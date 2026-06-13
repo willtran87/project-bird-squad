@@ -1,0 +1,269 @@
+{
+  "version": "0.1",
+  "project": "Tarot Aviary",
+  "coreRule": "All subjects must remain anatomically bird. Streetwear adapts to bird anatomy and must not create humanoid bodies.",
+  "style": {
+    "medium": "high-resolution pixel art",
+    "tone": "modern urban fantasy tarot",
+    "composition": "vertical tarot card with ornate border, full-body bird subject, readable title area",
+    "avoid": [
+      "humanoid anatomy",
+      "human torso",
+      "human arms",
+      "hands",
+      "human face",
+      "human legs",
+      "human posture",
+      "gore",
+      "watermark",
+      "extra title text"
+    ]
+  },
+  "cards": [
+    {
+      "id": "major_00",
+      "tarot": "The Fool",
+      "bird": "House Sparrow",
+      "coreMeaning": "Beginnings, innocence, risk, curiosity",
+      "description": "A small, scrappy traveler with bright eyes and restless energy.",
+      "pose": "Natural hopping or takeoff pose at the edge of a rooftop or curb.",
+      "streetwear": ["oversized tiny backpack", "loose hoodie adapted around wings", "small charm"],
+      "palette": ["warm dawn yellow", "soft sky blue", "concrete gray"],
+      "gameplayFantasy": "A starter card about exploration, leap-of-faith movement, and lucky mistakes."
+    },
+    {
+      "id": "major_01",
+      "tarot": "The Magician",
+      "bird": "Magpie",
+      "coreMeaning": "Skill, manifestation, tools, cleverness",
+      "description": "A sharp-eyed collector surrounded by symbolic tools and shiny found objects.",
+      "pose": "Perched over arranged objects with one wing naturally extended.",
+      "streetwear": ["thin chain", "small utility harness", "patched cropped jacket"],
+      "palette": ["black", "white", "silver", "electric blue"],
+      "gameplayFantasy": "A card about converting resources, creating combos, and manipulating tools."
+    },
+    {
+      "id": "major_02",
+      "tarot": "The High Priestess",
+      "bird": "Barn Owl",
+      "coreMeaning": "Hidden knowledge, intuition, silence, mystery",
+      "description": "A silent watcher framed by moon symbols and secret thresholds.",
+      "pose": "Still perch, head slightly turned, eyes luminous.",
+      "streetwear": ["deep feather-safe hood", "moon pin", "veil-like scarf"],
+      "palette": ["moon white", "indigo", "soft violet", "aged gold"],
+      "gameplayFantasy": "A card about secrets, prediction, concealed paths, and intuition checks."
+    },
+    {
+      "id": "major_03",
+      "tarot": "The Empress",
+      "bird": "Mute Swan",
+      "coreMeaning": "Abundance, beauty, nurture, creation",
+      "description": "An elegant swan surrounded by lush growth and soft city-water reflections.",
+      "pose": "Graceful floating or seated water pose with curved neck.",
+      "streetwear": ["elegant body drape", "floral patches", "delicate gold chain"],
+      "palette": ["ivory", "soft green", "rose", "warm gold"],
+      "gameplayFantasy": "A card about growth, healing, summons, and abundance engines."
+    },
+    {
+      "id": "major_04",
+      "tarot": "The Emperor",
+      "bird": "Golden Eagle",
+      "coreMeaning": "Authority, structure, command, protection",
+      "description": "A commanding raptor with a monumental silhouette and disciplined visual language.",
+      "pose": "Strong perch, wings partly folded, gaze forward.",
+      "streetwear": ["structured military-street jacket", "rank-like pins", "reinforced talon bands"],
+      "palette": ["bronze", "deep red", "charcoal", "sun gold"],
+      "gameplayFantasy": "A card about defense, command effects, formation bonuses, and rules."
+    },
+    {
+      "id": "major_05",
+      "tarot": "The Hierophant",
+      "bird": "Sandhill Crane",
+      "coreMeaning": "Tradition, ritual, teaching, institutions",
+      "description": "A ritual teacher bridging old symbols and street-temple culture.",
+      "pose": "Calm standing bird pose, long neck vertical, wings relaxed.",
+      "streetwear": ["long scarf or stole", "ritual pins", "simple wrapped leg bands"],
+      "palette": ["sand gray", "muted red", "stone", "antique gold"],
+      "gameplayFantasy": "A card about rulesets, rituals, training, and shared buffs."
+    },
+    {
+      "id": "major_06",
+      "tarot": "The Lovers",
+      "bird": "Pair of Lovebirds",
+      "coreMeaning": "Choice, union, values, harmony",
+      "description": "Two natural birds in balanced relationship, not fused or humanoid.",
+      "pose": "Mirrored perch or gentle flight around a shared symbol.",
+      "streetwear": ["matching small accessories", "paired color accents", "tiny linked charms"],
+      "palette": ["warm coral", "leaf green", "sunset orange", "cyan neon"],
+      "gameplayFantasy": "A card about bonds, paired actions, commitment choices, and synergy."
+    },
+    {
+      "id": "major_07",
+      "tarot": "The Chariot",
+      "bird": "Peregrine Falcon",
+      "coreMeaning": "Victory, control, speed, focus",
+      "description": "A sleek falcon slicing through city wind with total intent.",
+      "pose": "Diving or forward-flight pose with controlled wings.",
+      "streetwear": ["racing jacket adapted to body", "aero bands", "small street-racer patches"],
+      "palette": ["steel blue", "white", "black", "signal red"],
+      "gameplayFantasy": "A card about charge attacks, momentum, pursuit, and victory conditions."
+    },
+    {
+      "id": "major_08",
+      "tarot": "Strength",
+      "bird": "Secretarybird",
+      "coreMeaning": "Courage, patience, controlled power, compassion",
+      "description": "A tall, composed hunter whose strength is restraint.",
+      "pose": "Natural long-legged stance with calm eye line.",
+      "streetwear": ["wrapped leg bands", "minimal bomber vest", "subtle protective charm"],
+      "palette": ["cream", "black", "dust red", "warm tan"],
+      "gameplayFantasy": "A card about restraint, counterattacks, courage, and taming hostile effects."
+    },
+    {
+      "id": "major_09",
+      "tarot": "The Hermit",
+      "bird": "Snowy Owl",
+      "coreMeaning": "Solitude, wisdom, guidance, search",
+      "description": "A pale owl carrying quiet light through cold urban night.",
+      "pose": "Perched alone, head turned toward a lantern charm.",
+      "streetwear": ["heavy wing-safe cloak", "small lantern charm", "weathered scarf"],
+      "palette": ["snow white", "ice blue", "deep navy", "muted silver"],
+      "gameplayFantasy": "A card about scouting, retreat, pathfinding, and wisdom gained in isolation."
+    },
+    {
+      "id": "major_10",
+      "tarot": "Wheel of Fortune",
+      "bird": "Kingfisher",
+      "coreMeaning": "Cycles, luck, change, opportunity",
+      "description": "A bright bird caught at the instant fortune turns.",
+      "pose": "Diving or perched in front of circular water and coin motifs.",
+      "streetwear": ["small windbreaker", "coin charm", "bright band accents"],
+      "palette": ["turquoise", "orange", "deep water blue", "gold"],
+      "gameplayFantasy": "A card about random events, rerolls, turn cycles, and opportunity windows."
+    },
+    {
+      "id": "major_11",
+      "tarot": "Justice",
+      "bird": "Black-Necked Stilt",
+      "coreMeaning": "Balance, truth, law, consequence",
+      "description": "A precise, symmetrical wading bird balanced between opposing signs.",
+      "pose": "Still shallow-water stance with long natural legs.",
+      "streetwear": ["clean monochrome wrap", "scale-like charm", "red accent band"],
+      "palette": ["black", "white", "shallow blue", "red"],
+      "gameplayFantasy": "A card about consequences, parity, damage reflection, and fair trades."
+    },
+    {
+      "id": "major_12",
+      "tarot": "The Hanged Man",
+      "bird": "Nuthatch",
+      "coreMeaning": "Pause, surrender, reversal, new perspective",
+      "description": "A natural upside-down bird turning inversion into calm insight.",
+      "pose": "Naturally upside-down on a branch, sign edge, or in peaceful levitation.",
+      "streetwear": ["small fitted hoodie", "talon bands", "tiny pouch charm"],
+      "palette": ["midnight blue", "warm gold", "cyan neon", "soft gray"],
+      "avoid": ["rope", "noose", "hanging device", "harm imagery"],
+      "gameplayFantasy": "A card about reversing perspective, delaying action, trading movement for insight, or flipping board state."
+    },
+    {
+      "id": "major_13",
+      "tarot": "Death",
+      "bird": "Turkey Vulture",
+      "coreMeaning": "Transformation, endings, release, renewal",
+      "description": "A solemn carrion bird representing cleanup, transition, and necessary endings.",
+      "pose": "Grounded stance or slow circling flight against a pale dawn.",
+      "streetwear": ["worn black layers", "weathered scarf", "bone-colored pins"],
+      "palette": ["black", "rust", "pale dawn", "desert tan"],
+      "avoid": ["gore", "villain caricature"],
+      "gameplayFantasy": "A card about sacrifice, clearing old effects, transformation, and rebirth triggers."
+    },
+    {
+      "id": "major_14",
+      "tarot": "Temperance",
+      "bird": "Flamingo",
+      "coreMeaning": "Balance, blending, patience, moderation",
+      "description": "A graceful balancing bird mixing colors, water, and opposing forces.",
+      "pose": "Natural one-leg stance with curved neck.",
+      "streetwear": ["soft cropped wrap", "waterproof pouch", "ankle bands"],
+      "palette": ["coral pink", "aqua", "cream", "soft gold"],
+      "gameplayFantasy": "A card about blending resources, healing over time, moderation, and stabilizing extremes."
+    },
+    {
+      "id": "major_15",
+      "tarot": "The Devil",
+      "bird": "Common Raven",
+      "coreMeaning": "Temptation, obsession, shadow, attachment",
+      "description": "A darkly stylish raven surrounded by broken chains and tempting objects.",
+      "pose": "Low perch with alert eyes and glossy feathers.",
+      "streetwear": ["dark luxe jacket", "broken chain charm", "silver rings clipped to harness"],
+      "palette": ["black", "oil-slick purple", "silver", "hot red"],
+      "avoid": ["literal demon anatomy", "humanoid body"],
+      "gameplayFantasy": "A card about bargains, risk-reward power, curses, and attachment mechanics."
+    },
+    {
+      "id": "major_16",
+      "tarot": "The Tower",
+      "bird": "Red-Headed Woodpecker",
+      "coreMeaning": "Disruption, collapse, revelation, shock",
+      "description": "A sharp bird tied to impact, alarm, and sudden structural change.",
+      "pose": "Clinging naturally to a cracked signpost or tower surface.",
+      "streetwear": ["hazard-striped wrap", "utility patch", "impact scuffs"],
+      "palette": ["red", "black", "white", "electric yellow"],
+      "gameplayFantasy": "A card about breaking defenses, destroying structures, and forced revelation."
+    },
+    {
+      "id": "major_17",
+      "tarot": "The Star",
+      "bird": "Superb Fairywren",
+      "coreMeaning": "Hope, healing, renewal, inspiration",
+      "description": "A tiny luminous bird beneath a huge sky, gentle but radiant.",
+      "pose": "Perched near water or hovering lightly beneath star symbols.",
+      "streetwear": ["silver-blue accents", "tiny soft jacket", "star charm"],
+      "palette": ["electric blue", "silver", "soft lavender", "deep night"],
+      "gameplayFantasy": "A card about healing, hope counters, inspiration, and recovery after loss."
+    },
+    {
+      "id": "major_18",
+      "tarot": "The Moon",
+      "bird": "Common Nightjar",
+      "coreMeaning": "Dreams, illusion, instinct, uncertainty",
+      "description": "A camouflaged night bird nearly hidden in surreal moonlight.",
+      "pose": "Low natural perch or ground rest with wide reflective eyes.",
+      "streetwear": ["subtle camo wrap", "moon patch", "soft shadow bands"],
+      "palette": ["charcoal", "moon gray", "dusky brown", "muted blue"],
+      "gameplayFantasy": "A card about hidden information, dreams, illusions, and instinctive navigation."
+    },
+    {
+      "id": "major_19",
+      "tarot": "The Sun",
+      "bird": "American Goldfinch",
+      "coreMeaning": "Joy, clarity, success, vitality",
+      "description": "A bright gold bird bursting with clear morning energy.",
+      "pose": "Open-wing flight or cheerful perch in sunlight.",
+      "streetwear": ["sporty summer band", "small cap adapted to head", "bright patch"],
+      "palette": ["sun yellow", "white", "sky blue", "fresh green"],
+      "gameplayFantasy": "A card about clarity, success chains, radiant buffs, and removing fear."
+    },
+    {
+      "id": "major_20",
+      "tarot": "Judgment",
+      "bird": "Rooster",
+      "coreMeaning": "Awakening, announcement, reckoning, calling",
+      "description": "A bold herald whose cry wakes the whole scene.",
+      "pose": "Natural crowing stance with lifted head and strong silhouette.",
+      "streetwear": ["bold vest", "sound-wave patches", "sunrise charm"],
+      "palette": ["crimson", "gold", "white", "morning blue"],
+      "gameplayFantasy": "A card about awakening units, resolving delayed effects, summons, and public reckoning."
+    },
+    {
+      "id": "major_21",
+      "tarot": "The World",
+      "bird": "Arctic Tern",
+      "coreMeaning": "Completion, journey, wholeness, integration",
+      "description": "A long-distance traveler framed by circular migration and world symbols.",
+      "pose": "Elegant flight through a wreath-like circular frame.",
+      "streetwear": ["travel patches", "light flight harness", "small compass charm"],
+      "palette": ["white", "sea blue", "silver", "aurora green"],
+      "gameplayFantasy": "A card about completion, global movement, final synergy, and journey rewards."
+    }
+  ]
+}
