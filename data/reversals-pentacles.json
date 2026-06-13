@@ -1,0 +1,245 @@
+{
+  "version": "0.1",
+  "project": "Tarot Aviary",
+  "set": "Reversals — The Molt (Suit of Pentacles)",
+  "basedOn": "docs/reversals-molt-system.md; data/minor-arcana-pentacles.json; data/reversals-sample.json",
+  "note": "The Molt (reversed) layer for all 14 Pentacles cards. Each card gains a 'reversed' block (mode-tagged RWS reading in the bird's scene + Molt-mode mechanic) and a 'molt' art-direction block. uprightMeaning aliases each card's existing coreMeaning. Pips mostly molt 'blocked' or 'shadow'; renewal where tradition flips positive (4 releasing control, 5 recovery). Still anatomically bird, no gore, no harm, title unchanged.",
+  "reversalModes": ["blocked", "inward", "shadow", "deficiency", "renewal"],
+  "accentMoltRule": "warm+inward/deficiency -> drained ash; any+shadow/renewal -> oil-slick iridescent; cool+blocked -> frost-dimmed",
+  "cards": [
+    {
+      "id": "pentacles_ace", "tier": "pip", "tarot": "Ace of Pentacles", "bird": "Satin Bowerbird",
+      "uprightMeaning": "Opportunity, new venture, material seed",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "The offering withdrawn — a missed opportunity, a bad investment, the seed that never takes; the coin-berry held back at the gate or dropped before it grows.",
+        "gameplayFantasy": "Molt mode fizzles the seed: the resource-generation engine starts dormant, paying out only if you spend a beat to coax it open.",
+        "renderPath": "procedural Molt filter (pip volume tier)"
+      },
+      "molt": {
+        "accentShift": "brass -> frost-dimmed brass-grey",
+        "featherState": "glossy mantle dulled, two body feathers shed at the gate, coin-berry tarnished",
+        "lighting": "cold underlight off the gate instead of warm market key",
+        "borderState": "gear/coin/vine filigree frayed, the offered coin rusted",
+        "moltGlyph": "single shed blue-black feather in the cartouche"
+      }
+    },
+    {
+      "id": "pentacles_02", "tier": "pip", "tarot": "Two of Pentacles", "bird": "European Starling",
+      "uprightMeaning": "Juggling, balance, adaptability",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Overwhelmed and disorganized — too many demands at once, the balance lost, both coins wobbling off the wingtips as the wire sways.",
+        "gameplayFantasy": "Molt mode overloads: you may shuffle three resources instead of two, but one is dropped at random each turn.",
+        "renderPath": "procedural Molt filter (pip volume tier)"
+      },
+      "molt": {
+        "accentShift": "copper -> frost-dimmed copper-grey",
+        "featherState": "iridescent speckling dulled, primaries ragged from over-flapping, a feather slipping off the wire",
+        "lighting": "noon balance-light cooled to grey overcast",
+        "borderState": "gear/coin/vine filigree frayed, the two coins slipping their clips",
+        "moltGlyph": "single shed flight feather in the cartouche"
+      }
+    },
+    {
+      "id": "pentacles_03", "tier": "pip", "tarot": "Three of Pentacles", "bird": "Sociable Weaver",
+      "uprightMeaning": "Teamwork, craft, shared building",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Teamwork broken down — mismatched effort, poor craft, the blueprint ignored; the straw arch sagging as the three weavers work at cross purposes.",
+        "gameplayFantasy": "Molt mode desyncs the build: the structure still completes, but the shared bonus splits unevenly and one worker is wasted.",
+        "renderPath": "procedural Molt filter (pip volume tier)"
+      },
+      "molt": {
+        "accentShift": "moss -> frost-dimmed moss-grey",
+        "featherState": "buff plumage scruffy, loose straw and shed feathers littering the half-built arch",
+        "lighting": "cold flat underlight, the worksite gone grey",
+        "borderState": "gear/coin/vine filigree frayed, the blueprint pin rusted loose",
+        "moltGlyph": "single shed down feather in the cartouche"
+      }
+    },
+    {
+      "id": "pentacles_04", "tier": "pip", "tarot": "Four of Pentacles", "bird": "Rock Pigeon",
+      "uprightMeaning": "Control, hoarding, holding tight",
+      "reversed": {
+        "mode": "renewal",
+        "meaning": "The grip released — control let go, generosity returning, the clenched wings opening; or its sour flip, greed tightening past reason. Read here as the loosening, the hoard finally spent.",
+        "gameplayFantasy": "Molt mode opens the vault: unlock your frozen resources all at once for a surge, at the cost of the protection they gave.",
+        "renderPath": "procedural Molt filter (pip volume tier)"
+      },
+      "molt": {
+        "accentShift": "coin gray -> oil-slick iridescent pewter",
+        "featherState": "wings unclenching, the protective curl shedding loose feathers as it opens, coins spilling free",
+        "lighting": "cold rim-light from below, the hunched shadow lifting",
+        "borderState": "gear/coin/vine filigree unravelling, the coin-purse lock sprung",
+        "moltGlyph": "single shed grey feather in the cartouche"
+      }
+    },
+    {
+      "id": "pentacles_05", "tier": "pip", "tarot": "Five of Pentacles", "bird": "Rock Pigeon",
+      "uprightMeaning": "Hardship, exclusion, want",
+      "reversed": {
+        "mode": "renewal",
+        "meaning": "Recovery from hardship — the cold spell ending, the lit window finally a door, the two huddled birds finding warmth; or the darker flip, the loss deepening into isolation. Read here as the turn toward relief.",
+        "gameplayFantasy": "Molt mode converts the setback: the hardship cost you paid earlier refunds as aid, the recovery cashing in.",
+        "renderPath": "procedural Molt filter (pip volume tier)"
+      },
+      "molt": {
+        "accentShift": "moss -> oil-slick iridescent moss-sheen",
+        "featherState": "fluffed chill feathers smoothing, a few shed as the birds warm and turn toward the glow",
+        "lighting": "the golden window's light spilling cold-warm onto the alley, shadow thinning",
+        "borderState": "gear/coin/vine filigree mending mid-unravel, frost lifting from the frame",
+        "moltGlyph": "single shed grey feather in the cartouche"
+      }
+    },
+    {
+      "id": "pentacles_06", "tier": "pip", "tarot": "Six of Pentacles", "bird": "European Starling",
+      "uprightMeaning": "Generosity, giving and receiving, fairness",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Giving soured into strings-attached — charity that buys control, debts called in, selfishness dressed as fairness; the scale tilted while the seed is doled out.",
+        "gameplayFantasy": "Molt mode weaponises the gift: you may share resources to allies, but each gift secretly marks a debt you collect later.",
+        "renderPath": "procedural Molt filter (pip volume tier)"
+      },
+      "molt": {
+        "accentShift": "brass -> oil-slick iridescent brass-sheen",
+        "featherState": "iridescent plumage gone oily and bristled, a feather shed as the seed-pouch tips uneven",
+        "lighting": "cold underlight, the merchant's gaze gone calculating",
+        "borderState": "gear/coin/vine filigree frayed, the balanced scale rusted askew",
+        "moltGlyph": "single shed flight feather in the cartouche"
+      }
+    },
+    {
+      "id": "pentacles_07", "tier": "pip", "tarot": "Seven of Pentacles", "bird": "Satin Bowerbird",
+      "uprightMeaning": "Patience, investment, waiting on growth",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Patience worn to impatience — poor return on long effort, the vine yielding little, the wait that no longer pays; leaning on the hoe in frustration at the thin harvest.",
+        "gameplayFantasy": "Molt mode forces the harvest early: cash in the ripening investment now for a reduced, immediate payout instead of the bigger wait.",
+        "renderPath": "procedural Molt filter (pip volume tier)"
+      },
+      "molt": {
+        "accentShift": "copper -> frost-dimmed copper-grey",
+        "featherState": "mantle dulled, shoulders slumped over the hoe, a shed feather caught on the trellis",
+        "lighting": "the warm garden light cooled to grey, the coin-fruit gone pale",
+        "borderState": "gear/coin/vine filigree frayed, the vine motif withering on the frame",
+        "moltGlyph": "single shed blue-black feather in the cartouche"
+      }
+    },
+    {
+      "id": "pentacles_08", "tier": "pip", "tarot": "Eight of Pentacles", "bird": "Sociable Weaver",
+      "uprightMeaning": "Mastery, diligence, skilled labor",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Diligence curdled into uninspired drudgery and perfectionism — work without heart, the same coin hammered past the point of care, mastery hollowed by repetition.",
+        "gameplayFantasy": "Molt mode grinds harder: the craft loop produces extra each turn but the output degrades in quality, and you can't stop the loop.",
+        "renderPath": "procedural Molt filter (pip volume tier)"
+      },
+      "molt": {
+        "accentShift": "soil brown -> oil-slick iridescent umber-sheen",
+        "featherState": "buff plumage oily and overworked, broken feathers shed across the cluttered bench",
+        "lighting": "cold task-light from below, the workbench in flat grey gloom",
+        "borderState": "gear/coin/vine filigree frayed, the row of finished coins tarnished",
+        "moltGlyph": "single shed down feather in the cartouche"
+      }
+    },
+    {
+      "id": "pentacles_09", "tier": "pip", "tarot": "Nine of Pentacles", "bird": "Satin Bowerbird",
+      "uprightMeaning": "Self-made abundance, independence, refinement",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Independence over-leveraged — overinvestment in work, financial dependence hidden under finery, the curated bower bought on credit; refinement that rings hollow and alone.",
+        "gameplayFantasy": "Molt mode over-extends: cash in accumulated wealth for a stronger reward, but it leaves you dependent on a single resource to stay standing.",
+        "renderPath": "procedural Molt filter (pip volume tier)"
+      },
+      "molt": {
+        "accentShift": "market-gold -> oil-slick iridescent oxidised gold",
+        "featherState": "estate-drape sleek but feathers shedding underneath, loose plumes among the coins and trinkets",
+        "lighting": "cold rim-light, the lush garden gone shadowed and still",
+        "borderState": "gear/coin/vine filigree frayed, the bower's gilt flaking on the frame",
+        "moltGlyph": "single shed blue-black feather in the cartouche"
+      }
+    },
+    {
+      "id": "pentacles_10", "tier": "pip", "tarot": "Ten of Pentacles", "bird": "Sociable Weaver",
+      "uprightMeaning": "Legacy, lasting wealth, family fortune",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Legacy fracturing — family conflict over the inheritance, unstable wealth, the lasting fortune squandered or lost; the multigenerational flock pulling apart under the coin-crowned arch.",
+        "gameplayFantasy": "Molt mode cashes the legacy: trigger your built-up board for a huge payout, but it disbands the asset chain that made it.",
+        "renderPath": "procedural Molt filter (pip volume tier)"
+      },
+      "molt": {
+        "accentShift": "market-gold -> oil-slick iridescent oxidised gold",
+        "featherState": "the flock's plumage scruffy and mismatched, shed feathers drifting from the gathering, banners fraying",
+        "lighting": "cold underlight, the grand arch in grey shadow",
+        "borderState": "gear/coin/vine filigree frayed, the coin-banner strings snapping on the frame",
+        "moltGlyph": "single shed down feather in the cartouche"
+      }
+    },
+    {
+      "id": "pentacles_fledgling", "tier": "court", "tarot": "Fledgling of Pentacles", "bird": "Hoopoe",
+      "uprightMeaning": "Diligence, study, a material opportunity",
+      "reversed": {
+        "mode": "deficiency",
+        "meaning": "Study abandoned — lazy and unrealistic about money, the lesson half-learned, the single coin examined for daydreams not skill; potential idling at the market's edge.",
+        "gameplayFantasy": "Molt mode procrastinates: the scout/bank unit costs nothing to deploy but learns its build option a turn late, if at all."
+      },
+      "molt": {
+        "accentShift": "cinnamon -> drained ash-cinnamon",
+        "featherState": "crest drooping and shedding, barred wing feathers pin-feathered and patchy",
+        "lighting": "cold underlight, the bright market edge gone dim",
+        "borderState": "gear/coin/vine filigree frayed, the single coin-tag tarnished",
+        "moltGlyph": "single shed crest feather in the cartouche"
+      }
+    },
+    {
+      "id": "pentacles_outrider", "tier": "court", "tarot": "Outrider of Pentacles", "bird": "Rock Pigeon",
+      "uprightMeaning": "Reliability, steady effort, delivery",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Steady effort soured — workaholic to the point of burnout, the route flown obsessively, or its flip into idleness and stalled delivery; the courier grinding past reason or grounded entirely.",
+        "gameplayFantasy": "Molt mode over-hauls: the courier delivers double each turn but cannot rest, taking on strain until it's grounded."
+      },
+      "molt": {
+        "accentShift": "copper -> oil-slick iridescent copper-sheen",
+        "featherState": "flight feathers frayed from overuse, the satchel dragging, loose feathers in the slipstream",
+        "lighting": "cold rim-light over the rooftops, the route below in grey shadow",
+        "borderState": "gear/coin/vine filigree frayed, the route-map clip rusted",
+        "moltGlyph": "single shed flight feather in the cartouche"
+      }
+    },
+    {
+      "id": "pentacles_matron", "tier": "court", "tarot": "Matron of Pentacles", "bird": "Satin Bowerbird",
+      "uprightMeaning": "Nurture, craft mastery, abundance tended",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Nurture turned inward and possessive — self-centered neglect of the crew, or smothering security that hoards the bower and chokes the very abundance she tends.",
+        "gameplayFantasy": "Molt mode over-protects: the resource pool grows faster but is locked to her alone, allies barred from drawing on it."
+      },
+      "molt": {
+        "accentShift": "moss -> oil-slick iridescent moss-sheen",
+        "featherState": "regal drape sleek but plumage shedding beneath, loose feathers settling around the coin-throne",
+        "lighting": "cold underlight off the throne, the curated bower in shadow",
+        "borderState": "gear/coin/vine filigree frayed, the crowned-coin pin oxidised",
+        "moltGlyph": "single shed blue-black feather in the cartouche"
+      }
+    },
+    {
+      "id": "pentacles_elder", "tier": "court", "tarot": "Elder of Pentacles", "bird": "Sociable Weaver",
+      "uprightMeaning": "Material command, builder authority, provider",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Command corrupted into greed and materialism — the provider become a hoarder, authority used to extract not build, the great nest ruling the market for profit alone.",
+        "gameplayFantasy": "Molt mode profiteers: the leader's build-and-rally effects gain raw power but skim a tax from every ally they touch."
+      },
+      "molt": {
+        "accentShift": "brass -> oil-slick iridescent brass-sheen",
+        "featherState": "foreman's coat heavy but mantle bristled and broken, a primary shed atop the nest-citadel",
+        "lighting": "harsh cold rim-light from below, the market he built in shadow",
+        "borderState": "gear/coin/vine filigree frayed, the deep coin-seal pin cracked and rusted",
+        "moltGlyph": "single shed wing feather in the cartouche"
+      }
+    }
+  ]
+}

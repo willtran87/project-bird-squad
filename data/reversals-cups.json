@@ -1,0 +1,235 @@
+{
+  "version": "0.1",
+  "project": "Tarot Aviary",
+  "set": "Reversals — The Molt (Suit of Cups)",
+  "basedOn": "docs/reversals-molt-system.md; data/reversals-sample.json; data/minor-arcana-cups.json",
+  "note": "Full Molt (reversed) layer for the 14 Cups cards. Reuses the finished 'Elder of Cups' entry from reversals-sample.json verbatim and generates the other 13 to match. uprightMeaning aliases each card's existing coreMeaning; reversed + molt blocks are additive. Pips render via the procedural Molt filter; courts bespoke.",
+  "reversalModes": ["blocked", "inward", "shadow", "deficiency", "renewal"],
+  "accentMoltRule": "warm+inward/deficiency -> drained ash; any+shadow/renewal -> oil-slick iridescent; cool+blocked -> frost-dimmed",
+  "cards": [
+    {
+      "id": "cups_ace", "tier": "pip", "tarot": "Ace of Cups", "bird": "Great Blue Heron",
+      "uprightMeaning": "New love, open heart, emotional source",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "The wellspring stopped — a closed heart, blocked or emptied emotion, love offered and withheld; the vessel runs dry.",
+        "gameplayFantasy": "Molt mode plugs the source: the emotion/bond resource it would open is locked for a turn, then bursts double when it finally flows."
+      },
+      "molt": {
+        "accentShift": "soft rose -> frost-dimmed rose-grey",
+        "featherState": "neck feathers shed, the lifted vessel tipped empty, a feather sinking in the dry basin",
+        "lighting": "cold underlight off still water instead of warm overflow glow",
+        "borderState": "wave-and-droplet filigree clogged and frayed",
+        "moltGlyph": "single shed plume in the cartouche"
+      }
+    },
+    {
+      "id": "cups_02", "tier": "pip", "tarot": "Two of Cups", "bird": "Hooded Merganser",
+      "uprightMeaning": "Connection, partnership, mutual attraction",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "The bond soured — breakup, imbalance, miscommunication, one crest raised while the other turns away; attraction curdled into tension.",
+        "gameplayFantasy": "Molt mode severs the pair: the bond-link breaks, dealing recoil to both — but the freed unit acts alone at full power."
+      },
+      "molt": {
+        "accentShift": "soft rose -> oil-slick iridescent mauve",
+        "featherState": "mirrored crests now mismatched and shedding, paired cuffs loosened, feathers drifting between them",
+        "lighting": "cold rim-light splits the two, the shared reflection broken",
+        "borderState": "linked droplet filigree pulled apart and fraying",
+        "moltGlyph": "single shed crest feather in the cartouche"
+      }
+    },
+    {
+      "id": "cups_03", "tier": "pip", "tarot": "Three of Cups", "bird": "Roseate Spoonbill",
+      "uprightMeaning": "Friendship, celebration, community joy",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Celebration overrun — overindulgence, gossip, a third wheel, the party gone sour; joy tipping into excess and exclusion.",
+        "gameplayFantasy": "Molt mode over-parties: the group buff hits harder but staggers the crew next turn with a hangover penalty."
+      },
+      "molt": {
+        "accentShift": "soft rose -> oil-slick iridescent magenta",
+        "featherState": "festival plumes bedraggled and shedding mid-splash, sashes askew, loose feathers in the spray",
+        "lighting": "cold overcast underlight, the fountain glare gone flat and greasy",
+        "borderState": "wave filigree churned and frayed at the corners",
+        "moltGlyph": "single shed pink feather in the cartouche"
+      }
+    },
+    {
+      "id": "cups_04", "tier": "pip", "tarot": "Four of Cups", "bird": "Great Blue Heron",
+      "uprightMeaning": "Apathy, withdrawal, missed offer",
+      "reversed": {
+        "mode": "renewal",
+        "meaning": "Re-engagement — the hunch lifting, the offered cup finally noticed, acceptance and new interest after withdrawal; head coming back up.",
+        "gameplayFantasy": "Molt mode wakes up: the skipped turn is reclaimed early, turning the pass into a delayed, stronger re-entry."
+      },
+      "molt": {
+        "accentShift": "soft rose -> oil-slick iridescent rose",
+        "featherState": "hunched feathers loosening as the head lifts, one stale feather shed and the floating vessel catching cold light",
+        "lighting": "cold uplight warming faintly as the gaze turns to the cup",
+        "borderState": "rain-droplet filigree unsnarling, half-loosed",
+        "moltGlyph": "single shed plume in the cartouche"
+      }
+    },
+    {
+      "id": "cups_05", "tier": "pip", "tarot": "Five of Cups", "bird": "Wood Duck",
+      "uprightMeaning": "Loss, grief, regret (but not total)",
+      "reversed": {
+        "mode": "renewal",
+        "meaning": "Acceptance and moving on — grief released, the two standing cups finally seen, forgiveness, turning back toward what remains.",
+        "gameplayFantasy": "Molt mode recovers: the discard/sacrifice returns more than it spent, the loss converted into a comeback resource."
+      },
+      "molt": {
+        "accentShift": "faded rose -> oil-slick iridescent rose",
+        "featherState": "mourning-wrap feathers shedding as the head turns back, the two lit cups brightening, a feather drifting off the gutter",
+        "lighting": "cold dusk underlight thawing toward the two glowing vessels",
+        "borderState": "droplet filigree unfraying, the cracked-charm motif easing loose",
+        "moltGlyph": "single shed crest feather in the cartouche"
+      }
+    },
+    {
+      "id": "cups_06", "tier": "pip", "tarot": "Six of Cups", "bird": "Sanderling",
+      "uprightMeaning": "Nostalgia, innocence, kindness",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Stuck in the past — clinging to old memory, refusing to grow up, nostalgia gone heavy; the gift held back, lingering at the fountain's edge.",
+        "gameplayFantasy": "Molt mode hoards the past: the gift/transfer effect is frozen on its source, banking value but stalling the hand-off."
+      },
+      "molt": {
+        "accentShift": "warm gold -> frost-dimmed ash-gold",
+        "featherState": "down patchy and pin-feathered, the offered berry withdrawn, a tiny feather caught on the old charm",
+        "lighting": "cold grey underlight instead of soft warm evening key",
+        "borderState": "wave filigree jammed and frayed, the friendship motif snagged",
+        "moltGlyph": "single shed down feather in the cartouche"
+      }
+    },
+    {
+      "id": "cups_07", "tier": "pip", "tarot": "Seven of Cups", "bird": "Wood Duck",
+      "uprightMeaning": "Illusion, fantasy, too many choices",
+      "reversed": {
+        "mode": "renewal",
+        "meaning": "Clarity after illusion — the bubbles popping, the decoys seen through, focus and a real choice made; or, soured, paralysis as the visions overwhelm.",
+        "gameplayFantasy": "Molt mode dispels: the choose-one reveals which options are decoys before you pick — clarity bought at the cost of the surprise."
+      },
+      "molt": {
+        "accentShift": "dusk violet -> oil-slick iridescent violet",
+        "featherState": "dream-wrap feathers shedding as the bubble-visions burst, one real cup left clear, loose feathers among popping bubbles",
+        "lighting": "cold underlight cutting through the dissolving shimmer",
+        "borderState": "droplet filigree unravelling as the illusions thin",
+        "moltGlyph": "single shed crest feather in the cartouche"
+      }
+    },
+    {
+      "id": "cups_08", "tier": "pip", "tarot": "Eight of Cups", "bird": "Great Blue Heron",
+      "uprightMeaning": "Withdrawal, walking away, seeking more",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Fear of leaving — frozen at the threshold, aimless drifting, unable to walk away or to stay; the departure stalled, the moon ungone-to.",
+        "gameplayFantasy": "Molt mode hesitates to retreat: the planned withdrawal is locked in place a turn, then breaks away cheaper once it commits."
+      },
+      "molt": {
+        "accentShift": "soft rose -> frost-dimmed rose-grey",
+        "featherState": "travel-cloak feathers shed mid-stride, the heron half-turned and stalled, a feather dropped on the lined-up cups",
+        "lighting": "cold low underlight, the moon ahead gone pale and grey",
+        "borderState": "wave filigree guttering, the path-motif broken",
+        "moltGlyph": "single shed flight feather in the cartouche"
+      }
+    },
+    {
+      "id": "cups_09", "tier": "pip", "tarot": "Nine of Cups", "bird": "Roseate Spoonbill",
+      "uprightMeaning": "Contentment, satisfaction, the wish granted",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Plenty gone hollow — smugness, dissatisfaction despite abundance, the wish granted but unfulfilling; surface comfort over an empty want.",
+        "gameplayFantasy": "Molt mode overspends: the payoff cashes in for more, but the surplus rots, leaving the board emotionally bankrupt after."
+      },
+      "molt": {
+        "accentShift": "warm gold -> oil-slick iridescent gold",
+        "featherState": "satin-wrap plumes preened to a greasy sheen and shedding, the arc of full cups dulled, a feather settling among them",
+        "lighting": "cold flat underlight, the abundance glow gone tarnished",
+        "borderState": "droplet filigree slick and frayed, the full-charm motif tarnished",
+        "moltGlyph": "single shed pink feather in the cartouche"
+      }
+    },
+    {
+      "id": "cups_10", "tier": "pip", "tarot": "Ten of Cups", "bird": "Wood Duck",
+      "uprightMeaning": "Harmony, family, lasting belonging",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Harmony broken — disconnection, a fractured family, the shared bond strained; the rainbow faded, the group turned from one another.",
+        "gameplayFantasy": "Molt mode fractures: the capstone synergy is jammed, but a single bonded unit can still cash the whole bond for one strong solo play."
+      },
+      "molt": {
+        "accentShift": "warm gold -> frost-dimmed ash-gold",
+        "featherState": "family plumage scruffy and shedding, the group drifting apart, feathers drifting under a fading arc",
+        "lighting": "cold underlight, the rainbow of ten lights gone pale and broken",
+        "borderState": "wave filigree split and frayed, the linked-charm motif unlinked",
+        "moltGlyph": "single shed crest feather in the cartouche"
+      }
+    },
+    {
+      "id": "cups_fledgling", "tier": "court", "tarot": "Fledgling of Cups", "bird": "Sanderling",
+      "uprightMeaning": "Curiosity, sensitivity, an emotional message",
+      "reversed": {
+        "mode": "deficiency",
+        "meaning": "Sensitivity collapsed into immaturity — escapism, sulking, the message undelivered or taken too hard; feeling without footing.",
+        "gameplayFantasy": "Molt mode flinches: the messenger drops its resource on entry but draws an extra card scrambling to recover it."
+      },
+      "molt": {
+        "accentShift": "teal -> frost-dimmed teal-grey",
+        "featherState": "fledgling down patchy and pin-feathered, the sealed vessel clutched undelivered, a loose feather on the satchel",
+        "lighting": "cold flat underlight instead of bright courier key",
+        "borderState": "droplet filigree frayed, the message-tag motif loosened",
+        "moltGlyph": "single shed down feather in the cartouche"
+      }
+    },
+    {
+      "id": "cups_outrider", "tier": "court", "tarot": "Outrider of Cups", "bird": "Hooded Merganser",
+      "uprightMeaning": "Romantic pursuit, idealism, following the heart",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Idealism soured — moodiness, jealousy, unrealistic expectations, chasing a fantasy that cannot deliver; the pursuit gone obsessive or sulky.",
+        "gameplayFantasy": "Molt mode over-commits the charge: the mobile strike hits harder but overshoots, leaving the Outrider stranded and exposed."
+      },
+      "molt": {
+        "accentShift": "soft rose -> oil-slick iridescent mauve",
+        "featherState": "swept crest shedding mid-flight, racing-wrap loosened, the clutched vessel slopping, feathers torn into the slipstream",
+        "lighting": "cold rim-light off the black canal, the skim gone joyless",
+        "borderState": "wave filigree churned and frayed in the wake",
+        "moltGlyph": "single shed crest feather in the cartouche"
+      }
+    },
+    {
+      "id": "cups_matron", "tier": "court", "tarot": "Matron of Cups", "bird": "Roseate Spoonbill",
+      "uprightMeaning": "Compassion, intuition, emotional mastery",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Compassion curdled into insecurity and smothering — emotional dependence, martyrdom, intuition clouded; care that controls and engulfs.",
+        "gameplayFantasy": "Molt mode over-shelters: the heal/protect aura clamps onto allies, shielding them but locking them under her until she releases."
+      },
+      "molt": {
+        "accentShift": "soft rose -> oil-slick iridescent mauve",
+        "featherState": "regal plumes shed and trailing in the fountain, satin drape sodden, the cradled vessel held too close",
+        "lighting": "cold underlight off the dark fountain, the serene gaze gone anxious",
+        "borderState": "wave filigree clinging and frayed, the crowned-droplet motif tarnished",
+        "moltGlyph": "single shed pink plume in the cartouche"
+      }
+    },
+    {
+      "id": "cups_elder", "tier": "court", "tarot": "Elder of Cups", "bird": "Great Blue Heron",
+      "uprightMeaning": "Emotional command, calm authority, wisdom of feeling",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Calm curdled into coldness or manipulation — moodiness, withheld feeling, authority used to guilt or control.",
+        "gameplayFantasy": "Molt mode weaponises emotion: the rally effect becomes a coercion — boosts the crew but drains their loyalty resource."
+      },
+      "molt": {
+        "accentShift": "soft rose -> oil-slick iridescent mauve",
+        "featherState": "neck plumes shed and trailing in the water, coat-drape sodden",
+        "lighting": "cold underlight off black water, gaze gone flat",
+        "borderState": "wave filigree churned and frayed",
+        "moltGlyph": "single shed plume in the cartouche"
+      }
+    }
+  ]
+}

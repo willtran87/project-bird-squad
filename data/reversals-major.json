@@ -1,0 +1,366 @@
+{
+  "version": "0.1",
+  "project": "Tarot Aviary",
+  "set": "Reversals — The Molt (Major Arcana)",
+  "basedOn": "docs/reversals-molt-system.md",
+  "note": "Full reversed/Molt overlay for all 22 Major Arcana. Each card adds a 'reversed' block (one of the five modes, RWS-accurate reading mapped to the bird archetype, plus a one-line gameplay hint) and a 'molt' art-direction block. uprightMeaning aliases each source card's coreMeaning verbatim. Dark Majors lean toward the renewal mode where tradition does. The six worked Majors from reversals-sample.json (The Fool, The Emperor, Strength, Death, The Tower, The Sun) are reused verbatim.",
+  "reversalModes": ["blocked", "inward", "shadow", "deficiency", "renewal"],
+  "accentMoltRule": "warm+inward/deficiency -> drained ash; any+shadow/renewal -> oil-slick iridescent; cool+blocked -> frost-dimmed",
+  "cards": [
+    {
+      "id": "major_00", "tier": "major", "tarot": "The Fool", "bird": "House Sparrow",
+      "uprightMeaning": "Beginnings, innocence, risk, curiosity",
+      "reversed": {
+        "mode": "deficiency",
+        "meaning": "The leap refused — fear of starting, hesitation at the ledge; or its flip side, reckless leaping without looking.",
+        "gameplayFantasy": "Molt mode hesitates: the leap-of-faith move is delayed a turn, but lands cheaper or safer when it finally fires."
+      },
+      "molt": {
+        "accentShift": "warm dawn yellow -> drained ash-gold",
+        "featherState": "fledgling down still patchy, two loose feathers caught on the curb",
+        "lighting": "cold pre-dawn underlight instead of warm dawn key",
+        "borderState": "dawn-ray filigree dimmed and frayed at the corners",
+        "moltGlyph": "single shed down feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_01", "tier": "major", "tarot": "The Magician", "bird": "Magpie",
+      "uprightMeaning": "Skill, manifestation, tools, cleverness",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Skill turned to manipulation — talent squandered or untapped, sleight-of-hand and deceit, tools used to con rather than create.",
+        "gameplayFantasy": "Molt mode cons: the resource-convert effect can steal from an opponent instead, but the trick can backfire onto the caster."
+      },
+      "molt": {
+        "accentShift": "electric blue -> oil-slick iridescent blue-violet",
+        "featherState": "pied plumage scruffy, primaries broken, a feather palmed and dropping",
+        "lighting": "cold rim-light from below, the laid-out tools in shadow",
+        "borderState": "filigree fraying, the arranged objects scattering",
+        "moltGlyph": "single shed pied feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_02", "tier": "major", "tarot": "The High Priestess", "bird": "Barn Owl",
+      "uprightMeaning": "Hidden knowledge, intuition, silence, mystery",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Intuition disconnected — secrets withheld or suppressed, inner voice ignored, signals misread, the threshold sealed shut.",
+        "gameplayFantasy": "Molt mode goes silent: hidden-information effects are locked off, but the card cannot be scried or predicted in turn."
+      },
+      "molt": {
+        "accentShift": "aged gold -> frost-dimmed pale gold",
+        "featherState": "heart-face plumes loose and dishevelled, a soft feather adrift in the veil",
+        "lighting": "cold underlight, the moon symbols gone flat and grey",
+        "borderState": "moon filigree frosted over, threshold motif sealed",
+        "moltGlyph": "single shed facial-disc feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_03", "tier": "major", "tarot": "The Empress", "bird": "Mute Swan",
+      "uprightMeaning": "Abundance, beauty, nurture, creation",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Nurture turned smothering — creative block, dependence and over-control, abundance hoarded, growth choked by too much care.",
+        "gameplayFantasy": "Molt mode smothers: the heal/abundance engine over-feeds a single ally, buffing it but locking it from acting."
+      },
+      "molt": {
+        "accentShift": "rose -> oil-slick iridescent mauve-rose",
+        "featherState": "neck plumes overgrown and matted, a loose feather sinking in the water",
+        "lighting": "cold underlight off dark water, the lush growth gone shadowed",
+        "borderState": "floral filigree overgrown and tangling, choking the frame",
+        "moltGlyph": "single shed breast feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_04", "tier": "major", "tarot": "The Emperor", "bird": "Golden Eagle",
+      "uprightMeaning": "Authority, structure, command, protection",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Authority soured into tyranny and rigidity — control for its own sake, brittle dominance, command no one follows.",
+        "gameplayFantasy": "Molt mode over-commands: forces obedience effects on allies too, gaining raw power at the cost of friendly synergy."
+      },
+      "molt": {
+        "accentShift": "deep red -> oil-slick iridescent crimson",
+        "featherState": "mantle feathers bristled and broken, a primary shed from one wing",
+        "lighting": "harsh cold rim-light from below, throne in shadow",
+        "borderState": "structured frame cracking, pins askew",
+        "moltGlyph": "single shed bronze feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_05", "tier": "major", "tarot": "The Hierophant", "bird": "Sandhill Crane",
+      "uprightMeaning": "Tradition, ritual, teaching, institutions",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Dogma soured or openly defied — rebellion against tradition, empty ritual, doctrine clung to past its use, the teacher who only commands.",
+        "gameplayFantasy": "Molt mode breaks ranks: the shared-buff aura flips to punish anyone who deviates from the ruleset, allies included."
+      },
+      "molt": {
+        "accentShift": "muted red -> oil-slick iridescent rust-red",
+        "featherState": "neck and wing feathers loosened and ragged, a feather shed mid-step",
+        "lighting": "cold underlight, the ritual symbols dimmed and hollow",
+        "borderState": "ritual filigree unravelling, sacred motif cracked",
+        "moltGlyph": "single shed neck feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_06", "tier": "major", "tarot": "The Lovers", "bird": "Pair of Lovebirds",
+      "uprightMeaning": "Choice, union, values, harmony",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Disharmony and misalignment — values clashing, a bond strained or broken, a choice avoided, the two pulling apart.",
+        "gameplayFantasy": "Molt mode splits the pair: the paired-action combo decouples — each bird acts alone, weaker and out of sync."
+      },
+      "molt": {
+        "accentShift": "cyan neon -> frost-dimmed cyan-grey",
+        "featherState": "both birds scruffy and turned away, loose feathers drifting between them",
+        "lighting": "cold underlight, the shared symbol gone dark and cracked",
+        "borderState": "the linked filigree frayed, the charms unclasped",
+        "moltGlyph": "single shed feather between the pair in the cartouche"
+      }
+    },
+    {
+      "id": "major_07", "tier": "major", "tarot": "The Chariot", "bird": "Peregrine Falcon",
+      "uprightMeaning": "Victory, control, speed, focus",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Loss of control — the drive stalled, focus scattered, momentum lost or pulling in two directions, aggression without aim.",
+        "gameplayFantasy": "Molt mode stalls: the charge attack loses its lock — it still hits hard but the target is chosen at random."
+      },
+      "molt": {
+        "accentShift": "signal red -> frost-dimmed steel-red",
+        "featherState": "swept wings ragged mid-stoop, motion lines breaking up, a flight feather torn loose",
+        "lighting": "cold flat overcast, the dive-line gone slack",
+        "borderState": "the racing filigree guttering, aero motif unravelling",
+        "moltGlyph": "single shed flight feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_08", "tier": "major", "tarot": "Strength", "bird": "Secretarybird",
+      "uprightMeaning": "Courage, patience, controlled power, compassion",
+      "reversed": {
+        "mode": "deficiency",
+        "meaning": "Nerve lost — self-doubt, raw uncontrolled emotion, restraint collapsing into either timidity or a wild outburst.",
+        "gameplayFantasy": "Molt mode is unstable: the controlled counter-attack becomes a coin-flip — bigger if it lands, self-staggering if it misses."
+      },
+      "molt": {
+        "accentShift": "dust red -> drained ash-rose",
+        "featherState": "crest feathers drooping and shedding, leg-wraps loosened",
+        "lighting": "flat cold underlight, the calm eye now wavering",
+        "borderState": "restraint motif unravelling",
+        "moltGlyph": "single shed crest feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_09", "tier": "major", "tarot": "The Hermit", "bird": "Snowy Owl",
+      "uprightMeaning": "Solitude, wisdom, guidance, search",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Solitude soured into isolation — withdrawal that has become a hiding place, guidance refused, loneliness mistaken for wisdom.",
+        "gameplayFantasy": "Molt mode hides deeper: the scout/retreat effect makes the bird untargetable but also unable to aid the crew."
+      },
+      "molt": {
+        "accentShift": "warm lantern amber -> oil-slick iridescent amber-grey",
+        "featherState": "white plumage loose and unpreened, a feather drifting from the high perch",
+        "lighting": "the lantern guttering to a cold sheen, the round white mass gone shadowed",
+        "borderState": "the path filigree dimmed, the lantern motif half-out",
+        "moltGlyph": "single shed down feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_10", "tier": "major", "tarot": "Wheel of Fortune", "bird": "Kingfisher",
+      "uprightMeaning": "Cycles, luck, change, opportunity",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Fortune turned against — bad luck, cycles resisted, the dive mistimed, clinging to control while the wheel jams.",
+        "gameplayFantasy": "Molt mode jams the wheel: the reroll/random-event effect locks to its worst face, but the lock can be turned against a foe."
+      },
+      "molt": {
+        "accentShift": "orange -> frost-dimmed amber-grey",
+        "featherState": "plunge stalled, wings ragged, the bright cap dulled, a wet feather shed mid-air",
+        "lighting": "cold overcast, the coin/water motif gone grey",
+        "borderState": "the circular motif frozen mid-turn, filigree frayed",
+        "moltGlyph": "single shed wing feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_11", "tier": "major", "tarot": "Justice", "bird": "Black-Necked Stilt",
+      "uprightMeaning": "Balance, truth, law, consequence",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Justice denied — unfairness, bias, accountability dodged, the scales tipped, a verdict twisted or refused.",
+        "gameplayFantasy": "Molt mode tips the scale: the damage-reflection effect can be skewed onto an unintended target — cheaper, but unfair and unpredictable."
+      },
+      "molt": {
+        "accentShift": "red -> oil-slick iridescent red-violet",
+        "featherState": "the symmetry broken, plumage uneven, one thin leg buckling, a feather shed off-balance",
+        "lighting": "cold underlight, the opposing signs gone murky",
+        "borderState": "the balanced filigree skewed and frayed, scales-charm askew",
+        "moltGlyph": "single shed feather tilting the cartouche"
+      }
+    },
+    {
+      "id": "major_12", "tier": "major", "tarot": "The Hanged Man", "bird": "Nuthatch",
+      "uprightMeaning": "Pause, surrender, reversal, new perspective",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Pointless stalling — surrender that has become mere delay, resistance to a needed shift, sacrifice with no insight gained.",
+        "gameplayFantasy": "Molt mode just stalls: the delay-for-insight trade stops paying out — the pause lingers but no new perspective is granted.",
+        "avoid": ["rope", "noose", "hanging device", "harm imagery"]
+      },
+      "molt": {
+        "accentShift": "cyan neon -> frost-dimmed cyan-grey",
+        "featherState": "clinging inverted, plumage scruffy and unpreened, a feather hanging loose mid-fall",
+        "lighting": "cold underlight, the calm insight-glow gone flat",
+        "borderState": "the inverted filigree jammed, motif stuck half-turned",
+        "moltGlyph": "single shed feather suspended in the cartouche"
+      }
+    },
+    {
+      "id": "major_13", "tier": "major", "tarot": "Death", "bird": "Turkey Vulture",
+      "uprightMeaning": "Transformation, endings, release, renewal",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Change resisted — clinging to what should end, stagnation, fear of letting go, the cleanup refused.",
+        "gameplayFantasy": "Molt mode stalls endings: blocks the next 'destroy/clear' effect on the board, but rot accumulates as a cost.",
+        "avoid": ["gore", "villain caricature"]
+      },
+      "molt": {
+        "accentShift": "rust -> frost-dimmed rust-grey",
+        "featherState": "stuck old feathers refusing to drop, dull and overgrown",
+        "lighting": "the pale dawn behind goes cold and grey",
+        "borderState": "the renewal motif jammed, half-shed",
+        "moltGlyph": "single stuck, ungroomed feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_14", "tier": "major", "tarot": "Temperance", "bird": "Flamingo",
+      "uprightMeaning": "Balance, blending, patience, moderation",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Balance lost to excess — impatience, overindulgence, clashing ingredients, the careful blend spilling into too much.",
+        "gameplayFantasy": "Molt mode over-mixes: the heal-over-time blend doubles its tick but destabilises, risking an overflow that harms the caster."
+      },
+      "molt": {
+        "accentShift": "coral pink -> oil-slick iridescent coral-violet",
+        "featherState": "plumage uneven and shedding, the one-leg stance wobbling, a feather drifting onto the water",
+        "lighting": "cold underlight, the two mixing colors curdling and murky",
+        "borderState": "the blending filigree spilling its banks, motif frayed",
+        "moltGlyph": "single shed coral feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_15", "tier": "major", "tarot": "The Devil", "bird": "Common Raven",
+      "uprightMeaning": "Temptation, obsession, shadow, attachment",
+      "reversed": {
+        "mode": "renewal",
+        "meaning": "Chains broken — release from obsession and attachment, a bargain refused, stepping out of the bind, reclaiming control.",
+        "gameplayFantasy": "Molt mode breaks free: instead of cursing a target, it frees a unit from a curse or bargain — a self-liberation effect.",
+        "avoid": ["literal demon anatomy", "humanoid body"]
+      },
+      "molt": {
+        "accentShift": "oil-slick purple -> oil-slick iridescent violet-green",
+        "featherState": "glossy feathers loosening, the broken chains slipping off, a single feather lifting free",
+        "lighting": "cold rim-light, but the bind goes slack and the eyes clear",
+        "borderState": "the chain filigree coming unlinked and falling open",
+        "moltGlyph": "single shed glossy feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_16", "tier": "major", "tarot": "The Tower", "bird": "Red-Headed Woodpecker",
+      "uprightMeaning": "Disruption, collapse, revelation, shock",
+      "reversed": {
+        "mode": "renewal",
+        "meaning": "Disaster averted or delayed — the collapse seen coming and braced for, upheaval kept internal, a near-miss.",
+        "gameplayFantasy": "Molt mode is a brace: instead of breaking a structure, it pre-empts incoming destruction — a reactive shield."
+      },
+      "molt": {
+        "accentShift": "electric yellow -> oil-slick iridescent amber",
+        "featherState": "feathers windblown but intact, one shed mid-air",
+        "lighting": "the sparks pull inward; cold contained glow instead of the burst",
+        "borderState": "the cracking frame holding, fracture frozen mid-spread",
+        "moltGlyph": "single shed crown feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_17", "tier": "major", "tarot": "The Star", "bird": "Superb Fairywren",
+      "uprightMeaning": "Hope, healing, renewal, inspiration",
+      "reversed": {
+        "mode": "deficiency",
+        "meaning": "Faith lost — despair, discouragement, the well of hope run dry, inspiration gone dim and the sky feeling empty.",
+        "gameplayFantasy": "Molt mode runs dry: the hope-counter/heal effect shrinks to a trickle, but cannot be drained or stolen while dimmed."
+      },
+      "molt": {
+        "accentShift": "soft rose -> drained ash-rose",
+        "featherState": "tiny plumage dulled and patchy, a single down feather drifting toward the water",
+        "lighting": "the vast star-sky gone cold and faded, the glow withdrawn",
+        "borderState": "the star filigree dimmed, points guttering out",
+        "moltGlyph": "single shed down feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_18", "tier": "major", "tarot": "The Moon", "bird": "Common Nightjar",
+      "uprightMeaning": "Dreams, illusion, instinct, uncertainty",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Illusion deepening — confusion and self-deception thickening, fears amplified, instinct drowned out by noise, the fog refusing to lift.",
+        "gameplayFantasy": "Molt mode thickens the fog: the hidden-information effect intensifies, scrambling everyone's reads — including the caster's own."
+      },
+      "molt": {
+        "accentShift": "muted green -> oil-slick iridescent sickly green",
+        "featherState": "cryptic plumage even more broken and ragged, a camouflaged feather shed into the dark",
+        "lighting": "cold underlight, the surreal moonlight gone lurid and deceptive",
+        "borderState": "the dream filigree dissolving into the camouflage, motif smeared",
+        "moltGlyph": "single shed mottled feather half-hidden in the cartouche"
+      }
+    },
+    {
+      "id": "major_19", "tier": "major", "tarot": "The Sun", "bird": "American Goldfinch",
+      "uprightMeaning": "Joy, clarity, success, vitality",
+      "reversed": {
+        "mode": "inward",
+        "meaning": "Joy dimmed or kept private — temporary gloom, blocked clarity, the inner child quieted, or hollow over-optimism.",
+        "gameplayFantasy": "Molt mode is a muted buff: the radiant effect shrinks to self-only, quieter but uninterruptible."
+      },
+      "molt": {
+        "accentShift": "sun yellow -> drained ash-gold",
+        "featherState": "scruffy, a few primaries shed and drifting",
+        "lighting": "cold uplight instead of warm key; the sun behind goes pale",
+        "borderState": "ray filigree dimmed and frayed",
+        "moltGlyph": "single shed gold feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_20", "tier": "major", "tarot": "Judgment", "bird": "Rooster",
+      "uprightMeaning": "Awakening, announcement, reckoning, calling",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "The call ignored — self-doubt, a reckoning avoided, the wake-up cry unheeded, refusing the summons to rise.",
+        "gameplayFantasy": "Molt mode goes unheard: the awaken/resolve-delayed-effects trigger is suppressed, banking the effect until a later, costlier reckoning."
+      },
+      "molt": {
+        "accentShift": "crimson -> frost-dimmed crimson-grey",
+        "featherState": "open-wing crow gone slack, hackles loosened, a tail feather shed mid-cry",
+        "lighting": "cold underlight, the sunrise behind gone grey and muffled",
+        "borderState": "the sound-wave filigree fading, the herald motif muted",
+        "moltGlyph": "single shed hackle feather in the cartouche"
+      }
+    },
+    {
+      "id": "major_21", "tier": "major", "tarot": "The World", "bird": "Arctic Tern",
+      "uprightMeaning": "Completion, journey, wholeness, integration",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Completion withheld — the journey unfinished, loose ends and shortcuts, a goal almost reached but stalled, integration delayed.",
+        "gameplayFantasy": "Molt mode stops short: the completion/journey payoff fires at a fraction, but skips its setup cost — a rushed, partial finish."
+      },
+      "molt": {
+        "accentShift": "aurora green -> frost-dimmed aurora-grey",
+        "featherState": "level flight faltering, wingtips ragged, a flight feather shed inside the wreath",
+        "lighting": "cold flat light, the aurora glow gone pale and dim",
+        "borderState": "the circular wreath frame broken open, the loop incomplete",
+        "moltGlyph": "single shed flight feather in the cartouche"
+      }
+    }
+  ]
+}

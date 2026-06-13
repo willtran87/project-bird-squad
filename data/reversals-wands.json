@@ -1,0 +1,236 @@
+{
+  "version": "0.1",
+  "project": "Tarot Aviary",
+  "set": "Reversals — The Molt (Suit of Wands)",
+  "basedOn": "docs/reversals-molt-system.md; data/minor-arcana-wands.json; data/reversals-sample.json",
+  "note": "Full Molt (reversed) overlay for the 14-card Suit of Wands. Each card gains a 'reversed' + 'molt' block; uprightMeaning aliases each card's existing coreMeaning. wands_08 reused verbatim from the sample. Fire-suit pips molt mostly blocked/shadow; the Ten flips toward renewal where tradition releases the burden. Still anatomically bird, streetwear-fitted, pixel-art, no gore.",
+  "reversalModes": ["blocked", "inward", "shadow", "deficiency", "renewal"],
+  "accentMoltRule": "warm+inward/deficiency -> drained ash; any+shadow/renewal -> oil-slick iridescent; cool+blocked -> frost-dimmed",
+  "cards": [
+    {
+      "id": "wands_ace", "tier": "pip", "tarot": "Ace of Wands", "bird": "Anna's Hummingbird",
+      "uprightMeaning": "Spark of inspiration, raw potential, new drive",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "The spark refuses to catch — false start, delays, lack of drive, an idea that fizzles before it lights.",
+        "gameplayFantasy": "Molt mode sputters: the ignition play is delayed a turn but fuels double when it finally fires."
+      },
+      "molt": {
+        "accentShift": "ember orange -> frost-dimmed ember-grey",
+        "featherState": "wingbeat ragged, the lit feather guttering, two loose feathers caught on the antenna",
+        "lighting": "cold uplight off the rooftop instead of warm noon key",
+        "borderState": "ember filigree guttering out at the corners",
+        "moltGlyph": "single shed spark-feather in the cartouche"
+      }
+    },
+    {
+      "id": "wands_02", "tier": "pip", "tarot": "Two of Wands", "bird": "Common Swift",
+      "uprightMeaning": "Planning, foresight, surveying the field",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Fear of the unknown — playing safe, plans that never leave the ledge, foresight curdled into indecision.",
+        "gameplayFantasy": "Molt mode hesitates: the scout/preview effect stalls, but reveals one extra card when it commits."
+      },
+      "molt": {
+        "accentShift": "gold -> frost-dimmed ash-gold",
+        "featherState": "head turned away from the horizon, wing-wraps loosened, a flight feather drifting off the ledge",
+        "lighting": "cold flat underlight, the skyline gone grey",
+        "borderState": "flame filigree dimmed and frayed",
+        "moltGlyph": "single shed flight feather in the cartouche"
+      }
+    },
+    {
+      "id": "wands_03", "tier": "pip", "tarot": "Three of Wands", "bird": "Greater Bird-of-Paradise",
+      "uprightMeaning": "Expansion, vision, ventures underway",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Ventures stalled — delays in plans, obstacles ahead, expansion overreaching or held back at the horizon.",
+        "gameplayFantasy": "Molt mode overextends: the reach buff stretches further but leaves the unit exposed until it returns."
+      },
+      "molt": {
+        "accentShift": "gold -> frost-dimmed ash-gold",
+        "featherState": "flank plumes drooping and half-shed, banners slack, a plume drifting on the wind",
+        "lighting": "cold rim-light from below, the distance gone hazy and grey",
+        "borderState": "ember filigree frayed and guttering",
+        "moltGlyph": "single shed flank plume in the cartouche"
+      }
+    },
+    {
+      "id": "wands_04", "tier": "pip", "tarot": "Four of Wands", "bird": "Vermilion Flycatcher",
+      "uprightMeaning": "Celebration, milestone, home and belonging",
+      "reversed": {
+        "mode": "inward",
+        "meaning": "The party dimmed — transition, lack of harmony at home, a milestone passed quietly or belonging deferred.",
+        "gameplayFantasy": "Molt mode is a muted anchor: the stabilise bonus shrinks to self-only but can't be uprooted."
+      },
+      "molt": {
+        "accentShift": "hot magenta -> drained ash-rose",
+        "featherState": "scruffy mid-air, breast feathers loose, one bulb in the garland gone dark",
+        "lighting": "cold underlight, the festival string-lights pale and failing",
+        "borderState": "flame filigree dimmed, ribbons frayed loose from the poles",
+        "moltGlyph": "single shed breast feather in the cartouche"
+      }
+    },
+    {
+      "id": "wands_05", "tier": "pip", "tarot": "Five of Wands", "bird": "Anna's Hummingbird",
+      "uprightMeaning": "Competition, friction, scrappy rivalry",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Conflict avoided or driven inward — the open scrap goes quiet while inner conflict simmers, friction turned on the self.",
+        "gameplayFantasy": "Molt mode internalises the fight: the skirmish becomes a self-buff that grows each turn it goes unspent, but stings to release."
+      },
+      "molt": {
+        "accentShift": "crimson red -> oil-slick iridescent crimson",
+        "featherState": "the five tangled birds ragged, wands lowered, loose feathers scattering instead of sparks",
+        "lighting": "cold contained underlight, the ember sparks pulled inward and guttering",
+        "borderState": "ember filigree churned and frayed",
+        "moltGlyph": "single shed crown feather in the cartouche"
+      }
+    },
+    {
+      "id": "wands_06", "tier": "pip", "tarot": "Six of Wands", "bird": "American Kestrel",
+      "uprightMeaning": "Victory, recognition, public triumph",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "A fall from grace — ego inflated, recognition withheld, the laurel claimed too loudly or the crowd turned away.",
+        "gameplayFantasy": "Molt mode grandstands: the morale boost spikes higher but the unit becomes a priority target while it preens."
+      },
+      "molt": {
+        "accentShift": "victory gold -> oil-slick iridescent amber",
+        "featherState": "raised wings bristled and broken, the laurel-wand drooping, a primary shed mid-lift",
+        "lighting": "harsh cold rim-light from below, the crowd in shadow",
+        "borderState": "flame filigree fraying, banner-cape coming loose",
+        "moltGlyph": "single shed wing feather in the cartouche"
+      }
+    },
+    {
+      "id": "wands_07", "tier": "pip", "tarot": "Seven of Wands", "bird": "Vermilion Flycatcher",
+      "uprightMeaning": "Defending your ground, standing firm",
+      "reversed": {
+        "mode": "deficiency",
+        "meaning": "Overwhelmed — the defence giving way, nerve worn down, ground surrendered or the position no longer worth holding.",
+        "gameplayFantasy": "Molt mode is a desperate stand: the defensive bonus is bigger but the unit can no longer act offensively this turn."
+      },
+      "molt": {
+        "accentShift": "blaze vermilion -> drained ash-rose",
+        "featherState": "crest drooping and shedding, the braced wing dropped, a feather torn loose in the press",
+        "lighting": "flat cold underlight, the high ledge gone grey beneath",
+        "borderState": "flame filigree unravelling from the ledge",
+        "moltGlyph": "single shed crest feather in the cartouche"
+      }
+    },
+    {
+      "id": "wands_08", "tier": "pip", "tarot": "Eight of Wands", "bird": "Common Swift",
+      "uprightMeaning": "Speed, movement, news, swift action",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Momentum jammed — delays, scattered energy, messages lost, the formation breaking apart.",
+        "gameplayFantasy": "Molt mode misfires: the fast multi-hit scatters to random targets — chaotic, occasionally devastating.",
+        "renderPath": "procedural Molt filter (pip volume tier)"
+      },
+      "molt": {
+        "accentShift": "ember orange -> frost-dimmed ember-grey",
+        "featherState": "the streaking swifts ragged, trails breaking up, loose feathers in the slipstream",
+        "lighting": "noon glare cooled to overcast",
+        "borderState": "ember filigree guttering out",
+        "moltGlyph": "single shed flight feather in the cartouche"
+      }
+    },
+    {
+      "id": "wands_09", "tier": "pip", "tarot": "Nine of Wands", "bird": "Anna's Hummingbird",
+      "uprightMeaning": "Resilience, last stand, guarded persistence",
+      "reversed": {
+        "mode": "deficiency",
+        "meaning": "Burnout — paranoia and exhaustion behind the barricade, defensiveness with nothing left to defend, persistence drained dry.",
+        "gameplayFantasy": "Molt mode runs on fumes: the survival bonus holds one more turn but the unit takes recoil damage when it triggers."
+      },
+      "molt": {
+        "accentShift": "smoke amber -> drained ash-amber",
+        "featherState": "battered down feathers shedding, bandages loosened, the raised wand wavering, a feather slipping from the fence",
+        "lighting": "cold flat underlight, the barricade in grey shadow",
+        "borderState": "ember filigree frayed and guttering along the wand-fence",
+        "moltGlyph": "single shed worn feather in the cartouche"
+      }
+    },
+    {
+      "id": "wands_10", "tier": "pip", "tarot": "Ten of Wands", "bird": "Greater Bird-of-Paradise",
+      "uprightMeaning": "Burden, overload, carrying too much",
+      "reversed": {
+        "mode": "renewal",
+        "meaning": "The load set down — burden released and delegated, the strapped bundle finally dropped; or its shadow, collapse under a weight carried too long.",
+        "gameplayFantasy": "Molt mode unloads: the overload cost is shed onto another unit or the board, lightening the carrier but spreading the strain."
+      },
+      "molt": {
+        "accentShift": "burnt sienna -> oil-slick iridescent sienna",
+        "featherState": "plumes lifting as the strapped bundle slips free, a few feathers shed in the release",
+        "lighting": "cold contained glow off the dropped wands instead of the warm strain",
+        "borderState": "the burden motif unhooking, ember filigree half-shed and loosening",
+        "moltGlyph": "single shed flank plume in the cartouche"
+      }
+    },
+    {
+      "id": "wands_fledgling", "tier": "court", "tarot": "Fledgling of Wands", "bird": "Anna's Hummingbird",
+      "uprightMeaning": "Eager spark, bold beginnings, a fiery message",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Eagerness gone hasty and directionless — a fiery message misfired, bold beginnings with no follow-through, enthusiasm scattering.",
+        "gameplayFantasy": "Molt mode is impulsive: the messenger delivers instantly but to a random recipient, drive resource and all."
+      },
+      "molt": {
+        "accentShift": "magenta pink -> oil-slick iridescent magenta",
+        "featherState": "darting mid-shed, fledgling down still patchy, the held wand jittering, a loose feather trailing the satchel",
+        "lighting": "cold neon underlight instead of warm ledge key",
+        "borderState": "flame filigree frayed, the courier hood coming loose",
+        "moltGlyph": "single shed down feather in the cartouche"
+      }
+    },
+    {
+      "id": "wands_outrider", "tier": "court", "tarot": "Outrider of Wands", "bird": "Common Swift",
+      "uprightMeaning": "Adventure, bold action, headlong momentum",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Momentum soured into recklessness — frustration, headlong action with no aim, the charge that overshoots and burns out.",
+        "gameplayFantasy": "Molt mode overcharges: the mobile strike hits harder and reaches further but the Outrider can't stop or change course next turn."
+      },
+      "molt": {
+        "accentShift": "ember orange -> oil-slick iridescent ember",
+        "featherState": "hard-swept wings ragged, the flaming wand trailing sparks loose, feathers shedding in the slipstream",
+        "lighting": "cold rim-light off the neon, the rooftops in shadow",
+        "borderState": "ember filigree torn and streaming behind the charge",
+        "moltGlyph": "single shed flight feather in the cartouche"
+      }
+    },
+    {
+      "id": "wands_matron", "tier": "court", "tarot": "Matron of Wands", "bird": "Greater Bird-of-Paradise",
+      "uprightMeaning": "Magnetism, confidence, creative mastery",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Confidence curdled into jealousy and insecurity — magnetism turned demanding, mastery guarded and possessive, the stage hoarded.",
+        "gameplayFantasy": "Molt mode is possessive: she amplifies allied Wands even harder but locks those buffs to herself, draining their loyalty."
+      },
+      "molt": {
+        "accentShift": "hot magenta -> oil-slick iridescent magenta",
+        "featherState": "fanned plumes bristled and half-shed, the held wand gripped tight, plumes drifting loose from the display",
+        "lighting": "cold underlight on the stage, the warm spotlight gone flat",
+        "borderState": "flame filigree churned and fraying around the stage",
+        "moltGlyph": "single shed display plume in the cartouche"
+      }
+    },
+    {
+      "id": "wands_elder", "tier": "court", "tarot": "Elder of Wands", "bird": "American Kestrel",
+      "uprightMeaning": "Bold leadership, vision in command, fiery authority",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Authority soured into tyranny and impulsiveness — command for its own sake, ruling by temper, vision burned down to demands.",
+        "gameplayFantasy": "Molt mode over-commands: the rally hits the whole crew but forces them to act on the Elder's terms, costing their loyalty."
+      },
+      "molt": {
+        "accentShift": "molten gold -> oil-slick iridescent amber",
+        "featherState": "folded feathers bristled and broken, the great wand smouldering uneven, a primary shed from one wing",
+        "lighting": "harsh cold rim-light from below, the water-tower perch in shadow",
+        "borderState": "ember filigree cracking, the heavy coat-drape frayed loose",
+        "moltGlyph": "single shed bronze feather in the cartouche"
+      }
+    }
+  ]
+}
