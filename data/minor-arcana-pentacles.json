@@ -1,0 +1,176 @@
+{
+  "version": "0.1",
+  "project": "Tarot Aviary",
+  "set": "Minor Arcana — Suit of Pentacles",
+  "basedOn": "docs/minor-arcana-expansion.md; major-arcana-bird-map.v0.2.json",
+  "note": "Earth suit of the four-crew framework. Cast is reserved away from all 22 Major Arcana species.",
+  "suit": {
+    "name": "Pentacles",
+    "element": "Earth",
+    "crew": "Groundwork",
+    "domain": "money, craft, work, home, the material world",
+    "habitat": "markets, alleys, construction, nests",
+    "timeOfDay": "market morning",
+    "borderMotif": "gear, coin, and vine filigree",
+    "palette": ["brass", "copper", "soil brown", "moss", "coin gray"],
+    "recurringCast": ["Satin Bowerbird", "Sociable Weaver", "Rock Pigeon", "European Starling", "Hoopoe"],
+    "coreRule": "All subjects anatomically bird; streetwear fitted to bird anatomy; no humanoid forms; no gore."
+  },
+  "courtNaming": { "Page": "Fledgling", "Knight": "Outrider", "Queen": "Matron", "King": "Elder" },
+  "cards": [
+    {
+      "id": "pentacles_ace", "rank": "Ace", "name": "Ace of Pentacles",
+      "bird": "Satin Bowerbird", "coreMeaning": "Opportunity, new venture, material seed",
+      "description": "A bowerbird presents a single gleaming coin-berry at a garden gate.",
+      "pose": "Perched at an arched garden gate, one wingtip extended offering a bright coin-berry, body turned toward the viewer.",
+      "silhouetteClass": "stout-perching", "poseEnergy": "static",
+      "streetwear": ["satin work-vest over folded wings", "coin pin", "brass talon bands"],
+      "palette": ["brass", "soil brown", "moss", "coin gray"], "accent": "brass",
+      "varietyNotes": "Suit anchor species. Glossy blue-black bowerbird + offered coin reads 'opportunity' at a glance.",
+      "gameplayFantasy": "Opens money/resource generation; a seed card that funds later Pentacles plays."
+    },
+    {
+      "id": "pentacles_02", "rank": "2", "name": "Two of Pentacles",
+      "bird": "European Starling", "coreMeaning": "Juggling, balance, adaptability",
+      "description": "A starling balances two coins on its wingtips along a wire.",
+      "pose": "Walking a taut wire mid-balance, wings spread wide, a coin teetering on each wingtip, tail flicking.",
+      "silhouetteClass": "slim-perching", "poseEnergy": "dynamic",
+      "streetwear": ["fitted courier harness", "twin coin clips", "grip cuffs"],
+      "palette": ["copper", "coin gray", "soil brown", "moss"], "accent": "copper",
+      "varietyNotes": "Iridescent speckled starling on a wire; spread-wing balance separates it from the perched bowerbird pips.",
+      "gameplayFantasy": "Resource shuffle; move or rebalance two resources between lanes each turn."
+    },
+    {
+      "id": "pentacles_03", "rank": "3", "name": "Three of Pentacles",
+      "bird": "Sociable Weaver", "coreMeaning": "Teamwork, craft, shared building",
+      "description": "Three weavers build a nest-arch together from a shared blueprint.",
+      "pose": "Three weavers at a half-built straw arch, two threading stalks while one reads a pinned blueprint.",
+      "silhouetteClass": "round-perching", "poseEnergy": "active",
+      "streetwear": ["builder tool-aprons", "straw bundle slings", "work-grip cuffs"],
+      "palette": ["soil brown", "moss", "brass", "coin gray"], "accent": "moss",
+      "varietyNotes": "Three small buff weavers around a communal arch; collaborative build distinguishes them from solo pips.",
+      "gameplayFantasy": "Build mechanic; multiple workers complete a structure faster for a shared bonus."
+    },
+    {
+      "id": "pentacles_04", "rank": "4", "name": "Four of Pentacles",
+      "bird": "Rock Pigeon", "coreMeaning": "Control, hoarding, holding tight",
+      "description": "A pigeon clutches four coins tightly, wings curled protectively inward.",
+      "pose": "Hunched on a ledge, wings wrapped around a stack of four coins, one underfoot, gaze guarded and wary.",
+      "silhouetteClass": "stout-perching", "poseEnergy": "static",
+      "streetwear": ["buttoned-tight vest", "locked coin-purse", "clenched talon bands"],
+      "palette": ["coin gray", "soil brown", "copper", "moss"], "accent": "coin gray",
+      "varietyNotes": "City pigeon's gray bulk + closed, hoarding curl contrasts the open offering of the Ace.",
+      "gameplayFantasy": "Lock/hold effect; freeze your resources to protect them but skip spending."
+    },
+    {
+      "id": "pentacles_05", "rank": "5", "name": "Five of Pentacles",
+      "bird": "Rock Pigeon", "coreMeaning": "Hardship, exclusion, want",
+      "description": "Two ragged birds huddle outside a warm lit market window.",
+      "pose": "Two bedraggled pigeons in cold alley shadow, looking up at a golden window they cannot enter, feathers fluffed against chill.",
+      "silhouetteClass": "stout-perching", "poseEnergy": "static",
+      "streetwear": ["threadbare patched wraps", "empty coin-pouch", "frayed cuffs"],
+      "palette": ["soil brown", "coin gray", "moss", "muted copper"], "accent": "moss",
+      "varietyNotes": "Two huddled pigeons against a lit window; the warm glow stays out of reach, keeping the lack in frame.",
+      "gameplayFantasy": "Cost/setback card; pay a hardship now to unlock aid or recovery later."
+    },
+    {
+      "id": "pentacles_06", "rank": "6", "name": "Six of Pentacles",
+      "bird": "European Starling", "coreMeaning": "Generosity, giving and receiving, fairness",
+      "description": "A starling shares seed with two smaller birds as the scales hang level.",
+      "pose": "Perched at a balanced market scale, scattering seed from a pouch to two upturned smaller birds below.",
+      "silhouetteClass": "slim-perching", "poseEnergy": "active",
+      "streetwear": ["merchant seed-apron", "balanced scale charm", "open-hand cuffs"],
+      "palette": ["brass", "soil brown", "moss", "coin gray"], "accent": "brass",
+      "varietyNotes": "Same starling as the Two, now generous and grounded; the level scale signals fairness.",
+      "gameplayFantasy": "Distribute effect; share resources to allies with a balancing payoff."
+    },
+    {
+      "id": "pentacles_07", "rank": "7", "name": "Seven of Pentacles",
+      "bird": "Satin Bowerbird", "coreMeaning": "Patience, investment, waiting on growth",
+      "description": "A bowerbird leans on a tool, eyeing a vine heavy with ripening coin-fruit.",
+      "pose": "Leaning thoughtfully on a hoe beside a trellis, head tilted up at a vine of slowly ripening coin-fruit, in no hurry.",
+      "silhouetteClass": "stout-perching", "poseEnergy": "static",
+      "streetwear": ["gardener's work-vest", "soil-dusted tool belt", "earthy cuffs"],
+      "palette": ["moss", "soil brown", "brass", "copper"], "accent": "copper",
+      "varietyNotes": "Bowerbird at rest beside a growing vine; the leaning, waiting pose reads investment, not action.",
+      "gameplayFantasy": "Slow-burn investment; a resource that ripens into a bigger payout if left to grow."
+    },
+    {
+      "id": "pentacles_08", "rank": "8", "name": "Eight of Pentacles",
+      "bird": "Sociable Weaver", "coreMeaning": "Mastery, diligence, skilled labor",
+      "description": "A weaver crafts coin after coin at a workbench.",
+      "pose": "Bent in focus over a cluttered workbench, hammering a fresh coin while finished coins hang in a neat row.",
+      "silhouetteClass": "round-perching", "poseEnergy": "active",
+      "streetwear": ["leather crafter's apron", "tool-loop bandolier", "calloused work cuffs"],
+      "palette": ["copper", "brass", "soil brown", "coin gray"], "accent": "soil brown",
+      "varietyNotes": "Solo weaver hard at the bench contrasts the three-weaver teamwork of the Three; rows of coins show output.",
+      "gameplayFantasy": "Craft loop; repeat a small action each turn to steadily produce resources."
+    },
+    {
+      "id": "pentacles_09", "rank": "9", "name": "Nine of Pentacles",
+      "bird": "Satin Bowerbird", "coreMeaning": "Self-made abundance, independence, refinement",
+      "description": "A poised bowerbird stands alone in a lush treasure-garden.",
+      "pose": "Settled and elegant amid a curated bower of coins, berries, and blue trinkets, one wing resting on a coin-laden branch.",
+      "silhouetteClass": "stout-perching", "poseEnergy": "static",
+      "streetwear": ["fine satin estate-drape", "polished coin medallion", "gilded talon bands"],
+      "palette": ["brass", "moss", "copper", "coin gray"], "accent": "market-gold",
+      "varietyNotes": "Bowerbird's real treasure-hoarding instinct made literal; gold accent marks the suit's prosperity high point.",
+      "gameplayFantasy": "Solo payoff; cash in accumulated wealth for a strong self-sufficient reward."
+    },
+    {
+      "id": "pentacles_10", "rank": "10", "name": "Ten of Pentacles",
+      "bird": "Sociable Weaver", "coreMeaning": "Legacy, lasting wealth, family fortune",
+      "description": "A multigenerational flock gathers at the market arch with ten coins and banners flying.",
+      "pose": "An elder, adults, and fledglings clustered beneath a grand coin-crowned market arch, ten coins strung as banners overhead.",
+      "silhouetteClass": "round-perching", "poseEnergy": "active",
+      "streetwear": ["matching house sashes", "linked coin charms", "heirloom cuffs"],
+      "palette": ["brass", "soil brown", "moss", "coin gray"], "accent": "market-gold",
+      "varietyNotes": "Multi-generation weaver flock under the arch is the material summit; market-gold lifts it above the earth tones.",
+      "gameplayFantasy": "Capstone economy; rewards a full built-up board of Pentacles assets with lasting value."
+    },
+    {
+      "id": "pentacles_fledgling", "rank": "Page", "name": "Fledgling of Pentacles",
+      "bird": "Hoopoe", "coreMeaning": "Diligence, study, a material opportunity",
+      "description": "The youngest apprentice of Groundwork, a hoopoe studying a single coin with care.",
+      "pose": "Bright-eyed and curious, crest half-raised, turning a coin over in its bill to examine it at the market's edge.",
+      "silhouetteClass": "crested-perching", "poseEnergy": "active",
+      "streetwear": ["apprentice tool-satchel", "single coin tag", "study cuffs"],
+      "palette": ["cinnamon", "soil brown", "brass", "moss"], "accent": "cinnamon",
+      "varietyNotes": "Court Fledgling = youngest apprentice; the hoopoe's barred wings and crest give a distinct silhouette.",
+      "gameplayFantasy": "Cheap study unit; scouts or banks a single resource to learn a build option."
+    },
+    {
+      "id": "pentacles_outrider", "rank": "Knight", "name": "Outrider of Pentacles",
+      "bird": "Rock Pigeon", "coreMeaning": "Reliability, steady effort, delivery",
+      "description": "The mobile worker of Groundwork, a pigeon coursing the market routes with a coin-laden satchel.",
+      "pose": "In strong purposeful flight low over the rooftops, a heavy coin-satchel slung across its breast, route map clipped to one leg.",
+      "silhouetteClass": "stout-perching", "poseEnergy": "dynamic",
+      "streetwear": ["courier delivery harness", "weighted coin-satchel", "route-tag cuffs"],
+      "palette": ["coin gray", "copper", "soil brown", "moss"], "accent": "copper",
+      "varietyNotes": "Court Outrider = always in motion; only dynamic flight pose among the Pentacles courts.",
+      "gameplayFantasy": "Mobile courier; reliably hauls and delivers resources across the board each turn."
+    },
+    {
+      "id": "pentacles_matron", "rank": "Queen", "name": "Matron of Pentacles",
+      "bird": "Satin Bowerbird", "coreMeaning": "Nurture, craft mastery, abundance tended",
+      "description": "The inner master of Groundwork, a poised bowerbird enthroned among her finest treasures.",
+      "pose": "Seated and serene on a moss-cushioned coin-throne, a chosen coin cradled close, surrounded by a curated bower.",
+      "silhouetteClass": "stout-perching", "poseEnergy": "static",
+      "streetwear": ["regal satin estate-drape", "crowned-coin pin", "fine layered cuffs"],
+      "palette": ["brass", "moss", "copper", "coin gray"], "accent": "moss",
+      "varietyNotes": "Court Matron = poised inner mastery of craft and treasure; her tended bower distinguishes her from the Elder.",
+      "gameplayFantasy": "Economy leader; grows and protects the crew's resource pool over time."
+    },
+    {
+      "id": "pentacles_elder", "rank": "King", "name": "Elder of Pentacles",
+      "bird": "Sociable Weaver", "coreMeaning": "Material command, builder authority, provider",
+      "description": "The crew boss of Groundwork, a weaver elder ruling atop the great communal nest at market morning.",
+      "pose": "Standing tall and still atop a vast communal nest-citadel, wings folded, surveying the market he built below.",
+      "silhouetteClass": "round-perching", "poseEnergy": "static",
+      "streetwear": ["heavy foreman's coat-drape", "deep coin seal pin", "reinforced talon bands"],
+      "palette": ["brass", "soil brown", "coin gray", "copper"], "accent": "brass",
+      "varietyNotes": "Court Elder = monumental builder authority; the weaver atop his own great nest is the suit's flagship at full command.",
+      "gameplayFantasy": "Faction leader; build and provide effects that grow and rally the whole Pentacles crew."
+    }
+  ]
+}

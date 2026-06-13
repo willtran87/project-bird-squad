@@ -1,0 +1,178 @@
+{
+  "version": "0.1",
+  "project": "Tarot Aviary",
+  "set": "Minor Arcana — Suit of Swords",
+  "basedOn": "docs/minor-arcana-expansion.md; major-arcana-bird-map.v0.2.json",
+  "note": "Air suit of the four-crew framework. Stays strictly symbolic: thorns, broken antennas, blade-shaped feathers, wind, and storm — never wounds, blood, ropes, or nooses. Cast is reserved away from all 22 Major Arcana species.",
+  "suit": {
+    "name": "Swords",
+    "element": "Air",
+    "crew": "Cutting Wind",
+    "domain": "intellect, conflict, truth, words, strategy",
+    "habitat": "glass spires, antennas, storm wind",
+    "timeOfDay": "storm night",
+    "borderMotif": "wind and blade filigree",
+    "palette": ["steel", "ink black", "glass blue", "white", "cold cyan"],
+    "recurringCast": ["Loggerhead Shrike", "Blue Jay", "Northern Goshawk", "Black Drongo", "Merlin"],
+    "coreRule": "All subjects anatomically bird; streetwear fitted to bird anatomy; no humanoid forms; no gore. Swords symbolic only — no wounds, blood, ropes, or nooses."
+  },
+  "courtNaming": { "Page": "Fledgling", "Knight": "Outrider", "Queen": "Matron", "King": "Elder" },
+  "cards": [
+    {
+      "id": "swords_ace", "rank": "Ace", "name": "Ace of Swords",
+      "bird": "Loggerhead Shrike", "coreMeaning": "Clarity, breakthrough, the cutting truth",
+      "description": "A shrike holds one gleaming blade-feather aloft as storm wind tears past.",
+      "pose": "Perched high on a glass spire, head raised, one long blade-shaped feather lifted straight up into the gale.",
+      "silhouetteClass": "hook-billed-songbird", "poseEnergy": "static",
+      "streetwear": ["sleek storm-shell over folded wings", "single blade pin", "wind-band talon wraps"],
+      "palette": ["steel", "glass blue", "white", "cold cyan"], "accent": "cold cyan",
+      "varietyNotes": "Suit anchor species. Vertical lone blade-feather against storm reads 'clarity' instantly.",
+      "gameplayFantasy": "Opens intellect/strategy resources; a clarity card that sharpens later Swords plays."
+    },
+    {
+      "id": "swords_02", "rank": "2", "name": "Two of Swords",
+      "bird": "Blue Jay", "coreMeaning": "Stalemate, hard choice, willful blindness",
+      "description": "A jay perches between two crossed antennas, eyes shut against the choice.",
+      "pose": "Balanced at the crossing of two antennas, head level, both eyes closed, wings held tense and even.",
+      "silhouetteClass": "crested-corvid", "poseEnergy": "static",
+      "streetwear": ["blindfold-style visor band", "balanced twin pins", "even cuff wraps"],
+      "palette": ["glass blue", "steel", "ink black", "white"], "accent": "glass blue",
+      "varietyNotes": "Crested corvid + crossed antennas gives a distinct symmetrical silhouette from the shrike pips.",
+      "gameplayFantasy": "Stall/standoff effect; locks two units until a choice is forced."
+    },
+    {
+      "id": "swords_03", "rank": "3", "name": "Three of Swords",
+      "bird": "Loggerhead Shrike", "coreMeaning": "Heartbreak, sorrow, painful truth (symbolic)",
+      "description": "A single blade-feather pierced by three thorns in cold driving rain.",
+      "pose": "Shrike turned aside on a thorn branch, gaze on one of its own feathers caught on three long thorns; no harm shown.",
+      "silhouetteClass": "hook-billed-songbird", "poseEnergy": "static",
+      "streetwear": ["rain-darkened storm-shell", "three-thorn brooch", "muted talon wraps"],
+      "palette": ["ink black", "steel", "cold cyan", "glass blue"],
+      "avoid": ["wounds", "blood", "gore", "nooses"], "accent": "cold cyan",
+      "varietyNotes": "Sorrow shown through a thorn-caught feather and rain, never injury; the shrike only looks on.",
+      "gameplayFantasy": "Conditional setback; a unit is pinned/sorrowed but recoverable, not destroyed."
+    },
+    {
+      "id": "swords_04", "rank": "4", "name": "Four of Swords",
+      "bird": "Northern Goshawk", "coreMeaning": "Rest, recovery, stillness before return",
+      "description": "A goshawk roosts still in a quiet belfry, its blade-feathers sheathed.",
+      "pose": "Settled and motionless on a high beam, wings fully folded, three blade-feathers laid flat and sheathed nearby.",
+      "silhouetteClass": "broad-raptor", "poseEnergy": "static",
+      "streetwear": ["heavy roost-cloak", "clasped quiet pin", "padded talon rests"],
+      "palette": ["steel", "ink black", "glass blue", "white"], "accent": "steel",
+      "varietyNotes": "Broad raptor at full rest contrasts the alert pip poses; sheathed blades signal pause, not conflict.",
+      "gameplayFantasy": "Recharge/recover card; a unit rests a turn to return stronger."
+    },
+    {
+      "id": "swords_05", "rank": "5", "name": "Five of Swords",
+      "bird": "Black Drongo", "coreMeaning": "Hollow victory, conflict, costly win",
+      "description": "A drongo gathers scattered blade-feathers as rivals retreat into the wind.",
+      "pose": "Sweeping up loose blade-feathers from a ledge, wings spread wide, two smaller birds turning away behind.",
+      "silhouetteClass": "fork-tailed-flycatcher", "poseEnergy": "dynamic",
+      "streetwear": ["sharp scavenger wrap", "trophy-feather sash", "grip cuffs"],
+      "palette": ["ink black", "steel", "cold cyan", "glass blue"], "accent": "ink black",
+      "varietyNotes": "Forked tail and aggressive sweep set the drongo apart; retreat is shown by turned backs, no harm.",
+      "gameplayFantasy": "Win-but-cost effect; seize resources while giving up board position or allies."
+    },
+    {
+      "id": "swords_06", "rank": "6", "name": "Six of Swords",
+      "bird": "Merlin", "coreMeaning": "Transition, moving on, calmer waters ahead",
+      "description": "Birds ferry across grey storm water toward a clearing, calmer sky.",
+      "pose": "Merlin leading a small line of birds in low formation over choppy grey water, gale easing ahead toward light.",
+      "silhouetteClass": "compact-falcon", "poseEnergy": "active",
+      "streetwear": ["travel windbreaker", "compass droplet charm", "trek talon bands"],
+      "palette": ["glass blue", "steel", "white", "cold cyan"], "accent": "glass blue",
+      "varietyNotes": "Falcon-led ferry crossing toward brightening sky reads 'transition' without any struggle imagery.",
+      "gameplayFantasy": "Relocate effect; move units to safer ground and reset their state."
+    },
+    {
+      "id": "swords_07", "rank": "7", "name": "Seven of Swords",
+      "bird": "Blue Jay", "coreMeaning": "Stealth, cunning, deception",
+      "description": "A jay slips off with five blade-feathers, two left standing behind.",
+      "pose": "Creeping along a wire glancing back, five blade-feathers bundled under a wing, two upright feathers left on the ledge.",
+      "silhouetteClass": "crested-corvid", "poseEnergy": "active",
+      "streetwear": ["low hooded sneak-wrap", "muffled pin", "soft-step talon wraps"],
+      "palette": ["ink black", "glass blue", "steel", "cold cyan"], "accent": "white",
+      "varietyNotes": "Sidelong sneaking jay carrying a bundle is a unique furtive read within the suit.",
+      "gameplayFantasy": "Steal/skim effect; take resources from an opponent and slip away."
+    },
+    {
+      "id": "swords_08", "rank": "8", "name": "Eight of Swords",
+      "bird": "Black Drongo", "coreMeaning": "Restriction, self-limit, the open cage",
+      "description": "A bird ringed by eight upright antennas, wind-bound — but the cage stands open.",
+      "pose": "Standing within a ring of eight antennas, wings half-lowered, gap clearly open on one side, gale pressing in.",
+      "silhouetteClass": "fork-tailed-flycatcher", "poseEnergy": "static",
+      "streetwear": ["wind-tangled wrap", "loosened band pin", "unclasped cuffs"],
+      "palette": ["steel", "ink black", "glass blue", "white"], "accent": "steel",
+      "varietyNotes": "Encircling antennas with a visible open gap show self-restriction, not capture; no bindings used.",
+      "gameplayFantasy": "Self-bind effect; a unit is restricted but can free itself by meeting a condition."
+    },
+    {
+      "id": "swords_09", "rank": "9", "name": "Nine of Swords",
+      "bird": "Loggerhead Shrike", "coreMeaning": "Anxiety, worry, sleepless mind",
+      "description": "A shrike awake at 3am on a wire, nine pale blade-feathers hanging in the dark.",
+      "pose": "Perched stiff and wide-eyed on a wire in the night, head low, nine pale blade-feathers floating above in the storm.",
+      "silhouetteClass": "hook-billed-songbird", "poseEnergy": "static",
+      "streetwear": ["rumpled night-shell", "dim worry pin", "tense talon wraps"],
+      "palette": ["ink black", "steel", "cold cyan", "glass blue"], "accent": "cold cyan",
+      "varietyNotes": "Sleepless wide-eyed shrike under floating pale blades conveys dread through mood, never harm.",
+      "gameplayFantasy": "Stress/doubt effect; weakens a unit until reassured or supported."
+    },
+    {
+      "id": "swords_10", "rank": "10", "name": "Ten of Swords",
+      "bird": "Black Drongo", "coreMeaning": "Rock bottom, ending that turns to renewal",
+      "description": "One feather pinned by ten blade-feathers at dawn, a sunrise rising behind it.",
+      "pose": "A single feather laid on a ledge ringed by ten upright blade-feathers, warm sunrise breaking over the spires behind; bird stirs to rise.",
+      "silhouetteClass": "fork-tailed-flycatcher", "poseEnergy": "active",
+      "streetwear": ["dawn-touched recovery wrap", "sunrise droplet pin", "fresh-start cuffs"],
+      "palette": ["ink black", "steel", "glass blue", "white"],
+      "avoid": ["wounds", "blood", "gore", "nooses"], "accent": "dawn gold",
+      "varietyNotes": "Ending shown only by ten staged blade-feathers; the rising sunrise lifts it to renewal, not death.",
+      "gameplayFantasy": "Reset/rebirth capstone; clears the board low but seeds a fresh, stronger start."
+    },
+    {
+      "id": "swords_fledgling", "rank": "Page", "name": "Fledgling of Swords",
+      "bird": "Blue Jay", "coreMeaning": "Curiosity, sharp wit, an incoming message",
+      "description": "The youngest of the Cutting Wind, a sharp blue jay bearing word on the storm.",
+      "pose": "Bright and alert, mid-hop along a wet antenna, one blade-feather raised like a pen, eyes scanning for news.",
+      "silhouetteClass": "crested-corvid", "poseEnergy": "active",
+      "streetwear": ["courier storm-hood", "satchel of message-feathers", "tag-clipped cuffs"],
+      "palette": ["glass blue", "steel", "white", "cold cyan"], "accent": "glass blue",
+      "varietyNotes": "Court Fledgling = youngest, sharp messenger; the crested jay reads quick and clever.",
+      "gameplayFantasy": "Cheap scout/messenger unit; draws or carries a strategy resource."
+    },
+    {
+      "id": "swords_outrider", "rank": "Knight", "name": "Outrider of Swords",
+      "bird": "Merlin", "coreMeaning": "Decisive action, swift strategy, charging the idea",
+      "description": "The Cutting Wind's aerial duelist, a merlin cutting across the storm at speed.",
+      "pose": "Steep diving flight through the gale, wings swept, a blade-feather streamed forward, motion lines trailing.",
+      "silhouetteClass": "compact-falcon", "poseEnergy": "dynamic",
+      "streetwear": ["streamlined racing shell", "wind-blade charm", "aero talon bands"],
+      "palette": ["steel", "glass blue", "cold cyan", "white"], "accent": "cold cyan",
+      "varietyNotes": "Court Outrider = most aerial duelist; only dynamic diving-flight pose among the Swords courts.",
+      "gameplayFantasy": "Fast striker; charges across the board to deliver a decisive strategy effect."
+    },
+    {
+      "id": "swords_matron", "rank": "Queen", "name": "Matron of Swords",
+      "bird": "Loggerhead Shrike", "coreMeaning": "Clear judgment, hard-won wisdom, inner mastery",
+      "description": "The inner master of the Cutting Wind, a poised shrike enthroned on a high spire.",
+      "pose": "Seated upright and still atop a glass spire, head level, one blade-feather held crosswise in calm command.",
+      "silhouetteClass": "hook-billed-songbird", "poseEnergy": "static",
+      "streetwear": ["regal storm-drape", "crowned-blade pin", "fine layered cuffs"],
+      "palette": ["steel", "ink black", "white", "cold cyan"], "accent": "white",
+      "varietyNotes": "Court Matron = poised, inward mastery; the still shrike distinguishes her from the Elder goshawk.",
+      "gameplayFantasy": "Judgment leader; sharpens and discerns, granting precise control to Swords units."
+    },
+    {
+      "id": "swords_elder", "rank": "King", "name": "Elder of Swords",
+      "bird": "Northern Goshawk", "coreMeaning": "Authority of mind, truth, command of strategy",
+      "description": "The crew boss of the Cutting Wind, a monumental goshawk ruling the storm-lit spires.",
+      "pose": "Standing tall and still on the highest spire, wings folded, gaze level over the wind-torn skyline.",
+      "silhouetteClass": "broad-raptor", "poseEnergy": "static",
+      "streetwear": ["heavy command coat-drape", "deep-blade seal pin", "reinforced talon bands"],
+      "palette": ["ink black", "steel", "glass blue", "cold cyan"], "accent": "steel",
+      "varietyNotes": "Court Elder = monumental external authority; the broad goshawk is the suit's flagship at full command.",
+      "gameplayFantasy": "Faction leader; command effects that direct and discipline the whole Swords crew."
+    }
+  ]
+}

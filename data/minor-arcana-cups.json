@@ -1,0 +1,176 @@
+{
+  "version": "0.1",
+  "project": "Tarot Aviary",
+  "set": "Minor Arcana — Suit of Cups",
+  "basedOn": "docs/minor-arcana-expansion.md; major-arcana-bird-map.v0.2.json",
+  "note": "Sample suit proving the four-crew framework. Cast is reserved away from all 22 Major Arcana species.",
+  "suit": {
+    "name": "Cups",
+    "element": "Water",
+    "crew": "Tidewatch",
+    "domain": "emotion, love, intuition, memory, bonds",
+    "habitat": "canals, rain, harbor, fountains",
+    "timeOfDay": "rainy dusk",
+    "borderMotif": "wave and droplet filigree",
+    "palette": ["teal", "rain gray", "pearl", "harbor blue", "soft rose"],
+    "recurringCast": ["Great Blue Heron", "Roseate Spoonbill", "Hooded Merganser", "Sanderling", "Wood Duck"],
+    "coreRule": "All subjects anatomically bird; streetwear fitted to bird anatomy; no humanoid forms; no gore."
+  },
+  "courtNaming": { "Page": "Fledgling", "Knight": "Outrider", "Queen": "Matron", "King": "Elder" },
+  "cards": [
+    {
+      "id": "cups_ace", "rank": "Ace", "name": "Ace of Cups",
+      "bird": "Great Blue Heron", "coreMeaning": "New love, open heart, emotional source",
+      "description": "A heron lifts a brimming dew-vessel as a fountain overflows around it.",
+      "pose": "Standing tall in shallow canal water, neck curved up, one vessel balanced, water spilling in arcs.",
+      "silhouetteClass": "tall-wader", "poseEnergy": "static",
+      "streetwear": ["pearl rain-cape over folded wings", "droplet pin", "wet-look talon bands"],
+      "palette": ["teal", "pearl", "harbor blue", "soft rose"], "accent": "soft rose",
+      "varietyNotes": "Suit anchor species. Vertical heron silhouette + overflowing water reads 'source' instantly.",
+      "gameplayFantasy": "Opens emotion/bond resources; a wellspring card that fuels later Cups plays."
+    },
+    {
+      "id": "cups_02", "rank": "2", "name": "Two of Cups",
+      "bird": "Hooded Merganser", "coreMeaning": "Connection, partnership, mutual attraction",
+      "description": "Two mergansers mirror each other in a courtship display over still water.",
+      "pose": "Paired symmetrical pose, crests raised, beaks nearly touching above a shared reflection.",
+      "silhouetteClass": "crested-waterfowl", "poseEnergy": "active",
+      "streetwear": ["matching collar bands", "linked droplet charm", "paired cuffs"],
+      "palette": ["harbor blue", "pearl", "teal", "soft rose"], "accent": "soft rose",
+      "varietyNotes": "Two-subject mirror composition; raised crests give a distinct silhouette from the heron pips.",
+      "gameplayFantasy": "Pairs two units; enables synergy/commitment effects between bonded cards."
+    },
+    {
+      "id": "cups_03", "rank": "3", "name": "Three of Cups",
+      "bird": "Roseate Spoonbill", "coreMeaning": "Friendship, celebration, community joy",
+      "description": "Spoonbills splash together in a fountain in shared celebration.",
+      "pose": "Three birds mid-splash, wings half-open, spatulate bills lifted, water droplets flying.",
+      "silhouetteClass": "tall-wader", "poseEnergy": "dynamic",
+      "streetwear": ["festival sashes", "tiny flower patches", "splash-proof cuffs"],
+      "palette": ["soft rose", "teal", "pearl", "warm gold"], "accent": "soft rose",
+      "varietyNotes": "Pink + spatulate bill clearly separates spoonbills from the heron and ducks of the suit.",
+      "gameplayFantasy": "Group buff; rewards having multiple friendly Cups units in play."
+    },
+    {
+      "id": "cups_04", "rank": "4", "name": "Four of Cups",
+      "bird": "Great Blue Heron", "coreMeaning": "Apathy, withdrawal, missed offer",
+      "description": "A heron ignores an offered cup, hunched and sulking in the rain.",
+      "pose": "Hunched on one leg under heavy rain, head withdrawn into shoulders, back turned to a floating vessel.",
+      "silhouetteClass": "tall-wader", "poseEnergy": "static",
+      "streetwear": ["soaked oversized hood", "dull droplet pin", "drooping scarf"],
+      "palette": ["rain gray", "teal", "muted harbor blue", "soft rose"], "accent": "soft rose",
+      "varietyNotes": "Same heron as the Ace, inverted in mood — hunched/closed silhouette vs. the Ace's open lift.",
+      "gameplayFantasy": "A pass/skip or disengage card; trades a turn of action for later focus."
+    },
+    {
+      "id": "cups_05", "rank": "5", "name": "Five of Cups",
+      "bird": "Wood Duck", "coreMeaning": "Loss, grief, regret (but not total)",
+      "description": "Spilled vessels in a gutter; a bird turned away mourns, two cups still standing behind it.",
+      "pose": "Turned away and lowered, gaze on three tipped vessels; two upright vessels glow softly behind.",
+      "silhouetteClass": "crested-waterfowl", "poseEnergy": "static",
+      "streetwear": ["dark mourning wrap", "single cracked-droplet charm", "muted cuffs"],
+      "palette": ["rain gray", "dusk blue", "muted teal", "faded rose"], "accent": "faded rose",
+      "varietyNotes": "Wood Duck's ornate head pattern reads even when hunched; the two lit cups keep hope in frame.",
+      "gameplayFantasy": "Discard/sacrifice with a recovery clause — something remains after the loss."
+    },
+    {
+      "id": "cups_06", "rank": "6", "name": "Six of Cups",
+      "bird": "Sanderling", "coreMeaning": "Nostalgia, innocence, kindness",
+      "description": "A fledgling shares food with an elder at the fountain's edge.",
+      "pose": "A small sanderling offers a berry up to a larger one; both gentle, soft evening light.",
+      "silhouetteClass": "small-shorebird", "poseEnergy": "active",
+      "streetwear": ["tiny knit cap", "old friendship charm", "soft cuffs"],
+      "palette": ["pearl", "warm gold", "soft rose", "teal"], "accent": "warm gold",
+      "varietyNotes": "Small busy shorebird scale contrasts the suit's tall waders; two-size pairing tells the story.",
+      "gameplayFantasy": "Gift/transfer effect; move a resource or buff from one unit to another."
+    },
+    {
+      "id": "cups_07", "rank": "7", "name": "Seven of Cups",
+      "bird": "Wood Duck", "coreMeaning": "Illusion, fantasy, too many choices",
+      "description": "A bird gazes into floating illusory reflections and shimmering bubbles.",
+      "pose": "Head tilted up at seven drifting bubble-visions, each holding a different glowing object.",
+      "silhouetteClass": "crested-waterfowl", "poseEnergy": "static",
+      "streetwear": ["iridescent dream-wrap", "fogged droplet pin", "shimmer cuffs"],
+      "palette": ["dusk violet", "teal", "pearl", "soft rose"], "accent": "dusk violet",
+      "varietyNotes": "Dusk-violet accent and floating bubbles set it apart visually from the grounded pips.",
+      "gameplayFantasy": "Choose-one / scry effect; reveal options, but some are decoys."
+    },
+    {
+      "id": "cups_08", "rank": "8", "name": "Eight of Cups",
+      "bird": "Great Blue Heron", "coreMeaning": "Withdrawal, walking away, seeking more",
+      "description": "A heron walks away from a neat row of arranged cups into the dusk rain.",
+      "pose": "Seen from behind mid-stride, leaving eight vessels lined on the bank, moon low ahead.",
+      "silhouetteClass": "tall-wader", "poseEnergy": "active",
+      "streetwear": ["travel rain-cloak", "lantern droplet charm", "wrapped trek bands"],
+      "palette": ["dusk blue", "rain gray", "pearl", "soft rose"], "accent": "soft rose",
+      "varietyNotes": "Back-turned departing heron is a unique reading angle within the suit.",
+      "gameplayFantasy": "Voluntary retreat; abandon a position to set up a stronger one elsewhere."
+    },
+    {
+      "id": "cups_09", "rank": "9", "name": "Nine of Cups",
+      "bird": "Roseate Spoonbill", "coreMeaning": "Contentment, satisfaction, the wish granted",
+      "description": "A content spoonbill sits before a proud row of full cups — the classic wish card.",
+      "pose": "Settled and satisfied, wings tucked, nine brimming vessels arrayed in an arc behind.",
+      "silhouetteClass": "tall-wader", "poseEnergy": "static",
+      "streetwear": ["fine satin wrap", "full-droplet charm", "polished cuffs"],
+      "palette": ["soft rose", "warm gold", "teal", "pearl"], "accent": "warm gold",
+      "varietyNotes": "Pink + gold abundance palette signals the 'wish' high point of the suit.",
+      "gameplayFantasy": "Payoff card; cash in accumulated emotion resources for a strong reward."
+    },
+    {
+      "id": "cups_10", "rank": "10", "name": "Ten of Cups",
+      "bird": "Wood Duck", "coreMeaning": "Harmony, family, lasting belonging",
+      "description": "A flock-family gathers under a rainbow arcing over the canal.",
+      "pose": "A family group close together at the water, wings raised toward a rainbow of ten lights.",
+      "silhouetteClass": "crested-waterfowl", "poseEnergy": "active",
+      "streetwear": ["matching family sashes", "linked droplet charms", "warm cuffs"],
+      "palette": ["teal", "soft rose", "warm gold", "pearl"], "accent": "warm gold",
+      "varietyNotes": "Multi-subject group + rainbow is the emotional summit; warm gold lifts it out of the grays.",
+      "gameplayFantasy": "Capstone synergy; rewards a full board of bonded Cups units."
+    },
+    {
+      "id": "cups_fledgling", "rank": "Page", "name": "Fledgling of Cups",
+      "bird": "Sanderling", "coreMeaning": "Curiosity, sensitivity, an emotional message",
+      "description": "The youngest of the Tidewatch, a small sanderling bearing a sealed dew-vessel.",
+      "pose": "Bright-eyed, mid-skitter along the wet bank, holding a tiny capped vessel out to deliver.",
+      "silhouetteClass": "small-shorebird", "poseEnergy": "active",
+      "streetwear": ["courier rain-hood", "satchel of droplet charms", "message-tag cuffs"],
+      "palette": ["pearl", "teal", "soft rose", "harbor blue"], "accent": "teal",
+      "varietyNotes": "Court Fledgling = smallest cast member, messenger energy; distinct tiny silhouette.",
+      "gameplayFantasy": "Cheap utility/messenger unit; draws or delivers an emotion resource."
+    },
+    {
+      "id": "cups_outrider", "rank": "Knight", "name": "Outrider of Cups",
+      "bird": "Hooded Merganser", "coreMeaning": "Romantic pursuit, idealism, following the heart",
+      "description": "The Tidewatch's mobile actor, a merganser skimming the canal on a quest of feeling.",
+      "pose": "Low fast flight skimming the water surface, crest swept back, a vessel clutched in its talons.",
+      "silhouetteClass": "crested-waterfowl", "poseEnergy": "dynamic",
+      "streetwear": ["streamlined racing wrap", "wind-droplet charm", "aero cuffs"],
+      "palette": ["harbor blue", "teal", "pearl", "soft rose"], "accent": "soft rose",
+      "varietyNotes": "Court Outrider = always in motion; only dynamic flight pose among the Cups courts.",
+      "gameplayFantasy": "Mobile striker; carries/charges emotion effects across the board."
+    },
+    {
+      "id": "cups_matron", "rank": "Queen", "name": "Matron of Cups",
+      "bird": "Roseate Spoonbill", "coreMeaning": "Compassion, intuition, emotional mastery",
+      "description": "The inner master of the Tidewatch, a poised spoonbill enthroned at the fountainhead.",
+      "pose": "Seated and serene on a fountain rim, neck in a soft curve, a still vessel cradled close.",
+      "silhouetteClass": "tall-wader", "poseEnergy": "static",
+      "streetwear": ["regal satin drape", "crowned-droplet pin", "fine layered cuffs"],
+      "palette": ["soft rose", "pearl", "teal", "warm gold"], "accent": "soft rose",
+      "varietyNotes": "Court Matron = poised, inward mastery; pink regalia distinguishes her from the Elder.",
+      "gameplayFantasy": "Support/healer leader; amplifies and protects bonded Cups units."
+    },
+    {
+      "id": "cups_elder", "rank": "King", "name": "Elder of Cups",
+      "bird": "Great Blue Heron", "coreMeaning": "Emotional command, calm authority, wisdom of feeling",
+      "description": "The crew boss of the Tidewatch, a monumental heron ruling the calm harbor at dusk.",
+      "pose": "Standing tall and still on a harbor post, wings folded, gaze level over calm water.",
+      "silhouetteClass": "tall-wader", "poseEnergy": "static",
+      "streetwear": ["heavy harbor-master coat-drape", "deep-droplet seal pin", "reinforced talon bands"],
+      "palette": ["harbor blue", "teal", "charcoal", "soft rose"], "accent": "soft rose",
+      "varietyNotes": "Court Elder = monumental, external authority; the suit's flagship heron at full command.",
+      "gameplayFantasy": "Faction leader; command effects that steady and rally the whole Cups crew."
+    }
+  ]
+}
