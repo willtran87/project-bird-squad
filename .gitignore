@@ -1,1 +1,26 @@
 .claude/
+.artifacts/
+node_modules/
+dist/
+output/
+test-artifacts/
+vite-dev*.log
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.playwright-mcp/
+
+# --- Generated-image noise (not used by the game; regenerable) ---
+# Scratch / QA composite output
+tmp/
+# Card-art generation iteration runs
+assets/concept-art/minor-arcana-border-first-runs/
+assets/concept-art/minor-arcana-center-art-runs/
+assets/concept-art/minor-arcana-regenerated-*/
+# Pre-rename minor-arcana suit dupes — the card-art manifest references only
+# basins/nests/plumes/quills (the bird suits), not these tarot-named folders.
+assets/concept-art/minor-arcana/cups/
+assets/concept-art/minor-arcana/pentacles/
+assets/concept-art/minor-arcana/swords/
+assets/concept-art/minor-arcana/wands/

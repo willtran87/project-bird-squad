@@ -1,0 +1,27 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/alpha-run-spec.md",
+    "docs/game/next-level-data-contracts.md"
+  ],
+  "options": [
+    {
+      "id": "preen",
+      "label": "Preen a Card",
+      "effects": ["preenCard(1)"]
+    },
+    {
+      "id": "release",
+      "label": "Release a Card",
+      "cost": 50,
+      "effects": ["payScrap(50)", "releaseCard(1)"]
+    },
+    {
+      "id": "reinforce_gear",
+      "label": "Reinforce Gear",
+      "cost": 90,
+      "effects": ["payScrap(90)", "gainRouteMark(randomNonBoss)"]
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/next-level-implementation-spec.md",
+    "docs/game/run-design-spec.md"
+  ],
+  "profiles": [
+    {
+      "mapId": "map_01_rooftop_blocks",
+      "thesis": "Learn visible Tells and form a first deck identity.",
+      "primaryTests": ["Cover", "direct damage", "first Molt risk"],
+      "preferredNodeTypes": ["street", "rival", "signal", "basin", "nest", "market", "cache", "boss"],
+      "encounterTags": ["cover", "heavy", "winded", "openSky"],
+      "rewardBias": ["Cover", "direct damage", "Route Marks"],
+      "bossPrepHints": [
+        "Build Cover before the Tar-Crowned Crow's Heavy Strike.",
+        "Keep Open Sky Guard ready for Molt turns."
+      ]
+    }
+  ]
+}

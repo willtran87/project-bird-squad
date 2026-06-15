@@ -1,0 +1,105 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": ["docs/game/alpha-run-spec.md", "docs/game/next-level-data-contracts.md"],
+  "normalEncounters": [
+    {
+      "id": "roof_rat",
+      "name": "Roof Rat",
+      "type": "normal",
+      "health": 20,
+      "lesson": "Read a basic attack Tell and use Cover.",
+      "moves": [
+        { "id": "strike_6_a", "label": "Strike 6", "effects": ["damage(flock, 6)"] },
+        { "id": "strike_6_b", "label": "Strike 6", "effects": ["damage(flock, 6)"] },
+        { "id": "scurry_cover", "label": "Scurry", "effects": ["gainCover(4)"] }
+      ],
+      "attackPattern": { "type": "cycle", "moveIds": ["strike_6_a", "strike_6_b", "scurry_cover"] },
+      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+    },
+    {
+      "id": "signal_gull",
+      "name": "Signal Gull",
+      "type": "normal",
+      "health": 24,
+      "lesson": "Manage Brace and Scavenge.",
+      "moves": [
+        { "id": "peck_5", "label": "Peck 5", "effects": ["damage(flock, 5)"] },
+        { "id": "scavenge_heal", "label": "Scavenge", "effects": ["if notHitThisTurn then heal(4)"] },
+        { "id": "brace_6", "label": "Brace", "effects": ["gainCover(6)"] }
+      ],
+      "attackPattern": { "type": "cycle", "moveIds": ["peck_5", "scavenge_heal", "brace_6"] },
+      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+    },
+    {
+      "id": "wire_hawk",
+      "name": "Wire Hawk",
+      "type": "normal",
+      "health": 28,
+      "lesson": "Respect Heavy Strike and Open Sky risk.",
+      "moves": [
+        { "id": "watch_winded", "label": "Watch", "effects": ["applyWinded(flock, 1)"] },
+        { "id": "heavy_strike_11", "label": "Heavy Strike 11", "effects": ["damage(flock, 11)"] },
+        { "id": "strike_7", "label": "Strike 7", "effects": ["damage(flock, 7)"] }
+      ],
+      "attackPattern": { "type": "cycle", "moveIds": ["watch_winded", "heavy_strike_11", "strike_7"] },
+      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+    }
+  ],
+  "rivalEncounters": [
+    {
+      "id": "tarline_crew",
+      "name": "Tarline Crew",
+      "type": "rival",
+      "health": 34,
+      "lesson": "Optional elite pressure with better rewards.",
+      "moves": [
+        { "id": "harass_6", "label": "Harass 6", "effects": ["damage(flock, 6)", "applyWinded(flock, 1)"] },
+        { "id": "brace_8", "label": "Brace 8", "effects": ["gainCover(8)"] },
+        { "id": "heavy_strike_12", "label": "Heavy Strike 12", "effects": ["damage(flock, 12)"] }
+      ],
+      "attackPattern": { "type": "cycle", "moveIds": ["harass_6", "brace_8", "heavy_strike_12"] },
+      "rewards": { "scrap": [70, 90], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+    },
+    {
+      "id": "gutter_baron",
+      "name": "Gutter Baron",
+      "type": "elite",
+      "health": 40,
+      "lesson": "Elite: armored bruiser that alternates a guard turn with a heavy swing.",
+      "moves": [
+        { "id": "baron_lash_9", "label": "Lash 9", "effects": ["damage(flock, 9)"] },
+        { "id": "baron_panel_guard", "label": "Panel Guard", "effects": ["gainCover(10)"] },
+        { "id": "baron_double_jab", "label": "Double Jab 7", "effects": ["damage(flock, 7)", "applyWinded(flock, 1)"] },
+        { "id": "baron_heavy_13", "label": "Heavy Strike 13", "effects": ["damage(flock, 13)"] }
+      ],
+      "attackPattern": { "type": "cycle", "moveIds": ["baron_lash_9", "baron_panel_guard", "baron_double_jab", "baron_heavy_13"] },
+      "rewards": { "scrap": [70, 95], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+    }
+  ],
+  "bosses": [
+    {
+      "id": "tar_crowned_crow",
+      "name": "The Tar-Crowned Crow",
+      "type": "boss",
+      "health": 46,
+      "fightLengthTarget": [6, 8],
+      "rewardScrap": 120,
+      "moves": [
+        { "id": "toll_line", "label": "Toll Line", "effects": ["gainCover(8)", "if flockHasNoCover then addSnagToDiscard(tangled_line)"] },
+        { "id": "crowbar_tap", "label": "Crowbar Tap 8", "effects": ["damage(flock, 8)"] },
+        { "id": "tar_toss", "label": "Tar Toss 5", "effects": ["damage(flock, 5)", "if isMolting then applyOpenSky(1)"] },
+        { "id": "chokepoint_call", "label": "Chokepoint Call", "effects": ["gainCover(6)", "nextAttackBonus(3)", "applyFrail(1)"] },
+        { "id": "heavy_strike", "label": "Heavy Strike 13", "effects": ["damage(flock, 13)"] }
+      ],
+      "attackPattern": { "type": "scripted", "moveIds": ["toll_line", "crowbar_tap", "tar_toss", "chokepoint_call", "heavy_strike"], "loopFrom": 1 },
+      "rewards": {
+        "bossRouteMarkChoices": 3,
+        "rareCardChoices": 3,
+        "preen": 1,
+        "scrap": 120,
+        "unlocks": "map_02_canal_markets"
+      }
+    }
+  ]
+}

@@ -1,0 +1,512 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "set": "Crew Cards — Suit of Quills",
+  "basedOn": "docs/art/art-bible.md; major-arcana-bird-map.json",
+  "note": "Signal suit of the four-crew framework. Stays strictly symbolic: thorns, broken antennas, quill-shaped feathers, wind, and storm — never wounds, blood, ropes, or nooses. Each card uses a unique bird species reserved away from the Major and Aviary Legends species.",
+  "suit": {
+    "name": "Quills",
+    "element": "Signal",
+    "crew": "Razorwind",
+    "domain": "intellect, conflict, truth, words, strategy",
+    "habitat": "rooftop radio rigs, antennas, transit wires, utility boxes, storm wind",
+    "timeOfDay": "storm night",
+    "borderMotif": "wind and quill filigree",
+    "borderFrame": "Use the shared Bird Squad frame structure: dark outer keyline, gilded inner filigree rail, four corner medallions, slim vertical side rails, top suit crest medallion, and bottom title cartouche. Keep frame thickness, symmetry, border width, and title placement consistent; place wind and quill motifs inside the established frame zones.",
+    "palette": [
+      "steel",
+      "ink black",
+      "glass blue",
+      "white",
+      "cold cyan"
+    ],
+    "featuredSpecies": [
+      "Loggerhead Shrike",
+      "Blue Jay",
+      "Northern Mockingbird",
+      "Northern Goshawk",
+      "Black Drongo",
+      "Merlin",
+      "Steller's Jay",
+      "Fork-tailed Drongo",
+      "Crested Caracara",
+      "Pied Butcherbird",
+      "Green Jay",
+      "Prairie Falcon",
+      "Kea",
+      "Cooper's Hawk"
+    ],
+    "coreRule": "All subjects anatomically bird; streetwear fitted to bird anatomy; no humanoid forms; no gore. Birds have no hands, fingers, wing-hands, wing-arms, extra wings, extra legs, or extra limbs; held props use beak, talons, feet, or legs only. Quills symbolic only: no wounds, blood, ropes, or nooses. Quills must split into distinct modern signal-and-strategy lanes: rooftop radio analyst, billboard decision perch, rain-alley witness, utility-room night watch, ledge salvage runner, transit-line storm crossing, wire-sneak thief, rooftop service enclosure, 3am apartment-wire insomnia, dawn recovery ledge, rookie message runner, aerial strategy racer, rooftop tactician, and radio-tower commander. Use varied present-day streetwear rather than repeated matching uniforms: cropped courier jackets, blue varsity windbreakers, taped-seam rain ponchos, padded roost parkas, asymmetric salvage vests, waterproof flight capes, thrifted black anoraks, mesh utility wraps, rumpled knit snoods, patched coach jackets, rookie messenger hoodies, racing shells, tailored tactician coats, and heavy command mantles. Quills pip counts must use the one count element named on the card and be integrated into working city surfaces, carried tags, clipped route markers, pressure marks, window reflections, rooftop cracks, or equipment the bird is actually using; avoid alternate count objects, rows of pasted loose feathers, isolated icon clusters, and extra feather-like clutter that could overcount. No readable text on clothing; suit-coded streetwear should use abstract motifs, color, material, and accessories without gang-coded uniforms or affiliation marks."
+  },
+  "courtNaming": {
+    "Page": "Fledgling",
+    "Knight": "Outrider",
+    "Queen": "Matron",
+    "King": "Elder"
+  },
+  "cards": [
+    {
+      "id": "swords_ace",
+      "rank": "Ace",
+      "rarity": "common",
+      "name": "Quill Point",
+      "bird": "Loggerhead Shrike",
+      "coreMeaning": "Clarity, breakthrough, the cutting truth",
+      "description": "A Loggerhead Shrike works a rooftop radio-analyst perch, lifting one gleaming signal-quill from a compact weatherproof radio kit as storm wind tears past.",
+      "pose": "Perched high on a rooftop radio rig beside a clipped field notebook and sealed dial box, head raised, one long quill-shaped feather lifted in its beak into the gale.",
+      "silhouetteClass": "hook-billed-songbird",
+      "poseEnergy": "static",
+      "streetwear": [
+        "cropped ink-black courier jacket over folded wings",
+        "single cold-cyan signal-quill lapel pin",
+        "ribbed wind-band talon wraps"
+      ],
+      "palette": [
+        "steel",
+        "glass blue",
+        "white",
+        "cold cyan"
+      ],
+      "accent": "cold cyan",
+      "varietyNotes": "Suit anchor species. Vertical lone signal-quill against storm reads 'clarity' instantly.",
+      "gameplayFantasy": "Opens intellect/strategy resources; a clarity card that sharpens later Quills plays.",
+      "gameName": "Quill Point",
+      "numberSymbolism": {
+        "count": 1,
+        "element": "one signal-quill lifted from the radio kit",
+        "represents": "clarity, breakthrough, and the first precise thought",
+        "visualRequirement": "Show exactly one signal-quill held by the Loggerhead Shrike."
+      },
+      "repairDirective": "Previous candidates looked realistic and risked wrong-suit reads. Regenerate as high-resolution pixel art only with the Loggerhead Shrike centered in the safe area, exactly one signal-quill lifted in its beak, and no shine tags, workbench scene, basins, plume spectacle, cropped subject, or extra quills."
+    },
+    {
+      "id": "swords_02",
+      "rank": "2",
+      "rarity": "common",
+      "name": "Crossed Quills",
+      "bird": "Blue Jay",
+      "coreMeaning": "Stalemate, hard choice, willful blindness",
+      "description": "A Blue Jay occupies a billboard decision perch between two crossed rooftop antennas, eyes shut while city traffic glows far below.",
+      "pose": "Balanced at the crossing of two antennas over a rain-slick billboard catwalk, head level, both eyes closed, wings held tense and even.",
+      "silhouetteClass": "crested-corvid",
+      "poseEnergy": "static",
+      "streetwear": [
+        "cropped glass-blue varsity windbreaker",
+        "soft blindfold-style visor band with no text",
+        "balanced twin strap pins"
+      ],
+      "palette": [
+        "glass blue",
+        "steel",
+        "ink black",
+        "white"
+      ],
+      "accent": "glass blue",
+      "varietyNotes": "Crested corvid + crossed antennas gives a distinct symmetrical silhouette from the shrike pips.",
+      "gameplayFantasy": "Stall/standoff effect; locks two crew cards until a choice is forced.",
+      "gameName": "Crossed Quills",
+      "numberSymbolism": {
+        "count": 2,
+        "element": "two crossed rooftop antennas",
+        "represents": "stalemate, difficult choice, and balanced opposing truths",
+        "visualRequirement": "Show exactly two crossed antennas framing the Blue Jay."
+      }
+    },
+    {
+      "id": "swords_03",
+      "rank": "3",
+      "rarity": "common",
+      "name": "Storm Quill",
+      "bird": "Northern Mockingbird",
+      "coreMeaning": "Heartbreak, sorrow, painful truth (symbolic)",
+      "description": "A Northern Mockingbird stands as a rain-alley witness beside a chain-link planter, reading pain and warning in one of its own feathers caught on three thorns.",
+      "pose": "Turned aside on a wet planter rail beside chain-link fencing, pale wing patches visible, gaze fixed on one shed feather caught across exactly three large thorns; no harm shown.",
+      "silhouetteClass": "slim-songbird",
+      "poseEnergy": "static",
+      "streetwear": [
+        "taped-seam translucent rain poncho over dark layers",
+        "three-thorn abstract brooch",
+        "pale wing-flash trim",
+        "matte grey talon wraps"
+      ],
+      "palette": [
+        "ink black",
+        "steel",
+        "cold cyan",
+        "glass blue"
+      ],
+      "avoid": [
+        "wounds",
+        "blood",
+        "gore",
+        "nooses"
+      ],
+      "accent": "cold cyan",
+      "varietyNotes": "The mimic/witness species keeps the truth-and-warning meaning while reducing the shrike cluster.",
+      "gameplayFantasy": "Conditional setback; a crew card is pinned/sorrowed but recoverable, not destroyed.",
+      "gameName": "Storm Quill",
+      "numberSymbolism": {
+        "count": 3,
+        "element": "three large thorns holding one shed feather",
+        "represents": "painful truth, sorrow, and warning without physical harm",
+        "visualRequirement": "Show exactly three large thorns holding one shed feather near the Northern Mockingbird. The three thorns must be prominent and countable; no extra thorns, extra quills, wounds, or blood."
+      },
+      "repairDirective": "Latest review found the three poorly represented and the raincoat reading more like Basins than Quills. Regenerate as high-resolution pixel art only with the Northern Mockingbird in Quills signalwear: cropped wind shell, courier vest, taped seams, or utility harness, not a Basin raincoat/caregiver poncho. Show exactly three large thorns as the dominant count objects holding one shed feather, pulled inward and clearly countable; no thorn bush clutter, no extra quills, no wounds, no cropped pips, and no Basin vessels or care-station language."
+    },
+    {
+      "id": "swords_04",
+      "rank": "4",
+      "rarity": "common",
+      "name": "Sheathed Quills",
+      "bird": "Northern Goshawk",
+      "coreMeaning": "Rest, recovery, stillness before return",
+      "description": "A Northern Goshawk keeps a modern utility-room night watch beneath breaker boxes while exactly four signal-quills stay sheathed on a service tray.",
+      "pose": "Settled and motionless on a high utility-room beam above breaker panels and bundled conduit, wings fully folded, exactly four sheathed signal-quills laid flat on a service tray nearby.",
+      "silhouetteClass": "broad-raptor",
+      "poseEnergy": "static",
+      "streetwear": [
+        "padded roost parka with quilted shoulder panels",
+        "closed quiet-clasp pin",
+        "soft insulated talon rests"
+      ],
+      "palette": [
+        "steel",
+        "ink black",
+        "glass blue",
+        "white"
+      ],
+      "accent": "steel",
+      "varietyNotes": "Broad raptor at full rest contrasts the alert pip poses; sheathed quills signal pause, not conflict.",
+      "gameplayFantasy": "Recharge/recover card; a crew card rests a turn to return stronger.",
+      "gameName": "Sheathed Quills",
+      "numberSymbolism": {
+        "count": 4,
+        "element": "four sheathed signal-quills laid flat in the utility room",
+        "represents": "rest, recovery, and deliberate mental pause",
+        "visualRequirement": "Show exactly four sheathed signal-quills near the Northern Goshawk; no extra loose feathers, quills, or antenna markers that could be counted."
+      },
+      "repairDirective": "Previous candidates looked realistic and had centering issues. Regenerate as high-resolution pixel art only with the Northern Goshawk centered in the utility-room safe area and exactly four sheathed signal-quills on a centered service tray; no wrong-suit props and no cropped tray."
+    },
+    {
+      "id": "swords_05",
+      "rank": "5",
+      "rarity": "common",
+      "name": "Scattered Quills",
+      "bird": "Black Drongo",
+      "coreMeaning": "Hollow victory, conflict, costly win",
+      "description": "A Black Drongo acts as a ledge salvage runner after a hard rooftop argument, gathering five scattered signal-quills while two same-species rivals retreat into the wind.",
+      "pose": "Sweeping exactly five large loose signal-quills from a concrete ledge with beak and talons, wings spread wide, two smaller Black Drongos of the same species turning away behind.",
+      "silhouetteClass": "fork-tailed-flycatcher",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "asymmetric salvage vest with loose pocket flaps",
+        "trophy-feather crossbody sash",
+        "rubberized grip talon cuffs"
+      ],
+      "palette": [
+        "ink black",
+        "steel",
+        "cold cyan",
+        "glass blue"
+      ],
+      "accent": "ink black",
+      "varietyNotes": "Forked tail and aggressive sweep set the drongo apart; retreat is shown by turned backs, no harm.",
+      "gameplayFantasy": "Win-but-cost effect; seize resources while giving up encounter position or allies.",
+      "gameName": "Scattered Quills",
+      "numberSymbolism": {
+        "count": 5,
+        "element": "five large loose signal-quills gathered from the ledge",
+        "represents": "costly victory, argument aftermath, and taking more than was needed",
+        "visualRequirement": "Show exactly five large loose signal-quills around the Black Drongo; all other feather textures must remain natural body plumage and must not read as separate countable quills."
+      },
+      "repairDirective": "Previous candidates looked realistic and had centering issues. Regenerate as high-resolution pixel art only with the Black Drongo and exactly five large signal-quills centered on the ledge; no extra feather clutter, quill trim, cropped quills, or realistic painting."
+    },
+    {
+      "id": "swords_06",
+      "rank": "6",
+      "rarity": "uncommon",
+      "name": "Quill Crossing",
+      "bird": "Merlin",
+      "coreMeaning": "Transition, moving on, calmer waters ahead",
+      "description": "Six Merlins make a transit-line storm crossing, flying under elevated tracks and over a grey flood channel toward a break in the weather.",
+      "pose": "Exactly six Merlins of the same species fly in a clean low formation beneath an elevated rail bridge, skimming over choppy grey runoff toward light; no extra birds, silhouettes, or distant flock shapes.",
+      "silhouetteClass": "compact-falcon",
+      "poseEnergy": "active",
+      "streetwear": [
+        "waterproof slate flight cape",
+        "folded route-map charm",
+        "reflective trek talon bands"
+      ],
+      "palette": [
+        "glass blue",
+        "steel",
+        "white",
+        "cold cyan"
+      ],
+      "accent": "glass blue",
+      "varietyNotes": "Falcon-led ferry crossing toward brightening sky reads 'transition' without any struggle imagery.",
+      "gameplayFantasy": "Relocate effect; move crew cards to safer ground and reset their state.",
+      "gameName": "Quill Crossing",
+      "numberSymbolism": {
+        "count": 6,
+        "element": "six same-species Merlins crossing under elevated tracks",
+        "represents": "transition, recovery, and moving toward safer weather",
+        "visualRequirement": "Show exactly six Merlins of the same species crossing under elevated tracks; count the six bird bodies clearly, with no seventh silhouette, no background birds, and no other species."
+      },
+      "repairDirective": "Previous candidates looked realistic and had centering issues. Regenerate as high-resolution pixel art only with exactly six Merlins centered in formation under the rail bridge, all fully inside the safe area; no seventh silhouette, no cropped birds, no other species."
+    },
+    {
+      "id": "swords_07",
+      "rank": "7",
+      "rarity": "uncommon",
+      "name": "Quill Slip",
+      "bird": "Steller's Jay",
+      "coreMeaning": "Stealth, cunning, deception",
+      "description": "A Steller's Jay pulls a wire-sneak theft along a service alley, slipping off with five signal-quills while two decoy quills remain standing behind.",
+      "pose": "Creeping along a low transit wire and glancing back, five large signal-quills bundled in a beak-safe side sling, with exactly two decoy signal-quills left standing on the ledge.",
+      "silhouetteClass": "crested-corvid",
+      "poseEnergy": "active",
+      "streetwear": [
+        "thrifted black hooded anorak",
+        "hidden side-pouch harness",
+        "soft-step felt talon wraps"
+      ],
+      "palette": [
+        "ink black",
+        "glass blue",
+        "steel",
+        "cold cyan"
+      ],
+      "accent": "white",
+      "varietyNotes": "Sidelong sneaking jay carrying a bundle is a unique furtive read within the suit.",
+      "gameplayFantasy": "Steal/skim effect; take resources from an opponent and slip away.",
+      "gameName": "Quill Slip",
+      "numberSymbolism": {
+        "count": 7,
+        "element": "five carried signal-quills plus two decoy signal-quills left standing",
+        "represents": "stealth, strategy, and taking a hidden route",
+        "visualRequirement": "Show exactly seven total signal-quills: five large quills carried in the side sling plus two decoy quills left standing. Do not add extra feather props, quill trim, loose feathers, or quill-like background marks."
+      },
+      "repairDirective": "Latest review found only five objects visible instead of seven. Regenerate as high-resolution pixel art only with the Steller's Jay centered and exactly seven signal-quills total: five large carried quills in the side sling plus two separate upright decoy quills left behind. Make all seven large, separated, and visible after the final border overlay; no cropped quills, no extra feather clutter, no extra birds, and no quill-like background marks."
+    },
+    {
+      "id": "swords_08",
+      "rank": "8",
+      "rarity": "uncommon",
+      "name": "Quill Ring",
+      "bird": "Fork-tailed Drongo",
+      "coreMeaning": "Restriction, self-limit, the open cage",
+      "description": "A Fork-tailed Drongo stands inside a rooftop service enclosure, ringed by eight signal posts built into the structure while the open service gate shows the way out.",
+      "pose": "Standing within a ring of eight built-in rooftop signal posts beside service units, wings half-lowered, gap clearly open through a service gate on one side.",
+      "silhouetteClass": "fork-tailed-flycatcher",
+      "poseEnergy": "static",
+      "streetwear": [
+        "loose mesh utility wrap",
+        "unclasped cyan band pin",
+        "open-buckle talon cuffs"
+      ],
+      "palette": [
+        "steel",
+        "ink black",
+        "glass blue",
+        "white"
+      ],
+      "accent": "steel",
+      "varietyNotes": "Built-in signal posts with a visible open gap show self-restriction, not capture; no bindings used.",
+      "gameplayFantasy": "Self-bind effect; a crew card is restricted but can free itself by meeting a condition.",
+      "gameName": "Quill Ring",
+      "numberSymbolism": {
+        "count": 8,
+        "element": "eight feather-topped rooftop signal posts forming an open enclosure",
+        "represents": "restriction, self-limitation, and the visible way out",
+        "visualRequirement": "Show exactly eight feather-topped signal posts around the Fork-tailed Drongo, with an open gap; the posts must feel like part of the rooftop enclosure, not pasted symbols. Keep all eight feathers/posts and the bird pulled inward so none are covered by the final border, side rails, medallions, or title cartouche."
+      },
+      "repairDirective": "Latest review confirmed the visual direction but requires exactly eight feathers/posts and tighter border-safe centering. Regenerate as high-resolution pixel art only with the Fork-tailed Drongo and exactly eight feather-topped rooftop signal posts pulled closer to the center. Use a compact two-by-four or four-left/four-right enclosure with all eight feather heads, post bases, and the bird fully visible after the final border overlay; no cropped feathers, cropped bases, extra posts, edge-hugging pips, sci-fi panels, pasted icons, or wrong-suit props."
+    },
+    {
+      "id": "swords_09",
+      "rank": "9",
+      "rarity": "uncommon",
+      "name": "Night Quills",
+      "bird": "Crested Caracara",
+      "coreMeaning": "Anxiety, worry, sleepless mind",
+      "description": "A Crested Caracara sits in 3am apartment-wire insomnia, with nine quill-like pressure reflections appearing across lit windows and rain streaks around it.",
+      "pose": "Perched stiff and wide-eyed on a wet rooftop service rail, crest raised, with exactly nine quill-like pressure reflections distributed across nearby apartment windows and rain streaks; no plume, basin, or nest props.",
+      "silhouetteClass": "long-legged-raptor",
+      "poseEnergy": "static",
+      "streetwear": [
+        "rumpled knit snood and short night shell",
+        "dim reflective worry pin",
+        "crest-line rain hood",
+        "tight uneven talon wraps"
+      ],
+      "palette": [
+        "ink black",
+        "steel",
+        "cold cyan",
+        "glass blue"
+      ],
+      "accent": "cold cyan",
+      "varietyNotes": "The caracara gives Night Quills a larger, anxious rooftop silhouette instead of a third small shrike.",
+      "gameplayFantasy": "Stress/doubt effect; weakens a crew card until reassured or supported.",
+      "gameName": "Night Quills",
+      "numberSymbolism": {
+        "count": 9,
+        "element": "nine quill-like pressure reflections across apartment windows and rain streaks",
+        "represents": "anxiety, sleepless thought, and pressure repeated through the night",
+        "visualRequirement": "Show exactly nine quill-like pressure reflections integrated into apartment windows and rain streaks around the Crested Caracara; do not place them as a pasted row above the bird and do not add extra feather or quill objects."
+      },
+      "repairDirective": "Previous candidates looked realistic and had centering issues. Regenerate as high-resolution pixel art only with the Crested Caracara centered on the rooftop rail and exactly nine pressure reflections pulled inward across windows/rain. No Plumes glow, no pasted quills, no cropped marks, no extra feathers."
+    },
+    {
+      "id": "swords_10",
+      "rank": "10",
+      "rarity": "rare",
+      "name": "Dawn Quills",
+      "bird": "Pied Butcherbird",
+      "coreMeaning": "Rock bottom, ending that turns to renewal",
+      "description": "A Pied Butcherbird reaches a dawn recovery ledge, choosing to rise after a night marked by exactly ten pressure marks embedded into rooftop cracks and rain streaks.",
+      "pose": "Low on a ledge beside exactly ten pale quill-like pressure marks embedded in rooftop cracks and rain streaks, the black-and-white bird lifts its head as warm sunrise breaks over rooftop radio towers; no loose feather pile and no talon-mark substitute count.",
+      "silhouetteClass": "black-white-songbird",
+      "poseEnergy": "active",
+      "streetwear": [
+        "patched dawn coach jacket",
+        "small sunrise lining tab",
+        "fresh-start white talon cuffs"
+      ],
+      "palette": [
+        "ink black",
+        "steel",
+        "glass blue",
+        "white"
+      ],
+      "avoid": [
+        "wounds",
+        "blood",
+        "gore",
+        "nooses"
+      ],
+      "accent": "dawn gold",
+      "varietyNotes": "Ending and renewal stay symbolic, but the butcherbird gives the Ten a stark black-white songbird silhouette instead of another shrike.",
+      "gameplayFantasy": "Reset/rebirth capstone; clears the encounter low but seeds a fresh, stronger start.",
+      "gameName": "Dawn Quills",
+      "numberSymbolism": {
+        "count": 10,
+        "element": "ten quill-like pressure marks embedded in rooftop cracks and rain streaks",
+        "represents": "an ending, rock bottom, and the first sign of renewal",
+        "visualRequirement": "Show exactly ten quill-like pressure marks embedded into rooftop cracks and rain streaks near the Pied Butcherbird; do not use talon marks, loose feather piles, pasted quill rows, or extra quill objects."
+      },
+      "repairDirective": "Latest review found the ten poorly represented because two objects were cut off by the border. Regenerate as high-resolution pixel art only with the Pied Butcherbird centered on the dawn ledge and exactly ten embedded quill-like pressure marks inside the safe area. Pull the marks closer to the center, use two compact arcs or two rows of five, and ensure all ten remain visible after the final border/title overlay. No talon-scratch substitute count, no loose feather pile, no pasted feather icons, no extra marks, and no cropped marks."
+    },
+    {
+      "id": "swords_fledgling",
+      "rank": "Page",
+      "rarity": "common",
+      "name": "Quill Fledgling",
+      "bird": "Green Jay",
+      "coreMeaning": "Curiosity, sharp wit, an incoming message",
+      "description": "A Green Jay rookie message runner bears word across a wet rooftop antenna row, eager and quick without matching the older crew's jackets.",
+      "pose": "Bright and alert, mid-hop along a wet antenna row above utility boxes, green-blue body flashing, one signal-quill balanced in its beak like a pen, eyes scanning for news.",
+      "silhouetteClass": "colorful-corvid",
+      "poseEnergy": "active",
+      "streetwear": [
+        "rookie green-blue messenger hoodie",
+        "compact word-tube chest sling",
+        "bright tag-clipped talon cuffs"
+      ],
+      "palette": [
+        "leaf green",
+        "glass blue",
+        "steel",
+        "cold cyan"
+      ],
+      "accent": "leaf green",
+      "varietyNotes": "Court Fledgling keeps jay cleverness but uses a much brighter green-blue silhouette than the Blue Jay and Steller's Jay.",
+      "gameplayFantasy": "Cheap scout/messenger crew card; draws or carries a strategy resource.",
+      "gameName": "Quill Fledgling"
+    },
+    {
+      "id": "swords_outrider",
+      "rank": "Knight",
+      "rarity": "uncommon",
+      "name": "Quill Outrider",
+      "bird": "Prairie Falcon",
+      "coreMeaning": "Decisive action, swift strategy, charging the idea",
+      "description": "A Prairie Falcon becomes the aerial strategy racer, cutting across storm wind between radio towers at high speed.",
+      "pose": "Steep diving flight through the gale between two radio towers, wings swept, a signal-quill streamed forward in its talons, motion lines trailing.",
+      "silhouetteClass": "compact-falcon",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "sleek slate racing shell",
+        "forward wind-quill talon charm",
+        "aero compression talon bands"
+      ],
+      "palette": [
+        "steel",
+        "glass blue",
+        "cold cyan",
+        "white"
+      ],
+      "accent": "cold cyan",
+      "varietyNotes": "Court Outrider = most aerial duelist; only dynamic diving-flight pose among the Quills courts.",
+      "gameplayFantasy": "Fast striker; charges across the encounter to deliver a decisive strategy effect.",
+      "gameName": "Quill Outrider"
+    },
+    {
+      "id": "swords_matron",
+      "rank": "Queen",
+      "rarity": "rare",
+      "name": "Quill Matron",
+      "bird": "Kea",
+      "coreMeaning": "Clear judgment, hard-won wisdom, inner mastery",
+      "description": "A Kea rooftop tactician sits poised on an antenna mast above taped roof diagrams and pressure-mark tags.",
+      "pose": "Seated upright and still atop a rooftop antenna mast, curved beak level, one signal-quill balanced crosswise in its beak, abstract roof diagrams clipped below.",
+      "silhouetteClass": "stocky-parrot",
+      "poseEnergy": "static",
+      "streetwear": [
+        "minimal olive tactician coat",
+        "thin crowned-quill collar pin",
+        "orange underwing accent cuffs",
+        "fine layered white talon wraps"
+      ],
+      "palette": [
+        "olive green",
+        "steel",
+        "ink black",
+        "cold cyan"
+      ],
+      "accent": "olive green",
+      "varietyNotes": "Court Matron becomes a clever, stocky problem-solver with a curved parrot bill, clearly distinct from the remaining shrikes and raptors.",
+      "gameplayFantasy": "Judgment leader; sharpens and discerns, granting precise control to Quills crew cards.",
+      "gameName": "Quill Matron",
+      "repairDirective": "Previous candidates gave the Kea arm-like or humanoid anatomy. Regenerate as high-resolution pixel art only with one anatomically correct Kea centered on the rooftop antenna mast, wings folded as wings, signal-quill balanced only in the beak, no hands, no arms, no sleeve-arms, no shoulder/elbow shapes, and no humanoid upright torso."
+    },
+    {
+      "id": "swords_elder",
+      "rank": "King",
+      "rarity": "rare",
+      "name": "Quill Elder",
+      "bird": "Cooper's Hawk",
+      "coreMeaning": "Authority of mind, truth, command of strategy",
+      "description": "A Cooper's Hawk radio-tower commander rules the storm-lit rooftop array from the highest mast.",
+      "pose": "Standing tall and still on the highest rooftop radio tower above relay boxes and guy wires, wings folded, gaze level over the wind-torn skyline.",
+      "silhouetteClass": "broad-raptor",
+      "poseEnergy": "static",
+      "streetwear": [
+        "heavy command mantle with broad shoulder paneling",
+        "deep-quill seal pin without text",
+        "reinforced steel talon bands"
+      ],
+      "palette": [
+        "ink black",
+        "steel",
+        "glass blue",
+        "cold cyan"
+      ],
+      "accent": "steel",
+      "varietyNotes": "Court Elder = monumental external authority; the broad goshawk is the suit's flagship at full command.",
+      "gameplayFantasy": "Faction leader; command effects that direct and discipline the whole Quills crew.",
+      "gameName": "Quill Elder"
+    }
+  ]
+}

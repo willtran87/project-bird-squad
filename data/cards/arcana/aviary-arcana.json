@@ -1,0 +1,184 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "set": "Aviary Legends — game-original trumps beyond the 22",
+  "basedOn": "docs/art/art-bible.md; major-arcana-bird-map.json",
+  "note": "Six trumps native to Bird Squad, extending the Legend Cards past XXI. Like the Majors these are legendary individuals (not crew pips). Cast is reserved away from all 22 Legend Cards species and the four Minor suits.",
+  "coreRule": "All subjects anatomically bird; streetwear fitted to bird anatomy; no humanoid forms; no gore. No readable text on clothing; suit-coded streetwear should use abstract motifs, color, material, and accessories without gang-coded uniforms or affiliation marks.",
+  "style": {
+    "medium": "high-resolution pixel art",
+    "tone": "modern urban fantasy tarot",
+    "composition": "vertical tarot card with consistent Bird Squad border frame, full-body bird subject, readable bottom title cartouche",
+    "borderSystem": "Fixed frame structure: dark outer keyline, gilded inner filigree rail, four corner medallions, slim vertical side rails, top numeral or crest medallion, and bottom title cartouche. Card-specific symbols may change inside these zones, but frame thickness, symmetry, border width, and title placement stay consistent."
+  },
+  "cards": [
+    {
+      "id": "aviary_22",
+      "number": 22,
+      "roman": "XXII",
+      "rarity": "legendary",
+      "tarot": "Migration Line",
+      "bird": "Bar-tailed Godwit",
+      "coreMeaning": "The great journey, endurance, collective destiny, no turning back",
+      "description": "A long-haul flier mid-crossing over an endless dusk skyline, the longest road of all.",
+      "pose": "Powerful sustained flight high over the city, wings fully extended, distant flock strung out behind toward the horizon.",
+      "silhouetteClass": "long-distance-flier",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "weathered long-haul flight harness",
+        "layered travel patches",
+        "compass-feather charm"
+      ],
+      "palette": [
+        "dusk orange",
+        "deep indigo",
+        "pale sand",
+        "harbor blue"
+      ],
+      "accent": "dusk orange",
+      "varietyNotes": "Pairs thematically with the Major World (Arctic Tern) but is endurance over completion; sustained-flight silhouette + trailing flock are its signature.",
+      "gameplayFantasy": "An endgame journey engine — long-payoff card that rewards committing to a course across many turns.",
+      "gameName": "Migration Line"
+    },
+    {
+      "id": "aviary_23",
+      "number": 23,
+      "roman": "XXIII",
+      "rarity": "legendary",
+      "tarot": "Home Roost",
+      "bird": "Purple Martin",
+      "coreMeaning": "Sanctuary, rest, belonging, the safe return, community shelter",
+      "description": "A guardian of the communal roost-tower welcoming the flock home at last light.",
+      "pose": "Perched at the mouth of a glowing colony-tower, wings spread in a sheltering arc, others settling in behind.",
+      "silhouetteClass": "colony-swallow",
+      "poseEnergy": "static",
+      "streetwear": [
+        "soft home-knit wrap",
+        "lantern-key charm",
+        "doorkeeper talon bands"
+      ],
+      "palette": [
+        "warm amber",
+        "deep violet",
+        "twilight blue",
+        "soft cream"
+      ],
+      "accent": "warm amber",
+      "varietyNotes": "Glowing tower + sheltering wing arc make it the deck's 'safe haven' card; warm amber separates it from the cool night cards.",
+      "gameplayFantasy": "A safe-harbor card — heal, regroup, and protect crew cards; recall pieces home and refresh them.",
+      "gameName": "Home Roost"
+    },
+    {
+      "id": "aviary_24",
+      "number": 24,
+      "roman": "XXIV",
+      "rarity": "legendary",
+      "tarot": "Storm Ride",
+      "bird": "Magnificent Frigatebird",
+      "coreMeaning": "Upheaval, raw forces, riding chaos, harnessing what you cannot control",
+      "description": "A storm-rider angled into the gale, throat-pouch flaring, thriving where others flee.",
+      "pose": "Banking hard on a thermal inside a wall of storm cloud, wings cocked, lightning behind, fully in command of the chaos.",
+      "silhouetteClass": "long-winged-seabird",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "slick storm-shell wrap",
+        "charged static charm",
+        "grip talon bands"
+      ],
+      "palette": [
+        "storm slate",
+        "electric white",
+        "deep teal",
+        "hot red"
+      ],
+      "accent": "hot red",
+      "varietyNotes": "Forked-tail, angular storm-rider silhouette; contrasts the Major Tower (sudden collapse) by being sustained mastery of chaos.",
+      "gameplayFantasy": "A high-risk/high-reward swing card — convert disruption into power; stronger the more chaotic the encounter.",
+      "gameName": "Storm Ride"
+    },
+    {
+      "id": "aviary_25",
+      "number": 25,
+      "roman": "XXV",
+      "rarity": "legendary",
+      "tarot": "Hot Feathers",
+      "bird": "Scarlet Tanager",
+      "coreMeaning": "Transformation of self, shedding an old identity, vulnerability inside change, renewal",
+      "description": "A bird caught between two selves — brilliant plumage giving way to a quieter new coat.",
+      "pose": "Mid-preen on a branch, half its feathers vivid scarlet and half shifting to muted green-gold, loose feathers drifting down.",
+      "silhouetteClass": "small-perching-songbird",
+      "poseEnergy": "active",
+      "streetwear": [
+        "half-shed layered wrap",
+        "shedding-feather charm",
+        "transition cuffs"
+      ],
+      "palette": [
+        "scarlet",
+        "olive gold",
+        "soft gray",
+        "warm cream"
+      ],
+      "accent": "scarlet",
+      "varietyNotes": "Two-tone split plumage is a unique visual hook in the deck; dramatizes 'becoming' without gore or harm.",
+      "gameplayFantasy": "A transform card — swap a card's form/role, trading current strength for a new shape (vulnerable mid-change).",
+      "gameName": "Hot Feathers"
+    },
+    {
+      "id": "aviary_26",
+      "number": 26,
+      "roman": "XXVI",
+      "rarity": "legendary",
+      "tarot": "Flock Signal",
+      "bird": "Red-billed Quelea",
+      "coreMeaning": "Unity, emergence, the many-as-one, collective will, strength in numbers",
+      "description": "A single small bird at the leading edge of a vast murmuration that moves as one mind.",
+      "pose": "One sharp foreground bird with an immense swirling flock behind forming a single shifting shape across the sky.",
+      "silhouetteClass": "small-flocking-finch",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "lightweight squad band",
+        "shared-crest charm",
+        "signal-tag cuffs"
+      ],
+      "palette": [
+        "dawn rose",
+        "warm brown",
+        "sky blue",
+        "soft gold"
+      ],
+      "accent": "dawn rose",
+      "varietyNotes": "Foreground individual + emergent flock-shape is the deck's only crowd-as-subject composition; reads 'collective' instantly.",
+      "gameplayFantasy": "A swarm/go-wide card — power scales with how many friendly crew cards are active in the encounter; rewards a full crew.",
+      "gameName": "Flock Signal"
+    },
+    {
+      "id": "aviary_27",
+      "number": 27,
+      "roman": "XXVII",
+      "rarity": "legendary",
+      "tarot": "Eclipse Watch",
+      "bird": "Tawny Frogmouth",
+      "coreMeaning": "Liminality, hidden truth, omen, the threshold between states",
+      "description": "A masked, motionless watcher at the moment the light goes out — neither day nor night.",
+      "pose": "Frozen upright against a branch in perfect camouflage, eyes thin slits, a ringed eclipse-sun directly behind its head.",
+      "silhouetteClass": "cryptic-nightbird",
+      "poseEnergy": "static",
+      "streetwear": [
+        "shadow-bark camo wrap",
+        "ringed-eclipse pin",
+        "still-watch talon bands"
+      ],
+      "palette": [
+        "charcoal",
+        "bruised violet",
+        "pale corona gold",
+        "muted brown"
+      ],
+      "accent": "pale corona gold",
+      "varietyNotes": "Camouflaged stillness + eclipse halo; sits beside the Major Moon (illusion) but is threshold/omen rather than dream. Corona gold is its one point of light.",
+      "gameplayFantasy": "A liminal/omen card — peek at hidden information or freeze the encounter state for a beat before a turn flips.",
+      "gameName": "Eclipse Watch"
+    }
+  ]
+}

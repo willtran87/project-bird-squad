@@ -1,0 +1,498 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "set": "Crew Cards — Suit of Basins",
+  "basedOn": "docs/art/art-bible.md; major-arcana-bird-map.json",
+  "note": "Unique-species suit proving the four-crew framework. Each card uses a unique bird species reserved away from the Major and Aviary Legends species.",
+  "suit": {
+    "name": "Basins",
+    "element": "Care",
+    "crew": "Tidewatch",
+    "domain": "emotion, love, intuition, memory, bonds",
+    "habitat": "modern canals, rain-slick streets, underpasses, harbor railings, utility fountains",
+    "timeOfDay": "rainy dusk",
+    "borderMotif": "wave and droplet filigree",
+    "borderFrame": "Use the shared Bird Squad frame structure: dark outer keyline, gilded inner filigree rail, four corner medallions, slim vertical side rails, top suit crest medallion, and bottom title cartouche. Keep frame thickness, symmetry, border width, and title placement consistent; place wave and droplet motifs inside the established frame zones.",
+    "palette": [
+      "teal",
+      "rain gray",
+      "pearl",
+      "harbor blue",
+      "soft rose"
+    ],
+    "featuredSpecies": [
+      "Great Blue Heron",
+      "Hooded Merganser",
+      "Roseate Spoonbill",
+      "Green Heron",
+      "Wood Duck",
+      "Sanderling",
+      "Mandarin Duck",
+      "Black Skimmer",
+      "Scarlet Ibis",
+      "Mallard",
+      "Piping Plover",
+      "Northern Gannet",
+      "Dalmatian Pelican",
+      "Shoebill"
+    ],
+    "coreRule": "All subjects anatomically bird; streetwear fitted to bird anatomy; no humanoid forms; no gore. Birds have no hands, fingers, wing-hands, wing-arms, extra wings, extra legs, or extra limbs; held props use beak, talons, feet, or legs only. Basin pip counts must use the one count element named on the card and be integrated into care scenes through vessels, reflected vessels, rain-basin marks, canal lights, or objects the birds are using; avoid alternate count objects, pasted icon rows, isolated prop clusters, and extra basin-like clutter that could overcount. No readable text on clothing; suit-coded streetwear should use abstract motifs, color, material, and accessories without gang-coded uniforms or affiliation marks. Do not mix bird species on a card; additional birds, if needed, must be the same listed species and match the described bird count exactly."
+  },
+  "courtNaming": {
+    "Page": "Fledgling",
+    "Knight": "Outrider",
+    "Queen": "Matron",
+    "King": "Elder"
+  },
+  "cards": [
+    {
+      "id": "cups_ace",
+      "rank": "Ace",
+      "rarity": "common",
+      "name": "Open Basin",
+      "bird": "Great Blue Heron",
+      "coreMeaning": "New love, open heart, emotional source",
+      "description": "A Great Blue Heron lifts one brimming dew-vessel from a modern utility fountain on a rain-slick canal walk, using only beak and talons.",
+      "pose": "Standing tall in shallow canal water, neck curved up, both wings folded against the body, exactly one brimming dew-vessel steadied between beak and talons; no arm, hand, sleeve, palm, or wing-tip grasp.",
+      "silhouetteClass": "tall-wader",
+      "poseEnergy": "static",
+      "streetwear": [
+        "pearl rain-cape over folded wings",
+        "droplet pin",
+        "wet-look talon bands"
+      ],
+      "palette": [
+        "teal",
+        "pearl",
+        "harbor blue",
+        "soft rose"
+      ],
+      "accent": "soft rose",
+      "varietyNotes": "Suit anchor species. Vertical heron silhouette + overflowing water reads 'source' instantly.",
+      "gameplayFantasy": "Opens emotion/bond resources; a wellspring card that fuels later Basins plays.",
+      "gameName": "Open Basin",
+      "numberSymbolism": {
+        "count": 1,
+        "element": "one brimming dew-vessel at the utility fountain",
+        "represents": "an open emotional offer, healing source, and first act of care",
+        "visualRequirement": "Show exactly one basin/dew-vessel steadied by the Great Blue Heron's beak and talons; both wings remain folded or naturally posed, with no arm, hand, sleeve, palm, or wing-tip grasp."
+      },
+      "repairDirective": "Previous candidates gave the bird arm-like side limbs while holding the basin. Regenerate as high-resolution pixel art only. The vessel must be held only by beak and talons, with wings clearly folded as wings under the rain cape; no sleeve-arm, hand, palm, elbow, shoulder, or humanoid clothing silhouette. Keep the heron and the one vessel centered inside the overlay-safe area."
+    },
+    {
+      "id": "cups_02",
+      "rank": "2",
+      "rarity": "common",
+      "name": "Twin Basin Bond",
+      "bird": "Hooded Merganser",
+      "coreMeaning": "Connection, partnership, mutual attraction",
+      "description": "Two mergansers mirror each other in a courtship display over still water.",
+      "pose": "Paired symmetrical pose, crests raised, beaks nearly touching above a shared reflection.",
+      "silhouetteClass": "crested-waterfowl",
+      "poseEnergy": "active",
+      "streetwear": [
+        "matching collar bands",
+        "linked droplet charm",
+        "paired cuffs"
+      ],
+      "palette": [
+        "harbor blue",
+        "pearl",
+        "teal",
+        "soft rose"
+      ],
+      "accent": "soft rose",
+      "varietyNotes": "Two-subject mirror composition; raised crests give a distinct silhouette from the heron pips.",
+      "gameplayFantasy": "Pairs two crew cards; enables synergy/commitment effects between bonded cards.",
+      "gameName": "Twin Basin Bond",
+      "numberSymbolism": {
+        "count": 2,
+        "element": "two paired basin reflections between the mirrored mergansers",
+        "represents": "mutual bond, reciprocity, and balanced care",
+        "visualRequirement": "Show exactly two basin vessels or two clear reflection rings between the Hooded Mergansers."
+      }
+    },
+    {
+      "id": "cups_03",
+      "rank": "3",
+      "rarity": "common",
+      "name": "Basin Chorus",
+      "bird": "Roseate Spoonbill",
+      "coreMeaning": "Friendship, celebration, community joy",
+      "description": "Three Roseate Spoonbills of the same species splash together in a modern fountain in shared celebration.",
+      "pose": "Three Roseate Spoonbills mid-splash, wings half-open, spatulate bills lifted, water droplets flying.",
+      "silhouetteClass": "tall-wader",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "festival sashes",
+        "tiny flower patches",
+        "splash-proof cuffs"
+      ],
+      "palette": [
+        "soft rose",
+        "teal",
+        "pearl",
+        "warm gold"
+      ],
+      "accent": "soft rose",
+      "varietyNotes": "Pink + spatulate bill clearly separates spoonbills from the heron and ducks of the suit.",
+      "gameplayFantasy": "Group buff; rewards having multiple friendly Basins crew cards active in the encounter.",
+      "gameName": "Basin Chorus",
+      "numberSymbolism": {
+        "count": 3,
+        "element": "three fountain basins or splash arcs around the spoonbills",
+        "represents": "shared joy, chorus, and community celebration",
+        "visualRequirement": "Show exactly three basin markers, fountain cups, or splash arcs around the Roseate Spoonbills."
+      }
+    },
+    {
+      "id": "cups_04",
+      "rank": "4",
+      "rarity": "common",
+      "name": "Closed Basin",
+      "bird": "Green Heron",
+      "coreMeaning": "Apathy, withdrawal, missed offer",
+      "description": "A Green Heron ignores exactly four closed basin vessels at a modern canal shelter, one offered and three untouched on the ledge.",
+      "pose": "Hunched on one leg under heavy rain, head withdrawn into shoulders, back turned to exactly four closed basin vessels: three capped vessels on the wet canal ledge and one offered vessel bobbing nearby.",
+      "silhouetteClass": "tall-wader",
+      "poseEnergy": "static",
+      "streetwear": [
+        "soaked oversized hood",
+        "dull droplet pin",
+        "drooping scarf"
+      ],
+      "palette": [
+        "rain gray",
+        "teal",
+        "muted harbor blue",
+        "soft rose"
+      ],
+      "accent": "soft rose",
+      "varietyNotes": "Same heron as the Ace, inverted in mood — hunched/closed silhouette vs. the Ace's open lift.",
+      "gameplayFantasy": "A pass/skip or disengage card; trades a turn of action for later focus.",
+      "gameName": "Closed Basin",
+      "numberSymbolism": {
+        "count": 4,
+        "element": "four closed basin vessels at the canal shelter",
+        "represents": "withdrawal, emotional refusal, and an unopened offer",
+        "visualRequirement": "Show exactly four basin vessels total: three capped vessels on the wet ledge plus one offered vessel bobbing nearby. Do not add extra bowls, cups, reflections, lights, or basin-shaped props."
+      },
+      "repairDirective": "Previous candidates had the correct four basins in the raw art but the final border cropped one. Regenerate as high-resolution pixel art only with all four basin vessels clustered closer to the center, comfortably inside the overlay-safe area, one full pip-width away from the future border and title cartouche. Keep the Green Heron centered and do not place any count object near an edge."
+    },
+    {
+      "id": "cups_05",
+      "rank": "5",
+      "rarity": "common",
+      "name": "Spilled Basin",
+      "bird": "Wood Duck",
+      "coreMeaning": "Loss, grief, regret (but not total)",
+      "description": "A wood duck turns away in grief after tipping three vessels in the gutter, while two basins still stand behind it.",
+      "pose": "Turned away and lowered near the center of the canal ledge, gaze pulled back toward exactly five basin vessels placed fully inside the overlay-safe center: three tipped vessels and two upright vessels behind.",
+      "silhouetteClass": "crested-waterfowl",
+      "poseEnergy": "static",
+      "streetwear": [
+        "dark mourning wrap",
+        "single cracked-droplet charm",
+        "muted cuffs"
+      ],
+      "palette": [
+        "rain gray",
+        "dusk blue",
+        "muted teal",
+        "faded rose"
+      ],
+      "accent": "faded rose",
+      "varietyNotes": "Wood Duck's ornate head pattern reads even when hunched; the two lit basins keep hope in frame.",
+      "gameplayFantasy": "Discard/sacrifice with a recovery clause — something remains after the loss.",
+      "gameName": "Spilled Basin",
+      "numberSymbolism": {
+        "count": 5,
+        "element": "five basin vessels split between three spilled and two still standing",
+        "represents": "loss, grief, and the remaining care that has not been noticed yet",
+        "visualRequirement": "Show exactly five basins total: three tipped and two upright behind the Wood Duck. Keep all five vessels close to the center of the scene and away from the future border; do not crop, hide, reflect, or duplicate them."
+      },
+      "repairDirective": "Previous candidates placed basin count elements too close to the future border. Regenerate as high-resolution pixel art only, with all five basin vessels clearly centered inside the safe image area and no countable reflections or edge-cropped vessels."
+    },
+    {
+      "id": "cups_06",
+      "rank": "6",
+      "rarity": "uncommon",
+      "name": "Basin Memory",
+      "bird": "Sanderling",
+      "coreMeaning": "Nostalgia, innocence, kindness",
+      "description": "Two Sanderlings share food at a city fountain while exactly six capped basin cups line the wet fountain rim.",
+      "pose": "Two Sanderlings of the same species share food at a modern fountain edge, with exactly six small capped basin cups clipped into the fountain rim around them.",
+      "silhouetteClass": "small-shorebird",
+      "poseEnergy": "active",
+      "streetwear": [
+        "tiny knit cap",
+        "old friendship charm",
+        "soft cuffs"
+      ],
+      "palette": [
+        "pearl",
+        "warm gold",
+        "soft rose",
+        "teal"
+      ],
+      "accent": "warm gold",
+      "varietyNotes": "Small busy shorebird scale contrasts the suit's tall waders; two-size pairing tells the story.",
+      "gameplayFantasy": "Gift/transfer effect; move a resource or buff from one crew card to another.",
+      "gameName": "Basin Memory",
+      "numberSymbolism": {
+        "count": 6,
+        "element": "six capped basin cups clipped into the fountain rim",
+        "represents": "kindness across ages, remembered care, and generous return",
+        "visualRequirement": "Show exactly six capped basin cups clipped into the fountain rim around the Sanderlings; do not add care tokens, shine tags, extra vessels, extra lights, or reflections that could be counted."
+      },
+      "repairDirective": "Latest review found the card reading too realistic. Regenerate as high-resolution pixel art only with crisp clusters, deliberate dithering, and visible pixel structure; reject realistic painting or soft digital rendering. Keep the scene unmistakably Basins: modern rainwear, fountain edge, water, and exactly six capped basin cups clipped into the fountain rim as the only countable pips. Keep all six cups centered well inside the final border opening with no extra vessels, lights, reflections, or shine tags."
+    },
+    {
+      "id": "cups_07",
+      "rank": "7",
+      "rarity": "uncommon",
+      "name": "Basin Mirage",
+      "bird": "Mandarin Duck",
+      "coreMeaning": "Illusion, fantasy, too many choices",
+      "description": "A bird gazes into rainwater reflections, shop-window glare, and canal lights that suggest too many choices.",
+      "pose": "Centered in the safe image area, head tilted toward exactly seven reflected basin choices arranged close around it in rainwater and shop glass, with no reflection near the future border.",
+      "silhouetteClass": "crested-waterfowl",
+      "poseEnergy": "static",
+      "streetwear": [
+        "iridescent dream-wrap",
+        "fogged droplet pin",
+        "shimmer cuffs"
+      ],
+      "palette": [
+        "dusk violet",
+        "teal",
+        "pearl",
+        "soft rose"
+      ],
+      "accent": "dusk violet",
+      "varietyNotes": "Dusk-violet accent and layered rainwater reflections set it apart visually from the grounded pips.",
+      "gameplayFantasy": "Choose-one / scry effect; reveal options, but some are decoys.",
+      "gameName": "Basin Mirage",
+      "numberSymbolism": {
+        "count": 7,
+        "element": "seven rainwater reflections or shop-window basin choices",
+        "represents": "temptation, fantasy, and too many emotional options",
+        "visualRequirement": "Show exactly seven reflected basin images or choice-reflections around the Mandarin Duck. Keep all seven reflections fully inside the overlay-safe center and away from borders; do not add extra reflected choices, lights, bowls, or cropped partial reflections."
+      },
+      "repairDirective": "Latest review found eight basin choices instead of seven. Regenerate as high-resolution pixel art only with the Mandarin Duck and exactly seven basin-choice reflections total, all pulled inward and centered. Use one countable object family only; no eighth reflection, no extra bowl, no partial basin, no reflected rim, no edge pip, and no vessel-like background light that could be counted."
+    },
+    {
+      "id": "cups_08",
+      "rank": "8",
+      "rarity": "uncommon",
+      "name": "Basin Walkaway",
+      "bird": "Black Skimmer",
+      "coreMeaning": "Withdrawal, walking away, seeking more",
+      "description": "A Black Skimmer leaves a neat row of arranged basins behind, gliding low down the canal into dusk rain.",
+      "pose": "Seen low and side-on mid-glide, oversized lower bill skimming rainwater as it leaves eight vessels lined on the bank, moon low ahead.",
+      "silhouetteClass": "low-skimming-waterbird",
+      "poseEnergy": "active",
+      "streetwear": [
+        "low-slung travel rain shell",
+        "packed-away basin strap",
+        "broad-bill reflective bands",
+        "farewell talon wraps"
+      ],
+      "palette": [
+        "dusk blue",
+        "rain gray",
+        "pearl",
+        "soft rose"
+      ],
+      "accent": "soft rose",
+      "varietyNotes": "The blade-like skimmer bill and low flight angle break up the repeated heron silhouettes in Basins.",
+      "gameplayFantasy": "Voluntary retreat; abandon a position to set up a stronger one elsewhere.",
+      "gameName": "Basin Walkaway",
+      "numberSymbolism": {
+        "count": 8,
+        "element": "eight arranged basin vessels left behind on the canal bank",
+        "represents": "walking away, emotional search, and leaving a full pattern unfinished",
+        "visualRequirement": "Show exactly eight basins behind the Black Skimmer as it departs low over the water."
+      }
+    },
+    {
+      "id": "cups_09",
+      "rank": "9",
+      "rarity": "uncommon",
+      "name": "Full Basin Row",
+      "bird": "Scarlet Ibis",
+      "coreMeaning": "Contentment, satisfaction, the wish granted",
+      "description": "A content Scarlet Ibis settles before exactly nine full basins on a modern canal ledge, satisfied and still.",
+      "pose": "Settled and satisfied, wings tucked, with exactly nine full basin vessels arranged in one proud arc on the wet ledge behind it, reflections blurred so they cannot be counted.",
+      "silhouetteClass": "tall-wader",
+      "poseEnergy": "static",
+      "streetwear": [
+        "fine satin wrap",
+        "full-droplet charm",
+        "polished cuffs"
+      ],
+      "palette": [
+        "soft rose",
+        "warm gold",
+        "teal",
+        "pearl"
+      ],
+      "accent": "warm gold",
+      "varietyNotes": "Pink + gold abundance palette signals the 'wish' high point of the suit.",
+      "gameplayFantasy": "Payoff card; cash in accumulated emotion resources for a strong reward.",
+      "gameName": "Full Basin Row",
+      "numberSymbolism": {
+        "count": 9,
+        "element": "nine full basins arranged in one proud arc",
+        "represents": "contentment, satisfaction, and a cared-for wish fulfilled",
+        "visualRequirement": "Show exactly nine full basin vessels in one clear arc behind or around the Scarlet Ibis; reflections must be soft and non-countable, with no extra basin vessels or bowl-like props."
+      },
+      "repairDirective": "Latest review found the card reading too realistic. Regenerate as high-resolution pixel art only with crisp clusters, deliberate dithering, and visible pixel structure; reject realistic painting or soft digital rendering. Use one countable centered arc of exactly nine full basin vessels and keep all reflections visually soft, broken, or non-countable so they cannot read as extra basins."
+    },
+    {
+      "id": "cups_10",
+      "rank": "10",
+      "rarity": "rare",
+      "name": "Canal Shelter",
+      "bird": "Mallard",
+      "coreMeaning": "Harmony, family, lasting belonging",
+      "description": "A Mallard family group gathers under exactly ten oval canal-light basin markers at a modern waterfront shelter.",
+      "pose": "Exactly ten Mallards of the same species huddle close together in the center of the waterfront shelter, under exactly ten oval canal-light basin markers mounted overhead; all birds and all markers stay inside the overlay-safe center, with water reflections blurred and non-countable.",
+      "silhouetteClass": "crested-waterfowl",
+      "poseEnergy": "active",
+      "streetwear": [
+        "matching family sashes",
+        "linked droplet charms",
+        "warm cuffs"
+      ],
+      "palette": [
+        "teal",
+        "soft rose",
+        "warm gold",
+        "pearl"
+      ],
+      "accent": "warm gold",
+      "varietyNotes": "Multi-subject group + rainbow is the emotional summit; warm gold lifts it out of the grays.",
+      "gameplayFantasy": "Capstone synergy; rewards a full crew of bonded Basins crew cards.",
+      "gameName": "Canal Shelter",
+      "numberSymbolism": {
+        "count": 10,
+        "element": "ten Mallards beneath ten oval canal-light basin markers mounted over the water",
+        "represents": "family shelter, emotional completion, and shared safety",
+        "visualRequirement": "Show exactly ten Mallards and exactly ten oval canal-light basin markers above them. Keep all ten ducks and all ten markers visible and away from the future border; do not add extra lanterns, bowls, reflected basin markers, countable light dots, or unrelated birds."
+      },
+      "repairDirective": "Previous candidates had cropped markers and only nine ducks. Regenerate as high-resolution pixel art only with exactly ten same-species Mallards clustered in the center and exactly ten oval basin-light markers fully inside the overlay-safe area. No edge-cropped lights, no extra birds, no missing ducks."
+    },
+    {
+      "id": "cups_fledgling",
+      "rank": "Page",
+      "rarity": "common",
+      "name": "Basin Fledgling",
+      "bird": "Piping Plover",
+      "coreMeaning": "Curiosity, sensitivity, an emotional message",
+      "description": "The youngest of the Tidewatch, a small piping plover bearing a sealed dew-vessel.",
+      "pose": "Bright-eyed, mid-skitter along the wet bank, carrying a tiny capped vessel in a beak-safe sling.",
+      "silhouetteClass": "small-shorebird",
+      "poseEnergy": "active",
+      "streetwear": [
+        "courier rain-hood",
+        "satchel of droplet charms",
+        "message-tag cuffs"
+      ],
+      "palette": [
+        "pearl",
+        "teal",
+        "soft rose",
+        "harbor blue"
+      ],
+      "accent": "teal",
+      "varietyNotes": "Court Fledgling = smallest cast msignal, messenger energy; distinct tiny silhouette.",
+      "gameplayFantasy": "Cheap utility/messenger crew card; draws or delivers an emotion resource.",
+      "gameName": "Basin Fledgling"
+    },
+    {
+      "id": "cups_outrider",
+      "rank": "Knight",
+      "rarity": "uncommon",
+      "name": "Basin Outrider",
+      "bird": "Northern Gannet",
+      "coreMeaning": "Romantic pursuit, idealism, following the heart",
+      "description": "Tidewatch's mobile actor, a Northern Gannet cutting low over the canal on a quest of feeling.",
+      "pose": "Low fast flight skimming the water surface, long wings swept, pale head angled forward, a small vessel clutched in its talons.",
+      "silhouetteClass": "long-winged-seabird",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "streamlined racing rain shell",
+        "wind-droplet charm",
+        "aero talon cuffs"
+      ],
+      "palette": [
+        "harbor blue",
+        "teal",
+        "pearl",
+        "soft rose"
+      ],
+      "accent": "soft rose",
+      "varietyNotes": "Court Outrider keeps fast water pursuit but becomes a long-winged seabird instead of a second merganser.",
+      "gameplayFantasy": "Mobile striker; carries/charges emotion effects across the encounter.",
+      "gameName": "Basin Outrider"
+    },
+    {
+      "id": "cups_matron",
+      "rank": "Queen",
+      "rarity": "rare",
+      "name": "Basin Matron",
+      "bird": "Dalmatian Pelican",
+      "coreMeaning": "Compassion, intuition, emotional mastery",
+      "description": "The inner master of Tidewatch, a Dalmatian Pelican sitting poised at a modern canal pump station and fountainhead.",
+      "pose": "Seated and serene on a concrete fountain rim near a canal pump station, massive pouched bill resting over a still vessel nested against her breast.",
+      "silhouetteClass": "pouched-waterbird",
+      "poseEnergy": "static",
+      "streetwear": [
+        "regal satin rain drape",
+        "crowned-droplet pin",
+        "fine layered talon cuffs",
+        "soft pouch-sling basin wrap"
+      ],
+      "palette": [
+        "soft rose",
+        "pearl",
+        "teal",
+        "warm gold"
+      ],
+      "accent": "soft rose",
+      "varietyNotes": "Court Matron gains a broad pouched-waterbird silhouette, separating her from the Roseate Spoonbill and other waders.",
+      "gameplayFantasy": "Support/healer leader; amplifies and protects bonded Basins crew cards.",
+      "gameName": "Basin Matron"
+    },
+    {
+      "id": "cups_elder",
+      "rank": "King",
+      "rarity": "rare",
+      "name": "Basin Elder",
+      "bird": "Shoebill",
+      "coreMeaning": "Emotional command, calm authority, wisdom of feeling",
+      "description": "The crew boss of Tidewatch, a monumental Shoebill ruling the calm modern harbor at dusk.",
+      "pose": "Standing massive and still on a concrete harbor post, huge bill level, wings folded, gaze calm over the water.",
+      "silhouetteClass": "massive-wader",
+      "poseEnergy": "static",
+      "streetwear": [
+        "oversized harbor-master raincoat",
+        "deep-droplet seal pin",
+        "broad-bill hood trim",
+        "reinforced talon bands"
+      ],
+      "palette": [
+        "harbor blue",
+        "teal",
+        "charcoal",
+        "soft rose"
+      ],
+      "accent": "soft rose",
+      "varietyNotes": "Court Elder becomes unmistakable at card scale through the Shoebill's massive bill and statue-still authority.",
+      "gameplayFantasy": "Faction leader; command effects that steady and rally the whole Basins crew.",
+      "gameName": "Basin Elder",
+      "repairDirective": "Previous candidates placed the Shoebill head too high so the final border cut it off. Regenerate as high-resolution pixel art only with the entire Shoebill silhouette, head, bill, crown, feet, and harbor-post perch centered lower and fully inside the overlay-safe center. Leave generous empty space above the head for the top border."
+    }
+  ]
+}

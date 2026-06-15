@@ -1,0 +1,594 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/run-design-spec.md",
+    "docs/game/next-level-data-contracts.md"
+  ],
+  "mapProfile": {
+    "mapId": "map_02_canal_markets",
+    "thesis": "Survive sustained attrition while rebuilding water, food, repair, and rest stops along the canals.",
+    "primaryTests": ["recovery", "chip damage", "Scrap tension", "Winded pressure"],
+    "preferredNodeTypes": ["street", "rival", "signal", "basin", "nest", "market", "cache", "boss"],
+    "encounterTags": ["scavenge", "cover", "winded", "heavy", "openSky", "tempo"],
+    "rewardBias": ["healing", "Scrap economy", "Route Marks"],
+    "bossPrepHints": [
+      "Bank Cohesion at Basins before the Canal Gatekeeper's drowning pressure.",
+      "Carry Scrap into the final Market; the boss punishes a starved economy.",
+      "Keep Open Sky Guard for the heron's sweeping reach."
+    ]
+  },
+  "enemies": [
+    {
+      "id": "canal_dock_warden",
+      "name": "Dock Warden",
+      "type": "elite",
+      "health": 46,
+      "lesson": "Elite: a lock-keeper bruiser that guards, then rams.",
+      "moves": [
+        { "id": "warden_haul_9", "label": "Haul 9", "effects": ["damage(flock, 9)"] },
+        { "id": "warden_bulwark", "label": "Bulwark", "effects": ["gainCover(11)"] },
+        { "id": "warden_hook_7", "label": "Gaff Hook 7", "effects": ["damage(flock, 7)", "applyWinded(flock, 1)"] },
+        { "id": "warden_ram_14", "label": "Ram 14", "effects": ["damage(flock, 14)"] }
+      ],
+      "attackPattern": { "type": "cycle", "moveIds": ["warden_haul_9", "warden_bulwark", "warden_hook_7", "warden_ram_14"] },
+      "rewards": { "scrap": [80, 105], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+    },
+    {
+      "id": "canal_dock_rat",
+      "name": "Dock Rat",
+      "type": "normal",
+      "health": 24,
+      "lesson": "Chip damage adds up; spend Cover before it stacks.",
+      "moves": [
+        { "id": "gnaw_6_a", "label": "Gnaw 6", "effects": ["damage(flock, 6)"] },
+        { "id": "gnaw_6_b", "label": "Gnaw 6", "effects": ["damage(flock, 6)"] },
+        { "id": "hoard_scraps", "label": "Hoard", "effects": ["gainCover(5)"] }
+      ],
+      "attackPattern": { "type": "cycle", "moveIds": ["gnaw_6_a", "gnaw_6_b", "hoard_scraps"] },
+      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+    },
+    {
+      "id": "canal_market_crow",
+      "name": "Market Crow",
+      "type": "normal",
+      "health": 26,
+      "lesson": "Scavengers heal if left alone; deny their rest turn.",
+      "moves": [
+        { "id": "snatch_6", "label": "Snatch 6", "effects": ["damage(flock, 6)"] },
+        { "id": "pick_clean", "label": "Pick Clean", "effects": ["if notHitThisTurn then heal(5)"] },
+        { "id": "fan_wings", "label": "Fan Wings", "effects": ["gainCover(6)"] }
+      ],
+      "attackPattern": { "type": "cycle", "moveIds": ["snatch_6", "pick_clean", "fan_wings"] },
+      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+    },
+    {
+      "id": "canal_dredge_eel",
+      "name": "Dredge Eel",
+      "type": "normal",
+      "health": 28,
+      "lesson": "Winded throttles your tempo; plan around the lull.",
+      "moves": [
+        { "id": "coil_winded", "label": "Coil", "effects": ["applyWinded(flock, 1)"] },
+        { "id": "lash_7", "label": "Lash 7", "effects": ["damage(flock, 7)"] },
+        { "id": "thrash_8", "label": "Thrash 8", "effects": ["damage(flock, 8)"] }
+      ],
+      "attackPattern": { "type": "cycle", "moveIds": ["coil_winded", "lash_7", "thrash_8"] },
+      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+    },
+    {
+      "id": "canal_barge_gull",
+      "name": "Barge Gull",
+      "type": "normal",
+      "health": 30,
+      "lesson": "Heavy Strike rewards Cover banked in advance.",
+      "moves": [
+        { "id": "wheel_5", "label": "Wheel 5", "effects": ["damage(flock, 5)"] },
+        { "id": "dive_heavy_12", "label": "Heavy Dive 12", "effects": ["damage(flock, 12)"] },
+        { "id": "ride_thermal", "label": "Ride Thermal", "effects": ["gainCover(5)", "if flockHasNoCover then nextAttackBonus(2)"] }
+      ],
+      "attackPattern": { "type": "cycle", "moveIds": ["wheel_5", "ride_thermal", "dive_heavy_12"] },
+      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+    },
+    {
+      "id": "canal_lock_keeper",
+      "name": "Lock Keeper",
+      "type": "normal",
+      "health": 32,
+      "lesson": "A turtling foe stalls your clock; out-pace its Cover.",
+      "moves": [
+        { "id": "shut_gate", "label": "Shut Gate", "effects": ["gainCover(8)"] },
+        { "id": "press_7", "label": "Press 7", "effects": ["damage(flock, 7)"] },
+        { "id": "flood_winded", "label": "Flood", "effects": ["damage(flock, 4)", "applyWinded(flock, 1)"] }
+      ],
+      "attackPattern": { "type": "cycle", "moveIds": ["shut_gate", "press_7", "flood_winded"] },
+      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+    },
+    {
+      "id": "canal_ferry_crew",
+      "name": "Ferry Crew",
+      "type": "rival",
+      "health": 38,
+      "lesson": "Optional elite that grinds you down between Basins.",
+      "moves": [
+        { "id": "twin_oars", "label": "Twin Oars 7", "effects": ["damage(flock, 7)", "applyWinded(flock, 1)"] },
+        { "id": "raise_gunwale", "label": "Raise Gunwale", "effects": ["gainCover(9)"] },
+        { "id": "ram_13", "label": "Ram 13", "effects": ["damage(flock, 13)"] }
+      ],
+      "attackPattern": { "type": "cycle", "moveIds": ["twin_oars", "raise_gunwale", "ram_13"] },
+      "rewards": { "scrap": [70, 90], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+    },
+    {
+      "id": "canal_toll_magpie",
+      "name": "Toll Magpie",
+      "type": "rival",
+      "health": 38,
+      "lesson": "Punishes a low Scrap economy by forcing Snags.",
+      "moves": [
+        { "id": "shake_down", "label": "Shake Down 6", "effects": ["damage(flock, 6)", "applyOpenSky(1)"] },
+        { "id": "stash_cover", "label": "Stash", "effects": ["gainCover(7)", "if flockOpenSky then heal(4)"] },
+        { "id": "tangle_toss", "label": "Tangle Toss", "effects": ["damage(flock, 9)", "addSnagToDiscard(wet_feathers)"] }
+      ],
+      "attackPattern": { "type": "cycle", "moveIds": ["shake_down", "stash_cover", "tangle_toss"] },
+      "rewards": { "scrap": [70, 90], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+    },
+    {
+      "id": "canal_heron_boss",
+      "name": "The Canal Gatekeeper",
+      "type": "boss",
+      "health": 54,
+      "fightLengthTarget": [7, 9],
+      "rewardScrap": 120,
+      "moves": [
+        { "id": "raise_weir", "label": "Raise Weir", "effects": ["gainCover(9)", "if flockHasNoCover then addSnagToDiscard(wet_feathers)"] },
+        { "id": "spear_strike_9", "label": "Spear Strike 9", "effects": ["damage(flock, 9)"] },
+        { "id": "wading_lull", "label": "Wading Lull", "effects": ["damage(flock, 5)", "applyWinded(flock, 1)"] },
+        { "id": "tide_call", "label": "Tide Call", "effects": ["gainCover(6)", "nextAttackBonus(4)"] },
+        { "id": "drown_press", "label": "Drowning Press", "effects": ["damage(flock, 6)", "if flockCohesionBelowHalf then applyOpenSky(1)"] },
+        { "id": "heavy_lunge_14", "label": "Heavy Lunge 14", "effects": ["damage(flock, 14)"] }
+      ],
+      "attackPattern": { "type": "scripted", "moveIds": ["raise_weir", "spear_strike_9", "wading_lull", "tide_call", "drown_press", "heavy_lunge_14"], "loopFrom": 1 },
+      "rewards": {
+        "bossRouteMarkChoices": 3,
+        "rareCardChoices": 3,
+        "preen": 1,
+        "scrap": 120
+      }
+    }
+  ],
+  "encounters": [
+    {
+      "id": "enc_canal_dock_swarm",
+      "name": "Dock Swarm",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "Two scavengers crowd the dock — clear one before both stack up.",
+      "tags": ["multi", "cover"],
+      "enemies": ["canal_dock_rat", "canal_market_crow"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_canal_dock_warden",
+      "name": "The Dock Warden",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "Elite: a Dock Warden with a rat escort holds the lock.",
+      "tags": ["elite", "heavy", "multi"],
+      "enemies": ["canal_dock_warden", "canal_dock_rat"],
+      "rewardProfileId": "rival_standard"
+    },
+    {
+      "id": "enc_canal_dock_rat",
+      "name": "Dock Rat",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "weak",
+      "lesson": "Chip damage adds up; spend Cover before it stacks.",
+      "tags": ["basic", "cover", "scavenge"],
+      "enemies": ["canal_dock_rat"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_canal_market_crow",
+      "name": "Market Crow",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Scavengers heal if left alone; deny their rest turn.",
+      "tags": ["scavenge", "cover"],
+      "enemies": ["canal_market_crow"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_canal_dredge_eel",
+      "name": "Dredge Eel",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Winded throttles your tempo; plan around the lull.",
+      "tags": ["winded", "tempo"],
+      "enemies": ["canal_dredge_eel"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_canal_barge_gull",
+      "name": "Barge Gull",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "Heavy Strike rewards Cover banked in advance.",
+      "tags": ["heavy", "cover"],
+      "enemies": ["canal_barge_gull"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_canal_lock_keeper",
+      "name": "Lock Keeper",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "A turtling foe stalls your clock; out-pace its Cover.",
+      "tags": ["cover", "winded", "tempo"],
+      "enemies": ["canal_lock_keeper"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_canal_ferry_crew",
+      "name": "Ferry Crew",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "Optional elite that grinds you down between Basins.",
+      "tags": ["heavy", "winded", "elite"],
+      "enemies": ["canal_ferry_crew"],
+      "rewardProfileId": "rival_standard"
+    },
+    {
+      "id": "enc_canal_toll_magpie",
+      "name": "Toll Magpie",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "Punishes a low Scrap economy by forcing Snags.",
+      "tags": ["snag", "openSky", "elite"],
+      "enemies": ["canal_toll_magpie"],
+      "rewardProfileId": "rival_standard"
+    },
+    {
+      "id": "enc_canal_heron_boss",
+      "name": "The Canal Gatekeeper",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "boss",
+      "band": "boss",
+      "lesson": "Tests recovery and attrition against drowning pressure.",
+      "tags": ["boss", "cover", "winded", "snag", "openSky"],
+      "enemies": ["canal_heron_boss"],
+      "rewardProfileId": "boss_alpha"
+    }
+  ],
+  "signals": [
+    {
+      "id": "canal_flooded_pantry",
+      "title": "Flooded Pantry",
+      "mapId": "map_02_canal_markets",
+      "prompt": "A market stall is half underwater, but salvageable seed and clean water sit just out of reach in the current.",
+      "choices": [
+        { "key": "wade", "text": "Wade in for supplies.", "outcomes": ["loseCohesion(3)", "gainSupplyChoice(1)"] },
+        { "key": "bail", "text": "Bail the stall dry.", "requirements": ["scrapAtLeast(40)"], "lockedText": "Need 40 Scrap.", "outcomes": ["payScrap(40)", "healCohesion(10)"] },
+        { "key": "skim", "text": "Skim what floats.", "outcomes": ["gainScrap(35)", "addSnagToDiscard(wet_feathers)"] }
+      ]
+    },
+    {
+      "id": "canal_lockmasters_ledger",
+      "title": "Lockmaster's Ledger",
+      "mapId": "map_02_canal_markets",
+      "prompt": "An abandoned ledger maps the canal locks. Tracing it could open a shortcut, but the ink runs in the damp.",
+      "choices": [
+        { "key": "copy", "text": "Copy the route mark.", "outcomes": ["loseCohesion(4)", "gainRouteMark(rain_gutter)"] },
+        { "key": "barter", "text": "Barter for the original.", "requirements": ["scrapAtLeast(55)"], "lockedText": "Need 55 Scrap.", "outcomes": ["payScrap(55)", "gainRouteMark(wire_map)"] },
+        { "key": "shred", "text": "Shred it for tinder.", "outcomes": ["gainScrap(40)", "loseCohesion(2)"] }
+      ]
+    },
+    {
+      "id": "canal_tide_shelter",
+      "title": "Tide Shelter",
+      "mapId": "map_02_canal_markets",
+      "prompt": "A dry repair berth offers rest, but a tidewatcher warns the next stretch runs under open canal sky.",
+      "choices": [
+        { "key": "rest", "text": "Rest in the berth.", "outcomes": ["healCohesion(8)", "reduceNextOpenSky(1)"] },
+        { "key": "guard", "text": "Rig a sky guard.", "outcomes": ["gainOpenSkyGuard(2)", "enemyCoverNextCombat(3)"] },
+        { "key": "trade", "text": "Trade the shelter's location.", "outcomes": ["gainScrap(30)", "gainSupply(shade_cloth)"] }
+      ]
+    },
+    {
+      "id": "canal_wingfeather_broker",
+      "title": "Wingfeather Broker",
+      "mapId": "map_02_canal_markets",
+      "prompt": "A grizzled lock broker hawks salvaged flight feathers and quill repairs. The best stock goes fast — and costs.",
+      "choices": [
+        { "key": "browse", "text": "Browse the common stock.", "outcomes": ["preenCard(1)"] },
+        { "key": "bid", "text": "Bid for the rare quills.", "requirements": ["scrapAtLeast(60)"], "lockedText": "Need 60 Scrap.", "outcomes": ["payScrap(60)", "addCard(randomCommonPlumesOrQuills)"] },
+        { "key": "negotiate", "text": "Trade the whole deal for supplies.", "outcomes": ["gainSupplyChoice(1)", "loseCohesion(2)"] }
+      ]
+    },
+    {
+      "id": "canal_bilgewater_cargo",
+      "title": "Bilgewater Cargo",
+      "mapId": "map_02_canal_markets",
+      "prompt": "A sinking barge spills crates of scrap into the canal. Grab what you can — but the bilge reeks of rot and tangle.",
+      "choices": [
+        { "key": "load_up", "text": "Load it all in.", "outcomes": ["gainScrap(65)", "addSnagToDiscard(tangled_line)"] },
+        { "key": "pick_clean", "text": "Cherry-pick the best crates.", "outcomes": ["gainScrap(35)"] },
+        { "key": "skip", "text": "Leave it sinking.", "outcomes": ["gainOpenSkyGuard(1)", "healCohesion(4)"] }
+      ]
+    },
+    {
+      "id": "canal_ferry_toll_gamble",
+      "title": "Ferry Toll Gamble",
+      "mapId": "map_02_canal_markets",
+      "prompt": "The ferry master offers a wager: a fat purse by sunset, but the fog and toll always take their cut.",
+      "choices": [
+        { "key": "gamble_hard", "text": "Bet it all.", "outcomes": ["gainScrap(80)", "addSnagToDraw(bad_directions)"] },
+        { "key": "small_stake", "text": "Wager modest coin.", "outcomes": ["gainScrap(25)"] },
+        { "key": "refuse", "text": "Refuse and move on.", "outcomes": ["gainRouteMark(randomNonBoss)", "loseCohesion(1)"] }
+      ]
+    },
+    {
+      "id": "canal_woven_trap",
+      "title": "Woven Trap",
+      "mapId": "map_02_canal_markets",
+      "prompt": "A section of canal ahead is choked with logjams and algae nets. The detour is clear but adds pressure. You could try to cut through.",
+      "choices": [
+        { "key": "cut_through", "text": "Cut through the nets.", "outcomes": ["startNextCombatOpenSky()", "gainScrap(45)"] },
+        { "key": "detour", "text": "Take the safe detour.", "outcomes": ["reduceNextOpenSky(2)", "loseCohesion(2)"] },
+        { "key": "scout_passage", "text": "Scout a passage first.", "requirements": ["cohesionAtLeast(14)"], "lockedText": "Need strong cohesion.", "outcomes": ["loseCohesion(3)", "gainOpenSkyGuard(1)"] }
+      ]
+    },
+    {
+      "id": "canal_salvage_net",
+      "title": "Salvage Net",
+      "mapId": "map_02_canal_markets",
+      "prompt": "A repair crew's lost net bobs in the shallows, tangled with useful cord, patches, and signal flares.",
+      "choices": [
+        { "key": "haul_in", "text": "Haul it in.", "outcomes": ["healMissingPct(35)", "gainSupplyChoice(1)"] },
+        { "key": "snip_supplies", "text": "Cut out the good bits.", "requirements": ["hasSupplySlot()"], "lockedText": "Need a supply slot.", "outcomes": ["gainSupply(zip_tie_roll)", "gainScrap(20)"] },
+        { "key": "leave_it", "text": "Leave it for the next crew.", "outcomes": ["gainRouteMark(loose_change_tin)"] }
+      ]
+    },
+    {
+      "id": "canal_stray_gosling",
+      "title": "Stray Gosling",
+      "mapId": "map_02_canal_markets",
+      "prompt": "A lost gosling has tangled itself in your flock's formation — darling but a liability. The lock keeper points to a safer route if you cut it loose.",
+      "choices": [
+        { "key": "adopt", "text": "Keep the gosling close.", "outcomes": ["loseCohesion(5)", "gainRouteMark(patched_harness)"] },
+        { "key": "release", "text": "Let it go.", "outcomes": ["releaseCard(1)", "gainScrap(30)"] },
+        { "key": "guide_ashore", "text": "Guide it safely ashore.", "requirements": ["cohesionAtLeast(18)"], "lockedText": "Need 18 Cohesion.", "outcomes": ["loseCohesion(4)", "healMissingPct(20)"] }
+      ]
+    }
+  ],
+  "routeMap": {
+    "id": "map_02_canal_markets",
+    "name": "Canal Markets",
+    "index": 2,
+    "seed": null,
+    "entryNodeId": "m2_c0_street_dock",
+    "bossNodeId": "m2_c6_boss_heron",
+    "columns": [
+      ["m2_c0_street_dock"],
+      ["m2_c1_street_rat", "m2_c1_signal_pantry"],
+      ["m2_c2_basin_canal", "m2_c2_street_crow", "m2_c2_market_canal"],
+      ["m2_c3_rival_ferry", "m2_c3_nest_repair", "m2_c3_cache_barge"],
+      ["m2_c4_street_eel", "m2_c4_signal_ledger", "m2_c4_street_lock"],
+      ["m2_c5_rival_magpie", "m2_c5_street_gull", "m2_c5_basin_tide"],
+      ["m2_c6_boss_heron"]
+    ],
+    "nodes": [
+      {
+        "id": "m2_c0_street_dock",
+        "column": 0,
+        "lane": 0,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_canal_dock_rat",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c1_street_rat",
+        "column": 1,
+        "lane": 0,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_canal_dock_rat",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c1_signal_pantry",
+        "column": 1,
+        "lane": 1,
+        "type": "signal",
+        "label": "Signal",
+        "payloadId": "canal_flooded_pantry",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c2_basin_canal",
+        "column": 2,
+        "lane": 0,
+        "type": "basin",
+        "label": "Basin",
+        "payloadId": "basin_alpha",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c2_street_crow",
+        "column": 2,
+        "lane": 1,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_canal_market_crow",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c2_market_canal",
+        "column": 2,
+        "lane": 2,
+        "type": "market",
+        "label": "Market",
+        "payloadId": "alpha_market",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c3_rival_ferry",
+        "column": 3,
+        "lane": 0,
+        "type": "rival",
+        "label": "Rival Crew",
+        "payloadId": "enc_canal_ferry_crew",
+        "risk": "high",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c3_nest_repair",
+        "column": 3,
+        "lane": 1,
+        "type": "nest",
+        "label": "Nest",
+        "payloadId": "nest_alpha",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c3_cache_barge",
+        "column": 3,
+        "lane": 2,
+        "type": "cache",
+        "label": "Rooftop Cache",
+        "payloadId": "alpha_rooftop_cache",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c4_street_eel",
+        "column": 4,
+        "lane": 0,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_canal_dredge_eel",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c4_signal_ledger",
+        "column": 4,
+        "lane": 1,
+        "type": "signal",
+        "label": "Signal",
+        "payloadId": "canal_lockmasters_ledger",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c4_street_lock",
+        "column": 4,
+        "lane": 2,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_canal_lock_keeper",
+        "risk": "high",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c5_rival_magpie",
+        "column": 5,
+        "lane": 0,
+        "type": "rival",
+        "label": "Rival Crew",
+        "payloadId": "enc_canal_toll_magpie",
+        "risk": "high",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c5_street_gull",
+        "column": 5,
+        "lane": 1,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_canal_barge_gull",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c5_basin_tide",
+        "column": 5,
+        "lane": 2,
+        "type": "basin",
+        "label": "Basin",
+        "payloadId": "basin_alpha",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m2_c6_boss_heron",
+        "column": 6,
+        "lane": 0,
+        "type": "boss",
+        "label": "Boss",
+        "payloadId": "enc_canal_heron_boss",
+        "risk": "boss",
+        "revealed": true,
+        "completed": false
+      }
+    ],
+    "edges": [
+      { "from": "m2_c0_street_dock", "to": "m2_c1_street_rat", "locked": false, "preview": "known" },
+      { "from": "m2_c0_street_dock", "to": "m2_c1_signal_pantry", "locked": false, "preview": "known" },
+      { "from": "m2_c1_street_rat", "to": "m2_c2_basin_canal", "locked": false, "preview": "known" },
+      { "from": "m2_c1_street_rat", "to": "m2_c2_street_crow", "locked": false, "preview": "known" },
+      { "from": "m2_c1_signal_pantry", "to": "m2_c2_street_crow", "locked": false, "preview": "known" },
+      { "from": "m2_c1_signal_pantry", "to": "m2_c2_market_canal", "locked": false, "preview": "known" },
+      { "from": "m2_c2_basin_canal", "to": "m2_c3_rival_ferry", "locked": false, "preview": "known" },
+      { "from": "m2_c2_basin_canal", "to": "m2_c3_nest_repair", "locked": false, "preview": "known" },
+      { "from": "m2_c2_street_crow", "to": "m2_c3_nest_repair", "locked": false, "preview": "known" },
+      { "from": "m2_c2_street_crow", "to": "m2_c3_cache_barge", "locked": false, "preview": "known" },
+      { "from": "m2_c2_market_canal", "to": "m2_c3_cache_barge", "locked": false, "preview": "known" },
+      { "from": "m2_c3_rival_ferry", "to": "m2_c4_street_eel", "locked": false, "preview": "known" },
+      { "from": "m2_c3_rival_ferry", "to": "m2_c4_signal_ledger", "locked": false, "preview": "known" },
+      { "from": "m2_c3_nest_repair", "to": "m2_c4_signal_ledger", "locked": false, "preview": "known" },
+      { "from": "m2_c3_nest_repair", "to": "m2_c4_street_lock", "locked": false, "preview": "known" },
+      { "from": "m2_c3_cache_barge", "to": "m2_c4_street_lock", "locked": false, "preview": "known" },
+      { "from": "m2_c4_street_eel", "to": "m2_c5_rival_magpie", "locked": false, "preview": "known" },
+      { "from": "m2_c4_street_eel", "to": "m2_c5_street_gull", "locked": false, "preview": "known" },
+      { "from": "m2_c4_signal_ledger", "to": "m2_c5_rival_magpie", "locked": false, "preview": "known" },
+      { "from": "m2_c4_signal_ledger", "to": "m2_c5_street_gull", "locked": false, "preview": "known" },
+      { "from": "m2_c4_signal_ledger", "to": "m2_c5_basin_tide", "locked": false, "preview": "known" },
+      { "from": "m2_c4_street_lock", "to": "m2_c5_basin_tide", "locked": false, "preview": "known" },
+      { "from": "m2_c5_rival_magpie", "to": "m2_c6_boss_heron", "locked": false, "preview": "known" },
+      { "from": "m2_c5_street_gull", "to": "m2_c6_boss_heron", "locked": false, "preview": "known" },
+      { "from": "m2_c5_basin_tide", "to": "m2_c6_boss_heron", "locked": false, "preview": "known" }
+    ]
+  }
+}

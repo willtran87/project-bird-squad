@@ -1,0 +1,3600 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/alpha-run-spec.md",
+    "docs/game/core-gameplay-spec.md"
+  ],
+  "starterDeck": [
+    "major_00",
+    "wands_ace",
+    "wands_08",
+    "swords_02",
+    "swords_ace",
+    "cups_ace",
+    "cups_03",
+    "pentacles_04",
+    "pentacles_02",
+    "aviary_25"
+  ],
+  "rewardPool": [
+    "wands_02",
+    "wands_03",
+    "wands_04",
+    "wands_05",
+    "wands_06",
+    "wands_09",
+    "swords_03",
+    "swords_04",
+    "swords_05",
+    "swords_fledgling",
+    "swords_06",
+    "swords_07",
+    "cups_02",
+    "cups_04",
+    "cups_05",
+    "cups_fledgling",
+    "cups_06",
+    "cups_08",
+    "pentacles_ace",
+    "pentacles_03",
+    "pentacles_05",
+    "pentacles_fledgling",
+    "pentacles_06",
+    "pentacles_08",
+    "major_01",
+    "major_02",
+    "major_03",
+    "major_04",
+    "major_05",
+    "major_06",
+    "major_07",
+    "major_08",
+    "major_09",
+    "major_10",
+    "major_11",
+    "major_12",
+    "major_13",
+    "major_14",
+    "major_15",
+    "major_16",
+    "major_17",
+    "major_18",
+    "major_19",
+    "major_20",
+    "major_21",
+    "aviary_22",
+    "aviary_23",
+    "aviary_24",
+    "aviary_26",
+    "aviary_27",
+    "wands_07",
+    "wands_10",
+    "wands_fledgling",
+    "wands_outrider",
+    "wands_matron",
+    "wands_elder",
+    "cups_07",
+    "cups_09",
+    "cups_10",
+    "cups_outrider",
+    "cups_matron",
+    "cups_elder",
+    "swords_08",
+    "swords_09",
+    "swords_10",
+    "swords_outrider",
+    "swords_matron",
+    "swords_elder",
+    "pentacles_07",
+    "pentacles_09",
+    "pentacles_10",
+    "pentacles_outrider",
+    "pentacles_matron",
+    "pentacles_elder"
+  ],
+  "cards": [
+    {
+      "id": "major_00",
+      "displayName": "First Flight",
+      "bird": "House Sparrow",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "cover",
+        "draw"
+      ],
+      "effects": [
+        "damage(target, 3)",
+        "gainCover(2)",
+        "if firstPlayedThisCombat then draw(1)"
+      ],
+      "moltEffects": [
+        "gainResonance(2)",
+        "draw(1)",
+        "if firstPlayedThisCombat then gainWingbeat(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 5)",
+          "gainCover(4)",
+          "if firstPlayedThisCombat then draw(1)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "gainResonance(3)",
+          "draw(1)",
+          "if firstPlayedThisCombat then gainWingbeat(1)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 2,
+        "draw": 1
+      }
+    },
+    {
+      "id": "wands_ace",
+      "displayName": "Plume Flash",
+      "bird": "Malachite Sunbird",
+      "kind": "crew",
+      "suit": "plumes",
+      "rarity": "common",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "resonance"
+      ],
+      "effects": [
+        "damage(target, 2)",
+        "gainResonance(1)"
+      ],
+      "moltEffects": [
+        "gainCover(3)",
+        "draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 3)",
+          "gainResonance(2)"
+        ],
+        "flockStats": {
+          "resonance": 1
+        },
+        "moltEffects": [
+          "gainCover(5)",
+          "draw(1)"
+        ]
+      },
+      "flockStats": {
+        "resonance": 1
+      }
+    },
+    {
+      "id": "wands_08",
+      "displayName": "Plume Rush",
+      "bird": "Lilac-breasted Roller",
+      "kind": "crew",
+      "suit": "plumes",
+      "rarity": "uncommon",
+      "cost": 0,
+      "target": "none",
+      "tags": [
+        "draw",
+        "tempo"
+      ],
+      "effects": [
+        "draw(1)",
+        "if isMolting then gainWingbeat(1)"
+      ],
+      "moltEffects": [
+        "gainCover(4)"
+      ],
+      "upgrade": {
+        "effects": [
+          "draw(2)",
+          "if isMolting then gainWingbeat(1)",
+          "gainEnergyNextTurn(1)"
+        ],
+        "flockStats": {
+          "resonance": 1
+        },
+        "moltEffects": [
+          "gainCover(6)"
+        ]
+      },
+      "flockStats": {
+        "draw": 1
+      }
+    },
+    {
+      "id": "swords_02",
+      "displayName": "Crossed Quills",
+      "bird": "Blue Jay",
+      "kind": "crew",
+      "suit": "quills",
+      "rarity": "common",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "finisher"
+      ],
+      "effects": [
+        "damage(target, 4)",
+        "if targetBelowHalf then damage(target, 3)"
+      ],
+      "moltEffects": [
+        "gainCover(4)",
+        "if cohesionBelowHalf then gainCover(3)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 5)",
+          "if targetBelowHalf then damage(target, 4)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "gainCover(5)",
+          "if cohesionBelowHalf then gainCover(4)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1
+      }
+    },
+    {
+      "id": "swords_ace",
+      "displayName": "Quill Point",
+      "bird": "Loggerhead Shrike",
+      "kind": "crew",
+      "suit": "quills",
+      "rarity": "common",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "winded"
+      ],
+      "effects": [
+        "damage(target, 3)",
+        "applyWinded(target, 1)"
+      ],
+      "moltEffects": [
+        "gainResonance(1)",
+        "draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 5)",
+          "applyWinded(target, 1)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "gainResonance(2)",
+          "draw(1)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1
+      }
+    },
+    {
+      "id": "cups_ace",
+      "displayName": "Open Basin",
+      "bird": "Great Blue Heron",
+      "kind": "crew",
+      "suit": "basins",
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "heal",
+        "draw"
+      ],
+      "effects": [
+        "heal(3)",
+        "if fullCohesion then draw(1)"
+      ],
+      "moltEffects": [
+        "damage(target, 3)",
+        "if firstPlayedThisCombat then gainResonance(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(5)",
+          "if fullCohesion then draw(1)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "damage(target, 5)",
+          "if firstPlayedThisCombat then gainResonance(1)"
+        ]
+      },
+      "flockStats": {
+        "regen": 1
+      }
+    },
+    {
+      "id": "cups_03",
+      "displayName": "Basin Chorus",
+      "bird": "Roseate Spoonbill",
+      "kind": "crew",
+      "suit": "basins",
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "heal",
+        "draw"
+      ],
+      "effects": [
+        "heal(2)",
+        "draw(1)"
+      ],
+      "moltEffects": [
+        "damage(target, 2)",
+        "gainResonance(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(3)",
+          "draw(1)"
+        ],
+        "flockStats": {
+          "regen": 1
+        },
+        "moltEffects": [
+          "damage(target, 3)",
+          "gainResonance(2)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 1
+      }
+    },
+    {
+      "id": "pentacles_04",
+      "displayName": "Locked Nest",
+      "bird": "Rock Pigeon",
+      "kind": "crew",
+      "suit": "nests",
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover"
+      ],
+      "effects": [
+        "gainCover(7)"
+      ],
+      "moltEffects": [
+        "damage(target, 7)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(10)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "damage(target, 10)"
+        ]
+      },
+      "flockStats": {
+        "cover": 1
+      }
+    },
+    {
+      "id": "pentacles_02",
+      "displayName": "Nest Juggle",
+      "bird": "European Starling",
+      "kind": "crew",
+      "suit": "nests",
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover",
+        "draw",
+        "discard"
+      ],
+      "effects": [
+        "gainCover(4)",
+        "draw(1)",
+        "discard(1)"
+      ],
+      "moltEffects": [
+        "discard(1)",
+        "draw(1)",
+        "damage(target, 3 perDiscarded)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(6)",
+          "draw(1)",
+          "discard(1)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "discard(1)",
+          "draw(1)",
+          "damage(target, 5 perDiscarded)"
+        ]
+      },
+      "flockStats": {
+        "cover": 1
+      }
+    },
+    {
+      "id": "aviary_25",
+      "displayName": "Hot Feathers",
+      "bird": "Scarlet Tanager",
+      "kind": "molt",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 0,
+      "target": "none",
+      "tags": [
+        "molt"
+      ],
+      "effects": [
+        "enterMolt()"
+      ],
+      "moltEffects": [
+        "draw(1)",
+        "gainResonance(1)",
+        "gainCover(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "enterMolt()",
+          "gainOpenSkyGuard(1)"
+        ],
+        "flockStats": {
+          "openSkyGuard": 1
+        },
+        "moltEffects": [
+          "draw(1)",
+          "gainResonance(1)",
+          "gainCover(4)"
+        ]
+      },
+      "flockStats": {
+        "moltPower": 1,
+        "openSkyGuard": 1
+      }
+    },
+    {
+      "id": "wands_02",
+      "displayName": "Twin Plume Lookout",
+      "bird": "Barn Swallow",
+      "kind": "crew",
+      "suit": "plumes",
+      "rarity": "common",
+      "cost": 1,
+      "target": "none",
+      "tags": [
+        "resonance",
+        "draw"
+      ],
+      "effects": [
+        "gainResonance(1)",
+        "draw(1)"
+      ],
+      "moltEffects": [
+        "damage(target, 3)",
+        "applyWinded(target, 1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainResonance(2)",
+          "draw(1)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "damage(target, 5)",
+          "applyWinded(target, 1)"
+        ]
+      },
+      "flockStats": {
+        "resonance": 1
+      }
+    },
+    {
+      "id": "wands_03",
+      "displayName": "Plume Horizon",
+      "bird": "Greater Bird-of-Paradise",
+      "kind": "crew",
+      "suit": "plumes",
+      "rarity": "common",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "draw",
+        "resonance"
+      ],
+      "effects": [
+        "damage(target, 3)",
+        "if hasResonance then spendResonance(1)",
+        "if spentResonance then draw(1)"
+      ],
+      "moltEffects": [
+        "gainCover(5)",
+        "if hasResonance then gainCover(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 5)",
+          "if hasResonance then spendResonance(1)",
+          "if spentResonance then draw(2)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "gainCover(7)",
+          "if hasResonance then gainCover(2)"
+        ]
+      },
+      "flockStats": {
+        "resonance": 1
+      }
+    },
+    {
+      "id": "wands_04",
+      "displayName": "Plume Street Party",
+      "bird": "Vermilion Flycatcher",
+      "kind": "crew",
+      "suit": "plumes",
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "resonance",
+        "cover"
+      ],
+      "effects": [
+        "gainResonance(2)",
+        "gainCover(2)"
+      ],
+      "moltEffects": [
+        "damage(target, 3)",
+        "applyWinded(target, 2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainResonance(3)",
+          "gainCover(3)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "damage(target, 5)",
+          "applyWinded(target, 2)"
+        ]
+      },
+      "flockStats": {
+        "resonance": 1
+      }
+    },
+    {
+      "id": "wands_05",
+      "displayName": "Plume Clash",
+      "bird": "Red-whiskered Bulbul",
+      "kind": "crew",
+      "suit": "plumes",
+      "rarity": "common",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "resonance"
+      ],
+      "effects": [
+        "damage(target, 4)",
+        "if resonanceAtLeast(2) then spendResonance(2)",
+        "if spentResonance then damage(target, 5)"
+      ],
+      "moltEffects": [
+        "gainCover(4)",
+        "if resonanceAtLeast(2) then heal(3)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 6)",
+          "if resonanceAtLeast(2) then spendResonance(2)",
+          "if spentResonance then damage(target, 7)"
+        ],
+        "flockStats": {
+          "resonance": 1
+        },
+        "moltEffects": [
+          "gainCover(6)",
+          "if resonanceAtLeast(2) then heal(3)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1
+      }
+    },
+    {
+      "id": "wands_06",
+      "displayName": "Plume Victory Wire",
+      "bird": "American Kestrel",
+      "kind": "crew",
+      "suit": "plumes",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "tempo",
+        "draw"
+      ],
+      "effects": [
+        "damage(target, 5)",
+        "if defeatsEnemy then gainWingbeat(1)"
+      ],
+      "moltEffects": [
+        "gainCover(6)",
+        "if firstPlayedThisCombat then gainResonance(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 7)",
+          "if defeatsEnemy then gainWingbeat(1)",
+          "if defeatsEnemy then draw(1)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "gainCover(8)",
+          "if firstPlayedThisCombat then gainResonance(2)"
+        ]
+      },
+      "flockStats": {
+        "resonance": 2
+      }
+    },
+    {
+      "id": "wands_09",
+      "displayName": "Plume Barricade",
+      "bird": "Rufous Hummingbird",
+      "kind": "crew",
+      "suit": "plumes",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover",
+        "resonance"
+      ],
+      "effects": [
+        "gainCover(4)",
+        "gainResonance(1)"
+      ],
+      "moltEffects": [
+        "damage(target, 4)",
+        "gainResonance(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(6)",
+          "gainResonance(2)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "damage(target, 6)",
+          "gainResonance(2)"
+        ]
+      },
+      "flockStats": {
+        "resonance": 2
+      }
+    },
+    {
+      "id": "swords_03",
+      "displayName": "Storm Quill",
+      "bird": "Northern Mockingbird",
+      "kind": "crew",
+      "suit": "quills",
+      "rarity": "common",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "tell",
+        "winded"
+      ],
+      "effects": [
+        "damage(target, 5)",
+        "if targetIntendsAttack then applyWinded(target, 1)"
+      ],
+      "moltEffects": [
+        "heal(3)",
+        "gainCover(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 7)",
+          "if targetIntendsAttack then applyWinded(target, 1)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "heal(5)",
+          "gainCover(2)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1
+      }
+    },
+    {
+      "id": "swords_04",
+      "displayName": "Sheathed Quills",
+      "bird": "Belted Kingfisher",
+      "kind": "crew",
+      "suit": "quills",
+      "rarity": "common",
+      "cost": 0,
+      "target": "self",
+      "tags": [
+        "cover",
+        "draw",
+        "discard"
+      ],
+      "effects": [
+        "gainCover(3)",
+        "draw(1)",
+        "discard(1)"
+      ],
+      "moltEffects": [
+        "damage(target, 4)",
+        "applyWinded(target, 1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(5)",
+          "draw(1)",
+          "discard(1)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "damage(target, 6)",
+          "applyWinded(target, 1)"
+        ]
+      },
+      "flockStats": {
+        "draw": 1
+      }
+    },
+    {
+      "id": "swords_05",
+      "displayName": "Scattered Quills",
+      "bird": "Red-winged Blackbird",
+      "kind": "crew",
+      "suit": "quills",
+      "rarity": "common",
+      "cost": 1,
+      "target": "allEnemies",
+      "tags": [
+        "attack",
+        "aoe"
+      ],
+      "effects": [
+        "damageAll(3)"
+      ],
+      "moltEffects": [
+        "gainCover(2 perCover)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damageAll(5)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "gainCover(4 perCover)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1
+      }
+    },
+    {
+      "id": "swords_fledgling",
+      "displayName": "Quill Fledgling",
+      "bird": "Green Jay",
+      "kind": "crew",
+      "suit": "quills",
+      "rarity": "common",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "winded",
+        "draw"
+      ],
+      "effects": [
+        "damage(target, 4)",
+        "if windedAtLeast(2) then draw(1)"
+      ],
+      "moltEffects": [
+        "gainResonance(2)",
+        "nextTurnDraw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 6)",
+          "if windedAtLeast(2) then draw(2)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "gainResonance(3)",
+          "nextTurnDraw(1)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1
+      }
+    },
+    {
+      "id": "swords_06",
+      "displayName": "Quill Crossing",
+      "bird": "Green Heron",
+      "kind": "crew",
+      "suit": "quills",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "cover"
+      ],
+      "effects": [
+        "loseCohesion(2)",
+        "damage(target, 9)"
+      ],
+      "moltEffects": [
+        "heal(3)",
+        "gainOpenSkyGuard(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "loseCohesion(2)",
+          "damage(target, 13)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "heal(5)",
+          "gainOpenSkyGuard(2)"
+        ]
+      },
+      "flockStats": {
+        "damage": 2
+      }
+    },
+    {
+      "id": "swords_07",
+      "displayName": "Quill Slip",
+      "bird": "Cedar Waxwing",
+      "kind": "crew",
+      "suit": "quills",
+      "rarity": "uncommon",
+      "cost": 0,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "molt"
+      ],
+      "effects": [
+        "damage(target, 3)",
+        "if isMolting then damage(target, 3)"
+      ],
+      "moltEffects": [
+        "returnDiscard(nonMolt, +1)",
+        "draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 4)",
+          "if isMolting then damage(target, 5)"
+        ],
+        "flockStats": {
+          "moltPower": 1
+        },
+        "moltEffects": [
+          "returnDiscard(nonMolt, 0)",
+          "draw(1)"
+        ]
+      },
+      "flockStats": {
+        "damage": 2
+      }
+    },
+    {
+      "id": "cups_02",
+      "displayName": "Twin Basin Bond",
+      "bird": "Wood Duck",
+      "kind": "crew",
+      "suit": "basins",
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "heal",
+        "cover"
+      ],
+      "effects": [
+        "heal(2)",
+        "gainCover(3)"
+      ],
+      "moltEffects": [
+        "applyWinded(target, 2)",
+        "draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(3)",
+          "gainCover(5)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "applyWinded(target, 3)",
+          "draw(1)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 1
+      }
+    },
+    {
+      "id": "cups_04",
+      "displayName": "Closed Basin",
+      "bird": "American Coot",
+      "kind": "crew",
+      "suit": "basins",
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover",
+        "heal"
+      ],
+      "effects": [
+        "gainCover(5)",
+        "heal(1)"
+      ],
+      "moltEffects": [
+        "damage(target, 2)",
+        "if targetIntendsAttack then applyWinded(target, 2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(7)",
+          "heal(2)"
+        ],
+        "flockStats": {
+          "regen": 1
+        },
+        "moltEffects": [
+          "damage(target, 4)",
+          "if targetIntendsAttack then applyWinded(target, 2)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 1
+      }
+    },
+    {
+      "id": "cups_05",
+      "displayName": "Spilled Basin",
+      "bird": "Killdeer",
+      "kind": "crew",
+      "suit": "basins",
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "heal",
+        "open-sky"
+      ],
+      "effects": [
+        "heal(3)",
+        "if cohesionBelowHalf then heal(5)"
+      ],
+      "moltEffects": [
+        "damageAll(2)",
+        "if cohesionBelowHalf then damageAll(3)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(4)",
+          "if cohesionBelowHalf then heal(7)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "damageAll(3)",
+          "if cohesionBelowHalf then damageAll(5)"
+        ]
+      },
+      "flockStats": {
+        "openSkyGuard": 1
+      }
+    },
+    {
+      "id": "cups_fledgling",
+      "displayName": "Basin Fledgling",
+      "bird": "Piping Plover",
+      "kind": "crew",
+      "suit": "basins",
+      "rarity": "common",
+      "cost": 0,
+      "target": "self",
+      "tags": [
+        "heal",
+        "draw"
+      ],
+      "effects": [
+        "heal(1)",
+        "draw(1)"
+      ],
+      "moltEffects": [
+        "damage(target, 2)",
+        "gainWingbeat(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(2)",
+          "draw(1)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "damage(target, 4)",
+          "gainWingbeat(1)"
+        ]
+      },
+      "flockStats": {
+        "regen": 1
+      }
+    },
+    {
+      "id": "cups_06",
+      "displayName": "Basin Memory",
+      "bird": "Sandhill Crane",
+      "kind": "crew",
+      "suit": "basins",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "choice",
+      "tags": [
+        "discard",
+        "recursion"
+      ],
+      "effects": [
+        "returnDiscard(nonMolt, +1)"
+      ],
+      "moltEffects": [
+        "discard(1)",
+        "gainResonance(2)",
+        "draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "returnDiscard(nonMolt, 0)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "discard(1)",
+          "gainResonance(3)",
+          "draw(1)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 2
+      }
+    },
+    {
+      "id": "cups_08",
+      "displayName": "Basin Walkaway",
+      "bird": "Black Skimmer",
+      "kind": "crew",
+      "suit": "basins",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "discard",
+        "heal"
+      ],
+      "effects": [
+        "discardUpTo(2)",
+        "heal(2 perDiscarded)"
+      ],
+      "moltEffects": [
+        "discardUpTo(2)",
+        "damage(target, 3 perDiscarded)"
+      ],
+      "upgrade": {
+        "effects": [
+          "discardUpTo(2)",
+          "heal(3 perDiscarded)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "discardUpTo(2)",
+          "damage(target, 5 perDiscarded)"
+        ]
+      },
+      "flockStats": {
+        "regen": 2
+      }
+    },
+    {
+      "id": "pentacles_ace",
+      "displayName": "Nest Seed",
+      "bird": "Satin Bowerbird",
+      "kind": "crew",
+      "suit": "nests",
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover"
+      ],
+      "effects": [
+        "gainCover(5)"
+      ],
+      "moltEffects": [
+        "gainResonance(2)",
+        "gainWingbeat(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(7)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "gainResonance(3)",
+          "gainWingbeat(1)"
+        ]
+      },
+      "flockStats": {
+        "cover": 1
+      }
+    },
+    {
+      "id": "pentacles_03",
+      "displayName": "Nest Blueprint",
+      "bird": "Baya Weaver",
+      "kind": "crew",
+      "suit": "nests",
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover",
+        "setup"
+      ],
+      "effects": [
+        "gainCover(4)",
+        "nextCoverBonus(nests, 2)"
+      ],
+      "moltEffects": [
+        "applyWinded(target, 2)",
+        "nextTurnDraw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(6)",
+          "nextCoverBonus(nests, 3)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "applyWinded(target, 3)",
+          "nextTurnDraw(1)"
+        ]
+      },
+      "flockStats": {
+        "cover": 1
+      }
+    },
+    {
+      "id": "pentacles_05",
+      "displayName": "Cold Nest",
+      "bird": "Cliff Swallow",
+      "kind": "crew",
+      "suit": "nests",
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover",
+        "low-cohesion"
+      ],
+      "effects": [
+        "gainCover(6)",
+        "if cohesionBelowHalf then gainCover(3)"
+      ],
+      "moltEffects": [
+        "heal(4)",
+        "if cohesionBelowHalf then damageAll(3)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(8)",
+          "if cohesionBelowHalf then gainCover(4)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "heal(6)",
+          "if cohesionBelowHalf then damageAll(5)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 1
+      }
+    },
+    {
+      "id": "pentacles_fledgling",
+      "displayName": "Nest Fledgling",
+      "bird": "Long-tailed Tit",
+      "kind": "crew",
+      "suit": "nests",
+      "rarity": "common",
+      "cost": 0,
+      "target": "self",
+      "tags": [
+        "cover"
+      ],
+      "effects": [
+        "gainCover(3)"
+      ],
+      "moltEffects": [
+        "damage(target, 2)",
+        "draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(5)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "damage(target, 4)",
+          "draw(1)"
+        ]
+      },
+      "flockStats": {
+        "cover": 1
+      }
+    },
+    {
+      "id": "pentacles_06",
+      "displayName": "Shared Nest",
+      "bird": "Acorn Woodpecker",
+      "kind": "crew",
+      "suit": "nests",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover",
+        "heal"
+      ],
+      "effects": [
+        "gainCover(5)",
+        "heal(2)"
+      ],
+      "moltEffects": [
+        "applyWinded(target, 2)",
+        "draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(7)",
+          "heal(3)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "applyWinded(target, 3)",
+          "draw(1)"
+        ]
+      },
+      "flockStats": {
+        "cover": 2
+      }
+    },
+    {
+      "id": "pentacles_08",
+      "displayName": "Workshop Nest",
+      "bird": "Carolina Wren",
+      "kind": "crew",
+      "suit": "nests",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover",
+        "draw-next"
+      ],
+      "effects": [
+        "gainCover(8)",
+        "if fullyBlocksNextAttack then nextTurnDraw(1)"
+      ],
+      "moltEffects": [
+        "damageAll(5)",
+        "if firstPlayedThisCombat then nextTurnDraw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(11)",
+          "if fullyBlocksNextAttack then nextTurnDraw(1)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "damageAll(7)",
+          "if firstPlayedThisCombat then nextTurnDraw(1)"
+        ]
+      },
+      "flockStats": {
+        "cover": 2
+      }
+    },
+    {
+      "id": "major_01",
+      "displayName": "Shiny Toolkit",
+      "bird": "Black-billed Magpie",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "none",
+      "tags": [
+        "resonance",
+        "draw",
+        "tempo",
+        "setup",
+        "combo"
+      ],
+      "effects": [
+        "gainResonance(2)",
+        "draw(1)",
+        "if playedSuitThisTurn(plumes) then draw(1)"
+      ],
+      "moltEffects": [
+        "damageAll(3)",
+        "if hasResonance then spendResonance(2)",
+        "if spentResonance then damageAll(3)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainResonance(2)",
+          "draw(1)",
+          "if playedSuitThisTurn(plumes) then draw(2)"
+        ],
+        "flockStats": {
+          "resonance": 1
+        },
+        "moltEffects": [
+          "damageAll(5)",
+          "if hasResonance then spendResonance(2)",
+          "if spentResonance then damageAll(3)"
+        ]
+      },
+      "flockStats": {
+        "resonance": 2,
+        "draw": 1
+      }
+    },
+    {
+      "id": "major_02",
+      "displayName": "Moonlit Lookout",
+      "bird": "Barn Owl",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "none",
+      "tags": [
+        "draw",
+        "winded",
+        "tempo",
+        "setup"
+      ],
+      "effects": [
+        "draw(1)",
+        "if targetIntendsAttack then draw(1)",
+        "nextTurnDraw(1)"
+      ],
+      "moltEffects": [
+        "if targetIntendsAttack then applyWinded(target, 3)",
+        "gainCover(3)"
+      ],
+      "upgrade": {
+        "effects": [
+          "draw(2)",
+          "if targetIntendsAttack then draw(1)",
+          "nextTurnDraw(1)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "if targetIntendsAttack then applyWinded(target, 3)",
+          "gainCover(5)"
+        ]
+      },
+      "flockStats": {
+        "draw": 2
+      }
+    },
+    {
+      "id": "major_03",
+      "displayName": "Canal Bloom",
+      "bird": "Mute Swan",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "heal",
+        "draw",
+        "open-sky"
+      ],
+      "effects": [
+        "heal(5)",
+        "draw(1)",
+        "if fullCohesion then gainOpenSkyGuard(1)"
+      ],
+      "moltEffects": [
+        "damage(target, 4)",
+        "applyWinded(target, 2)",
+        "if targetBelowHalf then damage(target, 3)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(7)",
+          "draw(1)",
+          "if fullCohesion then gainOpenSkyGuard(1)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "damage(target, 6)",
+          "applyWinded(target, 2)",
+          "if targetBelowHalf then damage(target, 3)"
+        ]
+      },
+      "flockStats": {
+        "regen": 2,
+        "cohesion": 1
+      }
+    },
+    {
+      "id": "major_04",
+      "displayName": "High Perch",
+      "bird": "Golden Eagle",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 2,
+      "target": "self",
+      "tags": [
+        "cover",
+        "open-sky",
+        "setup"
+      ],
+      "effects": [
+        "gainCover(10)",
+        "nextCoverBonus(nests, 3)",
+        "gainOpenSkyGuard(1)"
+      ],
+      "moltEffects": [
+        "damage(target, 12)",
+        "if defeatsEnemy then gainWingbeat(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(12)",
+          "nextCoverBonus(nests, 4)",
+          "gainOpenSkyGuard(1)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "damage(target, 14)",
+          "if defeatsEnemy then gainWingbeat(1)"
+        ]
+      },
+      "flockStats": {
+        "cover": 2,
+        "openSkyGuard": 1
+      }
+    },
+    {
+      "id": "major_05",
+      "displayName": "Old Route",
+      "bird": "Sandhill Crane",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "heal",
+        "cover",
+        "resonance",
+        "setup"
+      ],
+      "effects": [
+        "heal(2)",
+        "gainCover(3)",
+        "gainResonance(1)",
+        "if firstPlayedThisCombat then draw(1)"
+      ],
+      "moltEffects": [
+        "damage(target, 5)",
+        "if firstPlayedThisCombat then draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(3)",
+          "gainCover(4)",
+          "gainResonance(2)",
+          "if firstPlayedThisCombat then draw(1)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "damage(target, 7)",
+          "if firstPlayedThisCombat then draw(1)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 2
+      }
+    },
+    {
+      "id": "major_06",
+      "displayName": "Paired Wings",
+      "bird": "Rosy-faced Lovebird",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "heal",
+        "cover",
+        "resonance"
+      ],
+      "effects": [
+        "gainResonance(1)",
+        "if hasResonance then heal(3)",
+        "if hasResonance then gainCover(3)"
+      ],
+      "moltEffects": [
+        "damage(target, 3)",
+        "applyWinded(target, 2)",
+        "if hasResonance then damage(target, 3)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainResonance(2)",
+          "if hasResonance then heal(4)",
+          "if hasResonance then gainCover(4)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "damage(target, 5)",
+          "applyWinded(target, 2)",
+          "if hasResonance then damage(target, 3)"
+        ]
+      },
+      "flockStats": {
+        "resonance": 1,
+        "cohesion": 1
+      }
+    },
+    {
+      "id": "major_07",
+      "displayName": "Dive Line",
+      "bird": "Peregrine Falcon",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "finisher",
+        "tempo"
+      ],
+      "effects": [
+        "damage(target, 6)",
+        "if targetBelowHalf then damage(target, 2)",
+        "if defeatsEnemy then gainWingbeat(1)"
+      ],
+      "moltEffects": [
+        "gainCover(6)",
+        "gainOpenSkyGuard(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 8)",
+          "if targetBelowHalf then damage(target, 2)",
+          "if defeatsEnemy then gainWingbeat(1)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "gainCover(8)",
+          "gainOpenSkyGuard(1)"
+        ]
+      },
+      "flockStats": {
+        "damage": 2
+      }
+    },
+    {
+      "id": "major_08",
+      "displayName": "Steady Talon",
+      "bird": "Secretarybird",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "cover",
+        "winded"
+      ],
+      "effects": [
+        "gainCover(4)",
+        "damage(target, 4)",
+        "if targetIntendsAttack then applyWinded(target, 2)"
+      ],
+      "moltEffects": [
+        "draw(2)",
+        "gainResonance(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(6)",
+          "damage(target, 6)",
+          "if targetIntendsAttack then applyWinded(target, 2)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "draw(2)",
+          "gainResonance(2)"
+        ]
+      },
+      "flockStats": {
+        "cover": 1,
+        "damage": 1
+      }
+    },
+    {
+      "id": "major_09",
+      "displayName": "Lantern Roost",
+      "bird": "Snowy Owl",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 0,
+      "target": "none",
+      "tags": [
+        "draw",
+        "open-sky",
+        "tempo"
+      ],
+      "effects": [
+        "draw(1)",
+        "if openSky then draw(1)",
+        "if openSky then gainOpenSkyGuard(1)"
+      ],
+      "moltEffects": [
+        "gainCover(3)",
+        "if openSky then gainCover(3)",
+        "if openSky then gainOpenSkyGuard(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "draw(2)",
+          "if openSky then draw(1)",
+          "if openSky then gainOpenSkyGuard(1)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "gainCover(5)",
+          "if openSky then gainCover(5)",
+          "if openSky then gainOpenSkyGuard(1)"
+        ]
+      },
+      "flockStats": {
+        "draw": 1,
+        "openSkyGuard": 1
+      }
+    },
+    {
+      "id": "major_10",
+      "displayName": "Turn Current",
+      "bird": "Belted Kingfisher",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "discard",
+        "draw",
+        "resonance",
+        "tempo"
+      ],
+      "effects": [
+        "discardUpTo(2)",
+        "draw(2)",
+        "gainResonance(1)"
+      ],
+      "moltEffects": [
+        "discardUpTo(2)",
+        "damage(target, 3 perDiscarded)"
+      ],
+      "upgrade": {
+        "effects": [
+          "discardUpTo(2)",
+          "draw(2)",
+          "gainResonance(2)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "discardUpTo(2)",
+          "damage(target, 5 perDiscarded)"
+        ]
+      },
+      "flockStats": {
+        "draw": 1,
+        "resonance": 1
+      }
+    },
+    {
+      "id": "major_11",
+      "displayName": "Level Line",
+      "bird": "Black-Necked Stilt",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "cover",
+        "winded",
+        "finisher"
+      ],
+      "effects": [
+        "damage(target, 4)",
+        "gainCover(4)",
+        "if targetWinded then damage(target, 4)"
+      ],
+      "moltEffects": [
+        "heal(4)",
+        "gainCover(4)",
+        "if cohesionBelowHalf then heal(4)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 5)",
+          "gainCover(5)",
+          "if targetWinded then damage(target, 5)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "heal(5)",
+          "gainCover(5)",
+          "if cohesionBelowHalf then heal(5)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1,
+        "cover": 1
+      }
+    },
+    {
+      "id": "major_12",
+      "displayName": "Upside View",
+      "bird": "White-breasted Nuthatch",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "choice",
+      "tags": [
+        "recursion",
+        "draw",
+        "tempo",
+        "setup"
+      ],
+      "effects": [
+        "discard(1)",
+        "draw(1)",
+        "returnDiscard(nonMolt, +1)",
+        "if cohesionBelowHalf then draw(1)"
+      ],
+      "moltEffects": [
+        "discard(1)",
+        "damage(target, 4 perDiscarded)",
+        "if targetWinded then draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "discard(1)",
+          "draw(2)",
+          "returnDiscard(nonMolt, +1)",
+          "if cohesionBelowHalf then draw(1)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "discard(1)",
+          "damage(target, 6 perDiscarded)",
+          "if targetWinded then draw(1)"
+        ]
+      },
+      "flockStats": {
+        "draw": 1,
+        "cohesion": 1
+      }
+    },
+    {
+      "id": "major_13",
+      "displayName": "Clean Break",
+      "bird": "Turkey Vulture",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "molt",
+        "discard",
+        "heal",
+        "open-sky"
+      ],
+      "effects": [
+        "discardUpTo(2)",
+        "heal(2 perDiscarded)",
+        "enterMolt()"
+      ],
+      "moltEffects": [
+        "windedBurst(3)",
+        "damageAll(3)"
+      ],
+      "upgrade": {
+        "effects": [
+          "discardUpTo(2)",
+          "heal(3 perDiscarded)",
+          "enterMolt()",
+          "if isMolting then gainOpenSkyGuard(1)"
+        ],
+        "flockStats": {
+          "moltPower": 1
+        },
+        "moltEffects": [
+          "windedBurst(4)",
+          "damageAll(5)"
+        ]
+      },
+      "flockStats": {
+        "moltPower": 1,
+        "regen": 1
+      }
+    },
+    {
+      "id": "major_14",
+      "displayName": "Measured Flow",
+      "bird": "American Flamingo",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "heal",
+        "cover",
+        "resonance",
+        "tempo"
+      ],
+      "effects": [
+        "heal(3)",
+        "gainCover(3)",
+        "if fullCohesion then gainResonance(2)"
+      ],
+      "moltEffects": [
+        "gainResonance(2)",
+        "draw(1)",
+        "gainEnergyNextTurn(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(4)",
+          "gainCover(4)",
+          "if fullCohesion then gainResonance(2)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "gainResonance(3)",
+          "draw(1)",
+          "gainEnergyNextTurn(1)"
+        ]
+      },
+      "flockStats": {
+        "regen": 1,
+        "cover": 1
+      }
+    },
+    {
+      "id": "major_15",
+      "displayName": "Gleam Trap",
+      "bird": "Common Raven",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "resonance",
+        "finisher",
+        "risk-reward"
+      ],
+      "effects": [
+        "damage(target, 4)",
+        "if hasResonance then spendResonance(2)",
+        "if spentResonance then damage(target, 4)",
+        "if defeatsEnemy then draw(1)"
+      ],
+      "moltEffects": [
+        "if hasResonance then spendResonance(2)",
+        "overhealCover(4 perCover)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 5)",
+          "if hasResonance then spendResonance(2)",
+          "if spentResonance then damage(target, 6)",
+          "if defeatsEnemy then draw(1)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "if hasResonance then spendResonance(2)",
+          "overhealCover(6 perCover)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1,
+        "resonance": 1
+      }
+    },
+    {
+      "id": "major_16",
+      "displayName": "Signbreak",
+      "bird": "Red-Headed Woodpecker",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 2,
+      "target": "allEnemies",
+      "tags": [
+        "attack",
+        "aoe",
+        "finisher",
+        "draw",
+        "tempo"
+      ],
+      "effects": [
+        "damageAll(5)",
+        "draw(1)",
+        "if firstPlayedThisCombat then damageAll(2)"
+      ],
+      "moltEffects": [
+        "windedBurst(2)",
+        "gainCover(5)",
+        "nextTurnDraw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damageAll(7)",
+          "draw(1)",
+          "if firstPlayedThisCombat then damageAll(2)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "windedBurst(3)",
+          "gainCover(7)",
+          "nextTurnDraw(1)"
+        ]
+      },
+      "flockStats": {
+        "damage": 2
+      }
+    },
+    {
+      "id": "major_17",
+      "displayName": "Rooftop Glow",
+      "bird": "Superb Fairywren",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "heal",
+        "open-sky",
+        "draw",
+        "recovery"
+      ],
+      "effects": [
+        "heal(5)",
+        "gainOpenSkyGuard(1)",
+        "if cohesionBelowHalf then nextTurnDraw(1)"
+      ],
+      "moltEffects": [
+        "damage(target, 5)",
+        "applyWinded(target, 2)",
+        "gainOpenSkyGuard(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(7)",
+          "gainOpenSkyGuard(2)",
+          "if cohesionBelowHalf then nextTurnDraw(1)"
+        ],
+        "flockStats": {
+          "regen": 1
+        },
+        "moltEffects": [
+          "damage(target, 7)",
+          "applyWinded(target, 2)",
+          "gainOpenSkyGuard(2)"
+        ]
+      },
+      "flockStats": {
+        "regen": 1,
+        "openSkyGuard": 1
+      }
+    },
+    {
+      "id": "major_18",
+      "displayName": "Night Road",
+      "bird": "Common Nightjar",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "winded",
+        "draw",
+        "tell"
+      ],
+      "effects": [
+        "damage(target, 3)",
+        "if targetIntendsAttack then applyWinded(target, 2)",
+        "if targetWinded then draw(1)"
+      ],
+      "moltEffects": [
+        "gainCover(3 perWinded)",
+        "if targetWinded then draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 5)",
+          "if targetIntendsAttack then applyWinded(target, 2)",
+          "if targetWinded then draw(1)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "gainCover(5 perWinded)",
+          "if targetWinded then draw(1)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1,
+        "draw": 1
+      }
+    },
+    {
+      "id": "major_19",
+      "displayName": "Morning Burst",
+      "bird": "American Goldfinch",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "none",
+      "tags": [
+        "draw",
+        "tempo",
+        "resonance"
+      ],
+      "effects": [
+        "draw(2)",
+        "gainResonance(1)",
+        "if firstPlayedThisCombat then gainWingbeat(1)"
+      ],
+      "moltEffects": [
+        "resonanceBurst(2)",
+        "gainCover(4)"
+      ],
+      "upgrade": {
+        "effects": [
+          "draw(2)",
+          "gainResonance(2)",
+          "if firstPlayedThisCombat then gainWingbeat(2)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "resonanceBurst(3)",
+          "gainCover(6)"
+        ]
+      },
+      "flockStats": {
+        "draw": 1,
+        "resonance": 1
+      }
+    },
+    {
+      "id": "major_20",
+      "displayName": "Wake Call",
+      "bird": "Red Junglefowl",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "choice",
+      "tags": [
+        "recursion",
+        "draw",
+        "resonance",
+        "awaken"
+      ],
+      "effects": [
+        "returnDiscard(nonMolt, +1)",
+        "draw(1)",
+        "if hasResonance then gainWingbeat(1)"
+      ],
+      "moltEffects": [
+        "windedBurst(2)",
+        "gainWingbeat(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "returnDiscard(nonMolt, +1)",
+          "draw(2)",
+          "if hasResonance then gainWingbeat(1)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "windedBurst(3)",
+          "gainWingbeat(1)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 1,
+        "draw": 1
+      }
+    },
+    {
+      "id": "major_21",
+      "displayName": "Long Loop",
+      "bird": "Arctic Tern",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 2,
+      "target": "allEnemies",
+      "tags": [
+        "attack",
+        "aoe",
+        "draw",
+        "finisher",
+        "open-sky"
+      ],
+      "effects": [
+        "damageAll(4)",
+        "draw(1)",
+        "if openSky then damageAll(3)",
+        "if fullCohesion then gainOpenSkyGuard(1)"
+      ],
+      "moltEffects": [
+        "overhealCover(5)",
+        "gainOpenSkyGuard(1)",
+        "nextTurnDraw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damageAll(6)",
+          "draw(1)",
+          "if openSky then damageAll(4)",
+          "if fullCohesion then gainOpenSkyGuard(1)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "overhealCover(7)",
+          "gainOpenSkyGuard(1)",
+          "nextTurnDraw(1)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1,
+        "cohesion": 1
+      }
+    },
+    {
+      "id": "aviary_22",
+      "displayName": "Migration Line",
+      "bird": "Bar-tailed Godwit",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "none",
+      "tags": [
+        "resonance",
+        "draw",
+        "tempo",
+        "open-sky"
+      ],
+      "effects": [
+        "gainResonance(2)",
+        "nextTurnDraw(1)",
+        "if hasResonance then gainOpenSkyGuard(1)"
+      ],
+      "moltEffects": [
+        "resonanceBurst(2)",
+        "damage(target, 4)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainResonance(3)",
+          "nextTurnDraw(2)",
+          "if hasResonance then gainOpenSkyGuard(1)"
+        ],
+        "flockStats": {
+          "resonance": 1
+        },
+        "moltEffects": [
+          "resonanceBurst(3)",
+          "damage(target, 6)"
+        ]
+      },
+      "flockStats": {
+        "resonance": 2,
+        "draw": 1
+      }
+    },
+    {
+      "id": "aviary_23",
+      "displayName": "Home Roost",
+      "bird": "Purple Martin",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "choice",
+      "tags": [
+        "heal",
+        "cover",
+        "recursion",
+        "open-sky"
+      ],
+      "effects": [
+        "heal(4)",
+        "gainCover(3)",
+        "returnDiscard(nonMolt, +1)"
+      ],
+      "moltEffects": [
+        "damage(target, 4)",
+        "applyWinded(target, 2)",
+        "returnDiscard(nonMolt, +1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(6)",
+          "gainCover(4)",
+          "returnDiscard(nonMolt, +1)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "damage(target, 6)",
+          "applyWinded(target, 3)",
+          "returnDiscard(nonMolt, +1)"
+        ]
+      },
+      "flockStats": {
+        "regen": 2,
+        "cohesion": 1
+      }
+    },
+    {
+      "id": "aviary_24",
+      "displayName": "Storm Ride",
+      "bird": "Magnificent Frigatebird",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "allEnemies",
+      "tags": [
+        "attack",
+        "aoe",
+        "tempo"
+      ],
+      "effects": [
+        "damageAll(3)",
+        "if firstPlayedThisCombat then gainWingbeat(1)"
+      ],
+      "moltEffects": [
+        "gainCover(4)",
+        "gainOpenSkyGuard(1)",
+        "gainEnergyNextTurn(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damageAll(4)",
+          "if firstPlayedThisCombat then gainWingbeat(1)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "gainCover(6)",
+          "gainOpenSkyGuard(1)",
+          "gainEnergyNextTurn(1)"
+        ]
+      },
+      "flockStats": {
+        "damage": 2
+      }
+    },
+    {
+      "id": "aviary_26",
+      "displayName": "Flock Signal",
+      "bird": "Red-billed Quelea",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 1,
+      "target": "allEnemies",
+      "tags": [
+        "attack",
+        "aoe",
+        "draw",
+        "tempo"
+      ],
+      "effects": [
+        "damageAll(3)",
+        "if fullCohesion then draw(2)",
+        "if playedSuitThisTurn(plumes) then gainResonance(1)"
+      ],
+      "moltEffects": [
+        "gainResonance(2)",
+        "applyWinded(target, 2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damageAll(4)",
+          "if fullCohesion then draw(2)",
+          "if playedSuitThisTurn(plumes) then gainResonance(2)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "gainResonance(3)",
+          "applyWinded(target, 3)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 2,
+        "draw": 1
+      }
+    },
+    {
+      "id": "aviary_27",
+      "displayName": "Eclipse Watch",
+      "bird": "Tawny Frogmouth",
+      "kind": "legend",
+      "suit": null,
+      "rarity": "legendary",
+      "cost": 0,
+      "target": "enemy",
+      "tags": [
+        "setup",
+        "winded",
+        "draw"
+      ],
+      "effects": [
+        "draw(1)",
+        "if targetIntendsAttack then applyWinded(target, 2)"
+      ],
+      "moltEffects": [
+        "damage(target, 2)",
+        "gainCover(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "draw(1)",
+          "if targetIntendsAttack then applyWinded(target, 3)"
+        ],
+        "flockStats": {
+          "openSkyGuard": 1
+        },
+        "moltEffects": [
+          "damage(target, 4)",
+          "gainCover(2)"
+        ]
+      },
+      "flockStats": {
+        "draw": 1,
+        "openSkyGuard": 1
+      }
+    },
+    {
+      "id": "wands_07",
+      "displayName": "Plume Stand",
+      "bird": "Scissor-tailed Flycatcher",
+      "kind": "crew",
+      "suit": "plumes",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover",
+        "resonance",
+        "tempo"
+      ],
+      "effects": [
+        "gainCover(4)",
+        "gainResonance(1)",
+        "if targetIntendsAttack then gainCover(3)"
+      ],
+      "moltEffects": [
+        "applyWinded(target, 2)",
+        "if targetIntendsAttack then applyWinded(target, 1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(6)",
+          "gainResonance(1)",
+          "if targetIntendsAttack then gainCover(4)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "applyWinded(target, 3)",
+          "if targetIntendsAttack then applyWinded(target, 2)"
+        ]
+      },
+      "flockStats": {
+        "resonance": 1
+      }
+    },
+    {
+      "id": "wands_10",
+      "displayName": "Plume Load",
+      "bird": "Wilson's Bird-of-Paradise",
+      "kind": "crew",
+      "suit": "plumes",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "resonance",
+        "finisher"
+      ],
+      "effects": [
+        "damage(target, 4)",
+        "if resonanceAtLeast(3) then damage(target, 4)"
+      ],
+      "moltEffects": [
+        "draw(2)",
+        "gainEnergyNextTurn(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 6)",
+          "if resonanceAtLeast(3) then damage(target, 5)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "draw(3)",
+          "gainEnergyNextTurn(1)"
+        ]
+      },
+      "flockStats": {
+        "resonance": 2
+      }
+    },
+    {
+      "id": "wands_fledgling",
+      "displayName": "Plume Fledgling",
+      "bird": "Rainbow Bee-eater",
+      "kind": "crew",
+      "suit": "plumes",
+      "rarity": "common",
+      "cost": 0,
+      "target": "none",
+      "tags": [
+        "draw",
+        "resonance",
+        "tempo"
+      ],
+      "effects": [
+        "draw(1)",
+        "if playedSuitThisTurn(plumes) then gainResonance(1)"
+      ],
+      "moltEffects": [
+        "damage(target, 2)",
+        "if playedSuitThisTurn(plumes) then gainResonance(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "draw(1)",
+          "gainResonance(1)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "damage(target, 3)",
+          "if playedSuitThisTurn(plumes) then gainResonance(1)"
+        ]
+      },
+      "flockStats": {
+        "resonance": 1
+      }
+    },
+    {
+      "id": "wands_outrider",
+      "displayName": "Plume Outrider",
+      "bird": "Alpine Swift",
+      "kind": "crew",
+      "suit": "plumes",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "tempo",
+        "resonance"
+      ],
+      "effects": [
+        "damage(target, 3)",
+        "resonanceBurst(2)"
+      ],
+      "moltEffects": [
+        "gainOpenSkyGuard(1)",
+        "gainCover(3)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 4)",
+          "resonanceBurst(3)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "gainOpenSkyGuard(1)",
+          "gainCover(5)"
+        ]
+      },
+      "flockStats": {
+        "resonance": 2
+      }
+    },
+    {
+      "id": "wands_matron",
+      "displayName": "Plume Matron",
+      "bird": "Superb Lyrebird",
+      "kind": "crew",
+      "suit": "plumes",
+      "rarity": "rare",
+      "cost": 1,
+      "target": "none",
+      "tags": [
+        "resonance",
+        "draw",
+        "setup"
+      ],
+      "effects": [
+        "gainResonance(2)",
+        "draw(1)",
+        "if playedSuitThisTurn(plumes) then draw(1)"
+      ],
+      "moltEffects": [
+        "damageAll(3)",
+        "if hasResonance then spendResonance(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainResonance(3)",
+          "draw(1)",
+          "if flockSuit(plumes,5) then draw(1)"
+        ],
+        "flockStats": {
+          "resonance": 1
+        },
+        "moltEffects": [
+          "damageAll(5)",
+          "if hasResonance then spendResonance(1)"
+        ]
+      },
+      "flockStats": {
+        "resonance": 2,
+        "draw": 1
+      }
+    },
+    {
+      "id": "wands_elder",
+      "displayName": "Plume Elder",
+      "bird": "Aplomado Falcon",
+      "kind": "crew",
+      "suit": "plumes",
+      "rarity": "rare",
+      "cost": 2,
+      "target": "allEnemies",
+      "tags": [
+        "attack",
+        "aoe",
+        "resonance",
+        "finisher"
+      ],
+      "effects": [
+        "damageAll(4)",
+        "if resonanceAtLeast(3) then damageAll(3)"
+      ],
+      "moltEffects": [
+        "gainCover(5)",
+        "heal(3)",
+        "nextTurnDraw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damageAll(6)",
+          "if resonanceAtLeast(3) then damageAll(4)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "gainCover(7)",
+          "heal(4)",
+          "nextTurnDraw(1)"
+        ]
+      },
+      "flockStats": {
+        "damage": 2,
+        "resonance": 1
+      }
+    },
+    {
+      "id": "cups_07",
+      "displayName": "Basin Mirage",
+      "bird": "Mandarin Duck",
+      "kind": "crew",
+      "suit": "basins",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "draw",
+        "discard",
+        "setup"
+      ],
+      "effects": [
+        "draw(2)",
+        "discardUpTo(1)"
+      ],
+      "moltEffects": [
+        "gainOpenSkyGuard(2)",
+        "applyWinded(target, 1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "draw(2)",
+          "discardUpTo(1)",
+          "if openSky then gainOpenSkyGuard(1)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "gainOpenSkyGuard(2)",
+          "applyWinded(target, 2)"
+        ]
+      },
+      "flockStats": {
+        "draw": 1
+      }
+    },
+    {
+      "id": "cups_09",
+      "displayName": "Full Basin Row",
+      "bird": "Scarlet Ibis",
+      "kind": "crew",
+      "suit": "basins",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "heal",
+        "cohesion"
+      ],
+      "effects": [
+        "overhealCover(6)",
+        "draw(1)"
+      ],
+      "moltEffects": [
+        "resonanceBurst(2)",
+        "damageAll(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "overhealCover(8)",
+          "draw(1)"
+        ],
+        "flockStats": {
+          "regen": 1
+        },
+        "moltEffects": [
+          "resonanceBurst(3)",
+          "damageAll(2)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 2
+      }
+    },
+    {
+      "id": "cups_10",
+      "displayName": "Canal Shelter",
+      "bird": "Mallard",
+      "kind": "crew",
+      "suit": "basins",
+      "rarity": "rare",
+      "cost": 2,
+      "target": "self",
+      "tags": [
+        "heal",
+        "cover",
+        "draw"
+      ],
+      "effects": [
+        "heal(4)",
+        "gainCover(5)",
+        "draw(1)"
+      ],
+      "moltEffects": [
+        "windedBurst(3)",
+        "if flockSuit(cups,2) then damageAll(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(6)",
+          "gainCover(7)",
+          "draw(1)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "windedBurst(4)",
+          "if flockSuit(cups,2) then damageAll(3)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 2,
+        "regen": 1
+      }
+    },
+    {
+      "id": "cups_outrider",
+      "displayName": "Basin Outrider",
+      "bird": "Northern Gannet",
+      "kind": "crew",
+      "suit": "basins",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "heal",
+        "tempo",
+        "open-sky"
+      ],
+      "effects": [
+        "heal(3)",
+        "draw(1)",
+        "if openSky then gainOpenSkyGuard(1)"
+      ],
+      "moltEffects": [
+        "damage(target, 5)",
+        "if defeatsEnemy then gainWingbeat(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(5)",
+          "draw(1)",
+          "if openSky then gainOpenSkyGuard(1)"
+        ],
+        "flockStats": {
+          "regen": 1
+        },
+        "moltEffects": [
+          "damage(target, 7)",
+          "if defeatsEnemy then gainWingbeat(2)"
+        ]
+      },
+      "flockStats": {
+        "openSkyGuard": 1,
+        "draw": 1
+      }
+    },
+    {
+      "id": "cups_matron",
+      "displayName": "Basin Matron",
+      "bird": "Dalmatian Pelican",
+      "kind": "crew",
+      "suit": "basins",
+      "rarity": "rare",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "heal",
+        "open-sky",
+        "draw"
+      ],
+      "effects": [
+        "heal(5)",
+        "gainOpenSkyGuard(1)",
+        "if fullCohesion then draw(1)"
+      ],
+      "moltEffects": [
+        "damage(target, 4)",
+        "applyWinded(target, 2)",
+        "loseCohesion(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(7)",
+          "gainOpenSkyGuard(2)",
+          "if fullCohesion then draw(1)"
+        ],
+        "flockStats": {
+          "regen": 1
+        },
+        "moltEffects": [
+          "damage(target, 6)",
+          "applyWinded(target, 2)",
+          "loseCohesion(2)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 2,
+        "openSkyGuard": 1
+      }
+    },
+    {
+      "id": "cups_elder",
+      "displayName": "Basin Elder",
+      "bird": "Shoebill",
+      "kind": "crew",
+      "suit": "basins",
+      "rarity": "rare",
+      "cost": 2,
+      "target": "self",
+      "tags": [
+        "heal",
+        "cover",
+        "draw-next"
+      ],
+      "effects": [
+        "heal(5)",
+        "gainCover(6)",
+        "nextTurnDraw(1)"
+      ],
+      "moltEffects": [
+        "damageAll(4)",
+        "gainResonance(2)",
+        "loseCohesion(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(7)",
+          "gainCover(8)",
+          "nextTurnDraw(2)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "damageAll(6)",
+          "gainResonance(2)",
+          "loseCohesion(2)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 2,
+        "regen": 1
+      }
+    },
+    {
+      "id": "swords_08",
+      "displayName": "Quill Ring",
+      "bird": "Fork-tailed Drongo",
+      "kind": "crew",
+      "suit": "quills",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "winded",
+        "pressure"
+      ],
+      "effects": [
+        "damage(target, 4)",
+        "applyWinded(target, 1)",
+        "if targetWinded then applyWinded(target, 1)"
+      ],
+      "moltEffects": [
+        "overhealCover(4)",
+        "nextCoverBonus(nests, 2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 5)",
+          "applyWinded(target, 2)",
+          "if targetWinded then applyWinded(target, 1)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "overhealCover(6)",
+          "nextCoverBonus(nests, 3)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1
+      }
+    },
+    {
+      "id": "swords_09",
+      "displayName": "Night Quills",
+      "bird": "Crested Caracara",
+      "kind": "crew",
+      "suit": "quills",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "tell",
+        "winded"
+      ],
+      "effects": [
+        "damage(target, 5)",
+        "if targetIntendsAttack then damage(target, 2)",
+        "if targetIntendsAttack then applyWinded(target, 1)"
+      ],
+      "moltEffects": [
+        "gainOpenSkyGuard(3)",
+        "if targetIntendsAttack then gainCover(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 6)",
+          "if targetIntendsAttack then damage(target, 3)",
+          "if targetIntendsAttack then applyWinded(target, 1)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "gainOpenSkyGuard(3)",
+          "if targetIntendsAttack then gainCover(4)"
+        ]
+      },
+      "flockStats": {
+        "damage": 2
+      }
+    },
+    {
+      "id": "swords_10",
+      "displayName": "Dawn Quills",
+      "bird": "Pied Butcherbird",
+      "kind": "crew",
+      "suit": "quills",
+      "rarity": "rare",
+      "cost": 2,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "finisher",
+        "tempo"
+      ],
+      "effects": [
+        "damage(target, 8)",
+        "if defeatsEnemy then draw(2)",
+        "if defeatsEnemy then gainWingbeat(1)"
+      ],
+      "moltEffects": [
+        "draw(2)",
+        "gainEnergyNextTurn(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 10)",
+          "if defeatsEnemy then draw(2)",
+          "if defeatsEnemy then gainWingbeat(2)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "draw(3)",
+          "gainEnergyNextTurn(1)"
+        ]
+      },
+      "flockStats": {
+        "damage": 2,
+        "draw": 1
+      }
+    },
+    {
+      "id": "swords_outrider",
+      "displayName": "Quill Outrider",
+      "bird": "Prairie Falcon",
+      "kind": "crew",
+      "suit": "quills",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "tempo",
+        "draw"
+      ],
+      "effects": [
+        "damage(target, 3)",
+        "windedBurst(2)"
+      ],
+      "moltEffects": [
+        "gainCover(3)",
+        "windedBurst(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 4)",
+          "windedBurst(3)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "gainCover(5)",
+          "windedBurst(3)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1,
+        "draw": 1
+      }
+    },
+    {
+      "id": "swords_matron",
+      "displayName": "Quill Matron",
+      "bird": "Kea",
+      "kind": "crew",
+      "suit": "quills",
+      "rarity": "rare",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "winded",
+        "draw"
+      ],
+      "effects": [
+        "applyWinded(target, 2)",
+        "damage(target, 1 perWinded)"
+      ],
+      "moltEffects": [
+        "gainCover(2 perWinded)",
+        "draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "applyWinded(target, 3)",
+          "damage(target, 2 perWinded)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "gainCover(3 perWinded)",
+          "draw(1)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1,
+        "draw": 1
+      }
+    },
+    {
+      "id": "swords_elder",
+      "displayName": "Quill Elder",
+      "bird": "Cooper's Hawk",
+      "kind": "crew",
+      "suit": "quills",
+      "rarity": "rare",
+      "cost": 2,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "finisher",
+        "winded",
+        "cover"
+      ],
+      "effects": [
+        "damage(target, 7)",
+        "if windedAtLeast(3) then damage(target, 5)",
+        "gainCover(3)"
+      ],
+      "moltEffects": [
+        "gainResonance(3)",
+        "gainCover(3)",
+        "nextTurnDraw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 9)",
+          "if windedAtLeast(3) then damage(target, 7)",
+          "gainCover(4)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "gainResonance(4)",
+          "gainCover(5)",
+          "nextTurnDraw(1)"
+        ]
+      },
+      "flockStats": {
+        "damage": 2,
+        "cover": 1
+      }
+    },
+    {
+      "id": "pentacles_07",
+      "displayName": "Growing Nest",
+      "bird": "Clark's Nutcracker",
+      "kind": "crew",
+      "suit": "nests",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover",
+        "setup",
+        "draw"
+      ],
+      "effects": [
+        "gainCover(5)",
+        "nextCoverBonus(nests, 3)",
+        "if fullyBlocksNextAttack then nextTurnDraw(1)"
+      ],
+      "moltEffects": [
+        "gainResonance(2)",
+        "resonanceBurst(3)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(6)",
+          "nextCoverBonus(nests, 4)",
+          "if fullyBlocksNextAttack then nextTurnDraw(1)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "gainResonance(3)",
+          "resonanceBurst(4)"
+        ]
+      },
+      "flockStats": {
+        "cover": 1,
+        "draw": 1
+      }
+    },
+    {
+      "id": "pentacles_09",
+      "displayName": "Treasure Nest",
+      "bird": "Regent Bowerbird",
+      "kind": "crew",
+      "suit": "nests",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover",
+        "heal",
+        "open-sky"
+      ],
+      "effects": [
+        "gainCover(7)",
+        "if openSky then heal(3)"
+      ],
+      "moltEffects": [
+        "damage(target, 6)",
+        "if openSky then damage(target, 3)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(9)",
+          "if openSky then heal(4)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "damage(target, 8)",
+          "if openSky then damage(target, 5)"
+        ]
+      },
+      "flockStats": {
+        "cover": 2
+      }
+    },
+    {
+      "id": "pentacles_10",
+      "displayName": "Legacy Nest",
+      "bird": "Baya Weaver",
+      "kind": "crew",
+      "suit": "nests",
+      "rarity": "rare",
+      "cost": 2,
+      "target": "self",
+      "tags": [
+        "cover",
+        "draw",
+        "setup"
+      ],
+      "effects": [
+        "gainCover(8)",
+        "draw(1)",
+        "nextCoverBonus(nests, 4)"
+      ],
+      "moltEffects": [
+        "damageAll(6)",
+        "draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(11)",
+          "draw(1)",
+          "nextCoverBonus(nests, 5)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "damageAll(8)",
+          "draw(1)"
+        ]
+      },
+      "flockStats": {
+        "cover": 2,
+        "draw": 1
+      }
+    },
+    {
+      "id": "pentacles_outrider",
+      "displayName": "Nest Outrider",
+      "bird": "Montezuma Oropendola",
+      "kind": "crew",
+      "suit": "nests",
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "cover",
+        "attack",
+        "tempo"
+      ],
+      "effects": [
+        "gainCover(3)",
+        "damage(target, 1 perCover)"
+      ],
+      "moltEffects": [
+        "applyWinded(target, 2)",
+        "windedBurst(3)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(5)",
+          "damage(target, 1 perCover)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "applyWinded(target, 2)",
+          "windedBurst(4)"
+        ]
+      },
+      "flockStats": {
+        "cover": 1,
+        "damage": 1
+      }
+    },
+    {
+      "id": "pentacles_matron",
+      "displayName": "Nest Matron",
+      "bird": "Golden Bowerbird",
+      "kind": "crew",
+      "suit": "nests",
+      "rarity": "rare",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover",
+        "heal",
+        "draw"
+      ],
+      "effects": [
+        "gainCover(6)",
+        "heal(3)",
+        "if cohesionBelowHalf then draw(1)"
+      ],
+      "moltEffects": [
+        "overhealCover(4)",
+        "draw(1)",
+        "if cohesionBelowHalf then gainEnergyNextTurn(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(8)",
+          "heal(4)",
+          "if cohesionBelowHalf then draw(1)"
+        ],
+        "flockStats": {
+          "regen": 1
+        },
+        "moltEffects": [
+          "overhealCover(6)",
+          "draw(1)",
+          "if cohesionBelowHalf then gainEnergyNextTurn(1)"
+        ]
+      },
+      "flockStats": {
+        "cover": 1,
+        "regen": 1
+      }
+    },
+    {
+      "id": "pentacles_elder",
+      "displayName": "Nest Elder",
+      "bird": "Malleefowl",
+      "kind": "crew",
+      "suit": "nests",
+      "rarity": "rare",
+      "cost": 2,
+      "target": "self",
+      "tags": [
+        "cover",
+        "setup",
+        "open-sky"
+      ],
+      "effects": [
+        "gainCover(8)",
+        "nextCoverBonus(nests, 4)",
+        "gainOpenSkyGuard(1)"
+      ],
+      "moltEffects": [
+        "damageAll(6)",
+        "applyWinded(target, 2)",
+        "windedBurst(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(10)",
+          "nextCoverBonus(nests, 5)",
+          "gainOpenSkyGuard(2)"
+        ],
+        "flockStats": {
+          "openSkyGuard": 1
+        },
+        "moltEffects": [
+          "damageAll(8)",
+          "applyWinded(target, 2)",
+          "windedBurst(3)"
+        ]
+      },
+      "flockStats": {
+        "cover": 2,
+        "openSkyGuard": 1
+      }
+    },
+    {
+      "id": "tangled_line",
+      "displayName": "Tangled Line",
+      "bird": "Black-billed Magpie",
+      "kind": "snag",
+      "suit": null,
+      "rarity": "common",
+      "cost": 0,
+      "target": "none",
+      "tags": [
+        "snag",
+        "unplayable"
+      ],
+      "effects": [
+        "loseWingbeat(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "loseWingbeat(1)"
+        ],
+        "flockStats": {}
+      },
+      "flockStats": {}
+    },
+    {
+      "id": "wet_feathers",
+      "displayName": "Wet Feathers",
+      "bird": "Eurasian Jackdaw",
+      "kind": "snag",
+      "suit": null,
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "snag"
+      ],
+      "effects": [
+        "gainCover(2)",
+        "discard(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(2)",
+          "discard(1)"
+        ],
+        "flockStats": {}
+      },
+      "flockStats": {}
+    },
+    {
+      "id": "bad_directions",
+      "displayName": "Bad Directions",
+      "bird": "Rook",
+      "kind": "snag",
+      "suit": null,
+      "rarity": "common",
+      "cost": 0,
+      "target": "none",
+      "tags": [
+        "snag",
+        "unplayable"
+      ],
+      "effects": [
+        "shuffleSelfToDraw()"
+      ],
+      "upgrade": {
+        "effects": [
+          "shuffleSelfToDraw()"
+        ],
+        "flockStats": {}
+      },
+      "flockStats": {}
+    }
+  ]
+}

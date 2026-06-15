@@ -1,0 +1,202 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/alpha-run-spec.md",
+    "docs/game/run-design-spec.md"
+  ],
+  "id": "map_01_rooftop_blocks",
+  "name": "Rooftop Blocks",
+  "index": 1,
+  "seed": null,
+  "entryNodeId": "m1_c0_street_opening",
+  "bossNodeId": "m1_c6_boss_tar_crow",
+  "columns": [
+    ["m1_c0_street_opening"],
+    ["m1_c1_street_rat", "m1_c1_signal_chalk"],
+    ["m1_c2_basin_rain", "m1_c2_nest_workshop", "m1_c2_street_gull"],
+    ["m1_c3_rival_tarline", "m1_c3_market_rooftop", "m1_c3_cache_billboard"],
+    ["m1_c4_street_wire", "m1_c4_signal_wire"],
+    ["m1_c5_basin_final", "m1_c5_nest_final"],
+    ["m1_c6_boss_tar_crow"]
+  ],
+  "nodes": [
+    {
+      "id": "m1_c0_street_opening",
+      "column": 0,
+      "lane": 0,
+      "type": "street",
+      "label": "Street Encounter",
+      "payloadId": "enc_roof_rat",
+      "risk": "low",
+      "revealed": true,
+      "completed": false
+    },
+    {
+      "id": "m1_c1_street_rat",
+      "column": 1,
+      "lane": 0,
+      "type": "street",
+      "label": "Street Encounter",
+      "payloadId": "enc_roof_rat",
+      "risk": "low",
+      "revealed": true,
+      "completed": false
+    },
+    {
+      "id": "m1_c1_signal_chalk",
+      "column": 1,
+      "lane": 1,
+      "type": "signal",
+      "label": "Signal",
+      "payloadId": "faded_chalk_line",
+      "risk": "medium",
+      "revealed": true,
+      "completed": false
+    },
+    {
+      "id": "m1_c2_basin_rain",
+      "column": 2,
+      "lane": 0,
+      "type": "basin",
+      "label": "Basin",
+      "payloadId": "basin_alpha",
+      "risk": "low",
+      "revealed": true,
+      "completed": false
+    },
+    {
+      "id": "m1_c2_nest_workshop",
+      "column": 2,
+      "lane": 1,
+      "type": "nest",
+      "label": "Nest",
+      "payloadId": "nest_alpha",
+      "risk": "low",
+      "revealed": true,
+      "completed": false
+    },
+    {
+      "id": "m1_c2_street_gull",
+      "column": 2,
+      "lane": 2,
+      "type": "street",
+      "label": "Street Encounter",
+      "payloadId": "enc_signal_gull",
+      "risk": "medium",
+      "revealed": true,
+      "completed": false
+    },
+    {
+      "id": "m1_c3_rival_tarline",
+      "column": 3,
+      "lane": 0,
+      "type": "rival",
+      "label": "Rival Crew",
+      "payloadId": "enc_tarline_crew",
+      "risk": "high",
+      "revealed": true,
+      "completed": false
+    },
+    {
+      "id": "m1_c3_market_rooftop",
+      "column": 3,
+      "lane": 1,
+      "type": "market",
+      "label": "Market",
+      "payloadId": "alpha_market",
+      "risk": "low",
+      "revealed": true,
+      "completed": false
+    },
+    {
+      "id": "m1_c3_cache_billboard",
+      "column": 3,
+      "lane": 2,
+      "type": "cache",
+      "label": "Rooftop Cache",
+      "payloadId": "alpha_rooftop_cache",
+      "risk": "low",
+      "revealed": true,
+      "completed": false
+    },
+    {
+      "id": "m1_c4_street_wire",
+      "column": 4,
+      "lane": 0,
+      "type": "street",
+      "label": "Street Encounter",
+      "payloadId": "enc_wire_hawk",
+      "risk": "medium",
+      "revealed": true,
+      "completed": false
+    },
+    {
+      "id": "m1_c4_signal_wire",
+      "column": 4,
+      "lane": 1,
+      "type": "signal",
+      "label": "Signal",
+      "payloadId": "loose_wire_perch",
+      "risk": "medium",
+      "revealed": true,
+      "completed": false
+    },
+    {
+      "id": "m1_c5_basin_final",
+      "column": 5,
+      "lane": 0,
+      "type": "basin",
+      "label": "Basin",
+      "payloadId": "basin_alpha",
+      "risk": "low",
+      "revealed": true,
+      "completed": false
+    },
+    {
+      "id": "m1_c5_nest_final",
+      "column": 5,
+      "lane": 1,
+      "type": "nest",
+      "label": "Nest",
+      "payloadId": "nest_alpha",
+      "risk": "low",
+      "revealed": true,
+      "completed": false
+    },
+    {
+      "id": "m1_c6_boss_tar_crow",
+      "column": 6,
+      "lane": 0,
+      "type": "boss",
+      "label": "Boss",
+      "payloadId": "enc_tar_crowned_crow",
+      "risk": "boss",
+      "revealed": true,
+      "completed": false
+    }
+  ],
+  "edges": [
+    { "from": "m1_c0_street_opening", "to": "m1_c1_street_rat", "locked": false, "preview": "known" },
+    { "from": "m1_c0_street_opening", "to": "m1_c1_signal_chalk", "locked": false, "preview": "known" },
+    { "from": "m1_c1_street_rat", "to": "m1_c2_basin_rain", "locked": false, "preview": "known" },
+    { "from": "m1_c1_street_rat", "to": "m1_c2_nest_workshop", "locked": false, "preview": "known" },
+    { "from": "m1_c1_signal_chalk", "to": "m1_c2_street_gull", "locked": false, "preview": "known" },
+    { "from": "m1_c2_basin_rain", "to": "m1_c3_rival_tarline", "locked": false, "preview": "known" },
+    { "from": "m1_c2_basin_rain", "to": "m1_c3_market_rooftop", "locked": false, "preview": "known" },
+    { "from": "m1_c2_nest_workshop", "to": "m1_c3_market_rooftop", "locked": false, "preview": "known" },
+    { "from": "m1_c2_nest_workshop", "to": "m1_c3_cache_billboard", "locked": false, "preview": "known" },
+    { "from": "m1_c2_street_gull", "to": "m1_c3_rival_tarline", "locked": false, "preview": "known" },
+    { "from": "m1_c2_street_gull", "to": "m1_c3_cache_billboard", "locked": false, "preview": "known" },
+    { "from": "m1_c3_rival_tarline", "to": "m1_c4_street_wire", "locked": false, "preview": "known" },
+    { "from": "m1_c3_rival_tarline", "to": "m1_c4_signal_wire", "locked": false, "preview": "known" },
+    { "from": "m1_c3_market_rooftop", "to": "m1_c4_street_wire", "locked": false, "preview": "known" },
+    { "from": "m1_c3_cache_billboard", "to": "m1_c4_street_wire", "locked": false, "preview": "known" },
+    { "from": "m1_c4_street_wire", "to": "m1_c5_basin_final", "locked": false, "preview": "known" },
+    { "from": "m1_c4_street_wire", "to": "m1_c5_nest_final", "locked": false, "preview": "known" },
+    { "from": "m1_c4_signal_wire", "to": "m1_c5_basin_final", "locked": false, "preview": "known" },
+    { "from": "m1_c4_signal_wire", "to": "m1_c5_nest_final", "locked": false, "preview": "known" },
+    { "from": "m1_c5_basin_final", "to": "m1_c6_boss_tar_crow", "locked": false, "preview": "known" },
+    { "from": "m1_c5_nest_final", "to": "m1_c6_boss_tar_crow", "locked": false, "preview": "known" }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "name": "bird-squad",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc && vite build",
+    "export:minor-prompts": "node tools/export-minor-prompts.mjs",
+    "export:minor-center-prompts": "node tools/export-minor-prompts.mjs --center-art-only",
+    "generate:minor-overlays": "node tools/generate-minor-card-overlays.mjs",
+    "prepare:minor-border-template": "python tools/prepare-minor-border-template.py",
+    "compose:minor-art": "python tools/compose-minor-arcana.py",
+    "qa:minor-contact-sheet": "python tools/make-minor-contact-sheets.py",
+    "validate:minor-art-uniqueness": "node tools/validate-minor-art-uniqueness.mjs",
+    "validate:minor-border-templates": "node tools/validate-minor-border-templates.mjs",
+    "validate:minor-center-art": "node tools/validate-minor-center-art.mjs",
+    "validate:minor-overlays": "node tools/validate-minor-card-overlays.mjs",
+    "validate:minor-composites": "node tools/validate-minor-composites.mjs",
+    "normalize:minor-art": "python tools/normalize-card-images.py assets/concept-art/minor-arcana --width 1024 --height 1536 --write",
+    "validate:art-dimensions": "node tools/validate-art-dimensions.mjs assets/concept-art/minor-arcana",
+    "validate:runtime": "node tools/validate-runtime-data.mjs",
+    "validate:docs": "node tools/validate-docs.mjs",
+    "audit:content": "node tools/audit-content.mjs",
+    "diff:data": "node tools/diff-runtime-data.mjs",
+    "stats:playtest": "node tools/playtest-stats.mjs",
+    "test:e2e": "playwright test",
+    "validate": "npm run validate:docs && npm run validate:runtime && npm run validate:minor-overlays",
+    "test": "npm run validate:runtime",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "phaser": "^4.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@vitejs/plugin-basic-ssl": "^2.1.0",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  }
+}

@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1536" viewBox="0 0 1024 1536" fill="none">
+  <title>Six of Quills locked Bird Squad Minor Arcana overlay</title>
+  <defs>
+    <linearGradient id="goldRail" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f0d58b"/>
+      <stop offset="0.42" stop-color="#a96f2b"/>
+      <stop offset="0.72" stop-color="#f7e7ad"/>
+      <stop offset="1" stop-color="#6f421a"/>
+    </linearGradient>
+    <linearGradient id="suitAccent" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#d6e5ee"/>
+      <stop offset="1" stop-color="#8bb7d7"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000814" flood-opacity="0.72"/>
+    </filter>
+    <style>
+      .panelFill { fill: #0c1020; }
+      .enamel { fill: #1b2b3d; }
+      .goldStroke { stroke: url(#goldRail); }
+      .suitStroke { stroke: url(#suitAccent); }
+      .fine { stroke-width: 3; }
+      .medium { stroke-width: 7; }
+      .heavy { stroke-width: 14; }
+      .motif { color: #8bb7d7; }
+    </style>
+  </defs>
+
+  <rect x="32" y="32" width="960" height="1472" rx="28" fill="none" stroke="#060913" stroke-width="30" filter="url(#softShadow)"/>
+  <rect x="58" y="58" width="908" height="1420" rx="22" fill="none" class="goldStroke heavy"/>
+  <rect x="76" y="76" width="872" height="1384" rx="18" fill="none" class="suitStroke fine" opacity="0.85"/>
+  <rect x="60" y="176" width="46" height="1090" rx="18" class="panelFill goldStroke medium"/>
+  <rect x="918" y="176" width="46" height="1090" rx="18" class="panelFill goldStroke medium"/>
+  <circle cx="88" cy="88" r="38" class="enamel goldStroke medium"/>
+  <circle cx="936" cy="88" r="38" class="enamel goldStroke medium"/>
+  <circle cx="88" cy="1448" r="38" class="enamel goldStroke medium"/>
+  <circle cx="936" cy="1448" r="38" class="enamel goldStroke medium"/>
+  <circle cx="512" cy="92" r="46" class="enamel goldStroke medium"/>
+  <rect x="154" y="1310" width="716" height="112" rx="32" fill="#e8d6ab" class="goldStroke medium" filter="url(#softShadow)"/>
+  <rect x="174" y="1328" width="676" height="76" rx="22" fill="none" stroke="#68451e" stroke-width="3" opacity="0.78"/>
+  <g class="motif">
+    <g transform="translate(512 92) scale(0.48)">
+    <path d="M-30 42 C12 28 38 -10 26 -42 C-8 -34 -30 -2 -30 42Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M-28 40 C-8 12 8 -10 24 -40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <path d="M-10 14 L-28 10 M2 -4 L-18 -10 M12 -20 L-4 -28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </g>
+<g transform="translate(88 88) scale(0.34)">
+    <path d="M-30 42 C12 28 38 -10 26 -42 C-8 -34 -30 -2 -30 42Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M-28 40 C-8 12 8 -10 24 -40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <path d="M-10 14 L-28 10 M2 -4 L-18 -10 M12 -20 L-4 -28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </g>
+<g transform="translate(936 88) scale(0.34)">
+    <path d="M-30 42 C12 28 38 -10 26 -42 C-8 -34 -30 -2 -30 42Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M-28 40 C-8 12 8 -10 24 -40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <path d="M-10 14 L-28 10 M2 -4 L-18 -10 M12 -20 L-4 -28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </g>
+<g transform="translate(88 1448) scale(0.34)">
+    <path d="M-30 42 C12 28 38 -10 26 -42 C-8 -34 -30 -2 -30 42Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M-28 40 C-8 12 8 -10 24 -40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <path d="M-10 14 L-28 10 M2 -4 L-18 -10 M12 -20 L-4 -28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </g>
+<g transform="translate(936 1448) scale(0.34)">
+    <path d="M-30 42 C12 28 38 -10 26 -42 C-8 -34 -30 -2 -30 42Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M-28 40 C-8 12 8 -10 24 -40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <path d="M-10 14 L-28 10 M2 -4 L-18 -10 M12 -20 L-4 -28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </g>
+<g transform="translate(83 370) scale(0.25)">
+    <path d="M-30 42 C12 28 38 -10 26 -42 C-8 -34 -30 -2 -30 42Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M-28 40 C-8 12 8 -10 24 -40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <path d="M-10 14 L-28 10 M2 -4 L-18 -10 M12 -20 L-4 -28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </g>
+<g transform="translate(83 640) scale(0.25)">
+    <path d="M-30 42 C12 28 38 -10 26 -42 C-8 -34 -30 -2 -30 42Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M-28 40 C-8 12 8 -10 24 -40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <path d="M-10 14 L-28 10 M2 -4 L-18 -10 M12 -20 L-4 -28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </g>
+<g transform="translate(83 910) scale(0.25)">
+    <path d="M-30 42 C12 28 38 -10 26 -42 C-8 -34 -30 -2 -30 42Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M-28 40 C-8 12 8 -10 24 -40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <path d="M-10 14 L-28 10 M2 -4 L-18 -10 M12 -20 L-4 -28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </g>
+<g transform="translate(941 370) scale(0.25)">
+    <path d="M-30 42 C12 28 38 -10 26 -42 C-8 -34 -30 -2 -30 42Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M-28 40 C-8 12 8 -10 24 -40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <path d="M-10 14 L-28 10 M2 -4 L-18 -10 M12 -20 L-4 -28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </g>
+<g transform="translate(941 640) scale(0.25)">
+    <path d="M-30 42 C12 28 38 -10 26 -42 C-8 -34 -30 -2 -30 42Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M-28 40 C-8 12 8 -10 24 -40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <path d="M-10 14 L-28 10 M2 -4 L-18 -10 M12 -20 L-4 -28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </g>
+<g transform="translate(941 910) scale(0.25)">
+    <path d="M-30 42 C12 28 38 -10 26 -42 C-8 -34 -30 -2 -30 42Z" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round"/>
+    <path d="M-28 40 C-8 12 8 -10 24 -40" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+    <path d="M-10 14 L-28 10 M2 -4 L-18 -10 M12 -20 L-4 -28" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  </g>
+  <text x="512" y="1378" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="46" fill="#241606" letter-spacing="0">Six of Quills</text>
+  <text x="512" y="1410" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="18" fill="#68451e" opacity="0.55" letter-spacing="0">QUILLS</text>
+</svg>

@@ -1,0 +1,53 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "purpose": "Imagegen prompts for reusable blank Minor Arcana tarot border templates.",
+  "outputRoot": "assets/templates/minor-arcana/raster-border-templates/raw",
+  "finalTemplateRoot": "assets/templates/minor-arcana/raster-border-templates",
+  "canvas": {
+    "width": 1024,
+    "height": 1536
+  },
+  "rules": [
+    "Generate blank border templates only, not finished cards.",
+    "Use a perfectly flat #00ff00 center window for local transparency preparation.",
+    "Do not generate readable text, card titles, rank labels, suit words, logos, birds, characters, or center artwork.",
+    "Keep the bottom title cartouche blank so the repo compositor can render deterministic title text.",
+    "All suit variants must preserve the same geometry and differ only through border-zone ornament and palette.",
+    "Use existing full-card Minor Arcana art under assets/concept-art/minor-arcana/ as the style reference: hand-inked black-and-aged-gold tarot frame, colored enamel medallions, organic filigree, weathered illustrated texture, slightly magical storybook finish.",
+    "Urban cues must be subtle patina, worn paint, sticker-wear shapes without text, and city-night color accents, not hard technology."
+  ],
+  "sharedNegative": "Avoid readable text, pseudo-writing, letters, numbers, rank symbols, suit words, card title, logo, watermark, bird character, human character, humanoid figure, hands, clothing, weapon display, magical particles, spell circles, floating runes, old-world parchment, plain medieval fantasy frame, sci-fi hologram UI, cyberpunk paneling, circuit patterns, industrial machine parts, antenna hardware, bolts as the dominant design language, thin cheap border, cream simplified frame, crooked geometry, asymmetric frame, cropped corners, center artwork, background scene inside the center window.",
+  "templates": [
+    {
+      "key": "master",
+      "rawFile": "master-raw.png",
+      "finalFile": "master.png",
+      "prompt": "Create a polished blank Bird Squad tarot card frame, 1024x1536 vertical portrait. Border only, no central illustration. Use a perfectly flat #00ff00 chroma-key central art window and a blank bottom title cartouche. Match the existing full-card Minor Arcana art style: hand-inked black-and-aged-gold tarot frame, colored enamel medallions, organic filigree, illustrated weathering, and a slightly magical storybook finish. Urban culture appears only as subtle worn paint, sticker-wear shapes without text, wet-pavement sheen, and city-night color accents. Include ornate outer frame, gilded inner rail, four corner medallions, slim side rails, top medallion, large central art window, and blank bottom title cartouche. No readable text, no bird, no character, no logo, no rank icons, no suit labels, no center art, no machined technology, no circuit patterns, no antenna hardware."
+    },
+    {
+      "key": "plumes",
+      "rawFile": "plumes-raw.png",
+      "finalFile": "plumes.png",
+      "prompt": "Create the Plumes suit variant of the blank Bird Squad tarot border template, 1024x1536 vertical portrait. Same geometry as the master: flat #00ff00 central art window, blank bottom title cartouche, ornate outer frame, side rails, corner medallions, top medallion. Match the existing full-card Minor Arcana frame style: hand-inked black-and-aged-gold tarot fantasy with painterly urban patina. Suit ornament: biological plume display, call-wave rhythm, feather-rhythm grooves, iridescent enamel, wingbeat arcs, ribbon-like performance marks, organic crest flourishes. Palette: black ink, antique gold, signal orange, hot magenta, jade, iridescent teal, ash charcoal. No readable text, no bird, no character, no magic particles, no electric beams, no LED-tech effects, no cyberpunk paneling, no center art, no title text."
+    },
+    {
+      "key": "basins",
+      "rawFile": "basins-raw.png",
+      "finalFile": "basins.png",
+      "prompt": "Create the Basins suit variant of the blank Bird Squad tarot border template, 1024x1536 vertical portrait. Same geometry as the master: flat #00ff00 central art window, blank bottom title cartouche, ornate outer frame, side rails, corner medallions, top medallion. Match the existing full-card Minor Arcana frame style: hand-inked black-and-aged-gold tarot fantasy with painterly urban rain patina. Suit ornament: basin curves, droplet inlays, waterline grooves, rain-slick reflections, soft fountain arcs, care-station stitch-like flourishes, enamel water beads. Palette: black ink, antique gold, teal, harbor blue, pearl, rain gray, soft rose. No readable text, no bird, no character, no old bathhouse fantasy, no temple styling, no center art, no title text, no industrial hardware."
+    },
+    {
+      "key": "quills",
+      "rawFile": "quills-raw.png",
+      "finalFile": "quills.png",
+      "prompt": "Create the Quills suit variant of the blank Bird Squad tarot border template, 1024x1536 vertical portrait. Same geometry as the master: flat #00ff00 central art window, blank bottom title cartouche, ornate outer frame, side rails, corner medallions, top medallion. Match the existing full-card Minor Arcana frame style: hand-inked black-and-aged-gold tarot fantasy with painterly storm-city patina. Suit ornament: quill cuts, wind-pressure marks, route-line grooves, feather barbs, storm-rain etching, sharp but symbolic pressure marks. Palette: black ink, antique gold, steel, ink black, glass blue, white, cold cyan. No readable text, no bird, no character, no sci-fi armor, no hologram UI, no antenna hardware, no gore, no weapon display, no center art, no title text."
+    },
+    {
+      "key": "nests",
+      "rawFile": "nests-raw.png",
+      "finalFile": "nests.png",
+      "prompt": "Create the Nests suit variant of the blank Bird Squad tarot border template, 1024x1536 vertical portrait. Same geometry as the master: flat #00ff00 central art window, blank bottom title cartouche, ornate outer frame, side rails, corner medallions, top medallion. Match the existing full-card Minor Arcana frame style: hand-inked black-and-aged-gold tarot fantasy with painterly maker-market patina. Suit ornament: nest-weave grooves, shine-tag inlays, seed-like medallion marks, vine details, braided twigs, hand-drawn resource sigils, warm maker-market texture. Palette: black ink, antique gold, brass, copper, soil brown, moss, pewter shine. No readable text, no bird, no character, no medieval workshop, no fantasy market, no parchment, no center art, no title text, no industrial machinery."
+    }
+  ]
+}

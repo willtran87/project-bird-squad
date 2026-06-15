@@ -1,0 +1,60 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/alpha-run-spec.md",
+    "docs/game/next-level-data-contracts.md"
+  ],
+  "supplies": [
+    {
+      "id": "seed_packet",
+      "name": "Seed Packet",
+      "category": "snack",
+      "rarity": "common",
+      "answerType": "healNow",
+      "timing": "either",
+      "effects": ["healCohesion(6)"],
+      "description": "Heal 6 Cohesion."
+    },
+    {
+      "id": "signal_flare",
+      "name": "Signal Flare",
+      "category": "flare",
+      "rarity": "common",
+      "answerType": "drawNow",
+      "timing": "combat",
+      "effects": ["gainResonance(2)", "draw(1)"],
+      "description": "Gain 2 Resonance. Draw 1."
+    },
+    {
+      "id": "zip_tie_roll",
+      "name": "Zip Tie Roll",
+      "category": "tool",
+      "rarity": "common",
+      "answerType": "coverNow",
+      "timing": "combat",
+      "effects": ["gainCover(10)"],
+      "description": "Gain 10 Cover."
+    },
+    {
+      "id": "emergency_call",
+      "name": "Emergency Call",
+      "category": "call",
+      "rarity": "uncommon",
+      "answerType": "wingbeatNow",
+      "timing": "combat",
+      "effects": ["gainWingbeat(1)", "draw(1)"],
+      "description": "Gain 1 Wingbeat. Draw 1."
+    },
+    {
+      "id": "shade_cloth",
+      "name": "Shade Cloth",
+      "category": "tool",
+      "rarity": "uncommon",
+      "answerType": "openSkySafety",
+      "timing": "either",
+      "effects": ["reduceNextOpenSky(2)"],
+      "description": "Reduce the next Open Sky damage increase by 2."
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "version": "0.1",
+  "purpose": "Reusable imagegen-created raster tarot border templates for Bird Squad Minor Arcana compositing.",
+  "canvas": {
+    "width": 1024,
+    "height": 1536
+  },
+  "geometry": {
+    "outer": {
+      "x": 32,
+      "y": 32,
+      "width": 960,
+      "height": 1472,
+      "rx": 28
+    },
+    "inner": {
+      "x": 58,
+      "y": 58,
+      "width": 908,
+      "height": 1420,
+      "rx": 22
+    },
+    "imageWindow": {
+      "x": 104,
+      "y": 164,
+      "width": 816,
+      "height": 1146
+    },
+    "titleCartouche": {
+      "x": 154,
+      "y": 1310,
+      "width": 716,
+      "height": 112,
+      "rx": 32
+    },
+    "topMedallion": {
+      "cx": 512,
+      "cy": 92,
+      "r": 46
+    },
+    "cornerMedallions": [
+      {
+        "cx": 88,
+        "cy": 88,
+        "r": 38
+      },
+      {
+        "cx": 936,
+        "cy": 88,
+        "r": 38
+      },
+      {
+        "cx": 88,
+        "cy": 1448,
+        "r": 38
+      },
+      {
+        "cx": 936,
+        "cy": 1448,
+        "r": 38
+      }
+    ],
+    "sideRails": [
+      {
+        "x": 60,
+        "y": 176,
+        "width": 46,
+        "height": 1090,
+        "rx": 18
+      },
+      {
+        "x": 918,
+        "y": 176,
+        "width": 46,
+        "height": 1090,
+        "rx": 18
+      }
+    ]
+  },
+  "templates": [
+    {
+      "key": "master",
+      "path": "assets/templates/minor-arcana/raster-border-templates/master.png"
+    },
+    {
+      "key": "plumes",
+      "path": "assets/templates/minor-arcana/raster-border-templates/plumes.png"
+    },
+    {
+      "key": "basins",
+      "path": "assets/templates/minor-arcana/raster-border-templates/basins.png"
+    },
+    {
+      "key": "quills",
+      "path": "assets/templates/minor-arcana/raster-border-templates/quills.png"
+    },
+    {
+      "key": "nests",
+      "path": "assets/templates/minor-arcana/raster-border-templates/nests.png"
+    }
+  ],
+  "rules": [
+    "Templates are reusable border overlays, not finished cards.",
+    "Templates must be 1024x1536 RGBA PNG files.",
+    "The imageWindow region must be transparent so center art can show through.",
+    "The titleCartouche region must stay opaque and visually blank so compositor-owned title text has a stable plate.",
+    "Templates must not contain readable title text, suit words, rank text, logos, or pseudo-writing.",
+    "The compositor owns final title text.",
+    "Visual style must match the existing full-card Minor Arcana frame language: hand-inked black-and-aged-gold tarot ornament, colored enamel suit medallions, organic filigree, and weathered illustrated texture.",
+    "Reject templates that read as hard technology, sci-fi UI, machined industrial panels, circuit patterns, or antenna hardware."
+  ]
+}

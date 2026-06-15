@@ -1,0 +1,98 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/alpha-run-spec.md",
+    "docs/game/next-level-data-contracts.md"
+  ],
+  "encounters": [
+    {
+      "id": "enc_rooftop_rat_pack",
+      "name": "Rat Pack",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "Two enemies at once — thin the pack fast or split your Cover.",
+      "tags": ["cover", "multi"],
+      "enemies": ["roof_rat", "roof_rat"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_rooftop_skirmish",
+      "name": "Rooftop Skirmish",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "A gull and a rat press from two angles at once.",
+      "tags": ["scavenge", "multi"],
+      "enemies": ["signal_gull", "roof_rat"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_gutter_baron",
+      "name": "The Gutter Baron",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "Elite: an armored bruiser with a rat escort. Focus one down first.",
+      "tags": ["elite", "heavy", "multi"],
+      "enemies": ["gutter_baron", "roof_rat"],
+      "rewardProfileId": "rival_standard"
+    },
+    {
+      "id": "enc_roof_rat",
+      "name": "Roof Rat",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "weak",
+      "lesson": "Read a basic attack Tell and use Cover.",
+      "tags": ["cover", "basic"],
+      "enemies": ["roof_rat"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_signal_gull",
+      "name": "Signal Gull",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Manage Brace and Scavenge.",
+      "tags": ["scavenge", "cover"],
+      "enemies": ["signal_gull"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_wire_hawk",
+      "name": "Wire Hawk",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "Respect Heavy Strike and Open Sky risk.",
+      "tags": ["heavy", "winded", "openSky"],
+      "enemies": ["wire_hawk"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_tarline_crew",
+      "name": "Tarline Crew",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "Optional elite pressure with better rewards.",
+      "tags": ["heavy", "winded", "elite"],
+      "enemies": ["tarline_crew"],
+      "rewardProfileId": "rival_standard"
+    },
+    {
+      "id": "enc_tar_crowned_crow",
+      "name": "The Tar-Crowned Crow",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "boss",
+      "band": "boss",
+      "lesson": "Tests Cover and Molt restraint.",
+      "tags": ["boss", "cover", "snag", "openSky"],
+      "enemies": ["tar_crowned_crow"],
+      "rewardProfileId": "boss_alpha"
+    }
+  ]
+}

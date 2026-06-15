@@ -1,0 +1,31 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/alpha-run-spec.md",
+    "docs/game/next-level-data-contracts.md"
+  ],
+  "markets": [
+    {
+      "id": "alpha_market",
+      "cardSlots": [
+        { "rarity": "common", "price": { "base": 55, "min": 35, "max": 75 } },
+        { "rarity": "common", "price": { "base": 55, "min": 35, "max": 75 } },
+        { "rarity": "uncommon", "price": { "base": 85, "min": 65, "max": 105 } },
+        { "rarity": "weighted", "price": { "base": 85, "min": 55, "max": 130 } }
+      ],
+      "routeMarkSlots": [
+        { "selector": "nonBoss", "price": { "base": 110, "min": 90, "max": 130 } },
+        { "selector": "nonBoss", "price": { "base": 110, "min": 90, "max": 130 } }
+      ],
+      "supplySlots": [
+        { "selector": "pool", "price": { "base": 45, "min": 25, "max": 65 } },
+        { "selector": "pool", "price": { "base": 45, "min": 25, "max": 65 } }
+      ],
+      "services": [
+        { "id": "release", "basePrice": 75, "priceIncrease": 25 },
+        { "id": "preen", "basePrice": 100, "discountRouteMarkIds": ["patched_harness"] }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,494 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "set": "Crew Cards — Suit of Nests",
+  "basedOn": "docs/art/art-bible.md; major-arcana-bird-map.json",
+  "note": "Nests crew proving the unique-species four-crew framework. Each card uses a unique bird species reserved away from the Major and Aviary Legends species.",
+  "suit": {
+    "name": "Nests",
+    "element": "Build",
+    "crew": "Brassnest",
+    "domain": "materials, craft, work, home, the material world",
+    "habitat": "community gardens, bike shops, record stalls, laundromats, food-pantry tables, rooftop planters, maker benches, thrift alleys, loading docks, coffee-roastery corners, hardware co-ops",
+    "timeOfDay": "market morning",
+    "borderMotif": "gear, shine, and vine filigree",
+    "borderFrame": "Use the shared Bird Squad frame structure: dark outer keyline, gilded inner filigree rail, four corner medallions, slim vertical side rails, top suit crest medallion, and bottom title cartouche. Keep frame thickness, symmetry, border width, and title placement consistent; place gear, shine, and vine motifs inside the established frame zones.",
+    "palette": [
+      "brass",
+      "copper",
+      "soil brown",
+      "moss",
+      "pewter shine"
+    ],
+    "featuredSpecies": [
+      "Satin Bowerbird",
+      "European Starling",
+      "Hamerkop",
+      "Rock Pigeon",
+      "Mourning Dove",
+      "Common Myna",
+      "Clark's Nutcracker",
+      "Common Tailorbird",
+      "Regent Bowerbird",
+      "Baya Weaver",
+      "Eurasian Hoopoe",
+      "Montezuma Oropendola",
+      "Golden Bowerbird",
+      "Malleefowl"
+    ],
+    "coreRule": "All subjects anatomically bird; streetwear fitted to bird anatomy; no humanoid forms; no gore. Birds have no hands, fingers, wing-hands, wing-arms, extra wings, extra legs, or extra limbs; held props use beak, talons, feet, or legs only. Nests must blend modern hipster streetwear and workwear through distinct card-by-card subcultures: community garden, bike shop, record stall, laundromat/corner store, food-pantry table, rooftop planter crew, maker bench, thrift alley display, loading dock, coffee-roastery corner, and hardware co-op. Use beanies, flannel wraps, hoodies, denim or canvas chore coats, utility vests, aprons, tool slings, salvage satchels, scaffold clips, folding tables, roll-up doors, crates, concrete, work lights, pegboards, cargo bikes, milk crates, planters, and modern shop fixtures. Nest pip counts must use the one count element named on the card and be integrated into work scenes through carried resource tags, built materials, clipped tools, shelves, crates, garlands, or objects the birds are using; avoid alternate count objects, pasted icon rows, isolated prop clusters, and extra charm/tag clutter that could overcount. Avoid old-world fantasy markets, medieval craft stalls, treasure rooms, taverns, robes, cloaks-as-costume, parchment-shop staging, and wizard-shop staging. No readable text on clothing; suit-coded streetwear should use abstract motifs, color, material, and accessories without gang-coded uniforms or affiliation marks."
+  },
+  "courtNaming": {
+    "Page": "Fledgling",
+    "Knight": "Outrider",
+    "Queen": "Matron",
+    "King": "Elder"
+  },
+  "cards": [
+    {
+      "id": "pentacles_ace",
+      "rank": "Ace",
+      "rarity": "common",
+      "name": "Nest Seed",
+      "bird": "Satin Bowerbird",
+      "coreMeaning": "Opportunity, new venture, material seed",
+      "description": "A Satin Bowerbird presents one gleaming shine berry at a modern community garden gate beside stacked milk crates and planter boxes.",
+      "pose": "Perched at a chain-link community garden gate, one shine berry held carefully in its beak above a talon-side pouch, stacked milk crates and planter boxes behind.",
+      "silhouetteClass": "stout-perching",
+      "poseEnergy": "static",
+      "streetwear": [
+        "slouch beanie and cropped olive chore vest over folded wings",
+        "single shine-berry pouch",
+        "mud-splashed brass talon bands"
+      ],
+      "palette": [
+        "brass",
+        "soil brown",
+        "moss",
+        "pewter shine"
+      ],
+      "accent": "brass",
+      "varietyNotes": "Suit anchor species. Glossy blue-black bowerbird + offered shine tag reads 'opportunity' at a glance.",
+      "gameplayFantasy": "Opens materials/resource generation; a seed card that funds later Nests plays.",
+      "gameName": "Nest Seed",
+      "numberSymbolism": {
+        "count": 1,
+        "element": "one shine berry at the community garden gate",
+        "represents": "first resource, seed capital, and practical opportunity",
+        "visualRequirement": "Show exactly one shine berry or shine tag presented by the Satin Bowerbird."
+      }
+    },
+    {
+      "id": "pentacles_02",
+      "rank": "2",
+      "rarity": "common",
+      "name": "Nest Juggle",
+      "bird": "European Starling",
+      "coreMeaning": "Juggling, balance, adaptability",
+      "description": "A European Starling balances two shine tags on a bike-shop cable strung above a repair stand and cargo-bike wheel.",
+      "pose": "Walking a taut bike-brake cable mid-balance, wings spread wide for stability, two shine tags clipped to a reflective courier harness, cargo-bike wheel below.",
+      "silhouetteClass": "slim-perching",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "reflective bike-courier vest",
+        "flannel waist wrap adapted around tail",
+        "two shine tag cable clips"
+      ],
+      "palette": [
+        "copper",
+        "pewter shine",
+        "soil brown",
+        "moss"
+      ],
+      "accent": "copper",
+      "varietyNotes": "Iridescent speckled starling on a wire; spread-wing balance separates it from the perched bowerbird pips.",
+      "gameplayFantasy": "Resource shuffle; move or rebalance two resources between routes each turn.",
+      "gameName": "Nest Juggle",
+      "numberSymbolism": {
+        "count": 2,
+        "element": "two shine tags balanced on the bike-shop cable",
+        "represents": "resource juggling, rhythm, and practical balance",
+        "visualRequirement": "Show exactly two shine tags balanced by the European Starling."
+      }
+    },
+    {
+      "id": "pentacles_03",
+      "rank": "3",
+      "rarity": "common",
+      "name": "Nest Blueprint",
+      "bird": "Hamerkop",
+      "coreMeaning": "Teamwork, craft, shared building",
+      "description": "Three Hamerkops of the same species build a modular display arch at a neighborhood hardware co-op pegboard, guided by three abstract plan cards.",
+      "pose": "Three Hamerkops around a half-built pegboard arch, hammer-shaped heads distinct, two threading material by beak and talons while one studies three clipped abstract plan cards.",
+      "silhouetteClass": "hammer-headed-builder",
+      "poseEnergy": "active",
+      "streetwear": [
+        "contrasting canvas shop aprons",
+        "rolled plan tube clipped to scaffold",
+        "bright work-grip talon wraps"
+      ],
+      "palette": [
+        "soil brown",
+        "moss",
+        "brass",
+        "pewter shine"
+      ],
+      "accent": "moss",
+      "varietyNotes": "Hamerkops keep the communal builder meaning while adding a hammer-headed silhouette and famous nest-building identity.",
+      "gameplayFantasy": "Build mechanic; multiple workers complete a structure faster for a shared bonus.",
+      "gameName": "Nest Blueprint",
+      "numberSymbolism": {
+        "count": 3,
+        "element": "three abstract plan cards guiding the hardware co-op build",
+        "represents": "collaboration, craft, and a shared plan becoming structure",
+        "visualRequirement": "Show exactly three plan cards or build markers around the Hamerkops."
+      }
+    },
+    {
+      "id": "pentacles_04",
+      "rank": "4",
+      "rarity": "common",
+      "name": "Locked Nest",
+      "bird": "Rock Pigeon",
+      "coreMeaning": "Control, hoarding, holding tight",
+      "description": "A Rock Pigeon guards four shine tags on a concrete storage-unit ledge beside a modern padlocked crate.",
+      "pose": "Hunched on a storage-unit ledge, wings curled protectively around four shine tags, one tag pinned under a talon, roll-up doors behind.",
+      "silhouetteClass": "stout-perching",
+      "poseEnergy": "static",
+      "streetwear": [
+        "zippered city utility hoodie",
+        "tiny padlock pouch",
+        "concrete-gray talon wraps"
+      ],
+      "palette": [
+        "pewter shine",
+        "soil brown",
+        "copper",
+        "moss"
+      ],
+      "accent": "pewter shine",
+      "varietyNotes": "City pigeon's gray bulk + closed, hoarding curl contrasts the open offering of the Ace.",
+      "gameplayFantasy": "Lock/hold effect; freeze your resources to protect them but skip spending.",
+      "gameName": "Locked Nest",
+      "numberSymbolism": {
+        "count": 4,
+        "element": "four shine tags guarded on the storage-unit ledge",
+        "represents": "holding resources, caution, and possessive security",
+        "visualRequirement": "Show exactly four shine tags protected by the Rock Pigeon. Keep all four tags clustered inward and fully visible after the final border overlay; no tag may sit under the side rail, corner medallion, or title cartouche."
+      },
+      "repairDirective": "Latest review found only three charms visible after the border because the fourth was cut off. Regenerate as high-resolution pixel art only with the Rock Pigeon and exactly four shine tags pulled closer to the center of the storage-unit ledge. Use a compact two-by-two or tight central cluster; keep every tag fully inside the final border opening and do not add extra charms, coins, tags, or reflections."
+    },
+    {
+      "id": "pentacles_05",
+      "rank": "5",
+      "rarity": "common",
+      "name": "Cold Nest",
+      "bird": "Mourning Dove",
+      "coreMeaning": "Hardship, exclusion, want",
+      "description": "Two Mourning Doves of the same species huddle outside a laundromat-corner-store window, with five dull shine tags out of reach behind the glass.",
+      "pose": "Two Mourning Doves in cold alley shadow, feathers fluffed under patched layers, looking toward exactly five dull shine tags displayed behind a warm laundromat window.",
+      "silhouetteClass": "stout-perching",
+      "poseEnergy": "static",
+      "streetwear": [
+        "oversized thrift hoodie",
+        "frayed flannel blanket wrap",
+        "empty canvas shine pouch"
+      ],
+      "palette": [
+        "soil brown",
+        "pewter shine",
+        "moss",
+        "muted copper"
+      ],
+      "accent": "moss",
+      "varietyNotes": "Two huddled pigeons against a lit window; the warm glow stays out of reach, keeping the lack in frame.",
+      "gameplayFantasy": "Cost/setback card; pay a hardship now to unlock aid or recovery later.",
+      "gameName": "Cold Nest",
+      "numberSymbolism": {
+        "count": 5,
+        "element": "five dull shine tags behind the laundromat glass",
+        "represents": "scarcity, hardship, and needing help nearby",
+        "visualRequirement": "Show exactly five dull shine tags behind the laundromat glass near the Mourning Doves; the five tags must be prominent and countable, with no extra shine tags, charms, coins, or resource markers."
+      },
+      "repairDirective": "Previous candidates looked realistic instead of matching the game art. Regenerate as high-resolution pixel art only with crisp clusters and deliberate dithering, not realistic painting. Keep the two Mourning Doves, laundromat window, and exactly five dull shine tags centered inside the overlay-safe area."
+    },
+    {
+      "id": "pentacles_06",
+      "rank": "6",
+      "rarity": "uncommon",
+      "name": "Shared Nest",
+      "bird": "Common Myna",
+      "coreMeaning": "Generosity, giving and receiving, fairness",
+      "description": "A Common Myna runs a mutual-aid folding table, sharing seed with two smaller Common Mynas while six brass resource tokens sit beside a digital scale.",
+      "pose": "Perched at a folding food-pantry table, seed packet held in its beak, two smaller Common Mynas below, exactly six brass resource tokens arranged beside a digital scale.",
+      "silhouetteClass": "slim-perching",
+      "poseEnergy": "active",
+      "streetwear": [
+        "volunteer utility vest",
+        "soft bucket hat fitted to crest line",
+        "plain apron loops with no token shapes"
+      ],
+      "palette": [
+        "brass",
+        "soil brown",
+        "moss",
+        "pewter shine"
+      ],
+      "accent": "brass",
+      "varietyNotes": "Same starling as the Two, now generous and grounded; the level scale signals fairness.",
+      "gameplayFantasy": "Distribute effect; share resources to allies with a balancing payoff.",
+      "gameName": "Shared Nest",
+      "numberSymbolism": {
+        "count": 6,
+        "element": "six brass resource tokens beside the digital scale",
+        "represents": "generosity, mutual aid, and fair exchange",
+        "visualRequirement": "Show exactly six brass resource tokens at the Common Myna's folding table; no extra charms, shine tags, coins, token-like apron loops, or trim that could be counted."
+      },
+      "repairDirective": "Latest review re-flags this card for exact resource clarity. Regenerate as high-resolution pixel art only with crisp clusters and deliberate dithering, not realistic painting. Keep exactly six brass resource tokens beside the digital scale, centered and away from the final border/title overlay. The six tokens are the only charm-like objects: no extra charms, shine tags, coins, token-like apron loops, trim, or reflections that could be counted."
+    },
+    {
+      "id": "pentacles_07",
+      "rank": "7",
+      "rarity": "uncommon",
+      "name": "Growing Nest",
+      "bird": "Clark's Nutcracker",
+      "coreMeaning": "Patience, investment, waiting on growth",
+      "description": "A Clark's Nutcracker waits beside rooftop planters and scaffold rails, watching exactly seven shine-seed cache markers mature under a continuous grow-light strip.",
+      "pose": "Perched on a low rooftop planter rail, long bill angled toward exactly seven shine-seed cache markers ripening under one continuous grow-light strip, a small handled tool braced under one talon.",
+      "silhouetteClass": "seed-caching-corvid",
+      "poseEnergy": "static",
+      "streetwear": [
+        "canvas gardener vest",
+        "rolled knit cap",
+        "soil-dusted cache satchel"
+      ],
+      "palette": [
+        "moss",
+        "soil brown",
+        "brass",
+        "copper"
+      ],
+      "accent": "copper",
+      "varietyNotes": "The nutcracker turns investment into seed-caching patience and breaks up the bowerbird cluster.",
+      "gameplayFantasy": "Slow-burn investment; a resource that ripens into a bigger payout if left to grow.",
+      "gameName": "Growing Nest",
+      "numberSymbolism": {
+        "count": 7,
+        "element": "seven shine-seed cache markers ripening under one continuous grow-light strip",
+        "represents": "patience, investment, and waiting for work to mature",
+        "visualRequirement": "Show exactly seven shine-seed cache markers near Clark's Nutcracker; the grow light must read as one continuous strip, not countable bulbs, with no extra cache markers, charms, tags, or seed lights."
+      },
+      "repairDirective": "Previous candidates looked realistic instead of matching the game art. Regenerate as high-resolution pixel art only with crisp clusters and deliberate dithering, not realistic painting. Keep the Clark's Nutcracker and exactly seven shine-seed cache markers centered in the rooftop planter safe area; one continuous grow-light strip only."
+    },
+    {
+      "id": "pentacles_08",
+      "rank": "8",
+      "rarity": "uncommon",
+      "name": "Workshop Nest",
+      "bird": "Common Tailorbird",
+      "coreMeaning": "Mastery, diligence, skilled labor",
+      "description": "A Common Tailorbird works at a modern maker-space bench, stitching and shaping the eighth shine tag beneath pegboard tools and task lights.",
+      "pose": "Bent over a plywood maker bench, long beak stitching one shine tag with thread-like fiber while seven finished tags hang in a neat row.",
+      "silhouetteClass": "tiny-crafter",
+      "poseEnergy": "active",
+      "streetwear": [
+        "selvedge denim micro-apron",
+        "thread-loop shoulder sling",
+        "paint-speckled talon wraps"
+      ],
+      "palette": [
+        "copper",
+        "brass",
+        "soil brown",
+        "pewter shine"
+      ],
+      "accent": "soil brown",
+      "varietyNotes": "The tailorbird makes the craft loop literal and visually smaller, breaking up the weaver-heavy Nests middle ranks.",
+      "gameplayFantasy": "Craft loop; repeat a small action each turn to steadily produce resources.",
+      "gameName": "Workshop Nest",
+      "numberSymbolism": {
+        "count": 8,
+        "element": "eight shine tags split between seven finished pieces and one in progress",
+        "represents": "practice, craft mastery, and repeated work",
+        "visualRequirement": "Show exactly eight shine tags total at the Common Tailorbird's bench."
+      }
+    },
+    {
+      "id": "pentacles_09",
+      "rank": "9",
+      "rarity": "uncommon",
+      "name": "Treasure Nest",
+      "bird": "Regent Bowerbird",
+      "coreMeaning": "Self-made abundance, independence, refinement",
+      "description": "A Regent Bowerbird stands alone in a curated thrift-alley record stall, surrounded by nine shine tags, blue trinkets, milk crates, and vinyl bins.",
+      "pose": "Settled elegantly near the center on a low milk crate beside vinyl bins, one wing tucked close against the body, with exactly nine shine tags arranged on a modern folding display rack well inside the overlay-safe center.",
+      "silhouetteClass": "stout-perching",
+      "poseEnergy": "static",
+      "streetwear": [
+        "polished thrifted satin jacket",
+        "small round sunglasses perched above beak line",
+        "collector shine medallion"
+      ],
+      "palette": [
+        "brass",
+        "moss",
+        "copper",
+        "pewter shine"
+      ],
+      "accent": "market-gold",
+      "varietyNotes": "Bowerbird's real treasure-hoarding instinct made literal; gold accent marks the suit's prosperity high point.",
+      "gameplayFantasy": "Solo payoff; cash in accumulated stored value for a strong self-sufficient reward.",
+      "gameName": "Treasure Nest",
+      "numberSymbolism": {
+        "count": 9,
+        "element": "nine shine tags displayed in the curated record stall",
+        "represents": "earned abundance, self-sufficiency, and refined taste",
+        "visualRequirement": "Show exactly nine shine tags around the Regent Bowerbird on a centered folding display rack. Keep all nine tags fully inside the overlay-safe center; do not crop tags with the border, add extra charms, or let wing/clothing shapes read as arms."
+      },
+      "repairDirective": "Previous candidates had cropped count elements and arm-like bird anatomy. Regenerate as high-resolution pixel art only, center the Regent Bowerbird and all nine shine tags, keep wings tucked as wings, and avoid any sleeve-arm, hand, elbow, or humanoid silhouette."
+    },
+    {
+      "id": "pentacles_10",
+      "rank": "10",
+      "rarity": "rare",
+      "name": "Legacy Nest",
+      "bird": "Baya Weaver",
+      "coreMeaning": "Legacy, lasting stored value, family stash",
+      "description": "A multigenerational Baya Weaver group gathers at a modern loading-dock block party beneath exactly ten shine tags strung across one scaffold arch.",
+      "pose": "Three to five Baya Weavers of the same species gather around pallet benches and a roll-up loading door, beneath exactly ten shine tags strung across one scaffold arch overhead.",
+      "silhouetteClass": "round-perching",
+      "poseEnergy": "active",
+      "streetwear": [
+        "mixed denim chore coats and flannel wraps",
+        "heirloom tool charms",
+        "family shine-tag garland"
+      ],
+      "palette": [
+        "brass",
+        "soil brown",
+        "moss",
+        "pewter shine"
+      ],
+      "accent": "market-gold",
+      "varietyNotes": "Multi-generation weaver flock under the arch is the material summit; market-gold lifts it above the earth tones.",
+      "gameplayFantasy": "Capstone economy; rewards a full built-up encounter of Nests assets with lasting value.",
+      "gameName": "Legacy Nest",
+      "numberSymbolism": {
+        "count": 10,
+        "element": "ten shine tags strung across one loading-dock scaffold arch",
+        "represents": "legacy, shared wealth, and resources held by the wider community",
+        "visualRequirement": "Show exactly ten shine tags above the Baya Weaver family group. Any visible birds must all be Baya Weavers; do not add extra charms, tags, bird silhouettes, or token-like decorations that confuse the count."
+      },
+      "repairDirective": "Previous candidates overcounted resource tokens/tags. Regenerate as high-resolution pixel art only with exactly ten shine tags total, all strung across one centered loading-dock scaffold arch and fully inside the overlay-safe area. Do not add extra charms, coins, token trim, tag-like decorations, or additional bird silhouettes."
+    },
+    {
+      "id": "pentacles_fledgling",
+      "rank": "Page",
+      "rarity": "common",
+      "name": "Nest Fledgling",
+      "bird": "Eurasian Hoopoe",
+      "coreMeaning": "Diligence, study, a material opportunity",
+      "description": "A Eurasian Hoopoe apprentice studies a single shine tag at a coffee-roastery maker corner beside burlap sacks and a compact tool tray.",
+      "pose": "Bright-eyed and curious, crest half-raised, turning one shine tag over in its beak beside burlap coffee sacks, a compact tool tray, and warm task light.",
+      "silhouetteClass": "crested-perching",
+      "poseEnergy": "active",
+      "streetwear": [
+        "cropped apprentice hoodie",
+        "tiny coffee-brown tool satchel",
+        "single lens charm"
+      ],
+      "palette": [
+        "cinnamon",
+        "soil brown",
+        "brass",
+        "moss"
+      ],
+      "accent": "cinnamon",
+      "varietyNotes": "Court Fledgling = youngest apprentice; the hoopoe's barred wings and crest give a distinct silhouette.",
+      "gameplayFantasy": "Cheap study crew card; scouts or banks a single resource to learn a build option.",
+      "gameName": "Nest Fledgling"
+    },
+    {
+      "id": "pentacles_outrider",
+      "rank": "Knight",
+      "rarity": "uncommon",
+      "name": "Nest Outrider",
+      "bird": "Montezuma Oropendola",
+      "coreMeaning": "Reliability, steady effort, delivery",
+      "description": "A Montezuma Oropendola courier cuts between loading docks and rooftops with a shine-laden salvage satchel and cargo-route tags.",
+      "pose": "In strong purposeful flight low over a loading dock alley, long tail swinging below, heavy salvage satchel slung across its breast, abstract route tag clipped to one leg.",
+      "silhouetteClass": "long-tailed-hanging-nester",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "boxy courier work jacket",
+        "weighted salvage satchel",
+        "cargo-route talon bands",
+        "hanging-nest cord accents"
+      ],
+      "palette": [
+        "pewter shine",
+        "copper",
+        "soil brown",
+        "moss"
+      ],
+      "accent": "copper",
+      "varietyNotes": "Court Outrider keeps delivery reliability but gains a dramatic long-tailed silhouette and hanging-nest resource identity.",
+      "gameplayFantasy": "Mobile courier; reliably hauls and delivers resources across the encounter each turn.",
+      "gameName": "Nest Outrider"
+    },
+    {
+      "id": "pentacles_matron",
+      "rank": "Queen",
+      "rarity": "rare",
+      "name": "Nest Matron",
+      "bird": "Golden Bowerbird",
+      "coreMeaning": "Nurture, craft mastery, abundance tended",
+      "description": "A Golden Bowerbird master curator sits in a modern parts-library alcove among labeled color bins, shine tags, and clamp lights.",
+      "pose": "Seated and serene on a low salvage bench, one chosen shine tag nestled at her talons, sorted color bins and clamp lights around her.",
+      "silhouetteClass": "stout-perching",
+      "poseEnergy": "static",
+      "streetwear": [
+        "long indigo shop apron",
+        "gold chore jacket panels",
+        "refined hardware cuffs"
+      ],
+      "palette": [
+        "brass",
+        "moss",
+        "copper",
+        "pewter shine"
+      ],
+      "accent": "moss",
+      "varietyNotes": "Court Matron = poised inner mastery of craft and treasure; her tended bower distinguishes her from the Elder.",
+      "gameplayFantasy": "Economy leader; grows and protects the crew's resource pool over time.",
+      "gameName": "Nest Matron"
+    },
+    {
+      "id": "pentacles_elder",
+      "rank": "King",
+      "rarity": "rare",
+      "name": "Nest Elder",
+      "bird": "Malleefowl",
+      "coreMeaning": "Material command, builder authority, provider",
+      "description": "A Malleefowl rules from a hardware co-op mezzanine above a communal scaffold-mound, pegboards, crates, and roll-up doors below.",
+      "pose": "Standing broad and still on a mezzanine rail above the communal scaffold-mound, wings folded, surveying pegboards, crates, and modern shop lights below.",
+      "silhouetteClass": "mound-building-groundbird",
+      "poseEnergy": "static",
+      "streetwear": [
+        "heavy canvas architect chore coat",
+        "rolled beanie with brass clip",
+        "reinforced talon bands"
+      ],
+      "palette": [
+        "brass",
+        "soil brown",
+        "pewter shine",
+        "copper"
+      ],
+      "accent": "brass",
+      "varietyNotes": "Court Elder becomes a massive mound-builder authority instead of another weaver, keeping the material-builder theme with a stronger silhouette.",
+      "gameplayFantasy": "Faction leader; build and provide effects that grow and rally the whole Nests crew.",
+      "gameName": "Nest Elder"
+    }
+  ]
+}

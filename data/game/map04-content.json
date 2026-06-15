@@ -1,0 +1,599 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/run-design-spec.md",
+    "docs/game/next-level-data-contracts.md"
+  ],
+  "mapProfile": {
+    "mapId": "map_04_high_roost",
+    "thesis": "Commit a final Flock build, time Molt precisely, and pay off every route consequence at the citywide chokepoint.",
+    "primaryTests": ["full Flock build", "Molt timing", "Open Sky management", "Cover under sustained pressure"],
+    "preferredNodeTypes": ["street", "rival", "signal", "basin", "nest", "market", "cache", "boss"],
+    "encounterTags": ["cover", "heavy", "winded", "openSky", "snag", "tempo", "elite", "molt"],
+    "rewardBias": ["rare cards", "Route Marks", "Open Sky Guard", "boss prep"],
+    "bossPrepHints": [
+      "Stockpile Cover before the Roost Warden's scripted Heavy Strikes.",
+      "Hold Open Sky Guard for the Warden's Skyfall Decree so Molt turns stay safe.",
+      "Clear snags fast: the Roost Warden punishes a cluttered draw with nextAttackBonus."
+    ]
+  },
+  "enemies": [
+      {
+        "id": "roost_iron_talon",
+        "name": "Iron Talon",
+        "type": "elite",
+        "health": 54,
+        "lesson": "Elite: a High Roost enforcer that walls up before a crushing blow.",
+        "moves": [
+          { "id": "talon_rake_10", "label": "Rake 10", "effects": ["damage(flock, 10)"] },
+          { "id": "talon_wall", "label": "Iron Wall", "effects": ["gainCover(12)"] },
+          { "id": "talon_grip_8", "label": "Grip 8", "effects": ["damage(flock, 8)", "applyWinded(flock, 1)"] },
+          { "id": "talon_crush_15", "label": "Crushing Blow 15", "effects": ["damage(flock, 15)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["talon_rake_10", "talon_wall", "talon_grip_8", "talon_crush_15"] },
+        "rewards": { "scrap": [90, 120], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+      },
+      {
+        "id": "roost_perch_thug",
+        "name": "Perch Thug",
+        "type": "normal",
+        "health": 32,
+        "lesson": "Sustained Cover against a relentless basic attacker.",
+        "moves": [
+          { "id": "strike_9_a", "label": "Strike 9", "effects": ["damage(flock, 9)"] },
+          { "id": "strike_9_b", "label": "Strike 9", "effects": ["damage(flock, 9)"] },
+          { "id": "dig_in_cover", "label": "Dig In", "effects": ["gainCover(7)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["strike_9_a", "strike_9_b", "dig_in_cover"] },
+        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      },
+      {
+        "id": "roost_wind_shrike",
+        "name": "Wind Shrike",
+        "type": "normal",
+        "health": 34,
+        "lesson": "Open Sky pressure forces Guard discipline.",
+        "moves": [
+          { "id": "buffet_winded", "label": "Buffet", "effects": ["damage(flock, 6)", "applyWinded(flock, 1)"] },
+          { "id": "expose_open_sky", "label": "Expose", "effects": ["applyOpenSky(1)"] },
+          { "id": "dive_8", "label": "Dive 8", "effects": ["damage(flock, 8)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["buffet_winded", "expose_open_sky", "dive_8"] },
+        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      },
+      {
+        "id": "roost_tar_drifter",
+        "name": "Tar Drifter",
+        "type": "normal",
+        "health": 36,
+        "lesson": "Snags clog the draw under heavy follow-up.",
+        "moves": [
+          { "id": "smear_snag", "label": "Smear", "effects": ["damage(flock, 5)", "addSnagToDiscard(wet_feathers)"] },
+          { "id": "heavy_strike_12", "label": "Heavy Strike 12", "effects": ["damage(flock, 12)"] },
+          { "id": "hunker_cover", "label": "Hunker", "effects": ["gainCover(8)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["smear_snag", "heavy_strike_12", "hunker_cover"] },
+        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      },
+      {
+        "id": "roost_relay_falcon",
+        "name": "Relay Falcon",
+        "type": "normal",
+        "health": 38,
+        "lesson": "Punish telegraphed Heavy Strike with a winded setup.",
+        "moves": [
+          { "id": "mark_winded", "label": "Mark", "effects": ["applyWinded(flock, 1)", "nextAttackBonus(2)"] },
+          { "id": "heavy_strike_13", "label": "Heavy Strike 13", "effects": ["damage(flock, 13)"] },
+          { "id": "strike_8", "label": "Strike 8", "effects": ["damage(flock, 8)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["mark_winded", "heavy_strike_13", "strike_8"] },
+        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      },
+      {
+        "id": "roost_spire_sentinel",
+        "name": "Spire Sentinel",
+        "type": "normal",
+        "health": 40,
+        "lesson": "A walled defender that scales damage when you have no Cover.",
+        "moves": [
+          { "id": "bulwark_cover", "label": "Bulwark", "effects": ["gainCover(10)"] },
+          { "id": "spire_slam_10", "label": "Spire Slam 10", "effects": ["damage(flock, 10)", "if flockHasNoCover then damage(flock, 4)"] },
+          { "id": "watch_open_sky", "label": "Watch", "effects": ["applyOpenSky(1)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["bulwark_cover", "spire_slam_10", "watch_open_sky"] },
+        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      },
+      {
+        "id": "roost_kettle_gang",
+        "name": "Kettle Gang",
+        "type": "rival",
+        "health": 50,
+        "lesson": "Elite tempo: trade through winded and a snag while staying covered.",
+        "moves": [
+          { "id": "swarm_6_winded", "label": "Swarm 6", "effects": ["damage(flock, 6)", "applyWinded(flock, 1)"] },
+          { "id": "rally_cover", "label": "Rally", "effects": ["gainCover(10)"] },
+          { "id": "foul_line_snag", "label": "Foul Line", "effects": ["addSnagToDiscard(tangled_line)", "if flockOpenSky then damage(flock, 6)"] },
+          { "id": "heavy_strike_14", "label": "Heavy Strike 14", "effects": ["damage(flock, 14)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["swarm_6_winded", "rally_cover", "foul_line_snag", "heavy_strike_14"] },
+        "rewards": { "scrap": [70, 90], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+      },
+      {
+        "id": "roost_skyline_baron",
+        "name": "Skyline Baron",
+        "type": "rival",
+        "health": 50,
+        "lesson": "Elite Open Sky bully that bonuses into a heavy when you stay exposed.",
+        "moves": [
+          { "id": "decree_open_sky", "label": "Decree", "effects": ["applyOpenSky(1)", "nextAttackBonus(3)"] },
+          { "id": "talon_strike_11", "label": "Talon Strike 11", "effects": ["damage(flock, 11)"] },
+          { "id": "fortify_cover", "label": "Fortify", "effects": ["gainCover(9)"] },
+          { "id": "skyfall_9", "label": "Skyfall 9", "effects": ["damage(flock, 9)", "if flockOpenSky then applyWinded(flock, 1)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["decree_open_sky", "talon_strike_11", "fortify_cover", "skyfall_9"] },
+        "rewards": { "scrap": [70, 90], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+      },
+      {
+        "id": "roost_warden",
+        "name": "The Roost Warden",
+        "type": "boss",
+        "health": 72,
+        "fightLengthTarget": [8, 11],
+        "rewardScrap": 150,
+        "moves": [
+          { "id": "warden_opening", "label": "Warden's Toll", "effects": ["gainCover(10)", "if flockHasNoCover then addSnagToDiscard(bad_directions)"] },
+          { "id": "iron_strike_12", "label": "Iron Strike 12", "effects": ["damage(flock, 12)"] },
+          { "id": "skyfall_decree", "label": "Skyfall Decree", "effects": ["applyOpenSky(1)", "if isMolting then applyOpenSky(1)"] },
+          { "id": "bind_the_routes", "label": "Bind the Routes", "effects": ["damage(flock, 7)", "addSnagToDiscard(tangled_line)"] },
+          { "id": "warden_brace", "label": "Roost Brace", "effects": ["gainCover(9)", "nextAttackBonus(4)"] },
+          { "id": "final_signal_18", "label": "Final Signal 18", "effects": ["damage(flock, 18)", "if flockOpenSky then damage(flock, 5)"] },
+          { "id": "talon_volley_10", "label": "Talon Volley 10", "effects": ["damage(flock, 10)", "if flockCohesionBelowHalf then nextAttackBonus(3)"] }
+        ],
+        "attackPattern": { "type": "scripted", "moveIds": ["warden_opening", "iron_strike_12", "skyfall_decree", "bind_the_routes", "warden_brace", "final_signal_18", "talon_volley_10"], "loopFrom": 1 },
+        "rewards": {
+          "bossRouteMarkChoices": 3,
+          "rareCardChoices": 3,
+          "preen": 1,
+          "scrap": 150
+        }
+      }
+  ],
+  "encounters": [
+    {
+      "id": "enc_roost_perch_gang",
+      "name": "Perch Gang",
+      "mapId": "map_04_high_roost",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "Two enforcers hold the perch — sustained Cover or fast kills.",
+      "tags": ["multi", "cover"],
+      "enemies": ["roost_perch_thug", "roost_wind_shrike"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_roost_iron_talon",
+      "name": "The Iron Talon",
+      "mapId": "map_04_high_roost",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "Elite: an Iron Talon enforcer with a thug escort guards the roost.",
+      "tags": ["elite", "heavy", "multi"],
+      "enemies": ["roost_iron_talon", "roost_perch_thug"],
+      "rewardProfileId": "rival_standard"
+    },
+    {
+      "id": "enc_roost_perch_thug",
+      "name": "Perch Thug",
+      "mapId": "map_04_high_roost",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Sustained Cover against a relentless basic attacker.",
+      "tags": ["cover", "basic"],
+      "enemies": ["roost_perch_thug"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_roost_wind_shrike",
+      "name": "Wind Shrike",
+      "mapId": "map_04_high_roost",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Open Sky pressure forces Guard discipline.",
+      "tags": ["openSky", "winded"],
+      "enemies": ["roost_wind_shrike"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_roost_tar_drifter",
+      "name": "Tar Drifter",
+      "mapId": "map_04_high_roost",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "Snags clog the draw under heavy follow-up.",
+      "tags": ["snag", "heavy", "cover"],
+      "enemies": ["roost_tar_drifter"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_roost_relay_falcon",
+      "name": "Relay Falcon",
+      "mapId": "map_04_high_roost",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "Punish telegraphed Heavy Strike with a winded setup.",
+      "tags": ["heavy", "winded", "tempo"],
+      "enemies": ["roost_relay_falcon"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_roost_spire_sentinel",
+      "name": "Spire Sentinel",
+      "mapId": "map_04_high_roost",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "A walled defender that scales damage when you have no Cover.",
+      "tags": ["cover", "heavy", "openSky"],
+      "enemies": ["roost_spire_sentinel"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_roost_kettle_gang",
+      "name": "Kettle Gang",
+      "mapId": "map_04_high_roost",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "Elite tempo: trade through winded and a snag while staying covered.",
+      "tags": ["elite", "winded", "snag", "tempo"],
+      "enemies": ["roost_kettle_gang"],
+      "rewardProfileId": "rival_standard"
+    },
+    {
+      "id": "enc_roost_skyline_baron",
+      "name": "Skyline Baron",
+      "mapId": "map_04_high_roost",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "Elite Open Sky bully that bonuses into a heavy when you stay exposed.",
+      "tags": ["elite", "openSky", "heavy", "winded"],
+      "enemies": ["roost_skyline_baron"],
+      "rewardProfileId": "rival_standard"
+    },
+    {
+      "id": "enc_roost_warden",
+      "name": "The Roost Warden",
+      "mapId": "map_04_high_roost",
+      "nodeType": "boss",
+      "band": "boss",
+      "lesson": "Final exam: full build, Molt timing, Open Sky management, and snag clearing.",
+      "tags": ["boss", "cover", "openSky", "snag", "heavy", "molt"],
+      "enemies": ["roost_warden"],
+      "rewardProfileId": "boss_alpha"
+    }
+  ],
+  "signals": [
+    {
+      "id": "roost_final_chalk",
+      "title": "Final Chalk Junction",
+      "mapId": "map_04_high_roost",
+      "prompt": "The last unbound junction is here. Marking it ties the whole flyway together, but the climb out is exposed.",
+      "choices": [
+        { "key": "bind", "text": "Bind the junction.", "outcomes": ["loseCohesion(5)", "gainRouteMark(reopened_roofline)"] },
+        { "key": "reinforce", "text": "Reinforce with parts.", "requirements": ["scrapAtLeast(50)"], "lockedText": "Need 50 Scrap.", "outcomes": ["payScrap(50)", "gainRouteMark(wire_map)", "gainOpenSkyGuard(2)"] },
+        { "key": "push", "text": "Push on under Open Sky.", "outcomes": ["startNextCombatOpenSky()", "gainCacheReward()"] }
+      ]
+    },
+    {
+      "id": "roost_storm_window",
+      "title": "Storm Window",
+      "mapId": "map_04_high_roost",
+      "prompt": "A break in the weather offers a quiet landing, but a rival lookout is watching the approach to the Roost.",
+      "choices": [
+        { "key": "rest", "text": "Take the quiet landing.", "requirements": ["hasRouteMark(quiet_landing)"], "lockedText": "Need the Quiet Landing mark.", "outcomes": ["healCohesion(12)", "reduceNextOpenSky(2)"] },
+        { "key": "scout", "text": "Scout the lookout.", "outcomes": ["gainScrap(45)", "enemyCoverNextCombat(5)"] },
+        { "key": "shelter", "text": "Wait out the storm.", "outcomes": ["healCohesion(7)", "addSnagToDraw(wet_feathers)"] }
+      ]
+    },
+    {
+      "id": "roost_signal_cache",
+      "title": "Last Signal Cache",
+      "mapId": "map_04_high_roost",
+      "prompt": "A route-runner left a sealed cache wired to the old signal mast. Opening it could arm the flock for the Roost Warden.",
+      "choices": [
+        { "key": "open", "text": "Open the cache.", "outcomes": ["gainCacheReward()", "addSnagToDiscard(bad_directions)"] },
+        { "key": "trade", "text": "Trade for supplies.", "requirements": ["scrapAtLeast(40)"], "lockedText": "Need 40 Scrap.", "outcomes": ["payScrap(40)", "gainSupplyChoice(1)"] },
+        { "key": "prep", "text": "Prep for the climb.", "outcomes": ["preenCard(1)", "gainOpenSkyGuard(2)"] }
+      ]
+    },
+    {
+      "id": "roost_wind_breach",
+      "title": "Wind Breach",
+      "mapId": "map_04_high_roost",
+      "prompt": "A sudden updraft tears through your formation, scattering the flock. Some birds climb the current; others tumble down into the gutters.",
+      "choices": [
+        { "key": "ride_up", "text": "Ride the updraft toward the peak.", "outcomes": ["gainOpenSkyGuard(3)", "gainScrap(35)"] },
+        { "key": "drop_shelter", "text": "Drop into the shelter of the gutters.", "outcomes": ["healCohesion(8)", "gainRouteMark(random)"] },
+        { "key": "scatter_wild", "text": "Let the wind scatter you — maybe it finds loot.", "outcomes": ["gainSupply(random)", "addSnagToDraw(wet_feathers)"] }
+      ]
+    },
+    {
+      "id": "roost_caught_line",
+      "title": "Caught in Line",
+      "mapId": "map_04_high_roost",
+      "prompt": "Tangled fishing line drapes across the thermal. Unwinding it costs time and feathers, but the line itself might be useful.",
+      "choices": [
+        { "key": "push_through", "text": "Push through — we're fast enough.", "outcomes": ["loseCohesion(4)", "gainScrap(50)"] },
+        { "key": "gather_line", "text": "Gather the line carefully.", "requirements": ["cohesionAtLeast(22)"], "lockedText": "Need 22+ Cohesion.", "outcomes": ["gainRouteMark(patched_harness)", "gainSupplyChoice(1)", "gainScrap(20)"] },
+        { "key": "cut_and_run", "text": "Cut loose and run for cover.", "outcomes": ["addSnagToDiscard(tangled_line)", "gainScrap(25)"] }
+      ]
+    },
+    {
+      "id": "roost_molt_window",
+      "title": "Molt Window",
+      "mapId": "map_04_high_roost",
+      "prompt": "The air currents say you could Molt here — shed the old feathers, refresh the draw. But it is risky so close to the summit.",
+      "choices": [
+        { "key": "molt_now", "text": "Molt and refresh the deck.", "outcomes": ["releaseCard(1)", "addCard(randomCommon)", "loseCohesion(3)"] },
+        { "key": "save_molt", "text": "Bank your strength for the climb.", "requirements": ["cohesionAtLeast(20)"], "lockedText": "Need 20 Cohesion to bank it.", "outcomes": ["gainOpenSkyGuard(2)", "healMissingPct(50)"] },
+        { "key": "preen_in_flight", "text": "Preen a card mid-flight instead.", "outcomes": ["preenCard(1)", "gainScrap(20)"] }
+      ]
+    },
+    {
+      "id": "roost_perch_lookout",
+      "title": "Rival Perch Lookout",
+      "mapId": "map_04_high_roost",
+      "prompt": "A rival flock has claimed the high perch overlooking your route. They are watching the approach to the Warden's nest.",
+      "choices": [
+        { "key": "challenge", "text": "Challenge them for the perch.", "outcomes": ["enemyCoverNextCombat(6)", "gainScrap(60)"] },
+        { "key": "sneak_below", "text": "Sneak below their sightlines.", "outcomes": ["addSnagToDraw(bad_directions)", "reduceNextOpenSky(3)"] },
+        { "key": "trade_passage", "text": "Trade for safe passage.", "requirements": ["scrapAtLeast(55)"], "lockedText": "Need 55 Scrap.", "outcomes": ["payScrap(55)", "gainOpenSkyGuard(3)", "gainRouteMark(loose_change_tin)"] }
+      ]
+    },
+    {
+      "id": "roost_storm_lull",
+      "title": "Storm's Lull",
+      "mapId": "map_04_high_roost",
+      "prompt": "The storm pauses. Rain stops. The sky is perfectly still — too still. In these rare moments, the flock can rest or scavenge before the next front rolls in.",
+      "choices": [
+        { "key": "rest_deep", "text": "Rest deeply and recover.", "outcomes": ["healMissingPct(60)", "healCohesion(6)"] },
+        { "key": "quick_scavenge", "text": "Scavenge for cache rewards.", "outcomes": ["gainCacheReward()", "addSnagToDiscard(wet_feathers)"] },
+        { "key": "upgrade_cards", "text": "Preen a card while you can.", "requirements": ["scrapAtLeast(30)"], "lockedText": "Need 30 Scrap.", "outcomes": ["payScrap(30)", "preenCard(1)", "gainRouteMark(wire_map)"] }
+      ]
+    },
+    {
+      "id": "roost_warden_summons",
+      "title": "Warden's Summons Echoes",
+      "mapId": "map_04_high_roost",
+      "prompt": "A distant cry echoes down from the Warden's tower. The flock feels it — the final challenge is calling. You can answer now or gather your strength for the climb.",
+      "choices": [
+        { "key": "answer_call", "text": "Answer now — we're ready.", "outcomes": ["startNextCombatOpenSky()", "gainScrap(70)"] },
+        { "key": "steel_yourself", "text": "Build up before we climb.", "outcomes": ["addCard(chooseOneOfTwoCommon)", "gainOpenSkyGuard(1)", "loseCohesion(2)"] },
+        { "key": "approach_careful", "text": "Approach careful and covered.", "requirements": ["cohesionBelowPct(60)"], "lockedText": "Flock is too healthy (60%+ Cohesion).", "outcomes": ["healCohesion(10)", "gainRouteMark(rain_gutter)"] }
+      ]
+    }
+  ],
+  "routeMap": {
+    "id": "map_04_high_roost",
+    "name": "High Roost",
+    "index": 4,
+    "seed": null,
+    "entryNodeId": "m4_c0_street_opening",
+    "bossNodeId": "m4_c6_boss_warden",
+    "columns": [
+      ["m4_c0_street_opening"],
+      ["m4_c1_street_thug", "m4_c1_signal_chalk"],
+      ["m4_c2_basin_storm", "m4_c2_street_shrike", "m4_c2_market_roost"],
+      ["m4_c3_rival_kettle", "m4_c3_signal_window", "m4_c3_cache_mast"],
+      ["m4_c4_street_drifter", "m4_c4_rival_baron", "m4_c4_street_falcon"],
+      ["m4_c5_nest_final", "m4_c5_signal_cache", "m4_c5_street_sentinel"],
+      ["m4_c6_boss_warden"]
+    ],
+    "nodes": [
+      {
+        "id": "m4_c0_street_opening",
+        "column": 0,
+        "lane": 0,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_roost_perch_thug",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c1_street_thug",
+        "column": 1,
+        "lane": 0,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_roost_wind_shrike",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c1_signal_chalk",
+        "column": 1,
+        "lane": 1,
+        "type": "signal",
+        "label": "Signal",
+        "payloadId": "roost_final_chalk",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c2_basin_storm",
+        "column": 2,
+        "lane": 0,
+        "type": "basin",
+        "label": "Basin",
+        "payloadId": "basin_alpha",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c2_street_shrike",
+        "column": 2,
+        "lane": 1,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_roost_wind_shrike",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c2_market_roost",
+        "column": 2,
+        "lane": 2,
+        "type": "market",
+        "label": "Market",
+        "payloadId": "alpha_market",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c3_rival_kettle",
+        "column": 3,
+        "lane": 0,
+        "type": "rival",
+        "label": "Rival Crew",
+        "payloadId": "enc_roost_kettle_gang",
+        "risk": "high",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c3_signal_window",
+        "column": 3,
+        "lane": 1,
+        "type": "signal",
+        "label": "Signal",
+        "payloadId": "roost_storm_window",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c3_cache_mast",
+        "column": 3,
+        "lane": 2,
+        "type": "cache",
+        "label": "Rooftop Cache",
+        "payloadId": "alpha_rooftop_cache",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c4_street_drifter",
+        "column": 4,
+        "lane": 0,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_roost_tar_drifter",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c4_rival_baron",
+        "column": 4,
+        "lane": 1,
+        "type": "rival",
+        "label": "Rival Crew",
+        "payloadId": "enc_roost_skyline_baron",
+        "risk": "high",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c4_street_falcon",
+        "column": 4,
+        "lane": 2,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_roost_relay_falcon",
+        "risk": "high",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c5_nest_final",
+        "column": 5,
+        "lane": 0,
+        "type": "nest",
+        "label": "Nest",
+        "payloadId": "nest_alpha",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c5_signal_cache",
+        "column": 5,
+        "lane": 1,
+        "type": "signal",
+        "label": "Signal",
+        "payloadId": "roost_signal_cache",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c5_street_sentinel",
+        "column": 5,
+        "lane": 2,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_roost_spire_sentinel",
+        "risk": "high",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m4_c6_boss_warden",
+        "column": 6,
+        "lane": 0,
+        "type": "boss",
+        "label": "Boss",
+        "payloadId": "enc_roost_warden",
+        "risk": "boss",
+        "revealed": true,
+        "completed": false
+      }
+    ],
+    "edges": [
+      { "from": "m4_c0_street_opening", "to": "m4_c1_street_thug", "locked": false, "preview": "known" },
+      { "from": "m4_c0_street_opening", "to": "m4_c1_signal_chalk", "locked": false, "preview": "known" },
+      { "from": "m4_c1_street_thug", "to": "m4_c2_basin_storm", "locked": false, "preview": "known" },
+      { "from": "m4_c1_street_thug", "to": "m4_c2_street_shrike", "locked": false, "preview": "known" },
+      { "from": "m4_c1_signal_chalk", "to": "m4_c2_street_shrike", "locked": false, "preview": "known" },
+      { "from": "m4_c1_signal_chalk", "to": "m4_c2_market_roost", "locked": false, "preview": "known" },
+      { "from": "m4_c2_basin_storm", "to": "m4_c3_rival_kettle", "locked": false, "preview": "known" },
+      { "from": "m4_c2_basin_storm", "to": "m4_c3_signal_window", "locked": false, "preview": "known" },
+      { "from": "m4_c2_street_shrike", "to": "m4_c3_signal_window", "locked": false, "preview": "known" },
+      { "from": "m4_c2_street_shrike", "to": "m4_c3_cache_mast", "locked": false, "preview": "known" },
+      { "from": "m4_c2_market_roost", "to": "m4_c3_cache_mast", "locked": false, "preview": "known" },
+      { "from": "m4_c2_market_roost", "to": "m4_c3_signal_window", "locked": false, "preview": "known" },
+      { "from": "m4_c3_rival_kettle", "to": "m4_c4_street_drifter", "locked": false, "preview": "known" },
+      { "from": "m4_c3_rival_kettle", "to": "m4_c4_rival_baron", "locked": false, "preview": "known" },
+      { "from": "m4_c3_signal_window", "to": "m4_c4_rival_baron", "locked": false, "preview": "known" },
+      { "from": "m4_c3_signal_window", "to": "m4_c4_street_falcon", "locked": false, "preview": "known" },
+      { "from": "m4_c3_cache_mast", "to": "m4_c4_street_falcon", "locked": false, "preview": "known" },
+      { "from": "m4_c3_cache_mast", "to": "m4_c4_street_drifter", "locked": false, "preview": "known" },
+      { "from": "m4_c4_street_drifter", "to": "m4_c5_nest_final", "locked": false, "preview": "known" },
+      { "from": "m4_c4_street_drifter", "to": "m4_c5_signal_cache", "locked": false, "preview": "known" },
+      { "from": "m4_c4_rival_baron", "to": "m4_c5_signal_cache", "locked": false, "preview": "known" },
+      { "from": "m4_c4_rival_baron", "to": "m4_c5_nest_final", "locked": false, "preview": "known" },
+      { "from": "m4_c4_street_falcon", "to": "m4_c5_street_sentinel", "locked": false, "preview": "known" },
+      { "from": "m4_c4_street_falcon", "to": "m4_c5_signal_cache", "locked": false, "preview": "known" },
+      { "from": "m4_c5_nest_final", "to": "m4_c6_boss_warden", "locked": false, "preview": "known" },
+      { "from": "m4_c5_signal_cache", "to": "m4_c6_boss_warden", "locked": false, "preview": "known" },
+      { "from": "m4_c5_street_sentinel", "to": "m4_c6_boss_warden", "locked": false, "preview": "known" }
+    ]
+  }
+}

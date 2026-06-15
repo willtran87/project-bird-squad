@@ -1,0 +1,599 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/run-design-spec.md",
+    "docs/game/next-level-data-contracts.md"
+  ],
+  "mapProfile": {
+    "mapId": "map_03_signal_spires",
+    "thesis": "Restore warning calls and skyline signals by mastering tempo and reading multi-part Tells.",
+    "primaryTests": ["tempo", "Winded pressure", "Open Sky management", "Plumes/Quills sequencing"],
+    "preferredNodeTypes": ["street", "rival", "signal", "basin", "nest", "market", "cache", "boss"],
+    "encounterTags": ["winded", "openSky", "heavy", "tempo"],
+    "rewardBias": ["tempo", "Open Sky Guard", "Route Marks"],
+    "bossPrepHints": [
+      "Keep Open Sky Guard ready before the Beacon-Breaker's Molt-triggered calls.",
+      "Spend Wingbeat early to outrun stacking Winded Tells.",
+      "Sequence Plumes and Quills so a single big turn lands before the next telegraph resolves."
+    ]
+  },
+  "enemies": [
+      {
+        "id": "spire_signal_marshal",
+        "name": "Signal Marshal",
+        "type": "elite",
+        "health": 48,
+        "lesson": "Elite: charges a beacon, then unloads a heavy strike.",
+        "moves": [
+          { "id": "marshal_volley_9", "label": "Volley 9", "effects": ["damage(flock, 9)", "applyWinded(flock, 1)"] },
+          { "id": "marshal_charge", "label": "Charge Beacon", "effects": ["gainCover(8)", "nextAttackBonus(4)"] },
+          { "id": "marshal_brace", "label": "Formation Brace", "effects": ["gainCover(10)"] },
+          { "id": "marshal_dive_14", "label": "Dive Strike 14", "effects": ["damage(flock, 14)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["marshal_volley_9", "marshal_charge", "marshal_brace", "marshal_dive_14"] },
+        "rewards": { "scrap": [85, 110], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+      },
+      {
+        "id": "spire_relay_starling",
+        "name": "Relay Starling",
+        "type": "normal",
+        "health": 28,
+        "lesson": "Read a two-part Tell that adds Winded after damage.",
+        "moves": [
+          { "id": "relay_jab_6", "label": "Relay Jab 6", "effects": ["damage(flock, 6)", "applyWinded(flock, 1)"] },
+          { "id": "settle_cover", "label": "Settle", "effects": ["gainCover(5)"] },
+          { "id": "quick_peck_5", "label": "Quick Peck 5", "effects": ["damage(flock, 5)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["relay_jab_6", "settle_cover", "quick_peck_5"] },
+        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      },
+      {
+        "id": "spire_aerial_kite",
+        "name": "Aerial Kite",
+        "type": "normal",
+        "health": 30,
+        "lesson": "Punish Open Sky telegraphs and keep tempo.",
+        "moves": [
+          { "id": "kite_dive_7", "label": "Kite Dive 7", "effects": ["damage(flock, 7)"] },
+          { "id": "updraft_call", "label": "Updraft Call", "effects": ["applyOpenSky(1)", "nextAttackBonus(3)"] },
+          { "id": "swoop_8", "label": "Swoop 8", "effects": ["damage(flock, 8)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["updraft_call", "swoop_8", "kite_dive_7"] },
+        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      },
+      {
+        "id": "spire_tower_pigeon",
+        "name": "Tower Pigeon",
+        "type": "normal",
+        "health": 32,
+        "lesson": "Survive a Heavy Strike that hits harder when you lack Cover.",
+        "moves": [
+          { "id": "roost_brace_7", "label": "Roost Brace", "effects": ["gainCover(7)"] },
+          { "id": "tower_strike_9", "label": "Tower Strike 9", "effects": ["damage(flock, 9)", "if flockHasNoCover then damage(flock, 4)"] },
+          { "id": "flutter_5", "label": "Flutter 5", "effects": ["damage(flock, 5)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["roost_brace_7", "tower_strike_9", "flutter_5"] },
+        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      },
+      {
+        "id": "spire_static_swift",
+        "name": "Static Swift",
+        "type": "normal",
+        "health": 30,
+        "lesson": "Manage tempo against a fast bird that builds toward a bonus strike.",
+        "moves": [
+          { "id": "static_nip_5", "label": "Static Nip 5", "effects": ["damage(flock, 5)", "applyWinded(flock, 1)"] },
+          { "id": "charge_call", "label": "Charge Call", "effects": ["nextAttackBonus(4)"] },
+          { "id": "dart_7", "label": "Dart 7", "effects": ["damage(flock, 7)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["static_nip_5", "charge_call", "dart_7"] },
+        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      },
+      {
+        "id": "spire_beacon_grackle",
+        "name": "Beacon Grackle",
+        "type": "normal",
+        "health": 36,
+        "lesson": "Respect a heavy multi-part Tell that punishes a thin Molt.",
+        "moves": [
+          { "id": "beacon_screech_6", "label": "Beacon Screech 6", "effects": ["damage(flock, 6)", "if isMolting then applyOpenSky(1)"] },
+          { "id": "hunker_cover", "label": "Hunker", "effects": ["gainCover(6)"] },
+          { "id": "heavy_toll_12", "label": "Heavy Toll 12", "effects": ["damage(flock, 12)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["beacon_screech_6", "hunker_cover", "heavy_toll_12"] },
+        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      },
+      {
+        "id": "spire_aerial_corps",
+        "name": "Aerial Signal Corps",
+        "type": "rival",
+        "health": 44,
+        "lesson": "Optional elite that stacks Winded and Open Sky pressure together.",
+        "moves": [
+          { "id": "corps_volley_7", "label": "Corps Volley 7", "effects": ["damage(flock, 7)", "applyWinded(flock, 1)"] },
+          { "id": "skyline_call", "label": "Skyline Call", "effects": ["applyOpenSky(1)", "nextAttackBonus(3)"] },
+          { "id": "formation_brace_9", "label": "Formation Brace", "effects": ["gainCover(9)"] },
+          { "id": "dive_strike_13", "label": "Dive Strike 13", "effects": ["damage(flock, 13)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["corps_volley_7", "skyline_call", "formation_brace_9", "dive_strike_13"] },
+        "rewards": { "scrap": [70, 90], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+      },
+      {
+        "id": "spire_tollkeeper_kestrel",
+        "name": "Tollkeeper Kestrel",
+        "type": "rival",
+        "health": 44,
+        "lesson": "Optional elite that punishes slow tempo and missed openings.",
+        "moves": [
+          { "id": "toll_rake_8", "label": "Toll Rake 8", "effects": ["damage(flock, 8)"] },
+          { "id": "winded_clutch", "label": "Winded Clutch", "effects": ["applyWinded(flock, 2)"] },
+          { "id": "snag_throw", "label": "Snag Throw", "effects": ["damage(flock, 5)", "addSnagToDiscard(wet_feathers)"] },
+          { "id": "talon_drop_12", "label": "Talon Drop 12", "effects": ["damage(flock, 12)", "if notHitThisTurn then nextAttackBonus(4)"] }
+        ],
+        "attackPattern": { "type": "cycle", "moveIds": ["toll_rake_8", "winded_clutch", "snag_throw", "talon_drop_12"] },
+        "rewards": { "scrap": [70, 90], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+      },
+      {
+        "id": "spire_beacon_breaker",
+        "name": "The Beacon-Breaker",
+        "type": "boss",
+        "health": 60,
+        "fightLengthTarget": [7, 9],
+        "rewardScrap": 120,
+        "moves": [
+          { "id": "open_the_spire", "label": "Open the Spire", "effects": ["gainCover(8)", "if flockHasNoCover then addSnagToDiscard(bad_directions)"] },
+          { "id": "warning_call", "label": "Warning Call 7", "effects": ["damage(flock, 7)", "applyWinded(flock, 1)"] },
+          { "id": "skyline_flare", "label": "Skyline Flare 6", "effects": ["damage(flock, 6)", "if isMolting then applyOpenSky(1)"] },
+          { "id": "charge_the_beacon", "label": "Charge the Beacon", "effects": ["gainCover(6)", "nextAttackBonus(4)"] },
+          { "id": "spire_toll_8", "label": "Spire Toll 8", "effects": ["damage(flock, 8)", "if flockOpenSky then applyWinded(flock, 1)"] },
+          { "id": "beacon_break_14", "label": "Beacon Break 14", "effects": ["damage(flock, 14)"] }
+        ],
+        "attackPattern": { "type": "scripted", "moveIds": ["open_the_spire", "warning_call", "skyline_flare", "charge_the_beacon", "spire_toll_8", "beacon_break_14"], "loopFrom": 1 },
+        "rewards": {
+          "bossRouteMarkChoices": 3,
+          "rareCardChoices": 3,
+          "preen": 1,
+          "scrap": 120,
+          "unlocks": "map_04_high_roost"
+        }
+      }
+  ],
+  "encounters": [
+    {
+      "id": "enc_spire_relay_swarm",
+      "name": "Relay Swarm",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "Two flyers stagger their Tells — answer the bigger threat first.",
+      "tags": ["multi", "winded"],
+      "enemies": ["spire_relay_starling", "spire_aerial_kite"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_spire_signal_marshal",
+      "name": "The Signal Marshal",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "Elite: a Signal Marshal with a starling wingman charges the beacon.",
+      "tags": ["elite", "heavy", "multi"],
+      "enemies": ["spire_signal_marshal", "spire_relay_starling"],
+      "rewardProfileId": "rival_standard"
+    },
+    {
+      "id": "enc_spire_relay_starling",
+      "name": "Relay Starling",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "street",
+      "band": "weak",
+      "lesson": "Read a two-part Tell that adds Winded after damage.",
+      "tags": ["winded", "tempo"],
+      "enemies": ["spire_relay_starling"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_spire_aerial_kite",
+      "name": "Aerial Kite",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Punish Open Sky telegraphs and keep tempo.",
+      "tags": ["openSky", "tempo"],
+      "enemies": ["spire_aerial_kite"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_spire_tower_pigeon",
+      "name": "Tower Pigeon",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Survive a Heavy Strike that hits harder when you lack Cover.",
+      "tags": ["heavy", "cover"],
+      "enemies": ["spire_tower_pigeon"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_spire_static_swift",
+      "name": "Static Swift",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Manage tempo against a fast bird that builds toward a bonus strike.",
+      "tags": ["tempo", "winded"],
+      "enemies": ["spire_static_swift"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_spire_beacon_grackle",
+      "name": "Beacon Grackle",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "Respect a heavy multi-part Tell that punishes a thin Molt.",
+      "tags": ["heavy", "openSky", "molt"],
+      "enemies": ["spire_beacon_grackle"],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_spire_aerial_corps",
+      "name": "Aerial Signal Corps",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "Optional elite that stacks Winded and Open Sky pressure together.",
+      "tags": ["winded", "openSky", "elite"],
+      "enemies": ["spire_aerial_corps"],
+      "rewardProfileId": "rival_standard"
+    },
+    {
+      "id": "enc_spire_tollkeeper_kestrel",
+      "name": "Tollkeeper Kestrel",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "Optional elite that punishes slow tempo and missed openings.",
+      "tags": ["heavy", "winded", "snag", "elite"],
+      "enemies": ["spire_tollkeeper_kestrel"],
+      "rewardProfileId": "rival_standard"
+    },
+    {
+      "id": "enc_spire_beacon_breaker",
+      "name": "The Beacon-Breaker",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "boss",
+      "band": "boss",
+      "lesson": "Tests tempo, multi-part Tells, and Open Sky restraint during Molt.",
+      "tags": ["boss", "winded", "openSky", "tempo"],
+      "enemies": ["spire_beacon_breaker"],
+      "rewardProfileId": "boss_alpha"
+    }
+  ],
+  "signals": [
+    {
+      "id": "spire_dead_beacon",
+      "title": "Dead Beacon",
+      "mapId": "map_03_signal_spires",
+      "prompt": "A burned-out skyline beacon could be relit to mark the route, but climbing the spire leaves the flock exposed.",
+      "choices": [
+        { "key": "relight", "text": "Relight the beacon.", "requirements": ["scrapAtLeast(40)"], "lockedText": "Need 40 Scrap.", "outcomes": ["payScrap(40)", "gainRouteMark(wire_map)"] },
+        { "key": "scavenge", "text": "Scavenge the wiring.", "outcomes": ["gainScrap(55)", "startNextCombatOpenSky()"] },
+        { "key": "reveal", "text": "Scout from the top.", "outcomes": ["gainScrap(35)", "addSnagToDiscard(bad_directions)"] }
+      ]
+    },
+    {
+      "id": "spire_crossed_wires",
+      "title": "Crossed Wires",
+      "mapId": "map_03_signal_spires",
+      "prompt": "Tangled signal wires hum across the gap. Untangling them takes time, but a quiet landing could ease the next exposed crossing.",
+      "choices": [
+        { "key": "untangle", "text": "Untangle the wires.", "outcomes": ["loseCohesion(4)", "gainRouteMark(quiet_landing)"] },
+        { "key": "guard", "text": "Rig an Open Sky guard line.", "outcomes": ["gainOpenSkyGuard(2)", "reduceNextOpenSky(1)"] },
+        { "key": "cut", "text": "Cut and sell the wire.", "outcomes": ["gainScrap(35)", "addSnagToDraw(tangled_line)"] }
+      ]
+    },
+    {
+      "id": "spire_warning_caller",
+      "title": "Warning Caller",
+      "mapId": "map_03_signal_spires",
+      "prompt": "A lone caller still keeps the old warning songs. It will teach a sharper opening cry in exchange for help or supplies.",
+      "choices": [
+        { "key": "learn", "text": "Learn the call.", "outcomes": ["addCard(randomCommonPlumesOrQuills)", "loseCohesion(3)"] },
+        { "key": "supply", "text": "Trade supplies for guard tips.", "outcomes": ["gainSupplyChoice(1)", "enemyCoverNextCombat(4)"] },
+        { "key": "preen", "text": "Practice the song together.", "outcomes": ["preenCard(1)", "addSnagToDiscard(wet_feathers)"] }
+      ]
+    },
+    {
+      "id": "spire_static_nest",
+      "title": "Static Nest",
+      "mapId": "map_03_signal_spires",
+      "prompt": "A nest wrapped in crackling static interference. Clearing it might restore a lost route mark — or it could scramble your deck.",
+      "choices": [
+        { "key": "clear_static", "text": "Clear the static carefully.", "outcomes": ["gainRouteMark(rain_gutter)", "gainScrap(20)"] },
+        { "key": "disrupt", "text": "Blast through with raw power.", "requirements": ["cohesionAtLeast(20)"], "lockedText": "Need 20 Cohesion.", "outcomes": ["loseCohesion(6)", "gainRouteMark(loose_change_tin)", "preenCard(1)"] },
+        { "key": "ignore", "text": "Leave it be.", "outcomes": ["gainScrap(35)"] }
+      ]
+    },
+    {
+      "id": "spire_fading_mark",
+      "title": "Fading Route Mark",
+      "mapId": "map_03_signal_spires",
+      "prompt": "A weathered sign flickers with the last traces of an old route mark. You could preserve it, trade it for scrap, or let it fade and find your own path.",
+      "choices": [
+        { "key": "preserve", "text": "Preserve the sign.", "outcomes": ["gainRouteMark(patched_harness)"] },
+        { "key": "salvage", "text": "Strip it for copper.", "outcomes": ["gainScrap(50)", "addSnagToDiscard(tangled_line)"] },
+        { "key": "replace", "text": "Mark it with your own route.", "requirements": ["scrapAtLeast(30)"], "lockedText": "Need 30 Scrap.", "outcomes": ["payScrap(30)", "gainRouteMark(wire_map)"] }
+      ]
+    },
+    {
+      "id": "spire_wind_shear",
+      "title": "Wind Shear Passage",
+      "mapId": "map_03_signal_spires",
+      "prompt": "Brutal wind shear cuts across the spire gap. Toughen the flock now, or accept the wind and land stronger afterward.",
+      "choices": [
+        { "key": "brace", "text": "Brace for impact.", "outcomes": ["loseCohesion(5)", "gainOpenSkyGuard(3)", "gainScrap(25)"] },
+        { "key": "gamble_wind", "text": "Dive through unguarded.", "outcomes": ["gainScrap(60)", "startNextCombatOpenSky()"] },
+        { "key": "circle", "text": "Circle around (slower).", "outcomes": ["reduceNextOpenSky(2)", "gainScrap(15)"] }
+      ]
+    },
+    {
+      "id": "spire_picker_roost",
+      "title": "Picker's Roost",
+      "mapId": "map_03_signal_spires",
+      "prompt": "A roost full of shiny things: scrap, supplies, cards. You have time for one haul before the owner returns.",
+      "choices": [
+        { "key": "grab_card", "text": "Pocket a card.", "outcomes": ["addCard(randomCommon)", "loseCohesion(2)"] },
+        { "key": "supply_haul", "text": "Fill your supply pouch.", "outcomes": ["gainSupplyChoice(1)", "gainScrap(20)"] },
+        { "key": "treasure_chest", "text": "Drag the whole chest.", "requirements": ["cohesionAtLeast(18)"], "lockedText": "Need 18 Cohesion.", "outcomes": ["loseCohesion(6)", "gainCacheReward()", "gainScrap(40)"] }
+      ]
+    },
+    {
+      "id": "spire_healer_refuge",
+      "title": "Healer's Refuge",
+      "mapId": "map_03_signal_spires",
+      "prompt": "An old healer still tends to injured birds in a sheltered tower alcove. Sanctuary, but at a cost.",
+      "choices": [
+        { "key": "rest", "text": "Rest and recover.", "outcomes": ["healCohesion(12)"] },
+        { "key": "preach", "text": "Trade healing tips for guidance.", "requirements": ["hasSupplySlot()"], "lockedText": "Need a free supply slot.", "outcomes": ["healMissingPct(50)", "payScrap(20)"] },
+        { "key": "apprentice", "text": "Learn her remedy — and her story.", "outcomes": ["healCohesion(6)", "releaseCard(1)", "addCard(randomCommonPlumesOrQuills)", "payScrap(15)"] }
+      ]
+    },
+    {
+      "id": "spire_toll_gambit",
+      "title": "The Toll Gambit",
+      "mapId": "map_03_signal_spires",
+      "prompt": "A figure at the tower crossing collects tolls — payment or peril. Most birds pay. Some don't make it across.",
+      "choices": [
+        { "key": "pay_toll", "text": "Pay the toll in Scrap.", "requirements": ["scrapAtLeast(45)"], "lockedText": "Need 45 Scrap.", "outcomes": ["payScrap(45)", "gainOpenSkyGuard(2)"] },
+        { "key": "slip_by", "text": "Slip by unnoticed (risky).", "outcomes": ["gainScrap(70)", "enemyCoverNextCombat(6)"] },
+        { "key": "bargain", "text": "Offer a card instead.", "outcomes": ["releaseCard(1)", "gainRouteMark(random)"] }
+      ]
+    }
+  ],
+  "routeMap": {
+    "id": "map_03_signal_spires",
+    "name": "Signal Spires",
+    "index": 3,
+    "seed": null,
+    "entryNodeId": "m3_c0_street_relay",
+    "bossNodeId": "m3_c6_boss_beacon_breaker",
+    "columns": [
+      ["m3_c0_street_relay"],
+      ["m3_c1_street_kite", "m3_c1_signal_beacon"],
+      ["m3_c2_basin_gutter", "m3_c2_nest_spire", "m3_c2_street_pigeon"],
+      ["m3_c3_rival_corps", "m3_c3_market_spire", "m3_c3_cache_antenna"],
+      ["m3_c4_street_swift", "m3_c4_rival_kestrel", "m3_c4_signal_wires"],
+      ["m3_c5_basin_final", "m3_c5_nest_final", "m3_c5_street_grackle"],
+      ["m3_c6_boss_beacon_breaker"]
+    ],
+    "nodes": [
+      {
+        "id": "m3_c0_street_relay",
+        "column": 0,
+        "lane": 0,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_spire_relay_starling",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c1_street_kite",
+        "column": 1,
+        "lane": 0,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_spire_aerial_kite",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c1_signal_beacon",
+        "column": 1,
+        "lane": 1,
+        "type": "signal",
+        "label": "Signal",
+        "payloadId": "spire_dead_beacon",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c2_basin_gutter",
+        "column": 2,
+        "lane": 0,
+        "type": "basin",
+        "label": "Basin",
+        "payloadId": "basin_alpha",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c2_nest_spire",
+        "column": 2,
+        "lane": 1,
+        "type": "nest",
+        "label": "Nest",
+        "payloadId": "nest_alpha",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c2_street_pigeon",
+        "column": 2,
+        "lane": 2,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_spire_tower_pigeon",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c3_rival_corps",
+        "column": 3,
+        "lane": 0,
+        "type": "rival",
+        "label": "Rival Crew",
+        "payloadId": "enc_spire_aerial_corps",
+        "risk": "high",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c3_market_spire",
+        "column": 3,
+        "lane": 1,
+        "type": "market",
+        "label": "Market",
+        "payloadId": "alpha_market",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c3_cache_antenna",
+        "column": 3,
+        "lane": 2,
+        "type": "cache",
+        "label": "Rooftop Cache",
+        "payloadId": "alpha_rooftop_cache",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c4_street_swift",
+        "column": 4,
+        "lane": 0,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_spire_static_swift",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c4_rival_kestrel",
+        "column": 4,
+        "lane": 1,
+        "type": "rival",
+        "label": "Rival Crew",
+        "payloadId": "enc_spire_tollkeeper_kestrel",
+        "risk": "high",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c4_signal_wires",
+        "column": 4,
+        "lane": 2,
+        "type": "signal",
+        "label": "Signal",
+        "payloadId": "spire_crossed_wires",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c5_basin_final",
+        "column": 5,
+        "lane": 0,
+        "type": "basin",
+        "label": "Basin",
+        "payloadId": "basin_alpha",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c5_nest_final",
+        "column": 5,
+        "lane": 1,
+        "type": "nest",
+        "label": "Nest",
+        "payloadId": "nest_alpha",
+        "risk": "low",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c5_street_grackle",
+        "column": 5,
+        "lane": 2,
+        "type": "street",
+        "label": "Street Encounter",
+        "payloadId": "enc_spire_beacon_grackle",
+        "risk": "medium",
+        "revealed": true,
+        "completed": false
+      },
+      {
+        "id": "m3_c6_boss_beacon_breaker",
+        "column": 6,
+        "lane": 0,
+        "type": "boss",
+        "label": "Boss",
+        "payloadId": "enc_spire_beacon_breaker",
+        "risk": "boss",
+        "revealed": true,
+        "completed": false
+      }
+    ],
+    "edges": [
+      { "from": "m3_c0_street_relay", "to": "m3_c1_street_kite", "locked": false, "preview": "known" },
+      { "from": "m3_c0_street_relay", "to": "m3_c1_signal_beacon", "locked": false, "preview": "known" },
+      { "from": "m3_c1_street_kite", "to": "m3_c2_basin_gutter", "locked": false, "preview": "known" },
+      { "from": "m3_c1_street_kite", "to": "m3_c2_nest_spire", "locked": false, "preview": "known" },
+      { "from": "m3_c1_signal_beacon", "to": "m3_c2_nest_spire", "locked": false, "preview": "known" },
+      { "from": "m3_c1_signal_beacon", "to": "m3_c2_street_pigeon", "locked": false, "preview": "known" },
+      { "from": "m3_c2_basin_gutter", "to": "m3_c3_rival_corps", "locked": false, "preview": "known" },
+      { "from": "m3_c2_basin_gutter", "to": "m3_c3_market_spire", "locked": false, "preview": "known" },
+      { "from": "m3_c2_nest_spire", "to": "m3_c3_market_spire", "locked": false, "preview": "known" },
+      { "from": "m3_c2_nest_spire", "to": "m3_c3_cache_antenna", "locked": false, "preview": "known" },
+      { "from": "m3_c2_street_pigeon", "to": "m3_c3_rival_corps", "locked": false, "preview": "known" },
+      { "from": "m3_c2_street_pigeon", "to": "m3_c3_cache_antenna", "locked": false, "preview": "known" },
+      { "from": "m3_c3_rival_corps", "to": "m3_c4_street_swift", "locked": false, "preview": "known" },
+      { "from": "m3_c3_rival_corps", "to": "m3_c4_rival_kestrel", "locked": false, "preview": "known" },
+      { "from": "m3_c3_market_spire", "to": "m3_c4_rival_kestrel", "locked": false, "preview": "known" },
+      { "from": "m3_c3_market_spire", "to": "m3_c4_signal_wires", "locked": false, "preview": "known" },
+      { "from": "m3_c3_cache_antenna", "to": "m3_c4_signal_wires", "locked": false, "preview": "known" },
+      { "from": "m3_c3_cache_antenna", "to": "m3_c4_street_swift", "locked": false, "preview": "known" },
+      { "from": "m3_c4_street_swift", "to": "m3_c5_basin_final", "locked": false, "preview": "known" },
+      { "from": "m3_c4_street_swift", "to": "m3_c5_street_grackle", "locked": false, "preview": "known" },
+      { "from": "m3_c4_rival_kestrel", "to": "m3_c5_basin_final", "locked": false, "preview": "known" },
+      { "from": "m3_c4_rival_kestrel", "to": "m3_c5_nest_final", "locked": false, "preview": "known" },
+      { "from": "m3_c4_signal_wires", "to": "m3_c5_nest_final", "locked": false, "preview": "known" },
+      { "from": "m3_c4_signal_wires", "to": "m3_c5_street_grackle", "locked": false, "preview": "known" },
+      { "from": "m3_c5_basin_final", "to": "m3_c6_boss_beacon_breaker", "locked": false, "preview": "known" },
+      { "from": "m3_c5_nest_final", "to": "m3_c6_boss_beacon_breaker", "locked": false, "preview": "known" },
+      { "from": "m3_c5_street_grackle", "to": "m3_c6_boss_beacon_breaker", "locked": false, "preview": "known" }
+    ]
+  }
+}

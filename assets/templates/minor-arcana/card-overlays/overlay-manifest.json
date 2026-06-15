@@ -1,0 +1,480 @@
+{
+  "version": "0.1",
+  "generatedBy": "tools/generate-minor-card-overlays.mjs",
+  "purpose": "Deterministic border-and-title overlays for border-first Minor Arcana generation.",
+  "canvas": {
+    "width": 1024,
+    "height": 1536
+  },
+  "geometry": {
+    "outer": {
+      "x": 32,
+      "y": 32,
+      "width": 960,
+      "height": 1472,
+      "rx": 28
+    },
+    "inner": {
+      "x": 58,
+      "y": 58,
+      "width": 908,
+      "height": 1420,
+      "rx": 22
+    },
+    "imageWindow": {
+      "x": 104,
+      "y": 164,
+      "width": 816,
+      "height": 1098
+    },
+    "titleCartouche": {
+      "x": 154,
+      "y": 1310,
+      "width": 716,
+      "height": 112,
+      "rx": 32
+    },
+    "topMedallion": {
+      "cx": 512,
+      "cy": 92,
+      "r": 46
+    },
+    "cornerMedallions": [
+      {
+        "cx": 88,
+        "cy": 88,
+        "r": 38
+      },
+      {
+        "cx": 936,
+        "cy": 88,
+        "r": 38
+      },
+      {
+        "cx": 88,
+        "cy": 1448,
+        "r": 38
+      },
+      {
+        "cx": 936,
+        "cy": 1448,
+        "r": 38
+      }
+    ],
+    "sideRails": [
+      {
+        "x": 60,
+        "y": 176,
+        "width": 46,
+        "height": 1090,
+        "rx": 18
+      },
+      {
+        "x": 918,
+        "y": 176,
+        "width": 46,
+        "height": 1090,
+        "rx": 18
+      }
+    ]
+  },
+  "rules": [
+    "The center illustration must stay inside imageWindow.",
+    "The SVG overlay owns the border, medallions, side rails, title cartouche, and readable title text.",
+    "The image model should not generate card borders or title text."
+  ],
+  "cards": [
+    {
+      "cardId": "wands_ace",
+      "suit": "Plumes",
+      "title": "Ace of Plumes",
+      "overlay": "assets/templates/minor-arcana/card-overlays/plumes/wands_ace.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-wands.json"
+    },
+    {
+      "cardId": "wands_02",
+      "suit": "Plumes",
+      "title": "Two of Plumes",
+      "overlay": "assets/templates/minor-arcana/card-overlays/plumes/wands_02.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-wands.json"
+    },
+    {
+      "cardId": "wands_03",
+      "suit": "Plumes",
+      "title": "Three of Plumes",
+      "overlay": "assets/templates/minor-arcana/card-overlays/plumes/wands_03.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-wands.json"
+    },
+    {
+      "cardId": "wands_04",
+      "suit": "Plumes",
+      "title": "Four of Plumes",
+      "overlay": "assets/templates/minor-arcana/card-overlays/plumes/wands_04.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-wands.json"
+    },
+    {
+      "cardId": "wands_05",
+      "suit": "Plumes",
+      "title": "Five of Plumes",
+      "overlay": "assets/templates/minor-arcana/card-overlays/plumes/wands_05.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-wands.json"
+    },
+    {
+      "cardId": "wands_06",
+      "suit": "Plumes",
+      "title": "Six of Plumes",
+      "overlay": "assets/templates/minor-arcana/card-overlays/plumes/wands_06.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-wands.json"
+    },
+    {
+      "cardId": "wands_07",
+      "suit": "Plumes",
+      "title": "Seven of Plumes",
+      "overlay": "assets/templates/minor-arcana/card-overlays/plumes/wands_07.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-wands.json"
+    },
+    {
+      "cardId": "wands_08",
+      "suit": "Plumes",
+      "title": "Eight of Plumes",
+      "overlay": "assets/templates/minor-arcana/card-overlays/plumes/wands_08.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-wands.json"
+    },
+    {
+      "cardId": "wands_09",
+      "suit": "Plumes",
+      "title": "Nine of Plumes",
+      "overlay": "assets/templates/minor-arcana/card-overlays/plumes/wands_09.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-wands.json"
+    },
+    {
+      "cardId": "wands_10",
+      "suit": "Plumes",
+      "title": "Ten of Plumes",
+      "overlay": "assets/templates/minor-arcana/card-overlays/plumes/wands_10.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-wands.json"
+    },
+    {
+      "cardId": "wands_fledgling",
+      "suit": "Plumes",
+      "title": "Fledgling of Plumes",
+      "overlay": "assets/templates/minor-arcana/card-overlays/plumes/wands_fledgling.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-wands.json"
+    },
+    {
+      "cardId": "wands_outrider",
+      "suit": "Plumes",
+      "title": "Outrider of Plumes",
+      "overlay": "assets/templates/minor-arcana/card-overlays/plumes/wands_outrider.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-wands.json"
+    },
+    {
+      "cardId": "wands_matron",
+      "suit": "Plumes",
+      "title": "Matron of Plumes",
+      "overlay": "assets/templates/minor-arcana/card-overlays/plumes/wands_matron.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-wands.json"
+    },
+    {
+      "cardId": "wands_elder",
+      "suit": "Plumes",
+      "title": "Elder of Plumes",
+      "overlay": "assets/templates/minor-arcana/card-overlays/plumes/wands_elder.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-wands.json"
+    },
+    {
+      "cardId": "cups_ace",
+      "suit": "Basins",
+      "title": "Ace of Basins",
+      "overlay": "assets/templates/minor-arcana/card-overlays/basins/cups_ace.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-cups.json"
+    },
+    {
+      "cardId": "cups_02",
+      "suit": "Basins",
+      "title": "Two of Basins",
+      "overlay": "assets/templates/minor-arcana/card-overlays/basins/cups_02.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-cups.json"
+    },
+    {
+      "cardId": "cups_03",
+      "suit": "Basins",
+      "title": "Three of Basins",
+      "overlay": "assets/templates/minor-arcana/card-overlays/basins/cups_03.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-cups.json"
+    },
+    {
+      "cardId": "cups_04",
+      "suit": "Basins",
+      "title": "Four of Basins",
+      "overlay": "assets/templates/minor-arcana/card-overlays/basins/cups_04.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-cups.json"
+    },
+    {
+      "cardId": "cups_05",
+      "suit": "Basins",
+      "title": "Five of Basins",
+      "overlay": "assets/templates/minor-arcana/card-overlays/basins/cups_05.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-cups.json"
+    },
+    {
+      "cardId": "cups_06",
+      "suit": "Basins",
+      "title": "Six of Basins",
+      "overlay": "assets/templates/minor-arcana/card-overlays/basins/cups_06.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-cups.json"
+    },
+    {
+      "cardId": "cups_07",
+      "suit": "Basins",
+      "title": "Seven of Basins",
+      "overlay": "assets/templates/minor-arcana/card-overlays/basins/cups_07.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-cups.json"
+    },
+    {
+      "cardId": "cups_08",
+      "suit": "Basins",
+      "title": "Eight of Basins",
+      "overlay": "assets/templates/minor-arcana/card-overlays/basins/cups_08.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-cups.json"
+    },
+    {
+      "cardId": "cups_09",
+      "suit": "Basins",
+      "title": "Nine of Basins",
+      "overlay": "assets/templates/minor-arcana/card-overlays/basins/cups_09.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-cups.json"
+    },
+    {
+      "cardId": "cups_10",
+      "suit": "Basins",
+      "title": "Ten of Basins",
+      "overlay": "assets/templates/minor-arcana/card-overlays/basins/cups_10.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-cups.json"
+    },
+    {
+      "cardId": "cups_fledgling",
+      "suit": "Basins",
+      "title": "Fledgling of Basins",
+      "overlay": "assets/templates/minor-arcana/card-overlays/basins/cups_fledgling.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-cups.json"
+    },
+    {
+      "cardId": "cups_outrider",
+      "suit": "Basins",
+      "title": "Outrider of Basins",
+      "overlay": "assets/templates/minor-arcana/card-overlays/basins/cups_outrider.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-cups.json"
+    },
+    {
+      "cardId": "cups_matron",
+      "suit": "Basins",
+      "title": "Matron of Basins",
+      "overlay": "assets/templates/minor-arcana/card-overlays/basins/cups_matron.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-cups.json"
+    },
+    {
+      "cardId": "cups_elder",
+      "suit": "Basins",
+      "title": "Elder of Basins",
+      "overlay": "assets/templates/minor-arcana/card-overlays/basins/cups_elder.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-cups.json"
+    },
+    {
+      "cardId": "swords_ace",
+      "suit": "Quills",
+      "title": "Ace of Quills",
+      "overlay": "assets/templates/minor-arcana/card-overlays/quills/swords_ace.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-swords.json"
+    },
+    {
+      "cardId": "swords_02",
+      "suit": "Quills",
+      "title": "Two of Quills",
+      "overlay": "assets/templates/minor-arcana/card-overlays/quills/swords_02.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-swords.json"
+    },
+    {
+      "cardId": "swords_03",
+      "suit": "Quills",
+      "title": "Three of Quills",
+      "overlay": "assets/templates/minor-arcana/card-overlays/quills/swords_03.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-swords.json"
+    },
+    {
+      "cardId": "swords_04",
+      "suit": "Quills",
+      "title": "Four of Quills",
+      "overlay": "assets/templates/minor-arcana/card-overlays/quills/swords_04.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-swords.json"
+    },
+    {
+      "cardId": "swords_05",
+      "suit": "Quills",
+      "title": "Five of Quills",
+      "overlay": "assets/templates/minor-arcana/card-overlays/quills/swords_05.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-swords.json"
+    },
+    {
+      "cardId": "swords_06",
+      "suit": "Quills",
+      "title": "Six of Quills",
+      "overlay": "assets/templates/minor-arcana/card-overlays/quills/swords_06.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-swords.json"
+    },
+    {
+      "cardId": "swords_07",
+      "suit": "Quills",
+      "title": "Seven of Quills",
+      "overlay": "assets/templates/minor-arcana/card-overlays/quills/swords_07.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-swords.json"
+    },
+    {
+      "cardId": "swords_08",
+      "suit": "Quills",
+      "title": "Eight of Quills",
+      "overlay": "assets/templates/minor-arcana/card-overlays/quills/swords_08.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-swords.json"
+    },
+    {
+      "cardId": "swords_09",
+      "suit": "Quills",
+      "title": "Nine of Quills",
+      "overlay": "assets/templates/minor-arcana/card-overlays/quills/swords_09.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-swords.json"
+    },
+    {
+      "cardId": "swords_10",
+      "suit": "Quills",
+      "title": "Ten of Quills",
+      "overlay": "assets/templates/minor-arcana/card-overlays/quills/swords_10.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-swords.json"
+    },
+    {
+      "cardId": "swords_fledgling",
+      "suit": "Quills",
+      "title": "Fledgling of Quills",
+      "overlay": "assets/templates/minor-arcana/card-overlays/quills/swords_fledgling.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-swords.json"
+    },
+    {
+      "cardId": "swords_outrider",
+      "suit": "Quills",
+      "title": "Outrider of Quills",
+      "overlay": "assets/templates/minor-arcana/card-overlays/quills/swords_outrider.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-swords.json"
+    },
+    {
+      "cardId": "swords_matron",
+      "suit": "Quills",
+      "title": "Matron of Quills",
+      "overlay": "assets/templates/minor-arcana/card-overlays/quills/swords_matron.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-swords.json"
+    },
+    {
+      "cardId": "swords_elder",
+      "suit": "Quills",
+      "title": "Elder of Quills",
+      "overlay": "assets/templates/minor-arcana/card-overlays/quills/swords_elder.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-swords.json"
+    },
+    {
+      "cardId": "pentacles_ace",
+      "suit": "Nests",
+      "title": "Ace of Nests",
+      "overlay": "assets/templates/minor-arcana/card-overlays/nests/pentacles_ace.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-pentacles.json"
+    },
+    {
+      "cardId": "pentacles_02",
+      "suit": "Nests",
+      "title": "Two of Nests",
+      "overlay": "assets/templates/minor-arcana/card-overlays/nests/pentacles_02.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-pentacles.json"
+    },
+    {
+      "cardId": "pentacles_03",
+      "suit": "Nests",
+      "title": "Three of Nests",
+      "overlay": "assets/templates/minor-arcana/card-overlays/nests/pentacles_03.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-pentacles.json"
+    },
+    {
+      "cardId": "pentacles_04",
+      "suit": "Nests",
+      "title": "Four of Nests",
+      "overlay": "assets/templates/minor-arcana/card-overlays/nests/pentacles_04.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-pentacles.json"
+    },
+    {
+      "cardId": "pentacles_05",
+      "suit": "Nests",
+      "title": "Five of Nests",
+      "overlay": "assets/templates/minor-arcana/card-overlays/nests/pentacles_05.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-pentacles.json"
+    },
+    {
+      "cardId": "pentacles_06",
+      "suit": "Nests",
+      "title": "Six of Nests",
+      "overlay": "assets/templates/minor-arcana/card-overlays/nests/pentacles_06.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-pentacles.json"
+    },
+    {
+      "cardId": "pentacles_07",
+      "suit": "Nests",
+      "title": "Seven of Nests",
+      "overlay": "assets/templates/minor-arcana/card-overlays/nests/pentacles_07.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-pentacles.json"
+    },
+    {
+      "cardId": "pentacles_08",
+      "suit": "Nests",
+      "title": "Eight of Nests",
+      "overlay": "assets/templates/minor-arcana/card-overlays/nests/pentacles_08.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-pentacles.json"
+    },
+    {
+      "cardId": "pentacles_09",
+      "suit": "Nests",
+      "title": "Nine of Nests",
+      "overlay": "assets/templates/minor-arcana/card-overlays/nests/pentacles_09.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-pentacles.json"
+    },
+    {
+      "cardId": "pentacles_10",
+      "suit": "Nests",
+      "title": "Ten of Nests",
+      "overlay": "assets/templates/minor-arcana/card-overlays/nests/pentacles_10.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-pentacles.json"
+    },
+    {
+      "cardId": "pentacles_fledgling",
+      "suit": "Nests",
+      "title": "Fledgling of Nests",
+      "overlay": "assets/templates/minor-arcana/card-overlays/nests/pentacles_fledgling.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-pentacles.json"
+    },
+    {
+      "cardId": "pentacles_outrider",
+      "suit": "Nests",
+      "title": "Outrider of Nests",
+      "overlay": "assets/templates/minor-arcana/card-overlays/nests/pentacles_outrider.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-pentacles.json"
+    },
+    {
+      "cardId": "pentacles_matron",
+      "suit": "Nests",
+      "title": "Matron of Nests",
+      "overlay": "assets/templates/minor-arcana/card-overlays/nests/pentacles_matron.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-pentacles.json"
+    },
+    {
+      "cardId": "pentacles_elder",
+      "suit": "Nests",
+      "title": "Elder of Nests",
+      "overlay": "assets/templates/minor-arcana/card-overlays/nests/pentacles_elder.svg",
+      "sourceData": "data/cards/arcana/minor-arcana-pentacles.json"
+    }
+  ]
+}

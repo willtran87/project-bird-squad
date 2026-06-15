@@ -1,0 +1,766 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/art/art-bible.md",
+    "data/game/alpha-cards.json"
+  ],
+  "cards": [
+    {
+      "cardId": "major_00",
+      "source": "assets/concept-art/major-arcana/major-00-the-fool-house-sparrow-v2.png",
+      "portrait": "assets/runtime/cards/portrait/major_00.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_00.webp",
+      "icon": "assets/runtime/cards/icon/major_00.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "aviary_25",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_25.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_25.webp",
+      "icon": "assets/runtime/cards/icon/aviary_25.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "wands_ace",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/plumes/wands_ace.png",
+      "portrait": "assets/runtime/cards/portrait/wands_ace.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wands_ace.webp",
+      "icon": "assets/runtime/cards/icon/wands_ace.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "wands_02",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/plumes/wands_02.png",
+      "portrait": "assets/runtime/cards/portrait/wands_02.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wands_02.webp",
+      "icon": "assets/runtime/cards/icon/wands_02.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "wands_03",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/plumes/wands_03.png",
+      "portrait": "assets/runtime/cards/portrait/wands_03.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wands_03.webp",
+      "icon": "assets/runtime/cards/icon/wands_03.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "wands_04",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/plumes/wands_04.png",
+      "portrait": "assets/runtime/cards/portrait/wands_04.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wands_04.webp",
+      "icon": "assets/runtime/cards/icon/wands_04.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "wands_05",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/plumes/wands_05.png",
+      "portrait": "assets/runtime/cards/portrait/wands_05.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wands_05.webp",
+      "icon": "assets/runtime/cards/icon/wands_05.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "wands_06",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/plumes/wands_06.png",
+      "portrait": "assets/runtime/cards/portrait/wands_06.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wands_06.webp",
+      "icon": "assets/runtime/cards/icon/wands_06.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "wands_08",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/plumes/wands_08.png",
+      "portrait": "assets/runtime/cards/portrait/wands_08.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wands_08.webp",
+      "icon": "assets/runtime/cards/icon/wands_08.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "wands_09",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/plumes/wands_09.png",
+      "portrait": "assets/runtime/cards/portrait/wands_09.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wands_09.webp",
+      "icon": "assets/runtime/cards/icon/wands_09.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "swords_ace",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/quills/swords_ace.png",
+      "portrait": "assets/runtime/cards/portrait/swords_ace.webp",
+      "thumbnail": "assets/runtime/cards/thumb/swords_ace.webp",
+      "icon": "assets/runtime/cards/icon/swords_ace.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "swords_02",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/quills/swords_02.png",
+      "portrait": "assets/runtime/cards/portrait/swords_02.webp",
+      "thumbnail": "assets/runtime/cards/thumb/swords_02.webp",
+      "icon": "assets/runtime/cards/icon/swords_02.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "swords_03",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/quills/swords_03.png",
+      "portrait": "assets/runtime/cards/portrait/swords_03.webp",
+      "thumbnail": "assets/runtime/cards/thumb/swords_03.webp",
+      "icon": "assets/runtime/cards/icon/swords_03.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "swords_04",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/quills/swords_04.png",
+      "portrait": "assets/runtime/cards/portrait/swords_04.webp",
+      "thumbnail": "assets/runtime/cards/thumb/swords_04.webp",
+      "icon": "assets/runtime/cards/icon/swords_04.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "swords_05",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/quills/swords_05.png",
+      "portrait": "assets/runtime/cards/portrait/swords_05.webp",
+      "thumbnail": "assets/runtime/cards/thumb/swords_05.webp",
+      "icon": "assets/runtime/cards/icon/swords_05.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "swords_06",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/quills/swords_06.png",
+      "portrait": "assets/runtime/cards/portrait/swords_06.webp",
+      "thumbnail": "assets/runtime/cards/thumb/swords_06.webp",
+      "icon": "assets/runtime/cards/icon/swords_06.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "swords_07",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/quills/swords_07.png",
+      "portrait": "assets/runtime/cards/portrait/swords_07.webp",
+      "thumbnail": "assets/runtime/cards/thumb/swords_07.webp",
+      "icon": "assets/runtime/cards/icon/swords_07.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "swords_fledgling",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/quills/swords_fledgling.png",
+      "portrait": "assets/runtime/cards/portrait/swords_fledgling.webp",
+      "thumbnail": "assets/runtime/cards/thumb/swords_fledgling.webp",
+      "icon": "assets/runtime/cards/icon/swords_fledgling.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "cups_ace",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/basins/cups_ace.png",
+      "portrait": "assets/runtime/cards/portrait/cups_ace.webp",
+      "thumbnail": "assets/runtime/cards/thumb/cups_ace.webp",
+      "icon": "assets/runtime/cards/icon/cups_ace.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "cups_02",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/basins/cups_02.png",
+      "portrait": "assets/runtime/cards/portrait/cups_02.webp",
+      "thumbnail": "assets/runtime/cards/thumb/cups_02.webp",
+      "icon": "assets/runtime/cards/icon/cups_02.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "cups_03",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/basins/cups_03.png",
+      "portrait": "assets/runtime/cards/portrait/cups_03.webp",
+      "thumbnail": "assets/runtime/cards/thumb/cups_03.webp",
+      "icon": "assets/runtime/cards/icon/cups_03.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "cups_04",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/basins/cups_04.png",
+      "portrait": "assets/runtime/cards/portrait/cups_04.webp",
+      "thumbnail": "assets/runtime/cards/thumb/cups_04.webp",
+      "icon": "assets/runtime/cards/icon/cups_04.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "cups_05",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/basins/cups_05.png",
+      "portrait": "assets/runtime/cards/portrait/cups_05.webp",
+      "thumbnail": "assets/runtime/cards/thumb/cups_05.webp",
+      "icon": "assets/runtime/cards/icon/cups_05.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "cups_06",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/basins/cups_06.png",
+      "portrait": "assets/runtime/cards/portrait/cups_06.webp",
+      "thumbnail": "assets/runtime/cards/thumb/cups_06.webp",
+      "icon": "assets/runtime/cards/icon/cups_06.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "cups_08",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/basins/cups_08.png",
+      "portrait": "assets/runtime/cards/portrait/cups_08.webp",
+      "thumbnail": "assets/runtime/cards/thumb/cups_08.webp",
+      "icon": "assets/runtime/cards/icon/cups_08.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "cups_fledgling",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/basins/cups_fledgling.png",
+      "portrait": "assets/runtime/cards/portrait/cups_fledgling.webp",
+      "thumbnail": "assets/runtime/cards/thumb/cups_fledgling.webp",
+      "icon": "assets/runtime/cards/icon/cups_fledgling.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "pentacles_ace",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/nests/pentacles_ace.png",
+      "portrait": "assets/runtime/cards/portrait/pentacles_ace.webp",
+      "thumbnail": "assets/runtime/cards/thumb/pentacles_ace.webp",
+      "icon": "assets/runtime/cards/icon/pentacles_ace.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "pentacles_02",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/nests/pentacles_02.png",
+      "portrait": "assets/runtime/cards/portrait/pentacles_02.webp",
+      "thumbnail": "assets/runtime/cards/thumb/pentacles_02.webp",
+      "icon": "assets/runtime/cards/icon/pentacles_02.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "pentacles_03",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/nests/pentacles_03.png",
+      "portrait": "assets/runtime/cards/portrait/pentacles_03.webp",
+      "thumbnail": "assets/runtime/cards/thumb/pentacles_03.webp",
+      "icon": "assets/runtime/cards/icon/pentacles_03.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "pentacles_04",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/nests/pentacles_04.png",
+      "portrait": "assets/runtime/cards/portrait/pentacles_04.webp",
+      "thumbnail": "assets/runtime/cards/thumb/pentacles_04.webp",
+      "icon": "assets/runtime/cards/icon/pentacles_04.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "pentacles_05",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/nests/pentacles_05.png",
+      "portrait": "assets/runtime/cards/portrait/pentacles_05.webp",
+      "thumbnail": "assets/runtime/cards/thumb/pentacles_05.webp",
+      "icon": "assets/runtime/cards/icon/pentacles_05.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "pentacles_06",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/nests/pentacles_06.png",
+      "portrait": "assets/runtime/cards/portrait/pentacles_06.webp",
+      "thumbnail": "assets/runtime/cards/thumb/pentacles_06.webp",
+      "icon": "assets/runtime/cards/icon/pentacles_06.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "pentacles_08",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/nests/pentacles_08.png",
+      "portrait": "assets/runtime/cards/portrait/pentacles_08.webp",
+      "thumbnail": "assets/runtime/cards/thumb/pentacles_08.webp",
+      "icon": "assets/runtime/cards/icon/pentacles_08.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "pentacles_fledgling",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/nests/pentacles_fledgling.png",
+      "portrait": "assets/runtime/cards/portrait/pentacles_fledgling.webp",
+      "thumbnail": "assets/runtime/cards/thumb/pentacles_fledgling.webp",
+      "icon": "assets/runtime/cards/icon/pentacles_fledgling.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_01",
+      "source": "assets/concept-art/major-arcana/major-01-the-magician-magpie.png",
+      "portrait": "assets/runtime/cards/portrait/major_01.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_01.webp",
+      "icon": "assets/runtime/cards/icon/major_01.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_02",
+      "source": "assets/concept-art/major-arcana/major-02-the-high-priestess-barn-owl-v2.png",
+      "portrait": "assets/runtime/cards/portrait/major_02.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_02.webp",
+      "icon": "assets/runtime/cards/icon/major_02.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_03",
+      "source": "assets/concept-art/major-arcana/major-03-the-empress-mute-swan.png",
+      "portrait": "assets/runtime/cards/portrait/major_03.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_03.webp",
+      "icon": "assets/runtime/cards/icon/major_03.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_04",
+      "source": "assets/concept-art/major-arcana/major-04-the-emperor-golden-eagle.png",
+      "portrait": "assets/runtime/cards/portrait/major_04.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_04.webp",
+      "icon": "assets/runtime/cards/icon/major_04.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_05",
+      "source": "assets/concept-art/major-arcana/major-05-the-hierophant-sandhill-crane.png",
+      "portrait": "assets/runtime/cards/portrait/major_05.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_05.webp",
+      "icon": "assets/runtime/cards/icon/major_05.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_06",
+      "source": "assets/concept-art/major-arcana/major-06-the-lovers-lovebirds.png",
+      "portrait": "assets/runtime/cards/portrait/major_06.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_06.webp",
+      "icon": "assets/runtime/cards/icon/major_06.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_07",
+      "source": "assets/concept-art/major-arcana/major-07-the-chariot-peregrine-falcon.png",
+      "portrait": "assets/runtime/cards/portrait/major_07.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_07.webp",
+      "icon": "assets/runtime/cards/icon/major_07.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_08",
+      "source": "assets/concept-art/major-arcana/major-08-strength-secretarybird.png",
+      "portrait": "assets/runtime/cards/portrait/major_08.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_08.webp",
+      "icon": "assets/runtime/cards/icon/major_08.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_09",
+      "source": "assets/concept-art/major-arcana/major-09-the-hermit-snowy-owl.png",
+      "portrait": "assets/runtime/cards/portrait/major_09.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_09.webp",
+      "icon": "assets/runtime/cards/icon/major_09.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_10",
+      "source": "assets/concept-art/major-arcana/major-10-wheel-of-fortune-kingfisher.png",
+      "portrait": "assets/runtime/cards/portrait/major_10.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_10.webp",
+      "icon": "assets/runtime/cards/icon/major_10.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_11",
+      "source": "assets/concept-art/major-arcana/major-11-justice-black-necked-stilt.png",
+      "portrait": "assets/runtime/cards/portrait/major_11.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_11.webp",
+      "icon": "assets/runtime/cards/icon/major_11.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_12",
+      "source": "assets/concept-art/major-arcana/major-12-the-hanged-man-nuthatch.png",
+      "portrait": "assets/runtime/cards/portrait/major_12.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_12.webp",
+      "icon": "assets/runtime/cards/icon/major_12.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_13",
+      "source": "assets/concept-art/major-arcana/major-13-death-turkey-vulture.png",
+      "portrait": "assets/runtime/cards/portrait/major_13.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_13.webp",
+      "icon": "assets/runtime/cards/icon/major_13.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_14",
+      "source": "assets/concept-art/major-arcana/major-14-temperance-flamingo.png",
+      "portrait": "assets/runtime/cards/portrait/major_14.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_14.webp",
+      "icon": "assets/runtime/cards/icon/major_14.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_15",
+      "source": "assets/concept-art/major-arcana/major-15-the-devil-common-raven.png",
+      "portrait": "assets/runtime/cards/portrait/major_15.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_15.webp",
+      "icon": "assets/runtime/cards/icon/major_15.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_16",
+      "source": "assets/concept-art/major-arcana/major-16-the-tower-red-headed-woodpecker.png",
+      "portrait": "assets/runtime/cards/portrait/major_16.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_16.webp",
+      "icon": "assets/runtime/cards/icon/major_16.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_17",
+      "source": "assets/concept-art/major-arcana/major-17-the-star-superb-fairywren.png",
+      "portrait": "assets/runtime/cards/portrait/major_17.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_17.webp",
+      "icon": "assets/runtime/cards/icon/major_17.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_18",
+      "source": "assets/concept-art/major-arcana/major-18-the-moon-common-nightjar.png",
+      "portrait": "assets/runtime/cards/portrait/major_18.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_18.webp",
+      "icon": "assets/runtime/cards/icon/major_18.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_19",
+      "source": "assets/concept-art/major-arcana/major-19-the-sun-american-goldfinch.png",
+      "portrait": "assets/runtime/cards/portrait/major_19.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_19.webp",
+      "icon": "assets/runtime/cards/icon/major_19.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_20",
+      "source": "assets/concept-art/major-arcana/major-20-judgment-rooster.png",
+      "portrait": "assets/runtime/cards/portrait/major_20.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_20.webp",
+      "icon": "assets/runtime/cards/icon/major_20.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "major_21",
+      "source": "assets/concept-art/major-arcana/major-21-the-world-arctic-tern.png",
+      "portrait": "assets/runtime/cards/portrait/major_21.webp",
+      "thumbnail": "assets/runtime/cards/thumb/major_21.webp",
+      "icon": "assets/runtime/cards/icon/major_21.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "wands_07",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/plumes/wands_07.png",
+      "portrait": "assets/runtime/cards/portrait/wands_07.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wands_07.webp",
+      "icon": "assets/runtime/cards/icon/wands_07.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "wands_10",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/plumes/wands_10.png",
+      "portrait": "assets/runtime/cards/portrait/wands_10.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wands_10.webp",
+      "icon": "assets/runtime/cards/icon/wands_10.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "wands_fledgling",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/plumes/wands_fledgling.png",
+      "portrait": "assets/runtime/cards/portrait/wands_fledgling.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wands_fledgling.webp",
+      "icon": "assets/runtime/cards/icon/wands_fledgling.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "wands_outrider",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/plumes/wands_outrider.png",
+      "portrait": "assets/runtime/cards/portrait/wands_outrider.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wands_outrider.webp",
+      "icon": "assets/runtime/cards/icon/wands_outrider.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "wands_matron",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/plumes/wands_matron.png",
+      "portrait": "assets/runtime/cards/portrait/wands_matron.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wands_matron.webp",
+      "icon": "assets/runtime/cards/icon/wands_matron.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "wands_elder",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/plumes/wands_elder.png",
+      "portrait": "assets/runtime/cards/portrait/wands_elder.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wands_elder.webp",
+      "icon": "assets/runtime/cards/icon/wands_elder.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "cups_07",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/basins/cups_07.png",
+      "portrait": "assets/runtime/cards/portrait/cups_07.webp",
+      "thumbnail": "assets/runtime/cards/thumb/cups_07.webp",
+      "icon": "assets/runtime/cards/icon/cups_07.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "cups_09",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/basins/cups_09.png",
+      "portrait": "assets/runtime/cards/portrait/cups_09.webp",
+      "thumbnail": "assets/runtime/cards/thumb/cups_09.webp",
+      "icon": "assets/runtime/cards/icon/cups_09.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "cups_10",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/basins/cups_10.png",
+      "portrait": "assets/runtime/cards/portrait/cups_10.webp",
+      "thumbnail": "assets/runtime/cards/thumb/cups_10.webp",
+      "icon": "assets/runtime/cards/icon/cups_10.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "cups_outrider",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/basins/cups_outrider.png",
+      "portrait": "assets/runtime/cards/portrait/cups_outrider.webp",
+      "thumbnail": "assets/runtime/cards/thumb/cups_outrider.webp",
+      "icon": "assets/runtime/cards/icon/cups_outrider.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "cups_matron",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/basins/cups_matron.png",
+      "portrait": "assets/runtime/cards/portrait/cups_matron.webp",
+      "thumbnail": "assets/runtime/cards/thumb/cups_matron.webp",
+      "icon": "assets/runtime/cards/icon/cups_matron.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "cups_elder",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/basins/cups_elder.png",
+      "portrait": "assets/runtime/cards/portrait/cups_elder.webp",
+      "thumbnail": "assets/runtime/cards/thumb/cups_elder.webp",
+      "icon": "assets/runtime/cards/icon/cups_elder.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "swords_08",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/quills/swords_08.png",
+      "portrait": "assets/runtime/cards/portrait/swords_08.webp",
+      "thumbnail": "assets/runtime/cards/thumb/swords_08.webp",
+      "icon": "assets/runtime/cards/icon/swords_08.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "swords_09",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/quills/swords_09.png",
+      "portrait": "assets/runtime/cards/portrait/swords_09.webp",
+      "thumbnail": "assets/runtime/cards/thumb/swords_09.webp",
+      "icon": "assets/runtime/cards/icon/swords_09.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "swords_10",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/quills/swords_10.png",
+      "portrait": "assets/runtime/cards/portrait/swords_10.webp",
+      "thumbnail": "assets/runtime/cards/thumb/swords_10.webp",
+      "icon": "assets/runtime/cards/icon/swords_10.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "swords_outrider",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/quills/swords_outrider.png",
+      "portrait": "assets/runtime/cards/portrait/swords_outrider.webp",
+      "thumbnail": "assets/runtime/cards/thumb/swords_outrider.webp",
+      "icon": "assets/runtime/cards/icon/swords_outrider.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "swords_matron",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/quills/swords_matron.png",
+      "portrait": "assets/runtime/cards/portrait/swords_matron.webp",
+      "thumbnail": "assets/runtime/cards/thumb/swords_matron.webp",
+      "icon": "assets/runtime/cards/icon/swords_matron.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "swords_elder",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/quills/swords_elder.png",
+      "portrait": "assets/runtime/cards/portrait/swords_elder.webp",
+      "thumbnail": "assets/runtime/cards/thumb/swords_elder.webp",
+      "icon": "assets/runtime/cards/icon/swords_elder.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "pentacles_07",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/nests/pentacles_07.png",
+      "portrait": "assets/runtime/cards/portrait/pentacles_07.webp",
+      "thumbnail": "assets/runtime/cards/thumb/pentacles_07.webp",
+      "icon": "assets/runtime/cards/icon/pentacles_07.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "pentacles_09",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/nests/pentacles_09.png",
+      "portrait": "assets/runtime/cards/portrait/pentacles_09.webp",
+      "thumbnail": "assets/runtime/cards/thumb/pentacles_09.webp",
+      "icon": "assets/runtime/cards/icon/pentacles_09.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "pentacles_10",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/nests/pentacles_10.png",
+      "portrait": "assets/runtime/cards/portrait/pentacles_10.webp",
+      "thumbnail": "assets/runtime/cards/thumb/pentacles_10.webp",
+      "icon": "assets/runtime/cards/icon/pentacles_10.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "pentacles_outrider",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/nests/pentacles_outrider.png",
+      "portrait": "assets/runtime/cards/portrait/pentacles_outrider.webp",
+      "thumbnail": "assets/runtime/cards/thumb/pentacles_outrider.webp",
+      "icon": "assets/runtime/cards/icon/pentacles_outrider.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "pentacles_matron",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/nests/pentacles_matron.png",
+      "portrait": "assets/runtime/cards/portrait/pentacles_matron.webp",
+      "thumbnail": "assets/runtime/cards/thumb/pentacles_matron.webp",
+      "icon": "assets/runtime/cards/icon/pentacles_matron.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "pentacles_elder",
+      "source": "assets/concept-art/minor-arcana-border-first-runs/2026-06-14-imagegen-contract-repairs/nests/pentacles_elder.png",
+      "portrait": "assets/runtime/cards/portrait/pentacles_elder.webp",
+      "thumbnail": "assets/runtime/cards/thumb/pentacles_elder.webp",
+      "icon": "assets/runtime/cards/icon/pentacles_elder.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "aviary_22",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_22.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_22.webp",
+      "icon": "assets/runtime/cards/icon/aviary_22.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_23",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_23.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_23.webp",
+      "icon": "assets/runtime/cards/icon/aviary_23.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_24",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_24.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_24.webp",
+      "icon": "assets/runtime/cards/icon/aviary_24.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_26",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_26.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_26.webp",
+      "icon": "assets/runtime/cards/icon/aviary_26.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_27",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_27.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_27.webp",
+      "icon": "assets/runtime/cards/icon/aviary_27.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/alpha-run-spec.md",
+    "docs/game/next-level-data-contracts.md"
+  ],
+  "profiles": [
+    {
+      "id": "street_standard",
+      "scrap": [25, 40],
+      "cardReward": true,
+      "preenChance": 0.25,
+      "routeMarkChance": 0.15
+    },
+    {
+      "id": "rival_standard",
+      "scrap": [70, 90],
+      "cardReward": true,
+      "preenGuaranteed": true,
+      "routeMarkGuaranteed": true
+    },
+    {
+      "id": "boss_alpha",
+      "scrap": 120,
+      "bossRouteMarkChoices": 3,
+      "rareCardChoices": 3,
+      "preen": 1,
+      "unlocks": "map_02_canal_markets"
+    }
+  ]
+}

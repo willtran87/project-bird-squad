@@ -1,0 +1,35 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/alpha-run-spec.md",
+    "docs/game/next-level-data-contracts.md"
+  ],
+  "options": [
+    {
+      "id": "cache_scrap",
+      "label": "Pocket the Scrap",
+      "effects": ["gainScrap(50)"]
+    },
+    {
+      "id": "cache_supply",
+      "label": "Grab a Supply",
+      "effects": ["gainSupplyChoice(1)"]
+    },
+    {
+      "id": "cache_mark",
+      "label": "Take a Route Mark",
+      "effects": ["gainRouteMark(randomCommon)"]
+    },
+    {
+      "id": "cache_card",
+      "label": "Recruit a Bird",
+      "effects": ["addCard(chooseOneOfTwoCommon)"]
+    },
+    {
+      "id": "cache_heal",
+      "label": "Patch Up",
+      "effects": ["healCohesion(5)"]
+    }
+  ]
+}

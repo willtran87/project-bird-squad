@@ -1,0 +1,20 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/alpha-run-spec.md",
+    "docs/game/next-level-data-contracts.md"
+  ],
+  "routeMarks": [
+    { "id": "chalk_wingmark", "name": "Chalk Wingmark", "family": "safety", "rarity": "common", "source": "street", "trigger": "combatStart", "effect": "gainCover(2)", "description": "Start each combat with 2 Cover." },
+    { "id": "rooftop_shortcut", "name": "Rooftop Shortcut", "family": "route", "rarity": "common", "source": "signal", "trigger": "onNthCardThisTurn(3)", "effect": "draw(1)", "description": "The first time you play 3 cards in a turn each combat, draw 1." },
+    { "id": "patched_harness", "name": "Patched Harness", "family": "economy", "rarity": "uncommon", "source": "market", "trigger": "passive", "effect": "reducePreenPrice(30)", "description": "Market Preen costs 30 less Scrap." },
+    { "id": "quiet_landing", "name": "Quiet Landing", "family": "molt", "rarity": "uncommon", "source": "rival", "trigger": "firstOpenSkyIncrease", "effect": "reduceOpenSky(1)", "description": "The first Open Sky damage increase each combat is reduced by 1." },
+    { "id": "loose_change_tin", "name": "Loose Change Tin", "family": "economy", "rarity": "common", "source": "market", "trigger": "afterStreetEncounter", "effect": "gainScrap(15)", "description": "Gain 15 extra Scrap after each Street Encounter." },
+    { "id": "rain_gutter", "name": "Rain Gutter", "family": "safety", "rarity": "common", "source": "market", "trigger": "basinHeal", "effect": "addHeal(4)", "description": "Basin Stops heal 4 more Cohesion." },
+    { "id": "wire_map", "name": "Wire Map", "family": "economy", "rarity": "uncommon", "source": "market", "trigger": "signalResolved", "effect": "gainScrap(25)", "description": "Signals pay out 25 Scrap." },
+    { "id": "feather_tape", "name": "Feather Tape", "family": "safety", "rarity": "uncommon", "source": "nest", "trigger": "combatStart", "effect": "heal(4)", "description": "Patched and ready — start each combat recovering 4 Cohesion." },
+    { "id": "crowbar_debt", "name": "Crowbar Debt", "family": "bossPrep", "rarity": "boss", "source": "boss", "trigger": "combatStart", "effect": "gainWingbeat(1)", "description": "Start each combat with 1 Wingbeat on turn 1 only." },
+    { "id": "reopened_roofline", "name": "Reopened Roofline", "family": "bossPrep", "rarity": "boss", "source": "boss", "trigger": "mapStart", "effect": "gainSupplyChoice(1)", "description": "At the start of each map, gain 1 Supply choice." }
+  ]
+}

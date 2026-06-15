@@ -1,0 +1,144 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "set": "Reversals — The Molt (Aviary Legends)",
+  "basedOn": "docs/art/art-bible.md",
+  "note": "The Molt reversal layer for all six Aviary Legends trumps (the game-original trumps XXII–XXVII). Adds a 'reversed' + 'molt' block to each; uprightMeaning aliases each card's existing coreMeaning. The Molt (aviary_25) entry is reused verbatim from data/cards/reversals/reversals-sample.json as the self-referential patron of the mechanic.",
+  "reversalModes": [
+    "blocked",
+    "inward",
+    "shadow",
+    "deficiency",
+    "renewal"
+  ],
+  "accentMoltRule": "warm+inward/deficiency -> drained ash; any+shadow/renewal -> oil-slick iridescent; cool+blocked -> frost-dimmed",
+  "cards": [
+    {
+      "id": "aviary_22",
+      "tier": "aviary-trump",
+      "tarot": "Migration Line",
+      "bird": "Bar-tailed Godwit",
+      "rarity": "legendary",
+      "uprightMeaning": "The great journey, endurance, collective destiny, no turning back",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "The crossing stalled — strength spent mid-route, the flock scattered and lost from sight, 'no turning back' soured into trapped en route with no shore in reach.",
+        "gameplayFantasy": "Molt mode strands the journey: the long-payoff engine freezes its progress, holding course but unable to advance until something breaks the stall."
+      },
+      "molt": {
+        "accentShift": "dusk orange -> frost-dimmed dusk-grey",
+        "featherState": "flight feathers ragged and overworked, a few primaries shed and lagging in the slipstream",
+        "lighting": "cold underlight off a greying dusk instead of the warm horizon key",
+        "borderState": "the travel-patch filigree fraying loose, compass motif jammed",
+        "moltGlyph": "single shed flight feather in the cartouche"
+      },
+      "gameName": "Migration Line"
+    },
+    {
+      "id": "aviary_23",
+      "tier": "aviary-trump",
+      "tarot": "Home Roost",
+      "bird": "Purple Martin",
+      "rarity": "legendary",
+      "uprightMeaning": "Sanctuary, rest, belonging, the safe return, community shelter",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "The shelter that smothers — refuge curdled into a cage, belonging into dependence, the safe return into never being able to leave home.",
+        "gameplayFantasy": "Molt mode clings: the safe-harbor recall keeps allies home and bound — protected but unable to be deployed until they break free."
+      },
+      "molt": {
+        "accentShift": "warm amber -> oil-slick iridescent amber",
+        "featherState": "breast feathers loosened and clumped, a few shed and caught in the tower mouth",
+        "lighting": "cold rim-light closing in, the colony-tower glow dimmed to a held shadow",
+        "borderState": "the sheltering-arc motif drawn tight and frayed, doorkeeper bands strained",
+        "moltGlyph": "single shed breast feather in the cartouche"
+      },
+      "gameName": "Home Roost"
+    },
+    {
+      "id": "aviary_24",
+      "tier": "aviary-trump",
+      "tarot": "Storm Ride",
+      "bird": "Magnificent Frigatebird",
+      "rarity": "legendary",
+      "uprightMeaning": "Upheaval, raw forces, riding chaos, harnessing what you cannot control",
+      "reversed": {
+        "mode": "deficiency",
+        "meaning": "Thrown by the chaos instead of riding it — swept off the thermal, control lost, the raw forces now overwhelming rather than harnessed.",
+        "gameplayFantasy": "Molt mode loses the reins: the high-risk swing no longer converts disruption to power — encounter chaos batters its owner instead."
+      },
+      "molt": {
+        "accentShift": "hot red -> drained ash-red",
+        "featherState": "wing coverts windbeaten and shedding, throat-pouch slack, feathers torn loose in the gust",
+        "lighting": "flat cold underlight off the storm wall, the lightning behind gone grey and distant",
+        "borderState": "the static-charm filigree shorted out and unravelling",
+        "moltGlyph": "single shed wing feather in the cartouche"
+      },
+      "gameName": "Storm Ride"
+    },
+    {
+      "id": "aviary_25",
+      "tier": "aviary-trump",
+      "tarot": "Hot Feathers",
+      "bird": "Scarlet Tanager",
+      "rarity": "legendary",
+      "uprightMeaning": "Transformation of self, shedding an old identity, renewal",
+      "reversed": {
+        "mode": "blocked",
+        "meaning": "Change refused — clinging to the old self, transformation forced or resisted, stuck between two coats.",
+        "gameplayFantasy": "Patron card: upright it lets you choose to Molt a crew card; Molt-reversed it forces a crew card to flip whether it wants to or not.",
+        "note": "Self-referential anchor — this card is the in-world governor of every other card's Molt state."
+      },
+      "molt": {
+        "accentShift": "scarlet -> oil-slick iridescent oxblood",
+        "featherState": "caught fully mid-shed, half scarlet half drab, a storm of loose feathers",
+        "lighting": "split light — warm key dying on one side, cold rim rising on the other",
+        "borderState": "the frame itself molting, motifs half-shed",
+        "moltGlyph": "two crossed shed feathers in the cartouche"
+      },
+      "gameName": "Hot Feathers"
+    },
+    {
+      "id": "aviary_26",
+      "tier": "aviary-trump",
+      "tarot": "Flock Signal",
+      "bird": "Red-billed Quelea",
+      "rarity": "legendary",
+      "uprightMeaning": "Unity, emergence, the many-as-one, collective will, strength in numbers",
+      "reversed": {
+        "mode": "shadow",
+        "meaning": "Unity soured into the mob — groupthink, the individual erased, the murmuration turned from one mind into a swarm of pressure that crushes dissent.",
+        "gameplayFantasy": "Molt mode swarms in excess: the go-wide power still scales with numbers but now bleeds its own crew cards, the many consuming the one."
+      },
+      "molt": {
+        "accentShift": "dawn rose -> oil-slick iridescent rose",
+        "featherState": "the foreground bird's crest feathers shedding, the swarm behind ragged with drifting loose feathers",
+        "lighting": "cold underlight, the dawn behind gone bruised; the murmuration darkened to a pressing mass",
+        "borderState": "the squad-band filigree fraying, signal-tags tangling",
+        "moltGlyph": "single shed crest feather in the cartouche"
+      },
+      "gameName": "Flock Signal"
+    },
+    {
+      "id": "aviary_27",
+      "tier": "aviary-trump",
+      "tarot": "Eclipse Watch",
+      "bird": "Tawny Frogmouth",
+      "rarity": "legendary",
+      "uprightMeaning": "Liminality, hidden truth, omen, the threshold between states",
+      "reversed": {
+        "mode": "inward",
+        "meaning": "The threshold won't open — omens ignored, truth kept hidden, caught and dimmed between two states with no crossing and no answer.",
+        "gameplayFantasy": "Molt mode seals the door: the peek/freeze effect turns inward — information stays hidden even from its owner, the encounter locked a beat too long."
+      },
+      "molt": {
+        "accentShift": "pale corona gold -> drained ash-gold",
+        "featherState": "camouflage feathers loosened and scruffy, a few shed against the bark, the bird stiller still",
+        "lighting": "cold uplight instead of the corona key; the ringed eclipse behind gone dull and ashen",
+        "borderState": "the ringed-eclipse motif frayed, the still-watch bands slack",
+        "moltGlyph": "single shed cryptic feather in the cartouche"
+      },
+      "gameName": "Eclipse Watch"
+    }
+  ]
+}

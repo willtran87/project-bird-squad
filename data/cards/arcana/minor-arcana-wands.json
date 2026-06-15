@@ -1,0 +1,500 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "set": "Crew Cards — Suit of Plumes",
+  "basedOn": "docs/art/art-bible.md; major-arcana-bird-map.json",
+  "note": "Plumes crew proving the unique-species four-crew framework. Each card uses a unique bird species reserved away from the Major and Aviary Legends species.",
+  "suit": {
+    "name": "Plumes",
+    "element": "Display",
+    "crew": "Brightwing",
+    "domain": "drive, passion, creativity, hustle, performance",
+    "habitat": "rooftop cyphers, busker corners, billboard catwalks, block-party stages, skate ledges, sound-system rooftops, poster walls, fashion-runway tarps",
+    "timeOfDay": "high-summer noon",
+    "borderMotif": "plume-flash and call-wave filigree",
+    "borderFrame": "Use the shared Bird Squad frame structure: dark outer keyline, gilded inner filigree rail, four corner medallions, slim vertical side rails, top suit crest medallion, and bottom title cartouche. Keep frame thickness, symmetry, border width, and title placement consistent; place call-wave and signal motifs inside the established frame zones.",
+    "palette": [
+      "signal orange",
+      "hot magenta",
+      "gold",
+      "ash charcoal"
+    ],
+    "featuredSpecies": [
+      "Malachite Sunbird",
+      "Barn Swallow",
+      "Greater Bird-of-Paradise",
+      "Vermilion Flycatcher",
+      "Red-whiskered Bulbul",
+      "American Kestrel",
+      "Scissor-tailed Flycatcher",
+      "Lilac-breasted Roller",
+      "Rufous Hummingbird",
+      "Wilson's Bird-of-Paradise",
+      "Rainbow Bee-eater",
+      "Alpine Swift",
+      "Superb Lyrebird",
+      "Aplomado Falcon"
+    ],
+    "coreRule": "All subjects anatomically bird; streetwear fitted to bird anatomy; no humanoid forms; no gore. Birds have no hands, fingers, wing-hands, wing-arms, extra wings, extra legs, or extra limbs; held props use beak, talons, feet, or legs only. Plumes must split into distinct modern urban performance lanes: rooftop busker, billboard scout, runway fit-check, block-party setup, rooftop dance cypher, festival victory wire, skate-ledge standoff, parkour speed formation, sound-crew barricade, performance-load runner, poster-runner fledgling, skyline courier, rooftop runway lead, and water-tower rhythm director. Use individualized bird-fitted streetwear rather than a black-and-bright uniform: cropped bombers, varsity shells, washed hoodies, puffers, mesh overshirts, dance wraps, windbreakers, crossbody pouches, abstract patches, flight-safe harnesses, talon wraps, poster walls, stage tape, chalk circles, rooftop mats, billboards, wet rooftops, waterfront rails, and grounded signage. Plume pip counts must use the one count element named on the card; do not add extra birds, extra lights, or extra plume-like props unless the card explicitly requires that exact same-species bird count. The card action should come from the bird's own throat color, chest color, plume display, wingbeat rhythm, call posture, feather vibration, iridescence, or body motion, supported by practical performance gear. Plume light and sound should read as biological or reflective: calls, wingbeats, feather buzz, plumage sheen, throat flash, wet pavement reflections, ordinary motion blur, and city light reflected from feathers. No readable text on clothing; suit-coded streetwear should use abstract motifs, color, material, and accessories without gang-coded uniforms or affiliation marks. No magical particles, spell effects, aura clouds, floating runes, generic fantasy energy, sorcerer robes, occult staging, tactical armor, electric beams, antenna flashes, holograms, LED-tech effects, glowing streaks in the air, or technology-driven action."
+  },
+  "courtNaming": {
+    "Page": "Fledgling",
+    "Knight": "Outrider",
+    "Queen": "Matron",
+    "King": "Elder"
+  },
+  "cards": [
+    {
+      "id": "wands_ace",
+      "rank": "Ace",
+      "rarity": "common",
+      "name": "Plume Flash",
+      "bird": "Malachite Sunbird",
+      "coreMeaning": "Resonance of inspiration, raw potential, new drive",
+      "description": "A Malachite Sunbird starts a rooftop busker set, creating one first flash through emerald throat-and-breast color, quick wing-flick rhythm, and a single feather-color echo near its open case.",
+      "pose": "Hovering beside a rooftop busker mat with curved bill angled into the call, emerald breast flashing with natural iridescence, one feather-color marker tucked near a tiny open case.",
+      "silhouetteClass": "curved-billed-nectarbird",
+      "poseEnergy": "active",
+      "streetwear": [
+        "cropped teal busker bomber over folded wings",
+        "coral zipper pull",
+        "one feather-color case charm",
+        "iridescent talon bands"
+      ],
+      "palette": [
+        "signal orange",
+        "hot magenta",
+        "gold",
+        "ash charcoal"
+      ],
+      "accent": "signal orange",
+      "varietyNotes": "Curved bill, emerald chest, and longer nectarbird body make the Ace distinct from the other Plumes fliers while preserving the first-flash role.",
+      "gameplayFantasy": "Opens drive/passion resources; an opening-signal card that fuels later Plumes plays.",
+      "gameName": "Plume Flash",
+      "numberSymbolism": {
+        "count": 1,
+        "element": "one feather-color marker beside the open busker case",
+        "represents": "the first flash of drive, inspiration, and creative ignition",
+        "visualRequirement": "Show exactly one feather-color marker or rhythm tag near the centered Malachite Sunbird; the emerald flash starts from the bird's plumage and posture. Do not represent sound with visible sound-wave lines, magical waves, electric arcs, or floating graphics."
+      },
+      "repairDirective": "Previous candidates were off-center and used sound-wave lines that read magical. Regenerate as high-resolution pixel art only with the sunbird centered in the safe area; show resonance through throat/chest color, feather sheen, open-beak call posture, and wet reflection only. No sound-wave lines, magic waves, electric arcs, or floating marks."
+    },
+    {
+      "id": "wands_02",
+      "rank": "2",
+      "rarity": "common",
+      "name": "Twin Plume Lookout",
+      "bird": "Barn Swallow",
+      "coreMeaning": "Planning, foresight, surveying the field",
+      "description": "A Barn Swallow works a billboard-scout lookout, reading the skyline between two cloth wind flags moved by its wingbeat.",
+      "pose": "Perched on a billboard catwalk with forked tail visible, head turned to scan the horizon, two cloth wind flags flanking it against city signage.",
+      "silhouetteClass": "fork-tailed-flier",
+      "poseEnergy": "static",
+      "streetwear": [
+        "faded blue-gray oversized sky-runner hoodie",
+        "two cloth wind-flag clips",
+        "cream wind-cut grip cuffs"
+      ],
+      "palette": [
+        "ash charcoal",
+        "signal orange",
+        "gold",
+        "hot magenta"
+      ],
+      "accent": "gold",
+      "varietyNotes": "Deep forked tail and swallow profile make the planning card read differently from the other fast Plumes birds.",
+      "gameplayFantasy": "Scout/plan effect; previews the field or sets up the next Plumes play.",
+      "gameName": "Twin Plume Lookout",
+      "numberSymbolism": {
+        "count": 2,
+        "element": "two cloth wind flags flanking the billboard catwalk",
+        "represents": "planning, foresight, and choosing between two directions",
+        "visualRequirement": "Show exactly two cloth wind flags around the Barn Swallow; they frame the decision and move from the bird's wingbeat."
+      }
+    },
+    {
+      "id": "wands_03",
+      "rank": "3",
+      "rarity": "common",
+      "name": "Plume Horizon",
+      "bird": "Greater Bird-of-Paradise",
+      "coreMeaning": "Expansion, vision, ventures underway",
+      "description": "A Greater Bird-of-Paradise treats a rooftop runway as a fit-check, watching the horizon while three mirror panels catch its display plumes.",
+      "pose": "Standing proud on a taped rooftop runway, plumes flared, gaze on the distance, three upright mirror panels behind it.",
+      "silhouetteClass": "plumed-display",
+      "poseEnergy": "static",
+      "streetwear": [
+        "baggy runway jacket fitted around display plumes",
+        "three mirror-tag charms",
+        "gold runway talon bands"
+      ],
+      "palette": [
+        "gold",
+        "signal orange",
+        "hot magenta",
+        "ash charcoal"
+      ],
+      "accent": "gold",
+      "varietyNotes": "Lavish flank plumes set the display species apart from the sleek fliers of the suit.",
+      "gameplayFantasy": "Reach/expansion buff; extends range or readies multiple ventures at once.",
+      "gameName": "Plume Horizon",
+      "numberSymbolism": {
+        "count": 3,
+        "element": "three mirror panels catching the display plumes",
+        "represents": "expansion, outward vision, and a performance plan beginning to travel",
+        "visualRequirement": "Show exactly three mirror panels or runway reflection markers behind the Greater Bird-of-Paradise."
+      }
+    },
+    {
+      "id": "wands_04",
+      "rank": "4",
+      "rarity": "common",
+      "name": "Plume Street Party",
+      "bird": "Vermilion Flycatcher",
+      "coreMeaning": "Celebration, milestone, home and belonging",
+      "description": "Four Vermilion Flycatchers of the same species set up a block-party stage, tying practical streamers between four corner anchors by beak and talons.",
+      "pose": "Four Vermilion Flycatchers in mid-air around a rooftop block-party setup, tying cloth streamers by beak and talons between four corner anchors.",
+      "silhouetteClass": "perky-songbird",
+      "poseEnergy": "active",
+      "streetwear": [
+        "warm rust rooftop party hoodie",
+        "tiny cloth streamer clips",
+        "dancer talon wraps"
+      ],
+      "palette": [
+        "hot magenta",
+        "signal orange",
+        "gold",
+        "ash charcoal"
+      ],
+      "accent": "hot magenta",
+      "varietyNotes": "Small vivid red flycatchers and strung lights signal the warm home/milestone scene.",
+      "gameplayFantasy": "Stabilize/anchor effect; rewards securing a position with a lasting bonus.",
+      "gameName": "Plume Street Party",
+      "numberSymbolism": {
+        "count": 4,
+        "element": "four streamer corner anchors around the block-party stage",
+        "represents": "a stable crew platform, celebration, and a temporary home base",
+        "visualRequirement": "Show exactly four practical streamer anchors around the Vermilion Flycatchers, integrated into their setup action."
+      }
+    },
+    {
+      "id": "wands_05",
+      "rank": "5",
+      "rarity": "common",
+      "name": "Plume Clash",
+      "bird": "Red-whiskered Bulbul",
+      "coreMeaning": "Competition, friction, scrappy rivalry",
+      "description": "Five Red-whiskered Bulbuls of the same species clash in a rooftop dance cypher, using crest snaps, call posture, and body motion around a chalk circle.",
+      "pose": "Five Red-whiskered Bulbuls mid-hop and spin around a chalk cypher circle, black crests raised, red cheek flashes and wingbeat rhythm marks crossing through reflected city light.",
+      "silhouetteClass": "crested-songbird",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "washed navy dance-cypher hoodie",
+        "red cheek-flash accent",
+        "mismatched abstract patches without text",
+        "padded practice talon wraps"
+      ],
+      "palette": [
+        "signal orange",
+        "hot magenta",
+        "ash charcoal",
+        "gold"
+      ],
+      "accent": "crimson red",
+      "varietyNotes": "Five crested bulbuls make the clash readable through raised crests and cheek flashes instead of another tiny hummingbird cluster.",
+      "gameplayFantasy": "Skirmish effect; contested play where multiple crew cards fight over one prize.",
+      "gameName": "Plume Clash",
+      "numberSymbolism": {
+        "count": 5,
+        "element": "five chalk-circle rhythm marks around the dance cypher",
+        "represents": "creative friction, competition, and competing bursts of drive",
+        "visualRequirement": "Show exactly five chalk-circle rhythm marks or crest-call echoes around the Red-whiskered Bulbuls; same-species birds may echo the count but should not be the only count cue."
+      }
+    },
+    {
+      "id": "wands_06",
+      "rank": "6",
+      "rarity": "uncommon",
+      "name": "Plume Victory Wire",
+      "bird": "American Kestrel",
+      "coreMeaning": "Victory, recognition, public triumph",
+      "description": "One American Kestrel claims a festival win on a high utility wire while exactly six feather-shaped puddle reflections answer its raised-wing pose.",
+      "pose": "One American Kestrel only, wings raised in triumph atop a high utility wire, a laurel-plume held by talons, with exactly six feather-shaped puddle reflections below; no other birds or bird silhouettes.",
+      "silhouetteClass": "compact-raptor",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "cream and red-brown cropped puffer victory vest",
+        "laurel-plume talon charm",
+        "muted gold champion bands"
+      ],
+      "palette": [
+        "gold",
+        "signal orange",
+        "hot magenta",
+        "ash charcoal"
+      ],
+      "accent": "victory gold",
+      "varietyNotes": "Compact raptor lifted high above a crowd is the suit's clear triumph silhouette.",
+      "gameplayFantasy": "Momentum payoff; converts a win into a crew-wide morale or tempo boost.",
+      "gameName": "Plume Victory Wire",
+      "numberSymbolism": {
+        "count": 6,
+        "element": "six feather-shaped puddle reflections below the utility wire",
+        "represents": "public momentum, recognition, and victory carried by the bird",
+        "visualRequirement": "Show exactly six feather-shaped puddle reflections beneath one American Kestrel; they echo the bird's victory pose. Do not add extra birds, extra reflections, or light marks that could be counted."
+      },
+      "repairDirective": "Previous candidates looked realistic and had centering issues. Regenerate as high-resolution pixel art only with one American Kestrel centered in the safe area and exactly six feather-shaped puddle reflections pulled inward below it; no background birds, no cropped reflections, no magical/electrical effects."
+    },
+    {
+      "id": "wands_07",
+      "rank": "7",
+      "rarity": "uncommon",
+      "name": "Plume Stand",
+      "bird": "Scissor-tailed Flycatcher",
+      "coreMeaning": "Defending your ground, standing firm",
+      "description": "A Scissor-tailed Flycatcher holds a skate-ledge standoff, defending its spot above seven ledge scuffs and feather rhythm marks integrated into the concrete.",
+      "pose": "Braced atop a scuffed rooftop skate ledge, long tail flared, body angled downward in defiance, seven ledge scuffs and feather rhythm marks below.",
+      "silhouetteClass": "perky-songbird",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "dusty green ledge-guard baggy flight wrap",
+        "long-tail accent bands",
+        "reinforced skate-grip talon cuffs"
+      ],
+      "palette": [
+        "signal orange",
+        "hot magenta",
+        "ash charcoal",
+        "gold"
+      ],
+      "accent": "blaze vermilion",
+      "varietyNotes": "High-ground lone defender against many keeps the seven readable as 'hold the line'.",
+      "gameplayFantasy": "Defensive stand; one crew card holds against several attackers for a turn.",
+      "gameName": "Plume Stand",
+      "numberSymbolism": {
+        "count": 7,
+        "element": "seven ledge scuffs and feather rhythm marks along the concrete",
+        "represents": "defending position, courage under pressure, and holding a contested spot",
+        "visualRequirement": "Show exactly seven ledge scuffs or feather rhythm marks integrated into the concrete around the Scissor-tailed Flycatcher."
+      },
+      "repairDirective": "Previous candidates need better centering. Regenerate as high-resolution pixel art only with the Scissor-tailed Flycatcher centered on the rooftop skate ledge and exactly seven ledge scuffs/rhythm marks placed well inside the overlay-safe center, away from border and title zones."
+    },
+    {
+      "id": "wands_08",
+      "rank": "8",
+      "rarity": "uncommon",
+      "name": "Plume Rush",
+      "bird": "Lilac-breasted Roller",
+      "coreMeaning": "Speed, momentum, swift news",
+      "description": "One Lilac-breasted Roller drives a parkour speed run between roof gaps, its body motion echoed by exactly eight physical reflective speed tabs fixed to the ledges.",
+      "pose": "One Lilac-breasted Roller launches across a rooftop gap, turquoise wings and lilac chest catching city light, with exactly eight reflective speed tabs fixed to ledges along the route; no air streaks, magic trails, electric trails, or extra birds.",
+      "silhouetteClass": "color-block-aerial-roller",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "turquoise-lilac speed-runner windbreaker shell",
+        "silver throat scarf",
+        "motion-stripe talon cuffs"
+      ],
+      "palette": [
+        "turquoise blue",
+        "lilac",
+        "gold",
+        "ash charcoal"
+      ],
+      "accent": "turquoise blue",
+      "varietyNotes": "Color-blocked rollers keep the speed card vivid and aerial while avoiding another swift, swallow, or martin silhouette.",
+      "gameplayFantasy": "Haste/burst effect; rushes multiple actions or accelerates a play this turn.",
+      "gameName": "Plume Rush",
+      "numberSymbolism": {
+        "count": 8,
+        "element": "eight reflective speed tabs fixed to rooftop ledges",
+        "represents": "fast movement, acceleration, and coordinated drive",
+        "visualRequirement": "Show exactly eight reflective speed tabs physically fixed to rooftop ledges along the Lilac-breasted Roller's route. Use one bird only; do not add magical streaks, electric trails, extra birds, or floating marks."
+      },
+      "repairDirective": "Previous candidates looked realistic and had centering issues. Regenerate as high-resolution pixel art only with one Lilac-breasted Roller centered through the rooftop gap and exactly eight physical speed tabs pulled inward on ledges. No magical streaks, electric trails, floating marks, edge-cropped tabs, or extra birds."
+    },
+    {
+      "id": "wands_09",
+      "rank": "9",
+      "rarity": "uncommon",
+      "name": "Plume Barricade",
+      "bird": "Rufous Hummingbird",
+      "coreMeaning": "Resilience, last stand, guarded persistence",
+      "description": "A Rufous Hummingbird guards a worn rooftop barricade, wary but unbroken, where nine strain marks, wrapped plume markers, and feather posture show resilience.",
+      "pose": "Tensed atop a low rooftop barricade, nine integrated strain marks and wrapped plume markers around it, one plume held defensively by talons.",
+      "silhouetteClass": "tiny-hoverer",
+      "poseEnergy": "static",
+      "streetwear": [
+        "smoke amber and slate sentry bomber",
+        "muted orange zipper pulls",
+        "patched protective wrap without text",
+        "sound-system sentry bands"
+      ],
+      "palette": [
+        "ash charcoal",
+        "signal orange",
+        "hot magenta",
+        "gold"
+      ],
+      "accent": "smoke amber",
+      "varietyNotes": "Small but battle-worn behind a plume barricade; smoke-amber accent reads grit over glory.",
+      "gameplayFantasy": "Endurance/last-stand; a weakened crew card gains a defensive bonus to survive one more turn.",
+      "gameName": "Plume Barricade",
+      "numberSymbolism": {
+        "count": 9,
+        "element": "nine strain marks and wrapped plume markers worked into the rooftop barricade",
+        "represents": "resilience, wary protection, and the last stand before burnout",
+        "visualRequirement": "Show exactly nine integrated strain marks or wrapped plume markers on and around the barricade; they should not look pasted in a row."
+      },
+      "repairDirective": "Previous candidates need better centering. Regenerate as high-resolution pixel art only with the Rufous Hummingbird centered on the barricade and exactly nine strain marks/wrapped plume markers placed inside the safe center. No cropped markers, no magic particles, no sound-wave lines."
+    },
+    {
+      "id": "wands_10",
+      "rank": "10",
+      "rarity": "rare",
+      "name": "Plume Load",
+      "bird": "Wilson's Bird-of-Paradise",
+      "coreMeaning": "Burden, overload, carrying too much",
+      "description": "A Wilson's Bird-of-Paradise hauls ten bundled performance rods and plume props through a rooftop service area, overloaded after the show.",
+      "pose": "Bent low under a strapped bundle of ten reflective performance rods and plume props, plumes drooping, trudging past cases and taped floor marks.",
+      "silhouetteClass": "plumed-display",
+      "poseEnergy": "static",
+      "streetwear": [
+        "overloaded performance-runner work jacket",
+        "baggy velvet-trim work jacket",
+        "heavy fabric-sling talon bands"
+      ],
+      "palette": [
+        "signal orange",
+        "ash charcoal",
+        "gold",
+        "hot magenta"
+      ],
+      "accent": "burnt sienna",
+      "varietyNotes": "Drooping plumes and the heavy strapped bundle invert the proud Three into burden.",
+      "gameplayFantasy": "Overload cost; powerful effect that taxes the crew card or slows it next turn.",
+      "gameName": "Plume Load",
+      "numberSymbolism": {
+        "count": 10,
+        "element": "ten performance rods and plume props bundled through the rooftop service area",
+        "represents": "overload, burden, and carrying the whole performance alone",
+        "visualRequirement": "Show exactly ten performance rods and plume props as the Wilson's Bird-of-Paradise hauls the load; the count must be part of the carried bundle."
+      },
+      "repairDirective": "Previous candidates need better centering. Regenerate as high-resolution pixel art only with the Wilson's Bird-of-Paradise and the bundle of exactly ten performance rods/plume props centered inside the safe area. Keep the entire burden visible and away from the border/title overlay."
+    },
+    {
+      "id": "wands_fledgling",
+      "rank": "Page",
+      "rarity": "common",
+      "name": "Plume Fledgling",
+      "bird": "Rainbow Bee-eater",
+      "coreMeaning": "Eager flash, bold beginnings, a high-volume message",
+      "description": "A Rainbow Bee-eater poster-runner darts along a wheatpaste wall, carrying a fresh physical signal plume and blank abstract flyers.",
+      "pose": "Bright-eyed and darting along a poster wall, long tail streamers visible, a tiny reflective signal plume clipped to a talon-side courier sling, blank abstract flyers fluttering nearby.",
+      "silhouetteClass": "long-tailed-percher",
+      "poseEnergy": "active",
+      "streetwear": [
+        "green-gold poster-runner hoodie",
+        "tiny crossbody plume pouch",
+        "poster-runner talon cuffs"
+      ],
+      "palette": [
+        "jade green",
+        "sky blue",
+        "gold",
+        "ash charcoal"
+      ],
+      "accent": "sky blue",
+      "varietyNotes": "Court Fledgling keeps messenger energy but swaps the repeated hummingbird silhouette for a long-tailed, multicolor bee-eater.",
+      "gameplayFantasy": "Cheap utility/messenger crew card; draws or delivers a drive resource.",
+      "gameName": "Plume Fledgling",
+      "repairDirective": "Previous candidates looked realistic and had centering issues. Regenerate as high-resolution pixel art only with the Rainbow Bee-eater centered in the safe area, bird-safe poster-runner streetwear, no readable text, no extra birds, and no magical/electrical sound marks."
+    },
+    {
+      "id": "wands_outrider",
+      "rank": "Knight",
+      "rarity": "uncommon",
+      "name": "Plume Outrider",
+      "bird": "Alpine Swift",
+      "coreMeaning": "Adventure, bold action, headlong momentum",
+      "description": "An Alpine Swift skyline courier tears between rooftops and billboards in unmistakable Plumes performance-streetwear, with speed read through wingbeat rhythm, body angle, and feather sheen rather than Basin, Quill, or Nest props.",
+      "pose": "Low high-speed flight between rooftops and billboards, wings hard-swept, an iridescent charge-plume clutched in its talons while plumage color trails through natural motion blur; no basin vessels, signal-quills, antennas as action source, shine tags, nests, or workbench props.",
+      "silhouetteClass": "sleek-flier",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "slate-and-cream flight-courier shell",
+        "crossbody charge-plume sling",
+        "long-distance wing bands",
+        "aero talon cuffs"
+      ],
+      "palette": [
+        "ash charcoal",
+        "signal orange",
+        "gold",
+        "hot magenta"
+      ],
+      "accent": "signal orange",
+      "varietyNotes": "Court Outrider = always in motion; only dynamic flight pose among the Plumes courts.",
+      "gameplayFantasy": "Mobile striker; carries/charges drive effects across the encounter.",
+      "gameName": "Plume Outrider",
+      "repairDirective": "Previous candidates looked realistic and had centering issues. Regenerate as high-resolution pixel art only with one Alpine Swift centered in the safe area, exactly two wings, speed from body angle/wingbeat/feather sheen, and no Basin vessels, Quill signal arrays, Nest resources, extra wings, or edge-cropped subject."
+    },
+    {
+      "id": "wands_matron",
+      "rank": "Queen",
+      "rarity": "rare",
+      "name": "Plume Matron",
+      "bird": "Superb Lyrebird",
+      "coreMeaning": "Magnetism, confidence, creative mastery",
+      "description": "A Superb Lyrebird commands a rooftop runway through sweeping tail display, call control, fashion posture, and grounded stage presence.",
+      "pose": "Poised on a taped rooftop runway, lyre-shaped tail fully arched, one reflective signal plume on a nearby stage stand while her display and call posture command the scene.",
+      "silhouetteClass": "lyre-tailed-display",
+      "poseEnergy": "static",
+      "streetwear": [
+        "oversized runway jacket panels",
+        "tail-safe iridescent trim",
+        "elegant command harness"
+      ],
+      "palette": [
+        "hot magenta",
+        "warm brown",
+        "gold",
+        "ash charcoal"
+      ],
+      "accent": "hot magenta",
+      "varietyNotes": "Court Matron keeps Plumes performance mastery but swaps repeated bird-of-paradise display for an unmistakable lyre-tail silhouette and sound-performer identity.",
+      "gameplayFantasy": "Support/buff leader; amplifies and inspires allied Plumes crew cards.",
+      "gameName": "Plume Matron",
+      "repairDirective": "Previous candidates read as the completely wrong suit. Regenerate as high-resolution pixel art only and make this unmistakably Plumes: one Superb Lyrebird centered on a taped rooftop runway, lyre tail display, biological call posture, feather rhythm, performance streetwear, abstract stage tape. No Basin vessels, Quill signal props, Nest shine tags, workbenches, resource tables, antennas as action source, or magical particles."
+    },
+    {
+      "id": "wands_elder",
+      "rank": "King",
+      "rarity": "rare",
+      "name": "Plume Elder",
+      "bird": "Aplomado Falcon",
+      "coreMeaning": "Bold leadership, vision in command, high-volume authority",
+      "description": "An Aplomado Falcon rules from a water-tower perch as a Plumes rhythm director, commanding billboards, calls, wingbeat timing, and rooftop movement at high-summer noon without borrowing care, signal, or resource imagery.",
+      "pose": "Standing tall and still on a high water-tower perch above billboards and rooftop paths, wings folded, a great reflective plume at its side; no basin vessels, signal-quills, shine tags, nests, workbenches, or antenna-driven action.",
+      "silhouetteClass": "compact-raptor",
+      "poseEnergy": "static",
+      "streetwear": [
+        "deep green rooftop director puffer coat",
+        "brass hardware zipper pulls",
+        "reinforced rhythm-crew talon bands"
+      ],
+      "palette": [
+        "signal orange",
+        "gold",
+        "ash charcoal",
+        "hot magenta"
+      ],
+      "accent": "molten gold",
+      "varietyNotes": "Court Elder = monumental external authority; the crew's kestrel boss at full command.",
+      "gameplayFantasy": "Faction leader; command effects that rally and embolden the whole Plumes crew.",
+      "gameName": "Plume Elder",
+      "repairDirective": "Previous candidates looked realistic and had centering issues. Regenerate as high-resolution pixel art only with one Aplomado Falcon centered lower on the water-tower perch, entire head/feet/tail inside the overlay-safe area, and unmistakable Plumes rhythm-director cues. No wrong-suit props, no extra birds, no magical particles."
+    }
+  ]
+}

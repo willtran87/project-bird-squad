@@ -1,0 +1,14 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/next-level-data-contracts.md",
+    "docs/game/core-gameplay-spec.md"
+  ],
+  "statuses": [
+    { "id": "winded", "kind": "debuff", "stack": "counter" },
+    { "id": "openSky", "kind": "debuff", "stack": "counter" },
+    { "id": "openSkyGuard", "kind": "buff", "stack": "counter" },
+    { "id": "molt", "kind": "buff", "stack": "flag" }
+  ]
+}

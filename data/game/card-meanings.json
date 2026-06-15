@@ -1,0 +1,426 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "meanings": {
+    "major_00": {
+      "core": "Beginnings, innocence, risk, curiosity",
+      "upright": "A small bird launches from a ledge it has never left before, trusting the air to hold it. First Flight upright is the brave, curious leap into the unknown, the beginner's gamble taken with open eyes and a hopeful heart.",
+      "reversed": "Reversed, the fledgling clings to the gutter, frozen by every imagined fall. This is recklessness or paralysis, the leap taken without looking or refused entirely out of fear."
+    },
+    "wands_ace": {
+      "core": "Resonance of inspiration, raw potential, new drive",
+      "upright": "A spark of green fire lands on the first open bloom of the season. Plume Flash upright is raw inspiration arriving, the electric jolt of a new drive that demands to be acted on while the nectar still flows.",
+      "reversed": "Reversed, the spark gutters before it catches, scattered across too many flowers at once. This is creative energy diffused, motivation that flares and dies, or a brilliant idea left unfed."
+    },
+    "wands_08": {
+      "core": "Speed, momentum, swift news",
+      "upright": "The roller tumbles through the air faster than news can travel, momentum carrying the message before doubt can catch it. Plume Rush upright is swift movement, sudden developments, and word that arrives all at once.",
+      "reversed": "Reversed, the dive becomes a fall with no control, speed outrunning sense. This is haste that causes mistakes, news rushed out half-true, or momentum spent before it reaches its mark."
+    },
+    "swords_02": {
+      "core": "Stalemate, hard choice, willful blindness",
+      "upright": "Two quills cross over a blindfolded jay, each path equally sharp. Crossed Quills upright is a stalemate or hard choice held in tense balance, a truce reached by refusing to look directly at the conflict.",
+      "reversed": "Reversed, the blindfold slips and the standoff breaks, for better or worse. This is willful blindness ending, a decision finally forced, or information that shatters a comfortable deadlock."
+    },
+    "swords_ace": {
+      "core": "Clarity, breakthrough, the cutting truth",
+      "upright": "One clean point cuts through the fog and pins the truth in place where it cannot wriggle free. Quill Point upright is mental clarity and breakthrough, the sharp insight that names a thing exactly for what it is.",
+      "reversed": "Reversed, the blade turns cruel or careless, cutting without aim. This is harsh words, brutal honesty wielded as a weapon, or a clarity so cold it wounds more than it reveals."
+    },
+    "cups_ace": {
+      "core": "New love, open heart, emotional source",
+      "upright": "Still water brims at the lip of the basin, holding the sky upside down. Open Basin upright is the heart opening to new love or feeling, an emotional source filling quietly and completely from a place of calm.",
+      "reversed": "Reversed, the basin is held too tightly or spills before it is offered. This is emotion blocked, a heart guarded against connection, or feelings poured out faster than they can be received."
+    },
+    "cups_03": {
+      "core": "Friendship, celebration, community joy",
+      "upright": "Three pink birds wade and feed together, painted the same shade by the same shared waters. Basin Chorus upright is friendship, celebration, and the joy of a community that nourishes everyone within it.",
+      "reversed": "Reversed, the gathering sours into gossip, exclusion, or hollow festivity. This is a falling-out among friends, a celebration that masks loneliness, or community turned cliquish and cold."
+    },
+    "pentacles_04": {
+      "core": "Control, hoarding, holding tight",
+      "upright": "A pigeon hunches over its hoard on a locked ledge, wings curled tight around what it has gathered. Locked Nest upright is security through control and saving, a firm grip on resources that brings stability.",
+      "reversed": "Reversed, the grip becomes a cage, the hoarder starving atop a pile it refuses to spend. This is miserliness, fear of loss, and stability so rigid it strangles growth and generosity."
+    },
+    "pentacles_02": {
+      "core": "Juggling, balance, adaptability",
+      "upright": "A starling keeps two beakfuls aloft at once, shifting weight as the rooftop tilts beneath it. Nest Juggle upright is adaptability and balance, the nimble managing of competing demands without dropping any.",
+      "reversed": "Reversed, one too many balls is in the air and the whole act wobbles. This is overcommitment, finances or duties spread too thin, and the dropped obligation that brings the rest crashing down."
+    },
+    "aviary_25": {
+      "core": "Transformation of self, shedding an old identity, vulnerability inside change, renewal",
+      "upright": "The tanager sheds its fire and stands briefly plain and exposed, neither what it was nor yet what it will be. Hot Feathers upright is transformation of self, the vulnerable, necessary shedding of an old identity for renewal.",
+      "reversed": "Reversed, the bird clings to faded red feathers long past their season. This is resistance to change, an identity outgrown but clutched, or a transformation stalled halfway and left raw."
+    },
+    "wands_02": {
+      "core": "Planning, foresight, surveying the field",
+      "upright": "Two swallows perch on a wire and survey the whole field below before committing to a single sweep. Twin Plume Lookout upright is planning and foresight, the calm assessment of options before bold action is taken.",
+      "reversed": "Reversed, the survey never ends and the swallow never dives. This is overthinking, hesitation, and a vision so cautious it lets every opportunity in the field slip past."
+    },
+    "wands_03": {
+      "core": "Expansion, vision, ventures underway",
+      "upright": "From the highest branch the bird fans its plumes toward a horizon it intends to claim. Plume Horizon upright is expansion and vision, a venture already underway and reaching confidently beyond the familiar.",
+      "reversed": "Reversed, the display outshines the substance, or the horizon proves farther than the wings can carry. This is overreach, scattered ambition, or grand plans that stall before they take flight."
+    },
+    "wands_04": {
+      "core": "Celebration, milestone, home and belonging",
+      "upright": "Red sparks gather on the rooftop wires and the whole block lights up in welcome. Plume Street Party upright is celebration and belonging, a milestone reached and shared in the warmth of home and community.",
+      "reversed": "Reversed, the lights are up but the joy feels forced or the homecoming hollow. This is celebration without belonging, a milestone that rings empty, or a sense of not quite fitting where you stand."
+    },
+    "wands_05": {
+      "core": "Competition, friction, scrappy rivalry",
+      "upright": "Two crested birds square off over a fruiting branch, all bluster and bright feathers. Plume Clash upright is scrappy rivalry and friction, competition that sharpens you and proves your mettle in the open.",
+      "reversed": "Reversed, the squabbling turns petty and exhausting, energy burned on conflict that settles nothing. This is needless friction, a rivalry gone bitter, or fights picked from insecurity rather than strength."
+    },
+    "wands_06": {
+      "core": "Victory, recognition, public triumph",
+      "upright": "The kestrel claims the highest wire for all the rooftop flock to see, turning a hard-won kill into a banner of triumph; your victory is real, public, and earned. Let the recognition lift the whole squad's wingbeat, not just your own pride.",
+      "reversed": "The applause has gone hollow, or the wire is empty because the win was claimed too loudly and too soon. Beware triumph that feeds the ego while the flock goes hungry, or laurels rested upon while the real hunt continues below."
+    },
+    "wands_09": {
+      "core": "Resilience, last stand, guarded persistence",
+      "upright": "Battered but unbroken, the tiny defender plants itself at the last flower and dares the world to take it; your reserves are low yet your resolve is iron. Hold the line one more beat, for resilience this fierce outlasts foes many times your size.",
+      "reversed": "The last stand has curdled into stubborn exhaustion, guarding a patch long since drained dry. Persistence without purpose is just depletion; know when the wire you cling to is no longer worth the wingbeats it costs."
+    },
+    "swords_03": {
+      "core": "Heartbreak, sorrow, painful truth (symbolic)",
+      "upright": "Three blades through the heart, and the mockingbird sings the pain aloud rather than hiding it; grief named in full voice is grief that can finally begin to heal. Let the sorrow be heard, for naming the wound is the first stitch in mending it.",
+      "reversed": "The song of heartbreak has become a loop with no exit, rehearsing the same wound until it cannot scab over. Replaying the betrayal on repeat keeps the quills fresh; release the refrain before it sings you into stone."
+    },
+    "swords_04": {
+      "core": "Rest, recovery, stillness before return",
+      "upright": "The goshawk folds its wings and waits in the deep cover of the canopy, gathering strength in perfect stillness before the strike. This is the rest that is not surrender but preparation; recover now, for the return will be swift and total.",
+      "reversed": "Stillness has slid into stagnation, or rest is refused until exhaustion forces a clumsy strike. Either the perch is held too long and the moment passes, or the bird launches before its strength returns; honor the pause without letting it rot."
+    },
+    "swords_05": {
+      "core": "Hollow victory, conflict, costly win",
+      "upright": "The drongo scatters every rival from the field and stands alone amid the wreckage, the spoils dearly bought. You may win this fight, but count what the winning cost before you call it a victory.",
+      "reversed": "The hollow triumph is laid bare: a field cleared of allies as well as foes, leaving only an empty perch. Conflict pursued for its own sake burns the bridges you needed; walk away before there is nothing left to defend."
+    },
+    "swords_fledgling": {
+      "core": "Curiosity, sharp wit, an incoming message",
+      "upright": "Bright, quick, and endlessly curious, the green jay pries beneath the bark of every surface and surfaces a sharp little truth. A message is on its way, and a keen mind is ready to cut straight to its meaning.",
+      "reversed": "The clever wit turns to mischief or sharp words wielded carelessly, and the incoming message may be twisted or eavesdropped. Cunning unmoored from kindness pries open things better left closed."
+    },
+    "swords_06": {
+      "core": "Transition, moving on, calmer waters ahead",
+      "upright": "The merlin lifts off the rough ground and beats toward calmer air, leaving troubled water behind for steadier skies ahead. The crossing costs something, but the worst of the turbulence is now in your wake.",
+      "reversed": "The flock clings to the familiar bank, refusing the crossing even as the water rises, or carries the old turbulence into new air. Transition stalls when you mistake leaving for losing; the calmer sky waits only past the discomfort."
+    },
+    "swords_07": {
+      "core": "Stealth, cunning, deception",
+      "upright": "The Steller's jay works the quiet edges, slipping in under a borrowed hawk's cry to retrieve what was lost and turn it to advantage. Stealth and cunning serve you now; not every gain must be taken in the open.",
+      "reversed": "The deception curls back on the deceiver, the borrowed scream heard for the bluff it is. Cunning overplayed becomes a liability, and the thing slipped from the discard pile may carry a hidden cost."
+    },
+    "cups_02": {
+      "core": "Connection, partnership, mutual attraction",
+      "upright": "Two birds bow and display in a courtship that mirrors each motion, drawn together by a current neither chose alone. A genuine bond is forming, partnership built on mutual attraction and answered signals.",
+      "reversed": "The display goes unanswered, or one partner mirrors only to manipulate, and the connection frays into mismatch. Beware bonds that flatter rather than meet you; a partnership of one is no partnership at all."
+    },
+    "cups_04": {
+      "core": "Apathy, withdrawal, missed offer",
+      "upright": "The heron sits hunched and inward at the water's edge, eyes lowered, letting offered chances drift past untouched. Sometimes withdrawal is wisdom, but ask whether you are resting or simply refusing what the basin holds out.",
+      "reversed": "The shell finally cracks: an offer once spurned is seen clearly, and the heron stirs from its sullen crouch. Apathy lifts, or its grip tightens into self-pity; the choice to reach out or stay closed is yours to make now."
+    },
+    "cups_05": {
+      "core": "Loss, grief, regret (but not total)",
+      "upright": "The basin has tipped and something precious has run out across the rooftop tiles, yet the spilled cup is never wholly empty. Grieve what was lost, but turn at last to see the two cups still standing behind you.",
+      "reversed": "The gaze stays fixed on the spreading puddle, blind to all that remains, and the grief calcifies into regret. Mourning that refuses to lift its eyes spills the rest of the basin too; loss is real, but it is not total."
+    },
+    "cups_fledgling": {
+      "core": "Curiosity, sensitivity, an emotional message",
+      "upright": "The little plover comes piping across the sand carrying a tender message, all openness and instinct. Receive it with the same sensitivity it is offered; a small feeling, freshly hatched, asks gently for your attention.",
+      "reversed": "Sensitivity tips into a feigned wound, dragging a wing to win sympathy, or a delicate message is missed amid the noise. Guard against emotions performed rather than felt, and against overlooking the quiet signal at your feet."
+    },
+    "cups_06": {
+      "core": "Nostalgia, innocence, kindness",
+      "upright": "Like a sanderling chasing the foam it knew as a chick, you return to a gentler shore of memory, warmed by old innocence and kindness. Let nostalgia restore something tender, and pass that warmth onward.",
+      "reversed": "The chase after the retreating wave becomes flight from the present, the past gilded past all truth. Sweet memory turns to a trap when you run backward forever; the tide you long for has already gone out."
+    },
+    "cups_08": {
+      "core": "Withdrawal, walking away, seeking more",
+      "upright": "The skimmer cuts away from the colony and flies low over open water alone, leaving behind what no longer satisfies in search of something deeper. Walking away is not defeat here but a deliberate turn toward what truly nourishes.",
+      "reversed": "The departure becomes endless drifting, every basin abandoned before it can fill, or the bird leaves what it should have stayed to tend. Restless turning-away can mistake good enough for not enough; some shores are worth landing on."
+    },
+    "pentacles_ace": {
+      "core": "Opportunity, new venture, material seed",
+      "upright": "A bright object catches the eye on a sun-warmed ledge: here is opportunity, the raw seed of a venture worth tending. Gather what gleams, build the bower, and trust that small treasures collected with intent become something that draws others in.",
+      "reversed": "The hoard grows but the bower stays empty, gleaming trinkets stacked with no one to court. Reversed, this is opportunity squandered on appearances, a venture begun for the shine of it rather than the substance, leaving you with a pile that means nothing."
+    },
+    "pentacles_03": {
+      "core": "Teamwork, craft, shared building",
+      "upright": "Many wings raise the same roof: this is the craft of shared labor, where skill compounds when builders trust a common blueprint. Lay your stick beside another's and the structure that rises will outlast any of you working alone.",
+      "reversed": "The plans clash and the half-built frame sags under arguing hands. Reversed, teamwork curdles into competing visions, shoddy work rushed without care, a project where everyone hauls material but no one agrees on what is being made."
+    },
+    "pentacles_05": {
+      "core": "Hardship, exclusion, want",
+      "upright": "Out in the cold beyond the lit window, want sharpens the senses and reveals who will share their seed. Hardship and exclusion are real here, yet the dove endures lean winters by knowing exactly where shelter waits; reach for it rather than suffering alone.",
+      "reversed": "Pride keeps you shivering on the wire when warmth is offered just below. Reversed, this card is the refusal of aid, a poverty deepened by isolation, the belief that asking for help is a defeat worse than the cold itself."
+    },
+    "pentacles_fledgling": {
+      "core": "Diligence, study, a material opportunity",
+      "upright": "Head down, bill working the cracks, the diligent student turns over every stone for the grub others overlook. This is the patient apprentice's card, a material opportunity earned by study and persistence rather than luck.",
+      "reversed": "The crest droops and the probing turns aimless, effort poured into ground that yields nothing. Reversed, diligence becomes drudgery, study without direction, an opportunity missed because the eager poking never learned where to dig."
+    },
+    "pentacles_06": {
+      "core": "Generosity, giving and receiving, fairness",
+      "upright": "An open beak shares the find, and what is given freely tends to circle back. This card speaks of generosity in fair measure, the balanced flow of giving and receiving that keeps a community fed and bound together.",
+      "reversed": "The sharing turns one-sided, charity that demands and crowds out, a gift with strings that takes more than it offers. Reversed, generosity sours into debt, dominance disguised as kindness, an imbalance where one party always feeds and the other always takes."
+    },
+    "pentacles_08": {
+      "core": "Mastery, diligence, skilled labor",
+      "upright": "Each stitch placed precisely, the tailorbird turns ordinary leaves into a hidden masterwork through sheer practiced skill. This is the card of mastery and patient craft, the diligence that, repeated long enough, becomes artistry.",
+      "reversed": "The thread tangles and the seam pulls loose, skill spent on fussing detail while the whole goes neglected. Reversed, mastery hardens into perfectionism or hollow repetition, labor that polishes the surface but forgets why the nest was being built."
+    },
+    "major_01": {
+      "core": "Skill, manifestation, tools, cleverness",
+      "upright": "Every bright tool within reach and the wit to wield it: the magpie's card is manifestation made practical, skill turning scattered resources into results. You have what you need; the cleverness to assemble it is the magic.",
+      "reversed": "The toolkit gleams but the hands fumble, talent scattered into trickery or wasted on shiny distractions. Reversed, this is skill misapplied, cleverness without follow-through, the manipulator who hoards tools rather than building anything with them."
+    },
+    "major_02": {
+      "core": "Hidden knowledge, intuition, silence, mystery",
+      "upright": "What cannot be seen can still be heard, and the barn owl reads the dark by what others miss. This is the card of intuition and hidden knowledge, of silence held until the moment is certain, of trusting the inner sense over the visible.",
+      "reversed": "The signals jam and the disc fills with noise, secrets that mislead rather than reveal. Reversed, intuition is drowned out or ignored, mysteries kept for their own sake, a knowing that festers into suspicion when the inner voice goes unheeded."
+    },
+    "major_03": {
+      "core": "Abundance, beauty, nurture, creation",
+      "upright": "Still water, full nest, the swan presides over abundance and the gentle work of nurture. This card is creation flowering, beauty and plenty tended into being, the open generosity of a heart with enough to give.",
+      "reversed": "The nest is guarded so jealously that nothing can grow, nurture curdling into smothering control. Reversed, abundance turns to excess or neglect, beauty grown vain, a creative source dammed up by possessiveness or left to run dry."
+    },
+    "major_04": {
+      "core": "Authority, structure, command, protection",
+      "upright": "From the highest perch the eagle sees the whole territory and rules it without apology. This is the card of authority and structure, of command exercised to protect what is yours, the steady power that gives others a framework to stand within.",
+      "reversed": "The throne becomes a cage and command hardens into tyranny. Reversed, authority turns rigid and domineering, structure that crushes rather than shelters, a ruler so fixed on control that the territory withers beneath the talons."
+    },
+    "major_05": {
+      "core": "Tradition, ritual, teaching, institutions",
+      "upright": "The old dance is performed again, and in its steps the young learn who they are. This is the card of tradition and ritual, of teaching passed wing to wing, the institutions and ancestral routes that give a journey its meaning.",
+      "reversed": "The ritual is repeated long after its meaning has flown, custom enforced for its own sake. Reversed, tradition becomes a cage, dogma that stifles the new, a teaching that demands obedience rather than understanding."
+    },
+    "major_06": {
+      "core": "Choice, union, values, harmony",
+      "upright": "Two birds choose each other and become a single warmth: this is the card of union and the choices that bind values together. A crossroads asks not which path is safer but which one your heart can stand beside in harmony.",
+      "reversed": "The bond frays into clinging or the choice is dodged entirely. Reversed, union becomes codependence or discord, values misaligned beneath the affection, a decision avoided so long that the harmony it promised quietly breaks."
+    },
+    "major_07": {
+      "core": "Victory, control, speed, focus",
+      "upright": "All the world narrows to the single point of the dive: this is victory through focus, control wedded to speed, the disciplined strike that lands because nothing was allowed to distract from it. Commit fully and the target falls.",
+      "reversed": "The stoop overshoots or fixates on the wrong quarry, speed without aim. Reversed, focus tightens into tunnel vision, control becomes recklessness, a drive so fast and narrow it misses the mark or shatters on impact."
+    },
+    "major_08": {
+      "core": "Courage, patience, controlled power, compassion",
+      "upright": "Power held in patient reserve, struck only when the moment is sure: the secretarybird embodies courage married to restraint. This is controlled strength, the compassion of a force that waits, the resolve to face the snake without flinching or wasting a blow.",
+      "reversed": "Patience tips into paralysis or the controlled strike becomes a reckless stomp. Reversed, courage curdles into bullying or hesitation, power either squandered in rashness or hoarded until the moment for compassion has passed."
+    },
+    "major_09": {
+      "core": "Solitude, wisdom, guidance, search",
+      "upright": "A lone pale watcher on a high snow-lit ledge, the Snowy Owl rewards the patient seeker who hunts truth in silence; wisdom and guidance come to those willing to keep solitary vigil. Trust the quiet knowing that surfaces when you stop chasing and simply watch.",
+      "reversed": "Reversed, the solitude curdles into isolation and the long watch becomes avoidance, the seeker lost in their own snowfield, mistaking withdrawal for insight while the answer drifts past unseen."
+    },
+    "major_10": {
+      "core": "Cycles, luck, change, opportunity",
+      "upright": "The kingfisher hovers over the turning canal and plunges exactly when the current offers its chance, embodying cycles, luck, and the turn of fortune; what falls away now clears the channel for what rises next. Read the water and dive when the moment opens.",
+      "reversed": "Reversed, the wheel jams and luck seems to sour, but the resistance is often self-made, clinging to a stale eddy and refusing the change the current is already bringing, so opportunity slips downstream."
+    },
+    "major_11": {
+      "core": "Balance, truth, law, consequence",
+      "upright": "Balanced on improbably long legs yet perfectly level over the water, the stilt is the keeper of fairness and truth, weighing each action against its consequence. Stand upright, settle your accounts honestly, and cause and effect will hold you steady.",
+      "reversed": "Reversed, the balance tips toward denial and unfairness, accountability dodged and the scales rigged; the long legs wobble, and a truth held off-true now threatens to topple the whole stance."
+    },
+    "major_12": {
+      "core": "Pause, surrender, reversal, new perspective",
+      "upright": "Hanging upside down to see the trunk anew, the nuthatch invites a deliberate pause and a flipped perspective; surrender the old vantage and the hidden insect, the overlooked answer, comes into view. Let go, turn the situation over, and look from below.",
+      "reversed": "Reversed, the suspension drags into stalling and resistance, clinging head-up to a familiar view and refusing the reversal that would finally reveal what you keep missing."
+    },
+    "major_13": {
+      "core": "Transformation, endings, release, renewal",
+      "upright": "Circling patiently over what has ended, the vulture transforms death into renewal, clearing the spoiled and the finished so new life can rise; this is the clean break that frees you. Release what has run its course without grief, for endings here are sacred work.",
+      "reversed": "Reversed, the break is resisted and decay lingers, the flock circling endlessly without ever landing to feed; clinging to a dead thing only poisons the ground around it and stalls the renewal."
+    },
+    "major_14": {
+      "core": "Balance, blending, patience, moderation",
+      "upright": "Standing serene on one leg while sieving exactly what it needs from the water, the flamingo teaches blending, patience, and moderation; combine your ingredients in measured proportion and a richer color emerges over time. Mix carefully, take only what nourishes, and let balance do the work.",
+      "reversed": "Reversed, the careful blend curdles into excess or imbalance, the diet skewed and the color draining away; impatience and overindulgence break the temperance that kept everything in harmony."
+    },
+    "major_15": {
+      "core": "Temptation, obsession, shadow, attachment",
+      "upright": "Glittering with stolen shine and ravenous intelligence, the raven names the temptation that grips you, the obsession and attachment that gleam too brightly to refuse. Notice what you are hoarding, for naming the lure is the first step out of its grip.",
+      "reversed": "Reversed, the shadow is faced and the hoard released; the raven sets down the bright trinket it could not stop coveting, and what once enslaved becomes merely a thing, its spell finally broken."
+    },
+    "major_16": {
+      "core": "Disruption, collapse, revelation, shock",
+      "upright": "The lightning-marked woodpecker hammers the false structure until it cracks, heralding sudden disruption, collapse, and the shocking revelation that follows. What is built on rot must fall now, and the bolt that breaks it also clears the way to truth.",
+      "reversed": "Reversed, the collapse is dreaded and resisted, the crack papered over and the tower propped up past its time; delaying the inevitable shock only makes the eventual fall harder and more total."
+    },
+    "major_17": {
+      "core": "Hope, healing, renewal, inspiration",
+      "upright": "Flashing electric blue at first light, the fairywren is the small bright spirit of hope, healing, and renewal that returns after a long dark season. Trust the inspiration breaking through; tend the nest and song, and color floods back into the world.",
+      "reversed": "Reversed, hope dims and faith falters, the blue draining to drab and the morning song unsung; despair or self-doubt clouds the renewal that is still, quietly, within reach."
+    },
+    "major_18": {
+      "core": "Dreams, illusion, instinct, uncertainty",
+      "upright": "A churring voice in the dusk and a shape that dissolves into shadow, the nightjar rules dreams, illusion, and instinct; the path ahead is dim, so trust the inner ear over the eye. Move by feel through the uncertain dark, and the hidden becomes navigable.",
+      "reversed": "Reversed, illusion thickens into deception and fear, the imagined predators of the night mistaken for real ones; anxiety and self-deceit blur the way, and instinct, ignored, can no longer guide you home."
+    },
+    "major_19": {
+      "core": "Joy, clarity, success, vitality",
+      "upright": "Bright as captured sunlight and bounding through the morning air, the goldfinch sings of joy, clarity, vitality, and well-earned success; the day is yours and the harvest is ripe. Let yourself shine openly, for this is a season of warmth and clear-eyed delight.",
+      "reversed": "Reversed, the gold dulls toward winter olive, the joy strained or postponed; overcommitment, gloom, or holding back the light dims a brightness that wants only to be expressed."
+    },
+    "major_20": {
+      "core": "Awakening, announcement, reckoning, calling",
+      "upright": "The crowing junglefowl splits the dawn with a call no one can ignore, summoning awakening, reckoning, and the moment of being named. Answer the call that has been sounding; rise, account for yourself, and step fully into the new day.",
+      "reversed": "Reversed, the alarm is heard and refused, the sleeper pulling the wing over their head; denial of the reckoning, or harsh self-judgment, keeps the awakening from taking hold."
+    },
+    "major_21": {
+      "core": "Completion, journey, wholeness, integration",
+      "upright": "Having flown pole to pole and home again, the Arctic Tern is the completion of the great circle, the journey made whole and the self integrated through everything it has crossed. The loop closes in fulfillment; honor how far you have come and let the cycle round.",
+      "reversed": "Reversed, the journey stalls short of home, the loop left open and the lesson incomplete; a refusal to finish, or a longing to escape rather than arrive, keeps wholeness just out of reach."
+    },
+    "aviary_22": {
+      "core": "The great journey, endurance, collective destiny, no turning back",
+      "upright": "Launching over open ocean with no island in sight, the godwit is the great journey itself, endurance and collective destiny that admits no turning back. Commit fully to the crossing; the strength to finish is already stored within you, waiting on the wind.",
+      "reversed": "Reversed, the endurance falters and doubt creeps in mid-ocean, the flock tempted to turn back where no turning back is possible; exhaustion or loss of faith threatens a journey that can only be survived by pressing on."
+    },
+    "wands_07": {
+      "core": "Defending your ground, standing firm",
+      "upright": "From its wire the scissor-tail holds the line, scissoring the air to drive off any rival who nears its patch of sky. Plume Stand is the resolve to defend what is yours, standing firm and unmoved when the storm intends to strike.",
+      "reversed": "Reversed, the defense curdles into stubbornness, a perch clung to long after the worth of it has flown. You guard a square of rooftop no longer worth the feathers spent, mistaking rigidity for strength."
+    },
+    "wands_10": {
+      "core": "Burden, overload, carrying too much",
+      "upright": "The little bird-of-paradise hauls a weight of plumes and ritual heavier than its own slight body, yet still it dances. Plume Load speaks of carrying more than your due, the burden borne because the work demands it of you.",
+      "reversed": "Reversed, the load buckles the bearer; what was once duty has become martyrdom, every feather a stone. Set some of it down, or be crushed by responsibilities that were never wholly yours to shoulder."
+    },
+    "wands_fledgling": {
+      "core": "Eager flash, bold beginnings, a high-volume message",
+      "upright": "The young bee-eater flashes out from its perch in a burst of color, eager and unafraid to seize the stinging thing. Plume Fledgling is a bright, bold message and the green spark of a beginning that announces itself loudly to the world.",
+      "reversed": "Reversed, eagerness outruns wisdom; the fledgling snatches the bee and forgets to draw the sting. Enthusiasm scatters into noise, a message sent half-formed before its meaning was ever ready."
+    },
+    "wands_outrider": {
+      "core": "Adventure, bold action, headlong momentum",
+      "upright": "The alpine swift throws itself into the open air for months on end, never once touching down, all forward momentum. Plume Outrider is the call to adventure, the headlong charge into the unknown trusting your own velocity to carry you.",
+      "reversed": "Reversed, momentum becomes recklessness, a flight so headlong it forgets that even the swift must one day come to rest. You hurtle onward with no plan to land, motion mistaken for progress."
+    },
+    "wands_matron": {
+      "core": "Magnetism, confidence, creative mastery",
+      "upright": "The lyrebird commands the whole forest's voices and bends them to her own performance, magnetic and assured. Plume Matron is creative mastery wielded with confidence, the artist who has gathered every influence and made it unmistakably hers.",
+      "reversed": "Reversed, the performance hollows into mere mimicry, dazzle without substance, borrowed brilliance signifying nothing. Confidence tips into vanity, all display and no song truly your own."
+    },
+    "wands_elder": {
+      "core": "Bold leadership, vision in command, high-volume authority",
+      "upright": "The aplomado falcon leads from the front, coordinating the hunt with vision and decisive command. Plume Elder is bold leadership made manifest, the authority that does not merely direct from above but flies at the head of the charge.",
+      "reversed": "Reversed, command sours into domination, a leader who flushes others into danger to claim the kill alone. Vision narrows to ego, and those who followed are spent as instruments rather than honored as a flock."
+    },
+    "cups_07": {
+      "core": "Illusion, fantasy, too many choices",
+      "upright": "The mandarin drake dazzles with a riot of colors, each one a tempting promise, more choices than the eye can hold. Basin Mirage is the seduction of too many beautiful options, fantasy shimmering where clear sight is needed.",
+      "reversed": "Reversed, the mirage thins and the true paths reveal themselves beneath the gilding; illusion dissolves into honest choice. What dazzled you proves shallow, and you finally see which water is real."
+    },
+    "cups_09": {
+      "core": "Contentment, satisfaction, the wish granted",
+      "upright": "The scarlet ibis stands fulfilled, its color the slow reward of years of patient feeding, the wish at last made flesh. Full Basin Row is contentment earned and savored, the deep satisfaction of a life's basin filled to its brim.",
+      "reversed": "Reversed, the brimming basin breeds complacency, or the granted wish proves emptier than the wanting was. Satisfaction curdles into stagnation, and you cling to a fullness that has quietly begun to fade."
+    },
+    "cups_10": {
+      "core": "Harmony, family, lasting belonging",
+      "upright": "The mallard family glides together across the canal, generations sheltering in one unbroken raft of belonging. Canal Shelter is lasting harmony and the warmth of home, the flock that endures because every member has a place in it.",
+      "reversed": "Reversed, the shelter becomes a cage of obligation, harmony enforced rather than freely given. Family closes in around you, comfort turned to confinement, belonging that asks you to surrender yourself."
+    },
+    "cups_outrider": {
+      "core": "Romantic pursuit, idealism, following the heart",
+      "upright": "The gannet folds its wings and hurls itself from on high, committing utterly to the dive toward what it desires. Basin Outrider is romantic pursuit and idealism in motion, the heart that follows its longing without hesitation or half-measure.",
+      "reversed": "Reversed, the headlong dive becomes blind infatuation, plunging toward a glittering surface that hides only shallow water. Idealism refuses to see clearly, and the heart hurls itself at a love that was never truly there."
+    },
+    "cups_matron": {
+      "core": "Compassion, intuition, emotional mastery",
+      "upright": "The great pelican gathers the waters in her pouch and gives freely, intuition and compassion held in steady command. Basin Matron is emotional mastery, the deep heart that nurtures a whole flock without ever losing its own calm center.",
+      "reversed": "Reversed, compassion spills past its banks into self-sacrifice, the matron emptying her own basin to fill everyone else's. Boundaries dissolve, and what was nurture becomes a slow drowning of the self in others' needs."
+    },
+    "cups_elder": {
+      "core": "Emotional command, calm authority, wisdom of feeling",
+      "upright": "The shoebill waits in vast stillness, then acts with absolute certainty, feeling and patience fused into authority. Basin Elder is calm emotional command, the wisdom that has felt deeply enough to no longer be ruled by what it feels.",
+      "reversed": "Reversed, stillness hardens into cold detachment, a heart so mastered it has gone numb and unreachable. Calm becomes austerity, and the authority that should counsel feeling now merely suppresses it."
+    },
+    "swords_08": {
+      "core": "Restriction, self-limit, the open cage",
+      "upright": "The drongo can fly anywhere, yet it lingers by the meerkats, bound by a hunger that is its own invention. Quill Ring names the cage with an open door, the self-imposed limit that holds you only because you believe it must.",
+      "reversed": "Reversed, the bird at last notices the unlatched gate and the restriction is revealed as a story it told itself. The trap was never real; step through, and the open sky has been waiting all along."
+    },
+    "swords_09": {
+      "core": "Anxiety, worry, sleepless mind",
+      "upright": "The caracara paces the ground at the edge of darkness, restless and watchful, turning every shadow over twice. Night Quills is the sleepless mind, anxiety circling the same worries, vigilant against a threat that may never come.",
+      "reversed": "Reversed, the racing thoughts begin to settle and the watchful bird finally lets itself roost. The dreaded attack does not arrive, and the worry that ruled the night is seen for the phantom it was."
+    },
+    "swords_10": {
+      "core": "Rock bottom, ending that turns to renewal",
+      "upright": "Dawn Quills is rock bottom, the ten blades borne to ground, and yet the night-singing voice insists that the darkest hour breaks toward morning. An ending has arrived in full; honor it, for from this lowest point the only road left runs upward into renewal.",
+      "reversed": "Reversed, you cling to the ruin, replaying the collapse and refusing the dawn that is already lightening the wire. The story is over, but you keep singing its dirge; release it, or you will mistake the bottom for a home."
+    },
+    "swords_outrider": {
+      "core": "Decisive action, swift strategy, charging the idea",
+      "upright": "Quill Outrider charges the idea before doubt can settle, a low fast strike that turns thought straight into motion; this is decisive strategy, the courage to commit while the line is still open. When the plan is clear, do not hover, dive.",
+      "reversed": "Reversed, swiftness becomes recklessness; you charge half-formed plans and burn momentum on the wrong quarry, mistaking speed for direction. Pull up, read the ground, and choose your angle before you commit the dive."
+    },
+    "swords_matron": {
+      "core": "Clear judgment, hard-won wisdom, inner mastery",
+      "upright": "Quill Matron is clear judgment forged from hard experience, a mind sharp enough to cut through illusion and curious enough to keep learning; her wisdom is playful but precise. Trust the discernment you have earned, and turn each obstacle into a puzzle to solve.",
+      "reversed": "Reversed, the keen mind turns mischievous or cruel, picking everything apart for sport until nothing is left whole; clever-ness without warmth shreds the very things it touches. Let understanding soften into compassion before your judgment becomes a blade."
+    },
+    "swords_elder": {
+      "core": "Authority of mind, truth, command of strategy",
+      "upright": "Quill Elder is the authority of mind, a master strategist who threads the tightest gap to reach the truth and seizes it without hesitation; his command is intellect made decisive. Bring cool, clear reasoning to bear and others will follow the line you cut.",
+      "reversed": "Reversed, the relentless pursuit breaks bones, your own included; truth wielded as a weapon, strategy that wins the chase but shatters the body it inhabits. Loosen the grip, for command without mercy collides with everything it loves."
+    },
+    "pentacles_07": {
+      "core": "Patience, investment, waiting on growth",
+      "upright": "Growing Nest is the patience of the long harvest: work done now buried against a winter you cannot yet see, faith that steady investment will sprout in its own season. Tend the cache and trust the wait, for what you plant in patience returns as a forest.",
+      "reversed": "Reversed, patience sours into stalling; you hoard and wait so long that the season passes, or you forget why you buried the effort at all. Movement is overdue, do not let prudence become an excuse for never reaping."
+    },
+    "pentacles_09": {
+      "core": "Self-made abundance, independence, refinement",
+      "upright": "Treasure Nest is self-made abundance: wealth and beauty crafted by your own hand, an independence refined into something others travel to admire. You owe your bounty to no one; stand in it, and let your finished work speak.",
+      "reversed": "Reversed, the gilded bower becomes a gallery of appearances, success measured only by what glitters on display while the inner rooms stay empty. Refinement curdles into vanity or isolation, prized possessions that no longer warm the nest."
+    },
+    "pentacles_10": {
+      "core": "Legacy, lasting stored value, family stash",
+      "upright": "Legacy Nest is the fullest house: stored value woven to last, a lineage and a shelter passed down through the colony. Here is lasting belonging earned over time; build for those who come after, and your work outlives the season.",
+      "reversed": "Reversed, the inheritance binds rather than blesses, wealth or tradition clung to so tightly it becomes a hollow showpiece or a weight on the next generation. Ask whether the nest still shelters life, or merely hangs there for show."
+    },
+    "pentacles_outrider": {
+      "core": "Reliability, steady effort, delivery",
+      "upright": "Nest Outrider is reliability in motion, the steady worker who turns up, bows to the task, and delivers without fanfare; effort accumulated becomes a structure that holds. Keep showing up, for dependable hands build what brilliance alone cannot.",
+      "reversed": "Reversed, steadiness slips into going-through-the-motions, or the delivery stalls and promises hang half-woven from the branch. Reliability lost is trust lost; finish what you start or stop bowing for an audience that no longer believes you."
+    },
+    "pentacles_matron": {
+      "core": "Nurture, craft mastery, abundance tended",
+      "upright": "Nest Matron is nurture raised to mastery: abundance not merely possessed but tended, craft and care woven together until the whole flock is provided for. Build generously and tend what you have made, for a well-kept nest feeds more than its keeper.",
+      "reversed": "Reversed, the tending turns smothering or anxious, towers raised ever higher to prove worth while the warmth inside runs thin. Abundance hoarded or over-managed stops nourishing; loosen your grip and let what you grow be shared."
+    },
+    "pentacles_elder": {
+      "core": "Material command, builder authority, provider",
+      "upright": "Nest Elder is the master provider, builder authority who commands the slow machinery of growth and holds it at the perfect temperature through sheer attentive labor. Yours is the patient, year-round work of stewardship; govern your resources well and life emerges from the mound.",
+      "reversed": "Reversed, the provider's control becomes obsession, forever raking and testing, unable to trust the mound to do its work or let the young leave the nest. Authority over material things turns to drudgery and grip; step back and let what you tended hatch on its own."
+    },
+    "aviary_23": {
+      "core": "Sanctuary, rest, belonging, the safe return, community shelter",
+      "upright": "The gourd-house swings full and warm: shelter freely given and gladly returned, a colony that remembers the way home. Trust the safe roof over your head and the flock that gathers beneath it.",
+      "reversed": "The houses stand empty or the scouts never come back; belonging curdles into dependence, and a sanctuary leaned on too hard becomes a cage. Comfort has stopped you from flying."
+    },
+    "aviary_24": {
+      "core": "Upheaval, raw forces, riding chaos, harnessing what you cannot control",
+      "upright": "Wings spread to the gale, you let the storm carry what you could never row against, turning raw upheaval into lift. Ride the chaos instead of fighting it, and let the wind do the work.",
+      "reversed": "The same storm that lifts can fling you down; clinging to forces you cannot steer, you mistake being swept along for being in control. The pouch deflates and the bluster proves hollow."
+    },
+    "aviary_26": {
+      "core": "Unity, emergence, the many-as-one, collective will, strength in numbers",
+      "upright": "A million small voices fold into one rolling shape, and the sky itself seems to move at the flock's will. Strength here is not the single bird but the many turning as one; lend your wingbeat to the whole.",
+      "reversed": "The murmuration scatters into noise, or the swarm consumes everything it touches; unity hardens into mob, the individual erased. Belonging to everyone, you belong to no one."
+    },
+    "aviary_27": {
+      "core": "Liminality, hidden truth, omen, the threshold between states",
+      "upright": "Frozen at the seam between day and night, the watcher sees what passes the threshold while seeming only a piece of dead branch. Hidden truth waits at the edge of things; hold still and read the omen before you move.",
+      "reversed": "The camouflage becomes a hiding place, the omen ignored; held too long in the in-between, you stiffen into denial and mistake stillness for safety. Some branch is about to break."
+    }
+  }
+}
