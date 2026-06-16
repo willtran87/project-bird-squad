@@ -1194,7 +1194,7 @@ make the boss-prep value explicit:
 Example Bird Squad pattern:
 
 ```text
-Tarline Crew reward bias: Cover, Open Sky Guard, Preen, boss-prep Route Mark.
+Tarline Jackdaw reward bias: Cover, Open Sky Guard, Preen, boss-prep Route Mark.
 Tar-Crowned Crow pressure: Heavy Strike and Open Sky punishment.
 ```
 

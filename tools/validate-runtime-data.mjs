@@ -24,6 +24,7 @@ const alphaMarket = readJson('data/game/alpha-market.json');
 const alphaSignals = readJson('data/game/alpha-signals.json');
 const alphaMapProfiles = readJson('data/game/alpha-map-profiles.json');
 const alphaCardArtManifest = readJson('assets/runtime/cards/card-art-manifest.json');
+const alphaEnemyArtManifest = readJson('assets/runtime/enemies/enemy-art-manifest.json');
 
 // District content files for Maps 2-4 (each self-contained: route map + its
 // enemies, encounters, signals, profile). Merged into the same id-spaces as the
@@ -186,6 +187,7 @@ const validateNodeOptions = (set, file) => {
 const validRisk = new Set(['low', 'medium', 'high', 'boss']);
 const validPreview = new Set(['known', 'typeOnly', 'hidden']);
 const validArtStatus = new Set(['approved', 'placeholder', 'needs-review']);
+const generatedImagePathPattern = /^\.generated\/imagegen\/(?:tarot|enemies)\/selected\/[a-z0-9_]+\.png$/;
 
 // Effect expression shape: `verb(args)` with an optional `if COND then ` prefix.
 // COND is a bare name, an optional `(arg)`, or the `turn >= N` comparison form
@@ -419,6 +421,18 @@ const validateEnemy = (enemy, file) => {
     }
     if (!Number.isInteger(enemy.health) || enemy.health < 1) {
       fail(`${label}: health must be a positive integer`);
+    }
+    if (!enemy.description || typeof enemy.description !== 'string') {
+      fail(`${label}: missing description`);
+    }
+    if (!enemy.visualBrief || typeof enemy.visualBrief !== 'string') {
+      fail(`${label}: missing visualBrief`);
+    }
+    if (!enemy.silhouette || typeof enemy.silhouette !== 'string') {
+      fail(`${label}: missing silhouette`);
+    }
+    if (!enemy.artPose || typeof enemy.artPose !== 'string') {
+      fail(`${label}: missing artPose`);
     }
     // Moves + attack pattern (next-level-data-contracts §2)
     const moveIds = new Set();
@@ -817,8 +831,8 @@ for (const entry of alphaCardArtManifest.cards ?? []) {
   if (entry.status === 'approved') {
     if (!entry.source || typeof entry.source !== 'string') {
       fail(`${label}: approved art requires a source path`);
-    } else if (!fs.existsSync(path.join(root, entry.source))) {
-      fail(`${label}: approved source does not exist at ${entry.source}`);
+    } else if (!generatedImagePathPattern.test(entry.source)) {
+      fail(`${label}: source must be an ignored .generated/imagegen selected PNG path`);
     }
   }
   if (entry.status === 'placeholder' && entry.source !== null) {
@@ -831,10 +845,14 @@ for (const entry of alphaCardArtManifest.cards ?? []) {
     const value = entry[field];
     if (typeof value !== 'string' || !expectedPattern.test(value)) {
       fail(`${label}: ${field} must match ${expectedPattern}`);
+    } else if (entry.status === 'approved' && !fs.existsSync(path.join(root, value))) {
+      fail(`${label}: approved ${field} does not exist at ${value}`);
     }
   }
   if (entry.icon !== null && (typeof entry.icon !== 'string' || !new RegExp(`^assets/runtime/cards/icon/${entry.cardId}\\.webp$`).test(entry.icon))) {
     fail(`${label}: icon path must match assets/runtime/cards/icon/${entry.cardId}.webp or be null`);
+  } else if (entry.status === 'approved' && entry.icon !== null && !fs.existsSync(path.join(root, entry.icon))) {
+    fail(`${label}: approved icon does not exist at ${entry.icon}`);
   }
 }
 
@@ -842,6 +860,44 @@ for (const [cardId, card] of cardsById) {
   // Snags render with a generic hazard visual and need no per-card art entry.
   if (card.kind !== 'snag' && !artEntriesByCardId.has(cardId)) {
     fail(`assets/runtime/cards/card-art-manifest.json: missing Alpha card ${cardId}`);
+  }
+}
+
+const enemyArtEntriesByEnemyId = new Map();
+for (const entry of alphaEnemyArtManifest.enemies ?? []) {
+  const label = `assets/runtime/enemies/enemy-art-manifest.json:${entry.enemyId ?? '<missing enemyId>'}`;
+  if (!entry.enemyId || typeof entry.enemyId !== 'string') {
+    fail(`${label}: missing enemyId`);
+    continue;
+  }
+  if (enemyArtEntriesByEnemyId.has(entry.enemyId)) {
+    fail(`${label}: duplicate enemyId`);
+  }
+  enemyArtEntriesByEnemyId.set(entry.enemyId, entry);
+  if (!enemiesByPayload.has(entry.enemyId)) {
+    fail(`${label}: enemyId is not in enemy data`);
+  }
+  if (!validArtStatus.has(entry.status)) {
+    fail(`${label}: invalid status "${entry.status}"`);
+  }
+  if (entry.status === 'approved') {
+    if (!entry.source || typeof entry.source !== 'string') {
+      fail(`${label}: approved art requires a source path`);
+    } else if (!generatedImagePathPattern.test(entry.source)) {
+      fail(`${label}: source must be an ignored .generated/imagegen selected PNG path`);
+    }
+    const expectedFull = new RegExp(`^assets/runtime/enemies/full/${entry.enemyId}\\.webp$`);
+    if (typeof entry.full !== 'string' || !expectedFull.test(entry.full)) {
+      fail(`${label}: full must match ${expectedFull}`);
+    } else if (!fs.existsSync(path.join(root, entry.full))) {
+      fail(`${label}: approved full asset does not exist at ${entry.full}`);
+    }
+  }
+}
+
+for (const enemyId of enemiesByPayload.keys()) {
+  if (!enemyArtEntriesByEnemyId.has(enemyId)) {
+    fail(`assets/runtime/enemies/enemy-art-manifest.json: missing enemy ${enemyId}`);
   }
 }
 
@@ -854,4 +910,4 @@ if (errors.length > 0) {
 }
 
 console.log('Runtime data validation passed.');
-console.log(`Checked ${cardsById.size} Alpha cards, ${enemiesByPayload.size} enemies, ${encounterIds.size} encounters, ${rewardProfileIds.size} reward profiles, ${statusIds.size} statuses, ${supplyIds.size} supplies, ${routeMarkIds.size} route marks, ${signalIds.size} signals, ${marketIds.size} markets, ${mapProfileIds.size} map profiles, ${basinOptionCount + nestOptionCount + cacheOptionCount} node options, ${totalRouteNodes} route nodes across ${1 + mapContents.length} maps, ${totalRouteEdges} route edges, and ${artEntriesByCardId.size} card art entries.`);
+console.log(`Checked ${cardsById.size} Alpha cards, ${enemiesByPayload.size} enemies, ${encounterIds.size} encounters, ${rewardProfileIds.size} reward profiles, ${statusIds.size} statuses, ${supplyIds.size} supplies, ${routeMarkIds.size} route marks, ${signalIds.size} signals, ${marketIds.size} markets, ${mapProfileIds.size} map profiles, ${basinOptionCount + nestOptionCount + cacheOptionCount} node options, ${totalRouteNodes} route nodes across ${1 + mapContents.length} maps, ${totalRouteEdges} route edges, ${artEntriesByCardId.size} card art entries, and ${enemyArtEntriesByEnemyId.size} enemy art entries.`);

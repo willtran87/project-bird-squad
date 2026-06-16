@@ -1,0 +1,244 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/art/enemy-art-bible.md",
+    "data/game/alpha-enemies.json",
+    "data/game/map02-content.json",
+    "data/game/map03-content.json",
+    "data/game/map04-content.json"
+  ],
+  "enemies": [
+    {
+      "enemyId": "roof_rat",
+      "source": ".generated/imagegen/enemies/selected/roof_rat.png",
+      "full": "assets/runtime/enemies/full/roof_rat.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "signal_gull",
+      "source": ".generated/imagegen/enemies/selected/signal_gull.png",
+      "full": "assets/runtime/enemies/full/signal_gull.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "wire_hawk",
+      "source": ".generated/imagegen/enemies/selected/wire_hawk.png",
+      "full": "assets/runtime/enemies/full/wire_hawk.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "tarline_jackdaw",
+      "source": ".generated/imagegen/enemies/selected/tarline_jackdaw.png",
+      "full": "assets/runtime/enemies/full/tarline_jackdaw.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "gutter_baron",
+      "source": ".generated/imagegen/enemies/selected/gutter_baron.png",
+      "full": "assets/runtime/enemies/full/gutter_baron.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "tar_crowned_crow",
+      "source": ".generated/imagegen/enemies/selected/tar_crowned_crow.png",
+      "full": "assets/runtime/enemies/full/tar_crowned_crow.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "canal_dock_warden",
+      "source": ".generated/imagegen/enemies/selected/canal_dock_warden.png",
+      "full": "assets/runtime/enemies/full/canal_dock_warden.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "canal_dock_rat",
+      "source": ".generated/imagegen/enemies/selected/canal_dock_rat.png",
+      "full": "assets/runtime/enemies/full/canal_dock_rat.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "canal_market_crow",
+      "source": ".generated/imagegen/enemies/selected/canal_market_crow.png",
+      "full": "assets/runtime/enemies/full/canal_market_crow.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "canal_dredge_eel",
+      "source": ".generated/imagegen/enemies/selected/canal_dredge_eel.png",
+      "full": "assets/runtime/enemies/full/canal_dredge_eel.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "canal_barge_gull",
+      "source": ".generated/imagegen/enemies/selected/canal_barge_gull.png",
+      "full": "assets/runtime/enemies/full/canal_barge_gull.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "canal_lock_keeper",
+      "source": ".generated/imagegen/enemies/selected/canal_lock_keeper.png",
+      "full": "assets/runtime/enemies/full/canal_lock_keeper.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "canal_ferry_cormorant",
+      "source": ".generated/imagegen/enemies/selected/canal_ferry_cormorant.png",
+      "full": "assets/runtime/enemies/full/canal_ferry_cormorant.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "canal_toll_magpie",
+      "source": ".generated/imagegen/enemies/selected/canal_toll_magpie.png",
+      "full": "assets/runtime/enemies/full/canal_toll_magpie.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "canal_heron_boss",
+      "source": ".generated/imagegen/enemies/selected/canal_heron_boss.png",
+      "full": "assets/runtime/enemies/full/canal_heron_boss.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "spire_signal_marshal",
+      "source": ".generated/imagegen/enemies/selected/spire_signal_marshal.png",
+      "full": "assets/runtime/enemies/full/spire_signal_marshal.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "spire_relay_starling",
+      "source": ".generated/imagegen/enemies/selected/spire_relay_starling.png",
+      "full": "assets/runtime/enemies/full/spire_relay_starling.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "spire_aerial_kite",
+      "source": ".generated/imagegen/enemies/selected/spire_aerial_kite.png",
+      "full": "assets/runtime/enemies/full/spire_aerial_kite.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "spire_tower_pigeon",
+      "source": ".generated/imagegen/enemies/selected/spire_tower_pigeon.png",
+      "full": "assets/runtime/enemies/full/spire_tower_pigeon.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "spire_static_swift",
+      "source": ".generated/imagegen/enemies/selected/spire_static_swift.png",
+      "full": "assets/runtime/enemies/full/spire_static_swift.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "spire_beacon_grackle",
+      "source": ".generated/imagegen/enemies/selected/spire_beacon_grackle.png",
+      "full": "assets/runtime/enemies/full/spire_beacon_grackle.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "spire_signal_kite",
+      "source": ".generated/imagegen/enemies/selected/spire_signal_kite.png",
+      "full": "assets/runtime/enemies/full/spire_signal_kite.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "spire_tollkeeper_kestrel",
+      "source": ".generated/imagegen/enemies/selected/spire_tollkeeper_kestrel.png",
+      "full": "assets/runtime/enemies/full/spire_tollkeeper_kestrel.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "spire_beacon_breaker",
+      "source": ".generated/imagegen/enemies/selected/spire_beacon_breaker.png",
+      "full": "assets/runtime/enemies/full/spire_beacon_breaker.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "roost_iron_talon",
+      "source": ".generated/imagegen/enemies/selected/roost_iron_talon.png",
+      "full": "assets/runtime/enemies/full/roost_iron_talon.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "roost_perch_thug",
+      "source": ".generated/imagegen/enemies/selected/roost_perch_thug.png",
+      "full": "assets/runtime/enemies/full/roost_perch_thug.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "roost_wind_shrike",
+      "source": ".generated/imagegen/enemies/selected/roost_wind_shrike.png",
+      "full": "assets/runtime/enemies/full/roost_wind_shrike.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "roost_tar_drifter",
+      "source": ".generated/imagegen/enemies/selected/roost_tar_drifter.png",
+      "full": "assets/runtime/enemies/full/roost_tar_drifter.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "roost_relay_falcon",
+      "source": ".generated/imagegen/enemies/selected/roost_relay_falcon.png",
+      "full": "assets/runtime/enemies/full/roost_relay_falcon.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "roost_spire_sentinel",
+      "source": ".generated/imagegen/enemies/selected/roost_spire_sentinel.png",
+      "full": "assets/runtime/enemies/full/roost_spire_sentinel.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "roost_kettle_harrier",
+      "source": ".generated/imagegen/enemies/selected/roost_kettle_harrier.png",
+      "full": "assets/runtime/enemies/full/roost_kettle_harrier.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "roost_skyline_baron",
+      "source": ".generated/imagegen/enemies/selected/roost_skyline_baron.png",
+      "full": "assets/runtime/enemies/full/roost_skyline_baron.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "roost_warden",
+      "source": ".generated/imagegen/enemies/selected/roost_warden.png",
+      "full": "assets/runtime/enemies/full/roost_warden.webp",
+      "version": "0.1",
+      "status": "approved"
+    }
+  ]
+}

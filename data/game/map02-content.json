@@ -25,6 +25,10 @@
       "type": "elite",
       "health": 46,
       "lesson": "Elite: a lock-keeper bruiser that guards, then rams.",
+      "description": "A broad canal coot that controls the dock gate and turns every crossing into a shove match.",
+      "visualBrief": "Stocky black coot in a reinforced rain shell, rubberized talon bands, lock-chain clips, and a wet utility harness beside canal gates and warning buoys.",
+      "silhouette": "Compact heavy waterbird with a forward shield-like chest and low guard stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
         { "id": "warden_haul_9", "label": "Haul 9", "effects": ["damage(flock, 9)"] },
         { "id": "warden_bulwark", "label": "Bulwark", "effects": ["gainCover(11)"] },
@@ -40,6 +44,10 @@
       "type": "normal",
       "health": 24,
       "lesson": "Chip damage adds up; spend Cover before it stacks.",
+      "description": "A canal rat that nips from between crates and turns small mistakes into steady attrition.",
+      "visualBrief": "Damp brown rat in a tiny patched slicker, paw wraps, rope-belt harness, and bead-like rain drops on dock planks beside market crates.",
+      "silhouette": "Small low runner with wet fur spikes, thin tail, and quick jaw-forward pose.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural limbs, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
         { "id": "gnaw_6_a", "label": "Gnaw 6", "effects": ["damage(flock, 6)"] },
         { "id": "gnaw_6_b", "label": "Gnaw 6", "effects": ["damage(flock, 6)"] },
@@ -54,6 +62,10 @@
       "type": "normal",
       "health": 26,
       "lesson": "Scavengers heal if left alone; deny their rest turn.",
+      "description": "A market crow that steals, sorts, and recovers behind the bustle whenever the flock looks away.",
+      "visualBrief": "Glossy crow in a cropped market-worker jacket, bright abstract pin clips, tiny satchel, and talon bands amid tarps, produce crates, and canal reflections.",
+      "silhouette": "Medium corvid with hunched shoulders, bright eye, and lifted scavenger beak.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
         { "id": "snatch_6", "label": "Snatch 6", "effects": ["damage(flock, 6)"] },
         { "id": "pick_clean", "label": "Pick Clean", "effects": ["if notHitThisTurn then heal(5)"] },
@@ -68,6 +80,10 @@
       "type": "normal",
       "health": 28,
       "lesson": "Winded throttles your tempo; plan around the lull.",
+      "description": "A slick canal eel that coils around dredge ropes and slows the flock with wet, dragging pressure.",
+      "visualBrief": "Long eel with a flexible waterproof strap harness, reflective canal tags, and cord loops sliding through muddy water beside dredge gear and algae nets.",
+      "silhouette": "Long sinuous body forming a low coil with a sharp raised head.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, coil angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears coiled, watchful, or ready to act while staying readable; full body shape visible with natural fins and tail, resting on an implied ground line or waterline with weight supported by its natural body; avoiding straight-on symmetry, floating poses, and human posture.",
       "moves": [
         { "id": "coil_winded", "label": "Coil", "effects": ["applyWinded(flock, 1)"] },
         { "id": "lash_7", "label": "Lash 7", "effects": ["damage(flock, 7)"] },
@@ -82,6 +98,10 @@
       "type": "normal",
       "health": 30,
       "lesson": "Heavy Strike rewards Cover banked in advance.",
+      "description": "A barge gull that rides canal thermals, waits for a gap, and crashes down with dockside force.",
+      "visualBrief": "Large gull in a loose canal-worker wind shell, cargo strap, bright talon bands, and rain-specked feathers over a barge rail and rope piles.",
+      "silhouette": "Wide gliding bird with long wings, dropped head, and diving diagonal read.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
         { "id": "wheel_5", "label": "Wheel 5", "effects": ["damage(flock, 5)"] },
         { "id": "dive_heavy_12", "label": "Heavy Dive 12", "effects": ["damage(flock, 12)"] },
@@ -96,6 +116,10 @@
       "type": "normal",
       "health": 32,
       "lesson": "A turtling foe stalls your clock; out-pace its Cover.",
+      "description": "A patient moorhen lock keeper that hides behind the canal works and lets the water do half the fighting.",
+      "visualBrief": "Dark moorhen in a hooded rain wrap, tiny key clips without readable marks, webbed-foot bands, and a compact utility pouch near a steel lock wheel.",
+      "silhouette": "Round guarded waterbird tucked behind a vertical gate shape.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
         { "id": "shut_gate", "label": "Shut Gate", "effects": ["gainCover(8)"] },
         { "id": "press_7", "label": "Press 7", "effects": ["damage(flock, 7)"] },
@@ -105,13 +129,17 @@
       "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
     },
     {
-      "id": "canal_ferry_crew",
-      "name": "Ferry Crew",
+      "id": "canal_ferry_cormorant",
+      "name": "Ferry Cormorant",
       "type": "rival",
       "health": 38,
       "lesson": "Optional elite that grinds you down between Basins.",
+      "description": "A canal cormorant ferryman that rows the route his way and punishes flocks that arrive tired.",
+      "visualBrief": "Long-necked black cormorant in a slate rain shell, reflective teal sash, oar-strap harness, waterproof pouch, and orange webbed-foot bands on a narrow ferry deck in gray canal light.",
+      "silhouette": "Tall waterbird with a hooked beak, folded wet wings, long neck, oar diagonal, and broad webbed-foot stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and webbed feet, standing on an implied ground line with weight supported by natural feet or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
-        { "id": "twin_oars", "label": "Twin Oars 7", "effects": ["damage(flock, 7)", "applyWinded(flock, 1)"] },
+        { "id": "twin_oars", "label": "Oar Feint 7", "effects": ["damage(flock, 7)", "applyWinded(flock, 1)"] },
         { "id": "raise_gunwale", "label": "Raise Gunwale", "effects": ["gainCover(9)"] },
         { "id": "ram_13", "label": "Ram 13", "effects": ["damage(flock, 13)"] }
       ],
@@ -124,6 +152,10 @@
       "type": "rival",
       "health": 38,
       "lesson": "Punishes a low Scrap economy by forcing Snags.",
+      "description": "A toll magpie that knows every shortcut price and turns unpaid routes into tangles.",
+      "visualBrief": "Black-and-white magpie in a sharp cropped rain jacket, shiny coin clips, sling pouch, and talon bands with toll-rail rope and wet-tag styling.",
+      "silhouette": "Sleek long-tailed bird with a tilted bargaining posture and bright scavenger accents.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, long tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
         { "id": "shake_down", "label": "Shake Down 6", "effects": ["damage(flock, 6)", "applyOpenSky(1)"] },
         { "id": "stash_cover", "label": "Stash", "effects": ["gainCover(7)", "if flockOpenSky then heal(4)"] },
@@ -137,6 +169,10 @@
       "name": "The Canal Gatekeeper",
       "type": "boss",
       "health": 54,
+      "description": "A towering heron that holds the canal's central gate and tests whether the flock can survive slow water pressure.",
+      "visualBrief": "Tall great heron in layered canal rainwear, long hooded neck wrap, reflective leg bands, and a basin-worker satchel standing amid raised weirs and churning locks.",
+      "silhouette": "Very tall spear-necked waterbird with long legs and a still, gate-like stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, long neck, legs, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "fightLengthTarget": [7, 9],
       "rewardScrap": 120,
       "moves": [
@@ -235,14 +271,14 @@
       "rewardProfileId": "street_standard"
     },
     {
-      "id": "enc_canal_ferry_crew",
-      "name": "Ferry Crew",
+      "id": "enc_canal_ferry_cormorant",
+      "name": "Ferry Cormorant",
       "mapId": "map_02_canal_markets",
       "nodeType": "rival",
       "band": "rival",
       "lesson": "Optional elite that grinds you down between Basins.",
       "tags": ["heavy", "winded", "elite"],
-      "enemies": ["canal_ferry_crew"],
+      "enemies": ["canal_ferry_cormorant"],
       "rewardProfileId": "rival_standard"
     },
     {
@@ -458,7 +494,7 @@
         "lane": 0,
         "type": "rival",
         "label": "Rival Crew",
-        "payloadId": "enc_canal_ferry_crew",
+        "payloadId": "enc_canal_ferry_cormorant",
         "risk": "high",
         "revealed": true,
         "completed": false

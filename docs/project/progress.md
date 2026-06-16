@@ -4,6 +4,54 @@ This log is historical context and handoff memory. It is not a canonical design
 source. Current game rules live in `docs/game/`, art direction lives in
 `docs/art/`, and card production data lives in `data/cards/`.
 
+## 2026-06-16 Enemy Art Contract Fields
+
+- Added `description`, `visualBrief`, and `silhouette` to all 33 authored enemy
+  contracts across Map 1 Alpha and maps 02-04.
+- Added required `artPose` guidance so enemy generation defaults to front-facing
+  3/4 cutout poses instead of straight-on symmetry.
+- Tightened `artPose` guidance so the face/head align with the same 3/4 angle as
+  the body rather than snapping to a straight-on portrait angle.
+- Clarified that tar/oil enemy motifs should translate into fashion, accessories,
+  and environment rather than literal material smeared on animal bodies.
+- Added enemy art guidance that props and clothing must not impede natural animal
+  movement.
+- Added grounded cutout guidance so enemy stills stand or rest on an implied
+  ground line instead of floating, flying, or depending on visible support props.
+- Added single-character enemy art guidance and reworked multi-character enemy
+  contracts into single readable threats: Tarline Jackdaw, Ferry Cormorant,
+  Aerial Signal Kite, and Kettle Harrier.
+- Trued up internal enemy, encounter, route payload, and audit ids so the old
+  group-based `*_crew`, `*_corps`, and `*_gang` names no longer remain in data.
+- Updated all enemy `artPose` contracts to prefer dramatic idle poses: braced,
+  watchful, guarding, mid-feint, coiled, or ready to act without becoming full
+  attack poses.
+- Created `docs/art/enemy-art-bible.md` to keep enemy art aligned with the
+  existing high-resolution pixel art, non-humanoid animal anatomy, and modern
+  urban streetwear visual language.
+- Updated runtime TypeScript types and validation so every enemy must carry the
+  new art contract fields.
+- Linked the enemy art bible from the documentation index and the main art
+  bible.
+- Verified `npm run validate:runtime`.
+
+## 2026-06-16 Generated Art Runtime Pipeline
+
+- Added `.generated/imagegen/` as the home for selected generated tarot and enemy
+  masters, contact sheets, and source/provenance art.
+- Added runtime art builders:
+  - `npm run build:runtime-card-art`
+  - `npm run build:runtime-enemy-art`
+  - `npm run build:runtime-art`
+- Built optimized WebP runtime assets under `assets/runtime/cards/` and
+  `assets/runtime/enemies/`.
+- Added `assets/runtime/enemies/enemy-art-manifest.json` and wired enemy art into
+  combat rendering with the existing fallback ellipse still available.
+- Switched card art loading to optimized runtime portraits instead of loading
+  archival PNG sources directly.
+- Kept raster imagegen art as raster WebP/PNG for runtime; SVG remains reserved
+  for deterministic overlays, icons, borders, and templates.
+
 ## 2026-06-13
 
 - Started the Bird Squad Phaser graybox build.

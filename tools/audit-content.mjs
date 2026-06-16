@@ -42,7 +42,7 @@ const ENEMY_TARGETS = {
   roof_rat:         { type: 'normal', health: 20, band: 'street', damage: { strike_6_a: 6, strike_6_b: 6 } },
   signal_gull:      { type: 'normal', health: 24, band: 'street', damage: { peck_5: 5 } },
   wire_hawk:        { type: 'normal', health: 28, band: 'street', damage: { heavy_strike_11: 11, strike_7: 7 } },
-  tarline_crew:     { type: 'rival',  health: 34, band: 'rival',  damage: { harass_6: 6, heavy_strike_12: 12 } },
+  tarline_jackdaw:  { type: 'rival',  health: 34, band: 'rival',  damage: { harass_6: 6, heavy_strike_12: 12 } },
   tar_crowned_crow: { type: 'boss',   health: 46, band: 'boss',   fightLength: [6, 8], damage: { crowbar_tap: 8, tar_toss: 5, heavy_strike: 13 } },
 };
 // §Alpha Enemies rewards / §Alpha Boss rewards (also next-level-data-contracts §3)

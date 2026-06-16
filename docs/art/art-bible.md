@@ -14,6 +14,7 @@ Related sources:
 - `docs/art/border-first-generation-pipeline.md` defines the preferred Minor
   Arcana regeneration workflow using locked overlays, center-art generation,
   deterministic titles, and QA gates.
+- `docs/art/enemy-art-bible.md` extends these rules for enemy concept art.
 - `data/cards/arcana/major-arcana-bird-map.json` and the Minor Arcana JSON
   files define the card-by-card production data.
 
@@ -662,22 +663,32 @@ Source asset rules:
 
 | Asset Type | Source Size | Rule |
 | --- | ---: | --- |
-| Full card art | 1024x1536 | Archival concept/source image. Do not crop destructively. |
+| Generated card master | 1024x1536 | Archival concept/source image under `.generated/imagegen/tarot/selected/`. Do not crop destructively. |
 | Runtime card portrait | 512x768 | Main in-game card image. Preserve full tarot frame and title cartouche unless UI intentionally hides the frame. |
 | Runtime thumbnail | 256x384 | Deck, reward, and map preview image. Must keep species silhouette readable. |
 | Small icon crop | 128x128 | Optional UI accent. Use bird head, suit crest, or readable silhouette, not arbitrary center crop. |
+| Generated enemy master | Variable transparent PNG | Archival concept/source cutout under `.generated/imagegen/enemies/selected/`. Do not crop destructively. |
+| Runtime enemy full | Long edge 768 max | Main in-game enemy cutout under `assets/runtime/enemies/full/`. Preserve alpha. |
+
+Generated raster art stays raster. Do not convert imagegen PNGs into SVG unless
+the output is a truly vector-authored overlay, icon, border, or template. Runtime
+optimization should produce WebP/PNG game assets, while SVG remains reserved for
+deterministic vector elements such as Minor Arcana overlays.
 
 Naming rules:
 
 | Asset | Pattern |
 | --- | --- |
-| Source card | `assets/concept-art/cards/{set}/{cardId}.png` |
+| Generated card master | `.generated/imagegen/tarot/selected/{cardId}.png` |
 | Minor Arcana border/title overlay | `assets/templates/minor-arcana/card-overlays/{suit}/{cardId}.svg` |
 | Minor Arcana overlay manifest | `assets/templates/minor-arcana/card-overlays/overlay-manifest.json` |
 | Runtime portrait | `assets/runtime/cards/portrait/{cardId}.webp` |
 | Runtime thumbnail | `assets/runtime/cards/thumb/{cardId}.webp` |
 | Runtime icon | `assets/runtime/cards/icon/{cardId}.webp` |
-| Manifest | `assets/runtime/cards/card-art-manifest.json` |
+| Card manifest | `assets/runtime/cards/card-art-manifest.json` |
+| Generated enemy master | `.generated/imagegen/enemies/selected/{enemyId}.png` |
+| Runtime enemy full | `assets/runtime/enemies/full/{enemyId}.webp` |
+| Enemy manifest | `assets/runtime/enemies/enemy-art-manifest.json` |
 
 Border-first generation rule:
 

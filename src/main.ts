@@ -9,6 +9,7 @@ import {
   alphaCardArtManifest,
   alphaCardSet,
   alphaEncounterLibrary,
+  alphaEnemyArtManifest,
   alphaEnemyLibrary,
   alphaMaps,
   alphaMapProfileLibrary,
@@ -325,6 +326,21 @@ const BATTLEFIELD_ASSETS: Record<string, { key: string; url: string }> = {
 };
 const DEFAULT_BATTLEFIELD_ASSET = BATTLEFIELD_ASSETS.map_01_rooftop_blocks;
 
+const cardRuntimeArtUrls = import.meta.glob('../assets/runtime/cards/portrait/*.webp', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+const enemyRuntimeArtUrls = import.meta.glob('../assets/runtime/enemies/full/*.webp', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+
+function bundledAssetUrl(manifestPath: string, urls: Record<string, string>) {
+  return urls[`../${manifestPath}`] ?? `/${manifestPath}`;
+}
+
 // Route marks the market / cache / rewards can grant: every non-boss mark, all
 // of which now fire real effects (combatStart cover/wingbeat/heal, onNthCard
 // draw, firstOpenSky softening, plus the economy marks). Boss marks
@@ -341,10 +357,18 @@ const routeMarks: RouteMark[] = MARKET_ROUTE_MARK_IDS.map((id) => {
 
 const cardArtAssets: Record<string, { key: string; url: string }> = Object.fromEntries(
   alphaCardArtManifest.cards
-    .filter((entry) => entry.source)
+    .filter((entry) => entry.status === 'approved')
     .map((entry) => [entry.cardId, {
       key: `card-${entry.cardId}`,
-      url: `/${entry.source}`
+      url: bundledAssetUrl(entry.portrait, cardRuntimeArtUrls)
+    }])
+);
+const enemyArtAssets: Record<string, { key: string; url: string }> = Object.fromEntries(
+  alphaEnemyArtManifest.enemies
+    .filter((entry) => entry.status === 'approved')
+    .map((entry) => [entry.enemyId, {
+      key: `enemy-${entry.enemyId}`,
+      url: bundledAssetUrl(entry.full, enemyRuntimeArtUrls)
     }])
 );
 const requestedOptionalArtKeys = new Set<string>();
@@ -2538,7 +2562,8 @@ class BattleScene extends Phaser.Scene {
 
     const assets = [
       currentBattlefieldAsset(),
-      ...Object.values(cardArtAssets)
+      ...Object.values(cardArtAssets),
+      ...this.enemies.map((enemy) => enemyArtAssets[enemy.id]).filter((asset): asset is { key: string; url: string } => Boolean(asset))
     ].filter((asset) => !this.textures.exists(asset.key) && !requestedOptionalArtKeys.has(asset.key));
 
     if (assets.length === 0) return;
@@ -2578,18 +2603,31 @@ class BattleScene extends Phaser.Scene {
       const move = currentMove(enemy);
 
       const frameColor = selected ? 0x24d0d6 : elite ? 0xffcf4a : boss ? 0xff6f6f : 0xd8a840;
-      const body = this.add.ellipse(x, y, 156 * s, 112 * s, elite ? 0x5b3f6d : 0x6f4b35, 1)
+      const artAsset = enemyArtAssets[enemy.id];
+      const hasEnemyArt = Boolean(artAsset && this.textures.exists(artAsset.key));
+      const body = this.add.ellipse(x, y, 174 * s, 136 * s, elite ? 0x5b3f6d : 0x6f4b35, hasEnemyArt ? 0.22 : 1)
         .setStrokeStyle(selected ? 5 : elite ? 4 : 2, frameColor, 1)
         .setInteractive({ useHandCursor: true });
       body.on('pointerdown', () => this.onEnemyClicked(enemy.id));
       this.root.add(body);
-      this.root.add(this.add.triangle(x + 68 * s, y - 10 * s, 0, 0, 22 * s, 8 * s, 0, 16 * s, 0xe7c36a, 1));
-      this.root.add(this.add.text(x, y - 10 * s, enemyInitials(enemy.name), {
-        fontFamily: 'Arial',
-        fontSize: `${Math.round(28 * s)}px`,
-        fontStyle: 'bold',
-        color: '#1b1110'
-      }).setOrigin(0.5));
+      if (hasEnemyArt && artAsset) {
+        const source = this.textures.get(artAsset.key).getSourceImage() as HTMLImageElement;
+        const fit = Math.min((236 * s) / source.width, (214 * s) / source.height);
+        const art = this.add.image(x, y - 22 * s, artAsset.key)
+          .setScale(fit)
+          .setAlpha(0.99)
+          .setInteractive({ useHandCursor: true });
+        art.on('pointerdown', () => this.onEnemyClicked(enemy.id));
+        this.root.add(art);
+      } else {
+        this.root.add(this.add.triangle(x + 68 * s, y - 10 * s, 0, 0, 22 * s, 8 * s, 0, 16 * s, 0xe7c36a, 1));
+        this.root.add(this.add.text(x, y - 10 * s, enemyInitials(enemy.name), {
+          fontFamily: 'Arial',
+          fontSize: `${Math.round(28 * s)}px`,
+          fontStyle: 'bold',
+          color: '#1b1110'
+        }).setOrigin(0.5));
+      }
       // Elite crest, clear above the intent badge so the tougher tier reads at a glance.
       if (elite) {
         this.root.add(this.add.text(x, y - 140 * s, '✦ ELITE', {

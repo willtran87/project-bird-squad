@@ -136,6 +136,12 @@ export interface RuntimeEnemy {
   type: 'normal' | 'rival' | 'boss' | 'elite';
   health: number;
   lesson?: string;
+  // Descriptive art contract fields. Combat behavior remains driven by moves
+  // and attackPattern.
+  description: string;
+  visualBrief: string;
+  silhouette: string;
+  artPose: string;
   fightLengthTarget?: [number, number];
   rewardScrap?: number;
   moves: EnemyMove[];
@@ -403,4 +409,19 @@ export interface RuntimeCardArtManifest {
   project: string;
   basedOn: string[];
   cards: RuntimeCardArtEntry[];
+}
+
+export interface RuntimeEnemyArtEntry {
+  enemyId: string;
+  source: string;
+  full: string;
+  version: string;
+  status: CardArtStatus;
+}
+
+export interface RuntimeEnemyArtManifest {
+  version: string;
+  project: string;
+  basedOn: string[];
+  enemies: RuntimeEnemyArtEntry[];
 }

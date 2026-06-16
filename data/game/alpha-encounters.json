@@ -73,14 +73,14 @@
       "rewardProfileId": "street_standard"
     },
     {
-      "id": "enc_tarline_crew",
-      "name": "Tarline Crew",
+      "id": "enc_tarline_jackdaw",
+      "name": "Tarline Jackdaw",
       "mapId": "map_01_rooftop_blocks",
       "nodeType": "rival",
       "band": "rival",
       "lesson": "Optional elite pressure with better rewards.",
       "tags": ["heavy", "winded", "elite"],
-      "enemies": ["tarline_crew"],
+      "enemies": ["tarline_jackdaw"],
       "rewardProfileId": "rival_standard"
     },
     {

@@ -24,6 +24,7 @@ import cupsArcana from '../../data/cards/arcana/minor-arcana-cups.json';
 import swordsArcana from '../../data/cards/arcana/minor-arcana-swords.json';
 import pentaclesArcana from '../../data/cards/arcana/minor-arcana-pentacles.json';
 import alphaCardArtManifestJson from '../../assets/runtime/cards/card-art-manifest.json';
+import alphaEnemyArtManifestJson from '../../assets/runtime/enemies/enemy-art-manifest.json';
 import type { RouteBlueprint } from './route-gen';
 import type {
   MapDesignProfile,
@@ -37,6 +38,8 @@ import type {
   RuntimeEncounter,
   RuntimeEncounterSet,
   RuntimeEnemy,
+  RuntimeEnemyArtEntry,
+  RuntimeEnemyArtManifest,
   RuntimeEnemySet,
   RuntimeMapContent,
   RuntimeMarketSet,
@@ -76,6 +79,7 @@ export const alphaMarketSet = alphaMarket as RuntimeMarketSet;
 export const alphaSignalSet = alphaSignals as RuntimeSignalSet;
 export const alphaMapProfileSet = alphaMapProfiles as MapDesignProfileSet;
 export const alphaCardArtManifest = alphaCardArtManifestJson as RuntimeCardArtManifest;
+export const alphaEnemyArtManifest = alphaEnemyArtManifestJson as RuntimeEnemyArtManifest;
 
 export const alphaRouteMarkLibrary: ReadonlyMap<string, RuntimeRouteMark> = new Map(
   alphaRouteMarkSet.routeMarks.map((mark) => [mark.id, mark]),
@@ -157,6 +161,10 @@ export const alphaCardLibrary: ReadonlyMap<string, RuntimeCard> = new Map(
 
 export const alphaCardArtLibrary: ReadonlyMap<string, RuntimeCardArtEntry> = new Map(
   alphaCardArtManifest.cards.map((entry) => [entry.cardId, entry]),
+);
+
+export const alphaEnemyArtLibrary: ReadonlyMap<string, RuntimeEnemyArtEntry> = new Map(
+  alphaEnemyArtManifest.enemies.map((entry) => [entry.enemyId, entry]),
 );
 
 // Card flavor / bird identity, joined from the canonical arcana lore files so the

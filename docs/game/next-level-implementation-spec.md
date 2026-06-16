@@ -337,7 +337,7 @@ Example:
 
 ```text
 Rival Crew
-Tarline Crew
+Tarline Jackdaw
 High risk
 
 Tests Cover and Open Sky restraint.

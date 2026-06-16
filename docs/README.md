@@ -16,6 +16,7 @@ should be recorded.
 | Build or tune the first playable slice | `docs/game/alpha-run-spec.md` |
 | Plan the next quality and implementation push | `docs/game/next-level-implementation-spec.md` |
 | Work on visual identity, card art, prompts, or style rules | `docs/art/art-bible.md` |
+| Generate or review enemy art | `docs/art/enemy-art-bible.md` |
 | Adapt external implementation patterns | `docs/game/spire-codex-adaptation-study.md` |
 | Review historical decisions and handoff notes | `docs/project/progress.md` |
 
@@ -28,6 +29,7 @@ should be recorded.
 | `docs/game/run-design-spec.md` | Run structure, route maps, node types, Route Marks, Scrap, Markets, Signals, Supplies, Snags, Rival Crews, Basin/Nest rules, and bosses. | Alpha-only card lists and exact first-slice numbers. |
 | `docs/game/alpha-run-spec.md` | Map 1 Alpha scope, starter deck, reward pool, Alpha enemies, boss, route marks, supplies, Signals, Snags, market prices, and tuning targets. | Full-run final balance. |
 | `docs/art/art-bible.md` | Visual identity, suit aesthetics, prompt standards, card-art production rules, and runtime asset expectations. | Gameplay rules except where art needs them for context. |
+| `docs/art/enemy-art-bible.md` | Enemy art visual language, non-humanoid animal constraints, and prompt pattern for enemy concepts. | Enemy combat tuning or encounter rewards. |
 
 ## Reference And Intake Documents
 
@@ -58,8 +60,9 @@ content:
 | --- | --- |
 | `data/cards/arcana/` | Canonical card identities, species, rarity, descriptions, and art-production fields. |
 | `data/cards/reversals/` | Molt/reversal overlays. |
-| `data/game/` | Runtime-ready Alpha cards, enemies, route map, and future runtime content. |
-| `assets/runtime/` | Runtime manifests and derived card-art targets. |
+| `data/game/` | Runtime-ready Alpha cards, enemies, enemy art briefs, route map, and future runtime content. |
+| `.generated/` | Generated art masters, selected source PNGs, prompt/run provenance, and QA sheets. |
+| `assets/runtime/` | Optimized game-ready card/enemy assets and runtime manifests. |
 
 Docs may summarize content, but should not become a second source of truth for
 runtime data.

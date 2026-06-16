@@ -71,9 +71,9 @@ Map 1 is `Rooftop Blocks`.
 Narrative:
 
 The local roofline is the first broken flyway. Old chalk marks have faded,
-repair perches are stripped, and a rival corvid crew is charging passage through
-the best crossing. The flock needs to reopen this route before it can reach the
-Canal Markets.
+repair perches are stripped, and a rival corvid line-worker is charging passage
+through the best crossing. The flock needs to reopen this route before it can
+reach the Canal Markets.
 
 Alpha map promise:
 
@@ -242,7 +242,7 @@ Enemy intent must be visible before the player commits cards.
 | Roof Rat | Normal | 20 | Read a basic attack Tell and use Cover. | Strike 6, Strike 6, Scurry: gain 4 Cover, repeat. |
 | Signal Gull | Normal | 24 | Manage Brace and Scavenge. | Peck 5, Scavenge: heal 4 unless damaged this turn, Brace: gain 6 Cover, repeat. |
 | Wire Hawk | Normal | 28 | Respect Heavy Strike and Open Sky risk. | Watch: apply 1 Winded, Heavy Strike 11, Strike 7, repeat. |
-| Tarline Crew | Rival Crew | 34 | Optional elite pressure with better rewards. | Harass 6 and apply 1 Winded, Brace 8 Cover, Heavy Strike 12, repeat. |
+| Tarline Jackdaw | Rival Crew | 34 | Optional elite pressure with better rewards. | Harass 6 and apply 1 Winded, Brace 8 Cover, Heavy Strike 12, repeat. |
 
 Normal encounter rewards:
 
@@ -264,7 +264,7 @@ Boss: `The Tar-Crowned Crow`
 
 Role:
 
-A rival corvid crew leader who controls the final rooftop crossing out of the
+A rival corvid toll boss who controls the final rooftop crossing out of the
 Rooftop Blocks. The crow is not evil for its own sake: it has been hoarding safe
 route marks, Scrap, and warning access because scarcity made passage valuable.
 

@@ -197,7 +197,7 @@ Cohesion.
 | `roof_rat` | `{ type: 'cycle', moveIds: ['strike_6_a','strike_6_b','scurry_cover'] }` | array order preserved |
 | `signal_gull` | `{ type: 'cycle', moveIds: ['peck_5','scavenge_heal','brace_6'] }` | `scavenge_heal` keeps its `if notHitThisTurn then heal(4)` |
 | `wire_hawk` | `{ type: 'cycle', moveIds: ['watch_winded','heavy_strike_11','strike_7'] }` | |
-| `tarline_crew` | `{ type: 'cycle', moveIds: ['harass_6','brace_8','heavy_strike_12'] }` | |
+| `tarline_jackdaw` | `{ type: 'cycle', moveIds: ['harass_6','brace_8','heavy_strike_12'] }` | |
 | `tar_crowned_crow` | `{ type: 'scripted', moveIds: ['toll_line','crowbar_tap','tar_toss','chokepoint_call','heavy_strike'], loopFrom: 1 }` | matches alpha-run-spec boss "6+ repeat from turn 2" |
 
 Move ids and effects are unchanged from `alpha-enemies.json`; only the wrapper
@@ -254,7 +254,7 @@ Alpha). `lesson` is verbatim from the enemy records.
 | `enc_roof_rat` | street | weak | `['roof_rat']` | `['cover','basic']` | `street_standard` |
 | `enc_signal_gull` | street | standard | `['signal_gull']` | `['scavenge','cover']` | `street_standard` |
 | `enc_wire_hawk` | street | pressure | `['wire_hawk']` | `['heavy','winded','openSky']` | `street_standard` |
-| `enc_tarline_crew` | rival | rival | `['tarline_crew']` | `['heavy','winded','elite']` | `rival_standard` |
+| `enc_tarline_jackdaw` | rival | rival | `['tarline_jackdaw']` | `['heavy','winded','elite']` | `rival_standard` |
 | `enc_tar_crowned_crow` | boss | boss | `['tar_crowned_crow']` | `['boss','cover','snag','openSky']` | `boss_alpha` |
 
 `introText`/`victoryText`/`lossText` are optional and may stay empty for Alpha.

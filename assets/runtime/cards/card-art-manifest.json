@@ -8,7 +8,7 @@
   "cards": [
     {
       "cardId": "major_00",
-      "source": "assets/concept-art/major-arcana/major-00-the-fool-house-sparrow-v2.png",
+      "source": ".generated/imagegen/tarot/selected/major_00.png",
       "portrait": "assets/runtime/cards/portrait/major_00.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_00.webp",
       "icon": "assets/runtime/cards/icon/major_00.webp",
@@ -26,7 +26,7 @@
     },
     {
       "cardId": "wands_ace",
-      "source": "assets/concept-art/minor-arcana/plumes/wands_ace.png",
+      "source": ".generated/imagegen/tarot/selected/wands_ace.png",
       "portrait": "assets/runtime/cards/portrait/wands_ace.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_ace.webp",
       "icon": "assets/runtime/cards/icon/wands_ace.webp",
@@ -35,7 +35,7 @@
     },
     {
       "cardId": "wands_02",
-      "source": "assets/concept-art/minor-arcana/plumes/wands_02.png",
+      "source": ".generated/imagegen/tarot/selected/wands_02.png",
       "portrait": "assets/runtime/cards/portrait/wands_02.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_02.webp",
       "icon": "assets/runtime/cards/icon/wands_02.webp",
@@ -44,7 +44,7 @@
     },
     {
       "cardId": "wands_03",
-      "source": "assets/concept-art/minor-arcana/plumes/wands_03.png",
+      "source": ".generated/imagegen/tarot/selected/wands_03.png",
       "portrait": "assets/runtime/cards/portrait/wands_03.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_03.webp",
       "icon": "assets/runtime/cards/icon/wands_03.webp",
@@ -53,7 +53,7 @@
     },
     {
       "cardId": "wands_04",
-      "source": "assets/concept-art/minor-arcana/plumes/wands_04.png",
+      "source": ".generated/imagegen/tarot/selected/wands_04.png",
       "portrait": "assets/runtime/cards/portrait/wands_04.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_04.webp",
       "icon": "assets/runtime/cards/icon/wands_04.webp",
@@ -62,7 +62,7 @@
     },
     {
       "cardId": "wands_05",
-      "source": "assets/concept-art/minor-arcana/plumes/wands_05.png",
+      "source": ".generated/imagegen/tarot/selected/wands_05.png",
       "portrait": "assets/runtime/cards/portrait/wands_05.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_05.webp",
       "icon": "assets/runtime/cards/icon/wands_05.webp",
@@ -71,7 +71,7 @@
     },
     {
       "cardId": "wands_06",
-      "source": "assets/concept-art/minor-arcana/plumes/wands_06.png",
+      "source": ".generated/imagegen/tarot/selected/wands_06.png",
       "portrait": "assets/runtime/cards/portrait/wands_06.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_06.webp",
       "icon": "assets/runtime/cards/icon/wands_06.webp",
@@ -80,7 +80,7 @@
     },
     {
       "cardId": "wands_08",
-      "source": "assets/concept-art/minor-arcana/plumes/wands_08.png",
+      "source": ".generated/imagegen/tarot/selected/wands_08.png",
       "portrait": "assets/runtime/cards/portrait/wands_08.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_08.webp",
       "icon": "assets/runtime/cards/icon/wands_08.webp",
@@ -89,7 +89,7 @@
     },
     {
       "cardId": "wands_09",
-      "source": "assets/concept-art/minor-arcana/plumes/wands_09.png",
+      "source": ".generated/imagegen/tarot/selected/wands_09.png",
       "portrait": "assets/runtime/cards/portrait/wands_09.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_09.webp",
       "icon": "assets/runtime/cards/icon/wands_09.webp",
@@ -98,7 +98,7 @@
     },
     {
       "cardId": "swords_ace",
-      "source": "assets/concept-art/minor-arcana/quills/swords_ace.png",
+      "source": ".generated/imagegen/tarot/selected/swords_ace.png",
       "portrait": "assets/runtime/cards/portrait/swords_ace.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_ace.webp",
       "icon": "assets/runtime/cards/icon/swords_ace.webp",
@@ -107,7 +107,7 @@
     },
     {
       "cardId": "swords_02",
-      "source": "assets/concept-art/minor-arcana/quills/swords_02.png",
+      "source": ".generated/imagegen/tarot/selected/swords_02.png",
       "portrait": "assets/runtime/cards/portrait/swords_02.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_02.webp",
       "icon": "assets/runtime/cards/icon/swords_02.webp",
@@ -116,7 +116,7 @@
     },
     {
       "cardId": "swords_03",
-      "source": "assets/concept-art/minor-arcana/quills/swords_03.png",
+      "source": ".generated/imagegen/tarot/selected/swords_03.png",
       "portrait": "assets/runtime/cards/portrait/swords_03.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_03.webp",
       "icon": "assets/runtime/cards/icon/swords_03.webp",
@@ -125,7 +125,7 @@
     },
     {
       "cardId": "swords_04",
-      "source": "assets/concept-art/minor-arcana/quills/swords_04.png",
+      "source": ".generated/imagegen/tarot/selected/swords_04.png",
       "portrait": "assets/runtime/cards/portrait/swords_04.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_04.webp",
       "icon": "assets/runtime/cards/icon/swords_04.webp",
@@ -134,7 +134,7 @@
     },
     {
       "cardId": "swords_05",
-      "source": "assets/concept-art/minor-arcana/quills/swords_05.png",
+      "source": ".generated/imagegen/tarot/selected/swords_05.png",
       "portrait": "assets/runtime/cards/portrait/swords_05.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_05.webp",
       "icon": "assets/runtime/cards/icon/swords_05.webp",
@@ -143,7 +143,7 @@
     },
     {
       "cardId": "swords_06",
-      "source": "assets/concept-art/minor-arcana/quills/swords_06.png",
+      "source": ".generated/imagegen/tarot/selected/swords_06.png",
       "portrait": "assets/runtime/cards/portrait/swords_06.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_06.webp",
       "icon": "assets/runtime/cards/icon/swords_06.webp",
@@ -152,7 +152,7 @@
     },
     {
       "cardId": "swords_07",
-      "source": "assets/concept-art/minor-arcana/quills/swords_07.png",
+      "source": ".generated/imagegen/tarot/selected/swords_07.png",
       "portrait": "assets/runtime/cards/portrait/swords_07.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_07.webp",
       "icon": "assets/runtime/cards/icon/swords_07.webp",
@@ -161,7 +161,7 @@
     },
     {
       "cardId": "swords_fledgling",
-      "source": "assets/concept-art/minor-arcana/quills/swords_fledgling.png",
+      "source": ".generated/imagegen/tarot/selected/swords_fledgling.png",
       "portrait": "assets/runtime/cards/portrait/swords_fledgling.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_fledgling.webp",
       "icon": "assets/runtime/cards/icon/swords_fledgling.webp",
@@ -170,7 +170,7 @@
     },
     {
       "cardId": "cups_ace",
-      "source": "assets/concept-art/minor-arcana/basins/cups_ace.png",
+      "source": ".generated/imagegen/tarot/selected/cups_ace.png",
       "portrait": "assets/runtime/cards/portrait/cups_ace.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_ace.webp",
       "icon": "assets/runtime/cards/icon/cups_ace.webp",
@@ -179,7 +179,7 @@
     },
     {
       "cardId": "cups_02",
-      "source": "assets/concept-art/minor-arcana/basins/cups_02.png",
+      "source": ".generated/imagegen/tarot/selected/cups_02.png",
       "portrait": "assets/runtime/cards/portrait/cups_02.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_02.webp",
       "icon": "assets/runtime/cards/icon/cups_02.webp",
@@ -188,7 +188,7 @@
     },
     {
       "cardId": "cups_03",
-      "source": "assets/concept-art/minor-arcana/basins/cups_03.png",
+      "source": ".generated/imagegen/tarot/selected/cups_03.png",
       "portrait": "assets/runtime/cards/portrait/cups_03.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_03.webp",
       "icon": "assets/runtime/cards/icon/cups_03.webp",
@@ -197,7 +197,7 @@
     },
     {
       "cardId": "cups_04",
-      "source": "assets/concept-art/minor-arcana/basins/cups_04.png",
+      "source": ".generated/imagegen/tarot/selected/cups_04.png",
       "portrait": "assets/runtime/cards/portrait/cups_04.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_04.webp",
       "icon": "assets/runtime/cards/icon/cups_04.webp",
@@ -206,7 +206,7 @@
     },
     {
       "cardId": "cups_05",
-      "source": "assets/concept-art/minor-arcana/basins/cups_05.png",
+      "source": ".generated/imagegen/tarot/selected/cups_05.png",
       "portrait": "assets/runtime/cards/portrait/cups_05.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_05.webp",
       "icon": "assets/runtime/cards/icon/cups_05.webp",
@@ -215,7 +215,7 @@
     },
     {
       "cardId": "cups_06",
-      "source": "assets/concept-art/minor-arcana/basins/cups_06.png",
+      "source": ".generated/imagegen/tarot/selected/cups_06.png",
       "portrait": "assets/runtime/cards/portrait/cups_06.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_06.webp",
       "icon": "assets/runtime/cards/icon/cups_06.webp",
@@ -224,7 +224,7 @@
     },
     {
       "cardId": "cups_08",
-      "source": "assets/concept-art/minor-arcana/basins/cups_08.png",
+      "source": ".generated/imagegen/tarot/selected/cups_08.png",
       "portrait": "assets/runtime/cards/portrait/cups_08.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_08.webp",
       "icon": "assets/runtime/cards/icon/cups_08.webp",
@@ -233,7 +233,7 @@
     },
     {
       "cardId": "cups_fledgling",
-      "source": "assets/concept-art/minor-arcana/basins/cups_fledgling.png",
+      "source": ".generated/imagegen/tarot/selected/cups_fledgling.png",
       "portrait": "assets/runtime/cards/portrait/cups_fledgling.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_fledgling.webp",
       "icon": "assets/runtime/cards/icon/cups_fledgling.webp",
@@ -242,7 +242,7 @@
     },
     {
       "cardId": "pentacles_ace",
-      "source": "assets/concept-art/minor-arcana/nests/pentacles_ace.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_ace.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_ace.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_ace.webp",
       "icon": "assets/runtime/cards/icon/pentacles_ace.webp",
@@ -251,7 +251,7 @@
     },
     {
       "cardId": "pentacles_02",
-      "source": "assets/concept-art/minor-arcana/nests/pentacles_02.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_02.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_02.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_02.webp",
       "icon": "assets/runtime/cards/icon/pentacles_02.webp",
@@ -260,7 +260,7 @@
     },
     {
       "cardId": "pentacles_03",
-      "source": "assets/concept-art/minor-arcana/nests/pentacles_03.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_03.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_03.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_03.webp",
       "icon": "assets/runtime/cards/icon/pentacles_03.webp",
@@ -269,7 +269,7 @@
     },
     {
       "cardId": "pentacles_04",
-      "source": "assets/concept-art/minor-arcana/nests/pentacles_04.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_04.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_04.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_04.webp",
       "icon": "assets/runtime/cards/icon/pentacles_04.webp",
@@ -278,7 +278,7 @@
     },
     {
       "cardId": "pentacles_05",
-      "source": "assets/concept-art/minor-arcana/nests/pentacles_05.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_05.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_05.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_05.webp",
       "icon": "assets/runtime/cards/icon/pentacles_05.webp",
@@ -287,7 +287,7 @@
     },
     {
       "cardId": "pentacles_06",
-      "source": "assets/concept-art/minor-arcana/nests/pentacles_06.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_06.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_06.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_06.webp",
       "icon": "assets/runtime/cards/icon/pentacles_06.webp",
@@ -296,7 +296,7 @@
     },
     {
       "cardId": "pentacles_08",
-      "source": "assets/concept-art/minor-arcana/nests/pentacles_08.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_08.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_08.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_08.webp",
       "icon": "assets/runtime/cards/icon/pentacles_08.webp",
@@ -305,7 +305,7 @@
     },
     {
       "cardId": "pentacles_fledgling",
-      "source": "assets/concept-art/minor-arcana/nests/pentacles_fledgling.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_fledgling.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_fledgling.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_fledgling.webp",
       "icon": "assets/runtime/cards/icon/pentacles_fledgling.webp",
@@ -314,7 +314,7 @@
     },
     {
       "cardId": "major_01",
-      "source": "assets/concept-art/major-arcana/major-01-the-magician-magpie.png",
+      "source": ".generated/imagegen/tarot/selected/major_01.png",
       "portrait": "assets/runtime/cards/portrait/major_01.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_01.webp",
       "icon": "assets/runtime/cards/icon/major_01.webp",
@@ -323,7 +323,7 @@
     },
     {
       "cardId": "major_02",
-      "source": "assets/concept-art/major-arcana/major-02-the-high-priestess-barn-owl-v2.png",
+      "source": ".generated/imagegen/tarot/selected/major_02.png",
       "portrait": "assets/runtime/cards/portrait/major_02.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_02.webp",
       "icon": "assets/runtime/cards/icon/major_02.webp",
@@ -332,7 +332,7 @@
     },
     {
       "cardId": "major_03",
-      "source": "assets/concept-art/major-arcana/major-03-the-empress-mute-swan.png",
+      "source": ".generated/imagegen/tarot/selected/major_03.png",
       "portrait": "assets/runtime/cards/portrait/major_03.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_03.webp",
       "icon": "assets/runtime/cards/icon/major_03.webp",
@@ -341,7 +341,7 @@
     },
     {
       "cardId": "major_04",
-      "source": "assets/concept-art/major-arcana/major-04-the-emperor-golden-eagle.png",
+      "source": ".generated/imagegen/tarot/selected/major_04.png",
       "portrait": "assets/runtime/cards/portrait/major_04.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_04.webp",
       "icon": "assets/runtime/cards/icon/major_04.webp",
@@ -350,7 +350,7 @@
     },
     {
       "cardId": "major_05",
-      "source": "assets/concept-art/major-arcana/major-05-the-hierophant-sandhill-crane.png",
+      "source": ".generated/imagegen/tarot/selected/major_05.png",
       "portrait": "assets/runtime/cards/portrait/major_05.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_05.webp",
       "icon": "assets/runtime/cards/icon/major_05.webp",
@@ -359,7 +359,7 @@
     },
     {
       "cardId": "major_06",
-      "source": "assets/concept-art/major-arcana/major-06-the-lovers-lovebirds.png",
+      "source": ".generated/imagegen/tarot/selected/major_06.png",
       "portrait": "assets/runtime/cards/portrait/major_06.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_06.webp",
       "icon": "assets/runtime/cards/icon/major_06.webp",
@@ -368,7 +368,7 @@
     },
     {
       "cardId": "major_07",
-      "source": "assets/concept-art/major-arcana/major-07-the-chariot-peregrine-falcon.png",
+      "source": ".generated/imagegen/tarot/selected/major_07.png",
       "portrait": "assets/runtime/cards/portrait/major_07.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_07.webp",
       "icon": "assets/runtime/cards/icon/major_07.webp",
@@ -377,7 +377,7 @@
     },
     {
       "cardId": "major_08",
-      "source": "assets/concept-art/major-arcana/major-08-strength-secretarybird.png",
+      "source": ".generated/imagegen/tarot/selected/major_08.png",
       "portrait": "assets/runtime/cards/portrait/major_08.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_08.webp",
       "icon": "assets/runtime/cards/icon/major_08.webp",
@@ -386,7 +386,7 @@
     },
     {
       "cardId": "major_09",
-      "source": "assets/concept-art/major-arcana/major-09-the-hermit-snowy-owl.png",
+      "source": ".generated/imagegen/tarot/selected/major_09.png",
       "portrait": "assets/runtime/cards/portrait/major_09.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_09.webp",
       "icon": "assets/runtime/cards/icon/major_09.webp",
@@ -395,7 +395,7 @@
     },
     {
       "cardId": "major_10",
-      "source": "assets/concept-art/major-arcana/major-10-wheel-of-fortune-kingfisher.png",
+      "source": ".generated/imagegen/tarot/selected/major_10.png",
       "portrait": "assets/runtime/cards/portrait/major_10.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_10.webp",
       "icon": "assets/runtime/cards/icon/major_10.webp",
@@ -404,7 +404,7 @@
     },
     {
       "cardId": "major_11",
-      "source": "assets/concept-art/major-arcana/major-11-justice-black-necked-stilt.png",
+      "source": ".generated/imagegen/tarot/selected/major_11.png",
       "portrait": "assets/runtime/cards/portrait/major_11.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_11.webp",
       "icon": "assets/runtime/cards/icon/major_11.webp",
@@ -413,7 +413,7 @@
     },
     {
       "cardId": "major_12",
-      "source": "assets/concept-art/major-arcana/major-12-the-hanged-man-nuthatch.png",
+      "source": ".generated/imagegen/tarot/selected/major_12.png",
       "portrait": "assets/runtime/cards/portrait/major_12.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_12.webp",
       "icon": "assets/runtime/cards/icon/major_12.webp",
@@ -422,7 +422,7 @@
     },
     {
       "cardId": "major_13",
-      "source": "assets/concept-art/major-arcana/major-13-death-turkey-vulture.png",
+      "source": ".generated/imagegen/tarot/selected/major_13.png",
       "portrait": "assets/runtime/cards/portrait/major_13.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_13.webp",
       "icon": "assets/runtime/cards/icon/major_13.webp",
@@ -431,7 +431,7 @@
     },
     {
       "cardId": "major_14",
-      "source": "assets/concept-art/major-arcana/major-14-temperance-flamingo.png",
+      "source": ".generated/imagegen/tarot/selected/major_14.png",
       "portrait": "assets/runtime/cards/portrait/major_14.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_14.webp",
       "icon": "assets/runtime/cards/icon/major_14.webp",
@@ -440,7 +440,7 @@
     },
     {
       "cardId": "major_15",
-      "source": "assets/concept-art/major-arcana/major-15-the-devil-common-raven.png",
+      "source": ".generated/imagegen/tarot/selected/major_15.png",
       "portrait": "assets/runtime/cards/portrait/major_15.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_15.webp",
       "icon": "assets/runtime/cards/icon/major_15.webp",
@@ -449,7 +449,7 @@
     },
     {
       "cardId": "major_16",
-      "source": "assets/concept-art/major-arcana/major-16-the-tower-red-headed-woodpecker.png",
+      "source": ".generated/imagegen/tarot/selected/major_16.png",
       "portrait": "assets/runtime/cards/portrait/major_16.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_16.webp",
       "icon": "assets/runtime/cards/icon/major_16.webp",
@@ -458,7 +458,7 @@
     },
     {
       "cardId": "major_17",
-      "source": "assets/concept-art/major-arcana/major-17-the-star-superb-fairywren.png",
+      "source": ".generated/imagegen/tarot/selected/major_17.png",
       "portrait": "assets/runtime/cards/portrait/major_17.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_17.webp",
       "icon": "assets/runtime/cards/icon/major_17.webp",
@@ -467,7 +467,7 @@
     },
     {
       "cardId": "major_18",
-      "source": "assets/concept-art/major-arcana/major-18-the-moon-common-nightjar.png",
+      "source": ".generated/imagegen/tarot/selected/major_18.png",
       "portrait": "assets/runtime/cards/portrait/major_18.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_18.webp",
       "icon": "assets/runtime/cards/icon/major_18.webp",
@@ -476,7 +476,7 @@
     },
     {
       "cardId": "major_19",
-      "source": "assets/concept-art/major-arcana/major-19-the-sun-american-goldfinch.png",
+      "source": ".generated/imagegen/tarot/selected/major_19.png",
       "portrait": "assets/runtime/cards/portrait/major_19.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_19.webp",
       "icon": "assets/runtime/cards/icon/major_19.webp",
@@ -485,7 +485,7 @@
     },
     {
       "cardId": "major_20",
-      "source": "assets/concept-art/major-arcana/major-20-judgment-rooster.png",
+      "source": ".generated/imagegen/tarot/selected/major_20.png",
       "portrait": "assets/runtime/cards/portrait/major_20.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_20.webp",
       "icon": "assets/runtime/cards/icon/major_20.webp",
@@ -494,7 +494,7 @@
     },
     {
       "cardId": "major_21",
-      "source": "assets/concept-art/major-arcana/major-21-the-world-arctic-tern.png",
+      "source": ".generated/imagegen/tarot/selected/major_21.png",
       "portrait": "assets/runtime/cards/portrait/major_21.webp",
       "thumbnail": "assets/runtime/cards/thumb/major_21.webp",
       "icon": "assets/runtime/cards/icon/major_21.webp",
@@ -503,7 +503,7 @@
     },
     {
       "cardId": "wands_07",
-      "source": "assets/concept-art/minor-arcana/plumes/wands_07.png",
+      "source": ".generated/imagegen/tarot/selected/wands_07.png",
       "portrait": "assets/runtime/cards/portrait/wands_07.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_07.webp",
       "icon": "assets/runtime/cards/icon/wands_07.webp",
@@ -512,7 +512,7 @@
     },
     {
       "cardId": "wands_10",
-      "source": "assets/concept-art/minor-arcana/plumes/wands_10.png",
+      "source": ".generated/imagegen/tarot/selected/wands_10.png",
       "portrait": "assets/runtime/cards/portrait/wands_10.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_10.webp",
       "icon": "assets/runtime/cards/icon/wands_10.webp",
@@ -521,7 +521,7 @@
     },
     {
       "cardId": "wands_fledgling",
-      "source": "assets/concept-art/minor-arcana/plumes/wands_fledgling.png",
+      "source": ".generated/imagegen/tarot/selected/wands_fledgling.png",
       "portrait": "assets/runtime/cards/portrait/wands_fledgling.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_fledgling.webp",
       "icon": "assets/runtime/cards/icon/wands_fledgling.webp",
@@ -530,7 +530,7 @@
     },
     {
       "cardId": "wands_outrider",
-      "source": "assets/concept-art/minor-arcana/plumes/wands_outrider.png",
+      "source": ".generated/imagegen/tarot/selected/wands_outrider.png",
       "portrait": "assets/runtime/cards/portrait/wands_outrider.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_outrider.webp",
       "icon": "assets/runtime/cards/icon/wands_outrider.webp",
@@ -539,7 +539,7 @@
     },
     {
       "cardId": "wands_matron",
-      "source": "assets/concept-art/minor-arcana/plumes/wands_matron.png",
+      "source": ".generated/imagegen/tarot/selected/wands_matron.png",
       "portrait": "assets/runtime/cards/portrait/wands_matron.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_matron.webp",
       "icon": "assets/runtime/cards/icon/wands_matron.webp",
@@ -548,7 +548,7 @@
     },
     {
       "cardId": "wands_elder",
-      "source": "assets/concept-art/minor-arcana/plumes/wands_elder.png",
+      "source": ".generated/imagegen/tarot/selected/wands_elder.png",
       "portrait": "assets/runtime/cards/portrait/wands_elder.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_elder.webp",
       "icon": "assets/runtime/cards/icon/wands_elder.webp",
@@ -557,7 +557,7 @@
     },
     {
       "cardId": "cups_07",
-      "source": "assets/concept-art/minor-arcana/basins/cups_07.png",
+      "source": ".generated/imagegen/tarot/selected/cups_07.png",
       "portrait": "assets/runtime/cards/portrait/cups_07.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_07.webp",
       "icon": "assets/runtime/cards/icon/cups_07.webp",
@@ -566,7 +566,7 @@
     },
     {
       "cardId": "cups_09",
-      "source": "assets/concept-art/minor-arcana/basins/cups_09.png",
+      "source": ".generated/imagegen/tarot/selected/cups_09.png",
       "portrait": "assets/runtime/cards/portrait/cups_09.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_09.webp",
       "icon": "assets/runtime/cards/icon/cups_09.webp",
@@ -575,7 +575,7 @@
     },
     {
       "cardId": "cups_10",
-      "source": "assets/concept-art/minor-arcana/basins/cups_10.png",
+      "source": ".generated/imagegen/tarot/selected/cups_10.png",
       "portrait": "assets/runtime/cards/portrait/cups_10.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_10.webp",
       "icon": "assets/runtime/cards/icon/cups_10.webp",
@@ -584,7 +584,7 @@
     },
     {
       "cardId": "cups_outrider",
-      "source": "assets/concept-art/minor-arcana/basins/cups_outrider.png",
+      "source": ".generated/imagegen/tarot/selected/cups_outrider.png",
       "portrait": "assets/runtime/cards/portrait/cups_outrider.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_outrider.webp",
       "icon": "assets/runtime/cards/icon/cups_outrider.webp",
@@ -593,7 +593,7 @@
     },
     {
       "cardId": "cups_matron",
-      "source": "assets/concept-art/minor-arcana/basins/cups_matron.png",
+      "source": ".generated/imagegen/tarot/selected/cups_matron.png",
       "portrait": "assets/runtime/cards/portrait/cups_matron.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_matron.webp",
       "icon": "assets/runtime/cards/icon/cups_matron.webp",
@@ -602,7 +602,7 @@
     },
     {
       "cardId": "cups_elder",
-      "source": "assets/concept-art/minor-arcana/basins/cups_elder.png",
+      "source": ".generated/imagegen/tarot/selected/cups_elder.png",
       "portrait": "assets/runtime/cards/portrait/cups_elder.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_elder.webp",
       "icon": "assets/runtime/cards/icon/cups_elder.webp",
@@ -611,7 +611,7 @@
     },
     {
       "cardId": "swords_08",
-      "source": "assets/concept-art/minor-arcana/quills/swords_08.png",
+      "source": ".generated/imagegen/tarot/selected/swords_08.png",
       "portrait": "assets/runtime/cards/portrait/swords_08.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_08.webp",
       "icon": "assets/runtime/cards/icon/swords_08.webp",
@@ -620,7 +620,7 @@
     },
     {
       "cardId": "swords_09",
-      "source": "assets/concept-art/minor-arcana/quills/swords_09.png",
+      "source": ".generated/imagegen/tarot/selected/swords_09.png",
       "portrait": "assets/runtime/cards/portrait/swords_09.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_09.webp",
       "icon": "assets/runtime/cards/icon/swords_09.webp",
@@ -629,7 +629,7 @@
     },
     {
       "cardId": "swords_10",
-      "source": "assets/concept-art/minor-arcana/quills/swords_10.png",
+      "source": ".generated/imagegen/tarot/selected/swords_10.png",
       "portrait": "assets/runtime/cards/portrait/swords_10.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_10.webp",
       "icon": "assets/runtime/cards/icon/swords_10.webp",
@@ -638,7 +638,7 @@
     },
     {
       "cardId": "swords_outrider",
-      "source": "assets/concept-art/minor-arcana/quills/swords_outrider.png",
+      "source": ".generated/imagegen/tarot/selected/swords_outrider.png",
       "portrait": "assets/runtime/cards/portrait/swords_outrider.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_outrider.webp",
       "icon": "assets/runtime/cards/icon/swords_outrider.webp",
@@ -647,7 +647,7 @@
     },
     {
       "cardId": "swords_matron",
-      "source": "assets/concept-art/minor-arcana/quills/swords_matron.png",
+      "source": ".generated/imagegen/tarot/selected/swords_matron.png",
       "portrait": "assets/runtime/cards/portrait/swords_matron.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_matron.webp",
       "icon": "assets/runtime/cards/icon/swords_matron.webp",
@@ -656,7 +656,7 @@
     },
     {
       "cardId": "swords_elder",
-      "source": "assets/concept-art/minor-arcana/quills/swords_elder.png",
+      "source": ".generated/imagegen/tarot/selected/swords_elder.png",
       "portrait": "assets/runtime/cards/portrait/swords_elder.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_elder.webp",
       "icon": "assets/runtime/cards/icon/swords_elder.webp",
@@ -665,7 +665,7 @@
     },
     {
       "cardId": "pentacles_07",
-      "source": "assets/concept-art/minor-arcana/nests/pentacles_07.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_07.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_07.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_07.webp",
       "icon": "assets/runtime/cards/icon/pentacles_07.webp",
@@ -674,7 +674,7 @@
     },
     {
       "cardId": "pentacles_09",
-      "source": "assets/concept-art/minor-arcana/nests/pentacles_09.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_09.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_09.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_09.webp",
       "icon": "assets/runtime/cards/icon/pentacles_09.webp",
@@ -683,7 +683,7 @@
     },
     {
       "cardId": "pentacles_10",
-      "source": "assets/concept-art/minor-arcana/nests/pentacles_10.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_10.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_10.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_10.webp",
       "icon": "assets/runtime/cards/icon/pentacles_10.webp",
@@ -692,7 +692,7 @@
     },
     {
       "cardId": "pentacles_outrider",
-      "source": "assets/concept-art/minor-arcana/nests/pentacles_outrider.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_outrider.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_outrider.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_outrider.webp",
       "icon": "assets/runtime/cards/icon/pentacles_outrider.webp",
@@ -701,7 +701,7 @@
     },
     {
       "cardId": "pentacles_matron",
-      "source": "assets/concept-art/minor-arcana/nests/pentacles_matron.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_matron.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_matron.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_matron.webp",
       "icon": "assets/runtime/cards/icon/pentacles_matron.webp",
@@ -710,7 +710,7 @@
     },
     {
       "cardId": "pentacles_elder",
-      "source": "assets/concept-art/minor-arcana/nests/pentacles_elder.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_elder.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_elder.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_elder.webp",
       "icon": "assets/runtime/cards/icon/pentacles_elder.webp",

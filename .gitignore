@@ -1,5 +1,6 @@
 .claude/
 .artifacts/
+.generated/
 node_modules/
 dist/
 output/

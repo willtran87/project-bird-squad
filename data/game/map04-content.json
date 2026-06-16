@@ -25,6 +25,10 @@
         "type": "elite",
         "health": 54,
         "lesson": "Elite: a High Roost enforcer that walls up before a crushing blow.",
+        "description": "A massive eagle enforcer that turns high-roost scaffolds into walls before dropping a crushing blow.",
+        "visualBrief": "Large eagle in reinforced urban workwear, heavy talon bands, broad utility straps, and battered metal-panel accents with high scaffold rail styling.",
+        "silhouette": "Big blocky raptor with shield-wide shoulders, hooked beak, and planted talons.",
+        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
         "moves": [
           { "id": "talon_rake_10", "label": "Rake 10", "effects": ["damage(flock, 10)"] },
           { "id": "talon_wall", "label": "Iron Wall", "effects": ["gainCover(12)"] },
@@ -40,6 +44,10 @@
         "type": "normal",
         "health": 32,
         "lesson": "Sustained Cover against a relentless basic attacker.",
+        "description": "A rough city pigeon bruiser that owns the lower perch and keeps swinging until cover gives out.",
+        "visualBrief": "Stocky pigeon in a scuffed zip hoodie, patched chest wrap, concrete-gray talon bands, and rain-grit feathers on a narrow high-roost ledge.",
+        "silhouette": "Round compact bruiser with puffed chest and short, stubborn stance.",
+        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
         "moves": [
           { "id": "strike_9_a", "label": "Strike 9", "effects": ["damage(flock, 9)"] },
           { "id": "strike_9_b", "label": "Strike 9", "effects": ["damage(flock, 9)"] },
@@ -54,6 +62,10 @@
         "type": "normal",
         "health": 34,
         "lesson": "Open Sky pressure forces Guard discipline.",
+        "description": "A knife-fast shrike that uses wind gaps and exposed sky to break formation discipline.",
+        "visualBrief": "Lean shrike in a wind-cut cropped shell, narrow signal strap, white-black feather contrast, and talon wraps over a bright open-air breach.",
+        "silhouette": "Small sharp predator with long tail, hooked beak, and slicing diagonal wings.",
+        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, long tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
         "moves": [
           { "id": "buffet_winded", "label": "Buffet", "effects": ["damage(flock, 6)", "applyWinded(flock, 1)"] },
           { "id": "expose_open_sky", "label": "Expose", "effects": ["applyOpenSky(1)"] },
@@ -68,6 +80,10 @@
         "type": "normal",
         "health": 36,
         "lesson": "Snags clog the draw under heavy follow-up.",
+        "description": "A rooftop drifter in tar-stained gear, trailing tangled line and clogging the flock's rhythm before a heavy hit.",
+        "visualBrief": "Ragged crow-like drifter in tar-stained streetwear layers, dangling line caught on a harness, dark rain shell, and sticky rooftop residue underfoot; the bird's feathers remain natural, not smeared with tar.",
+        "silhouette": "Loose ragged bird shape with trailing cords, drooped wing mass, and uneven clothing edges.",
+        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
         "moves": [
           { "id": "smear_snag", "label": "Smear", "effects": ["damage(flock, 5)", "addSnagToDiscard(wet_feathers)"] },
           { "id": "heavy_strike_12", "label": "Heavy Strike 12", "effects": ["damage(flock, 12)"] },
@@ -82,6 +98,10 @@
         "type": "normal",
         "health": 38,
         "lesson": "Punish telegraphed Heavy Strike with a winded setup.",
+        "description": "A relay falcon that marks the flock with a fast pass, then returns for the heavy strike it already signaled.",
+        "visualBrief": "Sleek falcon in a tight relay jacket, racing straps, small beacon tabs, and reinforced talon bands above a high-roost signal gap.",
+        "silhouette": "Long-winged predator with a narrow body, fast dive line, and focused head.",
+        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural long wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
         "moves": [
           { "id": "mark_winded", "label": "Mark", "effects": ["applyWinded(flock, 1)", "nextAttackBonus(2)"] },
           { "id": "heavy_strike_13", "label": "Heavy Strike 13", "effects": ["damage(flock, 13)"] },
@@ -96,6 +116,10 @@
         "type": "normal",
         "health": 40,
         "lesson": "A walled defender that scales damage when you have no Cover.",
+        "description": "A sentinel owl that anchors the old spire wall and punishes any flock caught without cover.",
+        "visualBrief": "Broad owl in a heavy padded roost vest, quiet hood wrap, utility perch straps, and bright eyes between cracked signal panels.",
+        "silhouette": "Wide still watcher with round head, broad wing cloak, and wall-like posture.",
+        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
         "moves": [
           { "id": "bulwark_cover", "label": "Bulwark", "effects": ["gainCover(10)"] },
           { "id": "spire_slam_10", "label": "Spire Slam 10", "effects": ["damage(flock, 10)", "if flockHasNoCover then damage(flock, 4)"] },
@@ -105,14 +129,18 @@
         "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
       },
       {
-        "id": "roost_kettle_gang",
-        "name": "Kettle Gang",
+        "id": "roost_kettle_harrier",
+        "name": "Kettle Harrier",
         "type": "rival",
         "health": 50,
         "lesson": "Elite tempo: trade through winded and a snag while staying covered.",
+        "description": "A rival harrier that rides warm rooftop currents, forcing tempo trades through wind, snags, and cover.",
+        "visualBrief": "Lean high-roost harrier in layered rust-and-graphite windwear, pale thermal scarf, matte talon bands, clipped route cord, and compact scaffold repair pouch.",
+        "silhouette": "Long-winged low-hunting raptor with a narrow head, folded crescent wings, trailing route cord, and alert talon stance.",
+        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet or talons; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
         "moves": [
-          { "id": "swarm_6_winded", "label": "Swarm 6", "effects": ["damage(flock, 6)", "applyWinded(flock, 1)"] },
-          { "id": "rally_cover", "label": "Rally", "effects": ["gainCover(10)"] },
+          { "id": "swarm_6_winded", "label": "Thermal Pass 6", "effects": ["damage(flock, 6)", "applyWinded(flock, 1)"] },
+          { "id": "rally_cover", "label": "Thermal Rally", "effects": ["gainCover(10)"] },
           { "id": "foul_line_snag", "label": "Foul Line", "effects": ["addSnagToDiscard(tangled_line)", "if flockOpenSky then damage(flock, 6)"] },
           { "id": "heavy_strike_14", "label": "Heavy Strike 14", "effects": ["damage(flock, 14)"] }
         ],
@@ -125,6 +153,10 @@
         "type": "rival",
         "health": 50,
         "lesson": "Elite Open Sky bully that bonuses into a heavy when you stay exposed.",
+        "description": "A high-status raven that claims the skyline rail and grows more dangerous whenever the flock stays exposed.",
+        "visualBrief": "Large raven in dark luxe roostwear, structured rain mantle, subtle chain clips, and talon bands with high skyline perch styling under hard wind.",
+        "silhouette": "Tall long-winged corvid with a regal perch stance and cloak-like feather mass.",
+        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, long tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
         "moves": [
           { "id": "decree_open_sky", "label": "Decree", "effects": ["applyOpenSky(1)", "nextAttackBonus(3)"] },
           { "id": "talon_strike_11", "label": "Talon Strike 11", "effects": ["damage(flock, 11)"] },
@@ -139,6 +171,10 @@
         "name": "The Roost Warden",
         "type": "boss",
         "health": 72,
+        "description": "The final guardian of the restored flyway, a huge raptor that binds routes, opens the sky, and tests the whole flock.",
+        "visualBrief": "Massive eagle-owl boss in layered final-route workwear, heavy utility harness, worn roost mantle, snagged line accents, and talon bands on the citywide chokepoint tower.",
+        "silhouette": "Largest enemy silhouette: broad wings, heavy head, deep talons, and a tower-filling final-boss stance.",
+        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
         "fightLengthTarget": [8, 11],
         "rewardScrap": 150,
         "moves": [
@@ -238,14 +274,14 @@
       "rewardProfileId": "street_standard"
     },
     {
-      "id": "enc_roost_kettle_gang",
-      "name": "Kettle Gang",
+      "id": "enc_roost_kettle_harrier",
+      "name": "Kettle Harrier",
       "mapId": "map_04_high_roost",
       "nodeType": "rival",
       "band": "rival",
       "lesson": "Elite tempo: trade through winded and a snag while staying covered.",
       "tags": ["elite", "winded", "snag", "tempo"],
-      "enemies": ["roost_kettle_gang"],
+      "enemies": ["roost_kettle_harrier"],
       "rewardProfileId": "rival_standard"
     },
     {
@@ -461,7 +497,7 @@
         "lane": 0,
         "type": "rival",
         "label": "Rival Crew",
-        "payloadId": "enc_roost_kettle_gang",
+        "payloadId": "enc_roost_kettle_harrier",
         "risk": "high",
         "revealed": true,
         "completed": false

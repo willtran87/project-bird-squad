@@ -9,6 +9,10 @@
       "type": "normal",
       "health": 20,
       "lesson": "Read a basic attack Tell and use Cover.",
+      "description": "A wiry rooftop rat that darts through tar paper seams and tests the flock's first defensive habits.",
+      "visualBrief": "Lean city rat in a cropped utility hoodie, tiny harness pouch, taped paw wraps, and scuffed scavenger clips on a rain-slick rooftop beside HVAC ducts.",
+      "silhouette": "Low, narrow, fast scavenger with a long tail and hunched shoulders.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural limbs, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
         { "id": "strike_6_a", "label": "Strike 6", "effects": ["damage(flock, 6)"] },
         { "id": "strike_6_b", "label": "Strike 6", "effects": ["damage(flock, 6)"] },
@@ -23,6 +27,10 @@
       "type": "normal",
       "health": 24,
       "lesson": "Manage Brace and Scavenge.",
+      "description": "A loud opportunist gull that steals tempo, braces behind rooftop junk, and patches itself up if ignored.",
+      "visualBrief": "Natural gull in a loose windbreaker wrap, reflective ankle bands, and a small scrap satchel, standing in a rooftop stance with food-carton and wet-antenna-wire styling cues.",
+      "silhouette": "Broad-winged scavenger with a cocked head and lifted beak.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
         { "id": "peck_5", "label": "Peck 5", "effects": ["damage(flock, 5)"] },
         { "id": "scavenge_heal", "label": "Scavenge", "effects": ["if notHitThisTurn then heal(4)"] },
@@ -37,6 +45,10 @@
       "type": "normal",
       "health": 28,
       "lesson": "Respect Heavy Strike and Open Sky risk.",
+      "description": "A rooftop hawk that watches from the wires, then dives hard when the flock overextends.",
+      "visualBrief": "Sharp-eyed hawk in a fitted courier shell, talon bands, and a narrow crossbody strap, framed by storm wires and open skyline above tar rooftops.",
+      "silhouette": "Tall raptor perch shape with angular wings and a hard forward lean.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
         { "id": "watch_winded", "label": "Watch", "effects": ["applyWinded(flock, 1)"] },
         { "id": "heavy_strike_11", "label": "Heavy Strike 11", "effects": ["damage(flock, 11)"] },
@@ -48,11 +60,15 @@
   ],
   "rivalEncounters": [
     {
-      "id": "tarline_crew",
-      "name": "Tarline Crew",
+      "id": "tarline_jackdaw",
+      "name": "Tarline Jackdaw",
       "type": "rival",
       "health": 34,
       "lesson": "Optional elite pressure with better rewards.",
+      "description": "A rival jackdaw line-worker that uses tar cords, braces, and sharp rooftop feints to tax careless routes.",
+      "visualBrief": "Compact black-and-gray city jackdaw in tar-sheen utility streetwear: cropped work shell, asymmetric cord harness, brass talon bands, scuffed pouch, and abstract black-gold repair patches around a rooftop tar line.",
+      "silhouette": "Small upright corvid with a quick beak, folded wings, long cord loops, and a compact line-worker stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet or talons; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
         { "id": "harass_6", "label": "Harass 6", "effects": ["damage(flock, 6)", "applyWinded(flock, 1)"] },
         { "id": "brace_8", "label": "Brace 8", "effects": ["gainCover(8)"] },
@@ -67,6 +83,10 @@
       "type": "elite",
       "health": 40,
       "lesson": "Elite: armored bruiser that alternates a guard turn with a heavy swing.",
+      "description": "A bulky sewer-rat boss of the gutter routes, all patched plating, low patience, and crushing counterweight.",
+      "visualBrief": "Heavy rat in layered street-work armor made from non-sci-fi scrap plates, canvas straps, and taped paws, braced beside a rooftop drain and bent service panels.",
+      "silhouette": "Squat armored bruiser with a thick neck, wide back, and heavy tail base.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural limbs, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
         { "id": "baron_lash_9", "label": "Lash 9", "effects": ["damage(flock, 9)"] },
         { "id": "baron_panel_guard", "label": "Panel Guard", "effects": ["gainCover(10)"] },
@@ -83,6 +103,10 @@
       "name": "The Tar-Crowned Crow",
       "type": "boss",
       "health": 46,
+      "description": "A commanding crow whose crown-like streetwear and oil-slick rain gear make the broken flyway feel like a toll road it owns.",
+      "visualBrief": "Large natural crow in a dark luxe rain shell, glossy oil-slick shoulder wrap, crown-like hood trim, tiny chain clips, and black talon bands atop a rooftop chokepoint of cables, tar paper, and rain-dark puddles; no literal tar on feathers or body.",
+      "silhouette": "Large crowned corvid shaped by hood trim and cloak-like wing mass, with a high perch stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "fightLengthTarget": [6, 8],
       "rewardScrap": 120,
       "moves": [
