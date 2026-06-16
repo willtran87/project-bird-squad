@@ -1020,3 +1020,17 @@ Follow-up TODO:
 - Kept the route-mark expansion item out of scope for this pass.
 - Verified `npm run validate:runtime`, `npm run build`, and
   `npm run test:e2e`.
+
+## 2026-06-16 Full Enemy Codex Cast
+
+- Expanded the Codex enemy section from the 48 reserve enemy contracts to the
+  complete 81-enemy cast: 33 playable encounter enemies plus 48 reserve
+  enemies.
+- Normalized playable encounter enemies and reserve contracts into one Codex
+  enemy catalog while preserving encounter combat kits, reserve fashion notes,
+  district tabs, and runtime art lookups.
+- Added smoke coverage proving the Codex reports 81 enemies and renders both a
+  playable encounter enemy and a reserve enemy with art and detail text.
+- Verified `npm run build`, `npx playwright test tests/smoke.spec.ts -g
+  "enemy codex"`, the web-game Playwright client, and a direct Codex screenshot
+  at `.artifacts/codex-enemy-page.png`.
