@@ -88,7 +88,7 @@ Bird Squad should feel like these ten systems working together:
 | Signature risk/reward | Molt and Open Sky | `core-gameplay-spec.md` |
 | Suit identity | Plumes, Quills, Basins, Nests | `core-gameplay-spec.md` |
 | Route choice | Branching maps, node types, bosses | `run-design-spec.md` |
-| Run texture | Route Marks, Scrap, Markets, Signals, Supplies, Snags, Rival Crews | `run-design-spec.md` |
+| Run texture | Waymarks, Scrap, Markets, Signals, Supplies, Snags, Rival Crews | `run-design-spec.md` |
 
 ## Player-Facing Vocabulary
 
@@ -103,7 +103,7 @@ Bird Squad should feel like these ten systems working together:
 | Open Sky | Vulnerability after Molt. |
 | Add to the Flock | Add a singleton card. |
 | Preen a Card | Improve an owned card. |
-| Route Marks | Permanent run modifiers. |
+| Waymarks | Permanent run artifact items. |
 | Scrap | Market/workshop currency. |
 | Signals | Event nodes and log language. |
 | Basin | Recovery node. |
@@ -114,7 +114,7 @@ Bird Squad should feel like these ten systems working together:
 The first implementation target was `docs/game/alpha-run-spec.md` — Map 1 only
 (Rooftop Blocks), a deterministic 6-8 node route plus boss, a 10-card starter
 deck, 3 normal enemies + 1 Rival Crew + `The Tar-Crowned Crow` boss, and the full
-node-type set (Route Marks, Scrap, Market, Supplies, Signals, Snags, Basin, Nest).
+node-type set (Waymarks, Scrap, Market, Supplies, Signals, Snags, Basin, Nest).
 That alpha slice proved the game feels like a bird-native deckbuilding roguelike.
 
 **Scope expanded post-alpha (current build):** the playable game now spans all
@@ -131,7 +131,7 @@ rarity-weighted reward offers. Map 1 remains the balance/tuning reference; see
 - Update `docs/game/core-gameplay-spec.md` when combat, cards, Flock Stats,
   Molt, enemy Tells, or foundation rewards change.
 - Update `docs/game/run-design-spec.md` when route maps, node types, economy,
-  Route Marks, Markets, Signals, Supplies, Snags, Rival Crews, bosses, Basin, or
+  Waymarks, Markets, Signals, Supplies, Snags, Rival Crews, bosses, Basin, or
   Nest rules change.
 - Update `docs/game/alpha-run-spec.md` when Map 1 Alpha content changes.
 - Update `docs/art/art-bible.md` when visual, world, prompt, suit, or Molt art

@@ -26,7 +26,7 @@ contracts. It answers:
 - how Molt and Open Sky work
 - what implementation should build first
 
-Alpha-specific cards, enemies, Route Marks, Signals, Supplies, and tuning live
+Alpha-specific cards, enemies, Waymarks, Signals, Supplies, and tuning live
 in `docs/game/alpha-run-spec.md`.
 
 ## Foundation Rules

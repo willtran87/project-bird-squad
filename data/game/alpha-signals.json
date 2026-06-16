@@ -10,7 +10,7 @@
       "id": "faded_chalk_line",
       "title": "Faded Chalk Line",
       "mapId": "map_01_rooftop_blocks",
-      "prompt": "An old route mark is still visible under rain grime, but reaching it means crossing an exposed billboard frame.",
+      "prompt": "An old Waymark is still visible under rain grime, but reaching it means crossing an exposed billboard frame.",
       "choices": [
         { "key": "repaint", "text": "Repaint the mark.", "outcomes": ["loseCohesion(4)", "gainRouteMark(chalk_wingmark)"] },
         { "key": "scout", "text": "Send a fast scout.", "outcomes": ["gainScrap(30)", "addSnagToDiscard(bad_directions)"] },

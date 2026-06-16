@@ -12,7 +12,7 @@
       "primaryTests": ["Cover", "direct damage", "first Molt risk"],
       "preferredNodeTypes": ["street", "rival", "signal", "basin", "nest", "market", "cache", "boss"],
       "encounterTags": ["cover", "heavy", "winded", "openSky"],
-      "rewardBias": ["Cover", "direct damage", "Route Marks"],
+      "rewardBias": ["Cover", "direct damage", "Waymarks"],
       "bossPrepHints": [
         "Build Cover before the Tar-Crowned Crow's Heavy Strike.",
         "Keep Open Sky Guard ready for Molt turns."

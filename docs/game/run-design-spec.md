@@ -20,7 +20,7 @@ This document consolidates the former run map and run systems specs. It answers:
 - why the flock is moving through the city
 - how the four-map route structure works
 - what route node types exist
-- how Route Marks, Scrap, Markets, Signals, Supplies, Snags, Rival Crews,
+- how Waymarks, Scrap, Markets, Signals, Supplies, Snags, Rival Crews,
   Basin Stops, Nest Workshops, and bosses work
 - what belongs in MVP versus later
 
@@ -79,8 +79,8 @@ stable unless run length is redesigned.
 | Boss | Boss | Break district chokepoint. | Required map endpoint. |
 | Basin Stop | Basin | Recover at water, shelter, or care point. | Heal/stabilize. |
 | Nest Workshop | Nest | Repair gear and prepare the flock. | Preen/removal/preparation. |
-| Market | Market | Trade in a bird-city exchange. | Spend Scrap on cards, Route Marks, Supplies, services. |
-| Signal Event | Signal | Follow rumors, warnings, calls, route marks. | Narrative risk/reward choice. |
+| Market | Market | Trade in a bird-city exchange. | Spend Scrap on cards, Waymarks, Supplies, services. |
+| Signal Event | Signal | Follow rumors, warnings, calls, Waymark leads. | Narrative risk/reward choice. |
 | Cache | Rooftop Cache | Find a stash left by route-runners. | Small reward without combat. |
 
 Terminology guardrails:
@@ -172,7 +172,7 @@ Generated maps should follow these rules:
 7. Ensure every route contains at least one combat before the boss.
 8. Ensure at least two lanes have meaningfully different risk/reward profiles.
 9. Reveal current node, next-node types, and boss endpoint by default.
-10. Apply Route Marks or Signals that reveal additional nodes after generation.
+10. Apply Waymarks or Signals that reveal additional nodes after generation.
 
 Legal transition guardrails:
 
@@ -204,8 +204,8 @@ Node payload rules:
 
 | Type | Payload | Completion Reward |
 | --- | --- | --- |
-| `street` | Normal encounter ID. | Scrap, Add to the Flock, possible Preen or Route Mark. |
-| `rival` | Elite encounter ID. | Higher Scrap, improved reward odds, Route Mark, Preen. |
+| `street` | Normal encounter ID. | Scrap, Add to the Flock, possible Preen or Waymark. |
+| `rival` | Elite encounter ID. | Higher Scrap, improved reward odds, Waymark, Preen. |
 | `boss` | Boss encounter ID. | Map-clear rewards and next-map transition. |
 | `basin` | Basin option set ID. | Recovery, shelter, or Supply refill. |
 | `nest` | Nest option set ID. | Preen, Release a Card, or route preparation. |
@@ -216,7 +216,7 @@ Node payload rules:
 Reward ordering after combat:
 
 1. Scrap.
-2. Route Mark offers, if any.
+2. Waymark offers, if any.
 3. Add to the Flock card reward, if any.
 4. Preen offer, if any.
 5. Supplies or Snags.
@@ -224,23 +224,40 @@ Reward ordering after combat:
 
 Singleton card filtering applies before card rewards are shown.
 
-## Route Marks
+## Waymarks
 
-Route Marks are Bird Squad's relic-equivalent: permanent run modifiers earned by
-reopening routes, clearing Rival Crews, resolving Signals, opening Caches, or
-beating bosses.
+Waymarks are Bird Squad's artifact item layer: permanent run modifiers earned by
+reopening routes, clearing Rival Crews, resolving Signals, opening Caches, buying
+from Markets, or beating bosses. The legacy runtime field remains `routeMarks`
+for save compatibility, but player-facing copy should say Waymarks.
+
+Waymarks are real carried objects rather than abstract badges: chalked slate,
+gutter metal, repaired harness pieces, market tally strings, signal tags,
+charms, tools, and boss trophies. They should feel like found route artifacts
+that change how the flock moves through the city.
 
 Rules:
 
-- Route Marks persist for the rest of the run.
-- Route Marks are not cards and do not enter the deck.
-- Route Marks should be visible in a compact run panel.
-- Most Route Marks should modify one clear thing.
-- Boss Route Marks can be stronger and map-defining.
+- Waymarks persist for the rest of the run.
+- Waymarks are items, not cards, and do not enter the deck.
+- Waymarks should be visible in the run inventory and browseable in the Codex.
+- Most Waymarks should modify one clear thing.
+- Boss Waymarks can be stronger and map-defining.
+
+Pool target:
+
+| Family | Count | Role |
+| --- | ---: | --- |
+| Shelter | 7 | Defense, healing, and survival. |
+| Tempo | 7 | Draw, Wingbeats, Open Sky Guard, and turn flow. |
+| Routecraft | 7 | Scrap, Signals, Markets, Caches, and route value. |
+| Suit Engines | 12 | Three each for Plumes, Quills, Basins, and Nests. |
+| Molt | 5 | Open Sky safety and transformation payoff. |
+| Boss | 2 | Strong map-clear artifacts. |
 
 Examples:
 
-| Route Mark | Effect |
+| Waymark | Effect |
 | --- | --- |
 | Chalk Wingmark | Start each combat with Cover. |
 | Rooftop Shortcut | First time you play 3 cards in a turn each combat, draw 1. |
@@ -264,7 +281,7 @@ Scrap sources:
 Scrap sinks:
 
 - buy cards
-- buy Route Marks
+- buy Waymarks
 - buy Supplies
 - Release a Card
 - pay for extra Preen
@@ -275,7 +292,7 @@ Market inventory target:
 | Slot | Count | Rule |
 | --- | ---: | --- |
 | Cards | 3-5 | Exclude owned singleton cards. |
-| Route Marks | 2-3 | At least one affordable option. |
+| Waymarks | 2-3 | At least one affordable option. |
 | Supplies | 2-3 | One-use tactical effects. |
 | Services | 1-2 | Release a Card, Preen, or future deck tuning. |
 
@@ -339,7 +356,7 @@ Signal structure:
 | Situation | One or two sentences explaining the route problem. |
 | Choices | 2-3 options with clear costs or risks. |
 | Outcome | Immediate mechanical result and short narrative beat. |
-| Memory | Optional Route Mark, card offer, Scrap, Supply, Snag, or route change. |
+| Memory | Optional Waymark, card offer, Scrap, Supply, Snag, or route change. |
 
 Signals should be about route repair, warning calls, stranded birds, rival
 bargains, weather, or infrastructure.
@@ -360,7 +377,7 @@ Rules:
 Reward target:
 
 - better rarity odds
-- high Route Mark chance
+- high Waymark chance
 - medium/high Scrap
 - usually Preen after victory
 - higher Cohesion loss, Snag, or route pressure risk
@@ -381,7 +398,7 @@ Boss roles:
 
 Boss rewards:
 
-- map-clear Route Mark
+- map-clear Waymark
 - stronger Preen or Nest service
 - possible Legend or Molt-signature offer
 - Scrap
@@ -415,7 +432,7 @@ Possible model:
 
 Build these for the first full roguelike run:
 
-- Route Marks
+- Waymarks
 - Scrap
 - Markets
 - Release a Card
@@ -434,7 +451,7 @@ Defer:
 - Flock Leaders
 - complex Signal chains
 - advanced deck services
-- large Route Mark pools with rare build-arounds
+- large Waymark pools with rare build-arounds
 
 ## Acceptance Criteria
 
@@ -443,7 +460,7 @@ Run design is ready when:
 - a run contains exactly four maps
 - each map is a branching route with a visible boss endpoint
 - route choices affect more than the next fight
-- Route Marks give runs identity beyond deck contents
+- Waymarks give runs identity beyond deck contents
 - Scrap creates meaningful Market decisions
 - Release a Card gives singleton decks control without breaking flock theme
 - Supplies create tactical safety valves

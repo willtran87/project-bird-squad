@@ -269,13 +269,14 @@ export interface RuntimeNodeOptionSet {
   options: RuntimeNodeOption[];
 }
 
-// Route Marks (next-level-data-contracts §6)
+// Waymarks, stored as routeMarks for legacy data compatibility (next-level-data-contracts §6)
 export type RouteMarkFamily = 'safety' | 'economy' | 'route' | 'suit' | 'molt' | 'bossPrep';
 export type RouteMarkSource = 'street' | 'rival' | 'boss' | 'market' | 'signal' | 'cache' | 'nest';
 export type RouteMarkRarity = 'common' | 'uncommon' | 'rare' | 'boss';
 
 export interface RuntimeRouteMark {
   id: string;
+  itemType?: 'waymark';
   name: string;
   family: RouteMarkFamily;
   source: RouteMarkSource;
@@ -283,6 +284,7 @@ export interface RuntimeRouteMark {
   trigger: string;
   effect: string;
   description: string;
+  flavorText?: string;
 }
 
 export interface RuntimeRouteMarkSet {

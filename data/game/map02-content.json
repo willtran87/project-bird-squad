@@ -11,7 +11,7 @@
     "primaryTests": ["recovery", "chip damage", "Scrap tension", "Winded pressure"],
     "preferredNodeTypes": ["street", "rival", "signal", "basin", "nest", "market", "cache", "boss"],
     "encounterTags": ["scavenge", "cover", "winded", "heavy", "openSky", "tempo"],
-    "rewardBias": ["healing", "Scrap economy", "Route Marks"],
+    "rewardBias": ["healing", "Scrap economy", "Waymarks"],
     "bossPrepHints": [
       "Bank Cohesion at Basins before the Canal Gatekeeper's drowning pressure.",
       "Carry Scrap into the final Market; the boss punishes a starved economy.",
@@ -322,7 +322,7 @@
       "mapId": "map_02_canal_markets",
       "prompt": "An abandoned ledger maps the canal locks. Tracing it could open a shortcut, but the ink runs in the damp.",
       "choices": [
-        { "key": "copy", "text": "Copy the route mark.", "outcomes": ["loseCohesion(4)", "gainRouteMark(rain_gutter)"] },
+        { "key": "copy", "text": "Copy the Waymark.", "outcomes": ["loseCohesion(4)", "gainRouteMark(rain_gutter)"] },
         { "key": "barter", "text": "Barter for the original.", "requirements": ["scrapAtLeast(55)"], "lockedText": "Need 55 Scrap.", "outcomes": ["payScrap(55)", "gainRouteMark(wire_map)"] },
         { "key": "shred", "text": "Shred it for tinder.", "outcomes": ["gainScrap(40)", "loseCohesion(2)"] }
       ]

@@ -33,7 +33,7 @@ describe that Map 1 slice, not a cap on the shipped build.
 Alpha should answer one question:
 
 > Is it fun to restore the first broken flyway through card combat, route
-> choices, Flock growth, Route Marks, Scrap, Signals, Supplies, and a boss?
+> choices, Flock growth, Waymarks, Scrap, Signals, Supplies, and a boss?
 
 ## Alpha Scope
 
@@ -46,7 +46,7 @@ Alpha should answer one question:
 | Boss | 1 rival bird crew leader. |
 | Starter deck | 10 cards. |
 | Reward pool | 74 cards (every non-starter playable card; the full arcana deck is implemented). |
-| Route Marks | 10. |
+| Waymarks | 40. |
 | Supplies | 5. |
 | Signals | 5. |
 | Snags | 3. |
@@ -84,7 +84,7 @@ Alpha map promise:
 - teach `Add to the Flock`
 - teach `Preen a Card`
 - introduce Scrap and Markets
-- introduce Route Marks and Supplies
+- introduce Waymarks and Supplies
 - end with a boss that tests Molt and Open Sky
 
 ## Route Shape
@@ -120,7 +120,7 @@ Minimum route requirements:
 | Starting Resonance cap | 5 |
 | Starting Scrap | 60 |
 | Supply slots | 2 |
-| Starting Route Marks | 0 |
+| Starting Waymarks | 0 |
 | Starting Snags | 0 |
 
 ## Starter Deck
@@ -249,14 +249,14 @@ Normal encounter rewards:
 - 25-40 Scrap
 - `Add to the Flock`
 - 25% chance to offer `Preen a Card`
-- 15% chance to offer a common Route Mark instead of Preen
+- 15% chance to offer a common Waymark instead of Preen
 
 Rival Crew rewards:
 
 - 70-90 Scrap
 - `Add to the Flock` with improved rarity odds
 - guaranteed `Preen a Card`
-- guaranteed Route Mark offer from 3 choices
+- guaranteed Waymark offer from 3 choices
 
 ## Alpha Boss
 
@@ -266,7 +266,7 @@ Role:
 
 A rival corvid toll boss who controls the final rooftop crossing out of the
 Rooftop Blocks. The crow is not evil for its own sake: it has been hoarding safe
-route marks, Scrap, and warning access because scarcity made passage valuable.
+Waymarks, Scrap, and warning access because scarcity made passage valuable.
 
 Narrative beat:
 
@@ -294,17 +294,33 @@ Intent pattern:
 
 Boss rewards:
 
-- choose 1 of 3 boss Route Marks
+- choose 1 of 3 boss Waymarks
 - choose 1 rare card from 3 options
 - Preen 1 card
 - gain 120 Scrap
 - unlock Map 2 in later builds
 
-## Route Marks
+## Waymarks
 
-Alpha Route Marks should be simple and visible.
+Alpha Waymarks are real carried artifact items: chalked route shards, patched
+harness pieces, tins, charms, signal tags, and boss trophies. They are the
+relic-equivalent run identity layer. The runtime still stores them in the
+legacy `routeMarks` field, but player-facing text should say Waymarks.
 
-| Route Mark | Source | Effect |
+The Alpha pool contains 40 Waymarks:
+
+| Family | Count | Role |
+| --- | ---: | --- |
+| Shelter | 7 | Defense, healing, and survival. |
+| Tempo | 7 | Draw, Wingbeats, Open Sky Guard, and turn flow. |
+| Routecraft | 7 | Scrap, Signals, Markets, Caches, and route value. |
+| Suit Engines | 12 | Three each for Plumes, Quills, Basins, and Nests. |
+| Molt | 5 | Open Sky safety and transformation payoff. |
+| Boss | 2 | Strong map-clear artifacts. |
+
+Representative Waymarks:
+
+| Waymark | Source | Effect |
 | --- | --- | --- |
 | Chalk Wingmark | Street Encounter / Cache | Start each combat with 2 Cover. |
 | Rooftop Shortcut | Signal / Cache | The first time you play 3 cards in a turn each combat, draw 1. |
@@ -313,7 +329,6 @@ Alpha Route Marks should be simple and visible.
 | Loose Change Tin | Market / Cache | Gain 15 extra Scrap after each Street Encounter. |
 | Rain Gutter | Market / Cache | Basin Stops heal 4 more Cohesion. |
 | Wire Map | Market / Cache | Signals pay out 25 Scrap. |
-| Feather Tape | Nest Workshop | The first card improved each run also gains `Cohesion +1` as a bonus Flock Stat. |
 | Crowbar Debt | Boss | Start each combat with 1 Wingbeat on turn 1 only. |
 | Reopened Roofline | Boss | At the start of each map, gain 1 Supply choice. |
 
@@ -337,7 +352,7 @@ Signals are short narrative choices. Alpha needs five.
 
 Situation:
 
-An old route mark is still visible under rain grime, but reaching it means
+An old Waymark is still visible under rain grime, but reaching it means
 crossing an exposed billboard frame.
 
 | Choice | Result |
@@ -418,7 +433,7 @@ Inventory:
 | Slot | Count | Rule |
 | --- | ---: | --- |
 | Cards | 4 | 2 common, 1 uncommon, 1 weighted random. Exclude owned cards. |
-| Route Marks | 2 | Pull from non-boss Route Marks. |
+| Waymarks | 2 | Pull from non-boss Waymarks. |
 | Supplies | 2 | Pull from Supply pool. |
 | Services | 2 | `Release a Card`; `Preen a Card`. |
 
@@ -440,7 +455,7 @@ Full Alpha target prices:
 | Common card | 55 Scrap |
 | Uncommon card | 85 Scrap |
 | Rare card | 130 Scrap |
-| Route Mark | 110 Scrap |
+| Waymark | 110 Scrap |
 | Supply | 45 Scrap |
 | Release a Card | 75 Scrap, +25 each later use |
 | Preen a Card | 100 Scrap |
@@ -465,7 +480,7 @@ Choose one:
 | --- | --- |
 | Preen a Card | Improve 1 owned, unimproved card. |
 | Release a Card | Remove 1 non-required card. Costs 50 Scrap. |
-| Reinforce Gear | Gain 1 random non-boss Route Mark if you pay 90 Scrap. |
+| Reinforce Gear | Gain 1 random non-boss Waymark if you pay 90 Scrap. |
 
 ## Rooftop Cache
 
@@ -473,7 +488,7 @@ Choose one of 3:
 
 - gain 50 Scrap
 - choose 1 of 2 Supplies
-- choose 1 common Route Mark
+- choose 1 common Waymark
 - Add to the Flock from 2 common cards
 - heal 5 Cohesion
 
@@ -487,7 +502,7 @@ Choose one of 3:
 | Average Cohesion loss per Rival Crew | 8-14 |
 | Average Scrap before first Market | 100-160 |
 | Average deck size before boss | 13-16 cards |
-| Average Route Marks before boss | 1-3 |
+| Average Waymarks before boss | 1-3 |
 | Average Supplies used before boss | 1-2 |
 
 If players consistently reach the boss at full Cohesion, route pressure is too
@@ -501,7 +516,7 @@ pressure is too high.
 3. Implement deterministic Map 1 route graph.
 4. Implement `Add to the Flock`, Preen, Basin, Nest, Market, and Cache nodes.
 5. Implement Scrap wallet and rewards.
-6. Implement Route Marks.
+6. Implement Waymarks.
 7. Implement Supplies.
 8. Implement Signals.
 9. Implement Snags.
@@ -516,7 +531,7 @@ Alpha is ready when:
 - the starter deck teaches all four suits and Molt
 - every reward respects singleton ownership
 - every added card changes active deck options and Flock Stats
-- Route Marks visibly alter the run
+- Waymarks visibly alter the run
 - Scrap creates a real Market decision
 - Supplies are useful but not required every fight
 - Snags feel like a cost, not a random punishment

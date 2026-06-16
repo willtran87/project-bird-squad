@@ -11,7 +11,7 @@
     "primaryTests": ["full Flock build", "Molt timing", "Open Sky management", "Cover under sustained pressure"],
     "preferredNodeTypes": ["street", "rival", "signal", "basin", "nest", "market", "cache", "boss"],
     "encounterTags": ["cover", "heavy", "winded", "openSky", "snag", "tempo", "elite", "molt"],
-    "rewardBias": ["rare cards", "Route Marks", "Open Sky Guard", "boss prep"],
+    "rewardBias": ["rare cards", "Waymarks", "Open Sky Guard", "boss prep"],
     "bossPrepHints": [
       "Stockpile Cover before the Roost Warden's scripted Heavy Strikes.",
       "Hold Open Sky Guard for the Warden's Skyfall Decree so Molt turns stay safe.",

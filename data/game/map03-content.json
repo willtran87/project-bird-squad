@@ -11,7 +11,7 @@
     "primaryTests": ["tempo", "Winded pressure", "Open Sky management", "Plumes/Quills sequencing"],
     "preferredNodeTypes": ["street", "rival", "signal", "basin", "nest", "market", "cache", "boss"],
     "encounterTags": ["winded", "openSky", "heavy", "tempo"],
-    "rewardBias": ["tempo", "Open Sky Guard", "Route Marks"],
+    "rewardBias": ["tempo", "Open Sky Guard", "Waymarks"],
     "bossPrepHints": [
       "Keep Open Sky Guard ready before the Beacon-Breaker's Molt-triggered calls.",
       "Spend Wingbeat early to outrun stacking Winded Tells.",
@@ -345,7 +345,7 @@
       "id": "spire_static_nest",
       "title": "Static Nest",
       "mapId": "map_03_signal_spires",
-      "prompt": "A nest wrapped in crackling static interference. Clearing it might restore a lost route mark — or it could scramble your deck.",
+      "prompt": "A nest wrapped in crackling static interference. Clearing it might restore a lost Waymark or scramble your deck.",
       "choices": [
         { "key": "clear_static", "text": "Clear the static carefully.", "outcomes": ["gainRouteMark(rain_gutter)", "gainScrap(20)"] },
         { "key": "disrupt", "text": "Blast through with raw power.", "requirements": ["cohesionAtLeast(20)"], "lockedText": "Need 20 Cohesion.", "outcomes": ["loseCohesion(6)", "gainRouteMark(loose_change_tin)", "preenCard(1)"] },
@@ -354,9 +354,9 @@
     },
     {
       "id": "spire_fading_mark",
-      "title": "Fading Route Mark",
+      "title": "Fading Waymark",
       "mapId": "map_03_signal_spires",
-      "prompt": "A weathered sign flickers with the last traces of an old route mark. You could preserve it, trade it for scrap, or let it fade and find your own path.",
+      "prompt": "A weathered sign flickers with the last traces of an old Waymark. You could preserve it, trade it for scrap, or let it fade and find your own path.",
       "choices": [
         { "key": "preserve", "text": "Preserve the sign.", "outcomes": ["gainRouteMark(patched_harness)"] },
         { "key": "salvage", "text": "Strip it for copper.", "outcomes": ["gainScrap(50)", "addSnagToDiscard(tangled_line)"] },
