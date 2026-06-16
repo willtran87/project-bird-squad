@@ -739,7 +739,7 @@ test('Winded stacking matters: perWinded scaling, windedAtLeast gate, consuming 
   expect(r.cover).toBeGreaterThanOrEqual(8);           // overheal became Cover
 });
 
-test('card codex: starting a run discovers its deck and the Codex screen renders', async ({ page }) => {
+test('codex: starting a run discovers its deck and the Codex screen renders', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -763,6 +763,53 @@ test('card codex: starting a run discovers its deck and the Codex screen renders
   expect(r.discoveredCount).toBeGreaterThanOrEqual(8); // Spark-Caller's 10-card deck (distinct ids)
   expect(r.active).toBe(true);
   expect(r.codexFound).toBeGreaterThanOrEqual(8);
+});
+
+test('enemy codex: reserve enemies render with art and contract details', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('CodexScene');
+    g.scene.stop('MenuScene');
+    const cs: any = g.scene.getScene('CodexScene');
+    for (let i = 0; i < 20 && !cs.root; i += 1) await wait(50);
+    cs.activeSection = 'enemies';
+    cs.activeEnemyTab = 0;
+    cs.detailId = undefined;
+    cs.gridScroll = 0;
+    cs.renderAll();
+    for (let i = 0; i < 40 && !cs.textures.exists('reserve-enemy-canal_otter'); i += 1) await wait(100);
+    cs.detailId = 'canal_otter';
+    cs.detailScroll = 0;
+    cs.renderAll();
+    await wait(150);
+
+    const all: any[] = [];
+    const walk = (o: any) => {
+      if (!o) return;
+      if (o.type === 'Text') all.push(o);
+      const children = o.list;
+      if (Array.isArray(children)) children.forEach(walk);
+    };
+    cs.children.list.forEach(walk);
+    const texts = all.map((t) => t.text || '');
+    const count = cs.allReserveEnemies ? cs.allReserveEnemies().length : 0;
+    return {
+      count,
+      hasCatalogCount: texts.some((t) => /48 reserve enemies cataloged/.test(t)),
+      hasEnemyName: texts.some((t) => /Canal Otter/.test(t)),
+      hasMoveKit: texts.some((t) => /MOVE KIT/.test(t)),
+      hasFashion: texts.some((t) => /FASHION DIRECTION/.test(t)),
+      hasArt: cs.textures.exists('reserve-enemy-canal_otter'),
+    };
+  });
+  expect(r.count).toBe(48);
+  expect(r.hasCatalogCount).toBe(true);
+  expect(r.hasEnemyName).toBe(true);
+  expect(r.hasMoveKit).toBe(true);
+  expect(r.hasFashion).toBe(true);
+  expect(r.hasArt).toBe(true);
 });
 
 test('Cover and Heal are distinct axes, and the new card verbs work', async ({ page }) => {

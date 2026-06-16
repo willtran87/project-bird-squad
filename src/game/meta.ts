@@ -128,7 +128,7 @@ export function isLeaderUnlocked(account: PlayerAccount, id: string): boolean {
 }
 
 // Mark cards as encountered (seen in a starting deck or offered/added in a run)
-// so they appear in the Card Codex. Returns the count newly discovered.
+// so they appear in the Codex. Returns the count newly discovered.
 export function discoverCards(ids: string[]): number {
   if (ids.length === 0) return 0;
   const account = loadAccount();

@@ -17,6 +17,7 @@ import alphaMapProfiles from '../../data/game/alpha-map-profiles.json';
 import map02Content from '../../data/game/map02-content.json';
 import map03Content from '../../data/game/map03-content.json';
 import map04Content from '../../data/game/map04-content.json';
+import enemyVarietyContractsJson from '../../data/game/enemy-variety-contracts.json';
 import majorArcana from '../../data/cards/arcana/major-arcana-bird-map.json';
 import aviaryArcana from '../../data/cards/arcana/aviary-arcana.json';
 import wandsArcana from '../../data/cards/arcana/minor-arcana-wands.json';
@@ -80,6 +81,28 @@ export const alphaSignalSet = alphaSignals as RuntimeSignalSet;
 export const alphaMapProfileSet = alphaMapProfiles as MapDesignProfileSet;
 export const alphaCardArtManifest = alphaCardArtManifestJson as RuntimeCardArtManifest;
 export const alphaEnemyArtManifest = alphaEnemyArtManifestJson as RuntimeEnemyArtManifest;
+
+export interface ReserveEnemyContract {
+  id: string;
+  name: string;
+  species: string;
+  district: string;
+  role: string;
+  typeHint: string;
+  varietyContribution: string;
+  description: string;
+  visualBrief: string;
+  silhouette: string;
+  artPose: string;
+  moveKit: string[];
+}
+
+const enemyVarietyContracts = enemyVarietyContractsJson as {
+  reserveEnemies: ReserveEnemyContract[];
+  fashionDirections?: Record<string, string>;
+};
+export const reserveEnemyContracts = enemyVarietyContracts.reserveEnemies;
+export const reserveEnemyFashionDirections = enemyVarietyContracts.fashionDirections ?? {};
 
 export const alphaRouteMarkLibrary: ReadonlyMap<string, RuntimeRouteMark> = new Map(
   alphaRouteMarkSet.routeMarks.map((mark) => [mark.id, mark]),
@@ -204,7 +227,7 @@ export function getCardFlavor(cardId: string): CardFlavor | undefined {
   return cardFlavorLibrary.get(cardId);
 }
 
-// Real-world ornithology trivia for the Card Codex, keyed by bird common name.
+// Real-world ornithology trivia for the Codex, keyed by bird common name.
 const birdFactSet = birdFacts as { facts: Record<string, string> };
 export const birdFactLibrary: ReadonlyMap<string, string> = new Map(Object.entries(birdFactSet.facts ?? {}));
 export function getBirdFact(bird: string | undefined): string | undefined {
@@ -212,7 +235,7 @@ export function getBirdFact(bird: string | undefined): string | undefined {
 }
 
 // Tarot reading per card: keyword line (core) + upright + reversed meanings,
-// shown in the Card Codex. Keyed by card id (data/game/card-meanings.json).
+// shown in the Codex. Keyed by card id (data/game/card-meanings.json).
 export interface CardMeaning { core: string; upright: string; reversed: string }
 const cardMeaningSet = cardMeanings as { meanings: Record<string, CardMeaning> };
 export const cardMeaningLibrary: ReadonlyMap<string, CardMeaning> = new Map(Object.entries(cardMeaningSet.meanings ?? {}));

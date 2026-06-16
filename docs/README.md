@@ -26,8 +26,8 @@ should be recorded.
 | --- | --- | --- |
 | `docs/game/game-design.md` | Pitch, pillars, narrative frame, vocabulary, and product direction. | Detailed combat math or Alpha tuning. |
 | `docs/game/core-gameplay-spec.md` | Combat loop, card contract, Flock Stats, effect syntax, rewards, Molt, Open Sky, and enemy Tells. | Route-map topology or node economy. |
-| `docs/game/run-design-spec.md` | Run structure, route maps, node types, Route Marks, Scrap, Markets, Signals, Supplies, Snags, Rival Crews, Basin/Nest rules, and bosses. | Alpha-only card lists and exact first-slice numbers. |
-| `docs/game/alpha-run-spec.md` | Map 1 Alpha scope, starter deck, reward pool, Alpha enemies, boss, route marks, supplies, Signals, Snags, market prices, and tuning targets. | Full-run final balance. |
+| `docs/game/run-design-spec.md` | Run structure, route maps, node types, Waymarks, Scrap, Markets, Signals, Supplies, Snags, Rival Crews, Basin/Nest rules, and bosses. | Alpha-only card lists and exact first-slice numbers. |
+| `docs/game/alpha-run-spec.md` | Map 1 Alpha scope, starter deck, reward pool, Alpha enemies, boss, Waymarks, supplies, Signals, Snags, market prices, and tuning targets. | Full-run final balance. |
 | `docs/art/art-bible.md` | Visual identity, suit aesthetics, prompt standards, card-art production rules, and runtime asset expectations. | Gameplay rules except where art needs them for context. |
 | `docs/art/enemy-art-bible.md` | Enemy art visual language, non-humanoid animal constraints, and prompt pattern for enemy concepts. | Enemy combat tuning or encounter rewards. |
 
@@ -61,6 +61,7 @@ content:
 | `data/cards/arcana/` | Canonical card identities, species, rarity, descriptions, and art-production fields. |
 | `data/cards/reversals/` | Molt/reversal overlays. |
 | `data/game/` | Runtime-ready Alpha cards, enemies, enemy art briefs, route map, and future runtime content. |
+| `data/game/enemy-variety-contracts.json` | Reserve enemy roster and art contracts for future animal-species variety. |
 | `.generated/` | Generated art masters, selected source PNGs, prompt/run provenance, and QA sheets. |
 | `assets/runtime/` | Optimized game-ready card/enemy assets and runtime manifests. |
 
