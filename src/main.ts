@@ -391,6 +391,26 @@ const flockLeaderArtAssets: Record<string, { key: string; url: string }> = {
     url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/fledgling-flock-combat-back-ne.png']
       ?? '/assets/runtime/flock/leaders/fledgling-flock-combat-back-ne.png',
   },
+  spark_caller: {
+    key: 'flock-leader-spark-caller',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/spark-caller-combat-back-ne.png']
+      ?? '/assets/runtime/flock/leaders/spark-caller-combat-back-ne.png',
+  },
+  talon: {
+    key: 'flock-leader-talon',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/talon-combat-back-ne.png']
+      ?? '/assets/runtime/flock/leaders/talon-combat-back-ne.png',
+  },
+  tidewarden: {
+    key: 'flock-leader-tidewarden',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/tidewarden-combat-back-ne.png']
+      ?? '/assets/runtime/flock/leaders/tidewarden-combat-back-ne.png',
+  },
+  roostkeeper: {
+    key: 'flock-leader-roostkeeper',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/roostkeeper-combat-back-ne.png']
+      ?? '/assets/runtime/flock/leaders/roostkeeper-combat-back-ne.png',
+  },
 };
 const requestedOptionalArtKeys = new Set<string>();
 
