@@ -146,11 +146,13 @@ test('card reward can be skipped for a Scrap fallback, recorded for stats', asyn
     const scene: any = g.scene.getScene('BattleScene');
     scene.rewardChoices = [{ id: 'wands_02' }, { id: 'cups_02' }];
     scene.mode = 'cardReward';
+    scene.shouldOfferUpgradeReward = () => true;
     const scrapBefore = scene.scrap;
     scene.skipCardReward();
-    return { scrapDelta: scene.scrap - scrapBefore, rewardEvents: scene.runRewardEvents };
+    return { scrapDelta: scene.scrap - scrapBefore, rewardEvents: scene.runRewardEvents, mode: scene.mode };
   });
   expect(result.scrapDelta).toBe(12);
+  expect(result.mode).toBe('upgradeReward');
   expect(result.rewardEvents[0].skipped).toBe(true);
   expect(result.rewardEvents[0].offered).toContain('wands_02');
 });
@@ -162,7 +164,9 @@ test('market shelves are finite during a visit', async ({ page }) => {
     g.scene.start('RouteScene', {});
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('RouteScene');
-    const market = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === 'market');
+    const market = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === 'market')
+      ?? window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type !== 'boss');
+    market.type = 'market';
     scene.openMarketNode(market);
     scene.runState.scrap = 999;
     const firstOffer = scene.marketCardOffer()?.id;
@@ -174,6 +178,48 @@ test('market shelves are finite during a visit', async ({ page }) => {
   expect(result.firstOffer).toBeTruthy();
   expect(result.deckHasOffer).toBe(true);
   expect(result.afterBuyOffer).toBe('');
+});
+
+test('post-combat Preen is gated by encounter reward profile', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const seedBattle: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 30 && !(seedBattle.hand && seedBattle.hand.length); i += 1) await wait(50);
+    const deck = [...seedBattle.drawPile, ...seedBattle.hand, ...seedBattle.discardPile]
+      .map((card: any) => ({ id: card.id, upgraded: !!card.upgraded }));
+    const runState = {
+      deck, leaderId: seedBattle.runLeaderId, difficulty: 0, seed: 'preen-profile-test', currentHp: 36,
+      scrap: 0, routeMarks: [], supplies: [], mapIndex: 0, completedRouteNodeIds: [],
+      currentRouteNodeId: undefined, routeLog: [], nextCombat: undefined, signalChoices: [], rewardEvents: [],
+    };
+    seedBattle.init({ runState });
+    const map = (window as any).__birdSquadCurrentMap();
+    const streets = map.nodes.filter((node: any) => node.type === 'street');
+    const rival = map.nodes.find((node: any) => node.type === 'rival');
+    const streetPreenWindows: boolean[] = [];
+    for (const node of streets) {
+      g.scene.start('BattleScene', { runState, routeNodeId: node.id });
+      g.scene.stop('MenuScene');
+      await wait(60);
+      const battle: any = g.scene.getScene('BattleScene');
+      streetPreenWindows.push(battle.shouldOfferUpgradeReward());
+    }
+    g.scene.start('BattleScene', { runState, routeNodeId: rival.id });
+    await wait(60);
+    const rivalBattle: any = g.scene.getScene('BattleScene');
+    return {
+      streetPreenWindows,
+      hasRoutineNoPreen: streetPreenWindows.includes(false),
+      rivalPreen: rivalBattle.shouldOfferUpgradeReward()
+    };
+  });
+  expect(result.streetPreenWindows.length).toBeGreaterThan(0);
+  expect(result.hasRoutineNoPreen).toBe(true);
+  expect(result.rivalPreen).toBe(true);
 });
 
 test('nest release opens a card picker and removes the chosen card', async ({ page }) => {
@@ -865,7 +911,7 @@ test('preened cards have a stronger Molt ability, and the Codex carries tarot me
   expect(codex.heavyMax).toBeGreaterThan(0); // the longest card scrolls instead of spilling
 });
 
-test('elite encounters spawn multiple enemies: every enemy telegraphs, all act, and both must fall', async ({ page }) => {
+test('elite encounters spawn multiple enemies: every enemy telegraphs, all act, and all must fall', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -886,7 +932,7 @@ test('elite encounters spawn multiple enemies: every enemy telegraphs, all act, 
     // First re-init caches the fixed-seed map (no render, no scene teardown).
     s.init({ runState });
     // Repoint a real combat node at the elite "Gutter Baron" encounter (an elite
-    // bruiser + a rat escort), then re-init there and redraw — exercises the
+    // bruiser + rat escorts), then re-init there and redraw — exercises the
     // multi-enemy spawn + render path.
     const map = (window as any).__birdSquadCurrentMap();
     const node = map.nodes.find((n: any) => ['street', 'rival', 'boss'].includes(n.type));
@@ -905,8 +951,8 @@ test('elite encounters spawn multiple enemies: every enemy telegraphs, all act, 
     const intentsAfter = s.enemies.map((e: any) => e.intentIndex);
     const flockAfter = s.flock.hp;
 
-    // Targeting stays per-enemy: damaging only the escort leaves the elite alive,
-    // so victory must require clearing BOTH (checkOutcome uses .every).
+    // Targeting stays per-enemy: damaging only one escort leaves the elite alive,
+    // so victory must require clearing the whole encounter (checkOutcome uses .every).
     const escort = s.enemies.find((e: any) => e.runtime.type !== 'elite');
     escort.hp = 0;
     const allDownAfterOne = s.enemies.every((e: any) => e.hp <= 0);
@@ -926,8 +972,8 @@ test('elite encounters spawn multiple enemies: every enemy telegraphs, all act, 
     };
   });
 
-  expect(r.count).toBe(2);                       // both encounter enemies spawned
-  expect(r.snapCount).toBe(2);                   // and both are exposed to the UI/harness
+  expect(r.count).toBe(3);                       // every authored encounter enemy spawned
+  expect(r.snapCount).toBe(3);                   // and every enemy is exposed to the UI/harness
   expect(r.hasElite).toBe(true);                 // one carries the elite tier
   expect(r.names).toContain('Gutter Baron');
   for (const intent of r.snapIntents) expect(typeof intent).toBe('string'); // each telegraphs
@@ -935,4 +981,200 @@ test('elite encounters spawn multiple enemies: every enemy telegraphs, all act, 
   expect(r.intentsAfter).toEqual(r.intentsBefore.map((n: number) => n + 1));
   expect(r.flockAfter).toBeLessThan(r.flockBefore); // both attackers contributed damage
   expect(r.allDownAfterOne).toBe(false);         // killing one does not end the fight
+});
+
+test('defeated enemies cannot remain selected or receive stale target effects', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', {});
+    g.scene.stop('MenuScene');
+    const s: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 30 && !(s.hand && s.hand.length); i += 1) await wait(50);
+    const deck = [...s.drawPile, ...s.hand, ...s.discardPile].map((c: any) => ({ id: c.id, upgraded: !!c.upgraded }));
+    const runState = {
+      deck, leaderId: s.runLeaderId, difficulty: 0, seed: 'dead-target-test', currentHp: 36,
+      scrap: 0, routeMarks: [], supplies: [], mapIndex: 0, completedRouteNodeIds: [],
+      currentRouteNodeId: undefined, routeLog: [], nextCombat: undefined, signalChoices: [], rewardEvents: [],
+    };
+    s.init({ runState });
+    const map = (window as any).__birdSquadCurrentMap();
+    const node = map.nodes.find((n: any) => ['street', 'rival', 'boss'].includes(n.type));
+    node.payloadId = 'enc_gutter_baron';
+    s.init({ runState, routeNodeId: node.id });
+    s.renderAll();
+
+    const defeated = s.enemies[0];
+    const survivor = s.enemies.find((enemy: any) => enemy.id !== defeated.id);
+    const targetCard = s.hand.find((card: any) => card.target === 'enemy');
+    s.selectedEnemyId = defeated.id;
+    s.damageEnemy(defeated.id, defeated.hp + 100, 'Test');
+    s.renderAll();
+    const selectedAfterDefeat = window.__birdSquadState!().selectedEnemy;
+    const selectedAfterDefeatHp = s.enemies.find((enemy: any) => enemy.id === selectedAfterDefeat)?.hp ?? 0;
+
+    const survivorHpBeforeStale = survivor.hp;
+    const staleDamageResult = s.damageEnemy(defeated.id, 999, 'Stale Test');
+    const survivorHpAfterStale = survivor.hp;
+
+    s.selectedEnemyId = defeated.id;
+    s.energy = 99;
+    const survivorHpBeforeCard = survivor.hp;
+    s.playCard(targetCard, defeated.id);
+    const survivorHpAfterCard = survivor.hp;
+
+    return {
+      defeatedHp: defeated.hp,
+      selectedAfterDefeat,
+      selectedAfterDefeatHp,
+      staleDamageResult,
+      staleChangedSurvivor: survivorHpAfterStale !== survivorHpBeforeStale,
+      cardRetargetedToSurvivor: survivorHpAfterCard < survivorHpBeforeCard,
+      selectedAfterCard: window.__birdSquadState!().selectedEnemy,
+    };
+  });
+
+  expect(r.defeatedHp).toBe(0);
+  expect(r.selectedAfterDefeat).toBeTruthy();
+  expect(r.selectedAfterDefeatHp).toBeGreaterThan(0);
+  expect(r.staleDamageResult).toBe(false);
+  expect(r.staleChangedSurvivor).toBe(false);
+  expect(r.cardRetargetedToSurvivor).toBe(true);
+  expect(r.selectedAfterCard).not.toBe('');
+});
+
+test('reward screens ignore end-turn input instead of restarting combat', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const s: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 30 && !(s.hand && s.hand.length); i += 1) await wait(50);
+    s.enemies.forEach((enemy: any) => { enemy.hp = 0; });
+    s.checkOutcome();
+    const before = window.__birdSquadState!();
+    s.endTurn();
+    const after = window.__birdSquadState!();
+    return {
+      beforeMode: before.mode,
+      afterMode: after.mode,
+      beforeRewards: before.rewardChoices.length,
+      afterRewards: after.rewardChoices.length,
+      afterEnemyHp: after.enemies[0]?.hp ?? 0,
+    };
+  });
+
+  expect(r.beforeMode).toBe('cardReward');
+  expect(r.afterMode).toBe('cardReward');
+  expect(r.afterRewards).toBe(r.beforeRewards);
+  expect(r.afterEnemyHp).toBe(0);
+});
+
+test('played cards leave hand before resolving discard effects', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    const deck = ['major_00', 'wands_02', 'wands_08', 'swords_02', 'wet_feathers', 'cups_03', 'pentacles_04', 'cups_ace', 'wands_02', 'cups_ace']
+      .map((id) => ({ id }));
+    g.scene.start('BattleScene', {
+      runState: {
+        deck, leaderId: 'fledgling', difficulty: 0, seed: 'discard-order-regression', currentHp: 39,
+        scrap: 0, routeMarks: [], supplies: [], mapIndex: 0, completedRouteNodeIds: [],
+        currentRouteNodeId: undefined, routeLog: [], nextCombat: undefined, signalChoices: [], rewardEvents: [],
+      },
+      routeNodeId: 'm1_entry',
+    });
+    g.scene.stop('MenuScene');
+    const s: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 30 && !(s.hand && s.hand.length); i += 1) await wait(50);
+    const card = [...s.hand, ...s.drawPile, ...s.discardPile].find((candidate: any) => candidate.id === 'wet_feathers');
+    s.hand = s.hand.filter((candidate: any) => candidate.instanceId !== card.instanceId);
+    s.drawPile = s.drawPile.filter((candidate: any) => candidate.instanceId !== card.instanceId);
+    s.discardPile = s.discardPile.filter((candidate: any) => candidate.instanceId !== card.instanceId);
+    s.hand.push(card);
+    const discardBefore = s.discardPile.length;
+    s.energy = 99;
+    s.playCard(card, s.enemies[0].id);
+    const discarded = s.discardPile.slice(discardBefore).map((candidate: any) => candidate.id);
+    return {
+      discarded,
+      handHasPlayedCard: s.hand.some((candidate: any) => candidate.instanceId === card.instanceId),
+    };
+  });
+
+  expect(r.handHasPlayedCard).toBe(false);
+  expect(r.discarded).toHaveLength(2);
+  expect(r.discarded[0]).not.toBe('wet_feathers');
+  expect(r.discarded[1]).toBe('wet_feathers');
+});
+
+test('enemy phase stops after lethal Cohesion damage and enemy Cover expires', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', {});
+    g.scene.stop('MenuScene');
+    const s: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 30 && !(s.hand && s.hand.length); i += 1) await wait(50);
+    const deck = [...s.drawPile, ...s.hand, ...s.discardPile].map((card: any) => ({ id: card.id, upgraded: !!card.upgraded }));
+    const runState = {
+      deck, leaderId: s.runLeaderId, difficulty: 0, seed: 'lethal-phase-regression', currentHp: 36,
+      scrap: 0, routeMarks: [], supplies: [], mapIndex: 0, completedRouteNodeIds: [],
+      currentRouteNodeId: undefined, routeLog: [], nextCombat: undefined, signalChoices: [], rewardEvents: [],
+    };
+    s.init({ runState });
+    const map = (window as any).__birdSquadCurrentMap();
+    const node = map.nodes.find((candidate: any) => ['street', 'rival', 'boss'].includes(candidate.type));
+    node.payloadId = 'enc_gutter_baron';
+    s.init({ runState, routeNodeId: node.id });
+    s.renderAll();
+    s.enemies.forEach((enemy: any) => { enemy.block = 7; });
+    s.flock.hp = 1;
+    s.flock.block = 0;
+    const intentsBefore = s.enemies.map((enemy: any) => enemy.intentIndex);
+    s.resolveEnemyTurn();
+    return {
+      hp: s.flock.hp,
+      taken: s.statTaken,
+      blocksAfter: s.enemies.map((enemy: any) => enemy.block),
+      intentsBefore,
+      intentsAfter: s.enemies.map((enemy: any) => enemy.intentIndex),
+      log: s.log.slice(-4),
+    };
+  });
+
+  expect(r.hp).toBe(0);
+  expect(r.taken).toBe(9);
+  expect(r.blocksAfter.every((block: number) => block === 0)).toBe(true);
+  expect(r.intentsAfter).toEqual([r.intentsBefore[0] + 1, r.intentsBefore[1], r.intentsBefore[2]]);
+  expect(r.log).toEqual(expect.arrayContaining(['Gutter Baron hits the flock for 9.']));
+  expect(r.log.some((entry: string) => entry.includes('Roof Rat A hits'))).toBe(false);
+});
+
+test('fullyBlocksNextAttack checks the next incoming attack, not stale selection', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const s: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 30 && !(s.hand && s.hand.length); i += 1) await wait(50);
+    const card = s.hand[0];
+    const state = { previousDiscarded: 0, previousDamageDefeated: false, spentResonance: false, returnSelfToDraw: false, builtFlow: false };
+    s.selectedEnemyId = 'missing-enemy';
+    s.flock.block = 6;
+    const blocksNext = s.checkCardCondition('fullyBlocksNextAttack', card, 'missing-enemy', state);
+    s.flock.block = 5;
+    const shortNext = s.checkCardCondition('fullyBlocksNextAttack', card, 'missing-enemy', state);
+    return { blocksNext, shortNext };
+  });
+
+  expect(r.blocksNext).toBe(true);
+  expect(r.shortNext).toBe(false);
 });

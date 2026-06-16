@@ -4,6 +4,37 @@ This log is historical context and handoff memory. It is not a canonical design
 source. Current game rules live in `docs/game/`, art direction lives in
 `docs/art/`, and card production data lives in `data/cards/`.
 
+## 2026-06-16 Encounter Enemy Scaling
+
+- Expanded authored encounters so street, rival, and boss fights can include up
+  to four enemies.
+- Added boss helper compositions for district bosses while keeping the boss as
+  the first combatant in each encounter payload.
+- Wired the authored route maps to use larger street/rival encounters after the
+  opening tutorial beat, so generated route pools and fixed map previews agree.
+- Updated battle enemy placement so four-enemy fights use a two-row formation
+  and boss fights keep the boss visually dominant with helpers staged lower.
+- Added runtime validation that encounter `enemies` arrays may not exceed four
+  combatants.
+- Tuned enemy idle breathing from a nearly imperceptible scale-only pulse into a
+  clearer Travquest-style squash/stretch, small bob, and ground-shadow pulse.
+- Fixed dead-enemy targeting so defeated enemies stop being selected, stale
+  target ids no-op, and the next playable enemy becomes the default target.
+- Fixed combat sequencing edge cases: reward screens no longer restart from
+  end-turn input, played cards leave hand before discard effects resolve, lethal
+  enemy phases stop immediately, enemy Cover expires after the player turn, and
+  `fullyBlocksNextAttack` checks the next actual incoming attack.
+
+## 2026-06-16 Concept Art Rehome
+
+- Moved remaining raw concept-art PNGs out of `assets/concept-art/` and into
+  ignored `.generated/imagegen/` source folders.
+- Converted the four battle backdrop masters into optimized WebP runtime assets
+  under `assets/runtime/backdrops/` and wired battle loading through Vite-managed
+  asset URLs.
+- Updated current art pipeline docs and tooling defaults to use `.generated`
+  roots for raw Minor Arcana work instead of recreating `assets/concept-art/`.
+
 ## 2026-06-16 Enemy Art Contract Fields
 
 - Added `description`, `visualBrief`, and `silhouette` to all 33 authored enemy
@@ -957,3 +988,21 @@ Follow-up TODO:
 - Consider making Markets show two fixed card shelves and one fixed Supply
   shelf later; this pass intentionally fixed the infinite-buy problem without
   broadening shop UI scope.
+
+## 2026-06-16 Post-Combat Preen Cadence Balance Pass
+
+- Changed post-combat reward sequencing so a card reward no longer always chains
+  into a free Preen choice.
+- Added deterministic Preen windows from encounter reward profiles: routine
+  fights can miss their Preen window, while rivals, bosses, and guaranteed
+  profile rewards still offer one when unupgraded cards remain.
+- Kept the skip-card flow meaningful: skipping now either enters a real Preen
+  window or immediately returns to the route map instead of granting automatic
+  extra scaling.
+- Added smoke coverage proving routine encounters include at least one no-Preen
+  outcome for a fixed route seed while rival encounters still guarantee Preen.
+- Verified `npm run validate:runtime`, `npm run validate:docs`, `npm run build`,
+  and `npx playwright test --reporter=line --workers=1` after the change.
+- Ran the web-game Playwright client for two iterations and captured a normal
+  page screenshot at `output/web-game-balance2/page-combat.png`; the game boots
+  into a readable combat state with the reward-gating code loaded.

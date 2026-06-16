@@ -152,6 +152,8 @@ interface EffectResolutionState {
   builtFlow: boolean;
 }
 
+type EnemyMotionCue = 'attack' | 'hit';
+
 interface RenderPayload {
   mode: GameMode;
   scene: string;
@@ -275,7 +277,9 @@ const CARD_H = 246; // true 2:3 card aspect (art is 1024x1536)
 const ENEMY_FX_X = 920;
 const ENEMY_FX_Y = 250;
 const FLOCK_FX_X = 230;
-const FLOCK_FX_Y = 70;
+const FLOCK_FX_Y = 332;
+const FLOCK_ART_X = 230;
+const FLOCK_ART_Y = 340;
 // HP-bar geometry, shared by the render (renderEnemyRow / top status bar) and the
 // drain animation (fadeRect in damageEnemy / damageFlock / healFlock) so they line up.
 const ENEMY_HP_BAR = { x: 920, y: 318, w: 210, h: 24 };
@@ -306,22 +310,27 @@ const REWARD_SKIP_SCRAP = 12;
 // Every playable card lives in one shared reward pool; weight post-combat offers
 // by rarity so commons/uncommons are the staple and rares/legendaries stay scarce.
 const REWARD_RARITY_WEIGHT: Record<string, number> = { common: 100, uncommon: 45, rare: 16, legendary: 5 };
+const battlefieldRuntimeArtUrls = import.meta.glob('../assets/runtime/backdrops/*.webp', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
 const BATTLEFIELD_ASSETS: Record<string, { key: string; url: string }> = {
   map_01_rooftop_blocks: {
     key: 'battlefield-rooftop-blocks',
-    url: '/assets/concept-art/rooftop-blocks-battle-backdrop-v3.png'
+    url: battlefieldRuntimeArtUrls['../assets/runtime/backdrops/rooftop-blocks.webp'] ?? '/assets/runtime/backdrops/rooftop-blocks.webp'
   },
   map_02_canal_markets: {
     key: 'battlefield-canal-markets',
-    url: '/assets/concept-art/canal-markets-battle-backdrop-v2.png'
+    url: battlefieldRuntimeArtUrls['../assets/runtime/backdrops/canal-markets.webp'] ?? '/assets/runtime/backdrops/canal-markets.webp'
   },
   map_03_signal_spires: {
     key: 'battlefield-signal-spires',
-    url: '/assets/concept-art/signal-spires-battle-backdrop-v2.png'
+    url: battlefieldRuntimeArtUrls['../assets/runtime/backdrops/signal-spires.webp'] ?? '/assets/runtime/backdrops/signal-spires.webp'
   },
   map_04_high_roost: {
     key: 'battlefield-high-roost',
-    url: '/assets/concept-art/high-roost-battle-backdrop-v2.png'
+    url: battlefieldRuntimeArtUrls['../assets/runtime/backdrops/high-roost.webp'] ?? '/assets/runtime/backdrops/high-roost.webp'
   }
 };
 const DEFAULT_BATTLEFIELD_ASSET = BATTLEFIELD_ASSETS.map_01_rooftop_blocks;
@@ -332,6 +341,11 @@ const cardRuntimeArtUrls = import.meta.glob('../assets/runtime/cards/portrait/*.
   import: 'default',
 }) as Record<string, string>;
 const enemyRuntimeArtUrls = import.meta.glob('../assets/runtime/enemies/full/*.webp', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+const flockLeaderRuntimeArtUrls = import.meta.glob('../assets/runtime/flock/leaders/*.png', {
   eager: true,
   query: '?url',
   import: 'default',
@@ -371,7 +385,24 @@ const enemyArtAssets: Record<string, { key: string; url: string }> = Object.from
       url: bundledAssetUrl(entry.full, enemyRuntimeArtUrls)
     }])
 );
+const flockLeaderArtAssets: Record<string, { key: string; url: string }> = {
+  fledgling: {
+    key: 'flock-leader-fledgling',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/fledgling-flock-combat-back-ne.png']
+      ?? '/assets/runtime/flock/leaders/fledgling-flock-combat-back-ne.png',
+  },
+};
 const requestedOptionalArtKeys = new Set<string>();
+
+function prefersReducedMotion(): boolean {
+  return typeof window !== 'undefined'
+    && typeof window.matchMedia === 'function'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function stableMotionSeed(id: string): number {
+  return [...id].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+}
 
 // Which district the run is currently in + the run's seed. Scenes set these from
 // RunState in init(); all map-relative reads go through currentMap(). The route
@@ -389,6 +420,12 @@ function currentMap(): RuntimeRouteMap {
     generatedMapCache.set(key, map);
   }
   return map;
+}
+
+function deterministicChance(key: string, chance: number): boolean {
+  if (chance <= 0) return false;
+  if (chance >= 1) return true;
+  return (hashSeed(key, 0x9e3779b9) / 0xffffffff) < chance;
 }
 
 function currentBattlefieldAsset() {
@@ -2306,6 +2343,9 @@ class BattleScene extends Phaser.Scene {
   private cardPreview?: Phaser.GameObjects.Container;
   // Quills keystone: the first attack each turn hits harder (consumed on use).
   private firstAttackThisTurn = true;
+  // renderAll() rebuilds the board, so one-shot enemy motion is queued here and
+  // consumed by the next render instead of trying to animate destroyed objects.
+  private enemyMotionCues = new Map<string, EnemyMotionCue>();
 
   constructor() {
     super('BattleScene');
@@ -2372,6 +2412,7 @@ class BattleScene extends Phaser.Scene {
     this.flock.hp = Math.min(this.flock.maxHp, Math.max(1, runState.currentHp));
     this.applyNextCombatMods(runState.nextCombat);
     this.firstAttackThisTurn = true;
+    this.enemyMotionCues = new Map();
     this.drawToHandSize();
     this.lastFlockState = this.flockState();
   }
@@ -2517,11 +2558,13 @@ class BattleScene extends Phaser.Scene {
   private renderAll() {
     hideKwTooltip();
     enemyMoveContext = { flock: this.flock, turn: this.turn }; // keep conditional intents live
+    this.normalizeSelectedEnemy();
     this.updateFormationFx();
     this.root.removeAll(true);
     this.renderBackdrop();
     this.renderTopBar();
     this.renderEnemyRow();
+    this.renderFlockLeader();
     this.renderPiles();
     this.renderHand();
     this.renderSupplies();
@@ -2576,11 +2619,16 @@ class BattleScene extends Phaser.Scene {
     if (this.optionalArtRequested) return;
     this.optionalArtRequested = true;
 
-    const assets = [
+    const requestedAssets = [
       currentBattlefieldAsset(),
+      this.currentFlockLeaderArtAsset(),
       ...Object.values(cardArtAssets),
-      ...this.enemies.map((enemy) => enemyArtAssets[enemy.id]).filter((asset): asset is { key: string; url: string } => Boolean(asset))
-    ].filter((asset) => !this.textures.exists(asset.key) && !requestedOptionalArtKeys.has(asset.key));
+      ...this.enemies
+        .map((enemy) => enemyArtAssets[enemy.runtime.id] ?? enemyArtAssets[enemy.id])
+        .filter((asset): asset is { key: string; url: string } => Boolean(asset))
+    ].filter((asset): asset is { key: string; url: string } => Boolean(asset))
+      .filter((asset) => !this.textures.exists(asset.key) && !requestedOptionalArtKeys.has(asset.key));
+    const assets = [...new Map(requestedAssets.map((asset) => [asset.key, asset])).values()];
 
     if (assets.length === 0) return;
 
@@ -2596,10 +2644,20 @@ class BattleScene extends Phaser.Scene {
   }
 
   // Per-enemy board placement: a single enemy keeps the classic right-side
-  // anchor; 2-4 enemies fan out horizontally around it and shrink to fit. Slots
-  // are keyed by array index so positions stay put when one enemy dies.
+  // anchor; larger groups shrink and stagger to keep art, HP, and intent readable.
+  // Boss fights keep the boss visually dominant while helpers sit lower/wider.
   private enemyView(enemy: Enemy): { x: number; y: number; scale: number } {
-    return enemyViewAt(Math.max(0, this.enemies.indexOf(enemy)), this.enemies.length);
+    const index = Math.max(0, this.enemies.indexOf(enemy));
+    const count = this.enemies.length;
+    const bossIndex = this.enemies.findIndex((candidate) => candidate.runtime.type === 'boss');
+    if (bossIndex >= 0 && count > 1) {
+      if (index === bossIndex) {
+        return { x: 930, y: count >= 4 ? 205 : 215, scale: count >= 4 ? 0.78 : 0.84 };
+      }
+      const goonIndex = this.enemies.slice(0, index).filter((candidate) => candidate.runtime.type !== 'boss').length;
+      return bossGoonViewAt(goonIndex, count - 1);
+    }
+    return enemyViewAt(index, count);
   }
 
   // HP-bar geometry for an enemy, matching renderEnemyRow so the drain animation
@@ -2609,9 +2667,70 @@ class BattleScene extends Phaser.Scene {
     return { x, y: y + 68 * scale, w: ENEMY_HP_BAR.w * scale, h: ENEMY_HP_BAR.h };
   }
 
+  private queueEnemyMotion(enemyId: string, cue: EnemyMotionCue) {
+    if (prefersReducedMotion()) return;
+    this.enemyMotionCues.set(enemyId, cue);
+  }
+
+  private addEnemyBreathing(group: Phaser.GameObjects.Container, enemy: Enemy, scale: number) {
+    if (prefersReducedMotion()) return;
+    const seed = stableMotionSeed(enemy.id);
+    const lift = (3.5 + (seed % 3)) * scale;
+    this.tweens.add({
+      targets: group,
+      y: group.y - lift,
+      scaleX: 0.992 - (seed % 2) * 0.002,
+      scaleY: 1.024 + (seed % 3) * 0.003,
+      duration: 1500 + (seed % 420),
+      delay: seed % 420,
+      yoyo: true,
+      repeat: -1,
+      ease: 'Sine.easeInOut',
+    });
+  }
+
+  private applyEnemyMotionCue(group: Phaser.GameObjects.Container, enemy: Enemy, scale: number) {
+    const cue = this.enemyMotionCues.get(enemy.id);
+    if (!cue || prefersReducedMotion()) return;
+    this.enemyMotionCues.delete(enemy.id);
+    const recoil = cue === 'hit';
+    const xShift = (recoil ? 12 : -14) * scale;
+    const duration = recoil ? 90 : 120;
+    this.tweens.add({
+      targets: group,
+      x: xShift,
+      scaleX: recoil ? 0.985 : 1.018,
+      scaleY: recoil ? 1.012 : 0.988,
+      duration,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        if (!group.active) return;
+        group.x = 0;
+        group.y = 0;
+        group.setScale(1);
+      },
+    });
+    if (recoil) {
+      this.tweens.add({
+        targets: group,
+        alpha: 0.68,
+        duration: 45,
+        yoyo: true,
+        ease: 'Linear',
+        onComplete: () => {
+          if (group.active) group.setAlpha(1);
+        },
+      });
+    }
+  }
+
   private renderEnemyRow() {
     for (const enemy of this.enemies) {
-      if (enemy.hp <= 0) continue;
+      if (enemy.hp <= 0) {
+        this.enemyMotionCues.delete(enemy.id);
+        continue;
+      }
       const selected = enemy.id === this.selectedEnemyId;
       const { x, y, scale: s } = this.enemyView(enemy);
       const elite = enemy.runtime.type === 'elite';
@@ -2619,31 +2738,42 @@ class BattleScene extends Phaser.Scene {
       const move = currentMove(enemy);
 
       const frameColor = selected ? 0x24d0d6 : elite ? 0xffcf4a : boss ? 0xff6f6f : 0xd8a840;
-      const artAsset = enemyArtAssets[enemy.id];
+      const artAsset = enemyArtAssets[enemy.runtime.id] ?? enemyArtAssets[enemy.id];
       const hasEnemyArt = Boolean(artAsset && this.textures.exists(artAsset.key));
-      const body = this.add.ellipse(x, y, 174 * s, 136 * s, elite ? 0x5b3f6d : 0x6f4b35, hasEnemyArt ? 0.22 : 1)
-        .setStrokeStyle(selected ? 5 : elite ? 4 : 2, frameColor, 1)
-        .setInteractive({ useHandCursor: true });
+      const breathGroup = this.add.container(x, y);
+      const poseGroup = this.add.container(0, 0);
+      breathGroup.add(poseGroup);
+      const shadow = this.add.ellipse(0, 48 * s, 132 * s, 26 * s, 0x020409, hasEnemyArt ? 0.42 : 0.28);
+      poseGroup.add(shadow);
+      const body = hasEnemyArt
+        ? this.add.rectangle(0, -18 * s, 248 * s, 236 * s, 0x000000, 0.001)
+          .setInteractive({ useHandCursor: true })
+        : this.add.ellipse(0, 0, 174 * s, 136 * s, elite ? 0x5b3f6d : 0x6f4b35, 1)
+          .setStrokeStyle(selected ? 5 : elite ? 4 : 2, frameColor, 1)
+          .setInteractive({ useHandCursor: true });
       body.on('pointerdown', () => this.onEnemyClicked(enemy.id));
-      this.root.add(body);
+      poseGroup.add(body);
       if (hasEnemyArt && artAsset) {
         const source = this.textures.get(artAsset.key).getSourceImage() as HTMLImageElement;
         const fit = Math.min((236 * s) / source.width, (214 * s) / source.height);
-        const art = this.add.image(x, y - 22 * s, artAsset.key)
+        const art = this.add.image(0, -22 * s, artAsset.key)
           .setScale(fit)
           .setAlpha(0.99)
           .setInteractive({ useHandCursor: true });
         art.on('pointerdown', () => this.onEnemyClicked(enemy.id));
-        this.root.add(art);
+        poseGroup.add(art);
       } else {
-        this.root.add(this.add.triangle(x + 68 * s, y - 10 * s, 0, 0, 22 * s, 8 * s, 0, 16 * s, 0xe7c36a, 1));
-        this.root.add(this.add.text(x, y - 10 * s, enemyInitials(enemy.name), {
+        poseGroup.add(this.add.triangle(68 * s, -10 * s, 0, 0, 22 * s, 8 * s, 0, 16 * s, 0xe7c36a, 1));
+        poseGroup.add(this.add.text(0, -10 * s, enemyInitials(enemy.name), {
           fontFamily: 'Arial',
           fontSize: `${Math.round(28 * s)}px`,
           fontStyle: 'bold',
           color: '#1b1110'
         }).setOrigin(0.5));
       }
+      this.root.add(breathGroup);
+      this.addEnemyBreathing(breathGroup, enemy, s);
+      this.applyEnemyMotionCue(poseGroup, enemy, s);
       // Elite crest, clear above the intent badge so the tougher tier reads at a glance.
       if (elite) {
         this.root.add(this.add.text(x, y - 140 * s, '✦ ELITE', {
@@ -2655,7 +2785,7 @@ class BattleScene extends Phaser.Scene {
       const hp = this.enemyHpBar(enemy);
       const ebFrac = Math.max(0, Math.min(1, enemy.hp / enemy.maxHp));
       this.root.add(this.add.rectangle(hp.x, hp.y, hp.w, hp.h, 0x140d0d, 0.92)
-        .setStrokeStyle(1, 0x000000, 0.55));
+        .setStrokeStyle(selected ? 3 : elite || boss ? 2 : 1, selected || elite || boss ? frameColor : 0x000000, selected || elite || boss ? 0.95 : 0.55));
       this.root.add(this.add.rectangle(
         hp.x - hp.w / 2 + (hp.w * ebFrac) / 2,
         hp.y,
@@ -2682,8 +2812,10 @@ class BattleScene extends Phaser.Scene {
         ? (dmg <= 6 ? 0xf5d38a : dmg <= 10 ? 0xff9d4d : 0xff5247)
         : isBrace ? 0x7ab8d6 : 0xc98bff;
       const badgeValue = dmg > 0 ? `${dmg}` : isBrace ? `${intentCoverValue(move)}` : '!';
-      const by = y - 104 * s;
-      const badge = this.add.circle(x, by, 28 * s, 0x10171f, 0.96)
+      const intentSide = x > GAME_WIDTH - 210 * s ? -1 : 1;
+      const bx = x + intentSide * (ENEMY_HP_BAR.w * s / 2 + 38 * s);
+      const by = hp.y;
+      const badge = this.add.circle(bx, by, 24 * s, 0x10171f, 0.96)
         .setStrokeStyle(dmg >= 11 ? 5 : 3, ringColor, 1);
       this.attachTooltip(
         badge,
@@ -2695,17 +2827,17 @@ class BattleScene extends Phaser.Scene {
             : 'Applies pressure — a debuff or special move.'
       );
       this.root.add(badge);
-      this.root.add(this.add.text(x, by, badgeValue, {
-        fontFamily: 'Arial', fontSize: `${Math.round(24 * s)}px`, fontStyle: 'bold', color: '#ffffff'
+      this.root.add(this.add.text(bx, by, badgeValue, {
+        fontFamily: 'Arial', fontSize: `${Math.round(21 * s)}px`, fontStyle: 'bold', color: '#ffffff'
       }).setOrigin(0.5));
       if (hasDebuff && dmg > 0) {
-        this.root.add(this.add.circle(x + 23 * s, by - 20 * s, 8 * s, 0xc98bff, 1));
-        this.root.add(this.add.text(x + 23 * s, by - 20 * s, '!', {
+        this.root.add(this.add.circle(bx + 20 * s, by - 17 * s, 7 * s, 0xc98bff, 1));
+        this.root.add(this.add.text(bx + 20 * s, by - 17 * s, '!', {
           fontFamily: 'Arial', fontSize: `${Math.round(12 * s)}px`, fontStyle: 'bold', color: '#170f1e'
         }).setOrigin(0.5));
       }
-      this.root.add(this.add.text(x, by + 42 * s, move.label, {
-        fontFamily: 'Arial', fontSize: `${Math.round(14 * s)}px`, fontStyle: 'bold',
+      this.root.add(this.add.text(bx, by + 32 * s, move.label, {
+        fontFamily: 'Arial', fontSize: `${Math.round(13 * s)}px`, fontStyle: 'bold',
         color: '#ffe1a3', stroke: '#000000', strokeThickness: 3
       }).setOrigin(0.5));
 
@@ -2716,6 +2848,74 @@ class BattleScene extends Phaser.Scene {
           color: '#b9c7d6'
         }).setOrigin(0.5));
       }
+    }
+  }
+
+  private currentFlockLeaderArtAsset(): { key: string; url: string } | undefined {
+    return flockLeaderArtAssets[this.runLeaderId ?? defaultLeaderId];
+  }
+
+  private renderFlockLeader() {
+    const leader = getLeader(this.runLeaderId);
+    const artAsset = this.currentFlockLeaderArtAsset();
+    const hasLeaderArt = Boolean(artAsset && this.textures.exists(artAsset.key));
+    const fstate = this.flockState();
+    const stateAccent = fstate === 'surging' ? 0x8df4ff : fstate === 'scattered' ? 0xff9d6b : 0xd8a840;
+    const group = this.add.container(FLOCK_ART_X, FLOCK_ART_Y);
+
+    group.add(this.add.ellipse(0, 126, 172, 26, 0x020409, 0.42));
+
+    if (hasLeaderArt && artAsset) {
+      const source = this.textures.get(artAsset.key).getSourceImage() as HTMLImageElement;
+      const fit = Math.min(230 / source.width, 288 / source.height);
+      group.add(this.add.image(0, -18, artAsset.key).setScale(fit).setAlpha(0.99));
+    } else {
+      group.add(this.add.ellipse(0, -18, 142, 118, 0x6f4b35, 0.96).setStrokeStyle(3, stateAccent, 0.9));
+      group.add(this.add.triangle(52, -26, 0, 0, 28, 7, 0, 16, 0x1b1110, 1));
+      group.add(this.add.text(0, -18, 'FF', {
+        fontFamily: 'Arial',
+        fontSize: '28px',
+        fontStyle: 'bold',
+        color: '#ffe1a3',
+        stroke: '#000000',
+        strokeThickness: 4,
+      }).setOrigin(0.5));
+    }
+
+    const hitbox = this.add.rectangle(0, -18, 250, 300, 0x000000, 0.001)
+      .setInteractive({ useHandCursor: true });
+    hitbox.on('pointerdown', () => this.openOverlay('flock'));
+    hitbox.on('pointerover', () => {
+      hitbox.setStrokeStyle(2, stateAccent, 0.7);
+    });
+    hitbox.on('pointerout', () => {
+      hitbox.setStrokeStyle();
+    });
+    this.attachTooltip(hitbox, leader.name, `${leader.bird} leader. Click for Flock Stats.`);
+    group.add(hitbox);
+
+    group.add(this.add.text(0, 150, leader.name, {
+      fontFamily: 'Arial',
+      fontSize: '14px',
+      fontStyle: 'bold',
+      color: '#ffe1a3',
+      stroke: '#000000',
+      strokeThickness: 4,
+    }).setOrigin(0.5));
+
+    this.root.add(group);
+
+    if (!prefersReducedMotion()) {
+      this.tweens.add({
+        targets: group,
+        y: FLOCK_ART_Y - 4,
+        scaleX: 0.994,
+        scaleY: 1.012,
+        duration: 1700,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
     }
   }
 
@@ -3607,6 +3807,7 @@ class BattleScene extends Phaser.Scene {
     if (this.mode !== 'battle') return;
     const card = this.hand.find((candidate) => candidate.instanceId === instanceId);
     if (!card || this.effectiveCost(card) > this.energy) return;
+    this.normalizeSelectedEnemy();
 
     if (card.target === 'none' || card.target === 'self' || card.target === 'allEnemies' || card.target === 'choice') {
       this.playCard(card);
@@ -3618,6 +3819,11 @@ class BattleScene extends Phaser.Scene {
   }
 
   private onEnemyClicked(enemyId: string) {
+    if (!this.getLivingEnemy(enemyId)) {
+      this.normalizeSelectedEnemy();
+      this.renderAll();
+      return;
+    }
     this.selectedEnemyId = enemyId;
     const card = this.getSelectedCard();
     if (card?.target === 'enemy') {
@@ -3629,15 +3835,20 @@ class BattleScene extends Phaser.Scene {
 
   private playCard(card: Card, enemyId = this.selectedEnemyId) {
     if (this.mode !== 'battle') return;
+    const targetEnemy = this.resolvePlayableEnemyTarget(enemyId);
+    if (card.target === 'enemy' && !targetEnemy) return;
+    enemyId = targetEnemy?.id ?? enemyId;
     const cost = this.effectiveCost(card);
     if (cost > this.energy) return;
+    const playedCard = this.removeCardFromHand(card.instanceId);
+    if (!playedCard) return;
     this.energy -= cost;
     this.statCardsPlayed += 1;
     this.cardsPlayedThisTurn += 1;
 
-    const outcome = this.resolveCardEffects(card, enemyId);
-    if (card.runtime.suit) this.playedSuitsThisTurn.add(card.runtime.suit);
-    this.playedCardIdsThisCombat.add(card.id);
+    const outcome = this.resolveCardEffects(playedCard, enemyId);
+    if (playedCard.runtime.suit) this.playedSuitsThisTurn.add(playedCard.runtime.suit);
+    this.playedCardIdsThisCombat.add(playedCard.id);
     this.checkNthCardMarks(); // rooftop_shortcut-style relics that trigger on the Nth card
 
     // (Molt is now a whole-turn transform stance — it no longer breaks on the
@@ -3645,8 +3856,8 @@ class BattleScene extends Phaser.Scene {
 
     // A snag like Bad Directions shuffles itself back into the draw pile instead
     // of discarding, so it keeps clogging the hand until removed at a deck node.
-    if (outcome.returnSelfToDraw) this.moveCardFromHandToDraw(card.instanceId);
-    else this.moveCardFromHandToDiscard(card.instanceId);
+    if (outcome.returnSelfToDraw) this.addCardToDrawRandom(playedCard);
+    else this.discardPile.push(playedCard);
     this.selectedInstanceId = undefined;
     this.checkOutcome();
     this.renderAll();
@@ -3694,7 +3905,7 @@ class BattleScene extends Phaser.Scene {
       return;
     }
 
-    const targetWinded = this.enemies.find((e) => e.id === enemyId)?.weak ?? 0;
+    const targetWinded = this.getLivingEnemy(enemyId)?.weak ?? 0;
     const value = parseEffectValue(parsed.args[1] ?? parsed.args[0], state.previousDiscarded, targetWinded, this.flock.block);
     switch (parsed.name) {
       case 'damage':
@@ -3769,7 +3980,8 @@ class BattleScene extends Phaser.Scene {
       }
       case 'windedBurst': {
         // Consume ALL Winded on the target for `value` damage per stack.
-        const enemy = this.getEnemy(enemyId);
+        const enemy = this.getLivingEnemy(enemyId);
+        if (!enemy) break;
         const stacks = enemy.weak;
         const burst = stacks * value;
         if (burst > 0) {
@@ -3783,7 +3995,8 @@ class BattleScene extends Phaser.Scene {
         break;
       }
       case 'applyWinded': {
-        const enemy = this.getEnemy(enemyId);
+        const enemy = this.getLivingEnemy(enemyId);
+        if (!enemy) break;
         enemy.weak += value;
         this.logEvent(`${enemy.name} is Winded.`);
         const awView = this.enemyView(enemy);
@@ -3830,13 +4043,16 @@ class BattleScene extends Phaser.Scene {
     enemyId: string,
     state: EffectResolutionState
   ) {
-    const enemy = this.getEnemy(enemyId);
+    const enemy = this.getLivingEnemy(enemyId);
     if (condition === 'firstPlayedThisCombat') return !this.playedCardIdsThisCombat.has(card.id);
-    if (condition === 'targetBelowHalf') return enemy.hp <= enemy.maxHp / 2;
-    if (condition === 'targetIntendsAttack') return moveDealsDamage(currentMove(enemy));
-    if (condition === 'targetWinded') return enemy.weak > 0;
+    if (!enemy && condition.startsWith('target')) return false;
+    if (!enemy && condition.startsWith('windedAtLeast')) return false;
+    if (condition === 'fullyBlocksNextAttack') return this.flock.block >= this.incomingNextAttackDamage();
+    if (condition === 'targetBelowHalf') return enemy ? enemy.hp <= enemy.maxHp / 2 : false;
+    if (condition === 'targetIntendsAttack') return enemy ? moveDealsDamage(currentMove(enemy)) : false;
+    if (condition === 'targetWinded') return enemy ? enemy.weak > 0 : false;
     const windedAtLeast = condition.match(/^windedAtLeast\((\d+)\)$/);
-    if (windedAtLeast) return enemy.weak >= Number(windedAtLeast[1]); // rewards stacking Winded
+    if (windedAtLeast) return enemy ? enemy.weak >= Number(windedAtLeast[1]) : false; // rewards stacking Winded
     if (condition === 'hasResonance') return this.spark > 0;
     if (condition === 'spentResonance') return state.spentResonance;
     const resAtLeast = condition.match(/^resonanceAtLeast\((\d+)\)$/);
@@ -3846,7 +4062,6 @@ class BattleScene extends Phaser.Scene {
     if (condition === 'fullCohesion') return this.flock.hp >= this.flock.maxHp;
     if (condition === 'cohesionBelowHalf') return this.flock.hp < this.flock.maxHp / 2;
     if (condition === 'defeatsEnemy') return state.previousDamageDefeated;
-    if (condition === 'fullyBlocksNextAttack') return this.flock.block >= this.incomingAttackDamage(enemy);
     const suitMatch = condition.match(/^playedSuitThisTurn\(([^)]+)\)$/);
     if (suitMatch) return this.playedSuitsThisTurn.has(suitMatch[1]);
     // flockSuit(suit,count): the flock currently holds >= count cards of a suit.
@@ -3908,7 +4123,8 @@ class BattleScene extends Phaser.Scene {
   }
 
   private damageEnemy(enemyId: string, amount: number, source: string) {
-    const enemy = this.getEnemy(enemyId);
+    const enemy = this.getLivingEnemy(enemyId);
+    if (!enemy) return false;
     let damage = amount + (this.flockStats().damage ?? 0);
     if (this.flock.weak > 0) damage = Math.floor(damage * 0.75);
     // Formation state: Surging birds press harder, Scattered birds flail.
@@ -3929,6 +4145,7 @@ class BattleScene extends Phaser.Scene {
     const view = this.enemyView(enemy);
     const bar = this.enemyHpBar(enemy);
     if (damage > 0) {
+      this.queueEnemyMotion(enemy.id, 'hit');
       strike(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, view.x, view.y, 0xffce6b);
       floatingText(this, this.fxLayer, view.x, view.y - 40, `${damage}`, '#ffce6b');
       burst(this, this.fxLayer, view.x, view.y, 0xffce6b, 8);
@@ -3944,6 +4161,7 @@ class BattleScene extends Phaser.Scene {
     if (enemy.hp <= 0) {
       burst(this, this.fxLayer, view.x, view.y, 0xffe1a3, 16);
       floatingText(this, this.fxLayer, view.x, view.y + 8, 'Down!', '#ffe1a3');
+      this.normalizeSelectedEnemy();
     }
     return enemy.hp <= 0;
   }
@@ -4000,7 +4218,6 @@ class BattleScene extends Phaser.Scene {
 
   private endTurn() {
     if (this.mode !== 'battle') {
-      this.scene.restart();
       return;
     }
 
@@ -4057,15 +4274,20 @@ class BattleScene extends Phaser.Scene {
     if (attackers.length === 0) return;
 
     banner(this, this.fxLayer, GAME_WIDTH / 2, 140, 'Enemy Turn', '#ff9d6b');
+    this.enemies.forEach((enemy) => { enemy.block = 0; });
 
     // Each living enemy telegraphs and resolves its own move, in board order.
     for (const enemy of attackers) {
-      if (enemy.hp <= 0) continue;
+      if (enemy.hp <= 0 || this.flock.hp <= 0) continue;
       enemyMoveContext = { flock: this.flock, turn: this.turn }; // branch on live state per attacker
       const move = currentMove(enemy);
-      move.effects.forEach((effect) => this.resolveEnemyEffect(enemy, effect));
+      for (const effect of move.effects) {
+        if (this.flock.hp <= 0) break;
+        this.resolveEnemyEffect(enemy, effect);
+      }
       // Advance the move counter; currentMove() maps it through the attack pattern.
       enemy.intentIndex += 1;
+      if (this.flock.hp <= 0) break;
     }
 
     // Open Sky ticks down once per enemy phase, after every attacker resolves.
@@ -4157,7 +4379,15 @@ class BattleScene extends Phaser.Scene {
     }, 0);
   }
 
+  private incomingNextAttackDamage() {
+    const nextAttacker = this.enemies
+      .filter((enemy) => enemy.hp > 0)
+      .find((enemy) => moveDealsDamage(currentMove(enemy)));
+    return nextAttacker ? this.incomingAttackDamage(nextAttacker) : 0;
+  }
+
   private damageFlock(enemy: Enemy, amount: number) {
+    this.queueEnemyMotion(enemy.id, 'attack');
     const mods = difficultyMods(this.runDifficulty);
     let damage = amount + enemy.nextAttackBonus + mods.enemyDamageBonus;
     enemy.nextAttackBonus = 0;
@@ -4211,9 +4441,7 @@ class BattleScene extends Phaser.Scene {
     if (this.hasCardInDeck(reward.id)) {
       this.logEvent(`${displayName(reward)} is already in the deck.`);
       this.rewardChoices = [];
-      this.upgradeChoices = this.createUpgradeChoices();
-      this.mode = 'upgradeReward';
-      this.renderAll();
+      this.resolvePostCardReward();
       return;
     }
     this.discardPile.push(cloneCard(reward.id));
@@ -4221,9 +4449,7 @@ class BattleScene extends Phaser.Scene {
     this.applyFlockStats(false);
     this.runRewardEvents.push({ offered: this.rewardChoices.map((card) => card.id), picked: reward.id, skipped: false });
     this.rewardChoices = [];
-    this.upgradeChoices = this.createUpgradeChoices();
-    this.mode = 'upgradeReward';
-    this.renderAll();
+    this.resolvePostCardReward();
   }
 
   // Decline the card reward intentionally; take a small Scrap fallback instead
@@ -4233,9 +4459,18 @@ class BattleScene extends Phaser.Scene {
     this.scrap += REWARD_SKIP_SCRAP;
     this.logEvent(`Skipped the card reward for +${REWARD_SKIP_SCRAP} Scrap.`);
     this.rewardChoices = [];
-    this.upgradeChoices = this.createUpgradeChoices();
-    this.mode = 'upgradeReward';
-    this.renderAll();
+    this.resolvePostCardReward();
+  }
+
+  private resolvePostCardReward() {
+    this.upgradeChoices = this.shouldOfferUpgradeReward() ? this.createUpgradeChoices() : [];
+    if (this.upgradeChoices.length > 0) {
+      this.mode = 'upgradeReward';
+      this.renderAll();
+      return;
+    }
+    this.logEvent('No Preen window at this crossing.');
+    this.returnToRouteMap();
   }
 
   private chooseUpgradeCard(cardId: string) {
@@ -4445,9 +4680,20 @@ class BattleScene extends Phaser.Scene {
     const index = this.hand.findIndex((card) => card.instanceId === instanceId);
     if (index >= 0) {
       const [card] = this.hand.splice(index, 1);
-      const at = Math.floor(Math.random() * (this.drawPile.length + 1));
-      this.drawPile.splice(at, 0, card);
+      this.addCardToDrawRandom(card);
     }
+  }
+
+  private removeCardFromHand(instanceId: string) {
+    const index = this.hand.findIndex((card) => card.instanceId === instanceId);
+    if (index < 0) return undefined;
+    const [card] = this.hand.splice(index, 1);
+    return card;
+  }
+
+  private addCardToDrawRandom(card: Card) {
+    const at = Math.floor(Math.random() * (this.drawPile.length + 1));
+    this.drawPile.splice(at, 0, card);
   }
 
   private effectiveCost(card: Card) {
@@ -4464,9 +4710,8 @@ class BattleScene extends Phaser.Scene {
         if (this.rewardChoices.length > 0) {
           this.mode = 'cardReward';
         } else {
-          this.logEvent('No new crew cards remain; preen an existing card.');
-          this.upgradeChoices = this.createUpgradeChoices();
-          this.mode = 'upgradeReward';
+          this.logEvent('No new crew cards remain.');
+          this.resolvePostCardReward();
         }
       }
       this.logEvent('The rooftop is clear.');
@@ -4555,6 +4800,16 @@ class BattleScene extends Phaser.Scene {
     return candidates.slice(0, 3);
   }
 
+  private shouldOfferUpgradeReward() {
+    const routeNode = currentCombatNodes()[this.currentRouteIndex];
+    const profile = rewardProfileForRouteNode(routeNode);
+    if (!profile || this.allDeckCards().every((card) => card.upgraded)) return false;
+    if (routeNode?.type === 'rival' || routeNode?.type === 'boss') return true;
+    if (profile.preenGuaranteed || (profile.preen ?? 0) > 0) return true;
+    if (!profile.preenChance) return false;
+    return deterministicChance(`${activeSeed}:${routeNode?.id ?? 'combat'}:preen`, profile.preenChance);
+  }
+
   private allDeckCards() {
     return [...this.drawPile, ...this.discardPile, ...this.hand];
   }
@@ -4585,8 +4840,26 @@ class BattleScene extends Phaser.Scene {
     return this.hand.find((card) => card.instanceId === this.selectedInstanceId);
   }
 
+  private getLivingEnemy(enemyId: string) {
+    return this.enemies.find((enemy) => enemy.id === enemyId && enemy.hp > 0);
+  }
+
+  private firstLivingEnemy() {
+    return this.enemies.find((enemy) => enemy.hp > 0);
+  }
+
+  private normalizeSelectedEnemy() {
+    const target = this.getLivingEnemy(this.selectedEnemyId) ?? this.firstLivingEnemy();
+    this.selectedEnemyId = target?.id ?? '';
+    return target;
+  }
+
+  private resolvePlayableEnemyTarget(enemyId: string) {
+    return this.getLivingEnemy(enemyId) ?? this.normalizeSelectedEnemy();
+  }
+
   private getEnemy(enemyId: string) {
-    return this.enemies.find((enemy) => enemy.id === enemyId) ?? this.enemies[0];
+    return this.enemies.find((enemy) => enemy.id === enemyId) ?? this.firstLivingEnemy() ?? this.enemies[0];
   }
 
   private logEvent(message: string) {
@@ -4942,14 +5215,46 @@ function flockStatusEntries(flock: Flock): Array<{ id: string; label: string; ki
 }
 
 // Board placement for enemy `index` of `count`. One enemy keeps the classic
-// anchor (ENEMY_FX_X/Y, full size); 2-4 fan out around x=900 and scale down so
-// the cluster stays inside the right half of the board.
+// anchor (ENEMY_FX_X/Y, full size); 2-3 fan out around x=900, and 4 uses a
+// compact two-row stage so HP/intent badges do not pile up in one horizontal run.
 function enemyViewAt(index: number, count: number): { x: number; y: number; scale: number } {
   if (count <= 1) return { x: ENEMY_FX_X, y: ENEMY_FX_Y, scale: 1 };
-  const step = Math.min(280, 560 / (count - 1));
-  const x = Math.round(900 - (step * (count - 1)) / 2 + step * index);
-  const scale = count === 2 ? 0.92 : count === 3 ? 0.82 : 0.72;
-  return { x, y: ENEMY_FX_Y, scale };
+  const layouts: Record<number, Array<{ x: number; y: number; scale: number }>> = {
+    2: [
+      { x: 760, y: ENEMY_FX_Y, scale: 0.86 },
+      { x: 1040, y: ENEMY_FX_Y, scale: 0.86 },
+    ],
+    3: [
+      { x: 690, y: 242, scale: 0.7 },
+      { x: 910, y: 230, scale: 0.74 },
+      { x: 1110, y: 252, scale: 0.7 },
+    ],
+    4: [
+      { x: 705, y: 200, scale: 0.62 },
+      { x: 1060, y: 200, scale: 0.62 },
+      { x: 765, y: 330, scale: 0.58 },
+      { x: 1115, y: 330, scale: 0.58 },
+    ],
+  };
+  return layouts[Math.min(4, count)]?.[index] ?? layouts[4][layouts[4].length - 1];
+}
+
+function bossGoonViewAt(index: number, count: number): { x: number; y: number; scale: number } {
+  const layouts: Record<number, Array<{ x: number; y: number; scale: number }>> = {
+    1: [
+      { x: 730, y: 300, scale: 0.66 },
+    ],
+    2: [
+      { x: 700, y: 315, scale: 0.62 },
+      { x: 1135, y: 315, scale: 0.62 },
+    ],
+    3: [
+      { x: 680, y: 315, scale: 0.58 },
+      { x: 1160, y: 315, scale: 0.58 },
+      { x: 930, y: 345, scale: 0.56 },
+    ],
+  };
+  return layouts[Math.min(3, count)]?.[index] ?? layouts[3][layouts[3].length - 1];
 }
 
 function enemyStatus(enemy: Enemy) {
