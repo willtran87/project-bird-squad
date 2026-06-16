@@ -1,0 +1,186 @@
+{
+  "version": "0.1",
+  "project": "Bird Squad",
+  "basedOn": [
+    "docs/game/run-design-spec.md",
+    "docs/game/alpha-run-spec.md"
+  ],
+  "maps": [
+    {
+      "mapId": "map_01_rooftop_blocks",
+      "index": 1,
+      "expectedFlockPower": 18,
+      "routeGeneration": {
+        "middleColumns": [6, 7],
+        "lanes": [2, 4],
+        "minimumCounts": {
+          "street": 6,
+          "rival": 1,
+          "signal": 3,
+          "basin": 2,
+          "nest": 2,
+          "market": 1,
+          "cache": 2
+        },
+        "fillWeights": {
+          "street": 32,
+          "rival": 5,
+          "signal": 18,
+          "basin": 12,
+          "nest": 12,
+          "market": 7,
+          "cache": 14
+        },
+        "requiredOpeningTypes": ["street"],
+        "preBossTypes": ["basin", "nest"]
+      },
+      "economy": {
+        "streetScrap": [20, 28],
+        "rivalScrap": [58, 72],
+        "bossScrap": 90,
+        "cacheScrap": 30,
+        "skipScrap": 12
+      },
+      "targets": {
+        "normalFightTurns": [4, 6],
+        "rivalFightTurns": [5, 7],
+        "bossFightTurns": [6, 8],
+        "normalCohesionLoss": [4, 9],
+        "bossEntryDeckSize": [13, 15],
+        "bossEntryRouteMarks": [1, 3]
+      }
+    },
+    {
+      "mapId": "map_02_canal_markets",
+      "index": 2,
+      "expectedFlockPower": 27,
+      "routeGeneration": {
+        "middleColumns": [6, 7],
+        "lanes": [2, 4],
+        "minimumCounts": {
+          "street": 6,
+          "rival": 2,
+          "signal": 3,
+          "basin": 3,
+          "nest": 2,
+          "market": 1,
+          "cache": 2
+        },
+        "fillWeights": {
+          "street": 30,
+          "rival": 7,
+          "signal": 16,
+          "basin": 16,
+          "nest": 10,
+          "market": 8,
+          "cache": 13
+        },
+        "requiredOpeningTypes": ["street"],
+        "preBossTypes": ["basin", "nest"]
+      },
+      "economy": {
+        "streetScrap": [25, 35],
+        "rivalScrap": [72, 88],
+        "bossScrap": 105,
+        "cacheScrap": 35,
+        "skipScrap": 14
+      },
+      "targets": {
+        "normalFightTurns": [4, 6],
+        "rivalFightTurns": [5, 8],
+        "bossFightTurns": [7, 9],
+        "normalCohesionLoss": [5, 11],
+        "bossEntryDeckSize": [16, 18],
+        "bossEntryRouteMarks": [2, 4]
+      }
+    },
+    {
+      "mapId": "map_03_signal_spires",
+      "index": 3,
+      "expectedFlockPower": 36,
+      "routeGeneration": {
+        "middleColumns": [6, 7],
+        "lanes": [2, 4],
+        "minimumCounts": {
+          "street": 6,
+          "rival": 2,
+          "signal": 4,
+          "basin": 2,
+          "nest": 3,
+          "market": 1,
+          "cache": 2
+        },
+        "fillWeights": {
+          "street": 29,
+          "rival": 8,
+          "signal": 20,
+          "basin": 10,
+          "nest": 14,
+          "market": 7,
+          "cache": 12
+        },
+        "requiredOpeningTypes": ["street"],
+        "preBossTypes": ["basin", "nest"]
+      },
+      "economy": {
+        "streetScrap": [31, 41],
+        "rivalScrap": [86, 104],
+        "bossScrap": 120,
+        "cacheScrap": 40,
+        "skipScrap": 16
+      },
+      "targets": {
+        "normalFightTurns": [4, 7],
+        "rivalFightTurns": [6, 8],
+        "bossFightTurns": [7, 10],
+        "normalCohesionLoss": [6, 13],
+        "bossEntryDeckSize": [19, 22],
+        "bossEntryRouteMarks": [3, 5]
+      }
+    },
+    {
+      "mapId": "map_04_high_roost",
+      "index": 4,
+      "expectedFlockPower": 46,
+      "routeGeneration": {
+        "middleColumns": [6, 7],
+        "lanes": [2, 4],
+        "minimumCounts": {
+          "street": 7,
+          "rival": 2,
+          "signal": 4,
+          "basin": 1,
+          "nest": 3,
+          "market": 1,
+          "cache": 2
+        },
+        "fillWeights": {
+          "street": 34,
+          "rival": 9,
+          "signal": 19,
+          "basin": 7,
+          "nest": 14,
+          "market": 6,
+          "cache": 11
+        },
+        "requiredOpeningTypes": ["street"],
+        "preBossTypes": ["nest", "basin"]
+      },
+      "economy": {
+        "streetScrap": [36, 48],
+        "rivalScrap": [98, 122],
+        "bossScrap": 75,
+        "cacheScrap": 45,
+        "skipScrap": 18
+      },
+      "targets": {
+        "normalFightTurns": [5, 7],
+        "rivalFightTurns": [6, 9],
+        "bossFightTurns": [8, 11],
+        "normalCohesionLoss": [7, 15],
+        "bossEntryDeckSize": [22, 26],
+        "bossEntryRouteMarks": [4, 7]
+      }
+    }
+  ]
+}

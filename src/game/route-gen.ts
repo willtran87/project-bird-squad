@@ -1,4 +1,5 @@
 import type { RouteEdge, RouteNode, RouteNodeType, RouteRisk, RuntimeRouteMap } from './types';
+import { getMapBalanceProfile, weightedPick, type RouteGenNodeType } from './balance';
 
 // Procedural route generation. Each run builds a larger, branching, randomized
 // district graph from the map's content pools — deterministic given a seed, so a
@@ -57,8 +58,16 @@ export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRoute
   const rand = mulberry32(seed);
   const ri = (min: number, max: number) => min + Math.floor(rand() * (max - min + 1));
   const pick = <T,>(arr: T[]): T | undefined => (arr.length ? arr[Math.floor(rand() * arr.length)] : undefined);
+  const shuffle = <T,>(items: T[]): T[] => {
+    for (let i = items.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(rand() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+    return items;
+  };
 
-  const middleCols = ri(6, 7); // 6-7 middle columns -> ~8-9 total
+  const balance = getMapBalanceProfile(bp.id, bp.index).routeGeneration;
+  const middleCols = ri(balance.middleColumns[0], balance.middleColumns[1]);
   const totalCols = middleCols + 2;
   const columns: string[][] = [];
   const nodes: RouteNode[] = [];
@@ -100,9 +109,9 @@ export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRoute
   columns[0] = [entryId];
   make(entryId, 0, 0, 'street', bp.entryEncounterId);
 
-  // Middle columns: 2-4 lanes each, types assigned below.
+  // Middle columns: lanes and node quotas come from the district balance profile.
   for (let c = 1; c <= middleCols; c += 1) {
-    const lanes = ri(2, 4);
+    const lanes = ri(balance.lanes[0], balance.lanes[1]);
     const ids: string[] = [];
     for (let l = 0; l < lanes; l += 1) {
       const id = `m${bp.index}_c${c}_l${l}`;
@@ -117,24 +126,44 @@ export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRoute
   columns[totalCols - 1] = [bossId];
   make(bossId, totalCols - 1, 0, 'boss', bp.bossEncounterId);
 
-  // Assign middle node types from a weighted distribution.
+  // Assign middle node types from district quotas, then weighted fill. This keeps
+  // routes varied without letting a seed accidentally starve safety/economy nodes.
   const middle = nodes.filter((n) => n.column >= 1 && n.column <= middleCols);
-  const weightedType = (): RouteNodeType => {
-    const r = rand();
-    if (r < 0.46) return 'street';
-    if (r < 0.62) return 'signal';
-    if (r < 0.72) return 'cache';
-    if (r < 0.82) return 'basin';
-    if (r < 0.92) return 'nest';
-    if (r < 0.97) return 'market';
-    return 'rival';
+  const quotaBag: RouteGenNodeType[] = [];
+  for (const [type, count] of Object.entries(balance.minimumCounts) as Array<[RouteGenNodeType, number]>) {
+    for (let i = 0; i < count; i += 1) quotaBag.push(type);
+  }
+  while (quotaBag.length < middle.length) quotaBag.push(weightedPick(balance.fillWeights, rand));
+  shuffle(quotaBag);
+  middle.forEach((n, index) => setType(n, quotaBag[index] ?? 'street'));
+
+  const applyOpeningColumn = () => {
+    // Every route should start with a second real fight after the entry node, so
+    // early pathing teaches combat before the first recovery/economy fork.
+    const openingTypes: RouteGenNodeType[] = balance.requiredOpeningTypes.length ? balance.requiredOpeningTypes : ['street'];
+    for (const [index, nodeId] of (columns[1] ?? []).entries()) {
+      const node = byId.get(nodeId);
+      if (node) setType(node, openingTypes[index % openingTypes.length]);
+    }
   };
-  middle.forEach((n) => setType(n, weightedType()));
+  const applyPreBossColumn = () => {
+    // Every boss approach gets an explicit stabilizer choice. Earlier columns may
+    // still be greedy, but no seed can route the player to a boss with no
+    // Basin/Nest-style safety valve available on the final branch.
+    const preBossTypes: RouteGenNodeType[] = balance.preBossTypes.length ? balance.preBossTypes : ['basin', 'nest'];
+    for (const [index, nodeId] of (columns[middleCols] ?? []).entries()) {
+      const node = byId.get(nodeId);
+      if (node) setType(node, preBossTypes[index % preBossTypes.length]);
+    }
+  };
+  applyOpeningColumn();
+  applyPreBossColumn();
 
   // Guarantee each non-street type appears at least once (variety + node-type coverage).
   const ensure = (type: RouteNodeType, available: boolean) => {
     if (!available || middle.some((n) => n.type === type)) return;
-    const target = pick(middle.filter((n) => n.type === 'street')) ?? pick(middle);
+    const unprotected = middle.filter((n) => n.column !== 1 && n.column !== middleCols);
+    const target = pick(unprotected.filter((n) => n.type === 'street')) ?? pick(unprotected) ?? pick(middle);
     if (target) setType(target, type);
   };
   ensure('rival', bp.rivalEncounterIds.length > 0);
@@ -143,12 +172,8 @@ export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRoute
   ensure('basin', true);
   ensure('nest', true);
   ensure('cache', true);
-  // Recovery before the boss: ensure the last middle column offers a Basin or Nest.
-  const lastCol = middle.filter((n) => n.column === middleCols);
-  if (lastCol.length && !lastCol.some((n) => n.type === 'basin' || n.type === 'nest')) {
-    const target = pick(lastCol);
-    if (target) setType(target, rand() < 0.5 ? 'basin' : 'nest');
-  }
+  applyOpeningColumn();
+  applyPreBossColumn();
 
   // Edges: connect every column fully to the next (so every node has an outgoing
   // and an incoming) plus extra branching, guaranteeing entry->boss reachability.
