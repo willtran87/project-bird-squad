@@ -291,7 +291,7 @@ const BASE_COHESION = 36;
 const BASE_WINGBEATS = 3;
 const BASE_HAND_TARGET = 5;
 const BASE_RESONANCE_CAP = 5;
-const STARTING_SCRAP = 60;
+const STARTING_SCRAP = 40;
 // Market pricing is data-driven from alpha-market.json (next-level-implementation
 // -spec "Market prices and services are data-driven").
 const alphaMarketConfig = alphaMarketSet.markets[0];
@@ -299,10 +299,10 @@ const MARKET_CARD_PRICE = alphaMarketConfig.cardSlots.find((slot) => slot.rarity
 const MARKET_PREEN_PRICE = alphaMarketConfig.services.find((service) => service.id === 'preen')?.basePrice ?? 100;
 const MARKET_ROUTE_MARK_PRICE = alphaMarketConfig.routeMarkSlots[0]?.price.base ?? 110;
 const PATCHED_HARNESS_DISCOUNT = Number(/reducePreenPrice\((\d+)\)/.exec(alphaRouteMarkLibrary.get('patched_harness')?.effect ?? '')?.[1] ?? 30);
-const CACHE_SCRAP_REWARD = 45;
-const SIGNAL_SCRAP_REWARD = 25;
+const CACHE_SCRAP_REWARD = 30;
+const SIGNAL_SCRAP_REWARD = 15;
 const STREET_SCRAP_BONUS = 15;
-const REWARD_SKIP_SCRAP = 20;
+const REWARD_SKIP_SCRAP = 12;
 // Every playable card lives in one shared reward pool; weight post-combat offers
 // by rarity so commons/uncommons are the staple and rares/legendaries stay scarce.
 const REWARD_RARITY_WEIGHT: Record<string, number> = { common: 100, uncommon: 45, rare: 16, legendary: 5 };
@@ -1025,6 +1025,9 @@ class RouteScene extends Phaser.Scene {
   private confirmExitOpen = false;
   private marketNodeId: string | undefined;
   private marketMessage = '';
+  private marketBoughtCard = false;
+  private marketBoughtRouteMark = false;
+  private marketBoughtPreen = false;
   private inspectedCardId: string | undefined;
   private cardReviewScroll = 0;
   private optionalCardArtRequested = false;
@@ -1047,6 +1050,9 @@ class RouteScene extends Phaser.Scene {
     this.marketOpen = false;
     this.marketNodeId = undefined;
     this.marketMessage = '';
+    this.marketBoughtCard = false;
+    this.marketBoughtRouteMark = false;
+    this.marketBoughtPreen = false;
     this.inspectedCardId = undefined;
     this.cardReviewScroll = 0;
     this.optionalCardArtRequested = false;
@@ -1493,16 +1499,17 @@ class RouteScene extends Phaser.Scene {
   }
 
   private nodeChoiceList(node: RouteNode): Array<{ key: string; text: string; effects: string[]; locked: boolean; lockedText?: string }> {
-    if (node.type === 'basin') return alphaBasinSet.options.map((option) => ({ key: option.id, text: option.label, effects: option.effects, locked: false }));
-    if (node.type === 'cache') return alphaCacheSet.options.map((option) => ({ key: option.id, text: option.label, effects: option.effects, locked: false }));
+    const nodeOption = (option: { id: string; label: string; effects: string[]; cost?: number }) => ({
+      key: option.id,
+      text: option.label,
+      effects: option.effects,
+      locked: option.cost !== undefined && this.runState.scrap < option.cost,
+      lockedText: option.cost !== undefined ? `Need ${option.cost} Scrap` : undefined
+    });
+    if (node.type === 'basin') return alphaBasinSet.options.map(nodeOption);
+    if (node.type === 'cache') return alphaCacheSet.options.map(nodeOption);
     if (node.type === 'nest') {
-      return alphaNestSet.options.map((option) => ({
-        key: option.id,
-        text: option.label,
-        effects: option.effects,
-        locked: option.cost !== undefined && this.runState.scrap < option.cost,
-        lockedText: option.cost !== undefined ? `Need ${option.cost} Scrap` : undefined
-      }));
+      return alphaNestSet.options.map(nodeOption);
     }
     const signal = alphaSignalLibrary.get(node.payloadId);
     return (signal?.choices ?? []).map((choice) => ({
@@ -1758,7 +1765,10 @@ class RouteScene extends Phaser.Scene {
     }
     this.marketOpen = true;
     this.marketNodeId = node.id;
-    this.marketMessage = 'Rooftop vendors spread their tarps between antenna masts.';
+    this.marketMessage = 'Rooftop vendors spread their tarps between antenna masts. Each shelf has one good opening; once it is gone, it is gone.';
+    this.marketBoughtCard = false;
+    this.marketBoughtRouteMark = false;
+    this.marketBoughtPreen = false;
     this.selectableNodeIds = new Set();
     this.renderAll();
   }
@@ -1859,7 +1869,7 @@ class RouteScene extends Phaser.Scene {
       });
       this.add.text(x - 108, y + 30, displayText(offer), detailBodyStyle(216));
     } else {
-      this.add.text(x - 108, y - 50, 'Every available crew card is already in the flock.', detailBodyStyle(216));
+      this.add.text(x - 108, y - 50, this.marketBoughtCard ? 'That recruitment lead has moved on.' : 'Every available crew card is already in the flock.', detailBodyStyle(216));
     }
     this.renderMarketButton(x, y + 142, 'Buy', enabled, () => this.buyMarketCard());
   }
@@ -1871,7 +1881,7 @@ class RouteScene extends Phaser.Scene {
       .setStrokeStyle(2, enabled ? 0xd8a840 : 0x49606d, enabled ? 0.95 : 0.65);
     this.add.text(x - 180, y - 36, 'Route Mark', marketOfferTitleStyle());
     this.add.text(x - 180, y - 10, mark ? `${mark.name} / ${mark.price} Scrap` : 'Sold out', marketOfferPriceStyle(enabled));
-    this.add.text(x - 180, y + 18, mark ? mark.text : 'No unclaimed marks remain in this market.', detailBodyStyle(260));
+    this.add.text(x - 180, y + 18, mark ? mark.text : this.marketBoughtRouteMark ? 'The route-board pin is already claimed.' : 'No unclaimed marks remain in this market.', detailBodyStyle(260));
     this.renderMarketButton(x + 138, y + 20, 'Buy', enabled, () => this.buyMarketRouteMark());
   }
 
@@ -1883,7 +1893,7 @@ class RouteScene extends Phaser.Scene {
       .setStrokeStyle(2, enabled ? 0x24d0d6 : 0x49606d, enabled ? 0.95 : 0.65);
     this.add.text(x - 180, y - 36, 'Preen a Card', marketOfferTitleStyle());
     this.add.text(x - 180, y - 10, card ? `${displayName(card)} / ${price} Scrap` : 'No cards to preen', marketOfferPriceStyle(enabled));
-    this.add.text(x - 180, y + 18, card ? 'Improve the first unpreened card in your flock deck.' : 'Every card in the flock is already polished.', detailBodyStyle(260));
+    this.add.text(x - 180, y + 18, card ? 'Improve the first unpreened card in your flock deck.' : this.marketBoughtPreen ? 'The preening bench is packed away.' : 'Every card in the flock is already polished.', detailBodyStyle(260));
     this.renderMarketButton(x + 138, y + 20, 'Preen', enabled, () => this.buyMarketPreen());
   }
 
@@ -1907,6 +1917,7 @@ class RouteScene extends Phaser.Scene {
     if (!offer || this.runState.scrap < MARKET_CARD_PRICE) return;
     this.runState.scrap -= MARKET_CARD_PRICE;
     this.runState.deck.push({ id: offer.id, upgraded: offer.upgraded });
+    this.marketBoughtCard = true;
     this.marketMessage = `${displayName(offer)} joins the flock.`;
     this.renderAll();
     this.queueOptionalCardArtLoad();
@@ -1917,6 +1928,7 @@ class RouteScene extends Phaser.Scene {
     if (!mark || this.runState.scrap < mark.price) return;
     this.runState.scrap -= mark.price;
     this.addRouteMark(mark.id);
+    this.marketBoughtRouteMark = true;
     this.marketMessage = `${mark.name} is pinned to the route board.`;
     this.renderAll();
   }
@@ -1929,6 +1941,7 @@ class RouteScene extends Phaser.Scene {
     if (!saved) return;
     saved.upgraded = true;
     this.runState.scrap -= price;
+    this.marketBoughtPreen = true;
     this.marketMessage = `${card.name} is preened.`;
     this.renderAll();
   }
@@ -1944,16 +1957,19 @@ class RouteScene extends Phaser.Scene {
   }
 
   private marketCardOffer() {
+    if (this.marketBoughtCard) return undefined;
     const owned = new Set(this.runState.deck.map((card) => card.id));
     const id = arcanaRewardPool.find((candidate) => !owned.has(candidate));
     return id ? cloneCard(id) : undefined;
   }
 
   private marketRouteMarkOffer() {
+    if (this.marketBoughtRouteMark) return undefined;
     return routeMarks.find((mark) => !this.hasRouteMark(mark.id));
   }
 
   private marketPreenCandidate() {
+    if (this.marketBoughtPreen) return undefined;
     const saved = this.runState.deck.find((card) => !card.upgraded);
     if (!saved) return undefined;
     const card = cloneCard(saved.id);

@@ -8,20 +8,21 @@
   "options": [
     {
       "id": "preen",
-      "label": "Preen a Card",
-      "effects": ["preenCard(1)"]
+      "label": "Oil the Working Feathers",
+      "cost": 35,
+      "effects": ["payScrap(35)", "preenCard(1)"]
     },
     {
       "id": "release",
-      "label": "Release a Card",
-      "cost": 50,
-      "effects": ["payScrap(50)", "releaseCard(1)"]
+      "label": "Send a Scout Ahead",
+      "cost": 40,
+      "effects": ["payScrap(40)", "releaseCard(1)"]
     },
     {
       "id": "reinforce_gear",
-      "label": "Reinforce Gear",
-      "cost": 90,
-      "effects": ["payScrap(90)", "gainRouteMark(randomNonBoss)"]
+      "label": "Rig a Route Board",
+      "cost": 115,
+      "effects": ["payScrap(115)", "gainRouteMark(randomNonBoss)"]
     }
   ]
 }

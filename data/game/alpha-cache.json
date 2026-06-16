@@ -8,28 +8,28 @@
   "options": [
     {
       "id": "cache_scrap",
-      "label": "Pocket the Scrap",
-      "effects": ["gainScrap(50)"]
+      "label": "Pocket the Dry Scrap",
+      "effects": ["gainScrap(35)"]
     },
     {
       "id": "cache_supply",
-      "label": "Grab a Supply",
-      "effects": ["gainSupplyChoice(1)"]
+      "label": "Crack the Snack Tin",
+      "effects": ["gainSupplyChoice(1)", "loseCohesion(2)"]
     },
     {
       "id": "cache_mark",
-      "label": "Take a Route Mark",
-      "effects": ["gainRouteMark(randomCommon)"]
+      "label": "Copy the Chalk Mark",
+      "effects": ["gainRouteMark(randomCommon)", "addSnagToDiscard(bad_directions)"]
     },
     {
       "id": "cache_card",
-      "label": "Recruit a Bird",
-      "effects": ["addCard(chooseOneOfTwoCommon)"]
+      "label": "Follow the Nest Note",
+      "effects": ["addCard(chooseOneOfTwoCommon)", "loseCohesion(3)"]
     },
     {
       "id": "cache_heal",
-      "label": "Patch Up",
-      "effects": ["healCohesion(5)"]
+      "label": "Rest Behind the Billboard",
+      "effects": ["healCohesion(6)"]
     }
   ]
 }

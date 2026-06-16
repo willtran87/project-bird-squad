@@ -150,9 +150,30 @@ test('card reward can be skipped for a Scrap fallback, recorded for stats', asyn
     scene.skipCardReward();
     return { scrapDelta: scene.scrap - scrapBefore, rewardEvents: scene.runRewardEvents };
   });
-  expect(result.scrapDelta).toBe(20);
+  expect(result.scrapDelta).toBe(12);
   expect(result.rewardEvents[0].skipped).toBe(true);
   expect(result.rewardEvents[0].offered).toContain('wands_02');
+});
+
+test('market shelves are finite during a visit', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    const g = window.__birdSquadGame;
+    g.scene.start('RouteScene', {});
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('RouteScene');
+    const market = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === 'market');
+    scene.openMarketNode(market);
+    scene.runState.scrap = 999;
+    const firstOffer = scene.marketCardOffer()?.id;
+    scene.buyMarketCard();
+    const afterBuyOffer = scene.marketCardOffer()?.id ?? '';
+    const deckHasOffer = scene.runState.deck.some((card: any) => card.id === firstOffer);
+    return { firstOffer, afterBuyOffer, deckHasOffer };
+  });
+  expect(result.firstOffer).toBeTruthy();
+  expect(result.deckHasOffer).toBe(true);
+  expect(result.afterBuyOffer).toBe('');
 });
 
 test('nest release opens a card picker and removes the chosen card', async ({ page }) => {

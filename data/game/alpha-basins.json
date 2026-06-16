@@ -8,18 +8,18 @@
   "options": [
     {
       "id": "recover",
-      "label": "Recover",
-      "effects": ["healMissingPct(35, 6)"]
+      "label": "Drink at the Rain Pipe",
+      "effects": ["healMissingPct(40, 7)"]
     },
     {
       "id": "take_shelter",
-      "label": "Take Shelter",
-      "effects": ["gainOpenSkyGuard(1)", "healCohesion(4)"]
+      "label": "Hide Under the Awning",
+      "effects": ["gainOpenSkyGuard(1)", "healCohesion(3)"]
     },
     {
       "id": "refill_supplies",
-      "label": "Refill Supplies",
-      "effects": ["gainSupplyChoice(1)"]
+      "label": "Trade for a Wrapped Snack",
+      "effects": ["payScrap(20)", "gainSupplyChoice(1)"]
     }
   ]
 }

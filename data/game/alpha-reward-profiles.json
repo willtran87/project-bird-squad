@@ -8,21 +8,21 @@
   "profiles": [
     {
       "id": "street_standard",
-      "scrap": [25, 40],
+      "scrap": [18, 30],
       "cardReward": true,
       "preenChance": 0.25,
       "routeMarkChance": 0.15
     },
     {
       "id": "rival_standard",
-      "scrap": [70, 90],
+      "scrap": [55, 75],
       "cardReward": true,
       "preenGuaranteed": true,
       "routeMarkGuaranteed": true
     },
     {
       "id": "boss_alpha",
-      "scrap": 120,
+      "scrap": 90,
       "bossRouteMarkChoices": 3,
       "rareCardChoices": 3,
       "preen": 1,

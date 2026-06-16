@@ -923,3 +923,37 @@ Follow-up TODO:
   `tmp/qa/imagegen-contract-repairs-2026-06-14/`.
 - Verified `npm run validate:minor-center-art`,
   `npm run validate:minor-composites`, and `npm run validate`.
+
+## 2026-06-16 Economy And Route-Decision Balance Pass
+
+- Tightened the early-run economy so choices have more bite: starting Scrap is
+  now 40, normal encounters average 24 Scrap, rivals average 65, boss payouts
+  are 90, and skipped card rewards pay 12 Scrap.
+- Made Market card, Route Mark, and Preen shelves finite per visit. Buying a
+  card no longer reveals the next unowned card in the same shop.
+- Raised Market prices for cards, Route Marks, and Preen service so entering a
+  shop usually means choosing one major purchase unless the run deliberately
+  saved Scrap.
+- Converted Nest upgrades/removals from free scaling into paid services:
+  Preen costs 35, Release costs 40, and Route Mark rigging costs 115.
+- Reworked Basin and Cache option labels/outcomes to feel more like route
+  moments and less like abstract payout buttons; Supplies, Route Marks, and
+  card recruitment now carry small Scrap, Cohesion, or Snag tradeoffs.
+- Reduced high-Scrap Signal outcomes so event nodes stop overwhelming the run
+  economy.
+- Added a smoke test proving Market card shelves sell out after purchase and
+  updated the skip-reward Scrap expectation.
+- Verified `npm run validate:runtime`, `npm run validate:docs`, `npm run build`,
+  and `npx playwright test --reporter=line --workers=1`.
+- Captured visual checks at `output/web-game/route-page.png` and
+  `output/web-game/market-after-card-buy.png`; route starts at Scrap 40 and the
+  post-purchase Market card shelf is visibly disabled.
+
+Follow-up TODO:
+
+- Run several real playtest runs and export `.artifacts/runs.json` so the new
+  economy can be tuned from win rate, average deck size, shop purchases, and
+  death points instead of feel alone.
+- Consider making Markets show two fixed card shelves and one fixed Supply
+  shelf later; this pass intentionally fixed the infinite-buy problem without
+  broadening shop UI scope.

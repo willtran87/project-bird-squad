@@ -9,22 +9,22 @@
     {
       "id": "alpha_market",
       "cardSlots": [
-        { "rarity": "common", "price": { "base": 55, "min": 35, "max": 75 } },
-        { "rarity": "common", "price": { "base": 55, "min": 35, "max": 75 } },
-        { "rarity": "uncommon", "price": { "base": 85, "min": 65, "max": 105 } },
-        { "rarity": "weighted", "price": { "base": 85, "min": 55, "max": 130 } }
+        { "rarity": "common", "price": { "base": 75, "min": 60, "max": 90 } },
+        { "rarity": "common", "price": { "base": 75, "min": 60, "max": 90 } },
+        { "rarity": "uncommon", "price": { "base": 105, "min": 85, "max": 125 } },
+        { "rarity": "weighted", "price": { "base": 95, "min": 70, "max": 145 } }
       ],
       "routeMarkSlots": [
-        { "selector": "nonBoss", "price": { "base": 110, "min": 90, "max": 130 } },
-        { "selector": "nonBoss", "price": { "base": 110, "min": 90, "max": 130 } }
+        { "selector": "nonBoss", "price": { "base": 135, "min": 115, "max": 160 } },
+        { "selector": "nonBoss", "price": { "base": 135, "min": 115, "max": 160 } }
       ],
       "supplySlots": [
         { "selector": "pool", "price": { "base": 45, "min": 25, "max": 65 } },
         { "selector": "pool", "price": { "base": 45, "min": 25, "max": 65 } }
       ],
       "services": [
-        { "id": "release", "basePrice": 75, "priceIncrease": 25 },
-        { "id": "preen", "basePrice": 100, "discountRouteMarkIds": ["patched_harness"] }
+        { "id": "release", "basePrice": 70, "priceIncrease": 25 },
+        { "id": "preen", "basePrice": 95, "discountRouteMarkIds": ["patched_harness"] }
       ]
     }
   ]
