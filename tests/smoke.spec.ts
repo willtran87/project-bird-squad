@@ -7,6 +7,7 @@ declare global {
     __birdSquadGame?: any;
     __birdSquadState?: () => any;
     __birdSquadLastRun?: any;
+    render_game_to_text?: () => string;
   }
 }
 
@@ -492,6 +493,21 @@ test('the route map exposes a Flock view (flock examinable between fights)', asy
   expect(r.active).toContain('RouteScene'); // overlay, not a scene change
 });
 
+test('route map exposes boss prep readiness before the final crossing', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(() => {
+    const g = window.__birdSquadGame;
+    g.scene.start('RouteScene', {});
+    g.scene.stop('MenuScene');
+    const state = JSON.parse(window.render_game_to_text!());
+    return state.bossPrep;
+  });
+  expect(r.bossName).toBeTruthy();
+  expect(r.pressure).toContain('cover');
+  expect(['low', 'steady', 'strong']).toContain(r.readiness.cover);
+  expect(Array.isArray(r.usefulNodes)).toBe(true);
+});
+
 test('combat tracks per-fight stats (damage dealt / taken / blocked)', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(() => {
@@ -525,6 +541,72 @@ test('a defeat emits a local run-summary artifact', async ({ page }) => {
   expect(run.killedBy).toBe('Roof Rat');
   expect(run.deck.length).toBeGreaterThan(0);
   expect(run.mapId).toBe('map_01_rooftop_blocks');
+  expect(run.combatResults.length).toBeGreaterThan(0);
+  expect(run.combatResults[0].encounterId).toBe('enc_roof_rat');
+  expect(Array.isArray(run.suppliesUsed)).toBe(true);
+});
+
+test('Flock Leader signatures fire at their once-per-combat hooks', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    const base = (leaderId: string) => ({
+      deck: [
+        { id: 'wands_03' }, { id: 'swords_ace' }, { id: 'cups_ace' }, { id: 'pentacles_04' }, { id: 'major_00' },
+        { id: 'wands_ace' }, { id: 'cups_03' }, { id: 'swords_02' }, { id: 'pentacles_02' }, { id: 'aviary_25' }
+      ],
+      leaderId, difficulty: 0, seed: `sig-${leaderId}`, currentHp: 36,
+      scrap: 0, routeMarks: [], supplies: [], mapIndex: 0, completedRouteNodeIds: [],
+      currentRouteNodeId: undefined, routeLog: [], nextCombat: undefined, signalChoices: [], rewardEvents: [],
+      suppliesUsed: [], combatResults: [],
+    });
+    const start = async (leaderId: string) => {
+      g.scene.start('BattleScene', { routeNodeId: 'm1_entry', runState: base(leaderId) });
+      g.scene.stop('MenuScene');
+      await wait(80);
+      return g.scene.getScene('BattleScene') as any;
+    };
+
+    const spark = await start('spark_caller');
+    const sparkSeedCard = spark.hand.pop();
+    if (sparkSeedCard) spark.drawPile.unshift(sparkSeedCard);
+    spark.spark = 1;
+    const sparkHandBefore = spark.hand.length;
+    spark.spendResonance(1);
+    const sparkDraw = spark.hand.length - sparkHandBefore;
+
+    const talon = await start('talon');
+    const talonEnemy = talon.enemies[0];
+    talonEnemy.hp = 20;
+    talon.resolveCardEffect('applyWinded(target, 1)', talon.hand[0], talonEnemy.id, {
+      previousDiscarded: 0, previousDamageDefeated: false, spentResonance: false, returnSelfToDraw: false, builtFlow: false
+    });
+    const talonDamage = 20 - talonEnemy.hp;
+
+    const tide = await start('tidewarden');
+    tide.flock.hp = tide.flock.maxHp;
+    tide.flock.block = 0;
+    tide.healFlock(3, 'test');
+    const tideCover = tide.flock.block;
+
+    const roost = await start('roostkeeper');
+    roost.flock.flow = 0;
+    roost.flock.block = 99;
+    roost.damageFlock(roost.enemies[0], 5);
+    const roostFlow = roost.flock.flow;
+
+    return {
+      sparkDraw,
+      talonDamage,
+      tideCover,
+      roostFlow
+    };
+  });
+  expect(r.sparkDraw).toBe(1);
+  expect(r.talonDamage).toBe(2);
+  expect(r.tideCover).toBe(3);
+  expect(r.roostFlow).toBe(1);
 });
 
 test('locked Flock Leaders are gated until unlocked, and the Profile screen renders', async ({ page }) => {
@@ -765,10 +847,21 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
   expect(r.codexFound).toBeGreaterThanOrEqual(8);
 });
 
-test('enemy codex: reserve enemies render with art and contract details', async ({ page }) => {
+test('enemy codex: entire enemy cast renders with art and details', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const collectTexts = (scene: any) => {
+      const all: any[] = [];
+      const walk = (o: any) => {
+        if (!o) return;
+        if (o.type === 'Text') all.push(o);
+        const children = o.list;
+        if (Array.isArray(children)) children.forEach(walk);
+      };
+      scene.children.list.forEach(walk);
+      return all.map((t) => t.text || '');
+    };
     const g = window.__birdSquadGame;
     g.scene.start('CodexScene');
     g.scene.stop('MenuScene');
@@ -779,37 +872,53 @@ test('enemy codex: reserve enemies render with art and contract details', async 
     cs.detailId = undefined;
     cs.gridScroll = 0;
     cs.renderAll();
-    for (let i = 0; i < 40 && !cs.textures.exists('reserve-enemy-canal_otter'); i += 1) await wait(100);
+    for (
+      let i = 0;
+      i < 40 && (!cs.textures.exists('enemy-roof_rat') || !cs.textures.exists('reserve-enemy-canal_otter'));
+      i += 1
+    ) await wait(100);
+    const listTexts = collectTexts(cs);
+
+    cs.detailId = 'roof_rat';
+    cs.detailScroll = 0;
+    cs.renderAll();
+    await wait(150);
+    const runtimeTexts = collectTexts(cs);
+
     cs.detailId = 'canal_otter';
     cs.detailScroll = 0;
     cs.renderAll();
     await wait(150);
+    const reserveTexts = collectTexts(cs);
 
-    const all: any[] = [];
-    const walk = (o: any) => {
-      if (!o) return;
-      if (o.type === 'Text') all.push(o);
-      const children = o.list;
-      if (Array.isArray(children)) children.forEach(walk);
-    };
-    cs.children.list.forEach(walk);
-    const texts = all.map((t) => t.text || '');
-    const count = cs.allReserveEnemies ? cs.allReserveEnemies().length : 0;
+    const count = cs.allCodexEnemies ? cs.allCodexEnemies().length : 0;
+    const encounterCount = cs.allEncounterEnemies ? cs.allEncounterEnemies().length : 0;
+    const reserveCount = cs.allReserveEnemies ? cs.allReserveEnemies().length : 0;
     return {
       count,
-      hasCatalogCount: texts.some((t) => /48 reserve enemies cataloged/.test(t)),
-      hasEnemyName: texts.some((t) => /Canal Otter/.test(t)),
-      hasMoveKit: texts.some((t) => /MOVE KIT/.test(t)),
-      hasFashion: texts.some((t) => /FASHION DIRECTION/.test(t)),
-      hasArt: cs.textures.exists('reserve-enemy-canal_otter'),
+      encounterCount,
+      reserveCount,
+      hasCatalogCount: listTexts.some((t) => /81 enemies cataloged \(33 encounter \/ 48 reserve\)/.test(t)),
+      hasRuntimeEnemyName: runtimeTexts.some((t) => /Roof Rat/.test(t)),
+      hasCombatKit: runtimeTexts.some((t) => /COMBAT KIT/.test(t)),
+      hasReserveEnemyName: reserveTexts.some((t) => /Canal Otter/.test(t)),
+      hasMoveKit: reserveTexts.some((t) => /MOVE KIT/.test(t)),
+      hasFashion: reserveTexts.some((t) => /FASHION DIRECTION/.test(t)),
+      hasRuntimeArt: cs.textures.exists('enemy-roof_rat'),
+      hasReserveArt: cs.textures.exists('reserve-enemy-canal_otter'),
     };
   });
-  expect(r.count).toBe(48);
+  expect(r.count).toBe(81);
+  expect(r.encounterCount).toBe(33);
+  expect(r.reserveCount).toBe(48);
   expect(r.hasCatalogCount).toBe(true);
-  expect(r.hasEnemyName).toBe(true);
+  expect(r.hasRuntimeEnemyName).toBe(true);
+  expect(r.hasCombatKit).toBe(true);
+  expect(r.hasReserveEnemyName).toBe(true);
   expect(r.hasMoveKit).toBe(true);
   expect(r.hasFashion).toBe(true);
-  expect(r.hasArt).toBe(true);
+  expect(r.hasRuntimeArt).toBe(true);
+  expect(r.hasReserveArt).toBe(true);
 });
 
 test('Cover and Heal are distinct axes, and the new card verbs work', async ({ page }) => {

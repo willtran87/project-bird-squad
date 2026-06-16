@@ -813,6 +813,24 @@ class ProfileScene extends Phaser.Scene {
 }
 
 type CodexSection = 'cards' | 'items' | 'leaders' | 'enemies';
+type CodexEnemySource = 'encounter' | 'reserve';
+
+interface CodexEnemyEntry {
+  id: string;
+  name: string;
+  species: string;
+  district: string;
+  role: string;
+  typeHint: string;
+  varietyContribution: string;
+  description: string;
+  visualBrief: string;
+  silhouette: string;
+  artPose: string;
+  moveKit: string[];
+  source: CodexEnemySource;
+  health?: number;
+}
 
 // Codex: a collection screen reachable from the menu. Cards stay discovery
 // gated; reserve enemy concepts are browsable as a design/bestiary section.
@@ -838,7 +856,7 @@ class CodexScene extends Phaser.Scene {
     { label: 'Basins', match: (c) => c.runtime.suit === 'basins' },
     { label: 'Nests', match: (c) => c.runtime.suit === 'nests' },
   ];
-  private readonly enemyTabs: Array<{ label: string; match: (e: ReserveEnemyContract) => boolean }> = [
+  private readonly enemyTabs: Array<{ label: string; match: (e: CodexEnemyEntry) => boolean }> = [
     { label: 'All', match: () => true },
     { label: 'Rooftops', match: (e) => e.district === 'Rooftop Blocks' },
     { label: 'Canals', match: (e) => e.district === 'Canal Markets' },
@@ -888,18 +906,79 @@ class CodexScene extends Phaser.Scene {
     return Object.values(cardLibrary).filter((c) => c.runtime.kind !== 'snag');
   }
 
-  private allReserveEnemies(): ReserveEnemyContract[] {
-    return [...reserveEnemyContracts];
+  private allReserveEnemies(): CodexEnemyEntry[] {
+    return reserveEnemyContracts.map((enemy) => this.reserveEnemyEntry(enemy));
+  }
+
+  private allEncounterEnemies(): CodexEnemyEntry[] {
+    return [...alphaEnemyLibrary.values()].map((enemy) => this.runtimeEnemyEntry(enemy));
+  }
+
+  private allCodexEnemies(): CodexEnemyEntry[] {
+    const entries = this.allEncounterEnemies();
+    const seen = new Set(entries.map((enemy) => enemy.id));
+    this.allReserveEnemies().forEach((enemy) => {
+      if (!seen.has(enemy.id)) entries.push(enemy);
+    });
+    return entries;
   }
 
   private allLeaders() {
     return [...flockLeaders];
   }
 
-  private currentReserveEnemies(): ReserveEnemyContract[] {
-    return this.allReserveEnemies()
+  private currentCodexEnemies(): CodexEnemyEntry[] {
+    const sourceOrder: Record<CodexEnemySource, number> = { encounter: 0, reserve: 1 };
+    return this.allCodexEnemies()
       .filter(this.enemyTabs[this.activeEnemyTab].match)
-      .sort((a, b) => a.district.localeCompare(b.district) || a.name.localeCompare(b.name));
+      .sort((a, b) => (
+        a.district.localeCompare(b.district)
+        || sourceOrder[a.source] - sourceOrder[b.source]
+        || a.name.localeCompare(b.name)
+      ));
+  }
+
+  private reserveEnemyEntry(enemy: ReserveEnemyContract): CodexEnemyEntry {
+    return {
+      ...enemy,
+      source: 'reserve',
+    };
+  }
+
+  private runtimeEnemyEntry(enemy: RuntimeEnemy): CodexEnemyEntry {
+    const typeLabel = this.runtimeEnemyTypeLabel(enemy);
+    return {
+      id: enemy.id,
+      name: enemy.name,
+      species: 'Encounter cast',
+      district: this.runtimeEnemyDistrict(enemy.id),
+      role: `${typeLabel} / ${enemy.health} HP`,
+      typeHint: typeLabel,
+      varietyContribution: enemy.lesson ?? `${typeLabel} enemy from the playable encounter roster.`,
+      description: enemy.description,
+      visualBrief: enemy.visualBrief,
+      silhouette: enemy.silhouette,
+      artPose: enemy.artPose,
+      moveKit: enemy.moves.map((move) => `${move.label}: ${move.effects.join(', ')}`),
+      source: 'encounter',
+      health: enemy.health,
+    };
+  }
+
+  private runtimeEnemyDistrict(enemyId: string) {
+    if (enemyId.startsWith('canal_')) return 'Canal Markets';
+    if (enemyId.startsWith('spire_')) return 'Signal Spires';
+    if (enemyId.startsWith('roost_')) return 'High Roost';
+    return 'Rooftop Blocks';
+  }
+
+  private runtimeEnemyTypeLabel(enemy: RuntimeEnemy) {
+    switch (enemy.type) {
+      case 'boss': return 'Boss';
+      case 'elite': return 'Elite';
+      case 'rival': return 'Rival';
+      default: return 'Encounter';
+    }
   }
 
   private allWaymarks(): RuntimeRouteMark[] {
@@ -919,7 +998,7 @@ class CodexScene extends Phaser.Scene {
       : this.activeSection === 'leaders'
         ? this.allLeaders().map((leader) => flockLeaderArtAssets[leader.id])
         : this.activeSection === 'enemies'
-          ? this.currentReserveEnemies().map((enemy) => reserveEnemyArtAssets[enemy.id])
+          ? this.currentCodexEnemies().map((enemy) => this.enemyArtAsset(enemy))
           : this.allCards()
           .filter((c) => this.discovered.has(c.id))
           .map((c) => cardArtAssets[c.id]);
@@ -937,8 +1016,10 @@ class CodexScene extends Phaser.Scene {
     this.queueArt();
     const all = this.allCards();
     const found = all.filter((c) => this.discovered.has(c.id)).length;
-    const enemyAll = this.allReserveEnemies();
-    const enemies = this.currentReserveEnemies();
+    const enemyAll = this.allCodexEnemies();
+    const reserveEnemyCount = this.allReserveEnemies().length;
+    const encounterEnemyCount = this.allEncounterEnemies().length;
+    const enemies = this.currentCodexEnemies();
     const waymarkAll = this.allWaymarks();
     const waymarks = this.currentWaymarks();
     const leaders = this.allLeaders();
@@ -1006,7 +1087,7 @@ class CodexScene extends Phaser.Scene {
         ? `${waymarkAll.length} Waymark items cataloged`
         : leaderMode
           ? `${flockLeaders.filter((leader) => isLeaderUnlocked(loadAccount(), leader.id)).length} / ${flockLeaders.length} Flock Leaders rallied`
-          : `${enemyAll.length} reserve enemies cataloged`;
+          : `${enemyAll.length} enemies cataloged (${encounterEnemyCount} encounter / ${reserveEnemyCount} reserve)`;
     this.root.add(this.add.text(42, 66, subtitle, { fontFamily: 'Arial', fontSize: '15px', color: '#8fa3b6' }));
 
     const back = this.add.rectangle(GAME_WIDTH - 86, 42, 140, 44, 0x122235, 0.96).setStrokeStyle(2, 0xd8a840, 1).setInteractive({ useHandCursor: true });
@@ -1065,7 +1146,7 @@ class CodexScene extends Phaser.Scene {
       this.enemyTabs.forEach((tab, i) => {
         const tx = 72 + i * 150;
         const active = i === this.activeEnemyTab;
-        const tabEnemies = this.allReserveEnemies().filter(tab.match);
+        const tabEnemies = this.allCodexEnemies().filter(tab.match);
         const rect = this.add.rectangle(tx, 116, 140, 40, active ? 0x1d3047 : 0x0d1420, active ? 1 : 0.9)
           .setStrokeStyle(2, active ? 0x7ab8d6 : 0x2a3a4d, active ? 1 : 0.8).setInteractive({ useHandCursor: true });
         rect.on('pointerdown', () => { this.activeEnemyTab = i; this.detailId = undefined; this.gridScroll = 0; this.renderAll(); });
@@ -1445,7 +1526,11 @@ class CodexScene extends Phaser.Scene {
     return { w: iw * scale, h: ih * scale };
   }
 
-  private renderEnemyThumb(layer: Phaser.GameObjects.Container, enemy: ReserveEnemyContract, cx: number, cy: number) {
+  private enemyArtAsset(enemy: CodexEnemyEntry) {
+    return enemy.source === 'reserve' ? reserveEnemyArtAssets[enemy.id] : enemyArtAssets[enemy.id];
+  }
+
+  private renderEnemyThumb(layer: Phaser.GameObjects.Container, enemy: CodexEnemyEntry, cx: number, cy: number) {
     const w = 252;
     const h = 206;
     const accent = this.enemyAccent(enemy);
@@ -1455,13 +1540,13 @@ class CodexScene extends Phaser.Scene {
     bg.on('pointerdown', () => { this.detailId = enemy.id; this.detailScroll = 0; this.renderAll(); });
     layer.add(bg);
 
-    const art = reserveEnemyArtAssets[enemy.id];
+    const art = this.enemyArtAsset(enemy);
     if (art && this.textures.exists(art.key)) {
       const fit = this.fittedTextureSize(art.key, 138, 128);
       layer.add(this.add.image(cx - 72, cy - 18, art.key).setDisplaySize(fit.w, fit.h).setAlpha(0.99));
     } else {
       layer.add(this.add.rectangle(cx - 72, cy - 18, 118, 128, 0x141d2b, 0.9).setStrokeStyle(1, 0x2a3a4d, 0.8));
-      layer.add(this.add.text(cx - 72, cy - 20, enemy.species, {
+      layer.add(this.add.text(cx - 72, cy - 20, enemy.typeHint, {
         fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#cdd9e6',
         align: 'center', wordWrap: { width: 102 }
       }).setOrigin(0.5));
@@ -1485,7 +1570,7 @@ class CodexScene extends Phaser.Scene {
     }).setOrigin(0.5, 0.5));
   }
 
-  private enemyAccent(enemy: ReserveEnemyContract) {
+  private enemyAccent(enemy: CodexEnemyEntry) {
     if (enemy.district === 'Canal Markets') return 0x2fc6c9;
     if (enemy.district === 'Signal Spires') return 0xc9a6ff;
     if (enemy.district === 'High Roost') return 0xe8c24a;
@@ -1617,7 +1702,7 @@ class CodexScene extends Phaser.Scene {
   }
 
   private renderEnemyDetail(id: string) {
-    const enemy = reserveEnemyContracts.find((entry) => entry.id === id);
+    const enemy = this.allCodexEnemies().find((entry) => entry.id === id);
     if (!enemy) return;
     const scrim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.76).setInteractive();
     scrim.on('pointerdown', () => { this.detailId = undefined; this.renderAll(); });
@@ -1635,14 +1720,14 @@ class CodexScene extends Phaser.Scene {
     const accentText = `#${accent.toString(16).padStart(6, '0')}`;
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accent, 1));
 
-    const art = reserveEnemyArtAssets[enemy.id];
+    const art = this.enemyArtAsset(enemy);
     const artBoxX = left + 220;
     if (art && this.textures.exists(art.key)) {
       const fit = this.fittedTextureSize(art.key, 360, 500);
       this.root.add(this.add.image(artBoxX, py + 8, art.key).setDisplaySize(fit.w, fit.h).setAlpha(0.99));
     } else {
       this.root.add(this.add.rectangle(artBoxX, py, 340, 480, 0x141d2b, 0.9).setStrokeStyle(1, 0x2a3a4d, 0.8));
-      this.root.add(this.add.text(artBoxX, py, enemy.species, {
+      this.root.add(this.add.text(artBoxX, py, enemy.typeHint, {
         fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#cdd9e6',
         align: 'center', wordWrap: { width: 280 }
       }).setOrigin(0.5));
@@ -1676,7 +1761,7 @@ class CodexScene extends Phaser.Scene {
       wordWrap: { width: wrap }
     }));
     yy += 40;
-    this.root.add(this.add.text(tx, yy, `${enemy.species} / ${enemy.district} / ${enemy.role}`, {
+    this.root.add(this.add.text(tx, yy, `${enemy.source === 'encounter' ? 'Playable encounter' : enemy.species} / ${enemy.district} / ${enemy.role}`, {
       fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#8fa3b6',
       wordWrap: { width: wrap }
     }));
@@ -1686,11 +1771,11 @@ class CodexScene extends Phaser.Scene {
     para(enemy.description, { size: 14 });
     yy += 12;
 
-    heading('VARIETY ROLE', '#8df4ff');
+    heading(enemy.source === 'encounter' ? 'COMBAT ROLE' : 'VARIETY ROLE', '#8df4ff');
     para(enemy.varietyContribution, { size: 13, bold: true, color: '#bceff4' });
     yy += 12;
 
-    heading('MOVE KIT', accentText);
+    heading(enemy.source === 'encounter' ? 'COMBAT KIT' : 'MOVE KIT', accentText);
     enemy.moveKit.forEach((move) => {
       para(`- ${move}`, { size: 13, color: '#dbe6f0' });
       yy += 5;
@@ -1702,7 +1787,7 @@ class CodexScene extends Phaser.Scene {
     yy += 12;
 
     heading('FASHION DIRECTION', '#c9a6ff');
-    para(reserveEnemyFashionDirections[enemy.id] ?? enemy.visualBrief, { size: 13 });
+    para(enemy.source === 'reserve' ? (reserveEnemyFashionDirections[enemy.id] ?? enemy.visualBrief) : enemy.visualBrief, { size: 13 });
     yy += 12;
 
     heading('ART CONTRACT', '#7f93a8');

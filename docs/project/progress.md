@@ -1006,3 +1006,17 @@ Follow-up TODO:
 - Ran the web-game Playwright client for two iterations and captured a normal
   page screenshot at `output/web-game-balance2/page-combat.png`; the game boots
   into a readable combat state with the reward-gating code loaded.
+
+## 2026-06-16 Next-Level Run Feedback And Leader Pass
+
+- Added once-per-combat Flock Leader signature hooks for Fledgling,
+  Spark-Caller, Talon, Tidewarden, and Roostkeeper so leader choice changes
+  combat texture immediately.
+- Added boss-prep readiness readouts on the route map and reward tags that call
+  out what a card offer helps the current deck solve.
+- Extended run summaries and playtest stats with combat results, reward
+  fallbacks, skipped offers, and Supplies used so future balance passes have
+  sharper telemetry.
+- Kept the route-mark expansion item out of scope for this pass.
+- Verified `npm run validate:runtime`, `npm run build`, and
+  `npm run test:e2e`.
