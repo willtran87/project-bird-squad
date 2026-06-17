@@ -1,6 +1,16 @@
 import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
 
-export default defineConfig({
+const phaserProductionBuild = fileURLToPath(new URL('./node_modules/phaser/dist/phaser.esm.min.js', import.meta.url));
+
+export default defineConfig(({ command }) => ({
+  resolve: command === 'build'
+    ? {
+      alias: {
+        phaser: phaserProductionBuild
+      }
+    }
+    : undefined,
   build: {
     outDir: '.artifacts/build',
     emptyOutDir: true,
@@ -28,4 +38,4 @@ export default defineConfig({
   preview: {
     port: 4173
   }
-});
+}));

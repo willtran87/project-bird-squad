@@ -1270,6 +1270,9 @@ class CodexScene extends Phaser.Scene {
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, (CodexScene.GRID_BOTTOM + GAME_HEIGHT) / 2, GAME_WIDTH, GAME_HEIGHT - CodexScene.GRID_BOTTOM, 0x070a11, 1));
 
     // 3) Header (title / counter / Back / tabs) on top of the curtain.
+    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 78, GAME_WIDTH, 156, 0x08111e, 0.96));
+    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 150, GAME_WIDTH - 80, 2, 0x1b2c3e, 0.82));
+    this.root.add(this.add.rectangle(838, 42, 486, 54, 0x05080e, 0.64).setStrokeStyle(1, 0x22364d, 0.72));
     this.root.add(this.add.text(40, 24, 'Codex', { fontFamily: 'Georgia, serif', fontSize: '34px', fontStyle: 'bold', color: '#ffe1a3', stroke: '#000000', strokeThickness: 4 }));
     const subtitle = cardMode
       ? `${found} / ${all.length} cards discovered`
@@ -1299,6 +1302,18 @@ class CodexScene extends Phaser.Scene {
     this.root.add(back);
     this.root.add(this.add.text(GAME_WIDTH - 86, 42, 'Back', { fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#ffe1a3' }).setOrigin(0.5));
 
+    const sectionMeta: Record<CodexSection, string> = {
+      cards: `${found}/${all.length}`,
+      items: `${waymarkAll.length}`,
+      leaders: `${flockLeaders.filter((leader) => isLeaderUnlocked(loadAccount(), leader.id)).length}/${flockLeaders.length}`,
+      enemies: `${enemyAll.length}`,
+    };
+    const sectionAccent: Record<CodexSection, number> = {
+      cards: 0x7ab8d6,
+      items: 0xc9a6ff,
+      leaders: 0xe8c24a,
+      enemies: 0xff9b6a,
+    };
     ([
       ['cards', 'Cards'],
       ['items', 'Items'],
@@ -1307,18 +1322,13 @@ class CodexScene extends Phaser.Scene {
     ] as Array<[CodexSection, string]>).forEach(([section, label], i) => {
       const tx = 660 + i * 118;
       const active = section === this.activeSection;
-      const rect = this.add.rectangle(tx, 42, 106, 40, active ? 0x1d3047 : 0x0d1420, active ? 1 : 0.9)
-        .setStrokeStyle(2, active ? 0x7ab8d6 : 0x2a3a4d, active ? 1 : 0.8)
-        .setInteractive({ useHandCursor: true });
-      rect.on('pointerdown', () => {
+      this.renderCodexTab(tx, 42, 106, 42, label, sectionMeta[section], active, sectionAccent[section], () => {
         this.activeSection = section;
         this.detailId = undefined;
         this.detailScroll = 0;
         this.gridScroll = 0;
         this.renderAll();
-      });
-      this.root.add(rect);
-      this.root.add(this.add.text(tx, 42, label, { fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: active ? '#ffe1a3' : '#9fb1c4' }).setOrigin(0.5));
+      }, 14);
     });
 
     if (cardMode) {
@@ -1327,36 +1337,31 @@ class CodexScene extends Phaser.Scene {
         const active = i === this.activeTab;
         const tabCards = this.allCards().filter(tab.match);
         const got = tabCards.filter((c) => this.discovered.has(c.id)).length;
-        const rect = this.add.rectangle(tx, 116, 124, 40, active ? 0x1d3047 : 0x0d1420, active ? 1 : 0.9)
-          .setStrokeStyle(2, active ? 0x7ab8d6 : 0x2a3a4d, active ? 1 : 0.8).setInteractive({ useHandCursor: true });
-        rect.on('pointerdown', () => { this.activeTab = i; this.detailId = undefined; this.gridScroll = 0; this.renderAll(); });
-        this.root.add(rect);
-        this.root.add(this.add.text(tx, 107, tab.label, { fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: active ? '#ffe1a3' : '#9fb1c4' }).setOrigin(0.5));
-        this.root.add(this.add.text(tx, 125, `${got}/${tabCards.length}`, { fontFamily: 'Arial', fontSize: '10px', color: '#7f93a8' }).setOrigin(0.5));
+        const sampleCard = tabCards[0];
+        const accent = sampleCard ? this.cardAccent(sampleCard) : 0x7ab8d6;
+        this.renderCodexTab(tx, 116, 124, 40, tab.label, `${got}/${tabCards.length}`, active, accent, () => {
+          this.activeTab = i; this.detailId = undefined; this.gridScroll = 0; this.renderAll();
+        }, 13);
       });
     } else if (itemMode) {
       this.itemTabs.forEach((tab, i) => {
-        const tx = 58 + i * 128;
+        const tx = 72 + i * 128;
         const active = i === this.activeItemTab;
         const tabMarks = this.allWaymarks().filter(tab.match);
-        const rect = this.add.rectangle(tx, 116, 120, 40, active ? 0x1d3047 : 0x0d1420, active ? 1 : 0.9)
-          .setStrokeStyle(2, active ? 0xc9a6ff : 0x2a3a4d, active ? 1 : 0.8).setInteractive({ useHandCursor: true });
-        rect.on('pointerdown', () => { this.activeItemTab = i; this.detailId = undefined; this.gridScroll = 0; this.renderAll(); });
-        this.root.add(rect);
-        this.root.add(this.add.text(tx, 107, tab.label, { fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: active ? '#ffe1a3' : '#9fb1c4' }).setOrigin(0.5));
-        this.root.add(this.add.text(tx, 125, `${tabMarks.length}`, { fontFamily: 'Arial', fontSize: '10px', color: '#7f93a8' }).setOrigin(0.5));
+        const accent = tabMarks[0] ? this.waymarkAccent(tabMarks[0]) : 0xc9a6ff;
+        this.renderCodexTab(tx, 116, 120, 40, tab.label, `${tabMarks.length}`, active, accent, () => {
+          this.activeItemTab = i; this.detailId = undefined; this.gridScroll = 0; this.renderAll();
+        }, 12);
       });
     } else if (!leaderMode) {
       this.enemyTabs.forEach((tab, i) => {
         const tx = 72 + i * 150;
         const active = i === this.activeEnemyTab;
         const tabEnemies = this.allCodexEnemies().filter(tab.match);
-        const rect = this.add.rectangle(tx, 116, 140, 40, active ? 0x1d3047 : 0x0d1420, active ? 1 : 0.9)
-          .setStrokeStyle(2, active ? 0x7ab8d6 : 0x2a3a4d, active ? 1 : 0.8).setInteractive({ useHandCursor: true });
-        rect.on('pointerdown', () => { this.activeEnemyTab = i; this.detailId = undefined; this.gridScroll = 0; this.renderAll(); });
-        this.root.add(rect);
-        this.root.add(this.add.text(tx, 107, tab.label, { fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: active ? '#ffe1a3' : '#9fb1c4' }).setOrigin(0.5));
-        this.root.add(this.add.text(tx, 125, `${tabEnemies.length}`, { fontFamily: 'Arial', fontSize: '10px', color: '#7f93a8' }).setOrigin(0.5));
+        const accent = tabEnemies[0] ? this.enemyAccent(tabEnemies[0]) : 0x7ab8d6;
+        this.renderCodexTab(tx, 116, 140, 40, tab.label, `${tabEnemies.length}`, active, accent, () => {
+          this.activeEnemyTab = i; this.detailId = undefined; this.gridScroll = 0; this.renderAll();
+        }, 13);
       });
     }
 
@@ -1491,24 +1496,32 @@ class CodexScene extends Phaser.Scene {
     const w = aw + 8;
     const h = ah + 8;
     const found = this.discovered.has(card.id);
-    const accent = card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
+    const accent = this.cardAccent(card);
     const bg = this.add.rectangle(cx, cy, w, h, found ? 0x0e131d : 0x0a0d13, found ? 1 : 0.9)
       .setStrokeStyle(found ? 3 : 2, found ? accent : 0x232b35, found ? 1 : 0.7)
       .setInteractive({ useHandCursor: found });
+    bg.on('pointerover', () => bg.setFillStyle(found ? 0x162235 : 0x0d1420, found ? 1 : 0.94));
+    bg.on('pointerout', () => bg.setFillStyle(found ? 0x0e131d : 0x0a0d13, found ? 1 : 0.9));
     if (found) bg.on('pointerdown', () => { this.detailId = card.id; this.detailScroll = 0; this.renderAll(); });
     layer.add(bg);
 
     const key = cardArtKey(card);
     if (found && key && this.textures.exists(key)) {
       layer.add(this.add.image(cx, cy, key).setDisplaySize(aw, ah).setAlpha(0.99));
+      layer.add(this.add.rectangle(cx, cy + ah / 2 - 15, aw - 14, 24, 0x05080e, 0.74).setStrokeStyle(1, accent, 0.38));
+      layer.add(this.add.rectangle(cx - aw / 2 + 5, cy, 4, ah - 12, accent, 0.86));
+      layer.add(this.add.text(cx + 18, cy + ah / 2 - 15, this.cardFamilyLabel(card), {
+        fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#dce8f2',
+        fixedWidth: aw - 68, align: 'right'
+      }).setResolution(2).setOrigin(0.5));
       // Cost badge (gameplay info not shown in the illustration).
       layer.add(this.add.circle(cx - aw / 2 + 18, cy - ah / 2 + 18, 15, card.cost === 0 ? 0x24d0d6 : 0xe8b830, 1).setStrokeStyle(2, 0x05080e, 0.95));
       layer.add(this.add.text(cx - aw / 2 + 18, cy - ah / 2 + 18, `${card.cost}`, { fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#06101c' }).setOrigin(0.5));
     } else if (found) {
       layer.add(this.add.text(cx, cy, displayName(card), { fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: '#cdd9e6', align: 'center', wordWrap: { width: aw - 16 } }).setOrigin(0.5));
+      this.addCodexChip(layer, cx, cy + 72, 118, this.cardFamilyLabel(card), accent, true);
     } else {
-      layer.add(this.add.text(cx, cy - 14, '?', { fontFamily: 'Georgia, serif', fontSize: '72px', fontStyle: 'bold', color: '#2f3a47' }).setOrigin(0.5));
-      layer.add(this.add.text(cx, cy + 84, 'Undiscovered', { fontFamily: 'Arial', fontSize: '12px', color: '#566778' }).setOrigin(0.5));
+      this.drawLockedCardBack(layer, card, cx, cy, aw, ah, accent);
     }
   }
 
@@ -1543,8 +1556,11 @@ class CodexScene extends Phaser.Scene {
     const bg = this.add.rectangle(cx, cy, w, h, 0x0d1420, 0.96)
       .setStrokeStyle(2, accent, 0.9)
       .setInteractive({ useHandCursor: true });
+    bg.on('pointerover', () => bg.setFillStyle(0x142033, 0.98));
+    bg.on('pointerout', () => bg.setFillStyle(0x0d1420, 0.96));
     bg.on('pointerdown', () => { this.detailId = mark.id; this.detailScroll = 0; this.renderAll(); });
     layer.add(bg);
+    layer.add(this.add.rectangle(cx, cy - h / 2 + 7, w - 16, 4, accent, 0.82));
 
     const artAsset = waymarkArtAssets[mark.id];
     layer.add(this.add.circle(cx - 92, cy - 34, 32, 0x05080e, 0.94).setStrokeStyle(2, accent, 0.9));
@@ -1563,6 +1579,8 @@ class CodexScene extends Phaser.Scene {
       fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#8df4ff',
       wordWrap: { width: 168 }
     }).setOrigin(0, 0));
+    this.addCodexChip(layer, cx - 58, cy + 7, 98, mark.trigger, accent);
+    this.addCodexChip(layer, cx + 52, cy + 7, 106, mark.effect, accent);
     layer.add(this.add.text(cx - 112, cy + 18, mark.description, {
       fontFamily: 'Arial', fontSize: '12px', color: '#cdd9e6',
       align: 'center', wordWrap: { width: w - 28 }
@@ -1661,8 +1679,11 @@ class CodexScene extends Phaser.Scene {
     const bg = this.add.rectangle(cx, cy, w, h, unlocked ? 0x0d1420 : 0x0a0d13, unlocked ? 0.98 : 0.92)
       .setStrokeStyle(2, unlocked ? accent : 0x2a3a4d, unlocked ? 0.9 : 0.72)
       .setInteractive({ useHandCursor: true });
+    bg.on('pointerover', () => bg.setFillStyle(unlocked ? 0x142033 : 0x0d1420, unlocked ? 1 : 0.94));
+    bg.on('pointerout', () => bg.setFillStyle(unlocked ? 0x0d1420 : 0x0a0d13, unlocked ? 0.98 : 0.92));
     bg.on('pointerdown', () => { this.detailId = leader.id; this.detailScroll = 0; this.renderAll(); });
     layer.add(bg);
+    layer.add(this.add.rectangle(cx, cy - h / 2 + 8, w - 18, 4, unlocked ? accent : 0x2a3a4d, unlocked ? 0.84 : 0.6));
 
     const art = flockLeaderArtAssets[leader.id];
     if (art && this.textures.exists(art.key)) {
@@ -1684,10 +1705,8 @@ class CodexScene extends Phaser.Scene {
       fontFamily: 'Georgia, serif', fontSize: '13px', fontStyle: 'italic', color: unlocked ? '#d9c8ff' : '#657385',
       align: 'center', wordWrap: { width: 176 }
     }).setOrigin(0.5, 0));
-    layer.add(this.add.text(cx + 26, cy - 12, unlocked ? `${leader.suit} / ${leader.bird}` : (leaderUnlockHints[leader.id] ?? 'Locked'), {
-      fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: unlocked ? '#8df4ff' : '#8fa3b6',
-      align: 'center', wordWrap: { width: 176 }
-    }).setOrigin(0.5, 0));
+    this.addCodexChip(layer, cx - 24, cy + 8, 86, leader.suit, accent, unlocked);
+    this.addCodexChip(layer, cx + 72, cy + 8, 86, unlocked ? 'Rallied' : 'Locked', accent, unlocked);
     layer.add(this.add.text(cx + 26, cy + 20, lore?.codexSummary ?? leader.blurb, {
       fontFamily: 'Arial', fontSize: '12px', color: unlocked ? '#cdd9e6' : '#7f93a8',
       align: 'center', wordWrap: { width: 178 }
@@ -1872,8 +1891,11 @@ class CodexScene extends Phaser.Scene {
     const bg = this.add.rectangle(cx, cy, w, h, 0x0d1420, 0.96)
       .setStrokeStyle(2, accent, 0.88)
       .setInteractive({ useHandCursor: true });
+    bg.on('pointerover', () => bg.setFillStyle(0x142033, 0.98));
+    bg.on('pointerout', () => bg.setFillStyle(0x0d1420, 0.96));
     bg.on('pointerdown', () => { this.detailId = enemy.id; this.detailScroll = 0; this.renderAll(); });
     layer.add(bg);
+    layer.add(this.add.rectangle(cx - w / 2 + 6, cy, 5, h - 16, accent, 0.85));
 
     const art = this.enemyArtAsset(enemy);
     if (art && this.textures.exists(art.key)) {
@@ -1895,6 +1917,7 @@ class CodexScene extends Phaser.Scene {
       fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: '#8df4ff',
       align: 'center', wordWrap: { width: 142 }
     }).setOrigin(0.5, 0));
+    this.addCodexChip(layer, cx + 14, cy - 1, 118, enemy.source === 'encounter' ? enemy.typeHint : 'Reserve', accent);
     layer.add(this.add.text(cx + 14, cy + 8, enemy.district, {
       fontFamily: 'Arial', fontSize: '11px', color: '#8fa3b6',
       align: 'center', wordWrap: { width: 142 }
@@ -1927,13 +1950,20 @@ class CodexScene extends Phaser.Scene {
     const right = px + MW / 2;
     const mTop = py - MH / 2;
     const mBottom = py + MH / 2;
-    this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, 0x7ab8d6, 1));
+    const accentColor = this.cardAccent(card);
+    const accentText = this.hexColor(accentColor);
+    this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accentColor, 1));
+    this.root.add(this.add.rectangle(left + 32, mTop + 28, 150, 28, 0x07101c, 0.96).setStrokeStyle(1, accentColor, 0.9));
+    this.root.add(this.add.text(left + 44, mTop + 36, 'CARD DOSSIER', {
+      fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText
+    }).setResolution(2));
 
     // Large card art on the left, at the art's true 2:3 aspect (no distortion).
     const key = cardArtKey(card);
     const artW = 320;
     const artH = artW * 1.5;
     const artX = left + 24 + artW / 2;
+    this.root.add(this.add.rectangle(artX, py, artW + 14, artH + 14, 0x05080e, 0.88).setStrokeStyle(2, accentColor, 0.7));
     if (key && this.textures.exists(key)) {
       this.root.add(this.add.image(artX, py, key).setDisplaySize(artW, artH).setAlpha(0.99));
     } else {
@@ -1950,7 +1980,7 @@ class CodexScene extends Phaser.Scene {
     const viewH = viewBottom - viewTop;
     const flav = this.codexData?.getCardFlavor(card.id);
     const meaning = this.codexData?.getCardMeaning(card.id);
-    const accent = card.type === 'major' ? '#d8a840' : card.type === 'molt' ? '#c56cff' : `#${suitAccentColor(card).toString(16).padStart(6, '0')}`;
+    const accent = accentText;
     let yy = viewTop - this.detailScroll;
     const heading = (t: string, color: string) => { this.root.add(this.add.text(tx, yy, t, { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color })); yy += 17; };
     const para = (t: string, opts: { color?: string; size?: number; italic?: boolean }) => {
@@ -2032,7 +2062,7 @@ class CodexScene extends Phaser.Scene {
     this.root.add(this.add.rectangle(left + 1, mTop + 1, MW - 2, viewTop - mTop - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
     this.root.add(this.add.rectangle(left + 1, viewBottom, MW - 2, mBottom - viewBottom - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
     // Redraw the panel border crisply over the covers.
-    this.root.add(this.add.rectangle(px, py, MW, MH, 0x000000, 0).setStrokeStyle(2, 0x7ab8d6, 1));
+    this.root.add(this.add.rectangle(px, py, MW, MH, 0x000000, 0).setStrokeStyle(2, accentColor, 1));
     // Thin accent rule between art and text column (clipped to the viewport band).
     this.root.add(this.add.rectangle(tx - 14, (viewTop + viewBottom) / 2, 2, viewH - 8, Phaser.Display.Color.HexStringToColor(accent).color, 0.5));
 
@@ -2064,9 +2094,14 @@ class CodexScene extends Phaser.Scene {
     const accent = this.enemyAccent(enemy);
     const accentText = `#${accent.toString(16).padStart(6, '0')}`;
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accent, 1));
+    this.root.add(this.add.rectangle(left + 32, mTop + 28, 158, 28, 0x07101c, 0.96).setStrokeStyle(1, accent, 0.9));
+    this.root.add(this.add.text(left + 44, mTop + 36, 'ENEMY DOSSIER', {
+      fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText
+    }).setResolution(2));
 
     const art = this.enemyArtAsset(enemy);
     const artBoxX = left + 220;
+    this.root.add(this.add.rectangle(artBoxX, py + 8, 372, 512, 0x05080e, 0.58).setStrokeStyle(1, accent, 0.52));
     if (art && this.textures.exists(art.key)) {
       const fit = this.fittedTextureSize(art.key, 360, 500);
       this.root.add(this.add.image(artBoxX, py + 8, art.key).setDisplaySize(fit.w, fit.h).setAlpha(0.99));
@@ -4247,24 +4282,27 @@ class BattleScene extends Phaser.Scene {
   ) {
     if (prefersReducedMotion() || !this.textures.exists(COMBAT_FX_PARTICLE_TEXTURE)) return;
     const lifespan = options.lifespan ?? 420;
+    const count = options.count ?? 12;
+    const speed = options.speed ?? 135;
     const emitter = this.add.particles(x, y, COMBAT_FX_PARTICLE_TEXTURE, {
       emitting: false,
       frequency: -1,
       lifespan: { min: Math.max(140, lifespan * 0.55), max: lifespan },
-      speed: { min: (options.speed ?? 135) * 0.35, max: options.speed ?? 135 },
+      speed: { min: speed * 0.22, max: speed },
       angle: options.angle ?? { min: 0, max: 360 },
       x: { min: -(options.spreadX ?? 8), max: options.spreadX ?? 8 },
       y: { min: -(options.spreadY ?? 8), max: options.spreadY ?? 8 },
-      scale: { start: options.scale ?? 0.82, end: 0, ease: 'Cubic.easeOut' },
-      alpha: { start: 0.92, end: 0, ease: 'Cubic.easeIn' },
-      rotate: { min: -90, max: 90 },
+      scale: { start: (options.scale ?? 0.82) * 0.78, end: 0, ease: 'Cubic.easeOut' },
+      alpha: { start: 0.82, end: 0, ease: 'Cubic.easeIn' },
+      rotate: { min: -45, max: 45 },
       gravityY: options.gravityY ?? 24,
-      tint: color,
+      tint: { start: 0xffffff, end: color },
       blendMode: Phaser.BlendModes.ADD,
-      maxParticles: options.count ?? 12,
+      maxParticles: count,
+      reserve: count,
     });
     this.fxLayer.add(emitter);
-    emitter.explode(options.count ?? 12);
+    emitter.explode(count);
     this.time.delayedCall(lifespan + 120, () => emitter.destroy());
   }
 
@@ -4283,36 +4321,41 @@ class BattleScene extends Phaser.Scene {
 
   private fxGlowPulse(x: number, y: number, color: number, radius = 72, duration = 360, alpha = 0.2) {
     if (prefersReducedMotion()) return;
-    const glow = this.add.ellipse(x, y, radius, radius * 0.56, color, alpha)
+    const glow = this.add.container(x, y);
+    const falloff = this.add.ellipse(0, 0, radius * 1.05, radius * 0.52, color, alpha * 0.34)
+      .setOrigin(0.5);
+    const core = this.add.ellipse(0, 0, radius * 0.48, radius * 0.22, color, alpha * 0.92)
       .setOrigin(0.5)
       .setBlendMode(Phaser.BlendModes.ADD);
+    glow.add([falloff, core]);
+    glow.setScale(0.72).setAlpha(0.92);
     this.fxLayer.add(glow);
     this.tweens.add({
       targets: glow,
-      scaleX: 1.85,
-      scaleY: 1.45,
+      scaleX: 1.44,
+      scaleY: 1.16,
       alpha: 0,
       duration,
       ease: 'Cubic.easeOut',
-      onComplete: () => glow.destroy(),
+      onComplete: () => glow.destroy(true),
     });
   }
 
   private fxShockwave(x: number, y: number, color: number, radius = 86, duration = 430, tilt = -8) {
     if (prefersReducedMotion()) return;
     const ring = this.add.graphics();
-    ring.lineStyle(4, 0x020409, 0.34);
-    ring.strokeEllipse(0, 0, radius * 1.05, radius * 0.46);
-    ring.lineStyle(2, color, 0.82);
+    ring.lineStyle(3, 0x020409, 0.28);
+    ring.strokeEllipse(0, 0, radius * 1.03, radius * 0.44);
+    ring.lineStyle(2, color, 0.72);
     ring.strokeEllipse(0, 0, radius, radius * 0.42);
-    ring.lineStyle(1, 0xffffff, 0.36);
+    ring.lineStyle(1, 0xffffff, 0.28);
     ring.strokeEllipse(0, 0, radius * 0.66, radius * 0.25);
-    ring.setPosition(x, y).setAngle(tilt).setBlendMode(Phaser.BlendModes.ADD);
+    ring.setPosition(x, y).setAngle(tilt).setScale(0.68).setBlendMode(Phaser.BlendModes.ADD);
     this.fxLayer.add(ring);
     this.tweens.add({
       targets: ring,
-      scaleX: 1.72,
-      scaleY: 1.36,
+      scaleX: 1.32,
+      scaleY: 1.08,
       alpha: 0,
       duration,
       ease: 'Cubic.easeOut',
@@ -4322,32 +4365,23 @@ class BattleScene extends Phaser.Scene {
 
   private fxDirectionalStreak(x1: number, y1: number, x2: number, y2: number, color: number, duration = 260) {
     if (prefersReducedMotion()) return;
-    const streak = this.add.graphics();
-    streak.lineStyle(7, 0x020409, 0.34);
-    streak.beginPath();
-    streak.moveTo(x1, y1);
-    streak.lineTo(x2, y2);
-    streak.strokePath();
-    streak.lineStyle(3, color, 0.92);
-    streak.beginPath();
-    streak.moveTo(x1, y1);
-    streak.lineTo(x2, y2);
-    streak.strokePath();
-    streak.lineStyle(1, 0xffffff, 0.5);
-    streak.beginPath();
-    streak.moveTo(x1 + 4, y1 - 4);
-    streak.lineTo(x2 - 4, y2 + 4);
-    streak.strokePath();
-    streak.setBlendMode(Phaser.BlendModes.ADD);
+    const streak = this.add.container(0, 0);
+    const shadow = this.add.line(0, 0, x1, y1, x2, y2, 0x020409, 0.26).setOrigin(0);
+    shadow.setLineWidth(6, 1);
+    const ribbon = this.add.line(0, 0, x1, y1, x2, y2, color, 0.82).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD);
+    ribbon.setLineWidth(3, 0.7);
+    const glint = this.add.line(0, 0, x1 + 3, y1 - 3, x2 - 6, y2 + 5, 0xffffff, 0.36).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD);
+    glint.setLineWidth(1.2, 0.2);
+    streak.add([shadow, ribbon, glint]);
     this.fxLayer.add(streak);
     this.tweens.add({
       targets: streak,
       alpha: 0,
-      scaleX: 1.03,
-      scaleY: 1.03,
+      x: (x2 - x1) * 0.018,
+      y: (y2 - y1) * 0.018,
       duration,
       ease: 'Quad.easeOut',
-      onComplete: () => streak.destroy(),
+      onComplete: () => streak.destroy(true),
     });
   }
 
@@ -4360,19 +4394,19 @@ class BattleScene extends Phaser.Scene {
       [-24, 16],
       [-26, -14],
     ];
-    g.lineStyle(4, 0x020409, 0.35);
+    g.lineStyle(3, 0x020409, 0.34);
     g.beginPath();
     g.moveTo(points[0][0], points[0][1]);
     points.slice(1).forEach(([x, y]) => g.lineTo(x, y));
     g.closePath();
     g.strokePath();
-    g.lineStyle(2, color, 0.9);
+    g.lineStyle(2, color, 0.82);
     g.beginPath();
     g.moveTo(points[0][0], points[0][1]);
     points.slice(1).forEach(([x, y]) => g.lineTo(x, y));
     g.closePath();
     g.strokePath();
-    g.lineStyle(2, color, 0.58);
+    g.lineStyle(1.5, 0xffffff, 0.38);
     g.beginPath();
     g.moveTo(-16, 4);
     g.lineTo(-2, 18);
@@ -4387,15 +4421,16 @@ class BattleScene extends Phaser.Scene {
     if (suit === 'nests') {
       this.drawSuitHex(sig, color);
     } else if (suit === 'basins') {
-      sig.lineStyle(4, 0x020409, 0.28);
+      sig.lineStyle(3, 0x020409, 0.24);
       sig.strokeEllipse(0, 10, 62, 16);
       sig.strokeEllipse(0, 0, 44, 12);
-      sig.lineStyle(2, color, 0.9);
+      sig.lineStyle(2, color, 0.8);
       sig.strokeEllipse(0, 10, 62, 16);
       sig.strokeEllipse(0, 0, 44, 12);
+      sig.lineStyle(1, 0xffffff, 0.36);
       sig.strokeEllipse(0, -9, 26, 8);
     } else if (suit === 'plumes') {
-      sig.lineStyle(5, 0x020409, 0.28);
+      sig.lineStyle(4, 0x020409, 0.24);
       sig.beginPath();
       sig.moveTo(-28, 12);
       sig.lineTo(24, -20);
@@ -4404,7 +4439,7 @@ class BattleScene extends Phaser.Scene {
       sig.moveTo(-22, -8);
       sig.lineTo(8, -28);
       sig.strokePath();
-      sig.lineStyle(2, color, 0.92);
+      sig.lineStyle(2, color, 0.82);
       sig.beginPath();
       sig.moveTo(-28, 12);
       sig.lineTo(24, -20);
@@ -4414,7 +4449,7 @@ class BattleScene extends Phaser.Scene {
       sig.lineTo(8, -28);
       sig.strokePath();
     } else if (suit === 'quills') {
-      sig.lineStyle(5, 0x020409, 0.28);
+      sig.lineStyle(4, 0x020409, 0.24);
       sig.beginPath();
       sig.moveTo(-22, 26);
       sig.lineTo(20, -28);
@@ -4423,7 +4458,7 @@ class BattleScene extends Phaser.Scene {
       sig.moveTo(-28, 4);
       sig.lineTo(10, -18);
       sig.strokePath();
-      sig.lineStyle(2, color, 0.94);
+      sig.lineStyle(2, color, 0.86);
       sig.beginPath();
       sig.moveTo(-22, 26);
       sig.lineTo(20, -28);
@@ -4433,7 +4468,7 @@ class BattleScene extends Phaser.Scene {
       sig.lineTo(10, -18);
       sig.strokePath();
     } else {
-      sig.lineStyle(2, color, 0.88);
+      sig.lineStyle(2, color, 0.76);
       for (let i = 0; i < 8; i += 1) {
         const a = Phaser.Math.DegToRad(i * 45);
         sig.beginPath();
@@ -4442,14 +4477,14 @@ class BattleScene extends Phaser.Scene {
         sig.strokePath();
       }
     }
-    sig.setPosition(x, y).setScale(scale).setAlpha(0.98);
+    sig.setPosition(x, y).setScale(scale * 0.84).setAlpha(0.9);
     this.fxLayer.add(sig);
     this.tweens.add({
       targets: sig,
-      scaleX: scale * 1.3,
-      scaleY: scale * 1.3,
+      scaleX: scale * 1.14,
+      scaleY: scale * 1.14,
       alpha: 0,
-      duration: 470,
+      duration: 380,
       ease: 'Cubic.easeOut',
       onComplete: () => sig.destroy(),
     });
@@ -4458,8 +4493,8 @@ class BattleScene extends Phaser.Scene {
   private fxImpactBurst(x: number, y: number, color: number, suit: string | null | undefined, intensity = 1) {
     if (prefersReducedMotion()) return;
     const burst = this.add.graphics();
-    const reach = 42 * intensity;
-    const inner = 9 * intensity;
+    const reach = 37 * intensity;
+    const inner = 7 * intensity;
     const angles = suit === 'basins'
       ? [-164, -126, -88, -50]
       : suit === 'nests'
@@ -4468,10 +4503,10 @@ class BattleScene extends Phaser.Scene {
           ? [-178, -142, -108, -72]
           : [-64, -34, -4, 28];
     burst.setBlendMode(Phaser.BlendModes.ADD);
-    burst.fillStyle(color, 0.2);
-    burst.fillCircle(0, 0, 34 * intensity);
-    burst.fillStyle(0xffffff, 0.34);
-    burst.fillCircle(0, 0, 9 * intensity);
+    burst.fillStyle(color, 0.14);
+    burst.fillCircle(0, 0, 27 * intensity);
+    burst.fillStyle(0xffffff, 0.44);
+    burst.fillCircle(0, 0, 7 * intensity);
     const drawRays = (width: number, rayColor: number, alpha: number, offset = 0) => {
       burst.lineStyle(width, rayColor, alpha);
       angles.forEach((deg, index) => {
@@ -4482,26 +4517,26 @@ class BattleScene extends Phaser.Scene {
         burst.strokePath();
       });
     };
-    drawRays(8, 0x020409, 0.38);
-    drawRays(4, color, 0.96);
-    drawRays(1, 0xffffff, 0.72, -2);
-    burst.setPosition(x, y).setScale(0.72).setAlpha(0.98);
+    drawRays(6, 0x020409, 0.26);
+    drawRays(3, color, 0.86);
+    drawRays(1, 0xffffff, 0.64, -2);
+    burst.setPosition(x, y).setScale(0.58).setAlpha(0.92);
     this.fxLayer.add(burst);
     this.tweens.add({
       targets: burst,
-      scaleX: 1.28,
-      scaleY: 1.28,
+      scaleX: 1.16,
+      scaleY: 1.16,
       alpha: 0,
-      duration: 360,
-      ease: 'Cubic.easeOut',
+      duration: 290,
+      ease: 'Quad.easeOut',
       onComplete: () => burst.destroy(),
     });
     this.time.delayedCall(50, () => {
       this.fxMoteBurst(x, y, color, {
-        count: Math.round(10 * intensity),
-        speed: 178 * intensity,
-        lifespan: 360,
-        scale: 0.58,
+        count: Math.round(7 * intensity),
+        speed: 150 * intensity,
+        lifespan: 300,
+        scale: 0.5,
         gravityY: suit === 'basins' ? -18 : 10,
         spreadX: 14,
         spreadY: 10,
