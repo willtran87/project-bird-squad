@@ -228,6 +228,7 @@ interface RenderPayload {
     supplies?: string[];
     battlefieldAssetKey?: string;
     battlefieldVariant?: boolean;
+    battlefieldMood?: 'street' | 'rival' | 'boss';
   };
   inspectOverlay?: InspectOverlay;
   waymarkDrawerOpen?: boolean;
@@ -385,6 +386,12 @@ const BATTLEFIELD_BOSS_VARIANTS: Partial<Record<string, RuntimeImageAsset>> = {
   map_02_canal_markets: battlefieldVariantAsset('canal-markets-boss-gatekeeper-v1.webp', 'battlefield-canal-markets-boss-gatekeeper'),
   map_03_signal_spires: battlefieldVariantAsset('signal-spires-boss-beacon-breaker-v1.webp', 'battlefield-signal-spires-boss-beacon-breaker'),
   map_04_high_roost: battlefieldVariantAsset('high-roost-boss-warden-v1.webp', 'battlefield-high-roost-boss-warden')
+};
+const ROUTE_EVENT_BACKDROP_ASSETS: Partial<Record<RouteNode['type'], RuntimeImageAsset>> = {
+  cache: battlefieldVariantAsset('rooftop-blocks-cache-billboard-v1.webp', 'route-event-cache-billboard'),
+  market: battlefieldVariantAsset('canal-markets-supply-market-v1.webp', 'route-event-supply-market'),
+  signal: battlefieldVariantAsset('signal-spires-signal-relay-v1.webp', 'route-event-signal-relay'),
+  nest: battlefieldVariantAsset('high-roost-workshop-prep-v1.webp', 'route-event-workshop-prep')
 };
 const ROUTE_MAP_BACKDROP_ASSET = {
   key: 'route-map-backdrop-rooftop-blocks',
@@ -2343,6 +2350,40 @@ class RouteScene extends Phaser.Scene {
     );
   }
 
+  private routeEventBackdropAsset(node?: RouteNode) {
+    return node ? ROUTE_EVENT_BACKDROP_ASSETS[node.type] : undefined;
+  }
+
+  private queueRouteEventBackdropArtLoad(node?: RouteNode) {
+    queueRuntimeImageAssets(
+      this,
+      [this.routeEventBackdropAsset(node)],
+      'Route event backdrop failed to load',
+      () => this.renderAll()
+    );
+  }
+
+  private renderRouteEventBackdrop(node?: RouteNode, opacity = 0.74) {
+    this.queueRouteEventBackdropArtLoad(node);
+    const asset = this.routeEventBackdropAsset(node);
+    const hasBackdrop = !!asset && this.textures.exists(asset.key);
+    if (hasBackdrop && asset) {
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, asset.key)
+        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+        .setAlpha(opacity);
+    }
+    this.add.rectangle(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2,
+      GAME_WIDTH,
+      GAME_HEIGHT,
+      0x020409,
+      hasBackdrop ? 0.54 : 0.82
+    ).setInteractive({ useHandCursor: false });
+    this.add.rectangle(GAME_WIDTH / 2, 108, GAME_WIDTH, 216, 0x020409, hasBackdrop ? 0.34 : 0.08);
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 96, GAME_WIDTH, 192, 0x020409, hasBackdrop ? 0.4 : 0.08);
+  }
+
   private renderConfirmExitOverlay() {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.86)
       .setInteractive({ useHandCursor: false });
@@ -3225,7 +3266,7 @@ class RouteScene extends Phaser.Scene {
     if (!node) return;
     const choices = this.nodeChoiceList(node);
     const signal = node.type === 'signal' ? alphaSignalLibrary.get(node.payloadId) : undefined;
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.82).setInteractive({ useHandCursor: false });
+    this.renderRouteEventBackdrop(node, 0.76);
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 760, 470, 0x0d1420, 0.98).setStrokeStyle(3, 0xd8a840, 0.95);
     this.add.text(GAME_WIDTH / 2, 162, signal?.title ?? routeNodeTypeLabel(node.type), {
       fontFamily: 'Arial', fontSize: '30px', fontStyle: 'bold', color: '#ffe1a3', stroke: '#000000', strokeThickness: 4
@@ -3311,8 +3352,8 @@ class RouteScene extends Phaser.Scene {
 
   private renderMarketOverlay() {
     this.queueOptionalCardArtLoad();
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.78)
-      .setInteractive({ useHandCursor: false });
+    const node = currentMap().nodes.find((candidate) => candidate.id === this.marketNodeId);
+    this.renderRouteEventBackdrop(node, 0.78);
     const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2, 940, 520, {
       eyebrow: 'Rooftop Stall',
       title: 'Market',
@@ -3670,6 +3711,10 @@ class RouteScene extends Phaser.Scene {
     const inspected = this.deckOverlayOpen
       ? inspectedCardPayload(getInspectedEntry(this.mapDeckCards(), this.inspectedCardId), undefined)
       : undefined;
+    const marketNode = currentMap().nodes.find((node) => node.id === this.marketNodeId);
+    const choiceNode = currentMap().nodes.find((node) => node.id === this.nodeChoiceNodeId);
+    const marketBackdrop = this.routeEventBackdropAsset(marketNode);
+    const choiceBackdrop = this.routeEventBackdropAsset(choiceNode);
     window.render_game_to_text = () => JSON.stringify({
       mode: 'routeSelection',
       scene: 'RouteScene',
@@ -3700,7 +3745,15 @@ class RouteScene extends Phaser.Scene {
             cardOffer: this.marketCardOffer()?.id ?? '',
             routeMarkOffer: this.marketRouteMarkOffer()?.id ?? '',
             preenOffer: this.marketPreenCandidate()?.id ?? '',
-            message: this.marketMessage
+            message: this.marketMessage,
+            backdropAssetKey: marketBackdrop?.key ?? ''
+        }
+        : undefined,
+      nodeChoice: this.nodeChoiceOpen && choiceNode
+        ? {
+            nodeId: choiceNode.id,
+            type: choiceNode.type,
+            backdropAssetKey: choiceBackdrop?.key ?? ''
         }
         : undefined,
       bossPrep: this.bossPrepReadiness(),
@@ -4199,7 +4252,56 @@ class BattleScene extends Phaser.Scene {
     shade.fillRect(0, 0, 150, GAME_HEIGHT);
     shade.fillRect(GAME_WIDTH - 150, 0, 150, GAME_HEIGHT);
     this.root.add(shade);
+    this.renderEncounterBackdropTreatment();
     this.renderAtmosphereOverlay();
+  }
+
+  private battlefieldMood(): 'street' | 'rival' | 'boss' {
+    const type = this.currentRouteNode()?.type;
+    if (type === 'boss') return 'boss';
+    if (type === 'rival') return 'rival';
+    return 'street';
+  }
+
+  private renderEncounterBackdropTreatment() {
+    const mood = this.battlefieldMood();
+    const treatment = this.add.graphics();
+
+    if (mood === 'boss') {
+      treatment.fillStyle(0x2a0808, 0.18);
+      treatment.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+      treatment.lineStyle(2, 0xff7a6e, 0.22);
+      for (let x = 64; x < GAME_WIDTH; x += 176) {
+        treatment.lineBetween(x, 0, x + 96, 116);
+      }
+      treatment.fillStyle(0xff3d3d, 0.34);
+      for (let x = 196; x < GAME_WIDTH; x += 196) {
+        treatment.fillCircle(x, 18, 4);
+        treatment.fillCircle(x, 26, 2);
+      }
+      treatment.fillStyle(0x020409, 0.34);
+      treatment.fillRect(0, 0, GAME_WIDTH, 72);
+    } else if (mood === 'rival') {
+      treatment.fillStyle(0x241508, 0.13);
+      treatment.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+      treatment.lineStyle(3, 0xffcf6b, 0.18);
+      for (let x = -120; x < GAME_WIDTH + 160; x += 150) {
+        treatment.lineBetween(x, 452, x + 280, 248);
+      }
+      treatment.fillStyle(0xff9d4d, 0.16);
+      treatment.fillRect(0, 130, 142, 286);
+      treatment.fillRect(GAME_WIDTH - 142, 116, 142, 320);
+    } else {
+      treatment.lineStyle(1, 0x8df4ff, 0.12);
+      for (let x = 160; x < GAME_WIDTH; x += 220) {
+        treatment.lineBetween(x, 114, x - 74, 438);
+      }
+      treatment.fillStyle(0x8df4ff, 0.06);
+      treatment.fillRect(150, 116, 3, 324);
+      treatment.fillRect(GAME_WIDTH - 153, 116, 3, 324);
+    }
+
+    this.root.add(treatment);
   }
 
   private renderAtmosphereOverlay() {
@@ -7492,7 +7594,8 @@ class BattleScene extends Phaser.Scene {
         routeMarks: [...this.routeMarks],
         supplies: [...this.runSupplies],
         battlefieldAssetKey: battlefield.key,
-        battlefieldVariant: battlefield.key !== districtBattlefield.key
+        battlefieldVariant: battlefield.key !== districtBattlefield.key,
+        battlefieldMood: this.battlefieldMood()
       },
       inspectOverlay: this.inspectOverlay,
       waymarkDrawerOpen: this.waymarkDrawerOpen,
@@ -8906,6 +9009,15 @@ function aggregateFlockStats(cards: Card[]) {
   return stats;
 }
 
+function shouldPreserveDrawingBufferForCapture() {
+  return typeof window !== 'undefined'
+    && (
+      window.location.search.includes('capture=1')
+      || window.location.search.includes('playwright=1')
+      || navigator.webdriver
+    );
+}
+
 function shuffle<T>(items: T[]) {
   for (let i = items.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -8926,7 +9038,8 @@ const config: Phaser.Types.Core.GameConfig = {
   roundPixels: false,
   render: {
     mipmapFilter: 'LINEAR_MIPMAP_LINEAR', // trilinear: sharp, alias-free downscaling
-    powerPreference: 'high-performance'
+    powerPreference: 'high-performance',
+    preserveDrawingBuffer: shouldPreserveDrawingBufferForCapture()
   },
   scale: {
     mode: Phaser.Scale.FIT,

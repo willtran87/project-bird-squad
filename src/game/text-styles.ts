@@ -3,9 +3,7 @@ import { TEXT, TEXT_DIM, TEXT_MUTE, CARD_CREAM } from './theme';
 
 type TextStyle = Phaser.Types.GameObjects.Text.TextStyle;
 
-// TODO: swap for a licensed/OFL face (UI sans + Kreon-class serif); Grindy Brush is personal-use-only, do NOT use.
 export const FONT_UI = 'Arial';
-// TODO: swap for a licensed/OFL face (UI sans + Kreon-class serif); Grindy Brush is personal-use-only, do NOT use.
 export const FONT_DISPLAY = 'Georgia, serif';
 
 export function titleStyle(over?: Partial<TextStyle>): TextStyle {
