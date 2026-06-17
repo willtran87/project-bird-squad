@@ -437,6 +437,11 @@ const battlefieldVariantRuntimeArtUrls = import.meta.glob('../assets/runtime/bac
   query: '?url',
   import: 'default',
 }) as Record<string, string>;
+const marketKitRuntimeArtUrls = import.meta.glob('../assets/runtime/market-kit/*.webp', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
 
 function battlefieldVariantAsset(filename: string, key: string): RuntimeImageAsset {
   return {
@@ -445,6 +450,21 @@ function battlefieldVariantAsset(filename: string, key: string): RuntimeImageAss
       ?? `/assets/runtime/backdrops/variants/${filename}`
   };
 }
+
+function marketKitAsset(filename: string, key: string): RuntimeImageAsset {
+  return {
+    key,
+    url: marketKitRuntimeArtUrls[`../assets/runtime/market-kit/${filename}`]
+      ?? `/assets/runtime/market-kit/${filename}`
+  };
+}
+
+const MARKET_KIT_ASSETS = {
+  background: marketKitAsset('bird-market-background-v1.webp', 'market-kit-background'),
+  shopkeeper: marketKitAsset('starling-shopkeeper-v1.webp', 'market-kit-shopkeeper-starling'),
+  sign: marketKitAsset('bird-market-sign-v1.webp', 'market-kit-sign'),
+  counter: marketKitAsset('market-counter-wares-v1.webp', 'market-kit-counter-wares')
+};
 
 const BATTLEFIELD_ASSETS: Record<string, RuntimeImageAsset> = {
   map_01_rooftop_blocks: {
@@ -473,7 +493,7 @@ const BATTLEFIELD_BOSS_VARIANTS: Partial<Record<string, RuntimeImageAsset>> = {
 };
 const ROUTE_EVENT_BACKDROP_ASSETS: Partial<Record<RouteNode['type'], RuntimeImageAsset>> = {
   cache: battlefieldVariantAsset('rooftop-blocks-cache-billboard-v1.webp', 'route-event-cache-billboard'),
-  market: battlefieldVariantAsset('canal-markets-supply-market-v1.webp', 'route-event-supply-market'),
+  market: MARKET_KIT_ASSETS.background,
   signal: battlefieldVariantAsset('signal-spires-signal-relay-v1.webp', 'route-event-signal-relay'),
   nest: battlefieldVariantAsset('high-roost-workshop-prep-v1.webp', 'route-event-workshop-prep')
 };
@@ -2658,6 +2678,15 @@ class RouteScene extends Phaser.Scene {
     );
   }
 
+  private queueMarketKitArtLoad() {
+    queueRuntimeImageAssets(
+      this,
+      Object.values(MARKET_KIT_ASSETS),
+      'Market kit art failed to load',
+      () => this.renderAll()
+    );
+  }
+
   private renderRouteEventBackdrop(node?: RouteNode, opacity = 0.74) {
     this.queueRouteEventBackdropArtLoad(node);
     const asset = this.routeEventBackdropAsset(node);
@@ -3737,6 +3766,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderMarketOverlay() {
+    this.queueMarketKitArtLoad();
     this.queueOptionalCardArtLoad();
     const node = currentMap().nodes.find((candidate) => candidate.id === this.marketNodeId);
     this.renderRouteEventBackdrop(node, 0.86);
@@ -3786,79 +3816,96 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderMarketSceneBackdrop(frame: { left: number; right: number; top: number; bottom: number; cx: number; w: number }) {
-    this.add.rectangle(frame.cx, frame.top + 360, frame.w - 86, 390, 0x080604, 0.42)
-      .setStrokeStyle(1, UI_FIELD.gold, 0.2);
-    this.add.rectangle(frame.cx, frame.top + 168, frame.w - 116, 22, 0x241708, 0.86)
-      .setStrokeStyle(1, UI_FIELD.gold, 0.52);
-    for (let i = 0; i < 15; i += 1) {
-      const bx = frame.left + 170 + i * 55;
-      this.add.rectangle(bx, frame.top + 169, 28, 22, i % 2 === 0 ? 0xd8a840 : 0x111923, i % 2 === 0 ? 0.38 : 0.72);
+    const backgroundKey = MARKET_KIT_ASSETS.background.key;
+    const signKey = MARKET_KIT_ASSETS.sign.key;
+    const counterKey = MARKET_KIT_ASSETS.counter.key;
+    const hasBackground = this.textures.exists(backgroundKey);
+
+    if (hasBackground) {
+      this.add.image(frame.cx, frame.top + 330, backgroundKey)
+        .setDisplaySize(frame.w - 46, 500)
+        .setAlpha(0.78);
+      this.add.rectangle(frame.cx, frame.top + 330, frame.w - 46, 500, 0x020409, 0.2);
+    } else {
+      this.add.rectangle(frame.cx, frame.top + 360, frame.w - 86, 390, 0x080604, 0.42)
+        .setStrokeStyle(1, UI_FIELD.gold, 0.2);
+      for (let i = 0; i < 17; i += 1) {
+        const lx = frame.left + 118 + i * 52;
+        this.add.line(lx - 24, frame.top + 210, 0, 0, 48, i % 2 === 0 ? 8 : -3, UI_FIELD.gold, 0.34);
+        this.add.circle(lx, frame.top + 213 + (i % 2) * 7, 4, i % 3 === 0 ? 0x8df4ff : 0xf0c36f, 0.86);
+      }
     }
-    for (let i = 0; i < 17; i += 1) {
-      const lx = frame.left + 118 + i * 52;
-      this.add.line(lx - 24, frame.top + 210, 0, 0, 48, i % 2 === 0 ? 8 : -3, UI_FIELD.gold, 0.34);
-      this.add.circle(lx, frame.top + 213 + (i % 2) * 7, 4, i % 3 === 0 ? 0x8df4ff : 0xf0c36f, 0.86);
+
+    if (this.textures.exists(signKey)) {
+      this.add.image(frame.cx, frame.top + 172, signKey)
+        .setDisplaySize(456, 257)
+        .setAlpha(0.9);
+    } else {
+      this.add.rectangle(frame.cx, frame.top + 168, 456, 58, 0x241708, 0.86)
+        .setStrokeStyle(1, UI_FIELD.gold, 0.52);
     }
-    this.add.rectangle(frame.cx + 26, frame.bottom - 108, frame.w - 164, 128, 0x130c06, 0.96)
-      .setStrokeStyle(2, 0x7b4f18, 0.88);
-    this.add.rectangle(frame.cx + 26, frame.bottom - 166, frame.w - 138, 18, 0x321f0d, 0.98)
-      .setStrokeStyle(1, UI_FIELD.gold, 0.48);
-    this.add.rectangle(frame.cx + 26, frame.bottom - 64, frame.w - 186, 14, 0x070b12, 0.42);
-    for (let i = 0; i < 8; i += 1) {
-      this.add.rectangle(frame.left + 274 + i * 96, frame.bottom - 108, 2, 112, 0x2b1a0a, 0.7);
+
+    if (this.textures.exists(counterKey)) {
+      this.add.image(frame.cx + 44, frame.bottom + 8, counterKey)
+        .setOrigin(0.5, 1)
+        .setDisplaySize(936, 499)
+        .setAlpha(0.5);
+    } else {
+      this.add.rectangle(frame.cx + 26, frame.bottom - 108, frame.w - 164, 128, 0x130c06, 0.96)
+        .setStrokeStyle(2, 0x7b4f18, 0.88);
+      this.add.rectangle(frame.cx + 26, frame.bottom - 166, frame.w - 138, 18, 0x321f0d, 0.98)
+        .setStrokeStyle(1, UI_FIELD.gold, 0.48);
     }
-    this.add.text(frame.left + 314, frame.top + 188, 'CARD RACK', {
-      fontFamily: 'Arial',
-      fontSize: '11px',
-      fontStyle: 'bold',
-      color: '#8df4ff'
-    });
-    this.add.text(frame.left + 320, frame.bottom - 206, 'WAYMARK TRAY', {
-      fontFamily: 'Arial',
-      fontSize: '11px',
-      fontStyle: 'bold',
-      color: '#8df4ff'
-    });
-    this.add.text(frame.right - 296, frame.top + 188, 'SERVICE SIGNS', {
-      fontFamily: 'Arial',
-      fontSize: '11px',
-      fontStyle: 'bold',
-      color: '#8df4ff'
-    });
+
+    this.add.rectangle(frame.left + 588, frame.top + 316, 664, 258, 0x020409, 0.46)
+      .setStrokeStyle(1, UI_FIELD.gold, 0.18);
+    this.add.rectangle(frame.left + 506, frame.bottom - 84, 384, 142, 0x05080e, 0.58)
+      .setStrokeStyle(1, UI_FIELD.gold, 0.24);
+    this.add.rectangle(frame.right - 146, frame.top + 440, 282, 366, 0x020409, 0.5)
+      .setStrokeStyle(1, UI_FIELD.cyan, 0.18);
+    this.add.rectangle(frame.left + 108, frame.top + 238, 190, 250, 0x020409, 0.34)
+      .setStrokeStyle(1, UI_FIELD.gold, 0.16);
   }
 
   private renderMarketVendor(frame: { left: number; top: number; bottom: number }) {
-    const x = frame.left + 166;
-    const y = frame.bottom - 206;
-    this.add.rectangle(x, y + 54, 112, 150, 0x0b1018, 0.98)
+    const x = frame.left + 196;
+    const y = frame.bottom - 34;
+    const shopkeeperKey = MARKET_KIT_ASSETS.shopkeeper.key;
+    if (this.textures.exists(shopkeeperKey)) {
+      this.add.ellipse(x + 4, y - 14, 184, 32, 0x020409, 0.5);
+      this.add.image(x, y, shopkeeperKey)
+        .setOrigin(0.5, 1)
+        .setDisplaySize(248, 372)
+        .setAlpha(0.98);
+      this.add.rectangle(x, frame.bottom - 108, 180, 48, 0x070b12, 0.78)
+        .setStrokeStyle(1, UI_FIELD.gold, 0.42);
+      this.add.text(x, frame.bottom - 121, 'Veyra Tallybright', {
+        fontFamily: 'Arial',
+        fontSize: '14px',
+        fontStyle: 'bold',
+        color: '#ffe1a3',
+        stroke: '#020409',
+        strokeThickness: 3
+      }).setOrigin(0.5, 0);
+      this.add.text(x, frame.bottom - 102, 'canal curator', {
+        fontFamily: 'Arial',
+        fontSize: '10px',
+        fontStyle: 'bold',
+        color: '#8df4ff'
+      }).setOrigin(0.5, 0);
+      return;
+    }
+
+    const fallbackY = frame.bottom - 206;
+    this.add.rectangle(x, fallbackY + 54, 112, 150, 0x0b1018, 0.98)
       .setStrokeStyle(2, UI_FIELD.gold, 0.62);
-    this.add.circle(x, y - 28, 44, 0x1b2630, 0.98)
+    this.add.circle(x, fallbackY - 28, 44, 0x1b2630, 0.98)
       .setStrokeStyle(2, UI_FIELD.cyan, 0.68);
-    this.add.circle(x - 16, y - 34, 7, 0xf0c36f, 0.95);
-    this.add.circle(x + 18, y - 34, 7, 0xf0c36f, 0.95);
-    this.add.rectangle(x, y - 6, 72, 12, 0xf0c36f, 0.76);
-    this.add.rectangle(x - 52, y + 42, 18, 88, 0xd8a840, 0.52).setAngle(-16);
-    this.add.rectangle(x + 52, y + 42, 18, 88, 0xd8a840, 0.52).setAngle(16);
-    this.add.rectangle(x, y + 118, 156, 40, 0x261808, 0.98)
-      .setStrokeStyle(1, UI_FIELD.gold, 0.58);
-    this.add.text(x, y + 108, 'OPEN', {
-      fontFamily: 'Arial',
-      fontSize: '18px',
-      fontStyle: 'bold',
-      color: '#ffe1a3',
-      stroke: '#020409',
-      strokeThickness: 3
-    }).setOrigin(0.5, 0);
-    this.add.rectangle(x - 8, y - 100, 132, 48, 0x0a1018, 0.88)
-      .setStrokeStyle(1, UI_FIELD.gold, 0.54);
-    this.add.text(x - 66, y - 112, 'Trade for the road.', {
-      fontFamily: 'Arial',
-      fontSize: '13px',
-      fontStyle: 'bold',
-      color: '#ffe1a3',
-      wordWrap: { width: 116 },
-      maxLines: 2
-    });
+    this.add.circle(x - 16, fallbackY - 34, 7, 0xf0c36f, 0.95);
+    this.add.circle(x + 18, fallbackY - 34, 7, 0xf0c36f, 0.95);
+    this.add.rectangle(x, fallbackY - 6, 72, 12, 0xf0c36f, 0.76);
+    this.add.rectangle(x - 52, fallbackY + 42, 18, 88, 0xd8a840, 0.52).setAngle(-16);
+    this.add.rectangle(x + 52, fallbackY + 42, 18, 88, 0xd8a840, 0.52).setAngle(16);
   }
 
   private renderMarketRefreshSign(x: number, y: number, cost: number, enabled: boolean) {

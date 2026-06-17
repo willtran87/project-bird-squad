@@ -533,7 +533,7 @@ test('route event overlays render generated special-node backdrops', async ({ pa
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const g = window.__birdSquadGame;
     const cases = [
-      { type: 'market', key: 'route-event-supply-market' },
+      { type: 'market', key: 'market-kit-background' },
       { type: 'cache', key: 'route-event-cache-billboard' },
       { type: 'signal', key: 'route-event-signal-relay' },
       { type: 'nest', key: 'route-event-workshop-prep' }
@@ -591,7 +591,7 @@ test('route event overlays render generated special-node backdrops', async ({ pa
   });
 
   expect(result).toEqual([
-    expect.objectContaining({ type: 'market', stateKey: 'route-event-supply-market', textureLoaded: true, rendered: true }),
+    expect.objectContaining({ type: 'market', stateKey: 'market-kit-background', textureLoaded: true, rendered: true }),
     expect.objectContaining({ type: 'cache', stateKey: 'route-event-cache-billboard', textureLoaded: true, rendered: true }),
     expect.objectContaining({ type: 'signal', stateKey: 'route-event-signal-relay', textureLoaded: true, rendered: true }),
     expect.objectContaining({ type: 'nest', stateKey: 'route-event-workshop-prep', textureLoaded: true, rendered: true })
@@ -790,6 +790,43 @@ test('market shelves stock multiple finite offers and paid refreshes', async ({ 
   expect(result.refreshCount).toBe(1);
   expect(result.scrapAfterRefresh).toBe(result.scrapAfterBuy - result.beforeRefreshCost);
   expect(result.refreshedCardOffers.every((offer: any) => !offer.sold)).toBe(true);
+});
+
+test('market overlay renders generated shopkeeper sign and counter kit', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('RouteScene', {});
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('RouteScene');
+    scene.runState.scrap = 999;
+    const market = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === 'market')
+      ?? window.__birdSquadCurrentMap!().nodes[0];
+    market.type = 'market';
+    scene.openMarketNode(market);
+    const keys = [
+      'market-kit-background',
+      'market-kit-shopkeeper-starling',
+      'market-kit-sign',
+      'market-kit-counter-wares'
+    ];
+    for (let i = 0; i < 80; i += 1) {
+      const loaded = keys.every((key) => scene.textures.exists(key));
+      const rendered = keys.every((key) => scene.children.list.some((child: any) => child.texture?.key === key));
+      if (loaded && rendered) break;
+      await wait(50);
+    }
+    return Object.fromEntries(keys.map((key) => [key, {
+      loaded: scene.textures.exists(key),
+      rendered: scene.children.list.some((child: any) => child.texture?.key === key)
+    }]));
+  });
+
+  expect(result['market-kit-background']).toEqual({ loaded: true, rendered: true });
+  expect(result['market-kit-shopkeeper-starling']).toEqual({ loaded: true, rendered: true });
+  expect(result['market-kit-sign']).toEqual({ loaded: true, rendered: true });
+  expect(result['market-kit-counter-wares']).toEqual({ loaded: true, rendered: true });
 });
 
 test('card choice surfaces expose full card details on hover', async ({ page }) => {
