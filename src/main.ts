@@ -354,6 +354,7 @@ const REWARD_SKIP_SCRAP = 12;
 const COMBAT_FX_TEXTURE = 'combat-fx-atlas';
 const COMBAT_FX_PARTICLE_TEXTURE = 'combat-fx-pixel';
 const COMBAT_ATMOSPHERE_TEXTURE = 'combat-atmosphere-strip';
+const MENU_SOFT_MOTE_TEXTURE = 'menu-soft-mote';
 const SUIT_FX_ANIM: Record<string, string> = {
   plumes: 'fx-plumes',
   quills: 'fx-quills',
@@ -630,6 +631,7 @@ class MenuScene extends Phaser.Scene {
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
       .setAlpha(1);
 
+    this.createHomeParticles();
     this.createAnimatedTitle();
 
     // Keep difficulty near the run action without adding a full-width dock, so
@@ -770,6 +772,53 @@ class MenuScene extends Phaser.Scene {
     panel.on('pointerover', () => { panel.setFillStyle(0x1b2535, 0.96); label.setColor('#ffffff'); });
     panel.on('pointerout', () => { panel.setFillStyle(0x0d1420, 0.92); label.setColor('#ffe1a3'); });
     panel.on('pointerdown', onClick);
+  }
+
+  private ensureHomeParticleTexture() {
+    if (this.textures.exists(MENU_SOFT_MOTE_TEXTURE)) return;
+    const g = this.add.graphics();
+    g.fillStyle(0xffffff, 0.08);
+    g.fillCircle(32, 32, 30);
+    g.fillStyle(0xffffff, 0.12);
+    g.fillCircle(32, 32, 22);
+    g.fillStyle(0xffffff, 0.22);
+    g.fillCircle(32, 32, 13);
+    g.fillStyle(0xffffff, 0.5);
+    g.fillCircle(32, 32, 5);
+    g.generateTexture(MENU_SOFT_MOTE_TEXTURE, 64, 64);
+    g.destroy();
+  }
+
+  private createHomeParticles() {
+    if (prefersReducedMotion()) return;
+    this.ensureHomeParticleTexture();
+    const source = {
+      getRandomPoint: (point: Phaser.Types.Math.Vector2Like) => {
+        point.x = Phaser.Math.Between(44, GAME_WIDTH - 44);
+        point.y = Phaser.Math.Between(GAME_HEIGHT - 82, GAME_HEIGHT + 30);
+      },
+    };
+    const emitter = this.add.particles(0, 0, MENU_SOFT_MOTE_TEXTURE, {
+      emitZone: {
+        type: 'random',
+        source,
+      },
+      frequency: 430,
+      quantity: 1,
+      lifespan: { min: 9000, max: 14500 },
+      radial: false,
+      speedX: { min: -8, max: 8 },
+      speedY: { min: -34, max: -14 },
+      accelerationY: { min: -1.2, max: -0.2 },
+      scale: { start: 0.16, end: 0.48, ease: 'Sine.easeOut' },
+      alpha: { start: 0.28, end: 0, ease: 'Sine.easeIn' },
+      rotate: { min: -10, max: 10 },
+      tint: [0x8df4ff, 0xf1c24c, 0xdce8f2],
+      blendMode: Phaser.BlendModes.ADD,
+      maxAliveParticles: 26,
+      reserve: 26,
+      advance: 10000,
+    });
   }
 
   private continueRun() {
