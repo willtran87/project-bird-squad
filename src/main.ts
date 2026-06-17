@@ -1462,6 +1462,39 @@ class CodexScene extends Phaser.Scene {
     return `#${color.toString(16).padStart(6, '0')}`;
   }
 
+  private renderCodexDossierHeader(
+    left: number,
+    right: number,
+    mTop: number,
+    label: string,
+    meta: string,
+    accent: number,
+    accentText: string
+  ) {
+    const x = (left + right) / 2;
+    const headerW = right - left - 40;
+    const headerY = mTop + 36;
+    this.root.add(this.add.rectangle(x, headerY, headerW, 48, 0x07101c, 0.98).setStrokeStyle(1, accent, 0.72));
+    this.root.add(this.add.rectangle(left + 31, headerY, 5, 30, accent, 0.9));
+    this.root.add(this.add.text(left + 48, headerY - 7, label, {
+      fontFamily: 'Arial',
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: accentText,
+      fixedWidth: 228,
+      maxLines: 1
+    }).setResolution(2).setOrigin(0, 0.5));
+    this.root.add(this.add.text(left + 296, headerY - 7, meta, {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#7f93a8',
+      fixedWidth: headerW - 360,
+      maxLines: 1
+    }).setResolution(2).setOrigin(0, 0.5));
+    this.root.add(this.add.rectangle(x, mTop + 68, headerW - 26, 2, accent, 0.42));
+  }
+
   private addCodexChip(
     layer: Phaser.GameObjects.Container,
     x: number,
@@ -1821,33 +1854,24 @@ class CodexScene extends Phaser.Scene {
     const accent = this.leaderAccent(leader);
     const accentText = `#${accent.toString(16).padStart(6, '0')}`;
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accent, 1));
-    this.root.add(this.add.rectangle(left + 32, mTop + 28, 154, 28, 0x07101c, 0.96).setStrokeStyle(1, accent, 0.9));
-    this.root.add(this.add.text(left + 44, mTop + 36, 'FIELD DOSSIER', {
-      fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText
-    }));
-    this.root.add(this.add.text(left + 198, mTop + 36, `ID ${leader.id.toUpperCase().replace(/_/g, '-')}`, {
-      fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#6f8192'
-    }));
-    [0, 1, 2].forEach((i) => {
-      this.root.add(this.add.rectangle(left + 24, mTop + 88 + i * 42, 8, 28, i === 0 ? accent : 0x2a3a4d, i === 0 ? 0.9 : 0.72));
-    });
-    this.root.add(this.add.rectangle(left + 54, mTop + 68, 302, 2, accent, 0.55));
 
     const art = flockLeaderArtAssets[leader.id];
     const artBoxX = left + 205;
+    const artBoxY = py + 24;
+    this.root.add(this.add.rectangle(artBoxX, artBoxY, 348, 516, 0x05080e, 0.58).setStrokeStyle(1, accent, 0.52));
     if (art && this.textures.exists(art.key)) {
       const fit = this.fittedTextureSize(art.key, 340, 500);
-      this.root.add(this.add.image(artBoxX, py + 8, art.key).setDisplaySize(fit.w, fit.h).setAlpha(unlocked ? 0.99 : 0.42));
+      this.root.add(this.add.image(artBoxX, artBoxY, art.key).setDisplaySize(fit.w, fit.h).setAlpha(unlocked ? 0.99 : 0.42));
     } else {
-      this.root.add(this.add.rectangle(artBoxX, py, 320, 480, 0x141d2b, 0.9).setStrokeStyle(1, 0x2a3a4d, 0.8));
-      this.root.add(this.add.text(artBoxX, py, leader.bird, {
+      this.root.add(this.add.rectangle(artBoxX, artBoxY, 320, 480, 0x141d2b, 0.9).setStrokeStyle(1, 0x2a3a4d, 0.8));
+      this.root.add(this.add.text(artBoxX, artBoxY, leader.bird, {
         fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#cdd9e6',
         align: 'center', wordWrap: { width: 260 }
       }).setOrigin(0.5));
     }
     if (!unlocked) {
-      this.root.add(this.add.rectangle(artBoxX, py + 224, 260, 36, 0x05070c, 0.8).setStrokeStyle(1, 0x2a3a4d, 0.85));
-      this.root.add(this.add.text(artBoxX, py + 224, leaderUnlockHints[leader.id] ?? 'Locked', {
+      this.root.add(this.add.rectangle(artBoxX, artBoxY + 224, 260, 36, 0x05070c, 0.8).setStrokeStyle(1, 0x2a3a4d, 0.85));
+      this.root.add(this.add.text(artBoxX, artBoxY + 224, leaderUnlockHints[leader.id] ?? 'Locked', {
         fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#ffe1a3',
         align: 'center', wordWrap: { width: 238 }
       }).setOrigin(0.5));
@@ -1855,8 +1879,8 @@ class CodexScene extends Phaser.Scene {
 
     const tx = left + 410;
     const wrap = right - tx - 30;
-    const viewTop = mTop + 20;
-    const viewBottom = mBottom - 18;
+    const viewTop = mTop + 86;
+    const viewBottom = mBottom - 42;
     const viewH = viewBottom - viewTop;
     let yy = viewTop - this.detailScroll;
     const heading = (t: string, color: string) => {
@@ -1931,11 +1955,14 @@ class CodexScene extends Phaser.Scene {
     this.detailMaxScroll = Math.max(0, (contentBottom - viewTop) - viewH + SCROLL_PAD);
 
     const closeDetail = () => { this.detailId = undefined; this.renderAll(); };
+    const curtainX = tx - 24;
+    const curtainW = right - curtainX - 1;
     this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, mTop, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
     this.root.add(this.add.rectangle(0, mBottom, GAME_WIDTH, GAME_HEIGHT - mBottom, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
-    this.root.add(this.add.rectangle(left + 1, mTop + 1, MW - 2, viewTop - mTop - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
-    this.root.add(this.add.rectangle(left + 1, viewBottom, MW - 2, mBottom - viewBottom - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
+    this.root.add(this.add.rectangle(curtainX, mTop + 1, curtainW, viewTop - mTop - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
+    this.root.add(this.add.rectangle(curtainX, viewBottom, curtainW, mBottom - viewBottom - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x000000, 0).setStrokeStyle(2, accent, 1));
+    this.renderCodexDossierHeader(left, right, mTop, 'FLOCK LEADER DOSSIER', `ID ${leader.id.toUpperCase().replace(/_/g, '-')}`, accent, accentText);
     this.root.add(this.add.rectangle(tx - 18, (viewTop + viewBottom) / 2, 2, viewH - 8, accent, 0.5));
 
     if (this.detailMaxScroll > 0) {
@@ -2254,22 +2281,19 @@ class CodexScene extends Phaser.Scene {
     const accent = this.enemyAccent(enemy);
     const accentText = `#${accent.toString(16).padStart(6, '0')}`;
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accent, 1));
-    this.root.add(this.add.rectangle(left + 32, mTop + 28, 158, 28, 0x07101c, 0.96).setStrokeStyle(1, accent, 0.9));
-    this.root.add(this.add.text(left + 44, mTop + 36, 'ENEMY DOSSIER', {
-      fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText
-    }).setResolution(2));
 
     const art = this.enemyArtAsset(enemy);
     const artBoxX = left + 220;
-    this.root.add(this.add.rectangle(artBoxX, py + 8, 372, 512, 0x05080e, 0.58).setStrokeStyle(1, accent, 0.52));
+    const artBoxY = py + 24;
+    this.root.add(this.add.rectangle(artBoxX, artBoxY, 372, 516, 0x05080e, 0.58).setStrokeStyle(1, accent, 0.52));
     if (art && this.textures.exists(art.key)) {
       const fit = this.fittedTextureSize(art.key, 360, 500);
-      const shadow = this.enemyShadowMetrics(art.key, artBoxX, py + 8, fit.w, fit.h, 360, 500);
+      const shadow = this.enemyShadowMetrics(art.key, artBoxX, artBoxY, fit.w, fit.h, 360, 500);
       this.root.add(this.add.ellipse(shadow.x, shadow.y, shadow.w, shadow.h, 0x020409, 0.34));
-      this.root.add(this.add.image(artBoxX, py + 8, art.key).setDisplaySize(fit.w, fit.h).setAlpha(0.99));
+      this.root.add(this.add.image(artBoxX, artBoxY, art.key).setDisplaySize(fit.w, fit.h).setAlpha(0.99));
     } else {
-      this.root.add(this.add.rectangle(artBoxX, py, 340, 480, 0x141d2b, 0.9).setStrokeStyle(1, 0x2a3a4d, 0.8));
-      this.root.add(this.add.text(artBoxX, py, enemy.typeHint, {
+      this.root.add(this.add.rectangle(artBoxX, artBoxY, 340, 480, 0x141d2b, 0.9).setStrokeStyle(1, 0x2a3a4d, 0.8));
+      this.root.add(this.add.text(artBoxX, artBoxY, enemy.typeHint, {
         fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#cdd9e6',
         align: 'center', wordWrap: { width: 280 }
       }).setOrigin(0.5));
@@ -2277,8 +2301,8 @@ class CodexScene extends Phaser.Scene {
 
     const tx = left + 430;
     const wrap = right - tx - 28;
-    const viewTop = mTop + 20;
-    const viewBottom = mBottom - 18;
+    const viewTop = mTop + 86;
+    const viewBottom = mBottom - 42;
     const viewH = viewBottom - viewTop;
     let yy = viewTop - this.detailScroll;
     const heading = (t: string, color: string) => {
@@ -2344,11 +2368,22 @@ class CodexScene extends Phaser.Scene {
     this.detailMaxScroll = Math.max(0, (contentBottom - viewTop) - viewH + SCROLL_PAD);
 
     const closeDetail = () => { this.detailId = undefined; this.renderAll(); };
+    const curtainX = tx - 24;
+    const curtainW = right - curtainX - 1;
     this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, mTop, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
     this.root.add(this.add.rectangle(0, mBottom, GAME_WIDTH, GAME_HEIGHT - mBottom, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
-    this.root.add(this.add.rectangle(left + 1, mTop + 1, MW - 2, viewTop - mTop - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
-    this.root.add(this.add.rectangle(left + 1, viewBottom, MW - 2, mBottom - viewBottom - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
+    this.root.add(this.add.rectangle(curtainX, mTop + 1, curtainW, viewTop - mTop - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
+    this.root.add(this.add.rectangle(curtainX, viewBottom, curtainW, mBottom - viewBottom - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x000000, 0).setStrokeStyle(2, accent, 1));
+    this.renderCodexDossierHeader(
+      left,
+      right,
+      mTop,
+      'ENEMY FIELD DOSSIER',
+      `${enemy.source === 'encounter' ? 'PLAYABLE ENCOUNTER' : 'RESERVE CONCEPT'} / ${enemy.district.toUpperCase()}`,
+      accent,
+      accentText
+    );
     this.root.add(this.add.rectangle(tx - 18, (viewTop + viewBottom) / 2, 2, viewH - 8, accent, 0.5));
 
     if (this.detailMaxScroll > 0) {
