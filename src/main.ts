@@ -38,8 +38,9 @@ import { queueRuntimeImageAssets, uniqueImageAssets, type RuntimeImageAsset } fr
 
 type GameMode = 'menu' | 'routeSelection' | 'battle' | 'cardReward' | 'upgradeReward' | 'runComplete' | 'defeat';
 type CodexDataModule = typeof import('./game/codex-data');
+const codexDataPreload: Promise<CodexDataModule> = import('./game/codex-data');
 type InspectOverlay = 'deck' | 'draw' | 'discard' | 'flock';
-type CardType = 'major' | 'minor' | 'molt';
+type CardType = 'major' | 'minor' | 'molt' | 'aviary';
 type CardRole = 'attack' | 'skill' | 'utility';
 type TargetType = 'enemy' | 'allEnemies' | 'self' | 'none' | 'choice';
 
@@ -98,6 +99,22 @@ interface Card {
   bird: string;
   runtime: RuntimeCard;
   upgraded?: boolean;
+}
+
+interface ActiveCardContract {
+  effects: string[];
+  text: string;
+  target: TargetType;
+  baseTarget: TargetType;
+  usesMolt: boolean;
+  label: 'Normal' | 'Molt';
+}
+
+interface TextureVisibleBounds {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
 }
 
 interface SavedCard {
@@ -190,6 +207,9 @@ interface RenderPayload {
     cost: number;
     type: CardType;
     target: TargetType;
+    activeTarget?: TargetType;
+    activeText?: string;
+    usesMolt?: boolean;
     baseText: string;
     upgradedText: string;
     flockStats: Array<{ label: string; value: number }>;
@@ -205,7 +225,7 @@ interface RenderPayload {
     block: number;
     statuses: string[];
   };
-  hand: Array<{ id: string; name: string; bird: string; cost: number; type: CardType; target: TargetType }>;
+  hand: Array<{ id: string; name: string; bird: string; cost: number; type: CardType; target: TargetType; activeTarget?: TargetType; activeText?: string; usesMolt?: boolean }>;
   rewardChoices?: Array<{ id: string; name: string; bird: string; cost: number; type: CardType; target: TargetType }>;
   upgradeChoices?: Array<{ id: string; name: string; bird: string; cost: number; type: CardType; target: TargetType }>;
   enemies: Array<{
@@ -1003,6 +1023,7 @@ class CodexScene extends Phaser.Scene {
   private codexData?: CodexDataModule;
   private codexDataLoad?: Promise<void>;
   private codexDataFailed = false;
+  private textureBoundsCache = new Map<string, TextureVisibleBounds>();
   private static readonly GRID_TOP = 158;
   private static readonly GRID_BOTTOM = 690;
   private readonly tabs: Array<{ label: string; match: (c: Card) => boolean }> = [
@@ -1065,7 +1086,9 @@ class CodexScene extends Phaser.Scene {
   }
 
   private allReserveEnemies(): CodexEnemyEntry[] {
-    return (this.codexData?.reserveEnemyContracts ?? []).map((enemy) => this.reserveEnemyEntry(enemy));
+    return (this.codexData?.reserveEnemyContracts ?? [])
+      .filter((enemy) => !alphaEnemyLibrary.has(enemy.id))
+      .map((enemy) => this.reserveEnemyEntry(enemy));
   }
 
   private allEncounterEnemies(): CodexEnemyEntry[] {
@@ -1153,7 +1176,7 @@ class CodexScene extends Phaser.Scene {
   private ensureCodexData() {
     if (this.codexData) return Promise.resolve();
     this.codexDataFailed = false;
-    this.codexDataLoad ??= import('./game/codex-data')
+    this.codexDataLoad ??= codexDataPreload
       .then((data) => {
         this.codexData = data;
         this.codexDataFailed = false;
@@ -1285,11 +1308,11 @@ class CodexScene extends Phaser.Scene {
       ? `${found} / ${all.length} cards discovered`
       : itemMode
         ? `${waymarkAll.length} Waymark items cataloged`
-        : leaderMode
-          ? `${flockLeaders.filter((leader) => isLeaderUnlocked(loadAccount(), leader.id)).length} / ${flockLeaders.length} Flock Leaders rallied`
-          : this.codexDataPending()
-            ? `${encounterEnemyCount} encounter enemies cataloged (loading reserve files)`
-            : `${enemyAll.length} enemies cataloged (${encounterEnemyCount} encounter / ${reserveEnemyCount} reserve)`;
+          : leaderMode
+            ? `${flockLeaders.filter((leader) => isLeaderUnlocked(loadAccount(), leader.id)).length} / ${flockLeaders.length} Flock Leaders rallied`
+            : this.codexDataPending()
+            ? `${encounterEnemyCount} playable enemies cataloged (loading reserve concepts)`
+            : `${enemyAll.length} enemies cataloged (${encounterEnemyCount} playable / ${reserveEnemyCount} reserve concepts)`;
     this.root.add(this.add.text(42, 66, subtitle, { fontFamily: 'Arial', fontSize: '15px', color: '#8fa3b6' }));
     const codexStatus = this.codexDataFailed
       ? 'Extended Codex notes unavailable'
@@ -1446,12 +1469,14 @@ class CodexScene extends Phaser.Scene {
   }
 
   private cardAccent(card: Card) {
+    if (isAviaryCard(card)) return 0xe8c24a;
     if (card.type === 'major') return 0xd8a840;
     if (card.type === 'molt') return 0xc56cff;
     return suitAccentColor(card);
   }
 
   private cardFamilyLabel(card: Card) {
+    if (isAviaryCard(card)) return 'Aviary';
     if (card.type === 'major') return 'Major Arcana';
     if (card.type === 'molt') return 'Molt';
     switch (card.runtime.suit) {
@@ -1461,6 +1486,13 @@ class CodexScene extends Phaser.Scene {
       case 'nests': return 'Nests';
       default: return 'Aviary';
     }
+  }
+
+  private cardDossierLabel(card: Card) {
+    if (isAviaryCard(card)) return 'AVIARY DOSSIER';
+    if (card.type === 'major') return 'LEGEND DOSSIER';
+    if (card.type === 'molt') return 'MOLT DOSSIER';
+    return `${this.cardFamilyLabel(card).toUpperCase()} DOSSIER`;
   }
 
   private drawLockedCardBack(layer: Phaser.GameObjects.Container, card: Card, cx: number, cy: number, aw: number, ah: number, accent: number) {
@@ -1515,12 +1547,6 @@ class CodexScene extends Phaser.Scene {
     const key = cardArtKey(card);
     if (found && key && this.textures.exists(key)) {
       layer.add(this.add.image(cx, cy, key).setDisplaySize(aw, ah).setAlpha(0.99));
-      layer.add(this.add.rectangle(cx, cy + ah / 2 - 15, aw - 14, 24, 0x05080e, 0.74).setStrokeStyle(1, accent, 0.38));
-      layer.add(this.add.rectangle(cx - aw / 2 + 5, cy, 4, ah - 12, accent, 0.86));
-      layer.add(this.add.text(cx + 18, cy + ah / 2 - 15, this.cardFamilyLabel(card), {
-        fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#dce8f2',
-        fixedWidth: aw - 68, align: 'right'
-      }).setResolution(2).setOrigin(0.5));
       // Cost badge (gameplay info not shown in the illustration).
       layer.add(this.add.circle(cx - aw / 2 + 18, cy - ah / 2 + 18, 15, card.cost === 0 ? 0x24d0d6 : 0xe8b830, 1).setStrokeStyle(2, 0x05080e, 0.95));
       layer.add(this.add.text(cx - aw / 2 + 18, cy - ah / 2 + 18, `${card.cost}`, { fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#06101c' }).setOrigin(0.5));
@@ -1887,6 +1913,70 @@ class CodexScene extends Phaser.Scene {
     return { w: iw * scale, h: ih * scale };
   }
 
+  private textureVisibleBounds(key: string): TextureVisibleBounds {
+    const cached = this.textureBoundsCache.get(key);
+    if (cached) return cached;
+
+    const src = this.textures.get(key).getSourceImage() as CanvasImageSource & { width?: number; height?: number };
+    const width = Math.max(1, Number(src.width ?? 1));
+    const height = Math.max(1, Number(src.height ?? 1));
+    let bounds: TextureVisibleBounds = { left: 0, right: 1, top: 0, bottom: 1 };
+
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      if (ctx) {
+        ctx.drawImage(src, 0, 0, width, height);
+        const alpha = ctx.getImageData(0, 0, width, height).data;
+        let minX = width;
+        let minY = height;
+        let maxX = -1;
+        let maxY = -1;
+        const alphaThreshold = 28;
+        for (let y = 0; y < height; y += 1) {
+          for (let x = 0; x < width; x += 1) {
+            if (alpha[(y * width + x) * 4 + 3] <= alphaThreshold) continue;
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+          }
+        }
+        if (maxX >= minX && maxY >= minY) {
+          bounds = {
+            left: minX / width,
+            right: (maxX + 1) / width,
+            top: minY / height,
+            bottom: (maxY + 1) / height,
+          };
+        }
+      }
+    } catch {
+      // Fall back to the full texture box if the browser refuses pixel reads.
+    }
+
+    this.textureBoundsCache.set(key, bounds);
+    return bounds;
+  }
+
+  private enemyShadowMetrics(key: string, imageX: number, imageY: number, fitW: number, fitH: number, maxW: number, maxH: number) {
+    const bounds = this.textureVisibleBounds(key);
+    const visibleW = fitW * Math.max(0.05, bounds.right - bounds.left);
+    const visibleH = fitH * Math.max(0.05, bounds.bottom - bounds.top);
+    const visibleCenterX = imageX - fitW / 2 + fitW * ((bounds.left + bounds.right) / 2);
+    const visibleBottom = imageY - fitH / 2 + fitH * bounds.bottom;
+    const shadowW = Math.max(maxW * 0.34, Math.min(maxW * 0.84, visibleW * 0.78));
+    const shadowH = Math.max(8, Math.min(maxH * 0.18, visibleH * 0.11));
+    return {
+      x: visibleCenterX,
+      y: Math.min(imageY + maxH / 2 - shadowH * 0.45, visibleBottom - shadowH * 0.18),
+      w: shadowW,
+      h: shadowH,
+    };
+  }
+
   private enemyArtAsset(enemy: CodexEnemyEntry) {
     return enemy.source === 'reserve' ? reserveEnemyArtAssets[enemy.id] : enemyArtAssets[enemy.id];
   }
@@ -1895,39 +1985,48 @@ class CodexScene extends Phaser.Scene {
     const w = 252;
     const h = 206;
     const accent = this.enemyAccent(enemy);
+    const artX = cx - 68;
+    const artY = cy - 22;
+    const artW = 108;
+    const artH = 124;
+    const textX = cx + 42;
+    const textW = 122;
     const bg = this.add.rectangle(cx, cy, w, h, 0x0d1420, 0.96)
-      .setStrokeStyle(2, accent, 0.88)
+      .setStrokeStyle(1, 0x22364d, 0.84)
       .setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => bg.setFillStyle(0x142033, 0.98));
     bg.on('pointerout', () => bg.setFillStyle(0x0d1420, 0.96));
     bg.on('pointerdown', () => { this.detailId = enemy.id; this.detailScroll = 0; this.renderAll(); });
     layer.add(bg);
-    layer.add(this.add.rectangle(cx - w / 2 + 6, cy, 5, h - 16, accent, 0.85));
+    layer.add(this.add.rectangle(cx, cy - h / 2 + 7, w - 18, 3, accent, 0.62));
+    layer.add(this.add.rectangle(cx - w / 2 + 8, cy - h / 2 + 28, 3, 42, accent, 0.7));
 
     const art = this.enemyArtAsset(enemy);
     if (art && this.textures.exists(art.key)) {
-      const fit = this.fittedTextureSize(art.key, 138, 128);
-      layer.add(this.add.image(cx - 72, cy - 18, art.key).setDisplaySize(fit.w, fit.h).setAlpha(0.99));
+      const fit = this.fittedTextureSize(art.key, artW, artH);
+      const shadow = this.enemyShadowMetrics(art.key, artX, artY, fit.w, fit.h, artW, artH);
+      layer.add(this.add.ellipse(shadow.x, shadow.y, shadow.w, shadow.h, 0x020409, 0.3));
+      layer.add(this.add.image(artX, artY, art.key).setDisplaySize(fit.w, fit.h).setAlpha(0.99));
     } else {
-      layer.add(this.add.rectangle(cx - 72, cy - 18, 118, 128, 0x141d2b, 0.9).setStrokeStyle(1, 0x2a3a4d, 0.8));
-      layer.add(this.add.text(cx - 72, cy - 20, enemy.typeHint, {
+      layer.add(this.add.rectangle(artX, artY, artW, artH, 0x141d2b, 0.9).setStrokeStyle(1, 0x22364d, 0.8));
+      layer.add(this.add.text(artX, artY - 2, enemy.typeHint, {
         fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#cdd9e6',
-        align: 'center', wordWrap: { width: 102 }
+        align: 'center', wordWrap: { width: artW - 14 }
       }).setOrigin(0.5));
     }
 
-    layer.add(this.add.text(cx + 14, cy - 82, enemy.name, {
+    layer.add(this.add.text(textX, cy - 82, enemy.name, {
       fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#ffe1a3',
-      wordWrap: { width: 140 }
+      align: 'center', wordWrap: { width: textW }
     }).setOrigin(0.5, 0));
-    layer.add(this.add.text(cx + 14, cy - 30, enemy.role, {
+    layer.add(this.add.text(textX, cy - 30, enemy.role, {
       fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: '#8df4ff',
-      align: 'center', wordWrap: { width: 142 }
+      align: 'center', wordWrap: { width: textW }
     }).setOrigin(0.5, 0));
-    this.addCodexChip(layer, cx + 14, cy - 1, 118, enemy.source === 'encounter' ? enemy.typeHint : 'Reserve', accent);
-    layer.add(this.add.text(cx + 14, cy + 8, enemy.district, {
+    this.addCodexChip(layer, textX, cy - 1, 108, enemy.source === 'encounter' ? enemy.typeHint : 'Concept', accent);
+    layer.add(this.add.text(textX, cy + 8, enemy.district, {
       fontFamily: 'Arial', fontSize: '11px', color: '#8fa3b6',
-      align: 'center', wordWrap: { width: 142 }
+      align: 'center', wordWrap: { width: textW }
     }).setOrigin(0.5, 0));
     layer.add(this.add.text(cx, cy + 76, enemy.varietyContribution, {
       fontFamily: 'Arial', fontSize: '11px', color: '#b9c7d6',
@@ -1959,11 +2058,8 @@ class CodexScene extends Phaser.Scene {
     const mBottom = py + MH / 2;
     const accentColor = this.cardAccent(card);
     const accentText = this.hexColor(accentColor);
+    const isAviary = isAviaryCard(card);
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accentColor, 1));
-    this.root.add(this.add.rectangle(left + 32, mTop + 28, 150, 28, 0x07101c, 0.96).setStrokeStyle(1, accentColor, 0.9));
-    this.root.add(this.add.text(left + 44, mTop + 36, 'CARD DOSSIER', {
-      fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText
-    }).setResolution(2));
 
     // Large card art on the left, at the art's true 2:3 aspect (no distortion).
     const key = cardArtKey(card);
@@ -2028,7 +2124,7 @@ class CodexScene extends Phaser.Scene {
 
     if (!this.codexData && this.codexDataPending()) {
       heading('CODEX NOTES', '#c9a6ff');
-      para('Loading tarot notes and bird facts...', { color: '#d9c8ff', italic: true, size: 13 });
+      para(isAviary ? 'Loading Aviary notes and bird facts...' : 'Loading tarot notes and bird facts...', { color: '#d9c8ff', italic: true, size: 13 });
       yy += 14;
     } else if (this.codexDataFailed) {
       heading('CODEX NOTES', '#ff9b6a');
@@ -2036,13 +2132,13 @@ class CodexScene extends Phaser.Scene {
       yy += 14;
     }
 
-    // Tarot meaning — keyword line + upright + reversed.
+    // Card meaning - keyword line plus orientation variants.
     if (meaning) {
-      heading('🔮  TAROT MEANING', '#c9a6ff');
+      heading(isAviary ? 'AVIARY LEGEND' : 'TAROT MEANING', '#c9a6ff');
       if (meaning.core) { para(meaning.core, { color: '#d9c8ff', italic: true, size: 13 }); yy += 8; }
-      this.root.add(this.add.text(tx, yy, 'UPRIGHT', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#9d86c8' })); yy += 15;
+      this.root.add(this.add.text(tx, yy, isAviary ? 'SIGNAL' : 'UPRIGHT', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#9d86c8' })); yy += 15;
       para(meaning.upright, { color: '#cfd9ea', size: 13 }); yy += 8;
-      this.root.add(this.add.text(tx, yy, 'REVERSED', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#9d86c8' })); yy += 15;
+      this.root.add(this.add.text(tx, yy, isAviary ? 'SHADOW' : 'REVERSED', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#9d86c8' })); yy += 15;
       para(meaning.reversed, { color: '#b9a7bd', size: 13 }); yy += 14;
     }
 
@@ -2070,6 +2166,14 @@ class CodexScene extends Phaser.Scene {
     this.root.add(this.add.rectangle(left + 1, viewBottom, MW - 2, mBottom - viewBottom - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
     // Redraw the panel border crisply over the covers.
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x000000, 0).setStrokeStyle(2, accentColor, 1));
+    const dossierLabel = this.cardDossierLabel(card);
+    const dossierW = Math.max(150, Math.min(190, dossierLabel.length * 9 + 30));
+    const dossierX = left + 24 + dossierW / 2;
+    this.root.add(this.add.rectangle(dossierX, mTop + 28, dossierW, 28, 0x07101c, 0.96).setStrokeStyle(1, accentColor, 0.9));
+    this.root.add(this.add.text(dossierX, mTop + 28, dossierLabel, {
+      fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText,
+      align: 'center', fixedWidth: dossierW - 18,
+    }).setResolution(2).setOrigin(0.5));
     // Thin accent rule between art and text column (clipped to the viewport band).
     this.root.add(this.add.rectangle(tx - 14, (viewTop + viewBottom) / 2, 2, viewH - 8, Phaser.Display.Color.HexStringToColor(accent).color, 0.5));
 
@@ -2111,6 +2215,8 @@ class CodexScene extends Phaser.Scene {
     this.root.add(this.add.rectangle(artBoxX, py + 8, 372, 512, 0x05080e, 0.58).setStrokeStyle(1, accent, 0.52));
     if (art && this.textures.exists(art.key)) {
       const fit = this.fittedTextureSize(art.key, 360, 500);
+      const shadow = this.enemyShadowMetrics(art.key, artBoxX, py + 8, fit.w, fit.h, 360, 500);
+      this.root.add(this.add.ellipse(shadow.x, shadow.y, shadow.w, shadow.h, 0x020409, 0.34));
       this.root.add(this.add.image(artBoxX, py + 8, art.key).setDisplaySize(fit.w, fit.h).setAlpha(0.99));
     } else {
       this.root.add(this.add.rectangle(artBoxX, py, 340, 480, 0x141d2b, 0.9).setStrokeStyle(1, 0x2a3a4d, 0.8));
@@ -4424,18 +4530,18 @@ class BattleScene extends Phaser.Scene {
   private fxGlowPulse(x: number, y: number, color: number, radius = 72, duration = 360, alpha = 0.2) {
     if (prefersReducedMotion()) return;
     const glow = this.add.container(x, y);
-    const falloff = this.add.ellipse(0, 0, radius * 1.05, radius * 0.52, color, alpha * 0.34)
+    const falloff = this.add.ellipse(0, 0, radius * 1.12, radius * 0.56, color, alpha * 0.5)
       .setOrigin(0.5);
-    const core = this.add.ellipse(0, 0, radius * 0.48, radius * 0.22, color, alpha * 0.92)
+    const core = this.add.ellipse(0, 0, radius * 0.5, radius * 0.24, color, Math.min(0.38, alpha * 1.28))
       .setOrigin(0.5)
       .setBlendMode(Phaser.BlendModes.ADD);
     glow.add([falloff, core]);
-    glow.setScale(0.72).setAlpha(0.92);
+    glow.setScale(0.68).setAlpha(1);
     this.fxLayer.add(glow);
     this.tweens.add({
       targets: glow,
-      scaleX: 1.44,
-      scaleY: 1.16,
+      scaleX: 1.52,
+      scaleY: 1.2,
       alpha: 0,
       duration,
       ease: 'Cubic.easeOut',
@@ -4446,18 +4552,18 @@ class BattleScene extends Phaser.Scene {
   private fxShockwave(x: number, y: number, color: number, radius = 86, duration = 430, tilt = -8) {
     if (prefersReducedMotion()) return;
     const ring = this.add.graphics();
-    ring.lineStyle(3, 0x020409, 0.28);
+    ring.lineStyle(3, 0x020409, 0.38);
     ring.strokeEllipse(0, 0, radius * 1.03, radius * 0.44);
-    ring.lineStyle(2, color, 0.72);
+    ring.lineStyle(2, color, 0.9);
     ring.strokeEllipse(0, 0, radius, radius * 0.42);
-    ring.lineStyle(1, 0xffffff, 0.28);
+    ring.lineStyle(1, 0xffffff, 0.42);
     ring.strokeEllipse(0, 0, radius * 0.66, radius * 0.25);
     ring.setPosition(x, y).setAngle(tilt).setScale(0.68).setBlendMode(Phaser.BlendModes.ADD);
     this.fxLayer.add(ring);
     this.tweens.add({
       targets: ring,
-      scaleX: 1.32,
-      scaleY: 1.08,
+      scaleX: 1.38,
+      scaleY: 1.12,
       alpha: 0,
       duration,
       ease: 'Cubic.easeOut',
@@ -4468,13 +4574,14 @@ class BattleScene extends Phaser.Scene {
   private fxDirectionalStreak(x1: number, y1: number, x2: number, y2: number, color: number, duration = 260) {
     if (prefersReducedMotion()) return;
     const streak = this.add.container(0, 0);
-    const shadow = this.add.line(0, 0, x1, y1, x2, y2, 0x020409, 0.26).setOrigin(0);
+    const shadow = this.add.line(0, 0, x1, y1, x2, y2, 0x020409, 0.36).setOrigin(0);
     shadow.setLineWidth(6, 1);
-    const ribbon = this.add.line(0, 0, x1, y1, x2, y2, color, 0.82).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD);
-    ribbon.setLineWidth(3, 0.7);
-    const glint = this.add.line(0, 0, x1 + 3, y1 - 3, x2 - 6, y2 + 5, 0xffffff, 0.36).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD);
-    glint.setLineWidth(1.2, 0.2);
+    const ribbon = this.add.line(0, 0, x1, y1, x2, y2, color, 0.94).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD);
+    ribbon.setLineWidth(4, 0.9);
+    const glint = this.add.line(0, 0, x1 + 3, y1 - 3, x2 - 6, y2 + 5, 0xffffff, 0.48).setOrigin(0).setBlendMode(Phaser.BlendModes.ADD);
+    glint.setLineWidth(1.6, 0.25);
     streak.add([shadow, ribbon, glint]);
+    streak.setAlpha(0.96);
     this.fxLayer.add(streak);
     this.tweens.add({
       targets: streak,
@@ -4482,7 +4589,7 @@ class BattleScene extends Phaser.Scene {
       x: (x2 - x1) * 0.018,
       y: (y2 - y1) * 0.018,
       duration,
-      ease: 'Quad.easeOut',
+      ease: 'Cubic.easeOut',
       onComplete: () => streak.destroy(true),
     });
   }
@@ -4579,14 +4686,14 @@ class BattleScene extends Phaser.Scene {
         sig.strokePath();
       }
     }
-    sig.setPosition(x, y).setScale(scale * 0.84).setAlpha(0.9);
+    sig.setPosition(x, y).setScale(scale * 0.82).setAlpha(0.96);
     this.fxLayer.add(sig);
     this.tweens.add({
       targets: sig,
       scaleX: scale * 1.14,
       scaleY: scale * 1.14,
       alpha: 0,
-      duration: 380,
+      duration: 440,
       ease: 'Cubic.easeOut',
       onComplete: () => sig.destroy(),
     });
@@ -4605,10 +4712,10 @@ class BattleScene extends Phaser.Scene {
           ? [-178, -142, -108, -72]
           : [-64, -34, -4, 28];
     burst.setBlendMode(Phaser.BlendModes.ADD);
-    burst.fillStyle(color, 0.14);
-    burst.fillCircle(0, 0, 27 * intensity);
-    burst.fillStyle(0xffffff, 0.44);
-    burst.fillCircle(0, 0, 7 * intensity);
+    burst.fillStyle(color, 0.2);
+    burst.fillCircle(0, 0, 29 * intensity);
+    burst.fillStyle(0xffffff, 0.58);
+    burst.fillCircle(0, 0, 8 * intensity);
     const drawRays = (width: number, rayColor: number, alpha: number, offset = 0) => {
       burst.lineStyle(width, rayColor, alpha);
       angles.forEach((deg, index) => {
@@ -4619,17 +4726,17 @@ class BattleScene extends Phaser.Scene {
         burst.strokePath();
       });
     };
-    drawRays(6, 0x020409, 0.26);
-    drawRays(3, color, 0.86);
-    drawRays(1, 0xffffff, 0.64, -2);
-    burst.setPosition(x, y).setScale(0.58).setAlpha(0.92);
+    drawRays(7, 0x020409, 0.34);
+    drawRays(3, color, 0.96);
+    drawRays(1.4, 0xffffff, 0.78, -2);
+    burst.setPosition(x, y).setScale(0.54).setAlpha(1);
     this.fxLayer.add(burst);
     this.tweens.add({
       targets: burst,
-      scaleX: 1.16,
-      scaleY: 1.16,
+      scaleX: 1.24,
+      scaleY: 1.24,
       alpha: 0,
-      duration: 290,
+      duration: 380,
       ease: 'Quad.easeOut',
       onComplete: () => burst.destroy(),
     });
@@ -4657,37 +4764,37 @@ class BattleScene extends Phaser.Scene {
   private pulseRing(x: number, y: number, color: number, radius = 58, duration = 460) {
     if (prefersReducedMotion()) return;
     const scale = Phaser.Math.Clamp(radius / 44, 0.9, 2.5);
-    this.fxGlowPulse(x, y, color, radius * 1.16, duration * 0.86, 0.18);
-    this.fxShockwave(x, y, color, radius * 1.05, duration, -8);
-    this.playFxAnimation(this.fxAnimForColor(color), x, y, { scale, alpha: 0.82, additive: true });
+    this.fxGlowPulse(x, y, color, radius * 1.02, duration * 0.82, 0.15);
+    this.fxShockwave(x, y, color, radius * 0.96, duration * 0.9, -8);
+    this.playFxAnimation(this.fxAnimForColor(color), x, y, { scale: scale * 0.94, alpha: 0.74, additive: true });
     this.fxMoteBurst(x, y, color, {
-      count: radius >= 84 ? 18 : 10,
-      speed: radius * 1.65,
-      lifespan: duration,
-      scale: radius >= 84 ? 0.72 : 0.56,
+      count: radius >= 84 ? 14 : 8,
+      speed: radius * 1.38,
+      lifespan: duration * 0.82,
+      scale: radius >= 84 ? 0.56 : 0.44,
       gravityY: 4,
-      spreadX: 10,
-      spreadY: 10,
+      spreadX: 8,
+      spreadY: 8,
     });
   }
 
   private sparkBurst(x: number, y: number, color: number, count = 18, speed = 145) {
     if (prefersReducedMotion()) return;
     const anim = this.fxAnimForColor(color);
-    const repeats = count >= 22 ? 3 : count >= 14 ? 2 : 1;
-    this.fxGlowPulse(x, y, color, count >= 22 ? 72 : 54, 310, 0.13);
+    const repeats = count >= 22 ? 2 : 1;
+    this.fxGlowPulse(x, y, color, count >= 22 ? 64 : 48, 270, 0.11);
     this.fxMoteBurst(x, y, color, {
-      count,
-      speed,
-      lifespan: count >= 22 ? 560 : 430,
-      scale: count >= 18 ? 0.72 : 0.56,
+      count: Math.max(6, Math.round(count * 0.72)),
+      speed: speed * 0.88,
+      lifespan: count >= 22 ? 440 : 340,
+      scale: count >= 18 ? 0.56 : 0.44,
       gravityY: color === 0x8fd6a0 ? -18 : 28,
     });
     for (let i = 0; i < repeats; i += 1) {
       this.time.delayedCall(i * 55, () => {
         this.playFxAnimation(anim, x + (i - 1) * 12, y + (i % 2) * 8, {
           scale: Phaser.Math.Clamp(speed / 105, 0.9, 2.1),
-          alpha: 0.74,
+          alpha: 0.58,
           angle: -10 + i * 18,
           flipX: i % 2 === 1,
           additive: true,
@@ -4698,29 +4805,29 @@ class BattleScene extends Phaser.Scene {
 
   private suitPulseAt(x: number, y: number, suit: string | null | undefined, label = '') {
     const meta = suitFxMeta(suit ?? undefined);
-    this.fxGlowPulse(x, y, meta.color, 70, 360, 0.14);
-    this.fxSuitSignature(suit, x, y + 2, meta.color, 0.92);
+    this.fxGlowPulse(x, y, meta.color, 58, 300, 0.11);
+    this.fxSuitSignature(suit, x, y + 2, meta.color, 0.8);
     this.playFxAnimation(SUIT_FX_ANIM[suit ?? ''] ?? this.fxAnimForColor(meta.color), x, y, {
-      scale: 1.45,
-      alpha: 0.88,
+      scale: 1.26,
+      alpha: 0.72,
       additive: true,
     });
-    this.fxMoteBurst(x, y, meta.color, { count: 12, speed: 120, lifespan: 380, scale: 0.58, gravityY: 0 });
+    this.fxMoteBurst(x, y, meta.color, { count: 8, speed: 96, lifespan: 300, scale: 0.44, gravityY: 0 });
     if (label) {
       floatingText(this, this.fxLayer, x, y - 58, label, meta.hex);
     }
   }
 
   private windedFx(x: number, y: number) {
-    this.fxShockwave(x, y - 8, 0xc98bff, 72, 440, -11);
-    this.fxGlowPulse(x, y - 10, 0xc98bff, 62, 380, 0.16);
-    this.playFxAnimation('fx-winded', x, y - 10, { scale: 1.7, alpha: 0.94, additive: true });
+    this.fxShockwave(x, y - 8, 0xc98bff, 62, 360, -11);
+    this.fxGlowPulse(x, y - 10, 0xc98bff, 52, 320, 0.12);
+    this.playFxAnimation('fx-winded', x, y - 10, { scale: 1.42, alpha: 0.78, additive: true });
     this.fxMoteBurst(x + 6, y - 8, 0xc98bff, {
-      count: 14,
-      speed: 110,
-      lifespan: 520,
+      count: 10,
+      speed: 92,
+      lifespan: 420,
       angle: { min: 178, max: 352 },
-      scale: 0.62,
+      scale: 0.48,
       gravityY: -8,
       spreadX: 18,
       spreadY: 8,
@@ -4729,20 +4836,20 @@ class BattleScene extends Phaser.Scene {
 
   private coverImpactFx(x: number, y: number, color = 0x7ab8d6) {
     const hostile = color === 0x9fb1c4;
-    this.fxGlowPulse(x, y - 8, hostile ? 0xff9d6b : color, hostile ? 54 : 70, 330, hostile ? 0.12 : 0.17);
-    this.fxShockwave(x, y - 8, hostile ? 0xff9d6b : color, hostile ? 54 : 76, 380, hostile ? 9 : -8);
-    if (!hostile) this.fxSuitSignature('nests', x, y - 10, color, 1.05);
-    this.fxImpactBurst(x, y - 8, hostile ? 0xff9d6b : color, hostile ? null : 'nests', hostile ? 0.78 : 0.95);
+    this.fxGlowPulse(x, y - 8, hostile ? 0xff9d6b : color, hostile ? 48 : 62, 280, hostile ? 0.1 : 0.13);
+    this.fxShockwave(x, y - 8, hostile ? 0xff9d6b : color, hostile ? 48 : 66, 320, hostile ? 9 : -8);
+    if (!hostile) this.fxSuitSignature('nests', x, y - 10, color, 0.9);
+    this.fxImpactBurst(x, y - 8, hostile ? 0xff9d6b : color, hostile ? null : 'nests', hostile ? 0.64 : 0.78);
     this.playFxAnimation(hostile ? 'fx-hostile' : 'fx-nests', x, y - 8, {
-      scale: hostile ? 1.22 : 1.45,
-      alpha: 0.88,
+      scale: hostile ? 1.04 : 1.22,
+      alpha: 0.72,
       additive: true,
     });
     this.fxMoteBurst(x, y - 6, hostile ? 0x9fb1c4 : 0x7ab8d6, {
-      count: hostile ? 9 : 13,
-      speed: hostile ? 132 : 96,
-      lifespan: 360,
-      scale: 0.58,
+      count: hostile ? 7 : 9,
+      speed: hostile ? 108 : 82,
+      lifespan: 300,
+      scale: 0.44,
       gravityY: hostile ? 22 : 4,
       spreadX: 18,
       spreadY: 12,
@@ -4751,21 +4858,21 @@ class BattleScene extends Phaser.Scene {
 
   private coverBuildFx(suit?: string | null) {
     const meta = suitFxMeta(suit ?? 'nests');
-    this.fxGlowPulse(FLOCK_FX_X, FLOCK_FX_Y + 20, 0x8fd6a0, 108, 520, 0.2);
-    this.fxShockwave(FLOCK_FX_X, FLOCK_FX_Y + 24, 0x8fd6a0, 104, 560, -7);
-    this.fxSuitSignature('nests', FLOCK_FX_X, FLOCK_FX_Y + 18, 0x8fd6a0, 1.28);
+    this.fxGlowPulse(FLOCK_FX_X, FLOCK_FX_Y + 20, 0x8fd6a0, 90, 440, 0.16);
+    this.fxShockwave(FLOCK_FX_X, FLOCK_FX_Y + 24, 0x8fd6a0, 84, 460, -7);
+    this.fxSuitSignature('nests', FLOCK_FX_X, FLOCK_FX_Y + 18, 0x8fd6a0, 1.08);
     this.playFxAnimation('fx-nests', FLOCK_FX_X, FLOCK_FX_Y + 20, {
-      scale: 1.85,
-      alpha: 0.9,
+      scale: 1.52,
+      alpha: 0.76,
       additive: true,
     });
     this.fxMoteBurst(FLOCK_FX_X, FLOCK_FX_Y + 24, 0x8fd6a0, {
-      count: 18,
-      speed: 104,
-      lifespan: 520,
-      scale: 0.66,
+      count: 12,
+      speed: 88,
+      lifespan: 440,
+      scale: 0.52,
       gravityY: -18,
-      spreadX: 34,
+      spreadX: 26,
       spreadY: 10,
     });
     if (suit && suit !== 'nests') {
@@ -4780,19 +4887,19 @@ class BattleScene extends Phaser.Scene {
   }
 
   private healFx() {
-    this.fxGlowPulse(FLOCK_FX_X, FLOCK_FX_Y + 12, 0x8fd6a0, 106, 600, 0.2);
-    this.fxShockwave(FLOCK_FX_X, FLOCK_FX_Y + 12, 0x8fd6a0, 88, 560, -6);
-    this.fxSuitSignature('basins', FLOCK_FX_X + 4, FLOCK_FX_Y - 2, 0x8fd6a0, 1.15);
-    this.playFxAnimation('fx-heal', FLOCK_FX_X, FLOCK_FX_Y + 12, { scale: 1.75, alpha: 0.92, additive: true });
-    this.playFxAnimation('fx-basins', FLOCK_FX_X + 16, FLOCK_FX_Y - 24, { scale: 1.05, alpha: 0.7, additive: true });
+    this.fxGlowPulse(FLOCK_FX_X, FLOCK_FX_Y + 12, 0x8fd6a0, 88, 520, 0.16);
+    this.fxShockwave(FLOCK_FX_X, FLOCK_FX_Y + 12, 0x8fd6a0, 74, 460, -6);
+    this.fxSuitSignature('basins', FLOCK_FX_X + 4, FLOCK_FX_Y - 2, 0x8fd6a0, 0.96);
+    this.playFxAnimation('fx-heal', FLOCK_FX_X, FLOCK_FX_Y + 12, { scale: 1.42, alpha: 0.78, additive: true });
+    this.playFxAnimation('fx-basins', FLOCK_FX_X + 16, FLOCK_FX_Y - 24, { scale: 0.92, alpha: 0.54, additive: true });
     this.fxMoteBurst(FLOCK_FX_X, FLOCK_FX_Y + 14, 0x8fd6a0, {
-      count: 22,
-      speed: 84,
-      lifespan: 720,
+      count: 14,
+      speed: 68,
+      lifespan: 560,
       angle: { min: 235, max: 305 },
-      scale: 0.7,
+      scale: 0.52,
       gravityY: -42,
-      spreadX: 30,
+      spreadX: 24,
       spreadY: 12,
     });
   }
@@ -4989,7 +5096,7 @@ class BattleScene extends Phaser.Scene {
       const breathGroup = this.add.container(x, y);
       const poseGroup = this.add.container(0, 0);
       breathGroup.add(poseGroup);
-      const shadow = this.add.ellipse(0, 48 * s, 132 * s, 26 * s, 0x020409, hasEnemyArt ? 0.42 : 0.28);
+      const shadow = this.add.ellipse(0, 34 * s, 112 * s, 22 * s, 0x020409, hasEnemyArt ? 0.38 : 0.26);
       poseGroup.add(shadow);
       const body = hasEnemyArt
         ? this.add.rectangle(0, -18 * s, 248 * s, 236 * s, 0x000000, 0.001)
@@ -5371,6 +5478,10 @@ class BattleScene extends Phaser.Scene {
     });
   }
 
+  private activeCardContract(card: Card): ActiveCardContract {
+    return activeCardContract(card, this.flock.molt);
+  }
+
   private handCardLeft(index: number, handSize = this.hand.length) {
     const minLeft = 142;
     const maxRight = 1140;
@@ -5388,6 +5499,7 @@ class BattleScene extends Phaser.Scene {
     const selected = this.selectedInstanceId === card.instanceId;
     const canPay = this.effectiveCost(card) <= this.energy;
     const accent = card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
+    const contract = this.activeCardContract(card);
 
     const rect = this.add.rectangle(cx, HAND_Y, CARD_W, CARD_H, 0x0a0f18, 1)
       .setStrokeStyle(selected ? 5 : 2, selected ? 0x24d0d6 : accent, 1)
@@ -5408,6 +5520,12 @@ class BattleScene extends Phaser.Scene {
     this.root.add(this.add.text(x + 34, top + 8, displayName(card), {
       fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: canPay ? '#ffe7b0' : '#9aa7b6', wordWrap: { width: CARD_W - 44 }
     }));
+    if (contract.usesMolt) {
+      this.root.add(this.add.rectangle(x + CARD_W - 43, top + 16, 70, 18, 0x2a1208, 0.88).setStrokeStyle(1, 0xff9d4d, 0.78));
+      this.root.add(this.add.text(x + CARD_W - 43, top + 9, 'MOLT', {
+        fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#ffc78f', align: 'center'
+      }).setOrigin(0.5, 0));
+    }
 
     // Cost badge (top-left).
     this.root.add(this.add.circle(x + 16, top + 16, 14, this.effectiveCost(card) === 0 ? 0x24d0d6 : 0xe8b830, 1).setStrokeStyle(2, 0x05080e, 0.9));
@@ -5421,7 +5539,7 @@ class BattleScene extends Phaser.Scene {
     this.root.add(this.add.rectangle(cx, bottom - panelH / 2 - 3, CARD_W - 6, panelH, 0x05080e, 0.82));
     this.root.add(this.add.rectangle(cx, bottom - panelH - 3, CARD_W - 6, 2, accent, 0.85));
     // Mechanical keywords are highlighted in their color (hover one for its meaning).
-    renderRichText(this, this.root, cx, bottom - panelH + 5, displayText(card), {
+    renderRichText(this, this.root, cx, bottom - panelH + 5, contract.text, {
       wrap: CARD_W - 16, fontSize: 12, align: 'center', lineSpacing: 2, tooltips: this.mode === 'battle',
     });
 
@@ -5440,6 +5558,7 @@ class BattleScene extends Phaser.Scene {
   // redraw and overlays the board above the hand.
   private showCardPreview(card: Card) {
     this.hideCardPreview();
+    const contract = this.activeCardContract(card);
     const w = 300;
     const h = Math.round(w * 1.5);
     const cx = GAME_WIDTH / 2;
@@ -5465,7 +5584,13 @@ class BattleScene extends Phaser.Scene {
     c.add(this.add.rectangle(cx, bottom - panelH / 2 - 4, w - 4, panelH, 0x05080e, 0.92));
     c.add(this.add.rectangle(cx, bottom - panelH - 4, w - 4, 2, accent, 0.85));
     let py = bottom - panelH + 6;
-    py += renderRichText(this, c, cx, py, displayText(card), { wrap: w - 24, fontSize: 15, align: 'center', lineSpacing: 2 }) + 6;
+    if (contract.usesMolt) {
+      c.add(this.add.text(cx, py, 'MOLT ACTIVE', {
+        fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#ffc78f'
+      }).setOrigin(0.5, 0));
+      py += 14;
+    }
+    py += renderRichText(this, c, cx, py, contract.text, { wrap: w - 24, fontSize: 15, align: 'center', lineSpacing: 2 }) + 6;
     if (card.moltText) {
       renderRichText(this, c, cx, py, `❂ MOLT: ${card.moltText}`, { wrap: w - 24, fontSize: 12, align: 'center', baseColor: '#ff9d4d', bold: true, lineSpacing: 2 });
     }
@@ -6026,6 +6151,7 @@ class BattleScene extends Phaser.Scene {
 
   private renderCardDetailPanel(card: Card, zone: string) {
     const accent = card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : 0x7ab8d6;
+    const contract = this.activeCardContract(card);
     renderFieldPanel(this, (obj) => this.root.add(obj), 842, 360, 590, 430, { accent, fill: UI_FIELD.ink });
 
     this.renderDetailCardArt(card);
@@ -6052,17 +6178,17 @@ class BattleScene extends Phaser.Scene {
       color: '#7ab8d6',
       wordWrap: { width: 270 }
     }));
-    this.root.add(this.add.text(840, 242, `Target: ${targetLabel(card.target)}  Role: ${card.role.toUpperCase()}`, {
+    this.root.add(this.add.text(840, 242, `Target: ${targetLabel(contract.target)}  Role: ${card.role.toUpperCase()}`, {
       fontFamily: 'Arial',
       fontSize: '14px',
-      color: '#b9c7d6'
+      color: contract.usesMolt ? '#ffc78f' : '#b9c7d6'
     }));
 
-    this.root.add(this.add.text(840, 292, 'Current Effect', detailHeaderStyle()));
-    this.root.add(this.add.text(840, 318, displayText(card), detailBodyStyle(270)));
+    this.root.add(this.add.text(840, 292, contract.usesMolt ? 'Current Effect (Molt)' : 'Current Effect', detailHeaderStyle()));
+    this.root.add(this.add.text(840, 318, contract.text, detailBodyStyle(270)));
 
-    this.root.add(this.add.text(840, 398, 'Preened Effect', detailHeaderStyle()));
-    this.root.add(this.add.text(840, 424, card.upgraded ? 'Already preened.' : card.upgradedText, detailBodyStyle(270)));
+    this.root.add(this.add.text(840, 398, contract.usesMolt ? 'Normal Effect' : 'Preened Effect', detailHeaderStyle()));
+    this.root.add(this.add.text(840, 424, contract.usesMolt ? displayText(card) : card.upgraded ? 'Already preened.' : card.upgradedText, detailBodyStyle(270)));
 
     this.root.add(this.add.text(840, 504, 'Flock Stats', detailHeaderStyle()));
     const stats = cardStatRows(card);
@@ -6213,8 +6339,9 @@ class BattleScene extends Phaser.Scene {
     const card = this.hand.find((candidate) => candidate.instanceId === instanceId);
     if (!card || this.effectiveCost(card) > this.energy) return;
     this.normalizeSelectedEnemy();
+    const contract = this.activeCardContract(card);
 
-    if (card.target === 'none' || card.target === 'self' || card.target === 'allEnemies' || card.target === 'choice') {
+    if (contract.target === 'none' || contract.target === 'self' || contract.target === 'allEnemies' || contract.target === 'choice') {
       this.playCard(card);
       return;
     }
@@ -6231,7 +6358,7 @@ class BattleScene extends Phaser.Scene {
     }
     this.selectedEnemyId = enemyId;
     const card = this.getSelectedCard();
-    if (card?.target === 'enemy') {
+    if (card && this.activeCardContract(card).target === 'enemy') {
       this.playCard(card, enemyId);
       return;
     }
@@ -6240,8 +6367,9 @@ class BattleScene extends Phaser.Scene {
 
   private playCard(card: Card, enemyId = this.selectedEnemyId) {
     if (this.mode !== 'battle') return;
+    const contract = this.activeCardContract(card);
     const targetEnemy = this.resolvePlayableEnemyTarget(enemyId);
-    if (card.target === 'enemy' && !targetEnemy) return;
+    if (contract.target === 'enemy' && !targetEnemy) return;
     enemyId = targetEnemy?.id ?? enemyId;
     const cost = this.effectiveCost(card);
     if (cost > this.energy) return;
@@ -6252,9 +6380,9 @@ class BattleScene extends Phaser.Scene {
     this.energy -= cost;
     this.statCardsPlayed += 1;
     this.cardsPlayedThisTurn += 1;
-    this.playCardCastFx(playedCard, enemyId, handIndexBeforePlay, handSizeBeforePlay);
+    this.playCardCastFx(playedCard, enemyId, handIndexBeforePlay, handSizeBeforePlay, contract);
 
-    const outcome = this.resolveCardEffects(playedCard, enemyId);
+    const outcome = this.resolveCardEffects(playedCard, enemyId, contract);
     if (playedCard.runtime.suit) {
       this.playedSuitsThisTurn.add(playedCard.runtime.suit);
       this.triggerFledglingSuitRally(playedCard);
@@ -6305,12 +6433,13 @@ class BattleScene extends Phaser.Scene {
     return c;
   }
 
-  private playCardCastFx(card: Card, enemyId: string, handIndex = 0, handSize = this.hand.length + 1) {
+  private playCardCastFx(card: Card, enemyId: string, handIndex = 0, handSize = this.hand.length + 1, contract = this.activeCardContract(card)) {
     if (prefersReducedMotion()) return;
     const meta = suitFxMeta(card.runtime.suit);
-    const target = card.target === 'enemy'
+    const activeTarget = contract.target;
+    const target = activeTarget === 'enemy'
       ? this.enemyView(this.getEnemy(enemyId))
-      : card.target === 'allEnemies'
+      : activeTarget === 'allEnemies'
         ? { x: ENEMY_FX_X, y: ENEMY_FX_Y, scale: 1 }
         : { x: FLOCK_FX_X, y: FLOCK_FX_Y, scale: 1 };
     const animKey = SUIT_FX_ANIM[card.runtime.suit ?? ''] ?? this.fxAnimForColor(meta.color);
@@ -6320,8 +6449,8 @@ class BattleScene extends Phaser.Scene {
     const fromX = this.handCardLeft(handIndex, handSize) + CARD_W / 2;
     const ghost = this.addCastCardGhost(card, fromX, HAND_Y);
     ghost.setDepth(40);
-    this.fxShardSweep(fromX, HAND_Y - 18, meta.color, travelDirection, 6);
-    this.fxDirectionalStreak(fromX, HAND_Y - 34, FLOCK_FX_X + 18, FLOCK_FX_Y - 82, meta.color, 250);
+    this.fxShardSweep(fromX, HAND_Y - 18, meta.color, travelDirection, 7);
+    this.fxDirectionalStreak(fromX, HAND_Y - 34, FLOCK_FX_X + 18, FLOCK_FX_Y - 82, meta.color, 300);
 
     this.tweens.chain({
       targets: ghost,
@@ -6334,12 +6463,12 @@ class BattleScene extends Phaser.Scene {
           duration: 170,
           ease: 'Cubic.easeOut',
           onComplete: () => {
-            this.fxGlowPulse(FLOCK_FX_X + 10, FLOCK_FX_Y - 42, meta.color, 74, 340, 0.18);
-            this.fxSuitSignature(card.runtime.suit, FLOCK_FX_X + 10, FLOCK_FX_Y - 42, meta.color, 0.88);
-            this.playFxAnimation(animKey, FLOCK_FX_X + 10, FLOCK_FX_Y - 42, { scale: 1.35, alpha: 0.9, additive: true });
-            this.fxShardSweep(FLOCK_FX_X + 18, FLOCK_FX_Y - 62, meta.color, travelDirection, 9);
-            if (card.target !== 'self') {
-              this.fxDirectionalStreak(FLOCK_FX_X + 18, FLOCK_FX_Y - 72, target.x, target.y - 68, meta.color, 260);
+            this.fxGlowPulse(FLOCK_FX_X + 10, FLOCK_FX_Y - 42, meta.color, 64, 360, 0.16);
+            this.fxSuitSignature(card.runtime.suit, FLOCK_FX_X + 10, FLOCK_FX_Y - 42, meta.color, 0.82);
+            this.playFxAnimation(animKey, FLOCK_FX_X + 10, FLOCK_FX_Y - 42, { scale: 1.18, alpha: 0.8, additive: true });
+            this.fxShardSweep(FLOCK_FX_X + 18, FLOCK_FX_Y - 62, meta.color, travelDirection, 7);
+            if (activeTarget === 'enemy' || activeTarget === 'allEnemies') {
+              this.fxDirectionalStreak(FLOCK_FX_X + 18, FLOCK_FX_Y - 72, target.x, target.y - 68, meta.color, 340);
             }
           },
         },
@@ -6349,21 +6478,22 @@ class BattleScene extends Phaser.Scene {
           scale: 0.52,
           angle: target.x > FLOCK_FX_X ? 6 : -6,
           alpha: 0.82,
-          duration: card.target === 'self' ? 120 : 230,
+          duration: activeTarget === 'self' || activeTarget === 'none' || activeTarget === 'choice' ? 120 : 230,
           ease: 'Quad.easeInOut',
           onComplete: () => {
             ghost.destroy(true);
-            this.fxGlowPulse(target.x, target.y - 18, meta.color, card.target === 'self' ? 78 : 96, 420, 0.19);
-            this.fxShockwave(target.x, target.y - 18, meta.color, card.target === 'self' ? 68 : 92, 430, card.target === 'self' ? -6 : 8);
-            this.fxSuitSignature(card.runtime.suit, target.x, target.y - 18, meta.color, card.target === 'self' ? 0.9 : 1.1);
-            this.fxImpactBurst(target.x, target.y - 18, meta.color, card.runtime.suit, card.target === 'self' ? 0.85 : 1.12);
-            this.playFxAnimation(animKey, target.x, target.y - 18, { scale: 1.55, alpha: 0.92, additive: true });
+            const selfTarget = activeTarget === 'self' || activeTarget === 'none' || activeTarget === 'choice';
+            this.fxGlowPulse(target.x, target.y - 18, meta.color, selfTarget ? 68 : 86, 440, 0.2);
+            this.fxShockwave(target.x, target.y - 18, meta.color, selfTarget ? 62 : 82, 460, selfTarget ? -6 : 8);
+            this.fxSuitSignature(card.runtime.suit, target.x, target.y - 18, meta.color, selfTarget ? 0.82 : 1.02);
+            this.fxImpactBurst(target.x, target.y - 18, meta.color, card.runtime.suit, selfTarget ? 0.78 : 1.08);
+            this.playFxAnimation(animKey, target.x, target.y - 18, { scale: 1.38, alpha: 0.88, additive: true });
             this.fxMoteBurst(target.x, target.y - 18, meta.color, {
-              count: card.target === 'self' ? 12 : 18,
-              speed: card.target === 'self' ? 92 : 154,
-              lifespan: 430,
-              scale: 0.66,
-              gravityY: card.target === 'self' ? -16 : 16,
+              count: selfTarget ? 9 : 15,
+              speed: selfTarget ? 84 : 142,
+              lifespan: 420,
+              scale: 0.56,
+              gravityY: selfTarget ? -16 : 16,
             });
           },
         },
@@ -6371,19 +6501,13 @@ class BattleScene extends Phaser.Scene {
     });
   }
 
-  private resolveCardEffects(card: Card, enemyId: string): EffectResolutionState {
+  private resolveCardEffects(card: Card, enemyId: string, contract = this.activeCardContract(card)): EffectResolutionState {
     // While Molting, a card resolves its unique Molt ability (do-different)
     // instead of its normal effect. Cards without one fall back to normal.
-    const molting = this.flock.molt && (card.runtime.moltEffects?.length ?? 0) > 0;
-    // A preened (upgraded) card uses its stronger PREENED Molt ability if it has one.
-    const moltEffects = card.upgraded && card.runtime.upgrade.moltEffects?.length
-      ? (card.runtime.upgrade.moltEffects as string[])
-      : (card.runtime.moltEffects as string[]);
-    const effects = molting
-      ? moltEffects
-      : (card.upgraded ? card.runtime.upgrade.effects : card.runtime.effects);
+    const molting = contract.usesMolt;
+    const effects = contract.effects;
     if (molting) {
-      const moltLabel = card.upgraded && card.moltTextUpgraded ? card.moltTextUpgraded : card.moltText;
+      const moltLabel = contract.text;
       this.logEvent(`${displayName(card)} molts — ${moltLabel}`);
       floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 40, 'Molt!', '#ff9d4d');
     }
@@ -7550,15 +7674,21 @@ class BattleScene extends Phaser.Scene {
         block: this.flock.block,
         statuses: flockStatuses(this.flock)
       },
-      hand: this.hand.map((card) => ({
-        instanceId: card.instanceId,
-        id: card.id,
-        name: displayName(card),
-        bird: card.bird,
-        cost: this.effectiveCost(card),
-        type: card.type,
-        target: card.target
-      })),
+      hand: this.hand.map((card) => {
+        const contract = this.activeCardContract(card);
+        return {
+          instanceId: card.instanceId,
+          id: card.id,
+          name: displayName(card),
+          bird: card.bird,
+          cost: this.effectiveCost(card),
+          type: card.type,
+          target: card.target,
+          activeTarget: contract.target,
+          activeText: contract.text,
+          usesMolt: contract.usesMolt
+        };
+      }),
       rewardChoices: this.rewardChoices.map((card) => ({
         id: card.id,
         name: displayName(card),
@@ -7624,6 +7754,7 @@ class BattleScene extends Phaser.Scene {
           : this.discardPile.map((card) => ({ card, zone: 'Discard' }))
     );
     if (!entry) return undefined;
+    const contract = this.activeCardContract(entry.card);
     return {
       id: entry.card.id,
       name: displayName(entry.card),
@@ -7632,6 +7763,9 @@ class BattleScene extends Phaser.Scene {
       cost: this.effectiveCost(entry.card),
       type: entry.card.type,
       target: entry.card.target,
+      activeTarget: contract.target,
+      activeText: contract.text,
+      usesMolt: contract.usesMolt,
       baseText: entry.card.text,
       upgradedText: entry.card.upgradedText,
       flockStats: Object.entries(entry.card.runtime.flockStats).map(([key, value]) => ({
@@ -7837,7 +7971,12 @@ function displayName(card: Card) {
   return card.upgraded ? `${card.name}+` : card.name;
 }
 
+function isAviaryCard(card: Pick<Card, 'id'>) {
+  return card.id.startsWith('aviary_');
+}
+
 function cardLabel(card: Card) {
+  if (isAviaryCard(card)) return 'AVIARY';
   if (card.type === 'major') return 'LEGEND';
   if (card.type === 'minor') return suitLabel(card);
   return 'MOLT';
@@ -7857,6 +7996,67 @@ function cardArtKey(card: Card) {
 
 function displayText(card: Card) {
   return card.upgraded ? card.upgradedText : card.text;
+}
+
+function activeMoltEffects(card: Card) {
+  return card.upgraded && card.runtime.upgrade.moltEffects?.length
+    ? (card.runtime.upgrade.moltEffects as string[])
+    : (card.runtime.moltEffects ?? []);
+}
+
+function activeMoltText(card: Card) {
+  if (card.upgraded && card.moltTextUpgraded) return card.moltTextUpgraded;
+  return card.moltText;
+}
+
+function effectBody(effect: string) {
+  return effect.replace(/^if .+? then /, '');
+}
+
+function effectsNeedEnemyTarget(effects: string[]) {
+  return effects.some((effect) => {
+    const body = effectBody(effect);
+    return /\b(?:damage|damagePierce|applyWinded|removeCover)\(target\b/.test(body)
+      || /\b(?:resonanceBurst|windedBurst)\(/.test(body)
+      || /\bperWinded\b/.test(body)
+      || /\btarget(?:BelowHalf|IntendsAttack|HasCover|Winded)\b/.test(effect)
+      || /\bwindedAtLeast\(/.test(effect);
+  });
+}
+
+function effectsHitAllEnemies(effects: string[]) {
+  return effects.some((effect) => /\bdamageAll\(/.test(effectBody(effect)));
+}
+
+function effectsOnlyAffectFlock(effects: string[]) {
+  return effects.some((effect) => {
+    const body = effectBody(effect);
+    return /\b(?:gainCover|heal|overhealCover|loseCohesion|draw|discard|discardUpTo|gainWingbeat|loseWingbeat|gainResonance|spendResonance|enterMolt|gainOpenSkyGuard|returnDiscard|nextCoverBonus|nextTurnDraw|gainEnergyNextTurn|shuffleSelfToDraw)\(/.test(body);
+  });
+}
+
+function inferActiveTarget(baseTarget: TargetType, effects: string[]): TargetType {
+  if (effectsNeedEnemyTarget(effects)) return 'enemy';
+  if (effectsHitAllEnemies(effects)) return 'allEnemies';
+  if (baseTarget === 'choice') return 'choice';
+  if (effectsOnlyAffectFlock(effects)) return baseTarget === 'none' ? 'none' : 'self';
+  return baseTarget;
+}
+
+function activeCardContract(card: Card, molting: boolean): ActiveCardContract {
+  const moltEffects = activeMoltEffects(card);
+  const usesMolt = molting && moltEffects.length > 0;
+  const effects = usesMolt
+    ? moltEffects
+    : (card.upgraded ? card.runtime.upgrade.effects : card.runtime.effects);
+  return {
+    effects,
+    text: usesMolt ? activeMoltText(card) : displayText(card),
+    target: usesMolt ? inferActiveTarget(card.target, effects) : card.target,
+    baseTarget: card.target,
+    usesMolt,
+    label: usesMolt ? 'Molt' : 'Normal',
+  };
 }
 
 const STATUS_TOOLTIPS: Record<string, string> = {
@@ -8729,7 +8929,7 @@ function createCardTemplate(runtime: RuntimeCard): Card {
     instanceId: '',
     id: runtime.id,
     name: runtime.displayName,
-    type: runtime.kind === 'legend' ? 'major' : runtime.kind === 'molt' ? 'molt' : 'minor',
+    type: runtime.id.startsWith('aviary_') ? 'aviary' : runtime.kind === 'legend' ? 'major' : runtime.kind === 'molt' ? 'molt' : 'minor',
     role: runtime.tags.includes('attack') ? 'attack' : runtime.tags.some((tag) => ['cover', 'heal'].includes(tag)) ? 'skill' : 'utility',
     target: runtime.target,
     cost: runtime.cost,
