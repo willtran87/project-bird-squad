@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bird Squad Runtime Optimizer"
+  short_description: "Keep Bird Squad assets and bundles fast"
+  default_prompt: "Use $bird-squad-runtime-optimizer to review Bird Squad runtime asset loading, bundle size, cache headers, and smoke-test performance."
