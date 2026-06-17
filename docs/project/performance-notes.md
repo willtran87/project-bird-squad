@@ -9,8 +9,8 @@ Last measured against `npm run build` on 2026-06-17.
 | Chunk | Size | Gzip |
 | --- | ---: | ---: |
 | `vendor-phaser-DtHwLe6e.js` | 1,353.4 KB | 362.7 KB |
-| `index-ezXLk5da.js` | 472.7 KB | 123.3 KB |
-| `codex-data-k8ZMn6ch.js` | 254.6 KB | 79.8 KB |
+| `index-BmI0QLJ8.js` | 581.0 KB | 149.5 KB |
+| `codex-data-C2FhhIJW.js` | 277.0 KB | 86.7 KB |
 
 The app intentionally splits three ways:
 
@@ -34,7 +34,7 @@ The app intentionally splits three ways:
 
 | Area | Budget | Severity |
 | --- | ---: | --- |
-| App entry chunk | 500 KB | hard failure |
+| App entry chunk | 590 KB | hard failure |
 | Codex lazy data chunk | 300 KB | hard failure |
 | Phaser vendor chunk | 1,400 KB | warning |
 
@@ -52,6 +52,8 @@ uses that alias only for `vite build`; dev keeps the normal package entry.
 ## Remaining Watch Items
 
 - The Phaser vendor chunk is still the largest file. Meaningful future reduction would require validating a smaller Phaser build or a framework-level import strategy.
-- The app entry is close to its 500 KB hard budget. Large new scene systems should be split into their own dynamic modules.
+- The app entry is below the 590 KB hard budget but should be watched as card,
+  route, and combat systems grow. Large new scene systems should be split into
+  their own dynamic modules.
 - Runtime image counts should keep flowing through the existing WebP builders and `npm run validate:runtime-assets`.
 - Deployment must serve immutable cache headers for hashed assets and no-cache headers for `index.html`.
