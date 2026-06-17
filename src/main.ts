@@ -611,37 +611,37 @@ class MenuScene extends Phaser.Scene {
 
     this.menuAccount = loadAccount();
     if (!isLeaderUnlocked(this.menuAccount, this.selectedLeaderId)) this.selectedLeaderId = defaultLeaderId;
-    this.add.text(GAME_WIDTH / 2, 460, 'Choose your Flock Leader', {
-      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#ffe1a3'
+    this.add.text(GAME_WIDTH / 2, 474, 'Choose your Flock Leader', {
+      fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: '#ffe1a3'
     }).setOrigin(0.5);
     this.leaderPanels = [];
     flockLeaders.forEach((leader, index) => {
       const px = 168 + index * 236;
-      const py = 522;
+      const py = 524;
       const unlocked = isLeaderUnlocked(this.menuAccount, leader.id);
-      const rect = this.add.rectangle(px, py, 224, 80, unlocked ? 0x0d1420 : 0x0a0e15, unlocked ? 0.92 : 0.92)
+      const rect = this.add.rectangle(px, py, 218, 58, unlocked ? 0x0d1420 : 0x0a0e15, unlocked ? 0.9 : 0.86)
         .setStrokeStyle(2, unlocked ? 0x2a4555 : 0x222a33, 0.9)
         .setInteractive({ useHandCursor: unlocked });
       if (unlocked) rect.on('pointerdown', () => this.selectLeader(leader.id));
-      this.add.text(px, py - 20, leader.name, {
-        fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: unlocked ? '#ffe1a3' : '#5a6675', align: 'center', wordWrap: { width: 208 }
+      this.add.text(px, py - 13, leader.name, {
+        fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: unlocked ? '#ffe1a3' : '#5a6675', align: 'center', wordWrap: { width: 202 }
       }).setOrigin(0.5);
       this.add.text(px, py + 18, unlocked ? `${leader.suit} · ${leader.bird}` : `🔒 ${leaderUnlockHints[leader.id] ?? 'Locked'}`, {
-        fontFamily: 'Arial', fontSize: unlocked ? '12px' : '11px', color: unlocked ? '#9fb1c4' : '#6f7d8c', align: 'center', wordWrap: { width: 208 }
+        fontFamily: 'Arial', fontSize: unlocked ? '11px' : '10px', color: unlocked ? '#9fb1c4' : '#6f7d8c', align: 'center', wordWrap: { width: 202 }
       }).setOrigin(0.5);
       this.leaderPanels.push({ id: leader.id, rect, unlocked });
     });
-    this.leaderBlurb = this.add.text(GAME_WIDTH / 2, 580, '', {
-      fontFamily: 'Georgia, serif', fontSize: '14px', fontStyle: 'italic', color: '#cdd9e6', align: 'center', wordWrap: { width: 880 }
+    this.leaderBlurb = this.add.text(GAME_WIDTH / 2, 578, '', {
+      fontFamily: 'Georgia, serif', fontSize: '12px', fontStyle: 'italic', color: '#cdd9e6', align: 'center', wordWrap: { width: 780 }
     }).setOrigin(0.5);
     this.selectLeader(this.selectedLeaderId);
 
     const savedRun = hasActiveRun();
     if (savedRun) {
-      this.makeMenuButton(GAME_WIDTH / 2, 622, 360, 46, 'Continue Run', 0xe8b830, '24px', () => this.continueRun());
-      this.makeMenuButton(GAME_WIDTH / 2, 672, 300, 40, 'Start New Run', 0x7ab8d6, '18px', () => this.startRun());
+      this.makeMenuButton(672, 636, 292, 48, 'Continue Run', 0xe8b830, '23px', () => this.continueRun());
+      this.makeMenuButton(986, 636, 230, 40, 'Start New Run', 0x7ab8d6, '17px', () => this.startRun());
     } else {
-      this.makeMenuButton(GAME_WIDTH / 2, 636, 324, 54, 'Start Run', 0xd8a840, '28px', () => this.startRun());
+      this.makeMenuButton(780, 636, 324, 54, 'Start Run', 0xd8a840, '28px', () => this.startRun());
     }
     this.input.keyboard?.on('keydown-ENTER', () => (savedRun ? this.continueRun() : this.startRun()));
 
