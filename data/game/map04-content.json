@@ -588,6 +588,7 @@
       "name": "Vulture Cleanup Crew",
       "type": "normal",
       "health": 42,
+      "roles": ["support", "bruiser"],
       "lesson": "Cleanup pressure: heals if left alone and punishes low Cohesion.",
       "description": "A patient high-roost scavenger posted near roof-access salvage carts, waiting for weakness before closing the cleanup lane.",
       "visualBrief": "Turkey vulture in a worn roost mantle, utility harness, talon bands, subtle salvage tags, and clipped tarp-cord accents beside a roof-access landing and service-cart scrap; natural bare head and wings unobstructed.",
@@ -605,7 +606,7 @@
           "id": "vulture_cleanup",
           "label": "Cleanup",
           "effects": [
-            "if notHitThisTurn then heal(6)"
+            "if notHitThisTurn then healAlly(lowest, 6)"
           ]
         },
         {
@@ -1052,11 +1053,14 @@
       "band": "pressure",
       "lesson": "A cleanup bird recovers if ignored and escalates when Cohesion is low.",
       "tags": [
+        "support",
         "openSky",
-        "tempo"
+        "tempo",
+        "multi"
       ],
       "enemies": [
-        "vulture_cleanup_crew"
+        "vulture_cleanup_crew",
+        "woodpecker_riveter"
       ],
       "rewardProfileId": "street_map04"
     },
@@ -1103,6 +1107,7 @@
       "lesson": "Late-roost utilities mix healing denial, wall pressure, and Open Sky setup.",
       "tags": [
         "multi",
+        "support",
         "cover",
         "openSky"
       ],
@@ -1137,6 +1142,7 @@
       "lesson": "Support setup plus cleanup pressure forces focus before low-Cohesion punishment arrives.",
       "tags": [
         "tempo",
+        "support",
         "openSky",
         "multi"
       ],
@@ -1827,14 +1833,8 @@
       {
         "from": "m4_c4_street_drifter",
         "to": "m4_c5_signal_cache",
-        "locked": false,
-        "preview": "known"
-      },
-      {
-        "from": "m4_c4_rival_baron",
-        "to": "m4_c5_signal_cache",
-        "locked": false,
-        "preview": "known"
+        "locked": true,
+        "preview": "hidden"
       },
       {
         "from": "m4_c4_rival_baron",
@@ -1844,15 +1844,15 @@
       },
       {
         "from": "m4_c4_street_falcon",
-        "to": "m4_c5_street_sentinel",
+        "to": "m4_c5_nest_final",
         "locked": false,
         "preview": "known"
       },
       {
         "from": "m4_c4_street_falcon",
-        "to": "m4_c5_signal_cache",
-        "locked": false,
-        "preview": "known"
+        "to": "m4_c5_street_sentinel",
+        "locked": true,
+        "preview": "hidden"
       },
       {
         "from": "m4_c5_nest_final",

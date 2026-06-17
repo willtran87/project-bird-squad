@@ -62,6 +62,7 @@
       "name": "Signal Gull",
       "type": "normal",
       "health": 24,
+      "roles": ["support", "saboteur"],
       "lesson": "Manage Brace and Scavenge.",
       "description": "A loud opportunist gull that steals tempo, braces behind rooftop junk, and patches itself up if ignored.",
       "visualBrief": "Natural gull in a loose windbreaker wrap, reflective ankle bands, and a small scrap satchel, standing in a rooftop stance with food-carton and wet-antenna-wire styling cues.",
@@ -79,14 +80,15 @@
           "id": "scavenge_heal",
           "label": "Scavenge",
           "effects": [
-            "if notHitThisTurn then heal(4)"
+            "if notHitThisTurn then healAlly(lowest, 4)"
           ]
         },
         {
           "id": "brace_6",
           "label": "Brace",
           "effects": [
-            "gainCover(6)"
+            "gainCoverAlly(lowest, 4)",
+            "gainCover(4)"
           ]
         }
       ],
@@ -421,6 +423,7 @@
       "name": "Skunk Chemist",
       "type": "normal",
       "health": 28,
+      "roles": ["poison", "controller", "saboteur"],
       "lesson": "Area-denial debuffer: Frail and Snag pressure arrive before late districts.",
       "description": "A prepared skunk that turns narrow alleys into no-go zones with nasty natural deterrence and found containers.",
       "visualBrief": "Striped skunk in a bright hazard-style harness, clipped non-sci-fi canister props, paw wraps, and tail fully free near alley drainage.",
@@ -431,7 +434,8 @@
           "id": "skunk_sour_cloud",
           "label": "Sour Cloud",
           "effects": [
-            "applyFrail(1)"
+            "applyFrail(1)",
+            "applyPoison(flock, 2)"
           ]
         },
         {

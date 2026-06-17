@@ -66,6 +66,7 @@ const effectValue = (effect, verb) => {
 const rewardProfiles = readJson('data/game/alpha-reward-profiles.json').profiles;
 const rewardById = new Map(rewardProfiles.map((profile) => [profile.id, profile]));
 const routeMarks = readJson('data/game/alpha-route-marks.json').routeMarks;
+const cacheOptions = readJson('data/game/alpha-cache.json').options;
 const balance = readJson('data/game/balance-config.json');
 const market = readJson('data/game/alpha-market.json').markets[0];
 
@@ -129,6 +130,45 @@ function markValue(run, trigger, verb) {
   }, 0);
 }
 
+function applyRouteEffect(run, rng, effect) {
+  const parsed = parseEffect(effect);
+  if (!parsed) return;
+  const n = Number(parsed.args[0]) || 0;
+  switch (parsed.name) {
+    case 'gainScrap':
+      run.scrap += n;
+      run.scrapGained += n;
+      break;
+    case 'payScrap':
+      run.scrap = Math.max(0, run.scrap - n);
+      break;
+    case 'gainRouteMark':
+      if (parsed.args[0]?.startsWith('random')) {
+        addRouteMark(run, rng);
+      } else if (markById.has(parsed.args[0]) && !run.routeMarks.includes(parsed.args[0])) {
+        run.routeMarks.push(parsed.args[0]);
+      }
+      break;
+    case 'addCard':
+      run.deckSize += 1;
+      break;
+    case 'preenCard':
+      run.preens += n || 1;
+      break;
+    case 'releaseCard':
+      run.deckSize = Math.max(1, run.deckSize - (n || 1));
+      break;
+    case 'gainCacheReward': {
+      const choices = cacheOptions.slice(0, 5 + markValue(run, 'cacheChoice', 'extraCacheChoice'));
+      const chosen = choices.length ? pick(rng, choices) : undefined;
+      chosen?.effects?.forEach((inner) => applyRouteEffect(run, rng, inner));
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 function affordableMarketAction(run, rng) {
   const cardPrice = market.cardSlots[0]?.price?.base ?? 75;
   const waymarkPrice = market.routeMarkSlots[0]?.price?.base ?? 135;
@@ -184,10 +224,9 @@ function applyRouteNode(run, node, rng, economy) {
     return;
   }
   if (node.type === 'cache') {
-    run.scrap += economy.cacheScrap;
-    run.scrapGained += economy.cacheScrap;
-    if (rng() < 0.35) addRouteMark(run, rng, 'cache');
-    if (rng() < 0.35) run.deckSize += 1;
+    const choices = cacheOptions.slice(0, 5 + markValue(run, 'cacheChoice', 'extraCacheChoice'));
+    const chosen = choices.length ? pick(rng, choices) : undefined;
+    chosen?.effects?.forEach((effect) => applyRouteEffect(run, rng, effect));
     return;
   }
   if (node.type === 'signal') {
@@ -303,7 +342,7 @@ if (jsonOutput) {
 console.log(`Bird Squad economy simulation (${samples} seeded full-run samples)`);
 console.log('');
 console.log('Assumptions: route choices are sampled uniformly from legal exits; combat rewards use authored profiles;');
-console.log('caches use configured cache EV plus modest card/Waymark odds; markets buy one affordable card/Preen/Waymark.');
+console.log('caches sample the live cache choice table; markets buy one affordable card/Preen/Waymark.');
 console.log('');
 const headers = ['Map', 'Scrap+', 'Boss Scrap', 'Deck', 'Deck Target', 'Waymarks', 'WM Target', 'Preens', 'Safety', 'Status'];
 const table = rows.map((row) => [

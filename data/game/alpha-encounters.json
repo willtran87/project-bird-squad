@@ -34,6 +34,7 @@
       "lesson": "A gull screens for two rats pressing from both roof edges.",
       "tags": [
         "scavenge",
+        "support",
         "multi"
       ],
       "enemies": [
@@ -87,10 +88,13 @@
       "lesson": "Manage Brace and Scavenge.",
       "tags": [
         "scavenge",
-        "cover"
+        "support",
+        "cover",
+        "multi"
       ],
       "enemies": [
-        "signal_gull"
+        "signal_gull",
+        "roof_rat"
       ],
       "rewardProfileId": "street_standard"
     },
@@ -139,6 +143,7 @@
         "boss",
         "cover",
         "snag",
+        "support",
         "openSky",
         "multi"
       ],
@@ -257,6 +262,7 @@
       "lesson": "Early Frail and Snag pressure teaches status cleanup before later districts.",
       "tags": [
         "snag",
+        "poison",
         "tempo"
       ],
       "enemies": [

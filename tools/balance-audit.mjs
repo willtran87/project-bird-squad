@@ -150,18 +150,27 @@ for (const map of maps) {
   const profile = balanceByMap.get(map.id);
   const encounterRows = map.encounters.map((encounter) => {
     const enemies = encounter.enemies.map((id) => enemyById.get(id)).filter(Boolean);
+    const supportCount = enemies.filter((enemy) => enemy.roles?.includes('support')).length;
+    const poisonCount = enemies.filter((enemy) => enemy.roles?.includes('poison')).length;
     return {
       id: encounter.id,
       band: encounter.band,
       n: enemies.length,
+      supportCount,
+      poisonCount,
       hp: sum(enemies.map((enemy) => enemy.health)),
       maxHit: sum(enemies.map((enemy) => Math.max(...enemy.moves.map(damageFromMove)))),
     };
   });
   const route = routeStats(map.routeMap);
+  const multiRows = encounterRows.filter((row) => row.n > 1);
+  const soloRows = encounterRows.filter((row) => row.n === 1 && row.band !== 'boss');
+  const supportMultiRows = multiRows.filter((row) => row.supportCount > 0);
+  const poisonRows = encounterRows.filter((row) => row.poisonCount > 0);
   console.log(`- ${map.id}: expected FPI ${profile?.expectedFlockPower ?? 'n/a'}`);
   console.log(`  route authored paths ${route.paths}, avg path ${JSON.stringify(route.avgPath)}, min safety ${route.minSafety}, max street ${route.maxStreet}`);
   console.log(`  enemies HP avg ${fmt(avg(map.enemies.map((enemy) => enemy.health)))}, max hit ${Math.max(...map.enemies.flatMap((enemy) => enemy.moves.map(damageFromMove)))}`);
+  console.log(`  composition: ${soloRows.length} solo tuned fights, ${supportMultiRows.length}/${multiRows.length} multi fights include support, ${poisonRows.length} poison-status fights`);
   for (const row of encounterRows.sort((a, b) => b.hp - a.hp).slice(0, 3)) {
     console.log(`  top pressure: ${row.id} [${row.band}] ${row.n} enemy, ${row.hp} HP, ${row.maxHit} max-hit stack`);
   }

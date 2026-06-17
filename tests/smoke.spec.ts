@@ -48,6 +48,60 @@ test('route map loads and previews the boss before the final node', async ({ pag
   expect(result.bossRewardBadges).toContain('waymark');
 });
 
+test('generated route map node footprints do not overlap', async ({ page }) => {
+  await boot(page);
+  const overlaps = await page.evaluate(() => {
+    const g = window.__birdSquadGame;
+    const seeds = Array.from({ length: 12 }, (_value, index) => `node-spacing-${index}`);
+    const failures: Array<{ mapIndex: number; seed: string; a: string; b: string }> = [];
+    const rectsOverlap = (a: any, b: any) => (
+      a.left < b.right - 1
+      && a.right > b.left + 1
+      && a.top < b.bottom - 1
+      && a.bottom > b.top + 1
+    );
+
+    for (let mapIndex = 0; mapIndex < 4; mapIndex += 1) {
+      for (const seed of seeds) {
+        g.scene.start('RouteScene', {
+          runState: {
+            deck: [{ id: 'major_00' }],
+            leaderId: 'fledgling',
+            difficulty: 0,
+            seed,
+            currentHp: 36,
+            scrap: 40,
+            routeMarks: [],
+            supplies: [],
+            mapIndex,
+            completedRouteNodeIds: [],
+            currentRouteNodeId: undefined,
+            routeLog: [],
+            nextCombat: undefined,
+            signalChoices: [],
+            rewardEvents: [],
+            suppliesUsed: [],
+            combatResults: [],
+            freePreenNextDistrict: 0
+          }
+        });
+        g.scene.stop('MenuScene');
+        const state = JSON.parse(window.render_game_to_text!());
+        const nodes = state.nodes.map((node: any) => ({ id: node.id, bounds: node.visualBounds }));
+        for (let i = 0; i < nodes.length; i += 1) {
+          for (let j = i + 1; j < nodes.length; j += 1) {
+            if (rectsOverlap(nodes[i].bounds, nodes[j].bounds)) {
+              failures.push({ mapIndex, seed, a: nodes[i].id, b: nodes[j].id });
+            }
+          }
+        }
+      }
+    }
+    return failures;
+  });
+  expect(overlaps).toEqual([]);
+});
+
 test('route map surfaces run status without opening the Flock menu', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(() => {
@@ -88,6 +142,138 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
     return window.__birdSquadState!().enemies.map((e: any) => e.name);
   });
   expect(enemies).toContain('Roof Rat');
+});
+
+test('encounter composition supports solo tuning and support companions', async ({ page }) => {
+  await boot(page);
+  const solo = await page.evaluate(() => {
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const soloScene: any = g.scene.getScene('BattleScene');
+    const soloEnemy = soloScene.enemies[0];
+    return {
+      solo: soloEnemy.solo,
+      maxHp: soloEnemy.maxHp,
+      baseHp: soloEnemy.runtime.health,
+      damageBonus: soloEnemy.damageBonus,
+      previewDamage: soloScene.incomingAttackDamage(soloEnemy),
+    };
+  });
+
+  await page.reload();
+  await boot(page);
+  const supportResult = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    const runState = {
+      deck: [{ id: 'major_00' }],
+      leaderId: 'fledgling',
+      difficulty: 0,
+      seed: 'support-companion-test',
+      currentHp: 36,
+      scrap: 0,
+      routeMarks: [],
+      supplies: [],
+      mapIndex: 0,
+      completedRouteNodeIds: [],
+      currentRouteNodeId: undefined,
+      routeLog: [],
+      nextCombat: undefined,
+      signalChoices: [],
+      rewardEvents: [],
+    };
+
+    g.scene.start('RouteScene', { runState });
+    const supportNodeId = window.__birdSquadCurrentMap!().nodes
+      .find((node: any) => node.payloadId === 'enc_rooftop_skirmish')?.id;
+    g.scene.start('BattleScene', { routeNodeId: supportNodeId, runState });
+    g.scene.stop('MenuScene');
+    const supportScene: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 20 && !supportScene.enemies?.length; i += 1) {
+      await wait(50);
+    }
+    for (let i = 0; i < 20 && !supportScene.enemies.some((enemy: any) => enemy.roles.includes('support')); i += 1) {
+      await wait(50);
+    }
+    const support = supportScene.enemies.find((enemy: any) => enemy.roles.includes('support'));
+    const ally = supportScene.enemies.find((enemy: any) => enemy.id !== support.id);
+    ally.maxHp = 30;
+    ally.hp = 12;
+    supportScene.resolveEnemyEffect(support, 'healAlly(lowest, 4)');
+    supportScene.resolveEnemyEffect(support, 'gainCoverAlly(lowest, 3)');
+
+    return {
+      supportRoles: support.roles,
+      allyHp: ally.hp,
+      allyBlock: ally.block,
+      supportState: window.__birdSquadState!().enemies.map((enemy: any) => ({
+        id: enemy.id,
+        roles: enemy.roles,
+        solo: enemy.solo,
+      })),
+    };
+  });
+
+  expect(solo.solo).toBe(true);
+  expect(solo.maxHp).toBeGreaterThan(solo.baseHp);
+  expect(solo.damageBonus).toBe(1);
+  expect(solo.previewDamage).toBeGreaterThan(6);
+  expect(supportResult.supportRoles).toContain('support');
+  expect(supportResult.allyHp).toBe(16);
+  expect(supportResult.allyBlock).toBe(3);
+  expect(supportResult.supportState.some((enemy: any) => enemy.roles.includes('support'))).toBe(true);
+  expect(supportResult.supportState.every((enemy: any) => enemy.solo === false)).toBe(true);
+});
+
+test('poison pressure applies Fouled and ticks on the next player turn', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    const enemy = scene.enemies[0];
+    scene.flock.hp = 30;
+    scene.flock.block = 99;
+    scene.resolveEnemyEffect(enemy, 'applyPoison(flock, 2)');
+    const afterApply = window.__birdSquadState!().flock;
+    scene.startPlayerTurn();
+    const afterTick = window.__birdSquadState!().flock;
+    return { afterApply, afterTick, log: scene.log.slice(-4) };
+  });
+
+  expect(result.afterApply.fouled).toBe(2);
+  expect(result.afterApply.statuses).toContain('Fouled 2');
+  expect(result.afterTick.hp).toBe(29);
+  expect(result.afterTick.fouled).toBe(1);
+  expect(result.afterTick.statuses).toContain('Fouled 1');
+  expect(result.log.some((line: string) => line.includes('Fouled pressure'))).toBe(true);
+});
+
+test('flock Cohesion bar exposes incoming damage prediction after Cover', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    const enemy = scene.enemies[0];
+    const intentDamage = scene.incomingAttackDamage(enemy);
+    scene.flock.hp = 30;
+    scene.flock.block = 3;
+    scene.renderAll();
+    return {
+      intentDamage,
+      preview: window.__birdSquadState!().flock.incoming,
+    };
+  });
+
+  expect(result.preview.total).toBe(result.intentDamage);
+  expect(result.preview.blocked).toBe(3);
+  expect(result.preview.hpLoss).toBe(result.intentDamage - 3);
+  expect(result.preview.afterHp).toBe(30 - (result.intentDamage - 3));
+  expect(result.preview.attackers).toBe(1);
 });
 
 test('battle hand is compact (no full effect text) and enemies expose intents', async ({ page }) => {
@@ -286,6 +472,61 @@ test('signals/basins/cache present structured choices resolved by the route-effe
   expect(result.gatedNear).toBe(true);
 });
 
+test('route choice and market nodes complete only after their economy step resolves', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    const g = window.__birdSquadGame;
+    g.scene.start('RouteScene', {});
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('RouteScene');
+    const map = window.__birdSquadCurrentMap!();
+    const basin = map.nodes.find((node: any) => node.type === 'basin');
+    scene.openNodeChoices(basin);
+    const basinCompletedOnOpen = scene.runState.completedRouteNodeIds.includes(basin.id);
+    scene.chooseNodeOption('recover');
+    const basinCompletedAfterChoice = scene.runState.completedRouteNodeIds.includes(basin.id);
+
+    g.scene.start('RouteScene', {});
+    const marketScene: any = g.scene.getScene('RouteScene');
+    const marketMap = window.__birdSquadCurrentMap!();
+    const market = marketMap.nodes.find((node: any) => node.type === 'market')
+      ?? marketMap.nodes.find((node: any) => node.type !== 'boss');
+    market.type = 'market';
+    marketScene.openMarketNode(market);
+    const marketCompletedOnOpen = marketScene.runState.completedRouteNodeIds.includes(market.id);
+    marketScene.leaveMarket();
+    const marketCompletedAfterLeave = marketScene.runState.completedRouteNodeIds.includes(market.id);
+
+    return { basinCompletedOnOpen, basinCompletedAfterChoice, marketCompletedOnOpen, marketCompletedAfterLeave };
+  });
+  expect(result.basinCompletedOnOpen).toBe(false);
+  expect(result.basinCompletedAfterChoice).toBe(true);
+  expect(result.marketCompletedOnOpen).toBe(false);
+  expect(result.marketCompletedAfterLeave).toBe(true);
+});
+
+test('payScrap route options are locked when Scrap is short', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    const g = window.__birdSquadGame;
+    g.scene.start('RouteScene', {});
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('RouteScene');
+    scene.runState.scrap = 0;
+    const basin = scene.nodeChoiceList({ type: 'basin' }).find((choice: any) => choice.key === 'refill_supplies');
+    scene.runState.scrap = 20;
+    const basinAffordable = scene.nodeChoiceList({ type: 'basin' }).find((choice: any) => choice.key === 'refill_supplies');
+    return {
+      lockedAtZero: basin.locked,
+      lockText: basin.lockedText,
+      unlockedAtCost: basinAffordable.locked
+    };
+  });
+  expect(result.lockedAtZero).toBe(true);
+  expect(result.lockText).toContain('20 Scrap');
+  expect(result.unlockedAtCost).toBe(false);
+});
+
 test('route event overlays render generated special-node backdrops', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
@@ -432,7 +673,79 @@ test('card reward can be skipped for a Scrap fallback, recorded for stats', asyn
   expect(result.rewardEvents[0].offered).toContain('wands_02');
 });
 
-test('market shelves are finite during a visit', async ({ page }) => {
+test('card reward skip Scrap follows the active map economy profile', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', {
+      routeNodeId: 'm4_c0_street_opening',
+      runState: {
+        deck: [{ id: 'major_00' }],
+        leaderId: 'fledgling',
+        difficulty: 0,
+        seed: 'skip-scrap-map4',
+        currentHp: 36,
+        scrap: 0,
+        routeMarks: [],
+        supplies: [],
+        mapIndex: 3,
+        completedRouteNodeIds: [],
+        currentRouteNodeId: undefined,
+        routeLog: [],
+        nextCombat: undefined,
+        signalChoices: [],
+        rewardEvents: [],
+      }
+    });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    scene.rewardChoices = [{ id: 'wands_02' }, { id: 'cups_02' }];
+    scene.mode = 'cardReward';
+    scene.combatEconomyAwarded = true;
+    scene.shouldOfferUpgradeReward = () => false;
+    const before = scene.scrap;
+    scene.skipCardReward();
+    return scene.scrap - before;
+  });
+  expect(result).toBe(18);
+});
+
+test('boss Waymark reward choices use boss items before the next district starts', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_boss' });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    scene.createRewardChoices = () => [];
+    scene.shouldOfferUpgradeReward = () => false;
+    scene.enemies.forEach((enemy: any) => { enemy.hp = 0; });
+    scene.checkOutcome();
+    const rewardState = window.__birdSquadState!();
+    const choices = rewardState.waymarkChoices.map((choice: any) => choice.id);
+    scene.chooseWaymarkReward('reopened_roofline');
+    await wait(100);
+    const route: any = g.scene.getScene('RouteScene');
+    const routeState = JSON.parse(window.render_game_to_text!());
+    return {
+      rewardMode: rewardState.mode,
+      choices,
+      mapIndex: routeState.map.index,
+      routeMarks: routeState.run.routeMarks,
+      upgradedCards: route.runState.deck.filter((card: any) => card.upgraded).length,
+      log: route.runState.routeLog
+    };
+  });
+  expect(result.rewardMode).toBe('waymarkReward');
+  expect(result.choices).toEqual(expect.arrayContaining(['sky_safe_harness', 'crowbar_debt', 'reopened_roofline']));
+  expect(result.mapIndex).toBe(2);
+  expect(result.routeMarks).toContain('reopened_roofline');
+  expect(result.upgradedCards).toBeGreaterThan(0);
+  expect(result.log.some((entry: string) => entry.includes('Boss prep'))).toBe(true);
+});
+
+test('market shelves stock multiple finite offers and paid refreshes', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(() => {
     const g = window.__birdSquadGame;
@@ -445,14 +758,38 @@ test('market shelves are finite during a visit', async ({ page }) => {
     scene.openMarketNode(market);
     scene.runState.scrap = 999;
     const firstOffer = scene.marketCardOffer()?.id;
+    const beforeCardOffers = scene.marketCardOffers().map((offer: any) => ({ id: offer.id, price: offer.price, sold: !!offer.sold }));
+    const beforeRefreshCost = scene.marketRefreshCost();
     scene.buyMarketCard();
     const afterBuyOffer = scene.marketCardOffer()?.id ?? '';
+    const afterCardOffers = scene.marketCardOffers().map((offer: any) => ({ id: offer.id, price: offer.price, sold: !!offer.sold }));
     const deckHasOffer = scene.runState.deck.some((card: any) => card.id === firstOffer);
-    return { firstOffer, afterBuyOffer, deckHasOffer };
+    const scrapAfterBuy = scene.runState.scrap;
+    scene.refreshMarket();
+    const refreshedCardOffers = scene.marketCardOffers().map((offer: any) => ({ id: offer.id, price: offer.price, sold: !!offer.sold }));
+    return {
+      firstOffer,
+      beforeCardOffers,
+      beforeRefreshCost,
+      afterBuyOffer,
+      afterCardOffers,
+      deckHasOffer,
+      scrapAfterBuy,
+      scrapAfterRefresh: scene.runState.scrap,
+      refreshCount: scene.marketRefreshCount,
+      refreshedCardOffers
+    };
   });
   expect(result.firstOffer).toBeTruthy();
+  expect(result.beforeCardOffers.length).toBeGreaterThan(1);
+  expect(new Set(result.beforeCardOffers.map((offer: any) => offer.price)).size).toBeGreaterThan(1);
   expect(result.deckHasOffer).toBe(true);
-  expect(result.afterBuyOffer).toBe('');
+  expect(result.afterCardOffers.filter((offer: any) => offer.sold)).toHaveLength(1);
+  expect(result.afterBuyOffer).toBeTruthy();
+  expect(result.afterBuyOffer).not.toBe(result.firstOffer);
+  expect(result.refreshCount).toBe(1);
+  expect(result.scrapAfterRefresh).toBe(result.scrapAfterBuy - result.beforeRefreshCost);
+  expect(result.refreshedCardOffers.every((offer: any) => !offer.sold)).toBe(true);
 });
 
 test('card choice surfaces expose full card details on hover', async ({ page }) => {
@@ -1084,7 +1421,7 @@ test('flock formation states reshape combat and an unblocked hit shatters Flow',
     s.flock.hp = s.flock.maxHp; s.flock.flow = 0;
     const holding = s.flockState();
 
-    // Surging hit (Flow full) vs Holding hit — Surge adds +2 outgoing damage.
+    // Surging hit (Flow full) vs Holding hit - Surge adds +1 outgoing damage.
     enemy.block = 0; enemy.maxHp = 200; enemy.hp = 200;
     s.flock.flow = s.flock.flowMax;
     const surging = s.flockState();
@@ -1110,7 +1447,7 @@ test('flock formation states reshape combat and an unblocked hit shatters Flow',
   expect(r.holding).toBe('holding');
   expect(r.surging).toBe('surging');
   expect(r.scattered).toBe('scattered');
-  expect(r.surgeDamage).toBe(r.holdDamage + 2); // Surge = +2 outgoing damage
+  expect(r.surgeDamage).toBe(r.holdDamage + 1); // Surge = +1 outgoing damage
   expect(r.flowAfterHit).toBe(0);               // unblocked hit broke formation
 });
 
@@ -2012,6 +2349,8 @@ test('fullyBlocksNextAttack checks the next incoming attack, not stale selection
     for (let i = 0; i < 30 && !(s.hand && s.hand.length); i += 1) await wait(50);
     const card = s.hand[0];
     const state = { previousDiscarded: 0, previousDamageDefeated: false, spentResonance: false, returnSelfToDraw: false, builtFlow: false };
+    s.enemies[0].damageBonus = 0;
+    s.enemies[0].nextAttackBonus = 0;
     s.selectedEnemyId = 'missing-enemy';
     s.flock.block = 6;
     const blocksNext = s.checkCardCondition('fullyBlocksNextAttack', card, 'missing-enemy', state);

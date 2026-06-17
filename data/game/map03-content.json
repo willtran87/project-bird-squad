@@ -574,6 +574,7 @@
       "name": "Cicada Static Swarm",
       "type": "normal",
       "health": 32,
+      "roles": ["support", "controller"],
       "lesson": "Static caller: tempo pressure grows if the flock lets it hum.",
       "description": "A representative signal cicada whose rattling wing buzz scrambles tells in dense spire weather.",
       "visualBrief": "Single large cicada enemy in tiny signal-safe strap accents and reflective tags on a utility box, with natural transparent wings unobstructed.",
@@ -585,7 +586,7 @@
           "label": "Static Drone",
           "effects": [
             "applyWinded(flock, 1)",
-            "nextAttackBonus(2)"
+            "nextAttackBonusAlly(highest, 2)"
           ]
         },
         {
@@ -626,6 +627,7 @@
       "name": "Crane Signal Caller",
       "type": "elite",
       "health": 46,
+      "roles": ["support", "controller"],
       "lesson": "Signal support elite: calls Open Sky pressure before a long reach strike.",
       "description": "A tall signal caller that turns skyline distance into marching pressure.",
       "visualBrief": "Sandhill crane in a wind-cut neck wrap, fitted signal sash, long leg bands, and small route tags beside antenna cages.",
@@ -637,7 +639,7 @@
           "label": "Warning Call",
           "effects": [
             "applyOpenSky(1)",
-            "nextAttackBonus(3)"
+            "nextAttackBonusAlly(highest, 3)"
           ]
         },
         {
@@ -800,6 +802,7 @@
       "name": "Moth Lantern-Drifter",
       "type": "normal",
       "health": 32,
+      "roles": ["poison", "saboteur"],
       "lesson": "Night distractor: Cover, Winded, and bad-direction Snags vary Spire street pressure.",
       "description": "A night moth that drifts around service lamps and draws attention away from harder threats.",
       "visualBrief": "Large moth with tiny body-safe reflective tags and no wing coverings near a practical lantern and rain-specked utility glass.",
@@ -818,6 +821,7 @@
           "label": "Dust Flutter",
           "effects": [
             "applyWinded(flock, 1)",
+            "applyPoison(flock, 1)",
             "if notHitThisTurn then addSnagToDiscard(bad_directions)"
           ]
         },
@@ -894,6 +898,7 @@
       "band": "weak",
       "lesson": "Read a two-part Tell that adds Winded after damage.",
       "tags": [
+        "support",
         "winded",
         "tempo"
       ],
@@ -1032,10 +1037,13 @@
       "lesson": "A static caller builds tempo pressure if its drone continues.",
       "tags": [
         "winded",
-        "tempo"
+        "tempo",
+        "support",
+        "multi"
       ],
       "enemies": [
-        "cicada_static_swarm"
+        "cicada_static_swarm",
+        "spire_relay_starling"
       ],
       "rewardProfileId": "street_map03"
     },
@@ -1048,11 +1056,14 @@
       "lesson": "Elite: a crane caller layers Open Sky setup into a long reach strike.",
       "tags": [
         "elite",
+        "support",
         "openSky",
-        "winded"
+        "winded",
+        "multi"
       ],
       "enemies": [
-        "crane_signal_caller"
+        "crane_signal_caller",
+        "spire_aerial_kite"
       ],
       "rewardProfileId": "rival_map03"
     },
@@ -1065,6 +1076,7 @@
       "lesson": "Signal noise and relay pressure stack Winded if ignored.",
       "tags": [
         "multi",
+        "support",
         "winded",
         "tempo"
       ],
@@ -1136,6 +1148,7 @@
       "lesson": "A lamp-side distractor adds Snag noise to Signal Spires timing pressure.",
       "tags": [
         "snag",
+        "poison",
         "winded",
         "cover"
       ],
@@ -1153,6 +1166,8 @@
       "lesson": "Lantern distraction paired with static tempo rewards quick focus.",
       "tags": [
         "snag",
+        "poison",
+        "support",
         "winded",
         "tempo",
         "multi"
@@ -1423,9 +1438,10 @@
           "key": "preach",
           "text": "Trade healing tips for guidance.",
           "requirements": [
-            "hasSupplySlot()"
+            "hasSupplySlot()",
+            "scrapAtLeast(20)"
           ],
-          "lockedText": "Need a free supply slot.",
+          "lockedText": "Need a free supply slot and 20 Scrap.",
           "outcomes": [
             "healMissingPct(50)",
             "payScrap(20)"
@@ -1434,6 +1450,10 @@
         {
           "key": "apprentice",
           "text": "Learn her remedy — and her story.",
+          "requirements": [
+            "scrapAtLeast(15)"
+          ],
+          "lockedText": "Need 15 Scrap.",
           "outcomes": [
             "healCohesion(6)",
             "releaseCard(1)",
@@ -1731,8 +1751,8 @@
       {
         "from": "m3_c1_signal_beacon",
         "to": "m3_c2_street_pigeon",
-        "locked": false,
-        "preview": "known"
+        "locked": true,
+        "preview": "hidden"
       },
       {
         "from": "m3_c2_basin_gutter",

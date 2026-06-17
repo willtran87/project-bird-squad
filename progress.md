@@ -170,3 +170,41 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 - Added runtime validation visibility for Molt target shifts; the current data set intentionally reports 68 cards whose active Molt target differs from their base card target.
 - Added smoke coverage for Locked Nest's self-to-enemy Molt behavior and a synthetic none-target card that Molts into target damage/Winded without auto-firing ambiguously.
 - Verification: `npm run build`, `npm test`, focused Molt Playwright smoke tests, full `npm run test:e2e` (52/52 passed), required generic `develop-web-game` client, and direct Molt combat capture passed. Inspected screenshot/state artifacts: `.artifacts/test-results/molt-active-card-contract.png` and `.artifacts/test-results/molt-active-card-contract-state.json`.
+
+- Enemy description art-direction polish follow-up: strengthened seven weaker runtime enemy descriptions/visualBriefs with concrete fashion/accessory, streetwear, and urban-place cues while preserving anatomy constraints and gameplay data.
+- Re-ran the fashion/urban heuristic audit: all 64 playable enemies now meet the cue threshold. Verification passed with `npm run validate:runtime`, `npm run build`, focused enemy Codex smoke, the required generic `develop-web-game` client, and direct Codex detail screenshot `.artifacts/test-results/codex-enemy-fashion-copy-pass.png`.
+
+- Reward card-choice visual polish follow-up: replaced the post-combat Add-to-Flock/Preen choice cards' heavy text slabs with larger art-forward card frames, lighter glass panels, suit-accent borders, stroked labels, and compact footer metadata; also aligned the market Add-to-Flock offer tile with the same mini-card treatment.
+- Verification: `npm run build`, focused reward/market/card-detail Playwright smoke tests, required generic `develop-web-game` client, and production-preview screenshots in `.artifacts/test-results/reward-card-polish-final/`.
+
+- Combat tension tuning follow-up: audited flock/card/enemy scaling and found the main player-favoring pressure came from passive Damage/Cover stats compounding through multi-hit, AoE, burst, Surge, and Nests carry interactions rather than from route economy drift.
+- Tuned runtime combat scaling so passive Damage applies once per played card, AoE gets a smaller passive Damage bonus, Resonance/Winded bursts no longer double-dip passive Damage, passive Cover is softened, Surge gives +1 instead of +2, and the Nests Cover carry cap is 8.
+- Added `npm run audit:balance` for the existing balance-audit script and updated formation smoke coverage for the new Surge contract.
+- Verification: `npm run audit:balance`, `npm run audit:economy`, `npm run build`, `npm test`, `npx playwright test tests/smoke.spec.ts --grep combat`, `npx playwright test tests/smoke.spec.ts --grep "Cover"`, and the generic `develop-web-game` client passed. Latest generic client screenshot/state: `output/web-game/shot-1.png`, `output/web-game/state-1.json`.
+
+- Market layout polish follow-up: rebuilt the route market overlay as a stall row with a string-light lane, awning trim, a recruit perch, waymark board, and preen bench so the screen reads like visiting a market instead of three menu boxes.
+- Verification: `npm run build`, focused Playwright smoke tests for market shelves/route event backdrops/card hover details, required generic `develop-web-game` client, and production-preview screenshot `.artifacts/test-results/market-layout-polish/market-stall-layout-final.png`.
+
+- Market decision pass: replaced one-shot market offers with seeded per-visit shelves: four rarity-priced card listings, two unowned Waymark listings, a utility shelf with Preen/Release/Supply options, and paid Scrap refresh that rerolls fresh stock while individual purchases sell out their row.
+- Market prices now use the existing `alpha-market.json` bands with rarity/district scaling, and the route text-state exposes full market shelves plus refresh cost/count for tests and debugging.
+- While verifying, build surfaced existing in-progress combat-state type drift (`fouled`, enemy roles/solo/damageBonus); aligned the constructors/text payloads with those fields without rolling back that work.
+- Verification: `npm run build`, focused Playwright smoke tests for market shelves/route event backdrops/card hover details, required generic `develop-web-game` client, in-app browser opened `http://127.0.0.1:5173/`, and inspected market screenshot `.artifacts/test-results/market-meaning/market-stocked-final.png`.
+
+- Route map node-spacing fix: route node placement now reserves explicit visual room for focus ticks above icons and reward-badge pips below icons, then spaces lanes across the usable graph band so four-lane generated columns do not overlap.
+- Exposed `position` and `visualBounds` for route nodes in the text-state harness and added a smoke test that sweeps 4 districts x 12 seeds to fail on any overlapping generated route-node footprint.
+- Verification: `npm run build`, focused route-map Playwright smoke tests, required generic `develop-web-game` client against built preview, in-app browser opened built preview `http://127.0.0.1:5324/`, and inspected built-preview screenshot `.artifacts/test-results/route-node-spacing/route-four-lane-spacing.png`.
+
+- Enemy tension/mechanics pass: added explicit enemy roles, solo non-boss encounter tuning (+HP and +1 persistent damage), ally-support enemy verbs, and the new Fouled poison status.
+- Authored support/poison identities into existing enemies: Signal Gull, Market Crow, Cicada Static Swarm, Crane Signal Caller, Moth Lantern-Drifter, Skunk Chemist, and Vulture Cleanup Crew; tagged supporting/poison encounters across districts.
+- Expanded runtime validation/audit coverage for enemy roles, support/poison verbs, encounter tags, status registry, and balance-audit composition reporting.
+- Added smoke coverage for solo tuning, support companion targeting, and Fouled tick behavior.
+- Verification: `npm run validate:runtime`, `npm run audit:balance`, `npm run build`, `npm test`, full `npx playwright test tests/smoke.spec.ts`, and the required generic `develop-web-game` client passed. Latest generic screenshot/state: `output/web-game/shot-1.png` and `output/web-game/state-1.json`.
+
+- Combat convenience HUD pass: added an incoming-damage prediction to the flock Cohesion bar. Visible enemy attack intents now create a red at-risk segment on the current Cohesion fill with a `-N / After X` marker after current Cover is applied.
+- Exposed the same prediction in the combat text-state as `flock.incoming` (`total`, `blocked`, `hpLoss`, `afterHp`, `attackers`) and added smoke coverage for the math.
+- Verification: `npm run build`, focused Playwright smoke test `flock Cohesion bar exposes incoming damage prediction after Cover`, `npm test`, required generic `develop-web-game` client, and inspected combat screenshot `.artifacts/test-results/combat-incoming-health-preview.png`.
+
+- Support encounter composition follow-up: converted every solo support encounter into a paired fight with at least one non-support threat so support enemies create target-priority decisions instead of low-pressure stall turns.
+- Updated Signal Gull, Market Crow, Cicada Static Swarm, Crane Signal Caller, and Vulture Cleanup Crew encounters with companion enemies and `multi`/`support` tags where needed.
+- Added a runtime data validation guard that fails any support-only encounter composition, including future support-only pairs.
+- Verification: focused support-composition audit script, `npm run validate:runtime`, `npm run audit:balance`, `npm run build`, `npm test`, required generic `develop-web-game` client, and inspected `output/web-game/shot-1.png`.

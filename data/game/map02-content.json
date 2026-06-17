@@ -160,6 +160,7 @@
       "name": "Market Crow",
       "type": "normal",
       "health": 26,
+      "roles": ["support", "saboteur"],
       "lesson": "Scavengers heal if left alone; deny their rest turn.",
       "description": "A market crow that steals, sorts, and recovers behind the bustle whenever the flock looks away.",
       "visualBrief": "Glossy crow in a cropped market-worker jacket, bright abstract pin clips, tiny satchel, and talon bands amid tarps, produce crates, and canal reflections.",
@@ -177,14 +178,15 @@
           "id": "pick_clean",
           "label": "Pick Clean",
           "effects": [
-            "if notHitThisTurn then heal(5)"
+            "if notHitThisTurn then healAlly(lowest, 5)"
           ]
         },
         {
           "id": "fan_wings",
           "label": "Fan Wings",
           "effects": [
-            "gainCover(6)"
+            "gainCoverAlly(lowest, 5)",
+            "gainCover(4)"
           ]
         }
       ],
@@ -1112,6 +1114,7 @@
       "lesson": "Three scavengers crowd the dock — clear one before the whole line stacks up.",
       "tags": [
         "multi",
+        "support",
         "cover"
       ],
       "enemies": [
@@ -1131,6 +1134,7 @@
       "tags": [
         "elite",
         "heavy",
+        "support",
         "multi"
       ],
       "enemies": [
@@ -1166,10 +1170,13 @@
       "lesson": "Scavengers heal if left alone; deny their rest turn.",
       "tags": [
         "scavenge",
-        "cover"
+        "support",
+        "cover",
+        "multi"
       ],
       "enemies": [
-        "canal_market_crow"
+        "canal_market_crow",
+        "canal_dock_rat"
       ],
       "rewardProfileId": "street_map02"
     },

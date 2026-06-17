@@ -9,6 +9,7 @@
     { "id": "winded", "kind": "debuff", "stack": "counter" },
     { "id": "openSky", "kind": "debuff", "stack": "counter" },
     { "id": "openSkyGuard", "kind": "buff", "stack": "counter" },
+    { "id": "fouled", "kind": "debuff", "stack": "counter" },
     { "id": "molt", "kind": "buff", "stack": "flag" }
   ]
 }

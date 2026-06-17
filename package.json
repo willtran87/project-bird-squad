@@ -34,6 +34,7 @@
     "validate:enemy-variety-contracts": "node tools/export-enemy-variety-prompts.mjs --check",
     "validate:reserve-enemy-art": "python tools/validate-reserve-enemy-art.py",
     "validate:docs": "node tools/validate-docs.mjs",
+    "audit:balance": "node tools/balance-audit.mjs",
     "audit:content": "node tools/audit-content.mjs",
     "audit:economy": "node tools/simulate-run-economy.mjs",
     "diff:data": "node tools/diff-runtime-data.mjs",

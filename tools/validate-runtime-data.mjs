@@ -67,7 +67,8 @@ const validStatKeys = new Set([
 ]);
 const validNodeTypes = new Set(['street', 'rival', 'boss', 'basin', 'nest', 'market', 'signal', 'cache']);
 const validBands = new Set(['weak', 'standard', 'pressure', 'rival', 'boss']);
-const validEncounterTags = new Set(['basic', 'cover', 'scavenge', 'heavy', 'winded', 'openSky', 'snag', 'elite', 'boss', 'tempo', 'molt', 'multi']);
+const validEncounterTags = new Set(['basic', 'cover', 'scavenge', 'heavy', 'winded', 'openSky', 'snag', 'elite', 'boss', 'tempo', 'molt', 'multi', 'support', 'poison']);
+const validEnemyRoles = new Set(['striker', 'bruiser', 'saboteur', 'controller', 'support', 'poison', 'boss']);
 const validStatusKinds = new Set(['buff', 'debuff']);
 const validStatusStacks = new Set(['counter', 'flag']);
 const validSupplyCategories = new Set(['snack', 'flare', 'tool', 'call']);
@@ -138,6 +139,7 @@ const validEffectVerbs = new Set([
   'gainOpenSkyGuard', 'returnDiscard', 'nextCoverBonus', 'nextTurnDraw',
   // enemy verbs
   'applyOpenSky', 'addSnagToDiscard', 'addSnagToDraw', 'nextAttackBonus',
+  'healAlly', 'healAllEnemies', 'gainCoverAlly', 'gainCoverAllEnemies', 'nextAttackBonusAlly', 'applyPoison',
   // route verbs (only those the runtime resolveRouteEffect actually executes;
   // revealNodes/skipNextStreet/removeRouteChoice were removed — the Alpha
   // pre-reveals the map, so they no-op'd and were re-authored out of the data)
@@ -252,6 +254,7 @@ const validCardVerbs = new Set([
 const validEnemyVerbs = new Set([
   'damage', 'gainCover', 'heal', 'applyWinded', 'loseWingbeat', 'applyFrail', 'applyOpenSky',
   'addSnagToDiscard', 'addSnagToDraw', 'nextAttackBonus',
+  'healAlly', 'healAllEnemies', 'gainCoverAlly', 'gainCoverAllEnemies', 'nextAttackBonusAlly', 'applyPoison',
 ]);
 // Route-mark effect verbs the runtime actually honors: the combat relics fire
 // through resolveMarkEffect (gainCover/gainWingbeat/gainOpenSkyGuard/draw/heal);
@@ -453,6 +456,13 @@ const validateEnemy = (enemy, file) => {
     if (!Number.isInteger(enemy.health) || enemy.health < 1) {
       fail(`${label}: health must be a positive integer`);
     }
+    if (enemy.roles !== undefined) {
+      if (!Array.isArray(enemy.roles) || enemy.roles.length === 0) {
+        fail(`${label}: roles must be a nonempty array when present`);
+      } else {
+        for (const role of enemy.roles) if (!validEnemyRoles.has(role)) fail(`${label}: unknown role "${role}"`);
+      }
+    }
     if (!enemy.description || typeof enemy.description !== 'string') {
       fail(`${label}: missing description`);
     }
@@ -577,8 +587,19 @@ const validateEncounter = (encounter, file) => {
     fail(`${label}: enemies must be a nonempty array`);
   } else {
     if (encounter.enemies.length > 4) fail(`${label}: enemies supports at most 4 combatants`);
+    const resolvedEnemies = [];
     for (const enemyId of encounter.enemies) {
-      if (!enemiesByPayload.has(enemyId)) fail(`${label}: enemy "${enemyId}" does not exist in enemy data`);
+      const enemy = enemiesByPayload.get(enemyId);
+      if (!enemy) {
+        fail(`${label}: enemy "${enemyId}" does not exist in enemy data`);
+      } else {
+        resolvedEnemies.push(enemy);
+      }
+    }
+    const hasSupport = resolvedEnemies.some((enemy) => enemy.roles?.includes('support'));
+    const hasNonSupport = resolvedEnemies.some((enemy) => !enemy.roles?.includes('support'));
+    if (hasSupport && !hasNonSupport) {
+      fail(`${label}: support enemies must spawn with at least one non-support companion`);
     }
   }
   if (!rewardProfileIds.has(encounter.rewardProfileId)) {

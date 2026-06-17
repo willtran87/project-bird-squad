@@ -2,6 +2,7 @@ export type CardKind = 'legend' | 'crew' | 'molt' | 'aviary' | 'snag';
 export type CardSuit = 'plumes' | 'quills' | 'basins' | 'nests';
 export type CardRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
 export type CardTarget = 'enemy' | 'allEnemies' | 'self' | 'none' | 'choice';
+export type EnemyRole = 'striker' | 'bruiser' | 'saboteur' | 'controller' | 'support' | 'poison' | 'boss';
 
 export type FlockStatKey =
   | 'cohesion'
@@ -135,6 +136,7 @@ export interface RuntimeEnemy {
   // shown with an Elite crest in combat and worth rival-grade rewards.
   type: 'normal' | 'rival' | 'boss' | 'elite';
   health: number;
+  roles?: EnemyRole[];
   lesson?: string;
   // Descriptive art contract fields. Combat behavior remains driven by moves
   // and attackPattern.

@@ -19,6 +19,7 @@
     {
       "id": "refill_supplies",
       "label": "Trade for a Wrapped Snack",
+      "cost": 20,
       "effects": ["payScrap(20)", "gainSupplyChoice(1)"]
     }
   ]

@@ -26,7 +26,20 @@ import {
   routeBlueprints,
 } from './game/runtime-data';
 import { generateRouteMap, hashSeed } from './game/route-gen';
-import type { EnemyMove, RewardProfile, RouteNode, RuntimeCard, RuntimeEnemy, RuntimeRouteMap, RuntimeRouteMark } from './game/types';
+import type {
+  CardRarity,
+  EnemyRole,
+  EnemyMove,
+  MarketPriceBand,
+  RewardProfile,
+  RouteMarkRarity,
+  RouteNode,
+  RuntimeCard,
+  RuntimeEnemy,
+  RuntimeRouteMap,
+  RuntimeRouteMark,
+  RuntimeSupply
+} from './game/types';
 import type { ReserveEnemyContract } from './game/runtime-data';
 import { banner, burst, fadeRect, floatingText, impactRing, shakeCamera, strike } from './game/fx';
 import { drawPanel } from './game/theme';
@@ -35,8 +48,9 @@ import { getLeaderLore } from './game/leader-lore';
 import { difficultyAdds, difficultyLabel, difficultyMods, MAX_DIFFICULTY } from './game/difficulty';
 import { achievements, discoverCards, isLeaderUnlocked, leaderUnlockHints, loadAccount, recordRun, type PlayerAccount } from './game/meta';
 import { queueRuntimeImageAssets, uniqueImageAssets, type RuntimeImageAsset } from './game/runtime-images';
+import { getMapBalanceProfile } from './game/balance';
 
-type GameMode = 'menu' | 'routeSelection' | 'battle' | 'cardReward' | 'upgradeReward' | 'runComplete' | 'defeat';
+type GameMode = 'menu' | 'routeSelection' | 'battle' | 'waymarkReward' | 'cardReward' | 'upgradeReward' | 'runComplete' | 'defeat';
 type CodexDataModule = typeof import('./game/codex-data');
 const codexDataPreload: Promise<CodexDataModule> = import('./game/codex-data');
 type InspectOverlay = 'deck' | 'draw' | 'discard' | 'flock';
@@ -50,6 +64,7 @@ interface Flock {
   block: number;
   weak: number;
   frail: number;
+  fouled: number;
   exposed: boolean;
   exposedTurns: number;
   molt: boolean;
@@ -81,6 +96,9 @@ interface Enemy {
   intentIndex: number;
   hitThisTurn: boolean;
   nextAttackBonus: number;
+  damageBonus: number;
+  roles: EnemyRole[];
+  solo: boolean;
   runtime: RuntimeEnemy;
 }
 
@@ -181,12 +199,33 @@ interface RouteMark {
   price: number;
 }
 
+interface MarketCardListing {
+  id: string;
+  price: number;
+  sold?: boolean;
+}
+
+interface MarketWaymarkListing {
+  id: string;
+  price: number;
+  sold?: boolean;
+}
+
+interface MarketUtilityListing {
+  id: 'preen' | 'release' | 'supply';
+  price: number;
+  cardId?: string;
+  supplyId?: string;
+  sold?: boolean;
+}
+
 interface EffectResolutionState {
   previousDiscarded: number;
   previousDamageDefeated: boolean;
   spentResonance: boolean;
   returnSelfToDraw: boolean;
   builtFlow: boolean;
+  flockDamageBonusUsed: boolean;
 }
 
 type EnemyMotionCue = 'attack' | 'hit';
@@ -223,9 +262,18 @@ interface RenderPayload {
     hp: number;
     maxHp: number;
     block: number;
+    fouled: number;
+    incoming: {
+      total: number;
+      blocked: number;
+      hpLoss: number;
+      afterHp: number;
+      attackers: number;
+    };
     statuses: string[];
   };
   hand: Array<{ id: string; name: string; bird: string; cost: number; type: CardType; target: TargetType; activeTarget?: TargetType; activeText?: string; usesMolt?: boolean }>;
+  waymarkChoices?: Array<{ id: string; name: string; family: string; source: string; description: string }>;
   rewardChoices?: Array<{ id: string; name: string; bird: string; cost: number; type: CardType; target: TargetType }>;
   upgradeChoices?: Array<{ id: string; name: string; bird: string; cost: number; type: CardType; target: TargetType }>;
   enemies: Array<{
@@ -235,6 +283,9 @@ interface RenderPayload {
     maxHp: number;
     block: number;
     weak: number;
+    roles: EnemyRole[];
+    solo: boolean;
+    damageBonus: number;
     intent: string;
   }>;
   route: {
@@ -319,6 +370,14 @@ const MENU_BORDER_COLOR = 0x7ab8d6;
 const HAND_Y = 590;
 const CARD_W = 164;
 const CARD_H = 246; // true 2:3 card aspect (art is 1024x1536)
+const ROUTE_NODE_RADIUS = 30;
+const ROUTE_BOSS_NODE_RADIUS = 38;
+const ROUTE_NODE_ICON_SIZE = 66;
+const ROUTE_BOSS_NODE_ICON_SIZE = 84;
+const ROUTE_NODE_FOCUS_PAD = 8;
+const ROUTE_REWARD_BADGE_RADIUS = 8;
+const ROUTE_REWARD_BADGE_OFFSET = 9;
+const ROUTE_NODE_LAYOUT_PAD = 4;
 // Anchor points for combat FX (floating numbers / bursts), matching the
 // enemy body (renderEnemyRow) and flock panel (renderFlock) positions.
 const ENEMY_FX_X = 920;
@@ -335,7 +394,10 @@ const FLOCK_HP_BAR = { x: 230, y: 44, w: 300, h: 24 };
 // (A suit-biased Leader's starter deck already crosses it, so each Leader opens
 // with their keystone live; the balanced Fledgling opens with none.)
 const KEYSTONE_AT = 5;
-const NESTS_COVER_CARRY_CAP = 10;
+const NESTS_COVER_CARRY_CAP = 8;
+const SURGE_STAT_BONUS = 1;
+const SOLO_ENCOUNTER_HEALTH_MULT = 1.18;
+const SOLO_ENCOUNTER_DAMAGE_BONUS = 1;
 const CARD_REVIEW_VISIBLE_ROWS = 11;
 const CARD_REVIEW_ROW_H = 38;
 const BASE_COHESION = 36;
@@ -349,8 +411,9 @@ const alphaMarketConfig = alphaMarketSet.markets[0];
 const MARKET_CARD_PRICE = alphaMarketConfig.cardSlots.find((slot) => slot.rarity === 'common')?.price.base ?? 55;
 const MARKET_PREEN_PRICE = alphaMarketConfig.services.find((service) => service.id === 'preen')?.basePrice ?? 100;
 const MARKET_ROUTE_MARK_PRICE = alphaMarketConfig.routeMarkSlots[0]?.price.base ?? 110;
+const MARKET_REFRESH_BASE_PRICE = 30;
 const CACHE_SCRAP_REWARD = 30;
-const REWARD_SKIP_SCRAP = 12;
+const DEFAULT_REWARD_SKIP_SCRAP = 12;
 const COMBAT_FX_TEXTURE = 'combat-fx-atlas';
 const COMBAT_FX_PARTICLE_TEXTURE = 'combat-fx-pixel';
 const COMBAT_ATMOSPHERE_TEXTURE = 'combat-atmosphere-strip';
@@ -464,6 +527,9 @@ const routeMarks: RouteMark[] = MARKET_ROUTE_MARK_IDS.map((id) => {
   const mark = alphaRouteMarkLibrary.get(id);
   return { id, name: mark?.name ?? id, text: mark?.description ?? '', price: MARKET_ROUTE_MARK_PRICE };
 });
+const BOSS_ROUTE_MARK_IDS = [...alphaRouteMarkSet.routeMarks]
+  .filter((mark) => mark.source === 'boss')
+  .map((mark) => mark.id);
 
 const cardArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
   alphaCardArtManifest.cards
@@ -561,6 +627,39 @@ function deterministicChance(key: string, chance: number): boolean {
   if (chance <= 0) return false;
   if (chance >= 1) return true;
   return (hashSeed(key, 0x9e3779b9) / 0xffffffff) < chance;
+}
+
+function seededRng(key: string) {
+  let state = hashSeed(key, 0x85ebca6b) >>> 0;
+  return () => {
+    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+    return state / 0x100000000;
+  };
+}
+
+function priceInBand(band: MarketPriceBand, rarityStep = 0, districtStep = activeMapIndex) {
+  const scaled = band.base + rarityStep * 18 + districtStep * 8;
+  return Math.round(clamp(scaled, band.min, band.max));
+}
+
+function cardRarityStep(rarity: CardRarity) {
+  if (rarity === 'legendary') return 3;
+  if (rarity === 'rare') return 2;
+  if (rarity === 'uncommon') return 1;
+  return 0;
+}
+
+function routeMarkRarityStep(rarity: RouteMarkRarity) {
+  if (rarity === 'boss') return 3;
+  if (rarity === 'rare') return 2;
+  if (rarity === 'uncommon') return 1;
+  return 0;
+}
+
+function supplyRarityStep(rarity: RuntimeSupply['rarity']) {
+  if (rarity === 'rare') return 2;
+  if (rarity === 'uncommon') return 1;
+  return 0;
 }
 
 function battlefieldVariantForRouteNode(routeNode?: RouteNode): RuntimeImageAsset | undefined {
@@ -2416,9 +2515,10 @@ class RouteScene extends Phaser.Scene {
   private confirmExitOpen = false;
   private marketNodeId: string | undefined;
   private marketMessage = '';
-  private marketBoughtCard = false;
-  private marketBoughtRouteMark = false;
-  private marketBoughtPreen = false;
+  private marketRefreshCount = 0;
+  private marketCardShelf: MarketCardListing[] = [];
+  private marketWaymarkShelf: MarketWaymarkListing[] = [];
+  private marketUtilityShelf: MarketUtilityListing[] = [];
   private inspectedCardId: string | undefined;
   private hoverCardDetail?: Phaser.GameObjects.Container;
   private cardReviewScroll = 0;
@@ -2451,9 +2551,10 @@ class RouteScene extends Phaser.Scene {
     this.marketOpen = false;
     this.marketNodeId = undefined;
     this.marketMessage = '';
-    this.marketBoughtCard = false;
-    this.marketBoughtRouteMark = false;
-    this.marketBoughtPreen = false;
+    this.marketRefreshCount = 0;
+    this.marketCardShelf = [];
+    this.marketWaymarkShelf = [];
+    this.marketUtilityShelf = [];
     this.inspectedCardId = undefined;
     this.hoverCardDetail = undefined;
     this.cardReviewScroll = 0;
@@ -2514,13 +2615,17 @@ class RouteScene extends Phaser.Scene {
     if (this.cardPickerMode) this.renderCardPickerOverlay();
     if (this.confirmExitOpen) this.renderConfirmExitOverlay();
     this.updateTextState();
-    persistActiveRun(this.runState); // checkpoint: resume lands back on the route map
+    if (!this.marketOpen && !this.nodeChoiceOpen && !this.cardPickerMode) {
+      persistActiveRun(this.runState); // checkpoint: resume lands back on the route map
+    }
   }
 
   private queueOptionalCardArtLoad() {
     const ids = new Set(this.runState.deck.map((card) => card.id));
-    const offer = this.marketCardOffer();
-    if (offer) ids.add(offer.id);
+    this.marketCardShelf.forEach((offer) => ids.add(offer.id));
+    this.marketUtilityShelf.forEach((offer) => {
+      if (offer.cardId) ids.add(offer.cardId);
+    });
     queueRuntimeImageAssets(
       this,
       [...ids].map((id) => cardArtAssets[id]),
@@ -2649,7 +2754,7 @@ class RouteScene extends Phaser.Scene {
     return {
       top: { y: 124 },
       map: { x: 52, y: 150, w: 836, h: 520, cx: 470, cy: 410 },
-      graph: { left: 102, right: 838, top: 204, bottom: 522 },
+      graph: { left: 102, right: 838, top: 188, bottom: 560 },
       inspector: { x: 904, y: 150, w: 300, h: 500, cx: 1054, cy: 400 },
       footer: { x: 76, y: 604, w: 800, h: 56, cx: 476, cy: 632 }
     };
@@ -2726,7 +2831,7 @@ class RouteScene extends Phaser.Scene {
         lit ? 0x6fd69a : primaryPreview ? 0xffe1a3 : available ? 0x7ab8d6 : secondaryPreview ? 0x7ab8d6 : 0x263b52,
         lit ? 0.78 : primaryPreview ? 0.78 : available ? 0.62 : secondaryPreview ? 0.42 : 0.28
       );
-      lines.lineBetween(from.x + 32, from.y, to.x - 32, to.y);
+      lines.lineBetween(from.x + ROUTE_NODE_ICON_SIZE / 2, from.y, to.x - ROUTE_NODE_ICON_SIZE / 2, to.y);
       if (available || primaryPreview) {
         const mx = from.x * 0.35 + to.x * 0.65;
         const my = from.y * 0.35 + to.y * 0.65;
@@ -2953,35 +3058,20 @@ class RouteScene extends Phaser.Scene {
   private renderRouteNode(node: RouteNode, selectable: boolean) {
     const { x, y } = this.nodePosition(node);
     const completed = this.runState.completedRouteNodeIds.includes(node.id);
-    const current = this.runState.currentRouteNodeId === node.id;
     const selected = this.selectedNodeId === node.id;
     const isBoss = node.type === 'boss';
-    const radius = isBoss ? 38 : 30;
-    // Icons carry node type now; the plate stays neutral and the ring carries route state.
-    const fillColor = selectable ? 0x122235 : completed ? 0x0f1d18 : 0x0c1420;
-    const fillAlpha = completed ? 0.68 : selectable ? 0.94 : 0.86;
-    const strokeColor = selected ? 0x9fe9ff : selectable ? 0x8fb0c6 : current ? 0xd8a840 : completed ? 0x6fd69a : 0x49606d;
-    const strokeWidth = selected ? 2.5 : selectable ? 2 : current ? 2 : 1.5;
-    const strokeAlpha = selected ? 0.96 : selectable ? 0.74 : current ? 0.82 : completed ? 0.76 : 0.52;
-
-    // Current and reachable states use fine rings; selection is handled by focus ticks.
-    if (current) {
-      this.add.circle(x, y, radius + 6, 0xd8a840, 0).setStrokeStyle(1.5, 0xd8a840, 0.34);
-    }
-    if (selectable && !selected) {
-      this.add.circle(x, y, radius + 5, 0x7ab8d6, 0.03).setStrokeStyle(1, 0x7ab8d6, 0.22);
-    }
-    const circle = this.add.circle(x, y, radius, fillColor, fillAlpha)
-      .setStrokeStyle(strokeWidth, strokeColor, strokeAlpha);
+    const radius = isBoss ? ROUTE_BOSS_NODE_RADIUS : ROUTE_NODE_RADIUS;
+    const iconSize = isBoss ? ROUTE_BOSS_NODE_ICON_SIZE : ROUTE_NODE_ICON_SIZE;
+    const hitTarget = this.add.circle(x, y, radius + 10, 0x000000, 0);
     if (selected) this.renderSelectedRouteNodeFocus(x, y, radius);
     // Every node is hoverable for the full preview; selectable nodes commit-select on click.
-    circle.setInteractive({ useHandCursor: selectable });
-    if (selectable) circle.on('pointerdown', () => this.selectRouteNode(node.id));
+    hitTarget.setInteractive({ useHandCursor: selectable });
+    if (selectable) hitTarget.on('pointerdown', () => this.selectRouteNode(node.id));
     let tip: Phaser.GameObjects.Container | undefined;
-    circle.on('pointerover', () => { tip = this.showNodeTooltip(node, x, y - radius - 8); });
-    circle.on('pointerout', () => { tip?.destroy(true); tip = undefined; });
+    hitTarget.on('pointerover', () => { tip = this.showNodeTooltip(node, x, y - radius - 8); });
+    hitTarget.on('pointerout', () => { tip?.destroy(true); tip = undefined; });
 
-    this.renderRouteNodeTypeIcon(node.type, x, y, isBoss ? 66 : 52, completed ? 0.55 : 1);
+    this.renderRouteNodeTypeIcon(node.type, x, y, iconSize, completed ? 0.55 : 1);
     this.renderRouteRewardBadges(node, x, y, radius, completed);
 
     // Risk pip (bottom-left) for combat crossings, where risk actually varies.
@@ -2996,7 +3086,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderSelectedRouteNodeFocus(x: number, y: number, radius: number) {
-    const r = radius + 8;
+    const r = radius + ROUTE_NODE_FOCUS_PAD;
     const tick = 12;
     const g = this.add.graphics();
     g.lineStyle(2, 0x24d0d6, 0.86);
@@ -3008,7 +3098,6 @@ class RouteScene extends Phaser.Scene {
     g.lineBetween(x - r, y + r, x - r + tick, y + r);
     g.lineBetween(x + r - tick, y + r, x + r, y + r);
     g.lineBetween(x + r, y + r - tick, x + r, y + r);
-    this.add.circle(x, y, radius + 5, 0x24d0d6, 0).setStrokeStyle(1, 0x24d0d6, 0.28);
   }
 
   private renderRouteNodeTypeIcon(type: RouteNode['type'], x: number, y: number, size: number, alpha = 1) {
@@ -3035,11 +3124,11 @@ class RouteScene extends Phaser.Scene {
     if (badges.length === 0) return;
     const gap = 16;
     const startX = x - ((badges.length - 1) * gap) / 2;
-    const by = y + radius + 9;
+    const by = y + radius + ROUTE_REWARD_BADGE_OFFSET;
     const alpha = completed ? 0.55 : 0.95;
     badges.forEach((badge, index) => {
       const bx = startX + index * gap;
-      this.add.circle(bx, by, 8, 0x07101c, 0.96 * alpha)
+      this.add.circle(bx, by, ROUTE_REWARD_BADGE_RADIUS, 0x07101c, 0.96 * alpha)
         .setStrokeStyle(1.5, badge.color, alpha);
       this.add.text(bx, by - 1, badge.icon, {
         fontFamily: 'Arial',
@@ -3131,14 +3220,37 @@ class RouteScene extends Phaser.Scene {
     const columns = currentMap().columns;
     const columnNodes = columns[node.column] ?? [node.id];
     const laneIndex = Math.max(0, columnNodes.indexOf(node.id));
-    // Spread evenly across the graph area (left of the detail panel) so any number
-    // of columns/lanes fits without overflow.
+    // Spread across the graph area with explicit room for the full node footprint:
+    // focus ticks above the icon and reward-badge pips below it.
     const { left: leftX, right: rightX, top, bottom } = this.routeLayout().graph;
     const colCount = Math.max(1, columns.length);
     const x = colCount > 1 ? leftX + (node.column * (rightX - leftX)) / (colCount - 1) : (leftX + rightX) / 2;
-    const laneGap = Math.min(114, (bottom - top - 42) / Math.max(1, columnNodes.length));
-    const y = (top + bottom) / 2 + (laneIndex - (columnNodes.length - 1) / 2) * laneGap;
+    const topPad = ROUTE_NODE_ICON_SIZE / 2 + ROUTE_NODE_FOCUS_PAD + ROUTE_NODE_LAYOUT_PAD;
+    const bottomPad = ROUTE_NODE_ICON_SIZE / 2 + ROUTE_REWARD_BADGE_OFFSET + ROUTE_REWARD_BADGE_RADIUS + ROUTE_NODE_LAYOUT_PAD;
+    const usableTop = top + topPad;
+    const usableBottom = bottom - bottomPad;
+    const laneGap = columnNodes.length > 1
+      ? Math.min(114, (usableBottom - usableTop) / Math.max(1, columnNodes.length - 1))
+      : 0;
+    const stackHeight = laneGap * Math.max(0, columnNodes.length - 1);
+    const startY = (usableTop + usableBottom) / 2 - stackHeight / 2;
+    const y = columnNodes.length > 1 ? startY + laneIndex * laneGap : (top + bottom) / 2;
     return { x, y };
+  }
+
+  private nodeVisualBounds(node: RouteNode) {
+    const { x, y } = this.nodePosition(node);
+    const radius = node.type === 'boss' ? ROUTE_BOSS_NODE_RADIUS : ROUTE_NODE_RADIUS;
+    const iconSize = node.type === 'boss' ? ROUTE_BOSS_NODE_ICON_SIZE : ROUTE_NODE_ICON_SIZE;
+    const badges = this.routeRewardBadges(node).slice(0, 3);
+    const badgeWidth = badges.length > 0 ? ((badges.length - 1) * 16) / 2 + ROUTE_REWARD_BADGE_RADIUS : 0;
+    const horizontal = Math.max(iconSize / 2 + ROUTE_NODE_FOCUS_PAD, badgeWidth);
+    return {
+      left: x - horizontal,
+      right: x + horizontal,
+      top: y - iconSize / 2 - ROUTE_NODE_FOCUS_PAD,
+      bottom: y + iconSize / 2 + (badges.length > 0 ? ROUTE_REWARD_BADGE_OFFSET + ROUTE_REWARD_BADGE_RADIUS : ROUTE_NODE_FOCUS_PAD)
+    };
   }
 
   private getEntryNode() {
@@ -3196,9 +3308,6 @@ class RouteScene extends Phaser.Scene {
   // through the route-effect interpreter (next-level-data-contracts §6.3/§7).
   private openNodeChoices(node: RouteNode) {
     this.runState.currentRouteNodeId = node.id;
-    if (!this.runState.completedRouteNodeIds.includes(node.id)) {
-      this.runState.completedRouteNodeIds.push(node.id);
-    }
     this.nodeChoiceOpen = true;
     this.nodeChoiceNodeId = node.id;
     this.selectableNodeIds = new Set();
@@ -3206,13 +3315,25 @@ class RouteScene extends Phaser.Scene {
   }
 
   private nodeChoiceList(node: RouteNode): Array<{ key: string; text: string; effects: string[]; locked: boolean; lockedText?: string }> {
-    const nodeOption = (option: { id: string; label: string; effects: string[]; cost?: number }) => ({
-      key: option.id,
-      text: option.label,
-      effects: option.effects,
-      locked: option.cost !== undefined && this.runState.scrap < option.cost,
-      lockedText: option.cost !== undefined ? `Need ${option.cost} Scrap` : undefined
-    });
+    const lockFor = (effects: string[], explicitCost?: number, requirements?: string[], lockedText?: string) => {
+      const scrapCost = explicitCost ?? this.scrapCostOfEffects(effects);
+      const lacksScrap = scrapCost > 0 && this.runState.scrap < scrapCost;
+      const lacksRequirement = !this.requirementsMet(requirements);
+      return {
+        locked: lacksScrap || lacksRequirement,
+        lockedText: lacksScrap ? `Need ${scrapCost} Scrap` : lockedText
+      };
+    };
+    const nodeOption = (option: { id: string; label: string; effects: string[]; cost?: number }) => {
+      const lock = lockFor(option.effects, option.cost);
+      return {
+        key: option.id,
+        text: option.label,
+        effects: option.effects,
+        locked: lock.locked,
+        lockedText: lock.lockedText
+      };
+    };
     if (node.type === 'basin') return alphaBasinSet.options.map(nodeOption);
     if (node.type === 'cache') {
       const bonus = this.routeMarkValue('cacheChoice', 'extraCacheChoice');
@@ -3224,13 +3345,16 @@ class RouteScene extends Phaser.Scene {
       return alphaNestSet.options.map(nodeOption);
     }
     const signal = alphaSignalLibrary.get(node.payloadId);
-    return (signal?.choices ?? []).map((choice) => ({
-      key: choice.key,
-      text: choice.text,
-      effects: choice.outcomes,
-      locked: !this.requirementsMet(choice.requirements),
-      lockedText: choice.lockedText
-    }));
+    return (signal?.choices ?? []).map((choice) => {
+      const lock = lockFor(choice.outcomes, undefined, choice.requirements, choice.lockedText);
+      return {
+        key: choice.key,
+        text: choice.text,
+        effects: choice.outcomes,
+        locked: lock.locked,
+        lockedText: lock.lockedText
+      };
+    });
   }
 
   private routeMarkValue(trigger: string, verb: string) {
@@ -3244,11 +3368,28 @@ class RouteScene extends Phaser.Scene {
     return total;
   }
 
+  private scrapCostOfEffects(effects: string[]) {
+    return effects.reduce((total, effect) => {
+      const parsed = parseEffect(effect);
+      return parsed?.name === 'payScrap' ? total + parseEffectValue(parsed.args[0], 0) : total;
+    }, 0);
+  }
+
+  private completePendingRouteNode(nodeId: string | undefined = this.nodeChoiceNodeId) {
+    if (!nodeId) return;
+    this.runState.currentRouteNodeId = nodeId;
+    if (!this.runState.completedRouteNodeIds.includes(nodeId)) {
+      this.runState.completedRouteNodeIds.push(nodeId);
+    }
+  }
+
   private chooseNodeOption(key: string) {
     const node = currentMap().nodes.find((candidate) => candidate.id === this.nodeChoiceNodeId);
     if (!node) return;
     const choice = this.nodeChoiceList(node).find((entry) => entry.key === key);
     if (!choice || choice.locked) return;
+    const scrapCost = this.scrapCostOfEffects(choice.effects);
+    if (scrapCost > this.runState.scrap) return;
     // Preen/Release defer to a card picker so the player chooses the card; other
     // effects resolve immediately.
     let pickerMode: 'preen' | 'release' | undefined;
@@ -3271,6 +3412,7 @@ class RouteScene extends Phaser.Scene {
       this.renderAll();
       return;
     }
+    this.completePendingRouteNode(node.id);
     this.nodeChoiceOpen = false;
     this.nodeChoiceNodeId = undefined;
     this.scene.restart({ runState: cloneRunState(this.runState) });
@@ -3303,7 +3445,9 @@ class RouteScene extends Phaser.Scene {
       this.runState.routeLog.push(`Released ${name}.`);
       this.runState.deck.splice(index, 1);
     }
+    this.completePendingRouteNode();
     this.cardPickerMode = undefined;
+    this.nodeChoiceNodeId = undefined;
     this.runState.routeLog = this.runState.routeLog.slice(-8);
     this.scene.restart({ runState: cloneRunState(this.runState) });
   }
@@ -3553,15 +3697,13 @@ class RouteScene extends Phaser.Scene {
 
   private openMarketNode(node: RouteNode) {
     this.runState.currentRouteNodeId = node.id;
-    if (!this.runState.completedRouteNodeIds.includes(node.id)) {
-      this.runState.completedRouteNodeIds.push(node.id);
-    }
     this.marketOpen = true;
     this.marketNodeId = node.id;
-    this.marketMessage = 'Rooftop vendors spread their tarps between antenna masts. Each shelf has one good opening; once it is gone, it is gone.';
-    this.marketBoughtCard = false;
-    this.marketBoughtRouteMark = false;
-    this.marketBoughtPreen = false;
+    this.marketRefreshCount = 0;
+    this.marketCardShelf = this.createMarketCardShelf(this.marketRng('cards'));
+    this.marketWaymarkShelf = this.createMarketWaymarkShelf(this.marketRng('waymarks'));
+    this.marketUtilityShelf = this.createMarketUtilityShelf(this.marketRng('utilities'));
+    this.marketMessage = 'Vendors call from under bright tarps. Buy a permanent edge, patch the flock, or pay Scrap to call out fresh stock.';
     this.selectableNodeIds = new Set();
     this.renderAll();
   }
@@ -3601,156 +3743,598 @@ class RouteScene extends Phaser.Scene {
     const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 8, 1080, 560, {
       eyebrow: 'Landmark Visit',
       title: node?.label ?? 'Market',
-      subtitle: 'A bright stall line has unfolded across the crossing.',
+      subtitle: 'A rooftop landmark where goods, route pins, and flock services crowd the counter.',
       accent: UI_FIELD.gold,
       fill: UI_FIELD.panelWarm
     });
-    this.add.rectangle(frame.left + 246, frame.cy + 38, 396, 414, 0x020409, 0.18).setStrokeStyle(1, UI_FIELD.gold, 0.22);
-    this.add.text(frame.left + 54, frame.top + 116, `Scrap ${this.runState.scrap}`, {
+
+    this.renderMarketSceneBackdrop(frame);
+    this.renderMarketVendor(frame);
+
+    this.add.rectangle(frame.left + 108, frame.top + 114, 148, 46, 0x080604, 0.84)
+      .setStrokeStyle(1.5, UI_FIELD.gold, 0.86);
+    this.add.text(frame.left + 48, frame.top + 100, 'SCRAP', {
       fontFamily: 'Arial',
-      fontSize: '21px',
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#8df4ff'
+    });
+    this.add.text(frame.left + 46, frame.top + 116, `${this.runState.scrap}`, {
+      fontFamily: 'Arial',
+      fontSize: '24px',
       fontStyle: 'bold',
       color: '#f0c36f'
     });
-    this.add.text(frame.left + 54, frame.top + 150, this.marketMessage, {
+    this.add.text(frame.left + 218, frame.top + 104, this.marketMessage, {
       fontFamily: 'Arial',
       fontSize: '15px',
       color: '#d7c5a6',
       lineSpacing: 3,
-      wordWrap: { width: 392 },
-      maxLines: 4
+      wordWrap: { width: 500 },
+      maxLines: 2
     });
 
-    this.renderMarketCardOffer(frame.left + 250, frame.top + 398);
-    this.renderMarketRouteMarkOffer(frame.left + 740, frame.top + 290);
-    this.renderMarketPreenOffer(frame.left + 740, frame.top + 452);
+    const refreshCost = this.marketRefreshCost();
+    const refreshEnabled = this.runState.scrap >= refreshCost;
+    this.renderMarketRefreshSign(frame.right - 162, frame.top + 126, refreshCost, refreshEnabled);
+
+    this.renderMarketCardOffers(frame.left + 500, frame.top + 315);
+    this.renderMarketWaymarkOffers(frame.left + 488, frame.top + 422);
+    this.renderMarketUtilityOffers(frame.right - 146, frame.top + 308);
 
     renderCloseControl(this, (obj) => {}, frame.right - 80, frame.top + 56, () => this.leaveMarket());
   }
 
-  private renderMarketCardOffer(x: number, y: number) {
-    const offer = this.marketCardOffer();
-    const enabled = !!offer && this.runState.scrap >= MARKET_CARD_PRICE;
-    const panel = this.add.rectangle(x, y, 310, 310, 0x1a1711, 0.94)
-      .setStrokeStyle(1, enabled ? 0xd8a840 : 0x6f6044, enabled ? 0.8 : 0.45);
-    this.add.rectangle(x, y - 142, 270, 2, enabled ? 0xd8a840 : 0x6f6044, enabled ? 0.75 : 0.35);
-    if (offer) {
-      panel.setInteractive({ useHandCursor: false });
-      panel.on('pointerover', () => this.showHoverCardDetail(offer, 'Market offer', MARKET_CARD_PRICE, x, y));
-      panel.on('pointerout', () => this.hideHoverCardDetail());
+  private renderMarketSceneBackdrop(frame: { left: number; right: number; top: number; bottom: number; cx: number; w: number }) {
+    this.add.rectangle(frame.cx, frame.top + 360, frame.w - 86, 390, 0x080604, 0.42)
+      .setStrokeStyle(1, UI_FIELD.gold, 0.2);
+    this.add.rectangle(frame.cx, frame.top + 168, frame.w - 116, 22, 0x241708, 0.86)
+      .setStrokeStyle(1, UI_FIELD.gold, 0.52);
+    for (let i = 0; i < 15; i += 1) {
+      const bx = frame.left + 170 + i * 55;
+      this.add.rectangle(bx, frame.top + 169, 28, 22, i % 2 === 0 ? 0xd8a840 : 0x111923, i % 2 === 0 ? 0.38 : 0.72);
     }
-    this.add.text(x - 126, y - 132, 'Add to the Flock', marketOfferTitleStyle());
-    this.add.text(x + 58, y - 132, `${MARKET_CARD_PRICE} Scrap`, marketOfferPriceStyle(enabled));
-    if (offer) {
-      const key = cardArtKey(offer);
-      if (key && this.textures.exists(key)) {
-        this.add.image(x, y + 28, key).setDisplaySize(138, 207).setAlpha(0.86);
-      } else {
-        this.add.rectangle(x, y + 28, 138, 207, 0x141f2f, 0.92)
-          .setStrokeStyle(1, 0x6f6044, 0.75);
-        this.add.text(x, y + 40, cardLabel(offer), {
-          fontFamily: 'Arial',
-          fontSize: '15px',
-          fontStyle: 'bold',
-          color: '#7ab8d6',
-          align: 'center',
-          wordWrap: { width: 104 }
-        }).setOrigin(0.5);
-      }
-      this.add.rectangle(x, y - 80, 264, 74, 0x05080e, 0.7)
-        .setStrokeStyle(1, 0xd8a840, 0.25);
-      this.add.text(x - 118, y - 108, displayName(offer), {
+    for (let i = 0; i < 17; i += 1) {
+      const lx = frame.left + 118 + i * 52;
+      this.add.line(lx - 24, frame.top + 210, 0, 0, 48, i % 2 === 0 ? 8 : -3, UI_FIELD.gold, 0.34);
+      this.add.circle(lx, frame.top + 213 + (i % 2) * 7, 4, i % 3 === 0 ? 0x8df4ff : 0xf0c36f, 0.86);
+    }
+    this.add.rectangle(frame.cx + 26, frame.bottom - 108, frame.w - 164, 128, 0x130c06, 0.96)
+      .setStrokeStyle(2, 0x7b4f18, 0.88);
+    this.add.rectangle(frame.cx + 26, frame.bottom - 166, frame.w - 138, 18, 0x321f0d, 0.98)
+      .setStrokeStyle(1, UI_FIELD.gold, 0.48);
+    this.add.rectangle(frame.cx + 26, frame.bottom - 64, frame.w - 186, 14, 0x070b12, 0.42);
+    for (let i = 0; i < 8; i += 1) {
+      this.add.rectangle(frame.left + 274 + i * 96, frame.bottom - 108, 2, 112, 0x2b1a0a, 0.7);
+    }
+    this.add.text(frame.left + 314, frame.top + 188, 'CARD RACK', {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#8df4ff'
+    });
+    this.add.text(frame.left + 320, frame.bottom - 206, 'WAYMARK TRAY', {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#8df4ff'
+    });
+    this.add.text(frame.right - 296, frame.top + 188, 'SERVICE SIGNS', {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#8df4ff'
+    });
+  }
+
+  private renderMarketVendor(frame: { left: number; top: number; bottom: number }) {
+    const x = frame.left + 166;
+    const y = frame.bottom - 206;
+    this.add.rectangle(x, y + 54, 112, 150, 0x0b1018, 0.98)
+      .setStrokeStyle(2, UI_FIELD.gold, 0.62);
+    this.add.circle(x, y - 28, 44, 0x1b2630, 0.98)
+      .setStrokeStyle(2, UI_FIELD.cyan, 0.68);
+    this.add.circle(x - 16, y - 34, 7, 0xf0c36f, 0.95);
+    this.add.circle(x + 18, y - 34, 7, 0xf0c36f, 0.95);
+    this.add.rectangle(x, y - 6, 72, 12, 0xf0c36f, 0.76);
+    this.add.rectangle(x - 52, y + 42, 18, 88, 0xd8a840, 0.52).setAngle(-16);
+    this.add.rectangle(x + 52, y + 42, 18, 88, 0xd8a840, 0.52).setAngle(16);
+    this.add.rectangle(x, y + 118, 156, 40, 0x261808, 0.98)
+      .setStrokeStyle(1, UI_FIELD.gold, 0.58);
+    this.add.text(x, y + 108, 'OPEN', {
+      fontFamily: 'Arial',
+      fontSize: '18px',
+      fontStyle: 'bold',
+      color: '#ffe1a3',
+      stroke: '#020409',
+      strokeThickness: 3
+    }).setOrigin(0.5, 0);
+    this.add.rectangle(x + 84, y - 100, 152, 48, 0x0a1018, 0.88)
+      .setStrokeStyle(1, UI_FIELD.gold, 0.54);
+    this.add.text(x + 18, y - 112, 'Trade for the road.', {
+      fontFamily: 'Arial',
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#ffe1a3',
+      wordWrap: { width: 128 },
+      maxLines: 2
+    });
+  }
+
+  private renderMarketRefreshSign(x: number, y: number, cost: number, enabled: boolean) {
+    const sign = this.add.rectangle(x, y, 218, 58, enabled ? 0x101923 : 0x0c0d0f, enabled ? 0.96 : 0.62)
+      .setStrokeStyle(2, enabled ? UI_FIELD.cyan : 0x59606a, enabled ? 0.9 : 0.45);
+    this.add.rectangle(x, y - 20, 192, 3, UI_FIELD.gold, enabled ? 0.64 : 0.28);
+    this.add.text(x - 86, y - 16, 'FRESH STOCK', {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: enabled ? '#8df4ff' : '#596a78'
+    });
+    this.add.text(x - 86, y + 1, `${cost} Scrap`, marketOfferPriceStyle(enabled));
+    this.add.text(x + 54, y - 5, 'Refresh', {
+      fontFamily: 'Arial',
+      fontSize: '15px',
+      fontStyle: 'bold',
+      color: enabled ? '#ffe1a3' : '#596a78'
+    }).setOrigin(0.5, 0);
+    if (enabled) {
+      sign.setInteractive({ useHandCursor: true });
+      sign.on('pointerover', () => sign.setFillStyle(0x162434, 0.98));
+      sign.on('pointerout', () => sign.setFillStyle(0x101923, 0.96));
+      sign.on('pointerdown', () => this.refreshMarket());
+    }
+  }
+
+  private renderMarketCardOffers(x: number, y: number) {
+    const hasStock = this.marketCardShelf.some((offer) => !offer.sold);
+    this.add.rectangle(x, y - 112, 600, 18, 0x261808, 0.96)
+      .setStrokeStyle(1, hasStock ? UI_FIELD.gold : 0x6f6044, hasStock ? 0.58 : 0.3);
+    this.add.rectangle(x, y + 96, 616, 16, 0x070b12, 0.58);
+    if (this.marketCardShelf.length === 0) {
+      this.add.rectangle(x, y - 6, 440, 92, 0x101923, 0.9)
+        .setStrokeStyle(1, 0x6f6044, 0.5);
+      this.add.text(x, y - 26, 'Every available crew card is already in the flock.', {
         fontFamily: 'Arial',
-        fontSize: '18px',
-        fontStyle: 'bold',
-        color: '#ffe1a3',
-        wordWrap: { width: 232 },
+        fontSize: '15px',
+        color: '#d7c5a6',
+        align: 'center',
+        wordWrap: { width: 360 },
         maxLines: 2
-      });
-      this.add.text(x - 118, y - 56, `${offer.bird} / ${cardLabel(offer)}`, {
+      }).setOrigin(0.5, 0);
+      return;
+    }
+    this.marketCardShelf.forEach((listing, i) => {
+      const card = cloneCard(listing.id);
+      const cardW = 112;
+      const cardH = 170;
+      const cardX = x - 195 + i * 130;
+      const cardY = y - 4 + (i % 2 === 0 ? -8 : 8);
+      const enabled = !listing.sold && this.runState.scrap >= listing.price;
+      const accent = card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
+      this.add.rectangle(cardX + 7, cardY + 9, cardW, cardH, 0x020409, 0.42);
+      this.add.rectangle(cardX, cardY, cardW, cardH, listing.sold ? 0x0c0d0f : 0x07101c, listing.sold ? 0.72 : 0.98)
+        .setStrokeStyle(2.5, listing.sold ? 0x59606a : accent, listing.sold ? 0.38 : 0.95);
+      this.add.rectangle(cardX, cardY - 66, cardW - 16, 2, accent, listing.sold ? 0.22 : 0.76);
+      this.add.rectangle(cardX, cardY + 66, cardW - 16, 2, accent, listing.sold ? 0.22 : 0.56);
+      const key = cardArtKey(card);
+      this.add.rectangle(cardX, cardY - 18, 86, 96, 0x101b2a, listing.sold ? 0.38 : 0.96)
+        .setStrokeStyle(1, accent, listing.sold ? 0.22 : 0.62);
+      if (key && this.textures.exists(key)) this.add.image(cardX, cardY - 18, key).setDisplaySize(84, 94).setAlpha(listing.sold ? 0.32 : 0.88);
+      else this.add.text(cardX, cardY - 30, cardLabel(card), {
+        fontFamily: 'Arial',
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: '#8df4ff',
+        align: 'center',
+        wordWrap: { width: 76 },
+        maxLines: 2
+      }).setOrigin(0.5);
+      this.add.rectangle(cardX, cardY + 48, 94, 44, 0x05080e, listing.sold ? 0.58 : 0.82);
+      this.add.text(cardX, cardY + 29, displayName(card), {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        fontStyle: 'bold',
+        color: listing.sold ? '#91a6b8' : '#ffe1a3',
+        align: 'center',
+        wordWrap: { width: 86 },
+        maxLines: 2
+      }).setOrigin(0.5, 0);
+      this.add.text(cardX, cardY + 68, card.runtime.rarity.toUpperCase(), {
+        fontFamily: 'Arial',
+        fontSize: '9px',
+        fontStyle: 'bold',
+        color: '#8df4ff'
+      }).setOrigin(0.5);
+      this.renderMarketPriceTag(cardX, cardY + 102, listing.price, enabled && !listing.sold, accent, 'BUY');
+      if (listing.sold) this.renderMarketSoldSlat(cardX, cardY, cardW, cardH);
+      if (!listing.sold) {
+        const hit = this.add.rectangle(cardX, cardY + 10, cardW + 12, cardH + 64, 0x000000, 0.01)
+          .setInteractive({ useHandCursor: true });
+        hit.on('pointerdown', () => this.buyMarketCard(i));
+        hit.on('pointerover', () => this.showHoverCardDetail(card, 'Market offer', listing.price, cardX, cardY));
+        hit.on('pointerout', () => this.hideHoverCardDetail());
+      }
+    });
+  }
+
+  private renderMarketWaymarkOffers(x: number, y: number) {
+    const hasStock = this.marketWaymarkShelf.some((offer) => !offer.sold);
+    this.add.rectangle(x, y + 30, 346, 92, 0x0d1117, 0.58)
+      .setStrokeStyle(1, hasStock ? UI_FIELD.gold : 0x6f6044, hasStock ? 0.44 : 0.28);
+    if (this.marketWaymarkShelf.length === 0) {
+      this.add.text(x, y + 2, 'No unclaimed pins remain in this market.', {
         fontFamily: 'Arial',
         fontSize: '13px',
+        color: '#d7c5a6',
+        align: 'center',
+        wordWrap: { width: 260 },
+        maxLines: 2
+      }).setOrigin(0.5, 0);
+      return;
+    }
+    this.marketWaymarkShelf.forEach((listing, i) => {
+      const mark = alphaRouteMarkLibrary.get(listing.id);
+      if (!mark) return;
+      const itemX = x - 78 + i * 156;
+      const itemY = y + 8;
+      const enabled = !listing.sold && this.runState.scrap >= listing.price;
+      this.add.rectangle(itemX, itemY + 32, 128, 58, listing.sold ? 0x0c0d0f : 0x16110a, listing.sold ? 0.62 : 0.94)
+        .setStrokeStyle(1, listing.sold ? 0x59606a : UI_FIELD.gold, listing.sold ? 0.32 : 0.68);
+      this.add.circle(itemX, itemY - 18, 36, 0x111923, listing.sold ? 0.56 : 0.96)
+        .setStrokeStyle(2, listing.sold ? 0x59606a : UI_FIELD.gold, listing.sold ? 0.34 : 0.82);
+      const key = waymarkArtAssets[mark.id]?.key;
+      if (key && this.textures.exists(key)) this.add.image(itemX, itemY - 18, key).setDisplaySize(54, 54).setAlpha(listing.sold ? 0.42 : 0.95);
+      else this.add.text(itemX, itemY - 18, waymarkGlyph(mark), {
+        fontFamily: 'Georgia, serif',
+        fontSize: '25px',
         fontStyle: 'bold',
-        color: '#7ab8d6',
-        wordWrap: { width: 232 },
-        maxLines: 1
+        color: '#fff1c7'
+      }).setOrigin(0.5);
+      this.add.text(itemX, itemY + 16, listing.sold ? `${mark.name} - sold` : mark.name, {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        fontStyle: 'bold',
+        color: listing.sold ? '#91a6b8' : '#ffe1a3',
+        align: 'center',
+        wordWrap: { width: 108 },
+        maxLines: 2
+      }).setOrigin(0.5, 0);
+      this.add.text(itemX, itemY + 54, routeMarkFamilyLabel(mark.family).toUpperCase(), {
+        fontFamily: 'Arial',
+        fontSize: '9px',
+        fontStyle: 'bold',
+        color: '#8df4ff'
+      }).setOrigin(0.5);
+      this.renderMarketPriceTag(itemX, itemY + 92, listing.price, enabled && !listing.sold, UI_FIELD.gold, 'PIN');
+      if (listing.sold) this.renderMarketSoldSlat(itemX, itemY + 18, 126, 100);
+      if (!listing.sold) {
+        const hit = this.add.rectangle(itemX, itemY + 28, 138, 150, 0x000000, 0.01)
+          .setInteractive({ useHandCursor: true });
+        hit.on('pointerdown', () => this.buyMarketRouteMark(i));
+      }
+    });
+  }
+
+  private renderMarketUtilityOffers(x: number, y: number) {
+    const hasStock = this.marketUtilityShelf.some((offer) => !offer.sold);
+    this.add.rectangle(x, y + 132, 250, 338, 0x07101c, 0.28)
+      .setStrokeStyle(1, hasStock ? UI_FIELD.cyan : 0x59606a, hasStock ? 0.32 : 0.2);
+    if (this.marketUtilityShelf.length === 0) {
+      this.add.text(x, y + 42, 'The benches are quiet. Your pouch may be full, or every card is settled.', {
+        fontFamily: 'Arial',
+        fontSize: '13px',
+        color: '#d7c5a6',
+        align: 'center',
+        wordWrap: { width: 190 },
+        maxLines: 3
+      }).setOrigin(0.5, 0);
+      return;
+    }
+    this.marketUtilityShelf.forEach((listing, i) => {
+      const rowY = y + i * 76;
+      const label = this.marketUtilityLabel(listing);
+      const detail = this.marketUtilityDetail(listing);
+      const enabled = !listing.sold && this.marketUtilityEnabled(listing);
+      const accent = listing.id === 'release' ? UI_FIELD.danger : listing.id === 'supply' ? UI_FIELD.green : UI_FIELD.cyan;
+      const sign = this.add.rectangle(x, rowY, 224, 62, listing.sold ? 0x0c0d0f : 0x101923, listing.sold ? 0.62 : 0.96)
+        .setStrokeStyle(2, listing.sold ? 0x59606a : accent, listing.sold ? 0.34 : 0.78);
+      this.add.rectangle(x - 76, rowY - 41, 3, 20, 0xd8a840, listing.sold ? 0.25 : 0.7);
+      this.add.rectangle(x + 76, rowY - 41, 3, 20, 0xd8a840, listing.sold ? 0.25 : 0.7);
+      this.add.circle(x - 82, rowY - 1, 20, accent, listing.sold ? 0.32 : 0.86);
+      this.add.text(x - 82, rowY - 9, listing.id === 'preen' ? 'P' : listing.id === 'release' ? 'R' : 'S', {
+        fontFamily: 'Arial',
+        fontSize: '15px',
+        fontStyle: 'bold',
+        color: '#07101c'
+      }).setOrigin(0.5, 0);
+      this.add.text(x - 52, rowY - 24, listing.sold ? `${label} - sold` : label, {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        fontStyle: 'bold',
+        color: listing.sold ? '#91a6b8' : '#ffe1a3',
+        wordWrap: { width: 124 },
+        maxLines: 2
       });
-    } else {
-      this.add.text(x - 126, y - 50, this.marketBoughtCard ? 'That recruitment lead has moved on.' : 'Every available crew card is already in the flock.', detailBodyStyle(250));
-    }
-    this.renderMarketButton(x, y + 132, 'Buy', enabled, () => this.buyMarketCard());
+      this.add.text(x - 52, rowY + 8, detail, {
+        fontFamily: 'Arial',
+        fontSize: '9px',
+        color: '#dce8f2',
+        lineSpacing: 0,
+        wordWrap: { width: 116 },
+        maxLines: 2
+      });
+      this.renderMarketPriceTag(x + 76, rowY + 3, listing.price, enabled && !listing.sold, accent, this.marketUtilityVerb(listing).toUpperCase());
+      if (listing.sold) this.renderMarketSoldSlat(x, rowY, 224, 62);
+      if (!listing.sold) {
+        sign.setInteractive({ useHandCursor: true });
+        sign.on('pointerdown', () => this.buyMarketUtility(i));
+        const card = listing.cardId ? this.cardFromSavedId(listing.cardId) : undefined;
+        if (card) {
+          sign.on('pointerover', () => this.showHoverCardDetail(card, listing.id === 'preen' ? 'Preen candidate' : 'Release candidate', listing.price, x, rowY));
+          sign.on('pointerout', () => this.hideHoverCardDetail());
+        }
+      }
+    });
   }
 
-  private renderMarketRouteMarkOffer(x: number, y: number) {
-    const mark = this.marketRouteMarkOffer();
-    const enabled = !!mark && this.runState.scrap >= mark.price;
-    this.add.rectangle(x, y, 460, 132, 0x1a1711, 0.93)
-      .setStrokeStyle(1, enabled ? 0xd8a840 : 0x6f6044, enabled ? 0.75 : 0.42);
-    this.add.rectangle(x, y - 58, 420, 2, enabled ? 0xd8a840 : 0x6f6044, enabled ? 0.7 : 0.35);
-    this.add.text(x - 204, y - 46, 'Waymark', marketOfferTitleStyle());
-    this.add.text(x - 204, y - 18, mark ? `${mark.name} / ${mark.price} Scrap` : 'Sold out', marketOfferPriceStyle(enabled));
-    this.add.text(x - 204, y + 12, mark ? mark.text : this.marketBoughtRouteMark ? 'The route-board pin is already claimed.' : 'No unclaimed marks remain in this market.', detailBodyStyle(292));
-    this.renderMarketButton(x + 160, y + 30, 'Buy', enabled, () => this.buyMarketRouteMark());
+  private renderMarketPriceTag(x: number, y: number, price: number, enabled: boolean, accent: number, verb: string) {
+    this.add.rectangle(x, y, 92, 32, enabled ? 0x2a1a08 : 0x0b1017, enabled ? 0.96 : 0.64)
+      .setStrokeStyle(1.5, enabled ? accent : 0x3f4c58, enabled ? 0.86 : 0.4);
+    this.add.circle(x - 35, y, 4, enabled ? UI_FIELD.gold : 0x59606a, 0.9);
+    this.add.text(x - 26, y - 12, `${price}`, {
+      fontFamily: 'Arial',
+      fontSize: '15px',
+      fontStyle: 'bold',
+      color: enabled ? '#f0c36f' : '#91a6b8'
+    });
+    this.add.text(x + 25, y - 8, verb, {
+      fontFamily: 'Arial',
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: enabled ? '#8df4ff' : '#596a78'
+    }).setOrigin(0.5, 0);
   }
 
-  private renderMarketPreenOffer(x: number, y: number) {
-    const card = this.marketPreenCandidate();
-    const price = this.marketPreenPrice();
-    const enabled = !!card && this.runState.scrap >= price;
-    const panel = this.add.rectangle(x, y, 460, 132, 0x14171a, 0.93)
-      .setStrokeStyle(1, enabled ? 0x24d0d6 : 0x59606a, enabled ? 0.72 : 0.42);
-    this.add.rectangle(x, y - 58, 420, 2, enabled ? 0x24d0d6 : 0x59606a, enabled ? 0.68 : 0.32);
-    if (card) {
-      panel.setInteractive({ useHandCursor: false });
-      panel.on('pointerover', () => this.showHoverCardDetail(card, 'Preen candidate', price, x, y));
-      panel.on('pointerout', () => this.hideHoverCardDetail());
-    }
-    this.add.text(x - 204, y - 46, 'Preen a Card', marketOfferTitleStyle());
-    this.add.text(x - 204, y - 18, card ? `${displayName(card)} / ${price} Scrap` : 'No cards to preen', marketOfferPriceStyle(enabled));
-    this.add.text(x - 204, y + 12, card ? 'Improve the first unpreened card in your flock deck.' : this.marketBoughtPreen ? 'The preening bench is packed away.' : 'Every card in the flock is already polished.', detailBodyStyle(292));
-    this.renderMarketButton(x + 160, y + 30, 'Preen', enabled, () => this.buyMarketPreen());
+  private renderMarketSoldSlat(x: number, y: number, w: number, h: number) {
+    this.add.rectangle(x, y, w + 18, 10, 0x020409, 0.82).setAngle(-18);
+    this.add.text(x, y - 10, 'SOLD', {
+      fontFamily: 'Arial',
+      fontSize: '18px',
+      fontStyle: 'bold',
+      color: '#91a6b8',
+      stroke: '#020409',
+      strokeThickness: 3
+    }).setOrigin(0.5, 0);
   }
 
-  private renderMarketButton(x: number, y: number, label: string, enabled: boolean, onClick: () => void) {
-    renderFieldButton(this, (obj) => {}, x, y, 112, 34, label, enabled, onClick, UI_FIELD.gold);
+  private renderMarketButton(x: number, y: number, label: string, enabled: boolean, onClick: () => void, accent = UI_FIELD.gold) {
+    renderFieldButton(this, (obj) => {}, x, y, 112, 34, label, enabled, onClick, accent);
   }
 
-  private buyMarketCard() {
-    const offer = this.marketCardOffer();
-    if (!offer || this.runState.scrap < MARKET_CARD_PRICE) return;
-    this.runState.scrap -= MARKET_CARD_PRICE;
+  private renderMarketSmallButton(x: number, y: number, label: string, enabled: boolean, onClick: () => void, accent = UI_FIELD.gold) {
+    renderFieldButton(this, (obj) => {}, x, y, 70, 26, label, enabled, onClick, accent);
+  }
+
+  private buyMarketCard(slotIndex = 0) {
+    const listing = this.marketCardShelf[slotIndex] ?? this.marketCardShelf.find((offer) => !offer.sold);
+    if (!listing || listing.sold || this.runState.scrap < listing.price) return;
+    const offer = cloneCard(listing.id);
+    this.runState.scrap -= listing.price;
     this.runState.deck.push({ id: offer.id, upgraded: offer.upgraded });
-    this.marketBoughtCard = true;
-    this.marketMessage = `${displayName(offer)} joins the flock.`;
+    listing.sold = true;
+    discoverCards([offer.id]);
+    this.marketMessage = `${displayName(offer)} joins the flock for ${listing.price} Scrap.`;
     this.renderAll();
     this.queueOptionalCardArtLoad();
   }
 
-  private buyMarketRouteMark() {
-    const mark = this.marketRouteMarkOffer();
-    if (!mark || this.runState.scrap < mark.price) return;
-    this.runState.scrap -= mark.price;
+  private buyMarketRouteMark(slotIndex = 0) {
+    const listing = this.marketWaymarkShelf[slotIndex] ?? this.marketWaymarkShelf.find((offer) => !offer.sold);
+    const mark = listing ? alphaRouteMarkLibrary.get(listing.id) : undefined;
+    if (!listing || listing.sold || !mark || this.runState.scrap < listing.price) return;
+    this.runState.scrap -= listing.price;
     this.addRouteMark(mark.id);
-    this.marketBoughtRouteMark = true;
-    this.marketMessage = `${mark.name} is pinned to the route board.`;
+    listing.sold = true;
+    this.marketMessage = `${mark.name} is pinned to the route board for ${listing.price} Scrap.`;
     this.renderAll();
   }
 
   private buyMarketPreen() {
-    const card = this.marketPreenCandidate();
-    const price = this.marketPreenPrice();
-    if (!card || this.runState.scrap < price) return;
-    const saved = this.runState.deck.find((candidate) => candidate.id === card.id);
-    if (!saved) return;
-    saved.upgraded = true;
-    this.runState.scrap -= price;
-    this.marketBoughtPreen = true;
-    this.marketMessage = `${card.name} is preened.`;
+    const index = this.marketUtilityShelf.findIndex((offer) => offer.id === 'preen' && !offer.sold);
+    this.buyMarketUtility(Math.max(0, index));
+  }
+
+  private buyMarketUtility(slotIndex = 0) {
+    const listing = this.marketUtilityShelf[slotIndex] ?? this.marketUtilityShelf.find((offer) => !offer.sold);
+    if (!listing || listing.sold || !this.marketUtilityEnabled(listing)) return;
+    if (listing.id === 'preen') {
+      const saved = this.runState.deck.find((candidate) => candidate.id === listing.cardId && !candidate.upgraded);
+      if (!saved) return;
+      saved.upgraded = true;
+      this.runState.scrap -= listing.price;
+      listing.sold = true;
+      this.marketMessage = `${cardLibrary[saved.id]?.name ?? saved.id} is preened for ${listing.price} Scrap.`;
+    } else if (listing.id === 'release') {
+      const index = this.runState.deck.findIndex((candidate) => candidate.id === listing.cardId);
+      if (index < 0) return;
+      const [saved] = this.runState.deck.splice(index, 1);
+      this.runState.scrap -= listing.price;
+      listing.sold = true;
+      this.marketMessage = `${cardLibrary[saved.id]?.name ?? saved.id} leaves the travel pack for ${listing.price} Scrap.`;
+    } else {
+      const supply = listing.supplyId ? alphaSupplyLibrary.get(listing.supplyId) : undefined;
+      if (!supply || (this.runState.supplies ?? []).length >= 2) return;
+      this.runState.supplies.push(supply.id);
+      this.runState.scrap -= listing.price;
+      listing.sold = true;
+      this.marketMessage = `${supply.name} is packed for the road for ${listing.price} Scrap.`;
+    }
     this.renderAll();
+  }
+
+  private marketRefreshCost() {
+    return MARKET_REFRESH_BASE_PRICE + this.marketRefreshCount * 20 + activeMapIndex * 8;
+  }
+
+  private refreshMarket() {
+    const cost = this.marketRefreshCost();
+    if (this.runState.scrap < cost) return;
+    this.runState.scrap -= cost;
+    this.marketRefreshCount += 1;
+    this.marketCardShelf = this.createMarketCardShelf(this.marketRng('cards'));
+    this.marketWaymarkShelf = this.createMarketWaymarkShelf(this.marketRng('waymarks'));
+    this.marketUtilityShelf = this.createMarketUtilityShelf(this.marketRng('utilities'));
+    this.marketMessage = `A runner calls down the line. Fresh stock arrives for ${cost} Scrap.`;
+    this.renderAll();
+    this.queueOptionalCardArtLoad();
+  }
+
+  private marketRng(salt: string) {
+    return seededRng(`${this.runState.seed ?? activeSeed}:${this.marketNodeId ?? 'market'}:${this.marketRefreshCount}:${salt}`);
+  }
+
+  private createMarketCardShelf(rng: () => number): MarketCardListing[] {
+    const owned = new Set(this.runState.deck.map((card) => card.id));
+    const picked = new Set<string>();
+    const listings: MarketCardListing[] = [];
+    for (const slot of alphaMarketConfig.cardSlots) {
+      const basePool = arcanaRewardPool.filter((id) => !owned.has(id) && !picked.has(id));
+      let pool = slot.rarity === 'weighted'
+        ? basePool
+        : basePool.filter((id) => cardLibrary[id]?.runtime.rarity === slot.rarity);
+      if (pool.length === 0) pool = basePool;
+      const id = this.pickWeighted(pool, (candidate) => this.marketCardWeight(candidate, slot.rarity), rng);
+      const card = id ? cardLibrary[id] : undefined;
+      if (!id || !card) continue;
+      picked.add(id);
+      listings.push({
+        id,
+        price: priceInBand(slot.price, cardRarityStep(card.runtime.rarity))
+      });
+    }
+    return listings;
+  }
+
+  private marketCardWeight(id: string, slotRarity: 'common' | 'uncommon' | 'rare' | 'weighted') {
+    const rarity = cardLibrary[id]?.runtime.rarity ?? 'common';
+    if (slotRarity !== 'weighted') return rarity === slotRarity ? 100 : 20;
+    const base = REWARD_RARITY_WEIGHT[rarity] ?? 50;
+    if (rarity === 'legendary') return base + activeMapIndex * 3;
+    if (rarity === 'rare') return base + activeMapIndex * 8;
+    if (rarity === 'uncommon') return base + activeMapIndex * 6;
+    return base;
+  }
+
+  private createMarketWaymarkShelf(rng: () => number): MarketWaymarkListing[] {
+    const picked = new Set<string>();
+    const listings: MarketWaymarkListing[] = [];
+    for (const slot of alphaMarketConfig.routeMarkSlots) {
+      const pool = MARKET_ROUTE_MARK_IDS
+        .filter((id) => !this.hasRouteMark(id) && !picked.has(id))
+        .filter((id) => slot.selector !== 'nonBoss' || alphaRouteMarkLibrary.get(id)?.rarity !== 'boss');
+      const id = this.pickWeighted(pool, (candidate) => this.marketWaymarkWeight(candidate), rng);
+      const mark = id ? alphaRouteMarkLibrary.get(id) : undefined;
+      if (!id || !mark) continue;
+      picked.add(id);
+      listings.push({
+        id,
+        price: priceInBand(slot.price, routeMarkRarityStep(mark.rarity))
+      });
+    }
+    return listings;
+  }
+
+  private marketWaymarkWeight(id: string) {
+    const rarity = alphaRouteMarkLibrary.get(id)?.rarity ?? 'common';
+    if (rarity === 'rare') return 24 + activeMapIndex * 5;
+    if (rarity === 'uncommon') return 58 + activeMapIndex * 4;
+    return 100;
+  }
+
+  private createMarketUtilityShelf(rng: () => number): MarketUtilityListing[] {
+    const listings: MarketUtilityListing[] = [];
+    const preen = this.firstPreenCandidate();
+    if (preen) listings.push({ id: 'preen', cardId: preen.id, price: this.marketPreenPrice(preen) });
+    const release = this.marketReleaseCandidate();
+    if (release) listings.push({ id: 'release', cardId: release.id, price: this.marketReleasePrice() });
+
+    const pickedSupplies = new Set(this.runState.supplies ?? []);
+    for (const slot of alphaMarketConfig.supplySlots) {
+      if ((this.runState.supplies ?? []).length + listings.filter((offer) => offer.id === 'supply').length >= 2) break;
+      const pool = [...alphaSupplyLibrary.values()].filter((supply) => !pickedSupplies.has(supply.id));
+      const supply = this.pickWeighted(pool, (candidate) => this.marketSupplyWeight(candidate), rng);
+      if (!supply) continue;
+      pickedSupplies.add(supply.id);
+      listings.push({
+        id: 'supply',
+        supplyId: supply.id,
+        price: priceInBand(slot.price, supplyRarityStep(supply.rarity))
+      });
+    }
+    return listings;
+  }
+
+  private marketSupplyWeight(supply: RuntimeSupply) {
+    if (supply.rarity === 'rare') return 20 + activeMapIndex * 4;
+    if (supply.rarity === 'uncommon') return 52 + activeMapIndex * 4;
+    return 100;
+  }
+
+  private pickWeighted<T>(items: T[], weightOf: (item: T) => number, rng: () => number) {
+    if (items.length === 0) return undefined;
+    const total = items.reduce((sum, item) => sum + Math.max(0, weightOf(item)), 0);
+    if (total <= 0) return items[Math.floor(rng() * items.length)];
+    let roll = rng() * total;
+    for (const item of items) {
+      roll -= Math.max(0, weightOf(item));
+      if (roll <= 0) return item;
+    }
+    return items[items.length - 1];
+  }
+
+  private marketUtilityLabel(listing: MarketUtilityListing) {
+    if (listing.id === 'preen') return `Preen ${this.cardName(listing.cardId)}`;
+    if (listing.id === 'release') return `Release ${this.cardName(listing.cardId)}`;
+    const supply = listing.supplyId ? alphaSupplyLibrary.get(listing.supplyId) : undefined;
+    return supply?.name ?? 'Supply Crate';
+  }
+
+  private marketUtilityDetail(listing: MarketUtilityListing) {
+    if (listing.id === 'preen') return 'Upgrade one card in the flock deck.';
+    if (listing.id === 'release') return 'Thin one card from the flock deck.';
+    const supply = listing.supplyId ? alphaSupplyLibrary.get(listing.supplyId) : undefined;
+    return supply?.description ?? 'Pack a one-use tool.';
+  }
+
+  private marketUtilityVerb(listing: MarketUtilityListing) {
+    if (listing.id === 'preen') return 'Preen';
+    if (listing.id === 'release') return 'Leave';
+    return 'Pack';
+  }
+
+  private marketUtilityEnabled(listing: MarketUtilityListing) {
+    if (this.runState.scrap < listing.price) return false;
+    if (listing.id === 'preen') return this.runState.deck.some((card) => card.id === listing.cardId && !card.upgraded);
+    if (listing.id === 'release') return this.runState.deck.some((card) => card.id === listing.cardId);
+    return !!listing.supplyId && (this.runState.supplies ?? []).length < 2;
+  }
+
+  private cardName(cardId: string | undefined) {
+    return cardId ? cardLibrary[cardId]?.name ?? cardId : 'card';
+  }
+
+  private cardFromSavedId(cardId: string) {
+    const saved = this.runState.deck.find((candidate) => candidate.id === cardId);
+    if (!saved) return undefined;
+    const card = cloneCard(saved.id);
+    card.upgraded = saved.upgraded;
+    return card;
   }
 
   private leaveMarket() {
     const node = currentMap().nodes.find((candidate) => candidate.id === this.marketNodeId);
+    this.completePendingRouteNode(node?.id);
     this.runState.routeLog.push(node ? `${node.label}: market business settled.` : 'Market business settled.');
     this.runState.routeLog = this.runState.routeLog.slice(-8);
     this.marketOpen = false;
@@ -3760,28 +4344,73 @@ class RouteScene extends Phaser.Scene {
   }
 
   private marketCardOffer() {
-    if (this.marketBoughtCard) return undefined;
-    const owned = new Set(this.runState.deck.map((card) => card.id));
-    const id = arcanaRewardPool.find((candidate) => !owned.has(candidate));
-    return id ? cloneCard(id) : undefined;
+    const listing = this.marketCardShelf.find((offer) => !offer.sold);
+    if (!listing) return undefined;
+    const card = cloneCard(listing.id);
+    card.upgraded = false;
+    return card;
+  }
+
+  private marketCardOffers() {
+    return this.marketCardShelf.map((listing) => ({
+      ...listing,
+      card: cloneCard(listing.id)
+    }));
   }
 
   private marketRouteMarkOffer() {
-    if (this.marketBoughtRouteMark) return undefined;
-    return routeMarks.find((mark) => !this.hasRouteMark(mark.id));
+    const listing = this.marketWaymarkShelf.find((offer) => !offer.sold);
+    const mark = listing ? alphaRouteMarkLibrary.get(listing.id) : undefined;
+    return mark ? { id: mark.id, name: mark.name, text: mark.description, price: listing?.price ?? MARKET_ROUTE_MARK_PRICE } : undefined;
+  }
+
+  private marketRouteMarkOffers() {
+    return this.marketWaymarkShelf.map((listing) => {
+      const mark = alphaRouteMarkLibrary.get(listing.id);
+      return {
+        ...listing,
+        name: mark?.name ?? listing.id,
+        text: mark?.description ?? ''
+      };
+    });
   }
 
   private marketPreenCandidate() {
-    if (this.marketBoughtPreen) return undefined;
-    const saved = this.runState.deck.find((card) => !card.upgraded);
+    const listing = this.marketUtilityShelf.find((offer) => offer.id === 'preen' && !offer.sold);
+    if (listing?.cardId) return this.cardFromSavedId(listing.cardId);
+    return this.firstPreenCandidate();
+  }
+
+  private firstPreenCandidate() {
+    const saved = this.runState.deck.find((card) => !card.upgraded && cardLibrary[card.id]?.runtime.kind !== 'snag');
     if (!saved) return undefined;
     const card = cloneCard(saved.id);
     card.upgraded = saved.upgraded;
     return card;
   }
 
-  private marketPreenPrice() {
-    return Math.max(35, MARKET_PREEN_PRICE - this.routeMarkValue('passive', 'reducePreenPrice'));
+  private marketPreenPrice(card?: Card) {
+    const shelfPreen = !card ? this.marketUtilityShelf.find((offer) => offer.id === 'preen' && !offer.sold) : undefined;
+    if (shelfPreen) return shelfPreen.price;
+    const raritySurcharge = card ? Math.min(2, cardRarityStep(card.runtime.rarity)) * 10 : 0;
+    return Math.max(35, MARKET_PREEN_PRICE + raritySurcharge - this.routeMarkValue('passive', 'reducePreenPrice'));
+  }
+
+  private marketReleaseCandidate() {
+    const snag = this.runState.deck.find((card) => cardLibrary[card.id]?.runtime.kind === 'snag');
+    const starter = new Set(alphaCardSet.starterDeck);
+    const saved = snag ?? this.runState.deck.find((card) => !starter.has(card.id));
+    if (!saved) return undefined;
+    const card = cloneCard(saved.id);
+    card.upgraded = saved.upgraded;
+    return card;
+  }
+
+  private marketReleasePrice() {
+    const service = alphaMarketConfig.services.find((entry) => entry.id === 'release');
+    const starterSize = getLeader(this.runState.leaderId).startingDeckIds.length;
+    const thinnerDeckSurcharge = Math.max(0, starterSize - this.runState.deck.length) * (service?.priceIncrease ?? 0);
+    return (service?.basePrice ?? 70) + thinnerDeckSurcharge + activeMapIndex * 8;
   }
 
   private firstUnownedRouteMark() {
@@ -3993,8 +4622,19 @@ class RouteScene extends Phaser.Scene {
         ? {
             scrap: this.runState.scrap,
             cardOffer: this.marketCardOffer()?.id ?? '',
+            cardOffers: this.marketCardShelf.map((offer) => ({ id: offer.id, price: offer.price, sold: !!offer.sold })),
             routeMarkOffer: this.marketRouteMarkOffer()?.id ?? '',
+            routeMarkOffers: this.marketWaymarkShelf.map((offer) => ({ id: offer.id, price: offer.price, sold: !!offer.sold })),
             preenOffer: this.marketPreenCandidate()?.id ?? '',
+            utilityOffers: this.marketUtilityShelf.map((offer) => ({
+              id: offer.id,
+              price: offer.price,
+              cardId: offer.cardId ?? '',
+              supplyId: offer.supplyId ?? '',
+              sold: !!offer.sold
+            })),
+            refreshCost: this.marketRefreshCost(),
+            refreshCount: this.marketRefreshCount,
             message: this.marketMessage,
             backdropAssetKey: marketBackdrop?.key ?? ''
         }
@@ -4010,6 +4650,13 @@ class RouteScene extends Phaser.Scene {
       inspectedCard: inspected,
       selectableNodeIds: [...this.selectableNodeIds],
       nodes: currentMap().nodes.map((node) => ({
+        ...(() => {
+          const position = this.nodePosition(node);
+          return {
+            position,
+            visualBounds: this.nodeVisualBounds(node)
+          };
+        })(),
         id: node.id,
         label: node.label,
         type: node.type,
@@ -4111,6 +4758,11 @@ class BattleScene extends Phaser.Scene {
   private runCombatResults: CombatResultSummary[] = [];
   private freePreenNextDistrict = 0;
   private mode: GameMode = 'battle';
+  private combatEconomyAwarded = false;
+  private combatScrapAwarded = 0;
+  private combatRouteMarkAwarded?: RuntimeRouteMark;
+  private combatRouteMarkResolved = false;
+  private waymarkChoices: RuntimeRouteMark[] = [];
   private rewardChoices: Card[] = [];
   private upgradeChoices: Card[] = [];
   private log: string[] = [];
@@ -4202,6 +4854,11 @@ class BattleScene extends Phaser.Scene {
     this.runCombatResults = [...(runState.combatResults ?? [])];
     this.freePreenNextDistrict = runState.freePreenNextDistrict ?? 0;
     this.mode = 'battle';
+    this.combatEconomyAwarded = false;
+    this.combatScrapAwarded = 0;
+    this.combatRouteMarkAwarded = undefined;
+    this.combatRouteMarkResolved = false;
+    this.waymarkChoices = [];
     this.inspectOverlay = undefined;
     this.inspectedCardId = undefined;
     this.waymarkDrawerOpen = false;
@@ -4471,6 +5128,7 @@ class BattleScene extends Phaser.Scene {
     this.renderWaymarkShelf();
     this.renderCommandStrip();
     this.renderToast();
+    if (this.mode === 'waymarkReward') (this as unknown as { renderWaymarkReward: () => void }).renderWaymarkReward();
     if (this.mode === 'cardReward') this.renderCardReward();
     if (this.mode === 'upgradeReward') this.renderUpgradeReward();
     if (this.mode === 'runComplete' || this.mode === 'defeat') this.renderOutcome();
@@ -5304,11 +5962,12 @@ class BattleScene extends Phaser.Scene {
       // number is incoming damage, the ring color is danger (next-level §2.2-2.3).
       const dmg = this.incomingAttackDamage(enemy);
       const isBrace = dmg === 0 && move.effects.some((effect) => effect.includes('gainCover'));
-      const hasDebuff = move.effects.some((effect) => /applyWinded|applyOpenSky|addSnag/.test(effect));
+      const hasDebuff = move.effects.some((effect) => /applyWinded|applyOpenSky|applyPoison|applyFrail|addSnag/.test(effect));
+      const hasSupport = move.effects.some((effect) => /healAlly|healAllEnemies|gainCoverAlly|gainCoverAllEnemies|nextAttackBonusAlly/.test(effect));
       const ringColor = dmg > 0
         ? (dmg <= 6 ? 0xf5d38a : dmg <= 10 ? 0xff9d4d : 0xff5247)
-        : isBrace ? 0x7ab8d6 : 0xc98bff;
-      const badgeValue = dmg > 0 ? `${dmg}` : isBrace ? `${intentCoverValue(move)}` : '!';
+        : hasSupport ? 0x8fd6a0 : isBrace ? 0x7ab8d6 : 0xc98bff;
+      const badgeValue = dmg > 0 ? `${dmg}` : isBrace ? `${intentCoverValue(move)}` : hasSupport ? '+' : '!';
       const intentSide = x > GAME_WIDTH - 210 * s ? -1 : 1;
       const bx = x + intentSide * (ENEMY_HP_BAR.w * s / 2 + 38 * s);
       const by = hp.y;
@@ -5437,12 +6096,29 @@ class BattleScene extends Phaser.Scene {
 
     // Cohesion bar (click → full Flock Stats overlay).
     const fbFrac = Math.max(0, Math.min(1, this.flock.hp / this.flock.maxHp));
+    const incoming = this.incomingFlockDamagePreview();
     const barBg = this.add.rectangle(FLOCK_HP_BAR.x, FLOCK_HP_BAR.y, FLOCK_HP_BAR.w, FLOCK_HP_BAR.h, 0x0e1a12, 0.95)
       .setStrokeStyle(1, 0x000000, 0.5).setInteractive({ useHandCursor: true });
     barBg.on('pointerdown', () => this.openOverlay('flock'));
     this.attachTooltip(barBg, 'Cohesion', 'Flock survival — reach 0 and the run ends. Click for full Flock Stats.');
     this.root.add(barBg);
     this.root.add(this.add.rectangle(left + (FLOCK_HP_BAR.w * fbFrac) / 2, FLOCK_HP_BAR.y, Math.max(2, FLOCK_HP_BAR.w * fbFrac), FLOCK_HP_BAR.h - 6, fbFrac > 0.34 ? 0x4fa777 : 0xe2b24a, 0.95));
+    if (incoming.hpLoss > 0) {
+      const afterFrac = Math.max(0, Math.min(1, incoming.afterHp / this.flock.maxHp));
+      const currentX = left + FLOCK_HP_BAR.w * fbFrac;
+      const afterX = left + FLOCK_HP_BAR.w * afterFrac;
+      const riskW = Math.max(2, currentX - afterX);
+      this.root.add(this.add.rectangle(afterX + riskW / 2, FLOCK_HP_BAR.y, riskW, FLOCK_HP_BAR.h - 6, 0xff5247, 0.82));
+      this.root.add(this.add.rectangle(afterX, FLOCK_HP_BAR.y, 2, FLOCK_HP_BAR.h + 4, 0xffd0c9, 0.9));
+      this.root.add(this.add.text(Math.min(left + FLOCK_HP_BAR.w - 6, currentX - 4), FLOCK_HP_BAR.y + 19, `-${incoming.hpLoss} / After ${incoming.afterHp}`, {
+        fontFamily: 'Arial',
+        fontSize: '10px',
+        fontStyle: 'bold',
+        color: '#ffd0c9',
+        stroke: '#180807',
+        strokeThickness: 2,
+      }).setOrigin(1, 0.5));
+    }
     this.root.add(this.add.text(FLOCK_HP_BAR.x, FLOCK_HP_BAR.y, `Cohesion  ${this.flock.hp}/${this.flock.maxHp}`, { fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: '#eaf6ee', stroke: '#0a1410', strokeThickness: 3 }).setOrigin(0.5));
 
     // Formation badge + Flow pips (row 2, under the bar).
@@ -6040,9 +6716,55 @@ class BattleScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     skip.on('pointerdown', () => this.skipCardReward());
     this.root.add(skip);
-    this.root.add(this.add.text(GAME_WIDTH / 2, 652, `Skip - take +${REWARD_SKIP_SCRAP} Scrap`, {
+    this.root.add(this.add.text(GAME_WIDTH / 2, 652, `Skip - take +${this.currentSkipScrapReward()} Scrap`, {
       fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#ffe1a3'
     }).setOrigin(0.5));
+  }
+
+  private renderWaymarkReward() {
+    this.renderRewardBackdrop('Claim a Waymark', 'Choose one route artifact from the cleared chokepoint.');
+    this.waymarkChoices.forEach((mark, index) => {
+      const x = 336 + index * 304;
+      const y = 404;
+      const accent = mark.family === 'bossPrep' ? 0xff6b57 : mark.family === 'molt' ? 0xc9a6ff : 0xd8a840;
+      const card = this.add.rectangle(x, y, 248, 278, 0x07101c, 0.98)
+        .setStrokeStyle(3, accent, 0.95)
+        .setInteractive({ useHandCursor: true });
+      card.on('pointerdown', () => this.chooseWaymarkReward(mark.id));
+      this.root.add(this.add.rectangle(x + 8, y + 10, 248, 278, 0x020409, 0.42));
+      this.root.add(card);
+      this.root.add(this.add.circle(x, y - 84, 38, accent, 0.24).setStrokeStyle(2, accent, 0.8));
+      this.root.add(this.add.text(x, y - 84, waymarkGlyph(mark), {
+        fontFamily: 'Georgia, serif',
+        fontSize: '32px',
+        fontStyle: 'bold',
+        color: '#fff1c7'
+      }).setOrigin(0.5));
+      this.root.add(this.add.text(x, y - 30, mark.name, {
+        fontFamily: 'Arial',
+        fontSize: '20px',
+        fontStyle: 'bold',
+        color: '#ffe1a3',
+        align: 'center',
+        wordWrap: { width: 202 },
+        maxLines: 2
+      }).setOrigin(0.5));
+      this.root.add(this.add.text(x, y + 24, `${routeMarkFamilyLabel(mark.family)} / ${mark.source}`, {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        fontStyle: 'bold',
+        color: '#8df4ff',
+        align: 'center'
+      }).setOrigin(0.5));
+      this.root.add(this.add.text(x, y + 74, mark.description, {
+        fontFamily: 'Arial',
+        fontSize: '14px',
+        color: '#d7c5a6',
+        align: 'center',
+        wordWrap: { width: 204 },
+        maxLines: 4
+      }).setOrigin(0.5));
+    });
   }
 
   private renderUpgradeReward() {
@@ -6080,68 +6802,89 @@ class BattleScene extends Phaser.Scene {
   }
 
   private renderChoiceCard(card: Card, x: number, y: number, onClick: () => void) {
-    const cardW = 220;
-    const cardH = 294;
-    const rect = this.add.rectangle(x, y, cardW, cardH, 0x161b27, 0.98)
-      .setStrokeStyle(3, card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : 0x7ab8d6, 1)
+    const cardW = 228;
+    const cardH = 312;
+    const top = y - cardH / 2;
+    const bottom = y + cardH / 2;
+    const accent = card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
+    const accentText = card.type === 'major' ? '#ffe1a3' : card.type === 'molt' ? '#e6c4ff' : '#8df4ff';
+    const rect = this.add.rectangle(x, y, cardW, cardH, 0x07101c, 0.98)
+      .setStrokeStyle(3, accent, 1)
       .setInteractive({ useHandCursor: true });
     rect.on('pointerdown', onClick);
     rect.on('pointerover', () => this.showChoiceCardDetail(card, x, y));
     rect.on('pointerout', () => this.hideCardPreview());
+    this.root.add(this.add.rectangle(x + 8, y + 10, cardW, cardH, 0x020409, 0.42));
     this.root.add(rect);
     this.renderChoiceCardArt(card, x, y);
 
-    this.root.add(this.add.circle(x - 88, y - 124, 17, card.cost === 0 ? 0x24d0d6 : 0xd8a840, 1));
-    this.root.add(this.add.text(x - 88, y - 124, `${card.cost}`, {
+    this.root.add(this.add.rectangle(x, top + 18, cardW - 18, 2, accent, 0.78));
+    this.root.add(this.add.rectangle(x, bottom - 18, cardW - 18, 2, accent, 0.55));
+    this.root.add(this.add.circle(x - cardW / 2 + 24, top + 28, 19, card.cost === 0 ? 0x24d0d6 : 0xd8a840, 1)
+      .setStrokeStyle(2, 0x05080e, 0.95));
+    this.root.add(this.add.text(x - cardW / 2 + 24, top + 28, `${card.cost}`, {
       fontFamily: 'Arial',
-      fontSize: '16px',
+      fontSize: '18px',
       fontStyle: 'bold',
       color: '#07101c'
     }).setOrigin(0.5));
 
-    this.root.add(this.add.rectangle(x, y - 74, cardW - 8, 94, 0x05080e, 0.82));
-    this.root.add(this.add.text(x - 86, y - 108, displayName(card), {
+    this.root.add(this.add.rectangle(x, top + 43, cardW - 18, 56, 0x05080e, 0.58));
+    this.root.add(this.add.text(x - cardW / 2 + 50, top + 24, displayName(card), {
       fontFamily: 'Arial',
       fontSize: '18px',
       fontStyle: 'bold',
       color: '#ffe1a3',
-      wordWrap: { width: 170 },
+      stroke: '#020409',
+      strokeThickness: 3,
+      wordWrap: { width: cardW - 66 },
       maxLines: 2
     }));
-    this.root.add(this.add.text(x - 86, y - 50, card.bird, {
-      fontFamily: 'Arial',
-      fontSize: '13px',
-      fontStyle: 'bold',
-      color: '#91a6b8',
-      wordWrap: { width: 170 },
-      maxLines: 1
-    }));
-    this.root.add(this.add.rectangle(x, y + 62, cardW - 8, 126, 0x05080e, 0.86));
-    this.root.add(this.add.text(x - 86, y + 8, displayText(card), {
-      fontFamily: 'Arial',
-      fontSize: '14px',
-      color: '#dce8f2',
-      lineSpacing: 1,
-      wordWrap: { width: 170 },
-      maxLines: 4
-    }));
-    this.root.add(this.add.text(x - 86, y + 114, cardLabel(card), {
+    this.root.add(this.add.text(x - cardW / 2 + 50, top + 68, card.bird, {
       fontFamily: 'Arial',
       fontSize: '12px',
       fontStyle: 'bold',
-      color: card.type === 'major' ? '#d8a840' : '#7f93a8'
+      color: '#b9c7d6',
+      stroke: '#020409',
+      strokeThickness: 3,
+      wordWrap: { width: cardW - 66 },
+      maxLines: 1
+    }));
+
+    this.root.add(this.add.rectangle(x, bottom - 57, cardW - 18, 96, 0x05080e, 0.72)
+      .setStrokeStyle(1, accent, 0.28));
+    this.root.add(this.add.text(x - cardW / 2 + 16, bottom - 94, displayText(card), {
+      fontFamily: 'Arial',
+      fontSize: '13px',
+      color: '#dce8f2',
+      stroke: '#020409',
+      strokeThickness: 2,
+      lineSpacing: 1,
+      wordWrap: { width: cardW - 32 },
+      maxLines: 3
+    }));
+    this.root.add(this.add.text(x - cardW / 2 + 16, bottom - 30, cardLabel(card), {
+      fontFamily: 'Arial',
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: accentText,
+      stroke: '#020409',
+      strokeThickness: 2
     }));
     const needTags = this.cardNeedTags(card);
-    if (needTags.length > 0) {
-      this.root.add(this.add.text(x - 86, y + 132, needTags.join('  /  '), {
-        fontFamily: 'Arial',
-        fontSize: '11px',
-        fontStyle: 'bold',
-        color: '#ffcf6b',
-        wordWrap: { width: 170 },
-        maxLines: 2
-      }));
-    }
+    const stats = cardStatRows(card).slice(0, 2);
+    const footer = needTags.length > 0 ? needTags.join(' / ') : stats.join(' / ');
+    this.root.add(this.add.text(x + cardW / 2 - 16, bottom - 30, footer, {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: needTags.length > 0 ? '#ffcf6b' : '#91a6b8',
+      stroke: '#020409',
+      strokeThickness: 2,
+      align: 'right',
+      wordWrap: { width: 116 },
+      maxLines: 2
+    }).setOrigin(1, 0));
   }
 
   private showChoiceCardDetail(card: Card, anchorX: number, anchorY: number) {
@@ -6153,13 +6896,26 @@ class BattleScene extends Phaser.Scene {
 
   private renderChoiceCardArt(card: Card, x: number, y: number) {
     const key = cardArtKey(card);
-    if (!key || !this.textures.exists(key)) return;
-
-    const art = this.add.image(x, y, key)
-      .setDisplaySize(216, 288)
-      .setAlpha(0.95);
-    this.root.add(art);
-    this.root.add(this.add.rectangle(x, y, 216, 288, 0x05101a, 0.36));
+    const artW = 216;
+    const artH = 300;
+    if (key && this.textures.exists(key)) {
+      const art = this.add.image(x, y, key)
+        .setDisplaySize(artW, artH)
+        .setAlpha(0.98);
+      this.root.add(art);
+    } else {
+      this.root.add(this.add.rectangle(x, y, artW, artH, 0x141f2f, 0.94)
+        .setStrokeStyle(1, 0x49606d, 0.8));
+      this.root.add(this.add.text(x, y - 20, cardLabel(card), {
+        fontFamily: 'Arial',
+        fontSize: '18px',
+        fontStyle: 'bold',
+        color: '#7ab8d6',
+        align: 'center',
+        wordWrap: { width: artW - 40 }
+      }).setOrigin(0.5));
+    }
+    this.root.add(this.add.rectangle(x, y, artW, artH, 0x05101a, 0.16));
   }
 
   private openOverlay(overlay: InspectOverlay) {
@@ -6668,7 +7424,14 @@ class BattleScene extends Phaser.Scene {
       this.logEvent(`${displayName(card)} molts — ${moltLabel}`);
       floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 40, 'Molt!', '#ff9d4d');
     }
-    const state: EffectResolutionState = { previousDiscarded: 0, previousDamageDefeated: false, spentResonance: false, returnSelfToDraw: false, builtFlow: false };
+    const state: EffectResolutionState = {
+      previousDiscarded: 0,
+      previousDamageDefeated: false,
+      spentResonance: false,
+      returnSelfToDraw: false,
+      builtFlow: false,
+      flockDamageBonusUsed: false
+    };
     for (const effect of effects) {
       this.resolveCardEffect(effect, card, enemyId, state);
     }
@@ -6698,20 +7461,23 @@ class BattleScene extends Phaser.Scene {
     const value = parseEffectValue(parsed.args[1] ?? parsed.args[0], state.previousDiscarded, targetWinded, this.flock.block);
     switch (parsed.name) {
       case 'damage':
-        state.previousDamageDefeated = this.damageEnemy(enemyId, value, displayName(card), card);
+        state.previousDamageDefeated = this.damageEnemy(enemyId, value, displayName(card), card, false, this.spendFlockDamageBonus(state));
         this.buildFlow(state);
         break;
       case 'damagePierce':
-        state.previousDamageDefeated = this.damageEnemy(enemyId, value, displayName(card), card, true);
+        state.previousDamageDefeated = this.damageEnemy(enemyId, value, displayName(card), card, true, this.spendFlockDamageBonus(state));
         this.buildFlow(state);
         break;
       case 'damageAll':
         state.previousDamageDefeated = false;
-        this.enemies
-          .filter((enemy) => enemy.hp > 0)
-          .forEach((enemy) => {
-            if (this.damageEnemy(enemy.id, value, displayName(card), card)) state.previousDamageDefeated = true;
-          });
+        {
+          const bonus = this.spendFlockDamageBonus(state, true);
+          this.enemies
+            .filter((enemy) => enemy.hp > 0)
+            .forEach((enemy) => {
+              if (this.damageEnemy(enemy.id, value, displayName(card), card, false, bonus)) state.previousDamageDefeated = true;
+            });
+        }
         this.buildFlow(state);
         break;
       case 'gainCover':
@@ -6761,7 +7527,7 @@ class BattleScene extends Phaser.Scene {
         const spent = this.spark;
         const burst = spent * value;
         if (burst > 0) {
-          state.previousDamageDefeated = this.damageEnemy(enemyId, burst, displayName(card), card);
+          state.previousDamageDefeated = this.damageEnemy(enemyId, burst, displayName(card), card, false, 0);
           this.logEvent(`${displayName(card)} releases ${spent} Resonance for ${burst} damage.`);
           const rbView = this.enemyView(this.getEnemy(enemyId));
           floatingText(this, this.fxLayer, rbView.x, rbView.y - 90, 'Resonance Burst!', '#8df4ff');
@@ -6779,7 +7545,7 @@ class BattleScene extends Phaser.Scene {
         const stacks = enemy.weak;
         const burst = stacks * value;
         if (burst > 0) {
-          state.previousDamageDefeated = this.damageEnemy(enemyId, burst, displayName(card), card);
+          state.previousDamageDefeated = this.damageEnemy(enemyId, burst, displayName(card), card, false, 0);
           this.logEvent(`${displayName(card)} bursts ${stacks} Winded for ${burst} damage.`);
           const wbView = this.enemyView(enemy);
           floatingText(this, this.fxLayer, wbView.x, wbView.y - 90, 'Winded Burst!', '#c98bff');
@@ -6957,6 +7723,19 @@ class BattleScene extends Phaser.Scene {
     if (this.flock.flow < this.flock.flowMax) this.flock.flow += 1;
   }
 
+  private scaledFlockStatBonus(kind: 'damage' | 'cover', area = false) {
+    const raw = this.flockStats()[kind] ?? 0;
+    if (raw <= 0) return 0;
+    const softened = Math.ceil(raw * (area ? 0.4 : 0.65));
+    return Math.max(1, softened);
+  }
+
+  private spendFlockDamageBonus(state: EffectResolutionState, area = false) {
+    if (state.flockDamageBonusUsed) return 0;
+    state.flockDamageBonusUsed = true;
+    return this.scaledFlockStatBonus('damage', area);
+  }
+
   // Fire a one-shot banner when the formation state changes, and run the
   // Regroup recovery beat when the flock climbs back out of Scatter.
   private updateFormationFx() {
@@ -6980,14 +7759,14 @@ class BattleScene extends Phaser.Scene {
     this.healFlock(4, 'Regroup');
   }
 
-  private damageEnemy(enemyId: string, amount: number, source: string, card?: Card, pierceCover = false) {
+  private damageEnemy(enemyId: string, amount: number, source: string, card?: Card, pierceCover = false, flockDamageBonus = 0) {
     const enemy = this.getLivingEnemy(enemyId);
     if (!enemy) return false;
-    let damage = amount + (this.flockStats().damage ?? 0);
+    let damage = amount + flockDamageBonus;
     if (this.flock.weak > 0) damage = Math.floor(damage * 0.75);
     // Formation state: Surging birds press harder, Scattered birds flail.
     const formation = this.flockState();
-    if (formation === 'surging') damage += 2;
+    if (formation === 'surging') damage += SURGE_STAT_BONUS;
     else if (formation === 'scattered') damage = Math.max(0, Math.floor(damage * 0.75));
     // Quills keystone: the first attack each turn lands +2.
     if (this.firstAttackThisTurn && this.keystoneActive('quills')) damage += 2;
@@ -7031,13 +7810,13 @@ class BattleScene extends Phaser.Scene {
   }
 
   private gainBlock(amount: number, source: string, card?: Card) {
-    let block = amount + (this.flockStats().cover ?? 0);
+    let block = amount + this.scaledFlockStatBonus('cover');
     if (card?.runtime.suit === 'nests' && this.pendingNestCoverBonus > 0) {
       block += this.pendingNestCoverBonus;
       this.pendingNestCoverBonus = 0;
     }
     const formation = this.flockState();
-    if (formation === 'surging') block += 2;
+    if (formation === 'surging') block += SURGE_STAT_BONUS;
     else if (formation === 'scattered') block = Math.floor(block * 0.75);
     if (this.flock.frail > 0) block = Math.max(0, Math.floor(block * 0.75));
     this.flock.block += block;
@@ -7136,6 +7915,8 @@ class BattleScene extends Phaser.Scene {
     this.playedSuitsThisTurn = new Set();
     if (this.flock.frail > 0) this.flock.frail -= 1;
     if (this.flock.weak > 0) this.flock.weak -= 1;
+    this.tickFouled();
+    if (this.mode !== 'battle') return;
     if ((this.flockStats().regen ?? 0) > 0) this.healFlock(this.flockStats().regen ?? 0, 'Regen');
     // Basins keystone: the flock mends a little each turn.
     if (this.keystoneActive('basins')) this.healFlock(2, 'Tidewatch');
@@ -7201,22 +7982,29 @@ class BattleScene extends Phaser.Scene {
         this.damageFlock(enemy, value);
         break;
       case 'gainCover':
-        enemy.block += value;
-        this.logEvent(`${enemy.name} ducks into ${value} Cover.`);
-        {
-          const view = this.enemyView(enemy);
-          this.coverImpactFx(view.x, view.y, 0x7ab8d6);
-          floatingText(this, this.fxLayer, view.x, view.y - 74, `+${value} Cover`, '#7ab8d6');
-        }
+        this.giveEnemyCover(enemy, value, enemy.name, 'ducks into');
         break;
       case 'heal':
-        enemy.hp = Math.min(enemy.maxHp, enemy.hp + value);
-        this.logEvent(`${enemy.name} scavenges ${value} health.`);
-        {
-          const view = this.enemyView(enemy);
-          this.pulseRing(view.x, view.y - 12, 0x8fd6a0, 58, 440);
-          this.sparkBurst(view.x, view.y - 12, 0x8fd6a0, 10, 95);
+        this.healEnemy(enemy, value, enemy.name, 'scavenges');
+        break;
+      case 'healAlly':
+        this.healEnemy(this.supportTargetEnemy(enemy, parsed.args[0]) ?? enemy, value, enemy.name, 'patches');
+        break;
+      case 'healAllEnemies':
+        for (const target of this.enemies.filter((candidate) => candidate.hp > 0)) {
+          this.healEnemy(target, value, enemy.name, 'rallies');
         }
+        break;
+      case 'gainCoverAlly':
+        this.giveEnemyCover(this.supportTargetEnemy(enemy, parsed.args[0]) ?? enemy, value, enemy.name, 'screens');
+        break;
+      case 'gainCoverAllEnemies':
+        for (const target of this.enemies.filter((candidate) => candidate.hp > 0)) {
+          this.giveEnemyCover(target, value, enemy.name, 'screens');
+        }
+        break;
+      case 'nextAttackBonusAlly':
+        this.boostEnemyAttack(this.supportTargetEnemy(enemy, parsed.args[0]) ?? enemy, value, enemy.name);
         break;
       case 'applyWinded':
         this.flock.weak += value;
@@ -7243,6 +8031,12 @@ class BattleScene extends Phaser.Scene {
         floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 50, 'Open Sky!', '#ff9d4d');
         this.pulseRing(FLOCK_FX_X, FLOCK_FX_Y - 20, 0xff9d4d, 92, 580);
         this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y - 20, 0xff9d4d, 20, 155);
+        break;
+      case 'applyPoison':
+        this.flock.fouled += value;
+        this.logEvent(`${enemy.name} fouls the flock for ${value}.`);
+        floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 58, `Fouled ${value}`, '#8bd2a0');
+        this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y - 8, 0x8bd2a0, 14, 130);
         break;
       case 'addSnagToDiscard': {
         const snagId = parsed.args[0];
@@ -7271,6 +8065,64 @@ class BattleScene extends Phaser.Scene {
   // The closed enemy/pattern condition set (next-level-data-contracts §1.3),
   // delegated to the shared evaluator so per-effect gates and attack-pattern
   // branching stay in lockstep.
+  private supportTargetEnemy(source: Enemy, selector = 'lowest'): Enemy | undefined {
+    const allies = this.enemies.filter((enemy) => enemy.hp > 0 && enemy.id !== source.id);
+    if (allies.length === 0) return undefined;
+    switch (selector) {
+      case 'highest':
+        return [...allies].sort((a, b) => (b.hp / b.maxHp) - (a.hp / a.maxHp))[0];
+      case 'front':
+        return allies[0];
+      case 'random':
+        return allies[Math.floor(Math.random() * allies.length)];
+      case 'lowest':
+      default:
+        return [...allies].sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
+    }
+  }
+
+  private healEnemy(target: Enemy, amount: number, sourceName: string, verb: string) {
+    const before = target.hp;
+    target.hp = Math.min(target.maxHp, target.hp + amount);
+    const healed = target.hp - before;
+    this.logEvent(`${sourceName} ${verb} ${target.name} for ${healed} health.`);
+    if (healed <= 0) return;
+    const view = this.enemyView(target);
+    this.pulseRing(view.x, view.y - 12, 0x8fd6a0, 58, 440);
+    this.sparkBurst(view.x, view.y - 12, 0x8fd6a0, 10, 95);
+    floatingText(this, this.fxLayer, view.x, view.y - 74, `+${healed}`, '#8fd6a0');
+  }
+
+  private giveEnemyCover(target: Enemy, amount: number, sourceName: string, verb: string) {
+    target.block += amount;
+    this.logEvent(`${sourceName} ${verb} ${target.name} for ${amount} Cover.`);
+    const view = this.enemyView(target);
+    this.coverImpactFx(view.x, view.y, 0x7ab8d6);
+    floatingText(this, this.fxLayer, view.x, view.y - 74, `+${amount} Cover`, '#7ab8d6');
+  }
+
+  private boostEnemyAttack(target: Enemy, amount: number, sourceName: string) {
+    target.nextAttackBonus += amount;
+    this.logEvent(`${sourceName} marks ${target.name} for +${amount} damage.`);
+    const view = this.enemyView(target);
+    floatingText(this, this.fxLayer, view.x, view.y - 84, `+${amount} damage`, '#ffcf7a');
+    this.sparkBurst(view.x, view.y - 20, 0xffcf7a, 10, 120);
+  }
+
+  private tickFouled() {
+    if (this.flock.fouled <= 0) return;
+    const damage = this.flock.fouled;
+    this.flock.hp = Math.max(0, this.flock.hp - damage);
+    this.flock.fouled = Math.max(0, this.flock.fouled - 1);
+    this.statTaken += damage;
+    this.flock.flow = 0;
+    this.logEvent(`Fouled pressure costs ${damage} Cohesion.`);
+    this.queueFlockMotion('hit');
+    floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 8, `-${damage} Fouled`, '#8bd2a0');
+    this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y + 18, 0x8bd2a0, 14, 130);
+    this.checkOutcome();
+  }
+
   private checkEnemyCondition(condition: string, enemy: Enemy) {
     return evaluateEnemyCondition(condition, enemy, this.flock, this.turn);
   }
@@ -7280,8 +8132,25 @@ class BattleScene extends Phaser.Scene {
     return currentMove(enemy).effects.reduce((total, effect) => {
       const parsed = parseEffect(effect);
       if (!parsed || parsed.name !== 'damage') return total;
-      return total + parseEffectValue(parsed.args[1] ?? parsed.args[0], 0) + enemy.nextAttackBonus;
+      return total + parseEffectValue(parsed.args[1] ?? parsed.args[0], 0) + enemy.nextAttackBonus + enemy.damageBonus;
     }, 0);
+  }
+
+  private incomingFlockDamagePreview() {
+    const damages = this.enemies
+      .filter((enemy) => enemy.hp > 0)
+      .map((enemy) => this.incomingAttackDamage(enemy))
+      .filter((damage) => damage > 0);
+    const total = damages.reduce((sum, damage) => sum + damage, 0);
+    const blocked = Math.min(this.flock.block, total);
+    const hpLoss = Math.max(0, total - blocked);
+    return {
+      total,
+      blocked,
+      hpLoss,
+      afterHp: Math.max(0, this.flock.hp - hpLoss),
+      attackers: damages.length,
+    };
   }
 
   private incomingNextAttackDamage() {
@@ -7294,7 +8163,7 @@ class BattleScene extends Phaser.Scene {
   private damageFlock(enemy: Enemy, amount: number) {
     this.queueEnemyMotion(enemy.id, 'attack');
     const mods = difficultyMods(this.runDifficulty);
-    let damage = amount + enemy.nextAttackBonus + mods.enemyDamageBonus;
+    let damage = amount + enemy.nextAttackBonus + enemy.damageBonus + mods.enemyDamageBonus;
     enemy.nextAttackBonus = 0;
     if (enemy.weak > 0) damage = Math.floor(damage * 0.75);
     if (this.flock.exposed) {
@@ -7365,11 +8234,59 @@ class BattleScene extends Phaser.Scene {
   // Decline the card reward intentionally; take a small Scrap fallback instead
   // (next-level-implementation-spec "rewards support skip or fallback decisions").
   private skipCardReward() {
+    const skipScrap = this.currentSkipScrapReward();
     this.runRewardEvents.push({ offered: this.rewardChoices.map((card) => card.id), skipped: true, fallback: 'scrap' });
-    this.scrap += REWARD_SKIP_SCRAP;
-    this.logEvent(`Skipped the card reward for +${REWARD_SKIP_SCRAP} Scrap.`);
+    this.scrap += skipScrap;
+    this.logEvent(`Skipped the card reward for +${skipScrap} Scrap.`);
     this.rewardChoices = [];
     this.resolvePostCardReward();
+  }
+
+  private currentSkipScrapReward() {
+    return getMapBalanceProfile(currentMap().id, currentMap().index).economy.skipScrap ?? DEFAULT_REWARD_SKIP_SCRAP;
+  }
+
+  private beginPostCombatRewards() {
+    this.applyCombatEconomyRewards();
+    this.waymarkChoices = this.createWaymarkRewardChoices();
+    if (this.waymarkChoices.length > 1) {
+      this.mode = 'waymarkReward';
+      this.renderAll();
+      return;
+    }
+    if (this.waymarkChoices.length === 1) {
+      this.claimWaymarkReward(this.waymarkChoices[0].id);
+    } else {
+      this.combatRouteMarkResolved = true;
+    }
+    this.beginCardReward();
+  }
+
+  private beginCardReward() {
+    this.rewardChoices = this.createRewardChoices();
+    if (this.rewardChoices.length > 0) {
+      this.mode = 'cardReward';
+    } else {
+      this.logEvent('No new crew cards remain.');
+      this.resolvePostCardReward();
+      return;
+    }
+    this.renderAll();
+  }
+
+  private chooseWaymarkReward(markId: string) {
+    this.claimWaymarkReward(markId);
+    this.waymarkChoices = [];
+    this.beginCardReward();
+  }
+
+  private claimWaymarkReward(markId: string) {
+    const mark = alphaRouteMarkLibrary.get(markId);
+    if (!mark) return;
+    if (!this.routeMarks.includes(mark.id)) this.routeMarks.push(mark.id);
+    this.combatRouteMarkAwarded = mark;
+    this.combatRouteMarkResolved = true;
+    this.logEvent(`${mark.name} Waymark claimed.`);
   }
 
   private resolvePostCardReward() {
@@ -7407,8 +8324,10 @@ class BattleScene extends Phaser.Scene {
         this.renderAll();
         return;
       }
-      this.applyMapStartMarks(); // reopened_roofline-style Waymarks stock the next district
       const advanceState = this.createRouteReturnState(completedNodeId);
+      this.applyMapStartMarks(); // reopened_roofline-style Waymarks stock the next district
+      advanceState.supplies = [...this.runSupplies];
+      advanceState.freePreenNextDistrict = this.freePreenNextDistrict;
       advanceState.mapIndex = activeMapIndex + 1;
       advanceState.currentRouteNodeId = undefined;
       this.logEvent(`${currentMap().name} cleared — onward to ${alphaMaps[activeMapIndex + 1].name}.`);
@@ -7429,20 +8348,16 @@ class BattleScene extends Phaser.Scene {
     this.flock.weak = 0;
     this.flock.openSkyGuard = this.flockStats().openSkyGuard ?? 0;
     this.applyFlockStats(false);
-
-    const routeNode = currentCombatNodes()[this.currentRouteIndex];
-    const scrapReward = combatScrapReward(routeNode);
-    const streetBonus = routeNode?.type === 'street' ? this.markValue('afterStreetEncounter', 'gainScrap') : 0;
-    this.scrap += scrapReward + streetBonus;
-
-    const awardedMark = this.combatRouteMarkReward(routeNode);
-    if (awardedMark && !this.routeMarks.includes(awardedMark.id)) {
-      this.routeMarks.push(awardedMark.id);
+    this.applyCombatEconomyRewards();
+    if (!this.combatRouteMarkResolved) {
+      const choices = this.createWaymarkRewardChoices();
+      if (choices[0]) this.claimWaymarkReward(choices[0].id);
+      else this.combatRouteMarkResolved = true;
     }
 
     const routeLog = [
-      `${currentMap().name}: ${routeNode?.label ?? 'Encounter'} cleared. +${scrapReward + streetBonus} Scrap.`,
-      ...(awardedMark ? [`${awardedMark.name} Waymark claimed.`] : []),
+      `${currentMap().name}: ${currentCombatNodes()[this.currentRouteIndex]?.label ?? 'Encounter'} cleared. +${this.combatScrapAwarded} Scrap.`,
+      ...(this.combatRouteMarkAwarded ? [`${this.combatRouteMarkAwarded.name} Waymark claimed.`] : []),
       ...this.log.slice(-3)
     ];
 
@@ -7488,14 +8403,35 @@ class BattleScene extends Phaser.Scene {
     };
   }
 
-  private combatRouteMarkReward(routeNode: RouteNode | undefined) {
-    if (!routeNode) return undefined;
+  private applyCombatEconomyRewards() {
+    if (this.combatEconomyAwarded) return;
+    const routeNode = currentCombatNodes()[this.currentRouteIndex];
+    const scrapReward = combatScrapReward(routeNode);
+    const streetBonus = routeNode?.type === 'street' ? this.markValue('afterStreetEncounter', 'gainScrap') : 0;
+    this.combatScrapAwarded = scrapReward + streetBonus;
+    this.scrap += this.combatScrapAwarded;
+    this.combatEconomyAwarded = true;
+    this.logEvent(`Recovered +${this.combatScrapAwarded} Scrap.`);
+  }
+
+  private createWaymarkRewardChoices() {
+    const routeNode = currentCombatNodes()[this.currentRouteIndex];
+    if (!routeNode || this.combatRouteMarkResolved) return [];
     const profile = rewardProfileForRouteNode(routeNode);
     const guaranteed = routeNode.type === 'rival' || routeNode.type === 'boss' || profile?.routeMarkGuaranteed;
     const chance = profile?.routeMarkChance ?? 0;
     const rolled = chance > 0 && deterministicChance(`${activeSeed}:${routeNode.id}:route-mark`, chance);
-    if (!guaranteed && !rolled) return undefined;
-    return routeMarks.find((mark) => !this.routeMarks.includes(mark.id));
+    if (!guaranteed && !rolled) return [];
+
+    const choiceCount = routeNode.type === 'boss'
+      ? Math.max(1, profile?.bossRouteMarkChoices ?? 1)
+      : 1;
+    const poolIds = routeNode.type === 'boss' ? BOSS_ROUTE_MARK_IDS : MARKET_ROUTE_MARK_IDS;
+    return poolIds
+      .filter((id) => !this.routeMarks.includes(id))
+      .map((id) => alphaRouteMarkLibrary.get(id))
+      .filter((mark): mark is RuntimeRouteMark => !!mark)
+      .slice(0, choiceCount);
   }
 
   private drawToHandSize() {
@@ -7641,15 +8577,10 @@ class BattleScene extends Phaser.Scene {
   private checkOutcome() {
     if (this.enemies.every((enemy) => enemy.hp <= 0)) {
       if (this.mode === 'battle') {
-        this.rewardChoices = this.createRewardChoices();
-        if (this.rewardChoices.length > 0) {
-          this.mode = 'cardReward';
-        } else {
-          this.logEvent('No new crew cards remain.');
-          this.resolvePostCardReward();
-        }
+        this.beginPostCombatRewards();
+        this.logEvent('The rooftop is clear.');
+        return;
       }
-      this.logEvent('The rooftop is clear.');
     } else if (this.flock.hp <= 0) {
       this.mode = 'defeat';
       this.emitRunSummary('loss');
@@ -7829,6 +8760,8 @@ class BattleScene extends Phaser.Scene {
         hp: this.flock.hp,
         maxHp: this.flock.maxHp,
         block: this.flock.block,
+        fouled: this.flock.fouled,
+        incoming: this.incomingFlockDamagePreview(),
         statuses: flockStatuses(this.flock)
       },
       hand: this.hand.map((card) => {
@@ -7846,6 +8779,13 @@ class BattleScene extends Phaser.Scene {
           usesMolt: contract.usesMolt
         };
       }),
+      waymarkChoices: this.waymarkChoices.map((mark) => ({
+        id: mark.id,
+        name: mark.name,
+        family: mark.family,
+        source: mark.source,
+        description: mark.description
+      })),
       rewardChoices: this.rewardChoices.map((card) => ({
         id: card.id,
         name: displayName(card),
@@ -7869,6 +8809,9 @@ class BattleScene extends Phaser.Scene {
         maxHp: enemy.maxHp,
         block: enemy.block,
         weak: enemy.weak,
+        roles: enemy.roles,
+        solo: enemy.solo,
+        damageBonus: enemy.damageBonus,
         intent: currentMove(enemy).label
       })),
       route: {
@@ -7944,6 +8887,7 @@ function createFlock(): Flock {
     block: 0,
     weak: 0,
     frail: 0,
+    fouled: 0,
     exposed: false,
     exposedTurns: 0,
     molt: false,
@@ -7971,6 +8915,7 @@ function createEncounterEnemy(encounter: number): Enemy {
 // per-enemy state stay independent.
 function createEncounterEnemiesForRouteNode(routeNode: RouteNode): Enemy[] {
   const runtimes = getEncounterEnemiesByPayload(routeNode.payloadId);
+  const solo = runtimes.length === 1 && routeNode.type !== 'boss';
   const totalById = new Map<string, number>();
   runtimes.forEach((r) => totalById.set(r.id, (totalById.get(r.id) ?? 0) + 1));
   const seenById = new Map<string, number>();
@@ -7978,16 +8923,20 @@ function createEncounterEnemiesForRouteNode(routeNode: RouteNode): Enemy[] {
     const seen = seenById.get(runtime.id) ?? 0;
     seenById.set(runtime.id, seen + 1);
     const duplicated = (totalById.get(runtime.id) ?? 1) > 1;
+    const maxHp = solo ? Math.ceil(runtime.health * SOLO_ENCOUNTER_HEALTH_MULT) : runtime.health;
     return {
       id: duplicated ? `${runtime.id}#${seen}` : runtime.id,
       name: duplicated ? `${runtime.name} ${String.fromCharCode(65 + seen)}` : runtime.name,
-      hp: runtime.health,
-      maxHp: runtime.health,
+      hp: maxHp,
+      maxHp,
       block: 0,
       weak: 0,
       intentIndex: 0,
       hitThisTurn: false,
       nextAttackBonus: 0,
+      damageBonus: solo ? SOLO_ENCOUNTER_DAMAGE_BONUS : 0,
+      roles: runtime.roles ?? [],
+      solo,
       runtime
     };
   });
@@ -8221,6 +9170,7 @@ const STATUS_TOOLTIPS: Record<string, string> = {
   openSky: 'Open Sky increases incoming damage until it ticks down.',
   openSkyGuard: 'Open Sky Guard cancels Open Sky damage increases — one per point.',
   molt: 'Molt: while in this stance, every card plays its alternate Molt ability instead of its normal effect. Ends your turn Open Sky.',
+  fouled: 'Fouled deals Cohesion damage at the start of your turn, then ticks down by 1.',
   ruffled: 'Ruffled is a lingering debuff on the flock.'
 };
 
@@ -8236,6 +9186,7 @@ function flockStatusEntries(flock: Flock): Array<{ id: string; label: string; ki
     alphaStatusSet.statuses.find((status) => status.id === id)?.kind ?? 'buff';
   const entries: Array<{ id: string; label: string; kind: 'buff' | 'debuff' }> = [];
   if (flock.weak > 0) entries.push({ id: 'winded', label: `Winded ${flock.weak}`, kind: kindOf('winded') });
+  if (flock.fouled > 0) entries.push({ id: 'fouled', label: `Fouled ${flock.fouled}`, kind: kindOf('fouled') });
   if (flock.exposed) entries.push({ id: 'openSky', label: 'Open Sky', kind: kindOf('openSky') });
   if (flock.frail > 0) entries.push({ id: 'ruffled', label: `Ruffled ${flock.frail}`, kind: 'debuff' });
   if (flock.molt) entries.push({ id: 'molt', label: 'Molt', kind: kindOf('molt') });
@@ -8338,6 +9289,7 @@ const KEYWORDS: Record<string, KeywordDef> = {
   Resonance: { color: '#c39bff', def: 'A Plumes resource. Bank it, then spend it on Resonance cards for amplified effects.' },
   'Resonance Burst': { color: '#8df4ff', def: 'A Plumes payoff that spends all of your banked Resonance at once for a large effect.' },
   Winded: { color: '#c98bff', def: 'A Quills counter. High Winded weakens the flock’s hits but supercharges Winded-payoff cards; it ticks down over time.' },
+  Fouled: { color: '#8bd2a0', def: 'A poison-like pressure. It damages Cohesion at the start of your turn, then ticks down by 1.' },
   'Winded Burst': { color: '#c98bff', def: 'A Quills payoff that converts accumulated Winded into a burst of damage.' },
   Molt: { color: '#ff9d4d', def: 'A transform stance. While Molting, every card plays its alternate Molt ability instead of its normal effect. The turn ends Open Sky.' },
   'Open Sky': { color: '#ffe1a3', def: 'Exposed. Incoming damage is increased until it ticks down. Open Sky Guard cancels it, one point per stack.' },
@@ -9009,6 +9961,18 @@ function waymarkGlyph(mark: RuntimeRouteMark) {
   }
 }
 
+function routeMarkFamilyLabel(family: RuntimeRouteMark['family']) {
+  switch (family) {
+    case 'safety': return 'Shelter';
+    case 'economy': return 'Routecraft';
+    case 'route': return 'Tempo';
+    case 'suit': return 'Suit';
+    case 'molt': return 'Molt';
+    case 'bossPrep': return 'Boss';
+    default: return 'Waymark';
+  }
+}
+
 // Human-readable summary of route-effect verbs for the node-choice overlay.
 function routeEffectSummary(effects: string[]): string {
   return effects.map((effect) => {
@@ -9281,6 +10245,16 @@ function formatEffect(effect: string) {
       return `Gain ${value} Cover.`;
     case 'heal':
       return `Heal ${value}.`;
+    case 'healAlly':
+      return `Heal an ally ${value}.`;
+    case 'healAllEnemies':
+      return `Heal all enemies ${value}.`;
+    case 'gainCoverAlly':
+      return `Give an ally ${value} Cover.`;
+    case 'gainCoverAllEnemies':
+      return `Give all enemies ${value} Cover.`;
+    case 'nextAttackBonusAlly':
+      return `Give an ally +${value} damage.`;
     case 'overhealCover':
       return `Heal ${value}; overflow becomes Cover.`;
     case 'loseCohesion':
@@ -9305,6 +10279,8 @@ function formatEffect(effect: string) {
       return `Consume the target's Winded: deal ${value} damage per stack.`;
     case 'applyWinded':
       return `Apply ${value} Winded.`;
+    case 'applyPoison':
+      return `Apply ${value} Fouled.`;
     case 'enterMolt':
       return 'Enter Molt.';
     case 'gainOpenSkyGuard':
