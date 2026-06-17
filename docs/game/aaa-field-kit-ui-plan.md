@@ -1,7 +1,7 @@
 # AAA Field-Kit UI Direction
 
-Status: first implementation pass, with route-map redesign shelved until the
-other UI surfaces establish the shared language.
+Status: first implementation pass complete; route-map chrome has been revisited
+after the other UI surfaces established the shared language.
 
 ## Intent
 
@@ -21,11 +21,13 @@ brass/gold carries focus, prices, and route/action authority.
 - Keep stats readable, but avoid spreadsheet-like row fills except for active
   emphasis.
 - Add tactile feedback through shared hover/press states and quiet UI sounds.
-- Revisit the route map only after these patterns are validated together.
+- Keep route-map node/data layout stable unless the map itself is the target;
+  polish map chrome through shared field-kit panels, rails, and inspector frames.
 
 ## First Pass
 
 - Add shared field-kit panel, close-control, action-button, and lighter stat-row
   helpers in `src/main.ts`.
 - Apply them to Flock, Deck, Market, combat HUD, and combat inspect overlays.
-- Preserve route-map layout and node work for the later reanalysis pass.
+- Preserve route-map node/data work while applying field-kit chrome to the map
+  frame, status rail, legend, top controls, and inspector.

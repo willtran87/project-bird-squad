@@ -2081,8 +2081,11 @@ class RouteScene extends Phaser.Scene {
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
       .setAlpha(backdropKey === ROUTE_MAP_BACKDROP_ASSET.key ? 1 : 0.48);
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, backdropKey === ROUTE_MAP_BACKDROP_ASSET.key ? 0.34 : 0.62);
-    this.add.rectangle(layout.map.cx, layout.map.cy, layout.map.w, layout.map.h, 0x09111e, 0.66)
-      .setStrokeStyle(2, 0xd8a840, 0.66);
+    renderFieldPanel(this, (obj) => {}, layout.map.cx, layout.map.cy, layout.map.w, layout.map.h, {
+      accent: UI_FIELD.gold,
+      fill: 0x07101a
+    });
+    this.add.rectangle(layout.map.cx, layout.map.cy, layout.map.w - 34, layout.map.h - 34, 0x03070d, 0.28);
 
     this.add.text(80, 42, currentMap().name, {
       fontFamily: 'Arial',
@@ -2101,42 +2104,16 @@ class RouteScene extends Phaser.Scene {
 
     this.renderRouteStatusRail();
 
-    const back = this.add.rectangle(1118, 56, 124, 42, 0x111a27, 0.96)
-      .setStrokeStyle(2, 0x7ab8d6, 0.85)
-      .setInteractive({ useHandCursor: true });
-    back.on('pointerdown', () => { this.confirmExitOpen = true; this.renderAll(); });
-    this.add.text(1118, 56, 'Back', {
-      fontFamily: 'Arial',
-      fontSize: '17px',
-      fontStyle: 'bold',
-      color: '#dce8f2'
-    }).setOrigin(0.5);
-
-    const flock = this.add.rectangle(822, 56, 124, 42, 0x111a27, 0.96)
-      .setStrokeStyle(2, 0x7ab8d6, 0.9)
-      .setInteractive({ useHandCursor: true });
-    flock.on('pointerdown', () => this.openFlockOverlay());
-    this.add.text(822, 56, 'Flock', {
-      fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#dce8f2'
-    }).setOrigin(0.5);
-
-    const deck = this.add.rectangle(970, 56, 124, 42, 0x111a27, 0.96)
-      .setStrokeStyle(2, 0xd8a840, 0.9)
-      .setInteractive({ useHandCursor: true });
-    deck.on('pointerdown', () => this.openDeckOverlay());
-    this.add.text(970, 56, 'Deck', {
-      fontFamily: 'Arial',
-      fontSize: '17px',
-      fontStyle: 'bold',
-      color: '#ffe1a3'
-    }).setOrigin(0.5);
+    renderFieldButton(this, (obj) => {}, 822, 56, 116, 38, 'Flock', true, () => this.openFlockOverlay(), UI_FIELD.cyan);
+    renderFieldButton(this, (obj) => {}, 960, 56, 116, 38, 'Deck', true, () => this.openDeckOverlay(), UI_FIELD.gold);
+    renderFieldButton(this, (obj) => {}, 1098, 56, 116, 38, 'Back', true, () => { this.confirmExitOpen = true; this.renderAll(); }, UI_FIELD.cyan);
   }
 
   private routeLayout() {
     return {
       top: { y: 124 },
       map: { x: 52, y: 150, w: 836, h: 520, cx: 470, cy: 410 },
-      graph: { left: 96, right: 844, top: 198, bottom: 526 },
+      graph: { left: 102, right: 838, top: 204, bottom: 522 },
       inspector: { x: 904, y: 150, w: 300, h: 500, cx: 1054, cy: 400 },
       footer: { x: 76, y: 604, w: 800, h: 56, cx: 476, cy: 632 }
     };
@@ -2162,8 +2139,9 @@ class RouteScene extends Phaser.Scene {
     let x = 80;
     chips.forEach((chip) => {
       const cx = x + chip.width / 2;
-      this.add.rectangle(cx, y, chip.width, 28, 0x0a1320, 0.94)
-        .setStrokeStyle(1.5, chip.color, 0.82);
+      this.add.rectangle(cx, y, chip.width, 28, 0x07101a, 0.78)
+        .setStrokeStyle(1, chip.color, 0.56);
+      this.add.rectangle(cx, y - 13, chip.width - 14, 2, chip.color, 0.58);
       this.add.text(x + 10, y - 8, chip.label, {
         fontFamily: 'Arial',
         fontSize: '10px',
@@ -2180,8 +2158,9 @@ class RouteScene extends Phaser.Scene {
     });
     const kitW = 342;
     const kitCx = x + kitW / 2;
-    this.add.rectangle(kitCx, y, kitW, 28, 0x0a1320, 0.9)
-      .setStrokeStyle(1.5, 0xd8a840, 0.65);
+    this.add.rectangle(kitCx, y, kitW, 28, 0x07101a, 0.72)
+      .setStrokeStyle(1, 0xd8a840, 0.5);
+    this.add.rectangle(kitCx, y - 13, kitW - 14, 2, 0xd8a840, 0.5);
     this.add.text(kitCx, y - 9, `Deck ${status.deckSize}   /   Waymarks ${status.waymarks}   /   Supplies ${status.supplies}`, {
       fontFamily: 'Arial',
       fontSize: '14px',
@@ -2207,16 +2186,16 @@ class RouteScene extends Phaser.Scene {
       const secondaryPreview = previewEdges.secondary.has(key);
       const available = this.selectableNodeIds.has(edge.to);
       lines.lineStyle(
-        lit ? 4 : primaryPreview ? 5 : available ? 4 : secondaryPreview ? 3 : 3,
+        lit ? 3 : primaryPreview ? 3 : available ? 2.5 : secondaryPreview ? 2 : 2,
         lit ? 0x6fd69a : primaryPreview ? 0xffe1a3 : available ? 0x7ab8d6 : secondaryPreview ? 0x7ab8d6 : 0x263b52,
-        lit ? 0.9 : primaryPreview ? 0.95 : available ? 0.86 : secondaryPreview ? 0.56 : 0.34
+        lit ? 0.78 : primaryPreview ? 0.78 : available ? 0.62 : secondaryPreview ? 0.42 : 0.28
       );
       lines.lineBetween(from.x + 32, from.y, to.x - 32, to.y);
       if (available || primaryPreview) {
         const mx = from.x * 0.35 + to.x * 0.65;
         const my = from.y * 0.35 + to.y * 0.65;
-        lines.fillStyle(primaryPreview ? 0xffe1a3 : 0x7ab8d6, primaryPreview ? 1 : 0.95);
-        lines.fillCircle(mx, my, primaryPreview ? 5 : 4);
+        lines.fillStyle(primaryPreview ? 0xffe1a3 : 0x7ab8d6, primaryPreview ? 0.9 : 0.72);
+        lines.fillCircle(mx, my, primaryPreview ? 3.5 : 3);
       }
     });
 
@@ -2229,7 +2208,7 @@ class RouteScene extends Phaser.Scene {
     this.add.text(96, 692, 'Click a crossing to inspect it   /   Enter: take selected   /   Esc: back', {
       fontFamily: 'Arial',
       fontSize: '14px',
-      color: '#7f93a8'
+      color: '#91a6b8'
     });
   }
 
@@ -2270,7 +2249,9 @@ class RouteScene extends Phaser.Scene {
     const typeY = footer.y + 21;
     const riskY = footer.y + 47;
     const left = footer.x + 18;
-    this.add.rectangle(footer.cx, footer.cy, footer.w, footer.h, 0x0a1320, 0.9).setStrokeStyle(1, 0x2a3a4d, 0.82);
+    this.add.rectangle(footer.cx + 5, footer.cy + 5, footer.w, footer.h, 0x020409, 0.3);
+    this.add.rectangle(footer.cx, footer.cy, footer.w, footer.h, 0x07101a, 0.78).setStrokeStyle(1, 0xd8a840, 0.28);
+    this.add.rectangle(footer.cx, footer.y + 7, footer.w - 26, 2, 0xd8a840, 0.38);
     this.add.text(left, typeY - 20, 'LEGEND', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#7f93a8' });
 
     let cx = left;
@@ -2303,13 +2284,17 @@ class RouteScene extends Phaser.Scene {
     const ph = panel.h;
     const top = panel.y;
     const left = panel.x + 20;
-    this.add.rectangle(px, py, pw, ph, 0x0c1420, 0.95).setStrokeStyle(2, 0x2a3a4d, 0.92);
+    const frame = renderFieldPanel(this, (obj) => {}, px, py, pw, ph, {
+      eyebrow: 'Route Board',
+      accent: UI_FIELD.cyan,
+      fill: 0x07101a
+    });
 
     const node = this.selectedNodeId
       ? currentMap().nodes.find((candidate) => candidate.id === this.selectedNodeId)
       : undefined;
     if (!node) {
-      this.add.text(px, top + 78, 'Click a crossing glyph to see\nits risk, reward, and lesson.', {
+      this.add.text(px, top + 88, 'Click a crossing glyph to see\nits risk, reward, and lesson.', {
         fontFamily: 'Arial', fontSize: '15px', color: '#91a6b8', align: 'center'
       }).setOrigin(0.5);
       this.renderInspectorBossPrep(left, top + 170, pw - 40);
@@ -2318,10 +2303,11 @@ class RouteScene extends Phaser.Scene {
 
     const detail = this.nodeDetail(node);
     let yy = top + 22;
-    this.add.circle(panel.x + pw - 48, top + 48, 31, 0x111a27, 0.98).setStrokeStyle(2, 0x49606d, 0.8);
-    this.renderRouteNodeTypeIcon(node.type, panel.x + pw - 48, top + 48, 52);
-    this.add.text(left, yy, detail.title, { fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffe1a3', wordWrap: { width: pw - 108 } });
-    yy += 36;
+    yy += 26;
+    this.add.circle(panel.x + pw - 50, frame.top + 56, 30, 0x111a27, 0.92).setStrokeStyle(1.5, 0x49606d, 0.74);
+    this.renderRouteNodeTypeIcon(node.type, panel.x + pw - 50, frame.top + 56, 50);
+    this.add.text(left, yy, detail.title, { fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffe1a3', wordWrap: { width: pw - 112 } });
+    yy += 38;
     this.add.text(left, yy, `${detail.type}  /  ${node.risk.toUpperCase()} RISK`, { fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: routeNodeRiskHex(node.risk) });
     yy += 30;
     this.add.text(left, yy, detail.lesson, { fontFamily: 'Arial', fontSize: '14px', color: '#cdd9e6', lineSpacing: 2, wordWrap: { width: pw - 40 } });
@@ -2337,11 +2323,7 @@ class RouteScene extends Phaser.Scene {
     this.renderInspectorBossPrep(left, Math.min(Math.max(yy, top + 276), top + ph - 200), pw - 40);
 
     if (this.selectableNodeIds.has(node.id)) {
-      const btn = this.add.rectangle(px, top + ph - 40, pw - 44, 46, 0x274536, 0.96)
-        .setStrokeStyle(2, 0x6fd69a, 1)
-        .setInteractive({ useHandCursor: true });
-      btn.on('pointerdown', () => this.commitRouteNode(node.id));
-      this.add.text(px, top + ph - 40, 'Take this route', { fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#dffaeb' }).setOrigin(0.5);
+      renderFieldButton(this, (obj) => {}, px, top + ph - 40, pw - 44, 42, 'Take this route', true, () => this.commitRouteNode(node.id), UI_FIELD.green);
     } else {
       this.add.text(px, top + ph - 40, 'Not reachable from here.', { fontFamily: 'Arial', fontSize: '13px', color: '#7f93a8' }).setOrigin(0.5);
     }
@@ -2383,7 +2365,8 @@ class RouteScene extends Phaser.Scene {
   private renderInspectorBossPrep(left: number, top: number, width: number) {
     const prep = this.bossPrepReadiness();
     const cx = left + width / 2;
-    this.add.rectangle(cx, top + 68, width, 136, 0x0a1320, 0.9).setStrokeStyle(1.5, 0xffb86b, 0.72);
+    this.add.rectangle(cx, top + 68, width, 136, 0x120f0a, 0.74).setStrokeStyle(1, 0xffb86b, 0.5);
+    this.add.rectangle(cx, top + 4, width - 22, 2, 0xffb86b, 0.48);
     this.add.text(left + 12, top + 12, 'BOSS PREP', {
       fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#ffb86b'
     });
@@ -2437,20 +2420,21 @@ class RouteScene extends Phaser.Scene {
     const radius = isBoss ? 38 : 30;
     // Icons carry node type now; the plate stays neutral and the ring carries route state.
     const fillColor = selectable ? 0x122235 : completed ? 0x0f1d18 : 0x0c1420;
-    const fillAlpha = completed ? 0.72 : selectable ? 0.98 : 0.9;
-    const strokeColor = selected ? 0x24d0d6 : selectable ? 0xe7eef7 : current ? 0xd8a840 : completed ? 0x6fd69a : 0x49606d;
-    const strokeWidth = selected ? 6 : selectable ? 4 : current ? 4 : 2;
-    const strokeAlpha = selected || selectable || current ? 1 : completed ? 0.86 : 0.62;
+    const fillAlpha = completed ? 0.68 : selectable ? 0.94 : 0.86;
+    const strokeColor = selected ? 0x9fe9ff : selectable ? 0x8fb0c6 : current ? 0xd8a840 : completed ? 0x6fd69a : 0x49606d;
+    const strokeWidth = selected ? 2.5 : selectable ? 2 : current ? 2 : 1.5;
+    const strokeAlpha = selected ? 0.96 : selectable ? 0.74 : current ? 0.82 : completed ? 0.76 : 0.52;
 
-    // The current node pulses in gold; selectable nodes get a bright ring.
+    // Current and reachable states use fine rings; selection is handled by focus ticks.
     if (current) {
-      this.add.circle(x, y, radius + 8, 0xd8a840, 0).setStrokeStyle(2, 0xd8a840, 0.5);
+      this.add.circle(x, y, radius + 6, 0xd8a840, 0).setStrokeStyle(1.5, 0xd8a840, 0.34);
     }
-    if (selectable) {
-      this.add.circle(x, y, radius + 7, 0x7ab8d6, 0.1).setStrokeStyle(1, 0x7ab8d6, 0.42);
+    if (selectable && !selected) {
+      this.add.circle(x, y, radius + 5, 0x7ab8d6, 0.03).setStrokeStyle(1, 0x7ab8d6, 0.22);
     }
     const circle = this.add.circle(x, y, radius, fillColor, fillAlpha)
       .setStrokeStyle(strokeWidth, strokeColor, strokeAlpha);
+    if (selected) this.renderSelectedRouteNodeFocus(x, y, radius);
     // Every node is hoverable for the full preview; selectable nodes commit-select on click.
     circle.setInteractive({ useHandCursor: selectable });
     if (selectable) circle.on('pointerdown', () => this.selectRouteNode(node.id));
@@ -2470,6 +2454,22 @@ class RouteScene extends Phaser.Scene {
     if (completed) {
       this.add.circle(x + radius - 7, y - radius + 7, 7, 0x6fd69a, 1);
     }
+  }
+
+  private renderSelectedRouteNodeFocus(x: number, y: number, radius: number) {
+    const r = radius + 8;
+    const tick = 12;
+    const g = this.add.graphics();
+    g.lineStyle(2, 0x24d0d6, 0.86);
+    g.lineBetween(x - r, y - r + tick, x - r, y - r);
+    g.lineBetween(x - r, y - r, x - r + tick, y - r);
+    g.lineBetween(x + r - tick, y - r, x + r, y - r);
+    g.lineBetween(x + r, y - r, x + r, y - r + tick);
+    g.lineBetween(x - r, y + r - tick, x - r, y + r);
+    g.lineBetween(x - r, y + r, x - r + tick, y + r);
+    g.lineBetween(x + r - tick, y + r, x + r, y + r);
+    g.lineBetween(x + r, y + r - tick, x + r, y + r);
+    this.add.circle(x, y, radius + 5, 0x24d0d6, 0).setStrokeStyle(1, 0x24d0d6, 0.28);
   }
 
   private renderRouteNodeTypeIcon(type: RouteNode['type'], x: number, y: number, size: number, alpha = 1) {

@@ -4,6 +4,17 @@ This log is historical context and handoff memory. It is not a canonical design
 source. Current game rules live in `docs/game/`, art direction lives in
 `docs/art/`, and card production data lives in `data/cards/`.
 
+## 2026-06-17 Route Map Field-Kit Reanalysis
+
+- Revisited the route map after the non-map field-kit surfaces established the
+  shared language.
+- Kept route node/data layout stable and changed map chrome only: the planning
+  board frame, lighter status rail, field-kit top controls, legend strip, and
+  inspector dossier.
+- Verified the selected-route screenshot at
+  `output/web-game-final-pass/route-selected-fieldkit-final.png`; console output
+  only reported expected WebGL ReadPixels screenshot warnings.
+
 ## 2026-06-17 AAA Field-Kit UI Pass
 
 - Shelved route-map redesign work while keeping existing map layout changes
