@@ -34,10 +34,10 @@ import { defaultLeaderId, flockLeaders, getLeader } from './game/leaders';
 import { getLeaderLore } from './game/leader-lore';
 import { difficultyAdds, difficultyLabel, difficultyMods, MAX_DIFFICULTY } from './game/difficulty';
 import { achievements, discoverCards, isLeaderUnlocked, leaderUnlockHints, loadAccount, recordRun, type PlayerAccount } from './game/meta';
+import { queueRuntimeImageAssets, uniqueImageAssets, type RuntimeImageAsset } from './game/runtime-images';
 
 type GameMode = 'menu' | 'routeSelection' | 'battle' | 'cardReward' | 'upgradeReward' | 'runComplete' | 'defeat';
 type CodexDataModule = typeof import('./game/codex-data');
-const codexDataPreload: Promise<CodexDataModule> = import('./game/codex-data');
 type InspectOverlay = 'deck' | 'draw' | 'discard' | 'flock';
 type CardType = 'major' | 'minor' | 'molt';
 type CardRole = 'attack' | 'skill' | 'utility';
@@ -352,7 +352,6 @@ const battlefieldVariantRuntimeArtUrls = import.meta.glob('../assets/runtime/bac
   query: '?url',
   import: 'default',
 }) as Record<string, string>;
-type RuntimeImageAsset = { key: string; url: string };
 
 function battlefieldVariantAsset(filename: string, key: string): RuntimeImageAsset {
   return {
@@ -501,65 +500,6 @@ const routeNodeIconAssets: Record<RouteNode['type'], RuntimeImageAsset> = Object
       ?? `/assets/runtime/map-icons/icons/${type}.webp`
   }])
 ) as Record<RouteNode['type'], RuntimeImageAsset>;
-const loadingOptionalArtKeys = new Set<string>();
-const loadedOptionalArtKeys = new Set<string>();
-
-function uniqueImageAssets(assets: Array<RuntimeImageAsset | undefined>): RuntimeImageAsset[] {
-  return [...new Map(assets.filter((asset): asset is RuntimeImageAsset => Boolean(asset)).map((asset) => [asset.key, asset])).values()];
-}
-
-function unloadedImageAssets(scene: Phaser.Scene, assets: Array<RuntimeImageAsset | undefined>): RuntimeImageAsset[] {
-  return uniqueImageAssets(assets).filter((asset) => (
-    !scene.textures.exists(asset.key)
-    && !loadingOptionalArtKeys.has(asset.key)
-    && !loadedOptionalArtKeys.has(asset.key)
-  ));
-}
-
-function queueRuntimeImageAssets(
-  scene: Phaser.Scene,
-  assets: Array<RuntimeImageAsset | undefined>,
-  warning: string,
-  onComplete?: () => void
-): boolean {
-  const pending = unloadedImageAssets(scene, assets);
-  if (pending.length === 0) return false;
-
-  const pendingKeys = new Set(pending.map((asset) => asset.key));
-  const onFileComplete = (key: string) => {
-    if (!pendingKeys.has(key)) return;
-    loadingOptionalArtKeys.delete(key);
-    loadedOptionalArtKeys.add(key);
-  };
-  const onLoadError = (file: { key?: string }) => {
-    const key = file.key;
-    if (!key || !pendingKeys.has(key)) return;
-    loadingOptionalArtKeys.delete(key);
-    loadedOptionalArtKeys.delete(key);
-    console.warn(`${warning}: ${key}`);
-  };
-  const cleanup = () => {
-    scene.load.off('filecomplete', onFileComplete);
-    scene.load.off('loaderror', onLoadError);
-  };
-
-  pending.forEach((asset) => {
-    loadingOptionalArtKeys.add(asset.key);
-    scene.load.image(asset.key, asset.url);
-  });
-  scene.load.on('filecomplete', onFileComplete);
-  scene.load.on('loaderror', onLoadError);
-  scene.load.once('complete', () => {
-    cleanup();
-    pending.forEach((asset) => {
-      loadingOptionalArtKeys.delete(asset.key);
-      if (scene.textures.exists(asset.key)) loadedOptionalArtKeys.add(asset.key);
-    });
-    onComplete?.();
-  });
-  scene.load.start();
-  return true;
-}
 
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined'
@@ -1055,6 +995,7 @@ class CodexScene extends Phaser.Scene {
   private gridMaxScroll = 0;
   private codexData?: CodexDataModule;
   private codexDataLoad?: Promise<void>;
+  private codexDataFailed = false;
   private static readonly GRID_TOP = 158;
   private static readonly GRID_BOTTOM = 690;
   private readonly tabs: Array<{ label: string; match: (c: Card) => boolean }> = [
@@ -1204,15 +1145,23 @@ class CodexScene extends Phaser.Scene {
 
   private ensureCodexData() {
     if (this.codexData) return Promise.resolve();
-    this.codexDataLoad ??= codexDataPreload
+    this.codexDataFailed = false;
+    this.codexDataLoad ??= import('./game/codex-data')
       .then((data) => {
         this.codexData = data;
+        this.codexDataFailed = false;
         this.renderAll();
       })
       .catch((error) => {
+        this.codexDataFailed = true;
         console.warn('Codex data failed to load', error);
+        this.renderAll();
       });
     return this.codexDataLoad;
+  }
+
+  private codexDataPending(): boolean {
+    return !this.codexData && Boolean(this.codexDataLoad) && !this.codexDataFailed;
   }
 
   private visibleGridEntries<T>(entries: T[], cols: number, cellH: number): T[] {
@@ -1328,8 +1277,22 @@ class CodexScene extends Phaser.Scene {
         ? `${waymarkAll.length} Waymark items cataloged`
         : leaderMode
           ? `${flockLeaders.filter((leader) => isLeaderUnlocked(loadAccount(), leader.id)).length} / ${flockLeaders.length} Flock Leaders rallied`
-          : `${enemyAll.length} enemies cataloged (${encounterEnemyCount} encounter / ${reserveEnemyCount} reserve)`;
+          : this.codexDataPending()
+            ? `${encounterEnemyCount} encounter enemies cataloged (loading reserve files)`
+            : `${enemyAll.length} enemies cataloged (${encounterEnemyCount} encounter / ${reserveEnemyCount} reserve)`;
     this.root.add(this.add.text(42, 66, subtitle, { fontFamily: 'Arial', fontSize: '15px', color: '#8fa3b6' }));
+    const codexStatus = this.codexDataFailed
+      ? 'Extended Codex notes unavailable'
+      : this.codexDataPending()
+        ? 'Loading extended Codex notes...'
+        : '';
+    if (codexStatus) {
+      this.root.add(this.add.text(42, 84, codexStatus, {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        color: this.codexDataFailed ? '#ff9b6a' : '#8df4ff'
+      }));
+    }
 
     const back = this.add.rectangle(GAME_WIDTH - 86, 42, 140, 44, 0x122235, 0.96).setStrokeStyle(2, 0xd8a840, 1).setInteractive({ useHandCursor: true });
     back.on('pointerdown', () => this.scene.start('MenuScene'));
