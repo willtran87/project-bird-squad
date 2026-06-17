@@ -25,8 +25,8 @@ The short version:
 | --- | --- |
 | `src/` | Runtime TypeScript and CSS for the playable build. |
 | `assets/splash/` | Splash and promotional images used by the menu or presentation. |
-| `assets/concept-art/` | Card and scene concept art. Runtime loads a subset lazily. |
-| `assets/runtime/` | Runtime asset manifests and derived card-art targets. |
+| `.generated/` | Ignored generated/source masters for imagegen, concept art, screenshots, and raw art pipeline outputs. |
+| `assets/runtime/` | Runtime asset manifests and optimized derived card, enemy, and backdrop targets. |
 | `assets/battlefields/` | Battlefield exploration and arena concepts. |
 | `data/cards/arcana/` | Production data for Legend and Crew card identities. |
 | `data/cards/reversals/` | Molt/reversal data layered over the card set. |

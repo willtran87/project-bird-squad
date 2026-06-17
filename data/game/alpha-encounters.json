@@ -12,9 +12,9 @@
       "mapId": "map_01_rooftop_blocks",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "Two enemies at once — thin the pack fast or split your Cover.",
+      "lesson": "Four small bodies crowd the roof — thin the pack fast or split your Cover.",
       "tags": ["cover", "multi"],
-      "enemies": ["roof_rat", "roof_rat"],
+      "enemies": ["roof_rat", "roof_rat", "roof_rat", "roof_rat"],
       "rewardProfileId": "street_standard"
     },
     {
@@ -23,9 +23,9 @@
       "mapId": "map_01_rooftop_blocks",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "A gull and a rat press from two angles at once.",
+      "lesson": "A gull screens for two rats pressing from both roof edges.",
       "tags": ["scavenge", "multi"],
-      "enemies": ["signal_gull", "roof_rat"],
+      "enemies": ["signal_gull", "roof_rat", "roof_rat"],
       "rewardProfileId": "street_standard"
     },
     {
@@ -34,9 +34,9 @@
       "mapId": "map_01_rooftop_blocks",
       "nodeType": "rival",
       "band": "rival",
-      "lesson": "Elite: an armored bruiser with a rat escort. Focus one down first.",
+      "lesson": "Elite: an armored bruiser with rat escorts. Focus one down first.",
       "tags": ["elite", "heavy", "multi"],
-      "enemies": ["gutter_baron", "roof_rat"],
+      "enemies": ["gutter_baron", "roof_rat", "roof_rat"],
       "rewardProfileId": "rival_standard"
     },
     {
@@ -89,9 +89,9 @@
       "mapId": "map_01_rooftop_blocks",
       "nodeType": "boss",
       "band": "boss",
-      "lesson": "Tests Cover and Molt restraint.",
-      "tags": ["boss", "cover", "snag", "openSky"],
-      "enemies": ["tar_crowned_crow"],
+      "lesson": "Tests Cover and Molt restraint while roof goons foul your hand.",
+      "tags": ["boss", "cover", "snag", "openSky", "multi"],
+      "enemies": ["tar_crowned_crow", "roof_rat", "signal_gull"],
       "rewardProfileId": "boss_alpha"
     }
   ]

@@ -316,8 +316,8 @@ def compose_card(source_path: Path, output_path: Path, suit: SuitSpec, title: st
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Compose generated Minor Arcana center art under deterministic Bird Squad borders and titles.")
-    parser.add_argument("--source-root", type=Path, default=Path("assets/concept-art/minor-arcana-center-art"))
-    parser.add_argument("--output-root", type=Path, default=Path("assets/concept-art/minor-arcana-composited"))
+    parser.add_argument("--source-root", type=Path, default=Path(".generated/imagegen/tarot/minor-arcana-center-art"))
+    parser.add_argument("--output-root", type=Path, default=Path(".generated/imagegen/tarot/minor-arcana-composited"))
     parser.add_argument("--template-root", type=Path, default=None, help="Optional raster border template root. Uses {suit}.png, then master.png, then procedural fallback.")
     parser.add_argument("--title-font", type=Path, default=None, help="Optional local title font override. Useful for prototype-only licensed fonts kept outside tracked assets.")
     parser.add_argument("--strict", action="store_true", help="Fail if any expected center-art source image is missing.")

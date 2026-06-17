@@ -4,7 +4,7 @@ import zlib from 'node:zlib';
 
 const root = process.cwd();
 const args = process.argv.slice(2);
-const targetRootArg = args.find((arg) => !arg.startsWith('--')) ?? 'assets/concept-art/minor-arcana-border-first-runs/latest';
+const targetRootArg = args.find((arg) => !arg.startsWith('--')) ?? '.generated/imagegen/tarot/minor-arcana-border-first-runs/latest';
 const sourceRootArg = args.find((arg) => arg.startsWith('--source-root='))?.split('=')[1];
 const targetRoot = path.resolve(root, targetRootArg);
 const sourceRoot = sourceRootArg ? path.resolve(root, sourceRootArg) : null;

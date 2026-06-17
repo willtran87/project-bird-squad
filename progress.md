@@ -64,3 +64,18 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 - Reconciled `balance-config.json`, `balance-scaling-plan.md`, and `tools/audit-content.mjs` with the current map-scaled reward profile numbers.
 - Added focused smoke coverage for generic Waymark economy hooks, cache choice expansion, Basin/Signal/Market bonuses, timed Waymark triggers, `shuffleSelfToDraw`, and anti-Cover conditionals.
 - Verification: `npm run validate:runtime`, `npm run validate:docs`, `npm run audit:economy`, `npm run audit:content`, `npm run build`, and the full `npx playwright test tests/smoke.spec.ts` suite all passed. The generic `develop-web-game` client completed and returned valid menu state JSON; its screenshot remains the known blank harness artifact.
+
+- Route map backdrop/inspector polish: generated a dedicated imagegen rooftop planning backdrop and saved the project asset as `assets/runtime/backdrops/rooftop-blocks-route-map-v1.webp`.
+- Wired `RouteScene` to load and render the route-specific backdrop instead of reusing the splash art, reduced the map board opacity so the district art remains visible, and added a larger selected-node type icon plus labeled likely-find badges in the inspector.
+- Fixed the existing combat FX compile blocker by completing the missing flock motion cue helper that matched the already-present enemy motion cue system.
+- Verification: `npm run build`, `npm run validate:runtime`, `npm run validate:docs`, focused route-map Playwright smoke tests, required generic `develop-web-game` client, direct Playwright route-map screenshot, and in-app browser bridge check all completed. Final inspected screenshot: `.artifacts/test-results/route-map-imagegen-backdrop-selected.png`.
+
+- Home screen compactness follow-up: moved the animated Bird Squad title higher, reduced the bottom setup dock height/opacity, and made the leader chips, Ascension arrows, run actions, Codex, and Flock Record buttons smaller so the splash art remains more visible.
+- Verification: `npm run build`, in-app browser menu screenshot, and required generic `develop-web-game` client passed. The generic client returned valid `MenuScene` state JSON and its screenshot remains the known black WebGL capture artifact.
+
+- Route map highlight refinement: reduced selected/available node ring thickness, replaced the selected-node halo with thin cyan focus ticks, softened route-preview line weights/dots, and changed the large map board frame from gold to muted steel blue so the map no longer feels over-highlighted.
+- Verification: `npm run build`, `npm run validate:runtime`, focused route-map Playwright smoke tests, required generic `develop-web-game` client, and visual screenshot inspection passed. Final screenshot: `.artifacts/test-results/route-map-thin-node-highlight-steel-frame.png`.
+
+- Home screen text-detail follow-up: added compact mechanical detail to the leader chips, surfaced the selected leader's signature rule in a readable two-line strip, and expanded the Ascension text to show current enemy Cohesion, reward, hit, and Open Sky modifiers.
+- Refined text readability with subtle strokes and a low-opacity backing strip while keeping the splash art visible.
+- Verification: `npm run build`, in-app browser menu screenshot, and required generic `develop-web-game` client passed. The generic client returned valid `MenuScene` state JSON; its screenshot remains the known black WebGL capture artifact.

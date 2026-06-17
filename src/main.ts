@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import './style.css';
-import splashUrl from '../assets/splash/bird-squad-canal-run-splash-v4.png';
+import splashUrl from '../assets/splash/bird-squad-canal-run-splash-v4.webp';
 import titleBirdUrl from '../assets/ui/bird-squad-title-bird-textured-v2.png';
 import titleSquadUrl from '../assets/ui/bird-squad-title-squad-textured-v2.png';
 import combatFxAtlasUrl from '../assets/runtime/fx/combat-fx-atlas.png';
@@ -330,6 +330,7 @@ const MARKET_ROUTE_MARK_PRICE = alphaMarketConfig.routeMarkSlots[0]?.price.base 
 const CACHE_SCRAP_REWARD = 30;
 const REWARD_SKIP_SCRAP = 12;
 const COMBAT_FX_TEXTURE = 'combat-fx-atlas';
+const COMBAT_FX_PARTICLE_TEXTURE = 'combat-fx-pixel';
 const COMBAT_ATMOSPHERE_TEXTURE = 'combat-atmosphere-strip';
 const SUIT_FX_ANIM: Record<string, string> = {
   plumes: 'fx-plumes',
@@ -386,7 +387,7 @@ const reserveEnemyArtUrls = import.meta.glob('../assets/runtime/enemies/reserve/
   query: '?url',
   import: 'default',
 }) as Record<string, string>;
-const flockLeaderRuntimeArtUrls = import.meta.glob('../assets/runtime/flock/leaders/*.png', {
+const flockLeaderRuntimeArtUrls = import.meta.glob('../assets/runtime/flock/leaders/*.webp', {
   eager: true,
   query: '?url',
   import: 'default',
@@ -442,28 +443,28 @@ const reserveEnemyArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntr
 const flockLeaderArtAssets: Record<string, RuntimeImageAsset> = {
   fledgling: {
     key: 'flock-leader-fledgling',
-    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/fledgling-flock-combat-back-ne.png']
-      ?? '/assets/runtime/flock/leaders/fledgling-flock-combat-back-ne.png',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/fledgling-flock-combat-back-ne.webp']
+      ?? '/assets/runtime/flock/leaders/fledgling-flock-combat-back-ne.webp',
   },
   spark_caller: {
     key: 'flock-leader-spark-caller',
-    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/spark-caller-combat-back-ne.png']
-      ?? '/assets/runtime/flock/leaders/spark-caller-combat-back-ne.png',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/spark-caller-combat-back-ne.webp']
+      ?? '/assets/runtime/flock/leaders/spark-caller-combat-back-ne.webp',
   },
   talon: {
     key: 'flock-leader-talon',
-    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/talon-combat-back-ne.png']
-      ?? '/assets/runtime/flock/leaders/talon-combat-back-ne.png',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/talon-combat-back-ne.webp']
+      ?? '/assets/runtime/flock/leaders/talon-combat-back-ne.webp',
   },
   tidewarden: {
     key: 'flock-leader-tidewarden',
-    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/tidewarden-combat-back-ne.png']
-      ?? '/assets/runtime/flock/leaders/tidewarden-combat-back-ne.png',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/tidewarden-combat-back-ne.webp']
+      ?? '/assets/runtime/flock/leaders/tidewarden-combat-back-ne.webp',
   },
   roostkeeper: {
     key: 'flock-leader-roostkeeper',
-    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/roostkeeper-combat-back-ne.png']
-      ?? '/assets/runtime/flock/leaders/roostkeeper-combat-back-ne.png',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/roostkeeper-combat-back-ne.webp']
+      ?? '/assets/runtime/flock/leaders/roostkeeper-combat-back-ne.webp',
   },
 };
 const waymarkArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
@@ -560,7 +561,7 @@ class BootScene extends Phaser.Scene {
 class MenuScene extends Phaser.Scene {
   private selectedLeaderId = defaultLeaderId;
   private leaderPanels: Array<{ id: string; rect: Phaser.GameObjects.Rectangle; unlocked: boolean }> = [];
-  private leaderBlurb?: Phaser.GameObjects.Text;
+  private leaderTooltip?: Phaser.GameObjects.Container;
   private menuAccount: PlayerAccount = loadAccount();
   private selectedDifficulty = 0;
   private difficultyLabelText?: Phaser.GameObjects.Text;
@@ -585,82 +586,111 @@ class MenuScene extends Phaser.Scene {
 
     this.createAnimatedTitle();
 
-    // Compact run setup dock: keep the splash art dominant, with difficulty
-    // controls next to the run action instead of floating in the hero art.
+    // Keep difficulty near the run action without adding a full-width dock, so
+    // the splash art stays visible behind the compact controls.
     this.selectedDifficulty = Math.min(this.selectedDifficulty, getMaxUnlockedTier());
-    this.add.rectangle(GAME_WIDTH / 2, 636, GAME_WIDTH, 168, 0x05070c, 0.36);
-    this.add.rectangle(GAME_WIDTH / 2, 552, GAME_WIDTH, 2, 0xe8b830, 0.22);
-    this.add.text(126, 586, 'ASCENSION', {
-      fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#8fa3b6'
+    this.add.text(122, 600, 'ASCENSION', {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#a9bbcc',
+      stroke: '#05070c',
+      strokeThickness: 3,
     }).setOrigin(0.5);
-    const dec = this.add.rectangle(96, 636, 30, 32, 0x0d1420, 0.92)
+    const dec = this.add.rectangle(100, 632, 26, 28, 0x0d1420, 0.9)
       .setStrokeStyle(2, 0x7ab8d6, 0.9).setInteractive({ useHandCursor: true });
     dec.on('pointerdown', () => this.stepDifficulty(-1));
-    this.add.text(96, 635, '<', { fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#dbe6f0' }).setOrigin(0.5);
-    const inc = this.add.rectangle(386, 636, 30, 32, 0x0d1420, 0.92)
+    this.add.text(100, 631, '<', { fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#dbe6f0' }).setOrigin(0.5);
+    const inc = this.add.rectangle(356, 632, 26, 28, 0x0d1420, 0.9)
       .setStrokeStyle(2, 0x7ab8d6, 0.9).setInteractive({ useHandCursor: true });
     inc.on('pointerdown', () => this.stepDifficulty(1));
-    this.add.text(386, 635, '>', { fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#dbe6f0' }).setOrigin(0.5);
-    this.difficultyLabelText = this.add.text(242, 623, '', {
-      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#e8b830'
+    this.add.text(356, 631, '>', { fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#dbe6f0' }).setOrigin(0.5);
+    this.difficultyLabelText = this.add.text(228, 630, '', {
+      fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#e8b830'
     }).setOrigin(0.5);
-    this.difficultyDescText = this.add.text(242, 650, '', {
-      fontFamily: 'Arial', fontSize: '11px', color: '#9fb1c4', align: 'center', wordWrap: { width: 252 }
+    this.difficultyDescText = this.add.text(228, 663, '', {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      color: '#aebed0',
+      align: 'center',
+      stroke: '#05070c',
+      strokeThickness: 3,
+      wordWrap: { width: 292 }
     }).setOrigin(0.5);
+    this.difficultyDescText.setLineSpacing(1);
     this.updateDifficultyText();
 
     this.menuAccount = loadAccount();
     if (!isLeaderUnlocked(this.menuAccount, this.selectedLeaderId)) this.selectedLeaderId = defaultLeaderId;
-    this.add.text(GAME_WIDTH / 2, 474, 'Choose your Flock Leader', {
-      fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: '#ffe1a3'
+    this.add.text(GAME_WIDTH / 2, 470, 'Choose your Flock Leader', {
+      fontFamily: 'Arial',
+      fontSize: '14px',
+      fontStyle: 'bold',
+      color: '#ffe1a3',
+      stroke: '#05070c',
+      strokeThickness: 3,
     }).setOrigin(0.5);
     this.leaderPanels = [];
     flockLeaders.forEach((leader, index) => {
-      const px = 168 + index * 236;
-      const py = 524;
+      const px = 178 + index * 231;
+      const py = 516;
       const unlocked = isLeaderUnlocked(this.menuAccount, leader.id);
-      const rect = this.add.rectangle(px, py, 218, 58, unlocked ? 0x0d1420 : 0x0a0e15, unlocked ? 0.9 : 0.86)
+      const rect = this.add.rectangle(px, py, 196, 56, unlocked ? 0x0d1420 : 0x0a0e15, unlocked ? 0.88 : 0.82)
         .setStrokeStyle(2, unlocked ? 0x2a4555 : 0x222a33, 0.9)
         .setInteractive({ useHandCursor: unlocked });
-      if (unlocked) rect.on('pointerdown', () => this.selectLeader(leader.id));
-      this.add.text(px, py - 13, leader.name, {
-        fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: unlocked ? '#ffe1a3' : '#5a6675', align: 'center', wordWrap: { width: 202 }
+      rect.on('pointerover', () => this.showLeaderTooltip(leader.id, px));
+      rect.on('pointerout', () => this.hideLeaderTooltip());
+      if (unlocked) {
+        rect.on('pointerdown', () => {
+          this.selectLeader(leader.id);
+          this.showLeaderTooltip(leader.id, px);
+        });
+      }
+      this.add.text(px, py - 16, leader.name, {
+        fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: unlocked ? '#ffe1a3' : '#5a6675', align: 'center', wordWrap: { width: 184 }
       }).setOrigin(0.5);
-      this.add.text(px, py + 18, unlocked ? `${leader.suit} - ${leader.bird}` : `Locked - ${leaderUnlockHints[leader.id] ?? 'Locked'}`, {
-        fontFamily: 'Arial', fontSize: unlocked ? '11px' : '10px', color: unlocked ? '#9fb1c4' : '#6f7d8c', align: 'center', wordWrap: { width: 202 }
+      const detail = unlocked
+        ? `${leader.suit} - ${leader.bird}\n${leader.signatureName}`
+        : `Locked\n${leaderUnlockHints[leader.id] ?? 'Locked'}`;
+      const detailText = this.add.text(px, py + 13, detail, {
+        fontFamily: 'Arial',
+        fontSize: '9px',
+        color: unlocked ? '#aebed0' : '#6f7d8c',
+        align: 'center',
+        stroke: '#05070c',
+        strokeThickness: 2,
+        wordWrap: { width: 184 }
       }).setOrigin(0.5);
+      detailText.setLineSpacing(1);
       this.leaderPanels.push({ id: leader.id, rect, unlocked });
     });
-    this.leaderBlurb = this.add.text(GAME_WIDTH / 2, 578, '', {
-      fontFamily: 'Georgia, serif', fontSize: '12px', fontStyle: 'italic', color: '#cdd9e6', align: 'center', wordWrap: { width: 780 }
-    }).setOrigin(0.5);
     this.selectLeader(this.selectedLeaderId);
 
     const savedRun = hasActiveRun();
     if (savedRun) {
-      this.makeMenuButton(672, 636, 292, 48, 'Continue Run', 0xe8b830, '23px', () => this.continueRun());
-      this.makeMenuButton(986, 636, 230, 40, 'Start New Run', 0x7ab8d6, '17px', () => this.startRun());
+      this.makeMenuButton(676, 642, 252, 42, 'Continue Run', 0xe8b830, '20px', () => this.continueRun());
+      this.makeMenuButton(962, 642, 204, 36, 'Start New Run', 0x7ab8d6, '15px', () => this.startRun());
     } else {
-      this.makeMenuButton(780, 636, 324, 54, 'Start Run', 0xd8a840, '28px', () => this.startRun());
+      this.makeMenuButton(780, 642, 286, 46, 'Start Run', 0xd8a840, '24px', () => this.startRun());
     }
     this.input.keyboard?.on('keydown-ENTER', () => (savedRun ? this.continueRun() : this.startRun()));
 
-    const profile = this.add.rectangle(GAME_WIDTH - 96, 40, 152, 44, 0x0d1420, 0.92)
+    const profile = this.add.rectangle(GAME_WIDTH - 92, 38, 136, 38, 0x0d1420, 0.9)
       .setStrokeStyle(2, 0x7ab8d6, 0.9).setInteractive({ useHandCursor: true });
     profile.on('pointerover', () => profile.setFillStyle(0x1b2535, 0.96));
     profile.on('pointerout', () => profile.setFillStyle(0x0d1420, 0.92));
     profile.on('pointerdown', () => this.scene.start('ProfileScene'));
-    this.add.text(GAME_WIDTH - 96, 40, 'Flock Record', {
-      fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: '#dce8f2'
+    this.add.text(GAME_WIDTH - 92, 38, 'Flock Record', {
+      fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#dce8f2'
     }).setOrigin(0.5);
 
-    const codex = this.add.rectangle(GAME_WIDTH - 258, 40, 152, 44, 0x0d1420, 0.92)
+    const codex = this.add.rectangle(GAME_WIDTH - 240, 38, 136, 38, 0x0d1420, 0.9)
       .setStrokeStyle(2, 0x7ab8d6, 0.9).setInteractive({ useHandCursor: true });
     codex.on('pointerover', () => codex.setFillStyle(0x1b2535, 0.96));
     codex.on('pointerout', () => codex.setFillStyle(0x0d1420, 0.92));
     codex.on('pointerdown', () => this.scene.start('CodexScene'));
-    this.add.text(GAME_WIDTH - 258, 40, 'Codex', {
-      fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: '#dce8f2'
+    this.add.text(GAME_WIDTH - 240, 38, 'Codex', {
+      fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#dce8f2'
     }).setOrigin(0.5);
   }
 
@@ -673,8 +703,13 @@ class MenuScene extends Phaser.Scene {
     this.difficultyLabelText?.setText(difficultyLabel(this.selectedDifficulty));
     const locked = this.selectedDifficulty >= getMaxUnlockedTier() && this.selectedDifficulty < MAX_DIFFICULTY;
     this.difficultyDescText?.setText(
-      difficultyAdds(this.selectedDifficulty) + (locked ? '\nWin this tier to unlock the next.' : ''),
+      `${difficultyAdds(this.selectedDifficulty)}\n${this.difficultyStatLine()}${locked ? '\nWin this tier to unlock the next.' : ''}`,
     );
+  }
+
+  private difficultyStatLine() {
+    const mods = difficultyMods(this.selectedDifficulty);
+    return `Mods: Cohesion x${mods.enemyHpMult.toFixed(2)} | Rewards ${mods.rewardChoices} | Hit +${mods.enemyDamageBonus} | Open Sky +${mods.openSkyBonus}`;
   }
 
   private makeMenuButton(x: number, y: number, w: number, h: number, text: string, color: number, fontSize: string, onClick: () => void) {
@@ -705,7 +740,48 @@ class MenuScene extends Phaser.Scene {
       entry.rect.setStrokeStyle(selected ? 4 : 2, selected ? 0xe8b830 : 0x2a4555, selected ? 1 : 0.9);
       entry.rect.setFillStyle(selected ? 0x1b2535 : 0x0d1420, selected ? 0.96 : 0.92);
     });
-    this.leaderBlurb?.setText(getLeader(id).blurb);
+    const leader = getLeader(id);
+  }
+
+  private showLeaderTooltip(id: string, anchorX: number) {
+    this.hideLeaderTooltip();
+    const leader = getLeader(id);
+    const unlocked = isLeaderUnlocked(this.menuAccount, leader.id);
+    const tooltipX = Phaser.Math.Clamp(anchorX, 328, GAME_WIDTH - 328);
+    const tooltipY = 404;
+    const tooltip = this.add.container(tooltipX, tooltipY).setDepth(100);
+    const bg = this.add.rectangle(0, 0, 640, unlocked ? 88 : 72, 0x05070c, 0.86)
+      .setStrokeStyle(2, unlocked ? 0xe8b830 : 0x7ab8d6, unlocked ? 0.9 : 0.68);
+    const title = this.add.text(0, unlocked ? -30 : -20, unlocked
+      ? `${leader.name} - ${leader.suit} / ${leader.bird}`
+      : `${leader.name} - Locked`, {
+      fontFamily: 'Arial',
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: unlocked ? '#ffe1a3' : '#9fb1c4',
+      align: 'center',
+      wordWrap: { width: 600 },
+    }).setOrigin(0.5);
+    const body = this.add.text(0, unlocked ? 6 : 14, unlocked
+      ? `${leader.blurb}\nSignature: ${leader.signatureName} - ${leader.signatureText}`
+      : leaderUnlockHints[leader.id] ?? 'Locked', {
+      fontFamily: 'Georgia, serif',
+      fontSize: '12px',
+      fontStyle: unlocked ? 'italic' : '',
+      color: unlocked ? '#dce7f2' : '#9fb1c4',
+      align: 'center',
+      stroke: '#05070c',
+      strokeThickness: 2,
+      wordWrap: { width: 584 },
+    }).setOrigin(0.5);
+    body.setLineSpacing(2);
+    tooltip.add([bg, title, body]);
+    this.leaderTooltip = tooltip;
+  }
+
+  private hideLeaderTooltip() {
+    this.leaderTooltip?.destroy(true);
+    this.leaderTooltip = undefined;
   }
 
   private startRun() {
@@ -713,7 +789,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   private createAnimatedTitle() {
-    const logo = this.add.container(GAME_WIDTH / 2, -210)
+    const logo = this.add.container(GAME_WIDTH / 2, -224)
       .setAlpha(0)
       .setAngle(-2.5);
 
@@ -729,7 +805,7 @@ class MenuScene extends Phaser.Scene {
 
     this.tweens.add({
       targets: logo,
-      y: 166,
+      y: 144,
       alpha: 1,
       angle: 0,
       scaleX: { from: 0.86, to: 1 },
@@ -2082,7 +2158,7 @@ class RouteScene extends Phaser.Scene {
       .setAlpha(backdropKey === ROUTE_MAP_BACKDROP_ASSET.key ? 1 : 0.48);
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, backdropKey === ROUTE_MAP_BACKDROP_ASSET.key ? 0.34 : 0.62);
     renderFieldPanel(this, (obj) => {}, layout.map.cx, layout.map.cy, layout.map.w, layout.map.h, {
-      accent: UI_FIELD.gold,
+      accent: 0x49606d,
       fill: 0x07101a
     });
     this.add.rectangle(layout.map.cx, layout.map.cy, layout.map.w - 34, layout.map.h - 34, 0x03070d, 0.28);
@@ -3775,6 +3851,16 @@ class BattleScene extends Phaser.Scene {
   }
 
   private ensureFxTextures() {
+    if (!this.textures.exists(COMBAT_FX_PARTICLE_TEXTURE)) {
+      const g = this.add.graphics();
+      g.fillStyle(0xffffff, 1);
+      g.fillRect(3, 0, 2, 8);
+      g.fillRect(0, 3, 8, 2);
+      g.fillStyle(0xffffff, 0.72);
+      g.fillRect(2, 2, 4, 4);
+      g.generateTexture(COMBAT_FX_PARTICLE_TEXTURE, 8, 8);
+      g.destroy();
+    }
     if (!this.textures.exists(COMBAT_FX_TEXTURE)) return;
     const create = (key: string, start: number, end: number, frameRate = 18) => {
       if (this.anims.exists(key)) return;
@@ -3919,7 +4005,15 @@ class BattleScene extends Phaser.Scene {
     animKey: string,
     x: number,
     y: number,
-    options: { scale?: number; alpha?: number; angle?: number; flipX?: boolean; onComplete?: () => void } = {}
+    options: {
+      scale?: number;
+      alpha?: number;
+      angle?: number;
+      flipX?: boolean;
+      tint?: number;
+      additive?: boolean;
+      onComplete?: () => void;
+    } = {}
   ) {
     if (!this.textures.exists(COMBAT_FX_TEXTURE) || !this.anims.exists(animKey)) return undefined;
     const sprite = this.add.sprite(x, y, COMBAT_FX_TEXTURE)
@@ -3928,6 +4022,8 @@ class BattleScene extends Phaser.Scene {
       .setAlpha(options.alpha ?? 0.96)
       .setAngle(options.angle ?? 0);
     if (options.flipX) sprite.setFlipX(true);
+    if (options.tint) sprite.setTint(options.tint);
+    if (options.additive) sprite.setBlendMode(Phaser.BlendModes.ADD);
     this.fxLayer.add(sprite);
     sprite.play(animKey);
     sprite.once('animationcomplete', () => {
@@ -3935,6 +4031,57 @@ class BattleScene extends Phaser.Scene {
       sprite.destroy();
     });
     return sprite;
+  }
+
+  private fxMoteBurst(
+    x: number,
+    y: number,
+    color: number,
+    options: {
+      count?: number;
+      speed?: number;
+      lifespan?: number;
+      angle?: { min: number; max: number };
+      scale?: number;
+      gravityY?: number;
+      spreadX?: number;
+      spreadY?: number;
+    } = {}
+  ) {
+    if (prefersReducedMotion() || !this.textures.exists(COMBAT_FX_PARTICLE_TEXTURE)) return;
+    const lifespan = options.lifespan ?? 420;
+    const emitter = this.add.particles(x, y, COMBAT_FX_PARTICLE_TEXTURE, {
+      emitting: false,
+      frequency: -1,
+      lifespan: { min: Math.max(140, lifespan * 0.55), max: lifespan },
+      speed: { min: (options.speed ?? 135) * 0.35, max: options.speed ?? 135 },
+      angle: options.angle ?? { min: 0, max: 360 },
+      x: { min: -(options.spreadX ?? 8), max: options.spreadX ?? 8 },
+      y: { min: -(options.spreadY ?? 8), max: options.spreadY ?? 8 },
+      scale: { start: options.scale ?? 0.82, end: 0, ease: 'Cubic.easeOut' },
+      alpha: { start: 0.92, end: 0, ease: 'Cubic.easeIn' },
+      rotate: { min: -90, max: 90 },
+      gravityY: options.gravityY ?? 24,
+      tint: color,
+      blendMode: Phaser.BlendModes.ADD,
+      maxParticles: options.count ?? 12,
+    });
+    this.fxLayer.add(emitter);
+    emitter.explode(options.count ?? 12);
+    this.time.delayedCall(lifespan + 120, () => emitter.destroy());
+  }
+
+  private fxShardSweep(x: number, y: number, color: number, direction: 1 | -1, count = 10) {
+    this.fxMoteBurst(x, y, color, {
+      count,
+      speed: 180,
+      lifespan: 360,
+      angle: direction > 0 ? { min: -40, max: 40 } : { min: 140, max: 220 },
+      scale: 0.72,
+      gravityY: 8,
+      spreadX: 4,
+      spreadY: 10,
+    });
   }
 
   private fxAnimForColor(color: number) {
@@ -3948,20 +4095,37 @@ class BattleScene extends Phaser.Scene {
   private pulseRing(x: number, y: number, color: number, radius = 58, duration = 460) {
     if (prefersReducedMotion()) return;
     const scale = Phaser.Math.Clamp(radius / 44, 0.9, 2.5);
-    this.playFxAnimation(this.fxAnimForColor(color), x, y, { scale, alpha: 0.82 });
+    this.playFxAnimation(this.fxAnimForColor(color), x, y, { scale, alpha: 0.82, additive: true });
+    this.fxMoteBurst(x, y, color, {
+      count: radius >= 84 ? 18 : 10,
+      speed: radius * 1.65,
+      lifespan: duration,
+      scale: radius >= 84 ? 0.72 : 0.56,
+      gravityY: 4,
+      spreadX: 10,
+      spreadY: 10,
+    });
   }
 
   private sparkBurst(x: number, y: number, color: number, count = 18, speed = 145) {
     if (prefersReducedMotion()) return;
     const anim = this.fxAnimForColor(color);
     const repeats = count >= 22 ? 3 : count >= 14 ? 2 : 1;
+    this.fxMoteBurst(x, y, color, {
+      count,
+      speed,
+      lifespan: count >= 22 ? 560 : 430,
+      scale: count >= 18 ? 0.72 : 0.56,
+      gravityY: color === 0x8fd6a0 ? -18 : 28,
+    });
     for (let i = 0; i < repeats; i += 1) {
       this.time.delayedCall(i * 55, () => {
         this.playFxAnimation(anim, x + (i - 1) * 12, y + (i % 2) * 8, {
           scale: Phaser.Math.Clamp(speed / 105, 0.9, 2.1),
-          alpha: 0.8,
+          alpha: 0.74,
           angle: -10 + i * 18,
           flipX: i % 2 === 1,
+          additive: true,
         });
       });
     }
@@ -3972,20 +4136,43 @@ class BattleScene extends Phaser.Scene {
     this.playFxAnimation(SUIT_FX_ANIM[suit ?? ''] ?? this.fxAnimForColor(meta.color), x, y, {
       scale: 1.45,
       alpha: 0.88,
+      additive: true,
     });
+    this.fxMoteBurst(x, y, meta.color, { count: 12, speed: 120, lifespan: 380, scale: 0.58, gravityY: 0 });
     if (label) {
       floatingText(this, this.fxLayer, x, y - 58, label, meta.hex);
     }
   }
 
   private windedFx(x: number, y: number) {
-    this.playFxAnimation('fx-winded', x, y - 10, { scale: 1.7, alpha: 0.94 });
+    this.playFxAnimation('fx-winded', x, y - 10, { scale: 1.7, alpha: 0.94, additive: true });
+    this.fxMoteBurst(x + 6, y - 8, 0xc98bff, {
+      count: 14,
+      speed: 110,
+      lifespan: 520,
+      angle: { min: 178, max: 352 },
+      scale: 0.62,
+      gravityY: -8,
+      spreadX: 18,
+      spreadY: 8,
+    });
   }
 
   private coverImpactFx(x: number, y: number, color = 0x7ab8d6) {
-    this.playFxAnimation(color === 0x9fb1c4 ? 'fx-hostile' : 'fx-nests', x, y - 8, {
-      scale: 1.35,
-      alpha: 0.9,
+    const hostile = color === 0x9fb1c4;
+    this.playFxAnimation(hostile ? 'fx-hostile' : 'fx-nests', x, y - 8, {
+      scale: hostile ? 1.22 : 1.45,
+      alpha: 0.88,
+      additive: true,
+    });
+    this.fxMoteBurst(x, y - 6, hostile ? 0x9fb1c4 : 0x7ab8d6, {
+      count: hostile ? 9 : 13,
+      speed: hostile ? 132 : 96,
+      lifespan: 360,
+      scale: 0.58,
+      gravityY: hostile ? 22 : 4,
+      spreadX: 18,
+      spreadY: 12,
     });
   }
 
@@ -3994,18 +4181,40 @@ class BattleScene extends Phaser.Scene {
     this.playFxAnimation('fx-nests', FLOCK_FX_X, FLOCK_FX_Y + 20, {
       scale: 1.85,
       alpha: 0.9,
+      additive: true,
+    });
+    this.fxMoteBurst(FLOCK_FX_X, FLOCK_FX_Y + 24, 0x8fd6a0, {
+      count: 18,
+      speed: 104,
+      lifespan: 520,
+      scale: 0.66,
+      gravityY: -18,
+      spreadX: 34,
+      spreadY: 10,
     });
     if (suit && suit !== 'nests') {
       this.playFxAnimation(SUIT_FX_ANIM[suit] ?? this.fxAnimForColor(meta.color), FLOCK_FX_X + 22, FLOCK_FX_Y - 12, {
         scale: 1.1,
         alpha: 0.72,
+        additive: true,
       });
+      this.fxMoteBurst(FLOCK_FX_X + 22, FLOCK_FX_Y - 12, meta.color, { count: 8, speed: 84, lifespan: 320, scale: 0.48, gravityY: 0 });
     }
   }
 
   private healFx() {
-    this.playFxAnimation('fx-heal', FLOCK_FX_X, FLOCK_FX_Y + 12, { scale: 1.75, alpha: 0.92 });
-    this.playFxAnimation('fx-basins', FLOCK_FX_X + 16, FLOCK_FX_Y - 24, { scale: 1.05, alpha: 0.7 });
+    this.playFxAnimation('fx-heal', FLOCK_FX_X, FLOCK_FX_Y + 12, { scale: 1.75, alpha: 0.92, additive: true });
+    this.playFxAnimation('fx-basins', FLOCK_FX_X + 16, FLOCK_FX_Y - 24, { scale: 1.05, alpha: 0.7, additive: true });
+    this.fxMoteBurst(FLOCK_FX_X, FLOCK_FX_Y + 14, 0x8fd6a0, {
+      count: 22,
+      speed: 84,
+      lifespan: 720,
+      angle: { min: 235, max: 305 },
+      scale: 0.7,
+      gravityY: -42,
+      spreadX: 30,
+      spreadY: 12,
+    });
   }
 
   private renderFallbackBackdrop() {
@@ -5531,10 +5740,12 @@ class BattleScene extends Phaser.Scene {
         : { x: FLOCK_FX_X, y: FLOCK_FX_Y, scale: 1 };
     const animKey = SUIT_FX_ANIM[card.runtime.suit ?? ''] ?? this.fxAnimForColor(meta.color);
     this.queueFlockMotion('cast');
+    const travelDirection = target.x >= FLOCK_FX_X ? 1 : -1;
 
     const fromX = this.handCardLeft(handIndex, handSize) + CARD_W / 2;
     const ghost = this.addCastCardGhost(card, fromX, HAND_Y);
     ghost.setDepth(40);
+    this.fxShardSweep(fromX, HAND_Y - 18, meta.color, travelDirection, 6);
 
     this.tweens.chain({
       targets: ghost,
@@ -5547,7 +5758,8 @@ class BattleScene extends Phaser.Scene {
           duration: 170,
           ease: 'Cubic.easeOut',
           onComplete: () => {
-            this.playFxAnimation(animKey, FLOCK_FX_X + 10, FLOCK_FX_Y - 42, { scale: 1.35, alpha: 0.9 });
+            this.playFxAnimation(animKey, FLOCK_FX_X + 10, FLOCK_FX_Y - 42, { scale: 1.35, alpha: 0.9, additive: true });
+            this.fxShardSweep(FLOCK_FX_X + 18, FLOCK_FX_Y - 62, meta.color, travelDirection, 9);
           },
         },
         {
@@ -5560,7 +5772,14 @@ class BattleScene extends Phaser.Scene {
           ease: 'Quad.easeInOut',
           onComplete: () => {
             ghost.destroy(true);
-            this.playFxAnimation(animKey, target.x, target.y - 18, { scale: 1.55, alpha: 0.92 });
+            this.playFxAnimation(animKey, target.x, target.y - 18, { scale: 1.55, alpha: 0.92, additive: true });
+            this.fxMoteBurst(target.x, target.y - 18, meta.color, {
+              count: card.target === 'self' ? 12 : 18,
+              speed: card.target === 'self' ? 92 : 154,
+              lifespan: 430,
+              scale: 0.66,
+              gravityY: card.target === 'self' ? -16 : 16,
+            });
           },
         },
       ],

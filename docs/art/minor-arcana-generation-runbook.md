@@ -21,8 +21,8 @@ Create one dated run folder for the pass:
 
 ```powershell
 $run = "2026-06-13-border-first-v2"
-$centerRoot = "assets/concept-art/minor-arcana-center-art-runs/$run"
-$finalRoot = "assets/concept-art/minor-arcana-border-first-runs/$run"
+$centerRoot = ".generated/imagegen/tarot/minor-arcana-center-art-runs/$run"
+$finalRoot = ".generated/imagegen/tarot/minor-arcana-border-first-runs/$run"
 $qaRoot = "tmp/qa/minor-arcana/$run"
 
 New-Item -ItemType Directory -Force `
@@ -41,16 +41,16 @@ Expected center-art filenames should match card ids:
 Save center art under the suit folder matching the overlay manifest:
 
 ```text
-assets/concept-art/minor-arcana-center-art-runs/{run}/plumes/{cardId}.png
-assets/concept-art/minor-arcana-center-art-runs/{run}/basins/{cardId}.png
-assets/concept-art/minor-arcana-center-art-runs/{run}/quills/{cardId}.png
-assets/concept-art/minor-arcana-center-art-runs/{run}/nests/{cardId}.png
+.generated/imagegen/tarot/minor-arcana-center-art-runs/{run}/plumes/{cardId}.png
+.generated/imagegen/tarot/minor-arcana-center-art-runs/{run}/basins/{cardId}.png
+.generated/imagegen/tarot/minor-arcana-center-art-runs/{run}/quills/{cardId}.png
+.generated/imagegen/tarot/minor-arcana-center-art-runs/{run}/nests/{cardId}.png
 ```
 
 Final composited cards should be saved separately:
 
 ```text
-assets/concept-art/minor-arcana-border-first-runs/{run}/{suit}/{cardId}.png
+.generated/imagegen/tarot/minor-arcana-border-first-runs/{run}/{suit}/{cardId}.png
 ```
 
 Do not overwrite prior generation runs. Keep rejected candidates in a

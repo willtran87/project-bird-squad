@@ -38,7 +38,7 @@
       "lane": 0,
       "type": "street",
       "label": "Street Encounter",
-      "payloadId": "enc_roof_rat",
+      "payloadId": "enc_rooftop_rat_pack",
       "risk": "low",
       "revealed": true,
       "completed": false
@@ -82,7 +82,7 @@
       "lane": 2,
       "type": "street",
       "label": "Street Encounter",
-      "payloadId": "enc_signal_gull",
+      "payloadId": "enc_rooftop_skirmish",
       "risk": "medium",
       "revealed": true,
       "completed": false
@@ -93,7 +93,7 @@
       "lane": 0,
       "type": "rival",
       "label": "Rival Crew",
-      "payloadId": "enc_tarline_jackdaw",
+      "payloadId": "enc_gutter_baron",
       "risk": "high",
       "revealed": true,
       "completed": false

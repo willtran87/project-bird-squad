@@ -1089,3 +1089,22 @@ Follow-up TODO:
 - Compressed the route-map resource rail into primary Cohesion/Scrap chips plus
   one inline Deck/Waymarks/Supplies readout to reduce crowding.
 - Re-centered the route Flock Stats overlay contents inside a wider panel.
+
+## 2026-06-16 Combat Beauty Polish Completion
+
+- Replaced the remaining abstract combat FX sheet frames with deterministic
+  pixel-art effect silhouettes for suit casts, Cover, Heal, Winded, Open Sky,
+  and hostile impacts.
+- Added a reproducible `tools/generate-combat-fx-atlas.py` pipeline for the
+  runtime combat FX atlas so future polish can tune authored frames instead of
+  editing opaque binary output.
+- Upgraded combat card casting from a floating label cue to a physical card
+  ghost that lifts from its hand slot, passes through the Flock Leader, and
+  resolves on the target with suit-specific FX.
+- Split Flock Leader idle breathing from combat pose reactions so cast, brace,
+  heal, and hit cues layer cleanly over the leader art.
+- Verified route map canvas clicking through Start Run and Take This Route
+  lands in BattleScene without bouncing back to MenuScene.
+- Verified `npm run build`, `npm test`, `npm run test:e2e`, the web-game
+  Playwright client, and targeted combat screenshots under
+  `.artifacts/test-results/`.

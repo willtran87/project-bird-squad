@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const targetDir = process.argv[2] ?? 'assets/concept-art/minor-arcana';
+const targetDir = process.argv[2] ?? '.generated/imagegen/tarot/minor-arcana';
 const targetWidth = Number(process.argv[3] ?? 1024);
 const targetHeight = Number(process.argv[4] ?? 1536);
 const root = process.cwd();

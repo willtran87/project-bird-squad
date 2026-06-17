@@ -24,7 +24,7 @@ center artwork, background scene inside the center window.
 ## Deck Style Reference
 
 Use the existing full-card Minor Arcana art under
-`assets/concept-art/minor-arcana/` as the deck reference. Match the older cards'
+`.generated/imagegen/tarot/minor-arcana/` as the deck reference. Match the older cards'
 hand-inked black-and-aged-gold tarot frame, colored enamel suit medallions,
 organic filigree, illustrated weathering, and slightly magical storybook finish.
 The border should read tarot-fantasy first, modern city second. Streetwear and

@@ -14,7 +14,7 @@
     "Do not generate readable text, card titles, rank labels, suit words, logos, birds, characters, or center artwork.",
     "Keep the bottom title cartouche blank so the repo compositor can render deterministic title text.",
     "All suit variants must preserve the same geometry and differ only through border-zone ornament and palette.",
-    "Use existing full-card Minor Arcana art under assets/concept-art/minor-arcana/ as the style reference: hand-inked black-and-aged-gold tarot frame, colored enamel medallions, organic filigree, weathered illustrated texture, slightly magical storybook finish.",
+    "Use existing full-card Minor Arcana art under .generated/imagegen/tarot/minor-arcana/ as the style reference: hand-inked black-and-aged-gold tarot frame, colored enamel medallions, organic filigree, weathered illustrated texture, slightly magical storybook finish.",
     "Urban cues must be subtle patina, worn paint, sticker-wear shapes without text, and city-night color accents, not hard technology."
   ],
   "sharedNegative": "Avoid readable text, pseudo-writing, letters, numbers, rank symbols, suit words, card title, logo, watermark, bird character, human character, humanoid figure, hands, clothing, weapon display, magical particles, spell circles, floating runes, old-world parchment, plain medieval fantasy frame, sci-fi hologram UI, cyberpunk paneling, circuit patterns, industrial machine parts, antenna hardware, bolts as the dominant design language, thin cheap border, cream simplified frame, crooked geometry, asymmetric frame, cropped corners, center artwork, background scene inside the center window.",

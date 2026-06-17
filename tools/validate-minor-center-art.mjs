@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const root = process.cwd();
 const args = process.argv.slice(2);
-const targetRootArg = args.find((arg) => !arg.startsWith('--')) ?? 'assets/concept-art/minor-arcana-center-art-runs/latest';
+const targetRootArg = args.find((arg) => !arg.startsWith('--')) ?? '.generated/imagegen/tarot/minor-arcana-center-art-runs/latest';
 const allowAnySize = args.includes('--allow-any-size');
 const targetRoot = path.resolve(root, targetRootArg);
 const errors = [];

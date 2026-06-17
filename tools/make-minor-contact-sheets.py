@@ -55,7 +55,7 @@ def make_sheet(files: list[Path], output: Path, columns: int, thumb: tuple[int, 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Create Minor Arcana contact sheets for center art or final composites.")
-    parser.add_argument("--source-root", type=Path, default=Path("assets/concept-art/minor-arcana-border-first-runs/latest"))
+    parser.add_argument("--source-root", type=Path, default=Path(".generated/imagegen/tarot/minor-arcana-border-first-runs/latest"))
     parser.add_argument("--output-root", type=Path, default=Path("tmp/qa/minor-arcana/latest"))
     args = parser.parse_args()
 

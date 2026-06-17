@@ -20,7 +20,7 @@ Each final card is assembled from three layers:
 Imagegen should create **blank border templates**, not finished cards.
 
 Use the existing full-card Minor Arcana art under
-`assets/concept-art/minor-arcana/` as the primary style reference. The approved
+`.generated/imagegen/tarot/minor-arcana/` as the primary style reference. The approved
 frame language should feel hand-inked, dark, gilt, ornate, and tarot-fantasy
 first: black outer keyline, aged gold filigree, colored enamel medallions,
 weathered illustrated texture, and a slightly magical storybook finish. Urban
@@ -106,8 +106,8 @@ repo compositor to render titles like `Ace of Plumes`.
 
    ```powershell
    npm run compose:minor-art -- `
-     --source-root assets/concept-art/minor-arcana-center-art-runs/{run} `
-     --output-root assets/concept-art/minor-arcana-border-first-runs/{run} `
+     --source-root .generated/imagegen/tarot/minor-arcana-center-art-runs/{run} `
+     --output-root .generated/imagegen/tarot/minor-arcana-border-first-runs/{run} `
      --template-root assets/templates/minor-arcana/raster-border-templates `
      --strict
    ```
@@ -123,7 +123,7 @@ in tracked assets:
 
 ```powershell
 npm run compose:minor-art -- `
-  --source-root assets/concept-art/minor-arcana-center-art-runs/{run} `
+  --source-root .generated/imagegen/tarot/minor-arcana-center-art-runs/{run} `
   --output-root tmp/qa/taroth-title-preview/composited `
   --template-root assets/templates/minor-arcana/raster-border-templates `
   --title-font .artifacts/fonts/taroth-sharp/TarothSharp-Regular.ttf `
