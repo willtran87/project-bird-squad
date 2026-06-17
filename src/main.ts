@@ -585,24 +585,27 @@ class MenuScene extends Phaser.Scene {
 
     this.createAnimatedTitle();
 
-    // Ascension stepper (clamped to the highest unlocked tier).
+    // Compact run setup dock: keep the splash art dominant, with difficulty
+    // controls next to the run action instead of floating in the hero art.
     this.selectedDifficulty = Math.min(this.selectedDifficulty, getMaxUnlockedTier());
-    this.add.text(GAME_WIDTH / 2, 376, 'Ascension', {
-      fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#8fa3b6'
+    this.add.rectangle(GAME_WIDTH / 2, 636, GAME_WIDTH, 168, 0x05070c, 0.36);
+    this.add.rectangle(GAME_WIDTH / 2, 552, GAME_WIDTH, 2, 0xe8b830, 0.22);
+    this.add.text(126, 586, 'ASCENSION', {
+      fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#8fa3b6'
     }).setOrigin(0.5);
-    const dec = this.add.rectangle(GAME_WIDTH / 2 - 252, 400, 40, 40, 0x0d1420, 0.92)
+    const dec = this.add.rectangle(96, 636, 30, 32, 0x0d1420, 0.92)
       .setStrokeStyle(2, 0x7ab8d6, 0.9).setInteractive({ useHandCursor: true });
     dec.on('pointerdown', () => this.stepDifficulty(-1));
     this.add.text(GAME_WIDTH / 2 - 252, 399, '◂', { fontFamily: 'Arial', fontSize: '22px', color: '#dbe6f0' }).setOrigin(0.5);
-    const inc = this.add.rectangle(GAME_WIDTH / 2 + 252, 400, 40, 40, 0x0d1420, 0.92)
+    const inc = this.add.rectangle(386, 636, 30, 32, 0x0d1420, 0.92)
       .setStrokeStyle(2, 0x7ab8d6, 0.9).setInteractive({ useHandCursor: true });
     inc.on('pointerdown', () => this.stepDifficulty(1));
     this.add.text(GAME_WIDTH / 2 + 252, 399, '▸', { fontFamily: 'Arial', fontSize: '22px', color: '#dbe6f0' }).setOrigin(0.5);
-    this.difficultyLabelText = this.add.text(GAME_WIDTH / 2, 400, '', {
-      fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#e8b830'
+    this.difficultyLabelText = this.add.text(242, 623, '', {
+      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#e8b830'
     }).setOrigin(0.5);
-    this.difficultyDescText = this.add.text(GAME_WIDTH / 2, 426, '', {
-      fontFamily: 'Arial', fontSize: '13px', color: '#9fb1c4', align: 'center', wordWrap: { width: 470 }
+    this.difficultyDescText = this.add.text(242, 650, '', {
+      fontFamily: 'Arial', fontSize: '11px', color: '#9fb1c4', align: 'center', wordWrap: { width: 252 }
     }).setOrigin(0.5);
     this.updateDifficultyText();
 
