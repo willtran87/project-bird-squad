@@ -1374,6 +1374,116 @@ class CodexScene extends Phaser.Scene {
     }
   }
 
+  private hexColor(color: number) {
+    return `#${color.toString(16).padStart(6, '0')}`;
+  }
+
+  private addCodexChip(
+    layer: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    w: number,
+    label: string,
+    accent: number,
+    active = false,
+  ) {
+    const chip = this.add.rectangle(x, y, w, 22, active ? 0x1d3047 : 0x08111e, active ? 0.98 : 0.9)
+      .setStrokeStyle(1, accent, active ? 0.95 : 0.68);
+    layer.add(chip);
+    layer.add(this.add.text(x, y, label, {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: active ? '#ffe1a3' : '#aebed0',
+      align: 'center',
+      fixedWidth: w - 8,
+    }).setResolution(2).setOrigin(0.5));
+  }
+
+  private renderCodexTab(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    label: string,
+    meta: string,
+    active: boolean,
+    accent: number,
+    onClick: () => void,
+    labelSize = 13,
+  ) {
+    const fill = active ? 0x1d3047 : 0x0d1420;
+    const rect = this.add.rectangle(x, y, w, h, fill, active ? 1 : 0.9)
+      .setStrokeStyle(active ? 2 : 1, active ? accent : 0x2a3a4d, active ? 1 : 0.82)
+      .setInteractive({ useHandCursor: true });
+    rect.on('pointerover', () => rect.setFillStyle(active ? 0x243954 : 0x121d2b, 0.98));
+    rect.on('pointerout', () => rect.setFillStyle(fill, active ? 1 : 0.9));
+    rect.on('pointerdown', onClick);
+    this.root.add(rect);
+    this.root.add(this.add.text(x, y - 8, label, {
+      fontFamily: 'Arial',
+      fontSize: `${labelSize}px`,
+      fontStyle: 'bold',
+      color: active ? '#ffe1a3' : '#9fb1c4',
+    }).setResolution(2).setOrigin(0.5));
+    this.root.add(this.add.text(x, y + 10, meta, {
+      fontFamily: 'Arial',
+      fontSize: '9px',
+      color: active ? this.hexColor(accent) : '#708296',
+    }).setResolution(2).setOrigin(0.5));
+  }
+
+  private cardAccent(card: Card) {
+    if (card.type === 'major') return 0xd8a840;
+    if (card.type === 'molt') return 0xc56cff;
+    return suitAccentColor(card);
+  }
+
+  private cardFamilyLabel(card: Card) {
+    if (card.type === 'major') return 'Major Arcana';
+    if (card.type === 'molt') return 'Molt';
+    switch (card.runtime.suit) {
+      case 'plumes': return 'Plumes';
+      case 'quills': return 'Quills';
+      case 'basins': return 'Basins';
+      case 'nests': return 'Nests';
+      default: return 'Aviary';
+    }
+  }
+
+  private drawLockedCardBack(layer: Phaser.GameObjects.Container, card: Card, cx: number, cy: number, aw: number, ah: number, accent: number) {
+    layer.add(this.add.rectangle(cx, cy, aw, ah, 0x08101b, 0.98).setStrokeStyle(1, 0x1b2c3e, 0.9));
+    layer.add(this.add.rectangle(cx, cy, aw - 18, ah - 18, 0x0d1420, 0.68).setStrokeStyle(1, accent, 0.46));
+    layer.add(this.add.rectangle(cx, cy - ah / 2 + 34, aw - 34, 2, accent, 0.42));
+    layer.add(this.add.rectangle(cx, cy + ah / 2 - 34, aw - 34, 2, accent, 0.42));
+    layer.add(this.add.triangle(cx - aw / 2 + 22, cy - ah / 2 + 22, 0, 0, 28, 0, 0, 28, accent, 0.8));
+    layer.add(this.add.triangle(cx + aw / 2 - 22, cy + ah / 2 - 22, 0, 0, -28, 0, 0, -28, accent, 0.62));
+    layer.add(this.add.text(cx, cy - 52, this.cardFamilyLabel(card).toUpperCase(), {
+      fontFamily: 'Arial',
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: this.hexColor(accent),
+      align: 'center',
+      fixedWidth: aw - 34,
+    }).setResolution(2).setOrigin(0.5));
+    layer.add(this.add.text(cx, cy - 6, '?', {
+      fontFamily: 'Georgia, serif',
+      fontSize: '68px',
+      fontStyle: 'bold',
+      color: '#344558',
+      stroke: '#05070c',
+      strokeThickness: 2,
+    }).setResolution(2).setOrigin(0.5));
+    layer.add(this.add.text(cx, cy + 66, 'UNFOUND', {
+      fontFamily: 'Arial',
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#8fa3b6',
+      align: 'center',
+      fixedWidth: aw - 34,
+    }).setResolution(2).setOrigin(0.5));
+  }
+
   private renderThumb(layer: Phaser.GameObjects.Container, card: Card, cx: number, cy: number) {
     // The art is a complete 2:3 card illustration — show it whole, undistorted.
     const aw = 184;
@@ -1879,6 +1989,16 @@ class CodexScene extends Phaser.Scene {
     heading('FLOCK STATS', '#7f93a8');
     this.root.add(this.add.text(tx, yy, statStr, { fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: '#8df4ff', wordWrap: { width: wrap } })); yy += 30;
 
+    if (!this.codexData && this.codexDataPending()) {
+      heading('CODEX NOTES', '#c9a6ff');
+      para('Loading tarot notes and bird facts...', { color: '#d9c8ff', italic: true, size: 13 });
+      yy += 14;
+    } else if (this.codexDataFailed) {
+      heading('CODEX NOTES', '#ff9b6a');
+      para('Extended Codex notes are unavailable. Gameplay data is still ready.', { color: '#ffd0bd', size: 13 });
+      yy += 14;
+    }
+
     // Tarot meaning — keyword line + upright + reversed.
     if (meaning) {
       heading('🔮  TAROT MEANING', '#c9a6ff');
@@ -2012,7 +2132,11 @@ class CodexScene extends Phaser.Scene {
     yy += 12;
 
     heading('FASHION DIRECTION', '#c9a6ff');
-    para(enemy.source === 'reserve' ? (this.codexData?.reserveEnemyFashionDirections[enemy.id] ?? enemy.visualBrief) : enemy.visualBrief, { size: 13 });
+    const fashionDirection = enemy.source === 'reserve'
+      ? this.codexData?.reserveEnemyFashionDirections[enemy.id]
+        ?? (this.codexDataPending() ? 'Loading reserve fashion direction...' : enemy.visualBrief)
+      : enemy.visualBrief;
+    para(fashionDirection, { size: 13 });
     yy += 12;
 
     heading('ART CONTRACT', '#7f93a8');
