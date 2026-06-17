@@ -18,14 +18,65 @@ async function boot(page: Page) {
 
 test('route map loads and previews the boss before the final node', async ({ page }) => {
   await boot(page);
-  const ok = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
     g.scene.start('RouteScene', {});
     g.scene.stop('MenuScene');
-    g.scene.getScene('RouteScene').selectRouteNode('m1_boss');
-    return g.scene.getScenes(true).map((s: any) => s.scene.key).includes('RouteScene');
+    const route = g.scene.getScene('RouteScene');
+    route.selectRouteNode(window.__birdSquadCurrentMap!().bossNodeId);
+    const expected = ['street', 'rival', 'boss', 'basin', 'nest', 'market', 'signal', 'cache']
+      .map((type) => `route-node-${type}`);
+    for (let i = 0; i < 40 && !expected.every((key) => route.textures.exists(key)); i += 1) await wait(50);
+    const imageKeys = route.children.list
+      .map((child: any) => child.texture?.key)
+      .filter((key: string | undefined) => key?.startsWith('route-node-'));
+    const state = JSON.parse(window.render_game_to_text!());
+    return {
+      active: g.scene.getScenes(true).map((s: any) => s.scene.key).includes('RouteScene'),
+      texturesLoaded: expected.every((key) => route.textures.exists(key)),
+      imageKeys: [...new Set(imageKeys)],
+      hasRewardBadges: state.nodes.some((node: any) => (node.rewardBadges ?? []).length > 0),
+      bossRewardBadges: state.nodes.find((node: any) => node.id === state.map.bossNodeId)?.rewardBadges ?? []
+    };
   });
-  expect(ok).toBe(true);
+  expect(result.active).toBe(true);
+  expect(result.texturesLoaded).toBe(true);
+  expect(result.imageKeys).toContain('route-node-street');
+  expect(result.imageKeys).toContain('route-node-boss');
+  expect(result.hasRewardBadges).toBe(true);
+  expect(result.bossRewardBadges).toContain('waymark');
+});
+
+test('route map surfaces run status without opening the Flock menu', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    const g = window.__birdSquadGame;
+    g.scene.start('RouteScene', {});
+    g.scene.stop('MenuScene');
+    const route: any = g.scene.getScene('RouteScene');
+    const texts = route.children.list
+      .map((child: any) => child.text)
+      .filter((text: unknown): text is string => typeof text === 'string');
+    const state = JSON.parse(window.render_game_to_text!());
+    return {
+      status: state.routeStatus,
+      hasCohesion: texts.includes('Cohesion'),
+      hasScrap: texts.includes('Scrap'),
+      hasDeck: texts.some((text) => text.includes('Deck')),
+      hasWaymarks: texts.some((text) => text.includes('Waymarks')),
+      hasSupplies: texts.some((text) => text.includes('Supplies')),
+      flockOverlayOpen: state.flockOverlayOpen
+    };
+  });
+  expect(result.status.cohesion).toBeTruthy();
+  expect(result.status.scrap).toBeGreaterThanOrEqual(0);
+  expect(result.hasCohesion).toBe(true);
+  expect(result.hasScrap).toBe(true);
+  expect(result.hasDeck).toBe(true);
+  expect(result.hasWaymarks).toBe(true);
+  expect(result.hasSupplies).toBe(true);
+  expect(result.flockOverlayOpen).toBe(false);
 });
 
 test('a combat route node resolves through its encounter', async ({ page }) => {
@@ -119,6 +170,42 @@ test('signals/basins/cache present structured choices resolved by the route-effe
   expect(result.gatedNear).toBe(true);
 });
 
+test('balance economy Waymarks resolve through generic trigger/effect hooks', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    const g = window.__birdSquadGame;
+    g.scene.start('RouteScene', {});
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('RouteScene');
+    const map = window.__birdSquadCurrentMap!();
+    const cache = map.nodes.find((node: any) => node.type === 'cache');
+    const basin = map.nodes.find((node: any) => node.type === 'basin');
+    const signal = map.nodes.find((node: any) => node.type === 'signal');
+
+    scene.runState.routeMarks = ['cache_hook', 'roofline_compass'];
+    const cacheChoices = scene.nodeChoiceList(cache).length;
+
+    scene.runState.currentHp = 20;
+    scene.runState.routeMarks = ['rain_gutter', 'blue_cup_token'];
+    scene.applyRouteNodeReward(basin);
+    const hpAfterBasin = scene.runState.currentHp;
+
+    scene.runState.scrap = 0;
+    scene.runState.routeMarks = ['wire_map', 'market_tally_string'];
+    scene.applyRouteNodeReward(signal);
+    const scrapAfterSignal = scene.runState.scrap;
+
+    scene.runState.routeMarks = ['patched_harness'];
+    const preenPrice = scene.marketPreenPrice();
+
+    return { cacheChoices, hpAfterBasin, scrapAfterSignal, preenPrice };
+  });
+  expect(result.cacheChoices).toBe(6);
+  expect(result.hpAfterBasin).toBe(35);      // base 8 + Rain Gutter 4 + Blue Cup Token 3
+  expect(result.scrapAfterSignal).toBe(40);  // Wire Map 25 + Market Tally String 15
+  expect(result.preenPrice).toBe(65);        // 95 base - Patched Harness 30
+});
+
 test('supplies are carried into combat and usable for an effect', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(() => {
@@ -179,6 +266,61 @@ test('market shelves are finite during a visit', async ({ page }) => {
   expect(result.firstOffer).toBeTruthy();
   expect(result.deckHasOffer).toBe(true);
   expect(result.afterBuyOffer).toBe('');
+});
+
+test('card choice surfaces expose full card details on hover', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const collectText = (container: any) => (container?.list ?? [])
+      .filter((child: any) => typeof child.text === 'string')
+      .map((child: any) => child.text);
+    const hasFullSections = (texts: string[]) => (
+      texts.includes('Current Effect')
+      && texts.includes('Preened Effect')
+      && texts.includes('Flock Stats')
+    );
+
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    await wait(80);
+    const battle: any = g.scene.getScene('BattleScene');
+    const rewardCard = battle.hand[0] ?? battle.drawPile[0];
+    battle.showChoiceCardDetail(rewardCard, 392, 360);
+    const rewardTexts = collectText(battle.cardPreview);
+
+    g.scene.start('RouteScene', {});
+    await wait(80);
+    const route: any = g.scene.getScene('RouteScene');
+    const market = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === 'market')
+      ?? window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type !== 'boss');
+    market.type = 'market';
+    route.openMarketNode(market);
+    route.runState.scrap = 999;
+    const marketOffer = route.marketCardOffer();
+    route.showHoverCardDetail(marketOffer, 'Market offer', 55, 250, 372);
+    const marketTexts = collectText(route.hoverCardDetail);
+
+    const preenEntry = route.pickerEligibleCards('preen')[0];
+    route.showHoverCardDetail(preenEntry.card, 'Preen candidate', preenEntry.cost, 640, 430);
+    const preenTexts = collectText(route.hoverCardDetail);
+
+    return {
+      reward: hasFullSections(rewardTexts),
+      market: hasFullSections(marketTexts),
+      preen: hasFullSections(preenTexts),
+      rewardTitle: rewardTexts.includes(rewardCard.name),
+      marketTitle: marketTexts.includes(marketOffer.name),
+      preenTitle: preenTexts.includes(preenEntry.card.name)
+    };
+  });
+  expect(result.reward).toBe(true);
+  expect(result.market).toBe(true);
+  expect(result.preen).toBe(true);
+  expect(result.rewardTitle).toBe(true);
+  expect(result.marketTitle).toBe(true);
+  expect(result.preenTitle).toBe(true);
 });
 
 test('post-combat Preen is gated by encounter reward profile', async ({ page }) => {
@@ -499,13 +641,18 @@ test('route map exposes boss prep readiness before the final crossing', async ({
     const g = window.__birdSquadGame;
     g.scene.start('RouteScene', {});
     g.scene.stop('MenuScene');
+    const route: any = g.scene.getScene('RouteScene');
+    const texts = route.children.list
+      .map((child: any) => child.text)
+      .filter((text: unknown): text is string => typeof text === 'string');
     const state = JSON.parse(window.render_game_to_text!());
-    return state.bossPrep;
+    return { ...state.bossPrep, hasInspectorSummary: texts.includes('BOSS PREP') };
   });
   expect(r.bossName).toBeTruthy();
   expect(r.pressure).toContain('cover');
   expect(['low', 'steady', 'strong']).toContain(r.readiness.cover);
   expect(Array.isArray(r.usefulNodes)).toBe(true);
+  expect(r.hasInspectorSummary).toBe(true);
 });
 
 test('combat tracks per-fight stats (damage dealt / taken / blocked)', async ({ page }) => {
@@ -671,6 +818,70 @@ test('route marks are real relics: combatStart marks reshape the fight', async (
   expect(r.baseEnergy).toBe(3);
   expect(r.markBlock).toBeGreaterThanOrEqual(2); // chalk_wingmark grants Cover at combat start
   expect(r.markEnergy).toBeGreaterThanOrEqual(4); // crowbar_debt grants a turn-1 Wingbeat
+});
+
+test('waymark artifact drawer renders found item art and run tooltips', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 20 && !window.__birdSquadState?.()?.hand?.length; i += 1) await wait(50);
+    scene.routeMarks = ['chalk_wingmark', 'rooftop_shortcut', 'wire_map', 'crowbar_debt', 'rain_gutter'];
+    scene.waymarkDrawerOpen = true;
+    scene.renderAll();
+    for (
+      let i = 0;
+      i < 40 && !scene.routeMarks.every((id: string) => scene.textures.exists(`waymark-${id}`));
+      i += 1
+    ) await wait(100);
+    scene.renderAll();
+    const texts: string[] = [];
+    const walk = (obj: any) => {
+      if (!obj) return;
+      if (obj.type === 'Text') texts.push(obj.text || '');
+      if (Array.isArray(obj.list)) obj.list.forEach(walk);
+    };
+    scene.children.list.forEach(walk);
+    const state = window.__birdSquadState!();
+    return {
+      drawerOpen: state.waymarkDrawerOpen,
+      carried: state.route.routeMarks,
+      hasIconTexture: scene.textures.exists('waymark-chalk_wingmark'),
+      hasAllIconTextures: scene.routeMarks.every((id: string) => scene.textures.exists(`waymark-${id}`)),
+      hasDrawerTitle: texts.includes('Found Waymarks'),
+      hasShelfLabel: texts.includes('WAYMARKS'),
+      hasArtifactName: texts.includes('Chalk Wingmark')
+    };
+  });
+  expect(r.drawerOpen).toBe(true);
+  expect(r.carried).toContain('chalk_wingmark');
+  expect(r.hasIconTexture).toBe(true);
+  expect(r.hasAllIconTextures).toBe(true);
+  expect(r.hasDrawerTitle).toBe(true);
+  expect(r.hasShelfLabel).toBe(true);
+  expect(r.hasArtifactName).toBe(true);
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: '.artifacts/test-results/waymark-artifact-drawer.png' });
+  await page.mouse.move(8, 8);
+  await page.mouse.move(224, 220, { steps: 8 });
+  await page.waitForTimeout(250);
+  const tooltipTexts = await page.evaluate(() => {
+    const g = window.__birdSquadGame;
+    const scene: any = g.scene.getScene('BattleScene');
+    const texts: string[] = [];
+    const walk = (obj: any) => {
+      if (!obj) return;
+      if (obj.type === 'Text') texts.push(obj.text || '');
+      if (Array.isArray(obj.list)) obj.list.forEach(walk);
+    };
+    scene.children.list.forEach(walk);
+    return texts;
+  });
+  expect(tooltipTexts.some((text) => text.includes('Start each combat with 2 Cover.'))).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/waymark-artifact-tooltip.png' });
 });
 
 test('flock formation states reshape combat and an unblocked hit shatters Flow', async ({ page }) => {
@@ -961,6 +1172,78 @@ test('Cover and Heal are distinct axes, and the new card verbs work', async ({ p
   expect(r.coverAfterOverheal).toBeGreaterThanOrEqual(5); // overhealCover does
   expect(r.perCoverDamage).toBeGreaterThanOrEqual(6);     // 1 x 6 Cover (+ deck damage)
   expect(r.hpAfterLose).toBe(1);                         // loseCohesion clamps to 1
+});
+
+test('new balance verbs: timed Waymarks, self-loop cards, and anti-Cover conditionals', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const s: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 20 && !(s.hand && s.hand.length); i += 1) await wait(50);
+    const card = s.hand[0];
+    const enemy = s.enemies[0];
+
+    s.routeMarks = ['black_ink_pin', 'fresh_pinfeather'];
+    s.markFiredThisCombat = new Set();
+    s.energy = 3;
+    s.flock.openSkyGuard = 0;
+    s.cardsPlayedThisTurn = 2;
+    s.checkNthCardMarks();
+    const energyAfterSecondCard = s.energy;
+    s.cardsPlayedThisTurn = 3;
+    s.checkNthCardMarks();
+    const guardAfterThirdCard = s.flock.openSkyGuard;
+
+    const fakeLoopCard = {
+      ...card,
+      runtime: {
+        ...card.runtime,
+        effects: ['shuffleSelfToDraw()'],
+        upgrade: { ...card.runtime.upgrade, effects: ['shuffleSelfToDraw()'] }
+      },
+      upgraded: false
+    };
+    const loopOutcome = s.resolveCardEffects(fakeLoopCard, enemy.id);
+
+    enemy.block = 5;
+    enemy.maxHp = 50;
+    enemy.hp = 50;
+    const fakeBreakerCard = {
+      ...card,
+      runtime: {
+        ...card.runtime,
+        effects: [
+          'if targetHasCover then removeCover(target, 2)',
+          'if targetHasCover then damagePierce(target, 2)'
+        ],
+        upgrade: {
+          ...card.runtime.upgrade,
+          effects: [
+            'if targetHasCover then removeCover(target, 3)',
+            'if targetHasCover then damagePierce(target, 3)'
+          ]
+        }
+      },
+      upgraded: false
+    };
+    s.resolveCardEffects(fakeBreakerCard, enemy.id);
+
+    return {
+      energyAfterSecondCard,
+      guardAfterThirdCard,
+      returnSelfToDraw: loopOutcome.returnSelfToDraw,
+      enemyBlockAfterBreaker: enemy.block,
+      enemyHpAfterBreaker: enemy.hp
+    };
+  });
+  expect(r.energyAfterSecondCard).toBe(4);
+  expect(r.guardAfterThirdCard).toBe(1);
+  expect(r.returnSelfToDraw).toBe(true);
+  expect(r.enemyBlockAfterBreaker).toBe(3);
+  expect(r.enemyHpAfterBreaker).toBeLessThanOrEqual(48);
 });
 
 test('Molt is a do-DIFFERENT transform stance: a card resolves its molt ability while Molting', async ({ page }) => {

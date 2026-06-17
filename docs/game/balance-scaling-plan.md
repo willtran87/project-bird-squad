@@ -48,12 +48,31 @@ Scrap rewards scale by district:
 
 | District | Street | Rival | Boss | Cache | Skip |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Rooftop Blocks | 20-28 | 58-72 | 90 | 30 | 12 |
-| Canal Markets | 25-35 | 72-88 | 105 | 35 | 14 |
+| Rooftop Blocks | 18-30 | 55-75 | 90 | 30 | 12 |
+| Canal Markets | 25-35 | 72-88 | 120 | 35 | 14 |
 | Signal Spires | 31-41 | 86-104 | 120 | 40 | 16 |
-| High Roost | 36-48 | 98-122 | 75 | 45 | 18 |
+| High Roost | 36-48 | 98-122 | 150 | 45 | 18 |
 
-The boss payout dips in High Roost because it is the final conversion point rather than a bridge into another district. If a fifth district is added, restore boss payout growth and set the next expected FPI band first.
+Boss payouts now scale through High Roost because Waymarks and late-run preening make the final district a capstone economy check, not just a conversion point. If a fifth district is added, set the next expected FPI band first, then extend the street/rival/boss bands from that target.
+
+## Economy Simulation
+
+Run:
+
+```powershell
+npm run audit:economy
+```
+
+The simulator samples seeded routes across all four districts and reports:
+
+- average Scrap gained per district
+- average boss-entry deck size
+- average boss-entry Waymark count
+- average preen/release/service opportunities
+- route node mix and safety counts
+- drift against `balance-config.json` targets
+
+The simulator is not a combat AI. It uses transparent route/economy assumptions: combats pay their authored reward profile, normal combat Waymark odds use `routeMarkChance`, caches use the configured expected cache value, nests assume one Preen opportunity, and markets buy one card or Waymark only when the sampled run can afford it. Use it to catch economy drift and pacing outliers before running manual playtests.
 
 ## Audit Loop
 
@@ -61,6 +80,7 @@ Run:
 
 ```powershell
 node tools\balance-audit.mjs
+npm run audit:economy
 ```
 
 Look for:
@@ -69,5 +89,6 @@ Look for:
 - Encounter HP and max-hit stacks rising with expected FPI.
 - No generated route path with zero safety before a boss.
 - Economy EV high enough to afford one meaningful market/service action per district without guaranteeing every purchase.
+- Simulated boss-entry deck size and Waymark count close to the district `targets` band.
 
 When adjusting balance, change `balance-config.json` first, then use card/enemy edits only when the audit shows a specific outlier.

@@ -52,8 +52,14 @@ const REWARD_BANDS = { street: { scrap: [25, 40] }, rival: { scrap: [70, 90] }, 
 const DECK_TARGETS = { starter: 10, rewardPool: 74 };
 // next-level-data-contracts §5.5 status registry ids
 const STATUS_IDS = ['winded', 'openSky', 'openSkyGuard', 'molt'];
-// next-level-data-contracts §3 reward-profile ids -> band
-const PROFILE_BANDS = { street_standard: 'street', rival_standard: 'rival', boss_alpha: 'boss' };
+// Current reward-profile targets are tracked in data/game/balance-config.json.
+// Enemy definitions retain their original authored reward bands above, but the
+// runtime profile tuning now uses the lower Map 1 economy curve.
+const PROFILE_TARGETS = {
+  street_standard: [18, 30],
+  rival_standard: [55, 75],
+  boss_alpha: 90,
+};
 
 const damageOf = (intent) => {
   for (const e of intent?.effects ?? []) {
@@ -113,11 +119,11 @@ if (rewardProfiles === null) {
   pending.push('alpha-reward-profiles.json not authored — profile scrap bands will be checked here (next-level-data-contracts §3)');
 } else if (rewardProfiles) {
   const byId = new Map((Array.isArray(rewardProfiles) ? rewardProfiles : rewardProfiles.profiles ?? []).map((p) => [p.id, p]));
-  for (const [pid, band] of Object.entries(PROFILE_BANDS)) {
+  for (const [pid, wantScrap] of Object.entries(PROFILE_TARGETS)) {
     const prof = byId.get(pid);
     if (!prof) { fail(`reward profile "${pid}": missing`); continue; }
-    if (!scrapEq(prof.scrap, REWARD_BANDS[band].scrap)) fail(`reward profile "${pid}".scrap: data=${fmtScrap(prof.scrap)} but spec ${band} band=${fmtScrap(REWARD_BANDS[band].scrap)}`);
-    else pass(`reward profile "${pid}" scrap ${fmtScrap(REWARD_BANDS[band].scrap)}`);
+    if (!scrapEq(prof.scrap, wantScrap)) fail(`reward profile "${pid}".scrap: data=${fmtScrap(prof.scrap)} but profile target=${fmtScrap(wantScrap)}`);
+    else pass(`reward profile "${pid}" scrap ${fmtScrap(wantScrap)}`);
   }
 }
 

@@ -85,7 +85,7 @@
         "silhouette": "Loose ragged bird shape with trailing cords, drooped wing mass, and uneven clothing edges.",
         "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
         "moves": [
-          { "id": "smear_snag", "label": "Smear", "effects": ["damage(flock, 5)", "addSnagToDiscard(wet_feathers)"] },
+          { "id": "smear_snag", "label": "Smear", "effects": ["damage(flock, 5)", "addSnagToDiscard(wet_feathers)", "applyFrail(1)"] },
           { "id": "heavy_strike_12", "label": "Heavy Strike 12", "effects": ["damage(flock, 12)"] },
           { "id": "hunker_cover", "label": "Hunker", "effects": ["gainCover(8)"] }
         ],
@@ -121,8 +121,8 @@
         "silhouette": "Wide still watcher with round head, broad wing cloak, and wall-like posture.",
         "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
         "moves": [
-          { "id": "bulwark_cover", "label": "Bulwark", "effects": ["gainCover(10)"] },
-          { "id": "spire_slam_10", "label": "Spire Slam 10", "effects": ["damage(flock, 10)", "if flockHasNoCover then damage(flock, 4)"] },
+          { "id": "bulwark_cover", "label": "Bulwark", "effects": ["gainCover(10)", "if flockHasCover then loseWingbeat(1)"] },
+          { "id": "spire_slam_10", "label": "Spire Slam 10", "effects": ["damage(flock, 10)", "if flockHasNoCover then damage(flock, 4)", "applyFrail(1)"] },
           { "id": "watch_open_sky", "label": "Watch", "effects": ["applyOpenSky(1)"] }
         ],
         "attackPattern": { "type": "cycle", "moveIds": ["bulwark_cover", "spire_slam_10", "watch_open_sky"] },
@@ -182,7 +182,7 @@
           { "id": "iron_strike_12", "label": "Iron Strike 12", "effects": ["damage(flock, 12)"] },
           { "id": "skyfall_decree", "label": "Skyfall Decree", "effects": ["applyOpenSky(1)", "if isMolting then applyOpenSky(1)"] },
           { "id": "bind_the_routes", "label": "Bind the Routes", "effects": ["damage(flock, 7)", "addSnagToDiscard(tangled_line)"] },
-          { "id": "warden_brace", "label": "Roost Brace", "effects": ["gainCover(9)", "nextAttackBonus(4)"] },
+          { "id": "warden_brace", "label": "Roost Brace", "effects": ["gainCover(9)", "nextAttackBonus(4)", "if flockHasCover then loseWingbeat(1)"] },
           { "id": "final_signal_18", "label": "Final Signal 18", "effects": ["damage(flock, 18)", "if flockOpenSky then damage(flock, 5)"] },
           { "id": "talon_volley_10", "label": "Talon Volley 10", "effects": ["damage(flock, 10)", "if flockCohesionBelowHalf then nextAttackBonus(3)"] }
         ],
@@ -202,10 +202,10 @@
       "mapId": "map_04_high_roost",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "Two enforcers hold the perch — sustained Cover or fast kills.",
+      "lesson": "Four enforcers hold the perch — sustained Cover or fast kills.",
       "tags": ["multi", "cover"],
-      "enemies": ["roost_perch_thug", "roost_wind_shrike"],
-      "rewardProfileId": "street_standard"
+      "enemies": ["roost_perch_thug", "roost_wind_shrike", "roost_perch_thug", "roost_wind_shrike"],
+      "rewardProfileId": "street_map04"
     },
     {
       "id": "enc_roost_iron_talon",
@@ -213,10 +213,10 @@
       "mapId": "map_04_high_roost",
       "nodeType": "rival",
       "band": "rival",
-      "lesson": "Elite: an Iron Talon enforcer with a thug escort guards the roost.",
+      "lesson": "Elite: an Iron Talon enforcer with escorts guards the roost.",
       "tags": ["elite", "heavy", "multi"],
-      "enemies": ["roost_iron_talon", "roost_perch_thug"],
-      "rewardProfileId": "rival_standard"
+      "enemies": ["roost_iron_talon", "roost_perch_thug", "roost_wind_shrike"],
+      "rewardProfileId": "rival_map04"
     },
     {
       "id": "enc_roost_perch_thug",
@@ -227,7 +227,7 @@
       "lesson": "Sustained Cover against a relentless basic attacker.",
       "tags": ["cover", "basic"],
       "enemies": ["roost_perch_thug"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map04"
     },
     {
       "id": "enc_roost_wind_shrike",
@@ -238,7 +238,7 @@
       "lesson": "Open Sky pressure forces Guard discipline.",
       "tags": ["openSky", "winded"],
       "enemies": ["roost_wind_shrike"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map04"
     },
     {
       "id": "enc_roost_tar_drifter",
@@ -249,7 +249,7 @@
       "lesson": "Snags clog the draw under heavy follow-up.",
       "tags": ["snag", "heavy", "cover"],
       "enemies": ["roost_tar_drifter"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map04"
     },
     {
       "id": "enc_roost_relay_falcon",
@@ -260,7 +260,7 @@
       "lesson": "Punish telegraphed Heavy Strike with a winded setup.",
       "tags": ["heavy", "winded", "tempo"],
       "enemies": ["roost_relay_falcon"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map04"
     },
     {
       "id": "enc_roost_spire_sentinel",
@@ -271,7 +271,7 @@
       "lesson": "A walled defender that scales damage when you have no Cover.",
       "tags": ["cover", "heavy", "openSky"],
       "enemies": ["roost_spire_sentinel"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map04"
     },
     {
       "id": "enc_roost_kettle_harrier",
@@ -282,7 +282,7 @@
       "lesson": "Elite tempo: trade through winded and a snag while staying covered.",
       "tags": ["elite", "winded", "snag", "tempo"],
       "enemies": ["roost_kettle_harrier"],
-      "rewardProfileId": "rival_standard"
+      "rewardProfileId": "rival_map04"
     },
     {
       "id": "enc_roost_skyline_baron",
@@ -293,7 +293,7 @@
       "lesson": "Elite Open Sky bully that bonuses into a heavy when you stay exposed.",
       "tags": ["elite", "openSky", "heavy", "winded"],
       "enemies": ["roost_skyline_baron"],
-      "rewardProfileId": "rival_standard"
+      "rewardProfileId": "rival_map04"
     },
     {
       "id": "enc_roost_warden",
@@ -301,10 +301,10 @@
       "mapId": "map_04_high_roost",
       "nodeType": "boss",
       "band": "boss",
-      "lesson": "Final exam: full build, Molt timing, Open Sky management, and snag clearing.",
-      "tags": ["boss", "cover", "openSky", "snag", "heavy", "molt"],
-      "enemies": ["roost_warden"],
-      "rewardProfileId": "boss_alpha"
+      "lesson": "Final exam: full build, Molt timing, Open Sky management, snag clearing, and boss helpers.",
+      "tags": ["boss", "cover", "openSky", "snag", "heavy", "molt", "multi"],
+      "enemies": ["roost_warden", "roost_spire_sentinel", "roost_wind_shrike", "roost_perch_thug"],
+      "rewardProfileId": "boss_map04"
     }
   ],
   "signals": [
@@ -442,7 +442,7 @@
         "lane": 0,
         "type": "street",
         "label": "Street Encounter",
-        "payloadId": "enc_roost_wind_shrike",
+        "payloadId": "enc_roost_perch_gang",
         "risk": "medium",
         "revealed": true,
         "completed": false
@@ -497,7 +497,7 @@
         "lane": 0,
         "type": "rival",
         "label": "Rival Crew",
-        "payloadId": "enc_roost_kettle_harrier",
+        "payloadId": "enc_roost_iron_talon",
         "risk": "high",
         "revealed": true,
         "completed": false

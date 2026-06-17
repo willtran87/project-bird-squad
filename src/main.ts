@@ -3,6 +3,8 @@ import './style.css';
 import splashUrl from '../assets/splash/bird-squad-canal-run-splash-v4.png';
 import titleBirdUrl from '../assets/ui/bird-squad-title-bird-textured-v2.png';
 import titleSquadUrl from '../assets/ui/bird-squad-title-squad-textured-v2.png';
+import combatFxAtlasUrl from '../assets/runtime/fx/combat-fx-atlas.png';
+import combatAtmosphereUrl from '../assets/runtime/fx/combat-atmosphere-strip.png';
 import {
   alphaBasinSet,
   alphaCacheSet,
@@ -325,11 +327,16 @@ const alphaMarketConfig = alphaMarketSet.markets[0];
 const MARKET_CARD_PRICE = alphaMarketConfig.cardSlots.find((slot) => slot.rarity === 'common')?.price.base ?? 55;
 const MARKET_PREEN_PRICE = alphaMarketConfig.services.find((service) => service.id === 'preen')?.basePrice ?? 100;
 const MARKET_ROUTE_MARK_PRICE = alphaMarketConfig.routeMarkSlots[0]?.price.base ?? 110;
-const PATCHED_HARNESS_DISCOUNT = Number(/reducePreenPrice\((\d+)\)/.exec(alphaRouteMarkLibrary.get('patched_harness')?.effect ?? '')?.[1] ?? 30);
 const CACHE_SCRAP_REWARD = 30;
-const SIGNAL_SCRAP_REWARD = 15;
-const STREET_SCRAP_BONUS = 15;
 const REWARD_SKIP_SCRAP = 12;
+const COMBAT_FX_TEXTURE = 'combat-fx-atlas';
+const COMBAT_ATMOSPHERE_TEXTURE = 'combat-atmosphere-strip';
+const SUIT_FX_ANIM: Record<string, string> = {
+  plumes: 'fx-plumes',
+  quills: 'fx-quills',
+  basins: 'fx-basins',
+  nests: 'fx-nests',
+};
 // Every playable card lives in one shared reward pool; weight post-combat offers
 // by rarity so commons/uncommons are the staple and rares/legendaries stay scarce.
 const REWARD_RARITY_WEIGHT: Record<string, number> = { common: 100, uncommon: 45, rare: 16, legendary: 5 };
@@ -357,6 +364,11 @@ const BATTLEFIELD_ASSETS: Record<string, { key: string; url: string }> = {
   }
 };
 const DEFAULT_BATTLEFIELD_ASSET = BATTLEFIELD_ASSETS.map_01_rooftop_blocks;
+const ROUTE_MAP_BACKDROP_ASSET = {
+  key: 'route-map-backdrop-rooftop-blocks',
+  url: battlefieldRuntimeArtUrls['../assets/runtime/backdrops/rooftop-blocks-route-map-v1.webp']
+    ?? '/assets/runtime/backdrops/rooftop-blocks-route-map-v1.webp'
+};
 
 const cardRuntimeArtUrls = import.meta.glob('../assets/runtime/cards/portrait/*.webp', {
   eager: true,
@@ -528,8 +540,11 @@ class BootScene extends Phaser.Scene {
 
   preload() {
     this.load.image('splash', splashUrl);
+    this.load.image(ROUTE_MAP_BACKDROP_ASSET.key, ROUTE_MAP_BACKDROP_ASSET.url);
     this.load.image('title-bird', titleBirdUrl);
     this.load.image('title-squad', titleSquadUrl);
+    this.load.spritesheet(COMBAT_FX_TEXTURE, combatFxAtlasUrl, { frameWidth: 64, frameHeight: 64 });
+    this.load.spritesheet(COMBAT_ATMOSPHERE_TEXTURE, combatAtmosphereUrl, { frameWidth: 256, frameHeight: 96 });
   }
 
   create() {
@@ -2050,20 +2065,18 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderBackdrop() {
-    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'splash')
+    const layout = this.routeLayout();
+    const backdropKey = this.textures.exists(ROUTE_MAP_BACKDROP_ASSET.key)
+      ? ROUTE_MAP_BACKDROP_ASSET.key
+      : 'splash';
+    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, backdropKey)
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
-      .setAlpha(0.48);
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.62);
-    this.add.rectangle(GAME_WIDTH / 2, 398, 1120, 462, 0x09111e, 0.9)
-      .setStrokeStyle(2, 0xd8a840, 0.82);
+      .setAlpha(backdropKey === ROUTE_MAP_BACKDROP_ASSET.key ? 1 : 0.48);
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, backdropKey === ROUTE_MAP_BACKDROP_ASSET.key ? 0.34 : 0.62);
+    this.add.rectangle(layout.map.cx, layout.map.cy, layout.map.w, layout.map.h, 0x09111e, 0.66)
+      .setStrokeStyle(2, 0xd8a840, 0.66);
 
-    this.add.text(56, 28, 'Bird Squad', {
-      fontFamily: 'Arial',
-      fontSize: '30px',
-      fontStyle: 'bold',
-      color: '#f5d38a'
-    });
-    this.add.text(96, 92, currentMap().name, {
+    this.add.text(80, 42, currentMap().name, {
       fontFamily: 'Arial',
       fontSize: '34px',
       fontStyle: 'bold',
@@ -2071,43 +2084,54 @@ class RouteScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 4
     });
-    this.add.text(98, 142, this.routeSubtitle(), {
+    this.add.text(82, 84, this.routeSubtitle(), {
       fontFamily: 'Arial',
-      fontSize: '17px',
-      color: '#b9c7d6'
+      fontSize: '15px',
+      color: '#b9c7d6',
+      wordWrap: { width: 660 }
     });
 
     this.renderRouteStatusRail();
 
-    const back = this.add.rectangle(1118, 96, 124, 42, 0x111a27, 0.96)
+    const back = this.add.rectangle(1118, 56, 124, 42, 0x111a27, 0.96)
       .setStrokeStyle(2, 0x7ab8d6, 0.85)
       .setInteractive({ useHandCursor: true });
     back.on('pointerdown', () => { this.confirmExitOpen = true; this.renderAll(); });
-    this.add.text(1118, 96, 'Back', {
+    this.add.text(1118, 56, 'Back', {
       fontFamily: 'Arial',
       fontSize: '17px',
       fontStyle: 'bold',
       color: '#dce8f2'
     }).setOrigin(0.5);
 
-    const flock = this.add.rectangle(822, 96, 124, 42, 0x111a27, 0.96)
+    const flock = this.add.rectangle(822, 56, 124, 42, 0x111a27, 0.96)
       .setStrokeStyle(2, 0x7ab8d6, 0.9)
       .setInteractive({ useHandCursor: true });
     flock.on('pointerdown', () => this.openFlockOverlay());
-    this.add.text(822, 96, 'Flock', {
+    this.add.text(822, 56, 'Flock', {
       fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#dce8f2'
     }).setOrigin(0.5);
 
-    const deck = this.add.rectangle(970, 96, 124, 42, 0x111a27, 0.96)
+    const deck = this.add.rectangle(970, 56, 124, 42, 0x111a27, 0.96)
       .setStrokeStyle(2, 0xd8a840, 0.9)
       .setInteractive({ useHandCursor: true });
     deck.on('pointerdown', () => this.openDeckOverlay());
-    this.add.text(970, 96, 'Deck', {
+    this.add.text(970, 56, 'Deck', {
       fontFamily: 'Arial',
       fontSize: '17px',
       fontStyle: 'bold',
       color: '#ffe1a3'
     }).setOrigin(0.5);
+  }
+
+  private routeLayout() {
+    return {
+      top: { y: 124 },
+      map: { x: 52, y: 150, w: 836, h: 520, cx: 470, cy: 410 },
+      graph: { left: 96, right: 844, top: 198, bottom: 526 },
+      inspector: { x: 904, y: 150, w: 300, h: 500, cx: 1054, cy: 400 },
+      footer: { x: 76, y: 604, w: 800, h: 56, cx: 476, cy: 632 }
+    };
   }
 
   private routeStatusSummary() {
@@ -2122,33 +2146,40 @@ class RouteScene extends Phaser.Scene {
 
   private renderRouteStatusRail() {
     const status = this.routeStatusSummary();
-    const y = 174;
+    const y = this.routeLayout().top.y;
     const chips: Array<{ label: string; value: string | number; width: number; color: number; text: string }> = [
-      { label: 'Cohesion', value: status.cohesion, width: 144, color: 0x8fd6a0, text: '#dff5e7' },
-      { label: 'Scrap', value: status.scrap, width: 104, color: 0x8df4ff, text: '#dffbff' },
-      { label: 'Deck', value: status.deckSize, width: 94, color: 0xd8a840, text: '#ffe1a3' },
-      { label: 'Waymarks', value: status.waymarks, width: 126, color: 0xc9a6ff, text: '#eadbff' },
-      { label: 'Supplies', value: status.supplies, width: 116, color: 0xffb86b, text: '#ffe4c2' }
+      { label: 'Cohesion', value: status.cohesion, width: 140, color: 0x8fd6a0, text: '#dff5e7' },
+      { label: 'Scrap', value: status.scrap, width: 96, color: 0x8df4ff, text: '#dffbff' }
     ];
-    let x = 96;
+    let x = 80;
     chips.forEach((chip) => {
       const cx = x + chip.width / 2;
-      this.add.rectangle(cx, y, chip.width, 30, 0x0a1320, 0.94)
+      this.add.rectangle(cx, y, chip.width, 28, 0x0a1320, 0.94)
         .setStrokeStyle(1.5, chip.color, 0.82);
-      this.add.text(x + 10, y - 9, chip.label, {
+      this.add.text(x + 10, y - 8, chip.label, {
         fontFamily: 'Arial',
         fontSize: '10px',
         fontStyle: 'bold',
         color: '#7f93a8'
       });
-      this.add.text(x + chip.width - 10, y - 10, `${chip.value}`, {
+      this.add.text(x + chip.width - 10, y - 9, `${chip.value}`, {
         fontFamily: 'Arial',
         fontSize: '15px',
         fontStyle: 'bold',
         color: chip.text
       }).setOrigin(1, 0);
-      x += chip.width + 8;
+      x += chip.width + 10;
     });
+    const kitW = 342;
+    const kitCx = x + kitW / 2;
+    this.add.rectangle(kitCx, y, kitW, 28, 0x0a1320, 0.9)
+      .setStrokeStyle(1.5, 0xd8a840, 0.65);
+    this.add.text(kitCx, y - 9, `Deck ${status.deckSize}   /   Waymarks ${status.waymarks}   /   Supplies ${status.supplies}`, {
+      fontFamily: 'Arial',
+      fontSize: '14px',
+      fontStyle: 'bold',
+      color: '#ffe1a3'
+    }).setOrigin(0.5, 0);
   }
 
   private renderRouteMap() {
@@ -2183,12 +2214,11 @@ class RouteScene extends Phaser.Scene {
 
     currentMap().nodes.forEach((node) => this.renderRouteNode(node, this.selectableNodeIds.has(node.id)));
 
-    this.renderBossPrepPanel();
     this.renderSelectedNodePanel();
-    this.renderRouteLog();
     this.renderRouteLegend();
+    this.renderRouteLog();
 
-    this.add.text(96, 690, 'Click a crossing to inspect it   ·   Enter: take selected   ·   Esc: back', {
+    this.add.text(96, 692, 'Click a crossing to inspect it   /   Enter: take selected   /   Esc: back', {
       fontFamily: 'Arial',
       fontSize: '14px',
       color: '#7f93a8'
@@ -2215,34 +2245,33 @@ class RouteScene extends Phaser.Scene {
 
   private renderRouteColumnGuides() {
     const columns = currentMap().columns;
-    const leftX = 92;
-    const rightX = 872;
+    const { left: leftX, right: rightX, top, bottom } = this.routeLayout().graph;
     const colCount = Math.max(1, columns.length);
     const graphics = this.add.graphics();
     for (let column = 0; column < colCount; column += 1) {
       const x = colCount > 1 ? leftX + (column * (rightX - leftX)) / (colCount - 1) : (leftX + rightX) / 2;
       graphics.lineStyle(1, 0x2a3a4d, column === 0 || column === colCount - 1 ? 0.26 : 0.16);
-      graphics.lineBetween(x, 216, x, 566);
+      graphics.lineBetween(x, top, x, bottom);
     }
   }
 
   // An icon key so every crossing type is identifiable without hovering.
   private renderRouteLegend() {
+    const footer = this.routeLayout().footer;
     const types: RouteNode['type'][] = ['street', 'rival', 'boss', 'basin', 'nest', 'market', 'signal', 'cache'];
-    const stripCx = 476;
-    const typeY = 606;
-    const riskY = 636;
-    const left = 96;
-    this.add.rectangle(stripCx, 621, 800, 78, 0x0a1320, 0.92).setStrokeStyle(1, 0x2a3a4d, 0.85);
-    this.add.text(left, typeY - 22, 'LEGEND', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#7f93a8' });
+    const typeY = footer.y + 21;
+    const riskY = footer.y + 47;
+    const left = footer.x + 18;
+    this.add.rectangle(footer.cx, footer.cy, footer.w, footer.h, 0x0a1320, 0.9).setStrokeStyle(1, 0x2a3a4d, 0.82);
+    this.add.text(left, typeY - 20, 'LEGEND', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#7f93a8' });
 
     let cx = left;
     for (const t of types) {
-      this.add.circle(cx + 10, typeY, 11, 0x111a27, 0.98).setStrokeStyle(1.5, 0x49606d, 0.75);
-      this.renderRouteNodeTypeIcon(t, cx + 10, typeY, 22);
+      this.add.circle(cx + 9, typeY, 10, 0x111a27, 0.98).setStrokeStyle(1.5, 0x49606d, 0.75);
+      this.renderRouteNodeTypeIcon(t, cx + 9, typeY, 20);
       const label = routeNodeTypeLabel(t).replace(' Encounter', '').replace(' Workshop', '').replace('Rooftop ', '');
-      this.add.text(cx + 26, typeY, label, { fontFamily: 'Arial', fontSize: '13px', color: '#cdd9e6' }).setOrigin(0, 0.5);
-      cx += 26 + label.length * 7.5 + 20;
+      this.add.text(cx + 23, typeY, label, { fontFamily: 'Arial', fontSize: '12px', color: '#cdd9e6' }).setOrigin(0, 0.5);
+      cx += 23 + label.length * 6.8 + 16;
     }
 
     this.add.text(left, riskY, 'COMBAT RISK', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#7f93a8' }).setOrigin(0, 0.5);
@@ -2253,55 +2282,121 @@ class RouteScene extends Phaser.Scene {
       this.add.text(rx + 16, riskY, lbl, { fontFamily: 'Arial', fontSize: '13px', color: routeNodeRiskHex(r) }).setOrigin(0, 0.5);
       rx += 16 + lbl.length * 7.5 + 22;
     }
-    this.add.text(rx + 6, riskY, '(pip on combat crossings)', { fontFamily: 'Arial', fontSize: '12px', color: '#6a7d90' }).setOrigin(0, 0.5);
+    this.add.text(rx + 6, riskY, '(combat pip)', { fontFamily: 'Arial', fontSize: '11px', color: '#6a7d90' }).setOrigin(0, 0.5);
   }
 
   // Two-step flow: clicking a node selects it (shows this panel); the confirm
   // button commits (next-level-implementation-spec Phase 2 Selected Node Panel).
   private renderSelectedNodePanel() {
-    const px = 1052;
-    const py = 392;
-    const pw = 300;
-    this.add.rectangle(px, py, pw, 432, 0x0c1420, 0.95).setStrokeStyle(2, 0x2a3a4d, 0.92);
+    const panel = this.routeLayout().inspector;
+    const px = panel.cx;
+    const py = panel.cy;
+    const pw = panel.w;
+    const ph = panel.h;
+    const top = panel.y;
+    const left = panel.x + 20;
+    this.add.rectangle(px, py, pw, ph, 0x0c1420, 0.95).setStrokeStyle(2, 0x2a3a4d, 0.92);
 
     const node = this.selectedNodeId
       ? currentMap().nodes.find((candidate) => candidate.id === this.selectedNodeId)
       : undefined;
     if (!node) {
-      this.add.text(px, py, 'Click a crossing glyph to see\nits risk, reward, and lesson.', {
+      this.add.text(px, top + 78, 'Click a crossing glyph to see\nits risk, reward, and lesson.', {
         fontFamily: 'Arial', fontSize: '15px', color: '#91a6b8', align: 'center'
       }).setOrigin(0.5);
+      this.renderInspectorBossPrep(left, top + 170, pw - 40);
       return;
     }
 
     const detail = this.nodeDetail(node);
-    const left = px - pw / 2 + 20;
-    let yy = py - 198;
-    this.add.text(left, yy, detail.title, { fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffe1a3', wordWrap: { width: pw - 40 } });
+    let yy = top + 22;
+    this.add.circle(panel.x + pw - 48, top + 48, 31, 0x111a27, 0.98).setStrokeStyle(2, 0x49606d, 0.8);
+    this.renderRouteNodeTypeIcon(node.type, panel.x + pw - 48, top + 48, 52);
+    this.add.text(left, yy, detail.title, { fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffe1a3', wordWrap: { width: pw - 108 } });
     yy += 36;
-    this.add.text(left, yy, `${detail.type}  ·  ${node.risk.toUpperCase()} RISK`, { fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: routeNodeRiskHex(node.risk) });
+    this.add.text(left, yy, `${detail.type}  /  ${node.risk.toUpperCase()} RISK`, { fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: routeNodeRiskHex(node.risk) });
     yy += 30;
     this.add.text(left, yy, detail.lesson, { fontFamily: 'Arial', fontSize: '14px', color: '#cdd9e6', lineSpacing: 2, wordWrap: { width: pw - 40 } });
-    yy += 88;
+    yy += 76;
     if (detail.rewards) {
       this.add.text(left, yy, 'REWARD BIAS', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#7f93a8' });
       yy += 18;
       this.add.text(left, yy, detail.rewards, { fontFamily: 'Arial', fontSize: '13px', color: '#8df4ff', wordWrap: { width: pw - 40 } });
-      yy += 48;
+      yy += 42;
     }
+    const badgeHeight = this.renderInspectorRewardBadges(node, left, yy, pw - 40);
+    yy += badgeHeight + (badgeHeight > 0 ? 14 : 0);
     if (detail.bossPrep) {
       this.add.text(left, yy, detail.bossPrep, { fontFamily: 'Arial', fontSize: '13px', color: '#ffb38a', wordWrap: { width: pw - 40 } });
+      yy += 34;
     }
 
+    this.renderInspectorBossPrep(left, Math.min(Math.max(yy, top + 276), top + ph - 216), pw - 40);
+
     if (this.selectableNodeIds.has(node.id)) {
-      const btn = this.add.rectangle(px, py + 178, pw - 44, 46, 0x274536, 0.96)
+      const btn = this.add.rectangle(px, top + ph - 40, pw - 44, 46, 0x274536, 0.96)
         .setStrokeStyle(2, 0x6fd69a, 1)
         .setInteractive({ useHandCursor: true });
       btn.on('pointerdown', () => this.commitRouteNode(node.id));
-      this.add.text(px, py + 178, 'Take this route', { fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#dffaeb' }).setOrigin(0.5);
+      this.add.text(px, top + ph - 40, 'Take this route', { fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#dffaeb' }).setOrigin(0.5);
     } else {
-      this.add.text(px, py + 178, 'Not reachable from here.', { fontFamily: 'Arial', fontSize: '13px', color: '#7f93a8' }).setOrigin(0.5);
+      this.add.text(px, top + ph - 40, 'Not reachable from here.', { fontFamily: 'Arial', fontSize: '13px', color: '#7f93a8' }).setOrigin(0.5);
     }
+  }
+
+  private renderInspectorRewardBadges(node: RouteNode, left: number, top: number, width: number) {
+    const badges = this.routeRewardBadges(node).slice(0, 5);
+    if (badges.length === 0) return 0;
+    this.add.text(left, top, 'LIKELY FINDS', {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#7f93a8'
+    });
+    const gap = Math.min(48, width / Math.max(1, badges.length));
+    const startX = left + 17;
+    const badgeY = top + 30;
+    badges.forEach((badge, index) => {
+      const bx = startX + index * gap;
+      this.add.circle(bx, badgeY, 15, 0x07101c, 0.98)
+        .setStrokeStyle(1.5, badge.color, 0.94);
+      this.add.text(bx, badgeY - 1, badge.icon, {
+        fontFamily: 'Arial',
+        fontSize: '12px',
+        fontStyle: 'bold',
+        color: badge.text,
+        stroke: '#020409',
+        strokeThickness: 2
+      }).setOrigin(0.5);
+      this.add.text(bx, badgeY + 21, badge.label, {
+        fontFamily: 'Arial',
+        fontSize: '10px',
+        color: '#b9c7d6'
+      }).setOrigin(0.5, 0);
+    });
+    return 58;
+  }
+
+  private renderInspectorBossPrep(left: number, top: number, width: number) {
+    const prep = this.bossPrepReadiness();
+    const cx = left + width / 2;
+    this.add.rectangle(cx, top + 68, width, 136, 0x0a1320, 0.9).setStrokeStyle(1.5, 0xffb86b, 0.72);
+    this.add.text(left + 12, top + 12, 'BOSS PREP', {
+      fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#ffb86b'
+    });
+    this.add.text(left + 12, top + 31, prep.bossName, {
+      fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: '#ffe1a3', wordWrap: { width: width - 24 }
+    });
+    this.add.text(left + 12, top + 55, `Pressure: ${prep.pressure}`, {
+      fontFamily: 'Arial', fontSize: '12px', color: '#ffb38a', wordWrap: { width: width - 24 }
+    });
+    this.add.text(left + 12, top + 78, `Prep: ${prep.usefulNodes.join(', ') || 'none ahead'}`, {
+      fontFamily: 'Arial', fontSize: '12px', color: '#8df4ff', wordWrap: { width: width - 24 }
+    });
+    this.add.text(left + 12, top + 100,
+      `Cover ${prep.readiness.cover} / Damage ${prep.readiness.damage} / Recovery ${prep.readiness.recovery} / Molt ${prep.readiness.moltSafety} / Supplies ${prep.readiness.supplies}`,
+      { fontFamily: 'Arial', fontSize: '10px', color: '#cdd9e6', wordWrap: { width: width - 24 } }
+    );
   }
 
   private nodeDetail(node: RouteNode) {
@@ -2314,12 +2409,12 @@ class RouteScene extends Phaser.Scene {
           profile.preenGuaranteed ? 'Preen' : profile.preenChance ? `${Math.round(profile.preenChance * 100)}% Preen` : '',
           profile.routeMarkGuaranteed ? 'Waymark' : profile.routeMarkChance ? `${Math.round(profile.routeMarkChance * 100)}% Waymark` : '',
           profile.bossRouteMarkChoices ? `${profile.bossRouteMarkChoices} boss Waymarks` : ''
-        ].filter(Boolean).join('  ·  ')
+        ].filter(Boolean).join('  /  ')
       : nonCombatRewardBias(node.type);
     const bossPrep = node.type === 'boss'
       ? `Final crossing. ${encounter?.name ?? 'The boss'} tests Cover and Molt restraint.`
       : node.type === 'rival'
-        ? 'Rival Crew — an optional boss-prep bet for richer rewards.'
+        ? 'Rival Crew - an optional boss-prep bet for richer rewards.'
         : undefined;
     return {
       title: encounter?.name ?? routeNodeTitle(node),
@@ -2415,18 +2510,18 @@ class RouteScene extends Phaser.Scene {
     });
   }
 
-  private routeRewardBadges(node: RouteNode): Array<{ id: string; icon: string; color: number; text: string }> {
-    const addUnique = (badges: Array<{ id: string; icon: string; color: number; text: string }>, badge: { id: string; icon: string; color: number; text: string }) => {
+  private routeRewardBadges(node: RouteNode): Array<{ id: string; icon: string; color: number; text: string; label: string }> {
+    const addUnique = (badges: Array<{ id: string; icon: string; color: number; text: string; label: string }>, badge: { id: string; icon: string; color: number; text: string; label: string }) => {
       if (!badges.some((entry) => entry.id === badge.id)) badges.push(badge);
     };
-    const badges: Array<{ id: string; icon: string; color: number; text: string }> = [];
+    const badges: Array<{ id: string; icon: string; color: number; text: string; label: string }> = [];
     const defs = {
-      waymark: { id: 'waymark', icon: 'W', color: 0xc9a6ff, text: '#efe4ff' },
-      card: { id: 'card', icon: 'C', color: 0xd8a840, text: '#fff0b8' },
-      supply: { id: 'supply', icon: 'S', color: 0xffb86b, text: '#ffe7c9' },
-      preen: { id: 'preen', icon: 'P', color: 0x24d0d6, text: '#dffbff' },
-      heal: { id: 'heal', icon: '+', color: 0x8fd6a0, text: '#e4fbe9' },
-      scrap: { id: 'scrap', icon: '$', color: 0x8df4ff, text: '#dffbff' }
+      waymark: { id: 'waymark', icon: 'W', color: 0xc9a6ff, text: '#efe4ff', label: 'Waymark' },
+      card: { id: 'card', icon: 'C', color: 0xd8a840, text: '#fff0b8', label: 'Card' },
+      supply: { id: 'supply', icon: 'S', color: 0xffb86b, text: '#ffe7c9', label: 'Supply' },
+      preen: { id: 'preen', icon: 'P', color: 0x24d0d6, text: '#dffbff', label: 'Preen' },
+      heal: { id: 'heal', icon: '+', color: 0x8fd6a0, text: '#e4fbe9', label: 'Heal' },
+      scrap: { id: 'scrap', icon: '$', color: 0x8df4ff, text: '#dffbff', label: 'Scrap' }
     };
     const fromEffect = (effect: string) => {
       const parsed = parseEffect(effect);
@@ -2458,9 +2553,9 @@ class RouteScene extends Phaser.Scene {
 
     const profile = rewardProfileForRouteNode(node);
     if (profile) {
-      if (node.type === 'rival' || node.type === 'boss' || profile.routeMarkGuaranteed || profile.routeMarkChance) addUnique(badges, defs.waymark);
+      if (node.type === 'rival' || node.type === 'boss' || profile.routeMarkGuaranteed) addUnique(badges, defs.waymark);
       if (node.type === 'rival' || node.type === 'boss') addUnique(badges, defs.card);
-      if (profile.preenGuaranteed || profile.preenChance) addUnique(badges, defs.preen);
+      if (node.type === 'rival' || node.type === 'boss' || profile.preenGuaranteed) addUnique(badges, defs.preen);
       return badges;
     }
 
@@ -2478,9 +2573,10 @@ class RouteScene extends Phaser.Scene {
 
   private showNodeTooltip(node: RouteNode, x: number, anchorY: number) {
     const detail = this.nodeDetail(node);
-    const line2 = `${detail.type} · ${node.risk} risk`;
+    const line2 = `${detail.type} / ${node.risk} risk`;
     const width = Math.max(detail.title.length, line2.length) * 7 + 26;
-    const cx = Math.max(width / 2 + 6, Math.min(900 - width / 2, x));
+    const graph = this.routeLayout().graph;
+    const cx = Math.max(graph.left + width / 2, Math.min(graph.right - width / 2, x));
     const top = anchorY - 22;
     const container = this.add.container(0, 0);
     container.add(this.add.rectangle(cx, top, width, 44, 0x05161f, 0.98).setStrokeStyle(1, 0x7ab8d6, 0.95));
@@ -2495,12 +2591,11 @@ class RouteScene extends Phaser.Scene {
     const laneIndex = Math.max(0, columnNodes.indexOf(node.id));
     // Spread evenly across the graph area (left of the detail panel) so any number
     // of columns/lanes fits without overflow.
-    const leftX = 92;
-    const rightX = 872;
+    const { left: leftX, right: rightX, top, bottom } = this.routeLayout().graph;
     const colCount = Math.max(1, columns.length);
     const x = colCount > 1 ? leftX + (node.column * (rightX - leftX)) / (colCount - 1) : (leftX + rightX) / 2;
-    const laneGap = Math.min(112, 376 / Math.max(1, columnNodes.length));
-    const y = 388 + (laneIndex - (columnNodes.length - 1) / 2) * laneGap;
+    const laneGap = Math.min(114, (bottom - top - 42) / Math.max(1, columnNodes.length));
+    const y = (top + bottom) / 2 + (laneIndex - (columnNodes.length - 1) / 2) * laneGap;
     return { x, y };
   }
 
@@ -2622,7 +2717,8 @@ class RouteScene extends Phaser.Scene {
       this.resolveRouteEffect(effect);
     }
     if (node.type === 'signal') {
-      if (this.hasRouteMark('wire_map')) this.runState.scrap += SIGNAL_SCRAP_REWARD;
+      const signalScrap = this.routeMarkValue('signalResolved', 'gainScrap');
+      if (signalScrap > 0) this.runState.scrap += signalScrap;
       (this.runState.signalChoices ??= []).push({ signalId: node.payloadId, choiceKey: key });
     }
     this.runState.routeLog.push(`${node.label}: ${choice.text}`);
@@ -2877,6 +2973,7 @@ class RouteScene extends Phaser.Scene {
   private applyRouteNodeReward(node: RouteNode) {
     const recovery = routeNodeRecovery(node, this.runState.routeMarks);
     if (recovery > 0) this.runState.currentHp = Math.min(this.runMaxHp(), this.runState.currentHp + recovery);
+    let signalScrap = 0;
 
     if (node.type === 'cache') {
       this.runState.scrap += CACHE_SCRAP_REWARD;
@@ -2884,8 +2981,9 @@ class RouteScene extends Phaser.Scene {
       if (mark) this.addRouteMark(mark.id);
     }
 
-    if (node.type === 'signal' && this.hasRouteMark('wire_map')) {
-      this.runState.scrap += SIGNAL_SCRAP_REWARD;
+    if (node.type === 'signal') {
+      signalScrap = this.routeMarkValue('signalResolved', 'gainScrap');
+      if (signalScrap > 0) this.runState.scrap += signalScrap;
     }
 
     if (node.type === 'nest') {
@@ -2896,84 +2994,73 @@ class RouteScene extends Phaser.Scene {
 
     this.runState.routeLog.push(routeNodeResolutionText(node, {
       recovery,
-      scrap: node.type === 'cache' ? CACHE_SCRAP_REWARD : node.type === 'signal' && this.hasRouteMark('wire_map') ? SIGNAL_SCRAP_REWARD : 0
+      scrap: node.type === 'cache' ? CACHE_SCRAP_REWARD : signalScrap
     }));
   }
 
   private renderMarketOverlay() {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.78)
       .setInteractive({ useHandCursor: false });
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 940, 520, 0x0d1420, 0.98)
-      .setStrokeStyle(3, 0xd8a840, 0.95);
-    this.add.text(210, 110, 'Market', {
-      fontFamily: 'Arial',
-      fontSize: '40px',
-      fontStyle: 'bold',
-      color: '#ffe1a3',
-      stroke: '#000000',
-      strokeThickness: 5
+    const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2, 940, 520, {
+      eyebrow: 'Rooftop Stall',
+      title: 'Market',
+      accent: UI_FIELD.gold,
+      fill: UI_FIELD.panelWarm
     });
-    this.add.text(210, 158, `Scrap ${this.runState.scrap}`, {
+    this.add.text(210, 178, `Scrap ${this.runState.scrap}`, {
       fontFamily: 'Arial',
       fontSize: '19px',
       fontStyle: 'bold',
-      color: '#8df4ff'
+      color: '#f0c36f'
     });
-    this.add.text(210, 188, this.marketMessage, {
+    this.add.text(430, 154, this.marketMessage, {
       fontFamily: 'Arial',
-      fontSize: '15px',
-      color: '#b9c7d6',
-      wordWrap: { width: 820 }
+      fontSize: '14px',
+      color: '#d7c5a6',
+      wordWrap: { width: 520 }
     });
 
-    this.renderMarketCardOffer(250, 372);
-    this.renderMarketRouteMarkOffer(640, 286);
-    this.renderMarketPreenOffer(640, 430);
+    this.renderMarketCardOffer(310, 372);
+    this.renderMarketRouteMarkOffer(680, 286);
+    this.renderMarketPreenOffer(680, 430);
 
-    const leave = this.add.rectangle(1010, 110, 124, 40, 0x33252b, 0.98)
-      .setStrokeStyle(2, 0xff6b57, 0.95)
-      .setInteractive({ useHandCursor: true });
-    leave.on('pointerdown', () => this.leaveMarket());
-    this.add.text(1010, 110, 'Leave', {
-      fontFamily: 'Arial',
-      fontSize: '16px',
-      fontStyle: 'bold',
-      color: '#ffd5cc'
-    }).setOrigin(0.5);
+    renderCloseControl(this, (obj) => {}, frame.right - 80, frame.top + 56, () => this.leaveMarket());
   }
 
   private renderMarketCardOffer(x: number, y: number) {
     const offer = this.marketCardOffer();
     const enabled = !!offer && this.runState.scrap >= MARKET_CARD_PRICE;
-    const panel = this.add.rectangle(x, y, 270, 340, 0x141f2f, 0.97)
-      .setStrokeStyle(2, enabled ? 0xd8a840 : 0x49606d, enabled ? 0.95 : 0.65);
+    const panel = this.add.rectangle(x, y, 270, 340, 0x1a1711, 0.96)
+      .setStrokeStyle(1, enabled ? 0xd8a840 : 0x6f6044, enabled ? 0.8 : 0.45);
+    this.add.rectangle(x, y - 156, 236, 2, enabled ? 0xd8a840 : 0x6f6044, enabled ? 0.75 : 0.35);
     if (offer) {
       panel.setInteractive({ useHandCursor: false });
       panel.on('pointerover', () => this.showHoverCardDetail(offer, 'Market offer', MARKET_CARD_PRICE, x, y));
       panel.on('pointerout', () => this.hideHoverCardDetail());
     }
     this.add.text(x - 108, y - 148, 'Add to the Flock', marketOfferTitleStyle());
-    this.add.text(x - 108, y - 122, `${MARKET_CARD_PRICE} Scrap`, marketOfferPriceStyle(enabled));
+    this.add.text(x + 44, y - 148, `${MARKET_CARD_PRICE} Scrap`, marketOfferPriceStyle(enabled));
     if (offer) {
       const key = cardArtKey(offer);
       if (key && this.textures.exists(key)) {
-        this.add.image(x, y - 12, key).setDisplaySize(148, 222).setAlpha(0.78);
+        this.add.image(x, y + 6, key).setDisplaySize(138, 207).setAlpha(0.82);
       }
-      this.add.text(x - 108, y - 70, displayName(offer), {
+      this.add.rectangle(x, y - 82, 232, 70, 0x05080e, 0.72)
+        .setStrokeStyle(1, 0xd8a840, 0.25);
+      this.add.text(x - 98, y - 110, displayName(offer), {
         fontFamily: 'Arial',
-        fontSize: '20px',
+        fontSize: '18px',
         fontStyle: 'bold',
         color: '#ffe1a3',
-        wordWrap: { width: 216 }
+        wordWrap: { width: 196 }
       });
-      this.add.text(x - 108, y - 22, `${offer.bird} / ${cardLabel(offer)}`, {
+      this.add.text(x - 98, y - 64, `${offer.bird} / ${cardLabel(offer)}`, {
         fontFamily: 'Arial',
         fontSize: '13px',
         fontStyle: 'bold',
         color: '#7ab8d6',
-        wordWrap: { width: 216 }
+        wordWrap: { width: 196 }
       });
-      this.add.text(x - 108, y + 30, displayText(offer), detailBodyStyle(216));
     } else {
       this.add.text(x - 108, y - 50, this.marketBoughtCard ? 'That recruitment lead has moved on.' : 'Every available crew card is already in the flock.', detailBodyStyle(216));
     }
@@ -2983,8 +3070,9 @@ class RouteScene extends Phaser.Scene {
   private renderMarketRouteMarkOffer(x: number, y: number) {
     const mark = this.marketRouteMarkOffer();
     const enabled = !!mark && this.runState.scrap >= mark.price;
-    this.add.rectangle(x, y, 410, 112, 0x141f2f, 0.97)
-      .setStrokeStyle(2, enabled ? 0xd8a840 : 0x49606d, enabled ? 0.95 : 0.65);
+    this.add.rectangle(x, y, 410, 112, 0x1a1711, 0.95)
+      .setStrokeStyle(1, enabled ? 0xd8a840 : 0x6f6044, enabled ? 0.75 : 0.42);
+    this.add.rectangle(x, y - 48, 372, 2, enabled ? 0xd8a840 : 0x6f6044, enabled ? 0.7 : 0.35);
     this.add.text(x - 180, y - 36, 'Waymark', marketOfferTitleStyle());
     this.add.text(x - 180, y - 10, mark ? `${mark.name} / ${mark.price} Scrap` : 'Sold out', marketOfferPriceStyle(enabled));
     this.add.text(x - 180, y + 18, mark ? mark.text : this.marketBoughtRouteMark ? 'The route-board pin is already claimed.' : 'No unclaimed marks remain in this market.', detailBodyStyle(260));
@@ -2995,8 +3083,9 @@ class RouteScene extends Phaser.Scene {
     const card = this.marketPreenCandidate();
     const price = this.marketPreenPrice();
     const enabled = !!card && this.runState.scrap >= price;
-    const panel = this.add.rectangle(x, y, 410, 112, 0x141f2f, 0.97)
-      .setStrokeStyle(2, enabled ? 0x24d0d6 : 0x49606d, enabled ? 0.95 : 0.65);
+    const panel = this.add.rectangle(x, y, 410, 112, 0x14171a, 0.95)
+      .setStrokeStyle(1, enabled ? 0x24d0d6 : 0x59606a, enabled ? 0.72 : 0.42);
+    this.add.rectangle(x, y - 48, 372, 2, enabled ? 0x24d0d6 : 0x59606a, enabled ? 0.68 : 0.32);
     if (card) {
       panel.setInteractive({ useHandCursor: false });
       panel.on('pointerover', () => this.showHoverCardDetail(card, 'Preen candidate', price, x, y));
@@ -3009,18 +3098,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderMarketButton(x: number, y: number, label: string, enabled: boolean, onClick: () => void) {
-    const button = this.add.rectangle(x, y, 112, 34, enabled ? 0x20334a : 0x101827, enabled ? 0.98 : 0.5)
-      .setStrokeStyle(2, enabled ? 0xd8a840 : 0x49606d, enabled ? 0.95 : 0.55);
-    if (enabled) {
-      button.setInteractive({ useHandCursor: true });
-      button.on('pointerdown', onClick);
-    }
-    this.add.text(x, y, label, {
-      fontFamily: 'Arial',
-      fontSize: '14px',
-      fontStyle: 'bold',
-      color: enabled ? '#ffe1a3' : '#596a78'
-    }).setOrigin(0.5);
+    renderFieldButton(this, (obj) => {}, x, y, 112, 34, label, enabled, onClick, UI_FIELD.gold);
   }
 
   private buyMarketCard() {
@@ -3089,7 +3167,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private marketPreenPrice() {
-    return Math.max(35, MARKET_PREEN_PRICE - (this.hasRouteMark('patched_harness') ? PATCHED_HARNESS_DISCOUNT : 0));
+    return Math.max(35, MARKET_PREEN_PRICE - this.routeMarkValue('passive', 'reducePreenPrice'));
   }
 
   private firstUnownedRouteMark() {
@@ -3134,19 +3212,27 @@ class RouteScene extends Phaser.Scene {
   private renderRouteFlockOverlay() {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.78)
       .setInteractive({ useHandCursor: false });
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 760, 540, 0x0d1420, 0.98).setStrokeStyle(3, 0x7ab8d6, 0.95);
-    this.add.text(260, 118, 'Flock Stats', { fontFamily: 'Arial', fontSize: '30px', fontStyle: 'bold', color: '#ffe1a3' });
     this.add.text(260, 156, `Cohesion ${this.runState.currentHp}/${this.runMaxHp()}   ·   Scrap ${this.runState.scrap}   ·   Waymarks ${this.runState.routeMarks.length}`, {
       fontFamily: 'Arial', fontSize: '15px', color: '#8df4ff'
     });
     const rows = buildFlockStatRows(cardsFromSave(this.runState.deck), this.runMaxHp());
-    renderFlockStatTable(this, () => {}, rows, 260, 196);
-    this.add.text(260, 588, 'Passive stats from owned cards. Build them up across the run.', {
-      fontFamily: 'Arial', fontSize: '14px', color: '#91a6b8'
+
+    const panelW = 820;
+    const panelH = 540;
+    const panelX = GAME_WIDTH / 2;
+    const panelY = GAME_HEIGHT / 2;
+    const panelTop = panelY - panelH / 2;
+    const frame = renderFieldPanel(this, (obj) => {}, panelX, panelY, panelW, panelH, {
+      eyebrow: 'Crew Dossier',
+      title: 'Flock Stats',
+      subtitle: 'Passive bonuses from owned cards. Build them up across the run.',
+      accent: UI_FIELD.cyan
     });
-    const close = this.add.rectangle(940, 152, 96, 34, 0x33252b, 0.98).setStrokeStyle(2, 0xff6b57, 0.95).setInteractive({ useHandCursor: true });
-    close.on('pointerdown', () => this.closeFlockOverlay());
-    this.add.text(940, 152, 'Close', { fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: '#ffd5cc' }).setOrigin(0.5);
+    this.add.text(panelX, panelTop + 108, `Cohesion ${this.runState.currentHp}/${this.runMaxHp()}   /   Scrap ${this.runState.scrap}   /   Waymarks ${this.runState.routeMarks.length}`, {
+      fontFamily: 'Arial', fontSize: '15px', color: '#8df4ff'
+    }).setOrigin(0.5);
+    renderFlockStatTable(this, () => {}, rows, 390, panelTop + 148);
+    renderCloseControl(this, (obj) => {}, frame.right - 72, frame.top + 54, () => this.closeFlockOverlay());
   }
 
   private closeDeckOverlay() {
@@ -3172,37 +3258,26 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderMapDeckOverlay() {
-    const scrim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.76)
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.76)
       .setInteractive({ useHandCursor: false });
-    const panel = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 1060, 570, 0x0d1420, 0.98)
-      .setStrokeStyle(3, 0xd8a840, 0.95);
-    const close = this.add.rectangle(1110, 96, 112, 36, 0x33252b, 0.98)
-      .setStrokeStyle(2, 0xff6b57, 0.95)
-      .setInteractive({ useHandCursor: true });
-    close.on('pointerdown', () => this.closeDeckOverlay());
-
-    this.add.text(1110, 96, 'Close', {
-      fontFamily: 'Arial',
-      fontSize: '15px',
-      fontStyle: 'bold',
-      color: '#ffd5cc'
-    }).setOrigin(0.5);
+    const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2, 1060, 570, {
+      eyebrow: 'Field Binder',
+      title: `Deck Review (${this.mapDeckCards().length})`,
+      subtitle: `Flock deck / Cohesion ${this.runState.currentHp}/${this.runMaxHp()}`,
+      accent: UI_FIELD.gold
+    });
+    renderCloseControl(this, (obj) => {}, frame.right - 76, frame.top + 56, () => this.closeDeckOverlay());
 
     this.renderMapCardBrowser();
   }
 
   private renderMapCardBrowser() {
     const cards = this.mapDeckCards();
-    this.add.text(140, 86, `Deck Review (${cards.length})`, {
+    this.add.text(140, 166, 'CARD INDEX', {
       fontFamily: 'Arial',
-      fontSize: '32px',
+      fontSize: '11px',
       fontStyle: 'bold',
-      color: '#ffe1a3'
-    });
-    this.add.text(140, 126, `Flock deck / Cohesion ${this.runState.currentHp}/${this.runMaxHp()}`, {
-      fontFamily: 'Arial',
-      fontSize: '16px',
-      color: '#b9c7d6'
+      color: '#91a6b8'
     });
 
     const selectedEntry = getInspectedEntry(cards, this.inspectedCardId);
@@ -3222,12 +3297,13 @@ class RouteScene extends Phaser.Scene {
 
     visible.forEach(({ card, zone }, index) => {
       const x = 140;
-      const y = 176 + index * CARD_REVIEW_ROW_H;
+      const y = 198 + index * CARD_REVIEW_ROW_H;
       const selected = selectedEntry?.card.id === card.id;
-      const rowBg = this.add.rectangle(x + 150, y + 15, 300, 32, selected ? 0x21344a : 0x141f2f, 0.96)
-        .setStrokeStyle(selected ? 2 : 1, selected ? 0xd8a840 : card.upgraded ? 0x24d0d6 : 0x49606d, selected ? 1 : 0.8)
+      const rowBg = this.add.rectangle(x + 150, y + 15, 312, 34, selected ? 0x1d2224 : 0x0f151d, selected ? 0.96 : 0.44)
+        .setStrokeStyle(selected ? 1.5 : 1, selected ? 0xd8a840 : card.upgraded ? 0x24d0d6 : 0xffffff, selected ? 0.95 : 0.08)
         .setInteractive({ useHandCursor: true });
       rowBg.on('pointerdown', () => onInspect(card.id));
+      this.add.rectangle(x + 150, y + 31, 280, 1, card.upgraded ? 0x24d0d6 : 0xd8a840, selected ? 0.6 : 0.18);
       this.add.circle(x + 14, y + 15, 13, card.cost === 0 ? 0x24d0d6 : 0xd8a840, 1);
       this.add.text(x + 14, y + 15, `${card.cost}`, {
         fontFamily: 'Arial',
@@ -3250,9 +3326,9 @@ class RouteScene extends Phaser.Scene {
       });
     });
 
-    this.renderScrollButton(472, 192, 'Up', this.cardReviewScroll > 0, () => onScroll(-1));
-    this.renderScrollButton(472, 542, 'Down', this.cardReviewScroll < scrollMax, () => onScroll(1));
-    this.add.text(424, 568, `${this.cardReviewScroll + 1}-${this.cardReviewScroll + visible.length} / ${cards.length}`, {
+    this.renderScrollButton(472, 214, 'Up', this.cardReviewScroll > 0, () => onScroll(-1));
+    this.renderScrollButton(472, 610, 'Down', this.cardReviewScroll < scrollMax, () => onScroll(1));
+    this.add.text(424, 632, `${this.cardReviewScroll + 1}-${this.cardReviewScroll + visible.length} / ${cards.length}`, {
       fontFamily: 'Arial',
       fontSize: '12px',
       color: '#91a6b8'
@@ -3260,18 +3336,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderScrollButton(x: number, y: number, label: string, enabled: boolean, onClick: () => void) {
-    const button = this.add.rectangle(x, y, 70, 30, enabled ? 0x18283a : 0x101827, enabled ? 0.98 : 0.5)
-      .setStrokeStyle(1, enabled ? 0xd8a840 : 0x49606d, enabled ? 0.95 : 0.55);
-    if (enabled) {
-      button.setInteractive({ useHandCursor: true });
-      button.on('pointerdown', onClick);
-    }
-    this.add.text(x, y, label, {
-      fontFamily: 'Arial',
-      fontSize: '13px',
-      fontStyle: 'bold',
-      color: enabled ? '#ffe1a3' : '#596a78'
-    }).setOrigin(0.5);
+    renderFieldButton(this, (obj) => {}, x, y, 72, 28, label, enabled, onClick, UI_FIELD.gold);
   }
 
   private renderRouteCardDetailPanel(card: Card, zone: string) {
@@ -3371,44 +3436,22 @@ class RouteScene extends Phaser.Scene {
     };
   }
 
-  private renderBossPrepPanel() {
-    const prep = this.bossPrepReadiness();
-    const x = 492;
-    const y = 214;
-    const w = 760;
-    this.add.rectangle(x, y, w, 44, 0x0a1320, 0.9).setStrokeStyle(1, 0xffb86b, 0.75);
-    this.add.text(x - w / 2 + 14, y - 16, `Boss Prep: ${prep.bossName}`, {
-      fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: '#ffe1a3'
-    });
-    this.add.text(x + w / 2 - 14, y - 16, `Prep nodes: ${prep.usefulNodes.join(', ') || 'none ahead'}`, {
-      fontFamily: 'Arial', fontSize: '12px', color: '#8df4ff'
-    }).setOrigin(1, 0);
-    this.add.text(x - w / 2 + 14, y + 5, `Pressure: ${prep.pressure}`, {
-      fontFamily: 'Arial', fontSize: '12px', color: '#ffb38a'
-    });
-    this.add.text(x + w / 2 - 14, y + 5,
-      `Cover ${prep.readiness.cover}  /  Damage ${prep.readiness.damage}  /  Recovery ${prep.readiness.recovery}  /  Molt ${prep.readiness.moltSafety}  /  Supplies ${prep.readiness.supplies}`,
-      { fontFamily: 'Arial', fontSize: '12px', color: '#cdd9e6' }
-    ).setOrigin(1, 0);
-  }
-
   private renderRouteLog() {
-    this.add.rectangle(1030, 614, 288, 78, 0x0d1420, 0.86)
-      .setStrokeStyle(1, 0x49606d, 0.85);
-    this.add.text(902, 584, 'Signals', {
+    const footer = this.routeLayout().footer;
+    const y = footer.y + 47;
+    this.add.text(520, y, 'SIGNALS', {
       fontFamily: 'Arial',
-      fontSize: '14px',
+      fontSize: '11px',
       fontStyle: 'bold',
-      color: '#ffe1a3'
-    });
+      color: '#7f93a8'
+    }).setOrigin(0, 0.5);
     const latest = this.runState.routeLog.slice(-2);
-    this.add.text(902, 604, latest.length > 0 ? latest.join('\n') : 'The first route is open.', {
+    this.add.text(575, y, latest.length > 0 ? latest[latest.length - 1] : 'The first route is open.', {
       fontFamily: 'Arial',
       fontSize: '12px',
       color: '#b9c7d6',
-      lineSpacing: 4,
-      wordWrap: { width: 250 }
-    });
+      wordWrap: { width: 285 }
+    }).setOrigin(0, 0.5);
   }
 }
 
@@ -3478,6 +3521,7 @@ class BattleScene extends Phaser.Scene {
   // renderAll() rebuilds the board, so one-shot enemy motion is queued here and
   // consumed by the next render instead of trying to animate destroyed objects.
   private enemyMotionCues = new Map<string, EnemyMotionCue>();
+  private flockMotionCue?: 'cast' | 'brace' | 'heal' | 'hit';
   private leaderSignatureUsed = new Set<string>();
   private fledglingSuitRallies = new Set<string>();
   private introPlayed = false;
@@ -3716,12 +3760,24 @@ class BattleScene extends Phaser.Scene {
   }
 
   private ensureFxTextures() {
-    if (this.textures.exists('fx-soft-dot')) return;
-    const g = this.add.graphics();
-    g.fillStyle(0xffffff, 1);
-    g.fillCircle(8, 8, 8);
-    g.generateTexture('fx-soft-dot', 16, 16);
-    g.destroy();
+    if (!this.textures.exists(COMBAT_FX_TEXTURE)) return;
+    const create = (key: string, start: number, end: number, frameRate = 18) => {
+      if (this.anims.exists(key)) return;
+      this.anims.create({
+        key,
+        frames: this.anims.generateFrameNumbers(COMBAT_FX_TEXTURE, { start, end }),
+        frameRate,
+        repeat: 0,
+      });
+    };
+    create('fx-plumes', 0, 5, 20);
+    create('fx-quills', 6, 11, 22);
+    create('fx-basins', 12, 17, 16);
+    create('fx-nests', 18, 23, 16);
+    create('fx-heal', 24, 29, 16);
+    create('fx-winded', 30, 35, 18);
+    create('fx-open-sky', 36, 41, 18);
+    create('fx-hostile', 42, 47, 20);
   }
 
   private playBattleIntro() {
@@ -3814,167 +3870,127 @@ class BattleScene extends Phaser.Scene {
   }
 
   private renderAtmosphereOverlay() {
-    const index = activeMapIndex;
-    const g = this.add.graphics();
-    if (index === 1) {
-      g.lineStyle(1, 0x7ab8d6, 0.18);
-      for (let i = 0; i < 34; i += 1) {
-        const x = (i * 47 + stableMotionSeed(activeSeed)) % GAME_WIDTH;
-        const y = 98 + ((i * 83) % 340);
-        g.lineBetween(x, y, x - 22, y + 72);
+    if (!this.textures.exists(COMBAT_ATMOSPHERE_TEXTURE)) return;
+    const frame = Math.max(0, Math.min(3, activeMapIndex));
+    const yRows = activeMapIndex === 1
+      ? [160, 252, 344, 414]
+      : activeMapIndex === 3
+        ? [138, 224, 314]
+        : [134, 226, 318];
+    const c = this.add.container(0, 0);
+    yRows.forEach((y, row) => {
+      for (let col = -1; col <= 5; col += 1) {
+        const tile = this.add.image(col * 256 + 128 + row * 37, y, COMBAT_ATMOSPHERE_TEXTURE, frame)
+          .setAlpha(activeMapIndex === 2 ? 0.42 : 0.34)
+          .setScale(1);
+        c.add(tile);
       }
-      g.lineStyle(2, 0x2fc6c9, 0.14);
-      for (let i = 0; i < 6; i += 1) {
-        const x = 210 + i * 160;
-        const y = 372 + (i % 2) * 24;
-        g.strokeEllipse(x, y, 74, 12);
-      }
-    } else if (index === 2) {
-      g.lineStyle(1, 0xc9a6ff, 0.22);
-      for (let i = 0; i < 9; i += 1) {
-        const y = 130 + i * 34;
-        g.lineBetween(270, y, 1190, y + ((i % 2) * 6));
-      }
-      g.fillStyle(0x8df4ff, 0.18);
-      for (let i = 0; i < 18; i += 1) {
-        g.fillRect(360 + ((i * 97) % 760), 116 + ((i * 53) % 300), 16 + (i % 4) * 7, 2);
-      }
-    } else if (index === 3) {
-      g.fillStyle(0xe8c24a, 0.12);
-      for (let i = 0; i < 22; i += 1) {
-        const x = 180 + ((i * 71) % 960);
-        const y = 100 + ((i * 43) % 360);
-        g.fillCircle(x, y, 1.5 + (i % 3));
-      }
-      g.lineStyle(2, 0xe8c24a, 0.11);
-      g.lineBetween(140, 172, 1140, 116);
-      g.lineBetween(180, 292, 1200, 220);
-    } else {
-      g.lineStyle(2, 0x8df4ff, 0.13);
-      for (let i = 0; i < 8; i += 1) {
-        const y = 145 + i * 34;
-        g.lineBetween(190, y, 1110, y - 54);
-      }
-      g.fillStyle(0xff9d4d, 0.22);
-      for (let i = 0; i < 10; i += 1) {
-        g.fillCircle(330 + ((i * 89) % 710), 116 + ((i * 61) % 230), 2 + (i % 2));
-      }
-    }
-    this.root.add(g);
+    });
+    this.root.add(c);
 
     if (prefersReducedMotion()) return;
-    const drift = this.add.rectangle(GAME_WIDTH / 2, 318, GAME_WIDTH * 0.92, 3, index === 2 ? 0xc9a6ff : 0x8df4ff, 0.13)
-      .setAngle(index === 1 ? 105 : -8);
-    this.root.add(drift);
     this.tweens.add({
-      targets: drift,
-      x: drift.x + (index === 1 ? -46 : 58),
-      alpha: 0.28,
-      duration: 1900 + index * 240,
+      targets: c,
+      x: activeMapIndex === 1 ? -42 : 46,
+      alpha: activeMapIndex === 2 ? 0.72 : 0.6,
+      duration: 2600 + activeMapIndex * 260,
       yoyo: true,
       repeat: -1,
       ease: 'Sine.easeInOut',
     });
   }
 
-  private pulseRing(x: number, y: number, color: number, radius = 58, duration = 460) {
-    const ring = this.add.circle(x, y, 8, 0x000000, 0).setStrokeStyle(3, color, 0.88);
-    this.fxLayer.add(ring);
-    this.tweens.add({
-      targets: ring,
-      radius,
-      alpha: 0,
-      duration,
-      ease: 'Cubic.easeOut',
-      onComplete: () => ring.destroy(),
+  private playFxAnimation(
+    animKey: string,
+    x: number,
+    y: number,
+    options: { scale?: number; alpha?: number; angle?: number; flipX?: boolean; onComplete?: () => void } = {}
+  ) {
+    if (!this.textures.exists(COMBAT_FX_TEXTURE) || !this.anims.exists(animKey)) return undefined;
+    const sprite = this.add.sprite(x, y, COMBAT_FX_TEXTURE)
+      .setOrigin(0.5)
+      .setScale(options.scale ?? 1.35)
+      .setAlpha(options.alpha ?? 0.96)
+      .setAngle(options.angle ?? 0);
+    if (options.flipX) sprite.setFlipX(true);
+    this.fxLayer.add(sprite);
+    sprite.play(animKey);
+    sprite.once('animationcomplete', () => {
+      options.onComplete?.();
+      sprite.destroy();
     });
+    return sprite;
+  }
+
+  private fxAnimForColor(color: number) {
+    if (color === 0xc98bff) return 'fx-winded';
+    if (color === 0x8fd6a0) return 'fx-heal';
+    if (color === 0x7ab8d6 || color === 0x9fb1c4) return 'fx-nests';
+    if (color === 0xff9d4d || color === 0xff9d6b || color === 0xff7a6e || color === 0xffcf7a) return 'fx-hostile';
+    return 'fx-quills';
+  }
+
+  private pulseRing(x: number, y: number, color: number, radius = 58, duration = 460) {
+    if (prefersReducedMotion()) return;
+    const scale = Phaser.Math.Clamp(radius / 44, 0.9, 2.5);
+    this.playFxAnimation(this.fxAnimForColor(color), x, y, { scale, alpha: 0.82 });
   }
 
   private sparkBurst(x: number, y: number, color: number, count = 18, speed = 145) {
-    if (!this.textures.exists('fx-soft-dot')) return;
-    const emitter = this.add.particles(x, y, 'fx-soft-dot', {
-      emitting: false,
-      frequency: -1,
-      lifespan: { min: 260, max: 620 },
-      speed: { min: speed * 0.38, max: speed },
-      scale: { start: 0.42, end: 0 },
-      alpha: { start: 0.92, end: 0 },
-      tint: color,
-      blendMode: 'ADD',
-    });
-    this.fxLayer.add(emitter);
-    emitter.explode(count);
-    this.time.delayedCall(720, () => emitter.destroy());
+    if (prefersReducedMotion()) return;
+    const anim = this.fxAnimForColor(color);
+    const repeats = count >= 22 ? 3 : count >= 14 ? 2 : 1;
+    for (let i = 0; i < repeats; i += 1) {
+      this.time.delayedCall(i * 55, () => {
+        this.playFxAnimation(anim, x + (i - 1) * 12, y + (i % 2) * 8, {
+          scale: Phaser.Math.Clamp(speed / 105, 0.9, 2.1),
+          alpha: 0.8,
+          angle: -10 + i * 18,
+          flipX: i % 2 === 1,
+        });
+      });
+    }
   }
 
   private suitPulseAt(x: number, y: number, suit: string | null | undefined, label = '') {
     const meta = suitFxMeta(suit ?? undefined);
-    this.pulseRing(x, y, meta.color, 64, 480);
-    this.sparkBurst(x, y, meta.color, 12, 115);
+    this.playFxAnimation(SUIT_FX_ANIM[suit ?? ''] ?? this.fxAnimForColor(meta.color), x, y, {
+      scale: 1.45,
+      alpha: 0.88,
+    });
     if (label) {
       floatingText(this, this.fxLayer, x, y - 58, label, meta.hex);
     }
   }
 
   private windedFx(x: number, y: number) {
-    const g = this.add.graphics();
-    g.lineStyle(3, 0xc98bff, 0.72);
-    for (let i = 0; i < 4; i += 1) {
-      const yy = y - 44 + i * 16;
-      g.lineBetween(x - 54, yy, x - 20, yy - 10);
-      g.lineBetween(x + 22, yy - 8, x + 56, yy + 4);
-    }
-    this.fxLayer.add(g);
-    this.tweens.add({
-      targets: g,
-      alpha: 0,
-      x: 10,
-      duration: 540,
-      ease: 'Quad.easeOut',
-      onComplete: () => g.destroy(),
-    });
-    this.pulseRing(x, y, 0xc98bff, 64, 440);
-    this.sparkBurst(x, y, 0xc98bff, 12, 135);
+    this.playFxAnimation('fx-winded', x, y - 10, { scale: 1.7, alpha: 0.94 });
   }
 
   private coverImpactFx(x: number, y: number, color = 0x7ab8d6) {
-    this.pulseRing(x, y - 10, color, 54, 360);
-    this.sparkBurst(x, y - 10, color, 10, 120);
+    this.playFxAnimation(color === 0x9fb1c4 ? 'fx-hostile' : 'fx-nests', x, y - 8, {
+      scale: 1.35,
+      alpha: 0.9,
+    });
   }
 
   private coverBuildFx(suit?: string | null) {
     const meta = suitFxMeta(suit ?? 'nests');
-    for (let i = 0; i < 5; i += 1) {
-      const shard = this.add.rectangle(FLOCK_FX_X - 58 + i * 29, FLOCK_FX_Y + 54 - Math.abs(2 - i) * 5, 34, 8, 0x7ab8d6, 0.76)
-        .setStrokeStyle(1, meta.color, 0.82)
-        .setAngle(-10 + i * 5);
-      this.fxLayer.add(shard);
-      this.tweens.add({
-        targets: shard,
-        y: shard.y - 34,
-        alpha: 0,
-        duration: 620,
-        ease: 'Cubic.easeOut',
-        onComplete: () => shard.destroy(),
+    this.playFxAnimation('fx-nests', FLOCK_FX_X, FLOCK_FX_Y + 20, {
+      scale: 1.85,
+      alpha: 0.9,
+    });
+    if (suit && suit !== 'nests') {
+      this.playFxAnimation(SUIT_FX_ANIM[suit] ?? this.fxAnimForColor(meta.color), FLOCK_FX_X + 22, FLOCK_FX_Y - 12, {
+        scale: 1.1,
+        alpha: 0.72,
       });
     }
-    this.pulseRing(FLOCK_FX_X, FLOCK_FX_Y + 8, 0x7ab8d6, 86, 520);
   }
 
   private healFx() {
-    this.pulseRing(FLOCK_FX_X, FLOCK_FX_Y - 12, 0x8fd6a0, 76, 560);
-    this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y - 12, 0x8fd6a0, 16, 105);
-    const glow = this.add.ellipse(FLOCK_FX_X, FLOCK_FX_Y + 32, 132, 30, 0x8fd6a0, 0.18);
-    this.fxLayer.add(glow);
-    this.tweens.add({
-      targets: glow,
-      alpha: 0,
-      scaleX: 1.5,
-      scaleY: 1.4,
-      duration: 680,
-      ease: 'Sine.easeOut',
-      onComplete: () => glow.destroy(),
-    });
+    this.playFxAnimation('fx-heal', FLOCK_FX_X, FLOCK_FX_Y + 12, { scale: 1.75, alpha: 0.92 });
+    this.playFxAnimation('fx-basins', FLOCK_FX_X + 16, FLOCK_FX_Y - 24, { scale: 1.05, alpha: 0.7 });
   }
 
   private renderFallbackBackdrop() {
@@ -4048,6 +4064,11 @@ class BattleScene extends Phaser.Scene {
     this.enemyMotionCues.set(enemyId, cue);
   }
 
+  private queueFlockMotion(cue: 'cast' | 'brace' | 'heal' | 'hit') {
+    if (prefersReducedMotion()) return;
+    this.flockMotionCue = cue;
+  }
+
   private addEnemyBreathing(group: Phaser.GameObjects.Container, enemy: Enemy, scale: number) {
     if (prefersReducedMotion()) return;
     const seed = stableMotionSeed(enemy.id);
@@ -4099,6 +4120,34 @@ class BattleScene extends Phaser.Scene {
         },
       });
     }
+  }
+
+  private applyFlockMotionCue(group: Phaser.GameObjects.Container) {
+    const cue = this.flockMotionCue;
+    if (!cue || prefersReducedMotion()) return;
+    this.flockMotionCue = undefined;
+    const motion = {
+      cast: { x: 12, y: -10, scaleX: 1.018, scaleY: 0.99, duration: 120 },
+      brace: { x: -4, y: 6, scaleX: 1.028, scaleY: 0.978, duration: 110 },
+      heal: { x: 0, y: -8, scaleX: 1.012, scaleY: 1.018, duration: 140 },
+      hit: { x: -12, y: 8, scaleX: 0.982, scaleY: 1.018, duration: 90 },
+    }[cue];
+    this.tweens.add({
+      targets: group,
+      x: FLOCK_ART_X + motion.x,
+      y: FLOCK_ART_Y + motion.y,
+      scaleX: motion.scaleX,
+      scaleY: motion.scaleY,
+      duration: motion.duration,
+      yoyo: true,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        if (!group.active) return;
+        group.x = FLOCK_ART_X;
+        group.y = FLOCK_ART_Y;
+        group.setScale(1);
+      },
+    });
   }
 
   private renderEnemyRow() {
@@ -4280,6 +4329,7 @@ class BattleScene extends Phaser.Scene {
     }).setOrigin(0.5));
 
     this.root.add(group);
+    this.applyFlockMotionCue(group);
 
     if (!prefersReducedMotion()) {
       this.tweens.add({
@@ -4303,8 +4353,10 @@ class BattleScene extends Phaser.Scene {
     const stateAccent = fstate === 'surging' ? 0x8df4ff : fstate === 'scattered' ? 0xff9d6b : 0xd8a840;
     const highlight = this.flock.molt || fstate !== 'holding';
     const stroke = this.flock.molt ? 0xc56cff : highlight ? stateAccent : 0x2a3a4d;
-    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 52, GAME_WIDTH - 20, 80, 0x0b1320, 0.9)
-      .setStrokeStyle(highlight ? 3 : 1, stroke, highlight ? 1 : 0.55));
+    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 52, GAME_WIDTH - 28, 76, 0x070b12, 0.78)
+      .setStrokeStyle(1, stroke, highlight ? 0.78 : 0.26));
+    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 16, GAME_WIDTH - 62, 2, stroke, highlight ? 0.82 : 0.32));
+    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 88, GAME_WIDTH - 62, 1, 0xffffff, 0.08));
 
     const row2 = 74;
     const left = FLOCK_HP_BAR.x - FLOCK_HP_BAR.w / 2;
@@ -4371,13 +4423,14 @@ class BattleScene extends Phaser.Scene {
 
 
   private renderChip(cx: number, cy: number, width: number, label: string, value: string, accent: number, tip?: string, onClick?: () => void) {
-    const rect = this.add.rectangle(cx, cy, width, 40, 0x0e1623, 0.92).setStrokeStyle(2, accent, 0.85);
+    const rect = this.add.rectangle(cx, cy, width, 38, 0x0b1017, 0.58).setStrokeStyle(1, accent, 0.42);
     if (onClick) {
       rect.setInteractive({ useHandCursor: true });
       rect.on('pointerdown', onClick);
     }
     if (tip) this.attachTooltip(rect, label, tip);
     this.root.add(rect);
+    this.root.add(this.add.rectangle(cx, cy - 17, width - 18, 2, accent, 0.72));
     this.root.add(this.add.text(cx - width / 2 + 10, cy - 14, label.toUpperCase(), {
       fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#91a6b8'
     }));
@@ -4488,19 +4541,21 @@ class BattleScene extends Phaser.Scene {
     hideKwTooltip();
     const n = this.hand.length;
     if (n === 0) return;
-    // Dynamic centered layout: fan/overlap only when the hand is too wide to fit
-    // the band between the draw pile (left) and discard pile (right).
+
+    this.hand.forEach((card, index) => {
+      const x = this.handCardLeft(index, n);
+      this.renderHandCard(card, x);
+    });
+  }
+
+  private handCardLeft(index: number, handSize = this.hand.length) {
     const minLeft = 142;
     const maxRight = 1140;
     const avail = maxRight - minLeft;
-    const spacing = n > 1 ? Math.min(CARD_W + 12, (avail - CARD_W) / (n - 1)) : 0;
-    const totalW = (n - 1) * spacing + CARD_W;
+    const spacing = handSize > 1 ? Math.min(CARD_W + 12, (avail - CARD_W) / (handSize - 1)) : 0;
+    const totalW = (handSize - 1) * spacing + CARD_W;
     const startX = minLeft + Math.max(0, (avail - totalW) / 2);
-
-    this.hand.forEach((card, index) => {
-      const x = Math.round(startX + index * spacing); // card left edge
-      this.renderHandCard(card, x);
-    });
+    return Math.round(startX + index * spacing);
   }
 
   private renderHandCard(card: Card, x: number) {
@@ -5023,21 +5078,10 @@ class BattleScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: false });
     this.root.add(scrim);
 
-    const panel = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 1060, 570, 0x0d1420, 0.98)
-      .setStrokeStyle(3, 0xd8a840, 0.95);
-    this.root.add(panel);
-
-    const close = this.add.rectangle(1110, 96, 112, 36, 0x33252b, 0.98)
-      .setStrokeStyle(2, 0xff6b57, 0.95)
-      .setInteractive({ useHandCursor: true });
-    close.on('pointerdown', () => this.closeOverlay());
-    this.root.add(close);
-    this.root.add(this.add.text(1110, 96, 'Close', {
-      fontFamily: 'Arial',
-      fontSize: '15px',
-      fontStyle: 'bold',
-      color: '#ffd5cc'
-    }).setOrigin(0.5));
+    const frame = renderFieldPanel(this, (obj) => this.root.add(obj), GAME_WIDTH / 2, GAME_HEIGHT / 2, 1060, 570, {
+      accent: overlay === 'flock' ? UI_FIELD.cyan : UI_FIELD.gold
+    });
+    renderCloseControl(this, (obj) => this.root.add(obj), frame.right - 76, frame.top + 56, () => this.closeOverlay());
 
     if (overlay === 'flock') {
       this.renderFlockStatsOverlay();
@@ -5078,13 +5122,14 @@ class BattleScene extends Phaser.Scene {
 
     sorted.slice(this.cardReviewScroll, this.cardReviewScroll + CARD_REVIEW_VISIBLE_ROWS).forEach(({ card, zone }, index) => {
       const x = 140;
-      const y = 176 + index * CARD_REVIEW_ROW_H;
+      const y = 198 + index * CARD_REVIEW_ROW_H;
       const selected = selectedEntry?.card.id === card.id;
-      const rowBg = this.add.rectangle(x + 150, y + 15, 300, 32, selected ? 0x21344a : 0x141f2f, 0.96)
-        .setStrokeStyle(selected ? 2 : 1, selected ? 0xd8a840 : card.upgraded ? 0x24d0d6 : 0x49606d, selected ? 1 : 0.8)
+      const rowBg = this.add.rectangle(x + 150, y + 15, 312, 34, selected ? 0x1d2224 : 0x0f151d, selected ? 0.96 : 0.44)
+        .setStrokeStyle(selected ? 1.5 : 1, selected ? 0xd8a840 : card.upgraded ? 0x24d0d6 : 0xffffff, selected ? 0.95 : 0.08)
         .setInteractive({ useHandCursor: true });
       rowBg.on('pointerdown', () => this.inspectCard(card.id));
       this.root.add(rowBg);
+      this.root.add(this.add.rectangle(x + 150, y + 31, 280, 1, card.upgraded ? 0x24d0d6 : 0xd8a840, selected ? 0.6 : 0.18));
       this.root.add(this.add.circle(x + 14, y + 15, 13, this.effectiveCost(card) === 0 ? 0x24d0d6 : 0xd8a840, 1));
       this.root.add(this.add.text(x + 14, y + 15, `${this.effectiveCost(card)}`, {
         fontFamily: 'Arial',
@@ -5107,15 +5152,15 @@ class BattleScene extends Phaser.Scene {
       }));
     });
 
-    this.renderCardReviewScrollButton(472, 192, 'Up', this.cardReviewScroll > 0, () => this.scrollCardReview(-1));
+    this.renderCardReviewScrollButton(472, 214, 'Up', this.cardReviewScroll > 0, () => this.scrollCardReview(-1));
     this.renderCardReviewScrollButton(
       472,
-      542,
+      610,
       'Down',
       this.cardReviewScroll < Math.max(0, sorted.length - CARD_REVIEW_VISIBLE_ROWS),
       () => this.scrollCardReview(1)
     );
-    this.root.add(this.add.text(424, 568, `${this.cardReviewScroll + 1}-${this.cardReviewScroll + Math.min(CARD_REVIEW_VISIBLE_ROWS, sorted.length - this.cardReviewScroll)} / ${sorted.length}`, {
+    this.root.add(this.add.text(424, 632, `${this.cardReviewScroll + 1}-${this.cardReviewScroll + Math.min(CARD_REVIEW_VISIBLE_ROWS, sorted.length - this.cardReviewScroll)} / ${sorted.length}`, {
       fontFamily: 'Arial',
       fontSize: '12px',
       color: '#91a6b8'
@@ -5150,19 +5195,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private renderCardReviewScrollButton(x: number, y: number, label: string, enabled: boolean, onClick: () => void) {
-    const button = this.add.rectangle(x, y, 70, 30, enabled ? 0x18283a : 0x101827, enabled ? 0.98 : 0.5)
-      .setStrokeStyle(1, enabled ? 0xd8a840 : 0x49606d, enabled ? 0.95 : 0.55);
-    if (enabled) {
-      button.setInteractive({ useHandCursor: true });
-      button.on('pointerdown', onClick);
-    }
-    this.root.add(button);
-    this.root.add(this.add.text(x, y, label, {
-      fontFamily: 'Arial',
-      fontSize: '13px',
-      fontStyle: 'bold',
-      color: enabled ? '#ffe1a3' : '#596a78'
-    }).setOrigin(0.5));
+    renderFieldButton(this, (obj) => this.root.add(obj), x, y, 72, 28, label, enabled, onClick, UI_FIELD.gold);
   }
 
   private getInspectedCardEntry(cards: Array<{ card: Card; zone: string }>) {
@@ -5170,9 +5203,8 @@ class BattleScene extends Phaser.Scene {
   }
 
   private renderCardDetailPanel(card: Card, zone: string) {
-    const panel = this.add.rectangle(842, 360, 590, 430, 0x111a27, 0.96)
-      .setStrokeStyle(2, card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : 0x7ab8d6, 0.95);
-    this.root.add(panel);
+    const accent = card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : 0x7ab8d6;
+    renderFieldPanel(this, (obj) => this.root.add(obj), 842, 360, 590, 430, { accent, fill: UI_FIELD.ink });
 
     this.renderDetailCardArt(card);
 
@@ -5268,7 +5300,7 @@ class BattleScene extends Phaser.Scene {
     ];
     battleRows.forEach((row, index) => {
       const y = 215 + index * 36;
-      this.root.add(this.add.rectangle(rx + 132, y + 9, 300, 28, index % 2 === 0 ? 0x141f2f : 0x101827, 0.94));
+      this.root.add(this.add.rectangle(rx + 132, y + 29, 300, 1, 0xffffff, index % 2 === 0 ? 0.08 : 0.04));
       this.root.add(this.add.text(rx, y, row[0], tableCellStyle('#cdd9e6')));
       this.root.add(this.add.text(rx + 260, y, row[1], { ...tableCellStyle('#ffffff'), align: 'right' }).setOrigin(1, 0));
     });
@@ -5391,12 +5423,14 @@ class BattleScene extends Phaser.Scene {
     enemyId = targetEnemy?.id ?? enemyId;
     const cost = this.effectiveCost(card);
     if (cost > this.energy) return;
+    const handSizeBeforePlay = this.hand.length;
+    const handIndexBeforePlay = Math.max(0, this.hand.findIndex((candidate) => candidate.instanceId === card.instanceId));
     const playedCard = this.removeCardFromHand(card.instanceId);
     if (!playedCard) return;
     this.energy -= cost;
     this.statCardsPlayed += 1;
     this.cardsPlayedThisTurn += 1;
-    this.playCardCastFx(playedCard, enemyId);
+    this.playCardCastFx(playedCard, enemyId, handIndexBeforePlay, handSizeBeforePlay);
 
     const outcome = this.resolveCardEffects(playedCard, enemyId);
     if (playedCard.runtime.suit) {
@@ -5418,7 +5452,38 @@ class BattleScene extends Phaser.Scene {
     this.renderAll();
   }
 
-  private playCardCastFx(card: Card, enemyId: string) {
+  private addCastCardGhost(card: Card, x: number, y: number) {
+    const accent = card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
+    const c = this.add.container(x, y);
+    c.add(this.add.rectangle(4, 6, CARD_W, CARD_H, 0x020409, 0.42));
+    c.add(this.add.rectangle(0, 0, CARD_W, CARD_H, 0x07101c, 0.98).setStrokeStyle(3, accent, 1));
+    const key = cardArtKey(card);
+    if (key && this.textures.exists(key)) {
+      c.add(this.add.image(0, 0, key).setDisplaySize(CARD_W - 6, CARD_H - 6));
+    } else {
+      c.add(this.add.rectangle(0, 0, CARD_W - 6, CARD_H - 6, 0x141d2b, 0.96));
+    }
+    c.add(this.add.rectangle(0, -CARD_H / 2 + 16, CARD_W - 6, 26, 0x05080e, 0.72));
+    c.add(this.add.text(-CARD_W / 2 + 34, -CARD_H / 2 + 8, displayName(card), {
+      fontFamily: 'Arial',
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#ffe7b0',
+      wordWrap: { width: CARD_W - 44 },
+    }));
+    c.add(this.add.circle(-CARD_W / 2 + 16, -CARD_H / 2 + 16, 14, this.effectiveCost(card) === 0 ? 0x24d0d6 : 0xe8b830, 1)
+      .setStrokeStyle(2, 0x05080e, 0.9));
+    c.add(this.add.text(-CARD_W / 2 + 16, -CARD_H / 2 + 16, `${this.effectiveCost(card)}`, {
+      fontFamily: 'Arial',
+      fontSize: '16px',
+      fontStyle: 'bold',
+      color: '#06101c',
+    }).setOrigin(0.5));
+    this.fxLayer.add(c);
+    return c;
+  }
+
+  private playCardCastFx(card: Card, enemyId: string, handIndex = 0, handSize = this.hand.length + 1) {
     if (prefersReducedMotion()) return;
     const meta = suitFxMeta(card.runtime.suit);
     const target = card.target === 'enemy'
@@ -5426,38 +5491,42 @@ class BattleScene extends Phaser.Scene {
       : card.target === 'allEnemies'
         ? { x: ENEMY_FX_X, y: ENEMY_FX_Y, scale: 1 }
         : { x: FLOCK_FX_X, y: FLOCK_FX_Y, scale: 1 };
-    const c = this.add.container(0, 0);
-    const plate = this.add.rectangle(GAME_WIDTH / 2, 408, 284, 86, 0x06090f, 0.82)
-      .setStrokeStyle(2, meta.color, 0.95)
-      .setAngle(-2);
-    const glyph = this.add.text(GAME_WIDTH / 2 - 116, 384, meta.glyph, {
-      fontFamily: 'Arial', fontSize: '22px', fontStyle: 'bold', color: meta.hex,
-    }).setOrigin(0.5);
-    const title = this.add.text(GAME_WIDTH / 2 - 88, 382, displayName(card), {
-      fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#ffe1a3',
-      wordWrap: { width: 210 },
+    const animKey = SUIT_FX_ANIM[card.runtime.suit ?? ''] ?? this.fxAnimForColor(meta.color);
+    this.queueFlockMotion('cast');
+
+    const fromX = this.handCardLeft(handIndex, handSize) + CARD_W / 2;
+    const ghost = this.addCastCardGhost(card, fromX, HAND_Y);
+    ghost.setDepth(40);
+
+    this.tweens.chain({
+      targets: ghost,
+      tweens: [
+        {
+          x: FLOCK_FX_X + 22,
+          y: FLOCK_FX_Y - 120,
+          scale: 0.78,
+          angle: target.x > FLOCK_FX_X ? -7 : 7,
+          duration: 170,
+          ease: 'Cubic.easeOut',
+          onComplete: () => {
+            this.playFxAnimation(animKey, FLOCK_FX_X + 10, FLOCK_FX_Y - 42, { scale: 1.35, alpha: 0.9 });
+          },
+        },
+        {
+          x: target.x,
+          y: target.y - 86,
+          scale: 0.52,
+          angle: target.x > FLOCK_FX_X ? 6 : -6,
+          alpha: 0.82,
+          duration: card.target === 'self' ? 120 : 230,
+          ease: 'Quad.easeInOut',
+          onComplete: () => {
+            ghost.destroy(true);
+            this.playFxAnimation(animKey, target.x, target.y - 18, { scale: 1.55, alpha: 0.92 });
+          },
+        },
+      ],
     });
-    const label = this.add.text(GAME_WIDTH / 2 - 88, 414, meta.label, {
-      fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: meta.hex,
-    });
-    const line = this.add.graphics();
-    line.lineStyle(3, meta.color, 0.62);
-    line.lineBetween(FLOCK_FX_X + 20, FLOCK_FX_Y - 40, target.x, target.y - 28);
-    c.add([line, plate, glyph, title, label]);
-    c.setAlpha(0);
-    this.fxLayer.add(c);
-    this.tweens.add({
-      targets: c,
-      alpha: 1,
-      y: -10,
-      duration: 140,
-      ease: 'Quad.easeOut',
-      yoyo: true,
-      hold: 360,
-      onComplete: () => c.destroy(true),
-    });
-    this.suitPulseAt(FLOCK_FX_X, FLOCK_FX_Y, card.runtime.suit);
-    this.suitPulseAt(target.x, target.y - 16, card.runtime.suit);
   }
 
   private resolveCardEffects(card: Card, enemyId: string): EffectResolutionState {
@@ -6235,7 +6304,7 @@ class BattleScene extends Phaser.Scene {
 
     const routeNode = currentCombatNodes()[this.currentRouteIndex];
     const scrapReward = combatScrapReward(routeNode);
-    const streetBonus = routeNode?.type === 'street' && this.routeMarks.includes('loose_change_tin') ? STREET_SCRAP_BONUS : 0;
+    const streetBonus = routeNode?.type === 'street' ? this.markValue('afterStreetEncounter', 'gainScrap') : 0;
     this.scrap += scrapReward + streetBonus;
 
     const awardedMark = this.combatRouteMarkReward(routeNode);
@@ -6295,7 +6364,9 @@ class BattleScene extends Phaser.Scene {
     if (!routeNode) return undefined;
     const profile = rewardProfileForRouteNode(routeNode);
     const guaranteed = routeNode.type === 'rival' || routeNode.type === 'boss' || profile?.routeMarkGuaranteed;
-    if (!guaranteed) return undefined;
+    const chance = profile?.routeMarkChance ?? 0;
+    const rolled = chance > 0 && deterministicChance(`${activeSeed}:${routeNode.id}:route-mark`, chance);
+    if (!guaranteed && !rolled) return undefined;
     return routeMarks.find((mark) => !this.routeMarks.includes(mark.id));
   }
 
@@ -7210,6 +7281,179 @@ function marketOfferPriceStyle(enabled: boolean) {
   };
 }
 
+const UI_FIELD = {
+  ink: 0x070b12,
+  panel: 0x0b111b,
+  panelWarm: 0x17120c,
+  rail: 0x111923,
+  paper: 0x1c2022,
+  gold: 0xd8a840,
+  brass: 0xf0c36f,
+  cyan: 0x7ab8d6,
+  green: 0x8fd6a0,
+  danger: 0xff6b57,
+  violet: 0xc9a6ff,
+  text: '#e7eef7',
+  muted: '#91a6b8',
+  warm: '#ffe1a3',
+  cyanText: '#8df4ff'
+};
+
+type UiAdd = (obj: Phaser.GameObjects.GameObject) => void;
+
+function addUi<T extends Phaser.GameObjects.GameObject>(addTo: UiAdd, obj: T): T {
+  addTo(obj);
+  return obj;
+}
+
+function renderFieldPanel(
+  scene: Phaser.Scene,
+  addTo: UiAdd,
+  cx: number,
+  cy: number,
+  w: number,
+  h: number,
+  opts: { title?: string; subtitle?: string; accent?: number; fill?: number; eyebrow?: string } = {}
+) {
+  const accent = opts.accent ?? UI_FIELD.gold;
+  const fill = opts.fill ?? UI_FIELD.panel;
+  addUi(addTo, scene.add.rectangle(cx + 8, cy + 10, w, h, 0x020409, 0.42));
+  addUi(addTo, scene.add.rectangle(cx, cy, w, h, fill, 0.985).setStrokeStyle(1, accent, 0.42));
+  addUi(addTo, scene.add.rectangle(cx, cy - h / 2 + 14, w - 34, 2, accent, 0.72));
+  addUi(addTo, scene.add.rectangle(cx, cy + h / 2 - 14, w - 34, 1, 0xffffff, 0.08));
+  const left = cx - w / 2;
+  const right = cx + w / 2;
+  const top = cy - h / 2;
+  const bottom = cy + h / 2;
+  const corner = 28;
+  [
+    [left + 15, top + 15, corner, 2], [left + 15, top + 15, 2, corner],
+    [right - 15, top + 15, corner, 2], [right - 15, top + 15, 2, corner],
+    [left + 15, bottom - 15, corner, 2], [left + 15, bottom - 15, 2, corner],
+    [right - 15, bottom - 15, corner, 2], [right - 15, bottom - 15, 2, corner]
+  ].forEach(([x, y, cw, ch], index) => {
+    const ox = index === 2 || index === 6 ? -corner : 0;
+    const oy = index === 5 || index === 7 ? -corner : 0;
+    addUi(addTo, scene.add.rectangle(x + ox, y + oy, cw, ch, accent, 0.72).setOrigin(0, 0));
+  });
+  if (opts.eyebrow) {
+    addUi(addTo, scene.add.text(left + 36, top + 30, opts.eyebrow.toUpperCase(), {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: UI_FIELD.muted
+    }));
+  }
+  if (opts.title) {
+    addUi(addTo, scene.add.text(left + 36, top + (opts.eyebrow ? 46 : 30), opts.title, {
+      fontFamily: 'Arial',
+      fontSize: '28px',
+      fontStyle: 'bold',
+      color: UI_FIELD.warm,
+      stroke: '#020409',
+      strokeThickness: 3
+    }));
+  }
+  if (opts.subtitle) {
+    addUi(addTo, scene.add.text(left + 36, top + (opts.title ? 76 : 44), opts.subtitle, {
+      fontFamily: 'Arial',
+      fontSize: '14px',
+      color: '#b9c7d6',
+      wordWrap: { width: w - 220 }
+    }));
+  }
+  return { left, right, top, bottom, cx, cy, w, h };
+}
+
+function renderCloseControl(scene: Phaser.Scene, addTo: UiAdd, x: number, y: number, onClick: () => void) {
+  const hit = addUi(addTo, scene.add.rectangle(x, y, 86, 30, 0x020409, 0.05)
+    .setInteractive({ useHandCursor: true }));
+  const label = addUi(addTo, scene.add.text(x, y - 7, 'Close', {
+    fontFamily: 'Arial',
+    fontSize: '13px',
+    fontStyle: 'bold',
+    color: '#ffd5cc'
+  }).setOrigin(0.5, 0));
+  const line = addUi(addTo, scene.add.rectangle(x, y + 12, 52, 2, UI_FIELD.danger, 0.85));
+  hit.on('pointerover', () => {
+    label.setColor('#ffffff');
+    line.setDisplaySize(66, 2);
+  });
+  hit.on('pointerout', () => {
+    label.setColor('#ffd5cc');
+    line.setDisplaySize(52, 2);
+  });
+  hit.on('pointerdown', () => {
+    playUiSound('close');
+    onClick();
+  });
+  return hit;
+}
+
+function renderFieldButton(
+  scene: Phaser.Scene,
+  addTo: UiAdd,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  label: string,
+  enabled: boolean,
+  onClick: () => void,
+  accent = UI_FIELD.gold
+) {
+  const button = addUi(addTo, scene.add.rectangle(x, y, w, h, enabled ? 0x141b22 : 0x0b1017, enabled ? 0.96 : 0.55)
+    .setStrokeStyle(1, enabled ? accent : 0x3f4c58, enabled ? 0.9 : 0.45));
+  addUi(addTo, scene.add.rectangle(x, y - h / 2 + 4, w - 18, 2, accent, enabled ? 0.78 : 0.25));
+  const text = addUi(addTo, scene.add.text(x, y - 8, label, {
+    fontFamily: 'Arial',
+    fontSize: '14px',
+    fontStyle: 'bold',
+    color: enabled ? UI_FIELD.warm : '#596a78'
+  }).setOrigin(0.5, 0));
+  if (enabled) {
+    button.setInteractive({ useHandCursor: true });
+    button.on('pointerover', () => {
+      button.setFillStyle(0x1b2630, 0.98);
+      text.setColor('#ffffff');
+    });
+    button.on('pointerout', () => {
+      button.setFillStyle(0x141b22, 0.96);
+      text.setColor(UI_FIELD.warm);
+    });
+    button.on('pointerdown', () => {
+      playUiSound('confirm');
+      onClick();
+    });
+  }
+  return button;
+}
+
+function playUiSound(kind: 'confirm' | 'close' | 'locked' = 'confirm') {
+  try {
+    const AudioContextCtor = (window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext }).AudioContext
+      ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) return;
+    const ctx = new AudioContextCtor();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const now = ctx.currentTime;
+    const freq = kind === 'close' ? 280 : kind === 'locked' ? 150 : 420;
+    osc.type = kind === 'locked' ? 'triangle' : 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    osc.frequency.exponentialRampToValueAtTime(kind === 'close' ? 190 : freq * 1.45, now + 0.06);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(kind === 'locked' ? 0.025 : 0.035, now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.09);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.1);
+  } catch {
+    // UI sound is cosmetic; browsers may block or omit WebAudio in test contexts.
+  }
+}
+
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
@@ -7327,8 +7571,8 @@ function renderFloatingCardDetail(scene: Phaser.Scene, card: Card, zone: string,
 }
 
 function renderSceneCardDetail(scene: Phaser.Scene, card: Card, zone: string, cost: number) {
-  scene.add.rectangle(842, 360, 590, 430, 0x111a27, 0.96)
-    .setStrokeStyle(2, card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : 0x7ab8d6, 0.95);
+  const accent = card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : 0x7ab8d6;
+  renderFieldPanel(scene, (obj) => {}, 842, 360, 590, 430, { accent, fill: UI_FIELD.ink });
 
   const key = cardArtKey(card);
   if (key && scene.textures.exists(key)) {
@@ -7581,7 +7825,14 @@ function nonCombatRewardBias(type: RouteNode['type']) {
 }
 
 function routeNodeRecovery(node: RouteNode, routeMarkIds: string[] = []) {
-  if (node.type === 'basin') return 8 + (routeMarkIds.includes('rain_gutter') ? 4 : 0);
+  if (node.type === 'basin') {
+    const bonus = routeMarkIds.reduce((total, id) => {
+      const mark = alphaRouteMarkLibrary.get(id);
+      const parsed = mark?.trigger === 'basinHeal' ? parseEffect(mark.effect) : undefined;
+      return parsed?.name === 'addHeal' ? total + parseEffectValue(parsed.args[1] ?? parsed.args[0], 0) : total;
+    }, 0);
+    return 8 + bonus;
+  }
   if (node.type === 'cache') return 3;
   return 0;
 }
@@ -7833,6 +8084,8 @@ function formatEffect(effect: string) {
       return `Next Nest Cover +${value}.`;
     case 'nextTurnDraw':
       return `Draw ${value} next turn.`;
+    case 'shuffleSelfToDraw':
+      return 'Return this to the draw pile after play.';
     case 'bossDamageShield':
       return `Boss fights: gain ${value} Cover.`;
     case 'extraCacheChoice':
@@ -7877,9 +8130,11 @@ function renderFlockStatTable(
   addTo(scene.add.text(leftX + 232, topY, 'Base', tableHeaderStyle()));
   addTo(scene.add.text(leftX + 330, topY, 'Flock', tableHeaderStyle()));
   addTo(scene.add.text(leftX + 446, topY, 'Now', tableHeaderStyle()));
+  addTo(scene.add.rectangle(leftX + 270, topY + 25, 540, 1, UI_FIELD.gold, 0.28));
   rows.forEach((row, index) => {
     const y = topY + 37 + index * 33;
-    addTo(scene.add.rectangle(leftX + 250, y + 9, 540, 27, index % 2 === 0 ? 0x141f2f : 0x101827, 0.94));
+    addTo(scene.add.rectangle(leftX + 270, y + 25, 540, 1, 0xffffff, index % 2 === 0 ? 0.08 : 0.04));
+    if (row.bonus > 0) addTo(scene.add.rectangle(leftX - 8, y + 9, 3, 18, UI_FIELD.cyan, 0.82));
     addTo(scene.add.text(leftX, y, row.label, tableCellStyle('#ffe1a3')));
     addTo(scene.add.text(leftX + 240, y, `${row.base}`, tableCellStyle('#dce8f2')));
     addTo(scene.add.text(leftX + 338, y, row.bonus > 0 ? `+${row.bonus}` : `${row.bonus}`, tableCellStyle(row.bonus > 0 ? '#8df4ff' : '#91a6b8')));

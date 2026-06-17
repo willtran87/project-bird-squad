@@ -27,6 +27,71 @@
       "rareCardChoices": 3,
       "preen": 1,
       "unlocks": "map_02_canal_markets"
+    },
+    {
+      "id": "street_map02",
+      "scrap": [25, 35],
+      "cardReward": true,
+      "preenChance": 0.25,
+      "routeMarkChance": 0.15
+    },
+    {
+      "id": "rival_map02",
+      "scrap": [72, 88],
+      "cardReward": true,
+      "preenGuaranteed": true,
+      "routeMarkGuaranteed": true
+    },
+    {
+      "id": "boss_map02",
+      "scrap": 120,
+      "bossRouteMarkChoices": 3,
+      "rareCardChoices": 3,
+      "preen": 1,
+      "unlocks": "map_03_signal_spires"
+    },
+    {
+      "id": "street_map03",
+      "scrap": [31, 41],
+      "cardReward": true,
+      "preenChance": 0.25,
+      "routeMarkChance": 0.15
+    },
+    {
+      "id": "rival_map03",
+      "scrap": [86, 104],
+      "cardReward": true,
+      "preenGuaranteed": true,
+      "routeMarkGuaranteed": true
+    },
+    {
+      "id": "boss_map03",
+      "scrap": 120,
+      "bossRouteMarkChoices": 3,
+      "rareCardChoices": 3,
+      "preen": 1,
+      "unlocks": "map_04_high_roost"
+    },
+    {
+      "id": "street_map04",
+      "scrap": [36, 48],
+      "cardReward": true,
+      "preenChance": 0.25,
+      "routeMarkChance": 0.15
+    },
+    {
+      "id": "rival_map04",
+      "scrap": [98, 122],
+      "cardReward": true,
+      "preenGuaranteed": true,
+      "routeMarkGuaranteed": true
+    },
+    {
+      "id": "boss_map04",
+      "scrap": 150,
+      "bossRouteMarkChoices": 3,
+      "rareCardChoices": 3,
+      "preen": 1
     }
   ]
 }

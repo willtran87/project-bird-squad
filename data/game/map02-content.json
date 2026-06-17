@@ -199,10 +199,10 @@
       "mapId": "map_02_canal_markets",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "Two scavengers crowd the dock — clear one before both stack up.",
+      "lesson": "Three scavengers crowd the dock — clear one before the whole line stacks up.",
       "tags": ["multi", "cover"],
-      "enemies": ["canal_dock_rat", "canal_market_crow"],
-      "rewardProfileId": "street_standard"
+      "enemies": ["canal_dock_rat", "canal_market_crow", "canal_dock_rat"],
+      "rewardProfileId": "street_map02"
     },
     {
       "id": "enc_canal_dock_warden",
@@ -210,10 +210,10 @@
       "mapId": "map_02_canal_markets",
       "nodeType": "rival",
       "band": "rival",
-      "lesson": "Elite: a Dock Warden with a rat escort holds the lock.",
+      "lesson": "Elite: a Dock Warden with market escorts holds the lock.",
       "tags": ["elite", "heavy", "multi"],
-      "enemies": ["canal_dock_warden", "canal_dock_rat"],
-      "rewardProfileId": "rival_standard"
+      "enemies": ["canal_dock_warden", "canal_dock_rat", "canal_market_crow"],
+      "rewardProfileId": "rival_map02"
     },
     {
       "id": "enc_canal_dock_rat",
@@ -224,7 +224,7 @@
       "lesson": "Chip damage adds up; spend Cover before it stacks.",
       "tags": ["basic", "cover", "scavenge"],
       "enemies": ["canal_dock_rat"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map02"
     },
     {
       "id": "enc_canal_market_crow",
@@ -235,7 +235,7 @@
       "lesson": "Scavengers heal if left alone; deny their rest turn.",
       "tags": ["scavenge", "cover"],
       "enemies": ["canal_market_crow"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map02"
     },
     {
       "id": "enc_canal_dredge_eel",
@@ -246,7 +246,7 @@
       "lesson": "Winded throttles your tempo; plan around the lull.",
       "tags": ["winded", "tempo"],
       "enemies": ["canal_dredge_eel"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map02"
     },
     {
       "id": "enc_canal_barge_gull",
@@ -257,7 +257,7 @@
       "lesson": "Heavy Strike rewards Cover banked in advance.",
       "tags": ["heavy", "cover"],
       "enemies": ["canal_barge_gull"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map02"
     },
     {
       "id": "enc_canal_lock_keeper",
@@ -268,7 +268,7 @@
       "lesson": "A turtling foe stalls your clock; out-pace its Cover.",
       "tags": ["cover", "winded", "tempo"],
       "enemies": ["canal_lock_keeper"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map02"
     },
     {
       "id": "enc_canal_ferry_cormorant",
@@ -279,7 +279,7 @@
       "lesson": "Optional elite that grinds you down between Basins.",
       "tags": ["heavy", "winded", "elite"],
       "enemies": ["canal_ferry_cormorant"],
-      "rewardProfileId": "rival_standard"
+      "rewardProfileId": "rival_map02"
     },
     {
       "id": "enc_canal_toll_magpie",
@@ -290,7 +290,7 @@
       "lesson": "Punishes a low Scrap economy by forcing Snags.",
       "tags": ["snag", "openSky", "elite"],
       "enemies": ["canal_toll_magpie"],
-      "rewardProfileId": "rival_standard"
+      "rewardProfileId": "rival_map02"
     },
     {
       "id": "enc_canal_heron_boss",
@@ -298,10 +298,10 @@
       "mapId": "map_02_canal_markets",
       "nodeType": "boss",
       "band": "boss",
-      "lesson": "Tests recovery and attrition against drowning pressure.",
-      "tags": ["boss", "cover", "winded", "snag", "openSky"],
-      "enemies": ["canal_heron_boss"],
-      "rewardProfileId": "boss_alpha"
+      "lesson": "Tests recovery and attrition while dock helpers keep the canal pressure wide.",
+      "tags": ["boss", "cover", "winded", "snag", "openSky", "multi"],
+      "enemies": ["canal_heron_boss", "canal_dock_rat", "canal_market_crow"],
+      "rewardProfileId": "boss_map02"
     }
   ],
   "signals": [
@@ -428,7 +428,7 @@
         "lane": 0,
         "type": "street",
         "label": "Street Encounter",
-        "payloadId": "enc_canal_dock_rat",
+        "payloadId": "enc_canal_dock_swarm",
         "risk": "low",
         "revealed": true,
         "completed": false
@@ -494,7 +494,7 @@
         "lane": 0,
         "type": "rival",
         "label": "Rival Crew",
-        "payloadId": "enc_canal_ferry_cormorant",
+        "payloadId": "enc_canal_dock_warden",
         "risk": "high",
         "revealed": true,
         "completed": false

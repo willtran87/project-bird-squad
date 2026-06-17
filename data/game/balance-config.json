@@ -35,8 +35,8 @@
         "preBossTypes": ["basin", "nest"]
       },
       "economy": {
-        "streetScrap": [20, 28],
-        "rivalScrap": [58, 72],
+        "streetScrap": [18, 30],
+        "rivalScrap": [55, 75],
         "bossScrap": 90,
         "cacheScrap": 30,
         "skipScrap": 12
@@ -81,7 +81,7 @@
       "economy": {
         "streetScrap": [25, 35],
         "rivalScrap": [72, 88],
-        "bossScrap": 105,
+        "bossScrap": 120,
         "cacheScrap": 35,
         "skipScrap": 14
       },
@@ -169,7 +169,7 @@
       "economy": {
         "streetScrap": [36, 48],
         "rivalScrap": [98, 122],
-        "bossScrap": 75,
+        "bossScrap": 150,
         "cacheScrap": 45,
         "skipScrap": 18
       },

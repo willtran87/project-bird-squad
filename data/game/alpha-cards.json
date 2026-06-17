@@ -685,14 +685,16 @@
       "suit": "plumes",
       "rarity": "uncommon",
       "cost": 1,
-      "target": "self",
+      "target": "enemy",
       "tags": [
         "cover",
-        "resonance"
+        "resonance",
+        "cover-break"
       ],
       "effects": [
         "gainCover(4)",
-        "gainResonance(1)"
+        "gainResonance(1)",
+        "if targetHasCover then removeCover(target, 2)"
       ],
       "moltEffects": [
         "damage(target, 4)",
@@ -701,7 +703,8 @@
       "upgrade": {
         "effects": [
           "gainCover(6)",
-          "gainResonance(2)"
+          "gainResonance(2)",
+          "if targetHasCover then removeCover(target, 3)"
         ],
         "flockStats": {
           "cover": 1
@@ -2792,7 +2795,8 @@
       ],
       "effects": [
         "draw(2)",
-        "discardUpTo(1)"
+        "discardUpTo(1)",
+        "if openSky then shuffleSelfToDraw()"
       ],
       "moltEffects": [
         "gainOpenSkyGuard(2)",
@@ -2802,7 +2806,8 @@
         "effects": [
           "draw(2)",
           "discardUpTo(1)",
-          "if openSky then gainOpenSkyGuard(1)"
+          "if openSky then gainOpenSkyGuard(1)",
+          "if openSky then shuffleSelfToDraw()"
         ],
         "flockStats": {
           "draw": 1
@@ -3287,15 +3292,17 @@
       "suit": "nests",
       "rarity": "uncommon",
       "cost": 1,
-      "target": "self",
+      "target": "enemy",
       "tags": [
         "cover",
         "setup",
-        "draw"
+        "draw",
+        "cover-break"
       ],
       "effects": [
         "gainCover(5)",
         "nextCoverBonus(nests, 3)",
+        "if targetHasCover then damagePierce(target, 2)",
         "if fullyBlocksNextAttack then nextTurnDraw(1)"
       ],
       "moltEffects": [
@@ -3306,6 +3313,7 @@
         "effects": [
           "gainCover(6)",
           "nextCoverBonus(nests, 4)",
+          "if targetHasCover then damagePierce(target, 3)",
           "if fullyBlocksNextAttack then nextTurnDraw(1)"
         ],
         "flockStats": {

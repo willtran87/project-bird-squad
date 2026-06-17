@@ -122,7 +122,7 @@
         "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, long tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
         "moves": [
           { "id": "beacon_screech_6", "label": "Beacon Screech 6", "effects": ["damage(flock, 6)", "if isMolting then applyOpenSky(1)"] },
-          { "id": "hunker_cover", "label": "Hunker", "effects": ["gainCover(6)"] },
+          { "id": "hunker_cover", "label": "Hunker", "effects": ["gainCover(6)", "if selfBelowHalf then heal(4)"] },
           { "id": "heavy_toll_12", "label": "Heavy Toll 12", "effects": ["damage(flock, 12)"] }
         ],
         "attackPattern": { "type": "cycle", "moveIds": ["beacon_screech_6", "hunker_cover", "heavy_toll_12"] },
@@ -202,10 +202,10 @@
       "mapId": "map_03_signal_spires",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "Two flyers stagger their Tells — answer the bigger threat first.",
+      "lesson": "Three flyers stagger their Tells — answer the bigger threat first.",
       "tags": ["multi", "winded"],
-      "enemies": ["spire_relay_starling", "spire_aerial_kite"],
-      "rewardProfileId": "street_standard"
+      "enemies": ["spire_relay_starling", "spire_aerial_kite", "spire_relay_starling"],
+      "rewardProfileId": "street_map03"
     },
     {
       "id": "enc_spire_signal_marshal",
@@ -213,10 +213,10 @@
       "mapId": "map_03_signal_spires",
       "nodeType": "rival",
       "band": "rival",
-      "lesson": "Elite: a Signal Marshal with a starling wingman charges the beacon.",
+      "lesson": "Elite: a Signal Marshal with wingmen charges the beacon.",
       "tags": ["elite", "heavy", "multi"],
-      "enemies": ["spire_signal_marshal", "spire_relay_starling"],
-      "rewardProfileId": "rival_standard"
+      "enemies": ["spire_signal_marshal", "spire_relay_starling", "spire_aerial_kite"],
+      "rewardProfileId": "rival_map03"
     },
     {
       "id": "enc_spire_relay_starling",
@@ -227,7 +227,7 @@
       "lesson": "Read a two-part Tell that adds Winded after damage.",
       "tags": ["winded", "tempo"],
       "enemies": ["spire_relay_starling"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map03"
     },
     {
       "id": "enc_spire_aerial_kite",
@@ -238,7 +238,7 @@
       "lesson": "Punish Open Sky telegraphs and keep tempo.",
       "tags": ["openSky", "tempo"],
       "enemies": ["spire_aerial_kite"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map03"
     },
     {
       "id": "enc_spire_tower_pigeon",
@@ -249,7 +249,7 @@
       "lesson": "Survive a Heavy Strike that hits harder when you lack Cover.",
       "tags": ["heavy", "cover"],
       "enemies": ["spire_tower_pigeon"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map03"
     },
     {
       "id": "enc_spire_static_swift",
@@ -260,7 +260,7 @@
       "lesson": "Manage tempo against a fast bird that builds toward a bonus strike.",
       "tags": ["tempo", "winded"],
       "enemies": ["spire_static_swift"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map03"
     },
     {
       "id": "enc_spire_beacon_grackle",
@@ -271,7 +271,7 @@
       "lesson": "Respect a heavy multi-part Tell that punishes a thin Molt.",
       "tags": ["heavy", "openSky", "molt"],
       "enemies": ["spire_beacon_grackle"],
-      "rewardProfileId": "street_standard"
+      "rewardProfileId": "street_map03"
     },
     {
       "id": "enc_spire_signal_kite",
@@ -282,7 +282,7 @@
       "lesson": "Optional elite that stacks Winded and Open Sky pressure together.",
       "tags": ["winded", "openSky", "elite"],
       "enemies": ["spire_signal_kite"],
-      "rewardProfileId": "rival_standard"
+      "rewardProfileId": "rival_map03"
     },
     {
       "id": "enc_spire_tollkeeper_kestrel",
@@ -293,7 +293,7 @@
       "lesson": "Optional elite that punishes slow tempo and missed openings.",
       "tags": ["heavy", "winded", "snag", "elite"],
       "enemies": ["spire_tollkeeper_kestrel"],
-      "rewardProfileId": "rival_standard"
+      "rewardProfileId": "rival_map03"
     },
     {
       "id": "enc_spire_beacon_breaker",
@@ -301,10 +301,10 @@
       "mapId": "map_03_signal_spires",
       "nodeType": "boss",
       "band": "boss",
-      "lesson": "Tests tempo, multi-part Tells, and Open Sky restraint during Molt.",
-      "tags": ["boss", "winded", "openSky", "tempo"],
-      "enemies": ["spire_beacon_breaker"],
-      "rewardProfileId": "boss_alpha"
+      "lesson": "Tests tempo, multi-part Tells, and Open Sky restraint while relay helpers keep alarms moving.",
+      "tags": ["boss", "winded", "openSky", "tempo", "multi"],
+      "enemies": ["spire_beacon_breaker", "spire_relay_starling", "spire_aerial_kite"],
+      "rewardProfileId": "boss_map03"
     }
   ],
   "signals": [
@@ -442,7 +442,7 @@
         "lane": 0,
         "type": "street",
         "label": "Street Encounter",
-        "payloadId": "enc_spire_aerial_kite",
+        "payloadId": "enc_spire_relay_swarm",
         "risk": "low",
         "revealed": true,
         "completed": false
@@ -497,7 +497,7 @@
         "lane": 0,
         "type": "rival",
         "label": "Rival Crew",
-        "payloadId": "enc_spire_signal_kite",
+        "payloadId": "enc_spire_signal_marshal",
         "risk": "high",
         "revealed": true,
         "completed": false
