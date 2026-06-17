@@ -596,11 +596,11 @@ class MenuScene extends Phaser.Scene {
     const dec = this.add.rectangle(96, 636, 30, 32, 0x0d1420, 0.92)
       .setStrokeStyle(2, 0x7ab8d6, 0.9).setInteractive({ useHandCursor: true });
     dec.on('pointerdown', () => this.stepDifficulty(-1));
-    this.add.text(GAME_WIDTH / 2 - 252, 399, '◂', { fontFamily: 'Arial', fontSize: '22px', color: '#dbe6f0' }).setOrigin(0.5);
+    this.add.text(96, 635, '<', { fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#dbe6f0' }).setOrigin(0.5);
     const inc = this.add.rectangle(386, 636, 30, 32, 0x0d1420, 0.92)
       .setStrokeStyle(2, 0x7ab8d6, 0.9).setInteractive({ useHandCursor: true });
     inc.on('pointerdown', () => this.stepDifficulty(1));
-    this.add.text(GAME_WIDTH / 2 + 252, 399, '▸', { fontFamily: 'Arial', fontSize: '22px', color: '#dbe6f0' }).setOrigin(0.5);
+    this.add.text(386, 635, '>', { fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#dbe6f0' }).setOrigin(0.5);
     this.difficultyLabelText = this.add.text(242, 623, '', {
       fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#e8b830'
     }).setOrigin(0.5);
@@ -626,7 +626,7 @@ class MenuScene extends Phaser.Scene {
       this.add.text(px, py - 13, leader.name, {
         fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: unlocked ? '#ffe1a3' : '#5a6675', align: 'center', wordWrap: { width: 202 }
       }).setOrigin(0.5);
-      this.add.text(px, py + 18, unlocked ? `${leader.suit} · ${leader.bird}` : `🔒 ${leaderUnlockHints[leader.id] ?? 'Locked'}`, {
+      this.add.text(px, py + 18, unlocked ? `${leader.suit} - ${leader.bird}` : `Locked - ${leaderUnlockHints[leader.id] ?? 'Locked'}`, {
         fontFamily: 'Arial', fontSize: unlocked ? '11px' : '10px', color: unlocked ? '#9fb1c4' : '#6f7d8c', align: 'center', wordWrap: { width: 202 }
       }).setOrigin(0.5);
       this.leaderPanels.push({ id: leader.id, rect, unlocked });
