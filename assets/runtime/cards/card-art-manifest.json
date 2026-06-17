@@ -17,12 +17,12 @@
     },
     {
       "cardId": "aviary_25",
-      "source": null,
+      "source": ".generated/imagegen/tarot/selected/aviary_25.png",
       "portrait": "assets/runtime/cards/portrait/aviary_25.webp",
       "thumbnail": "assets/runtime/cards/thumb/aviary_25.webp",
       "icon": "assets/runtime/cards/icon/aviary_25.webp",
       "version": "0.1",
-      "status": "placeholder"
+      "status": "approved"
     },
     {
       "cardId": "wands_ace",
@@ -719,46 +719,190 @@
     },
     {
       "cardId": "aviary_22",
-      "source": null,
+      "source": ".generated/imagegen/tarot/selected/aviary_22.png",
       "portrait": "assets/runtime/cards/portrait/aviary_22.webp",
       "thumbnail": "assets/runtime/cards/thumb/aviary_22.webp",
       "icon": "assets/runtime/cards/icon/aviary_22.webp",
       "version": "0.1",
-      "status": "placeholder"
+      "status": "approved"
     },
     {
       "cardId": "aviary_23",
-      "source": null,
+      "source": ".generated/imagegen/tarot/selected/aviary_23.png",
       "portrait": "assets/runtime/cards/portrait/aviary_23.webp",
       "thumbnail": "assets/runtime/cards/thumb/aviary_23.webp",
       "icon": "assets/runtime/cards/icon/aviary_23.webp",
       "version": "0.1",
-      "status": "placeholder"
+      "status": "approved"
     },
     {
       "cardId": "aviary_24",
-      "source": null,
+      "source": ".generated/imagegen/tarot/selected/aviary_24.png",
       "portrait": "assets/runtime/cards/portrait/aviary_24.webp",
       "thumbnail": "assets/runtime/cards/thumb/aviary_24.webp",
       "icon": "assets/runtime/cards/icon/aviary_24.webp",
       "version": "0.1",
-      "status": "placeholder"
+      "status": "approved"
     },
     {
       "cardId": "aviary_26",
-      "source": null,
+      "source": ".generated/imagegen/tarot/selected/aviary_26.png",
       "portrait": "assets/runtime/cards/portrait/aviary_26.webp",
       "thumbnail": "assets/runtime/cards/thumb/aviary_26.webp",
       "icon": "assets/runtime/cards/icon/aviary_26.webp",
       "version": "0.1",
-      "status": "placeholder"
+      "status": "approved"
     },
     {
       "cardId": "aviary_27",
-      "source": null,
+      "source": ".generated/imagegen/tarot/selected/aviary_27.png",
       "portrait": "assets/runtime/cards/portrait/aviary_27.webp",
       "thumbnail": "assets/runtime/cards/thumb/aviary_27.webp",
       "icon": "assets/runtime/cards/icon/aviary_27.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "aviary_28",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_28.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_28.webp",
+      "icon": "assets/runtime/cards/icon/aviary_28.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_29",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_29.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_29.webp",
+      "icon": "assets/runtime/cards/icon/aviary_29.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_30",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_30.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_30.webp",
+      "icon": "assets/runtime/cards/icon/aviary_30.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_31",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_31.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_31.webp",
+      "icon": "assets/runtime/cards/icon/aviary_31.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_32",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_32.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_32.webp",
+      "icon": "assets/runtime/cards/icon/aviary_32.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_33",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_33.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_33.webp",
+      "icon": "assets/runtime/cards/icon/aviary_33.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_34",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_34.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_34.webp",
+      "icon": "assets/runtime/cards/icon/aviary_34.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_35",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_35.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_35.webp",
+      "icon": "assets/runtime/cards/icon/aviary_35.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_36",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_36.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_36.webp",
+      "icon": "assets/runtime/cards/icon/aviary_36.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_37",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_37.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_37.webp",
+      "icon": "assets/runtime/cards/icon/aviary_37.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_38",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_38.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_38.webp",
+      "icon": "assets/runtime/cards/icon/aviary_38.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_39",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_39.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_39.webp",
+      "icon": "assets/runtime/cards/icon/aviary_39.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_40",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_40.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_40.webp",
+      "icon": "assets/runtime/cards/icon/aviary_40.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_41",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_41.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_41.webp",
+      "icon": "assets/runtime/cards/icon/aviary_41.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_42",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_42.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_42.webp",
+      "icon": "assets/runtime/cards/icon/aviary_42.webp",
+      "version": "0.1",
+      "status": "placeholder"
+    },
+    {
+      "cardId": "aviary_43",
+      "source": null,
+      "portrait": "assets/runtime/cards/portrait/aviary_43.webp",
+      "thumbnail": "assets/runtime/cards/thumb/aviary_43.webp",
+      "icon": "assets/runtime/cards/icon/aviary_43.webp",
       "version": "0.1",
       "status": "placeholder"
     }

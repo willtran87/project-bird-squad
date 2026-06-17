@@ -47,9 +47,9 @@ const ENEMY_TARGETS = {
 };
 // §Alpha Enemies rewards / §Alpha Boss rewards (also next-level-data-contracts §3)
 const REWARD_BANDS = { street: { scrap: [25, 40] }, rival: { scrap: [70, 90] }, boss: { scrap: 120 } };
-// §Starter Deck / §Alpha Reward Pool — the full arcana deck is now playable, so
-// the reward pool is every non-starter playable card (84 non-snag minus 10 starter).
-const DECK_TARGETS = { starter: 10, rewardPool: 74 };
+// §Starter Deck / §Alpha Reward Pool — the full card deck is now playable, so
+// the reward pool is every non-starter playable card (100 non-snag minus 10 starter).
+const DECK_TARGETS = { starter: 10, rewardPool: 90 };
 // next-level-data-contracts §5.5 status registry ids
 const STATUS_IDS = ['winded', 'openSky', 'openSkyGuard', 'molt'];
 // Current reward-profile targets are tracked in data/game/balance-config.json.

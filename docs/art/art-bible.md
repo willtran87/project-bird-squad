@@ -95,6 +95,16 @@ contemporary harnesses, hoodies, rain shells, beanies, pouches, straps, and
 workwear layers. The world should feel like a present-day or near-present
 bird-city, not old-world fantasy and not futuristic sci-fi.
 
+The title splash is also the wardrobe-intensity target. Birds should read as
+bold cast members in avian-tailored streetwear, not mostly unclothed wildlife
+with a small accessory. Favor visible cropped puffers, bomber or varsity shells,
+oversized hood panels, poncho/rain-shell shapes, crossbody straps, utility
+pouches, abstract patch blocks, talon bands, leg wraps, tiny caps or beanies
+where species anatomy allows, and high-contrast color blocking. These garments
+must remain bird-safe: they wrap torsos, shoulders, folded wings, legs, and
+tails without creating human arms, sleeve-arms, hands, fingers, or readable
+logos/text.
+
 Every card/bird mapping needs both a **style direction** and a **description**.
 The style direction defines the bird's culture, fit, material language, and
 accessory lane. The description defines the card scene, action, and symbolic
@@ -383,8 +393,13 @@ traceable without becoming the visible card identity.
 
 ## Aviary Legend Bird Map
 
-Aviary Legends are Bird Squad-original trumps beyond the 22 classic Legend
-lineage cards. They follow the same style/description contract as the Majors.
+Aviary cards are Bird Squad-original cards, not tarot cards. The first six are
+legendary field myths that sit beside the 22 classic Legend lineage cards; the
+quality expansion adds lower-rarity bird-behavior cards with no suit and no
+tarot numbering requirement. They all follow the same style/description
+contract as the Majors and Minor Arcana: one unique bird species, a readable
+urban bird action, and the shared master border composited after center-art
+generation.
 
 | Card | Bird | Rarity | Style Direction | Description |
 | --- | --- | --- | --- | --- |
@@ -394,6 +409,22 @@ lineage cards. They follow the same style/description contract as the Majors.
 | Hot Feathers | Scarlet Tanager | legendary | Half-shed layered wrap, transition cuffs, loose feather charms, two-tone renewal styling. | A bird caught between two selves, brilliant plumage giving way to a quieter new coat. |
 | Flock Signal | Red-billed Quelea | legendary | Lightweight shared-culture bands, signal-tag cuffs, dawn-colored flock trims, no uniform marks. | A single small bird leading a vast murmuration that moves as one mind. |
 | Eclipse Watch | Tawny Frogmouth | legendary | Shadow-bark camo wrap, ringed-eclipse pin, still-watch talon bands, muted night layers. | A masked, motionless watcher at the moment the light goes out. |
+| Hover Check | Black-chinned Hummingbird | common | Micro flight vest, needle-thin timing charm, iridescent throat scarf, lightweight courier bands. | A tiny city courier holds a perfect hover beside a rain-slick signal light, reading the exact instant to move. |
+| Mobbing Call | Red-winged Blackbird | common | Black utility shell, red shoulder patch shapes, chain-link lookout bands, alarm-call throat wrap. | A shoulder-patched sentinel leans into a hard alarm call from a chain-link rooftop, making a larger foe hesitate. |
+| Underwing Shelter | Killdeer | common | Dusty safety vest, soft underwing wrap, tiny pebble charms, roadside talon bands. | A plover draws attention away from a hidden sidewalk nest, one wing lowered in a deliberate act of protection. |
+| Scavenger Eye | Herring Gull | common | Salt-stained pier jacket, market-latch charm, rubberized talon wraps, bright eye pin. | A dockside gull clocks the one unsecured latch on a market crate while the whole rooftop misses it. |
+| Thermal Lift | Andean Condor | uncommon | Wide weather cloak fitted over folded wing base, thermal-map harness, white collar scarf, altitude talon bands. | A vast-winged condor rides warm city air above solar vents and roof exhausts without wasting a beat. |
+| Cache Memory | Pinyon Jay | uncommon | Faded blue field jacket, cache-map satchel, seed-tag clips, chalk-dust talon wraps. | A blue jay-mapkeeper retrieves a tagged cache from a cracked planter exactly when the route needs it. |
+| Brood Shield | Emperor Penguin | uncommon | Heavy insulated transit coat, soft brood pouch panel, ice-worn talon wraps, station-lamp charm. | A massive penguin anchors a winter transit platform, sheltering the flock from crosswind and exhaustion. |
+| Mimic Thread | Gray Catbird | rare | Slate hooded shell, four small abstract call charms, black cap line, stitch-thread harness. | A slate-gray mimic threads four different neighborhood calls into one live counter-call from a fire escape. |
+| Drumline Tap | Northern Flicker | common | Speckled work jacket, vent-rhythm talon bands, small red nape pin, drumline utility strap. | A spotted woodpecker hammers a bright rhythm on a rooftop vent, turning scattered city noise into a usable start. |
+| Curb Step | American Coot | common | Rubberized curb-runner vest, wide-foot talon wraps, wet concrete charm, short black cap hood. | A coot with oversized lobed toes scrambles across a slick curb and somehow turns the wobble into momentum. |
+| Spiral Search | Brown Creeper | common | Bark-brown climbing wrap, micro satchel, brick-dust talon bands, spiral-route stitch motif. | A tiny creeper works up a brick wall in a spiral route, checking every crack before vanishing around the corner. |
+| Reed Balance | Bearded Reedling | common | Soft reed-color wrap, black moustache cheek trim, wire-balance anklets, pale seed charm. | A small reedling splits its weight between swaying rail wires, making a fragile crossing look easy. |
+| Plunge Claim | Osprey | uncommon | Waterproof strike harness, pale head wrap, fish-scale talon bands, storm-pool strap. | An osprey drops through rain toward a guarded rooftop pool, talons forward and eyes locked on the one true opening. |
+| Cold Plunge | White-throated Dipper | uncommon | Dark waterproof shell, white throat scarf, river-stone charm, slick-pipe talon wraps. | A compact river bird dives under a cold spillway and pops back onto a pipe with the route still in its beak. |
+| Formation Draft | Canada Goose | uncommon | Black-neck flight scarf, route-leader chest band, formation clip charms, weathered wing bands. | A goose holds the lead angle in a street-canyon V, turning headwind between buildings into shared lift. |
+| Tool Probe | New Caledonian Crow | rare | Matte black problem-solver coat, wire-tool satchel, plain brass latch charm, workbench talon wraps. | A crow shapes a hooked probe from scrap wire and reaches the one latch the flock could not open by force. |
 
 ## Minor Arcana Crews
 

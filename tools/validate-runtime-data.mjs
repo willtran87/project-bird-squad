@@ -3,6 +3,7 @@ import path from 'node:path';
 
 const root = process.cwd();
 const errors = [];
+const notes = [];
 
 const readJson = (relativePath) =>
   JSON.parse(fs.readFileSync(path.join(root, relativePath), 'utf8'));
@@ -50,7 +51,7 @@ const arcanaCards = arcanaFiles.flatMap((file) =>
 );
 const knownArcanaIds = new Set(arcanaCards.map((card) => card.id));
 
-const validKinds = new Set(['legend', 'crew', 'molt', 'snag']);
+const validKinds = new Set(['legend', 'crew', 'molt', 'aviary', 'snag']);
 const validSuits = new Set(['plumes', 'quills', 'basins', 'nests']);
 const validRarities = new Set(['common', 'uncommon', 'rare', 'legendary']);
 const validTargets = new Set(['enemy', 'allEnemies', 'self', 'none', 'choice']);
@@ -295,7 +296,30 @@ const validateConditions = (effects, label, allowed, allowTurnGate) => {
   }
 };
 
+const effectBody = (effect) => effect.replace(/^if .+? then /, '');
+const effectsNeedEnemyTarget = (effects = []) => effects.some((effect) => {
+  const body = effectBody(effect);
+  return /\b(?:damage|damagePierce|applyWinded|removeCover)\(target\b/.test(body)
+    || /\b(?:resonanceBurst|windedBurst)\(/.test(body)
+    || /\bperWinded\b/.test(body)
+    || /\btarget(?:BelowHalf|IntendsAttack|HasCover|Winded)\b/.test(effect)
+    || /\bwindedAtLeast\(/.test(effect);
+});
+const effectsHitAllEnemies = (effects = []) => effects.some((effect) => /\bdamageAll\(/.test(effectBody(effect)));
+const effectsOnlyAffectFlock = (effects = []) => effects.some((effect) => {
+  const body = effectBody(effect);
+  return /\b(?:gainCover|heal|overhealCover|loseCohesion|draw|discard|discardUpTo|gainWingbeat|loseWingbeat|gainResonance|spendResonance|enterMolt|gainOpenSkyGuard|returnDiscard|nextCoverBonus|nextTurnDraw|gainEnergyNextTurn|shuffleSelfToDraw)\(/.test(body);
+});
+const inferMoltTarget = (baseTarget, effects = []) => {
+  if (effectsNeedEnemyTarget(effects)) return 'enemy';
+  if (effectsHitAllEnemies(effects)) return 'allEnemies';
+  if (baseTarget === 'choice') return 'choice';
+  if (effectsOnlyAffectFlock(effects)) return baseTarget === 'none' ? 'none' : 'self';
+  return baseTarget;
+};
+
 const cardsById = new Map();
+let moltTargetShiftCount = 0;
 for (const card of alphaCards.cards ?? []) {
   const label = `data/game/alpha-cards.json:${card.id ?? '<missing id>'}`;
   if (!card.id || typeof card.id !== 'string') {
@@ -348,6 +372,7 @@ for (const card of alphaCards.cards ?? []) {
   if (card.moltEffects !== undefined) {
     validateEffects(card.moltEffects, `${label}:moltEffects`, validCardVerbs);
     validateConditions(card.moltEffects, `${label}:moltEffects`, validCardConditions, false);
+    if (inferMoltTarget(card.target, card.moltEffects) !== card.target) moltTargetShiftCount += 1;
   }
 
   if (!card.upgrade || typeof card.upgrade !== 'object') {
@@ -367,6 +392,10 @@ for (const card of alphaCards.cards ?? []) {
   if (card.kind !== 'snag' && statTotal < 1) {
     fail(`${label}: every playable card must grant at least one Flock Stat`);
   }
+}
+
+if (moltTargetShiftCount > 0) {
+  notes.push(`${moltTargetShiftCount} card(s) derive a different active Molt target from moltEffects than their base target.`);
 }
 
 const starterDeck = alphaCards.starterDeck ?? [];
@@ -913,4 +942,7 @@ if (errors.length > 0) {
 }
 
 console.log('Runtime data validation passed.');
+for (const note of notes) {
+  console.log(`Note: ${note}`);
+}
 console.log(`Checked ${cardsById.size} Alpha cards, ${enemiesByPayload.size} enemies, ${encounterIds.size} encounters, ${rewardProfileIds.size} reward profiles, ${statusIds.size} statuses, ${supplyIds.size} supplies, ${routeMarkIds.size} route marks, ${signalIds.size} signals, ${marketIds.size} markets, ${mapProfileIds.size} map profiles, ${basinOptionCount + nestOptionCount + cacheOptionCount} node options, ${totalRouteNodes} route nodes across ${1 + mapContents.length} maps, ${totalRouteEdges} route edges, ${artEntriesByCardId.size} card art entries, and ${enemyArtEntriesByEnemyId.size} enemy art entries.`);

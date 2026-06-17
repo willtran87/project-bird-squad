@@ -68,6 +68,22 @@
     "aviary_24",
     "aviary_26",
     "aviary_27",
+    "aviary_35",
+    "aviary_43",
+    "aviary_42",
+    "aviary_41",
+    "aviary_40",
+    "aviary_39",
+    "aviary_38",
+    "aviary_37",
+    "aviary_36",
+    "aviary_34",
+    "aviary_33",
+    "aviary_32",
+    "aviary_31",
+    "aviary_30",
+    "aviary_29",
+    "aviary_28",
     "wands_07",
     "wands_10",
     "wands_fledgling",
@@ -2534,6 +2550,657 @@
       "flockStats": {
         "draw": 1,
         "openSkyGuard": 1
+      }
+    },
+    {
+      "id": "aviary_28",
+      "displayName": "Hover Check",
+      "bird": "Black-chinned Hummingbird",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "common",
+      "cost": 0,
+      "target": "self",
+      "tags": [
+        "draw",
+        "discard",
+        "tempo"
+      ],
+      "effects": [
+        "draw(1)",
+        "discard(1)"
+      ],
+      "moltEffects": [
+        "gainCover(3)",
+        "draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "draw(1)",
+          "discard(1)",
+          "gainCover(2)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "gainCover(4)",
+          "draw(1)"
+        ]
+      },
+      "flockStats": {
+        "draw": 1
+      }
+    },
+    {
+      "id": "aviary_29",
+      "displayName": "Mobbing Call",
+      "bird": "Red-winged Blackbird",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "common",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "winded",
+        "tell"
+      ],
+      "effects": [
+        "damage(target, 2)",
+        "if targetIntendsAttack then applyWinded(target, 1)"
+      ],
+      "moltEffects": [
+        "applyWinded(target, 2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 3)",
+          "if targetIntendsAttack then applyWinded(target, 2)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "applyWinded(target, 3)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1
+      }
+    },
+    {
+      "id": "aviary_30",
+      "displayName": "Underwing Shelter",
+      "bird": "Killdeer",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover",
+        "heal"
+      ],
+      "effects": [
+        "gainCover(3)",
+        "heal(2)"
+      ],
+      "moltEffects": [
+        "gainOpenSkyGuard(1)",
+        "heal(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(5)",
+          "heal(3)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "gainOpenSkyGuard(1)",
+          "heal(4)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 1
+      }
+    },
+    {
+      "id": "aviary_31",
+      "displayName": "Scavenger Eye",
+      "bird": "Herring Gull",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "common",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "cover",
+        "draw",
+        "utility"
+      ],
+      "effects": [
+        "removeCover(target, 3)",
+        "draw(1)"
+      ],
+      "moltEffects": [
+        "removeCover(target, 5)",
+        "damage(target, 2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "removeCover(target, 5)",
+          "draw(1)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "removeCover(target, 7)",
+          "damage(target, 3)"
+        ]
+      },
+      "flockStats": {
+        "draw": 1
+      }
+    },
+    {
+      "id": "aviary_32",
+      "displayName": "Thermal Lift",
+      "bird": "Andean Condor",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "none",
+      "tags": [
+        "tempo",
+        "open-sky",
+        "draw"
+      ],
+      "effects": [
+        "gainWingbeat(1)",
+        "if openSky then gainOpenSkyGuard(1)",
+        "nextTurnDraw(1)"
+      ],
+      "moltEffects": [
+        "gainWingbeat(1)",
+        "gainOpenSkyGuard(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainWingbeat(1)",
+          "if openSky then gainOpenSkyGuard(2)",
+          "nextTurnDraw(1)"
+        ],
+        "flockStats": {
+          "openSkyGuard": 1
+        },
+        "moltEffects": [
+          "gainWingbeat(1)",
+          "gainOpenSkyGuard(2)"
+        ]
+      },
+      "flockStats": {
+        "openSkyGuard": 1,
+        "draw": 1
+      }
+    },
+    {
+      "id": "aviary_33",
+      "displayName": "Cache Memory",
+      "bird": "Pinyon Jay",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "choice",
+      "tags": [
+        "recursion",
+        "draw"
+      ],
+      "effects": [
+        "returnDiscard(nonMolt, +1)",
+        "if fullCohesion then draw(1)"
+      ],
+      "moltEffects": [
+        "draw(1)",
+        "returnDiscard(nonMolt, +1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "returnDiscard(nonMolt, 0)",
+          "if fullCohesion then draw(1)"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "draw(1)",
+          "returnDiscard(nonMolt, 0)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 1,
+        "draw": 1
+      }
+    },
+    {
+      "id": "aviary_34",
+      "displayName": "Brood Shield",
+      "bird": "Emperor Penguin",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover",
+        "heal"
+      ],
+      "effects": [
+        "gainCover(6)",
+        "if cohesionBelowHalf then heal(2)"
+      ],
+      "moltEffects": [
+        "gainCover(8)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(8)",
+          "if cohesionBelowHalf then heal(3)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "gainCover(10)"
+        ]
+      },
+      "flockStats": {
+        "cover": 1,
+        "cohesion": 1
+      }
+    },
+    {
+      "id": "aviary_35",
+      "displayName": "Mimic Thread",
+      "bird": "Gray Catbird",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "rare",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "resonance",
+        "winded",
+        "heal",
+        "cover"
+      ],
+      "effects": [
+        "damage(target, 3)",
+        "if playedSuitThisTurn(plumes) then gainResonance(1)",
+        "if playedSuitThisTurn(quills) then applyWinded(target, 1)",
+        "if playedSuitThisTurn(basins) then heal(2)",
+        "if playedSuitThisTurn(nests) then gainCover(3)"
+      ],
+      "moltEffects": [
+        "draw(1)",
+        "gainResonance(1)",
+        "applyWinded(target, 1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damage(target, 4)",
+          "if playedSuitThisTurn(plumes) then gainResonance(2)",
+          "if playedSuitThisTurn(quills) then applyWinded(target, 2)",
+          "if playedSuitThisTurn(basins) then heal(3)",
+          "if playedSuitThisTurn(nests) then gainCover(4)"
+        ],
+        "flockStats": {
+          "draw": 1,
+          "damage": 1
+        },
+        "moltEffects": [
+          "draw(1)",
+          "gainResonance(2)",
+          "applyWinded(target, 1)"
+        ]
+      },
+      "flockStats": {
+        "draw": 1,
+        "damage": 1
+      }
+    },
+    {
+      "id": "aviary_36",
+      "displayName": "Drumline Tap",
+      "bird": "Northern Flicker",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "common",
+      "cost": 1,
+      "target": "allEnemies",
+      "tags": [
+        "attack",
+        "aoe",
+        "opener",
+        "resonance"
+      ],
+      "effects": [
+        "damageAll(2)",
+        "if firstPlayedThisCombat then gainResonance(1)"
+      ],
+      "moltEffects": [
+        "damageAll(3)",
+        "gainResonance(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damageAll(3)",
+          "if firstPlayedThisCombat then gainResonance(2)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "damageAll(4)",
+          "gainResonance(1)"
+        ]
+      },
+      "flockStats": {
+        "damage": 1
+      }
+    },
+    {
+      "id": "aviary_37",
+      "displayName": "Curb Step",
+      "bird": "American Coot",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "cover",
+        "tempo"
+      ],
+      "effects": [
+        "gainCover(4)",
+        "gainWingbeat(1)"
+      ],
+      "moltEffects": [
+        "gainCover(5)",
+        "gainWingbeat(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(6)",
+          "gainWingbeat(1)"
+        ],
+        "flockStats": {
+          "cover": 1
+        },
+        "moltEffects": [
+          "gainCover(7)",
+          "gainWingbeat(1)"
+        ]
+      },
+      "flockStats": {
+        "cover": 1
+      }
+    },
+    {
+      "id": "aviary_38",
+      "displayName": "Spiral Search",
+      "bird": "Brown Creeper",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "common",
+      "cost": 0,
+      "target": "none",
+      "tags": [
+        "cover",
+        "recursion",
+        "loop"
+      ],
+      "effects": [
+        "gainCover(1)",
+        "shuffleSelfToDraw()"
+      ],
+      "moltEffects": [
+        "gainCover(3)",
+        "shuffleSelfToDraw()"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainCover(2)",
+          "shuffleSelfToDraw()"
+        ],
+        "flockStats": {
+          "draw": 1
+        },
+        "moltEffects": [
+          "gainCover(4)",
+          "shuffleSelfToDraw()"
+        ]
+      },
+      "flockStats": {
+        "draw": 1
+      }
+    },
+    {
+      "id": "aviary_39",
+      "displayName": "Reed Balance",
+      "bird": "Bearded Reedling",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "common",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "heal",
+        "cover",
+        "draw"
+      ],
+      "effects": [
+        "heal(1)",
+        "gainCover(4)",
+        "if fullCohesion then draw(1)"
+      ],
+      "moltEffects": [
+        "heal(2)",
+        "gainCover(4)"
+      ],
+      "upgrade": {
+        "effects": [
+          "heal(2)",
+          "gainCover(5)",
+          "if fullCohesion then draw(1)"
+        ],
+        "flockStats": {
+          "cohesion": 1
+        },
+        "moltEffects": [
+          "heal(3)",
+          "gainCover(5)"
+        ]
+      },
+      "flockStats": {
+        "cohesion": 1
+      }
+    },
+    {
+      "id": "aviary_40",
+      "displayName": "Plunge Claim",
+      "bird": "Osprey",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "enemy",
+      "tags": [
+        "attack",
+        "pierce",
+        "cover"
+      ],
+      "effects": [
+        "damagePierce(target, 4)",
+        "if targetHasCover then removeCover(target, 4)"
+      ],
+      "moltEffects": [
+        "damagePierce(target, 5)",
+        "removeCover(target, 3)"
+      ],
+      "upgrade": {
+        "effects": [
+          "damagePierce(target, 6)",
+          "if targetHasCover then removeCover(target, 6)"
+        ],
+        "flockStats": {
+          "damage": 1
+        },
+        "moltEffects": [
+          "damagePierce(target, 7)",
+          "removeCover(target, 4)"
+        ]
+      },
+      "flockStats": {
+        "damage": 2
+      }
+    },
+    {
+      "id": "aviary_41",
+      "displayName": "Cold Plunge",
+      "bird": "White-throated Dipper",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "self",
+      "tags": [
+        "open-sky",
+        "heal",
+        "draw"
+      ],
+      "effects": [
+        "gainOpenSkyGuard(1)",
+        "heal(2)",
+        "if openSky then draw(1)"
+      ],
+      "moltEffects": [
+        "gainOpenSkyGuard(2)",
+        "heal(2)",
+        "draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainOpenSkyGuard(2)",
+          "heal(3)",
+          "if openSky then draw(1)"
+        ],
+        "flockStats": {
+          "openSkyGuard": 1
+        },
+        "moltEffects": [
+          "gainOpenSkyGuard(3)",
+          "heal(3)",
+          "draw(1)"
+        ]
+      },
+      "flockStats": {
+        "openSkyGuard": 1,
+        "cohesion": 1
+      }
+    },
+    {
+      "id": "aviary_42",
+      "displayName": "Formation Draft",
+      "bird": "Canada Goose",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "uncommon",
+      "cost": 1,
+      "target": "none",
+      "tags": [
+        "tempo",
+        "draw",
+        "cover",
+        "formation"
+      ],
+      "effects": [
+        "gainWingbeat(1)",
+        "if flockSuit(plumes,3) then draw(1)",
+        "if flockSuit(nests,3) then gainCover(3)"
+      ],
+      "moltEffects": [
+        "gainWingbeat(1)",
+        "draw(1)",
+        "gainCover(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "gainWingbeat(1)",
+          "if flockSuit(plumes,3) then draw(1)",
+          "if flockSuit(nests,3) then gainCover(5)"
+        ],
+        "flockStats": {
+          "openSkyGuard": 1
+        },
+        "moltEffects": [
+          "gainWingbeat(1)",
+          "draw(1)",
+          "gainCover(4)"
+        ]
+      },
+      "flockStats": {
+        "draw": 1,
+        "openSkyGuard": 1
+      }
+    },
+    {
+      "id": "aviary_43",
+      "displayName": "Tool Probe",
+      "bird": "New Caledonian Crow",
+      "kind": "aviary",
+      "suit": null,
+      "rarity": "rare",
+      "cost": 1,
+      "target": "choice",
+      "tags": [
+        "recursion",
+        "tempo",
+        "draw"
+      ],
+      "effects": [
+        "returnDiscard(nonMolt, 0)",
+        "if firstPlayedThisCombat then gainWingbeat(1)"
+      ],
+      "moltEffects": [
+        "returnDiscard(nonMolt, 0)",
+        "draw(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "returnDiscard(nonMolt, 0)",
+          "if firstPlayedThisCombat then gainWingbeat(1)",
+          "draw(1)"
+        ],
+        "flockStats": {
+          "draw": 1,
+          "resonance": 1
+        },
+        "moltEffects": [
+          "returnDiscard(nonMolt, 0)",
+          "draw(2)"
+        ]
+      },
+      "flockStats": {
+        "draw": 1,
+        "resonance": 1
       }
     },
     {

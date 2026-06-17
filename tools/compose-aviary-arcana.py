@@ -158,7 +158,7 @@ def draw_centered_text(
     image.alpha_composite(text_layer, (round(center[0] - text_layer.width / 2), round(center[1] - text_layer.height / 2)))
 
 
-def draw_title_and_roman(image: Image.Image, title: str, roman: str) -> Image.Image:
+def draw_title_and_badge(image: Image.Image, title: str, badge: str) -> Image.Image:
     cartouche = GEOMETRY["title_cartouche"]
     draw_centered_text(
         image,
@@ -172,7 +172,7 @@ def draw_title_and_roman(image: Image.Image, title: str, roman: str) -> Image.Im
     cx, cy, r = GEOMETRY["top_medallion"]
     draw_centered_text(
         image,
-        roman,
+        badge,
         (cx, cy + 4),
         r * 2 - 16,
         [36, 34, 32, 30, 28, 26, 24],
@@ -208,14 +208,14 @@ def compose_card(source_path: Path, output_path: Path, template_path: Path, card
             canvas = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
             canvas.alpha_composite(fit_art_under_template(source, template_layer), (0, 0))
             canvas.alpha_composite(template_layer)
-        final = draw_title_and_roman(canvas, display_title(card), card["roman"])
+        final = draw_title_and_badge(canvas, display_title(card), card.get("qualityCode") or card.get("roman") or "")
         final = apply_card_alpha_mask(final)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         final.save(output_path)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Compose generated Aviary Legend center art under the shared Bird Squad master border.")
+    parser = argparse.ArgumentParser(description="Compose generated Aviary center art under the shared Bird Squad master border.")
     parser.add_argument("--source-root", type=Path, default=Path(".generated/imagegen/tarot/aviary-center-art-runs/latest"))
     parser.add_argument("--output-root", type=Path, default=Path(".generated/imagegen/tarot/aviary-border-first-runs/latest"))
     parser.add_argument("--template", type=Path, default=DEFAULT_TEMPLATE, help="Shared raster border template, normally the Minor Arcana master.png.")
@@ -251,7 +251,7 @@ def main() -> None:
         composed.append(output)
 
     action = "Would compose" if args.dry_run else "Composed"
-    print(f"{action} {len(composed)} Aviary Legend card(s).")
+    print(f"{action} {len(composed)} Aviary card(s).")
     if missing:
         print(f"Missing {len(missing)} center-art source file(s):")
         for item in missing:

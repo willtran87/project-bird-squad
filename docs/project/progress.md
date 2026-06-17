@@ -1122,3 +1122,58 @@ Follow-up TODO:
   single overlay sprite.
 - Verified `npm run build`, `npm test`, `npm run test:e2e`, and direct combat
   Playwright captures at `.artifacts/test-results/combat-fx-quality-*.png`.
+
+## 2026-06-17 Aviary Master-Border Art Workflow
+
+- Added an Aviary Legend center-art prompt exporter and generated the six-card
+  prompt pack under `docs/art/prompt-packs/`.
+- Added the Aviary master-border compositor, composite validator, contact-sheet
+  helper, and runbook using the existing raster `master.png` border template.
+- Generated six Aviary center-art images with imagegen and composited them under
+  the master border at
+  `.generated/imagegen/tarot/aviary-border-first-runs/2026-06-17-imagegen-aviary-master-border-v1/`.
+- Recorded QA notes and contact sheets under
+  `tmp/qa/aviary/2026-06-17-imagegen-aviary-master-border-v1/`.
+- Verified `npm run validate:docs`, `npm run validate:minor-border-templates -- --require-all`,
+  `npm run validate:aviary-composites`, and `npm run validate`.
+
+## 2026-06-17 Aviary Runtime Art Wiring
+
+- Promoted the six approved Aviary master-border composites into the runtime
+  card-art manifest as approved sources.
+- Generated optimized portrait, thumbnail, and icon WebP assets for
+  `aviary_22` through `aviary_27`.
+- Verified the Codex can load all six Aviary runtime card textures and captured
+  an in-game detail view at `.artifacts/aviary-codex-runtime-art.png`.
+
+## 2026-06-17 Aviary Quality Expansion
+
+- Added eight suitless Aviary quality cards (`aviary_28` through `aviary_35`)
+  to the identity data, runtime card data, reward pool, Codex meanings, bird
+  facts, and placeholder art manifest.
+- Added `kind: "aviary"` to the gameplay data contract and validators so Aviary
+  cards are not treated as tarot cards or suit cards.
+- Updated art docs, alpha/game design counts, audit targets, the Aviary prompt
+  exporter, and the Aviary compositor to support 14 Aviary cards and
+  compositor-owned top badge/title marks instead of roman-numeral tarot trumps.
+- Regenerated the Aviary center-art prompt pack and verified with runtime/docs
+  validation, content audit, build, full validate, smoke tests, and the generic
+  web-game client.
+
+## 2026-06-17 Aviary Fieldcraft Expansion
+
+- Added a second eight-card suitless Aviary batch (`aviary_36` through
+  `aviary_43`) centered on practical bird qualities: drumming signal, footwork,
+  methodical search, balance, plunge commitment, current resilience, formation
+  drafting, and tool use.
+- Wired the cards into runtime data, reward pool, Aviary arcana identity data,
+  Codex meanings, bird facts, placeholder card art manifest entries, art bible
+  rows, alpha spec card tables, and the generated Aviary center-art prompt pack.
+- Updated current deck/count contracts to 100 playable cards and a 90-card reward
+  pool.
+- Raised the app-entry bundle-size guard to 540 KB for the current full-content
+  build while leaving bundle-size validation active.
+- Verified with runtime/docs validation, content audit, build, full validate,
+  tests, full smoke suite, `git diff --check`, and the generic web-game client.
+- Verified `npm run validate:runtime`, `npm run validate:runtime-assets`,
+  `npm run build`, and `npm run validate`.

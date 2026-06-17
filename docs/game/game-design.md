@@ -119,8 +119,8 @@ That alpha slice proved the game feels like a bird-native deckbuilding roguelike
 
 **Scope expanded post-alpha (current build):** the playable game now spans all
 four districts — Rooftop Blocks → Canal Markets → Signal Spires → High Roost
-(`src/game/runtime-data.ts` `alphaMaps`) — and the full arcana deck is implemented
-as **84 playable cards** (10-card starter + **74-card reward pool**), with
+(`src/game/runtime-data.ts` `alphaMaps`) — and the full playable deck is implemented
+as **100 playable cards** (10-card starter + **90-card reward pool**), with
 rarity-weighted reward offers. Map 1 remains the balance/tuning reference; see
 `docs/game/alpha-run-spec.md` for per-map detail.
 

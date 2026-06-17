@@ -1,15 +1,15 @@
 {
   "version": "0.1",
   "project": "Bird Squad",
-  "set": "Aviary Legends — game-original trumps beyond the 22",
+  "set": "Aviary Cards - Bird Squad-original legends and field qualities",
   "basedOn": "docs/art/art-bible.md; major-arcana-bird-map.json",
-  "note": "Six trumps native to Bird Squad, extending the Legend Cards past XXI. Like the Majors these are legendary individuals (not crew pips). Cast is reserved away from all 22 Legend Cards species and the four Minor suits.",
+  "note": "Aviary cards are Bird Squad-original cards, not tarot cards. The first six are legendary field myths; the quality expansion adds lower-rarity bird-behavior cards with no suit and no tarot numbering requirement.",
   "coreRule": "All subjects anatomically bird; streetwear fitted to bird anatomy; no humanoid forms; no gore. No readable text on clothing; suit-coded streetwear should use abstract motifs, color, material, and accessories without gang-coded uniforms or affiliation marks.",
   "style": {
     "medium": "high-resolution pixel art",
-    "tone": "modern urban fantasy tarot",
-    "composition": "vertical tarot card with consistent Bird Squad border frame, full-body bird subject, readable bottom title cartouche",
-    "borderSystem": "Fixed frame structure: dark outer keyline, gilded inner filigree rail, four corner medallions, slim vertical side rails, top numeral or crest medallion, and bottom title cartouche. Card-specific symbols may change inside these zones, but frame thickness, symmetry, border width, and title placement stay consistent."
+    "tone": "modern urban bird-card mythos",
+    "composition": "vertical Bird Squad card with shared master border frame, full-body bird subject, and readable bottom title cartouche",
+    "borderSystem": "Fixed master frame structure: dark outer keyline, gilded inner filigree rail, four corner medallions, slim vertical side rails, top badge or crest medallion, and bottom title cartouche. Aviary cards reuse the master border without treating the card as tarot."
   },
   "cards": [
     {
@@ -38,7 +38,9 @@
       "accent": "dusk orange",
       "varietyNotes": "Pairs thematically with the Major World (Arctic Tern) but is endurance over completion; sustained-flight silhouette + trailing flock are its signature.",
       "gameplayFantasy": "An endgame journey engine — long-payoff card that rewards committing to a course across many turns.",
-      "gameName": "Migration Line"
+      "gameName": "Migration Line",
+      "setRole": "legend",
+      "lineage": "aviary-original"
     },
     {
       "id": "aviary_23",
@@ -66,7 +68,9 @@
       "accent": "warm amber",
       "varietyNotes": "Glowing tower + sheltering wing arc make it the deck's 'safe haven' card; warm amber separates it from the cool night cards.",
       "gameplayFantasy": "A safe-harbor card — heal, regroup, and protect crew cards; recall pieces home and refresh them.",
-      "gameName": "Home Roost"
+      "gameName": "Home Roost",
+      "setRole": "legend",
+      "lineage": "aviary-original"
     },
     {
       "id": "aviary_24",
@@ -94,7 +98,9 @@
       "accent": "hot red",
       "varietyNotes": "Forked-tail, angular storm-rider silhouette; contrasts the Major Tower (sudden collapse) by being sustained mastery of chaos.",
       "gameplayFantasy": "A high-risk/high-reward swing card — convert disruption into power; stronger the more chaotic the encounter.",
-      "gameName": "Storm Ride"
+      "gameName": "Storm Ride",
+      "setRole": "legend",
+      "lineage": "aviary-original"
     },
     {
       "id": "aviary_25",
@@ -122,7 +128,9 @@
       "accent": "scarlet",
       "varietyNotes": "Two-tone split plumage is a unique visual hook in the deck; dramatizes 'becoming' without gore or harm.",
       "gameplayFantasy": "A transform card — swap a card's form/role, trading current strength for a new shape (vulnerable mid-change).",
-      "gameName": "Hot Feathers"
+      "gameName": "Hot Feathers",
+      "setRole": "molt-legend",
+      "lineage": "aviary-original"
     },
     {
       "id": "aviary_26",
@@ -150,7 +158,9 @@
       "accent": "dawn rose",
       "varietyNotes": "Foreground individual + emergent flock-shape is the deck's only crowd-as-subject composition; reads 'collective' instantly.",
       "gameplayFantasy": "A swarm/go-wide card — power scales with how many friendly crew cards are active in the encounter; rewards a full crew.",
-      "gameName": "Flock Signal"
+      "gameName": "Flock Signal",
+      "setRole": "legend",
+      "lineage": "aviary-original"
     },
     {
       "id": "aviary_27",
@@ -178,7 +188,489 @@
       "accent": "pale corona gold",
       "varietyNotes": "Camouflaged stillness + eclipse halo; sits beside the Major Moon (illusion) but is threshold/omen rather than dream. Corona gold is its one point of light.",
       "gameplayFantasy": "A liminal/omen card — peek at hidden information or freeze the encounter state for a beat before a turn flips.",
-      "gameName": "Eclipse Watch"
+      "gameName": "Eclipse Watch",
+      "setRole": "legend",
+      "lineage": "aviary-original"
+    },
+    {
+      "id": "aviary_28",
+      "number": 28,
+      "qualityCode": "AQ-01",
+      "setRole": "quality",
+      "quality": "Hover",
+      "rarity": "common",
+      "gameName": "Hover Check",
+      "bird": "Black-chinned Hummingbird",
+      "coreMeaning": "Precision, timing, staying steady inside impossible motion",
+      "description": "A tiny city courier holds a perfect hover beside a rain-slick signal light, reading the exact instant to move.",
+      "pose": "Suspended in a sharp hover with wings blurred by pixel clusters, beak angled toward a tiny timing marker clipped to a rooftop rail.",
+      "silhouetteClass": "tiny-hovering-hummingbird",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "micro flight vest",
+        "needle-thin timing charm",
+        "iridescent throat scarf",
+        "lightweight courier bands"
+      ],
+      "palette": [
+        "deep teal",
+        "black violet",
+        "silver rain",
+        "white glint"
+      ],
+      "accent": "white glint",
+      "varietyNotes": "Tiny scale, suspended pose, and throat-glint timing separate it from Plumes speed cards; this is control, not spectacle.",
+      "gameplayFantasy": "A low-cost filter card that fixes timing: draw, discard, and lightly brace while keeping the turn moving."
+    },
+    {
+      "id": "aviary_29",
+      "number": 29,
+      "qualityCode": "AQ-02",
+      "setRole": "quality",
+      "quality": "Mobbing",
+      "rarity": "common",
+      "gameName": "Mobbing Call",
+      "bird": "Red-winged Blackbird",
+      "coreMeaning": "Warning, group nerve, turning pressure back on a threat",
+      "description": "A shoulder-patched sentinel leans into a hard alarm call from a chain-link rooftop, making a larger foe hesitate.",
+      "pose": "Perched forward with red epaulets flared, beak open in a sharp call, body angled at an unseen incoming threat.",
+      "silhouetteClass": "marsh-songbird-sentinel",
+      "poseEnergy": "active",
+      "streetwear": [
+        "black utility shell",
+        "red shoulder patch shapes",
+        "chain-link lookout bands",
+        "alarm-call throat wrap"
+      ],
+      "palette": [
+        "matte black",
+        "red orange",
+        "ditch green",
+        "weathered steel"
+      ],
+      "accent": "red orange",
+      "varietyNotes": "Epaulet flare and alarm-call posture make the bird quality readable without needing a named heroic individual.",
+      "gameplayFantasy": "A modest strike that punishes attacking enemies by adding Winded."
+    },
+    {
+      "id": "aviary_30",
+      "number": 30,
+      "qualityCode": "AQ-03",
+      "setRole": "quality",
+      "quality": "Decoy Care",
+      "rarity": "common",
+      "gameName": "Underwing Shelter",
+      "bird": "Killdeer",
+      "coreMeaning": "Protective misdirection, brave vulnerability, keeping the fragile thing safe",
+      "description": "A plover draws attention away from a hidden sidewalk nest, one wing lowered in a deliberate act of protection.",
+      "pose": "Low to the pavement with one wing drooped naturally, head turned bright-eyed toward danger while the real safe place sits behind.",
+      "silhouetteClass": "ground-plover-guardian",
+      "poseEnergy": "active",
+      "streetwear": [
+        "dusty safety vest",
+        "soft underwing wrap",
+        "tiny pebble charms",
+        "roadside talon bands"
+      ],
+      "palette": [
+        "warm gravel",
+        "cream",
+        "black collar",
+        "safety orange"
+      ],
+      "accent": "safety orange",
+      "varietyNotes": "Grounded sidewalk-nest staging and broken-wing-display behavior give this card a tender defensive identity.",
+      "gameplayFantasy": "A gentle sustain card: Cover plus a little healing, stronger as a Molt-softening shelter."
+    },
+    {
+      "id": "aviary_31",
+      "number": 31,
+      "qualityCode": "AQ-04",
+      "setRole": "quality",
+      "quality": "Opportunism",
+      "rarity": "common",
+      "gameName": "Scavenger Eye",
+      "bird": "Herring Gull",
+      "coreMeaning": "Spotting loose value, breaking open defenses, practical opportunism",
+      "description": "A dockside gull clocks the one unsecured latch on a market crate while the whole rooftop misses it.",
+      "pose": "Standing alert on a wet pier rail, head cocked at a loose latch, with one foot braced and wings tucked cleanly.",
+      "silhouetteClass": "large-urban-gull",
+      "poseEnergy": "static",
+      "streetwear": [
+        "salt-stained pier jacket",
+        "market-latch charm",
+        "rubberized talon wraps",
+        "bright eye pin"
+      ],
+      "palette": [
+        "gull gray",
+        "harbor white",
+        "dock blue",
+        "chip-yellow"
+      ],
+      "accent": "chip-yellow",
+      "varietyNotes": "A utilitarian gull card about noticing weakness; it should feel clever and funny without becoming slapstick.",
+      "gameplayFantasy": "Anti-Cover utility that cracks enemy Cover and replaces itself."
+    },
+    {
+      "id": "aviary_32",
+      "number": 32,
+      "qualityCode": "AQ-05",
+      "setRole": "quality",
+      "quality": "Soaring",
+      "rarity": "uncommon",
+      "gameName": "Thermal Lift",
+      "bird": "Andean Condor",
+      "coreMeaning": "Patience, altitude, borrowed momentum, spending less by reading the air",
+      "description": "A vast-winged condor rides warm city air above solar vents and roof exhausts without wasting a beat.",
+      "pose": "Huge wings locked in a calm soar over rooftop vents, body barely tilted as the city heat carries it upward.",
+      "silhouetteClass": "giant-soaring-vulture",
+      "poseEnergy": "static",
+      "streetwear": [
+        "wide weather cloak fitted over folded wing base",
+        "thermal-map harness",
+        "white collar scarf",
+        "altitude talon bands"
+      ],
+      "palette": [
+        "charcoal",
+        "bone white",
+        "sun-warmed copper",
+        "high-sky blue"
+      ],
+      "accent": "sun-warmed copper",
+      "varietyNotes": "Massive calm silhouette and thermal-vent setting make it the opposite of frantic speed cards.",
+      "gameplayFantasy": "A tempo setup card: gain Wingbeat, future draw, and Open Sky protection when the flock is exposed."
+    },
+    {
+      "id": "aviary_33",
+      "number": 33,
+      "qualityCode": "AQ-06",
+      "setRole": "quality",
+      "quality": "Cache Memory",
+      "rarity": "uncommon",
+      "gameName": "Cache Memory",
+      "bird": "Pinyon Jay",
+      "coreMeaning": "Remembered resources, social memory, getting back what the flock set aside",
+      "description": "A blue jay-mapkeeper retrieves a tagged cache from a cracked planter exactly when the route needs it.",
+      "pose": "Perched beside a rooftop planter cache, beak lifting one tagged seed packet from many hidden spots mapped by memory.",
+      "silhouetteClass": "social-corvid-cachekeeper",
+      "poseEnergy": "active",
+      "streetwear": [
+        "faded blue field jacket",
+        "cache-map satchel",
+        "seed-tag clips",
+        "chalk-dust talon wraps"
+      ],
+      "palette": [
+        "dusty blue",
+        "pinyon green",
+        "tan concrete",
+        "chalk white"
+      ],
+      "accent": "chalk white",
+      "varietyNotes": "Memory and retrieval are the point; keep the props practical, small, and route-used rather than magical.",
+      "gameplayFantasy": "A fair recursion card that returns a discard card, with extra draw when the flock is healthy."
+    },
+    {
+      "id": "aviary_34",
+      "number": 34,
+      "qualityCode": "AQ-07",
+      "setRole": "quality",
+      "quality": "Brooding",
+      "rarity": "uncommon",
+      "gameName": "Brood Shield",
+      "bird": "Emperor Penguin",
+      "coreMeaning": "Endurance through cold, shared warmth, patient protection",
+      "description": "A massive penguin anchors a winter transit platform, sheltering the flock from crosswind and exhaustion.",
+      "pose": "Standing square and monumental, flippers close to the body, a warm protected space suggested at its feet without adding another species.",
+      "silhouetteClass": "large-upright-seabird",
+      "poseEnergy": "static",
+      "streetwear": [
+        "heavy insulated transit coat",
+        "soft brood pouch panel",
+        "ice-worn talon wraps",
+        "station-lamp charm"
+      ],
+      "palette": [
+        "deep navy",
+        "snow white",
+        "warm amber",
+        "frost blue"
+      ],
+      "accent": "warm amber",
+      "varietyNotes": "Tall grounded mass, warmth, and endurance set it apart from flashier defense cards.",
+      "gameplayFantasy": "A sturdy Cover card that helps more when Cohesion is low."
+    },
+    {
+      "id": "aviary_35",
+      "number": 35,
+      "qualityCode": "AQ-08",
+      "setRole": "quality",
+      "quality": "Mimicry",
+      "rarity": "rare",
+      "gameName": "Mimic Thread",
+      "bird": "Gray Catbird",
+      "coreMeaning": "Adaptation, borrowed voices, stitching the flock's habits into one answer",
+      "description": "A slate-gray mimic threads four different neighborhood calls into one live counter-call from a fire escape.",
+      "pose": "Balanced on a fire escape rail with tail cocked, beak open mid-phrase, subtle visual echoes of four suit behaviors around the scene.",
+      "silhouetteClass": "mimic-songbird",
+      "poseEnergy": "active",
+      "streetwear": [
+        "slate hooded shell",
+        "four small abstract call charms",
+        "black cap line",
+        "stitch-thread harness"
+      ],
+      "palette": [
+        "slate gray",
+        "black cap",
+        "soft rust",
+        "pale signal blue"
+      ],
+      "accent": "soft rust",
+      "varietyNotes": "The rare glue card: one bird voice braids suit habits without becoming any suit or importing their border symbols.",
+      "gameplayFantasy": "A flexible rare payoff that rewards whatever suit the player has already played this turn."
+    },
+    {
+      "id": "aviary_36",
+      "number": 36,
+      "qualityCode": "AQ-09",
+      "setRole": "quality",
+      "quality": "Drumming Signal",
+      "rarity": "common",
+      "gameName": "Drumline Tap",
+      "bird": "Northern Flicker",
+      "coreMeaning": "Attention, opening rhythm, the first clear signal through noise",
+      "description": "A spotted woodpecker hammers a bright rhythm on a rooftop vent, turning scattered city noise into a usable start.",
+      "pose": "Braced against a metal vent cap with tail stiff for support, beak mid-tap, spotted body angled in a clean drumming silhouette.",
+      "silhouetteClass": "ground-foraging-woodpecker",
+      "poseEnergy": "active",
+      "streetwear": [
+        "speckled work jacket",
+        "vent-rhythm talon bands",
+        "small red nape pin",
+        "drumline utility strap"
+      ],
+      "palette": [
+        "warm buff",
+        "black spots",
+        "brick red",
+        "vent steel"
+      ],
+      "accent": "brick red",
+      "varietyNotes": "A biological signal card: rhythm comes from beak and braced tail, not electronics or magical sound waves.",
+      "gameplayFantasy": "A simple opener that pings all enemies and gives Plumes-adjacent tempo only on the first play."
+    },
+    {
+      "id": "aviary_37",
+      "number": 37,
+      "qualityCode": "AQ-10",
+      "setRole": "quality",
+      "quality": "Footwork",
+      "rarity": "common",
+      "gameName": "Curb Step",
+      "bird": "American Coot",
+      "coreMeaning": "Scrappy footing, awkward grace, staying upright on bad ground",
+      "description": "A coot with oversized lobed toes scrambles across a slick curb and somehow turns the wobble into momentum.",
+      "pose": "Low stepping over wet curb stones, lobed feet visible and planted wide, wings tucked tight for balance.",
+      "silhouetteClass": "lobed-foot-waterbird",
+      "poseEnergy": "active",
+      "streetwear": [
+        "rubberized curb-runner vest",
+        "wide-foot talon wraps",
+        "wet concrete charm",
+        "short black cap hood"
+      ],
+      "palette": [
+        "charcoal",
+        "wet concrete gray",
+        "white bill",
+        "pond green"
+      ],
+      "accent": "white bill",
+      "varietyNotes": "The humor is in the species anatomy: awkward-looking footwork that is actually excellent.",
+      "gameplayFantasy": "A defensive tempo card that pays back one Wingbeat while adding modest Cover."
+    },
+    {
+      "id": "aviary_38",
+      "number": 38,
+      "qualityCode": "AQ-11",
+      "setRole": "quality",
+      "quality": "Methodical Search",
+      "rarity": "common",
+      "gameName": "Spiral Search",
+      "bird": "Brown Creeper",
+      "coreMeaning": "Careful inspection, patient loops, finding value by circling back",
+      "description": "A tiny creeper works up a brick wall in a spiral route, checking every crack before vanishing around the corner.",
+      "pose": "Clinging vertically to a brick wall with tail braced, curved bill pointed into a small crack, body small but exact.",
+      "silhouetteClass": "tiny-treecreeper",
+      "poseEnergy": "static",
+      "streetwear": [
+        "bark-brown climbing wrap",
+        "micro satchel",
+        "brick-dust talon bands",
+        "spiral-route stitch motif"
+      ],
+      "palette": [
+        "bark brown",
+        "cream streaks",
+        "brick red",
+        "shadow gray"
+      ],
+      "accent": "cream streaks",
+      "varietyNotes": "A small quiet card about persistence; keep the scale intimate and wall-clinging, not heroic flight.",
+      "gameplayFantasy": "A low-impact self-loop that adds tiny Cover and keeps coming back through the draw pile."
+    },
+    {
+      "id": "aviary_39",
+      "number": 39,
+      "qualityCode": "AQ-12",
+      "setRole": "quality",
+      "quality": "Balance",
+      "rarity": "common",
+      "gameName": "Reed Balance",
+      "bird": "Bearded Reedling",
+      "coreMeaning": "Poise, light footing, calm on a narrow stem",
+      "description": "A small reedling splits its weight between swaying rail wires, making a fragile crossing look easy.",
+      "pose": "Perched in a perfect side-split stance between two flexible wires, tail counterbalancing, head calm and alert.",
+      "silhouetteClass": "small-reed-percher",
+      "poseEnergy": "static",
+      "streetwear": [
+        "soft reed-color wrap",
+        "black moustache cheek trim",
+        "wire-balance anklets",
+        "pale seed charm"
+      ],
+      "palette": [
+        "reed tan",
+        "soft gray",
+        "black cheek",
+        "pale sky"
+      ],
+      "accent": "pale sky",
+      "varietyNotes": "Balance and calm are the hook; no acrobatics that read as humanoid gymnastics.",
+      "gameplayFantasy": "A common sustain card that gives Cover, a little healing, and a draw bonus when the flock is already steady."
+    },
+    {
+      "id": "aviary_40",
+      "number": 40,
+      "qualityCode": "AQ-13",
+      "setRole": "quality",
+      "quality": "Commitment",
+      "rarity": "uncommon",
+      "gameName": "Plunge Claim",
+      "bird": "Osprey",
+      "coreMeaning": "Commitment, clean entry, claiming the opening through resistance",
+      "description": "An osprey drops through rain toward a guarded rooftop pool, talons forward and eyes locked on the one true opening.",
+      "pose": "Descending in a controlled plunge with talons extended naturally, wings angled back, gaze fixed below.",
+      "silhouetteClass": "fish-hawk-plunger",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "waterproof strike harness",
+        "pale head wrap",
+        "fish-scale talon bands",
+        "storm-pool strap"
+      ],
+      "palette": [
+        "dark brown",
+        "white head",
+        "rain blue",
+        "brass yellow"
+      ],
+      "accent": "brass yellow",
+      "varietyNotes": "Distinct from raptor authority cards: this is a plunge and grip moment, not command or predation gore.",
+      "gameplayFantasy": "A clean anti-Cover strike using piercing damage and extra Cover removal."
+    },
+    {
+      "id": "aviary_41",
+      "number": 41,
+      "qualityCode": "AQ-14",
+      "setRole": "quality",
+      "quality": "Current Resilience",
+      "rarity": "uncommon",
+      "gameName": "Cold Plunge",
+      "bird": "White-throated Dipper",
+      "coreMeaning": "Going under pressure, surfacing clean, resilience in rough current",
+      "description": "A compact river bird dives under a cold spillway and pops back onto a pipe with the route still in its beak.",
+      "pose": "Half-emerged from rushing water near a drainpipe, white throat bright, feet gripping slick metal.",
+      "silhouetteClass": "compact-aquatic-songbird",
+      "poseEnergy": "active",
+      "streetwear": [
+        "dark waterproof shell",
+        "white throat scarf",
+        "river-stone charm",
+        "slick-pipe talon wraps"
+      ],
+      "palette": [
+        "river black",
+        "white throat",
+        "cold blue",
+        "stone gray"
+      ],
+      "accent": "white throat",
+      "varietyNotes": "Water resilience without Basin identity: this is pressure tolerance and Open Sky recovery, not care-taking.",
+      "gameplayFantasy": "Open Sky survival that heals, guards, and replaces itself when the flock is exposed."
+    },
+    {
+      "id": "aviary_42",
+      "number": 42,
+      "qualityCode": "AQ-15",
+      "setRole": "quality",
+      "quality": "Drafting",
+      "rarity": "uncommon",
+      "gameName": "Formation Draft",
+      "bird": "Canada Goose",
+      "coreMeaning": "Shared effort, drafting, letting formation carry the tired wing",
+      "description": "A goose holds the lead angle in a street-canyon V, turning headwind between buildings into shared lift.",
+      "pose": "Strong forward flight with neck extended and wings broad, city canyon behind forming a subtle V-shaped lane.",
+      "silhouetteClass": "large-formation-waterfowl",
+      "poseEnergy": "dynamic",
+      "streetwear": [
+        "black-neck flight scarf",
+        "route-leader chest band",
+        "formation clip charms",
+        "weathered wing bands"
+      ],
+      "palette": [
+        "deep brown",
+        "black neck",
+        "cream chinstrap",
+        "sky gray"
+      ],
+      "accent": "cream chinstrap",
+      "varietyNotes": "Formation is suggested by city geometry and same-species silhouettes only if needed; avoid crowd clutter.",
+      "gameplayFantasy": "A formation glue card that rewards suit-heavy Plumes or Nests decks while staying suitless."
+    },
+    {
+      "id": "aviary_43",
+      "number": 43,
+      "qualityCode": "AQ-16",
+      "setRole": "quality",
+      "quality": "Tool Use",
+      "rarity": "rare",
+      "gameName": "Tool Probe",
+      "bird": "New Caledonian Crow",
+      "coreMeaning": "Tool use, clever access, solving the route with the right small instrument",
+      "description": "A crow shapes a hooked probe from scrap wire and reaches the one latch the flock could not open by force.",
+      "pose": "Perched beside a locked utility box, beak holding a bent wire tool, eyes focused on the hidden latch.",
+      "silhouetteClass": "tool-using-corvid",
+      "poseEnergy": "static",
+      "streetwear": [
+        "matte black problem-solver coat",
+        "wire-tool satchel",
+        "plain brass latch charm",
+        "workbench talon wraps"
+      ],
+      "palette": [
+        "matte black",
+        "charcoal",
+        "brass latch",
+        "cool worklight"
+      ],
+      "accent": "brass latch",
+      "varietyNotes": "The rare intelligence card: practical tool use, no magic, no sci-fi interface, no readable schematics.",
+      "gameplayFantasy": "A premium recursion card that retrieves the exact discard card and refunds tempo the first time it is used."
     }
   ]
 }

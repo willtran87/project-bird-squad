@@ -72,12 +72,31 @@ export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRoute
   const columns: string[][] = [];
   const nodes: RouteNode[] = [];
   const byId = new Map<string, RouteNode>();
+  const usedPayloads: Record<'street' | 'rival' | 'signal', Set<string>> = {
+    street: new Set(),
+    rival: new Set(),
+    signal: new Set(),
+  };
+  const nonEntryStreetIds = bp.streetEncounterIds.filter((id) => id && id !== bp.entryEncounterId);
+  const pickPayload = (bucket: keyof typeof usedPayloads, ids: string[], fallback: string): string => {
+    const pool = ids.filter(Boolean);
+    const fresh = pool.filter((id) => !usedPayloads[bucket].has(id));
+    const chosen = pick(fresh.length ? fresh : pool) ?? fallback;
+    if (chosen) usedPayloads[bucket].add(chosen);
+    return chosen;
+  };
 
   const payloadFor = (type: RouteNodeType): string => {
     switch (type) {
-      case 'street': return pick(bp.streetEncounterIds) ?? bp.entryEncounterId;
-      case 'rival': return pick(bp.rivalEncounterIds) ?? pick(bp.streetEncounterIds) ?? bp.entryEncounterId;
-      case 'signal': return pick(bp.signalIds) ?? bp.basinPayloadId;
+      case 'street':
+        return pickPayload('street', nonEntryStreetIds.length ? nonEntryStreetIds : bp.streetEncounterIds, bp.entryEncounterId);
+      case 'rival':
+        return pickPayload(
+          bp.rivalEncounterIds.length ? 'rival' : 'street',
+          bp.rivalEncounterIds.length ? bp.rivalEncounterIds : (nonEntryStreetIds.length ? nonEntryStreetIds : bp.streetEncounterIds),
+          bp.rivalEncounterIds[0] ?? bp.entryEncounterId,
+        );
+      case 'signal': return pickPayload('signal', bp.signalIds, bp.basinPayloadId);
       case 'basin': return bp.basinPayloadId;
       case 'nest': return bp.nestPayloadId;
       case 'market': return bp.marketPayloadId;
@@ -98,9 +117,10 @@ export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRoute
     return node;
   };
   const setType = (node: RouteNode, type: RouteNodeType) => {
+    const shouldRefreshPayload = node.type !== type || !node.payloadId;
     node.type = type;
     node.label = LABELS[type];
-    node.payloadId = payloadFor(type);
+    if (shouldRefreshPayload) node.payloadId = payloadFor(type);
     node.risk = riskFor(type);
   };
 
@@ -116,7 +136,7 @@ export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRoute
     for (let l = 0; l < lanes; l += 1) {
       const id = `m${bp.index}_c${c}_l${l}`;
       ids.push(id);
-      make(id, c, l, 'street', payloadFor('street'));
+      make(id, c, l, 'street', '');
     }
     columns[c] = ids;
   }

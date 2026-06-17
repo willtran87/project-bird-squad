@@ -1272,7 +1272,7 @@ test('enemy codex: entire enemy cast renders with art and details', async ({ pag
     cs.renderAll();
     for (
       let i = 0;
-      i < 40 && (!cs.textures.exists('enemy-roof_rat') || !cs.textures.exists('reserve-enemy-canal_otter'));
+      i < 40 && (!cs.textures.exists('enemy-roof_rat') || !cs.textures.exists('reserve-enemy-mole_tunnelbreaker'));
       i += 1
     ) await wait(100);
     const listTexts = collectTexts(cs);
@@ -1283,10 +1283,10 @@ test('enemy codex: entire enemy cast renders with art and details', async ({ pag
     for (let i = 0; i < 40 && !cs.textures.exists('enemy-roof_rat'); i += 1) await wait(100);
     const runtimeTexts = collectTexts(cs);
 
-    cs.detailId = 'canal_otter';
+    cs.detailId = 'mole_tunnelbreaker';
     cs.detailScroll = 0;
     cs.renderAll();
-    for (let i = 0; i < 40 && !cs.textures.exists('reserve-enemy-canal_otter'); i += 1) await wait(100);
+    for (let i = 0; i < 40 && !cs.textures.exists('reserve-enemy-mole_tunnelbreaker'); i += 1) await wait(100);
     const reserveTexts = collectTexts(cs);
 
     const count = cs.allCodexEnemies ? cs.allCodexEnemies().length : 0;
@@ -1296,19 +1296,19 @@ test('enemy codex: entire enemy cast renders with art and details', async ({ pag
       count,
       encounterCount,
       reserveCount,
-      hasCatalogCount: listTexts.some((t) => /81 enemies cataloged \(33 encounter \/ 48 reserve\)/.test(t)),
+      hasCatalogCount: listTexts.some((t) => /81 enemies cataloged \(64 playable \/ 17 reserve concepts\)/.test(t)),
       hasRuntimeEnemyName: runtimeTexts.some((t) => /Roof Rat/.test(t)),
       hasCombatKit: runtimeTexts.some((t) => /COMBAT KIT/.test(t)),
-      hasReserveEnemyName: reserveTexts.some((t) => /Canal Otter/.test(t)),
+      hasReserveEnemyName: reserveTexts.some((t) => /Mole Tunnelbreaker/.test(t)),
       hasMoveKit: reserveTexts.some((t) => /MOVE KIT/.test(t)),
       hasFashion: reserveTexts.some((t) => /FASHION DIRECTION/.test(t)),
       hasRuntimeArt: cs.textures.exists('enemy-roof_rat'),
-      hasReserveArt: cs.textures.exists('reserve-enemy-canal_otter'),
+      hasReserveArt: cs.textures.exists('reserve-enemy-mole_tunnelbreaker'),
     };
   });
   expect(r.count).toBe(81);
-  expect(r.encounterCount).toBe(33);
-  expect(r.reserveCount).toBe(48);
+  expect(r.encounterCount).toBe(64);
+  expect(r.reserveCount).toBe(17);
   expect(r.hasCatalogCount).toBe(true);
   expect(r.hasRuntimeEnemyName).toBe(true);
   expect(r.hasCombatKit).toBe(true);
@@ -1317,6 +1317,84 @@ test('enemy codex: entire enemy cast renders with art and details', async ({ pag
   expect(r.hasFashion).toBe(true);
   expect(r.hasRuntimeArt).toBe(true);
   expect(r.hasReserveArt).toBe(true);
+});
+
+test('promoted reserve enemies can surface in generated route encounters', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    const promotedByMap = [
+      {
+        mapIndex: 0,
+        ids: [
+          'enc_rooftop_raccoon', 'enc_pigeon_enforcer', 'enc_crow_saboteur',
+          'enc_rat_courier', 'enc_weasel_cutpurse', 'enc_skunk_chemist', 'enc_armadillo_roller',
+          'enc_alley_cat', 'enc_jackrabbit_sprinter', 'enc_hedgehog_curb_crosser', 'enc_mongoose_counterfighter',
+        ],
+      },
+      {
+        mapIndex: 1,
+        ids: [
+          'enc_canal_otter', 'enc_crab_dockguard', 'enc_frog_canal_jumper',
+          'enc_turtle_barricader', 'enc_cormorant_netter', 'enc_kingfisher_snapdiver', 'enc_heron_spearstepper',
+          'enc_opossum_decoy', 'enc_goose_bouncer', 'enc_mantis_street_duelist',
+        ],
+      },
+      {
+        mapIndex: 2,
+        ids: [
+          'enc_cicada_static_swarm', 'enc_crane_signal_caller',
+          'enc_bat_nightcaller', 'enc_kite_hawk_courier',
+          'enc_moth_lantern_drifter',
+        ],
+      },
+      {
+        mapIndex: 3,
+        ids: [
+          'enc_vulture_cleanup_crew', 'enc_woodpecker_riveter', 'enc_porcupine_bristleguard',
+          'enc_fox_lookout', 'enc_peacock_intimidator',
+        ],
+      },
+    ];
+    const seen = new Set<string>();
+    const mkRunState = (seed: string, mapIndex: number) => ({
+      deck: [{ id: 'major_00' }],
+      leaderId: 'fledgling',
+      difficulty: 0,
+      seed,
+      currentHp: 36,
+      scrap: 40,
+      routeMarks: [],
+      supplies: [],
+      mapIndex,
+      completedRouteNodeIds: [],
+      currentRouteNodeId: undefined,
+      routeLog: [],
+      nextCombat: undefined,
+      signalChoices: [],
+      rewardEvents: [],
+    });
+
+    for (const group of promotedByMap) {
+      for (let i = 0; i < 160 && group.ids.some((id) => !seen.has(id)); i += 1) {
+        g.scene.start('RouteScene', { runState: mkRunState(`promoted-enemy-${group.mapIndex}-${i}`, group.mapIndex) });
+        g.scene.stop('MenuScene');
+        await wait(5);
+        for (const node of window.__birdSquadCurrentMap!().nodes) {
+          if (node.type === 'street' || node.type === 'rival') seen.add(node.payloadId);
+        }
+      }
+    }
+
+    const expected = promotedByMap.flatMap((group) => group.ids);
+    return {
+      seen: expected.filter((id) => seen.has(id)),
+      missing: expected.filter((id) => !seen.has(id)),
+    };
+  });
+  expect(r.missing).toEqual([]);
+  expect(r.seen.length).toBe(31);
 });
 
 test('Cover and Heal are distinct axes, and the new card verbs work', async ({ page }) => {
@@ -1470,7 +1548,128 @@ test('Molt is a do-DIFFERENT transform stance: a card resolves its molt ability 
   expect(r.dmgMolt).toBeGreaterThanOrEqual(7);      // molt: deals damage instead
 });
 
-test('preened cards have a stronger Molt ability, and the Codex carries tarot meaning + bird facts', async ({ page }) => {
+test('Molt active card contract drives hand display and enemy targeting', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const s: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 20 && !(s.hand && s.hand.length); i += 1) await wait(50);
+    const enemy = s.enemies[0];
+    const card = [...s.drawPile, ...s.hand, ...s.discardPile].find((c: any) => c.id === 'pentacles_04');
+    s.drawPile = s.drawPile.filter((c: any) => c.instanceId !== card.instanceId);
+    s.discardPile = s.discardPile.filter((c: any) => c.instanceId !== card.instanceId);
+    s.hand = [card];
+    s.flock.molt = true;
+    s.energy = 99;
+    s.selectedEnemyId = '';
+    enemy.hp = 500;
+    s.renderAll();
+
+    const handPayload = window.__birdSquadState!().hand[0];
+    s.onCardClicked(card.instanceId);
+    const selectedAfterCardClick = s.selectedInstanceId === card.instanceId;
+    const hpAfterCardClick = enemy.hp;
+    s.onEnemyClicked(enemy.id);
+
+    return {
+      activeTarget: handPayload.activeTarget,
+      activeText: handPayload.activeText,
+      usesMolt: handPayload.usesMolt,
+      selectedAfterCardClick,
+      hpAfterCardClick,
+      hpAfterEnemyClick: enemy.hp,
+      handAfterEnemyClick: s.hand.length,
+    };
+  });
+
+  expect(r.usesMolt).toBe(true);
+  expect(r.activeTarget).toBe('enemy');
+  expect(r.activeText).toContain('Deal');
+  expect(r.selectedAfterCardClick).toBe(true);
+  expect(r.hpAfterCardClick).toBe(500);
+  expect(r.hpAfterEnemyClick).toBeLessThan(500);
+  expect(r.handAfterEnemyClick).toBe(0);
+});
+
+test('none-target cards that Molt into target effects no longer auto-fire ambiguously', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const s: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 20 && !(s.hand && s.hand.length); i += 1) await wait(50);
+    const enemy = s.enemies[0];
+    const base = s.hand[0];
+    const fake = {
+      ...base,
+      instanceId: 'fake_none_molt_target_1',
+      id: 'fake_none_molt_target',
+      name: 'Fake Molt Target',
+      target: 'none',
+      cost: 0,
+      text: 'Draw 1.',
+      upgradedText: 'Draw 2.',
+      moltText: 'Deal 3. Apply 1 Winded.',
+      moltTextUpgraded: 'Deal 5. Apply 1 Winded.',
+      runtime: {
+        ...base.runtime,
+        id: 'fake_none_molt_target',
+        displayName: 'Fake Molt Target',
+        target: 'none',
+        effects: ['draw(1)'],
+        moltEffects: ['damage(target, 3)', 'applyWinded(target, 1)'],
+        upgrade: {
+          ...base.runtime.upgrade,
+          effects: ['draw(2)'],
+          moltEffects: ['damage(target, 5)', 'applyWinded(target, 1)'],
+        },
+      },
+    };
+    s.hand = [fake];
+    s.drawPile = [];
+    s.discardPile = [];
+    s.flock.molt = true;
+    s.energy = 99;
+    s.selectedEnemyId = '';
+    enemy.hp = 500;
+    enemy.weak = 0;
+    s.renderAll();
+
+    const handPayload = window.__birdSquadState!().hand[0];
+    s.onCardClicked(fake.instanceId);
+    const afterCardClick = {
+      selected: s.selectedInstanceId,
+      hp: enemy.hp,
+      weak: enemy.weak,
+      hand: s.hand.length,
+    };
+    s.onEnemyClicked(enemy.id);
+
+    return {
+      activeTarget: handPayload.activeTarget,
+      usesMolt: handPayload.usesMolt,
+      afterCardClick,
+      afterEnemyClick: { hp: enemy.hp, weak: enemy.weak, hand: s.hand.length },
+    };
+  });
+
+  expect(r.usesMolt).toBe(true);
+  expect(r.activeTarget).toBe('enemy');
+  expect(r.afterCardClick.selected).toBe('fake_none_molt_target_1');
+  expect(r.afterCardClick.hp).toBe(500);
+  expect(r.afterCardClick.weak).toBe(0);
+  expect(r.afterCardClick.hand).toBe(1);
+  expect(r.afterEnemyClick.hp).toBeLessThan(500);
+  expect(r.afterEnemyClick.weak).toBeGreaterThan(0);
+  expect(r.afterEnemyClick.hand).toBe(0);
+});
+
+test('preened cards have a stronger Molt ability, and the Codex carries tarot and Aviary notes correctly', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -1505,7 +1704,7 @@ test('preened cards have a stronger Molt ability, and the Codex carries tarot me
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
     const acct = JSON.parse(window.localStorage.getItem('birdsquad.account') || '{}');
-    acct.discoveredCards = ['pentacles_04'];
+    acct.discoveredCards = ['pentacles_04', 'aviary_25'];
     window.localStorage.setItem('birdsquad.account', JSON.stringify(acct));
     g.scene.start('CodexScene'); g.scene.stop('BattleScene');
     const cs: any = g.scene.getScene('CodexScene');
@@ -1523,17 +1722,37 @@ test('preened cards have a stronger Molt ability, and the Codex carries tarot me
     await wait(100);
     const tip = cs.children.list.find((o: any) => o.depth === 99999);
 
+    cs.detailId = 'aviary_25'; cs.detailScroll = 0; cs.renderAll();
+    await wait(150);
+    const aviaryAll: any[] = [];
+    const collectAviary = (o: any) => {
+      if (!o) return;
+      if (o.type === 'Text') aviaryAll.push(o);
+      const k = o.list;
+      if (Array.isArray(k)) k.forEach(collectAviary);
+    };
+    cs.children.list.forEach(collectAviary);
+    const aviaryDetailTexts = aviaryAll.map((t) => t.text || '');
+    const hasAviaryDossier = aviaryDetailTexts.some((t) => /AVIARY DOSSIER/.test(t));
+    const hasAviaryLegend = aviaryDetailTexts.some((t) => /AVIARY LEGEND/.test(t))
+      && aviaryDetailTexts.some((t) => /SIGNAL/.test(t))
+      && aviaryDetailTexts.some((t) => /SHADOW/.test(t));
+    const aviarySaysTarot = aviaryDetailTexts.some((t) => /TAROT MEANING|UPRIGHT|REVERSED/.test(t));
+
     // A content-heavy card must engage scrolling (fixed panel + scroll), not overflow.
     let heavyMax = 0;
     for (const id of (cs.allCards ? cs.allCards() : []).map((c: any) => c.id)) {
       cs.detailId = id; cs.detailScroll = 0; cs.renderAll();
       if (cs.detailMaxScroll > heavyMax) heavyMax = cs.detailMaxScroll;
     }
-    return { hasTarot, hasFacts, keywordTooltip: !!tip, heavyMax };
+    return { hasTarot, hasFacts, keywordTooltip: !!tip, hasAviaryDossier, hasAviaryLegend, aviarySaysTarot, heavyMax };
   });
   expect(codex.hasTarot).toBe(true);
   expect(codex.hasFacts).toBe(true);
   expect(codex.keywordTooltip).toBe(true);
+  expect(codex.hasAviaryDossier).toBe(true);
+  expect(codex.hasAviaryLegend).toBe(true);
+  expect(codex.aviarySaysTarot).toBe(false);
   expect(codex.heavyMax).toBeGreaterThan(0); // the longest card scrolls instead of spilling
 });
 

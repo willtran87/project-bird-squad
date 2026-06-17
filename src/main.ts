@@ -2478,16 +2478,19 @@ class RouteScene extends Phaser.Scene {
         .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
         .setAlpha(opacity);
     }
+    const accent = node ? routeEventAccent(node.type) : UI_FIELD.gold;
     this.add.rectangle(
       GAME_WIDTH / 2,
       GAME_HEIGHT / 2,
       GAME_WIDTH,
       GAME_HEIGHT,
       0x020409,
-      hasBackdrop ? 0.54 : 0.82
+      hasBackdrop ? 0.28 : 0.74
     ).setInteractive({ useHandCursor: false });
-    this.add.rectangle(GAME_WIDTH / 2, 108, GAME_WIDTH, 216, 0x020409, hasBackdrop ? 0.34 : 0.08);
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 96, GAME_WIDTH, 192, 0x020409, hasBackdrop ? 0.4 : 0.08);
+    this.add.rectangle(GAME_WIDTH / 2, 78, GAME_WIDTH, 156, 0x020409, hasBackdrop ? 0.42 : 0.18);
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 66, GAME_WIDTH, 132, 0x020409, hasBackdrop ? 0.46 : 0.18);
+    this.add.rectangle(GAME_WIDTH / 2, 24, GAME_WIDTH - 100, 2, accent, hasBackdrop ? 0.42 : 0.24);
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 28, GAME_WIDTH - 100, 2, accent, hasBackdrop ? 0.36 : 0.22);
   }
 
   private renderConfirmExitOverlay() {
@@ -3225,24 +3228,49 @@ class RouteScene extends Phaser.Scene {
     const mode = this.cardPickerMode;
     if (!mode) return;
     const eligible = this.pickerEligibleCards(mode);
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.82).setInteractive({ useHandCursor: false });
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 720, 470, 0x0d1420, 0.98).setStrokeStyle(3, mode === 'preen' ? 0x24d0d6 : 0xff6b57, 0.95);
-    this.add.text(GAME_WIDTH / 2, 152, mode === 'preen' ? 'Preen a Card' : 'Release a Card', {
-      fontFamily: 'Arial', fontSize: '30px', fontStyle: 'bold', color: '#ffe1a3', stroke: '#000000', strokeThickness: 4
-    }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 192, mode === 'preen' ? 'Choose a card to improve.' : 'Choose a card to remove from the flock.', {
-      fontFamily: 'Arial', fontSize: '15px', color: '#b9c7d6'
-    }).setOrigin(0.5);
+    const node = currentMap().nodes.find((candidate) => candidate.id === this.nodeChoiceNodeId);
+    const accent = mode === 'preen' ? UI_FIELD.cyan : UI_FIELD.danger;
+    this.renderRouteEventBackdrop(node, 0.82);
+    const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 8, 1040, 558, {
+      eyebrow: node ? routeNodeTypeLabel(node.type) : 'Flock Workbench',
+      title: mode === 'preen' ? 'Preen a Card' : 'Release a Card',
+      subtitle: mode === 'preen' ? 'Choose the card the landmark workbench improves.' : 'Choose the card the flock leaves behind here.',
+      accent,
+      fill: mode === 'preen' ? 0x071824 : 0x1b1114
+    });
+    this.add.rectangle(frame.cx, frame.cy, frame.w - 36, frame.h - 36, 0x020409, 0.14);
+    this.add.text(frame.left + 54, frame.top + 112, node?.label ?? 'Workshop stop', {
+      fontFamily: 'Arial',
+      fontSize: '16px',
+      fontStyle: 'bold',
+      color: '#8df4ff',
+      wordWrap: { width: 360 },
+      maxLines: 2
+    });
+    this.add.text(frame.left + 54, frame.top + 142, mode === 'preen' ? 'The flock gathers at a bright repair table, choosing one card to polish before moving on.' : 'The flock sorts the pack at the edge of the landmark, making room before the next crossing.', {
+      fontFamily: 'Arial',
+      fontSize: '14px',
+      color: '#cdd9e6',
+      lineSpacing: 2,
+      wordWrap: { width: 360 }
+    });
     eligible.slice(0, 12).forEach((entry, i) => {
-      const x = GAME_WIDTH / 2 - 165 + (i % 2) * 330;
-      const y = 236 + Math.floor(i / 2) * 48;
-      const button = this.add.rectangle(x, y, 312, 42, 0x1d2c40, 0.97).setStrokeStyle(2, 0x7ab8d6, 0.9).setInteractive({ useHandCursor: true });
+      const x = frame.left + 520 + (i % 2) * 248;
+      const y = frame.top + 122 + Math.floor(i / 2) * 64;
+      const button = this.add.rectangle(x, y, 226, 50, 0x101b2a, 0.94).setStrokeStyle(1.5, accent, 0.74).setInteractive({ useHandCursor: true });
       button.on('pointerdown', () => this.applyCardPick(entry.index));
       button.on('pointerover', () => this.showHoverCardDetail(entry.card, mode === 'preen' ? 'Preen candidate' : 'Release candidate', entry.cost, x, y));
       button.on('pointerout', () => this.hideHoverCardDetail());
-      this.add.circle(x - 134, y, 12, entry.cost === 0 ? 0x24d0d6 : 0xd8a840, 1);
-      this.add.text(x - 134, y, `${entry.cost}`, { fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#07101c' }).setOrigin(0.5);
-      this.add.text(x - 114, y, `${entry.name}${entry.upgraded ? '+' : ''}`, { fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: '#ffe1a3', wordWrap: { width: 230 } }).setOrigin(0, 0.5);
+      this.add.circle(x - 92, y, 13, entry.cost === 0 ? 0x24d0d6 : 0xd8a840, 1);
+      this.add.text(x - 92, y, `${entry.cost}`, { fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#07101c' }).setOrigin(0.5);
+      this.add.text(x - 72, y - 12, `${entry.name}${entry.upgraded ? '+' : ''}`, {
+        fontFamily: 'Arial',
+        fontSize: '13px',
+        fontStyle: 'bold',
+        color: '#ffe1a3',
+        wordWrap: { width: 146 },
+        maxLines: 2
+      });
     });
   }
 
@@ -3372,30 +3400,56 @@ class RouteScene extends Phaser.Scene {
     if (!node) return;
     const choices = this.nodeChoiceList(node);
     const signal = node.type === 'signal' ? alphaSignalLibrary.get(node.payloadId) : undefined;
-    this.renderRouteEventBackdrop(node, 0.76);
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 760, 470, 0x0d1420, 0.98).setStrokeStyle(3, 0xd8a840, 0.95);
-    this.add.text(GAME_WIDTH / 2, 162, signal?.title ?? routeNodeTypeLabel(node.type), {
-      fontFamily: 'Arial', fontSize: '30px', fontStyle: 'bold', color: '#ffe1a3', stroke: '#000000', strokeThickness: 4
-    }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 206, signal?.prompt ?? nonCombatLesson(node.type), {
-      fontFamily: 'Arial', fontSize: '15px', color: '#b9c7d6', align: 'center', wordWrap: { width: 680 }
-    }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, 248, `Scrap ${this.runState.scrap}    Cohesion ${this.runState.currentHp}/${this.runMaxHp()}`, {
-      fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: '#8df4ff'
-    }).setOrigin(0.5);
+    const accent = routeEventAccent(node.type);
+    this.renderRouteEventBackdrop(node, 0.84);
+    const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 8, 1100, 560, {
+      eyebrow: routeNodeTypeLabel(node.type),
+      title: signal?.title ?? node.label,
+      subtitle: routeEventLandmarkLine(node.type),
+      accent,
+      fill: 0x07101a
+    });
+    this.add.rectangle(frame.left + 258, frame.cy + 40, 430, 392, 0x020409, 0.22).setStrokeStyle(1, accent, 0.2);
+    this.add.circle(frame.left + 96, frame.top + 138, 42, 0x111a27, 0.82).setStrokeStyle(2, accent, 0.78);
+    this.renderRouteNodeTypeIcon(node.type, frame.left + 96, frame.top + 138, 66);
+    this.add.text(frame.left + 54, frame.top + 202, signal?.prompt ?? nonCombatLesson(node.type), {
+      fontFamily: 'Arial',
+      fontSize: '17px',
+      color: '#dbe6f0',
+      lineSpacing: 4,
+      wordWrap: { width: 400 },
+      maxLines: 6
+    });
+    this.add.text(frame.left + 54, frame.bottom - 94, `Scrap ${this.runState.scrap}    /    Cohesion ${this.runState.currentHp}/${this.runMaxHp()}`, {
+      fontFamily: 'Arial',
+      fontSize: '15px',
+      fontStyle: 'bold',
+      color: '#8df4ff'
+    });
+    this.add.rectangle(frame.left + 506, frame.cy + 42, 2, 394, accent, 0.4);
     choices.forEach((choice, index) => {
-      const y = 300 + index * 58;
-      const button = this.add.rectangle(GAME_WIDTH / 2, y, 660, 50, choice.locked ? 0x101827 : 0x1d2c40, choice.locked ? 0.6 : 0.97)
-        .setStrokeStyle(2, choice.locked ? 0x49606d : 0x7ab8d6, choice.locked ? 0.5 : 0.95);
+      const x = frame.left + 792;
+      const y = frame.top + 164 + index * 82;
+      const button = this.add.rectangle(x, y, 520, 64, choice.locked ? 0x101827 : 0x122235, choice.locked ? 0.62 : 0.94)
+        .setStrokeStyle(1.5, choice.locked ? 0x49606d : accent, choice.locked ? 0.5 : 0.82);
       if (!choice.locked) {
         button.setInteractive({ useHandCursor: true });
         button.on('pointerdown', () => this.chooseNodeOption(choice.key));
       }
-      this.add.text(GAME_WIDTH / 2 - 312, y - 11, choice.text, {
-        fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: choice.locked ? '#7f93a8' : '#ffe1a3'
+      this.add.text(x - 238, y - 22, choice.text, {
+        fontFamily: 'Arial',
+        fontSize: '16px',
+        fontStyle: 'bold',
+        color: choice.locked ? '#7f93a8' : '#ffe1a3',
+        wordWrap: { width: 456 },
+        maxLines: 1
       });
-      this.add.text(GAME_WIDTH / 2 - 312, y + 9, choice.locked && choice.lockedText ? choice.lockedText : routeEffectSummary(choice.effects), {
-        fontFamily: 'Arial', fontSize: '12px', color: choice.locked ? '#ff9d4d' : '#9fb1c4', wordWrap: { width: 620 }
+      this.add.text(x - 238, y + 2, choice.locked && choice.lockedText ? choice.lockedText : routeEffectSummary(choice.effects), {
+        fontFamily: 'Arial',
+        fontSize: '13px',
+        color: choice.locked ? '#ff9d4d' : '#b9c7d6',
+        wordWrap: { width: 456 },
+        maxLines: 2
       });
     });
   }
@@ -3459,29 +3513,33 @@ class RouteScene extends Phaser.Scene {
   private renderMarketOverlay() {
     this.queueOptionalCardArtLoad();
     const node = currentMap().nodes.find((candidate) => candidate.id === this.marketNodeId);
-    this.renderRouteEventBackdrop(node, 0.78);
-    const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2, 940, 520, {
-      eyebrow: 'Rooftop Stall',
-      title: 'Market',
+    this.renderRouteEventBackdrop(node, 0.86);
+    const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 8, 1080, 560, {
+      eyebrow: 'Landmark Visit',
+      title: node?.label ?? 'Market',
+      subtitle: 'A bright stall line has unfolded across the crossing.',
       accent: UI_FIELD.gold,
       fill: UI_FIELD.panelWarm
     });
-    this.add.text(210, 178, `Scrap ${this.runState.scrap}`, {
+    this.add.rectangle(frame.left + 246, frame.cy + 38, 396, 414, 0x020409, 0.18).setStrokeStyle(1, UI_FIELD.gold, 0.22);
+    this.add.text(frame.left + 54, frame.top + 116, `Scrap ${this.runState.scrap}`, {
       fontFamily: 'Arial',
-      fontSize: '19px',
+      fontSize: '21px',
       fontStyle: 'bold',
       color: '#f0c36f'
     });
-    this.add.text(430, 154, this.marketMessage, {
+    this.add.text(frame.left + 54, frame.top + 150, this.marketMessage, {
       fontFamily: 'Arial',
-      fontSize: '14px',
+      fontSize: '15px',
       color: '#d7c5a6',
-      wordWrap: { width: 520 }
+      lineSpacing: 3,
+      wordWrap: { width: 392 },
+      maxLines: 4
     });
 
-    this.renderMarketCardOffer(310, 372);
-    this.renderMarketRouteMarkOffer(680, 286);
-    this.renderMarketPreenOffer(680, 430);
+    this.renderMarketCardOffer(frame.left + 250, frame.top + 398);
+    this.renderMarketRouteMarkOffer(frame.left + 740, frame.top + 290);
+    this.renderMarketPreenOffer(frame.left + 740, frame.top + 452);
 
     renderCloseControl(this, (obj) => {}, frame.right - 80, frame.top + 56, () => this.leaveMarket());
   }
@@ -3489,22 +3547,22 @@ class RouteScene extends Phaser.Scene {
   private renderMarketCardOffer(x: number, y: number) {
     const offer = this.marketCardOffer();
     const enabled = !!offer && this.runState.scrap >= MARKET_CARD_PRICE;
-    const panel = this.add.rectangle(x, y, 270, 340, 0x1a1711, 0.96)
+    const panel = this.add.rectangle(x, y, 310, 310, 0x1a1711, 0.94)
       .setStrokeStyle(1, enabled ? 0xd8a840 : 0x6f6044, enabled ? 0.8 : 0.45);
-    this.add.rectangle(x, y - 156, 236, 2, enabled ? 0xd8a840 : 0x6f6044, enabled ? 0.75 : 0.35);
+    this.add.rectangle(x, y - 142, 270, 2, enabled ? 0xd8a840 : 0x6f6044, enabled ? 0.75 : 0.35);
     if (offer) {
       panel.setInteractive({ useHandCursor: false });
       panel.on('pointerover', () => this.showHoverCardDetail(offer, 'Market offer', MARKET_CARD_PRICE, x, y));
       panel.on('pointerout', () => this.hideHoverCardDetail());
     }
-    this.add.text(x - 108, y - 148, 'Add to the Flock', marketOfferTitleStyle());
-    this.add.text(x + 44, y - 148, `${MARKET_CARD_PRICE} Scrap`, marketOfferPriceStyle(enabled));
+    this.add.text(x - 126, y - 132, 'Add to the Flock', marketOfferTitleStyle());
+    this.add.text(x + 58, y - 132, `${MARKET_CARD_PRICE} Scrap`, marketOfferPriceStyle(enabled));
     if (offer) {
       const key = cardArtKey(offer);
       if (key && this.textures.exists(key)) {
-        this.add.image(x, y + 6, key).setDisplaySize(138, 207).setAlpha(0.82);
+        this.add.image(x, y + 28, key).setDisplaySize(138, 207).setAlpha(0.86);
       } else {
-        this.add.rectangle(x, y + 6, 138, 207, 0x141f2f, 0.92)
+        this.add.rectangle(x, y + 28, 138, 207, 0x141f2f, 0.92)
           .setStrokeStyle(1, 0x6f6044, 0.75);
         this.add.text(x, y + 40, cardLabel(offer), {
           fontFamily: 'Arial',
@@ -3515,56 +3573,58 @@ class RouteScene extends Phaser.Scene {
           wordWrap: { width: 104 }
         }).setOrigin(0.5);
       }
-      this.add.rectangle(x, y - 82, 232, 70, 0x05080e, 0.72)
+      this.add.rectangle(x, y - 80, 264, 74, 0x05080e, 0.7)
         .setStrokeStyle(1, 0xd8a840, 0.25);
-      this.add.text(x - 98, y - 110, displayName(offer), {
+      this.add.text(x - 118, y - 108, displayName(offer), {
         fontFamily: 'Arial',
         fontSize: '18px',
         fontStyle: 'bold',
         color: '#ffe1a3',
-        wordWrap: { width: 196 }
+        wordWrap: { width: 232 },
+        maxLines: 2
       });
-      this.add.text(x - 98, y - 64, `${offer.bird} / ${cardLabel(offer)}`, {
+      this.add.text(x - 118, y - 56, `${offer.bird} / ${cardLabel(offer)}`, {
         fontFamily: 'Arial',
         fontSize: '13px',
         fontStyle: 'bold',
         color: '#7ab8d6',
-        wordWrap: { width: 196 }
+        wordWrap: { width: 232 },
+        maxLines: 1
       });
     } else {
-      this.add.text(x - 108, y - 50, this.marketBoughtCard ? 'That recruitment lead has moved on.' : 'Every available crew card is already in the flock.', detailBodyStyle(216));
+      this.add.text(x - 126, y - 50, this.marketBoughtCard ? 'That recruitment lead has moved on.' : 'Every available crew card is already in the flock.', detailBodyStyle(250));
     }
-    this.renderMarketButton(x, y + 142, 'Buy', enabled, () => this.buyMarketCard());
+    this.renderMarketButton(x, y + 132, 'Buy', enabled, () => this.buyMarketCard());
   }
 
   private renderMarketRouteMarkOffer(x: number, y: number) {
     const mark = this.marketRouteMarkOffer();
     const enabled = !!mark && this.runState.scrap >= mark.price;
-    this.add.rectangle(x, y, 410, 112, 0x1a1711, 0.95)
+    this.add.rectangle(x, y, 460, 132, 0x1a1711, 0.93)
       .setStrokeStyle(1, enabled ? 0xd8a840 : 0x6f6044, enabled ? 0.75 : 0.42);
-    this.add.rectangle(x, y - 48, 372, 2, enabled ? 0xd8a840 : 0x6f6044, enabled ? 0.7 : 0.35);
-    this.add.text(x - 180, y - 36, 'Waymark', marketOfferTitleStyle());
-    this.add.text(x - 180, y - 10, mark ? `${mark.name} / ${mark.price} Scrap` : 'Sold out', marketOfferPriceStyle(enabled));
-    this.add.text(x - 180, y + 18, mark ? mark.text : this.marketBoughtRouteMark ? 'The route-board pin is already claimed.' : 'No unclaimed marks remain in this market.', detailBodyStyle(260));
-    this.renderMarketButton(x + 138, y + 20, 'Buy', enabled, () => this.buyMarketRouteMark());
+    this.add.rectangle(x, y - 58, 420, 2, enabled ? 0xd8a840 : 0x6f6044, enabled ? 0.7 : 0.35);
+    this.add.text(x - 204, y - 46, 'Waymark', marketOfferTitleStyle());
+    this.add.text(x - 204, y - 18, mark ? `${mark.name} / ${mark.price} Scrap` : 'Sold out', marketOfferPriceStyle(enabled));
+    this.add.text(x - 204, y + 12, mark ? mark.text : this.marketBoughtRouteMark ? 'The route-board pin is already claimed.' : 'No unclaimed marks remain in this market.', detailBodyStyle(292));
+    this.renderMarketButton(x + 160, y + 30, 'Buy', enabled, () => this.buyMarketRouteMark());
   }
 
   private renderMarketPreenOffer(x: number, y: number) {
     const card = this.marketPreenCandidate();
     const price = this.marketPreenPrice();
     const enabled = !!card && this.runState.scrap >= price;
-    const panel = this.add.rectangle(x, y, 410, 112, 0x14171a, 0.95)
+    const panel = this.add.rectangle(x, y, 460, 132, 0x14171a, 0.93)
       .setStrokeStyle(1, enabled ? 0x24d0d6 : 0x59606a, enabled ? 0.72 : 0.42);
-    this.add.rectangle(x, y - 48, 372, 2, enabled ? 0x24d0d6 : 0x59606a, enabled ? 0.68 : 0.32);
+    this.add.rectangle(x, y - 58, 420, 2, enabled ? 0x24d0d6 : 0x59606a, enabled ? 0.68 : 0.32);
     if (card) {
       panel.setInteractive({ useHandCursor: false });
       panel.on('pointerover', () => this.showHoverCardDetail(card, 'Preen candidate', price, x, y));
       panel.on('pointerout', () => this.hideHoverCardDetail());
     }
-    this.add.text(x - 180, y - 36, 'Preen a Card', marketOfferTitleStyle());
-    this.add.text(x - 180, y - 10, card ? `${displayName(card)} / ${price} Scrap` : 'No cards to preen', marketOfferPriceStyle(enabled));
-    this.add.text(x - 180, y + 18, card ? 'Improve the first unpreened card in your flock deck.' : this.marketBoughtPreen ? 'The preening bench is packed away.' : 'Every card in the flock is already polished.', detailBodyStyle(260));
-    this.renderMarketButton(x + 138, y + 20, 'Preen', enabled, () => this.buyMarketPreen());
+    this.add.text(x - 204, y - 46, 'Preen a Card', marketOfferTitleStyle());
+    this.add.text(x - 204, y - 18, card ? `${displayName(card)} / ${price} Scrap` : 'No cards to preen', marketOfferPriceStyle(enabled));
+    this.add.text(x - 204, y + 12, card ? 'Improve the first unpreened card in your flock deck.' : this.marketBoughtPreen ? 'The preening bench is packed away.' : 'Every card in the flock is already polished.', detailBodyStyle(292));
+    this.renderMarketButton(x + 160, y + 30, 'Preen', enabled, () => this.buyMarketPreen());
   }
 
   private renderMarketButton(x: number, y: number, label: string, enabled: boolean, onClick: () => void) {
@@ -5591,8 +5651,10 @@ class BattleScene extends Phaser.Scene {
       py += 14;
     }
     py += renderRichText(this, c, cx, py, contract.text, { wrap: w - 24, fontSize: 15, align: 'center', lineSpacing: 2 }) + 6;
-    if (card.moltText) {
-      renderRichText(this, c, cx, py, `❂ MOLT: ${card.moltText}`, { wrap: w - 24, fontSize: 12, align: 'center', baseColor: '#ff9d4d', bold: true, lineSpacing: 2 });
+    if (contract.usesMolt) {
+      renderRichText(this, c, cx, py, `NORMAL: ${displayText(card)}`, { wrap: w - 24, fontSize: 12, align: 'center', baseColor: '#b9c7d6', bold: true, lineSpacing: 2 });
+    } else if (card.moltText) {
+      renderRichText(this, c, cx, py, `MOLT: ${card.moltText}`, { wrap: w - 24, fontSize: 12, align: 'center', baseColor: '#ff9d4d', bold: true, lineSpacing: 2 });
     }
     const statLabels: Record<string, string> = {
       cohesion: 'Cohesion', damage: 'Damage', cover: 'Cover', draw: 'Hand', resonance: 'Res/turn', regen: 'Regen', moltPower: 'Molt', openSkyGuard: 'Sky Guard',
@@ -5885,16 +5947,16 @@ class BattleScene extends Phaser.Scene {
   private renderCardReward() {
     this.queueCardArtLoad(this.rewardChoices);
     this.renderRewardBackdrop('Add to the Flock', 'Choose one new crew card — or skip for Scrap.');
-    this.renderDeckNeeds(210);
+    this.renderDeckNeeds(182);
     this.rewardChoices.forEach((card, index) => {
-      this.renderChoiceCard(card, 392 + index * 248, 374, () => this.chooseRewardCard(card.id));
+      this.renderChoiceCard(card, 336 + index * 304, 402, () => this.chooseRewardCard(card.id));
     });
-    const skip = this.add.rectangle(GAME_WIDTH / 2, 590, 280, 46, 0x2a2320, 0.96)
+    const skip = this.add.rectangle(GAME_WIDTH / 2, 652, 324, 48, 0x2a2320, 0.96)
       .setStrokeStyle(2, 0xd8a840, 0.9)
       .setInteractive({ useHandCursor: true });
     skip.on('pointerdown', () => this.skipCardReward());
     this.root.add(skip);
-    this.root.add(this.add.text(GAME_WIDTH / 2, 590, `Skip — take +${REWARD_SKIP_SCRAP} Scrap`, {
+    this.root.add(this.add.text(GAME_WIDTH / 2, 652, `Skip - take +${REWARD_SKIP_SCRAP} Scrap`, {
       fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#ffe1a3'
     }).setOrigin(0.5));
   }
@@ -5903,15 +5965,22 @@ class BattleScene extends Phaser.Scene {
     this.queueCardArtLoad(this.upgradeChoices);
     this.renderRewardBackdrop('Preen a Card', 'Choose one owned crew card to improve.');
     this.upgradeChoices.forEach((card, index) => {
-      this.renderChoiceCard(card, 392 + index * 248, 374, () => this.chooseUpgradeCard(card.id));
+      this.renderChoiceCard(card, 336 + index * 304, 402, () => this.chooseUpgradeCard(card.id));
     });
   }
 
   private renderRewardBackdrop(title: string, subtitle: string) {
-    const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.9);
+    const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.58);
     this.root.add(overlay);
-    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 180, GAME_WIDTH, 220, 0x020409, 0.42));
-    this.root.add(this.add.text(GAME_WIDTH / 2, 128, title, {
+    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 92, GAME_WIDTH - 116, 120, 0x020409, 0.66).setStrokeStyle(1, 0xd8a840, 0.35));
+    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 632, GAME_WIDTH - 170, 112, 0x020409, 0.38));
+    this.root.add(this.add.text(GAME_WIDTH / 2, 62, 'ROOFTOP LANDMARK', {
+      fontFamily: 'Arial',
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#8df4ff'
+    }).setOrigin(0.5));
+    this.root.add(this.add.text(GAME_WIDTH / 2, 92, title, {
       fontFamily: 'Arial',
       fontSize: '42px',
       fontStyle: 'bold',
@@ -5919,7 +5988,7 @@ class BattleScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 6
     }).setOrigin(0.5));
-    this.root.add(this.add.text(GAME_WIDTH / 2, 174, subtitle, {
+    this.root.add(this.add.text(GAME_WIDTH / 2, 136, subtitle, {
       fontFamily: 'Arial',
       fontSize: '18px',
       color: '#b9c7d6'
@@ -5927,7 +5996,9 @@ class BattleScene extends Phaser.Scene {
   }
 
   private renderChoiceCard(card: Card, x: number, y: number, onClick: () => void) {
-    const rect = this.add.rectangle(x, y, 190, 252, 0x161b27, 0.98)
+    const cardW = 220;
+    const cardH = 294;
+    const rect = this.add.rectangle(x, y, cardW, cardH, 0x161b27, 0.98)
       .setStrokeStyle(3, card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : 0x7ab8d6, 1)
       .setInteractive({ useHandCursor: true });
     rect.on('pointerdown', onClick);
@@ -5936,39 +6007,41 @@ class BattleScene extends Phaser.Scene {
     this.root.add(rect);
     this.renderChoiceCardArt(card, x, y);
 
-    this.root.add(this.add.circle(x - 74, y - 104, 16, card.cost === 0 ? 0x24d0d6 : 0xd8a840, 1));
-    this.root.add(this.add.text(x - 74, y - 104, `${card.cost}`, {
+    this.root.add(this.add.circle(x - 88, y - 124, 17, card.cost === 0 ? 0x24d0d6 : 0xd8a840, 1));
+    this.root.add(this.add.text(x - 88, y - 124, `${card.cost}`, {
       fontFamily: 'Arial',
       fontSize: '16px',
       fontStyle: 'bold',
       color: '#07101c'
     }).setOrigin(0.5));
 
-    this.root.add(this.add.text(x - 76, y - 86, displayName(card), {
+    this.root.add(this.add.rectangle(x, y - 74, cardW - 8, 94, 0x05080e, 0.82));
+    this.root.add(this.add.text(x - 86, y - 108, displayName(card), {
       fontFamily: 'Arial',
       fontSize: '18px',
       fontStyle: 'bold',
       color: '#ffe1a3',
-      wordWrap: { width: 150 },
+      wordWrap: { width: 170 },
       maxLines: 2
     }));
-    this.root.add(this.add.text(x - 76, y - 31, card.bird, {
+    this.root.add(this.add.text(x - 86, y - 50, card.bird, {
       fontFamily: 'Arial',
       fontSize: '13px',
       fontStyle: 'bold',
       color: '#91a6b8',
-      wordWrap: { width: 150 },
+      wordWrap: { width: 170 },
       maxLines: 1
     }));
-    this.root.add(this.add.text(x - 76, y - 2, displayText(card), {
+    this.root.add(this.add.rectangle(x, y + 62, cardW - 8, 126, 0x05080e, 0.86));
+    this.root.add(this.add.text(x - 86, y + 8, displayText(card), {
       fontFamily: 'Arial',
       fontSize: '14px',
       color: '#dce8f2',
       lineSpacing: 1,
-      wordWrap: { width: 150 },
+      wordWrap: { width: 170 },
       maxLines: 4
     }));
-    this.root.add(this.add.text(x - 76, y + 84, cardLabel(card), {
+    this.root.add(this.add.text(x - 86, y + 114, cardLabel(card), {
       fontFamily: 'Arial',
       fontSize: '12px',
       fontStyle: 'bold',
@@ -5976,12 +6049,12 @@ class BattleScene extends Phaser.Scene {
     }));
     const needTags = this.cardNeedTags(card);
     if (needTags.length > 0) {
-      this.root.add(this.add.text(x - 76, y + 100, needTags.join('  /  '), {
+      this.root.add(this.add.text(x - 86, y + 132, needTags.join('  /  '), {
         fontFamily: 'Arial',
         fontSize: '11px',
         fontStyle: 'bold',
         color: '#ffcf6b',
-        wordWrap: { width: 150 },
+        wordWrap: { width: 170 },
         maxLines: 2
       }));
     }
@@ -5999,10 +6072,10 @@ class BattleScene extends Phaser.Scene {
     if (!key || !this.textures.exists(key)) return;
 
     const art = this.add.image(x, y, key)
-      .setDisplaySize(186, 248)
+      .setDisplaySize(216, 288)
       .setAlpha(0.95);
     this.root.add(art);
-    this.root.add(this.add.rectangle(x, y, 186, 248, 0x05101a, 0.4));
+    this.root.add(this.add.rectangle(x, y, 216, 288, 0x05101a, 0.36));
   }
 
   private openOverlay(overlay: InspectOverlay) {
@@ -8804,6 +8877,28 @@ function routeNodeTypeLabel(type: RouteNode['type']) {
     case 'signal': return 'Signal';
     case 'cache': return 'Rooftop Cache';
     default: return 'Crossing';
+  }
+}
+
+function routeEventAccent(type: RouteNode['type']) {
+  switch (type) {
+    case 'basin': return UI_FIELD.green;
+    case 'nest': return UI_FIELD.cyan;
+    case 'market': return UI_FIELD.gold;
+    case 'signal': return 0xc9a6ff;
+    case 'cache': return 0xffcf6b;
+    default: return UI_FIELD.gold;
+  }
+}
+
+function routeEventLandmarkLine(type: RouteNode['type']) {
+  switch (type) {
+    case 'basin': return 'A protected basin stop where the flock regroups under cover.';
+    case 'nest': return 'A rooftop workshop landmark for tuning the flock before the next crossing.';
+    case 'market': return 'A stall-lined landmark where route currency turns into momentum.';
+    case 'signal': return 'A signal landmark where one choice changes the shape of the route.';
+    case 'cache': return 'A hidden rooftop cache with one useful find waiting in the open.';
+    default: return 'A marked crossing on the route.';
   }
 }
 

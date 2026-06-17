@@ -1,7 +1,10 @@
 {
   "version": "0.1",
   "project": "Bird Squad",
-  "basedOn": ["docs/game/alpha-run-spec.md", "docs/game/next-level-data-contracts.md"],
+  "basedOn": [
+    "docs/game/alpha-run-spec.md",
+    "docs/game/next-level-data-contracts.md"
+  ],
   "normalEncounters": [
     {
       "id": "roof_rat",
@@ -14,12 +17,45 @@
       "silhouette": "Low, narrow, fast scavenger with a long tail and hunched shoulders.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural limbs, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
-        { "id": "strike_6_a", "label": "Strike 6", "effects": ["damage(flock, 6)"] },
-        { "id": "strike_6_b", "label": "Strike 6", "effects": ["damage(flock, 6)"] },
-        { "id": "scurry_cover", "label": "Scurry", "effects": ["gainCover(4)"] }
+        {
+          "id": "strike_6_a",
+          "label": "Strike 6",
+          "effects": [
+            "damage(flock, 6)"
+          ]
+        },
+        {
+          "id": "strike_6_b",
+          "label": "Strike 6",
+          "effects": [
+            "damage(flock, 6)"
+          ]
+        },
+        {
+          "id": "scurry_cover",
+          "label": "Scurry",
+          "effects": [
+            "gainCover(4)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "cycle", "moveIds": ["strike_6_a", "strike_6_b", "scurry_cover"] },
-      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "strike_6_a",
+          "strike_6_b",
+          "scurry_cover"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
     },
     {
       "id": "signal_gull",
@@ -32,12 +68,45 @@
       "silhouette": "Broad-winged scavenger with a cocked head and lifted beak.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
-        { "id": "peck_5", "label": "Peck 5", "effects": ["damage(flock, 5)"] },
-        { "id": "scavenge_heal", "label": "Scavenge", "effects": ["if notHitThisTurn then heal(4)"] },
-        { "id": "brace_6", "label": "Brace", "effects": ["gainCover(6)"] }
+        {
+          "id": "peck_5",
+          "label": "Peck 5",
+          "effects": [
+            "damage(flock, 5)"
+          ]
+        },
+        {
+          "id": "scavenge_heal",
+          "label": "Scavenge",
+          "effects": [
+            "if notHitThisTurn then heal(4)"
+          ]
+        },
+        {
+          "id": "brace_6",
+          "label": "Brace",
+          "effects": [
+            "gainCover(6)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "cycle", "moveIds": ["peck_5", "scavenge_heal", "brace_6"] },
-      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "peck_5",
+          "scavenge_heal",
+          "brace_6"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
     },
     {
       "id": "wire_hawk",
@@ -50,12 +119,510 @@
       "silhouette": "Tall raptor perch shape with angular wings and a hard forward lean.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
-        { "id": "watch_winded", "label": "Watch", "effects": ["applyWinded(flock, 1)"] },
-        { "id": "heavy_strike_11", "label": "Heavy Strike 11", "effects": ["damage(flock, 11)"] },
-        { "id": "strike_7", "label": "Strike 7", "effects": ["damage(flock, 7)"] }
+        {
+          "id": "watch_winded",
+          "label": "Watch",
+          "effects": [
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "heavy_strike_11",
+          "label": "Heavy Strike 11",
+          "effects": [
+            "damage(flock, 11)"
+          ]
+        },
+        {
+          "id": "strike_7",
+          "label": "Strike 7",
+          "effects": [
+            "damage(flock, 7)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "cycle", "moveIds": ["watch_winded", "heavy_strike_11", "strike_7"] },
-      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "watch_winded",
+          "heavy_strike_11",
+          "strike_7"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "rooftop_raccoon",
+      "name": "Rooftop Raccoon",
+      "type": "normal",
+      "health": 24,
+      "lesson": "Gear thief: adds Snags if ignored and slips behind rooftop cover.",
+      "description": "A nimble rooftop scavenger that rifles through route gear and slips behind HVAC cover before the flock can pin it down.",
+      "visualBrief": "Natural raccoon in a cropped utility vest, reflective strap harness, small tool sling, and flexible paw wraps on rain-dark tar paper beside vents and wire bundles.",
+      "silhouette": "Low masked mammal with ringed tail, hunched shoulders, quick paws, and compact scavenger stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, low and ready on all fours with head aligned to the body angle, tail free for balance, and clothing clear of shoulders and hips.",
+      "moves": [
+        {
+          "id": "raccoon_rummage",
+          "label": "Rummage",
+          "effects": [
+            "if notHitThisTurn then addSnagToDiscard(tangled_line)"
+          ]
+        },
+        {
+          "id": "raccoon_swipe_6",
+          "label": "Swipe 6",
+          "effects": [
+            "damage(flock, 6)"
+          ]
+        },
+        {
+          "id": "raccoon_slip_cover",
+          "label": "Slip Behind",
+          "effects": [
+            "gainCover(6)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "raccoon_rummage",
+          "raccoon_swipe_6",
+          "raccoon_slip_cover"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "pigeon_enforcer",
+      "name": "Pigeon Enforcer",
+      "type": "normal",
+      "health": 26,
+      "lesson": "Basic bruiser alternative that teaches steady Cover instead of swarm pressure.",
+      "description": "A heavy city pigeon that crowds the perch and forces the flock to spend Cover instead of setting up.",
+      "visualBrief": "Stocky pigeon in a bomber-style chest wrap, wing-safe shoulder markings, concrete-gray talon bands, and subtle chain clips on a ledge.",
+      "silhouette": "Round broad chest, tucked head, short legs, and stubborn planted bird stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, planted on natural feet with folded wings unobstructed and jacket panels following the chest mass.",
+      "moves": [
+        {
+          "id": "enforcer_shove_7",
+          "label": "Shove 7",
+          "effects": [
+            "damage(flock, 7)"
+          ]
+        },
+        {
+          "id": "enforcer_square_up",
+          "label": "Square Up",
+          "effects": [
+            "gainCover(7)"
+          ]
+        },
+        {
+          "id": "enforcer_body_check_8",
+          "label": "Body Check 8",
+          "effects": [
+            "damage(flock, 8)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "enforcer_shove_7",
+          "enforcer_square_up",
+          "enforcer_body_check_8"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "crow_saboteur",
+      "name": "Crow Saboteur",
+      "type": "normal",
+      "health": 25,
+      "lesson": "Snag saboteur: slow it down before your discard turns hostile.",
+      "description": "A wire-smart crow that clips loose lines and leaves route systems tangled without needing any magic to cause trouble.",
+      "visualBrief": "Glossy crow in a black courier harness, bright zipper pulls, wire-tool charms, and talon bands near breaker boxes and antenna cable.",
+      "silhouette": "Medium corvid with long beak, folded wing mass, dangling wire loops, and tilted problem-solver posture.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, bird grounded on talons with tool props clipped to harness, never held by invented hands.",
+      "moves": [
+        {
+          "id": "saboteur_clip_line",
+          "label": "Clip Line",
+          "effects": [
+            "addSnagToDiscard(bad_directions)"
+          ]
+        },
+        {
+          "id": "saboteur_peck_6",
+          "label": "Peck 6",
+          "effects": [
+            "damage(flock, 6)"
+          ]
+        },
+        {
+          "id": "saboteur_cover",
+          "label": "Duck Behind Vents",
+          "effects": [
+            "gainCover(5)",
+            "if flockHasCover then loseWingbeat(1)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "saboteur_peck_6",
+          "saboteur_clip_line",
+          "saboteur_cover"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "rat_courier",
+      "name": "Rat Courier",
+      "type": "normal",
+      "health": 23,
+      "lesson": "Alarm runner: interrupt its setup before the next hit gets sharper.",
+      "description": "A fast courier rat that carries warning tags through gutters and makes the next enemy wave arrive better prepared.",
+      "visualBrief": "Lean rat in a lightweight crossbody satchel, reflective trim, paw wraps, and rain-specked fur near gutter runs and route tags.",
+      "silhouette": "Small stretched runner with long tail, low head, and satchel diagonal.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, paused mid-ready on four natural paws with satchel stable against the ribs.",
+      "moves": [
+        {
+          "id": "rat_courier_run_message",
+          "label": "Run Message",
+          "effects": [
+            "nextAttackBonus(3)"
+          ]
+        },
+        {
+          "id": "rat_courier_skitter_5",
+          "label": "Skitter Bite 5",
+          "effects": [
+            "damage(flock, 5)"
+          ]
+        },
+        {
+          "id": "rat_courier_alarm_tag",
+          "label": "Alarm Tag",
+          "effects": [
+            "if notHitThisTurn then addSnagToDiscard(bad_directions)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "rat_courier_run_message",
+          "rat_courier_skitter_5",
+          "rat_courier_alarm_tag"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "weasel_cutpurse",
+      "name": "Weasel Cutpurse",
+      "type": "normal",
+      "health": 26,
+      "lesson": "Tempo thief: chips, Winded pressure, and Cover-based Wingbeat disruption.",
+      "description": "A narrow cutpurse that clips loose straps, tangles route gear, and vanishes into the next drain gap.",
+      "visualBrief": "Weasel in a slim dark vest, tiny clip pouch, and close paw wraps near alley straps and drain covers.",
+      "silhouette": "Long skinny mammal with pointed muzzle, tiny paws, and fast low profile.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, low on natural paws with clothing flush to the body.",
+      "moves": [
+        {
+          "id": "weasel_tug_strap",
+          "label": "Tug Strap 6",
+          "effects": [
+            "damage(flock, 6)",
+            "if flockHasCover then loseWingbeat(1)"
+          ]
+        },
+        {
+          "id": "weasel_stolen_stride",
+          "label": "Stolen Stride",
+          "effects": [
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "weasel_darting_bite",
+          "label": "Darting Bite 7",
+          "effects": [
+            "damage(flock, 7)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "weasel_tug_strap",
+          "weasel_stolen_stride",
+          "weasel_darting_bite"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "skunk_chemist",
+      "name": "Skunk Chemist",
+      "type": "normal",
+      "health": 28,
+      "lesson": "Area-denial debuffer: Frail and Snag pressure arrive before late districts.",
+      "description": "A prepared skunk that turns narrow alleys into no-go zones with nasty natural deterrence and found containers.",
+      "visualBrief": "Striped skunk in a bright hazard-style harness, clipped non-sci-fi canister props, paw wraps, and tail fully free near alley drainage.",
+      "silhouette": "Low black-and-white mammal with raised plume tail, rounded back, and warning stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, four paws grounded with tail free and harness clear of the hips.",
+      "moves": [
+        {
+          "id": "skunk_sour_cloud",
+          "label": "Sour Cloud",
+          "effects": [
+            "applyFrail(1)"
+          ]
+        },
+        {
+          "id": "skunk_spill_kit",
+          "label": "Spill Kit",
+          "effects": [
+            "addSnagToDiscard(wet_feathers)",
+            "if flockHasNoCover then applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "skunk_nip_6",
+          "label": "Nip 6",
+          "effects": [
+            "damage(flock, 6)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "skunk_sour_cloud",
+          "skunk_spill_kit",
+          "skunk_nip_6"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "alley_cat",
+      "name": "Alley Cat",
+      "type": "normal",
+      "health": 25,
+      "lesson": "Burst hunter: interrupt the stalk before its pounce spikes.",
+      "description": "A patient alley hunter that waits under market shadow, then bursts through a gap in the formation.",
+      "visualBrief": "Lean city cat in a narrow streetwear collar, asymmetrical back panel, soft ankle wraps, and small side pouch among alley crates and fire escapes.",
+      "silhouette": "Sleek crouched feline with arched back, sharp ears, long tail, and spring-loaded legs.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, crouched on all fours with tail free, natural shoulders, and no sleeves or human jacket shape.",
+      "moves": [
+        {
+          "id": "alley_cat_stalk",
+          "label": "Stalk",
+          "effects": [
+            "if notHitThisTurn then nextAttackBonus(4)"
+          ]
+        },
+        {
+          "id": "alley_cat_pounce_10",
+          "label": "Pounce 10",
+          "effects": [
+            "damage(flock, 10)"
+          ]
+        },
+        {
+          "id": "alley_cat_melt_away",
+          "label": "Melt Away",
+          "effects": [
+            "gainCover(6)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "alley_cat_stalk",
+          "alley_cat_pounce_10",
+          "alley_cat_melt_away"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "jackrabbit_sprinter",
+      "name": "Jackrabbit Sprinter",
+      "type": "normal",
+      "health": 27,
+      "lesson": "Speed pressure: small hits and Winded turns punish slow setup.",
+      "description": "A long-legged rooftop sprinter that darts along painted service lanes and rain-slick curb arrows before the flock can settle.",
+      "visualBrief": "Jackrabbit in a lightweight runner harness, flexible leg bands, tiny side pouch, reflective route-tag clips, and no footwear or leg-restricting clothing on cracked concrete beside rooftop track paint and curb drains.",
+      "silhouette": "Tall-eared rabbit with long back legs, lean body, and explosive crouch.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, crouched on natural paws with hind legs free and ears readable.",
+      "moves": [
+        {
+          "id": "jackrabbit_sprint_6",
+          "label": "Sprint Through 6",
+          "effects": [
+            "damage(flock, 6)",
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "jackrabbit_juke",
+          "label": "Juke",
+          "effects": [
+            "gainCover(7)"
+          ]
+        },
+        {
+          "id": "jackrabbit_overrun_8",
+          "label": "Overrun 8",
+          "effects": [
+            "damage(flock, 8)",
+            "if flockHasNoCover then nextAttackBonus(2)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "jackrabbit_sprint_6",
+          "jackrabbit_juke",
+          "jackrabbit_overrun_8"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "hedgehog_curb_crosser",
+      "name": "Hedgehog Curb-Crosser",
+      "type": "normal",
+      "health": 30,
+      "lesson": "Low blocker: small body, steady Cover, and Winded lane tax.",
+      "description": "A compact curb defender that is hard to dislodge and slows the flock in tight concrete lanes.",
+      "visualBrief": "Hedgehog in a tiny roadworker harness, reflective trim, and paw wraps that leave spines and legs free near curb drains.",
+      "silhouette": "Very low oval body with spines, small face, and stubborn little feet.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, low and grounded with natural spines visible and no bulky clothing.",
+      "moves": [
+        {
+          "id": "hedgehog_curb_block",
+          "label": "Curb Block",
+          "effects": [
+            "gainCover(9)"
+          ]
+        },
+        {
+          "id": "hedgehog_needle_roll_6",
+          "label": "Needle Roll 6",
+          "effects": [
+            "damage(flock, 6)"
+          ]
+        },
+        {
+          "id": "hedgehog_slow_crossing",
+          "label": "Slow Crossing",
+          "effects": [
+            "applyWinded(flock, 1)",
+            "if flockHasCover then loseWingbeat(1)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "hedgehog_curb_block",
+          "hedgehog_needle_roll_6",
+          "hedgehog_slow_crossing"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
     }
   ],
   "rivalEncounters": [
@@ -70,12 +637,46 @@
       "silhouette": "Small upright corvid with a quick beak, folded wings, long cord loops, and a compact line-worker stance.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet or talons; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
-        { "id": "harass_6", "label": "Harass 6", "effects": ["damage(flock, 6)", "applyWinded(flock, 1)"] },
-        { "id": "brace_8", "label": "Brace 8", "effects": ["gainCover(8)"] },
-        { "id": "heavy_strike_12", "label": "Heavy Strike 12", "effects": ["damage(flock, 12)"] }
+        {
+          "id": "harass_6",
+          "label": "Harass 6",
+          "effects": [
+            "damage(flock, 6)",
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "brace_8",
+          "label": "Brace 8",
+          "effects": [
+            "gainCover(8)"
+          ]
+        },
+        {
+          "id": "heavy_strike_12",
+          "label": "Heavy Strike 12",
+          "effects": [
+            "damage(flock, 12)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "cycle", "moveIds": ["harass_6", "brace_8", "heavy_strike_12"] },
-      "rewards": { "scrap": [70, 90], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "harass_6",
+          "brace_8",
+          "heavy_strike_12"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          70,
+          90
+        ],
+        "cardReward": true,
+        "preenGuaranteed": true,
+        "routeMarkGuaranteed": true
+      }
     },
     {
       "id": "gutter_baron",
@@ -88,13 +689,177 @@
       "silhouette": "Squat armored bruiser with a thick neck, wide back, and heavy tail base.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural limbs, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
-        { "id": "baron_lash_9", "label": "Lash 9", "effects": ["damage(flock, 9)"] },
-        { "id": "baron_panel_guard", "label": "Panel Guard", "effects": ["gainCover(10)", "if flockHasCover then loseWingbeat(1)"] },
-        { "id": "baron_double_jab", "label": "Double Jab 7", "effects": ["damage(flock, 7)", "applyWinded(flock, 1)"] },
-        { "id": "baron_heavy_13", "label": "Heavy Strike 13", "effects": ["damage(flock, 13)"] }
+        {
+          "id": "baron_lash_9",
+          "label": "Lash 9",
+          "effects": [
+            "damage(flock, 9)"
+          ]
+        },
+        {
+          "id": "baron_panel_guard",
+          "label": "Panel Guard",
+          "effects": [
+            "gainCover(10)",
+            "if flockHasCover then loseWingbeat(1)"
+          ]
+        },
+        {
+          "id": "baron_double_jab",
+          "label": "Double Jab 7",
+          "effects": [
+            "damage(flock, 7)",
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "baron_heavy_13",
+          "label": "Heavy Strike 13",
+          "effects": [
+            "damage(flock, 13)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "cycle", "moveIds": ["baron_lash_9", "baron_panel_guard", "baron_double_jab", "baron_heavy_13"] },
-      "rewards": { "scrap": [70, 95], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "baron_lash_9",
+          "baron_panel_guard",
+          "baron_double_jab",
+          "baron_heavy_13"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          70,
+          95
+        ],
+        "cardReward": true,
+        "preenGuaranteed": true,
+        "routeMarkGuaranteed": true
+      }
+    },
+    {
+      "id": "armadillo_roller",
+      "name": "Armadillo Roller",
+      "type": "elite",
+      "health": 42,
+      "lesson": "Early elite charger: breaks greedy lines with setup Cover into a heavy roll.",
+      "description": "A tough curb runner that curls through alleys and knocks loose cover out of place.",
+      "visualBrief": "Armadillo with flexible strap accents, shell decals, tiny side pouch, and scuffed paw wraps near curb stones and traffic cones.",
+      "silhouette": "Low armored mammal with domed shell, pointed snout, short legs, and rolling-read posture.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, uncurled but tense, with natural shell visible and straps not changing body shape.",
+      "moves": [
+        {
+          "id": "armadillo_curl",
+          "label": "Curl Up",
+          "effects": [
+            "gainCover(10)",
+            "nextAttackBonus(3)"
+          ]
+        },
+        {
+          "id": "armadillo_roll_12",
+          "label": "Rolling Slam 12",
+          "effects": [
+            "damage(flock, 12)"
+          ]
+        },
+        {
+          "id": "armadillo_ricochet_7",
+          "label": "Ricochet 7",
+          "effects": [
+            "damage(flock, 7)",
+            "if flockHasCover then loseWingbeat(1)"
+          ]
+        },
+        {
+          "id": "armadillo_brace",
+          "label": "Brace Plating",
+          "effects": [
+            "gainCover(8)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "armadillo_curl",
+          "armadillo_roll_12",
+          "armadillo_ricochet_7",
+          "armadillo_brace"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          50,
+          70
+        ],
+        "cardReward": true,
+        "preenChance": 0.4,
+        "routeMarkChance": 0.35
+      }
+    },
+    {
+      "id": "mongoose_counterfighter",
+      "name": "Mongoose Counterfighter",
+      "type": "rival",
+      "health": 42,
+      "lesson": "Reactive duelist: setup Cover turns into a counterstrike if ignored.",
+      "description": "A quick counterfighter that watches for rhythm and snaps into openings before the flock resets.",
+      "visualBrief": "Mongoose in a sleek fitted vest, flexible flank straps, paw wraps, and market-tile grit with no sleeve shapes.",
+      "silhouette": "Slim low carnivore with pointed muzzle, arched back, long tail, and springy stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, low on four paws with clothing tight to torso and shoulders free.",
+      "moves": [
+        {
+          "id": "mongoose_counter_read",
+          "label": "Counter Read",
+          "effects": [
+            "gainCover(8)",
+            "nextAttackBonus(3)"
+          ]
+        },
+        {
+          "id": "mongoose_snap_10",
+          "label": "Snap Strike 10",
+          "effects": [
+            "damage(flock, 10)"
+          ]
+        },
+        {
+          "id": "mongoose_punish_repeat",
+          "label": "Punish Repeat",
+          "effects": [
+            "applyWinded(flock, 1)",
+            "if flockHasCover then loseWingbeat(1)"
+          ]
+        },
+        {
+          "id": "mongoose_low_slip",
+          "label": "Low Slip",
+          "effects": [
+            "gainCover(6)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "mongoose_counter_read",
+          "mongoose_snap_10",
+          "mongoose_punish_repeat",
+          "mongoose_low_slip"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          50,
+          70
+        ],
+        "cardReward": true,
+        "preenChance": 0.4,
+        "routeMarkChance": 0.35
+      }
     }
   ],
   "bosses": [
@@ -107,16 +872,64 @@
       "visualBrief": "Large natural crow in a dark luxe rain shell, glossy oil-slick shoulder wrap, crown-like hood trim, tiny chain clips, and black talon bands atop a rooftop chokepoint of cables, tar paper, and rain-dark puddles; no literal tar on feathers or body.",
       "silhouette": "Large crowned corvid shaped by hood trim and cloak-like wing mass, with a high perch stance.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
-      "fightLengthTarget": [6, 8],
+      "fightLengthTarget": [
+        6,
+        8
+      ],
       "rewardScrap": 120,
       "moves": [
-        { "id": "toll_line", "label": "Toll Line", "effects": ["gainCover(8)", "if flockHasNoCover then addSnagToDiscard(tangled_line)"] },
-        { "id": "crowbar_tap", "label": "Crowbar Tap 8", "effects": ["damage(flock, 8)"] },
-        { "id": "tar_toss", "label": "Tar Toss 5", "effects": ["damage(flock, 5)", "if isMolting then applyOpenSky(1)"] },
-        { "id": "chokepoint_call", "label": "Chokepoint Call", "effects": ["gainCover(6)", "nextAttackBonus(3)", "applyFrail(1)", "if flockHasCover then loseWingbeat(1)"] },
-        { "id": "heavy_strike", "label": "Heavy Strike 13", "effects": ["damage(flock, 13)"] }
+        {
+          "id": "toll_line",
+          "label": "Toll Line",
+          "effects": [
+            "gainCover(8)",
+            "if flockHasNoCover then addSnagToDiscard(tangled_line)"
+          ]
+        },
+        {
+          "id": "crowbar_tap",
+          "label": "Crowbar Tap 8",
+          "effects": [
+            "damage(flock, 8)"
+          ]
+        },
+        {
+          "id": "tar_toss",
+          "label": "Tar Toss 5",
+          "effects": [
+            "damage(flock, 5)",
+            "if isMolting then applyOpenSky(1)"
+          ]
+        },
+        {
+          "id": "chokepoint_call",
+          "label": "Chokepoint Call",
+          "effects": [
+            "gainCover(6)",
+            "nextAttackBonus(3)",
+            "applyFrail(1)",
+            "if flockHasCover then loseWingbeat(1)"
+          ]
+        },
+        {
+          "id": "heavy_strike",
+          "label": "Heavy Strike 13",
+          "effects": [
+            "damage(flock, 13)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "scripted", "moveIds": ["toll_line", "crowbar_tap", "tar_toss", "chokepoint_call", "heavy_strike"], "loopFrom": 1 },
+      "attackPattern": {
+        "type": "scripted",
+        "moveIds": [
+          "toll_line",
+          "crowbar_tap",
+          "tar_toss",
+          "chokepoint_call",
+          "heavy_strike"
+        ],
+        "loopFrom": 1
+      },
       "rewards": {
         "bossRouteMarkChoices": 3,
         "rareCardChoices": 3,

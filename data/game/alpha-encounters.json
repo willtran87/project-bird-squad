@@ -13,8 +13,16 @@
       "nodeType": "street",
       "band": "pressure",
       "lesson": "Four small bodies crowd the roof — thin the pack fast or split your Cover.",
-      "tags": ["cover", "multi"],
-      "enemies": ["roof_rat", "roof_rat", "roof_rat", "roof_rat"],
+      "tags": [
+        "cover",
+        "multi"
+      ],
+      "enemies": [
+        "roof_rat",
+        "roof_rat",
+        "roof_rat",
+        "roof_rat"
+      ],
       "rewardProfileId": "street_standard"
     },
     {
@@ -24,8 +32,15 @@
       "nodeType": "street",
       "band": "pressure",
       "lesson": "A gull screens for two rats pressing from both roof edges.",
-      "tags": ["scavenge", "multi"],
-      "enemies": ["signal_gull", "roof_rat", "roof_rat"],
+      "tags": [
+        "scavenge",
+        "multi"
+      ],
+      "enemies": [
+        "signal_gull",
+        "roof_rat",
+        "roof_rat"
+      ],
       "rewardProfileId": "street_standard"
     },
     {
@@ -35,8 +50,16 @@
       "nodeType": "rival",
       "band": "rival",
       "lesson": "Elite: an armored bruiser with rat escorts. Focus one down first.",
-      "tags": ["elite", "heavy", "multi"],
-      "enemies": ["gutter_baron", "roof_rat", "roof_rat"],
+      "tags": [
+        "elite",
+        "heavy",
+        "multi"
+      ],
+      "enemies": [
+        "gutter_baron",
+        "roof_rat",
+        "roof_rat"
+      ],
       "rewardProfileId": "rival_standard"
     },
     {
@@ -46,8 +69,13 @@
       "nodeType": "street",
       "band": "weak",
       "lesson": "Read a basic attack Tell and use Cover.",
-      "tags": ["cover", "basic"],
-      "enemies": ["roof_rat"],
+      "tags": [
+        "cover",
+        "basic"
+      ],
+      "enemies": [
+        "roof_rat"
+      ],
       "rewardProfileId": "street_standard"
     },
     {
@@ -57,8 +85,13 @@
       "nodeType": "street",
       "band": "standard",
       "lesson": "Manage Brace and Scavenge.",
-      "tags": ["scavenge", "cover"],
-      "enemies": ["signal_gull"],
+      "tags": [
+        "scavenge",
+        "cover"
+      ],
+      "enemies": [
+        "signal_gull"
+      ],
       "rewardProfileId": "street_standard"
     },
     {
@@ -68,8 +101,14 @@
       "nodeType": "street",
       "band": "pressure",
       "lesson": "Respect Heavy Strike and Open Sky risk.",
-      "tags": ["heavy", "winded", "openSky"],
-      "enemies": ["wire_hawk"],
+      "tags": [
+        "heavy",
+        "winded",
+        "openSky"
+      ],
+      "enemies": [
+        "wire_hawk"
+      ],
       "rewardProfileId": "street_standard"
     },
     {
@@ -79,8 +118,14 @@
       "nodeType": "rival",
       "band": "rival",
       "lesson": "Optional elite pressure with better rewards.",
-      "tags": ["heavy", "winded", "elite"],
-      "enemies": ["tarline_jackdaw"],
+      "tags": [
+        "heavy",
+        "winded",
+        "elite"
+      ],
+      "enemies": [
+        "tarline_jackdaw"
+      ],
       "rewardProfileId": "rival_standard"
     },
     {
@@ -90,9 +135,252 @@
       "nodeType": "boss",
       "band": "boss",
       "lesson": "Tests Cover and Molt restraint while roof goons foul your hand.",
-      "tags": ["boss", "cover", "snag", "openSky", "multi"],
-      "enemies": ["tar_crowned_crow", "roof_rat", "signal_gull"],
+      "tags": [
+        "boss",
+        "cover",
+        "snag",
+        "openSky",
+        "multi"
+      ],
+      "enemies": [
+        "tar_crowned_crow",
+        "roof_rat",
+        "signal_gull"
+      ],
       "rewardProfileId": "boss_alpha"
+    },
+    {
+      "id": "enc_rooftop_raccoon",
+      "name": "Rooftop Raccoon",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "A gear thief tries to turn ignored turns into Snags.",
+      "tags": [
+        "snag",
+        "cover"
+      ],
+      "enemies": [
+        "rooftop_raccoon"
+      ],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_pigeon_enforcer",
+      "name": "Pigeon Enforcer",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "A sturdy bruiser checks whether the flock can keep Cover steady.",
+      "tags": [
+        "basic",
+        "cover"
+      ],
+      "enemies": [
+        "pigeon_enforcer"
+      ],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_crow_saboteur",
+      "name": "Crow Saboteur",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "A rooftop saboteur clogs your route if it gets breathing room.",
+      "tags": [
+        "snag",
+        "tempo"
+      ],
+      "enemies": [
+        "crow_saboteur"
+      ],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_rooftop_scrapper_mix",
+      "name": "Rooftop Scrapper Mix",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "A mixed rooftop crew splits your attention between damage, Cover, and Snags.",
+      "tags": [
+        "multi",
+        "snag",
+        "cover"
+      ],
+      "enemies": [
+        "rooftop_raccoon",
+        "pigeon_enforcer",
+        "crow_saboteur"
+      ],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_rat_courier",
+      "name": "Rat Courier",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Intercept the runner before its warning turns into bonus pressure.",
+      "tags": [
+        "tempo",
+        "snag"
+      ],
+      "enemies": [
+        "rat_courier"
+      ],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_weasel_cutpurse",
+      "name": "Weasel Cutpurse",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Tempo theft tests whether the flock can keep Wingbeat while under pressure.",
+      "tags": [
+        "tempo",
+        "winded"
+      ],
+      "enemies": [
+        "weasel_cutpurse"
+      ],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_skunk_chemist",
+      "name": "Skunk Chemist",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Early Frail and Snag pressure teaches status cleanup before later districts.",
+      "tags": [
+        "snag",
+        "tempo"
+      ],
+      "enemies": [
+        "skunk_chemist"
+      ],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_armadillo_roller",
+      "name": "Armadillo Roller",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "An early optional charger rewards respecting a clear setup turn.",
+      "tags": [
+        "elite",
+        "heavy",
+        "cover"
+      ],
+      "enemies": [
+        "armadillo_roller"
+      ],
+      "rewardProfileId": "rival_standard"
+    },
+    {
+      "id": "enc_rooftop_cutpurse_alarm",
+      "name": "Cutpurse Alarm Run",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "A courier and cutpurse split focus between Snags and tempo loss.",
+      "tags": [
+        "tempo",
+        "snag",
+        "multi"
+      ],
+      "enemies": [
+        "rat_courier",
+        "weasel_cutpurse"
+      ],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_alley_cat",
+      "name": "Alley Cat",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "A stalk-pounce pattern rewards hitting the hunter before the burst turn.",
+      "tags": [
+        "tempo",
+        "heavy"
+      ],
+      "enemies": [
+        "alley_cat"
+      ],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_jackrabbit_sprinter",
+      "name": "Jackrabbit Sprinter",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Fast Winded pressure pushes the flock to stabilize before the overrun.",
+      "tags": [
+        "tempo",
+        "winded"
+      ],
+      "enemies": [
+        "jackrabbit_sprinter"
+      ],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_hedgehog_curb_crosser",
+      "name": "Hedgehog Curb-Crosser",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "A low Cover blocker slows early hands without becoming a heavy elite.",
+      "tags": [
+        "cover",
+        "winded"
+      ],
+      "enemies": [
+        "hedgehog_curb_crosser"
+      ],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_rooftop_speed_trap",
+      "name": "Rooftop Speed Trap",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Speed and stealth split focus between Winded tempo and pounce setup.",
+      "tags": [
+        "tempo",
+        "winded",
+        "multi"
+      ],
+      "enemies": [
+        "jackrabbit_sprinter",
+        "alley_cat"
+      ],
+      "rewardProfileId": "street_standard"
+    },
+    {
+      "id": "enc_mongoose_counterfighter",
+      "name": "Mongoose Counterfighter",
+      "mapId": "map_01_rooftop_blocks",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "A counterfighter turns setup Cover into a sharp optional duel.",
+      "tags": [
+        "elite",
+        "cover",
+        "tempo"
+      ],
+      "enemies": [
+        "mongoose_counterfighter"
+      ],
+      "rewardProfileId": "rival_standard"
     }
   ]
 }

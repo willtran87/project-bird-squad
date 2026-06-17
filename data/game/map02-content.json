@@ -8,10 +8,35 @@
   "mapProfile": {
     "mapId": "map_02_canal_markets",
     "thesis": "Survive sustained attrition while rebuilding water, food, repair, and rest stops along the canals.",
-    "primaryTests": ["recovery", "chip damage", "Scrap tension", "Winded pressure"],
-    "preferredNodeTypes": ["street", "rival", "signal", "basin", "nest", "market", "cache", "boss"],
-    "encounterTags": ["scavenge", "cover", "winded", "heavy", "openSky", "tempo"],
-    "rewardBias": ["healing", "Scrap economy", "Waymarks"],
+    "primaryTests": [
+      "recovery",
+      "chip damage",
+      "Scrap tension",
+      "Winded pressure"
+    ],
+    "preferredNodeTypes": [
+      "street",
+      "rival",
+      "signal",
+      "basin",
+      "nest",
+      "market",
+      "cache",
+      "boss"
+    ],
+    "encounterTags": [
+      "scavenge",
+      "cover",
+      "winded",
+      "heavy",
+      "openSky",
+      "tempo"
+    ],
+    "rewardBias": [
+      "healing",
+      "Scrap economy",
+      "Waymarks"
+    ],
     "bossPrepHints": [
       "Bank Cohesion at Basins before the Canal Gatekeeper's drowning pressure.",
       "Carry Scrap into the final Market; the boss punishes a starved economy.",
@@ -30,13 +55,54 @@
       "silhouette": "Compact heavy waterbird with a forward shield-like chest and low guard stance.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
-        { "id": "warden_haul_9", "label": "Haul 9", "effects": ["damage(flock, 9)"] },
-        { "id": "warden_bulwark", "label": "Bulwark", "effects": ["gainCover(11)"] },
-        { "id": "warden_hook_7", "label": "Gaff Hook 7", "effects": ["damage(flock, 7)", "applyWinded(flock, 1)"] },
-        { "id": "warden_ram_14", "label": "Ram 14", "effects": ["damage(flock, 14)"] }
+        {
+          "id": "warden_haul_9",
+          "label": "Haul 9",
+          "effects": [
+            "damage(flock, 9)"
+          ]
+        },
+        {
+          "id": "warden_bulwark",
+          "label": "Bulwark",
+          "effects": [
+            "gainCover(11)"
+          ]
+        },
+        {
+          "id": "warden_hook_7",
+          "label": "Gaff Hook 7",
+          "effects": [
+            "damage(flock, 7)",
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "warden_ram_14",
+          "label": "Ram 14",
+          "effects": [
+            "damage(flock, 14)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "cycle", "moveIds": ["warden_haul_9", "warden_bulwark", "warden_hook_7", "warden_ram_14"] },
-      "rewards": { "scrap": [80, 105], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "warden_haul_9",
+          "warden_bulwark",
+          "warden_hook_7",
+          "warden_ram_14"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          80,
+          105
+        ],
+        "cardReward": true,
+        "preenGuaranteed": true,
+        "routeMarkGuaranteed": true
+      }
     },
     {
       "id": "canal_dock_rat",
@@ -49,12 +115,45 @@
       "silhouette": "Small low runner with wet fur spikes, thin tail, and quick jaw-forward pose.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural limbs, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
-        { "id": "gnaw_6_a", "label": "Gnaw 6", "effects": ["damage(flock, 6)"] },
-        { "id": "gnaw_6_b", "label": "Gnaw 6", "effects": ["damage(flock, 6)"] },
-        { "id": "hoard_scraps", "label": "Hoard", "effects": ["gainCover(5)"] }
+        {
+          "id": "gnaw_6_a",
+          "label": "Gnaw 6",
+          "effects": [
+            "damage(flock, 6)"
+          ]
+        },
+        {
+          "id": "gnaw_6_b",
+          "label": "Gnaw 6",
+          "effects": [
+            "damage(flock, 6)"
+          ]
+        },
+        {
+          "id": "hoard_scraps",
+          "label": "Hoard",
+          "effects": [
+            "gainCover(5)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "cycle", "moveIds": ["gnaw_6_a", "gnaw_6_b", "hoard_scraps"] },
-      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "gnaw_6_a",
+          "gnaw_6_b",
+          "hoard_scraps"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
     },
     {
       "id": "canal_market_crow",
@@ -67,12 +166,45 @@
       "silhouette": "Medium corvid with hunched shoulders, bright eye, and lifted scavenger beak.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
-        { "id": "snatch_6", "label": "Snatch 6", "effects": ["damage(flock, 6)"] },
-        { "id": "pick_clean", "label": "Pick Clean", "effects": ["if notHitThisTurn then heal(5)"] },
-        { "id": "fan_wings", "label": "Fan Wings", "effects": ["gainCover(6)"] }
+        {
+          "id": "snatch_6",
+          "label": "Snatch 6",
+          "effects": [
+            "damage(flock, 6)"
+          ]
+        },
+        {
+          "id": "pick_clean",
+          "label": "Pick Clean",
+          "effects": [
+            "if notHitThisTurn then heal(5)"
+          ]
+        },
+        {
+          "id": "fan_wings",
+          "label": "Fan Wings",
+          "effects": [
+            "gainCover(6)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "cycle", "moveIds": ["snatch_6", "pick_clean", "fan_wings"] },
-      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "snatch_6",
+          "pick_clean",
+          "fan_wings"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
     },
     {
       "id": "canal_dredge_eel",
@@ -85,12 +217,45 @@
       "silhouette": "Long sinuous body forming a low coil with a sharp raised head.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, coil angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears coiled, watchful, or ready to act while staying readable; full body shape visible with natural fins and tail, resting on an implied ground line or waterline with weight supported by its natural body; avoiding straight-on symmetry, floating poses, and human posture.",
       "moves": [
-        { "id": "coil_winded", "label": "Coil", "effects": ["applyWinded(flock, 1)"] },
-        { "id": "lash_7", "label": "Lash 7", "effects": ["damage(flock, 7)"] },
-        { "id": "thrash_8", "label": "Thrash 8", "effects": ["damage(flock, 8)"] }
+        {
+          "id": "coil_winded",
+          "label": "Coil",
+          "effects": [
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "lash_7",
+          "label": "Lash 7",
+          "effects": [
+            "damage(flock, 7)"
+          ]
+        },
+        {
+          "id": "thrash_8",
+          "label": "Thrash 8",
+          "effects": [
+            "damage(flock, 8)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "cycle", "moveIds": ["coil_winded", "lash_7", "thrash_8"] },
-      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "coil_winded",
+          "lash_7",
+          "thrash_8"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
     },
     {
       "id": "canal_barge_gull",
@@ -103,12 +268,46 @@
       "silhouette": "Wide gliding bird with long wings, dropped head, and diving diagonal read.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
-        { "id": "wheel_5", "label": "Wheel 5", "effects": ["damage(flock, 5)"] },
-        { "id": "dive_heavy_12", "label": "Heavy Dive 12", "effects": ["damage(flock, 12)"] },
-        { "id": "ride_thermal", "label": "Ride Thermal", "effects": ["gainCover(5)", "if flockHasNoCover then nextAttackBonus(2)"] }
+        {
+          "id": "wheel_5",
+          "label": "Wheel 5",
+          "effects": [
+            "damage(flock, 5)"
+          ]
+        },
+        {
+          "id": "dive_heavy_12",
+          "label": "Heavy Dive 12",
+          "effects": [
+            "damage(flock, 12)"
+          ]
+        },
+        {
+          "id": "ride_thermal",
+          "label": "Ride Thermal",
+          "effects": [
+            "gainCover(5)",
+            "if flockHasNoCover then nextAttackBonus(2)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "cycle", "moveIds": ["wheel_5", "ride_thermal", "dive_heavy_12"] },
-      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "wheel_5",
+          "ride_thermal",
+          "dive_heavy_12"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
     },
     {
       "id": "canal_lock_keeper",
@@ -121,12 +320,46 @@
       "silhouette": "Round guarded waterbird tucked behind a vertical gate shape.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
-        { "id": "shut_gate", "label": "Shut Gate", "effects": ["gainCover(8)"] },
-        { "id": "press_7", "label": "Press 7", "effects": ["damage(flock, 7)"] },
-        { "id": "flood_winded", "label": "Flood", "effects": ["damage(flock, 4)", "applyWinded(flock, 1)"] }
+        {
+          "id": "shut_gate",
+          "label": "Shut Gate",
+          "effects": [
+            "gainCover(8)"
+          ]
+        },
+        {
+          "id": "press_7",
+          "label": "Press 7",
+          "effects": [
+            "damage(flock, 7)"
+          ]
+        },
+        {
+          "id": "flood_winded",
+          "label": "Flood",
+          "effects": [
+            "damage(flock, 4)",
+            "applyWinded(flock, 1)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "cycle", "moveIds": ["shut_gate", "press_7", "flood_winded"] },
-      "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "shut_gate",
+          "press_7",
+          "flood_winded"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
     },
     {
       "id": "canal_ferry_cormorant",
@@ -139,12 +372,46 @@
       "silhouette": "Tall waterbird with a hooked beak, folded wet wings, long neck, oar diagonal, and broad webbed-foot stance.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and webbed feet, standing on an implied ground line with weight supported by natural feet or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
-        { "id": "twin_oars", "label": "Oar Feint 7", "effects": ["damage(flock, 7)", "applyWinded(flock, 1)"] },
-        { "id": "raise_gunwale", "label": "Raise Gunwale", "effects": ["gainCover(9)"] },
-        { "id": "ram_13", "label": "Ram 13", "effects": ["damage(flock, 13)"] }
+        {
+          "id": "twin_oars",
+          "label": "Oar Feint 7",
+          "effects": [
+            "damage(flock, 7)",
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "raise_gunwale",
+          "label": "Raise Gunwale",
+          "effects": [
+            "gainCover(9)"
+          ]
+        },
+        {
+          "id": "ram_13",
+          "label": "Ram 13",
+          "effects": [
+            "damage(flock, 13)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "cycle", "moveIds": ["twin_oars", "raise_gunwale", "ram_13"] },
-      "rewards": { "scrap": [70, 90], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "twin_oars",
+          "raise_gunwale",
+          "ram_13"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          70,
+          90
+        ],
+        "cardReward": true,
+        "preenGuaranteed": true,
+        "routeMarkGuaranteed": true
+      }
     },
     {
       "id": "canal_toll_magpie",
@@ -157,12 +424,48 @@
       "silhouette": "Sleek long-tailed bird with a tilted bargaining posture and bright scavenger accents.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, long tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
-        { "id": "shake_down", "label": "Shake Down 6", "effects": ["damage(flock, 6)", "applyOpenSky(1)"] },
-        { "id": "stash_cover", "label": "Stash", "effects": ["gainCover(7)", "if flockOpenSky then heal(4)"] },
-        { "id": "tangle_toss", "label": "Tangle Toss", "effects": ["damage(flock, 9)", "addSnagToDiscard(wet_feathers)"] }
+        {
+          "id": "shake_down",
+          "label": "Shake Down 6",
+          "effects": [
+            "damage(flock, 6)",
+            "applyOpenSky(1)"
+          ]
+        },
+        {
+          "id": "stash_cover",
+          "label": "Stash",
+          "effects": [
+            "gainCover(7)",
+            "if flockOpenSky then heal(4)"
+          ]
+        },
+        {
+          "id": "tangle_toss",
+          "label": "Tangle Toss",
+          "effects": [
+            "damage(flock, 9)",
+            "addSnagToDiscard(wet_feathers)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "cycle", "moveIds": ["shake_down", "stash_cover", "tangle_toss"] },
-      "rewards": { "scrap": [70, 90], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "shake_down",
+          "stash_cover",
+          "tangle_toss"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          70,
+          90
+        ],
+        "cardReward": true,
+        "preenGuaranteed": true,
+        "routeMarkGuaranteed": true
+      }
     },
     {
       "id": "canal_heron_boss",
@@ -173,22 +476,629 @@
       "visualBrief": "Tall great heron in layered canal rainwear, long hooded neck wrap, reflective leg bands, and a basin-worker satchel standing amid raised weirs and churning locks.",
       "silhouette": "Very tall spear-necked waterbird with long legs and a still, gate-like stance.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, long neck, legs, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
-      "fightLengthTarget": [7, 9],
+      "fightLengthTarget": [
+        7,
+        9
+      ],
       "rewardScrap": 120,
       "moves": [
-        { "id": "raise_weir", "label": "Raise Weir", "effects": ["gainCover(9)", "if flockHasNoCover then addSnagToDiscard(wet_feathers)"] },
-        { "id": "spear_strike_9", "label": "Spear Strike 9", "effects": ["damage(flock, 9)"] },
-        { "id": "wading_lull", "label": "Wading Lull", "effects": ["damage(flock, 5)", "applyWinded(flock, 1)"] },
-        { "id": "tide_call", "label": "Tide Call", "effects": ["gainCover(6)", "nextAttackBonus(4)"] },
-        { "id": "drown_press", "label": "Drowning Press", "effects": ["damage(flock, 6)", "if flockCohesionBelowHalf then applyOpenSky(1)"] },
-        { "id": "heavy_lunge_14", "label": "Heavy Lunge 14", "effects": ["damage(flock, 14)"] }
+        {
+          "id": "raise_weir",
+          "label": "Raise Weir",
+          "effects": [
+            "gainCover(9)",
+            "if flockHasNoCover then addSnagToDiscard(wet_feathers)"
+          ]
+        },
+        {
+          "id": "spear_strike_9",
+          "label": "Spear Strike 9",
+          "effects": [
+            "damage(flock, 9)"
+          ]
+        },
+        {
+          "id": "wading_lull",
+          "label": "Wading Lull",
+          "effects": [
+            "damage(flock, 5)",
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "tide_call",
+          "label": "Tide Call",
+          "effects": [
+            "gainCover(6)",
+            "nextAttackBonus(4)"
+          ]
+        },
+        {
+          "id": "drown_press",
+          "label": "Drowning Press",
+          "effects": [
+            "damage(flock, 6)",
+            "if flockCohesionBelowHalf then applyOpenSky(1)"
+          ]
+        },
+        {
+          "id": "heavy_lunge_14",
+          "label": "Heavy Lunge 14",
+          "effects": [
+            "damage(flock, 14)"
+          ]
+        }
       ],
-      "attackPattern": { "type": "scripted", "moveIds": ["raise_weir", "spear_strike_9", "wading_lull", "tide_call", "drown_press", "heavy_lunge_14"], "loopFrom": 1 },
+      "attackPattern": {
+        "type": "scripted",
+        "moveIds": [
+          "raise_weir",
+          "spear_strike_9",
+          "wading_lull",
+          "tide_call",
+          "drown_press",
+          "heavy_lunge_14"
+        ],
+        "loopFrom": 1
+      },
       "rewards": {
         "bossRouteMarkChoices": 3,
         "rareCardChoices": 3,
         "preen": 1,
         "scrap": 120
+      }
+    },
+    {
+      "id": "canal_otter",
+      "name": "Canal Otter",
+      "type": "normal",
+      "health": 30,
+      "lesson": "Water flanker: chips, shifts tempo, and rewards quick focus.",
+      "description": "A slick canal runner that slides through wet lanes and appears where the flock thought the crossing was safe.",
+      "visualBrief": "Streamlined otter in a fitted waterproof shell, clipped pouch harness, and close neck scarf on wet dock planks near lock water and rope coils.",
+      "silhouette": "Long low body, tapered head, thick tail, and slippery side-on movement read.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, crouched low on natural paws with long tail visible and rainwear tight to the body.",
+      "moves": [
+        {
+          "id": "otter_slipstream",
+          "label": "Slipstream",
+          "effects": [
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "otter_nip_7",
+          "label": "Nip 7",
+          "effects": [
+            "damage(flock, 7)"
+          ]
+        },
+        {
+          "id": "otter_dive_cover",
+          "label": "Dive Cover",
+          "effects": [
+            "gainCover(6)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "otter_slipstream",
+          "otter_nip_7",
+          "otter_dive_cover"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "crab_dockguard",
+      "name": "Crab Dockguard",
+      "type": "normal",
+      "health": 34,
+      "lesson": "Dockguard tank: remove Cover before the dock lane locks down.",
+      "description": "A dock crab that patrols sideways under mooring lines and makes narrow crossings awkward.",
+      "visualBrief": "Crab with painted shell decals, cargo strap around the shell, tiny waterproof pouches, and natural claws free on wet pier boards.",
+      "silhouette": "Wide low crustacean with big claws, shell rectangle, and sideways stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, weight on natural legs with claws visible and shell straps not becoming armor.",
+      "moves": [
+        {
+          "id": "crab_guard_shell",
+          "label": "Shell Guard",
+          "effects": [
+            "gainCover(10)"
+          ]
+        },
+        {
+          "id": "crab_claw_6",
+          "label": "Claw 6",
+          "effects": [
+            "damage(flock, 6)"
+          ]
+        },
+        {
+          "id": "crab_sideways_8",
+          "label": "Sideways Shove 8",
+          "effects": [
+            "damage(flock, 8)",
+            "if flockHasNoCover then applyWinded(flock, 1)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "crab_guard_shell",
+          "crab_claw_6",
+          "crab_sideways_8"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "frog_canal_jumper",
+      "name": "Frog Canal Jumper",
+      "type": "normal",
+      "health": 29,
+      "lesson": "Leaper: alternates small hits with Winded tempo pressure.",
+      "description": "A bright canal frog that springs over clutter and splashes the flock out of clean formation.",
+      "visualBrief": "Green frog in a short waterproof hood cape, flexible leg bands, and tiny belly-safe pouch beside puddles and algae-slick stone.",
+      "silhouette": "Compact amphibian with large back legs, wide head, and ready-to-hop crouch.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, crouched on natural limbs with leg bands flexing freely and no sleeves.",
+      "moves": [
+        {
+          "id": "frog_splash_5",
+          "label": "Splash 5",
+          "effects": [
+            "damage(flock, 5)",
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "frog_low_perch",
+          "label": "Low Perch",
+          "effects": [
+            "gainCover(5)"
+          ]
+        },
+        {
+          "id": "frog_jump_8",
+          "label": "Jump 8",
+          "effects": [
+            "damage(flock, 8)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "frog_splash_5",
+          "frog_low_perch",
+          "frog_jump_8"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "turtle_barricader",
+      "name": "Turtle Barricader",
+      "type": "normal",
+      "health": 36,
+      "lesson": "Slow barricade: break Cover before the canal lane locks down.",
+      "description": "A stubborn canal turtle that turns dock clutter into a living roadblock while escorts work around it.",
+      "visualBrief": "Pond turtle with shell-safe stickered cargo netting, small waterproof pouches, and strap clips that do not cover the legs or alter the shell.",
+      "silhouette": "Low dome shell, short planted legs, blunt head, and wide immovable base.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, shell and natural legs fully visible, resting on an implied ground line with no fake armor silhouette.",
+      "moves": [
+        {
+          "id": "turtle_shell_wall",
+          "label": "Shell Wall",
+          "effects": [
+            "gainCover(12)"
+          ]
+        },
+        {
+          "id": "turtle_snap_6",
+          "label": "Snap 6",
+          "effects": [
+            "damage(flock, 6)"
+          ]
+        },
+        {
+          "id": "turtle_lane_block",
+          "label": "Lane Block",
+          "effects": [
+            "gainCover(6)",
+            "if flockHasNoCover then addSnagToDiscard(tangled_line)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "turtle_shell_wall",
+          "turtle_snap_6",
+          "turtle_lane_block"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          30,
+          48
+        ],
+        "cardReward": true,
+        "preenChance": 0.28,
+        "routeMarkChance": 0.18
+      }
+    },
+    {
+      "id": "cormorant_netter",
+      "name": "Cormorant Netter",
+      "type": "normal",
+      "health": 34,
+      "lesson": "Control netter: dock-line Snags and Winded turns tax slow hands.",
+      "description": "A wet-winged canal netter that turns loose dock line into dragged, physical control.",
+      "visualBrief": "Cormorant in a slate rain shell, oar-strap harness, dock-line loops clipped to body, and orange webbed-foot bands.",
+      "silhouette": "Long-neck black waterbird with hooked beak, folded wet wings, and webbed-foot stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, grounded on webbed feet with lines clipped to harness, never held by invented hands.",
+      "moves": [
+        {
+          "id": "cormorant_cast_net",
+          "label": "Cast Net",
+          "effects": [
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "cormorant_tangle_line",
+          "label": "Tangle Line",
+          "effects": [
+            "addSnagToDiscard(tangled_line)"
+          ]
+        },
+        {
+          "id": "cormorant_peck_7",
+          "label": "Pier Peck 7",
+          "effects": [
+            "damage(flock, 7)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "cormorant_cast_net",
+          "cormorant_tangle_line",
+          "cormorant_peck_7"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          30,
+          48
+        ],
+        "cardReward": true,
+        "preenChance": 0.28,
+        "routeMarkChance": 0.18
+      }
+    },
+    {
+      "id": "kingfisher_snapdiver",
+      "name": "Kingfisher Snapdiver",
+      "type": "rival",
+      "health": 40,
+      "lesson": "Water assassin: Open Sky setup into a burst dive if the flock stays exposed.",
+      "description": "A sharp canal kingfisher that waits above the waterline and strikes exactly when the flock drifts.",
+      "visualBrief": "Belted kingfisher in a close rain collar, tiny waterproof side pouch, and talon bands beside low canal posts and rippled water.",
+      "silhouette": "Compact crested bird with large head, dagger beak, short tail, and taut crouch.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, grounded on talons with wings folded and beak aligned to the body angle.",
+      "moves": [
+        {
+          "id": "kingfisher_perch_signal",
+          "label": "Perch Signal",
+          "effects": [
+            "applyOpenSky(1)",
+            "nextAttackBonus(3)"
+          ]
+        },
+        {
+          "id": "kingfisher_snap_dive_13",
+          "label": "Snap Dive 13",
+          "effects": [
+            "damage(flock, 13)"
+          ]
+        },
+        {
+          "id": "kingfisher_flash_7",
+          "label": "Flash Strike 7",
+          "effects": [
+            "damage(flock, 7)",
+            "if flockOpenSky then damage(flock, 5)"
+          ]
+        },
+        {
+          "id": "kingfisher_bank_cover",
+          "label": "Bank Cover",
+          "effects": [
+            "gainCover(7)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "kingfisher_perch_signal",
+          "kingfisher_snap_dive_13",
+          "kingfisher_flash_7",
+          "kingfisher_bank_cover"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          58,
+          78
+        ],
+        "cardReward": true,
+        "preenChance": 0.42,
+        "routeMarkChance": 0.38
+      }
+    },
+    {
+      "id": "heron_spearstepper",
+      "name": "Heron Spearstepper",
+      "type": "elite",
+      "health": 44,
+      "lesson": "Reach elite: long telegraphs combine Winded, Cover, and Open Sky punishment.",
+      "description": "A still canal hunter that threatens from the edge of the water with patient, precise reach.",
+      "visualBrief": "Tall heron in a tailored waterproof sash, pinned-close scarf, reflective leg bands, and small dock satchel beside a canal rail.",
+      "silhouette": "Very tall spear-neck waterbird with long legs, narrow head, and patient vertical stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, weight on natural long legs with neck folded in a heron S-curve and clothing clear of leg motion.",
+      "moves": [
+        {
+          "id": "heron_long_jab_8",
+          "label": "Long Jab 8",
+          "effects": [
+            "damage(flock, 8)"
+          ]
+        },
+        {
+          "id": "heron_pin_feet",
+          "label": "Pin Feet",
+          "effects": [
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "heron_spearstep_setup",
+          "label": "Spearstep Setup",
+          "effects": [
+            "gainCover(8)",
+            "nextAttackBonus(3)"
+          ]
+        },
+        {
+          "id": "heron_reach_12",
+          "label": "Reach Strike 12",
+          "effects": [
+            "damage(flock, 12)",
+            "if flockHasNoCover then applyOpenSky(1)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "heron_long_jab_8",
+          "heron_pin_feet",
+          "heron_spearstep_setup",
+          "heron_reach_12"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          58,
+          78
+        ],
+        "cardReward": true,
+        "preenChance": 0.42,
+        "routeMarkChance": 0.38
+      }
+    },
+    {
+      "id": "opossum_decoy",
+      "name": "Opossum Decoy",
+      "type": "normal",
+      "health": 29,
+      "lesson": "Feint controller: ignored turns let it rebuild tempo before a startle snap.",
+      "description": "A theatrical canal-market survivor that slumps beside curb stalls, watches through patched scarf layers, and snaps when the flock commits wrong.",
+      "visualBrief": "Opossum in layered vintage scarf wraps, patched denim-like back cloth, tiny charm clips, close paw bands, and canal-market curb salvage with tail fully free.",
+      "silhouette": "Low marsupial with pointed snout, arched back, long bare tail, and sly half-collapsed pose.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, crouched naturally with decoy tension rather than a human acting pose.",
+      "moves": [
+        {
+          "id": "opossum_play_dead",
+          "label": "Play Dead",
+          "effects": [
+            "if notHitThisTurn then gainCover(8)"
+          ]
+        },
+        {
+          "id": "opossum_startle_snap_7",
+          "label": "Startle Snap 7",
+          "effects": [
+            "damage(flock, 7)"
+          ]
+        },
+        {
+          "id": "opossum_bait_line",
+          "label": "Bait Line",
+          "effects": [
+            "applyOpenSky(1)",
+            "if flockOpenSky then nextAttackBonus(2)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "opossum_play_dead",
+          "opossum_startle_snap_7",
+          "opossum_bait_line"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          30,
+          48
+        ],
+        "cardReward": true,
+        "preenChance": 0.28,
+        "routeMarkChance": 0.18
+      }
+    },
+    {
+      "id": "goose_bouncer",
+      "name": "Goose Bouncer",
+      "type": "elite",
+      "health": 43,
+      "lesson": "Space-control charger: loud lane denial into a heavy body check.",
+      "description": "A canal-side bouncer that owns the crossing and forces the flock to respect its lane.",
+      "visualBrief": "Canada goose in a varsity-style chest bib, bold color blocking, wing-safe bands, and dockside rain grit.",
+      "silhouette": "Large long-neck bird with broad body, webbed feet, and aggressive forward lean.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, planted on natural webbed feet with neck thrust but body balanced.",
+      "moves": [
+        {
+          "id": "goose_honk_down",
+          "label": "Honk Down",
+          "effects": [
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "goose_hold_door",
+          "label": "Hold Door",
+          "effects": [
+            "gainCover(10)",
+            "nextAttackBonus(2)"
+          ]
+        },
+        {
+          "id": "goose_body_charge_13",
+          "label": "Body Charge 13",
+          "effects": [
+            "damage(flock, 13)"
+          ]
+        },
+        {
+          "id": "goose_wing_shove_8",
+          "label": "Wing Shove 8",
+          "effects": [
+            "damage(flock, 8)",
+            "if flockHasNoCover then applyOpenSky(1)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "goose_honk_down",
+          "goose_hold_door",
+          "goose_body_charge_13",
+          "goose_wing_shove_8"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          58,
+          78
+        ],
+        "cardReward": true,
+        "preenChance": 0.42,
+        "routeMarkChance": 0.38
+      }
+    },
+    {
+      "id": "mantis_street_duelist",
+      "name": "Mantis Street Duelist",
+      "type": "elite",
+      "health": 44,
+      "lesson": "Precision elite: read, guard, then punish sloppy timing with clean cuts.",
+      "description": "A poised mantis that reads the flock's rhythm and answers sloppy timing with clean precision.",
+      "visualBrief": "Large mantis in sleek segmented wrap accents and a tiny thorax panel, limbs fully exposed, perched on cracked market tile.",
+      "silhouette": "Tall insect with triangular head, folded raptorial forelegs, and needle-thin stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, balanced on natural insect legs with wraps following body segments and no humanoid jacket shape.",
+      "moves": [
+        {
+          "id": "mantis_read_rhythm",
+          "label": "Read Rhythm",
+          "effects": [
+            "nextAttackBonus(4)"
+          ]
+        },
+        {
+          "id": "mantis_duel_cut_12",
+          "label": "Duel Cut 12",
+          "effects": [
+            "damage(flock, 12)"
+          ]
+        },
+        {
+          "id": "mantis_still_guard",
+          "label": "Still Guard",
+          "effects": [
+            "gainCover(9)"
+          ]
+        },
+        {
+          "id": "mantis_pinpoint_8",
+          "label": "Pinpoint 8",
+          "effects": [
+            "damage(flock, 8)",
+            "if notHitThisTurn then nextAttackBonus(3)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "mantis_read_rhythm",
+          "mantis_duel_cut_12",
+          "mantis_still_guard",
+          "mantis_pinpoint_8"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          58,
+          78
+        ],
+        "cardReward": true,
+        "preenChance": 0.42,
+        "routeMarkChance": 0.38
       }
     }
   ],
@@ -200,8 +1110,15 @@
       "nodeType": "street",
       "band": "pressure",
       "lesson": "Three scavengers crowd the dock — clear one before the whole line stacks up.",
-      "tags": ["multi", "cover"],
-      "enemies": ["canal_dock_rat", "canal_market_crow", "canal_dock_rat"],
+      "tags": [
+        "multi",
+        "cover"
+      ],
+      "enemies": [
+        "canal_dock_rat",
+        "canal_market_crow",
+        "canal_dock_rat"
+      ],
       "rewardProfileId": "street_map02"
     },
     {
@@ -211,8 +1128,16 @@
       "nodeType": "rival",
       "band": "rival",
       "lesson": "Elite: a Dock Warden with market escorts holds the lock.",
-      "tags": ["elite", "heavy", "multi"],
-      "enemies": ["canal_dock_warden", "canal_dock_rat", "canal_market_crow"],
+      "tags": [
+        "elite",
+        "heavy",
+        "multi"
+      ],
+      "enemies": [
+        "canal_dock_warden",
+        "canal_dock_rat",
+        "canal_market_crow"
+      ],
       "rewardProfileId": "rival_map02"
     },
     {
@@ -222,8 +1147,14 @@
       "nodeType": "street",
       "band": "weak",
       "lesson": "Chip damage adds up; spend Cover before it stacks.",
-      "tags": ["basic", "cover", "scavenge"],
-      "enemies": ["canal_dock_rat"],
+      "tags": [
+        "basic",
+        "cover",
+        "scavenge"
+      ],
+      "enemies": [
+        "canal_dock_rat"
+      ],
       "rewardProfileId": "street_map02"
     },
     {
@@ -233,8 +1164,13 @@
       "nodeType": "street",
       "band": "standard",
       "lesson": "Scavengers heal if left alone; deny their rest turn.",
-      "tags": ["scavenge", "cover"],
-      "enemies": ["canal_market_crow"],
+      "tags": [
+        "scavenge",
+        "cover"
+      ],
+      "enemies": [
+        "canal_market_crow"
+      ],
       "rewardProfileId": "street_map02"
     },
     {
@@ -244,8 +1180,13 @@
       "nodeType": "street",
       "band": "standard",
       "lesson": "Winded throttles your tempo; plan around the lull.",
-      "tags": ["winded", "tempo"],
-      "enemies": ["canal_dredge_eel"],
+      "tags": [
+        "winded",
+        "tempo"
+      ],
+      "enemies": [
+        "canal_dredge_eel"
+      ],
       "rewardProfileId": "street_map02"
     },
     {
@@ -255,8 +1196,13 @@
       "nodeType": "street",
       "band": "pressure",
       "lesson": "Heavy Strike rewards Cover banked in advance.",
-      "tags": ["heavy", "cover"],
-      "enemies": ["canal_barge_gull"],
+      "tags": [
+        "heavy",
+        "cover"
+      ],
+      "enemies": [
+        "canal_barge_gull"
+      ],
       "rewardProfileId": "street_map02"
     },
     {
@@ -266,8 +1212,14 @@
       "nodeType": "street",
       "band": "pressure",
       "lesson": "A turtling foe stalls your clock; out-pace its Cover.",
-      "tags": ["cover", "winded", "tempo"],
-      "enemies": ["canal_lock_keeper"],
+      "tags": [
+        "cover",
+        "winded",
+        "tempo"
+      ],
+      "enemies": [
+        "canal_lock_keeper"
+      ],
       "rewardProfileId": "street_map02"
     },
     {
@@ -277,8 +1229,14 @@
       "nodeType": "rival",
       "band": "rival",
       "lesson": "Optional elite that grinds you down between Basins.",
-      "tags": ["heavy", "winded", "elite"],
-      "enemies": ["canal_ferry_cormorant"],
+      "tags": [
+        "heavy",
+        "winded",
+        "elite"
+      ],
+      "enemies": [
+        "canal_ferry_cormorant"
+      ],
       "rewardProfileId": "rival_map02"
     },
     {
@@ -288,8 +1246,14 @@
       "nodeType": "rival",
       "band": "rival",
       "lesson": "Punishes a low Scrap economy by forcing Snags.",
-      "tags": ["snag", "openSky", "elite"],
-      "enemies": ["canal_toll_magpie"],
+      "tags": [
+        "snag",
+        "openSky",
+        "elite"
+      ],
+      "enemies": [
+        "canal_toll_magpie"
+      ],
       "rewardProfileId": "rival_map02"
     },
     {
@@ -299,9 +1263,242 @@
       "nodeType": "boss",
       "band": "boss",
       "lesson": "Tests recovery and attrition while dock helpers keep the canal pressure wide.",
-      "tags": ["boss", "cover", "winded", "snag", "openSky", "multi"],
-      "enemies": ["canal_heron_boss", "canal_dock_rat", "canal_market_crow"],
+      "tags": [
+        "boss",
+        "cover",
+        "winded",
+        "snag",
+        "openSky",
+        "multi"
+      ],
+      "enemies": [
+        "canal_heron_boss",
+        "canal_dock_rat",
+        "canal_market_crow"
+      ],
       "rewardProfileId": "boss_map02"
+    },
+    {
+      "id": "enc_canal_otter",
+      "name": "Canal Otter",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "A water flanker taxes tempo before slipping away.",
+      "tags": [
+        "winded",
+        "tempo"
+      ],
+      "enemies": [
+        "canal_otter"
+      ],
+      "rewardProfileId": "street_map02"
+    },
+    {
+      "id": "enc_crab_dockguard",
+      "name": "Crab Dockguard",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "A shelling dockguard stalls the fight unless Cover is broken.",
+      "tags": [
+        "cover",
+        "heavy"
+      ],
+      "enemies": [
+        "crab_dockguard"
+      ],
+      "rewardProfileId": "street_map02"
+    },
+    {
+      "id": "enc_frog_canal_jumper",
+      "name": "Frog Canal Jumper",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "A leaper staggers hits and Winded pressure.",
+      "tags": [
+        "winded",
+        "tempo"
+      ],
+      "enemies": [
+        "frog_canal_jumper"
+      ],
+      "rewardProfileId": "street_map02"
+    },
+    {
+      "id": "enc_canal_lane_mix",
+      "name": "Canal Lane Mix",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "A canal lane fight mixes guard pressure with leaping tempo disruption.",
+      "tags": [
+        "multi",
+        "cover",
+        "winded"
+      ],
+      "enemies": [
+        "crab_dockguard",
+        "frog_canal_jumper",
+        "canal_otter"
+      ],
+      "rewardProfileId": "street_map02"
+    },
+    {
+      "id": "enc_turtle_barricader",
+      "name": "Turtle Barricader",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "A slow wall turns ignored Cover into route-clogging Snags.",
+      "tags": [
+        "cover",
+        "snag"
+      ],
+      "enemies": [
+        "turtle_barricader"
+      ],
+      "rewardProfileId": "street_map02"
+    },
+    {
+      "id": "enc_cormorant_netter",
+      "name": "Cormorant Netter",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Dock-line control taxes hands with Winded and Snag pressure.",
+      "tags": [
+        "winded",
+        "snag"
+      ],
+      "enemies": [
+        "cormorant_netter"
+      ],
+      "rewardProfileId": "street_map02"
+    },
+    {
+      "id": "enc_canal_net_barricade",
+      "name": "Net Barricade",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "A barricade and netter pair asks whether to break Cover or clear tempo first.",
+      "tags": [
+        "cover",
+        "winded",
+        "snag",
+        "multi"
+      ],
+      "enemies": [
+        "turtle_barricader",
+        "cormorant_netter"
+      ],
+      "rewardProfileId": "street_map02"
+    },
+    {
+      "id": "enc_kingfisher_snapdiver",
+      "name": "Kingfisher Snapdiver",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "A water-burst rival turns Open Sky into a visible dive window.",
+      "tags": [
+        "elite",
+        "openSky",
+        "heavy"
+      ],
+      "enemies": [
+        "kingfisher_snapdiver"
+      ],
+      "rewardProfileId": "rival_map02"
+    },
+    {
+      "id": "enc_heron_spearstepper",
+      "name": "Heron Spearstepper",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "Reach pressure combines Winded and Open Sky punishment across long tells.",
+      "tags": [
+        "elite",
+        "winded",
+        "openSky"
+      ],
+      "enemies": [
+        "heron_spearstepper"
+      ],
+      "rewardProfileId": "rival_map02"
+    },
+    {
+      "id": "enc_opossum_decoy",
+      "name": "Opossum Decoy",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "A feint enemy rebuilds Cover when ignored, then baits Open Sky.",
+      "tags": [
+        "tempo",
+        "openSky"
+      ],
+      "enemies": [
+        "opossum_decoy"
+      ],
+      "rewardProfileId": "street_map02"
+    },
+    {
+      "id": "enc_goose_bouncer",
+      "name": "Goose Bouncer",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "A lane-control elite uses Winded and Cover before a heavy charge.",
+      "tags": [
+        "elite",
+        "winded",
+        "heavy",
+        "cover"
+      ],
+      "enemies": [
+        "goose_bouncer"
+      ],
+      "rewardProfileId": "rival_map02"
+    },
+    {
+      "id": "enc_mantis_street_duelist",
+      "name": "Mantis Street Duelist",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "A precision duel rewards reading the setup before the heavy cut.",
+      "tags": [
+        "elite",
+        "heavy",
+        "tempo"
+      ],
+      "enemies": [
+        "mantis_street_duelist"
+      ],
+      "rewardProfileId": "rival_map02"
+    },
+    {
+      "id": "enc_canal_feint_line",
+      "name": "Canal Feint Line",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "A decoy and netter stack Open Sky bait with Winded control.",
+      "tags": [
+        "tempo",
+        "openSky",
+        "winded",
+        "multi"
+      ],
+      "enemies": [
+        "opossum_decoy",
+        "cormorant_netter"
+      ],
+      "rewardProfileId": "street_map02"
     }
   ],
   "signals": [
@@ -311,9 +1508,34 @@
       "mapId": "map_02_canal_markets",
       "prompt": "A market stall is half underwater, but salvageable seed and clean water sit just out of reach in the current.",
       "choices": [
-        { "key": "wade", "text": "Wade in for supplies.", "outcomes": ["loseCohesion(3)", "gainSupplyChoice(1)"] },
-        { "key": "bail", "text": "Bail the stall dry.", "requirements": ["scrapAtLeast(40)"], "lockedText": "Need 40 Scrap.", "outcomes": ["payScrap(40)", "healCohesion(10)"] },
-        { "key": "skim", "text": "Skim what floats.", "outcomes": ["gainScrap(35)", "addSnagToDiscard(wet_feathers)"] }
+        {
+          "key": "wade",
+          "text": "Wade in for supplies.",
+          "outcomes": [
+            "loseCohesion(3)",
+            "gainSupplyChoice(1)"
+          ]
+        },
+        {
+          "key": "bail",
+          "text": "Bail the stall dry.",
+          "requirements": [
+            "scrapAtLeast(40)"
+          ],
+          "lockedText": "Need 40 Scrap.",
+          "outcomes": [
+            "payScrap(40)",
+            "healCohesion(10)"
+          ]
+        },
+        {
+          "key": "skim",
+          "text": "Skim what floats.",
+          "outcomes": [
+            "gainScrap(35)",
+            "addSnagToDiscard(wet_feathers)"
+          ]
+        }
       ]
     },
     {
@@ -322,9 +1544,34 @@
       "mapId": "map_02_canal_markets",
       "prompt": "An abandoned ledger maps the canal locks. Tracing it could open a shortcut, but the ink runs in the damp.",
       "choices": [
-        { "key": "copy", "text": "Copy the Waymark.", "outcomes": ["loseCohesion(4)", "gainRouteMark(rain_gutter)"] },
-        { "key": "barter", "text": "Barter for the original.", "requirements": ["scrapAtLeast(55)"], "lockedText": "Need 55 Scrap.", "outcomes": ["payScrap(55)", "gainRouteMark(wire_map)"] },
-        { "key": "shred", "text": "Shred it for tinder.", "outcomes": ["gainScrap(40)", "loseCohesion(2)"] }
+        {
+          "key": "copy",
+          "text": "Copy the Waymark.",
+          "outcomes": [
+            "loseCohesion(4)",
+            "gainRouteMark(rain_gutter)"
+          ]
+        },
+        {
+          "key": "barter",
+          "text": "Barter for the original.",
+          "requirements": [
+            "scrapAtLeast(55)"
+          ],
+          "lockedText": "Need 55 Scrap.",
+          "outcomes": [
+            "payScrap(55)",
+            "gainRouteMark(wire_map)"
+          ]
+        },
+        {
+          "key": "shred",
+          "text": "Shred it for tinder.",
+          "outcomes": [
+            "gainScrap(40)",
+            "loseCohesion(2)"
+          ]
+        }
       ]
     },
     {
@@ -333,9 +1580,30 @@
       "mapId": "map_02_canal_markets",
       "prompt": "A dry repair berth offers rest, but a tidewatcher warns the next stretch runs under open canal sky.",
       "choices": [
-        { "key": "rest", "text": "Rest in the berth.", "outcomes": ["healCohesion(8)", "reduceNextOpenSky(1)"] },
-        { "key": "guard", "text": "Rig a sky guard.", "outcomes": ["gainOpenSkyGuard(2)", "enemyCoverNextCombat(3)"] },
-        { "key": "trade", "text": "Trade the shelter's location.", "outcomes": ["gainScrap(30)", "gainSupply(shade_cloth)"] }
+        {
+          "key": "rest",
+          "text": "Rest in the berth.",
+          "outcomes": [
+            "healCohesion(8)",
+            "reduceNextOpenSky(1)"
+          ]
+        },
+        {
+          "key": "guard",
+          "text": "Rig a sky guard.",
+          "outcomes": [
+            "gainOpenSkyGuard(2)",
+            "enemyCoverNextCombat(3)"
+          ]
+        },
+        {
+          "key": "trade",
+          "text": "Trade the shelter's location.",
+          "outcomes": [
+            "gainScrap(30)",
+            "gainSupply(shade_cloth)"
+          ]
+        }
       ]
     },
     {
@@ -344,9 +1612,33 @@
       "mapId": "map_02_canal_markets",
       "prompt": "A grizzled lock broker hawks salvaged flight feathers and quill repairs. The best stock goes fast — and costs.",
       "choices": [
-        { "key": "browse", "text": "Browse the common stock.", "outcomes": ["preenCard(1)"] },
-        { "key": "bid", "text": "Bid for the rare quills.", "requirements": ["scrapAtLeast(60)"], "lockedText": "Need 60 Scrap.", "outcomes": ["payScrap(60)", "addCard(randomCommonPlumesOrQuills)"] },
-        { "key": "negotiate", "text": "Trade the whole deal for supplies.", "outcomes": ["gainSupplyChoice(1)", "loseCohesion(2)"] }
+        {
+          "key": "browse",
+          "text": "Browse the common stock.",
+          "outcomes": [
+            "preenCard(1)"
+          ]
+        },
+        {
+          "key": "bid",
+          "text": "Bid for the rare quills.",
+          "requirements": [
+            "scrapAtLeast(60)"
+          ],
+          "lockedText": "Need 60 Scrap.",
+          "outcomes": [
+            "payScrap(60)",
+            "addCard(randomCommonPlumesOrQuills)"
+          ]
+        },
+        {
+          "key": "negotiate",
+          "text": "Trade the whole deal for supplies.",
+          "outcomes": [
+            "gainSupplyChoice(1)",
+            "loseCohesion(2)"
+          ]
+        }
       ]
     },
     {
@@ -355,9 +1647,29 @@
       "mapId": "map_02_canal_markets",
       "prompt": "A sinking barge spills crates of scrap into the canal. Grab what you can — but the bilge reeks of rot and tangle.",
       "choices": [
-        { "key": "load_up", "text": "Load it all in.", "outcomes": ["gainScrap(65)", "addSnagToDiscard(tangled_line)"] },
-        { "key": "pick_clean", "text": "Cherry-pick the best crates.", "outcomes": ["gainScrap(35)"] },
-        { "key": "skip", "text": "Leave it sinking.", "outcomes": ["gainOpenSkyGuard(1)", "healCohesion(4)"] }
+        {
+          "key": "load_up",
+          "text": "Load it all in.",
+          "outcomes": [
+            "gainScrap(65)",
+            "addSnagToDiscard(tangled_line)"
+          ]
+        },
+        {
+          "key": "pick_clean",
+          "text": "Cherry-pick the best crates.",
+          "outcomes": [
+            "gainScrap(35)"
+          ]
+        },
+        {
+          "key": "skip",
+          "text": "Leave it sinking.",
+          "outcomes": [
+            "gainOpenSkyGuard(1)",
+            "healCohesion(4)"
+          ]
+        }
       ]
     },
     {
@@ -366,9 +1678,29 @@
       "mapId": "map_02_canal_markets",
       "prompt": "The ferry master offers a wager: a fat purse by sunset, but the fog and toll always take their cut.",
       "choices": [
-        { "key": "gamble_hard", "text": "Bet it all.", "outcomes": ["gainScrap(80)", "addSnagToDraw(bad_directions)"] },
-        { "key": "small_stake", "text": "Wager modest coin.", "outcomes": ["gainScrap(25)"] },
-        { "key": "refuse", "text": "Refuse and move on.", "outcomes": ["gainRouteMark(randomNonBoss)", "loseCohesion(1)"] }
+        {
+          "key": "gamble_hard",
+          "text": "Bet it all.",
+          "outcomes": [
+            "gainScrap(80)",
+            "addSnagToDraw(bad_directions)"
+          ]
+        },
+        {
+          "key": "small_stake",
+          "text": "Wager modest coin.",
+          "outcomes": [
+            "gainScrap(25)"
+          ]
+        },
+        {
+          "key": "refuse",
+          "text": "Refuse and move on.",
+          "outcomes": [
+            "gainRouteMark(randomNonBoss)",
+            "loseCohesion(1)"
+          ]
+        }
       ]
     },
     {
@@ -377,9 +1709,34 @@
       "mapId": "map_02_canal_markets",
       "prompt": "A section of canal ahead is choked with logjams and algae nets. The detour is clear but adds pressure. You could try to cut through.",
       "choices": [
-        { "key": "cut_through", "text": "Cut through the nets.", "outcomes": ["startNextCombatOpenSky()", "gainScrap(45)"] },
-        { "key": "detour", "text": "Take the safe detour.", "outcomes": ["reduceNextOpenSky(2)", "loseCohesion(2)"] },
-        { "key": "scout_passage", "text": "Scout a passage first.", "requirements": ["cohesionAtLeast(14)"], "lockedText": "Need strong cohesion.", "outcomes": ["loseCohesion(3)", "gainOpenSkyGuard(1)"] }
+        {
+          "key": "cut_through",
+          "text": "Cut through the nets.",
+          "outcomes": [
+            "startNextCombatOpenSky()",
+            "gainScrap(45)"
+          ]
+        },
+        {
+          "key": "detour",
+          "text": "Take the safe detour.",
+          "outcomes": [
+            "reduceNextOpenSky(2)",
+            "loseCohesion(2)"
+          ]
+        },
+        {
+          "key": "scout_passage",
+          "text": "Scout a passage first.",
+          "requirements": [
+            "cohesionAtLeast(14)"
+          ],
+          "lockedText": "Need strong cohesion.",
+          "outcomes": [
+            "loseCohesion(3)",
+            "gainOpenSkyGuard(1)"
+          ]
+        }
       ]
     },
     {
@@ -388,9 +1745,33 @@
       "mapId": "map_02_canal_markets",
       "prompt": "A repair crew's lost net bobs in the shallows, tangled with useful cord, patches, and signal flares.",
       "choices": [
-        { "key": "haul_in", "text": "Haul it in.", "outcomes": ["healMissingPct(35)", "gainSupplyChoice(1)"] },
-        { "key": "snip_supplies", "text": "Cut out the good bits.", "requirements": ["hasSupplySlot()"], "lockedText": "Need a supply slot.", "outcomes": ["gainSupply(zip_tie_roll)", "gainScrap(20)"] },
-        { "key": "leave_it", "text": "Leave it for the next crew.", "outcomes": ["gainRouteMark(loose_change_tin)"] }
+        {
+          "key": "haul_in",
+          "text": "Haul it in.",
+          "outcomes": [
+            "healMissingPct(35)",
+            "gainSupplyChoice(1)"
+          ]
+        },
+        {
+          "key": "snip_supplies",
+          "text": "Cut out the good bits.",
+          "requirements": [
+            "hasSupplySlot()"
+          ],
+          "lockedText": "Need a supply slot.",
+          "outcomes": [
+            "gainSupply(zip_tie_roll)",
+            "gainScrap(20)"
+          ]
+        },
+        {
+          "key": "leave_it",
+          "text": "Leave it for the next crew.",
+          "outcomes": [
+            "gainRouteMark(loose_change_tin)"
+          ]
+        }
       ]
     },
     {
@@ -399,9 +1780,34 @@
       "mapId": "map_02_canal_markets",
       "prompt": "A lost gosling has tangled itself in your flock's formation — darling but a liability. The lock keeper points to a safer route if you cut it loose.",
       "choices": [
-        { "key": "adopt", "text": "Keep the gosling close.", "outcomes": ["loseCohesion(5)", "gainRouteMark(patched_harness)"] },
-        { "key": "release", "text": "Let it go.", "outcomes": ["releaseCard(1)", "gainScrap(30)"] },
-        { "key": "guide_ashore", "text": "Guide it safely ashore.", "requirements": ["cohesionAtLeast(18)"], "lockedText": "Need 18 Cohesion.", "outcomes": ["loseCohesion(4)", "healMissingPct(20)"] }
+        {
+          "key": "adopt",
+          "text": "Keep the gosling close.",
+          "outcomes": [
+            "loseCohesion(5)",
+            "gainRouteMark(patched_harness)"
+          ]
+        },
+        {
+          "key": "release",
+          "text": "Let it go.",
+          "outcomes": [
+            "releaseCard(1)",
+            "gainScrap(30)"
+          ]
+        },
+        {
+          "key": "guide_ashore",
+          "text": "Guide it safely ashore.",
+          "requirements": [
+            "cohesionAtLeast(18)"
+          ],
+          "lockedText": "Need 18 Cohesion.",
+          "outcomes": [
+            "loseCohesion(4)",
+            "healMissingPct(20)"
+          ]
+        }
       ]
     }
   ],
@@ -413,13 +1819,36 @@
     "entryNodeId": "m2_c0_street_dock",
     "bossNodeId": "m2_c6_boss_heron",
     "columns": [
-      ["m2_c0_street_dock"],
-      ["m2_c1_street_rat", "m2_c1_signal_pantry"],
-      ["m2_c2_basin_canal", "m2_c2_street_crow", "m2_c2_market_canal"],
-      ["m2_c3_rival_ferry", "m2_c3_nest_repair", "m2_c3_cache_barge"],
-      ["m2_c4_street_eel", "m2_c4_signal_ledger", "m2_c4_street_lock"],
-      ["m2_c5_rival_magpie", "m2_c5_street_gull", "m2_c5_basin_tide"],
-      ["m2_c6_boss_heron"]
+      [
+        "m2_c0_street_dock"
+      ],
+      [
+        "m2_c1_street_rat",
+        "m2_c1_signal_pantry"
+      ],
+      [
+        "m2_c2_basin_canal",
+        "m2_c2_street_crow",
+        "m2_c2_market_canal"
+      ],
+      [
+        "m2_c3_rival_ferry",
+        "m2_c3_nest_repair",
+        "m2_c3_cache_barge"
+      ],
+      [
+        "m2_c4_street_eel",
+        "m2_c4_signal_ledger",
+        "m2_c4_street_lock"
+      ],
+      [
+        "m2_c5_rival_magpie",
+        "m2_c5_street_gull",
+        "m2_c5_basin_tide"
+      ],
+      [
+        "m2_c6_boss_heron"
+      ]
     ],
     "nodes": [
       {
@@ -600,31 +2029,156 @@
       }
     ],
     "edges": [
-      { "from": "m2_c0_street_dock", "to": "m2_c1_street_rat", "locked": false, "preview": "known" },
-      { "from": "m2_c0_street_dock", "to": "m2_c1_signal_pantry", "locked": false, "preview": "known" },
-      { "from": "m2_c1_street_rat", "to": "m2_c2_basin_canal", "locked": false, "preview": "known" },
-      { "from": "m2_c1_street_rat", "to": "m2_c2_street_crow", "locked": false, "preview": "known" },
-      { "from": "m2_c1_signal_pantry", "to": "m2_c2_street_crow", "locked": false, "preview": "known" },
-      { "from": "m2_c1_signal_pantry", "to": "m2_c2_market_canal", "locked": false, "preview": "known" },
-      { "from": "m2_c2_basin_canal", "to": "m2_c3_rival_ferry", "locked": false, "preview": "known" },
-      { "from": "m2_c2_basin_canal", "to": "m2_c3_nest_repair", "locked": false, "preview": "known" },
-      { "from": "m2_c2_street_crow", "to": "m2_c3_nest_repair", "locked": false, "preview": "known" },
-      { "from": "m2_c2_street_crow", "to": "m2_c3_cache_barge", "locked": false, "preview": "known" },
-      { "from": "m2_c2_market_canal", "to": "m2_c3_cache_barge", "locked": false, "preview": "known" },
-      { "from": "m2_c3_rival_ferry", "to": "m2_c4_street_eel", "locked": false, "preview": "known" },
-      { "from": "m2_c3_rival_ferry", "to": "m2_c4_signal_ledger", "locked": false, "preview": "known" },
-      { "from": "m2_c3_nest_repair", "to": "m2_c4_signal_ledger", "locked": false, "preview": "known" },
-      { "from": "m2_c3_nest_repair", "to": "m2_c4_street_lock", "locked": false, "preview": "known" },
-      { "from": "m2_c3_cache_barge", "to": "m2_c4_street_lock", "locked": false, "preview": "known" },
-      { "from": "m2_c4_street_eel", "to": "m2_c5_rival_magpie", "locked": false, "preview": "known" },
-      { "from": "m2_c4_street_eel", "to": "m2_c5_street_gull", "locked": false, "preview": "known" },
-      { "from": "m2_c4_signal_ledger", "to": "m2_c5_rival_magpie", "locked": false, "preview": "known" },
-      { "from": "m2_c4_signal_ledger", "to": "m2_c5_street_gull", "locked": false, "preview": "known" },
-      { "from": "m2_c4_signal_ledger", "to": "m2_c5_basin_tide", "locked": false, "preview": "known" },
-      { "from": "m2_c4_street_lock", "to": "m2_c5_basin_tide", "locked": false, "preview": "known" },
-      { "from": "m2_c5_rival_magpie", "to": "m2_c6_boss_heron", "locked": false, "preview": "known" },
-      { "from": "m2_c5_street_gull", "to": "m2_c6_boss_heron", "locked": false, "preview": "known" },
-      { "from": "m2_c5_basin_tide", "to": "m2_c6_boss_heron", "locked": false, "preview": "known" }
+      {
+        "from": "m2_c0_street_dock",
+        "to": "m2_c1_street_rat",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c0_street_dock",
+        "to": "m2_c1_signal_pantry",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c1_street_rat",
+        "to": "m2_c2_basin_canal",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c1_street_rat",
+        "to": "m2_c2_street_crow",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c1_signal_pantry",
+        "to": "m2_c2_street_crow",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c1_signal_pantry",
+        "to": "m2_c2_market_canal",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c2_basin_canal",
+        "to": "m2_c3_rival_ferry",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c2_basin_canal",
+        "to": "m2_c3_nest_repair",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c2_street_crow",
+        "to": "m2_c3_nest_repair",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c2_street_crow",
+        "to": "m2_c3_cache_barge",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c2_market_canal",
+        "to": "m2_c3_cache_barge",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c3_rival_ferry",
+        "to": "m2_c4_street_eel",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c3_rival_ferry",
+        "to": "m2_c4_signal_ledger",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c3_nest_repair",
+        "to": "m2_c4_signal_ledger",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c3_nest_repair",
+        "to": "m2_c4_street_lock",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c3_cache_barge",
+        "to": "m2_c4_street_lock",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c4_street_eel",
+        "to": "m2_c5_rival_magpie",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c4_street_eel",
+        "to": "m2_c5_street_gull",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c4_signal_ledger",
+        "to": "m2_c5_rival_magpie",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c4_signal_ledger",
+        "to": "m2_c5_street_gull",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c4_signal_ledger",
+        "to": "m2_c5_basin_tide",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c4_street_lock",
+        "to": "m2_c5_basin_tide",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c5_rival_magpie",
+        "to": "m2_c6_boss_heron",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c5_street_gull",
+        "to": "m2_c6_boss_heron",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m2_c5_basin_tide",
+        "to": "m2_c6_boss_heron",
+        "locked": false,
+        "preview": "known"
+      }
     ]
   }
 }

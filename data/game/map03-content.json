@@ -8,10 +8,33 @@
   "mapProfile": {
     "mapId": "map_03_signal_spires",
     "thesis": "Restore warning calls and skyline signals by mastering tempo and reading multi-part Tells.",
-    "primaryTests": ["tempo", "Winded pressure", "Open Sky management", "Plumes/Quills sequencing"],
-    "preferredNodeTypes": ["street", "rival", "signal", "basin", "nest", "market", "cache", "boss"],
-    "encounterTags": ["winded", "openSky", "heavy", "tempo"],
-    "rewardBias": ["tempo", "Open Sky Guard", "Waymarks"],
+    "primaryTests": [
+      "tempo",
+      "Winded pressure",
+      "Open Sky management",
+      "Plumes/Quills sequencing"
+    ],
+    "preferredNodeTypes": [
+      "street",
+      "rival",
+      "signal",
+      "basin",
+      "nest",
+      "market",
+      "cache",
+      "boss"
+    ],
+    "encounterTags": [
+      "winded",
+      "openSky",
+      "heavy",
+      "tempo"
+    ],
+    "rewardBias": [
+      "tempo",
+      "Open Sky Guard",
+      "Waymarks"
+    ],
     "bossPrepHints": [
       "Keep Open Sky Guard ready before the Beacon-Breaker's Molt-triggered calls.",
       "Spend Wingbeat early to outrun stacking Winded Tells.",
@@ -19,181 +42,811 @@
     ]
   },
   "enemies": [
-      {
-        "id": "spire_signal_marshal",
-        "name": "Signal Marshal",
-        "type": "elite",
-        "health": 48,
-        "lesson": "Elite: charges a beacon, then unloads a heavy strike.",
-        "description": "A disciplined signal hawk that charges the spire beacons before diving through the flock's formation.",
-        "visualBrief": "Lean raptor in a structured signal-marshal wind shell, narrow harness straps, talon bands, and beacon clips standing with antenna-cage signal styling.",
-        "silhouette": "Tall angular officer shape with swept wings and a beacon-backed perch.",
-        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
-        "moves": [
-          { "id": "marshal_volley_9", "label": "Volley 9", "effects": ["damage(flock, 9)", "applyWinded(flock, 1)"] },
-          { "id": "marshal_charge", "label": "Charge Beacon", "effects": ["gainCover(8)", "nextAttackBonus(4)"] },
-          { "id": "marshal_brace", "label": "Formation Brace", "effects": ["gainCover(10)"] },
-          { "id": "marshal_dive_14", "label": "Dive Strike 14", "effects": ["damage(flock, 14)"] }
-        ],
-        "attackPattern": { "type": "cycle", "moveIds": ["marshal_volley_9", "marshal_charge", "marshal_brace", "marshal_dive_14"] },
-        "rewards": { "scrap": [85, 110], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
-      },
-      {
-        "id": "spire_relay_starling",
-        "name": "Relay Starling",
-        "type": "normal",
-        "health": 28,
-        "lesson": "Read a two-part Tell that adds Winded after damage.",
-        "description": "A fast relay starling that carries warning calls between antennas and leaves the flock winded in its wake.",
-        "visualBrief": "Small iridescent starling in a cropped courier jacket, tiny message tube, bright talon bands, and wind-tugged feathers with relay-wire courier styling.",
-        "silhouette": "Small darting bird with pointed wings and a message-runner forward lean.",
-        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
-        "moves": [
-          { "id": "relay_jab_6", "label": "Relay Jab 6", "effects": ["damage(flock, 6)", "applyWinded(flock, 1)"] },
-          { "id": "settle_cover", "label": "Settle", "effects": ["gainCover(5)"] },
-          { "id": "quick_peck_5", "label": "Quick Peck 5", "effects": ["damage(flock, 5)"] }
-        ],
-        "attackPattern": { "type": "cycle", "moveIds": ["relay_jab_6", "settle_cover", "quick_peck_5"] },
-        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
-      },
-      {
-        "id": "spire_aerial_kite",
-        "name": "Aerial Kite",
-        "type": "normal",
-        "health": 30,
-        "lesson": "Punish Open Sky telegraphs and keep tempo.",
-        "description": "A high circling kite that marks exposed routes, then drops through the open air when tempo slips.",
-        "visualBrief": "Long-winged kite in a light windbreaker wrap, chest strap, and reflective feather-safe tabs against a pale skyline and exposed spire gap.",
-        "silhouette": "Wide high-soaring raptor with a forked tail angle and open-sky arc.",
-        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural long wings, forked tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
-        "moves": [
-          { "id": "kite_dive_7", "label": "Kite Dive 7", "effects": ["damage(flock, 7)"] },
-          { "id": "updraft_call", "label": "Updraft Call", "effects": ["applyOpenSky(1)", "nextAttackBonus(3)"] },
-          { "id": "swoop_8", "label": "Swoop 8", "effects": ["damage(flock, 8)"] }
-        ],
-        "attackPattern": { "type": "cycle", "moveIds": ["updraft_call", "swoop_8", "kite_dive_7"] },
-        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
-      },
-      {
-        "id": "spire_tower_pigeon",
-        "name": "Tower Pigeon",
-        "type": "normal",
-        "health": 32,
-        "lesson": "Survive a Heavy Strike that hits harder when you lack Cover.",
-        "description": "A stubborn tower pigeon that roosts in the signal works and slams harder when the flock has no cover.",
-        "visualBrief": "Heavy city pigeon in layered roost vest, soft neck wrap, utility leg bands, and soot-dusted feathers beside breaker boxes and antenna mounts.",
-        "silhouette": "Round solid bird with puffed chest, short neck, and planted roost stance.",
-        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
-        "moves": [
-          { "id": "roost_brace_7", "label": "Roost Brace", "effects": ["gainCover(7)"] },
-          { "id": "tower_strike_9", "label": "Tower Strike 9", "effects": ["damage(flock, 9)", "if flockHasNoCover then damage(flock, 4)"] },
-          { "id": "flutter_5", "label": "Flutter 5", "effects": ["damage(flock, 5)"] }
-        ],
-        "attackPattern": { "type": "cycle", "moveIds": ["roost_brace_7", "tower_strike_9", "flutter_5"] },
-        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
-      },
-      {
-        "id": "spire_static_swift",
-        "name": "Static Swift",
-        "type": "normal",
-        "health": 30,
-        "lesson": "Manage tempo against a fast bird that builds toward a bonus strike.",
-        "description": "A static swift that snaps between wires, building charge-like momentum through speed rather than magic.",
-        "visualBrief": "Sleek swift in a narrow racing shell, tiny strap harness, and reflective trim cutting across taut signal wires in rain and city light.",
-        "silhouette": "Needle-fast crescent-wing shape with a small body and sharp motion angle.",
-        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural crescent wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
-        "moves": [
-          { "id": "static_nip_5", "label": "Static Nip 5", "effects": ["damage(flock, 5)", "applyWinded(flock, 1)"] },
-          { "id": "charge_call", "label": "Charge Call", "effects": ["nextAttackBonus(4)"] },
-          { "id": "dart_7", "label": "Dart 7", "effects": ["damage(flock, 7)"] }
-        ],
-        "attackPattern": { "type": "cycle", "moveIds": ["static_nip_5", "charge_call", "dart_7"] },
-        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
-      },
-      {
-        "id": "spire_beacon_grackle",
-        "name": "Beacon Grackle",
-        "type": "normal",
-        "health": 36,
-        "lesson": "Respect a heavy multi-part Tell that punishes a thin Molt.",
-        "description": "A beacon grackle that guards the signal lights and punishes flocks that molt under exposed skyline.",
-        "visualBrief": "Glossy grackle in a rumpled black-blue signal jacket, small beacon charm clips, talon bands, and a utility perch lit by practical warning lamps.",
-        "silhouette": "Medium glossy bird with long tail, raised head, and warning-call chest.",
-        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, long tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
-        "moves": [
-          { "id": "beacon_screech_6", "label": "Beacon Screech 6", "effects": ["damage(flock, 6)", "if isMolting then applyOpenSky(1)"] },
-          { "id": "hunker_cover", "label": "Hunker", "effects": ["gainCover(6)", "if selfBelowHalf then heal(4)"] },
-          { "id": "heavy_toll_12", "label": "Heavy Toll 12", "effects": ["damage(flock, 12)"] }
-        ],
-        "attackPattern": { "type": "cycle", "moveIds": ["beacon_screech_6", "hunker_cover", "heavy_toll_12"] },
-        "rewards": { "scrap": [25, 40], "cardReward": true, "preenChance": 0.25, "routeMarkChance": 0.15 }
-      },
-      {
-        "id": "spire_signal_kite",
-        "name": "Aerial Signal Kite",
-        "type": "rival",
-        "health": 44,
-        "lesson": "Optional elite that stacks Winded and Open Sky pressure together.",
-        "description": "A sharp-eyed signal kite that patrols the spires alone, layering wind pressure with exposed-route calls.",
-        "visualBrief": "Lean signal kite in a cobalt courier shell, wind-cut flight straps, amber reflective bands, clipped route tags, and small antenna charm beside rooftop signal hardware.",
-        "silhouette": "Long-winged raptor with a forked tail, narrow talons, signal straps, and a strong diagonal courier profile.",
-        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet or talons; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
-        "moves": [
-          { "id": "corps_volley_7", "label": "Signal Volley 7", "effects": ["damage(flock, 7)", "applyWinded(flock, 1)"] },
-          { "id": "skyline_call", "label": "Skyline Call", "effects": ["applyOpenSky(1)", "nextAttackBonus(3)"] },
-          { "id": "formation_brace_9", "label": "Signal Brace", "effects": ["gainCover(9)"] },
-          { "id": "dive_strike_13", "label": "Dive Strike 13", "effects": ["damage(flock, 13)"] }
-        ],
-        "attackPattern": { "type": "cycle", "moveIds": ["corps_volley_7", "skyline_call", "formation_brace_9", "dive_strike_13"] },
-        "rewards": { "scrap": [70, 90], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
-      },
-      {
-        "id": "spire_tollkeeper_kestrel",
-        "name": "Tollkeeper Kestrel",
-        "type": "rival",
-        "health": 44,
-        "lesson": "Optional elite that punishes slow tempo and missed openings.",
-        "description": "A tollkeeper kestrel that waits at the skyline crossing and charges every hesitation with talons and snags.",
-        "visualBrief": "Compact kestrel in a sharp toll-runner jacket, weathered sling pouch, talon wraps, and rope tags with windy antenna toll-perch styling.",
-        "silhouette": "Compact raptor with pointed wings, long tail, and a poised tollgate crouch.",
-        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, long tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
-        "moves": [
-          { "id": "toll_rake_8", "label": "Toll Rake 8", "effects": ["damage(flock, 8)"] },
-          { "id": "winded_clutch", "label": "Winded Clutch", "effects": ["applyWinded(flock, 2)"] },
-          { "id": "snag_throw", "label": "Snag Throw", "effects": ["damage(flock, 5)", "addSnagToDiscard(wet_feathers)"] },
-          { "id": "talon_drop_12", "label": "Talon Drop 12", "effects": ["damage(flock, 12)", "if notHitThisTurn then nextAttackBonus(4)"] }
-        ],
-        "attackPattern": { "type": "cycle", "moveIds": ["toll_rake_8", "winded_clutch", "snag_throw", "talon_drop_12"] },
-        "rewards": { "scrap": [70, 90], "cardReward": true, "preenGuaranteed": true, "routeMarkGuaranteed": true }
-      },
-      {
-        "id": "spire_beacon_breaker",
-        "name": "The Beacon-Breaker",
-        "type": "boss",
-        "health": 60,
-        "description": "A storm-black signal boss that breaks old warning beacons and turns every exposed molt into a citywide alarm.",
-        "visualBrief": "Large dark raptor-corvid presence in a heavy signal mantle, wind-cut straps, talon bands, and broken beacon fragments atop a storm-lit spire.",
-        "silhouette": "Huge high-perch bird with broken-beacon framing, broad wings, and a severe downward gaze.",
-        "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
-        "fightLengthTarget": [7, 9],
-        "rewardScrap": 120,
-        "moves": [
-          { "id": "open_the_spire", "label": "Open the Spire", "effects": ["gainCover(8)", "if flockHasNoCover then addSnagToDiscard(bad_directions)"] },
-          { "id": "warning_call", "label": "Warning Call 7", "effects": ["damage(flock, 7)", "applyWinded(flock, 1)"] },
-          { "id": "skyline_flare", "label": "Skyline Flare 6", "effects": ["damage(flock, 6)", "if isMolting then applyOpenSky(1)"] },
-          { "id": "charge_the_beacon", "label": "Charge the Beacon", "effects": ["gainCover(6)", "nextAttackBonus(4)"] },
-          { "id": "spire_toll_8", "label": "Spire Toll 8", "effects": ["damage(flock, 8)", "if flockOpenSky then applyWinded(flock, 1)"] },
-          { "id": "beacon_break_14", "label": "Beacon Break 14", "effects": ["damage(flock, 14)"] }
-        ],
-        "attackPattern": { "type": "scripted", "moveIds": ["open_the_spire", "warning_call", "skyline_flare", "charge_the_beacon", "spire_toll_8", "beacon_break_14"], "loopFrom": 1 },
-        "rewards": {
-          "bossRouteMarkChoices": 3,
-          "rareCardChoices": 3,
-          "preen": 1,
-          "scrap": 120,
-          "unlocks": "map_04_high_roost"
+    {
+      "id": "spire_signal_marshal",
+      "name": "Signal Marshal",
+      "type": "elite",
+      "health": 48,
+      "lesson": "Elite: charges a beacon, then unloads a heavy strike.",
+      "description": "A disciplined signal hawk that charges the spire beacons before diving through the flock's formation.",
+      "visualBrief": "Lean raptor in a structured signal-marshal wind shell, narrow harness straps, talon bands, and beacon clips standing with antenna-cage signal styling.",
+      "silhouette": "Tall angular officer shape with swept wings and a beacon-backed perch.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
+      "moves": [
+        {
+          "id": "marshal_volley_9",
+          "label": "Volley 9",
+          "effects": [
+            "damage(flock, 9)",
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "marshal_charge",
+          "label": "Charge Beacon",
+          "effects": [
+            "gainCover(8)",
+            "nextAttackBonus(4)"
+          ]
+        },
+        {
+          "id": "marshal_brace",
+          "label": "Formation Brace",
+          "effects": [
+            "gainCover(10)"
+          ]
+        },
+        {
+          "id": "marshal_dive_14",
+          "label": "Dive Strike 14",
+          "effects": [
+            "damage(flock, 14)"
+          ]
         }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "marshal_volley_9",
+          "marshal_charge",
+          "marshal_brace",
+          "marshal_dive_14"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          85,
+          110
+        ],
+        "cardReward": true,
+        "preenGuaranteed": true,
+        "routeMarkGuaranteed": true
       }
+    },
+    {
+      "id": "spire_relay_starling",
+      "name": "Relay Starling",
+      "type": "normal",
+      "health": 28,
+      "lesson": "Read a two-part Tell that adds Winded after damage.",
+      "description": "A fast relay starling that carries warning calls between antennas and leaves the flock winded in its wake.",
+      "visualBrief": "Small iridescent starling in a cropped courier jacket, tiny message tube, bright talon bands, and wind-tugged feathers with relay-wire courier styling.",
+      "silhouette": "Small darting bird with pointed wings and a message-runner forward lean.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
+      "moves": [
+        {
+          "id": "relay_jab_6",
+          "label": "Relay Jab 6",
+          "effects": [
+            "damage(flock, 6)",
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "settle_cover",
+          "label": "Settle",
+          "effects": [
+            "gainCover(5)"
+          ]
+        },
+        {
+          "id": "quick_peck_5",
+          "label": "Quick Peck 5",
+          "effects": [
+            "damage(flock, 5)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "relay_jab_6",
+          "settle_cover",
+          "quick_peck_5"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "spire_aerial_kite",
+      "name": "Aerial Kite",
+      "type": "normal",
+      "health": 30,
+      "lesson": "Punish Open Sky telegraphs and keep tempo.",
+      "description": "A high circling kite that marks exposed routes, then drops through the open air when tempo slips.",
+      "visualBrief": "Long-winged kite in a light windbreaker wrap, chest strap, and reflective feather-safe tabs against a pale skyline and exposed spire gap.",
+      "silhouette": "Wide high-soaring raptor with a forked tail angle and open-sky arc.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural long wings, forked tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
+      "moves": [
+        {
+          "id": "kite_dive_7",
+          "label": "Kite Dive 7",
+          "effects": [
+            "damage(flock, 7)"
+          ]
+        },
+        {
+          "id": "updraft_call",
+          "label": "Updraft Call",
+          "effects": [
+            "applyOpenSky(1)",
+            "nextAttackBonus(3)"
+          ]
+        },
+        {
+          "id": "swoop_8",
+          "label": "Swoop 8",
+          "effects": [
+            "damage(flock, 8)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "updraft_call",
+          "swoop_8",
+          "kite_dive_7"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "spire_tower_pigeon",
+      "name": "Tower Pigeon",
+      "type": "normal",
+      "health": 32,
+      "lesson": "Survive a Heavy Strike that hits harder when you lack Cover.",
+      "description": "A stubborn tower pigeon that roosts in the signal works and slams harder when the flock has no cover.",
+      "visualBrief": "Heavy city pigeon in layered roost vest, soft neck wrap, utility leg bands, and soot-dusted feathers beside breaker boxes and antenna mounts.",
+      "silhouette": "Round solid bird with puffed chest, short neck, and planted roost stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
+      "moves": [
+        {
+          "id": "roost_brace_7",
+          "label": "Roost Brace",
+          "effects": [
+            "gainCover(7)"
+          ]
+        },
+        {
+          "id": "tower_strike_9",
+          "label": "Tower Strike 9",
+          "effects": [
+            "damage(flock, 9)",
+            "if flockHasNoCover then damage(flock, 4)"
+          ]
+        },
+        {
+          "id": "flutter_5",
+          "label": "Flutter 5",
+          "effects": [
+            "damage(flock, 5)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "roost_brace_7",
+          "tower_strike_9",
+          "flutter_5"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "spire_static_swift",
+      "name": "Static Swift",
+      "type": "normal",
+      "health": 30,
+      "lesson": "Manage tempo against a fast bird that builds toward a bonus strike.",
+      "description": "A static swift that snaps between wires, building charge-like momentum through speed rather than magic.",
+      "visualBrief": "Sleek swift in a narrow racing shell, tiny strap harness, and reflective trim cutting across taut signal wires in rain and city light.",
+      "silhouette": "Needle-fast crescent-wing shape with a small body and sharp motion angle.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural crescent wings, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
+      "moves": [
+        {
+          "id": "static_nip_5",
+          "label": "Static Nip 5",
+          "effects": [
+            "damage(flock, 5)",
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "charge_call",
+          "label": "Charge Call",
+          "effects": [
+            "nextAttackBonus(4)"
+          ]
+        },
+        {
+          "id": "dart_7",
+          "label": "Dart 7",
+          "effects": [
+            "damage(flock, 7)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "static_nip_5",
+          "charge_call",
+          "dart_7"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "spire_beacon_grackle",
+      "name": "Beacon Grackle",
+      "type": "normal",
+      "health": 36,
+      "lesson": "Respect a heavy multi-part Tell that punishes a thin Molt.",
+      "description": "A beacon grackle that guards the signal lights and punishes flocks that molt under exposed skyline.",
+      "visualBrief": "Glossy grackle in a rumpled black-blue signal jacket, small beacon charm clips, talon bands, and a utility perch lit by practical warning lamps.",
+      "silhouette": "Medium glossy bird with long tail, raised head, and warning-call chest.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, long tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
+      "moves": [
+        {
+          "id": "beacon_screech_6",
+          "label": "Beacon Screech 6",
+          "effects": [
+            "damage(flock, 6)",
+            "if isMolting then applyOpenSky(1)"
+          ]
+        },
+        {
+          "id": "hunker_cover",
+          "label": "Hunker",
+          "effects": [
+            "gainCover(6)",
+            "if selfBelowHalf then heal(4)"
+          ]
+        },
+        {
+          "id": "heavy_toll_12",
+          "label": "Heavy Toll 12",
+          "effects": [
+            "damage(flock, 12)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "beacon_screech_6",
+          "hunker_cover",
+          "heavy_toll_12"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "spire_signal_kite",
+      "name": "Aerial Signal Kite",
+      "type": "rival",
+      "health": 44,
+      "lesson": "Optional elite that stacks Winded and Open Sky pressure together.",
+      "description": "A sharp-eyed signal kite that patrols the spires alone, layering wind pressure with exposed-route calls.",
+      "visualBrief": "Lean signal kite in a cobalt courier shell, wind-cut flight straps, amber reflective bands, clipped route tags, and small antenna charm beside rooftop signal hardware.",
+      "silhouette": "Long-winged raptor with a forked tail, narrow talons, signal straps, and a strong diagonal courier profile.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet or talons; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
+      "moves": [
+        {
+          "id": "corps_volley_7",
+          "label": "Signal Volley 7",
+          "effects": [
+            "damage(flock, 7)",
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "skyline_call",
+          "label": "Skyline Call",
+          "effects": [
+            "applyOpenSky(1)",
+            "nextAttackBonus(3)"
+          ]
+        },
+        {
+          "id": "formation_brace_9",
+          "label": "Signal Brace",
+          "effects": [
+            "gainCover(9)"
+          ]
+        },
+        {
+          "id": "dive_strike_13",
+          "label": "Dive Strike 13",
+          "effects": [
+            "damage(flock, 13)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "corps_volley_7",
+          "skyline_call",
+          "formation_brace_9",
+          "dive_strike_13"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          70,
+          90
+        ],
+        "cardReward": true,
+        "preenGuaranteed": true,
+        "routeMarkGuaranteed": true
+      }
+    },
+    {
+      "id": "spire_tollkeeper_kestrel",
+      "name": "Tollkeeper Kestrel",
+      "type": "rival",
+      "health": 44,
+      "lesson": "Optional elite that punishes slow tempo and missed openings.",
+      "description": "A tollkeeper kestrel posted at a rooftop signal crossing, reading every hesitation from a rope-tag gantry before diving into the lane.",
+      "visualBrief": "Compact kestrel in a sharp toll-runner jacket, weathered sling pouch, talon wraps, reflective rope tags, and clipped toll-wire charms beside an antenna gantry and rain-dark rooftop crossing.",
+      "silhouette": "Compact raptor with pointed wings, long tail, and a poised tollgate crouch.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, long tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
+      "moves": [
+        {
+          "id": "toll_rake_8",
+          "label": "Toll Rake 8",
+          "effects": [
+            "damage(flock, 8)"
+          ]
+        },
+        {
+          "id": "winded_clutch",
+          "label": "Winded Clutch",
+          "effects": [
+            "applyWinded(flock, 2)"
+          ]
+        },
+        {
+          "id": "snag_throw",
+          "label": "Snag Throw",
+          "effects": [
+            "damage(flock, 5)",
+            "addSnagToDiscard(wet_feathers)"
+          ]
+        },
+        {
+          "id": "talon_drop_12",
+          "label": "Talon Drop 12",
+          "effects": [
+            "damage(flock, 12)",
+            "if notHitThisTurn then nextAttackBonus(4)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "toll_rake_8",
+          "winded_clutch",
+          "snag_throw",
+          "talon_drop_12"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          70,
+          90
+        ],
+        "cardReward": true,
+        "preenGuaranteed": true,
+        "routeMarkGuaranteed": true
+      }
+    },
+    {
+      "id": "spire_beacon_breaker",
+      "name": "The Beacon-Breaker",
+      "type": "boss",
+      "health": 60,
+      "description": "A storm-black signal boss that breaks old warning beacons and turns every exposed molt into a citywide alarm.",
+      "visualBrief": "Large dark raptor-corvid presence in a heavy signal mantle, wind-cut straps, talon bands, and broken beacon fragments atop a storm-lit spire.",
+      "silhouette": "Huge high-perch bird with broken-beacon framing, broad wings, and a severe downward gaze.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, tail, and talons, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
+      "fightLengthTarget": [
+        7,
+        9
+      ],
+      "rewardScrap": 120,
+      "moves": [
+        {
+          "id": "open_the_spire",
+          "label": "Open the Spire",
+          "effects": [
+            "gainCover(8)",
+            "if flockHasNoCover then addSnagToDiscard(bad_directions)"
+          ]
+        },
+        {
+          "id": "warning_call",
+          "label": "Warning Call 7",
+          "effects": [
+            "damage(flock, 7)",
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "skyline_flare",
+          "label": "Skyline Flare 6",
+          "effects": [
+            "damage(flock, 6)",
+            "if isMolting then applyOpenSky(1)"
+          ]
+        },
+        {
+          "id": "charge_the_beacon",
+          "label": "Charge the Beacon",
+          "effects": [
+            "gainCover(6)",
+            "nextAttackBonus(4)"
+          ]
+        },
+        {
+          "id": "spire_toll_8",
+          "label": "Spire Toll 8",
+          "effects": [
+            "damage(flock, 8)",
+            "if flockOpenSky then applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "beacon_break_14",
+          "label": "Beacon Break 14",
+          "effects": [
+            "damage(flock, 14)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "scripted",
+        "moveIds": [
+          "open_the_spire",
+          "warning_call",
+          "skyline_flare",
+          "charge_the_beacon",
+          "spire_toll_8",
+          "beacon_break_14"
+        ],
+        "loopFrom": 1
+      },
+      "rewards": {
+        "bossRouteMarkChoices": 3,
+        "rareCardChoices": 3,
+        "preen": 1,
+        "scrap": 120,
+        "unlocks": "map_04_high_roost"
+      }
+    },
+    {
+      "id": "cicada_static_swarm",
+      "name": "Cicada Static Swarm",
+      "type": "normal",
+      "health": 32,
+      "lesson": "Static caller: tempo pressure grows if the flock lets it hum.",
+      "description": "A representative signal cicada whose rattling wing buzz scrambles tells in dense spire weather.",
+      "visualBrief": "Single large cicada enemy in tiny signal-safe strap accents and reflective tags on a utility box, with natural transparent wings unobstructed.",
+      "silhouette": "Small insect with broad wings, stout body, round eyes, and vibrating-ready posture.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, one readable cicada grounded or perched low, not a cluster or cloud.",
+      "moves": [
+        {
+          "id": "cicada_drone",
+          "label": "Static Drone",
+          "effects": [
+            "applyWinded(flock, 1)",
+            "nextAttackBonus(2)"
+          ]
+        },
+        {
+          "id": "cicada_sting_7",
+          "label": "Sting 7",
+          "effects": [
+            "damage(flock, 7)"
+          ]
+        },
+        {
+          "id": "cicada_shell",
+          "label": "Shell Hum",
+          "effects": [
+            "gainCover(6)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "cicada_drone",
+          "cicada_sting_7",
+          "cicada_shell"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          25,
+          40
+        ],
+        "cardReward": true,
+        "preenChance": 0.25,
+        "routeMarkChance": 0.15
+      }
+    },
+    {
+      "id": "crane_signal_caller",
+      "name": "Crane Signal Caller",
+      "type": "elite",
+      "health": 46,
+      "lesson": "Signal support elite: calls Open Sky pressure before a long reach strike.",
+      "description": "A tall signal caller that turns skyline distance into marching pressure.",
+      "visualBrief": "Sandhill crane in a wind-cut neck wrap, fitted signal sash, long leg bands, and small route tags beside antenna cages.",
+      "silhouette": "Very tall bird with long legs, straight neck, narrow beak, and lookout stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, standing on natural long legs with wraps fitted close and no robe-like costume.",
+      "moves": [
+        {
+          "id": "crane_warning_call",
+          "label": "Warning Call",
+          "effects": [
+            "applyOpenSky(1)",
+            "nextAttackBonus(3)"
+          ]
+        },
+        {
+          "id": "crane_spear_9",
+          "label": "Spear 9",
+          "effects": [
+            "damage(flock, 9)"
+          ]
+        },
+        {
+          "id": "crane_signal_brace",
+          "label": "Signal Brace",
+          "effects": [
+            "gainCover(9)"
+          ]
+        },
+        {
+          "id": "crane_long_step_13",
+          "label": "Long Step 13",
+          "effects": [
+            "damage(flock, 13)",
+            "applyWinded(flock, 1)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "crane_warning_call",
+          "crane_spear_9",
+          "crane_signal_brace",
+          "crane_long_step_13"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          78,
+          98
+        ],
+        "cardReward": true,
+        "preenGuaranteed": true,
+        "routeMarkGuaranteed": true
+      }
+    },
+    {
+      "id": "bat_nightcaller",
+      "name": "Bat Nightcaller",
+      "type": "normal",
+      "health": 30,
+      "lesson": "Disruptor: bad-direction Snags and exposure pressure vary the Spire tempo mix.",
+      "description": "A night-roost bat that rattles the flock's timing with sharp calls around tower lights.",
+      "visualBrief": "Little brown bat with a minimal flight-safe collar, tiny reflective tags, and wing membranes fully unobstructed in a dim utility alcove.",
+      "silhouette": "Small winged mammal with wide natural wings, pointed ears, and compact body.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, grounded or resting naturally with wings readable and not covered by capes or sleeves.",
+      "moves": [
+        {
+          "id": "bat_bad_echo",
+          "label": "Bad Echo",
+          "effects": [
+            "addSnagToDiscard(bad_directions)"
+          ]
+        },
+        {
+          "id": "bat_night_pass_6",
+          "label": "Night Pass 6",
+          "effects": [
+            "damage(flock, 6)",
+            "applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "bat_dim_wing",
+          "label": "Dim Wing",
+          "effects": [
+            "if notHitThisTurn then applyOpenSky(1)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "bat_bad_echo",
+          "bat_night_pass_6",
+          "bat_dim_wing"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          35,
+          55
+        ],
+        "cardReward": true,
+        "preenChance": 0.3,
+        "routeMarkChance": 0.2
+      }
+    },
+    {
+      "id": "kite_hawk_courier",
+      "name": "Kite Hawk Courier",
+      "type": "rival",
+      "health": 45,
+      "lesson": "Aerial hit-and-run: line up Open Sky, then sweep through weak Cover.",
+      "description": "A skyline courier that sweeps through predictable lanes and tests whether the flock reads the incoming pass.",
+      "visualBrief": "Slender kite in a lightweight courier shell, wind-cut straps, talon bands, and route tags against antenna masts and roof gaps.",
+      "silhouette": "Lean raptor with pointed wings, narrow head, long tail, and fast diagonal profile.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, grounded on talons in a poised pre-launch stance rather than flying.",
+      "moves": [
+        {
+          "id": "kite_hawk_line_up",
+          "label": "Line Up",
+          "effects": [
+            "applyOpenSky(1)",
+            "nextAttackBonus(3)"
+          ]
+        },
+        {
+          "id": "kite_hawk_sweep_12",
+          "label": "Courier Sweep 12",
+          "effects": [
+            "damage(flock, 12)"
+          ]
+        },
+        {
+          "id": "kite_hawk_climb",
+          "label": "Thermal Climb",
+          "effects": [
+            "gainCover(8)"
+          ]
+        },
+        {
+          "id": "kite_hawk_drop_7",
+          "label": "Drop Strike 7",
+          "effects": [
+            "damage(flock, 7)",
+            "if flockHasNoCover then damage(flock, 4)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "kite_hawk_line_up",
+          "kite_hawk_sweep_12",
+          "kite_hawk_climb",
+          "kite_hawk_drop_7"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          65,
+          88
+        ],
+        "cardReward": true,
+        "preenChance": 0.45,
+        "routeMarkChance": 0.4
+      }
+    },
+    {
+      "id": "moth_lantern_drifter",
+      "name": "Moth Lantern-Drifter",
+      "type": "normal",
+      "health": 32,
+      "lesson": "Night distractor: Cover, Winded, and bad-direction Snags vary Spire street pressure.",
+      "description": "A night moth that drifts around service lamps and draws attention away from harder threats.",
+      "visualBrief": "Large moth with tiny body-safe reflective tags and no wing coverings near a practical lantern and rain-specked utility glass.",
+      "silhouette": "Soft wide-wing insect with small body, feathery antennae, and flutter-ready stance.",
+      "artPose": "Front-facing 3/4 dramatic idle cutout pose, single readable moth grounded or resting low, wings natural and unobstructed.",
+      "moves": [
+        {
+          "id": "moth_lantern_drift",
+          "label": "Lantern Drift",
+          "effects": [
+            "gainCover(7)"
+          ]
+        },
+        {
+          "id": "moth_dust_flutter",
+          "label": "Dust Flutter",
+          "effects": [
+            "applyWinded(flock, 1)",
+            "if notHitThisTurn then addSnagToDiscard(bad_directions)"
+          ]
+        },
+        {
+          "id": "moth_wing_tap_6",
+          "label": "Wing Tap 6",
+          "effects": [
+            "damage(flock, 6)"
+          ]
+        }
+      ],
+      "attackPattern": {
+        "type": "cycle",
+        "moveIds": [
+          "moth_lantern_drift",
+          "moth_dust_flutter",
+          "moth_wing_tap_6"
+        ]
+      },
+      "rewards": {
+        "scrap": [
+          35,
+          55
+        ],
+        "cardReward": true,
+        "preenChance": 0.3,
+        "routeMarkChance": 0.2
+      }
+    }
   ],
   "encounters": [
     {
@@ -203,8 +856,15 @@
       "nodeType": "street",
       "band": "pressure",
       "lesson": "Three flyers stagger their Tells — answer the bigger threat first.",
-      "tags": ["multi", "winded"],
-      "enemies": ["spire_relay_starling", "spire_aerial_kite", "spire_relay_starling"],
+      "tags": [
+        "multi",
+        "winded"
+      ],
+      "enemies": [
+        "spire_relay_starling",
+        "spire_aerial_kite",
+        "spire_relay_starling"
+      ],
       "rewardProfileId": "street_map03"
     },
     {
@@ -214,8 +874,16 @@
       "nodeType": "rival",
       "band": "rival",
       "lesson": "Elite: a Signal Marshal with wingmen charges the beacon.",
-      "tags": ["elite", "heavy", "multi"],
-      "enemies": ["spire_signal_marshal", "spire_relay_starling", "spire_aerial_kite"],
+      "tags": [
+        "elite",
+        "heavy",
+        "multi"
+      ],
+      "enemies": [
+        "spire_signal_marshal",
+        "spire_relay_starling",
+        "spire_aerial_kite"
+      ],
       "rewardProfileId": "rival_map03"
     },
     {
@@ -225,8 +893,13 @@
       "nodeType": "street",
       "band": "weak",
       "lesson": "Read a two-part Tell that adds Winded after damage.",
-      "tags": ["winded", "tempo"],
-      "enemies": ["spire_relay_starling"],
+      "tags": [
+        "winded",
+        "tempo"
+      ],
+      "enemies": [
+        "spire_relay_starling"
+      ],
       "rewardProfileId": "street_map03"
     },
     {
@@ -236,8 +909,13 @@
       "nodeType": "street",
       "band": "standard",
       "lesson": "Punish Open Sky telegraphs and keep tempo.",
-      "tags": ["openSky", "tempo"],
-      "enemies": ["spire_aerial_kite"],
+      "tags": [
+        "openSky",
+        "tempo"
+      ],
+      "enemies": [
+        "spire_aerial_kite"
+      ],
       "rewardProfileId": "street_map03"
     },
     {
@@ -247,8 +925,13 @@
       "nodeType": "street",
       "band": "standard",
       "lesson": "Survive a Heavy Strike that hits harder when you lack Cover.",
-      "tags": ["heavy", "cover"],
-      "enemies": ["spire_tower_pigeon"],
+      "tags": [
+        "heavy",
+        "cover"
+      ],
+      "enemies": [
+        "spire_tower_pigeon"
+      ],
       "rewardProfileId": "street_map03"
     },
     {
@@ -258,8 +941,13 @@
       "nodeType": "street",
       "band": "standard",
       "lesson": "Manage tempo against a fast bird that builds toward a bonus strike.",
-      "tags": ["tempo", "winded"],
-      "enemies": ["spire_static_swift"],
+      "tags": [
+        "tempo",
+        "winded"
+      ],
+      "enemies": [
+        "spire_static_swift"
+      ],
       "rewardProfileId": "street_map03"
     },
     {
@@ -269,8 +957,14 @@
       "nodeType": "street",
       "band": "pressure",
       "lesson": "Respect a heavy multi-part Tell that punishes a thin Molt.",
-      "tags": ["heavy", "openSky", "molt"],
-      "enemies": ["spire_beacon_grackle"],
+      "tags": [
+        "heavy",
+        "openSky",
+        "molt"
+      ],
+      "enemies": [
+        "spire_beacon_grackle"
+      ],
       "rewardProfileId": "street_map03"
     },
     {
@@ -280,8 +974,14 @@
       "nodeType": "rival",
       "band": "rival",
       "lesson": "Optional elite that stacks Winded and Open Sky pressure together.",
-      "tags": ["winded", "openSky", "elite"],
-      "enemies": ["spire_signal_kite"],
+      "tags": [
+        "winded",
+        "openSky",
+        "elite"
+      ],
+      "enemies": [
+        "spire_signal_kite"
+      ],
       "rewardProfileId": "rival_map03"
     },
     {
@@ -291,8 +991,15 @@
       "nodeType": "rival",
       "band": "rival",
       "lesson": "Optional elite that punishes slow tempo and missed openings.",
-      "tags": ["heavy", "winded", "snag", "elite"],
-      "enemies": ["spire_tollkeeper_kestrel"],
+      "tags": [
+        "heavy",
+        "winded",
+        "snag",
+        "elite"
+      ],
+      "enemies": [
+        "spire_tollkeeper_kestrel"
+      ],
       "rewardProfileId": "rival_map03"
     },
     {
@@ -302,9 +1009,159 @@
       "nodeType": "boss",
       "band": "boss",
       "lesson": "Tests tempo, multi-part Tells, and Open Sky restraint while relay helpers keep alarms moving.",
-      "tags": ["boss", "winded", "openSky", "tempo", "multi"],
-      "enemies": ["spire_beacon_breaker", "spire_relay_starling", "spire_aerial_kite"],
+      "tags": [
+        "boss",
+        "winded",
+        "openSky",
+        "tempo",
+        "multi"
+      ],
+      "enemies": [
+        "spire_beacon_breaker",
+        "spire_relay_starling",
+        "spire_aerial_kite"
+      ],
       "rewardProfileId": "boss_map03"
+    },
+    {
+      "id": "enc_cicada_static_swarm",
+      "name": "Cicada Static Swarm",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "A static caller builds tempo pressure if its drone continues.",
+      "tags": [
+        "winded",
+        "tempo"
+      ],
+      "enemies": [
+        "cicada_static_swarm"
+      ],
+      "rewardProfileId": "street_map03"
+    },
+    {
+      "id": "enc_crane_signal_caller",
+      "name": "Crane Signal Caller",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "Elite: a crane caller layers Open Sky setup into a long reach strike.",
+      "tags": [
+        "elite",
+        "openSky",
+        "winded"
+      ],
+      "enemies": [
+        "crane_signal_caller"
+      ],
+      "rewardProfileId": "rival_map03"
+    },
+    {
+      "id": "enc_spire_static_callers",
+      "name": "Static Callers",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "Signal noise and relay pressure stack Winded if ignored.",
+      "tags": [
+        "multi",
+        "winded",
+        "tempo"
+      ],
+      "enemies": [
+        "cicada_static_swarm",
+        "spire_relay_starling"
+      ],
+      "rewardProfileId": "street_map03"
+    },
+    {
+      "id": "enc_bat_nightcaller",
+      "name": "Bat Nightcaller",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "A disruptor shifts Signal Spires from pure Winded/Open Sky into bad-direction Snags.",
+      "tags": [
+        "snag",
+        "openSky",
+        "winded"
+      ],
+      "enemies": [
+        "bat_nightcaller"
+      ],
+      "rewardProfileId": "street_map03"
+    },
+    {
+      "id": "enc_spire_night_static",
+      "name": "Night Static Callers",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Night disruption stacked with static tempo pressure rewards fast targeting.",
+      "tags": [
+        "tempo",
+        "snag",
+        "winded",
+        "multi"
+      ],
+      "enemies": [
+        "bat_nightcaller",
+        "spire_static_swift"
+      ],
+      "rewardProfileId": "street_map03"
+    },
+    {
+      "id": "enc_kite_hawk_courier",
+      "name": "Kite Hawk Courier",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "rival",
+      "band": "rival",
+      "lesson": "Aerial hit-and-run pressure telegraphs Open Sky into a courier sweep.",
+      "tags": [
+        "elite",
+        "openSky",
+        "heavy"
+      ],
+      "enemies": [
+        "kite_hawk_courier"
+      ],
+      "rewardProfileId": "rival_map03"
+    },
+    {
+      "id": "enc_moth_lantern_drifter",
+      "name": "Moth Lantern-Drifter",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "A lamp-side distractor adds Snag noise to Signal Spires timing pressure.",
+      "tags": [
+        "snag",
+        "winded",
+        "cover"
+      ],
+      "enemies": [
+        "moth_lantern_drifter"
+      ],
+      "rewardProfileId": "street_map03"
+    },
+    {
+      "id": "enc_spire_lantern_static",
+      "name": "Lantern Static",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "street",
+      "band": "standard",
+      "lesson": "Lantern distraction paired with static tempo rewards quick focus.",
+      "tags": [
+        "snag",
+        "winded",
+        "tempo",
+        "multi"
+      ],
+      "enemies": [
+        "moth_lantern_drifter",
+        "cicada_static_swarm"
+      ],
+      "rewardProfileId": "street_map03"
     }
   ],
   "signals": [
@@ -314,9 +1171,34 @@
       "mapId": "map_03_signal_spires",
       "prompt": "A burned-out skyline beacon could be relit to mark the route, but climbing the spire leaves the flock exposed.",
       "choices": [
-        { "key": "relight", "text": "Relight the beacon.", "requirements": ["scrapAtLeast(40)"], "lockedText": "Need 40 Scrap.", "outcomes": ["payScrap(40)", "gainRouteMark(wire_map)"] },
-        { "key": "scavenge", "text": "Scavenge the wiring.", "outcomes": ["gainScrap(55)", "startNextCombatOpenSky()"] },
-        { "key": "reveal", "text": "Scout from the top.", "outcomes": ["gainScrap(35)", "addSnagToDiscard(bad_directions)"] }
+        {
+          "key": "relight",
+          "text": "Relight the beacon.",
+          "requirements": [
+            "scrapAtLeast(40)"
+          ],
+          "lockedText": "Need 40 Scrap.",
+          "outcomes": [
+            "payScrap(40)",
+            "gainRouteMark(wire_map)"
+          ]
+        },
+        {
+          "key": "scavenge",
+          "text": "Scavenge the wiring.",
+          "outcomes": [
+            "gainScrap(55)",
+            "startNextCombatOpenSky()"
+          ]
+        },
+        {
+          "key": "reveal",
+          "text": "Scout from the top.",
+          "outcomes": [
+            "gainScrap(35)",
+            "addSnagToDiscard(bad_directions)"
+          ]
+        }
       ]
     },
     {
@@ -325,9 +1207,30 @@
       "mapId": "map_03_signal_spires",
       "prompt": "Tangled signal wires hum across the gap. Untangling them takes time, but a quiet landing could ease the next exposed crossing.",
       "choices": [
-        { "key": "untangle", "text": "Untangle the wires.", "outcomes": ["loseCohesion(4)", "gainRouteMark(quiet_landing)"] },
-        { "key": "guard", "text": "Rig an Open Sky guard line.", "outcomes": ["gainOpenSkyGuard(2)", "reduceNextOpenSky(1)"] },
-        { "key": "cut", "text": "Cut and sell the wire.", "outcomes": ["gainScrap(35)", "addSnagToDraw(tangled_line)"] }
+        {
+          "key": "untangle",
+          "text": "Untangle the wires.",
+          "outcomes": [
+            "loseCohesion(4)",
+            "gainRouteMark(quiet_landing)"
+          ]
+        },
+        {
+          "key": "guard",
+          "text": "Rig an Open Sky guard line.",
+          "outcomes": [
+            "gainOpenSkyGuard(2)",
+            "reduceNextOpenSky(1)"
+          ]
+        },
+        {
+          "key": "cut",
+          "text": "Cut and sell the wire.",
+          "outcomes": [
+            "gainScrap(35)",
+            "addSnagToDraw(tangled_line)"
+          ]
+        }
       ]
     },
     {
@@ -336,9 +1239,30 @@
       "mapId": "map_03_signal_spires",
       "prompt": "A lone caller still keeps the old warning songs. It will teach a sharper opening cry in exchange for help or supplies.",
       "choices": [
-        { "key": "learn", "text": "Learn the call.", "outcomes": ["addCard(randomCommonPlumesOrQuills)", "loseCohesion(3)"] },
-        { "key": "supply", "text": "Trade supplies for guard tips.", "outcomes": ["gainSupplyChoice(1)", "enemyCoverNextCombat(4)"] },
-        { "key": "preen", "text": "Practice the song together.", "outcomes": ["preenCard(1)", "addSnagToDiscard(wet_feathers)"] }
+        {
+          "key": "learn",
+          "text": "Learn the call.",
+          "outcomes": [
+            "addCard(randomCommonPlumesOrQuills)",
+            "loseCohesion(3)"
+          ]
+        },
+        {
+          "key": "supply",
+          "text": "Trade supplies for guard tips.",
+          "outcomes": [
+            "gainSupplyChoice(1)",
+            "enemyCoverNextCombat(4)"
+          ]
+        },
+        {
+          "key": "preen",
+          "text": "Practice the song together.",
+          "outcomes": [
+            "preenCard(1)",
+            "addSnagToDiscard(wet_feathers)"
+          ]
+        }
       ]
     },
     {
@@ -347,9 +1271,34 @@
       "mapId": "map_03_signal_spires",
       "prompt": "A nest wrapped in crackling static interference. Clearing it might restore a lost Waymark or scramble your deck.",
       "choices": [
-        { "key": "clear_static", "text": "Clear the static carefully.", "outcomes": ["gainRouteMark(rain_gutter)", "gainScrap(20)"] },
-        { "key": "disrupt", "text": "Blast through with raw power.", "requirements": ["cohesionAtLeast(20)"], "lockedText": "Need 20 Cohesion.", "outcomes": ["loseCohesion(6)", "gainRouteMark(loose_change_tin)", "preenCard(1)"] },
-        { "key": "ignore", "text": "Leave it be.", "outcomes": ["gainScrap(35)"] }
+        {
+          "key": "clear_static",
+          "text": "Clear the static carefully.",
+          "outcomes": [
+            "gainRouteMark(rain_gutter)",
+            "gainScrap(20)"
+          ]
+        },
+        {
+          "key": "disrupt",
+          "text": "Blast through with raw power.",
+          "requirements": [
+            "cohesionAtLeast(20)"
+          ],
+          "lockedText": "Need 20 Cohesion.",
+          "outcomes": [
+            "loseCohesion(6)",
+            "gainRouteMark(loose_change_tin)",
+            "preenCard(1)"
+          ]
+        },
+        {
+          "key": "ignore",
+          "text": "Leave it be.",
+          "outcomes": [
+            "gainScrap(35)"
+          ]
+        }
       ]
     },
     {
@@ -358,9 +1307,33 @@
       "mapId": "map_03_signal_spires",
       "prompt": "A weathered sign flickers with the last traces of an old Waymark. You could preserve it, trade it for scrap, or let it fade and find your own path.",
       "choices": [
-        { "key": "preserve", "text": "Preserve the sign.", "outcomes": ["gainRouteMark(patched_harness)"] },
-        { "key": "salvage", "text": "Strip it for copper.", "outcomes": ["gainScrap(50)", "addSnagToDiscard(tangled_line)"] },
-        { "key": "replace", "text": "Mark it with your own route.", "requirements": ["scrapAtLeast(30)"], "lockedText": "Need 30 Scrap.", "outcomes": ["payScrap(30)", "gainRouteMark(wire_map)"] }
+        {
+          "key": "preserve",
+          "text": "Preserve the sign.",
+          "outcomes": [
+            "gainRouteMark(patched_harness)"
+          ]
+        },
+        {
+          "key": "salvage",
+          "text": "Strip it for copper.",
+          "outcomes": [
+            "gainScrap(50)",
+            "addSnagToDiscard(tangled_line)"
+          ]
+        },
+        {
+          "key": "replace",
+          "text": "Mark it with your own route.",
+          "requirements": [
+            "scrapAtLeast(30)"
+          ],
+          "lockedText": "Need 30 Scrap.",
+          "outcomes": [
+            "payScrap(30)",
+            "gainRouteMark(wire_map)"
+          ]
+        }
       ]
     },
     {
@@ -369,9 +1342,31 @@
       "mapId": "map_03_signal_spires",
       "prompt": "Brutal wind shear cuts across the spire gap. Toughen the flock now, or accept the wind and land stronger afterward.",
       "choices": [
-        { "key": "brace", "text": "Brace for impact.", "outcomes": ["loseCohesion(5)", "gainOpenSkyGuard(3)", "gainScrap(25)"] },
-        { "key": "gamble_wind", "text": "Dive through unguarded.", "outcomes": ["gainScrap(60)", "startNextCombatOpenSky()"] },
-        { "key": "circle", "text": "Circle around (slower).", "outcomes": ["reduceNextOpenSky(2)", "gainScrap(15)"] }
+        {
+          "key": "brace",
+          "text": "Brace for impact.",
+          "outcomes": [
+            "loseCohesion(5)",
+            "gainOpenSkyGuard(3)",
+            "gainScrap(25)"
+          ]
+        },
+        {
+          "key": "gamble_wind",
+          "text": "Dive through unguarded.",
+          "outcomes": [
+            "gainScrap(60)",
+            "startNextCombatOpenSky()"
+          ]
+        },
+        {
+          "key": "circle",
+          "text": "Circle around (slower).",
+          "outcomes": [
+            "reduceNextOpenSky(2)",
+            "gainScrap(15)"
+          ]
+        }
       ]
     },
     {
@@ -380,9 +1375,35 @@
       "mapId": "map_03_signal_spires",
       "prompt": "A roost full of shiny things: scrap, supplies, cards. You have time for one haul before the owner returns.",
       "choices": [
-        { "key": "grab_card", "text": "Pocket a card.", "outcomes": ["addCard(randomCommon)", "loseCohesion(2)"] },
-        { "key": "supply_haul", "text": "Fill your supply pouch.", "outcomes": ["gainSupplyChoice(1)", "gainScrap(20)"] },
-        { "key": "treasure_chest", "text": "Drag the whole chest.", "requirements": ["cohesionAtLeast(18)"], "lockedText": "Need 18 Cohesion.", "outcomes": ["loseCohesion(6)", "gainCacheReward()", "gainScrap(40)"] }
+        {
+          "key": "grab_card",
+          "text": "Pocket a card.",
+          "outcomes": [
+            "addCard(randomCommon)",
+            "loseCohesion(2)"
+          ]
+        },
+        {
+          "key": "supply_haul",
+          "text": "Fill your supply pouch.",
+          "outcomes": [
+            "gainSupplyChoice(1)",
+            "gainScrap(20)"
+          ]
+        },
+        {
+          "key": "treasure_chest",
+          "text": "Drag the whole chest.",
+          "requirements": [
+            "cohesionAtLeast(18)"
+          ],
+          "lockedText": "Need 18 Cohesion.",
+          "outcomes": [
+            "loseCohesion(6)",
+            "gainCacheReward()",
+            "gainScrap(40)"
+          ]
+        }
       ]
     },
     {
@@ -391,9 +1412,35 @@
       "mapId": "map_03_signal_spires",
       "prompt": "An old healer still tends to injured birds in a sheltered tower alcove. Sanctuary, but at a cost.",
       "choices": [
-        { "key": "rest", "text": "Rest and recover.", "outcomes": ["healCohesion(12)"] },
-        { "key": "preach", "text": "Trade healing tips for guidance.", "requirements": ["hasSupplySlot()"], "lockedText": "Need a free supply slot.", "outcomes": ["healMissingPct(50)", "payScrap(20)"] },
-        { "key": "apprentice", "text": "Learn her remedy — and her story.", "outcomes": ["healCohesion(6)", "releaseCard(1)", "addCard(randomCommonPlumesOrQuills)", "payScrap(15)"] }
+        {
+          "key": "rest",
+          "text": "Rest and recover.",
+          "outcomes": [
+            "healCohesion(12)"
+          ]
+        },
+        {
+          "key": "preach",
+          "text": "Trade healing tips for guidance.",
+          "requirements": [
+            "hasSupplySlot()"
+          ],
+          "lockedText": "Need a free supply slot.",
+          "outcomes": [
+            "healMissingPct(50)",
+            "payScrap(20)"
+          ]
+        },
+        {
+          "key": "apprentice",
+          "text": "Learn her remedy — and her story.",
+          "outcomes": [
+            "healCohesion(6)",
+            "releaseCard(1)",
+            "addCard(randomCommonPlumesOrQuills)",
+            "payScrap(15)"
+          ]
+        }
       ]
     },
     {
@@ -402,9 +1449,34 @@
       "mapId": "map_03_signal_spires",
       "prompt": "A figure at the tower crossing collects tolls — payment or peril. Most birds pay. Some don't make it across.",
       "choices": [
-        { "key": "pay_toll", "text": "Pay the toll in Scrap.", "requirements": ["scrapAtLeast(45)"], "lockedText": "Need 45 Scrap.", "outcomes": ["payScrap(45)", "gainOpenSkyGuard(2)"] },
-        { "key": "slip_by", "text": "Slip by unnoticed (risky).", "outcomes": ["gainScrap(70)", "enemyCoverNextCombat(6)"] },
-        { "key": "bargain", "text": "Offer a card instead.", "outcomes": ["releaseCard(1)", "gainRouteMark(random)"] }
+        {
+          "key": "pay_toll",
+          "text": "Pay the toll in Scrap.",
+          "requirements": [
+            "scrapAtLeast(45)"
+          ],
+          "lockedText": "Need 45 Scrap.",
+          "outcomes": [
+            "payScrap(45)",
+            "gainOpenSkyGuard(2)"
+          ]
+        },
+        {
+          "key": "slip_by",
+          "text": "Slip by unnoticed (risky).",
+          "outcomes": [
+            "gainScrap(70)",
+            "enemyCoverNextCombat(6)"
+          ]
+        },
+        {
+          "key": "bargain",
+          "text": "Offer a card instead.",
+          "outcomes": [
+            "releaseCard(1)",
+            "gainRouteMark(random)"
+          ]
+        }
       ]
     }
   ],
@@ -416,13 +1488,36 @@
     "entryNodeId": "m3_c0_street_relay",
     "bossNodeId": "m3_c6_boss_beacon_breaker",
     "columns": [
-      ["m3_c0_street_relay"],
-      ["m3_c1_street_kite", "m3_c1_signal_beacon"],
-      ["m3_c2_basin_gutter", "m3_c2_nest_spire", "m3_c2_street_pigeon"],
-      ["m3_c3_rival_signal_kite", "m3_c3_market_spire", "m3_c3_cache_antenna"],
-      ["m3_c4_street_swift", "m3_c4_rival_kestrel", "m3_c4_signal_wires"],
-      ["m3_c5_basin_final", "m3_c5_nest_final", "m3_c5_street_grackle"],
-      ["m3_c6_boss_beacon_breaker"]
+      [
+        "m3_c0_street_relay"
+      ],
+      [
+        "m3_c1_street_kite",
+        "m3_c1_signal_beacon"
+      ],
+      [
+        "m3_c2_basin_gutter",
+        "m3_c2_nest_spire",
+        "m3_c2_street_pigeon"
+      ],
+      [
+        "m3_c3_rival_signal_kite",
+        "m3_c3_market_spire",
+        "m3_c3_cache_antenna"
+      ],
+      [
+        "m3_c4_street_swift",
+        "m3_c4_rival_kestrel",
+        "m3_c4_signal_wires"
+      ],
+      [
+        "m3_c5_basin_final",
+        "m3_c5_nest_final",
+        "m3_c5_street_grackle"
+      ],
+      [
+        "m3_c6_boss_beacon_breaker"
+      ]
     ],
     "nodes": [
       {
@@ -603,33 +1698,168 @@
       }
     ],
     "edges": [
-      { "from": "m3_c0_street_relay", "to": "m3_c1_street_kite", "locked": false, "preview": "known" },
-      { "from": "m3_c0_street_relay", "to": "m3_c1_signal_beacon", "locked": false, "preview": "known" },
-      { "from": "m3_c1_street_kite", "to": "m3_c2_basin_gutter", "locked": false, "preview": "known" },
-      { "from": "m3_c1_street_kite", "to": "m3_c2_nest_spire", "locked": false, "preview": "known" },
-      { "from": "m3_c1_signal_beacon", "to": "m3_c2_nest_spire", "locked": false, "preview": "known" },
-      { "from": "m3_c1_signal_beacon", "to": "m3_c2_street_pigeon", "locked": false, "preview": "known" },
-      { "from": "m3_c2_basin_gutter", "to": "m3_c3_rival_signal_kite", "locked": false, "preview": "known" },
-      { "from": "m3_c2_basin_gutter", "to": "m3_c3_market_spire", "locked": false, "preview": "known" },
-      { "from": "m3_c2_nest_spire", "to": "m3_c3_market_spire", "locked": false, "preview": "known" },
-      { "from": "m3_c2_nest_spire", "to": "m3_c3_cache_antenna", "locked": false, "preview": "known" },
-      { "from": "m3_c2_street_pigeon", "to": "m3_c3_rival_signal_kite", "locked": false, "preview": "known" },
-      { "from": "m3_c2_street_pigeon", "to": "m3_c3_cache_antenna", "locked": false, "preview": "known" },
-      { "from": "m3_c3_rival_signal_kite", "to": "m3_c4_street_swift", "locked": false, "preview": "known" },
-      { "from": "m3_c3_rival_signal_kite", "to": "m3_c4_rival_kestrel", "locked": false, "preview": "known" },
-      { "from": "m3_c3_market_spire", "to": "m3_c4_rival_kestrel", "locked": false, "preview": "known" },
-      { "from": "m3_c3_market_spire", "to": "m3_c4_signal_wires", "locked": false, "preview": "known" },
-      { "from": "m3_c3_cache_antenna", "to": "m3_c4_signal_wires", "locked": false, "preview": "known" },
-      { "from": "m3_c3_cache_antenna", "to": "m3_c4_street_swift", "locked": false, "preview": "known" },
-      { "from": "m3_c4_street_swift", "to": "m3_c5_basin_final", "locked": false, "preview": "known" },
-      { "from": "m3_c4_street_swift", "to": "m3_c5_street_grackle", "locked": false, "preview": "known" },
-      { "from": "m3_c4_rival_kestrel", "to": "m3_c5_basin_final", "locked": false, "preview": "known" },
-      { "from": "m3_c4_rival_kestrel", "to": "m3_c5_nest_final", "locked": false, "preview": "known" },
-      { "from": "m3_c4_signal_wires", "to": "m3_c5_nest_final", "locked": false, "preview": "known" },
-      { "from": "m3_c4_signal_wires", "to": "m3_c5_street_grackle", "locked": false, "preview": "known" },
-      { "from": "m3_c5_basin_final", "to": "m3_c6_boss_beacon_breaker", "locked": false, "preview": "known" },
-      { "from": "m3_c5_nest_final", "to": "m3_c6_boss_beacon_breaker", "locked": false, "preview": "known" },
-      { "from": "m3_c5_street_grackle", "to": "m3_c6_boss_beacon_breaker", "locked": false, "preview": "known" }
+      {
+        "from": "m3_c0_street_relay",
+        "to": "m3_c1_street_kite",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c0_street_relay",
+        "to": "m3_c1_signal_beacon",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c1_street_kite",
+        "to": "m3_c2_basin_gutter",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c1_street_kite",
+        "to": "m3_c2_nest_spire",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c1_signal_beacon",
+        "to": "m3_c2_nest_spire",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c1_signal_beacon",
+        "to": "m3_c2_street_pigeon",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c2_basin_gutter",
+        "to": "m3_c3_rival_signal_kite",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c2_basin_gutter",
+        "to": "m3_c3_market_spire",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c2_nest_spire",
+        "to": "m3_c3_market_spire",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c2_nest_spire",
+        "to": "m3_c3_cache_antenna",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c2_street_pigeon",
+        "to": "m3_c3_rival_signal_kite",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c2_street_pigeon",
+        "to": "m3_c3_cache_antenna",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c3_rival_signal_kite",
+        "to": "m3_c4_street_swift",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c3_rival_signal_kite",
+        "to": "m3_c4_rival_kestrel",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c3_market_spire",
+        "to": "m3_c4_rival_kestrel",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c3_market_spire",
+        "to": "m3_c4_signal_wires",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c3_cache_antenna",
+        "to": "m3_c4_signal_wires",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c3_cache_antenna",
+        "to": "m3_c4_street_swift",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c4_street_swift",
+        "to": "m3_c5_basin_final",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c4_street_swift",
+        "to": "m3_c5_street_grackle",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c4_rival_kestrel",
+        "to": "m3_c5_basin_final",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c4_rival_kestrel",
+        "to": "m3_c5_nest_final",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c4_signal_wires",
+        "to": "m3_c5_nest_final",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c4_signal_wires",
+        "to": "m3_c5_street_grackle",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c5_basin_final",
+        "to": "m3_c6_boss_beacon_breaker",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c5_nest_final",
+        "to": "m3_c6_boss_beacon_breaker",
+        "locked": false,
+        "preview": "known"
+      },
+      {
+        "from": "m3_c5_street_grackle",
+        "to": "m3_c6_boss_beacon_breaker",
+        "locked": false,
+        "preview": "known"
+      }
     ]
   }
 }

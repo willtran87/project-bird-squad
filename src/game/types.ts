@@ -1,4 +1,4 @@
-export type CardKind = 'legend' | 'crew' | 'molt' | 'snag';
+export type CardKind = 'legend' | 'crew' | 'molt' | 'aviary' | 'snag';
 export type CardSuit = 'plumes' | 'quills' | 'basins' | 'nests';
 export type CardRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
 export type CardTarget = 'enemy' | 'allEnemies' | 'self' | 'none' | 'choice';

@@ -96,7 +96,7 @@ Every playable card has:
 - stable ID
 - Bird Squad display name
 - bird species
-- type: Legend, Crew, or Molt
+- type: Legend, Crew, Molt, or Aviary
 - suit, if Crew
 - rarity
 - cost
@@ -112,6 +112,7 @@ Card types:
 | Legend | Run-defining, rule-bending cards with strong identity. |
 | Crew | Core tactical cards organized by suit. |
 | Molt | Risk/reward transformation cards that create burst and exposure. |
+| Aviary | Suitless bird-quality cards that add flexible field instincts without being tarot cards. |
 
 Suit jobs:
 
@@ -136,7 +137,7 @@ Required runtime fields:
 | --- | --- | --- |
 | `id` | string | Stable singleton key. Must match card identity data. |
 | `displayName` | string | Player-facing Bird Squad card name. |
-| `kind` | enum | `legend`, `crew`, `molt`, or `snag`. |
+| `kind` | enum | `legend`, `crew`, `molt`, `aviary`, or `snag`. |
 | `suit` | enum/null | `plumes`, `quills`, `basins`, `nests`, or null. |
 | `rarity` | enum | `common`, `uncommon`, `rare`, or `legendary`. |
 | `cost` | number | Base Wingbeat cost. |
@@ -313,6 +314,7 @@ Suit boundaries:
 | Nests | Cover, Cohesion | Draw, rare Open Sky Guard | Damage, Regen, Resonance, Molt Power |
 | Molt | Molt Power, Open Sky Guard | Damage, rare Cohesion | Draw, Regen, Cover |
 | Legend | Unique packages | Any thematic stat | None, but theme must justify it |
+| Aviary | Flexible glue stats tied to bird behavior | Any modest foundation stat | Suit-only identity claims |
 
 Rarity budget:
 

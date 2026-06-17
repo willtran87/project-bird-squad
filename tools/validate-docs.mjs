@@ -31,7 +31,7 @@ const cards = Object.entries(arcana).flatMap(([set, { file, data }]) =>
 
 const expectedCounts = {
   major: 22,
-  aviary: 6,
+  aviary: 22,
   plumes: 14,
   basins: 14,
   quills: 14,
@@ -45,8 +45,8 @@ for (const [set, expected] of Object.entries(expectedCounts)) {
   }
 }
 
-if (cards.length !== 84) {
-  fail(`expected 84 total arcana cards, found ${cards.length}`);
+if (cards.length !== 100) {
+  fail(`expected 100 total card mappings, found ${cards.length}`);
 }
 
 const seenIds = new Map();
@@ -101,8 +101,12 @@ for (const card of cards) {
     seenBirds.set(birdKey, label);
   }
 
-  if ((card.set === 'major' || card.set === 'aviary') && card.rarity !== 'legendary') {
-    fail(`${label}: Legend/Aviary cards must be legendary`);
+  if (card.set === 'major' && card.rarity !== 'legendary') {
+    fail(`${label}: Major Legend cards must be legendary`);
+  }
+
+  if (card.set === 'aviary' && card.setRole !== 'quality' && card.rarity !== 'legendary') {
+    fail(`${label}: Aviary legend cards must be legendary`);
   }
 
   if (!['major', 'aviary'].includes(card.set) && numberedMinorRanks.has(card.rank)) {
@@ -142,7 +146,7 @@ for (const [rarity, expected] of Object.entries(expectedMinorRarityCounts)) {
 const artBible = readText('docs/art/art-bible.md');
 const artSections = {
   'Major Arcana Bird Map': 22,
-  'Aviary Legend Bird Map': 6,
+  'Aviary Legend Bird Map': 22,
   'Plumes / Brightwing': 14,
   'Basins / Tidewatch': 14,
   'Quills / Razorwind': 14,
@@ -643,8 +647,8 @@ if (!fs.existsSync(path.join(root, aviaryPromptPackPath))) {
   if (aviaryPromptPack.mode !== 'center-art-only') {
     fail(`${aviaryPromptPackPath}: expected mode center-art-only, found ${aviaryPromptPack.mode}`);
   }
-  if (aviaryPromptPack.totalCards !== 6 || aviaryPromptCards.length !== 6) {
-    fail(`${aviaryPromptPackPath}: expected 6 prompts, found totalCards=${aviaryPromptPack.totalCards}, rows=${aviaryPromptCards.length}`);
+  if (aviaryPromptPack.totalCards !== 22 || aviaryPromptCards.length !== 22) {
+    fail(`${aviaryPromptPackPath}: expected 22 prompts, found totalCards=${aviaryPromptPack.totalCards}, rows=${aviaryPromptCards.length}`);
   }
 
   const aviaryIds = new Set(cards.filter((card) => card.set === 'aviary').map((card) => card.id));
@@ -662,12 +666,12 @@ if (!fs.existsSync(path.join(root, aviaryPromptPackPath))) {
     }
 
     for (const required of [
-      'Aviary Legend center illustration layer',
+      'Aviary card center illustration layer',
       'Do not generate a card border',
       'no readable text',
       'locked master raster border',
       'master.png',
-      'roman numeral',
+      'top badge/title',
       'Text handling for this layer:',
       'Species lock:',
       'Subject species lock:',
@@ -707,4 +711,4 @@ if (errors.length > 0) {
 }
 
 console.log('Documentation validation passed.');
-console.log(`Checked ${cards.length} cards, ${seenBirds.size} unique bird species, and art style rows for all 84 mappings.`);
+console.log(`Checked ${cards.length} cards, ${seenBirds.size} unique bird species, and art style rows for all card mappings.`);

@@ -26,9 +26,9 @@ Map 1 only: Rooftop Blocks.
 
 **Status (scope expanded):** the alpha slice is achieved, and the build has since
 grown past it — all four districts (Rooftop Blocks → Canal Markets → Signal
-Spires → High Roost) are wired and playable, and the full 84-card arcana deck is
-implemented. This document still owns Map 1's reference tuning; the targets below
-describe that Map 1 slice, not a cap on the shipped build.
+Spires → High Roost) are wired and playable, and the full 100-card playable deck
+is implemented. This document still owns Map 1's reference tuning; the targets
+below describe that Map 1 slice, not a cap on the shipped build.
 
 Alpha should answer one question:
 
@@ -45,7 +45,7 @@ Alpha should answer one question:
 | Rival Crew | 1. |
 | Boss | 1 rival bird crew leader. |
 | Starter deck | 10 cards. |
-| Reward pool | 74 cards (every non-starter playable card; the full arcana deck is implemented). |
+| Reward pool | 90 cards (every non-starter playable card; the full deck is implemented). |
 | Waymarks | 40. |
 | Supplies | 5. |
 | Signals | 5. |
@@ -143,7 +143,7 @@ for tuning enemy health.
 
 ## Alpha Reward Pool
 
-The full arcana deck (84 playable cards) is implemented; the reward pool is every
+The full playable deck (100 cards) is implemented; the reward pool is every
 playable card not in the starter deck, so any card can be acquired across a run.
 
 Reward rules:
@@ -153,8 +153,9 @@ Reward rules:
 - Offers are rarity-weighted (common 100 / uncommon 45 / rare 16 / legendary 5),
   so Common/uncommon rewards dominate Map 1 and rares appear occasionally.
 - Rare cards can appear, but should not solve the run by themselves.
-- Legend/Legendary cards (the Major Arcana + Aviary trumps) are heavily
-  down-weighted, so they read as rare treats rather than staple street rewards.
+- Major Legend and legendary Aviary cards are heavily down-weighted, so they read
+  as rare treats rather than staple street rewards. Lower-rarity Aviary quality
+  cards follow the normal rarity weights and are not treated as tarot cards.
 
 | ID | Card | Suit | Rarity | Cost | Base Effect | Improved Effect |
 | --- | --- | --- | --- | ---: | --- | --- |
@@ -182,6 +183,22 @@ Reward rules:
 | `pentacles_fledgling` | Nest Fledgling | Nests | Common | 0 | Gain 3 Cover. | Gain 5 Cover. |
 | `pentacles_06` | Shared Nest | Nests | Uncommon | 1 | Gain 5 Cover. Heal 2. | Gain 7 Cover. Heal 3. |
 | `pentacles_08` | Workshop Nest | Nests | Uncommon | 1 | Gain 8 Cover. If this fully blocks the next attack, draw 1 next turn. | Gain 11 Cover. If this fully blocks the next attack, draw 1 next turn. |
+| `aviary_28` | Hover Check | Aviary | Common | 0 | Draw 1, then discard 1. | Draw 1, discard 1, and gain 2 Cover. |
+| `aviary_29` | Mobbing Call | Aviary | Common | 1 | Deal 2. If the enemy intends to attack, apply 1 Winded. | Deal 3. If the enemy intends to attack, apply 2 Winded. |
+| `aviary_30` | Underwing Shelter | Aviary | Common | 1 | Gain 3 Cover. Heal 2. | Gain 5 Cover. Heal 3. |
+| `aviary_31` | Scavenger Eye | Aviary | Common | 1 | Remove 3 enemy Cover. Draw 1. | Remove 5 enemy Cover. Draw 1. |
+| `aviary_32` | Thermal Lift | Aviary | Uncommon | 1 | Gain 1 Wingbeat. If Open Sky, gain 1 Open Sky Guard. Draw 1 extra next turn. | Gain 1 Wingbeat. If Open Sky, gain 2 Open Sky Guard. Draw 1 extra next turn. |
+| `aviary_33` | Cache Memory | Aviary | Uncommon | 1 | Return a non-Molt card from discard to hand. It costs 1 more this turn. If at full Cohesion, draw 1. | Return a non-Molt card from discard to hand. If at full Cohesion, draw 1. |
+| `aviary_34` | Brood Shield | Aviary | Uncommon | 1 | Gain 6 Cover. If Cohesion is below half, heal 2. | Gain 8 Cover. If Cohesion is below half, heal 3. |
+| `aviary_35` | Mimic Thread | Aviary | Rare | 1 | Deal 3. Gain a bonus from the suit already played this turn. | Deal 4. Gain a stronger bonus from the suit already played this turn. |
+| `aviary_36` | Drumline Tap | Aviary | Common | 1 | Deal 2 to all enemies. First time played each combat, gain 1 Resonance. | Deal 3 to all enemies. First time played each combat, gain 2 Resonance. |
+| `aviary_37` | Curb Step | Aviary | Common | 1 | Gain 4 Cover. Gain 1 Wingbeat. | Gain 6 Cover. Gain 1 Wingbeat. |
+| `aviary_38` | Spiral Search | Aviary | Common | 0 | Gain 1 Cover. Shuffle this card into the draw pile. | Gain 2 Cover. Shuffle this card into the draw pile. |
+| `aviary_39` | Reed Balance | Aviary | Common | 1 | Heal 1. Gain 4 Cover. If at full Cohesion, draw 1. | Heal 2. Gain 5 Cover. If at full Cohesion, draw 1. |
+| `aviary_40` | Plunge Claim | Aviary | Uncommon | 1 | Deal 4 piercing. If the target has Cover, remove 4 Cover. | Deal 6 piercing. If the target has Cover, remove 6 Cover. |
+| `aviary_41` | Cold Plunge | Aviary | Uncommon | 1 | Gain 1 Open Sky Guard. Heal 2. If Open Sky, draw 1. | Gain 2 Open Sky Guard. Heal 3. If Open Sky, draw 1. |
+| `aviary_42` | Formation Draft | Aviary | Uncommon | 1 | Gain 1 Wingbeat. If the flock has 3 Plumes, draw 1. If the flock has 3 Nests, gain 3 Cover. | Gain 1 Wingbeat. If the flock has 3 Plumes, draw 1. If the flock has 3 Nests, gain 5 Cover. |
+| `aviary_43` | Tool Probe | Aviary | Rare | 1 | Return a non-Molt card from discard to hand. First time played each combat, gain 1 Wingbeat. | Return a non-Molt card from discard to hand. First time played each combat, gain 1 Wingbeat. Draw 1. |
 
 ## Alpha Card Implementation Contract
 
@@ -232,6 +249,22 @@ Flock Stat rules:
 | `pentacles_fledgling` | self | cover | `gainCover(3)` | `gainCover(5)` | `Cover +1` | `Cohesion +1` |
 | `pentacles_06` | self | cover, heal | `gainCover(5); heal(2)` | `gainCover(7); heal(3)` | `Cover +2` | `Cohesion +1` |
 | `pentacles_08` | self | cover, draw-next | `gainCover(8); if fullyBlocksNextAttack then nextTurnDraw(1)` | `gainCover(11); if fullyBlocksNextAttack then nextTurnDraw(1)` | `Cover +2` | `Draw +1` |
+| `aviary_28` | self | draw, discard, tempo | `draw(1); discard(1)` | `draw(1); discard(1); gainCover(2)` | `Draw +1` | `Draw +1` |
+| `aviary_29` | enemy | attack, winded, tell | `damage(target, 2); if targetIntendsAttack then applyWinded(target, 1)` | `damage(target, 3); if targetIntendsAttack then applyWinded(target, 2)` | `Damage +1` | `Damage +1` |
+| `aviary_30` | self | cover, heal | `gainCover(3); heal(2)` | `gainCover(5); heal(3)` | `Cohesion +1` | `Cohesion +1` |
+| `aviary_31` | enemy | cover, draw, utility | `removeCover(target, 3); draw(1)` | `removeCover(target, 5); draw(1)` | `Draw +1` | `Draw +1` |
+| `aviary_32` | none | tempo, open-sky, draw | `gainWingbeat(1); if openSky then gainOpenSkyGuard(1); nextTurnDraw(1)` | `gainWingbeat(1); if openSky then gainOpenSkyGuard(2); nextTurnDraw(1)` | `Open Sky Guard +1; Draw +1` | `Open Sky Guard +1` |
+| `aviary_33` | choice | recursion, draw | `returnDiscard(nonMolt, +1); if fullCohesion then draw(1)` | `returnDiscard(nonMolt, 0); if fullCohesion then draw(1)` | `Cohesion +1; Draw +1` | `Draw +1` |
+| `aviary_34` | self | cover, heal | `gainCover(6); if cohesionBelowHalf then heal(2)` | `gainCover(8); if cohesionBelowHalf then heal(3)` | `Cover +1; Cohesion +1` | `Cohesion +1` |
+| `aviary_35` | enemy | attack, resonance, winded, heal, cover | `damage(target, 3); if playedSuitThisTurn(plumes) then gainResonance(1); if playedSuitThisTurn(quills) then applyWinded(target, 1); if playedSuitThisTurn(basins) then heal(2); if playedSuitThisTurn(nests) then gainCover(3)` | `damage(target, 4); if playedSuitThisTurn(plumes) then gainResonance(2); if playedSuitThisTurn(quills) then applyWinded(target, 2); if playedSuitThisTurn(basins) then heal(3); if playedSuitThisTurn(nests) then gainCover(4)` | `Draw +1; Damage +1` | `Draw +1; Damage +1` |
+| `aviary_36` | allEnemies | attack, aoe, opener, resonance | `damageAll(2); if firstPlayedThisCombat then gainResonance(1)` | `damageAll(3); if firstPlayedThisCombat then gainResonance(2)` | `Damage +1` | `Damage +1` |
+| `aviary_37` | self | cover, tempo | `gainCover(4); gainWingbeat(1)` | `gainCover(6); gainWingbeat(1)` | `Cover +1` | `Cover +1` |
+| `aviary_38` | none | cover, recursion, loop | `gainCover(1); shuffleSelfToDraw()` | `gainCover(2); shuffleSelfToDraw()` | `Draw +1` | `Draw +1` |
+| `aviary_39` | self | heal, cover, draw | `heal(1); gainCover(4); if fullCohesion then draw(1)` | `heal(2); gainCover(5); if fullCohesion then draw(1)` | `Cohesion +1` | `Cohesion +1` |
+| `aviary_40` | enemy | attack, pierce, cover | `damagePierce(target, 4); if targetHasCover then removeCover(target, 4)` | `damagePierce(target, 6); if targetHasCover then removeCover(target, 6)` | `Damage +2` | `Damage +1` |
+| `aviary_41` | self | open-sky, heal, draw | `gainOpenSkyGuard(1); heal(2); if openSky then draw(1)` | `gainOpenSkyGuard(2); heal(3); if openSky then draw(1)` | `Open Sky Guard +1; Cohesion +1` | `Open Sky Guard +1` |
+| `aviary_42` | none | tempo, draw, cover, formation | `gainWingbeat(1); if flockSuit(plumes,3) then draw(1); if flockSuit(nests,3) then gainCover(3)` | `gainWingbeat(1); if flockSuit(plumes,3) then draw(1); if flockSuit(nests,3) then gainCover(5)` | `Draw +1; Open Sky Guard +1` | `Open Sky Guard +1` |
+| `aviary_43` | choice | recursion, tempo, draw | `returnDiscard(nonMolt, 0); if firstPlayedThisCombat then gainWingbeat(1)` | `returnDiscard(nonMolt, 0); if firstPlayedThisCombat then gainWingbeat(1); draw(1)` | `Draw +1; Resonance +1` | `Draw +1; Resonance +1` |
 
 ## Alpha Enemies
 

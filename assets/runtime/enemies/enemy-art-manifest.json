@@ -239,6 +239,223 @@
       "full": "assets/runtime/enemies/full/roost_warden.webp",
       "version": "0.1",
       "status": "approved"
+    },
+    {
+      "enemyId": "rooftop_raccoon",
+      "source": ".generated/imagegen/enemies/selected/rooftop_raccoon.png",
+      "full": "assets/runtime/enemies/full/rooftop_raccoon.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "pigeon_enforcer",
+      "source": ".generated/imagegen/enemies/selected/pigeon_enforcer.png",
+      "full": "assets/runtime/enemies/full/pigeon_enforcer.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "crow_saboteur",
+      "source": ".generated/imagegen/enemies/selected/crow_saboteur.png",
+      "full": "assets/runtime/enemies/full/crow_saboteur.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "canal_otter",
+      "source": ".generated/imagegen/enemies/selected/canal_otter.png",
+      "full": "assets/runtime/enemies/full/canal_otter.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "crab_dockguard",
+      "source": ".generated/imagegen/enemies/selected/crab_dockguard.png",
+      "full": "assets/runtime/enemies/full/crab_dockguard.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "frog_canal_jumper",
+      "source": ".generated/imagegen/enemies/selected/frog_canal_jumper.png",
+      "full": "assets/runtime/enemies/full/frog_canal_jumper.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "cicada_static_swarm",
+      "source": ".generated/imagegen/enemies/selected/cicada_static_swarm.png",
+      "full": "assets/runtime/enemies/full/cicada_static_swarm.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "crane_signal_caller",
+      "source": ".generated/imagegen/enemies/selected/crane_signal_caller.png",
+      "full": "assets/runtime/enemies/full/crane_signal_caller.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "vulture_cleanup_crew",
+      "source": ".generated/imagegen/enemies/selected/vulture_cleanup_crew.png",
+      "full": "assets/runtime/enemies/full/vulture_cleanup_crew.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "woodpecker_riveter",
+      "source": ".generated/imagegen/enemies/selected/woodpecker_riveter.png",
+      "full": "assets/runtime/enemies/full/woodpecker_riveter.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "porcupine_bristleguard",
+      "source": ".generated/imagegen/enemies/selected/porcupine_bristleguard.png",
+      "full": "assets/runtime/enemies/full/porcupine_bristleguard.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "rat_courier",
+      "source": ".generated/imagegen/enemies/selected/rat_courier.png",
+      "full": "assets/runtime/enemies/full/rat_courier.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "weasel_cutpurse",
+      "source": ".generated/imagegen/enemies/selected/weasel_cutpurse.png",
+      "full": "assets/runtime/enemies/full/weasel_cutpurse.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "skunk_chemist",
+      "source": ".generated/imagegen/enemies/selected/skunk_chemist.png",
+      "full": "assets/runtime/enemies/full/skunk_chemist.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "armadillo_roller",
+      "source": ".generated/imagegen/enemies/selected/armadillo_roller.png",
+      "full": "assets/runtime/enemies/full/armadillo_roller.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "turtle_barricader",
+      "source": ".generated/imagegen/enemies/selected/turtle_barricader.png",
+      "full": "assets/runtime/enemies/full/turtle_barricader.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "cormorant_netter",
+      "source": ".generated/imagegen/enemies/selected/cormorant_netter.png",
+      "full": "assets/runtime/enemies/full/cormorant_netter.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "kingfisher_snapdiver",
+      "source": ".generated/imagegen/enemies/selected/kingfisher_snapdiver.png",
+      "full": "assets/runtime/enemies/full/kingfisher_snapdiver.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "heron_spearstepper",
+      "source": ".generated/imagegen/enemies/selected/heron_spearstepper.png",
+      "full": "assets/runtime/enemies/full/heron_spearstepper.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "bat_nightcaller",
+      "source": ".generated/imagegen/enemies/selected/bat_nightcaller.png",
+      "full": "assets/runtime/enemies/full/bat_nightcaller.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "kite_hawk_courier",
+      "source": ".generated/imagegen/enemies/selected/kite_hawk_courier.png",
+      "full": "assets/runtime/enemies/full/kite_hawk_courier.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "fox_lookout",
+      "source": ".generated/imagegen/enemies/selected/fox_lookout.png",
+      "full": "assets/runtime/enemies/full/fox_lookout.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "peacock_intimidator",
+      "source": ".generated/imagegen/enemies/selected/peacock_intimidator.png",
+      "full": "assets/runtime/enemies/full/peacock_intimidator.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "alley_cat",
+      "source": ".generated/imagegen/enemies/selected/alley_cat.png",
+      "full": "assets/runtime/enemies/full/alley_cat.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "jackrabbit_sprinter",
+      "source": ".generated/imagegen/enemies/selected/jackrabbit_sprinter.png",
+      "full": "assets/runtime/enemies/full/jackrabbit_sprinter.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "hedgehog_curb_crosser",
+      "source": ".generated/imagegen/enemies/selected/hedgehog_curb_crosser.png",
+      "full": "assets/runtime/enemies/full/hedgehog_curb_crosser.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "mongoose_counterfighter",
+      "source": ".generated/imagegen/enemies/selected/mongoose_counterfighter.png",
+      "full": "assets/runtime/enemies/full/mongoose_counterfighter.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "opossum_decoy",
+      "source": ".generated/imagegen/enemies/selected/opossum_decoy.png",
+      "full": "assets/runtime/enemies/full/opossum_decoy.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "goose_bouncer",
+      "source": ".generated/imagegen/enemies/selected/goose_bouncer.png",
+      "full": "assets/runtime/enemies/full/goose_bouncer.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "mantis_street_duelist",
+      "source": ".generated/imagegen/enemies/selected/mantis_street_duelist.png",
+      "full": "assets/runtime/enemies/full/mantis_street_duelist.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "enemyId": "moth_lantern_drifter",
+      "source": ".generated/imagegen/enemies/selected/moth_lantern_drifter.png",
+      "full": "assets/runtime/enemies/full/moth_lantern_drifter.webp",
+      "version": "0.1",
+      "status": "approved"
     }
   ]
 }
