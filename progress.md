@@ -208,3 +208,7 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 - Updated Signal Gull, Market Crow, Cicada Static Swarm, Crane Signal Caller, and Vulture Cleanup Crew encounters with companion enemies and `multi`/`support` tags where needed.
 - Added a runtime data validation guard that fails any support-only encounter composition, including future support-only pairs.
 - Verification: focused support-composition audit script, `npm run validate:runtime`, `npm run audit:balance`, `npm run build`, `npm test`, required generic `develop-web-game` client, and inspected `output/web-game/shot-1.png`.
+
+- Market shop-scene redesign follow-up: researched Slay the Spire and Monster Train shop presentation, then rebuilt the market overlay from a row-list layout into a place-like shop scene with a vendor, awning/string lights, card rack, waymark tray, service signs, object-mounted price tags, refresh sign, and sold slats.
+- Kept the existing randomized shelves, rarity-priced offers, paid refresh, finite purchases, and hover details intact while making the visual grouping follow goods/services/currency rather than three menu boxes.
+- Verification: `npm run build`, focused market/hover/event Playwright smoke tests, required generic `develop-web-game` client against built preview, and inspected `.artifacts/test-results/market-shop-redesign/market-shop-scene-final.png`.

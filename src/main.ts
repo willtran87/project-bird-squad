@@ -3779,7 +3779,7 @@ class RouteScene extends Phaser.Scene {
     this.renderMarketRefreshSign(frame.right - 162, frame.top + 126, refreshCost, refreshEnabled);
 
     this.renderMarketCardOffers(frame.left + 500, frame.top + 315);
-    this.renderMarketWaymarkOffers(frame.left + 488, frame.top + 422);
+    this.renderMarketWaymarkOffers(frame.left + 488, frame.top + 476);
     this.renderMarketUtilityOffers(frame.right - 146, frame.top + 308);
 
     renderCloseControl(this, (obj) => {}, frame.right - 80, frame.top + 56, () => this.leaveMarket());
@@ -3849,14 +3849,14 @@ class RouteScene extends Phaser.Scene {
       stroke: '#020409',
       strokeThickness: 3
     }).setOrigin(0.5, 0);
-    this.add.rectangle(x + 84, y - 100, 152, 48, 0x0a1018, 0.88)
+    this.add.rectangle(x - 8, y - 100, 132, 48, 0x0a1018, 0.88)
       .setStrokeStyle(1, UI_FIELD.gold, 0.54);
-    this.add.text(x + 18, y - 112, 'Trade for the road.', {
+    this.add.text(x - 66, y - 112, 'Trade for the road.', {
       fontFamily: 'Arial',
       fontSize: '13px',
       fontStyle: 'bold',
       color: '#ffe1a3',
-      wordWrap: { width: 128 },
+      wordWrap: { width: 116 },
       maxLines: 2
     });
   }
@@ -3960,7 +3960,7 @@ class RouteScene extends Phaser.Scene {
 
   private renderMarketWaymarkOffers(x: number, y: number) {
     const hasStock = this.marketWaymarkShelf.some((offer) => !offer.sold);
-    this.add.rectangle(x, y + 30, 346, 92, 0x0d1117, 0.58)
+    this.add.rectangle(x, y + 38, 346, 116, 0x0d1117, 0.58)
       .setStrokeStyle(1, hasStock ? UI_FIELD.gold : 0x6f6044, hasStock ? 0.44 : 0.28);
     if (this.marketWaymarkShelf.length === 0) {
       this.add.text(x, y + 2, 'No unclaimed pins remain in this market.', {
@@ -3977,21 +3977,21 @@ class RouteScene extends Phaser.Scene {
       const mark = alphaRouteMarkLibrary.get(listing.id);
       if (!mark) return;
       const itemX = x - 78 + i * 156;
-      const itemY = y + 8;
+      const itemY = y + 4;
       const enabled = !listing.sold && this.runState.scrap >= listing.price;
-      this.add.rectangle(itemX, itemY + 32, 128, 58, listing.sold ? 0x0c0d0f : 0x16110a, listing.sold ? 0.62 : 0.94)
+      this.add.rectangle(itemX, itemY + 30, 128, 54, listing.sold ? 0x0c0d0f : 0x16110a, listing.sold ? 0.62 : 0.94)
         .setStrokeStyle(1, listing.sold ? 0x59606a : UI_FIELD.gold, listing.sold ? 0.32 : 0.68);
-      this.add.circle(itemX, itemY - 18, 36, 0x111923, listing.sold ? 0.56 : 0.96)
+      this.add.circle(itemX, itemY - 18, 28, 0x111923, listing.sold ? 0.56 : 0.96)
         .setStrokeStyle(2, listing.sold ? 0x59606a : UI_FIELD.gold, listing.sold ? 0.34 : 0.82);
       const key = waymarkArtAssets[mark.id]?.key;
-      if (key && this.textures.exists(key)) this.add.image(itemX, itemY - 18, key).setDisplaySize(54, 54).setAlpha(listing.sold ? 0.42 : 0.95);
+      if (key && this.textures.exists(key)) this.add.image(itemX, itemY - 18, key).setDisplaySize(42, 42).setAlpha(listing.sold ? 0.42 : 0.95);
       else this.add.text(itemX, itemY - 18, waymarkGlyph(mark), {
         fontFamily: 'Georgia, serif',
-        fontSize: '25px',
+        fontSize: '21px',
         fontStyle: 'bold',
         color: '#fff1c7'
       }).setOrigin(0.5);
-      this.add.text(itemX, itemY + 16, listing.sold ? `${mark.name} - sold` : mark.name, {
+      this.add.text(itemX, itemY + 10, listing.sold ? `${mark.name} - sold` : mark.name, {
         fontFamily: 'Arial',
         fontSize: '12px',
         fontStyle: 'bold',
@@ -4000,16 +4000,16 @@ class RouteScene extends Phaser.Scene {
         wordWrap: { width: 108 },
         maxLines: 2
       }).setOrigin(0.5, 0);
-      this.add.text(itemX, itemY + 54, routeMarkFamilyLabel(mark.family).toUpperCase(), {
+      this.add.text(itemX, itemY + 46, routeMarkFamilyLabel(mark.family).toUpperCase(), {
         fontFamily: 'Arial',
         fontSize: '9px',
         fontStyle: 'bold',
         color: '#8df4ff'
       }).setOrigin(0.5);
-      this.renderMarketPriceTag(itemX, itemY + 92, listing.price, enabled && !listing.sold, UI_FIELD.gold, 'PIN');
+      this.renderMarketPriceTag(itemX, itemY + 62, listing.price, enabled && !listing.sold, UI_FIELD.gold, 'PIN');
       if (listing.sold) this.renderMarketSoldSlat(itemX, itemY + 18, 126, 100);
       if (!listing.sold) {
-        const hit = this.add.rectangle(itemX, itemY + 28, 138, 150, 0x000000, 0.01)
+        const hit = this.add.rectangle(itemX, itemY + 28, 138, 126, 0x000000, 0.01)
           .setInteractive({ useHandCursor: true });
         hit.on('pointerdown', () => this.buyMarketRouteMark(i));
       }
