@@ -29,6 +29,7 @@ should be recorded.
 | `docs/game/run-design-spec.md` | Run structure, route maps, node types, Waymarks, Scrap, Markets, Signals, Supplies, Snags, Rival Crews, Basin/Nest rules, and bosses. | Alpha-only card lists and exact first-slice numbers. |
 | `docs/game/alpha-run-spec.md` | Map 1 Alpha scope, starter deck, reward pool, Alpha enemies, boss, Waymarks, supplies, Signals, Snags, market prices, and tuning targets. | Full-run final balance. |
 | `docs/art/art-bible.md` | Visual identity, suit aesthetics, prompt standards, card-art production rules, and runtime asset expectations. | Gameplay rules except where art needs them for context. |
+| `docs/art/aviary-generation-runbook.md` | Aviary Legend imagegen, master-border compositing, and QA workflow. | Minor Arcana suit generation details or gameplay tuning. |
 | `docs/art/enemy-art-bible.md` | Enemy art visual language, non-humanoid animal constraints, and prompt pattern for enemy concepts. | Enemy combat tuning or encounter rewards. |
 
 ## Reference And Intake Documents

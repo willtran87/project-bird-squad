@@ -1108,3 +1108,17 @@ Follow-up TODO:
 - Verified `npm run build`, `npm test`, `npm run test:e2e`, the web-game
   Playwright client, and targeted combat screenshots under
   `.artifacts/test-results/`.
+
+## 2026-06-16 Combat FX Quality Lift
+
+- Increased runtime combat FX quality with denser generated pixel frames,
+  sparkle breakup, stronger shield facets, basin foam, and richer hostile/status
+  silhouettes.
+- Added a generated in-scene pixel particle texture plus reusable burst helpers
+  for additive motes, directional cast trails, cover flecks, heal motes, and hit
+  shards.
+- Layered secondary FX into card casts, impact pulses, Cover, Heal, Winded, and
+  suit pulse helpers so combat feedback reads as authored motion rather than a
+  single overlay sprite.
+- Verified `npm run build`, `npm test`, `npm run test:e2e`, and direct combat
+  Playwright captures at `.artifacts/test-results/combat-fx-quality-*.png`.

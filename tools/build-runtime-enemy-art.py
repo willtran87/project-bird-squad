@@ -20,7 +20,10 @@ SELECTED_ROOT = GENERATED_ROOT / "selected"
 CONTACT_ROOT = GENERATED_ROOT / "contact-sheets"
 RUNTIME_ROOT = ROOT / "assets" / "runtime" / "enemies"
 FULL_ROOT = RUNTIME_ROOT / "full"
+RESERVE_SELECTED_ROOT = GENERATED_ROOT / "reserve-selected"
+RESERVE_RUNTIME_ROOT = RUNTIME_ROOT / "reserve"
 MANIFEST_PATH = RUNTIME_ROOT / "enemy-art-manifest.json"
+RESERVE_CONTRACTS_PATH = ROOT / "data" / "game" / "enemy-variety-contracts.json"
 
 
 ENEMY_SOURCES = {
@@ -59,6 +62,24 @@ ENEMY_SOURCES = {
     "roost_warden": "roost-warden-3q-dramatic-idle-transparent.png",
 }
 
+LOSSY_FULL_ENEMIES = {
+    "canal_barge_gull",
+    "canal_dredge_eel",
+    "gutter_baron",
+    "roost_iron_talon",
+    "roost_kettle_harrier",
+    "roost_relay_falcon",
+    "roost_skyline_baron",
+    "roost_spire_sentinel",
+    "roost_tar_drifter",
+    "roost_warden",
+    "roost_wind_shrike",
+    "signal_gull",
+    "spire_signal_marshal",
+    "tar_crowned_crow",
+    "wire_hawk",
+}
+
 
 def rel(path: Path) -> str:
     return path.relative_to(ROOT).as_posix()
@@ -83,11 +104,37 @@ def copy_master(enemy_id: str, filename: str) -> Path:
     raise FileNotFoundError(f"Missing generated source for {enemy_id}: {filename}")
 
 
-def optimize(master: Path, target: Path, max_edge: int = 768) -> None:
+def optimize(master: Path, target: Path, max_edge: int = 768, lossy: bool = False, quality: int = 82) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     with Image.open(master).convert("RGBA") as image:
         image.thumbnail((max_edge, max_edge), Image.Resampling.LANCZOS)
-        image.save(target, "WEBP", lossless=True, method=6)
+        if lossy:
+            image.save(target, "WEBP", quality=quality, method=4, exact=False)
+        else:
+            image.save(target, "WEBP", lossless=True, method=6)
+
+
+def reserve_source(enemy_id: str) -> Path:
+    source = RESERVE_SELECTED_ROOT / f"{enemy_id}-transparent.png"
+    if not source.exists():
+        raise FileNotFoundError(f"Missing reserve enemy source for {enemy_id}: {rel(source)}")
+    return source
+
+
+def build_reserve_enemies() -> int:
+    contract = json.loads(RESERVE_CONTRACTS_PATH.read_text(encoding="utf-8"))
+    enemies = contract.get("reserveEnemies", [])
+    if not isinstance(enemies, list):
+        raise ValueError(f"{rel(RESERVE_CONTRACTS_PATH)}: reserveEnemies must be a list")
+
+    built = 0
+    for enemy in enemies:
+        enemy_id = enemy.get("id")
+        if not isinstance(enemy_id, str):
+            raise ValueError(f"{rel(RESERVE_CONTRACTS_PATH)}: reserve enemy missing string id")
+        optimize(reserve_source(enemy_id), RESERVE_RUNTIME_ROOT / f"{enemy_id}.webp", max_edge=704, lossy=True, quality=82)
+        built += 1
+    return built
 
 
 def copy_contact_sheets() -> None:
@@ -102,7 +149,8 @@ def main() -> None:
     for enemy_id, filename in ENEMY_SOURCES.items():
         master = copy_master(enemy_id, filename)
         full = FULL_ROOT / f"{enemy_id}.webp"
-        optimize(master, full)
+        lossy = enemy_id in LOSSY_FULL_ENEMIES
+        optimize(master, full, max_edge=704 if lossy else 768, lossy=lossy, quality=82)
         entries.append(
             {
                 "enemyId": enemy_id,
@@ -114,6 +162,7 @@ def main() -> None:
         )
 
     copy_contact_sheets()
+    reserve_count = build_reserve_enemies()
     RUNTIME_ROOT.mkdir(parents=True, exist_ok=True)
     MANIFEST_PATH.write_text(
         json.dumps(
@@ -135,6 +184,7 @@ def main() -> None:
         encoding="utf-8",
     )
     print(f"Built {len(entries)} enemy runtime assets.")
+    print(f"Built {reserve_count} reserve enemy runtime assets.")
     print(rel(MANIFEST_PATH))
 
 

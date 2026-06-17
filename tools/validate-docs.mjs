@@ -634,6 +634,70 @@ if (!fs.existsSync(path.join(root, centerPromptPackPath))) {
   }
 }
 
+const aviaryPromptPackPath = 'docs/art/prompt-packs/aviary-center-art-prompts.json';
+if (!fs.existsSync(path.join(root, aviaryPromptPackPath))) {
+  fail(`${aviaryPromptPackPath}: missing; run npm run export:aviary-center-prompts`);
+} else {
+  const aviaryPromptPack = readJson(aviaryPromptPackPath);
+  const aviaryPromptCards = aviaryPromptPack.cards ?? [];
+  if (aviaryPromptPack.mode !== 'center-art-only') {
+    fail(`${aviaryPromptPackPath}: expected mode center-art-only, found ${aviaryPromptPack.mode}`);
+  }
+  if (aviaryPromptPack.totalCards !== 6 || aviaryPromptCards.length !== 6) {
+    fail(`${aviaryPromptPackPath}: expected 6 prompts, found totalCards=${aviaryPromptPack.totalCards}, rows=${aviaryPromptCards.length}`);
+  }
+
+  const aviaryIds = new Set(cards.filter((card) => card.set === 'aviary').map((card) => card.id));
+  const promptIds = new Set(aviaryPromptCards.map((card) => card.id));
+  for (const id of aviaryIds) {
+    if (!promptIds.has(id)) {
+      fail(`${aviaryPromptPackPath}: missing prompt for Aviary card ${id}`);
+    }
+  }
+
+  for (const card of aviaryPromptCards) {
+    if (!card.prompt || typeof card.prompt !== 'string') {
+      fail(`${aviaryPromptPackPath}:${card.id}: missing prompt text`);
+      continue;
+    }
+
+    for (const required of [
+      'Aviary Legend center illustration layer',
+      'Do not generate a card border',
+      'no readable text',
+      'locked master raster border',
+      'master.png',
+      'roman numeral',
+      'Text handling for this layer:',
+      'Species lock:',
+      'Subject species lock:',
+      'Anatomy handling:',
+      'Bird-originated action:',
+      'Style reference target:',
+      'World constraint:',
+      'Future-tech constraint:',
+      'Grounded effects constraint:',
+      'Master border reference:',
+    ]) {
+      if (!card.prompt.includes(required)) {
+        fail(`${aviaryPromptPackPath}:${card.id}: Aviary prompt missing "${required}"`);
+      }
+    }
+
+    for (const forbidden of [
+      'Text (verbatim):',
+      'only in the bottom title cartouche',
+      'Suit border inserts:',
+      'Tarot count requirement:',
+      'Pip representation:',
+    ]) {
+      if (card.prompt.includes(forbidden)) {
+        fail(`${aviaryPromptPackPath}:${card.id}: Aviary center prompt should not include full-card/minor phrase "${forbidden}"`);
+      }
+    }
+  }
+}
+
 if (errors.length > 0) {
   console.error(`Documentation validation failed with ${errors.length} issue(s):`);
   for (const error of errors) {

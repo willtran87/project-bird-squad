@@ -140,6 +140,85 @@ test('boss uses a scripted attack pattern that loops from move 2', async ({ page
   expect(labels[6]).toBe('Tar Toss 5');
 });
 
+test('boss fights render generated boss battlefield variants', async ({ page }) => {
+  await boot(page);
+  const results = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const expectedKeys = [
+      'battlefield-rooftop-blocks-boss-tar-crow',
+      'battlefield-canal-markets-boss-gatekeeper',
+      'battlefield-signal-spires-boss-beacon-breaker',
+      'battlefield-high-roost-boss-warden'
+    ];
+    const g = window.__birdSquadGame;
+
+    const mkRunState = (mapIndex: number) => ({
+      deck: [{ id: 'major_00' }],
+      leaderId: 'fledgling',
+      difficulty: 0,
+      seed: 'boss-backdrop-variant-test',
+      currentHp: 36,
+      scrap: 40,
+      routeMarks: [],
+      supplies: [],
+      mapIndex,
+      completedRouteNodeIds: [],
+      currentRouteNodeId: undefined,
+      routeLog: [],
+      nextCombat: undefined,
+      signalChoices: [],
+      rewardEvents: [],
+    });
+
+    const results = [];
+    for (let mapIndex = 0; mapIndex < expectedKeys.length; mapIndex += 1) {
+      const expectedKey = expectedKeys[mapIndex];
+      const runState = mkRunState(mapIndex);
+      g.scene.start('RouteScene', { runState });
+      g.scene.stop('MenuScene');
+      await wait(50);
+      const bossNodeId = window.__birdSquadCurrentMap!().bossNodeId;
+      g.scene.start('BattleScene', { routeNodeId: bossNodeId, runState });
+      const scene: any = g.scene.getScene('BattleScene');
+      for (let i = 0; i < 80; i += 1) {
+        const state = window.__birdSquadState!();
+        const rendered = scene.root?.list?.some((child: any) => child.texture?.key === expectedKey) ?? false;
+        if (state.route.battlefieldAssetKey === expectedKey && state.route.battlefieldVariant && scene.textures.exists(expectedKey) && rendered) {
+          results.push({
+            mapIndex,
+            bossNodeId,
+            stateKey: state.route.battlefieldAssetKey,
+            variant: state.route.battlefieldVariant,
+            textureLoaded: true,
+            rendered: true
+          });
+          break;
+        }
+        await wait(50);
+      }
+      if (results.length !== mapIndex + 1) {
+        const state = window.__birdSquadState!();
+        results.push({
+          mapIndex,
+          bossNodeId,
+          stateKey: state.route.battlefieldAssetKey,
+          variant: state.route.battlefieldVariant,
+          textureLoaded: scene.textures.exists(expectedKey),
+          rendered: scene.root?.list?.some((child: any) => child.texture?.key === expectedKey) ?? false
+        });
+      }
+    }
+    return results;
+  });
+
+  expect(results).toEqual([
+    expect.objectContaining({ stateKey: 'battlefield-rooftop-blocks-boss-tar-crow', variant: true, textureLoaded: true, rendered: true }),
+    expect.objectContaining({ stateKey: 'battlefield-canal-markets-boss-gatekeeper', variant: true, textureLoaded: true, rendered: true }),
+    expect.objectContaining({ stateKey: 'battlefield-signal-spires-boss-beacon-breaker', variant: true, textureLoaded: true, rendered: true }),
+    expect.objectContaining({ stateKey: 'battlefield-high-roost-boss-warden', variant: true, textureLoaded: true, rendered: true })
+  ]);
+});
+
 test('signals/basins/cache present structured choices resolved by the route-effect interpreter', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(() => {

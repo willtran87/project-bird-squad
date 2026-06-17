@@ -72,10 +72,56 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 
 - Home screen compactness follow-up: moved the animated Bird Squad title higher, reduced the bottom setup dock height/opacity, and made the leader chips, Ascension arrows, run actions, Codex, and Flock Record buttons smaller so the splash art remains more visible.
 - Verification: `npm run build`, in-app browser menu screenshot, and required generic `develop-web-game` client passed. The generic client returned valid `MenuScene` state JSON and its screenshot remains the known black WebGL capture artifact.
+- Home screen text-sharpness follow-up: increased menu text texture resolution, reduced heavy text strokes, slightly enlarged the smallest Ascension/leader detail labels, and strengthened only the local backing panels needed for readability.
+- Verification: `npm run build`, direct Playwright menu screenshot at `.artifacts/test-results/menu-text-detail-pass.png`, and required generic `develop-web-game` client passed. The direct screenshot reported no console errors; only repeated WebGL `ReadPixels` performance warnings appeared during capture. The generic client returned valid `MenuScene` state JSON and its screenshot remains the known black WebGL capture artifact.
+- Codex header layout follow-up: shifted the Cards/Items/Leaders/Enemies section tabs left and tightened their width so the Enemies tab no longer overlaps the Back button.
+- Verification: `npm run build`, direct Playwright Codex screenshots at `.artifacts/test-results/codex-header-tabs-no-overlap.png` and `.artifacts/test-results/codex-enemies-tab-no-overlap.png`, and required generic `develop-web-game` client passed. The direct screenshots showed clear separation between Enemies and Back; only WebGL `ReadPixels` performance warnings appeared during capture. The generic client returned valid `MenuScene` state JSON and its screenshot remains the known black WebGL capture artifact.
+- Codex card-filter alignment follow-up: shifted the Major/Aviary/Plumes/Quills/Basins/Nests row 12px right so the Major button no longer hugs/clips against the left edge.
+- Verification: `npm run build`, direct Playwright Codex screenshot at `.artifacts/test-results/codex-major-tab-inset.png`, and required generic `develop-web-game` client passed. The direct screenshot showed the Major tab inset cleanly; only WebGL `ReadPixels` performance warnings appeared during capture. The generic client returned valid `MenuScene` state JSON and its screenshot remains the known black WebGL capture artifact.
 
 - Route map highlight refinement: reduced selected/available node ring thickness, replaced the selected-node halo with thin cyan focus ticks, softened route-preview line weights/dots, and changed the large map board frame from gold to muted steel blue so the map no longer feels over-highlighted.
 - Verification: `npm run build`, `npm run validate:runtime`, focused route-map Playwright smoke tests, required generic `develop-web-game` client, and visual screenshot inspection passed. Final screenshot: `.artifacts/test-results/route-map-thin-node-highlight-steel-frame.png`.
 
+- Generated the first encounter/situation backdrop variant set with built-in imagegen and saved normalized 1280x720 WebP runtime assets under `assets/runtime/backdrops/variants/`.
+- New boss variants: `rooftop-blocks-boss-tar-crow-v1.webp`, `canal-markets-boss-gatekeeper-v1.webp`, `signal-spires-boss-beacon-breaker-v1.webp`, `high-roost-boss-warden-v1.webp`.
+- New special-node variants: `rooftop-blocks-cache-billboard-v1.webp`, `canal-markets-supply-market-v1.webp`, `signal-spires-signal-relay-v1.webp`, `high-roost-workshop-prep-v1.webp`.
+- Validation: every variant is 1280x720 RGB WebP. Contact sheet inspected at `.artifacts/test-results/backdrop-variant-contact-sheet-v1.jpg`.
+
 - Home screen text-detail follow-up: added compact mechanical detail to the leader chips, surfaced the selected leader's signature rule in a readable two-line strip, and expanded the Ascension text to show current enemy Cohesion, reward, hit, and Open Sky modifiers.
 - Refined text readability with subtle strokes and a low-opacity backing strip while keeping the splash art visible.
 - Verification: `npm run build`, in-app browser menu screenshot, and required generic `develop-web-game` client passed. The generic client returned valid `MenuScene` state JSON; its screenshot remains the known black WebGL capture artifact.
+
+- Home screen selected-detail implementation follow-up: removed the full-width tinted bottom dock and permanent leader description strip, keeping only compact control panels over the splash art.
+- Converted flock leader descriptions/signature rules into hover tooltips for both unlocked and locked leader chips; pointer-out hides the tooltip cleanly.
+- Verification: `npm run build`, in-app browser idle/leader-hover/pointer-out screenshots, and required generic `develop-web-game` client passed. Browser console had no errors; the generic client returned valid `MenuScene` state JSON and its screenshot remains the known black WebGL capture artifact.
+
+- Runtime optimization follow-up: added reproducible UI and enemy-art optimization paths, including active menu splash WebP regeneration, lossy/capped large encounter enemy outputs, and reserve enemy WebP generation from transparent masters.
+- Added `tools/validate-runtime-asset-sizes.mjs`, wired it into `npm test` and `npm run validate`, and set budgets for optimized splash, leader, encounter enemy, reserve enemy, card thumbnail/icon, Waymark icon, route icon, and backdrop assets.
+- Tightened Codex optional art loading to visible grid rows plus the open detail item instead of queueing every asset in the active section.
+- Split Phaser into a dedicated Vite `vendor-phaser` chunk for better long-term caching. Remaining note: Vite still warns because Phaser is a large dependency and the app entry remains above 500 KB minified; deeper scene/module splitting would be the next larger-scope bundle task.
+- Verification: `npm run build:runtime-ui-art`, `npm run build:runtime-enemy-art`, `npm test`, `npm run build`, `npm run validate`, required generic `develop-web-game` client, and in-app browser menu/route/battle/Codex enemy smoke checks all passed with no browser warnings or errors.
+
+- Startup bundle optimization follow-up: moved Codex-only tarot lore, bird facts, card meanings, and reserve enemy contract data into lazy `src/game/codex-data.ts`.
+- Updated `CodexScene` to import the Codex data chunk on demand, rerender when it arrives, and keep visible card/enemy grids usable while the chunk resolves.
+- Added a lightweight HTML/CSS boot shell so players see immediate feedback before Phaser finishes booting, removed by `BootScene.create()`.
+- Build output after the split: app entry `index` is ~459 KB minified, lazy `codex-data` is ~249 KB, and `vendor-phaser` remains ~1.62 MB. Built HTML modulepreloads only `vendor-phaser`, confirming `codex-data` is deferred until Codex opens.
+- Verification: `npm run build`, `npm test`, `npm run validate`, required generic `develop-web-game` client, and in-app browser menu/route/battle/Codex card-detail/enemy-grid smoke checks passed with no browser warnings or errors.
+
+- Home screen splash-pop follow-up: generated `assets/splash/bird-squad-canal-run-splash-v4-menu-pop.webp` from the original splash PNG with a brighter, higher-saturation menu grade, removed the remaining full-screen dark wash, and pointed the menu splash import at the new asset.
+- Verification: `npm run build`, in-app browser idle and leader-tooltip screenshots, and required generic `develop-web-game` client passed. Browser console had no errors; the generic client returned valid `MenuScene` state JSON and its screenshot remains the known black WebGL capture artifact.
+
+- Home screen title placement follow-up: moved the animated Bird Squad title 22px higher and reduced the textured title image sizes by roughly 6% so the splash art has more room to read.
+- Verification: `npm run build`, in-app browser menu screenshot, and required generic `develop-web-game` client passed. Browser console had no errors; the generic client returned valid `MenuScene` state JSON and its screenshot remains the known black WebGL capture artifact.
+
+- Home screen Ascension/readability follow-up: added a compact translucent backing plate behind the Ascension controls, brightened/stroked its label/detail text, unified title-screen button borders under a shared thin `MENU_BORDER_WIDTH`, and removed the thicker selected-leader outline in favor of color/fill state.
+- Verification: `npm run build`, direct Playwright menu screenshot at `.artifacts/test-results/menu-ascension-border-pass.png`, and required generic `develop-web-game` client passed on rerun. The in-app browser navigation got stuck during reload, but direct Playwright reported no console errors and rendered the canvas correctly; the generic client returned valid `MenuScene` state JSON and its screenshot remains the known black WebGL capture artifact.
+
+- Boss backdrop variant wiring follow-up: added a generated backdrop variant registry for `assets/runtime/backdrops/variants/*.webp`, routed boss combat nodes through district-specific boss arenas, queued the selected arena via the existing optional art loader, and exposed `route.battlefieldAssetKey` / `route.battlefieldVariant` in the battle text-state.
+- Added smoke coverage that starts each district boss fight and confirms the expected generated boss backdrop texture is loaded and rendered: Rooftop Blocks Tar-Crowned Crow, Canal Markets Gatekeeper, Signal Spires Beacon Breaker, and High Roost Warden.
+- Verification: `npm run build`, `npm run validate:runtime`, `npm run validate:runtime-assets`, focused boss Playwright smoke tests, required generic `develop-web-game` client, and direct Playwright boss-scene visual capture passed. Inspected screenshot: `.artifacts/test-results/boss-backdrop-variant-rooftop.png`.
+- Note: the special-node backdrop variants are generated and bundled but remain staged until the non-combat route/encounter presentation gets a proper backdrop surface.
+
+- Text overflow/tidiness execution pass: tightened compact reward/preen card text bounds, removed lore paragraphs from small choice cards, kept full details on hover in the deck-card detail format, and shifted card reward/preen choices down to clear the deck-needs row.
+- Cleaned the route boss inspector by allowing long titles to drive spacing, removing crowded likely-find micro-labels, and constraining boss prep pressure/prep/readiness text to the panel.
+- Improved modal/overlay readability by making Codex detail curtains fully opaque, lowering the Codex detail viewport bottom, repositioning market hover detail away from buy controls, and darkening reward backdrops so battle text does not compete with choices.
+- Verification: `npm run build`, `npm run validate:runtime`, focused route/reward/hover Playwright smoke tests, `git diff --check`, required generic `develop-web-game` client, and final screenshots under `output/text-audit-after/` passed/inspected.

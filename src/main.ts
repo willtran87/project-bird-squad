@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import './style.css';
-import splashUrl from '../assets/splash/bird-squad-canal-run-splash-v4.webp';
+import splashUrl from '../assets/splash/bird-squad-canal-run-splash-v4-menu-pop.webp';
 import titleBirdUrl from '../assets/ui/bird-squad-title-bird-textured-v2.png';
 import titleSquadUrl from '../assets/ui/bird-squad-title-squad-textured-v2.png';
 import combatFxAtlasUrl from '../assets/runtime/fx/combat-fx-atlas.png';
@@ -23,11 +23,6 @@ import {
   alphaSignalLibrary,
   alphaStatusSet,
   alphaSupplyLibrary,
-  getCardFlavor,
-  getBirdFact,
-  getCardMeaning,
-  reserveEnemyContracts,
-  reserveEnemyFashionDirections,
   routeBlueprints,
 } from './game/runtime-data';
 import { generateRouteMap, hashSeed } from './game/route-gen';
@@ -41,6 +36,8 @@ import { difficultyAdds, difficultyLabel, difficultyMods, MAX_DIFFICULTY } from 
 import { achievements, discoverCards, isLeaderUnlocked, leaderUnlockHints, loadAccount, recordRun, type PlayerAccount } from './game/meta';
 
 type GameMode = 'menu' | 'routeSelection' | 'battle' | 'cardReward' | 'upgradeReward' | 'runComplete' | 'defeat';
+type CodexDataModule = typeof import('./game/codex-data');
+const codexDataPreload: Promise<CodexDataModule> = import('./game/codex-data');
 type InspectOverlay = 'deck' | 'draw' | 'discard' | 'flock';
 type CardType = 'major' | 'minor' | 'molt';
 type CardRole = 'attack' | 'skill' | 'utility';
@@ -229,6 +226,8 @@ interface RenderPayload {
     scrap?: number;
     routeMarks?: string[];
     supplies?: string[];
+    battlefieldAssetKey?: string;
+    battlefieldVariant?: boolean;
   };
   inspectOverlay?: InspectOverlay;
   waymarkDrawerOpen?: boolean;
@@ -294,6 +293,8 @@ declare global {
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
+const MENU_BORDER_WIDTH = 1.5;
+const MENU_BORDER_COLOR = 0x7ab8d6;
 const HAND_Y = 590;
 const CARD_W = 164;
 const CARD_H = 246; // true 2:3 card aspect (art is 1024x1536)
@@ -346,7 +347,22 @@ const battlefieldRuntimeArtUrls = import.meta.glob('../assets/runtime/backdrops/
   query: '?url',
   import: 'default',
 }) as Record<string, string>;
-const BATTLEFIELD_ASSETS: Record<string, { key: string; url: string }> = {
+const battlefieldVariantRuntimeArtUrls = import.meta.glob('../assets/runtime/backdrops/variants/*.webp', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+type RuntimeImageAsset = { key: string; url: string };
+
+function battlefieldVariantAsset(filename: string, key: string): RuntimeImageAsset {
+  return {
+    key,
+    url: battlefieldVariantRuntimeArtUrls[`../assets/runtime/backdrops/variants/${filename}`]
+      ?? `/assets/runtime/backdrops/variants/${filename}`
+  };
+}
+
+const BATTLEFIELD_ASSETS: Record<string, RuntimeImageAsset> = {
   map_01_rooftop_blocks: {
     key: 'battlefield-rooftop-blocks',
     url: battlefieldRuntimeArtUrls['../assets/runtime/backdrops/rooftop-blocks.webp'] ?? '/assets/runtime/backdrops/rooftop-blocks.webp'
@@ -365,7 +381,12 @@ const BATTLEFIELD_ASSETS: Record<string, { key: string; url: string }> = {
   }
 };
 const DEFAULT_BATTLEFIELD_ASSET = BATTLEFIELD_ASSETS.map_01_rooftop_blocks;
-type RuntimeImageAsset = { key: string; url: string };
+const BATTLEFIELD_BOSS_VARIANTS: Partial<Record<string, RuntimeImageAsset>> = {
+  map_01_rooftop_blocks: battlefieldVariantAsset('rooftop-blocks-boss-tar-crow-v1.webp', 'battlefield-rooftop-blocks-boss-tar-crow'),
+  map_02_canal_markets: battlefieldVariantAsset('canal-markets-boss-gatekeeper-v1.webp', 'battlefield-canal-markets-boss-gatekeeper'),
+  map_03_signal_spires: battlefieldVariantAsset('signal-spires-boss-beacon-breaker-v1.webp', 'battlefield-signal-spires-boss-beacon-breaker'),
+  map_04_high_roost: battlefieldVariantAsset('high-roost-boss-warden-v1.webp', 'battlefield-high-roost-boss-warden')
+};
 const ROUTE_MAP_BACKDROP_ASSET = {
   key: 'route-map-backdrop-rooftop-blocks',
   url: battlefieldRuntimeArtUrls['../assets/runtime/backdrops/rooftop-blocks-route-map-v1.webp']
@@ -434,11 +455,10 @@ const enemyArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
     }])
 );
 const reserveEnemyArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
-  reserveEnemyContracts.map((enemy) => [enemy.id, {
-    key: `reserve-enemy-${enemy.id}`,
-    url: reserveEnemyArtUrls[`../assets/runtime/enemies/reserve/${enemy.id}.webp`]
-      ?? `/assets/runtime/enemies/reserve/${enemy.id}.webp`
-  }])
+  Object.entries(reserveEnemyArtUrls).map(([path, url]) => {
+    const id = path.split('/').pop()?.replace(/\.webp$/, '') ?? path;
+    return [id, { key: `reserve-enemy-${id}`, url }];
+  })
 );
 const flockLeaderArtAssets: Record<string, RuntimeImageAsset> = {
   fledgling: {
@@ -481,10 +501,64 @@ const routeNodeIconAssets: Record<RouteNode['type'], RuntimeImageAsset> = Object
       ?? `/assets/runtime/map-icons/icons/${type}.webp`
   }])
 ) as Record<RouteNode['type'], RuntimeImageAsset>;
-const requestedOptionalArtKeys = new Set<string>();
+const loadingOptionalArtKeys = new Set<string>();
+const loadedOptionalArtKeys = new Set<string>();
 
 function uniqueImageAssets(assets: Array<RuntimeImageAsset | undefined>): RuntimeImageAsset[] {
   return [...new Map(assets.filter((asset): asset is RuntimeImageAsset => Boolean(asset)).map((asset) => [asset.key, asset])).values()];
+}
+
+function unloadedImageAssets(scene: Phaser.Scene, assets: Array<RuntimeImageAsset | undefined>): RuntimeImageAsset[] {
+  return uniqueImageAssets(assets).filter((asset) => (
+    !scene.textures.exists(asset.key)
+    && !loadingOptionalArtKeys.has(asset.key)
+    && !loadedOptionalArtKeys.has(asset.key)
+  ));
+}
+
+function queueRuntimeImageAssets(
+  scene: Phaser.Scene,
+  assets: Array<RuntimeImageAsset | undefined>,
+  warning: string,
+  onComplete?: () => void
+): boolean {
+  const pending = unloadedImageAssets(scene, assets);
+  if (pending.length === 0) return false;
+
+  const pendingKeys = new Set(pending.map((asset) => asset.key));
+  const onFileComplete = (key: string) => {
+    if (!pendingKeys.has(key)) return;
+    loadingOptionalArtKeys.delete(key);
+    loadedOptionalArtKeys.add(key);
+  };
+  const onLoadError = (file: { key?: string }) => {
+    const key = file.key;
+    if (!key || !pendingKeys.has(key)) return;
+    loadingOptionalArtKeys.delete(key);
+    loadedOptionalArtKeys.delete(key);
+    console.warn(`${warning}: ${key}`);
+  };
+  const cleanup = () => {
+    scene.load.off('filecomplete', onFileComplete);
+    scene.load.off('loaderror', onLoadError);
+  };
+
+  pending.forEach((asset) => {
+    loadingOptionalArtKeys.add(asset.key);
+    scene.load.image(asset.key, asset.url);
+  });
+  scene.load.on('filecomplete', onFileComplete);
+  scene.load.on('loaderror', onLoadError);
+  scene.load.once('complete', () => {
+    cleanup();
+    pending.forEach((asset) => {
+      loadingOptionalArtKeys.delete(asset.key);
+      if (scene.textures.exists(asset.key)) loadedOptionalArtKeys.add(asset.key);
+    });
+    onComplete?.();
+  });
+  scene.load.start();
+  return true;
 }
 
 function prefersReducedMotion(): boolean {
@@ -521,8 +595,13 @@ function deterministicChance(key: string, chance: number): boolean {
   return (hashSeed(key, 0x9e3779b9) / 0xffffffff) < chance;
 }
 
-function currentBattlefieldAsset() {
-  return BATTLEFIELD_ASSETS[currentMap().id] ?? DEFAULT_BATTLEFIELD_ASSET;
+function battlefieldVariantForRouteNode(routeNode?: RouteNode): RuntimeImageAsset | undefined {
+  if (routeNode?.type === 'boss') return BATTLEFIELD_BOSS_VARIANTS[currentMap().id];
+  return undefined;
+}
+
+function currentBattlefieldAsset(routeNode?: RouteNode): RuntimeImageAsset {
+  return battlefieldVariantForRouteNode(routeNode) ?? BATTLEFIELD_ASSETS[currentMap().id] ?? DEFAULT_BATTLEFIELD_ASSET;
 }
 
 function currentCombatNodes(): RouteNode[] {
@@ -554,6 +633,7 @@ class BootScene extends Phaser.Scene {
   }
 
   create() {
+    document.getElementById('boot-shell')?.remove();
     this.scene.start('MenuScene');
   }
 }
@@ -581,43 +661,44 @@ class MenuScene extends Phaser.Scene {
     this.cameras.main.fadeIn(220);
     this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'splash')
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
-      .setAlpha(0.9);
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.26);
+      .setAlpha(1);
 
     this.createAnimatedTitle();
 
     // Keep difficulty near the run action without adding a full-width dock, so
     // the splash art stays visible behind the compact controls.
     this.selectedDifficulty = Math.min(this.selectedDifficulty, getMaxUnlockedTier());
+    this.add.rectangle(228, 642, 314, 102, 0x05070c, 0.68)
+      .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, 0.64);
     this.add.text(122, 600, 'ASCENSION', {
       fontFamily: 'Arial',
-      fontSize: '11px',
+      fontSize: '12px',
       fontStyle: 'bold',
-      color: '#a9bbcc',
+      color: '#dce8f2',
       stroke: '#05070c',
-      strokeThickness: 3,
-    }).setOrigin(0.5);
+      strokeThickness: 2,
+    }).setResolution(2).setOrigin(0.5);
     const dec = this.add.rectangle(100, 632, 26, 28, 0x0d1420, 0.9)
-      .setStrokeStyle(2, 0x7ab8d6, 0.9).setInteractive({ useHandCursor: true });
+      .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, 0.86).setInteractive({ useHandCursor: true });
     dec.on('pointerdown', () => this.stepDifficulty(-1));
-    this.add.text(100, 631, '<', { fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#dbe6f0' }).setOrigin(0.5);
+    this.add.text(100, 631, '<', { fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#eef7ff', stroke: '#05070c', strokeThickness: 1 }).setResolution(2).setOrigin(0.5);
     const inc = this.add.rectangle(356, 632, 26, 28, 0x0d1420, 0.9)
-      .setStrokeStyle(2, 0x7ab8d6, 0.9).setInteractive({ useHandCursor: true });
+      .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, 0.86).setInteractive({ useHandCursor: true });
     inc.on('pointerdown', () => this.stepDifficulty(1));
-    this.add.text(356, 631, '>', { fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#dbe6f0' }).setOrigin(0.5);
+    this.add.text(356, 631, '>', { fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#eef7ff', stroke: '#05070c', strokeThickness: 1 }).setResolution(2).setOrigin(0.5);
     this.difficultyLabelText = this.add.text(228, 630, '', {
-      fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#e8b830'
-    }).setOrigin(0.5);
+      fontFamily: 'Arial', fontSize: '18px', fontStyle: 'bold', color: '#ffd76a', stroke: '#05070c', strokeThickness: 2
+    }).setResolution(2).setOrigin(0.5);
     this.difficultyDescText = this.add.text(228, 663, '', {
       fontFamily: 'Arial',
-      fontSize: '10px',
-      color: '#aebed0',
+      fontSize: '11px',
+      color: '#dce7f2',
       align: 'center',
       stroke: '#05070c',
-      strokeThickness: 3,
-      wordWrap: { width: 292 }
-    }).setOrigin(0.5);
-    this.difficultyDescText.setLineSpacing(1);
+      strokeThickness: 2,
+      wordWrap: { width: 304 }
+    }).setResolution(2).setOrigin(0.5);
+    this.difficultyDescText.setLineSpacing(2);
     this.updateDifficultyText();
 
     this.menuAccount = loadAccount();
@@ -628,15 +709,15 @@ class MenuScene extends Phaser.Scene {
       fontStyle: 'bold',
       color: '#ffe1a3',
       stroke: '#05070c',
-      strokeThickness: 3,
-    }).setOrigin(0.5);
+      strokeThickness: 2,
+    }).setResolution(2).setOrigin(0.5);
     this.leaderPanels = [];
     flockLeaders.forEach((leader, index) => {
       const px = 178 + index * 231;
       const py = 516;
       const unlocked = isLeaderUnlocked(this.menuAccount, leader.id);
-      const rect = this.add.rectangle(px, py, 196, 56, unlocked ? 0x0d1420 : 0x0a0e15, unlocked ? 0.88 : 0.82)
-        .setStrokeStyle(2, unlocked ? 0x2a4555 : 0x222a33, 0.9)
+      const rect = this.add.rectangle(px, py, 196, 60, unlocked ? 0x0d1420 : 0x0a0e15, unlocked ? 0.93 : 0.86)
+        .setStrokeStyle(MENU_BORDER_WIDTH, unlocked ? 0x2a4555 : 0x222a33, 0.9)
         .setInteractive({ useHandCursor: unlocked });
       rect.on('pointerover', () => this.showLeaderTooltip(leader.id, px));
       rect.on('pointerout', () => this.hideLeaderTooltip());
@@ -646,22 +727,22 @@ class MenuScene extends Phaser.Scene {
           this.showLeaderTooltip(leader.id, px);
         });
       }
-      this.add.text(px, py - 16, leader.name, {
-        fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: unlocked ? '#ffe1a3' : '#5a6675', align: 'center', wordWrap: { width: 184 }
-      }).setOrigin(0.5);
+      this.add.text(px, py - 17, leader.name, {
+        fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: unlocked ? '#ffe1a3' : '#5a6675', align: 'center', stroke: '#05070c', strokeThickness: 1, wordWrap: { width: 184 }
+      }).setResolution(2).setOrigin(0.5);
       const detail = unlocked
         ? `${leader.suit} - ${leader.bird}\n${leader.signatureName}`
         : `Locked\n${leaderUnlockHints[leader.id] ?? 'Locked'}`;
-      const detailText = this.add.text(px, py + 13, detail, {
+      const detailText = this.add.text(px, py + 15, detail, {
         fontFamily: 'Arial',
-        fontSize: '9px',
-        color: unlocked ? '#aebed0' : '#6f7d8c',
+        fontSize: '10px',
+        color: unlocked ? '#dce7f2' : '#8895a5',
         align: 'center',
         stroke: '#05070c',
-        strokeThickness: 2,
+        strokeThickness: 1,
         wordWrap: { width: 184 }
-      }).setOrigin(0.5);
-      detailText.setLineSpacing(1);
+      }).setResolution(2).setOrigin(0.5);
+      detailText.setLineSpacing(2);
       this.leaderPanels.push({ id: leader.id, rect, unlocked });
     });
     this.selectLeader(this.selectedLeaderId);
@@ -676,22 +757,22 @@ class MenuScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-ENTER', () => (savedRun ? this.continueRun() : this.startRun()));
 
     const profile = this.add.rectangle(GAME_WIDTH - 92, 38, 136, 38, 0x0d1420, 0.9)
-      .setStrokeStyle(2, 0x7ab8d6, 0.9).setInteractive({ useHandCursor: true });
+      .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, 0.9).setInteractive({ useHandCursor: true });
     profile.on('pointerover', () => profile.setFillStyle(0x1b2535, 0.96));
     profile.on('pointerout', () => profile.setFillStyle(0x0d1420, 0.92));
     profile.on('pointerdown', () => this.scene.start('ProfileScene'));
     this.add.text(GAME_WIDTH - 92, 38, 'Flock Record', {
       fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#dce8f2'
-    }).setOrigin(0.5);
+    }).setResolution(2).setOrigin(0.5);
 
     const codex = this.add.rectangle(GAME_WIDTH - 240, 38, 136, 38, 0x0d1420, 0.9)
-      .setStrokeStyle(2, 0x7ab8d6, 0.9).setInteractive({ useHandCursor: true });
+      .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, 0.9).setInteractive({ useHandCursor: true });
     codex.on('pointerover', () => codex.setFillStyle(0x1b2535, 0.96));
     codex.on('pointerout', () => codex.setFillStyle(0x0d1420, 0.92));
     codex.on('pointerdown', () => this.scene.start('CodexScene'));
     this.add.text(GAME_WIDTH - 240, 38, 'Codex', {
       fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#dce8f2'
-    }).setOrigin(0.5);
+    }).setResolution(2).setOrigin(0.5);
   }
 
   private stepDifficulty(delta: number) {
@@ -714,11 +795,11 @@ class MenuScene extends Phaser.Scene {
 
   private makeMenuButton(x: number, y: number, w: number, h: number, text: string, color: number, fontSize: string, onClick: () => void) {
     const panel = this.add.rectangle(x, y, w, h, 0x0d1420, 0.92)
-      .setStrokeStyle(2, color, 0.95)
+      .setStrokeStyle(MENU_BORDER_WIDTH, color, 0.95)
       .setInteractive({ useHandCursor: true });
     const label = this.add.text(x, y, text, {
-      fontFamily: 'Arial', fontSize, fontStyle: 'bold', color: '#ffe1a3', stroke: '#111111', strokeThickness: 4
-    }).setOrigin(0.5);
+      fontFamily: 'Arial', fontSize, fontStyle: 'bold', color: '#ffe1a3', stroke: '#111111', strokeThickness: 2
+    }).setResolution(2).setOrigin(0.5);
     panel.on('pointerover', () => { panel.setFillStyle(0x1b2535, 0.96); label.setColor('#ffffff'); });
     panel.on('pointerout', () => { panel.setFillStyle(0x0d1420, 0.92); label.setColor('#ffe1a3'); });
     panel.on('pointerdown', onClick);
@@ -737,7 +818,7 @@ class MenuScene extends Phaser.Scene {
     this.leaderPanels.forEach((entry) => {
       if (!entry.unlocked) return; // locked panels keep their dimmed style
       const selected = entry.id === id;
-      entry.rect.setStrokeStyle(selected ? 4 : 2, selected ? 0xe8b830 : 0x2a4555, selected ? 1 : 0.9);
+      entry.rect.setStrokeStyle(MENU_BORDER_WIDTH, selected ? 0xe8b830 : 0x2a4555, selected ? 1 : 0.9);
       entry.rect.setFillStyle(selected ? 0x1b2535 : 0x0d1420, selected ? 0.96 : 0.92);
     });
     const leader = getLeader(id);
@@ -794,18 +875,18 @@ class MenuScene extends Phaser.Scene {
       .setAngle(-2.5);
 
     const bird = this.add.image(-10, -54, 'title-bird')
-      .setDisplaySize(302, 145)
+      .setDisplaySize(284, 136)
       .setOrigin(0.5)
       .setAlpha(0);
     const squad = this.add.image(6, 43, 'title-squad')
-      .setDisplaySize(335, 133)
+      .setDisplaySize(315, 125)
       .setOrigin(0.5)
       .setAlpha(0);
     logo.add([bird, squad]);
 
     this.tweens.add({
       targets: logo,
-      y: 144,
+      y: 136,
       alpha: 1,
       angle: 0,
       scaleX: { from: 0.86, to: 1 },
@@ -972,6 +1053,8 @@ class CodexScene extends Phaser.Scene {
   private detailMaxScroll = 0;
   private gridScroll = 0;
   private gridMaxScroll = 0;
+  private codexData?: CodexDataModule;
+  private codexDataLoad?: Promise<void>;
   private static readonly GRID_TOP = 158;
   private static readonly GRID_BOTTOM = 690;
   private readonly tabs: Array<{ label: string; match: (c: Card) => boolean }> = [
@@ -1009,6 +1092,7 @@ class CodexScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.82);
     this.root = this.add.container(0, 0);
     this.discovered = new Set(loadAccount().discoveredCards);
+    void this.ensureCodexData();
     this.queueArt();
     this.renderAll();
     this.input.keyboard?.on('keydown-ESC', () => {
@@ -1033,7 +1117,7 @@ class CodexScene extends Phaser.Scene {
   }
 
   private allReserveEnemies(): CodexEnemyEntry[] {
-    return reserveEnemyContracts.map((enemy) => this.reserveEnemyEntry(enemy));
+    return (this.codexData?.reserveEnemyContracts ?? []).map((enemy) => this.reserveEnemyEntry(enemy));
   }
 
   private allEncounterEnemies(): CodexEnemyEntry[] {
@@ -1118,22 +1202,53 @@ class CodexScene extends Phaser.Scene {
       .sort((a, b) => (rarityOrder[a.rarity] ?? 9) - (rarityOrder[b.rarity] ?? 9) || a.name.localeCompare(b.name));
   }
 
+  private ensureCodexData() {
+    if (this.codexData) return Promise.resolve();
+    this.codexDataLoad ??= codexDataPreload
+      .then((data) => {
+        this.codexData = data;
+        this.renderAll();
+      })
+      .catch((error) => {
+        console.warn('Codex data failed to load', error);
+      });
+    return this.codexDataLoad;
+  }
+
+  private visibleGridEntries<T>(entries: T[], cols: number, cellH: number): T[] {
+    const top = CodexScene.GRID_TOP;
+    return entries.filter((_entry, i) => {
+      const cy = top + Math.floor(i / cols) * cellH + cellH / 2;
+      return cy - this.gridScroll >= top - cellH && cy - this.gridScroll <= CodexScene.GRID_BOTTOM + cellH;
+    });
+  }
+
+  private currentDetailArtAsset(): RuntimeImageAsset | undefined {
+    if (!this.detailId) return undefined;
+    if (this.activeSection === 'items') return waymarkArtAssets[this.detailId];
+    if (this.activeSection === 'leaders') return flockLeaderArtAssets[this.detailId];
+    if (this.activeSection === 'enemies') {
+      const enemy = this.currentCodexEnemies().find((candidate) => candidate.id === this.detailId);
+      return enemy ? this.enemyArtAsset(enemy) : undefined;
+    }
+    return this.discovered.has(this.detailId) ? cardArtAssets[this.detailId] : undefined;
+  }
+
   private queueArt() {
+    const cards = this.allCards().filter(this.tabs[this.activeTab].match).sort((a, b) => a.id.localeCompare(b.id));
+    const waymarks = this.currentWaymarks();
+    const leaders = this.allLeaders();
+    const enemies = this.currentCodexEnemies();
     const source = this.activeSection === 'items'
-      ? this.currentWaymarks().map((mark) => waymarkArtAssets[mark.id])
+      ? this.visibleGridEntries(waymarks, 4, 176).map((mark) => waymarkArtAssets[mark.id])
       : this.activeSection === 'leaders'
-        ? this.allLeaders().map((leader) => flockLeaderArtAssets[leader.id])
+        ? this.visibleGridEntries(leaders, 3, 238).map((leader) => flockLeaderArtAssets[leader.id])
         : this.activeSection === 'enemies'
-          ? this.currentCodexEnemies().map((enemy) => this.enemyArtAsset(enemy))
-          : this.allCards()
+          ? this.visibleGridEntries(enemies, 4, 228).map((enemy) => this.enemyArtAsset(enemy))
+          : this.visibleGridEntries(cards, 5, 286)
           .filter((c) => this.discovered.has(c.id))
           .map((c) => cardArtAssets[c.id]);
-    const assets = source.filter((a) => a && !this.textures.exists(a.key) && !requestedOptionalArtKeys.has(a.key));
-    if (assets.length === 0) return;
-    assets.forEach((a) => { requestedOptionalArtKeys.add(a.key); this.load.image(a.key, a.url); });
-    this.load.once('complete', () => this.renderAll());
-    this.load.once('loaderror', () => { /* leave it as a text thumb */ });
-    this.load.start();
+    queueRuntimeImageAssets(this, [...source, this.currentDetailArtAsset()], 'Codex art failed to load', () => this.renderAll());
   }
 
   private renderAll() {
@@ -1227,9 +1342,9 @@ class CodexScene extends Phaser.Scene {
       ['leaders', 'Leaders'],
       ['enemies', 'Enemies'],
     ] as Array<[CodexSection, string]>).forEach(([section, label], i) => {
-      const tx = 704 + i * 126;
+      const tx = 660 + i * 118;
       const active = section === this.activeSection;
-      const rect = this.add.rectangle(tx, 42, 112, 40, active ? 0x1d3047 : 0x0d1420, active ? 1 : 0.9)
+      const rect = this.add.rectangle(tx, 42, 106, 40, active ? 0x1d3047 : 0x0d1420, active ? 1 : 0.9)
         .setStrokeStyle(2, active ? 0x7ab8d6 : 0x2a3a4d, active ? 1 : 0.8)
         .setInteractive({ useHandCursor: true });
       rect.on('pointerdown', () => {
@@ -1245,7 +1360,7 @@ class CodexScene extends Phaser.Scene {
 
     if (cardMode) {
       this.tabs.forEach((tab, i) => {
-        const tx = 60 + i * 132;
+        const tx = 72 + i * 132;
         const active = i === this.activeTab;
         const tabCards = this.allCards().filter(tab.match);
         const got = tabCards.filter((c) => this.discovered.has(c.id)).length;
@@ -1642,8 +1757,8 @@ class CodexScene extends Phaser.Scene {
     this.detailMaxScroll = Math.max(0, (contentBottom - viewTop) - viewH + SCROLL_PAD);
 
     const closeDetail = () => { this.detailId = undefined; this.renderAll(); };
-    this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, mTop, 0x070a11, 0.97).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
-    this.root.add(this.add.rectangle(0, mBottom, GAME_WIDTH, GAME_HEIGHT - mBottom, 0x070a11, 0.97).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
+    this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, mTop, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
+    this.root.add(this.add.rectangle(0, mBottom, GAME_WIDTH, GAME_HEIGHT - mBottom, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
     this.root.add(this.add.rectangle(left + 1, mTop + 1, MW - 2, viewTop - mTop - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
     this.root.add(this.add.rectangle(left + 1, viewBottom, MW - 2, mBottom - viewBottom - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x000000, 0).setStrokeStyle(2, accent, 1));
@@ -1758,10 +1873,10 @@ class CodexScene extends Phaser.Scene {
     const tx = artX + artW / 2 + 26;
     const wrap = right - tx - 22;
     const viewTop = mTop + 16;
-    const viewBottom = mBottom - 16;
+    const viewBottom = mBottom - 44;
     const viewH = viewBottom - viewTop;
-    const flav = getCardFlavor(card.id);
-    const meaning = getCardMeaning(card.id);
+    const flav = this.codexData?.getCardFlavor(card.id);
+    const meaning = this.codexData?.getCardMeaning(card.id);
     const accent = card.type === 'major' ? '#d8a840' : card.type === 'molt' ? '#c56cff' : `#${suitAccentColor(card).toString(16).padStart(6, '0')}`;
     let yy = viewTop - this.detailScroll;
     const heading = (t: string, color: string) => { this.root.add(this.add.text(tx, yy, t, { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color })); yy += 17; };
@@ -1812,7 +1927,7 @@ class CodexScene extends Phaser.Scene {
     }
 
     // Real-world bird facts.
-    const fact = getBirdFact(flav?.bird ?? card.bird);
+    const fact = this.codexData?.getBirdFact(flav?.bird ?? card.bird);
     if (fact) {
       heading(`🐦  ABOUT THE ${(flav?.bird ?? card.bird).toUpperCase()}`, '#e8c24a');
       para(fact, { color: '#cfe0ef', size: 13 }); yy += 14;
@@ -1829,8 +1944,8 @@ class CodexScene extends Phaser.Scene {
     // they also swallow hovers on keyword tokens scrolled out of view; the outside
     // covers double as click-to-close, matching the scrim.
     const closeDetail = () => { this.detailId = undefined; this.renderAll(); };
-    this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, mTop, 0x070a11, 0.97).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
-    this.root.add(this.add.rectangle(0, mBottom, GAME_WIDTH, GAME_HEIGHT - mBottom, 0x070a11, 0.97).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
+    this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, mTop, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
+    this.root.add(this.add.rectangle(0, mBottom, GAME_WIDTH, GAME_HEIGHT - mBottom, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
     this.root.add(this.add.rectangle(left + 1, mTop + 1, MW - 2, viewTop - mTop - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
     this.root.add(this.add.rectangle(left + 1, viewBottom, MW - 2, mBottom - viewBottom - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
     // Redraw the panel border crisply over the covers.
@@ -1934,7 +2049,7 @@ class CodexScene extends Phaser.Scene {
     yy += 12;
 
     heading('FASHION DIRECTION', '#c9a6ff');
-    para(enemy.source === 'reserve' ? (reserveEnemyFashionDirections[enemy.id] ?? enemy.visualBrief) : enemy.visualBrief, { size: 13 });
+    para(enemy.source === 'reserve' ? (this.codexData?.reserveEnemyFashionDirections[enemy.id] ?? enemy.visualBrief) : enemy.visualBrief, { size: 13 });
     yy += 12;
 
     heading('ART CONTRACT', '#7f93a8');
@@ -1945,8 +2060,8 @@ class CodexScene extends Phaser.Scene {
     this.detailMaxScroll = Math.max(0, (contentBottom - viewTop) - viewH + SCROLL_PAD);
 
     const closeDetail = () => { this.detailId = undefined; this.renderAll(); };
-    this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, mTop, 0x070a11, 0.97).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
-    this.root.add(this.add.rectangle(0, mBottom, GAME_WIDTH, GAME_HEIGHT - mBottom, 0x070a11, 0.97).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
+    this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, mTop, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
+    this.root.add(this.add.rectangle(0, mBottom, GAME_WIDTH, GAME_HEIGHT - mBottom, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
     this.root.add(this.add.rectangle(left + 1, mTop + 1, MW - 2, viewTop - mTop - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
     this.root.add(this.add.rectangle(left + 1, viewBottom, MW - 2, mBottom - viewBottom - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x000000, 0).setStrokeStyle(2, accent, 1));
@@ -2087,34 +2202,23 @@ class RouteScene extends Phaser.Scene {
     const ids = new Set(this.runState.deck.map((card) => card.id));
     const offer = this.marketCardOffer();
     if (offer) ids.add(offer.id);
-    const assets = uniqueImageAssets([...ids].map((id) => cardArtAssets[id]))
-      .filter((asset) => !this.textures.exists(asset.key) && !requestedOptionalArtKeys.has(asset.key));
-    if (assets.length === 0) return;
-    assets.forEach((asset) => {
-      requestedOptionalArtKeys.add(asset.key);
-      this.load.image(asset.key, asset.url);
-    });
-    this.load.once('complete', () => this.renderAll());
-    this.load.once('loaderror', (file: { key?: string }) => {
-      console.warn(`Optional card art failed to load on route map: ${file.key ?? 'unknown'}`);
-    });
-    this.load.start();
+    queueRuntimeImageAssets(
+      this,
+      [...ids].map((id) => cardArtAssets[id]),
+      'Optional card art failed to load on route map',
+      () => this.renderAll()
+    );
   }
 
   private queueRouteNodeIconArtLoad() {
     if (this.routeNodeIconArtRequested) return;
     this.routeNodeIconArtRequested = true;
-    const assets = Object.values(routeNodeIconAssets).filter((asset) => !this.textures.exists(asset.key) && !requestedOptionalArtKeys.has(asset.key));
-    if (assets.length === 0) return;
-    assets.forEach((asset) => {
-      requestedOptionalArtKeys.add(asset.key);
-      this.load.image(asset.key, asset.url);
-    });
-    this.load.once('complete', () => this.renderAll());
-    this.load.once('loaderror', (file: { key?: string }) => {
-      console.warn(`Route node icon failed to load: ${file.key ?? 'unknown'}`);
-    });
-    this.load.start();
+    queueRuntimeImageAssets(
+      this,
+      Object.values(routeNodeIconAssets),
+      'Route node icon failed to load',
+      () => this.renderAll()
+    );
   }
 
   private renderConfirmExitOverlay() {
@@ -2382,12 +2486,20 @@ class RouteScene extends Phaser.Scene {
     yy += 26;
     this.add.circle(panel.x + pw - 50, frame.top + 56, 30, 0x111a27, 0.92).setStrokeStyle(1.5, 0x49606d, 0.74);
     this.renderRouteNodeTypeIcon(node.type, panel.x + pw - 50, frame.top + 56, 50);
-    this.add.text(left, yy, detail.title, { fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold', color: '#ffe1a3', wordWrap: { width: pw - 112 } });
-    yy += 38;
+    const title = this.add.text(left, yy, detail.title, {
+      fontFamily: 'Arial',
+      fontSize: '20px',
+      fontStyle: 'bold',
+      color: '#ffe1a3',
+      lineSpacing: 1,
+      wordWrap: { width: pw - 112 },
+      maxLines: 2
+    });
+    yy += title.height + 10;
     this.add.text(left, yy, `${detail.type}  /  ${node.risk.toUpperCase()} RISK`, { fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: routeNodeRiskHex(node.risk) });
     yy += 30;
     this.add.text(left, yy, detail.lesson, { fontFamily: 'Arial', fontSize: '14px', color: '#cdd9e6', lineSpacing: 2, wordWrap: { width: pw - 40 } });
-    yy += 76;
+    yy += Math.max(60, Math.min(82, 24 + Math.ceil(detail.lesson.length / 44) * 18));
     if (detail.rewards) {
       this.add.text(left, yy, 'REWARD BIAS', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#7f93a8' });
       yy += 18;
@@ -2395,7 +2507,7 @@ class RouteScene extends Phaser.Scene {
       yy += 42;
     }
     const badgeHeight = this.renderInspectorRewardBadges(node, left, yy, pw - 40);
-    yy += badgeHeight + (badgeHeight > 0 ? 14 : 0);
+    yy += badgeHeight + (badgeHeight > 0 ? 20 : 0);
     this.renderInspectorBossPrep(left, Math.min(Math.max(yy, top + 276), top + ph - 200), pw - 40);
 
     if (this.selectableNodeIds.has(node.id)) {
@@ -2429,11 +2541,6 @@ class RouteScene extends Phaser.Scene {
         stroke: '#020409',
         strokeThickness: 2
       }).setOrigin(0.5);
-      this.add.text(bx, badgeY + 21, badge.label, {
-        fontFamily: 'Arial',
-        fontSize: '10px',
-        color: '#b9c7d6'
-      }).setOrigin(0.5, 0);
     });
     return 58;
   }
@@ -2450,14 +2557,14 @@ class RouteScene extends Phaser.Scene {
       fontFamily: 'Arial', fontSize: '14px', fontStyle: 'bold', color: '#ffe1a3', wordWrap: { width: width - 24 }
     });
     this.add.text(left + 12, top + 55, `Pressure: ${prep.pressure}`, {
-      fontFamily: 'Arial', fontSize: '12px', color: '#ffb38a', wordWrap: { width: width - 24 }
+      fontFamily: 'Arial', fontSize: '11px', color: '#ffb38a', lineSpacing: 1, wordWrap: { width: width - 24 }, maxLines: 2
     });
-    this.add.text(left + 12, top + 78, `Prep: ${prep.usefulNodes.join(', ') || 'none ahead'}`, {
-      fontFamily: 'Arial', fontSize: '12px', color: '#8df4ff', wordWrap: { width: width - 24 }
+    this.add.text(left + 12, top + 84, `Prep: ${prep.usefulNodes.join(', ') || 'none ahead'}`, {
+      fontFamily: 'Arial', fontSize: '11px', color: '#8df4ff', lineSpacing: 1, wordWrap: { width: width - 24 }, maxLines: 2
     });
     this.add.text(left + 12, top + 100,
       `Cover ${prep.readiness.cover} / Damage ${prep.readiness.damage} / Recovery ${prep.readiness.recovery} / Molt ${prep.readiness.moltSafety} / Supplies ${prep.readiness.supplies}`,
-      { fontFamily: 'Arial', fontSize: '10px', color: '#cdd9e6', wordWrap: { width: width - 24 } }
+      { fontFamily: 'Arial', fontSize: '10px', color: '#cdd9e6', wordWrap: { width: width - 24 }, maxLines: 2 }
     );
   }
 
@@ -2872,7 +2979,10 @@ class RouteScene extends Phaser.Scene {
 
   private showHoverCardDetail(card: Card, zone: string, cost: number, anchorX: number, anchorY: number) {
     this.hideHoverCardDetail();
-    this.hoverCardDetail = renderFloatingCardDetail(this, card, zone, cost, anchorX, anchorY);
+    const adjustedAnchorX = this.marketOpen && zone === 'Market offer'
+      ? 440
+      : anchorX;
+    this.hoverCardDetail = renderFloatingCardDetail(this, card, zone, cost, adjustedAnchorX, anchorY);
   }
 
   private hideHoverCardDetail() {
@@ -3945,7 +4055,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private renderBackdrop() {
-    const battlefield = currentBattlefieldAsset();
+    const battlefield = this.currentBattlefieldAsset();
     if (this.textures.exists(battlefield.key)) {
       const bg = this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, battlefield.key)
         .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
@@ -4084,6 +4194,234 @@ class BattleScene extends Phaser.Scene {
     });
   }
 
+  private fxGlowPulse(x: number, y: number, color: number, radius = 72, duration = 360, alpha = 0.2) {
+    if (prefersReducedMotion()) return;
+    const glow = this.add.ellipse(x, y, radius, radius * 0.56, color, alpha)
+      .setOrigin(0.5)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.fxLayer.add(glow);
+    this.tweens.add({
+      targets: glow,
+      scaleX: 1.85,
+      scaleY: 1.45,
+      alpha: 0,
+      duration,
+      ease: 'Cubic.easeOut',
+      onComplete: () => glow.destroy(),
+    });
+  }
+
+  private fxShockwave(x: number, y: number, color: number, radius = 86, duration = 430, tilt = -8) {
+    if (prefersReducedMotion()) return;
+    const ring = this.add.graphics();
+    ring.lineStyle(4, 0x020409, 0.34);
+    ring.strokeEllipse(0, 0, radius * 1.05, radius * 0.46);
+    ring.lineStyle(2, color, 0.82);
+    ring.strokeEllipse(0, 0, radius, radius * 0.42);
+    ring.lineStyle(1, 0xffffff, 0.36);
+    ring.strokeEllipse(0, 0, radius * 0.66, radius * 0.25);
+    ring.setPosition(x, y).setAngle(tilt).setBlendMode(Phaser.BlendModes.ADD);
+    this.fxLayer.add(ring);
+    this.tweens.add({
+      targets: ring,
+      scaleX: 1.72,
+      scaleY: 1.36,
+      alpha: 0,
+      duration,
+      ease: 'Cubic.easeOut',
+      onComplete: () => ring.destroy(),
+    });
+  }
+
+  private fxDirectionalStreak(x1: number, y1: number, x2: number, y2: number, color: number, duration = 260) {
+    if (prefersReducedMotion()) return;
+    const streak = this.add.graphics();
+    streak.lineStyle(7, 0x020409, 0.34);
+    streak.beginPath();
+    streak.moveTo(x1, y1);
+    streak.lineTo(x2, y2);
+    streak.strokePath();
+    streak.lineStyle(3, color, 0.92);
+    streak.beginPath();
+    streak.moveTo(x1, y1);
+    streak.lineTo(x2, y2);
+    streak.strokePath();
+    streak.lineStyle(1, 0xffffff, 0.5);
+    streak.beginPath();
+    streak.moveTo(x1 + 4, y1 - 4);
+    streak.lineTo(x2 - 4, y2 + 4);
+    streak.strokePath();
+    streak.setBlendMode(Phaser.BlendModes.ADD);
+    this.fxLayer.add(streak);
+    this.tweens.add({
+      targets: streak,
+      alpha: 0,
+      scaleX: 1.03,
+      scaleY: 1.03,
+      duration,
+      ease: 'Quad.easeOut',
+      onComplete: () => streak.destroy(),
+    });
+  }
+
+  private drawSuitHex(g: Phaser.GameObjects.Graphics, color: number) {
+    const points = [
+      [0, -30],
+      [26, -14],
+      [24, 16],
+      [0, 32],
+      [-24, 16],
+      [-26, -14],
+    ];
+    g.lineStyle(4, 0x020409, 0.35);
+    g.beginPath();
+    g.moveTo(points[0][0], points[0][1]);
+    points.slice(1).forEach(([x, y]) => g.lineTo(x, y));
+    g.closePath();
+    g.strokePath();
+    g.lineStyle(2, color, 0.9);
+    g.beginPath();
+    g.moveTo(points[0][0], points[0][1]);
+    points.slice(1).forEach(([x, y]) => g.lineTo(x, y));
+    g.closePath();
+    g.strokePath();
+    g.lineStyle(2, color, 0.58);
+    g.beginPath();
+    g.moveTo(-16, 4);
+    g.lineTo(-2, 18);
+    g.lineTo(19, -10);
+    g.strokePath();
+  }
+
+  private fxSuitSignature(suit: string | null | undefined, x: number, y: number, color: number, scale = 1) {
+    if (prefersReducedMotion()) return;
+    const sig = this.add.graphics();
+    sig.setBlendMode(Phaser.BlendModes.ADD);
+    if (suit === 'nests') {
+      this.drawSuitHex(sig, color);
+    } else if (suit === 'basins') {
+      sig.lineStyle(4, 0x020409, 0.28);
+      sig.strokeEllipse(0, 10, 62, 16);
+      sig.strokeEllipse(0, 0, 44, 12);
+      sig.lineStyle(2, color, 0.9);
+      sig.strokeEllipse(0, 10, 62, 16);
+      sig.strokeEllipse(0, 0, 44, 12);
+      sig.strokeEllipse(0, -9, 26, 8);
+    } else if (suit === 'plumes') {
+      sig.lineStyle(5, 0x020409, 0.28);
+      sig.beginPath();
+      sig.moveTo(-28, 12);
+      sig.lineTo(24, -20);
+      sig.moveTo(-12, 18);
+      sig.lineTo(30, 2);
+      sig.moveTo(-22, -8);
+      sig.lineTo(8, -28);
+      sig.strokePath();
+      sig.lineStyle(2, color, 0.92);
+      sig.beginPath();
+      sig.moveTo(-28, 12);
+      sig.lineTo(24, -20);
+      sig.moveTo(-12, 18);
+      sig.lineTo(30, 2);
+      sig.moveTo(-22, -8);
+      sig.lineTo(8, -28);
+      sig.strokePath();
+    } else if (suit === 'quills') {
+      sig.lineStyle(5, 0x020409, 0.28);
+      sig.beginPath();
+      sig.moveTo(-22, 26);
+      sig.lineTo(20, -28);
+      sig.moveTo(4, 28);
+      sig.lineTo(28, -8);
+      sig.moveTo(-28, 4);
+      sig.lineTo(10, -18);
+      sig.strokePath();
+      sig.lineStyle(2, color, 0.94);
+      sig.beginPath();
+      sig.moveTo(-22, 26);
+      sig.lineTo(20, -28);
+      sig.moveTo(4, 28);
+      sig.lineTo(28, -8);
+      sig.moveTo(-28, 4);
+      sig.lineTo(10, -18);
+      sig.strokePath();
+    } else {
+      sig.lineStyle(2, color, 0.88);
+      for (let i = 0; i < 8; i += 1) {
+        const a = Phaser.Math.DegToRad(i * 45);
+        sig.beginPath();
+        sig.moveTo(Math.cos(a) * 8, Math.sin(a) * 8);
+        sig.lineTo(Math.cos(a) * 32, Math.sin(a) * 32);
+        sig.strokePath();
+      }
+    }
+    sig.setPosition(x, y).setScale(scale).setAlpha(0.98);
+    this.fxLayer.add(sig);
+    this.tweens.add({
+      targets: sig,
+      scaleX: scale * 1.3,
+      scaleY: scale * 1.3,
+      alpha: 0,
+      duration: 470,
+      ease: 'Cubic.easeOut',
+      onComplete: () => sig.destroy(),
+    });
+  }
+
+  private fxImpactBurst(x: number, y: number, color: number, suit: string | null | undefined, intensity = 1) {
+    if (prefersReducedMotion()) return;
+    const burst = this.add.graphics();
+    const reach = 42 * intensity;
+    const inner = 9 * intensity;
+    const angles = suit === 'basins'
+      ? [-164, -126, -88, -50]
+      : suit === 'nests'
+        ? [-150, -90, -30, 30, 90, 150]
+        : suit === 'plumes'
+          ? [-178, -142, -108, -72]
+          : [-64, -34, -4, 28];
+    burst.setBlendMode(Phaser.BlendModes.ADD);
+    burst.fillStyle(color, 0.2);
+    burst.fillCircle(0, 0, 34 * intensity);
+    burst.fillStyle(0xffffff, 0.34);
+    burst.fillCircle(0, 0, 9 * intensity);
+    const drawRays = (width: number, rayColor: number, alpha: number, offset = 0) => {
+      burst.lineStyle(width, rayColor, alpha);
+      angles.forEach((deg, index) => {
+        const angle = Phaser.Math.DegToRad(deg + offset + index * 3);
+        burst.beginPath();
+        burst.moveTo(Math.cos(angle) * inner, Math.sin(angle) * inner);
+        burst.lineTo(Math.cos(angle) * reach, Math.sin(angle) * reach);
+        burst.strokePath();
+      });
+    };
+    drawRays(8, 0x020409, 0.38);
+    drawRays(4, color, 0.96);
+    drawRays(1, 0xffffff, 0.72, -2);
+    burst.setPosition(x, y).setScale(0.72).setAlpha(0.98);
+    this.fxLayer.add(burst);
+    this.tweens.add({
+      targets: burst,
+      scaleX: 1.28,
+      scaleY: 1.28,
+      alpha: 0,
+      duration: 360,
+      ease: 'Cubic.easeOut',
+      onComplete: () => burst.destroy(),
+    });
+    this.time.delayedCall(50, () => {
+      this.fxMoteBurst(x, y, color, {
+        count: Math.round(10 * intensity),
+        speed: 178 * intensity,
+        lifespan: 360,
+        scale: 0.58,
+        gravityY: suit === 'basins' ? -18 : 10,
+        spreadX: 14,
+        spreadY: 10,
+      });
+    });
+  }
+
   private fxAnimForColor(color: number) {
     if (color === 0xc98bff) return 'fx-winded';
     if (color === 0x8fd6a0) return 'fx-heal';
@@ -4095,6 +4433,8 @@ class BattleScene extends Phaser.Scene {
   private pulseRing(x: number, y: number, color: number, radius = 58, duration = 460) {
     if (prefersReducedMotion()) return;
     const scale = Phaser.Math.Clamp(radius / 44, 0.9, 2.5);
+    this.fxGlowPulse(x, y, color, radius * 1.16, duration * 0.86, 0.18);
+    this.fxShockwave(x, y, color, radius * 1.05, duration, -8);
     this.playFxAnimation(this.fxAnimForColor(color), x, y, { scale, alpha: 0.82, additive: true });
     this.fxMoteBurst(x, y, color, {
       count: radius >= 84 ? 18 : 10,
@@ -4111,6 +4451,7 @@ class BattleScene extends Phaser.Scene {
     if (prefersReducedMotion()) return;
     const anim = this.fxAnimForColor(color);
     const repeats = count >= 22 ? 3 : count >= 14 ? 2 : 1;
+    this.fxGlowPulse(x, y, color, count >= 22 ? 72 : 54, 310, 0.13);
     this.fxMoteBurst(x, y, color, {
       count,
       speed,
@@ -4133,6 +4474,8 @@ class BattleScene extends Phaser.Scene {
 
   private suitPulseAt(x: number, y: number, suit: string | null | undefined, label = '') {
     const meta = suitFxMeta(suit ?? undefined);
+    this.fxGlowPulse(x, y, meta.color, 70, 360, 0.14);
+    this.fxSuitSignature(suit, x, y + 2, meta.color, 0.92);
     this.playFxAnimation(SUIT_FX_ANIM[suit ?? ''] ?? this.fxAnimForColor(meta.color), x, y, {
       scale: 1.45,
       alpha: 0.88,
@@ -4145,6 +4488,8 @@ class BattleScene extends Phaser.Scene {
   }
 
   private windedFx(x: number, y: number) {
+    this.fxShockwave(x, y - 8, 0xc98bff, 72, 440, -11);
+    this.fxGlowPulse(x, y - 10, 0xc98bff, 62, 380, 0.16);
     this.playFxAnimation('fx-winded', x, y - 10, { scale: 1.7, alpha: 0.94, additive: true });
     this.fxMoteBurst(x + 6, y - 8, 0xc98bff, {
       count: 14,
@@ -4160,6 +4505,10 @@ class BattleScene extends Phaser.Scene {
 
   private coverImpactFx(x: number, y: number, color = 0x7ab8d6) {
     const hostile = color === 0x9fb1c4;
+    this.fxGlowPulse(x, y - 8, hostile ? 0xff9d6b : color, hostile ? 54 : 70, 330, hostile ? 0.12 : 0.17);
+    this.fxShockwave(x, y - 8, hostile ? 0xff9d6b : color, hostile ? 54 : 76, 380, hostile ? 9 : -8);
+    if (!hostile) this.fxSuitSignature('nests', x, y - 10, color, 1.05);
+    this.fxImpactBurst(x, y - 8, hostile ? 0xff9d6b : color, hostile ? null : 'nests', hostile ? 0.78 : 0.95);
     this.playFxAnimation(hostile ? 'fx-hostile' : 'fx-nests', x, y - 8, {
       scale: hostile ? 1.22 : 1.45,
       alpha: 0.88,
@@ -4178,6 +4527,9 @@ class BattleScene extends Phaser.Scene {
 
   private coverBuildFx(suit?: string | null) {
     const meta = suitFxMeta(suit ?? 'nests');
+    this.fxGlowPulse(FLOCK_FX_X, FLOCK_FX_Y + 20, 0x8fd6a0, 108, 520, 0.2);
+    this.fxShockwave(FLOCK_FX_X, FLOCK_FX_Y + 24, 0x8fd6a0, 104, 560, -7);
+    this.fxSuitSignature('nests', FLOCK_FX_X, FLOCK_FX_Y + 18, 0x8fd6a0, 1.28);
     this.playFxAnimation('fx-nests', FLOCK_FX_X, FLOCK_FX_Y + 20, {
       scale: 1.85,
       alpha: 0.9,
@@ -4193,6 +4545,7 @@ class BattleScene extends Phaser.Scene {
       spreadY: 10,
     });
     if (suit && suit !== 'nests') {
+      this.fxSuitSignature(suit, FLOCK_FX_X + 22, FLOCK_FX_Y - 12, meta.color, 0.82);
       this.playFxAnimation(SUIT_FX_ANIM[suit] ?? this.fxAnimForColor(meta.color), FLOCK_FX_X + 22, FLOCK_FX_Y - 12, {
         scale: 1.1,
         alpha: 0.72,
@@ -4203,6 +4556,9 @@ class BattleScene extends Phaser.Scene {
   }
 
   private healFx() {
+    this.fxGlowPulse(FLOCK_FX_X, FLOCK_FX_Y + 12, 0x8fd6a0, 106, 600, 0.2);
+    this.fxShockwave(FLOCK_FX_X, FLOCK_FX_Y + 12, 0x8fd6a0, 88, 560, -6);
+    this.fxSuitSignature('basins', FLOCK_FX_X + 4, FLOCK_FX_Y - 2, 0x8fd6a0, 1.15);
     this.playFxAnimation('fx-heal', FLOCK_FX_X, FLOCK_FX_Y + 12, { scale: 1.75, alpha: 0.92, additive: true });
     this.playFxAnimation('fx-basins', FLOCK_FX_X + 16, FLOCK_FX_Y - 24, { scale: 1.05, alpha: 0.7, additive: true });
     this.fxMoteBurst(FLOCK_FX_X, FLOCK_FX_Y + 14, 0x8fd6a0, {
@@ -4235,35 +4591,33 @@ class BattleScene extends Phaser.Scene {
     this.optionalArtRequested = true;
 
     const requestedAssets = uniqueImageAssets([
-      currentBattlefieldAsset(),
+      this.currentBattlefieldAsset(),
       this.currentFlockLeaderArtAsset(),
       ...Object.values(waymarkArtAssets),
       ...this.allDeckCards().map((card) => cardArtAssets[card.id]),
       ...this.enemies
         .map((enemy) => enemyArtAssets[enemy.runtime.id] ?? enemyArtAssets[enemy.id])
         .filter((asset): asset is { key: string; url: string } => Boolean(asset))
-    ]).filter((asset) => !this.textures.exists(asset.key) && !requestedOptionalArtKeys.has(asset.key));
+    ]);
 
     this.queueImageAssets(requestedAssets, 'Optional art failed to load');
   }
 
+  private currentRouteNode() {
+    return currentCombatNodes()[this.currentRouteIndex];
+  }
+
+  private currentBattlefieldAsset() {
+    return currentBattlefieldAsset(this.currentRouteNode());
+  }
+
   private queueCardArtLoad(cards: Card[]) {
-    const assets = uniqueImageAssets(cards.map((card) => cardArtAssets[card.id]))
-      .filter((asset) => !this.textures.exists(asset.key) && !requestedOptionalArtKeys.has(asset.key));
+    const assets = uniqueImageAssets(cards.map((card) => cardArtAssets[card.id]));
     this.queueImageAssets(assets, 'Card art failed to load');
   }
 
   private queueImageAssets(assets: RuntimeImageAsset[], warning: string) {
-    if (assets.length === 0) return;
-    assets.forEach((asset) => {
-      requestedOptionalArtKeys.add(asset.key);
-      this.load.image(asset.key, asset.url);
-    });
-    this.load.once('complete', () => this.renderAll());
-    this.load.once('loaderror', (file: { key?: string }) => {
-      console.warn(`${warning}: ${file.key ?? 'unknown'}`);
-    });
-    this.load.start();
+    queueRuntimeImageAssets(this, assets, warning, () => this.renderAll());
   }
 
   // Per-enemy board placement: a single enemy keeps the classic right-side
@@ -5182,9 +5536,9 @@ class BattleScene extends Phaser.Scene {
   private renderCardReward() {
     this.queueCardArtLoad(this.rewardChoices);
     this.renderRewardBackdrop('Add to the Flock', 'Choose one new crew card — or skip for Scrap.');
-    this.renderDeckNeeds(196);
+    this.renderDeckNeeds(210);
     this.rewardChoices.forEach((card, index) => {
-      this.renderChoiceCard(card, 392 + index * 248, 360, () => this.chooseRewardCard(card.id));
+      this.renderChoiceCard(card, 392 + index * 248, 374, () => this.chooseRewardCard(card.id));
     });
     const skip = this.add.rectangle(GAME_WIDTH / 2, 590, 280, 46, 0x2a2320, 0.96)
       .setStrokeStyle(2, 0xd8a840, 0.9)
@@ -5200,13 +5554,14 @@ class BattleScene extends Phaser.Scene {
     this.queueCardArtLoad(this.upgradeChoices);
     this.renderRewardBackdrop('Preen a Card', 'Choose one owned crew card to improve.');
     this.upgradeChoices.forEach((card, index) => {
-      this.renderChoiceCard(card, 392 + index * 248, 360, () => this.chooseUpgradeCard(card.id));
+      this.renderChoiceCard(card, 392 + index * 248, 374, () => this.chooseUpgradeCard(card.id));
     });
   }
 
   private renderRewardBackdrop(title: string, subtitle: string) {
-    const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.78);
+    const overlay = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.9);
     this.root.add(overlay);
+    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 180, GAME_WIDTH, 220, 0x020409, 0.42));
     this.root.add(this.add.text(GAME_WIDTH / 2, 128, title, {
       fontFamily: 'Arial',
       fontSize: '42px',
@@ -5245,22 +5600,26 @@ class BattleScene extends Phaser.Scene {
       fontSize: '18px',
       fontStyle: 'bold',
       color: '#ffe1a3',
-      wordWrap: { width: 150 }
+      wordWrap: { width: 150 },
+      maxLines: 2
     }));
-    this.root.add(this.add.text(x - 76, y - 28, card.bird, {
+    this.root.add(this.add.text(x - 76, y - 31, card.bird, {
       fontFamily: 'Arial',
       fontSize: '13px',
       fontStyle: 'bold',
       color: '#91a6b8',
-      wordWrap: { width: 150 }
+      wordWrap: { width: 150 },
+      maxLines: 1
     }));
-    this.root.add(this.add.text(x - 76, y + 2, displayText(card), {
+    this.root.add(this.add.text(x - 76, y - 2, displayText(card), {
       fontFamily: 'Arial',
       fontSize: '14px',
       color: '#dce8f2',
-      wordWrap: { width: 150 }
+      lineSpacing: 1,
+      wordWrap: { width: 150 },
+      maxLines: 4
     }));
-    this.root.add(this.add.text(x - 76, y + 88, cardLabel(card), {
+    this.root.add(this.add.text(x - 76, y + 84, cardLabel(card), {
       fontFamily: 'Arial',
       fontSize: '12px',
       fontStyle: 'bold',
@@ -5268,21 +5627,13 @@ class BattleScene extends Phaser.Scene {
     }));
     const needTags = this.cardNeedTags(card);
     if (needTags.length > 0) {
-      this.root.add(this.add.text(x - 76, y + 104, needTags.join('  /  '), {
+      this.root.add(this.add.text(x - 76, y + 100, needTags.join('  /  '), {
         fontFamily: 'Arial',
         fontSize: '11px',
         fontStyle: 'bold',
         color: '#ffcf6b',
-        wordWrap: { width: 150 }
-      }));
-    }
-
-    // Flavor / fantasy from the canonical arcana lore, to aid the pick.
-    const flavor = getCardFlavor(card.id)?.flavor;
-    if (flavor) {
-      this.root.add(this.add.text(x - 76, y + (needTags.length ? 124 : 106), flavor, {
-        fontFamily: 'Georgia, serif', fontSize: '11px', fontStyle: 'italic',
-        color: '#9fb1c4', wordWrap: { width: 152 }
+        wordWrap: { width: 150 },
+        maxLines: 2
       }));
     }
   }
@@ -5746,6 +6097,7 @@ class BattleScene extends Phaser.Scene {
     const ghost = this.addCastCardGhost(card, fromX, HAND_Y);
     ghost.setDepth(40);
     this.fxShardSweep(fromX, HAND_Y - 18, meta.color, travelDirection, 6);
+    this.fxDirectionalStreak(fromX, HAND_Y - 34, FLOCK_FX_X + 18, FLOCK_FX_Y - 82, meta.color, 250);
 
     this.tweens.chain({
       targets: ghost,
@@ -5758,8 +6110,13 @@ class BattleScene extends Phaser.Scene {
           duration: 170,
           ease: 'Cubic.easeOut',
           onComplete: () => {
+            this.fxGlowPulse(FLOCK_FX_X + 10, FLOCK_FX_Y - 42, meta.color, 74, 340, 0.18);
+            this.fxSuitSignature(card.runtime.suit, FLOCK_FX_X + 10, FLOCK_FX_Y - 42, meta.color, 0.88);
             this.playFxAnimation(animKey, FLOCK_FX_X + 10, FLOCK_FX_Y - 42, { scale: 1.35, alpha: 0.9, additive: true });
             this.fxShardSweep(FLOCK_FX_X + 18, FLOCK_FX_Y - 62, meta.color, travelDirection, 9);
+            if (card.target !== 'self') {
+              this.fxDirectionalStreak(FLOCK_FX_X + 18, FLOCK_FX_Y - 72, target.x, target.y - 68, meta.color, 260);
+            }
           },
         },
         {
@@ -5772,6 +6129,10 @@ class BattleScene extends Phaser.Scene {
           ease: 'Quad.easeInOut',
           onComplete: () => {
             ghost.destroy(true);
+            this.fxGlowPulse(target.x, target.y - 18, meta.color, card.target === 'self' ? 78 : 96, 420, 0.19);
+            this.fxShockwave(target.x, target.y - 18, meta.color, card.target === 'self' ? 68 : 92, 430, card.target === 'self' ? -6 : 8);
+            this.fxSuitSignature(card.runtime.suit, target.x, target.y - 18, meta.color, card.target === 'self' ? 0.9 : 1.1);
+            this.fxImpactBurst(target.x, target.y - 18, meta.color, card.runtime.suit, card.target === 'self' ? 0.85 : 1.12);
             this.playFxAnimation(animKey, target.x, target.y - 18, { scale: 1.55, alpha: 0.92, additive: true });
             this.fxMoteBurst(target.x, target.y - 18, meta.color, {
               count: card.target === 'self' ? 12 : 18,
@@ -6943,6 +7304,8 @@ class BattleScene extends Phaser.Scene {
   }
 
   private getTextState(): RenderPayload {
+    const battlefield = this.currentBattlefieldAsset();
+    const districtBattlefield = BATTLEFIELD_ASSETS[currentMap().id] ?? DEFAULT_BATTLEFIELD_ASSET;
     return {
       mode: this.mode,
       scene: 'BattleScene',
@@ -7005,7 +7368,9 @@ class BattleScene extends Phaser.Scene {
         completedNodeIds: [...this.completedRouteNodeIds],
         scrap: this.scrap,
         routeMarks: [...this.routeMarks],
-        supplies: [...this.runSupplies]
+        supplies: [...this.runSupplies],
+        battlefieldAssetKey: battlefield.key,
+        battlefieldVariant: battlefield.key !== districtBattlefield.key
       },
       inspectOverlay: this.inspectOverlay,
       waymarkDrawerOpen: this.waymarkDrawerOpen,
@@ -7796,7 +8161,7 @@ function renderFloatingCardDetail(scene: Phaser.Scene, card: Card, zone: string,
   }));
   yy += 15;
   const current = add(scene.add.text(tx, yy, displayText(card), {
-    fontFamily: 'Arial', fontSize: '12px', color: '#dce8f2', lineSpacing: 1, wordWrap: { width: wrap }
+    fontFamily: 'Arial', fontSize: '12px', color: '#dce8f2', lineSpacing: 1, wordWrap: { width: wrap }, maxLines: 2
   })) as Phaser.GameObjects.Text;
   yy += current.height + 8;
   add(scene.add.text(tx, yy, 'Preened Effect', {
@@ -7804,7 +8169,7 @@ function renderFloatingCardDetail(scene: Phaser.Scene, card: Card, zone: string,
   }));
   yy += 15;
   const upgraded = add(scene.add.text(tx, yy, card.upgraded ? 'Already preened.' : card.upgradedText, {
-    fontFamily: 'Arial', fontSize: '12px', color: '#cfe0ef', lineSpacing: 1, wordWrap: { width: wrap }
+    fontFamily: 'Arial', fontSize: '12px', color: '#cfe0ef', lineSpacing: 1, wordWrap: { width: wrap }, maxLines: 2
   })) as Phaser.GameObjects.Text;
   yy += upgraded.height + 8;
   if (card.moltText && yy < bottom - 40) {
@@ -7813,7 +8178,7 @@ function renderFloatingCardDetail(scene: Phaser.Scene, card: Card, zone: string,
     }));
     yy += 15;
     const molt = add(scene.add.text(tx, yy, card.upgraded && card.moltTextUpgraded ? card.moltTextUpgraded : card.moltText, {
-      fontFamily: 'Arial', fontSize: '11px', color: '#ffc78f', fontStyle: 'bold', lineSpacing: 1, wordWrap: { width: wrap }
+      fontFamily: 'Arial', fontSize: '11px', color: '#ffc78f', fontStyle: 'bold', lineSpacing: 1, wordWrap: { width: wrap }, maxLines: 3
     })) as Phaser.GameObjects.Text;
     yy += molt.height + 7;
   }
