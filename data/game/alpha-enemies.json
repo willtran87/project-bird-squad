@@ -89,7 +89,7 @@
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural limbs, tail, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
       "moves": [
         { "id": "baron_lash_9", "label": "Lash 9", "effects": ["damage(flock, 9)"] },
-        { "id": "baron_panel_guard", "label": "Panel Guard", "effects": ["gainCover(10)"] },
+        { "id": "baron_panel_guard", "label": "Panel Guard", "effects": ["gainCover(10)", "if flockHasCover then loseWingbeat(1)"] },
         { "id": "baron_double_jab", "label": "Double Jab 7", "effects": ["damage(flock, 7)", "applyWinded(flock, 1)"] },
         { "id": "baron_heavy_13", "label": "Heavy Strike 13", "effects": ["damage(flock, 13)"] }
       ],
@@ -113,7 +113,7 @@
         { "id": "toll_line", "label": "Toll Line", "effects": ["gainCover(8)", "if flockHasNoCover then addSnagToDiscard(tangled_line)"] },
         { "id": "crowbar_tap", "label": "Crowbar Tap 8", "effects": ["damage(flock, 8)"] },
         { "id": "tar_toss", "label": "Tar Toss 5", "effects": ["damage(flock, 5)", "if isMolting then applyOpenSky(1)"] },
-        { "id": "chokepoint_call", "label": "Chokepoint Call", "effects": ["gainCover(6)", "nextAttackBonus(3)", "applyFrail(1)"] },
+        { "id": "chokepoint_call", "label": "Chokepoint Call", "effects": ["gainCover(6)", "nextAttackBonus(3)", "applyFrail(1)", "if flockHasCover then loseWingbeat(1)"] },
         { "id": "heavy_strike", "label": "Heavy Strike 13", "effects": ["damage(flock, 13)"] }
       ],
       "attackPattern": { "type": "scripted", "moveIds": ["toll_line", "crowbar_tap", "tar_toss", "chokepoint_call", "heavy_strike"], "loopFrom": 1 },

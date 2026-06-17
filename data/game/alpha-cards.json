@@ -762,13 +762,15 @@
       "suit": "quills",
       "rarity": "common",
       "cost": 0,
-      "target": "self",
+      "target": "enemy",
       "tags": [
         "cover",
         "draw",
-        "discard"
+        "discard",
+        "cover-break"
       ],
       "effects": [
+        "removeCover(target, 4)",
         "gainCover(3)",
         "draw(1)",
         "discard(1)"
@@ -779,6 +781,7 @@
       ],
       "upgrade": {
         "effects": [
+          "removeCover(target, 6)",
           "gainCover(5)",
           "draw(1)",
           "discard(1)"
@@ -3040,6 +3043,7 @@
       "effects": [
         "damage(target, 4)",
         "applyWinded(target, 1)",
+        "if targetHasCover then damagePierce(target, 3)",
         "if targetWinded then applyWinded(target, 1)"
       ],
       "moltEffects": [
@@ -3050,6 +3054,7 @@
         "effects": [
           "damage(target, 5)",
           "applyWinded(target, 2)",
+          "if targetHasCover then damagePierce(target, 5)",
           "if targetWinded then applyWinded(target, 1)"
         ],
         "flockStats": {
@@ -3245,6 +3250,7 @@
       "effects": [
         "damage(target, 7)",
         "if windedAtLeast(3) then damage(target, 5)",
+        "if targetHasCover then damagePierce(target, 4)",
         "gainCover(3)"
       ],
       "moltEffects": [
@@ -3256,6 +3262,7 @@
         "effects": [
           "damage(target, 9)",
           "if windedAtLeast(3) then damage(target, 7)",
+          "if targetHasCover then damagePierce(target, 6)",
           "gainCover(4)"
         ],
         "flockStats": {

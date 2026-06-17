@@ -78,7 +78,7 @@ const validRouteMarkSources = new Set(['street', 'rival', 'boss', 'market', 'sig
 const validRouteMarkRarities = new Set(['common', 'uncommon', 'rare', 'boss']);
 const validTriggerBases = new Set([
   'combatStart', 'afterStreetEncounter', 'firstOpenSkyIncrease', 'basinHeal',
-  'signalResolved', 'firstImproveThisRun', 'mapStart', 'passive',
+  'signalResolved', 'firstImproveThisRun', 'mapStart', 'passive', 'cacheChoice',
 ]);
 // Signal/Market choice preconditions (next-level-data-contracts §7.2)
 const validPredicates = new Set([
@@ -132,8 +132,8 @@ const validateOutcomeRefs = (effects, label, refs) => {
 // next-level-data-contracts §1.2/§6.3). Catches typo'd or invented verbs.
 const validEffectVerbs = new Set([
   // combat verbs
-  'damage', 'damageAll', 'gainCover', 'heal', 'draw', 'discard', 'discardUpTo',
-  'gainWingbeat', 'gainResonance', 'spendResonance', 'applyWinded', 'enterMolt',
+  'damage', 'damagePierce', 'damageAll', 'removeCover', 'gainCover', 'heal', 'draw', 'discard', 'discardUpTo',
+  'gainWingbeat', 'loseWingbeat', 'gainResonance', 'spendResonance', 'applyWinded', 'enterMolt',
   'gainOpenSkyGuard', 'returnDiscard', 'nextCoverBonus', 'nextTurnDraw',
   // enemy verbs
   'applyOpenSky', 'addSnagToDiscard', 'addSnagToDraw', 'nextAttackBonus',
@@ -143,9 +143,10 @@ const validEffectVerbs = new Set([
   'gainScrap', 'payScrap', 'loseCohesion', 'healCohesion', 'healMissingPct',
   'gainRouteMark', 'gainSupply', 'gainSupplyChoice', 'gainCacheReward', 'addCard',
   'preenCard', 'releaseCard',
-  'reduceNextOpenSky', 'enemyCoverNextCombat', 'startNextCombatOpenSky',
+  'reduceNextOpenSky', 'enemyCoverNextCombat', 'bossDamageShield', 'startNextCombatOpenSky',
   // route-mark resolver helpers
-  'reducePreenPrice', 'reduceOpenSky', 'addHeal', 'addBonusStat',
+  'reducePreenPrice', 'reduceOpenSky', 'addHeal', 'addBonusStat', 'extraCacheChoice',
+  'freePreenNextDistrict',
 ]);
 
 const effectVerbName = (effect) => {
@@ -241,14 +242,14 @@ const validateEffects = (effects, label, allowedVerbs) => {
 // switch; enemy verbs = resolveEnemyEffect's switch. Keep these in lockstep with
 // the runtime — adding a verb to one without the other reintroduces the gap.
 const validCardVerbs = new Set([
-  'damage', 'damageAll', 'gainCover', 'heal', 'draw', 'discard', 'discardUpTo',
+  'damage', 'damagePierce', 'damageAll', 'removeCover', 'gainCover', 'heal', 'draw', 'discard', 'discardUpTo',
   'gainWingbeat', 'loseWingbeat', 'gainResonance', 'spendResonance', 'resonanceBurst',
   'applyWinded', 'windedBurst', 'enterMolt', 'gainOpenSkyGuard', 'returnDiscard',
   'nextCoverBonus', 'nextTurnDraw', 'gainEnergyNextTurn', 'shuffleSelfToDraw',
   'overhealCover', 'loseCohesion',
 ]);
 const validEnemyVerbs = new Set([
-  'damage', 'gainCover', 'heal', 'applyWinded', 'applyFrail', 'applyOpenSky',
+  'damage', 'gainCover', 'heal', 'applyWinded', 'loseWingbeat', 'applyFrail', 'applyOpenSky',
   'addSnagToDiscard', 'addSnagToDraw', 'nextAttackBonus',
 ]);
 // Route-mark effect verbs the runtime actually honors: the combat relics fire
@@ -256,8 +257,9 @@ const validEnemyVerbs = new Set([
 // the economy/passive ones are consumed at dedicated sites (reducePreenPrice,
 // gainScrap, addHeal, reduceOpenSky, gainSupplyChoice).
 const validMarkVerbs = new Set([
-  'gainCover', 'gainWingbeat', 'gainOpenSkyGuard', 'draw', 'heal',
+  'gainCover', 'gainWingbeat', 'gainOpenSkyGuard', 'draw', 'heal', 'bossDamageShield',
   'reducePreenPrice', 'gainScrap', 'addHeal', 'reduceOpenSky', 'gainSupplyChoice',
+  'extraCacheChoice', 'freePreenNextDistrict',
 ]);
 
 // Condition allowlists for the optional `if COND then` effect prefix
@@ -265,7 +267,7 @@ const validMarkVerbs = new Set([
 // closes the silent-pass gap). A condition that is syntactically valid but not
 // in the runtime's closed set would no-op silently — this catches it at build.
 const validCardConditions = new Set([
-  'firstPlayedThisCombat', 'targetBelowHalf', 'targetIntendsAttack', 'targetWinded',
+  'firstPlayedThisCombat', 'targetBelowHalf', 'targetIntendsAttack', 'targetHasCover', 'targetWinded',
   'hasResonance', 'spentResonance', 'isMolting', 'openSky', 'fullCohesion',
   'cohesionBelowHalf', 'defeatsEnemy', 'fullyBlocksNextAttack', 'playedSuitThisTurn',
   'flockSuit', // flockSuit(suit,count): deck holds >= count of a suit (composition payoffs)
@@ -273,7 +275,7 @@ const validCardConditions = new Set([
   'windedAtLeast', // windedAtLeast(N): target has >= N Winded (stacking payoffs)
 ]);
 const validEnemyConditions = new Set([
-  'notHitThisTurn', 'flockHasNoCover', 'isMolting', 'flockOpenSky',
+  'notHitThisTurn', 'flockHasNoCover', 'flockHasCover', 'isMolting', 'flockOpenSky',
   'flockCohesionBelowHalf', 'selfBelowHalf',
 ]);
 
@@ -545,6 +547,7 @@ const validateEncounter = (encounter, file) => {
   if (!Array.isArray(encounter.enemies) || encounter.enemies.length === 0) {
     fail(`${label}: enemies must be a nonempty array`);
   } else {
+    if (encounter.enemies.length > 4) fail(`${label}: enemies supports at most 4 combatants`);
     for (const enemyId of encounter.enemies) {
       if (!enemiesByPayload.has(enemyId)) fail(`${label}: enemy "${enemyId}" does not exist in enemy data`);
     }

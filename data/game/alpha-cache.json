@@ -30,6 +30,11 @@
       "id": "cache_heal",
       "label": "Rest Behind the Billboard",
       "effects": ["healCohesion(6)"]
+    },
+    {
+      "id": "cache_boss_line",
+      "label": "Rig a Boss-Safe Line",
+      "effects": ["bossDamageShield(8)"]
     }
   ]
 }
