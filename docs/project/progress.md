@@ -4,6 +4,21 @@ This log is historical context and handoff memory. It is not a canonical design
 source. Current game rules live in `docs/game/`, art direction lives in
 `docs/art/`, and card production data lives in `data/cards/`.
 
+## 2026-06-17 AAA Field-Kit UI Pass
+
+- Shelved route-map redesign work while keeping existing map layout changes
+  untouched for later reanalysis.
+- Added shared field-kit UI helpers for dossier frames, lighter controls,
+  compact action buttons, and quiet UI feedback.
+- Reworked non-map route overlays into distinct surfaces: Flock as a crew
+  dossier, Deck as a field binder, and Market as a rooftop stall.
+- Matched route/card hover detail to the full deck-card detail format while
+  keeping shop and preen shelves compact.
+- Lightened combat HUD chips and inspect overlays so stats read as tactical
+  rails and dossier tables instead of repeated blue blocks.
+- Verified with build, focused smoke tests, runtime/docs validation, and
+  Playwright visual screenshots under `output/web-game-aaa-ui/`.
+
 ## 2026-06-16 Encounter Enemy Scaling
 
 - Expanded authored encounters so street, rival, and boss fights can include up
@@ -1021,6 +1036,16 @@ Follow-up TODO:
 - Verified `npm run validate:runtime`, `npm run build`, and
   `npm run test:e2e`.
 
+## 2026-06-16 Card Choice Hover Detail Pass
+
+- Added a compact card-shaped hover detail panel for decision surfaces.
+- Wired hover details into post-battle card rewards, post-battle Preen choices,
+  Market card offers, Market Preen offers, and route Preen/Release pickers.
+- Added smoke coverage proving reward, market, and Preen hover details include
+  current effect, preened effect, and Flock Stats.
+- Verified `npm run build`, `npm run validate:runtime`, and `npm run test:e2e`.
+- Captured visual QA at `output/web-game-card-hover-compact/market-hover-detail.png`.
+
 ## 2026-06-16 Full Enemy Codex Cast
 
 - Expanded the Codex enemy section from the 48 reserve enemy contracts to the
@@ -1034,3 +1059,22 @@ Follow-up TODO:
 - Verified `npm run build`, `npx playwright test tests/smoke.spec.ts -g
   "enemy codex"`, the web-game Playwright client, and a direct Codex screenshot
   at `.artifacts/codex-enemy-page.png`.
+
+## 2026-06-16 Route Map Status Rail
+
+- Added a compact route-map status rail so Cohesion and Scrap are visible
+  without opening the Flock menu.
+- Surfaced Deck size, Waymarks, and Supplies beside the requested core run
+  resources because they affect route planning decisions on the same screen.
+- Reflowed the boss-prep strip below the status rail so the added information
+  stays readable alongside map preview details.
+- Added smoke coverage proving the route map exposes the run status while the
+  Flock overlay remains closed.
+
+## 2026-06-16 Route Layout Polish
+
+- Removed the standalone Bird Squad masthead from the route map so the district
+  title, navigation buttons, and run resources fit in a tighter header.
+- Compressed the route-map resource rail into primary Cohesion/Scrap chips plus
+  one inline Deck/Waymarks/Supplies readout to reduce crowding.
+- Re-centered the route Flock Stats overlay contents inside a wider panel.

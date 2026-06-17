@@ -364,13 +364,14 @@ const BATTLEFIELD_ASSETS: Record<string, { key: string; url: string }> = {
   }
 };
 const DEFAULT_BATTLEFIELD_ASSET = BATTLEFIELD_ASSETS.map_01_rooftop_blocks;
+type RuntimeImageAsset = { key: string; url: string };
 const ROUTE_MAP_BACKDROP_ASSET = {
   key: 'route-map-backdrop-rooftop-blocks',
   url: battlefieldRuntimeArtUrls['../assets/runtime/backdrops/rooftop-blocks-route-map-v1.webp']
     ?? '/assets/runtime/backdrops/rooftop-blocks-route-map-v1.webp'
 };
 
-const cardRuntimeArtUrls = import.meta.glob('../assets/runtime/cards/portrait/*.webp', {
+const cardRuntimeArtUrls = import.meta.glob('../assets/runtime/cards/thumb/*.webp', {
   eager: true,
   query: '?url',
   import: 'default',
@@ -415,15 +416,15 @@ const routeMarks: RouteMark[] = MARKET_ROUTE_MARK_IDS.map((id) => {
   return { id, name: mark?.name ?? id, text: mark?.description ?? '', price: MARKET_ROUTE_MARK_PRICE };
 });
 
-const cardArtAssets: Record<string, { key: string; url: string }> = Object.fromEntries(
+const cardArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
   alphaCardArtManifest.cards
     .filter((entry) => entry.status === 'approved')
     .map((entry) => [entry.cardId, {
       key: `card-${entry.cardId}`,
-      url: bundledAssetUrl(entry.portrait, cardRuntimeArtUrls)
+      url: bundledAssetUrl(entry.thumbnail, cardRuntimeArtUrls)
     }])
 );
-const enemyArtAssets: Record<string, { key: string; url: string }> = Object.fromEntries(
+const enemyArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
   alphaEnemyArtManifest.enemies
     .filter((entry) => entry.status === 'approved')
     .map((entry) => [entry.enemyId, {
@@ -431,14 +432,14 @@ const enemyArtAssets: Record<string, { key: string; url: string }> = Object.from
       url: bundledAssetUrl(entry.full, enemyRuntimeArtUrls)
     }])
 );
-const reserveEnemyArtAssets: Record<string, { key: string; url: string }> = Object.fromEntries(
+const reserveEnemyArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
   reserveEnemyContracts.map((enemy) => [enemy.id, {
     key: `reserve-enemy-${enemy.id}`,
     url: reserveEnemyArtUrls[`../assets/runtime/enemies/reserve/${enemy.id}.webp`]
       ?? `/assets/runtime/enemies/reserve/${enemy.id}.webp`
   }])
 );
-const flockLeaderArtAssets: Record<string, { key: string; url: string }> = {
+const flockLeaderArtAssets: Record<string, RuntimeImageAsset> = {
   fledgling: {
     key: 'flock-leader-fledgling',
     url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/fledgling-flock-combat-back-ne.png']
@@ -465,21 +466,25 @@ const flockLeaderArtAssets: Record<string, { key: string; url: string }> = {
       ?? '/assets/runtime/flock/leaders/roostkeeper-combat-back-ne.png',
   },
 };
-const waymarkArtAssets: Record<string, { key: string; url: string }> = Object.fromEntries(
+const waymarkArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
   alphaRouteMarkSet.routeMarks.map((mark) => [mark.id, {
     key: `waymark-${mark.id}`,
     url: waymarkRuntimeArtUrls[`../assets/runtime/waymarks/icons/${mark.id}.webp`]
       ?? `/assets/runtime/waymarks/icons/${mark.id}.webp`
   }])
 );
-const routeNodeIconAssets: Record<RouteNode['type'], { key: string; url: string }> = Object.fromEntries(
+const routeNodeIconAssets: Record<RouteNode['type'], RuntimeImageAsset> = Object.fromEntries(
   (['street', 'rival', 'boss', 'basin', 'nest', 'market', 'signal', 'cache'] as RouteNode['type'][]).map((type) => [type, {
     key: `route-node-${type}`,
     url: routeNodeIconRuntimeArtUrls[`../assets/runtime/map-icons/icons/${type}.webp`]
       ?? `/assets/runtime/map-icons/icons/${type}.webp`
   }])
-) as Record<RouteNode['type'], { key: string; url: string }>;
+) as Record<RouteNode['type'], RuntimeImageAsset>;
 const requestedOptionalArtKeys = new Set<string>();
+
+function uniqueImageAssets(assets: Array<RuntimeImageAsset | undefined>): RuntimeImageAsset[] {
+  return [...new Map(assets.filter((asset): asset is RuntimeImageAsset => Boolean(asset)).map((asset) => [asset.key, asset])).values()];
+}
 
 function prefersReducedMotion(): boolean {
   return typeof window !== 'undefined'
@@ -1904,7 +1909,6 @@ class RouteScene extends Phaser.Scene {
   private inspectedCardId: string | undefined;
   private hoverCardDetail?: Phaser.GameObjects.Container;
   private cardReviewScroll = 0;
-  private optionalCardArtRequested = false;
   private routeNodeIconArtRequested = false;
 
   constructor() {
@@ -1940,7 +1944,6 @@ class RouteScene extends Phaser.Scene {
     this.inspectedCardId = undefined;
     this.hoverCardDetail = undefined;
     this.cardReviewScroll = 0;
-    this.optionalCardArtRequested = false;
     this.routeNodeIconArtRequested = false;
   }
 
@@ -2002,9 +2005,11 @@ class RouteScene extends Phaser.Scene {
   }
 
   private queueOptionalCardArtLoad() {
-    if (this.optionalCardArtRequested) return;
-    this.optionalCardArtRequested = true;
-    const assets = Object.values(cardArtAssets).filter((asset) => !this.textures.exists(asset.key) && !requestedOptionalArtKeys.has(asset.key));
+    const ids = new Set(this.runState.deck.map((card) => card.id));
+    const offer = this.marketCardOffer();
+    if (offer) ids.add(offer.id);
+    const assets = uniqueImageAssets([...ids].map((id) => cardArtAssets[id]))
+      .filter((asset) => !this.textures.exists(asset.key) && !requestedOptionalArtKeys.has(asset.key));
     if (assets.length === 0) return;
     assets.forEach((asset) => {
       requestedOptionalArtKeys.add(asset.key);
@@ -2326,12 +2331,7 @@ class RouteScene extends Phaser.Scene {
     }
     const badgeHeight = this.renderInspectorRewardBadges(node, left, yy, pw - 40);
     yy += badgeHeight + (badgeHeight > 0 ? 14 : 0);
-    if (detail.bossPrep) {
-      this.add.text(left, yy, detail.bossPrep, { fontFamily: 'Arial', fontSize: '13px', color: '#ffb38a', wordWrap: { width: pw - 40 } });
-      yy += 34;
-    }
-
-    this.renderInspectorBossPrep(left, Math.min(Math.max(yy, top + 276), top + ph - 216), pw - 40);
+    this.renderInspectorBossPrep(left, Math.min(Math.max(yy, top + 276), top + ph - 200), pw - 40);
 
     if (this.selectableNodeIds.has(node.id)) {
       const btn = this.add.rectangle(px, top + ph - 40, pw - 44, 46, 0x274536, 0.96)
@@ -2999,6 +2999,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderMarketOverlay() {
+    this.queueOptionalCardArtLoad();
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.78)
       .setInteractive({ useHandCursor: false });
     const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2, 940, 520, {
@@ -3044,6 +3045,17 @@ class RouteScene extends Phaser.Scene {
       const key = cardArtKey(offer);
       if (key && this.textures.exists(key)) {
         this.add.image(x, y + 6, key).setDisplaySize(138, 207).setAlpha(0.82);
+      } else {
+        this.add.rectangle(x, y + 6, 138, 207, 0x141f2f, 0.92)
+          .setStrokeStyle(1, 0x6f6044, 0.75);
+        this.add.text(x, y + 40, cardLabel(offer), {
+          fontFamily: 'Arial',
+          fontSize: '15px',
+          fontStyle: 'bold',
+          color: '#7ab8d6',
+          align: 'center',
+          wordWrap: { width: 104 }
+        }).setOrigin(0.5);
       }
       this.add.rectangle(x, y - 82, 232, 70, 0x05080e, 0.72)
         .setStrokeStyle(1, 0xd8a840, 0.25);
@@ -4010,27 +4022,34 @@ class BattleScene extends Phaser.Scene {
     if (this.optionalArtRequested) return;
     this.optionalArtRequested = true;
 
-    const requestedAssets = [
+    const requestedAssets = uniqueImageAssets([
       currentBattlefieldAsset(),
       this.currentFlockLeaderArtAsset(),
       ...Object.values(waymarkArtAssets),
-      ...Object.values(cardArtAssets),
+      ...this.allDeckCards().map((card) => cardArtAssets[card.id]),
       ...this.enemies
         .map((enemy) => enemyArtAssets[enemy.runtime.id] ?? enemyArtAssets[enemy.id])
         .filter((asset): asset is { key: string; url: string } => Boolean(asset))
-    ].filter((asset): asset is { key: string; url: string } => Boolean(asset))
+    ]).filter((asset) => !this.textures.exists(asset.key) && !requestedOptionalArtKeys.has(asset.key));
+
+    this.queueImageAssets(requestedAssets, 'Optional art failed to load');
+  }
+
+  private queueCardArtLoad(cards: Card[]) {
+    const assets = uniqueImageAssets(cards.map((card) => cardArtAssets[card.id]))
       .filter((asset) => !this.textures.exists(asset.key) && !requestedOptionalArtKeys.has(asset.key));
-    const assets = [...new Map(requestedAssets.map((asset) => [asset.key, asset])).values()];
+    this.queueImageAssets(assets, 'Card art failed to load');
+  }
 
+  private queueImageAssets(assets: RuntimeImageAsset[], warning: string) {
     if (assets.length === 0) return;
-
     assets.forEach((asset) => {
       requestedOptionalArtKeys.add(asset.key);
       this.load.image(asset.key, asset.url);
     });
     this.load.once('complete', () => this.renderAll());
     this.load.once('loaderror', (file: { key?: string }) => {
-      console.warn(`Optional art failed to load: ${file.key ?? 'unknown'}`);
+      console.warn(`${warning}: ${file.key ?? 'unknown'}`);
     });
     this.load.start();
   }
@@ -4134,8 +4153,8 @@ class BattleScene extends Phaser.Scene {
     }[cue];
     this.tweens.add({
       targets: group,
-      x: FLOCK_ART_X + motion.x,
-      y: FLOCK_ART_Y + motion.y,
+      x: motion.x,
+      y: motion.y,
       scaleX: motion.scaleX,
       scaleY: motion.scaleY,
       duration: motion.duration,
@@ -4143,11 +4162,23 @@ class BattleScene extends Phaser.Scene {
       ease: 'Quad.easeOut',
       onComplete: () => {
         if (!group.active) return;
-        group.x = FLOCK_ART_X;
-        group.y = FLOCK_ART_Y;
+        group.x = 0;
+        group.y = 0;
         group.setScale(1);
       },
     });
+    if (cue === 'hit') {
+      this.tweens.add({
+        targets: group,
+        alpha: 0.7,
+        duration: 45,
+        yoyo: true,
+        ease: 'Linear',
+        onComplete: () => {
+          if (group.active) group.setAlpha(1);
+        },
+      });
+    }
   }
 
   private renderEnemyRow() {
@@ -4286,7 +4317,9 @@ class BattleScene extends Phaser.Scene {
     const hasLeaderArt = Boolean(artAsset && this.textures.exists(artAsset.key));
     const fstate = this.flockState();
     const stateAccent = fstate === 'surging' ? 0x8df4ff : fstate === 'scattered' ? 0xff9d6b : 0xd8a840;
-    const group = this.add.container(FLOCK_ART_X, FLOCK_ART_Y);
+    const breathGroup = this.add.container(FLOCK_ART_X, FLOCK_ART_Y);
+    const group = this.add.container(0, 0);
+    breathGroup.add(group);
 
     group.add(this.add.ellipse(0, 126, 172, 26, 0x020409, 0.42));
 
@@ -4328,12 +4361,12 @@ class BattleScene extends Phaser.Scene {
       strokeThickness: 4,
     }).setOrigin(0.5));
 
-    this.root.add(group);
+    this.root.add(breathGroup);
     this.applyFlockMotionCue(group);
 
     if (!prefersReducedMotion()) {
       this.tweens.add({
-        targets: group,
+        targets: breathGroup,
         y: FLOCK_ART_Y - 4,
         scaleX: 0.994,
         scaleY: 1.012,
@@ -4935,6 +4968,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private renderCardReward() {
+    this.queueCardArtLoad(this.rewardChoices);
     this.renderRewardBackdrop('Add to the Flock', 'Choose one new crew card — or skip for Scrap.');
     this.renderDeckNeeds(196);
     this.rewardChoices.forEach((card, index) => {
@@ -4951,6 +4985,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private renderUpgradeReward() {
+    this.queueCardArtLoad(this.upgradeChoices);
     this.renderRewardBackdrop('Preen a Card', 'Choose one owned crew card to improve.');
     this.upgradeChoices.forEach((card, index) => {
       this.renderChoiceCard(card, 392 + index * 248, 360, () => this.chooseUpgradeCard(card.id));
@@ -5920,6 +5955,7 @@ class BattleScene extends Phaser.Scene {
     this.flock.block += block;
     this.logEvent(`${source} gives ${block} Cover.`);
     if (block > 0) {
+      this.queueFlockMotion('brace');
       floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, `+${block} Cover`, '#7ab8d6');
       this.coverBuildFx(card?.runtime.suit);
     }
@@ -5935,6 +5971,7 @@ class BattleScene extends Phaser.Scene {
     const healed = this.flock.hp - before;
     if (healed > 0) {
       this.logEvent(`${source} restores ${healed} Cohesion.`);
+      this.queueFlockMotion('heal');
       floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, `+${healed}`, '#8fd6a0');
       this.healFx();
     }
@@ -5948,6 +5985,7 @@ class BattleScene extends Phaser.Scene {
       this.logEvent(signatureOverflow
         ? `Overflow Shelter turns ${overheal} wasted healing into Cover.`
         : `${source} overflows into ${overheal} Cover.`);
+      this.queueFlockMotion('brace');
       floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 22, `+${overheal} Cover`, '#7ab8d6');
       this.coverBuildFx('nests');
     }
@@ -6201,6 +6239,7 @@ class BattleScene extends Phaser.Scene {
     // keeps the flock together (Cover earns a second job: holding formation).
     if (damage > 0) this.flock.flow = 0;
     if (damage > 0) {
+      this.queueFlockMotion('hit');
       const from = this.enemyView(enemy);
       strike(this, this.fxLayer, from.x, from.y, FLOCK_FX_X, FLOCK_FX_Y, 0xff7a6e);
       floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 8, `-${damage}`, '#ff7a6e');
@@ -6212,6 +6251,7 @@ class BattleScene extends Phaser.Scene {
       const xOld = left + FLOCK_HP_BAR.w * Math.min(1, (this.flock.hp + damage) / this.flock.maxHp);
       fadeRect(this, this.fxLayer, (xNew + xOld) / 2, FLOCK_HP_BAR.y, xOld - xNew, FLOCK_HP_BAR.h - 6, 0xffd0c9);
     } else {
+      this.queueFlockMotion('brace');
       floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 8, 'Blocked', '#7ab8d6');
       this.coverImpactFx(FLOCK_FX_X, FLOCK_FX_Y, 0x7ab8d6);
     }
