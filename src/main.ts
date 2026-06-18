@@ -600,6 +600,14 @@ const flockLeaderArtAssets: Record<string, RuntimeImageAsset> = {
       ?? '/assets/runtime/flock/leaders/roostkeeper-combat-back-ne.webp',
   },
 };
+const codexLeaderArtAssets: Record<string, RuntimeImageAsset> = {
+  ...flockLeaderArtAssets,
+  talon: {
+    key: 'codex-flock-leader-talon-front-3q',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/talon-combat-front-3q.webp']
+      ?? '/assets/runtime/flock/leaders/talon-combat-front-3q.webp',
+  },
+};
 const waymarkArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
   alphaRouteMarkSet.routeMarks.map((mark) => [mark.id, {
     key: `waymark-${mark.id}`,
@@ -1373,7 +1381,7 @@ class CodexScene extends Phaser.Scene {
   private currentDetailArtAsset(): RuntimeImageAsset | undefined {
     if (!this.detailId) return undefined;
     if (this.activeSection === 'items') return waymarkArtAssets[this.detailId];
-    if (this.activeSection === 'leaders') return flockLeaderArtAssets[this.detailId];
+    if (this.activeSection === 'leaders') return codexLeaderArtAssets[this.detailId];
     if (this.activeSection === 'enemies') {
       const enemy = this.currentCodexEnemies().find((candidate) => candidate.id === this.detailId);
       return enemy ? this.enemyArtAsset(enemy) : undefined;
@@ -1389,7 +1397,7 @@ class CodexScene extends Phaser.Scene {
     const source = this.activeSection === 'items'
       ? this.visibleGridEntries(waymarks, 4, 176).map((mark) => waymarkArtAssets[mark.id])
       : this.activeSection === 'leaders'
-        ? this.visibleGridEntries(leaders, 3, 238).map((leader) => flockLeaderArtAssets[leader.id])
+        ? this.visibleGridEntries(leaders, 3, 238).map((leader) => codexLeaderArtAssets[leader.id])
         : this.activeSection === 'enemies'
           ? this.visibleGridEntries(enemies, 4, 228).map((enemy) => this.enemyArtAsset(enemy))
           : this.visibleGridEntries(cards, 5, 286)
@@ -1919,7 +1927,7 @@ class CodexScene extends Phaser.Scene {
     layer.add(bg);
     layer.add(this.add.rectangle(cx, cy - h / 2 + 8, w - 18, 4, unlocked ? accent : 0x2a3a4d, unlocked ? 0.84 : 0.6));
 
-    const art = flockLeaderArtAssets[leader.id];
+    const art = codexLeaderArtAssets[leader.id];
     if (art && this.textures.exists(art.key)) {
       const fit = this.fittedTextureSize(art.key, 132, 160);
       layer.add(this.add.image(cx - 104, cy - 8, art.key).setDisplaySize(fit.w, fit.h).setAlpha(unlocked ? 0.99 : 0.38));
@@ -1974,7 +1982,7 @@ class CodexScene extends Phaser.Scene {
     const accentText = `#${accent.toString(16).padStart(6, '0')}`;
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accent, 1));
 
-    const art = flockLeaderArtAssets[leader.id];
+    const art = codexLeaderArtAssets[leader.id];
     const artBoxX = left + 205;
     const artBoxY = py + 24;
     this.root.add(this.add.rectangle(artBoxX, artBoxY, 348, 516, 0x05080e, 0.58).setStrokeStyle(1, accent, 0.52));
