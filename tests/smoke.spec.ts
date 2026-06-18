@@ -474,7 +474,8 @@ test('signals/basins/cache present structured choices resolved by the route-effe
 
 test('route choice and market nodes complete only after their economy step resolves', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const g = window.__birdSquadGame;
     g.scene.start('RouteScene', {});
     g.scene.stop('MenuScene');
@@ -497,12 +498,46 @@ test('route choice and market nodes complete only after their economy step resol
     marketScene.leaveMarket();
     const marketCompletedAfterLeave = marketScene.runState.completedRouteNodeIds.includes(market.id);
 
-    return { basinCompletedOnOpen, basinCompletedAfterChoice, marketCompletedOnOpen, marketCompletedAfterLeave };
+    g.scene.start('RouteScene', {});
+    const rivalFightScene: any = g.scene.getScene('RouteScene');
+    await wait(50);
+    const rivalFightMap = window.__birdSquadCurrentMap!();
+    const rivalFight = rivalFightMap.nodes.find((node: any) => node.type === 'rival');
+    rivalFightScene.openNodeChoices(rivalFight);
+    const rivalCompletedOnOpen = rivalFightScene.runState.completedRouteNodeIds.includes(rivalFight.id);
+    const rivalChoices = rivalFightScene.nodeChoiceList(rivalFight).map((choice: any) => choice.key);
+    rivalFightScene.chooseNodeOption('challenge_rival');
+    await wait(100);
+    const rivalStartsBattle = g.scene.getScenes(true).some((scene: any) => scene.scene.key === 'BattleScene');
+
+    g.scene.start('RouteScene', {});
+    const rivalDeclineScene: any = g.scene.getScene('RouteScene');
+    await wait(50);
+    const rivalDeclineMap = window.__birdSquadCurrentMap!();
+    const rivalDecline = rivalDeclineMap.nodes.find((node: any) => node.type === 'rival');
+    rivalDeclineScene.openNodeChoices(rivalDecline);
+    rivalDeclineScene.chooseNodeOption('decline');
+    const rivalCompletedAfterDecline = rivalDeclineScene.runState.completedRouteNodeIds.includes(rivalDecline.id);
+
+    return {
+      basinCompletedOnOpen,
+      basinCompletedAfterChoice,
+      marketCompletedOnOpen,
+      marketCompletedAfterLeave,
+      rivalCompletedOnOpen,
+      rivalChoices,
+      rivalCompletedAfterDecline,
+      rivalStartsBattle
+    };
   });
   expect(result.basinCompletedOnOpen).toBe(false);
   expect(result.basinCompletedAfterChoice).toBe(true);
   expect(result.marketCompletedOnOpen).toBe(false);
   expect(result.marketCompletedAfterLeave).toBe(true);
+  expect(result.rivalCompletedOnOpen).toBe(false);
+  expect(result.rivalChoices).toEqual(['challenge_rival', 'decline']);
+  expect(result.rivalCompletedAfterDecline).toBe(true);
+  expect(result.rivalStartsBattle).toBe(true);
 });
 
 test('payScrap route options are locked when Scrap is short', async ({ page }) => {
@@ -574,6 +609,12 @@ test('route event overlays render generated special-node backdrops', async ({ pa
         key: 'route-event-featherwright-studio',
         residentKey: 'route-event-resident-oren-shearbright',
         extraKeys: ['route-event-centerpiece-featherwright-chair-press']
+      },
+      {
+        type: 'rival',
+        key: 'route-event-rival-wager-board',
+        residentKey: 'route-event-resident-caldra-pinion',
+        extraKeys: ['route-event-centerpiece-rival-contract-prize-board']
       },
       { type: 'market', key: 'market-kit-background' }
     ];
@@ -650,6 +691,7 @@ test('route event overlays render generated special-node backdrops', async ({ pa
     expect.objectContaining({ type: 'cache', stateKey: 'route-event-rooftop-cache-office', textureLoaded: true, rendered: true, residentRendered: true, extraRendered: true }),
     expect.objectContaining({ type: 'signal', stateKey: 'route-event-signal-switchboard', textureLoaded: true, rendered: true, residentRendered: true, extraRendered: true }),
     expect.objectContaining({ type: 'nest', stateKey: 'route-event-featherwright-studio', textureLoaded: true, rendered: true, residentRendered: true, extraRendered: true }),
+    expect.objectContaining({ type: 'rival', stateKey: 'route-event-rival-wager-board', textureLoaded: true, rendered: true, residentRendered: true, extraRendered: true }),
     expect.objectContaining({ type: 'market', stateKey: 'market-kit-background', textureLoaded: true, rendered: true })
   ]);
 });

@@ -526,12 +526,12 @@ const BATTLEFIELD_BOSS_VARIANTS: Partial<Record<string, RuntimeImageAsset>> = {
   map_04_high_roost: battlefieldVariantAsset('high-roost-boss-warden-v1.webp', 'battlefield-high-roost-boss-warden')
 };
 const ROUTE_EVENT_BACKDROP_ASSETS: Partial<Record<RouteNode['type'], RuntimeImageAsset>> = {
-  basin: routeEventAsset('lantern-roost-shelter-v2.webp', 'route-event-lantern-roost-shelter'),
-  cache: routeEventAsset('rooftop-cache-office-v1.webp', 'route-event-rooftop-cache-office'),
+  basin: routeEventAsset('lantern-roost-shelter-v3.webp', 'route-event-lantern-roost-shelter'),
+  cache: routeEventAsset('rooftop-cache-office-v2.webp', 'route-event-rooftop-cache-office'),
   market: MARKET_KIT_ASSETS.background,
-  signal: routeEventAsset('signal-switchboard-v1.webp', 'route-event-signal-switchboard'),
-  nest: routeEventAsset('featherwright-studio-v1.webp', 'route-event-featherwright-studio'),
-  rival: routeEventAsset('rival-wager-board-v1.webp', 'route-event-rival-wager-board')
+  signal: routeEventAsset('signal-switchboard-v2.webp', 'route-event-signal-switchboard'),
+  nest: routeEventAsset('featherwright-studio-v2.webp', 'route-event-featherwright-studio'),
+  rival: routeEventAsset('rival-wager-board-v2.webp', 'route-event-rival-wager-board')
 };
 const ROUTE_MAP_BACKDROP_ASSET = {
   key: 'route-map-backdrop-rooftop-blocks',
@@ -545,6 +545,11 @@ const ROUTE_MAP_BACKING_ASSET = {
 };
 
 const cardRuntimeArtUrls = import.meta.glob('../assets/runtime/cards/portrait/*.webp', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+const cardIconRuntimeArtUrls = import.meta.glob('../assets/runtime/cards/icon/*.webp', {
   eager: true,
   query: '?url',
   import: 'default',
@@ -675,30 +680,11 @@ const codexLeaderArtAssets: Record<string, RuntimeImageAsset> = {
   },
 };
 const ROUTE_EVENT_RESIDENT_ASSETS: Partial<Record<RouteNode['type'], RuntimeImageAsset>> = {
-  basin: routeEventAsset('sella-warmwick-v1.webp', 'route-event-resident-sella-warmwick'),
-  cache: routeEventAsset('marn-valeclip-v1.webp', 'route-event-resident-marn-valeclip'),
-  signal: routeEventAsset('ivo-tallymast-v1.webp', 'route-event-resident-ivo-tallymast'),
-  nest: routeEventAsset('oren-shearbright-v1.webp', 'route-event-resident-oren-shearbright'),
-  rival: routeEventAsset('caldra-pinion-v1.webp', 'route-event-resident-caldra-pinion')
-};
-const LANTERN_ROOST_KIT_ASSETS = {
-  hearth: routeEventAsset('lantern-roost-hearth-v1.webp', 'route-event-lantern-roost-hearth'),
-  sign: routeEventAsset('lantern-roost-sign-v1.webp', 'route-event-lantern-roost-sign'),
-  rainPipe: routeEventAsset('lantern-roost-rain-pipe-v1.webp', 'route-event-lantern-roost-rain-pipe'),
-  awning: routeEventAsset('lantern-roost-awning-v1.webp', 'route-event-lantern-roost-awning'),
-  wrappedSnack: routeEventAsset('lantern-roost-wrapped-snack-v1.webp', 'route-event-lantern-roost-wrapped-snack')
-};
-const ROUTE_SET_PIECE_CENTERPIECE_ASSETS: Partial<Record<RouteNode['type'], RuntimeImageAsset>> = {
-  cache: routeEventAsset('rooftop-cache-cabinet-v1.webp', 'route-event-centerpiece-rooftop-cache-cabinet'),
-  signal: routeEventAsset('signal-route-switchboard-v1.webp', 'route-event-centerpiece-signal-route-switchboard'),
-  nest: routeEventAsset('featherwright-chair-press-v1.webp', 'route-event-centerpiece-featherwright-chair-press'),
-  rival: routeEventAsset('rival-contract-prize-board-v1.webp', 'route-event-centerpiece-rival-contract-prize-board')
-};
-const ROUTE_SET_PIECE_CENTERPIECE_LAYOUTS: Partial<Record<RouteNode['type'], { x: number; y: number; w: number; h: number }>> = {
-  cache: { x: 548, y: 376, w: 372, h: 298 },
-  signal: { x: 552, y: 372, w: 390, h: 278 },
-  nest: { x: 546, y: 382, w: 374, h: 284 },
-  rival: { x: 548, y: 382, w: 376, h: 284 }
+  basin: routeEventAsset('sella-warmwick-v2.webp', 'route-event-resident-sella-warmwick'),
+  cache: routeEventAsset('marn-valeclip-v2.webp', 'route-event-resident-marn-valeclip'),
+  signal: routeEventAsset('ivo-tallymast-v2.webp', 'route-event-resident-ivo-tallymast'),
+  nest: routeEventAsset('oren-shearbright-v2.webp', 'route-event-resident-oren-shearbright'),
+  rival: routeEventAsset('caldra-pinion-v2.webp', 'route-event-resident-caldra-pinion')
 };
 const ROUTE_SET_PIECE_PROFILES: Partial<Record<RouteNode['type'], {
   residentName: string;
@@ -762,6 +748,39 @@ const supplyArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
     return [id, { key: `supply-${id}`, url }];
   })
 );
+const scrapArtAsset: RuntimeImageAsset = {
+  key: 'resource-scrap',
+  url: supplyRuntimeArtUrls['../assets/runtime/supplies/icons/scrap.webp']
+    ?? '/assets/runtime/supplies/icons/scrap.webp'
+};
+const rewardBadgeArtAssets: Record<string, RuntimeImageAsset> = {
+  card: {
+    key: 'reward-badge-card',
+    url: cardIconRuntimeArtUrls['../assets/runtime/cards/icon/major_00.webp']
+      ?? '/assets/runtime/cards/icon/major_00.webp'
+  },
+  waymark: {
+    key: 'reward-badge-waymark',
+    url: waymarkRuntimeArtUrls['../assets/runtime/waymarks/icons/roofline_compass.webp']
+      ?? '/assets/runtime/waymarks/icons/roofline_compass.webp'
+  },
+  supply: {
+    key: 'reward-badge-supply',
+    url: supplyRuntimeArtUrls['../assets/runtime/supplies/icons/spare_pocket.webp']
+      ?? '/assets/runtime/supplies/icons/spare_pocket.webp'
+  },
+  preen: {
+    key: 'reward-badge-preen',
+    url: waymarkRuntimeArtUrls['../assets/runtime/waymarks/icons/fresh_pinfeather.webp']
+      ?? '/assets/runtime/waymarks/icons/fresh_pinfeather.webp'
+  },
+  heal: {
+    key: 'reward-badge-heal',
+    url: waymarkRuntimeArtUrls['../assets/runtime/waymarks/icons/basin_charm.webp']
+      ?? '/assets/runtime/waymarks/icons/basin_charm.webp'
+  },
+  scrap: scrapArtAsset
+};
 function setSupplyArtPixelFilter(scene: Phaser.Scene, key: string) {
   if (!scene.textures.exists(key)) return;
   scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
@@ -770,6 +789,22 @@ function setSupplyArtPixelFilter(scene: Phaser.Scene, key: string) {
 function addSupplyArtImage(scene: Phaser.Scene, x: number, y: number, key: string) {
   setSupplyArtPixelFilter(scene, key);
   return scene.add.image(x, y, key);
+}
+
+function addScrapIconImage(scene: Phaser.Scene, x: number, y: number, size: number) {
+  if (scene.textures.exists(scrapArtAsset.key)) {
+    setSupplyArtPixelFilter(scene, scrapArtAsset.key);
+    return scene.add.image(x, y, scrapArtAsset.key)
+      .setDisplaySize(size, size);
+  }
+  return scene.add.circle(x, y, Math.max(4, Math.round(size * 0.24)), 0xd8a840, 0.95);
+}
+
+function addRewardBadgeArtImage(scene: Phaser.Scene, badgeId: string, x: number, y: number, size: number) {
+  const asset = rewardBadgeArtAssets[badgeId];
+  if (!asset || !scene.textures.exists(asset.key)) return undefined;
+  scene.textures.get(asset.key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+  return scene.add.image(x, y, asset.key).setDisplaySize(size, size);
 }
 
 function setWaymarkArtPixelFilter(scene: Phaser.Scene, key: string) {
@@ -3190,6 +3225,8 @@ class RouteScene extends Phaser.Scene {
     queuePreloadImageAssets(
       this,
       [
+        scrapArtAsset,
+        ...Object.values(rewardBadgeArtAssets),
         ...Object.values(routeNodeIconAssets),
         ...Object.values(MARKET_KIT_ASSETS),
         ...Object.values(ROUTE_EVENT_BACKDROP_ASSETS),
@@ -3283,7 +3320,10 @@ class RouteScene extends Phaser.Scene {
     this.routeNodeIconArtRequested = true;
     queueRuntimeImageAssets(
       this,
-      Object.values(routeNodeIconAssets),
+      [
+        ...Object.values(routeNodeIconAssets),
+        ...Object.values(rewardBadgeArtAssets)
+      ],
       'Route node icon failed to load',
       () => this.renderAll()
     );
@@ -3528,7 +3568,12 @@ class RouteScene extends Phaser.Scene {
       this.add.rectangle(cx, y, chip.width, 28, 0x07101a, 0.78)
         .setStrokeStyle(1, chip.color, 0.56);
       this.add.rectangle(cx, y - 13, chip.width - 14, 2, chip.color, 0.58);
-      this.add.text(x + 10, y - 8, chip.label, {
+      const isScrap = chip.label === 'Scrap';
+      if (isScrap) {
+        const icon = addScrapIconImage(this, x + 18, y + 2, 30);
+        icon?.setAlpha(0.96);
+      }
+      this.add.text(x + (isScrap ? 38 : 10), y - 8, chip.label, {
         fontFamily: 'Arial',
         fontSize: '10px',
         fontStyle: 'bold',
@@ -3677,15 +3722,15 @@ class RouteScene extends Phaser.Scene {
       const primaryPreview = previewEdges.primary.has(key);
       const secondaryPreview = previewEdges.secondary.has(key);
       const available = this.selectableNodeIds.has(edge.to);
-      const color = lit ? 0x4fe07f : primaryPreview ? 0xffb347 : available ? 0x16b7d8 : secondaryPreview ? 0x4d7f95 : 0x1b2f42;
-      const alpha = lit ? 0.9 : primaryPreview ? 0.92 : available ? 0.82 : secondaryPreview ? 0.58 : 0.46;
+      const color = lit ? 0x87b884 : primaryPreview ? 0xbf7842 : available ? 0x4fb2a9 : secondaryPreview ? 0x657f89 : 0x263d4b;
+      const alpha = lit ? 0.88 : primaryPreview ? 0.92 : available ? 0.86 : secondaryPreview ? 0.6 : 0.5;
       const dotRadius = lit ? 1.45 : primaryPreview ? 1.45 : available ? 1.28 : secondaryPreview ? 1.22 : 1.05;
       const curve = this.drawRouteEdgePath(lines, from, to, key, color, alpha, dotRadius);
       if (available || primaryPreview) {
         const marker = curve.getPoint(0.65);
-        lines.fillStyle(0x06111a, primaryPreview ? 0.42 : 0.34);
+        lines.fillStyle(0x06111a, primaryPreview ? 0.5 : 0.42);
         lines.fillCircle(marker.x, marker.y, primaryPreview ? 4.35 : 3.85);
-        lines.fillStyle(primaryPreview ? 0xffb347 : 0x16b7d8, primaryPreview ? 0.96 : 0.86);
+        lines.fillStyle(primaryPreview ? 0xbf7842 : 0x4fb2a9, primaryPreview ? 0.96 : 0.88);
         lines.fillCircle(marker.x, marker.y, primaryPreview ? 3.5 : 3);
       }
     });
@@ -3730,7 +3775,7 @@ class RouteScene extends Phaser.Scene {
 
     points.slice(1, -1).forEach((point, index) => {
       const pulse = index % 3 === 1 ? 0.9 : 1;
-      graphics.fillStyle(0x06111a, Math.min(0.42, alpha * 0.72));
+      graphics.fillStyle(0x06111a, Math.min(0.52, alpha * 0.78));
       graphics.fillCircle(point.x, point.y, dotRadius * pulse + 0.58);
       graphics.fillStyle(color, alpha);
       graphics.fillCircle(point.x, point.y, dotRadius * pulse);
@@ -3879,14 +3924,19 @@ class RouteScene extends Phaser.Scene {
       const bx = startX + index * gap;
       this.add.circle(bx, badgeY, 15, 0x07101c, 0.98)
         .setStrokeStyle(1.5, badge.color, 0.94);
-      this.add.text(bx, badgeY - 1, badge.icon, {
-        fontFamily: 'Arial',
-        fontSize: '12px',
-        fontStyle: 'bold',
-        color: badge.text,
-        stroke: '#020409',
-        strokeThickness: 2
-      }).setOrigin(0.5);
+      const image = addRewardBadgeArtImage(this, badge.id, bx, badgeY, 24);
+      if (image) {
+        image.setAlpha(0.96);
+      } else {
+        this.add.text(bx, badgeY - 1, badge.icon, {
+          fontFamily: 'Arial',
+          fontSize: '12px',
+          fontStyle: 'bold',
+          color: badge.text,
+          stroke: '#020409',
+          strokeThickness: 2
+        }).setOrigin(0.5);
+      }
     });
     return 58;
   }
@@ -4015,6 +4065,11 @@ class RouteScene extends Phaser.Scene {
       const bx = startX + index * gap;
       this.add.circle(bx, by, ROUTE_REWARD_BADGE_RADIUS, 0x07101c, 0.96 * alpha)
         .setStrokeStyle(1.5, badge.color, alpha);
+      const icon = addRewardBadgeArtImage(this, badge.id, bx, by, 24);
+      if (icon) {
+        icon.setAlpha(alpha);
+        return;
+      }
       this.add.text(bx, by - 1, badge.icon, {
         fontFamily: 'Arial',
         fontSize: '10px',
@@ -4173,11 +4228,15 @@ class RouteScene extends Phaser.Scene {
   private commitRouteNode(routeNodeId: string) {
     if (this.deckOverlayOpen || this.flockOverlayOpen || this.marketOpen || this.nodeChoiceOpen) return;
     if (!this.selectableNodeIds.has(routeNodeId)) return;
+    const node = currentMap().nodes.find((candidate) => candidate.id === routeNodeId);
+    if (node?.type === 'rival') {
+      this.openNodeChoices(node);
+      return;
+    }
     if (currentCombatNodeIds().has(routeNodeId)) {
       this.scene.start('BattleScene', { routeNodeId, runState: cloneRunState(this.runState) });
       return;
     }
-    const node = currentMap().nodes.find((candidate) => candidate.id === routeNodeId);
     if (node?.type === 'market') {
       this.openMarketNode(node);
       return;
@@ -4232,6 +4291,22 @@ class RouteScene extends Phaser.Scene {
     }
     if (node.type === 'nest') {
       return withDecline(alphaNestSet.options.map(nodeOption), 'Leave the nest as-is.');
+    }
+    if (node.type === 'rival') {
+      return [
+        {
+          key: 'challenge_rival',
+          text: 'Take Caldra\'s wager',
+          effects: ['startRivalBattle'],
+          locked: false
+        },
+        {
+          key: 'decline',
+          text: 'Do not get involved.',
+          effects: [],
+          locked: false
+        }
+      ];
     }
     const signal = alphaSignalLibrary.get(node.payloadId);
     return withDecline((signal?.choices ?? []).map((choice) => {
@@ -4289,6 +4364,15 @@ class RouteScene extends Phaser.Scene {
     if (!choice || choice.locked) return;
     const scrapCost = this.scrapCostOfEffects(choice.effects);
     if (scrapCost > this.runState.scrap) return;
+    if (node.type === 'rival' && choice.key === 'challenge_rival') {
+      this.runState.currentRouteNodeId = node.id;
+      this.runState.routeLog.push(`${node.label}: ${choice.text}`);
+      this.runState.routeLog = this.runState.routeLog.slice(-8);
+      this.nodeChoiceOpen = false;
+      this.nodeChoiceNodeId = undefined;
+      this.scene.start('BattleScene', { routeNodeId: node.id, runState: cloneRunState(this.runState) });
+      return;
+    }
     // Preen/Remove defer to a card picker so the player chooses the card; other
     // effects resolve immediately.
     let pickerMode: 'preen' | 'release' | undefined;
@@ -4581,6 +4665,7 @@ class RouteScene extends Phaser.Scene {
       fontStyle: 'bold',
       color: '#f0c36f'
     }).setOrigin(1, 0);
+    const scrapIcon = addScrapIconImage(this, w - 58, 42, 24);
     const scrap = this.add.text(w - 16, 36, 'SCRAP', {
       fontFamily: 'Arial',
       fontSize: '9px',
@@ -4595,7 +4680,7 @@ class RouteScene extends Phaser.Scene {
       wordWrap: { width: w - 32 },
       maxLines: 1
     });
-    const panel = this.add.container(0, 0, [bg, rail, title, price, scrap, kicker, body, meta]).setDepth(20000);
+    const panel = this.add.container(0, 0, [bg, rail, title, price, ...(scrapIcon ? [scrapIcon] : []), scrap, kicker, body, meta]).setDepth(20000);
     const px = Math.max(12, Math.min(GAME_WIDTH - w - 12, opts.anchorX - w / 2));
     const above = opts.anchorY - h - 22;
     const py = above > 10 ? above : Math.min(GAME_HEIGHT - h - 12, opts.anchorY + 48);
@@ -4949,8 +5034,8 @@ class RouteScene extends Phaser.Scene {
     this.add.rectangle(x, y, w, h, 0x080604, 1)
       .setStrokeStyle(1, UI_FIELD.gold, 0.9);
     this.add.rectangle(x, y - h / 2 + 5, w - 16, 2, UI_FIELD.gold, 0.72);
-    this.add.circle(x - w / 2 + 18, y + 3, 5, UI_FIELD.gold, 0.95);
-    this.add.text(x - w / 2 + 31, y - 12, 'SCRAP', {
+    addScrapIconImage(this, x - w / 2 + 18, y + 3, 31)?.setAlpha(0.98);
+    this.add.text(x - w / 2 + 38, y - 12, 'SCRAP', {
       fontFamily: 'Arial',
       fontSize: '9px',
       fontStyle: 'bold',
@@ -5172,20 +5257,20 @@ class RouteScene extends Phaser.Scene {
     const h = 42;
     this.add.rectangle(x, y, w, h, 0x020409, 0.97)
       .setStrokeStyle(1, UI_FIELD.gold, 0.86);
-    this.add.circle(x - w / 2 + 18, y + 1, 5, UI_FIELD.gold, 0.96);
-    this.add.text(x - w / 2 + 32, y - 14, `${this.runState.scrap}`, {
+    addScrapIconImage(this, x - w / 2 + 21, y + 1, 34)?.setAlpha(0.98);
+    this.add.text(x - w / 2 + 46, y - 14, `${this.runState.scrap}`, {
       fontFamily: 'Arial',
       fontSize: '20px',
       fontStyle: 'bold',
       color: '#ffe1a3'
     });
-    this.add.text(x - w / 2 + 72, y - 12, 'SCRAP', {
+    this.add.text(x - w / 2 + 86, y - 12, 'SCRAP', {
       fontFamily: 'Arial',
       fontSize: '9px',
       fontStyle: 'bold',
       color: '#8df4ff'
     });
-    this.add.text(x - w / 2 + 72, y + 3, `${this.runState.currentHp}/${this.runMaxHp()} COHESION`, {
+    this.add.text(x - w / 2 + 86, y + 3, `${this.runState.currentHp}/${this.runMaxHp()} COHESION`, {
       fontFamily: 'Arial',
       fontSize: '9px',
       fontStyle: 'bold',
@@ -5198,7 +5283,7 @@ class RouteScene extends Phaser.Scene {
     const accent = routeEventAccent(node.type);
     const profile = ROUTE_SET_PIECE_PROFILES[node.type];
     this.queueRouteEventSetPieceArtLoad(node);
-    this.renderRouteEventBackdrop(node, node.type === 'basin' ? 1 : 0.9);
+    this.renderRouteEventBackdrop(node, 1);
     const background = this.routeEventBackdropAsset(node);
     const resident = this.routeEventResidentAsset(node);
 
@@ -5272,20 +5357,20 @@ class RouteScene extends Phaser.Scene {
 
     this.add.rectangle(154, 116, 130, 38, 0x020409, 0.96)
       .setStrokeStyle(1, 0xd8a840, 0.86);
-    this.add.circle(104, 116, 5, 0xd8a840, 1);
-    this.add.text(118, 105, `${this.runState.scrap}`, {
+    addScrapIconImage(this, 106, 116, 32)?.setAlpha(0.98);
+    this.add.text(128, 105, `${this.runState.scrap}`, {
       fontFamily: 'Arial',
       fontSize: '20px',
       fontStyle: 'bold',
       color: '#ffe1a3'
     });
-    this.add.text(156, 109, 'SCRAP', {
+    this.add.text(166, 109, 'SCRAP', {
       fontFamily: 'Arial',
       fontSize: '10px',
       fontStyle: 'bold',
       color: '#8df4ff'
     });
-    this.add.text(156, 122, `${this.runState.currentHp}/${this.runMaxHp()} COHESION`, {
+    this.add.text(166, 122, `${this.runState.currentHp}/${this.runMaxHp()} COHESION`, {
       fontFamily: 'Arial',
       fontSize: '9px',
       fontStyle: 'bold',
@@ -5340,7 +5425,8 @@ class RouteScene extends Phaser.Scene {
       wordWrap: { width: 300 },
       maxLines: 2
     });
-    this.add.text(x + 150, y - (compact ? 9 : 13), choice.locked ? 'LOCKED' : 'VISIT', {
+    const actionLabel = choice.locked ? 'LOCKED' : choice.effects.includes('startRivalBattle') ? 'ENTER' : 'VISIT';
+    this.add.text(x + 150, y - (compact ? 9 : 13), actionLabel, {
       fontFamily: 'Arial',
       fontSize: '11px',
       fontStyle: 'bold',
@@ -5616,6 +5702,8 @@ class RouteScene extends Phaser.Scene {
       color: enabled ? '#f0c36f' : '#91a6b8',
       align: 'right'
     }).setOrigin(1, 0);
+    addScrapIconImage(this, x + w / 2 - 45, y - h / 2 + 33, 22)
+      ?.setAlpha(enabled ? 0.94 : 0.46);
     this.add.text(x + w / 2 - 9, y - h / 2 + 28, 'SCRAP', {
       fontFamily: 'Arial',
       fontSize: '7px',
@@ -5630,7 +5718,8 @@ class RouteScene extends Phaser.Scene {
     this.add.rectangle(x + 3, y + 4, 78, 26, 0x020409, 0.78);
     this.add.rectangle(x, y, 78, 26, fill, enabled ? 0.94 : 0.86)
       .setStrokeStyle(MENU_BORDER_WIDTH, enabled ? accent : 0x3f4c58, enabled ? 0.86 : 0.52);
-    this.add.circle(x - 28, y, 4, enabled ? UI_FIELD.gold : 0x59606a, 0.9);
+    addScrapIconImage(this, x - 30, y, 24)
+      ?.setAlpha(enabled ? 0.94 : 0.5);
     this.add.text(x - 18, y - 10, `${price}`, {
       fontFamily: 'Arial',
       fontSize: '13px',
@@ -7616,6 +7705,7 @@ class BattleScene extends Phaser.Scene {
 
   private battleArtAssets() {
     return uniqueImageAssets([
+      scrapArtAsset,
       this.currentBattlefieldAsset(),
       this.currentFlockLeaderArtAsset(),
       ...this.routeMarks.map((id) => waymarkArtAssets[id]),
@@ -7654,6 +7744,11 @@ class BattleScene extends Phaser.Scene {
   private queueCurrentWaymarkArtLoad() {
     const assets = uniqueImageAssets(this.routeMarks.map((id) => waymarkArtAssets[id]));
     this.queueImageAssets(assets, 'Waymark art failed to load');
+  }
+
+  private queueWaymarkRewardArtLoad() {
+    const assets = uniqueImageAssets(this.waymarkChoices.map((mark) => waymarkArtAssets[mark.id]));
+    this.queueImageAssets(assets, 'Waymark reward art failed to load');
   }
 
   private queueImageAssets(assets: RuntimeImageAsset[], warning: string) {
@@ -8094,6 +8189,13 @@ class BattleScene extends Phaser.Scene {
     this.root.add(this.add.text(cx - width / 2 + 10, cy + 1, value, {
       fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#e7eef7'
     }));
+    if (label === 'Scrap') {
+      const icon = addScrapIconImage(this, cx + width / 2 - 18, cy, 34);
+      if (icon) {
+        this.root.add(icon);
+        return;
+      }
+    }
     this.root.add(this.add.circle(cx + width / 2 - 12, cy, 5, accent, 1));
   }
 
@@ -8836,7 +8938,8 @@ class BattleScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     skip.on('pointerdown', () => this.skipCardReward());
     this.root.add(skip);
-    this.root.add(this.add.text(GAME_WIDTH / 2, 652, `Skip - take +${this.currentSkipScrapReward()} Scrap`, {
+    this.root.add(addScrapIconImage(this, GAME_WIDTH / 2 - 132, 652, 30).setAlpha(0.95));
+    this.root.add(this.add.text(GAME_WIDTH / 2 + 10, 652, `Skip - take +${this.currentSkipScrapReward()} Scrap`, {
       fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#ffe1a3'
     }).setOrigin(0.5));
   }
@@ -8861,6 +8964,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private renderWaymarkReward() {
+    this.queueWaymarkRewardArtLoad();
     this.renderRewardBackdrop('Claim a Waymark', 'Choose one route artifact from the cleared chokepoint.');
     this.waymarkChoices.forEach((mark, index) => {
       const x = 336 + index * 304;
@@ -12233,6 +12337,7 @@ function routeEffectSummary(effects: string[]): string {
   if (effects.length === 0) return 'No cost';
   return effects.map((effect) => {
     const parsed = parseEffect(effect);
+    if (effect === 'startRivalBattle') return 'Start rival battle';
     if (!parsed) return effect;
     const a = parsed.args[0] ?? '';
     switch (parsed.name) {

@@ -635,6 +635,10 @@ for (const mark of alphaRouteMarks.routeMarks ?? []) {
   if (!validRouteMarkRarities.has(mark.rarity)) fail(`${label}: invalid rarity "${mark.rarity}"`);
   validateTrigger(mark.trigger, label);
   validateEffects([mark.effect], `${label}:effect`, validMarkVerbs);
+  const iconPath = `assets/runtime/waymarks/icons/${mark.id}.webp`;
+  if (!fs.existsSync(path.join(root, iconPath))) {
+    fail(`${label}: missing reward icon at ${iconPath}`);
+  }
 }
 
 // Supplies (next-level-data-contracts §7.1)
@@ -652,6 +656,10 @@ for (const supply of alphaSupplies.supplies ?? []) {
   if (!validSupplyTimings.has(supply.timing)) fail(`${label}: invalid timing "${supply.timing}"`);
   if (!validSupplyRarities.has(supply.rarity)) fail(`${label}: invalid rarity "${supply.rarity}"`);
   validateEffectVerbs(supply.effects, `${label}:effects`);
+  const iconPath = `assets/runtime/supplies/icons/${supply.id}.webp`;
+  if (!fs.existsSync(path.join(root, iconPath))) {
+    fail(`${label}: missing reward icon at ${iconPath}`);
+  }
 }
 
 // Basin / Nest / Cache node options (next-level-data-contracts §7.4)
@@ -923,6 +931,15 @@ for (const [cardId, card] of cardsById) {
   // Snags render with a generic hazard visual and need no per-card art entry.
   if (card.kind !== 'snag' && !artEntriesByCardId.has(cardId)) {
     fail(`assets/runtime/cards/card-art-manifest.json: missing Alpha card ${cardId}`);
+  }
+}
+
+for (const cardId of alphaCards.rewardPool ?? []) {
+  const entry = artEntriesByCardId.get(cardId);
+  if (!entry) {
+    fail(`assets/runtime/cards/card-art-manifest.json: reward card ${cardId} has no image mapping`);
+  } else if (entry.status !== 'approved') {
+    fail(`assets/runtime/cards/card-art-manifest.json: reward card ${cardId} must have approved image art`);
   }
 }
 
