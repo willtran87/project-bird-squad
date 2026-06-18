@@ -14,7 +14,7 @@
     },
     {
       "id": "release",
-      "label": "Send a Scout Ahead",
+      "label": "Remove a Card",
       "cost": 40,
       "effects": ["payScrap(40)", "releaseCard(1)"]
     },

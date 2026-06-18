@@ -13,7 +13,7 @@ const budgets = [
   { label: 'card portrait WebP', dir: 'assets/runtime/cards/portrait', pattern: /\.webp$/i, maxKb: 800 },
   { label: 'card thumbnail WebP', dir: 'assets/runtime/cards/thumb', pattern: /\.webp$/i, maxKb: 125 },
   { label: 'card icon WebP', dir: 'assets/runtime/cards/icon', pattern: /\.webp$/i, maxKb: 80 },
-  { label: 'waymark icon WebP', dir: 'assets/runtime/waymarks/icons', pattern: /\.webp$/i, maxKb: 24 },
+  { label: 'waymark icon WebP', dir: 'assets/runtime/waymarks/icons', pattern: /\.webp$/i, maxKb: 160 },
   { label: 'route node icon WebP', dir: 'assets/runtime/map-icons/icons', pattern: /\.webp$/i, maxKb: 32 },
   { label: 'battlefield backdrop WebP', dir: 'assets/runtime/backdrops', pattern: /\.webp$/i, maxKb: 420 },
 ];

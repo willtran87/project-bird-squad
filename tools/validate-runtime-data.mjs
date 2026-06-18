@@ -72,7 +72,10 @@ const validEnemyRoles = new Set(['striker', 'bruiser', 'saboteur', 'controller',
 const validStatusKinds = new Set(['buff', 'debuff']);
 const validStatusStacks = new Set(['counter', 'flag']);
 const validSupplyCategories = new Set(['snack', 'flare', 'tool', 'call']);
-const validSupplyAnswerTypes = new Set(['coverNow', 'drawNow', 'wingbeatNow', 'healNow', 'openSkySafety', 'tellControl']);
+const validSupplyAnswerTypes = new Set([
+  'coverNow', 'drawNow', 'wingbeatNow', 'healNow', 'openSkySafety', 'tellControl',
+  'damageNow', 'antiCover', 'cleanseNow', 'handFix', 'moltNow', 'burstNow',
+]);
 const validSupplyTimings = new Set(['combat', 'route', 'either']);
 const validSupplyRarities = new Set(['common', 'uncommon', 'rare']);
 const validRouteMarkFamilies = new Set(['safety', 'economy', 'route', 'suit', 'molt', 'bossPrep']);
@@ -81,6 +84,7 @@ const validRouteMarkRarities = new Set(['common', 'uncommon', 'rare', 'boss']);
 const validTriggerBases = new Set([
   'combatStart', 'afterStreetEncounter', 'firstOpenSkyIncrease', 'basinHeal',
   'signalResolved', 'firstImproveThisRun', 'mapStart', 'passive', 'cacheChoice',
+  'onSupplyUsed', 'onEnterMolt', 'onHealFlock',
 ]);
 // Signal/Market choice preconditions (next-level-data-contracts §7.2)
 const validPredicates = new Set([
@@ -95,7 +99,8 @@ const validateTrigger = (trigger, label) => {
   if (typeof trigger !== 'string') { fail(`${label}: trigger must be a string`); return; }
   const [base, gate] = trigger.split(' if ');
   const nth = /^onNthCardThisTurn\((\d+)\)$/.exec(base);
-  if (!validTriggerBases.has(base) && !nth) fail(`${label}: unknown trigger "${base}"`);
+  const suit = /^onSuitPlayed\((plumes|quills|basins|nests)\)$/.exec(base);
+  if (!validTriggerBases.has(base) && !nth && !suit) fail(`${label}: unknown trigger "${base}"`);
   if (gate !== undefined && !/^turn >= \d+$/.test(gate)) fail(`${label}: invalid trigger gate "${gate}"`);
 };
 
@@ -135,8 +140,8 @@ const validateOutcomeRefs = (effects, label, refs) => {
 const validEffectVerbs = new Set([
   // combat verbs
   'damage', 'damagePierce', 'damageAll', 'removeCover', 'gainCover', 'heal', 'draw', 'discard', 'discardUpTo',
-  'gainWingbeat', 'loseWingbeat', 'gainResonance', 'spendResonance', 'applyWinded', 'enterMolt',
-  'gainOpenSkyGuard', 'returnDiscard', 'nextCoverBonus', 'nextTurnDraw',
+  'gainWingbeat', 'loseWingbeat', 'gainEnergyNextTurn', 'gainResonance', 'spendResonance', 'resonanceBurst',
+  'applyWinded', 'enterMolt', 'gainOpenSkyGuard', 'returnDiscard', 'nextCoverBonus', 'nextTurnDraw', 'cleanseFlock',
   // enemy verbs
   'applyOpenSky', 'addSnagToDiscard', 'addSnagToDraw', 'nextAttackBonus',
   'healAlly', 'healAllEnemies', 'gainCoverAlly', 'gainCoverAllEnemies', 'nextAttackBonusAlly', 'applyPoison',
@@ -261,7 +266,8 @@ const validEnemyVerbs = new Set([
 // the economy/passive ones are consumed at dedicated sites (reducePreenPrice,
 // gainScrap, addHeal, reduceOpenSky, gainSupplyChoice).
 const validMarkVerbs = new Set([
-  'gainCover', 'gainWingbeat', 'gainOpenSkyGuard', 'draw', 'heal', 'bossDamageShield',
+  'gainCover', 'gainCoverPerWaymark', 'gainWingbeat', 'gainEnergyNextTurn', 'gainResonance',
+  'gainOpenSkyGuard', 'draw', 'damageAll', 'heal', 'nextCoverBonus', 'nextTurnDraw', 'bossDamageShield',
   'reducePreenPrice', 'gainScrap', 'addHeal', 'reduceOpenSky', 'gainSupplyChoice',
   'extraCacheChoice', 'freePreenNextDistrict',
 ]);
@@ -637,6 +643,7 @@ for (const supply of alphaSupplies.supplies ?? []) {
   supplyIds.add(supply.id);
   if (!supply.name || typeof supply.name !== 'string') fail(`${label}: missing name`);
   if (!supply.description || typeof supply.description !== 'string') fail(`${label}: missing description`);
+  if (!supply.visualBrief || typeof supply.visualBrief !== 'string') fail(`${label}: missing visualBrief for image generation`);
   if (!validSupplyCategories.has(supply.category)) fail(`${label}: invalid category "${supply.category}"`);
   if (!validSupplyAnswerTypes.has(supply.answerType)) fail(`${label}: invalid answerType "${supply.answerType}"`);
   if (!validSupplyTimings.has(supply.timing)) fail(`${label}: invalid timing "${supply.timing}"`);

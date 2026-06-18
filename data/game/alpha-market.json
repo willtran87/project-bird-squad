@@ -16,9 +16,11 @@
       ],
       "routeMarkSlots": [
         { "selector": "nonBoss", "price": { "base": 135, "min": 115, "max": 160 } },
+        { "selector": "nonBoss", "price": { "base": 135, "min": 115, "max": 160 } },
         { "selector": "nonBoss", "price": { "base": 135, "min": 115, "max": 160 } }
       ],
       "supplySlots": [
+        { "selector": "pool", "price": { "base": 45, "min": 25, "max": 65 } },
         { "selector": "pool", "price": { "base": 45, "min": 25, "max": 65 } },
         { "selector": "pool", "price": { "base": 45, "min": 25, "max": 65 } }
       ],

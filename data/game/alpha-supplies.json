@@ -1,5 +1,5 @@
 {
-  "version": "0.1",
+  "version": "0.2",
   "project": "Bird Squad",
   "basedOn": [
     "docs/game/alpha-run-spec.md",
@@ -14,7 +14,8 @@
       "answerType": "healNow",
       "timing": "either",
       "effects": ["healCohesion(6)"],
-      "description": "Heal 6 Cohesion."
+      "description": "Heal 6 Cohesion.",
+      "visualBrief": "A tiny foil seed packet with torn corners, bright safflower seeds spilling out, taped to a mini courier strap; bold streetwear colors, crisp object silhouette, rooftop-market grit, matching the Bird Squad title splash art."
     },
     {
       "id": "signal_flare",
@@ -24,7 +25,8 @@
       "answerType": "drawNow",
       "timing": "combat",
       "effects": ["gainResonance(2)", "draw(1)"],
-      "description": "Gain 2 Resonance. Draw 1."
+      "description": "Gain 2 Resonance. Draw 1.",
+      "visualBrief": "A stubby red-orange rooftop flare with a taped pull-ring, sparking cyan and amber smoke in a controlled plume; high-contrast neon against dark metal, utilitarian bird-scale gear, title-splash street fantasy style."
     },
     {
       "id": "zip_tie_roll",
@@ -34,7 +36,52 @@
       "answerType": "coverNow",
       "timing": "combat",
       "effects": ["gainCover(10)"],
-      "description": "Gain 10 Cover."
+      "description": "Gain 10 Cover.",
+      "visualBrief": "A coiled roll of black and teal zip ties clipped to a scratched bottlecap spool, with a few ties bent into quick brace shapes; clean readable silhouette, practical urban salvage, Bird Squad splash-art lighting."
+    },
+    {
+      "id": "bottlecap_popper",
+      "name": "Bottlecap Popper",
+      "category": "tool",
+      "rarity": "common",
+      "answerType": "damageNow",
+      "timing": "combat",
+      "effects": ["damagePierce(6)"],
+      "description": "Deal 6 damage that ignores Cover.",
+      "visualBrief": "A spring-loaded bottlecap launcher built from a pen spring, brass cap, and red thread trigger, sized for a bird talon; energetic comic-book silhouette, tiny hazard stripes, bright metal glints, title-splash rooftop grit."
+    },
+    {
+      "id": "tar_solvent",
+      "name": "Tar Solvent",
+      "category": "tool",
+      "rarity": "common",
+      "answerType": "antiCover",
+      "timing": "combat",
+      "effects": ["removeCover(10)"],
+      "description": "Remove up to 10 Cover from the selected enemy.",
+      "visualBrief": "A thumb-sized glass vial of blue-green solvent wrapped in caution tape, with dark tar drops sliding off a bent metal scraper; saturated neon chemistry, sharp readable item pose, Bird Squad title splash mood."
+    },
+    {
+      "id": "feather_splint",
+      "name": "Feather Splint",
+      "category": "snack",
+      "rarity": "common",
+      "answerType": "cleanseNow",
+      "timing": "either",
+      "effects": ["healCohesion(4)", "cleanseFlock(1)"],
+      "description": "Heal 4 Cohesion and reduce each flock debuff by 1.",
+      "visualBrief": "A soft feather splint kit: two tiny carbon slats, cloth wrap, and a mint-green balm tin, arranged like a field medic roll; warm compassionate palette, crisp bird-scale utility, title-splash urban fantasy realism."
+    },
+    {
+      "id": "mirror_shard",
+      "name": "Mirror Shard",
+      "category": "flare",
+      "rarity": "common",
+      "answerType": "handFix",
+      "timing": "combat",
+      "effects": ["draw(2)", "discard(1)"],
+      "description": "Draw 2, then discard 1.",
+      "visualBrief": "A triangular shard of mirror taped into a bottlecap frame, reflecting pink and cyan rooftop signs at sharp angles; sleek tactical shine, high contrast, streetwear accessory feel, Bird Squad title splash style."
     },
     {
       "id": "emergency_call",
@@ -44,7 +91,8 @@
       "answerType": "wingbeatNow",
       "timing": "combat",
       "effects": ["gainWingbeat(1)", "draw(1)"],
-      "description": "Gain 1 Wingbeat. Draw 1."
+      "description": "Gain 1 Wingbeat. Draw 1.",
+      "visualBrief": "A tiny whistle-and-radio charm made from a cracked earbud shell and copper wire, vibrating with a gold signal ring; heroic compact silhouette, neon highlights, practical courier gear from the title splash world."
     },
     {
       "id": "shade_cloth",
@@ -54,7 +102,250 @@
       "answerType": "openSkySafety",
       "timing": "either",
       "effects": ["reduceNextOpenSky(2)"],
-      "description": "Reduce the next Open Sky damage increase by 2."
+      "description": "Reduce the next Open Sky damage increase by 2.",
+      "visualBrief": "A folded rectangle of dark teal shade cloth with stitched orange edge marks and two bent safety pins, catching a cool shadow against hot rooftop light; grounded textile detail, bold splash-art contrast."
+    },
+    {
+      "id": "rooftop_decoy",
+      "name": "Rooftop Decoy",
+      "category": "tool",
+      "rarity": "uncommon",
+      "answerType": "coverNow",
+      "timing": "combat",
+      "effects": ["gainCover(6)", "gainOpenSkyGuard(1)"],
+      "description": "Gain 6 Cover and 1 Open Sky Guard.",
+      "visualBrief": "A flat decoy bird silhouette cut from black plastic signage, mounted on a bright blue wire stand with reflective tape eyes; clever rooftop trick, punchy graphic profile, Bird Squad title-splash lighting."
+    },
+    {
+      "id": "molt_pin",
+      "name": "Molt Pin",
+      "category": "tool",
+      "rarity": "uncommon",
+      "answerType": "moltNow",
+      "timing": "combat",
+      "effects": ["enterMolt()", "gainOpenSkyGuard(1)"],
+      "description": "Enter Molt and gain 1 Open Sky Guard.",
+      "visualBrief": "An enamel lapel pin shaped like a half-shed feather, violet enamel cracked to reveal gold underneath, clasped to a tiny harness strap; stylish flock identity object, title-splash streetwear finish."
+    },
+    {
+      "id": "wire_snips",
+      "name": "Wire Snips",
+      "category": "tool",
+      "rarity": "uncommon",
+      "answerType": "antiCover",
+      "timing": "combat",
+      "effects": ["removeCover(8)", "applyWinded(2)"],
+      "description": "Remove up to 8 enemy Cover and apply 2 Winded.",
+      "visualBrief": "Miniature red-handled wire snips with a fresh-cut cable curling away, tiny sparks frozen in the jaws; aggressive utility pose, sharp silhouette, neon rooftop hardware in Bird Squad splash-art style."
+    },
+    {
+      "id": "spare_harness",
+      "name": "Spare Harness",
+      "category": "tool",
+      "rarity": "uncommon",
+      "answerType": "coverNow",
+      "timing": "combat",
+      "effects": ["gainCover(14)"],
+      "description": "Gain 14 Cover.",
+      "visualBrief": "A folded bird-scale safety harness with patched navy straps, brass buckles, and one yellow rescue tag; sturdy protective silhouette, premium urban expedition gear, dramatic title-splash rim light."
+    },
+    {
+      "id": "signal_kite",
+      "name": "Signal Kite",
+      "category": "flare",
+      "rarity": "rare",
+      "answerType": "drawNow",
+      "timing": "combat",
+      "effects": ["draw(1)", "gainOpenSkyGuard(2)", "gainResonance(1)"],
+      "description": "Draw 1, gain 2 Open Sky Guard, and gain 1 Resonance.",
+      "visualBrief": "A folded micro-kite made from translucent orange plastic and black thread, painted with a cyan route glyph, fluttering above a rooftop antenna hook; elegant signal object, luminous title-splash palette."
+    },
+    {
+      "id": "storm_lantern",
+      "name": "Storm Lantern",
+      "category": "flare",
+      "rarity": "rare",
+      "answerType": "burstNow",
+      "timing": "combat",
+      "effects": ["gainWingbeat(2)", "draw(2)", "loseCohesion(4)"],
+      "description": "Gain 2 Wingbeat and draw 2. Lose 4 Cohesion.",
+      "visualBrief": "A tiny storm lantern built from a lighter cap and violet glass bead, blazing gold in wind with loose wires whipping around it; dangerous high-energy artifact, cinematic Bird Squad title-splash glow."
+    },
+    {
+      "id": "cache_key",
+      "name": "Cache Key",
+      "category": "tool",
+      "rarity": "rare",
+      "answerType": "handFix",
+      "timing": "combat",
+      "effects": ["draw(1)", "gainCover(8)"],
+      "description": "Draw 1 and gain 8 Cover.",
+      "visualBrief": "A strange brass vending-machine key tied to a red courier thread, with a scratched rooftop cache symbol on the bow; mysterious found-object charm, crisp silhouette, title-splash urban treasure mood."
+    },
+    {
+      "id": "rain_cape",
+      "name": "Rain Cape",
+      "category": "tool",
+      "rarity": "rare",
+      "answerType": "openSkySafety",
+      "timing": "either",
+      "effects": ["gainOpenSkyGuard(3)", "healCohesion(8)"],
+      "description": "Gain 3 Open Sky Guard and heal 8 Cohesion.",
+      "visualBrief": "A glossy midnight-blue rain cape folded around a tiny hood, with reflective silver wing stripes and warm city lights beading on the surface; protective, stylish, and heroic in Bird Squad title-splash style."
+    },
+    {
+      "id": "return_ticket",
+      "name": "Return Ticket",
+      "category": "call",
+      "rarity": "uncommon",
+      "answerType": "handFix",
+      "timing": "combat",
+      "effects": ["returnDiscard()", "draw(1)"],
+      "description": "Return 1 non-Molt card from discard to hand, then draw 1.",
+      "visualBrief": "A folded transit ticket with a punched wing symbol, red courier thread, and a tiny brass clip; a crisp bird-scale route charm with neon platform reflections and title-splash street grit."
+    },
+    {
+      "id": "nest_clamp",
+      "name": "Nest Clamp",
+      "category": "tool",
+      "rarity": "uncommon",
+      "answerType": "coverNow",
+      "timing": "combat",
+      "effects": ["gainCover(4)", "nextCoverBonus(8)"],
+      "description": "Gain 4 Cover. The next Nest Cover card gains +8 Cover.",
+      "visualBrief": "A compact spring clamp wrapped in green tape, biting into two little scaffold slats with orange safety paint; sturdy urban repair gear, readable silhouette, Bird Squad title-screen lighting."
+    },
+    {
+      "id": "smoke_thread",
+      "name": "Smoke Thread",
+      "category": "flare",
+      "rarity": "uncommon",
+      "answerType": "antiCover",
+      "timing": "combat",
+      "effects": ["applyWinded(3)", "nextTurnDraw(1)"],
+      "description": "Apply 3 Winded to the selected enemy. Draw 1 extra next turn.",
+      "visualBrief": "A spool of black thread leaking violet smoke, with a cyan bead counterweight and taped needle tucked through it; tactical misdirection object, high-contrast neon rooftop style."
+    },
+    {
+      "id": "windcatcher_spool",
+      "name": "Windcatcher Spool",
+      "category": "tool",
+      "rarity": "rare",
+      "answerType": "wingbeatNow",
+      "timing": "combat",
+      "effects": ["draw(1)", "gainEnergyNextTurn(2)"],
+      "description": "Draw 1. Gain +2 Wingbeat next turn.",
+      "visualBrief": "A tiny kite-string spool with translucent orange fins and a blue wind gauge, thread pulled taut as if catching rooftop gusts; sleek route gear with Bird Squad splash-art glow."
+    },
+    {
+      "id": "resonance_battery",
+      "name": "Resonance Battery",
+      "category": "flare",
+      "rarity": "rare",
+      "answerType": "burstNow",
+      "timing": "combat",
+      "effects": ["gainResonance(2)", "resonanceBurst(3)"],
+      "description": "Gain 2 Resonance, then spend all Resonance to deal 3 damage per Resonance to the selected enemy.",
+      "visualBrief": "A cracked teal battery cell wired into a bottlecap casing, pulsing with gold-blue resonance arcs; dangerous pocket power source, dramatic neon highlights, title-splash rooftop hardware."
+    },
+    {
+      "id": "oath_ledger",
+      "name": "Oath Ledger",
+      "category": "call",
+      "rarity": "rare",
+      "answerType": "burstNow",
+      "timing": "combat",
+      "effects": ["gainScrap(25)", "loseCohesion(3)"],
+      "description": "Gain 25 Scrap. Lose 3 Cohesion.",
+      "visualBrief": "A weatherproof mini ledger strapped shut with red cord, brass tally charms hanging from the spine and one page glowing with market ink; stylish risky bargain object, Bird Squad title-splash mood."
+    },
+    {
+      "id": "map_sticker_strip",
+      "name": "Map Sticker Strip",
+      "category": "call",
+      "rarity": "common",
+      "answerType": "tellControl",
+      "timing": "route",
+      "effects": ["peekNextNodes(1)"],
+      "description": "Preview the next reachable route choices.",
+      "visualBrief": "A strip of tiny neon route stickers half peeled from wax paper, with arrows, rooftop marks, and one red thread tab; crisp bird-scale planning gear in the Bird Squad title-splash salvage style."
+    },
+    {
+      "id": "thermos_lid",
+      "name": "Thermos Lid",
+      "category": "snack",
+      "rarity": "common",
+      "answerType": "healNow",
+      "timing": "either",
+      "effects": ["healCohesion(5)", "gainOpenSkyGuard(1)"],
+      "description": "Heal 5 Cohesion and gain 1 Open Sky Guard for the next fight.",
+      "visualBrief": "A dented teal thermos cap filled with warm seed broth, steam curling around a tiny spoon and safety-pin handle; cozy rooftop field snack with title-splash neon rim light."
+    },
+    {
+      "id": "bus_token_cache",
+      "name": "Bus Token Cache",
+      "category": "call",
+      "rarity": "uncommon",
+      "answerType": "tellControl",
+      "timing": "route",
+      "effects": ["gainScrap(15)", "gainSupplyChoice(1)"],
+      "description": "Gain 15 Scrap and pack a random Supply if there is room.",
+      "visualBrief": "Three brass transit tokens tied in a red cord bundle, one stamped with a wing, glowing with city-platform reflections; compact route-economy charm in Bird Squad title art style."
+    },
+    {
+      "id": "chalk_dust_pouch",
+      "name": "Chalk Dust Pouch",
+      "category": "tool",
+      "rarity": "uncommon",
+      "answerType": "antiCover",
+      "timing": "combat",
+      "effects": ["removeCover(6)", "draw(1)"],
+      "description": "Remove up to 6 enemy Cover. Draw 1.",
+      "visualBrief": "A small black pouch spilling pale blue chalk dust, clipped to a climbing buckle and scratched roof tile; tactical anti-Cover tool with bright rooftop grit."
+    },
+    {
+      "id": "market_iou",
+      "name": "Market IOU",
+      "category": "call",
+      "rarity": "rare",
+      "answerType": "tellControl",
+      "timing": "route",
+      "effects": ["freePreenNextDistrict(1)", "loseCohesion(2)"],
+      "description": "Next district starts with 1 free Preen. Lose 2 Cohesion.",
+      "visualBrief": "A waterproof IOU slip folded around a brass tally charm, red string seal, and oily market ink; risky favor token with Bird Squad title-splash lighting."
+    },
+    {
+      "id": "sky_sugar",
+      "name": "Sky Sugar",
+      "category": "snack",
+      "rarity": "rare",
+      "answerType": "wingbeatNow",
+      "timing": "combat",
+      "effects": ["gainWingbeat(1)", "draw(1)", "nextTurnDraw(1)"],
+      "description": "Gain 1 Wingbeat. Draw 1. Draw 1 extra next turn.",
+      "visualBrief": "A cracked candy tin of bright amber sugar crystals with a tiny feather scoop and electric-blue wrapper scraps; fast combo snack with neon rooftop highlights."
+    },
+    {
+      "id": "anchor_threader",
+      "name": "Anchor Threader",
+      "category": "tool",
+      "rarity": "uncommon",
+      "answerType": "coverNow",
+      "timing": "combat",
+      "effects": ["gainCover(5)", "retainHand(1)"],
+      "description": "Gain 5 Cover. Retain 1 card for next turn.",
+      "visualBrief": "A curved needle threaded with black anchor cord, wrapped around a green-taped micro spool and brass washer; sturdy setup tool in Bird Squad title-screen salvage style."
+    },
+    {
+      "id": "spare_pocket",
+      "name": "Spare Pocket",
+      "category": "tool",
+      "rarity": "rare",
+      "answerType": "tellControl",
+      "timing": "route",
+      "effects": ["increaseSupplySlots(1)"],
+      "description": "Increase Supply capacity by 1 for this run.",
+      "visualBrief": "A stitched navy harness pocket with orange zipper teeth, clipped-on bottlecap tag, and bright fabric patches; premium supply-build gear with crisp standalone silhouette."
     }
   ]
 }

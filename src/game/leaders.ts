@@ -28,7 +28,7 @@ export const flockLeaders: FlockLeader[] = [
     blurb: 'A bit of everything — the classic starting flock. Learn the ropes across all four suits.',
     signatureName: 'Four-Suit Rally',
     signatureText: 'The first card of each suit played each combat gains +1 Flow.',
-    startingDeckIds: ['major_00', 'wands_ace', 'wands_08', 'swords_02', 'swords_ace', 'cups_ace', 'cups_03', 'pentacles_04', 'pentacles_02', 'aviary_25'],
+    startingDeckIds: ['major_00', 'wands_ace', 'wands_fledgling', 'swords_ace', 'swords_fledgling', 'cups_ace', 'cups_fledgling', 'pentacles_04', 'pentacles_fledgling', 'aviary_25'],
   },
   {
     id: 'spark_caller',
@@ -38,7 +38,7 @@ export const flockLeaders: FlockLeader[] = [
     blurb: 'Builds Resonance and rides the tempo — fast hands, faster plays. Surges a beat sooner.',
     signatureName: 'Spark Echo',
     signatureText: 'The first Resonance spend each combat draws 1 card.',
-    startingDeckIds: ['wands_ace', 'wands_04', 'wands_02', 'wands_03', 'wands_05', 'wands_08', 'swords_ace', 'cups_03', 'pentacles_04', 'major_19'],
+    startingDeckIds: ['wands_ace', 'wands_02', 'wands_03', 'wands_05', 'wands_fledgling', 'wands_outrider', 'major_19', 'aviary_28', 'swords_ace', 'pentacles_fledgling'],
     flowMax: 4, // tempo archetype reaches Surge faster
   },
   {
@@ -49,7 +49,7 @@ export const flockLeaders: FlockLeader[] = [
     blurb: 'All edge. Press Winded and finish before they recover — opens a fight already pressing.',
     signatureName: 'Pinned Opening',
     signatureText: 'The first enemy made Winded each combat takes 2 bonus damage.',
-    startingDeckIds: ['swords_ace', 'swords_04', 'swords_02', 'swords_03', 'swords_05', 'wands_ace', 'cups_03', 'pentacles_04', 'major_07', 'aviary_25'],
+    startingDeckIds: ['swords_ace', 'swords_02', 'swords_03', 'swords_04', 'swords_fledgling', 'swords_08', 'major_18', 'aviary_29', 'pentacles_04', 'cups_03'],
     startFlow: 2, // aggressive archetype comes out of the gate near Surge
   },
   {
@@ -60,7 +60,7 @@ export const flockLeaders: FlockLeader[] = [
     blurb: 'Outlasts the storm — heal through attrition and never break.',
     signatureName: 'Overflow Shelter',
     signatureText: 'The first wasted healing each combat becomes Cover.',
-    startingDeckIds: ['cups_ace', 'cups_05', 'cups_02', 'cups_03', 'cups_04', 'pentacles_04', 'swords_ace', 'wands_ace', 'major_17', 'aviary_25'],
+    startingDeckIds: ['cups_ace', 'cups_02', 'cups_03', 'cups_fledgling', 'cups_09', 'cups_outrider', 'major_17', 'aviary_41', 'pentacles_06', 'swords_ace'],
   },
   {
     id: 'roostkeeper',
@@ -70,7 +70,7 @@ export const flockLeaders: FlockLeader[] = [
     blurb: 'A wall of Cover — turtle up, then bury them under your nest.',
     signatureName: 'Perfect Brace',
     signatureText: 'The first fully blocked enemy attack each combat gains +1 Flow.',
-    startingDeckIds: ['pentacles_04', 'pentacles_05', 'pentacles_02', 'pentacles_ace', 'pentacles_03', 'cups_03', 'swords_ace', 'wands_ace', 'major_04', 'aviary_25'],
+    startingDeckIds: ['pentacles_04', 'pentacles_02', 'pentacles_ace', 'pentacles_03', 'pentacles_06', 'pentacles_outrider', 'major_04', 'aviary_34', 'cups_02', 'swords_ace'],
   },
 ];
 

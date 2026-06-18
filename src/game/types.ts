@@ -235,7 +235,13 @@ export type SupplyAnswerType =
   | 'wingbeatNow'
   | 'healNow'
   | 'openSkySafety'
-  | 'tellControl';
+  | 'tellControl'
+  | 'damageNow'
+  | 'antiCover'
+  | 'cleanseNow'
+  | 'handFix'
+  | 'moltNow'
+  | 'burstNow';
 export type SupplyTiming = 'combat' | 'route' | 'either';
 
 export interface RuntimeSupply {
@@ -247,6 +253,7 @@ export interface RuntimeSupply {
   timing: SupplyTiming;
   effects: string[];
   description: string;
+  visualBrief?: string;
 }
 
 export interface RuntimeSupplySet {

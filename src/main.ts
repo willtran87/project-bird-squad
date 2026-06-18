@@ -47,7 +47,7 @@ import { defaultLeaderId, flockLeaders, getLeader } from './game/leaders';
 import { getLeaderLore } from './game/leader-lore';
 import { difficultyAdds, difficultyLabel, difficultyMods, MAX_DIFFICULTY } from './game/difficulty';
 import { achievements, discoverCards, isLeaderUnlocked, leaderUnlockHints, loadAccount, recordRun, type PlayerAccount } from './game/meta';
-import { queueRuntimeImageAssets, uniqueImageAssets, type RuntimeImageAsset } from './game/runtime-images';
+import { queuePreloadImageAssets, queueRuntimeImageAssets, uniqueImageAssets, type RuntimeImageAsset } from './game/runtime-images';
 import { getMapBalanceProfile } from './game/balance';
 
 type GameMode = 'menu' | 'routeSelection' | 'battle' | 'waymarkReward' | 'cardReward' | 'upgradeReward' | 'runComplete' | 'defeat';
@@ -157,6 +157,7 @@ interface RunState {
   scrap: number;
   routeMarks: string[];
   supplies: string[];
+  supplySlots?: number;
   mapIndex: number;
   completedRouteNodeIds: string[];
   currentRouteNodeId?: string;
@@ -404,6 +405,7 @@ const BASE_COHESION = 36;
 const BASE_WINGBEATS = 3;
 const BASE_HAND_TARGET = 5;
 const BASE_RESONANCE_CAP = 5;
+const BASE_SUPPLY_SLOTS = 2;
 const STARTING_SCRAP = 40;
 // Market pricing is data-driven from alpha-market.json (next-level-implementation
 // -spec "Market prices and services are data-driven").
@@ -719,6 +721,10 @@ function seededRng(key: string) {
 function priceInBand(band: MarketPriceBand, rarityStep = 0, districtStep = activeMapIndex) {
   const scaled = band.base + rarityStep * 18 + districtStep * 8;
   return Math.round(clamp(scaled, band.min, band.max));
+}
+
+function runSupplyCapacity(runState: Pick<RunState, 'supplySlots'>) {
+  return Math.max(BASE_SUPPLY_SLOTS, runState.supplySlots ?? BASE_SUPPLY_SLOTS);
 }
 
 function cardRarityStep(rarity: CardRarity) {
@@ -2870,6 +2876,19 @@ class RouteScene extends Phaser.Scene {
     this.routeNodeIconArtRequested = false;
   }
 
+  preload() {
+    queuePreloadImageAssets(
+      this,
+      [
+        ...Object.values(routeNodeIconAssets),
+        ...Object.values(MARKET_KIT_ASSETS),
+        ...Object.values(ROUTE_EVENT_BACKDROP_ASSETS),
+        ...this.runState.deck.map((card) => cardArtAssets[card.id])
+      ],
+      'Route scene art failed to preload'
+    );
+  }
+
   create() {
     this.cameras.main.setBackgroundColor('#08101d');
     this.cameras.main.fadeIn(200);
@@ -2968,6 +2987,15 @@ class RouteScene extends Phaser.Scene {
       this,
       [this.routeEventBackdropAsset(node)],
       'Route event backdrop failed to load',
+      () => this.renderAll()
+    );
+  }
+
+  private queueRouteSupplyArtLoad() {
+    queueRuntimeImageAssets(
+      this,
+      this.runState.supplies.map((id) => supplyArtAssets[id]),
+      'Route supply art failed to load',
       () => this.renderAll()
     );
   }
@@ -3085,6 +3113,7 @@ class RouteScene extends Phaser.Scene {
     });
 
     this.renderRouteStatusRail();
+    this.renderRouteSupplies();
 
     renderFieldButton(this, (obj) => {}, 822, 56, 116, 38, 'Flock', true, () => this.openFlockOverlay(), UI_FIELD.cyan);
     renderFieldButton(this, (obj) => {}, 960, 56, 116, 38, 'Deck', true, () => this.openDeckOverlay(), UI_FIELD.gold);
@@ -3107,7 +3136,7 @@ class RouteScene extends Phaser.Scene {
       scrap: this.runState.scrap,
       deckSize: this.runState.deck.length,
       waymarks: this.runState.routeMarks.length,
-      supplies: `${this.runState.supplies.length}/2`
+      supplies: `${this.runState.supplies.length}/${runSupplyCapacity(this.runState)}`
     };
   }
 
@@ -3149,6 +3178,64 @@ class RouteScene extends Phaser.Scene {
       fontStyle: 'bold',
       color: '#ffe1a3'
     }).setOrigin(0.5, 0);
+  }
+
+  private renderRouteSupplies() {
+    this.queueRouteSupplyArtLoad();
+    const capacity = runSupplyCapacity(this.runState);
+    const startX = 754;
+    const y = 116;
+    this.add.text(startX, y - 31, 'PACKED SUPPLIES', {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#7f93a8'
+    });
+    for (let i = 0; i < capacity; i += 1) {
+      const x = startX + 24 + i * 76;
+      const supplyId = this.runState.supplies[i];
+      const supply = supplyId ? alphaSupplyLibrary.get(supplyId) : undefined;
+      const usable = !!supply && supply.timing !== 'combat';
+      const box = this.add.rectangle(x, y, 64, 38, supply ? 0x111827 : 0x07101a, supply ? 0.88 : 0.5)
+        .setStrokeStyle(1.2, usable ? 0xffb86b : supply ? 0x49606d : 0x263b52, usable ? 0.88 : 0.56);
+      if (supply && usable) {
+        box.setInteractive({ useHandCursor: true });
+        box.on('pointerdown', () => this.useRouteSupply(i));
+      }
+      if (supply) {
+        const art = supplyArtAssets[supply.id];
+        if (art && this.textures.exists(art.key)) {
+          addSupplyArtImage(this, x - 18, y, art.key).setDisplaySize(30, 30).setAlpha(usable ? 1 : 0.58);
+        } else {
+          this.add.text(x - 18, y, this.supplyGlyph(supply), {
+            fontFamily: 'Arial',
+            fontSize: '16px',
+            fontStyle: 'bold',
+            color: usable ? '#ffe7c9' : '#7f93a8'
+          }).setOrigin(0.5);
+        }
+        this.add.text(x + 2, y - 12, supply.name, {
+          fontFamily: 'Arial',
+          fontSize: '9px',
+          fontStyle: 'bold',
+          color: usable ? '#ffe1a3' : '#7f93a8',
+          wordWrap: { width: 36 },
+          maxLines: 2
+        });
+        this.add.text(x + 2, y + 13, usable ? 'USE' : 'COMBAT', {
+          fontFamily: 'Arial',
+          fontSize: '8px',
+          fontStyle: 'bold',
+          color: usable ? '#8df4ff' : '#5e7285'
+        });
+      } else {
+        this.add.text(x, y - 2, 'empty', {
+          fontFamily: 'Arial',
+          fontSize: '10px',
+          color: '#5e7285'
+        }).setOrigin(0.5);
+      }
+    }
   }
 
   private renderRouteMap() {
@@ -3709,6 +3796,16 @@ class RouteScene extends Phaser.Scene {
     return total;
   }
 
+  private applyRouteMarkTrigger(trigger: string) {
+    for (const id of this.runState.routeMarks ?? []) {
+      const mark = alphaRouteMarkLibrary.get(id);
+      if (!mark || mark.trigger !== trigger) continue;
+      this.resolveRouteEffect(mark.effect);
+      this.runState.routeLog.push(`${mark.name}: ${mark.description}`);
+    }
+    this.runState.routeLog = this.runState.routeLog.slice(-8);
+  }
+
   private scrapCostOfEffects(effects: string[]) {
     return effects.reduce((total, effect) => {
       const parsed = parseEffect(effect);
@@ -3745,6 +3842,7 @@ class RouteScene extends Phaser.Scene {
       if (signalScrap > 0) this.runState.scrap += signalScrap;
       (this.runState.signalChoices ??= []).push({ signalId: node.payloadId, choiceKey: key });
     }
+    if (node.type === 'cache') this.applyRouteMarkTrigger('cacheChoice');
     this.runState.routeLog.push(`${node.label}: ${choice.text}`);
     this.runState.routeLog = this.runState.routeLog.slice(-8);
     if (pickerMode && this.pickerEligibleCards(pickerMode).length > 0) {
@@ -3833,6 +3931,7 @@ class RouteScene extends Phaser.Scene {
       this.runState.deck.splice(index, 1);
       this.marketMessage = `${name} is removed from the travel pack for ${entry.cost} Scrap.`;
     }
+    this.applyRouteMarkTrigger('afterMarketPurchase');
     this.cardPickerMode = undefined;
     this.cardPickerContext = undefined;
     this.marketPickerUtilitySlot = undefined;
@@ -4059,7 +4158,7 @@ class RouteScene extends Phaser.Scene {
       if (name === 'cohesionAtLeast' && this.runState.currentHp < n) return false;
       if (name === 'cohesionBelowPct' && this.runState.currentHp >= (this.runMaxHp() * n) / 100) return false;
       if (name === 'hasRouteMark' && !this.hasRouteMark(arg)) return false;
-      if (name === 'hasSupplySlot' && (this.runState.supplies ?? []).length >= 2) return false;
+      if (name === 'hasSupplySlot' && (this.runState.supplies ?? []).length >= runSupplyCapacity(this.runState)) return false;
       if (name === 'mapIndexAtLeast' && (currentMap().index ?? 1) < n) return false;
     }
     return true;
@@ -4088,6 +4187,13 @@ class RouteScene extends Phaser.Scene {
       case 'gainRouteMark': this.grantRouteMark(arg0); break;
       case 'gainSupply': this.grantSupply(arg0); break;
       case 'gainSupplyChoice': this.grantSupply('random'); break;
+      case 'peekNextNodes': {
+        const choices = this.getSelectableNodes().map((node) => node.label).slice(0, Math.max(1, n || 1) + 1);
+        this.runState.routeLog.push(choices.length > 0
+          ? `Route preview: ${choices.join(' / ')}.`
+          : 'Route preview: no reachable crossings remain.');
+        break;
+      }
       case 'gainCacheReward': {
         const options = alphaCacheSet.options;
         const pick = options[Math.floor(Math.random() * options.length)];
@@ -4103,6 +4209,7 @@ class RouteScene extends Phaser.Scene {
       case 'enemyCoverNextCombat': mod({ enemyCover: (rs.nextCombat?.enemyCover ?? 0) + n }); break;
       case 'bossDamageShield': mod({ bossDamageShield: (rs.nextCombat?.bossDamageShield ?? 0) + n }); break;
       case 'freePreenNextDistrict': rs.freePreenNextDistrict = (rs.freePreenNextDistrict ?? 0) + (n || 1); break;
+      case 'increaseSupplySlots': rs.supplySlots = runSupplyCapacity(rs) + (n || 1); break;
       case 'startNextCombatOpenSky': mod({ startOpenSky: true }); break;
       // revealNodes / skipNextStreet / removeRouteChoice are route-graph hints;
       // Alpha pre-reveals the whole map, so they are no-ops here.
@@ -4121,13 +4228,35 @@ class RouteScene extends Phaser.Scene {
   }
 
   private grantSupply(selector: string) {
-    if ((this.runState.supplies ?? []).length >= 2) return;
+    if ((this.runState.supplies ?? []).length >= runSupplyCapacity(this.runState)) return;
     let id = selector;
     if (selector === 'random' || selector === 'choice') {
-      const ids = [...alphaSupplyLibrary.keys()];
+      const ids = [...alphaSupplyLibrary.keys()].filter((candidate) => !this.runState.supplies.includes(candidate));
       id = ids[Math.floor(Math.random() * ids.length)];
     }
     if (alphaSupplyLibrary.has(id)) this.runState.supplies.push(id);
+  }
+
+  private supplyGlyph(supply: RuntimeSupply) {
+    switch (supply.category) {
+      case 'snack': return '+';
+      case 'flare': return '!';
+      case 'call': return '~';
+      case 'tool': return '#';
+      default: return '?';
+    }
+  }
+
+  private useRouteSupply(index: number) {
+    const id = this.runState.supplies[index];
+    const supply = id ? alphaSupplyLibrary.get(id) : undefined;
+    if (!supply || supply.timing === 'combat') return;
+    supply.effects.forEach((effect) => this.resolveRouteEffect(effect));
+    this.runState.supplies.splice(index, 1);
+    (this.runState.suppliesUsed ??= []).push(id);
+    this.runState.routeLog.push(`Used ${supply.name}: ${supply.description}`);
+    this.runState.routeLog = this.runState.routeLog.slice(-8);
+    this.renderAll();
   }
 
   private grantCard(selector: string) {
@@ -4295,9 +4424,9 @@ class RouteScene extends Phaser.Scene {
     const refreshEnabled = this.runState.scrap >= refreshCost;
     this.renderMarketRefreshSign(frame.right - 150, frame.top + 94, refreshCost, refreshEnabled);
 
-    this.renderMarketCardOffers(frame.left + 576, frame.top + 328);
+    this.renderMarketCardOffers(frame.left + 576, frame.top + 286);
     this.renderMarketWaymarkOffers(frame.left + 510, frame.top + 588);
-    this.renderMarketUtilityOffers(frame.right - 46, frame.top + 314);
+    this.renderMarketUtilityOffers(frame.left + 860, frame.top + 314);
 
     this.renderMarketEnamelButton(frame.right - 48, frame.top + 42, 86, 30, 'Close', true, () => {
       playUiSound('close');
@@ -4392,14 +4521,14 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderMarketVendor(frame: { left: number; top: number; bottom: number }) {
-    const x = frame.left + 12;
-    const y = frame.bottom + 20;
+    const x = frame.left + 90;
+    const y = frame.bottom + 136;
     const shopkeeperKey = MARKET_KIT_ASSETS.shopkeeper.key;
     if (this.textures.exists(shopkeeperKey)) {
-      this.add.ellipse(x + 7, y - 18, 244, 40, 0x020409, 0.5);
+      this.add.ellipse(x + 8, y - 19, 254, 42, 0x020409, 0.5);
       this.add.image(x, y, shopkeeperKey)
         .setOrigin(0.5, 1)
-        .setDisplaySize(392, 588)
+        .setDisplaySize(408, 612)
         .setAlpha(1);
       return;
     }
@@ -4490,7 +4619,7 @@ class RouteScene extends Phaser.Scene {
     this.marketWaymarkShelf.forEach((listing, i) => {
       const mark = alphaRouteMarkLibrary.get(listing.id);
       if (!mark) return;
-      const itemX = x - 84 + i * 168;
+      const itemX = x - 134 + i * 134;
       const itemY = y + 4;
       const enabled = !listing.sold && this.runState.scrap >= listing.price;
       const key = waymarkArtAssets[mark.id]?.key;
@@ -4506,7 +4635,7 @@ class RouteScene extends Phaser.Scene {
           strokeThickness: 2
         }).setOrigin(0.5, 0);
       }
-      this.renderMarketItemLabelBox(itemX, itemY + 67, 136, 44, 'PIN', mark.name, listing.price, enabled && !listing.sold, UI_FIELD.gold);
+      this.renderMarketItemLabelBox(itemX, itemY + 67, 128, 44, 'WAYMARKER', mark.name, listing.price, enabled && !listing.sold, UI_FIELD.gold);
       if (listing.sold) this.renderMarketSoldSlat(itemX, itemY - 8, 112, 112);
       if (!listing.sold) {
         const hit = this.add.rectangle(itemX, itemY + 18, 142, 158, 0x000000, 0.01)
@@ -4543,11 +4672,12 @@ class RouteScene extends Phaser.Scene {
       const supplyKey = supply ? supplyArtAssets[supply.id]?.key : undefined;
       if (listing.id === 'preen' || listing.id === 'release') {
         const serviceY = y + serviceIndex * 62;
+        const serviceX = x + 250;
         serviceIndex += 1;
         this.renderMarketItemLabelBox(
-          x + 10,
+          serviceX,
           serviceY,
-          154,
+          144,
           48,
           this.marketUtilityVerb(listing).toUpperCase(),
           this.marketUtilityLabel(listing),
@@ -4555,18 +4685,18 @@ class RouteScene extends Phaser.Scene {
           enabled && !listing.sold,
           accent
         );
-        if (listing.sold) this.renderMarketSoldSlat(x + 10, serviceY, 156, 48);
+        if (listing.sold) this.renderMarketSoldSlat(serviceX, serviceY, 146, 48);
         if (!listing.sold) {
-          const hit = this.add.rectangle(x + 10, serviceY, 164, 56, 0x000000, 0.01)
+          const hit = this.add.rectangle(serviceX, serviceY, 154, 56, 0x000000, 0.01)
             .setInteractive({ useHandCursor: true });
           hit.on('pointerdown', () => this.buyMarketUtility(i));
-          hit.on('pointerover', () => this.showMarketUtilityDetail(listing, x + 10, serviceY));
+          hit.on('pointerover', () => this.showMarketUtilityDetail(listing, serviceX, serviceY));
           hit.on('pointerout', () => this.hideMarketItemDetail());
         }
         return;
       }
 
-      const rowY = y + 212;
+      const rowY = y + 276;
       const supplyX = x - 70 + supplyIndex * 118;
       supplyIndex += 1;
       this.renderMarketObjectBackplate(supplyX, rowY - 16, cardKey ? 86 : 100, cardKey ? 120 : 90, enabled ? accent : 0x3f4c58);
@@ -4600,7 +4730,7 @@ class RouteScene extends Phaser.Scene {
         rowY + 68,
         112,
         52,
-        this.marketUtilityVerb(listing).toUpperCase(),
+        'SUPPLY',
         this.marketUtilityLabel(listing),
         listing.price,
         enabled && !listing.sold,
@@ -4776,6 +4906,7 @@ class RouteScene extends Phaser.Scene {
     this.runState.scrap -= listing.price;
     this.runState.deck.push({ id: offer.id, upgraded: offer.upgraded });
     listing.sold = true;
+    this.applyRouteMarkTrigger('afterMarketPurchase');
     discoverCards([offer.id]);
     this.marketMessage = `${displayName(offer)} joins the flock for ${listing.price} Scrap.`;
     this.renderAll();
@@ -4789,6 +4920,7 @@ class RouteScene extends Phaser.Scene {
     this.runState.scrap -= listing.price;
     this.addRouteMark(mark.id);
     listing.sold = true;
+    this.applyRouteMarkTrigger('afterMarketPurchase');
     this.marketMessage = `${mark.name} is pinned to the route board for ${listing.price} Scrap.`;
     this.renderAll();
   }
@@ -4809,10 +4941,11 @@ class RouteScene extends Phaser.Scene {
       return;
     } else {
       const supply = listing.supplyId ? alphaSupplyLibrary.get(listing.supplyId) : undefined;
-      if (!supply || (this.runState.supplies ?? []).length >= 2) return;
+      if (!supply || (this.runState.supplies ?? []).length >= runSupplyCapacity(this.runState)) return;
       this.runState.supplies.push(supply.id);
       this.runState.scrap -= listing.price;
       listing.sold = true;
+      this.applyRouteMarkTrigger('afterMarketPurchase');
       this.marketMessage = `${supply.name} is packed for the road for ${listing.price} Scrap.`;
     }
     this.renderAll();
@@ -4915,7 +5048,6 @@ class RouteScene extends Phaser.Scene {
 
     const pickedSupplies = new Set(this.runState.supplies ?? []);
     for (const slot of alphaMarketConfig.supplySlots) {
-      if ((this.runState.supplies ?? []).length + listings.filter((offer) => offer.id === 'supply').length >= 2) break;
       const pool = [...alphaSupplyLibrary.values()].filter((supply) => !pickedSupplies.has(supply.id));
       const supply = this.pickWeighted(pool, (candidate) => this.marketSupplyWeight(candidate), rng);
       if (!supply) continue;
@@ -4979,7 +5111,7 @@ class RouteScene extends Phaser.Scene {
     if (listing.id === 'preen') return this.pickerEligibleCards('preen', 'market').some((entry) => this.runState.scrap >= entry.cost);
     if (listing.id === 'release') return this.pickerEligibleCards('release', 'market').some((entry) => this.runState.scrap >= entry.cost);
     if (this.runState.scrap < listing.price) return false;
-    return !!listing.supplyId && (this.runState.supplies ?? []).length < 2;
+    return !!listing.supplyId && (this.runState.supplies ?? []).length < runSupplyCapacity(this.runState);
   }
 
   private cardName(cardId: string | undefined) {
@@ -6450,22 +6582,28 @@ class BattleScene extends Phaser.Scene {
     this.root.add(bg);
   }
 
+  private battleArtAssets() {
+    return uniqueImageAssets([
+      this.currentBattlefieldAsset(),
+      this.currentFlockLeaderArtAsset(),
+      ...this.routeMarks.map((id) => waymarkArtAssets[id]),
+      ...this.runSupplies.map((id) => supplyArtAssets[id]),
+      ...this.allDeckCards().map((card) => cardArtAssets[card.id]),
+      ...this.enemies
+        .map((enemy) => enemyArtAssets[enemy.runtime.id] ?? enemyArtAssets[enemy.id])
+        .filter((asset): asset is RuntimeImageAsset => Boolean(asset))
+    ]);
+  }
+
+  preload() {
+    queuePreloadImageAssets(this, this.battleArtAssets(), 'Battle scene art failed to preload');
+  }
+
   private queueOptionalArtLoad() {
     if (this.optionalArtRequested) return;
     this.optionalArtRequested = true;
 
-    const requestedAssets = uniqueImageAssets([
-      this.currentBattlefieldAsset(),
-      this.currentFlockLeaderArtAsset(),
-      ...Object.values(waymarkArtAssets),
-      ...Object.values(supplyArtAssets),
-      ...this.allDeckCards().map((card) => cardArtAssets[card.id]),
-      ...this.enemies
-        .map((enemy) => enemyArtAssets[enemy.runtime.id] ?? enemyArtAssets[enemy.id])
-        .filter((asset): asset is { key: string; url: string } => Boolean(asset))
-    ]);
-
-    this.queueImageAssets(requestedAssets, 'Optional art failed to load');
+    this.queueImageAssets(this.battleArtAssets(), 'Optional art failed to load');
   }
 
   private currentRouteNode() {
@@ -7195,31 +7333,34 @@ class BattleScene extends Phaser.Scene {
     this.root.add(this.add.text(30, 130, 'SUPPLIES', {
       fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#7f93a8'
     }));
-    for (let i = 0; i < 2; i += 1) {
-      const x = 98;
-      const y = 162 + i * 50;
+    for (let i = 0; i < this.runSupplyCapacity; i += 1) {
+      const x = 61 + (i % 2) * 74;
+      const y = 162 + Math.floor(i / 2) * 50;
       const id = this.runSupplies[i];
       const supply = id ? alphaSupplyLibrary.get(id) : undefined;
-      const box = this.add.rectangle(x, y, 152, 44, supply ? 0x14202e : 0x0b1018, supply ? 0.97 : 0.5)
+      const usable = !!supply && this.mode === 'battle' && supply.timing !== 'route';
+      const box = this.add.rectangle(x, y, 70, 44, supply ? 0x14202e : 0x0b1018, supply ? 0.97 : 0.5)
         .setStrokeStyle(2, supply ? 0x8fd6a0 : 0x2a3a4d, supply ? 0.95 : 0.5);
       this.root.add(box);
-      if (supply && this.mode === 'battle') {
+      if (supply) {
+        if (usable) {
         box.setInteractive({ useHandCursor: true });
         box.on('pointerdown', () => this.useSupply(i));
+        }
         this.attachTooltip(box, supply.name, `${supply.description} (click to use)`);
         const artAsset = supplyArtAssets[supply.id];
-        this.root.add(this.add.circle(x - 56, y, 17, 0x07101c, 0.96).setStrokeStyle(1, 0x8fd6a0, 0.8));
+        this.root.add(this.add.circle(x - 21, y, 15, 0x07101c, 0.96).setStrokeStyle(1, 0x8fd6a0, 0.8));
         if (artAsset && this.textures.exists(artAsset.key)) {
-          this.root.add(addSupplyArtImage(this, x - 56, y, artAsset.key).setDisplaySize(34, 34));
+          this.root.add(addSupplyArtImage(this, x - 21, y, artAsset.key).setDisplaySize(30, 30).setAlpha(usable ? 1 : 0.58));
         } else {
-          this.root.add(this.add.text(x - 56, y, this.supplyGlyph(supply), {
-            fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#dffaeb'
+          this.root.add(this.add.text(x - 21, y, this.supplyGlyph(supply), {
+            fontFamily: 'Arial', fontSize: '12px', fontStyle: 'bold', color: usable ? '#dffaeb' : '#7f93a8'
           }).setOrigin(0.5));
         }
-        this.root.add(this.add.text(x - 34, y - 9, supply.name, {
-          fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#dffaeb', wordWrap: { width: 88 }
+        this.root.add(this.add.text(x - 2, y - 13, supply.name, {
+          fontFamily: 'Arial', fontSize: '8px', fontStyle: 'bold', color: usable ? '#dffaeb' : '#7f93a8', wordWrap: { width: 34 }, maxLines: 2
         }));
-        this.root.add(this.add.text(x + 66, y + 12, 'use', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#8fd6a0' }).setOrigin(1, 0.5));
+        this.root.add(this.add.text(x + 30, y + 13, usable ? 'use' : 'map', { fontFamily: 'Arial', fontSize: '8px', fontStyle: 'bold', color: usable ? '#8fd6a0' : '#596a78' }).setOrigin(1, 0.5));
       } else {
         this.root.add(this.add.text(x, y, 'empty', { fontFamily: 'Arial', fontSize: '10px', color: '#566778' }).setOrigin(0.5));
       }
@@ -7362,8 +7503,12 @@ class BattleScene extends Phaser.Scene {
     if (this.mode !== 'battle') return;
     const id = this.runSupplies[index];
     const supply = id ? alphaSupplyLibrary.get(id) : undefined;
-    if (!supply) return;
+    if (!supply || supply.timing === 'route') return;
+    const repeats = this.pendingSupplyRepeats > 0 ? 1 + this.pendingSupplyRepeats : 1;
+    this.pendingSupplyRepeats = 0;
+    for (let i = 0; i < repeats; i += 1) {
     supply.effects.forEach((effect) => this.applySupplyEffect(effect, supply.name));
+    }
     this.runSupplies.splice(index, 1);
     this.runSuppliesUsed.push(id);
     this.checkSupplyUsedMarks();
@@ -9884,6 +10029,7 @@ function createInitialRunState(leaderId?: string, difficulty = 0): RunState {
     scrap: STARTING_SCRAP,
     routeMarks: [],
     supplies: [],
+    supplySlots: BASE_SUPPLY_SLOTS,
     mapIndex: 0,
     completedRouteNodeIds: [],
     currentRouteNodeId: undefined,
@@ -9907,6 +10053,7 @@ function cloneRunState(runState: RunState): RunState {
     scrap: runState.scrap ?? STARTING_SCRAP,
     routeMarks: [...(runState.routeMarks ?? [])],
     supplies: [...(runState.supplies ?? [])],
+    supplySlots: runSupplyCapacity(runState),
     mapIndex: runState.mapIndex ?? 0,
     completedRouteNodeIds: [...runState.completedRouteNodeIds],
     currentRouteNodeId: runState.currentRouteNodeId,
@@ -10855,6 +11002,7 @@ function routeEffectSummary(effects: string[]): string {
       case 'gainRouteMark': return alphaRouteMarkLibrary.get(a) ? `Gain ${alphaRouteMarkLibrary.get(a)!.name}` : 'Gain a Waymark';
       case 'gainSupply': return 'Gain a Supply';
       case 'gainSupplyChoice': return 'Choose a Supply';
+      case 'peekNextNodes': return `Preview ${a || 1} route`;
       case 'gainCacheReward': return 'Open the cache';
       case 'addSnagToDiscard': case 'addSnagToDraw': return 'Add a Snag to the deck';
       case 'addCard': return 'Add a card to the flock';
@@ -10866,6 +11014,7 @@ function routeEffectSummary(effects: string[]): string {
       case 'bossDamageShield': return `Boss fight starts +${a} Cover`;
       case 'extraCacheChoice': return `Caches offer +${a} choice`;
       case 'freePreenNextDistrict': return `Next district starts with ${a || 1} free Preen`;
+      case 'increaseSupplySlots': return `Supply capacity +${a || 1}`;
       case 'startNextCombatOpenSky': return 'Next combat starts in Open Sky';
       case 'revealNodes': return `Reveal ${a} nodes`;
       case 'skipNextStreet': return 'Skip the next street encounter';

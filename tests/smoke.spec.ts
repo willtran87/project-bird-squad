@@ -759,6 +759,10 @@ test('market shelves stock multiple finite offers and paid refreshes', async ({ 
     scene.runState.scrap = 999;
     const firstOffer = scene.marketCardOffer()?.id;
     const beforeCardOffers = scene.marketCardOffers().map((offer: any) => ({ id: offer.id, price: offer.price, sold: !!offer.sold }));
+    const beforeWaymarkOffers = scene.marketRouteMarkOffers().map((offer: any) => ({ id: offer.id, price: offer.price, sold: !!offer.sold }));
+    const beforeSupplyOffers = scene.marketUtilityShelf
+      .filter((offer: any) => offer.id === 'supply')
+      .map((offer: any) => ({ id: offer.supplyId, price: offer.price, sold: !!offer.sold }));
     const beforeRefreshCost = scene.marketRefreshCost();
     scene.buyMarketCard();
     const afterBuyOffer = scene.marketCardOffer()?.id ?? '';
@@ -770,6 +774,8 @@ test('market shelves stock multiple finite offers and paid refreshes', async ({ 
     return {
       firstOffer,
       beforeCardOffers,
+      beforeWaymarkOffers,
+      beforeSupplyOffers,
       beforeRefreshCost,
       afterBuyOffer,
       afterCardOffers,
@@ -781,7 +787,9 @@ test('market shelves stock multiple finite offers and paid refreshes', async ({ 
     };
   });
   expect(result.firstOffer).toBeTruthy();
-  expect(result.beforeCardOffers.length).toBeGreaterThan(1);
+  expect(result.beforeCardOffers).toHaveLength(4);
+  expect(result.beforeWaymarkOffers).toHaveLength(3);
+  expect(result.beforeSupplyOffers).toHaveLength(3);
   expect(new Set(result.beforeCardOffers.map((offer: any) => offer.price)).size).toBeGreaterThan(1);
   expect(result.deckHasOffer).toBe(true);
   expect(result.afterCardOffers.filter((offer: any) => offer.sold)).toHaveLength(1);
@@ -790,6 +798,107 @@ test('market shelves stock multiple finite offers and paid refreshes', async ({ 
   expect(result.refreshCount).toBe(1);
   expect(result.scrapAfterRefresh).toBe(result.scrapAfterBuy - result.beforeRefreshCost);
   expect(result.refreshedCardOffers.every((offer: any) => !offer.sold)).toBe(true);
+});
+
+test('market preen service lets the player choose a card before paying', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    const g = window.__birdSquadGame;
+    g.scene.start('RouteScene', {});
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('RouteScene');
+    scene.runState.scrap = 999;
+    const market = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === 'market')
+      ?? window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type !== 'boss');
+    market.type = 'market';
+    scene.openMarketNode(market);
+    const preenIndex = scene.marketUtilityShelf.findIndex((offer: any) => offer.id === 'preen');
+    if (preenIndex < 0) return { missing: true };
+    const shelfPrice = scene.marketUtilityShelf[preenIndex].price;
+    const scrapBeforeOpen = scene.runState.scrap;
+    scene.buyMarketUtility(preenIndex);
+    const pickerMode = scene.cardPickerMode;
+    const pickerContext = scene.cardPickerContext;
+    const soldBeforePick = !!scene.marketUtilityShelf[preenIndex].sold;
+    const scrapAfterOpen = scene.runState.scrap;
+    const choice = scene.pickerEligibleCards('preen', 'market').find((entry: any) => scene.runState.scrap >= entry.cost);
+    scene.applyCardPick(choice.index);
+    return {
+      missing: false,
+      shelfPrice,
+      chosenCost: choice.cost,
+      pickerMode,
+      pickerContext,
+      soldBeforePick,
+      scrapBeforeOpen,
+      scrapAfterOpen,
+      scrapAfterPick: scene.runState.scrap,
+      upgraded: !!scene.runState.deck[choice.index].upgraded,
+      soldAfterPick: !!scene.marketUtilityShelf[preenIndex].sold,
+      shelfPriceAfterPick: scene.marketUtilityShelf[preenIndex].price,
+      pickerCleared: !scene.cardPickerMode && !scene.cardPickerContext
+    };
+  });
+  expect(result.missing).toBe(false);
+  expect(result.pickerMode).toBe('preen');
+  expect(result.pickerContext).toBe('market');
+  expect(result.soldBeforePick).toBe(false);
+  expect(result.scrapAfterOpen).toBe(result.scrapBeforeOpen);
+  expect(result.upgraded).toBe(true);
+  expect(result.soldAfterPick).toBe(true);
+  expect(result.scrapAfterPick).toBe(result.scrapBeforeOpen - result.chosenCost);
+  expect(result.shelfPriceAfterPick).toBe(result.chosenCost);
+  expect(result.shelfPrice).toBeLessThanOrEqual(result.chosenCost);
+  expect(result.pickerCleared).toBe(true);
+});
+
+test('market remove service lets the player choose which card leaves the deck', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    const g = window.__birdSquadGame;
+    g.scene.start('RouteScene', {});
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('RouteScene');
+    scene.runState.scrap = 999;
+    const market = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === 'market')
+      ?? window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type !== 'boss');
+    market.type = 'market';
+    scene.openMarketNode(market);
+    const removeIndex = scene.marketUtilityShelf.findIndex((offer: any) => offer.id === 'release');
+    if (removeIndex < 0) return { missing: true };
+    const deckBefore = scene.runState.deck.length;
+    const scrapBeforeOpen = scene.runState.scrap;
+    scene.buyMarketUtility(removeIndex);
+    const pickerMode = scene.cardPickerMode;
+    const pickerContext = scene.cardPickerContext;
+    const soldBeforePick = !!scene.marketUtilityShelf[removeIndex].sold;
+    const scrapAfterOpen = scene.runState.scrap;
+    const choice = scene.pickerEligibleCards('release', 'market').find((entry: any) => scene.runState.scrap >= entry.cost);
+    scene.applyCardPick(choice.index);
+    return {
+      missing: false,
+      chosenCost: choice.cost,
+      pickerMode,
+      pickerContext,
+      soldBeforePick,
+      scrapBeforeOpen,
+      scrapAfterOpen,
+      scrapAfterPick: scene.runState.scrap,
+      deckBefore,
+      deckAfter: scene.runState.deck.length,
+      soldAfterPick: !!scene.marketUtilityShelf[removeIndex].sold,
+      pickerCleared: !scene.cardPickerMode && !scene.cardPickerContext
+    };
+  });
+  expect(result.missing).toBe(false);
+  expect(result.pickerMode).toBe('release');
+  expect(result.pickerContext).toBe('market');
+  expect(result.soldBeforePick).toBe(false);
+  expect(result.scrapAfterOpen).toBe(result.scrapBeforeOpen);
+  expect(result.deckAfter).toBe(result.deckBefore - 1);
+  expect(result.soldAfterPick).toBe(true);
+  expect(result.scrapAfterPick).toBe(result.scrapBeforeOpen - result.chosenCost);
+  expect(result.pickerCleared).toBe(true);
 });
 
 test('market overlay renders generated shopkeeper sign and counter kit', async ({ page }) => {
@@ -884,6 +993,41 @@ test('card choice surfaces expose full card details on hover', async ({ page }) 
   expect(result.preenTitle).toBe(true);
 });
 
+test('market item detail surfaces non-card offer stats', async ({ page }) => {
+  await boot(page);
+  const texts = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('RouteScene', {});
+    g.scene.stop('MenuScene');
+    await wait(80);
+    const route: any = g.scene.getScene('RouteScene');
+    route.runState.scrap = 999;
+    const market = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === 'market')
+      ?? window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type !== 'boss');
+    market.type = 'market';
+    route.openMarketNode(market);
+    await wait(120);
+    const offer = route.marketRouteMarkOffers().find((candidate: any) => !candidate.sold);
+    route.showMarketWaymarkDetail({
+      ...offer,
+      family: 'route',
+      rarity: 'common',
+      source: 'market',
+      trigger: 'Market hover',
+      effect: offer.text,
+      description: offer.text
+    }, offer.price, 510, 568);
+    return (route?.marketItemHover?.list ?? [])
+      .filter((child: any) => typeof child.text === 'string')
+      .map((child: any) => child.text);
+  });
+  expect(texts.some((text: string) => text.includes('SCRAP'))).toBe(true);
+  expect(texts.some((text: string) => text.includes('WAYMARK'))).toBe(true);
+  expect(texts.some((text: string) => text.includes('Trigger:'))).toBe(true);
+  expect(texts.some((text: string) => text.includes('Effect:'))).toBe(true);
+});
+
 test('post-combat Preen is gated by encounter reward profile', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
@@ -926,7 +1070,7 @@ test('post-combat Preen is gated by encounter reward profile', async ({ page }) 
   expect(result.rivalPreen).toBe(true);
 });
 
-test('nest release opens a card picker and removes the chosen card', async ({ page }) => {
+test('nest remove opens a card picker and removes the chosen card', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(() => {
     const g = window.__birdSquadGame;
@@ -1617,6 +1761,304 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
   expect(r.discoveredCount).toBeGreaterThanOrEqual(8); // Spark-Caller's 10-card deck (distinct ids)
   expect(r.active).toBe(true);
   expect(r.codexFound).toBeGreaterThanOrEqual(8);
+});
+
+test('codex: supplies are listed as items with usable details', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const collectTexts = (scene: any) => {
+      const all: any[] = [];
+      const walk = (o: any) => {
+        if (!o) return;
+        if (o.type === 'Text') all.push(o);
+        const children = o.list;
+        if (Array.isArray(children)) children.forEach(walk);
+      };
+      scene.children.list.forEach(walk);
+      return all.map((t) => t.text || '');
+    };
+    const g = window.__birdSquadGame;
+    g.scene.start('CodexScene');
+    g.scene.stop('MenuScene');
+    const cs: any = g.scene.getScene('CodexScene');
+    for (let i = 0; i < 20 && !cs.root; i += 1) await wait(50);
+    cs.activeSection = 'items';
+    cs.activeItemTab = 1;
+    cs.detailId = undefined;
+    cs.gridScroll = 0;
+    cs.renderAll();
+    for (let i = 0; i < 40 && !cs.textures.exists('supply-bottlecap_popper'); i += 1) await wait(50);
+    const listTexts = collectTexts(cs);
+
+    cs.detailId = 'seed_packet';
+    cs.detailScroll = 0;
+    cs.renderAll();
+    const detailTexts = collectTexts(cs);
+    return {
+      totalItems: cs.allCodexItems ? cs.allCodexItems().length : 0,
+      supplies: cs.allSupplies ? cs.allSupplies().length : 0,
+      hasSubtitle: listTexts.some((t) => /71 items cataloged \(48 Waymarks \/ 23 Supplies\)/.test(t)),
+      hasTab: listTexts.some((t) => t === 'Supplies'),
+      hasSeedPacket: listTexts.some((t) => /Seed Packet/.test(t)),
+      hasBottlecap: listTexts.some((t) => /Bottlecap Popper/.test(t)),
+      hasBottlecapArt: cs.textures.exists('supply-bottlecap_popper'),
+      hasDetailUse: detailTexts.some((t) => /USE/.test(t)),
+      hasDetailEffects: detailTexts.some((t) => /healCohesion\(6\)/.test(t)),
+      hasImageBrief: detailTexts.some((t) => /IMAGE BRIEF/.test(t))
+        && detailTexts.some((t) => /Bird Squad title splash art/.test(t)),
+    };
+  });
+  expect(r.totalItems).toBe(71);
+  expect(r.supplies).toBe(23);
+  expect(r.hasSubtitle).toBe(true);
+  expect(r.hasTab).toBe(true);
+  expect(r.hasSeedPacket).toBe(true);
+  expect(r.hasBottlecap).toBe(true);
+  expect(r.hasBottlecapArt).toBe(true);
+  expect(r.hasDetailUse).toBe(true);
+  expect(r.hasDetailEffects).toBe(true);
+  expect(r.hasImageBrief).toBe(true);
+});
+
+test('expanded supplies resolve tactical combat verbs', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const s: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 20 && !(s.enemies && s.enemies.length); i += 1) await wait(50);
+    const supplyTextureKeys = [
+      'supply-seed_packet',
+      'supply-signal_flare',
+      'supply-zip_tie_roll',
+      'supply-bottlecap_popper',
+      'supply-tar_solvent',
+      'supply-feather_splint',
+      'supply-mirror_shard',
+      'supply-emergency_call',
+      'supply-shade_cloth',
+      'supply-rooftop_decoy',
+      'supply-molt_pin',
+      'supply-wire_snips',
+      'supply-spare_harness',
+      'supply-signal_kite',
+      'supply-storm_lantern',
+      'supply-cache_key',
+      'supply-rain_cape',
+      'supply-return_ticket',
+      'supply-nest_clamp',
+      'supply-smoke_thread',
+      'supply-windcatcher_spool',
+      'supply-resonance_battery',
+      'supply-oath_ledger',
+    ];
+    for (let i = 0; i < 60 && !supplyTextureKeys.every((key) => s.textures.exists(key)); i += 1) await wait(100);
+    const enemy = s.enemies[0];
+    enemy.maxHp = 40;
+    enemy.hp = 40;
+    enemy.block = 12;
+    enemy.weak = 0;
+    s.selectedEnemyId = enemy.id;
+    s.runSupplies = ['bottlecap_popper', 'tar_solvent', 'wire_snips', 'feather_splint', 'molt_pin', 'storm_lantern'];
+    s.runSuppliesUsed = [];
+
+    s.useSupply(0);
+    const afterPierce = { hp: enemy.hp, block: enemy.block };
+    s.useSupply(0);
+    const afterSolvent = { hp: enemy.hp, block: enemy.block };
+    s.useSupply(0);
+    const afterSnips = { block: enemy.block, winded: enemy.weak };
+
+    s.flock.hp = 20;
+    s.flock.weak = 2;
+    s.flock.frail = 1;
+    s.flock.fouled = 2;
+    s.useSupply(0);
+    const afterSplint = { hp: s.flock.hp, weak: s.flock.weak, frail: s.flock.frail, fouled: s.flock.fouled };
+
+    s.flock.molt = false;
+    s.flock.openSkyGuard = 0;
+    s.useSupply(0);
+    const afterMolt = { molt: s.flock.molt, guard: s.flock.openSkyGuard };
+
+    const beforeStorm = { energy: s.energy, hp: s.flock.hp, hand: s.hand.length };
+    s.useSupply(0);
+    const afterStorm = { energy: s.energy, hp: s.flock.hp, hand: s.hand.length };
+
+    return {
+      afterPierce,
+      afterSolvent,
+      afterSnips,
+      afterSplint,
+      afterMolt,
+      beforeStorm,
+      afterStorm,
+      used: s.runSuppliesUsed,
+      hasAllSupplyArt: supplyTextureKeys.every((key) => s.textures.exists(key)),
+    };
+  });
+  expect(r.afterPierce.hp).toBe(34);
+  expect(r.afterPierce.block).toBe(12);
+  expect(r.afterSolvent.block).toBe(2);
+  expect(r.afterSnips.block).toBe(0);
+  expect(r.afterSnips.winded).toBe(2);
+  expect(r.afterSplint.hp).toBe(24);
+  expect(r.afterSplint.weak).toBe(1);
+  expect(r.afterSplint.frail).toBe(0);
+  expect(r.afterSplint.fouled).toBe(1);
+  expect(r.afterMolt.molt).toBe(true);
+  expect(r.afterMolt.guard).toBe(1);
+  expect(r.afterStorm.energy).toBe(r.beforeStorm.energy + 2);
+  expect(r.afterStorm.hp).toBe(r.beforeStorm.hp - 4);
+  expect(r.afterStorm.hand).toBeGreaterThanOrEqual(r.beforeStorm.hand);
+  expect(r.used).toEqual(['bottlecap_popper', 'tar_solvent', 'wire_snips', 'feather_splint', 'molt_pin', 'storm_lantern']);
+  expect(r.hasAllSupplyArt).toBe(true);
+});
+
+test('new supplies and build-around Waymarks execute their scaling hooks', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const s: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 20 && !(s.enemies && s.enemies.length && s.hand && s.hand.length); i += 1) await wait(50);
+    const newSupplyTextures = [
+      'supply-return_ticket',
+      'supply-nest_clamp',
+      'supply-smoke_thread',
+      'supply-windcatcher_spool',
+      'supply-resonance_battery',
+      'supply-oath_ledger',
+    ];
+    const newWaymarkTextures = [
+      'waymark-flock_counterweight',
+      'waymark-supply_bell',
+      'waymark-molt_metronome',
+      'waymark-eave_bloom',
+      'waymark-plumes_busker_patch',
+      'waymark-quills_pressure_gauge',
+      'waymark-basin_overflow_cup',
+      'waymark-nest_ratchet',
+    ];
+    for (let i = 0; i < 60 && ![...newSupplyTextures, ...newWaymarkTextures].every((key) => s.textures.exists(key)); i += 1) await wait(100);
+
+    const enemy = s.enemies[0];
+    enemy.maxHp = 60;
+    enemy.hp = 60;
+    enemy.block = 0;
+    s.selectedEnemyId = enemy.id;
+
+    const discarded = s.hand.pop();
+    if (discarded) s.discardPile = [discarded];
+    const handBeforeReturn = s.hand.length;
+    s.runSupplies = ['return_ticket', 'nest_clamp', 'smoke_thread', 'windcatcher_spool', 'resonance_battery', 'oath_ledger'];
+    s.runSuppliesUsed = [];
+    s.scrap = 0;
+    s.flock.hp = 30;
+    s.flock.block = 0;
+    s.spark = 0;
+    s.nextTurnDrawBonus = 0;
+    s.nextTurnEnergyBonus = 0;
+    s.pendingNestCoverBonus = 0;
+
+    s.useSupply(0);
+    const afterReturn = { hand: s.hand.length, discard: s.discardPile.length };
+    s.useSupply(0);
+    const afterClamp = { block: s.flock.block, pendingNest: s.pendingNestCoverBonus };
+    s.useSupply(0);
+    const afterSmoke = { winded: enemy.weak, nextDraw: s.nextTurnDrawBonus };
+    s.useSupply(0);
+    const afterWindcatcher = { nextEnergy: s.nextTurnEnergyBonus };
+    s.useSupply(0);
+    const afterBattery = { hp: enemy.hp, spark: s.spark };
+    const hpBeforeLedger = s.flock.hp;
+    s.useSupply(0);
+    const afterLedger = { scrap: s.scrap, hp: s.flock.hp, beforeHp: hpBeforeLedger };
+
+    s.routeMarks = ['flock_counterweight', 'chalk_wingmark', 'supply_bell'];
+    s.flock.block = 0;
+    s.energy = 3;
+    s.applyCombatStartMarks();
+    const afterCounterweight = { block: s.flock.block };
+
+    s.runSupplies = ['seed_packet'];
+    s.runSuppliesUsed = [];
+    const handBeforeBell = s.hand.length;
+    s.useSupply(0);
+    const afterBell = { hand: s.hand.length };
+
+    s.routeMarks = ['molt_metronome', 'eave_bloom'];
+    s.markFiredThisCombat = new Set();
+    s.flock.molt = false;
+    s.flock.block = 0;
+    if (s.drawPile.length === 0 && s.hand.length > 0) s.drawPile = [s.hand[0]];
+    const handBeforeMolt = s.hand.length;
+    s.enterMolt('test');
+    const afterMoltMarks = { hand: s.hand.length, block: s.flock.block };
+
+    s.routeMarks = ['plumes_busker_patch', 'quills_pressure_gauge', 'nest_ratchet'];
+    s.markFiredThisTurn = new Set();
+    s.spark = 0;
+    enemy.hp = 20;
+    s.pendingNestCoverBonus = 0;
+    s.checkSuitPlayedMarks('plumes');
+    s.checkSuitPlayedMarks('quills');
+    s.checkSuitPlayedMarks('nests');
+    const afterSuitMarks = { spark: s.spark, hp: enemy.hp, pendingNest: s.pendingNestCoverBonus };
+
+    s.routeMarks = ['basin_overflow_cup'];
+    s.markFiredThisTurn = new Set();
+    s.flock.hp = 20;
+    s.flock.block = 0;
+    s.healFlock(2, 'test heal');
+    const afterHealMark = { hp: s.flock.hp, block: s.flock.block };
+
+    return {
+      hasNewSupplyArt: newSupplyTextures.every((key) => s.textures.exists(key)),
+      hasNewWaymarkArt: newWaymarkTextures.every((key) => s.textures.exists(key)),
+      handBeforeReturn,
+      afterReturn,
+      afterClamp,
+      afterSmoke,
+      afterWindcatcher,
+      afterBattery,
+      afterLedger,
+      afterCounterweight,
+      handBeforeBell,
+      afterBell,
+      handBeforeMolt,
+      afterMoltMarks,
+      afterSuitMarks,
+      afterHealMark,
+    };
+  });
+  expect(r.hasNewSupplyArt).toBe(true);
+  expect(r.hasNewWaymarkArt).toBe(true);
+  expect(r.afterReturn.hand).toBeGreaterThanOrEqual(r.handBeforeReturn + 1);
+  expect(r.afterReturn.discard).toBe(0);
+  expect(r.afterClamp.block).toBeGreaterThanOrEqual(4);
+  expect(r.afterClamp.pendingNest).toBe(8);
+  expect(r.afterSmoke.winded).toBe(3);
+  expect(r.afterSmoke.nextDraw).toBe(1);
+  expect(r.afterWindcatcher.nextEnergy).toBe(2);
+  expect(r.afterBattery.hp).toBe(54);
+  expect(r.afterBattery.spark).toBe(0);
+  expect(r.afterLedger.scrap).toBe(25);
+  expect(r.afterLedger.hp).toBe(r.afterLedger.beforeHp - 3);
+  expect(r.afterCounterweight.block).toBe(5);
+  expect(r.afterBell.hand).toBeGreaterThanOrEqual(r.handBeforeBell + 1);
+  expect(r.afterMoltMarks.hand).toBeGreaterThanOrEqual(r.handBeforeMolt + 1);
+  expect(r.afterMoltMarks.block).toBe(6);
+  expect(r.afterSuitMarks.spark).toBe(1);
+  expect(r.afterSuitMarks.hp).toBe(19);
+  expect(r.afterSuitMarks.pendingNest).toBe(4);
+  expect(r.afterHealMark.hp).toBe(22);
+  expect(r.afterHealMark.block).toBe(2);
 });
 
 test('enemy codex: entire enemy cast renders with art and details', async ({ page }) => {
