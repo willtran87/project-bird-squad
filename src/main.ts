@@ -298,6 +298,7 @@ interface RenderPayload {
     scrap?: number;
     routeMarks?: string[];
     supplies?: string[];
+    supplySlots?: number;
     battlefieldAssetKey?: string;
     battlefieldVariant?: boolean;
     battlefieldMood?: 'street' | 'rival' | 'boss';
@@ -1274,8 +1275,14 @@ class CodexScene extends Phaser.Scene {
   private detailId?: string;
   private detailScroll = 0;
   private detailMaxScroll = 0;
+  private detailScrollTarget = 0;
   private gridScroll = 0;
   private gridMaxScroll = 0;
+  private gridScrollTarget = 0;
+  private gridLayer?: Phaser.GameObjects.Container;
+  private gridRenderScroll = 0;
+  private gridRenderCellH = 0;
+  private lastScrollRenderAt = 0;
   private codexData?: CodexDataModule;
   private codexDataLoad?: Promise<void>;
   private codexDataFailed = false;
@@ -1323,20 +1330,96 @@ class CodexScene extends Phaser.Scene {
     this.queueArt();
     this.renderAll();
     this.input.keyboard?.on('keydown-ESC', () => {
-      if (this.detailId) { this.detailId = undefined; this.renderAll(); }
+      if (this.detailId) this.closeCodexDetail();
       else this.scene.start('MenuScene');
     });
     this.input.on('wheel', (_p: unknown, _o: unknown, _dx: number, dy: number) => {
       if (this.detailId) {
         if (this.detailMaxScroll <= 0) return;
-        this.detailScroll = Math.max(0, Math.min(this.detailMaxScroll, this.detailScroll + (dy > 0 ? 64 : -64)));
-        this.renderAll();
+        this.detailScrollTarget = clamp(
+          this.detailScrollTarget + this.normalizedWheelDelta(dy),
+          0,
+          this.detailMaxScroll
+        );
         return;
       }
       if (this.gridMaxScroll <= 0) return;
-      this.gridScroll = Math.max(0, Math.min(this.gridMaxScroll, this.gridScroll + (dy > 0 ? 84 : -84)));
-      this.renderAll();
+      this.gridScrollTarget = clamp(
+        this.gridScrollTarget + this.normalizedWheelDelta(dy),
+        0,
+        this.gridMaxScroll
+      );
     });
+  }
+
+  update(time: number, delta: number) {
+    if (this.detailId) {
+      this.updateDetailScroll(time, delta);
+      return;
+    }
+    this.updateGridScroll(delta);
+  }
+
+  private updateDetailScroll(time: number, delta: number) {
+    if (this.detailMaxScroll <= 0) return;
+    const target = clamp(this.detailScrollTarget, 0, this.detailMaxScroll);
+    const distance = target - this.detailScroll;
+    if (Math.abs(distance) < 0.1) return;
+
+    const ease = 1 - Math.pow(0.0015, Math.min(delta, 50) / 180);
+    const next = Math.abs(distance) < 0.75 ? target : this.detailScroll + distance * ease;
+    this.detailScroll = clamp(next, 0, this.detailMaxScroll);
+    if (time - this.lastScrollRenderAt >= 16 || next === target) {
+      this.lastScrollRenderAt = time;
+      this.renderAll();
+    }
+  }
+
+  private updateGridScroll(delta: number) {
+    if (this.gridMaxScroll <= 0) return;
+    const target = clamp(this.gridScrollTarget, 0, this.gridMaxScroll);
+    const distance = target - this.gridScroll;
+    if (Math.abs(distance) < 0.1) return;
+
+    const ease = 1 - Math.pow(0.0015, Math.min(delta, 50) / 180);
+    const next = Math.abs(distance) < 0.75 ? target : this.gridScroll + distance * ease;
+    this.gridScroll = clamp(next, 0, this.gridMaxScroll);
+    if (this.gridLayer?.active) {
+      this.gridLayer.y = -this.gridScroll;
+    }
+
+    const drift = Math.abs(this.gridScroll - this.gridRenderScroll);
+    const rerenderDistance = Math.max(128, this.gridRenderCellH * 1.5);
+    if (drift >= rerenderDistance || (next === target && drift > 1)) {
+      this.renderAll();
+    }
+  }
+
+  private normalizedWheelDelta(dy: number) {
+    if (!Number.isFinite(dy) || dy === 0) return 0;
+    const magnitude = clamp(Math.abs(dy) * 0.78, 4, 128);
+    return Math.sign(dy) * magnitude;
+  }
+
+  private resetCodexScroll() {
+    this.detailScroll = 0;
+    this.detailScrollTarget = 0;
+    this.gridScroll = 0;
+    this.gridScrollTarget = 0;
+  }
+
+  private openCodexDetail(id: string) {
+    this.detailId = id;
+    this.detailScroll = 0;
+    this.detailScrollTarget = 0;
+    this.renderAll();
+  }
+
+  private closeCodexDetail() {
+    this.detailId = undefined;
+    this.detailScroll = 0;
+    this.detailScrollTarget = 0;
+    this.renderAll();
   }
 
   private allCards(): Card[] {
@@ -1472,9 +1555,10 @@ class CodexScene extends Phaser.Scene {
 
   private visibleGridEntries<T>(entries: T[], cols: number, cellH: number): T[] {
     const top = CodexScene.GRID_TOP;
+    const overscan = cellH * 2;
     return entries.filter((_entry, i) => {
       const cy = top + Math.floor(i / cols) * cellH + cellH / 2;
-      return cy - this.gridScroll >= top - cellH && cy - this.gridScroll <= CodexScene.GRID_BOTTOM + cellH;
+      return cy - this.gridScroll >= top - overscan && cy - this.gridScroll <= CodexScene.GRID_BOTTOM + overscan;
     });
   }
 
@@ -1513,6 +1597,7 @@ class CodexScene extends Phaser.Scene {
   private renderAll() {
     hideKwTooltip();
     this.root.removeAll(true);
+    this.gridLayer = undefined;
     this.queueArt();
     const all = this.allCards();
     const found = all.filter((c) => this.discovered.has(c.id)).length;
@@ -1542,22 +1627,27 @@ class CodexScene extends Phaser.Scene {
     const gridLeft = (GAME_WIDTH - cols * cellW) / 2;
     const rows = Math.ceil((cardMode ? cards.length : itemMode ? items.length : leaderMode ? leaders.length : enemies.length) / cols);
     this.gridMaxScroll = Math.max(0, rows * cellH - (CodexScene.GRID_BOTTOM - top) + 12);
-    this.gridScroll = Math.min(this.gridScroll, this.gridMaxScroll);
+    this.gridScrollTarget = clamp(this.gridScrollTarget, 0, this.gridMaxScroll);
+    this.gridScroll = clamp(this.gridScroll, 0, this.gridMaxScroll);
 
+    const gridOverscan = cellH * 2;
     const grid = this.add.container(0, -this.gridScroll);
+    this.gridLayer = grid;
+    this.gridRenderScroll = this.gridScroll;
+    this.gridRenderCellH = cellH;
     if (cardMode) {
       cards.forEach((card, i) => {
         const cx = gridLeft + (i % cols) * cellW + cellW / 2;
         const cy = top + Math.floor(i / cols) * cellH + cellH / 2;
         // Cull rows fully outside the viewport (cheap + avoids drawing offscreen).
-        if (cy - this.gridScroll < top - cellH || cy - this.gridScroll > CodexScene.GRID_BOTTOM + cellH) return;
+        if (cy - this.gridScroll < top - gridOverscan || cy - this.gridScroll > CodexScene.GRID_BOTTOM + gridOverscan) return;
         this.renderThumb(grid, card, cx, cy);
       });
     } else if (itemMode) {
       items.forEach((item, i) => {
         const cx = gridLeft + (i % cols) * cellW + cellW / 2;
         const cy = top + Math.floor(i / cols) * cellH + cellH / 2;
-        if (cy - this.gridScroll < top - cellH || cy - this.gridScroll > CodexScene.GRID_BOTTOM + cellH) return;
+        if (cy - this.gridScroll < top - gridOverscan || cy - this.gridScroll > CodexScene.GRID_BOTTOM + gridOverscan) return;
         if (item.kind === 'waymark') this.renderWaymarkThumb(grid, item.mark, cx, cy);
         else this.renderSupplyThumb(grid, item.supply, cx, cy);
       });
@@ -1565,14 +1655,14 @@ class CodexScene extends Phaser.Scene {
       leaders.forEach((leader, i) => {
         const cx = gridLeft + (i % cols) * cellW + cellW / 2;
         const cy = top + Math.floor(i / cols) * cellH + cellH / 2;
-        if (cy - this.gridScroll < top - cellH || cy - this.gridScroll > CodexScene.GRID_BOTTOM + cellH) return;
+        if (cy - this.gridScroll < top - gridOverscan || cy - this.gridScroll > CodexScene.GRID_BOTTOM + gridOverscan) return;
         this.renderLeaderThumb(grid, leader, cx, cy);
       });
     } else {
       enemies.forEach((enemy, i) => {
         const cx = gridLeft + (i % cols) * cellW + cellW / 2;
         const cy = top + Math.floor(i / cols) * cellH + cellH / 2;
-        if (cy - this.gridScroll < top - cellH || cy - this.gridScroll > CodexScene.GRID_BOTTOM + cellH) return;
+        if (cy - this.gridScroll < top - gridOverscan || cy - this.gridScroll > CodexScene.GRID_BOTTOM + gridOverscan) return;
         this.renderEnemyThumb(grid, enemy, cx, cy);
       });
     }
@@ -1638,8 +1728,7 @@ class CodexScene extends Phaser.Scene {
       this.renderCodexTab(tx, 42, 106, 42, label, sectionMeta[section], active, sectionAccent[section], () => {
         this.activeSection = section;
         this.detailId = undefined;
-        this.detailScroll = 0;
-        this.gridScroll = 0;
+        this.resetCodexScroll();
         this.renderAll();
       }, 14);
     });
@@ -1653,7 +1742,7 @@ class CodexScene extends Phaser.Scene {
         const sampleCard = tabCards[0];
         const accent = sampleCard ? this.cardAccent(sampleCard) : 0x7ab8d6;
         this.renderCodexTab(tx, 116, 124, 40, tab.label, `${got}/${tabCards.length}`, active, accent, () => {
-          this.activeTab = i; this.detailId = undefined; this.gridScroll = 0; this.renderAll();
+          this.activeTab = i; this.detailId = undefined; this.resetCodexScroll(); this.renderAll();
         }, 13);
       });
     } else if (itemMode) {
@@ -1665,7 +1754,7 @@ class CodexScene extends Phaser.Scene {
           ? tabItems[0].kind === 'waymark' ? this.waymarkAccent(tabItems[0].mark) : this.supplyAccent(tabItems[0].supply)
           : 0xc9a6ff;
         this.renderCodexTab(tx, 116, 104, 40, tab.label, `${tabItems.length}`, active, accent, () => {
-          this.activeItemTab = i; this.detailId = undefined; this.gridScroll = 0; this.renderAll();
+          this.activeItemTab = i; this.detailId = undefined; this.resetCodexScroll(); this.renderAll();
         }, 11);
       });
     } else if (!leaderMode) {
@@ -1675,7 +1764,7 @@ class CodexScene extends Phaser.Scene {
         const tabEnemies = this.allCodexEnemies().filter(tab.match);
         const accent = tabEnemies[0] ? this.enemyAccent(tabEnemies[0]) : 0x7ab8d6;
         this.renderCodexTab(tx, 116, 140, 40, tab.label, `${tabEnemies.length}`, active, accent, () => {
-          this.activeEnemyTab = i; this.detailId = undefined; this.gridScroll = 0; this.renderAll();
+          this.activeEnemyTab = i; this.detailId = undefined; this.resetCodexScroll(); this.renderAll();
         }, 13);
       });
     }
@@ -1862,7 +1951,7 @@ class CodexScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: found });
     bg.on('pointerover', () => bg.setFillStyle(found ? 0x162235 : 0x0d1420, found ? 1 : 0.94));
     bg.on('pointerout', () => bg.setFillStyle(found ? 0x0e131d : 0x0a0d13, found ? 1 : 0.9));
-    if (found) bg.on('pointerdown', () => { this.detailId = card.id; this.detailScroll = 0; this.renderAll(); });
+    if (found) bg.on('pointerdown', () => this.openCodexDetail(card.id));
     layer.add(bg);
 
     const key = cardArtKey(card);
@@ -1969,7 +2058,7 @@ class CodexScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => bg.setFillStyle(0x142334, 0.98));
     bg.on('pointerout', () => bg.setFillStyle(0x0d1720, 0.96));
-    bg.on('pointerdown', () => { this.detailId = supply.id; this.detailScroll = 0; this.renderAll(); });
+    bg.on('pointerdown', () => this.openCodexDetail(supply.id));
     layer.add(bg);
     layer.add(this.add.rectangle(cx, cy - h / 2 + 7, w - 16, 4, accent, 0.82));
     const artAsset = supplyArtAssets[supply.id];
@@ -2000,7 +2089,7 @@ class CodexScene extends Phaser.Scene {
     const supply = alphaSupplyLibrary.get(id);
     if (!supply) return;
     const scrim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.76).setInteractive();
-    scrim.on('pointerdown', () => { this.detailId = undefined; this.renderAll(); });
+    scrim.on('pointerdown', () => this.closeCodexDetail());
     this.root.add(scrim);
 
     const px = GAME_WIDTH / 2;
@@ -2067,7 +2156,7 @@ class CodexScene extends Phaser.Scene {
 
     const close = this.add.rectangle(left + MW - 30, top + 30, 36, 36, 0x3d2a2d, 0.97)
       .setStrokeStyle(2, 0xff6b57, 1).setInteractive({ useHandCursor: true });
-    close.on('pointerdown', () => { this.detailId = undefined; this.renderAll(); });
+    close.on('pointerdown', () => this.closeCodexDetail());
     this.root.add(close);
     this.root.add(this.add.text(left + MW - 30, top + 30, 'x', {
       fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#ffd5cc'
@@ -2083,7 +2172,7 @@ class CodexScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => bg.setFillStyle(0x142033, 0.98));
     bg.on('pointerout', () => bg.setFillStyle(0x0d1420, 0.96));
-    bg.on('pointerdown', () => { this.detailId = mark.id; this.detailScroll = 0; this.renderAll(); });
+    bg.on('pointerdown', () => this.openCodexDetail(mark.id));
     layer.add(bg);
     layer.add(this.add.rectangle(cx, cy - h / 2 + 7, w - 16, 4, accent, 0.82));
 
@@ -2115,7 +2204,7 @@ class CodexScene extends Phaser.Scene {
     const mark = alphaRouteMarkLibrary.get(id);
     if (!mark) return;
     const scrim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.76).setInteractive();
-    scrim.on('pointerdown', () => { this.detailId = undefined; this.renderAll(); });
+    scrim.on('pointerdown', () => this.closeCodexDetail());
     this.root.add(scrim);
 
     const px = GAME_WIDTH / 2;
@@ -2174,7 +2263,7 @@ class CodexScene extends Phaser.Scene {
 
     const close = this.add.rectangle(left + MW - 30, top + 30, 36, 36, 0x3d2a2d, 0.97)
       .setStrokeStyle(2, 0xff6b57, 1).setInteractive({ useHandCursor: true });
-    close.on('pointerdown', () => { this.detailId = undefined; this.renderAll(); });
+    close.on('pointerdown', () => this.closeCodexDetail());
     this.root.add(close);
     this.root.add(this.add.text(left + MW - 30, top + 30, 'x', {
       fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#ffd5cc'
@@ -2204,7 +2293,7 @@ class CodexScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => bg.setFillStyle(unlocked ? 0x142033 : 0x0d1420, unlocked ? 1 : 0.94));
     bg.on('pointerout', () => bg.setFillStyle(unlocked ? 0x0d1420 : 0x0a0d13, unlocked ? 0.98 : 0.92));
-    bg.on('pointerdown', () => { this.detailId = leader.id; this.detailScroll = 0; this.renderAll(); });
+    bg.on('pointerdown', () => this.openCodexDetail(leader.id));
     layer.add(bg);
     layer.add(this.add.rectangle(cx, cy - h / 2 + 8, w - 18, 4, unlocked ? accent : 0x2a3a4d, unlocked ? 0.84 : 0.6));
 
@@ -2248,7 +2337,7 @@ class CodexScene extends Phaser.Scene {
     const unlocked = isLeaderUnlocked(account, leader.id);
     const wins = account.winsByLeader[leader.id] ?? 0;
     const scrim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.76).setInteractive();
-    scrim.on('pointerdown', () => { this.detailId = undefined; this.renderAll(); });
+    scrim.on('pointerdown', () => this.closeCodexDetail());
     this.root.add(scrim);
 
     const px = GAME_WIDTH / 2;
@@ -2361,8 +2450,10 @@ class CodexScene extends Phaser.Scene {
     const contentBottom = yy + this.detailScroll;
     const SCROLL_PAD = 16;
     this.detailMaxScroll = Math.max(0, (contentBottom - viewTop) - viewH + SCROLL_PAD);
+    this.detailScrollTarget = clamp(this.detailScrollTarget, 0, this.detailMaxScroll);
+    this.detailScroll = clamp(this.detailScroll, 0, this.detailMaxScroll);
 
-    const closeDetail = () => { this.detailId = undefined; this.renderAll(); };
+    const closeDetail = () => this.closeCodexDetail();
     const curtainX = tx - 24;
     const curtainW = right - curtainX - 1;
     this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, mTop, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
@@ -2480,7 +2571,7 @@ class CodexScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     bg.on('pointerover', () => bg.setFillStyle(0x142033, 0.98));
     bg.on('pointerout', () => bg.setFillStyle(0x0d1420, 0.96));
-    bg.on('pointerdown', () => { this.detailId = enemy.id; this.detailScroll = 0; this.renderAll(); });
+    bg.on('pointerdown', () => this.openCodexDetail(enemy.id));
     layer.add(bg);
     layer.add(this.add.rectangle(cx, cy - h / 2 + 7, w - 18, 3, accent, 0.62));
     layer.add(this.add.rectangle(cx - w / 2 + 8, cy - h / 2 + 28, 3, 42, accent, 0.7));
@@ -2529,7 +2620,7 @@ class CodexScene extends Phaser.Scene {
     const card = cardLibrary[id];
     if (!card) return;
     const scrim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.76).setInteractive();
-    scrim.on('pointerdown', () => { this.detailId = undefined; this.renderAll(); });
+    scrim.on('pointerdown', () => this.closeCodexDetail());
     this.root.add(scrim);
 
     const px = GAME_WIDTH / 2;
@@ -2636,6 +2727,8 @@ class CodexScene extends Phaser.Scene {
     const contentBottom = yy + this.detailScroll; // absolute end if scroll were 0
     const SCROLL_PAD = 16; // breathing room below the last line at max scroll
     this.detailMaxScroll = Math.max(0, (contentBottom - viewTop) - viewH + SCROLL_PAD);
+    this.detailScrollTarget = clamp(this.detailScrollTarget, 0, this.detailMaxScroll);
+    this.detailScroll = clamp(this.detailScroll, 0, this.detailMaxScroll);
 
     // Clip the scroll viewport (WebGL has no geometry masks, so we paint over the
     // overflow). Two layers: opaque "outside" covers hide anything that bled past
@@ -2643,7 +2736,7 @@ class CodexScene extends Phaser.Scene {
     // restore the panel face over the header/footer scroll gaps. All interactive so
     // they also swallow hovers on keyword tokens scrolled out of view; the outside
     // covers double as click-to-close, matching the scrim.
-    const closeDetail = () => { this.detailId = undefined; this.renderAll(); };
+    const closeDetail = () => this.closeCodexDetail();
     this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, mTop, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
     this.root.add(this.add.rectangle(0, mBottom, GAME_WIDTH, GAME_HEIGHT - mBottom, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
     this.root.add(this.add.rectangle(left + 1, mTop + 1, MW - 2, viewTop - mTop - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
@@ -2666,7 +2759,7 @@ class CodexScene extends Phaser.Scene {
     }
 
     const close = this.add.rectangle(right - 26, mTop + 26, 36, 36, 0x3d2a2d, 0.97).setStrokeStyle(2, 0xff6b57, 1).setInteractive({ useHandCursor: true });
-    close.on('pointerdown', () => { this.detailId = undefined; this.renderAll(); });
+    close.on('pointerdown', closeDetail);
     this.root.add(close);
     this.root.add(this.add.text(right - 26, mTop + 26, '✕', { fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#ffd5cc' }).setOrigin(0.5));
   }
@@ -2675,7 +2768,7 @@ class CodexScene extends Phaser.Scene {
     const enemy = this.allCodexEnemies().find((entry) => entry.id === id);
     if (!enemy) return;
     const scrim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.76).setInteractive();
-    scrim.on('pointerdown', () => { this.detailId = undefined; this.renderAll(); });
+    scrim.on('pointerdown', () => this.closeCodexDetail());
     this.root.add(scrim);
 
     const px = GAME_WIDTH / 2;
@@ -2774,8 +2867,10 @@ class CodexScene extends Phaser.Scene {
     const contentBottom = yy + this.detailScroll;
     const SCROLL_PAD = 16;
     this.detailMaxScroll = Math.max(0, (contentBottom - viewTop) - viewH + SCROLL_PAD);
+    this.detailScrollTarget = clamp(this.detailScrollTarget, 0, this.detailMaxScroll);
+    this.detailScroll = clamp(this.detailScroll, 0, this.detailMaxScroll);
 
-    const closeDetail = () => { this.detailId = undefined; this.renderAll(); };
+    const closeDetail = () => this.closeCodexDetail();
     const curtainX = tx - 24;
     const curtainW = right - curtainX - 1;
     this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, mTop, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
@@ -3123,10 +3218,10 @@ class RouteScene extends Phaser.Scene {
   private routeLayout() {
     return {
       top: { y: 124 },
-      map: { x: 52, y: 150, w: 836, h: 520, cx: 470, cy: 410 },
-      graph: { left: 102, right: 838, top: 188, bottom: 560 },
-      inspector: { x: 904, y: 150, w: 300, h: 500, cx: 1054, cy: 400 },
-      footer: { x: 76, y: 604, w: 800, h: 56, cx: 476, cy: 632 }
+      map: { x: 32, y: 142, w: 890, h: 536, cx: 477, cy: 410 },
+      graph: { left: 88, right: 882, top: 178, bottom: 578 },
+      inspector: { x: 936, y: 142, w: 304, h: 512, cx: 1088, cy: 398 },
+      footer: { x: 62, y: 612, w: 848, h: 56, cx: 486, cy: 640 }
     };
   }
 
@@ -3254,17 +3349,14 @@ class RouteScene extends Phaser.Scene {
       const primaryPreview = previewEdges.primary.has(key);
       const secondaryPreview = previewEdges.secondary.has(key);
       const available = this.selectableNodeIds.has(edge.to);
-      lines.lineStyle(
-        lit ? 3 : primaryPreview ? 3 : available ? 2.5 : secondaryPreview ? 2 : 2,
-        lit ? 0x6fd69a : primaryPreview ? 0xffe1a3 : available ? 0x7ab8d6 : secondaryPreview ? 0x7ab8d6 : 0x263b52,
-        lit ? 0.78 : primaryPreview ? 0.78 : available ? 0.62 : secondaryPreview ? 0.42 : 0.28
-      );
-      lines.lineBetween(from.x + ROUTE_NODE_ICON_SIZE / 2, from.y, to.x - ROUTE_NODE_ICON_SIZE / 2, to.y);
+      const color = lit ? 0x6fd69a : primaryPreview ? 0xffe1a3 : available ? 0x7ab8d6 : secondaryPreview ? 0x7ab8d6 : 0x263b52;
+      const alpha = lit ? 0.78 : primaryPreview ? 0.78 : available ? 0.62 : secondaryPreview ? 0.42 : 0.28;
+      const dotRadius = lit ? 2.1 : primaryPreview ? 2.1 : available ? 1.8 : secondaryPreview ? 1.5 : 1.25;
+      const curve = this.drawRouteEdgePath(lines, from, to, key, color, alpha, dotRadius);
       if (available || primaryPreview) {
-        const mx = from.x * 0.35 + to.x * 0.65;
-        const my = from.y * 0.35 + to.y * 0.65;
+        const marker = curve.getPoint(0.65);
         lines.fillStyle(primaryPreview ? 0xffe1a3 : 0x7ab8d6, primaryPreview ? 0.9 : 0.72);
-        lines.fillCircle(mx, my, primaryPreview ? 3.5 : 3);
+        lines.fillCircle(marker.x, marker.y, primaryPreview ? 3.5 : 3);
       }
     });
 
@@ -3279,6 +3371,44 @@ class RouteScene extends Phaser.Scene {
       fontSize: '14px',
       color: '#91a6b8'
     });
+  }
+
+  private drawRouteEdgePath(
+    graphics: Phaser.GameObjects.Graphics,
+    from: { x: number; y: number },
+    to: { x: number; y: number },
+    edgeKey: string,
+    color: number,
+    alpha: number,
+    dotRadius: number
+  ) {
+    const start = new Phaser.Math.Vector2(from.x + ROUTE_NODE_ICON_SIZE / 2, from.y);
+    const end = new Phaser.Math.Vector2(to.x - ROUTE_NODE_ICON_SIZE / 2, to.y);
+    const dx = end.x - start.x;
+    const dy = end.y - start.y;
+    const length = Math.max(1, Math.hypot(dx, dy));
+    const seed = hashSeed(edgeKey, activeMapIndex);
+    const side = (seed & 1) === 0 ? 1 : -1;
+    const bend = clamp(length * 0.16, 14, 34) * side;
+    const control = new Phaser.Math.Vector2(
+      (start.x + end.x) / 2 + (-dy / length) * bend,
+      (start.y + end.y) / 2 + (dx / length) * bend
+    );
+    const curve = new Phaser.Curves.QuadraticBezier(start, control, end);
+    const pointCount = Math.max(7, Math.ceil(length / 16));
+    const points = curve.getSpacedPoints(pointCount);
+
+    graphics.fillStyle(color, alpha);
+    points.slice(1, -1).forEach((point, index) => {
+      const pulse = index % 3 === 1 ? 0.9 : 1;
+      if (dotRadius >= 1.8) {
+        graphics.fillStyle(color, alpha * 0.2);
+        graphics.fillCircle(point.x, point.y, dotRadius * pulse + 2);
+        graphics.fillStyle(color, alpha);
+      }
+      graphics.fillCircle(point.x, point.y, dotRadius * pulse);
+    });
+    return curve;
   }
 
   private routeEdgeKey(from: string, to: string) {
@@ -3658,7 +3788,7 @@ class RouteScene extends Phaser.Scene {
     const usableTop = top + topPad;
     const usableBottom = bottom - bottomPad;
     const laneGap = columnNodes.length > 1
-      ? Math.min(114, (usableBottom - usableTop) / Math.max(1, columnNodes.length - 1))
+      ? Math.min(126, (usableBottom - usableTop) / Math.max(1, columnNodes.length - 1))
       : 0;
     const stackHeight = laneGap * Math.max(0, columnNodes.length - 1);
     const startY = (usableTop + usableBottom) / 2 - stackHeight / 2;
@@ -4420,13 +4550,10 @@ class RouteScene extends Phaser.Scene {
 
     this.renderMarketScrapTag(frame.left + 84, frame.top + 78);
 
-    const refreshCost = this.marketRefreshCost();
-    const refreshEnabled = this.runState.scrap >= refreshCost;
-    this.renderMarketRefreshSign(frame.right - 150, frame.top + 94, refreshCost, refreshEnabled);
-
+    const goodsRowY = frame.top + 548;
     this.renderMarketCardOffers(frame.left + 576, frame.top + 286);
-    this.renderMarketWaymarkOffers(frame.left + 510, frame.top + 588);
-    this.renderMarketUtilityOffers(frame.left + 860, frame.top + 314);
+    this.renderMarketWaymarkOffers(frame.left + 458, goodsRowY);
+    this.renderMarketUtilityOffers(frame.left + 810, frame.top + 292, goodsRowY);
 
     this.renderMarketEnamelButton(frame.right - 48, frame.top + 42, 86, 30, 'Close', true, () => {
       playUiSound('close');
@@ -4434,27 +4561,29 @@ class RouteScene extends Phaser.Scene {
     }, UI_FIELD.danger, '13px');
   }
 
-  private renderMarketVendorTitle(frame: { left: number; top: number }) {
-    const x = frame.left + 282;
-    const y = frame.top + 62;
-    const w = 238;
-    const h = 42;
+  private renderMarketVendorTitle(frame: { cx: number; top: number }) {
+    const x = frame.cx;
+    const y = frame.top + 38;
+    const w = 408;
+    const h = 48;
     this.add.rectangle(x, y, w, h, 0x080604, 1)
       .setStrokeStyle(MENU_BORDER_WIDTH, UI_FIELD.gold, 0.9);
-    this.add.text(x - w / 2 + 13, y - h / 2 + 6, 'Veyra Tallybright', {
+    this.add.text(x, y - 16, 'Veyra Tallybright', {
       fontFamily: 'Arial',
-      fontSize: '14px',
+      fontSize: '20px',
       fontStyle: 'bold',
       color: '#ffe1a3',
       stroke: '#020409',
-      strokeThickness: 3
-    });
-    this.add.text(x - w / 2 + 13, y - h / 2 + 25, 'CANAL CURATOR', {
+      strokeThickness: 4,
+      align: 'center'
+    }).setOrigin(0.5, 0);
+    this.add.text(x, y + 9, 'CANAL CURATOR', {
       fontFamily: 'Arial',
-      fontSize: '9px',
+      fontSize: '10px',
       fontStyle: 'bold',
-      color: '#8df4ff'
-    });
+      color: '#8df4ff',
+      align: 'center'
+    }).setOrigin(0.5, 0);
   }
 
   private renderMarketScrapTag(x: number, y: number) {
@@ -4545,10 +4674,6 @@ class RouteScene extends Phaser.Scene {
     this.add.rectangle(x + 52, fallbackY + 42, 18, 88, 0xd8a840, 0.52).setAngle(16);
   }
 
-  private renderMarketRefreshSign(x: number, y: number, cost: number, enabled: boolean) {
-    this.renderMarketEnamelButton(x, y, 196, 50, 'Refresh', enabled, () => this.refreshMarket(), UI_FIELD.cyan, '14px', `${cost} Scrap`);
-  }
-
   private renderMarketCardOffers(x: number, y: number) {
     if (this.marketCardShelf.length === 0) {
       this.add.rectangle(x, y - 6, 420, 78, 0x020409, 0.42)
@@ -4602,11 +4727,11 @@ class RouteScene extends Phaser.Scene {
     });
   }
 
-  private renderMarketWaymarkOffers(x: number, y: number) {
+  private renderMarketWaymarkOffers(x: number, rowY: number) {
     if (this.marketWaymarkShelf.length === 0) {
-      this.add.rectangle(x, y + 22, 300, 72, 0x020409, 0.34)
+      this.add.rectangle(x, rowY + 22, 300, 72, 0x020409, 0.34)
         .setStrokeStyle(1, 0x6f6044, 0.28);
-      this.add.text(x, y - 4, 'No unclaimed pins remain in this market.', {
+      this.add.text(x, rowY - 4, 'No unclaimed pins remain in this market.', {
         fontFamily: 'Arial',
         fontSize: '13px',
         color: '#d7c5a6',
@@ -4620,13 +4745,12 @@ class RouteScene extends Phaser.Scene {
       const mark = alphaRouteMarkLibrary.get(listing.id);
       if (!mark) return;
       const itemX = x - 134 + i * 134;
-      const itemY = y + 4;
       const enabled = !listing.sold && this.runState.scrap >= listing.price;
       const key = waymarkArtAssets[mark.id]?.key;
-      this.renderMarketObjectBackplate(itemX, itemY - 18, 112, 94, enabled ? UI_FIELD.gold : 0x3f4c58);
-      if (key && this.textures.exists(key)) addWaymarkArtImage(this, itemX, itemY - 18, key).setDisplaySize(96, 96).setAlpha(1);
+      this.renderMarketObjectBackplate(itemX, rowY - 16, 112, 94, enabled ? UI_FIELD.gold : 0x3f4c58);
+      if (key && this.textures.exists(key)) addWaymarkArtImage(this, itemX, rowY - 16, key).setDisplaySize(96, 96).setAlpha(1);
       else {
-        this.add.text(itemX, itemY - 31, waymarkGlyph(mark), {
+        this.add.text(itemX, rowY - 29, waymarkGlyph(mark), {
           fontFamily: 'Georgia, serif',
           fontSize: '27px',
           fontStyle: 'bold',
@@ -4635,19 +4759,19 @@ class RouteScene extends Phaser.Scene {
           strokeThickness: 2
         }).setOrigin(0.5, 0);
       }
-      this.renderMarketItemLabelBox(itemX, itemY + 67, 128, 44, 'WAYMARKER', mark.name, listing.price, enabled && !listing.sold, UI_FIELD.gold);
-      if (listing.sold) this.renderMarketSoldSlat(itemX, itemY - 8, 112, 112);
+      this.renderMarketItemLabelBox(itemX, rowY + 68, 128, 48, 'WAYMARKER', mark.name, listing.price, enabled && !listing.sold, UI_FIELD.gold);
+      if (listing.sold) this.renderMarketSoldSlat(itemX, rowY + 24, 128, 126);
       if (!listing.sold) {
-        const hit = this.add.rectangle(itemX, itemY + 18, 142, 158, 0x000000, 0.01)
+        const hit = this.add.rectangle(itemX, rowY + 24, 136, 160, 0x000000, 0.01)
           .setInteractive({ useHandCursor: true });
         hit.on('pointerdown', () => this.buyMarketRouteMark(i));
-        hit.on('pointerover', () => this.showMarketWaymarkDetail(mark, listing.price, itemX, itemY));
+        hit.on('pointerover', () => this.showMarketWaymarkDetail(mark, listing.price, itemX, rowY));
         hit.on('pointerout', () => this.hideMarketItemDetail());
       }
     });
   }
 
-  private renderMarketUtilityOffers(x: number, y: number) {
+  private renderMarketUtilityOffers(x: number, y: number, goodsRowY?: number) {
     if (this.marketUtilityShelf.length === 0) {
       this.add.rectangle(x, y + 70, 220, 96, 0x020409, 0.34)
         .setStrokeStyle(1, 0x59606a, 0.24);
@@ -4663,6 +4787,7 @@ class RouteScene extends Phaser.Scene {
     }
     let serviceIndex = 0;
     let supplyIndex = 0;
+    const serviceBaseY = y - 44;
     this.marketUtilityShelf.forEach((listing, i) => {
       const enabled = !listing.sold && this.marketUtilityEnabled(listing);
       const accent = listing.id === 'release' ? UI_FIELD.danger : listing.id === 'supply' ? UI_FIELD.green : UI_FIELD.cyan;
@@ -4671,8 +4796,8 @@ class RouteScene extends Phaser.Scene {
       const supply = listing.supplyId ? alphaSupplyLibrary.get(listing.supplyId) : undefined;
       const supplyKey = supply ? supplyArtAssets[supply.id]?.key : undefined;
       if (listing.id === 'preen' || listing.id === 'release') {
-        const serviceY = y + serviceIndex * 62;
-        const serviceX = x + 250;
+        const serviceY = serviceBaseY + serviceIndex * 58;
+        const serviceX = x + 300;
         serviceIndex += 1;
         this.renderMarketItemLabelBox(
           serviceX,
@@ -4696,23 +4821,23 @@ class RouteScene extends Phaser.Scene {
         return;
       }
 
-      const rowY = y + 276;
-      const supplyX = x - 70 + supplyIndex * 118;
+      const rowY = goodsRowY ?? y + 276;
+      const supplyX = x - 72 + supplyIndex * 134;
       supplyIndex += 1;
-      this.renderMarketObjectBackplate(supplyX, rowY - 16, cardKey ? 86 : 100, cardKey ? 120 : 90, enabled ? accent : 0x3f4c58);
+      this.renderMarketObjectBackplate(supplyX, rowY - 16, 112, 94, enabled ? accent : 0x3f4c58);
       if (cardKey && this.textures.exists(cardKey)) {
         this.add.image(supplyX, rowY - 12, cardKey)
-          .setDisplaySize(72, 108)
+          .setDisplaySize(64, 96)
           .setAlpha(1);
       } else if (supplyKey && this.textures.exists(supplyKey)) {
         addSupplyArtImage(this, supplyX, rowY - 16, supplyKey)
-          .setDisplaySize(92, 92)
+          .setDisplaySize(96, 96)
           .setAlpha(1);
       } else {
         const artAsset = this.marketUtilityProxyArtAsset(listing);
         if (artAsset && this.textures.exists(artAsset.key)) {
           this.add.image(supplyX, rowY - 16, artAsset.key)
-            .setDisplaySize(92, 92)
+            .setDisplaySize(96, 96)
             .setAlpha(1);
         } else if (listing.id === 'supply') {
           this.add.text(supplyX, rowY - 26, 'S', {
@@ -4728,17 +4853,17 @@ class RouteScene extends Phaser.Scene {
       this.renderMarketItemLabelBox(
         supplyX,
         rowY + 68,
-        112,
-        52,
+        128,
+        48,
         'SUPPLY',
         this.marketUtilityLabel(listing),
         listing.price,
         enabled && !listing.sold,
         accent
       );
-      if (listing.sold) this.renderMarketSoldSlat(supplyX, rowY + 24, 116, 126);
+      if (listing.sold) this.renderMarketSoldSlat(supplyX, rowY + 24, 128, 126);
       if (!listing.sold) {
-        const hit = this.add.rectangle(supplyX, rowY + 24, 116, 160, 0x000000, 0.01)
+        const hit = this.add.rectangle(supplyX, rowY + 24, 136, 160, 0x000000, 0.01)
           .setInteractive({ useHandCursor: true });
         hit.on('pointerdown', () => this.buyMarketUtility(i));
         if (card) {
@@ -4750,6 +4875,26 @@ class RouteScene extends Phaser.Scene {
         }
       }
     });
+    const refreshCost = this.marketRefreshCost();
+    const refreshEnabled = this.runState.scrap >= refreshCost;
+    const refreshX = x + 300;
+    const refreshY = serviceBaseY + serviceIndex * 58;
+    this.renderMarketItemLabelBox(
+      refreshX,
+      refreshY,
+      144,
+      48,
+      'REFRESH',
+      'New Stock',
+      refreshCost,
+      refreshEnabled,
+      UI_FIELD.cyan
+    );
+    if (refreshEnabled) {
+      const hit = this.add.rectangle(refreshX, refreshY, 154, 56, 0x000000, 0.01)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => this.refreshMarket());
+    }
   }
 
   private renderMarketObjectBackplate(x: number, y: number, w: number, h: number, accent: number) {
@@ -5406,7 +5551,8 @@ class RouteScene extends Phaser.Scene {
         maxHp: this.runMaxHp(),
         scrap: this.runState.scrap,
         routeMarks: [...this.runState.routeMarks],
-        supplies: [...this.runState.supplies]
+        supplies: [...this.runState.supplies],
+        supplySlots: runSupplyCapacity(this.runState)
       },
       routeStatus: this.routeStatusSummary(),
       deckOverlayOpen: this.deckOverlayOpen,
@@ -5534,6 +5680,8 @@ class BattleScene extends Phaser.Scene {
   private nextTurnEnergyBonus = 0;
   private nextTurnDrawBonus = 0;
   private pendingNestCoverBonus = 0;
+  private pendingRetainHand = 0;
+  private pendingSupplyRepeats = 0;
   private spark = 0;
   private turn = 1;
   private encounter = 1;
@@ -5543,6 +5691,7 @@ class BattleScene extends Phaser.Scene {
   private scrap = 0;
   private routeMarks: string[] = [];
   private runSupplies: string[] = [];
+  private runSupplyCapacity = BASE_SUPPLY_SLOTS;
   private runLeaderId?: string;
   private runDifficulty = 0;
   private lastRunRewards?: ReturnType<typeof recordRun>;
@@ -5634,6 +5783,8 @@ class BattleScene extends Phaser.Scene {
     this.nextTurnEnergyBonus = 0;
     this.nextTurnDrawBonus = 0;
     this.pendingNestCoverBonus = 0;
+    this.pendingRetainHand = 0;
+    this.pendingSupplyRepeats = 0;
     this.spark = 0;
     this.turn = 1;
     this.encounter = initialRouteIndex + 1;
@@ -5643,6 +5794,7 @@ class BattleScene extends Phaser.Scene {
     this.scrap = runState.scrap;
     this.routeMarks = [...runState.routeMarks];
     this.runSupplies = [...(runState.supplies ?? [])];
+    this.runSupplyCapacity = runSupplyCapacity(runState);
     this.runSignalChoices = [...(runState.signalChoices ?? [])];
     this.runRewardEvents = [...(runState.rewardEvents ?? [])];
     this.runSuppliesUsed = [...(runState.suppliesUsed ?? [])];
@@ -5735,6 +5887,9 @@ class BattleScene extends Phaser.Scene {
       case 'gainOpenSkyGuard':
         this.flock.openSkyGuard += value;
         break;
+      case 'reduceNextOpenSky':
+        this.flock.openSkyGuard += value;
+        break;
       case 'draw':
         this.drawCards(value);
         break;
@@ -5749,8 +5904,17 @@ class BattleScene extends Phaser.Scene {
       case 'nextCoverBonus':
         this.pendingNestCoverBonus += value;
         break;
+      case 'retainHand':
+        this.pendingRetainHand += value;
+        break;
       case 'nextTurnDraw':
         this.nextTurnDrawBonus += value;
+        break;
+      case 'repeatNextSupply':
+        this.pendingSupplyRepeats += value;
+        break;
+      case 'cleanseFlock':
+        this.cleanseFlock(value, markName);
         break;
       case 'bossDamageShield':
         if (currentCombatNodes()[this.currentRouteIndex]?.type === 'boss') {
@@ -5845,6 +6009,27 @@ class BattleScene extends Phaser.Scene {
     for (const mark of this.ownedMarkDefs()) {
       if (mark.trigger !== 'onHealFlock') continue;
       this.fireOncePerTurnMark(mark);
+    }
+  }
+
+  private checkEnemyCoverBrokenMarks() {
+    for (const mark of this.ownedMarkDefs()) {
+      if (mark.trigger !== 'onEnemyCoverBroken') continue;
+      this.fireOncePerTurnMark(mark);
+    }
+  }
+
+  private checkResonanceSpentMarks() {
+    for (const mark of this.ownedMarkDefs()) {
+      if (mark.trigger !== 'onResonanceSpent') continue;
+      this.fireOncePerCombatMark(mark);
+    }
+  }
+
+  private checkNoDamageTurnMarks() {
+    for (const mark of this.ownedMarkDefs()) {
+      if (mark.trigger !== 'onTurnEndNoHpLoss') continue;
+      this.fireOncePerCombatMark(mark);
     }
   }
 
@@ -7555,12 +7740,14 @@ class BattleScene extends Phaser.Scene {
       case 'removeCover': {
         const enemy = target();
         if (!enemy) break;
+        const hadCover = enemy.block > 0;
         const removed = Math.min(enemy.block, n);
         enemy.block -= removed;
         this.logEvent(`${source} strips ${removed} Cover from ${enemy.name}.`);
         const view = this.enemyView(enemy);
         floatingText(this, this.fxLayer, view.x, view.y - 84, `-${removed} Cover`, '#8df4ff');
         this.coverImpactFx(view.x, view.y, 0x8df4ff);
+        if (hadCover && enemy.block <= 0) this.checkEnemyCoverBrokenMarks();
         break;
       }
       case 'applyWinded': {
@@ -7602,20 +7789,11 @@ class BattleScene extends Phaser.Scene {
           this.sparkBurst(view.x, view.y - 22, 0x8df4ff, 30, 210);
         }
         this.spark = 0;
+        if (spent > 0) this.checkResonanceSpentMarks();
         break;
       }
       case 'cleanseFlock': {
-        const before = this.flock.weak + this.flock.frail + this.flock.fouled;
-        this.flock.weak = Math.max(0, this.flock.weak - n);
-        this.flock.frail = Math.max(0, this.flock.frail - n);
-        this.flock.fouled = Math.max(0, this.flock.fouled - n);
-        const after = this.flock.weak + this.flock.frail + this.flock.fouled;
-        const cleared = before - after;
-        if (cleared > 0) {
-          this.logEvent(`${source} clears ${cleared} pressure.`);
-          floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 38, 'Cleanse', '#8fd6a0');
-          this.healFx();
-        }
+        this.cleanseFlock(n, source);
         break;
       }
       case 'enterMolt':
@@ -7625,7 +7803,25 @@ class BattleScene extends Phaser.Scene {
         this.nextTurnDrawBonus += n;
         this.logEvent(`${source} adds +${n} draw next turn.`);
         break;
+      case 'retainHand':
+        this.pendingRetainHand += n;
+        this.logEvent(`${source} retains ${n} card${n === 1 ? '' : 's'} for next turn.`);
+        break;
       default: break;
+    }
+  }
+
+  private cleanseFlock(amount: number, source = 'Cleanse') {
+    const before = this.flock.weak + this.flock.frail + this.flock.fouled;
+    this.flock.weak = Math.max(0, this.flock.weak - amount);
+    this.flock.frail = Math.max(0, this.flock.frail - amount);
+    this.flock.fouled = Math.max(0, this.flock.fouled - amount);
+    const after = this.flock.weak + this.flock.frail + this.flock.fouled;
+    const cleared = before - after;
+    if (cleared > 0) {
+      this.logEvent(`${source} clears ${cleared} pressure.`);
+      floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 38, 'Cleanse', '#8fd6a0');
+      this.healFx();
     }
   }
 
@@ -8535,6 +8731,7 @@ class BattleScene extends Phaser.Scene {
         }
         this.spark = 0;
         state.spentResonance = spent > 0;
+        if (spent > 0) this.checkResonanceSpentMarks();
         this.buildFlow(state);
         break;
       }
@@ -8569,12 +8766,14 @@ class BattleScene extends Phaser.Scene {
       case 'removeCover': {
         const enemy = this.getLivingEnemy(enemyId);
         if (!enemy) break;
+        const hadCover = enemy.block > 0;
         const removed = Math.min(enemy.block, value);
         enemy.block -= removed;
         this.logEvent(`${displayName(card)} strips ${removed} Cover from ${enemy.name}.`);
         const rcView = this.enemyView(enemy);
         floatingText(this, this.fxLayer, rcView.x, rcView.y - 84, `-${removed} Cover`, '#8df4ff');
         this.coverImpactFx(rcView.x, rcView.y, 0x8df4ff);
+        if (hadCover && enemy.block <= 0) this.checkEnemyCoverBrokenMarks();
         break;
       }
       case 'enterMolt':
@@ -8766,11 +8965,13 @@ class BattleScene extends Phaser.Scene {
     // Quills keystone: the first attack each turn lands +2.
     if (this.firstAttackThisTurn && this.keystoneActive('quills')) damage += 2;
     this.firstAttackThisTurn = false;
+    const hadCover = enemy.block > 0;
     const blocked = pierceCover ? 0 : Math.min(enemy.block, damage);
     if (!pierceCover) {
       enemy.block -= blocked;
       damage -= blocked;
     }
+    if (hadCover && enemy.block <= 0) this.checkEnemyCoverBrokenMarks();
     enemy.hp = Math.max(0, enemy.hp - damage);
     enemy.hitThisTurn = true;
     this.statDealt += damage;
@@ -8873,6 +9074,7 @@ class BattleScene extends Phaser.Scene {
       this.logEvent('Spark Echo draws 1 card.');
       floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 54, 'Spark Echo', '#8df4ff');
     }
+    this.checkResonanceSpentMarks();
     return true;
   }
 
@@ -8892,9 +9094,16 @@ class BattleScene extends Phaser.Scene {
       return;
     }
 
+    const retainCount = Math.min(Math.max(0, this.pendingRetainHand), this.hand.length);
+    const retained = retainCount > 0 ? this.hand.splice(this.hand.length - retainCount, retainCount) : [];
+    this.pendingRetainHand = 0;
     while (this.hand.length > 0) {
       const card = this.hand.pop();
       if (card) this.discardPile.push(card);
+    }
+    if (retained.length > 0) {
+      this.hand = retained;
+      this.logEvent(`Retained ${retained.length} card${retained.length === 1 ? '' : 's'} for next turn.`);
     }
     this.selectedInstanceId = undefined;
     // Molting is a one-turn transform stance: it ends now, leaving the flock
@@ -8905,7 +9114,9 @@ class BattleScene extends Phaser.Scene {
       this.flock.exposedTurns = 1;
       this.logEvent('The flock sheds out of Molt — Open Sky.');
     }
+    const hpBeforeEnemyTurn = this.flock.hp;
     this.resolveEnemyTurn();
+    if (this.flock.hp >= hpBeforeEnemyTurn) this.checkNoDamageTurnMarks();
     this.checkOutcome();
     if (this.mode === 'battle') this.startPlayerTurn();
     this.renderAll();
@@ -9378,6 +9589,7 @@ class BattleScene extends Phaser.Scene {
       scrap: this.scrap,
       routeMarks: [...this.routeMarks],
       supplies: [...this.runSupplies],
+      supplySlots: this.runSupplyCapacity,
       mapIndex: activeMapIndex,
       completedRouteNodeIds: [...this.completedRouteNodeIds],
       currentRouteNodeId: completedNodeId,
@@ -11305,8 +11517,18 @@ function formatEffect(effect: string) {
       return 'Return a card from discard.';
     case 'nextCoverBonus':
       return `Next Nest Cover +${value}.`;
+    case 'retainHand':
+      return `Retain ${value} card${value === '1' ? '' : 's'}.`;
     case 'nextTurnDraw':
       return `Draw ${value} next turn.`;
+    case 'repeatNextSupply':
+      return `The next Supply resolves ${value} extra time${value === '1' ? '' : 's'}.`;
+    case 'cleanseFlock':
+      return `Reduce each flock debuff by ${value}.`;
+    case 'peekNextNodes':
+      return `Preview ${value || 1} route choice${value === '1' ? '' : 's'}.`;
+    case 'increaseSupplySlots':
+      return `Supply capacity +${value || 1}.`;
     case 'shuffleSelfToDraw':
       return 'Return this to the draw pile after play.';
     case 'bossDamageShield':

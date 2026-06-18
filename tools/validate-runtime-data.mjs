@@ -84,7 +84,8 @@ const validRouteMarkRarities = new Set(['common', 'uncommon', 'rare', 'boss']);
 const validTriggerBases = new Set([
   'combatStart', 'afterStreetEncounter', 'firstOpenSkyIncrease', 'basinHeal',
   'signalResolved', 'firstImproveThisRun', 'mapStart', 'passive', 'cacheChoice',
-  'onSupplyUsed', 'onEnterMolt', 'onHealFlock',
+  'onSupplyUsed', 'onEnterMolt', 'onHealFlock', 'onEnemyCoverBroken',
+  'onResonanceSpent', 'onTurnEndNoHpLoss', 'afterMarketPurchase',
 ]);
 // Signal/Market choice preconditions (next-level-data-contracts §7.2)
 const validPredicates = new Set([
@@ -152,9 +153,10 @@ const validEffectVerbs = new Set([
   'gainRouteMark', 'gainSupply', 'gainSupplyChoice', 'gainCacheReward', 'addCard',
   'preenCard', 'releaseCard',
   'reduceNextOpenSky', 'enemyCoverNextCombat', 'bossDamageShield', 'startNextCombatOpenSky',
+  'peekNextNodes', 'increaseSupplySlots', 'retainHand', 'repeatNextSupply',
   // route-mark resolver helpers
   'reducePreenPrice', 'reduceOpenSky', 'addHeal', 'addBonusStat', 'extraCacheChoice',
-  'freePreenNextDistrict',
+  'freePreenNextDistrict', 'cleanseFlock',
 ]);
 
 const effectVerbName = (effect) => {
@@ -268,6 +270,7 @@ const validEnemyVerbs = new Set([
 const validMarkVerbs = new Set([
   'gainCover', 'gainCoverPerWaymark', 'gainWingbeat', 'gainEnergyNextTurn', 'gainResonance',
   'gainOpenSkyGuard', 'draw', 'damageAll', 'heal', 'nextCoverBonus', 'nextTurnDraw', 'bossDamageShield',
+  'retainHand', 'repeatNextSupply', 'cleanseFlock', 'reduceNextOpenSky',
   'reducePreenPrice', 'gainScrap', 'addHeal', 'reduceOpenSky', 'gainSupplyChoice',
   'extraCacheChoice', 'freePreenNextDistrict',
 ]);

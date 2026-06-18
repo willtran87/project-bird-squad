@@ -1798,7 +1798,7 @@ test('codex: supplies are listed as items with usable details', async ({ page })
     return {
       totalItems: cs.allCodexItems ? cs.allCodexItems().length : 0,
       supplies: cs.allSupplies ? cs.allSupplies().length : 0,
-      hasSubtitle: listTexts.some((t) => /71 items cataloged \(48 Waymarks \/ 23 Supplies\)/.test(t)),
+      hasSubtitle: listTexts.some((t) => /89 items cataloged \(58 Waymarks \/ 31 Supplies\)/.test(t)),
       hasTab: listTexts.some((t) => t === 'Supplies'),
       hasSeedPacket: listTexts.some((t) => /Seed Packet/.test(t)),
       hasBottlecap: listTexts.some((t) => /Bottlecap Popper/.test(t)),
@@ -1809,8 +1809,8 @@ test('codex: supplies are listed as items with usable details', async ({ page })
         && detailTexts.some((t) => /Bird Squad title splash art/.test(t)),
     };
   });
-  expect(r.totalItems).toBe(71);
-  expect(r.supplies).toBe(23);
+  expect(r.totalItems).toBe(89);
+  expect(r.supplies).toBe(31);
   expect(r.hasSubtitle).toBe(true);
   expect(r.hasTab).toBe(true);
   expect(r.hasSeedPacket).toBe(true);
@@ -1826,35 +1826,59 @@ test('expanded supplies resolve tactical combat verbs', async ({ page }) => {
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    const supplyIds = [
+      'seed_packet',
+      'signal_flare',
+      'zip_tie_roll',
+      'bottlecap_popper',
+      'tar_solvent',
+      'feather_splint',
+      'mirror_shard',
+      'emergency_call',
+      'shade_cloth',
+      'rooftop_decoy',
+      'molt_pin',
+      'wire_snips',
+      'spare_harness',
+      'signal_kite',
+      'storm_lantern',
+      'cache_key',
+      'rain_cape',
+      'return_ticket',
+      'nest_clamp',
+      'smoke_thread',
+      'windcatcher_spool',
+      'resonance_battery',
+      'oath_ledger',
+    ];
+    const supplyTextureKeys = supplyIds.map((id) => `supply-${id}`);
+    g.scene.start('BattleScene', {
+      routeNodeId: 'm1_entry',
+      runState: {
+        deck: [{ id: 'major_00' }, { id: 'wands_ace' }, { id: 'swords_ace' }, { id: 'cups_ace' }, { id: 'pentacles_04' }],
+        leaderId: 'fledgling',
+        difficulty: 0,
+        seed: 'expanded-supplies-art',
+        currentHp: 36,
+        scrap: 0,
+        routeMarks: [],
+        supplies: supplyIds,
+        supplySlots: supplyIds.length,
+        mapIndex: 0,
+        completedRouteNodeIds: [],
+        currentRouteNodeId: undefined,
+        routeLog: [],
+        nextCombat: undefined,
+        signalChoices: [],
+        rewardEvents: [],
+        suppliesUsed: [],
+        combatResults: [],
+        freePreenNextDistrict: 0,
+      }
+    });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 20 && !(s.enemies && s.enemies.length); i += 1) await wait(50);
-    const supplyTextureKeys = [
-      'supply-seed_packet',
-      'supply-signal_flare',
-      'supply-zip_tie_roll',
-      'supply-bottlecap_popper',
-      'supply-tar_solvent',
-      'supply-feather_splint',
-      'supply-mirror_shard',
-      'supply-emergency_call',
-      'supply-shade_cloth',
-      'supply-rooftop_decoy',
-      'supply-molt_pin',
-      'supply-wire_snips',
-      'supply-spare_harness',
-      'supply-signal_kite',
-      'supply-storm_lantern',
-      'supply-cache_key',
-      'supply-rain_cape',
-      'supply-return_ticket',
-      'supply-nest_clamp',
-      'supply-smoke_thread',
-      'supply-windcatcher_spool',
-      'supply-resonance_battery',
-      'supply-oath_ledger',
-    ];
     for (let i = 0; i < 60 && !supplyTextureKeys.every((key) => s.textures.exists(key)); i += 1) await wait(100);
     const enemy = s.enemies[0];
     enemy.maxHp = 40;
@@ -1923,28 +1947,53 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    const newSupplyIds = [
+      'return_ticket',
+      'nest_clamp',
+      'smoke_thread',
+      'windcatcher_spool',
+      'resonance_battery',
+      'oath_ledger',
+    ];
+    const newWaymarkIds = [
+      'flock_counterweight',
+      'supply_bell',
+      'molt_metronome',
+      'eave_bloom',
+      'plumes_busker_patch',
+      'quills_pressure_gauge',
+      'basin_overflow_cup',
+      'nest_ratchet',
+    ];
+    const newSupplyTextures = newSupplyIds.map((id) => `supply-${id}`);
+    const newWaymarkTextures = newWaymarkIds.map((id) => `waymark-${id}`);
+    g.scene.start('BattleScene', {
+      routeNodeId: 'm1_entry',
+      runState: {
+        deck: [{ id: 'major_00' }, { id: 'wands_ace' }, { id: 'swords_ace' }, { id: 'cups_ace' }, { id: 'pentacles_04' }],
+        leaderId: 'fledgling',
+        difficulty: 0,
+        seed: 'scaling-items-art',
+        currentHp: 36,
+        scrap: 0,
+        routeMarks: newWaymarkIds,
+        supplies: newSupplyIds,
+        supplySlots: newSupplyIds.length,
+        mapIndex: 0,
+        completedRouteNodeIds: [],
+        currentRouteNodeId: undefined,
+        routeLog: [],
+        nextCombat: undefined,
+        signalChoices: [],
+        rewardEvents: [],
+        suppliesUsed: [],
+        combatResults: [],
+        freePreenNextDistrict: 0,
+      }
+    });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 20 && !(s.enemies && s.enemies.length && s.hand && s.hand.length); i += 1) await wait(50);
-    const newSupplyTextures = [
-      'supply-return_ticket',
-      'supply-nest_clamp',
-      'supply-smoke_thread',
-      'supply-windcatcher_spool',
-      'supply-resonance_battery',
-      'supply-oath_ledger',
-    ];
-    const newWaymarkTextures = [
-      'waymark-flock_counterweight',
-      'waymark-supply_bell',
-      'waymark-molt_metronome',
-      'waymark-eave_bloom',
-      'waymark-plumes_busker_patch',
-      'waymark-quills_pressure_gauge',
-      'waymark-basin_overflow_cup',
-      'waymark-nest_ratchet',
-    ];
     for (let i = 0; i < 60 && ![...newSupplyTextures, ...newWaymarkTextures].every((key) => s.textures.exists(key)); i += 1) await wait(100);
 
     const enemy = s.enemies[0];
@@ -1988,6 +2037,7 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
 
     s.runSupplies = ['seed_packet'];
     s.runSuppliesUsed = [];
+    if (s.drawPile.length === 0 && s.hand.length > 0) s.drawPile = [{ ...s.hand[0], instanceId: 'supply-bell-draw' }];
     const handBeforeBell = s.hand.length;
     s.useSupply(0);
     const afterBell = { hand: s.hand.length };
@@ -2059,6 +2109,254 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
   expect(r.afterSuitMarks.pendingNest).toBe(4);
   expect(r.afterHealMark.hp).toBe(22);
   expect(r.afterHealMark.block).toBe(2);
+});
+
+test('next item pass supplies and Waymarks execute route and combat hooks', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    const nextSupplies = [
+      'map_sticker_strip',
+      'thermos_lid',
+      'bus_token_cache',
+      'chalk_dust_pouch',
+      'market_iou',
+      'sky_sugar',
+      'anchor_threader',
+      'spare_pocket',
+    ];
+    const nextWaymarks = [
+      'broken_cover_chime',
+      'spark_ground_clip',
+      'quiet_roost_token',
+      'double_packed_buckle',
+      'ledger_tab',
+      'basin_safety_pin',
+      'nest_measure_line',
+      'plumes_applause_cap',
+      'molt_shadow_tag',
+      'cache_divining_hook',
+    ];
+    const mkRunState = (patch: any = {}) => ({
+      deck: [{ id: 'major_00' }, { id: 'wands_ace' }, { id: 'cups_ace' }, { id: 'swords_ace' }, { id: 'pentacles_04' }],
+      leaderId: 'fledgling',
+      difficulty: 0,
+      seed: 'next-items-test',
+      currentHp: 24,
+      scrap: 12,
+      routeMarks: [],
+      supplies: [],
+      supplySlots: 2,
+      mapIndex: 0,
+      completedRouteNodeIds: [],
+      currentRouteNodeId: undefined,
+      routeLog: [],
+      nextCombat: undefined,
+      signalChoices: [],
+      rewardEvents: [],
+      suppliesUsed: [],
+      combatResults: [],
+      freePreenNextDistrict: 0,
+      ...patch,
+    });
+
+    g.scene.start('RouteScene', {
+      runState: mkRunState({
+        currentHp: 20,
+        routeMarks: ['ledger_tab', 'cache_divining_hook'],
+        supplies: ['spare_pocket', 'map_sticker_strip', 'thermos_lid', 'market_iou'],
+        supplySlots: 4,
+      })
+    });
+    g.scene.stop('MenuScene');
+    const route: any = g.scene.getScene('RouteScene');
+    for (let i = 0; i < 40 && !route.root; i += 1) await wait(50);
+    const routeSupplyKeys = ['supply-spare_pocket', 'supply-map_sticker_strip', 'supply-thermos_lid', 'supply-market_iou'];
+    for (let i = 0; i < 60 && !routeSupplyKeys.every((key) => route.textures.exists(key)); i += 1) await wait(100);
+
+    route.useRouteSupply(0);
+    const afterPocket = { slots: route.runState.supplySlots, used: [...route.runState.suppliesUsed] };
+    route.useRouteSupply(0);
+    const afterSticker = {
+      used: [...route.runState.suppliesUsed],
+      previewLogged: route.runState.routeLog.some((line: string) => /Route preview/.test(line)),
+    };
+    route.useRouteSupply(0);
+    const afterThermos = {
+      hp: route.runState.currentHp,
+      guard: route.runState.nextCombat?.openSkyGuard ?? 0,
+      used: [...route.runState.suppliesUsed],
+    };
+    route.useRouteSupply(0);
+    const afterIou = {
+      hp: route.runState.currentHp,
+      freePreen: route.runState.freePreenNextDistrict ?? 0,
+      used: [...route.runState.suppliesUsed],
+    };
+    route.runState.scrap = 12;
+    route.applyRouteMarkTrigger('afterMarketPurchase');
+    const afterLedger = { scrap: route.runState.scrap };
+    route.runState.supplies = [];
+    route.runState.supplySlots = 4;
+    route.applyRouteMarkTrigger('cacheChoice');
+    const afterCacheHook = { supplies: route.runState.supplies.length };
+
+    g.scene.start('BattleScene', {
+      routeNodeId: 'm1_entry',
+      runState: mkRunState({
+        currentHp: 32,
+        routeMarks: nextWaymarks,
+        supplies: nextSupplies,
+        supplySlots: 8,
+      })
+    });
+    g.scene.stop('RouteScene');
+    const battle: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 30 && !(battle.enemies && battle.enemies.length && battle.hand && battle.hand.length); i += 1) await wait(50);
+    const textureKeys = [
+      ...nextSupplies.map((id) => `supply-${id}`),
+      ...nextWaymarks.map((id) => `waymark-${id}`),
+    ];
+    for (let i = 0; i < 60 && !textureKeys.every((key) => battle.textures.exists(key)); i += 1) await wait(100);
+
+    const enemy = battle.enemies[0];
+    enemy.maxHp = 60;
+    enemy.hp = 60;
+    enemy.block = 6;
+    battle.selectedEnemyId = enemy.id;
+    const filler = battle.hand[0] ?? battle.drawPile[0] ?? battle.discardPile[0];
+    if (filler) {
+      for (let i = battle.drawPile.length; i < 10; i += 1) {
+        battle.drawPile.push({ ...filler, instanceId: `test-draw-${i}` });
+      }
+    }
+
+    battle.routeMarks = ['broken_cover_chime'];
+    battle.markFiredThisTurn = new Set();
+    battle.runSupplies = ['chalk_dust_pouch', 'sky_sugar', 'anchor_threader'];
+    battle.runSuppliesUsed = [];
+    battle.energy = 3;
+    battle.flock.block = 0;
+    battle.pendingRetainHand = 0;
+    battle.nextTurnDrawBonus = 0;
+    const handBeforeChalk = battle.hand.length;
+    battle.useSupply(0);
+    const afterChalk = { block: enemy.block, hand: battle.hand.length, beforeHand: handBeforeChalk };
+    const handBeforeSugar = battle.hand.length;
+    battle.useSupply(0);
+    const afterSugar = { energy: battle.energy, nextDraw: battle.nextTurnDrawBonus, hand: battle.hand.length, beforeHand: handBeforeSugar };
+    battle.useSupply(0);
+    const afterAnchor = { block: battle.flock.block, retain: battle.pendingRetainHand };
+
+    battle.routeMarks = ['spark_ground_clip'];
+    battle.markFiredThisCombat = new Set();
+    battle.spark = 2;
+    battle.flock.block = 0;
+    battle.spendResonance(1);
+    const afterSparkClip = { spark: battle.spark, block: battle.flock.block };
+
+    battle.routeMarks = ['quiet_roost_token'];
+    battle.markFiredThisCombat = new Set();
+    battle.flock.maxHp = 40;
+    battle.flock.hp = 20;
+    battle.checkNoDamageTurnMarks();
+    const afterQuietRoost = { hp: battle.flock.hp };
+
+    battle.routeMarks = ['double_packed_buckle'];
+    battle.markFiredThisCombat = new Set();
+    battle.pendingSupplyRepeats = 0;
+    battle.checkSupplyUsedMarks();
+    const afterDoublePacked = { pending: battle.pendingSupplyRepeats };
+    battle.routeMarks = [];
+    battle.runSupplies = ['seed_packet'];
+    battle.runSuppliesUsed = [];
+    battle.flock.hp = 20;
+    battle.useSupply(0);
+    const afterRepeatedSupply = { hp: battle.flock.hp, pending: battle.pendingSupplyRepeats };
+
+    battle.routeMarks = ['basin_safety_pin'];
+    battle.markFiredThisTurn = new Set();
+    battle.flock.hp = 20;
+    battle.flock.weak = 2;
+    battle.flock.frail = 2;
+    battle.flock.fouled = 2;
+    battle.healFlock(2, 'test heal');
+    const afterSafetyPin = { hp: battle.flock.hp, weak: battle.flock.weak, frail: battle.flock.frail, fouled: battle.flock.fouled };
+
+    battle.routeMarks = ['nest_measure_line'];
+    battle.markFiredThisTurn = new Set();
+    battle.pendingRetainHand = 0;
+    battle.checkSuitPlayedMarks('nests');
+    const afterMeasureLine = { retain: battle.pendingRetainHand };
+
+    battle.routeMarks = ['plumes_applause_cap'];
+    battle.markFiredThisCombat = new Set();
+    battle.cardsPlayedThisTurn = 4;
+    battle.spark = 0;
+    battle.checkNthCardMarks();
+    const afterApplauseCap = { spark: battle.spark };
+
+    battle.routeMarks = ['molt_shadow_tag'];
+    battle.markFiredThisCombat = new Set();
+    battle.flock.molt = false;
+    battle.flock.openSkyGuard = 0;
+    battle.enterMolt('test molt');
+    const afterShadowTag = { guard: battle.flock.openSkyGuard };
+
+    return {
+      hasRouteSupplyArt: routeSupplyKeys.every((key) => route.textures.exists(key)),
+      hasNextPassArt: textureKeys.every((key) => battle.textures.exists(key)),
+      afterPocket,
+      afterSticker,
+      afterThermos,
+      afterIou,
+      afterLedger,
+      afterCacheHook,
+      afterChalk,
+      afterSugar,
+      afterAnchor,
+      afterSparkClip,
+      afterQuietRoost,
+      afterDoublePacked,
+      afterRepeatedSupply,
+      afterSafetyPin,
+      afterMeasureLine,
+      afterApplauseCap,
+      afterShadowTag,
+    };
+  });
+  expect(r.hasRouteSupplyArt).toBe(true);
+  expect(r.hasNextPassArt).toBe(true);
+  expect(r.afterPocket.slots).toBe(5);
+  expect(r.afterPocket.used).toContain('spare_pocket');
+  expect(r.afterSticker.previewLogged).toBe(true);
+  expect(r.afterThermos.hp).toBe(25);
+  expect(r.afterThermos.guard).toBe(1);
+  expect(r.afterIou.hp).toBe(23);
+  expect(r.afterIou.freePreen).toBe(1);
+  expect(r.afterLedger.scrap).toBe(20);
+  expect(r.afterCacheHook.supplies).toBe(1);
+  expect(r.afterChalk.block).toBe(0);
+  expect(r.afterChalk.hand).toBeGreaterThanOrEqual(r.afterChalk.beforeHand + 1);
+  expect(r.afterSugar.energy).toBe(4);
+  expect(r.afterSugar.nextDraw).toBe(1);
+  expect(r.afterSugar.hand).toBeGreaterThanOrEqual(r.afterSugar.beforeHand + 1);
+  expect(r.afterAnchor.block).toBeGreaterThanOrEqual(5);
+  expect(r.afterAnchor.retain).toBe(1);
+  expect(r.afterSparkClip.spark).toBe(1);
+  expect(r.afterSparkClip.block).toBe(5);
+  expect(r.afterQuietRoost.hp).toBe(22);
+  expect(r.afterDoublePacked.pending).toBe(1);
+  expect(r.afterRepeatedSupply.hp).toBe(32);
+  expect(r.afterRepeatedSupply.pending).toBe(0);
+  expect(r.afterSafetyPin.hp).toBe(22);
+  expect(r.afterSafetyPin.weak).toBe(1);
+  expect(r.afterSafetyPin.frail).toBe(1);
+  expect(r.afterSafetyPin.fouled).toBe(1);
+  expect(r.afterMeasureLine.retain).toBe(1);
+  expect(r.afterApplauseCap.spark).toBe(2);
+  expect(r.afterShadowTag.guard).toBe(2);
 });
 
 test('enemy codex: entire enemy cast renders with art and details', async ({ page }) => {

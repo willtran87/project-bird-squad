@@ -342,7 +342,36 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 - Follow-up overlap fix: moved the Preen/Remove service boxes to the far-right side so they no longer sit over the fourth card art after the card rack was lifted.
 - Verification: `npm run validate:runtime`, `npm run build`, focused market Playwright smoke tests with 3 Waymarker / 3 Supply assertions, required `develop-web-game` client against built preview, `git diff --check` (line-ending warnings only), and screenshot inspection at `.artifacts/test-results/market-three-and-three-cluster-service-clear-built-preview.png`.
 
+- Market service-stack and goods nudge: bumped Waymarker/Supply objects and labels upward, shifted the lower goods cluster slightly left, removed the oversized top Refresh sign, and rendered Refresh as a third compact service row under Remove with the same size/style as Preen and Remove.
+- Verification: `npm run build`, focused market Playwright smoke tests, required `develop-web-game` client against built preview, `git diff --check` (line-ending warnings only), and screenshot inspection at `.artifacts/test-results/market-refresh-service-stack-final-built-preview.png`.
+
+- Market goods parity pass: moved the Preen/Remove/Refresh stack upward to sit more centered beside the cards, and standardized Waymarker/Supply item presentation to matching art plates, art size, label size, hit area, and spacing rhythm.
+- Verification: `npm run build`, focused market Playwright smoke tests, required `develop-web-game` client against built preview, and screenshot inspection at `.artifacts/test-results/market-service-centered-goods-parity-built-preview.png`.
+
+- Market title banner pass: moved Veyra Tallybright's banner upward, widened it into a centered title plaque, and centered/scaled both the shopkeeper name and Canal Curator subtitle so the header reads as part of the landmark scene.
+- Verification: `npm run build`, focused market Playwright smoke tests, required `develop-web-game` client against built preview, and screenshot inspection at `.artifacts/test-results/market-centered-title-banner-built-preview.png`.
+
+- Market goods row alignment pass: moved the Waymarker/Supply cluster upward together and put both offer types on a shared row baseline with matching art centers, label centers, sold slats, and hit areas.
+- Verification: `npm run build`, focused market Playwright smoke tests, required `develop-web-game` client against built preview, and screenshot inspection at `.artifacts/test-results/market-goods-shared-row-built-preview.png`.
+
+- Market goods spacing fix: shifted the Waymarker shelf left so the rightmost Waymarker label no longer overlaps the leftmost Supply label while preserving the shared lower-row baseline.
+- Verification: `npm run build`, focused market Playwright smoke tests, required `develop-web-game` client against built preview, and screenshot inspection at `.artifacts/test-results/market-waymarkers-shifted-left-built-preview.png`.
+
 - Placeholder/load flash audit: identified live fallback renderers for battle backdrops, flock leaders, enemies, route node glyphs, route-event backdrops, market kit art, card offers, Waymarkers, and Supplies; these are still useful load-failure guards, but normal scene entry was sometimes rendering before optional art finished.
 - Added preload-time runtime art queuing for RouteScene and BattleScene so first render waits for route node icons, market kit/backdrop art, route deck cards, battlefield art, current flock leader art, active waymarks/supplies, current battle deck, and current enemies. Battle's follow-up optional art queue now requests only active run assets instead of every item icon globally.
 - Safety call: runtime item icons referenced by supply/Waymark data are not safe to remove while their data entries remain live; fallback drawing branches should stay as failure guards. Any old concept-source placeholder PNGs are provenance-only once replaced by final runtime art.
 - Verification: `npm run build`, `npm run validate:runtime`, required `develop-web-game` client on `http://127.0.0.1:5623/`, BattleScene preload texture probe/screenshot at `.artifacts/placeholder-preload-battle-check.png`, RouteScene/market preload probes, and market screenshot at `.artifacts/placeholder-preload-market-check.png`.
+
+- Route map edge-line refinement: reduced route board connection stroke widths so inactive/secondary/available/lit edges read as thinner map lines without changing node rings, icons, labels, or column guides.
+- Verification: `npm run build`, required `develop-web-game` client on `http://127.0.0.1:5623/`, and route screenshot inspection at `.artifacts/route-map-thin-edge-lines-check.png`.
+
+- Route map dotted-path refinement: replaced straight edge segments with deterministic quadratic dotted paths. Each route connection now curves between nodes with small stamped dots, preserving the existing color/alpha hierarchy for inactive, secondary preview, available, and primary/lit routes.
+- Verification: `npm run build`, required `develop-web-game` client on `http://127.0.0.1:5623/`, and route screenshot inspection at `.artifacts/route-map-curved-dotted-paths-check.png`.
+
+- Route map breathing-room pass: widened the map board, moved the route description inspector farther right, expanded graph bounds, spread node lanes slightly farther apart, and added a soft halo to highlighted dotted paths so reachable/preview edges remain readable after the dotted-path styling.
+- Verification: `npm run build`, required `develop-web-game` client on `http://127.0.0.1:5623/`, focused progressed-route probe with two reachable nodes, and screenshot inspection at `.artifacts/route-map-wide-breathing-highlight-check.png`.
+
+- Next item pass implementation: wired 8 supplies (`Map Sticker Strip`, `Thermos Lid`, `Bus Token Cache`, `Chalk Dust Pouch`, `Market IOU`, `Sky Sugar`, `Anchor Threader`, `Spare Pocket`) and 10 Waymarks (`Broken Cover Chime`, `Spark Ground Clip`, `Quiet Roost Token`, `Double-Packed Buckle`, `Ledger Tab`, `Basin Safety Pin`, `Nest Measure Line`, `Plumes Applause Cap`, `Molt Shadow Tag`, `Cache Divining Hook`), bringing Codex Items to 89 total (58 Waymarks / 31 Supplies).
+- Added route supply slots and route-side supply use, plus runtime hooks/effects for route previews, permanent supply capacity, enemy Cover-break draw, Resonance-spend Cover, no-damage-turn healing, next-supply repeat, heal cleanse, Nests hand retention, Plumes fourth-card payoff, Molt Open Sky guard, market rebates, and cache supply picks.
+- Generated matching high-resolution pixel-art sheets for the 18 new items, chroma-cleaned them into transparent 512x512 runtime icons under `assets/runtime/supplies/icons` and `assets/runtime/waymarks/icons`, and saved imagegen source sheets/crops under the concept-art source folders.
+- Verification: `npm run validate:runtime`, runtime asset-size validation, `npx tsc --noEmit`, focused Playwright smoke tests for Codex/item hooks, `npm run build`, and required `develop-web-game` client on `http://127.0.0.1:5173`.
