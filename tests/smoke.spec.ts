@@ -2098,7 +2098,7 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
   expect(r.afterWindcatcher.nextEnergy).toBe(2);
   expect(r.afterBattery.hp).toBe(54);
   expect(r.afterBattery.spark).toBe(0);
-  expect(r.afterLedger.scrap).toBe(25);
+  expect(r.afterLedger.scrap).toBe(20);
   expect(r.afterLedger.hp).toBe(r.afterLedger.beforeHp - 3);
   expect(r.afterCounterweight.block).toBe(5);
   expect(r.afterBell.hand).toBeGreaterThanOrEqual(r.handBeforeBell + 1);
@@ -2179,6 +2179,7 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
     const afterPocket = { slots: route.runState.supplySlots, used: [...route.runState.suppliesUsed] };
     route.useRouteSupply(0);
     const afterSticker = {
+      scrap: route.runState.scrap,
       used: [...route.runState.suppliesUsed],
       previewLogged: route.runState.routeLog.some((line: string) => /Route preview/.test(line)),
     };
@@ -2191,6 +2192,7 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
     route.useRouteSupply(0);
     const afterIou = {
       hp: route.runState.currentHp,
+      scrap: route.runState.scrap,
       freePreen: route.runState.freePreenNextDistrict ?? 0,
       used: [...route.runState.suppliesUsed],
     };
@@ -2247,7 +2249,22 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
     battle.useSupply(0);
     const afterSugar = { energy: battle.energy, nextDraw: battle.nextTurnDrawBonus, hand: battle.hand.length, beforeHand: handBeforeSugar };
     battle.useSupply(0);
-    const afterAnchor = { block: battle.flock.block, retain: battle.pendingRetainHand };
+    const afterAnchor = { block: battle.flock.block, retain: battle.pendingRetainHand, pendingNest: battle.pendingNestCoverBonus };
+
+    const map = (window as any).__birdSquadCurrentMap();
+    const cacheNode = map.nodes.find((node: any) => node.type === 'cache');
+    battle.completedRouteNodeIds = cacheNode ? [cacheNode.id] : [];
+    battle.runSupplies = ['cache_key'];
+    battle.runSuppliesUsed = [];
+    battle.flock.block = 0;
+    const handBeforeCacheKey = battle.hand.length;
+    battle.useSupply(0);
+    const afterCacheKey = {
+      block: battle.flock.block,
+      hand: battle.hand.length,
+      beforeHand: handBeforeCacheKey,
+      hadCacheNode: !!cacheNode,
+    };
 
     battle.routeMarks = ['spark_ground_clip'];
     battle.markFiredThisCombat = new Set();
@@ -2316,6 +2333,7 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
       afterChalk,
       afterSugar,
       afterAnchor,
+      afterCacheKey,
       afterSparkClip,
       afterQuietRoost,
       afterDoublePacked,
@@ -2331,9 +2349,11 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
   expect(r.afterPocket.slots).toBe(5);
   expect(r.afterPocket.used).toContain('spare_pocket');
   expect(r.afterSticker.previewLogged).toBe(true);
+  expect(r.afterSticker.scrap).toBe(17);
   expect(r.afterThermos.hp).toBe(25);
   expect(r.afterThermos.guard).toBe(1);
   expect(r.afterIou.hp).toBe(23);
+  expect(r.afterIou.scrap).toBe(27);
   expect(r.afterIou.freePreen).toBe(1);
   expect(r.afterLedger.scrap).toBe(20);
   expect(r.afterCacheHook.supplies).toBe(1);
@@ -2342,8 +2362,12 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
   expect(r.afterSugar.energy).toBe(4);
   expect(r.afterSugar.nextDraw).toBe(1);
   expect(r.afterSugar.hand).toBeGreaterThanOrEqual(r.afterSugar.beforeHand + 1);
-  expect(r.afterAnchor.block).toBeGreaterThanOrEqual(5);
+  expect(r.afterAnchor.block).toBeGreaterThanOrEqual(6);
   expect(r.afterAnchor.retain).toBe(1);
+  expect(r.afterAnchor.pendingNest).toBe(3);
+  expect(r.afterCacheKey.hadCacheNode).toBe(true);
+  expect(r.afterCacheKey.block).toBeGreaterThanOrEqual(8);
+  expect(r.afterCacheKey.hand).toBeGreaterThanOrEqual(r.afterCacheKey.beforeHand + 2);
   expect(r.afterSparkClip.spark).toBe(1);
   expect(r.afterSparkClip.block).toBe(5);
   expect(r.afterQuietRoost.hp).toBe(22);

@@ -357,6 +357,24 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 - Market goods spacing fix: shifted the Waymarker shelf left so the rightmost Waymarker label no longer overlaps the leftmost Supply label while preserving the shared lower-row baseline.
 - Verification: `npm run build`, focused market Playwright smoke tests, required `develop-web-game` client against built preview, and screenshot inspection at `.artifacts/test-results/market-waymarkers-shifted-left-built-preview.png`.
 
+- Market scrap badge polish: simplified the Scrap counter into a tighter opaque enamel badge with a cleaner gold border, centered value alignment, and stronger text contrast.
+- Verification: `npm run build`, focused market Playwright smoke tests, required `develop-web-game` client against built preview, and screenshot inspection at `.artifacts/test-results/market-scrap-badge-polish-built-preview.png`.
+
+- Market shopkeeper idle pass: added a subtle foot-anchored breathing tween to Veyra's shopkeeper art and a timed single-eye blink overlay while keeping the shopkeeper texture as a top-level rendered image for existing market art probes.
+- Verification: `npm run build`, focused market Playwright smoke tests, required `develop-web-game` client against built preview, animation probe confirming shopkeeper scale and blink alpha changes, and screenshot inspection at `.artifacts/test-results/market-shopkeeper-idle-built-preview.png`.
+
+- Market shopkeeper blink visibility fix: replaced the too-subtle shape overlay with a closed-eye shopkeeper art variant (`assets/runtime/market-kit/starling-shopkeeper-blink-v1.webp`) and crossfaded it over the base shopkeeper during idle blinks so the blink is visible in the rendered market scene.
+- Verification: `npm run build`, focused market Playwright smoke tests, required `develop-web-game` client against built preview, and closed-frame blink probe/screenshot inspection at `.artifacts/test-results/market-shopkeeper-blink-visible-built-preview.png` plus head crop `.artifacts/test-results/market-shopkeeper-blink-head-crop.png`.
+
+- Market shopkeeper TravQuest-style blink revision: removed the full-body closed-eye variant and switched Veyra to a tiny low-alpha eyelid line over the existing shopkeeper art, timed as a brief idle blink while keeping breathing separate.
+- Verification: `npm run build`, focused market Playwright smoke tests, required `develop-web-game` client against built preview, and closed-frame screenshot inspection at `.artifacts/test-results/market-shopkeeper-travquest-blink-line-final-built-preview.png` plus head crop `.artifacts/test-results/market-shopkeeper-travquest-blink-line-final-head-crop.png`.
+
+- Market shopkeeper blink placement correction: moved the blink from the face feathers onto the rendered eye, replaced the too-subtle line with a small eyelid patch container above the shopkeeper art, and shortened the repeat delay so the blink is noticeable during normal market viewing.
+- Verification: `npm run build`, focused market Playwright smoke tests, required `develop-web-game` client against `http://127.0.0.1:5636/`, and open-vs-closed eye comparison at `.artifacts/test-results/market-shopkeeper-eye-open-vs-closed-patched-crop.png`.
+
+- Market shopkeeper blink removal: removed the eyelid patch and blink alpha tween entirely after visual review showed the mechanic did not suit the shopkeeper art; Veyra keeps only the subtle breathing idle tween.
+- Verification: `npm run build`, focused market Playwright smoke tests, required `develop-web-game` client against `http://127.0.0.1:5636/`, runtime probe confirming zero blink-named objects and one shopkeeper idle tween, and screenshot inspection at `.artifacts/test-results/market-shopkeeper-no-blink-built-preview.png`.
+
 - Placeholder/load flash audit: identified live fallback renderers for battle backdrops, flock leaders, enemies, route node glyphs, route-event backdrops, market kit art, card offers, Waymarkers, and Supplies; these are still useful load-failure guards, but normal scene entry was sometimes rendering before optional art finished.
 - Added preload-time runtime art queuing for RouteScene and BattleScene so first render waits for route node icons, market kit/backdrop art, route deck cards, battlefield art, current flock leader art, active waymarks/supplies, current battle deck, and current enemies. Battle's follow-up optional art queue now requests only active run assets instead of every item icon globally.
 - Safety call: runtime item icons referenced by supply/Waymark data are not safe to remove while their data entries remain live; fallback drawing branches should stay as failure guards. Any old concept-source placeholder PNGs are provenance-only once replaced by final runtime art.
@@ -375,3 +393,56 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 - Added route supply slots and route-side supply use, plus runtime hooks/effects for route previews, permanent supply capacity, enemy Cover-break draw, Resonance-spend Cover, no-damage-turn healing, next-supply repeat, heal cleanse, Nests hand retention, Plumes fourth-card payoff, Molt Open Sky guard, market rebates, and cache supply picks.
 - Generated matching high-resolution pixel-art sheets for the 18 new items, chroma-cleaned them into transparent 512x512 runtime icons under `assets/runtime/supplies/icons` and `assets/runtime/waymarks/icons`, and saved imagegen source sheets/crops under the concept-art source folders.
 - Verification: `npm run validate:runtime`, runtime asset-size validation, `npx tsc --noEmit`, focused Playwright smoke tests for Codex/item hooks, `npm run build`, and required `develop-web-game` client on `http://127.0.0.1:5173`.
+
+- Next item supply art repair: replaced the 8 next-pass Supply runtime icons with individually generated high-resolution pixel-art cutouts instead of grid crops, removing sheet-boundary clipping and fixing Anchor Threader's green tape alpha damage by switching to a magenta-key workflow with edge despill.
+- Verification: final supply contact sheet at `tmp/qa/items-imagegen/next-pass/next-pass-supplies-transparent-contact-v3.png`, residue/corner/edge audit, runtime asset-size validation, `npm run validate:runtime`, `npm run build`, required `develop-web-game` client on `http://127.0.0.1:5173`, and live Codex detail screenshot at `tmp/qa/items-imagegen/next-pass/codex-anchor-threader-repair.png`.
+- Thermos Lid steam cleanup: neutralized remaining magenta-key contamination in the Thermos Lid steam curl and edge specks, updating `assets/runtime/supplies/icons/thermos_lid.webp` plus source crops through `thermos_lid-imagegen-crop-v7.png`.
+- Verification: `node tools/validate-runtime-asset-sizes.mjs`, `npm run build`, required `develop-web-game` client on `http://127.0.0.1:5173`, final contact sheet `tmp/qa/items-imagegen/next-pass/next-pass-supplies-transparent-contact-v7.png`, and live Codex screenshot `tmp/qa/items-imagegen/next-pass/codex-thermos-lid-steam-repair.png`.
+
+- Route map highlighted-dot pullback: reduced lit/primary/available dotted-path radii and softened the highlight halo so reachable paths remain visible without clustering into thick bead chains.
+- Verification: `npm run build`, required `develop-web-game` client on `http://127.0.0.1:5623/`, focused progressed-route probe with two reachable nodes, and screenshot inspection at `.artifacts/route-map-highlight-dots-thinner-check.png`.
+
+- Route map highlighted-dot extra-thin pass: took the active/preview/available dotted paths down one more notch and reduced the halo spread so highlighted routes feel path-like without clumping.
+- Verification: `npm run build`, required `develop-web-game` client on `http://127.0.0.1:5623/`, focused progressed-route probe with four reachable nodes, and screenshot inspection at `.artifacts/route-map-highlight-dots-extra-thin-check.png`.
+
+- Route board image-gen backing correction: replaced the procedural route-board texture with the attached generated map-paper image, preserving the original PNG source at `assets/concept-art/ui/route-map/route-board-laminated-plan-v1.png` and optimizing a cropped 1200x693 runtime WebP (~73 KB) at `assets/runtime/backdrops/route-board-laminated-plan-v1.webp`.
+- Wired the texture through BootScene preload and RouteScene rendering as a clearer screen-blended layer inside the map border so nodes, dotted paths, and inspector highlights remain readable while the generated map art is visible.
+- Verification: `npm run build`, required `develop-web-game` client on `http://127.0.0.1:5623/`, temporary built-preview route probe confirming `route-board-laminated-plan` loaded with 20 nodes, and screenshot inspection at `.artifacts/route-map-imagegen-plan-backing-built-preview-canvas.png`.
+
+- Route map backing brightness/fit pass: settled on `route map backing` as the code-facing name for the generated paper layer, expanded it to the full inner route-board panel, and reduced the dark wash so it reads as the actual map surface behind the route icons.
+- Verification: `npm run build`, required `develop-web-game` client on `http://127.0.0.1:5623/`, and built-preview screenshot inspection at `.artifacts/route-map-backing-expanded-brightened-built-preview-canvas.png`.
+
+- Route map backing full-color/full-bleed correction: removed the remaining backing inset, tint, alpha fade, and dark wash so the generated map image fills the whole route-board backing at full color; redrew only the thin frame accents above the image.
+- Verification: `npm run build`, required `develop-web-game` client on `http://127.0.0.1:5623/`, and built-preview screenshot inspection at `.artifacts/route-map-backing-full-color-full-bleed-built-preview-canvas.png`.
+
+- Route node icon contrast pass: refreshed the eight route node runtime icons from the existing imagegen route atlas using the item-icon processing style: stronger dark silhouettes, boosted color/contrast, cleaned transparent edges, and small detached-alpha cleanup so Street/Rival/Boss/Basin/Nest/Market/Signal/Cache read on the new full-color map backing.
+- Saved versioned source outputs under `assets/concept-art/ui/route-map/route-node-icons-contrast-v2/` plus `assets/concept-art/ui/route-map/route-node-icon-atlas-contrast-v2.png` and `assets/runtime/map-icons/map-node-icon-atlas-contrast-v2.png`; replaced the existing runtime WebP icon filenames under `assets/runtime/map-icons/icons/` so RouteScene picks them up without code changes.
+- Verification: contact sheet inspection at `tmp/qa/route-map-icons-contrast-v2/route-node-icons-contrast-v2-contact.png`, `node tools/validate-runtime-asset-sizes.mjs`, `npm run validate:runtime`, `npm run build`, required `develop-web-game` client on `http://127.0.0.1:5623/`, and built-preview route screenshot `.artifacts/route-map-icons-contrast-v2-built-preview-canvas.png`.
+
+- Title screen floating-particle bump: increased the home-screen mote emitter frequency, lifespan, drift, alpha, scale, and live-particle cap so the floating particles read a little richer without obscuring the splash art or menu controls.
+- Verification: `npm run build`, required `develop-web-game` client on `http://127.0.0.1:5173`, direct Playwright MenuScene probe confirming the `menu-soft-mote` emitter at 34/36 live particles, and screenshot inspection at `.artifacts/test-results/title-particles-bumped-menu.png`.
+
+- Title logo shimmer pass: added a reduced-motion-aware additive gold sheen over the transparent Bird Squad title images, triggered after the title impact and repeated on a long delay so the logo catches light without adding stray streaks over the splash art.
+- Verification: `npm run build`, required `develop-web-game` client on `http://127.0.0.1:5173`, direct Playwright MenuScene probe confirming both shimmer overlay images active at alpha `0.2`, and screenshot inspection at `.artifacts/test-results/title-logo-shimmer-final.png`.
+
+- Title shine visibility follow-up: strengthened the title shimmer with brighter additive title sheen and three logo-anchored twinkles so the effect is plainly visible on first view.
+- Verification: `npm run build`, required `develop-web-game` Playwright client against `http://127.0.0.1:5173`, and a direct Playwright title-screen probe confirming sheen/twinkle alpha with screenshot output at `.artifacts/test-results/title-logo-shine-visible.png`.
+
+- Title polish follow-up: removed the visible logo twinkle flares, reduced the looping title sheen to a slow low-alpha warm lift, and softened the entrance gold burst into sparse tiny dust flecks so the title treatment feels less flashy.
+- Verification: `npm run build`, fresh Vite dev server on `http://127.0.0.1:5634`, required `develop-web-game` Playwright client against that clean port, and screenshot inspection at `.artifacts/test-results/title-polished-final-client/shot-0.png`.
+
+- Title feathers-only rollback: removed the delayed logo sheen/glint overlay entirely so the title screen returns to the simpler feather/particle-only treatment while keeping the title entrance intact.
+- Verification: `npm run build`, required `develop-web-game` Playwright client against `http://127.0.0.1:5634`, and screenshot inspection at `.artifacts/test-results/title-feathers-only-client/shot-0.png`.
+
+- Title effects full rollback: restored the original home-screen particle emitter settings and original 42-fleck title impact burst, with the shimmer/glint overlay still removed.
+- Verification: `npm run build`, required `develop-web-game` Playwright client against `http://127.0.0.1:5634`, and screenshot inspection at `.artifacts/test-results/title-original-effects-client/shot-0.png`.
+
+- Title particle preference follow-up: restored the boosted ambient home-screen particle emitter values while keeping the logo shimmer/glint removed and leaving the original title impact flecks in place.
+- Verification: `npm run build`, required `develop-web-game` Playwright client against `http://127.0.0.1:5634`, and screenshot inspection at `.artifacts/test-results/title-boosted-particles-client/shot-0.png`.
+
+- Codex Items filter pass: split the Items browser into a type row (`All`, `Waymarks`, `Supplies`) plus contextual filters. Waymarks now filter by family (`Shelter`, `Tempo`, `Economy`, `Suit`, `Molt`, `Boss`); Supplies filter by timing and tactical role (`Combat`, `Route`, `Flexible`, `Defense`, `Recovery`, `Momentum`, `Pressure`, `Intel`). The Items grid gets extra header height only in that section, and legacy smoke/debug `activeItemTab` values still map to the expected old Supplies/Waymarks selections.
+- Verification: `npm run build`, `npm run validate:runtime`, focused `npx playwright test tests/smoke.spec.ts -g "codex: supplies are listed as items"`, required `develop-web-game` client on `http://127.0.0.1:5634`, and built-preview screenshots inspected at `.artifacts/test-results/codex-items-two-row-all.png`, `.artifacts/test-results/codex-items-waymark-filters.png`, and `.artifacts/test-results/codex-items-supply-filters.png`.
+
+- Supplies/Waymark tuning pass: strengthened underperforming supplies with clearer tactical hooks (`Shade Cloth`, `Signal Kite`, `Cache Key`, `Oath Ledger`, `Map Sticker Strip`, `Bus Token Cache`, `Market IOU`, `Anchor Threader`, `Spare Pocket`, and clarified `Thermos Lid`) and corrected `Molt Shadow Tag` to use the Open Sky Guard effect its text promised.
+- Added conditional combat-supply support for `if visitedNodeType(cache) then ...`, letting `Cache Key` reward players who opened a rooftop Cache earlier in the district.
+- Verification: `npm run validate:runtime`, `npx tsc --noEmit`, focused `npx playwright test tests/smoke.spec.ts --grep "codex: supplies are listed|expanded supplies resolve tactical combat verbs|next item pass supplies"`, `npm run build`, and required `develop-web-game` client on `http://127.0.0.1:5173`.

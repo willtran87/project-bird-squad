@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import './style.css';
-import splashUrl from '../assets/splash/bird-squad-canal-run-splash-v4-menu-pop.webp';
+import splashUrl from '../assets/splash/bird-squad-canal-run-splash-v5-menu-pop.webp';
 import titleBirdUrl from '../assets/ui/bird-squad-title-bird-textured-v2.png';
 import titleSquadUrl from '../assets/ui/bird-squad-title-squad-textured-v2.png';
 import combatFxAtlasUrl from '../assets/runtime/fx/combat-fx-atlas.png';
@@ -505,6 +505,11 @@ const ROUTE_MAP_BACKDROP_ASSET = {
   url: battlefieldRuntimeArtUrls['../assets/runtime/backdrops/rooftop-blocks-route-map-v1.webp']
     ?? '/assets/runtime/backdrops/rooftop-blocks-route-map-v1.webp'
 };
+const ROUTE_MAP_BACKING_ASSET = {
+  key: 'route-board-laminated-plan',
+  url: battlefieldRuntimeArtUrls['../assets/runtime/backdrops/route-board-laminated-plan-v1.webp']
+    ?? '/assets/runtime/backdrops/route-board-laminated-plan-v1.webp'
+};
 
 const cardRuntimeArtUrls = import.meta.glob('../assets/runtime/cards/portrait/*.webp', {
   eager: true,
@@ -799,6 +804,7 @@ class BootScene extends Phaser.Scene {
   preload() {
     this.load.image('splash', splashUrl);
     this.load.image(ROUTE_MAP_BACKDROP_ASSET.key, ROUTE_MAP_BACKDROP_ASSET.url);
+    this.load.image(ROUTE_MAP_BACKING_ASSET.key, ROUTE_MAP_BACKING_ASSET.url);
     this.load.image('title-bird', titleBirdUrl);
     this.load.image('title-squad', titleSquadUrl);
     this.load.spritesheet(COMBAT_FX_TEXTURE, combatFxAtlasUrl, { frameWidth: 64, frameHeight: 64 });
@@ -1136,9 +1142,7 @@ class MenuScene extends Phaser.Scene {
     });
   }
 
-  private playTitleImpact(
-    logo: Phaser.GameObjects.Container
-  ) {
+  private playTitleImpact(logo: Phaser.GameObjects.Container) {
     const finalX = logo.x;
 
     this.tweens.add({
@@ -1245,6 +1249,7 @@ type CodexEnemySource = 'encounter' | 'reserve';
 type CodexItemEntry =
   | { kind: 'waymark'; id: string; mark: RuntimeRouteMark }
   | { kind: 'supply'; id: string; supply: RuntimeSupply };
+type CodexItemTab = { label: string; match: (item: CodexItemEntry) => boolean };
 
 interface CodexEnemyEntry {
   id: string;
@@ -1270,7 +1275,8 @@ class CodexScene extends Phaser.Scene {
   private activeSection: CodexSection = 'cards';
   private activeTab = 0;
   private activeEnemyTab = 0;
-  private activeItemTab = 0;
+  private activeItemTypeTab = 0;
+  private activeItemFilterTab = 0;
   private discovered = new Set<string>();
   private detailId?: string;
   private detailScroll = 0;
@@ -1288,6 +1294,7 @@ class CodexScene extends Phaser.Scene {
   private codexDataFailed = false;
   private textureBoundsCache = new Map<string, TextureVisibleBounds>();
   private static readonly GRID_TOP = 158;
+  private static readonly ITEM_GRID_TOP = 190;
   private static readonly GRID_BOTTOM = 690;
   private readonly tabs: Array<{ label: string; match: (c: Card) => boolean }> = [
     { label: 'Major', match: (c) => c.id.startsWith('major_') },
@@ -1304,20 +1311,46 @@ class CodexScene extends Phaser.Scene {
     { label: 'Signals', match: (e) => e.district === 'Signal Spires' },
     { label: 'Roost', match: (e) => e.district === 'High Roost' },
   ];
-  private readonly itemTabs: Array<{ label: string; match: (item: CodexItemEntry) => boolean }> = [
+  private readonly itemTypeTabs: CodexItemTab[] = [
     { label: 'All', match: () => true },
-    { label: 'Supplies', match: (item) => item.kind === 'supply' },
     { label: 'Waymarks', match: (item) => item.kind === 'waymark' },
+    { label: 'Supplies', match: (item) => item.kind === 'supply' },
+  ];
+  private readonly waymarkFilterTabs: CodexItemTab[] = [
+    { label: 'All', match: (item) => item.kind === 'waymark' },
     { label: 'Shelter', match: (item) => item.kind === 'waymark' && item.mark.family === 'safety' },
     { label: 'Tempo', match: (item) => item.kind === 'waymark' && item.mark.family === 'route' },
-    { label: 'Routecraft', match: (item) => item.kind === 'waymark' && item.mark.family === 'economy' },
+    { label: 'Economy', match: (item) => item.kind === 'waymark' && item.mark.family === 'economy' },
     { label: 'Suit', match: (item) => item.kind === 'waymark' && item.mark.family === 'suit' },
     { label: 'Molt', match: (item) => item.kind === 'waymark' && item.mark.family === 'molt' },
     { label: 'Boss', match: (item) => item.kind === 'waymark' && item.mark.family === 'bossPrep' },
   ];
+  private readonly supplyFilterTabs: CodexItemTab[] = [
+    { label: 'All', match: (item) => item.kind === 'supply' },
+    { label: 'Combat', match: (item) => item.kind === 'supply' && item.supply.timing === 'combat' },
+    { label: 'Route', match: (item) => item.kind === 'supply' && item.supply.timing === 'route' },
+    { label: 'Flexible', match: (item) => item.kind === 'supply' && item.supply.timing === 'either' },
+    { label: 'Defense', match: (item) => item.kind === 'supply' && (['coverNow', 'openSkySafety', 'cleanseNow'] as RuntimeSupply['answerType'][]).includes(item.supply.answerType) },
+    { label: 'Recovery', match: (item) => item.kind === 'supply' && (['healNow', 'cleanseNow'] as RuntimeSupply['answerType'][]).includes(item.supply.answerType) },
+    { label: 'Momentum', match: (item) => item.kind === 'supply' && (['drawNow', 'wingbeatNow', 'handFix', 'moltNow'] as RuntimeSupply['answerType'][]).includes(item.supply.answerType) },
+    { label: 'Pressure', match: (item) => item.kind === 'supply' && (['damageNow', 'antiCover', 'burstNow'] as RuntimeSupply['answerType'][]).includes(item.supply.answerType) },
+    { label: 'Intel', match: (item) => item.kind === 'supply' && item.supply.answerType === 'tellControl' },
+  ];
 
   constructor() {
     super('CodexScene');
+  }
+
+  private get activeItemTab() {
+    if (this.activeItemTypeTab === 2) return 1;
+    if (this.activeItemTypeTab === 1) return 2;
+    return 0;
+  }
+
+  private set activeItemTab(value: number) {
+    // Legacy smoke/debug hook: old tab indexes were 1 = Supplies, 2 = Waymarks.
+    this.activeItemTypeTab = value === 1 ? 2 : value === 2 ? 1 : 0;
+    this.activeItemFilterTab = 0;
   }
 
   create() {
@@ -1518,13 +1551,41 @@ class CodexScene extends Phaser.Scene {
     ];
   }
 
+  private currentGridTop() {
+    return this.activeSection === 'items' ? CodexScene.ITEM_GRID_TOP : CodexScene.GRID_TOP;
+  }
+
+  private activeItemTypeDef() {
+    return this.itemTypeTabs[this.activeItemTypeTab] ?? this.itemTypeTabs[0];
+  }
+
+  private currentItemFilterTabs(): CodexItemTab[] {
+    const type = this.itemTypeTabs[this.activeItemTypeTab]?.label;
+    if (type === 'Waymarks') return this.waymarkFilterTabs;
+    if (type === 'Supplies') return this.supplyFilterTabs;
+    return [];
+  }
+
+  private activeItemFilterDef() {
+    const tabs = this.currentItemFilterTabs();
+    return tabs[this.activeItemFilterTab] ?? tabs[0];
+  }
+
+  private normalizeItemTabs() {
+    this.activeItemTypeTab = clamp(this.activeItemTypeTab, 0, this.itemTypeTabs.length - 1);
+    const filters = this.currentItemFilterTabs();
+    this.activeItemFilterTab = filters.length > 0 ? clamp(this.activeItemFilterTab, 0, filters.length - 1) : 0;
+  }
+
   private currentCodexItems(): CodexItemEntry[] {
     const rarityOrder: Record<string, number> = { common: 0, uncommon: 1, rare: 2, boss: 3 };
     const kindOrder: Record<CodexItemEntry['kind'], number> = { supply: 0, waymark: 1 };
     const itemName = (item: CodexItemEntry) => item.kind === 'waymark' ? item.mark.name : item.supply.name;
     const itemRarity = (item: CodexItemEntry) => item.kind === 'waymark' ? item.mark.rarity : item.supply.rarity;
+    const itemType = this.activeItemTypeDef();
+    const itemFilter = this.activeItemFilterDef();
     return this.allCodexItems()
-      .filter(this.itemTabs[this.activeItemTab].match)
+      .filter((item) => itemType.match(item) && (!itemFilter || itemFilter.match(item)))
       .sort((a, b) => (
         kindOrder[a.kind] - kindOrder[b.kind]
         || (rarityOrder[itemRarity(a)] ?? 9) - (rarityOrder[itemRarity(b)] ?? 9)
@@ -1554,7 +1615,7 @@ class CodexScene extends Phaser.Scene {
   }
 
   private visibleGridEntries<T>(entries: T[], cols: number, cellH: number): T[] {
-    const top = CodexScene.GRID_TOP;
+    const top = this.currentGridTop();
     const overscan = cellH * 2;
     return entries.filter((_entry, i) => {
       const cy = top + Math.floor(i / cols) * cellH + cellH / 2;
@@ -1608,9 +1669,10 @@ class CodexScene extends Phaser.Scene {
     const waymarkAll = this.allWaymarks();
     const supplyAll = this.allSupplies();
     const itemAll = this.allCodexItems();
+    if (this.activeSection === 'items') this.normalizeItemTabs();
     const items = this.currentCodexItems();
     const leaders = this.allLeaders();
-    const top = CodexScene.GRID_TOP;
+    const top = this.currentGridTop();
 
     // 1) Scrollable grid. Drawn FIRST so the
     //    header/footer curtains below can hide anything scrolled out of view
@@ -1673,8 +1735,9 @@ class CodexScene extends Phaser.Scene {
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, (CodexScene.GRID_BOTTOM + GAME_HEIGHT) / 2, GAME_WIDTH, GAME_HEIGHT - CodexScene.GRID_BOTTOM, 0x070a11, 1));
 
     // 3) Header (title / counter / Back / tabs) on top of the curtain.
-    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 78, GAME_WIDTH, 156, 0x08111e, 0.96));
-    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 150, GAME_WIDTH - 80, 2, 0x1b2c3e, 0.82));
+    const headerH = itemMode ? 188 : 156;
+    this.root.add(this.add.rectangle(GAME_WIDTH / 2, headerH / 2, GAME_WIDTH, headerH, 0x08111e, 0.96));
+    this.root.add(this.add.rectangle(GAME_WIDTH / 2, headerH - 6, GAME_WIDTH - 80, 2, 0x1b2c3e, 0.82));
     this.root.add(this.add.rectangle(838, 42, 486, 54, 0x05080e, 0.64).setStrokeStyle(1, 0x22364d, 0.72));
     this.root.add(this.add.text(40, 24, 'Codex', { fontFamily: 'Georgia, serif', fontSize: '34px', fontStyle: 'bold', color: '#ffe1a3', stroke: '#000000', strokeThickness: 4 }));
     const subtitle = cardMode
@@ -1746,16 +1809,28 @@ class CodexScene extends Phaser.Scene {
         }, 13);
       });
     } else if (itemMode) {
-      this.itemTabs.forEach((tab, i) => {
-        const tx = 62 + i * 112;
-        const active = i === this.activeItemTab;
+      this.itemTypeTabs.forEach((tab, i) => {
+        const tx = 72 + i * 132;
+        const active = i === this.activeItemTypeTab;
         const tabItems = this.allCodexItems().filter(tab.match);
+        const accent = tab.label === 'Supplies' ? 0xffb86b : tab.label === 'Waymarks' ? 0xc9a6ff : 0xd8a840;
+        this.renderCodexTab(tx, 102, 120, 32, tab.label, `${tabItems.length}`, active, accent, () => {
+          this.activeItemTypeTab = i; this.activeItemFilterTab = 0; this.detailId = undefined; this.resetCodexScroll(); this.renderAll();
+        }, 11);
+      });
+      const contextTabs = this.currentItemFilterTabs();
+      const typeDef = this.activeItemTypeDef();
+      const typeItems = this.allCodexItems().filter(typeDef.match);
+      contextTabs.forEach((tab, i) => {
+        const tx = 62 + i * 108;
+        const active = i === this.activeItemFilterTab;
+        const tabItems = typeItems.filter(tab.match);
         const accent = tabItems[0]
           ? tabItems[0].kind === 'waymark' ? this.waymarkAccent(tabItems[0].mark) : this.supplyAccent(tabItems[0].supply)
-          : 0xc9a6ff;
-        this.renderCodexTab(tx, 116, 104, 40, tab.label, `${tabItems.length}`, active, accent, () => {
-          this.activeItemTab = i; this.detailId = undefined; this.resetCodexScroll(); this.renderAll();
-        }, 11);
+          : typeDef.label === 'Supplies' ? 0xffb86b : 0xc9a6ff;
+        this.renderCodexTab(tx, 144, 100, 30, tab.label, `${tabItems.length}`, active, accent, () => {
+          this.activeItemFilterTab = i; this.detailId = undefined; this.resetCodexScroll(); this.renderAll();
+        }, 10);
       });
     } else if (!leaderMode) {
       this.enemyTabs.forEach((tab, i) => {
@@ -1984,7 +2059,7 @@ class CodexScene extends Phaser.Scene {
     switch (mark.family) {
       case 'safety': return 'Shelter';
       case 'route': return 'Tempo';
-      case 'economy': return 'Routecraft';
+      case 'economy': return 'Economy';
       case 'suit': return 'Suit Engine';
       case 'molt': return 'Molt';
       case 'bossPrep': return 'Boss';
@@ -3191,6 +3266,8 @@ class RouteScene extends Phaser.Scene {
       fill: 0x07101a
     });
     this.add.rectangle(layout.map.cx, layout.map.cy, layout.map.w - 34, layout.map.h - 34, 0x03070d, 0.28);
+    this.renderRouteMapBacking(layout);
+    this.renderRouteMapFrame(layout);
 
     this.add.text(80, 42, currentMap().name, {
       fontFamily: 'Arial',
@@ -3213,6 +3290,42 @@ class RouteScene extends Phaser.Scene {
     renderFieldButton(this, (obj) => {}, 822, 56, 116, 38, 'Flock', true, () => this.openFlockOverlay(), UI_FIELD.cyan);
     renderFieldButton(this, (obj) => {}, 960, 56, 116, 38, 'Deck', true, () => this.openDeckOverlay(), UI_FIELD.gold);
     renderFieldButton(this, (obj) => {}, 1098, 56, 116, 38, 'Back', true, () => { this.confirmExitOpen = true; this.renderAll(); }, UI_FIELD.cyan);
+  }
+
+  private renderRouteMapBacking(layout: ReturnType<RouteScene['routeLayout']>) {
+    const w = layout.map.w;
+    const h = layout.map.h;
+    const x = layout.map.cx;
+    const y = layout.map.cy;
+    if (this.textures.exists(ROUTE_MAP_BACKING_ASSET.key)) {
+      this.add.image(x, y, ROUTE_MAP_BACKING_ASSET.key)
+        .setDisplaySize(w, h)
+        .setAlpha(1);
+    } else {
+      this.add.rectangle(x, y, w, h, 0x07101a, 0.34);
+    }
+  }
+
+  private renderRouteMapFrame(layout: ReturnType<RouteScene['routeLayout']>) {
+    const accent = 0x49606d;
+    const { cx, cy, w, h } = layout.map;
+    const left = cx - w / 2;
+    const right = cx + w / 2;
+    const top = cy - h / 2;
+    const bottom = cy + h / 2;
+    const corner = 28;
+    this.add.rectangle(cx, top + 14, w - 34, 2, accent, 0.72);
+    this.add.rectangle(cx, bottom - 14, w - 34, 1, 0xffffff, 0.08);
+    [
+      [left + 15, top + 15, corner, 2], [left + 15, top + 15, 2, corner],
+      [right - 15, top + 15, corner, 2], [right - 15, top + 15, 2, corner],
+      [left + 15, bottom - 15, corner, 2], [left + 15, bottom - 15, 2, corner],
+      [right - 15, bottom - 15, corner, 2], [right - 15, bottom - 15, 2, corner]
+    ].forEach(([x, y, cw, ch], index) => {
+      const ox = index === 2 || index === 6 ? -corner : 0;
+      const oy = index === 5 || index === 7 ? -corner : 0;
+      this.add.rectangle(x + ox, y + oy, cw, ch, accent, 0.72).setOrigin(0, 0);
+    });
   }
 
   private routeLayout() {
@@ -3351,7 +3464,7 @@ class RouteScene extends Phaser.Scene {
       const available = this.selectableNodeIds.has(edge.to);
       const color = lit ? 0x6fd69a : primaryPreview ? 0xffe1a3 : available ? 0x7ab8d6 : secondaryPreview ? 0x7ab8d6 : 0x263b52;
       const alpha = lit ? 0.78 : primaryPreview ? 0.78 : available ? 0.62 : secondaryPreview ? 0.42 : 0.28;
-      const dotRadius = lit ? 2.1 : primaryPreview ? 2.1 : available ? 1.8 : secondaryPreview ? 1.5 : 1.25;
+      const dotRadius = lit ? 1.45 : primaryPreview ? 1.45 : available ? 1.28 : secondaryPreview ? 1.22 : 1.05;
       const curve = this.drawRouteEdgePath(lines, from, to, key, color, alpha, dotRadius);
       if (available || primaryPreview) {
         const marker = curve.getPoint(0.65);
@@ -3401,9 +3514,9 @@ class RouteScene extends Phaser.Scene {
     graphics.fillStyle(color, alpha);
     points.slice(1, -1).forEach((point, index) => {
       const pulse = index % 3 === 1 ? 0.9 : 1;
-      if (dotRadius >= 1.8) {
-        graphics.fillStyle(color, alpha * 0.2);
-        graphics.fillCircle(point.x, point.y, dotRadius * pulse + 2);
+      if (dotRadius >= 1.4) {
+        graphics.fillStyle(color, alpha * 0.1);
+        graphics.fillCircle(point.x, point.y, dotRadius * pulse + 0.85);
         graphics.fillStyle(color, alpha);
       }
       graphics.fillCircle(point.x, point.y, dotRadius * pulse);
@@ -4587,22 +4700,29 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderMarketScrapTag(x: number, y: number) {
-    this.add.rectangle(x + 4, y + 5, 118, 42, 0x020409, 0.82);
-    this.add.rectangle(x, y, 118, 42, 0x0d1420, 0.92)
-      .setStrokeStyle(MENU_BORDER_WIDTH, UI_FIELD.gold, 0.95);
-    this.add.circle(x - 42, y + 6, 5, UI_FIELD.gold, 0.9);
-    this.add.text(x - 34, y - 11, 'SCRAP', {
+    const w = 124;
+    const h = 38;
+    this.add.rectangle(x + 3, y + 4, w, h, 0x020409, 0.72);
+    this.add.rectangle(x, y, w, h, 0x080604, 1)
+      .setStrokeStyle(1, UI_FIELD.gold, 0.9);
+    this.add.rectangle(x, y - h / 2 + 5, w - 16, 2, UI_FIELD.gold, 0.72);
+    this.add.circle(x - w / 2 + 18, y + 3, 5, UI_FIELD.gold, 0.95);
+    this.add.text(x - w / 2 + 31, y - 12, 'SCRAP', {
       fontFamily: 'Arial',
       fontSize: '9px',
       fontStyle: 'bold',
-      color: '#8df4ff'
+      color: '#8df4ff',
+      align: 'left'
     });
-    this.add.text(x - 34, y, `${this.runState.scrap}`, {
+    this.add.text(x + w / 2 - 12, y - 1, `${this.runState.scrap}`, {
       fontFamily: 'Arial',
-      fontSize: '20px',
+      fontSize: '19px',
       fontStyle: 'bold',
-      color: '#f0c36f'
-    });
+      color: '#ffe1a3',
+      stroke: '#020409',
+      strokeThickness: 3,
+      align: 'right'
+    }).setOrigin(1, 0.5);
   }
 
   private renderMarketSceneBackdrop(frame: { left: number; right: number; top: number; bottom: number; cx: number; w: number }) {
@@ -4655,10 +4775,13 @@ class RouteScene extends Phaser.Scene {
     const shopkeeperKey = MARKET_KIT_ASSETS.shopkeeper.key;
     if (this.textures.exists(shopkeeperKey)) {
       this.add.ellipse(x + 8, y - 19, 254, 42, 0x020409, 0.5);
-      this.add.image(x, y, shopkeeperKey)
+      const vendor = this.add.image(x, y, shopkeeperKey)
         .setOrigin(0.5, 1)
         .setDisplaySize(408, 612)
-        .setAlpha(1);
+        .setAlpha(1)
+        .setDepth(20);
+      vendor.setName('market-vendor-shopkeeper');
+      this.animateMarketVendorIdle(vendor);
       return;
     }
 
@@ -4672,6 +4795,20 @@ class RouteScene extends Phaser.Scene {
     this.add.rectangle(x, fallbackY - 6, 72, 12, 0xf0c36f, 0.76);
     this.add.rectangle(x - 52, fallbackY + 42, 18, 88, 0xd8a840, 0.52).setAngle(-16);
     this.add.rectangle(x + 52, fallbackY + 42, 18, 88, 0xd8a840, 0.52).setAngle(16);
+  }
+
+  private animateMarketVendorIdle(vendor: Phaser.GameObjects.Image) {
+    const baseScaleX = vendor.scaleX;
+    const baseScaleY = vendor.scaleY;
+    this.tweens.add({
+      targets: vendor,
+      scaleX: baseScaleX * 0.996,
+      scaleY: baseScaleY * 1.012,
+      duration: 1900,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1
+    });
   }
 
   private renderMarketCardOffers(x: number, y: number) {
@@ -7568,7 +7705,7 @@ class BattleScene extends Phaser.Scene {
     switch (mark.family) {
       case 'safety': return 'Shelter';
       case 'route': return 'Tempo';
-      case 'economy': return 'Routecraft';
+      case 'economy': return 'Economy';
       case 'suit': return 'Suit Engine';
       case 'molt': return 'Molt';
       case 'bossPrep': return 'Boss';
@@ -7701,7 +7838,23 @@ class BattleScene extends Phaser.Scene {
     this.renderAll();
   }
 
+  private checkSupplyCondition(condition: string) {
+    const visitedType = /^visitedNodeType\(([a-zA-Z0-9_]+)\)$/.exec(condition);
+    if (visitedType) {
+      const wantedType = visitedType[1];
+      return currentMap().nodes.some((node) =>
+        node.type === wantedType && this.completedRouteNodeIds.includes(node.id)
+      );
+    }
+    return false;
+  }
+
   private applySupplyEffect(effect: string, source = 'Supply') {
+    const conditional = /^if (.+?) then (.+)$/.exec(effect);
+    if (conditional) {
+      if (this.checkSupplyCondition(conditional[1])) this.applySupplyEffect(conditional[2], source);
+      return;
+    }
     const parsed = parseEffect(effect);
     if (!parsed) return;
     const n = Number(parsed.args[0]) || 0;
@@ -11190,7 +11343,7 @@ function waymarkGlyph(mark: RuntimeRouteMark) {
 function routeMarkFamilyLabel(family: RuntimeRouteMark['family']) {
   switch (family) {
     case 'safety': return 'Shelter';
-    case 'economy': return 'Routecraft';
+    case 'economy': return 'Economy';
     case 'route': return 'Tempo';
     case 'suit': return 'Suit';
     case 'molt': return 'Molt';
