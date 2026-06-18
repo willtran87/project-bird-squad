@@ -503,7 +503,7 @@ const ROUTE_MAP_BACKDROP_ASSET = {
     ?? '/assets/runtime/backdrops/rooftop-blocks-route-map-v1.webp'
 };
 
-const cardRuntimeArtUrls = import.meta.glob('../assets/runtime/cards/thumb/*.webp', {
+const cardRuntimeArtUrls = import.meta.glob('../assets/runtime/cards/portrait/*.webp', {
   eager: true,
   query: '?url',
   import: 'default',
@@ -524,6 +524,11 @@ const flockLeaderRuntimeArtUrls = import.meta.glob('../assets/runtime/flock/lead
   import: 'default',
 }) as Record<string, string>;
 const waymarkRuntimeArtUrls = import.meta.glob('../assets/runtime/waymarks/icons/*.webp', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+const supplyRuntimeArtUrls = import.meta.glob('../assets/runtime/supplies/icons/*.webp', {
   eager: true,
   query: '?url',
   import: 'default',
@@ -556,7 +561,7 @@ const cardArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
     .filter((entry) => entry.status === 'approved')
     .map((entry) => [entry.cardId, {
       key: `card-${entry.cardId}`,
-      url: bundledAssetUrl(entry.thumbnail, cardRuntimeArtUrls)
+      url: bundledAssetUrl(entry.portrait, cardRuntimeArtUrls)
     }])
 );
 const enemyArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
@@ -602,10 +607,30 @@ const flockLeaderArtAssets: Record<string, RuntimeImageAsset> = {
 };
 const codexLeaderArtAssets: Record<string, RuntimeImageAsset> = {
   ...flockLeaderArtAssets,
+  fledgling: {
+    key: 'codex-flock-leader-fledgling-front-3q',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/fledgling-flock-combat-front-3q.webp']
+      ?? '/assets/runtime/flock/leaders/fledgling-flock-combat-front-3q.webp',
+  },
+  roostkeeper: {
+    key: 'codex-flock-leader-roostkeeper-front-3q',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/roostkeeper-combat-front-3q.webp']
+      ?? '/assets/runtime/flock/leaders/roostkeeper-combat-front-3q.webp',
+  },
+  spark_caller: {
+    key: 'codex-flock-leader-spark-caller-front-3q',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/spark-caller-combat-front-3q.webp']
+      ?? '/assets/runtime/flock/leaders/spark-caller-combat-front-3q.webp',
+  },
   talon: {
     key: 'codex-flock-leader-talon-front-3q',
     url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/talon-combat-front-3q.webp']
       ?? '/assets/runtime/flock/leaders/talon-combat-front-3q.webp',
+  },
+  tidewarden: {
+    key: 'codex-flock-leader-tidewarden-front-3q',
+    url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/tidewarden-combat-front-3q.webp']
+      ?? '/assets/runtime/flock/leaders/tidewarden-combat-front-3q.webp',
   },
 };
 const waymarkArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
@@ -615,6 +640,32 @@ const waymarkArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
       ?? `/assets/runtime/waymarks/icons/${mark.id}.webp`
   }])
 );
+const supplyArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
+  Object.entries(supplyRuntimeArtUrls).map(([path, url]) => {
+    const id = path.split('/').pop()?.replace(/\.webp$/, '') ?? path;
+    return [id, { key: `supply-${id}`, url }];
+  })
+);
+function setSupplyArtPixelFilter(scene: Phaser.Scene, key: string) {
+  if (!scene.textures.exists(key)) return;
+  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+}
+
+function addSupplyArtImage(scene: Phaser.Scene, x: number, y: number, key: string) {
+  setSupplyArtPixelFilter(scene, key);
+  return scene.add.image(x, y, key);
+}
+
+function setWaymarkArtPixelFilter(scene: Phaser.Scene, key: string) {
+  if (!scene.textures.exists(key)) return;
+  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+}
+
+function addWaymarkArtImage(scene: Phaser.Scene, x: number, y: number, key: string) {
+  setWaymarkArtPixelFilter(scene, key);
+  return scene.add.image(x, y, key);
+}
+
 const routeNodeIconAssets: Record<RouteNode['type'], RuntimeImageAsset> = Object.fromEntries(
   (['street', 'rival', 'boss', 'basin', 'nest', 'market', 'signal', 'cache'] as RouteNode['type'][]).map((type) => [type, {
     key: `route-node-${type}`,
@@ -689,6 +740,26 @@ function supplyRarityStep(rarity: RuntimeSupply['rarity']) {
   if (rarity === 'uncommon') return 1;
   return 0;
 }
+
+const MARKET_SUPPLY_PROXY_MARKS: Record<string, string> = {
+  seed_packet: 'basin_charm',
+  signal_flare: 'bright_bottlecap',
+  zip_tie_roll: 'scaffold_knot',
+  bottlecap_popper: 'bright_bottlecap',
+  tar_solvent: 'blue_cup_token',
+  feather_splint: 'feather_tape',
+  mirror_shard: 'parade_mirror',
+  emergency_call: 'signal_whistle',
+  shade_cloth: 'tin_roof_shade',
+  rooftop_decoy: 'stage_pin',
+  molt_pin: 'sunbreak_lens',
+  wire_snips: 'wire_map',
+  spare_harness: 'sky_safe_harness',
+  signal_kite: 'razor_kite_tail',
+  storm_lantern: 'rooftop_relay_bell',
+  cache_key: 'cache_hook',
+  rain_cape: 'borrowed_raincoat'
+};
 
 function battlefieldVariantForRouteNode(routeNode?: RouteNode): RuntimeImageAsset | undefined {
   if (routeNode?.type === 'boss') return BATTLEFIELD_BOSS_VARIANTS[currentMap().id];
@@ -1164,6 +1235,9 @@ class ProfileScene extends Phaser.Scene {
 
 type CodexSection = 'cards' | 'items' | 'leaders' | 'enemies';
 type CodexEnemySource = 'encounter' | 'reserve';
+type CodexItemEntry =
+  | { kind: 'waymark'; id: string; mark: RuntimeRouteMark }
+  | { kind: 'supply'; id: string; supply: RuntimeSupply };
 
 interface CodexEnemyEntry {
   id: string;
@@ -1217,14 +1291,16 @@ class CodexScene extends Phaser.Scene {
     { label: 'Signals', match: (e) => e.district === 'Signal Spires' },
     { label: 'Roost', match: (e) => e.district === 'High Roost' },
   ];
-  private readonly itemTabs: Array<{ label: string; match: (m: RuntimeRouteMark) => boolean }> = [
+  private readonly itemTabs: Array<{ label: string; match: (item: CodexItemEntry) => boolean }> = [
     { label: 'All', match: () => true },
-    { label: 'Shelter', match: (m) => m.family === 'safety' },
-    { label: 'Tempo', match: (m) => m.family === 'route' },
-    { label: 'Routecraft', match: (m) => m.family === 'economy' },
-    { label: 'Suit', match: (m) => m.family === 'suit' },
-    { label: 'Molt', match: (m) => m.family === 'molt' },
-    { label: 'Boss', match: (m) => m.family === 'bossPrep' },
+    { label: 'Supplies', match: (item) => item.kind === 'supply' },
+    { label: 'Waymarks', match: (item) => item.kind === 'waymark' },
+    { label: 'Shelter', match: (item) => item.kind === 'waymark' && item.mark.family === 'safety' },
+    { label: 'Tempo', match: (item) => item.kind === 'waymark' && item.mark.family === 'route' },
+    { label: 'Routecraft', match: (item) => item.kind === 'waymark' && item.mark.family === 'economy' },
+    { label: 'Suit', match: (item) => item.kind === 'waymark' && item.mark.family === 'suit' },
+    { label: 'Molt', match: (item) => item.kind === 'waymark' && item.mark.family === 'molt' },
+    { label: 'Boss', match: (item) => item.kind === 'waymark' && item.mark.family === 'bossPrep' },
   ];
 
   constructor() {
@@ -1342,11 +1418,29 @@ class CodexScene extends Phaser.Scene {
     return [...alphaRouteMarkSet.routeMarks];
   }
 
-  private currentWaymarks(): RuntimeRouteMark[] {
+  private allSupplies(): RuntimeSupply[] {
+    return [...alphaSupplyLibrary.values()];
+  }
+
+  private allCodexItems(): CodexItemEntry[] {
+    return [
+      ...this.allWaymarks().map((mark) => ({ kind: 'waymark' as const, id: mark.id, mark })),
+      ...this.allSupplies().map((supply) => ({ kind: 'supply' as const, id: supply.id, supply })),
+    ];
+  }
+
+  private currentCodexItems(): CodexItemEntry[] {
     const rarityOrder: Record<string, number> = { common: 0, uncommon: 1, rare: 2, boss: 3 };
-    return this.allWaymarks()
+    const kindOrder: Record<CodexItemEntry['kind'], number> = { supply: 0, waymark: 1 };
+    const itemName = (item: CodexItemEntry) => item.kind === 'waymark' ? item.mark.name : item.supply.name;
+    const itemRarity = (item: CodexItemEntry) => item.kind === 'waymark' ? item.mark.rarity : item.supply.rarity;
+    return this.allCodexItems()
       .filter(this.itemTabs[this.activeItemTab].match)
-      .sort((a, b) => (rarityOrder[a.rarity] ?? 9) - (rarityOrder[b.rarity] ?? 9) || a.name.localeCompare(b.name));
+      .sort((a, b) => (
+        kindOrder[a.kind] - kindOrder[b.kind]
+        || (rarityOrder[itemRarity(a)] ?? 9) - (rarityOrder[itemRarity(b)] ?? 9)
+        || itemName(a).localeCompare(itemName(b))
+      ));
   }
 
   private ensureCodexData() {
@@ -1380,7 +1474,11 @@ class CodexScene extends Phaser.Scene {
 
   private currentDetailArtAsset(): RuntimeImageAsset | undefined {
     if (!this.detailId) return undefined;
-    if (this.activeSection === 'items') return waymarkArtAssets[this.detailId];
+    if (this.activeSection === 'items') {
+      if (alphaRouteMarkLibrary.has(this.detailId)) return waymarkArtAssets[this.detailId];
+      if (alphaSupplyLibrary.has(this.detailId)) return supplyArtAssets[this.detailId];
+      return undefined;
+    }
     if (this.activeSection === 'leaders') return codexLeaderArtAssets[this.detailId];
     if (this.activeSection === 'enemies') {
       const enemy = this.currentCodexEnemies().find((candidate) => candidate.id === this.detailId);
@@ -1391,11 +1489,11 @@ class CodexScene extends Phaser.Scene {
 
   private queueArt() {
     const cards = this.allCards().filter(this.tabs[this.activeTab].match).sort((a, b) => a.id.localeCompare(b.id));
-    const waymarks = this.currentWaymarks();
+    const items = this.currentCodexItems();
     const leaders = this.allLeaders();
     const enemies = this.currentCodexEnemies();
     const source = this.activeSection === 'items'
-      ? this.visibleGridEntries(waymarks, 4, 176).map((mark) => waymarkArtAssets[mark.id])
+      ? this.visibleGridEntries(items, 4, 176).map((item) => item.kind === 'waymark' ? waymarkArtAssets[item.id] : supplyArtAssets[item.id])
       : this.activeSection === 'leaders'
         ? this.visibleGridEntries(leaders, 3, 238).map((leader) => codexLeaderArtAssets[leader.id])
         : this.activeSection === 'enemies'
@@ -1417,7 +1515,9 @@ class CodexScene extends Phaser.Scene {
     const encounterEnemyCount = this.allEncounterEnemies().length;
     const enemies = this.currentCodexEnemies();
     const waymarkAll = this.allWaymarks();
-    const waymarks = this.currentWaymarks();
+    const supplyAll = this.allSupplies();
+    const itemAll = this.allCodexItems();
+    const items = this.currentCodexItems();
     const leaders = this.allLeaders();
     const top = CodexScene.GRID_TOP;
 
@@ -1434,7 +1534,7 @@ class CodexScene extends Phaser.Scene {
     const cellW = cardMode ? 202 : leaderMode ? 360 : 274;
     const cellH = cardMode ? 286 : itemMode ? 176 : leaderMode ? 238 : 228;
     const gridLeft = (GAME_WIDTH - cols * cellW) / 2;
-    const rows = Math.ceil((cardMode ? cards.length : itemMode ? waymarks.length : leaderMode ? leaders.length : enemies.length) / cols);
+    const rows = Math.ceil((cardMode ? cards.length : itemMode ? items.length : leaderMode ? leaders.length : enemies.length) / cols);
     this.gridMaxScroll = Math.max(0, rows * cellH - (CodexScene.GRID_BOTTOM - top) + 12);
     this.gridScroll = Math.min(this.gridScroll, this.gridMaxScroll);
 
@@ -1448,11 +1548,12 @@ class CodexScene extends Phaser.Scene {
         this.renderThumb(grid, card, cx, cy);
       });
     } else if (itemMode) {
-      waymarks.forEach((mark, i) => {
+      items.forEach((item, i) => {
         const cx = gridLeft + (i % cols) * cellW + cellW / 2;
         const cy = top + Math.floor(i / cols) * cellH + cellH / 2;
         if (cy - this.gridScroll < top - cellH || cy - this.gridScroll > CodexScene.GRID_BOTTOM + cellH) return;
-        this.renderWaymarkThumb(grid, mark, cx, cy);
+        if (item.kind === 'waymark') this.renderWaymarkThumb(grid, item.mark, cx, cy);
+        else this.renderSupplyThumb(grid, item.supply, cx, cy);
       });
     } else if (leaderMode) {
       leaders.forEach((leader, i) => {
@@ -1483,7 +1584,7 @@ class CodexScene extends Phaser.Scene {
     const subtitle = cardMode
       ? `${found} / ${all.length} cards discovered`
       : itemMode
-        ? `${waymarkAll.length} Waymark items cataloged`
+        ? `${itemAll.length} items cataloged (${waymarkAll.length} Waymarks / ${supplyAll.length} Supplies)`
           : leaderMode
             ? `${flockLeaders.filter((leader) => isLeaderUnlocked(loadAccount(), leader.id)).length} / ${flockLeaders.length} Flock Leaders rallied`
             : this.codexDataPending()
@@ -1510,7 +1611,7 @@ class CodexScene extends Phaser.Scene {
 
     const sectionMeta: Record<CodexSection, string> = {
       cards: `${found}/${all.length}`,
-      items: `${waymarkAll.length}`,
+      items: `${itemAll.length}`,
       leaders: `${flockLeaders.filter((leader) => isLeaderUnlocked(loadAccount(), leader.id)).length}/${flockLeaders.length}`,
       enemies: `${enemyAll.length}`,
     };
@@ -1551,13 +1652,15 @@ class CodexScene extends Phaser.Scene {
       });
     } else if (itemMode) {
       this.itemTabs.forEach((tab, i) => {
-        const tx = 72 + i * 128;
+        const tx = 62 + i * 112;
         const active = i === this.activeItemTab;
-        const tabMarks = this.allWaymarks().filter(tab.match);
-        const accent = tabMarks[0] ? this.waymarkAccent(tabMarks[0]) : 0xc9a6ff;
-        this.renderCodexTab(tx, 116, 120, 40, tab.label, `${tabMarks.length}`, active, accent, () => {
+        const tabItems = this.allCodexItems().filter(tab.match);
+        const accent = tabItems[0]
+          ? tabItems[0].kind === 'waymark' ? this.waymarkAccent(tabItems[0].mark) : this.supplyAccent(tabItems[0].supply)
+          : 0xc9a6ff;
+        this.renderCodexTab(tx, 116, 104, 40, tab.label, `${tabItems.length}`, active, accent, () => {
           this.activeItemTab = i; this.detailId = undefined; this.gridScroll = 0; this.renderAll();
-        }, 12);
+        }, 11);
       });
     } else if (!leaderMode) {
       this.enemyTabs.forEach((tab, i) => {
@@ -1578,7 +1681,10 @@ class CodexScene extends Phaser.Scene {
     }
 
     if (this.detailId) {
-      if (this.activeSection === 'items') this.renderWaymarkDetail(this.detailId);
+      if (this.activeSection === 'items') {
+        if (alphaSupplyLibrary.has(this.detailId)) this.renderSupplyDetail(this.detailId);
+        else this.renderWaymarkDetail(this.detailId);
+      }
       else if (this.activeSection === 'leaders') this.renderLeaderDetail(this.detailId);
       else if (this.activeSection === 'enemies') this.renderEnemyDetail(this.detailId);
       else this.renderDetail(this.detailId);
@@ -1791,6 +1897,177 @@ class CodexScene extends Phaser.Scene {
     }
   }
 
+  private supplyAccent(supply: RuntimeSupply) {
+    switch (supply.category) {
+      case 'snack': return 0x8fd6a0;
+      case 'flare': return 0xffb86b;
+      case 'tool': return 0x7ab8d6;
+      case 'call': return 0xc9a6ff;
+      default: return 0x8fa3b6;
+    }
+  }
+
+  private supplyCategoryLabel(supply: RuntimeSupply) {
+    switch (supply.category) {
+      case 'snack': return 'Snack';
+      case 'flare': return 'Flare';
+      case 'tool': return 'Tool';
+      case 'call': return 'Call';
+      default: return supply.category;
+    }
+  }
+
+  private supplyTimingLabel(supply: RuntimeSupply) {
+    switch (supply.timing) {
+      case 'combat': return 'Combat';
+      case 'route': return 'Route';
+      case 'either': return 'Either';
+      default: return supply.timing;
+    }
+  }
+
+  private supplyAnswerLabel(supply: RuntimeSupply) {
+    switch (supply.answerType) {
+      case 'coverNow': return 'Cover';
+      case 'drawNow': return 'Draw';
+      case 'wingbeatNow': return 'Wingbeat';
+      case 'healNow': return 'Healing';
+      case 'openSkySafety': return 'Open Sky';
+      case 'tellControl': return 'Intel';
+      case 'damageNow': return 'Damage';
+      case 'antiCover': return 'Anti-Cover';
+      case 'cleanseNow': return 'Cleanse';
+      case 'handFix': return 'Hand Fix';
+      case 'moltNow': return 'Molt';
+      case 'burstNow': return 'Burst';
+      default: return supply.answerType;
+    }
+  }
+
+  private supplyGlyph(supply: RuntimeSupply) {
+    switch (supply.category) {
+      case 'snack': return 'S';
+      case 'flare': return 'F';
+      case 'tool': return 'T';
+      case 'call': return 'C';
+      default: return '?';
+    }
+  }
+
+  private renderSupplyThumb(layer: Phaser.GameObjects.Container, supply: RuntimeSupply, cx: number, cy: number) {
+    const w = 252;
+    const h = 154;
+    const accent = this.supplyAccent(supply);
+    const bg = this.add.rectangle(cx, cy, w, h, 0x0d1720, 0.96)
+      .setStrokeStyle(2, accent, 0.9)
+      .setInteractive({ useHandCursor: true });
+    bg.on('pointerover', () => bg.setFillStyle(0x142334, 0.98));
+    bg.on('pointerout', () => bg.setFillStyle(0x0d1720, 0.96));
+    bg.on('pointerdown', () => { this.detailId = supply.id; this.detailScroll = 0; this.renderAll(); });
+    layer.add(bg);
+    layer.add(this.add.rectangle(cx, cy - h / 2 + 7, w - 16, 4, accent, 0.82));
+    const artAsset = supplyArtAssets[supply.id];
+    if (artAsset && this.textures.exists(artAsset.key)) {
+      layer.add(addSupplyArtImage(this, cx - 92, cy - 34, artAsset.key).setDisplaySize(70, 70));
+    } else {
+      layer.add(this.add.text(cx - 92, cy - 35, this.supplyGlyph(supply), {
+        fontFamily: 'Arial', fontSize: '22px', fontStyle: 'bold', color: '#e7eef7'
+      }).setOrigin(0.5));
+    }
+    layer.add(this.add.text(cx - 48, cy - 58, supply.name, {
+      fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#ffe1a3',
+      wordWrap: { width: 168 }
+    }).setOrigin(0, 0));
+    layer.add(this.add.text(cx - 48, cy - 20, `${this.supplyCategoryLabel(supply)} / ${supply.rarity}`, {
+      fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#8df4ff',
+      wordWrap: { width: 168 }
+    }).setOrigin(0, 0));
+    this.addCodexChip(layer, cx - 58, cy + 7, 98, this.supplyTimingLabel(supply), accent);
+    this.addCodexChip(layer, cx + 52, cy + 7, 106, this.supplyAnswerLabel(supply), accent);
+    layer.add(this.add.text(cx - 112, cy + 18, supply.description, {
+      fontFamily: 'Arial', fontSize: '12px', color: '#cdd9e6',
+      align: 'center', wordWrap: { width: w - 28 }
+    }).setOrigin(0, 0));
+  }
+
+  private renderSupplyDetail(id: string) {
+    const supply = alphaSupplyLibrary.get(id);
+    if (!supply) return;
+    const scrim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.76).setInteractive();
+    scrim.on('pointerdown', () => { this.detailId = undefined; this.renderAll(); });
+    this.root.add(scrim);
+
+    const px = GAME_WIDTH / 2;
+    const py = GAME_HEIGHT / 2;
+    const MW = 780;
+    const MH = 520;
+    const left = px - MW / 2;
+    const top = py - MH / 2;
+    const accent = this.supplyAccent(supply);
+    const accentText = `#${accent.toString(16).padStart(6, '0')}`;
+    const artAsset = supplyArtAssets[supply.id];
+    this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accent, 1));
+    if (artAsset && this.textures.exists(artAsset.key)) {
+      this.root.add(addSupplyArtImage(this, left + 92, top + 92, artAsset.key).setDisplaySize(126, 126));
+    } else {
+      this.root.add(this.add.text(left + 92, top + 91, this.supplyGlyph(supply), {
+        fontFamily: 'Arial', fontSize: '38px', fontStyle: 'bold', color: '#e7eef7'
+      }).setOrigin(0.5));
+    }
+
+    const tx = left + 168;
+    const wrap = MW - 214;
+    let yy = top + 48;
+    this.root.add(this.add.text(tx, yy, supply.name, {
+      fontFamily: 'Arial', fontSize: '30px', fontStyle: 'bold', color: '#ffe1a3',
+      wordWrap: { width: wrap }
+    }));
+    yy += 42;
+    this.root.add(this.add.text(tx, yy, `${this.supplyCategoryLabel(supply)} Supply / ${supply.rarity} / ${this.supplyTimingLabel(supply)}`, {
+      fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#8fa3b6',
+      wordWrap: { width: wrap }
+    }));
+    yy += 42;
+    this.root.add(this.add.text(tx, yy, 'USE', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText }));
+    yy += 18;
+    const effect = this.add.text(tx, yy, supply.description, {
+      fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#cfe0ef',
+      lineSpacing: 4, wordWrap: { width: wrap }
+    });
+    this.root.add(effect);
+    yy += effect.height + 24;
+    this.root.add(this.add.text(tx, yy, 'EFFECTS', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText }));
+    yy += 18;
+    this.root.add(this.add.text(tx, yy, supply.effects.join(' -> '), {
+      fontFamily: 'Arial', fontSize: '13px', color: '#9fb1c4',
+      wordWrap: { width: wrap }
+    }));
+    yy += 42;
+    this.root.add(this.add.text(tx, yy, 'TACTICAL ANSWER', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText }));
+    yy += 18;
+    this.root.add(this.add.text(tx, yy, `${this.supplyAnswerLabel(supply)} answer. Can be packed in one of two supply slots and consumed once.`, {
+      fontFamily: 'Georgia, serif', fontSize: '15px', fontStyle: 'italic', color: '#d9c8ff',
+      lineSpacing: 4, wordWrap: { width: wrap }
+    }));
+    if (supply.visualBrief) {
+      yy += 58;
+      this.root.add(this.add.text(tx, yy, 'IMAGE BRIEF', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText }));
+      yy += 18;
+      this.root.add(this.add.text(tx, yy, supply.visualBrief, {
+        fontFamily: 'Arial', fontSize: '12px', color: '#9fb1c4',
+        lineSpacing: 3, wordWrap: { width: wrap }
+      }));
+    }
+
+    const close = this.add.rectangle(left + MW - 30, top + 30, 36, 36, 0x3d2a2d, 0.97)
+      .setStrokeStyle(2, 0xff6b57, 1).setInteractive({ useHandCursor: true });
+    close.on('pointerdown', () => { this.detailId = undefined; this.renderAll(); });
+    this.root.add(close);
+    this.root.add(this.add.text(left + MW - 30, top + 30, 'x', {
+      fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#ffd5cc'
+    }).setOrigin(0.5));
+  }
+
   private renderWaymarkThumb(layer: Phaser.GameObjects.Container, mark: RuntimeRouteMark, cx: number, cy: number) {
     const w = 252;
     const h = 154;
@@ -1805,9 +2082,8 @@ class CodexScene extends Phaser.Scene {
     layer.add(this.add.rectangle(cx, cy - h / 2 + 7, w - 16, 4, accent, 0.82));
 
     const artAsset = waymarkArtAssets[mark.id];
-    layer.add(this.add.circle(cx - 92, cy - 34, 32, 0x05080e, 0.94).setStrokeStyle(2, accent, 0.9));
     if (artAsset && this.textures.exists(artAsset.key)) {
-      layer.add(this.add.image(cx - 92, cy - 34, artAsset.key).setDisplaySize(58, 58));
+      layer.add(addWaymarkArtImage(this, cx - 92, cy - 34, artAsset.key).setDisplaySize(70, 70));
     } else {
       layer.add(this.add.text(cx - 92, cy - 35, waymarkGlyph(mark), {
         fontFamily: 'Arial', fontSize: '22px', fontStyle: 'bold', color: '#e7eef7'
@@ -1846,9 +2122,8 @@ class CodexScene extends Phaser.Scene {
     const accentText = `#${accent.toString(16).padStart(6, '0')}`;
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accent, 1));
     const artAsset = waymarkArtAssets[mark.id];
-    this.root.add(this.add.rectangle(left + 92, top + 92, 108, 108, 0x05080e, 0.96).setStrokeStyle(3, accent, 0.95));
     if (artAsset && this.textures.exists(artAsset.key)) {
-      this.root.add(this.add.image(left + 92, top + 92, artAsset.key).setDisplaySize(96, 96));
+      this.root.add(addWaymarkArtImage(this, left + 92, top + 92, artAsset.key).setDisplaySize(126, 126));
     } else {
       this.root.add(this.add.text(left + 92, top + 91, waymarkGlyph(mark), {
         fontFamily: 'Arial', fontSize: '36px', fontStyle: 'bold', color: '#e7eef7'
@@ -2537,6 +2812,8 @@ class RouteScene extends Phaser.Scene {
   private nodeChoiceOpen = false;
   private nodeChoiceNodeId: string | undefined;
   private cardPickerMode: 'preen' | 'release' | undefined;
+  private cardPickerContext: 'route' | 'market' | undefined;
+  private marketPickerUtilitySlot: number | undefined;
   private deckOverlayOpen = false;
   private flockOverlayOpen = false;
   private marketOpen = false;
@@ -2549,6 +2826,7 @@ class RouteScene extends Phaser.Scene {
   private marketUtilityShelf: MarketUtilityListing[] = [];
   private inspectedCardId: string | undefined;
   private hoverCardDetail?: Phaser.GameObjects.Container;
+  private marketItemHover?: Phaser.GameObjects.Container;
   private cardReviewScroll = 0;
   private routeNodeIconArtRequested = false;
 
@@ -2574,6 +2852,8 @@ class RouteScene extends Phaser.Scene {
     this.nodeChoiceOpen = false;
     this.nodeChoiceNodeId = undefined;
     this.cardPickerMode = undefined;
+    this.cardPickerContext = undefined;
+    this.marketPickerUtilitySlot = undefined;
     this.deckOverlayOpen = false;
     this.flockOverlayOpen = false;
     this.marketOpen = false;
@@ -2585,6 +2865,7 @@ class RouteScene extends Phaser.Scene {
     this.marketUtilityShelf = [];
     this.inspectedCardId = undefined;
     this.hoverCardDetail = undefined;
+    this.marketItemHover = undefined;
     this.cardReviewScroll = 0;
     this.routeNodeIconArtRequested = false;
   }
@@ -2604,6 +2885,10 @@ class RouteScene extends Phaser.Scene {
       if (target) this.commitRouteNode(target);
     });
     this.input.keyboard?.on('keydown-ESC', () => {
+      if (this.cardPickerMode && this.cardPickerContext === 'market') {
+        this.cancelMarketCardPicker();
+        return;
+      }
       if (this.nodeChoiceOpen || this.cardPickerMode) return; // a node choice / card pick must be resolved, not escaped
       if (this.confirmExitOpen) { // Esc dismisses the abandon prompt (keep playing)
         this.confirmExitOpen = false;
@@ -2634,6 +2919,7 @@ class RouteScene extends Phaser.Scene {
   private renderAll() {
     this.children.removeAll(true);
     this.hoverCardDetail = undefined;
+    this.marketItemHover = undefined;
     this.renderBackdrop();
     this.renderRouteMap();
     if (this.deckOverlayOpen) this.renderMapDeckOverlay();
@@ -2682,6 +2968,24 @@ class RouteScene extends Phaser.Scene {
       this,
       [this.routeEventBackdropAsset(node)],
       'Route event backdrop failed to load',
+      () => this.renderAll()
+    );
+  }
+
+  private queueMarketWaymarkArtLoad() {
+    queueRuntimeImageAssets(
+      this,
+      this.marketWaymarkShelf.map((offer) => waymarkArtAssets[offer.id]),
+      'Market waymark art failed to load on route map',
+      () => this.renderAll()
+    );
+  }
+
+  private queueMarketUtilityArtLoad() {
+    queueRuntimeImageAssets(
+      this,
+      this.marketUtilityShelf.map((offer) => this.marketUtilityProxyArtAsset(offer)),
+      'Market utility art failed to load on route map',
       () => this.renderAll()
     );
   }
@@ -3427,7 +3731,7 @@ class RouteScene extends Phaser.Scene {
     if (!choice || choice.locked) return;
     const scrapCost = this.scrapCostOfEffects(choice.effects);
     if (scrapCost > this.runState.scrap) return;
-    // Preen/Release defer to a card picker so the player chooses the card; other
+    // Preen/Remove defer to a card picker so the player chooses the card; other
     // effects resolve immediately.
     let pickerMode: 'preen' | 'release' | undefined;
     for (const effect of choice.effects) {
@@ -3445,6 +3749,8 @@ class RouteScene extends Phaser.Scene {
     this.runState.routeLog = this.runState.routeLog.slice(-8);
     if (pickerMode && this.pickerEligibleCards(pickerMode).length > 0) {
       this.cardPickerMode = pickerMode;
+      this.cardPickerContext = 'route';
+      this.marketPickerUtilitySlot = undefined;
       this.nodeChoiceOpen = false;
       this.renderAll();
       return;
@@ -3455,7 +3761,7 @@ class RouteScene extends Phaser.Scene {
     this.scene.restart({ runState: cloneRunState(this.runState) });
   }
 
-  private pickerEligibleCards(mode: 'preen' | 'release') {
+  private pickerEligibleCards(mode: 'preen' | 'release', context = this.cardPickerContext) {
     return this.runState.deck
       .map((saved, index) => ({ saved, index }))
       .filter(({ saved }) => {
@@ -3467,11 +3773,16 @@ class RouteScene extends Phaser.Scene {
       .map(({ saved, index }) => {
         const card = cloneCard(saved.id);
         card.upgraded = !!saved.upgraded;
-        return { index, card, name: card.name, cost: card.cost, upgraded: !!saved.upgraded };
+        const cost = context === 'market' ? this.marketCardPickerPrice(mode, card) : card.cost;
+        return { index, card, name: card.name, cost, upgraded: !!saved.upgraded };
       });
   }
 
   private applyCardPick(index: number) {
+    if (this.cardPickerContext === 'market') {
+      this.applyMarketCardPick(index);
+      return;
+    }
     const saved = this.runState.deck[index];
     if (!saved) return;
     const name = cardLibrary[saved.id]?.name ?? saved.id;
@@ -3479,27 +3790,74 @@ class RouteScene extends Phaser.Scene {
       saved.upgraded = true;
       this.runState.routeLog.push(`Preened ${name}.`);
     } else {
-      this.runState.routeLog.push(`Released ${name}.`);
+      this.runState.routeLog.push(`Removed ${name}.`);
       this.runState.deck.splice(index, 1);
     }
     this.completePendingRouteNode();
     this.cardPickerMode = undefined;
+    this.cardPickerContext = undefined;
+    this.marketPickerUtilitySlot = undefined;
     this.nodeChoiceNodeId = undefined;
     this.runState.routeLog = this.runState.routeLog.slice(-8);
     this.scene.restart({ runState: cloneRunState(this.runState) });
   }
 
+  private marketCardPickerPrice(mode: 'preen' | 'release', card?: Card) {
+    return mode === 'preen' ? this.marketPreenPrice(card) : this.marketReleasePrice();
+  }
+
+  private cancelMarketCardPicker() {
+    this.cardPickerMode = undefined;
+    this.cardPickerContext = undefined;
+    this.marketPickerUtilitySlot = undefined;
+    this.renderAll();
+  }
+
+  private applyMarketCardPick(index: number) {
+    const mode = this.cardPickerMode;
+    const slot = this.marketPickerUtilitySlot;
+    if (!mode || slot === undefined) return;
+    const listing = this.marketUtilityShelf[slot];
+    if (!listing || listing.sold || listing.id !== mode) return;
+    const entry = this.pickerEligibleCards(mode, 'market').find((candidate) => candidate.index === index);
+    const saved = this.runState.deck[index];
+    if (!entry || !saved || this.runState.scrap < entry.cost) return;
+    const name = cardLibrary[saved.id]?.name ?? saved.id;
+    this.runState.scrap -= entry.cost;
+    listing.price = entry.cost;
+    listing.sold = true;
+    if (mode === 'preen') {
+      saved.upgraded = true;
+      this.marketMessage = `${name} is preened for ${entry.cost} Scrap.`;
+    } else {
+      this.runState.deck.splice(index, 1);
+      this.marketMessage = `${name} is removed from the travel pack for ${entry.cost} Scrap.`;
+    }
+    this.cardPickerMode = undefined;
+    this.cardPickerContext = undefined;
+    this.marketPickerUtilitySlot = undefined;
+    this.renderAll();
+  }
+
   private renderCardPickerOverlay() {
     const mode = this.cardPickerMode;
     if (!mode) return;
+    const isMarketPicker = this.cardPickerContext === 'market';
     const eligible = this.pickerEligibleCards(mode);
-    const node = currentMap().nodes.find((candidate) => candidate.id === this.nodeChoiceNodeId);
+    const node = currentMap().nodes.find((candidate) => candidate.id === (isMarketPicker ? this.marketNodeId : this.nodeChoiceNodeId));
     const accent = mode === 'preen' ? UI_FIELD.cyan : UI_FIELD.danger;
-    this.renderRouteEventBackdrop(node, 0.82);
+    if (isMarketPicker) {
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.72)
+        .setInteractive({ useHandCursor: false });
+    } else {
+      this.renderRouteEventBackdrop(node, 0.82);
+    }
     const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 8, 1040, 558, {
-      eyebrow: node ? routeNodeTypeLabel(node.type) : 'Flock Workbench',
-      title: mode === 'preen' ? 'Preen a Card' : 'Release a Card',
-      subtitle: mode === 'preen' ? 'Choose the card the landmark workbench improves.' : 'Choose the card the flock leaves behind here.',
+      eyebrow: isMarketPicker ? 'Market Service' : node ? routeNodeTypeLabel(node.type) : 'Flock Workbench',
+      title: mode === 'preen' ? 'Preen a Card' : 'Remove a Card',
+      subtitle: mode === 'preen'
+        ? isMarketPicker ? 'Choose which card Veyra improves, then pay Scrap.' : 'Choose the card the landmark workbench improves.'
+        : isMarketPicker ? 'Choose which card is removed from the deck, then pay Scrap.' : 'Choose the card the flock removes before moving on.',
       accent,
       fill: mode === 'preen' ? 0x071824 : 0x1b1114
     });
@@ -3512,7 +3870,9 @@ class RouteScene extends Phaser.Scene {
       wordWrap: { width: 360 },
       maxLines: 2
     });
-    this.add.text(frame.left + 54, frame.top + 142, mode === 'preen' ? 'The flock gathers at a bright repair table, choosing one card to polish before moving on.' : 'The flock sorts the pack at the edge of the landmark, making room before the next crossing.', {
+    this.add.text(frame.left + 54, frame.top + 142, mode === 'preen'
+      ? isMarketPicker ? 'Pick the exact card to preen. Prices can shift with rarity and market discounts.' : 'The flock gathers at a bright repair table, choosing one card to polish before moving on.'
+      : isMarketPicker ? 'Pick the exact card to remove from the deck. You only pay after choosing.' : 'The flock sorts the pack at the edge of the landmark, removing one card before the next crossing.', {
       fontFamily: 'Arial',
       fontSize: '14px',
       color: '#cdd9e6',
@@ -3520,23 +3880,56 @@ class RouteScene extends Phaser.Scene {
       wordWrap: { width: 360 }
     });
     eligible.slice(0, 12).forEach((entry, i) => {
-      const x = frame.left + 520 + (i % 2) * 248;
-      const y = frame.top + 122 + Math.floor(i / 2) * 64;
-      const button = this.add.rectangle(x, y, 226, 50, 0x101b2a, 0.94).setStrokeStyle(1.5, accent, 0.74).setInteractive({ useHandCursor: true });
-      button.on('pointerdown', () => this.applyCardPick(entry.index));
-      button.on('pointerover', () => this.showHoverCardDetail(entry.card, mode === 'preen' ? 'Preen candidate' : 'Release candidate', entry.cost, x, y));
-      button.on('pointerout', () => this.hideHoverCardDetail());
-      this.add.circle(x - 92, y, 13, entry.cost === 0 ? 0x24d0d6 : 0xd8a840, 1);
-      this.add.text(x - 92, y, `${entry.cost}`, { fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#07101c' }).setOrigin(0.5);
-      this.add.text(x - 72, y - 12, `${entry.name}${entry.upgraded ? '+' : ''}`, {
+      const cardW = 94;
+      const cardH = Math.round(cardW * 1.5);
+      const x = frame.left + 450 + (i % 5) * 112;
+      const y = frame.top + 184 + Math.floor(i / 5) * 154;
+      const affordable = !isMarketPicker || this.runState.scrap >= entry.cost;
+      this.add.rectangle(x + 5, y + 7, cardW, cardH, 0x020409, 0.72);
+      const key = compactCardArtKey(entry.card);
+      if (key && this.textures.exists(key)) {
+        this.add.image(x, y, key)
+          .setDisplaySize(cardW, cardH)
+          .setAlpha(affordable ? 1 : 0.48);
+      } else {
+        this.add.rectangle(x, y, cardW, cardH, affordable ? 0x101b2a : 0x0a0e15, affordable ? 0.96 : 0.78)
+          .setStrokeStyle(1.5, affordable ? accent : 0x3f4c58, affordable ? 0.74 : 0.48);
+        this.add.text(x, y - 16, cardLabel(entry.card), {
+          fontFamily: 'Arial',
+          fontSize: '12px',
+          fontStyle: 'bold',
+          color: affordable ? '#ffe1a3' : '#91a6b8',
+          align: 'center',
+          wordWrap: { width: cardW - 12 },
+          maxLines: 2
+        }).setOrigin(0.5);
+      }
+      this.add.circle(x - 34, y - 52, 14, affordable ? (entry.cost === 0 ? 0x24d0d6 : 0xd8a840) : 0x3f4c58, 1);
+      this.add.text(x - 34, y - 60, `${entry.cost}`, {
         fontFamily: 'Arial',
-        fontSize: '13px',
+        fontSize: '12px',
         fontStyle: 'bold',
-        color: '#ffe1a3',
-        wordWrap: { width: 146 },
+        color: affordable ? '#07101c' : '#91a6b8'
+      }).setOrigin(0.5, 0);
+      this.add.rectangle(x, y + 82, cardW + 4, 25, 0x020409, 0.94);
+      this.add.text(x, y + 72, `${entry.name}${entry.upgraded ? '+' : ''}`, {
+        fontFamily: 'Arial',
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: affordable ? '#ffe1a3' : '#91a6b8',
+        align: 'center',
+        wordWrap: { width: cardW - 6 },
         maxLines: 2
-      });
+      }).setOrigin(0.5, 0);
+      const button = this.add.rectangle(x, y + 10, cardW + 12, cardH + 54, 0x000000, 0.01)
+        .setInteractive({ useHandCursor: affordable });
+      if (affordable) button.on('pointerdown', () => this.applyCardPick(entry.index));
+      button.on('pointerover', () => this.showHoverCardDetail(entry.card, mode === 'preen' ? 'Preen candidate' : 'Remove candidate', entry.cost, x, y));
+      button.on('pointerout', () => this.hideHoverCardDetail());
     });
+    if (isMarketPicker) {
+      this.renderMarketEnamelButton(frame.left + 142, frame.bottom - 48, 176, 38, 'Back to Market', true, () => this.cancelMarketCardPicker(), UI_FIELD.cyan, '13px');
+    }
   }
 
   private showHoverCardDetail(card: Card, zone: string, cost: number, anchorX: number, anchorY: number) {
@@ -3550,6 +3943,109 @@ class RouteScene extends Phaser.Scene {
   private hideHoverCardDetail() {
     this.hoverCardDetail?.destroy(true);
     this.hoverCardDetail = undefined;
+  }
+
+  private showMarketWaymarkDetail(mark: RuntimeRouteMark, price: number, anchorX: number, anchorY: number) {
+    this.showMarketItemDetail({
+      title: mark.name,
+      kicker: `${routeMarkFamilyLabel(mark.family)} Waymark / ${mark.rarity} / ${mark.source}`,
+      body: mark.description,
+      meta: `Trigger: ${mark.trigger}\nEffect: ${mark.effect}`,
+      price,
+      accent: UI_FIELD.gold,
+      anchorX,
+      anchorY
+    });
+  }
+
+  private showMarketUtilityDetail(listing: MarketUtilityListing, anchorX: number, anchorY: number) {
+    const supply = listing.supplyId ? alphaSupplyLibrary.get(listing.supplyId) : undefined;
+    this.showMarketItemDetail({
+      title: supply?.name ?? this.marketUtilityLabel(listing),
+      kicker: supply ? `${supply.rarity} ${supply.category} / ${supply.timing}` : 'Market service',
+      body: supply?.description ?? this.marketUtilityDetail(listing),
+      meta: supply ? `Effects: ${supply.effects.join(', ')}` : this.marketUtilityDetail(listing),
+      price: listing.price,
+      accent: listing.id === 'supply' ? UI_FIELD.green : listing.id === 'release' ? UI_FIELD.danger : UI_FIELD.cyan,
+      anchorX,
+      anchorY
+    });
+  }
+
+  private showMarketItemDetail(opts: {
+    title: string;
+    kicker: string;
+    body: string;
+    meta: string;
+    price: number;
+    accent: number;
+    anchorX: number;
+    anchorY: number;
+  }) {
+    this.hideMarketItemDetail();
+    this.hideHoverCardDetail();
+    const w = 306;
+    const body = this.add.text(16, 74, opts.body, {
+      fontFamily: 'Arial',
+      fontSize: '13px',
+      color: '#dbe6f2',
+      lineSpacing: 3,
+      wordWrap: { width: w - 32 },
+      maxLines: 4
+    });
+    const meta = this.add.text(16, 86 + body.height, opts.meta, {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#8df4ff',
+      lineSpacing: 2,
+      wordWrap: { width: w - 32 },
+      maxLines: 3
+    });
+    const h = Math.max(150, 104 + body.height + meta.height);
+    const bg = this.add.rectangle(0, 0, w, h, 0x07101a, 1)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, opts.accent, 1);
+    const rail = this.add.rectangle(0, 0, w, 4, opts.accent, 1).setOrigin(0, 0);
+    const title = this.add.text(16, 13, opts.title, {
+      fontFamily: 'Arial',
+      fontSize: '17px',
+      fontStyle: 'bold',
+      color: '#ffe1a3',
+      wordWrap: { width: w - 92 },
+      maxLines: 2
+    });
+    const price = this.add.text(w - 16, 16, `${opts.price}`, {
+      fontFamily: 'Arial',
+      fontSize: '17px',
+      fontStyle: 'bold',
+      color: '#f0c36f'
+    }).setOrigin(1, 0);
+    const scrap = this.add.text(w - 16, 36, 'SCRAP', {
+      fontFamily: 'Arial',
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: '#8df4ff'
+    }).setOrigin(1, 0);
+    const kicker = this.add.text(16, 52, opts.kicker.toUpperCase(), {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#91a6b8',
+      wordWrap: { width: w - 32 },
+      maxLines: 1
+    });
+    const panel = this.add.container(0, 0, [bg, rail, title, price, scrap, kicker, body, meta]).setDepth(20000);
+    const px = Math.max(12, Math.min(GAME_WIDTH - w - 12, opts.anchorX - w / 2));
+    const above = opts.anchorY - h - 22;
+    const py = above > 10 ? above : Math.min(GAME_HEIGHT - h - 12, opts.anchorY + 48);
+    panel.setPosition(px, py);
+    this.marketItemHover = panel;
+  }
+
+  private hideMarketItemDetail() {
+    this.marketItemHover?.destroy(true);
+    this.marketItemHover = undefined;
   }
 
   private requirementsMet(requirements?: string[]): boolean {
@@ -3740,7 +4236,7 @@ class RouteScene extends Phaser.Scene {
     this.marketCardShelf = this.createMarketCardShelf(this.marketRng('cards'));
     this.marketWaymarkShelf = this.createMarketWaymarkShelf(this.marketRng('waymarks'));
     this.marketUtilityShelf = this.createMarketUtilityShelf(this.marketRng('utilities'));
-    this.marketMessage = 'Vendors call from under bright tarps. Buy a permanent edge, patch the flock, or pay Scrap to call out fresh stock.';
+    this.marketMessage = 'Fresh stock. Spend Scrap, tune up, or call new offers.';
     this.selectableNodeIds = new Set();
     this.renderAll();
   }
@@ -3776,51 +4272,79 @@ class RouteScene extends Phaser.Scene {
   private renderMarketOverlay() {
     this.queueMarketKitArtLoad();
     this.queueOptionalCardArtLoad();
+    this.queueMarketWaymarkArtLoad();
+    this.queueMarketUtilityArtLoad();
     const node = currentMap().nodes.find((candidate) => candidate.id === this.marketNodeId);
-    this.renderRouteEventBackdrop(node, 0.86);
-    const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 8, 1080, 560, {
-      eyebrow: 'Landmark Visit',
-      title: node?.label ?? 'Market',
-      subtitle: 'A rooftop landmark where goods, route pins, and flock services crowd the counter.',
-      accent: UI_FIELD.gold,
-      fill: UI_FIELD.panelWarm
-    });
+    this.renderRouteEventBackdrop(node, 0.52);
+    const frame = {
+      left: 62,
+      right: GAME_WIDTH - 62,
+      top: 34,
+      bottom: GAME_HEIGHT - 32,
+      cx: GAME_WIDTH / 2,
+      w: GAME_WIDTH - 124
+    };
 
     this.renderMarketSceneBackdrop(frame);
     this.renderMarketVendor(frame);
+    this.renderMarketVendorTitle(frame);
 
-    this.add.rectangle(frame.left + 108, frame.top + 114, 148, 46, 0x080604, 0.84)
-      .setStrokeStyle(1.5, UI_FIELD.gold, 0.86);
-    this.add.text(frame.left + 48, frame.top + 100, 'SCRAP', {
-      fontFamily: 'Arial',
-      fontSize: '10px',
-      fontStyle: 'bold',
-      color: '#8df4ff'
-    });
-    this.add.text(frame.left + 46, frame.top + 116, `${this.runState.scrap}`, {
-      fontFamily: 'Arial',
-      fontSize: '24px',
-      fontStyle: 'bold',
-      color: '#f0c36f'
-    });
-    this.add.text(frame.left + 218, frame.top + 104, this.marketMessage, {
-      fontFamily: 'Arial',
-      fontSize: '15px',
-      color: '#d7c5a6',
-      lineSpacing: 3,
-      wordWrap: { width: 500 },
-      maxLines: 2
-    });
+    this.renderMarketScrapTag(frame.left + 84, frame.top + 78);
 
     const refreshCost = this.marketRefreshCost();
     const refreshEnabled = this.runState.scrap >= refreshCost;
-    this.renderMarketRefreshSign(frame.right - 162, frame.top + 126, refreshCost, refreshEnabled);
+    this.renderMarketRefreshSign(frame.right - 150, frame.top + 94, refreshCost, refreshEnabled);
 
-    this.renderMarketCardOffers(frame.left + 500, frame.top + 315);
-    this.renderMarketWaymarkOffers(frame.left + 488, frame.top + 476);
-    this.renderMarketUtilityOffers(frame.right - 146, frame.top + 308);
+    this.renderMarketCardOffers(frame.left + 576, frame.top + 328);
+    this.renderMarketWaymarkOffers(frame.left + 510, frame.top + 588);
+    this.renderMarketUtilityOffers(frame.right - 46, frame.top + 314);
 
-    renderCloseControl(this, (obj) => {}, frame.right - 80, frame.top + 56, () => this.leaveMarket());
+    this.renderMarketEnamelButton(frame.right - 48, frame.top + 42, 86, 30, 'Close', true, () => {
+      playUiSound('close');
+      this.leaveMarket();
+    }, UI_FIELD.danger, '13px');
+  }
+
+  private renderMarketVendorTitle(frame: { left: number; top: number }) {
+    const x = frame.left + 282;
+    const y = frame.top + 62;
+    const w = 238;
+    const h = 42;
+    this.add.rectangle(x, y, w, h, 0x080604, 1)
+      .setStrokeStyle(MENU_BORDER_WIDTH, UI_FIELD.gold, 0.9);
+    this.add.text(x - w / 2 + 13, y - h / 2 + 6, 'Veyra Tallybright', {
+      fontFamily: 'Arial',
+      fontSize: '14px',
+      fontStyle: 'bold',
+      color: '#ffe1a3',
+      stroke: '#020409',
+      strokeThickness: 3
+    });
+    this.add.text(x - w / 2 + 13, y - h / 2 + 25, 'CANAL CURATOR', {
+      fontFamily: 'Arial',
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: '#8df4ff'
+    });
+  }
+
+  private renderMarketScrapTag(x: number, y: number) {
+    this.add.rectangle(x + 4, y + 5, 118, 42, 0x020409, 0.82);
+    this.add.rectangle(x, y, 118, 42, 0x0d1420, 0.92)
+      .setStrokeStyle(MENU_BORDER_WIDTH, UI_FIELD.gold, 0.95);
+    this.add.circle(x - 42, y + 6, 5, UI_FIELD.gold, 0.9);
+    this.add.text(x - 34, y - 11, 'SCRAP', {
+      fontFamily: 'Arial',
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: '#8df4ff'
+    });
+    this.add.text(x - 34, y, `${this.runState.scrap}`, {
+      fontFamily: 'Arial',
+      fontSize: '20px',
+      fontStyle: 'bold',
+      color: '#f0c36f'
+    });
   }
 
   private renderMarketSceneBackdrop(frame: { left: number; right: number; top: number; bottom: number; cx: number; w: number }) {
@@ -3830,13 +4354,13 @@ class RouteScene extends Phaser.Scene {
     const hasBackground = this.textures.exists(backgroundKey);
 
     if (hasBackground) {
-      this.add.image(frame.cx, frame.top + 330, backgroundKey)
-        .setDisplaySize(frame.w - 46, 500)
-        .setAlpha(0.78);
-      this.add.rectangle(frame.cx, frame.top + 330, frame.w - 46, 500, 0x020409, 0.2);
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, backgroundKey)
+        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+        .setAlpha(1);
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.07);
     } else {
-      this.add.rectangle(frame.cx, frame.top + 360, frame.w - 86, 390, 0x080604, 0.42)
-        .setStrokeStyle(1, UI_FIELD.gold, 0.2);
+      this.add.rectangle(frame.cx, frame.top + 360, frame.w - 86, 460, 0x080604, 0.28)
+        .setStrokeStyle(1, UI_FIELD.gold, 0.14);
       for (let i = 0; i < 17; i += 1) {
         const lx = frame.left + 118 + i * 52;
         this.add.line(lx - 24, frame.top + 210, 0, 0, 48, i % 2 === 0 ? 8 : -3, UI_FIELD.gold, 0.34);
@@ -3845,9 +4369,9 @@ class RouteScene extends Phaser.Scene {
     }
 
     if (this.textures.exists(signKey)) {
-      this.add.image(frame.cx, frame.top + 172, signKey)
-        .setDisplaySize(456, 257)
-        .setAlpha(0.9);
+      this.add.image(frame.cx, frame.top + 160, signKey)
+        .setDisplaySize(486, 274)
+        .setAlpha(1);
     } else {
       this.add.rectangle(frame.cx, frame.top + 168, 456, 58, 0x241708, 0.86)
         .setStrokeStyle(1, UI_FIELD.gold, 0.52);
@@ -3856,8 +4380,8 @@ class RouteScene extends Phaser.Scene {
     if (this.textures.exists(counterKey)) {
       this.add.image(frame.cx + 44, frame.bottom + 8, counterKey)
         .setOrigin(0.5, 1)
-        .setDisplaySize(936, 499)
-        .setAlpha(0.5);
+        .setDisplaySize(982, 524)
+        .setAlpha(1);
     } else {
       this.add.rectangle(frame.cx + 26, frame.bottom - 108, frame.w - 164, 128, 0x130c06, 0.96)
         .setStrokeStyle(2, 0x7b4f18, 0.88);
@@ -3865,42 +4389,18 @@ class RouteScene extends Phaser.Scene {
         .setStrokeStyle(1, UI_FIELD.gold, 0.48);
     }
 
-    this.add.rectangle(frame.left + 588, frame.top + 316, 664, 258, 0x020409, 0.46)
-      .setStrokeStyle(1, UI_FIELD.gold, 0.18);
-    this.add.rectangle(frame.left + 506, frame.bottom - 84, 384, 142, 0x05080e, 0.58)
-      .setStrokeStyle(1, UI_FIELD.gold, 0.24);
-    this.add.rectangle(frame.right - 146, frame.top + 440, 282, 366, 0x020409, 0.5)
-      .setStrokeStyle(1, UI_FIELD.cyan, 0.18);
-    this.add.rectangle(frame.left + 108, frame.top + 238, 190, 250, 0x020409, 0.34)
-      .setStrokeStyle(1, UI_FIELD.gold, 0.16);
   }
 
   private renderMarketVendor(frame: { left: number; top: number; bottom: number }) {
-    const x = frame.left + 196;
-    const y = frame.bottom - 34;
+    const x = frame.left + 12;
+    const y = frame.bottom + 20;
     const shopkeeperKey = MARKET_KIT_ASSETS.shopkeeper.key;
     if (this.textures.exists(shopkeeperKey)) {
-      this.add.ellipse(x + 4, y - 14, 184, 32, 0x020409, 0.5);
+      this.add.ellipse(x + 7, y - 18, 244, 40, 0x020409, 0.5);
       this.add.image(x, y, shopkeeperKey)
         .setOrigin(0.5, 1)
-        .setDisplaySize(248, 372)
-        .setAlpha(0.98);
-      this.add.rectangle(x, frame.bottom - 108, 180, 48, 0x070b12, 0.78)
-        .setStrokeStyle(1, UI_FIELD.gold, 0.42);
-      this.add.text(x, frame.bottom - 121, 'Veyra Tallybright', {
-        fontFamily: 'Arial',
-        fontSize: '14px',
-        fontStyle: 'bold',
-        color: '#ffe1a3',
-        stroke: '#020409',
-        strokeThickness: 3
-      }).setOrigin(0.5, 0);
-      this.add.text(x, frame.bottom - 102, 'canal curator', {
-        fontFamily: 'Arial',
-        fontSize: '10px',
-        fontStyle: 'bold',
-        color: '#8df4ff'
-      }).setOrigin(0.5, 0);
+        .setDisplaySize(392, 588)
+        .setAlpha(1);
       return;
     }
 
@@ -3917,39 +4417,14 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderMarketRefreshSign(x: number, y: number, cost: number, enabled: boolean) {
-    const sign = this.add.rectangle(x, y, 218, 58, enabled ? 0x101923 : 0x0c0d0f, enabled ? 0.96 : 0.62)
-      .setStrokeStyle(2, enabled ? UI_FIELD.cyan : 0x59606a, enabled ? 0.9 : 0.45);
-    this.add.rectangle(x, y - 20, 192, 3, UI_FIELD.gold, enabled ? 0.64 : 0.28);
-    this.add.text(x - 86, y - 16, 'FRESH STOCK', {
-      fontFamily: 'Arial',
-      fontSize: '10px',
-      fontStyle: 'bold',
-      color: enabled ? '#8df4ff' : '#596a78'
-    });
-    this.add.text(x - 86, y + 1, `${cost} Scrap`, marketOfferPriceStyle(enabled));
-    this.add.text(x + 54, y - 5, 'Refresh', {
-      fontFamily: 'Arial',
-      fontSize: '15px',
-      fontStyle: 'bold',
-      color: enabled ? '#ffe1a3' : '#596a78'
-    }).setOrigin(0.5, 0);
-    if (enabled) {
-      sign.setInteractive({ useHandCursor: true });
-      sign.on('pointerover', () => sign.setFillStyle(0x162434, 0.98));
-      sign.on('pointerout', () => sign.setFillStyle(0x101923, 0.96));
-      sign.on('pointerdown', () => this.refreshMarket());
-    }
+    this.renderMarketEnamelButton(x, y, 196, 50, 'Refresh', enabled, () => this.refreshMarket(), UI_FIELD.cyan, '14px', `${cost} Scrap`);
   }
 
   private renderMarketCardOffers(x: number, y: number) {
-    const hasStock = this.marketCardShelf.some((offer) => !offer.sold);
-    this.add.rectangle(x, y - 112, 600, 18, 0x261808, 0.96)
-      .setStrokeStyle(1, hasStock ? UI_FIELD.gold : 0x6f6044, hasStock ? 0.58 : 0.3);
-    this.add.rectangle(x, y + 96, 616, 16, 0x070b12, 0.58);
     if (this.marketCardShelf.length === 0) {
-      this.add.rectangle(x, y - 6, 440, 92, 0x101923, 0.9)
-        .setStrokeStyle(1, 0x6f6044, 0.5);
-      this.add.text(x, y - 26, 'Every available crew card is already in the flock.', {
+      this.add.rectangle(x, y - 6, 420, 78, 0x020409, 0.42)
+        .setStrokeStyle(1, 0x6f6044, 0.34);
+      this.add.text(x, y - 24, 'Every available crew card is already in the flock.', {
         fontFamily: 'Arial',
         fontSize: '15px',
         color: '#d7c5a6',
@@ -3961,50 +4436,35 @@ class RouteScene extends Phaser.Scene {
     }
     this.marketCardShelf.forEach((listing, i) => {
       const card = cloneCard(listing.id);
-      const cardW = 112;
-      const cardH = 170;
-      const cardX = x - 195 + i * 130;
+      const artW = 190;
+      const artH = Math.round(artW * 1.5);
+      const cardW = artW + 8;
+      const cardH = artH + 8;
+      const cardX = x - 250 + i * 205;
       const cardY = y - 4 + (i % 2 === 0 ? -8 : 8);
       const enabled = !listing.sold && this.runState.scrap >= listing.price;
       const accent = card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
-      this.add.rectangle(cardX + 7, cardY + 9, cardW, cardH, 0x020409, 0.42);
-      this.add.rectangle(cardX, cardY, cardW, cardH, listing.sold ? 0x0c0d0f : 0x07101c, listing.sold ? 0.72 : 0.98)
-        .setStrokeStyle(2.5, listing.sold ? 0x59606a : accent, listing.sold ? 0.38 : 0.95);
-      this.add.rectangle(cardX, cardY - 66, cardW - 16, 2, accent, listing.sold ? 0.22 : 0.76);
-      this.add.rectangle(cardX, cardY + 66, cardW - 16, 2, accent, listing.sold ? 0.22 : 0.56);
+      this.add.rectangle(cardX + 5, cardY + 8, cardW - 18, cardH - 18, 0x020409, 0.5);
       const key = cardArtKey(card);
-      this.add.rectangle(cardX, cardY - 18, 86, 96, 0x101b2a, listing.sold ? 0.38 : 0.96)
-        .setStrokeStyle(1, accent, listing.sold ? 0.22 : 0.62);
-      if (key && this.textures.exists(key)) this.add.image(cardX, cardY - 18, key).setDisplaySize(84, 94).setAlpha(listing.sold ? 0.32 : 0.88);
-      else this.add.text(cardX, cardY - 30, cardLabel(card), {
-        fontFamily: 'Arial',
-        fontSize: '11px',
-        fontStyle: 'bold',
-        color: '#8df4ff',
-        align: 'center',
-        wordWrap: { width: 76 },
-        maxLines: 2
-      }).setOrigin(0.5);
-      this.add.rectangle(cardX, cardY + 48, 94, 44, 0x05080e, listing.sold ? 0.58 : 0.82);
-      this.add.text(cardX, cardY + 29, displayName(card), {
+      if (key && this.textures.exists(key)) {
+        this.add.image(cardX, cardY, key)
+          .setDisplaySize(artW, artH)
+          .setAlpha(1);
+      } else {
+        this.add.text(cardX, cardY - 30, cardLabel(card), {
         fontFamily: 'Arial',
         fontSize: '12px',
         fontStyle: 'bold',
-        color: listing.sold ? '#91a6b8' : '#ffe1a3',
+        color: '#8df4ff',
         align: 'center',
-        wordWrap: { width: 86 },
+        wordWrap: { width: 90 },
         maxLines: 2
-      }).setOrigin(0.5, 0);
-      this.add.text(cardX, cardY + 68, card.runtime.rarity.toUpperCase(), {
-        fontFamily: 'Arial',
-        fontSize: '9px',
-        fontStyle: 'bold',
-        color: '#8df4ff'
-      }).setOrigin(0.5);
-      this.renderMarketPriceTag(cardX, cardY + 102, listing.price, enabled && !listing.sold, accent, 'BUY');
+        }).setOrigin(0.5);
+      }
+      this.renderMarketPriceTag(cardX, cardY + artH / 2 + 18, listing.price, enabled && !listing.sold, accent, 'BUY');
       if (listing.sold) this.renderMarketSoldSlat(cardX, cardY, cardW, cardH);
       if (!listing.sold) {
-        const hit = this.add.rectangle(cardX, cardY + 10, cardW + 12, cardH + 64, 0x000000, 0.01)
+        const hit = this.add.rectangle(cardX, cardY + 8, cardW + 12, cardH + 58, 0x000000, 0.01)
           .setInteractive({ useHandCursor: true });
         hit.on('pointerdown', () => this.buyMarketCard(i));
         hit.on('pointerover', () => this.showHoverCardDetail(card, 'Market offer', listing.price, cardX, cardY));
@@ -4014,11 +4474,10 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderMarketWaymarkOffers(x: number, y: number) {
-    const hasStock = this.marketWaymarkShelf.some((offer) => !offer.sold);
-    this.add.rectangle(x, y + 38, 346, 116, 0x0d1117, 0.58)
-      .setStrokeStyle(1, hasStock ? UI_FIELD.gold : 0x6f6044, hasStock ? 0.44 : 0.28);
     if (this.marketWaymarkShelf.length === 0) {
-      this.add.text(x, y + 2, 'No unclaimed pins remain in this market.', {
+      this.add.rectangle(x, y + 22, 300, 72, 0x020409, 0.34)
+        .setStrokeStyle(1, 0x6f6044, 0.28);
+      this.add.text(x, y - 4, 'No unclaimed pins remain in this market.', {
         fontFamily: 'Arial',
         fontSize: '13px',
         color: '#d7c5a6',
@@ -4031,51 +4490,38 @@ class RouteScene extends Phaser.Scene {
     this.marketWaymarkShelf.forEach((listing, i) => {
       const mark = alphaRouteMarkLibrary.get(listing.id);
       if (!mark) return;
-      const itemX = x - 78 + i * 156;
+      const itemX = x - 84 + i * 168;
       const itemY = y + 4;
       const enabled = !listing.sold && this.runState.scrap >= listing.price;
-      this.add.rectangle(itemX, itemY + 30, 128, 54, listing.sold ? 0x0c0d0f : 0x16110a, listing.sold ? 0.62 : 0.94)
-        .setStrokeStyle(1, listing.sold ? 0x59606a : UI_FIELD.gold, listing.sold ? 0.32 : 0.68);
-      this.add.circle(itemX, itemY - 18, 28, 0x111923, listing.sold ? 0.56 : 0.96)
-        .setStrokeStyle(2, listing.sold ? 0x59606a : UI_FIELD.gold, listing.sold ? 0.34 : 0.82);
       const key = waymarkArtAssets[mark.id]?.key;
-      if (key && this.textures.exists(key)) this.add.image(itemX, itemY - 18, key).setDisplaySize(42, 42).setAlpha(listing.sold ? 0.42 : 0.95);
-      else this.add.text(itemX, itemY - 18, waymarkGlyph(mark), {
-        fontFamily: 'Georgia, serif',
-        fontSize: '21px',
-        fontStyle: 'bold',
-        color: '#fff1c7'
-      }).setOrigin(0.5);
-      this.add.text(itemX, itemY + 10, listing.sold ? `${mark.name} - sold` : mark.name, {
-        fontFamily: 'Arial',
-        fontSize: '12px',
-        fontStyle: 'bold',
-        color: listing.sold ? '#91a6b8' : '#ffe1a3',
-        align: 'center',
-        wordWrap: { width: 108 },
-        maxLines: 2
-      }).setOrigin(0.5, 0);
-      this.add.text(itemX, itemY + 46, routeMarkFamilyLabel(mark.family).toUpperCase(), {
-        fontFamily: 'Arial',
-        fontSize: '9px',
-        fontStyle: 'bold',
-        color: '#8df4ff'
-      }).setOrigin(0.5);
-      this.renderMarketPriceTag(itemX, itemY + 62, listing.price, enabled && !listing.sold, UI_FIELD.gold, 'PIN');
-      if (listing.sold) this.renderMarketSoldSlat(itemX, itemY + 18, 126, 100);
+      this.renderMarketObjectBackplate(itemX, itemY - 18, 112, 94, enabled ? UI_FIELD.gold : 0x3f4c58);
+      if (key && this.textures.exists(key)) addWaymarkArtImage(this, itemX, itemY - 18, key).setDisplaySize(96, 96).setAlpha(1);
+      else {
+        this.add.text(itemX, itemY - 31, waymarkGlyph(mark), {
+          fontFamily: 'Georgia, serif',
+          fontSize: '27px',
+          fontStyle: 'bold',
+          color: '#fff1c7',
+          stroke: '#020409',
+          strokeThickness: 2
+        }).setOrigin(0.5, 0);
+      }
+      this.renderMarketItemLabelBox(itemX, itemY + 67, 136, 44, 'PIN', mark.name, listing.price, enabled && !listing.sold, UI_FIELD.gold);
+      if (listing.sold) this.renderMarketSoldSlat(itemX, itemY - 8, 112, 112);
       if (!listing.sold) {
-        const hit = this.add.rectangle(itemX, itemY + 28, 138, 126, 0x000000, 0.01)
+        const hit = this.add.rectangle(itemX, itemY + 18, 142, 158, 0x000000, 0.01)
           .setInteractive({ useHandCursor: true });
         hit.on('pointerdown', () => this.buyMarketRouteMark(i));
+        hit.on('pointerover', () => this.showMarketWaymarkDetail(mark, listing.price, itemX, itemY));
+        hit.on('pointerout', () => this.hideMarketItemDetail());
       }
     });
   }
 
   private renderMarketUtilityOffers(x: number, y: number) {
-    const hasStock = this.marketUtilityShelf.some((offer) => !offer.sold);
-    this.add.rectangle(x, y + 132, 250, 338, 0x07101c, 0.28)
-      .setStrokeStyle(1, hasStock ? UI_FIELD.cyan : 0x59606a, hasStock ? 0.32 : 0.2);
     if (this.marketUtilityShelf.length === 0) {
+      this.add.rectangle(x, y + 70, 220, 96, 0x020409, 0.34)
+        .setStrokeStyle(1, 0x59606a, 0.24);
       this.add.text(x, y + 42, 'The benches are quiet. Your pouch may be full, or every card is settled.', {
         fontFamily: 'Arial',
         fontSize: '13px',
@@ -4086,69 +4532,221 @@ class RouteScene extends Phaser.Scene {
       }).setOrigin(0.5, 0);
       return;
     }
+    let serviceIndex = 0;
+    let supplyIndex = 0;
     this.marketUtilityShelf.forEach((listing, i) => {
-      const rowY = y + i * 76;
-      const label = this.marketUtilityLabel(listing);
-      const detail = this.marketUtilityDetail(listing);
       const enabled = !listing.sold && this.marketUtilityEnabled(listing);
       const accent = listing.id === 'release' ? UI_FIELD.danger : listing.id === 'supply' ? UI_FIELD.green : UI_FIELD.cyan;
-      const sign = this.add.rectangle(x, rowY, 224, 62, listing.sold ? 0x0c0d0f : 0x101923, listing.sold ? 0.62 : 0.96)
-        .setStrokeStyle(2, listing.sold ? 0x59606a : accent, listing.sold ? 0.34 : 0.78);
-      this.add.rectangle(x - 76, rowY - 41, 3, 20, 0xd8a840, listing.sold ? 0.25 : 0.7);
-      this.add.rectangle(x + 76, rowY - 41, 3, 20, 0xd8a840, listing.sold ? 0.25 : 0.7);
-      this.add.circle(x - 82, rowY - 1, 20, accent, listing.sold ? 0.32 : 0.86);
-      this.add.text(x - 82, rowY - 9, listing.id === 'preen' ? 'P' : listing.id === 'release' ? 'R' : 'S', {
-        fontFamily: 'Arial',
-        fontSize: '15px',
-        fontStyle: 'bold',
-        color: '#07101c'
-      }).setOrigin(0.5, 0);
-      this.add.text(x - 52, rowY - 24, listing.sold ? `${label} - sold` : label, {
-        fontFamily: 'Arial',
-        fontSize: '12px',
-        fontStyle: 'bold',
-        color: listing.sold ? '#91a6b8' : '#ffe1a3',
-        wordWrap: { width: 124 },
-        maxLines: 2
-      });
-      this.add.text(x - 52, rowY + 8, detail, {
-        fontFamily: 'Arial',
-        fontSize: '9px',
-        color: '#dce8f2',
-        lineSpacing: 0,
-        wordWrap: { width: 116 },
-        maxLines: 2
-      });
-      this.renderMarketPriceTag(x + 76, rowY + 3, listing.price, enabled && !listing.sold, accent, this.marketUtilityVerb(listing).toUpperCase());
-      if (listing.sold) this.renderMarketSoldSlat(x, rowY, 224, 62);
+      const card = listing.cardId ? this.cardFromSavedId(listing.cardId) : undefined;
+      const cardKey = card ? compactCardArtKey(card) : undefined;
+      const supply = listing.supplyId ? alphaSupplyLibrary.get(listing.supplyId) : undefined;
+      const supplyKey = supply ? supplyArtAssets[supply.id]?.key : undefined;
+      if (listing.id === 'preen' || listing.id === 'release') {
+        const serviceY = y + serviceIndex * 62;
+        serviceIndex += 1;
+        this.renderMarketItemLabelBox(
+          x + 10,
+          serviceY,
+          154,
+          48,
+          this.marketUtilityVerb(listing).toUpperCase(),
+          this.marketUtilityLabel(listing),
+          listing.price,
+          enabled && !listing.sold,
+          accent
+        );
+        if (listing.sold) this.renderMarketSoldSlat(x + 10, serviceY, 156, 48);
+        if (!listing.sold) {
+          const hit = this.add.rectangle(x + 10, serviceY, 164, 56, 0x000000, 0.01)
+            .setInteractive({ useHandCursor: true });
+          hit.on('pointerdown', () => this.buyMarketUtility(i));
+          hit.on('pointerover', () => this.showMarketUtilityDetail(listing, x + 10, serviceY));
+          hit.on('pointerout', () => this.hideMarketItemDetail());
+        }
+        return;
+      }
+
+      const rowY = y + 212;
+      const supplyX = x - 70 + supplyIndex * 118;
+      supplyIndex += 1;
+      this.renderMarketObjectBackplate(supplyX, rowY - 16, cardKey ? 86 : 100, cardKey ? 120 : 90, enabled ? accent : 0x3f4c58);
+      if (cardKey && this.textures.exists(cardKey)) {
+        this.add.image(supplyX, rowY - 12, cardKey)
+          .setDisplaySize(72, 108)
+          .setAlpha(1);
+      } else if (supplyKey && this.textures.exists(supplyKey)) {
+        addSupplyArtImage(this, supplyX, rowY - 16, supplyKey)
+          .setDisplaySize(92, 92)
+          .setAlpha(1);
+      } else {
+        const artAsset = this.marketUtilityProxyArtAsset(listing);
+        if (artAsset && this.textures.exists(artAsset.key)) {
+          this.add.image(supplyX, rowY - 16, artAsset.key)
+            .setDisplaySize(92, 92)
+            .setAlpha(1);
+        } else if (listing.id === 'supply') {
+          this.add.text(supplyX, rowY - 26, 'S', {
+            fontFamily: 'Arial',
+            fontSize: '17px',
+            fontStyle: 'bold',
+            color: listing.sold ? '#596a78' : '#8df4ff',
+            stroke: '#020409',
+            strokeThickness: 2
+          }).setOrigin(0.5, 0);
+        }
+      }
+      this.renderMarketItemLabelBox(
+        supplyX,
+        rowY + 68,
+        112,
+        52,
+        this.marketUtilityVerb(listing).toUpperCase(),
+        this.marketUtilityLabel(listing),
+        listing.price,
+        enabled && !listing.sold,
+        accent
+      );
+      if (listing.sold) this.renderMarketSoldSlat(supplyX, rowY + 24, 116, 126);
       if (!listing.sold) {
-        sign.setInteractive({ useHandCursor: true });
-        sign.on('pointerdown', () => this.buyMarketUtility(i));
-        const card = listing.cardId ? this.cardFromSavedId(listing.cardId) : undefined;
+        const hit = this.add.rectangle(supplyX, rowY + 24, 116, 160, 0x000000, 0.01)
+          .setInteractive({ useHandCursor: true });
+        hit.on('pointerdown', () => this.buyMarketUtility(i));
         if (card) {
-          sign.on('pointerover', () => this.showHoverCardDetail(card, listing.id === 'preen' ? 'Preen candidate' : 'Release candidate', listing.price, x, rowY));
-          sign.on('pointerout', () => this.hideHoverCardDetail());
+          hit.on('pointerover', () => this.showHoverCardDetail(card, listing.id === 'preen' ? 'Preen candidate' : 'Remove candidate', listing.price, supplyX, rowY));
+          hit.on('pointerout', () => this.hideHoverCardDetail());
+        } else {
+          hit.on('pointerover', () => this.showMarketUtilityDetail(listing, supplyX, rowY));
+          hit.on('pointerout', () => this.hideMarketItemDetail());
         }
       }
     });
   }
 
-  private renderMarketPriceTag(x: number, y: number, price: number, enabled: boolean, accent: number, verb: string) {
-    this.add.rectangle(x, y, 92, 32, enabled ? 0x2a1a08 : 0x0b1017, enabled ? 0.96 : 0.64)
-      .setStrokeStyle(1.5, enabled ? accent : 0x3f4c58, enabled ? 0.86 : 0.4);
-    this.add.circle(x - 35, y, 4, enabled ? UI_FIELD.gold : 0x59606a, 0.9);
-    this.add.text(x - 26, y - 12, `${price}`, {
+  private renderMarketObjectBackplate(x: number, y: number, w: number, h: number, accent: number) {
+    this.add.rectangle(x, y, w, h, 0x07101a, 0.92)
+      .setStrokeStyle(1, accent, 0.62);
+  }
+
+  private renderMarketItemLabelBox(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    kicker: string,
+    title: string,
+    price: number,
+    enabled: boolean,
+    accent: number
+  ) {
+    const fill = enabled ? 0x0d1420 : 0x0a0e15;
+    const stroke = enabled ? accent : 0x3f4c58;
+    this.add.rectangle(x, y, w, h, fill, enabled ? 0.96 : 0.88)
+      .setStrokeStyle(MENU_BORDER_WIDTH, stroke, enabled ? 0.9 : 0.58);
+    this.add.text(x - w / 2 + 8, y - h / 2 + 6, kicker, {
       fontFamily: 'Arial',
-      fontSize: '15px',
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: enabled ? '#ffe1a3' : '#91a6b8',
+      wordWrap: { width: w - 58 },
+      maxLines: 1
+    });
+    this.add.text(x - w / 2 + 8, y - h / 2 + 21, title, {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: enabled ? '#8df4ff' : '#596a78',
+      wordWrap: { width: w - 58 },
+      maxLines: 2,
+      lineSpacing: -1
+    });
+    this.add.text(x + w / 2 - 9, y - h / 2 + 9, `${price}`, {
+      fontFamily: 'Arial',
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: enabled ? '#f0c36f' : '#91a6b8',
+      align: 'right'
+    }).setOrigin(1, 0);
+    this.add.text(x + w / 2 - 9, y - h / 2 + 28, 'SCRAP', {
+      fontFamily: 'Arial',
+      fontSize: '7px',
+      fontStyle: 'bold',
+      color: enabled ? '#8df4ff' : '#596a78',
+      align: 'right'
+    }).setOrigin(1, 0);
+  }
+
+  private renderMarketPriceTag(x: number, y: number, price: number, enabled: boolean, accent: number, verb: string) {
+    const fill = enabled ? 0x0d1420 : 0x0a0e15;
+    this.add.rectangle(x + 3, y + 4, 78, 26, 0x020409, 0.78);
+    this.add.rectangle(x, y, 78, 26, fill, enabled ? 0.94 : 0.86)
+      .setStrokeStyle(MENU_BORDER_WIDTH, enabled ? accent : 0x3f4c58, enabled ? 0.86 : 0.52);
+    this.add.circle(x - 28, y, 4, enabled ? UI_FIELD.gold : 0x59606a, 0.9);
+    this.add.text(x - 18, y - 10, `${price}`, {
+      fontFamily: 'Arial',
+      fontSize: '13px',
       fontStyle: 'bold',
       color: enabled ? '#f0c36f' : '#91a6b8'
     });
-    this.add.text(x + 25, y - 8, verb, {
+    this.add.text(x + 22, y - 7, verb, {
       fontFamily: 'Arial',
       fontSize: '9px',
       fontStyle: 'bold',
       color: enabled ? '#8df4ff' : '#596a78'
     }).setOrigin(0.5, 0);
+  }
+
+  private renderMarketEnamelButton(
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    label: string,
+    enabled: boolean,
+    onClick: () => void,
+    accent = UI_FIELD.gold,
+    fontSize = '14px',
+    detail?: string
+  ) {
+    this.add.rectangle(x + 4, y + 5, w, h, 0x020409, 0.82);
+    const panel = this.add.rectangle(x, y, w, h, enabled ? 0x0d1420 : 0x0a0e15, enabled ? 0.92 : 0.82)
+      .setStrokeStyle(MENU_BORDER_WIDTH, enabled ? accent : 0x3f4c58, enabled ? 0.95 : 0.58);
+    const labelY = detail ? y - 3 : y - 8;
+    const text = this.add.text(x, labelY, label, {
+      fontFamily: 'Arial',
+      fontSize,
+      fontStyle: 'bold',
+      color: enabled ? '#ffe1a3' : '#596a78',
+      stroke: '#111111',
+      strokeThickness: 2
+    }).setResolution(2).setOrigin(0.5, 0);
+    const detailText = detail
+      ? this.add.text(x, y - 17, detail, {
+        fontFamily: 'Arial',
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: enabled ? '#8df4ff' : '#596a78',
+        stroke: '#05070c',
+        strokeThickness: 2
+      }).setResolution(2).setOrigin(0.5, 0)
+      : undefined;
+    if (enabled) {
+      panel.setInteractive({ useHandCursor: true });
+      panel.on('pointerover', () => {
+        panel.setFillStyle(0x1b2535, 0.96);
+        text.setColor('#ffffff');
+        detailText?.setColor('#ffffff');
+      });
+      panel.on('pointerout', () => {
+        panel.setFillStyle(0x0d1420, 0.92);
+        text.setColor('#ffe1a3');
+        detailText?.setColor('#8df4ff');
+      });
+      panel.on('pointerdown', () => {
+        playUiSound('confirm');
+        onClick();
+      });
+    }
+    return panel;
   }
 
   private renderMarketSoldSlat(x: number, y: number, w: number, h: number) {
@@ -4204,19 +4802,11 @@ class RouteScene extends Phaser.Scene {
     const listing = this.marketUtilityShelf[slotIndex] ?? this.marketUtilityShelf.find((offer) => !offer.sold);
     if (!listing || listing.sold || !this.marketUtilityEnabled(listing)) return;
     if (listing.id === 'preen') {
-      const saved = this.runState.deck.find((candidate) => candidate.id === listing.cardId && !candidate.upgraded);
-      if (!saved) return;
-      saved.upgraded = true;
-      this.runState.scrap -= listing.price;
-      listing.sold = true;
-      this.marketMessage = `${cardLibrary[saved.id]?.name ?? saved.id} is preened for ${listing.price} Scrap.`;
+      this.openMarketCardPicker(slotIndex, 'preen');
+      return;
     } else if (listing.id === 'release') {
-      const index = this.runState.deck.findIndex((candidate) => candidate.id === listing.cardId);
-      if (index < 0) return;
-      const [saved] = this.runState.deck.splice(index, 1);
-      this.runState.scrap -= listing.price;
-      listing.sold = true;
-      this.marketMessage = `${cardLibrary[saved.id]?.name ?? saved.id} leaves the travel pack for ${listing.price} Scrap.`;
+      this.openMarketCardPicker(slotIndex, 'release');
+      return;
     } else {
       const supply = listing.supplyId ? alphaSupplyLibrary.get(listing.supplyId) : undefined;
       if (!supply || (this.runState.supplies ?? []).length >= 2) return;
@@ -4225,6 +4815,15 @@ class RouteScene extends Phaser.Scene {
       listing.sold = true;
       this.marketMessage = `${supply.name} is packed for the road for ${listing.price} Scrap.`;
     }
+    this.renderAll();
+  }
+
+  private openMarketCardPicker(slotIndex: number, mode: 'preen' | 'release') {
+    this.cardPickerMode = mode;
+    this.cardPickerContext = 'market';
+    this.marketPickerUtilitySlot = slotIndex;
+    this.hideHoverCardDetail();
+    this.hideMarketItemDetail();
     this.renderAll();
   }
 
@@ -4309,10 +4908,10 @@ class RouteScene extends Phaser.Scene {
 
   private createMarketUtilityShelf(rng: () => number): MarketUtilityListing[] {
     const listings: MarketUtilityListing[] = [];
-    const preen = this.firstPreenCandidate();
-    if (preen) listings.push({ id: 'preen', cardId: preen.id, price: this.marketPreenPrice(preen) });
-    const release = this.marketReleaseCandidate();
-    if (release) listings.push({ id: 'release', cardId: release.id, price: this.marketReleasePrice() });
+    const preenPrices = this.pickerEligibleCards('preen', 'market').map((entry) => entry.cost);
+    if (preenPrices.length > 0) listings.push({ id: 'preen', price: Math.min(...preenPrices) });
+    const releasePrices = this.pickerEligibleCards('release', 'market').map((entry) => entry.cost);
+    if (releasePrices.length > 0) listings.push({ id: 'release', price: Math.min(...releasePrices) });
 
     const pickedSupplies = new Set(this.runState.supplies ?? []);
     for (const slot of alphaMarketConfig.supplySlots) {
@@ -4349,29 +4948,37 @@ class RouteScene extends Phaser.Scene {
   }
 
   private marketUtilityLabel(listing: MarketUtilityListing) {
-    if (listing.id === 'preen') return `Preen ${this.cardName(listing.cardId)}`;
-    if (listing.id === 'release') return `Release ${this.cardName(listing.cardId)}`;
+    if (listing.id === 'preen') return 'Choose a Card';
+    if (listing.id === 'release') return 'Choose a Card';
     const supply = listing.supplyId ? alphaSupplyLibrary.get(listing.supplyId) : undefined;
     return supply?.name ?? 'Supply Crate';
   }
 
+  private marketUtilityProxyArtAsset(listing: MarketUtilityListing) {
+    if (!listing.supplyId) return undefined;
+    const supplyArt = supplyArtAssets[listing.supplyId];
+    if (supplyArt) return supplyArt;
+    const markId = MARKET_SUPPLY_PROXY_MARKS[listing.supplyId];
+    return markId ? waymarkArtAssets[markId] : undefined;
+  }
+
   private marketUtilityDetail(listing: MarketUtilityListing) {
-    if (listing.id === 'preen') return 'Upgrade one card in the flock deck.';
-    if (listing.id === 'release') return 'Thin one card from the flock deck.';
+    if (listing.id === 'preen') return 'Choose one card in the flock deck to upgrade.';
+    if (listing.id === 'release') return 'Choose one card to remove from the flock deck.';
     const supply = listing.supplyId ? alphaSupplyLibrary.get(listing.supplyId) : undefined;
     return supply?.description ?? 'Pack a one-use tool.';
   }
 
   private marketUtilityVerb(listing: MarketUtilityListing) {
     if (listing.id === 'preen') return 'Preen';
-    if (listing.id === 'release') return 'Leave';
+    if (listing.id === 'release') return 'Remove';
     return 'Pack';
   }
 
   private marketUtilityEnabled(listing: MarketUtilityListing) {
+    if (listing.id === 'preen') return this.pickerEligibleCards('preen', 'market').some((entry) => this.runState.scrap >= entry.cost);
+    if (listing.id === 'release') return this.pickerEligibleCards('release', 'market').some((entry) => this.runState.scrap >= entry.cost);
     if (this.runState.scrap < listing.price) return false;
-    if (listing.id === 'preen') return this.runState.deck.some((card) => card.id === listing.cardId && !card.upgraded);
-    if (listing.id === 'release') return this.runState.deck.some((card) => card.id === listing.cardId);
     return !!listing.supplyId && (this.runState.supplies ?? []).length < 2;
   }
 
@@ -4843,6 +5450,7 @@ class BattleScene extends Phaser.Scene {
   // fired, whether the first Open Sky increase has been softened, and the
   // per-turn card count that drives onNthCardThisTurn marks.
   private markFiredThisCombat = new Set<string>();
+  private markFiredThisTurn = new Set<string>();
   private markFirstOpenSkyConsumed = false;
   private cardsPlayedThisTurn = 0;
   // Last-rendered formation state, so transitions fire a one-shot banner/FX.
@@ -4977,8 +5585,20 @@ class BattleScene extends Phaser.Scene {
         this.flock.block += value;
         floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, `+${value} Cover`, '#c9a6ff');
         break;
+      case 'gainCoverPerWaymark': {
+        const cover = Math.max(0, value * this.routeMarks.length);
+        this.flock.block += cover;
+        floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, `+${cover} Cover`, '#c9a6ff');
+        break;
+      }
       case 'gainWingbeat':
         this.energy += value;
+        break;
+      case 'gainEnergyNextTurn':
+        this.nextTurnEnergyBonus += value;
+        break;
+      case 'gainResonance':
+        this.gainResonance(value);
         break;
       case 'gainOpenSkyGuard':
         this.flock.openSkyGuard += value;
@@ -4986,8 +5606,19 @@ class BattleScene extends Phaser.Scene {
       case 'draw':
         this.drawCards(value);
         break;
+      case 'damageAll':
+        this.enemies
+          .filter((enemy) => enemy.hp > 0)
+          .forEach((enemy) => this.damageEnemy(enemy.id, value, markName));
+        break;
       case 'heal':
         this.healFlock(value, markName);
+        break;
+      case 'nextCoverBonus':
+        this.pendingNestCoverBonus += value;
+        break;
+      case 'nextTurnDraw':
+        this.nextTurnDrawBonus += value;
         break;
       case 'bossDamageShield':
         if (currentCombatNodes()[this.currentRouteIndex]?.type === 'boss') {
@@ -5023,9 +5654,24 @@ class BattleScene extends Phaser.Scene {
   // on turn 1 and aren't wiped by the next turn's energy/block reset.
   private applyCombatStartMarks() {
     this.markFiredThisCombat = new Set();
+    this.markFiredThisTurn = new Set();
     this.markFirstOpenSkyConsumed = false;
     this.cardsPlayedThisTurn = 0;
     this.applyMarkTrigger('combatStart');
+  }
+
+  private fireOncePerCombatMark(mark: RuntimeRouteMark) {
+    if (this.markFiredThisCombat.has(mark.id)) return;
+    this.markFiredThisCombat.add(mark.id);
+    this.resolveMarkEffect(mark.effect, mark.name);
+    this.logEvent(`${mark.name}: ${mark.description}`);
+  }
+
+  private fireOncePerTurnMark(mark: RuntimeRouteMark) {
+    if (this.markFiredThisTurn.has(mark.id)) return;
+    this.markFiredThisTurn.add(mark.id);
+    this.resolveMarkEffect(mark.effect, mark.name);
+    this.logEvent(`${mark.name}: ${mark.description}`);
   }
 
   // onNthCardThisTurn(N) marks: fire once per combat the first time the player
@@ -5037,6 +5683,36 @@ class BattleScene extends Phaser.Scene {
       this.markFiredThisCombat.add(mark.id);
       this.resolveMarkEffect(mark.effect, mark.name);
       this.logEvent(`${mark.name}: ${mark.description}`);
+    }
+  }
+
+  private checkSupplyUsedMarks() {
+    for (const mark of this.ownedMarkDefs()) {
+      if (mark.trigger !== 'onSupplyUsed') continue;
+      this.fireOncePerCombatMark(mark);
+    }
+  }
+
+  private checkEnterMoltMarks() {
+    for (const mark of this.ownedMarkDefs()) {
+      if (mark.trigger !== 'onEnterMolt') continue;
+      this.fireOncePerCombatMark(mark);
+    }
+  }
+
+  private checkSuitPlayedMarks(suit: string | null) {
+    if (!suit) return;
+    for (const mark of this.ownedMarkDefs()) {
+      const suitTrigger = /^onSuitPlayed\((plumes|quills|basins|nests)\)$/.exec(mark.trigger);
+      if (!suitTrigger || suitTrigger[1] !== suit) continue;
+      this.fireOncePerTurnMark(mark);
+    }
+  }
+
+  private checkHealFlockMarks() {
+    for (const mark of this.ownedMarkDefs()) {
+      if (mark.trigger !== 'onHealFlock') continue;
+      this.fireOncePerTurnMark(mark);
     }
   }
 
@@ -5782,6 +6458,7 @@ class BattleScene extends Phaser.Scene {
       this.currentBattlefieldAsset(),
       this.currentFlockLeaderArtAsset(),
       ...Object.values(waymarkArtAssets),
+      ...Object.values(supplyArtAssets),
       ...this.allDeckCards().map((card) => cardArtAssets[card.id]),
       ...this.enemies
         .map((enemy) => enemyArtAssets[enemy.runtime.id] ?? enemyArtAssets[enemy.id])
@@ -6504,6 +7181,16 @@ class BattleScene extends Phaser.Scene {
 
   // Supplies are a tactical item layer (carried between fights). They sit on the
   // left edge of the (now-open) board, below the top bar.
+  private supplyGlyph(supply: RuntimeSupply) {
+    switch (supply.category) {
+      case 'snack': return 'S';
+      case 'flare': return 'F';
+      case 'tool': return 'T';
+      case 'call': return 'C';
+      default: return '?';
+    }
+  }
+
   private renderSupplies() {
     this.root.add(this.add.text(30, 130, 'SUPPLIES', {
       fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#7f93a8'
@@ -6520,8 +7207,17 @@ class BattleScene extends Phaser.Scene {
         box.setInteractive({ useHandCursor: true });
         box.on('pointerdown', () => this.useSupply(i));
         this.attachTooltip(box, supply.name, `${supply.description} (click to use)`);
-        this.root.add(this.add.text(x - 66, y - 9, supply.name, {
-          fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: '#dffaeb', wordWrap: { width: 120 }
+        const artAsset = supplyArtAssets[supply.id];
+        this.root.add(this.add.circle(x - 56, y, 17, 0x07101c, 0.96).setStrokeStyle(1, 0x8fd6a0, 0.8));
+        if (artAsset && this.textures.exists(artAsset.key)) {
+          this.root.add(addSupplyArtImage(this, x - 56, y, artAsset.key).setDisplaySize(34, 34));
+        } else {
+          this.root.add(this.add.text(x - 56, y, this.supplyGlyph(supply), {
+            fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#dffaeb'
+          }).setOrigin(0.5));
+        }
+        this.root.add(this.add.text(x - 34, y - 9, supply.name, {
+          fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#dffaeb', wordWrap: { width: 88 }
         }));
         this.root.add(this.add.text(x + 66, y + 12, 'use', { fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#8fd6a0' }).setOrigin(1, 0.5));
       } else {
@@ -6563,7 +7259,7 @@ class BattleScene extends Phaser.Scene {
     const artAsset = waymarkArtAssets[mark.id];
     this.root.add(this.add.rectangle(x, y, size, size, 0x07101c, 0.97).setStrokeStyle(2, accent, 0.95));
     if (artAsset && this.textures.exists(artAsset.key)) {
-      this.root.add(this.add.image(x, y, artAsset.key).setDisplaySize(size - 8, size - 8));
+      this.root.add(addWaymarkArtImage(this, x, y, artAsset.key).setDisplaySize(size - 8, size - 8));
     } else {
       this.root.add(this.add.text(x, y - 1, waymarkGlyph(mark), {
         fontFamily: 'Arial', fontSize: `${Math.round(size * 0.48)}px`, fontStyle: 'bold', color: '#e7eef7'
@@ -6667,24 +7363,123 @@ class BattleScene extends Phaser.Scene {
     const id = this.runSupplies[index];
     const supply = id ? alphaSupplyLibrary.get(id) : undefined;
     if (!supply) return;
-    supply.effects.forEach((effect) => this.applySupplyEffect(effect));
+    supply.effects.forEach((effect) => this.applySupplyEffect(effect, supply.name));
     this.runSupplies.splice(index, 1);
     this.runSuppliesUsed.push(id);
+    this.checkSupplyUsedMarks();
     this.logEvent(`Used ${supply.name}.`);
     this.renderAll();
   }
 
-  private applySupplyEffect(effect: string) {
+  private applySupplyEffect(effect: string, source = 'Supply') {
     const parsed = parseEffect(effect);
     if (!parsed) return;
     const n = Number(parsed.args[0]) || 0;
+    const target = () => this.normalizeSelectedEnemy();
     switch (parsed.name) {
-      case 'healCohesion': case 'heal': this.flock.hp = Math.min(this.flock.maxHp, this.flock.hp + n); break;
-      case 'gainResonance': this.spark = Math.min(5, this.spark + n); break;
+      case 'healCohesion': case 'heal': this.healFlock(n, source); break;
+      case 'gainResonance': this.gainResonance(n); break;
       case 'draw': this.drawCards(n); break;
-      case 'gainCover': this.flock.block += n; break;
-      case 'gainWingbeat': this.energy += n; break;
+      case 'discard': case 'discardUpTo': this.discardCards(n); break;
+      case 'gainCover': this.gainBlock(n, source); break;
+      case 'gainWingbeat':
+        this.energy += n;
+        this.logEvent(`${source} gives ${n} Wingbeat.`);
+        break;
+      case 'loseCohesion':
+        this.flock.hp = Math.max(1, this.flock.hp - n);
+        this.logEvent(`${source} costs ${n} Cohesion.`);
+        floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 8, `-${n}`, '#ff7a6e');
+        break;
       case 'reduceNextOpenSky': case 'gainOpenSkyGuard': this.flock.openSkyGuard += n; break;
+      case 'damage': {
+        const enemy = target();
+        if (enemy) this.damageEnemy(enemy.id, n, source);
+        break;
+      }
+      case 'damagePierce': {
+        const enemy = target();
+        if (enemy) this.damageEnemy(enemy.id, n, source, undefined, true);
+        break;
+      }
+      case 'damageAll':
+        this.enemies
+          .filter((enemy) => enemy.hp > 0)
+          .forEach((enemy) => this.damageEnemy(enemy.id, n, source));
+        break;
+      case 'removeCover': {
+        const enemy = target();
+        if (!enemy) break;
+        const removed = Math.min(enemy.block, n);
+        enemy.block -= removed;
+        this.logEvent(`${source} strips ${removed} Cover from ${enemy.name}.`);
+        const view = this.enemyView(enemy);
+        floatingText(this, this.fxLayer, view.x, view.y - 84, `-${removed} Cover`, '#8df4ff');
+        this.coverImpactFx(view.x, view.y, 0x8df4ff);
+        break;
+      }
+      case 'applyWinded': {
+        const enemy = target();
+        if (!enemy) break;
+        enemy.weak += n;
+        this.logEvent(`${source} leaves ${enemy.name} Winded.`);
+        const view = this.enemyView(enemy);
+        floatingText(this, this.fxLayer, view.x, view.y - 70, 'Winded', '#c98bff');
+        this.windedFx(view.x, view.y);
+        this.triggerTalonPinnedOpening(enemy);
+        break;
+      }
+      case 'returnDiscard':
+        this.returnDiscardToHand();
+        break;
+      case 'nextCoverBonus':
+        this.pendingNestCoverBonus += n;
+        this.logEvent(`${source} primes +${n} Cover for the next Nest brace.`);
+        break;
+      case 'gainEnergyNextTurn':
+        this.nextTurnEnergyBonus += n;
+        this.logEvent(`${source} banks +${n} Wingbeat for next turn.`);
+        break;
+      case 'gainScrap':
+        this.scrap += n;
+        this.logEvent(`${source} recovers ${n} Scrap.`);
+        break;
+      case 'resonanceBurst': {
+        const enemy = target();
+        if (!enemy) break;
+        const spent = this.spark;
+        const burst = spent * n;
+        if (burst > 0) {
+          this.damageEnemy(enemy.id, burst, source);
+          this.logEvent(`${source} releases ${spent} Resonance for ${burst} damage.`);
+          const view = this.enemyView(enemy);
+          floatingText(this, this.fxLayer, view.x, view.y - 90, 'Resonance Burst!', '#8df4ff');
+          this.sparkBurst(view.x, view.y - 22, 0x8df4ff, 30, 210);
+        }
+        this.spark = 0;
+        break;
+      }
+      case 'cleanseFlock': {
+        const before = this.flock.weak + this.flock.frail + this.flock.fouled;
+        this.flock.weak = Math.max(0, this.flock.weak - n);
+        this.flock.frail = Math.max(0, this.flock.frail - n);
+        this.flock.fouled = Math.max(0, this.flock.fouled - n);
+        const after = this.flock.weak + this.flock.frail + this.flock.fouled;
+        const cleared = before - after;
+        if (cleared > 0) {
+          this.logEvent(`${source} clears ${cleared} pressure.`);
+          floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 38, 'Cleanse', '#8fd6a0');
+          this.healFx();
+        }
+        break;
+      }
+      case 'enterMolt':
+        this.enterMolt(source);
+        break;
+      case 'nextTurnDraw':
+        this.nextTurnDrawBonus += n;
+        this.logEvent(`${source} adds +${n} draw next turn.`);
+        break;
       default: break;
     }
   }
@@ -6788,13 +7583,17 @@ class BattleScene extends Phaser.Scene {
       card.on('pointerdown', () => this.chooseWaymarkReward(mark.id));
       this.root.add(this.add.rectangle(x + 8, y + 10, 248, 278, 0x020409, 0.42));
       this.root.add(card);
-      this.root.add(this.add.circle(x, y - 84, 38, accent, 0.24).setStrokeStyle(2, accent, 0.8));
-      this.root.add(this.add.text(x, y - 84, waymarkGlyph(mark), {
-        fontFamily: 'Georgia, serif',
-        fontSize: '32px',
-        fontStyle: 'bold',
-        color: '#fff1c7'
-      }).setOrigin(0.5));
+      const artAsset = waymarkArtAssets[mark.id];
+      if (artAsset && this.textures.exists(artAsset.key)) {
+        this.root.add(addWaymarkArtImage(this, x, y - 84, artAsset.key).setDisplaySize(86, 86));
+      } else {
+        this.root.add(this.add.text(x, y - 84, waymarkGlyph(mark), {
+          fontFamily: 'Georgia, serif',
+          fontSize: '32px',
+          fontStyle: 'bold',
+          color: '#fff1c7'
+        }).setOrigin(0.5));
+      }
       this.root.add(this.add.text(x, y - 30, mark.name, {
         fontFamily: 'Arial',
         fontSize: '20px',
@@ -6951,8 +7750,8 @@ class BattleScene extends Phaser.Scene {
 
   private renderChoiceCardArt(card: Card, x: number, y: number) {
     const key = cardArtKey(card);
-    const artW = 216;
-    const artH = 300;
+    const artW = 208;
+    const artH = Math.round(artW * 1.5);
     if (key && this.textures.exists(key)) {
       const art = this.add.image(x, y, key)
         .setDisplaySize(artW, artH)
@@ -7354,6 +8153,7 @@ class BattleScene extends Phaser.Scene {
     if (playedCard.runtime.suit) {
       this.playedSuitsThisTurn.add(playedCard.runtime.suit);
       this.triggerFledglingSuitRally(playedCard);
+      this.checkSuitPlayedMarks(playedCard.runtime.suit);
     }
     this.playedCardIdsThisCombat.add(playedCard.id);
     this.checkNthCardMarks(); // rooftop_shortcut-style Waymarks that trigger on the Nth card
@@ -7633,12 +8433,7 @@ class BattleScene extends Phaser.Scene {
         break;
       }
       case 'enterMolt':
-        this.flock.molt = true;
-        this.flock.exposed = false;
-        this.flock.exposedTurns = 0;
-        this.logEvent('The flock turns through Molt.');
-        floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 30, 'Molt!', '#ff9d4d');
-        burst(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, 0xff9d4d, 10);
+        this.enterMolt(displayName(card));
         break;
       case 'gainOpenSkyGuard':
         this.flock.openSkyGuard += value;
@@ -7896,6 +8691,7 @@ class BattleScene extends Phaser.Scene {
       this.queueFlockMotion('heal');
       floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, `+${healed}`, '#8fd6a0');
       this.healFx();
+      this.checkHealFlockMarks();
     }
     const overheal = healing - healed;
     const signatureOverflow = !overflowToCover
@@ -7935,6 +8731,17 @@ class BattleScene extends Phaser.Scene {
     return true;
   }
 
+  private enterMolt(source: string) {
+    const wasMolting = this.flock.molt;
+    this.flock.molt = true;
+    this.flock.exposed = false;
+    this.flock.exposedTurns = 0;
+    this.logEvent(`${source} turns the flock through Molt.`);
+    floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 30, 'Molt!', '#ff9d4d');
+    burst(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, 0xff9d4d, 10);
+    if (!wasMolting) this.checkEnterMoltMarks();
+  }
+
   private endTurn() {
     if (this.mode !== 'battle') {
       return;
@@ -7966,6 +8773,7 @@ class BattleScene extends Phaser.Scene {
     // Nests keystone: Cover carries between turns (capped) instead of fully clearing.
     this.flock.block = this.keystoneActive('nests') ? Math.min(this.flock.block, NESTS_COVER_CARRY_CAP) : 0;
     this.cardsPlayedThisTurn = 0;
+    this.markFiredThisTurn = new Set();
     this.firstAttackThisTurn = true;
     this.playedSuitsThisTurn = new Set();
     if (this.flock.frail > 0) this.flock.frail -= 1;
@@ -9155,6 +9963,10 @@ function cardArtKey(card: Card) {
   return cardArtAssets[card.id]?.key;
 }
 
+function compactCardArtKey(card: Card) {
+  return cardArtKey(card);
+}
+
 function displayText(card: Card) {
   return card.upgraded ? card.upgradedText : card.text;
 }
@@ -9996,8 +10808,8 @@ function routeEventLandmarkLine(type: RouteNode['type']) {
 function nonCombatLesson(type: RouteNode['type']) {
   switch (type) {
     case 'basin': return 'Recover Cohesion, take shelter for Open Sky Guard, or refill a Supply.';
-    case 'nest': return 'Preen or Release a card, or buy a Waymark to shape the deck.';
-    case 'market': return 'Spend Scrap on cards, Waymarks, Supplies, and Preen/Release.';
+    case 'nest': return 'Preen or Remove a card, or buy a Waymark to shape the deck.';
+    case 'market': return 'Spend Scrap on cards, Waymarks, Supplies, and Preen/Remove.';
     case 'signal': return 'A route choice with trade-offs in Scrap, Cohesion, and risk.';
     case 'cache': return 'Choose one reward from the rooftop stash.';
     default: return 'A crossing on the route.';
@@ -10047,7 +10859,7 @@ function routeEffectSummary(effects: string[]): string {
       case 'addSnagToDiscard': case 'addSnagToDraw': return 'Add a Snag to the deck';
       case 'addCard': return 'Add a card to the flock';
       case 'preenCard': return `Preen ${a || 1}`;
-      case 'releaseCard': return `Release ${a || 1}`;
+      case 'releaseCard': return `Remove ${a || 1}`;
       case 'gainOpenSkyGuard': return `+${a} Open Sky Guard next combat`;
       case 'reduceNextOpenSky': return `Soften next Open Sky by ${a}`;
       case 'enemyCoverNextCombat': return `Next enemy starts +${a} Cover`;
@@ -10066,7 +10878,7 @@ function routeEffectSummary(effects: string[]): string {
 function nonCombatRewardBias(type: RouteNode['type']) {
   switch (type) {
     case 'basin': return 'Healing  ·  Open Sky Guard  ·  Supply';
-    case 'nest': return 'Preen  ·  Release  ·  Waymark';
+    case 'nest': return 'Preen  ·  Remove  ·  Waymark';
     case 'market': return 'Cards  ·  Waymarks  ·  Supplies';
     case 'signal': return 'Varies by choice';
     case 'cache': return 'Scrap  ·  Supply  ·  Waymark  ·  card  ·  heal';
