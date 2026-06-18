@@ -13,8 +13,8 @@
       "rarity": "common",
       "answerType": "healNow",
       "timing": "either",
-      "effects": ["healCohesion(6)"],
-      "description": "Heal 6 Cohesion.",
+      "effects": ["healCohesion(6)", "if visitedNodeType(basin) then healCohesion(2)"],
+      "description": "Heal 6 Cohesion. If you visited a Basin this district, heal +2.",
       "visualBrief": "A tiny foil seed packet with torn corners, bright safflower seeds spilling out, taped to a mini courier strap; bold streetwear colors, crisp object silhouette, rooftop-market grit, matching the Bird Squad title splash art."
     },
     {
@@ -211,8 +211,8 @@
       "rarity": "uncommon",
       "answerType": "coverNow",
       "timing": "combat",
-      "effects": ["gainCover(4)", "nextCoverBonus(8)"],
-      "description": "Gain 4 Cover. The next Nest Cover card gains +8 Cover.",
+      "effects": ["gainCover(4)", "nextCoverBonus(8)", "if visitedNodeType(nest) then retainHand(1)"],
+      "description": "Gain 4 Cover. The next Nest Cover card gains +8 Cover. If you visited a Nest this district, retain 1 card.",
       "visualBrief": "A compact spring clamp wrapped in green tape, biting into two little scaffold slats with orange safety paint; sturdy urban repair gear, readable silhouette, Bird Squad title-screen lighting."
     },
     {
@@ -288,8 +288,8 @@
       "rarity": "uncommon",
       "answerType": "tellControl",
       "timing": "route",
-      "effects": ["gainScrap(12)", "peekNextNodes(1)", "gainSupplyChoice(1)"],
-      "description": "Gain 12 Scrap, preview the next route choice, and pack a random Supply if there is room.",
+      "effects": ["gainScrap(12)", "peekNextNodes(1)", "gainSupplyChoice(1)", "if visitedNodeType(signal) then gainScrap(8)"],
+      "description": "Gain 12 Scrap, preview the next route choice, and pack a random Supply if there is room. If you resolved a Signal this district, gain +8 Scrap.",
       "visualBrief": "Three brass transit tokens tied in a red cord bundle, one stamped with a wing, glowing with city-platform reflections; compact route-economy charm in Bird Squad title art style."
     },
     {
@@ -310,8 +310,8 @@
       "rarity": "rare",
       "answerType": "tellControl",
       "timing": "route",
-      "effects": ["freePreenNextDistrict(1)", "gainScrap(10)", "loseCohesion(2)"],
-      "description": "Next district starts with 1 free Preen and 10 Scrap. Lose 2 Cohesion.",
+      "effects": ["freePreenNextDistrict(1)", "gainScrap(10)", "loseCohesion(2)", "if visitedNodeType(market) then healCohesion(2)"],
+      "description": "Next district starts with 1 free Preen and 10 Scrap. Lose 2 Cohesion; if you visited a Market this district, heal that Cohesion back.",
       "visualBrief": "A waterproof IOU slip folded around a brass tally charm, red string seal, and oily market ink; risky favor token with Bird Squad title-splash lighting."
     },
     {

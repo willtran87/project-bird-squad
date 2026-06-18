@@ -182,6 +182,21 @@ interface CardRewardEvent {
   fallback?: 'scrap' | 'preen';
 }
 
+interface WaymarkFeedback {
+  id: string;
+  name: string;
+  summary: string;
+  turn: number;
+}
+
+interface SupplyFeedback {
+  id: string;
+  name: string;
+  summary: string;
+  timing: RuntimeSupply['timing'];
+  turn?: number;
+}
+
 interface CombatResultSummary {
   encounterId: string;
   nodeId: string;
@@ -305,6 +320,8 @@ interface RenderPayload {
   };
   inspectOverlay?: InspectOverlay;
   waymarkDrawerOpen?: boolean;
+  waymarkFeedback?: WaymarkFeedback[];
+  supplyFeedback?: SupplyFeedback[];
   piles: {
     deck: number;
     hand: number;
@@ -372,11 +389,11 @@ const MENU_BORDER_COLOR = 0x7ab8d6;
 const HAND_Y = 590;
 const CARD_W = 164;
 const CARD_H = 246; // true 2:3 card aspect (art is 1024x1536)
-const ROUTE_NODE_RADIUS = 30;
-const ROUTE_BOSS_NODE_RADIUS = 38;
-const ROUTE_NODE_ICON_SIZE = 66;
-const ROUTE_BOSS_NODE_ICON_SIZE = 84;
-const ROUTE_NODE_FOCUS_PAD = 8;
+const ROUTE_NODE_RADIUS = 42;
+const ROUTE_BOSS_NODE_RADIUS = 52;
+const ROUTE_NODE_ICON_SIZE = 90;
+const ROUTE_BOSS_NODE_ICON_SIZE = 114;
+const ROUTE_NODE_FOCUS_PAD = 9;
 const ROUTE_REWARD_BADGE_RADIUS = 8;
 const ROUTE_REWARD_BADGE_OFFSET = 9;
 const ROUTE_NODE_LAYOUT_PAD = 4;
@@ -445,6 +462,11 @@ const marketKitRuntimeArtUrls = import.meta.glob('../assets/runtime/market-kit/*
   query: '?url',
   import: 'default',
 }) as Record<string, string>;
+const routeEventRuntimeArtUrls = import.meta.glob('../assets/runtime/route-events/*.webp', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
 
 function battlefieldVariantAsset(filename: string, key: string): RuntimeImageAsset {
   return {
@@ -459,6 +481,14 @@ function marketKitAsset(filename: string, key: string): RuntimeImageAsset {
     key,
     url: marketKitRuntimeArtUrls[`../assets/runtime/market-kit/${filename}`]
       ?? `/assets/runtime/market-kit/${filename}`
+  };
+}
+
+function routeEventAsset(filename: string, key: string): RuntimeImageAsset {
+  return {
+    key,
+    url: routeEventRuntimeArtUrls[`../assets/runtime/route-events/${filename}`]
+      ?? `/assets/runtime/route-events/${filename}`
   };
 }
 
@@ -495,10 +525,12 @@ const BATTLEFIELD_BOSS_VARIANTS: Partial<Record<string, RuntimeImageAsset>> = {
   map_04_high_roost: battlefieldVariantAsset('high-roost-boss-warden-v1.webp', 'battlefield-high-roost-boss-warden')
 };
 const ROUTE_EVENT_BACKDROP_ASSETS: Partial<Record<RouteNode['type'], RuntimeImageAsset>> = {
-  cache: battlefieldVariantAsset('rooftop-blocks-cache-billboard-v1.webp', 'route-event-cache-billboard'),
+  basin: routeEventAsset('lantern-roost-shelter-v2.webp', 'route-event-lantern-roost-shelter'),
+  cache: routeEventAsset('rooftop-cache-office-v1.webp', 'route-event-rooftop-cache-office'),
   market: MARKET_KIT_ASSETS.background,
-  signal: battlefieldVariantAsset('signal-spires-signal-relay-v1.webp', 'route-event-signal-relay'),
-  nest: battlefieldVariantAsset('high-roost-workshop-prep-v1.webp', 'route-event-workshop-prep')
+  signal: routeEventAsset('signal-switchboard-v1.webp', 'route-event-signal-switchboard'),
+  nest: routeEventAsset('featherwright-studio-v1.webp', 'route-event-featherwright-studio'),
+  rival: routeEventAsset('rival-wager-board-v1.webp', 'route-event-rival-wager-board')
 };
 const ROUTE_MAP_BACKDROP_ASSET = {
   key: 'route-map-backdrop-rooftop-blocks',
@@ -640,6 +672,81 @@ const codexLeaderArtAssets: Record<string, RuntimeImageAsset> = {
     url: flockLeaderRuntimeArtUrls['../assets/runtime/flock/leaders/tidewarden-combat-front-3q.webp']
       ?? '/assets/runtime/flock/leaders/tidewarden-combat-front-3q.webp',
   },
+};
+const ROUTE_EVENT_RESIDENT_ASSETS: Partial<Record<RouteNode['type'], RuntimeImageAsset>> = {
+  basin: routeEventAsset('sella-warmwick-v1.webp', 'route-event-resident-sella-warmwick'),
+  cache: routeEventAsset('marn-valeclip-v1.webp', 'route-event-resident-marn-valeclip'),
+  signal: routeEventAsset('ivo-tallymast-v1.webp', 'route-event-resident-ivo-tallymast'),
+  nest: routeEventAsset('oren-shearbright-v1.webp', 'route-event-resident-oren-shearbright'),
+  rival: routeEventAsset('caldra-pinion-v1.webp', 'route-event-resident-caldra-pinion')
+};
+const LANTERN_ROOST_KIT_ASSETS = {
+  hearth: routeEventAsset('lantern-roost-hearth-v1.webp', 'route-event-lantern-roost-hearth'),
+  sign: routeEventAsset('lantern-roost-sign-v1.webp', 'route-event-lantern-roost-sign'),
+  rainPipe: routeEventAsset('lantern-roost-rain-pipe-v1.webp', 'route-event-lantern-roost-rain-pipe'),
+  awning: routeEventAsset('lantern-roost-awning-v1.webp', 'route-event-lantern-roost-awning'),
+  wrappedSnack: routeEventAsset('lantern-roost-wrapped-snack-v1.webp', 'route-event-lantern-roost-wrapped-snack')
+};
+const ROUTE_SET_PIECE_CENTERPIECE_ASSETS: Partial<Record<RouteNode['type'], RuntimeImageAsset>> = {
+  cache: routeEventAsset('rooftop-cache-cabinet-v1.webp', 'route-event-centerpiece-rooftop-cache-cabinet'),
+  signal: routeEventAsset('signal-route-switchboard-v1.webp', 'route-event-centerpiece-signal-route-switchboard'),
+  nest: routeEventAsset('featherwright-chair-press-v1.webp', 'route-event-centerpiece-featherwright-chair-press'),
+  rival: routeEventAsset('rival-contract-prize-board-v1.webp', 'route-event-centerpiece-rival-contract-prize-board')
+};
+const ROUTE_SET_PIECE_CENTERPIECE_LAYOUTS: Partial<Record<RouteNode['type'], { x: number; y: number; w: number; h: number }>> = {
+  cache: { x: 548, y: 376, w: 372, h: 298 },
+  signal: { x: 552, y: 372, w: 390, h: 278 },
+  nest: { x: 546, y: 382, w: 374, h: 284 },
+  rival: { x: 548, y: 382, w: 376, h: 284 }
+};
+const ROUTE_SET_PIECE_PROFILES: Partial<Record<RouteNode['type'], {
+  residentName: string;
+  residentRole: string;
+  species: string;
+  fashion: string;
+  centerpiece: string;
+  visitLine: string;
+}>> = {
+  basin: {
+    residentName: 'Sella Warmwick',
+    residentRole: 'Lantern Roost Keeper',
+    species: 'golden weaver finch',
+    fashion: 'insulated roost-host layers, plaid scarf, brass charms, practical winter workwear',
+    centerpiece: 'heated brass roost hearth',
+    visitLine: 'A warm roost landmark where recovery is treated like careful maintenance.'
+  },
+  cache: {
+    residentName: 'Marn Valeclip',
+    residentRole: 'Lockbox Archivist',
+    species: 'hooded crow',
+    fashion: 'numbered archive coat, wax-tag straps, quiet salvage-office tailoring',
+    centerpiece: 'sealed pulley cache cabinet',
+    visitLine: 'A hidden stash office where every useful thing has a record.'
+  },
+  signal: {
+    residentName: 'Ivo Tallymast',
+    residentRole: 'Wire Cartographer',
+    species: 'kestrel',
+    fashion: 'signal-runner sash, lens cords, chalk tabs, lean rooftop technician gear',
+    centerpiece: 'illuminated switchboard route map',
+    visitLine: 'A skyline control post where route information becomes leverage.'
+  },
+  nest: {
+    residentName: 'Oren Shearbright',
+    residentRole: 'Featherwright Tailor',
+    species: 'pileated woodpecker',
+    fashion: 'tailored work smock, measuring cords, lacquered tool pockets, boutique repairwear',
+    centerpiece: 'lit grooming chair and feather press',
+    visitLine: 'A precise studio where the deck is fitted, repaired, and refined.'
+  },
+  rival: {
+    residentName: 'Caldra Pinion',
+    residentRole: 'Velvet Wager Broker',
+    species: 'peafowl',
+    fashion: 'glossy statement capelet, jewel pins, wager-table evening streetwear',
+    centerpiece: 'contract case and prize board',
+    visitLine: 'A stylish confrontation where confidence is turned into a bet.'
+  }
 };
 const waymarkArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
   alphaRouteMarkSet.routeMarks.map((mark) => [mark.id, {
@@ -1920,6 +2027,24 @@ class CodexScene extends Phaser.Scene {
     }).setResolution(2).setOrigin(0.5));
   }
 
+  private addCodexTagRow(
+    layer: Phaser.GameObjects.Container,
+    x: number,
+    y: number,
+    tags: string[],
+    accent: number,
+    maxWidth: number,
+    active = false,
+  ) {
+    let cursor = x;
+    tags.slice(0, 4).forEach((tag) => {
+      const w = clamp(tag.length * 7 + 24, 72, 138);
+      if (cursor + w > x + maxWidth) return;
+      this.addCodexChip(layer, cursor + w / 2, y, w, tag, accent, active);
+      cursor += w + 8;
+    });
+  }
+
   private renderCodexTab(
     x: number,
     y: number,
@@ -2154,9 +2279,11 @@ class CodexScene extends Phaser.Scene {
     }).setOrigin(0, 0));
     this.addCodexChip(layer, cx - 58, cy + 7, 98, this.supplyTimingLabel(supply), accent);
     this.addCodexChip(layer, cx + 52, cy + 7, 106, this.supplyAnswerLabel(supply), accent);
-    layer.add(this.add.text(cx - 112, cy + 18, supply.description, {
+    this.addCodexTagRow(layer, cx - 112, cy + 35, supplySynergyTags(supply), accent, w - 28);
+    layer.add(this.add.text(cx - 112, cy + 48, supply.description, {
       fontFamily: 'Arial', fontSize: '12px', color: '#cdd9e6',
-      align: 'center', wordWrap: { width: w - 28 }
+      align: 'center', wordWrap: { width: w - 28 },
+      maxLines: 2
     }).setOrigin(0, 0));
   }
 
@@ -2170,7 +2297,7 @@ class CodexScene extends Phaser.Scene {
     const px = GAME_WIDTH / 2;
     const py = GAME_HEIGHT / 2;
     const MW = 780;
-    const MH = 520;
+    const MH = 560;
     const left = px - MW / 2;
     const top = py - MH / 2;
     const accent = this.supplyAccent(supply);
@@ -2197,7 +2324,11 @@ class CodexScene extends Phaser.Scene {
       fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#8fa3b6',
       wordWrap: { width: wrap }
     }));
-    yy += 42;
+    yy += 28;
+    this.root.add(this.add.text(tx, yy, 'BUILD TAGS', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText }));
+    yy += 22;
+    this.addCodexTagRow(this.root, tx, yy, supplySynergyTags(supply), accent, wrap, true);
+    yy += 34;
     this.root.add(this.add.text(tx, yy, 'USE', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText }));
     yy += 18;
     const effect = this.add.text(tx, yy, supply.description, {
@@ -2215,7 +2346,7 @@ class CodexScene extends Phaser.Scene {
     yy += 42;
     this.root.add(this.add.text(tx, yy, 'TACTICAL ANSWER', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText }));
     yy += 18;
-    this.root.add(this.add.text(tx, yy, `${this.supplyAnswerLabel(supply)} answer. Can be packed in one of two supply slots and consumed once.`, {
+    this.root.add(this.add.text(tx, yy, `${this.supplyAnswerLabel(supply)} answer. Can be packed in a supply slot and consumed once.`, {
       fontFamily: 'Georgia, serif', fontSize: '15px', fontStyle: 'italic', color: '#d9c8ff',
       lineSpacing: 4, wordWrap: { width: wrap }
     }));
@@ -2269,9 +2400,11 @@ class CodexScene extends Phaser.Scene {
     }).setOrigin(0, 0));
     this.addCodexChip(layer, cx - 58, cy + 7, 98, mark.trigger, accent);
     this.addCodexChip(layer, cx + 52, cy + 7, 106, mark.effect, accent);
-    layer.add(this.add.text(cx - 112, cy + 18, mark.description, {
+    this.addCodexTagRow(layer, cx - 112, cy + 35, waymarkSynergyTags(mark), accent, w - 28);
+    layer.add(this.add.text(cx - 112, cy + 48, mark.description, {
       fontFamily: 'Arial', fontSize: '12px', color: '#cdd9e6',
-      align: 'center', wordWrap: { width: w - 28 }
+      align: 'center', wordWrap: { width: w - 28 },
+      maxLines: 2
     }).setOrigin(0, 0));
   }
 
@@ -2285,7 +2418,7 @@ class CodexScene extends Phaser.Scene {
     const px = GAME_WIDTH / 2;
     const py = GAME_HEIGHT / 2;
     const MW = 780;
-    const MH = 480;
+    const MH = 520;
     const left = px - MW / 2;
     const top = py - MH / 2;
     const accent = this.waymarkAccent(mark);
@@ -2312,7 +2445,11 @@ class CodexScene extends Phaser.Scene {
       fontFamily: 'Arial', fontSize: '13px', fontStyle: 'bold', color: '#8fa3b6',
       wordWrap: { width: wrap }
     }));
-    yy += 42;
+    yy += 28;
+    this.root.add(this.add.text(tx, yy, 'BUILD TAGS', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText }));
+    yy += 22;
+    this.addCodexTagRow(this.root, tx, yy, waymarkSynergyTags(mark), accent, wrap, true);
+    yy += 34;
     this.root.add(this.add.text(tx, yy, 'EFFECT', { fontFamily: 'Arial', fontSize: '11px', fontStyle: 'bold', color: accentText }));
     yy += 18;
     const effect = this.add.text(tx, yy, mark.description, {
@@ -3005,6 +3142,7 @@ class RouteScene extends Phaser.Scene {
   private marketItemHover?: Phaser.GameObjects.Container;
   private cardReviewScroll = 0;
   private routeNodeIconArtRequested = false;
+  private supplyFeedback: SupplyFeedback[] = [];
 
   constructor() {
     super('RouteScene');
@@ -3044,6 +3182,7 @@ class RouteScene extends Phaser.Scene {
     this.marketItemHover = undefined;
     this.cardReviewScroll = 0;
     this.routeNodeIconArtRequested = false;
+    this.supplyFeedback = [];
   }
 
   preload() {
@@ -3111,6 +3250,7 @@ class RouteScene extends Phaser.Scene {
     this.marketItemHover = undefined;
     this.renderBackdrop();
     this.renderRouteMap();
+    this.renderRouteSupplyFeedbackStrip();
     if (this.deckOverlayOpen) this.renderMapDeckOverlay();
     if (this.flockOverlayOpen) this.renderRouteFlockOverlay();
     if (this.marketOpen) this.renderMarketOverlay();
@@ -3152,11 +3292,37 @@ class RouteScene extends Phaser.Scene {
     return node ? ROUTE_EVENT_BACKDROP_ASSETS[node.type] : undefined;
   }
 
+  private routeEventResidentAsset(node?: RouteNode) {
+    return node ? ROUTE_EVENT_RESIDENT_ASSETS[node.type] : undefined;
+  }
+
+  private routeSetPieceCenterpieceAsset(node?: RouteNode) {
+    return node ? ROUTE_SET_PIECE_CENTERPIECE_ASSETS[node.type] : undefined;
+  }
+
   private queueRouteEventBackdropArtLoad(node?: RouteNode) {
     queueRuntimeImageAssets(
       this,
       [this.routeEventBackdropAsset(node)],
       'Route event backdrop failed to load',
+      () => this.renderAll()
+    );
+  }
+
+  private queueRouteEventSetPieceArtLoad(node?: RouteNode) {
+    queueRuntimeImageAssets(
+      this,
+      [this.routeEventBackdropAsset(node), this.routeEventResidentAsset(node), this.routeSetPieceCenterpieceAsset(node)],
+      'Route event set piece art failed to load',
+      () => this.renderAll()
+    );
+  }
+
+  private queueLanternRoostKitArtLoad() {
+    queueRuntimeImageAssets(
+      this,
+      Object.values(LANTERN_ROOST_KIT_ASSETS),
+      'Lantern Roost kit art failed to load',
       () => this.renderAll()
     );
   }
@@ -3446,6 +3612,54 @@ class RouteScene extends Phaser.Scene {
     }
   }
 
+  private routeSupplyFeedbackSummary(supply: RuntimeSupply) {
+    return formatEffects(supply.effects)
+      .replace(/\s+/g, ' ')
+      .replace(/\.$/, '');
+  }
+
+  private recordRouteSupplyFeedback(supply: RuntimeSupply) {
+    this.supplyFeedback = [
+      {
+        id: supply.id,
+        name: supply.name,
+        summary: this.routeSupplyFeedbackSummary(supply),
+        timing: supply.timing
+      },
+      ...this.supplyFeedback
+    ].slice(0, 4);
+  }
+
+  private renderRouteSupplyFeedbackStrip() {
+    const latest = this.supplyFeedback[0];
+    if (!latest) return;
+    const x = 1140;
+    const y = 116;
+    this.add.text(x - 84, y - 31, 'LAST SUPPLY', {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#7f93a8'
+    });
+    this.add.rectangle(x, y, 176, 38, 0x07101a, 0.86)
+      .setStrokeStyle(1, 0xffb86b, 0.72);
+    this.add.text(x - 78, y - 14, latest.name, {
+      fontFamily: 'Arial',
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: '#ffe1a3',
+      fixedWidth: 154,
+      maxLines: 1
+    }).setResolution(2);
+    this.add.text(x - 78, y + 1, latest.summary, {
+      fontFamily: 'Arial',
+      fontSize: '8px',
+      color: '#cdd9e6',
+      fixedWidth: 156,
+      maxLines: 1
+    }).setResolution(2);
+  }
+
   private renderRouteMap() {
     const positions = new Map(currentMap().nodes.map((node) => [node.id, this.nodePosition(node)]));
     const onChosenPath = new Set(this.runState.completedRouteNodeIds);
@@ -3462,13 +3676,15 @@ class RouteScene extends Phaser.Scene {
       const primaryPreview = previewEdges.primary.has(key);
       const secondaryPreview = previewEdges.secondary.has(key);
       const available = this.selectableNodeIds.has(edge.to);
-      const color = lit ? 0x6fd69a : primaryPreview ? 0xffe1a3 : available ? 0x7ab8d6 : secondaryPreview ? 0x7ab8d6 : 0x263b52;
-      const alpha = lit ? 0.78 : primaryPreview ? 0.78 : available ? 0.62 : secondaryPreview ? 0.42 : 0.28;
+      const color = lit ? 0x4fe07f : primaryPreview ? 0xffb347 : available ? 0x16b7d8 : secondaryPreview ? 0x4d7f95 : 0x1b2f42;
+      const alpha = lit ? 0.9 : primaryPreview ? 0.92 : available ? 0.82 : secondaryPreview ? 0.58 : 0.46;
       const dotRadius = lit ? 1.45 : primaryPreview ? 1.45 : available ? 1.28 : secondaryPreview ? 1.22 : 1.05;
       const curve = this.drawRouteEdgePath(lines, from, to, key, color, alpha, dotRadius);
       if (available || primaryPreview) {
         const marker = curve.getPoint(0.65);
-        lines.fillStyle(primaryPreview ? 0xffe1a3 : 0x7ab8d6, primaryPreview ? 0.9 : 0.72);
+        lines.fillStyle(0x06111a, primaryPreview ? 0.42 : 0.34);
+        lines.fillCircle(marker.x, marker.y, primaryPreview ? 4.35 : 3.85);
+        lines.fillStyle(primaryPreview ? 0xffb347 : 0x16b7d8, primaryPreview ? 0.96 : 0.86);
         lines.fillCircle(marker.x, marker.y, primaryPreview ? 3.5 : 3);
       }
     });
@@ -3511,14 +3727,11 @@ class RouteScene extends Phaser.Scene {
     const pointCount = Math.max(7, Math.ceil(length / 16));
     const points = curve.getSpacedPoints(pointCount);
 
-    graphics.fillStyle(color, alpha);
     points.slice(1, -1).forEach((point, index) => {
       const pulse = index % 3 === 1 ? 0.9 : 1;
-      if (dotRadius >= 1.4) {
-        graphics.fillStyle(color, alpha * 0.1);
-        graphics.fillCircle(point.x, point.y, dotRadius * pulse + 0.85);
-        graphics.fillStyle(color, alpha);
-      }
+      graphics.fillStyle(0x06111a, Math.min(0.42, alpha * 0.72));
+      graphics.fillCircle(point.x, point.y, dotRadius * pulse + 0.58);
+      graphics.fillStyle(color, alpha);
       graphics.fillCircle(point.x, point.y, dotRadius * pulse);
     });
     return curve;
@@ -4409,7 +4622,23 @@ class RouteScene extends Phaser.Scene {
 
   // The route-effect interpreter: executes a single route-effect verb against the
   // run state (next-level-data-contracts §6.3).
+  private checkRouteCondition(condition: string) {
+    const visitedType = /^visitedNodeType\(([a-zA-Z0-9_]+)\)$/.exec(condition);
+    if (visitedType) {
+      const wantedType = visitedType[1];
+      return currentMap().nodes.some((node) =>
+        node.type === wantedType && this.runState.completedRouteNodeIds.includes(node.id)
+      );
+    }
+    return false;
+  }
+
   private resolveRouteEffect(effect: string) {
+    const conditional = /^if (.+?) then (.+)$/.exec(effect);
+    if (conditional) {
+      if (this.checkRouteCondition(conditional[1])) this.resolveRouteEffect(conditional[2]);
+      return;
+    }
     const parsed = parseEffect(effect);
     if (!parsed) return;
     const arg0 = parsed.args[0] ?? '';
@@ -4495,6 +4724,7 @@ class RouteScene extends Phaser.Scene {
     const supply = id ? alphaSupplyLibrary.get(id) : undefined;
     if (!supply || supply.timing === 'combat') return;
     supply.effects.forEach((effect) => this.resolveRouteEffect(effect));
+    this.recordRouteSupplyFeedback(supply);
     this.runState.supplies.splice(index, 1);
     (this.runState.suppliesUsed ??= []).push(id);
     this.runState.routeLog.push(`Used ${supply.name}: ${supply.description}`);
@@ -4531,6 +4761,14 @@ class RouteScene extends Phaser.Scene {
   private renderNodeChoiceOverlay() {
     const node = currentMap().nodes.find((candidate) => candidate.id === this.nodeChoiceNodeId);
     if (!node) return;
+    if (node.type === 'basin') {
+      this.renderLanternRoostOverlay(node);
+      return;
+    }
+    if (ROUTE_SET_PIECE_PROFILES[node.type]) {
+      this.renderRouteSetPieceOverlay(node);
+      return;
+    }
     const choices = this.nodeChoiceList(node);
     const signal = node.type === 'signal' ? alphaSignalLibrary.get(node.payloadId) : undefined;
     const accent = routeEventAccent(node.type);
@@ -4809,6 +5047,301 @@ class RouteScene extends Phaser.Scene {
       yoyo: true,
       repeat: -1
     });
+  }
+
+  private renderLanternRoostOverlay(node: RouteNode) {
+    const choices = this.nodeChoiceList(node);
+    const accent = routeEventAccent(node.type);
+    const profile = ROUTE_SET_PIECE_PROFILES.basin;
+    const background = this.routeEventBackdropAsset(node);
+    const resident = this.routeEventResidentAsset(node);
+    this.queueRouteEventSetPieceArtLoad(node);
+    this.queueLanternRoostKitArtLoad();
+
+    if (background && this.textures.exists(background.key)) {
+      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, background.key)
+        .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
+        .setAlpha(1);
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.08)
+        .setInteractive({ useHandCursor: false });
+    } else {
+      this.renderRouteEventBackdrop(node, 1);
+    }
+
+    if (this.textures.exists(LANTERN_ROOST_KIT_ASSETS.hearth.key)) {
+      this.add.image(664, 438, LANTERN_ROOST_KIT_ASSETS.hearth.key)
+        .setDisplaySize(420, 236)
+        .setAlpha(0.72);
+    }
+    if (this.textures.exists(LANTERN_ROOST_KIT_ASSETS.sign.key)) {
+      this.add.image(268, 338, LANTERN_ROOST_KIT_ASSETS.sign.key)
+        .setDisplaySize(180, 88)
+        .setAlpha(0.94);
+    }
+
+    this.add.rectangle(GAME_WIDTH / 2, 24, GAME_WIDTH - 100, 2, accent, 0.38);
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 28, GAME_WIDTH - 100, 2, accent, 0.34);
+
+    const titleX = GAME_WIDTH / 2;
+    this.add.rectangle(titleX, 70, 548, 72, 0x020409, 0.98)
+      .setStrokeStyle(2, accent, 0.92);
+    this.add.text(titleX, 48, profile?.residentName ?? 'Sella Warmwick', {
+      fontFamily: 'Arial',
+      fontSize: '24px',
+      fontStyle: 'bold',
+      color: '#ffe1a3',
+      stroke: '#000000',
+      strokeThickness: 4,
+      align: 'center'
+    }).setOrigin(0.5);
+    this.add.text(titleX, 76, profile?.residentRole ?? 'Lantern Roost Keeper', {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#8df4ff',
+      align: 'center'
+    }).setOrigin(0.5);
+    this.add.text(titleX, 91, (profile?.species ?? 'golden weaver finch').toUpperCase(), {
+      fontFamily: 'Arial',
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: '#b9c7d6',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    this.renderLanternRoostResourceTag(118, 96);
+
+    if (resident && this.textures.exists(resident.key)) {
+      this.add.image(154, GAME_HEIGHT + 58, resident.key)
+        .setOrigin(0.5, 1)
+        .setDisplaySize(350, 430)
+        .setAlpha(1);
+    } else {
+      this.add.circle(164, 438, 82, 0x1c2230, 0.98)
+        .setStrokeStyle(2, accent, 0.82);
+      this.renderRouteNodeTypeIcon(node.type, 164, 438, 96);
+    }
+
+    this.add.rectangle(248, 602, 356, 88, 0x06101a, 0.98)
+      .setStrokeStyle(1, accent, 0.72);
+    this.add.text(88, 572, (profile?.centerpiece ?? 'heated brass roost hearth').toUpperCase(), {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#ffcf6b',
+      maxLines: 1
+    });
+    this.add.text(88, 594, profile?.visitLine ?? routeEventLandmarkLine(node.type), {
+      fontFamily: 'Arial',
+      fontSize: '13px',
+      color: '#dbe6f2',
+      lineSpacing: 3,
+      wordWrap: { width: 314 },
+      maxLines: 3
+    });
+
+    const choiceX = 1010;
+    const startY = 286;
+    choices.forEach((choice, index) => {
+      const y = startY + index * 112;
+      this.renderLanternRoostChoiceProp(choice.key, 746, y);
+      this.renderSetPieceChoice(choice, choiceX, y, index, accent, 76, false);
+    });
+  }
+
+  private renderLanternRoostChoiceProp(choiceKey: string, x: number, y: number) {
+    const props: Record<string, { asset: RuntimeImageAsset; w: number; h: number; dx: number; dy: number }> = {
+      recover: { asset: LANTERN_ROOST_KIT_ASSETS.rainPipe, w: 118, h: 118, dx: -12, dy: 0 },
+      take_shelter: { asset: LANTERN_ROOST_KIT_ASSETS.awning, w: 164, h: 92, dx: -2, dy: -2 },
+      refill_supplies: { asset: LANTERN_ROOST_KIT_ASSETS.wrappedSnack, w: 112, h: 98, dx: -10, dy: 0 }
+    };
+    const prop = props[choiceKey];
+    if (!prop || !this.textures.exists(prop.asset.key)) return;
+    this.add.image(x + prop.dx, y + prop.dy, prop.asset.key)
+      .setDisplaySize(prop.w, prop.h)
+      .setAlpha(0.98);
+  }
+
+  private renderLanternRoostResourceTag(x: number, y: number) {
+    const w = 148;
+    const h = 42;
+    this.add.rectangle(x, y, w, h, 0x020409, 0.97)
+      .setStrokeStyle(1, UI_FIELD.gold, 0.86);
+    this.add.circle(x - w / 2 + 18, y + 1, 5, UI_FIELD.gold, 0.96);
+    this.add.text(x - w / 2 + 32, y - 14, `${this.runState.scrap}`, {
+      fontFamily: 'Arial',
+      fontSize: '20px',
+      fontStyle: 'bold',
+      color: '#ffe1a3'
+    });
+    this.add.text(x - w / 2 + 72, y - 12, 'SCRAP', {
+      fontFamily: 'Arial',
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: '#8df4ff'
+    });
+    this.add.text(x - w / 2 + 72, y + 3, `${this.runState.currentHp}/${this.runMaxHp()} COHESION`, {
+      fontFamily: 'Arial',
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: '#dbe6f2'
+    });
+  }
+
+  private renderRouteSetPieceOverlay(node: RouteNode) {
+    const choices = this.nodeChoiceList(node);
+    const accent = routeEventAccent(node.type);
+    const profile = ROUTE_SET_PIECE_PROFILES[node.type];
+    this.queueRouteEventSetPieceArtLoad(node);
+    this.renderRouteEventBackdrop(node, node.type === 'basin' ? 1 : 0.9);
+    const background = this.routeEventBackdropAsset(node);
+    const resident = this.routeEventResidentAsset(node);
+
+    if (background && this.textures.exists(background.key)) {
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.08)
+        .setInteractive({ useHandCursor: false });
+    }
+
+    const titleX = GAME_WIDTH / 2;
+    this.add.rectangle(titleX, 72, 560, 78, 0x020409, 0.98)
+      .setStrokeStyle(2, accent, 0.95);
+    this.add.text(titleX, 50, profile?.residentName ?? node.label, {
+      fontFamily: 'Arial',
+      fontSize: '24px',
+      fontStyle: 'bold',
+      color: '#ffe1a3',
+      stroke: '#000000',
+      strokeThickness: 4,
+      align: 'center'
+    }).setOrigin(0.5);
+    this.add.text(titleX, 78, profile?.residentRole ?? routeNodeTypeLabel(node.type), {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#8df4ff',
+      align: 'center'
+    }).setOrigin(0.5);
+    this.add.text(titleX, 94, (profile?.species ?? routeNodeTypeLabel(node.type)).toUpperCase(), {
+      fontFamily: 'Arial',
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: '#b9c7d6',
+      align: 'center'
+    }).setOrigin(0.5);
+
+    if (resident && this.textures.exists(resident.key)) {
+      this.add.image(176, GAME_HEIGHT + 22, resident.key)
+        .setOrigin(0.5, 1)
+        .setDisplaySize(310, 372)
+        .setAlpha(0.98);
+    } else {
+      this.add.circle(176, 438, 82, 0x1c2230, 0.98)
+        .setStrokeStyle(2, accent, 0.82);
+      this.renderRouteNodeTypeIcon(node.type, 176, 438, 96);
+    }
+
+    const centerpiece = this.routeSetPieceCenterpieceAsset(node);
+    const centerpieceLayout = ROUTE_SET_PIECE_CENTERPIECE_LAYOUTS[node.type] ?? { x: 548, y: 380, w: 370, h: 280 };
+    if (centerpiece && this.textures.exists(centerpiece.key)) {
+      this.add.image(centerpieceLayout.x, centerpieceLayout.y, centerpiece.key)
+        .setDisplaySize(centerpieceLayout.w, centerpieceLayout.h)
+        .setAlpha(0.98);
+    }
+
+    this.add.rectangle(258, 594, 342, 88, 0x06101a, 0.97)
+      .setStrokeStyle(1, accent, 0.72);
+    this.add.text(106, 564, profile?.centerpiece.toUpperCase() ?? routeNodeTypeLabel(node.type).toUpperCase(), {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#ffcf6b'
+    });
+    this.add.text(106, 586, profile?.visitLine ?? routeEventLandmarkLine(node.type), {
+      fontFamily: 'Arial',
+      fontSize: '13px',
+      color: '#dbe6f2',
+      lineSpacing: 3,
+      wordWrap: { width: 292 },
+      maxLines: 3
+    });
+
+    this.add.rectangle(154, 116, 130, 38, 0x020409, 0.96)
+      .setStrokeStyle(1, 0xd8a840, 0.86);
+    this.add.circle(104, 116, 5, 0xd8a840, 1);
+    this.add.text(118, 105, `${this.runState.scrap}`, {
+      fontFamily: 'Arial',
+      fontSize: '20px',
+      fontStyle: 'bold',
+      color: '#ffe1a3'
+    });
+    this.add.text(156, 109, 'SCRAP', {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#8df4ff'
+    });
+    this.add.text(156, 122, `${this.runState.currentHp}/${this.runMaxHp()} COHESION`, {
+      fontFamily: 'Arial',
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: '#dbe6f2'
+    });
+
+    const compact = choices.length > 5;
+    const choiceHeight = compact ? 56 : 78;
+    const gap = compact ? 9 : 18;
+    const totalHeight = choices.length * choiceHeight + Math.max(0, choices.length - 1) * gap;
+    const startY = GAME_HEIGHT / 2 - totalHeight / 2 + choiceHeight / 2 + (compact ? 24 : 20);
+    choices.forEach((choice, index) => {
+      const x = 1010;
+      const y = startY + index * (choiceHeight + gap);
+      this.renderSetPieceChoice(choice, x, y, index, accent, choiceHeight, compact);
+    });
+  }
+
+  private renderSetPieceChoice(
+    choice: { key: string; text: string; effects: string[]; locked: boolean; lockedText?: string },
+    x: number,
+    y: number,
+    index: number,
+    accent: number,
+    height = 78,
+    compact = false
+  ) {
+    const colors = [UI_FIELD.green, UI_FIELD.cyan, UI_FIELD.gold];
+    const choiceAccent = colors[index % colors.length] ?? accent;
+    const w = 382;
+    const h = height;
+    const bg = this.add.rectangle(x, y, w, h, choice.locked ? 0x0d1420 : 0x07101a, choice.locked ? 0.8 : 0.98)
+      .setStrokeStyle(2, choice.locked ? 0x49606d : choiceAccent, choice.locked ? 0.62 : 0.95);
+    if (!choice.locked) {
+      bg.setInteractive({ useHandCursor: true });
+      bg.on('pointerdown', () => this.chooseNodeOption(choice.key));
+    }
+    this.add.rectangle(x - w / 2 + 4, y, 6, h - 12, choice.locked ? 0x49606d : choiceAccent, choice.locked ? 0.62 : 1);
+    this.add.text(x - 164, y - (compact ? 22 : 28), choice.text, {
+      fontFamily: 'Arial',
+      fontSize: compact ? '14px' : '16px',
+      fontStyle: 'bold',
+      color: choice.locked ? '#7f93a8' : '#ffe1a3',
+      wordWrap: { width: 286 },
+      maxLines: 1
+    });
+    this.add.text(x - 164, y + (compact ? -1 : -4), choice.locked && choice.lockedText ? choice.lockedText : routeEffectSummary(choice.effects), {
+      fontFamily: 'Arial',
+      fontSize: compact ? '11px' : '13px',
+      color: choice.locked ? '#ff9d4d' : '#dbe6f2',
+      lineSpacing: compact ? 1 : 2,
+      wordWrap: { width: 300 },
+      maxLines: 2
+    });
+    this.add.text(x + 150, y - (compact ? 9 : 13), choice.locked ? 'LOCKED' : 'VISIT', {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: choice.locked ? '#ff9d4d' : '#8df4ff',
+      align: 'right'
+    }).setOrigin(0.5);
   }
 
   private renderMarketCardOffers(x: number, y: number) {
@@ -5692,6 +6225,7 @@ class RouteScene extends Phaser.Scene {
         supplySlots: runSupplyCapacity(this.runState)
       },
       routeStatus: this.routeStatusSummary(),
+      supplyFeedback: [...this.supplyFeedback],
       deckOverlayOpen: this.deckOverlayOpen,
       flockOverlayOpen: this.flockOverlayOpen,
       marketOpen: this.marketOpen,
@@ -5847,6 +6381,8 @@ class BattleScene extends Phaser.Scene {
   private upgradeChoices: Card[] = [];
   private log: string[] = [];
   private logDrawerOpen = false;
+  private waymarkFeedback: WaymarkFeedback[] = [];
+  private supplyFeedback: SupplyFeedback[] = [];
   private root!: Phaser.GameObjects.Container;
   // Persistent FX layer: renderAll() only clears `root`, so transient juice
   // (floating numbers, bursts) spawned here survives the synchronous redraw.
@@ -5950,6 +6486,8 @@ class BattleScene extends Phaser.Scene {
     this.rewardChoices = [];
     this.upgradeChoices = [];
     this.log = [`${currentMap().name}: ${initialRouteNode.label} begins.`];
+    this.waymarkFeedback = [];
+    this.supplyFeedback = [];
     this.optionalArtRequested = false;
     this.playedCardIdsThisCombat = new Set();
     this.playedSuitsThisTurn = new Set();
@@ -6062,11 +6600,169 @@ class BattleScene extends Phaser.Scene {
     }
   }
 
+  private markFeedbackSummary(mark: RuntimeRouteMark) {
+    const effect = formatEffect(mark.effect)
+      .replace(/\.$/, '')
+      .replace(/^The next Supply resolves /, 'Next Supply x')
+      .replace(/^Next district starts with /, 'Next district: ');
+    if (mark.trigger === 'combatStart') return effect;
+    if (mark.trigger === 'onSupplyUsed') return `Supply combo: ${effect}`;
+    if (mark.trigger === 'onEnemyCoverBroken') return `Cover broken: ${effect}`;
+    if (mark.trigger === 'onEnterMolt') return `Molt: ${effect}`;
+    if (mark.trigger === 'onHealFlock') return `Healing: ${effect}`;
+    const suit = /^onSuitPlayed\(([^)]+)\)$/.exec(mark.trigger)?.[1];
+    if (suit) return `${suit[0].toUpperCase()}${suit.slice(1)}: ${effect}`;
+    const nth = /^onNthCardThisTurn\((\d+)\)$/.exec(mark.trigger)?.[1];
+    if (nth) return `Card ${nth}: ${effect}`;
+    return effect;
+  }
+
+  private showWaymarkFeedback(mark: RuntimeRouteMark) {
+    const summary = this.markFeedbackSummary(mark);
+    this.waymarkFeedback = [
+      { id: mark.id, name: mark.name, summary, turn: this.turn },
+      ...this.waymarkFeedback
+    ].slice(0, 4);
+
+    if (!this.fxLayer?.active) return;
+    const accent = this.waymarkAccent(mark);
+    const sameTurnIndex = Math.min(
+      this.waymarkFeedback.filter((entry) => entry.turn === this.turn).length - 1,
+      2
+    );
+    const x = 178;
+    const y = 216 + sameTurnIndex * 58;
+    const toast = this.add.container(x, y).setAlpha(0).setScale(0.96);
+    const bg = this.add.rectangle(0, 0, 294, 50, 0x07101c, 0.96)
+      .setStrokeStyle(2, accent, 0.95);
+    toast.add(bg);
+    toast.add(this.add.rectangle(-134, 0, 4, 36, accent, 0.95));
+    const artAsset = waymarkArtAssets[mark.id];
+    if (artAsset && this.textures.exists(artAsset.key)) {
+      toast.add(addWaymarkArtImage(this, -108, 0, artAsset.key).setDisplaySize(36, 36));
+    } else {
+      toast.add(this.add.text(-108, -1, waymarkGlyph(mark), {
+        fontFamily: 'Arial',
+        fontSize: '18px',
+        fontStyle: 'bold',
+        color: '#e7eef7'
+      }).setOrigin(0.5));
+    }
+    toast.add(this.add.text(-78, -15, mark.name, {
+      fontFamily: 'Arial',
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#ffe1a3',
+      fixedWidth: 190,
+      maxLines: 1,
+    }).setResolution(2));
+    toast.add(this.add.text(-78, 3, summary, {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      color: '#cdd9e6',
+      fixedWidth: 220,
+      maxLines: 1,
+    }).setResolution(2));
+    this.fxLayer.add(toast);
+    this.tweens.add({
+      targets: toast,
+      alpha: 1,
+      scale: 1,
+      duration: 150,
+      ease: 'Back.easeOut',
+      onComplete: () => this.tweens.add({
+        targets: toast,
+        y: y - 14,
+        alpha: 0,
+        delay: 900,
+        duration: 360,
+        ease: 'Cubic.easeIn',
+        onComplete: () => toast.destroy(),
+      }),
+    });
+  }
+
+  private supplyFeedbackSummary(supply: RuntimeSupply, repeats = 1) {
+    const summary = formatEffects(supply.effects)
+      .replace(/\s+/g, ' ')
+      .replace(/\.$/, '');
+    return repeats > 1 ? `x${repeats}: ${summary}` : summary;
+  }
+
+  private showSupplyFeedback(supply: RuntimeSupply, repeats = 1) {
+    const summary = this.supplyFeedbackSummary(supply, repeats);
+    this.supplyFeedback = [
+      { id: supply.id, name: supply.name, summary, timing: supply.timing, turn: this.turn },
+      ...this.supplyFeedback
+    ].slice(0, 4);
+
+    if (!this.fxLayer?.active) return;
+    const accent = 0xffb86b;
+    const sameTurnIndex = Math.min(
+      this.supplyFeedback.filter((entry) => entry.turn === this.turn).length - 1,
+      2
+    );
+    const x = 194;
+    const y = 154 + sameTurnIndex * 54;
+    const toast = this.add.container(x, y).setAlpha(0).setScale(0.96);
+    toast.add(this.add.rectangle(0, 0, 288, 48, 0x07101c, 0.96)
+      .setStrokeStyle(2, accent, 0.94));
+    toast.add(this.add.rectangle(-132, 0, 4, 34, accent, 0.95));
+    const artAsset = supplyArtAssets[supply.id];
+    if (artAsset && this.textures.exists(artAsset.key)) {
+      toast.add(addSupplyArtImage(this, -108, 0, artAsset.key).setDisplaySize(36, 36));
+    } else {
+      toast.add(this.add.text(-108, 0, this.supplyGlyph(supply), {
+        fontFamily: 'Arial',
+        fontSize: '18px',
+        fontStyle: 'bold',
+        color: '#ffe7c9'
+      }).setOrigin(0.5));
+    }
+    toast.add(this.add.text(-78, -15, supply.name, {
+      fontFamily: 'Arial',
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#ffe1a3',
+      fixedWidth: 186,
+      maxLines: 1
+    }).setResolution(2));
+    toast.add(this.add.text(-78, 3, summary, {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      color: '#cdd9e6',
+      fixedWidth: 216,
+      maxLines: 1
+    }).setResolution(2));
+    this.fxLayer.add(toast);
+    this.tweens.add({
+      targets: toast,
+      alpha: 1,
+      scale: 1,
+      duration: 150,
+      ease: 'Back.easeOut',
+      onComplete: () => this.tweens.add({
+        targets: toast,
+        y: y - 14,
+        alpha: 0,
+        delay: 900,
+        duration: 360,
+        ease: 'Cubic.easeIn',
+        onComplete: () => toast.destroy()
+      })
+    });
+  }
+
+  private triggerWaymark(mark: RuntimeRouteMark) {
+    this.resolveMarkEffect(mark.effect, mark.name);
+    this.showWaymarkFeedback(mark);
+    this.logEvent(`${mark.name}: ${mark.description}`);
+  }
+
   private applyMarkTrigger(trigger: string) {
     for (const mark of this.ownedMarkDefs()) {
       if (mark.trigger !== trigger) continue;
-      this.resolveMarkEffect(mark.effect, mark.name);
-      this.logEvent(`${mark.name}: ${mark.description}`);
+      this.triggerWaymark(mark);
     }
   }
 
@@ -6096,15 +6792,13 @@ class BattleScene extends Phaser.Scene {
   private fireOncePerCombatMark(mark: RuntimeRouteMark) {
     if (this.markFiredThisCombat.has(mark.id)) return;
     this.markFiredThisCombat.add(mark.id);
-    this.resolveMarkEffect(mark.effect, mark.name);
-    this.logEvent(`${mark.name}: ${mark.description}`);
+    this.triggerWaymark(mark);
   }
 
   private fireOncePerTurnMark(mark: RuntimeRouteMark) {
     if (this.markFiredThisTurn.has(mark.id)) return;
     this.markFiredThisTurn.add(mark.id);
-    this.resolveMarkEffect(mark.effect, mark.name);
-    this.logEvent(`${mark.name}: ${mark.description}`);
+    this.triggerWaymark(mark);
   }
 
   // onNthCardThisTurn(N) marks: fire once per combat the first time the player
@@ -6114,8 +6808,7 @@ class BattleScene extends Phaser.Scene {
       const nth = /^onNthCardThisTurn\((\d+)\)$/.exec(mark.trigger);
       if (!nth || this.cardsPlayedThisTurn !== Number(nth[1]) || this.markFiredThisCombat.has(mark.id)) continue;
       this.markFiredThisCombat.add(mark.id);
-      this.resolveMarkEffect(mark.effect, mark.name);
-      this.logEvent(`${mark.name}: ${mark.description}`);
+      this.triggerWaymark(mark);
     }
   }
 
@@ -6188,6 +6881,16 @@ class BattleScene extends Phaser.Scene {
         const value = parseEffectValue(parsed.args[1] ?? parsed.args[0], 0) || 1;
         this.freePreenNextDistrict += value;
         this.logEvent(`${mark.name}: ${value} free Preen waits in the next district.`);
+      }
+      if (parsed && parsed.name === 'districtStartKit') {
+        const value = parseEffectValue(parsed.args[1] ?? parsed.args[0], 0) || 1;
+        this.freePreenNextDistrict += value;
+        for (let i = 0; i < value && this.runSupplies.length < this.runSupplyCapacity; i += 1) {
+          const ids = [...alphaSupplyLibrary.keys()].filter((id) => !this.runSupplies.includes(id));
+          const pick = ids[Math.floor(Math.random() * ids.length)];
+          if (pick) this.runSupplies.push(pick);
+        }
+        this.logEvent(`${mark.name}: the next district starts with Preen and packed gear.`);
       }
     }
   }
@@ -6310,7 +7013,9 @@ class BattleScene extends Phaser.Scene {
     this.renderPiles();
     this.renderHand();
     this.renderSupplies();
+    this.renderSupplyFeedbackStrip();
     this.renderWaymarkShelf();
+    this.renderWaymarkFeedbackStrip();
     this.renderCommandStrip();
     this.renderToast();
     if (this.mode === 'waymarkReward') (this as unknown as { renderWaymarkReward: () => void }).renderWaymarkReward();
@@ -6939,6 +7644,11 @@ class BattleScene extends Phaser.Scene {
   private queueCardArtLoad(cards: Card[]) {
     const assets = uniqueImageAssets(cards.map((card) => cardArtAssets[card.id]));
     this.queueImageAssets(assets, 'Card art failed to load');
+  }
+
+  private queueCurrentWaymarkArtLoad() {
+    const assets = uniqueImageAssets(this.routeMarks.map((id) => waymarkArtAssets[id]));
+    this.queueImageAssets(assets, 'Waymark art failed to load');
   }
 
   private queueImageAssets(assets: RuntimeImageAsset[], warning: string) {
@@ -7689,6 +8399,36 @@ class BattleScene extends Phaser.Scene {
     }
   }
 
+  private renderSupplyFeedbackStrip() {
+    const latest = this.supplyFeedback[0];
+    if (!latest) return;
+    const x = 300;
+    const y = 162;
+    this.root.add(this.add.text(x - 126, y - 34, 'LAST SUPPLY', {
+      fontFamily: 'Arial',
+      fontSize: '9px',
+      fontStyle: 'bold',
+      color: '#7f93a8'
+    }));
+    this.root.add(this.add.rectangle(x, y, 252, 50, 0x07101c, 0.86)
+      .setStrokeStyle(1, 0xffb86b, 0.72));
+    this.root.add(this.add.text(x - 116, y - 19, latest.name, {
+      fontFamily: 'Arial',
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#ffe1a3',
+      fixedWidth: 226,
+      maxLines: 1
+    }).setResolution(2));
+    this.root.add(this.add.text(x - 116, y - 2, latest.summary, {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      color: '#cdd9e6',
+      fixedWidth: 226,
+      maxLines: 2
+    }).setResolution(2));
+  }
+
   private waymarkAccent(mark: RuntimeRouteMark) {
     switch (mark.family) {
       case 'safety': return 0x8fd6a0;
@@ -7737,6 +8477,7 @@ class BattleScene extends Phaser.Scene {
 
   private renderWaymarkShelf() {
     const marks = this.ownedMarkDefs();
+    this.queueCurrentWaymarkArtLoad();
     this.root.add(this.add.text(30, 246, 'WAYMARKS', {
       fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#7f93a8'
     }));
@@ -7776,6 +8517,35 @@ class BattleScene extends Phaser.Scene {
         fontFamily: 'Arial', fontSize: '16px', fontStyle: 'bold', color: '#d9c8ff'
       }).setOrigin(0.5));
     }
+  }
+
+  private renderWaymarkFeedbackStrip() {
+    const latest = this.waymarkFeedback[0];
+    if (!latest) return;
+    const mark = alphaRouteMarkLibrary.get(latest.id);
+    const accent = mark ? this.waymarkAccent(mark) : 0xc9a6ff;
+    const x = 98;
+    const y = 382;
+    this.root.add(this.add.text(30, y - 34, 'LAST TRIGGER', {
+      fontFamily: 'Arial', fontSize: '9px', fontStyle: 'bold', color: '#7f93a8'
+    }));
+    this.root.add(this.add.rectangle(x, y, 152, 58, 0x07101c, 0.86)
+      .setStrokeStyle(1, accent, 0.72));
+    this.root.add(this.add.text(32, y - 22, latest.name, {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#ffe1a3',
+      fixedWidth: 132,
+      maxLines: 1,
+    }).setResolution(2));
+    this.root.add(this.add.text(32, y - 5, latest.summary, {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      color: '#cdd9e6',
+      fixedWidth: 132,
+      maxLines: 2,
+    }).setResolution(2));
   }
 
   private renderWaymarkDrawer() {
@@ -7833,6 +8603,7 @@ class BattleScene extends Phaser.Scene {
     }
     this.runSupplies.splice(index, 1);
     this.runSuppliesUsed.push(id);
+    this.showSupplyFeedback(supply, repeats);
     this.checkSupplyUsedMarks();
     this.logEvent(`Used ${supply.name}.`);
     this.renderAll();
@@ -8065,17 +8836,38 @@ class BattleScene extends Phaser.Scene {
     }).setOrigin(0.5));
   }
 
+  private addRewardTagRow(x: number, y: number, tags: string[], accent: number, maxWidth: number) {
+    let cursor = x;
+    tags.slice(0, 3).forEach((tag) => {
+      const w = clamp(tag.length * 7 + 24, 70, 132);
+      if (cursor + w > x + maxWidth) return;
+      this.root.add(this.add.rectangle(cursor + w / 2, y, w, 22, 0x1d3047, 0.98)
+        .setStrokeStyle(1, accent, 0.95));
+      this.root.add(this.add.text(cursor + w / 2, y, tag, {
+        fontFamily: 'Arial',
+        fontSize: '10px',
+        fontStyle: 'bold',
+        color: '#ffe1a3',
+        align: 'center',
+        fixedWidth: w - 8,
+      }).setResolution(2).setOrigin(0.5));
+      cursor += w + 8;
+    });
+  }
+
   private renderWaymarkReward() {
     this.renderRewardBackdrop('Claim a Waymark', 'Choose one route artifact from the cleared chokepoint.');
     this.waymarkChoices.forEach((mark, index) => {
       const x = 336 + index * 304;
       const y = 404;
       const accent = mark.family === 'bossPrep' ? 0xff6b57 : mark.family === 'molt' ? 0xc9a6ff : 0xd8a840;
-      const card = this.add.rectangle(x, y, 248, 278, 0x07101c, 0.98)
+      const cardW = 248;
+      const cardH = 306;
+      const card = this.add.rectangle(x, y, cardW, cardH, 0x07101c, 0.98)
         .setStrokeStyle(3, accent, 0.95)
         .setInteractive({ useHandCursor: true });
       card.on('pointerdown', () => this.chooseWaymarkReward(mark.id));
-      this.root.add(this.add.rectangle(x + 8, y + 10, 248, 278, 0x020409, 0.42));
+      this.root.add(this.add.rectangle(x + 8, y + 10, cardW, cardH, 0x020409, 0.42));
       this.root.add(card);
       const artAsset = waymarkArtAssets[mark.id];
       if (artAsset && this.textures.exists(artAsset.key)) {
@@ -8104,13 +8896,21 @@ class BattleScene extends Phaser.Scene {
         color: '#8df4ff',
         align: 'center'
       }).setOrigin(0.5));
-      this.root.add(this.add.text(x, y + 74, mark.description, {
+      this.root.add(this.add.text(x, y + 48, mark.rarity.toUpperCase(), {
         fontFamily: 'Arial',
-        fontSize: '14px',
+        fontSize: '11px',
+        fontStyle: 'bold',
+        color: mark.rarity === 'boss' ? '#ffb1a4' : '#ffcf6b',
+        align: 'center',
+      }).setOrigin(0.5));
+      this.addRewardTagRow(x - 102, y + 76, waymarkSynergyTags(mark), accent, 204);
+      this.root.add(this.add.text(x, y + 112, mark.description, {
+        fontFamily: 'Arial',
+        fontSize: '13px',
         color: '#d7c5a6',
         align: 'center',
         wordWrap: { width: 204 },
-        maxLines: 4
+        maxLines: 3
       }).setOrigin(0.5));
     });
   }
@@ -10157,7 +10957,8 @@ class BattleScene extends Phaser.Scene {
         name: mark.name,
         family: mark.family,
         source: mark.source,
-        description: mark.description
+        description: mark.description,
+        tags: waymarkSynergyTags(mark)
       })),
       rewardChoices: this.rewardChoices.map((card) => ({
         id: card.id,
@@ -10202,6 +11003,8 @@ class BattleScene extends Phaser.Scene {
       },
       inspectOverlay: this.inspectOverlay,
       waymarkDrawerOpen: this.waymarkDrawerOpen,
+      waymarkFeedback: [...this.waymarkFeedback],
+      supplyFeedback: [...this.supplyFeedback],
       piles: {
         deck: this.drawPile.length,
         hand: this.hand.length,
@@ -11286,7 +12089,7 @@ function routeNodeTypeLabel(type: RouteNode['type']) {
     case 'street': return 'Street Encounter';
     case 'rival': return 'Rival Crew';
     case 'boss': return 'Boss';
-    case 'basin': return 'Basin';
+    case 'basin': return 'Lantern Roost';
     case 'nest': return 'Nest Workshop';
     case 'market': return 'Market';
     case 'signal': return 'Signal';
@@ -11308,7 +12111,7 @@ function routeEventAccent(type: RouteNode['type']) {
 
 function routeEventLandmarkLine(type: RouteNode['type']) {
   switch (type) {
-    case 'basin': return 'A protected basin stop where the flock regroups under cover.';
+    case 'basin': return 'A warm roost landmark where recovery is treated like careful maintenance.';
     case 'nest': return 'A rooftop workshop landmark for tuning the flock before the next crossing.';
     case 'market': return 'A stall-lined landmark where route currency turns into momentum.';
     case 'signal': return 'A signal landmark where one choice changes the shape of the route.';
@@ -11319,7 +12122,7 @@ function routeEventLandmarkLine(type: RouteNode['type']) {
 
 function nonCombatLesson(type: RouteNode['type']) {
   switch (type) {
-    case 'basin': return 'Recover Cohesion, take shelter for Open Sky Guard, or refill a Supply.';
+    case 'basin': return 'Recover Cohesion, take shelter for Open Sky Guard, or trade Scrap for a Supply.';
     case 'nest': return 'Preen or Remove a card, or buy a Waymark to shape the deck.';
     case 'market': return 'Spend Scrap on cards, Waymarks, Supplies, and Preen/Remove.';
     case 'signal': return 'A route choice with trade-offs in Scrap, Cohesion, and risk.';
@@ -11350,6 +12153,74 @@ function routeMarkFamilyLabel(family: RuntimeRouteMark['family']) {
     case 'bossPrep': return 'Boss';
     default: return 'Waymark';
   }
+}
+
+function addSynergyTag(tags: string[], tag: string) {
+  if (!tags.includes(tag)) tags.push(tag);
+}
+
+function authoredEffectBodies(effects: string[]) {
+  return effects.flatMap((effect) => {
+    const conditional = effect.match(/^if ([a-zA-Z][a-zA-Z0-9]*(?:\([^)]+\))?) then (.+)$/);
+    return conditional ? [conditional[1], conditional[2]] : [effect];
+  });
+}
+
+function effectVerb(effect: string) {
+  return parseEffect(effect)?.name ?? '';
+}
+
+function supplySynergyTags(supply: RuntimeSupply) {
+  const tags: string[] = [];
+  const bodies = authoredEffectBodies(supply.effects);
+  const text = `${supply.answerType} ${supply.timing} ${supply.effects.join(' ')}`.toLowerCase();
+  const verbs = new Set(bodies.map(effectVerb));
+  if (supply.timing === 'route') addSynergyTag(tags, 'Route');
+  if (supply.timing === 'combat') addSynergyTag(tags, 'Combat');
+  if (supply.timing === 'either') addSynergyTag(tags, 'Flexible');
+  if (text.includes('visitednodetype')) addSynergyTag(tags, 'Route Memory');
+  if (verbs.has('gainCover') || supply.answerType === 'coverNow') addSynergyTag(tags, 'Cover');
+  if (verbs.has('healCohesion') || verbs.has('heal') || supply.answerType === 'healNow') addSynergyTag(tags, 'Recovery');
+  if (verbs.has('draw') || verbs.has('nextTurnDraw') || supply.answerType === 'drawNow') addSynergyTag(tags, 'Draw');
+  if (verbs.has('gainWingbeat') || verbs.has('gainEnergyNextTurn') || supply.answerType === 'wingbeatNow') addSynergyTag(tags, 'Wingbeat');
+  if (verbs.has('damage') || verbs.has('damageAll') || verbs.has('damagePierce') || supply.answerType === 'damageNow') addSynergyTag(tags, 'Pressure');
+  if (verbs.has('removeCover') || supply.answerType === 'antiCover') addSynergyTag(tags, 'Anti-Cover');
+  if (verbs.has('cleanseFlock') || supply.answerType === 'cleanseNow') addSynergyTag(tags, 'Cleanse');
+  if (verbs.has('gainSupplyChoice') || verbs.has('gainSupply')) addSynergyTag(tags, 'Packs Supply');
+  if (verbs.has('increaseSupplySlots')) addSynergyTag(tags, 'Capacity');
+  if (verbs.has('repeatNextSupply')) addSynergyTag(tags, 'Supply Combo');
+  if (verbs.has('retainHand') || supply.answerType === 'handFix') addSynergyTag(tags, 'Hand Fix');
+  if (verbs.has('enterMolt') || supply.answerType === 'moltNow') addSynergyTag(tags, 'Molt');
+  if (verbs.has('peekNextNodes') || supply.answerType === 'tellControl') addSynergyTag(tags, 'Intel');
+  return tags.slice(0, 5);
+}
+
+function waymarkSynergyTags(mark: RuntimeRouteMark) {
+  const tags: string[] = [];
+  const parsed = parseEffect(mark.effect);
+  const verb = parsed?.name ?? '';
+  addSynergyTag(tags, routeMarkFamilyLabel(mark.family));
+  if (mark.rarity === 'boss') addSynergyTag(tags, 'Boss');
+  if (mark.trigger.startsWith('onSuitPlayed')) addSynergyTag(tags, 'Suit Engine');
+  if (mark.trigger === 'onSupplyUsed') addSynergyTag(tags, 'Supply Combo');
+  if (mark.trigger === 'onEnemyCoverBroken') addSynergyTag(tags, 'Anti-Cover');
+  if (mark.trigger === 'onEnterMolt') addSynergyTag(tags, 'Molt');
+  if (mark.trigger === 'onHealFlock' || mark.trigger === 'basinHeal') addSynergyTag(tags, 'Recovery');
+  if (mark.trigger === 'cacheChoice') addSynergyTag(tags, 'Cache');
+  if (mark.trigger === 'signalResolved') addSynergyTag(tags, 'Signal');
+  if (mark.trigger === 'afterStreetEncounter' || mark.trigger === 'afterMarketPurchase') addSynergyTag(tags, 'Economy');
+  if (mark.trigger === 'mapStart') addSynergyTag(tags, 'Next District');
+  if (verb === 'gainCover' || verb === 'bossDamageShield' || verb === 'gainCoverPerWaymark') addSynergyTag(tags, 'Cover');
+  if (verb === 'heal' || verb === 'addHeal') addSynergyTag(tags, 'Recovery');
+  if (verb === 'draw' || verb === 'nextTurnDraw') addSynergyTag(tags, 'Draw');
+  if (verb === 'gainWingbeat' || verb === 'gainEnergyNextTurn') addSynergyTag(tags, 'Wingbeat');
+  if (verb === 'gainOpenSkyGuard' || verb === 'reduceOpenSky' || verb === 'reduceNextOpenSky') addSynergyTag(tags, 'Open Sky');
+  if (verb === 'gainScrap' || verb === 'reducePreenPrice') addSynergyTag(tags, 'Economy');
+  if (verb === 'damageAll' || verb === 'damage' || verb === 'damagePierce') addSynergyTag(tags, 'Pressure');
+  if (verb === 'gainResonance') addSynergyTag(tags, 'Resonance');
+  if (verb === 'extraCacheChoice') addSynergyTag(tags, 'Cache');
+  if (verb === 'freePreenNextDistrict' || verb === 'districtStartKit') addSynergyTag(tags, 'Preen');
+  return tags.slice(0, 5);
 }
 
 // Human-readable summary of route-effect verbs for the node-choice overlay.
@@ -11682,6 +12553,10 @@ function formatEffect(effect: string) {
       return `Preview ${value || 1} route choice${value === '1' ? '' : 's'}.`;
     case 'increaseSupplySlots':
       return `Supply capacity +${value || 1}.`;
+    case 'gainSupply':
+      return 'Pack a Supply.';
+    case 'gainSupplyChoice':
+      return `Pack ${value || 1} Supply ${value === '1' ? 'choice' : 'choices'}.`;
     case 'shuffleSelfToDraw':
       return 'Return this to the draw pile after play.';
     case 'bossDamageShield':
@@ -11690,6 +12565,8 @@ function formatEffect(effect: string) {
       return `Caches offer +${value} choice.`;
     case 'freePreenNextDistrict':
       return `Next district starts with ${value || 1} free Preen.`;
+    case 'districtStartKit':
+      return `Next district starts with ${value || 1} free Preen and ${value || 1} Supply.`;
     default:
       return effect;
   }

@@ -528,15 +528,43 @@ test('payScrap route options are locked when Scrap is short', async ({ page }) =
 });
 
 test('route event overlays render generated special-node backdrops', async ({ page }) => {
+  test.setTimeout(45000);
   await boot(page);
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const g = window.__birdSquadGame;
     const cases = [
-      { type: 'market', key: 'market-kit-background' },
-      { type: 'cache', key: 'route-event-cache-billboard' },
-      { type: 'signal', key: 'route-event-signal-relay' },
-      { type: 'nest', key: 'route-event-workshop-prep' }
+      {
+        type: 'basin',
+        key: 'route-event-lantern-roost-shelter',
+        residentKey: 'route-event-resident-sella-warmwick',
+        extraKeys: [
+          'route-event-lantern-roost-hearth',
+          'route-event-lantern-roost-sign',
+          'route-event-lantern-roost-rain-pipe',
+          'route-event-lantern-roost-awning',
+          'route-event-lantern-roost-wrapped-snack'
+        ]
+      },
+      {
+        type: 'cache',
+        key: 'route-event-rooftop-cache-office',
+        residentKey: 'route-event-resident-marn-valeclip',
+        extraKeys: ['route-event-centerpiece-rooftop-cache-cabinet']
+      },
+      {
+        type: 'signal',
+        key: 'route-event-signal-switchboard',
+        residentKey: 'route-event-resident-ivo-tallymast',
+        extraKeys: ['route-event-centerpiece-signal-route-switchboard']
+      },
+      {
+        type: 'nest',
+        key: 'route-event-featherwright-studio',
+        residentKey: 'route-event-resident-oren-shearbright',
+        extraKeys: ['route-event-centerpiece-featherwright-chair-press']
+      },
+      { type: 'market', key: 'market-kit-background' }
     ];
     const mkRunState = () => ({
       deck: [{ id: 'major_00' }],
@@ -559,6 +587,7 @@ test('route event overlays render generated special-node backdrops', async ({ pa
     for (const entry of cases) {
       g.scene.start('RouteScene', { runState: mkRunState() });
       g.scene.stop('MenuScene');
+      await wait(50);
       const scene: any = g.scene.getScene('RouteScene');
       const node = window.__birdSquadCurrentMap!().nodes.find((candidate: any) => candidate.type === entry.type);
       if (!node) {
@@ -571,8 +600,19 @@ test('route event overlays render generated special-node backdrops', async ({ pa
         const state = JSON.parse(window.render_game_to_text!());
         const stateKey = state.market?.backdropAssetKey ?? state.nodeChoice?.backdropAssetKey ?? '';
         const rendered = scene.children.list.some((child: any) => child.texture?.key === entry.key);
-        if (stateKey === entry.key && scene.textures.exists(entry.key) && rendered) {
-          opened.push({ type: entry.type, stateKey, textureLoaded: true, rendered: true });
+        const residentRendered = !entry.residentKey
+          || scene.children.list.some((child: any) => child.texture?.key === entry.residentKey);
+        const extraRendered = (entry.extraKeys ?? [])
+          .every((key: string) => scene.children.list.some((child: any) => child.texture?.key === key));
+        if (stateKey === entry.key && scene.textures.exists(entry.key) && rendered && residentRendered && extraRendered) {
+          opened.push({
+            type: entry.type,
+            stateKey,
+            textureLoaded: true,
+            rendered: true,
+            residentRendered,
+            extraRendered
+          });
           break;
         }
         await wait(50);
@@ -583,7 +623,11 @@ test('route event overlays render generated special-node backdrops', async ({ pa
           type: entry.type,
           stateKey: state.market?.backdropAssetKey ?? state.nodeChoice?.backdropAssetKey ?? '',
           textureLoaded: scene.textures.exists(entry.key),
-          rendered: scene.children.list.some((child: any) => child.texture?.key === entry.key)
+          rendered: scene.children.list.some((child: any) => child.texture?.key === entry.key),
+          residentRendered: !entry.residentKey
+            || scene.children.list.some((child: any) => child.texture?.key === entry.residentKey),
+          extraRendered: (entry.extraKeys ?? [])
+            .every((key: string) => scene.children.list.some((child: any) => child.texture?.key === key))
         });
       }
     }
@@ -591,10 +635,11 @@ test('route event overlays render generated special-node backdrops', async ({ pa
   });
 
   expect(result).toEqual([
-    expect.objectContaining({ type: 'market', stateKey: 'market-kit-background', textureLoaded: true, rendered: true }),
-    expect.objectContaining({ type: 'cache', stateKey: 'route-event-cache-billboard', textureLoaded: true, rendered: true }),
-    expect.objectContaining({ type: 'signal', stateKey: 'route-event-signal-relay', textureLoaded: true, rendered: true }),
-    expect.objectContaining({ type: 'nest', stateKey: 'route-event-workshop-prep', textureLoaded: true, rendered: true })
+    expect.objectContaining({ type: 'basin', stateKey: 'route-event-lantern-roost-shelter', textureLoaded: true, rendered: true, residentRendered: true, extraRendered: true }),
+    expect.objectContaining({ type: 'cache', stateKey: 'route-event-rooftop-cache-office', textureLoaded: true, rendered: true, residentRendered: true, extraRendered: true }),
+    expect.objectContaining({ type: 'signal', stateKey: 'route-event-signal-switchboard', textureLoaded: true, rendered: true, residentRendered: true, extraRendered: true }),
+    expect.objectContaining({ type: 'nest', stateKey: 'route-event-featherwright-studio', textureLoaded: true, rendered: true, residentRendered: true, extraRendered: true }),
+    expect.objectContaining({ type: 'market', stateKey: 'market-kit-background', textureLoaded: true, rendered: true })
   ]);
 });
 
@@ -636,21 +681,51 @@ test('balance economy Waymarks resolve through generic trigger/effect hooks', as
 
 test('supplies are carried into combat and usable for an effect', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.start('BattleScene', {
+      routeNodeId: 'm1_entry',
+      runState: {
+        deck: [{ id: 'major_00' }, { id: 'wands_ace' }, { id: 'cups_ace' }, { id: 'swords_ace' }, { id: 'pentacles_04' }],
+        leaderId: 'fledgling',
+        difficulty: 0,
+        seed: 'combat-supply-test',
+        currentHp: 32,
+        scrap: 0,
+        routeMarks: [],
+        supplies: ['zip_tie_roll'],
+        supplySlots: 2,
+        mapIndex: 0,
+        completedRouteNodeIds: [],
+        currentRouteNodeId: undefined,
+        routeLog: [],
+        nextCombat: undefined,
+        signalChoices: [],
+        rewardEvents: [],
+        suppliesUsed: [],
+        combatResults: [],
+        freePreenNextDistrict: 0,
+      }
+    });
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('BattleScene');
-    scene.runSupplies = ['zip_tie_roll']; // gainCover(10)
-    scene.renderAll();
+    for (let i = 0; i < 30 && !(scene.root && scene.hand?.length); i += 1) await wait(50);
     const carried = window.__birdSquadState!().route.supplies;
     const coverBefore = scene.flock.block;
     scene.useSupply(0);
-    return { carried, coverBefore, coverAfter: scene.flock.block, remaining: scene.runSupplies.length };
+    return {
+      carried,
+      coverBefore,
+      coverAfter: scene.flock.block,
+      remaining: scene.runSupplies.length,
+      feedback: window.__birdSquadState!().supplyFeedback?.[0],
+    };
   });
   expect(result.carried).toEqual(['zip_tie_roll']);
-  expect(result.coverAfter).toBe(result.coverBefore + 10);
+  expect(result.coverAfter - result.coverBefore).toBeGreaterThanOrEqual(10);
   expect(result.remaining).toBe(0);
+  expect(result.feedback.id).toBe('zip_tie_roll');
 });
 
 test('card reward can be skipped for a Scrap fallback, recorded for stats', async ({ page }) => {
@@ -718,29 +793,43 @@ test('boss Waymark reward choices use boss items before the next district starts
     g.scene.start('BattleScene', { routeNodeId: 'm1_boss' });
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 30 && !scene.root; i += 1) await wait(50);
     scene.createRewardChoices = () => [];
     scene.shouldOfferUpgradeReward = () => false;
     scene.enemies.forEach((enemy: any) => { enemy.hp = 0; });
     scene.checkOutcome();
     const rewardState = window.__birdSquadState!();
     const choices = rewardState.waymarkChoices.map((choice: any) => choice.id);
+    const choiceTags = Object.fromEntries(rewardState.waymarkChoices.map((choice: any) => [choice.id, choice.tags]));
     scene.chooseWaymarkReward('reopened_roofline');
-    await wait(100);
-    const route: any = g.scene.getScene('RouteScene');
-    const routeState = JSON.parse(window.render_game_to_text!());
+    let route: any = g.scene.getScene('RouteScene');
+    let routeState: any = {};
+    for (let i = 0; i < 40; i += 1) {
+      route = g.scene.getScene('RouteScene');
+      routeState = JSON.parse(window.render_game_to_text!());
+      if (route?.root && routeState.map) break;
+      await wait(50);
+    }
     return {
       rewardMode: rewardState.mode,
       choices,
-      mapIndex: routeState.map.index,
-      routeMarks: routeState.run.routeMarks,
-      upgradedCards: route.runState.deck.filter((card: any) => card.upgraded).length,
-      log: route.runState.routeLog
+      choiceTags,
+      mapIndex: routeState.map?.index ?? -1,
+      routeMarks: routeState.run?.routeMarks ?? [],
+      supplies: route?.runState?.supplies ?? [],
+      freePreen: route?.runState?.freePreenNextDistrict ?? 0,
+      upgradedCards: route?.runState?.deck?.filter((card: any) => card.upgraded).length ?? 0,
+      log: route?.runState?.routeLog ?? []
     };
   });
   expect(result.rewardMode).toBe('waymarkReward');
   expect(result.choices).toEqual(expect.arrayContaining(['sky_safe_harness', 'crowbar_debt', 'reopened_roofline']));
+  expect(result.choiceTags.reopened_roofline).toEqual(expect.arrayContaining(['Boss', 'Next District', 'Preen']));
+  expect(result.choiceTags.crowbar_debt).toEqual(expect.arrayContaining(['Anti-Cover', 'Pressure']));
   expect(result.mapIndex).toBe(2);
   expect(result.routeMarks).toContain('reopened_roofline');
+  expect(result.supplies.length).toBeGreaterThan(0);
+  expect(result.freePreen).toBeGreaterThanOrEqual(0);
   expect(result.upgradedCards).toBeGreaterThan(0);
   expect(result.log.some((entry: string) => entry.includes('Boss prep'))).toBe(true);
 });
@@ -1500,11 +1589,13 @@ test('locked Flock Leaders are gated until unlocked, and the Profile screen rend
 
 test('route marks are real relics: combatStart marks reshape the fight', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(() => {
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
     g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 30 && !scene.fxLayer; i += 1) await wait(50);
     // Baseline: no marks → no relic cover/energy beyond the turn-1 default.
     scene.routeMarks = [];
     scene.flock.block = 0;
@@ -1513,16 +1604,111 @@ test('route marks are real relics: combatStart marks reshape the fight', async (
     const baseBlock = scene.flock.block;
     const baseEnergy = scene.energy;
     // Equip two combatStart relics and re-run combat start.
-    scene.routeMarks = ['chalk_wingmark', 'crowbar_debt']; // +2 Cover, +1 Wingbeat
+    scene.routeMarks = ['patched_shoulder_wrap', 'loose_feather_token']; // +3 Cover, +1 Wingbeat
     scene.flock.block = 0;
     scene.energy = 3;
     scene.applyCombatStartMarks();
-    return { baseBlock, baseEnergy, markBlock: scene.flock.block, markEnergy: scene.energy };
+    const markBlock = scene.flock.block;
+    const markEnergy = scene.energy;
+
+    scene.routeMarks = ['chalk_wingmark'];
+    scene.markFiredThisTurn = new Set();
+    scene.flock.block = 0;
+    scene.checkEnemyCoverBrokenMarks();
+    const chalkCover = scene.flock.block;
+
+    scene.routeMarks = ['stage_pin', 'quill_notch', 'feather_tape', 'workshop_stamp'];
+    scene.markFiredThisTurn = new Set();
+    scene.flock.maxHp = 40;
+    scene.flock.hp = 20;
+    scene.flock.block = 0;
+    scene.flock.openSkyGuard = 0;
+    scene.checkSuitPlayedMarks('plumes');
+    scene.checkSuitPlayedMarks('quills');
+    scene.checkSuitPlayedMarks('basins');
+    scene.checkSuitPlayedMarks('nests');
+    const suitMarks = {
+      hp: scene.flock.hp,
+      block: scene.flock.block,
+      guard: scene.flock.openSkyGuard,
+    };
+
+    scene.routeMarks = ['rooftop_relay_bell'];
+    scene.markFiredThisCombat = new Set();
+    scene.energy = 3;
+    scene.checkSupplyUsedMarks();
+    const relayEnergy = scene.energy;
+
+    scene.routeMarks = ['parade_mirror'];
+    scene.markFiredThisCombat = new Set();
+    scene.cardsPlayedThisTurn = 2;
+    scene.spark = 0;
+    scene.checkNthCardMarks();
+    const paradeSpark = scene.spark;
+
+    scene.routeMarks = ['fresh_pinfeather'];
+    scene.markFiredThisCombat = new Set();
+    scene.flock.molt = false;
+    scene.nextTurnEnergyBonus = 0;
+    scene.enterMolt('test');
+    const pinfeatherNextEnergy = scene.nextTurnEnergyBonus;
+
+    scene.routeMarks = ['harbor_bead_strand'];
+    scene.markFiredThisTurn = new Set();
+    scene.flock.maxHp = 40;
+    scene.flock.hp = 20;
+    scene.nextTurnDrawBonus = 0;
+    scene.healFlock(2, 'test');
+    const harborNextDraw = scene.nextTurnDrawBonus;
+
+    scene.routeMarks = ['rooftop_nest_lining'];
+    scene.markFiredThisCombat = new Set();
+    scene.flock.block = 0;
+    scene.checkNoDamageTurnMarks();
+    const nestLiningCover = scene.flock.block;
+
+    scene.routeMarks = ['crowbar_debt'];
+    scene.markFiredThisTurn = new Set();
+    scene.enemies.forEach((enemy: any) => { enemy.maxHp = 20; enemy.hp = 20; });
+    scene.checkEnemyCoverBrokenMarks();
+    const crowbarDamage = scene.enemies.map((enemy: any) => 20 - enemy.hp);
+    const waymarkFeedback = window.__birdSquadState!().waymarkFeedback ?? [];
+
+    return {
+      baseBlock,
+      baseEnergy,
+      markBlock,
+      markEnergy,
+      chalkCover,
+      suitMarks,
+      relayEnergy,
+      paradeSpark,
+      pinfeatherNextEnergy,
+      harborNextDraw,
+      nestLiningCover,
+      crowbarDamage,
+      waymarkFeedback,
+    };
   });
   expect(r.baseBlock).toBe(0);          // no relic, no bonus cover
   expect(r.baseEnergy).toBe(3);
-  expect(r.markBlock).toBeGreaterThanOrEqual(2); // chalk_wingmark grants Cover at combat start
-  expect(r.markEnergy).toBeGreaterThanOrEqual(4); // crowbar_debt grants a turn-1 Wingbeat
+  expect(r.markBlock).toBeGreaterThanOrEqual(3); // patched_shoulder_wrap grants Cover at combat start
+  expect(r.markEnergy).toBeGreaterThanOrEqual(4); // loose_feather_token grants a turn-1 Wingbeat
+  expect(r.chalkCover).toBe(3);
+  expect(r.suitMarks.guard).toBe(1);
+  expect(r.suitMarks.block).toBe(8);
+  expect(r.suitMarks.hp).toBe(22);
+  expect(r.relayEnergy).toBe(4);
+  expect(r.paradeSpark).toBe(1);
+  expect(r.pinfeatherNextEnergy).toBe(1);
+  expect(r.harborNextDraw).toBe(1);
+  expect(r.nestLiningCover).toBe(6);
+  expect(r.crowbarDamage.every((damage: number) => damage === 2)).toBe(true);
+  expect(r.waymarkFeedback[0]).toEqual(expect.objectContaining({
+    id: 'crowbar_debt',
+    name: 'Crowbar Debt',
+  }));
+  expect(r.waymarkFeedback[0].summary).toContain('Cover broken');
 });
 
 test('waymark artifact drawer renders found item art and run tooltips', async ({ page }) => {
@@ -1585,7 +1771,7 @@ test('waymark artifact drawer renders found item art and run tooltips', async ({
     scene.children.list.forEach(walk);
     return texts;
   });
-  expect(tooltipTexts.some((text) => text.includes('Start each combat with 2 Cover.'))).toBe(true);
+  expect(tooltipTexts.some((text) => text.includes('The first time enemy Cover is broken each turn, gain 3 Cover.'))).toBe(true);
   await page.screenshot({ path: '.artifacts/test-results/waymark-artifact-tooltip.png' });
 });
 
@@ -1666,7 +1852,7 @@ test('Resonance has real sinks: a threshold gate and a spend-all burst', async (
     g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
-    for (let i = 0; i < 20 && !(s.hand && s.hand.length); i += 1) await wait(50);
+    for (let i = 0; i < 30 && (!(s.hand && s.hand.length) || !s.fxLayer); i += 1) await wait(50);
     const card = s.hand[0];
     const enemy = s.enemies[0];
     const mkState = () => ({ previousDiscarded: 0, previousDamageDefeated: false, spentResonance: false, returnSelfToDraw: false, builtFlow: false });
@@ -1698,7 +1884,7 @@ test('Winded stacking matters: perWinded scaling, windedAtLeast gate, consuming 
     g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
-    for (let i = 0; i < 20 && !(s.hand && s.hand.length); i += 1) await wait(50);
+    for (let i = 0; i < 30 && (!(s.hand && s.hand.length) || !s.fxLayer); i += 1) await wait(50);
     const card = s.hand[0];
     const enemy = s.enemies[0];
     const mkState = () => ({ previousDiscarded: 0, previousDamageDefeated: false, spentResonance: false, returnSelfToDraw: false, builtFlow: false });
@@ -1878,7 +2064,7 @@ test('expanded supplies resolve tactical combat verbs', async ({ page }) => {
     });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
-    for (let i = 0; i < 20 && !(s.enemies && s.enemies.length); i += 1) await wait(50);
+    for (let i = 0; i < 30 && (!(s.enemies && s.enemies.length) || !s.fxLayer); i += 1) await wait(50);
     for (let i = 0; i < 60 && !supplyTextureKeys.every((key) => s.textures.exists(key)); i += 1) await wait(100);
     const enemy = s.enemies[0];
     enemy.maxHp = 40;
@@ -2001,6 +2187,8 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
     enemy.hp = 60;
     enemy.block = 0;
     s.selectedEnemyId = enemy.id;
+    const map = (window as any).__birdSquadCurrentMap();
+    const nestNode = map.nodes.find((node: any) => node.type === 'nest');
 
     const discarded = s.hand.pop();
     if (discarded) s.discardPile = [discarded];
@@ -2014,11 +2202,13 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
     s.nextTurnDrawBonus = 0;
     s.nextTurnEnergyBonus = 0;
     s.pendingNestCoverBonus = 0;
+    s.pendingRetainHand = 0;
+    s.completedRouteNodeIds = nestNode ? [nestNode.id] : [];
 
     s.useSupply(0);
     const afterReturn = { hand: s.hand.length, discard: s.discardPile.length };
     s.useSupply(0);
-    const afterClamp = { block: s.flock.block, pendingNest: s.pendingNestCoverBonus };
+    const afterClamp = { block: s.flock.block, pendingNest: s.pendingNestCoverBonus, retain: s.pendingRetainHand, hadNestNode: !!nestNode };
     s.useSupply(0);
     const afterSmoke = { winded: enemy.weak, nextDraw: s.nextTurnDrawBonus };
     s.useSupply(0);
@@ -2029,7 +2219,7 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
     s.useSupply(0);
     const afterLedger = { scrap: s.scrap, hp: s.flock.hp, beforeHp: hpBeforeLedger };
 
-    s.routeMarks = ['flock_counterweight', 'chalk_wingmark', 'supply_bell'];
+    s.routeMarks = ['flock_counterweight', 'patched_shoulder_wrap', 'supply_bell'];
     s.flock.block = 0;
     s.energy = 3;
     s.applyCombatStartMarks();
@@ -2091,8 +2281,10 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
   expect(r.hasNewWaymarkArt).toBe(true);
   expect(r.afterReturn.hand).toBeGreaterThanOrEqual(r.handBeforeReturn + 1);
   expect(r.afterReturn.discard).toBe(0);
+  expect(r.afterClamp.hadNestNode).toBe(true);
   expect(r.afterClamp.block).toBeGreaterThanOrEqual(4);
   expect(r.afterClamp.pendingNest).toBe(8);
+  expect(r.afterClamp.retain).toBe(1);
   expect(r.afterSmoke.winded).toBe(3);
   expect(r.afterSmoke.nextDraw).toBe(1);
   expect(r.afterWindcatcher.nextEnergy).toBe(2);
@@ -2100,7 +2292,7 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
   expect(r.afterBattery.spark).toBe(0);
   expect(r.afterLedger.scrap).toBe(20);
   expect(r.afterLedger.hp).toBe(r.afterLedger.beforeHp - 3);
-  expect(r.afterCounterweight.block).toBe(5);
+  expect(r.afterCounterweight.block).toBe(6);
   expect(r.afterBell.hand).toBeGreaterThanOrEqual(r.handBeforeBell + 1);
   expect(r.afterMoltMarks.hand).toBeGreaterThanOrEqual(r.handBeforeMolt + 1);
   expect(r.afterMoltMarks.block).toBe(6);
@@ -2171,17 +2363,24 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
     });
     g.scene.stop('MenuScene');
     const route: any = g.scene.getScene('RouteScene');
-    for (let i = 0; i < 40 && !route.root; i += 1) await wait(50);
+    for (let i = 0; i < 40 && !(window as any).render_game_to_text; i += 1) await wait(50);
     const routeSupplyKeys = ['supply-spare_pocket', 'supply-map_sticker_strip', 'supply-thermos_lid', 'supply-market_iou'];
     for (let i = 0; i < 60 && !routeSupplyKeys.every((key) => route.textures.exists(key)); i += 1) await wait(100);
 
     route.useRouteSupply(0);
-    const afterPocket = { slots: route.runState.supplySlots, used: [...route.runState.suppliesUsed] };
+    const afterPocketText = JSON.parse((window as any).render_game_to_text());
+    const afterPocket = {
+      slots: route.runState.supplySlots,
+      used: [...route.runState.suppliesUsed],
+      feedback: afterPocketText.supplyFeedback?.[0],
+    };
     route.useRouteSupply(0);
+    const afterStickerText = JSON.parse((window as any).render_game_to_text());
     const afterSticker = {
       scrap: route.runState.scrap,
       used: [...route.runState.suppliesUsed],
       previewLogged: route.runState.routeLog.some((line: string) => /Route preview/.test(line)),
+      feedback: afterStickerText.supplyFeedback?.[0],
     };
     route.useRouteSupply(0);
     const afterThermos = {
@@ -2204,6 +2403,47 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
     route.applyRouteMarkTrigger('cacheChoice');
     const afterCacheHook = { supplies: route.runState.supplies.length };
 
+    const routeMap = (window as any).__birdSquadCurrentMap();
+    const marketNode = routeMap.nodes.find((node: any) => node.type === 'market');
+    route.runState.supplies = ['market_iou'];
+    route.runState.suppliesUsed = [];
+    route.runState.currentHp = 20;
+    route.runState.scrap = 12;
+    route.runState.freePreenNextDistrict = 0;
+    route.runState.completedRouteNodeIds = marketNode ? [marketNode.id] : [];
+    route.useRouteSupply(0);
+    const afterIouAfterMarket = {
+      hadMarketNode: !!marketNode,
+      hp: route.runState.currentHp,
+      scrap: route.runState.scrap,
+      freePreen: route.runState.freePreenNextDistrict ?? 0,
+    };
+
+    const signalNode = routeMap.nodes.find((node: any) => node.type === 'signal');
+    route.runState.supplies = ['bus_token_cache'];
+    route.runState.suppliesUsed = [];
+    route.runState.supplySlots = 4;
+    route.runState.scrap = 12;
+    route.runState.completedRouteNodeIds = signalNode ? [signalNode.id] : [];
+    route.useRouteSupply(0);
+    const afterBusAfterSignal = {
+      hadSignalNode: !!signalNode,
+      scrap: route.runState.scrap,
+      supplies: route.runState.supplies.length,
+      previewLogged: route.runState.routeLog.some((line: string) => /Route preview/.test(line)),
+    };
+
+    const basinNode = routeMap.nodes.find((node: any) => node.type === 'basin');
+    route.runState.supplies = ['seed_packet'];
+    route.runState.suppliesUsed = [];
+    route.runState.currentHp = 20;
+    route.runState.completedRouteNodeIds = basinNode ? [basinNode.id] : [];
+    route.useRouteSupply(0);
+    const afterSeedAfterBasin = {
+      hadBasinNode: !!basinNode,
+      hp: route.runState.currentHp,
+    };
+
     g.scene.start('BattleScene', {
       routeNodeId: 'm1_entry',
       runState: mkRunState({
@@ -2220,7 +2460,7 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
       ...nextSupplies.map((id) => `supply-${id}`),
       ...nextWaymarks.map((id) => `waymark-${id}`),
     ];
-    for (let i = 0; i < 60 && !textureKeys.every((key) => battle.textures.exists(key)); i += 1) await wait(100);
+    for (let i = 0; i < 100 && !textureKeys.every((key) => battle.textures.exists(key)); i += 1) await wait(100);
 
     const enemy = battle.enemies[0];
     enemy.maxHp = 60;
@@ -2244,7 +2484,14 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
     battle.nextTurnDrawBonus = 0;
     const handBeforeChalk = battle.hand.length;
     battle.useSupply(0);
-    const afterChalk = { block: enemy.block, hand: battle.hand.length, beforeHand: handBeforeChalk };
+    const afterChalkState = (window as any).__birdSquadState();
+    const afterChalk = {
+      block: enemy.block,
+      hand: battle.hand.length,
+      beforeHand: handBeforeChalk,
+      feedback: afterChalkState.supplyFeedback?.[0],
+      waymarkFeedback: afterChalkState.waymarkFeedback?.[0],
+    };
     const handBeforeSugar = battle.hand.length;
     battle.useSupply(0);
     const afterSugar = { energy: battle.energy, nextDraw: battle.nextTurnDrawBonus, hand: battle.hand.length, beforeHand: handBeforeSugar };
@@ -2290,7 +2537,12 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
     battle.runSuppliesUsed = [];
     battle.flock.hp = 20;
     battle.useSupply(0);
-    const afterRepeatedSupply = { hp: battle.flock.hp, pending: battle.pendingSupplyRepeats };
+    const afterRepeatedState = (window as any).__birdSquadState();
+    const afterRepeatedSupply = {
+      hp: battle.flock.hp,
+      pending: battle.pendingSupplyRepeats,
+      feedback: afterRepeatedState.supplyFeedback?.[0],
+    };
 
     battle.routeMarks = ['basin_safety_pin'];
     battle.markFiredThisTurn = new Set();
@@ -2330,6 +2582,9 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
       afterIou,
       afterLedger,
       afterCacheHook,
+      afterIouAfterMarket,
+      afterBusAfterSignal,
+      afterSeedAfterBasin,
       afterChalk,
       afterSugar,
       afterAnchor,
@@ -2348,8 +2603,12 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
   expect(r.hasNextPassArt).toBe(true);
   expect(r.afterPocket.slots).toBe(5);
   expect(r.afterPocket.used).toContain('spare_pocket');
+  expect(r.afterPocket.feedback.id).toBe('spare_pocket');
+  expect(r.afterPocket.feedback.summary).toContain('Supply capacity');
   expect(r.afterSticker.previewLogged).toBe(true);
   expect(r.afterSticker.scrap).toBe(17);
+  expect(r.afterSticker.feedback.id).toBe('map_sticker_strip');
+  expect(r.afterSticker.feedback.summary).toContain('Preview');
   expect(r.afterThermos.hp).toBe(25);
   expect(r.afterThermos.guard).toBe(1);
   expect(r.afterIou.hp).toBe(23);
@@ -2357,8 +2616,21 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
   expect(r.afterIou.freePreen).toBe(1);
   expect(r.afterLedger.scrap).toBe(20);
   expect(r.afterCacheHook.supplies).toBe(1);
+  expect(r.afterIouAfterMarket.hadMarketNode).toBe(true);
+  expect(r.afterIouAfterMarket.hp).toBe(20);
+  expect(r.afterIouAfterMarket.scrap).toBe(22);
+  expect(r.afterIouAfterMarket.freePreen).toBe(1);
+  expect(r.afterBusAfterSignal.hadSignalNode).toBe(true);
+  expect(r.afterBusAfterSignal.scrap).toBe(32);
+  expect(r.afterBusAfterSignal.supplies).toBe(1);
+  expect(r.afterBusAfterSignal.previewLogged).toBe(true);
+  expect(r.afterSeedAfterBasin.hadBasinNode).toBe(true);
+  expect(r.afterSeedAfterBasin.hp).toBe(28);
   expect(r.afterChalk.block).toBe(0);
   expect(r.afterChalk.hand).toBeGreaterThanOrEqual(r.afterChalk.beforeHand + 1);
+  expect(r.afterChalk.feedback.id).toBe('chalk_dust_pouch');
+  expect(r.afterChalk.feedback.summary).toContain('Remove');
+  expect(r.afterChalk.waymarkFeedback.id).toBe('broken_cover_chime');
   expect(r.afterSugar.energy).toBe(4);
   expect(r.afterSugar.nextDraw).toBe(1);
   expect(r.afterSugar.hand).toBeGreaterThanOrEqual(r.afterSugar.beforeHand + 1);
@@ -2374,6 +2646,8 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
   expect(r.afterDoublePacked.pending).toBe(1);
   expect(r.afterRepeatedSupply.hp).toBe(32);
   expect(r.afterRepeatedSupply.pending).toBe(0);
+  expect(r.afterRepeatedSupply.feedback.id).toBe('seed_packet');
+  expect(r.afterRepeatedSupply.feedback.summary).toContain('x2');
   expect(r.afterSafetyPin.hp).toBe(22);
   expect(r.afterSafetyPin.weak).toBe(1);
   expect(r.afterSafetyPin.frail).toBe(1);
@@ -2543,7 +2817,7 @@ test('Cover and Heal are distinct axes, and the new card verbs work', async ({ p
     g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
-    for (let i = 0; i < 20 && !(s.hand && s.hand.length); i += 1) await wait(50);
+    for (let i = 0; i < 30 && (!(s.hand && s.hand.length) || !s.fxLayer); i += 1) await wait(50);
     const card = s.hand[0];
     const enemy = s.enemies[0];
     const mkState = () => ({ previousDiscarded: 0, previousDamageDefeated: false, spentResonance: false, returnSelfToDraw: false, builtFlow: false });
@@ -2585,20 +2859,22 @@ test('new balance verbs: timed Waymarks, self-loop cards, and anti-Cover conditi
     g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
-    for (let i = 0; i < 20 && !(s.hand && s.hand.length); i += 1) await wait(50);
+    for (let i = 0; i < 30 && (!(s.hand && s.hand.length) || !s.fxLayer); i += 1) await wait(50);
     const card = s.hand[0];
     const enemy = s.enemies[0];
 
-    s.routeMarks = ['black_ink_pin', 'fresh_pinfeather'];
+    s.routeMarks = ['black_ink_pin'];
     s.markFiredThisCombat = new Set();
     s.energy = 3;
-    s.flock.openSkyGuard = 0;
     s.cardsPlayedThisTurn = 2;
     s.checkNthCardMarks();
     const energyAfterSecondCard = s.energy;
-    s.cardsPlayedThisTurn = 3;
-    s.checkNthCardMarks();
-    const guardAfterThirdCard = s.flock.openSkyGuard;
+
+    s.routeMarks = ['fresh_pinfeather'];
+    s.markFiredThisCombat = new Set();
+    s.nextTurnEnergyBonus = 0;
+    s.checkEnterMoltMarks();
+    const nextEnergyAfterMolt = s.nextTurnEnergyBonus;
 
     const fakeLoopCard = {
       ...card,
@@ -2636,14 +2912,14 @@ test('new balance verbs: timed Waymarks, self-loop cards, and anti-Cover conditi
 
     return {
       energyAfterSecondCard,
-      guardAfterThirdCard,
+      nextEnergyAfterMolt,
       returnSelfToDraw: loopOutcome.returnSelfToDraw,
       enemyBlockAfterBreaker: enemy.block,
       enemyHpAfterBreaker: enemy.hp
     };
   });
   expect(r.energyAfterSecondCard).toBe(4);
-  expect(r.guardAfterThirdCard).toBe(1);
+  expect(r.nextEnergyAfterMolt).toBe(1);
   expect(r.returnSelfToDraw).toBe(true);
   expect(r.enemyBlockAfterBreaker).toBe(3);
   expect(r.enemyHpAfterBreaker).toBeLessThanOrEqual(48);

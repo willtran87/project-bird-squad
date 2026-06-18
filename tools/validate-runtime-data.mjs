@@ -156,7 +156,7 @@ const validEffectVerbs = new Set([
   'peekNextNodes', 'increaseSupplySlots', 'retainHand', 'repeatNextSupply',
   // route-mark resolver helpers
   'reducePreenPrice', 'reduceOpenSky', 'addHeal', 'addBonusStat', 'extraCacheChoice',
-  'freePreenNextDistrict', 'cleanseFlock',
+  'freePreenNextDistrict', 'districtStartKit', 'cleanseFlock',
 ]);
 
 const effectVerbName = (effect) => {
@@ -272,7 +272,7 @@ const validMarkVerbs = new Set([
   'gainOpenSkyGuard', 'draw', 'damageAll', 'heal', 'nextCoverBonus', 'nextTurnDraw', 'bossDamageShield',
   'retainHand', 'repeatNextSupply', 'cleanseFlock', 'reduceNextOpenSky',
   'reducePreenPrice', 'gainScrap', 'addHeal', 'reduceOpenSky', 'gainSupplyChoice',
-  'extraCacheChoice', 'freePreenNextDistrict',
+  'extraCacheChoice', 'freePreenNextDistrict', 'districtStartKit',
 ]);
 
 // Condition allowlists for the optional `if COND then` effect prefix
