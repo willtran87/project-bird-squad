@@ -583,38 +583,27 @@ test('route event overlays render generated special-node backdrops', async ({ pa
       {
         type: 'basin',
         key: 'route-event-lantern-roost-shelter',
-        residentKey: 'route-event-resident-sella-warmwick',
-        extraKeys: [
-          'route-event-lantern-roost-hearth',
-          'route-event-lantern-roost-sign',
-          'route-event-lantern-roost-rain-pipe',
-          'route-event-lantern-roost-awning',
-          'route-event-lantern-roost-wrapped-snack'
-        ]
+        residentKey: 'route-event-resident-sella-warmwick'
       },
       {
         type: 'cache',
         key: 'route-event-rooftop-cache-office',
-        residentKey: 'route-event-resident-marn-valeclip',
-        extraKeys: ['route-event-centerpiece-rooftop-cache-cabinet']
+        residentKey: 'route-event-resident-marn-valeclip'
       },
       {
         type: 'signal',
         key: 'route-event-signal-switchboard',
-        residentKey: 'route-event-resident-ivo-tallymast',
-        extraKeys: ['route-event-centerpiece-signal-route-switchboard']
+        residentKey: 'route-event-resident-ivo-tallymast'
       },
       {
         type: 'nest',
         key: 'route-event-featherwright-studio',
-        residentKey: 'route-event-resident-oren-shearbright',
-        extraKeys: ['route-event-centerpiece-featherwright-chair-press']
+        residentKey: 'route-event-resident-oren-shearbright'
       },
       {
         type: 'rival',
         key: 'route-event-rival-wager-board',
-        residentKey: 'route-event-resident-caldra-pinion',
-        extraKeys: ['route-event-centerpiece-rival-contract-prize-board']
+        residentKey: 'route-event-resident-caldra-pinion'
       },
       { type: 'market', key: 'market-kit-background' }
     ];
@@ -1889,12 +1878,48 @@ test('flock composition keystone: a Plumes-heavy flock activates its aura (+1 dr
     return {
       plumes: s.flockSuitCounts().plumes,
       keystone: s.keystoneActive('plumes'),
-      handSize: s.hand.length, // base 5 + keystone 1 (+ any deck draw bonus)
+      handSize: s.hand.length, // base 4 + keystone 1 (+ any deck draw bonus)
     };
   });
   expect(r.plumes).toBeGreaterThanOrEqual(5);
   expect(r.keystone).toBe(true);
-  expect(r.handSize).toBeGreaterThanOrEqual(6); // keystone added at least +1 over the base 5
+  expect(r.handSize).toBeGreaterThanOrEqual(6); // keystone plus deck draw keeps Plumes hands wider
+});
+
+test('playing four or more cards overextends the flock into Open Sky', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const s: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 30 && !(s.enemies && s.enemies.length && s.hand && s.hand.length && s.fxLayer); i += 1) await wait(50);
+
+    s.flock.exposed = false;
+    s.flock.exposedTurns = 0;
+    s.flock.openSkyGuard = 0;
+    s.cardsPlayedThisTurn = 3;
+    s.applyOverextensionPenalty();
+    const safe = { exposed: s.flock.exposed, turns: s.flock.exposedTurns };
+
+    s.cardsPlayedThisTurn = 4;
+    s.applyOverextensionPenalty();
+    const overextended = { exposed: s.flock.exposed, turns: s.flock.exposedTurns, log: s.log.at(-1) };
+
+    s.flock.hp = 30;
+    s.flock.block = 0;
+    s.enemies[0].damageBonus = 0;
+    s.enemies[0].nextAttackBonus = 0;
+    s.damageFlock(s.enemies[0], 5);
+    return { safe, overextended, hpAfterHit: s.flock.hp };
+  });
+
+  expect(r.safe.exposed).toBe(false);
+  expect(r.overextended.exposed).toBe(true);
+  expect(r.overextended.turns).toBe(1);
+  expect(r.overextended.log).toContain('overextend');
+  expect(r.hpAfterHit).toBe(24); // 5 base + 1 Standard Open Sky bonus
 });
 
 test('Resonance has real sinks: a threshold gate and a spend-all burst', async ({ page }) => {

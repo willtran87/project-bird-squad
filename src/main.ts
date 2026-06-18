@@ -420,9 +420,11 @@ const CARD_REVIEW_VISIBLE_ROWS = 11;
 const CARD_REVIEW_ROW_H = 38;
 const BASE_COHESION = 36;
 const BASE_WINGBEATS = 3;
-const BASE_HAND_TARGET = 5;
+const BASE_HAND_TARGET = 4;
 const BASE_RESONANCE_CAP = 5;
 const BASE_SUPPLY_SLOTS = 2;
+const POST_COMBAT_RECOVERY = 1;
+const OVEREXTENSION_CARD_THRESHOLD = 4;
 const STARTING_SCRAP = 40;
 // Market pricing is data-driven from alpha-market.json (next-level-implementation
 // -spec "Market prices and services are data-driven").
@@ -3335,10 +3337,6 @@ class RouteScene extends Phaser.Scene {
     return node ? ROUTE_EVENT_RESIDENT_ASSETS[node.type] : undefined;
   }
 
-  private routeSetPieceCenterpieceAsset(node?: RouteNode) {
-    return node ? ROUTE_SET_PIECE_CENTERPIECE_ASSETS[node.type] : undefined;
-  }
-
   private queueRouteEventBackdropArtLoad(node?: RouteNode) {
     queueRuntimeImageAssets(
       this,
@@ -3351,17 +3349,8 @@ class RouteScene extends Phaser.Scene {
   private queueRouteEventSetPieceArtLoad(node?: RouteNode) {
     queueRuntimeImageAssets(
       this,
-      [this.routeEventBackdropAsset(node), this.routeEventResidentAsset(node), this.routeSetPieceCenterpieceAsset(node)],
+      [this.routeEventBackdropAsset(node), this.routeEventResidentAsset(node)],
       'Route event set piece art failed to load',
-      () => this.renderAll()
-    );
-  }
-
-  private queueLanternRoostKitArtLoad() {
-    queueRuntimeImageAssets(
-      this,
-      Object.values(LANTERN_ROOST_KIT_ASSETS),
-      'Lantern Roost kit art failed to load',
       () => this.renderAll()
     );
   }
@@ -5106,6 +5095,22 @@ class RouteScene extends Phaser.Scene {
     });
   }
 
+  private fitImageInside(image: Phaser.GameObjects.Image, maxWidth: number, maxHeight: number) {
+    const sourceWidth = image.width || image.frame.width || maxWidth;
+    const sourceHeight = image.height || image.frame.height || maxHeight;
+    const scale = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight);
+    image.setDisplaySize(sourceWidth * scale, sourceHeight * scale);
+    return image;
+  }
+
+  private routeSetPieceResidentFrame(node: RouteNode) {
+    if (node.type === 'nest') {
+      return { x: 190, y: GAME_HEIGHT + 70, maxWidth: 420, maxHeight: 590 };
+    }
+
+    return { x: 176, y: GAME_HEIGHT + 42, maxWidth: 340, maxHeight: 500 };
+  }
+
   private renderLanternRoostOverlay(node: RouteNode) {
     const choices = this.nodeChoiceList(node);
     const accent = routeEventAccent(node.type);
@@ -5113,7 +5118,6 @@ class RouteScene extends Phaser.Scene {
     const background = this.routeEventBackdropAsset(node);
     const resident = this.routeEventResidentAsset(node);
     this.queueRouteEventSetPieceArtLoad(node);
-    this.queueLanternRoostKitArtLoad();
 
     if (background && this.textures.exists(background.key)) {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, background.key)
@@ -5123,17 +5127,6 @@ class RouteScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: false });
     } else {
       this.renderRouteEventBackdrop(node, 1);
-    }
-
-    if (this.textures.exists(LANTERN_ROOST_KIT_ASSETS.hearth.key)) {
-      this.add.image(664, 438, LANTERN_ROOST_KIT_ASSETS.hearth.key)
-        .setDisplaySize(420, 236)
-        .setAlpha(0.72);
-    }
-    if (this.textures.exists(LANTERN_ROOST_KIT_ASSETS.sign.key)) {
-      this.add.image(268, 338, LANTERN_ROOST_KIT_ASSETS.sign.key)
-        .setDisplaySize(180, 88)
-        .setAlpha(0.94);
     }
 
     this.add.rectangle(GAME_WIDTH / 2, 24, GAME_WIDTH - 100, 2, accent, 0.38);
@@ -5169,10 +5162,10 @@ class RouteScene extends Phaser.Scene {
     this.renderLanternRoostResourceTag(118, 96);
 
     if (resident && this.textures.exists(resident.key)) {
-      this.add.image(154, GAME_HEIGHT + 58, resident.key)
+      const residentImage = this.add.image(196, GAME_HEIGHT + 58, resident.key)
         .setOrigin(0.5, 1)
-        .setDisplaySize(350, 430)
         .setAlpha(1);
+      this.fitImageInside(residentImage, 380, 460);
     } else {
       this.add.circle(164, 438, 82, 0x1c2230, 0.98)
         .setStrokeStyle(2, accent, 0.82);
@@ -5201,22 +5194,8 @@ class RouteScene extends Phaser.Scene {
     const startY = 286;
     choices.forEach((choice, index) => {
       const y = startY + index * 112;
-      this.renderLanternRoostChoiceProp(choice.key, 746, y);
       this.renderSetPieceChoice(choice, choiceX, y, index, accent, 76, false);
     });
-  }
-
-  private renderLanternRoostChoiceProp(choiceKey: string, x: number, y: number) {
-    const props: Record<string, { asset: RuntimeImageAsset; w: number; h: number; dx: number; dy: number }> = {
-      recover: { asset: LANTERN_ROOST_KIT_ASSETS.rainPipe, w: 118, h: 118, dx: -12, dy: 0 },
-      take_shelter: { asset: LANTERN_ROOST_KIT_ASSETS.awning, w: 164, h: 92, dx: -2, dy: -2 },
-      refill_supplies: { asset: LANTERN_ROOST_KIT_ASSETS.wrappedSnack, w: 112, h: 98, dx: -10, dy: 0 }
-    };
-    const prop = props[choiceKey];
-    if (!prop || !this.textures.exists(prop.asset.key)) return;
-    this.add.image(x + prop.dx, y + prop.dy, prop.asset.key)
-      .setDisplaySize(prop.w, prop.h)
-      .setAlpha(0.98);
   }
 
   private renderLanternRoostResourceTag(x: number, y: number) {
@@ -5287,22 +5266,15 @@ class RouteScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     if (resident && this.textures.exists(resident.key)) {
-      this.add.image(176, GAME_HEIGHT + 22, resident.key)
+      const residentFrame = this.routeSetPieceResidentFrame(node);
+      const residentImage = this.add.image(residentFrame.x, residentFrame.y, resident.key)
         .setOrigin(0.5, 1)
-        .setDisplaySize(310, 372)
         .setAlpha(0.98);
+      this.fitImageInside(residentImage, residentFrame.maxWidth, residentFrame.maxHeight);
     } else {
       this.add.circle(176, 438, 82, 0x1c2230, 0.98)
         .setStrokeStyle(2, accent, 0.82);
       this.renderRouteNodeTypeIcon(node.type, 176, 438, 96);
-    }
-
-    const centerpiece = this.routeSetPieceCenterpieceAsset(node);
-    const centerpieceLayout = ROUTE_SET_PIECE_CENTERPIECE_LAYOUTS[node.type] ?? { x: 548, y: 380, w: 370, h: 280 };
-    if (centerpiece && this.textures.exists(centerpiece.key)) {
-      this.add.image(centerpieceLayout.x, centerpieceLayout.y, centerpiece.key)
-        .setDisplaySize(centerpieceLayout.w, centerpieceLayout.h)
-        .setAlpha(0.98);
     }
 
     this.add.rectangle(258, 594, 342, 88, 0x06101a, 0.97)
@@ -10143,6 +10115,7 @@ class BattleScene extends Phaser.Scene {
       this.flock.exposedTurns = 1;
       this.logEvent('The flock sheds out of Molt — Open Sky.');
     }
+    this.applyOverextensionPenalty();
     const hpBeforeEnemyTurn = this.flock.hp;
     this.resolveEnemyTurn();
     if (this.flock.hp >= hpBeforeEnemyTurn) this.checkNoDamageTurnMarks();
@@ -10181,6 +10154,17 @@ class BattleScene extends Phaser.Scene {
     this.time.delayedCall(900, () => {
       if (this.mode === 'battle') banner(this, this.fxLayer, GAME_WIDTH / 2, 140, 'Your Turn', '#8fd6a0');
     });
+  }
+
+  private applyOverextensionPenalty() {
+    if (this.cardsPlayedThisTurn < OVEREXTENSION_CARD_THRESHOLD || this.flock.exposed) return;
+    this.flock.exposed = true;
+    this.flock.exposedTurns = Math.max(this.flock.exposedTurns, 1);
+    this.logEvent(`${this.cardsPlayedThisTurn} cards overextend the formation - Open Sky.`);
+    if (this.fxLayer?.active) {
+      floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 50, 'Overextended!', '#ff9d4d');
+      this.pulseRing(FLOCK_FX_X, FLOCK_FX_Y - 20, 0xff9d4d, 92, 580);
+    }
   }
 
   private resolveEnemyTurn() {
@@ -10614,7 +10598,7 @@ class BattleScene extends Phaser.Scene {
       leaderId: this.runLeaderId,
       difficulty: this.runDifficulty,
       seed: activeSeed,
-      currentHp: Math.min(this.flock.maxHp, this.flock.hp + 3),
+      currentHp: Math.min(this.flock.maxHp, this.flock.hp + POST_COMBAT_RECOVERY),
       scrap: this.scrap,
       routeMarks: [...this.routeMarks],
       supplies: [...this.runSupplies],
@@ -10685,7 +10669,7 @@ class BattleScene extends Phaser.Scene {
 
   private drawToHandSize() {
     const plumesKeystone = this.keystoneActive('plumes') ? 1 : 0; // Plumes keystone: +1 hand size
-    this.drawCards(Math.max(0, 5 + plumesKeystone + (this.flockStats().draw ?? 0) + this.nextTurnDrawBonus - this.hand.length));
+    this.drawCards(Math.max(0, BASE_HAND_TARGET + plumesKeystone + (this.flockStats().draw ?? 0) + this.nextTurnDrawBonus - this.hand.length));
     this.nextTurnDrawBonus = 0;
   }
 

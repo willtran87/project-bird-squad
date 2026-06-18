@@ -116,7 +116,7 @@ Minimum route requirements:
 | --- | ---: |
 | Starting Cohesion | 36 |
 | Starting Wingbeats | 3 |
-| Starting hand target | 5 |
+| Starting hand target | 4 |
 | Starting Resonance cap | 5 |
 | Starting Scrap | 60 |
 | Supply slots | 2 |
@@ -541,6 +541,11 @@ Choose one of 3:
 If players consistently reach the boss at full Cohesion, route pressure is too
 low. If players reach the boss unable to survive one Heavy Strike, route
 pressure is too high.
+
+Standard combat uses a soft anti-spam pressure valve: playing 4 or more cards
+before choosing Roost overextends the flock into Open Sky for the enemy phase.
+Automatic post-combat recovery is intentionally light (+1 Cohesion) so Basin,
+Supply, and Cover decisions carry more of the sustain burden.
 
 ## Implementation Order
 

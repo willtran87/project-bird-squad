@@ -69,10 +69,11 @@ conversion, intent delay/freeze, temporary cards, or all-four-suits payoffs.
 
 1. Start player turn.
 2. Clear old Cover.
-3. Draw to hand size 5, plus any Draw stat bonus.
+3. Draw to hand size 4, plus any Draw stat bonus.
 4. Set Wingbeats to 3, plus any turn modifiers.
 5. Show enemy Tells.
-6. Player plays cards until done or out of Wingbeats.
+6. Player plays cards until done or out of Wingbeats. Playing 4 or more cards
+   before Roost overextends the flock into Open Sky for the enemy phase.
 7. Player chooses `Roost`.
 8. Enemies resolve their Tells.
 9. Status durations tick.
