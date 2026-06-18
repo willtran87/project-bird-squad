@@ -395,8 +395,6 @@ const ROUTE_BOSS_NODE_RADIUS = 52;
 const ROUTE_NODE_ICON_SIZE = 90;
 const ROUTE_BOSS_NODE_ICON_SIZE = 114;
 const ROUTE_NODE_FOCUS_PAD = 9;
-const ROUTE_REWARD_BADGE_RADIUS = 8;
-const ROUTE_REWARD_BADGE_OFFSET = 9;
 const ROUTE_NODE_LAYOUT_PAD = 4;
 // Anchor points for combat FX (floating numbers / bursts), matching the
 // enemy body (renderEnemyRow) and flock panel (renderFlock) positions.
@@ -4007,7 +4005,6 @@ class RouteScene extends Phaser.Scene {
     hitTarget.on('pointerout', () => { tip?.destroy(true); tip = undefined; });
 
     this.renderRouteNodeTypeIcon(node.type, x, y, iconSize, completed ? 0.55 : 1);
-    this.renderRouteRewardBadges(node, x, y, radius, completed);
 
     // Risk pip (bottom-left) for combat crossings, where risk actually varies.
     if (node.type === 'street' || node.type === 'rival' || node.type === 'boss') {
@@ -4052,33 +4049,6 @@ class RouteScene extends Phaser.Scene {
       stroke: '#0a121c',
       strokeThickness: 3
     }).setOrigin(0.5).setAlpha(alpha);
-  }
-
-  private renderRouteRewardBadges(node: RouteNode, x: number, y: number, radius: number, completed: boolean) {
-    const badges = this.routeRewardBadges(node).slice(0, 3);
-    if (badges.length === 0) return;
-    const gap = 16;
-    const startX = x - ((badges.length - 1) * gap) / 2;
-    const by = y + radius + ROUTE_REWARD_BADGE_OFFSET;
-    const alpha = completed ? 0.55 : 0.95;
-    badges.forEach((badge, index) => {
-      const bx = startX + index * gap;
-      this.add.circle(bx, by, ROUTE_REWARD_BADGE_RADIUS, 0x07101c, 0.96 * alpha)
-        .setStrokeStyle(1.5, badge.color, alpha);
-      const icon = addRewardBadgeArtImage(this, badge.id, bx, by, 24);
-      if (icon) {
-        icon.setAlpha(alpha);
-        return;
-      }
-      this.add.text(bx, by - 1, badge.icon, {
-        fontFamily: 'Arial',
-        fontSize: '10px',
-        fontStyle: 'bold',
-        color: badge.text,
-        stroke: '#020409',
-        strokeThickness: 2
-      }).setOrigin(0.5).setAlpha(alpha);
-    });
   }
 
   private routeRewardBadges(node: RouteNode): Array<{ id: string; icon: string; color: number; text: string; label: string }> {
@@ -4160,13 +4130,13 @@ class RouteScene extends Phaser.Scene {
     const columns = currentMap().columns;
     const columnNodes = columns[node.column] ?? [node.id];
     const laneIndex = Math.max(0, columnNodes.indexOf(node.id));
-    // Spread across the graph area with explicit room for the full node footprint:
-    // focus ticks above the icon and reward-badge pips below it.
+    // Spread across the graph area with explicit room for the icon footprint
+    // and focus ticks.
     const { left: leftX, right: rightX, top, bottom } = this.routeLayout().graph;
     const colCount = Math.max(1, columns.length);
     const x = colCount > 1 ? leftX + (node.column * (rightX - leftX)) / (colCount - 1) : (leftX + rightX) / 2;
     const topPad = ROUTE_NODE_ICON_SIZE / 2 + ROUTE_NODE_FOCUS_PAD + ROUTE_NODE_LAYOUT_PAD;
-    const bottomPad = ROUTE_NODE_ICON_SIZE / 2 + ROUTE_REWARD_BADGE_OFFSET + ROUTE_REWARD_BADGE_RADIUS + ROUTE_NODE_LAYOUT_PAD;
+    const bottomPad = ROUTE_NODE_ICON_SIZE / 2 + ROUTE_NODE_FOCUS_PAD + ROUTE_NODE_LAYOUT_PAD;
     const usableTop = top + topPad;
     const usableBottom = bottom - bottomPad;
     const laneGap = columnNodes.length > 1
@@ -4180,16 +4150,13 @@ class RouteScene extends Phaser.Scene {
 
   private nodeVisualBounds(node: RouteNode) {
     const { x, y } = this.nodePosition(node);
-    const radius = node.type === 'boss' ? ROUTE_BOSS_NODE_RADIUS : ROUTE_NODE_RADIUS;
     const iconSize = node.type === 'boss' ? ROUTE_BOSS_NODE_ICON_SIZE : ROUTE_NODE_ICON_SIZE;
-    const badges = this.routeRewardBadges(node).slice(0, 3);
-    const badgeWidth = badges.length > 0 ? ((badges.length - 1) * 16) / 2 + ROUTE_REWARD_BADGE_RADIUS : 0;
-    const horizontal = Math.max(iconSize / 2 + ROUTE_NODE_FOCUS_PAD, badgeWidth);
+    const horizontal = iconSize / 2 + ROUTE_NODE_FOCUS_PAD;
     return {
       left: x - horizontal,
       right: x + horizontal,
       top: y - iconSize / 2 - ROUTE_NODE_FOCUS_PAD,
-      bottom: y + iconSize / 2 + (badges.length > 0 ? ROUTE_REWARD_BADGE_OFFSET + ROUTE_REWARD_BADGE_RADIUS : ROUTE_NODE_FOCUS_PAD)
+      bottom: y + iconSize / 2 + ROUTE_NODE_FOCUS_PAD
     };
   }
 
