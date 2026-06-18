@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import './style.css';
-import splashUrl from '../assets/splash/bird-squad-canal-run-splash-v5-menu-pop.webp';
+import splashUrl from '../assets/splash/bird-squad-canal-run-splash-v10-menu-pop.webp';
 import titleBirdUrl from '../assets/ui/bird-squad-title-bird-textured-v2.png';
 import titleSquadUrl from '../assets/ui/bird-squad-title-squad-textured-v2.png';
 import combatFxAtlasUrl from '../assets/runtime/fx/combat-fx-atlas.png';
