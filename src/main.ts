@@ -57,6 +57,7 @@ type InspectOverlay = 'deck' | 'draw' | 'discard' | 'flock';
 type CardType = 'major' | 'minor' | 'molt' | 'aviary';
 type CardRole = 'attack' | 'skill' | 'utility';
 type TargetType = 'enemy' | 'allEnemies' | 'self' | 'none' | 'choice';
+type NodeChoiceOption = { key: string; text: string; effects: string[]; locked: boolean; lockedText?: string };
 
 interface Flock {
   hp: number;
@@ -4198,7 +4199,7 @@ class RouteScene extends Phaser.Scene {
     this.renderAll();
   }
 
-  private nodeChoiceList(node: RouteNode): Array<{ key: string; text: string; effects: string[]; locked: boolean; lockedText?: string }> {
+  private nodeChoiceList(node: RouteNode): NodeChoiceOption[] {
     const lockFor = (effects: string[], explicitCost?: number, requirements?: string[], lockedText?: string) => {
       const scrapCost = explicitCost ?? this.scrapCostOfEffects(effects);
       const lacksScrap = scrapCost > 0 && this.runState.scrap < scrapCost;
@@ -4218,18 +4219,22 @@ class RouteScene extends Phaser.Scene {
         lockedText: lock.lockedText
       };
     };
-    if (node.type === 'basin') return alphaBasinSet.options.map(nodeOption);
+    const withDecline = (choices: NodeChoiceOption[], text = 'Keep moving.') => {
+      if (choices.some((choice) => choice.key === 'decline')) return choices;
+      return [...choices, { key: 'decline', text, effects: [], locked: false }];
+    };
+    if (node.type === 'basin') return withDecline(alphaBasinSet.options.map(nodeOption));
     if (node.type === 'cache') {
       const bonus = this.routeMarkValue('cacheChoice', 'extraCacheChoice');
-      return alphaCacheSet.options
+      return withDecline(alphaCacheSet.options
         .slice(0, Math.min(alphaCacheSet.options.length, 5 + bonus))
-        .map(nodeOption);
+        .map(nodeOption));
     }
     if (node.type === 'nest') {
-      return alphaNestSet.options.map(nodeOption);
+      return withDecline(alphaNestSet.options.map(nodeOption), 'Leave the nest as-is.');
     }
     const signal = alphaSignalLibrary.get(node.payloadId);
-    return (signal?.choices ?? []).map((choice) => {
+    return withDecline((signal?.choices ?? []).map((choice) => {
       const lock = lockFor(choice.outcomes, undefined, choice.requirements, choice.lockedText);
       return {
         key: choice.key,
@@ -4238,7 +4243,7 @@ class RouteScene extends Phaser.Scene {
         locked: lock.locked,
         lockedText: lock.lockedText
       };
-    });
+    }), 'Do not get involved.');
   }
 
   private routeMarkValue(trigger: string, verb: string) {
@@ -12225,6 +12230,7 @@ function waymarkSynergyTags(mark: RuntimeRouteMark) {
 
 // Human-readable summary of route-effect verbs for the node-choice overlay.
 function routeEffectSummary(effects: string[]): string {
+  if (effects.length === 0) return 'No cost';
   return effects.map((effect) => {
     const parsed = parseEffect(effect);
     if (!parsed) return effect;

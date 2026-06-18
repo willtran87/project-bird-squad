@@ -464,9 +464,9 @@ test('signals/basins/cache present structured choices resolved by the route-effe
       gatedNear: scene.requirementsMet(['scrapAtLeast(0)'])
     };
   });
-  expect(result.signalChoices).toEqual(['repaint', 'scout', 'move']);
-  expect(result.basinCount).toBe(3);
-  expect(result.cacheCount).toBe(5);
+  expect(result.signalChoices).toEqual(['repaint', 'scout', 'move', 'decline']);
+  expect(result.basinCount).toBe(4);
+  expect(result.cacheCount).toBe(6);
   expect(result.scrapDelta).toBe(45);
   expect(result.gatedFar).toBe(false);
   expect(result.gatedNear).toBe(true);
@@ -516,15 +516,26 @@ test('payScrap route options are locked when Scrap is short', async ({ page }) =
     const basin = scene.nodeChoiceList({ type: 'basin' }).find((choice: any) => choice.key === 'refill_supplies');
     scene.runState.scrap = 20;
     const basinAffordable = scene.nodeChoiceList({ type: 'basin' }).find((choice: any) => choice.key === 'refill_supplies');
+    scene.runState.scrap = 0;
+    const nest = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type === 'nest');
+    scene.openNodeChoices(nest);
+    const nestUnlockedAtZero = scene.nodeChoiceList(nest).filter((choice: any) => !choice.locked).map((choice: any) => choice.key);
+    scene.chooseNodeOption('decline');
     return {
       lockedAtZero: basin.locked,
       lockText: basin.lockedText,
-      unlockedAtCost: basinAffordable.locked
+      unlockedAtCost: basinAffordable.locked,
+      nestUnlockedAtZero,
+      nestCompletedAfterDecline: scene.runState.completedRouteNodeIds.includes(nest.id),
+      nestChoiceClosedAfterDecline: !scene.nodeChoiceOpen
     };
   });
   expect(result.lockedAtZero).toBe(true);
   expect(result.lockText).toContain('20 Scrap');
   expect(result.unlockedAtCost).toBe(false);
+  expect(result.nestUnlockedAtZero).toEqual(['decline']);
+  expect(result.nestCompletedAfterDecline).toBe(true);
+  expect(result.nestChoiceClosedAfterDecline).toBe(true);
 });
 
 test('route event overlays render generated special-node backdrops', async ({ page }) => {
