@@ -3560,12 +3560,14 @@ class RouteScene extends Phaser.Scene {
         const icon = addScrapIconImage(this, x + 18, y + 2, 30);
         icon?.setAlpha(0.96);
       }
-      this.add.text(x + (isScrap ? 38 : 10), y - 8, chip.label, {
-        fontFamily: 'Arial',
-        fontSize: '10px',
-        fontStyle: 'bold',
-        color: '#7f93a8'
-      });
+      if (!isScrap) {
+        this.add.text(x + 10, y - 8, chip.label, {
+          fontFamily: 'Arial',
+          fontSize: '10px',
+          fontStyle: 'bold',
+          color: '#7f93a8'
+        });
+      }
       this.add.text(x + chip.width - 10, y - 9, `${chip.value}`, {
         fontFamily: 'Arial',
         fontSize: '15px',
@@ -4622,12 +4624,6 @@ class RouteScene extends Phaser.Scene {
       color: '#f0c36f'
     }).setOrigin(1, 0);
     const scrapIcon = addScrapIconImage(this, w - 58, 42, 24);
-    const scrap = this.add.text(w - 16, 36, 'SCRAP', {
-      fontFamily: 'Arial',
-      fontSize: '9px',
-      fontStyle: 'bold',
-      color: '#8df4ff'
-    }).setOrigin(1, 0);
     const kicker = this.add.text(16, 52, opts.kicker.toUpperCase(), {
       fontFamily: 'Arial',
       fontSize: '10px',
@@ -4636,7 +4632,7 @@ class RouteScene extends Phaser.Scene {
       wordWrap: { width: w - 32 },
       maxLines: 1
     });
-    const panel = this.add.container(0, 0, [bg, rail, title, price, ...(scrapIcon ? [scrapIcon] : []), scrap, kicker, body, meta]).setDepth(20000);
+    const panel = this.add.container(0, 0, [bg, rail, title, price, ...(scrapIcon ? [scrapIcon] : []), kicker, body, meta]).setDepth(20000);
     const px = Math.max(12, Math.min(GAME_WIDTH - w - 12, opts.anchorX - w / 2));
     const above = opts.anchorY - h - 22;
     const py = above > 10 ? above : Math.min(GAME_HEIGHT - h - 12, opts.anchorY + 48);
@@ -4991,13 +4987,6 @@ class RouteScene extends Phaser.Scene {
       .setStrokeStyle(1, UI_FIELD.gold, 0.9);
     this.add.rectangle(x, y - h / 2 + 5, w - 16, 2, UI_FIELD.gold, 0.72);
     addScrapIconImage(this, x - w / 2 + 18, y + 3, 31)?.setAlpha(0.98);
-    this.add.text(x - w / 2 + 38, y - 12, 'SCRAP', {
-      fontFamily: 'Arial',
-      fontSize: '9px',
-      fontStyle: 'bold',
-      color: '#8df4ff',
-      align: 'left'
-    });
     this.add.text(x + w / 2 - 12, y - 1, `${this.runState.scrap}`, {
       fontFamily: 'Arial',
       fontSize: '19px',
@@ -5210,13 +5199,7 @@ class RouteScene extends Phaser.Scene {
       fontStyle: 'bold',
       color: '#ffe1a3'
     });
-    this.add.text(x - w / 2 + 86, y - 12, 'SCRAP', {
-      fontFamily: 'Arial',
-      fontSize: '9px',
-      fontStyle: 'bold',
-      color: '#8df4ff'
-    });
-    this.add.text(x - w / 2 + 86, y + 3, `${this.runState.currentHp}/${this.runMaxHp()} COHESION`, {
+    this.add.text(x - w / 2 + 86, y - 5, `${this.runState.currentHp}/${this.runMaxHp()} COHESION`, {
       fontFamily: 'Arial',
       fontSize: '9px',
       fontStyle: 'bold',
@@ -5303,13 +5286,7 @@ class RouteScene extends Phaser.Scene {
       fontStyle: 'bold',
       color: '#ffe1a3'
     });
-    this.add.text(166, 109, 'SCRAP', {
-      fontFamily: 'Arial',
-      fontSize: '10px',
-      fontStyle: 'bold',
-      color: '#8df4ff'
-    });
-    this.add.text(166, 122, `${this.runState.currentHp}/${this.runMaxHp()} COHESION`, {
+    this.add.text(166, 115, `${this.runState.currentHp}/${this.runMaxHp()} COHESION`, {
       fontFamily: 'Arial',
       fontSize: '9px',
       fontStyle: 'bold',
@@ -5643,13 +5620,6 @@ class RouteScene extends Phaser.Scene {
     }).setOrigin(1, 0);
     addScrapIconImage(this, x + w / 2 - 45, y - h / 2 + 33, 22)
       ?.setAlpha(enabled ? 0.94 : 0.46);
-    this.add.text(x + w / 2 - 9, y - h / 2 + 28, 'SCRAP', {
-      fontFamily: 'Arial',
-      fontSize: '7px',
-      fontStyle: 'bold',
-      color: enabled ? '#8df4ff' : '#596a78',
-      align: 'right'
-    }).setOrigin(1, 0);
   }
 
   private renderMarketPriceTag(x: number, y: number, price: number, enabled: boolean, accent: number, verb: string) {
@@ -8122,9 +8092,11 @@ class BattleScene extends Phaser.Scene {
     if (tip) this.attachTooltip(rect, label, tip);
     this.root.add(rect);
     this.root.add(this.add.rectangle(cx, cy - 17, width - 18, 2, accent, 0.72));
-    this.root.add(this.add.text(cx - width / 2 + 10, cy - 14, label.toUpperCase(), {
-      fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#91a6b8'
-    }));
+    if (label !== 'Scrap') {
+      this.root.add(this.add.text(cx - width / 2 + 10, cy - 14, label.toUpperCase(), {
+        fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#91a6b8'
+      }));
+    }
     this.root.add(this.add.text(cx - width / 2 + 10, cy + 1, value, {
       fontFamily: 'Arial', fontSize: '17px', fontStyle: 'bold', color: '#e7eef7'
     }));
