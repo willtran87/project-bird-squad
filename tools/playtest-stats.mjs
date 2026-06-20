@@ -46,6 +46,11 @@ const avg = (nums) => (nums.length
 const sumCombat = (run, key) => (run.combatResults ?? [])
   .reduce((sum, combat) => sum + (combat[key] ?? 0), 0);
 
+const sumDecision = (run, key) => {
+  if (run.decisionStats?.[key] !== undefined) return run.decisionStats[key] ?? 0;
+  return (run.combatResults ?? []).reduce((sum, combat) => sum + (combat.decisionStats?.[key] ?? 0), 0);
+};
+
 const printTop = (label, entries) => {
   console.log(`\n${label}:`);
   if (entries.length === 0) {
@@ -64,6 +69,13 @@ if (runs.length) {
   console.log(`Avg final Cohesion: ${avg(runs.map((r) => r.currentCohesion ?? 0))}`);
   console.log(`Avg Cohesion lost per run: ${avg(runs.map((r) => sumCombat(r, 'cohesionLost')))}`);
   console.log(`Avg damage dealt per run: ${avg(runs.map((r) => sumCombat(r, 'damageDealt')))}`);
+  console.log(`Avg cards played per run: ${avg(runs.map((r) => sumDecision(r, 'cardsPlayed')))}`);
+  console.log(`Avg overextensions per run: ${avg(runs.map((r) => sumDecision(r, 'overextensions')))}`);
+  console.log(`Avg low-card Roosts per run: ${avg(runs.map((r) => sumDecision(r, 'lowCardTurns')))}`);
+  console.log(`Avg held cards at Roost: ${avg(runs.map((r) => sumDecision(r, 'cardsHeldAtRoost')))}`);
+  console.log(`Avg unspent Wingbeat at Roost: ${avg(runs.map((r) => sumDecision(r, 'unspentWingbeatAtRoost')))}`);
+  console.log(`Avg boss-entry Scrap: ${avg(runs.map((r) => r.decisionStats?.bossEntryScrap ?? 0).filter((n) => n > 0))}`);
+  console.log(`Avg boss-entry Cohesion: ${avg(runs.map((r) => r.decisionStats?.bossEntryCohesion ?? 0).filter((n) => n > 0))}`);
 }
 
 printTop('Deadliest (killed by)', tally(runs.filter((r) => r.killedBy).map((r) => r.killedBy)));

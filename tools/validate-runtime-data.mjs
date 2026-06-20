@@ -86,6 +86,7 @@ const validTriggerBases = new Set([
   'signalResolved', 'firstImproveThisRun', 'mapStart', 'passive', 'cacheChoice',
   'onSupplyUsed', 'onEnterMolt', 'onHealFlock', 'onEnemyCoverBroken',
   'onResonanceSpent', 'onTurnEndNoHpLoss', 'afterMarketPurchase',
+  'onRoostWithWingbeat', 'onRoostWithCardsInHand', 'onTurnEndNoOverextension',
 ]);
 // Signal/Market choice preconditions (next-level-data-contracts §7.2)
 const validPredicates = new Set([
@@ -100,8 +101,9 @@ const validateTrigger = (trigger, label) => {
   if (typeof trigger !== 'string') { fail(`${label}: trigger must be a string`); return; }
   const [base, gate] = trigger.split(' if ');
   const nth = /^onNthCardThisTurn\((\d+)\)$/.exec(base);
+  const lowCard = /^onLowCardTurn\((\d+)\)$/.exec(base);
   const suit = /^onSuitPlayed\((plumes|quills|basins|nests)\)$/.exec(base);
-  if (!validTriggerBases.has(base) && !nth && !suit) fail(`${label}: unknown trigger "${base}"`);
+  if (!validTriggerBases.has(base) && !nth && !lowCard && !suit) fail(`${label}: unknown trigger "${base}"`);
   if (gate !== undefined && !/^turn >= \d+$/.test(gate)) fail(`${label}: invalid trigger gate "${gate}"`);
 };
 
@@ -255,7 +257,7 @@ const validCardVerbs = new Set([
   'damage', 'damagePierce', 'damageAll', 'removeCover', 'gainCover', 'heal', 'draw', 'discard', 'discardUpTo',
   'gainWingbeat', 'loseWingbeat', 'gainResonance', 'spendResonance', 'resonanceBurst',
   'applyWinded', 'windedBurst', 'enterMolt', 'gainOpenSkyGuard', 'returnDiscard',
-  'nextCoverBonus', 'nextTurnDraw', 'gainEnergyNextTurn', 'shuffleSelfToDraw',
+  'nextCoverBonus', 'retainHand', 'nextTurnDraw', 'gainEnergyNextTurn', 'shuffleSelfToDraw',
   'overhealCover', 'loseCohesion',
 ]);
 const validEnemyVerbs = new Set([
@@ -272,7 +274,7 @@ const validMarkVerbs = new Set([
   'gainOpenSkyGuard', 'draw', 'damageAll', 'heal', 'nextCoverBonus', 'nextTurnDraw', 'bossDamageShield',
   'retainHand', 'repeatNextSupply', 'cleanseFlock', 'reduceNextOpenSky',
   'reducePreenPrice', 'gainScrap', 'addHeal', 'reduceOpenSky', 'gainSupplyChoice',
-  'extraCacheChoice', 'freePreenNextDistrict', 'districtStartKit',
+  'extraCacheChoice', 'peekNextNodes', 'freePreenNextDistrict', 'districtStartKit',
 ]);
 
 // Condition allowlists for the optional `if COND then` effect prefix
@@ -289,7 +291,8 @@ const validCardConditions = new Set([
 ]);
 const validEnemyConditions = new Set([
   'notHitThisTurn', 'flockHasNoCover', 'flockHasCover', 'isMolting', 'flockOpenSky',
-  'flockCohesionBelowHalf', 'selfBelowHalf',
+  'flockCohesionBelowHalf', 'selfBelowHalf', 'playedCardsAtLeast', 'zeroCostCardsAtLeast',
+  'handEmptyAtRoost',
 ]);
 
 const conditionOf = (effect) => {
@@ -320,7 +323,7 @@ const effectsNeedEnemyTarget = (effects = []) => effects.some((effect) => {
 const effectsHitAllEnemies = (effects = []) => effects.some((effect) => /\bdamageAll\(/.test(effectBody(effect)));
 const effectsOnlyAffectFlock = (effects = []) => effects.some((effect) => {
   const body = effectBody(effect);
-  return /\b(?:gainCover|heal|overhealCover|loseCohesion|draw|discard|discardUpTo|gainWingbeat|loseWingbeat|gainResonance|spendResonance|enterMolt|gainOpenSkyGuard|returnDiscard|nextCoverBonus|nextTurnDraw|gainEnergyNextTurn|shuffleSelfToDraw)\(/.test(body);
+  return /\b(?:gainCover|heal|overhealCover|loseCohesion|draw|discard|discardUpTo|gainWingbeat|loseWingbeat|gainResonance|spendResonance|enterMolt|gainOpenSkyGuard|returnDiscard|nextCoverBonus|retainHand|nextTurnDraw|gainEnergyNextTurn|shuffleSelfToDraw)\(/.test(body);
 });
 const inferMoltTarget = (baseTarget, effects = []) => {
   if (effectsNeedEnemyTarget(effects)) return 'enemy';
@@ -634,7 +637,11 @@ for (const mark of alphaRouteMarks.routeMarks ?? []) {
   if (!validRouteMarkSources.has(mark.source)) fail(`${label}: invalid source "${mark.source}"`);
   if (!validRouteMarkRarities.has(mark.rarity)) fail(`${label}: invalid rarity "${mark.rarity}"`);
   validateTrigger(mark.trigger, label);
-  validateEffects([mark.effect], `${label}:effect`, validMarkVerbs);
+  const markEffects = Array.isArray(mark.effects) && mark.effects.length > 0
+    ? mark.effects
+    : (mark.effect ? [mark.effect] : []);
+  if (markEffects.length === 0) fail(`${label}: missing effect/effects`);
+  validateEffects(markEffects, `${label}:effects`, validMarkVerbs);
   const iconPath = `assets/runtime/waymarks/icons/${mark.id}.webp`;
   if (!fs.existsSync(path.join(root, iconPath))) {
     fail(`${label}: missing reward icon at ${iconPath}`);

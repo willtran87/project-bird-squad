@@ -26,7 +26,7 @@
       ],
       "services": [
         { "id": "release", "basePrice": 70, "priceIncrease": 25 },
-        { "id": "preen", "basePrice": 95, "discountRouteMarkIds": ["patched_harness"] }
+        { "id": "preen", "basePrice": 95, "discountRouteMarkIds": [] }
       ]
     }
   ]

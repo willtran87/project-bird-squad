@@ -168,6 +168,7 @@
         "resonance"
       ],
       "effects": [
+        "if hasResonance then damage(target, 2)",
         "damage(target, 2)",
         "gainResonance(1)"
       ],
@@ -177,6 +178,7 @@
       ],
       "upgrade": {
         "effects": [
+          "if hasResonance then damage(target, 3)",
           "damage(target, 3)",
           "gainResonance(2)"
         ],
@@ -206,7 +208,7 @@
         "tempo"
       ],
       "effects": [
-        "draw(1)",
+        "if isMolting then draw(1)",
         "if isMolting then gainWingbeat(1)"
       ],
       "moltEffects": [
@@ -214,9 +216,9 @@
       ],
       "upgrade": {
         "effects": [
-          "draw(2)",
-          "if isMolting then gainWingbeat(1)",
-          "gainEnergyNextTurn(1)"
+          "draw(1)",
+          "if isMolting then draw(1)",
+          "if isMolting then gainWingbeat(1)"
         ],
         "flockStats": {
           "resonance": 1
@@ -282,6 +284,7 @@
       ],
       "effects": [
         "damage(target, 3)",
+        "if targetWinded then draw(1)",
         "applyWinded(target, 1)"
       ],
       "moltEffects": [
@@ -291,6 +294,7 @@
       "upgrade": {
         "effects": [
           "damage(target, 5)",
+          "if targetWinded then draw(1)",
           "applyWinded(target, 1)"
         ],
         "flockStats": {
@@ -354,11 +358,13 @@
       "target": "self",
       "tags": [
         "heal",
-        "draw"
+        "draw",
+        "full-cohesion"
       ],
       "effects": [
         "heal(2)",
-        "draw(1)"
+        "draw(1)",
+        "if fullCohesion then gainOpenSkyGuard(1)"
       ],
       "moltEffects": [
         "damage(target, 2)",
@@ -367,7 +373,8 @@
       "upgrade": {
         "effects": [
           "heal(3)",
-          "draw(1)"
+          "draw(1)",
+          "if fullCohesion then gainOpenSkyGuard(2)"
         ],
         "flockStats": {
           "regen": 1
@@ -391,17 +398,23 @@
       "cost": 1,
       "target": "self",
       "tags": [
-        "cover"
+        "cover",
+        "retain",
+        "restraint"
       ],
       "effects": [
-        "gainCover(7)"
+        "gainCover(6)",
+        "retainHand(1)",
+        "if fullyBlocksNextAttack then nextTurnDraw(1)"
       ],
       "moltEffects": [
         "damage(target, 7)"
       ],
       "upgrade": {
         "effects": [
-          "gainCover(10)"
+          "gainCover(8)",
+          "retainHand(1)",
+          "if fullyBlocksNextAttack then nextTurnDraw(2)"
         ],
         "flockStats": {
           "cover": 1
@@ -431,7 +444,8 @@
       "effects": [
         "gainCover(4)",
         "draw(1)",
-        "discard(1)"
+        "discard(1)",
+        "if fullyBlocksNextAttack then retainHand(1)"
       ],
       "moltEffects": [
         "discard(1)",
@@ -442,7 +456,8 @@
         "effects": [
           "gainCover(6)",
           "draw(1)",
-          "discard(1)"
+          "discard(1)",
+          "if fullyBlocksNextAttack then retainHand(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -510,6 +525,7 @@
         "draw"
       ],
       "effects": [
+        "if hasResonance then gainEnergyNextTurn(1)",
         "gainResonance(1)",
         "draw(1)"
       ],
@@ -519,6 +535,7 @@
       ],
       "upgrade": {
         "effects": [
+          "if hasResonance then gainEnergyNextTurn(1)",
           "gainResonance(2)",
           "draw(1)"
         ],
@@ -551,7 +568,8 @@
       "effects": [
         "damage(target, 3)",
         "if hasResonance then spendResonance(1)",
-        "if spentResonance then draw(1)"
+        "if spentResonance then draw(1)",
+        "if spentResonance then damage(target, 2)"
       ],
       "moltEffects": [
         "gainCover(5)",
@@ -561,7 +579,8 @@
         "effects": [
           "damage(target, 5)",
           "if hasResonance then spendResonance(1)",
-          "if spentResonance then draw(2)"
+          "if spentResonance then draw(2)",
+          "if spentResonance then damage(target, 3)"
         ],
         "flockStats": {
           "damage": 1
@@ -791,8 +810,8 @@
       "effects": [
         "removeCover(target, 4)",
         "gainCover(3)",
-        "draw(1)",
-        "discard(1)"
+        "if targetHasCover then draw(1)",
+        "if targetHasCover then discard(1)"
       ],
       "moltEffects": [
         "damage(target, 4)",
@@ -802,8 +821,8 @@
         "effects": [
           "removeCover(target, 6)",
           "gainCover(5)",
-          "draw(1)",
-          "discard(1)"
+          "if targetHasCover then draw(1)",
+          "if targetHasCover then discard(1)"
         ],
         "flockStats": {
           "damage": 1
@@ -831,20 +850,28 @@
         "aoe"
       ],
       "effects": [
-        "damageAll(3)"
+        "damageAll(2)",
+        "if targetHasCover then removeCover(target, 3)",
+        "if targetHasCover then gainResonance(1)"
       ],
       "moltEffects": [
-        "gainCover(2 perCover)"
+        "gainCover(2 perCover)",
+        "gainCover(3)",
+        "if fullyBlocksNextAttack then nextTurnDraw(1)"
       ],
       "upgrade": {
         "effects": [
-          "damageAll(5)"
+          "damageAll(3)",
+          "if targetHasCover then removeCover(target, 5)",
+          "if targetHasCover then gainResonance(1)"
         ],
         "flockStats": {
           "damage": 1
         },
         "moltEffects": [
-          "gainCover(4 perCover)"
+          "gainCover(4 perCover)",
+          "gainCover(4)",
+          "if fullyBlocksNextAttack then nextTurnDraw(1)"
         ]
       },
       "flockStats": {
@@ -942,24 +969,26 @@
         "molt"
       ],
       "effects": [
-        "damage(target, 3)",
-        "if isMolting then damage(target, 3)"
+        "damage(target, 2)",
+        "if targetWinded then damage(target, 3)",
+        "if isMolting then damage(target, 2)"
       ],
       "moltEffects": [
         "returnDiscard(nonMolt, +1)",
-        "draw(1)"
+        "if targetWinded then draw(1)"
       ],
       "upgrade": {
         "effects": [
-          "damage(target, 4)",
-          "if isMolting then damage(target, 5)"
+          "damage(target, 3)",
+          "if targetWinded then damage(target, 4)",
+          "if isMolting then damage(target, 3)"
         ],
         "flockStats": {
           "moltPower": 1
         },
         "moltEffects": [
-          "returnDiscard(nonMolt, 0)",
-          "draw(1)"
+          "returnDiscard(nonMolt, +1)",
+          "if targetWinded then draw(1)"
         ]
       },
       "flockStats": {
@@ -977,11 +1006,13 @@
       "target": "self",
       "tags": [
         "heal",
-        "cover"
+        "cover",
+        "retain"
       ],
       "effects": [
         "heal(2)",
-        "gainCover(3)"
+        "gainCover(3)",
+        "if fullCohesion then retainHand(1)"
       ],
       "moltEffects": [
         "applyWinded(target, 2)",
@@ -990,7 +1021,8 @@
       "upgrade": {
         "effects": [
           "heal(3)",
-          "gainCover(5)"
+          "gainCover(4)",
+          "if fullCohesion then retainHand(1)"
         ],
         "flockStats": {
           "cover": 1
@@ -1015,11 +1047,13 @@
       "target": "self",
       "tags": [
         "cover",
-        "heal"
+        "heal",
+        "open-sky"
       ],
       "effects": [
-        "gainCover(5)",
-        "heal(1)"
+        "gainCover(4)",
+        "heal(1)",
+        "if openSky then gainOpenSkyGuard(2)"
       ],
       "moltEffects": [
         "damage(target, 2)",
@@ -1027,8 +1061,9 @@
       ],
       "upgrade": {
         "effects": [
-          "gainCover(7)",
-          "heal(2)"
+          "gainCover(6)",
+          "heal(2)",
+          "if openSky then gainOpenSkyGuard(2)"
         ],
         "flockStats": {
           "regen": 1
@@ -1052,12 +1087,14 @@
       "cost": 1,
       "target": "self",
       "tags": [
+        "cover",
         "heal",
         "open-sky"
       ],
       "effects": [
-        "heal(3)",
-        "if cohesionBelowHalf then heal(5)"
+        "gainCover(3)",
+        "heal(2)",
+        "if openSky then gainCover(4)"
       ],
       "moltEffects": [
         "damageAll(2)",
@@ -1065,8 +1102,9 @@
       ],
       "upgrade": {
         "effects": [
-          "heal(4)",
-          "if cohesionBelowHalf then heal(7)"
+          "gainCover(4)",
+          "heal(3)",
+          "if openSky then gainCover(5)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -1094,8 +1132,8 @@
         "draw"
       ],
       "effects": [
-        "heal(1)",
-        "draw(1)"
+        "overhealCover(1)",
+        "if fullCohesion then gainOpenSkyGuard(1)"
       ],
       "moltEffects": [
         "damage(target, 2)",
@@ -1103,8 +1141,9 @@
       ],
       "upgrade": {
         "effects": [
-          "heal(2)",
-          "draw(1)"
+          "overhealCover(2)",
+          "if fullCohesion then gainOpenSkyGuard(1)",
+          "if fullCohesion then draw(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -1132,7 +1171,8 @@
         "recursion"
       ],
       "effects": [
-        "returnDiscard(nonMolt, +1)"
+        "returnDiscard(nonMolt, +1)",
+        "heal(2)"
       ],
       "moltEffects": [
         "discard(1)",
@@ -1141,7 +1181,8 @@
       ],
       "upgrade": {
         "effects": [
-          "returnDiscard(nonMolt, 0)"
+          "returnDiscard(nonMolt, +1)",
+          "heal(3)"
         ],
         "flockStats": {
           "draw": 1
@@ -1171,23 +1212,27 @@
       ],
       "effects": [
         "discardUpTo(2)",
-        "heal(2 perDiscarded)"
+        "heal(3 perDiscarded)",
+        "gainCover(2 perDiscarded)"
       ],
       "moltEffects": [
         "discardUpTo(2)",
-        "damage(target, 3 perDiscarded)"
+        "damage(target, 4 perDiscarded)",
+        "gainResonance(1)"
       ],
       "upgrade": {
         "effects": [
           "discardUpTo(2)",
-          "heal(3 perDiscarded)"
+          "heal(4 perDiscarded)",
+          "gainCover(3 perDiscarded)"
         ],
         "flockStats": {
           "cohesion": 1
         },
         "moltEffects": [
           "discardUpTo(2)",
-          "damage(target, 5 perDiscarded)"
+          "damage(target, 6 perDiscarded)",
+          "gainResonance(1)"
         ]
       },
       "flockStats": {
@@ -1207,7 +1252,8 @@
         "cover"
       ],
       "effects": [
-        "gainCover(5)"
+        "gainCover(5)",
+        "nextCoverBonus(nests, 2)"
       ],
       "moltEffects": [
         "gainResonance(2)",
@@ -1215,7 +1261,8 @@
       ],
       "upgrade": {
         "effects": [
-          "gainCover(7)"
+          "gainCover(7)",
+          "nextCoverBonus(nests, 3)"
         ],
         "flockStats": {
           "cover": 1
@@ -1278,11 +1325,13 @@
       "target": "self",
       "tags": [
         "cover",
-        "low-cohesion"
+        "low-cohesion",
+        "restraint"
       ],
       "effects": [
-        "gainCover(6)",
-        "if cohesionBelowHalf then gainCover(3)"
+        "gainCover(5)",
+        "if cohesionBelowHalf then gainCover(3)",
+        "if fullyBlocksNextAttack then retainHand(1)"
       ],
       "moltEffects": [
         "heal(4)",
@@ -1290,8 +1339,9 @@
       ],
       "upgrade": {
         "effects": [
-          "gainCover(8)",
-          "if cohesionBelowHalf then gainCover(4)"
+          "gainCover(7)",
+          "if cohesionBelowHalf then gainCover(4)",
+          "if fullyBlocksNextAttack then retainHand(1)"
         ],
         "flockStats": {
           "cover": 1
@@ -1318,7 +1368,8 @@
         "cover"
       ],
       "effects": [
-        "gainCover(3)"
+        "gainCover(3)",
+        "nextCoverBonus(nests, 1)"
       ],
       "moltEffects": [
         "damage(target, 2)",
@@ -1326,7 +1377,8 @@
       ],
       "upgrade": {
         "effects": [
-          "gainCover(5)"
+          "gainCover(4)",
+          "nextCoverBonus(nests, 2)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -1351,11 +1403,13 @@
       "target": "self",
       "tags": [
         "cover",
-        "heal"
+        "heal",
+        "setup"
       ],
       "effects": [
-        "gainCover(5)",
-        "heal(2)"
+        "gainCover(4)",
+        "heal(2)",
+        "nextCoverBonus(nests, 2)"
       ],
       "moltEffects": [
         "applyWinded(target, 2)",
@@ -1363,8 +1417,9 @@
       ],
       "upgrade": {
         "effects": [
-          "gainCover(7)",
-          "heal(3)"
+          "gainCover(6)",
+          "heal(3)",
+          "nextCoverBonus(nests, 3)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -1776,8 +1831,7 @@
         "tempo"
       ],
       "effects": [
-        "draw(1)",
-        "if openSky then draw(1)",
+        "if openSky then draw(2)",
         "if openSky then gainOpenSkyGuard(1)"
       ],
       "moltEffects": [
@@ -1787,7 +1841,7 @@
       ],
       "upgrade": {
         "effects": [
-          "draw(2)",
+          "draw(1)",
           "if openSky then draw(1)",
           "if openSky then gainOpenSkyGuard(1)"
         ],
@@ -2527,7 +2581,7 @@
         "draw"
       ],
       "effects": [
-        "draw(1)",
+        "if targetIntendsAttack then draw(1)",
         "if targetIntendsAttack then applyWinded(target, 2)"
       ],
       "moltEffects": [
@@ -2536,7 +2590,7 @@
       ],
       "upgrade": {
         "effects": [
-          "draw(1)",
+          "if targetIntendsAttack then draw(1)",
           "if targetIntendsAttack then applyWinded(target, 3)"
         ],
         "flockStats": {
@@ -2568,7 +2622,8 @@
       ],
       "effects": [
         "draw(1)",
-        "discard(1)"
+        "discard(1)",
+        "if openSky then gainOpenSkyGuard(1)"
       ],
       "moltEffects": [
         "gainCover(3)",
@@ -2578,7 +2633,8 @@
         "effects": [
           "draw(1)",
           "discard(1)",
-          "gainCover(2)"
+          "if openSky then gainOpenSkyGuard(1)",
+          "retainHand(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -2607,22 +2663,26 @@
         "tell"
       ],
       "effects": [
-        "damage(target, 2)",
-        "if targetIntendsAttack then applyWinded(target, 1)"
+        "damage(target, 3)",
+        "applyWinded(target, 1)",
+        "if targetIntendsAttack then gainCover(3)"
       ],
       "moltEffects": [
-        "applyWinded(target, 2)"
+        "applyWinded(target, 2)",
+        "draw(1)"
       ],
       "upgrade": {
         "effects": [
-          "damage(target, 3)",
-          "if targetIntendsAttack then applyWinded(target, 2)"
+          "damage(target, 4)",
+          "applyWinded(target, 2)",
+          "if targetIntendsAttack then gainCover(4)"
         ],
         "flockStats": {
           "damage": 1
         },
         "moltEffects": [
-          "applyWinded(target, 3)"
+          "applyWinded(target, 3)",
+          "draw(1)"
         ]
       },
       "flockStats": {
@@ -2644,7 +2704,8 @@
       ],
       "effects": [
         "gainCover(3)",
-        "heal(2)"
+        "heal(2)",
+        "if openSky then gainOpenSkyGuard(1)"
       ],
       "moltEffects": [
         "gainOpenSkyGuard(1)",
@@ -2653,7 +2714,8 @@
       "upgrade": {
         "effects": [
           "gainCover(5)",
-          "heal(3)"
+          "heal(3)",
+          "if openSky then gainOpenSkyGuard(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -2683,7 +2745,8 @@
       ],
       "effects": [
         "removeCover(target, 3)",
-        "draw(1)"
+        "draw(1)",
+        "if targetHasCover then gainResonance(1)"
       ],
       "moltEffects": [
         "removeCover(target, 5)",
@@ -2692,7 +2755,8 @@
       "upgrade": {
         "effects": [
           "removeCover(target, 5)",
-          "draw(1)"
+          "draw(1)",
+          "if targetHasCover then gainResonance(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -2771,7 +2835,7 @@
       ],
       "upgrade": {
         "effects": [
-          "returnDiscard(nonMolt, 0)",
+          "returnDiscard(nonMolt, +1)",
           "if fullCohesion then draw(1)"
         ],
         "flockStats": {
@@ -2779,7 +2843,7 @@
         },
         "moltEffects": [
           "draw(1)",
-          "returnDiscard(nonMolt, 0)"
+          "returnDiscard(nonMolt, +1)"
         ]
       },
       "flockStats": {
@@ -2926,27 +2990,34 @@
       "target": "self",
       "tags": [
         "cover",
-        "tempo"
+        "tempo",
+        "open-sky"
       ],
       "effects": [
-        "gainCover(4)",
-        "gainWingbeat(1)"
+        "gainCover(3)",
+        "gainWingbeat(1)",
+        "if openSky then gainOpenSkyGuard(1)",
+        "if fullyBlocksNextAttack then nextTurnDraw(1)"
       ],
       "moltEffects": [
         "gainCover(5)",
-        "gainWingbeat(1)"
+        "gainWingbeat(1)",
+        "gainOpenSkyGuard(1)"
       ],
       "upgrade": {
         "effects": [
-          "gainCover(6)",
-          "gainWingbeat(1)"
+          "gainCover(5)",
+          "gainWingbeat(1)",
+          "if openSky then gainOpenSkyGuard(2)",
+          "if fullyBlocksNextAttack then nextTurnDraw(1)"
         ],
         "flockStats": {
           "cover": 1
         },
         "moltEffects": [
           "gainCover(7)",
-          "gainWingbeat(1)"
+          "gainWingbeat(1)",
+          "gainOpenSkyGuard(1)"
         ]
       },
       "flockStats": {
@@ -2969,15 +3040,18 @@
       ],
       "effects": [
         "gainCover(1)",
+        "if openSky then gainOpenSkyGuard(1)",
         "shuffleSelfToDraw()"
       ],
       "moltEffects": [
         "gainCover(3)",
+        "if openSky then gainOpenSkyGuard(1)",
         "shuffleSelfToDraw()"
       ],
       "upgrade": {
         "effects": [
           "gainCover(2)",
+          "if openSky then gainOpenSkyGuard(1)",
           "shuffleSelfToDraw()"
         ],
         "flockStats": {
@@ -2985,6 +3059,7 @@
         },
         "moltEffects": [
           "gainCover(4)",
+          "if openSky then gainOpenSkyGuard(1)",
           "shuffleSelfToDraw()"
         ]
       },
@@ -3176,17 +3251,17 @@
         "draw"
       ],
       "effects": [
-        "returnDiscard(nonMolt, 0)",
+        "returnDiscard(nonMolt, +1)",
         "if firstPlayedThisCombat then gainWingbeat(1)"
       ],
       "moltEffects": [
-        "returnDiscard(nonMolt, 0)",
+        "returnDiscard(nonMolt, +1)",
         "draw(1)"
       ],
       "upgrade": {
         "effects": [
-          "returnDiscard(nonMolt, 0)",
-          "if firstPlayedThisCombat then gainWingbeat(1)",
+          "returnDiscard(nonMolt, +1)",
+          "if firstPlayedThisCombat then gainWingbeat(2)",
           "draw(1)"
         ],
         "flockStats": {
@@ -3194,7 +3269,7 @@
           "resonance": 1
         },
         "moltEffects": [
-          "returnDiscard(nonMolt, 0)",
+          "returnDiscard(nonMolt, +1)",
           "draw(2)"
         ]
       },
@@ -3298,7 +3373,7 @@
         "tempo"
       ],
       "effects": [
-        "draw(1)",
+        "if playedSuitThisTurn(plumes) then draw(1)",
         "if playedSuitThisTurn(plumes) then gainResonance(1)"
       ],
       "moltEffects": [
@@ -3307,7 +3382,7 @@
       ],
       "upgrade": {
         "effects": [
-          "draw(1)",
+          "if playedSuitThisTurn(plumes) then draw(1)",
           "gainResonance(1)"
         ],
         "flockStats": {
@@ -3547,7 +3622,7 @@
       ],
       "moltEffects": [
         "windedBurst(3)",
-        "if flockSuit(cups,2) then damageAll(2)"
+        "if flockSuit(basins,2) then damageAll(2)"
       ],
       "upgrade": {
         "effects": [
@@ -3560,7 +3635,7 @@
         },
         "moltEffects": [
           "windedBurst(4)",
-          "if flockSuit(cups,2) then damageAll(3)"
+          "if flockSuit(basins,2) then damageAll(3)"
         ]
       },
       "flockStats": {
@@ -3840,15 +3915,18 @@
       ],
       "effects": [
         "damage(target, 3)",
+        "if targetWinded then draw(1)",
         "windedBurst(2)"
       ],
       "moltEffects": [
         "gainCover(3)",
+        "if targetWinded then draw(1)",
         "windedBurst(2)"
       ],
       "upgrade": {
         "effects": [
           "damage(target, 4)",
+          "if targetWinded then draw(1)",
           "windedBurst(3)"
         ],
         "flockStats": {
@@ -3856,6 +3934,7 @@
         },
         "moltEffects": [
           "gainCover(5)",
+          "if targetWinded then draw(1)",
           "windedBurst(3)"
         ]
       },
@@ -4092,7 +4171,7 @@
         "tempo"
       ],
       "effects": [
-        "gainCover(3)",
+        "gainCover(5)",
         "damage(target, 1 perCover)"
       ],
       "moltEffects": [
@@ -4101,7 +4180,7 @@
       ],
       "upgrade": {
         "effects": [
-          "gainCover(5)",
+          "gainCover(7)",
           "damage(target, 1 perCover)"
         ],
         "flockStats": {
@@ -4219,11 +4298,15 @@
         "unplayable"
       ],
       "effects": [
-        "loseWingbeat(1)"
+        "loseWingbeat(1)",
+        "if fullyBlocksNextAttack then draw(1)",
+        "if openSky then discard(1)"
       ],
       "upgrade": {
         "effects": [
-          "loseWingbeat(1)"
+          "loseWingbeat(1)",
+          "if fullyBlocksNextAttack then draw(1)",
+          "if openSky then discard(1)"
         ],
         "flockStats": {}
       },
@@ -4243,12 +4326,14 @@
       ],
       "effects": [
         "gainCover(2)",
-        "discard(1)"
+        "discard(1)",
+        "if openSky then loseWingbeat(1)"
       ],
       "upgrade": {
         "effects": [
           "gainCover(2)",
-          "discard(1)"
+          "discard(1)",
+          "if openSky then loseWingbeat(1)"
         ],
         "flockStats": {}
       },
@@ -4268,10 +4353,14 @@
         "unplayable"
       ],
       "effects": [
+        "discard(1)",
+        "if hasResonance then spendResonance(1)",
         "shuffleSelfToDraw()"
       ],
       "upgrade": {
         "effects": [
+          "discard(1)",
+          "if hasResonance then spendResonance(1)",
           "shuffleSelfToDraw()"
         ],
         "flockStats": {}

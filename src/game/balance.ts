@@ -3,6 +3,25 @@ import type { RouteNodeType } from './types';
 
 export type RouteGenNodeType = Exclude<RouteNodeType, 'boss'>;
 
+export interface RouteGenerationBeat {
+  id: string;
+  columns?: number[];
+  fromEnd?: number;
+  types?: RouteGenNodeType[];
+  requireAny?: RouteGenNodeType[];
+  maxCombat?: number;
+  mustOfferNonCombat?: boolean;
+}
+
+export interface RoutePathRules {
+  maxConsecutiveCombat?: number;
+  minSafetyBeforeBoss?: number;
+  minSafetyBeforeColumnPct?: number;
+  minBuildBeforeBoss?: number;
+  rivalRequiresAlternative?: boolean;
+  maxPressureScore?: number;
+}
+
 export interface RouteGenerationBalance {
   middleColumns: [number, number];
   lanes: [number, number];
@@ -10,6 +29,8 @@ export interface RouteGenerationBalance {
   fillWeights: Partial<Record<RouteGenNodeType, number>>;
   requiredOpeningTypes: RouteGenNodeType[];
   preBossTypes: RouteGenNodeType[];
+  beats?: RouteGenerationBeat[];
+  pathRules?: RoutePathRules;
 }
 
 export interface MapEconomyBalance {

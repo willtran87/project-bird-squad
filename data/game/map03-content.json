@@ -66,7 +66,8 @@
           "label": "Charge Beacon",
           "effects": [
             "gainCover(8)",
-            "nextAttackBonus(4)"
+            "nextAttackBonus(4)",
+            "if playedCardsAtLeast(4) then nextAttackBonus(3)"
           ]
         },
         {
@@ -522,7 +523,8 @@
           "label": "Skyline Flare 6",
           "effects": [
             "damage(flock, 6)",
-            "if isMolting then applyOpenSky(1)"
+            "if isMolting then applyOpenSky(1)",
+            "if handEmptyAtRoost then applyFrail(1)"
           ]
         },
         {

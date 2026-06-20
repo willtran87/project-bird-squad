@@ -26,16 +26,18 @@
         },
         {
           "id": "strike_6_b",
-          "label": "Strike 6",
+          "label": "Gutter Nibble 4",
           "effects": [
-            "damage(flock, 6)"
+            "damage(flock, 4)",
+            "if handEmptyAtRoost then addSnagToDiscard(tangled_line)"
           ]
         },
         {
           "id": "scurry_cover",
           "label": "Scurry",
           "effects": [
-            "gainCover(4)"
+            "gainCover(4)",
+            "if flockHasNoCover then nextAttackBonus(2)"
           ]
         }
       ],
@@ -125,14 +127,16 @@
           "id": "watch_winded",
           "label": "Watch",
           "effects": [
-            "applyWinded(flock, 1)"
+            "applyWinded(flock, 1)",
+            "if playedCardsAtLeast(4) then applyOpenSky(1)"
           ]
         },
         {
           "id": "heavy_strike_11",
           "label": "Heavy Strike 11",
           "effects": [
-            "damage(flock, 11)"
+            "damage(flock, 10)",
+            "if playedCardsAtLeast(4) then nextAttackBonus(3)"
           ]
         },
         {
@@ -176,7 +180,8 @@
           "id": "raccoon_rummage",
           "label": "Rummage",
           "effects": [
-            "if notHitThisTurn then addSnagToDiscard(tangled_line)"
+            "if notHitThisTurn then addSnagToDiscard(tangled_line)",
+            "if handEmptyAtRoost then addSnagToDiscard(bad_directions)"
           ]
         },
         {
@@ -190,7 +195,8 @@
           "id": "raccoon_slip_cover",
           "label": "Slip Behind",
           "effects": [
-            "gainCover(6)"
+            "gainCover(6)",
+            "if flockHasNoCover then nextAttackBonus(2)"
           ]
         }
       ],
@@ -234,14 +240,16 @@
           "id": "enforcer_square_up",
           "label": "Square Up",
           "effects": [
-            "gainCover(7)"
+            "gainCover(7)",
+            "if flockHasCover then loseWingbeat(1)"
           ]
         },
         {
           "id": "enforcer_body_check_8",
           "label": "Body Check 8",
           "effects": [
-            "damage(flock, 8)"
+            "damage(flock, 8)",
+            "if flockHasCover then applyWinded(flock, 1)"
           ]
         }
       ],
@@ -330,7 +338,8 @@
           "id": "rat_courier_run_message",
           "label": "Run Message",
           "effects": [
-            "nextAttackBonus(3)"
+            "nextAttackBonus(3)",
+            "if playedCardsAtLeast(4) then applyWinded(flock, 1)"
           ]
         },
         {
@@ -344,7 +353,8 @@
           "id": "rat_courier_alarm_tag",
           "label": "Alarm Tag",
           "effects": [
-            "if notHitThisTurn then addSnagToDiscard(bad_directions)"
+            "if notHitThisTurn then addSnagToDiscard(bad_directions)",
+            "if handEmptyAtRoost then nextAttackBonus(2)"
           ]
         }
       ],
@@ -487,7 +497,8 @@
           "id": "alley_cat_stalk",
           "label": "Stalk",
           "effects": [
-            "if notHitThisTurn then nextAttackBonus(4)"
+            "if notHitThisTurn then nextAttackBonus(4)",
+            "if handEmptyAtRoost then applyOpenSky(1)"
           ]
         },
         {
@@ -501,7 +512,8 @@
           "id": "alley_cat_melt_away",
           "label": "Melt Away",
           "effects": [
-            "gainCover(6)"
+            "gainCover(6)",
+            "if flockHasNoCover then nextAttackBonus(2)"
           ]
         }
       ],

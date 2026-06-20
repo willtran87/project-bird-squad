@@ -67,6 +67,8 @@ const rewardProfiles = readJson('data/game/alpha-reward-profiles.json').profiles
 const rewardById = new Map(rewardProfiles.map((profile) => [profile.id, profile]));
 const routeMarks = readJson('data/game/alpha-route-marks.json').routeMarks;
 const cacheOptions = readJson('data/game/alpha-cache.json').options;
+const basinOptions = readJson('data/game/alpha-basins.json').options;
+const nestOptions = readJson('data/game/alpha-nests.json').options;
 const balance = readJson('data/game/balance-config.json');
 const market = readJson('data/game/alpha-market.json').markets[0];
 
@@ -84,6 +86,7 @@ const mapSources = [
 const encounterById = new Map(mapSources.flatMap((source) => source.encounters.map((encounter) => [encounter.id, encounter])));
 const balanceByMap = new Map(balance.maps.map((profile) => [profile.mapId, profile]));
 const markById = new Map(routeMarks.map((mark) => [mark.id, mark]));
+const WAYMARK_ACTIVE_CAP = 6;
 
 function outgoingFor(routeMap) {
   const outgoing = new Map();
@@ -119,14 +122,36 @@ function firstUnownedMark(run, rng, source) {
 
 function addRouteMark(run, rng, source) {
   const mark = firstUnownedMark(run, rng, source);
-  if (mark) run.routeMarks.push(mark.id);
+  return addSpecificRouteMark(run, mark);
+}
+
+function addSpecificRouteMark(run, mark) {
+  if (mark) {
+    const capExempt = mark.source === 'boss' || mark.rarity === 'boss';
+    if (!capExempt) {
+      const nonBossCount = run.routeMarks.filter((id) => {
+        const owned = markById.get(id);
+        return owned?.source !== 'boss' && owned?.rarity !== 'boss';
+      }).length;
+      if (nonBossCount >= WAYMARK_ACTIVE_CAP) {
+        const replaceIndex = run.routeMarks.findIndex((id) => {
+          const owned = markById.get(id);
+          return owned?.source !== 'boss' && owned?.rarity !== 'boss';
+        });
+        if (replaceIndex >= 0) run.routeMarks.splice(replaceIndex, 1);
+      }
+    }
+    run.routeMarks.push(mark.id);
+  }
   return mark?.id;
 }
 
 function markValue(run, trigger, verb) {
   return run.routeMarks.reduce((total, id) => {
     const mark = markById.get(id);
-    return mark?.trigger === trigger ? total + effectValue(mark.effect, verb) : total;
+    if (!mark || mark.trigger !== trigger) return total;
+    const effects = Array.isArray(mark.effects) && mark.effects.length > 0 ? mark.effects : [mark.effect].filter(Boolean);
+    return total + effects.reduce((sum, effect) => sum + effectValue(effect, verb), 0);
   }, 0);
 }
 
@@ -146,7 +171,7 @@ function applyRouteEffect(run, rng, effect) {
       if (parsed.args[0]?.startsWith('random')) {
         addRouteMark(run, rng);
       } else if (markById.has(parsed.args[0]) && !run.routeMarks.includes(parsed.args[0])) {
-        run.routeMarks.push(parsed.args[0]);
+        addSpecificRouteMark(run, markById.get(parsed.args[0]));
       }
       break;
     case 'addCard':
@@ -178,11 +203,21 @@ function affordableMarketAction(run, rng) {
       - markValue(run, 'passive', 'reducePreenPrice')
   );
   const choices = [];
+  const bossGuardPrice = 120 + run.mapIndex * 35;
+  const routeScoutPrice = 90 + run.mapIndex * 30;
+  if (run.mapIndex >= 1 && run.scrap >= bossGuardPrice) choices.push('boss_guard');
+  if (run.mapIndex >= 2 && run.scrap >= routeScoutPrice) choices.push('route_scout');
   if (run.scrap >= waymarkPrice) choices.push('waymark');
   if (run.scrap >= cardPrice) choices.push('card');
   if (run.scrap >= preenPrice) choices.push('preen');
   const choice = choices.length ? pick(rng, choices) : undefined;
-  if (choice === 'waymark') {
+  if (choice === 'boss_guard') {
+    run.scrap -= bossGuardPrice;
+    run.marketBuys += 1;
+  } else if (choice === 'route_scout') {
+    run.scrap -= routeScoutPrice;
+    run.marketBuys += 1;
+  } else if (choice === 'waymark') {
     run.scrap -= waymarkPrice;
     run.marketBuys += 1;
     addRouteMark(run, rng, 'market');
@@ -194,6 +229,16 @@ function affordableMarketAction(run, rng) {
     run.scrap -= preenPrice;
     run.preens += 1;
   }
+}
+
+function optionCost(option) {
+  return Number(option.cost ?? option.effects?.map((effect) => effectValue(effect, 'payScrap')).find((value) => value > 0) ?? 0);
+}
+
+function applyChoiceOptions(run, rng, options) {
+  const affordable = options.filter((option) => optionCost(option) <= run.scrap);
+  const chosen = affordable.length ? pick(rng, affordable) : undefined;
+  chosen?.effects?.forEach((effect) => applyRouteEffect(run, rng, effect));
 }
 
 function applyCombatReward(run, node, rng) {
@@ -237,14 +282,11 @@ function applyRouteNode(run, node, rng, economy) {
     return;
   }
   if (node.type === 'nest') {
-    if (run.scrap >= 35) {
-      run.scrap -= 35;
-      run.preens += 1;
-    }
-    if (run.scrap >= 115 && rng() < 0.25) {
-      run.scrap -= 115;
-      addRouteMark(run, rng, 'nest');
-    }
+    applyChoiceOptions(run, rng, nestOptions);
+    return;
+  }
+  if (node.type === 'basin') {
+    applyChoiceOptions(run, rng, basinOptions);
     return;
   }
   if (node.type === 'market') affordableMarketAction(run, rng);
@@ -255,6 +297,7 @@ function simulate(seedIndex) {
   const run = {
     scrap: 40,
     scrapGained: 0,
+    mapIndex: 0,
     deckSize: 10,
     routeMarks: [],
     preens: 0,
@@ -262,7 +305,9 @@ function simulate(seedIndex) {
     nodeCounts: {},
   };
   const maps = [];
-  for (const source of mapSources) {
+  for (let mapIndex = 0; mapIndex < mapSources.length; mapIndex += 1) {
+    const source = mapSources[mapIndex];
+    run.mapIndex = mapIndex;
     const profile = balanceByMap.get(source.map.id);
     const path = samplePath(source.map, rng);
     const before = {
@@ -342,7 +387,7 @@ if (jsonOutput) {
 console.log(`Bird Squad economy simulation (${samples} seeded full-run samples)`);
 console.log('');
 console.log('Assumptions: route choices are sampled uniformly from legal exits; combat rewards use authored profiles;');
-console.log('caches sample the live cache choice table; markets buy one affordable card/Preen/Waymark.');
+console.log('caches/nests/basins sample live choice tables; markets buy one affordable card/Preen/Waymark/prep service.');
 console.log('');
 const headers = ['Map', 'Scrap+', 'Boss Scrap', 'Deck', 'Deck Target', 'Waymarks', 'WM Target', 'Preens', 'Safety', 'Status'];
 const table = rows.map((row) => [

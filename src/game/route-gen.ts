@@ -15,6 +15,8 @@ export interface RouteBlueprint {
   bossEncounterId: string;
   streetEncounterIds: string[];
   rivalEncounterIds: string[];
+  streetEncounterWeights?: Record<string, number>;
+  rivalEncounterWeights?: Record<string, number>;
   signalIds: string[];
   basinPayloadId: string;
   nestPayloadId: string;
@@ -54,6 +56,10 @@ const LABELS: Record<RouteNodeType, string> = {
   cache: 'Rooftop Cache',
 };
 
+const COMBAT_NODE_TYPES = new Set<RouteNodeType>(['street', 'rival']);
+const SAFETY_NODE_TYPES = new Set<RouteNodeType>(['basin', 'nest']);
+const BUILD_NODE_TYPES = new Set<RouteNodeType>(['cache', 'market', 'signal', 'nest']);
+
 export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRouteMap {
   const rand = mulberry32(seed);
   const ri = (min: number, max: number) => min + Math.floor(rand() * (max - min + 1));
@@ -78,10 +84,21 @@ export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRoute
     signal: new Set(),
   };
   const nonEntryStreetIds = bp.streetEncounterIds.filter((id) => id && id !== bp.entryEncounterId);
-  const pickPayload = (bucket: keyof typeof usedPayloads, ids: string[], fallback: string): string => {
+  const pickWeightedPayload = (ids: string[], weights?: Record<string, number>): string | undefined => {
+    if (!ids.length) return undefined;
+    if (!weights) return pick(ids);
+    const weighted = Object.fromEntries(ids.map((id) => [id, Math.max(1, weights[id] ?? 1)]));
+    return weightedPick(weighted, rand);
+  };
+  const pickPayload = (
+    bucket: keyof typeof usedPayloads,
+    ids: string[],
+    fallback: string,
+    weights?: Record<string, number>,
+  ): string => {
     const pool = ids.filter(Boolean);
     const fresh = pool.filter((id) => !usedPayloads[bucket].has(id));
-    const chosen = pick(fresh.length ? fresh : pool) ?? fallback;
+    const chosen = pickWeightedPayload(fresh.length ? fresh : pool, weights) ?? fallback;
     if (chosen) usedPayloads[bucket].add(chosen);
     return chosen;
   };
@@ -89,13 +106,17 @@ export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRoute
   const payloadFor = (type: RouteNodeType): string => {
     switch (type) {
       case 'street':
-        return pickPayload('street', nonEntryStreetIds.length ? nonEntryStreetIds : bp.streetEncounterIds, bp.entryEncounterId);
-      case 'rival':
+        return pickPayload('street', nonEntryStreetIds.length ? nonEntryStreetIds : bp.streetEncounterIds, bp.entryEncounterId, bp.streetEncounterWeights);
+      case 'rival': {
+        const hasRivalPool = bp.rivalEncounterIds.length > 0;
+        const fallbackPool = nonEntryStreetIds.length ? nonEntryStreetIds : bp.streetEncounterIds;
         return pickPayload(
-          bp.rivalEncounterIds.length ? 'rival' : 'street',
-          bp.rivalEncounterIds.length ? bp.rivalEncounterIds : (nonEntryStreetIds.length ? nonEntryStreetIds : bp.streetEncounterIds),
+          hasRivalPool ? 'rival' : 'street',
+          hasRivalPool ? bp.rivalEncounterIds : fallbackPool,
           bp.rivalEncounterIds[0] ?? bp.entryEncounterId,
+          hasRivalPool ? bp.rivalEncounterWeights : bp.streetEncounterWeights,
         );
+      }
       case 'signal': return pickPayload('signal', bp.signalIds, bp.basinPayloadId);
       case 'basin': return bp.basinPayloadId;
       case 'nest': return bp.nestPayloadId;
@@ -179,6 +200,54 @@ export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRoute
   applyOpeningColumn();
   applyPreBossColumn();
 
+  const nonCombatFallbackForBeat = (options: RouteGenNodeType[] = []): RouteGenNodeType => (
+    options.find((type) => !COMBAT_NODE_TYPES.has(type)) ?? 'cache'
+  );
+  const applyBeatTemplates = () => {
+    const beats = balance.beats ?? [];
+    for (const beat of beats) {
+      const targetColumns = new Set<number>();
+      for (const column of beat.columns ?? []) {
+        if (column >= 1 && column <= middleCols) targetColumns.add(column);
+      }
+      if (beat.fromEnd !== undefined) {
+        const column = middleCols - Math.max(0, beat.fromEnd);
+        if (column >= 1 && column <= middleCols) targetColumns.add(column);
+      }
+
+      for (const column of targetColumns) {
+        const columnNodes = (columns[column] ?? []).map((id) => byId.get(id)).filter((node): node is RouteNode => Boolean(node));
+        if (columnNodes.length === 0) continue;
+
+        if (beat.types?.length) {
+          columnNodes.forEach((node, index) => setType(node, beat.types![index % beat.types!.length]));
+        }
+
+        const preferred = beat.requireAny ?? beat.types ?? [];
+        if (beat.requireAny?.length && !columnNodes.some((node) => beat.requireAny!.includes(node.type as RouteGenNodeType))) {
+          const target = pick(columnNodes.filter((node) => COMBAT_NODE_TYPES.has(node.type))) ?? pick(columnNodes);
+          if (target) setType(target, pick(beat.requireAny) ?? beat.requireAny[0]);
+        }
+
+        if (beat.mustOfferNonCombat && columnNodes.every((node) => COMBAT_NODE_TYPES.has(node.type))) {
+          const target = pick(columnNodes) ?? columnNodes[0];
+          setType(target, nonCombatFallbackForBeat(preferred));
+        }
+
+        if (beat.maxCombat !== undefined) {
+          let combatNodes = columnNodes.filter((node) => COMBAT_NODE_TYPES.has(node.type));
+          while (combatNodes.length > beat.maxCombat) {
+            const target = combatNodes.pop();
+            if (!target) break;
+            setType(target, nonCombatFallbackForBeat(preferred));
+            combatNodes = columnNodes.filter((node) => COMBAT_NODE_TYPES.has(node.type));
+          }
+        }
+      }
+    }
+  };
+  applyBeatTemplates();
+
   // Guarantee each non-street type appears at least once (variety + node-type coverage).
   const ensure = (type: RouteNodeType, available: boolean) => {
     if (!available || middle.some((n) => n.type === type)) return;
@@ -193,6 +262,7 @@ export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRoute
   ensure('nest', true);
   ensure('cache', true);
   applyOpeningColumn();
+  applyBeatTemplates();
   applyPreBossColumn();
 
   // Edges: connect every column fully to the next (so every node has an outgoing
@@ -225,6 +295,120 @@ export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRoute
       addEdge(src, tid);
     });
   }
+
+  const outgoingFor = () => {
+    const outgoing = new Map<string, string[]>();
+    for (const edge of edges) {
+      if (edge.locked) continue;
+      outgoing.set(edge.from, [...(outgoing.get(edge.from) ?? []), edge.to]);
+    }
+    return outgoing;
+  };
+  const enumeratePaths = (limit = 2000): RouteNode[][] => {
+    const outgoing = outgoingFor();
+    const paths: RouteNode[][] = [];
+    const stack: string[][] = [[entryId]];
+    while (stack.length > 0 && paths.length < limit) {
+      const path = stack.pop()!;
+      const current = path[path.length - 1];
+      if (current === bossId) {
+        paths.push(path.map((id) => byId.get(id)).filter((node): node is RouteNode => Boolean(node)));
+        continue;
+      }
+      for (const next of outgoing.get(current) ?? []) {
+        if (path.includes(next)) continue;
+        stack.push([...path, next]);
+      }
+    }
+    return paths;
+  };
+  const pathPressureScore = (path: RouteNode[]) => path.reduce((score, node) => {
+    if (node.type === 'rival') return score + 2;
+    if (node.type === 'street') return score + 1;
+    if (SAFETY_NODE_TYPES.has(node.type)) return score - 1;
+    return score;
+  }, 0);
+  const maxConsecutiveCombat = (path: RouteNode[]) => {
+    let current = 0;
+    let worst = 0;
+    for (const node of path) {
+      if (COMBAT_NODE_TYPES.has(node.type)) {
+        current += 1;
+        worst = Math.max(worst, current);
+      } else if (node.type !== 'boss') {
+        current = 0;
+      }
+    }
+    return worst;
+  };
+  const repairNodeOnPath = (path: RouteNode[], targetType: RouteGenNodeType, preferredColumn = Math.ceil(middleCols / 2)) => {
+    const candidates = path.filter((node) => (
+      node.column >= 1 &&
+      node.column < middleCols &&
+      node.type !== 'boss' &&
+      node.type !== targetType
+    ));
+    const combatCandidates = candidates.filter((node) => COMBAT_NODE_TYPES.has(node.type));
+    const pool = combatCandidates.length ? combatCandidates : candidates;
+    const target = pool.sort((a, b) => Math.abs(a.column - preferredColumn) - Math.abs(b.column - preferredColumn))[0];
+    if (target) setType(target, targetType);
+    return Boolean(target);
+  };
+  const repairForcedRivalAlternatives = () => {
+    if (!balance.pathRules?.rivalRequiresAlternative) return;
+    const outgoing = outgoingFor();
+    for (const node of nodes) {
+      if (node.type === 'boss') continue;
+      const targets = (outgoing.get(node.id) ?? []).map((id) => byId.get(id)).filter((target): target is RouteNode => Boolean(target));
+      if (targets.length === 0 || targets.some((target) => target.type !== 'rival')) continue;
+      const targetColumn = targets[0]?.column;
+      const fallback = (targetColumn !== undefined ? (columns[targetColumn] ?? []) : [])
+        .map((id) => byId.get(id))
+        .find((target): target is RouteNode => target !== undefined && target.type !== 'rival');
+      if (fallback) {
+        addEdge(node.id, fallback.id);
+      } else {
+        setType(targets[0], 'cache');
+      }
+    }
+  };
+  const repairPathRules = () => {
+    const rules = balance.pathRules ?? {};
+    const maxCombat = rules.maxConsecutiveCombat ?? 2;
+    const minSafety = rules.minSafetyBeforeBoss ?? 1;
+    const safetyColumnLimit = Math.max(1, Math.floor(middleCols * (rules.minSafetyBeforeColumnPct ?? 0.7)));
+    const minBuild = rules.minBuildBeforeBoss ?? 1;
+    const maxPressure = rules.maxPressureScore ?? Math.max(4, middleCols - 2);
+
+    for (let attempt = 0; attempt < 32; attempt += 1) {
+      repairForcedRivalAlternatives();
+      const badPath = enumeratePaths().find((path) => {
+        const routeNodes = path.filter((node) => node.column >= 1 && node.column <= middleCols);
+        const safetyCount = routeNodes.filter((node) => node.column <= safetyColumnLimit && SAFETY_NODE_TYPES.has(node.type)).length;
+        const buildCount = routeNodes.filter((node) => BUILD_NODE_TYPES.has(node.type)).length;
+        return maxConsecutiveCombat(path) > maxCombat ||
+          safetyCount < minSafety ||
+          buildCount < minBuild ||
+          pathPressureScore(path) > maxPressure;
+      });
+      if (!badPath) return;
+
+      const routeNodes = badPath.filter((node) => node.column >= 1 && node.column <= middleCols);
+      const safetyCount = routeNodes.filter((node) => node.column <= safetyColumnLimit && SAFETY_NODE_TYPES.has(node.type)).length;
+      const buildCount = routeNodes.filter((node) => BUILD_NODE_TYPES.has(node.type)).length;
+      if (safetyCount < minSafety) {
+        if (repairNodeOnPath(badPath, attempt % 2 === 0 ? 'basin' : 'nest', Math.max(2, Math.ceil(safetyColumnLimit / 2)))) continue;
+      }
+      if (buildCount < minBuild) {
+        if (repairNodeOnPath(badPath, attempt % 2 === 0 ? 'cache' : 'signal')) continue;
+      }
+      if (maxConsecutiveCombat(badPath) > maxCombat || pathPressureScore(badPath) > maxPressure) {
+        if (repairNodeOnPath(badPath, attempt % 2 === 0 ? 'cache' : 'basin')) continue;
+      }
+      break;
+    }
+  };
+  repairPathRules();
 
   return {
     version: '0.1',

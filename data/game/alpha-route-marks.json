@@ -12,63 +12,889 @@
     "docs/game/next-level-data-contracts.md"
   ],
   "routeMarks": [
-    { "id": "chalk_wingmark", "name": "Chalk Wingmark", "itemType": "waymark", "family": "safety", "rarity": "common", "source": "street", "trigger": "onEnemyCoverBroken", "effect": "gainCover(3)", "description": "The first time enemy Cover is broken each turn, gain 3 Cover.", "flavorText": "A snapped roofing slate dusted with old crossing chalk. The flock still reads the angle of the wing." },
-    { "id": "rooftop_shortcut", "name": "Rooftop Shortcut", "itemType": "waymark", "family": "route", "rarity": "common", "source": "signal", "trigger": "onNthCardThisTurn(3)", "effect": "draw(1)", "description": "The first time you play 3 cards in a turn each combat, draw 1.", "flavorText": "A bent antenna tag scratched with three ledges, two vents, and one route only locals trust." },
-    { "id": "patched_harness", "name": "Patched Harness", "itemType": "waymark", "family": "economy", "rarity": "uncommon", "source": "market", "trigger": "passive", "effect": "reducePreenPrice(30)", "description": "Market Preen costs 30 less Scrap.", "flavorText": "An old market harness with every buckle replaced at least twice and every patch earned." },
-    { "id": "quiet_landing", "name": "Quiet Landing", "itemType": "waymark", "family": "safety", "rarity": "uncommon", "source": "rival", "trigger": "firstOpenSkyIncrease", "effect": "reduceOpenSky(1)", "description": "The first Open Sky damage increase each combat is reduced by 1.", "flavorText": "A rubber pad cut from an old rooftop mat. It remembers how to land without announcing it." },
-    { "id": "loose_change_tin", "name": "Loose Change Tin", "itemType": "waymark", "family": "economy", "rarity": "common", "source": "market", "trigger": "afterStreetEncounter", "effect": "gainScrap(15)", "description": "Gain 15 extra Scrap after each Street Encounter.", "flavorText": "A mint tin full of washers, transit screws, and coins too shiny to leave behind." },
-    { "id": "rain_gutter", "name": "Rain Gutter", "itemType": "waymark", "family": "safety", "rarity": "common", "source": "market", "trigger": "basinHeal", "effect": "addHeal(4)", "description": "Basin Stops heal 4 more Cohesion.", "flavorText": "A bright strip of gutter metal bent into a perch sign. It points toward clean water after hard crossings." },
-    { "id": "wire_map", "name": "Wire Map", "itemType": "waymark", "family": "economy", "rarity": "common", "source": "market", "trigger": "signalResolved", "effect": "gainScrap(25)", "description": "Signals pay out 25 Scrap.", "flavorText": "A folded scrap of mesh wire that turns bad directions into profitable detours." },
-    { "id": "feather_tape", "name": "Feather Tape", "itemType": "waymark", "family": "suit", "rarity": "uncommon", "source": "nest", "trigger": "onSuitPlayed(basins)", "effect": "heal(2)", "description": "The first time you play a Basins card each turn, heal 2 Cohesion.", "flavorText": "A roll of soft repair tape used for feathers, harnesses, and the sort of morale nobody admits needs mending." },
-    { "id": "patched_shoulder_wrap", "name": "Patched Shoulder Wrap", "itemType": "waymark", "family": "safety", "rarity": "common", "source": "cache", "trigger": "combatStart", "effect": "gainCover(3)", "description": "Start each combat with 3 Cover.", "flavorText": "A rain-dark cloth wrap repaired with careful beak-stitches and roof-tar thread." },
-    { "id": "tin_roof_shade", "name": "Tin Roof Shade", "itemType": "waymark", "family": "safety", "rarity": "common", "source": "cache", "trigger": "firstOpenSkyIncrease", "effect": "reduceOpenSky(1)", "description": "The first Open Sky damage increase each combat is reduced by 1.", "flavorText": "A palm-sized square of corrugated tin, polished bright on one edge and tied under the wing." },
-    { "id": "borrowed_raincoat", "name": "Borrowed Raincoat", "itemType": "waymark", "family": "safety", "rarity": "uncommon", "source": "market", "trigger": "combatStart", "effect": "heal(3)", "description": "Start each combat recovering 3 Cohesion.", "flavorText": "A tiny waxed hood and shoulder cape passed between crews when the weather turns mean." },
-    { "id": "rooftop_nest_lining", "name": "Rooftop Nest Lining", "itemType": "waymark", "family": "safety", "rarity": "rare", "source": "nest", "trigger": "onTurnEndNoHpLoss", "effect": "gainCover(6)", "description": "The first time an enemy turn deals no Cohesion damage each combat, gain 6 Cover.", "flavorText": "Soft insulation pulled from an abandoned vent and woven into a travel roll." },
-    { "id": "signal_whistle", "name": "Signal Whistle", "itemType": "waymark", "family": "route", "rarity": "common", "source": "signal", "trigger": "combatStart", "effect": "gainOpenSkyGuard(1)", "description": "Start each combat with 1 Open Sky Guard.", "flavorText": "A bottlecap whistle tuned to a warning pitch that carries between HVAC stacks." },
-    { "id": "courier_thread", "name": "Courier Thread", "itemType": "waymark", "family": "route", "rarity": "common", "source": "cache", "trigger": "onNthCardThisTurn(3)", "effect": "draw(1)", "description": "The first time you play 3 cards in a turn each combat, draw 1.", "flavorText": "A red thread knotted with delivery stops, carried because the path is easier to follow by feel." },
-    { "id": "loose_feather_token", "name": "Loose Feather Token", "itemType": "waymark", "family": "route", "rarity": "common", "source": "street", "trigger": "combatStart", "effect": "gainWingbeat(1)", "description": "Start each combat with 1 Wingbeat on turn 1 only.", "flavorText": "A molted feather tucked in a transit-card sleeve. Someone marked it as good luck and meant it." },
-    { "id": "wind_step_tag", "name": "Wind-Step Tag", "itemType": "waymark", "family": "route", "rarity": "uncommon", "source": "rival", "trigger": "onNthCardThisTurn(3)", "effect": "gainWingbeat(1)", "description": "The first time you play 3 cards in a turn each combat, gain 1 Wingbeat.", "flavorText": "A toe tag from a courier crew, etched with footwork for crossing wet parapets." },
-    { "id": "bright_bottlecap", "name": "Bright Bottlecap", "itemType": "waymark", "family": "route", "rarity": "uncommon", "source": "market", "trigger": "combatStart", "effect": "gainOpenSkyGuard(1)", "description": "Start each combat with 1 Open Sky Guard.", "flavorText": "A polished cap that catches sunrise and tells the flock which roofs are exposed." },
-    { "id": "rooftop_relay_bell", "name": "Rooftop Relay Bell", "itemType": "waymark", "family": "route", "rarity": "rare", "source": "signal", "trigger": "onSupplyUsed", "effect": "gainWingbeat(1)", "description": "The first time you use a Supply each combat, gain 1 Wingbeat.", "flavorText": "A tiny brass bell from a signal mast. One clean ring can move a whole crew." },
-    { "id": "market_tally_string", "name": "Market Tally String", "itemType": "waymark", "family": "economy", "rarity": "common", "source": "market", "trigger": "signalResolved", "effect": "gainScrap(15)", "description": "Signals pay out 15 Scrap.", "flavorText": "Colored knots for favors owed, debts forgiven, and which stalls will trade in rain." },
-    { "id": "cache_hook", "name": "Cache Hook", "itemType": "waymark", "family": "economy", "rarity": "common", "source": "cache", "trigger": "cacheChoice", "effect": "extraCacheChoice(1)", "description": "Rooftop Caches offer 1 extra reward choice.", "flavorText": "A bent hook clipped to a harness loop, good for lifting loose lids without slowing down." },
-    { "id": "couriers_ledger", "name": "Courier's Ledger", "itemType": "waymark", "family": "economy", "rarity": "uncommon", "source": "signal", "trigger": "afterStreetEncounter", "effect": "gainScrap(15)", "description": "Gain 15 extra Scrap after each Street Encounter.", "flavorText": "A waterproof pocket ledger that turns cleared crossings into names, favors, and parts." },
-    { "id": "roofline_compass", "name": "Roofline Compass", "itemType": "waymark", "family": "economy", "rarity": "rare", "source": "cache", "trigger": "cacheChoice", "effect": "extraCacheChoice(2)", "description": "Rooftop Caches offer 2 extra reward choices.", "flavorText": "A weighted washer that knows where a route wants to turn." },
-    { "id": "stage_pin", "name": "Stage Pin", "itemType": "waymark", "family": "suit", "rarity": "common", "source": "street", "trigger": "onSuitPlayed(plumes)", "effect": "gainOpenSkyGuard(1)", "description": "The first time you play a Plumes card each turn, gain 1 Open Sky Guard.", "flavorText": "A bright enamel pin from a Plumes rooftop show, still sharp enough to fasten confidence in place." },
-    { "id": "dawn_ribbon", "name": "Dawn Ribbon", "itemType": "waymark", "family": "suit", "rarity": "uncommon", "source": "signal", "trigger": "combatStart", "effect": "draw(1)", "description": "Draw 1 card at combat start.", "flavorText": "A faded orange ribbon tied where the morning routes catch first light." },
-    { "id": "parade_mirror", "name": "Parade Mirror", "itemType": "waymark", "family": "suit", "rarity": "rare", "source": "rival", "trigger": "onNthCardThisTurn(2)", "effect": "gainResonance(1)", "description": "The first time you play 2 cards in a turn each combat, gain 1 Resonance.", "flavorText": "A thumb-sized mirror that lets a performer read the whole roofline without turning around." },
-    { "id": "quill_notch", "name": "Quill Notch", "itemType": "waymark", "family": "suit", "rarity": "common", "source": "street", "trigger": "onSuitPlayed(quills)", "effect": "gainCover(3)", "description": "The first time you play a Quills card each turn, gain 3 Cover.", "flavorText": "A scored metal sliver used by Quills crews to mark where pressure will land." },
-    { "id": "razor_kite_tail", "name": "Razor Kite Tail", "itemType": "waymark", "family": "suit", "rarity": "uncommon", "source": "rival", "trigger": "onNthCardThisTurn(3)", "effect": "draw(1)", "description": "The first time you play 3 cards in a turn each combat, draw 1.", "flavorText": "A strip from a signal kite, frayed by fast turns and kept for sharper timing." },
-    { "id": "black_ink_pin", "name": "Black Ink Pin", "itemType": "waymark", "family": "suit", "rarity": "rare", "source": "market", "trigger": "onNthCardThisTurn(2)", "effect": "gainWingbeat(1)", "description": "The first time you play 2 cards in a turn each combat, gain 1 Wingbeat.", "flavorText": "A sealed ink pin from a rooftop tactician. It marks the decision before the fight begins." },
-    { "id": "basin_charm", "name": "Basin Charm", "itemType": "waymark", "family": "suit", "rarity": "common", "source": "cache", "trigger": "combatStart", "effect": "heal(2)", "description": "Start each combat recovering 2 Cohesion.", "flavorText": "A smooth blue bead threaded through a washer, cool even after a long exposed crossing." },
-    { "id": "blue_cup_token", "name": "Blue Cup Token", "itemType": "waymark", "family": "suit", "rarity": "uncommon", "source": "market", "trigger": "basinHeal", "effect": "addHeal(3)", "description": "Basin Stops heal 3 more Cohesion.", "flavorText": "A chipped measuring cup from a canal stall, kept because someone once filled it exactly when needed." },
-    { "id": "harbor_bead_strand", "name": "Harbor Bead Strand", "itemType": "waymark", "family": "suit", "rarity": "rare", "source": "signal", "trigger": "onHealFlock", "effect": "nextTurnDraw(1)", "description": "The first time healing restores Cohesion each turn, draw 1 extra next turn.", "flavorText": "A strand of glass beads traded from the canal railings, one bead for each shelter that stayed open." },
-    { "id": "scaffold_knot", "name": "Scaffold Knot", "itemType": "waymark", "family": "suit", "rarity": "uncommon", "source": "nest", "trigger": "onNthCardThisTurn(3)", "effect": "gainCover(4)", "description": "The first time you play 3 cards in a turn each combat, gain 4 Cover.", "flavorText": "A knot pattern Nests crews use when the crossing must hold under bad wind." },
-    { "id": "workshop_stamp", "name": "Workshop Stamp", "itemType": "waymark", "family": "suit", "rarity": "rare", "source": "nest", "trigger": "onSuitPlayed(nests)", "effect": "gainCover(5)", "description": "The first time you play a Nests card each turn, gain 5 Cover.", "flavorText": "A heavy stamp from a rooftop workshop, pressed into repairs that are expected to last." },
-    { "id": "shed_feather_case", "name": "Shed Feather Case", "itemType": "waymark", "family": "molt", "rarity": "common", "source": "cache", "trigger": "combatStart", "effect": "gainOpenSkyGuard(1)", "description": "Start each combat with 1 Open Sky Guard.", "flavorText": "A clear case for one molted feather, carried as a reminder that change needs shelter." },
-    { "id": "sunbreak_lens", "name": "Sunbreak Lens", "itemType": "waymark", "family": "molt", "rarity": "uncommon", "source": "market", "trigger": "firstOpenSkyIncrease", "effect": "reduceOpenSky(2)", "description": "The first Open Sky damage increase each combat is reduced by 2.", "flavorText": "A scratched safety lens that turns harsh skyline glare into a usable warning." },
-    { "id": "under_eave_charm", "name": "Under-Eave Charm", "itemType": "waymark", "family": "molt", "rarity": "uncommon", "source": "signal", "trigger": "firstOpenSkyIncrease", "effect": "reduceOpenSky(1)", "description": "The first Open Sky damage increase each combat is reduced by 1.", "flavorText": "A charm made from eave wire and shelter thread. It is plain until the sky gets too open." },
-    { "id": "fresh_pinfeather", "name": "Fresh Pinfeather", "itemType": "waymark", "family": "molt", "rarity": "rare", "source": "rival", "trigger": "onEnterMolt", "effect": "gainEnergyNextTurn(1)", "description": "The first time you enter Molt each combat, gain +1 Wingbeat next turn.", "flavorText": "A new feather sealed in wax paper, fragile and bright with the cost of becoming stronger." },
-    { "id": "sky_safe_harness", "name": "Sky-Safe Harness", "itemType": "waymark", "family": "molt", "rarity": "rare", "source": "boss", "trigger": "combatStart", "effect": "bossDamageShield(14)", "description": "Boss fights start with 14 extra Cover.", "flavorText": "A reinforced harness with sun-faded straps, built for the crossing everyone worries about." },
-    { "id": "crowbar_debt", "name": "Crowbar Debt", "itemType": "waymark", "family": "bossPrep", "rarity": "boss", "source": "boss", "trigger": "onEnemyCoverBroken", "effect": "damageAll(2)", "description": "The first time enemy Cover is broken each turn, deal 2 damage to all enemies.", "flavorText": "A bent crowbar hook returned after the crossing opens. It still carries the weight of the bargain." },
-    { "id": "reopened_roofline", "name": "Reopened Roofline", "itemType": "waymark", "family": "bossPrep", "rarity": "boss", "source": "boss", "trigger": "mapStart", "effect": "districtStartKit(1)", "description": "At the start of the next district, Preen 1 card for free and pack a random Supply if there is room.", "flavorText": "A real route sign, newly painted and impossible to miss. The city feels wider after it goes up." },
-    { "id": "flock_counterweight", "name": "Flock Counterweight", "itemType": "waymark", "family": "economy", "rarity": "rare", "source": "market", "trigger": "combatStart", "effect": "gainCoverPerWaymark(1)", "description": "Start each combat with 1 Cover for each Waymark carried.", "flavorText": "A heavy washer tied low on the harness. Every found object steadies the next crossing a little more." },
-    { "id": "supply_bell", "name": "Supply Bell", "itemType": "waymark", "family": "route", "rarity": "uncommon", "source": "cache", "trigger": "onSupplyUsed", "effect": "draw(1)", "description": "The first time you use a Supply each combat, draw 1.", "flavorText": "A small counter bell from a stall window. It rings once when the flock commits to using what it packed." },
-    { "id": "molt_metronome", "name": "Molt Metronome", "itemType": "waymark", "family": "molt", "rarity": "rare", "source": "nest", "trigger": "onEnterMolt", "effect": "draw(1)", "description": "The first time you enter Molt each combat, draw 1.", "flavorText": "A cracked timing charm that clicks faster when feathers loosen and the whole route changes rhythm." },
-    { "id": "eave_bloom", "name": "Eave Bloom", "itemType": "waymark", "family": "molt", "rarity": "uncommon", "source": "signal", "trigger": "onEnterMolt", "effect": "gainCover(6)", "description": "The first time you enter Molt each combat, gain 6 Cover.", "flavorText": "A curled tin flower from under an eave, opening only when the flock has to become something new." },
-    { "id": "plumes_busker_patch", "name": "Plumes Busker Patch", "itemType": "waymark", "family": "suit", "rarity": "rare", "source": "street", "trigger": "onSuitPlayed(plumes)", "effect": "gainResonance(1)", "description": "The first time you play a Plumes card each turn, gain 1 Resonance.", "flavorText": "A bright stage patch traded by rooftop performers. It turns first applause into a usable spark." },
-    { "id": "quills_pressure_gauge", "name": "Quills Pressure Gauge", "itemType": "waymark", "family": "suit", "rarity": "rare", "source": "rival", "trigger": "onSuitPlayed(quills)", "effect": "damageAll(1)", "description": "The first time you play a Quills card each turn, deal 1 damage to all enemies.", "flavorText": "A tiny cracked gauge from a rooftop compressor. It twitches when the cleanest line through a fight appears." },
-    { "id": "basin_overflow_cup", "name": "Basin Overflow Cup", "itemType": "waymark", "family": "suit", "rarity": "uncommon", "source": "cache", "trigger": "onHealFlock", "effect": "gainCover(2)", "description": "The first time healing restores Cohesion each turn, gain 2 Cover.", "flavorText": "A dented blue cup that never wastes the last sip; whatever spills becomes shelter." },
-    { "id": "nest_ratchet", "name": "Nest Ratchet", "itemType": "waymark", "family": "suit", "rarity": "rare", "source": "nest", "trigger": "onSuitPlayed(nests)", "effect": "nextCoverBonus(4)", "description": "The first time you play a Nests card each turn, the next Nest Cover card gains +4 Cover.", "flavorText": "A palm-sized ratchet with green tape on the handle. Every first brace tightens the next one." },
-    { "id": "broken_cover_chime", "name": "Broken Cover Chime", "itemType": "waymark", "family": "route", "rarity": "uncommon", "source": "rival", "trigger": "onEnemyCoverBroken", "effect": "draw(1)", "description": "The first time enemy Cover is broken each turn, draw 1.", "flavorText": "A cracked brass wind chime made from snipped wire and bottlecaps. It rings when a guarded route finally opens." },
-    { "id": "spark_ground_clip", "name": "Spark Ground Clip", "itemType": "waymark", "family": "suit", "rarity": "rare", "source": "market", "trigger": "onResonanceSpent", "effect": "gainCover(5)", "description": "The first time you spend Resonance each combat, gain 5 Cover.", "flavorText": "A tiny alligator clip biting a teal battery plate. It turns the leftover crackle into shelter." },
-    { "id": "quiet_roost_token", "name": "Quiet Roost Token", "itemType": "waymark", "family": "safety", "rarity": "uncommon", "source": "street", "trigger": "onTurnEndNoHpLoss", "effect": "heal(2)", "description": "The first time an enemy turn deals no Cohesion damage each combat, heal 2.", "flavorText": "A flat rubber roost pad stamped with a faded wing. If the flock holds clean, it gives a little back." },
-    { "id": "double_packed_buckle", "name": "Double-Packed Buckle", "itemType": "waymark", "family": "economy", "rarity": "rare", "source": "market", "trigger": "onSupplyUsed", "effect": "repeatNextSupply(1)", "description": "After you use a Supply, the next Supply used this combat resolves twice.", "flavorText": "A heavy two-slot harness buckle with mirrored brass teeth. Good packing makes the next tool count twice." },
-    { "id": "ledger_tab", "name": "Ledger Tab", "itemType": "waymark", "family": "economy", "rarity": "common", "source": "market", "trigger": "afterMarketPurchase", "effect": "gainScrap(8)", "description": "After each Market purchase, regain 8 Scrap.", "flavorText": "A black ledger tab with gold tally marks clipped to a torn receipt. Every fair trade leaves a little change." },
-    { "id": "basin_safety_pin", "name": "Basin Safety Pin", "itemType": "waymark", "family": "suit", "rarity": "uncommon", "source": "cache", "trigger": "onHealFlock", "effect": "cleanseFlock(1)", "description": "The first time healing restores Cohesion each turn, reduce each flock debuff by 1.", "flavorText": "A blue enamel safety pin threaded through cloth wrap. Clean water, clean feathers, clean escape." },
-    { "id": "nest_measure_line", "name": "Nest Measure Line", "itemType": "waymark", "family": "suit", "rarity": "rare", "source": "nest", "trigger": "onSuitPlayed(nests)", "effect": "retainHand(1)", "description": "The first time you play a Nests card each turn, retain 1 card for next turn.", "flavorText": "A retractable tape line in a scratched green case. The next brace starts before the turn ends." },
-    { "id": "plumes_applause_cap", "name": "Plumes Applause Cap", "itemType": "waymark", "family": "suit", "rarity": "uncommon", "source": "street", "trigger": "onNthCardThisTurn(4)", "effect": "gainResonance(2)", "description": "The first time you play 4 cards in a turn each combat, gain 2 Resonance.", "flavorText": "A purple bottlecap badge with gold wing embroidery. Four clean beats make the roofline answer." },
-    { "id": "molt_shadow_tag", "name": "Molt Shadow Tag", "itemType": "waymark", "family": "molt", "rarity": "rare", "source": "rival", "trigger": "onEnterMolt", "effect": "gainOpenSkyGuard(2)", "description": "The first time you enter Molt each combat, gain 2 Open Sky Guard.", "flavorText": "A dark translucent luggage tag holding one pale pinfeather. It makes the exposed moment shorter." },
-    { "id": "cache_divining_hook", "name": "Cache Divining Hook", "itemType": "waymark", "family": "economy", "rarity": "rare", "source": "cache", "trigger": "cacheChoice", "effect": "gainSupplyChoice(1)", "description": "Rooftop Caches also pack a random Supply if there is room.", "flavorText": "A bent copper hook tied to a glowing blue bead strand. It points toward the useful thing under the lid." }
+    {
+      "id": "chalk_wingmark",
+      "name": "Chalk Wingmark",
+      "itemType": "waymark",
+      "family": "safety",
+      "rarity": "common",
+      "source": "street",
+      "trigger": "onEnemyCoverBroken",
+      "description": "The first time enemy Cover is broken each turn, gain 3 Cover, gain 1 Resonance, and draw 1 extra next turn.",
+      "flavorText": "A snapped roofing slate dusted with old crossing chalk. The flock still reads the angle of the wing.",
+      "effects": [
+        "gainCover(3)",
+        "gainResonance(1)",
+        "nextTurnDraw(1)"
+      ]
+    },
+    {
+      "id": "rooftop_shortcut",
+      "name": "Rooftop Shortcut",
+      "itemType": "waymark",
+      "family": "route",
+      "rarity": "common",
+      "source": "signal",
+      "trigger": "onRoostWithWingbeat",
+      "effects": [
+        "nextTurnDraw(1)",
+        "gainEnergyNextTurn(1)"
+      ],
+      "description": "The first time you Roost with unspent Wingbeat each combat, draw 1 extra and gain +1 Wingbeat next turn.",
+      "flavorText": "A bent antenna tag scratched with three ledges, two vents, and one route only locals trust."
+    },
+    {
+      "id": "patched_harness",
+      "name": "Patched Harness",
+      "itemType": "waymark",
+      "family": "economy",
+      "rarity": "uncommon",
+      "source": "market",
+      "trigger": "afterMarketPurchase",
+      "description": "After each Market purchase, regain 10 Scrap, preview the next route choices, and carry 1 Open Sky Guard into the next fight.",
+      "flavorText": "An old market harness with every buckle replaced at least twice and every patch earned.",
+      "effects": [
+        "gainScrap(10)",
+        "peekNextNodes(1)",
+        "gainOpenSkyGuard(1)"
+      ]
+    },
+    {
+      "id": "quiet_landing",
+      "name": "Quiet Landing",
+      "itemType": "waymark",
+      "family": "safety",
+      "rarity": "uncommon",
+      "source": "rival",
+      "trigger": "firstOpenSkyIncrease",
+      "effects": [
+        "reduceOpenSky(2)",
+        "gainEnergyNextTurn(1)"
+      ],
+      "description": "The first Open Sky damage increase each combat is reduced by 2, and the flock gains +1 Wingbeat next turn.",
+      "flavorText": "A rubber pad cut from an old rooftop mat. It remembers how to land without announcing it."
+    },
+    {
+      "id": "loose_change_tin",
+      "name": "Loose Change Tin",
+      "itemType": "waymark",
+      "family": "economy",
+      "rarity": "common",
+      "source": "market",
+      "trigger": "onTurnEndNoOverextension",
+      "description": "The first time you Roost after playing cards without overextending each combat, gain 10 Scrap, retain 1 card, and gain 1 Open Sky Guard.",
+      "flavorText": "A mint tin full of washers, transit screws, and coins too shiny to leave behind.",
+      "effects": [
+        "gainScrap(10)",
+        "retainHand(1)",
+        "gainOpenSkyGuard(1)"
+      ]
+    },
+    {
+      "id": "rain_gutter",
+      "name": "Rain Gutter",
+      "itemType": "waymark",
+      "family": "safety",
+      "rarity": "common",
+      "source": "market",
+      "trigger": "basinHeal",
+      "effects": [
+        "addHeal(4)",
+        "gainOpenSkyGuard(1)",
+        "peekNextNodes(1)"
+      ],
+      "description": "Basin Stops heal 4 more Cohesion, preview the next route choice, and carry 1 Open Sky Guard into the next fight.",
+      "flavorText": "A bright strip of gutter metal bent into a perch sign. It points toward clean water after hard crossings."
+    },
+    {
+      "id": "wire_map",
+      "name": "Wire Map",
+      "itemType": "waymark",
+      "family": "economy",
+      "rarity": "common",
+      "source": "market",
+      "trigger": "signalResolved",
+      "effects": [
+        "gainScrap(10)",
+        "peekNextNodes(1)"
+      ],
+      "description": "Signals pay out 10 Scrap and preview the next route choice.",
+      "flavorText": "A folded scrap of mesh wire that turns bad directions into profitable detours."
+    },
+    {
+      "id": "feather_tape",
+      "name": "Feather Tape",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "uncommon",
+      "source": "nest",
+      "trigger": "onSuitPlayed(basins)",
+      "effects": [
+        "heal(3)",
+        "cleanseFlock(1)"
+      ],
+      "description": "The first time you play a Basins card each turn, heal 3 Cohesion and cleanse 1 negative status.",
+      "flavorText": "A roll of soft repair tape used for feathers, harnesses, and the sort of morale nobody admits needs mending."
+    },
+    {
+      "id": "patched_shoulder_wrap",
+      "name": "Patched Shoulder Wrap",
+      "itemType": "waymark",
+      "family": "safety",
+      "rarity": "common",
+      "source": "cache",
+      "trigger": "onTurnEndNoHpLoss",
+      "description": "The first time an enemy turn deals no Cohesion damage each combat, gain 4 Cover and retain 1 card.",
+      "flavorText": "A rain-dark cloth wrap repaired with careful beak-stitches and roof-tar thread.",
+      "effects": [
+        "gainCover(4)",
+        "retainHand(1)"
+      ]
+    },
+    {
+      "id": "tin_roof_shade",
+      "name": "Tin Roof Shade",
+      "itemType": "waymark",
+      "family": "safety",
+      "rarity": "common",
+      "source": "cache",
+      "trigger": "firstOpenSkyIncrease",
+      "effects": [
+        "reduceOpenSky(1)",
+        "gainOpenSkyGuard(1)"
+      ],
+      "description": "The first Open Sky damage increase each combat is reduced by 1, then gain 1 Open Sky Guard.",
+      "flavorText": "A palm-sized square of corrugated tin, polished bright on one edge and tied under the wing."
+    },
+    {
+      "id": "borrowed_raincoat",
+      "name": "Borrowed Raincoat",
+      "itemType": "waymark",
+      "family": "safety",
+      "rarity": "uncommon",
+      "source": "market",
+      "trigger": "firstOpenSkyIncrease",
+      "description": "The first Open Sky damage increase each combat is reduced by 2, then recover 3 Cohesion.",
+      "flavorText": "A tiny waxed hood and shoulder cape passed between crews when the weather turns mean.",
+      "effects": [
+        "reduceOpenSky(2)",
+        "heal(3)"
+      ]
+    },
+    {
+      "id": "rooftop_nest_lining",
+      "name": "Rooftop Nest Lining",
+      "itemType": "waymark",
+      "family": "safety",
+      "rarity": "rare",
+      "source": "nest",
+      "trigger": "onTurnEndNoHpLoss",
+      "effects": [
+        "gainCover(8)",
+        "nextTurnDraw(1)",
+        "retainHand(1)"
+      ],
+      "description": "The first time an enemy turn deals no Cohesion damage each combat, gain 8 Cover, draw 1 extra next turn, and retain 1 card.",
+      "flavorText": "Soft insulation pulled from an abandoned vent and woven into a travel roll."
+    },
+    {
+      "id": "signal_whistle",
+      "name": "Signal Whistle",
+      "itemType": "waymark",
+      "family": "route",
+      "rarity": "common",
+      "source": "signal",
+      "trigger": "onTurnEndNoOverextension",
+      "effects": [
+        "gainOpenSkyGuard(1)",
+        "gainEnergyNextTurn(1)"
+      ],
+      "description": "The first time you Roost after playing cards without overextending each combat, gain 1 Open Sky Guard and +1 Wingbeat next turn.",
+      "flavorText": "A bottlecap whistle tuned to a warning pitch that carries between HVAC stacks."
+    },
+    {
+      "id": "courier_thread",
+      "name": "Courier Thread",
+      "itemType": "waymark",
+      "family": "route",
+      "rarity": "common",
+      "source": "cache",
+      "trigger": "onLowCardTurn(2)",
+      "effects": [
+        "nextTurnDraw(1)",
+        "retainHand(1)"
+      ],
+      "description": "The first time you Roost after playing 1 or 2 cards each combat, draw 1 extra next turn and retain 1 card.",
+      "flavorText": "A red thread knotted with delivery stops, carried because the path is easier to follow by feel."
+    },
+    {
+      "id": "loose_feather_token",
+      "name": "Loose Feather Token",
+      "itemType": "waymark",
+      "family": "route",
+      "rarity": "common",
+      "source": "street",
+      "trigger": "onLowCardTurn(2)",
+      "effect": "gainEnergyNextTurn(1)",
+      "description": "The first time you Roost after playing 1 or 2 cards each combat, gain +1 Wingbeat next turn.",
+      "flavorText": "A molted feather tucked in a transit-card sleeve. Someone marked it as good luck and meant it."
+    },
+    {
+      "id": "wind_step_tag",
+      "name": "Wind-Step Tag",
+      "itemType": "waymark",
+      "family": "route",
+      "rarity": "uncommon",
+      "source": "rival",
+      "trigger": "onRoostWithCardsInHand",
+      "description": "The first time you Roost with cards still in hand each combat, gain +1 Wingbeat next turn and retain 1 card.",
+      "flavorText": "A toe tag from a courier crew, etched with footwork for crossing wet parapets.",
+      "effects": [
+        "gainEnergyNextTurn(1)",
+        "retainHand(1)"
+      ]
+    },
+    {
+      "id": "bright_bottlecap",
+      "name": "Bright Bottlecap",
+      "itemType": "waymark",
+      "family": "route",
+      "rarity": "uncommon",
+      "source": "market",
+      "trigger": "combatStart",
+      "effects": [
+        "gainOpenSkyGuard(2)",
+        "gainResonance(1)",
+        "nextTurnDraw(1)",
+        "gainEnergyNextTurn(1)"
+      ],
+      "description": "Start each combat with 2 Open Sky Guard and 1 Resonance, then draw 1 extra card and gain +1 Wingbeat next turn.",
+      "flavorText": "A polished cap that catches sunrise and tells the flock which roofs are exposed."
+    },
+    {
+      "id": "rooftop_relay_bell",
+      "name": "Rooftop Relay Bell",
+      "itemType": "waymark",
+      "family": "route",
+      "rarity": "rare",
+      "source": "signal",
+      "trigger": "onSupplyUsed",
+      "effects": [
+        "gainWingbeat(1)",
+        "draw(1)"
+      ],
+      "description": "The first time you use a Supply each combat, gain 1 Wingbeat and draw 1.",
+      "flavorText": "A tiny brass bell from a signal mast. One clean ring can move a whole crew."
+    },
+    {
+      "id": "market_tally_string",
+      "name": "Market Tally String",
+      "itemType": "waymark",
+      "family": "economy",
+      "rarity": "common",
+      "source": "market",
+      "trigger": "signalResolved",
+      "effects": [
+        "gainScrap(15)",
+        "peekNextNodes(1)"
+      ],
+      "description": "Signals pay out 15 Scrap and preview the next route choices.",
+      "flavorText": "Colored knots for favors owed, debts forgiven, and which stalls will trade in rain."
+    },
+    {
+      "id": "cache_hook",
+      "name": "Cache Hook",
+      "itemType": "waymark",
+      "family": "economy",
+      "rarity": "common",
+      "source": "cache",
+      "trigger": "cacheChoice",
+      "effects": [
+        "extraCacheChoice(1)",
+        "gainScrap(8)"
+      ],
+      "description": "Rooftop Caches offer 1 extra reward choice and pay out 8 Scrap.",
+      "flavorText": "A bent hook clipped to a harness loop, good for lifting loose lids without slowing down."
+    },
+    {
+      "id": "couriers_ledger",
+      "name": "Courier's Ledger",
+      "itemType": "waymark",
+      "family": "economy",
+      "rarity": "uncommon",
+      "source": "signal",
+      "trigger": "afterStreetEncounter",
+      "effects": [
+        "gainScrap(20)",
+        "gainOpenSkyGuard(1)",
+        "reduceNextOpenSky(1)"
+      ],
+      "description": "Gain 20 extra Scrap after each Street Encounter, carry 1 Open Sky Guard into the next fight, and soften the next Open Sky increase by 1.",
+      "flavorText": "A waterproof pocket ledger that turns cleared crossings into names, favors, and parts."
+    },
+    {
+      "id": "roofline_compass",
+      "name": "Roofline Compass",
+      "itemType": "waymark",
+      "family": "economy",
+      "rarity": "rare",
+      "source": "cache",
+      "trigger": "cacheChoice",
+      "effects": [
+        "extraCacheChoice(2)",
+        "gainSupplyChoice(1)"
+      ],
+      "description": "Rooftop Caches offer 2 extra reward choices and pack a random Supply if there is room.",
+      "flavorText": "A weighted washer that knows where a route wants to turn."
+    },
+    {
+      "id": "stage_pin",
+      "name": "Stage Pin",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "common",
+      "source": "street",
+      "trigger": "onSuitPlayed(plumes)",
+      "effects": [
+        "gainOpenSkyGuard(1)",
+        "gainResonance(1)",
+        "gainEnergyNextTurn(1)",
+        "nextTurnDraw(1)"
+      ],
+      "description": "The first time you play a Plumes card each turn, gain 1 Open Sky Guard, 1 Resonance, +1 Wingbeat next turn, and draw 1 extra next turn.",
+      "flavorText": "A bright enamel pin from a Plumes rooftop show, still sharp enough to fasten confidence in place."
+    },
+    {
+      "id": "dawn_ribbon",
+      "name": "Dawn Ribbon",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "uncommon",
+      "source": "signal",
+      "trigger": "onRoostWithCardsInHand",
+      "effects": [
+        "nextTurnDraw(1)",
+        "retainHand(1)"
+      ],
+      "description": "The first time you Roost with cards still in hand each combat, draw +1 next turn and retain 1 card.",
+      "flavorText": "A faded orange ribbon tied where the morning routes catch first light."
+    },
+    {
+      "id": "parade_mirror",
+      "name": "Parade Mirror",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "rare",
+      "source": "rival",
+      "trigger": "onTurnEndNoOverextension",
+      "effects": [
+        "gainResonance(1)",
+        "nextTurnDraw(1)"
+      ],
+      "description": "The first time you Roost after playing cards without overextending each combat, gain 1 Resonance and draw 1 extra next turn.",
+      "flavorText": "A thumb-sized mirror that lets a performer read the whole roofline without turning around."
+    },
+    {
+      "id": "quill_notch",
+      "name": "Quill Notch",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "common",
+      "source": "street",
+      "trigger": "onSuitPlayed(quills)",
+      "effects": [
+        "gainCover(3)",
+        "gainResonance(1)"
+      ],
+      "description": "The first time you play a Quills card each turn, gain 3 Cover and 1 Resonance.",
+      "flavorText": "A scored metal sliver used by Quills crews to mark where pressure will land."
+    },
+    {
+      "id": "razor_kite_tail",
+      "name": "Razor Kite Tail",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "uncommon",
+      "source": "rival",
+      "trigger": "onTurnEndNoOverextension",
+      "effects": [
+        "gainCover(4)",
+        "nextTurnDraw(1)",
+        "gainResonance(1)"
+      ],
+      "description": "The first time you Roost after playing cards without overextending each combat, gain 4 Cover, gain 1 Resonance, and draw 1 extra next turn.",
+      "flavorText": "A strip from a signal kite, frayed by fast turns and kept for sharper timing."
+    },
+    {
+      "id": "black_ink_pin",
+      "name": "Black Ink Pin",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "rare",
+      "source": "market",
+      "trigger": "onRoostWithCardsInHand",
+      "effects": [
+        "gainEnergyNextTurn(1)",
+        "retainHand(1)"
+      ],
+      "description": "The first time you Roost with cards still in hand each combat, gain +1 Wingbeat next turn and retain 1 card.",
+      "flavorText": "A sealed ink pin from a rooftop tactician. It marks the decision before the fight begins."
+    },
+    {
+      "id": "basin_charm",
+      "name": "Basin Charm",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "common",
+      "source": "cache",
+      "trigger": "onRoostWithWingbeat",
+      "description": "The first time you Roost with Wingbeat unspent each combat, recover 3 Cohesion and gain 1 Open Sky Guard.",
+      "flavorText": "A smooth blue bead threaded through a washer, cool even after a long exposed crossing.",
+      "effects": [
+        "heal(3)",
+        "gainOpenSkyGuard(1)"
+      ]
+    },
+    {
+      "id": "blue_cup_token",
+      "name": "Blue Cup Token",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "uncommon",
+      "source": "market",
+      "trigger": "basinHeal",
+      "effects": [
+        "addHeal(5)",
+        "gainOpenSkyGuard(1)",
+        "gainSupplyChoice(1)"
+      ],
+      "description": "Basin Stops heal 5 more Cohesion, pack a random Supply if there is room, and carry 1 Open Sky Guard into the next fight.",
+      "flavorText": "A chipped measuring cup from a canal stall, kept because someone once filled it exactly when needed."
+    },
+    {
+      "id": "harbor_bead_strand",
+      "name": "Harbor Bead Strand",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "rare",
+      "source": "signal",
+      "trigger": "onHealFlock",
+      "effects": [
+        "nextTurnDraw(1)",
+        "gainOpenSkyGuard(1)"
+      ],
+      "description": "The first time healing restores Cohesion each turn, draw 1 extra next turn and gain 1 Open Sky Guard.",
+      "flavorText": "A strand of glass beads traded from the canal railings, one bead for each shelter that stayed open."
+    },
+    {
+      "id": "scaffold_knot",
+      "name": "Scaffold Knot",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "uncommon",
+      "source": "nest",
+      "trigger": "onLowCardTurn(2)",
+      "description": "The first time you Roost after playing 1 or 2 cards each combat, gain 5 Cover and make the next Nest Cover card stronger.",
+      "flavorText": "A knot pattern Nests crews use when the crossing must hold under bad wind.",
+      "effects": [
+        "gainCover(5)",
+        "nextCoverBonus(3)"
+      ]
+    },
+    {
+      "id": "workshop_stamp",
+      "name": "Workshop Stamp",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "rare",
+      "source": "nest",
+      "trigger": "onSuitPlayed(nests)",
+      "effects": [
+        "gainCover(5)",
+        "nextCoverBonus(2)"
+      ],
+      "description": "The first time you play a Nests card each turn, gain 5 Cover and make the next Nest Cover card stronger.",
+      "flavorText": "A heavy stamp from a rooftop workshop, pressed into repairs that are expected to last."
+    },
+    {
+      "id": "shed_feather_case",
+      "name": "Shed Feather Case",
+      "itemType": "waymark",
+      "family": "molt",
+      "rarity": "common",
+      "source": "cache",
+      "trigger": "onEnterMolt",
+      "effects": [
+        "gainOpenSkyGuard(1)",
+        "gainCover(3)",
+        "draw(1)",
+        "gainEnergyNextTurn(1)"
+      ],
+      "description": "The first time you enter Molt each combat, gain 1 Open Sky Guard, 3 Cover, draw 1, and gain +1 Wingbeat next turn.",
+      "flavorText": "A clear case for one molted feather, carried as a reminder that change needs shelter."
+    },
+    {
+      "id": "sunbreak_lens",
+      "name": "Sunbreak Lens",
+      "itemType": "waymark",
+      "family": "molt",
+      "rarity": "uncommon",
+      "source": "market",
+      "trigger": "firstOpenSkyIncrease",
+      "effects": [
+        "reduceOpenSky(2)",
+        "gainOpenSkyGuard(1)"
+      ],
+      "description": "The first Open Sky damage increase each combat is reduced by 2, then gain 1 Open Sky Guard.",
+      "flavorText": "A scratched safety lens that turns harsh skyline glare into a usable warning."
+    },
+    {
+      "id": "under_eave_charm",
+      "name": "Under-Eave Charm",
+      "itemType": "waymark",
+      "family": "molt",
+      "rarity": "uncommon",
+      "source": "signal",
+      "trigger": "firstOpenSkyIncrease",
+      "effects": [
+        "reduceOpenSky(1)",
+        "gainCover(4)"
+      ],
+      "description": "The first Open Sky damage increase each combat is reduced by 1, then gain 4 Cover.",
+      "flavorText": "A charm made from eave wire and shelter thread. It is plain until the sky gets too open."
+    },
+    {
+      "id": "fresh_pinfeather",
+      "name": "Fresh Pinfeather",
+      "itemType": "waymark",
+      "family": "molt",
+      "rarity": "rare",
+      "source": "rival",
+      "trigger": "onEnterMolt",
+      "effects": [
+        "gainEnergyNextTurn(1)",
+        "draw(1)"
+      ],
+      "description": "The first time you enter Molt each combat, gain +1 Wingbeat next turn and draw 1.",
+      "flavorText": "A new feather sealed in wax paper, fragile and bright with the cost of becoming stronger."
+    },
+    {
+      "id": "sky_safe_harness",
+      "name": "Sky-Safe Harness",
+      "itemType": "waymark",
+      "family": "molt",
+      "rarity": "rare",
+      "source": "boss",
+      "trigger": "combatStart",
+      "effects": [
+        "gainOpenSkyGuard(1)",
+        "bossDamageShield(16)"
+      ],
+      "description": "Start each combat with 1 Open Sky Guard. Boss fights also start with 16 extra Cover.",
+      "flavorText": "A reinforced harness with sun-faded straps, built for the crossing everyone worries about."
+    },
+    {
+      "id": "crowbar_debt",
+      "name": "Crowbar Debt",
+      "itemType": "waymark",
+      "family": "bossPrep",
+      "rarity": "boss",
+      "source": "boss",
+      "trigger": "onEnemyCoverBroken",
+      "effects": [
+        "damageAll(5)",
+        "gainResonance(1)"
+      ],
+      "description": "The first time enemy Cover is broken each turn, deal 5 damage to all enemies and gain 1 Resonance.",
+      "flavorText": "A bent crowbar hook returned after the crossing opens. It still carries the weight of the bargain."
+    },
+    {
+      "id": "reopened_roofline",
+      "name": "Reopened Roofline",
+      "itemType": "waymark",
+      "family": "bossPrep",
+      "rarity": "boss",
+      "source": "boss",
+      "trigger": "mapStart",
+      "effects": [
+        "districtStartKit(2)",
+        "gainScrap(25)"
+      ],
+      "description": "At the start of the next district, gain 25 Scrap, Preen 2 cards for free, and pack up to 2 random Supplies if there is room.",
+      "flavorText": "A real route sign, newly painted and impossible to miss. The city feels wider after it goes up."
+    },
+    {
+      "id": "flock_counterweight",
+      "name": "Flock Counterweight",
+      "itemType": "waymark",
+      "family": "economy",
+      "rarity": "rare",
+      "source": "market",
+      "trigger": "onRoostWithCardsInHand",
+      "description": "The first time you Roost with cards still in hand each combat, gain 1 Cover per Waymark carried and +1 Wingbeat next turn.",
+      "flavorText": "A heavy washer tied low on the harness. Every found object steadies the next crossing a little more.",
+      "effects": [
+        "gainCoverPerWaymark(1)",
+        "gainEnergyNextTurn(1)"
+      ]
+    },
+    {
+      "id": "supply_bell",
+      "name": "Supply Bell",
+      "itemType": "waymark",
+      "family": "route",
+      "rarity": "uncommon",
+      "source": "cache",
+      "trigger": "onSupplyUsed",
+      "description": "After you use a Supply, draw 1 and the next Supply used this combat resolves twice.",
+      "flavorText": "A small counter bell from a stall window. It rings once when the flock commits to using what it packed.",
+      "effects": [
+        "draw(1)",
+        "repeatNextSupply(1)"
+      ]
+    },
+    {
+      "id": "molt_metronome",
+      "name": "Molt Metronome",
+      "itemType": "waymark",
+      "family": "molt",
+      "rarity": "rare",
+      "source": "nest",
+      "trigger": "onEnterMolt",
+      "effects": [
+        "draw(1)",
+        "gainEnergyNextTurn(1)"
+      ],
+      "description": "The first time you enter Molt each combat, draw 1 and gain +1 Wingbeat next turn.",
+      "flavorText": "A cracked timing charm that clicks faster when feathers loosen and the whole route changes rhythm."
+    },
+    {
+      "id": "eave_bloom",
+      "name": "Eave Bloom",
+      "itemType": "waymark",
+      "family": "molt",
+      "rarity": "uncommon",
+      "source": "signal",
+      "trigger": "onEnterMolt",
+      "effects": [
+        "gainCover(6)",
+        "nextCoverBonus(2)"
+      ],
+      "description": "The first time you enter Molt each combat, gain 6 Cover and make the next Nest Cover card stronger.",
+      "flavorText": "A curled tin flower from under an eave, opening only when the flock has to become something new."
+    },
+    {
+      "id": "plumes_busker_patch",
+      "name": "Plumes Busker Patch",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "rare",
+      "source": "street",
+      "trigger": "onSuitPlayed(plumes)",
+      "effects": [
+        "gainResonance(1)",
+        "gainEnergyNextTurn(1)"
+      ],
+      "description": "The first time you play a Plumes card each turn, gain 1 Resonance and +1 Wingbeat next turn.",
+      "flavorText": "A bright stage patch traded by rooftop performers. It turns first applause into a usable spark."
+    },
+    {
+      "id": "quills_pressure_gauge",
+      "name": "Quills Pressure Gauge",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "rare",
+      "source": "rival",
+      "trigger": "onSuitPlayed(quills)",
+      "effects": [
+        "damageAll(2)",
+        "gainCover(2)"
+      ],
+      "description": "The first time you play a Quills card each turn, deal 2 damage to all enemies and gain 2 Cover.",
+      "flavorText": "A tiny cracked gauge from a rooftop compressor. It twitches when the cleanest line through a fight appears."
+    },
+    {
+      "id": "basin_overflow_cup",
+      "name": "Basin Overflow Cup",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "uncommon",
+      "source": "cache",
+      "trigger": "onHealFlock",
+      "description": "The first time healing restores Cohesion each turn, gain 4 Cover and 1 Open Sky Guard.",
+      "flavorText": "A dented blue cup that never wastes the last sip; whatever spills becomes shelter.",
+      "effects": [
+        "gainCover(4)",
+        "gainOpenSkyGuard(1)"
+      ]
+    },
+    {
+      "id": "nest_ratchet",
+      "name": "Nest Ratchet",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "rare",
+      "source": "nest",
+      "trigger": "onSuitPlayed(nests)",
+      "effects": [
+        "nextCoverBonus(4)",
+        "gainOpenSkyGuard(1)"
+      ],
+      "description": "The first time you play a Nests card each turn, the next Nest Cover card gains +4 Cover and the flock gains 1 Open Sky Guard.",
+      "flavorText": "A palm-sized ratchet with green tape on the handle. Every first brace tightens the next one."
+    },
+    {
+      "id": "broken_cover_chime",
+      "name": "Broken Cover Chime",
+      "itemType": "waymark",
+      "family": "route",
+      "rarity": "uncommon",
+      "source": "rival",
+      "trigger": "onEnemyCoverBroken",
+      "description": "The first time enemy Cover is broken each turn, draw 1 and gain 1 Resonance.",
+      "flavorText": "A cracked brass wind chime made from snipped wire and bottlecaps. It rings when a guarded route finally opens.",
+      "effects": [
+        "draw(1)",
+        "gainResonance(1)"
+      ]
+    },
+    {
+      "id": "spark_ground_clip",
+      "name": "Spark Ground Clip",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "rare",
+      "source": "market",
+      "trigger": "onResonanceSpent",
+      "effects": [
+        "gainCover(7)",
+        "draw(1)",
+        "nextTurnDraw(1)"
+      ],
+      "description": "The first time you spend Resonance each combat, gain 7 Cover, draw 1, and draw 1 extra next turn.",
+      "flavorText": "A tiny alligator clip biting a teal battery plate. It turns the leftover crackle into shelter."
+    },
+    {
+      "id": "quiet_roost_token",
+      "name": "Quiet Roost Token",
+      "itemType": "waymark",
+      "family": "safety",
+      "rarity": "uncommon",
+      "source": "street",
+      "trigger": "onTurnEndNoHpLoss",
+      "effects": [
+        "heal(3)",
+        "retainHand(1)"
+      ],
+      "description": "The first time an enemy turn deals no Cohesion damage each combat, heal 3 and retain 1 card.",
+      "flavorText": "A flat rubber roost pad stamped with a faded wing. If the flock holds clean, it gives a little back."
+    },
+    {
+      "id": "double_packed_buckle",
+      "name": "Double-Packed Buckle",
+      "itemType": "waymark",
+      "family": "economy",
+      "rarity": "rare",
+      "source": "market",
+      "trigger": "onSupplyUsed",
+      "effects": [
+        "repeatNextSupply(1)",
+        "draw(1)"
+      ],
+      "description": "After you use a Supply, draw 1 and the next Supply used this combat resolves twice.",
+      "flavorText": "A heavy two-slot harness buckle with mirrored brass teeth. Good packing makes the next tool count twice."
+    },
+    {
+      "id": "ledger_tab",
+      "name": "Ledger Tab",
+      "itemType": "waymark",
+      "family": "economy",
+      "rarity": "common",
+      "source": "market",
+      "trigger": "afterMarketPurchase",
+      "description": "After each Market purchase, regain 12 Scrap, preview the next route choices, carry 1 Open Sky Guard into the next fight, and soften the next Open Sky increase by 1.",
+      "flavorText": "A black ledger tab with gold tally marks clipped to a torn receipt. Every fair trade leaves a little change.",
+      "effects": [
+        "gainScrap(12)",
+        "peekNextNodes(1)",
+        "gainOpenSkyGuard(1)",
+        "reduceNextOpenSky(1)"
+      ]
+    },
+    {
+      "id": "basin_safety_pin",
+      "name": "Basin Safety Pin",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "uncommon",
+      "source": "cache",
+      "trigger": "onHealFlock",
+      "effects": [
+        "cleanseFlock(1)",
+        "gainCover(3)"
+      ],
+      "description": "The first time healing restores Cohesion each turn, reduce each flock debuff by 1 and gain 3 Cover.",
+      "flavorText": "A blue enamel safety pin threaded through cloth wrap. Clean water, clean feathers, clean escape."
+    },
+    {
+      "id": "nest_measure_line",
+      "name": "Nest Measure Line",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "rare",
+      "source": "nest",
+      "trigger": "onSuitPlayed(nests)",
+      "effects": [
+        "retainHand(1)",
+        "nextCoverBonus(3)"
+      ],
+      "description": "The first time you play a Nests card each turn, retain 1 card and prime +3 Cover for the next Nest brace.",
+      "flavorText": "A retractable tape line in a scratched green case. The next brace starts before the turn ends."
+    },
+    {
+      "id": "plumes_applause_cap",
+      "name": "Plumes Applause Cap",
+      "itemType": "waymark",
+      "family": "suit",
+      "rarity": "uncommon",
+      "source": "street",
+      "trigger": "onTurnEndNoOverextension",
+      "description": "The first time you Roost after playing cards without overextending each combat, gain 1 Resonance and draw 1 extra next turn.",
+      "flavorText": "A purple bottlecap badge with gold wing embroidery. Clean timing makes the roofline answer.",
+      "effects": [
+        "gainResonance(1)",
+        "nextTurnDraw(1)"
+      ]
+    },
+    {
+      "id": "molt_shadow_tag",
+      "name": "Molt Shadow Tag",
+      "itemType": "waymark",
+      "family": "molt",
+      "rarity": "rare",
+      "source": "rival",
+      "trigger": "onEnterMolt",
+      "effects": [
+        "gainOpenSkyGuard(2)",
+        "draw(1)"
+      ],
+      "description": "The first time you enter Molt each combat, gain 2 Open Sky Guard and draw 1.",
+      "flavorText": "A dark translucent luggage tag holding one pale pinfeather. It makes the exposed moment shorter."
+    },
+    {
+      "id": "cache_divining_hook",
+      "name": "Cache Divining Hook",
+      "itemType": "waymark",
+      "family": "economy",
+      "rarity": "rare",
+      "source": "cache",
+      "trigger": "cacheChoice",
+      "effects": [
+        "gainSupplyChoice(1)",
+        "gainScrap(12)"
+      ],
+      "description": "Rooftop Caches also pack a random Supply if there is room and pay out 12 Scrap.",
+      "flavorText": "A bent copper hook tied to a glowing blue bead strand. It points toward the useful thing under the lid."
+    }
   ]
 }

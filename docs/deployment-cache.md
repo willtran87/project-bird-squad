@@ -34,12 +34,18 @@ Run the following before publishing:
 npm run build
 npm run validate:bundle-size
 npm run validate:runtime-assets
+npm run validate:deployment-cache
 ```
 
 The production build emits a lightweight HTML boot shell, a Phaser vendor chunk,
-the app entry chunk, and a lazy Codex data chunk. `index.html` should preload the
-Phaser vendor chunk only; the Codex data chunk is intentionally fetched when the
-Codex scene is opened.
+a runtime-data boot chunk, the app entry chunk, and a lazy Codex data chunk.
+`index.html` may preload the Phaser vendor and runtime-data chunks; the Codex
+data chunk is intentionally fetched when the Codex scene is opened.
+
+`validate:deployment-cache` checks the local build artifact contract that supports
+these headers: hashed JS/CSS asset names, a single app entry chunk, a single
+Phaser vendor chunk, a single runtime-data boot chunk, a single lazy Codex chunk,
+and no modulepreload for non-boot chunks.
 
 ## Rollback Rule
 

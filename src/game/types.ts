@@ -291,7 +291,8 @@ export interface RuntimeRouteMark {
   source: RouteMarkSource;
   rarity: RouteMarkRarity;
   trigger: string;
-  effect: string;
+  effect?: string;
+  effects?: string[];
   description: string;
   flavorText?: string;
 }

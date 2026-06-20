@@ -11,7 +11,7 @@
       "index": 1,
       "expectedFlockPower": 18,
       "routeGeneration": {
-        "middleColumns": [6, 7],
+        "middleColumns": [7, 8],
         "lanes": [2, 4],
         "minimumCounts": {
           "street": 6,
@@ -32,7 +32,22 @@
           "cache": 14
         },
         "requiredOpeningTypes": ["street"],
-        "preBossTypes": ["basin", "nest"]
+        "preBossTypes": ["basin", "nest"],
+        "beats": [
+          { "id": "opening", "columns": [1], "types": ["street", "cache", "street"], "maxCombat": 2, "mustOfferNonCombat": true },
+          { "id": "earlyRelief", "columns": [2], "requireAny": ["basin", "nest", "cache"], "maxCombat": 1, "mustOfferNonCombat": true },
+          { "id": "build", "columns": [3, 4], "requireAny": ["signal", "cache", "market"], "maxCombat": 2 },
+          { "id": "pressure", "columns": [5, 6], "requireAny": ["street", "rival"], "mustOfferNonCombat": true },
+          { "id": "bossPrep", "fromEnd": 0, "types": ["basin", "nest", "signal"], "maxCombat": 0 }
+        ],
+        "pathRules": {
+          "maxConsecutiveCombat": 2,
+          "minSafetyBeforeBoss": 1,
+          "minSafetyBeforeColumnPct": 0.7,
+          "minBuildBeforeBoss": 1,
+          "rivalRequiresAlternative": true,
+          "maxPressureScore": 5
+        }
       },
       "economy": {
         "streetScrap": [18, 30],
@@ -55,7 +70,7 @@
       "index": 2,
       "expectedFlockPower": 27,
       "routeGeneration": {
-        "middleColumns": [6, 7],
+        "middleColumns": [7, 8],
         "lanes": [2, 4],
         "minimumCounts": {
           "street": 6,
@@ -76,7 +91,22 @@
           "cache": 13
         },
         "requiredOpeningTypes": ["street"],
-        "preBossTypes": ["basin", "nest"]
+        "preBossTypes": ["basin", "nest"],
+        "beats": [
+          { "id": "opening", "columns": [1], "types": ["street", "cache", "street"], "maxCombat": 2, "mustOfferNonCombat": true },
+          { "id": "earlyRelief", "columns": [2], "requireAny": ["basin", "nest", "cache"], "maxCombat": 1, "mustOfferNonCombat": true },
+          { "id": "build", "columns": [3, 4], "requireAny": ["signal", "cache", "market"], "maxCombat": 2 },
+          { "id": "pressure", "columns": [5, 6], "requireAny": ["street", "rival"], "mustOfferNonCombat": true },
+          { "id": "bossPrep", "fromEnd": 0, "types": ["basin", "nest", "signal"], "maxCombat": 0 }
+        ],
+        "pathRules": {
+          "maxConsecutiveCombat": 2,
+          "minSafetyBeforeBoss": 1,
+          "minSafetyBeforeColumnPct": 0.7,
+          "minBuildBeforeBoss": 1,
+          "rivalRequiresAlternative": true,
+          "maxPressureScore": 6
+        }
       },
       "economy": {
         "streetScrap": [25, 35],
@@ -99,7 +129,7 @@
       "index": 3,
       "expectedFlockPower": 36,
       "routeGeneration": {
-        "middleColumns": [6, 7],
+        "middleColumns": [7, 8],
         "lanes": [2, 4],
         "minimumCounts": {
           "street": 6,
@@ -114,18 +144,33 @@
           "street": 29,
           "rival": 8,
           "signal": 20,
-          "basin": 10,
+          "basin": 11,
           "nest": 14,
-          "market": 7,
+          "market": 6,
           "cache": 12
         },
         "requiredOpeningTypes": ["street"],
-        "preBossTypes": ["basin", "nest"]
+        "preBossTypes": ["basin", "nest"],
+        "beats": [
+          { "id": "opening", "columns": [1], "types": ["street", "cache", "street"], "maxCombat": 2, "mustOfferNonCombat": true },
+          { "id": "earlyRelief", "columns": [2], "requireAny": ["basin", "nest", "cache"], "maxCombat": 1, "mustOfferNonCombat": true },
+          { "id": "build", "columns": [3, 4], "requireAny": ["signal", "cache", "market"], "maxCombat": 2 },
+          { "id": "pressure", "columns": [5, 6], "requireAny": ["street", "rival"], "mustOfferNonCombat": true },
+          { "id": "bossPrep", "fromEnd": 0, "types": ["basin", "nest", "signal"], "maxCombat": 0 }
+        ],
+        "pathRules": {
+          "maxConsecutiveCombat": 2,
+          "minSafetyBeforeBoss": 1,
+          "minSafetyBeforeColumnPct": 0.7,
+          "minBuildBeforeBoss": 1,
+          "rivalRequiresAlternative": true,
+          "maxPressureScore": 6
+        }
       },
       "economy": {
-        "streetScrap": [31, 41],
-        "rivalScrap": [86, 104],
-        "bossScrap": 120,
+        "streetScrap": [28, 37],
+        "rivalScrap": [76, 92],
+        "bossScrap": 105,
         "cacheScrap": 40,
         "skipScrap": 16
       },
@@ -143,33 +188,48 @@
       "index": 4,
       "expectedFlockPower": 46,
       "routeGeneration": {
-        "middleColumns": [6, 7],
+        "middleColumns": [7, 8],
         "lanes": [2, 4],
         "minimumCounts": {
           "street": 7,
           "rival": 2,
           "signal": 4,
-          "basin": 1,
+          "basin": 2,
           "nest": 3,
           "market": 1,
           "cache": 2
         },
         "fillWeights": {
-          "street": 34,
+          "street": 31,
           "rival": 9,
-          "signal": 19,
-          "basin": 7,
+          "signal": 18,
+          "basin": 12,
           "nest": 14,
           "market": 6,
-          "cache": 11
+          "cache": 10
         },
         "requiredOpeningTypes": ["street"],
-        "preBossTypes": ["nest", "basin"]
+        "preBossTypes": ["nest", "basin"],
+        "beats": [
+          { "id": "opening", "columns": [1], "types": ["street", "cache", "street"], "maxCombat": 2, "mustOfferNonCombat": true },
+          { "id": "earlyRelief", "columns": [2], "requireAny": ["basin", "nest", "cache"], "maxCombat": 1, "mustOfferNonCombat": true },
+          { "id": "build", "columns": [3, 4], "requireAny": ["signal", "cache", "market"], "maxCombat": 2 },
+          { "id": "pressure", "columns": [5, 6], "requireAny": ["street", "rival"], "mustOfferNonCombat": true },
+          { "id": "bossPrep", "fromEnd": 0, "types": ["nest", "basin", "signal"], "maxCombat": 0 }
+        ],
+        "pathRules": {
+          "maxConsecutiveCombat": 2,
+          "minSafetyBeforeBoss": 1,
+          "minSafetyBeforeColumnPct": 0.7,
+          "minBuildBeforeBoss": 1,
+          "rivalRequiresAlternative": true,
+          "maxPressureScore": 7
+        }
       },
       "economy": {
-        "streetScrap": [36, 48],
-        "rivalScrap": [98, 122],
-        "bossScrap": 150,
+        "streetScrap": [32, 42],
+        "rivalScrap": [84, 104],
+        "bossScrap": 130,
         "cacheScrap": 45,
         "skipScrap": 18
       },

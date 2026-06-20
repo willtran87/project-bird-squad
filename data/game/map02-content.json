@@ -223,7 +223,8 @@
           "id": "coil_winded",
           "label": "Coil",
           "effects": [
-            "applyWinded(flock, 1)"
+            "applyWinded(flock, 1)",
+            "if playedCardsAtLeast(4) then loseWingbeat(1)"
           ]
         },
         {
@@ -431,7 +432,8 @@
           "label": "Shake Down 6",
           "effects": [
             "damage(flock, 6)",
-            "applyOpenSky(1)"
+            "applyOpenSky(1)",
+            "if zeroCostCardsAtLeast(2) then addSnagToDiscard(tangled_line)"
           ]
         },
         {

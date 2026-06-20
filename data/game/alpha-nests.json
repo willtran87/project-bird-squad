@@ -23,6 +23,12 @@
       "label": "Rig a Route Board",
       "cost": 115,
       "effects": ["payScrap(115)", "gainRouteMark(randomNonBoss)"]
+    },
+    {
+      "id": "boss_ready_tune",
+      "label": "Boss-Ready Tune-Up",
+      "cost": 130,
+      "effects": ["payScrap(130)", "preenCard(2)", "bossDamageShield(12)", "loseCohesion(3)"]
     }
   ]
 }

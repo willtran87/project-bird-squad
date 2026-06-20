@@ -1,5 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const smokePort = Number(process.env.BIRD_SQUAD_SMOKE_PORT ?? 5373);
+const smokeBaseUrl = `http://127.0.0.1:${smokePort}`;
+
 // Smoke-test harness for Bird Squad (next-level-implementation-spec Validation
 // Plan). Tests assert against the in-game text-state harness exposed on window
 // (__birdSquadGame / __birdSquadState / __birdSquadLastRun), which is fast and
@@ -13,14 +16,18 @@ export default defineConfig({
   reporter: 'list',
   timeout: 30_000,
   use: {
-    baseURL: 'http://127.0.0.1:5273',
+    baseURL: smokeBaseUrl,
     trace: 'off',
   },
   webServer: {
-    command: 'npx vite --host 127.0.0.1 --port 5273',
-    url: 'http://127.0.0.1:5273',
-    reuseExistingServer: true,
-    timeout: 60_000,
+    command: `npm run build && node ./node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port ${smokePort}`,
+    env: {
+      ...process.env,
+      BIRD_SQUAD_SMOKE: '1',
+    },
+    url: smokeBaseUrl,
+    reuseExistingServer: false,
+    timeout: 120_000,
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 });

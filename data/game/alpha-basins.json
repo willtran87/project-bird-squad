@@ -21,6 +21,12 @@
       "label": "Trade for a Wrapped Snack",
       "cost": 20,
       "effects": ["payScrap(20)", "gainSupplyChoice(1)"]
+    },
+    {
+      "id": "emergency_perch",
+      "label": "Fund an Emergency Perch",
+      "cost": 95,
+      "effects": ["payScrap(95)", "healMissingPct(70, 14)", "reduceNextOpenSky(2)"]
     }
   ]
 }

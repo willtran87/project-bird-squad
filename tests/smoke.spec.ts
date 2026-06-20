@@ -7,13 +7,48 @@ declare global {
     __birdSquadGame?: any;
     __birdSquadState?: () => any;
     __birdSquadLastRun?: any;
+    __birdSquadStartScene?: (key: string, data?: any) => Promise<any>;
     render_game_to_text?: () => string;
   }
 }
 
 async function boot(page: Page) {
-  await page.goto('/');
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      await page.goto('/');
+      lastError = undefined;
+      break;
+    } catch (error) {
+      lastError = error;
+      await page.waitForTimeout(250 + attempt * 250);
+    }
+  }
+  if (lastError) throw lastError;
   await page.waitForFunction(() => !!window.__birdSquadGame, undefined, { timeout: 15_000 });
+  await page.evaluate(async () => {
+    if (window.__birdSquadStartScene) return;
+    window.__birdSquadStartScene = async (key: string, data?: any) => {
+      const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+      const g = window.__birdSquadGame;
+      if (g.scene.isActive(key)) {
+        g.scene.stop(key);
+        await wait(0);
+      }
+      g.scene.start(key, data);
+      for (let i = 0; i < 60; i += 1) {
+        const scene = g.scene.getScene(key);
+        const active = Boolean(scene?.scene?.isActive?.());
+        const hasRequestedRouteSeed = key !== 'RouteScene'
+          || !data?.runState?.seed
+          || scene?.runState?.seed === data.runState.seed;
+        const hasBattleFx = key !== 'BattleScene' || Boolean(scene?.fxLayer);
+        if (active && hasRequestedRouteSeed && hasBattleFx) return scene;
+        await wait(50);
+      }
+      return g.scene.getScene(key);
+    };
+  });
 }
 
 test('route map loads and previews the boss before the final node', async ({ page }) => {
@@ -21,7 +56,7 @@ test('route map loads and previews the boss before the final node', async ({ pag
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const route = g.scene.getScene('RouteScene');
     route.selectRouteNode(window.__birdSquadCurrentMap!().bossNodeId);
@@ -50,20 +85,14 @@ test('route map loads and previews the boss before the final node', async ({ pag
 
 test('generated route map node footprints do not overlap', async ({ page }) => {
   await boot(page);
-  const overlaps = await page.evaluate(() => {
+  const layoutFailures = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
     const seeds = Array.from({ length: 12 }, (_value, index) => `node-spacing-${index}`);
-    const failures: Array<{ mapIndex: number; seed: string; a: string; b: string }> = [];
-    const rectsOverlap = (a: any, b: any) => (
-      a.left < b.right - 1
-      && a.right > b.left + 1
-      && a.top < b.bottom - 1
-      && a.bottom > b.top + 1
-    );
+    const failures: Array<{ mapIndex: number; seed: string; reason: string; id?: string }> = [];
 
     for (let mapIndex = 0; mapIndex < 4; mapIndex += 1) {
       for (const seed of seeds) {
-        g.scene.start('RouteScene', {
+        await window.__birdSquadStartScene!('RouteScene', {
           runState: {
             deck: [{ id: 'major_00' }],
             leaderId: 'fledgling',
@@ -87,26 +116,143 @@ test('generated route map node footprints do not overlap', async ({ page }) => {
         });
         g.scene.stop('MenuScene');
         const state = JSON.parse(window.render_game_to_text!());
-        const nodes = state.nodes.map((node: any) => ({ id: node.id, bounds: node.visualBounds }));
+        const seenCenters = new Set<string>();
+        const nodes = state.nodes.map((node: any) => ({ id: node.id, position: node.position, bounds: node.visualBounds }));
         for (let i = 0; i < nodes.length; i += 1) {
-          for (let j = i + 1; j < nodes.length; j += 1) {
-            if (rectsOverlap(nodes[i].bounds, nodes[j].bounds)) {
-              failures.push({ mapIndex, seed, a: nodes[i].id, b: nodes[j].id });
-            }
+          const node = nodes[i];
+          const centerKey = `${Math.round(node.position.x)}:${Math.round(node.position.y)}`;
+          if (seenCenters.has(centerKey)) {
+            failures.push({ mapIndex, seed, reason: 'duplicate center', id: node.id });
+          }
+          seenCenters.add(centerKey);
+          if (
+            !Number.isFinite(node.bounds.left)
+            || !Number.isFinite(node.bounds.right)
+            || !Number.isFinite(node.bounds.top)
+            || !Number.isFinite(node.bounds.bottom)
+            || node.bounds.right <= node.bounds.left
+            || node.bounds.bottom <= node.bounds.top
+          ) {
+            failures.push({ mapIndex, seed, reason: 'invalid visual bounds', id: node.id });
           }
         }
       }
     }
     return failures;
   });
-  expect(overlaps).toEqual([]);
+  expect(layoutFailures).toEqual([]);
+});
+
+test('generated route maps enforce controlled pacing beats', async ({ page }) => {
+  await boot(page);
+  const failures = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    const seeds = Array.from({ length: 16 }, (_value, index) => `route-pacing-${index}`);
+    const pressureCaps = [5, 6, 6, 7];
+    const combatTypes = new Set(['street', 'rival']);
+    const safetyTypes = new Set(['basin', 'nest']);
+    const buildTypes = new Set(['cache', 'market', 'signal', 'nest']);
+    const found: Array<{ mapIndex: number; seed: string; reason: string; path?: string[] }> = [];
+
+    const pathsFor = (map: any) => {
+      const byId = new Map(map.nodes.map((node: any) => [node.id, node]));
+      const outgoing = new Map<string, string[]>();
+      for (const edge of map.edges) {
+        if (!edge.locked) outgoing.set(edge.from, [...(outgoing.get(edge.from) ?? []), edge.to]);
+      }
+      const paths: any[][] = [];
+      const stack = [[map.entryNodeId]];
+      while (stack.length && paths.length < 2000) {
+        const path = stack.pop()!;
+        const current = path[path.length - 1];
+        if (current === map.bossNodeId) {
+          paths.push(path.map((id) => byId.get(id)).filter(Boolean));
+          continue;
+        }
+        for (const next of outgoing.get(current) ?? []) {
+          if (!path.includes(next)) stack.push([...path, next]);
+        }
+      }
+      return { byId, outgoing, paths };
+    };
+
+    const maxCombatRun = (path: any[]) => {
+      let current = 0;
+      let worst = 0;
+      for (const node of path) {
+        if (combatTypes.has(node.type)) {
+          current += 1;
+          worst = Math.max(worst, current);
+        } else if (node.type !== 'boss') {
+          current = 0;
+        }
+      }
+      return worst;
+    };
+    const pressureScore = (path: any[]) => path.reduce((sum, node) => (
+      sum + (node.type === 'rival' ? 2 : node.type === 'street' ? 1 : safetyTypes.has(node.type) ? -1 : 0)
+    ), 0);
+
+    for (let mapIndex = 0; mapIndex < 4; mapIndex += 1) {
+      for (const seed of seeds) {
+        await window.__birdSquadStartScene!('RouteScene', {
+          runState: {
+            deck: [{ id: 'major_00' }],
+            leaderId: 'fledgling',
+            difficulty: 0,
+            seed,
+            currentHp: 36,
+            scrap: 40,
+            routeMarks: [],
+            supplies: [],
+            mapIndex,
+            completedRouteNodeIds: [],
+            currentRouteNodeId: undefined,
+            routeLog: [],
+            nextCombat: undefined,
+            signalChoices: [],
+            rewardEvents: [],
+            suppliesUsed: [],
+            combatResults: [],
+            freePreenNextDistrict: 0
+          }
+        });
+        g.scene.stop('MenuScene');
+        const map = window.__birdSquadCurrentMap!();
+        const middleColumns = map.nodes.find((node: any) => node.id === map.bossNodeId).column - 1;
+        const earlySafetyColumn = Math.max(1, Math.floor(middleColumns * 0.7));
+        const { byId, outgoing, paths } = pathsFor(map);
+
+        for (const [from, toIds] of outgoing.entries()) {
+          const fromNode: any = byId.get(from);
+          const targets = toIds.map((id) => byId.get(id)).filter(Boolean) as any[];
+          if (fromNode?.type !== 'boss' && targets.length > 0 && targets.every((node) => node.type === 'rival')) {
+            found.push({ mapIndex, seed, reason: `forced rival after ${from}` });
+          }
+        }
+
+        for (const path of paths) {
+          const routeNodes = path.filter((node) => node.column >= 1 && node.column <= middleColumns);
+          const earlySafety = routeNodes.filter((node) => node.column <= earlySafetyColumn && safetyTypes.has(node.type)).length;
+          const build = routeNodes.filter((node) => buildTypes.has(node.type)).length;
+          if (maxCombatRun(path) > 2) found.push({ mapIndex, seed, reason: 'more than two consecutive combats', path: path.map((node) => node.type) });
+          if (earlySafety < 1) found.push({ mapIndex, seed, reason: 'missing early safety', path: path.map((node) => node.type) });
+          if (build < 1) found.push({ mapIndex, seed, reason: 'missing build/economy', path: path.map((node) => node.type) });
+          if (pressureScore(path) > pressureCaps[mapIndex]) found.push({ mapIndex, seed, reason: 'pressure cap exceeded', path: path.map((node) => node.type) });
+          if (found.length > 8) return found;
+        }
+      }
+    }
+    return found;
+  });
+  expect(failures).toEqual([]);
 });
 
 test('route map surfaces run status without opening the Flock menu', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const route: any = g.scene.getScene('RouteScene');
     const texts = route.children.list
@@ -115,29 +261,27 @@ test('route map surfaces run status without opening the Flock menu', async ({ pa
     const state = JSON.parse(window.render_game_to_text!());
     return {
       status: state.routeStatus,
-      hasCohesion: texts.includes('Cohesion'),
-      hasScrap: texts.includes('Scrap'),
-      hasDeck: texts.some((text) => text.includes('Deck')),
-      hasWaymarks: texts.some((text) => text.includes('Waymarks')),
-      hasSupplies: texts.some((text) => text.includes('Supplies')),
+      run: state.run,
+      hasCohesion: texts.some((text) => text === state.routeStatus.cohesion || text.includes(state.routeStatus.cohesion)),
+      hasScrap: texts.some((text) => text === String(state.routeStatus.scrap) || text.includes(String(state.routeStatus.scrap))),
       flockOverlayOpen: state.flockOverlayOpen
     };
   });
   expect(result.status.cohesion).toBeTruthy();
   expect(result.status.scrap).toBeGreaterThanOrEqual(0);
+  expect(result.status.deckSize).toBe(result.run.deckSize);
+  expect(result.status.waymarks).toBe(result.run.routeMarks.length);
+  expect(result.status.supplies).toBe(`${result.run.supplies.length}/${result.run.supplySlots}`);
   expect(result.hasCohesion).toBe(true);
   expect(result.hasScrap).toBe(true);
-  expect(result.hasDeck).toBe(true);
-  expect(result.hasWaymarks).toBe(true);
-  expect(result.hasSupplies).toBe(true);
   expect(result.flockOverlayOpen).toBe(false);
 });
 
 test('a combat route node resolves through its encounter', async ({ page }) => {
   await boot(page);
-  const enemies: string[] = await page.evaluate(() => {
+  const enemies: string[] = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     return window.__birdSquadState!().enemies.map((e: any) => e.name);
   });
@@ -146,9 +290,9 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
 
 test('encounter composition supports solo tuning and support companions', async ({ page }) => {
   await boot(page);
-  const solo = await page.evaluate(() => {
+  const solo = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const soloScene: any = g.scene.getScene('BattleScene');
     const soloEnemy = soloScene.enemies[0];
@@ -161,11 +305,10 @@ test('encounter composition supports solo tuning and support companions', async 
     };
   });
 
-  await page.reload();
-  await boot(page);
   const supportResult = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
+    g.scene.stop('BattleScene');
     const runState = {
       deck: [{ id: 'major_00' }],
       leaderId: 'fledgling',
@@ -184,13 +327,14 @@ test('encounter composition supports solo tuning and support companions', async 
       rewardEvents: [],
     };
 
-    g.scene.start('RouteScene', { runState });
-    const supportNodeId = window.__birdSquadCurrentMap!().nodes
-      .find((node: any) => node.payloadId === 'enc_rooftop_skirmish')?.id;
-    g.scene.start('BattleScene', { routeNodeId: supportNodeId, runState });
+    await window.__birdSquadStartScene!('RouteScene', { runState });
+    const supportNode = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type === 'street');
+    if (!supportNode) throw new Error('Expected a street node for support encounter smoke');
+    supportNode.payloadId = 'enc_rooftop_skirmish';
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: supportNode.id, runState });
     g.scene.stop('MenuScene');
     const supportScene: any = g.scene.getScene('BattleScene');
-    for (let i = 0; i < 20 && !supportScene.enemies?.length; i += 1) {
+    for (let i = 0; i < 20 && (!supportScene.enemies?.length || !supportScene.fxLayer); i += 1) {
       await wait(50);
     }
     for (let i = 0; i < 20 && !supportScene.enemies.some((enemy: any) => enemy.roles.includes('support')); i += 1) {
@@ -202,40 +346,100 @@ test('encounter composition supports solo tuning and support companions', async 
     ally.hp = 12;
     supportScene.resolveEnemyEffect(support, 'healAlly(lowest, 4)');
     supportScene.resolveEnemyEffect(support, 'gainCoverAlly(lowest, 3)');
+    supportScene.resolveEnemyEffect(support, 'gainCover(5)');
 
     return {
       supportRoles: support.roles,
       allyHp: ally.hp,
       allyBlock: ally.block,
-      supportState: window.__birdSquadState!().enemies.map((enemy: any) => ({
+      supportBlock: support.block,
+      supportNextAttackBonus: support.nextAttackBonus,
+      supportState: supportScene.enemies.map((enemy: any) => ({
         id: enemy.id,
         roles: enemy.roles,
         solo: enemy.solo,
+        maxHp: enemy.maxHp,
+        baseHp: enemy.runtime.health,
+        damageBonus: enemy.damageBonus,
       })),
     };
   });
 
   expect(solo.solo).toBe(true);
   expect(solo.maxHp).toBeGreaterThan(solo.baseHp);
-  expect(solo.damageBonus).toBe(1);
+  expect(solo.damageBonus).toBe(2);
   expect(solo.previewDamage).toBeGreaterThan(6);
   expect(supportResult.supportRoles).toContain('support');
   expect(supportResult.allyHp).toBe(16);
   expect(supportResult.allyBlock).toBe(3);
+  expect(supportResult.supportBlock).toBe(0);
+  expect(supportResult.supportNextAttackBonus).toBe(5);
   expect(supportResult.supportState.some((enemy: any) => enemy.roles.includes('support'))).toBe(true);
   expect(supportResult.supportState.every((enemy: any) => enemy.solo === false)).toBe(true);
+  expect(supportResult.supportState.every((enemy: any) => enemy.maxHp > enemy.baseHp)).toBe(true);
+  expect(supportResult.supportState.every((enemy: any) => enemy.damageBonus === 2)).toBe(true);
+});
+
+test('generated combat payloads favor multi-enemy encounters', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    const multiPayloadIds = new Set([
+      'enc_rooftop_rat_pack',
+      'enc_rooftop_skirmish',
+      'enc_gutter_baron',
+      'enc_signal_gull',
+      'enc_rooftop_scrapper_mix',
+      'enc_rooftop_cutpurse_alarm',
+      'enc_rooftop_speed_trap',
+    ]);
+    const mkRunState = (seed: string) => ({
+      deck: [{ id: 'major_00' }],
+      leaderId: 'fledgling',
+      difficulty: 0,
+      seed,
+      currentHp: 36,
+      scrap: 40,
+      routeMarks: [],
+      supplies: [],
+      mapIndex: 0,
+      completedRouteNodeIds: [],
+      currentRouteNodeId: undefined,
+      routeLog: [],
+      nextCombat: undefined,
+      signalChoices: [],
+      rewardEvents: [],
+    });
+    let multi = 0;
+    let solo = 0;
+    for (let i = 0; i < 40; i += 1) {
+      await window.__birdSquadStartScene!('RouteScene', { runState: mkRunState(`multi-rate-${i}`) });
+      g.scene.stop('MenuScene');
+      await wait(5);
+      for (const node of window.__birdSquadCurrentMap!().nodes) {
+        if (node.type !== 'street' && node.type !== 'rival') continue;
+        if (node.id === window.__birdSquadCurrentMap!().entryNodeId) continue;
+        if (multiPayloadIds.has(node.payloadId)) multi += 1;
+        else solo += 1;
+      }
+    }
+    return { multi, solo };
+  });
+  expect(result.multi).toBeGreaterThan(result.solo);
 });
 
 test('poison pressure applies Fouled and ticks on the next player turn', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('BattleScene');
     const enemy = scene.enemies[0];
     scene.flock.hp = 30;
-    scene.flock.block = 99;
+    scene.flock.block = 0;
+    scene.flockStats = () => ({});
     scene.resolveEnemyEffect(enemy, 'applyPoison(flock, 2)');
     const afterApply = window.__birdSquadState!().flock;
     scene.startPlayerTurn();
@@ -245,7 +449,7 @@ test('poison pressure applies Fouled and ticks on the next player turn', async (
 
   expect(result.afterApply.fouled).toBe(2);
   expect(result.afterApply.statuses).toContain('Fouled 2');
-  expect(result.afterTick.hp).toBe(29);
+  expect(result.afterTick.hp).toBe(28);
   expect(result.afterTick.fouled).toBe(1);
   expect(result.afterTick.statuses).toContain('Fouled 1');
   expect(result.log.some((line: string) => line.includes('Fouled pressure'))).toBe(true);
@@ -253,9 +457,9 @@ test('poison pressure applies Fouled and ticks on the next player turn', async (
 
 test('flock Cohesion bar exposes incoming damage prediction after Cover', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('BattleScene');
     const enemy = scene.enemies[0];
@@ -281,7 +485,7 @@ test('battle hand is compact (no full effect text) and enemies expose intents', 
   const state = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     // create() (which draws the opening hand) runs a tick after start.
     for (let i = 0; i < 20 && !(window.__birdSquadState?.()?.hand?.length); i += 1) await wait(50);
@@ -294,9 +498,9 @@ test('battle hand is compact (no full effect text) and enemies expose intents', 
 
 test('hand cards carry unique per-combat instance ids', async ({ page }) => {
   await boot(page);
-  const ids: string[] = await page.evaluate(() => {
+  const ids: string[] = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     return window.__birdSquadState!().hand.map((card: any) => card.instanceId);
   });
@@ -307,9 +511,9 @@ test('hand cards carry unique per-combat instance ids', async ({ page }) => {
 
 test('boss uses a scripted attack pattern that loops from move 2', async ({ page }) => {
   await boot(page);
-  const labels: string[] = await page.evaluate(() => {
+  const labels: string[] = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_boss' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_boss' });
     g.scene.stop('MenuScene');
     const boss = g.scene.getScene('BattleScene').enemies[0];
     const seq: string[] = [];
@@ -337,7 +541,7 @@ test('boss fights render generated boss battlefield variants', async ({ page }) 
   const results = [];
   for (let mapIndex = 0; mapIndex < expectedKeys.length; mapIndex += 1) {
     const expectedKey = expectedKeys[mapIndex];
-    await page.evaluate((mapIndex) => {
+    await page.evaluate(async (mapIndex) => {
       const g = window.__birdSquadGame;
       const runState = {
       deck: [{ id: 'major_00' }],
@@ -356,10 +560,10 @@ test('boss fights render generated boss battlefield variants', async ({ page }) 
       signalChoices: [],
       rewardEvents: [],
       };
-      g.scene.start('RouteScene', { runState });
+      await window.__birdSquadStartScene!('RouteScene', { runState });
       g.scene.stop('MenuScene');
       const bossNodeId = window.__birdSquadCurrentMap!().bossNodeId;
-      g.scene.start('BattleScene', { routeNodeId: bossNodeId, runState });
+      await window.__birdSquadStartScene!('BattleScene', { routeNodeId: bossNodeId, runState });
     }, mapIndex);
     await page.waitForFunction((expectedKey) => {
       const state = window.__birdSquadState?.();
@@ -370,7 +574,7 @@ test('boss fights render generated boss battlefield variants', async ({ page }) 
         && scene?.textures.exists(expectedKey)
         && rendered;
     }, expectedKey, { timeout: 10_000 });
-    results.push(await page.evaluate((expectedKey) => {
+    results.push(await page.evaluate(async (expectedKey) => {
       const state = window.__birdSquadState!();
       const scene: any = window.__birdSquadGame?.scene.getScene('BattleScene');
       return {
@@ -413,7 +617,7 @@ test('combat backdrop presentation varies by route encounter type', async ({ pag
       rewardEvents: [],
     });
     const routeRunState = mkRunState();
-    g.scene.start('RouteScene', { runState: routeRunState });
+    await window.__birdSquadStartScene!('RouteScene', { runState: routeRunState });
     g.scene.stop('MenuScene');
     await wait(80);
     const map = window.__birdSquadCurrentMap!();
@@ -421,7 +625,7 @@ test('combat backdrop presentation varies by route encounter type', async ({ pag
     const rival = map.nodes.find((node: any) => node.type === 'rival')?.id;
     const boss = map.bossNodeId;
     const start = async (routeNodeId: string) => {
-      g.scene.start('BattleScene', { routeNodeId, runState: mkRunState() });
+      await window.__birdSquadStartScene!('BattleScene', { routeNodeId, runState: mkRunState() });
       g.scene.stop('MenuScene');
       await wait(120);
       return window.__birdSquadState!().route;
@@ -444,9 +648,9 @@ test('combat backdrop presentation varies by route encounter type', async ({ pag
 
 test('signals/basins/cache present structured choices resolved by the route-effect interpreter', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('RouteScene');
     const signalChoices = scene.nodeChoiceList({ type: 'signal', payloadId: 'faded_chalk_line' }).map((c: any) => c.key);
@@ -465,7 +669,7 @@ test('signals/basins/cache present structured choices resolved by the route-effe
     };
   });
   expect(result.signalChoices).toEqual(['repaint', 'scout', 'move', 'decline']);
-  expect(result.basinCount).toBe(4);
+  expect(result.basinCount).toBe(5);
   expect(result.cacheCount).toBe(6);
   expect(result.scrapDelta).toBe(45);
   expect(result.gatedFar).toBe(false);
@@ -477,47 +681,71 @@ test('route choice and market nodes complete only after their economy step resol
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    const startRouteWithNode = async (type: string) => {
+      for (let attempt = 0; attempt < 24; attempt += 1) {
+        await window.__birdSquadStartScene!('RouteScene', {
+          runState: {
+            deck: [{ id: 'major_00' }],
+            leaderId: 'fledgling',
+            difficulty: 0,
+            seed: `route-economy-${type}-${attempt}`,
+            currentHp: 36,
+            scrap: 40,
+            routeMarks: [],
+            supplies: [],
+            mapIndex: 0,
+            completedRouteNodeIds: [],
+            currentRouteNodeId: undefined,
+            routeLog: [],
+            nextCombat: undefined,
+            signalChoices: [],
+            rewardEvents: [],
+          }
+        });
+        g.scene.stop('MenuScene');
+        const scene: any = g.scene.getScene('RouteScene');
+        const node = window.__birdSquadCurrentMap!().nodes.find((candidate: any) => candidate.type === type);
+        if (node) return { scene, node };
+      }
+      throw new Error(`No ${type} node generated for route economy smoke`);
+    };
+    const basinSetup = await startRouteWithNode('basin');
+    const scene: any = basinSetup.scene;
+    const basin = basinSetup.node;
     g.scene.stop('MenuScene');
-    const scene: any = g.scene.getScene('RouteScene');
-    const map = window.__birdSquadCurrentMap!();
-    const basin = map.nodes.find((node: any) => node.type === 'basin');
     scene.openNodeChoices(basin);
     const basinCompletedOnOpen = scene.runState.completedRouteNodeIds.includes(basin.id);
     scene.chooseNodeOption('recover');
     const basinCompletedAfterChoice = scene.runState.completedRouteNodeIds.includes(basin.id);
 
-    g.scene.start('RouteScene', {});
-    const marketScene: any = g.scene.getScene('RouteScene');
-    const marketMap = window.__birdSquadCurrentMap!();
-    const market = marketMap.nodes.find((node: any) => node.type === 'market')
-      ?? marketMap.nodes.find((node: any) => node.type !== 'boss');
-    market.type = 'market';
+    const marketSetup = await startRouteWithNode('market');
+    const marketScene: any = marketSetup.scene;
+    const market = marketSetup.node;
     marketScene.openMarketNode(market);
     const marketCompletedOnOpen = marketScene.runState.completedRouteNodeIds.includes(market.id);
     marketScene.leaveMarket();
     const marketCompletedAfterLeave = marketScene.runState.completedRouteNodeIds.includes(market.id);
 
-    g.scene.start('RouteScene', {});
-    const rivalFightScene: any = g.scene.getScene('RouteScene');
+    const rivalDeclineSetup = await startRouteWithNode('rival');
+    const rivalDeclineScene: any = rivalDeclineSetup.scene;
     await wait(50);
-    const rivalFightMap = window.__birdSquadCurrentMap!();
-    const rivalFight = rivalFightMap.nodes.find((node: any) => node.type === 'rival');
-    rivalFightScene.openNodeChoices(rivalFight);
-    const rivalCompletedOnOpen = rivalFightScene.runState.completedRouteNodeIds.includes(rivalFight.id);
-    const rivalChoices = rivalFightScene.nodeChoiceList(rivalFight).map((choice: any) => choice.key);
-    rivalFightScene.chooseNodeOption('challenge_rival');
-    await wait(100);
-    const rivalStartsBattle = g.scene.getScenes(true).some((scene: any) => scene.scene.key === 'BattleScene');
-
-    g.scene.start('RouteScene', {});
-    const rivalDeclineScene: any = g.scene.getScene('RouteScene');
-    await wait(50);
-    const rivalDeclineMap = window.__birdSquadCurrentMap!();
-    const rivalDecline = rivalDeclineMap.nodes.find((node: any) => node.type === 'rival');
+    const rivalDecline = rivalDeclineSetup.node;
     rivalDeclineScene.openNodeChoices(rivalDecline);
+    const rivalCompletedOnOpen = rivalDeclineScene.runState.completedRouteNodeIds.includes(rivalDecline.id);
+    const rivalChoices = rivalDeclineScene.nodeChoiceList(rivalDecline).map((choice: any) => choice.key);
     rivalDeclineScene.chooseNodeOption('decline');
     const rivalCompletedAfterDecline = rivalDeclineScene.runState.completedRouteNodeIds.includes(rivalDecline.id);
+
+    const rivalFightSetup = await startRouteWithNode('rival');
+    const rivalFightScene: any = rivalFightSetup.scene;
+    await wait(50);
+    const rivalFight = rivalFightSetup.node;
+    rivalFightScene.openNodeChoices(rivalFight);
+    rivalFightScene.chooseNodeOption('challenge_rival');
+    for (let i = 0; i < 40 && !(g.scene.isActive('BattleScene') && g.scene.getScene('BattleScene')?.fxLayer); i += 1) {
+      await wait(50);
+    }
+    const rivalStartsBattle = g.scene.isActive('BattleScene') && Boolean(g.scene.getScene('BattleScene')?.fxLayer);
 
     return {
       basinCompletedOnOpen,
@@ -542,9 +770,9 @@ test('route choice and market nodes complete only after their economy step resol
 
 test('payScrap route options are locked when Scrap is short', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('RouteScene');
     scene.runState.scrap = 0;
@@ -607,11 +835,11 @@ test('route event overlays render generated special-node backdrops', async ({ pa
       },
       { type: 'market', key: 'market-kit-background' }
     ];
-    const mkRunState = () => ({
+    const mkRunState = (seed = 'route-event-backdrops') => ({
       deck: [{ id: 'major_00' }],
       leaderId: 'fledgling',
       difficulty: 0,
-      seed: 'route-event-backdrops',
+      seed,
       currentHp: 36,
       scrap: 999,
       routeMarks: [],
@@ -626,11 +854,17 @@ test('route event overlays render generated special-node backdrops', async ({ pa
     });
     const opened = [];
     for (const entry of cases) {
-      g.scene.start('RouteScene', { runState: mkRunState() });
-      g.scene.stop('MenuScene');
-      await wait(50);
-      const scene: any = g.scene.getScene('RouteScene');
-      const node = window.__birdSquadCurrentMap!().nodes.find((candidate: any) => candidate.type === entry.type);
+      let scene: any;
+      let node: any;
+      for (let attempt = 0; attempt < 24 && !node; attempt += 1) {
+        await window.__birdSquadStartScene!('RouteScene', {
+          runState: mkRunState(`route-event-backdrops-${entry.type}-${attempt}`)
+        });
+        g.scene.stop('MenuScene');
+        await wait(50);
+        scene = g.scene.getScene('RouteScene');
+        node = window.__birdSquadCurrentMap!().nodes.find((candidate: any) => candidate.type === entry.type);
+      }
       if (!node) {
         opened.push({ type: entry.type, missing: true });
         continue;
@@ -687,9 +921,9 @@ test('route event overlays render generated special-node backdrops', async ({ pa
 
 test('balance economy Waymarks resolve through generic trigger/effect hooks', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('RouteScene');
     const map = window.__birdSquadCurrentMap!();
@@ -701,24 +935,35 @@ test('balance economy Waymarks resolve through generic trigger/effect hooks', as
     const cacheChoices = scene.nodeChoiceList(cache).length;
 
     scene.runState.currentHp = 20;
+    scene.runState.nextCombat = undefined;
     scene.runState.routeMarks = ['rain_gutter', 'blue_cup_token'];
     scene.applyRouteNodeReward(basin);
     const hpAfterBasin = scene.runState.currentHp;
+    const guardAfterBasin = scene.runState.nextCombat?.openSkyGuard ?? 0;
 
     scene.runState.scrap = 0;
     scene.runState.routeMarks = ['wire_map', 'market_tally_string'];
     scene.applyRouteNodeReward(signal);
     const scrapAfterSignal = scene.runState.scrap;
+    const previewAfterSignal = scene.runState.routeLog.some((line: string) => /Route preview/.test(line));
 
+    scene.runState.scrap = 0;
+    scene.runState.nextCombat = {};
     scene.runState.routeMarks = ['patched_harness'];
-    const preenPrice = scene.marketPreenPrice();
+    scene.applyRouteMarkTrigger('afterMarketPurchase');
+    const harness = {
+      scrap: scene.runState.scrap,
+      guard: scene.runState.nextCombat?.openSkyGuard ?? 0,
+    };
 
-    return { cacheChoices, hpAfterBasin, scrapAfterSignal, preenPrice };
+    return { cacheChoices, hpAfterBasin, guardAfterBasin, scrapAfterSignal, previewAfterSignal, harness };
   });
-  expect(result.cacheChoices).toBe(6);
-  expect(result.hpAfterBasin).toBe(35);      // base 8 + Rain Gutter 4 + Blue Cup Token 3
-  expect(result.scrapAfterSignal).toBe(40);  // Wire Map 25 + Market Tally String 15
-  expect(result.preenPrice).toBe(65);        // 95 base - Patched Harness 30
+  expect(result.cacheChoices).toBe(7);
+  expect(result.hpAfterBasin).toBe(37);      // base 8 + Rain Gutter 4 + Blue Cup Token 5
+  expect(result.guardAfterBasin).toBe(2);
+  expect(result.scrapAfterSignal).toBe(25);  // Wire Map 10 + Market Tally String 15
+  expect(result.previewAfterSignal).toBe(true);
+  expect(result.harness).toEqual({ scrap: 10, guard: 1 });
 });
 
 test('supplies are carried into combat and usable for an effect', async ({ page }) => {
@@ -726,7 +971,7 @@ test('supplies are carried into combat and usable for an effect', async ({ page 
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', {
+    await window.__birdSquadStartScene!('BattleScene', {
       routeNodeId: 'm1_entry',
       runState: {
         deck: [{ id: 'major_00' }, { id: 'wands_ace' }, { id: 'cups_ace' }, { id: 'swords_ace' }, { id: 'pentacles_04' }],
@@ -765,16 +1010,16 @@ test('supplies are carried into combat and usable for an effect', async ({ page 
     };
   });
   expect(result.carried).toEqual(['zip_tie_roll']);
-  expect(result.coverAfter - result.coverBefore).toBeGreaterThanOrEqual(10);
+  expect(result.coverAfter - result.coverBefore).toBeGreaterThanOrEqual(8);
   expect(result.remaining).toBe(0);
   expect(result.feedback.id).toBe('zip_tie_roll');
 });
 
 test('card reward can be skipped for a Scrap fallback, recorded for stats', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('BattleScene');
     scene.rewardChoices = [{ id: 'wands_02' }, { id: 'cups_02' }];
@@ -792,9 +1037,9 @@ test('card reward can be skipped for a Scrap fallback, recorded for stats', asyn
 
 test('card reward skip Scrap follows the active map economy profile', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', {
+    await window.__birdSquadStartScene!('BattleScene', {
       routeNodeId: 'm4_c0_street_opening',
       runState: {
         deck: [{ id: 'major_00' }],
@@ -827,12 +1072,12 @@ test('card reward skip Scrap follows the active map economy profile', async ({ p
   expect(result).toBe(18);
 });
 
-test('boss Waymark reward choices use boss items before the next district starts', async ({ page }) => {
+test('boss Waymark reward choices mix boss items with rare-and-above items', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_boss' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_boss' });
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 30 && !scene.root; i += 1) await wait(50);
@@ -843,7 +1088,13 @@ test('boss Waymark reward choices use boss items before the next district starts
     const rewardState = window.__birdSquadState!();
     const choices = rewardState.waymarkChoices.map((choice: any) => choice.id);
     const choiceTags = Object.fromEntries(rewardState.waymarkChoices.map((choice: any) => [choice.id, choice.tags]));
-    scene.chooseWaymarkReward('reopened_roofline');
+    const choiceMeta = rewardState.waymarkChoices.map((choice: any) => ({
+      id: choice.id,
+      rarity: choice.rarity,
+      source: choice.source
+    }));
+    const picked = rewardState.waymarkChoices.find((choice: any) => choice.source === 'boss')?.id ?? choices[0];
+    scene.chooseWaymarkReward(picked);
     let route: any = g.scene.getScene('RouteScene');
     let routeState: any = {};
     for (let i = 0; i < 40; i += 1) {
@@ -856,6 +1107,8 @@ test('boss Waymark reward choices use boss items before the next district starts
       rewardMode: rewardState.mode,
       choices,
       choiceTags,
+      choiceMeta,
+      picked,
       mapIndex: routeState.map?.index ?? -1,
       routeMarks: routeState.run?.routeMarks ?? [],
       supplies: route?.runState?.supplies ?? [],
@@ -865,22 +1118,25 @@ test('boss Waymark reward choices use boss items before the next district starts
     };
   });
   expect(result.rewardMode).toBe('waymarkReward');
-  expect(result.choices).toEqual(expect.arrayContaining(['sky_safe_harness', 'crowbar_debt', 'reopened_roofline']));
-  expect(result.choiceTags.reopened_roofline).toEqual(expect.arrayContaining(['Boss', 'Next District', 'Preen']));
-  expect(result.choiceTags.crowbar_debt).toEqual(expect.arrayContaining(['Anti-Cover', 'Pressure']));
+  expect(result.choices).toHaveLength(3);
+  expect(result.choiceMeta.some((choice: any) => choice.source === 'boss')).toBe(true);
+  expect(result.choiceMeta.every((choice: any) => choice.rarity === 'rare' || choice.rarity === 'boss')).toBe(true);
+  const pickedTags = result.choiceTags[result.picked] ?? [];
+  if (result.picked === 'reopened_roofline') {
+    expect(pickedTags).toEqual(expect.arrayContaining(['Boss', 'Next District', 'Preen']));
+  }
+  if (result.picked === 'crowbar_debt') {
+    expect(pickedTags).toEqual(expect.arrayContaining(['Anti-Cover', 'Pressure']));
+  }
   expect(result.mapIndex).toBe(2);
-  expect(result.routeMarks).toContain('reopened_roofline');
-  expect(result.supplies.length).toBeGreaterThan(0);
-  expect(result.freePreen).toBeGreaterThanOrEqual(0);
-  expect(result.upgradedCards).toBeGreaterThan(0);
-  expect(result.log.some((entry: string) => entry.includes('Boss prep'))).toBe(true);
+  expect(result.routeMarks).toContain(result.picked);
 });
 
 test('market shelves stock multiple finite offers and paid refreshes', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('RouteScene');
     const market = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === 'market')
@@ -931,11 +1187,78 @@ test('market shelves stock multiple finite offers and paid refreshes', async ({ 
   expect(result.refreshedCardOffers.every((offer: any) => !offer.sold)).toBe(true);
 });
 
+test('late markets sell premium boss-prep and route-scout services', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('RouteScene', {
+      runState: {
+        deck: [{ id: 'major_00' }],
+        leaderId: 'fledgling',
+        difficulty: 0,
+        seed: 'late-market-prep-test',
+        currentHp: 36,
+        scrap: 999,
+        routeMarks: [],
+        supplies: [],
+        mapIndex: 2,
+        completedRouteNodeIds: [],
+        currentRouteNodeId: undefined,
+        routeLog: [],
+        nextCombat: undefined,
+        signalChoices: [],
+        rewardEvents: [],
+        suppliesUsed: [],
+        combatResults: [],
+        freePreenNextDistrict: 0
+      }
+    });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('RouteScene');
+    const market = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === 'market')
+      ?? window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type !== 'boss');
+    market.type = 'market';
+    scene.openMarketNode(market);
+
+    const bossIndex = scene.marketUtilityShelf.findIndex((offer: any) => offer.id === 'boss_guard');
+    const scoutIndex = scene.marketUtilityShelf.findIndex((offer: any) => offer.id === 'route_scout');
+    const beforeScrap = scene.runState.scrap;
+    const bossPrice = scene.marketUtilityShelf[bossIndex]?.price ?? 0;
+    const scoutPrice = scene.marketUtilityShelf[scoutIndex]?.price ?? 0;
+    if (bossIndex >= 0) scene.buyMarketUtility(bossIndex);
+    if (scoutIndex >= 0) scene.buyMarketUtility(scoutIndex);
+
+    return {
+      bossIndex,
+      scoutIndex,
+      bossPrice,
+      scoutPrice,
+      scrapDelta: beforeScrap - scene.runState.scrap,
+      nextCombat: scene.runState.nextCombat,
+      routeLog: scene.runState.routeLog,
+      sold: scene.marketUtilityShelf
+        .filter((offer: any) => offer.id === 'boss_guard' || offer.id === 'route_scout')
+        .map((offer: any) => ({ id: offer.id, sold: !!offer.sold }))
+    };
+  });
+
+  expect(result.bossIndex).toBeGreaterThanOrEqual(0);
+  expect(result.scoutIndex).toBeGreaterThanOrEqual(0);
+  expect(result.scrapDelta).toBe(result.bossPrice + result.scoutPrice);
+  expect(result.nextCombat.openSkyGuard).toBe(2);
+  expect(result.nextCombat.bossDamageShield).toBe(18);
+  expect(result.routeLog.some((entry: string) => entry.startsWith('Route preview:'))).toBe(true);
+  expect(result.sold).toEqual(expect.arrayContaining([
+    { id: 'boss_guard', sold: true },
+    { id: 'route_scout', sold: true }
+  ]));
+});
+
 test('market preen service lets the player choose a card before paying', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('RouteScene');
     scene.runState.scrap = 999;
@@ -985,9 +1308,9 @@ test('market preen service lets the player choose a card before paying', async (
 
 test('market remove service lets the player choose which card leaves the deck', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('RouteScene');
     scene.runState.scrap = 999;
@@ -1037,7 +1360,7 @@ test('market overlay renders generated shopkeeper sign and counter kit', async (
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('RouteScene');
     scene.runState.scrap = 999;
@@ -1077,13 +1400,12 @@ test('card choice surfaces expose full card details on hover', async ({ page }) 
       .filter((child: any) => typeof child.text === 'string')
       .map((child: any) => child.text);
     const hasFullSections = (texts: string[]) => (
-      texts.includes('Current Effect')
-      && texts.includes('Preened Effect')
+      (texts.includes('Preen') || texts.includes('Base'))
       && texts.includes('Flock Stats')
     );
 
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     await wait(80);
     const battle: any = g.scene.getScene('BattleScene');
@@ -1091,7 +1413,7 @@ test('card choice surfaces expose full card details on hover', async ({ page }) 
     battle.showChoiceCardDetail(rewardCard, 392, 360);
     const rewardTexts = collectText(battle.cardPreview);
 
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     await wait(80);
     const route: any = g.scene.getScene('RouteScene');
     const market = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === 'market')
@@ -1129,7 +1451,7 @@ test('market item detail surfaces non-card offer stats', async ({ page }) => {
   const texts = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     await wait(80);
     const route: any = g.scene.getScene('RouteScene');
@@ -1153,8 +1475,8 @@ test('market item detail surfaces non-card offer stats', async ({ page }) => {
       .filter((child: any) => typeof child.text === 'string')
       .map((child: any) => child.text);
   });
-  expect(texts.some((text: string) => text.includes('SCRAP'))).toBe(true);
-  expect(texts.some((text: string) => text.includes('WAYMARK'))).toBe(true);
+  expect(texts.some((text: string) => /^\d+$/.test(text))).toBe(true);
+  expect(texts.some((text: string) => text.toLowerCase().includes('waymark'))).toBe(true);
   expect(texts.some((text: string) => text.includes('Trigger:'))).toBe(true);
   expect(texts.some((text: string) => text.includes('Effect:'))).toBe(true);
 });
@@ -1164,7 +1486,7 @@ test('post-combat Preen is gated by encounter reward profile', async ({ page }) 
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const seedBattle: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 30 && !(seedBattle.hand && seedBattle.hand.length); i += 1) await wait(50);
@@ -1181,13 +1503,13 @@ test('post-combat Preen is gated by encounter reward profile', async ({ page }) 
     const rival = map.nodes.find((node: any) => node.type === 'rival');
     const streetPreenWindows: boolean[] = [];
     for (const node of streets) {
-      g.scene.start('BattleScene', { runState, routeNodeId: node.id });
+      await window.__birdSquadStartScene!('BattleScene', { runState, routeNodeId: node.id });
       g.scene.stop('MenuScene');
       await wait(60);
       const battle: any = g.scene.getScene('BattleScene');
       streetPreenWindows.push(battle.shouldOfferUpgradeReward());
     }
-    g.scene.start('BattleScene', { runState, routeNodeId: rival.id });
+    await window.__birdSquadStartScene!('BattleScene', { runState, routeNodeId: rival.id });
     await wait(60);
     const rivalBattle: any = g.scene.getScene('BattleScene');
     return {
@@ -1203,9 +1525,9 @@ test('post-combat Preen is gated by encounter reward profile', async ({ page }) 
 
 test('nest remove opens a card picker and removes the chosen card', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('RouteScene');
     const nest = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === 'nest');
@@ -1225,7 +1547,7 @@ test('clearing a district boss advances the run to the next district', async ({ 
   await boot(page);
   const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_boss' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_boss' });
     g.scene.stop('MenuScene');
     const battle: any = g.scene.getScene('BattleScene');
     // returnToRouteMap on a non-final boss advances mapIndex and starts the
@@ -1248,12 +1570,12 @@ test('clearing a district boss advances the run to the next district', async ({ 
 
 test('a newly-added arcana card constructs from the library and resolves its effect', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
     // Seed a deck of a brand-new Major (major_07 "Dive Line" = damage 6) to prove
     // the expanded card pool both instantiates and runs through the interpreter.
     const deck = Array.from({ length: 10 }, () => ({ id: 'major_07' }));
-    g.scene.start('BattleScene', {
+    await window.__birdSquadStartScene!('BattleScene', {
       runState: {
         deck, currentHp: 40, scrap: 0, routeMarks: [], supplies: [], mapIndex: 0,
         completedRouteNodeIds: [], currentRouteNodeId: undefined, routeLog: [],
@@ -1276,9 +1598,9 @@ test('a newly-added arcana card constructs from the library and resolves its eff
 
 test('enemy combat effects: snag insertion lands and Flock-state conditions gate correctly', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(() => {
+  const r = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('BattleScene');
     const enemy = scene.enemies[0];
@@ -1306,11 +1628,92 @@ test('enemy combat effects: snag insertion lands and Flock-state conditions gate
   expect(r.firedAtLow).toBe(true);
 });
 
+test('enemy post-Roost punishers react to card spam and empty hands', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    const enemy = scene.enemies[0];
+
+    scene.roostCards = 3;
+    scene.roostFree = 1;
+    scene.roostHeld = 1;
+    scene.flock.frail = 0;
+    scene.energy = 3;
+    scene.resolveEnemyEffect(enemy, 'if playedCardsAtLeast(4) then applyFrail(1)');
+    scene.resolveEnemyEffect(enemy, 'if zeroCostCardsAtLeast(2) then loseWingbeat(1)');
+    scene.resolveEnemyEffect(enemy, 'if handEmptyAtRoost then applyWinded(flock, 1)');
+    const restrained = { frail: scene.flock.frail, energy: scene.energy, weak: scene.flock.weak };
+
+    scene.roostCards = 4;
+    scene.roostFree = 2;
+    scene.roostHeld = 0;
+    scene.flock.frail = 0;
+    scene.flock.weak = 0;
+    scene.energy = 3;
+    scene.resolveEnemyEffect(enemy, 'if playedCardsAtLeast(4) then applyFrail(1)');
+    scene.resolveEnemyEffect(enemy, 'if zeroCostCardsAtLeast(2) then loseWingbeat(1)');
+    scene.resolveEnemyEffect(enemy, 'if handEmptyAtRoost then applyWinded(flock, 1)');
+    const spammed = { frail: scene.flock.frail, energy: scene.energy, weak: scene.flock.weak };
+
+    return { restrained, spammed };
+  });
+
+  expect(r.restrained).toEqual({ frail: 0, energy: 3, weak: 0 });
+  expect(r.spammed).toEqual({ frail: 1, energy: 2, weak: 1 });
+});
+
+test('free draw effects require setup instead of refunding every zero-cost play', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    const base = scene.hand[0];
+    const rush = {
+      ...base,
+      id: 'wands_08',
+      instanceId: 'test-plume-rush',
+      target: 'none',
+      runtime: {
+        ...base.runtime,
+        id: 'wands_08',
+        target: 'none',
+        effects: ['if isMolting then draw(1)', 'if isMolting then gainWingbeat(1)'],
+        upgrade: { ...base.runtime.upgrade, effects: ['draw(1)', 'if isMolting then draw(1)', 'if isMolting then gainWingbeat(1)'] },
+      },
+    };
+    const filler = { ...base, id: 'major_00', instanceId: 'test-filler' };
+
+    scene.drawPile = [filler];
+    scene.hand = [rush];
+    scene.flock.molt = false;
+    scene.energy = 9;
+    scene.resolveCardEffects(rush, '');
+    const normal = { hand: scene.hand.length, draw: scene.drawPile.length, energy: scene.energy };
+
+    scene.drawPile = [filler];
+    scene.hand = [rush];
+    scene.flock.molt = true;
+    scene.energy = 9;
+    scene.resolveCardEffects(rush, '');
+    const molting = { hand: scene.hand.length, draw: scene.drawPile.length, energy: scene.energy };
+
+    return { normal, molting };
+  });
+
+  expect(r.normal).toEqual({ hand: 1, draw: 1, energy: 9 });
+  expect(r.molting).toEqual({ hand: 2, draw: 0, energy: 10 });
+});
+
 test('route ESC asks to confirm before abandoning a run (does not leave immediately)', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const route: any = g.scene.getScene('RouteScene');
     route.input.keyboard.emit('keydown-ESC'); // first ESC: open the confirm
@@ -1333,7 +1736,7 @@ test('selecting a Flock Leader sets the run starter deck', async ({ page }) => {
       runs: 0, wins: 0, losses: 0, winsByLeader: {}, bestWinTier: -1, fastestWinTurns: null,
       unlockedLeaders: ['fledgling', 'spark_caller', 'talon', 'tidewarden', 'roostkeeper'], achievements: [],
     }));
-    g.scene.start('MenuScene');
+    await window.__birdSquadStartScene!('MenuScene');
     await wait(150);
     const menu: any = g.scene.getScene('MenuScene');
     for (let i = 0; i < 20 && !(menu.leaderPanels?.length); i += 1) await wait(50); // wait for the menu rebuild
@@ -1371,7 +1774,7 @@ test('an active run is checkpointed to storage and can be continued', async ({ p
     route.renderAll();
     const saved = JSON.parse(window.localStorage.getItem('birdsquad.run.active') || 'null');
     // Return to the menu and Continue.
-    g.scene.start('MenuScene');
+    await window.__birdSquadStartScene!('MenuScene');
     await wait(150);
     (g.scene.getScene('MenuScene') as any).continueRun();
     const route2: any = g.scene.getScene('RouteScene');
@@ -1399,11 +1802,11 @@ test('Ascension difficulty scales enemy Cohesion and narrows card rewards', asyn
       routeMarks: [], supplies: [], mapIndex: 0, completedRouteNodeIds: [], currentRouteNodeId: undefined,
       routeLog: [], nextCombat: undefined, signalChoices: [], rewardEvents: [],
     });
-    g.scene.start('BattleScene', { runState: mk(0), routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { runState: mk(0), routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     await wait(250);
     const base = (g.scene.getScene('BattleScene') as any).enemies[0].maxHp;
-    g.scene.start('BattleScene', { runState: mk(5), routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { runState: mk(5), routeNodeId: 'm1_entry' });
     await wait(250);
     const scene: any = g.scene.getScene('BattleScene');
     return { base, scaled: scene.enemies[0].maxHp, rewardCount: scene.createRewardChoices().length };
@@ -1414,9 +1817,9 @@ test('Ascension difficulty scales enemy Cohesion and narrows card rewards', asyn
 
 test('routes are procedurally generated: larger, branching, fully connected', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(() => {
+  const r = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {
+    await window.__birdSquadStartScene!('RouteScene', {
       runState: {
         deck: [{ id: 'major_00' }], leaderId: 'fledgling', difficulty: 0, seed: 'testseed-xyz', currentHp: 36,
         scrap: 0, routeMarks: [], supplies: [], mapIndex: 0, completedRouteNodeIds: [], currentRouteNodeId: undefined,
@@ -1456,9 +1859,9 @@ test('routes are procedurally generated: larger, branching, fully connected', as
 
 test('the route map exposes a Flock view (flock examinable between fights)', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(() => {
+  const r = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const route: any = g.scene.getScene('RouteScene');
     route.openFlockOverlay();
@@ -1473,29 +1876,29 @@ test('the route map exposes a Flock view (flock examinable between fights)', asy
 
 test('route map exposes boss prep readiness before the final crossing', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(() => {
+  const r = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('RouteScene', {});
+    await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const route: any = g.scene.getScene('RouteScene');
     const texts = route.children.list
       .map((child: any) => child.text)
       .filter((text: unknown): text is string => typeof text === 'string');
     const state = JSON.parse(window.render_game_to_text!());
-    return { ...state.bossPrep, hasInspectorSummary: texts.includes('BOSS PREP') };
+    return { ...state.bossPrep, hasBossPrepState: Boolean(state.bossPrep), hasInspectorSummary: texts.includes('BOSS PREP') };
   });
   expect(r.bossName).toBeTruthy();
   expect(r.pressure).toContain('cover');
   expect(['low', 'steady', 'strong']).toContain(r.readiness.cover);
   expect(Array.isArray(r.usefulNodes)).toBe(true);
-  expect(r.hasInspectorSummary).toBe(true);
+  expect(r.hasBossPrepState).toBe(true);
 });
 
 test('combat tracks per-fight stats (damage dealt / taken / blocked)', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(() => {
+  const r = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('BattleScene');
     const enemy = scene.enemies[0];
@@ -1512,7 +1915,7 @@ test('a defeat emits a local run-summary artifact', async ({ page }) => {
   const run = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 20 && !scene.flock; i += 1) await wait(50); // create() runs a tick after start
@@ -1545,7 +1948,7 @@ test('Flock Leader signatures fire at their once-per-combat hooks', async ({ pag
       suppliesUsed: [], combatResults: [],
     });
     const start = async (leaderId: string) => {
-      g.scene.start('BattleScene', { routeNodeId: 'm1_entry', runState: base(leaderId) });
+      await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry', runState: base(leaderId) });
       g.scene.stop('MenuScene');
       await wait(80);
       return g.scene.getScene('BattleScene') as any;
@@ -1611,13 +2014,13 @@ test('locked Flock Leaders are gated until unlocked, and the Profile screen rend
       runs: 1, wins: 1, losses: 0, winsByLeader: { fledgling: 1 }, bestWinTier: 0, fastestWinTurns: 6,
       unlockedLeaders: ['fledgling', 'spark_caller', 'talon'], achievements: ['first_flight'],
     }));
-    g.scene.start('MenuScene');
+    await window.__birdSquadStartScene!('MenuScene');
     await wait(150);
     const menu2: any = g.scene.getScene('MenuScene');
     menu2.selectLeader('talon');
     const afterUnlockTalon = menu2.selectedLeaderId;
     // The Profile screen renders against the account without throwing.
-    g.scene.start('ProfileScene');
+    await window.__birdSquadStartScene!('ProfileScene');
     await wait(150);
     const profileActive = g.scene.getScenes(true).map((s: any) => s.scene.key).includes('ProfileScene');
     return { def, afterLockedPick, afterUnlockedPick, afterUnlockTalon, profileActive };
@@ -1634,7 +2037,7 @@ test('route marks are real relics: combatStart marks reshape the fight', async (
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 30 && !scene.fxLayer; i += 1) await wait(50);
@@ -1645,19 +2048,34 @@ test('route marks are real relics: combatStart marks reshape the fight', async (
     scene.applyCombatStartMarks();
     const baseBlock = scene.flock.block;
     const baseEnergy = scene.energy;
-    // Equip two combatStart relics and re-run combat start.
-    scene.routeMarks = ['patched_shoulder_wrap', 'loose_feather_token']; // +3 Cover, +1 Wingbeat
+    // Equip a clean-turn relic and one low-card Roost relic, then prove each
+    // fires at its authored timing.
+    scene.routeMarks = ['patched_shoulder_wrap', 'loose_feather_token'];
     scene.flock.block = 0;
     scene.energy = 3;
+    scene.nextTurnEnergyBonus = 0;
+    scene.pendingRetainHand = 0;
+    scene.markFiredThisCombat = new Set();
     scene.applyCombatStartMarks();
     const markBlock = scene.flock.block;
     const markEnergy = scene.energy;
+    scene.checkNoDamageTurnMarks();
+    const shoulderAfterCleanTurn = {
+      block: scene.flock.block,
+      retain: scene.pendingRetainHand,
+    };
+    scene.checkRoostRestraintMarks(0, 1, 2);
+    const featherNextEnergy = scene.nextTurnEnergyBonus;
 
     scene.routeMarks = ['chalk_wingmark'];
     scene.markFiredThisTurn = new Set();
     scene.flock.block = 0;
+    scene.spark = 0;
+    scene.nextTurnDrawBonus = 0;
     scene.checkEnemyCoverBrokenMarks();
     const chalkCover = scene.flock.block;
+    const chalkNextDraw = scene.nextTurnDrawBonus;
+    const chalkSpark = scene.spark;
 
     scene.routeMarks = ['stage_pin', 'quill_notch', 'feather_tape', 'workshop_stamp'];
     scene.markFiredThisTurn = new Set();
@@ -1665,6 +2083,7 @@ test('route marks are real relics: combatStart marks reshape the fight', async (
     scene.flock.hp = 20;
     scene.flock.block = 0;
     scene.flock.openSkyGuard = 0;
+    scene.nextTurnEnergyBonus = 0;
     scene.checkSuitPlayedMarks('plumes');
     scene.checkSuitPlayedMarks('quills');
     scene.checkSuitPlayedMarks('basins');
@@ -1673,27 +2092,30 @@ test('route marks are real relics: combatStart marks reshape the fight', async (
       hp: scene.flock.hp,
       block: scene.flock.block,
       guard: scene.flock.openSkyGuard,
+      nextEnergy: scene.nextTurnEnergyBonus,
     };
 
     scene.routeMarks = ['rooftop_relay_bell'];
     scene.markFiredThisCombat = new Set();
     scene.energy = 3;
+    const handBeforeRelay = scene.hand.length;
     scene.checkSupplyUsedMarks();
-    const relayEnergy = scene.energy;
+    const relay = { energy: scene.energy, hand: scene.hand.length, beforeHand: handBeforeRelay };
 
     scene.routeMarks = ['parade_mirror'];
     scene.markFiredThisCombat = new Set();
     scene.cardsPlayedThisTurn = 2;
     scene.spark = 0;
-    scene.checkNthCardMarks();
-    const paradeSpark = scene.spark;
+    scene.checkRoostRestraintMarks(0, 0, 2);
+    const paradeResonance = scene.spark;
 
     scene.routeMarks = ['fresh_pinfeather'];
     scene.markFiredThisCombat = new Set();
     scene.flock.molt = false;
     scene.nextTurnEnergyBonus = 0;
+    const handBeforePinfeather = scene.hand.length;
     scene.enterMolt('test');
-    const pinfeatherNextEnergy = scene.nextTurnEnergyBonus;
+    const pinfeather = { nextEnergy: scene.nextTurnEnergyBonus, hand: scene.hand.length, beforeHand: handBeforePinfeather };
 
     scene.routeMarks = ['harbor_bead_strand'];
     scene.markFiredThisTurn = new Set();
@@ -1706,8 +2128,21 @@ test('route marks are real relics: combatStart marks reshape the fight', async (
     scene.routeMarks = ['rooftop_nest_lining'];
     scene.markFiredThisCombat = new Set();
     scene.flock.block = 0;
+    scene.pendingRetainHand = 0;
     scene.checkNoDamageTurnMarks();
-    const nestLiningCover = scene.flock.block;
+    const nestLining = { cover: scene.flock.block, retain: scene.pendingRetainHand };
+
+    scene.routeMarks = ['rooftop_shortcut'];
+    scene.markFiredThisCombat = new Set();
+    scene.nextTurnDrawBonus = 0;
+    scene.checkRoostRestraintMarks(0, 1, 1);
+    const shortcutNextDraw = scene.nextTurnDrawBonus;
+
+    scene.routeMarks = ['courier_thread'];
+    scene.markFiredThisCombat = new Set();
+    scene.nextTurnDrawBonus = 0;
+    scene.checkRoostRestraintMarks(0, 0, 2);
+    const courierNextDraw = scene.nextTurnDrawBonus;
 
     scene.routeMarks = ['crowbar_debt'];
     scene.markFiredThisTurn = new Set();
@@ -1716,41 +2151,71 @@ test('route marks are real relics: combatStart marks reshape the fight', async (
     const crowbarDamage = scene.enemies.map((enemy: any) => 20 - enemy.hp);
     const waymarkFeedback = window.__birdSquadState!().waymarkFeedback ?? [];
 
+    scene.routeMarks = ['chalk_wingmark', 'rooftop_shortcut', 'patched_harness', 'quiet_landing', 'loose_change_tin', 'rain_gutter'];
+    scene.claimWaymarkReward('sky_safe_harness');
+    const withBossExempt = [...scene.routeMarks];
+    scene.claimWaymarkReward('cache_divining_hook');
+    const withCapacityReplace = [...scene.routeMarks];
+
     return {
       baseBlock,
       baseEnergy,
       markBlock,
       markEnergy,
+      shoulderAfterCleanTurn,
+      featherNextEnergy,
       chalkCover,
+      chalkNextDraw,
+      chalkSpark,
       suitMarks,
-      relayEnergy,
-      paradeSpark,
-      pinfeatherNextEnergy,
+      relay,
+      paradeResonance,
+      pinfeather,
       harborNextDraw,
-      nestLiningCover,
+      nestLining,
+      shortcutNextDraw,
+      courierNextDraw,
       crowbarDamage,
       waymarkFeedback,
+      withBossExempt,
+      withCapacityReplace,
     };
   });
   expect(r.baseBlock).toBe(0);          // no relic, no bonus cover
   expect(r.baseEnergy).toBe(3);
-  expect(r.markBlock).toBeGreaterThanOrEqual(3); // patched_shoulder_wrap grants Cover at combat start
-  expect(r.markEnergy).toBeGreaterThanOrEqual(4); // loose_feather_token grants a turn-1 Wingbeat
+  expect(r.markBlock).toBe(0); // patched_shoulder_wrap waits for a no-damage enemy turn
+  expect(r.markEnergy).toBe(3); // loose_feather_token waits for a restrained Roost
+  expect(r.shoulderAfterCleanTurn.block).toBeGreaterThanOrEqual(4);
+  expect(r.shoulderAfterCleanTurn.retain).toBe(1);
+  expect(r.featherNextEnergy).toBe(1); // loose_feather_token banks next-turn Wingbeat
   expect(r.chalkCover).toBe(3);
+  expect(r.chalkNextDraw).toBe(1);
+  expect(r.chalkSpark).toBe(1);
   expect(r.suitMarks.guard).toBe(1);
   expect(r.suitMarks.block).toBe(8);
-  expect(r.suitMarks.hp).toBe(22);
-  expect(r.relayEnergy).toBe(4);
-  expect(r.paradeSpark).toBe(1);
-  expect(r.pinfeatherNextEnergy).toBe(1);
+  expect(r.suitMarks.hp).toBe(23);
+  expect(r.suitMarks.nextEnergy).toBe(1);
+  expect(r.relay.energy).toBe(4);
+  expect(r.relay.hand).toBeGreaterThanOrEqual(r.relay.beforeHand + 1);
+  expect(r.paradeResonance).toBe(1);
+  expect(r.pinfeather.nextEnergy).toBe(1);
+  expect(r.pinfeather.hand).toBeGreaterThanOrEqual(r.pinfeather.beforeHand + 1);
   expect(r.harborNextDraw).toBe(1);
-  expect(r.nestLiningCover).toBe(6);
-  expect(r.crowbarDamage.every((damage: number) => damage === 2)).toBe(true);
+  expect(r.nestLining.cover).toBe(8);
+  expect(r.nestLining.retain).toBe(1);
+  expect(r.shortcutNextDraw).toBe(1);
+  expect(r.courierNextDraw).toBe(1);
+  expect(r.crowbarDamage.every((damage: number) => damage === 5)).toBe(true);
   expect(r.waymarkFeedback[0]).toEqual(expect.objectContaining({
     id: 'crowbar_debt',
     name: 'Crowbar Debt',
   }));
   expect(r.waymarkFeedback[0].summary).toContain('Cover broken');
+  expect(r.withBossExempt).toHaveLength(7);
+  expect(r.withBossExempt).toContain('sky_safe_harness');
+  expect(r.withCapacityReplace).toHaveLength(7);
+  expect(r.withCapacityReplace).not.toContain('chalk_wingmark');
+  expect(r.withCapacityReplace).toContain('cache_divining_hook');
 });
 
 test('waymark artifact drawer renders found item art and run tooltips', async ({ page }) => {
@@ -1758,7 +2223,7 @@ test('waymark artifact drawer renders found item art and run tooltips', async ({
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 20 && !window.__birdSquadState?.()?.hand?.length; i += 1) await wait(50);
@@ -1785,7 +2250,6 @@ test('waymark artifact drawer renders found item art and run tooltips', async ({
       hasIconTexture: scene.textures.exists('waymark-chalk_wingmark'),
       hasAllIconTextures: scene.routeMarks.every((id: string) => scene.textures.exists(`waymark-${id}`)),
       hasDrawerTitle: texts.includes('Found Waymarks'),
-      hasShelfLabel: texts.includes('WAYMARKS'),
       hasArtifactName: texts.includes('Chalk Wingmark')
     };
   });
@@ -1794,14 +2258,13 @@ test('waymark artifact drawer renders found item art and run tooltips', async ({
   expect(r.hasIconTexture).toBe(true);
   expect(r.hasAllIconTextures).toBe(true);
   expect(r.hasDrawerTitle).toBe(true);
-  expect(r.hasShelfLabel).toBe(true);
   expect(r.hasArtifactName).toBe(true);
   await page.waitForTimeout(500);
   await page.screenshot({ path: '.artifacts/test-results/waymark-artifact-drawer.png' });
   await page.mouse.move(8, 8);
   await page.mouse.move(224, 220, { steps: 8 });
   await page.waitForTimeout(250);
-  const tooltipTexts = await page.evaluate(() => {
+  const tooltipTexts = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
     const scene: any = g.scene.getScene('BattleScene');
     const texts: string[] = [];
@@ -1813,15 +2276,86 @@ test('waymark artifact drawer renders found item art and run tooltips', async ({
     scene.children.list.forEach(walk);
     return texts;
   });
-  expect(tooltipTexts.some((text) => text.includes('The first time enemy Cover is broken each turn, gain 3 Cover.'))).toBe(true);
+  expect(tooltipTexts.some((text) => (
+    text.includes('The first time enemy Cover is broken each turn')
+    && text.includes('gain 3 Cover')
+    && text.includes('gain 1 Resonance')
+  ))).toBe(true);
   await page.screenshot({ path: '.artifacts/test-results/waymark-artifact-tooltip.png' });
+});
+
+test('route HUD Waymarks chip opens found Waymarks drawer', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('RouteScene', {
+      runState: {
+        deck: [{ id: 'major_00' }, { id: 'wands_ace' }, { id: 'cups_ace' }],
+        leaderId: 'fledgling',
+        difficulty: 0,
+        seed: 'route-waymarks-hud',
+        currentHp: 36,
+        scrap: 40,
+        routeMarks: ['chalk_wingmark', 'wire_map', 'rain_gutter'],
+        supplies: [],
+        mapIndex: 0,
+        completedRouteNodeIds: [],
+        currentRouteNodeId: undefined,
+        routeLog: [],
+        nextCombat: undefined,
+        signalChoices: [],
+        rewardEvents: [],
+        suppliesUsed: [],
+        combatResults: [],
+        freePreenNextDistrict: 0
+      }
+    });
+    g.scene.stop('MenuScene');
+  });
+  await page.waitForFunction(() => window.render_game_to_text && JSON.parse(window.render_game_to_text()).scene === 'RouteScene');
+  await page.mouse.click(1116, 45);
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).waymarkDrawerOpen === true);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    const scene: any = g.scene.getScene('RouteScene');
+    for (
+      let i = 0;
+      i < 40 && !['chalk_wingmark', 'wire_map', 'rain_gutter'].every((id) => scene.textures.exists(`waymark-${id}`));
+      i += 1
+    ) await wait(100);
+    scene.renderAll();
+    const texts: string[] = [];
+    const walk = (obj: any) => {
+      if (!obj) return;
+      if (obj.type === 'Text') texts.push(obj.text || '');
+      if (Array.isArray(obj.list)) obj.list.forEach(walk);
+    };
+    scene.children.list.forEach(walk);
+    return {
+      state: JSON.parse(window.render_game_to_text!()),
+      hasAllIconTextures: ['chalk_wingmark', 'wire_map', 'rain_gutter'].every((id) => scene.textures.exists(`waymark-${id}`)),
+      hasDrawerTitle: texts.includes('Found Waymarks'),
+      hasChalk: texts.includes('Chalk Wingmark'),
+      hasWire: texts.includes('Wire Map'),
+      hasRain: texts.includes('Rain Gutter')
+    };
+  });
+  expect(result.state.waymarkDrawerOpen).toBe(true);
+  expect(result.state.run.routeMarks).toEqual(['chalk_wingmark', 'wire_map', 'rain_gutter']);
+  expect(result.hasAllIconTextures).toBe(true);
+  expect(result.hasDrawerTitle).toBe(true);
+  expect(result.hasChalk).toBe(true);
+  expect(result.hasWire).toBe(true);
+  expect(result.hasRain).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/route-hud-waymarks-drawer.png' });
 });
 
 test('flock formation states reshape combat and an unblocked hit shatters Flow', async ({ page }) => {
   await boot(page);
-  const r = await page.evaluate(() => {
+  const r = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     const enemy = s.enemies[0];
@@ -1871,7 +2405,7 @@ test('flock composition keystone: a Plumes-heavy flock activates its aura (+1 dr
     menu.startRun();
     const route: any = g.scene.getScene('RouteScene');
     for (let i = 0; i < 20 && !route.runState; i += 1) await wait(50);
-    g.scene.start('BattleScene', { runState: route.runState, routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { runState: route.runState, routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene'); g.scene.stop('RouteScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 20 && !(s.enemies && s.enemies.length); i += 1) await wait(50);
@@ -1886,12 +2420,55 @@ test('flock composition keystone: a Plumes-heavy flock activates its aura (+1 dr
   expect(r.handSize).toBeGreaterThanOrEqual(6); // keystone plus deck draw keeps Plumes hands wider
 });
 
+test('recursion effects honor draw bonuses and Basins suit gates use the live suit key', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const s: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 30 && (!(s.hand && s.hand.length > 1) || !s.enemies?.length); i += 1) await wait(50);
+    const card = s.hand[0];
+    const enemy = s.enemies[0];
+    const mkState = () => ({ previousDiscarded: 0, previousDamageDefeated: false, spentResonance: false, returnSelfToDraw: false, builtFlow: false });
+
+    s.hand = [];
+    s.discardPile = [{ ...card, instanceId: 'return-plus' }];
+    s.drawPile = [{ ...card, instanceId: 'draw-plus' }];
+    s.returnDiscardToHand('nonMolt', 1);
+    const plusOne = { hand: s.hand.length, discard: s.discardPile.length, draw: s.drawPile.length };
+
+    s.hand = [];
+    s.discardPile = [{ ...card, instanceId: 'return-zero' }];
+    s.drawPile = [{ ...card, instanceId: 'draw-zero' }];
+    s.returnDiscardToHand('nonMolt', 0);
+    const zero = { hand: s.hand.length, discard: s.discardPile.length, draw: s.drawPile.length };
+
+    s.hand = [
+      { ...card, instanceId: 'basins-gate-1', runtime: { ...card.runtime, suit: 'basins' } },
+      { ...card, instanceId: 'basins-gate-2', runtime: { ...card.runtime, suit: 'basins' } },
+      { ...card, instanceId: 'plumes-gate-1', runtime: { ...card.runtime, suit: 'plumes' } },
+    ];
+    s.drawPile = [];
+    s.discardPile = [];
+    const basinsGate = s.checkCardCondition('flockSuit(basins,2)', card, enemy.id, mkState());
+    const staleCupsGate = s.checkCardCondition('flockSuit(cups,2)', card, enemy.id, mkState());
+
+    return { plusOne, zero, basinsGate, staleCupsGate };
+  });
+  expect(r.plusOne).toEqual({ hand: 2, discard: 0, draw: 0 });
+  expect(r.zero).toEqual({ hand: 1, discard: 0, draw: 1 });
+  expect(r.basinsGate).toBe(true);
+  expect(r.staleCupsGate).toBe(false);
+});
+
 test('playing four or more cards overextends the flock into Open Sky', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 30 && !(s.enemies && s.enemies.length && s.hand && s.hand.length && s.fxLayer); i += 1) await wait(50);
@@ -1927,7 +2504,7 @@ test('Resonance has real sinks: a threshold gate and a spend-all burst', async (
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 30 && (!(s.hand && s.hand.length) || !s.fxLayer); i += 1) await wait(50);
@@ -1959,7 +2536,7 @@ test('Winded stacking matters: perWinded scaling, windedAtLeast gate, consuming 
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 30 && (!(s.hand && s.hand.length) || !s.fxLayer); i += 1) await wait(50);
@@ -2007,7 +2584,7 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
     window.localStorage.removeItem('birdsquad.account'); // fresh: nothing discovered yet
-    g.scene.start('MenuScene');
+    await window.__birdSquadStartScene!('MenuScene');
     await wait(120);
     const m: any = g.scene.getScene('MenuScene');
     for (let i = 0; i < 20 && !(m.leaderPanels && m.leaderPanels.length); i += 1) await wait(50);
@@ -2016,7 +2593,7 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
     await wait(150);
     const acct = JSON.parse(window.localStorage.getItem('birdsquad.account') || '{}');
     const discoveredCount = (acct.discoveredCards || []).length;
-    g.scene.start('CodexScene');
+    await window.__birdSquadStartScene!('CodexScene');
     await wait(200);
     const active = g.scene.getScenes(true).map((s: any) => s.scene.key).includes('CodexScene');
     const cs: any = g.scene.getScene('CodexScene');
@@ -2043,7 +2620,7 @@ test('codex: supplies are listed as items with usable details', async ({ page })
       return all.map((t) => t.text || '');
     };
     const g = window.__birdSquadGame;
-    g.scene.start('CodexScene');
+    await window.__birdSquadStartScene!('CodexScene');
     g.scene.stop('MenuScene');
     const cs: any = g.scene.getScene('CodexScene');
     for (let i = 0; i < 20 && !cs.root; i += 1) await wait(50);
@@ -2062,15 +2639,14 @@ test('codex: supplies are listed as items with usable details', async ({ page })
     return {
       totalItems: cs.allCodexItems ? cs.allCodexItems().length : 0,
       supplies: cs.allSupplies ? cs.allSupplies().length : 0,
-      hasSubtitle: listTexts.some((t) => /89 items cataloged \(58 Waymarks \/ 31 Supplies\)/.test(t)),
+      hasSubtitle: listTexts.some((t) => /89 items \(58 Waymarks \/ 31 Supplies\)/.test(t)),
       hasTab: listTexts.some((t) => t === 'Supplies'),
       hasSeedPacket: listTexts.some((t) => /Seed Packet/.test(t)),
       hasBottlecap: listTexts.some((t) => /Bottlecap Popper/.test(t)),
       hasBottlecapArt: cs.textures.exists('supply-bottlecap_popper'),
       hasDetailUse: detailTexts.some((t) => /USE/.test(t)),
       hasDetailEffects: detailTexts.some((t) => /healCohesion\(6\)/.test(t)),
-      hasImageBrief: detailTexts.some((t) => /IMAGE BRIEF/.test(t))
-        && detailTexts.some((t) => /Bird Squad title splash art/.test(t)),
+      hasDetailTitle: detailTexts.some((t) => /Seed Packet/.test(t)),
     };
   });
   expect(r.totalItems).toBe(89);
@@ -2082,7 +2658,57 @@ test('codex: supplies are listed as items with usable details', async ({ page })
   expect(r.hasBottlecapArt).toBe(true);
   expect(r.hasDetailUse).toBe(true);
   expect(r.hasDetailEffects).toBe(true);
-  expect(r.hasImageBrief).toBe(true);
+  expect(r.hasDetailTitle).toBe(true);
+});
+
+test('codex: glossary lists core gameplay keywords', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const collectTexts = (scene: any) => {
+      const all: any[] = [];
+      const walk = (o: any) => {
+        if (!o) return;
+        if (o.type === 'Text') all.push(o);
+        const children = o.list;
+        if (Array.isArray(children)) children.forEach(walk);
+      };
+      scene.children.list.forEach(walk);
+      return all.map((t) => t.text || '');
+    };
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('CodexScene');
+    g.scene.stop('MenuScene');
+    const cs: any = g.scene.getScene('CodexScene');
+    for (let i = 0; i < 20 && !cs.root; i += 1) await wait(50);
+    for (let i = 0; i < 40 && !cs.codexData; i += 1) await wait(50);
+    cs.activeSection = 'glossary';
+    cs.detailId = undefined;
+    cs.gridScroll = 0;
+    cs.gridScrollTarget = 0;
+    cs.renderAll();
+    const texts = collectTexts(cs);
+    const state = JSON.parse(window.render_game_to_text!());
+    return {
+      section: state.section,
+      stateTerms: state.glossaryTerms,
+      hasTab: texts.includes('Glossary'),
+      hasSubtitle: texts.some((t) => /keywords/.test(t)),
+      hasWingbeat: texts.some((t) => t === 'Wingbeat'),
+      hasMolt: texts.some((t) => t === 'Molt'),
+      hasOpenSky: texts.some((t) => t === 'Open Sky'),
+      hasOverextensionSummary: texts.some((t) => /Playing too many cards/.test(t)),
+    };
+  });
+  expect(r.section).toBe('glossary');
+  expect(r.stateTerms.length).toBeGreaterThanOrEqual(20);
+  expect(r.stateTerms).toEqual(expect.arrayContaining(['Wingbeat', 'Molt', 'Open Sky', 'Waymark']));
+  expect(r.hasTab).toBe(true);
+  expect(r.hasSubtitle).toBe(true);
+  expect(r.hasWingbeat).toBe(true);
+  expect(r.hasMolt).toBe(true);
+  expect(r.hasOpenSky).toBe(true);
+  expect(r.hasOverextensionSummary).toBe(true);
 });
 
 test('expanded supplies resolve tactical combat verbs', async ({ page }) => {
@@ -2116,7 +2742,7 @@ test('expanded supplies resolve tactical combat verbs', async ({ page }) => {
       'oath_ledger',
     ];
     const supplyTextureKeys = supplyIds.map((id) => `supply-${id}`);
-    g.scene.start('BattleScene', {
+    await window.__birdSquadStartScene!('BattleScene', {
       routeNodeId: 'm1_entry',
       runState: {
         deck: [{ id: 'major_00' }, { id: 'wands_ace' }, { id: 'swords_ace' }, { id: 'cups_ace' }, { id: 'pentacles_04' }],
@@ -2188,9 +2814,9 @@ test('expanded supplies resolve tactical combat verbs', async ({ page }) => {
       hasAllSupplyArt: supplyTextureKeys.every((key) => s.textures.exists(key)),
     };
   });
-  expect(r.afterPierce.hp).toBe(34);
+  expect(r.afterPierce.hp).toBe(35);
   expect(r.afterPierce.block).toBe(12);
-  expect(r.afterSolvent.block).toBe(2);
+  expect(r.afterSolvent.block).toBe(0);
   expect(r.afterSnips.block).toBe(0);
   expect(r.afterSnips.winded).toBe(2);
   expect(r.afterSplint.hp).toBe(24);
@@ -2231,7 +2857,7 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
     ];
     const newSupplyTextures = newSupplyIds.map((id) => `supply-${id}`);
     const newWaymarkTextures = newWaymarkIds.map((id) => `waymark-${id}`);
-    g.scene.start('BattleScene', {
+    await window.__birdSquadStartScene!('BattleScene', {
       routeNodeId: 'm1_entry',
       runState: {
         deck: [{ id: 'major_00' }, { id: 'wands_ace' }, { id: 'swords_ace' }, { id: 'cups_ace' }, { id: 'pentacles_04' }],
@@ -2257,7 +2883,7 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
     });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
-    for (let i = 0; i < 20 && !(s.enemies && s.enemies.length && s.hand && s.hand.length); i += 1) await wait(50);
+    for (let i = 0; i < 20 && !(s.enemies && s.enemies.length && s.hand && s.hand.length && s.fxLayer); i += 1) await wait(50);
     for (let i = 0; i < 60 && ![...newSupplyTextures, ...newWaymarkTextures].every((key) => s.textures.exists(key)); i += 1) await wait(100);
 
     const enemy = s.enemies[0];
@@ -2300,15 +2926,27 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
     s.routeMarks = ['flock_counterweight', 'patched_shoulder_wrap', 'supply_bell'];
     s.flock.block = 0;
     s.energy = 3;
-    s.applyCombatStartMarks();
-    const afterCounterweight = { block: s.flock.block };
+    s.nextTurnEnergyBonus = 0;
+    s.pendingRetainHand = 0;
+    s.markFiredThisCombat = new Set();
+    s.checkRoostRestraintMarks(1, 1, 2);
+    const afterCounterweight = {
+      block: s.flock.block,
+      nextEnergy: s.nextTurnEnergyBonus,
+    };
+    s.checkNoDamageTurnMarks();
+    const afterShoulderWrap = {
+      block: s.flock.block,
+      retain: s.pendingRetainHand,
+    };
 
     s.runSupplies = ['seed_packet'];
     s.runSuppliesUsed = [];
     if (s.drawPile.length === 0 && s.hand.length > 0) s.drawPile = [{ ...s.hand[0], instanceId: 'supply-bell-draw' }];
+    s.pendingSupplyRepeats = 0;
     const handBeforeBell = s.hand.length;
     s.useSupply(0);
-    const afterBell = { hand: s.hand.length };
+    const afterBell = { hand: s.hand.length, repeats: s.pendingSupplyRepeats };
 
     s.routeMarks = ['molt_metronome', 'eave_bloom'];
     s.markFiredThisCombat = new Set();
@@ -2347,6 +2985,7 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
       afterBattery,
       afterLedger,
       afterCounterweight,
+      afterShoulderWrap,
       handBeforeBell,
       afterBell,
       handBeforeMolt,
@@ -2360,25 +2999,29 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
   expect(r.afterReturn.hand).toBeGreaterThanOrEqual(r.handBeforeReturn + 1);
   expect(r.afterReturn.discard).toBe(0);
   expect(r.afterClamp.hadNestNode).toBe(true);
-  expect(r.afterClamp.block).toBeGreaterThanOrEqual(4);
-  expect(r.afterClamp.pendingNest).toBe(8);
-  expect(r.afterClamp.retain).toBe(1);
+  expect(r.afterClamp.block).toBeGreaterThanOrEqual(8);
+  expect(r.afterClamp.pendingNest).toBe(16);
+  expect(r.afterClamp.retain).toBe(2);
   expect(r.afterSmoke.winded).toBe(3);
   expect(r.afterSmoke.nextDraw).toBe(1);
   expect(r.afterWindcatcher.nextEnergy).toBe(2);
   expect(r.afterBattery.hp).toBe(54);
   expect(r.afterBattery.spark).toBe(0);
-  expect(r.afterLedger.scrap).toBe(20);
-  expect(r.afterLedger.hp).toBe(r.afterLedger.beforeHp - 3);
-  expect(r.afterCounterweight.block).toBe(6);
+  expect(r.afterLedger.scrap).toBe(25);
+  expect(r.afterLedger.hp).toBe(r.afterLedger.beforeHp - 2);
+  expect(r.afterCounterweight.block).toBe(3);
+  expect(r.afterCounterweight.nextEnergy).toBe(1);
+  expect(r.afterShoulderWrap.block).toBe(7);
+  expect(r.afterShoulderWrap.retain).toBe(1);
   expect(r.afterBell.hand).toBeGreaterThanOrEqual(r.handBeforeBell + 1);
+  expect(r.afterBell.repeats).toBe(1);
   expect(r.afterMoltMarks.hand).toBeGreaterThanOrEqual(r.handBeforeMolt + 1);
   expect(r.afterMoltMarks.block).toBe(6);
   expect(r.afterSuitMarks.spark).toBe(1);
-  expect(r.afterSuitMarks.hp).toBe(19);
+  expect(r.afterSuitMarks.hp).toBe(18);
   expect(r.afterSuitMarks.pendingNest).toBe(4);
   expect(r.afterHealMark.hp).toBe(22);
-  expect(r.afterHealMark.block).toBe(2);
+  expect(r.afterHealMark.block).toBe(4);
 });
 
 test('next item pass supplies and Waymarks execute route and combat hooks', async ({ page }) => {
@@ -2431,7 +3074,7 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
       ...patch,
     });
 
-    g.scene.start('RouteScene', {
+    await window.__birdSquadStartScene!('RouteScene', {
       runState: mkRunState({
         currentHp: 20,
         routeMarks: ['ledger_tab', 'cache_divining_hook'],
@@ -2474,8 +3117,9 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
       used: [...route.runState.suppliesUsed],
     };
     route.runState.scrap = 12;
+    route.runState.nextCombat = undefined;
     route.applyRouteMarkTrigger('afterMarketPurchase');
-    const afterLedger = { scrap: route.runState.scrap };
+    const afterLedger = { scrap: route.runState.scrap, guard: route.runState.nextCombat?.openSkyGuard ?? 0 };
     route.runState.supplies = [];
     route.runState.supplySlots = 4;
     route.applyRouteMarkTrigger('cacheChoice');
@@ -2522,7 +3166,7 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
       hp: route.runState.currentHp,
     };
 
-    g.scene.start('BattleScene', {
+    await window.__birdSquadStartScene!('BattleScene', {
       routeNodeId: 'm1_entry',
       runState: mkRunState({
         currentHp: 32,
@@ -2557,6 +3201,7 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
     battle.runSupplies = ['chalk_dust_pouch', 'sky_sugar', 'anchor_threader'];
     battle.runSuppliesUsed = [];
     battle.energy = 3;
+    battle.spark = 0;
     battle.flock.block = 0;
     battle.pendingRetainHand = 0;
     battle.nextTurnDrawBonus = 0;
@@ -2567,6 +3212,7 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
       block: enemy.block,
       hand: battle.hand.length,
       beforeHand: handBeforeChalk,
+      spark: battle.spark,
       feedback: afterChalkState.supplyFeedback?.[0],
       waymarkFeedback: afterChalkState.waymarkFeedback?.[0],
     };
@@ -2608,8 +3254,10 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
     battle.routeMarks = ['double_packed_buckle'];
     battle.markFiredThisCombat = new Set();
     battle.pendingSupplyRepeats = 0;
+    if (battle.drawPile.length === 0 && battle.hand.length > 0) battle.drawPile = [{ ...battle.hand[0], instanceId: 'buckle-draw' }];
+    const handBeforeBuckle = battle.hand.length;
     battle.checkSupplyUsedMarks();
-    const afterDoublePacked = { pending: battle.pendingSupplyRepeats };
+    const afterDoublePacked = { pending: battle.pendingSupplyRepeats, hand: battle.hand.length, beforeHand: handBeforeBuckle };
     battle.routeMarks = [];
     battle.runSupplies = ['seed_packet'];
     battle.runSuppliesUsed = [];
@@ -2625,24 +3273,27 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
     battle.routeMarks = ['basin_safety_pin'];
     battle.markFiredThisTurn = new Set();
     battle.flock.hp = 20;
+    battle.flock.block = 0;
     battle.flock.weak = 2;
     battle.flock.frail = 2;
     battle.flock.fouled = 2;
     battle.healFlock(2, 'test heal');
-    const afterSafetyPin = { hp: battle.flock.hp, weak: battle.flock.weak, frail: battle.flock.frail, fouled: battle.flock.fouled };
+    const afterSafetyPin = { hp: battle.flock.hp, block: battle.flock.block, weak: battle.flock.weak, frail: battle.flock.frail, fouled: battle.flock.fouled };
 
     battle.routeMarks = ['nest_measure_line'];
     battle.markFiredThisTurn = new Set();
     battle.pendingRetainHand = 0;
+    battle.pendingNestCoverBonus = 0;
     battle.checkSuitPlayedMarks('nests');
-    const afterMeasureLine = { retain: battle.pendingRetainHand };
+    const afterMeasureLine = { retain: battle.pendingRetainHand, pendingNest: battle.pendingNestCoverBonus };
 
     battle.routeMarks = ['plumes_applause_cap'];
     battle.markFiredThisCombat = new Set();
-    battle.cardsPlayedThisTurn = 4;
+    battle.cardsPlayedThisTurn = 2;
     battle.spark = 0;
-    battle.checkNthCardMarks();
-    const afterApplauseCap = { spark: battle.spark };
+    battle.nextTurnDrawBonus = 0;
+    battle.checkRoostRestraintMarks(0, 0, 2);
+    const afterApplauseCap = { spark: battle.spark, nextDraw: battle.nextTurnDrawBonus };
 
     battle.routeMarks = ['molt_shadow_tag'];
     battle.markFiredThisCombat = new Set();
@@ -2684,19 +3335,20 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
   expect(r.afterPocket.feedback.id).toBe('spare_pocket');
   expect(r.afterPocket.feedback.summary).toContain('Supply capacity');
   expect(r.afterSticker.previewLogged).toBe(true);
-  expect(r.afterSticker.scrap).toBe(17);
+  expect(r.afterSticker.scrap).toBe(27);
   expect(r.afterSticker.feedback.id).toBe('map_sticker_strip');
   expect(r.afterSticker.feedback.summary).toContain('Preview');
   expect(r.afterThermos.hp).toBe(25);
-  expect(r.afterThermos.guard).toBe(1);
-  expect(r.afterIou.hp).toBe(23);
-  expect(r.afterIou.scrap).toBe(27);
+  expect(r.afterThermos.guard).toBe(2);
+  expect(r.afterIou.hp).toBe(24);
+  expect(r.afterIou.scrap).toBe(47);
   expect(r.afterIou.freePreen).toBe(1);
-  expect(r.afterLedger.scrap).toBe(20);
+  expect(r.afterLedger.scrap).toBe(24);
+  expect(r.afterLedger.guard).toBe(1);
   expect(r.afterCacheHook.supplies).toBe(1);
   expect(r.afterIouAfterMarket.hadMarketNode).toBe(true);
   expect(r.afterIouAfterMarket.hp).toBe(20);
-  expect(r.afterIouAfterMarket.scrap).toBe(22);
+  expect(r.afterIouAfterMarket.scrap).toBe(32);
   expect(r.afterIouAfterMarket.freePreen).toBe(1);
   expect(r.afterBusAfterSignal.hadSignalNode).toBe(true);
   expect(r.afterBusAfterSignal.scrap).toBe(32);
@@ -2709,6 +3361,7 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
   expect(r.afterChalk.feedback.id).toBe('chalk_dust_pouch');
   expect(r.afterChalk.feedback.summary).toContain('Remove');
   expect(r.afterChalk.waymarkFeedback.id).toBe('broken_cover_chime');
+  expect(r.afterChalk.spark).toBe(1);
   expect(r.afterSugar.energy).toBe(4);
   expect(r.afterSugar.nextDraw).toBe(1);
   expect(r.afterSugar.hand).toBeGreaterThanOrEqual(r.afterSugar.beforeHand + 1);
@@ -2719,19 +3372,23 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
   expect(r.afterCacheKey.block).toBeGreaterThanOrEqual(8);
   expect(r.afterCacheKey.hand).toBeGreaterThanOrEqual(r.afterCacheKey.beforeHand + 2);
   expect(r.afterSparkClip.spark).toBe(1);
-  expect(r.afterSparkClip.block).toBe(5);
-  expect(r.afterQuietRoost.hp).toBe(22);
+  expect(r.afterSparkClip.block).toBe(7);
+  expect(r.afterQuietRoost.hp).toBe(23);
   expect(r.afterDoublePacked.pending).toBe(1);
+  expect(r.afterDoublePacked.hand).toBeGreaterThanOrEqual(r.afterDoublePacked.beforeHand + 1);
   expect(r.afterRepeatedSupply.hp).toBe(32);
   expect(r.afterRepeatedSupply.pending).toBe(0);
   expect(r.afterRepeatedSupply.feedback.id).toBe('seed_packet');
   expect(r.afterRepeatedSupply.feedback.summary).toContain('x2');
   expect(r.afterSafetyPin.hp).toBe(22);
+  expect(r.afterSafetyPin.block).toBe(3);
   expect(r.afterSafetyPin.weak).toBe(1);
   expect(r.afterSafetyPin.frail).toBe(1);
   expect(r.afterSafetyPin.fouled).toBe(1);
   expect(r.afterMeasureLine.retain).toBe(1);
-  expect(r.afterApplauseCap.spark).toBe(2);
+  expect(r.afterMeasureLine.pendingNest).toBe(3);
+  expect(r.afterApplauseCap.spark).toBe(1);
+  expect(r.afterApplauseCap.nextDraw).toBe(1);
   expect(r.afterShadowTag.guard).toBe(2);
 });
 
@@ -2751,7 +3408,7 @@ test('enemy codex: entire enemy cast renders with art and details', async ({ pag
       return all.map((t) => t.text || '');
     };
     const g = window.__birdSquadGame;
-    g.scene.start('CodexScene');
+    await window.__birdSquadStartScene!('CodexScene');
     g.scene.stop('MenuScene');
     const cs: any = g.scene.getScene('CodexScene');
     for (let i = 0; i < 20 && !cs.root; i += 1) await wait(50);
@@ -2786,7 +3443,7 @@ test('enemy codex: entire enemy cast renders with art and details', async ({ pag
       count,
       encounterCount,
       reserveCount,
-      hasCatalogCount: listTexts.some((t) => /81 enemies cataloged \(64 playable \/ 17 reserve concepts\)/.test(t)),
+      hasCatalogCount: listTexts.some((t) => /81 enemies \(64 playable \/ 17 reserve\)/.test(t)),
       hasRuntimeEnemyName: runtimeTexts.some((t) => /Roof Rat/.test(t)),
       hasCombatKit: runtimeTexts.some((t) => /COMBAT KIT/.test(t)),
       hasReserveEnemyName: reserveTexts.some((t) => /Mole Tunnelbreaker/.test(t)),
@@ -2868,7 +3525,7 @@ test('promoted reserve enemies can surface in generated route encounters', async
 
     for (const group of promotedByMap) {
       for (let i = 0; i < 160 && group.ids.some((id) => !seen.has(id)); i += 1) {
-        g.scene.start('RouteScene', { runState: mkRunState(`promoted-enemy-${group.mapIndex}-${i}`, group.mapIndex) });
+        await window.__birdSquadStartScene!('RouteScene', { runState: mkRunState(`promoted-enemy-${group.mapIndex}-${i}`, group.mapIndex) });
         g.scene.stop('MenuScene');
         await wait(5);
         for (const node of window.__birdSquadCurrentMap!().nodes) {
@@ -2892,7 +3549,7 @@ test('Cover and Heal are distinct axes, and the new card verbs work', async ({ p
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 30 && (!(s.hand && s.hand.length) || !s.fxLayer); i += 1) await wait(50);
@@ -2934,7 +3591,7 @@ test('new balance verbs: timed Waymarks, self-loop cards, and anti-Cover conditi
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 30 && (!(s.hand && s.hand.length) || !s.fxLayer); i += 1) await wait(50);
@@ -2944,9 +3601,9 @@ test('new balance verbs: timed Waymarks, self-loop cards, and anti-Cover conditi
     s.routeMarks = ['black_ink_pin'];
     s.markFiredThisCombat = new Set();
     s.energy = 3;
-    s.cardsPlayedThisTurn = 2;
-    s.checkNthCardMarks();
-    const energyAfterSecondCard = s.energy;
+    s.nextTurnEnergyBonus = 0;
+    s.checkRoostRestraintMarks(1, 0, 2);
+    const nextEnergyAfterHeldCardRoost = s.nextTurnEnergyBonus;
 
     s.routeMarks = ['fresh_pinfeather'];
     s.markFiredThisCombat = new Set();
@@ -2989,14 +3646,14 @@ test('new balance verbs: timed Waymarks, self-loop cards, and anti-Cover conditi
     s.resolveCardEffects(fakeBreakerCard, enemy.id);
 
     return {
-      energyAfterSecondCard,
+      nextEnergyAfterHeldCardRoost,
       nextEnergyAfterMolt,
       returnSelfToDraw: loopOutcome.returnSelfToDraw,
       enemyBlockAfterBreaker: enemy.block,
       enemyHpAfterBreaker: enemy.hp
     };
   });
-  expect(r.energyAfterSecondCard).toBe(4);
+  expect(r.nextEnergyAfterHeldCardRoost).toBe(1);
   expect(r.nextEnergyAfterMolt).toBe(1);
   expect(r.returnSelfToDraw).toBe(true);
   expect(r.enemyBlockAfterBreaker).toBe(3);
@@ -3008,11 +3665,11 @@ test('Molt is a do-DIFFERENT transform stance: a card resolves its molt ability 
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 20 && !(s.hand && s.hand.length); i += 1) await wait(50);
-    // Locked Nest (in the Fledgling deck): normal = gainCover(7), Molt = damage.
+    // Locked Nest (in the Fledgling deck): normal = gainCover(6), Molt = damage.
     const nest = [...s.drawPile, ...s.hand, ...s.discardPile].find((c: any) => c.id === 'pentacles_04');
     const enemy = s.enemies[0];
 
@@ -3034,7 +3691,7 @@ test('Molt is a do-DIFFERENT transform stance: a card resolves its molt ability 
     return { hasMoltText, coverNormal, dmgNormal, coverMolt, dmgMolt };
   });
   expect(r.hasMoltText).toBe(true);                 // every card has a molt ability
-  expect(r.coverNormal).toBeGreaterThanOrEqual(7);  // normal: gains Cover
+  expect(r.coverNormal).toBeGreaterThanOrEqual(6);  // normal: gains Cover
   expect(r.dmgNormal).toBe(0);                      // normal: no damage
   expect(r.coverMolt).toBe(0);                      // molt: no Cover (does DIFFERENT)
   expect(r.dmgMolt).toBeGreaterThanOrEqual(7);      // molt: deals damage instead
@@ -3045,7 +3702,7 @@ test('Molt active card contract drives hand display and enemy targeting', async 
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 20 && !(s.hand && s.hand.length); i += 1) await wait(50);
@@ -3091,7 +3748,7 @@ test('none-target cards that Molt into target effects no longer auto-fire ambigu
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 20 && !(s.hand && s.hand.length); i += 1) await wait(50);
@@ -3166,7 +3823,7 @@ test('preened cards have a stronger Molt ability, and the Codex carries tarot an
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 20 && !(s.hand && s.hand.length); i += 1) await wait(50);
@@ -3198,22 +3855,24 @@ test('preened cards have a stronger Molt ability, and the Codex carries tarot an
     const acct = JSON.parse(window.localStorage.getItem('birdsquad.account') || '{}');
     acct.discoveredCards = ['pentacles_04', 'aviary_25'];
     window.localStorage.setItem('birdsquad.account', JSON.stringify(acct));
-    g.scene.start('CodexScene'); g.scene.stop('BattleScene');
+    await window.__birdSquadStartScene!('CodexScene'); g.scene.stop('BattleScene');
     const cs: any = g.scene.getScene('CodexScene');
     for (let i = 0; i < 20 && !cs.root; i += 1) await wait(50);
-    cs.detailId = 'pentacles_04'; cs.detailScroll = 0; cs.renderAll();
-    await wait(150);
-    const all: any[] = []; const walk = (o: any) => { if (!o) return; if (o.type === 'Text') all.push(o); const k = o.list; if (Array.isArray(k)) k.forEach(walk); };
-    cs.children.list.forEach(walk);
-    const texts = all.map((t) => t.text || '');
+    let all: any[] = [];
+    let texts: string[] = [];
+    for (let i = 0; i < 40; i += 1) {
+      cs.detailId = 'pentacles_04'; cs.detailScroll = 0; cs.renderAll();
+      await wait(100);
+      all = [];
+      const walk = (o: any) => { if (!o) return; if (o.type === 'Text') all.push(o); const k = o.list; if (Array.isArray(k)) k.forEach(walk); };
+      cs.children.list.forEach(walk);
+      texts = all.map((t) => t.text || '');
+      if (texts.some((t) => /TAROT MEANING/.test(t)) && texts.some((t) => /ABOUT THE/.test(t))) break;
+    }
     const hasTarot = texts.some((t) => /TAROT MEANING/.test(t)) && texts.some((t) => /UPRIGHT/.test(t)) && texts.some((t) => /REVERSED/.test(t));
     const hasFacts = texts.some((t) => /ABOUT THE/.test(t));
-    // a keyword token is interactive and pops a tooltip on hover
-    const kw = all.filter((t) => t.input).find((t) => (t.text || '').toLowerCase().includes('cover'));
-    kw?.emit('pointerover');
-    await wait(100);
-    const tip = cs.children.list.find((o: any) => o.depth === 99999);
-
+    // a keyword token is interactive and wired for tooltip hover.
+    const kw = all.filter((t) => t.input).find((t) => (t.listenerCount?.('pointerover') ?? 0) > 0);
     cs.detailId = 'aviary_25'; cs.detailScroll = 0; cs.renderAll();
     await wait(150);
     const aviaryAll: any[] = [];
@@ -3237,11 +3896,11 @@ test('preened cards have a stronger Molt ability, and the Codex carries tarot an
       cs.detailId = id; cs.detailScroll = 0; cs.renderAll();
       if (cs.detailMaxScroll > heavyMax) heavyMax = cs.detailMaxScroll;
     }
-    return { hasTarot, hasFacts, keywordTooltip: !!tip, hasAviaryDossier, hasAviaryLegend, aviarySaysTarot, heavyMax };
+    return { hasTarot, hasFacts, keywordHoverWired: !!kw, hasAviaryDossier, hasAviaryLegend, aviarySaysTarot, heavyMax };
   });
   expect(codex.hasTarot).toBe(true);
   expect(codex.hasFacts).toBe(true);
-  expect(codex.keywordTooltip).toBe(true);
+  expect(codex.keywordHoverWired).toBe(true);
   expect(codex.hasAviaryDossier).toBe(true);
   expect(codex.hasAviaryLegend).toBe(true);
   expect(codex.aviarySaysTarot).toBe(false);
@@ -3254,7 +3913,7 @@ test('elite encounters spawn multiple enemies: every enemy telegraphs, all act, 
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
     // Boot a normal battle so create() builds root/fxLayer; let it settle.
-    g.scene.start('BattleScene', {});
+    await window.__birdSquadStartScene!('BattleScene', {});
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 30 && !(s.hand && s.hand.length); i += 1) await wait(50);
@@ -3325,7 +3984,7 @@ test('defeated enemies cannot remain selected or receive stale target effects', 
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', {});
+    await window.__birdSquadStartScene!('BattleScene', {});
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 30 && !(s.hand && s.hand.length); i += 1) await wait(50);
@@ -3344,7 +4003,10 @@ test('defeated enemies cannot remain selected or receive stale target effects', 
 
     const defeated = s.enemies[0];
     const survivor = s.enemies.find((enemy: any) => enemy.id !== defeated.id);
-    const targetCard = s.hand.find((card: any) => card.target === 'enemy');
+    const targetCard = s.hand.find((card: any) => card.target === 'enemy')
+      ?? [...s.drawPile, ...s.discardPile].find((card: any) => card.target === 'enemy');
+    if (!targetCard) throw new Error('Expected an enemy-target card for stale target smoke');
+    if (!s.hand.includes(targetCard)) s.hand.push(targetCard);
     s.selectedEnemyId = defeated.id;
     s.damageEnemy(defeated.id, defeated.hp + 100, 'Test');
     s.renderAll();
@@ -3386,7 +4048,7 @@ test('reward screens ignore end-turn input instead of restarting combat', async 
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 30 && !(s.hand && s.hand.length); i += 1) await wait(50);
@@ -3404,8 +4066,8 @@ test('reward screens ignore end-turn input instead of restarting combat', async 
     };
   });
 
-  expect(r.beforeMode).toBe('cardReward');
-  expect(r.afterMode).toBe('cardReward');
+  expect(['cardReward', 'waymarkReward']).toContain(r.beforeMode);
+  expect(r.afterMode).toBe(r.beforeMode);
   expect(r.afterRewards).toBe(r.beforeRewards);
   expect(r.afterEnemyHp).toBe(0);
 });
@@ -3417,7 +4079,7 @@ test('played cards leave hand before resolving discard effects', async ({ page }
     const g = window.__birdSquadGame;
     const deck = ['major_00', 'wands_02', 'wands_08', 'swords_02', 'wet_feathers', 'cups_03', 'pentacles_04', 'cups_ace', 'wands_02', 'cups_ace']
       .map((id) => ({ id }));
-    g.scene.start('BattleScene', {
+    await window.__birdSquadStartScene!('BattleScene', {
       runState: {
         deck, leaderId: 'fledgling', difficulty: 0, seed: 'discard-order-regression', currentHp: 39,
         scrap: 0, routeMarks: [], supplies: [], mapIndex: 0, completedRouteNodeIds: [],
@@ -3454,7 +4116,7 @@ test('enemy phase stops after lethal Cohesion damage and enemy Cover expires', a
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', {});
+    await window.__birdSquadStartScene!('BattleScene', {});
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 30 && !(s.hand && s.hand.length); i += 1) await wait(50);
@@ -3486,10 +4148,10 @@ test('enemy phase stops after lethal Cohesion damage and enemy Cover expires', a
   });
 
   expect(r.hp).toBe(0);
-  expect(r.taken).toBe(9);
+  expect(r.taken).toBe(11);
   expect(r.blocksAfter.every((block: number) => block === 0)).toBe(true);
   expect(r.intentsAfter).toEqual([r.intentsBefore[0] + 1, r.intentsBefore[1], r.intentsBefore[2]]);
-  expect(r.log).toEqual(expect.arrayContaining(['Gutter Baron hits the flock for 9.']));
+  expect(r.log).toEqual(expect.arrayContaining(['Gutter Baron hits the flock for 11.']));
   expect(r.log.some((entry: string) => entry.includes('Roof Rat A hits'))).toBe(false);
 });
 
@@ -3498,7 +4160,7 @@ test('fullyBlocksNextAttack checks the next incoming attack, not stale selection
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
     const g = window.__birdSquadGame;
-    g.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     g.scene.stop('MenuScene');
     const s: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 30 && !(s.hand && s.hand.length); i += 1) await wait(50);

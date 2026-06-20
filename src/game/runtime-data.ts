@@ -135,20 +135,32 @@ export const alphaRewardProfileLibrary: ReadonlyMap<string, RewardProfile> = new
 const blueprintFromMap = (map: RuntimeRouteMap): RouteBlueprint => {
   const payloadsOf = (type: string) => [...new Set(map.nodes.filter((node) => node.type === type).map((node) => node.payloadId))];
   const uniq = (ids: string[]) => [...new Set(ids.filter(Boolean))];
+  const encounterWeight = (id: string) => {
+    const encounter = alphaEncounterLibrary.get(id);
+    if (!encounter) return 1;
+    if (encounter.enemies.length >= 3) return 20;
+    if (encounter.enemies.length >= 2 || encounter.tags.includes('multi')) return 12;
+    return 1;
+  };
+  const weightsFor = (ids: string[]) => Object.fromEntries(ids.map((id) => [id, encounterWeight(id)]));
   const entryNode = map.nodes.find((node) => node.id === map.entryNodeId);
   const bossNode = map.nodes.find((node) => node.id === map.bossNodeId);
   const libStreet = [...alphaEncounterLibrary.values()].filter((enc) => enc.mapId === map.id && enc.nodeType === 'street').map((enc) => enc.id);
   const libRival = [...alphaEncounterLibrary.values()].filter((enc) => enc.mapId === map.id && enc.nodeType === 'rival').map((enc) => enc.id);
   const libSignal = [...alphaSignalLibrary.values()].filter((sig) => sig.mapId === map.id).map((sig) => sig.id);
   const first = (type: string, fallback: string) => payloadsOf(type)[0] ?? fallback;
+  const streetEncounterIds = uniq([...payloadsOf('street'), ...libStreet]);
+  const rivalEncounterIds = uniq([...payloadsOf('rival'), ...libRival]);
   return {
     id: map.id,
     name: map.name,
     index: map.index,
     entryEncounterId: entryNode?.payloadId ?? payloadsOf('street')[0] ?? '',
     bossEncounterId: bossNode?.payloadId ?? payloadsOf('boss')[0] ?? '',
-    streetEncounterIds: uniq([...payloadsOf('street'), ...libStreet]),
-    rivalEncounterIds: uniq([...payloadsOf('rival'), ...libRival]),
+    streetEncounterIds,
+    rivalEncounterIds,
+    streetEncounterWeights: weightsFor(streetEncounterIds),
+    rivalEncounterWeights: weightsFor(rivalEncounterIds),
     signalIds: uniq([...payloadsOf('signal'), ...libSignal]),
     basinPayloadId: first('basin', 'basin_alpha'),
     nestPayloadId: first('nest', 'nest_alpha'),

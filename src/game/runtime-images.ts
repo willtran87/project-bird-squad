@@ -17,11 +17,12 @@ function unloadedImageAssets(scene: Phaser.Scene, assets: Array<RuntimeImageAsse
   ));
 }
 
-export function queueRuntimeImageAssets(
+function queueImageAssets(
   scene: Phaser.Scene,
   assets: Array<RuntimeImageAsset | undefined>,
   warning: string,
-  onComplete?: () => void
+  startNow: boolean,
+  onComplete?: () => void,
 ): boolean {
   const pending = unloadedImageAssets(scene, assets);
   if (pending.length === 0) return false;
@@ -58,8 +59,17 @@ export function queueRuntimeImageAssets(
     });
     onComplete?.();
   });
-  scene.load.start();
+  if (startNow) scene.load.start();
   return true;
+}
+
+export function queueRuntimeImageAssets(
+  scene: Phaser.Scene,
+  assets: Array<RuntimeImageAsset | undefined>,
+  warning: string,
+  onComplete?: () => void
+): boolean {
+  return queueImageAssets(scene, assets, warning, true, onComplete);
 }
 
 export function queuePreloadImageAssets(
@@ -67,39 +77,5 @@ export function queuePreloadImageAssets(
   assets: Array<RuntimeImageAsset | undefined>,
   warning: string
 ): boolean {
-  const pending = unloadedImageAssets(scene, assets);
-  if (pending.length === 0) return false;
-
-  const pendingKeys = new Set(pending.map((asset) => asset.key));
-  const onFileComplete = (key: string) => {
-    if (!pendingKeys.has(key)) return;
-    loadingOptionalArtKeys.delete(key);
-    loadedOptionalArtKeys.add(key);
-  };
-  const onLoadError = (file: { key?: string }) => {
-    const key = file.key;
-    if (!key || !pendingKeys.has(key)) return;
-    loadingOptionalArtKeys.delete(key);
-    loadedOptionalArtKeys.delete(key);
-    console.warn(`${warning}: ${key}`);
-  };
-  const cleanup = () => {
-    scene.load.off('filecomplete', onFileComplete);
-    scene.load.off('loaderror', onLoadError);
-  };
-
-  pending.forEach((asset) => {
-    loadingOptionalArtKeys.add(asset.key);
-    scene.load.image(asset.key, asset.url);
-  });
-  scene.load.on('filecomplete', onFileComplete);
-  scene.load.on('loaderror', onLoadError);
-  scene.load.once('complete', () => {
-    cleanup();
-    pending.forEach((asset) => {
-      loadingOptionalArtKeys.delete(asset.key);
-      if (scene.textures.exists(asset.key)) loadedOptionalArtKeys.add(asset.key);
-    });
-  });
-  return true;
+  return queueImageAssets(scene, assets, warning, false);
 }

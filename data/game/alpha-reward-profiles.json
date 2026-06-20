@@ -52,21 +52,21 @@
     },
     {
       "id": "street_map03",
-      "scrap": [31, 41],
+      "scrap": [28, 37],
       "cardReward": true,
-      "preenChance": 0.25,
-      "routeMarkChance": 0.15
+      "preenChance": 0.22,
+      "routeMarkChance": 0.1
     },
     {
       "id": "rival_map03",
-      "scrap": [86, 104],
+      "scrap": [76, 92],
       "cardReward": true,
       "preenGuaranteed": true,
       "routeMarkGuaranteed": true
     },
     {
       "id": "boss_map03",
-      "scrap": 120,
+      "scrap": 105,
       "bossRouteMarkChoices": 3,
       "rareCardChoices": 3,
       "preen": 1,
@@ -74,21 +74,21 @@
     },
     {
       "id": "street_map04",
-      "scrap": [36, 48],
+      "scrap": [32, 42],
       "cardReward": true,
-      "preenChance": 0.25,
-      "routeMarkChance": 0.15
+      "preenChance": 0.2,
+      "routeMarkChance": 0.1
     },
     {
       "id": "rival_map04",
-      "scrap": [98, 122],
+      "scrap": [84, 104],
       "cardReward": true,
       "preenGuaranteed": true,
       "routeMarkGuaranteed": true
     },
     {
       "id": "boss_map04",
-      "scrap": 150,
+      "scrap": 130,
       "bossRouteMarkChoices": 3,
       "rareCardChoices": 3,
       "preen": 1

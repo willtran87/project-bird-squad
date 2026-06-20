@@ -69,7 +69,8 @@
           "id": "talon_wall",
           "label": "Iron Wall",
           "effects": [
-            "gainCover(12)"
+            "gainCover(12)",
+            "if playedCardsAtLeast(4) then nextAttackBonus(4)"
           ]
         },
         {
@@ -526,7 +527,8 @@
           "label": "Skyfall Decree",
           "effects": [
             "applyOpenSky(1)",
-            "if isMolting then applyOpenSky(1)"
+            "if isMolting then applyOpenSky(1)",
+            "if handEmptyAtRoost then applyWinded(flock, 1)"
           ]
         },
         {
@@ -543,7 +545,8 @@
           "effects": [
             "gainCover(9)",
             "nextAttackBonus(4)",
-            "if flockHasCover then loseWingbeat(1)"
+            "if flockHasCover then loseWingbeat(1)",
+            "if zeroCostCardsAtLeast(2) then loseWingbeat(1)"
           ]
         },
         {

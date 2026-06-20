@@ -50,7 +50,7 @@ export const flockLeaders: FlockLeader[] = [
     signatureName: 'Pinned Opening',
     signatureText: 'The first enemy made Winded each combat takes 2 bonus damage.',
     startingDeckIds: ['swords_ace', 'swords_02', 'swords_03', 'swords_04', 'swords_fledgling', 'swords_08', 'major_18', 'aviary_29', 'pentacles_04', 'cups_03'],
-    startFlow: 2, // aggressive archetype comes out of the gate near Surge
+    startFlow: 1, // aggressive archetype starts ahead, but no longer opens nearly Surged
   },
   {
     id: 'tidewarden',
@@ -69,7 +69,7 @@ export const flockLeaders: FlockLeader[] = [
     suit: 'Nests',
     blurb: 'A wall of Cover — turtle up, then bury them under your nest.',
     signatureName: 'Perfect Brace',
-    signatureText: 'The first fully blocked enemy attack each combat gains +1 Flow.',
+    signatureText: 'The first fully blocked enemy attack each combat gains +1 Flow and counterstrikes.',
     startingDeckIds: ['pentacles_04', 'pentacles_02', 'pentacles_ace', 'pentacles_03', 'pentacles_06', 'pentacles_outrider', 'major_04', 'aviary_34', 'cups_02', 'swords_ace'],
   },
 ];
