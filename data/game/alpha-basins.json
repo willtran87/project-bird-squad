@@ -14,19 +14,19 @@
     {
       "id": "take_shelter",
       "label": "Hide Under the Awning",
-      "effects": ["gainOpenSkyGuard(1)", "healCohesion(3)"]
+      "effects": ["gainOpenSkyGuard(2)", "healCohesion(5)"]
     },
     {
       "id": "refill_supplies",
       "label": "Trade for a Wrapped Snack",
       "cost": 20,
-      "effects": ["payScrap(20)", "gainSupplyChoice(1)"]
+      "effects": ["payScrap(20)", "gainSupplyChoice(1)", "healCohesion(3)"]
     },
     {
       "id": "emergency_perch",
       "label": "Fund an Emergency Perch",
       "cost": 95,
-      "effects": ["payScrap(95)", "healMissingPct(70, 14)", "reduceNextOpenSky(2)"]
+      "effects": ["payScrap(95)", "healMissingPct(80, 18)", "reduceNextOpenSky(3)", "gainSupplyChoice(1)"]
     }
   ]
 }

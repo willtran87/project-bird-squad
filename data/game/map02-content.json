@@ -1522,7 +1522,8 @@
           "text": "Wade in for supplies.",
           "outcomes": [
             "loseCohesion(3)",
-            "gainSupplyChoice(1)"
+            "gainSupplyChoice(1)",
+            "gainScrap(25)"
           ]
         },
         {
@@ -1541,7 +1542,8 @@
           "key": "skim",
           "text": "Skim what floats.",
           "outcomes": [
-            "gainScrap(35)",
+            "gainScrap(50)",
+            "gainSupplyChoice(1)",
             "addSnagToDiscard(wet_feathers)"
           ]
         }
@@ -1558,7 +1560,7 @@
           "text": "Copy the Waymark.",
           "outcomes": [
             "loseCohesion(4)",
-            "gainRouteMark(rain_gutter)"
+            "gainRouteMark(randomUncommonOrRare)"
           ]
         },
         {
@@ -1570,7 +1572,8 @@
           "lockedText": "Need 55 Scrap.",
           "outcomes": [
             "payScrap(55)",
-            "gainRouteMark(wire_map)"
+            "gainRouteMark(randomUncommonOrRare)",
+            "gainOpenSkyGuard(1)"
           ]
         },
         {
@@ -1637,7 +1640,7 @@
           "lockedText": "Need 60 Scrap.",
           "outcomes": [
             "payScrap(60)",
-            "addCard(randomCommonPlumesOrQuills)"
+            "addCard(chooseOneOfTwoRare)"
           ]
         },
         {
@@ -1645,6 +1648,7 @@
           "text": "Trade the whole deal for supplies.",
           "outcomes": [
             "gainSupplyChoice(1)",
+            "gainScrap(20)",
             "loseCohesion(2)"
           ]
         }
@@ -1660,7 +1664,8 @@
           "key": "load_up",
           "text": "Load it all in.",
           "outcomes": [
-            "gainScrap(65)",
+            "gainScrap(75)",
+            "gainRouteMark(randomUncommonOrRare)",
             "addSnagToDiscard(tangled_line)"
           ]
         },
@@ -1692,6 +1697,7 @@
           "text": "Bet it all.",
           "outcomes": [
             "gainScrap(80)",
+            "addCard(randomUncommonOrRare)",
             "addSnagToDraw(bad_directions)"
           ]
         },
@@ -1706,7 +1712,7 @@
           "key": "refuse",
           "text": "Refuse and move on.",
           "outcomes": [
-            "gainRouteMark(randomNonBoss)",
+            "gainRouteMark(randomRare)",
             "loseCohesion(1)"
           ]
         }
@@ -1723,7 +1729,8 @@
           "text": "Cut through the nets.",
           "outcomes": [
             "startNextCombatOpenSky()",
-            "gainScrap(45)"
+            "gainScrap(60)",
+            "gainSupplyChoice(1)"
           ]
         },
         {
@@ -1794,7 +1801,8 @@
           "text": "Keep the gosling close.",
           "outcomes": [
             "loseCohesion(5)",
-            "gainRouteMark(patched_harness)"
+            "gainRouteMark(randomRare)",
+            "healMissingPct(20)"
           ]
         },
         {

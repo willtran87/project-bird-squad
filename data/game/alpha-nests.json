@@ -22,13 +22,13 @@
       "id": "reinforce_gear",
       "label": "Rig a Route Board",
       "cost": 115,
-      "effects": ["payScrap(115)", "gainRouteMark(randomNonBoss)"]
+      "effects": ["payScrap(115)", "gainRouteMark(randomRare)", "preenCard(1)"]
     },
     {
       "id": "boss_ready_tune",
       "label": "Boss-Ready Tune-Up",
       "cost": 130,
-      "effects": ["payScrap(130)", "preenCard(2)", "bossDamageShield(12)", "loseCohesion(3)"]
+      "effects": ["payScrap(130)", "preenCard(2)", "bossDamageShield(18)", "gainOpenSkyGuard(2)", "loseCohesion(3)"]
     }
   ]
 }

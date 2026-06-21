@@ -94,7 +94,7 @@ const validPredicates = new Set([
   'hasSupplySlot', 'deckHasTag', 'mapIndexAtLeast', 'not',
 ]);
 // Selector tokens that are valid non-id arguments to reference-taking verbs.
-const routeMarkSelectors = new Set(['random', 'randomCommon', 'randomNonBoss', 'choice']);
+const routeMarkSelectors = new Set(['random', 'randomCommon', 'randomNonBoss', 'randomRare', 'randomUncommonOrRare', 'choice']);
 const supplySelectors = new Set(['random', 'choice']);
 
 const validateTrigger = (trigger, label) => {

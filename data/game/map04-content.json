@@ -1197,7 +1197,7 @@
           "lockedText": "Need 50 Scrap.",
           "outcomes": [
             "payScrap(50)",
-            "gainRouteMark(wire_map)",
+            "gainRouteMark(randomRare)",
             "gainOpenSkyGuard(2)"
           ]
         },
@@ -1207,6 +1207,7 @@
           "outcomes": [
             "startNextCombatOpenSky()",
             "gainCacheReward()",
+            "gainRouteMark(randomRare)",
             "addSnagToDiscard(glass_gap)"
           ]
         }
@@ -1242,7 +1243,8 @@
           "key": "shelter",
           "text": "Wait out the storm.",
           "outcomes": [
-            "healCohesion(7)",
+            "healCohesion(10)",
+            "gainSupplyChoice(1)",
             "addSnagToDraw(wet_feathers)"
           ]
         }
@@ -1259,6 +1261,7 @@
           "text": "Open the cache.",
           "outcomes": [
             "gainCacheReward()",
+            "addCard(randomRare)",
             "addSnagToDiscard(bad_directions)"
           ]
         },
@@ -1271,7 +1274,8 @@
           "lockedText": "Need 40 Scrap.",
           "outcomes": [
             "payScrap(40)",
-            "gainSupplyChoice(1)"
+            "gainSupplyChoice(1)",
+            "healMissingPct(25)"
           ]
         },
         {
@@ -1279,7 +1283,8 @@
           "text": "Prep for the climb.",
           "outcomes": [
             "preenCard(1)",
-            "gainOpenSkyGuard(2)"
+            "gainOpenSkyGuard(3)",
+            "bossDamageShield(10)"
           ]
         }
       ]
@@ -1303,14 +1308,15 @@
           "text": "Drop into the shelter of the gutters.",
           "outcomes": [
             "healCohesion(8)",
-            "gainRouteMark(random)"
+            "gainRouteMark(randomRare)"
           ]
         },
         {
           "key": "scatter_wild",
           "text": "Let the wind scatter you — maybe it finds loot.",
           "outcomes": [
-            "gainSupply(random)",
+            "gainSupplyChoice(1)",
+            "gainRouteMark(randomUncommonOrRare)",
             "addSnagToDraw(wet_feathers)"
           ]
         }
@@ -1327,7 +1333,8 @@
           "text": "Push through — we're fast enough.",
           "outcomes": [
             "loseCohesion(4)",
-            "gainScrap(50)"
+            "gainScrap(70)",
+            "addCard(randomUncommonOrRare)"
           ]
         },
         {
@@ -1338,9 +1345,9 @@
           ],
           "lockedText": "Need 22+ Cohesion.",
           "outcomes": [
-            "gainRouteMark(patched_harness)",
+            "gainRouteMark(randomRare)",
             "gainSupplyChoice(1)",
-            "gainScrap(20)"
+            "gainScrap(25)"
           ]
         },
         {
@@ -1348,7 +1355,8 @@
           "text": "Cut loose and run for cover.",
           "outcomes": [
             "addSnagToDiscard(tangled_line)",
-            "gainScrap(25)"
+            "gainScrap(45)",
+            "gainOpenSkyGuard(2)"
           ]
         }
       ]
@@ -1364,7 +1372,7 @@
           "text": "Molt and refresh the deck.",
           "outcomes": [
             "releaseCard(1)",
-            "addCard(randomCommon)",
+            "addCard(randomRare)",
             "loseCohesion(3)"
           ]
         },
@@ -1401,7 +1409,8 @@
           "text": "Challenge them for the perch.",
           "outcomes": [
             "enemyCoverNextCombat(6)",
-            "gainScrap(60)",
+            "gainScrap(75)",
+            "addCard(randomRare)",
             "addSnagToDiscard(barricade_scrap)"
           ]
         },
@@ -1410,7 +1419,8 @@
           "text": "Sneak below their sightlines.",
           "outcomes": [
             "addSnagToDraw(bad_directions)",
-            "reduceNextOpenSky(3)"
+            "reduceNextOpenSky(3)",
+            "gainRouteMark(randomRare)"
           ]
         },
         {
@@ -1423,7 +1433,7 @@
           "outcomes": [
             "payScrap(55)",
             "gainOpenSkyGuard(3)",
-            "gainRouteMark(loose_change_tin)"
+            "gainRouteMark(randomRare)"
           ]
         }
       ]
@@ -1447,6 +1457,7 @@
           "text": "Scavenge for cache rewards.",
           "outcomes": [
             "gainCacheReward()",
+            "gainRouteMark(randomRare)",
             "addSnagToDiscard(wet_feathers)"
           ]
         },
@@ -1460,7 +1471,7 @@
           "outcomes": [
             "payScrap(30)",
             "preenCard(1)",
-            "gainRouteMark(wire_map)"
+            "gainRouteMark(randomUncommonOrRare)"
           ]
         }
       ]
@@ -1476,15 +1487,16 @@
           "text": "Answer now — we're ready.",
           "outcomes": [
             "startNextCombatOpenSky()",
-            "gainScrap(70)"
+            "gainScrap(90)",
+            "bossDamageShield(12)"
           ]
         },
         {
           "key": "steel_yourself",
           "text": "Build up before we climb.",
           "outcomes": [
-            "addCard(chooseOneOfTwoCommon)",
-            "gainOpenSkyGuard(1)",
+            "addCard(chooseOneOfTwoRare)",
+            "gainOpenSkyGuard(2)",
             "loseCohesion(2)"
           ]
         },
@@ -1497,7 +1509,7 @@
           "lockedText": "Flock is too healthy (60%+ Cohesion).",
           "outcomes": [
             "healCohesion(10)",
-            "gainRouteMark(rain_gutter)"
+            "gainRouteMark(randomUncommonOrRare)"
           ]
         }
       ]

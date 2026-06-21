@@ -57,16 +57,20 @@ type CardType = 'major' | 'minor' | 'molt' | 'aviary';
 type CardRole = 'attack' | 'skill' | 'utility';
 type TargetType = 'enemy' | 'allEnemies' | 'self' | 'none' | 'choice';
 type NodeChoiceOption = { key: string; text: string; effects: string[]; locked: boolean; lockedText?: string };
-type RouteEventChangeRow = { label: string; before: string; after: string; color: string };
-type RouteEventResolution = {
+type PendingRouteReward = {
   nodeId: string;
   nodeType: RouteNode['type'];
-  title: string;
+  choiceKey: string;
   choiceText: string;
+  effects: string[];
   effectText: string;
-  rows: RouteEventChangeRow[];
+  restoreState: RunState;
   accent: number;
+  effectsAppliedOnOpen: boolean;
+  previewItem?: PendingRouteRewardItem;
+  previewCards?: Card[];
 };
+type PendingRouteRewardItem = { kind: 'supply' | 'waymark'; id: string };
 
 interface Flock {
   hp: number;
@@ -642,6 +646,9 @@ const ROUTE_EVENT_BACKDROP_ASSETS: Partial<Record<RouteNode['type'], RuntimeImag
   rival: routeEventAsset('rival-wager-board-v2.webp', 'route-event-rival-wager-board')
 };
 const ROUTE_EVENT_PROP_ASSETS = {
+  basinHearthCart: routeEventPropAsset('basin-hearth-cart-v1.webp', 'route-event-prop-basin-hearth-cart'),
+  signalSwitchboard: routeEventPropAsset('signal-route-switchboard-v1.webp', 'route-event-prop-signal-route-switchboard'),
+  nestFeatherwrightBench: routeEventPropAsset('nest-featherwright-bench-v1.webp', 'route-event-prop-nest-featherwright-bench'),
   marnLockboxCabinet: routeEventPropAsset('marn-lockbox-cabinet-v1.webp', 'route-event-prop-marn-lockbox-cabinet')
 };
 const ROUTE_MAP_BACKDROP_ASSET = {
@@ -1031,25 +1038,25 @@ const CACHE_DRAWER_PROFILES: Record<string, CacheDrawerProfile> = {
     title: 'Snack Tin With Warm Latch',
     seal: 'Warm latch',
     note: 'Marn: Useful, but it opens loud.',
-    tell: 'Costs Cohesion',
+    tell: 'Supply + Scrap',
     icon: 'supply-pouch',
     accent: 0xffb86b
   },
   cache_mark: {
     drawer: '19',
-    title: 'Chalk Route Tag',
+    title: 'Rare Chalk Route Tag',
     seal: 'Bad handwriting',
     note: 'Marn: The mark is real. The note bites.',
-    tell: 'Adds a Snag',
+    tell: 'Rare Waymark + Snag',
     icon: 'waymark-compass',
     accent: 0xc9a6ff
   },
   cache_card: {
     drawer: '27',
-    title: 'Nest Note Packet',
+    title: 'Rare Nest Note Packet',
     seal: 'Thin paper seal',
     note: 'Marn: Leads to a card. Mind the staple.',
-    tell: 'Costs Cohesion',
+    tell: 'Rare card choice',
     icon: 'deck-stack',
     accent: 0x7ab8d6
   },
@@ -1058,7 +1065,7 @@ const CACHE_DRAWER_PROFILES: Record<string, CacheDrawerProfile> = {
     title: 'Billboard Shelter Key',
     seal: 'Quiet seal',
     note: 'Marn: No prize. Just a safe ledge.',
-    tell: 'Safe recovery',
+    tell: 'Recover + Sky safety',
     icon: 'flock-heart',
     accent: 0x8fd6a0
   },
@@ -1067,7 +1074,7 @@ const CACHE_DRAWER_PROFILES: Record<string, CacheDrawerProfile> = {
     title: 'Boss-Safe Pulley Line',
     seal: 'Fresh wire',
     note: 'Marn: Archive says it holds under pressure.',
-    tell: 'Boss prep',
+    tell: '+16 Boss Cover',
     icon: 'cover-shield',
     accent: 0x7ab8d6
   },
@@ -3640,6 +3647,12 @@ class RouteScene extends Phaser.Scene {
   private selectedNodeId: string | undefined;
   private nodeChoiceOpen = false;
   private nodeChoiceNodeId: string | undefined;
+  private nodeChoicePreviousNodeId: string | undefined;
+  private routeCardPickerRestoreState: RunState | undefined;
+  private routeCardRewardChoices: Card[] = [];
+  private routeStaticCardRewardChoiceIds = new Map<string, string[]>();
+  private routeStaticItemRewardChoices = new Map<string, PendingRouteRewardItem>();
+  private pendingRouteReward: PendingRouteReward | undefined;
   private cardPickerMode: 'preen' | 'release' | undefined;
   private cardPickerContext: 'route' | 'market' | undefined;
   private marketPickerUtilitySlot: number | undefined;
@@ -3659,7 +3672,6 @@ class RouteScene extends Phaser.Scene {
   private hoverCardDetail?: Phaser.GameObjects.Container;
   private marketItemHover?: Phaser.GameObjects.Container;
   private routeChoiceHover?: Phaser.GameObjects.Container;
-  private routeEventResolution?: RouteEventResolution;
   private cardReviewScroll = 0;
   private routeWaymarkScroll = 0;
   private routeNodeIconArtRequested = false;
@@ -3686,7 +3698,12 @@ class RouteScene extends Phaser.Scene {
     this.selectedNodeId = this.getSelectableNodes()[0]?.id;
     this.nodeChoiceOpen = false;
     this.nodeChoiceNodeId = undefined;
-    this.routeEventResolution = undefined;
+    this.nodeChoicePreviousNodeId = undefined;
+    this.routeCardPickerRestoreState = undefined;
+    this.routeCardRewardChoices = [];
+    this.routeStaticCardRewardChoiceIds.clear();
+    this.routeStaticItemRewardChoices.clear();
+    this.pendingRouteReward = undefined;
     this.cardPickerMode = undefined;
     this.cardPickerContext = undefined;
     this.marketPickerUtilitySlot = undefined;
@@ -3795,7 +3812,7 @@ class RouteScene extends Phaser.Scene {
     this.routeChoiceHover = undefined;
     this.renderBackdrop();
     this.renderRouteMap();
-    const hasBlockingOverlay = this.deckOverlayOpen || this.flockOverlayOpen || this.waymarkDrawerOpen || this.supplyDrawerOpen || this.marketOpen || this.nodeChoiceOpen || !!this.cardPickerMode || !!this.routeEventResolution;
+    const hasBlockingOverlay = this.deckOverlayOpen || this.flockOverlayOpen || this.waymarkDrawerOpen || this.supplyDrawerOpen || this.marketOpen || this.nodeChoiceOpen || !!this.pendingRouteReward || !!this.cardPickerMode;
     if (!hasBlockingOverlay) {
       this.renderRouteSupplyFeedbackStrip();
     }
@@ -3805,12 +3822,12 @@ class RouteScene extends Phaser.Scene {
     if (this.supplyDrawerOpen) this.renderRouteSupplyDrawer();
     if (this.marketOpen) this.renderMarketOverlay();
     if (this.nodeChoiceOpen) this.renderNodeChoiceOverlay();
-    if (this.routeEventResolution) this.renderRouteEventResolutionOverlay();
+    if (this.pendingRouteReward) this.renderRouteCardRewardOverlay();
     if (this.cardPickerMode) this.renderCardPickerOverlay();
     if (!this.confirmExitOpen) this.renderRunHud();
     if (this.confirmExitOpen) this.renderConfirmExitOverlay();
     this.updateTextState();
-    if (!this.marketOpen && !this.nodeChoiceOpen && !this.cardPickerMode && !this.routeEventResolution) {
+    if (!this.marketOpen && !this.nodeChoiceOpen && !this.pendingRouteReward && !this.cardPickerMode) {
       persistActiveRun(this.runState); // checkpoint: resume lands back on the route map
     }
   }
@@ -3822,6 +3839,31 @@ class RouteScene extends Phaser.Scene {
       this,
       [...ids].map((id) => cardThumbArtAssets[id] ?? cardArtAssets[id]),
       'Optional card art failed to load on route map',
+      () => this.renderAll()
+    );
+  }
+
+  private queueRouteRewardCardArtLoad() {
+    const cards = [
+      ...this.routeCardRewardChoices,
+      ...(this.pendingRouteReward?.previewCards ?? [])
+    ];
+    if (cards.length === 0) return;
+    queueRuntimeImageAssets(
+      this,
+      uniqueImageAssets(cards.map((card) => cardCompactArtAsset(card))),
+      'Route reward card art failed to load',
+      () => this.renderAll()
+    );
+  }
+
+  private queueRouteRewardItemArtLoad() {
+    const item = this.pendingRouteReward?.previewItem;
+    if (!item) return;
+    queueRuntimeImageAssets(
+      this,
+      [item.kind === 'supply' ? supplyArtAssets[item.id] : waymarkArtAssets[item.id]],
+      'Route reward item art failed to load',
       () => this.renderAll()
     );
   }
@@ -3858,15 +3900,22 @@ class RouteScene extends Phaser.Scene {
   }
 
   private queueRouteEventSetPieceArtLoad(node?: RouteNode) {
-    const propAssets = node?.type === 'cache'
-      ? [ROUTE_EVENT_PROP_ASSETS.marnLockboxCabinet]
-      : [];
+    const prop = this.routeEventPropAssetForType(node?.type);
+    const propAssets = prop ? [prop] : [];
     queueRuntimeImageAssets(
       this,
       [this.routeEventBackdropAsset(node), this.routeEventResidentAsset(node), ...propAssets],
       'Route event set piece art failed to load',
       () => this.renderAll()
     );
+  }
+
+  private routeEventPropAssetForType(type?: RouteNode['type']) {
+    if (type === 'basin') return ROUTE_EVENT_PROP_ASSETS.basinHearthCart;
+    if (type === 'cache') return ROUTE_EVENT_PROP_ASSETS.marnLockboxCabinet;
+    if (type === 'signal') return ROUTE_EVENT_PROP_ASSETS.signalSwitchboard;
+    if (type === 'nest') return ROUTE_EVENT_PROP_ASSETS.nestFeatherwrightBench;
+    return undefined;
   }
 
   private queueRouteSupplyArtLoad() {
@@ -3914,7 +3963,11 @@ class RouteScene extends Phaser.Scene {
     );
   }
 
-  private renderRouteEventBackdrop(node?: RouteNode, opacity = 0.74) {
+  private renderRouteEventBackdrop(
+    node?: RouteNode,
+    opacity = 0.74,
+    options: { showBottomBand?: boolean } = {}
+  ) {
     this.queueRouteEventBackdropArtLoad(node);
     const asset = this.routeEventBackdropAsset(node);
     const hasBackdrop = !!asset && this.textures.exists(asset.key);
@@ -3933,7 +3986,9 @@ class RouteScene extends Phaser.Scene {
       hasBackdrop ? 0.28 : 0.74
     ).setInteractive({ useHandCursor: false });
     this.add.rectangle(GAME_WIDTH / 2, 78, GAME_WIDTH, 156, 0x020409, hasBackdrop ? 0.42 : 0.18);
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 66, GAME_WIDTH, 132, 0x020409, hasBackdrop ? 0.46 : 0.18);
+    if (options.showBottomBand ?? true) {
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 66, GAME_WIDTH, 132, 0x020409, hasBackdrop ? 0.46 : 0.18);
+    }
     this.add.rectangle(GAME_WIDTH / 2, 24, GAME_WIDTH - 100, 2, accent, hasBackdrop ? 0.42 : 0.24);
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 28, GAME_WIDTH - 100, 2, accent, hasBackdrop ? 0.36 : 0.22);
   }
@@ -4052,7 +4107,7 @@ class RouteScene extends Phaser.Scene {
       top: { y: 124 },
       map: { x: 32, y: 112, w: 1208, h: 590, cx: 636, cy: 407 },
       graph: { left: 88, right: 1158, top: 146, bottom: 638 },
-      confirm: { cx: 1088, cy: 662, w: 260, h: 42 },
+      confirm: { cx: 1138, cy: 662, w: 260, h: 42 },
       footer: { x: 62, y: 612, w: 848, h: 56, cx: 486, cy: 640 }
     };
   }
@@ -4213,19 +4268,19 @@ class RouteScene extends Phaser.Scene {
     if (!this.selectedNodeId || !this.selectableNodeIds.has(this.selectedNodeId)) return;
     const nodeId = this.selectedNodeId;
     const confirm = this.routeLayout().confirm;
-    const hit = this.add.rectangle(confirm.cx, confirm.cy, confirm.h + 12, confirm.h + 12, 0x101a18, 0.96)
-      .setStrokeStyle(1.5, UI_FIELD.green, 0.92)
+    const hit = this.add.rectangle(confirm.cx, confirm.cy, confirm.h + 12, confirm.h + 12, 0x000000, 0.01)
       .setInteractive({ useHandCursor: true });
-    this.add.rectangle(confirm.cx, confirm.cy - confirm.h / 2 + 8, confirm.h - 2, 2, UI_FIELD.green, 0.78);
     const icon = addUiIconImage(this, 'route-pin', confirm.cx, confirm.cy, 26);
     if (icon) icon.setAlpha(0.98);
+    const iconBaseScaleX = icon?.scaleX ?? 1;
+    const iconBaseScaleY = icon?.scaleY ?? 1;
     let tip: Phaser.GameObjects.Container | undefined;
     hit.on('pointerover', () => {
-      hit.setFillStyle(0x17261f, 0.98);
+      icon?.setScale(iconBaseScaleX * 1.08, iconBaseScaleY * 1.08);
       tip = this.showSimpleTooltip('Take this route', confirm.cx, confirm.cy - 46);
     });
     hit.on('pointerout', () => {
-      hit.setFillStyle(0x101a18, 0.96);
+      icon?.setScale(iconBaseScaleX, iconBaseScaleY);
       tip?.destroy(true);
       tip = undefined;
     });
@@ -4581,10 +4636,27 @@ class RouteScene extends Phaser.Scene {
   // Data-driven node choices (Basin/Nest/Cache options + Signal choices) resolved
   // through the route-effect interpreter (next-level-data-contracts §6.3/§7).
   private openNodeChoices(node: RouteNode) {
+    this.nodeChoicePreviousNodeId = this.runState.currentRouteNodeId;
     this.runState.currentRouteNodeId = node.id;
     this.nodeChoiceOpen = true;
     this.nodeChoiceNodeId = node.id;
     this.selectableNodeIds = new Set();
+    this.routeStaticCardRewardChoiceIds.clear();
+    this.routeStaticItemRewardChoices.clear();
+    this.renderAll();
+  }
+
+  private closeNodeChoices() {
+    this.hideRouteChoiceDetail();
+    this.nodeChoiceOpen = false;
+    this.nodeChoiceNodeId = undefined;
+    this.runState.currentRouteNodeId = this.nodeChoicePreviousNodeId;
+    this.nodeChoicePreviousNodeId = undefined;
+    this.routeStaticCardRewardChoiceIds.clear();
+    this.routeStaticItemRewardChoices.clear();
+    const selectable = this.getSelectableNodes();
+    this.selectableNodeIds = new Set(selectable.map((node) => node.id));
+    this.selectedNodeId = selectable[0]?.id;
     this.renderAll();
   }
 
@@ -4689,6 +4761,20 @@ class RouteScene extends Phaser.Scene {
     }
   }
 
+  private returnToRouteMapAfterNode(nodeId: string | undefined = this.nodeChoiceNodeId) {
+    this.completePendingRouteNode(nodeId);
+    this.routeCardRewardChoices = [];
+    this.pendingRouteReward = undefined;
+    this.nodeChoiceOpen = false;
+    this.nodeChoiceNodeId = undefined;
+    this.nodeChoicePreviousNodeId = undefined;
+    this.routeCardPickerRestoreState = undefined;
+    this.hideRouteChoiceDetail();
+    this.hideHoverCardDetail();
+    this.hideMarketItemDetail();
+    this.scene.restart({ runState: cloneRunState(this.runState) });
+  }
+
   private chooseNodeOption(key: string) {
     const node = currentMap().nodes.find((candidate) => candidate.id === this.nodeChoiceNodeId);
     if (!node) return;
@@ -4696,54 +4782,318 @@ class RouteScene extends Phaser.Scene {
     if (!choice || choice.locked) return;
     const scrapCost = this.scrapCostOfEffects(choice.effects);
     if (scrapCost > this.runState.scrap) return;
-    const before = this.routeResultSnapshot();
+    const pickerRestoreState = cloneRunState(this.runState);
+    if (node.type === 'basin' || node.type === 'cache' || node.type === 'nest' || node.type === 'signal') {
+      this.openRouteRewardMenu(node, choice, pickerRestoreState);
+      return;
+    }
     if (node.type === 'rival' && choice.key === 'challenge_rival') {
       this.runState.currentRouteNodeId = node.id;
       this.runState.routeLog.push(`${node.label}: ${choice.text}`);
       this.runState.routeLog = this.runState.routeLog.slice(-8);
       this.nodeChoiceOpen = false;
       this.nodeChoiceNodeId = undefined;
+      this.nodeChoicePreviousNodeId = undefined;
       this.scene.start('BattleScene', { routeNodeId: node.id, runState: cloneRunState(this.runState) });
       return;
     }
     // Preen/Remove defer to a card picker so the player chooses the card; other
     // effects resolve immediately.
     let pickerMode: 'preen' | 'release' | undefined;
+    let routeCardRewardSelector: string | undefined;
     for (const effect of choice.effects) {
       const parsed = parseEffect(effect);
       if (parsed?.name === 'preenCard') { pickerMode = 'preen'; continue; }
       if (parsed?.name === 'releaseCard') { pickerMode = 'release'; continue; }
+      if (parsed?.name === 'addCard' && parsed.args[0]?.startsWith('choose')) {
+        routeCardRewardSelector = parsed.args[0];
+        continue;
+      }
       this.resolveRouteEffect(effect);
     }
-    if (node.type === 'signal') {
-      this.applyRouteMarkTrigger('signalResolved');
-      (this.runState.signalChoices ??= []).push({ signalId: node.payloadId, choiceKey: key });
-    }
-    if (node.type === 'cache') this.applyRouteMarkTrigger('cacheChoice');
     this.runState.routeLog.push(`${node.label}: ${choice.text}`);
     this.runState.routeLog = this.runState.routeLog.slice(-8);
     if (pickerMode && this.pickerEligibleCards(pickerMode).length > 0) {
       this.cardPickerMode = pickerMode;
       this.cardPickerContext = 'route';
       this.marketPickerUtilitySlot = undefined;
+      this.routeCardPickerRestoreState = pickerRestoreState;
       this.nodeChoiceOpen = false;
       this.renderAll();
       return;
     }
-    this.completePendingRouteNode(node.id);
-    const after = this.routeResultSnapshot();
-    this.routeEventResolution = {
+    if (routeCardRewardSelector) {
+      const choices = this.staticRouteCardRewardChoices(node.id, choice.key, routeCardRewardSelector);
+      if (choices.length > 0) {
+        this.routeCardRewardChoices = choices;
+        this.pendingRouteReward = {
+          nodeId: node.id,
+          nodeType: node.type,
+          choiceKey: choice.key,
+          choiceText: choice.text,
+          effects: choice.effects,
+          effectText: routeEffectSummary(choice.effects),
+          restoreState: pickerRestoreState,
+          accent: routeEventAccent(node.type),
+          effectsAppliedOnOpen: true
+        };
+        this.nodeChoiceOpen = false;
+        this.hideRouteChoiceDetail();
+        this.queueRouteRewardCardArtLoad();
+        this.renderAll();
+        return;
+      }
+    }
+    this.returnToRouteMapAfterNode(node.id);
+  }
+
+  private openRouteRewardMenu(
+    node: RouteNode,
+    choice: NodeChoiceOption,
+    restoreState: RunState
+  ) {
+    const cardSelector = this.routeCardRewardSelector(choice.effects);
+    this.routeCardRewardChoices = cardSelector
+      ? this.staticRouteCardRewardChoices(node.id, choice.key, cardSelector)
+      : [];
+    const previewItem = this.staticRouteItemRewardChoice(node.id, choice.key, choice.effects);
+    const previewCards = cardSelector ? [] : this.routeRewardPreviewCards(node.id, choice.key, choice.effects);
+    const effectText = routeEffectSummaryWithPreview(choice.effects, previewItem, previewCards);
+    this.pendingRouteReward = {
       nodeId: node.id,
       nodeType: node.type,
-      title: routeNodeTypeLabel(node.type),
+      choiceKey: choice.key,
       choiceText: choice.text,
-      effectText: routeEffectSummary(choice.effects),
-      rows: this.routeResultRows(before, after),
-      accent: routeEventAccent(node.type)
+      effects: choice.effects,
+      effectText,
+      restoreState,
+      accent: routeEventAccent(node.type),
+      effectsAppliedOnOpen: false,
+      previewItem,
+      previewCards
     };
     this.nodeChoiceOpen = false;
-    this.nodeChoiceNodeId = undefined;
     this.hideRouteChoiceDetail();
+    this.queueRouteRewardCardArtLoad();
+    this.queueRouteRewardItemArtLoad();
+    this.renderAll();
+  }
+
+  private routeCardRewardSelector(effects: string[]) {
+    for (const effect of effects) {
+      const parsed = parseEffect(effect);
+      if (parsed?.name === 'addCard' && parsed.args[0]?.startsWith('choose')) return parsed.args[0];
+    }
+    return undefined;
+  }
+
+  private routeRewardPreviewCards(nodeId: string, choiceKey: string, effects: string[]) {
+    return effects.flatMap((effect) => {
+      const parsed = parseEffect(effect);
+      if (parsed?.name === 'addCard') {
+        const selector = parsed.args[0] ?? '';
+        if (selector.startsWith('choose')) return [];
+        const card = this.staticRouteCardPreviewChoice(nodeId, choiceKey, selector);
+        return card ? [card] : [];
+      }
+      if (parsed?.name !== 'addSnagToDiscard' && parsed?.name !== 'addSnagToDraw') return [];
+      const id = parsed.args[0];
+      return id && cardLibrary[id] ? [cloneCard(id)] : [];
+    });
+  }
+
+  private routeRewardPickerMode(effects: string[]): 'preen' | 'release' | undefined {
+    for (const effect of effects) {
+      const parsed = parseEffect(effect);
+      if (parsed?.name === 'preenCard') return 'preen';
+      if (parsed?.name === 'releaseCard') return 'release';
+    }
+    return undefined;
+  }
+
+  private applyPendingRouteRewardEffects(
+    pending: PendingRouteReward,
+    skipCardChoice = false,
+    skipInteractiveCardEffects = false
+  ) {
+    for (const effect of pending.effects) {
+      const parsed = parseEffect(effect);
+      if (skipCardChoice && parsed?.name === 'addCard' && parsed.args[0]?.startsWith('choose')) continue;
+      if (skipInteractiveCardEffects && (parsed?.name === 'preenCard' || parsed?.name === 'releaseCard')) continue;
+      if (pending.previewItem?.kind === 'supply' && (parsed?.name === 'gainSupply' || parsed?.name === 'gainSupplyChoice')) {
+        this.grantSupply(pending.previewItem.id);
+        continue;
+      }
+      if (pending.previewItem?.kind === 'waymark' && parsed?.name === 'gainRouteMark') {
+        this.grantRouteMark(pending.previewItem.id);
+        continue;
+      }
+      if (parsed?.name === 'addCard' && !parsed.args[0]?.startsWith('choose')) {
+        const card = pending.previewCards?.find((candidate) => candidate.runtime.kind !== 'snag');
+        if (card) {
+          this.grantSpecificCard(card.id);
+          continue;
+        }
+      }
+      this.resolveRouteEffect(effect);
+    }
+    if (pending.nodeType === 'cache') this.applyRouteMarkTrigger('cacheChoice');
+    if (pending.nodeType === 'signal') {
+      this.applyRouteMarkTrigger('signalResolved');
+      (this.runState.signalChoices ??= []).push({ signalId: currentMap().nodes.find((candidate) => candidate.id === pending.nodeId)?.payloadId ?? '', choiceKey: pending.choiceKey });
+    }
+    const node = currentMap().nodes.find((candidate) => candidate.id === pending.nodeId);
+    this.runState.routeLog.push(`${node?.label ?? routeNodeTypeLabel(pending.nodeType)}: ${pending.choiceText}`);
+    this.runState.routeLog = this.runState.routeLog.slice(-8);
+  }
+
+  private finishPendingRouteReward(pending: PendingRouteReward) {
+    this.returnToRouteMapAfterNode(pending.nodeId);
+  }
+
+  private claimRouteReward() {
+    const pending = this.pendingRouteReward;
+    if (!pending) return;
+    const pickerMode = this.routeRewardPickerMode(pending.effects);
+    if (pickerMode && this.pickerEligibleCards(pickerMode, 'route').length > 0) {
+      if (!pending.effectsAppliedOnOpen) this.applyPendingRouteRewardEffects(pending, false, true);
+      this.cardPickerMode = pickerMode;
+      this.cardPickerContext = 'route';
+      this.marketPickerUtilitySlot = undefined;
+      this.routeCardPickerRestoreState = cloneRunState(pending.restoreState);
+      this.routeCardRewardChoices = [];
+      this.pendingRouteReward = undefined;
+      this.nodeChoiceOpen = false;
+      this.hideHoverCardDetail();
+      this.hideMarketItemDetail();
+      this.renderAll();
+      return;
+    }
+    if (!pending.effectsAppliedOnOpen) this.applyPendingRouteRewardEffects(pending);
+    this.finishPendingRouteReward(pending);
+  }
+
+  private createRouteCardRewardChoices(selector: string) {
+    const owned = new Set(this.runState.deck.map((card) => card.id));
+    const basePool = arcanaRewardPool.filter((id) => !owned.has(id));
+    let pool = [...basePool];
+    if (selector === 'chooseOneOfTwoCommon') {
+      pool = pool.filter((id) => cardLibrary[id]?.runtime.rarity === 'common');
+    } else if (selector === 'chooseOneOfTwoRare') {
+      pool = pool.filter((id) => cardLibrary[id]?.runtime.rarity === 'rare');
+      if (pool.length === 0) pool = basePool.filter((id) => cardLibrary[id]?.runtime.rarity === 'uncommon');
+    } else if (selector === 'chooseOneOfTwoUncommonOrRare') {
+      pool = pool.filter((id) => {
+        const rarity = cardLibrary[id]?.runtime.rarity;
+        return rarity === 'uncommon' || rarity === 'rare';
+      });
+    }
+    const choices: Card[] = [];
+    while (pool.length > 0 && choices.length < 2) {
+      const index = Math.floor(Math.random() * pool.length);
+      const [id] = pool.splice(index, 1);
+      if (id) choices.push(cloneCard(id));
+    }
+    return choices;
+  }
+
+  private staticRouteCardRewardChoices(nodeId: string, choiceKey: string, selector: string) {
+    const key = `${nodeId}:${choiceKey}:${selector}`;
+    const cachedIds = this.routeStaticCardRewardChoiceIds.get(key);
+    if (cachedIds) return cachedIds.map((id) => cloneCard(id));
+    const choices = this.createRouteCardRewardChoices(selector);
+    this.routeStaticCardRewardChoiceIds.set(key, choices.map((card) => card.id));
+    return choices;
+  }
+
+  private staticRouteCardPreviewChoice(nodeId: string, choiceKey: string, selector: string) {
+    const key = `${nodeId}:${choiceKey}:preview:${selector}`;
+    const cachedIds = this.routeStaticCardRewardChoiceIds.get(key);
+    const cachedId = cachedIds?.[0];
+    if (cachedId && cardLibrary[cachedId]) return cloneCard(cachedId);
+    const id = this.selectCardRewardId(selector);
+    if (!id) return undefined;
+    this.routeStaticCardRewardChoiceIds.set(key, [id]);
+    return cloneCard(id);
+  }
+
+  private staticRouteItemRewardChoice(nodeId: string, choiceKey: string, effects: string[]) {
+    const parsed = effects.map(parseEffect).find((effect) => (
+      effect?.name === 'gainSupply'
+      || effect?.name === 'gainSupplyChoice'
+      || effect?.name === 'gainRouteMark'
+    ));
+    if (!parsed) return undefined;
+    const key = `${nodeId}:${choiceKey}:${parsed.name}:${parsed.args.join(',')}`;
+    const cached = this.routeStaticItemRewardChoices.get(key);
+    if (cached) return { ...cached };
+
+    let item: PendingRouteRewardItem | undefined;
+    if (parsed.name === 'gainRouteMark') {
+      const id = this.selectRouteMarkRewardId(parsed.args[0] ?? 'random');
+      if (id) item = { kind: 'waymark', id };
+    } else {
+      const id = this.selectSupplyRewardId(parsed.name === 'gainSupplyChoice' ? 'random' : parsed.args[0] ?? 'random');
+      if (id) item = { kind: 'supply', id };
+    }
+    if (item) this.routeStaticItemRewardChoices.set(key, { ...item });
+    return item;
+  }
+
+  private selectRouteMarkRewardId(selector: string) {
+    if (selector && !['random', 'randomNonBoss', 'randomCommon', 'randomRare', 'randomUncommonOrRare', 'choice'].includes(selector)) {
+      return !this.hasRouteMark(selector) && alphaRouteMarkLibrary.has(selector) ? selector : undefined;
+    }
+    const basePool = MARKET_ROUTE_MARK_IDS.filter((markId) => !this.hasRouteMark(markId));
+    let pool = [...basePool];
+    if (selector === 'randomCommon') {
+      pool = pool.filter((markId) => alphaRouteMarkLibrary.get(markId)?.rarity === 'common');
+    } else if (selector === 'randomRare') {
+      pool = pool.filter((markId) => alphaRouteMarkLibrary.get(markId)?.rarity === 'rare');
+      if (pool.length === 0) pool = basePool.filter((markId) => alphaRouteMarkLibrary.get(markId)?.rarity === 'uncommon');
+    } else if (selector === 'randomUncommonOrRare') {
+      pool = pool.filter((markId) => {
+        const rarity = alphaRouteMarkLibrary.get(markId)?.rarity;
+        return rarity === 'uncommon' || rarity === 'rare';
+      });
+    } else if (selector === 'randomNonBoss') {
+      pool = pool.filter((markId) => alphaRouteMarkLibrary.get(markId)?.rarity !== 'boss');
+    }
+    if (pool.length === 0) return undefined;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+
+  private selectSupplyRewardId(selector: string) {
+    if ((this.runState.supplies ?? []).length >= runSupplyCapacity(this.runState)) return undefined;
+    if (selector && !['random', 'choice'].includes(selector) && alphaSupplyLibrary.has(selector)) {
+      return this.runState.supplies.includes(selector) ? undefined : selector;
+    }
+    const ids = [...alphaSupplyLibrary.keys()].filter((candidate) => !this.runState.supplies.includes(candidate));
+    if (ids.length === 0) return undefined;
+    return ids[Math.floor(Math.random() * ids.length)];
+  }
+
+  private chooseRouteRewardCard(cardId: string) {
+    const pending = this.pendingRouteReward;
+    if (!pending) return;
+    const reward = this.routeCardRewardChoices.find((card) => card.id === cardId);
+    if (!reward) return;
+    if (!pending.effectsAppliedOnOpen) this.applyPendingRouteRewardEffects(pending, true);
+    this.runState.deck.push({ id: reward.id });
+    discoverCards([reward.id]);
+    this.runState.routeLog.push(`${displayName(reward)} joins the flock.`);
+    this.runState.routeLog = this.runState.routeLog.slice(-8);
+    this.finishPendingRouteReward(pending);
+  }
+
+  private cancelRouteCardReward() {
+    const pending = this.pendingRouteReward;
+    if (!pending) return;
+    this.runState = cloneRunState(pending.restoreState);
+    this.routeCardRewardChoices = [];
+    this.pendingRouteReward = undefined;
+    this.nodeChoiceOpen = true;
+    this.hideHoverCardDetail();
     this.renderAll();
   }
 
@@ -4783,7 +5133,9 @@ class RouteScene extends Phaser.Scene {
     this.cardPickerMode = undefined;
     this.cardPickerContext = undefined;
     this.marketPickerUtilitySlot = undefined;
+    this.routeCardPickerRestoreState = undefined;
     this.nodeChoiceNodeId = undefined;
+    this.nodeChoicePreviousNodeId = undefined;
     this.runState.routeLog = this.runState.routeLog.slice(-8);
     this.scene.restart({ runState: cloneRunState(this.runState) });
   }
@@ -4796,6 +5148,20 @@ class RouteScene extends Phaser.Scene {
     this.cardPickerMode = undefined;
     this.cardPickerContext = undefined;
     this.marketPickerUtilitySlot = undefined;
+    this.renderAll();
+  }
+
+  private cancelRouteCardPicker() {
+    const nodeId = this.nodeChoiceNodeId;
+    if (this.routeCardPickerRestoreState) {
+      this.runState = cloneRunState(this.routeCardPickerRestoreState);
+    }
+    this.cardPickerMode = undefined;
+    this.cardPickerContext = undefined;
+    this.marketPickerUtilitySlot = undefined;
+    this.routeCardPickerRestoreState = undefined;
+    this.nodeChoiceOpen = !!nodeId;
+    this.hideHoverCardDetail();
     this.renderAll();
   }
 
@@ -4909,10 +5275,472 @@ class RouteScene extends Phaser.Scene {
     });
     if (isMarketPicker) {
       this.renderMarketEnamelButton(frame.left + 142, frame.bottom - 48, 176, 38, 'Back to Market', true, () => this.cancelMarketCardPicker(), UI_FIELD.cyan, '13px');
+    } else {
+      this.renderRouteEventCancelButton(frame.left + 126, frame.bottom - 48, 166, 38, 'Cancel', () => this.cancelRouteCardPicker());
     }
   }
 
+  private renderRouteRewardCardOption(card: Card, x: number, y: number, cardW: number, cardH: number, accent: number) {
+    const top = y - cardH / 2;
+    const bottom = y + cardH / 2;
+    this.add.rectangle(x + 6, y + 8, cardW, cardH, 0x020409, 0.72);
+    const key = compactCardArtKey(card);
+    if (key && this.textures.exists(key)) {
+      this.add.image(x, y, key).setDisplaySize(cardW, cardH);
+      return;
+    }
+    if (renderSnagCardBorder(this, undefined, card, x, y, cardW, cardH, 1)) {
+      this.add.rectangle(x, y, cardW - 4, cardH - 4, 0x05101a, 0.12);
+      return;
+    }
+
+    this.add.rectangle(x, y, cardW, cardH, 0x0b1420, 0.98)
+      .setStrokeStyle(2, accent, 0.9);
+    this.add.rectangle(x, top + 18, cardW - 8, 32, 0x05080e, 0.86);
+    this.add.rectangle(x, top + 42, cardW - 18, 2, accent, 0.72);
+    this.add.circle(x - cardW / 2 + 22, top + 19, 15, card.cost === 0 ? 0x24d0d6 : 0xe8b830, 1)
+      .setStrokeStyle(2, 0x05080e, 0.9);
+    this.add.text(x - cardW / 2 + 22, top + 19, `${card.cost}`, {
+      fontFamily: UI_FONT,
+      fontSize: '16px',
+      fontStyle: UI_BOLD,
+      color: '#06101c'
+    }).setOrigin(0.5);
+    this.add.text(x - cardW / 2 + 42, top + 9, displayName(card), {
+      fontFamily: UI_FONT,
+      fontSize: '13px',
+      fontStyle: UI_BOLD,
+      color: '#ffe7b0',
+      wordWrap: { width: cardW - 50 },
+      maxLines: 2
+    });
+    this.add.text(x, top + 52, `${cardLabel(card)} / ${card.role.toUpperCase()}`, {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      fontStyle: UI_BOLD,
+      color: UI_CYAN,
+      align: 'center',
+      wordWrap: { width: cardW - 16 },
+      maxLines: 1
+    }).setOrigin(0.5, 0);
+    this.add.rectangle(x, bottom - 57, cardW - 10, 98, 0x05080e, 0.82);
+    this.add.rectangle(x, bottom - 106, cardW - 10, 2, accent, 0.72);
+    this.add.text(x, bottom - 96, displayText(card), {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: '#dbe6f2',
+      align: 'center',
+      lineSpacing: 1,
+      wordWrap: { width: cardW - 20 },
+      maxLines: 6
+    }).setOrigin(0.5, 0);
+  }
+
+  private renderRouteRewardItemShowcase(item: PendingRouteRewardItem, x: number, y: number, w: number, h: number, companionCards: Card[] = []) {
+    const isSupply = item.kind === 'supply';
+    const supply = isSupply ? alphaSupplyLibrary.get(item.id) : undefined;
+    const mark = !isSupply ? alphaRouteMarkLibrary.get(item.id) : undefined;
+    if (!supply && !mark) return false;
+    const accent = supply ? supplyAccent(supply) : mark ? routeMarkAccent(mark) : UI_FIELD.gold;
+    const title = supply?.name ?? mark?.name ?? 'Found item';
+    const kicker = supply
+      ? `${supplyCategoryLabel(supply)} Supply / ${supply.rarity}`
+      : mark
+        ? `${routeMarkFamilyLabel(mark.family)} Waymark / ${mark.rarity}`
+        : '';
+    const summary = supply
+      ? compactEffectSummary(supply.effects, 110)
+      : mark
+        ? compactEffectSummary(routeMarkEffectText(mark), 110)
+        : '';
+    const key = supply ? supplyArtAssets[supply.id]?.key : mark ? waymarkArtAssets[mark.id]?.key : undefined;
+    const companion = companionCards[0];
+    if (companion) {
+      const itemKindLabel = supply
+        ? `${supply.rarity.toUpperCase()} SUPPLY`
+        : mark
+          ? `${mark.rarity.toUpperCase()} WAYMARK`
+          : 'ITEM';
+      this.add.rectangle(x, y, w, h, 0x06101a, 0.9)
+        .setStrokeStyle(2, accent, 0.76);
+      this.add.rectangle(x, y - h / 2 + 16, w - 28, 3, accent, 0.72);
+
+      const itemCx = x - 104;
+      const cardCx = x + 108;
+      const artY = y - 30;
+      this.add.text(itemCx, y - 100, itemKindLabel, {
+        fontFamily: UI_FONT,
+        fontSize: '10px',
+        fontStyle: UI_BOLD,
+        color: UI_CYAN,
+        align: 'center',
+        wordWrap: { width: 150 },
+        maxLines: 1
+      }).setOrigin(0.5, 0);
+      this.add.rectangle(itemCx, artY, 118, 118, 0x020409, 0.54)
+        .setStrokeStyle(1, accent, 0.56);
+      if (key && this.textures.exists(key)) {
+        const image = supply
+          ? addSupplyArtImage(this, itemCx, artY, key)
+          : addWaymarkArtImage(this, itemCx, artY, key);
+        image.setDisplaySize(104, 104);
+      } else if (supply) {
+        this.add.text(itemCx, artY - 17, this.supplyGlyph(supply), {
+          fontFamily: UI_FONT,
+          fontSize: '30px',
+          fontStyle: UI_BOLD,
+          color: '#ffe7c9',
+          stroke: '#020409',
+          strokeThickness: 2
+        }).setOrigin(0.5, 0);
+      } else if (mark) {
+        this.add.text(itemCx, artY - 17, waymarkGlyph(mark), {
+          fontFamily: UI_FONT,
+          fontSize: '32px',
+          fontStyle: UI_BOLD,
+          color: '#efe4ff',
+          stroke: '#020409',
+          strokeThickness: 2
+        }).setOrigin(0.5, 0);
+      }
+      this.add.text(itemCx, y + 42, title, {
+        fontFamily: UI_FONT,
+        fontSize: '14px',
+        fontStyle: UI_BOLD,
+        color: UI_GOLD,
+        align: 'center',
+        wordWrap: { width: 158 },
+        maxLines: 2
+      }).setOrigin(0.5, 0);
+      this.add.text(itemCx, y + 79, summary, {
+        fontFamily: UI_FONT,
+        fontSize: '10px',
+        fontStyle: UI_BOLD,
+        color: UI_SOFT,
+        align: 'center',
+        lineSpacing: 1,
+        wordWrap: { width: 168 },
+        maxLines: 2
+      }).setOrigin(0.5, 0);
+      const itemHit = this.add.rectangle(itemCx, y - 1, 170, 210, 0x000000, 0.01)
+        .setInteractive({ useHandCursor: true });
+      itemHit.on('pointerover', () => {
+        if (supply) this.showRewardSupplyDetail(supply, itemCx, y + 18);
+        else if (mark) this.showRewardWaymarkDetail(mark, itemCx, y + 18);
+      });
+      itemHit.on('pointerout', () => this.hideMarketItemDetail());
+
+      this.add.rectangle(x, y + 2, 1, h - 44, accent, 0.36);
+      this.add.text(cardCx, y - 100, 'SNAG CARD', {
+        fontFamily: UI_FONT,
+        fontSize: '10px',
+        fontStyle: UI_BOLD,
+        color: '#ffd5cc',
+        align: 'center',
+        wordWrap: { width: 150 },
+        maxLines: 1
+      }).setOrigin(0.5, 0);
+      this.renderRouteRewardCardOption(companion, cardCx, y - 4, 108, 162, UI_FIELD.danger);
+      this.add.rectangle(cardCx, y + 93, 138, 28, 0x020409, 0.94)
+        .setStrokeStyle(1, UI_FIELD.danger, 0.72);
+      this.add.text(cardCx, y + 83, displayName(companion), {
+        fontFamily: UI_FONT,
+        fontSize: '11px',
+        fontStyle: UI_BOLD,
+        color: '#ffd5cc',
+        align: 'center',
+        wordWrap: { width: 126 },
+        maxLines: 2
+      }).setOrigin(0.5, 0);
+      const cardHit = this.add.rectangle(cardCx, y - 4, 126, 208, 0x000000, 0.01)
+        .setInteractive({ useHandCursor: true });
+      cardHit.on('pointerover', () => this.showHoverCardDetail(companion, 'Cache consequence', companion.cost, cardCx, y - 4));
+      cardHit.on('pointerout', () => this.hideHoverCardDetail());
+      return true;
+    }
+
+    const artX = x - w / 2 + 114;
+    const artY = y - 8;
+    this.add.rectangle(x, y, w, h, 0x06101a, 0.9)
+      .setStrokeStyle(2, accent, 0.76);
+    this.add.rectangle(x, y - h / 2 + 16, w - 28, 3, accent, 0.72);
+    this.add.rectangle(artX, artY, 142, 142, 0x020409, 0.54)
+      .setStrokeStyle(1, accent, 0.56);
+    if (key && this.textures.exists(key)) {
+      const image = supply
+        ? addSupplyArtImage(this, artX, artY, key)
+        : addWaymarkArtImage(this, artX, artY, key);
+      image.setDisplaySize(126, 126);
+    } else if (supply) {
+      this.add.text(artX, artY - 18, this.supplyGlyph(supply), {
+        fontFamily: UI_FONT,
+        fontSize: '34px',
+        fontStyle: UI_BOLD,
+        color: '#ffe7c9',
+        stroke: '#020409',
+        strokeThickness: 2
+      }).setOrigin(0.5, 0);
+    } else if (mark) {
+      this.add.text(artX, artY - 18, waymarkGlyph(mark), {
+        fontFamily: UI_FONT,
+        fontSize: '36px',
+        fontStyle: UI_BOLD,
+        color: '#efe4ff',
+        stroke: '#020409',
+        strokeThickness: 2
+      }).setOrigin(0.5, 0);
+    }
+
+    const tx = x - w / 2 + 205;
+    const textW = w - 232;
+    this.add.text(tx, y - 88, title, {
+      fontFamily: UI_FONT,
+      fontSize: '19px',
+      fontStyle: UI_BOLD,
+      color: UI_GOLD,
+      wordWrap: { width: textW },
+      maxLines: 2
+    });
+    this.add.text(tx, y - 38, kicker, {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: UI_CYAN,
+      wordWrap: { width: textW },
+      maxLines: 1
+    });
+    this.add.text(tx, y - 8, summary, {
+      fontFamily: UI_FONT,
+      fontSize: '13px',
+      fontStyle: UI_BOLD,
+      color: UI_SOFT,
+      lineSpacing: 2,
+      wordWrap: { width: textW },
+      maxLines: 4
+    });
+    const hit = this.add.rectangle(x, y, w - 22, h - 26, 0x000000, 0.01)
+      .setInteractive({ useHandCursor: true });
+    hit.on('pointerover', () => {
+      if (supply) this.showRewardSupplyDetail(supply, x, y);
+      else if (mark) this.showRewardWaymarkDetail(mark, x, y);
+    });
+    hit.on('pointerout', () => this.hideMarketItemDetail());
+    return true;
+  }
+
+  private renderRouteRewardEffectShowcase(pending: PendingRouteReward, x: number, y: number, w: number, h: number) {
+    const accent = pending.accent;
+    const previewCards = pending.previewCards ?? [];
+    this.add.rectangle(x, y, w, h, 0x06101a, 0.9)
+      .setStrokeStyle(2, accent, 0.76);
+    this.add.rectangle(x, y - h / 2 + 16, w - 28, 3, accent, 0.72);
+
+    if (previewCards.length > 0) {
+      const cardSlots = previewCards.slice(0, 2);
+      const compactCards = cardSlots.length > 1;
+      cardSlots.forEach((card, index) => {
+        const cardX = compactCards ? x + 48 + index * 116 : x + 102;
+        const cardW = compactCards ? 86 : 108;
+        const cardH = Math.round(cardW * 1.5);
+        const cardY = compactCards ? y - 10 : y - 4;
+        const cardKindLabel = card.runtime.kind === 'snag'
+          ? 'SNAG CARD'
+          : `${card.runtime.rarity.toUpperCase()} CARD`;
+        const cardAccent = card.runtime.kind === 'snag' ? UI_FIELD.danger : UI_FIELD.gold;
+        const cardTextColor = card.runtime.kind === 'snag' ? '#ffd5cc' : UI_GOLD;
+        this.add.text(cardX, y - 100, cardKindLabel, {
+          fontFamily: UI_FONT,
+          fontSize: compactCards ? '9px' : '10px',
+          fontStyle: UI_BOLD,
+          color: card.runtime.kind === 'snag' ? '#ffd5cc' : UI_CYAN,
+          align: 'center',
+          wordWrap: { width: compactCards ? 104 : 150 },
+          maxLines: 1
+        }).setOrigin(0.5, 0);
+        this.renderRouteRewardCardOption(card, cardX, cardY, cardW, cardH, cardAccent);
+        this.add.rectangle(cardX, y + 93, compactCards ? 104 : 138, 28, 0x020409, 0.94)
+          .setStrokeStyle(1, cardAccent, 0.72);
+        this.add.text(cardX, y + 83, displayName(card), {
+          fontFamily: UI_FONT,
+          fontSize: compactCards ? '10px' : '11px',
+          fontStyle: UI_BOLD,
+          color: cardTextColor,
+          align: 'center',
+          wordWrap: { width: compactCards ? 96 : 126 },
+          maxLines: 2
+        }).setOrigin(0.5, 0);
+        const cardHit = this.add.rectangle(cardX, cardY, cardW + 18, cardH + 76, 0x000000, 0.01)
+          .setInteractive({ useHandCursor: true });
+        cardHit.on('pointerover', () => this.showHoverCardDetail(card, `${routeNodeTypeLabel(pending.nodeType)} preview`, card.cost, cardX, cardY));
+        cardHit.on('pointerout', () => this.hideHoverCardDetail());
+      });
+      this.add.rectangle(x, y + 2, 1, h - 44, accent, 0.36);
+    }
+
+    const tokens = routeEffectTokens(pending.effects);
+    const rows = this.routeChoicePreviewRows({
+      key: pending.choiceKey,
+      text: pending.choiceText,
+      effects: pending.effects,
+      locked: false
+    });
+    const leftX = previewCards.length > 0 ? x - 116 : x;
+    const tileW = previewCards.length > 0 ? 146 : 332;
+    const tileH = 56;
+    const listTop = y - 68;
+    const positiveTokens = tokens.filter((token) => token.color !== UI_FIELD.danger);
+    const riskTokens = tokens.filter((token) => token.color === UI_FIELD.danger);
+    const visualTokens = tokens.length <= 3
+      ? tokens
+      : [...positiveTokens.slice(0, Math.max(1, 3 - Math.min(2, riskTokens.length))), ...riskTokens.slice(0, 2)].slice(0, 3);
+    if (visualTokens.length === 0) {
+      this.add.text(leftX, y - 12, 'No reward will be taken.', {
+        fontFamily: UI_FONT,
+        fontSize: '15px',
+        fontStyle: UI_BOLD,
+        color: UI_SOFT,
+        align: 'center',
+        wordWrap: { width: tileW - 20 },
+        maxLines: 2
+      }).setOrigin(0.5, 0);
+    } else {
+      visualTokens.forEach((token, index) => {
+        const ty = listTop + index * (tileH + 8);
+        this.add.rectangle(leftX, ty, tileW, tileH, 0x020409, 0.68)
+          .setStrokeStyle(1, token.color, 0.68);
+        const compactTokenRow = tileW < 160;
+        const iconX = leftX - tileW / 2 + (compactTokenRow ? 25 : 34);
+        const labelX = leftX - tileW / 2 + (compactTokenRow ? 52 : 78);
+        if (token.scrap) {
+          addUiIconImage(this, 'scrap-gear', iconX, ty, compactTokenRow ? 16 : 18)?.setAlpha(0.94);
+        } else if (token.icon) {
+          addUiIconImage(this, token.icon, iconX, ty, compactTokenRow ? 16 : 18)?.setAlpha(0.92);
+        }
+        this.add.text(labelX, ty, token.label, {
+          fontFamily: UI_FONT,
+          fontSize: compactTokenRow ? '12px' : '14px',
+          fontStyle: UI_BOLD,
+          color: token.textColor,
+          wordWrap: { width: tileW - (compactTokenRow ? 62 : 94) },
+          maxLines: 1
+        }).setOrigin(0, 0.5);
+      });
+    }
+    if (rows.length > 0 && visualTokens.length === 0) {
+      const summary = rows
+        .slice(0, 3)
+        .map((row) => `${row.label} ${this.routeChoiceChangeAmountText(row)}`)
+        .join(' / ');
+      this.add.text(leftX, y + 80, summary, {
+        fontFamily: UI_FONT,
+        fontSize: '11px',
+        fontStyle: UI_BOLD,
+        color: UI_SOFT,
+        align: 'center',
+        wordWrap: { width: tileW },
+        maxLines: 2
+      }).setOrigin(0.5, 0);
+    }
+    return true;
+  }
+
+  private renderRouteCardRewardOverlay() {
+    const pending = this.pendingRouteReward;
+    if (!pending) return;
+    const node = currentMap().nodes.find((candidate) => candidate.id === pending.nodeId);
+    const accent = pending.accent;
+    const hasCardChoices = this.routeCardRewardChoices.length > 0;
+    const isDecline = pending.effects.length === 0;
+    if (hasCardChoices || (pending.previewCards?.length ?? 0) > 0) this.queueRouteRewardCardArtLoad();
+    if (pending.previewItem) this.queueRouteRewardItemArtLoad();
+    this.renderRouteEventBackdrop(node, 0.86);
+    if (node) this.renderRouteEventAtmosphere(node, accent);
+    const profile = ROUTE_SET_PIECE_PROFILES[pending.nodeType];
+    const confirmName = profile?.residentName?.split(' ')[0] ?? routeNodeTypeLabel(pending.nodeType);
+    const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 8, 940, 558, {
+      eyebrow: node ? routeNodeTypeLabel(node.type) : 'Route Reward',
+      title: hasCardChoices ? 'Choose a Reward' : isDecline ? `Leave ${routeNodeTypeLabel(pending.nodeType)}` : pending.nodeType === 'cache' ? 'Open This Drawer' : 'Review This Choice',
+      subtitle: hasCardChoices
+        ? `Pick one card from this ${routeNodeTypeLabel(pending.nodeType).toLowerCase()}, or cancel back to ${confirmName}.`
+        : isDecline
+          ? `Leave without taking a reward, or cancel back to ${confirmName}.`
+          : `Confirm this choice, or cancel back to ${confirmName}.`,
+      accent,
+      fill: 0x07101a
+    });
+    this.add.rectangle(frame.cx, frame.cy, frame.w - 36, frame.h - 36, 0x020409, 0.16);
+    this.add.text(frame.left + 54, frame.top + 112, pending.choiceText, {
+      fontFamily: UI_FONT,
+      fontSize: '16px',
+      fontStyle: UI_BOLD,
+      color: UI_GOLD,
+      wordWrap: { width: 360 },
+      maxLines: 2
+    });
+    this.add.text(frame.left + 54, frame.top + 164, pending.effectText || 'No reward will be taken.', {
+      fontFamily: UI_FONT,
+      fontSize: '13px',
+      fontStyle: UI_BOLD,
+      color: UI_SOFT,
+      wordWrap: { width: 360 },
+      maxLines: 2
+    });
+    this.add.rectangle(frame.left + 408, frame.cy + 14, 2, 396, accent, 0.36);
+    if (!hasCardChoices) {
+      const panelX = frame.left + 672;
+      const panelY = frame.top + 326;
+      if (!pending.previewItem || !this.renderRouteRewardItemShowcase(pending.previewItem, panelX, panelY, 410, 238, pending.previewCards ?? [])) {
+        this.renderRouteRewardEffectShowcase(pending, panelX, panelY, 410, 238);
+      }
+      const claim = this.add.rectangle(frame.right - 158, frame.bottom - 48, 180, 38, 0x102235, 0.98)
+        .setStrokeStyle(2, accent, 0.92)
+        .setInteractive({ useHandCursor: true });
+      claim.on('pointerover', () => claim.setFillStyle(0x18314a, 1));
+      claim.on('pointerout', () => claim.setFillStyle(0x102235, 0.98));
+      claim.on('pointerdown', () => {
+        playUiSound('confirm');
+        this.claimRouteReward();
+      });
+      const claimLabel = isDecline ? 'Leave' : pending.nodeType === 'cache' ? 'Claim' : 'Confirm';
+      this.add.text(frame.right - 158, frame.bottom - 60, claimLabel, {
+        fontFamily: UI_FONT,
+        fontSize: '15px',
+        fontStyle: UI_BOLD,
+        color: UI_GOLD,
+        align: 'center',
+        fixedWidth: 150
+      }).setOrigin(0.5, 0);
+    }
+    this.routeCardRewardChoices.forEach((card, index) => {
+      const cardW = 148;
+      const cardH = Math.round(cardW * 1.5);
+      const x = frame.left + 540 + index * 190;
+      const y = frame.top + 336;
+      const accentColor = card.type === 'major' ? UI_FIELD.gold : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
+      this.renderRouteRewardCardOption(card, x, y, cardW, cardH, accentColor);
+      this.add.rectangle(x, y + cardH / 2 + 24, cardW + 16, 34, 0x020409, 0.94)
+        .setStrokeStyle(1, accentColor, 0.72);
+      this.add.text(x, y + cardH / 2 + 12, displayName(card), {
+        fontFamily: UI_FONT,
+        fontSize: '12px',
+        fontStyle: UI_BOLD,
+        color: UI_GOLD,
+        align: 'center',
+        wordWrap: { width: cardW },
+        maxLines: 2
+      }).setOrigin(0.5, 0);
+      const hit = this.add.rectangle(x, y + 8, cardW + 18, cardH + 76, 0x000000, 0.01)
+        .setInteractive({ useHandCursor: true });
+      hit.on('pointerdown', () => this.chooseRouteRewardCard(card.id));
+      hit.on('pointerover', () => this.showHoverCardDetail(card, 'Cache reward', card.cost, x, y));
+      hit.on('pointerout', () => this.hideHoverCardDetail());
+    });
+    this.renderRouteEventCancelButton(frame.left + 126, frame.bottom - 48, 166, 38, 'Cancel', () => this.cancelRouteCardReward());
+  }
+
   private showHoverCardDetail(card: Card, zone: string, cost: number, anchorX: number, anchorY: number) {
+    this.hideMarketItemDetail();
     this.hideHoverCardDetail();
     const adjustedAnchorX = this.marketOpen && zone === 'Market offer'
       ? 440
@@ -4952,6 +5780,30 @@ class RouteScene extends Phaser.Scene {
     });
   }
 
+  private showRewardWaymarkDetail(mark: RuntimeRouteMark, anchorX: number, anchorY: number) {
+    this.showMarketItemDetail({
+      title: mark.name,
+      kicker: `${routeMarkFamilyLabel(mark.family)} Waymark / ${mark.rarity} / ${mark.source}`,
+      body: mark.description,
+      meta: `Trigger: ${mark.trigger}\nEffect: ${routeMarkEffectGrammar(mark)}`,
+      accent: UI_FIELD.gold,
+      anchorX,
+      anchorY
+    });
+  }
+
+  private showRewardSupplyDetail(supply: RuntimeSupply, anchorX: number, anchorY: number) {
+    this.showMarketItemDetail({
+      title: supply.name,
+      kicker: `${supply.rarity} ${supply.category} / ${supply.timing}`,
+      body: supply.description,
+      meta: `Effects: ${supply.effects.join(', ')}`,
+      accent: UI_FIELD.green,
+      anchorX,
+      anchorY
+    });
+  }
+
   private showMarketRefreshDetail(price: number, anchorX: number, anchorY: number) {
     this.showMarketItemDetail({
       title: 'New Stock',
@@ -4970,7 +5822,7 @@ class RouteScene extends Phaser.Scene {
     kicker: string;
     body: string;
     meta: string;
-    price: number;
+    price?: number;
     accent: number;
     anchorX: number;
     anchorY: number;
@@ -5005,16 +5857,18 @@ class RouteScene extends Phaser.Scene {
       fontSize: '17px',
       fontStyle: UI_BOLD,
       color: UI_GOLD,
-      wordWrap: { width: w - 92 },
+      wordWrap: { width: opts.price === undefined ? w - 32 : w - 92 },
       maxLines: 2
     });
-    const price = this.add.text(w - 16, 16, `${opts.price}`, {
-      fontFamily: UI_FONT,
-      fontSize: '17px',
-      fontStyle: UI_BOLD,
-      color: '#f0c36f'
-    }).setOrigin(1, 0);
-    const scrapIcon = addScrapIconImage(this, w - 50, 28, 24);
+    const price = opts.price === undefined
+      ? undefined
+      : this.add.text(w - 16, 16, `${opts.price}`, {
+        fontFamily: UI_FONT,
+        fontSize: '17px',
+        fontStyle: UI_BOLD,
+        color: '#f0c36f'
+      }).setOrigin(1, 0);
+    const scrapIcon = opts.price === undefined ? undefined : addScrapIconImage(this, w - 50, 28, 24);
     const kicker = this.add.text(16, 52, opts.kicker.toUpperCase(), {
       fontFamily: UI_FONT,
       fontSize: '10px',
@@ -5023,7 +5877,8 @@ class RouteScene extends Phaser.Scene {
       wordWrap: { width: w - 32 },
       maxLines: 1
     });
-    const panel = this.add.container(0, 0, [bg, rail, title, price, ...(scrapIcon ? [scrapIcon] : []), kicker, body, meta]).setDepth(20000);
+    const panelChildren = [bg, rail, title, ...(price ? [price] : []), ...(scrapIcon ? [scrapIcon] : []), kicker, body, meta];
+    const panel = this.add.container(0, 0, panelChildren).setDepth(20000);
     const px = Math.max(12, Math.min(GAME_WIDTH - w - 12, opts.anchorX - w / 2));
     const above = opts.anchorY - h - 22;
     const py = above > 10 ? above : Math.min(GAME_HEIGHT - h - 12, opts.anchorY + 48);
@@ -5123,23 +5978,13 @@ class RouteScene extends Phaser.Scene {
   }
 
   private grantRouteMark(selector: string) {
-    let id = selector;
-    if (selector === 'random' || selector === 'randomNonBoss' || selector === 'randomCommon' || selector === 'choice') {
-      const pool = MARKET_ROUTE_MARK_IDS.filter((markId) => !this.hasRouteMark(markId));
-      if (pool.length === 0) return;
-      id = pool[Math.floor(Math.random() * pool.length)];
-    }
+    const id = this.selectRouteMarkRewardId(selector);
     if (id && !this.hasRouteMark(id)) this.addRouteMark(id);
   }
 
   private grantSupply(selector: string) {
-    if ((this.runState.supplies ?? []).length >= runSupplyCapacity(this.runState)) return;
-    let id = selector;
-    if (selector === 'random' || selector === 'choice') {
-      const ids = [...alphaSupplyLibrary.keys()].filter((candidate) => !this.runState.supplies.includes(candidate));
-      id = ids[Math.floor(Math.random() * ids.length)];
-    }
-    if (alphaSupplyLibrary.has(id)) this.runState.supplies.push(id);
+    const id = this.selectSupplyRewardId(selector);
+    if (id && alphaSupplyLibrary.has(id)) this.runState.supplies.push(id);
   }
 
   private supplyGlyph(supply: RuntimeSupply) {
@@ -5166,8 +6011,22 @@ class RouteScene extends Phaser.Scene {
   }
 
   private grantCard(selector: string) {
+    const granted = this.selectCardRewardId(selector);
+    if (!granted) return;
+    this.grantSpecificCard(granted);
+  }
+
+  private grantSpecificCard(cardId: string) {
+    if (!cardLibrary[cardId]) return;
+    this.runState.deck.push({ id: cardId });
+    discoverCards([cardId]);
+  }
+
+  private selectCardRewardId(selector: string) {
     const owned = new Set(this.runState.deck.map((card) => card.id));
-    let pool = arcanaRewardPool.filter((id) => !owned.has(id));
+    if (selector && cardLibrary[selector] && !owned.has(selector)) return selector;
+    const basePool = arcanaRewardPool.filter((id) => !owned.has(id));
+    let pool = [...basePool];
     if (selector === 'randomCommonPlumesOrQuills') {
       pool = pool.filter((id) => {
         const card = cardLibrary[id];
@@ -5175,11 +6034,17 @@ class RouteScene extends Phaser.Scene {
       });
     } else if (selector === 'randomCommon' || selector === 'chooseOneOfTwoCommon') {
       pool = pool.filter((id) => cardLibrary[id]?.runtime.rarity === 'common');
+    } else if (selector === 'randomRare' || selector === 'chooseOneOfTwoRare') {
+      pool = pool.filter((id) => cardLibrary[id]?.runtime.rarity === 'rare');
+      if (pool.length === 0) pool = basePool.filter((id) => cardLibrary[id]?.runtime.rarity === 'uncommon');
+    } else if (selector === 'randomUncommonOrRare' || selector === 'chooseOneOfTwoUncommonOrRare') {
+      pool = pool.filter((id) => {
+        const rarity = cardLibrary[id]?.runtime.rarity;
+        return rarity === 'uncommon' || rarity === 'rare';
+      });
     }
     if (pool.length === 0) return;
-    const granted = pool[Math.floor(Math.random() * pool.length)];
-    this.runState.deck.push({ id: granted });
-    discoverCards([granted]);
+    return pool[Math.floor(Math.random() * pool.length)];
   }
 
   private releaseFirstReleasable(count: number) {
@@ -5249,6 +6114,40 @@ class RouteScene extends Phaser.Scene {
         wordWrap: { width: 456 },
         maxLines: 2
       });
+    });
+  }
+
+  private renderRouteEventCancelButton(x: number, y: number, w: number, h: number, labelText: string, onClick: () => void) {
+    const accent = UI_FIELD.danger;
+    this.add.rectangle(x + 4, y + 5, w, h, 0x020409, 0.58).setDepth(22000);
+    const hit = this.add.rectangle(x, y, w, h, 0x141820, 0.94)
+      .setStrokeStyle(1, accent, 0.84)
+      .setDepth(22001)
+      .setInteractive({ useHandCursor: true });
+    this.add.rectangle(x, y - h / 2 + 4, w - 22, 2, accent, 0.8).setDepth(22002);
+    const icon = addUiIconImage(this, 'close-medallion', x - w / 2 + 17, y, Math.min(20, h - 8));
+    icon?.setDepth(22003).setAlpha(0.92);
+    const label = this.add.text(x + 14, y - 8, 'Exit', {
+      fontFamily: UI_FONT,
+      fontSize: '13px',
+      fontStyle: UI_BOLD,
+      color: '#ffd5cc',
+      align: 'center',
+      fixedWidth: 56,
+      maxLines: 1
+    }).setDepth(22003).setOrigin(0.5, 0);
+    label.setText(labelText);
+    hit.on('pointerover', () => {
+      hit.setFillStyle(0x2a1720, 0.98);
+      label.setColor('#ffffff');
+    });
+    hit.on('pointerout', () => {
+      hit.setFillStyle(0x141820, 0.94);
+      label.setColor('#ffd5cc');
+    });
+    hit.on('pointerdown', () => {
+      playUiSound('close');
+      onClick();
     });
   }
 
@@ -5561,12 +6460,22 @@ class RouteScene extends Phaser.Scene {
     }).setOrigin(0.5);
   }
 
-  private renderRouteEventResident(node: RouteNode, x: number, floorY: number, maxWidth: number, maxHeight: number) {
+  private renderRouteEventResident(
+    node: RouteNode,
+    x: number,
+    floorY: number,
+    maxWidth: number,
+    maxHeight: number,
+    options: { showGlow?: boolean } = {}
+  ) {
     const accent = routeEventAccent(node.type);
     const resident = this.routeEventResidentAsset(node);
+    const showGlow = options.showGlow ?? true;
     this.add.ellipse(x, floorY - 18, Math.min(300, maxWidth * 0.8), 38, 0x020409, 0.48);
-    this.add.circle(x, floorY - maxHeight * 0.46, Math.min(168, maxWidth * 0.45), accent, 0.055)
-      .setBlendMode(Phaser.BlendModes.ADD);
+    if (showGlow) {
+      this.add.circle(x, floorY - maxHeight * 0.46, Math.min(168, maxWidth * 0.45), accent, 0.055)
+        .setBlendMode(Phaser.BlendModes.ADD);
+    }
     if (resident && this.textures.exists(resident.key)) {
       const residentImage = this.add.image(x, floorY, resident.key)
         .setOrigin(0.5, 1)
@@ -5577,29 +6486,6 @@ class RouteScene extends Phaser.Scene {
     this.add.circle(x, floorY - maxHeight * 0.34, 82, 0x1c2230, 0.98)
       .setStrokeStyle(2, accent, 0.82);
     this.renderRouteNodeTypeIcon(node.type, x, floorY - maxHeight * 0.34, 96);
-  }
-
-  private renderRouteEventCenterpiecePlaque(node: RouteNode, x: number, y: number, w = 350) {
-    const accent = routeEventAccent(node.type);
-    const profile = ROUTE_SET_PIECE_PROFILES[node.type];
-    this.add.rectangle(x, y, w, 92, 0x06101a, 0.97)
-      .setStrokeStyle(1, accent, 0.72);
-    this.add.text(x - w / 2 + 18, y - 33, profile?.centerpiece.toUpperCase() ?? routeNodeTypeLabel(node.type).toUpperCase(), {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: '#ffcf6b',
-      wordWrap: { width: w - 36 },
-      maxLines: 1
-    });
-    this.add.text(x - w / 2 + 18, y - 10, profile?.visitLine ?? routeEventLandmarkLine(node.type), {
-      fontFamily: UI_FONT,
-      fontSize: '13px',
-      color: '#dbe6f2',
-      lineSpacing: 3,
-      wordWrap: { width: w - 36 },
-      maxLines: 3
-    });
   }
 
   private renderEventEffectTokens(
@@ -5621,7 +6507,7 @@ class RouteScene extends Phaser.Scene {
       this.add.rectangle(cursor + w / 2, y, w, compact ? 18 : 22, 0x020409, 0.72)
         .setStrokeStyle(1, token.color, 0.82);
       if (token.scrap) {
-        addScrapIconImage(this, cursor + 14, y, compact ? 15 : 18)
+        addUiIconImage(this, 'scrap-gear', cursor + 15, y, compact ? 13 : 15)
           ?.setAlpha(choice.locked ? 0.46 : 0.94);
       } else if (token.icon) {
         addUiIconImage(this, token.icon, cursor + 15, y, compact ? 13 : 15)
@@ -5860,147 +6746,6 @@ class RouteScene extends Phaser.Scene {
     this.routeChoiceHover = undefined;
   }
 
-  private routeResultSnapshot() {
-    return {
-      hp: this.runState.currentHp,
-      maxHp: this.runMaxHp(),
-      scrap: this.runState.scrap,
-      deck: this.runState.deck.length,
-      supplies: this.runState.supplies.length,
-      supplyCap: runSupplyCapacity(this.runState),
-      waymarks: this.runState.routeMarks.length,
-      openSkyGuard: this.runState.nextCombat?.openSkyGuard ?? 0,
-      reduceNextOpenSky: this.runState.nextCombat?.reduceNextOpenSky ?? 0,
-      bossDamageShield: this.runState.nextCombat?.bossDamageShield ?? 0,
-      enemyCover: this.runState.nextCombat?.enemyCover ?? 0,
-      freePreenNextDistrict: this.runState.freePreenNextDistrict ?? 0
-    };
-  }
-
-  private routeResultRows(
-    before: ReturnType<RouteScene['routeResultSnapshot']>,
-    after: ReturnType<RouteScene['routeResultSnapshot']>
-  ): RouteEventChangeRow[] {
-    const rows: RouteEventChangeRow[] = [];
-    const add = (label: string, b: string | number, a: string | number, color: string) => {
-      if (`${b}` !== `${a}`) rows.push({ label, before: `${b}`, after: `${a}`, color });
-    };
-    add('Cohesion', `${before.hp}/${before.maxHp}`, `${after.hp}/${after.maxHp}`, after.hp >= before.hp ? '#e4fbe9' : '#ffd5cc');
-    add('Scrap', before.scrap, after.scrap, after.scrap >= before.scrap ? '#fff0b8' : '#ffd5cc');
-    add('Deck', before.deck, after.deck, after.deck <= before.deck ? '#dffbff' : '#ffd5cc');
-    add('Supplies', `${before.supplies}/${before.supplyCap}`, `${after.supplies}/${after.supplyCap}`, '#ffe7c9');
-    add('Waymarks', before.waymarks, after.waymarks, '#efe4ff');
-    add('Open Sky Guard', before.openSkyGuard, after.openSkyGuard, '#e4fbe9');
-    add('Open Sky Relief', before.reduceNextOpenSky, after.reduceNextOpenSky, '#dffbff');
-    add('Boss Shield', before.bossDamageShield, after.bossDamageShield, '#e4fbe9');
-    add('Enemy Cover', before.enemyCover, after.enemyCover, '#ffd5cc');
-    add('Free Preen', before.freePreenNextDistrict, after.freePreenNextDistrict, '#dffbff');
-    return rows.slice(0, 8);
-  }
-
-  private renderRouteEventResolutionOverlay() {
-    const result = this.routeEventResolution;
-    if (!result) return;
-    const node = currentMap().nodes.find((candidate) => candidate.id === result.nodeId);
-    this.renderRouteEventBackdrop(node, 0.92);
-    if (node) this.renderRouteEventAtmosphere(node, result.accent);
-    const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 16, 880, 560, {
-      eyebrow: routeNodeTypeLabel(result.nodeType),
-      title: result.title,
-      accent: result.accent,
-      fill: 0x07101a
-    });
-    this.add.circle(frame.left + 96, frame.top + 134, 42, 0x020409, 0.92)
-      .setStrokeStyle(2, result.accent, 0.86);
-    this.renderRouteNodeTypeIcon(result.nodeType, frame.left + 96, frame.top + 134, 64);
-    this.add.text(frame.left + 150, frame.top + 92, 'CHOICE TAKEN', {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: UI_MUTED
-    });
-    this.add.text(frame.left + 150, frame.top + 108, result.choiceText, {
-      fontFamily: UI_FONT,
-      fontSize: '15px',
-      fontStyle: UI_BOLD,
-      color: UI_SOFT,
-      wordWrap: { width: 610 },
-      maxLines: 1
-    });
-    this.add.text(frame.left + 150, frame.top + 142, 'RESOLVED', {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: UI_CYAN
-    });
-    this.add.text(frame.left + 150, frame.top + 164, result.effectText || 'No resource change. The flock keeps moving.', {
-      fontFamily: UI_FONT,
-      fontSize: '17px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      wordWrap: { width: 610 },
-      maxLines: 2
-    });
-    this.add.rectangle(frame.cx, frame.top + 232, frame.w - 92, 1, result.accent, 0.42);
-    this.add.text(frame.left + 68, frame.top + 254, 'OUTCOME LEDGER', {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: UI_MUTED
-    });
-    if (result.rows.length === 0) {
-      this.add.rectangle(frame.cx, frame.top + 324, frame.w - 140, 72, 0x020409, 0.72)
-        .setStrokeStyle(1, result.accent, 0.42);
-      this.add.text(frame.cx, frame.top + 306, 'No numbers changed, but the route is marked complete.', {
-        fontFamily: UI_FONT,
-        fontSize: '15px',
-        fontStyle: UI_BOLD,
-        color: UI_SOFT,
-        align: 'center',
-        wordWrap: { width: frame.w - 180 },
-        maxLines: 2
-      }).setOrigin(0.5, 0);
-    } else {
-      result.rows.forEach((row, index) => {
-        const y = frame.top + 290 + index * 26;
-        this.add.rectangle(frame.cx, y + 9, frame.w - 140, 24, 0x020409, 0.68)
-          .setStrokeStyle(1, 0x49606d, 0.38);
-        this.add.text(frame.left + 92, y, row.label, {
-          fontFamily: UI_FONT,
-          fontSize: '12px',
-          fontStyle: UI_BOLD,
-          color: UI_SOFT,
-          maxLines: 1
-        });
-        this.add.text(frame.right - 92, y, `${row.before} -> ${row.after}`, {
-          fontFamily: UI_FONT,
-          fontSize: '12px',
-          fontStyle: UI_BOLD,
-          color: row.color,
-          align: 'right',
-          maxLines: 1
-        }).setOrigin(1, 0);
-      });
-    }
-    const continueButton = this.add.rectangle(frame.cx, frame.bottom - 54, 188, 42, 0x102235, 0.98)
-      .setStrokeStyle(2, result.accent, 0.96)
-      .setInteractive({ useHandCursor: true });
-    continueButton.on('pointerdown', () => this.continueRouteEventResolution());
-    this.add.text(frame.cx, frame.bottom - 66, 'Continue', {
-      fontFamily: UI_FONT,
-      fontSize: '18px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      align: 'center',
-      fixedWidth: 170
-    }).setOrigin(0.5, 0);
-  }
-
-  private continueRouteEventResolution() {
-    this.routeEventResolution = undefined;
-    this.scene.restart({ runState: cloneRunState(this.runState) });
-  }
-
   private renderLanternRoostOverlay(node: RouteNode) {
     const choices = this.nodeChoiceList(node);
     const accent = routeEventAccent(node.type);
@@ -6022,23 +6767,48 @@ class RouteScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 28, GAME_WIDTH - 100, 2, accent, 0.34);
 
     this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 132, 548);
-    this.renderRouteEventResident(node, 196, GAME_HEIGHT + 58, 380, 460);
-    this.renderRouteEventCenterpiecePlaque(node, 266, 594, 354);
-    this.renderBasinHearthBench(552, 418, 408, 274, accent);
+    this.renderRouteEventResident(node, 146, GAME_HEIGHT + 58, 350, 460, { showGlow: false });
+    this.renderBasinHearthBench(1022, 492, 428, 316, accent);
+    this.renderRouteEventChoiceColumn(node, choices, 560, 326, 472, accent);
+  }
 
-    const compact = choices.length > 5;
-    const choiceHeight = compact ? 56 : 74;
-    const gap = compact ? 10 : 14;
-    const totalHeight = choices.length * choiceHeight + Math.max(0, choices.length - 1) * gap;
-    const choiceX = 1010;
-    const startY = GAME_HEIGHT / 2 - totalHeight / 2 + choiceHeight / 2 + 20;
-    choices.forEach((choice, index) => {
-      const y = startY + index * (choiceHeight + gap);
-      this.renderSetPieceChoice(choice, choiceX, y, index, accent, choiceHeight, compact);
-    });
+  private renderRouteEventPropCenterpiece(
+    asset: RuntimeImageAsset,
+    x: number,
+    y: number,
+    maxW: number,
+    maxH: number,
+    accent: number,
+    glow: number,
+    options: { showGlow?: boolean; showAccentLine?: boolean } = {}
+  ) {
+    const showGlow = options.showGlow ?? true;
+    const showAccentLine = options.showAccentLine ?? true;
+    this.add.ellipse(x, y + maxH * 0.38, maxW * 0.82, 42, 0x020409, 0.38);
+    if (showGlow) {
+      this.add.circle(x, y + 18, Math.min(maxW, maxH) * 0.42, glow, 0.12)
+        .setBlendMode(Phaser.BlendModes.ADD);
+      this.add.circle(x, y + 18, Math.min(maxW, maxH) * 0.28, glow, 0.08)
+        .setBlendMode(Phaser.BlendModes.ADD);
+    }
+    const image = this.add.image(x, y, asset.key);
+    const scale = Math.min(maxW / image.width, maxH / image.height);
+    image.setScale(scale);
+    image.setAlpha(0.98);
+    if (showAccentLine) {
+      this.add.rectangle(x, y + maxH * 0.43, maxW * 0.72, 2, accent, 0.32);
+    }
   }
 
   private renderBasinHearthBench(x: number, y: number, w: number, h: number, accent: number) {
+    const prop = ROUTE_EVENT_PROP_ASSETS.basinHearthCart;
+    if (this.textures.exists(prop.key)) {
+      this.renderRouteEventPropCenterpiece(prop, x + 12, y + 8, w + 76, h + 84, accent, 0xff8c36, {
+        showGlow: false,
+        showAccentLine: false
+      });
+      return;
+    }
     this.add.rectangle(x + 8, y + 10, w, h, 0x020409, 0.42);
     this.add.rectangle(x, y, w, h, 0x08120f, 0.9)
       .setStrokeStyle(2, accent, 0.78);
@@ -6054,14 +6824,6 @@ class RouteScene extends Phaser.Scene {
       .setStrokeStyle(2, UI_FIELD.gold, 0.82);
     this.add.circle(x, y + 2, 42, 0xff9d4d, 0.34)
       .setBlendMode(Phaser.BlendModes.ADD);
-    this.tweens.add({
-      targets: hearth,
-      alpha: { from: 0.84, to: 1 },
-      scale: { from: 0.98, to: 1.025 },
-      duration: 1100,
-      yoyo: true,
-      repeat: -1
-    });
     [
       { icon: 'flock-heart' as UiIconId, label: 'Recover', dx: -134, color: UI_FIELD.green },
       { icon: 'cover-shield' as UiIconId, label: 'Shelter', dx: 0, color: UI_FIELD.cyan },
@@ -6081,17 +6843,9 @@ class RouteScene extends Phaser.Scene {
       });
     });
     for (let i = 0; i < 4; i += 1) {
-      const steam = this.add.rectangle(x - 58 + i * 38, y - 84, 16, 2, 0xdffbff, 0.22)
+      this.add.rectangle(x - 58 + i * 38, y - 84, 16, 2, 0xdffbff, 0.18)
         .setAngle(-82 + i * 8)
         .setBlendMode(Phaser.BlendModes.ADD);
-      this.tweens.add({
-        targets: steam,
-        y: steam.y - 28,
-        alpha: { from: 0.05, to: 0.32 },
-        duration: 1300 + i * 170,
-        yoyo: true,
-        repeat: -1
-      });
     }
   }
 
@@ -6111,7 +6865,7 @@ class RouteScene extends Phaser.Scene {
     const choices = this.nodeChoiceList(node);
     const accent = routeEventAccent(node.type);
     this.queueRouteEventSetPieceArtLoad(node);
-    this.renderRouteEventBackdrop(node, 1);
+    this.renderRouteEventBackdrop(node, 1, { showBottomBand: false });
     const background = this.routeEventBackdropAsset(node);
 
     if (background && this.textures.exists(background.key)) {
@@ -6123,7 +6877,6 @@ class RouteScene extends Phaser.Scene {
     this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 132, 560);
     const residentFrame = this.routeSetPieceResidentFrame(node);
     this.renderRouteEventResident(node, residentFrame.x, residentFrame.y, residentFrame.maxWidth, residentFrame.maxHeight);
-    this.renderRouteEventCenterpiecePlaque(node, 258, 594, 342);
 
     const compact = choices.length > 5;
     const choiceHeight = compact ? 56 : 78;
@@ -6149,23 +6902,20 @@ class RouteScene extends Phaser.Scene {
     }
     this.renderRouteEventAtmosphere(node, accent);
     this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 132, 560);
-    const residentFrame = this.routeSetPieceResidentFrame(node);
-    this.renderRouteEventResident(node, residentFrame.x, residentFrame.y, residentFrame.maxWidth, residentFrame.maxHeight);
-    this.renderRouteEventCenterpiecePlaque(node, 258, 594, 342);
-    this.renderNestWorkbench(556, 412, 430, 300, accent);
-
-    const compact = choices.length > 5;
-    const choiceHeight = compact ? 56 : 78;
-    const gap = compact ? 9 : 18;
-    const totalHeight = choices.length * choiceHeight + Math.max(0, choices.length - 1) * gap;
-    const startY = GAME_HEIGHT / 2 - totalHeight / 2 + choiceHeight / 2 + (compact ? 24 : 20);
-    choices.forEach((choice, index) => {
-      const y = startY + index * (choiceHeight + gap);
-      this.renderSetPieceChoice(choice, 1010, y, index, accent, choiceHeight, compact);
-    });
+    this.renderRouteEventResident(node, 146, GAME_HEIGHT + 70, 350, 560, { showGlow: false });
+    this.renderNestWorkbench(1018, 488, 392, 300, accent);
+    this.renderRouteEventChoiceColumn(node, choices, 560, 316, 472, accent);
   }
 
   private renderNestWorkbench(x: number, y: number, w: number, h: number, accent: number) {
+    const prop = ROUTE_EVENT_PROP_ASSETS.nestFeatherwrightBench;
+    if (this.textures.exists(prop.key)) {
+      this.renderRouteEventPropCenterpiece(prop, x + 18, y + 8, w + 94, h + 70, accent, 0xffd37a, {
+        showGlow: false,
+        showAccentLine: false
+      });
+      return;
+    }
     this.add.rectangle(x + 8, y + 10, w, h, 0x020409, 0.42);
     this.add.rectangle(x, y, w, h, 0x07101a, 0.9)
       .setStrokeStyle(2, accent, 0.82);
@@ -6198,16 +6948,8 @@ class RouteScene extends Phaser.Scene {
         align: 'center'
       });
     });
-    const lamp = this.add.circle(x + 126, y - 78, 36, accent, 0.12)
+    this.add.circle(x + 126, y - 78, 36, accent, 0.12)
       .setBlendMode(Phaser.BlendModes.ADD);
-    this.tweens.add({
-      targets: lamp,
-      alpha: { from: 0.06, to: 0.22 },
-      scale: { from: 0.92, to: 1.08 },
-      duration: 1500,
-      yoyo: true,
-      repeat: -1
-    });
     for (let i = 0; i < 4; i += 1) {
       this.add.rectangle(x - 136 + i * 82, y + 16 + (i % 2) * 10, 52, 4, 0xd8a840, 0.5)
         .setAngle(-8 + i * 5);
@@ -6225,8 +6967,8 @@ class RouteScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: false });
     }
     this.renderRouteEventAtmosphere(node, accent);
-    this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 118, 560);
-    this.renderRouteEventResident(node, 146, GAME_HEIGHT + 62, 350, 500);
+    this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 132, 560);
+    this.renderRouteEventResident(node, 146, GAME_HEIGHT + 62, 350, 500, { showGlow: false });
     this.renderCacheCabinet(node, 620, 438, 590, 506, choices, accent);
   }
 
@@ -6246,15 +6988,16 @@ class RouteScene extends Phaser.Scene {
     }
 
     const optionW = 472;
-    const optionH = choices.length > 6 ? 38 : 44;
-    const startY = top + 144;
+    const optionH = choices.length > 6 ? 48 : 54;
+    const panelStartY = top + 144;
+    const startY = panelStartY + 12;
     const optionPanelH = choices.length * (optionH + 6) + 56;
-    const optionPanelY = startY + optionPanelH / 2 - 26;
+    const optionPanelY = panelStartY + optionPanelH / 2 - 26;
     this.add.rectangle(optionX + 7, optionPanelY + 8, optionW + 40, optionPanelH, 0x020409, 0.34);
     this.add.rectangle(optionX, optionPanelY, optionW + 40, optionPanelH, 0x06101a, 0.58)
       .setStrokeStyle(2, accent, 0.78);
-    this.add.rectangle(optionX, startY - 42, optionW - 28, 2, accent, 0.62);
-    this.add.text(optionX - optionW / 2 + 20, startY - 33, 'MARN WAITS FOR YOUR NOD', {
+    this.add.rectangle(optionX, panelStartY - 42, optionW - 28, 2, accent, 0.62);
+    this.add.text(optionX - optionW / 2 + 20, panelStartY - 33, 'MARN WAITS FOR YOUR NOD', {
       fontFamily: UI_FONT,
       fontSize: '10px',
       fontStyle: UI_BOLD,
@@ -6266,17 +7009,107 @@ class RouteScene extends Phaser.Scene {
       const dy = startY + i * (optionH + 6);
       this.renderCacheDrawerTile(node, choice, optionX, dy, optionW, optionH, i, accent);
     });
-    const glint = this.add.rectangle(cabinetX + 96, top + 208, 72, 2, 0xffffff, 0.22)
+    this.add.rectangle(cabinetX + 96, top + 208, 72, 2, 0xffffff, 0.14)
       .setAngle(-18)
       .setBlendMode(Phaser.BlendModes.ADD);
-    this.tweens.add({
-      targets: glint,
-      alpha: { from: 0.04, to: 0.22 },
-      x: cabinetX + 156,
-      duration: 2100,
-      yoyo: true,
-      repeat: -1
+  }
+
+  private routeEventChoiceColumnHeader(node: RouteNode) {
+    const firstName = ROUTE_SET_PIECE_PROFILES[node.type]?.residentName.split(' ')[0] ?? routeNodeTypeLabel(node.type);
+    switch (node.type) {
+      case 'basin': return `${firstName.toUpperCase()} KEEPS THE HEARTH READY`;
+      case 'nest': return `${firstName.toUpperCase()} WAITS AT THE BENCH`;
+      case 'signal': return `${firstName.toUpperCase()} HOLDS THE SWITCHES`;
+      default: return `${firstName.toUpperCase()} WAITS FOR YOUR NOD`;
+    }
+  }
+
+  private renderRouteEventChoiceColumn(node: RouteNode, choices: NodeChoiceOption[], x: number, top: number, w: number, accent: number) {
+    const optionH = choices.length > 6 ? 38 : 44;
+    const optionGap = 6;
+    const panelH = choices.length * (optionH + optionGap) + 56;
+    const panelY = top + panelH / 2 - 26;
+    this.add.rectangle(x + 7, panelY + 8, w + 40, panelH, 0x020409, 0.34);
+    this.add.rectangle(x, panelY, w + 40, panelH, 0x06101a, 0.58)
+      .setStrokeStyle(2, accent, 0.78);
+    this.add.rectangle(x, top - 42, w - 28, 2, accent, 0.62);
+    this.add.text(x - w / 2 + 20, top - 33, this.routeEventChoiceColumnHeader(node), {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      fontStyle: UI_BOLD,
+      color: UI_SOFT,
+      align: 'left',
+      maxLines: 1
+    }).setOrigin(0, 0.5);
+    choices.forEach((choice, index) => {
+      this.renderRouteEventChoiceTile(node, choice, x, top + index * (optionH + optionGap), w, optionH, index, accent);
     });
+  }
+
+  private renderRouteEventChoiceTile(
+    node: RouteNode,
+    choice: NodeChoiceOption,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    index: number,
+    accent: number
+  ) {
+    const token = routeEffectTokens(choice.effects)[0];
+    const colors = [UI_FIELD.green, UI_FIELD.cyan, UI_FIELD.gold, 0xffb86b, UI_FIELD.violet, UI_FIELD.danger];
+    const choiceAccent = choice.locked ? 0x49606d : token?.color ?? colors[index % colors.length] ?? accent;
+    this.add.rectangle(x + 3, y + 4, w, h, 0x020409, 0.2);
+    const bg = this.add.rectangle(x, y, w, h, choice.locked ? 0x0b1018 : 0xf3f7ff, choice.locked ? 0.34 : 0.055)
+      .setStrokeStyle(1, choiceAccent, choice.locked ? 0.34 : 0.45);
+    bg.setInteractive({ useHandCursor: !choice.locked });
+    if (!choice.locked) bg.on('pointerdown', () => this.chooseNodeOption(choice.key));
+    bg.on('pointerover', () => {
+      bg.setFillStyle(choice.locked ? 0x141827 : 0xf3f7ff, choice.locked ? 0.48 : 0.16);
+      bg.setStrokeStyle(1, choice.locked ? UI_FIELD.danger : choiceAccent, 0.92);
+      this.hideRouteChoiceDetail();
+    });
+    bg.on('pointerout', () => {
+      bg.setFillStyle(choice.locked ? 0x0b1018 : 0xf3f7ff, choice.locked ? 0.34 : 0.055);
+      bg.setStrokeStyle(1, choiceAccent, choice.locked ? 0.34 : 0.45);
+      this.hideRouteChoiceDetail();
+    });
+    this.add.rectangle(x - w / 2 + 5, y, 4, h - 10, choiceAccent, choice.locked ? 0.38 : 0.72);
+    this.add.text(x - w / 2 + 21, y - 8, `${index + 1}`.padStart(2, '0'), {
+      fontFamily: UI_FONT,
+      fontSize: '16px',
+      fontStyle: UI_BOLD,
+      color: choice.locked ? '#65788b' : '#ffe1a3',
+      align: 'center',
+      fixedWidth: 38
+    }).setOrigin(0.5, 0);
+    if (choice.locked) {
+      addUiIconImage(this, 'locked-padlock', x - w / 2 + 61, y, 25)?.setAlpha(0.38);
+    } else if (token?.scrap) {
+      addUiIconImage(this, 'scrap-gear', x - w / 2 + 61, y, 25)?.setAlpha(0.82);
+    } else {
+      addUiIconImage(this, token?.icon ?? 'route-pin', x - w / 2 + 61, y, 25)?.setAlpha(0.72);
+    }
+    this.add.text(x - w / 2 + 92, y - 11, choice.text, {
+      fontFamily: UI_FONT,
+      fontSize: '14px',
+      fontStyle: UI_BOLD,
+      color: choice.locked ? '#7f93a8' : '#f3f7ff',
+      wordWrap: { width: w - 222 },
+      maxLines: 1
+    }).setOrigin(0, 0);
+    this.add.text(x + w / 2 - 14, y - 9, choice.locked ? (choice.lockedText ?? 'Locked') : routeEffectSummary(choice.effects), {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: choice.locked ? '#ffb8ad' : '#dffbff',
+      align: 'right',
+      fixedWidth: 132,
+      maxLines: 1
+    }).setOrigin(1, 0);
+    if (choice.locked) {
+      this.add.rectangle(x + w / 2 - 8, y, 3, h - 12, UI_FIELD.danger, 0.48);
+    }
   }
 
   private renderCacheDrawerTile(
@@ -6299,7 +7132,7 @@ class RouteScene extends Phaser.Scene {
     bg.on('pointerover', () => {
       bg.setFillStyle(choice.locked ? 0x141827 : 0xf3f7ff, choice.locked ? 0.48 : 0.16);
       bg.setStrokeStyle(1, choice.locked ? UI_FIELD.danger : choiceAccent, 0.92);
-      this.showCacheDrawerInspector(choice, 1000, 422, 276, 360, index, accent);
+      this.hideRouteChoiceDetail();
     });
     bg.on('pointerout', () => {
       bg.setFillStyle(choice.locked ? 0x0b1018 : 0xf3f7ff, choice.locked ? 0.34 : 0.055);
@@ -6315,7 +7148,7 @@ class RouteScene extends Phaser.Scene {
       align: 'center',
       fixedWidth: 38
     }).setOrigin(0.5, 0);
-    addUiIconImage(this, choice.locked ? 'locked-padlock' : profile.icon, x - w / 2 + 61, y, 17)
+    addUiIconImage(this, choice.locked ? 'locked-padlock' : profile.icon, x - w / 2 + 61, y, 25)
       ?.setAlpha(choice.locked ? 0.38 : 0.72);
     this.add.text(x - w / 2 + 92, y - 11, profile.title, {
       fontFamily: UI_FONT,
@@ -6492,29 +7325,27 @@ class RouteScene extends Phaser.Scene {
     const accent = routeEventAccent(node.type);
     const background = this.routeEventBackdropAsset(node);
     this.queueRouteEventSetPieceArtLoad(node);
-    this.renderRouteEventBackdrop(node, 1);
+    this.renderRouteEventBackdrop(node, 1, { showBottomBand: false });
     if (background && this.textures.exists(background.key)) {
       this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.08)
         .setInteractive({ useHandCursor: false });
     }
     this.renderRouteEventAtmosphere(node, accent);
-    this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 118, 560);
-    this.renderRouteEventResident(node, 178, GAME_HEIGHT + 50, 330, 488);
-    this.renderRouteEventCenterpiecePlaque(node, 268, 596, 354);
-
-    const compact = choices.length > 5;
-    const choiceHeight = compact ? 56 : 72;
-    const gap = compact ? 10 : 16;
-    const totalHeight = choices.length * choiceHeight + Math.max(0, choices.length - 1) * gap;
-    const startY = GAME_HEIGHT / 2 - totalHeight / 2 + choiceHeight / 2 + 22;
-    const choiceYs = choices.map((_, index) => startY + index * (choiceHeight + gap));
-    this.renderSignalSwitchboard(552, 400, 430, 350, choiceYs, accent);
-    choices.forEach((choice, index) => {
-      this.renderSetPieceChoice(choice, 1012, choiceYs[index], index, accent, choiceHeight, compact);
-    });
+    this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 132, 560);
+    this.renderRouteEventResident(node, 146, GAME_HEIGHT + 50, 330, 488, { showGlow: false });
+    this.renderSignalSwitchboard(1018, 486, 430, 386, [], accent);
+    this.renderRouteEventChoiceColumn(node, choices, 560, 316, 472, accent);
   }
 
   private renderSignalSwitchboard(x: number, y: number, w: number, h: number, choiceYs: number[], accent: number) {
+    const prop = ROUTE_EVENT_PROP_ASSETS.signalSwitchboard;
+    if (this.textures.exists(prop.key)) {
+      this.renderRouteEventPropCenterpiece(prop, x + 12, y + 12, w + 92, h + 54, accent, UI_FIELD.cyan, {
+        showGlow: false,
+        showAccentLine: false
+      });
+      return;
+    }
     this.add.rectangle(x + 8, y + 10, w, h, 0x020409, 0.44);
     this.add.rectangle(x, y, w, h, 0x07101a, 0.9)
       .setStrokeStyle(2, accent, 0.84);
@@ -6536,16 +7367,8 @@ class RouteScene extends Phaser.Scene {
       board.lineBetween(jackX, jackY, x + w / 2 - 22, choiceY);
       this.add.circle(jackX, jackY, 11, 0x020409, 0.92)
         .setStrokeStyle(2, color, 0.9);
-      const pulse = this.add.circle(jackX, jackY, 5, color, 0.72)
+      this.add.circle(jackX, jackY, 5, color, 0.54)
         .setBlendMode(Phaser.BlendModes.ADD);
-      this.tweens.add({
-        targets: pulse,
-        alpha: { from: 0.18, to: 0.86 },
-        scale: { from: 0.8, to: 1.42 },
-        duration: 980 + index * 140,
-        yoyo: true,
-        repeat: -1
-      });
     });
     this.renderRouteNodeTypeIcon('signal', x, y + 66, 118);
     this.add.rectangle(x, y + 140, w - 90, 38, 0x020409, 0.54)
@@ -13917,8 +14740,14 @@ function formatEffectCompact(effect: string): string {
     case 'addHeal': return `Basin +${value} HP`;
     case 'reducePreenPrice': return `Preen -${value} Scrap`;
     case 'gainCoverPerWaymark': return `+${value} Cover/Waymark`;
-    case 'gainRouteMark': return 'Waymark';
-    case 'addCard': return 'Card';
+    case 'gainRouteMark':
+      if (value === 'randomRare') return 'Rare Waymark';
+      if (value === 'randomUncommonOrRare') return 'High-tier Waymark';
+      return 'Waymark';
+    case 'addCard':
+      if (value === 'chooseOneOfTwoRare' || value === 'randomRare') return 'Rare card';
+      if (value === 'chooseOneOfTwoUncommonOrRare' || value === 'randomUncommonOrRare') return 'High-tier card';
+      return 'Card';
     case 'addSnagToDiscard': return 'Snag to discard';
     case 'addSnagToDraw': return 'Snag to draw';
     case 'shuffleSelfToDraw': return 'returns to deck';
@@ -14100,10 +14929,10 @@ function renderUnifiedRunHud(
 ) {
   const accent = data.statusColor ? Phaser.Display.Color.HexStringToColor(data.statusColor).color : UI_FIELD.gold;
   const highlight = data.statusLabel && !['ROUTE', 'HOLDING'].includes(data.statusLabel);
-  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, 52, GAME_WIDTH - 28, 76, 0x070b12, 0.78)
+  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, 47, GAME_WIDTH - 28, 62, 0x070b12, 0.78)
     .setStrokeStyle(1, accent, highlight ? 0.78 : 0.26));
   addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, 16, GAME_WIDTH - 62, 2, accent, highlight ? 0.82 : 0.32));
-  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, 88, GAME_WIDTH - 62, 1, 0xffffff, 0.08));
+  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, 76, GAME_WIDTH - 62, 1, 0xffffff, 0.08));
 
   const [hp, maxHp] = parseHudRatio(data.cohesion);
   const hpFrac = maxHp > 0 ? Math.max(0, Math.min(1, hp / maxHp)) : 0;
@@ -14153,8 +14982,8 @@ function renderUnifiedRunHud(
     icon: 'resonance-battery'
   });
 
-  addUi(addTo, scene.add.rectangle(650, FLOCK_HP_BAR.y + 1, 1, 44, 0x49606d, 0.55));
-  addUi(addTo, scene.add.rectangle(655, FLOCK_HP_BAR.y + 1, 1, 32, 0xffffff, 0.08));
+  addUi(addTo, scene.add.rectangle(650, FLOCK_HP_BAR.y + 1, 1, 38, 0x49606d, 0.55));
+  addUi(addTo, scene.add.rectangle(655, FLOCK_HP_BAR.y + 1, 1, 28, 0xffffff, 0.08));
 
   const chips: Array<{ label: string; value: string | number; width: number; color: number; text?: string; icon?: UiIconId }> = [
     { label: 'Scrap', value: data.scrap, width: 116, color: 0x8df4ff, text: '#dffbff', icon: 'scrap-gear' },
@@ -14951,13 +15780,21 @@ function routeEffectSummary(effects: string[]): string {
       case 'loseCohesion': return `-${a} Cohesion`;
       case 'healCohesion': case 'heal': return `Heal ${a} Cohesion`;
       case 'healMissingPct': return `Heal ${a}% missing Cohesion`;
-      case 'gainRouteMark': return alphaRouteMarkLibrary.get(a) ? `Gain ${alphaRouteMarkLibrary.get(a)!.name}` : 'Gain a Waymark';
+      case 'gainRouteMark':
+        if (a === 'randomRare') return 'Gain a rare Waymark';
+        if (a === 'randomUncommonOrRare') return 'Gain a high-tier Waymark';
+        return alphaRouteMarkLibrary.get(a) ? `Gain ${alphaRouteMarkLibrary.get(a)!.name}` : 'Gain a Waymark';
       case 'gainSupply': return 'Gain a Supply';
       case 'gainSupplyChoice': return 'Choose a Supply';
       case 'peekNextNodes': return `Preview ${a || 1} route`;
       case 'gainCacheReward': return 'Open the cache';
       case 'addSnagToDiscard': case 'addSnagToDraw': return 'Add a Snag to the deck';
-      case 'addCard': return 'Add a card to the flock';
+      case 'addCard':
+        if (a === 'chooseOneOfTwoRare') return 'Choose a rare card';
+        if (a === 'randomRare') return 'Add a rare card';
+        if (a === 'chooseOneOfTwoUncommonOrRare') return 'Choose a high-tier card';
+        if (a === 'randomUncommonOrRare') return 'Add a high-tier card';
+        return 'Add a card to the flock';
       case 'preenCard': return `Preen ${a || 1}`;
       case 'releaseCard': return `Remove ${a || 1}`;
       case 'gainOpenSkyGuard': return `+${a} Open Sky Guard next combat`;
@@ -14973,6 +15810,35 @@ function routeEffectSummary(effects: string[]): string {
       case 'removeRouteChoice': return 'Close a route';
       default: return parsed.name;
     }
+  }).join(' / ');
+}
+
+function routeEffectSummaryWithPreview(
+  effects: string[],
+  previewItem?: PendingRouteRewardItem,
+  previewCards: Card[] = []
+): string {
+  if (effects.length === 0) return 'No cost';
+  return effects.map((effect) => {
+    const parsed = parseEffect(effect);
+    if (!parsed) return effect === 'startRivalBattle' ? 'Start rival battle' : effect;
+    if (previewItem?.kind === 'supply' && (parsed.name === 'gainSupply' || parsed.name === 'gainSupplyChoice')) {
+      const supply = alphaSupplyLibrary.get(previewItem.id);
+      return supply ? `Gain ${supply.name}` : routeEffectSummary([effect]);
+    }
+    if (previewItem?.kind === 'waymark' && parsed.name === 'gainRouteMark') {
+      const mark = alphaRouteMarkLibrary.get(previewItem.id);
+      return mark ? `Gain ${mark.name}` : routeEffectSummary([effect]);
+    }
+    if ((parsed.name === 'addSnagToDiscard' || parsed.name === 'addSnagToDraw') && previewCards.length > 0) {
+      const card = previewCards.find((candidate) => candidate.id === parsed.args[0]) ?? previewCards[0];
+      return `Add ${displayName(card)} to the deck`;
+    }
+    if (parsed.name === 'addCard' && previewCards.length > 0) {
+      const card = previewCards.find((candidate) => candidate.runtime.kind !== 'snag');
+      return card ? `Add ${displayName(card)}` : routeEffectSummary([effect]);
+    }
+    return routeEffectSummary([effect]);
   }).join(' / ');
 }
 
@@ -15004,7 +15870,12 @@ function routeEffectTokens(effects: string[]): RouteEffectToken[] {
       case 'healCohesion':
       case 'heal': return { label: `+${a}`, color: UI_FIELD.green, textColor: '#e4fbe9', icon: 'flock-heart' };
       case 'healMissingPct': return { label: `Heal ${a}%`, color: UI_FIELD.green, textColor: '#e4fbe9', icon: 'flock-heart' };
-      case 'gainRouteMark': return { label: 'Waymark', color: UI_FIELD.violet, textColor: '#efe4ff', icon: 'waymark-compass' };
+      case 'gainRouteMark': return {
+        label: a === 'randomRare' ? 'Rare Waymark' : a === 'randomUncommonOrRare' ? 'High Waymark' : 'Waymark',
+        color: UI_FIELD.violet,
+        textColor: '#efe4ff',
+        icon: 'waymark-compass'
+      };
       case 'gainSupply':
       case 'gainSupplyChoice': return { label: parsed.name === 'gainSupplyChoice' ? 'Supply choice' : 'Supply', color: 0xffb86b, textColor: '#ffe7c9', icon: 'supply-pouch' };
       case 'peekNextNodes':
@@ -15012,7 +15883,16 @@ function routeEffectTokens(effects: string[]): RouteEffectToken[] {
       case 'gainCacheReward': return { label: 'Cache', color: UI_FIELD.gold, textColor: '#fff0b8', icon: 'locked-padlock' };
       case 'addSnagToDiscard':
       case 'addSnagToDraw': return { label: 'Snag', color: UI_FIELD.danger, textColor: '#ffd5cc', icon: 'release-card' };
-      case 'addCard': return { label: 'Card', color: UI_FIELD.gold, textColor: '#fff0b8', icon: 'deck-stack' };
+      case 'addCard': return {
+        label: a === 'chooseOneOfTwoRare' || a === 'randomRare'
+          ? 'Rare card'
+          : a === 'chooseOneOfTwoUncommonOrRare' || a === 'randomUncommonOrRare'
+            ? 'High card'
+            : 'Card',
+        color: UI_FIELD.gold,
+        textColor: '#fff0b8',
+        icon: 'deck-stack'
+      };
       case 'preenCard': return { label: `Preen ${a || 1}`, color: UI_FIELD.cyan, textColor: '#dffbff', icon: 'preen-kit' };
       case 'releaseCard': return { label: `Remove ${a || 1}`, color: UI_FIELD.danger, textColor: '#ffd5cc', icon: 'release-card' };
       case 'gainOpenSkyGuard': return { label: `Guard ${a}`, color: UI_FIELD.green, textColor: '#e4fbe9', icon: 'cover-shield' };
@@ -15363,6 +16243,8 @@ function formatEffect(effect: string) {
       if (Number.isFinite(n) && n < 0) return `Draw ${Math.abs(n)} fewer next turn.`;
       return `Draw ${value} next turn.`;
     }
+    case 'gainEnergyNextTurn':
+      return `Gain ${value} Wingbeat next turn.`;
     case 'enemyNextAttackBonus':
       return `The next enemy attack gains +${value} damage.`;
     case 'enemyGainCover':

@@ -14,27 +14,27 @@
     {
       "id": "cache_supply",
       "label": "Claim Drawer 03: Snack Tin",
-      "effects": ["gainSupplyChoice(1)", "loseCohesion(2)"]
+      "effects": ["gainSupplyChoice(1)", "gainScrap(20)", "loseCohesion(2)"]
     },
     {
       "id": "cache_mark",
-      "label": "Claim Drawer 19: Chalk Tag",
-      "effects": ["gainRouteMark(randomCommon)", "addSnagToDiscard(bad_directions)"]
+      "label": "Claim Drawer 19: Rare Chalk Tag",
+      "effects": ["gainRouteMark(randomRare)", "addSnagToDiscard(bad_directions)"]
     },
     {
       "id": "cache_card",
-      "label": "Claim Drawer 27: Nest Note",
-      "effects": ["addCard(chooseOneOfTwoCommon)", "loseCohesion(3)"]
+      "label": "Claim Drawer 27: Rare Nest Note",
+      "effects": ["addCard(chooseOneOfTwoRare)", "loseCohesion(3)"]
     },
     {
       "id": "cache_heal",
       "label": "Claim Drawer 08: Shelter Key",
-      "effects": ["healCohesion(6)"]
+      "effects": ["healMissingPct(50, 10)", "reduceNextOpenSky(1)"]
     },
     {
       "id": "cache_boss_line",
       "label": "Claim Drawer 44: Boss Line",
-      "effects": ["bossDamageShield(8)"]
+      "effects": ["bossDamageShield(16)", "gainOpenSkyGuard(1)"]
     }
   ]
 }

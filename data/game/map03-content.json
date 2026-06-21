@@ -1215,7 +1215,8 @@
           "key": "reveal",
           "text": "Scout from the top.",
           "outcomes": [
-            "gainScrap(35)",
+            "gainScrap(50)",
+            "gainRouteMark(randomUncommonOrRare)",
             "addSnagToDiscard(smeared_map)"
           ]
         }
@@ -1247,7 +1248,8 @@
           "key": "cut",
           "text": "Cut and sell the wire.",
           "outcomes": [
-            "gainScrap(35)",
+            "gainScrap(50)",
+            "gainSupplyChoice(1)",
             "addSnagToDraw(tangled_line)"
           ]
         }
@@ -1263,7 +1265,7 @@
           "key": "learn",
           "text": "Learn the call.",
           "outcomes": [
-            "addCard(randomCommonPlumesOrQuills)",
+            "addCard(randomUncommonOrRare)",
             "loseCohesion(3)"
           ]
         },
@@ -1279,6 +1281,7 @@
           "key": "preen",
           "text": "Practice the song together.",
           "outcomes": [
+            "addCard(randomUncommonOrRare)",
             "preenCard(1)",
             "addSnagToDiscard(wet_feathers)"
           ]
@@ -1295,8 +1298,8 @@
           "key": "clear_static",
           "text": "Clear the static carefully.",
           "outcomes": [
-            "gainRouteMark(rain_gutter)",
-            "gainScrap(20)"
+            "gainRouteMark(randomUncommonOrRare)",
+            "gainScrap(30)"
           ]
         },
         {
@@ -1308,7 +1311,7 @@
           "lockedText": "Need 20 Cohesion.",
           "outcomes": [
             "loseCohesion(6)",
-            "gainRouteMark(loose_change_tin)",
+            "gainRouteMark(randomRare)",
             "preenCard(1)"
           ]
         },
@@ -1338,7 +1341,8 @@
           "key": "salvage",
           "text": "Strip it for copper.",
           "outcomes": [
-            "gainScrap(50)",
+            "gainScrap(65)",
+            "gainRouteMark(randomUncommonOrRare)",
             "addSnagToDiscard(tangled_line)"
           ]
         },
@@ -1375,7 +1379,8 @@
           "key": "gamble_wind",
           "text": "Dive through unguarded.",
           "outcomes": [
-            "gainScrap(60)",
+            "gainScrap(75)",
+            "addCard(randomUncommonOrRare)",
             "startNextCombatOpenSky()"
           ]
         },
@@ -1399,7 +1404,7 @@
           "key": "grab_card",
           "text": "Pocket a card.",
           "outcomes": [
-            "addCard(randomCommon)",
+            "addCard(randomUncommonOrRare)",
             "loseCohesion(2)"
           ]
         },
@@ -1421,7 +1426,8 @@
           "outcomes": [
             "loseCohesion(6)",
             "gainCacheReward()",
-            "gainScrap(40)"
+            "gainScrap(55)",
+            "gainRouteMark(randomUncommonOrRare)"
           ]
         }
       ]
@@ -1462,7 +1468,7 @@
           "outcomes": [
             "healCohesion(6)",
             "releaseCard(1)",
-            "addCard(randomCommonPlumesOrQuills)",
+            "addCard(randomUncommonOrRare)",
             "payScrap(15)"
           ]
         }
@@ -1499,7 +1505,7 @@
           "text": "Offer a card instead.",
           "outcomes": [
             "releaseCard(1)",
-            "gainRouteMark(random)"
+            "gainRouteMark(randomRare)"
           ]
         }
       ]
