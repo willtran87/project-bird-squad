@@ -14,6 +14,7 @@
     "prepare:minor-border-template": "python tools/prepare-minor-border-template.py",
     "compose:minor-art": "python tools/compose-minor-arcana.py",
     "compose:aviary-art": "python tools/compose-aviary-arcana.py",
+    "compose:snag-art": "python tools/compose-snag-cards.py",
     "qa:minor-contact-sheet": "python tools/make-minor-contact-sheets.py",
     "qa:aviary-contact-sheet": "python tools/make-aviary-contact-sheet.py",
     "validate:minor-art-uniqueness": "node tools/validate-minor-art-uniqueness.mjs",

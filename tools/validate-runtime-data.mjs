@@ -205,7 +205,7 @@ const generatedImagePathPattern = /^\.generated\/imagegen\/(?:tarot|enemies)\/se
 // Effect expression shape: `verb(args)` with an optional `if COND then ` prefix.
 // COND is a bare name, an optional `(arg)`, or the `turn >= N` comparison form
 // (the only comparison the condition grammar permits — see next-level-data-contracts §1.3).
-const effectPattern = /^(?:if [a-zA-Z][a-zA-Z0-9]*(?:\([a-zA-Z0-9_,-]+\))?(?: >= [0-9]+)? then )?[a-zA-Z][a-zA-Z0-9]*\((?:[^()]*)\)$/;
+const effectPattern = /^(?:if [a-zA-Z][a-zA-Z0-9]*(?:\([a-zA-Z0-9_,-]+\))?(?: >= -?[0-9]+)? then )?[a-zA-Z][a-zA-Z0-9]*\((?:[^()]*)\)$/;
 
 const validateStats = (stats, label) => {
   if (!stats || typeof stats !== 'object' || Array.isArray(stats)) {
@@ -254,10 +254,10 @@ const validateEffects = (effects, label, allowedVerbs) => {
 // switch; enemy verbs = resolveEnemyEffect's switch. Keep these in lockstep with
 // the runtime — adding a verb to one without the other reintroduces the gap.
 const validCardVerbs = new Set([
-  'damage', 'damagePierce', 'damageAll', 'removeCover', 'gainCover', 'heal', 'draw', 'discard', 'discardUpTo',
+  'damage', 'damagePierce', 'damageAll', 'removeCover', 'gainCover', 'applyOpenSky', 'loseCover', 'damageFlock', 'heal', 'draw', 'discard', 'discardUpTo',
   'gainWingbeat', 'loseWingbeat', 'gainResonance', 'spendResonance', 'resonanceBurst',
   'applyWinded', 'windedBurst', 'enterMolt', 'gainOpenSkyGuard', 'returnDiscard',
-  'nextCoverBonus', 'retainHand', 'nextTurnDraw', 'gainEnergyNextTurn', 'shuffleSelfToDraw',
+  'nextCoverBonus', 'retainHand', 'nextTurnDraw', 'gainEnergyNextTurn', 'enemyNextAttackBonus', 'enemyGainCover', 'shuffleSelfToDraw', 'exhaustSelf',
   'overhealCover', 'loseCohesion',
 ]);
 const validEnemyVerbs = new Set([
@@ -284,7 +284,7 @@ const validMarkVerbs = new Set([
 const validCardConditions = new Set([
   'firstPlayedThisCombat', 'targetBelowHalf', 'targetIntendsAttack', 'targetHasCover', 'targetWinded',
   'hasResonance', 'spentResonance', 'isMolting', 'openSky', 'fullCohesion',
-  'cohesionBelowHalf', 'defeatsEnemy', 'fullyBlocksNextAttack', 'playedSuitThisTurn',
+  'cohesionBelowHalf', 'defeatsEnemy', 'fullyBlocksNextAttack', 'noCover', 'noResonance', 'playedSuitThisTurn',
   'flockSuit', // flockSuit(suit,count): deck holds >= count of a suit (composition payoffs)
   'resonanceAtLeast', // resonanceAtLeast(N): banked Resonance >= N (hoard payoffs)
   'windedAtLeast', // windedAtLeast(N): target has >= N Winded (stacking payoffs)
@@ -323,7 +323,7 @@ const effectsNeedEnemyTarget = (effects = []) => effects.some((effect) => {
 const effectsHitAllEnemies = (effects = []) => effects.some((effect) => /\bdamageAll\(/.test(effectBody(effect)));
 const effectsOnlyAffectFlock = (effects = []) => effects.some((effect) => {
   const body = effectBody(effect);
-  return /\b(?:gainCover|heal|overhealCover|loseCohesion|draw|discard|discardUpTo|gainWingbeat|loseWingbeat|gainResonance|spendResonance|enterMolt|gainOpenSkyGuard|returnDiscard|nextCoverBonus|retainHand|nextTurnDraw|gainEnergyNextTurn|shuffleSelfToDraw)\(/.test(body);
+  return /\b(?:gainCover|applyOpenSky|loseCover|damageFlock|heal|overhealCover|loseCohesion|draw|discard|discardUpTo|gainWingbeat|loseWingbeat|gainResonance|spendResonance|enterMolt|gainOpenSkyGuard|returnDiscard|nextCoverBonus|retainHand|nextTurnDraw|gainEnergyNextTurn|enemyNextAttackBonus|enemyGainCover|shuffleSelfToDraw|exhaustSelf)\(/.test(body);
 });
 const inferMoltTarget = (baseTarget, effects = []) => {
   if (effectsNeedEnemyTarget(effects)) return 'enemy';
@@ -381,6 +381,10 @@ for (const card of alphaCards.cards ?? []) {
 
   validateEffects(card.effects, `${label}:effects`, validCardVerbs);
   validateConditions(card.effects, `${label}:effects`, validCardConditions, false);
+  if (card.heldEffects !== undefined) {
+    validateEffects(card.heldEffects, `${label}:heldEffects`, validCardVerbs);
+    validateConditions(card.heldEffects, `${label}:heldEffects`, validCardConditions, false);
+  }
 
   // Molt ability (optional during rollout): the alternate effect resolved while
   // Molting. Validated against the same runtime card verb/condition set.

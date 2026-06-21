@@ -29,7 +29,7 @@
           "label": "Gutter Nibble 4",
           "effects": [
             "damage(flock, 4)",
-            "if handEmptyAtRoost then addSnagToDiscard(tangled_line)"
+            "if handEmptyAtRoost then addSnagToDiscard(loose_shingle)"
           ]
         },
         {
@@ -82,7 +82,8 @@
           "id": "scavenge_heal",
           "label": "Scavenge",
           "effects": [
-            "if notHitThisTurn then healAlly(lowest, 4)"
+            "if notHitThisTurn then healAlly(lowest, 4)",
+            "if notHitThisTurn then addSnagToDiscard(bad_directions)"
           ]
         },
         {
@@ -90,7 +91,8 @@
           "label": "Brace",
           "effects": [
             "gainCoverAlly(lowest, 4)",
-            "gainCover(4)"
+            "gainCover(4)",
+            "if notHitThisTurn then addSnagToDiscard(barricade_scrap)"
           ]
         }
       ],
@@ -128,7 +130,9 @@
           "label": "Watch",
           "effects": [
             "applyWinded(flock, 1)",
-            "if playedCardsAtLeast(4) then applyOpenSky(1)"
+            "if playedCardsAtLeast(4) then applyOpenSky(1)",
+            "if playedCardsAtLeast(4) then addSnagToDiscard(glass_gap)",
+            "if playedCardsAtLeast(4) then addSnagToDiscard(tangled_line)"
           ]
         },
         {
@@ -354,7 +358,8 @@
           "label": "Alarm Tag",
           "effects": [
             "if notHitThisTurn then addSnagToDiscard(bad_directions)",
-            "if handEmptyAtRoost then nextAttackBonus(2)"
+            "if handEmptyAtRoost then nextAttackBonus(2)",
+            "if handEmptyAtRoost then addSnagToDiscard(smeared_map)"
           ]
         }
       ],
@@ -392,7 +397,8 @@
           "label": "Tug Strap 6",
           "effects": [
             "damage(flock, 6)",
-            "if flockHasCover then loseWingbeat(1)"
+            "if flockHasCover then loseWingbeat(1)",
+            "if flockHasCover then addSnagToDiscard(jammed_strap)"
           ]
         },
         {

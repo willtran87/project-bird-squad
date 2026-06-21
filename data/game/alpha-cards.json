@@ -4299,14 +4299,16 @@
       ],
       "effects": [
         "loseWingbeat(1)",
-        "if fullyBlocksNextAttack then draw(1)",
-        "if openSky then discard(1)"
+        "if fullyBlocksNextAttack then draw(1)"
+      ],
+      "heldEffects": [
+        "loseWingbeat(1)",
+        "shuffleSelfToDraw()"
       ],
       "upgrade": {
         "effects": [
           "loseWingbeat(1)",
-          "if fullyBlocksNextAttack then draw(1)",
-          "if openSky then discard(1)"
+          "if fullyBlocksNextAttack then draw(1)"
         ],
         "flockStats": {}
       },
@@ -4326,14 +4328,15 @@
       ],
       "effects": [
         "gainCover(2)",
-        "discard(1)",
-        "if openSky then loseWingbeat(1)"
+        "discard(1)"
+      ],
+      "heldEffects": [
+        "applyWinded(flock, 1)"
       ],
       "upgrade": {
         "effects": [
           "gainCover(2)",
-          "discard(1)",
-          "if openSky then loseWingbeat(1)"
+          "discard(1)"
         ],
         "flockStats": {}
       },
@@ -4354,14 +4357,205 @@
       ],
       "effects": [
         "discard(1)",
+        "shuffleSelfToDraw()"
+      ],
+      "heldEffects": [
         "if hasResonance then spendResonance(1)",
         "shuffleSelfToDraw()"
       ],
       "upgrade": {
         "effects": [
           "discard(1)",
-          "if hasResonance then spendResonance(1)",
           "shuffleSelfToDraw()"
+        ],
+        "flockStats": {}
+      },
+      "flockStats": {}
+    },
+    {
+      "id": "loose_shingle",
+      "displayName": "Loose Shingle",
+      "bird": "House Sparrow",
+      "kind": "snag",
+      "suit": null,
+      "rarity": "common",
+      "cost": 0,
+      "target": "self",
+      "tags": [
+        "snag"
+      ],
+      "effects": [
+        "loseCover(2)"
+      ],
+      "heldEffects": [
+        "if noCover then damageFlock(2)"
+      ],
+      "upgrade": {
+        "effects": [
+          "loseCover(2)"
+        ],
+        "flockStats": {}
+      },
+      "flockStats": {}
+    },
+    {
+      "id": "static_burst",
+      "displayName": "Static Burst",
+      "bird": "Starling",
+      "kind": "snag",
+      "suit": null,
+      "rarity": "common",
+      "cost": 0,
+      "target": "none",
+      "tags": [
+        "snag"
+      ],
+      "effects": [
+        "if hasResonance then spendResonance(1)",
+        "if noResonance then loseWingbeat(1)"
+      ],
+      "heldEffects": [
+        "enemyNextAttackBonus(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "if hasResonance then spendResonance(1)",
+          "if noResonance then loseWingbeat(1)"
+        ],
+        "flockStats": {}
+      },
+      "flockStats": {}
+    },
+    {
+      "id": "bent_feather",
+      "displayName": "Bent Feather",
+      "bird": "Pigeon",
+      "kind": "snag",
+      "suit": null,
+      "rarity": "common",
+      "cost": 0,
+      "target": "self",
+      "tags": [
+        "snag"
+      ],
+      "effects": [
+        "applyWinded(flock, 1)",
+        "exhaustSelf()"
+      ],
+      "heldEffects": [
+        "applyWinded(flock, 1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "applyWinded(flock, 1)",
+          "exhaustSelf()"
+        ],
+        "flockStats": {}
+      },
+      "flockStats": {}
+    },
+    {
+      "id": "glass_gap",
+      "displayName": "Glass Gap",
+      "bird": "Swift",
+      "kind": "snag",
+      "suit": null,
+      "rarity": "common",
+      "cost": 0,
+      "target": "self",
+      "tags": [
+        "snag"
+      ],
+      "effects": [
+        "applyOpenSky(1)"
+      ],
+      "heldEffects": [
+        "applyOpenSky(1)",
+        "enemyNextAttackBonus(1)"
+      ],
+      "upgrade": {
+        "effects": [
+          "applyOpenSky(1)"
+        ],
+        "flockStats": {}
+      },
+      "flockStats": {}
+    },
+    {
+      "id": "jammed_strap",
+      "displayName": "Jammed Strap",
+      "bird": "Dunnock",
+      "kind": "snag",
+      "suit": null,
+      "rarity": "common",
+      "cost": 0,
+      "target": "self",
+      "tags": [
+        "snag"
+      ],
+      "effects": [
+        "discard(1)"
+      ],
+      "heldEffects": [
+        "discard(1)",
+        "shuffleSelfToDraw()"
+      ],
+      "upgrade": {
+        "effects": [
+          "discard(1)"
+        ],
+        "flockStats": {}
+      },
+      "flockStats": {}
+    },
+    {
+      "id": "barricade_scrap",
+      "displayName": "Barricade Scrap",
+      "bird": "Crow",
+      "kind": "snag",
+      "suit": null,
+      "rarity": "common",
+      "cost": 0,
+      "target": "none",
+      "tags": [
+        "snag"
+      ],
+      "effects": [
+        "enemyGainCover(3)"
+      ],
+      "heldEffects": [
+        "enemyGainCover(6)"
+      ],
+      "upgrade": {
+        "effects": [
+          "enemyGainCover(3)"
+        ],
+        "flockStats": {}
+      },
+      "flockStats": {}
+    },
+    {
+      "id": "smeared_map",
+      "displayName": "Smeared Map",
+      "bird": "Rook",
+      "kind": "snag",
+      "suit": null,
+      "rarity": "common",
+      "cost": 0,
+      "target": "self",
+      "tags": [
+        "snag"
+      ],
+      "effects": [
+        "nextTurnDraw(-1)"
+      ],
+      "heldEffects": [
+        "nextTurnDraw(-1)",
+        "shuffleSelfToDraw()"
+      ],
+      "upgrade": {
+        "effects": [
+          "nextTurnDraw(-1)"
         ],
         "flockStats": {}
       },

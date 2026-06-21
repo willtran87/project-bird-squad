@@ -57,6 +57,16 @@ type CardType = 'major' | 'minor' | 'molt' | 'aviary';
 type CardRole = 'attack' | 'skill' | 'utility';
 type TargetType = 'enemy' | 'allEnemies' | 'self' | 'none' | 'choice';
 type NodeChoiceOption = { key: string; text: string; effects: string[]; locked: boolean; lockedText?: string };
+type RouteEventChangeRow = { label: string; before: string; after: string; color: string };
+type RouteEventResolution = {
+  nodeId: string;
+  nodeType: RouteNode['type'];
+  title: string;
+  choiceText: string;
+  effectText: string;
+  rows: RouteEventChangeRow[];
+  accent: number;
+};
 
 interface Flock {
   hp: number;
@@ -112,6 +122,7 @@ interface Card {
   cost: number;
   text: string;
   upgradedText: string;
+  heldText: string;
   moltText: string; // formatted Molt ability (empty if the card has none)
   moltTextUpgraded: string; // formatted PREENED Molt ability (empty if none)
   bird: string;
@@ -259,6 +270,7 @@ interface EffectResolutionState {
   previousDamageDefeated: boolean;
   spentResonance: boolean;
   returnSelfToDraw: boolean;
+  exhaustSelf: boolean;
   builtFlow: boolean;
   flockDamageBonusUsed: boolean;
 }
@@ -551,6 +563,11 @@ const routeEventRuntimeArtUrls = import.meta.glob('../assets/runtime/route-event
   query: '?url',
   import: 'default',
 }) as Record<string, string>;
+const routeEventPropRuntimeArtUrls = import.meta.glob('../assets/runtime/route-events/props/*.webp', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
 
 function battlefieldVariantAsset(filename: string, key: string): RuntimeImageAsset {
   return {
@@ -573,6 +590,14 @@ function routeEventAsset(filename: string, key: string): RuntimeImageAsset {
     key,
     url: routeEventRuntimeArtUrls[`../assets/runtime/route-events/${filename}`]
       ?? `/assets/runtime/route-events/${filename}`
+  };
+}
+
+function routeEventPropAsset(filename: string, key: string): RuntimeImageAsset {
+  return {
+    key,
+    url: routeEventPropRuntimeArtUrls[`../assets/runtime/route-events/props/${filename}`]
+      ?? `/assets/runtime/route-events/props/${filename}`
   };
 }
 
@@ -616,6 +641,9 @@ const ROUTE_EVENT_BACKDROP_ASSETS: Partial<Record<RouteNode['type'], RuntimeImag
   nest: routeEventAsset('featherwright-studio-v2.webp', 'route-event-featherwright-studio'),
   rival: routeEventAsset('rival-wager-board-v2.webp', 'route-event-rival-wager-board')
 };
+const ROUTE_EVENT_PROP_ASSETS = {
+  marnLockboxCabinet: routeEventPropAsset('marn-lockbox-cabinet-v1.webp', 'route-event-prop-marn-lockbox-cabinet')
+};
 const ROUTE_MAP_BACKDROP_ASSET = {
   key: 'route-map-backdrop-rooftop-blocks',
   url: battlefieldRuntimeArtUrls['../assets/runtime/backdrops/rooftop-blocks-route-map-v1.webp']
@@ -638,6 +666,11 @@ const cardThumbRuntimeArtUrls = import.meta.glob('../assets/runtime/cards/thumb/
   import: 'default',
 }) as Record<string, string>;
 const cardIconRuntimeArtUrls = import.meta.glob('../assets/runtime/cards/icon/*.webp', {
+  eager: true,
+  query: '?url',
+  import: 'default',
+}) as Record<string, string>;
+const cardBorderRuntimeArtUrls = import.meta.glob('../assets/runtime/cards/borders/*.webp', {
   eager: true,
   query: '?url',
   import: 'default',
@@ -713,6 +746,10 @@ const cardThumbArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries
       url: bundledAssetUrl(entry.thumbnail, cardThumbRuntimeArtUrls)
     }])
 );
+const snagCardBorderAsset: RuntimeImageAsset = {
+  key: 'card-border-snag',
+  url: bundledAssetUrl('assets/runtime/cards/borders/snag-border.webp', cardBorderRuntimeArtUrls)
+};
 const enemyArtAssets: Record<string, RuntimeImageAsset> = Object.fromEntries(
   alphaEnemyArtManifest.enemies
     .filter((entry) => entry.status === 'approved')
@@ -967,6 +1004,94 @@ function addUiIconImage(scene: Phaser.Scene, iconId: UiIconId, x: number, y: num
   if (!asset || !scene.textures.exists(asset.key)) return undefined;
   scene.textures.get(asset.key).setFilter(Phaser.Textures.FilterMode.LINEAR);
   return scene.add.image(x, y, asset.key).setDisplaySize(size * UI_ICON_PREVIEW_SCALE, size * UI_ICON_PREVIEW_SCALE);
+}
+
+type CacheDrawerProfile = {
+  drawer: string;
+  title: string;
+  seal: string;
+  note: string;
+  tell: string;
+  icon: UiIconId;
+  accent: number;
+};
+
+const CACHE_DRAWER_PROFILES: Record<string, CacheDrawerProfile> = {
+  cache_scrap: {
+    drawer: '12',
+    title: 'Dry Scrap Bundle',
+    seal: 'Clean seal',
+    note: 'Marn: Counted twice. Dry enough to spend.',
+    tell: 'No catch',
+    icon: 'scrap-gear',
+    accent: 0xd8a840
+  },
+  cache_supply: {
+    drawer: '03',
+    title: 'Snack Tin With Warm Latch',
+    seal: 'Warm latch',
+    note: 'Marn: Useful, but it opens loud.',
+    tell: 'Costs Cohesion',
+    icon: 'supply-pouch',
+    accent: 0xffb86b
+  },
+  cache_mark: {
+    drawer: '19',
+    title: 'Chalk Route Tag',
+    seal: 'Bad handwriting',
+    note: 'Marn: The mark is real. The note bites.',
+    tell: 'Adds a Snag',
+    icon: 'waymark-compass',
+    accent: 0xc9a6ff
+  },
+  cache_card: {
+    drawer: '27',
+    title: 'Nest Note Packet',
+    seal: 'Thin paper seal',
+    note: 'Marn: Leads to a card. Mind the staple.',
+    tell: 'Costs Cohesion',
+    icon: 'deck-stack',
+    accent: 0x7ab8d6
+  },
+  cache_heal: {
+    drawer: '08',
+    title: 'Billboard Shelter Key',
+    seal: 'Quiet seal',
+    note: 'Marn: No prize. Just a safe ledge.',
+    tell: 'Safe recovery',
+    icon: 'flock-heart',
+    accent: 0x8fd6a0
+  },
+  cache_boss_line: {
+    drawer: '44',
+    title: 'Boss-Safe Pulley Line',
+    seal: 'Fresh wire',
+    note: 'Marn: Archive says it holds under pressure.',
+    tell: 'Boss prep',
+    icon: 'cover-shield',
+    accent: 0x7ab8d6
+  },
+  decline: {
+    drawer: '00',
+    title: 'Leave the Ledger Closed',
+    seal: 'No claim filed',
+    note: 'Marn: Untouched drawers stay honest.',
+    tell: 'Move on',
+    icon: 'route-pin',
+    accent: 0x49606d
+  }
+};
+
+function cacheDrawerProfile(choice: NodeChoiceOption, index = 0): CacheDrawerProfile {
+  return CACHE_DRAWER_PROFILES[choice.key] ?? {
+    drawer: `${index + 1}`.padStart(2, '0'),
+    title: choice.text,
+    seal: 'Unfiled seal',
+    note: 'Marn: Useful things still need a record.',
+    tell: routeEffectSummary(choice.effects),
+    icon: 'route-pin',
+    accent: 0xd8a840
+  };
 }
 
 function hudIconForLabel(label: string): UiIconId | undefined {
@@ -1710,6 +1835,7 @@ class CodexScene extends Phaser.Scene {
     { label: 'Quills', match: (c) => c.runtime.suit === 'quills' },
     { label: 'Basins', match: (c) => c.runtime.suit === 'basins' },
     { label: 'Nests', match: (c) => c.runtime.suit === 'nests' },
+    { label: 'Snags', match: (c) => c.runtime.kind === 'snag' },
   ];
   private readonly enemyTabs: Array<{ label: string; match: (e: CodexEnemyEntry) => boolean }> = [
     { label: 'All', match: () => true },
@@ -1867,7 +1993,7 @@ class CodexScene extends Phaser.Scene {
   }
 
   private allCards(): Card[] {
-    return Object.values(cardLibrary).filter((c) => c.runtime.kind !== 'snag');
+    return Object.values(cardLibrary);
   }
 
   private allReserveEnemies(): CodexEnemyEntry[] {
@@ -2239,13 +2365,13 @@ class CodexScene extends Phaser.Scene {
 
     if (cardMode) {
       this.tabs.forEach((tab, i) => {
-        const tx = 72 + i * 132;
+        const tx = 64 + i * 124;
         const active = i === this.activeTab;
         const tabCards = this.allCards().filter(tab.match);
         const got = tabCards.filter((c) => this.discovered.has(c.id)).length;
         const sampleCard = tabCards[0];
         const accent = sampleCard ? this.cardAccent(sampleCard) : 0x7ab8d6;
-        this.renderCodexTab(tx, 116, 124, 40, tab.label, `${got}/${tabCards.length}`, active, accent, () => {
+        this.renderCodexTab(tx, 116, 116, 40, tab.label, `${got}/${tabCards.length}`, active, accent, () => {
           this.activeTab = i; this.detailId = undefined; this.resetCodexScroll(); this.renderAll();
         }, 13);
       });
@@ -2444,6 +2570,7 @@ class CodexScene extends Phaser.Scene {
   }
 
   private cardAccent(card: Card) {
+    if (isSnagCard(card)) return 0xff6b57;
     if (isAviaryCard(card)) return 0xe8c24a;
     if (card.type === 'major') return 0xd8a840;
     if (card.type === 'molt') return 0xc56cff;
@@ -2451,6 +2578,7 @@ class CodexScene extends Phaser.Scene {
   }
 
   private cardFamilyLabel(card: Card) {
+    if (isSnagCard(card)) return 'Snag';
     if (isAviaryCard(card)) return 'Aviary';
     if (card.type === 'major') return 'Major Arcana';
     if (card.type === 'molt') return 'Molt';
@@ -2464,6 +2592,7 @@ class CodexScene extends Phaser.Scene {
   }
 
   private cardDossierLabel(card: Card) {
+    if (isSnagCard(card)) return 'SNAG DOSSIER';
     if (isAviaryCard(card)) return 'AVIARY DOSSIER';
     if (card.type === 'major') return 'LEGEND DOSSIER';
     if (card.type === 'molt') return 'MOLT DOSSIER';
@@ -2525,6 +2654,8 @@ class CodexScene extends Phaser.Scene {
       // Cost badge (gameplay info not shown in the illustration).
       layer.add(this.add.circle(cx - aw / 2 + 18, cy - ah / 2 + 18, 15, card.cost === 0 ? 0x24d0d6 : 0xe8b830, 1).setStrokeStyle(2, 0x05080e, 0.95));
       layer.add(this.add.text(cx - aw / 2 + 18, cy - ah / 2 + 18, `${card.cost}`, { fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: '#06101c' }).setOrigin(0.5));
+    } else if (found && renderSnagCardBorder(this, (obj) => layer.add(obj), card, cx, cy, aw, ah, 0.99)) {
+      // Snag cards use their own border template even before full illustration art exists.
     } else if (found) {
       layer.add(this.add.text(cx, cy, displayName(card), { fontFamily: UI_FONT, fontSize: '15px', fontStyle: UI_BOLD, color: UI_BODY, align: 'center', wordWrap: { width: aw - 16 } }).setOrigin(0.5));
       this.addCodexChip(layer, cx, cy + 72, 118, this.cardFamilyLabel(card), accent, true);
@@ -3527,6 +3658,8 @@ class RouteScene extends Phaser.Scene {
   private inspectedCardId: string | undefined;
   private hoverCardDetail?: Phaser.GameObjects.Container;
   private marketItemHover?: Phaser.GameObjects.Container;
+  private routeChoiceHover?: Phaser.GameObjects.Container;
+  private routeEventResolution?: RouteEventResolution;
   private cardReviewScroll = 0;
   private routeWaymarkScroll = 0;
   private routeNodeIconArtRequested = false;
@@ -3553,6 +3686,7 @@ class RouteScene extends Phaser.Scene {
     this.selectedNodeId = this.getSelectableNodes()[0]?.id;
     this.nodeChoiceOpen = false;
     this.nodeChoiceNodeId = undefined;
+    this.routeEventResolution = undefined;
     this.cardPickerMode = undefined;
     this.cardPickerContext = undefined;
     this.marketPickerUtilitySlot = undefined;
@@ -3581,11 +3715,13 @@ class RouteScene extends Phaser.Scene {
       this,
       [
         scrapArtAsset,
+        snagCardBorderAsset,
         ...Object.values(uiIconAssets),
         ...Object.values(rewardBadgeArtAssets),
         ...Object.values(routeNodeIconAssets),
         ...Object.values(MARKET_KIT_ASSETS),
         ...Object.values(ROUTE_EVENT_BACKDROP_ASSETS),
+        ...Object.values(ROUTE_EVENT_PROP_ASSETS),
         ...this.runState.deck.map((card) => cardArtAssets[card.id])
       ],
       'Route scene art failed to preload'
@@ -3656,9 +3792,10 @@ class RouteScene extends Phaser.Scene {
     this.children.removeAll(true);
     this.hoverCardDetail = undefined;
     this.marketItemHover = undefined;
+    this.routeChoiceHover = undefined;
     this.renderBackdrop();
     this.renderRouteMap();
-    const hasBlockingOverlay = this.deckOverlayOpen || this.flockOverlayOpen || this.waymarkDrawerOpen || this.supplyDrawerOpen || this.marketOpen || this.nodeChoiceOpen || !!this.cardPickerMode;
+    const hasBlockingOverlay = this.deckOverlayOpen || this.flockOverlayOpen || this.waymarkDrawerOpen || this.supplyDrawerOpen || this.marketOpen || this.nodeChoiceOpen || !!this.cardPickerMode || !!this.routeEventResolution;
     if (!hasBlockingOverlay) {
       this.renderRouteSupplyFeedbackStrip();
     }
@@ -3668,11 +3805,12 @@ class RouteScene extends Phaser.Scene {
     if (this.supplyDrawerOpen) this.renderRouteSupplyDrawer();
     if (this.marketOpen) this.renderMarketOverlay();
     if (this.nodeChoiceOpen) this.renderNodeChoiceOverlay();
+    if (this.routeEventResolution) this.renderRouteEventResolutionOverlay();
     if (this.cardPickerMode) this.renderCardPickerOverlay();
     if (!this.confirmExitOpen) this.renderRunHud();
     if (this.confirmExitOpen) this.renderConfirmExitOverlay();
     this.updateTextState();
-    if (!this.marketOpen && !this.nodeChoiceOpen && !this.cardPickerMode) {
+    if (!this.marketOpen && !this.nodeChoiceOpen && !this.cardPickerMode && !this.routeEventResolution) {
       persistActiveRun(this.runState); // checkpoint: resume lands back on the route map
     }
   }
@@ -3720,9 +3858,12 @@ class RouteScene extends Phaser.Scene {
   }
 
   private queueRouteEventSetPieceArtLoad(node?: RouteNode) {
+    const propAssets = node?.type === 'cache'
+      ? [ROUTE_EVENT_PROP_ASSETS.marnLockboxCabinet]
+      : [];
     queueRuntimeImageAssets(
       this,
-      [this.routeEventBackdropAsset(node), this.routeEventResidentAsset(node)],
+      [this.routeEventBackdropAsset(node), this.routeEventResidentAsset(node), ...propAssets],
       'Route event set piece art failed to load',
       () => this.renderAll()
     );
@@ -4555,6 +4696,7 @@ class RouteScene extends Phaser.Scene {
     if (!choice || choice.locked) return;
     const scrapCost = this.scrapCostOfEffects(choice.effects);
     if (scrapCost > this.runState.scrap) return;
+    const before = this.routeResultSnapshot();
     if (node.type === 'rival' && choice.key === 'challenge_rival') {
       this.runState.currentRouteNodeId = node.id;
       this.runState.routeLog.push(`${node.label}: ${choice.text}`);
@@ -4589,9 +4731,20 @@ class RouteScene extends Phaser.Scene {
       return;
     }
     this.completePendingRouteNode(node.id);
+    const after = this.routeResultSnapshot();
+    this.routeEventResolution = {
+      nodeId: node.id,
+      nodeType: node.type,
+      title: routeNodeTypeLabel(node.type),
+      choiceText: choice.text,
+      effectText: routeEffectSummary(choice.effects),
+      rows: this.routeResultRows(before, after),
+      accent: routeEventAccent(node.type)
+    };
     this.nodeChoiceOpen = false;
     this.nodeChoiceNodeId = undefined;
-    this.scene.restart({ runState: cloneRunState(this.runState) });
+    this.hideRouteChoiceDetail();
+    this.renderAll();
   }
 
   private pickerEligibleCards(mode: 'preen' | 'release', context = this.cardPickerContext) {
@@ -4716,7 +4869,7 @@ class RouteScene extends Phaser.Scene {
         this.add.image(x, y, key)
           .setDisplaySize(cardW, cardH)
           .setAlpha(affordable ? 1 : 0.48);
-      } else {
+      } else if (!renderSnagCardBorder(this, undefined, entry.card, x, y, cardW, cardH, affordable ? 1 : 0.48)) {
         this.add.rectangle(x, y, cardW, cardH, affordable ? 0x101b2a : 0x0a0e15, affordable ? 0.96 : 0.78)
           .setStrokeStyle(1.5, affordable ? accent : 0x3f4c58, affordable ? 0.74 : 0.48);
         this.add.text(x, y - 16, cardLabel(entry.card), {
@@ -4728,6 +4881,8 @@ class RouteScene extends Phaser.Scene {
           wordWrap: { width: cardW - 12 },
           maxLines: 2
         }).setOrigin(0.5);
+      } else {
+        this.add.rectangle(x, y, cardW, cardH, 0x05101a, 0.12);
       }
       this.add.circle(x - 34, y - 52, 14, affordable ? (entry.cost === 0 ? 0x24d0d6 : 0xd8a840) : 0x3f4c58, 1);
       this.add.text(x - 34, y - 60, `${entry.cost}`, {
@@ -5340,12 +5495,516 @@ class RouteScene extends Phaser.Scene {
     return { x: 176, y: GAME_HEIGHT + 42, maxWidth: 340, maxHeight: 500 };
   }
 
+  private renderRouteEventAtmosphere(node: RouteNode, accent: number) {
+    const glowPoints = node.type === 'signal'
+      ? [{ x: 516, y: 278, r: 78 }, { x: 625, y: 454, r: 58 }, { x: 928, y: 238, r: 44 }]
+      : node.type === 'cache'
+        ? [{ x: 516, y: 384, r: 92 }, { x: 690, y: 300, r: 44 }, { x: 940, y: 514, r: 42 }]
+        : [{ x: 238, y: 418, r: 82 }, { x: 985, y: 304, r: 62 }];
+    glowPoints.forEach((point, index) => {
+      const glow = this.add.circle(point.x, point.y, point.r, accent, 0.07 + index * 0.015)
+        .setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({
+        targets: glow,
+        alpha: { from: 0.045, to: 0.16 },
+        scale: { from: 0.92, to: 1.06 },
+        duration: 1700 + index * 320,
+        yoyo: true,
+        repeat: -1
+      });
+    });
+    const moteColor = node.type === 'cache' ? UI_FIELD.gold : node.type === 'signal' ? UI_FIELD.violet : accent;
+    for (let i = 0; i < 5; i += 1) {
+      const mote = this.add.rectangle(438 + i * 95, 192 + (i % 2) * 34, 30, 2, moteColor, 0.22)
+        .setAngle(-10 + i * 5)
+        .setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({
+        targets: mote,
+        alpha: { from: 0.08, to: 0.32 },
+        x: mote.x + 12,
+        duration: 1500 + i * 180,
+        yoyo: true,
+        repeat: -1
+      });
+    }
+  }
+
+  private renderRouteEventTitlePlaque(node: RouteNode, x: number, y: number, w = 560) {
+    const accent = routeEventAccent(node.type);
+    const profile = ROUTE_SET_PIECE_PROFILES[node.type];
+    this.add.rectangle(x + 4, y + 5, w, 82, 0x020409, 0.48);
+    this.add.rectangle(x, y, w, 78, 0x020409, 0.97)
+      .setStrokeStyle(2, accent, 0.92);
+    this.add.rectangle(x, y - 32, w - 34, 2, accent, 0.68);
+    this.add.text(x, y - 22, profile?.residentName ?? node.label, {
+      fontFamily: UI_FONT,
+      fontSize: '24px',
+      fontStyle: UI_BOLD,
+      color: UI_GOLD,
+      stroke: '#000000',
+      strokeThickness: 4,
+      align: 'center'
+    }).setOrigin(0.5);
+    this.add.text(x, y + 6, profile?.residentRole ?? routeNodeTypeLabel(node.type), {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: UI_CYAN,
+      align: 'center'
+    }).setOrigin(0.5);
+    this.add.text(x, y + 23, (profile?.species ?? routeNodeTypeLabel(node.type)).toUpperCase(), {
+      fontFamily: UI_FONT,
+      fontSize: '9px',
+      fontStyle: UI_BOLD,
+      color: UI_SOFT,
+      align: 'center'
+    }).setOrigin(0.5);
+  }
+
+  private renderRouteEventResident(node: RouteNode, x: number, floorY: number, maxWidth: number, maxHeight: number) {
+    const accent = routeEventAccent(node.type);
+    const resident = this.routeEventResidentAsset(node);
+    this.add.ellipse(x, floorY - 18, Math.min(300, maxWidth * 0.8), 38, 0x020409, 0.48);
+    this.add.circle(x, floorY - maxHeight * 0.46, Math.min(168, maxWidth * 0.45), accent, 0.055)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    if (resident && this.textures.exists(resident.key)) {
+      const residentImage = this.add.image(x, floorY, resident.key)
+        .setOrigin(0.5, 1)
+        .setAlpha(0.99);
+      this.fitImageInside(residentImage, maxWidth, maxHeight);
+      return;
+    }
+    this.add.circle(x, floorY - maxHeight * 0.34, 82, 0x1c2230, 0.98)
+      .setStrokeStyle(2, accent, 0.82);
+    this.renderRouteNodeTypeIcon(node.type, x, floorY - maxHeight * 0.34, 96);
+  }
+
+  private renderRouteEventCenterpiecePlaque(node: RouteNode, x: number, y: number, w = 350) {
+    const accent = routeEventAccent(node.type);
+    const profile = ROUTE_SET_PIECE_PROFILES[node.type];
+    this.add.rectangle(x, y, w, 92, 0x06101a, 0.97)
+      .setStrokeStyle(1, accent, 0.72);
+    this.add.text(x - w / 2 + 18, y - 33, profile?.centerpiece.toUpperCase() ?? routeNodeTypeLabel(node.type).toUpperCase(), {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: '#ffcf6b',
+      wordWrap: { width: w - 36 },
+      maxLines: 1
+    });
+    this.add.text(x - w / 2 + 18, y - 10, profile?.visitLine ?? routeEventLandmarkLine(node.type), {
+      fontFamily: UI_FONT,
+      fontSize: '13px',
+      color: '#dbe6f2',
+      lineSpacing: 3,
+      wordWrap: { width: w - 36 },
+      maxLines: 3
+    });
+  }
+
+  private renderEventEffectTokens(
+    choice: NodeChoiceOption,
+    x: number,
+    y: number,
+    maxWidth: number,
+    compact = false
+  ) {
+    const tokens: RouteEffectToken[] = choice.locked
+      ? [{ label: choice.lockedText ?? 'Locked', color: UI_FIELD.danger, textColor: '#ffd5cc', icon: 'locked-padlock' }]
+      : routeEffectTokens(choice.effects);
+    const maxTokens = compact ? 2 : 3;
+    let cursor = x;
+    tokens.slice(0, maxTokens).forEach((token) => {
+      const label = token.label.length > 14 ? `${token.label.slice(0, 12)}...` : token.label;
+      const w = Math.min(124, Math.max(62, label.length * 7 + (token.icon || token.scrap ? 36 : 18)));
+      if (cursor + w > x + maxWidth) return;
+      this.add.rectangle(cursor + w / 2, y, w, compact ? 18 : 22, 0x020409, 0.72)
+        .setStrokeStyle(1, token.color, 0.82);
+      if (token.scrap) {
+        addScrapIconImage(this, cursor + 14, y, compact ? 15 : 18)
+          ?.setAlpha(choice.locked ? 0.46 : 0.94);
+      } else if (token.icon) {
+        addUiIconImage(this, token.icon, cursor + 15, y, compact ? 13 : 15)
+          ?.setAlpha(choice.locked ? 0.46 : 0.92);
+      }
+      this.add.text(cursor + (token.icon || token.scrap ? 29 : 9), y - (compact ? 7 : 8), label, {
+        fontFamily: UI_FONT,
+        fontSize: compact ? '9px' : '10px',
+        fontStyle: UI_BOLD,
+        color: choice.locked ? '#91a6b8' : token.textColor,
+        wordWrap: { width: w - (token.icon || token.scrap ? 34 : 12) },
+        maxLines: 1
+      });
+      cursor += w + 7;
+    });
+    if (tokens.length > maxTokens && cursor + 34 <= x + maxWidth) {
+      this.add.text(cursor + 4, y - 7, `+${tokens.length - maxTokens}`, {
+        fontFamily: UI_FONT,
+        fontSize: '10px',
+        fontStyle: UI_BOLD,
+        color: UI_SOFT
+      });
+    }
+  }
+
+  private routeChoicePreviewRows(choice: NodeChoiceOption): Array<{ label: string; before: string; after: string; color: string }> {
+    const rows = new Map<string, { label: string; before: string; after: string; color: string }>();
+    const maxHp = this.runMaxHp();
+    let scrap = this.runState.scrap;
+    let hp = this.runState.currentHp;
+    let deck = this.runState.deck.length;
+    let supplies = this.runState.supplies.length;
+    let waymarks = this.runState.routeMarks.length;
+    const supplyCap = runSupplyCapacity(this.runState);
+    const setRow = (id: string, label: string, before: string, after: string, color: string) => {
+      rows.set(id, { label, before, after, color });
+    };
+    const visit = (effect: string) => {
+      const conditional = /^if (.+?) then (.+)$/.exec(effect);
+      if (conditional) {
+        if (this.checkRouteCondition(conditional[1])) visit(conditional[2]);
+        return;
+      }
+      const parsed = parseEffect(effect);
+      if (!parsed) return;
+      const arg0 = parsed.args[0] ?? '';
+      const n = Number(arg0) || 0;
+      switch (parsed.name) {
+        case 'gainScrap': {
+          const before = scrap;
+          scrap += n;
+          setRow('scrap', 'Scrap', `${before}`, `${scrap}`, '#fff0b8');
+          break;
+        }
+        case 'payScrap': {
+          const before = scrap;
+          scrap = Math.max(0, scrap - n);
+          setRow('scrap', 'Scrap', `${before}`, `${scrap}`, '#ffd5cc');
+          break;
+        }
+        case 'loseCohesion': {
+          const before = hp;
+          hp = Math.max(0, hp - n);
+          setRow('hp', 'Cohesion', `${before}/${maxHp}`, `${hp}/${maxHp}`, '#ffd5cc');
+          break;
+        }
+        case 'heal':
+        case 'healCohesion': {
+          const before = hp;
+          hp = Math.min(maxHp, hp + n);
+          setRow('hp', 'Cohesion', `${before}/${maxHp}`, `${hp}/${maxHp}`, '#e4fbe9');
+          break;
+        }
+        case 'healMissingPct': {
+          const before = hp;
+          const heal = Math.max(Number(parsed.args[1]) || 0, Math.round(((maxHp - hp) * n) / 100));
+          hp = Math.min(maxHp, hp + heal);
+          setRow('hp', 'Cohesion', `${before}/${maxHp}`, `${hp}/${maxHp}`, '#e4fbe9');
+          break;
+        }
+        case 'addCard':
+        case 'addSnagToDiscard':
+        case 'addSnagToDraw': {
+          const before = deck;
+          deck += 1;
+          setRow('deck', 'Deck', `${before}`, `${deck}`, parsed.name === 'addCard' ? '#fff0b8' : '#ffd5cc');
+          break;
+        }
+        case 'releaseCard': {
+          const before = deck;
+          deck = Math.max(0, deck - (n || 1));
+          setRow('deck', 'Deck', `${before}`, `${deck}`, '#ffd5cc');
+          break;
+        }
+        case 'gainSupply':
+        case 'gainSupplyChoice': {
+          const before = supplies;
+          supplies = Math.min(supplyCap, supplies + 1);
+          setRow('supplies', 'Supplies', `${before}/${supplyCap}`, `${supplies}/${supplyCap}`, '#ffe7c9');
+          break;
+        }
+        case 'gainRouteMark': {
+          const before = waymarks;
+          waymarks += 1;
+          setRow('waymarks', 'Waymarks', `${before}`, `${waymarks}`, '#efe4ff');
+          break;
+        }
+        case 'preenCard':
+          setRow('preen', 'Deck tune', 'Base', `Preen ${n || 1}`, '#dffbff');
+          break;
+        case 'gainOpenSkyGuard':
+          setRow('guard', 'Next combat', 'Guard', `+${n}`, '#e4fbe9');
+          break;
+        case 'reduceNextOpenSky':
+          setRow('sky', 'Open Sky', 'Next rise', `-${n}`, '#dffbff');
+          break;
+        case 'peekNextNodes':
+        case 'revealNodes':
+          setRow('intel', 'Route intel', 'Hidden', `${n || 1} look`, '#dffbff');
+          break;
+        case 'gainCacheReward':
+          setRow('cache', 'Cache', 'Closed', 'Open', '#fff0b8');
+          break;
+        default:
+          break;
+      }
+    };
+    choice.effects.forEach(visit);
+    return [...rows.values()].slice(0, 5);
+  }
+
+  private routeChoiceChangeAmountText(row: { before: string; after: string }) {
+    const leadingNumber = (value: string) => {
+      const match = /^([+-]?\d+)/.exec(value);
+      return match ? Number(match[1]) : undefined;
+    };
+    const before = leadingNumber(row.before);
+    const after = leadingNumber(row.after);
+    if (before !== undefined && after !== undefined && before !== after) {
+      const delta = after - before;
+      return `${delta > 0 ? '+' : ''}${delta}`;
+    }
+    if (/^[+-]\d+/.test(row.after)) return row.after;
+    return row.after;
+  }
+
+  private showRouteChoiceDetail(
+    node: RouteNode,
+    choice: NodeChoiceOption,
+    anchorX: number,
+    anchorY: number,
+    accent: number
+  ) {
+    this.hideRouteChoiceDetail();
+    this.hideMarketItemDetail();
+    this.hideHoverCardDetail();
+    const w = 330;
+    const rows = this.routeChoicePreviewRows(choice);
+    const h = Math.max(168, 128 + rows.length * 27);
+    const panel = this.add.container(0, 0).setDepth(22000);
+    const bg = this.add.rectangle(0, 0, w, h, 0x07101a, 0.985)
+      .setOrigin(0, 0)
+      .setStrokeStyle(2, choice.locked ? UI_FIELD.danger : accent, 0.96);
+    panel.add(bg);
+    panel.add(this.add.rectangle(0, 0, w, 4, choice.locked ? UI_FIELD.danger : accent, 1).setOrigin(0, 0));
+    panel.add(this.add.text(16, 13, choice.text, {
+      fontFamily: UI_FONT,
+      fontSize: '17px',
+      fontStyle: UI_BOLD,
+      color: choice.locked ? '#ffb8ad' : UI_GOLD,
+      wordWrap: { width: w - 32 },
+      maxLines: 2
+    }));
+    panel.add(this.add.text(16, 52, `${routeNodeTypeLabel(node.type)} / ${choice.locked ? 'LOCKED' : 'CHOICE'}`, {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      fontStyle: UI_BOLD,
+      color: choice.locked ? '#ff9d4d' : UI_CYAN,
+      wordWrap: { width: w - 32 },
+      maxLines: 1
+    }));
+    panel.add(this.add.text(16, 74, choice.locked && choice.lockedText ? choice.lockedText : routeEffectSummary(choice.effects), {
+      fontFamily: UI_FONT,
+      fontSize: '12px',
+      color: '#dbe6f2',
+      lineSpacing: 2,
+      wordWrap: { width: w - 32 },
+      maxLines: 2
+    }));
+    const rowY = 118;
+    if (rows.length === 0) {
+      panel.add(this.add.text(16, rowY, 'No resource change. You simply keep moving.', {
+        fontFamily: UI_FONT,
+        fontSize: '12px',
+        color: UI_SOFT,
+        wordWrap: { width: w - 32 },
+        maxLines: 2
+      }));
+    } else {
+      panel.add(this.add.text(16, rowY - 18, 'PREVIEW', {
+        fontFamily: UI_FONT,
+        fontSize: '10px',
+        fontStyle: UI_BOLD,
+        color: UI_MUTED
+      }));
+      rows.forEach((row, index) => {
+        const y = rowY + index * 27;
+        panel.add(this.add.rectangle(16, y - 1, w - 32, 22, 0x020409, 0.62)
+          .setOrigin(0, 0)
+          .setStrokeStyle(1, 0x49606d, 0.36));
+        panel.add(this.add.text(26, y + 4, row.label, {
+          fontFamily: UI_FONT,
+          fontSize: '11px',
+          fontStyle: UI_BOLD,
+          color: UI_SOFT,
+          maxLines: 1
+        }));
+        panel.add(this.add.text(w - 24, y + 4, `${row.before} -> ${row.after}`, {
+          fontFamily: UI_FONT,
+          fontSize: '11px',
+          fontStyle: UI_BOLD,
+          color: row.color,
+          align: 'right',
+          maxLines: 1
+        }).setOrigin(1, 0));
+      });
+    }
+    const px = Math.max(20, Math.min(GAME_WIDTH - w - 20, anchorX - w - 238));
+    const py = Math.max(96, Math.min(GAME_HEIGHT - h - 18, anchorY - h / 2));
+    panel.setPosition(px, py);
+    this.routeChoiceHover = panel;
+  }
+
+  private hideRouteChoiceDetail() {
+    this.routeChoiceHover?.destroy(true);
+    this.routeChoiceHover = undefined;
+  }
+
+  private routeResultSnapshot() {
+    return {
+      hp: this.runState.currentHp,
+      maxHp: this.runMaxHp(),
+      scrap: this.runState.scrap,
+      deck: this.runState.deck.length,
+      supplies: this.runState.supplies.length,
+      supplyCap: runSupplyCapacity(this.runState),
+      waymarks: this.runState.routeMarks.length,
+      openSkyGuard: this.runState.nextCombat?.openSkyGuard ?? 0,
+      reduceNextOpenSky: this.runState.nextCombat?.reduceNextOpenSky ?? 0,
+      bossDamageShield: this.runState.nextCombat?.bossDamageShield ?? 0,
+      enemyCover: this.runState.nextCombat?.enemyCover ?? 0,
+      freePreenNextDistrict: this.runState.freePreenNextDistrict ?? 0
+    };
+  }
+
+  private routeResultRows(
+    before: ReturnType<RouteScene['routeResultSnapshot']>,
+    after: ReturnType<RouteScene['routeResultSnapshot']>
+  ): RouteEventChangeRow[] {
+    const rows: RouteEventChangeRow[] = [];
+    const add = (label: string, b: string | number, a: string | number, color: string) => {
+      if (`${b}` !== `${a}`) rows.push({ label, before: `${b}`, after: `${a}`, color });
+    };
+    add('Cohesion', `${before.hp}/${before.maxHp}`, `${after.hp}/${after.maxHp}`, after.hp >= before.hp ? '#e4fbe9' : '#ffd5cc');
+    add('Scrap', before.scrap, after.scrap, after.scrap >= before.scrap ? '#fff0b8' : '#ffd5cc');
+    add('Deck', before.deck, after.deck, after.deck <= before.deck ? '#dffbff' : '#ffd5cc');
+    add('Supplies', `${before.supplies}/${before.supplyCap}`, `${after.supplies}/${after.supplyCap}`, '#ffe7c9');
+    add('Waymarks', before.waymarks, after.waymarks, '#efe4ff');
+    add('Open Sky Guard', before.openSkyGuard, after.openSkyGuard, '#e4fbe9');
+    add('Open Sky Relief', before.reduceNextOpenSky, after.reduceNextOpenSky, '#dffbff');
+    add('Boss Shield', before.bossDamageShield, after.bossDamageShield, '#e4fbe9');
+    add('Enemy Cover', before.enemyCover, after.enemyCover, '#ffd5cc');
+    add('Free Preen', before.freePreenNextDistrict, after.freePreenNextDistrict, '#dffbff');
+    return rows.slice(0, 8);
+  }
+
+  private renderRouteEventResolutionOverlay() {
+    const result = this.routeEventResolution;
+    if (!result) return;
+    const node = currentMap().nodes.find((candidate) => candidate.id === result.nodeId);
+    this.renderRouteEventBackdrop(node, 0.92);
+    if (node) this.renderRouteEventAtmosphere(node, result.accent);
+    const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 16, 880, 560, {
+      eyebrow: routeNodeTypeLabel(result.nodeType),
+      title: result.title,
+      accent: result.accent,
+      fill: 0x07101a
+    });
+    this.add.circle(frame.left + 96, frame.top + 134, 42, 0x020409, 0.92)
+      .setStrokeStyle(2, result.accent, 0.86);
+    this.renderRouteNodeTypeIcon(result.nodeType, frame.left + 96, frame.top + 134, 64);
+    this.add.text(frame.left + 150, frame.top + 92, 'CHOICE TAKEN', {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: UI_MUTED
+    });
+    this.add.text(frame.left + 150, frame.top + 108, result.choiceText, {
+      fontFamily: UI_FONT,
+      fontSize: '15px',
+      fontStyle: UI_BOLD,
+      color: UI_SOFT,
+      wordWrap: { width: 610 },
+      maxLines: 1
+    });
+    this.add.text(frame.left + 150, frame.top + 142, 'RESOLVED', {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: UI_CYAN
+    });
+    this.add.text(frame.left + 150, frame.top + 164, result.effectText || 'No resource change. The flock keeps moving.', {
+      fontFamily: UI_FONT,
+      fontSize: '17px',
+      fontStyle: UI_BOLD,
+      color: UI_GOLD,
+      wordWrap: { width: 610 },
+      maxLines: 2
+    });
+    this.add.rectangle(frame.cx, frame.top + 232, frame.w - 92, 1, result.accent, 0.42);
+    this.add.text(frame.left + 68, frame.top + 254, 'OUTCOME LEDGER', {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: UI_MUTED
+    });
+    if (result.rows.length === 0) {
+      this.add.rectangle(frame.cx, frame.top + 324, frame.w - 140, 72, 0x020409, 0.72)
+        .setStrokeStyle(1, result.accent, 0.42);
+      this.add.text(frame.cx, frame.top + 306, 'No numbers changed, but the route is marked complete.', {
+        fontFamily: UI_FONT,
+        fontSize: '15px',
+        fontStyle: UI_BOLD,
+        color: UI_SOFT,
+        align: 'center',
+        wordWrap: { width: frame.w - 180 },
+        maxLines: 2
+      }).setOrigin(0.5, 0);
+    } else {
+      result.rows.forEach((row, index) => {
+        const y = frame.top + 290 + index * 26;
+        this.add.rectangle(frame.cx, y + 9, frame.w - 140, 24, 0x020409, 0.68)
+          .setStrokeStyle(1, 0x49606d, 0.38);
+        this.add.text(frame.left + 92, y, row.label, {
+          fontFamily: UI_FONT,
+          fontSize: '12px',
+          fontStyle: UI_BOLD,
+          color: UI_SOFT,
+          maxLines: 1
+        });
+        this.add.text(frame.right - 92, y, `${row.before} -> ${row.after}`, {
+          fontFamily: UI_FONT,
+          fontSize: '12px',
+          fontStyle: UI_BOLD,
+          color: row.color,
+          align: 'right',
+          maxLines: 1
+        }).setOrigin(1, 0);
+      });
+    }
+    const continueButton = this.add.rectangle(frame.cx, frame.bottom - 54, 188, 42, 0x102235, 0.98)
+      .setStrokeStyle(2, result.accent, 0.96)
+      .setInteractive({ useHandCursor: true });
+    continueButton.on('pointerdown', () => this.continueRouteEventResolution());
+    this.add.text(frame.cx, frame.bottom - 66, 'Continue', {
+      fontFamily: UI_FONT,
+      fontSize: '18px',
+      fontStyle: UI_BOLD,
+      color: UI_GOLD,
+      align: 'center',
+      fixedWidth: 170
+    }).setOrigin(0.5, 0);
+  }
+
+  private continueRouteEventResolution() {
+    this.routeEventResolution = undefined;
+    this.scene.restart({ runState: cloneRunState(this.runState) });
+  }
+
   private renderLanternRoostOverlay(node: RouteNode) {
     const choices = this.nodeChoiceList(node);
     const accent = routeEventAccent(node.type);
-    const profile = ROUTE_SET_PIECE_PROFILES.basin;
     const background = this.routeEventBackdropAsset(node);
-    const resident = this.routeEventResidentAsset(node);
     this.queueRouteEventSetPieceArtLoad(node);
 
     if (background && this.textures.exists(background.key)) {
@@ -5358,126 +6017,113 @@ class RouteScene extends Phaser.Scene {
       this.renderRouteEventBackdrop(node, 1);
     }
 
+    this.renderRouteEventAtmosphere(node, accent);
     this.add.rectangle(GAME_WIDTH / 2, 24, GAME_WIDTH - 100, 2, accent, 0.38);
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 28, GAME_WIDTH - 100, 2, accent, 0.34);
 
-    const titleX = GAME_WIDTH / 2;
-    this.add.rectangle(titleX, 132, 548, 72, 0x020409, 0.98)
-      .setStrokeStyle(2, accent, 0.92);
-    this.add.text(titleX, 110, profile?.residentName ?? 'Sella Warmwick', {
-      fontFamily: UI_FONT,
-      fontSize: '24px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      stroke: '#000000',
-      strokeThickness: 4,
-      align: 'center'
-    }).setOrigin(0.5);
-    this.add.text(titleX, 138, profile?.residentRole ?? 'Lantern Roost Keeper', {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: UI_CYAN,
-      align: 'center'
-    }).setOrigin(0.5);
-    this.add.text(titleX, 153, (profile?.species ?? 'golden weaver finch').toUpperCase(), {
-      fontFamily: UI_FONT,
-      fontSize: '9px',
-      fontStyle: UI_BOLD,
-      color: UI_SOFT,
-      align: 'center'
-    }).setOrigin(0.5);
+    this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 132, 548);
+    this.renderRouteEventResident(node, 196, GAME_HEIGHT + 58, 380, 460);
+    this.renderRouteEventCenterpiecePlaque(node, 266, 594, 354);
+    this.renderBasinHearthBench(552, 418, 408, 274, accent);
 
-    if (resident && this.textures.exists(resident.key)) {
-      const residentImage = this.add.image(196, GAME_HEIGHT + 58, resident.key)
-        .setOrigin(0.5, 1)
-        .setAlpha(1);
-      this.fitImageInside(residentImage, 380, 460);
-    } else {
-      this.add.circle(164, 438, 82, 0x1c2230, 0.98)
-        .setStrokeStyle(2, accent, 0.82);
-      this.renderRouteNodeTypeIcon(node.type, 164, 438, 96);
-    }
-
+    const compact = choices.length > 5;
+    const choiceHeight = compact ? 56 : 74;
+    const gap = compact ? 10 : 14;
+    const totalHeight = choices.length * choiceHeight + Math.max(0, choices.length - 1) * gap;
     const choiceX = 1010;
-    const startY = 286;
+    const startY = GAME_HEIGHT / 2 - totalHeight / 2 + choiceHeight / 2 + 20;
     choices.forEach((choice, index) => {
-      const y = startY + index * 112;
-      this.renderSetPieceChoice(choice, choiceX, y, index, accent, 76, false);
+      const y = startY + index * (choiceHeight + gap);
+      this.renderSetPieceChoice(choice, choiceX, y, index, accent, choiceHeight, compact);
     });
   }
 
+  private renderBasinHearthBench(x: number, y: number, w: number, h: number, accent: number) {
+    this.add.rectangle(x + 8, y + 10, w, h, 0x020409, 0.42);
+    this.add.rectangle(x, y, w, h, 0x08120f, 0.9)
+      .setStrokeStyle(2, accent, 0.78);
+    this.add.rectangle(x, y - h / 2 + 26, w - 44, 3, accent, 0.68);
+    this.add.text(x, y - h / 2 + 42, 'ROOST HEARTH SERVICE', {
+      fontFamily: UI_FONT,
+      fontSize: '12px',
+      fontStyle: UI_BOLD,
+      color: UI_GOLD,
+      align: 'center'
+    }).setOrigin(0.5);
+    const hearth = this.add.circle(x, y + 2, 64, 0x3b1708, 0.94)
+      .setStrokeStyle(2, UI_FIELD.gold, 0.82);
+    this.add.circle(x, y + 2, 42, 0xff9d4d, 0.34)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({
+      targets: hearth,
+      alpha: { from: 0.84, to: 1 },
+      scale: { from: 0.98, to: 1.025 },
+      duration: 1100,
+      yoyo: true,
+      repeat: -1
+    });
+    [
+      { icon: 'flock-heart' as UiIconId, label: 'Recover', dx: -134, color: UI_FIELD.green },
+      { icon: 'cover-shield' as UiIconId, label: 'Shelter', dx: 0, color: UI_FIELD.cyan },
+      { icon: 'supply-pouch' as UiIconId, label: 'Pack', dx: 134, color: 0xffb86b }
+    ].forEach((item) => {
+      this.add.rectangle(x + item.dx, y + 102, 112, 44, 0x020409, 0.66)
+        .setStrokeStyle(1, item.color, 0.66);
+      addUiIconImage(this, item.icon, x + item.dx - 32, y + 102, 18)
+        ?.setAlpha(0.9);
+      this.add.text(x + item.dx - 4, y + 96, item.label, {
+        fontFamily: UI_FONT,
+        fontSize: '11px',
+        fontStyle: UI_BOLD,
+        color: '#dbe6f2',
+        align: 'center',
+        fixedWidth: 74
+      });
+    });
+    for (let i = 0; i < 4; i += 1) {
+      const steam = this.add.rectangle(x - 58 + i * 38, y - 84, 16, 2, 0xdffbff, 0.22)
+        .setAngle(-82 + i * 8)
+        .setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({
+        targets: steam,
+        y: steam.y - 28,
+        alpha: { from: 0.05, to: 0.32 },
+        duration: 1300 + i * 170,
+        yoyo: true,
+        repeat: -1
+      });
+    }
+  }
+
   private renderRouteSetPieceOverlay(node: RouteNode) {
+    if (node.type === 'cache') {
+      this.renderCacheSetPieceOverlay(node);
+      return;
+    }
+    if (node.type === 'signal') {
+      this.renderSignalSetPieceOverlay(node);
+      return;
+    }
+    if (node.type === 'nest') {
+      this.renderNestSetPieceOverlay(node);
+      return;
+    }
     const choices = this.nodeChoiceList(node);
     const accent = routeEventAccent(node.type);
-    const profile = ROUTE_SET_PIECE_PROFILES[node.type];
     this.queueRouteEventSetPieceArtLoad(node);
     this.renderRouteEventBackdrop(node, 1);
     const background = this.routeEventBackdropAsset(node);
-    const resident = this.routeEventResidentAsset(node);
 
     if (background && this.textures.exists(background.key)) {
       this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.08)
         .setInteractive({ useHandCursor: false });
     }
 
-    const titleX = GAME_WIDTH / 2;
-    this.add.rectangle(titleX, 132, 560, 78, 0x020409, 0.98)
-      .setStrokeStyle(2, accent, 0.95);
-    this.add.text(titleX, 110, profile?.residentName ?? node.label, {
-      fontFamily: UI_FONT,
-      fontSize: '24px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      stroke: '#000000',
-      strokeThickness: 4,
-      align: 'center'
-    }).setOrigin(0.5);
-    this.add.text(titleX, 138, profile?.residentRole ?? routeNodeTypeLabel(node.type), {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: UI_CYAN,
-      align: 'center'
-    }).setOrigin(0.5);
-    this.add.text(titleX, 154, (profile?.species ?? routeNodeTypeLabel(node.type)).toUpperCase(), {
-      fontFamily: UI_FONT,
-      fontSize: '9px',
-      fontStyle: UI_BOLD,
-      color: UI_SOFT,
-      align: 'center'
-    }).setOrigin(0.5);
-
-    if (resident && this.textures.exists(resident.key)) {
-      const residentFrame = this.routeSetPieceResidentFrame(node);
-      const residentImage = this.add.image(residentFrame.x, residentFrame.y, resident.key)
-        .setOrigin(0.5, 1)
-        .setAlpha(0.98);
-      this.fitImageInside(residentImage, residentFrame.maxWidth, residentFrame.maxHeight);
-    } else {
-      this.add.circle(176, 438, 82, 0x1c2230, 0.98)
-        .setStrokeStyle(2, accent, 0.82);
-      this.renderRouteNodeTypeIcon(node.type, 176, 438, 96);
-    }
-
-    if (node.type !== 'cache' && node.type !== 'signal') {
-      this.add.rectangle(258, 594, 342, 88, 0x06101a, 0.97)
-        .setStrokeStyle(1, accent, 0.72);
-      this.add.text(106, 564, profile?.centerpiece.toUpperCase() ?? routeNodeTypeLabel(node.type).toUpperCase(), {
-        fontFamily: UI_FONT,
-        fontSize: '11px',
-        fontStyle: UI_BOLD,
-        color: '#ffcf6b'
-      });
-      this.add.text(106, 586, profile?.visitLine ?? routeEventLandmarkLine(node.type), {
-        fontFamily: UI_FONT,
-        fontSize: '13px',
-        color: '#dbe6f2',
-        lineSpacing: 3,
-        wordWrap: { width: 292 },
-        maxLines: 3
-      });
-    }
+    this.renderRouteEventAtmosphere(node, accent);
+    this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 132, 560);
+    const residentFrame = this.routeSetPieceResidentFrame(node);
+    this.renderRouteEventResident(node, residentFrame.x, residentFrame.y, residentFrame.maxWidth, residentFrame.maxHeight);
+    this.renderRouteEventCenterpiecePlaque(node, 258, 594, 342);
 
     const compact = choices.length > 5;
     const choiceHeight = compact ? 56 : 78;
@@ -5491,6 +6137,428 @@ class RouteScene extends Phaser.Scene {
     });
   }
 
+  private renderNestSetPieceOverlay(node: RouteNode) {
+    const choices = this.nodeChoiceList(node);
+    const accent = routeEventAccent(node.type);
+    const background = this.routeEventBackdropAsset(node);
+    this.queueRouteEventSetPieceArtLoad(node);
+    this.renderRouteEventBackdrop(node, 1);
+    if (background && this.textures.exists(background.key)) {
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.08)
+        .setInteractive({ useHandCursor: false });
+    }
+    this.renderRouteEventAtmosphere(node, accent);
+    this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 132, 560);
+    const residentFrame = this.routeSetPieceResidentFrame(node);
+    this.renderRouteEventResident(node, residentFrame.x, residentFrame.y, residentFrame.maxWidth, residentFrame.maxHeight);
+    this.renderRouteEventCenterpiecePlaque(node, 258, 594, 342);
+    this.renderNestWorkbench(556, 412, 430, 300, accent);
+
+    const compact = choices.length > 5;
+    const choiceHeight = compact ? 56 : 78;
+    const gap = compact ? 9 : 18;
+    const totalHeight = choices.length * choiceHeight + Math.max(0, choices.length - 1) * gap;
+    const startY = GAME_HEIGHT / 2 - totalHeight / 2 + choiceHeight / 2 + (compact ? 24 : 20);
+    choices.forEach((choice, index) => {
+      const y = startY + index * (choiceHeight + gap);
+      this.renderSetPieceChoice(choice, 1010, y, index, accent, choiceHeight, compact);
+    });
+  }
+
+  private renderNestWorkbench(x: number, y: number, w: number, h: number, accent: number) {
+    this.add.rectangle(x + 8, y + 10, w, h, 0x020409, 0.42);
+    this.add.rectangle(x, y, w, h, 0x07101a, 0.9)
+      .setStrokeStyle(2, accent, 0.82);
+    this.add.rectangle(x, y - h / 2 + 26, w - 44, 3, accent, 0.7);
+    this.add.text(x, y - h / 2 + 42, 'FEATHERWRIGHT DECK BENCH', {
+      fontFamily: UI_FONT,
+      fontSize: '12px',
+      fontStyle: UI_BOLD,
+      color: UI_GOLD,
+      align: 'center'
+    }).setOrigin(0.5);
+    this.add.rectangle(x, y + 36, w - 86, 96, 0x020409, 0.46)
+      .setStrokeStyle(1, accent, 0.36);
+    this.renderRouteNodeTypeIcon('nest', x, y - 18, 110);
+    [
+      { icon: 'preen-kit' as UiIconId, label: 'Preen', x: x - 130, y: y + 92, color: UI_FIELD.cyan },
+      { icon: 'deck-stack' as UiIconId, label: 'Sleeve', x, y: y + 104, color: UI_FIELD.gold },
+      { icon: 'release-card' as UiIconId, label: 'Remove', x: x + 130, y: y + 92, color: UI_FIELD.danger }
+    ].forEach((tool) => {
+      this.add.rectangle(tool.x, tool.y, 104, 48, 0x020409, 0.68)
+        .setStrokeStyle(1, tool.color, 0.66);
+      addUiIconImage(this, tool.icon, tool.x - 31, tool.y, 18)
+        ?.setAlpha(0.92);
+      this.add.text(tool.x - 2, tool.y - 7, tool.label, {
+        fontFamily: UI_FONT,
+        fontSize: '11px',
+        fontStyle: UI_BOLD,
+        color: '#dbe6f2',
+        fixedWidth: 74,
+        align: 'center'
+      });
+    });
+    const lamp = this.add.circle(x + 126, y - 78, 36, accent, 0.12)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({
+      targets: lamp,
+      alpha: { from: 0.06, to: 0.22 },
+      scale: { from: 0.92, to: 1.08 },
+      duration: 1500,
+      yoyo: true,
+      repeat: -1
+    });
+    for (let i = 0; i < 4; i += 1) {
+      this.add.rectangle(x - 136 + i * 82, y + 16 + (i % 2) * 10, 52, 4, 0xd8a840, 0.5)
+        .setAngle(-8 + i * 5);
+    }
+  }
+
+  private renderCacheSetPieceOverlay(node: RouteNode) {
+    const choices = this.nodeChoiceList(node);
+    const accent = routeEventAccent(node.type);
+    const background = this.routeEventBackdropAsset(node);
+    this.queueRouteEventSetPieceArtLoad(node);
+    this.renderRouteEventBackdrop(node, 1);
+    if (background && this.textures.exists(background.key)) {
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.06)
+        .setInteractive({ useHandCursor: false });
+    }
+    this.renderRouteEventAtmosphere(node, accent);
+    this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 118, 560);
+    this.renderRouteEventResident(node, 146, GAME_HEIGHT + 62, 350, 500);
+    this.renderCacheCabinet(node, 620, 438, 590, 506, choices, accent);
+  }
+
+  private renderCacheCabinet(node: RouteNode, x: number, y: number, w: number, h: number, choices: NodeChoiceOption[], accent: number) {
+    const top = y - h / 2;
+    const cabinetAsset = ROUTE_EVENT_PROP_ASSETS.marnLockboxCabinet;
+    const cabinetX = x + 412;
+    const optionX = x - 58;
+
+    if (this.textures.exists(cabinetAsset.key)) {
+      this.add.ellipse(cabinetX, top + 420, 418, 42, 0x020409, 0.32);
+      const cabinetImage = this.add.image(cabinetX, top + 302, cabinetAsset.key)
+        .setAlpha(0.98);
+      this.fitImageInside(cabinetImage, 438, 386);
+    } else {
+      this.renderRouteNodeTypeIcon('cache', cabinetX, top + 302, 120);
+    }
+
+    const optionW = 472;
+    const optionH = choices.length > 6 ? 38 : 44;
+    const startY = top + 144;
+    const optionPanelH = choices.length * (optionH + 6) + 56;
+    const optionPanelY = startY + optionPanelH / 2 - 26;
+    this.add.rectangle(optionX + 7, optionPanelY + 8, optionW + 40, optionPanelH, 0x020409, 0.34);
+    this.add.rectangle(optionX, optionPanelY, optionW + 40, optionPanelH, 0x06101a, 0.58)
+      .setStrokeStyle(2, accent, 0.78);
+    this.add.rectangle(optionX, startY - 42, optionW - 28, 2, accent, 0.62);
+    this.add.text(optionX - optionW / 2 + 20, startY - 33, 'MARN WAITS FOR YOUR NOD', {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      fontStyle: UI_BOLD,
+      color: UI_SOFT,
+      align: 'left'
+    }).setOrigin(0, 0.5);
+
+    choices.forEach((choice, i) => {
+      const dy = startY + i * (optionH + 6);
+      this.renderCacheDrawerTile(node, choice, optionX, dy, optionW, optionH, i, accent);
+    });
+    const glint = this.add.rectangle(cabinetX + 96, top + 208, 72, 2, 0xffffff, 0.22)
+      .setAngle(-18)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({
+      targets: glint,
+      alpha: { from: 0.04, to: 0.22 },
+      x: cabinetX + 156,
+      duration: 2100,
+      yoyo: true,
+      repeat: -1
+    });
+  }
+
+  private renderCacheDrawerTile(
+    node: RouteNode,
+    choice: NodeChoiceOption,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    index: number,
+    accent: number
+  ) {
+    const profile = cacheDrawerProfile(choice, index);
+    const choiceAccent = choice.locked ? 0x49606d : profile.accent;
+    this.add.rectangle(x + 3, y + 4, w, h, 0x020409, 0.2);
+    const bg = this.add.rectangle(x, y, w, h, choice.locked ? 0x0b1018 : 0xf3f7ff, choice.locked ? 0.34 : 0.055)
+      .setStrokeStyle(1, choiceAccent, choice.locked ? 0.34 : 0.45);
+    bg.setInteractive({ useHandCursor: !choice.locked });
+    if (!choice.locked) bg.on('pointerdown', () => this.chooseNodeOption(choice.key));
+    bg.on('pointerover', () => {
+      bg.setFillStyle(choice.locked ? 0x141827 : 0xf3f7ff, choice.locked ? 0.48 : 0.16);
+      bg.setStrokeStyle(1, choice.locked ? UI_FIELD.danger : choiceAccent, 0.92);
+      this.showCacheDrawerInspector(choice, 1000, 422, 276, 360, index, accent);
+    });
+    bg.on('pointerout', () => {
+      bg.setFillStyle(choice.locked ? 0x0b1018 : 0xf3f7ff, choice.locked ? 0.34 : 0.055);
+      bg.setStrokeStyle(1, choiceAccent, choice.locked ? 0.34 : 0.45);
+      this.hideRouteChoiceDetail();
+    });
+    this.add.rectangle(x - w / 2 + 5, y, 4, h - 10, choiceAccent, choice.locked ? 0.38 : 0.72);
+    this.add.text(x - w / 2 + 21, y - 8, profile.drawer, {
+      fontFamily: UI_FONT,
+      fontSize: '16px',
+      fontStyle: UI_BOLD,
+      color: choice.locked ? '#65788b' : '#ffe1a3',
+      align: 'center',
+      fixedWidth: 38
+    }).setOrigin(0.5, 0);
+    addUiIconImage(this, choice.locked ? 'locked-padlock' : profile.icon, x - w / 2 + 61, y, 17)
+      ?.setAlpha(choice.locked ? 0.38 : 0.72);
+    this.add.text(x - w / 2 + 92, y - 11, profile.title, {
+      fontFamily: UI_FONT,
+      fontSize: '14px',
+      fontStyle: UI_BOLD,
+      color: choice.locked ? '#7f93a8' : '#f3f7ff',
+      wordWrap: { width: w - 222 },
+      maxLines: 1
+    }).setOrigin(0, 0);
+    this.add.text(x + w / 2 - 14, y - 9, choice.locked ? 'Locked' : profile.tell, {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: choice.locked ? '#ffb8ad' : '#dffbff',
+      align: 'right',
+      fixedWidth: 132,
+      maxLines: 1
+    }).setOrigin(1, 0);
+    if (choice.locked) {
+      this.add.rectangle(x + w / 2 - 8, y, 3, h - 12, UI_FIELD.danger, 0.48);
+    }
+  }
+
+  private renderCacheClaimPanel(
+    choice: NodeChoiceOption,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    index: number,
+    accent: number,
+    panel?: Phaser.GameObjects.Container
+  ) {
+    const own = <T extends Phaser.GameObjects.GameObject>(obj: T) => {
+      panel?.add(obj);
+      return obj;
+    };
+    const profile = cacheDrawerProfile(choice, index);
+    const choiceAccent = choice.locked ? UI_FIELD.danger : profile.accent;
+    const rows = this.routeChoicePreviewRows(choice);
+    own(this.add.rectangle(x + 8, y + 10, w, h, 0x020409, 0.44));
+    own(this.add.rectangle(x, y, w, h, 0x07101a, 0.97)
+      .setStrokeStyle(2, choiceAccent, choice.locked ? 0.9 : 0.82));
+    own(this.add.rectangle(x, y - h / 2 + 24, w - 40, 3, choiceAccent, 0.76));
+    own(this.add.text(x - w / 2 + 22, y - h / 2 + 42, 'CLAIM FILE', {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: UI_GOLD
+    }));
+    own(this.add.text(x + w / 2 - 22, y - h / 2 + 42, choice.locked ? 'LOCKED' : 'READY', {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      fontStyle: UI_BOLD,
+      color: choice.locked ? '#ffb8ad' : '#dffbff',
+      align: 'right'
+    }).setOrigin(1, 0));
+    own(this.add.rectangle(x - w / 2 + 54, y - h / 2 + 96, 68, 78, 0x020409, 0.68)
+      .setStrokeStyle(1, choiceAccent, 0.78));
+    own(this.add.text(x - w / 2 + 54, y - h / 2 + 72, 'DRAWER', {
+      fontFamily: UI_FONT,
+      fontSize: '8px',
+      fontStyle: UI_BOLD,
+      color: '#dffbff',
+      align: 'center',
+      fixedWidth: 62,
+      maxLines: 1
+    }).setOrigin(0.5, 0));
+    own(this.add.text(x - w / 2 + 54, y - h / 2 + 87, profile.drawer, {
+      fontFamily: UI_FONT,
+      fontSize: '28px',
+      fontStyle: UI_BOLD,
+      color: choice.locked ? '#7f93a8' : '#ffe1a3',
+      align: 'center',
+      fixedWidth: 62
+    }).setOrigin(0.5, 0));
+    const icon = addUiIconImage(this, choice.locked ? 'locked-padlock' : profile.icon, x - w / 2 + 54, y - h / 2 + 146, 22);
+    if (icon) own(icon.setAlpha(choice.locked ? 0.46 : 0.9));
+    own(this.add.text(x - w / 2 + 104, y - h / 2 + 72, profile.title, {
+      fontFamily: UI_FONT,
+      fontSize: '18px',
+      fontStyle: UI_BOLD,
+      color: choice.locked ? '#ffb8ad' : '#ffe1a3',
+      wordWrap: { width: w - 132 },
+      maxLines: 2
+    }));
+    own(this.add.text(x - w / 2 + 104, y - h / 2 + 122, choice.locked ? 'Unavailable claim' : profile.tell, {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      fontStyle: UI_BOLD,
+      color: choice.locked ? '#ff9d4d' : '#dffbff',
+      wordWrap: { width: w - 132 },
+      maxLines: 1
+    }));
+    own(this.add.text(x - w / 2 + 34, y - h / 2 + 176, 'REWARD / COST', {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      fontStyle: UI_BOLD,
+      color: UI_MUTED
+    }));
+    if (choice.locked && choice.lockedText) {
+      own(this.add.rectangle(x, y - h / 2 + 220, w - 68, 64, 0x020409, 0.62)
+        .setStrokeStyle(1, UI_FIELD.danger, 0.42));
+      own(this.add.text(x - w / 2 + 48, y - h / 2 + 199, choice.lockedText, {
+        fontFamily: UI_FONT,
+        fontSize: '13px',
+        color: '#ffb8ad',
+        wordWrap: { width: w - 68 },
+        maxLines: 2
+      }));
+    } else if (rows.length === 0) {
+      own(this.add.rectangle(x, y - h / 2 + 220, w - 68, 42, 0x020409, 0.62)
+        .setStrokeStyle(1, 0x49606d, 0.34));
+      own(this.add.text(x - w / 2 + 48, y - h / 2 + 210, 'No cost / no reward', {
+        fontFamily: UI_FONT,
+        fontSize: '13px',
+        fontStyle: UI_BOLD,
+        color: UI_SOFT,
+        maxLines: 1
+      }));
+    } else {
+      rows.slice(0, 4).forEach((row, rowIndex) => {
+        const rowY = y - h / 2 + 201 + rowIndex * 32;
+        const kind = row.color === '#ffd5cc' ? 'Cost' : 'Reward';
+        own(this.add.rectangle(x, rowY + 9, w - 68, 26, 0x020409, 0.62)
+          .setStrokeStyle(1, 0x49606d, 0.34));
+        own(this.add.text(x - w / 2 + 48, rowY + 1, `${kind}: ${row.label}`, {
+          fontFamily: UI_FONT,
+          fontSize: '12px',
+          fontStyle: UI_BOLD,
+          color: UI_SOFT,
+          maxLines: 1
+        }));
+        own(this.add.text(x + w / 2 - 48, rowY + 1, this.routeChoiceChangeAmountText(row), {
+          fontFamily: UI_FONT,
+          fontSize: '12px',
+          fontStyle: UI_BOLD,
+          color: row.color,
+          align: 'right',
+          maxLines: 1
+        }).setOrigin(1, 0));
+      });
+    }
+    own(this.add.rectangle(x, y + h / 2 - 34, w - 56, 30, 0x020409, 0.72)
+      .setStrokeStyle(1, choiceAccent, choice.locked ? 0.42 : 0.78));
+    own(this.add.text(x, y + h / 2 - 43, choice.locked ? 'Find another claim' : 'Choose this claim', {
+      fontFamily: UI_FONT,
+      fontSize: '12px',
+      fontStyle: UI_BOLD,
+      color: choice.locked ? '#ffb8ad' : '#ffe1a3',
+      align: 'center',
+      fixedWidth: w - 64,
+      maxLines: 1
+    }).setOrigin(0.5, 0));
+  }
+
+  private showCacheDrawerInspector(
+    choice: NodeChoiceOption,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    index: number,
+    accent: number
+  ) {
+    this.hideRouteChoiceDetail();
+    const panel = this.add.container(0, 0).setDepth(22000);
+    this.renderCacheClaimPanel(choice, x, y, w, h, index, accent, panel);
+    this.routeChoiceHover = panel;
+  }
+
+  private renderSignalSetPieceOverlay(node: RouteNode) {
+    const choices = this.nodeChoiceList(node);
+    const accent = routeEventAccent(node.type);
+    const background = this.routeEventBackdropAsset(node);
+    this.queueRouteEventSetPieceArtLoad(node);
+    this.renderRouteEventBackdrop(node, 1);
+    if (background && this.textures.exists(background.key)) {
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.08)
+        .setInteractive({ useHandCursor: false });
+    }
+    this.renderRouteEventAtmosphere(node, accent);
+    this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 118, 560);
+    this.renderRouteEventResident(node, 178, GAME_HEIGHT + 50, 330, 488);
+    this.renderRouteEventCenterpiecePlaque(node, 268, 596, 354);
+
+    const compact = choices.length > 5;
+    const choiceHeight = compact ? 56 : 72;
+    const gap = compact ? 10 : 16;
+    const totalHeight = choices.length * choiceHeight + Math.max(0, choices.length - 1) * gap;
+    const startY = GAME_HEIGHT / 2 - totalHeight / 2 + choiceHeight / 2 + 22;
+    const choiceYs = choices.map((_, index) => startY + index * (choiceHeight + gap));
+    this.renderSignalSwitchboard(552, 400, 430, 350, choiceYs, accent);
+    choices.forEach((choice, index) => {
+      this.renderSetPieceChoice(choice, 1012, choiceYs[index], index, accent, choiceHeight, compact);
+    });
+  }
+
+  private renderSignalSwitchboard(x: number, y: number, w: number, h: number, choiceYs: number[], accent: number) {
+    this.add.rectangle(x + 8, y + 10, w, h, 0x020409, 0.44);
+    this.add.rectangle(x, y, w, h, 0x07101a, 0.9)
+      .setStrokeStyle(2, accent, 0.84);
+    this.add.rectangle(x, y - h / 2 + 26, w - 42, 3, accent, 0.7);
+    this.add.text(x, y - h / 2 + 42, 'SWITCHBOARD ROUTE MAP', {
+      fontFamily: UI_FONT,
+      fontSize: '12px',
+      fontStyle: UI_BOLD,
+      color: UI_GOLD,
+      align: 'center'
+    }).setOrigin(0.5);
+    const board = this.add.graphics();
+    const colors = [UI_FIELD.violet, UI_FIELD.cyan, UI_FIELD.gold, UI_FIELD.green, 0xffb86b, UI_FIELD.danger];
+    choiceYs.forEach((choiceY, index) => {
+      const jackX = x + 42 + (index % 3) * 92;
+      const jackY = y - 76 + Math.floor(index / 3) * 82;
+      const color = colors[index % colors.length] ?? accent;
+      board.lineStyle(2, color, 0.58);
+      board.lineBetween(jackX, jackY, x + w / 2 - 22, choiceY);
+      this.add.circle(jackX, jackY, 11, 0x020409, 0.92)
+        .setStrokeStyle(2, color, 0.9);
+      const pulse = this.add.circle(jackX, jackY, 5, color, 0.72)
+        .setBlendMode(Phaser.BlendModes.ADD);
+      this.tweens.add({
+        targets: pulse,
+        alpha: { from: 0.18, to: 0.86 },
+        scale: { from: 0.8, to: 1.42 },
+        duration: 980 + index * 140,
+        yoyo: true,
+        repeat: -1
+      });
+    });
+    this.renderRouteNodeTypeIcon('signal', x, y + 66, 118);
+    this.add.rectangle(x, y + 140, w - 90, 38, 0x020409, 0.54)
+      .setStrokeStyle(1, accent, 0.36);
+    this.add.text(x, y + 128, 'WIRE PATHS ACTIVE', {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      fontStyle: UI_BOLD,
+      color: UI_CYAN,
+      align: 'center'
+    }).setOrigin(0.5, 0);
+  }
+
   private renderSetPieceChoice(
     choice: { key: string; text: string; effects: string[]; locked: boolean; lockedText?: string },
     x: number,
@@ -5502,16 +6570,34 @@ class RouteScene extends Phaser.Scene {
   ) {
     const colors = [UI_FIELD.green, UI_FIELD.cyan, UI_FIELD.gold];
     const choiceAccent = colors[index % colors.length] ?? accent;
-    const w = 382;
+    const w = 398;
     const h = height;
+    this.add.rectangle(x + 7, y + 7, w, h, 0x020409, 0.38);
     const bg = this.add.rectangle(x, y, w, h, choice.locked ? 0x0d1420 : 0x07101a, choice.locked ? 0.8 : 0.98)
       .setStrokeStyle(2, choice.locked ? 0x49606d : choiceAccent, choice.locked ? 0.62 : 0.95);
+    bg.setInteractive({ useHandCursor: !choice.locked });
     if (!choice.locked) {
-      bg.setInteractive({ useHandCursor: true });
       bg.on('pointerdown', () => this.chooseNodeOption(choice.key));
     }
-    this.add.rectangle(x - w / 2 + 4, y, 6, h - 12, choice.locked ? 0x49606d : choiceAccent, choice.locked ? 0.62 : 1);
-    this.add.text(x - 164, y - (compact ? 22 : 28), choice.text, {
+    bg.on('pointerover', () => {
+      const node = currentMap().nodes.find((candidate) => candidate.id === this.nodeChoiceNodeId);
+      bg.setFillStyle(choice.locked ? 0x141827 : 0x102235, choice.locked ? 0.88 : 1);
+      bg.setStrokeStyle(2, choice.locked ? UI_FIELD.danger : choiceAccent, 1);
+      if (node) this.showRouteChoiceDetail(node, choice, x, y, choiceAccent);
+    });
+    bg.on('pointerout', () => {
+      bg.setFillStyle(choice.locked ? 0x0d1420 : 0x07101a, choice.locked ? 0.8 : 0.98);
+      bg.setStrokeStyle(2, choice.locked ? 0x49606d : choiceAccent, choice.locked ? 0.62 : 0.95);
+      this.hideRouteChoiceDetail();
+    });
+    this.add.rectangle(x - w / 2 + 6, y, 8, h - 12, choice.locked ? 0x49606d : choiceAccent, choice.locked ? 0.62 : 1);
+    this.add.rectangle(x, y - h / 2 + 8, w - 36, 2, choice.locked ? 0x49606d : choiceAccent, choice.locked ? 0.34 : 0.58);
+    this.add.rectangle(x - w / 2 + 42, y, 48, h - 18, 0x020409, choice.locked ? 0.5 : 0.66)
+      .setStrokeStyle(1, choice.locked ? 0x49606d : choiceAccent, choice.locked ? 0.42 : 0.72);
+    addUiIconImage(this, choice.locked ? 'locked-padlock' : 'route-pin', x - w / 2 + 42, y, compact ? 15 : 17)
+      ?.setAlpha(choice.locked ? 0.45 : 0.86);
+    const titleY = y - h / 2 + (compact ? 9 : 11);
+    this.add.text(x - w / 2 + 76, titleY, choice.text, {
       fontFamily: UI_FONT,
       fontSize: compact ? '14px' : '16px',
       fontStyle: UI_BOLD,
@@ -5519,16 +6605,17 @@ class RouteScene extends Phaser.Scene {
       wordWrap: { width: 286 },
       maxLines: 1
     });
-    this.add.text(x - 164, y + (compact ? -1 : -4), choice.locked && choice.lockedText ? choice.lockedText : routeEffectSummary(choice.effects), {
-      fontFamily: UI_FONT,
-      fontSize: compact ? '11px' : '13px',
-      color: choice.locked ? '#ff9d4d' : '#dbe6f2',
-      lineSpacing: compact ? 1 : 2,
-      wordWrap: { width: 300 },
-      maxLines: 2
-    });
-    addUiIconImage(this, choice.locked ? 'locked-padlock' : 'route-pin', x + 152, y, compact ? 15 : 17)
-      ?.setAlpha(choice.locked ? 0.45 : 0.86);
+    if (!compact) {
+      this.add.text(x - w / 2 + 76, y - h / 2 + 33, choice.locked && choice.lockedText ? choice.lockedText : routeEffectSummary(choice.effects), {
+        fontFamily: UI_FONT,
+        fontSize: '12px',
+        color: choice.locked ? '#ff9d4d' : '#dbe6f2',
+        lineSpacing: 1,
+        wordWrap: { width: 288 },
+        maxLines: 1
+      });
+    }
+    this.renderEventEffectTokens(choice, x - w / 2 + 76, y + h / 2 - (compact ? 13 : 14), 292, compact);
   }
 
   private renderMarketCardOffers(x: number, y: number) {
@@ -5561,7 +6648,7 @@ class RouteScene extends Phaser.Scene {
         this.add.image(cardX, cardY, key)
           .setDisplaySize(artW, artH)
           .setAlpha(1);
-      } else {
+      } else if (!renderSnagCardBorder(this, undefined, card, cardX, cardY, artW, artH, 1)) {
         this.add.text(cardX, cardY - 30, cardLabel(card), {
         fontFamily: UI_FONT,
         fontSize: '12px',
@@ -5571,6 +6658,8 @@ class RouteScene extends Phaser.Scene {
         wordWrap: { width: 90 },
         maxLines: 2
         }).setOrigin(0.5);
+      } else {
+        this.add.rectangle(cardX, cardY, artW, artH, 0x05101a, 0.12);
       }
       this.renderMarketPriceTag(cardX, cardY + artH / 2 + 18, listing.price, enabled && !listing.sold, accent, 'BUY');
       if (listing.sold) this.renderMarketSoldSlat(cardX, cardY, cardW, cardH);
@@ -8102,6 +9191,7 @@ class BattleScene extends Phaser.Scene {
     return uniqueImageAssets([
       scrapArtAsset,
       ...Object.values(uiIconAssets),
+      snagCardBorderAsset,
       this.currentBattlefieldAsset(),
       this.currentFlockLeaderArtAsset(),
       ...this.routeMarks.map((id) => waymarkArtAssets[id]),
@@ -8133,7 +9223,10 @@ class BattleScene extends Phaser.Scene {
   }
 
   private queueCardArtLoad(cards: Card[]) {
-    const assets = uniqueImageAssets(cards.map((card) => cardCompactArtAsset(card)));
+    const assets = uniqueImageAssets([
+      ...cards.map((card) => cardCompactArtAsset(card)),
+      ...(cards.some(isSnagCard) ? [snagCardBorderAsset] : [])
+    ]);
     this.queueImageAssets(assets, 'Card art failed to load');
   }
 
@@ -8910,8 +10003,10 @@ class BattleScene extends Phaser.Scene {
     const key = compactCardArtKey(card);
     if (key && this.textures.exists(key)) {
       this.root.add(this.add.image(cx, HAND_Y, key).setDisplaySize(CARD_W - 4, CARD_H - 4).setAlpha(canPay ? 1 : 0.55));
-    } else {
+    } else if (!renderSnagCardBorder(this, (obj) => this.root.add(obj), card, cx, HAND_Y, CARD_W - 4, CARD_H - 4, canPay ? 1 : 0.55)) {
       this.root.add(this.add.rectangle(cx, HAND_Y, CARD_W - 4, CARD_H - 4, 0x141d2b, 0.92));
+    } else {
+      this.root.add(this.add.rectangle(cx, HAND_Y, CARD_W - 4, CARD_H - 4, 0x05101a, 0.12));
     }
 
     // Name banner (top) over a scrim so it reads against the art.
@@ -8980,7 +10075,8 @@ class BattleScene extends Phaser.Scene {
     c.add(this.add.rectangle(cx, cy, w + 8, h + 8, 0x06090f, 0.99).setStrokeStyle(3, accent, 1));
     const key = loadedCardArtKey(this, card);
     if (key && this.textures.exists(key)) c.add(this.add.image(cx, cy, key).setDisplaySize(w, h));
-    else c.add(this.add.rectangle(cx, cy, w, h, 0x141d2b, 0.95));
+    else if (!renderSnagCardBorder(this, (obj) => c.add(obj), card, cx, cy, w, h)) c.add(this.add.rectangle(cx, cy, w, h, 0x141d2b, 0.95));
+    else c.add(this.add.rectangle(cx, cy, w, h, 0x05101a, 0.12));
 
     // Name banner + cost.
     c.add(this.add.rectangle(cx, top + 22, w - 4, 40, 0x05080e, 0.72));
@@ -9382,7 +10478,9 @@ class BattleScene extends Phaser.Scene {
         break;
       case 'nextTurnDraw':
         this.nextTurnDrawBonus += n;
-        this.logEvent(`${source} adds +${n} draw next turn.`);
+        this.logEvent(n >= 0
+          ? `${source} adds +${n} draw next turn.`
+          : `${source} cuts ${Math.abs(n)} draw next turn.`);
         break;
       case 'retainHand':
         this.pendingRetainHand += n;
@@ -9716,7 +10814,7 @@ class BattleScene extends Phaser.Scene {
         .setDisplaySize(artW, artH)
         .setAlpha(0.98);
       this.root.add(art);
-    } else {
+    } else if (!renderSnagCardBorder(this, (obj) => this.root.add(obj), card, x, y, artW, artH, 0.98)) {
       this.root.add(this.add.rectangle(x, y, artW, artH, 0x141f2f, 0.94)
         .setStrokeStyle(1, 0x49606d, 0.8));
       this.root.add(this.add.text(x, y - 20, cardLabel(card), {
@@ -9727,6 +10825,8 @@ class BattleScene extends Phaser.Scene {
         align: 'center',
         wordWrap: { width: artW - 40 }
       }).setOrigin(0.5));
+    } else {
+      this.root.add(this.add.rectangle(x, y, artW, artH, 0x05101a, 0.12));
     }
     this.root.add(this.add.rectangle(x, y, artW, artH, 0x05101a, 0.16));
   }
@@ -10006,6 +11106,10 @@ class BattleScene extends Phaser.Scene {
   private renderDetailCardArt(card: Card) {
     const key = loadedCardArtKey(this, card);
     if (!key || !this.textures.exists(key)) {
+      if (renderSnagCardBorder(this, (obj) => this.root.add(obj), card, DECK_DETAIL_LAYOUT.artX, DECK_DETAIL_LAYOUT.artY, DECK_DETAIL_LAYOUT.artW, DECK_DETAIL_LAYOUT.artH, 0.92)) {
+        this.root.add(this.add.rectangle(DECK_DETAIL_LAYOUT.artX, DECK_DETAIL_LAYOUT.artY, DECK_DETAIL_LAYOUT.artW, DECK_DETAIL_LAYOUT.artH, 0x05101a, 0.12));
+        return;
+      }
       this.root.add(this.add.rectangle(DECK_DETAIL_LAYOUT.artX, DECK_DETAIL_LAYOUT.artY, DECK_DETAIL_LAYOUT.artW, DECK_DETAIL_LAYOUT.artH, 0x141f2f, 0.95)
         .setStrokeStyle(1, 0x49606d, 0.8));
       this.root.add(this.add.text(DECK_DETAIL_LAYOUT.artX, DECK_DETAIL_LAYOUT.artY, cardLabel(card), {
@@ -10202,7 +11306,8 @@ class BattleScene extends Phaser.Scene {
 
     // A snag like Bad Directions shuffles itself back into the draw pile instead
     // of discarding, so it keeps clogging the hand until removed at a deck node.
-    if (outcome.returnSelfToDraw) this.addCardToDrawRandom(playedCard);
+    if (outcome.exhaustSelf) this.logEvent(`${displayName(playedCard)} is cleared for this combat.`);
+    else if (outcome.returnSelfToDraw) this.addCardToDrawRandom(playedCard);
     else this.discardPile.push(playedCard);
     this.selectedInstanceId = undefined;
     this.checkOutcome();
@@ -10217,8 +11322,10 @@ class BattleScene extends Phaser.Scene {
     const key = loadedCardArtKey(this, card);
     if (key && this.textures.exists(key)) {
       c.add(this.add.image(0, 0, key).setDisplaySize(CARD_W - 6, CARD_H - 6));
-    } else {
+    } else if (!renderSnagCardBorder(this, (obj) => c.add(obj), card, 0, 0, CARD_W - 6, CARD_H - 6, 0.96)) {
       c.add(this.add.rectangle(0, 0, CARD_W - 6, CARD_H - 6, 0x141d2b, 0.96));
+    } else {
+      c.add(this.add.rectangle(0, 0, CARD_W - 6, CARD_H - 6, 0x05101a, 0.12));
     }
     c.add(this.add.rectangle(0, -CARD_H / 2 + 16, CARD_W - 6, 26, 0x05080e, 0.72));
     c.add(this.add.text(-CARD_W / 2 + 34, -CARD_H / 2 + 8, displayName(card), {
@@ -10323,6 +11430,7 @@ class BattleScene extends Phaser.Scene {
       previousDamageDefeated: false,
       spentResonance: false,
       returnSelfToDraw: false,
+      exhaustSelf: false,
       builtFlow: false,
       flockDamageBonusUsed: false
     };
@@ -10330,6 +11438,30 @@ class BattleScene extends Phaser.Scene {
       this.resolveCardEffect(effect, card, enemyId, state);
     }
     return state;
+  }
+
+  private resolveHeldSnagEffects() {
+    const heldSnags = this.hand.filter((card) => isSnagCard(card) && card.runtime.heldEffects?.length);
+    for (const card of heldSnags) {
+      const state: EffectResolutionState = {
+        previousDiscarded: 0,
+        previousDamageDefeated: false,
+        spentResonance: false,
+        returnSelfToDraw: false,
+        exhaustSelf: false,
+        builtFlow: false,
+        flockDamageBonusUsed: false
+      };
+      this.logEvent(`${displayName(card)} catches at Roost.`);
+      floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 72, 'Snag!', '#ff6b57');
+      for (const effect of card.runtime.heldEffects ?? []) {
+        this.resolveCardEffect(effect, card, '', state);
+      }
+      if (state.returnSelfToDraw) {
+        this.hand = this.hand.filter((candidate) => candidate.instanceId !== card.instanceId);
+        this.addCardToDrawRandom(card);
+      }
+    }
   }
 
   private resolveCardEffect(
@@ -10378,6 +11510,36 @@ class BattleScene extends Phaser.Scene {
         this.gainBlock(value, displayName(card), card);
         this.buildFlow(state);
         break;
+      case 'applyOpenSky':
+        this.flock.exposed = true;
+        this.flock.exposedTurns = Math.max(this.flock.exposedTurns, value);
+        this.logEvent(`${displayName(card)} leaves the flock in Open Sky.`);
+        floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 50, 'Open Sky!', '#ff9d4d');
+        this.pulseRing(FLOCK_FX_X, FLOCK_FX_Y - 20, 0xff9d4d, 92, 580);
+        this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y - 20, 0xff9d4d, 20, 155);
+        break;
+      case 'loseCover': {
+        const removed = Math.min(this.flock.block, value);
+        this.flock.block = Math.max(0, this.flock.block - removed);
+        this.logEvent(`${displayName(card)} shakes loose ${removed} Cover.`);
+        floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 42, `-${removed} Cover`, '#8df4ff');
+        this.coverImpactFx(FLOCK_FX_X, FLOCK_FX_Y, 0x8df4ff);
+        break;
+      }
+      case 'damageFlock': {
+        const damage = Math.max(0, value);
+        this.flock.hp = Math.max(0, this.flock.hp - damage);
+        this.statTaken += damage;
+        if (damage > 0) this.flock.flow = 0;
+        this.logEvent(`${displayName(card)} hurts the flock for ${damage}.`);
+        if (damage > 0) {
+          this.queueFlockMotion('hit');
+          floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 8, `-${damage}`, '#ff7a6e');
+          this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y + 32, 0xff9d6b, 16, 155);
+          shakeCamera(this, 0.004);
+        }
+        break;
+      }
       case 'heal':
         this.healFlock(value, displayName(card));
         break;
@@ -10451,6 +11613,13 @@ class BattleScene extends Phaser.Scene {
         break;
       }
       case 'applyWinded': {
+        if (parsed.args[0] === 'flock') {
+          this.flock.weak += value;
+          this.logEvent(`${displayName(card)} leaves the flock Winded.`);
+          floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 46, 'Winded', '#c98bff');
+          this.windedFx(FLOCK_FX_X, FLOCK_FX_Y);
+          break;
+        }
         const enemy = this.getLivingEnemy(enemyId);
         if (!enemy) break;
         enemy.weak += value;
@@ -10494,15 +11663,36 @@ class BattleScene extends Phaser.Scene {
         break;
       case 'nextTurnDraw':
         this.nextTurnDrawBonus += value;
-        this.logEvent(`Next turn draw gains +${value}.`);
+        this.logEvent(value >= 0
+          ? `Next turn draw gains +${value}.`
+          : `Next turn draw loses ${Math.abs(value)}.`);
         break;
       case 'gainEnergyNextTurn':
         this.nextTurnEnergyBonus += value;
         this.logEvent(`${displayName(card)} banks +${value} Wingbeat for next turn.`);
         break;
+      case 'enemyNextAttackBonus': {
+        const enemy = this.enemies.find((candidate) => candidate.hp > 0);
+        if (!enemy) break;
+        enemy.nextAttackBonus += value;
+        this.logEvent(`${displayName(card)} gives ${enemy.name} +${value} next damage.`);
+        const view = this.enemyView(enemy);
+        floatingText(this, this.fxLayer, view.x, view.y - 92, `+${value} dmg`, '#ff9d6b');
+        this.sparkBurst(view.x, view.y - 28, 0xff9d6b, 12, 130);
+        break;
+      }
+      case 'enemyGainCover': {
+        const enemy = this.enemies.find((candidate) => candidate.hp > 0);
+        if (!enemy) break;
+        this.giveEnemyCover(enemy, value, displayName(card), 'shields');
+        break;
+      }
       case 'shuffleSelfToDraw':
         state.returnSelfToDraw = true;
         this.logEvent(`${displayName(card)} tangles back into the draw pile.`);
+        break;
+      case 'exhaustSelf':
+        state.exhaustSelf = true;
         break;
     }
   }
@@ -10518,6 +11708,7 @@ class BattleScene extends Phaser.Scene {
     if (!enemy && condition.startsWith('target')) return false;
     if (!enemy && condition.startsWith('windedAtLeast')) return false;
     if (condition === 'fullyBlocksNextAttack') return this.flock.block >= this.incomingNextAttackDamage();
+    if (condition === 'noCover') return this.flock.block <= 0;
     if (condition === 'targetBelowHalf') return enemy ? enemy.hp <= enemy.maxHp / 2 : false;
     if (condition === 'targetIntendsAttack') return enemy ? moveDealsDamage(currentMove(enemy)) : false;
     if (condition === 'targetHasCover') return enemy ? enemy.block > 0 : false;
@@ -10525,6 +11716,7 @@ class BattleScene extends Phaser.Scene {
     const windedAtLeast = condition.match(/^windedAtLeast\((\d+)\)$/);
     if (windedAtLeast) return enemy ? enemy.weak >= Number(windedAtLeast[1]) : false; // rewards stacking Winded
     if (condition === 'hasResonance') return this.spark > 0;
+    if (condition === 'noResonance') return this.spark <= 0 && !state.spentResonance;
     if (condition === 'spentResonance') return state.spentResonance;
     const resAtLeast = condition.match(/^resonanceAtLeast\((\d+)\)$/);
     if (resAtLeast) return this.spark >= Number(resAtLeast[1]); // hoard payoff (doesn't consume)
@@ -10813,6 +12005,8 @@ class BattleScene extends Phaser.Scene {
     if (cardsPlayedAtRoost > 0 && cardsPlayedAtRoost <= 2) this.statLowCardTurns += 1;
     if (cardsPlayedAtRoost > 0 && cardsPlayedAtRoost < OVEREXTENSION_CARD_THRESHOLD) this.statNoOverextensionTurns += 1;
 
+    this.resolveHeldSnagEffects();
+
     const retainCount = Math.min(Math.max(0, this.pendingRetainHand), this.hand.length);
     const retained = retainCount > 0 ? this.hand.splice(this.hand.length - retainCount, retainCount) : [];
     this.pendingRetainHand = 0;
@@ -10994,6 +12188,7 @@ class BattleScene extends Phaser.Scene {
       case 'addSnagToDiscard': {
         const snagId = parsed.args[0];
         if (snagId && cardLibrary[snagId]) {
+          discoverCards([snagId]);
           this.discardPile.push(cloneCard(snagId));
           this.logEvent(`${enemy.name} tangles the route — ${cardLibrary[snagId].runtime.displayName} drops into your discard.`);
         }
@@ -11002,6 +12197,7 @@ class BattleScene extends Phaser.Scene {
       case 'addSnagToDraw': {
         const snagId = parsed.args[0];
         if (snagId && cardLibrary[snagId]) {
+          discoverCards([snagId]);
           const at = Math.floor(Math.random() * (this.drawPile.length + 1));
           this.drawPile.splice(at, 0, cloneCard(snagId));
           this.logEvent(`${enemy.name} fouls your draw with ${cardLibrary[snagId].runtime.displayName}.`);
@@ -12172,6 +13368,7 @@ function isAviaryCard(card: Pick<Card, 'id'>) {
 }
 
 function cardLabel(card: Card) {
+  if (isSnagCard(card)) return 'SNAG';
   if (isAviaryCard(card)) return 'AVIARY';
   if (card.type === 'major') return 'LEGEND';
   if (card.type === 'minor') return suitLabel(card);
@@ -12200,6 +13397,32 @@ function loadedCardArtKey(scene: Phaser.Scene, card: Card) {
   const compact = compactCardArtKey(card);
   if (compact && scene.textures.exists(compact)) return compact;
   return undefined;
+}
+
+function isSnagCard(card: Pick<Card, 'runtime'>) {
+  return card.runtime.kind === 'snag';
+}
+
+function renderSnagCardBorder(
+  scene: Phaser.Scene,
+  addTo: UiAdd | undefined,
+  card: Pick<Card, 'runtime'>,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  alpha = 1
+) {
+  if (!isSnagCard(card) || !scene.textures.exists(snagCardBorderAsset.key)) return false;
+  const bg = scene.add.rectangle(x, y, width, height, 0x07090d, Math.min(0.98, alpha));
+  const frame = scene.add.image(x, y, snagCardBorderAsset.key)
+    .setDisplaySize(width, height)
+    .setAlpha(alpha);
+  if (addTo) {
+    addTo(bg);
+    addTo(frame);
+  }
+  return true;
 }
 
 function cardCompactArtAsset(card: Pick<Card, 'id'>) {
@@ -12243,7 +13466,7 @@ function effectsHitAllEnemies(effects: string[]) {
 function effectsOnlyAffectFlock(effects: string[]) {
   return effects.some((effect) => {
     const body = effectBody(effect);
-    return /\b(?:gainCover|heal|overhealCover|loseCohesion|draw|discard|discardUpTo|gainWingbeat|loseWingbeat|gainResonance|spendResonance|enterMolt|gainOpenSkyGuard|returnDiscard|nextCoverBonus|nextTurnDraw|gainEnergyNextTurn|shuffleSelfToDraw)\(/.test(body);
+    return /\b(?:gainCover|applyOpenSky|loseCover|damageFlock|heal|overhealCover|loseCohesion|draw|discard|discardUpTo|gainWingbeat|loseWingbeat|gainResonance|spendResonance|enterMolt|gainOpenSkyGuard|returnDiscard|nextCoverBonus|nextTurnDraw|gainEnergyNextTurn|enemyNextAttackBonus|enemyGainCover|shuffleSelfToDraw|exhaustSelf)\(/.test(body);
   });
 }
 
@@ -12645,6 +13868,9 @@ function formatEffectCompact(effect: string): string {
     case 'damageAll': return `${value} all`;
     case 'removeCover': return `-${value} Cover`;
     case 'gainCover': return `+${value} Cover`;
+    case 'applyOpenSky': return `Open Sky ${value}`;
+    case 'loseCover': return `-${value} Cover`;
+    case 'damageFlock': return `-${value} HP`;
     case 'heal':
     case 'healCohesion': return `+${value} HP`;
     case 'healMissingPct': return `missing HP +${parsed.args[1] ?? value}`;
@@ -12666,7 +13892,7 @@ function formatEffectCompact(effect: string): string {
     case 'spendResonance': return `spend ${value} Resonance`;
     case 'resonanceBurst': return `${value} dmg/Resonance`;
     case 'windedBurst': return `${value} dmg/Winded`;
-    case 'applyWinded': return `+${value} Winded`;
+    case 'applyWinded': return parsed.args[0] === 'flock' ? `flock +${value} Winded` : `+${value} Winded`;
     case 'applyPoison': return `+${value} Fouled`;
     case 'enterMolt': return 'Molt';
     case 'gainOpenSkyGuard': return `+${value} Sky Guard`;
@@ -12678,8 +13904,10 @@ function formatEffectCompact(effect: string): string {
     }
     case 'nextCoverBonus': return `next Cover +${value}`;
     case 'retainHand': return `retain ${value}`;
-    case 'nextTurnDraw': return `next Draw +${value}`;
+    case 'nextTurnDraw': return `next Draw ${Number(value) >= 0 ? '+' : ''}${value}`;
     case 'gainEnergyNextTurn': return `next Wingbeat +${value}`;
+    case 'enemyNextAttackBonus': return `enemy +${value} dmg`;
+    case 'enemyGainCover': return `enemy +${value} Cover`;
     case 'repeatNextSupply': return `repeat Supply +${value}`;
     case 'cleanseFlock': return `cleanse ${value}`;
     case 'peekNextNodes': return `peek ${value || 1}`;
@@ -12694,6 +13922,7 @@ function formatEffectCompact(effect: string): string {
     case 'addSnagToDiscard': return 'Snag to discard';
     case 'addSnagToDraw': return 'Snag to draw';
     case 'shuffleSelfToDraw': return 'returns to deck';
+    case 'exhaustSelf': return 'clears';
     case 'bossDamageShield': return `Boss +${value} Cover`;
     case 'extraCacheChoice': return `Cache +${value} choice`;
     case 'freePreenNextDistrict': return 'free Preen next';
@@ -13223,12 +14452,14 @@ function renderFloatingCardDetail(scene: Phaser.Scene, card: Card, zone: string,
   const key = loadedCardArtKey(scene, card);
   if (key && scene.textures.exists(key)) {
     add(scene.add.image(cx, cy, key).setDisplaySize(w, h).setAlpha(0.98));
-  } else {
+  } else if (!renderSnagCardBorder(scene, (obj) => add(obj), card, cx, cy, w, h, 0.98)) {
     add(scene.add.rectangle(cx, cy, w, h, 0x141d2b, 0.95));
     add(scene.add.text(cx, cy - 42, cardLabel(card), {
       fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: '#7ab8d6',
       wordWrap: { width: w - 50 }, align: 'center'
     }).setOrigin(0.5));
+  } else {
+    add(scene.add.rectangle(cx, cy, w, h, 0x05101a, 0.12));
   }
 
   add(scene.add.rectangle(cx, top + 24, w - 4, 44, 0x05080e, 0.76));
@@ -13313,7 +14544,7 @@ function renderSceneCardDetail(scene: Phaser.Scene, card: Card, zone: string, co
     scene.add.image(DECK_DETAIL_LAYOUT.artX, DECK_DETAIL_LAYOUT.artY, key)
       .setDisplaySize(DECK_DETAIL_LAYOUT.artW, DECK_DETAIL_LAYOUT.artH)
       .setAlpha(0.92);
-  } else {
+  } else if (!renderSnagCardBorder(scene, undefined, card, DECK_DETAIL_LAYOUT.artX, DECK_DETAIL_LAYOUT.artY, DECK_DETAIL_LAYOUT.artW, DECK_DETAIL_LAYOUT.artH, 0.92)) {
     scene.add.rectangle(DECK_DETAIL_LAYOUT.artX, DECK_DETAIL_LAYOUT.artY, DECK_DETAIL_LAYOUT.artW, DECK_DETAIL_LAYOUT.artH, 0x141f2f, 0.95)
       .setStrokeStyle(1, 0x49606d, 0.8);
     scene.add.text(DECK_DETAIL_LAYOUT.artX, DECK_DETAIL_LAYOUT.artY, cardLabel(card), {
@@ -13324,6 +14555,8 @@ function renderSceneCardDetail(scene: Phaser.Scene, card: Card, zone: string, co
       wordWrap: { width: 190 },
       align: 'center'
     }).setOrigin(0.5);
+  } else {
+    scene.add.rectangle(DECK_DETAIL_LAYOUT.artX, DECK_DETAIL_LAYOUT.artY, DECK_DETAIL_LAYOUT.artW, DECK_DETAIL_LAYOUT.artH, 0x05101a, 0.12);
   }
 
   scene.add.circle(DECK_DETAIL_LAYOUT.costX, DECK_DETAIL_LAYOUT.costY, 18, cost === 0 ? 0x24d0d6 : 0xd8a840, 1);
@@ -13740,16 +14973,70 @@ function routeEffectSummary(effects: string[]): string {
       case 'removeRouteChoice': return 'Close a route';
       default: return parsed.name;
     }
-  }).join('   ·   ');
+  }).join(' / ');
+}
+
+interface RouteEffectToken {
+  label: string;
+  color: number;
+  textColor: string;
+  icon?: UiIconId;
+  scrap?: boolean;
+}
+
+function routeEffectTokens(effects: string[]): RouteEffectToken[] {
+  if (effects.length === 0) {
+    return [{ label: 'No cost', color: 0x49606d, textColor: '#b9c7d6', icon: 'route-pin' }];
+  }
+  return effects.map((effect) => {
+    const parsed = parseEffect(effect);
+    if (effect === 'startRivalBattle') {
+      return { label: 'Rival', color: UI_FIELD.danger, textColor: '#ffd5cc', icon: 'release-card' };
+    }
+    if (!parsed) {
+      return { label: effect, color: 0x49606d, textColor: '#dbe6f2', icon: 'route-pin' };
+    }
+    const a = parsed.args[0] ?? '';
+    switch (parsed.name) {
+      case 'gainScrap': return { label: `+${a}`, color: UI_FIELD.gold, textColor: '#fff0b8', scrap: true };
+      case 'payScrap': return { label: `-${a}`, color: UI_FIELD.danger, textColor: '#ffd5cc', scrap: true };
+      case 'loseCohesion': return { label: `-${a}`, color: UI_FIELD.danger, textColor: '#ffd5cc', icon: 'flock-heart' };
+      case 'healCohesion':
+      case 'heal': return { label: `+${a}`, color: UI_FIELD.green, textColor: '#e4fbe9', icon: 'flock-heart' };
+      case 'healMissingPct': return { label: `Heal ${a}%`, color: UI_FIELD.green, textColor: '#e4fbe9', icon: 'flock-heart' };
+      case 'gainRouteMark': return { label: 'Waymark', color: UI_FIELD.violet, textColor: '#efe4ff', icon: 'waymark-compass' };
+      case 'gainSupply':
+      case 'gainSupplyChoice': return { label: parsed.name === 'gainSupplyChoice' ? 'Supply choice' : 'Supply', color: 0xffb86b, textColor: '#ffe7c9', icon: 'supply-pouch' };
+      case 'peekNextNodes':
+      case 'revealNodes': return { label: `Preview ${a || 1}`, color: UI_FIELD.cyan, textColor: '#dffbff', icon: 'route-pin' };
+      case 'gainCacheReward': return { label: 'Cache', color: UI_FIELD.gold, textColor: '#fff0b8', icon: 'locked-padlock' };
+      case 'addSnagToDiscard':
+      case 'addSnagToDraw': return { label: 'Snag', color: UI_FIELD.danger, textColor: '#ffd5cc', icon: 'release-card' };
+      case 'addCard': return { label: 'Card', color: UI_FIELD.gold, textColor: '#fff0b8', icon: 'deck-stack' };
+      case 'preenCard': return { label: `Preen ${a || 1}`, color: UI_FIELD.cyan, textColor: '#dffbff', icon: 'preen-kit' };
+      case 'releaseCard': return { label: `Remove ${a || 1}`, color: UI_FIELD.danger, textColor: '#ffd5cc', icon: 'release-card' };
+      case 'gainOpenSkyGuard': return { label: `Guard ${a}`, color: UI_FIELD.green, textColor: '#e4fbe9', icon: 'cover-shield' };
+      case 'reduceNextOpenSky': return { label: `Sky -${a}`, color: UI_FIELD.cyan, textColor: '#dffbff', icon: 'cover-shield' };
+      case 'enemyCoverNextCombat': return { label: `Enemy +${a}`, color: UI_FIELD.danger, textColor: '#ffd5cc', icon: 'cover-shield' };
+      case 'bossDamageShield': return { label: `Boss +${a}`, color: UI_FIELD.danger, textColor: '#ffd5cc', icon: 'cover-shield' };
+      case 'extraCacheChoice': return { label: `Cache +${a}`, color: UI_FIELD.gold, textColor: '#fff0b8', icon: 'locked-padlock' };
+      case 'freePreenNextDistrict': return { label: `Free Preen ${a || 1}`, color: UI_FIELD.cyan, textColor: '#dffbff', icon: 'preen-kit' };
+      case 'increaseSupplySlots': return { label: `Slot +${a || 1}`, color: 0xffb86b, textColor: '#ffe7c9', icon: 'supply-pouch' };
+      case 'startNextCombatOpenSky': return { label: 'Open Sky', color: UI_FIELD.cyan, textColor: '#dffbff', icon: 'route-pin' };
+      case 'skipNextStreet': return { label: 'Skip street', color: UI_FIELD.cyan, textColor: '#dffbff', icon: 'route-pin' };
+      case 'removeRouteChoice': return { label: 'Close route', color: UI_FIELD.danger, textColor: '#ffd5cc', icon: 'route-pin' };
+      default: return { label: parsed.name, color: 0x49606d, textColor: '#dbe6f2', icon: 'route-pin' };
+    }
+  });
 }
 
 function nonCombatRewardBias(type: RouteNode['type']) {
   switch (type) {
-    case 'basin': return 'Healing  ·  Open Sky Guard  ·  Supply';
-    case 'nest': return 'Preen  ·  Remove  ·  Waymark';
-    case 'market': return 'Cards  ·  Waymarks  ·  Supplies';
+    case 'basin': return 'Healing / Open Sky Guard / Supply';
+    case 'nest': return 'Preen / Remove / Waymark';
+    case 'market': return 'Cards / Waymarks / Supplies';
     case 'signal': return 'Varies by choice';
-    case 'cache': return 'Scrap  ·  Supply  ·  Waymark  ·  card  ·  heal';
+    case 'cache': return 'Marn appraises numbered lockbox drawers';
     default: return '';
   }
 }
@@ -13806,6 +15093,8 @@ function combatScrapReward(routeNode: RouteNode | undefined) {
 }
 
 function createCardTemplate(runtime: RuntimeCard): Card {
+  const heldText = runtime.heldEffects?.length ? `Roost: ${formatEffects(runtime.heldEffects)}` : '';
+  const baseText = formatEffects(runtime.effects);
   return {
     instanceId: '',
     id: runtime.id,
@@ -13814,8 +15103,9 @@ function createCardTemplate(runtime: RuntimeCard): Card {
     role: runtime.tags.includes('attack') ? 'attack' : runtime.tags.some((tag) => ['cover', 'heal'].includes(tag)) ? 'skill' : 'utility',
     target: runtime.target,
     cost: runtime.cost,
-    text: formatEffects(runtime.effects),
-    upgradedText: formatEffects(runtime.upgrade.effects),
+    text: heldText ? `${baseText} ${heldText}` : baseText,
+    upgradedText: heldText ? `${formatEffects(runtime.upgrade.effects)} ${heldText}` : formatEffects(runtime.upgrade.effects),
+    heldText,
     moltText: runtime.moltEffects?.length ? formatEffects(runtime.moltEffects) : '',
     moltTextUpgraded: runtime.upgrade.moltEffects?.length ? formatEffects(runtime.upgrade.moltEffects) : '',
     bird: runtime.bird,
@@ -13967,6 +15257,8 @@ function formatCondition(condition: string) {
     .replace(/^resonanceAtLeast\((\d+)\)$/, '$1+ Resonance')
     .replace(/^windedAtLeast\((\d+)\)$/, 'target $1+ Winded')
     .replace('hasResonance', 'Resonance')
+    .replace('noResonance', 'no Resonance')
+    .replace('noCover', 'no Cover')
     .replace('spentResonance', 'spent Resonance')
     .replace('isMolting', 'Molting')
     .replace('openSky', 'Open Sky')
@@ -13996,6 +15288,12 @@ function formatEffect(effect: string) {
       return `Remove ${value} Cover.`;
     case 'gainCover':
       return `Gain ${value} Cover.`;
+    case 'applyOpenSky':
+      return `Enter Open Sky for ${value}.`;
+    case 'loseCover':
+      return `Lose ${value} Cover.`;
+    case 'damageFlock':
+      return `Take ${value} damage.`;
     case 'heal':
       return `Heal ${value}.`;
     case 'healCohesion':
@@ -14039,6 +15337,7 @@ function formatEffect(effect: string) {
     case 'windedBurst':
       return `Consume the target's Winded: deal ${value} damage per stack.`;
     case 'applyWinded':
+      if (parsed.args[0] === 'flock') return `Apply ${value} Winded to the flock.`;
       return `Apply ${value} Winded.`;
     case 'applyPoison':
       return `Apply ${value} Fouled.`;
@@ -14059,8 +15358,15 @@ function formatEffect(effect: string) {
       return `Next Nest Cover +${value}.`;
     case 'retainHand':
       return `Retain ${value} card${value === '1' ? '' : 's'}.`;
-    case 'nextTurnDraw':
+    case 'nextTurnDraw': {
+      const n = Number(value);
+      if (Number.isFinite(n) && n < 0) return `Draw ${Math.abs(n)} fewer next turn.`;
       return `Draw ${value} next turn.`;
+    }
+    case 'enemyNextAttackBonus':
+      return `The next enemy attack gains +${value} damage.`;
+    case 'enemyGainCover':
+      return `The enemy gains ${value} Cover.`;
     case 'repeatNextSupply':
       return `The next Supply resolves ${value} extra time${value === '1' ? '' : 's'}.`;
     case 'cleanseFlock':
@@ -14089,6 +15395,8 @@ function formatEffect(effect: string) {
       return 'Add a Snag to draw.';
     case 'shuffleSelfToDraw':
       return 'Return this to the draw pile after play.';
+    case 'exhaustSelf':
+      return 'Remove this from combat.';
     case 'bossDamageShield':
       return `Boss fights: gain ${value} Cover.`;
     case 'extraCacheChoice':

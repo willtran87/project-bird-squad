@@ -39,6 +39,7 @@ export interface RuntimeCard {
   // The card's unique "Molt ability" — a qualitatively DIFFERENT effect resolved
   // instead of `effects` while the flock is Molting (do-different, not do-more).
   moltEffects?: string[];
+  heldEffects?: string[];
   upgrade: RuntimeCardUpgrade;
   flockStats: FlockStats;
 }

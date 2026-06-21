@@ -127,7 +127,8 @@
           "id": "settle_cover",
           "label": "Settle",
           "effects": [
-            "gainCover(5)"
+            "gainCover(5)",
+            "if notHitThisTurn then addSnagToDiscard(static_burst)"
           ]
         },
         {
@@ -179,7 +180,8 @@
           "label": "Updraft Call",
           "effects": [
             "applyOpenSky(1)",
-            "nextAttackBonus(3)"
+            "nextAttackBonus(3)",
+            "addSnagToDiscard(glass_gap)"
           ]
         },
         {
@@ -231,7 +233,8 @@
           "label": "Tower Strike 9",
           "effects": [
             "damage(flock, 9)",
-            "if flockHasNoCover then damage(flock, 4)"
+            "if flockHasNoCover then damage(flock, 4)",
+            "if flockHasNoCover then addSnagToDiscard(bent_feather)"
           ]
         },
         {
@@ -1213,7 +1216,7 @@
           "text": "Scout from the top.",
           "outcomes": [
             "gainScrap(35)",
-            "addSnagToDiscard(bad_directions)"
+            "addSnagToDiscard(smeared_map)"
           ]
         }
       ]

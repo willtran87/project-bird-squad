@@ -8,32 +8,32 @@
   "options": [
     {
       "id": "cache_scrap",
-      "label": "Pocket the Dry Scrap",
+      "label": "Claim Drawer 12: Dry Scrap",
       "effects": ["gainScrap(35)"]
     },
     {
       "id": "cache_supply",
-      "label": "Crack the Snack Tin",
+      "label": "Claim Drawer 03: Snack Tin",
       "effects": ["gainSupplyChoice(1)", "loseCohesion(2)"]
     },
     {
       "id": "cache_mark",
-      "label": "Copy the Chalk Mark",
+      "label": "Claim Drawer 19: Chalk Tag",
       "effects": ["gainRouteMark(randomCommon)", "addSnagToDiscard(bad_directions)"]
     },
     {
       "id": "cache_card",
-      "label": "Follow the Nest Note",
+      "label": "Claim Drawer 27: Nest Note",
       "effects": ["addCard(chooseOneOfTwoCommon)", "loseCohesion(3)"]
     },
     {
       "id": "cache_heal",
-      "label": "Rest Behind the Billboard",
+      "label": "Claim Drawer 08: Shelter Key",
       "effects": ["healCohesion(6)"]
     },
     {
       "id": "cache_boss_line",
-      "label": "Rig a Boss-Safe Line",
+      "label": "Claim Drawer 44: Boss Line",
       "effects": ["bossDamageShield(8)"]
     }
   ]

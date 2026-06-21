@@ -905,6 +905,96 @@
       "icon": "assets/runtime/cards/icon/aviary_43.webp",
       "version": "0.1",
       "status": "approved"
+    },
+    {
+      "cardId": "tangled_line",
+      "source": ".generated/imagegen/tarot/selected/tangled_line.png",
+      "portrait": "assets/runtime/cards/portrait/tangled_line.webp",
+      "thumbnail": "assets/runtime/cards/thumb/tangled_line.webp",
+      "icon": "assets/runtime/cards/icon/tangled_line.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "wet_feathers",
+      "source": ".generated/imagegen/tarot/selected/wet_feathers.png",
+      "portrait": "assets/runtime/cards/portrait/wet_feathers.webp",
+      "thumbnail": "assets/runtime/cards/thumb/wet_feathers.webp",
+      "icon": "assets/runtime/cards/icon/wet_feathers.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "bad_directions",
+      "source": ".generated/imagegen/tarot/selected/bad_directions.png",
+      "portrait": "assets/runtime/cards/portrait/bad_directions.webp",
+      "thumbnail": "assets/runtime/cards/thumb/bad_directions.webp",
+      "icon": "assets/runtime/cards/icon/bad_directions.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "loose_shingle",
+      "source": ".generated/imagegen/tarot/selected/loose_shingle.png",
+      "portrait": "assets/runtime/cards/portrait/loose_shingle.webp",
+      "thumbnail": "assets/runtime/cards/thumb/loose_shingle.webp",
+      "icon": "assets/runtime/cards/icon/loose_shingle.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "static_burst",
+      "source": ".generated/imagegen/tarot/selected/static_burst.png",
+      "portrait": "assets/runtime/cards/portrait/static_burst.webp",
+      "thumbnail": "assets/runtime/cards/thumb/static_burst.webp",
+      "icon": "assets/runtime/cards/icon/static_burst.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "bent_feather",
+      "source": ".generated/imagegen/tarot/selected/bent_feather.png",
+      "portrait": "assets/runtime/cards/portrait/bent_feather.webp",
+      "thumbnail": "assets/runtime/cards/thumb/bent_feather.webp",
+      "icon": "assets/runtime/cards/icon/bent_feather.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "glass_gap",
+      "source": ".generated/imagegen/tarot/selected/glass_gap.png",
+      "portrait": "assets/runtime/cards/portrait/glass_gap.webp",
+      "thumbnail": "assets/runtime/cards/thumb/glass_gap.webp",
+      "icon": "assets/runtime/cards/icon/glass_gap.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "jammed_strap",
+      "source": ".generated/imagegen/tarot/selected/jammed_strap.png",
+      "portrait": "assets/runtime/cards/portrait/jammed_strap.webp",
+      "thumbnail": "assets/runtime/cards/thumb/jammed_strap.webp",
+      "icon": "assets/runtime/cards/icon/jammed_strap.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "barricade_scrap",
+      "source": ".generated/imagegen/tarot/selected/barricade_scrap.png",
+      "portrait": "assets/runtime/cards/portrait/barricade_scrap.webp",
+      "thumbnail": "assets/runtime/cards/thumb/barricade_scrap.webp",
+      "icon": "assets/runtime/cards/icon/barricade_scrap.webp",
+      "version": "0.1",
+      "status": "approved"
+    },
+    {
+      "cardId": "smeared_map",
+      "source": ".generated/imagegen/tarot/selected/smeared_map.png",
+      "portrait": "assets/runtime/cards/portrait/smeared_map.webp",
+      "thumbnail": "assets/runtime/cards/thumb/smeared_map.webp",
+      "icon": "assets/runtime/cards/icon/smeared_map.webp",
+      "version": "0.1",
+      "status": "approved"
     }
   ]
 }

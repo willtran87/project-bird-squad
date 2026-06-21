@@ -1206,7 +1206,8 @@
           "text": "Push on under Open Sky.",
           "outcomes": [
             "startNextCombatOpenSky()",
-            "gainCacheReward()"
+            "gainCacheReward()",
+            "addSnagToDiscard(glass_gap)"
           ]
         }
       ]
@@ -1400,7 +1401,8 @@
           "text": "Challenge them for the perch.",
           "outcomes": [
             "enemyCoverNextCombat(6)",
-            "gainScrap(60)"
+            "gainScrap(60)",
+            "addSnagToDiscard(barricade_scrap)"
           ]
         },
         {

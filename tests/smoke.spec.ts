@@ -1628,6 +1628,261 @@ test('enemy combat effects: snag insertion lands and Flock-state conditions gate
   expect(r.firedAtLow).toBe(true);
 });
 
+test('snag cards punish being held at Roost instead of acting as inert dead cards', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    const enemy = scene.enemies[0];
+    const makeSnag = (id: string) => {
+      scene.resolveEnemyEffect(enemy, `addSnagToDiscard(${id})`);
+      return scene.discardPile.pop();
+    };
+    const fillerCard = { ...scene.hand[0], instanceId: 'held-snag-filler' };
+
+    scene.hand = [makeSnag('tangled_line')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.energy = 3;
+    scene.resolveHeldSnagEffects();
+    const tangledHeld = {
+      hand: scene.hand.length,
+      draw: scene.drawPile.map((card: any) => card.id),
+      energy: scene.energy,
+    };
+
+    scene.hand = [makeSnag('wet_feathers')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.flock.weak = 0;
+    scene.resolveHeldSnagEffects();
+    const wetHeld = {
+      hand: scene.hand.map((card: any) => card.id),
+      weak: scene.flock.weak,
+    };
+
+    scene.hand = [makeSnag('bad_directions')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.spark = 1;
+    scene.resolveHeldSnagEffects();
+    const badHeld = {
+      hand: scene.hand.length,
+      draw: scene.drawPile.map((card: any) => card.id),
+      spark: scene.spark,
+    };
+
+    scene.hand = [makeSnag('loose_shingle')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.flock.hp = 10;
+    scene.flock.block = 0;
+    scene.resolveHeldSnagEffects();
+    const looseHeld = {
+      hand: scene.hand.map((card: any) => card.id),
+      hp: scene.flock.hp,
+    };
+
+    scene.hand = [makeSnag('static_burst')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    enemy.nextAttackBonus = 0;
+    scene.resolveHeldSnagEffects();
+    const staticHeld = {
+      hand: scene.hand.map((card: any) => card.id),
+      nextAttackBonus: enemy.nextAttackBonus,
+    };
+
+    scene.hand = [makeSnag('bent_feather')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.flock.weak = 0;
+    scene.resolveHeldSnagEffects();
+    const bentHeld = {
+      hand: scene.hand.map((card: any) => card.id),
+      weak: scene.flock.weak,
+    };
+
+    scene.hand = [makeSnag('glass_gap')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.flock.exposed = false;
+    scene.flock.exposedTurns = 0;
+    enemy.nextAttackBonus = 0;
+    scene.resolveHeldSnagEffects();
+    const glassHeld = {
+      hand: scene.hand.map((card: any) => card.id),
+      exposed: scene.flock.exposed,
+      exposedTurns: scene.flock.exposedTurns,
+      nextAttackBonus: enemy.nextAttackBonus,
+    };
+
+    scene.hand = [makeSnag('jammed_strap'), { ...fillerCard, instanceId: 'held-snag-filler-jammed' }];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.resolveHeldSnagEffects();
+    const jammedHeld = {
+      hand: scene.hand.map((card: any) => card.id),
+      draw: scene.drawPile.map((card: any) => card.id),
+      discardCount: scene.discardPile.length,
+    };
+
+    scene.hand = [makeSnag('barricade_scrap')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    enemy.block = 0;
+    scene.resolveHeldSnagEffects();
+    const barricadeHeld = {
+      hand: scene.hand.map((card: any) => card.id),
+      enemyCover: enemy.block,
+    };
+
+    scene.hand = [makeSnag('smeared_map')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.nextTurnDrawBonus = 0;
+    scene.resolveHeldSnagEffects();
+    const smearedHeld = {
+      hand: scene.hand.map((card: any) => card.id),
+      draw: scene.drawPile.map((card: any) => card.id),
+      nextDraw: scene.nextTurnDrawBonus,
+    };
+
+    return { tangledHeld, wetHeld, badHeld, looseHeld, staticHeld, bentHeld, glassHeld, jammedHeld, barricadeHeld, smearedHeld };
+  });
+
+  expect(r.tangledHeld).toEqual({ hand: 0, draw: ['tangled_line'], energy: 2 });
+  expect(r.wetHeld).toEqual({ hand: ['wet_feathers'], weak: 1 });
+  expect(r.badHeld).toEqual({ hand: 0, draw: ['bad_directions'], spark: 0 });
+  expect(r.looseHeld).toEqual({ hand: ['loose_shingle'], hp: 8 });
+  expect(r.staticHeld).toEqual({ hand: ['static_burst'], nextAttackBonus: 1 });
+  expect(r.bentHeld).toEqual({ hand: ['bent_feather'], weak: 1 });
+  expect(r.glassHeld).toEqual({ hand: ['glass_gap'], exposed: true, exposedTurns: 1, nextAttackBonus: 1 });
+  expect(r.jammedHeld).toEqual({ hand: [], draw: ['jammed_strap'], discardCount: 1 });
+  expect(r.barricadeHeld).toEqual({ hand: ['barricade_scrap'], enemyCover: 6 });
+  expect(r.smearedHeld).toEqual({ hand: [], draw: ['smeared_map'], nextDraw: -1 });
+});
+
+test('new snag cards have playable cleanup tradeoffs', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    const enemy = scene.enemies[0];
+    const makeSnag = (id: string) => {
+      scene.resolveEnemyEffect(enemy, `addSnagToDiscard(${id})`);
+      return scene.discardPile.pop();
+    };
+    const fillerCard = { ...scene.hand[0], instanceId: 'played-snag-filler' };
+
+    scene.hand = [makeSnag('loose_shingle')];
+    scene.flock.block = 5;
+    scene.energy = 3;
+    scene.playCard(scene.hand[0]);
+    const loosePlayed = {
+      block: scene.flock.block,
+      discard: scene.discardPile.map((card: any) => card.id),
+    };
+
+    scene.hand = [makeSnag('static_burst')];
+    scene.discardPile = [];
+    scene.spark = 1;
+    scene.energy = 3;
+    scene.playCard(scene.hand[0]);
+    const staticWithResonance = {
+      spark: scene.spark,
+      energy: scene.energy,
+      discard: scene.discardPile.map((card: any) => card.id),
+    };
+
+    scene.hand = [makeSnag('static_burst')];
+    scene.discardPile = [];
+    scene.spark = 0;
+    scene.energy = 3;
+    scene.playCard(scene.hand[0]);
+    const staticNoResonance = {
+      spark: scene.spark,
+      energy: scene.energy,
+      discard: scene.discardPile.map((card: any) => card.id),
+    };
+
+    scene.hand = [makeSnag('bent_feather')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.flock.weak = 0;
+    scene.energy = 3;
+    scene.playCard(scene.hand[0]);
+    const bentPlayed = {
+      weak: scene.flock.weak,
+      hand: scene.hand.map((card: any) => card.id),
+      discard: scene.discardPile.map((card: any) => card.id),
+      draw: scene.drawPile.map((card: any) => card.id),
+    };
+
+    scene.hand = [makeSnag('glass_gap')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.flock.exposed = false;
+    scene.flock.exposedTurns = 0;
+    scene.energy = 3;
+    scene.playCard(scene.hand[0]);
+    const glassPlayed = {
+      exposed: scene.flock.exposed,
+      exposedTurns: scene.flock.exposedTurns,
+      discard: scene.discardPile.map((card: any) => card.id),
+    };
+
+    scene.hand = [makeSnag('jammed_strap'), { ...fillerCard, instanceId: 'played-snag-filler-jammed' }];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.energy = 3;
+    scene.playCard(scene.hand[0]);
+    const jammedPlayed = {
+      hand: scene.hand.map((card: any) => card.id),
+      discard: scene.discardPile.map((card: any) => card.id),
+    };
+
+    scene.hand = [makeSnag('barricade_scrap')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    enemy.block = 0;
+    scene.energy = 3;
+    scene.playCard(scene.hand[0]);
+    const barricadePlayed = {
+      enemyCover: enemy.block,
+      discard: scene.discardPile.map((card: any) => card.id),
+    };
+
+    scene.hand = [makeSnag('smeared_map')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.nextTurnDrawBonus = 0;
+    scene.energy = 3;
+    scene.playCard(scene.hand[0]);
+    const smearedPlayed = {
+      nextDraw: scene.nextTurnDrawBonus,
+      discard: scene.discardPile.map((card: any) => card.id),
+    };
+
+    return { loosePlayed, staticWithResonance, staticNoResonance, bentPlayed, glassPlayed, jammedPlayed, barricadePlayed, smearedPlayed };
+  });
+
+  expect(r.loosePlayed).toEqual({ block: 3, discard: ['loose_shingle'] });
+  expect(r.staticWithResonance).toEqual({ spark: 0, energy: 3, discard: ['static_burst'] });
+  expect(r.staticNoResonance).toEqual({ spark: 0, energy: 2, discard: ['static_burst'] });
+  expect(r.bentPlayed).toEqual({ weak: 1, hand: [], discard: [], draw: [] });
+  expect(r.glassPlayed).toEqual({ exposed: true, exposedTurns: 1, discard: ['glass_gap'] });
+  expect(r.jammedPlayed.discard).toContain('jammed_strap');
+  expect(r.jammedPlayed.discard.length).toBe(2);
+  expect(r.jammedPlayed.hand).toEqual([]);
+  expect(r.barricadePlayed).toEqual({ enemyCover: 3, discard: ['barricade_scrap'] });
+  expect(r.smearedPlayed).toEqual({ nextDraw: -1, discard: ['smeared_map'] });
+});
+
 test('enemy post-Roost punishers react to card spam and empty hands', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
@@ -2602,6 +2857,87 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
   expect(r.discoveredCount).toBeGreaterThanOrEqual(8); // Spark-Caller's 10-card deck (distinct ids)
   expect(r.active).toBe(true);
   expect(r.codexFound).toBeGreaterThanOrEqual(8);
+});
+
+test('codex: snag cards have their own rightmost tab and render card art', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const collect = (scene: any) => {
+      const texts: string[] = [];
+      const images: string[] = [];
+      const walk = (o: any) => {
+        if (!o) return;
+        if (o.type === 'Text') texts.push(o.text || '');
+        const key = o.texture?.key;
+        if (key) images.push(key);
+        const children = o.list;
+        if (Array.isArray(children)) children.forEach(walk);
+      };
+      scene.children.list.forEach(walk);
+      return { texts, images };
+    };
+
+    const g = window.__birdSquadGame;
+    const acct = JSON.parse(window.localStorage.getItem('birdsquad.account') || '{}');
+    acct.discoveredCards = [
+      'tangled_line', 'wet_feathers', 'bad_directions', 'loose_shingle', 'static_burst', 'bent_feather',
+      'glass_gap', 'jammed_strap', 'barricade_scrap', 'smeared_map'
+    ];
+    window.localStorage.setItem('birdsquad.account', JSON.stringify(acct));
+    await window.__birdSquadStartScene!('CodexScene');
+    g.scene.stop('MenuScene');
+    const cs: any = g.scene.getScene('CodexScene');
+    for (let i = 0; i < 20 && !cs.root; i += 1) await wait(50);
+
+    const rightmost = cs.tabs[cs.tabs.length - 1]?.label;
+    cs.activeSection = 'cards';
+    cs.activeTab = cs.tabs.length - 1;
+    cs.detailId = undefined;
+    cs.gridScroll = 0;
+    cs.renderAll();
+    for (let i = 0; i < 60 && !cs.textures.exists('card-thumb-tangled_line'); i += 1) await wait(50);
+    cs.renderAll();
+    const list = collect(cs);
+
+    cs.detailId = 'tangled_line';
+    cs.detailScroll = 0;
+    cs.renderAll();
+    for (let i = 0; i < 40 && !cs.textures.exists('card-tangled_line'); i += 1) await wait(50);
+    cs.renderAll();
+    const detail = collect(cs);
+
+    return {
+      rightmost,
+      snagCount: cs.allCards().filter((card: any) => card.runtime.kind === 'snag').length,
+      hasSnagTab: list.texts.some((text) => text === 'Snags'),
+      hasThumbArt: [
+        'card-thumb-tangled_line',
+        'card-thumb-wet_feathers',
+        'card-thumb-bad_directions',
+        'card-thumb-loose_shingle',
+        'card-thumb-static_burst',
+        'card-thumb-bent_feather',
+        'card-thumb-glass_gap',
+        'card-thumb-jammed_strap',
+        'card-thumb-barricade_scrap',
+        'card-thumb-smeared_map',
+      ].every((key) => (
+        list.images.includes(key) || cs.textures.exists(key)
+      )),
+      hasDetailArt: detail.images.includes('card-tangled_line'),
+      hasDetailTitle: detail.texts.some((text) => /Tangled Line/.test(text)),
+      hasDossier: detail.texts.some((text) => /SNAG DOSSIER/.test(text)),
+    };
+  });
+
+  expect(r.rightmost).toBe('Snags');
+  expect(r.snagCount).toBe(10);
+  expect(r.hasSnagTab).toBe(true);
+  expect(r.hasThumbArt).toBe(true);
+  expect(r.hasDetailArt).toBe(true);
+  expect(r.hasDetailTitle).toBe(true);
+  expect(r.hasDossier).toBe(true);
 });
 
 test('codex: supplies are listed as items with usable details', async ({ page }) => {
