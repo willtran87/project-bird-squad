@@ -488,12 +488,14 @@ const MENU_BORDER_COLOR = 0x7ab8d6;
 const HAND_Y = 590;
 const CARD_W = 164;
 const CARD_H = 246; // true 2:3 card aspect (art is 1024x1536)
-const ROUTE_NODE_RADIUS = 42;
-const ROUTE_BOSS_NODE_RADIUS = 60;
-const ROUTE_NODE_ICON_SIZE = 90;
-const ROUTE_BOSS_NODE_ICON_SIZE = 138;
-const ROUTE_NODE_FOCUS_PAD = 9;
+const ROUTE_NODE_RADIUS = 50;
+const ROUTE_BOSS_NODE_RADIUS = 66;
+const ROUTE_NODE_ICON_SIZE = 108;
+const ROUTE_BOSS_NODE_ICON_SIZE = 156;
+const ROUTE_NODE_FOCUS_PAD = 10;
 const ROUTE_NODE_LAYOUT_PAD = 4;
+const ROUTE_CONFIRM_ICON_SIZE = 36;
+const ROUTE_CONFIRM_HIT_SIZE = 82;
 // Anchor points for combat FX (floating numbers / bursts), matching the
 // enemy body (renderEnemyRow) and flock panel (renderFlock) positions.
 const ENEMY_FX_X = 920;
@@ -4288,16 +4290,16 @@ class RouteScene extends Phaser.Scene {
     if (!this.selectedNodeId || !this.selectableNodeIds.has(this.selectedNodeId)) return;
     const nodeId = this.selectedNodeId;
     const confirm = this.routeLayout().confirm;
-    const hit = this.add.rectangle(confirm.cx, confirm.cy, confirm.h + 12, confirm.h + 12, 0x000000, 0.01)
+    const hit = this.add.rectangle(confirm.cx, confirm.cy, ROUTE_CONFIRM_HIT_SIZE, ROUTE_CONFIRM_HIT_SIZE, 0x000000, 0.01)
       .setInteractive({ useHandCursor: true });
-    const icon = addUiIconImage(this, 'route-pin', confirm.cx, confirm.cy, 26);
+    const icon = addUiIconImage(this, 'route-pin', confirm.cx, confirm.cy, ROUTE_CONFIRM_ICON_SIZE);
     if (icon) icon.setAlpha(0.98);
     const iconBaseScaleX = icon?.scaleX ?? 1;
     const iconBaseScaleY = icon?.scaleY ?? 1;
     let tip: Phaser.GameObjects.Container | undefined;
     hit.on('pointerover', () => {
-      icon?.setScale(iconBaseScaleX * 1.08, iconBaseScaleY * 1.08);
-      tip = this.showSimpleTooltip('Take this route', confirm.cx, confirm.cy - 46);
+      icon?.setScale(iconBaseScaleX * 1.1, iconBaseScaleY * 1.1);
+      tip = this.showSimpleTooltip('Take this route', confirm.cx, confirm.cy - 60);
     });
     hit.on('pointerout', () => {
       icon?.setScale(iconBaseScaleX, iconBaseScaleY);

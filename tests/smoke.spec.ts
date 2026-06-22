@@ -1594,6 +1594,7 @@ test('nest remove opens a card picker and removes the chosen card', async ({ pag
     scene.openNodeChoices(nest);
     const deckBefore = scene.runState.deck.length;
     scene.chooseNodeOption('release');
+    scene.claimRouteReward();
     const pickerMode = scene.cardPickerMode;
     const firstIndex = scene.pickerEligibleCards('release')[0].index;
     scene.applyCardPick(firstIndex);
