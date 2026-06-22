@@ -165,3 +165,42 @@ Fresh production bundle validation:
 Deployment cache validation now treats `runtime-data` as a boot-critical preload
 alongside Phaser, while still failing if `codex-data` is preloaded before the
 Codex scene opens.
+
+## 2026-06-22 Market Load Review
+
+Focused market profiling found that RouteScene was still preloading full
+portrait card art for every card in the run deck. On a 36-card profiling deck,
+that meant RouteScene requested about 28.2 MB of images before becoming active,
+dominated by 600-730 KB portrait WebPs. Market open then requested another
+4.2 MB because the market card-art queue included the whole run deck even though
+the market only displays the card offers.
+
+The route preload now excludes deck card art entirely, and card art queues are
+split by surface: market shelves load only offer thumbnails, while the deck
+overlay and card picker still load visible/card-list thumbnails on demand. Full
+portrait art remains reserved for detail surfaces, so visual detail is not
+reduced.
+
+Post-change profile on the same 36-card deck, counting runtime WebP payloads:
+
+| Phase | Before | After |
+| --- | ---: | ---: |
+| RouteScene image requests | 64 files / 28.2 MB | 28 files / 4.5 MB |
+| Market-open image requests | 46 files / 4.2 MB | 10 files / 0.7 MB |
+| Loaded route card portraits | 36 | 0 |
+| Loaded market card thumbnails | 40 | 4 |
+
+The first full portrait request now occurs when a card detail surface opens; the
+same profile loaded one 0.7 MB portrait on hover after Market was already open.
+
+Follow-up pass after visual review batched all Market shelf art into one runtime
+queue that starts as soon as the Market node opens. This avoids four independent
+loader completions/redraws for kit, cards, Waymarks, and utilities. The Market
+layout also moved the lower Waymark/Supply shelf away from card price tags and
+reduced card hit areas so the rows no longer overlap.
+
+Remaining watch item: `scrap.webp` is a 616 KB runtime asset used as a tiny UI
+icon in several places. Several Supply/Waymark "icon" WebPs are also 120-210 KB
+and can still make a cold Market feel slow. Rebuilding a smaller HUD/shop icon
+tier would reduce Market and route preload without changing larger reward-detail
+art.

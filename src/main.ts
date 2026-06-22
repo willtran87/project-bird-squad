@@ -3746,8 +3746,7 @@ class RouteScene extends Phaser.Scene {
         ...Object.values(routeNodeIconAssets),
         ...Object.values(MARKET_KIT_ASSETS),
         ...Object.values(ROUTE_EVENT_BACKDROP_ASSETS),
-        ...Object.values(ROUTE_EVENT_PROP_ASSETS),
-        ...this.runState.deck.map((card) => cardArtAssets[card.id])
+        ...Object.values(ROUTE_EVENT_PROP_ASSETS)
       ],
       'Route scene art failed to preload'
     );
@@ -3844,14 +3843,45 @@ class RouteScene extends Phaser.Scene {
     }
   }
 
-  private queueOptionalCardArtLoad() {
+  private queueDeckCardArtLoad() {
     const ids = new Set(this.runState.deck.map((card) => card.id));
-    this.marketCardShelf.forEach((offer) => ids.add(offer.id));
+    this.queueCardThumbArtLoad([...ids], 'Deck card art failed to load on route map');
+  }
+
+  private marketShelfArtAssets() {
+    return uniqueImageAssets([
+      ...Object.values(MARKET_KIT_ASSETS),
+      ...this.marketCardShelf.map((offer) => cardThumbArtAssets[offer.id] ?? cardArtAssets[offer.id]),
+      ...this.marketWaymarkShelf.map((offer) => waymarkArtAssets[offer.id]),
+      ...this.marketUtilityShelf.map((offer) => this.marketUtilityProxyArtAsset(offer))
+    ]);
+  }
+
+  private queueMarketShelfArtLoad() {
     queueRuntimeImageAssets(
       this,
-      [...ids].map((id) => cardThumbArtAssets[id] ?? cardArtAssets[id]),
-      'Optional card art failed to load on route map',
+      this.marketShelfArtAssets(),
+      'Market shelf art failed to load on route map',
       () => this.renderAll()
+    );
+  }
+
+  private queueCardThumbArtLoad(ids: string[], warning: string) {
+    if (ids.length === 0) return;
+    queueRuntimeImageAssets(
+      this,
+      ids.map((id) => cardThumbArtAssets[id] ?? cardArtAssets[id]),
+      warning,
+      () => this.renderAll()
+    );
+  }
+
+  private queueCardPortraitArtLoad(card: Pick<Card, 'id'>, warning: string, onComplete: () => void = () => this.renderAll()) {
+    queueRuntimeImageAssets(
+      this,
+      [cardArtAssets[card.id]],
+      warning,
+      onComplete
     );
   }
 
@@ -3949,38 +3979,11 @@ class RouteScene extends Phaser.Scene {
     );
   }
 
-  private queueMarketWaymarkArtLoad() {
-    queueRuntimeImageAssets(
-      this,
-      this.marketWaymarkShelf.map((offer) => waymarkArtAssets[offer.id]),
-      'Market waymark art failed to load on route map',
-      () => this.renderAll()
-    );
-  }
-
   private queueRouteWaymarkArtLoad() {
     queueRuntimeImageAssets(
       this,
       this.runState.routeMarks.map((id) => waymarkArtAssets[id]),
       'Route waymark art failed to load on route map',
-      () => this.renderAll()
-    );
-  }
-
-  private queueMarketUtilityArtLoad() {
-    queueRuntimeImageAssets(
-      this,
-      this.marketUtilityShelf.map((offer) => this.marketUtilityProxyArtAsset(offer)),
-      'Market utility art failed to load on route map',
-      () => this.renderAll()
-    );
-  }
-
-  private queueMarketKitArtLoad() {
-    queueRuntimeImageAssets(
-      this,
-      Object.values(MARKET_KIT_ASSETS),
-      'Market kit art failed to load',
       () => this.renderAll()
     );
   }
@@ -5848,6 +5851,11 @@ class RouteScene extends Phaser.Scene {
       ? 440
       : anchorX;
     this.hoverCardDetail = renderFloatingCardDetail(this, card, zone, cost, adjustedAnchorX, anchorY);
+    this.queueCardPortraitArtLoad(card, 'Hover card detail art failed to load', () => {
+      if (!this.hoverCardDetail) return;
+      this.hoverCardDetail.destroy(true);
+      this.hoverCardDetail = renderFloatingCardDetail(this, card, zone, cost, adjustedAnchorX, anchorY);
+    });
   }
 
   private hideHoverCardDetail() {
@@ -6276,6 +6284,7 @@ class RouteScene extends Phaser.Scene {
     this.marketUtilityShelf = this.createMarketUtilityShelf(this.marketRng('utilities'));
     this.marketMessage = 'Fresh stock. Spend Scrap, tune up, or call new offers.';
     this.selectableNodeIds = new Set();
+    this.queueMarketShelfArtLoad();
     this.renderAll();
   }
 
@@ -6312,10 +6321,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderMarketOverlay() {
-    this.queueMarketKitArtLoad();
-    this.queueOptionalCardArtLoad();
-    this.queueMarketWaymarkArtLoad();
-    this.queueMarketUtilityArtLoad();
+    this.queueMarketShelfArtLoad();
     const node = currentMap().nodes.find((candidate) => candidate.id === this.marketNodeId);
     this.renderRouteEventBackdrop(node, 0.52);
     const frame = {
@@ -6331,11 +6337,12 @@ class RouteScene extends Phaser.Scene {
     this.renderMarketVendor(frame);
     this.renderMarketVendorTitle(frame);
 
-    const goodsRowY = frame.top + 500;
+    const goodsRowY = frame.top + 526;
+    const goodsHeaderY = goodsRowY - 84;
     this.renderMarketSectionHeader(frame.left + 576, frame.top + 114, 680, 'Crew Cards', 'Permanent deck options', UI_FIELD.gold);
-    this.renderMarketSectionHeader(frame.left + 458, goodsRowY - 116, 330, 'Waymarks', 'Run modifiers', UI_FIELD.violet);
+    this.renderMarketSectionHeader(frame.left + 458, goodsHeaderY, 330, 'Waymarks', 'Run modifiers', UI_FIELD.violet);
     this.renderMarketSectionHeader(frame.right - 124, frame.top + 154, 240, 'Services', 'Deck tuning', UI_FIELD.cyan);
-    this.renderMarketSectionHeader(frame.left + 810, goodsRowY - 116, 300, 'Supplies', 'One-use tools', UI_FIELD.green);
+    this.renderMarketSectionHeader(frame.left + 810, goodsHeaderY, 300, 'Supplies', 'One-use tools', UI_FIELD.green);
     this.renderMarketCardOffers(frame.left + 576, frame.top + 286);
     this.renderMarketWaymarkOffers(frame.left + 458, goodsRowY);
     this.renderMarketUtilityOffers(frame.left + 810, frame.top + 292, goodsRowY);
@@ -7586,10 +7593,10 @@ class RouteScene extends Phaser.Scene {
       } else {
         this.add.rectangle(cardX, cardY, artW, artH, 0x05101a, 0.12);
       }
-      this.renderMarketPriceTag(cardX, cardY + artH / 2 + 18, listing.price, enabled && !listing.sold, accent, 'BUY');
+      this.renderMarketPriceTag(cardX, cardY + artH / 2 + 2, listing.price, enabled && !listing.sold, accent, 'BUY');
       if (listing.sold) this.renderMarketSoldSlat(cardX, cardY, cardW, cardH);
       if (!listing.sold) {
-        const hit = this.add.rectangle(cardX, cardY + 8, cardW + 12, cardH + 58, 0x000000, 0.01)
+        const hit = this.add.rectangle(cardX, cardY + 8, cardW + 12, cardH + 34, 0x000000, 0.01)
           .setInteractive({ useHandCursor: true });
         hit.on('pointerdown', () => this.buyMarketCard(i));
         hit.on('pointerover', () => this.showHoverCardDetail(card, 'Market offer', listing.price, cardX, cardY));
@@ -7948,7 +7955,7 @@ class RouteScene extends Phaser.Scene {
     discoverCards([offer.id]);
     this.marketMessage = `${displayName(offer)} joins the flock for ${listing.price} Scrap.`;
     this.renderAll();
-    this.queueOptionalCardArtLoad();
+    this.queueMarketShelfArtLoad();
   }
 
   private buyMarketRouteMark(slotIndex = 0) {
@@ -8031,7 +8038,7 @@ class RouteScene extends Phaser.Scene {
     this.marketUtilityShelf = this.createMarketUtilityShelf(this.marketRng('utilities'));
     this.marketMessage = `A runner calls down the line. Fresh stock arrives for ${cost} Scrap.`;
     this.renderAll();
-    this.queueOptionalCardArtLoad();
+    this.queueMarketShelfArtLoad();
   }
 
   private marketRng(salt: string) {
@@ -8293,7 +8300,7 @@ class RouteScene extends Phaser.Scene {
     this.inspectedCardId = undefined;
     this.cardReviewScroll = 0;
     this.renderAll();
-    this.queueOptionalCardArtLoad();
+    this.queueDeckCardArtLoad();
   }
 
   private openFlockOverlay() {
@@ -8644,6 +8651,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderRouteCardDetailPanel(card: Card, zone: string) {
+    this.queueCardPortraitArtLoad(card, 'Deck detail card art failed to load');
     renderSceneCardDetail(this, card, zone, card.cost);
   }
 
