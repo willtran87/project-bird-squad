@@ -57,6 +57,8 @@ type CardType = 'major' | 'minor' | 'molt' | 'aviary';
 type CardRole = 'attack' | 'skill' | 'utility';
 type TargetType = 'enemy' | 'allEnemies' | 'self' | 'none' | 'choice';
 type NodeChoiceOption = { key: string; text: string; effects: string[]; locked: boolean; lockedText?: string };
+type CardPickerMode = 'preen' | 'release';
+type RouteCardPickerPlan = { mode: CardPickerMode; count: number };
 type PendingRouteReward = {
   nodeId: string;
   nodeType: RouteNode['type'];
@@ -3653,8 +3655,9 @@ class RouteScene extends Phaser.Scene {
   private routeStaticCardRewardChoiceIds = new Map<string, string[]>();
   private routeStaticItemRewardChoices = new Map<string, PendingRouteRewardItem>();
   private pendingRouteReward: PendingRouteReward | undefined;
-  private cardPickerMode: 'preen' | 'release' | undefined;
+  private cardPickerMode: CardPickerMode | undefined;
   private cardPickerContext: 'route' | 'market' | undefined;
+  private cardPickerRemainingPicks = 0;
   private marketPickerUtilitySlot: number | undefined;
   private deckOverlayOpen = false;
   private flockOverlayOpen = false;
@@ -3673,6 +3676,7 @@ class RouteScene extends Phaser.Scene {
   private marketItemHover?: Phaser.GameObjects.Container;
   private routeChoiceHover?: Phaser.GameObjects.Container;
   private cardReviewScroll = 0;
+  private cardPickerScroll = 0;
   private routeWaymarkScroll = 0;
   private routeNodeIconArtRequested = false;
   private supplyFeedback: SupplyFeedback[] = [];
@@ -3706,6 +3710,7 @@ class RouteScene extends Phaser.Scene {
     this.pendingRouteReward = undefined;
     this.cardPickerMode = undefined;
     this.cardPickerContext = undefined;
+    this.cardPickerRemainingPicks = 0;
     this.marketPickerUtilitySlot = undefined;
     this.deckOverlayOpen = false;
     this.flockOverlayOpen = false;
@@ -3722,6 +3727,7 @@ class RouteScene extends Phaser.Scene {
     this.hoverCardDetail = undefined;
     this.marketItemHover = undefined;
     this.cardReviewScroll = 0;
+    this.cardPickerScroll = 0;
     this.routeWaymarkScroll = 0;
     this.routeNodeIconArtRequested = false;
     this.supplyFeedback = [];
@@ -3794,6 +3800,10 @@ class RouteScene extends Phaser.Scene {
       this.renderAll();
     });
     this.input.on('wheel', (_pointer: Phaser.Input.Pointer, _gameObjects: Phaser.GameObjects.GameObject[], _deltaX: number, deltaY: number) => {
+      if (this.cardPickerMode) {
+        this.scrollCardPicker(deltaY > 0 ? 1 : -1);
+        return;
+      }
       if (this.waymarkDrawerOpen) {
         this.scrollRouteWaymarks(deltaY > 0 ? 1 : -1);
         return;
@@ -3853,6 +3863,16 @@ class RouteScene extends Phaser.Scene {
       this,
       uniqueImageAssets(cards.map((card) => cardCompactArtAsset(card))),
       'Route reward card art failed to load',
+      () => this.renderAll()
+    );
+  }
+
+  private queueCardPickerArtLoad(entries: Array<{ card: Card }>) {
+    if (entries.length === 0) return;
+    queueRuntimeImageAssets(
+      this,
+      uniqueImageAssets(entries.map((entry) => cardCompactArtAsset(entry.card))),
+      'Card picker art failed to load',
       () => this.renderAll()
     );
   }
@@ -4799,12 +4819,18 @@ class RouteScene extends Phaser.Scene {
     }
     // Preen/Remove defer to a card picker so the player chooses the card; other
     // effects resolve immediately.
-    let pickerMode: 'preen' | 'release' | undefined;
+    let pickerPlan: RouteCardPickerPlan | undefined;
     let routeCardRewardSelector: string | undefined;
     for (const effect of choice.effects) {
       const parsed = parseEffect(effect);
-      if (parsed?.name === 'preenCard') { pickerMode = 'preen'; continue; }
-      if (parsed?.name === 'releaseCard') { pickerMode = 'release'; continue; }
+      if (parsed?.name === 'preenCard') {
+        pickerPlan = { mode: 'preen', count: Math.max(1, parseEffectValue(parsed.args[0], 0) || 1) };
+        continue;
+      }
+      if (parsed?.name === 'releaseCard') {
+        pickerPlan = { mode: 'release', count: Math.max(1, parseEffectValue(parsed.args[0], 0) || 1) };
+        continue;
+      }
       if (parsed?.name === 'addCard' && parsed.args[0]?.startsWith('choose')) {
         routeCardRewardSelector = parsed.args[0];
         continue;
@@ -4813,11 +4839,13 @@ class RouteScene extends Phaser.Scene {
     }
     this.runState.routeLog.push(`${node.label}: ${choice.text}`);
     this.runState.routeLog = this.runState.routeLog.slice(-8);
-    if (pickerMode && this.pickerEligibleCards(pickerMode).length > 0) {
-      this.cardPickerMode = pickerMode;
+    if (pickerPlan && this.pickerEligibleCards(pickerPlan.mode).length > 0) {
+      this.cardPickerMode = pickerPlan.mode;
       this.cardPickerContext = 'route';
+      this.cardPickerRemainingPicks = pickerPlan.count;
       this.marketPickerUtilitySlot = undefined;
       this.routeCardPickerRestoreState = pickerRestoreState;
+      this.cardPickerScroll = 0;
       this.nodeChoiceOpen = false;
       this.renderAll();
       return;
@@ -4902,11 +4930,11 @@ class RouteScene extends Phaser.Scene {
     });
   }
 
-  private routeRewardPickerMode(effects: string[]): 'preen' | 'release' | undefined {
+  private routeRewardPickerPlan(effects: string[]): RouteCardPickerPlan | undefined {
     for (const effect of effects) {
       const parsed = parseEffect(effect);
-      if (parsed?.name === 'preenCard') return 'preen';
-      if (parsed?.name === 'releaseCard') return 'release';
+      if (parsed?.name === 'preenCard') return { mode: 'preen', count: Math.max(1, parseEffectValue(parsed.args[0], 0) || 1) };
+      if (parsed?.name === 'releaseCard') return { mode: 'release', count: Math.max(1, parseEffectValue(parsed.args[0], 0) || 1) };
     }
     return undefined;
   }
@@ -4954,13 +4982,15 @@ class RouteScene extends Phaser.Scene {
   private claimRouteReward() {
     const pending = this.pendingRouteReward;
     if (!pending) return;
-    const pickerMode = this.routeRewardPickerMode(pending.effects);
-    if (pickerMode && this.pickerEligibleCards(pickerMode, 'route').length > 0) {
+    const pickerPlan = this.routeRewardPickerPlan(pending.effects);
+    if (pickerPlan && this.pickerEligibleCards(pickerPlan.mode, 'route').length > 0) {
       if (!pending.effectsAppliedOnOpen) this.applyPendingRouteRewardEffects(pending, false, true);
-      this.cardPickerMode = pickerMode;
+      this.cardPickerMode = pickerPlan.mode;
       this.cardPickerContext = 'route';
+      this.cardPickerRemainingPicks = pickerPlan.count;
       this.marketPickerUtilitySlot = undefined;
       this.routeCardPickerRestoreState = cloneRunState(pending.restoreState);
+      this.cardPickerScroll = 0;
       this.routeCardRewardChoices = [];
       this.pendingRouteReward = undefined;
       this.nodeChoiceOpen = false;
@@ -5097,7 +5127,7 @@ class RouteScene extends Phaser.Scene {
     this.renderAll();
   }
 
-  private pickerEligibleCards(mode: 'preen' | 'release', context = this.cardPickerContext) {
+  private pickerEligibleCards(mode: CardPickerMode, context = this.cardPickerContext) {
     return this.runState.deck
       .map((saved, index) => ({ saved, index }))
       .filter(({ saved }) => {
@@ -5119,35 +5149,48 @@ class RouteScene extends Phaser.Scene {
       this.applyMarketCardPick(index);
       return;
     }
+    const mode = this.cardPickerMode;
     const saved = this.runState.deck[index];
-    if (!saved) return;
+    if (!saved || !mode) return;
     const name = cardLibrary[saved.id]?.name ?? saved.id;
-    if (this.cardPickerMode === 'preen') {
+    if (mode === 'preen') {
       saved.upgraded = true;
       this.runState.routeLog.push(`Preened ${name}.`);
     } else {
       this.runState.routeLog.push(`Removed ${name}.`);
       this.runState.deck.splice(index, 1);
     }
+    this.cardPickerRemainingPicks = Math.max(0, (this.cardPickerRemainingPicks || 1) - 1);
+    this.runState.routeLog = this.runState.routeLog.slice(-8);
+    if (this.cardPickerRemainingPicks > 0 && this.pickerEligibleCards(mode, 'route').length > 0) {
+      this.cardPickerScroll = clamp(this.cardPickerScroll, 0, this.cardPickerMaxScroll(this.pickerEligibleCards(mode, 'route').length));
+      this.hideHoverCardDetail();
+      this.renderAll();
+      return;
+    }
     this.completePendingRouteNode();
     this.cardPickerMode = undefined;
     this.cardPickerContext = undefined;
+    this.cardPickerRemainingPicks = 0;
     this.marketPickerUtilitySlot = undefined;
     this.routeCardPickerRestoreState = undefined;
+    this.cardPickerScroll = 0;
     this.nodeChoiceNodeId = undefined;
     this.nodeChoicePreviousNodeId = undefined;
     this.runState.routeLog = this.runState.routeLog.slice(-8);
     this.scene.restart({ runState: cloneRunState(this.runState) });
   }
 
-  private marketCardPickerPrice(mode: 'preen' | 'release', card?: Card) {
+  private marketCardPickerPrice(mode: CardPickerMode, card?: Card) {
     return mode === 'preen' ? this.marketPreenPrice(card) : this.marketReleasePrice();
   }
 
   private cancelMarketCardPicker() {
     this.cardPickerMode = undefined;
     this.cardPickerContext = undefined;
+    this.cardPickerRemainingPicks = 0;
     this.marketPickerUtilitySlot = undefined;
+    this.cardPickerScroll = 0;
     this.renderAll();
   }
 
@@ -5158,8 +5201,10 @@ class RouteScene extends Phaser.Scene {
     }
     this.cardPickerMode = undefined;
     this.cardPickerContext = undefined;
+    this.cardPickerRemainingPicks = 0;
     this.marketPickerUtilitySlot = undefined;
     this.routeCardPickerRestoreState = undefined;
+    this.cardPickerScroll = 0;
     this.nodeChoiceOpen = !!nodeId;
     this.hideHoverCardDetail();
     this.renderAll();
@@ -5188,8 +5233,40 @@ class RouteScene extends Phaser.Scene {
     this.applyRouteMarkTrigger('afterMarketPurchase');
     this.cardPickerMode = undefined;
     this.cardPickerContext = undefined;
+    this.cardPickerRemainingPicks = 0;
     this.marketPickerUtilitySlot = undefined;
+    this.cardPickerScroll = 0;
     this.renderAll();
+  }
+
+  private cardPickerMaxScroll(totalCards: number) {
+    const columns = 5;
+    const visibleRows = 2;
+    return Math.max(0, Math.ceil(totalCards / columns) - visibleRows);
+  }
+
+  private scrollCardPicker(deltaRows: number) {
+    if (!this.cardPickerMode) return;
+    const totalCards = this.pickerEligibleCards(this.cardPickerMode).length;
+    const next = clamp(this.cardPickerScroll + deltaRows, 0, this.cardPickerMaxScroll(totalCards));
+    if (next === this.cardPickerScroll) return;
+    this.cardPickerScroll = next;
+    this.hideHoverCardDetail();
+    this.renderAll();
+  }
+
+  private renderCardPickerScrollButton(x: number, y: number, direction: 'up' | 'down', enabled: boolean, onClick: () => void) {
+    const accent = enabled ? UI_FIELD.gold : 0x3f4c58;
+    const button = this.add.rectangle(x, y, 40, 32, enabled ? 0x0d1420 : 0x0a0e15, enabled ? 0.94 : 0.7)
+      .setStrokeStyle(1.5, accent, enabled ? 0.82 : 0.46);
+    const icon = addUiIconImage(this, direction === 'up' ? 'scroll-up-chevron' : 'scroll-down-chevron', x, y, 13);
+    if (icon) icon.setAlpha(enabled ? 0.9 : 0.38);
+    if (!enabled) return;
+    button.setInteractive({ useHandCursor: true });
+    button.on('pointerdown', () => {
+      playUiSound('confirm');
+      onClick();
+    });
   }
 
   private renderCardPickerOverlay() {
@@ -5199,6 +5276,16 @@ class RouteScene extends Phaser.Scene {
     const eligible = this.pickerEligibleCards(mode);
     const node = currentMap().nodes.find((candidate) => candidate.id === (isMarketPicker ? this.marketNodeId : this.nodeChoiceNodeId));
     const accent = mode === 'preen' ? UI_FIELD.cyan : UI_FIELD.danger;
+    const columns = 5;
+    const visibleRows = 2;
+    const visibleCount = columns * visibleRows;
+    const rowGap = 176;
+    const remainingPicks = Math.max(1, this.cardPickerRemainingPicks || 1);
+    const maxScroll = this.cardPickerMaxScroll(eligible.length);
+    this.cardPickerScroll = clamp(this.cardPickerScroll, 0, maxScroll);
+    const firstVisible = this.cardPickerScroll * columns;
+    const visible = eligible.slice(firstVisible, firstVisible + visibleCount);
+    this.queueCardPickerArtLoad(visible);
     if (isMarketPicker) {
       this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.72)
         .setInteractive({ useHandCursor: false });
@@ -5207,7 +5294,9 @@ class RouteScene extends Phaser.Scene {
     }
     const frame = renderFieldPanel(this, (obj) => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 8, 1040, 558, {
       eyebrow: isMarketPicker ? 'Market Service' : node ? routeNodeTypeLabel(node.type) : 'Flock Workbench',
-      title: mode === 'preen' ? 'Preen a Card' : 'Remove a Card',
+      title: mode === 'preen'
+        ? remainingPicks > 1 ? `Preen ${remainingPicks} Cards` : 'Preen a Card'
+        : remainingPicks > 1 ? `Remove ${remainingPicks} Cards` : 'Remove a Card',
       subtitle: mode === 'preen'
         ? isMarketPicker ? 'Choose which card Veyra improves, then pay Scrap.' : 'Choose the card the landmark workbench improves.'
         : isMarketPicker ? 'Choose which card is removed from the deck, then pay Scrap.' : 'Choose the card the flock removes before moving on.',
@@ -5223,11 +5312,11 @@ class RouteScene extends Phaser.Scene {
       wordWrap: { width: 360 },
       maxLines: 2
     });
-    eligible.slice(0, 12).forEach((entry, i) => {
+    visible.forEach((entry, i) => {
       const cardW = 94;
       const cardH = Math.round(cardW * 1.5);
-      const x = frame.left + 450 + (i % 5) * 112;
-      const y = frame.top + 184 + Math.floor(i / 5) * 154;
+      const x = frame.left + 450 + (i % columns) * 112;
+      const y = frame.top + 184 + Math.floor(i / columns) * rowGap;
       const affordable = !isMarketPicker || this.runState.scrap >= entry.cost;
       this.add.rectangle(x + 5, y + 7, cardW, cardH, 0x020409, 0.72);
       const key = compactCardArtKey(entry.card);
@@ -5273,6 +5362,17 @@ class RouteScene extends Phaser.Scene {
       button.on('pointerover', () => this.showHoverCardDetail(entry.card, mode === 'preen' ? 'Preen candidate' : 'Remove candidate', entry.cost, x, y));
       button.on('pointerout', () => this.hideHoverCardDetail());
     });
+    if (eligible.length > visibleCount) {
+      const scrollX = frame.right - 66;
+      this.renderCardPickerScrollButton(scrollX, frame.top + 184, 'up', this.cardPickerScroll > 0, () => this.scrollCardPicker(-1));
+      this.renderCardPickerScrollButton(scrollX, frame.top + 184 + rowGap, 'down', this.cardPickerScroll < maxScroll, () => this.scrollCardPicker(1));
+      this.add.text(scrollX, frame.top + 218 + rowGap, `${firstVisible + 1}-${firstVisible + visible.length} / ${eligible.length}`, {
+        fontFamily: UI_FONT,
+        fontSize: '12px',
+        color: '#91a6b8',
+        align: 'center'
+      }).setOrigin(0.5, 0);
+    }
     if (isMarketPicker) {
       this.renderMarketEnamelButton(frame.left + 142, frame.bottom - 48, 176, 38, 'Back to Market', true, () => this.cancelMarketCardPicker(), UI_FIELD.cyan, '13px');
     } else {
@@ -7904,10 +8004,12 @@ class RouteScene extends Phaser.Scene {
     this.renderAll();
   }
 
-  private openMarketCardPicker(slotIndex: number, mode: 'preen' | 'release') {
+  private openMarketCardPicker(slotIndex: number, mode: CardPickerMode) {
     this.cardPickerMode = mode;
     this.cardPickerContext = 'market';
+    this.cardPickerRemainingPicks = 1;
     this.marketPickerUtilitySlot = slotIndex;
+    this.cardPickerScroll = 0;
     this.hideHoverCardDetail();
     this.hideMarketItemDetail();
     this.renderAll();

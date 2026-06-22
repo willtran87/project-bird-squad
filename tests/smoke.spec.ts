@@ -1446,6 +1446,66 @@ test('card choice surfaces expose full card details on hover', async ({ page }) 
   expect(result.preenTitle).toBe(true);
 });
 
+test('route preen picker keeps large decks inside a two-row viewport', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('RouteScene', {});
+    g.scene.stop('MenuScene');
+    await wait(80);
+    const route: any = g.scene.getScene('RouteScene');
+    const nest = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type === 'nest')
+      ?? window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type !== 'boss');
+    route.runState.deck = Array.from({ length: 18 }, (_, index) => ({
+      id: ['major_00', 'wands_ace', 'cups_ace', 'swords_ace', 'pentacles_04', 'major_07'][index % 6],
+      upgraded: false
+    }));
+    route.cardPickerMode = 'preen';
+    route.cardPickerContext = 'route';
+    route.nodeChoiceNodeId = nest.id;
+    route.renderAll();
+
+    const visibleCardArtCount = () => route.children.list
+      .filter((child: any) => typeof child.texture?.key === 'string')
+      .filter((child: any) => child.texture.key.startsWith('card-thumb-') || child.texture.key.startsWith('card-'))
+      .length;
+    for (let i = 0; i < 60 && visibleCardArtCount() < 10; i += 1) await wait(50);
+
+    const pickerHitAreas = () => route.children.list
+      .filter((child: any) => child.type === 'Rectangle' && Math.abs((child.fillAlpha ?? 0) - 0.01) < 0.001)
+      .map((child: any) => {
+        const bounds = child.getBounds();
+        return { bottom: bounds.bottom, height: bounds.height };
+      })
+      .filter((bounds: any) => bounds.height > 180);
+    const rangeTexts = () => route.children.list
+      .filter((child: any) => typeof child.text === 'string')
+      .map((child: any) => child.text);
+
+    const firstPageHitAreas = pickerHitAreas();
+    const firstPageRange = rangeTexts().find((text: string) => text.includes(' / 18'));
+    route.scrollCardPicker(1);
+    const secondPageRange = rangeTexts().find((text: string) => text.includes(' / 18'));
+
+    return {
+      firstPageCount: firstPageHitAreas.length,
+      maxHitBottom: Math.max(...firstPageHitAreas.map((bounds: any) => bounds.bottom)),
+      firstPageRange,
+      secondPageRange,
+      firstPageArtCount: visibleCardArtCount(),
+      scroll: route.cardPickerScroll
+    };
+  });
+
+  expect(result.firstPageCount).toBe(10);
+  expect(result.firstPageArtCount).toBeGreaterThanOrEqual(10);
+  expect(result.maxHitBottom).toBeLessThan(650);
+  expect(result.firstPageRange).toBe('1-10 / 18');
+  expect(result.secondPageRange).toBe('6-15 / 18');
+  expect(result.scroll).toBe(1);
+});
+
 test('market item detail surfaces non-card offer stats', async ({ page }) => {
   await boot(page);
   const texts = await page.evaluate(async () => {
@@ -1541,6 +1601,71 @@ test('nest remove opens a card picker and removes the chosen card', async ({ pag
   });
   expect(result.pickerMode).toBe('release');
   expect(result.deckAfter).toBe(result.deckBefore - 1);
+});
+
+test('nest boss ready up allows two chosen preens before completing', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('RouteScene', {});
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('RouteScene');
+    const nest = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === 'nest');
+    scene.runState.scrap = 999;
+    scene.runState.currentHp = 38;
+    scene.runState.deck = [
+      { id: 'major_00' },
+      { id: 'wands_ace' },
+      { id: 'cups_ace' },
+      { id: 'swords_ace' }
+    ];
+    scene.openNodeChoices(nest);
+    scene.chooseNodeOption('boss_ready_tune');
+    const pendingKey = scene.pendingRouteReward?.choiceKey;
+    scene.claimRouteReward();
+    const titleBeforePick = scene.children.list
+      .filter((child: any) => typeof child.text === 'string')
+      .map((child: any) => child.text)
+      .find((text: string) => text.includes('Preen'));
+    const firstIndex = scene.pickerEligibleCards('preen')[0].index;
+    scene.applyCardPick(firstIndex);
+    const afterFirst = {
+      remaining: scene.cardPickerRemainingPicks,
+      pickerMode: scene.cardPickerMode,
+      upgraded: scene.runState.deck.filter((card: any) => card.upgraded).length,
+      completed: scene.runState.completedRouteNodeIds.includes(nest.id)
+    };
+    const secondIndex = scene.pickerEligibleCards('preen')[0].index;
+    scene.applyCardPick(secondIndex);
+    return {
+      pendingKey,
+      titleBeforePick,
+      afterFirst,
+      afterSecond: {
+        pickerMode: scene.cardPickerMode,
+        upgraded: scene.runState.deck.filter((card: any) => card.upgraded).length,
+        completed: scene.runState.completedRouteNodeIds.includes(nest.id),
+        nextCombat: scene.runState.nextCombat,
+        scrap: scene.runState.scrap,
+        currentHp: scene.runState.currentHp
+      }
+    };
+  });
+
+  expect(result.pendingKey).toBe('boss_ready_tune');
+  expect(result.titleBeforePick).toBe('Preen 2 Cards');
+  expect(result.afterFirst).toMatchObject({
+    remaining: 1,
+    pickerMode: 'preen',
+    upgraded: 1,
+    completed: false
+  });
+  expect(result.afterSecond.pickerMode).toBeUndefined();
+  expect(result.afterSecond.upgraded).toBe(2);
+  expect(result.afterSecond.completed).toBe(true);
+  expect(result.afterSecond.nextCombat).toMatchObject({ bossDamageShield: 18, openSkyGuard: 2 });
+  expect(result.afterSecond.scrap).toBe(869);
+  expect(result.afterSecond.currentHp).toBe(35);
 });
 
 test('clearing a district boss advances the run to the next district', async ({ page }) => {
