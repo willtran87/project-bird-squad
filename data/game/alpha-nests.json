@@ -8,7 +8,7 @@
   "options": [
     {
       "id": "preen",
-      "label": "Oil the Working Feathers",
+      "label": "Preen Feathers",
       "cost": 35,
       "effects": ["payScrap(35)", "preenCard(1)"]
     },
@@ -20,13 +20,13 @@
     },
     {
       "id": "reinforce_gear",
-      "label": "Rig a Route Board",
+      "label": "Route Board",
       "cost": 115,
       "effects": ["payScrap(115)", "gainRouteMark(randomRare)", "preenCard(1)"]
     },
     {
       "id": "boss_ready_tune",
-      "label": "Boss-Ready Tune-Up",
+      "label": "Boss Tune-Up",
       "cost": 130,
       "effects": ["payScrap(130)", "preenCard(2)", "bossDamageShield(18)", "gainOpenSkyGuard(2)", "loseCohesion(3)"]
     }

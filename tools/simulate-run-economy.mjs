@@ -204,9 +204,9 @@ function affordableMarketAction(run, rng) {
   );
   const choices = [];
   const bossGuardPrice = 120 + run.mapIndex * 35;
-  const routeScoutPrice = 90 + run.mapIndex * 30;
+  const routeScoutPrice = 80 + run.mapIndex * 25;
   if (run.mapIndex >= 1 && run.scrap >= bossGuardPrice) choices.push('boss_guard');
-  if (run.mapIndex >= 2 && run.scrap >= routeScoutPrice) choices.push('route_scout');
+  if (run.mapIndex >= 1 && run.scrap >= routeScoutPrice) choices.push('route_scout');
   if (run.scrap >= waymarkPrice) choices.push('waymark');
   if (run.scrap >= cardPrice) choices.push('card');
   if (run.scrap >= preenPrice) choices.push('preen');

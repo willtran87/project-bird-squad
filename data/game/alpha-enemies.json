@@ -139,7 +139,7 @@
           "id": "heavy_strike_11",
           "label": "Heavy Strike 11",
           "effects": [
-            "damage(flock, 10)",
+            "damage(flock, 11)",
             "if playedCardsAtLeast(4) then nextAttackBonus(3)"
           ]
         },

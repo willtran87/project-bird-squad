@@ -143,6 +143,312 @@ test('generated route map node footprints do not overlap', async ({ page }) => {
   expect(layoutFailures).toEqual([]);
 });
 
+test('mixed route card-choice rewards preserve the card choice before opening Preen', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('RouteScene', {});
+    g.scene.stop('MenuScene');
+    const route: any = g.scene.getScene('RouteScene');
+    route.runState.deck = [
+      { id: 'major_00' },
+      { id: 'major_01' },
+      { id: 'major_02' }
+    ];
+    const node = { id: 'audit_tangled_antenna', type: 'signal', label: 'Tangled Antenna', payloadId: 'rooftop_tangled_antenna' };
+    const choice = {
+      key: 'untangle',
+      text: 'Untangle carefully.',
+      effects: ['addCard(chooseOneOfTwoUncommonOrRare)', 'preenCard(1)'],
+      locked: false
+    };
+    route.openRouteRewardMenu(node, choice, structuredClone(route.runState));
+    const offered = route.routeCardRewardChoices.map((card: any) => card.id);
+    route.chooseRouteRewardCard(offered[0]);
+    return {
+      offered,
+      deckIds: route.runState.deck.map((card: any) => card.id),
+      cardPickerMode: route.cardPickerMode,
+      remainingPicks: route.cardPickerRemainingPicks,
+      pendingCleared: !route.pendingRouteReward,
+      choicesCleared: route.routeCardRewardChoices.length
+    };
+  });
+
+  expect(result.offered).toHaveLength(2);
+  expect(result.deckIds).toContain(result.offered[0]);
+  expect(result.deckIds).not.toContain(result.offered[1]);
+  expect(result.cardPickerMode).toBe('preen');
+  expect(result.remainingPicks).toBe(1);
+  expect(result.pendingCleared).toBe(true);
+  expect(result.choicesCleared).toBe(0);
+});
+
+test('route Supplies resolve route-side cleanse explicitly instead of dropping it', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('RouteScene', {
+      runState: {
+        deck: [{ id: 'major_00' }],
+        leaderId: 'fledgling',
+        difficulty: 0,
+        seed: 'route-cleanse-supply',
+        currentHp: 20,
+        scrap: 0,
+        routeMarks: [],
+        supplies: ['feather_splint'],
+        mapIndex: 0,
+        completedRouteNodeIds: [],
+        currentRouteNodeId: undefined,
+        routeLog: [],
+        nextCombat: undefined,
+        signalChoices: [],
+        rewardEvents: [],
+        suppliesUsed: [],
+        combatResults: [],
+        freePreenNextDistrict: 0
+      }
+    });
+    g.scene.stop('MenuScene');
+    const route: any = g.scene.getScene('RouteScene');
+    route.useRouteSupply(0);
+    return {
+      hp: route.runState.currentHp,
+      supplies: route.runState.supplies,
+      used: route.runState.suppliesUsed,
+      log: route.runState.routeLog
+    };
+  });
+
+  expect(result.hp).toBe(26);
+  expect(result.supplies).toEqual([]);
+  expect(result.used).toEqual(['feather_splint']);
+  expect(result.log.some((entry: string) => entry.includes('restore 2 Cohesion'))).toBe(true);
+});
+
+test('route cleanse and scout effects provide meaningful fallback value', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('RouteScene', {
+      runState: {
+        deck: [{ id: 'major_00' }],
+        leaderId: 'fledgling',
+        difficulty: 0,
+        seed: 'route-cleanse-scout-fallback',
+        currentHp: 20,
+        scrap: 0,
+        routeMarks: [],
+        supplies: [],
+        mapIndex: 0,
+        completedRouteNodeIds: [],
+        currentRouteNodeId: undefined,
+        routeLog: [],
+        nextCombat: undefined,
+        signalChoices: [],
+        rewardEvents: [],
+        suppliesUsed: [],
+        combatResults: [],
+        freePreenNextDistrict: 0
+      }
+    });
+    g.scene.stop('MenuScene');
+    const route: any = g.scene.getScene('RouteScene');
+    route.resolveRouteEffect('cleanseFlock(1)');
+    const afterHeal = {
+      hp: route.runState.currentHp,
+      nextCombat: structuredClone(route.runState.nextCombat ?? {}),
+      log: [...route.runState.routeLog]
+    };
+    route.runState.currentHp = route.runMaxHp();
+    route.resolveRouteEffect('cleanseFlock(1)');
+    route.resolveRouteEffect('peekNextNodes(2)');
+    return {
+      afterHeal,
+      finalHp: route.runState.currentHp,
+      finalNextCombat: route.runState.nextCombat,
+      finalLog: route.runState.routeLog
+    };
+  });
+
+  expect(result.afterHeal.hp).toBe(22);
+  expect(result.afterHeal.nextCombat.openSkyGuard ?? 0).toBe(0);
+  expect(result.afterHeal.log.some((entry: string) => entry.includes('restore 2 Cohesion'))).toBe(true);
+  expect(result.finalNextCombat.openSkyGuard).toBe(2);
+  expect(result.finalNextCombat.reduceNextOpenSky).toBe(2);
+  expect(result.finalLog.some((entry: string) => entry.startsWith('Route plan set:'))).toBe(true);
+});
+
+test('repeat Supply Waymarks fire on each Supply use', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', {
+      routeNodeId: 'm1_entry',
+      runState: {
+        deck: [{ id: 'major_00' }, { id: 'major_01' }, { id: 'major_02' }, { id: 'major_03' }, { id: 'major_04' }],
+        leaderId: 'fledgling',
+        difficulty: 0,
+        seed: 'repeat-supply-waymark',
+        currentHp: 20,
+        scrap: 0,
+        routeMarks: ['supply_bell'],
+        supplies: ['signal_flare', 'emergency_call'],
+        supplySlots: 2,
+        mapIndex: 0,
+        completedRouteNodeIds: [],
+        currentRouteNodeId: 'm1_entry',
+        routeLog: [],
+        nextCombat: undefined,
+        signalChoices: [],
+        rewardEvents: [],
+        suppliesUsed: [],
+        combatResults: [],
+        freePreenNextDistrict: 0
+      }
+    });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    scene.selectedEnemyId = scene.enemies.find((enemy: any) => enemy.hp > 0)?.id;
+    scene.useSupply(0);
+    const afterFirst = {
+      pending: scene.pendingSupplyRepeats,
+      used: [...scene.runSuppliesUsed],
+      log: [...scene.log]
+    };
+    scene.useSupply(0);
+    return {
+      afterFirst,
+      afterSecond: {
+        pending: scene.pendingSupplyRepeats,
+        used: [...scene.runSuppliesUsed],
+        log: [...scene.log]
+      }
+    };
+  });
+
+  expect(result.afterFirst.pending).toBe(1);
+  expect(result.afterFirst.used).toEqual(['signal_flare']);
+  expect(result.afterSecond.used).toEqual(['signal_flare', 'emergency_call']);
+  expect(result.afterSecond.pending).toBe(1);
+  expect(result.afterSecond.log.filter((entry: string) => entry.startsWith('Supply Bell:'))).toHaveLength(2);
+});
+
+test('Open Sky softening is distinct from Open Sky Guard', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', {
+      routeNodeId: 'm1_entry',
+      runState: {
+        deck: [{ id: 'major_00' }, { id: 'major_01' }, { id: 'major_02' }, { id: 'major_03' }, { id: 'major_04' }],
+        leaderId: 'fledgling',
+        difficulty: 0,
+        seed: 'open-sky-softening',
+        currentHp: 30,
+        scrap: 0,
+        routeMarks: [],
+        supplies: [],
+        supplySlots: 2,
+        mapIndex: 0,
+        completedRouteNodeIds: [],
+        currentRouteNodeId: 'm1_entry',
+        routeLog: [],
+        nextCombat: { reduceNextOpenSky: 2, startOpenSky: true },
+        signalChoices: [],
+        rewardEvents: [],
+        suppliesUsed: [],
+        combatResults: [],
+        freePreenNextDistrict: 0
+      }
+    });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    const enemy = scene.enemies.find((candidate: any) => candidate.hp > 0);
+    enemy.nextAttackBonus = 0;
+    enemy.damageBonus = 0;
+    enemy.weak = 0;
+    scene.flock.openSkyGuard = 0;
+    const before = {
+      hp: scene.flock.hp,
+      guard: scene.flock.openSkyGuard,
+      reduction: scene.flock.openSkyReduction,
+      statuses: scene.flockStatuses?.(scene.flock) ?? []
+    };
+    scene.damageFlock(enemy, 4);
+    return {
+      before,
+      after: {
+        hp: scene.flock.hp,
+        guard: scene.flock.openSkyGuard,
+        reduction: scene.flock.openSkyReduction,
+        log: [...scene.log]
+      }
+    };
+  });
+
+  expect(result.before.guard).toBe(0);
+  expect(result.before.reduction).toBe(2);
+  expect(result.after.guard).toBe(0);
+  expect(result.after.reduction).toBeLessThan(2);
+  expect(result.after.log.some((entry: string) => entry.includes('softens Open Sky'))).toBe(true);
+});
+
+test('Roost retain Waymarks retain cards from the triggering Roost', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    scene.resolveEnemyTurn = () => {};
+    scene.checkOutcome = () => {};
+
+    scene.routeMarks = ['wind_step_tag'];
+    scene.markFiredThisCombat = new Set();
+    scene.hand = scene.hand.slice(0, 3);
+    scene.energy = 1;
+    scene.cardsPlayedThisTurn = 1;
+    scene.zeroCostThisTurn = 0;
+    scene.pendingRetainHand = 0;
+    scene.roostRetainPool = [];
+    const cardsInHandRetain = scene.hand.map((card: any) => card.instanceId);
+    scene.endTurn();
+    const retainedFromHand = cardsInHandRetain.filter((id: string) => scene.hand.some((card: any) => card.instanceId === id));
+    const duplicatedFromHand = retainedFromHand.filter((id: string) => scene.discardPile.some((card: any) => card.instanceId === id));
+
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    const cleanScene: any = g.scene.getScene('BattleScene');
+    cleanScene.resolveEnemyTurn = () => {};
+    cleanScene.checkOutcome = () => {};
+    cleanScene.routeMarks = ['patched_shoulder_wrap'];
+    cleanScene.markFiredThisCombat = new Set();
+    cleanScene.hand = cleanScene.hand.slice(0, 3);
+    cleanScene.energy = 0;
+    cleanScene.cardsPlayedThisTurn = 1;
+    cleanScene.zeroCostThisTurn = 0;
+    cleanScene.pendingRetainHand = 0;
+    cleanScene.roostRetainPool = [];
+    const cardsForNoDamage = cleanScene.hand.map((card: any) => card.instanceId);
+    cleanScene.endTurn();
+    const retainedAfterEnemy = cardsForNoDamage.filter((id: string) => cleanScene.hand.some((card: any) => card.instanceId === id));
+    const duplicatedAfterEnemy = retainedAfterEnemy.filter((id: string) => cleanScene.discardPile.some((card: any) => card.instanceId === id));
+
+    return {
+      retainedFromHand,
+      duplicatedFromHand,
+      retainedAfterEnemy,
+      duplicatedAfterEnemy
+    };
+  });
+
+  expect(result.retainedFromHand).toHaveLength(1);
+  expect(result.duplicatedFromHand).toHaveLength(0);
+  expect(result.retainedAfterEnemy).toHaveLength(1);
+  expect(result.duplicatedAfterEnemy).toHaveLength(0);
+});
+
 test('generated route maps enforce controlled pacing beats', async ({ page }) => {
   await boot(page);
   const failures = await page.evaluate(async () => {
@@ -372,8 +678,8 @@ test('encounter composition supports solo tuning and support companions', async 
   expect(supportResult.supportRoles).toContain('support');
   expect(supportResult.allyHp).toBe(16);
   expect(supportResult.allyBlock).toBe(3);
-  expect(supportResult.supportBlock).toBe(0);
-  expect(supportResult.supportNextAttackBonus).toBe(5);
+  expect(supportResult.supportBlock).toBe(5);
+  expect(supportResult.supportNextAttackBonus).toBe(0);
   expect(supportResult.supportState.some((enemy: any) => enemy.roles.includes('support'))).toBe(true);
   expect(supportResult.supportState.every((enemy: any) => enemy.solo === false)).toBe(true);
   expect(supportResult.supportState.every((enemy: any) => enemy.maxHp > enemy.baseHp)).toBe(true);
@@ -717,6 +1023,8 @@ test('route choice and market nodes complete only after their economy step resol
     const basinCompletedOnOpen = scene.runState.completedRouteNodeIds.includes(basin.id);
     scene.chooseNodeOption('recover');
     const basinCompletedAfterChoice = scene.runState.completedRouteNodeIds.includes(basin.id);
+    scene.claimRouteReward();
+    const basinCompletedAfterClaim = scene.runState.completedRouteNodeIds.includes(basin.id);
 
     const marketSetup = await startRouteWithNode('market');
     const marketScene: any = marketSetup.scene;
@@ -750,6 +1058,7 @@ test('route choice and market nodes complete only after their economy step resol
     return {
       basinCompletedOnOpen,
       basinCompletedAfterChoice,
+      basinCompletedAfterClaim,
       marketCompletedOnOpen,
       marketCompletedAfterLeave,
       rivalCompletedOnOpen,
@@ -759,7 +1068,8 @@ test('route choice and market nodes complete only after their economy step resol
     };
   });
   expect(result.basinCompletedOnOpen).toBe(false);
-  expect(result.basinCompletedAfterChoice).toBe(true);
+  expect(result.basinCompletedAfterChoice).toBe(false);
+  expect(result.basinCompletedAfterClaim).toBe(true);
   expect(result.marketCompletedOnOpen).toBe(false);
   expect(result.marketCompletedAfterLeave).toBe(true);
   expect(result.rivalCompletedOnOpen).toBe(false);
@@ -945,7 +1255,7 @@ test('balance economy Waymarks resolve through generic trigger/effect hooks', as
     scene.runState.routeMarks = ['wire_map', 'market_tally_string'];
     scene.applyRouteNodeReward(signal);
     const scrapAfterSignal = scene.runState.scrap;
-    const previewAfterSignal = scene.runState.routeLog.some((line: string) => /Route preview/.test(line));
+    const planAfterSignal = scene.runState.routeLog.some((line: string) => /Route plan set/.test(line));
 
     scene.runState.scrap = 0;
     scene.runState.nextCombat = {};
@@ -956,14 +1266,14 @@ test('balance economy Waymarks resolve through generic trigger/effect hooks', as
       guard: scene.runState.nextCombat?.openSkyGuard ?? 0,
     };
 
-    return { cacheChoices, hpAfterBasin, guardAfterBasin, scrapAfterSignal, previewAfterSignal, harness };
+    return { cacheChoices, hpAfterBasin, guardAfterBasin, scrapAfterSignal, planAfterSignal, harness };
   });
   expect(result.cacheChoices).toBe(7);
   expect(result.hpAfterBasin).toBe(37);      // base 8 + Rain Gutter 4 + Blue Cup Token 5
-  expect(result.guardAfterBasin).toBe(2);
+  expect(result.guardAfterBasin).toBe(3);
   expect(result.scrapAfterSignal).toBe(25);  // Wire Map 10 + Market Tally String 15
-  expect(result.previewAfterSignal).toBe(true);
-  expect(result.harness).toEqual({ scrap: 10, guard: 1 });
+  expect(result.planAfterSignal).toBe(true);
+  expect(result.harness).toEqual({ scrap: 10, guard: 2 });
 });
 
 test('supplies are carried into combat and usable for an effect', async ({ page }) => {
@@ -1247,7 +1557,7 @@ test('late markets sell premium boss-prep and route-scout services', async ({ pa
   expect(result.scrapDelta).toBe(result.bossPrice + result.scoutPrice);
   expect(result.nextCombat.openSkyGuard).toBe(2);
   expect(result.nextCombat.bossDamageShield).toBe(18);
-  expect(result.routeLog.some((entry: string) => entry.startsWith('Route preview:'))).toBe(true);
+  expect(result.routeLog.some((entry: string) => entry.startsWith('Route plan set:'))).toBe(true);
   expect(result.sold).toEqual(expect.arrayContaining([
     { id: 'boss_guard', sold: true },
     { id: 'route_scout', sold: true }
@@ -3286,9 +3596,9 @@ test('expanded supplies resolve tactical combat verbs', async ({ page }) => {
   expect(r.afterSplint.frail).toBe(0);
   expect(r.afterSplint.fouled).toBe(1);
   expect(r.afterMolt.molt).toBe(true);
-  expect(r.afterMolt.guard).toBe(1);
+  expect(r.afterMolt.guard).toBe(2);
   expect(r.afterStorm.energy).toBe(r.beforeStorm.energy + 2);
-  expect(r.afterStorm.hp).toBe(r.beforeStorm.hp - 4);
+  expect(r.afterStorm.hp).toBe(r.beforeStorm.hp - 3);
   expect(r.afterStorm.hand).toBeGreaterThanOrEqual(r.beforeStorm.hand);
   expect(r.used).toEqual(['bottlecap_popper', 'tar_solvent', 'wire_snips', 'feather_splint', 'molt_pin', 'storm_lantern']);
   expect(r.hasAllSupplyArt).toBe(true);
@@ -3352,6 +3662,7 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
     enemy.maxHp = 60;
     enemy.hp = 60;
     enemy.block = 0;
+    enemy.weak = 0;
     s.selectedEnemyId = enemy.id;
     const map = (window as any).__birdSquadCurrentMap();
     const nestNode = map.nodes.find((node: any) => node.type === 'nest');
@@ -3464,13 +3775,13 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
   expect(r.afterClamp.block).toBeGreaterThanOrEqual(8);
   expect(r.afterClamp.pendingNest).toBe(16);
   expect(r.afterClamp.retain).toBe(2);
-  expect(r.afterSmoke.winded).toBe(3);
-  expect(r.afterSmoke.nextDraw).toBe(1);
-  expect(r.afterWindcatcher.nextEnergy).toBe(2);
-  expect(r.afterBattery.hp).toBe(54);
+  expect(r.afterSmoke.winded).toBe(6);
+  expect(r.afterSmoke.nextDraw).toBe(2);
+  expect(r.afterWindcatcher.nextEnergy).toBe(4);
+  expect(r.afterBattery.hp).toBe(48);
   expect(r.afterBattery.spark).toBe(0);
-  expect(r.afterLedger.scrap).toBe(25);
-  expect(r.afterLedger.hp).toBe(r.afterLedger.beforeHp - 2);
+  expect(r.afterLedger.scrap).toBe(50);
+  expect(r.afterLedger.hp).toBe(r.afterLedger.beforeHp - 4);
   expect(r.afterCounterweight.block).toBe(3);
   expect(r.afterCounterweight.nextEnergy).toBe(1);
   expect(r.afterShoulderWrap.block).toBe(7);
@@ -3562,7 +3873,7 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
     const afterSticker = {
       scrap: route.runState.scrap,
       used: [...route.runState.suppliesUsed],
-      previewLogged: route.runState.routeLog.some((line: string) => /Route preview/.test(line)),
+      planLogged: route.runState.routeLog.some((line: string) => /Route plan set/.test(line)),
       feedback: afterStickerText.supplyFeedback?.[0],
     };
     route.useRouteSupply(0);
@@ -3614,7 +3925,7 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
       hadSignalNode: !!signalNode,
       scrap: route.runState.scrap,
       supplies: route.runState.supplies.length,
-      previewLogged: route.runState.routeLog.some((line: string) => /Route preview/.test(line)),
+      planLogged: route.runState.routeLog.some((line: string) => /Route plan set/.test(line)),
     };
 
     const basinNode = routeMap.nodes.find((node: any) => node.type === 'basin');
@@ -3796,17 +4107,17 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
   expect(r.afterPocket.used).toContain('spare_pocket');
   expect(r.afterPocket.feedback.id).toBe('spare_pocket');
   expect(r.afterPocket.feedback.summary).toContain('Supply capacity');
-  expect(r.afterSticker.previewLogged).toBe(true);
+  expect(r.afterSticker.planLogged).toBe(true);
   expect(r.afterSticker.scrap).toBe(27);
   expect(r.afterSticker.feedback.id).toBe('map_sticker_strip');
-  expect(r.afterSticker.feedback.summary).toContain('Preview');
+  expect(r.afterSticker.feedback.summary).toContain('Open Sky Guard');
   expect(r.afterThermos.hp).toBe(25);
   expect(r.afterThermos.guard).toBe(2);
   expect(r.afterIou.hp).toBe(24);
   expect(r.afterIou.scrap).toBe(47);
   expect(r.afterIou.freePreen).toBe(1);
   expect(r.afterLedger.scrap).toBe(24);
-  expect(r.afterLedger.guard).toBe(1);
+  expect(r.afterLedger.guard).toBe(2);
   expect(r.afterCacheHook.supplies).toBe(1);
   expect(r.afterIouAfterMarket.hadMarketNode).toBe(true);
   expect(r.afterIouAfterMarket.hp).toBe(20);
@@ -3815,7 +4126,7 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
   expect(r.afterBusAfterSignal.hadSignalNode).toBe(true);
   expect(r.afterBusAfterSignal.scrap).toBe(32);
   expect(r.afterBusAfterSignal.supplies).toBe(1);
-  expect(r.afterBusAfterSignal.previewLogged).toBe(true);
+  expect(r.afterBusAfterSignal.planLogged).toBe(true);
   expect(r.afterSeedAfterBasin.hadBasinNode).toBe(true);
   expect(r.afterSeedAfterBasin.hp).toBe(28);
   expect(r.afterChalk.block).toBe(0);

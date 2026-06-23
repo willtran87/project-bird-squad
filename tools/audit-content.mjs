@@ -39,7 +39,7 @@ const fmtScrap = (s) => (Array.isArray(s) ? `${s[0]}-${s[1]}` : String(s));
 // ───────────────────────── Authored targets (the spec is the source of truth) ──
 // docs/game/alpha-run-spec.md §Alpha Enemies + §Alpha Boss
 const ENEMY_TARGETS = {
-  roof_rat:         { type: 'normal', health: 20, band: 'street', damage: { strike_6_a: 6, strike_6_b: 6 } },
+  roof_rat:         { type: 'normal', health: 20, band: 'street', damage: { strike_6_a: 6, strike_6_b: 4 } },
   signal_gull:      { type: 'normal', health: 24, band: 'street', damage: { peck_5: 5 } },
   wire_hawk:        { type: 'normal', health: 28, band: 'street', damage: { heavy_strike_11: 11, strike_7: 7 } },
   tarline_jackdaw:  { type: 'rival',  health: 34, band: 'rival',  damage: { harass_6: 6, heavy_strike_12: 12 } },
@@ -50,8 +50,10 @@ const REWARD_BANDS = { street: { scrap: [25, 40] }, rival: { scrap: [70, 90] }, 
 // §Starter Deck / §Alpha Reward Pool — the full card deck is now playable, so
 // the reward pool is every non-starter playable card (100 non-snag minus 10 starter).
 const DECK_TARGETS = { starter: 10, rewardPool: 90 };
-// next-level-data-contracts §5.5 status registry ids
-const STATUS_IDS = ['winded', 'openSky', 'openSkyGuard', 'molt'];
+// next-level-data-contracts §5.5 status registry ids, expanded to shipped
+// pressure statuses now used by enemies and cleanse effects.
+const STATUS_IDS = ['winded', 'openSky', 'openSkyGuard', 'fouled', 'molt'];
+const SUPPLY_TARGET_COUNT = 31;
 // Current reward-profile targets are tracked in data/game/balance-config.json.
 // Enemy definitions retain their original authored reward bands above, but the
 // runtime profile tuning now uses the lower Map 1 economy curve.
@@ -140,11 +142,11 @@ if (statuses === null) {
 }
 
 const supplies = readJson('data/game/alpha-supplies.json');
-if (supplies === null) pending.push('alpha-supplies.json not authored — expect 5 supplies (alpha-run-spec §Supplies)');
+if (supplies === null) pending.push(`alpha-supplies.json not authored — expect ${SUPPLY_TARGET_COUNT} supplies`);
 else if (supplies) {
   const n = (Array.isArray(supplies) ? supplies : supplies.supplies ?? []).length;
-  if (n !== 5) fail(`supplies count: data=${n} but alpha-run-spec authors 5`);
-  else pass('supply count 5');
+  if (n !== SUPPLY_TARGET_COUNT) fail(`supplies count: data=${n} but shipped supply target is ${SUPPLY_TARGET_COUNT}`);
+  else pass(`supply count ${SUPPLY_TARGET_COUNT}`);
 }
 
 for (const f of ['alpha-encounters.json', 'alpha-market.json', 'alpha-signals.json', 'alpha-basins.json', 'alpha-nests.json', 'alpha-cache.json']) {

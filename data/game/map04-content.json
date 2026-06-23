@@ -1043,8 +1043,7 @@
       "enemies": [
         "roost_warden",
         "roost_spire_sentinel",
-        "roost_wind_shrike",
-        "roost_perch_thug"
+        "roost_wind_shrike"
       ],
       "rewardProfileId": "boss_map04"
     },
@@ -1702,10 +1701,10 @@
         "id": "m4_c5_signal_cache",
         "column": 5,
         "lane": 1,
-        "type": "signal",
-        "label": "Signal",
-        "payloadId": "roost_signal_cache",
-        "risk": "medium",
+        "type": "basin",
+        "label": "Basin",
+        "payloadId": "basin_alpha",
+        "risk": "low",
         "revealed": true,
         "completed": false
       },
@@ -1713,10 +1712,10 @@
         "id": "m4_c5_street_sentinel",
         "column": 5,
         "lane": 2,
-        "type": "street",
-        "label": "Street Encounter",
-        "payloadId": "enc_roost_spire_sentinel",
-        "risk": "high",
+        "type": "nest",
+        "label": "Nest",
+        "payloadId": "nest_alpha",
+        "risk": "low",
         "revealed": true,
         "completed": false
       },

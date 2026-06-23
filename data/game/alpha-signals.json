@@ -13,7 +13,7 @@
       "prompt": "An old Waymark is still visible under rain grime, but reaching it means crossing an exposed billboard frame.",
       "choices": [
         { "key": "repaint", "text": "Repaint the mark.", "outcomes": ["loseCohesion(4)", "gainRouteMark(randomRare)"] },
-        { "key": "scout", "text": "Send a fast scout.", "outcomes": ["gainScrap(45)", "gainRouteMark(randomUncommonOrRare)", "addSnagToDiscard(smeared_map)"] },
+        { "key": "scout", "text": "Fast scout.", "outcomes": ["gainScrap(45)", "gainRouteMark(randomUncommonOrRare)", "addSnagToDiscard(smeared_map)"] },
         { "key": "move", "text": "Keep moving.", "outcomes": ["gainScrap(12)"] }
       ]
     },
@@ -24,7 +24,7 @@
       "prompt": "A broken wire perch can become a shortcut if the flock spends time and Scrap to stabilize it.",
       "choices": [
         { "key": "repair", "text": "Repair it.", "requirements": ["scrapAtLeast(50)"], "lockedText": "Need 50 Scrap.", "outcomes": ["payScrap(50)", "gainRouteMark(rooftop_shortcut)"] },
-        { "key": "strip", "text": "Strip it for parts.", "outcomes": ["gainScrap(55)", "gainSupplyChoice(1)", "addSnagToDiscard(static_burst)"] },
+        { "key": "strip", "text": "Strip parts.", "outcomes": ["gainScrap(55)", "gainSupplyChoice(1)", "addSnagToDiscard(static_burst)"] },
         { "key": "leave", "text": "Leave it.", "outcomes": [] }
       ]
     },
@@ -34,9 +34,9 @@
       "mapId": "map_01_rooftop_blocks",
       "prompt": "A hidden barrel still holds clean rainwater, but a lookout warns that the route ahead is watched.",
       "choices": [
-        { "key": "rest", "text": "Rest and refill.", "outcomes": ["healCohesion(12)", "gainSupplyChoice(1)", "enemyCoverNextCombat(4)", "addSnagToDiscard(barricade_scrap)"] },
-        { "key": "trade", "text": "Trade the location.", "outcomes": ["gainScrap(30)", "gainSupply(random)"] },
-        { "key": "mark", "text": "Mark it for later.", "outcomes": ["gainSupplyChoice(1)"] }
+        { "key": "rest", "text": "Rest & refill.", "outcomes": ["healCohesion(12)", "gainSupplyChoice(1)", "enemyCoverNextCombat(4)", "addSnagToDiscard(barricade_scrap)"] },
+        { "key": "trade", "text": "Trade location.", "outcomes": ["gainScrap(30)", "gainSupply(random)"] },
+        { "key": "mark", "text": "Mark for later.", "outcomes": ["gainSupplyChoice(1)"] }
       ]
     },
     {
@@ -45,9 +45,9 @@
       "mapId": "map_01_rooftop_blocks",
       "prompt": "A tired courier offers a shortcut in exchange for help clearing a Snag from its own route.",
       "choices": [
-        { "key": "help", "text": "Help the courier.", "outcomes": ["addCard(randomRare)", "preenCard(1)", "addSnagToDraw(tangled_line)"] },
-        { "key": "pay", "text": "Pay for the shortcut.", "requirements": ["scrapAtLeast(40)"], "lockedText": "Need 40 Scrap.", "outcomes": ["payScrap(40)", "gainRouteMark(rooftop_shortcut)"] },
-        { "key": "invite", "text": "Invite the courier.", "outcomes": ["addCard(randomUncommonOrRare)"] }
+        { "key": "help", "text": "Help courier.", "outcomes": ["addCard(randomRare)", "preenCard(1)", "addSnagToDraw(tangled_line)"] },
+        { "key": "pay", "text": "Buy shortcut.", "requirements": ["scrapAtLeast(40)"], "lockedText": "Need 40 Scrap.", "outcomes": ["payScrap(40)", "gainRouteMark(rooftop_shortcut)"] },
+        { "key": "invite", "text": "Invite courier.", "outcomes": ["addCard(randomUncommonOrRare)"] }
       ]
     },
     {
@@ -58,7 +58,7 @@
       "choices": [
         { "key": "cut", "text": "Cut through.", "outcomes": ["startNextCombatOpenSky()", "gainCacheReward()", "gainRouteMark(randomRare)", "addSnagToDiscard(glass_gap)"] },
         { "key": "around", "text": "Go around.", "outcomes": ["gainScrap(30)"] },
-        { "key": "patch", "text": "Patch the sign.", "requirements": ["scrapAtLeast(30)"], "lockedText": "Need 30 Scrap.", "outcomes": ["payScrap(30)", "gainSupply(signal_flare)"] }
+        { "key": "patch", "text": "Patch sign.", "requirements": ["scrapAtLeast(30)"], "lockedText": "Need 30 Scrap.", "outcomes": ["payScrap(30)", "gainSupply(signal_flare)"] }
       ]
     },
     {
@@ -67,9 +67,9 @@
       "mapId": "map_01_rooftop_blocks",
       "prompt": "A scrappy crew of corvids has claimed this tar roof. They offer passage — or a wager.",
       "choices": [
-        { "key": "wager", "text": "Challenge them to a race.", "outcomes": ["gainOpenSkyGuard(2)", "gainScrap(24)"] },
-        { "key": "pay_tribute", "text": "Leave a seed offering.", "requirements": ["hasSupplySlot()"], "lockedText": "Need an empty supply slot.", "outcomes": ["gainSupply(seed_packet)", "loseCohesion(2)"] },
-        { "key": "sneak", "text": "Slip through at dusk.", "outcomes": ["addSnagToDiscard(bad_directions)", "gainScrap(16)"] }
+        { "key": "wager", "text": "Race wager.", "outcomes": ["gainOpenSkyGuard(2)", "gainScrap(24)"] },
+        { "key": "pay_tribute", "text": "Seed offering.", "requirements": ["hasSupplySlot()"], "lockedText": "Need an empty supply slot.", "outcomes": ["gainSupply(seed_packet)", "loseCohesion(2)"] },
+        { "key": "sneak", "text": "Slip through.", "outcomes": ["addSnagToDiscard(bad_directions)", "gainScrap(16)"] }
       ]
     },
     {
@@ -78,9 +78,9 @@
       "mapId": "map_01_rooftop_blocks",
       "prompt": "A ruptured water main floods the tar. The downpour offers cover, but the flock will be soaked for the next fight.",
       "choices": [
-        { "key": "cross_wet", "text": "Cross while wet.", "outcomes": ["addSnagToDraw(wet_feathers)", "reduceNextOpenSky(3)", "gainScrap(42)", "gainSupplyChoice(1)"] },
-        { "key": "shelter", "text": "Shelter under an awning.", "outcomes": ["healMissingPct(40)", "gainSupplyChoice(1)"] },
-        { "key": "ride_flow", "text": "Ride the water downslope.", "requirements": ["cohesionAtLeast(8)"], "lockedText": "Need 8+ Cohesion.", "outcomes": ["loseCohesion(6)", "gainRouteMark(randomRare)"] }
+        { "key": "cross_wet", "text": "Wet crossing.", "outcomes": ["addSnagToDraw(wet_feathers)", "reduceNextOpenSky(3)", "gainScrap(42)", "gainSupplyChoice(1)"] },
+        { "key": "shelter", "text": "Take shelter.", "outcomes": ["healMissingPct(40)", "gainSupplyChoice(1)"] },
+        { "key": "ride_flow", "text": "Ride flow.", "requirements": ["cohesionAtLeast(8)"], "lockedText": "Need 8+ Cohesion.", "outcomes": ["loseCohesion(6)", "gainRouteMark(randomRare)"] }
       ]
     },
     {
@@ -89,9 +89,9 @@
       "mapId": "map_01_rooftop_blocks",
       "prompt": "An old TV antenna has caught cables and netting. Clearing it might yield scrap — or a card from someone's nest.",
       "choices": [
-        { "key": "harvest", "text": "Strip it for metal.", "outcomes": ["gainScrap(70)", "releaseCard(1)"] },
-        { "key": "untangle", "text": "Untangle carefully.", "outcomes": ["addCard(chooseOneOfTwoUncommonOrRare)", "preenCard(1)"] },
-        { "key": "leave", "text": "Leave it tied.", "outcomes": ["gainSupply(zip_tie_roll)", "gainScrap(25)", "addSnagToDiscard(jammed_strap)"] }
+        { "key": "harvest", "text": "Strip metal.", "outcomes": ["gainScrap(70)", "releaseCard(1)"] },
+        { "key": "untangle", "text": "Untangle.", "outcomes": ["addCard(chooseOneOfTwoUncommonOrRare)", "preenCard(1)"] },
+        { "key": "leave", "text": "Leave tied.", "outcomes": ["gainSupply(zip_tie_roll)", "gainScrap(25)", "addSnagToDiscard(jammed_strap)"] }
       ]
     },
     {
@@ -102,7 +102,7 @@
       "choices": [
         { "key": "ride_updraft", "text": "Ride the updraft.", "outcomes": ["startNextCombatOpenSky()", "healCohesion(14)", "gainRouteMark(randomUncommonOrRare)", "addSnagToDraw(glass_gap)"] },
         { "key": "ground", "text": "Stay grounded.", "outcomes": ["gainOpenSkyGuard(3)"] },
-        { "key": "rest", "text": "Rest in the warmth.", "requirements": ["cohesionBelowPct(60)"], "lockedText": "Only when the flock is battered.", "outcomes": ["healMissingPct(50)"] }
+        { "key": "rest", "text": "Warm rest.", "requirements": ["cohesionBelowPct(60)"], "lockedText": "Only when the flock is battered.", "outcomes": ["healMissingPct(50)"] }
       ]
     },
     {
@@ -111,9 +111,9 @@
       "mapId": "map_01_rooftop_blocks",
       "prompt": "Behind a loose drainpipe, an old pigeon has cached supplies and cards. Sharing means splitting the haul.",
       "choices": [
-        { "key": "partner", "text": "Partner with the pigeon.", "outcomes": ["addCard(chooseOneOfTwoRare)", "gainScrap(35)", "loseCohesion(3)"] },
-        { "key": "take_supplies", "text": "Take just the supplies.", "requirements": ["hasSupplySlot()"], "lockedText": "Need an empty supply slot.", "outcomes": ["gainSupplyChoice(1)", "gainScrap(35)", "addSnagToDiscard(loose_shingle)"] },
-        { "key": "thank_leave", "text": "Thank and leave.", "outcomes": ["healCohesion(6)"] }
+        { "key": "partner", "text": "Split stash.", "outcomes": ["addCard(chooseOneOfTwoRare)", "gainScrap(35)", "loseCohesion(3)"] },
+        { "key": "take_supplies", "text": "Take supplies.", "requirements": ["hasSupplySlot()"], "lockedText": "Need an empty supply slot.", "outcomes": ["gainSupplyChoice(1)", "gainScrap(35)", "addSnagToDiscard(loose_shingle)"] },
+        { "key": "thank_leave", "text": "Thank & leave.", "outcomes": ["healCohesion(6)"] }
       ]
     },
     {
@@ -122,9 +122,9 @@
       "mapId": "map_01_rooftop_blocks",
       "prompt": "An old mark has been half-erased. You could reinterpret it, or search the tar for what is hidden beneath.",
       "choices": [
-        { "key": "redraw", "text": "Redraw the mark.", "outcomes": ["gainRouteMark(loose_change_tin)", "loseCohesion(2)"] },
-        { "key": "dig", "text": "Dig under the tar.", "outcomes": ["gainScrap(50)", "addCard(randomUncommonOrRare)", "addSnagToDraw(bent_feather)"] },
-        { "key": "ponder", "text": "Decipher the smudge.", "requirements": ["scrapAtLeast(25)"], "lockedText": "Need 25 Scrap for materials.", "outcomes": ["payScrap(25)", "gainCacheReward()"] }
+        { "key": "redraw", "text": "Redraw mark.", "outcomes": ["gainRouteMark(loose_change_tin)", "loseCohesion(2)"] },
+        { "key": "dig", "text": "Dig tar.", "outcomes": ["gainScrap(50)", "addCard(randomUncommonOrRare)", "addSnagToDraw(bent_feather)"] },
+        { "key": "ponder", "text": "Read smudge.", "requirements": ["scrapAtLeast(25)"], "lockedText": "Need 25 Scrap.", "outcomes": ["payScrap(25)", "gainCacheReward()"] }
       ]
     }
   ]

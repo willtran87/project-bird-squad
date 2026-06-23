@@ -605,11 +605,11 @@
       "target": "self",
       "tags": [
         "resonance",
-        "cover"
+        "tempo"
       ],
       "effects": [
         "gainResonance(2)",
-        "gainCover(2)"
+        "gainEnergyNextTurn(1)"
       ],
       "moltEffects": [
         "damage(target, 3)",
@@ -1223,11 +1223,12 @@
       "upgrade": {
         "effects": [
           "discardUpTo(2)",
-          "heal(4 perDiscarded)",
-          "gainCover(3 perDiscarded)"
+          "heal(5 perDiscarded)",
+          "gainCover(4 perDiscarded)"
         ],
         "flockStats": {
-          "cohesion": 1
+          "cohesion": 1,
+          "regen": 1
         },
         "moltEffects": [
           "discardUpTo(2)",
@@ -1249,11 +1250,12 @@
       "cost": 1,
       "target": "self",
       "tags": [
-        "cover"
+        "cover",
+        "open-sky"
       ],
       "effects": [
         "gainCover(5)",
-        "nextCoverBonus(nests, 2)"
+        "gainOpenSkyGuard(1)"
       ],
       "moltEffects": [
         "gainResonance(2)",
@@ -1262,7 +1264,7 @@
       "upgrade": {
         "effects": [
           "gainCover(7)",
-          "nextCoverBonus(nests, 3)"
+          "gainOpenSkyGuard(2)"
         ],
         "flockStats": {
           "cover": 1
@@ -1290,8 +1292,8 @@
         "setup"
       ],
       "effects": [
-        "gainCover(4)",
-        "nextCoverBonus(nests, 2)"
+        "gainCover(3)",
+        "nextCoverBonus(nests, 4)"
       ],
       "moltEffects": [
         "applyWinded(target, 2)",
@@ -1299,8 +1301,8 @@
       ],
       "upgrade": {
         "effects": [
-          "gainCover(6)",
-          "nextCoverBonus(nests, 3)"
+          "gainCover(4)",
+          "nextCoverBonus(nests, 6)"
         ],
         "flockStats": {
           "cover": 1
@@ -1365,11 +1367,12 @@
       "cost": 0,
       "target": "self",
       "tags": [
-        "cover"
+        "cover",
+        "retain"
       ],
       "effects": [
-        "gainCover(3)",
-        "nextCoverBonus(nests, 1)"
+        "gainCover(2)",
+        "retainHand(1)"
       ],
       "moltEffects": [
         "damage(target, 2)",
@@ -1378,7 +1381,7 @@
       "upgrade": {
         "effects": [
           "gainCover(4)",
-          "nextCoverBonus(nests, 2)"
+          "retainHand(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -1440,7 +1443,7 @@
       "kind": "crew",
       "suit": "nests",
       "rarity": "uncommon",
-      "cost": 1,
+      "cost": 2,
       "target": "self",
       "tags": [
         "cover",
@@ -1866,7 +1869,7 @@
       "kind": "legend",
       "suit": null,
       "rarity": "legendary",
-      "cost": 1,
+      "cost": 2,
       "target": "self",
       "tags": [
         "discard",
@@ -2145,7 +2148,7 @@
         "tempo"
       ],
       "effects": [
-        "damageAll(5)",
+        "damageAll(4)",
         "draw(1)",
         "if firstPlayedThisCombat then damageAll(2)"
       ],
@@ -2156,7 +2159,7 @@
       ],
       "upgrade": {
         "effects": [
-          "damageAll(7)",
+          "damageAll(6)",
           "draw(1)",
           "if firstPlayedThisCombat then damageAll(2)"
         ],
@@ -3198,7 +3201,7 @@
       "kind": "aviary",
       "suit": null,
       "rarity": "uncommon",
-      "cost": 1,
+      "cost": 2,
       "target": "none",
       "tags": [
         "tempo",
@@ -3570,7 +3573,7 @@
       "kind": "crew",
       "suit": "basins",
       "rarity": "uncommon",
-      "cost": 1,
+      "cost": 2,
       "target": "self",
       "tags": [
         "heal",
@@ -3999,9 +4002,9 @@
         "cover"
       ],
       "effects": [
-        "damage(target, 7)",
-        "if windedAtLeast(3) then damage(target, 5)",
-        "if targetHasCover then damagePierce(target, 4)",
+        "damage(target, 6)",
+        "if windedAtLeast(3) then damage(target, 4)",
+        "if targetHasCover then damagePierce(target, 3)",
         "gainCover(3)"
       ],
       "moltEffects": [
@@ -4011,9 +4014,9 @@
       ],
       "upgrade": {
         "effects": [
-          "damage(target, 9)",
-          "if windedAtLeast(3) then damage(target, 7)",
-          "if targetHasCover then damagePierce(target, 6)",
+          "damage(target, 8)",
+          "if windedAtLeast(3) then damage(target, 5)",
+          "if targetHasCover then damagePierce(target, 4)",
           "gainCover(4)"
         ],
         "flockStats": {

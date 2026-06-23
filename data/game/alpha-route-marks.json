@@ -51,12 +51,13 @@
       "rarity": "uncommon",
       "source": "market",
       "trigger": "afterMarketPurchase",
-      "description": "After each Market purchase, regain 10 Scrap, preview the next route choices, and carry 1 Open Sky Guard into the next fight.",
+      "description": "After each Market purchase, regain 10 Scrap, carry 1 Open Sky Guard into the next fight, and soften the next Open Sky increase by 1.",
       "flavorText": "An old market harness with every buckle replaced at least twice and every patch earned.",
       "effects": [
         "gainScrap(10)",
         "peekNextNodes(1)",
-        "gainOpenSkyGuard(1)"
+        "gainOpenSkyGuard(1)",
+        "reduceNextOpenSky(1)"
       ]
     },
     {
@@ -100,10 +101,11 @@
       "trigger": "basinHeal",
       "effects": [
         "addHeal(4)",
+        "peekNextNodes(1)",
         "gainOpenSkyGuard(1)",
-        "peekNextNodes(1)"
+        "reduceNextOpenSky(1)"
       ],
-      "description": "Basin Stops heal 4 more Cohesion, preview the next route choice, and carry 1 Open Sky Guard into the next fight.",
+      "description": "Basin Stops heal 4 more Cohesion, carry 1 Open Sky Guard into the next fight, and soften the next Open Sky increase by 1.",
       "flavorText": "A bright strip of gutter metal bent into a perch sign. It points toward clean water after hard crossings."
     },
     {
@@ -116,9 +118,11 @@
       "trigger": "signalResolved",
       "effects": [
         "gainScrap(10)",
-        "peekNextNodes(1)"
+        "peekNextNodes(1)",
+        "gainOpenSkyGuard(1)",
+        "reduceNextOpenSky(1)"
       ],
-      "description": "Signals pay out 10 Scrap and preview the next route choice.",
+      "description": "Signals pay out 10 Scrap, carry 1 Open Sky Guard into the next fight, and soften the next Open Sky increase by 1.",
       "flavorText": "A folded scrap of mesh wire that turns bad directions into profitable detours."
     },
     {
@@ -235,8 +239,11 @@
       "rarity": "common",
       "source": "street",
       "trigger": "onLowCardTurn(2)",
-      "effect": "gainEnergyNextTurn(1)",
-      "description": "The first time you Roost after playing 1 or 2 cards each combat, gain +1 Wingbeat next turn.",
+      "effects": [
+        "gainEnergyNextTurn(1)",
+        "nextTurnDraw(1)"
+      ],
+      "description": "The first time you Roost after playing 1 or 2 cards each combat, gain +1 Wingbeat and draw 1 extra next turn.",
       "flavorText": "A molted feather tucked in a transit-card sleeve. Someone marked it as good luck and meant it."
     },
     {
@@ -296,9 +303,11 @@
       "trigger": "signalResolved",
       "effects": [
         "gainScrap(15)",
-        "peekNextNodes(1)"
+        "peekNextNodes(1)",
+        "gainOpenSkyGuard(1)",
+        "reduceNextOpenSky(1)"
       ],
-      "description": "Signals pay out 15 Scrap and preview the next route choices.",
+      "description": "Signals pay out 15 Scrap, carry 1 Open Sky Guard into the next fight, and soften the next Open Sky increase by 1.",
       "flavorText": "Colored knots for favors owed, debts forgiven, and which stalls will trade in rain."
     },
     {
@@ -590,7 +599,7 @@
         "gainOpenSkyGuard(1)",
         "bossDamageShield(16)"
       ],
-      "description": "Start each combat with 1 Open Sky Guard. Boss fights also start with 16 extra Cover.",
+      "description": "Start each combat with 1 Open Sky Guard. The flock starts boss fights with 16 extra Cover.",
       "flavorText": "A reinforced harness with sun-faded straps, built for the crossing everyone worries about."
     },
     {
@@ -812,13 +821,13 @@
       "rarity": "common",
       "source": "market",
       "trigger": "afterMarketPurchase",
-      "description": "After each Market purchase, regain 12 Scrap, preview the next route choices, carry 1 Open Sky Guard into the next fight, and soften the next Open Sky increase by 1.",
+      "description": "After each Market purchase, regain 12 Scrap, carry 1 Open Sky Guard into the next fight, and soften the next Open Sky increase by 2.",
       "flavorText": "A black ledger tab with gold tally marks clipped to a torn receipt. Every fair trade leaves a little change.",
       "effects": [
         "gainScrap(12)",
         "peekNextNodes(1)",
         "gainOpenSkyGuard(1)",
-        "reduceNextOpenSky(1)"
+        "reduceNextOpenSky(2)"
       ]
     },
     {

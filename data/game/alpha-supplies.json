@@ -160,9 +160,10 @@
       "timing": "combat",
       "effects": [
         "enterMolt()",
-        "gainOpenSkyGuard(1)"
+        "gainOpenSkyGuard(2)",
+        "draw(1)"
       ],
-      "description": "Enter Molt and gain 1 Open Sky Guard.",
+      "description": "Enter Molt, gain 2 Open Sky Guard, and draw 1.",
       "visualBrief": "An enamel lapel pin shaped like a half-shed feather, violet enamel cracked to reveal gold underneath, clasped to a tiny harness strap; stylish flock identity object, title-splash streetwear finish."
     },
     {
@@ -221,9 +222,10 @@
       "effects": [
         "gainWingbeat(2)",
         "draw(2)",
-        "loseCohesion(4)"
+        "damageAll(3)",
+        "loseCohesion(3)"
       ],
-      "description": "Gain 2 Wingbeat and draw 2. Lose 4 Cohesion.",
+      "description": "Gain 2 Wingbeat, draw 2, and deal 3 to all enemies. Lose 3 Cohesion.",
       "visualBrief": "A tiny storm lantern built from a lighter cap and violet glass bead, blazing gold in wind with loose wires whipping around it; dangerous high-energy artifact, cinematic Bird Squad title-splash glow."
     },
     {
@@ -341,9 +343,10 @@
         "gainScrap(25)",
         "gainResonance(2)",
         "draw(2)",
+        "gainOpenSkyGuard(1)",
         "loseCohesion(2)"
       ],
-      "description": "Gain 25 Scrap, gain 2 Resonance, and draw 2. Lose 2 Cohesion.",
+      "description": "Gain 25 Scrap, gain 2 Resonance, draw 2, and gain 1 Open Sky Guard. Lose 2 Cohesion.",
       "visualBrief": "A weatherproof mini ledger strapped shut with red cord, brass tally charms hanging from the spine and one page glowing with market ink; stylish risky bargain object, Bird Squad title-splash mood."
     },
     {
@@ -356,10 +359,9 @@
       "effects": [
         "peekNextNodes(2)",
         "gainScrap(15)",
-        "gainOpenSkyGuard(1)",
         "gainSupplyChoice(1)"
       ],
-      "description": "Preview the next reachable route choices, gain 15 Scrap, gain 1 Open Sky Guard for the next fight, and pack a random Supply if there is room.",
+      "description": "Pack a route plan for the next fight, gain 15 Scrap, and pack a random Supply if there is room.",
       "visualBrief": "A strip of tiny neon route stickers half peeled from wax paper, with arrows, rooftop marks, and one red thread tab; crisp bird-scale planning gear in the Bird Squad title-splash salvage style."
     },
     {
@@ -390,7 +392,7 @@
         "gainSupplyChoice(1)",
         "if visitedNodeType(signal) then gainScrap(8)"
       ],
-      "description": "Gain 12 Scrap, preview the next route choice, and pack a random Supply if there is room. If you resolved a Signal this district, gain +8 Scrap.",
+      "description": "Gain 12 Scrap, pack a route plan for the next fight, and pack a random Supply if there is room. If you resolved a Signal this district, gain +8 Scrap.",
       "visualBrief": "Three brass transit tokens tied in a red cord bundle, one stamped with a wing, glowing with city-platform reflections; compact route-economy charm in Bird Squad title art style."
     },
     {
