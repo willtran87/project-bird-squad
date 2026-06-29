@@ -11,6 +11,8 @@ Related sources:
 - `docs/game/core-gameplay-spec.md` defines combat, cards, Flock Stats, and
   Molt.
 - `docs/game/alpha-run-spec.md` defines the first playable Map 1 content slice.
+- `docs/project/runtime-architecture.md` maps the current route data, generated
+  map, effect-runner, and scene wiring.
 - `docs/art/art-bible.md` defines visual identity and world language.
 
 ## Purpose
@@ -159,6 +161,26 @@ Required edge fields:
 | `locked` | boolean | True when a Signal or route effect can unlock it later. |
 | `preview` | enum | `known`, `typeOnly`, or `hidden`. |
 
+### Current Route Data Flow
+
+```mermaid
+flowchart TD
+  Map1["data/game/alpha-route-map.json"] --> RuntimeData["runtime-data.ts"]
+  Maps["map02-content.json<br/>map03-content.json<br/>map04-content.json"] --> RuntimeData
+  Encounters["encounters + enemies + signals"] --> RuntimeData
+  RuntimeData --> Blueprint["routeBlueprints"]
+  Balance["data/game/balance-config.json"] --> Generator["generateRouteMap()"]
+  Blueprint --> Generator
+  Seed["run seed + map index"] --> Generator
+  Generator --> RouteScene["RouteScene current map"]
+```
+
+The current build keeps authored district maps as content anchors, then derives
+seeded route blueprints from them for each run. The authored maps provide stable
+district IDs, entry and boss payloads, content pools, and validation coverage;
+`generateRouteMap()` uses the blueprint, run seed, map index, and balance profile
+to produce the live graph.
+
 ## Route Generation Contract
 
 Generated maps should follow these rules:
@@ -173,6 +195,12 @@ Generated maps should follow these rules:
 8. Ensure at least two lanes have meaningfully different risk/reward profiles.
 9. Reveal current node, next-node types, and boss endpoint by default.
 10. Apply Waymarks or Signals that reveal additional nodes after generation.
+
+The live generator also runs repair passes that keep every generated route
+playable: non-boss nodes must reach the boss, opening columns teach combat,
+pre-boss columns offer a safety valve, generated routes avoid excessive
+consecutive combat pressure, and Rival Crew paths should have alternatives when
+the district profile requires them.
 
 Legal transition guardrails:
 
@@ -244,16 +272,19 @@ Rules:
 - Most Waymarks should modify one clear thing.
 - Boss Waymarks can be stronger and map-defining.
 
-Pool target:
+Current pool:
 
 | Family | Count | Role |
 | --- | ---: | --- |
-| Shelter | 7 | Defense, healing, and survival. |
-| Tempo | 7 | Draw, Wingbeats, Open Sky Guard, and turn flow. |
-| Routecraft | 7 | Scrap, Signals, Markets, Caches, and route value. |
-| Suit Engines | 12 | Three each for Plumes, Quills, Basins, and Nests. |
-| Molt | 5 | Open Sky safety and transformation payoff. |
-| Boss | 2 | Strong map-clear artifacts. |
+| Safety | 8 | Defense, healing, and survival. |
+| Route | 9 | Signals, Caches, route preview, and path value. |
+| Economy | 11 | Scrap, Markets, purchases, and exchange rates. |
+| Suit | 20 | Plumes, Quills, Basins, and Nests build engines. |
+| Molt | 8 | Open Sky safety and transformation payoff. |
+| Boss Prep | 2 | Strong map-clear artifacts and boss preparation. |
+
+The runtime field is still named `routeMarks` for save compatibility, but
+player-facing text should say Waymarks.
 
 Examples:
 
@@ -360,6 +391,11 @@ Signal structure:
 
 Signals should be about route repair, warning calls, stranded birds, rival
 bargains, weather, or infrastructure.
+
+Current Signal data is distributed across Map 1's `alpha-signals.json` and the
+Map 2-4 district content files. Signal choice outcomes are route-effect strings
+resolved by `src/game/effects/route-effect-runner.ts`; requirements are validated
+as closed predicates by `tools/validate-runtime-data.mjs`.
 
 ## Rival Crews
 

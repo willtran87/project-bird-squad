@@ -4,6 +4,19 @@ This log is historical context and handoff memory. It is not a canonical design
 source. Current game rules live in `docs/game/`, art direction lives in
 `docs/art/`, and card production data lives in `data/cards/`.
 
+## 2026-06-29 Documentation Architecture Refresh
+
+- Added `docs/project/runtime-architecture.md` with Mermaid diagrams for data
+  flow, scene lifecycle, run lifecycle, effect resolution, route generation, and
+  validation/build gates.
+- Updated README and documentation index links so the architecture note is the
+  entry point for code/data/scene changes.
+- Refreshed current runtime counts in the game docs: 4 districts, 100 playable
+  cards plus 10 Snags, 90 reward cards, 58 Waymarks, 31 Supplies, 64 enemies, 80
+  encounters, and 38 Signals.
+- Expanded canonical notes for live effect syntax, Snags, `moltEffects`,
+  `heldEffects`, generated route maps, and Waymark family counts.
+
 ## 2026-06-17 Route Map Field-Kit Reanalysis
 
 - Revisited the route map after the non-map field-kit surfaces established the

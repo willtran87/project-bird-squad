@@ -15,6 +15,10 @@ Related sources:
 - `data/game/alpha-cards.json`, `data/game/alpha-enemies.json`, and
   `data/game/alpha-route-map.json` are the runtime-ready Alpha data mirrors of
   this spec.
+- `data/game/map02-content.json`, `map03-content.json`, and
+  `map04-content.json` hold the later district content now used by the full run.
+- `docs/project/runtime-architecture.md` maps how these data files enter the
+  current Phaser runtime.
 
 ## Purpose
 
@@ -25,10 +29,11 @@ core loop before building the remaining three maps.
 Map 1 only: Rooftop Blocks.
 
 **Status (scope expanded):** the alpha slice is achieved, and the build has since
-grown past it — all four districts (Rooftop Blocks → Canal Markets → Signal
-Spires → High Roost) are wired and playable, and the full 100-card playable deck
-is implemented. This document still owns Map 1's reference tuning; the targets
-below describe that Map 1 slice, not a cap on the shipped build.
+grown past it. All four districts (Rooftop Blocks -> Canal Markets -> Signal
+Spires -> High Roost) are wired and playable. The runtime card file contains 110
+cards total: 100 playable cards plus 10 Snags. This document still owns Map 1's
+reference tuning; the targets below describe that Map 1 slice, not a cap on the
+shipped build.
 
 Alpha should answer one question:
 
@@ -46,13 +51,13 @@ Alpha should answer one question:
 | Boss | 1 rival bird crew leader. |
 | Starter deck | 10 cards. |
 | Reward pool | 90 cards (every non-starter playable card; the full deck is implemented). |
-| Waymarks | 40. |
+| Snags | 10 runtime Snag cards. |
+| Waymarks | 58. |
 | Supplies | 31 shipped items; the original five-item set remains the starter pattern. |
-| Signals | 5. |
-| Snags | 3. |
+| Signals | 38 across all districts; Map 1's original five remain the starter pattern. |
 | Market | 1 inventory model. |
-| Basin Stop | 1 recovery rule set. |
-| Nest Workshop | 1 upgrade/removal rule set. |
+| Basin Stop | 1 recovery rule set with 4 options. |
+| Nest Workshop | 1 upgrade/removal/preparation rule set with 4 options. |
 
 Out of scope for the original Alpha cut (note: Maps 2-4 have since shipped as
 playable routes):
@@ -145,6 +150,8 @@ for tuning enemy health.
 
 The full playable deck (100 cards) is implemented; the reward pool is every
 playable card not in the starter deck, so any card can be acquired across a run.
+`data/game/alpha-cards.json` also contains 10 Snags. Snags are not reward-pool
+cards and do not contribute beneficial Flock Stats.
 
 Reward rules:
 
@@ -340,16 +347,16 @@ harness pieces, tins, charms, signal tags, and boss trophies. They are the
 relic-equivalent run identity layer. The runtime still stores them in the
 legacy `routeMarks` field, but player-facing text should say Waymarks.
 
-The Alpha pool contains 40 Waymarks:
+The shipped runtime pool contains 58 Waymarks:
 
 | Family | Count | Role |
 | --- | ---: | --- |
-| Shelter | 7 | Defense, healing, and survival. |
-| Tempo | 7 | Draw, Wingbeats, Open Sky Guard, and turn flow. |
-| Routecraft | 7 | Scrap, Signals, Markets, Caches, and route value. |
-| Suit Engines | 12 | Three each for Plumes, Quills, Basins, and Nests. |
-| Molt | 5 | Open Sky safety and transformation payoff. |
-| Boss | 2 | Strong map-clear artifacts. |
+| Safety | 8 | Defense, healing, and survival. |
+| Route | 9 | Signals, Caches, route preview, and path value. |
+| Economy | 11 | Scrap, Markets, purchases, and exchange rates. |
+| Suit | 20 | Plumes, Quills, Basins, and Nests build engines. |
+| Molt | 8 | Open Sky safety and transformation payoff. |
+| Boss Prep | 2 | Strong map-clear artifacts and boss preparation. |
 
 Representative Waymarks:
 
@@ -377,7 +384,28 @@ The player can carry 2 Supplies by default. Later route items can expand that ca
 | Emergency Call | Call | Gain 1 Wingbeat. Draw 1. |
 | Shade Cloth | Tool | Reduce the next Open Sky damage increase by 2. |
 
-The shipped Supply pool has expanded to 31 items across combat, route, and either-timing use. The five rows above are the original alpha baseline, not the current full pool.
+The shipped Supply pool has expanded to 31 items across combat, route, and
+either-timing use: 4 snacks, 6 flares, 15 tools, and 6 calls. The five rows above
+are the original alpha baseline, not the current full pool.
+
+## Current Runtime Data Notes
+
+```mermaid
+flowchart LR
+  AlphaSpec["Map 1 reference tuning<br/>this document"] --> Data1["alpha-*.json"]
+  LaterMaps["Map 2-4 content"] --> Data2["map02/03/04-content.json"]
+  Data1 --> Runtime["src/game/runtime-data.ts"]
+  Data2 --> Runtime
+  Runtime --> Route["RouteScene + generated maps"]
+  Runtime --> Battle["BattleScene + combat"]
+  Runtime --> Codex["CodexScene + discovery"]
+```
+
+The `alpha-*` filenames are historical. In the current build they contain shared
+runtime pools as well as Map 1 reference content. Treat `alpha-run-spec.md` as
+the Map 1 tuning mirror, and treat `src/game/types.ts`,
+`src/game/runtime-data.ts`, and `tools/validate-runtime-data.mjs` as the live
+runtime contract for the full four-map build.
 
 ## Signals
 

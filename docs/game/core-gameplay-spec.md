@@ -10,6 +10,8 @@ Related sources:
 - `docs/game/game-design.md` defines the high-level product direction.
 - `docs/game/run-design-spec.md` defines route-map and run-system structure.
 - `docs/game/alpha-run-spec.md` defines the first playable Map 1 content slice.
+- `docs/project/runtime-architecture.md` maps the current code, data, scene, and
+  validation boundaries.
 - `docs/art/art-bible.md` defines visual identity and card art direction.
 - `data/cards/arcana/` defines canonical card identity, species, rarity, and
   production fields.
@@ -144,6 +146,8 @@ Required runtime fields:
 | `cost` | number | Base Wingbeat cost. |
 | `target` | enum | `enemy`, `allEnemies`, `self`, `none`, or `choice`. |
 | `effects` | string[] | Ordered base effect expressions. |
+| `moltEffects` | string[]/optional | Alternate active effect used while the Flock is Molting. |
+| `heldEffects` | string[]/optional | Effects that resolve from held Snag-style cards when the runtime checks the hand. |
 | `upgrade` | object | Improved cost/effects/Flock Stat delta. |
 | `flockStats` | object | Passive whole-number stats granted while owned. |
 | `tags` | string[] | Resolver hints such as `attack`, `skill`, `heal`, `cover`, `molt`. |
@@ -152,8 +156,17 @@ Upgrade rules:
 
 - Improved cards keep the same ID and gain a `+` display suffix.
 - Upgrades may change cost, effect values, conditions, and Flock Stats.
+- Upgrades may define stronger `upgrade.moltEffects` for cards with a Molt
+  ability.
 - Upgrades should not change the card's suit, kind, or bird identity.
 - A card can be improved once in the foundation rules.
+
+Snag notes:
+
+- Snags are runtime-only deck cards, not tarot cards.
+- Snags do not grant beneficial Flock Stats.
+- Snags may use `heldEffects` or friction effects, and are intentionally exempt
+  from the arcana-source cross-check.
 
 ## Effect Syntax
 
@@ -165,21 +178,35 @@ Core verbs:
 | Expression | Meaning |
 | --- | --- |
 | `damage(target, N)` | Deal N base damage to the selected enemy. |
+| `damagePierce(target, N)` | Deal N damage while bypassing enemy Cover. |
 | `damageAll(N)` | Deal N base damage to each enemy. |
+| `removeCover(target, N)` | Remove N Cover from the selected enemy. |
 | `gainCover(N)` | Gain N base Cover. |
+| `overhealCover(N)` | Heal N and convert overflow into Cover. |
 | `heal(N)` | Restore N base Cohesion. |
+| `loseCohesion(N)` | Lose N Cohesion directly. |
+| `damageFlock(N)` | Damage the Flock from a player-card effect. |
 | `draw(N)` | Draw N cards. |
 | `discard(N)` | Player discards N cards. |
 | `discardUpTo(N)` | Player may discard up to N cards. |
 | `gainWingbeat(N)` | Gain N Wingbeats this turn. |
+| `loseWingbeat(N)` | Lose N Wingbeats this turn. |
+| `gainEnergyNextTurn(N)` | Gain N extra Wingbeats next turn. |
 | `gainResonance(N)` | Gain N Resonance, capped by Resonance cap. |
 | `spendResonance(N)` | Spend N Resonance if available; the next `spentResonance` condition sees whether the spend succeeded. |
+| `resonanceBurst(N)` | Spend all Resonance and deal N damage per Resonance spent. |
 | `applyWinded(target, N)` | Apply N turns/stacks of Winded to target. |
+| `windedBurst(N)` | Consume target Winded and deal N damage per Winded stack. |
 | `enterMolt()` | Enter Molt. |
 | `gainOpenSkyGuard(N)` | Gain N Open Sky Guard for the current combat. |
 | `returnDiscard(filter, costDelta)` | Return one matching discard card to hand with a cost modifier this turn. |
 | `nextCoverBonus(suit, N)` | Next matching suit card this turn gains N base Cover. |
+| `retainHand(N)` | Retain up to N cards at Roost. |
 | `nextTurnDraw(N)` | Draw N extra cards at the start of next player turn. |
+| `enemyNextAttackBonus(N)` | Add N damage to the next enemy attack. Used by a small set of risk/reward cards. |
+| `enemyGainCover(N)` | Give the first living enemy N Cover. Used by risk/reward cards. |
+| `shuffleSelfToDraw()` | Return the resolving card to the draw pile instead of normal discard flow. |
+| `exhaustSelf()` | Exhaust the resolving card. Reserved for cards that explicitly need it. |
 
 Conditions use `if CONDITION then EFFECT`. Supported foundation conditions:
 
@@ -187,23 +214,31 @@ Conditions use `if CONDITION then EFFECT`. Supported foundation conditions:
 | --- | --- |
 | `firstPlayedThisCombat` | This is the first time this card ID resolved during the current combat. |
 | `targetBelowHalf` | Selected enemy is below half health before the effect resolves. |
+| `targetHasCover` | Selected enemy currently has Cover. |
 | `targetIntendsAttack` | Selected enemy's visible Tell includes damage. |
 | `targetWinded` | Selected enemy currently has Winded. |
 | `hasResonance` | Current Resonance is at least 1. |
+| `noResonance` | Current Resonance is 0. |
+| `resonanceAtLeast(N)` | Current Resonance is at least N. |
 | `spentResonance` | The immediately preceding `spendResonance` effect succeeded. |
 | `playedSuitThisTurn(suit)` | Player already played a card of that suit this turn. |
+| `flockSuit(suit,N)` | Run deck contains at least N cards of that suit. |
 | `isMolting` | Flock is currently Molting. |
 | `openSky` | Flock currently has Open Sky. |
 | `fullCohesion` | Current Cohesion equals maximum Cohesion. |
 | `cohesionBelowHalf` | Current Cohesion is below half maximum Cohesion. |
+| `noCover` | Flock has no Cover. |
 | `defeatsEnemy` | The immediately preceding damage effect defeats an enemy. |
 | `fullyBlocksNextAttack` | Cover prevents all damage from the next attack. |
+| `windedAtLeast(N)` | Selected enemy has at least N Winded. |
 
 Supported value scalars:
 
 | Scalar | Meaning |
 | --- | --- |
 | `perDiscarded` | Multiply the value by cards actually discarded by the preceding discard effect. |
+| `perWinded` | Multiply the value by the target's current Winded stacks. |
+| `perCover` | Multiply the value by current Flock Cover. |
 
 Formula order:
 
@@ -218,6 +253,22 @@ Formula order:
 
 Flock `Regen`, `Draw`, `Resonance`, `Molt Power`, and `Open Sky Guard` are not
 added to every matching card line. They modify their named system rules instead.
+
+### Effect Runner Wiring
+
+```mermaid
+flowchart LR
+  CardData["RuntimeCard.effects<br/>moltEffects / heldEffects"] --> Parser["parseEffect()"]
+  Parser --> Runner["resolveCardEffect()"]
+  Runner --> Context["BattleScene cardEffectContext()"]
+  Context --> State["Flock, enemies, hand, draw, discard, log"]
+  Validator["validate-runtime-data.mjs"] -. "closed verb and condition sets" .-> CardData
+```
+
+`src/game/effects/card-effect-runner.ts` owns the generic switch over card
+verbs. `BattleScene` supplies the callbacks that mutate live combat state. When
+adding a verb, update both the runner and `tools/validate-runtime-data.mjs`;
+otherwise authored data can pass design review while no-oping at runtime.
 
 ## Timing And Status Rules
 

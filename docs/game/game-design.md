@@ -21,6 +21,7 @@ production rules.
 | How do combat, cards, Flock Stats, and Molt work? | `docs/game/core-gameplay-spec.md` |
 | How do maps, route systems, economy, events, and bosses work? | `docs/game/run-design-spec.md` |
 | What exactly are we building first? | `docs/game/alpha-run-spec.md` |
+| How is the current runtime wired? | `docs/project/runtime-architecture.md` |
 | What should the game look like? | `docs/art/art-bible.md` |
 | What are the card identities and species? | `data/cards/arcana/` |
 | Which external implementation ideas are being considered? | `docs/game/spire-codex-adaptation-study.md` |
@@ -111,18 +112,20 @@ Bird Squad should feel like these ten systems working together:
 
 ## Alpha Target (achieved) and current build
 
-The first implementation target was `docs/game/alpha-run-spec.md` — Map 1 only
+The first implementation target was `docs/game/alpha-run-spec.md`: Map 1 only
 (Rooftop Blocks), a deterministic 6-8 node route plus boss, a 10-card starter
 deck, 3 normal enemies + 1 Rival Crew + `The Tar-Crowned Crow` boss, and the full
 node-type set (Waymarks, Scrap, Market, Supplies, Signals, Snags, Basin, Nest).
 That alpha slice proved the game feels like a bird-native deckbuilding roguelike.
 
 **Scope expanded post-alpha (current build):** the playable game now spans all
-four districts — Rooftop Blocks → Canal Markets → Signal Spires → High Roost
-(`src/game/runtime-data.ts` `alphaMaps`) — and the full playable deck is implemented
-as **100 playable cards** (10-card starter + **90-card reward pool**), with
-rarity-weighted reward offers. Map 1 remains the balance/tuning reference; see
-`docs/game/alpha-run-spec.md` for per-map detail.
+four districts: Rooftop Blocks -> Canal Markets -> Signal Spires -> High Roost
+(`src/game/runtime-data.ts` `alphaMaps`). The runtime card file contains **100
+playable cards** (10-card starter + **90-card reward pool**) plus **10 Snags**,
+with rarity-weighted reward offers. The broader runtime also ships 58 Waymarks,
+31 Supplies, 64 enemies, 80 encounters, and 38 Signals. Map 1 remains the
+balance/tuning reference; see `docs/game/alpha-run-spec.md` for per-map detail
+and `docs/project/runtime-architecture.md` for the implementation map.
 
 ## Document Ownership
 

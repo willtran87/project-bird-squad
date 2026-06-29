@@ -14,6 +14,7 @@ should be recorded.
 | Implement combat, cards, Flock Stats, rewards, or Molt | `docs/game/core-gameplay-spec.md` |
 | Implement the route map, economy, Signals, Markets, or bosses | `docs/game/run-design-spec.md` |
 | Build or tune the first playable slice | `docs/game/alpha-run-spec.md` |
+| Understand how code, data, scenes, and validators fit together | `docs/project/runtime-architecture.md` |
 | Plan the next quality and implementation push | `docs/game/next-level-implementation-spec.md` |
 | Work on visual identity, card art, prompts, or style rules | `docs/art/art-bible.md` |
 | Generate or review enemy art | `docs/art/enemy-art-bible.md` |
@@ -31,6 +32,26 @@ should be recorded.
 | `docs/art/art-bible.md` | Visual identity, suit aesthetics, prompt standards, card-art production rules, and runtime asset expectations. | Gameplay rules except where art needs them for context. |
 | `docs/art/aviary-generation-runbook.md` | Aviary card imagegen, master-border compositing, and QA workflow. | Minor Arcana suit generation details or gameplay tuning. |
 | `docs/art/enemy-art-bible.md` | Enemy art visual language, non-humanoid animal constraints, and prompt pattern for enemy concepts. | Enemy combat tuning or encounter rewards. |
+| `docs/project/runtime-architecture.md` | Current runtime wiring, scene ownership, data flow, effect-runner boundaries, and validation/build gates. | Product direction, balance numbers, or art direction. |
+
+## Runtime Overview
+
+```mermaid
+flowchart LR
+  Data["data/game JSON<br/>cards, encounters, maps, items"] --> RuntimeData["src/game/runtime-data.ts"]
+  RuntimeData --> RouteGen["src/game/route-gen.ts"]
+  RuntimeData --> Scenes["src/main.ts Phaser scenes"]
+  RouteGen --> Scenes
+  Scenes --> CardEffects["card-effect-runner.ts"]
+  Scenes --> RouteEffects["route-effect-runner.ts"]
+  Scenes --> Storage["localStorage run/account state"]
+  Tools["tools/validate-*.mjs"] -. "contract checks" .-> Data
+  Tools -. "bundle/cache/art checks" .-> Scenes
+```
+
+Use `docs/project/runtime-architecture.md` when a change crosses code/data
+boundaries, adds a new effect verb, changes route generation, or touches scene
+ownership.
 
 ## Reference And Intake Documents
 
@@ -61,7 +82,7 @@ content:
 | --- | --- |
 | `data/cards/arcana/` | Canonical card identities, species, rarity, descriptions, and art-production fields. |
 | `data/cards/reversals/` | Molt/reversal overlays. |
-| `data/game/` | Runtime-ready Alpha cards, enemies, enemy art briefs, route map, and future runtime content. |
+| `data/game/` | Runtime-ready cards, Snags, enemies, encounters, route maps, route effects, Supplies, Waymarks, Signals, Markets, and district content. |
 | `data/game/enemy-variety-contracts.json` | Reserve enemy roster and art contracts for future animal-species variety. |
 | `.generated/` | Generated art masters, selected source PNGs, prompt/run provenance, and QA sheets. |
 | `assets/runtime/` | Optimized game-ready card/enemy assets and runtime manifests. |
