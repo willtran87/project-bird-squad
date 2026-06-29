@@ -61,10 +61,16 @@ export function getMapBalanceProfile(mapId: string, index: number): MapBalancePr
 export function weightedPick<T extends string>(
   entries: Partial<Record<T, number>>,
   rand: () => number,
+  fallback?: T,
 ): T {
   const weighted = Object.entries(entries)
     .map(([key, value]) => [key as T, Math.max(0, Number(value) || 0)] as const)
     .filter(([, value]) => value > 0);
+  if (weighted.length === 0) {
+    const firstKey = Object.keys(entries)[0] as T | undefined;
+    if (fallback ?? firstKey) return (fallback ?? firstKey) as T;
+    throw new Error('weightedPick requires at least one entry or fallback');
+  }
   const total = weighted.reduce((sum, [, value]) => sum + value, 0);
   let roll = rand() * total;
   for (const [key, value] of weighted) {

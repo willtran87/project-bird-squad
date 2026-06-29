@@ -174,7 +174,7 @@ export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRoute
   for (const [type, count] of Object.entries(balance.minimumCounts) as Array<[RouteGenNodeType, number]>) {
     for (let i = 0; i < count; i += 1) quotaBag.push(type);
   }
-  while (quotaBag.length < middle.length) quotaBag.push(weightedPick(balance.fillWeights, rand));
+  while (quotaBag.length < middle.length) quotaBag.push(weightedPick(balance.fillWeights, rand, 'street'));
   shuffle(quotaBag);
   middle.forEach((n, index) => setType(n, quotaBag[index] ?? 'street'));
 

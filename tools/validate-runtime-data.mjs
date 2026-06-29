@@ -24,6 +24,7 @@ const alphaRouteMarks = readJson('data/game/alpha-route-marks.json');
 const alphaMarket = readJson('data/game/alpha-market.json');
 const alphaSignals = readJson('data/game/alpha-signals.json');
 const alphaMapProfiles = readJson('data/game/alpha-map-profiles.json');
+const balanceConfig = readJson('data/game/balance-config.json');
 const alphaCardArtManifest = readJson('assets/runtime/cards/card-art-manifest.json');
 const alphaEnemyArtManifest = readJson('assets/runtime/enemies/enemy-art-manifest.json');
 
@@ -66,6 +67,7 @@ const validStatKeys = new Set([
   'openSkyGuard',
 ]);
 const validNodeTypes = new Set(['street', 'rival', 'boss', 'basin', 'nest', 'market', 'signal', 'cache']);
+const validRouteGenNodeTypes = new Set([...validNodeTypes].filter((type) => type !== 'boss'));
 const validBands = new Set(['weak', 'standard', 'pressure', 'rival', 'boss']);
 const validEncounterTags = new Set(['basic', 'cover', 'scavenge', 'heavy', 'winded', 'openSky', 'snag', 'elite', 'boss', 'tempo', 'molt', 'multi', 'support', 'poison']);
 const validEnemyRoles = new Set(['striker', 'bruiser', 'saboteur', 'controller', 'support', 'poison', 'boss']);
@@ -776,6 +778,67 @@ for (const content of mapContents) {
   validateMapProfile(content.mapProfile, content.__file);
 }
 
+// Balance config drives procedural route generation. Validate its weighted pools
+// explicitly so bad tuning data fails before runtime route construction.
+const validRange = (range) => (
+  Array.isArray(range) &&
+  range.length === 2 &&
+  range.every((value) => Number.isInteger(value) && value >= 0) &&
+  range[0] <= range[1]
+);
+const validateRouteGenWeights = (weights, label, requirePositive = false) => {
+  if (!weights || typeof weights !== 'object' || Array.isArray(weights)) {
+    fail(`${label}: must be an object`);
+    return;
+  }
+  let positive = 0;
+  for (const [type, weight] of Object.entries(weights)) {
+    if (!validRouteGenNodeTypes.has(type)) fail(`${label}: invalid route node type "${type}"`);
+    if (typeof weight !== 'number' || !Number.isFinite(weight) || weight < 0) {
+      fail(`${label}.${type}: weight must be a nonnegative finite number`);
+    }
+    if (Number(weight) > 0) positive += 1;
+  }
+  if (requirePositive && positive === 0) fail(`${label}: must contain at least one positive weight`);
+};
+const validateRouteGenTypeArray = (values, label) => {
+  if (!Array.isArray(values)) {
+    fail(`${label}: must be an array`);
+    return;
+  }
+  for (const type of values) {
+    if (!validRouteGenNodeTypes.has(type)) fail(`${label}: invalid route node type "${type}"`);
+  }
+};
+for (const profile of balanceConfig.maps ?? []) {
+  const label = `data/game/balance-config.json:${profile.mapId ?? '<missing mapId>'}`;
+  if (!profile.mapId || typeof profile.mapId !== 'string') { fail(`${label}: missing mapId`); continue; }
+  if (!Number.isInteger(profile.index) || profile.index < 0) fail(`${label}: index must be a nonnegative integer`);
+  const generation = profile.routeGeneration;
+  if (!generation || typeof generation !== 'object') {
+    fail(`${label}: missing routeGeneration`);
+    continue;
+  }
+  if (!validRange(generation.middleColumns) || generation.middleColumns[0] < 1) {
+    fail(`${label}: routeGeneration.middleColumns must be a positive [min,max] range`);
+  }
+  if (!validRange(generation.lanes) || generation.lanes[0] < 1) {
+    fail(`${label}: routeGeneration.lanes must be a positive [min,max] range`);
+  }
+  validateRouteGenWeights(generation.minimumCounts, `${label}:routeGeneration.minimumCounts`);
+  validateRouteGenWeights(generation.fillWeights, `${label}:routeGeneration.fillWeights`, true);
+  validateRouteGenTypeArray(generation.requiredOpeningTypes, `${label}:routeGeneration.requiredOpeningTypes`);
+  validateRouteGenTypeArray(generation.preBossTypes, `${label}:routeGeneration.preBossTypes`);
+  for (const beat of generation.beats ?? []) {
+    const beatLabel = `${label}:routeGeneration.beats:${beat.id ?? '<missing id>'}`;
+    if (!beat.id || typeof beat.id !== 'string') fail(`${beatLabel}: missing id`);
+    validateRouteGenTypeArray(beat.types ?? [], `${beatLabel}:types`);
+    validateRouteGenTypeArray(beat.requireAny ?? [], `${beatLabel}:requireAny`);
+    if (beat.maxCombat !== undefined && (!Number.isInteger(beat.maxCombat) || beat.maxCombat < 0)) {
+      fail(`${beatLabel}: maxCombat must be a nonnegative integer`);
+    }
+  }
+}
 
 // Each district's route map is its own graph: node ids, edges, entry/boss, and
 // reachability are validated independently. Payload cross-checks resolve against

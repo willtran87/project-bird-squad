@@ -13745,13 +13745,106 @@ function persistActiveRun(runState: RunState): void {
     /* storage unavailable — saving is best-effort */
   }
 }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
+}
+function finiteNumber(value: unknown, fallback: number) {
+  return Number.isFinite(value) ? Number(value) : fallback;
+}
+function finiteInt(value: unknown, fallback: number, min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER) {
+  return clamp(Math.floor(finiteNumber(value, fallback)), min, max);
+}
+function validRouteNodeType(value: unknown): value is RouteNode['type'] {
+  return value === 'street' || value === 'rival' || value === 'boss' || value === 'basin' ||
+    value === 'nest' || value === 'market' || value === 'signal' || value === 'cache';
+}
+function sanitizeNextCombat(value: unknown): NextCombatMods | undefined {
+  if (!isRecord(value)) return undefined;
+  const mods: NextCombatMods = {};
+  if (Number.isFinite(value.openSkyGuard)) mods.openSkyGuard = Math.max(0, Number(value.openSkyGuard));
+  if (Number.isFinite(value.reduceNextOpenSky)) mods.reduceNextOpenSky = Math.max(0, Number(value.reduceNextOpenSky));
+  if (Number.isFinite(value.enemyCover)) mods.enemyCover = Math.max(0, Number(value.enemyCover));
+  if (value.startOpenSky === true) mods.startOpenSky = true;
+  if (Number.isFinite(value.bossDamageShield)) mods.bossDamageShield = Math.max(0, Number(value.bossDamageShield));
+  return Object.keys(mods).length > 0 ? mods : undefined;
+}
+function sanitizeSignalChoices(value: unknown): SignalChoiceEvent[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isRecord).flatMap((entry) => {
+    if (typeof entry.signalId !== 'string' || typeof entry.choiceKey !== 'string') return [];
+    return [{ signalId: entry.signalId, choiceKey: entry.choiceKey }];
+  });
+}
+function sanitizeRewardEvents(value: unknown): CardRewardEvent[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isRecord).map((entry) => ({
+    offered: stringArray(entry.offered).filter((id) => Boolean(cardLibrary[id])),
+    picked: typeof entry.picked === 'string' && Boolean(cardLibrary[entry.picked]) ? entry.picked : undefined,
+    skipped: entry.skipped === true,
+    fallback: entry.fallback === 'scrap' || entry.fallback === 'preen' ? entry.fallback : undefined
+  }));
+}
+function sanitizeCombatResults(value: unknown): CombatResultSummary[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter(isRecord).flatMap((entry) => {
+    if (typeof entry.nodeId !== 'string') return [];
+    return [{
+      encounterId: typeof entry.encounterId === 'string' ? entry.encounterId : '',
+      nodeId: entry.nodeId,
+      nodeType: validRouteNodeType(entry.nodeType) ? entry.nodeType : 'street',
+      enemyIds: stringArray(entry.enemyIds),
+      turnsTaken: finiteInt(entry.turnsTaken, 0, 0),
+      damageDealt: finiteInt(entry.damageDealt, 0, 0),
+      cohesionLost: finiteInt(entry.cohesionLost, 0, 0),
+      killedByMove: typeof entry.killedByMove === 'string' ? entry.killedByMove : undefined,
+      decisionStats: undefined
+    }];
+  });
+}
+function sanitizeActiveRun(value: unknown): RunState | undefined {
+  if (!isRecord(value) || !Array.isArray(value.deck)) return undefined;
+  const deck = value.deck.filter(isRecord).flatMap((entry) => {
+    if (typeof entry.id !== 'string' || !cardLibrary[entry.id]) return [];
+    return [{ id: entry.id, upgraded: entry.upgraded === true }];
+  });
+  if (deck.length === 0) return undefined;
+  const leaderId = typeof value.leaderId === 'string' && flockLeaders.some((leader) => leader.id === value.leaderId)
+    ? value.leaderId
+    : defaultLeaderId;
+  return {
+    deck,
+    leaderId,
+    difficulty: finiteInt(value.difficulty, 0, 0, MAX_DIFFICULTY),
+    seed: typeof value.seed === 'string' && value.seed.length > 0 ? value.seed : 'alpha',
+    currentHp: finiteInt(value.currentHp, BASE_COHESION, 1),
+    scrap: finiteInt(value.scrap, STARTING_SCRAP, 0),
+    routeMarks: stringArray(value.routeMarks).filter((id) => alphaRouteMarkLibrary.has(id)),
+    supplies: stringArray(value.supplies).filter((id) => alphaSupplyLibrary.has(id)),
+    supplySlots: finiteInt(value.supplySlots, BASE_SUPPLY_SLOTS, BASE_SUPPLY_SLOTS),
+    mapIndex: finiteInt(value.mapIndex, 0, 0, alphaMaps.length - 1),
+    completedRouteNodeIds: stringArray(value.completedRouteNodeIds),
+    currentRouteNodeId: typeof value.currentRouteNodeId === 'string' ? value.currentRouteNodeId : undefined,
+    routeLog: stringArray(value.routeLog).slice(-8),
+    nextCombat: sanitizeNextCombat(value.nextCombat),
+    signalChoices: sanitizeSignalChoices(value.signalChoices),
+    rewardEvents: sanitizeRewardEvents(value.rewardEvents),
+    suppliesUsed: stringArray(value.suppliesUsed).filter((id) => alphaSupplyLibrary.has(id)),
+    combatResults: sanitizeCombatResults(value.combatResults),
+    freePreenNextDistrict: finiteInt(value.freePreenNextDistrict, 0, 0)
+  };
+}
 function loadActiveRun(): RunState | undefined {
   try {
     const raw = window.localStorage.getItem(ACTIVE_RUN_KEY);
     if (!raw) return undefined;
-    const parsed = JSON.parse(raw) as RunState;
-    return parsed && Array.isArray(parsed.deck) ? parsed : undefined;
+    const parsed = sanitizeActiveRun(JSON.parse(raw));
+    if (!parsed) clearActiveRun();
+    return parsed;
   } catch {
+    clearActiveRun();
     return undefined;
   }
 }
@@ -13798,7 +13891,9 @@ function nextCardInstanceId(cardId: string): string {
 // same card are distinguishable in hand (next-level-data-contracts Phase 4 /
 // §11a — per-combat instance identity).
 function cloneCard(id: string): Card {
-  return { ...cardLibrary[id], instanceId: nextCardInstanceId(id) };
+  const template = cardLibrary[id];
+  if (!template) throw new Error(`Unknown card id: ${id}`);
+  return { ...template, instanceId: nextCardInstanceId(id) };
 }
 
 function createInitialRunState(leaderId?: string, difficulty = 0): RunState {

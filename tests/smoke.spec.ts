@@ -2483,6 +2483,34 @@ test('an active run is checkpointed to storage and can be continued', async ({ p
   expect(r.resumedProgress).toBe(1);
 });
 
+test('invalid active run saves are ignored instead of crashing Continue', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    window.localStorage.setItem('birdsquad.run.active', JSON.stringify({
+      deck: [{ id: 'missing_card' }],
+      leaderId: 'missing_leader',
+      currentHp: 36,
+      scrap: 40,
+      routeMarks: [],
+      supplies: [],
+      mapIndex: 0,
+      completedRouteNodeIds: [],
+      routeLog: []
+    }));
+    await window.__birdSquadStartScene!('MenuScene');
+    await wait(150);
+    const active = g.scene.getScenes(true).map((s: any) => s.scene.key);
+    return {
+      active,
+      savedAfterMenu: window.localStorage.getItem('birdsquad.run.active')
+    };
+  });
+  expect(r.active).toContain('MenuScene');
+  expect(r.savedAfterMenu).toBeNull();
+});
+
 test('Ascension difficulty scales enemy Cohesion and narrows card rewards', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {

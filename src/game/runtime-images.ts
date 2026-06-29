@@ -28,6 +28,7 @@ function queueImageAssets(
   if (pending.length === 0) return false;
 
   const pendingKeys = new Set(pending.map((asset) => asset.key));
+  let settled = false;
   const onFileComplete = (key: string) => {
     if (!pendingKeys.has(key)) return;
     loadingOptionalArtKeys.delete(key);
@@ -43,6 +44,28 @@ function queueImageAssets(
   const cleanup = () => {
     scene.load.off('filecomplete', onFileComplete);
     scene.load.off('loaderror', onLoadError);
+    scene.load.off('complete', onLoaderComplete);
+    scene.events.off('shutdown', onSceneEnd);
+    scene.events.off('destroy', onSceneEnd);
+  };
+  const markResolvedTextures = () => {
+    pending.forEach((asset) => {
+      loadingOptionalArtKeys.delete(asset.key);
+      if (scene.textures.exists(asset.key)) loadedOptionalArtKeys.add(asset.key);
+    });
+  };
+  const onLoaderComplete = () => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    markResolvedTextures();
+    onComplete?.();
+  };
+  const onSceneEnd = () => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    markResolvedTextures();
   };
 
   pending.forEach((asset) => {
@@ -51,14 +74,9 @@ function queueImageAssets(
   });
   scene.load.on('filecomplete', onFileComplete);
   scene.load.on('loaderror', onLoadError);
-  scene.load.once('complete', () => {
-    cleanup();
-    pending.forEach((asset) => {
-      loadingOptionalArtKeys.delete(asset.key);
-      if (scene.textures.exists(asset.key)) loadedOptionalArtKeys.add(asset.key);
-    });
-    onComplete?.();
-  });
+  scene.load.once('complete', onLoaderComplete);
+  scene.events.once('shutdown', onSceneEnd);
+  scene.events.once('destroy', onSceneEnd);
   if (startNow) scene.load.start();
   return true;
 }
