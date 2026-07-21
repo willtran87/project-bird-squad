@@ -2327,8 +2327,9 @@ test('unsupported displays pause the game while landscape tablets remain playabl
     running: window.__birdSquadGame.loop.running,
   }));
 
-  await page.setViewportSize({ width: 1024, height: 768 });
+  await page.setViewportSize({ width: 1000, height: 560 });
   await page.waitForFunction(() => window.__birdSquadGame?.loop.running === true);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/title-1000x560.png' });
   const tablet = await page.evaluate(() => {
     const canvas = document.querySelector('canvas')!.getBoundingClientRect();
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
@@ -10928,8 +10929,8 @@ test('audio toggle renders generated wave burst feedback across game surfaces', 
           child.type === 'Rectangle'
           && Math.round(child.x) === x
           && Math.round(child.y) === y
-          && Math.round(child.width) === 56
-          && Math.round(child.height) === 56
+          && Math.round(child.width) === 58
+          && Math.round(child.height) === 58
         ) {
           return child;
         }

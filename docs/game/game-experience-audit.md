@@ -646,8 +646,9 @@ displays show a branded game-art gate, make the canvas unavailable to input,
 and sleep the Phaser loop. Returning to a supported viewport refreshes canvas
 scaling and resumes the same run state. The loading shell states the supported
 platforms, and representative title controls maintain a 56-game-pixel minimum
-target, equivalent to at least 44.8 CSS pixels at the smallest supported 0.8x
-canvas scale.
+target. Title and shared audio/pause hit regions use a 58-game-pixel minimum,
+equivalent to about 45 CSS pixels at the smallest supported 1000x560 canvas
+scale.
 
 Acceptance:
 

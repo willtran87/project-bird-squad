@@ -44,6 +44,7 @@ import { banner, burst, fadeRect, floatingText, shakeCamera, strike } from './ga
 import { defaultLeaderId, flockLeaders, getLeader } from './game/leaders';
 import { difficultyAdds, difficultyLabel, difficultyMods, MAX_DIFFICULTY } from './game/difficulty';
 import { achievements, discoverCards, isLeaderUnlocked, leaderMastery, leaderUnlockHints, loadAccount, recordRun, type PlayerAccount } from './game/meta';
+import { MIN_SUPPORTED_TOUCH_TARGET } from './game/theme';
 import { queuePreloadImageAssets, queueRuntimeImageAssets, uniqueImageAssets, type RuntimeImageAsset } from './game/runtime-images';
 import {
   advanceGameTime,
@@ -4256,14 +4257,14 @@ class MenuScene extends Phaser.Scene {
     this.renderTitleAscensionStatusStrip(228, 669);
     this.renderTitleAscensionValueFrame(228, 630);
     const hasStepperFrame = this.textures.exists(uiIconAssets['title-ascension-stepper-frame'].key);
-    const dec = this.add.rectangle(100, 632, 56, 56, 0x0d1420, hasStepperFrame ? 0.1 : 0.9)
+    const dec = this.add.rectangle(100, 632, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x0d1420, hasStepperFrame ? 0.1 : 0.9)
       .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, hasStepperFrame ? 0.16 : 0.86).setInteractive({ useHandCursor: true });
     const decFrame = this.renderTitleAscensionStepperFrame(100, 632);
     dec.on('pointerover', () => decFrame?.setAlpha(0.92));
     dec.on('pointerout', () => decFrame?.setAlpha(0.72));
     dec.on('pointerdown', () => { this.menuFocus = 'difficulty'; playUiSound('confirm'); this.stepDifficulty(-1); this.updateMenuFocusRing(); });
     this.add.text(100, 631, '<', { fontFamily: UI_FONT, fontSize: '17px', fontStyle: UI_BOLD, color: '#eef7ff', stroke: '#05070c', strokeThickness: 1 }).setResolution(2).setOrigin(0.5);
-    const inc = this.add.rectangle(356, 632, 56, 56, 0x0d1420, hasStepperFrame ? 0.1 : 0.9)
+    const inc = this.add.rectangle(356, 632, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x0d1420, hasStepperFrame ? 0.1 : 0.9)
       .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, hasStepperFrame ? 0.16 : 0.86).setInteractive({ useHandCursor: true });
     const incFrame = this.renderTitleAscensionStepperFrame(356, 632);
     inc.on('pointerover', () => incFrame?.setAlpha(0.92));
@@ -4349,11 +4350,11 @@ class MenuScene extends Phaser.Scene {
     if (savedRun) {
       this.primaryRunAction = () => this.continueRunAnimated(true, 676, 642, 252);
       this.secondaryRunAction = () => this.startRunAnimated(true, 962, 642, 204);
-      this.menuFocusTargets.set('primaryRun', this.makeMenuButton(676, 642, 252, 56, 'Continue Run', 0xe8b830, '20px', 'primaryRun', this.primaryRunAction));
-      this.menuFocusTargets.set('secondaryRun', this.makeMenuButton(962, 642, 204, 56, SHARED_ROUTE_SEED ? 'Shared Route' : 'Start New Run', 0x7ab8d6, '15px', 'secondaryRun', this.secondaryRunAction));
+      this.menuFocusTargets.set('primaryRun', this.makeMenuButton(676, 642, 252, MIN_SUPPORTED_TOUCH_TARGET, 'Continue Run', 0xe8b830, '20px', 'primaryRun', this.primaryRunAction));
+      this.menuFocusTargets.set('secondaryRun', this.makeMenuButton(962, 642, 204, MIN_SUPPORTED_TOUCH_TARGET, SHARED_ROUTE_SEED ? 'Shared Route' : 'Start New Run', 0x7ab8d6, '15px', 'secondaryRun', this.secondaryRunAction));
     } else {
       this.primaryRunAction = () => this.startRunAnimated(true, 780, 642, 286);
-      this.menuFocusTargets.set('primaryRun', this.makeMenuButton(780, 642, 286, 56, newRunLabel, 0xd8a840, SHARED_ROUTE_SEED ? '20px' : '24px', 'primaryRun', this.primaryRunAction));
+      this.menuFocusTargets.set('primaryRun', this.makeMenuButton(780, 642, 286, MIN_SUPPORTED_TOUCH_TARGET, newRunLabel, 0xd8a840, SHARED_ROUTE_SEED ? '20px' : '24px', 'primaryRun', this.primaryRunAction));
     }
     this.showStorageRecoveryNotice(generation);
     bindControlActions(this, {
@@ -4978,7 +4979,7 @@ class MenuScene extends Phaser.Scene {
 
   private renderTopUtilityButton(x: number, y: number, label: string, focus: MenuFocus, onClick: () => void) {
     const hasFrame = this.textures.exists(uiIconAssets['title-utility-command-frame'].key);
-    const button = this.add.rectangle(x, y, 108, 56, 0x0d1420, hasFrame ? 0.08 : 0.82)
+    const button = this.add.rectangle(x, y, 108, MIN_SUPPORTED_TOUCH_TARGET, 0x0d1420, hasFrame ? 0.08 : 0.82)
       .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, hasFrame ? 0.08 : 0.9)
       .setInteractive({ useHandCursor: true });
     const frame = this.renderTitleUtilityCommandFrame(x, y);
@@ -5242,7 +5243,7 @@ class MenuScene extends Phaser.Scene {
     ];
     choices.forEach((choice) => {
       const selected = choice.mode === this.selectedRunMode;
-      const hit = this.add.rectangle(choice.x, y, 82, 56, selected ? 0x183451 : 0x0d1420, 0.95)
+      const hit = this.add.rectangle(choice.x, y, 82, MIN_SUPPORTED_TOUCH_TARGET, selected ? 0x183451 : 0x0d1420, 0.95)
         .setStrokeStyle(2, selected ? UI_FIELD.gold : UI_FIELD.cyan, selected ? 0.92 : 0.42)
         .setInteractive({ useHandCursor: true })
         .setName('title-run-mode-option');
@@ -26413,7 +26414,7 @@ function renderFieldButton(
 }
 
 function renderAudioToggleControl(scene: Phaser.Scene, addTo: UiAdd, x: number, y: number, onToggle?: () => void) {
-  const hit = addUi(addTo, scene.add.rectangle(x, y, 56, 56, 0x020409, 0.08)
+  const hit = addUi(addTo, scene.add.rectangle(x, y, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.08)
     .setInteractive({ useHandCursor: true }));
   const pulse = addUiIconImage(scene, 'audio-toggle-pulse-ring', x, y, 26);
   if (pulse) addUi(addTo, pulse.setAlpha(birdAudio.isMuted() ? 0.14 : 0.24).setName('audio-toggle-pulse-ring'));
@@ -26479,7 +26480,7 @@ function renderAudioToggleControl(scene: Phaser.Scene, addTo: UiAdd, x: number, 
 }
 
 function renderPauseToggleControl(scene: Phaser.Scene, addTo: UiAdd, x: number, y: number, onToggle: () => void) {
-  const hit = addUi(addTo, scene.add.rectangle(x, y, 56, 56, 0x020409, 0.08)
+  const hit = addUi(addTo, scene.add.rectangle(x, y, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.08)
     .setInteractive({ useHandCursor: true }));
   const icon = addUiIconImage(scene, 'pause-medallion', x, y, 19);
   if (icon) addUi(addTo, icon.setAlpha(0.94));

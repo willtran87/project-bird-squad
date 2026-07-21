@@ -2069,3 +2069,21 @@ Follow-up TODO:
   `.artifacts/world-cleanup-proof-battle/` visually confirm the current Rooftop
   Blocks route backdrop and matching battlefield; text state reports ready
   renderers and neither run emitted browser errors.
+
+## 2026-07-21 Minimum Supported Touch Targets
+
+- Replaced the title/shared 56-game-pixel hit regions with a documented
+  58-game-pixel minimum. At the declared 1000x560 viewport this keeps the
+  smallest controls at roughly 45 CSS pixels instead of 43.6 pixels.
+- Moved the platform regression from 1024x768 to the exact 1000x560 support
+  boundary while preserving the portrait and compact-landscape gate checks.
+- The exact-boundary capture at
+  `.artifacts/test-results/min-supported/title-1000x560.png` was visually
+  inspected: the complete title setup remains visible without clipping.
+- Shared audio feedback still passes across Menu, Route, and Battle. The
+  required production client reached a focused playable battle with matching
+  text state and no browser errors under
+  `.artifacts/min-supported-touch-client/`.
+- Strict TypeScript, production build, both focused regressions, and
+  `npm run validate` pass, including all nine sequencing scenarios. App entry
+  remains 659.4 KiB and combined boot code 687.8 KiB.

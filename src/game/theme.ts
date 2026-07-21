@@ -11,6 +11,11 @@ export const GOLD_LIGHT = 0xfbd91e;
 export const RED = 0xc41e3a;
 export const TEAL = 0x45cfd8;
 
+// The smallest supported 1000x560 viewport scales the 1280x720 game surface
+// to roughly 0.778x. A 58 px game-space hit region therefore remains above the
+// 44 CSS px touch-target floor at that boundary.
+export const MIN_SUPPORTED_TOUCH_TARGET = 58;
+
 // Text colors (CSS hex strings).
 export const TEXT = '#e0ddd8';
 export const TEXT_DIM = '#8a9298';

@@ -2563,3 +2563,18 @@ known leaf directories. A retired generation hidden in a newly created nested
 folder is therefore rejected alongside old filenames, imports, builder
 references, and contributor guidance. This closes the last path by which stale
 world art could return as a misleading implementation reference.
+
+Current follow-up: Exact minimum-supported touch closure. The device contract
+advertised 1000x560 support, but its 0.778 canvas scale turned the title's
+56-game-pixel controls into 43.6 CSS-pixel targets, below the documented 44 px
+floor. A shared 58-game-pixel minimum now keeps title setup plus shared
+audio/pause targets at roughly 45 CSS pixels without narrowing device support.
+The platform regression now runs at the exact 1000x560 boundary instead of the
+more forgiving 1024x768 viewport. Its inspected capture remains unclipped and
+fully playable; the required production client also drove title -> route ->
+battle with matching focus state and no browser errors under
+`.artifacts/min-supported-touch-client/`. Remaining release evidence is still
+five observed fresh-player sessions through `docs/game/playtest-runbook.md`.
+Strict TypeScript, production build, the focused minimum-display/shared-audio
+pair, and the complete release validation with all nine sequencing scenarios
+pass. App entry remains 659.4 KiB and combined boot code 687.8 KiB.
