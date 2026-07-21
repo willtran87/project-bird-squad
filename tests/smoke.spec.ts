@@ -8320,7 +8320,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
     const menuPaceAfterSnappy = JSON.parse(window.render_game_to_text!()).combatPacing;
     const menuMusicHit = findSliderHit(menu.children.list, 'music');
     if (!menuMusicHit) throw new Error('Missing menu Music slider hit target');
-    menuMusicHit.emit('pointerdown', { x: 754, y: 328, isDown: true });
+    menuMusicHit.emit('pointerdown', { x: 364, y: 266, isDown: true });
     await wait(80);
     const menuAudioAfterMusic = JSON.parse(window.render_game_to_text!()).audio;
     let menuSfxHit = findSliderHit(menu.children.list, 'sfx');
@@ -8329,7 +8329,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
       menuSfxHit = findSliderHit(menu.children.list, 'sfx');
     }
     if (!menuSfxHit) throw new Error('Missing menu SFX slider hit target');
-    menuSfxHit.emit('pointerdown', { x: 824, y: 380, isDown: true });
+    menuSfxHit.emit('pointerdown', { x: 434, y: 328, isDown: true });
     await wait(80);
     const menuAudioAfterSfx = JSON.parse(window.render_game_to_text!()).audio;
     menu.input.keyboard.emit('keydown-ESC');
@@ -8508,7 +8508,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.menuSettingsFocus).toEqual({ index: 0, label: 'Audio' });
   expect(result.menuSettingsControlTargets).toHaveLength(5);
   expect(result.menuSettingsControlTargets.every((target: { width: number; height: number }) => (
-    target.width >= 276 && target.height === 56
+    target.width >= 276 && target.height === 58
   ))).toBe(true);
   expect(result.menuMotionInitial.preference).toBe('system');
   expect(result.menuMotionAfterFull.preference).toBe('full');
@@ -8517,7 +8517,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.menuMotionAfterReduced.reduced).toBe(true);
   expect(result.menuContrastInitial).toMatchObject({ preference: 'standard', highContrast: false, applied: true });
   expect(result.menuContrastAfter).toMatchObject({ preference: 'high', highContrast: true, applied: true });
-  expect(result.menuContrastTarget).toEqual({ width: 184, height: 44 });
+  expect(result.menuContrastTarget).toEqual({ width: 184, height: 58 });
   expect(result.menuContrastClassApplied).toBe(true);
   expect(result.menuGraphicsInitial.preference).toBe('auto');
   expect(result.menuGraphicsAfterFull).toMatchObject({ preference: 'full', effective: 'full', lean: false });
@@ -8581,6 +8581,220 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.battleClosed).toBe(false);
   expect(await page.evaluate(() => localStorage.getItem('birdsquad.graphicsQuality'))).toBe('lean');
   expect(await page.evaluate(() => localStorage.getItem('birdsquad.visualContrast'))).toBe('high');
+});
+
+test('settings and remapping controls keep touch targets at the minimum supported viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await boot(page);
+  await page.keyboard.press('s');
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return state.settingsOpen
+      && collect(menu.settingsOverlay?.list ?? [])
+        .some((child: any) => child.name === 'system-settings-row-8-hit' && child.input?.enabled);
+  });
+
+  const settingsTargets = await page.evaluate(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const canvas = document.querySelector('canvas')!.getBoundingClientRect();
+    const scale = canvas.width / 1280;
+    const names = /^(system-settings-row-\d+-hit|system-settings-(music|sfx)-slider-hit|system-settings-(motion|contrast|graphics-quality|combat-pace)-(switch|toggle)-hit)$/;
+    return collect(menu.settingsOverlay?.list ?? [])
+      .filter((child: any) => child.input?.enabled && names.test(child.name ?? ''))
+      .map((child: any) => ({
+        name: child.name,
+        cssWidth: child.displayWidth * scale,
+        cssHeight: child.displayHeight * scale,
+      }));
+  });
+
+  expect(settingsTargets).toHaveLength(15);
+  expect(settingsTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  await page.waitForFunction(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return collect(menu.settingsOverlay?.list ?? [])
+      .filter((child: any) => child.texture?.key === 'ui-icon-system-settings-row-frame').length >= 9;
+  });
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/settings-1000x560.png' });
+
+  await page.evaluate(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const controls = collect(menu.settingsOverlay?.list ?? [])
+      .find((child: any) => child.name === 'system-settings-row-3-hit' && child.input?.enabled);
+    if (!controls) throw new Error('Missing Controls settings row');
+    controls.emit('pointerdown', {}, 0, 0, { stopPropagation() {} });
+  });
+  await page.waitForFunction(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return collect(menu.settingsOverlay?.list ?? [])
+      .some((child: any) => child.name === 'system-controls-done-hit' && child.input?.enabled);
+  });
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/settings-controls-1000x560.png' });
+
+  const remappingTargets = await page.evaluate(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const canvas = document.querySelector('canvas')!.getBoundingClientRect();
+    const scale = canvas.width / 1280;
+    const names = /^system-controls-(play-tab-hit|utility-tab-hit|binding-.+-hit|reset-hit|done-hit)$/;
+    return collect(menu.settingsOverlay?.list ?? [])
+      .filter((child: any) => child.input?.enabled && names.test(child.name ?? ''))
+      .map((child: any) => ({
+        name: child.name,
+        cssWidth: child.displayWidth * scale,
+        cssHeight: child.displayHeight * scale,
+      }));
+  });
+
+  expect(remappingTargets).toHaveLength(10);
+  expect(remappingTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+});
+
+test('shared onboarding and pause commands keep touch targets at the minimum supported viewport', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await boot(page);
+  const targetSnapshot = (sceneKey: string) => page.evaluate((key) => {
+    const scene: any = window.__birdSquadGame.scene.getScene(key);
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const canvas = document.querySelector('canvas')!.getBoundingClientRect();
+    const scale = canvas.width / 1280;
+    return collect(scene.children.list)
+      .filter((child: any) => child.name === 'system-field-button-hit' && child.input?.enabled)
+      .map((child: any) => ({
+        label: child.getData('label'),
+        cssWidth: child.displayWidth * scale,
+        cssHeight: child.displayHeight * scale,
+      }));
+  }, sceneKey);
+
+  await page.keyboard.press('h');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').helpOpen === true);
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.howToPlayTopicCardFrame?.count >= 4 && state.howToPlayTipRowFrame?.count >= 2;
+  });
+  const helpTargets = await targetSnapshot('MenuScene');
+  expect(helpTargets).toHaveLength(2);
+  expect(helpTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/how-to-play-1000x560.png' });
+
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').helpOpen === false);
+  await page.evaluate(async () => window.__birdSquadStartScene!('RouteScene', {}));
+  await page.keyboard.press('p');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').pauseOverlayOpen === true);
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').systemPauseDetailRowFrame?.count >= 4);
+  const pauseTargets = await targetSnapshot('RouteScene');
+  expect(pauseTargets.map((target) => target.label).sort()).toEqual(['Main Menu', 'Resume', 'Settings']);
+  expect(pauseTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/route-pause-1000x560.png' });
+});
+
+test('deck, pile, and reward commands keep touch targets at the minimum supported viewport', async ({ page }) => {
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await boot(page);
+  const targetSnapshot = (sceneKey: string, patternSource: string) => page.evaluate(({ key, source }) => {
+    const scene: any = window.__birdSquadGame.scene.getScene(key);
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const canvas = document.querySelector('canvas')!.getBoundingClientRect();
+    const scale = canvas.width / 1280;
+    const pattern = new RegExp(source);
+    return collect(scene.children.list)
+      .filter((child: any) => child.input?.enabled && pattern.test(child.name ?? ''))
+      .map((child: any) => ({
+        name: child.name,
+        cssWidth: child.displayWidth * scale,
+        cssHeight: child.displayHeight * scale,
+      }));
+  }, { key: sceneKey, source: patternSource });
+
+  await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {});
+    for (let i = 0; i < 120 && !route.textures.exists('ui-icon-deck-review-flourish'); i += 1) await wait(50);
+    const seed = route.runState.deck[0];
+    while (route.runState.deck.length < 13) route.runState.deck.push({ ...seed });
+    route.openDeckOverlay();
+    route.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.children.list.some((child: any) => child.name === 'deck-review-row-hit' && child.input?.enabled);
+  });
+  const routeTargets = await targetSnapshot('RouteScene', '^(deck-review-row-hit|deck-review-scroll-(up|down)-hit)$');
+  expect(routeTargets.filter((target) => target.name === 'deck-review-row-hit')).toHaveLength(7);
+  expect(routeTargets.filter((target) => target.name.startsWith('deck-review-scroll-'))).toHaveLength(1);
+  expect(routeTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/route-deck-review-1000x560.png' });
+
+  await page.evaluate(async () => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.closeDeckOverlay();
+    const battle: any = await window.__birdSquadStartScene!('BattleScene', { runState: route.runState, routeNodeId: 'm1_entry' });
+    const seed = battle.drawPile[0] ?? battle.hand[0];
+    while (battle.drawPile.length < 13) {
+      const index = battle.drawPile.length;
+      battle.drawPile.push({ ...seed, instanceId: `touch-review-${index}` });
+    }
+    battle.openOverlay('draw');
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.battleInspectRenderer?.loaded && state.combatPileReviewFrame?.rendered;
+  });
+  const pileTargets = await targetSnapshot('BattleScene', '^(combat-pile-row-hit|combat-pile-scroll-(up|down)-hit)$');
+  expect(pileTargets.filter((target) => target.name === 'combat-pile-row-hit')).toHaveLength(7);
+  expect(pileTargets.filter((target) => target.name.startsWith('combat-pile-scroll-'))).toHaveLength(1);
+  expect(pileTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/combat-pile-review-1000x560.png' });
+
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.closeOverlay();
+    battle.rewardChoices = battle.hand.slice(0, 3);
+    battle.mode = 'cardReward';
+    battle.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.battleRewardRenderer?.ready && state.rewardSkipCommandFrame?.rendered;
+  });
+  const rewardTargets = await targetSnapshot('BattleScene', '^reward-skip-hit$');
+  expect(rewardTargets).toHaveLength(1);
+  expect(rewardTargets[0].cssWidth).toBeGreaterThanOrEqual(44);
+  expect(rewardTargets[0].cssHeight).toBeGreaterThanOrEqual(44);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/card-reward-1000x560.png' });
 });
 
 test('high contrast applies before scene boot and persists across reloads', async ({ page }) => {
@@ -8816,6 +9030,12 @@ test('settings remain usable when browser preference storage is unavailable', as
   expect(await page.evaluate(() => localStorage.getItem('birdsquad.controlBindings'))).toBeNull();
   expect(await page.evaluate(() => localStorage.getItem('birdsquad.graphicsQuality'))).toBeNull();
   expect(await page.evaluate(() => localStorage.getItem('birdsquad.visualContrast'))).toBeNull();
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').titleFocus.current
+  ))).toBe('primaryRun');
   await page.keyboard.press('c');
   await expect.poll(async () => page.evaluate(() => (
     JSON.parse(window.render_game_to_text?.() ?? '{}').scene
@@ -9010,14 +9230,14 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
   });
   await expect.poll(async () => {
     const current = await snapshot();
-    return current.listenerCount === beforeOpenListeners + 1 && current.focusRings === 1 && current.rowTargets === 8;
+    return current.listenerCount === beforeOpenListeners + 1 && current.focusRings === 1 && current.rowTargets === 9;
   }).toBe(true);
   await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 0, label: 'Audio' });
   const opened = await snapshot();
   expect(beforeOpenListeners).toBe(1);
   expect(opened.listenerCount).toBe(2);
   expect(opened.focusRings).toBe(1);
-  expect(opened.rowTargets).toBe(8);
+  expect(opened.rowTargets).toBe(9);
   expect(opened.ring).toMatchObject({ index: 0, label: 'Audio' });
 
   const initialMusic = opened.state.audio.musicVolume;
@@ -9435,8 +9655,8 @@ test('title How to Play overlay opens, reports state, and loads its medallion', 
   expect(result.tipRowFrameTelemetry).toEqual({ loaded: true, rendered: true, count: 2 });
   expect(result.tipRowFrameObjects).toHaveLength(2);
   expect(result.guideActionTargets).toEqual([
-    { width: 190, height: 56 },
-    { width: 190, height: 56 }
+    { width: 190, height: 58 },
+    { width: 190, height: 58 }
   ]);
   for (const frame of result.tipRowFrameObjects) {
     expect(frame).toMatchObject({
@@ -9450,6 +9670,7 @@ test('title How to Play overlay opens, reports state, and loads its medallion', 
 });
 
 test('deck review overlays render generated dossier flourish art', async ({ page }) => {
+  test.setTimeout(60_000);
   await boot(page);
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -9532,8 +9753,11 @@ test('deck review overlays render generated dossier flourish art', async ({ page
     g.scene.stop('MenuScene');
     const route: any = g.scene.getScene('RouteScene');
     route.openDeckOverlay();
-    await wait(80);
-    const routeState = JSON.parse(window.render_game_to_text!());
+    let routeState = JSON.parse(window.render_game_to_text!());
+    for (let i = 0; i < 80 && !routeState.deckReviewFlourish?.rendered; i += 1) {
+      await wait(50);
+      routeState = JSON.parse(window.render_game_to_text!());
+    }
     const routeFlourish = countFlourish(route.children.list);
     const routeScrollButtonFrames = countScrollButtonFrames(route.children.list);
     const routeRowFrames = countRowFrames(route.children.list);
@@ -10400,7 +10624,7 @@ test('combat pile inspector renders generated review dossier frame', async ({ pa
       titlePlaqueObjects: countTitlePlaques(battle.root?.list ?? battle.children.list),
       pageIndicatorFrameObjects: countPageIndicatorFrames(battle.root?.list ?? battle.children.list),
       closeFrameObjects: countCloseFrames(battle.root?.list ?? battle.children.list),
-      visibleRows: Math.min(battle.drawPile.length, 11),
+      visibleRows: Math.min(battle.drawPile.length, 7),
     };
   });
 

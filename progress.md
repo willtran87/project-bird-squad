@@ -2578,3 +2578,55 @@ five observed fresh-player sessions through `docs/game/playtest-runbook.md`.
 Strict TypeScript, production build, the focused minimum-display/shared-audio
 pair, and the complete release validation with all nine sequencing scenarios
 pass. App entry remains 659.4 KiB and combined boot code 687.8 KiB.
+
+Current follow-up: Settings and remapping minimum-touch closure. An exact
+1000x560 probe found that Settings row targets scaled to 31.1 CSS pixels,
+Contrast to 34.2, and nominal 56-game-pixel switches to 43.6, all below the
+44 CSS-pixel contract. Settings now uses two columns of non-overlapping
+58-game-pixel rows, while remapping tabs and six binding rows use the same
+minimum and matching vertical spacing. The new boundary regression measures
+all 15 named Settings targets and all 10 named remapping targets in CSS pixels,
+requires each to remain at least 44x44, and captures both layouts after deferred
+art settles. Exact-boundary and required production-client screenshots were
+visually inspected; the text harness reports the matching Settings/Controls
+focus state and neither client emitted browser errors. Strict TypeScript, four
+focused Settings/remapping scenarios, production build, every static release
+validator, and all nine sequencing scenarios pass. Remaining release evidence
+is unchanged: five observed fresh-player sessions through
+`docs/game/playtest-runbook.md`. App entry remains 659.4 KiB and combined boot
+code 687.8 KiB.
+
+Current follow-up: Shared field-command minimum-touch closure. The exact
+1000x560 probe found that How to Play and route-pause actions authored at 56
+game pixels still scaled to 43.6 CSS pixels. The shared field-button renderer
+now separates its visual frame from a transparent named interaction/focus
+region that is at least 58x58 game pixels. This preserves compact authored art
+while applying the touch floor to onboarding, pause, Profile save/restore and
+export actions, plus fallback shared commands. A new boundary regression
+measures both How to Play actions and all three route-pause actions, and final
+artwork-loaded captures under `.artifacts/test-results/min-supported/` remain
+readable, separated, and unclipped. Required production clients reached both
+surfaces through real pointer/title navigation with matching text state and no
+browser errors under `.artifacts/shared-field-help-client/` and
+`.artifacts/shared-field-pause-client/`. Strict TypeScript, six focused shared
+consumers, isolated deck-review confirmation, production build, and full
+`npm run validate` pass with all nine sequencing scenarios. Remaining release
+evidence is unchanged: five observed fresh-player sessions through
+`docs/game/playtest-runbook.md`. App entry is 659.5 KiB and combined boot code
+is 687.9 KiB.
+
+Current follow-up: Review and reward minimum-touch closure. At the exact
+1000x560 support boundary, route/combat review rows measured 26.4 CSS pixels
+high and reward Skip measured 37.3, with review scroll controls also below the
+44x44 contract. Review pages now show seven rows instead of eleven, use
+58-game-pixel spacing, and separate compact visual art from 58-pixel row and
+scroll interaction regions. Reward Skip uses the same minimum transparent hit
+region without changing its artwork. A new exact-boundary regression measures
+all three surfaces in CSS pixels; the route review, combat pile, and reward
+captures remain readable and unclipped. Seven focused regressions, the
+production build, and full release validation pass, including all nine
+sequencing scenarios. The required production client reached the live
+seven-row Deck Review with matching text state and no browser errors under
+`.artifacts/shared-review-client-final/`. Remaining release evidence is still
+five observed fresh-player sessions through `docs/game/playtest-runbook.md`.
+App entry is 659.7 KiB and combined boot code is 688.2 KiB.

@@ -20,6 +20,7 @@ import {
 import type { GraphicsQualityPreference, GraphicsQualityState } from './graphics-quality';
 import type { VisualContrastPreference, VisualContrastState } from './visual-accessibility';
 import type { ScreenReaderPreference, ScreenReaderState } from './screen-reader-accessibility';
+import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
@@ -516,7 +517,7 @@ function renderSettingsVolumeSlider(
     { alpha: 0.78, tint: accent },
     dependencies,
   );
-  const hit = addUi(addTo, scene.add.rectangle(cx, cy, width + 28, 56, 0x020409, 0.02)
+  const hit = addUi(addTo, scene.add.rectangle(cx, cy, width + 28, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.02)
     .setName(controlName)
     .setInteractive({ useHandCursor: true }));
   const trackWidth = width - 78;
@@ -568,7 +569,7 @@ function renderSettingsMotionSwitch(
     alpha: state.reduced ? 0.74 : 0.82,
     tint: preference === 'reduced' ? 0xffefc4 : preference === 'full' ? 0xdffaff : undefined,
   }, dependencies);
-  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 276, 56, 0x020409, 0.02)
+  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 276, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.02)
     .setName('system-settings-motion-switch-hit')
     .setInteractive({ useHandCursor: true }));
   [cx - 84, cx, cx + 84].forEach((x, index) => {
@@ -605,7 +606,7 @@ function renderSettingsCombatPaceSwitch(
     alpha: 0.82,
     tint: preference === 'cinematic' ? 0xffefc4 : preference === 'snappy' ? 0xdffaff : undefined,
   }, dependencies);
-  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 276, 56, 0x020409, 0.02)
+  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 276, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.02)
     .setName('system-settings-combat-pace-switch-hit')
     .setInteractive({ useHandCursor: true }));
   [cx - 84, cx, cx + 84].forEach((x, index) => {
@@ -637,7 +638,7 @@ function renderSettingsContrastSwitch(
     alpha: highContrast ? 0.88 : 0.66,
     tint: highContrast ? 0xdffaff : undefined,
   }, dependencies);
-  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 184, 44, 0x020409, 0.02)
+  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 184, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.02)
     .setName('system-settings-contrast-toggle-hit')
     .setInteractive({ useHandCursor: true }));
   hit.on('pointerdown', () => {
@@ -662,7 +663,7 @@ function renderSettingsGraphicsQualitySwitch(
     alpha: state.lean ? 0.74 : 0.82,
     tint: preference === 'lean' ? 0xffefc4 : preference === 'full' ? 0xdffaff : undefined,
   }, dependencies);
-  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 276, 56, 0x020409, 0.02)
+  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 276, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.02)
     .setName('system-settings-graphics-quality-switch-hit')
     .setInteractive({ useHandCursor: true }));
   [cx - 84, cx, cx + 84].forEach((x, index) => {
@@ -770,7 +771,7 @@ export function renderSettingsMenuOverlay(
     options.onClose();
   };
   scene.registry.set(settingsInputKey, true);
-  const frame = dependencies.renderFieldPanel(scene, addTo, GAME_WIDTH / 2, GAME_HEIGHT / 2, 700, 660, {
+  const frame = dependencies.renderFieldPanel(scene, addTo, GAME_WIDTH / 2, GAME_HEIGHT / 2, 1160, 660, {
     accent: UI_FIELD.cyan,
     fill: UI_FIELD.ink,
   });
@@ -831,10 +832,16 @@ export function renderSettingsMenuOverlay(
     ? Math.round(clamp(storedFocusIndex, 0, rows.length - 1))
     : 0;
   let focusRing: Phaser.GameObjects.Rectangle | undefined;
-  const rowY = (index: number) => frame.top + 174 + index * 43;
+  const rowPosition = (index: number) => {
+    const rightColumn = index >= 5;
+    const row = rightColumn ? index - 5 : index;
+    const cx = rightColumn ? frame.right - 280 : frame.left + 280;
+    return { cx, y: frame.top + 174 + row * 62, right: cx + 260 };
+  };
   const setFocus = (index: number) => {
     focusIndex = (index + rows.length) % rows.length;
-    focusRing?.setPosition(frame.cx + 34, rowY(focusIndex));
+    const position = rowPosition(focusIndex);
+    focusRing?.setPosition(position.cx, position.y);
     focusRing?.setData('index', focusIndex);
     focusRing?.setData('label', rows[focusIndex][0]);
     scene.registry.set(focusRegistryKey, focusIndex);
@@ -902,12 +909,13 @@ export function renderSettingsMenuOverlay(
     else setScreenReader(adjacentValue(['off', 'on'] as const, screenReaderPreference, 1));
   };
   rows.forEach(([label, value, kind], index) => {
-    const y = rowY(index);
-    addUi(addTo, scene.add.rectangle(frame.cx + 34, y, 502, 34, 0x050a12, index % 2 === 0 ? 0.42 : 0.26));
-    addSystemSettingsRowFrame(scene, addTo, frame.cx + 34, y, 530, 44, {
+    const position = rowPosition(index);
+    const { cx, y, right } = position;
+    addUi(addTo, scene.add.rectangle(cx, y, 502, 42, 0x050a12, index % 2 === 0 ? 0.42 : 0.26));
+    addSystemSettingsRowFrame(scene, addTo, cx, y, 530, MIN_SUPPORTED_TOUCH_TARGET, {
       alpha: index % 2 === 0 ? 0.78 : 0.68,
     }, dependencies);
-    const focusZone = addUi(addTo, scene.add.rectangle(frame.cx + 34, y, 530, 40, 0x020409, 0.001)
+    const focusZone = addUi(addTo, scene.add.rectangle(cx, y, 530, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
       .setName(`system-settings-row-${index}-hit`)
       .setInteractive({ useHandCursor: kind !== 'slider' }));
     focusZone.on('pointerover', () => setFocus(index));
@@ -921,7 +929,7 @@ export function renderSettingsMenuOverlay(
       else if (index === 7) setPace(adjacentValue(['cinematic', 'standard', 'snappy'] as const, pacePreference, 1));
       else if (index === 8) setScreenReader(adjacentValue(['off', 'on'] as const, screenReaderPreference, 1));
     });
-    addUi(addTo, scene.add.text(frame.left + 152, y, label, {
+    addUi(addTo, scene.add.text(cx - 238, y, label, {
       fontFamily: UI_FONT,
       fontSize: '14px',
       fontStyle: UI_BOLD,
@@ -932,7 +940,7 @@ export function renderSettingsMenuOverlay(
       renderSettingsVolumeSlider(
         scene,
         addTo,
-        frame.right - 186,
+        right - 186,
         y,
         254,
         isMusic ? audioSnapshot.musicVolume : audioSnapshot.sfxVolume,
@@ -945,7 +953,7 @@ export function renderSettingsMenuOverlay(
         `system-settings-${isMusic ? 'music' : 'sfx'}-slider-hit`,
         dependencies,
       );
-      addUi(addTo, scene.add.text(frame.right - 62, y, value, {
+      addUi(addTo, scene.add.text(right - 62, y, value, {
         fontFamily: UI_FONT,
         fontSize: '13px',
         fontStyle: UI_BOLD,
@@ -953,11 +961,11 @@ export function renderSettingsMenuOverlay(
         align: 'right',
       }).setOrigin(1, 0.5));
     } else if (kind === 'motion') {
-      renderSettingsMotionSwitch(scene, addTo, frame.right - 184, y, motion.preference, () => {
+      renderSettingsMotionSwitch(scene, addTo, right - 184, y, motion.preference, () => {
         setFocus(index);
         setMotion(adjacentValue(['system', 'full', 'reduced'] as const, motionPreference, 1));
       }, dependencies);
-      addUi(addTo, scene.add.text(frame.right - 62, y, value, {
+      addUi(addTo, scene.add.text(right - 62, y, value, {
         fontFamily: UI_FONT,
         fontSize: '13px',
         fontStyle: UI_BOLD,
@@ -965,11 +973,11 @@ export function renderSettingsMenuOverlay(
         align: 'right',
       }).setOrigin(1, 0.5));
     } else if (kind === 'pace') {
-      renderSettingsCombatPaceSwitch(scene, addTo, frame.right - 184, y, pace, () => {
+      renderSettingsCombatPaceSwitch(scene, addTo, right - 184, y, pace, () => {
         setFocus(index);
         setPace(adjacentValue(['cinematic', 'standard', 'snappy'] as const, pacePreference, 1));
       }, dependencies);
-      addUi(addTo, scene.add.text(frame.right - 62, y, value, {
+      addUi(addTo, scene.add.text(right - 62, y, value, {
         fontFamily: UI_FONT,
         fontSize: '13px',
         fontStyle: UI_BOLD,
@@ -977,11 +985,11 @@ export function renderSettingsMenuOverlay(
         align: 'right',
       }).setOrigin(1, 0.5));
     } else if (kind === 'contrast') {
-      renderSettingsContrastSwitch(scene, addTo, frame.right - 144, y, contrast.preference, () => {
+      renderSettingsContrastSwitch(scene, addTo, right - 144, y, contrast.preference, () => {
         setFocus(index);
         setContrast(adjacentValue(['standard', 'high'] as const, contrastPreference, 1));
       }, dependencies);
-      addUi(addTo, scene.add.text(frame.right - 96, y, value, {
+      addUi(addTo, scene.add.text(right - 96, y, value, {
         fontFamily: UI_FONT,
         fontSize: '14px',
         fontStyle: UI_BOLD,
@@ -989,11 +997,11 @@ export function renderSettingsMenuOverlay(
         align: 'right',
       }).setOrigin(1, 0.5));
     } else if (kind === 'graphics') {
-      renderSettingsGraphicsQualitySwitch(scene, addTo, frame.right - 184, y, graphics.preference, () => {
+      renderSettingsGraphicsQualitySwitch(scene, addTo, right - 184, y, graphics.preference, () => {
         setFocus(index);
         setGraphics(adjacentValue(['auto', 'full', 'lean'] as const, graphicsPreference, 1));
       }, dependencies);
-      addUi(addTo, scene.add.text(frame.right - 62, y, value, {
+      addUi(addTo, scene.add.text(right - 62, y, value, {
         fontFamily: UI_FONT,
         fontSize: '13px',
         fontStyle: UI_BOLD,
@@ -1001,13 +1009,13 @@ export function renderSettingsMenuOverlay(
         align: 'right',
       }).setOrigin(1, 0.5));
     } else {
-      addSystemSettingsToggleFrame(scene, addTo, frame.right - 144, y, 176, 42, {
+      addSystemSettingsToggleFrame(scene, addTo, right - 144, y, 176, 42, {
         alpha: label === 'Audio' && dependencies.audio.isMuted() ? 0.52 : 0.7,
         tint: (label === 'Audio' && !dependencies.audio.isMuted()) || (kind === 'screenReader' && screenReader.enabled)
           ? 0xdffaff
           : undefined,
       }, dependencies);
-      const valueText = addUi(addTo, scene.add.text(frame.right - 96, y, value, {
+      const valueText = addUi(addTo, scene.add.text(right - 96, y, value, {
         fontFamily: UI_FONT,
         fontSize: '14px',
         fontStyle: UI_BOLD,
@@ -1018,19 +1026,21 @@ export function renderSettingsMenuOverlay(
     }
   });
 
-  focusRing = addUi(addTo, scene.add.rectangle(frame.cx + 34, rowY(focusIndex), 536, 40, 0x06151b, 0.04)
+  const initialFocusPosition = rowPosition(focusIndex);
+  focusRing = addUi(addTo, scene.add.rectangle(initialFocusPosition.cx, initialFocusPosition.y, 536, MIN_SUPPORTED_TOUCH_TARGET, 0x06151b, 0.04)
     .setStrokeStyle(2, UI_FIELD.cyan, 0.96)
     .setName('system-settings-focus-ring'));
   setFocus(focusIndex);
 
-  dependencies.renderAudioToggleControl(scene, addTo, frame.right - 74, frame.top + 174, () => {
+  const audioPosition = rowPosition(0);
+  dependencies.renderAudioToggleControl(scene, addTo, audioPosition.right - 74, audioPosition.y, () => {
     setFocus(0);
     options.onToggleAudio();
   });
-  dependencies.renderFieldButton(scene, addTo, frame.left + 206, frame.bottom - 72, 190, 56, scene.scale.isFullscreen ? 'Windowed' : 'Full Screen', true, () => {
+  dependencies.renderFieldButton(scene, addTo, frame.cx - 112, frame.bottom - 72, 190, MIN_SUPPORTED_TOUCH_TARGET, scene.scale.isFullscreen ? 'Windowed' : 'Full Screen', true, () => {
     options.onToggleFullscreen();
   }, UI_FIELD.cyan);
-  dependencies.renderFieldButton(scene, addTo, frame.right - 206, frame.bottom - 72, 190, 56, 'Close', true, dismissSettingsOverlay, UI_FIELD.gold);
+  dependencies.renderFieldButton(scene, addTo, frame.cx + 112, frame.bottom - 72, 190, MIN_SUPPORTED_TOUCH_TARGET, 'Close', true, dismissSettingsOverlay, UI_FIELD.gold);
 
   const controlsPageKey = controlPanelPageRegistryKey(scene);
   const controlsFocusKey = controlPanelFocusRegistryKey(scene);
@@ -1050,7 +1060,7 @@ export function renderSettingsMenuOverlay(
 
   const pageDefinitions = () => CONTROL_BINDING_DEFINITIONS.filter((definition) => definition.page === controlsPage);
   const controlsFocusGeometry = (index: number, controlFrame: FieldFrame) => index < 6
-    ? { x: controlFrame.cx, y: controlFrame.top + 188 + index * 48, width: 566, height: 44 }
+    ? { x: controlFrame.cx, y: controlFrame.top + 200 + index * MIN_SUPPORTED_TOUCH_TARGET, width: 566, height: MIN_SUPPORTED_TOUCH_TARGET }
     : { x: index === 6 ? controlFrame.left + 210 : controlFrame.right - 210, y: controlFrame.bottom - 58, width: 196, height: 58 };
 
   const updateControlsValue = () => controlsValueText?.setText(controlBindingsAreDefault() ? 'Default' : 'Custom');
@@ -1127,7 +1137,7 @@ export function renderSettingsMenuOverlay(
     addUi(addPanel, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.94)
       .setInteractive({ useHandCursor: false })
       .setName('system-controls-modal-backdrop'));
-    const controlFrame = dependencies.renderFieldPanel(scene, addPanel, GAME_WIDTH / 2, GAME_HEIGHT / 2, 760, 620, {
+    const controlFrame = dependencies.renderFieldPanel(scene, addPanel, GAME_WIDTH / 2, GAME_HEIGHT / 2, 760, 660, {
       accent: UI_FIELD.cyan,
       fill: UI_FIELD.ink,
     });
@@ -1159,15 +1169,15 @@ export function renderSettingsMenuOverlay(
     (['play', 'utility'] as const).forEach((page, index) => {
       const x = controlFrame.cx - 96 + index * 192;
       const active = page === controlsPage;
-      addSystemSettingsToggleFrame(scene, addPanel, x, controlFrame.top + 142, 174, 40, {
+      addSystemSettingsToggleFrame(scene, addPanel, x, controlFrame.top + 132, 174, 40, {
         alpha: active ? 0.84 : 0.5,
         tint: active ? 0xdffaff : undefined,
       }, dependencies);
-      const hit = addUi(addPanel, scene.add.rectangle(x, controlFrame.top + 142, 180, 42, 0x020409, 0.001)
+      const hit = addUi(addPanel, scene.add.rectangle(x, controlFrame.top + 132, 180, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
         .setName(`system-controls-${page}-tab-hit`)
         .setInteractive({ useHandCursor: true }));
       hit.on('pointerdown', () => setControlsPage(page));
-      addUi(addPanel, scene.add.text(x, controlFrame.top + 142, page === 'play' ? 'Play' : 'Utility', {
+      addUi(addPanel, scene.add.text(x, controlFrame.top + 132, page === 'play' ? 'Play' : 'Utility', {
         fontFamily: UI_FONT,
         fontSize: '13px',
         fontStyle: UI_BOLD,
@@ -1177,12 +1187,12 @@ export function renderSettingsMenuOverlay(
 
     const definitions = pageDefinitions();
     definitions.forEach((definition, index) => {
-      const y = controlFrame.top + 188 + index * 48;
-      addUi(addPanel, scene.add.rectangle(controlFrame.cx, y, 548, 34, 0x050a12, index % 2 === 0 ? 0.42 : 0.26));
-      addSystemSettingsRowFrame(scene, addPanel, controlFrame.cx, y, 566, 46, {
+      const y = controlFrame.top + 200 + index * MIN_SUPPORTED_TOUCH_TARGET;
+      addUi(addPanel, scene.add.rectangle(controlFrame.cx, y, 548, 42, 0x050a12, index % 2 === 0 ? 0.42 : 0.26));
+      addSystemSettingsRowFrame(scene, addPanel, controlFrame.cx, y, 566, MIN_SUPPORTED_TOUCH_TARGET, {
         alpha: index % 2 === 0 ? 0.76 : 0.66,
       }, dependencies);
-      const hit = addUi(addPanel, scene.add.rectangle(controlFrame.cx, y, 566, 44, 0x020409, 0.001)
+      const hit = addUi(addPanel, scene.add.rectangle(controlFrame.cx, y, 566, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
         .setName(`system-controls-binding-${definition.action}-hit`)
         .setInteractive({ useHandCursor: true }));
       hit.on('pointerover', () => setControlsFocus(index, controlFrame));

@@ -2087,3 +2087,69 @@ Follow-up TODO:
 - Strict TypeScript, production build, both focused regressions, and
   `npm run validate` pass, including all nine sequencing scenarios. App entry
   remains 659.4 KiB and combined boot code 687.8 KiB.
+
+## 2026-07-21 Settings And Remapping Touch Closure
+
+- Extended the 58-game-pixel minimum from title/shared controls to the
+  configurable Settings and keyboard-remapping surfaces. The former Settings
+  rows measured 31.1 CSS pixels, Contrast 34.2, and nominal 56-game-pixel
+  switches 43.6 at the supported 1000x560 boundary.
+- Reflowed Settings into two roomy columns with non-overlapping 58-pixel rows.
+  Remapping tabs and six binding rows now use the same floor with 58-pixel
+  spacing; close and footer actions retain matching accessible hit regions.
+- Added an exact-boundary regression that measures 15 Settings targets and 10
+  remapping targets in CSS pixels, requires every one to be at least 44x44,
+  and captures both final artwork-loaded layouts.
+- Inspected exact-boundary captures under `.artifacts/test-results/min-supported/`
+  and production-client captures under `.artifacts/min-touch-settings-client/`
+  and `.artifacts/min-touch-controls-client/`. Both client states match the
+  visible focus/panel state and contain no browser errors.
+- Strict TypeScript, the four focused Settings/remapping scenarios, production
+  build, every static release validator, and all nine sequencing scenarios
+  pass. App entry remains 659.4 KiB and combined boot code 687.8 KiB.
+
+## 2026-07-21 Shared Field Command Touch Floor
+
+- Reproduced the remaining shared-command boundary mismatch: How to Play and
+  route pause actions authored at 56 game pixels measured 43.6 CSS pixels at
+  the supported 1000x560 viewport.
+- Split the shared field button's visual frame from its interaction target.
+  Visual art keeps its authored size, while every enabled shared command now
+  returns a transparent, named hit/focus region of at least 58x58 game pixels.
+  This also covers Profile save/restore/export actions and compact fallback
+  commands without inflating their artwork.
+- Added an exact-boundary regression for both How to Play actions and all three
+  route-pause actions. Final artwork-loaded captures under
+  `.artifacts/test-results/min-supported/` confirm both layouts remain readable,
+  separated, and unclipped.
+- Required production-client runs reached How to Play and route pause through
+  real pointer/title navigation. Captures and matching text state are under
+  `.artifacts/shared-field-help-client/` and
+  `.artifacts/shared-field-pause-client/`; neither emitted browser errors.
+- Strict TypeScript, six focused shared-command consumers, isolated deck-review
+  confirmation, production build, and full `npm run validate` pass, including
+  all nine sequencing scenarios. App entry is 659.5 KiB and combined boot code
+  is 687.9 KiB.
+
+## 2026-07-21 Review And Reward Touch Closure
+
+- Reproduced the final compact-command mismatch at the exact 1000x560 support
+  boundary: deck and pile rows measured 26.4 CSS pixels high, review scroll
+  controls were below the 44x44 contract, and reward Skip measured 37.3 CSS
+  pixels high.
+- Reduced deck and pile review pages from eleven compressed rows to seven
+  comfortably spaced rows. Visual frames keep their compact authored size,
+  while independent row and scroll hit regions use the shared 58-game-pixel
+  floor and remain non-overlapping.
+- Expanded only the transparent card-reward Skip target to the same floor,
+  preserving its existing command artwork and placement.
+- Added one exact-boundary regression that measures route rows/navigation,
+  combat pile rows/navigation, and reward Skip in CSS pixels. All three final
+  artwork-loaded captures under `.artifacts/test-results/min-supported/` are
+  readable, separated, and unclipped.
+- The required production client reached the live seven-row Deck Review through
+  title and route pointer navigation. Its capture and matching state are under
+  `.artifacts/shared-review-client-final/`; no browser error file was emitted.
+- Production build, seven focused Settings, pause/help, review, pile, and reward
+  regressions, and full `npm run validate` pass, including all nine sequencing
+  scenarios. App entry is 659.7 KiB and combined boot code is 688.2 KiB.

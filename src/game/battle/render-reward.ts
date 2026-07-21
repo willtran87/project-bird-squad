@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
 
 export type RewardCeremonyKind = 'card' | 'upgrade' | 'waymark';
 export type RewardNeedRank = 'low' | 'steady' | 'strong';
@@ -584,7 +585,9 @@ function renderSkip(context: RewardCeremonyRenderContext) {
   } else {
     target.add(scene.add.rectangle(width / 2, 652, 324, 48, 0x2a2320, 0.96).setStrokeStyle(2, 0xd8a840, 0.9).setName('reward-skip-command-frame-fallback'));
   }
-  const hit = scene.add.rectangle(width / 2, 652, 324, 48, 0x000000, 0.01).setInteractive({ useHandCursor: true });
+  const hit = scene.add.rectangle(width / 2, 652, 324, MIN_SUPPORTED_TOUCH_TARGET, 0x000000, 0.01)
+    .setInteractive({ useHandCursor: true })
+    .setName('reward-skip-hit');
   hit.on('pointerdown', context.onSkip);
   target.add(hit);
   const icon = context.addIcon('scrap-gear', width / 2 - 132, 652, 30);

@@ -1886,8 +1886,8 @@ const SOLO_ENCOUNTER_HEALTH_MULT = 1.35;
 const SOLO_ENCOUNTER_DAMAGE_BONUS = 2;
 const MULTI_ENCOUNTER_HEALTH_MULT = 1.2;
 const MULTI_ENCOUNTER_DAMAGE_BONUS = 2;
-const CARD_REVIEW_VISIBLE_ROWS = 11;
-const CARD_REVIEW_ROW_H = 38;
+const CARD_REVIEW_VISIBLE_ROWS = 7;
+const CARD_REVIEW_ROW_H = 58;
 const BASE_COHESION = 36;
 const BASE_WINGBEATS = 3;
 const BASE_HAND_TARGET = 4;
@@ -13044,10 +13044,8 @@ class RouteScene extends Phaser.Scene {
       const x = 140;
       const y = 198 + index * CARD_REVIEW_ROW_H;
       const selected = selectedEntry?.card.id === card.id;
-      const rowBg = this.add.rectangle(x + 150, y + 15, 312, 34, selected ? 0x1d2224 : 0x0f151d, selected ? 0.96 : 0.44)
-        .setStrokeStyle(selected ? 1.5 : 1, selected ? 0xd8a840 : card.upgraded ? 0x24d0d6 : 0xffffff, selected ? 0.95 : 0.08)
-        .setInteractive({ useHandCursor: true });
-      rowBg.on('pointerdown', () => onInspect(card.id));
+      this.add.rectangle(x + 150, y + 15, 312, 42, selected ? 0x1d2224 : 0x0f151d, selected ? 0.96 : 0.44)
+        .setStrokeStyle(selected ? 1.5 : 1, selected ? 0xd8a840 : card.upgraded ? 0x24d0d6 : 0xffffff, selected ? 0.95 : 0.08);
       addDeckReviewRowFrame(this, () => {}, x + 140, y + 15, { selected, upgraded: card.upgraded });
       this.add.rectangle(x + 150, y + 31, 280, 1, card.upgraded ? 0x24d0d6 : 0xd8a840, selected ? 0.6 : 0.18);
       addDeckReviewCostBadge(this, () => {}, x + 14, y + 15, 34, { zero: card.cost === 0, selected });
@@ -13075,12 +13073,16 @@ class RouteScene extends Phaser.Scene {
         align: 'center',
         fixedWidth: 116
       });
+      const rowHit = this.add.rectangle(x + 150, y + 15, 312, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+        .setInteractive({ useHandCursor: true })
+        .setName('deck-review-row-hit');
+      rowHit.on('pointerdown', () => onInspect(card.id));
     });
 
-    this.renderScrollButton(472, 214, 'Up', this.cardReviewScroll > 0, () => onScroll(-1));
-    this.renderScrollButton(472, 610, 'Down', this.cardReviewScroll < scrollMax, () => onScroll(1));
-    addDeckReviewPageIndicatorFrame(this, () => {}, 472, 641);
-    this.add.text(472, 641, `${this.cardReviewScroll + 1}-${this.cardReviewScroll + visible.length} / ${cards.length}`, {
+    this.renderScrollButton(480, 214, 'Up', this.cardReviewScroll > 0, () => onScroll(-1));
+    this.renderScrollButton(480, 610, 'Down', this.cardReviewScroll < scrollMax, () => onScroll(1));
+    addDeckReviewPageIndicatorFrame(this, () => {}, 480, 651);
+    this.add.text(480, 651, `${this.cardReviewScroll + 1}-${this.cardReviewScroll + visible.length} / ${cards.length}`, {
       fontFamily: UI_FONT,
       fontSize: '12px',
       color: '#b9c9d8',
@@ -13095,27 +13097,30 @@ class RouteScene extends Phaser.Scene {
     const frameKey = uiIconAssets['deck-review-scroll-button-frame'].key;
     const hasFrame = this.textures.exists(frameKey);
     if (!hasFrame) {
-      renderFieldButton(this, () => {}, x, y, 72, 28, label, enabled, onClick, UI_FIELD.gold);
+      renderFieldButton(this, () => {}, x, y, 72, 28, label, enabled, onClick, UI_FIELD.gold)
+        .setName(`deck-review-scroll-${label.toLowerCase()}-hit`);
       return;
     }
 
-    const hit = this.add.rectangle(x, y, 78, 32, 0x141a22, enabled ? 0.16 : 0.08)
+    const button = this.add.rectangle(x, y, 78, 32, 0x141a22, enabled ? 0.16 : 0.08)
       .setStrokeStyle(1, UI_FIELD.gold, enabled ? 0.16 : 0.06);
     this.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
     const frame = this.add.image(x, y, frameKey)
       .setDisplaySize(82, 34)
       .setAlpha(enabled ? 0.82 : 0.34)
       .setName('deck-review-scroll-button-frame');
+    const hit = this.add.rectangle(x, y, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      .setName(`deck-review-scroll-${label.toLowerCase()}-hit`);
     if (enabled) {
       hit.setInteractive({ useHandCursor: true });
       hit.on('pointerdown', onClick);
       hit.on('pointerover', () => {
-        hit.setFillStyle(0x1e2833, 0.24);
+        button.setFillStyle(0x1e2833, 0.24);
         frame.setAlpha(0.96);
         frame.setDisplaySize(86, 36);
       });
       hit.on('pointerout', () => {
-        hit.setFillStyle(0x141a22, 0.16);
+        button.setFillStyle(0x141a22, 0.16);
         frame.setAlpha(0.82);
         frame.setDisplaySize(82, 34);
       });
@@ -26322,7 +26327,7 @@ function addRouteWaymarkScrollRailFrame(
 }
 
 function renderCloseControl(scene: Phaser.Scene, addTo: UiAdd, x: number, y: number, onClick: () => void) {
-  const hit = addUi(addTo, scene.add.rectangle(x, y, 104, 56, 0x020409, 0.05)
+  const hit = addUi(addTo, scene.add.rectangle(x, y, 104, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.05)
     .setInteractive({ useHandCursor: true }));
   const frameKey = uiIconAssets['overlay-close-command-frame'].key;
   if (scene.textures.exists(frameKey)) {
@@ -26393,24 +26398,34 @@ function renderFieldButton(
     fontStyle: UI_BOLD,
     color: enabled ? UI_FIELD.warm : '#596a78'
   }).setOrigin(0.5, 0));
+  const hit = addUi(addTo, scene.add.rectangle(
+    x,
+    y,
+    Math.max(w, MIN_SUPPORTED_TOUCH_TARGET),
+    Math.max(h, MIN_SUPPORTED_TOUCH_TARGET),
+    0x020409,
+    0.001,
+  )
+    .setName('system-field-button-hit')
+    .setData('label', label));
   if (enabled) {
-    button.setInteractive({ useHandCursor: true });
-    button.on('pointerover', () => {
+    hit.setInteractive({ useHandCursor: true });
+    hit.on('pointerover', () => {
       button.setFillStyle(0x1b2630, 0.98);
       if (generatedFrame) generatedFrame.setAlpha(prefersReducedMotion() ? 0.72 : 0.9);
       text.setColor('#ffffff');
     });
-    button.on('pointerout', () => {
+    hit.on('pointerout', () => {
       button.setFillStyle(0x141b22, 0.96);
       if (generatedFrame) generatedFrame.setAlpha(prefersReducedMotion() ? 0.66 : 0.78);
       text.setColor(UI_FIELD.warm);
     });
-    button.on('pointerdown', () => {
+    hit.on('pointerdown', () => {
       if (soundKind) playUiSound(soundKind);
       onClick();
     });
   }
-  return button;
+  return hit;
 }
 
 function renderAudioToggleControl(scene: Phaser.Scene, addTo: UiAdd, x: number, y: number, onToggle?: () => void) {

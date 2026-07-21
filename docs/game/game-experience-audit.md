@@ -645,10 +645,17 @@ The shipped boundary supports desktop and landscape-tablet viewports at
 displays show a branded game-art gate, make the canvas unavailable to input,
 and sleep the Phaser loop. Returning to a supported viewport refreshes canvas
 scaling and resumes the same run state. The loading shell states the supported
-platforms, and representative title controls maintain a 56-game-pixel minimum
-target. Title and shared audio/pause hit regions use a 58-game-pixel minimum,
-equivalent to about 45 CSS pixels at the smallest supported 1000x560 canvas
-scale.
+platforms. Title actions, shared audio/pause controls, configurable Settings
+rows and switches, and control-remapping tabs and rows use a 58-game-pixel
+minimum hit region, equivalent to about 45 CSS pixels at the smallest supported
+1000x560 canvas scale. Settings uses two columns and remapping rows use wider
+vertical spacing so those targets do not overlap at the larger size. Shared
+field commands separate their visual frame from a minimum-size interaction and
+focus region, so compact pause, onboarding, Profile, and fallback commands keep
+their authored proportions without sacrificing the touch floor. Deck and pile
+review lists show seven comfortably spaced rows instead of eleven compressed
+rows, with independent 58-pixel row and scroll targets; the card-reward Scrap
+fallback uses the same minimum without enlarging its command artwork.
 
 Acceptance:
 

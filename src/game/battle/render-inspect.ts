@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
 
 export type BattleInspectMode = 'deck' | 'draw' | 'discard';
 
@@ -216,9 +217,12 @@ function renderScrollButton(
       .setName('combat-pile-scroll-button-frame'));
   }
   addIcon(context, direction === 'up' ? 'scroll-up-chevron' : 'scroll-down-chevron', x, y, 13, enabled ? 0.9 : 0.38);
+  const hit = context.scene.add.rectangle(x, y, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+    .setName(`combat-pile-scroll-${direction}-hit`);
+  context.target.add(hit);
   if (!enabled) return;
-  button.setInteractive({ useHandCursor: true });
-  button.on('pointerdown', () => {
+  hit.setInteractive({ useHandCursor: true });
+  hit.on('pointerdown', () => {
     context.onConfirmSound();
     context.onScroll(direction === 'up' ? -1 : 1);
   });
@@ -228,11 +232,8 @@ function renderRow(context: BattleInspectRenderContext, card: BattleInspectCardV
   const deck = context.mode === 'deck';
   const x = 140;
   const y = 198 + index * context.rowHeight;
-  const row = context.scene.add.rectangle(x + 150, y + 15, 312, 34, selected ? 0x1d2224 : 0x0f151d, selected ? 0.96 : 0.44)
-    .setStrokeStyle(selected ? 1.5 : 1, selected ? 0xd8a840 : card.upgraded ? 0x24d0d6 : 0xffffff, selected ? 0.95 : 0.08)
-    .setInteractive({ useHandCursor: true });
-  row.on('pointerdown', () => context.onInspect(card.id));
-  context.target.add(row);
+  context.target.add(context.scene.add.rectangle(x + 150, y + 15, 312, 42, selected ? 0x1d2224 : 0x0f151d, selected ? 0.96 : 0.44)
+    .setStrokeStyle(selected ? 1.5 : 1, selected ? 0xd8a840 : card.upgraded ? 0x24d0d6 : 0xffffff, selected ? 0.95 : 0.08));
   if (deck) {
     context.decorators.addRowFrame(x + 140, y + 15, selected, card.upgraded);
   } else if (textureReady(context.scene, context.assets.pileRowFrame)) {
@@ -269,6 +270,11 @@ function renderRow(context: BattleInspectRenderContext, card: BattleInspectCardV
     fixedWidth: 92,
   }));
   addIcon(context, card.zoneIcon, x + 414, y + 16, 14);
+  const rowHit = context.scene.add.rectangle(x + 150, y + 15, 312, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+    .setInteractive({ useHandCursor: true })
+    .setName('combat-pile-row-hit');
+  rowHit.on('pointerdown', () => context.onInspect(card.id));
+  context.target.add(rowHit);
 }
 
 function renderDetailChip(context: BattleInspectRenderContext, x: number, y: number, icon: string, text: string, accent: number) {
@@ -429,8 +435,8 @@ export function renderBattleInspect(context: BattleInspectRenderContext) {
   const scroll = Phaser.Math.Clamp(context.scroll, 0, maxScroll);
   const selected = cards.find((card) => card.id === context.selectedCardId) ?? cards[0];
   cards.slice(scroll, scroll + context.visibleRows).forEach((card, index) => renderRow(context, card, index, selected?.id === card.id));
-  renderScrollButton(context, 472, 214, 'up', scroll > 0);
-  renderScrollButton(context, 472, 610, 'down', scroll < maxScroll);
+  renderScrollButton(context, 480, 214, 'up', scroll > 0);
+  renderScrollButton(context, 480, 610, 'down', scroll < maxScroll);
   if (context.mode === 'deck') context.decorators.addPageIndicator();
   else if (textureReady(context.scene, context.assets.pilePageIndicatorFrame)) {
     context.target.add(context.scene.add.image(462, 641, context.assets.pilePageIndicatorFrame)
