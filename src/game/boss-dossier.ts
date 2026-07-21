@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 
 export interface BossDossierEnemy {
   id: string;
@@ -426,10 +427,9 @@ export function renderOutcomeCommand(
 ) {
   const frameLoaded = scene.textures.exists(options.frameKey);
   if (frameLoaded) scene.textures.get(options.frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const hit = scene.add.rectangle(options.x, 582, 256, 52, options.baseFill, frameLoaded ? 0.18 : 0.98)
-    .setStrokeStyle(2, options.stroke, frameLoaded ? 0.28 : 1)
-    .setInteractive({ useHandCursor: true });
-  root.add(hit);
+  const visual = scene.add.rectangle(options.x, 582, 256, 52, options.baseFill, frameLoaded ? 0.18 : 0.98)
+    .setStrokeStyle(2, options.stroke, frameLoaded ? 0.28 : 1);
+  root.add(visual);
   let frame: Phaser.GameObjects.Image | undefined;
   if (frameLoaded) {
     frame = scene.add.image(options.x, 582, options.frameKey)
@@ -439,12 +439,17 @@ export function renderOutcomeCommand(
     if (options.frameTint) frame.setTint(options.frameTint);
     root.add(frame);
   }
+  const hit = scene.add.rectangle(options.x, 582, 256, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+    .setInteractive({ useHandCursor: true })
+    .setName('run-outcome-command-hit')
+    .setData('label', options.label);
+  root.add(hit);
   hit.on('pointerover', () => {
-    hit.setFillStyle(options.hoverFill, frameLoaded ? 0.28 : 1);
+    visual.setFillStyle(options.hoverFill, frameLoaded ? 0.28 : 1);
     frame?.setAlpha(0.94);
   });
   hit.on('pointerout', () => {
-    hit.setFillStyle(options.baseFill, frameLoaded ? 0.18 : 0.98);
+    visual.setFillStyle(options.baseFill, frameLoaded ? 0.18 : 0.98);
     frame?.setAlpha(0.86);
   });
   hit.on('pointerdown', options.onActivate);

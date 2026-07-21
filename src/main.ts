@@ -6414,21 +6414,27 @@ class RouteScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const hasCommandFrame = this.textures.exists(uiIconAssets['confirm-exit-command-frame'].key);
-    const keep = this.add.rectangle(GAME_WIDTH / 2 - 140, GAME_HEIGHT / 2 + 56, 230, 54, 0x122235, hasCommandFrame ? 0.18 : 0.98)
-      .setStrokeStyle(2, 0x7ab8d6, hasCommandFrame ? 0.22 : 0.95).setInteractive({ useHandCursor: true });
-    keep.on('pointerdown', () => { this.confirmExitOpen = false; this.renderAll(); });
+    this.add.rectangle(GAME_WIDTH / 2 - 140, GAME_HEIGHT / 2 + 56, 230, 54, 0x122235, hasCommandFrame ? 0.18 : 0.98)
+      .setStrokeStyle(2, 0x7ab8d6, hasCommandFrame ? 0.22 : 0.95);
     this.renderConfirmExitCommandFrame(GAME_WIDTH / 2 - 140, GAME_HEIGHT / 2 + 56);
     this.add.text(GAME_WIDTH / 2 - 140, GAME_HEIGHT / 2 + 56, 'Keep Playing', {
       fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: '#eef8ff', stroke: '#000000', strokeThickness: 3
     }).setOrigin(0.5);
+    const keepHit = this.add.rectangle(GAME_WIDTH / 2 - 140, GAME_HEIGHT / 2 + 56, 230, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setName('route-confirm-exit-keep-hit');
+    keepHit.on('pointerdown', () => { this.confirmExitOpen = false; this.renderAll(); });
 
-    const abandon = this.add.rectangle(GAME_WIDTH / 2 + 140, GAME_HEIGHT / 2 + 56, 230, 54, 0x2a1014, hasCommandFrame ? 0.24 : 0.98)
-      .setStrokeStyle(2, 0xff7a6e, hasCommandFrame ? 0.28 : 0.95).setInteractive({ useHandCursor: true });
-    abandon.on('pointerdown', () => { clearActiveRun(); this.scene.start('MenuScene'); });
+    this.add.rectangle(GAME_WIDTH / 2 + 140, GAME_HEIGHT / 2 + 56, 230, 54, 0x2a1014, hasCommandFrame ? 0.24 : 0.98)
+      .setStrokeStyle(2, 0xff7a6e, hasCommandFrame ? 0.28 : 0.95);
     this.renderConfirmExitCommandFrame(GAME_WIDTH / 2 + 140, GAME_HEIGHT / 2 + 56, true);
     this.add.text(GAME_WIDTH / 2 + 140, GAME_HEIGHT / 2 + 56, 'Abandon Run', {
       fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: '#ffd8d2', stroke: '#000000', strokeThickness: 3
     }).setOrigin(0.5);
+    const abandonHit = this.add.rectangle(GAME_WIDTH / 2 + 140, GAME_HEIGHT / 2 + 56, 230, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setName('route-confirm-exit-abandon-hit');
+    abandonHit.on('pointerdown', () => { clearActiveRun(); this.scene.start('MenuScene'); });
 
     this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, 'Esc to keep playing', {
       fontFamily: UI_FONT, fontSize: '12px', color: '#9aaabe'
@@ -9493,11 +9499,13 @@ class RouteScene extends Phaser.Scene {
         this.renderRouteRewardEffectShowcase(pending, panelX, panelY, 410, 238);
       }
       const claim = this.add.rectangle(frame.right - 158, frame.bottom - 48, 180, 38, 0x102235, 0.98)
-        .setStrokeStyle(2, accent, 0.92)
-        .setInteractive({ useHandCursor: true });
-      claim.on('pointerover', () => claim.setFillStyle(0x18314a, 1));
-      claim.on('pointerout', () => claim.setFillStyle(0x102235, 0.98));
-      claim.on('pointerdown', () => {
+        .setStrokeStyle(2, accent, 0.92);
+      const claimHit = this.add.rectangle(frame.right - 158, frame.bottom - 48, 180, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+        .setInteractive({ useHandCursor: true })
+        .setName('route-reward-claim-hit');
+      claimHit.on('pointerover', () => claim.setFillStyle(0x18314a, 1));
+      claimHit.on('pointerout', () => claim.setFillStyle(0x102235, 0.98));
+      claimHit.on('pointerdown', () => {
         playUiSound('confirm');
         this.claimRouteReward();
       });
@@ -10822,9 +10830,8 @@ class RouteScene extends Phaser.Scene {
     tabs.forEach((tab, index) => {
       const x = 450 + index * 156;
       const selected = this.marketCategory === tab.id;
-      const hit = this.add.rectangle(x, frame.top + 86, 140, 34, selected ? 0x152637 : 0x07101a, 0.94)
+      const visual = this.add.rectangle(x, frame.top + 86, 140, 34, selected ? 0x152637 : 0x07101a, 0.94)
         .setStrokeStyle(1, selected ? tab.accent : 0x49606d, selected ? 0.94 : 0.42)
-        .setInteractive({ useHandCursor: true })
         .setName('market-category-tab');
       this.add.text(x, frame.top + 86, tab.label, {
         fontFamily: UI_FONT,
@@ -10832,6 +10839,12 @@ class RouteScene extends Phaser.Scene {
         fontStyle: UI_BOLD,
         color: selected ? '#fff0c7' : '#91a6b8'
       }).setOrigin(0.5).setName('market-category-tab');
+      const hit = this.add.rectangle(x, frame.top + 86, 140, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+        .setInteractive({ useHandCursor: true })
+        .setName('market-category-tab-hit')
+        .setData('label', tab.label);
+      hit.on('pointerover', () => visual.setFillStyle(selected ? 0x1d3349 : 0x10202c, 0.98));
+      hit.on('pointerout', () => visual.setFillStyle(selected ? 0x152637 : 0x07101a, 0.94));
       hit.on('pointerdown', () => {
         this.setMarketCategory(tab.id);
       });
@@ -11702,8 +11715,10 @@ class RouteScene extends Phaser.Scene {
         );
         if (listing.sold) this.renderMarketSoldSlat(serviceX, serviceY, serviceWidth + 2, 48);
         if (!listing.sold) {
-          const hit = this.add.rectangle(serviceX, serviceY, serviceWidth + 10, 56, 0x000000, 0.01)
-            .setInteractive({ useHandCursor: true });
+          const hit = this.add.rectangle(serviceX, serviceY, serviceWidth + 10, MIN_SUPPORTED_TOUCH_TARGET, 0x000000, 0.01)
+            .setInteractive({ useHandCursor: true })
+            .setName('market-service-hit')
+            .setData('label', this.marketUtilityLabel(listing));
           hit.on('pointerdown', () => this.buyMarketUtility(i));
           hit.on('pointerover', () => this.showMarketUtilityDetail(listing, serviceX, serviceY));
           hit.on('pointerout', () => this.hideMarketItemDetail());
@@ -11787,8 +11802,9 @@ class RouteScene extends Phaser.Scene {
       'Refresh stock'
     );
     if (refreshEnabled) {
-      const hit = this.add.rectangle(refreshX, refreshY, view === 'services' ? 350 : 154, 56, 0x000000, 0.01)
-        .setInteractive({ useHandCursor: true });
+      const hit = this.add.rectangle(refreshX, refreshY, view === 'services' ? 350 : 154, MIN_SUPPORTED_TOUCH_TARGET, 0x000000, 0.01)
+        .setInteractive({ useHandCursor: true })
+        .setName('market-refresh-hit');
       hit.on('pointerdown', () => this.refreshMarket());
       hit.on('pointerover', () => this.showMarketRefreshDetail(refreshCost, refreshX, refreshY));
       hit.on('pointerout', () => this.hideMarketItemDetail());

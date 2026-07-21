@@ -2153,3 +2153,50 @@ Follow-up TODO:
 - Production build, seven focused Settings, pause/help, review, pile, and reward
   regressions, and full `npm run validate` pass, including all nine sequencing
   scenarios. App entry is 659.7 KiB and combined boot code is 688.2 KiB.
+
+## 2026-07-21 Codex And Flock Record Touch Closure
+
+- Continued the exact-boundary audit into the two lazy optional scenes. At
+  1000x560, Codex navigation measured as little as 23-34 CSS pixels high;
+  Flock Record badge tabs measured 43.6, rating rows 24.9, and direct rating
+  chips 26.4x18.7.
+- Separated Codex section, type, filter, Back, and dossier Close artwork from
+  minimum 58-game-pixel hit regions. The Supplies/Waymarks secondary filter row
+  moved down so its larger targets meet the type row edge without overlap.
+- Reflowed the local-only playtest panel into a taller layout with four
+  58-pixel-spaced rating rows and five independently selectable 58x58 rating
+  targets per row. Existing compact chip art and the main Flock Record badge
+  styling remain intact.
+- Added exact 1000x560 coverage for 18 Codex navigation controls, dossier Close,
+  two Flock Record tabs, and 27 playtest/save controls. Captures under
+  `.artifacts/test-results/min-supported/` confirm the two-row filters, complete
+  Supply dossier, and rating matrix remain readable and unclipped.
+- Required production clients reached Supplies / Plan and the Contracts tab
+  through real pointer navigation. Captures and matching state are under
+  `.artifacts/optional-touch-codex-client/` and
+  `.artifacts/optional-touch-profile-client/`; neither emitted browser errors.
+- Strict TypeScript, production build, five focused Codex/Profile input, export,
+  detail, and exact-boundary regressions, and full `npm run validate` pass,
+  including all nine sequencing scenarios. App entry remains 659.7 KiB and
+  combined boot code remains 688.2 KiB.
+
+## 2026-07-21 Core Route Decision Touch Closure
+
+- Continued exact-boundary measurement into high-frequency route decisions.
+  At 1000x560, abandon confirmation measured 42 CSS pixels high, reward Claim
+  29.6, market category tabs 26.4, market services/refresh 43.6, and outcome
+  commands 40.4, all below the 44x44 supported-device contract.
+- Kept the authored command artwork compact while adding independent,
+  non-overlapping 58-game-pixel hit regions to exit confirmation, market tabs,
+  services and refresh, route reward Claim, and both run-outcome commands.
+- Added a single exact-boundary traversal that measures every affected target
+  across exit confirmation, Market Services, route reward review, and defeat.
+  All four artwork-loaded captures under
+  `.artifacts/test-results/min-supported/` remain readable and unclipped.
+- The required production client reached a live paused route with matching
+  serialized state and no browser errors under
+  `.artifacts/core-route-touch-client/`.
+- Strict TypeScript, five focused route/market/reward/outcome regressions,
+  production build, and full release validation pass, including all nine
+  sequencing scenarios. App entry is 660.4 KiB and combined boot code is
+  688.8 KiB.

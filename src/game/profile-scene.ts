@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 import { alphaCardSet } from './runtime-data';
 import { difficultyLabel } from './difficulty';
 import { flockLeaders } from './leaders';
@@ -668,9 +669,10 @@ export function renderProfileScene(
   tabs.forEach((tab) => {
     const selected = state.badgeView === tab.view;
     const focused = state.focus === tab.view;
-    const hit = scene.add.rectangle(tab.x, frame.top + 210, 124, 56, selected ? 0x183451 : 0x0d1420, 0.94)
+    const hit = scene.add.rectangle(tab.x, frame.top + 210, 124, MIN_SUPPORTED_TOUCH_TARGET, selected ? 0x183451 : 0x0d1420, 0.94)
       .setStrokeStyle(focused ? 3 : 1, focused ? UI_FIELD.cyan : selected ? UI_FIELD.gold : UI_FIELD.cyan, focused ? 0.98 : selected ? 0.86 : 0.34)
-      .setInteractive({ useHandCursor: true });
+      .setInteractive({ useHandCursor: true })
+      .setName(`profile-${tab.view}-tab-hit`);
     scene.add.text(tab.x, frame.top + 210, tab.label, {
       fontFamily: UI_FONT,
       fontSize: '12px',
@@ -775,7 +777,7 @@ function renderSaveDataOverlay(
     .setInteractive()
     .setName('profile-save-data-blocker');
   const expanded = Boolean(state.pendingRestore) || playtestMode;
-  const panel = dependencies.renderFieldPanel(scene, () => {}, GAME_WIDTH / 2, 360, 700, expanded ? 560 : 340, {
+  const panel = dependencies.renderFieldPanel(scene, () => {}, GAME_WIDTH / 2, 360, 700, expanded ? 620 : 340, {
     accent: UI_FIELD.cyan,
     fill: UI_FIELD.ink,
   });
@@ -906,8 +908,8 @@ function renderSaveDataOverlay(
   }).setResolution(2).setOrigin(0.5, 0).setName('profile-save-data-status');
 
   if (playtestMode) {
-    scene.add.rectangle(panel.cx, panel.top + 280, 574, 1, UI_FIELD.cyan, 0.34);
-    scene.add.text(panel.left + 64, panel.top + 296, 'PLAYTEST EXPERIENCE / LATEST RUN', {
+    scene.add.rectangle(panel.cx, panel.top + 270, 574, 1, UI_FIELD.cyan, 0.34);
+    scene.add.text(panel.left + 64, panel.top + 284, 'PLAYTEST EXPERIENCE / LATEST RUN', {
       fontFamily: UI_FONT,
       fontSize: '10px',
       fontStyle: UI_BOLD,
@@ -916,7 +918,7 @@ function renderSaveDataOverlay(
     const latestLabel = state.playtestRunId
       ? `${state.playtestRunResult === 'win' ? 'WIN' : 'LOSS'}  |  ${state.playtestRunId}`
       : 'Complete a run, then return here to rate it.';
-    scene.add.text(panel.right - 64, panel.top + 296, latestLabel, {
+    scene.add.text(panel.right - 64, panel.top + 284, latestLabel, {
       fontFamily: UI_FONT,
       fontSize: '9px',
       fontStyle: UI_BOLD,
@@ -932,12 +934,13 @@ function renderSaveDataOverlay(
       { key: 'replay', label: 'Replay', focus: 'playtestReplay' },
     ];
     ratingRows.forEach(({ key, label, focus }, index) => {
-      const y = panel.top + 340 + index * 38;
+      const y = panel.top + 328 + index * MIN_SUPPORTED_TOUCH_TARGET;
       const enabled = Boolean(state.playtestRunId);
       const focused = state.focus === focus;
       const selected = state.playtestFeedback[key];
-      const rowHit = scene.add.rectangle(panel.cx, y, 574, 32, 0x0b1420, focused ? 0.94 : 0.68)
-        .setStrokeStyle(1, focused ? UI_FIELD.cyan : 0x344b5b, focused ? 0.88 : 0.45)
+      scene.add.rectangle(panel.cx, y, 574, 42, 0x0b1420, focused ? 0.94 : 0.68)
+        .setStrokeStyle(1, focused ? UI_FIELD.cyan : 0x344b5b, focused ? 0.88 : 0.45);
+      const rowHit = scene.add.rectangle(panel.cx, y, 574, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
         .setName(`profile-playtest-feedback-${key}-row`);
       if (enabled) {
         rowHit.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
@@ -957,11 +960,10 @@ function renderSaveDataOverlay(
         color: selected ? UI_FIELD.cyanText : UI_FIELD.muted,
       }).setResolution(2);
       for (let rating = 1; rating <= 5; rating += 1) {
-        const x = panel.right - 246 + (rating - 1) * 43;
+        const x = panel.right - 274 + (rating - 1) * MIN_SUPPORTED_TOUCH_TARGET;
         const chosen = selected === rating;
-        const chip = scene.add.rectangle(x, y, 34, 24, chosen ? UI_FIELD.violet : 0x141b22, chosen ? 0.92 : 0.86)
-          .setStrokeStyle(1, chosen ? 0xf0d8ff : 0x66798a, chosen ? 0.95 : 0.6)
-          .setName(`profile-playtest-feedback-${key}-${rating}`);
+        scene.add.rectangle(x, y, 34, 24, chosen ? UI_FIELD.violet : 0x141b22, chosen ? 0.92 : 0.86)
+          .setStrokeStyle(1, chosen ? 0xf0d8ff : 0x66798a, chosen ? 0.95 : 0.6);
         scene.add.text(x, y - 6, `${rating}`, {
           fontFamily: UI_FONT,
           fontSize: '11px',
@@ -969,7 +971,9 @@ function renderSaveDataOverlay(
           color: enabled ? (chosen ? '#ffffff' : UI_SOFT) : '#596a78',
         }).setResolution(2).setOrigin(0.5, 0);
         if (enabled) {
-          chip.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+          scene.add.rectangle(x, y, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+            .setName(`profile-playtest-feedback-${key}-${rating}`)
+            .setInteractive({ useHandCursor: true }).on('pointerdown', () => {
             setPlaytestRating(scene, state, dependencies, key, rating);
           });
         }
@@ -980,7 +984,7 @@ function renderSaveDataOverlay(
       scene,
       () => {},
       panel.cx,
-      panel.top + 510,
+      panel.bottom - 54,
       230,
       44,
       `Export ${playtestRunCount} Run${playtestRunCount === 1 ? '' : 's'}`,
@@ -990,7 +994,7 @@ function renderSaveDataOverlay(
     );
     exportHit.setName('profile-playtest-export-hit');
     renderProfileFocusRing(scene, exportHit, state.focus === 'playtestExport', 'playtestExport');
-    scene.add.text(panel.cx, panel.top + 539, playtestStatusText(state, playtestRunCount), {
+    scene.add.text(panel.cx, panel.bottom - 16, playtestStatusText(state, playtestRunCount), {
       fontFamily: UI_FONT,
       fontSize: '9px',
       fontStyle: UI_BOLD,
@@ -1095,7 +1099,14 @@ function renderProfileReturnCommand(
     stroke: '#05070c',
     strokeThickness: 3,
   }).setResolution(2).setOrigin(0.5, 0);
-  const hit = scene.add.rectangle(cx, cy, width, height, 0x000000, 0.01).setInteractive({ useHandCursor: true });
+  const hit = scene.add.rectangle(
+    cx,
+    cy,
+    Math.max(width, MIN_SUPPORTED_TOUCH_TARGET),
+    Math.max(height, MIN_SUPPORTED_TOUCH_TARGET),
+    0x000000,
+    0.01,
+  ).setInteractive({ useHandCursor: true });
   hit.on('pointerover', () => {
     frame.setAlpha(0.84);
     label.setColor('#ffffff');

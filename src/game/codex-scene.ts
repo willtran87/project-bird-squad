@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 import {
   addCodexDossierFrame, addCodexEntryFrame, addSupplyArtImage, addUiIconImage, addWaymarkArtImage,
   advanceGameTime, alphaEnemyLibrary, alphaRouteMarkLibrary, alphaRouteMarkSet, alphaSupplyLibrary,
@@ -1045,10 +1046,13 @@ export class CodexScene extends Phaser.Scene {
     const backFrameKey = uiIconAssets['codex-back-command-frame'].key;
     const hasBackFrame = this.textures.exists(backFrameKey);
     const back = this.add.rectangle(backX, 42, 132, 44, 0x122235, hasBackFrame ? 0.14 : 0.96)
-      .setStrokeStyle(2, 0xd8a840, hasBackFrame ? 0.24 : 1)
-      .setInteractive({ useHandCursor: true });
-    back.on('pointerdown', () => { playUiSound('close'); this.scene.start('MenuScene'); });
+      .setStrokeStyle(2, 0xd8a840, hasBackFrame ? 0.24 : 1);
     this.root.add(back);
+    const backHit = this.add.rectangle(backX, 42, 132, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setName('codex-back-hit');
+    backHit.on('pointerdown', () => { playUiSound('close'); this.scene.start('MenuScene'); });
+    this.root.add(backHit);
     if (hasBackFrame) {
       this.textures.get(backFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
       this.root.add(this.add.image(backX, 42, backFrameKey)
@@ -1146,7 +1150,7 @@ export class CodexScene extends Phaser.Scene {
           : typeDef.label === 'Supplies'
             ? supplyCodexIconForLabel(tab.label)
             : undefined;
-        this.renderCodexTab(tx, 144, 100, 30, tab.label, `${tabItems.length}`, active, accent, () => {
+        this.renderCodexTab(tx, 160, 100, 30, tab.label, `${tabItems.length}`, active, accent, () => {
           this.focusZone = 'secondaryTabs';
           playUiSound('confirm');
           this.setActiveSecondaryTab(i);
@@ -1267,10 +1271,13 @@ export class CodexScene extends Phaser.Scene {
     const frameKey = uiIconAssets['codex-close-command-frame'].key;
     const hasFrame = this.textures.exists(frameKey);
     const close = this.add.rectangle(x, y, 38, 38, 0x3d2a2d, hasFrame ? 0.22 : 0.97)
-      .setStrokeStyle(2, 0xff6b57, hasFrame ? 0.38 : 1)
-      .setInteractive({ useHandCursor: true });
-    close.on('pointerdown', onClick);
+      .setStrokeStyle(2, 0xff6b57, hasFrame ? 0.38 : 1);
     this.root.add(close);
+    const closeHit = this.add.rectangle(x, y, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setName('codex-detail-close-hit');
+    closeHit.on('pointerdown', onClick);
+    this.root.add(closeHit);
 
     let frame: Phaser.GameObjects.Image | undefined;
     if (hasFrame) {
@@ -1282,12 +1289,12 @@ export class CodexScene extends Phaser.Scene {
       this.root.add(frame);
     }
 
-    close.on('pointerover', () => {
+    closeHit.on('pointerover', () => {
       close.setFillStyle(0x4d3034, hasFrame ? 0.34 : 1);
       frame?.setAlpha(1);
       frame?.setDisplaySize(48, 48);
     });
-    close.on('pointerout', () => {
+    closeHit.on('pointerout', () => {
       close.setFillStyle(0x3d2a2d, hasFrame ? 0.22 : 0.97);
       frame?.setAlpha(0.92);
       frame?.setDisplaySize(46, 46);
@@ -1302,23 +1309,23 @@ export class CodexScene extends Phaser.Scene {
   private codexFocusGeometry(): CodexFocusGeometry | undefined {
     this.normalizeCodexFocus();
     if (this.focusZone === 'entries') return this.entryFocusGeometry();
-    if (this.focusZone === 'back') return { x: GAME_WIDTH - 76, y: 42, width: 140, height: 52 };
+    if (this.focusZone === 'back') return { x: GAME_WIDTH - 76, y: 42, width: 140, height: MIN_SUPPORTED_TOUCH_TARGET };
     if (this.focusZone === 'detail') {
       const point = this.detailClosePoint ?? { x: GAME_WIDTH - 206, y: 74 };
-      return { x: point.x, y: point.y, width: 54, height: 54 };
+      return { x: point.x, y: point.y, width: MIN_SUPPORTED_TOUCH_TARGET, height: MIN_SUPPORTED_TOUCH_TARGET };
     }
     if (this.focusZone === 'sections') {
       const index = Math.max(0, this.sections.findIndex((section) => section.id === this.activeSection));
-      return { x: 568 + index * 110, y: 42, width: 110, height: 48 };
+      return { x: 568 + index * 110, y: 42, width: 110, height: MIN_SUPPORTED_TOUCH_TARGET };
     }
     if (this.focusZone === 'primaryTabs') {
       const index = this.activePrimaryTabIndex();
-      if (this.activeSection === 'cards') return { x: 64 + index * 124, y: 116, width: 122, height: 46 };
-      if (this.activeSection === 'items') return { x: 72 + index * 132, y: 102, width: 126, height: 38 };
-      return { x: 72 + index * 150, y: 116, width: 146, height: 46 };
+      if (this.activeSection === 'cards') return { x: 64 + index * 124, y: 116, width: 122, height: MIN_SUPPORTED_TOUCH_TARGET };
+      if (this.activeSection === 'items') return { x: 72 + index * 132, y: 102, width: 126, height: MIN_SUPPORTED_TOUCH_TARGET };
+      return { x: 72 + index * 150, y: 116, width: 146, height: MIN_SUPPORTED_TOUCH_TARGET };
     }
     if (this.focusZone === 'secondaryTabs') {
-      return { x: 62 + this.activeItemFilterTab * 108, y: 144, width: 106, height: 36 };
+      return { x: 62 + this.activeItemFilterTab * 108, y: 160, width: 106, height: MIN_SUPPORTED_TOUCH_TARGET };
     }
     return undefined;
   }
@@ -1421,12 +1428,16 @@ export class CodexScene extends Phaser.Scene {
     const tabFrameKey = uiIconAssets['codex-tab-frame'].key;
     const hasTabFrame = this.textures.exists(tabFrameKey);
     const rect = this.add.rectangle(x, y, w, h, fill, hasTabFrame ? (active ? 0.22 : 0.1) : (active ? 1 : 0.9))
-      .setStrokeStyle(active ? 2 : 1, active ? accent : 0x2a3a4d, hasTabFrame ? (active ? 0.36 : 0.18) : (active ? 1 : 0.82))
-      .setInteractive({ useHandCursor: true });
-    rect.on('pointerover', () => rect.setFillStyle(active ? 0x243954 : 0x121d2b, hasTabFrame ? 0.24 : 0.98));
-    rect.on('pointerout', () => rect.setFillStyle(fill, hasTabFrame ? (active ? 0.22 : 0.1) : (active ? 1 : 0.9)));
-    rect.on('pointerdown', onClick);
+      .setStrokeStyle(active ? 2 : 1, active ? accent : 0x2a3a4d, hasTabFrame ? (active ? 0.36 : 0.18) : (active ? 1 : 0.82));
     this.root.add(rect);
+    const hit = this.add.rectangle(x, y, Math.max(w, MIN_SUPPORTED_TOUCH_TARGET), MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setName('codex-tab-hit')
+      .setData('label', label);
+    hit.on('pointerover', () => rect.setFillStyle(active ? 0x243954 : 0x121d2b, hasTabFrame ? 0.24 : 0.98));
+    hit.on('pointerout', () => rect.setFillStyle(fill, hasTabFrame ? (active ? 0.22 : 0.1) : (active ? 1 : 0.9)));
+    hit.on('pointerdown', onClick);
+    this.root.add(hit);
     if (hasTabFrame) {
       this.textures.get(tabFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
       this.root.add(this.add.image(x, y, tabFrameKey)

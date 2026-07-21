@@ -655,7 +655,14 @@ focus region, so compact pause, onboarding, Profile, and fallback commands keep
 their authored proportions without sacrificing the touch floor. Deck and pile
 review lists show seven comfortably spaced rows instead of eleven compressed
 rows, with independent 58-pixel row and scroll targets; the card-reward Scrap
-fallback uses the same minimum without enlarging its command artwork.
+fallback uses the same minimum without enlarging its command artwork. Codex
+section/type/filter navigation, Back, and dossier Close also use independent
+58-pixel hit regions. Flock Record badge tabs and the local playtest rating
+matrix use the same floor, with the rating panel reflowed so direct 1-5 choices
+remain separated at the minimum viewport. Core route decisions now follow the
+same contract: abandon-run confirmation, market category/service/refresh
+controls, reward Claim, and run-outcome commands retain compact artwork over
+independent 58-game-pixel interaction regions.
 
 Acceptance:
 

@@ -2630,3 +2630,37 @@ seven-row Deck Review with matching text state and no browser errors under
 `.artifacts/shared-review-client-final/`. Remaining release evidence is still
 five observed fresh-player sessions through `docs/game/playtest-runbook.md`.
 App entry is 659.7 KiB and combined boot code is 688.2 KiB.
+
+Current follow-up: Codex and Flock Record minimum-touch closure. Exact 1000x560
+measurement found Codex navigation as low as 23-34 CSS pixels, Flock Record
+badge tabs at 43.6, playtest rating rows at 24.9, and direct rating chips at
+26.4x18.7. Codex section/type/filter, Back, and dossier Close controls now use
+independent 58-game-pixel hit regions; the secondary item-filter row was moved
+down to keep the enlarged targets non-overlapping. The local playtest panel is
+taller and gives all four rows plus every direct 1-5 choice a separated 58x58
+target without inflating the compact chip art. A new exact-boundary regression
+measures 18 Codex navigation controls, dossier Close, two Profile tabs, and 27
+playtest/save controls. The inspected minimum-viewport captures remain readable
+and unclipped. Required production clients reached Supplies / Plan and the
+Contracts tab through real pointer navigation with matching text state and no
+browser errors under `.artifacts/optional-touch-codex-client/` and
+`.artifacts/optional-touch-profile-client/`. Strict TypeScript, production
+build, five focused Codex/Profile regressions, and full release validation pass,
+including all nine sequencing scenarios. App entry remains 659.7 KiB and
+combined boot code remains 688.2 KiB. Remaining release evidence is still five
+observed fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+Current follow-up: Core route-decision minimum-touch closure. Exact 1000x560
+measurement found abandon confirmation at 42 CSS pixels high, route reward
+Claim at 29.6, market tabs at 26.4, services/refresh at 43.6, and run-outcome
+commands at 40.4. Exit confirmation, Market category/service/refresh, reward
+Claim, and outcome commands now separate compact authored artwork from
+independent 58-game-pixel hit regions. One exact-boundary traversal measures
+all affected targets across four screens; inspected captures remain readable,
+separated, and unclipped. The required production client reached a live paused
+route with matching text state and no browser errors under
+`.artifacts/core-route-touch-client/`. Strict TypeScript, five focused
+regressions, production build, and full release validation pass, including all
+nine sequencing scenarios. App entry is 660.4 KiB and combined boot code is
+688.8 KiB. Remaining release evidence is still five observed fresh-player
+sessions through `docs/game/playtest-runbook.md`.

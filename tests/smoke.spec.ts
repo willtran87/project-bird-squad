@@ -8797,6 +8797,216 @@ test('deck, pile, and reward commands keep touch targets at the minimum supporte
   await page.screenshot({ path: '.artifacts/test-results/min-supported/card-reward-1000x560.png' });
 });
 
+test('Codex and Flock Record controls keep touch targets at the minimum supported viewport', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await boot(page);
+  const targetSnapshot = (sceneKey: string, patternSource: string) => page.evaluate(({ key, source }) => {
+    const scene: any = window.__birdSquadGame.scene.getScene(key);
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const canvas = document.querySelector('canvas')!.getBoundingClientRect();
+    const scale = canvas.width / 1280;
+    const pattern = new RegExp(source);
+    return collect(scene.children.list)
+      .filter((child: any) => child.input?.enabled && pattern.test(child.name ?? ''))
+      .map((child: any) => ({
+        name: child.name,
+        label: child.getData?.('label') ?? '',
+        cssWidth: child.displayWidth * scale,
+        cssHeight: child.displayHeight * scale,
+      }));
+  }, { key: sceneKey, source: patternSource });
+
+  await page.evaluate(async () => {
+    const codex: any = await window.__birdSquadStartScene!('CodexScene');
+    codex.activeSection = 'items';
+    codex.activeItemTypeTab = 2;
+    codex.activeItemFilterTab = 0;
+    codex.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return collect(codex.children.list)
+      .filter((child: any) => child.name === 'codex-tab-hit' && child.input?.enabled).length === 17;
+  });
+  const codexTargets = await targetSnapshot('CodexScene', '^(codex-tab-hit|codex-back-hit)$');
+  expect(codexTargets.filter((target) => target.name === 'codex-tab-hit')).toHaveLength(17);
+  expect(codexTargets.filter((target) => target.name === 'codex-back-hit')).toHaveLength(1);
+  expect(codexTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/codex-items-1000x560.png' });
+
+  await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const firstSupply = codex.currentCodexItems()[0];
+    if (!firstSupply) throw new Error('Missing Codex Supply entry');
+    codex.openCodexDetail(firstSupply.id);
+  });
+  await page.waitForFunction(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return collect(codex.children.list)
+      .some((child: any) => child.name === 'codex-detail-close-hit' && child.input?.enabled);
+  });
+  const codexClose = await targetSnapshot('CodexScene', '^codex-detail-close-hit$');
+  expect(codexClose).toHaveLength(1);
+  expect(codexClose[0].cssWidth).toBeGreaterThanOrEqual(44);
+  expect(codexClose[0].cssHeight).toBeGreaterThanOrEqual(44);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/codex-detail-1000x560.png' });
+
+  const exportedRun = {
+    id: 'touch-session', seed: 'touch-session', result: 'loss', leaderId: 'fledgling', difficulty: 0,
+    runMode: 'quick', mapId: 'map_0', finalNodeId: 'm0_street_1', turnsTaken: 2, durationMs: 60_000,
+    currentCohesion: 0, maxCohesion: 38, scrapEarned: 12, scrapSpent: 0, finalScrap: 52,
+    path: ['m0_street_1'], deck: [], routeMarks: [], suppliesUsed: [], signals: [], cardRewards: [],
+    routeDecisions: [], combatResults: [], districtContracts: [], seenEnemyMoves: [], combatPace: 'standard',
+    firstFlightGuide: { completed: false, skipped: 0 },
+  };
+  await page.evaluate((run) => {
+    const raw = JSON.stringify([run]);
+    localStorage.setItem('birdsquad.runs', raw);
+    localStorage.setItem('birdsquad.runs.backup', raw);
+  }, exportedRun);
+  await boot(page, '/?playtest=1');
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  const profileTabs = await targetSnapshot('ProfileScene', '^profile-(achievements|contracts)-tab-hit$');
+  expect(profileTabs).toHaveLength(2);
+  expect(profileTabs.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-save-data-hit');
+  await page.waitForFunction(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    return profile.children.list.some((child: any) => (
+      child.name === 'profile-playtest-feedback-replay-5' && child.input?.enabled
+    ));
+  });
+  const profileTargets = await targetSnapshot(
+    'ProfileScene',
+    '^(profile-playtest-feedback-(fun|fairness|clarity|replay)-(row|[1-5])|profile-playtest-export-hit|profile-save-(download|restore-file)-hit)$',
+  );
+  expect(profileTargets).toHaveLength(27);
+  expect(profileTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/profile-playtest-1000x560.png' });
+});
+
+test('route decisions and outcome commands keep touch targets at the minimum supported viewport', async ({ page }) => {
+  test.setTimeout(150_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await boot(page);
+  const targetSnapshot = (sceneKey: string, patternSource: string) => page.evaluate(({ key, source }) => {
+    const scene: any = window.__birdSquadGame.scene.getScene(key);
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const canvas = document.querySelector('canvas')!.getBoundingClientRect();
+    const scale = canvas.width / 1280;
+    const pattern = new RegExp(source);
+    return collect(scene.children.list)
+      .filter((child: any) => child.input?.enabled && pattern.test(child.name ?? ''))
+      .map((child: any) => ({
+        name: child.name,
+        label: child.getData?.('label') ?? '',
+        cssWidth: child.displayWidth * scale,
+        cssHeight: child.displayHeight * scale,
+      }));
+  }, { key: sceneKey, source: patternSource });
+
+  await page.evaluate(async () => {
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {});
+    route.input.keyboard.emit('keydown-ESC');
+  });
+  await page.waitForFunction(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.children.list.some((child: any) => child.name === 'route-confirm-exit-keep-hit' && child.input?.enabled);
+  });
+  const confirmTargets = await targetSnapshot('RouteScene', '^route-confirm-exit-(keep|abandon)-hit$');
+  expect(confirmTargets).toHaveLength(2);
+  expect(confirmTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/route-confirm-exit-1000x560.png' });
+
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.input.keyboard.emit('keydown-ESC');
+    route.runState.scrap = 999;
+    const market = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type === 'market')
+      ?? window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type !== 'boss');
+    market.type = 'market';
+    route.openMarketNode(market);
+    route.marketCategory = 'services';
+    route.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.children.list.filter((child: any) => child.name === 'market-category-tab-hit' && child.input?.enabled).length === 4
+      && route.children.list.some((child: any) => child.name === 'market-service-hit' && child.input?.enabled)
+      && route.children.list.some((child: any) => child.name === 'market-refresh-hit' && child.input?.enabled);
+  });
+  const marketTargets = await targetSnapshot('RouteScene', '^(market-category-tab-hit|market-service-hit|market-refresh-hit)$');
+  expect(marketTargets.filter((target) => target.name === 'market-category-tab-hit')).toHaveLength(4);
+  expect(marketTargets.filter((target) => target.name === 'market-service-hit').length).toBeGreaterThanOrEqual(1);
+  expect(marketTargets.filter((target) => target.name === 'market-refresh-hit')).toHaveLength(1);
+  expect(marketTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/route-market-services-1000x560.png' });
+
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.marketOpen = false;
+    route.marketNodeId = undefined;
+    const node = window.__birdSquadCurrentMap!().nodes.find((candidate: any) => candidate.type === 'basin')
+      ?? window.__birdSquadCurrentMap!().nodes.find((candidate: any) => candidate.type === 'signal');
+    const choice = route.nodeChoiceList(node).find((candidate: any) => (
+      !candidate.locked
+      && candidate.effects.length > 0
+      && !candidate.effects.some((effect: string) => /addCard|preenCard|releaseCard/.test(effect))
+    ));
+    if (!choice) throw new Error('Missing non-card route reward choice');
+    route.nodeChoiceNodeId = node.id;
+    route.pendingRouteReward = route.preparePendingRouteReward(node, choice, structuredClone(route.runState));
+    route.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.children.list.some((child: any) => child.name === 'route-reward-claim-hit' && child.input?.enabled);
+  });
+  const rewardClaim = await targetSnapshot('RouteScene', '^route-reward-claim-hit$');
+  expect(rewardClaim).toHaveLength(1);
+  expect(rewardClaim[0].cssWidth).toBeGreaterThanOrEqual(44);
+  expect(rewardClaim[0].cssHeight).toBeGreaterThanOrEqual(44);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/route-reward-claim-1000x560.png' });
+
+  await page.evaluate(async () => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const battle: any = await window.__birdSquadStartScene!('BattleScene', {
+      routeNodeId: 'm1_entry',
+      runState: route.runState,
+    });
+    battle.mode = 'defeat';
+    battle.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return collect(battle.children.list)
+      .filter((child: any) => child.name === 'run-outcome-command-hit' && child.input?.enabled).length === 2;
+  });
+  const outcomeTargets = await targetSnapshot('BattleScene', '^run-outcome-command-hit$');
+  expect(outcomeTargets).toHaveLength(2);
+  expect(outcomeTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/run-outcome-1000x560.png' });
+});
+
 test('high contrast applies before scene boot and persists across reloads', async ({ page }) => {
   await boot(page);
   await page.evaluate(() => localStorage.setItem('birdsquad.visualContrast', 'high'));
