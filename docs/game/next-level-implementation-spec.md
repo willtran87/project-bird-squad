@@ -699,6 +699,13 @@ interface RunSummary {
   signals: SignalChoiceEvent[];
   markets: MarketPurchaseEvent[];
   combatResults: CombatResultSummary[];
+  experienceFeedback?: {
+    fun?: number;
+    fairness?: number;
+    clarity?: number;
+    replay?: number;
+    updatedAt?: string;
+  };
 }
 ```
 
@@ -746,6 +753,7 @@ Aggregate locally from run summaries:
 - Market purchases
 - Route Marks acquired
 - boss losses by cause
+- complete 1–5 human ratings for fun, fairness, clarity, and replay intent
 
 Acceptance criteria:
 

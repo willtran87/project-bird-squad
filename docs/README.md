@@ -15,8 +15,13 @@ should be recorded.
 | Implement the route map, economy, Signals, Markets, or bosses | `docs/game/run-design-spec.md` |
 | Build or tune the first playable slice | `docs/game/alpha-run-spec.md` |
 | Understand how code, data, scenes, and validators fit together | `docs/project/runtime-architecture.md` |
+| Plan remaining runtime, bundle, and animation-smoothness work | `docs/project/runtime-remaining-work-plan.md` |
 | Plan the next quality and implementation push | `docs/game/next-level-implementation-spec.md` |
+| Review the current fun, beauty, onboarding, pacing, and retention audit | `docs/game/game-experience-audit.md` |
+| Run and aggregate observed first-run sessions | `docs/game/playtest-runbook.md` |
 | Work on visual identity, card art, prompts, or style rules | `docs/art/art-bible.md` |
+| Add, replace, or audit route, battlefield, landmark, market, or map-node art | `docs/art/world-asset-contract.md` |
+| Plan future imagegen/chroma-key asset packs | `docs/art/imagegen-asset-roadmap.md` |
 | Generate or review enemy art | `docs/art/enemy-art-bible.md` |
 | Adapt external implementation patterns | `docs/game/spire-codex-adaptation-study.md` |
 | Review historical decisions and handoff notes | `docs/project/progress.md` |
@@ -30,6 +35,7 @@ should be recorded.
 | `docs/game/run-design-spec.md` | Run structure, route maps, node types, Waymarks, Scrap, Markets, Signals, Supplies, Snags, Rival Crews, Basin/Nest rules, and bosses. | Alpha-only card lists and exact first-slice numbers. |
 | `docs/game/alpha-run-spec.md` | Map 1 Alpha scope, starter deck, reward pool, Alpha enemies, boss, Waymarks, supplies, Signals, Snags, market prices, and tuning targets. | Full-run final balance. |
 | `docs/art/art-bible.md` | Visual identity, suit aesthetics, prompt standards, card-art production rules, and runtime asset expectations. | Gameplay rules except where art needs them for context. |
+| `docs/art/world-asset-contract.md` | Canonical runtime world-art inventory, retired paths, and replacement validation. | Card, enemy, or gameplay data. |
 | `docs/art/aviary-generation-runbook.md` | Aviary card imagegen, master-border compositing, and QA workflow. | Minor Arcana suit generation details or gameplay tuning. |
 | `docs/art/enemy-art-bible.md` | Enemy art visual language, non-humanoid animal constraints, and prompt pattern for enemy concepts. | Enemy combat tuning or encounter rewards. |
 | `docs/project/runtime-architecture.md` | Current runtime wiring, scene ownership, data flow, effect-runner boundaries, and validation/build gates. | Product direction, balance numbers, or art direction. |

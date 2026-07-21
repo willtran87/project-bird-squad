@@ -15,8 +15,12 @@ const budgets = [
   { label: 'card icon WebP', dir: 'assets/runtime/cards/icon', pattern: /\.webp$/i, maxKb: 80 },
   { label: 'card border WebP', dir: 'assets/runtime/cards/borders', pattern: /\.webp$/i, maxKb: 400 },
   { label: 'waymark icon WebP', dir: 'assets/runtime/waymarks/icons', pattern: /\.webp$/i, maxKb: 160 },
+  { label: 'waymark thumbnail WebP', dir: 'assets/runtime/waymarks/thumb', pattern: /\.webp$/i, maxKb: 32 },
+  { label: 'supply thumbnail WebP', dir: 'assets/runtime/supplies/thumb', pattern: /\.webp$/i, maxKb: 32 },
   { label: 'route node icon WebP', dir: 'assets/runtime/map-icons/icons', pattern: /\.webp$/i, maxKb: 32 },
   { label: 'battlefield backdrop WebP', dir: 'assets/runtime/backdrops', pattern: /\.webp$/i, maxKb: 420 },
+  { label: 'runtime FX WebP', dir: 'assets/runtime/fx', pattern: /\.webp$/i, maxKb: 140 },
+  { label: 'runtime UI WebP', dir: 'assets/runtime/ui/icons', pattern: /\.webp$/i, maxKb: 120 },
 ];
 
 function listFiles(dir) {
@@ -30,6 +34,26 @@ function listFiles(dir) {
 
 const failures = [];
 let checked = 0;
+
+const fxDir = path.join(root, 'assets/runtime/fx');
+if (fs.existsSync(fxDir)) {
+  const pngNames = fs.readdirSync(fxDir).filter((name) => name.endsWith('.png')).map((name) => name.replace(/\.png$/i, '')).sort();
+  const webpNames = fs.readdirSync(fxDir).filter((name) => name.endsWith('.webp')).map((name) => name.replace(/\.webp$/i, '')).sort();
+  const missingWebp = pngNames.filter((name) => !webpNames.includes(name));
+  const staleWebp = webpNames.filter((name) => !pngNames.includes(name));
+  missingWebp.forEach((name) => failures.push(`assets/runtime/fx/${name}.webp: missing optimized counterpart`));
+  staleWebp.forEach((name) => failures.push(`assets/runtime/fx/${name}.webp: no matching PNG source`));
+}
+
+const uiIconDir = path.join(root, 'assets/runtime/ui/icons');
+if (fs.existsSync(uiIconDir)) {
+  const pngNames = fs.readdirSync(uiIconDir).filter((name) => name.endsWith('.png')).map((name) => name.replace(/\.png$/i, '')).sort();
+  const webpNames = fs.readdirSync(uiIconDir).filter((name) => name.endsWith('.webp')).map((name) => name.replace(/\.webp$/i, '')).sort();
+  const missingWebp = pngNames.filter((name) => !webpNames.includes(name));
+  const staleWebp = webpNames.filter((name) => !pngNames.includes(name));
+  missingWebp.forEach((name) => failures.push(`assets/runtime/ui/icons/${name}.webp: missing optimized counterpart`));
+  staleWebp.forEach((name) => failures.push(`assets/runtime/ui/icons/${name}.webp: no matching PNG source`));
+}
 
 for (const budget of budgets) {
   const dir = path.join(root, budget.dir);

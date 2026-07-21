@@ -63,9 +63,14 @@ conversion, intent delay/freeze, temporary cards, or all-four-suits payoffs.
 | Flock Stats | Passive stats supplied by owned cards. |
 | Resonance | Plumes tempo resource. Foundation cap target is 5. |
 | Winded | Enemy deals roughly 25% less attack damage while active. |
-| Molt | The next non-Molt card is cheaper and stronger. |
+| Molt | A whole-turn transform stance: non-Molt cards cost 1 less, use their alternate Molt abilities, and channel Molt Power. |
 | Open Sky | Vulnerable aftermath after Molt; incoming damage is increased. |
 | Open Sky Guard | Reduces or blocks Open Sky backlash. |
+| Flow | Formation momentum. Card effects build it at most once per card; unblocked damage resets it, while a fully blocked hit preserves it. |
+| Hold | The steady formation between Scatter and Surge, with no stat modifier. |
+| Surge | Full Flow. Adds 1 to outgoing damage and generated Cover. |
+| Scatter | Below 34% Cohesion, outgoing damage and generated Cover are reduced to 75%. |
+| Regroup | Leaving Scatter through recovery restores 4 additional Cohesion and returns the flock to Hold or Surge. |
 
 ## Combat Loop
 
@@ -80,6 +85,26 @@ conversion, intent delay/freeze, temporary cards, or all-four-suits payoffs.
 8. Enemies resolve their Tells.
 9. Status durations tick.
 10. If all enemies are defeated, resolve route/reward flow.
+
+Non-boss encounters may also carry one deterministic optional objective. The
+current objective pool rewards different visible plans: preserve Flow, trigger
+Surge, finish with Cover, avoid Cohesion loss, avoid overextension, win by a
+Beat deadline, defeat a priority enemy by its deadline, bank Wingbeat before a
+Roost, or block a district-scaled amount of damage. Pools reinforce district
+identity: Rooftops teach restraint and formation, Canals emphasize reserves
+and protection, Signal Spires emphasize Flow/Surge timing, and High Roost asks
+for heavier guards or efficient clears. The compact goal plate reports live
+progress and exposes the full rule on hover. Objectives award bonus Scrap and
+never turn a combat victory into a loss. Priority objectives also mark the
+specific enemy directly above its Cohesion rail, beside the Tell, with the
+remaining Beat window; the marker changes to `OBJECTIVE MISSED` when the
+deadline passes while the fight remains playable.
+
+When any objective changes from active to complete or failed, the transition is
+acknowledged immediately and once: a compact generated callout shows either
+`GOAL COMPLETE +Scrap` or `GOAL MISSED`, while distinct success/miss audio cues
+mirror the result. Repeated redraws cannot replay the callout or cue. This
+feedback is informational and does not interrupt card input or enemy sequencing.
 
 Good turns should ask the player to choose between at least two attractive
 options:
@@ -247,7 +272,7 @@ Formula order:
 3. Resolve effects in written order.
 4. Add Flock `Damage` to `damage` and `damageAll` values.
 5. Add Flock `Cover` to `gainCover` values.
-6. Add Molt Power to the next non-Molt damage, Cover, or heal value.
+6. If the card is using its Molt ability, add Molt Power once to its first positive damage, Cover, or recovery value. `damageAll` receives half Molt Power, rounded up, per target.
 7. Clamp healing at maximum Cohesion.
 8. Apply post-effect triggers such as `defeatsEnemy`.
 
@@ -288,7 +313,7 @@ Status rules:
 | Status | Owner | Duration Rule | Stacking Rule |
 | --- | --- | --- | --- |
 | Winded | Enemy | Ticks down after the enemy acts. | Higher value extends duration/stacks; foundation tuning treats it as roughly 25% attack reduction. |
-| Molt | Flock | Ends after the next non-Molt card resolves. | Re-entering Molt refreshes the pending boosted card. |
+| Molt | Flock | Lasts through the current player turn and ends at Roost. | Re-entering Molt keeps the stance active without repeating first-entry triggers. |
 | Open Sky | Flock | Ticks down after enemy turns. | Duration can refresh; incoming damage increase does not stack unless a later spec adds it. |
 | Open Sky Guard | Flock | Lasts for the current combat unless spent. | Each point reduces one Open Sky damage increase by 1. |
 
@@ -353,7 +378,7 @@ Foundation stats:
 | Regen | Heals at the start of player turn. | Basins |
 | Draw | Increases player turn draw target. | Plumes, Nests |
 | Resonance | Grants start-of-turn Resonance, capped by Resonance cap. | Plumes |
-| Molt Power | Increases Molt value bonus. | Molt, Legend |
+| Molt Power | Increases the once-per-card value bonus while a card uses its alternate Molt ability. | Molt, Legend |
 | Open Sky Guard | Reduces or blocks Open Sky damage increase. | Basins, Molt, Legend |
 
 Suit boundaries:
@@ -388,13 +413,13 @@ Molt is the signature reversal mechanic.
 Foundation Molt rule:
 
 1. A card or effect enters Molt.
-2. The next non-Molt card costs 1 less, minimum 0.
-3. If that card deals damage, it gains the Molt value bonus.
-4. If that card gains Cover or heals, it gains the Molt value bonus.
-5. Molt ends after that non-Molt card resolves.
-6. The Flock enters Open Sky for 2 enemy turns.
+2. Molt remains active for the rest of the current player turn. Each non-Molt card costs 1 less, minimum 0.
+3. Every card resolves its alternate `moltEffects` contract while Molting. Its target, role, and effect can differ from the normal contract.
+4. Each Molt-active card adds Molt Power once to its first positive damage, Cover, or recovery effect. Later eligible lines on that card receive no second bonus.
+5. Area damage adds half Molt Power, rounded up, to every target. A zero-value Resonance or Winded burst does not consume the bonus, so a later eligible effect can still use it.
+6. Molt ends when the player chooses Roost. The Flock enters Open Sky for that enemy phase.
 
-Base Molt value bonus is `+2`, increased by Molt Power.
+Base Molt Power is `+2`, increased by the deck's Molt Power Flock Stat. The selected-card preview and live resolver must use the same total and eligibility rule.
 
 Open Sky:
 
@@ -453,3 +478,130 @@ Core gameplay is ready when:
 - Preen improves active effect and Flock Stat line
 - Molt creates at least one memorable decision per fight
 - no parked mechanics are required for the foundation cards to work
+
+## Reward Draft Composition
+
+Combat card rewards are composed rather than drawn as three interchangeable random cards:
+
+1. one card addresses a visible deck need or missing keystone
+2. one card reinforces the deck's dominant suit
+3. one weighted wildcard preserves surprise and pivot potential
+
+The player may still skip the draft for Scrap. Duplicate singleton cards are never offered.
+
+## Boss Dossiers
+
+Boss knowledge is horizontal progression. When a named boss move finishes its
+impact beat and resolves its effects, the account records that boss-and-move
+pair once. Windups that are interrupted, previews, and duplicated observations
+do not add progress.
+
+Codex reveals only witnessed boss tactics and presents the remaining rows as
+undocumented. Run outcomes call out newly observed tactics and prioritize the
+most recently encountered incomplete dossier as a concrete next-flight goal.
+Dossier completion may award records, lore, presentation, or cosmetic rewards;
+it must not grant permanent combat power.
+
+## Card Discovery Collections
+
+The Codex groups discovered cards into Major Arcana, Aviary, Plumes, Quills,
+Basins, Nests, and Snags collections. Progress is derived only from card IDs the
+player has encountered; locked cards remain hidden and no separate collection
+currency exists.
+
+Each collection marks progress at 25 percent (`Trail Mark`), 50 percent (`Field
+Notes`), and 100 percent (`Set Seal`). When no unfinished boss dossier takes
+priority, the outcome screen may surface the nearest collection milestone as
+the next-flight goal. These milestones are informational and cosmetic only and
+must never grant permanent combat stats.
+
+## Input Baseline
+
+- Mouse and touch retain direct manipulation.
+- Settings > Controls exposes two six-action keyboard pages. Play defaults are Enter Confirm, Esc Back, Left/Right Previous/Next, `P` Pause, and `R` Roost. Utility defaults are Space Hustle, `X` Skip Reward, `M` Mute, `F` Full Screen, `S` Settings, and `H` How to Play.
+- Remapping takes effect immediately across active scenes, persists locally when browser storage is available, and swaps conflicting assignments so every configurable action remains reachable. Reset Defaults restores the complete map.
+- Keyboard number keys `1-9` remain reserved for direct hand-card and reward-slot selection.
+- Route arrows or Tab cycle reachable nodes; the configured Confirm action commits; `1-3` chooses a district contract.
+- In combat, configured Previous/Next or Tab moves the visible hand/reward focus, Confirm plays or claims the focused choice, physical Up/Down retargets living enemies when those keys are not remapped, and the separate Roost action ends the Beat. Confirm must never silently substitute for Roost. The current focus, target, bindings, and choice position are exposed through text state.
+- Codex uses Tab or D-pad Up/Down to move between section tabs, collection filters, entries, and Back. Configured Previous/Next or D-pad Left/Right changes the focused section/filter or moves through the entry grid; Confirm/A opens or closes a dossier, and Back/B closes the dossier or returns to title. Grid focus scrolls into view automatically.
+- Standard controllers use D-pad Left/Right for hand/reward choices, D-pad Up/Down or shoulder buttons to retarget, A to confirm/play, B to dismiss or resume, Y to Roost, X to skip a card reward, and Start to pause on the route or in combat.
+- Input actions must pass through the same animation and modal locks as pointer actions.
+
+## Visual, Graphics, And Motion Preferences
+
+- Motion is an accessibility preference with System, Full, and Reduced modes. It governs animation behavior and presentation timing without changing combat math.
+- Contrast is a visual-accessibility preference with Standard and High modes. High increases luminance separation across the complete playfield so text, controls, status rails, and active targets stand apart without replacing authored art or changing game rules.
+- Screen Reader is an assistive-technology preference with Off and On modes.
+  On mirrors current focus, route selection, combat resources, selected-card
+  rules/targeting, rewards, Codex browsing/dossiers, and major overlays through a polite DOM live region.
+  It is presentation-only and defaults Off.
+- Effects is a rendering-quality preference with Auto, Full, and Lean modes. Auto selects Lean when Save Data is active or the browser reports constrained memory/CPU capacity; otherwise it selects Full.
+- Lean removes passive title particles, reduces route set-piece ambience, halves optional particle density, caps concurrent combat particle bursts at two, and renders a smaller static combat-atmosphere field.
+- Primary card and enemy attack art, wind-up/release/impact beats, intent tells, hit confirmation, reward choices, and all interactive controls remain present in every Effects mode.
+- Effects quality must never change combat sequencing, animation locks, damage timing, enemy pacing, random outcomes, or balance.
+- Contrast and Effects preferences persist locally when browser storage is available and remain usable for the current session when storage is blocked.
+
+## Visual Hierarchy
+
+Bird Squad keeps its enamel, brass, cyan-light, tarot, and rooftop identity while limiting simultaneous focal elements:
+
+- one ornate focal surface carries the current decision
+- active information may use up to two supporting rails
+- utilities and inactive information use quiet icons, thin borders, lower saturation, or progressive disclosure
+- inactive route nodes recede until reachable; boss preparation appears only when the boss becomes relevant
+- combat shows completed suit keystones rather than four permanent suit counters
+- the combat log presents one recent event, with history available on hover
+- reward and outcome ceremonies do not render the battlefield hand, piles, enemies, or command UI underneath
+- Markets expose one of Cards, Waymarks, Supplies, or Services at a time
+- a combat beat may run one primary generated effect, with secondary particles and glow subject to concurrency budgets
+- title setup keeps the selected Leader ornate while available alternatives are restrained and locked Leaders become quiet silhouettes
+- route HUDs omit combat-only metrics; combat HUDs omit zero-value Cover and Resonance until those systems become active
+- unselected hand cards show a compact two-line effect while the selected card carries the full rules treatment
+- card rewards surface the three most useful deck signals rather than presenting every diagnostic at equal weight
+- focused Market categories use a local merchandise scrim; Services use labeled rows instead of floating icon-price pairs
+- passive ornament does not pulse continuously; ambient motion yields to selection, combat, and reward feedback
+
+### District Route Identity
+
+Each district owns a dedicated 16:9 world backdrop for its route. The artwork
+keeps its central traversal field low-contrast and moves skyline, lighting, and
+recognizable district landmarks toward the perimeter, where they establish
+place without competing with nodes or connections. Route nodes sit directly on
+this district scene inside the shared map frame; there is no separate planning
+board or laminated backing.
+
+Only Rooftop Blocks is part of the initial boot set. Later district backdrops
+load through the lazy route-art module when RouteScene enters that map. Route
+readiness telemetry reports the selected backdrop key plus loaded and rendered
+state so production tests can reject stale or mismatched district art.
+
+## First Flight Guide
+
+New local profiles begin with an optional, persistent decision guide:
+
+1. Route: choose a reachable node, read Gain/Risk, and Take Route.
+2. Card: spend Wingbeats, build Flow, and preview the legal target/result.
+3. Roost: end the beat and read `Incoming - Cover = Cohesion` before enemies resolve.
+4. Reward: compare the three strongest deck signals and treat Skip as a valid deckbuilding choice.
+
+Only one guide step is active at a time. The guide never disables legal alternatives. How to Play exposes `Skip Guide` while active and `Replay Guide` after skipping or completion. Local guide telemetry retains counters for route commits, cards played, Roosts, rewards resolved, steps seen, skips, and replays.
+
+## Replay Flight
+
+Every win and defeat exposes a true rematch rather than a default-run reset. `Replay Flight` starts a clean run with the finished flight's Leader, Ascension tier, Quick/Full length, and exact procedural route seed. Deck changes, route progress, Scrap, Supplies, Waymarks, and damage do not carry into the rematch.
+
+The outcome report shows the flight code beside the replay promise. Activating the flight code copies a shareable route link containing the exact seed and Quick/Full length. Opening that link presents `Fly Shared Route` on the title screen and launches the same route while leaving Leader and unlocked Ascension selection under the recipient's control; challenge links never bypass progression locks.
+
+## Leader Personal Records
+
+Every winning flight records a clear against its Leader, Full/Quick length, and
+Ascension tier. The record stores clear count and fastest total flight beats;
+the existing global Fastest statistic remains a final-boss record for legacy
+achievement semantics. First clears and faster tier clears appear as outcome
+progress, while slower repeat clears increase the clear count without claiming
+a new record. The Profile shows each unlocked Leader's highest Full Ascension
+clear and fastest Full and Quick flight. Save sanitization rejects unknown
+Leaders, modes, and out-of-range tiers, and older accounts migrate with an empty
+record table rather than fabricated history.
+
+Pointer activation and Enter confirm the local rematch; Escape returns to the main menu. This keeps retry intent explicit while preserving the strategic value of learning and sharing a route.

@@ -17,10 +17,12 @@ export default defineConfig(({ command }) => ({
     chunkSizeWarningLimit: 1400,
     minify: 'terser',
     terserOptions: {
+      ecma: 2020,
       module: true,
       compress: {
+        ecma: 2020,
         module: true,
-        passes: 3,
+        passes: 5,
         pure_getters: true,
         toplevel: true,
       },
@@ -52,6 +54,17 @@ export default defineConfig(({ command }) => ({
             || moduleId.includes('/assets/runtime/cards/card-art-manifest.json')
             || moduleId.includes('/assets/runtime/enemies/enemy-art-manifest.json')
           ) return 'runtime-data';
+          if (
+            moduleId.includes('/src/game/route-gen')
+            || moduleId.includes('/src/game/fx')
+            || moduleId.includes('/src/game/leaders')
+            || moduleId.includes('/src/game/difficulty')
+            || moduleId.includes('/src/game/meta')
+            || moduleId.includes('/src/game/runtime-images')
+            || moduleId.includes('/src/game/scene-runtime')
+            || moduleId.includes('/src/game/safe-storage')
+            || moduleId.includes('/src/game/effects/')
+          ) return 'game-core';
           if (moduleId.includes('node_modules')) return 'vendor';
         }
       }

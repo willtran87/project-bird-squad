@@ -236,6 +236,23 @@ for (const docPath of activeDocPaths) {
 }
 
 const coreGameplaySpec = readText('docs/game/core-gameplay-spec.md');
+const nextLevelDataContracts = readText('docs/game/next-level-data-contracts.md');
+const retiredMoltRules = [
+  /next non-Molt card/i,
+  /pending boosted card/i,
+  /ends after the next non-Molt/i,
+  /Open Sky for 2 enemy turns/i,
+];
+
+for (const [docPath, text] of [
+  ['docs/game/core-gameplay-spec.md', coreGameplaySpec],
+  ['docs/game/next-level-data-contracts.md', nextLevelDataContracts],
+]) {
+  for (const pattern of retiredMoltRules) {
+    if (pattern.test(text)) fail(`${docPath}: retired single-card Molt rule matched ${pattern}`);
+  }
+}
+
 const requiredFlockStats = [
   'Cohesion',
   'Damage',
@@ -284,6 +301,10 @@ for (const phrase of [
   'firstPlayedThisCombat',
   'perDiscarded',
   'Formula order',
+  'whole-turn transform stance',
+  'alternate `moltEffects` contract',
+  'half Molt Power, rounded up',
+  'Molt ends when the player chooses Roost',
 ]) {
   if (!coreGameplaySpec.includes(phrase)) {
     fail(`docs/game/core-gameplay-spec.md: missing required gameplay phrase "${phrase}"`);

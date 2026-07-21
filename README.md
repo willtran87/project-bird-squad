@@ -3,6 +3,14 @@
 Bird Squad is a Phaser/Vite foundation build for a rooftop card battler about a
 streetwise bird crew, singleton deckbuilding, and risky Molt turns.
 
+## Supported Displays
+
+The playable build supports desktop browsers and landscape tablets with a
+viewport of at least 1000x560 CSS pixels. Portrait and compact phone displays
+show a branded platform gate and pause the Phaser loop without discarding the
+current run. Rotating or returning to a supported display resumes the same game
+state.
+
 ## Source Of Truth
 
 Start with `docs/README.md`. It owns the documentation map, canonical source
@@ -28,7 +36,7 @@ The short version:
 | `assets/splash/` | Splash and promotional images used by the menu or presentation. |
 | `.generated/` | Ignored generated/source masters for imagegen, concept art, screenshots, and raw art pipeline outputs. |
 | `assets/runtime/` | Runtime asset manifests and optimized derived card, enemy, and backdrop targets. |
-| `assets/battlefields/` | Battlefield exploration and arena concepts. |
+| `assets/concept-art/backdrops/`, `assets/concept-art/route-events/`, `assets/concept-art/route-event-centerpieces/` | Current editable world-demo source art; exact allowed generations are defined by `docs/art/world-asset-contract.md`. |
 | `data/cards/arcana/` | Production data for Legend and Crew card identities. |
 | `data/cards/reversals/` | Molt/reversal data layered over the card set. |
 | `data/game/` | Runtime-ready cards, enemies, encounters, route maps, items, economy, and district content. |

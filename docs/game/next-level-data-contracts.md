@@ -312,7 +312,7 @@ keywords; core-gameplay-spec forbids parked mechanics):
 | `winded` | debuff | counter | on Flock; reduces attack output; ticks down |
 | `openSky` | debuff | counter | on Flock; increases incoming damage |
 | `openSkyGuard` | buff | counter | on Flock; each point cancels one Open Sky increase |
-| `molt` | buff | flag | on Flock; ends after the next non-Molt card |
+| `molt` | buff | flag | on Flock; whole-turn alternate-card stance that ends at Roost |
 
 (`nextAttackBonus` stays a bespoke enemy verb in §1.2, **not** a registry status —
 it is a one-shot enemy self-modifier with no tick/stack lifecycle, so it does not

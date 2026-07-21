@@ -652,6 +652,10 @@ for (const mark of alphaRouteMarks.routeMarks ?? []) {
   if (!fs.existsSync(path.join(root, iconPath))) {
     fail(`${label}: missing reward icon at ${iconPath}`);
   }
+  const thumbPath = `assets/runtime/waymarks/thumb/${mark.id}.webp`;
+  if (!fs.existsSync(path.join(root, thumbPath))) {
+    fail(`${label}: missing compact reward icon at ${thumbPath}`);
+  }
 }
 
 // Supplies (next-level-data-contracts §7.1)
@@ -673,6 +677,14 @@ for (const supply of alphaSupplies.supplies ?? []) {
   if (!fs.existsSync(path.join(root, iconPath))) {
     fail(`${label}: missing reward icon at ${iconPath}`);
   }
+  const thumbPath = `assets/runtime/supplies/thumb/${supply.id}.webp`;
+  if (!fs.existsSync(path.join(root, thumbPath))) {
+    fail(`${label}: missing compact reward icon at ${thumbPath}`);
+  }
+}
+
+if (!fs.existsSync(path.join(root, 'assets/runtime/supplies/thumb/scrap.webp'))) {
+  fail('assets/runtime/supplies/thumb/scrap.webp: missing compact Scrap resource icon');
 }
 
 // Basin / Nest / Cache node options (next-level-data-contracts §7.4)

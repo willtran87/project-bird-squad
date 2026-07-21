@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/webp" href="/assets/runtime/ui/icons/start-run-medallion.webp" />
     <title>Bird Squad</title>
   </head>
   <body>
@@ -10,8 +11,19 @@
       <div id="boot-shell" aria-live="polite">
         <div class="boot-title">Bird Squad</div>
         <div class="boot-line"></div>
+        <div class="boot-support">Desktop + landscape tablet</div>
       </div>
     </div>
+    <section id="portrait-gate" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="portrait-gate-title" aria-describedby="portrait-gate-copy" tabindex="-1">
+      <img class="portrait-gate-art" src="/assets/splash/bird-squad-bold-streetwear-splash-v3-gate.webp" alt="" loading="lazy" decoding="async" />
+      <div class="portrait-gate-shade" aria-hidden="true"></div>
+      <div class="portrait-gate-mark" aria-hidden="true"></div>
+      <h1 id="portrait-gate-title">Bird Squad</h1>
+      <div class="portrait-gate-title">Landscape display required</div>
+      <p id="portrait-gate-copy">Rotate your device or move to a larger screen. Bird Squad supports desktop and landscape tablets.</p>
+    </section>
+    <div id="game-status" class="screen-reader-status" role="status" aria-live="off" aria-atomic="true" aria-hidden="true"></div>
+    <script type="module" src="/src/platform-gate.ts"></script>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

@@ -19,6 +19,8 @@ export interface RouteEffectRunState {
   deck: RouteEffectCardRef[];
   currentHp: number;
   scrap: number;
+  scrapEarned?: number;
+  scrapSpent?: number;
   routeMarks: string[];
   supplies: string[];
   supplySlots?: number;
@@ -69,8 +71,18 @@ export function resolveRouteEffect(effect: string, context: RouteEffectContext) 
   const mod = (patch: RouteNextCombatMods) => { rs.nextCombat = { ...rs.nextCombat, ...patch }; };
 
   switch (parsed.name) {
-    case 'gainScrap': rs.scrap += n; break;
-    case 'payScrap': rs.scrap = Math.max(0, rs.scrap - n); break;
+    case 'gainScrap': {
+      const gained = Math.max(0, n);
+      rs.scrap += gained;
+      rs.scrapEarned = (rs.scrapEarned ?? 0) + gained;
+      break;
+    }
+    case 'payScrap': {
+      const spent = Math.min(rs.scrap, Math.max(0, n));
+      rs.scrap -= spent;
+      rs.scrapSpent = (rs.scrapSpent ?? 0) + spent;
+      break;
+    }
     case 'loseCohesion': rs.currentHp = Math.max(0, rs.currentHp - n); break;
     case 'healCohesion': case 'heal': rs.currentHp = Math.min(max, rs.currentHp + n); break;
     case 'cleanseFlock': {

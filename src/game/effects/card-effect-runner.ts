@@ -8,6 +8,8 @@ export interface CardEffectResolutionState {
   exhaustSelf: boolean;
   builtFlow: boolean;
   flockDamageBonusUsed: boolean;
+  moltPower: number;
+  moltApplied: number;
 }
 
 export interface CardEffectFlock {
@@ -73,6 +75,7 @@ export interface CardEffectContext<CardT extends CardEffectCard, EnemyT extends 
   checkResonanceSpentMarks: () => void;
   resonanceBurstFx: (enemyId: string, spent: number, burst: number) => void;
   windedBurstFx: (enemy: EnemyT, stacks: number, burst: number) => void;
+  moltBonus: (state: CardEffectResolutionState, effectValue: number, area?: boolean) => number;
   applyFlockWinded: (source: string, value: number) => void;
   applyEnemyWinded: (enemy: EnemyT, value: number) => void;
   removeEnemyCover: (source: string, enemy: EnemyT, value: number) => void;
@@ -88,7 +91,7 @@ export interface CardEffectContext<CardT extends CardEffectCard, EnemyT extends 
   shuffleSelfToDraw: (source: string) => void;
 }
 
-export function createCardEffectResolutionState(): CardEffectResolutionState {
+export function createCardEffectResolutionState(moltPower = 0): CardEffectResolutionState {
   return {
     previousDiscarded: 0,
     previousDamageDefeated: false,
@@ -96,7 +99,9 @@ export function createCardEffectResolutionState(): CardEffectResolutionState {
     returnSelfToDraw: false,
     exhaustSelf: false,
     builtFlow: false,
-    flockDamageBonusUsed: false
+    flockDamageBonusUsed: false,
+    moltPower: moltPower | 0,
+    moltApplied: 0
   };
 }
 
@@ -130,25 +135,26 @@ export function resolveCardEffect<CardT extends CardEffectCard, EnemyT extends C
 
   switch (parsed.name) {
     case 'damage':
-      state.previousDamageDefeated = context.damageEnemy(enemyId, value, source, card, false, context.spendFlockDamageBonus(state));
+      state.previousDamageDefeated = context.damageEnemy(enemyId, value + context.moltBonus(state, value), source, card, false, context.spendFlockDamageBonus(state));
       context.buildFlow(state);
       break;
     case 'damagePierce':
-      state.previousDamageDefeated = context.damageEnemy(enemyId, value, source, card, true, context.spendFlockDamageBonus(state));
+      state.previousDamageDefeated = context.damageEnemy(enemyId, value + context.moltBonus(state, value), source, card, true, context.spendFlockDamageBonus(state));
       context.buildFlow(state);
       break;
     case 'damageAll':
       state.previousDamageDefeated = false;
       {
         const bonus = context.spendFlockDamageBonus(state, true);
+        const moltPower = context.moltBonus(state, value, true);
         context.livingEnemies().forEach((enemy) => {
-          if (context.damageEnemy(enemy.id, value, source, card, false, bonus)) state.previousDamageDefeated = true;
+          if (context.damageEnemy(enemy.id, value + moltPower, source, card, false, bonus)) state.previousDamageDefeated = true;
         });
       }
       context.buildFlow(state);
       break;
     case 'gainCover':
-      context.gainBlock(value, source, card);
+      context.gainBlock(value + context.moltBonus(state, value), source, card);
       context.buildFlow(state);
       break;
     case 'applyOpenSky':
@@ -161,10 +167,10 @@ export function resolveCardEffect<CardT extends CardEffectCard, EnemyT extends C
       context.damageFlock(source, value);
       break;
     case 'heal':
-      context.healFlock(value, source);
+      context.healFlock(value + context.moltBonus(state, value), source);
       break;
     case 'overhealCover':
-      context.healFlock(value, source, true);
+      context.healFlock(value + context.moltBonus(state, value), source, true);
       context.buildFlow(state);
       break;
     case 'loseCohesion':
@@ -192,7 +198,8 @@ export function resolveCardEffect<CardT extends CardEffectCard, EnemyT extends C
       break;
     case 'resonanceBurst': {
       const spent = context.getResonance();
-      const burst = spent * value;
+      const baseBurst = spent * value;
+      const burst = baseBurst > 0 ? baseBurst + context.moltBonus(state, baseBurst) : 0;
       if (burst > 0) {
         state.previousDamageDefeated = context.damageEnemy(enemyId, burst, source, card, false, 0);
         context.logEvent(`${source} releases ${spent} Resonance for ${burst} damage.`);
@@ -208,7 +215,8 @@ export function resolveCardEffect<CardT extends CardEffectCard, EnemyT extends C
       const enemy = context.getLivingEnemy(enemyId);
       if (!enemy) break;
       const stacks = enemy.weak;
-      const burst = stacks * value;
+      const baseBurst = stacks * value;
+      const burst = baseBurst > 0 ? baseBurst + context.moltBonus(state, baseBurst) : 0;
       if (burst > 0) {
         state.previousDamageDefeated = context.damageEnemy(enemyId, burst, source, card, false, 0);
         context.logEvent(`${source} bursts ${stacks} Winded for ${burst} damage.`);

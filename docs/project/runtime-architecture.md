@@ -195,6 +195,32 @@ entry and boss payloads, and pools of combat/non-combat payloads. At runtime,
 the generated map uses those pools plus `balance-config.json` to produce a
 seeded graph with controlled pacing beats, non-combat relief, and boss access.
 
+## Persistence And Player Backups
+
+Four gameplay records are journaled in browser storage: the player account,
+active flight, run history, and first-flight guide. Each primary has a mirrored
+`.backup` checkpoint; malformed primaries can be quarantined as `.corrupt`
+while the runtime recovers the last valid mirror. Controls, graphics, contrast,
+motion, combat pace, music/SFX volume, mute state, and the highest unlocked tier
+are stored as separate preferences.
+
+`src/game/save-backup.ts` is the single full-backup boundary. It writes a
+versioned `bird-squad-save` JSON document containing only the owned records and
+preferences above. Restore accepts at most 2 MB, runs every section through the
+same authoritative sanitizers used by the runtime, requires unique valid
+control bindings, and stages a summary before the player can confirm. Applying
+a restore replaces only the explicit Bird Squad key allowlist, rebuilds journal
+mirrors, verifies each write, and attempts rollback from an in-memory snapshot
+if any operation fails. It never reads, deletes, exports, or uploads unrelated
+origin storage.
+
+Players reach the flow through **Flock Record -> Save Data**. Backups are local
+downloads and restores use a local file picker; there is no server sync or
+network transport. This is a single-player recovery feature, not a
+cryptographic anti-cheat boundary. The complete surface shares one focus order
+across configurable keyboard bindings, Tab, pointer/touch, and D-pad/A/B
+gamepad input; focus and legal actions are also exposed in Profile text state.
+
 ## Validation And Build Gates
 
 ```mermaid

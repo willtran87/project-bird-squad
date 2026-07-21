@@ -11,6 +11,9 @@ Related sources:
 - `docs/art/art-bible.md` owns the overall visual identity.
 - `assets/runtime/waymarks/icons/` owns established Waymark item-icon language.
 - `assets/runtime/supplies/icons/` owns established Supply and Scrap icon language.
+- `assets/runtime/waymarks/thumb/` and `assets/runtime/supplies/thumb/` are the
+  generated compact runtime tier; rebuild them with
+  `npm run build:runtime-item-art` rather than editing them independently.
 - `assets/splash/bird-squad-canal-run-splash-v11-menu-pop.webp` anchors the
   dark canal-rooftop mood.
 - `C:/Users/Will/Desktop/icons-alpha.png` is the processed transparent concept
@@ -371,3 +374,21 @@ Before a workshopped icon becomes a runtime asset:
 - It does not rely on readable text, letters, or numbers.
 - It does not duplicate another icon's silhouette too closely.
 - It has a tooltip title in UI when used without a visible text label.
+
+## Runtime Delivery Tier
+
+The PNG files under `assets/runtime/ui/icons/` are the canonical generated
+authoring inputs. The production game loads same-dimension, alpha-preserving
+WebP counterparts from that folder so high-detail frames and medallions do not
+ship their much larger PNG payloads.
+
+After adding, replacing, or removing a PNG, run:
+
+```powershell
+npm run build:runtime-ui-art
+```
+
+The builder regenerates every WebP at quality 90 and rejects stale WebPs that
+no longer have a PNG source. Runtime validation requires exact PNG/WebP stem
+parity and caps each delivered WebP at 120 KiB. PNGs remain workshop sources;
+do not point Phaser loaders or HTML entry assets back at them.

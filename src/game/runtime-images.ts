@@ -2,19 +2,45 @@ import type Phaser from 'phaser';
 
 export type RuntimeImageAsset = { key: string; url: string };
 
-const loadingOptionalArtKeys = new Set<string>();
-const loadedOptionalArtKeys = new Set<string>();
+const sceneLoadingAssetKeys = new WeakMap<Phaser.Scene, Set<string>>();
+
+function loadingKeysForScene(scene: Phaser.Scene): Set<string> {
+  let keys = sceneLoadingAssetKeys.get(scene);
+  if (!keys) {
+    keys = new Set<string>();
+    sceneLoadingAssetKeys.set(scene, keys);
+  }
+  return keys;
+}
 
 export function uniqueImageAssets(assets: Array<RuntimeImageAsset | undefined>): RuntimeImageAsset[] {
   return [...new Map(assets.filter((asset): asset is RuntimeImageAsset => Boolean(asset)).map((asset) => [asset.key, asset])).values()];
 }
 
-function unloadedImageAssets(scene: Phaser.Scene, assets: Array<RuntimeImageAsset | undefined>): RuntimeImageAsset[] {
-  return uniqueImageAssets(assets).filter((asset) => (
-    !scene.textures.exists(asset.key)
-    && !loadingOptionalArtKeys.has(asset.key)
-    && !loadedOptionalArtKeys.has(asset.key)
-  ));
+function missingImageAssets(scene: Phaser.Scene, assets: Array<RuntimeImageAsset | undefined>): RuntimeImageAsset[] {
+  return uniqueImageAssets(assets).filter((asset) => !scene.textures.exists(asset.key));
+}
+
+function waitForImageAssets(
+  scene: Phaser.Scene,
+  keys: string[],
+  onComplete?: () => void
+) {
+  if (!onComplete) return;
+
+  const loadingKeys = loadingKeysForScene(scene);
+  let settled = false;
+  const check = () => {
+    if (settled || !scene.sys.settings.active) return;
+    if (!keys.every((key) => scene.textures.exists(key) || !loadingKeys.has(key))) {
+      scene.time.delayedCall(50, check);
+      return;
+    }
+    settled = true;
+    onComplete();
+  };
+
+  check();
 }
 
 function queueImageAssets(
@@ -24,21 +50,26 @@ function queueImageAssets(
   startNow: boolean,
   onComplete?: () => void,
 ): boolean {
-  const pending = unloadedImageAssets(scene, assets);
-  if (pending.length === 0) return false;
+  const missing = missingImageAssets(scene, assets);
+  if (missing.length === 0) return false;
+
+  const loadingKeys = loadingKeysForScene(scene);
+  const pending = missing.filter((asset) => !loadingKeys.has(asset.key));
+  if (pending.length === 0) {
+    waitForImageAssets(scene, missing.map((asset) => asset.key), onComplete);
+    return true;
+  }
 
   const pendingKeys = new Set(pending.map((asset) => asset.key));
   let settled = false;
   const onFileComplete = (key: string) => {
     if (!pendingKeys.has(key)) return;
-    loadingOptionalArtKeys.delete(key);
-    loadedOptionalArtKeys.add(key);
+    loadingKeys.delete(key);
   };
   const onLoadError = (file: { key?: string }) => {
     const key = file.key;
     if (!key || !pendingKeys.has(key)) return;
-    loadingOptionalArtKeys.delete(key);
-    loadedOptionalArtKeys.delete(key);
+    loadingKeys.delete(key);
     console.warn(`${warning}: ${key}`);
   };
   const cleanup = () => {
@@ -50,8 +81,7 @@ function queueImageAssets(
   };
   const markResolvedTextures = () => {
     pending.forEach((asset) => {
-      loadingOptionalArtKeys.delete(asset.key);
-      if (scene.textures.exists(asset.key)) loadedOptionalArtKeys.add(asset.key);
+      loadingKeys.delete(asset.key);
     });
   };
   const onLoaderComplete = () => {
@@ -59,7 +89,6 @@ function queueImageAssets(
     settled = true;
     cleanup();
     markResolvedTextures();
-    onComplete?.();
   };
   const onSceneEnd = () => {
     if (settled) return;
@@ -69,9 +98,10 @@ function queueImageAssets(
   };
 
   pending.forEach((asset) => {
-    loadingOptionalArtKeys.add(asset.key);
+    loadingKeys.add(asset.key);
     scene.load.image(asset.key, asset.url);
   });
+  waitForImageAssets(scene, missing.map((asset) => asset.key), onComplete);
   scene.load.on('filecomplete', onFileComplete);
   scene.load.on('loaderror', onLoadError);
   scene.load.once('complete', onLoaderComplete);

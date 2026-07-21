@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 
+const FLOATING_CALLOUT_TEXTURE = 'combat-floating-callout';
+
 /** Floating combat text that drifts up and fades out, then self-destructs. */
 export function floatingText(
   scene: Phaser.Scene,
@@ -8,8 +10,11 @@ export function floatingText(
   y: number,
   text: string,
   color: string,
+  options: { name?: string; holdMs?: number } = {},
 ): void {
-  const label = scene.add.text(x, y, text, {
+  const group = scene.add.container(x, y).setAlpha(0).setScale(0.96);
+  if (options.name) group.setName(options.name);
+  const label = scene.add.text(0, -1, text, {
     fontFamily: 'sans-serif',
     fontSize: '22px',
     fontStyle: 'bold',
@@ -18,14 +23,38 @@ export function floatingText(
     strokeThickness: 3,
   });
   label.setOrigin(0.5);
-  layer.add(label);
+  if (scene.textures.exists(FLOATING_CALLOUT_TEXTURE)) {
+    scene.textures.get(FLOATING_CALLOUT_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    const plateWidth = Phaser.Math.Clamp(label.width + 78, 154, 360);
+    const plate = scene.add.image(0, 2, FLOATING_CALLOUT_TEXTURE)
+      .setDisplaySize(plateWidth, 48)
+      .setAlpha(0.9)
+      .setName(options.name ? `${options.name}-plate` : 'combat-floating-callout');
+    group.add(plate);
+  }
+  group.add(label);
+  layer.add(group);
+  scene.time.delayedCall(0, () => {
+    if (group.active) layer.bringToTop(group);
+  });
   scene.tweens.add({
-    targets: label,
-    y: y - 44,
-    alpha: 0,
-    duration: 720,
-    ease: 'Cubic.easeOut',
-    onComplete: () => label.destroy(),
+    targets: group,
+    alpha: 1,
+    scale: 1,
+    y: y - 8,
+    duration: 110,
+    ease: 'Back.easeOut',
+    onComplete: () => {
+      scene.tweens.add({
+        targets: group,
+        y: y - 48,
+        alpha: 0,
+        delay: options.holdMs ?? 380,
+        duration: 330,
+        ease: 'Cubic.easeOut',
+        onComplete: () => group.destroy(true),
+      });
+    },
   });
 }
 
@@ -149,8 +178,23 @@ export function banner(
   y: number,
   text: string,
   color: string,
+  options: {
+    textureKey?: string;
+    width?: number;
+    height?: number;
+    name?: string;
+  } = {},
 ): void {
-  const label = scene.add.text(x, y, text, {
+  const group = scene.add.container(x, y).setAlpha(0).setScale(0.92);
+  if (options.textureKey && scene.textures.exists(options.textureKey)) {
+    scene.textures.get(options.textureKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    const backing = scene.add.image(0, 0, options.textureKey)
+      .setDisplaySize(options.width ?? 520, options.height ?? 150);
+    if (options.name) backing.setName(options.name);
+    group.add(backing);
+  }
+
+  const label = scene.add.text(0, 0, text, {
     fontFamily: 'Georgia, serif',
     fontSize: '34px',
     fontStyle: 'bold',
@@ -158,21 +202,22 @@ export function banner(
     stroke: '#0a0e14',
     strokeThickness: 5,
   });
-  label.setOrigin(0.5).setAlpha(0).setScale(0.92);
-  layer.add(label);
+  label.setOrigin(0.5);
+  group.add(label);
+  layer.add(group);
   scene.tweens.add({
-    targets: label,
+    targets: group,
     alpha: 1,
     scale: 1,
     duration: 170,
     ease: 'Back.easeOut',
     onComplete: () =>
       scene.tweens.add({
-        targets: label,
+        targets: group,
         alpha: 0,
         delay: 520,
         duration: 320,
-        onComplete: () => label.destroy(),
+        onComplete: () => group.destroy(true),
       }),
   });
 }

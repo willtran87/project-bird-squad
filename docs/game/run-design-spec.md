@@ -60,6 +60,14 @@ Each map should show:
 - visible route risk
 - deck/Flock summary before confirming the next node
 
+Reachable route decisions keep their immediate gain and risk visible after
+selection. The commit control uses both the route medallion and the explicit
+`Take Route` command so confirmation does not depend on icon recall.
+
+Each district also offers one optional contract. Completed contracts persist as
+horizontal Flock Record badges and contribute to Leader mastery; they do not
+grant permanent combat stats.
+
 ## Four-Map Arc
 
 | Map | Working Name | Narrative Job | Mechanical Job |
@@ -505,3 +513,29 @@ Run design is ready when:
 - bosses feel like route blockers and reward map completion
 - Basin and Nest nodes create recovery-versus-upgrade tension
 - the player understands why restoring the flyways matters
+
+## Run Modes And Restoration
+
+The title screen offers two deliberate run lengths:
+
+- **Quick Flight** visits three districts (`Rooftop Blocks`, `Signal Yards`, and `High Roost`) for a shorter complete arc. Quick clears do not unlock higher Ascension tiers.
+- **Full Flight** visits all four districts and remains the mastery and Ascension progression path.
+
+Both lengths maintain separate personal records for every Leader and Ascension
+tier. A record uses total beats across the flight, so route composition and
+combat efficiency both matter; Quick times never overwrite Full times. Only a
+first clear or a faster repeat is celebrated as a new record.
+
+Every district offers three visible contract dossiers after the opening teaching fight. The player chooses one; contracts show their goal and Scrap reward before acceptance, pay once, and add a permanent badge to the Flock Record when completed.
+
+Cleared districts and completed contracts restore illuminated flyway segments on the route map. This makes campaign progress visible in the world rather than leaving restoration as outcome copy only.
+
+## First Flight Curriculum
+
+The first three Rooftop Blocks combats introduce one layer at a time:
+
+1. Wingbeats, enemy Tells, Cover, damage, and Roost. No encounter objective competes for attention.
+2. Flow and Surge, with a Preserve Flow objective.
+3. Molt and Open Sky, with a Clean Roost objective.
+
+District contracts remain hidden until the opening combat is complete.

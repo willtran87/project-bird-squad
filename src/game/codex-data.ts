@@ -9,6 +9,8 @@ import swordsArcana from '../../data/cards/arcana/minor-arcana-swords.json';
 import pentaclesArcana from '../../data/cards/arcana/minor-arcana-pentacles.json';
 import type { CardFlavor, CardMeaning, ReserveEnemyContract } from './runtime-data';
 
+export { getLeaderLore } from './leader-lore';
+
 const enemyVarietyContracts = enemyVarietyContractsJson as {
   reserveEnemies: ReserveEnemyContract[];
   fashionDirections?: Record<string, string>;

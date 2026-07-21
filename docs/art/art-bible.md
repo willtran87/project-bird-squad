@@ -11,6 +11,8 @@ Related sources:
 - `docs/game/game-design.md` defines the playable deckbuilder structure.
 - `docs/game/core-gameplay-spec.md` defines canonical foundation and future card
   behavior.
+- `docs/art/world-asset-contract.md` defines the canonical world-demo asset
+  inventory and replacement rules.
 - `docs/art/border-first-generation-pipeline.md` defines the preferred Minor
   Arcana regeneration workflow using locked overlays, center-art generation,
   deterministic titles, and QA gates.

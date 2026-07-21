@@ -1190,3 +1190,882 @@ Follow-up TODO:
   tests, full smoke suite, `git diff --check`, and the generic web-game client.
 - Verified `npm run validate:runtime`, `npm run validate:runtime-assets`,
   `npm run build`, and `npm run validate`.
+
+## 2026-07-13 Enemy Turn Hustle
+
+- Added hold-to-accelerate for familiar non-boss enemy sequences on Standard
+  and Snappy pacing. Wind-up, Commit, Recovery, and interludes accelerate at
+  2.2x only after minimum readable windows; Impact, first sightings, bosses,
+  and Cinematic pacing remain protected.
+- Added a compact contextual state to the existing beat plaque and support for
+  keyboard, pointer/touch, and controller holds. Text-state telemetry reports
+  availability, eligibility, held input, active acceleration, and multiplier.
+- Moved enemy-turn orchestration into the lazy combat-FX module, preserving
+  ordered effects and damage-at-Impact while reducing combined boot code to
+  723.8 KB minified / 188.6 KB gzip.
+- Verified strict TypeScript, focused sequencing/browser coverage, production
+  build and bundle gates, the required web-game client, and captures at
+  2560x1600, 1440x900, and 844x390 with no page or console errors.
+
+## 2026-07-13 Playtest Evidence Dashboard
+
+- Extended local run summaries with per-fight duration, exact fatal move,
+  route-offer denominators and decision time, reward decision time, combat pace,
+  and First Flight Guide state.
+- Rebuilt `npm run stats:playtest` as a Markdown dashboard covering the run
+  funnel, first-fight/decision timing, economy, offer-based reward and route
+  pick rates, Leader performance, death distribution, and pace preference.
+- Added a clearly labeled ten-seed pipeline harness when no human run export is
+  present. The generated report explicitly rejects synthetic balance claims.
+- Verified strict TypeScript, live summary regression coverage, dashboard
+  generation, production build, and bundle validation at exactly 725.0 KB
+  combined boot code without changing a threshold.
+
+## 2026-07-14 Production Display Boundary
+
+- Completed the desktop-first mobile product direction with a branded,
+  game-art-backed gate for portrait and compact landscape displays.
+- Added a dedicated platform lifecycle controller that makes the hidden game
+  inert, sleeps the Phaser loop after boot, preserves current run state, and
+  refreshes scaling before resuming on a supported display.
+- Declared support for desktop and landscape-tablet viewports of at least
+  1000x560 CSS pixels on the loading surface and in the project README.
+- Raised compact title, audio, close, difficulty, flight-length, and run-command
+  interactions to a 56-game-pixel minimum. Representative controls measure at
+  least 44.8 CSS pixels at the 1024x768 tablet breakpoint.
+- Added browser coverage for frame freezing, compact-landscape gating,
+  rotate-to-resume behavior, ARIA state, platform copy, and touch geometry.
+- Visually verified the production build at 390x844, 1024x768, and 2560x1600;
+  the platform gate and both supported layouts render without overlap or new
+  browser warnings/errors.
+
+## 2026-07-15 Lazy Profile And System Overlays
+
+- Moved Flock Record presentation and Profile-only icon ownership into the lazy
+  `profile-scene` module; fixed redraws accumulating Escape and mute listeners.
+- Moved Pause, Settings, and How-to-Play presentation into a shared lazy
+  `system-overlays` module with visible loading/failure handling.
+- Raised system-overlay and Profile action geometry to 56 game pixels and added
+  focused browser assertions for tablet-safe touch targets.
+- Shortened and enlarged How-to-Play copy for faster scanning at the smallest
+  supported scale, and removed the final achievement/Return visual collision.
+- Extended deployment validation to require one Profile chunk and one system
+  overlay chunk while rejecting modulepreloads for both.
+- Reduced production boot code to 675.0 KB for the app entry and 700.8 KB
+  combined, clearing both preferred budgets without warnings.
+- Focused Profile, Settings, guide, and first-flight tests pass. Production
+  screenshots at 2560x1600, 1280x720, and 1024x768 are clean, with no browser
+  warnings or errors.
+
+## 2026-07-15 Sequencing And Regression Closure
+
+- Added generation-aware Menu asset refreshes so stale asynchronous callbacks
+  cannot interrupt a title launch, while preserving an open Leader tooltip
+  through a valid redraw.
+- Kept normal route selection constrained to reachable nodes and retained an
+  explicit inspector path for viewing the boss-preparation dossier before the
+  final crossing.
+- Made Codex detail flow use measured wrapped-text heights. The longest current
+  dossier now reports a 244-pixel scroll range and remains contained at
+  2560x1600 and 1024x768.
+- Moved shared scene time, texture, display-tree, and tween helpers into
+  `scene-runtime` in `game-core`. Production measures 674.6 KB app entry,
+  27.0 KB game core, and 701.6 KB combined boot code / 183.5 KB gzip, clearing
+  all preferred targets without warnings.
+- Passed runtime/docs/assets/bundle/cache/enemy/overlay validation, all 8
+  critical sequencing tests, and the complete 147-test Playwright suite in
+  18.0 minutes.
+
+## 2026-07-15 Combat Redraw Ownership
+
+- Added a BattleScene frame scheduler that coalesces noncritical same-frame
+  refreshes while preserving synchronous wind-up and impact sequencing.
+- Moved battlefield scenery and the combat hand into persistent layers. The
+  atmosphere tween survives UI updates, unchanged hand cards keep their Phaser
+  objects, and compact art plus Flow cues refresh in place.
+- Removed the duplicate next-hand build during enemy-to-player handoff. Player
+  attacks retain two required full passes; enemy turns now use three instead of
+  four and reveal the replenished hand together with input unlock.
+- Added production telemetry and a critical regression for request coalescing,
+  pass counts, persistent object identity, and scenery/hand build reuse.
+- Preserved the district-advance flourish through late RouteScene asset redraws
+  with a bounded replay window; its sound and telemetry still fire once.
+- Final three-run production medians are 222.0 ms per player attack and 237.4 ms
+  per enemy turn, versus initial observations of 231.7 ms and 346.8 ms.
+- Verified the production WebGL surface at 2560x1600 and 1024x768, including an
+  enemy wind-up capture. Both layouts remain aligned and nonblank.
+- Production measures 680.4 KB app entry, 27.0 KB game core, and 707.4 KB
+  combined boot / 184.9 KB gzip. The app entry is 5.4 KB over its preferred
+  target but safely below the hard gate; combined boot remains below target.
+- Strict TypeScript, the final production build, focused district-redraw
+  coverage, and the complete 148-test browser suite pass; the full suite took
+  18.6 minutes on one Chromium worker.
+
+## 2026-07-15 Exact Combat Forecast And Profile Reveal Ownership
+
+- Extended the lazy combat outcome simulator with exact before/after snapshots
+  for each enemy and the flock while preserving the same ordered effect resolver
+  used by committed cards.
+- Selected attacks now shade pending enemy Cohesion loss, mark the remaining
+  health boundary, and show `AFTER N` or `LETHAL` under the target health rail.
+  The selected-card summary exposes exact target, Cover, Flow, and Surge deltas.
+- Selection and deselection update only the existing preview objects. Focused
+  coverage proves zero full battlefield redraws, exact preview/live parity, and
+  lethal resolution.
+- Split the Profile record flourish into persistent decoration and a one-shot
+  reveal. Badge-tab and late-asset rerenders no longer replay its particles or
+  `profileRecord` audio cue; the existing listener-ownership checks remain green.
+- Production captures at 2560x1600 and 1024x768 show nonlethal and lethal
+  forecasts clear of intents, actors, target rings, and hand text, with zero
+  page or console errors.
+- Production measures 682.9 KB app entry, 27.0 KB `game-core`, and 709.9 KB
+  combined boot / 185.5 KB gzip. Combined boot remains under its preferred
+  target; the app entry retains its existing over-target advisory without a
+  threshold change.
+- Documentation, runtime, asset, bundle, deployment-cache, enemy, overlay, and
+  all 9 critical sequencing gates pass. The complete 149-test Chromium suite
+  passes in 17.8 minutes on one worker.
+
+## 2026-07-15 Journaled Save Recovery
+
+- Added exception-safe browser storage access plus mirrored `.backup` journals
+  for the Flock Record, active flight, First Flight guide, and run history.
+  Valid mirrors restore corrupt or missing primary keys; unrecoverable payloads
+  are bounded, quarantined under `.corrupt`, and removed from live play.
+- Added schema-aware account, guide, history, and active-run sanitization.
+  Progression counters reject unknown Leader IDs, run totals remain coherent,
+  and Ascension unlocks can be reconstructed from the best recorded win.
+- Settings and audio preferences now remain usable when browser storage throws.
+  Corrupt run history no longer prevents future telemetry saves or exports.
+- The title reports a recovered checkpoint or isolated save in one compact
+  bottom status strip. Its formatter and renderer live in a 1.1 KB lazy chunk,
+  so normal launches do not load recovery presentation code.
+- Production captures at 2560x1600 and 1024x768 show the notice contained below
+  the launch controls with zero page or console errors. Production measures
+  683.1 KB app entry, 28.6 KB `game-core`, and 711.7 KB combined boot / 186.2 KB
+  gzip. Hard gates pass; the existing app-entry warning and a 1.7 KB combined
+  preferred-target advisory remain visible without changing either threshold.
+- Strict TypeScript, focused blocked-storage/corruption/interrupted-write cases,
+  all release validators, all 9 sequencing gates, and the complete 151-test
+  Chromium suite pass. The full browser run completed in 17.3 minutes.
+
+## 2026-07-15 Keyboard And Controller Settings Navigation
+
+- Made all six shared Settings rows directly navigable from Menu, Route, and
+  paused Combat. Arrow keys and Tab move focus, Left/Right adjust values, and
+  Enter/Space activate the focused control.
+- Added standard gamepad support: D-pad navigation and adjustment, A to
+  activate, and B to close. Music and SFX move in five-percent steps while
+  Audio, Motion, and Combat Pace retain their existing cycles.
+- Kept one visible focus ring and six stable row targets. The focused row is
+  stored per scene in Phaser's registry, so lazy icon redraws and scene-local
+  Settings reconstruction preserve position without adding host-scene fields.
+- Added shutdown-owned keyboard and gamepad cleanup. Regression coverage proves
+  one listener and one ring while open, no retained listener or ring after
+  close, and focus persistence while volume, Motion, and pace redraw controls.
+- `render_game_to_text` now reports the focused index and label in all three
+  host scenes. The required web-game client completed a real keyboard
+  adjustment, and settled production captures at 2048x1536 and 2560x1600 show
+  the focus ring contained within Music and Combat Pace with zero browser
+  errors.
+- Production measures 683.4 KB app entry, 28.6 KB `game-core`, and 712.0 KB
+  combined boot / 186.3 KB gzip. The lazy `system-overlays` chunk is 15.8 KB /
+  5.3 KB gzip. All hard gates pass; the unchanged entry and combined preferred
+  targets continue to emit advisories without a threshold change.
+- Focused Settings coverage passes 3/3, and the full release validator passes
+  documentation, runtime, 617-asset, bundle, deployment-cache, enemy, overlay,
+  and all 9 critical sequencing checks.
+- The complete 152-test Chromium suite passes in 18.2 minutes on one worker.
+
+## 2026-07-16 Configurable Keyboard Controls
+
+- Replaced the redundant Settings Display row with a focused Controls entry;
+  Full Screen remains a dedicated command at the bottom of Settings.
+- Added twelve remappable actions across Play and Utility pages: Confirm, Back,
+  Previous, Next, Pause, Roost, Hustle, Skip Reward, Mute, Full Screen,
+  Settings, and How to Play. Number keys `1-9` and Tab remain reserved for
+  direct game selection and navigation.
+- Bindings apply live across Menu, Profile, Route, Combat, reward, pause, and
+  enemy-turn Hustle input. Assigning an occupied key swaps the displaced action
+  onto the prior key, so every action remains reachable.
+- Added exception-safe local persistence, malformed-data fallback, session-only
+  operation when storage is blocked, Reset Defaults, human-readable key labels,
+  and live subscriber refresh after each change.
+- The modal Controls surface supports pointer, keyboard, and standard gamepad
+  navigation. It retains page, focus, and capture state through valid lazy
+  Menu redraws, owns host input while open, and defers listener refresh so the
+  captured key cannot immediately trigger its newly assigned action.
+- `render_game_to_text` reports customization, modal/page/focus/capture state,
+  and all twelve live bindings in Menu, Route, and Battle. How to Play now
+  derives its quick-key copy from the active map.
+- Menu, Route, and Combat preload the complete generated close command. A
+  branded existing medallion now serves as the production favicon, eliminating
+  the browser's fallback `/favicon.ico` 404.
+- The required web-game client exercised both pages. Final production captures
+  at 1024x768 and 1280x800 CSS pixels with DPR 2 show stable rows, contained
+  focus rings, complete close commands, and zero console or request errors.
+- Production measures 688.5 KB app entry, 28.6 KB `game-core`, 22.0 KB lazy
+  `system-overlays`, and 717.2 KB combined boot / 188.2 KB gzip. All hard gates
+  pass; the 675 KB entry and 710 KB combined preferred targets remain explicit
+  advisories without changing thresholds.
+- Strict TypeScript, focused blocked-storage/remapping/Settings/Profile/Hustle
+  coverage, the full release validator, all 9 sequencing checks, and the
+  complete 153-test Chromium suite pass. The full suite took 19.1 minutes on
+  one worker.
+
+## 2026-07-16 Device-Aware Effects Quality
+
+- Added Auto, Full, and Lean Effects quality as a seventh shared Settings row,
+  with pointer, keyboard, and standard-gamepad operation across Menu, Route,
+  and paused Combat.
+- Auto responds to Save Data and constrained memory/processor signals. Explicit
+  preferences persist safely, cache after the first read, and remain active for
+  the session when browser storage throws.
+- Lean removes passive title particles, reduces route ambience and reward
+  ornament, halves optional combat particle density, caps concurrent particle
+  bursts at two, and cuts opening-district atmosphere strips from 21 to 10
+  while preserving primary attack, tell, impact, and reward feedback.
+- Added text-state evidence for preference/effective quality, selection reason,
+  cost budgets, title emitter ownership, and combat atmosphere pressure.
+  Four focused regressions pass in 1.3 minutes and prove Full/Lean runtime
+  changes, cross-scene propagation, local persistence, blocked-storage fallback,
+  and seven-row input navigation.
+- The required game client and production captures at 1280x720, 2560x1600,
+  and 1024x640 show a clean seven-row panel with no clipping, overlap, blank
+  frames, or console errors.
+- Production is 690.7 KB app entry, 28.6 KB game core, 23.3 KB lazy system
+  overlays, and 719.3 KB combined boot / 188.9 KB gzip. Hard bundle gates pass;
+  existing preferred-target advisories remain.
+- Documentation, runtime data, all 617 runtime assets, bundle/deployment
+  contracts, enemy variety, and all 56 Minor Arcana overlays validate. All nine
+  critical sequencing tests pass in 2.1 minutes.
+
+## 2026-07-18 Compact Runtime Item Art
+
+- Added a reproducible 256 px compact tier for all Supplies and Waymarks plus a
+  dedicated 96 px Scrap texture; Codex dossiers retain the full 512 px tier.
+- Rewired route/combat preload, item drawers, rewards, market fallbacks, combat
+  feedback, and Codex grids to compact cache keys without changing gameplay.
+- Runtime item transfer falls from 9,974.6 KB to 1,583.7 KB (84.1%); always-
+  preloaded Scrap falls from 601.6 KB to 4.7 KB.
+- Added 32 KB budgets and complete runtime-data counterpart validation. Six
+  focused item scenarios pass, and the production client verified 96/256 px
+  textures, compact network responses, crisp visuals, and zero browser errors.
+
+## 2026-07-18 Runtime UI WebP Tier
+
+- Added a reproducible same-dimension, alpha-preserving WebP delivery tier for
+  all 257 generated runtime UI icons, medallions, chips, and panel frames.
+- Reduced that tier from 38.11 MiB of PNG inputs to 8.47 MiB of production
+  WebPs (77.8%) without changing Phaser texture keys or loader behavior.
+- Rewired the Phaser manifest, direct runtime helper, and favicon; production
+  builds now emit one hashed WebP and no PNG for every runtime UI ID.
+- Added exact PNG/WebP parity, stale-output rejection, 120 KiB budgets, and
+  deployment guards. Five focused multi-surface regressions pass.
+- The required production client inspected title and How-to-Play at 1280x720;
+  live requests contain only hashed WebPs for the checked UI assets and no
+  browser errors.
+- Release validation and the complete 155-test Chromium suite pass; the full
+  browser run took 22.0 minutes on one worker.
+
+## 2026-07-18 Runtime FX WebP Tier
+
+- Added a reproducible same-dimension, alpha-preserving WebP delivery tier for
+  all 71 used title, route, and combat FX sources.
+- Reduced FX transfer from 14.84 MiB to 5.02 MiB (66.2%) while preserving
+  Phaser keys, spritesheet frames, and staged loader ownership.
+- Removed one unreferenced 64x64 particle orphan; the live particle system uses
+  the generated combat FX atlas.
+- Added exact PNG/WebP parity, stale-output rejection, a 140 KiB budget, and
+  deployment checks requiring one hashed WebP and no emitted PNG per FX ID.
+- Four focused visual/timing regressions pass. The required production client
+  reached a complete battle at 1280x720 with all essential FX loaded, clean
+  visuals, WebP-only request evidence, and zero browser errors.
+- Release validation and the complete 155-test Chromium suite pass; the full
+  browser run took 22.1 minutes on one worker.
+
+## 2026-07-18 First-Combat Outcome FX Deferral
+
+- Measured three cold production route-to-combat transitions and found victory
+  rally, victory fanfare, and boss phase-break art resident before first input.
+- Split those three textures from the opening optional pack. Normal encounters
+  warm them on the first committed card or Roost action; boss/elite encounters
+  retain setup-time loading.
+- Cold transition transfer falls by 314,015 bytes, decoded combat residency by
+  3,014,656 bytes, and the median worst frame gap from 394 ms to 360 ms. Median
+  time-to-input remains neutral within noise.
+- A first-card production probe confirms all three hashed WebPs load on demand.
+  The required client reached a clean playable battle with the pack deferred,
+  and the focused FX plus full encounter regressions pass.
+- `npm run validate` passes every release gate and `npm test` passes all 155
+  Chromium scenarios in 20.8 minutes. Two wall-clock test flakes found by the
+  first full run were made deterministic, then passed three repeated focused
+  runs and the complete clean rerun.
+
+## 2026-07-18 Route Event Art On-Demand Loading
+
+- Profiled production route -> combat -> route cycles and retained Phaser's
+  global texture cache because the combat return already transfers zero bytes.
+- Removed the eager all-event load from ordinary route creation. Basin, Cache,
+  Signal, Nest, Rival, and Market now queue only their matching scene art when
+  the overlay opens, then redraw through the existing fallback-safe path.
+- Ordinary-route decoded texture residency fell from 181,410,016 to
+  104,040,156 bytes (-42.6%); first-battle residency fell from 260,454,384 to
+  183,291,560 bytes (-29.6%). The 18 deferred textures total 3,979,034 bytes on
+  disk and about 76.47 MB decoded.
+- A production Basin probe loaded exactly its three matching textures in
+  677,846 transfer bytes. Focused lazy-load, all-event, and Market presentation
+  regressions pass, and the shared client captured the optimized route with no
+  page or console errors.
+- Closure found and fixed a route-travel lifecycle race where a late asset
+  callback could redraw during commitment and destroy the generated streak.
+  Travel now preserves its transient objects/tweens until handoff; travel plus
+  lazy-load coverage passes three repeated focused runs.
+- Final release closure is green: `npm run validate` passes all gates and
+  `npm test` passes all 156 Chromium scenarios in 19.7 minutes.
+
+## 2026-07-18 District Encounter Objective Depth
+
+- Re-audited the current game before selecting the pass: 32/32 content checks
+  pass with no drift, the 500-seed economy simulation meets every authored
+  target, balance pressure remains progressive, and the ten-row seeded
+  dashboard is explicitly telemetry evidence rather than human balance proof.
+- Replaced the shared late-run objective pool with district-specific strategic
+  pools. Added `Keep A Reserve` (Roost with banked Wingbeat) and district-scaled
+  damage-blocking goals, while retaining Flow, Surge, restraint, speed, Cover,
+  no-damage, and priority-target plans where they fit each district.
+- Encounter goal text state now reports exact live progress. The battle HUD
+  shows the compact progress value and exposes the full condition/reward in an
+  interactive tooltip; save sanitization preserves both new objective types.
+- Five focused district-pool, resolution, HUD/tooltip, horizontal-reward, and
+  checkpoint tests pass. The required shared production client reached combat
+  without errors, and the separately inspected Canal objective capture proves
+  `Wingbeat banked 1/1` and its tooltip remain clear of the HUD and hand.
+- Release closure passes: `npm run validate` is green across documentation,
+  runtime data, all 959 optimized assets, legacy-world rejection, bundle/cache
+  rules, enemy variety, Minor Arcana overlays, and nine sequencing gates;
+  `npm test` passes all 158 Chromium scenarios in 19.9 minutes.
+
+## 2026-07-18 Legacy World Asset Removal
+
+- Removed 117 superseded world files totaling 64.7 MB: 16 old splash/title
+  generations, 46 old route-map atlases/crops, 28 obsolete route-event source
+  layers, 20 old runtime route-event layers, five retired backdrop variants,
+  and two obsolete runtime node atlases.
+- The remaining route/battle graph uses only explicit current assets: four
+  district world backdrops, four district battlefields, four boss battlefields,
+  ten current route-event plates/residents, four props, the market kit, and the
+  eight splash-v7 route-node crops. The laminated planning-board path and broad
+  world-art globs remain forbidden.
+- `tools/build-runtime-ui-art.py` now regenerates the current v11 title image
+  instead of the retired v4 output. `tools/validate-world-assets.mjs` now exact-
+  allowlists 42 runtime/style assets and 41 matching source assets, scans runtime
+  and build code for retired names, and runs through `validate:runtime-assets`.
+- Production build and `npm run validate` pass. The shared web-game client drove
+  title -> RouteScene -> BattleScene; inspected route and battle captures show
+  the current Rooftop Blocks world art, matching text-state keys, and no console
+  error artifact.
+- Hardened the canonical inventory after a follow-up audit: the validator now
+  checks every file below all ten owned world-art roots. Retired art cannot be
+  hidden in an unregistered nested directory and later mistaken for a current
+  source; new world files must enter the exact allowlist when they are wired.
+
+## 2026-07-18 Leader And Ascension Personal Records
+
+- Closed the horizontal-mastery promise behind `Set a new personal record`.
+  Every winning flight now tracks clear count and fastest total beats by Leader,
+  Full/Quick length, and Ascension tier. Quick results never overwrite Full
+  records, slower repeats do not claim a record, and Full clears alone remain
+  responsible for unlocking higher Ascension tiers.
+- First clears and faster repeats become `record` outcome highlights. The strip
+  uses `NEW PROGRESS`, counts records separately from badges/unlocks, and places
+  record names first so a four-item first-win celebration does not hide them.
+- Profile Leader rows now show highest Full Ascension plus fastest Full and Quick
+  flights (`A2 / FULL 42B / QUICK 24B`). The global chip is labeled `Boss
+  Fastest` to preserve its existing final-fight meaning without ambiguity.
+- Account migration defaults old saves to an empty record table rather than
+  fabricating history. Sanitization accepts only known Leaders, Full/Quick modes,
+  Ascension 0-6, positive clear counts, and positive times; mirrored checkpoint
+  recovery preserves valid records.
+- Production optimization kept player-facing formatting in the lazy Profile and
+  outcome modules. Final bundles are 29.7 KB for `game-core`, 664.7 KB for the
+  app entry, and 694.4 KB combined boot code; all existing hard budgets pass.
+- Focused record, outcome, Profile, migration, and recovery regressions pass.
+  The shared production client and populated production probe were visually
+  inspected with matching text state and zero console errors; proof is
+  `.artifacts/leader-record-profile-populated.png`. `npm run validate` passes all
+  release gates, and the complete Chromium suite passes 159/159 in 20.2 minutes.
+
+## 2026-07-18 Enemy-Local Priority Objective Read
+
+- Closed the remaining encounter-goal placement gap for priority fights. The
+  actual target now carries a compact gold objective marker immediately above
+  its Cohesion rail and beside its Tell, including the remaining Beat window.
+- The marker shares the objective resolver used by the global goal plate. It
+  turns into `OBJECTIVE MISSED` after the deadline, keeps the combat victory
+  valid, and exposes the full condition plus Scrap reward through hover.
+- Added a production regression proving the marker follows the configured enemy,
+  reports `2 BEATS` on Beat 2 of a Beat-3 deadline, remains interactive, and
+  switches to the failed state when the deadline passes.
+- Production proof is `.artifacts/objective-target-production.png`; visual
+  inspection confirms the marker does not cover enemy art, Cohesion, Tell, or
+  the global objective plate. The required shared client also drove title ->
+  route -> battle with a complete hand/enemy state and no browser errors.
+- Strict TypeScript and two focused objective/HUD tests pass. `npm run validate`
+  is green across docs, runtime data, all 951 optimized assets, canonical-world
+  rejection, bundle/deployment contracts, art contracts, and nine sequencing
+  gates. App entry is 665.0 KB, combined boot code is 694.7 KB, and the lazy
+  foreground renderer is 7.2 KB.
+
+## 2026-07-18 Encounter Objective Audio And Celebration
+
+- Closed the feedback gap where an encounter objective could complete or fail
+  silently between renders. Every active-to-terminal transition now fires one
+  generated callout plus a result-specific procedural audio cue.
+- Completion uses a bright ascending motif and reports the earned Scrap;
+  failure uses a softer descending cue and `GOAL MISSED` so the optional goal is
+  clear without making the continuing fight feel punitive.
+- A resolver latch owns the transition, so redundant and coalesced redraws
+  cannot replay either sound or callout. Text state exposes current feedback
+  status, burst count, and visibility for production verification.
+- Extended only milestone callouts to a readable roughly 1.3-second lifetime.
+  Production captures prove both outcomes remain clear of the enemy Tell,
+  target rail, objective plate, combat log, and hand:
+  `.artifacts/objective-feedback-complete-production.png` and
+  `.artifacts/objective-feedback-missed-production.png`.
+- Strict TypeScript and three focused objective HUD/target/feedback scenarios
+  pass. Production text state matches both captures with one burst, one matching
+  cue, no opposite cue, and no console or page-error artifact.
+- `npm run validate` passes all release gates and nine sequencing scenarios.
+  The app entry remains within target at 666.4 KB, combined boot is 696.2 KB,
+  and `game-core` remains within its hard cap at 29.7 KB.
+
+## 2026-07-18 Persistent High Contrast Accessibility
+
+- Added Standard/High Contrast as the eighth shared Settings row. The option is
+  available from title, paused route, and paused combat Settings and applies to
+  the whole game surface before scene boot, so Profile, Codex, rewards, and
+  outcomes inherit it without scene-specific wiring.
+- High Contrast increases luminance separation while retaining the authored
+  enamel, brass, cyan, tarot, and rooftop artwork. It changes no combat rules,
+  timing, random outcomes, input locks, progression, or asset selection.
+- The preference persists through safe browser storage and keeps a session
+  fallback when storage is blocked. Text state reports preference, effective
+  state, and whether the expected game-container treatment is actually applied.
+- Pointer, keyboard, and standard-gamepad coverage proves live switching;
+  focused tests also cover Menu/Route/Battle propagation, reload persistence,
+  blocked storage, exact row/focus ownership, and configurable-control reuse.
+- The required production client reached the complete eight-row Settings panel
+  with eight generated row frames and no error artifact. Inspected Standard and
+  High captures are `.artifacts/high-contrast-standard-production.png` and
+  `.artifacts/high-contrast-high-production.png`; their state files report the
+  matching preference and applied status.
+- A separate production combat proof at
+  `.artifacts/high-contrast-battle-production.png` reports one enemy, five hand
+  cards, ready foreground/hand renderers, and applied High Contrast; inspection
+  confirms the Leader, enemy, Tell, Cohesion rails, HUD, event rail, piles, and
+  card art all remain distinct. No console/page-error artifact was emitted.
+- `npm run validate` passes every release gate, including the 42-runtime/
+  41-source canonical-world allowlist and legacy-path rejection, plus all nine
+  sequencing scenarios. Production is 667.4 KB app entry, 697.1 KB combined
+  boot code, 29.7 KB game core, and 24.1 KB lazy system overlays.
+
+## 2026-07-18 Molt Power Resolver And Canonical Rule Repair
+
+- Closed a live progression defect where cards and the Flock Stats panel granted
+  Molt Power but neither combat preview nor card resolution consumed the stat.
+  Every Molt-active card now applies the deck's Molt Power once to its first
+  positive damage, Cover, or recovery line; area damage receives half, rounded
+  up, per target, and a zero-value burst cannot waste the bonus.
+- Preview and live resolution share the same small Molt Power helper. Selected
+  card outcomes report the applied amount, while combat telemetry records total,
+  bursts, and rendered feedback. The production action uses an unobstructed
+  `MOLT POWER +N` callout, orange sparks, combat-log confirmation, and the normal
+  target damage read.
+- Replaced the retired single-card Molt documentation with the shipped whole-turn
+  stance: alternate `moltEffects`, 1-Wingbeat discount for active non-Molt cards,
+  once-per-card Molt Power, Roost termination, and one Open Sky enemy phase.
+  Documentation validation now rejects the old next-card/end-after-card phrases.
+- Five focused Molt browser scenarios pass, including normal/Molt separation,
+  preview/live parity, stat scaling, first-positive-line ownership, half-strength
+  area damage, derived targeting, and Preen behavior. `npm run validate` passes
+  every release gate and all nine sequencing scenarios; game core remains within
+  its hard cap at 29.9 KB and combined boot code is 698.3 KB.
+- The required shared production client completed title -> route -> battle with
+  no errors. The inspected live proof is `.artifacts/molt-power-production.png`:
+  starter Molt Power 3 turns Locked Nest's 7 damage into 10, updates Roof Rat
+  from 30 to 20 Cohesion, and emits one readable bonus burst with no console or
+  page-error artifact.
+- Added a dedicated procedural Molt Power cue: a brief feather-noise accent and
+  rising three-tone shimmer whose intensity follows the applied bonus. The pure
+  preview stays silent, normal cards emit nothing, and the resolver-owned spend
+  produces exactly one cue even when other Molt lines follow. It inherits the
+  existing mute and SFX-volume controls.
+- A fresh production interaction first unlocked Web Audio through the real title
+  Start Run control, then resolved Molt Power in battle. Text state reports one
+  Molt Power cue and one visual burst with the enemy at 20/30 Cohesion; the
+  inspected frame keeps `MOLT POWER +3` in a stable upper-center lane clear of
+  the simultaneous four-suit rally wheel. No console/page-error artifact was
+  emitted. Three focused audio/preview/resolution scenarios and `npm run
+  validate` pass; combined boot remains within target at 698.5 KB.
+- Added the delayed contextual Molt lesson called for by the experience audit.
+  It activates only after the core First Flight Guide is complete and a true
+  Molt-mechanic card enters hand, then uses a compact orange HUD explanation,
+  card pulse, and `MOLT CARD` chip without blocking other plays. Playing that
+  card retires the lesson persistently; Skip Guide suppresses it and Replay
+  Guide resets it.
+- Focused browser coverage passes skipped, active, seen, played, and restarted
+  states. The required shared production client completed title -> route ->
+  battle, and `.artifacts/molt-guide-production.png` shows the final Hot Feathers
+  treatment with matched text state and no console/page errors. `npm run
+  validate` passes all release gates and nine sequencing scenarios at 700.0 KB
+  combined boot, 671.6 KB app entry, and 28.4 KB game core.
+
+## 2026-07-18 Reward Decision Outcome Previews
+
+- Added an always-visible primary consequence chip to every card reward. Add
+  choices show the exact deck-size change before commitment; Preen choices show
+  the first changed normal or Molt effect, with a changed Flock Stat as fallback.
+- The main scene supplies the live raw card/deck decision contract and the lazy
+  reward renderer owns compact presentation diffing. This keeps reward-only work
+  out of boot while allowing the same source values to drive preview and commit.
+- Focused Chromium coverage commits both decision types and proves the displayed
+  Add delta against the resulting deck size and the Preen contract against the
+  upgraded card's actual effect text.
+- The required shared production client completed title -> route -> battle with
+  audio unlocked. Inspected focused captures are
+  `.artifacts/reward-delta-production.png` and
+  `.artifacts/preen-delta-production.png`; all three offers remain visible, the
+  latter includes clear `Heal 1 > Heal 2` and `Gain 6 Cover > Gain 8 Cover`
+  examples, text state matches, and no console/page errors were recorded.
+- `npm run validate` passes every release gate and all nine sequencing scenarios.
+  Production remains within budget at 700.4 KB combined boot, 672.0 KB app
+  entry, 28.4 KB game core, and 12.2 KB for the lazy reward renderer.
+
+## 2026-07-18 Final Card-Picker Consequence Previews
+
+- Extended primary outcome previews into the shared final-choice picker used by
+  Market Preen/Release services and route workbenches. Every candidate now owns
+  a compact consequence plate inside its card rather than requiring a hover.
+- Preen compares the first changed normal or Molt effect, then falls back to an
+  aggregated Flock Stat delta. Its formatter isolates changed numbers from long
+  shared prefixes (`Deal 2 > Deal 3`), retains useful effect context (`Gain 6
+  Cover > Gain 8 Cover`), and identifies newly added effects. The full existing
+  hover dossier remains available for unabridged rules.
+- Release shows the exact live deck reduction on all candidates. With repeated
+  route removals, the rendered contract recalculates from `DECK 10 > 9` to
+  `DECK 9 > 8` immediately after the first commit.
+- Three focused Chromium scenarios pass Market Preen, Market Release, and the
+  repeated route-workbench path. They verify visible text-state deltas, Scrap
+  payment timing, upgraded state, deck mutation, and recalculation after commit.
+- The required shared production client completed title -> route -> battle with
+  audio unlocked and no error artifact. Inspected focused proofs are
+  `.artifacts/card-picker-preen-production.png` and
+  `.artifacts/card-picker-release-production.png`; both match text state and
+  preserve card art, costs, names, navigation, and all ten competing choices.
+- Bundle validation passes at 702.5 KB combined boot, 674.1 KB app entry, 28.4
+  KB game core, and 12.2 KB lazy reward rendering.
+
+## 2026-07-18 Enemy-Move And Input-Friction Telemetry
+
+- Added resolver-owned enemy-move pressure rows to every combat summary: enemy
+  and move identifiers, readable move label, actual Cohesion lost, Cover
+  blocked, and hit count. Repeated hits aggregate under the same move boundary.
+- Corrected damage telemetry at enemy, card/self-damage, and Fouled sources so
+  overkill cannot inflate Cohesion loss. A 20-point Review Strike against one
+  remaining Cohesion now records exactly one point lost.
+- Added separate invalid-action and cancelled-selection counters at the live
+  card and target click handlers. Selecting an enemy-target card and clicking it
+  again counts as a cancellation; missing or unaffordable cards and invalid
+  targets count as input friction, while animation locks do not.
+- Carried both contracts through completed-combat cloning, active-run save
+  sanitization, continuation, run aggregation, and local playtest history.
+- Extended the developer dashboard with Enemy Move Pressure and Input Friction
+  tables. Its seeded fallback remains explicitly labeled as pipeline evidence
+  and is not treated as human balance evidence.
+- Focused Chromium coverage passes live loss emission, cross-fight aggregation,
+  exact overkill accounting, and checkpoint recovery. The required shared
+  production client completed title -> route -> battle with no error artifact.
+- Inspected production proof at `.artifacts/telemetry-outcome-production.png`
+  matches `.artifacts/telemetry-outcome-production-summary.json`: Review Strike
+  caused one actual Cohesion loss, two invalid actions and one cancellation were
+  recorded, the outcome chrome loaded, and the browser error list is empty.
+- Bundle validation passes at 703.9 KB combined boot, 675.5 KB app entry, and
+  28.4 KB game core. The entry emits a soft 0.5 KB target warning but remains
+  below the hard release budget. `npm run validate` passes every release gate
+  and all nine sequencing scenarios.
+
+## 2026-07-18 Complete Market Purchase Outcome Previews
+
+- Added a uniform primary decision contract for every irreversible Market
+  purchase: cards, Waymarks, Supplies, boss rigging, route planning, and paid
+  stock refreshes now show exact before/after values before commitment.
+- Card dossiers replace secondary taxonomy in the decision line with the live
+  deck-size and post-purchase Scrap totals. Non-card dossiers render separate
+  rows for the purchased inventory, Boss Shield, Open Sky Guard, Open Sky
+  reduction, stock round, and resulting Scrap as applicable.
+- Purchase projection reuses the route-effect resolver for carried
+  `afterMarketPurchase` Waymarks. Refunds and route-preparation bonuses are
+  included rather than subtracting only the shelf price.
+- Preen and Release remain safe two-stage actions: opening the picker spends
+  nothing, and each final card shows its exact cost and result before the paid
+  selection.
+- Focused Chromium parity coverage commits every purchase family and compares
+  each rendered preview with the resulting state. It explicitly carries Ledger
+  Tab to prove refund, Guard, and Open Sky projection; six surrounding Market
+  purchase/detail/picker regressions pass.
+- The required shared production client completed title -> route -> battle with
+  audio unlocked and no error artifact. Inspected focused captures are
+  `.artifacts/market-card-preview-production.png` and
+  `.artifacts/market-boss-preview-production.png`; matching text state reports
+  `DECK 3 > 4`, `SCRAP 480 > 390`, `BOSS SHIELD 0 > 18`, and
+  `SKY GUARD 0 > 1`, with an empty browser-error list.
+- Bundle validation passes at 707.7 KB combined boot, 679.3 KB app entry, and
+  28.4 KB game core. The entry produces a preferred-target warning but remains
+  below the 700 KB hard cap. `npm run validate` passes every release gate and all
+  nine sequencing scenarios.
+
+## 2026-07-18 Complete Route-Event Outcome Previews
+
+- Added exact confirmation-ledger rows to every Basin, Cache, Nest, and Signal
+  choice, covering Cohesion, Scrap, deck, Supplies, Waymarks, boss shield, Open
+  Sky Guard/reduction, enemy Cover, and forced Open Sky state.
+- Built the preview through the production route-effect resolver and replayed
+  active Basin, Cache, and Signal Waymark triggers in the projection. Random
+  cache outcomes and selected item/card rewards are frozen before confirmation.
+- Kept Preen and Release as safe two-stage choices with exact results on the
+  final card picker; rival choices now preview their Battle transition.
+- Focused Chromium parity coverage passes Basin, expanded Signal cache rewards,
+  Cache card selection, Nest/Preen, hidden Waymark bonuses, and rival handoff.
+  Five surrounding route-art, district-world, and card-picker regressions pass.
+- The production build and required shared-client route run pass. The inspected
+  confirmation capture at `.artifacts/route-decision-production/route-decision.png`
+  matches its text state and has an empty browser-error list; shared-client
+  evidence is under `.artifacts/route-decision-shared-client/`.
+- `npm run validate` passes every release gate and all nine sequencing
+  scenarios. Bundle hard caps pass at 714.2 KB combined boot, 685.8 KB app
+  entry, and 28.4 KB game core; combined boot and entry remain above their
+  preferred soft targets.
+
+## 2026-07-18 P1 Visual-Hierarchy Evidence Closure
+
+- Inspected production grayscale captures for title, route confirmation,
+  rewards, Market, combat intro, and settled combat. Each surface retains an
+  obvious current decision without relying on suit color or glow alone.
+- Verified that interactive offers and primary actions lead structural chrome,
+  the combat log recedes behind threat/cards, and selected reward/Market
+  dossiers keep all alternatives visible.
+- Rechecked the route confirmation at 2560x1600, 1280x720, and the minimum
+  supported 1000x560 viewport. The centered stage, ledger, reward dossier, and
+  Confirm/Cancel controls remain anchored and unclipped with no browser errors.
+- Evidence is stored under `.artifacts/visual-hierarchy-grayscale/` and
+  `.artifacts/route-decision-breakpoints/`; existing high-resolution route and
+  landscape-tablet smoke coverage preserves the breakpoint contract.
+
+## 2026-07-18 Route-Contract Completion Feedback Closure
+
+- Closed the final concrete-route-decision acceptance gap: contract completion
+  now fires a generated route callout and the ascending objective-complete cue
+  instead of relying only on a badge/log update.
+- The callout names the completed plan, exact Scrap reward, and permanent record
+  badge, then clears after 1.8 seconds so it never stalls route planning.
+- Added a persisted `celebrated` latch to sanitized active-run state so reloads
+  cannot replay earned reward feedback.
+- Focused Chromium coverage proves all four contract completion resolvers,
+  account and run-summary recording, callout/audio emission, expiry below three
+  seconds, and the one-shot state.
+- Inspected production proof at
+  `.artifacts/contract-celebration-production/contract-complete.png`; it remains
+  clear of the selected route and Take Route action, with an empty browser-error
+  list.
+- `npm run validate` passes every release gate and all nine sequencing
+  scenarios. Bundle hard caps pass at 716.1 KB combined boot, 687.6 KB app
+  entry, and 28.4 KB game core; combined boot and entry remain above their
+  preferred soft targets.
+
+## 2026-07-18 Horizontal Mastery Acceptance Closure
+
+- Verified pre-run named Leader mastery with live progress and post-run
+  `NEXT FLIGHT` goal priority across boss dossier, suit collection, and Leader
+  mastery targets.
+- Confirmed that contract badges, dossier discoveries, achievements, personal
+  records, Ascension, same-seed replay, and challenge links remain horizontal,
+  informational, or opt-in rather than permanent stat power.
+- Four focused browser scenarios pass dossier persistence/goal priority,
+  collection milestones, shared-route fidelity, and fresh-progress outcome
+  presentation.
+- Deliberately deferred a calendar-based weekly route until observed retention
+  proves the base loop; adding time pressure now would conflict with the
+  no-streak/no-FOMO product direction.
+
+## 2026-07-18 Codex Boot-Bundle Deferral
+
+- Moved the complete Codex scene into an on-demand module and removed it from
+  Phaser's initial scene registration. The title shows a compact loading notice,
+  retries cleanly after a chunk failure, and preserves early clicks across its
+  normal UI-art restart.
+- Production HTML does not preload the new 55.2 KB Codex scene or Codex data.
+  App entry dropped from 687.6 KB to 635.0 KB and combined boot from 716.1 KB
+  to 663.4 KB, clearing both preferred targets while game core remains 28.4 KB.
+- Added focused coverage for unregistered/unrequested boot state, actual menu
+  activation, dynamic request/registration, scene handoff, and the existing full
+  Codex renderer. Both focused scenarios pass.
+- The required production client opened Codex through the real top-bar canvas
+  control. Its screenshot and `mode: codex` text state agree, all expected Codex
+  frames are present, and no browser-error artifact was emitted. Evidence is in
+  `.artifacts/codex-lazy-production/client/`.
+- The broad matrix passed 165/169 before exposing three missing-field Molt Power
+  states that propagated `NaN` into WebAudio and one stale overkill telemetry
+  expectation. The state helper now safely treats missing/non-finite power as
+  zero, telemetry asserts actual Cohesion lost, and all four cases pass together.
+  The authoritative extended rerun passes all 169 Chromium scenarios in 22.3
+  minutes; the final bounded `npm run validate` gate and all nine sequencing
+  tests also pass.
+
+## 2026-07-18 Fairness Audit And Single-Cue Feedback Closure
+
+- Re-ran the authored balance, 500-seed economy, content-drift, and ten-row
+  telemetry-pipeline audits. All 32 content checks pass with zero drift; every
+  district economy profile remains inside its Scrap, deck, Waymark, Preen, and
+  safety tolerances. The seeded dashboard is retained strictly as pipeline proof,
+  not human retention or balance evidence.
+- Rejected a speculative starter buff. The simple Flock Power Index reports the
+  Fledgling below specialists because it counts static Flock Stats and five-card
+  suit keystones but omits the starter's three zero-cost cards and Four-Suit
+  Rally's up-to-four Flow. Changing live balance from that proxy would weaken the
+  evidence standard.
+- Production evidence exposed one real feedback defect: the shared title utility
+  button and the lazy Codex opener each emitted `confirm`, producing two cues for
+  one click. The opener no longer duplicates the shared control sound.
+- Pointer-level coverage now proves the real Codex button requests/registers the
+  lazy scene, stops Menu, clears its notice, and increments confirm telemetry by
+  exactly one. Both focused Codex scenarios pass.
+- The required shared production client confirms `cueRequests.confirm: 1`, a
+  matching clean Codex frame, and no browser-error artifact. Evidence is under
+  `.artifacts/codex-single-cue-production/client/`.
+- The complete 169-scenario Chromium matrix passes in 22.3 minutes on one worker,
+  including the real-pointer single-cue path and every late combat-state case.
+
+## 2026-07-18 Human Playtest Export Bridge
+
+- Closed the operational gap between browser-local run telemetry and the Node
+  playtest dashboard. `?playtest=1` now adds an explicit Flock Record export
+  command without changing gameplay or normal player UI.
+- The command reads the same journaled, sanitized history used by the runtime,
+  downloads pretty JSON locally, reports its run count/status in text state,
+  and labels the operation `LOCAL ONLY / NO NETWORK UPLOAD`.
+- `tools/playtest-stats.mjs` now accepts one file, several files, or a directory
+  of JSON exports, merges their arrays, and deduplicates stable run IDs.
+- Added `docs/game/playtest-runbook.md` with fresh-profile setup, observation
+  rules, export/aggregation steps, and the exact five-session release evidence
+  standard. Seeded rows remain explicitly ineligible as human evidence.
+- Focused Chromium coverage proves normal builds hide the command, the gated
+  control works through a real canvas pointer, the downloaded JSON exactly
+  matches journaled history, status feedback updates, and no POST/PUT/PATCH
+  request occurs. Both Profile scenarios pass.
+- The required production client inspected the empty-history boundary. The
+  disabled command and local-only subtitle fit inside the Flock Record without
+  obscuring achievements, text state matches, and no browser-error artifact was
+  emitted. Evidence is under `.artifacts/playtest-export-production/`.
+- A two-file directory fixture merged into two unique runs despite one repeated
+  ID; proof is `.artifacts/playtest-export-production/dashboard-merge-proof.md`.
+  The default dashboard was then restored to its clearly labeled seeded state.
+- Final release closure passes `npm run validate`, all nine sequencing gates,
+  and the complete 170-scenario Chromium matrix in 24.0 minutes on one worker.
+  Production remains below preferred boot targets at 635.1 KB app entry and
+  663.5 KB combined boot; the optional Profile module is 13.9 KB.
+
+## 2026-07-18 Deployment Security Closure
+
+- Replaced the inline responsive platform-gate script with
+  `src/platform-gate.ts`. The emitted document now has no inline executable
+  script and can enforce a strict self-hosted script policy without
+  `unsafe-inline` or `unsafe-eval`.
+- Added `public/_headers` with CSP, no-referrer, MIME-sniff protection, framing
+  denial, sensitive-capability denial, same-origin opener/resource isolation,
+  no-cache HTML, and immutable hashed assets. Fullscreen remains allowed to the
+  game itself; Phaser's runtime canvas styles retain a narrow style-only inline
+  allowance.
+- Deployment validation now requires the emitted manifest, validates the
+  security directives, rejects unsafe script sources or inline execution, and
+  still enforces the existing cache and lazy-chunk contracts.
+- Focused Chromium coverage injects the exact production CSP into the document
+  response and proves Menu boots with a canvas, hidden platform gate, no inline
+  scripts, and zero console/page errors. The existing portrait/compact sleep,
+  landscape resume, and minimum touch-target scenario also passes.
+- The required shared production client shows an unchanged complete title with
+  matching menu/accessibility telemetry and no error artifact under
+  `.artifacts/deployment-security/client/`.
+- Production build and deployment/bundle validation pass at 635.7 KB app entry
+  and 664.2 KB combined boot, both below preferred targets.
+- Final `npm run validate` passes all release gates and nine sequencing
+  scenarios. The complete hardened-build Chromium matrix passes 171/171 in
+  24.9 minutes on one worker, including the injected strict-CSP boot path.
+
+## 2026-07-18 Full Save Backup And Restore
+
+- Added `src/game/save-backup.ts`, a versioned full-save boundary for the
+  account, active flight, run history, first-flight guide, controls, graphics,
+  contrast, motion, combat pace, audio volumes/mute, and unlocked tier.
+- Flock Record now exposes **Save Data** in normal play. Players can download a
+  local JSON backup or select one for restore; valid files show runs, wins,
+  unlocked leaders, active-checkpoint presence, and export date before a
+  separate confirmation action.
+- Restore is limited to 2 MB, uses runtime sanitizers, requires valid unique
+  controls, replaces only an explicit Bird Squad storage allowlist, rebuilds
+  all four journal mirrors, verifies writes, and attempts rollback on failure.
+  Unrelated origin storage is neither exported nor changed.
+- The gated `?playtest=1` run-history export remains available inside the Save
+  Data panel, keeping the normal Flock Record footer uncluttered.
+- Focused real-canvas coverage proves the complete download contract and no
+  mutating network request, invalid-file and pre-confirm immutability,
+  transactional confirmed restore, journal mirror equality, unrelated-key
+  preservation, and playtest-export compatibility.
+- The required production client inspected the compact normal panel with
+  matching text state and no error artifact under
+  `.artifacts/save-backup/client-polished/`.
+- Production is 636.4 KB app entry and 664.8 KB combined boot. `npm run
+  validate` passes all release gates and nine sequencing cases; the full
+  current-build Chromium matrix passes 174/174 in 23.7 minutes on one worker.
+
+## 2026-07-19 Flock Record Input Parity
+
+- Added a lifecycle-owned focus model to Flock Record, covering both badge
+  tabs, Return, Save Data, download/restore, gated playtest export, and staged
+  restore confirmation/cancellation.
+- Configured Previous, Next, Confirm, and Back bindings now operate the complete
+  flow. Tab cycles focus; D-pad directions navigate; gamepad A confirms and B
+  backs out. Pointer/touch behavior remains unchanged.
+- A bright named focus ring and compact on-canvas hint use the player's actual
+  binding labels. Profile text state exposes current focus, legal order, and
+  those bindings for accessibility and deterministic automation.
+- Corrected Save Data audio ownership: pointer actions now request exactly one
+  confirmation cue, while Cancel, Return, Escape, Q-equivalent bindings, and
+  gamepad B request one close cue rather than layered confirm/close feedback.
+- Focused Chromium coverage drives remapped A/D/Space/Q controls plus D-pad,
+  gamepad A/B, exact cue deltas, and a pointer backup download with one cue.
+- The required production client drove Menu -> Flock Record -> keyboard focus
+  -> Save Data. The inspected capture and matching text state are under
+  `.artifacts/profile-input/client-final/`; no error artifact was emitted.
+- Production remains below preferred targets at 636.4 KB app entry and 664.9
+  KB combined boot. The optional Profile scene is 25.7 KB / 8.7 KB gzip.
+  `npm run validate` passes all release gates and nine sequencing cases; the
+  complete Chromium matrix passes 175/175 in 24.2 minutes on one worker.
+
+## 2026-07-19 Legacy World Asset Guard Closure
+
+- Re-audited the July 18 removal and confirmed all 117 retired world files
+  remain absent from the working tree, runtime imports, and production bundle.
+- Removed the last active-documentation reference to the retired
+  `assets/battlefields/` directory from the root README.
+- Added the three canonical route-event centerpiece masters to the exact source
+  allowlist and extended the world validator to reject retired asset guidance
+  in current documentation while permitting the canonical denylist and this
+  historical progress log.
+- The release contract now checks exactly 42 runtime/style assets and 44 source
+  assets. Production build and `npm run validate` pass, including all nine
+  sequencing gates.
+- Required-client captures under `.artifacts/world-cleanup-proof-route/` and
+  `.artifacts/world-cleanup-proof-battle/` visually confirm the current Rooftop
+  Blocks route backdrop and matching battlefield; text state reports ready
+  renderers and neither run emitted browser errors.
