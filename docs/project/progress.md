@@ -2260,3 +2260,28 @@ Follow-up TODO:
   scenarios. App entry is 669.0 KiB and combined boot code is 697.6 KiB.
   Remaining release evidence is unchanged: five observed fresh-player sessions
   through `docs/game/playtest-runbook.md`.
+
+## 2026-07-21 Outcome Input And Playtest Handoff
+
+- Replaced the outcome screen's pointer-only command behavior with the shared
+  indexed input model. Keyboard Previous/Next and gamepad D-pad now focus Replay
+  Flight or Main Menu, Confirm/gamepad A activates the focused command, and the
+  visible focus ring plus `combatInputFocus` state report the same selection.
+- Preserved Back/gamepad B as the fast return-to-menu path and retained the
+  existing pointer commands and minimum touch regions.
+- Added a third `Rate This Run` command only under `?playtest=1`. It opens Flock
+  Record directly on Save Data with the latest completed run selected, the Fun
+  rating focused, and all ratings/export behavior remaining local-only.
+- Tightened the playtest rating header to show a readable result and short run
+  reference rather than crowding the panel with the raw internal run ID.
+- Strict TypeScript and focused Chromium coverage pass for normal keyboard,
+  normal gamepad, and playtest outcome-to-rating flows. The built shared client
+  exercised the production title/route/battle path with complete asset
+  readiness and no browser-error artifact. Outcome and rating-panel captures
+  were visually inspected under `.artifacts/test-results/outcome-input/`.
+- The final production build and full release validation pass, including all
+  nine sequencing scenarios. App entry is 670.3 KiB and combined boot code is
+  698.9 KiB, both within their enforced budgets.
+- Remaining release evidence is still five genuinely observed fresh-player
+  sessions through `docs/game/playtest-runbook.md`; automation does not replace
+  those human ratings and notes.

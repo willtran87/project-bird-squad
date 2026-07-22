@@ -6,7 +6,7 @@ Status: current-state design audit and prioritized improvement roadmap.
 
 Audit date: 2026-07-09
 
-Implementation update: 2026-07-18
+Implementation update: 2026-07-21
 
 The first experience pass is now live in the runtime: route paths use stronger
 continuous connections, selected routes keep gain/risk visible, the commit
@@ -689,6 +689,12 @@ card-picker scrolling, route-event Cancel, Market Close/back, and the outcome
 route-link action also use that independent minimum. Runtime boundary checks
 reject any enabled pointer target below 44 CSS pixels across the exercised
 Menu, Route, Market, Battle, review/reward, Codex, and Flock Record states.
+Run outcomes now use the same indexed focus model as combat and rewards:
+Previous/Next or D-pad selects Replay Flight and Main Menu, Confirm or gamepad A
+activates the focused command, Back/gamepad B still returns safely, and a named
+focus ring mirrors the text-state choice. Opt-in `?playtest=1` sessions add a
+third Rate This Run command that hands the just-completed run directly to the
+local-only four-rating panel without changing normal outcome choices.
 
 Acceptance:
 

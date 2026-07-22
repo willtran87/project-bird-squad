@@ -421,25 +421,29 @@ export function renderOutcomeCommand(
     frameKey: string;
     fontFamily: string;
     boldStyle: string;
+    width?: number;
+    fontSize?: number;
+    focused?: boolean;
     onActivate: () => void;
     addIcon: (id: string, x: number, y: number) => Phaser.GameObjects.Image | undefined;
   }
 ) {
+  const width = options.width ?? 256;
   const frameLoaded = scene.textures.exists(options.frameKey);
   if (frameLoaded) scene.textures.get(options.frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const visual = scene.add.rectangle(options.x, 582, 256, 52, options.baseFill, frameLoaded ? 0.18 : 0.98)
+  const visual = scene.add.rectangle(options.x, 582, width, 52, options.baseFill, frameLoaded ? 0.18 : 0.98)
     .setStrokeStyle(2, options.stroke, frameLoaded ? 0.28 : 1);
   root.add(visual);
   let frame: Phaser.GameObjects.Image | undefined;
   if (frameLoaded) {
     frame = scene.add.image(options.x, 582, options.frameKey)
-      .setDisplaySize(278, 74)
+      .setDisplaySize(width + 22, 74)
       .setAlpha(0.86)
       .setName('run-outcome-command-frame');
     if (options.frameTint) frame.setTint(options.frameTint);
     root.add(frame);
   }
-  const hit = scene.add.rectangle(options.x, 582, 256, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+  const hit = scene.add.rectangle(options.x, 582, width, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
     .setInteractive({ useHandCursor: true })
     .setName('run-outcome-command-hit')
     .setData('label', options.label);
@@ -453,11 +457,17 @@ export function renderOutcomeCommand(
     frame?.setAlpha(0.86);
   });
   hit.on('pointerdown', options.onActivate);
+  if (options.focused) {
+    root.add(scene.add.rectangle(options.x, 582, width + 10, 64, 0x06151b, 0.03)
+      .setStrokeStyle(3, 0x8df4ff, 0.98)
+      .setName('run-outcome-input-focus-ring')
+      .setData('label', options.label));
+  }
   const icon = options.addIcon(options.iconId, options.iconX, 582);
   if (icon) root.add(icon.setAlpha(0.9));
   root.add(scene.add.text(options.textX, 582, options.label, {
     fontFamily: options.fontFamily,
-    fontSize: '20px',
+    fontSize: `${options.fontSize ?? 20}px`,
     fontStyle: options.boldStyle,
     color: options.labelColor
   }).setOrigin(0.5));

@@ -10136,6 +10136,142 @@ test('combat and rewards expose remapped keyboard and standard gamepad focus', a
   expect((await snapshot()).liveText).toContain('choice 2 of 3');
 });
 
+test('run outcomes expose equivalent keyboard and gamepad command focus', async ({ page }) => {
+  test.setTimeout(90_000);
+  await boot(page);
+
+  const openOutcome = () => page.evaluate(async () => {
+    const scene: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    scene.mode = 'defeat';
+    scene.battleInputActive = false;
+    scene.controllerChoiceIndex = 0;
+    scene.renderAll();
+  });
+  const snapshot = () => page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const objects = collect(scene.children.list);
+    return {
+      state,
+      commands: objects
+        .filter((child: any) => child.name === 'run-outcome-command-hit' && child.input?.enabled)
+        .map((child: any) => child.getData?.('label')),
+      focusRings: objects.filter((child: any) => child.name === 'run-outcome-input-focus-ring').length,
+    };
+  });
+
+  await openOutcome();
+  await expect.poll(async () => (await snapshot()).commands).toEqual(['Replay Flight', 'Main Menu']);
+  expect((await snapshot()).state.combatInputFocus).toMatchObject({
+    active: false,
+    kind: 'outcome',
+    index: 0,
+    count: 2,
+    label: 'Replay Flight',
+    visibleFocus: false,
+  });
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await snapshot()).state.combatInputFocus).toMatchObject({
+    active: true,
+    kind: 'outcome',
+    index: 1,
+    count: 2,
+    label: 'Main Menu',
+    visibleFocus: true,
+  });
+  expect((await snapshot()).focusRings).toBe(1);
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).scene).toBe('MenuScene');
+
+  await openOutcome();
+  await expect.poll(async () => (await snapshot()).commands).toHaveLength(2);
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.input.gamepad.emit('down', battle.input.gamepad.pad1, { index: 15 }, 1);
+  });
+  await expect.poll(async () => (await snapshot()).state.combatInputFocus).toMatchObject({
+    active: true,
+    kind: 'outcome',
+    index: 1,
+    label: 'Main Menu',
+    visibleFocus: true,
+  });
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.input.gamepad.emit('down', battle.input.gamepad.pad1, { index: 0 }, 1);
+  });
+  await expect.poll(async () => JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).scene).toBe('MenuScene');
+});
+
+test('playtest outcomes hand the latest run directly to the local rating panel', async ({ page }) => {
+  test.setTimeout(90_000);
+  await boot(page, '/?playtest=1');
+
+  await page.evaluate(async () => {
+    const scene: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    scene.mode = 'defeat';
+    scene.emitRunSummary('loss');
+    scene.battleInputActive = false;
+    scene.controllerChoiceIndex = 0;
+    scene.renderAll();
+  });
+  const outcomeState = () => page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return {
+      state,
+      commands: collect(scene.children.list)
+        .filter((child: any) => child.name === 'run-outcome-command-hit' && child.input?.enabled)
+        .map((child: any) => child.getData?.('label')),
+    };
+  });
+  await expect.poll(async () => (await outcomeState()).commands).toEqual([
+    'Replay Flight',
+    'Rate This Run',
+    'Main Menu',
+  ]);
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await outcomeState()).state.combatInputFocus).toMatchObject({
+    active: true,
+    kind: 'outcome',
+    index: 1,
+    count: 3,
+    label: 'Rate This Run',
+    visibleFocus: true,
+  });
+  await page.screenshot({ path: '.artifacts/test-results/outcome-input/playtest-rate-focus.png' });
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}'))).toMatchObject({
+    mode: 'profile',
+    scene: 'ProfileScene',
+    focus: { current: 'playtestFun' },
+    playtestExport: { enabled: true, localOnly: true, runs: 1 },
+    playtestFeedback: { enabled: true, localOnly: true, result: 'loss', complete: false },
+    saveData: { open: true },
+  });
+  await expect.poll(async () => page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.profileTitlePlaque?.loaded
+      && state.profileTitlePlaque?.rendered
+      && state.profileSectionTabFrame?.loaded;
+  })).toBe(true);
+  // The lazy profile art callback rebuilds the display list once after its
+  // state first reports ready; wait for the next rendered frame before visual
+  // capture so the evidence cannot land between clear and redraw.
+  await page.waitForTimeout(250);
+  const profile = await page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}'));
+  expect(profile.playtestFeedback.runId).toBeTruthy();
+  await page.screenshot({ path: '.artifacts/test-results/outcome-input/playtest-rating-panel.png' });
+});
+
 test('title How to Play overlay opens, reports state, and loads its medallion', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {

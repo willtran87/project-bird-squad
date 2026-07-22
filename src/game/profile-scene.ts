@@ -908,22 +908,25 @@ function renderSaveDataOverlay(
   }).setResolution(2).setOrigin(0.5, 0).setName('profile-save-data-status');
 
   if (playtestMode) {
-    scene.add.rectangle(panel.cx, panel.top + 270, 574, 1, UI_FIELD.cyan, 0.34);
-    scene.add.text(panel.left + 64, panel.top + 284, 'PLAYTEST EXPERIENCE / LATEST RUN', {
+    scene.add.rectangle(panel.cx, panel.top + 262, 574, 1, UI_FIELD.cyan, 0.34);
+    scene.add.rectangle(panel.cx, panel.top + 278, 574, 32, 0x07111b, 0.86)
+      .setStrokeStyle(1, UI_FIELD.cyan, 0.28)
+      .setName('profile-playtest-rating-header');
+    scene.add.text(panel.left + 64, panel.top + 271, 'PLAYTEST RATINGS / LATEST RUN', {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: UI_SOFT,
+    }).setResolution(2);
+    const latestLabel = state.playtestRunId
+      ? `${state.playtestRunResult === 'win' ? 'WIN' : 'LOSS'}  /  RUN ${state.playtestRunId.split('-').at(-1) ?? state.playtestRunId}`
+      : 'Complete a run, then return here to rate it.';
+    scene.add.text(panel.right - 64, panel.top + 271, latestLabel, {
       fontFamily: UI_FONT,
       fontSize: '10px',
       fontStyle: UI_BOLD,
-      color: UI_FIELD.muted,
-    }).setResolution(2);
-    const latestLabel = state.playtestRunId
-      ? `${state.playtestRunResult === 'win' ? 'WIN' : 'LOSS'}  |  ${state.playtestRunId}`
-      : 'Complete a run, then return here to rate it.';
-    scene.add.text(panel.right - 64, panel.top + 284, latestLabel, {
-      fontFamily: UI_FONT,
-      fontSize: '9px',
-      fontStyle: UI_BOLD,
       color: state.playtestRunId ? UI_FIELD.cyanText : UI_FIELD.muted,
-      fixedWidth: 390,
+      fixedWidth: 300,
       align: 'right',
     }).setResolution(2).setOrigin(1, 0).setName('profile-playtest-latest-run');
 

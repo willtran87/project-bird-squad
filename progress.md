@@ -2711,3 +2711,22 @@ prove early input queues without skipping the minimum and then releases combat.
 App entry is 669.0 KiB and combined boot code is 697.6 KiB. Remaining release
 evidence is still five observed fresh-player sessions through
 `docs/game/playtest-runbook.md`.
+
+Current follow-up: Outcome input parity and playtest handoff. Run outcomes now
+participate in the shared indexed input model instead of exposing pointer-only
+commands: keyboard Previous/Next and gamepad D-pad focus Replay Flight or Main
+Menu, Confirm/gamepad A activates the focused command, Back/gamepad B keeps its
+safe menu shortcut, and the named focus ring matches `combatInputFocus` state.
+Opt-in `?playtest=1` outcomes add a third Rate This Run command that opens Flock
+Record directly on Save Data with the just-completed run selected and Fun
+focused; normal outcomes remain two-choice and all feedback stays local. The
+rating header now uses a short readable result/run reference. Strict TypeScript
+and focused normal-keyboard, normal-gamepad, and playtest outcome-to-rating
+Chromium regressions pass. The required built shared client exercised the live
+title/route/battle path with complete asset readiness and no browser-error
+artifact; outcome and rating-panel captures under
+`.artifacts/test-results/outcome-input/` were inspected. Remaining release
+evidence is still five genuinely observed fresh-player sessions through
+`docs/game/playtest-runbook.md`. The final production build and full release
+validation pass, including all nine sequencing scenarios; app entry is 670.3
+KiB and combined boot code is 698.9 KiB.

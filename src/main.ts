@@ -131,9 +131,10 @@ import type {
 } from './game/battle/fx-presenter';
 
 type GameMode = 'menu' | 'routeSelection' | 'battle' | 'waymarkReward' | 'cardReward' | 'upgradeReward' | 'runComplete' | 'defeat';
-type CombatInputChoiceKind = 'card' | 'cardReward' | 'upgradeReward' | 'waymarkReward';
+type CombatInputChoiceKind = 'card' | 'cardReward' | 'upgradeReward' | 'waymarkReward' | 'outcome';
 const isRunOutcome = (mode: GameMode) => mode === 'runComplete' || mode === 'defeat';
 const sharedRouteParams = new URLSearchParams(window.location.search);
+const PLAYTEST_MODE = sharedRouteParams.get('playtest') === '1';
 const sharedRouteCandidate = sharedRouteParams.get('flight') ?? '';
 const SHARED_ROUTE_SEED = /^[a-z0-9_-]{1,32}$/i.test(sharedRouteCandidate) ? sharedRouteCandidate : undefined;
 const SHARED_ROUTE_MODE: RunMode = sharedRouteParams.get('length') === 'quick' ? 'quick' : 'full';
@@ -5817,6 +5818,7 @@ class ProfileScene extends Phaser.Scene {
     focus: 'achievements',
   };
   private profileRenderer?: ProfileSceneModule['renderProfileScene'];
+  private openSaveDataOnCreate = false;
 
   constructor() {
     super('ProfileScene');
@@ -5830,22 +5832,28 @@ class ProfileScene extends Phaser.Scene {
     this.profileViewState.badgeView = value;
   }
 
+  init(data: { openSaveData?: boolean } = {}) {
+    this.openSaveDataOnCreate = PLAYTEST_MODE && data.openSaveData === true;
+  }
+
   get profileRecordRevealBursts() {
     return this.profileViewState.revealBursts;
   }
 
   create() {
+    const openSaveData = this.openSaveDataOnCreate;
+    this.openSaveDataOnCreate = false;
     this.profileViewState.revealBursts = 0;
     this.profileViewState.playtestExportStatus = 'idle';
     this.profileViewState.playtestFeedbackStatus = 'idle';
     this.profileViewState.playtestFeedback = {};
     this.profileViewState.playtestRunId = undefined;
     this.profileViewState.playtestRunResult = undefined;
-    this.profileViewState.saveDataOpen = false;
+    this.profileViewState.saveDataOpen = openSaveData;
     this.profileViewState.saveDataStatus = 'idle';
     this.profileViewState.saveDataMessage = '';
     this.profileViewState.pendingRestore = undefined;
-    this.profileViewState.focus = 'achievements';
+    this.profileViewState.focus = openSaveData ? 'playtestFun' : 'achievements';
     this.renderProfileLoading();
     void loadProfileSceneModule()
       .then((module) => {
@@ -15056,10 +15064,6 @@ class BattleScene extends Phaser.Scene {
       confirm: () => {
         if (!this.fxLayer?.active) return;
         if (this.requestBattleIntroDismiss()) return;
-        if (isRunOutcome(this.mode)) {
-          this.replayLastFlight();
-          return;
-        }
         if (this.settingsOverlayOpen || this.pauseOverlayOpen) return;
         if (this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
         this.activateCombatChoice(this.controllerChoiceIndex);
@@ -15169,6 +15173,7 @@ class BattleScene extends Phaser.Scene {
     if (this.mode === 'waymarkReward') return this.waymarkChoices.length;
     if (this.mode === 'cardReward') return this.rewardChoices.length;
     if (this.mode === 'upgradeReward') return this.upgradeChoices.length;
+    if (isRunOutcome(this.mode)) return this.outcomeActions().length;
     return 0;
   }
 
@@ -15187,22 +15192,27 @@ class BattleScene extends Phaser.Scene {
     const reward = this.mode === 'cardReward' ? this.rewardChoices[index] : undefined;
     const upgrade = this.mode === 'upgradeReward' ? this.upgradeChoices[index] : undefined;
     const waymark = this.mode === 'waymarkReward' ? this.waymarkChoices[index] : undefined;
+    const outcome = isRunOutcome(this.mode) ? this.outcomeActions()[index] : undefined;
     const enemy = this.enemies.find((candidate) => candidate.id === this.selectedEnemyId && candidate.hp > 0);
     const kind: CombatInputChoiceKind | undefined = this.mode === 'battle'
       ? 'card'
       : this.mode === 'cardReward' || this.mode === 'upgradeReward' || this.mode === 'waymarkReward'
         ? this.mode
+        : isRunOutcome(this.mode)
+          ? 'outcome'
         : undefined;
     return {
       active: this.battleInputActive,
       kind,
       index: count > 0 ? index : undefined,
       count,
-      label: card ? displayName(card) : reward ? displayName(reward) : upgrade ? displayName(upgrade) : waymark?.name,
+      label: card ? displayName(card) : reward ? displayName(reward) : upgrade ? displayName(upgrade) : waymark?.name ?? outcome?.label,
       target: this.mode === 'battle' ? enemy?.name : undefined,
       visibleFocus: this.battleInputActive && (
         this.mode === 'battle'
           ? Boolean(this.selectedInstanceId && this.hand.some((candidate) => candidate.instanceId === this.selectedInstanceId))
+          : isRunOutcome(this.mode)
+            ? this.root?.list.some((child) => child.name === 'run-outcome-input-focus-ring') ?? false
           : this.root?.list.some((child) => child.name === 'reward-input-focus-ring') ?? false
       ),
       bindings: {
@@ -15225,6 +15235,14 @@ class BattleScene extends Phaser.Scene {
 
   private activateCombatChoice(index: number) {
     if (!this.fxLayer?.active || this.settingsOverlayOpen || this.pauseOverlayOpen || this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
+    if (isRunOutcome(this.mode)) {
+      const actions = this.outcomeActions();
+      const normalized = Phaser.Math.Clamp(Math.round(index), 0, Math.max(0, actions.length - 1));
+      this.controllerChoiceIndex = normalized;
+      this.battleInputActive = true;
+      actions[normalized]?.activate();
+      return;
+    }
     if ((this.mode === 'waymarkReward' || this.mode === 'cardReward' || this.mode === 'upgradeReward') && !this.rewardPresentationReady()) return;
     this.battleInputActive = true;
     this.controllerChoiceIndex = Math.max(0, index);
@@ -21756,6 +21774,23 @@ class BattleScene extends Phaser.Scene {
     ];
   }
 
+  private outcomeActions(): Array<{
+    id: 'replay' | 'rate' | 'menu';
+    label: string;
+    activate: () => void;
+  }> {
+    const actions: Array<{
+      id: 'replay' | 'rate' | 'menu';
+      label: string;
+      activate: () => void;
+    }> = [{ id: 'replay', label: 'Replay Flight', activate: () => this.replayLastFlight() }];
+    if (PLAYTEST_MODE && window.__birdSquadLastRun) {
+      actions.push({ id: 'rate', label: 'Rate This Run', activate: () => this.openPlaytestRunRating() });
+    }
+    actions.push({ id: 'menu', label: 'Main Menu', activate: () => this.returnToMainMenu() });
+    return actions;
+  }
+
   private renderOutcome() {
     this.queueBattleRewardUiLoad();
     this.queueOutcomeDossierLoad();
@@ -21955,17 +21990,59 @@ class BattleScene extends Phaser.Scene {
 
     const commandFrameKey = uiIconAssets['run-outcome-command-frame'].key;
     const addCommandIcon = (id: string, x: number, y: number) => addUiIconImage(this, id as UiIconId, x, y, 18);
-    this.bossDossierModule?.renderOutcomeCommand(this, this.root, {
-      x: cx - 140, textX: cx - 118, label: 'Replay Flight', labelColor: UI_GOLD,
-      iconId: 'route-pin', iconX: cx - 236, baseFill: 0x122235, hoverFill: 0x183451,
-      stroke: 0xd8a840, frameTint: win ? undefined : 0xffb195, frameKey: commandFrameKey,
-      fontFamily: UI_FONT, boldStyle: UI_BOLD, onActivate: () => this.replayLastFlight(), addIcon: addCommandIcon
-    });
-    this.bossDossierModule?.renderOutcomeCommand(this, this.root, {
-      x: cx + 140, textX: cx + 162, label: 'Main Menu', labelColor: '#dbe6f0',
-      iconId: 'back-chevron', iconX: cx + 44, baseFill: 0x141d2b, hoverFill: 0x1b2d42,
-      stroke: 0x7ab8d6, frameTint: win ? 0xcfefff : 0xffb195, frameKey: commandFrameKey,
-      fontFamily: UI_FONT, boldStyle: UI_BOLD, onActivate: () => this.returnToMainMenu(), addIcon: addCommandIcon
+    const outcomeActions = this.outcomeActions();
+    const outcomeIndex = this.normalizeCombatChoiceIndex();
+    const compactCommands = outcomeActions.length > 2;
+    const commandSpacing = compactCommands ? 232 : 280;
+    const commandWidth = compactCommands ? 210 : 256;
+    outcomeActions.forEach((action, index) => {
+      const x = cx + (index - (outcomeActions.length - 1) / 2) * commandSpacing;
+      const style = action.id === 'replay'
+        ? {
+            labelColor: UI_GOLD,
+            iconId: 'route-pin',
+            baseFill: 0x122235,
+            hoverFill: 0x183451,
+            stroke: 0xd8a840,
+            frameTint: win ? undefined : 0xffb195,
+          }
+        : action.id === 'rate'
+          ? {
+              labelColor: '#dffbff',
+              iconId: 'unlock-badge',
+              baseFill: 0x0d2730,
+              hoverFill: 0x164251,
+              stroke: 0x8df4ff,
+              frameTint: 0xcfefff,
+            }
+          : {
+              labelColor: '#dbe6f0',
+              iconId: 'back-chevron',
+              baseFill: 0x141d2b,
+              hoverFill: 0x1b2d42,
+              stroke: 0x7ab8d6,
+              frameTint: win ? 0xcfefff : 0xffb195,
+            };
+      this.bossDossierModule?.renderOutcomeCommand(this, this.root, {
+        x,
+        textX: x + (compactCommands ? 14 : 22),
+        label: action.label,
+        labelColor: style.labelColor,
+        iconId: style.iconId,
+        iconX: x - commandWidth / 2 + (compactCommands ? 34 : 32),
+        baseFill: style.baseFill,
+        hoverFill: style.hoverFill,
+        stroke: style.stroke,
+        frameTint: style.frameTint,
+        frameKey: commandFrameKey,
+        fontFamily: UI_FONT,
+        boldStyle: UI_BOLD,
+        width: commandWidth,
+        fontSize: compactCommands ? 17 : 20,
+        focused: this.battleInputActive && outcomeIndex === index,
+        onActivate: action.activate,
+        addIcon: addCommandIcon,
+      });
     });
 
     const mastery = leaderMastery(this.lastRunRewards?.account ?? loadAccount(), this.runLeaderId ?? defaultLeaderId);
@@ -22144,6 +22221,15 @@ class BattleScene extends Phaser.Scene {
         summary.seed
       )
     });
+  }
+
+  private openPlaytestRunRating() {
+    if (!PLAYTEST_MODE || !window.__birdSquadLastRun) {
+      playUiSound('locked');
+      return;
+    }
+    playUiSound('confirm');
+    this.scene.start('ProfileScene', { openSaveData: true });
   }
 
   private returnToMainMenu() {

@@ -19,11 +19,13 @@ export command to the Flock Record.
 
 ## Export A Session
 
-After a win or loss, open **Flock Record**, choose **Save Data**, and rate the
-latest run from 1–5 for **Fun**, **Fair**, **Clear**, and **Replay**. Each choice
-is saved immediately to that local run. Then choose **Export N Runs**. The
-button downloads `bird-squad-runs-YYYY-MM-DD.json`; its subtitle explicitly
-states that ratings and exports stay local and perform no network upload.
+After a win or loss, choose **Rate This Run** on the outcome screen. This opens
+the local Save Data panel with the completed run focused. Rate it from 1–5 for
+**Fun**, **Fair**, **Clear**, and **Replay**; each choice saves immediately to
+that local run. Then choose **Export N Runs**. The button downloads
+`bird-squad-runs-YYYY-MM-DD.json`; its subtitle explicitly states that ratings
+and exports stay local and perform no network upload. The longer Flock Record
+→ Save Data route remains available if the tester closes the outcome first.
 
 Ratings do not replace observer notes. They add a consistent subjective signal
 that can be compared with the recorded route, combat, input-friction, and
