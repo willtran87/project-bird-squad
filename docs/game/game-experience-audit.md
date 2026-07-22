@@ -662,7 +662,12 @@ matrix use the same floor, with the rating panel reflowed so direct 1-5 choices
 remain separated at the minimum viewport. Core route decisions now follow the
 same contract: abandon-run confirmation, market category/service/refresh
 controls, reward Claim, and run-outcome commands retain compact artwork over
-independent 58-game-pixel interaction regions.
+independent 58-game-pixel interaction regions. Route Cohesion and route/battle
+Deck, Supply, and Waymark HUD actions, the combat-log detail target, long-deck
+card-picker scrolling, route-event Cancel, Market Close/back, and the outcome
+route-link action also use that independent minimum. Runtime boundary checks
+reject any enabled pointer target below 44 CSS pixels across the exercised
+Menu, Route, Market, Battle, review/reward, Codex, and Flock Record states.
 
 Acceptance:
 

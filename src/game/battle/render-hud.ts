@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
 
 export type BattleHudTooltipTarget = Phaser.GameObjects.Rectangle | Phaser.GameObjects.Arc | Phaser.GameObjects.Text;
 
@@ -164,8 +165,9 @@ function renderCombatLog(context: BattleHudRenderContext) {
   const y = 404;
   const w = 390;
   const h = 50;
-  const hit = scene.add.rectangle(x, y, w, h, 0x000000, 0.001)
-    .setInteractive({ useHandCursor: true });
+  const hit = scene.add.rectangle(x, y, w, Math.max(h, MIN_SUPPORTED_TOUCH_TARGET), 0x000000, 0.001)
+    .setInteractive({ useHandCursor: true })
+    .setName('combat-log-hit');
   context.attachTooltip(hit, 'Combat Log', context.log.tooltip);
 
   root.add(scene.add.rectangle(x, y, w - 64, h - 22, 0x07111a, 0.48)

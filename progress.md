@@ -2664,3 +2664,23 @@ regressions, production build, and full release validation pass, including all
 nine sequencing scenarios. App entry is 660.4 KiB and combined boot code is
 688.8 KiB. Remaining release evidence is still five observed fresh-player
 sessions through `docs/game/playtest-runbook.md`.
+
+Current follow-up: Runtime pointer-target closure. Broad 1000x560 inventory now
+covers Menu, baseline Route, long-deck card picker, loaded Market, settled
+Battle, deck/pile/reward review, Codex/detail, Flock Record/playtest,
+exit/reward, and outcome states instead of relying only on named controls. It
+found route Cohesion at 18.7 CSS pixels high, route/battle HUD actions at 29.6,
+card-picker scroll at 35.8x28, picker Cancel and Market back at 29.6 high,
+Market Close at 23.3, combat log at 38.9, and Copy Route Link at 24.9. Shared
+renderers now place independent 58-game-pixel interaction regions over the
+compact artwork, and the boundary suite rejects any enabled hand-cursor target
+below 44 CSS pixels in every exercised state. Copy Route Link still copies and
+launches the same seed/run length. Inspected captures remain clean under
+`.artifacts/test-results/min-supported/`; the required production client used
+the live enlarged Deck HUD target to open Deck Review with matching state and
+no browser errors under `.artifacts/final-touch-client/`. Strict TypeScript,
+production build, broad boundary coverage, and focused market/card-picker/
+route/outcome regressions pass. Full release validation also passes all nine
+sequencing scenarios; app entry is 661.1 KiB and combined boot code is 689.6
+KiB. Remaining release evidence is still five observed fresh-player sessions
+through `docs/game/playtest-runbook.md`.

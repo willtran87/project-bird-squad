@@ -8738,7 +8738,23 @@ test('deck, pile, and reward commands keep touch targets at the minimum supporte
         cssHeight: child.displayHeight * scale,
       }));
   }, { key: sceneKey, source: patternSource });
-
+  const undersizedPointerTargets = (sceneKey: string) => page.evaluate((key) => {
+    const scene: any = window.__birdSquadGame.scene.getScene(key);
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const canvas = document.querySelector('canvas')!.getBoundingClientRect();
+    const scale = canvas.width / 1280;
+    return collect(scene.children.list)
+      .filter((child: any) => child.input?.enabled && child.input?.cursor === 'pointer')
+      .map((child: any) => ({
+        name: child.name ?? '',
+        cssWidth: Number((child.displayWidth * scale).toFixed(1)),
+        cssHeight: Number((child.displayHeight * scale).toFixed(1)),
+      }))
+      .filter((child: any) => child.cssWidth < 44 || child.cssHeight < 44);
+  }, sceneKey);
   await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const route: any = await window.__birdSquadStartScene!('RouteScene', {});
@@ -8756,6 +8772,7 @@ test('deck, pile, and reward commands keep touch targets at the minimum supporte
   expect(routeTargets.filter((target) => target.name === 'deck-review-row-hit')).toHaveLength(7);
   expect(routeTargets.filter((target) => target.name.startsWith('deck-review-scroll-'))).toHaveLength(1);
   expect(routeTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  expect(await undersizedPointerTargets('RouteScene')).toEqual([]);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/route-deck-review-1000x560.png' });
 
   await page.evaluate(async () => {
@@ -8777,6 +8794,7 @@ test('deck, pile, and reward commands keep touch targets at the minimum supporte
   expect(pileTargets.filter((target) => target.name === 'combat-pile-row-hit')).toHaveLength(7);
   expect(pileTargets.filter((target) => target.name.startsWith('combat-pile-scroll-'))).toHaveLength(1);
   expect(pileTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  expect(await undersizedPointerTargets('BattleScene')).toEqual([]);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/combat-pile-review-1000x560.png' });
 
   await page.evaluate(() => {
@@ -8794,6 +8812,7 @@ test('deck, pile, and reward commands keep touch targets at the minimum supporte
   expect(rewardTargets).toHaveLength(1);
   expect(rewardTargets[0].cssWidth).toBeGreaterThanOrEqual(44);
   expect(rewardTargets[0].cssHeight).toBeGreaterThanOrEqual(44);
+  expect(await undersizedPointerTargets('BattleScene')).toEqual([]);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/card-reward-1000x560.png' });
 });
 
@@ -8819,6 +8838,23 @@ test('Codex and Flock Record controls keep touch targets at the minimum supporte
         cssHeight: child.displayHeight * scale,
       }));
   }, { key: sceneKey, source: patternSource });
+  const undersizedPointerTargets = (sceneKey: string) => page.evaluate((key) => {
+    const scene: any = window.__birdSquadGame.scene.getScene(key);
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const canvas = document.querySelector('canvas')!.getBoundingClientRect();
+    const scale = canvas.width / 1280;
+    return collect(scene.children.list)
+      .filter((child: any) => child.input?.enabled && child.input?.cursor === 'pointer')
+      .map((child: any) => ({
+        name: child.name ?? '',
+        cssWidth: Number((child.displayWidth * scale).toFixed(1)),
+        cssHeight: Number((child.displayHeight * scale).toFixed(1)),
+      }))
+      .filter((child: any) => child.cssWidth < 44 || child.cssHeight < 44);
+  }, sceneKey);
 
   await page.evaluate(async () => {
     const codex: any = await window.__birdSquadStartScene!('CodexScene');
@@ -8840,6 +8876,7 @@ test('Codex and Flock Record controls keep touch targets at the minimum supporte
   expect(codexTargets.filter((target) => target.name === 'codex-tab-hit')).toHaveLength(17);
   expect(codexTargets.filter((target) => target.name === 'codex-back-hit')).toHaveLength(1);
   expect(codexTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  expect(await undersizedPointerTargets('CodexScene')).toEqual([]);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/codex-items-1000x560.png' });
 
   await page.evaluate(() => {
@@ -8861,6 +8898,7 @@ test('Codex and Flock Record controls keep touch targets at the minimum supporte
   expect(codexClose).toHaveLength(1);
   expect(codexClose[0].cssWidth).toBeGreaterThanOrEqual(44);
   expect(codexClose[0].cssHeight).toBeGreaterThanOrEqual(44);
+  expect(await undersizedPointerTargets('CodexScene')).toEqual([]);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/codex-detail-1000x560.png' });
 
   const exportedRun = {
@@ -8881,6 +8919,7 @@ test('Codex and Flock Record controls keep touch targets at the minimum supporte
   const profileTabs = await targetSnapshot('ProfileScene', '^profile-(achievements|contracts)-tab-hit$');
   expect(profileTabs).toHaveLength(2);
   expect(profileTabs.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  expect(await undersizedPointerTargets('ProfileScene')).toEqual([]);
   await clickNamedGameObject(page, 'ProfileScene', 'profile-save-data-hit');
   await page.waitForFunction(() => {
     const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
@@ -8894,6 +8933,7 @@ test('Codex and Flock Record controls keep touch targets at the minimum supporte
   );
   expect(profileTargets).toHaveLength(27);
   expect(profileTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  expect(await undersizedPointerTargets('ProfileScene')).toEqual([]);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/profile-playtest-1000x560.png' });
 });
 
@@ -8919,6 +8959,25 @@ test('route decisions and outcome commands keep touch targets at the minimum sup
         cssHeight: child.displayHeight * scale,
       }));
   }, { key: sceneKey, source: patternSource });
+  const undersizedPointerTargets = (sceneKey: string) => page.evaluate((key) => {
+    const scene: any = window.__birdSquadGame.scene.getScene(key);
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const canvas = document.querySelector('canvas')!.getBoundingClientRect();
+    const scale = canvas.width / 1280;
+    return collect(scene.children.list)
+      .filter((child: any) => child.input?.enabled && child.input?.cursor === 'pointer')
+      .map((child: any) => ({
+        name: child.name ?? '',
+        type: child.type,
+        text: child.text ?? '',
+        cssWidth: Number((child.displayWidth * scale).toFixed(1)),
+        cssHeight: Number((child.displayHeight * scale).toFixed(1)),
+      }))
+      .filter((child: any) => child.cssWidth < 44 || child.cssHeight < 44);
+  }, sceneKey);
 
   await page.evaluate(async () => {
     const route: any = await window.__birdSquadStartScene!('RouteScene', {});
@@ -8931,6 +8990,7 @@ test('route decisions and outcome commands keep touch targets at the minimum sup
   const confirmTargets = await targetSnapshot('RouteScene', '^route-confirm-exit-(keep|abandon)-hit$');
   expect(confirmTargets).toHaveLength(2);
   expect(confirmTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  expect(await undersizedPointerTargets('RouteScene')).toEqual([]);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/route-confirm-exit-1000x560.png' });
 
   await page.evaluate(() => {
@@ -8955,6 +9015,7 @@ test('route decisions and outcome commands keep touch targets at the minimum sup
   expect(marketTargets.filter((target) => target.name === 'market-service-hit').length).toBeGreaterThanOrEqual(1);
   expect(marketTargets.filter((target) => target.name === 'market-refresh-hit')).toHaveLength(1);
   expect(marketTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  expect(await undersizedPointerTargets('RouteScene')).toEqual([]);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/route-market-services-1000x560.png' });
 
   await page.evaluate(() => {
@@ -8981,6 +9042,7 @@ test('route decisions and outcome commands keep touch targets at the minimum sup
   expect(rewardClaim).toHaveLength(1);
   expect(rewardClaim[0].cssWidth).toBeGreaterThanOrEqual(44);
   expect(rewardClaim[0].cssHeight).toBeGreaterThanOrEqual(44);
+  expect(await undersizedPointerTargets('RouteScene')).toEqual([]);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/route-reward-claim-1000x560.png' });
 
   await page.evaluate(async () => {
@@ -9001,10 +9063,126 @@ test('route decisions and outcome commands keep touch targets at the minimum sup
     return collect(battle.children.list)
       .filter((child: any) => child.name === 'run-outcome-command-hit' && child.input?.enabled).length === 2;
   });
-  const outcomeTargets = await targetSnapshot('BattleScene', '^run-outcome-command-hit$');
-  expect(outcomeTargets).toHaveLength(2);
+  const outcomeTargets = await targetSnapshot('BattleScene', '^run-outcome-(command|flight-link)-hit$');
+  expect(outcomeTargets.filter((target) => target.name === 'run-outcome-command-hit')).toHaveLength(2);
+  expect(outcomeTargets.filter((target) => target.name === 'run-outcome-flight-link-hit')).toHaveLength(1);
   expect(outcomeTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  expect(await undersizedPointerTargets('BattleScene')).toEqual([]);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/run-outcome-1000x560.png' });
+});
+
+test('run HUD, card picker, market close, and combat log keep touch targets at the minimum supported viewport', async ({ page }) => {
+  test.setTimeout(150_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await boot(page);
+  const targetSnapshot = (sceneKey: string, patternSource: string) => page.evaluate(({ key, source }) => {
+    const scene: any = window.__birdSquadGame.scene.getScene(key);
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const canvas = document.querySelector('canvas')!.getBoundingClientRect();
+    const scale = canvas.width / 1280;
+    const pattern = new RegExp(source);
+    return collect(scene.children.list)
+      .filter((child: any) => child.input?.enabled && pattern.test(child.name ?? ''))
+      .map((child: any) => ({
+        name: child.name ?? '',
+        label: child.getData?.('label') ?? '',
+        cssWidth: Number((child.displayWidth * scale).toFixed(1)),
+        cssHeight: Number((child.displayHeight * scale).toFixed(1)),
+      }));
+  }, { key: sceneKey, source: patternSource });
+  const expectTouchFloor = (targets: Array<{ cssWidth: number; cssHeight: number }>) => {
+    expect(targets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  };
+  const undersizedPointerTargets = (sceneKey: string) => page.evaluate((key) => {
+    const scene: any = window.__birdSquadGame.scene.getScene(key);
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const canvas = document.querySelector('canvas')!.getBoundingClientRect();
+    const scale = canvas.width / 1280;
+    return collect(scene.children.list)
+      .filter((child: any) => child.input?.enabled && child.input?.cursor === 'pointer')
+      .map((child: any) => ({
+        name: child.name ?? '',
+        cssWidth: Number((child.displayWidth * scale).toFixed(1)),
+        cssHeight: Number((child.displayHeight * scale).toFixed(1)),
+      }))
+      .filter((child: any) => child.cssWidth < 44 || child.cssHeight < 44);
+  }, sceneKey);
+
+  expect(await undersizedPointerTargets('MenuScene')).toEqual([]);
+
+  await page.evaluate(async () => { await window.__birdSquadStartScene!('RouteScene', {}); });
+  const routeHudTargets = await targetSnapshot('RouteScene', '^(hud-cohesion-hit|hud-(deck|supplies|waymarks)-chip)$');
+  expect(routeHudTargets).toHaveLength(4);
+  expectTouchFloor(routeHudTargets);
+  expect(await undersizedPointerTargets('RouteScene')).toEqual([]);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/route-run-hud-1000x560.png' });
+
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.runState.deck.push(...structuredClone(route.runState.deck.slice(0, 5)));
+    route.cardPickerMode = 'preen';
+    route.cardPickerContext = 'route';
+    route.cardPickerRemainingPicks = 1;
+    route.nodeChoiceNodeId = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type === 'nest')?.id;
+    route.renderAll();
+  });
+  const pickerTargets = await targetSnapshot('RouteScene', '^(card-picker-scroll-(up|down)-hit|route-event-cancel-hit)$');
+  expect(pickerTargets).toHaveLength(2);
+  expect(pickerTargets.map((target) => target.name).sort()).toEqual(['card-picker-scroll-down-hit', 'route-event-cancel-hit']);
+  expectTouchFloor(pickerTargets);
+  expect(await undersizedPointerTargets('RouteScene')).toEqual([]);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/route-card-picker-1000x560.png' });
+
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.cancelRouteCardPicker();
+    route.nodeChoiceOpen = false;
+    route.nodeChoiceNodeId = undefined;
+    route.runState.scrap = 999;
+    const market = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type === 'market')
+      ?? window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type !== 'boss');
+    market.type = 'market';
+    route.openMarketNode(market);
+  });
+  await page.waitForFunction(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.textures.exists('market-kit-shopkeeper-starling')
+      && route.children.list.some((child: any) => child.texture?.key === 'market-kit-shopkeeper-starling');
+  }, undefined, { timeout: 10_000 });
+  const marketCloseTargets = await targetSnapshot('RouteScene', '^market-enamel-button-hit$');
+  expect(marketCloseTargets.filter((target) => target.label === 'Close')).toHaveLength(1);
+  expectTouchFloor(marketCloseTargets);
+  expect(await undersizedPointerTargets('RouteScene')).toEqual([]);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/route-market-close-1000x560.png' });
+
+  await page.evaluate(async () => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const battle: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry', runState: route.runState });
+    battle.mode = 'battle';
+    battle.battleInputActive = true;
+    battle.combatAnimationPending = false;
+    battle.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.scene === 'BattleScene' && state.mode === 'battle'
+      && state.battleHudRenderer?.ready && state.battleHandRenderer?.ready;
+  }, undefined, { timeout: 30_000 });
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.renderAll();
+  });
+  const battleTargets = await targetSnapshot('BattleScene', '^(hud-(deck|supplies|waymarks)-chip|combat-log-hit)$');
+  expect(battleTargets).toHaveLength(4);
+  expectTouchFloor(battleTargets);
+  expect(await undersizedPointerTargets('BattleScene')).toEqual([]);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/combat-run-hud-1000x560.png' });
 });
 
 test('high contrast applies before scene boot and persists across reloads', async ({ page }) => {
@@ -12557,18 +12735,21 @@ test('outcome flight codes copy a shared route link that launches the same seed 
       ...(Array.isArray(child.list) ? collectObjects(child.list) : [])
     ]);
     let flightCode: any;
-    for (let i = 0; i < 80 && !flightCode; i += 1) {
-      flightCode = collectObjects(battle.root?.list ?? []).find((child: any) => child.text?.includes('COPY ROUTE LINK'));
-      if (!flightCode) await wait(50);
+    let flightCodeHit: any;
+    for (let i = 0; i < 80 && (!flightCode || !flightCodeHit); i += 1) {
+      const objects = collectObjects(battle.root?.list ?? []);
+      flightCode = objects.find((child: any) => child.text?.includes('COPY ROUTE LINK'));
+      flightCodeHit = objects.find((child: any) => child.name === 'run-outcome-flight-link-hit');
+      if (!flightCode || !flightCodeHit) await wait(50);
     }
-    if (!flightCode) return {
+    if (!flightCode || !flightCodeHit) return {
       link: '',
       feedback: collectObjects(battle.root?.list ?? [])
         .map((child: any) => child.text)
         .filter((text: unknown): text is string => typeof text === 'string')
         .join(' || ')
     };
-    flightCode.emit('pointerdown');
+    flightCodeHit.emit('pointerdown');
     for (let i = 0; i < 40 && !flightCode.text.includes('LINK COPIED'); i += 1) await wait(25);
     return {
       link: window.localStorage.getItem('test.sharedRouteLink') ?? '',

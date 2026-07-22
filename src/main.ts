@@ -8768,7 +8768,7 @@ class RouteScene extends Phaser.Scene {
 
   private renderCardPickerScrollButton(x: number, y: number, direction: 'up' | 'down', enabled: boolean, onClick: () => void) {
     const accent = enabled ? UI_FIELD.gold : 0x3f4c58;
-    const button = this.add.rectangle(x, y, 46, 36, enabled ? 0x0d1420 : 0x0a0e15, enabled ? 0.78 : 0.54)
+    const visual = this.add.rectangle(x, y, 46, 36, enabled ? 0x0d1420 : 0x0a0e15, enabled ? 0.78 : 0.54)
       .setStrokeStyle(1.5, accent, enabled ? 0.82 : 0.46);
     const frameKey = uiIconAssets['card-picker-scroll-button-frame'].key;
     let frame: Phaser.GameObjects.Image | undefined;
@@ -8782,20 +8782,24 @@ class RouteScene extends Phaser.Scene {
     const icon = addUiIconImage(this, direction === 'up' ? 'scroll-up-chevron' : 'scroll-down-chevron', x, y, 13);
     if (icon) icon.setAlpha(enabled ? 0.9 : 0.38);
     if (!enabled) return;
-    button.setInteractive({ useHandCursor: true });
-    button.on('pointerover', () => {
+    const hit = this.add.rectangle(x, y, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setName(`card-picker-scroll-${direction}-hit`);
+    hit.on('pointerover', () => {
+      visual.setFillStyle(0x182637, 0.92);
       if (!frame) return;
       frame.setDisplaySize(52, 39).setAlpha(0.98);
     });
-    button.on('pointerout', () => {
+    hit.on('pointerout', () => {
+      visual.setFillStyle(0x0d1420, 0.78);
       if (!frame) return;
       frame.setDisplaySize(48, 36).setAlpha(0.88);
     });
-    button.on('pointerdown', () => {
+    hit.on('pointerdown', () => {
       playUiSound('confirm');
       onClick();
     });
-    return button;
+    return hit;
   }
 
   private renderCardPickerCostBadge(x: number, y: number, affordable: boolean) {
@@ -10064,10 +10068,9 @@ class RouteScene extends Phaser.Scene {
     const accent = UI_FIELD.danger;
     const frameKey = uiIconAssets['route-event-cancel-command-frame'].key;
     this.add.rectangle(x + 4, y + 5, w, h, 0x020409, 0.46).setDepth(22000);
-    const hit = this.add.rectangle(x, y, w, h, 0x141820, this.textures.exists(frameKey) ? 0.08 : 0.94)
+    const visual = this.add.rectangle(x, y, w, h, 0x141820, this.textures.exists(frameKey) ? 0.08 : 0.94)
       .setStrokeStyle(1, accent, 0.84)
-      .setDepth(22001)
-      .setInteractive({ useHandCursor: true });
+      .setDepth(22001);
     let frame: Phaser.GameObjects.Image | undefined;
     if (this.textures.exists(frameKey)) {
       this.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
@@ -10090,13 +10093,18 @@ class RouteScene extends Phaser.Scene {
       fixedWidth: Math.max(62, w - 78),
       maxLines: 1
     }).setDepth(22003).setOrigin(0.5, 0);
+    const hit = this.add.rectangle(x, y, Math.max(w, MIN_SUPPORTED_TOUCH_TARGET), Math.max(h, MIN_SUPPORTED_TOUCH_TARGET), 0x020409, 0.001)
+      .setDepth(22004)
+      .setInteractive({ useHandCursor: true })
+      .setName('route-event-cancel-hit')
+      .setData('label', labelText);
     hit.on('pointerover', () => {
-      hit.setFillStyle(0x2a1720, frame ? 0.16 : 0.98);
+      visual.setFillStyle(0x2a1720, frame ? 0.16 : 0.98);
       frame?.setDisplaySize(w + 28, h + 17).setAlpha(1);
       label.setColor('#ffffff');
     });
     hit.on('pointerout', () => {
-      hit.setFillStyle(0x141820, frame ? 0.08 : 0.94);
+      visual.setFillStyle(0x141820, frame ? 0.08 : 0.94);
       frame?.setDisplaySize(w + 22, h + 14).setAlpha(0.92);
       label.setColor('#ffd5cc');
     });
@@ -12073,23 +12081,33 @@ class RouteScene extends Phaser.Scene {
     const icon = iconId ? addUiIconImage(this, iconId, x - w / 2 + (label === 'Close' ? 14 : 24), y, Math.min(26, h - 6)) : undefined;
     if (icon) icon.setAlpha(enabled ? 0.92 : 0.42);
     if (enabled) {
-      panel.setInteractive({ useHandCursor: true });
-      panel.on('pointerover', () => {
+      const hit = this.add.rectangle(
+        x,
+        y,
+        Math.max(w, MIN_SUPPORTED_TOUCH_TARGET),
+        Math.max(h, MIN_SUPPORTED_TOUCH_TARGET),
+        0x020409,
+        0.001,
+      ).setInteractive({ useHandCursor: true })
+        .setName('market-enamel-button-hit')
+        .setData('label', label);
+      hit.on('pointerover', () => {
         panel.setFillStyle(0x1b2535, hasFrame ? 0.08 : 0.96);
         frame?.setDisplaySize(w + 28, h + 20).setAlpha(0.98);
         text.setColor('#ffffff');
         detailText?.setColor('#ffffff');
       });
-      panel.on('pointerout', () => {
+      hit.on('pointerout', () => {
         panel.setFillStyle(0x0d1420, hasFrame ? 0.01 : 0.92);
         frame?.setDisplaySize(w + 24, h + 18).setAlpha(0.88);
         text.setColor('#ffe1a3');
         detailText?.setColor('#8df4ff');
       });
-      panel.on('pointerdown', () => {
+      hit.on('pointerdown', () => {
         playUiSound('confirm');
         onClick();
       });
+      return hit;
     }
     return panel;
   }
@@ -21504,13 +21522,18 @@ class BattleScene extends Phaser.Scene {
       fontSize: '13px',
       color: UI_SOFT,
       align: 'center'
-    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    flightCode.on('pointerdown', () => {
+    }).setOrigin(0.5);
+    this.root.add(flightCode);
+    const flightCodeHit = this.add.rectangle(panelLeft + 126, 496, 244, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setName('run-outcome-flight-link-hit')
+      .setData('label', 'Copy route link');
+    flightCodeHit.on('pointerdown', () => {
       import('./game/run-challenge')
         .then(({ copySharedRouteLink }) => copySharedRouteLink(activeSeed, this.runMode))
         .then((copied) => flightCode.setText(`FLIGHT ${activeSeed}\n${copied ? 'LINK COPIED' : 'COPY FAILED'}`));
     });
-    this.root.add(flightCode);
+    this.root.add(flightCodeHit);
 
     // Recap stats, drawn from the same run state RunSummary captures.
     const runDistrictCount = runMapIndices(this.runMode).length;
@@ -25480,12 +25503,8 @@ function renderUnifiedRunHud(
   const [hp, maxHp] = parseHudRatio(data.cohesion);
   const hpFrac = maxHp > 0 ? Math.max(0, Math.min(1, hp / maxHp)) : 0;
   const hpLeft = FLOCK_HP_BAR.x - FLOCK_HP_BAR.w / 2;
-  const hpBg = addUi(addTo, scene.add.rectangle(FLOCK_HP_BAR.x, FLOCK_HP_BAR.y, FLOCK_HP_BAR.w, FLOCK_HP_BAR.h, 0x0e1a12, 0.95)
+  addUi(addTo, scene.add.rectangle(FLOCK_HP_BAR.x, FLOCK_HP_BAR.y, FLOCK_HP_BAR.w, FLOCK_HP_BAR.h, 0x0e1a12, 0.95)
     .setStrokeStyle(1, 0x000000, 0.5));
-  if (data.onFlock) {
-    hpBg.setInteractive({ useHandCursor: true });
-    hpBg.on('pointerdown', data.onFlock);
-  }
   addUi(addTo, scene.add.rectangle(
     hpLeft + (FLOCK_HP_BAR.w * hpFrac) / 2,
     FLOCK_HP_BAR.y,
@@ -25549,6 +25568,18 @@ function renderUnifiedRunHud(
     stroke: '#0a1410',
     strokeThickness: 3
   }).setOrigin(0.5));
+  if (data.onFlock) {
+    const cohesionHit = addUi(addTo, scene.add.rectangle(
+      FLOCK_HP_BAR.x,
+      FLOCK_HP_BAR.y,
+      Math.max(FLOCK_HP_BAR.w, MIN_SUPPORTED_TOUCH_TARGET),
+      MIN_SUPPORTED_TOUCH_TARGET,
+      0x020409,
+      0.001,
+    ).setInteractive({ useHandCursor: true })
+      .setName('hud-cohesion-hit'));
+    cohesionHit.on('pointerdown', data.onFlock);
+  }
 
   const cover = data.cover ?? 0;
   const contextualMetrics = data.context === 'route'
@@ -25619,26 +25650,29 @@ function renderUnifiedRunHud(
   let x = data.context === 'route' ? hpLeft + FLOCK_HP_BAR.w + 18 : 674;
   chips.forEach((chip) => {
     const cx = x + chip.width / 2;
-    const rect = renderHudMetricChip(scene, addTo, cx, FLOCK_HP_BAR.y + 1, chip.width, chip.label, `${chip.value}`, chip.color, {
+    renderHudMetricChip(scene, addTo, cx, FLOCK_HP_BAR.y + 1, chip.width, chip.label, `${chip.value}`, chip.color, {
       height: 38,
       valueColor: chip.text,
       alpha: 0.82,
       icon: chip.icon
     });
     if (chip.label === 'Deck' && data.onDeck) {
-      rect.setName('hud-deck-chip');
-      rect.setInteractive({ useHandCursor: true });
-      rect.on('pointerdown', data.onDeck);
+      const hit = addUi(addTo, scene.add.rectangle(cx, FLOCK_HP_BAR.y + 1, chip.width, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+        .setName('hud-deck-chip')
+        .setInteractive({ useHandCursor: true }));
+      hit.on('pointerdown', data.onDeck);
     }
     if (chip.label === 'Waymarks' && data.onWaymarks) {
-      rect.setName('hud-waymarks-chip');
-      rect.setInteractive({ useHandCursor: true });
-      rect.on('pointerdown', data.onWaymarks);
+      const hit = addUi(addTo, scene.add.rectangle(cx, FLOCK_HP_BAR.y + 1, chip.width, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+        .setName('hud-waymarks-chip')
+        .setInteractive({ useHandCursor: true }));
+      hit.on('pointerdown', data.onWaymarks);
     }
     if (chip.label === 'Supplies' && data.onSupplies) {
-      rect.setName('hud-supplies-chip');
-      rect.setInteractive({ useHandCursor: true });
-      rect.on('pointerdown', data.onSupplies);
+      const hit = addUi(addTo, scene.add.rectangle(cx, FLOCK_HP_BAR.y + 1, chip.width, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+        .setName('hud-supplies-chip')
+        .setInteractive({ useHandCursor: true }));
+      hit.on('pointerdown', data.onSupplies);
     }
     x += chip.width + 10;
   });
