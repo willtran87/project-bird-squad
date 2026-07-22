@@ -9686,6 +9686,14 @@ test('title setup follows remapped keyboard and gamepad controls with one cue pe
     menu.input.gamepad.emit('down', menu.input.gamepad.pad1, { index: buttonIndex }, 1);
   }, index);
 
+  await page.evaluate(() => window.advanceTime?.(300));
+  await expect.poll(async () => (await state()).titleTransition).toEqual({
+    generation: 1,
+    fadeRunning: false,
+    fadeComplete: true,
+    fadeProgress: 1,
+  });
+
   const initial = await state();
   expect(initial.titleFocus).toMatchObject({
     current: 'leader', previous: 'A', next: 'D', confirm: 'Space', ringRendered: true,
@@ -9704,16 +9712,45 @@ test('title setup follows remapped keyboard and gamepad controls with one cue pe
   expect((await state()).titleFocus.current).toBe('runMode');
   await page.keyboard.press('d');
   await expect.poll(async () => (await state()).selectedRunMode).toBe('quick');
-  await expect.poll(async () => (await state()).titleFocus.current).toBe('runMode');
-  const afterRestart = await page.evaluate(() => {
+  const afterKeyboardToggle = await state();
+  expect(afterKeyboardToggle.titleFocus.current).toBe('runMode');
+  expect(afterKeyboardToggle.titleBoot.generation).toBe(initial.titleBoot.generation);
+  expect(afterKeyboardToggle.titleTransition).toEqual(initial.titleTransition);
+  const afterToggle = await page.evaluate(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    const options = menu.children.list
+      .filter((child: any) => child.name === 'title-run-mode-option')
+      .map((child: any) => ({ mode: child.getData('mode'), fillColor: child.fillColor }));
     return {
       keyboardListeners: menu.input.keyboard.listenerCount('keydown'),
       gamepadListeners: menu.input.gamepad.listenerCount('down'),
       focusRings: menu.children.list.filter((child: any) => child.name === 'title-menu-focus-ring').length,
+      options,
     };
   });
-  expect(afterRestart).toEqual({ keyboardListeners: 1, gamepadListeners: 1, focusRings: 1 });
+  expect(afterToggle).toEqual({
+    keyboardListeners: 1,
+    gamepadListeners: 1,
+    focusRings: 1,
+    options: [
+      { mode: 'quick', fillColor: 0x183451 },
+      { mode: 'full', fillColor: 0x0d1420 },
+    ],
+  });
+
+  await page.evaluate(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    menu.children.list.find((child: any) => child.name === 'title-run-mode-option' && child.getData('mode') === 'full')?.emit('pointerdown');
+  });
+  expect((await state()).selectedRunMode).toBe('full');
+  await page.evaluate(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    menu.children.list.find((child: any) => child.name === 'title-run-mode-option' && child.getData('mode') === 'quick')?.emit('pointerdown');
+  });
+  const afterPointerToggles = await state();
+  expect(afterPointerToggles.selectedRunMode).toBe('quick');
+  expect(afterPointerToggles.titleBoot.generation).toBe(initial.titleBoot.generation);
+  expect(afterPointerToggles.titleTransition).toEqual(initial.titleTransition);
 
   await gamepadDown(13);
   expect((await state()).titleFocus.current).toBe('primaryRun');
@@ -9730,7 +9767,7 @@ test('title setup follows remapped keyboard and gamepad controls with one cue pe
     };
   });
   expect(result).toMatchObject({ leaderId: 'spark_caller', difficulty: 1, runMode: 'quick' });
-  expect(result.confirmCues - (initial.audio.cueRequests.confirm ?? 0)).toBe(7);
+  expect(result.confirmCues - (initial.audio.cueRequests.confirm ?? 0)).toBe(9);
 });
 
 test('title utility destinations are reachable by controller without starting a run', async ({ page }) => {
@@ -10266,10 +10303,49 @@ test('playtest outcomes hand the latest run directly to the local rating panel',
   // The lazy profile art callback rebuilds the display list once after its
   // state first reports ready; wait for the next rendered frame before visual
   // capture so the evidence cannot land between clear and redraw.
-  await page.waitForTimeout(250);
+  await page.evaluate(() => window.advanceTime?.(250));
+  await expect.poll(async () => {
+    const state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+    return state.transition;
+  }).toEqual({
+    entryFadePlayed: true,
+    fadeRunning: false,
+    fadeComplete: true,
+    fadeProgress: 1,
+  });
   const profile = await page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}'));
   expect(profile.playtestFeedback.runId).toBeTruthy();
+  expect(profile.transition).toEqual({
+    entryFadePlayed: true,
+    fadeRunning: false,
+    fadeComplete: true,
+    fadeProgress: 1,
+  });
   await page.screenshot({ path: '.artifacts/test-results/outcome-input/playtest-rating-panel.png' });
+
+  await page.keyboard.press('ArrowRight');
+  let refreshedProfile = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(refreshedProfile.focus.current).toBe('playtestFairness');
+  expect(refreshedProfile.transition).toEqual({
+    entryFadePlayed: true,
+    fadeRunning: false,
+    fadeComplete: true,
+    fadeProgress: 1,
+  });
+
+  await page.keyboard.press('Enter');
+  refreshedProfile = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(refreshedProfile.playtestFeedback).toMatchObject({
+    ratings: { fairness: 1 },
+    status: 'saved',
+  });
+  expect(refreshedProfile.transition).toEqual({
+    entryFadePlayed: true,
+    fadeRunning: false,
+    fadeComplete: true,
+    fadeProgress: 1,
+  });
+  await page.screenshot({ path: '.artifacts/test-results/outcome-input/playtest-rating-no-refade.png' });
 });
 
 test('title How to Play overlay opens, reports state, and loads its medallion', async ({ page }) => {
@@ -11930,6 +12006,87 @@ test('audio toggle renders generated wave burst feedback across game surfaces', 
     expect(surface.during.rendered).toBe(true);
     expect(surface.during.visible).toBe(1);
     expect(surface.after).toEqual({ loaded: true, rendered: false, count: 1, visible: 0 });
+  }
+});
+
+test('mute shortcut reuses rendered audio feedback without re-entering core scenes', async ({ page }) => {
+  test.setTimeout(180_000);
+  await boot(page);
+
+  const startOnly = async (sceneKey: 'MenuScene' | 'ProfileScene' | 'CodexScene' | 'RouteScene' | 'BattleScene', data: Record<string, unknown> = {}) => {
+    await page.evaluate(async ({ sceneKey, data }) => {
+      const game = window.__birdSquadGame;
+      const target: any = await window.__birdSquadStartScene!(sceneKey, data);
+      for (const active of game.scene.getScenes(true)) {
+        if (active !== target) game.scene.stop(active.sys.settings.key);
+      }
+    }, { sceneKey, data });
+    await page.waitForFunction((key) => {
+      const scene: any = window.__birdSquadGame.scene.getScene(key);
+      const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+        child,
+        ...(Array.isArray(child.list) ? collect(child.list) : []),
+      ]);
+      return collect(scene.children.list).some((child: any) => child.name === 'audio-toggle-control-hit' && child.input?.enabled)
+        && scene.textures.exists('ui-icon-audio-toggle-wave-burst');
+    }, sceneKey);
+    await page.evaluate(() => window.advanceTime?.(300));
+    await page.waitForTimeout(350);
+    await page.waitForFunction(() => {
+      const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      const transition = state.titleTransition ?? state.transition;
+      return !transition || transition.fadeRunning === false;
+    });
+  };
+
+  const snapshot = (sceneKey: string) => page.evaluate((key) => {
+    const scene: any = window.__birdSquadGame.scene.getScene(key);
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const objects = collect(scene.children.list);
+    const hits = objects.filter((child: any) => child.name === 'audio-toggle-control-hit' && child.input?.enabled);
+    const visibleBursts = objects.filter((child: any) => child.name === 'audio-toggle-wave-burst' && child.visible && child.alpha > 0.01);
+    return {
+      audio: window.__birdSquadAudio?.(),
+      hitCount: hits.length,
+      hitLabel: hits.at(-1)?.getData('label'),
+      feedbackBursts: Number(hits.at(-1)?.getData('feedbackBursts') ?? 0),
+      visibleBursts: visibleBursts.length,
+      focus: state.titleFocus?.current ?? state.focus?.current ?? state.codexFocus?.current ?? null,
+      marker: state.titleTransition ?? state.transition ?? scene.activationId ?? null,
+    };
+  }, sceneKey);
+
+  const surfaces: Array<{
+    key: 'MenuScene' | 'ProfileScene' | 'CodexScene' | 'RouteScene' | 'BattleScene';
+    data?: Record<string, unknown>;
+  }> = [
+    { key: 'MenuScene' },
+    { key: 'ProfileScene' },
+    { key: 'CodexScene' },
+    { key: 'RouteScene' },
+    { key: 'BattleScene', data: { routeNodeId: 'm1_entry' } },
+  ];
+
+  for (const surface of surfaces) {
+    await startOnly(surface.key, surface.data);
+    const before = await snapshot(surface.key);
+    expect(before.hitCount).toBeGreaterThanOrEqual(1);
+    expect(before.visibleBursts).toBe(0);
+
+    await page.keyboard.press('m');
+    const during = await snapshot(surface.key);
+    expect(during.audio.muted).toBe(!before.audio.muted);
+    expect(during.hitLabel).toBe(during.audio.muted ? 'Unmute' : 'Mute');
+    expect(during.feedbackBursts).toBe(before.feedbackBursts + 1);
+    expect(during.focus).toBe(before.focus);
+    expect(during.marker).toEqual(before.marker);
+
+    await page.waitForTimeout(520);
+    expect((await snapshot(surface.key)).visibleBursts).toBe(0);
   }
 });
 

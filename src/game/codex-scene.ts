@@ -1,7 +1,8 @@
 import Phaser from 'phaser';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 import {
-  addCodexDossierFrame, addCodexEntryFrame, addSupplyArtImage, addUiIconImage, addWaymarkArtImage,
+  activateRenderedAudioToggleControl, addCodexDossierFrame, addCodexEntryFrame, addSupplyArtImage,
+  addUiIconImage, addWaymarkArtImage,
   advanceGameTime, alphaEnemyLibrary, alphaRouteMarkLibrary, alphaRouteMarkSet, alphaSupplyLibrary,
   bindControlActions, birdAudio, cardArtAssets, cardCompactArtAsset, cardLabel, cardLibrary, clamp,
   codexIconForLabel, codexLeaderArtAssets, codexUiIconIds, compactCardArtKey, compactEffectSummary,
@@ -161,8 +162,7 @@ export class CodexScene extends Phaser.Scene {
       next: () => this.moveCodexHorizontal(1),
       back: () => this.handleCodexBack(),
       mute: () => {
-        birdAudio.toggleMute();
-        this.renderAll();
+        if (!activateRenderedAudioToggleControl(this)) birdAudio.toggleMute();
       },
       fullscreen: () => this.scale.toggleFullscreen(),
     });
@@ -1068,7 +1068,7 @@ export class CodexScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 3
     }).setOrigin(0.5));
-    renderAudioToggleControl(this, (obj) => this.root.add(obj), GAME_WIDTH - 174, 42, () => this.renderAll());
+    renderAudioToggleControl(this, (obj) => this.root.add(obj), GAME_WIDTH - 174, 42);
 
     const sectionMeta: Record<CodexSection, string> = {
       cards: `${found}/${all.length}`,

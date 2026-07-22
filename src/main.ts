@@ -4369,6 +4369,11 @@ class MenuScene extends Phaser.Scene {
   private menuFocus: MenuFocus = 'leader';
   private menuFocusTargets = new Map<MenuFocus, Phaser.GameObjects.Rectangle>();
   private runModeFocusTargets = new Map<RunMode, Phaser.GameObjects.Rectangle>();
+  private runModeViews = new Map<RunMode, {
+    hit: Phaser.GameObjects.Rectangle;
+    label: Phaser.GameObjects.Text;
+    detail: Phaser.GameObjects.Text;
+  }>();
   private menuFocusRing?: Phaser.GameObjects.Rectangle;
   private primaryRunAction?: () => void;
   private secondaryRunAction?: () => void;
@@ -4391,6 +4396,7 @@ class MenuScene extends Phaser.Scene {
     this.leaderTooltip = undefined;
     this.menuFocusTargets.clear();
     this.runModeFocusTargets.clear();
+    this.runModeViews.clear();
     this.menuFocusRing = undefined;
     this.primaryRunAction = undefined;
     this.secondaryRunAction = undefined;
@@ -4536,8 +4542,7 @@ class MenuScene extends Phaser.Scene {
       next: () => this.adjustMenuFocus(1),
       back: () => this.handleMenuBack(),
       mute: () => {
-        birdAudio.toggleMute();
-        this.scene.restart();
+        if (!activateRenderedAudioToggleControl(this)) birdAudio.toggleMute();
       },
       fullscreen: () => this.scale.toggleFullscreen(),
       settings: () => {
@@ -4616,11 +4621,9 @@ class MenuScene extends Phaser.Scene {
     const modes: RunMode[] = ['quick', 'full'];
     const current = modes.indexOf(this.selectedRunMode);
     this.selectedRunMode = modes[(current + direction + modes.length) % modes.length];
+    this.refreshRunModeSelector();
     this.updateMenuFocusRing();
     this.updateMenuTextState();
-    this.time.delayedCall(0, () => {
-      if (this.scene.isActive()) this.scene.restart();
-    });
   }
 
   private adjustMenuFocus(direction: -1 | 1) {
@@ -4893,6 +4896,12 @@ class MenuScene extends Phaser.Scene {
       },
       titleComposition: this.titleCompositionState(),
       titleBoot: this.titleBootState(),
+      titleTransition: {
+        generation: this.menuGeneration,
+        fadeRunning: this.cameras.main.fadeEffect.isRunning,
+        fadeComplete: this.cameras.main.fadeEffect.isComplete,
+        fadeProgress: Number(this.cameras.main.fadeEffect.progress.toFixed(3)),
+      },
       selectedLeader: this.selectedLeaderId,
       selectedDifficulty: this.selectedDifficulty,
       selectedRunMode: this.selectedRunMode,
@@ -5420,21 +5429,36 @@ class MenuScene extends Phaser.Scene {
         .setStrokeStyle(2, selected ? UI_FIELD.gold : UI_FIELD.cyan, selected ? 0.92 : 0.42)
         .setInteractive({ useHandCursor: true })
         .setName('title-run-mode-option');
-      this.add.text(choice.x, y - 10, choice.label, {
+      const label = this.add.text(choice.x, y - 10, choice.label, {
         fontFamily: UI_FONT, fontSize: '14px', fontStyle: UI_BOLD, color: selected ? UI_GOLD : '#dce8f2'
       }).setResolution(2).setOrigin(0.5);
-      this.add.text(choice.x, y + 10, choice.detail, {
+      const detail = this.add.text(choice.x, y + 10, choice.detail, {
         fontFamily: UI_FONT, fontSize: '9px', color: selected ? '#e7fbff' : '#8fa3b6'
       }).setResolution(2).setOrigin(0.5);
+      hit.setData('mode', choice.mode);
       hit.on('pointerdown', () => {
         this.menuFocus = 'runMode';
+        if (this.selectedRunMode !== choice.mode) {
+          playUiSound('confirm');
+          this.selectedRunMode = choice.mode;
+          this.refreshRunModeSelector();
+        }
         this.updateMenuFocusRing();
-        if (this.selectedRunMode === choice.mode) return;
-        playUiSound('confirm');
-        this.selectedRunMode = choice.mode;
-        this.scene.restart();
+        this.updateMenuTextState();
       });
       this.runModeFocusTargets.set(choice.mode, hit);
+      this.runModeViews.set(choice.mode, { hit, label, detail });
+    });
+  }
+
+  private refreshRunModeSelector() {
+    this.runModeViews.forEach((view, mode) => {
+      const selected = mode === this.selectedRunMode;
+      view.hit
+        .setFillStyle(selected ? 0x183451 : 0x0d1420, 0.95)
+        .setStrokeStyle(2, selected ? UI_FIELD.gold : UI_FIELD.cyan, selected ? 0.92 : 0.42);
+      view.label.setColor(selected ? UI_GOLD : '#dce8f2');
+      view.detail.setColor(selected ? '#e7fbff' : '#8fa3b6');
     });
   }
 
@@ -5795,6 +5819,7 @@ const profileSceneDependencies: import('./game/profile-scene').ProfileSceneDepen
   killTweensForScene,
   playUiSound,
   prefersReducedMotion,
+  activateAudioToggleControl: activateRenderedAudioToggleControl,
   queueUiIconAssets: (scene, ids, warning, onComplete) => {
     queueUiIconAssets(scene, ids as UiIconId[], warning, onComplete);
   },
@@ -5808,6 +5833,7 @@ const profileSceneDependencies: import('./game/profile-scene').ProfileSceneDepen
 class ProfileScene extends Phaser.Scene {
   private readonly profileViewState: import('./game/profile-scene').ProfileViewState = {
     badgeView: 'achievements',
+    entryFadePlayed: false,
     revealBursts: 0,
     playtestExportStatus: 'idle',
     playtestFeedbackStatus: 'idle',
@@ -5843,6 +5869,7 @@ class ProfileScene extends Phaser.Scene {
   create() {
     const openSaveData = this.openSaveDataOnCreate;
     this.openSaveDataOnCreate = false;
+    this.profileViewState.entryFadePlayed = false;
     this.profileViewState.revealBursts = 0;
     this.profileViewState.playtestExportStatus = 'idle';
     this.profileViewState.playtestFeedbackStatus = 'idle';
@@ -6130,8 +6157,10 @@ class RouteScene extends Phaser.Scene {
         if (!this.settingsOverlayOpen && !this.pauseOverlayOpen) this.cycleSelectableRouteNode(1);
       },
       mute: () => {
-        birdAudio.toggleMute();
-        this.refreshRouteSystemOverlay();
+        if (!activateRenderedAudioToggleControl(this)) {
+          birdAudio.toggleMute();
+          this.refreshRouteSystemOverlay();
+        }
       },
       fullscreen: () => this.scale.toggleFullscreen(),
       settings: () => {
@@ -15081,9 +15110,11 @@ class BattleScene extends Phaser.Scene {
       fullscreen: () => this.scale.toggleFullscreen(),
       mute: () => {
         if (!this.fxLayer?.active) return;
-        birdAudio.toggleMute();
-        if (this.pauseOverlayOpen) this.queueBattleSystemOverlayRender();
-        else this.requestBattleRender();
+        if (!activateRenderedAudioToggleControl(this)) {
+          birdAudio.toggleMute();
+          if (this.pauseOverlayOpen) this.queueBattleSystemOverlayRender();
+          else this.requestBattleRender();
+        }
       },
       settings: () => {
         if (!this.fxLayer?.active || isRunOutcome(this.mode)) return;
@@ -26932,7 +26963,9 @@ function renderFieldButton(
 
 function renderAudioToggleControl(scene: Phaser.Scene, addTo: UiAdd, x: number, y: number, onToggle?: () => void) {
   const hit = addUi(addTo, scene.add.rectangle(x, y, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.08)
-    .setInteractive({ useHandCursor: true }));
+    .setInteractive({ useHandCursor: true })
+    .setName('audio-toggle-control-hit')
+    .setData('feedbackBursts', 0));
   const pulse = addUiIconImage(scene, 'audio-toggle-pulse-ring', x, y, 26);
   if (pulse) addUi(addTo, pulse.setAlpha(birdAudio.isMuted() ? 0.14 : 0.24).setName('audio-toggle-pulse-ring'));
   const burst = addUiIconImage(scene, 'audio-toggle-wave-burst', x, y, 34);
@@ -26949,6 +26982,7 @@ function renderAudioToggleControl(scene: Phaser.Scene, addTo: UiAdd, x: number, 
     pulse?.setAlpha(birdAudio.isMuted() ? 0.14 : 0.24);
     icon?.setAlpha(birdAudio.isMuted() ? 0.46 : 0.94);
     slash.setAlpha(birdAudio.isMuted() ? 0.94 : 0);
+    hit.setData('label', birdAudio.isMuted() ? 'Unmute' : 'Mute');
   };
   hit.on('pointerover', () => {
     pulse?.setAlpha(birdAudio.isMuted() ? 0.22 : 0.36);
@@ -26960,6 +26994,7 @@ function renderAudioToggleControl(scene: Phaser.Scene, addTo: UiAdd, x: number, 
   });
   hit.on('pointerdown', () => {
     birdAudio.toggleMute();
+    hit.setData('feedbackBursts', Number(hit.getData('feedbackBursts') ?? 0) + 1);
     refresh();
     if (pulse) {
       pulse.setScale(basePulseScaleX * 1.18, basePulseScaleY * 1.18).setAlpha(birdAudio.isMuted() ? 0.58 : 0.74);
@@ -26994,6 +27029,28 @@ function renderAudioToggleControl(scene: Phaser.Scene, addTo: UiAdd, x: number, 
   });
   refresh();
   return hit;
+}
+
+function findRenderedAudioToggleControl(children: any[]): Phaser.GameObjects.Rectangle | undefined {
+  let match: Phaser.GameObjects.Rectangle | undefined;
+  for (const child of children ?? []) {
+    if (!child || child.active === false || child.visible === false) continue;
+    if (child.name === 'audio-toggle-control-hit' && child.input?.enabled) {
+      match = child as Phaser.GameObjects.Rectangle;
+    }
+    if (Array.isArray(child.list)) {
+      const nested = findRenderedAudioToggleControl(child.list);
+      if (nested) match = nested;
+    }
+  }
+  return match;
+}
+
+function activateRenderedAudioToggleControl(scene: Phaser.Scene) {
+  const hit = findRenderedAudioToggleControl(scene.children.list);
+  if (!hit) return false;
+  hit.emit('pointerdown');
+  return true;
 }
 
 function renderPauseToggleControl(scene: Phaser.Scene, addTo: UiAdd, x: number, y: number, onToggle: () => void) {
@@ -28232,7 +28289,8 @@ export {
   GAME_HEIGHT, GAME_WIDTH, getLeader, hideKwTooltip, isAviaryCard, isLeaderUnlocked, isSnagCard,
   itemTypeCodexIconForLabel, KEYWORDS, killTweensForTree, LAZY_LOAD_FAILED, leaderUnlockHints,
   loadAccount, loadBossDossierModule, loadedCardArtKey, playUiSound, queueReserveEnemyArtAssets,
-  queueRuntimeImageAssets, queueUiIconAssets, renderAudioToggleControl, renderRichText,
+  queueRuntimeImageAssets, queueUiIconAssets, activateRenderedAudioToggleControl,
+  renderAudioToggleControl, renderRichText,
   renderSnagCardBorder, reserveEnemyArtAsset, routeMarkEffectGrammar, routeMarkEffectText,
   showKwTooltip, suitAccentColor, supplyArtAssets, supplyCodexIconForLabel, supplyCompactArtAssets,
   supplySynergyTags, UI_BODY, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, UI_MUTED, UI_SOFT,

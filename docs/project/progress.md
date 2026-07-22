@@ -2285,3 +2285,74 @@ Follow-up TODO:
 - Remaining release evidence is still five genuinely observed fresh-player
   sessions through `docs/game/playtest-runbook.md`; automation does not replace
   those human ratings and notes.
+
+## 2026-07-21 Flock Record Transition Responsiveness
+
+- Fixed Flock Record's scene-entry fade restarting on every display-list
+  rebuild. Focus movement, badge-tab changes, save actions, and playtest rating
+  updates now redraw immediately at full brightness after the single entry
+  transition has played.
+- Added transition telemetry to `render_game_to_text` and deterministic browser
+  assertions proving both a rating-focus move and a saved score leave the entry
+  fade complete and inactive. The inspected post-score capture is
+  `.artifacts/test-results/outcome-input/playtest-rating-no-refade.png`.
+- The required production client used the real title Flock Record command, let
+  the entry transition settle, moved keyboard focus to Contracts, and reported
+  `fadeRunning: false`, `fadeComplete: true`, matching visible focus, complete
+  Profile art, and no browser-error artifact under
+  `.artifacts/profile-transition-client/`.
+- Strict TypeScript, the focused Profile input and outcome-to-rating scenarios,
+  the production build, and full release validation pass, including all nine
+  sequencing scenarios. App entry remains 670.3 KiB and combined boot code is
+  699.0 KiB.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-21 In-Place Flight-Length Setup
+
+- Removed the full MenuScene restart from Quick/Full selection. Keyboard,
+  gamepad, and pointer changes now update the two option frames, labels, focus
+  ring, and serialized setup state in place instead of rebuilding the title and
+  replaying its 220 ms camera fade.
+- Added title transition telemetry and expanded the remapped-input regression to
+  prove keyboard and pointer toggles preserve the same scene generation, keep
+  one keyboard/gamepad listener and focus ring, swap the exact selected visual,
+  leave the entry fade complete, and still launch the chosen Quick flight by
+  gamepad with one cue per action.
+- The required production client selected Quick with the real pointer. The
+  inspected title capture under `.artifacts/title-run-mode-client/` stays fully
+  bright with matching focus and selection; text state reports generation 1,
+  all 24 essential title assets loaded, an inactive complete fade, and no
+  browser-error artifact.
+- Strict TypeScript, the focused title setup regression, the production build,
+  and full release validation pass, including all nine sequencing scenarios.
+  App entry is 670.9 KiB and combined boot code is 699.6 KiB, both within their
+  enforced budgets.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-21 Unified Mute Feedback And Scene Stability
+
+- Named the shared audio hit target and routed the M shortcut through that same
+  rendered control on Menu, Route, Battle, Codex, and Flock Record. Keyboard
+  activation now toggles once, updates the medallion/slash and Mute/Unmute label,
+  and plays the same pulse/wave presentation as pointer input.
+- Removed mute-driven Menu and Profile scene restarts plus Codex's full redraw.
+  Muting no longer replays entry fades, title presentation, or Profile reveal
+  motion; focus and scene activation markers remain stable. Route and Battle
+  retain their safe fallback if a rendered control is temporarily unavailable.
+- Added a per-control feedback counter and a five-surface M-key regression that
+  proves one toggle/presentation per action, stable focus and transition markers,
+  and retired burst state. The existing pointer regression still proves the
+  generated wave's visible-on/visible-off lifecycle.
+- The required production client captured the common rendered handler during
+  its active feedback frame under `.artifacts/mute-shortcut-client/`. The
+  inspected title is fully settled and shows the generated wave at the muted
+  medallion; state reports generation 1, no running fade, 24/24 essential title
+  assets, and no browser-error artifact.
+- Strict TypeScript, both focused audio regressions, the production build, and
+  full release validation pass, including all nine sequencing scenarios. App
+  entry is 671.4 KiB and combined boot code is 700.1 KiB, both within their
+  enforced budgets.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.

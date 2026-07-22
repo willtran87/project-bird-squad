@@ -92,6 +92,7 @@ type FieldFrame = {
 export interface ProfileViewState {
   badgeView: ProfileBadgeView;
   focus: ProfileFocus;
+  entryFadePlayed: boolean;
   revealBursts: number;
   playtestExportStatus: 'idle' | 'downloaded' | 'empty' | 'failed';
   playtestFeedbackStatus: 'idle' | 'saved' | 'unavailable' | 'failed';
@@ -125,6 +126,7 @@ export interface ProfileSceneDependencies {
   killTweensForScene: (scene: Phaser.Scene) => void;
   playUiSound: (kind?: 'confirm' | 'close' | 'locked') => void;
   prefersReducedMotion: () => boolean;
+  activateAudioToggleControl: (scene: Phaser.Scene) => boolean;
   queueUiIconAssets: (
     scene: Phaser.Scene,
     ids: readonly string[],
@@ -427,8 +429,7 @@ export function startProfileScene(
     scene.scene.start('MenuScene');
   };
   const toggleMute = () => {
-    dependencies.audio.toggleMute();
-    scene.scene.restart();
+    if (!dependencies.activateAudioToggleControl(scene)) dependencies.audio.toggleMute();
   };
   bindControlActions(scene, {
     back: returnToMenu,
@@ -471,7 +472,10 @@ export function renderProfileScene(
   scene.children.removeAll(true);
   dependencies.audio.setMood('menu');
   window.__birdSquadAudio = () => dependencies.audio.snapshot();
-  scene.cameras.main.fadeIn(200);
+  if (!state.entryFadePlayed) {
+    state.entryFadePlayed = true;
+    scene.cameras.main.fadeIn(200);
+  }
   scene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'splash')
     .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
     .setAlpha(0.52);
@@ -524,6 +528,12 @@ export function renderProfileScene(
       next: controlBindingLabel('next'),
       confirm: controlBindingLabel('confirm'),
       back: controlBindingLabel('back'),
+    },
+    transition: {
+      entryFadePlayed: state.entryFadePlayed,
+      fadeRunning: scene.cameras.main.fadeEffect.isRunning,
+      fadeComplete: scene.cameras.main.fadeEffect.isComplete,
+      fadeProgress: Number(scene.cameras.main.fadeEffect.progress.toFixed(3)),
     },
     contractBadges: [...account.contractBadges],
     leaderRecords: leaderRecordRows,

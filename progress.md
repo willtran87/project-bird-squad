@@ -2730,3 +2730,62 @@ evidence is still five genuinely observed fresh-player sessions through
 `docs/game/playtest-runbook.md`. The final production build and full release
 validation pass, including all nine sequencing scenarios; app entry is 670.3
 KiB and combined boot code is 698.9 KiB.
+
+Current follow-up: Flock Record transition responsiveness. The Profile renderer
+previously restarted its 200 ms full-camera entry fade on every interaction-led
+display-list rebuild, so focus movement, tab changes, save actions, and each
+playtest rating could briefly dim the whole screen. Profile state now owns a
+one-shot entry-fade flag that resets only when the scene is entered; subsequent
+renders stay at full brightness. `render_game_to_text` reports entry, running,
+complete, and progress transition state. The playtest outcome regression now
+uses deterministic game time to settle the entry transition, then proves both
+moving to Fair and saving 1/5 do not restart it. Its inspected capture is
+`.artifacts/test-results/outcome-input/playtest-rating-no-refade.png`. The
+required production client used the real title Flock Record command and
+keyboard Right to focus Contracts; `.artifacts/profile-transition-client/`
+shows a fully bright rendered Profile, matching focus, a complete inactive
+fade, all Profile art loaded, and no browser-error artifact. Strict TypeScript,
+focused Profile/outcome tests, the production build, and full release
+validation pass, including all nine sequencing scenarios. App entry remains
+670.3 KiB and combined boot code is 699.0 KiB. Remaining release evidence is
+still five genuinely observed fresh-player sessions through
+`docs/game/playtest-runbook.md`.
+
+Current follow-up: In-place title flight-length setup. Switching Quick/Full
+previously restarted the entire MenuScene, rebuilding every title object and
+replaying the 220 ms camera fade for a two-option setup change. MenuScene now
+keeps typed references to both run-mode views and refreshes their fill, stroke,
+labels, focus ring, and text state in place. Title transition telemetry exposes
+generation and fade state. The remapped setup regression proves keyboard and
+pointer toggles remain in one generation with one keyboard listener, one
+gamepad listener, one focus ring, exact selected fills, a completed inactive
+fade, exact cue counts, and the chosen Quick mode preserved through gamepad
+launch. The required production client selected Quick with the real pointer;
+the inspected `.artifacts/title-run-mode-client/` capture stays fully bright
+and matches generation 1, Quick focus/selection, 24/24 essential title assets,
+and no browser-error artifact. Strict TypeScript, the focused setup regression,
+the production build, and full release validation pass, including all nine
+sequencing scenarios. App entry is 670.9 KiB and combined boot code is 699.6
+KiB. Remaining release evidence is still five genuinely observed fresh-player
+sessions through `docs/game/playtest-runbook.md`.
+
+Current follow-up: Unified mute feedback and scene stability. Mute shortcuts on
+Menu and Flock Record previously restarted their entire scenes, replaying entry
+fades and presentation motion, while Codex rebuilt its full display list; these
+paths also differed from the pointer control's generated pulse/wave feedback.
+The shared audio control now has a named active hit target, dynamic Mute/Unmute
+label, and per-control feedback counter. Menu, Route, Battle, Codex, and Profile
+M handlers activate that same rendered control, with the former scene-specific
+fallbacks retained if no control is available. Menu/Profile no longer restart
+and Codex no longer redraws. A five-surface real-keyboard regression proves one
+toggle and feedback presentation per M press, stable focus and scene/transition
+markers, and retired burst state; the established pointer scenario still proves
+the visual burst lifetime. The required production client captured the shared
+handler while its generated wave was visibly active at the top-left muted
+medallion; `.artifacts/mute-shortcut-client/` reports a settled full title,
+generation 1, no running fade, 24/24 essential assets, and no browser errors.
+Strict TypeScript, both focused audio regressions, the production build, and
+full release validation pass, including all nine sequencing scenarios. App
+entry is 671.4 KiB and combined boot code is 700.1 KiB. Remaining release
+evidence is still five genuinely observed fresh-player sessions through
+`docs/game/playtest-runbook.md`.
