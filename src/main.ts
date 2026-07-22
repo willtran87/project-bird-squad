@@ -45,7 +45,14 @@ import { defaultLeaderId, flockLeaders, getLeader } from './game/leaders';
 import { difficultyAdds, difficultyLabel, difficultyMods, MAX_DIFFICULTY } from './game/difficulty';
 import { achievements, discoverCards, isLeaderUnlocked, leaderMastery, leaderUnlockHints, loadAccount, recordRun, type PlayerAccount } from './game/meta';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './game/theme';
-import { queuePreloadImageAssets, queueRuntimeImageAssets, uniqueImageAssets, type RuntimeImageAsset } from './game/runtime-images';
+import {
+  queuePreloadImageAssets,
+  queueRuntimeImageAssets,
+  RUNTIME_IMAGE_LOAD_TIMEOUT_MS,
+  uniqueImageAssets,
+  type RuntimeImageAsset,
+  type RuntimeImageLoadResult,
+} from './game/runtime-images';
 import {
   advanceGameTime,
   countTextureInGameObjects,
@@ -520,10 +527,99 @@ interface EncounterObjectiveProgress {
   label: string;
 }
 
+type AssetReadinessGroupState = {
+  settled: boolean;
+  timedOut: boolean;
+  failedKeys: string[];
+};
+
+type SceneAssetReadinessState = {
+  phase: 'loading' | 'transition' | 'interactive' | 'full-art';
+  interactive: boolean;
+  fullArt: boolean;
+  timeToFirstInteractionMs: number | null;
+  timeToFullArtMs: number | null;
+  pendingGroups: string[];
+  failedGroups: string[];
+  timedOutGroups: string[];
+  failures: Array<{ group: string; keys: string[] }>;
+};
+
+class SceneAssetReadinessTracker {
+  private startedAtMs = performance.now();
+  private firstInteractionAtMs?: number;
+  private fullArtAtMs?: number;
+  private groups = new Map<string, AssetReadinessGroupState>();
+
+  reset(groups: readonly string[]) {
+    this.startedAtMs = performance.now();
+    this.firstInteractionAtMs = undefined;
+    this.fullArtAtMs = undefined;
+    this.groups = new Map(groups.map((group) => [group, {
+      settled: false,
+      timedOut: false,
+      failedKeys: [],
+    }]));
+  }
+
+  settle(group: string, result?: RuntimeImageLoadResult) {
+    this.groups.set(group, {
+      settled: true,
+      timedOut: result?.timedOut ?? false,
+      failedKeys: [...(result?.failedKeys ?? [])],
+    });
+  }
+
+  markInteractive() {
+    this.firstInteractionAtMs ??= performance.now();
+  }
+
+  markFullArt() {
+    this.fullArtAtMs ??= performance.now();
+  }
+
+  groupSettled(group: string) {
+    return this.groups.get(group)?.settled ?? false;
+  }
+
+  snapshot(): SceneAssetReadinessState {
+    const entries = [...this.groups.entries()];
+    const elapsed = (at?: number) => at === undefined
+      ? null
+      : Math.max(0, Math.round(at - this.startedAtMs));
+    return {
+      phase: this.firstInteractionAtMs === undefined
+        ? this.fullArtAtMs !== undefined ? 'transition' : 'loading'
+        : this.fullArtAtMs !== undefined
+          ? 'full-art'
+          : 'interactive',
+      interactive: this.firstInteractionAtMs !== undefined,
+      fullArt: this.fullArtAtMs !== undefined,
+      timeToFirstInteractionMs: elapsed(this.firstInteractionAtMs),
+      timeToFullArtMs: elapsed(this.fullArtAtMs),
+      pendingGroups: entries.filter(([, state]) => !state.settled).map(([group]) => group),
+      failedGroups: entries.filter(([, state]) => state.failedKeys.length > 0).map(([group]) => group),
+      timedOutGroups: entries.filter(([, state]) => state.timedOut).map(([group]) => group),
+      failures: entries
+        .filter(([, state]) => state.failedKeys.length > 0)
+        .map(([group, state]) => ({ group, keys: [...state.failedKeys] })),
+    };
+  }
+}
+
 interface RenderPayload {
   mode: GameMode;
   scene: string;
+  assetReadiness?: SceneAssetReadinessState;
   combatAnimationPending?: boolean;
+  combatIntro?: {
+    active: boolean;
+    dismissQueued: boolean;
+    dismissed: boolean;
+    minimumReadableMs: number;
+    elapsedMs: number;
+    binding: string;
+  };
   combatEnemyTurnBeat?: EnemyTurnBeat;
   combatEnemyTurnMove?: string;
   combatEnemyTurnProgress?: EnemyTurnProgress;
@@ -1927,6 +2023,7 @@ const COMBAT_CARD_BACK_TEXTURE = 'combat-card-back';
 const COMBAT_TARGET_RETICLE_TEXTURE = 'combat-target-reticle';
 const COMBAT_TARGET_LOCK_PULSE_TEXTURE = 'combat-target-lock-pulse';
 const COMBAT_ENCOUNTER_INTRO_TEXTURE = 'combat-encounter-intro';
+const COMBAT_INTRO_MIN_DISMISS_MS = 600;
 const COMBAT_TURN_BANNER_TEXTURE = 'combat-turn-banner';
 const COMBAT_ROOST_HANDOFF_TEXTURE = 'combat-roost-handoff';
 const COMBAT_PLAYER_TURN_RALLY_TEXTURE = 'combat-player-turn-rally';
@@ -3095,13 +3192,58 @@ function sceneCanQueueRuntimeAssets(scene: Phaser.Scene): boolean {
   return Boolean(scene.sys?.settings?.active);
 }
 
+class RuntimeLoadTimeoutError extends Error {}
+
+function withRuntimeLoadTimeout<T>(request: Promise<T>, group: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timeout = globalThis.setTimeout(() => {
+      reject(new RuntimeLoadTimeoutError(`${group} timed out after ${RUNTIME_IMAGE_LOAD_TIMEOUT_MS}ms`));
+    }, RUNTIME_IMAGE_LOAD_TIMEOUT_MS);
+    request.then(
+      (value) => {
+        globalThis.clearTimeout(timeout);
+        resolve(value);
+      },
+      (error) => {
+        globalThis.clearTimeout(timeout);
+        reject(error);
+      },
+    );
+  });
+}
+
+function runtimeImageLoadSnapshot(
+  scene: Phaser.Scene,
+  assets: readonly RuntimeImageAsset[],
+  timedOut = false,
+): RuntimeImageLoadResult {
+  const requestedKeys = assets.map((asset) => asset.key);
+  const loadedKeys = requestedKeys.filter((key) => scene.textures.exists(key));
+  const loaded = new Set(loadedKeys);
+  return {
+    requestedKeys,
+    loadedKeys,
+    failedKeys: requestedKeys.filter((key) => !loaded.has(key)),
+    timedOut,
+  };
+}
+
+function failedModuleLoadResult(group: string, timedOut = false): RuntimeImageLoadResult {
+  return {
+    requestedKeys: [group],
+    loadedKeys: [],
+    failedKeys: [group],
+    timedOut,
+  };
+}
+
 function queueUiIconAssets(
   scene: Phaser.Scene,
   ids: readonly UiIconId[],
   warning: string,
   onComplete?: () => void
 ) {
-  void loadUiIconAssetsModule()
+  void withRuntimeLoadTimeout(loadUiIconAssetsModule(), warning)
     .then(({ uiIconAssetsFor }) => {
       if (!sceneCanQueueRuntimeAssets(scene)) return;
       queueRuntimeImageAssets(scene, uiIconAssetsFor(ids), warning, onComplete);
@@ -3113,17 +3255,41 @@ function queueRequiredUiIconAssets(
   scene: Phaser.Scene,
   ids: readonly UiIconId[],
   warning: string,
-  onReady: () => void
+  onReady: (result: RuntimeImageLoadResult) => void
 ) {
-  void loadUiIconAssetsModule()
+  void withRuntimeLoadTimeout(loadUiIconAssetsModule(), warning)
     .then(({ uiIconAssetsFor }) => {
       if (!sceneCanQueueRuntimeAssets(scene)) return;
-      const queued = queueRuntimeImageAssets(scene, uiIconAssetsFor(ids), warning, onReady);
-      if (!queued) onReady();
+      const assets = uiIconAssetsFor(ids);
+      const queued = queueRuntimeImageAssets(scene, assets, warning, onReady);
+      if (!queued) onReady(runtimeImageLoadSnapshot(scene, assets));
     })
     .catch((error) => {
       console.warn(`${warning}:`, error);
-      if (sceneCanQueueRuntimeAssets(scene)) onReady();
+      if (sceneCanQueueRuntimeAssets(scene)) {
+        onReady(failedModuleLoadResult(`${warning} module`, error instanceof RuntimeLoadTimeoutError));
+      }
+    });
+}
+
+function queueTrackedUiIconAssets(
+  scene: Phaser.Scene,
+  ids: readonly UiIconId[],
+  warning: string,
+  onComplete: (result: RuntimeImageLoadResult) => void,
+) {
+  void withRuntimeLoadTimeout(loadUiIconAssetsModule(), warning)
+    .then(({ uiIconAssetsFor }) => {
+      if (!sceneCanQueueRuntimeAssets(scene)) return;
+      const assets = uiIconAssetsFor(ids);
+      const queued = queueRuntimeImageAssets(scene, assets, warning, onComplete);
+      if (!queued) onComplete(runtimeImageLoadSnapshot(scene, assets));
+    })
+    .catch((error) => {
+      console.warn(`${warning}:`, error);
+      if (sceneCanQueueRuntimeAssets(scene)) {
+        onComplete(failedModuleLoadResult(`${warning} module`, error instanceof RuntimeLoadTimeoutError));
+      }
     });
 }
 
@@ -3146,7 +3312,7 @@ function queueRouteSceneEventArt(
   warning: string,
   onComplete?: () => void
 ) {
-  void loadRouteSceneAssetsModule()
+  void withRuntimeLoadTimeout(loadRouteSceneAssetsModule(), warning)
     .then(({ routeSceneEventArtAssetsFor }) => {
       if (!sceneCanQueueRuntimeAssets(scene)) return;
       queueRuntimeImageAssets(scene, routeSceneEventArtAssetsFor(type), warning, onComplete);
@@ -3158,19 +3324,25 @@ function queueRouteSceneEssentialArt(
   scene: Phaser.Scene,
   mapId: string,
   warning: string,
-  onReady: (backdrop: RuntimeImageAsset) => void
+  onReady: (backdrop: RuntimeImageAsset, result: RuntimeImageLoadResult) => void
 ) {
-  void loadRouteSceneAssetsModule()
+  void withRuntimeLoadTimeout(loadRouteSceneAssetsModule(), warning)
     .then(({ routeSceneEssentialArtAssetsFor, routeSceneMapBackdropAsset }) => {
       if (!sceneCanQueueRuntimeAssets(scene)) return;
       const backdrop = routeSceneMapBackdropAsset(mapId);
-      const finish = () => onReady(backdrop);
-      const queued = queueRuntimeImageAssets(scene, routeSceneEssentialArtAssetsFor(mapId), warning, finish);
-      if (!queued) finish();
+      const assets = routeSceneEssentialArtAssetsFor(mapId);
+      const finish = (result: RuntimeImageLoadResult) => onReady(backdrop, result);
+      const queued = queueRuntimeImageAssets(scene, assets, warning, finish);
+      if (!queued) finish(runtimeImageLoadSnapshot(scene, assets));
     })
     .catch((error) => {
       console.warn(`${warning}:`, error);
-      if (sceneCanQueueRuntimeAssets(scene)) onReady(DEFAULT_ROUTE_MAP_BACKDROP_ASSET);
+      if (sceneCanQueueRuntimeAssets(scene)) {
+        onReady(
+          DEFAULT_ROUTE_MAP_BACKDROP_ASSET,
+          failedModuleLoadResult(`${warning} module`, error instanceof RuntimeLoadTimeoutError),
+        );
+      }
     });
 }
 
@@ -5782,6 +5954,7 @@ class RouteScene extends Phaser.Scene {
   private routeEssentialAssetsReady = false;
   private routeEssentialUiReady = false;
   private routeEssentialArtReady = false;
+  private routeAssetReadiness = new SceneAssetReadinessTracker();
   private routeMapBackdrop?: RuntimeImageAsset;
   private supplyFeedback: SupplyFeedback[] = [];
   private marketPurchaseFlourishBursts = 0;
@@ -5869,6 +6042,11 @@ class RouteScene extends Phaser.Scene {
     this.routeEssentialAssetsReady = false;
     this.routeEssentialUiReady = false;
     this.routeEssentialArtReady = false;
+    this.routeAssetReadiness.reset([
+      'route-essential-ui',
+      'route-essential-art',
+      'route-full-ui',
+    ]);
     this.routeMapBackdrop = currentMap().id === 'map_01_rooftop_blocks' ? DEFAULT_ROUTE_MAP_BACKDROP_ASSET : undefined;
     this.supplyFeedback = [];
     this.marketPurchaseFlourishBursts = 0;
@@ -5904,7 +6082,11 @@ class RouteScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#08101d');
     this.cameras.main.fadeIn(200);
     this.queueRouteEssentialAssetLoad();
-    queueUiIconAssets(this, routeUiIconIds, 'Route UI', () => this.renderAll());
+    queueTrackedUiIconAssets(this, routeUiIconIds, 'Route UI', (result) => {
+      this.routeAssetReadiness.settle('route-full-ui', result);
+      this.markRouteFullArtReady();
+      this.renderAll();
+    });
     this.renderAll();
     if (this.districtContractCelebration) {
       birdAudio.play('objectiveComplete', 1);
@@ -6119,17 +6301,27 @@ class RouteScene extends Phaser.Scene {
     const finish = () => {
       if (!this.routeEssentialUiReady || !this.routeEssentialArtReady || !this.sys.settings.active) return;
       this.routeEssentialAssetsReady = true;
+      this.routeAssetReadiness.markInteractive();
+      this.markRouteFullArtReady();
       this.renderAll();
     };
-    queueRequiredUiIconAssets(this, routeEssentialUiIconIds, 'Essential route UI', () => {
+    queueRequiredUiIconAssets(this, routeEssentialUiIconIds, 'Essential route UI', (result) => {
+      this.routeAssetReadiness.settle('route-essential-ui', result);
       this.routeEssentialUiReady = true;
       finish();
     });
-    queueRouteSceneEssentialArt(this, currentMap().id, 'Route node art', (backdrop) => {
+    queueRouteSceneEssentialArt(this, currentMap().id, 'Route node art', (backdrop, result) => {
       this.routeMapBackdrop = backdrop;
+      this.routeAssetReadiness.settle('route-essential-art', result);
       this.routeEssentialArtReady = true;
       finish();
     });
+  }
+
+  private markRouteFullArtReady() {
+    if (!this.routeEssentialAssetsReady) return;
+    if (!this.routeAssetReadiness.groupSettled('route-full-ui')) return;
+    this.routeAssetReadiness.markFullArt();
   }
 
   update() {
@@ -13190,6 +13382,7 @@ class RouteScene extends Phaser.Scene {
       mode: 'routeSelection',
       scene: 'RouteScene',
       routeAssetsReady: this.routeEssentialAssetsReady,
+      assetReadiness: this.routeAssetReadiness.snapshot(),
       audio: birdAudio.snapshot(),
       motion: motionState(),
       visualContrast: visualContrastState(),
@@ -13811,6 +14004,12 @@ class BattleScene extends Phaser.Scene {
   private leaderSignatureUsed = new Set<string>();
   private fledglingSuitRallies = new Set<string>();
   private introPlayed = false;
+  private combatIntroActive = false;
+  private combatIntroDismissQueued = false;
+  private combatIntroDismissed = false;
+  private combatIntroStartedAtMs = 0;
+  private combatIntroElapsedMs = 0;
+  private combatIntroFinish?: () => void;
   private outcomeFxPlayed?: GameMode;
   private bossDossierModule?: BossDossierModule;
   private bossDossierLoadRequested = false;
@@ -13907,6 +14106,9 @@ class BattleScene extends Phaser.Scene {
   private battleEssentialUiReady = false;
   private battleCoreUiReady = false;
   private combatFxReady = false;
+  private battleAssetReadiness = new SceneAssetReadinessTracker();
+  private battleFullArtGroups: string[] = [];
+  private battleFullArtTrackingStarted = false;
   private battleRenderQueued = false;
   private battleRenderScheduleToken = 0;
   private battleRenderRequests = 0;
@@ -13941,6 +14143,28 @@ class BattleScene extends Phaser.Scene {
     this.flock.flowMax = leader.flowMax ?? this.flock.flowMax;
     this.flock.flow = Math.min(this.flock.flowMax, leader.startFlow ?? 0);
     this.enemies = createEncounterEnemiesForRouteNode(initialRouteNode);
+    this.battleFullArtGroups = [
+      'battle-current-art',
+      'battle-enemy-turn-fx',
+      'battle-optional-fx',
+      ...(this.enemies.some((enemy) => enemy.runtime.type === 'boss' || enemy.runtime.type === 'elite')
+        ? ['battle-outcome-fx']
+        : []),
+    ];
+    this.battleAssetReadiness.reset([
+      'battle-preloaded-art',
+      'battle-essential-ui',
+      'battle-core-ui',
+      'battle-essential-fx',
+      'battle-fx-presenter',
+      'battle-debug-state',
+      'battle-backdrop-renderer',
+      'battle-foreground-renderer',
+      'battle-hud-renderer',
+      'battle-hand-renderer',
+      ...this.battleFullArtGroups,
+    ]);
+    this.battleFullArtTrackingStarted = false;
     this.runCombatResults = [...(runState.combatResults ?? [])];
     this.encounterObjective = this.createEncounterObjective(initialRouteNode);
     this.encounterObjectiveFeedbackStatus = this.encounterObjective ? 'active' : undefined;
@@ -14055,6 +14279,12 @@ class BattleScene extends Phaser.Scene {
     this.leaderSignatureUsed = new Set();
     this.fledglingSuitRallies = new Set();
     this.introPlayed = false;
+    this.combatIntroActive = false;
+    this.combatIntroDismissQueued = false;
+    this.combatIntroDismissed = false;
+    this.combatIntroStartedAtMs = 0;
+    this.combatIntroElapsedMs = 0;
+    this.combatIntroFinish = undefined;
     this.outcomeFxPlayed = undefined;
     this.combatTurnBannerBursts = 0;
     this.combatPlayerTurnRallyBursts = 0;
@@ -14668,22 +14898,30 @@ class BattleScene extends Phaser.Scene {
     this.ensureFxTextures();
     this.combatAnimationPending = true;
     this.renderBattleReadinessScreen();
-    queueRequiredUiIconAssets(this, battleEssentialUiIconIds, 'Essential battle UI', () => {
+    this.battleAssetReadiness.settle(
+      'battle-preloaded-art',
+      runtimeImageLoadSnapshot(this, this.battleArtAssets()),
+    );
+    queueRequiredUiIconAssets(this, battleEssentialUiIconIds, 'Essential battle UI', (result) => {
+      this.battleAssetReadiness.settle('battle-essential-ui', result);
       this.battleEssentialUiReady = true;
       this.finishCombatCreate();
     });
-    queueRequiredUiIconAssets(this, battleCoreUiIconIds, 'Battle UI', () => {
+    queueRequiredUiIconAssets(this, battleCoreUiIconIds, 'Battle UI', (result) => {
+      this.battleAssetReadiness.settle('battle-core-ui', result);
       this.battleCoreUiReady = true;
       this.finishCombatCreate();
     });
-    this.queueCombatFxAssetLoad(() => {
+    this.queueCombatFxAssetLoad((result) => {
+      this.battleAssetReadiness.settle('battle-essential-fx', result);
       this.combatFxReady = true;
       this.finishCombatCreate();
     });
-    void loadBattleFxPresenterModule()
+    void withRuntimeLoadTimeout(loadBattleFxPresenterModule(), 'Battle FX presenter')
       .then((module) => {
         if (!this.sys.settings.active) return;
         this.battleFxPresenterModule = module;
+        this.battleAssetReadiness.settle('battle-fx-presenter');
         this.battleFxPresenterReady = true;
         this.finishCombatCreate();
       })
@@ -14692,13 +14930,18 @@ class BattleScene extends Phaser.Scene {
         if (!this.sys.settings.active) return;
         // Secondary presentation may degrade, but a chunk failure must not
         // strand the player behind the battle readiness screen.
+        this.battleAssetReadiness.settle('battle-fx-presenter', failedModuleLoadResult(
+          'battle FX presenter module',
+          error instanceof RuntimeLoadTimeoutError,
+        ));
         this.battleFxPresenterReady = true;
         this.finishCombatCreate();
       });
-    void loadBattleDebugStateModule()
+    void withRuntimeLoadTimeout(loadBattleDebugStateModule(), 'Battle debug state')
       .then((module) => {
         if (!this.sys.settings.active) return;
         this.battleDebugStateModule = module;
+        this.battleAssetReadiness.settle('battle-debug-state');
         this.battleDebugStateReady = true;
         this.finishCombatCreate();
       })
@@ -14707,13 +14950,18 @@ class BattleScene extends Phaser.Scene {
         if (!this.sys.settings.active) return;
         // Debug telemetry may degrade, but an optional diagnostics chunk must
         // never strand the player behind the battle readiness screen.
+        this.battleAssetReadiness.settle('battle-debug-state', failedModuleLoadResult(
+          'battle debug-state module',
+          error instanceof RuntimeLoadTimeoutError,
+        ));
         this.battleDebugStateReady = true;
         this.finishCombatCreate();
       });
-    void loadBattleBackdropRendererModule()
+    void withRuntimeLoadTimeout(loadBattleBackdropRendererModule(), 'Battle backdrop renderer')
       .then((module) => {
         if (!this.sys.settings.active) return;
         this.battleBackdropRendererModule = module;
+        this.battleAssetReadiness.settle('battle-backdrop-renderer');
         this.battleBackdropRendererReady = true;
         this.finishCombatCreate();
       })
@@ -14722,13 +14970,18 @@ class BattleScene extends Phaser.Scene {
         if (!this.sys.settings.active) return;
         // A presentation chunk failure may simplify scenery, but must never
         // strand the player behind the battle readiness screen.
+        this.battleAssetReadiness.settle('battle-backdrop-renderer', failedModuleLoadResult(
+          'battle backdrop renderer module',
+          error instanceof RuntimeLoadTimeoutError,
+        ));
         this.battleBackdropRendererReady = true;
         this.finishCombatCreate();
       });
-    void loadBattleForegroundRendererModule()
+    void withRuntimeLoadTimeout(loadBattleForegroundRendererModule(), 'Battle foreground renderer')
       .then((module) => {
         if (!this.sys.settings.active) return;
         this.battleForegroundRendererModule = module;
+        this.battleAssetReadiness.settle('battle-foreground-renderer');
         this.battleForegroundRendererReady = true;
         this.finishCombatCreate();
       })
@@ -14737,13 +14990,18 @@ class BattleScene extends Phaser.Scene {
         if (!this.sys.settings.active) return;
         // A presentation chunk failure may simplify combatants, but must never
         // strand the player behind the battle readiness screen.
+        this.battleAssetReadiness.settle('battle-foreground-renderer', failedModuleLoadResult(
+          'battle foreground renderer module',
+          error instanceof RuntimeLoadTimeoutError,
+        ));
         this.battleForegroundRendererReady = true;
         this.finishCombatCreate();
       });
-    void loadBattleHudRendererModule()
+    void withRuntimeLoadTimeout(loadBattleHudRendererModule(), 'Battle HUD renderer')
       .then((module) => {
         if (!this.sys.settings.active) return;
         this.battleHudRendererModule = module;
+        this.battleAssetReadiness.settle('battle-hud-renderer');
         this.battleHudRendererReady = true;
         this.finishCombatCreate();
       })
@@ -14752,13 +15010,18 @@ class BattleScene extends Phaser.Scene {
         if (!this.sys.settings.active) return;
         // HUD presentation may simplify, but Roost and pile inspection remain
         // available through the scene fallback instead of blocking readiness.
+        this.battleAssetReadiness.settle('battle-hud-renderer', failedModuleLoadResult(
+          'battle HUD renderer module',
+          error instanceof RuntimeLoadTimeoutError,
+        ));
         this.battleHudRendererReady = true;
         this.finishCombatCreate();
       });
-    void loadBattleHandRendererModule()
+    void withRuntimeLoadTimeout(loadBattleHandRendererModule(), 'Battle hand renderer')
       .then((module) => {
         if (!this.sys.settings.active) return;
         this.battleHandRendererModule = module;
+        this.battleAssetReadiness.settle('battle-hand-renderer');
         this.battleHandRendererReady = true;
         this.finishCombatCreate();
       })
@@ -14767,6 +15030,10 @@ class BattleScene extends Phaser.Scene {
         if (!this.sys.settings.active) return;
         // A hand-renderer failure still leaves compact, clickable cards through
         // the scene fallback instead of blocking combat readiness.
+        this.battleAssetReadiness.settle('battle-hand-renderer', failedModuleLoadResult(
+          'battle hand renderer module',
+          error instanceof RuntimeLoadTimeoutError,
+        ));
         this.battleHandRendererReady = true;
         this.finishCombatCreate();
       });
@@ -14788,6 +15055,7 @@ class BattleScene extends Phaser.Scene {
       back: () => this.handleBattleBack(),
       confirm: () => {
         if (!this.fxLayer?.active) return;
+        if (this.requestBattleIntroDismiss()) return;
         if (isRunOutcome(this.mode)) {
           this.replayLastFlight();
           return;
@@ -14836,7 +15104,9 @@ class BattleScene extends Phaser.Scene {
     };
     const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: { index?: number }) => {
       switch (button.index) {
-        case 0: this.activateCombatChoice(this.controllerChoiceIndex); break; // A
+        case 0:
+          if (!this.requestBattleIntroDismiss()) this.activateCombatChoice(this.controllerChoiceIndex);
+          break; // A
         case 1: this.handleBattleBack(); break; // B
         case 2: // X
           if (this.mode === 'cardReward' && this.rewardPresentationReady() && !this.settingsOverlayOpen && !this.pauseOverlayOpen) this.skipCardReward();
@@ -15005,17 +15275,35 @@ class BattleScene extends Phaser.Scene {
     this.ensureFxTextures();
     this.applyCombatStartMarks(); // relic effects need fxLayer, so fire after create()
     this.renderAll();
-    this.queueOptionalArtLoad();
-    this.queueEnemyTurnCombatFxAssetLoad();
-    this.queueOptionalCombatFxAssetLoad();
-    if (this.enemies.some((enemy) => enemy.runtime.type === 'boss' || enemy.runtime.type === 'elite')) {
-      this.queueOutcomeCombatFxAssetLoad();
-    }
+    this.queueBattleFullArtTracking();
     this.playBattleIntro(() => {
       if (!this.sys.settings.active || this.mode !== 'battle') return;
       this.combatAnimationPending = false;
+      this.battleAssetReadiness.markInteractive();
+      this.markBattleFullArtReady();
       this.renderAll();
     });
+  }
+
+  private queueBattleFullArtTracking() {
+    if (this.battleFullArtTrackingStarted) return;
+    this.battleFullArtTrackingStarted = true;
+    const settle = (group: string) => (result: RuntimeImageLoadResult) => {
+      if (!this.sys.settings.active) return;
+      this.battleAssetReadiness.settle(group, result);
+      this.markBattleFullArtReady();
+    };
+    this.queueOptionalArtLoad(settle('battle-current-art'));
+    this.queueEnemyTurnCombatFxAssetLoad(settle('battle-enemy-turn-fx'));
+    this.queueOptionalCombatFxAssetLoad(settle('battle-optional-fx'));
+    if (this.battleFullArtGroups.includes('battle-outcome-fx')) {
+      this.queueOutcomeCombatFxAssetLoad(settle('battle-outcome-fx'));
+    }
+  }
+
+  private markBattleFullArtReady() {
+    if (!this.battleFullArtGroups.every((group) => this.battleAssetReadiness.groupSettled(group))) return;
+    this.battleAssetReadiness.markFullArt();
   }
 
   private renderBattleReadinessScreen() {
@@ -15088,6 +15376,11 @@ class BattleScene extends Phaser.Scene {
     const reduced = prefersReducedMotion();
     const node = currentCombatNodes()[this.currentRouteIndex];
     const c = this.add.container(0, 0);
+    this.combatIntroActive = true;
+    this.combatIntroDismissQueued = false;
+    this.combatIntroDismissed = false;
+    this.combatIntroStartedAtMs = this.time.now;
+    this.combatIntroElapsedMs = 0;
     const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.54);
     const topBand = this.add.rectangle(GAME_WIDTH / 2, 106, GAME_WIDTH, 70, 0x05080e, 0.84);
     const bottomBand = this.add.rectangle(GAME_WIDTH / 2, 610, GAME_WIDTH, 70, 0x05080e, 0.78);
@@ -15131,16 +15424,48 @@ class BattleScene extends Phaser.Scene {
     const sub = this.add.text(GAME_WIDTH - 74, 620, 'Enemies sighted on the roofline.', {
       fontFamily: UI_FONT, fontSize: '12px', color: UI_SOFT,
     }).setOrigin(1, 0);
+    const dismissHit = this.add.rectangle(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT / 2,
+      GAME_WIDTH,
+      GAME_HEIGHT,
+      0x000000,
+      0.001,
+    ).setInteractive({ useHandCursor: true }).setName('combat-intro-dismiss-hit');
+    const dismissLabel = this.add.text(
+      GAME_WIDTH / 2,
+      GAME_HEIGHT - 44,
+      `${controlBindingLabel('confirm').toUpperCase()} / TAP  TAKE THE BEAT`,
+      {
+        fontFamily: UI_FONT,
+        fontSize: '12px',
+        fontStyle: UI_BOLD,
+        color: '#dffbff',
+        stroke: '#020409',
+        strokeThickness: 3,
+      },
+    ).setOrigin(0.5).setName('combat-intro-dismiss-label');
     c.add([shade, topBand, bottomBand, ...generatedLayers, line, leftLabel, title]);
     if (rightPlaque) c.add(rightPlaque);
-    c.add([rightLabel, sub]);
+    c.add([rightLabel, sub, dismissHit, dismissLabel]);
     this.fxLayer.add(c);
+    let finished = false;
+    const finish = (dismissed: boolean) => {
+      if (finished) return;
+      finished = true;
+      this.tweens.killTweensOf(c);
+      this.combatIntroActive = false;
+      this.combatIntroDismissed = dismissed;
+      this.combatIntroElapsedMs = Math.max(0, Math.round(this.time.now - this.combatIntroStartedAtMs));
+      this.combatIntroFinish = undefined;
+      c.destroy(true);
+      onComplete?.();
+    };
+    this.combatIntroFinish = () => finish(true);
+    dismissHit.on('pointerdown', () => this.requestBattleIntroDismiss());
     birdAudio.play('encounter', 0.72);
     if (reduced) {
-      this.time.delayedCall(360, () => {
-        c.destroy(true);
-        onComplete?.();
-      });
+      this.time.delayedCall(360, () => finish(false));
       return;
     }
     c.setAlpha(0);
@@ -15151,10 +15476,7 @@ class BattleScene extends Phaser.Scene {
       ease: 'Quad.easeOut',
       yoyo: true,
       hold: 1360,
-      onComplete: () => {
-        c.destroy(true);
-        onComplete?.();
-      },
+      onComplete: () => finish(false),
     });
     this.fxMoteBurst(GAME_WIDTH / 2, 356, 0x8df4ff, {
       count: 18,
@@ -15166,6 +15488,23 @@ class BattleScene extends Phaser.Scene {
       spreadY: 44,
     });
     this.pulseRing(FLOCK_FX_X, FLOCK_FX_Y, 0x8df4ff, 92, 720);
+  }
+
+  private requestBattleIntroDismiss() {
+    if (!this.combatIntroActive || !this.combatIntroFinish) return false;
+    if (this.combatIntroDismissQueued) return true;
+    this.combatIntroDismissQueued = true;
+    playUiSound('confirm');
+    const elapsed = Math.max(0, this.time.now - this.combatIntroStartedAtMs);
+    const remaining = Math.max(0, COMBAT_INTRO_MIN_DISMISS_MS - elapsed);
+    if (remaining <= 0) {
+      this.combatIntroFinish();
+      return true;
+    }
+    this.time.delayedCall(remaining, () => {
+      if (this.combatIntroActive && this.combatIntroDismissQueued) this.combatIntroFinish?.();
+    });
+    return true;
   }
 
   private requestBattleRender() {
@@ -18539,11 +18878,13 @@ class BattleScene extends Phaser.Scene {
     queuePreloadImageAssets(this, this.battleArtAssets(), 'Battle scene art');
   }
 
-  private queueOptionalArtLoad() {
+  private queueOptionalArtLoad(onReady?: (result: RuntimeImageLoadResult) => void) {
     if (this.optionalArtRequested) return;
     this.optionalArtRequested = true;
 
-    this.queueImageAssets(this.battleArtAssets(), 'Optional art');
+    const assets = this.battleArtAssets();
+    const queued = queueRuntimeImageAssets(this, assets, 'Optional art', onReady);
+    if (!queued) onReady?.(runtimeImageLoadSnapshot(this, assets));
   }
 
   private currentRouteNode() {
@@ -18605,11 +18946,11 @@ class BattleScene extends Phaser.Scene {
     });
   }
 
-  private queueCombatFxAssetLoad(onReady?: () => void) {
+  private queueCombatFxAssetLoad(onReady?: (result: RuntimeImageLoadResult) => void) {
     if (this.combatFxAssetsRequested) return;
     this.combatFxAssetsRequested = true;
 
-    void loadCombatFxAssetsModule()
+    void withRuntimeLoadTimeout(loadCombatFxAssetsModule(), 'Essential combat FX')
       .then((module) => {
         const { essentialCombatFxImageAssets, combatFxSpritesheetAssets } = module;
         this.combatFxModule = module;
@@ -18619,77 +18960,90 @@ class BattleScene extends Phaser.Scene {
       .catch((error) => {
         console.warn(LAZY_LOAD_FAILED, error);
         if (!this.sys.settings.active) return;
-        onReady?.();
+        onReady?.(failedModuleLoadResult('combat FX module', error instanceof RuntimeLoadTimeoutError));
       });
   }
 
-  private queueOptionalCombatFxAssetLoad() {
+  private queueOptionalCombatFxAssetLoad(onReady?: (result: RuntimeImageLoadResult) => void) {
     if (this.combatOptionalFxAssetsRequested) return;
     this.combatOptionalFxAssetsRequested = true;
-    void loadCombatFxAssetsModule()
+    void withRuntimeLoadTimeout(loadCombatFxAssetsModule(), 'Optional combat FX')
       .then(({ optionalCombatFxImageAssets }) => {
-        this.queueCombatFxAssetBatch(optionalCombatFxImageAssets, []);
+        this.queueCombatFxAssetBatch(optionalCombatFxImageAssets, [], onReady);
       })
       .catch((error) => {
         this.combatOptionalFxAssetsRequested = false;
         console.warn(LAZY_LOAD_FAILED, error);
+        if (this.sys.settings.active) {
+          onReady?.(failedModuleLoadResult('optional combat FX module', error instanceof RuntimeLoadTimeoutError));
+        }
       });
   }
 
-  private queueEnemyTurnCombatFxAssetLoad() {
+  private queueEnemyTurnCombatFxAssetLoad(onReady?: (result: RuntimeImageLoadResult) => void) {
     if (this.combatEnemyTurnFxAssetsRequested) return;
     this.combatEnemyTurnFxAssetsRequested = true;
-    void loadCombatFxAssetsModule()
+    void withRuntimeLoadTimeout(loadCombatFxAssetsModule(), 'Enemy-turn combat FX')
       .then(({ enemyTurnCombatFxImageAssets }) => {
-        this.queueCombatFxAssetBatch(enemyTurnCombatFxImageAssets, []);
+        this.queueCombatFxAssetBatch(enemyTurnCombatFxImageAssets, [], onReady);
       })
       .catch((error) => {
         this.combatEnemyTurnFxAssetsRequested = false;
         console.warn(LAZY_LOAD_FAILED, error);
+        if (this.sys.settings.active) {
+          onReady?.(failedModuleLoadResult('enemy-turn combat FX module', error instanceof RuntimeLoadTimeoutError));
+        }
       });
   }
 
-  private queueOutcomeCombatFxAssetLoad() {
+  private queueOutcomeCombatFxAssetLoad(onReady?: (result: RuntimeImageLoadResult) => void) {
     if (this.combatOutcomeFxAssetsRequested) return;
     this.combatOutcomeFxAssetsRequested = true;
-    void loadCombatFxAssetsModule()
+    void withRuntimeLoadTimeout(loadCombatFxAssetsModule(), 'Outcome combat FX')
       .then(({ outcomeCombatFxImageAssets }) => {
-        this.queueCombatFxAssetBatch(outcomeCombatFxImageAssets, []);
+        this.queueCombatFxAssetBatch(outcomeCombatFxImageAssets, [], onReady);
       })
       .catch((error) => {
         this.combatOutcomeFxAssetsRequested = false;
         console.warn(LAZY_LOAD_FAILED, error);
+        if (this.sys.settings.active) {
+          onReady?.(failedModuleLoadResult('outcome combat FX module', error instanceof RuntimeLoadTimeoutError));
+        }
       });
   }
 
   private queueCombatFxAssetBatch(
     imageAssets: RuntimeImageAsset[],
     spritesheetAssets: Array<RuntimeImageAsset & { frameWidth: number; frameHeight: number }>,
-    onReady?: () => void
+    onReady?: (result: RuntimeImageLoadResult) => void
   ) {
     if (!this.sys.settings.active) return;
+    const requestedAssets: RuntimeImageAsset[] = [...imageAssets, ...spritesheetAssets];
     const pendingImages = imageAssets.filter((asset) => !this.textures.exists(asset.key));
     const pendingSheets = spritesheetAssets.filter((asset) => !this.textures.exists(asset.key));
     if (pendingImages.length === 0 && pendingSheets.length === 0) {
       this.ensureFxTextures();
-      onReady?.();
+      onReady?.(runtimeImageLoadSnapshot(this, requestedAssets));
       return;
     }
 
     let settled = false;
+    let timeoutEvent: Phaser.Time.TimerEvent | undefined;
     const cleanup = () => {
       this.load.off('complete', onComplete);
       this.load.off('loaderror', onLoadError);
       this.events.off('shutdown', onSceneEnd);
       this.events.off('destroy', onSceneEnd);
+      timeoutEvent?.remove(false);
     };
-    const onComplete = () => {
+    const finish = (timedOut: boolean) => {
       if (settled) return;
       settled = true;
       cleanup();
       this.ensureFxTextures();
-      onReady?.();
+      onReady?.(runtimeImageLoadSnapshot(this, requestedAssets, timedOut));
     };
+    const onComplete = () => finish(false);
     const onLoadError = (file: { key?: string }) => {
       const key = file.key ?? 'unknown';
       if (!pendingImages.some((asset) => asset.key === key) && !pendingSheets.some((asset) => asset.key === key)) return;
@@ -18712,6 +19066,7 @@ class BattleScene extends Phaser.Scene {
     this.load.once('complete', onComplete);
     this.events.once('shutdown', onSceneEnd);
     this.events.once('destroy', onSceneEnd);
+    timeoutEvent = this.time.delayedCall(RUNTIME_IMAGE_LOAD_TIMEOUT_MS, () => finish(true));
     this.load.start();
   }
 
@@ -23930,7 +24285,18 @@ class BattleScene extends Phaser.Scene {
     return {
       mode: this.mode,
       scene: 'BattleScene',
+      assetReadiness: this.battleAssetReadiness.snapshot(),
       combatAnimationPending: this.combatAnimationPending,
+      combatIntro: {
+        active: this.combatIntroActive,
+        dismissQueued: this.combatIntroDismissQueued,
+        dismissed: this.combatIntroDismissed,
+        minimumReadableMs: COMBAT_INTRO_MIN_DISMISS_MS,
+        elapsedMs: this.combatIntroActive
+          ? Math.max(0, Math.round(this.time.now - this.combatIntroStartedAtMs))
+          : this.combatIntroElapsedMs,
+        binding: controlBindingLabel('confirm'),
+      },
       combatEnemyTurnBeat: this.combatEnemyTurnBeat,
       combatEnemyTurnMove: this.combatEnemyTurnMove,
       combatEnemyTurnProgress: this.enemyTurnBeatProgress(),

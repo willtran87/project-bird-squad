@@ -2684,3 +2684,30 @@ route/outcome regressions pass. Full release validation also passes all nine
 sequencing scenarios; app entry is 661.1 KiB and combined boot code is 689.6
 KiB. Remaining release evidence is still five observed fresh-player sessions
 through `docs/game/playtest-runbook.md`.
+
+Current follow-up: P0 scene asset-readiness closure. Added a shared readiness
+tracker for RouteScene and BattleScene with explicit loading, transition,
+interactive, and full-art phases; separate time-to-first-interaction and
+time-to-full-art clocks;
+pending groups; and exact failed/timed-out group and key diagnostics in
+`render_game_to_text`. Runtime image waits and required presentation-module
+imports now release to their existing fallbacks after an eight-second ceiling
+instead of risking an indefinite transition. Route tracks essential UI/art and
+the broader current-scene UI bundle; Battle tracks preloaded combat art,
+essential/core UI, combat FX, required render modules, and current optional FX.
+Three focused Chromium regressions pass, including a deliberately stalled
+route-map frame that becomes an interactive fallback and reports both affected
+groups. Required production-client captures under
+`.artifacts/readiness-client-route/` and
+`.artifacts/readiness-client-battle-settled-real/` were visually inspected:
+the route measured 436 ms to interaction / 1,535 ms to full art, combat measured
+4,803 ms to interaction / 1,468 ms to full art (the encounter-intro beat
+intentionally holds controls after art is complete), both had empty failure and
+timeout lists, and neither emitted a browser-error artifact. Strict TypeScript,
+the production build, and full release validation pass, including all nine
+sequencing scenarios. Encounter intros now accept the current keyboard confirm,
+gamepad A, or pointer/touch after a 600 ms readable floor; deterministic tests
+prove early input queues without skipping the minimum and then releases combat.
+App entry is 669.0 KiB and combined boot code is 697.6 KiB. Remaining release
+evidence is still five observed fresh-player sessions through
+`docs/game/playtest-runbook.md`.

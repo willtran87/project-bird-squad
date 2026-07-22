@@ -2,6 +2,15 @@ import type Phaser from 'phaser';
 
 export type RuntimeImageAsset = { key: string; url: string };
 
+export type RuntimeImageLoadResult = {
+  requestedKeys: string[];
+  loadedKeys: string[];
+  failedKeys: string[];
+  timedOut: boolean;
+};
+
+export const RUNTIME_IMAGE_LOAD_TIMEOUT_MS = 8_000;
+
 const sceneLoadingAssetKeys = new WeakMap<Phaser.Scene, Set<string>>();
 
 function loadingKeysForScene(scene: Phaser.Scene): Set<string> {
@@ -24,20 +33,33 @@ function missingImageAssets(scene: Phaser.Scene, assets: Array<RuntimeImageAsset
 function waitForImageAssets(
   scene: Phaser.Scene,
   keys: string[],
-  onComplete?: () => void
+  onComplete?: (result: RuntimeImageLoadResult) => void,
+  timeoutMs = RUNTIME_IMAGE_LOAD_TIMEOUT_MS,
 ) {
   if (!onComplete) return;
 
   const loadingKeys = loadingKeysForScene(scene);
+  const startedAt = performance.now();
   let settled = false;
+  const result = (timedOut: boolean): RuntimeImageLoadResult => {
+    const loadedKeys = keys.filter((key) => scene.textures.exists(key));
+    const loaded = new Set(loadedKeys);
+    return {
+      requestedKeys: [...keys],
+      loadedKeys,
+      failedKeys: keys.filter((key) => !loaded.has(key)),
+      timedOut,
+    };
+  };
   const check = () => {
     if (settled || !scene.sys.settings.active) return;
-    if (!keys.every((key) => scene.textures.exists(key) || !loadingKeys.has(key))) {
+    const timedOut = performance.now() - startedAt >= timeoutMs;
+    if (!timedOut && !keys.every((key) => scene.textures.exists(key) || !loadingKeys.has(key))) {
       scene.time.delayedCall(50, check);
       return;
     }
     settled = true;
-    onComplete();
+    onComplete(result(timedOut));
   };
 
   check();
@@ -48,7 +70,7 @@ function queueImageAssets(
   assets: Array<RuntimeImageAsset | undefined>,
   warning: string,
   startNow: boolean,
-  onComplete?: () => void,
+  onComplete?: (result: RuntimeImageLoadResult) => void,
 ): boolean {
   const missing = missingImageAssets(scene, assets);
   if (missing.length === 0) return false;
@@ -115,7 +137,7 @@ export function queueRuntimeImageAssets(
   scene: Phaser.Scene,
   assets: Array<RuntimeImageAsset | undefined>,
   warning: string,
-  onComplete?: () => void
+  onComplete?: (result: RuntimeImageLoadResult) => void
 ): boolean {
   return queueImageAssets(scene, assets, warning, true, onComplete);
 }

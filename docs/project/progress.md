@@ -2227,3 +2227,36 @@ Follow-up TODO:
   661.1 KiB and combined boot code is 689.6 KiB. Remaining release evidence is
   unchanged: five observed fresh-player sessions through
   `docs/game/playtest-runbook.md`.
+
+## 2026-07-21 Scene Asset Readiness Contract
+
+- Replaced route/battle readiness booleans as the only evidence with a shared
+  contract that reports loading, transition, interactive, and full-art phases;
+  independent time-to-first-interaction and time-to-full-art values; pending
+  groups; and
+  exact failed/timed-out groups and keys through `render_game_to_text`.
+- Added an eight-second production ceiling to runtime image waits and required
+  presentation-module imports. A stalled request now releases the existing
+  playable fallback and remains diagnosable instead of leaving the player on an
+  indefinite `Charting the route...` or `Flock taking position...` transition.
+- Route tracks essential UI, essential node/backdrop art, and the full current
+  route UI bundle. Battle tracks preloaded combat art, essential/core UI,
+  essential combat FX, required render modules, current art, and optional FX.
+- Added focused healthy-path coverage across both scenes plus a real browser
+  request stall for `route-map-frame`. The timeout regression proves route
+  interaction returns after the ceiling and identifies `route-essential-ui`
+  and `route-full-ui`, including the exact missing texture key.
+- Required production-client captures under `.artifacts/readiness-client-route/`
+  and `.artifacts/readiness-client-battle-settled-real/` were visually
+  inspected. Route measured 436 ms to interaction and 1,535 ms to full art;
+  combat measured 4,803 ms to interaction and 1,468 ms to full art because its
+  encounter-intro beat intentionally holds controls after art settles. Both
+  states had no pending, failed, or timed-out groups and no browser error file.
+- Added binding-aware encounter-intro dismissal for keyboard confirm, gamepad A,
+  and pointer/touch. Early input queues behind a 600 ms readable floor, then
+  releases combat interaction without skipping the presentation minimum.
+- Strict TypeScript, focused readiness and intro regressions, the production
+  build, and full release validation pass, including all nine sequencing
+  scenarios. App entry is 669.0 KiB and combined boot code is 697.6 KiB.
+  Remaining release evidence is unchanged: five observed fresh-player sessions
+  through `docs/game/playtest-runbook.md`.

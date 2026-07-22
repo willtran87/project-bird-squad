@@ -120,6 +120,203 @@ test('route readiness gate hides fallback nodes and blocks commitment', async ({
   expect(result.state.routeAssetsReady).toBe(false);
 });
 
+test('route and battle report separate interaction and full-art readiness milestones', async ({ page }) => {
+  test.setTimeout(45_000);
+  await boot(page);
+
+  const routeState = await page.evaluate(async () => {
+    await window.__birdSquadStartScene!('RouteScene', {});
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      if (state.assetReadiness?.interactive && state.assetReadiness?.fullArt) return state;
+      await wait(50);
+    }
+    return JSON.parse(window.render_game_to_text?.() ?? '{}');
+  });
+  expect(routeState.routeAssetsReady).toBe(true);
+  expect(routeState.assetReadiness).toMatchObject({
+    phase: 'full-art',
+    interactive: true,
+    fullArt: true,
+    pendingGroups: [],
+    failedGroups: [],
+    timedOutGroups: [],
+  });
+  expect(routeState.assetReadiness.timeToFirstInteractionMs).toEqual(expect.any(Number));
+  expect(routeState.assetReadiness.timeToFullArtMs).toEqual(expect.any(Number));
+
+  const battleResult = await page.evaluate(async () => {
+    const game = window.__birdSquadGame;
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    game.scene.stop('RouteScene');
+    await wait(0);
+    game.scene.start('BattleScene', {});
+    let sawTransition = false;
+    for (let attempt = 0; attempt < 300; attempt += 1) {
+      const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      if (state.scene === 'BattleScene' && state.assetReadiness?.fullArt && !state.assetReadiness?.interactive) {
+        sawTransition = sawTransition || state.assetReadiness.phase === 'transition';
+      }
+      if (state.scene === 'BattleScene' && state.assetReadiness?.interactive && state.assetReadiness?.fullArt) {
+        return { state, sawTransition };
+      }
+      await wait(50);
+    }
+    return { state: JSON.parse(window.render_game_to_text?.() ?? '{}'), sawTransition };
+  });
+  const battleState = battleResult.state;
+  expect(battleResult.sawTransition).toBe(true);
+  expect(battleState.combatAnimationPending).toBe(false);
+  expect(battleState.assetReadiness).toMatchObject({
+    phase: 'full-art',
+    interactive: true,
+    fullArt: true,
+    pendingGroups: [],
+    failedGroups: [],
+    timedOutGroups: [],
+  });
+  expect(battleState.assetReadiness.timeToFirstInteractionMs).toEqual(expect.any(Number));
+  expect(battleState.assetReadiness.timeToFullArtMs).toEqual(expect.any(Number));
+});
+
+test('route readiness timeout releases a playable fallback and reports the failed group', async ({ page }) => {
+  test.setTimeout(25_000);
+  await page.route('**/route-map-frame*.webp*', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 9_000));
+    await route.abort();
+  });
+  await boot(page);
+
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const scene: any = await window.__birdSquadStartScene!('RouteScene', {});
+    for (let attempt = 0; attempt < 220 && !scene.routeEssentialAssetsReady; attempt += 1) {
+      await wait(50);
+    }
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const texts = scene.children.list
+      .map((child: any) => child.text)
+      .filter((text: unknown): text is string => typeof text === 'string');
+    return {
+      state,
+      texts,
+      enabledRouteTargets: scene.children.list.filter((child: any) => (
+        child.input?.enabled && child.input?.cursor === 'pointer'
+      )).length,
+    };
+  });
+
+  expect(result.state.routeAssetsReady).toBe(true);
+  expect(result.state.assetReadiness.interactive).toBe(true);
+  expect(result.state.assetReadiness.timedOutGroups).toEqual(expect.arrayContaining([
+    'route-essential-ui',
+    'route-full-ui',
+  ]));
+  expect(result.state.assetReadiness.failedGroups).toEqual(expect.arrayContaining([
+    'route-essential-ui',
+    'route-full-ui',
+  ]));
+  expect(result.state.assetReadiness.failures).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      group: 'route-essential-ui',
+      keys: expect.arrayContaining(['ui-icon-route-map-frame']),
+    }),
+  ]));
+  expect(result.texts).not.toContain('Charting the route...');
+  expect(result.enabledRouteTargets).toBeGreaterThan(0);
+});
+
+test('encounter intro queues confirm and pointer dismissal behind its readable window', async ({ page }) => {
+  test.setTimeout(60_000);
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const game = window.__birdSquadGame;
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const collect = (items: any[]): any[] => items.flatMap((child) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const startIntro = async () => {
+      for (const key of ['MenuScene', 'RouteScene', 'BattleScene']) {
+        if (game.scene.isActive(key)) game.scene.stop(key);
+      }
+      await wait(0);
+      game.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+      for (let attempt = 0; attempt < 240; attempt += 1) {
+        const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+        if (state.scene === 'BattleScene' && state.combatIntro?.active) {
+          return game.scene.getScene('BattleScene') as any;
+        }
+        await wait(25);
+      }
+      throw new Error('Battle intro did not become active');
+    };
+
+    const keyboardScene = await startIntro();
+    const initial = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const keyboardObjects = collect(keyboardScene.children.list);
+    const keyboardHit = keyboardObjects.find((child: any) => (
+      child.name === 'combat-intro-dismiss-hit' && child.input?.enabled
+    ));
+    const keyboardLabel = keyboardObjects.find((child: any) => (
+      child.name === 'combat-intro-dismiss-label'
+    ))?.text;
+    keyboardScene.input.keyboard.emit('keydown-ENTER');
+    const queued = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const beforeMinimumMs = Math.max(
+      0,
+      initial.combatIntro.minimumReadableMs - initial.combatIntro.elapsedMs - 1,
+    );
+    window.advanceTime?.(beforeMinimumMs);
+    const beforeMinimum = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    window.advanceTime?.(1);
+    const keyboardFinished = JSON.parse(window.render_game_to_text?.() ?? '{}');
+
+    const pointerScene = await startIntro();
+    const pointerInitial = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const pointerHit = collect(pointerScene.children.list).find((child: any) => (
+      child.name === 'combat-intro-dismiss-hit' && child.input?.enabled
+    ));
+    pointerHit?.emit('pointerdown', { isDown: true });
+    window.advanceTime?.(Math.max(
+      0,
+      pointerInitial.combatIntro.minimumReadableMs - pointerInitial.combatIntro.elapsedMs + 2,
+    ));
+    const pointerFinished = JSON.parse(window.render_game_to_text?.() ?? '{}');
+
+    return {
+      initial,
+      keyboardHit: Boolean(keyboardHit),
+      keyboardLabel,
+      queued,
+      beforeMinimum,
+      keyboardFinished,
+      pointerHit: Boolean(pointerHit),
+      pointerFinished,
+    };
+  });
+
+  expect(result.initial.combatIntro).toMatchObject({
+    active: true,
+    dismissQueued: false,
+    dismissed: false,
+    minimumReadableMs: 600,
+  });
+  expect(result.keyboardHit).toBe(true);
+  expect(result.keyboardLabel).toContain(result.initial.combatIntro.binding.toUpperCase());
+  expect(result.queued.combatIntro.dismissQueued).toBe(true);
+  expect(result.beforeMinimum.combatIntro.active).toBe(true);
+  expect(result.beforeMinimum.combatAnimationPending).toBe(true);
+  expect(result.keyboardFinished.combatIntro).toMatchObject({ active: false, dismissed: true });
+  expect(result.keyboardFinished.combatAnimationPending).toBe(false);
+  expect(result.keyboardFinished.assetReadiness.interactive).toBe(true);
+  expect(result.keyboardFinished.combatIntro.elapsedMs).toBeGreaterThanOrEqual(600);
+  expect(result.pointerHit).toBe(true);
+  expect(result.pointerFinished.combatIntro).toMatchObject({ active: false, dismissed: true });
+  expect(result.pointerFinished.combatAnimationPending).toBe(false);
+});
+
 test('route map loads and previews the boss before the final node', async ({ page }) => {
   test.setTimeout(60_000);
   await boot(page);

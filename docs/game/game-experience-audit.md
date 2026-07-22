@@ -210,7 +210,20 @@ Acceptance:
 
 ### P0. Gate First Interaction On Essential Art Readiness
 
-The route currently renders fallback node letters while generated assets load.
+Implementation status: complete in runtime and automated recovery coverage.
+Route and battle now publish the same `assetReadiness` contract with loading,
+transition, interactive, and full-art milestones; independent
+time-to-first-interaction and time-to-full-art measurements; pending groups;
+and exact failed/timed-out group and key diagnostics. Essential image and
+presentation-module requests have an
+eight-second ceiling. Healthy production-client runs reach fully generated
+route and combat boards with no failed groups, while a browser regression holds
+the route-map frame request open past the ceiling and proves the scene releases
+to an interactive fallback with `route-essential-ui` and `route-full-ui`
+identified in debug state. Human first-run timing samples remain part of the
+observed-session release evidence rather than being inferred from automation.
+
+The original route rendered fallback node letters while generated assets loaded.
 Fallbacks are valuable for failure recovery, but they should not be the normal
 first frame.
 
@@ -291,8 +304,16 @@ Acceptance:
 
 ### P0. Add Adaptive Animation Pacing
 
-Readable attack staging is now a strength. Repeating full cinematic timing for
-every common action across roughly fourteen combats per run will become drag.
+Implementation status: complete in runtime and deterministic browser coverage.
+First-seen and boss moves retain full cinematic timing; Standard shortens
+familiar repeats to 68%, Snappy to 62%, and hold-to-Hustle accelerates familiar
+enemy staging only after its readable Tell window. Impact and event ordering are
+never skipped. Encounter intros also accept the current confirm binding,
+gamepad A, or tap after a 600 ms readable floor, so settled art no longer forces
+the player to wait through the complete flourish.
+
+Readable attack staging remains a strength without repeating full cinematic
+timing for every common action across roughly fourteen combats per run.
 
 Add a setting independent of reduced motion:
 
