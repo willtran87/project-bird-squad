@@ -2308,6 +2308,404 @@ Follow-up TODO:
 - Remaining release evidence is unchanged: five genuinely observed
   fresh-player sessions through `docs/game/playtest-runbook.md`.
 
+## 2026-07-26 First-Combat Start-Here Guidance
+
+- Closed the remaining live-onboarding gap between the Wingbeats/Flow
+  explanation and the board. The card step now deterministically recommends an
+  affordable non-Snag opener, preferring an enemy-targeted Flow builder.
+- Added a gold `START HERE` card frame/pulse and a `PLAY HERE` label on its
+  current legal enemy. The guide rail names the card, exact Wingbeat cost,
+  target, and Flow result while leaving every other legal card and target
+  available.
+- Added text-state recommendation data and screen-reader copy with the same
+  card, cost, target, and Flow/Surge lesson. All card and target markers retire
+  immediately after the first valid play as the guide advances to Roost.
+- Focused First Flight progression and Flow-preview tests pass, including
+  non-blocking alternatives, visual markers, accessible copy, and marker
+  retirement. The existing menu/route/combat/settings screen-reader test also
+  passes.
+- The required shared client captured the settled lesson at
+  `.artifacts/goal-first-card-guide-final/shot-0.png`, then used real pointer
+  input to play First Flight on Roof Rat. The post-play state advances to
+  `roost`, spends one Wingbeat, deals five damage, draws one card, and contains
+  no card/target guide markers; evidence is in
+  `.artifacts/goal-first-card-guide-played/`.
+- Production build and hard bundle validation pass. The follow-up accessibility
+  split restores both preferred targets: combined boot is 704.1 KB minified /
+  188.3 KB gzip and the app entry is 675.0 KB / 177.6 KB gzip.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Default-Off Screen Reader Runtime
+
+- Moved the polling interval, live-region announcements, and lazy summary
+  loader out of the default app entry into `screen-reader-runtime`. The
+  synchronous preference/state façade remains available to Settings and text
+  state.
+- With Screen Reader off, neither accessibility runtime chunk loads and no
+  observer runs. Opting in loads the runtime and summary, announces menu,
+  route, combat, and settings focus, and opting out stops polling and clears
+  the live region.
+- Added a 4 KB hard chunk budget, an exact-one deployment contract, and an
+  explicit rejection of title-screen modulepreloading.
+- The focused screen-reader and two First Flight regressions pass. Production
+  build, bundle validation, and deployment-cache/security validation pass with
+  a 675.0 KB / 177.6 KB gzip app entry and 704.1 KB / 188.3 KB gzip combined
+  boot.
+- Full `npm run validate` passes documentation, runtime/data, 961 optimized
+  runtime assets, world/FX contracts, bundle/deployment rules, enemy variety,
+  Minor Arcana overlays, and all 19 critical sequencing scenarios.
+- The required shared client reaches full-art first combat with First Flight
+  and Roof Rat guidance intact, Screen Reader off, no observer or summary
+  module active, and no browser-error artifact. Evidence is under
+  `.artifacts/goal-screen-reader-lazy-guide/`.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Final Enemy Attack-Tell Swap Verification
+
+- Confirmed the approved direction-neutral eight-node perimeter ring remains
+  the canonical `combat-enemy-attack-tell` PNG/WebP and that the renderer has no
+  target-coordinate or horizontal-flip behavior.
+- The required shared client traversed title, route, and live combat with real
+  input. `.artifacts/attack-tell-swap-current-live4/shot-0.png` captures
+  `Strike 6` during wind-up with both tell layers and the existing flourish
+  visible, the Roof Rat readable through the open center, and Cohesion held at
+  38/38 before impact.
+- Text state reports full art, no failed asset groups, and no browser-error
+  artifact. The focused enemy-wind-up regression passes and asserts every
+  active tell sprite remains unflipped.
+
+## 2026-07-25 Strategic Ascension Tell Ladder
+
+- Replaced Tier 3's flat +1 attack damage with `Unfamiliar Tells`: every cyclic
+  enemy begins on a seeded alternate intent. The same flight reproduces the
+  opener exactly while different flight seeds vary it.
+- Reworked Tier 6 into `Restless Patterns`: attacks add only +1 instead of +2,
+  and each cyclic enemy skips its ordinary next pattern step after every
+  Roost. The new Tell appears before the next player action and the combat log
+  names the reroute.
+- Preserved all four scripted boss sequences exactly. The mastery rules affect
+  the 60 cyclic normal/rival/elite patterns without skipping authored boss
+  phases.
+- Updated the title Ascension description and compact stat line to disclose HP,
+  reward count, attack bonus, Open Sky pressure, and Tell behavior. Tier 6's
+  isolated 1440x900 capture is
+  `.artifacts/ascension-mastery-client/tier6-title.png`; the description occupies
+  a measured 262x32 bound inside its panel with no page or console errors.
+- Added difficulty and per-enemy intent-index telemetry. Incoming intent
+  forecasts include the active Ascension attack bonus, so the displayed value
+  matches the resolved Cohesion loss.
+- Added a critical sequencing regression covering varied seeded openers,
+  same-seed opener and reroute reproduction, forecast/resolution parity,
+  readable reroute feedback, full modifier disclosure, and unchanged scripted
+  boss order.
+- Moved pure difficulty and enemy-label formatting into runtime/balance data.
+  Production entry meets the preferred 675.0 KB target; game core is 29.0 KB,
+  and combined boot is 704.0 KB minified / 188.1 KB gzip with no warnings.
+- The required shared client exercised title, route, and live combat after the
+  final refactor. `.artifacts/ascension-mastery-client-final/shot-0.png`
+  reports full art, no pending or failed groups, Standard's correct 8-damage
+  Roof Rat forecast, responsive first-turn controls, and no browser-error
+  artifact.
+- Strict TypeScript, production build, and full `npm run validate` pass,
+  including documentation, all 961 runtime assets, canonical world-asset
+  rejection, deployment/cache checks, enemy variety, Minor Arcana overlays,
+  every bundle gate, and all twelve critical sequencing scenarios.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Seeded Opening-Draw Variety And Fairness
+
+- Replaced the prior fixed saved-deck opening order. The authored first
+  Fledgling encounter remains curated for teaching; subsequent encounters
+  shuffle deterministically from flight seed, district, and route-node id.
+- Opening protection uses the final computed hand size after leader and card
+  draw modifiers. When the deck permits it, the actual hand contains at least
+  two affordable non-Snag cards and one enemy-pressure card.
+- Added compact `openingDraw` telemetry (`shuffled` and `protectionSwaps`) plus
+  a combat-log line when protection intervenes.
+- Disclosed the rule in How to Play under `Fair draws`, avoiding hidden
+  probability manipulation.
+- Routed reshuffles, random draw insertion, random support targets, map-start
+  Supply picks, and reward-draft rolls through the encounter RNG. Replaying the
+  same seed with the same decisions now reproduces gameplay randomness rather
+  than only the procedural route.
+- Added a 256-seed Tidewarden regression. It produced 252 unique ordered
+  openings; 133 pressureless samples required and received a protection swap.
+  Every actual four-card opening had at least two playable cards and one
+  pressure card. Repeated seeds produced identical hands and identical
+  three-card reward drafts.
+- Added the regression to `test:sequencing`; the release subset now passes
+  11/11 scenarios.
+- The required shared client visually inspected both the How to Play disclosure
+  and live combat. The tutorial still opens with First Flight, Plume Flash,
+  Plume Fledgling, Quill Point, and Quill Fledgling; combat became interactive
+  in 1,648ms, reached full art in 1,364ms, and reported zero asset failures. No
+  fresh browser-error artifact was emitted.
+- Folded deterministic draw/runtime utilities into the existing game-core boot
+  chunk. Production entry remains under its preferred target at 674.9 KB,
+  game-core remains within 30 KB, and combined boot code is 704.9 KB minified /
+  188.6 KB gzip without warnings.
+- Strict TypeScript, production build, and full `npm run validate` pass,
+  including documentation, runtime/data, 961 optimized runtime assets,
+  canonical world-asset rejection, deployment/cache, enemy variety, Minor
+  Arcana overlays, enforced bundle budgets, and all eleven sequencing
+  scenarios.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Procedural Route Fairness Stress Gate
+
+- Added a deterministic browser audit for all four procedural districts across
+  256 seeds each, covering 1,024 generated maps in every regular release run.
+- The gate proves seed stability, complete entry-to-node and node-to-boss
+  reachability, valid incoming/outgoing edges, meaningful branching, Rival
+  alternatives, and at least two complete paths on every generated map.
+- Every enumerated path is checked against the district's authored fairness
+  contract: maximum consecutive combats, timely safety access, minimum build
+  opportunities, and maximum pressure score.
+- All four districts passed with zero violations and 256/256 unique maps. Every
+  Street and Rival encounter-pool entry appeared. The districts produced 7,228,
+  7,609, 7,423, and 7,526 unique route-type path patterns respectively; sampled
+  maps ranged from 17-32 nodes and 5-160 viable complete paths.
+- Exposed the already-bundled generator, seed hash, blueprints, and balance
+  lookup through a narrow tuple-based test bridge. The compact representation
+  keeps the production entry at the preferred 675.0 KB target with no warning.
+- Added the stress audit to `test:sequencing`; the release subset now passes
+  10/10 scenarios.
+- The required shared client opened a live Rooftop Blocks run. The inspected
+  26-node, 10-column route became interactive in 617ms, reached full art in
+  1,303ms, saved its opening checkpoint, and reported no asset failures. No
+  fresh browser-error artifact was emitted.
+- Strict TypeScript, production build, and full `npm run validate` pass,
+  including documentation, runtime/data, 961 optimized runtime assets,
+  canonical world-asset rejection, deployment/cache, enemy variety, Minor
+  Arcana overlays, enforced bundle budgets, and all ten sequencing scenarios.
+  Combined boot code remains 703.7 KB minified / 188.2 KB gzip.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## Reinforced color-vision card cues
+
+- Added a persistent `Color Cues` setting with `Standard` and `Reinforced`
+  modes to title, route, and combat Settings.
+- Reinforced combat-hand and card-reward choices now combine distinct shapes
+  with full suit/type labels, so `PLUMES`, `BASINS`, `QUILLS`, `NESTS`,
+  `LEGEND`, `MOLT`, `AVIARY`, and `SNAG` never depend on color alone.
+- Compact failure renderers retain redundant cue text, and resuming from a
+  paused preference change rebuilds the underlying decision surface.
+- Added safe-storage state, text-state telemetry, transactional save
+  export/restore support, and backward-compatible `Standard` defaults for old
+  version-1 backups without the field.
+- The focused end-to-end regression proves keyboard activation, reload
+  persistence, exact hand/reward badge counts, shape/label metadata, pointer
+  deactivation, and badge-free Standard mode. Five adjacent navigation,
+  screen-reader, and save-backup regressions also pass.
+- The required shared client drove title Settings through a real route commit
+  into combat. Visual inspection of
+  `.artifacts/color-cues-shared-client/shot-0.png` and
+  `.artifacts/test-results/color-cues/reinforced-reward.png` confirmed the
+  badges preserve card names, costs, art, rules, focus, and target readability;
+  text state reported Reinforced mode and no browser error artifact.
+- Strict TypeScript, the production build, content/balance/economy audits, and
+  full release validation pass, including all nine sequencing scenarios. The
+  cue renderer is a 1.5 KB lazy chunk; combined boot is 704.9 KB minified /
+  188.8 KB gzip and passes the enforced budget. The app entry has a
+  non-blocking 676.2 KB target warning.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Truthful Route Checkpoint Feedback
+
+- RouteScene now fingerprints its serialized run state and writes the
+  journaled active-flight checkpoint only after genuine progress changes.
+  Selection, asset, hover, and overlay redraws no longer repeat the same local
+  storage write.
+- A successful checkpoint shows a compact `FLIGHT SAVED` acknowledgement for
+  1.8 seconds. A failed write shows `SAVE UNAVAILABLE` for 4.2 seconds and
+  announces that the player should keep the tab open when Screen Reader mode
+  is enabled.
+- Failed snapshots are not retried on every redraw. The next changed run state
+  retries normally, returning to the success acknowledgement if storage is
+  available again.
+- Route text state now reports checkpoint outcome, label visibility,
+  successful writes, and failures. Focused browser coverage proves initial and
+  changed-state saves, identical-redraw suppression, timed retirement,
+  Continue restoration, forced quota failure, and successful recovery with
+  stored state matching live state.
+- The shared client capture at
+  `.artifacts/route-checkpoint-feedback-client-final/shot-0.png` shows the
+  acknowledgement clear of route guidance and controls. State reports one
+  write, zero failures, full route art, and no browser-error artifact.
+- Strict TypeScript, focused checkpoint contracts, the production build, and
+  full release validation pass, including all nine sequencing scenarios. App
+  entry is 674.9 KB minified and combined boot code is 703.6 KB, within
+  enforced budgets. Remaining release evidence is unchanged: five genuinely
+  observed fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Progressive Route Readiness
+
+- Reduced the route's blocking UI set to the map frame, selected-node ring,
+  and commit medallion. The district backdrop, eight painted node icons, and
+  secondary route/overlay chrome now stream after the first route decision is
+  available and replace complete procedural/glyph fallbacks in place.
+- Full-art readiness now requires both `route-essential-art` and
+  `route-full-ui`; the interaction milestone no longer waits for either group.
+- Added a regression that delays every painted Street node asset for three
+  seconds and proves the route is interactive first, the loading copy is gone,
+  the `S` fallback glyph and enabled route target are present, and
+  `route-essential-art` remains reported as pending.
+- The production shared client measured 1.172 seconds to interaction and 1.790
+  seconds to full art with no failed or timed-out asset groups. The inspected
+  complete map is
+  `.artifacts/route-progressive-readiness-client-final/shot-1.png`; state is in
+  the adjacent JSON files and no browser-error artifact was emitted.
+- Authored balance, content, and economy audits remain clean. The seeded
+  playtest harness reports zero human rating responses, so it remains pipeline
+  evidence only. Four focused route readiness/status regressions and the
+  production build pass. Full release validation also passes, including all
+  nine sequencing scenarios; app entry is 672.7 KB minified and combined boot
+  code is 701.4 KB, within enforced budgets.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Actionable-Frame Combat FX Cleanup
+
+- Fixed a live visual-hierarchy failure where player-turn draw/Resonance
+  ceremony objects and the next card's commit, trail, cast, Flow, bank, and
+  leader-signature effects could all remain over the flock after controls
+  unlocked.
+- Animated card plays now capture the clean FX-layer baseline at commitment,
+  preserve feedback through resolution, hold the result for 240 ms, and retire
+  only that card's transient objects before restoring input. The cleanup also
+  releases generated-sprite and particle-budget counters.
+- Player-turn handoff now retires its whole protected transition beat before
+  input—not only the rally/banner, but draw cards, start-of-turn Resonance/Regen
+  callouts, and particles as well.
+- Added text-state telemetry for the action window and strengthened the combat
+  sequencing regression. It proves feedback is active while the card is
+  pending, then no commit sigil, action trail, cast focus, card draw, Resonance
+  effect, floating callout, or active particle burst remains at unlock.
+- The shared client replayed the exact first-card path that exposed the issue.
+  The inspected
+  `.artifacts/player-card-feedback-cleanup-client-final/shot-0.png` leaves the
+  flock, enemy, hand, forecast, and combat log unobstructed. Serialized state
+  reports 32 retired objects, zero transient objects, unlocked input, and no
+  browser errors.
+- Strict TypeScript, the three affected combat regressions, the production
+  build, and full release validation pass, including all nine sequencing
+  scenarios. App entry is 672.9 KiB minified and combined boot code is 701.5
+  KiB, within enforced budgets.
+- Remaining release evidence is unchanged: five genuinely observed fresh-player
+  sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Clear-Center Combat Flourishes
+
+- Made the approved direction-neutral attack tell the canonical runtime PNG
+  and WebP. The eight-node ornamental perimeter has a transparent center, no
+  arrow, and no target-facing flip.
+- Replaced the dense Four-Suit Rally crest and wide perfect-chain overlay with
+  one procedural, four-color segmented perimeter. Its runtime object declares
+  `centerClear: true`, uses a 94px radius, and leaves the flock visible.
+- Removed both legacy rally texture keys from imports, preload manifests,
+  renderer methods, debug texture discovery, FX-gallery coverage, and the
+  active image-generation roadmap. Deleted their runtime PNG/WebP files and
+  original generated sources, so neither tooling nor runtime code can select
+  or regenerate them by mistake.
+- Moved the player-turn ceremony into the protected handoff window and retire
+  its named objects before input unlocks, so `Your Turn` cannot stack with the
+  first card played. Reduced the separate cast-focus image to a shorter,
+  smaller, clear-center pulse.
+- The focused enemy-wind-up regression proves all attack-tell sprites remain
+  unflipped. The leader-signature regression proves the procedural rally shape
+  and the absence of both retired texture keys; the generated-FX gallery still
+  covers every wired asset. Strict TypeScript and all three focused regressions
+  pass. The production build and full release validation pass as well, including
+  all nine sequencing scenarios. App entry is 671.8 KiB minified and combined
+  boot code is 700.5 KiB, within enforced budgets.
+- The game remains live at `http://127.0.0.1:5201`. The canonical replacement
+  can be inspected directly at
+  `assets/runtime/fx/combat-enemy-attack-tell.png`.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Positive Incoming-Damage Forecast
+
+- Replaced the contradictory `Incoming -N` Cohesion forecast with the positive
+  Tell arithmetic used by onboarding. Covered attacks now read `Incoming 6 -
+  Cover 3 = 3` and then `After 29 Cohesion`; uncovered attacks read `Incoming
+  6` and then `After 26 Cohesion`.
+- Kept every value bound to the authoritative incoming preview, so the compact
+  label cannot diverge from intent modifiers, current Cover, HP loss, or the
+  forecast rail.
+- Expanded the Cohesion forecast regression to prove exact covered and
+  uncovered labels and explicitly reject the old negative notation.
+- The required shared client drove the real first-flight path and captured both
+  variants. The inspected
+  `.artifacts/incoming-forecast-clarity-client/shot-0.png` and
+  `.artifacts/incoming-forecast-clarity-client/partial-cover/shot-0.png` frames
+  fit without clipping; serialized state matches 6 total, 3 blocked, 3 lost,
+  and 29 remaining, with no browser-error artifact.
+- The content audit remains at 32/32 checks with no drift. Seeded telemetry is
+  still labeled as pipeline evidence and supplies no human experience ratings.
+- Strict TypeScript, the focused forecast regression, production build, and
+  full release validation pass, including all nine sequencing scenarios. App
+  entry is 672.5 KiB and combined boot code is 701.1 KiB, within enforced
+  budgets.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Ordered First-Flight Teaching And Clean Turn Handoff
+
+- Preserved the authored route -> card -> Roost -> reward teaching order
+  without restricting gameplay. Out-of-order actions remain legal, but no
+  longer count toward a later guide step or silently skip its explanation.
+- Hardened the first-flight regression with a deliberate premature Roost. It
+  proves the guide remains on `card` with zero recorded Roosts, then completes
+  through the normal card, Roost, and reward decisions.
+- Cleared the resolved enemy-phase FX tree before the next player-turn rally.
+  Attack tells, wind-up plaques, commitment seals, action trails, impact
+  contacts, and recovery remnants no longer compete with the replenished hand.
+- The required shared client reproduced the premature Roost through real title,
+  route, and battle input. The inspected capture at
+  `.artifacts/first-flight-ordered-guide/premature-roost-clean/shot-0.png` shows
+  an unobstructed Roof Rat and five-card hand with `GUIDE: PLAY` still active.
+  Text state reports every enemy-phase effect absent, the player rally present,
+  Beat 2 settled, and no browser-error artifact.
+- Authored balance and 500-seed economy audits pass. Strict TypeScript, both
+  focused combat/tutorial regressions, the production build, and full release
+  validation pass, including all nine sequencing scenarios. App entry remains
+  672.4 KiB minified and combined boot code is 701.0 KiB, within enforced
+  budgets.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-21 Direction-Neutral Enemy Attack Telegraph
+
+- Replaced the directional arrow-centered enemy attack tell with the approved
+  sparse brass/gunmetal perimeter ring. Its eight balanced nodes and large
+  transparent center retain urgency while leaving the enemy art readable.
+- Preserved the generated chroma source at
+  `assets/concept-art/fx/sources/combat-enemy-attack-tell-source-v2-directionless.png`.
+  The previous v1 source remains untouched for rollback. Rebuilt the canonical
+  `combat-enemy-attack-tell` PNG and WebP at the existing 512x512 RGBA contract;
+  both have transparent centers/corners and only 13.99% visible coverage.
+- Removed the obsolete target-coordinate and horizontal-flip logic from both
+  rendered tell layers. The focused combat test now asserts all active attack
+  tell sprites remain unflipped as well as appearing before Cohesion changes.
+- Strict TypeScript, runtime asset validation, the focused enemy-wind-up test,
+  the production build, and full release validation pass, including all nine
+  sequencing scenarios. The shared client exercised the actual title,
+  route, battle, card, and Roost flow and captured `Strike 6` during wind-up at
+  `.artifacts/attack-tell-swap-client-final2/shot-0.png`, with two tell layers,
+  the existing threat flourish, Cohesion held at 38/38, and no browser errors.
+- Visual inspection confirms the enemy remains visible through the open center,
+  the surrounding flourish carries the motion, and no arrow or directional
+  silhouette remains.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
 ## 2026-07-21 In-Place Flight-Length Setup
 
 - Removed the full MenuScene restart from Quick/Full selection. Keyboard,
@@ -2356,3 +2754,1073 @@ Follow-up TODO:
   enforced budgets.
 - Remaining release evidence is unchanged: five genuinely observed
   fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-21 Pause And Settings Mute Continuity
+
+- Removed mute-triggered system-overlay rebuilds from Menu settings, Route
+  pause/settings, and Battle pause/settings. Audio activation now preserves the
+  active overlay, focus ring, and rendered control identity.
+- Routed Settings Audio row pointer, keyboard, and gamepad activation through
+  the topmost shared audio control. All visible controls synchronize their
+  Mute/Unmute labels and medallion/slash state in place, while the settings row
+  updates its `On`/`Muted` value and generated toggle frame locally.
+- Moved the short pulse/wave animation to a pause-independent canvas-frame
+  driver. Route and Battle can keep gameplay time and tween managers paused
+  while audio feedback still animates smoothly and cleans itself up. The
+  settings medallion was also shifted right within the same 58px touch target so
+  it no longer overlaps the `Muted` label.
+- Added a real-M regression across Menu settings, Route pause/settings, and
+  Battle pause/settings. It proves exactly one toggle and feedback burst,
+  unchanged hit/control identity, synchronized visible labels, preserved
+  overlays, Audio focus/value updates, and eventual burst cleanup. The existing
+  five-base-scene mute regression now waits for stable lazy-scene controls, so a
+  late Codex asset render cannot masquerade as an input failure; both pass
+  together.
+- The required built shared client used real pointer input to open Settings and
+  toggle Audio. The inspected capture at
+  `.artifacts/overlay-audio-client-final2/shot-0.png` shows a focused, fully
+  readable `Muted` row with the medallion clear of the value; text state matches
+  and no browser-error artifact was emitted.
+- Strict TypeScript, both focused mute regressions, the production build, and
+  full release validation pass, including all nine sequencing scenarios. App
+  entry is 672.3 KiB and combined boot code is 701.0 KiB, both within enforced
+  budgets.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Screen-Shake Accessibility And Persistence
+
+- Added an eleventh `Screen Shake` Settings row across Menu, Route, and Battle.
+  Players can keep the default On behavior or disable camera movement
+  independently of other combat effects.
+- Made Reduced Motion an automatic safety override without changing the saved
+  Screen Shake preference. The effective state exposes `enabled` and
+  `reducedByMotion`; the Settings value reads `Off (Motion)` when the override
+  is active.
+- Routed all three current combat shake sites through the effective
+  accessibility state: runtime damage callbacks, heavy player hits, and enemy
+  damage. Other impact visuals and audio remain intact when shake is disabled.
+- Added safe-storage persistence, invalid-value cleanup, Menu/Route/Battle text
+  telemetry, profile preference capture, and Flock Record backup export/restore.
+  Existing version-1 backups without the field remain valid and restore Screen
+  Shake to the prior default of On.
+- Added a focused browser regression that replaces the live battle camera's
+  shake method and applies actual enemy damage. It proves zero camera calls for
+  explicit Off, zero for Reduced Motion with a saved On preference, and exactly
+  one after Full Motion restores that preference.
+- Updated neighboring Settings, color-cue, screen-reader, blocked-storage,
+  remapped-control, save-download, and transactional-restore coverage. The
+  Settings target matcher now supports multi-digit row indices, and the
+  remapped-confirm scenario explicitly navigates to Start Run before activation.
+- The required shared client opened Settings with real input. The inspected
+  `output/web-game/shot-0.png` shows the focused `Screen Shake: Off` row with no
+  overlap; `output/web-game/state-0.json` reports focus index 10 and
+  `{ preference: "off", enabled: false, reducedByMotion: false }`. The focused
+  Playwright capture is also preserved at
+  `.artifacts/test-results/screen-shake/screen-shake-off-settings.png`.
+- Strict TypeScript passes. Full `npm run validate` passes documentation,
+  runtime/data, 961 optimized runtime assets, canonical world-asset rejection,
+  deployment/cache, enemy variety, Minor Arcana overlays, enforced bundle
+  budgets, and all nine sequencing scenarios. Production entry is 676.9 KB
+  minified and combined boot code is 705.6 KB minified; the non-blocking
+  preferred 675 KB entry warning remains.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Reduced-Flash Accessibility
+
+- Added `Flashes` as the twelfth Settings row across Menu, Route, and Battle.
+  Players can keep the default Full feedback or choose Reduced independently
+  from camera shake, color cues, and graphics quality.
+- Made Reduced Motion an automatic safety override without changing the saved
+  flash preference. The effective state exposes `reduced` and
+  `reducedByMotion`; the Settings value reads `Reduced (Motion)` while the
+  override is active.
+- Reduced mode suppresses only abrupt additive duplicates: the combat impact
+  flash sprite, extra player hit-confirm layer, extra enemy impact-contact
+  layer, and extra cover-shatter layer. Normal contact art, a softer impact
+  glow, floating numbers, animation, and audio feedback remain intact.
+- Compressed the seven-row right Settings column to a 54px rhythm. The new row
+  remains fully framed and focused without crowding the Full Screen and Close
+  commands, and minimum-viewport touch targets remain compliant.
+- Added safe-storage persistence, invalid-value cleanup, Menu/Route/Battle text
+  telemetry, profile preference capture, and Flock Record backup export/restore.
+  Existing version-1 backups without the field remain valid and restore the
+  prior Full default.
+- Added a focused live-combat regression covering explicit Reduced, Full plus
+  Reduced Motion, and explicit Full. The four affected FX counts are 0/1/1/1
+  with zero flash bursts in both safer states, then 1/2/2/2 with one burst in
+  Full mode. Backup download and transactional restore tests also pass.
+- The required shared client opened Settings and toggled Flashes with real
+  input. The inspected `output/web-game/shot-0.png` shows the focused,
+  unobstructed `Flashes: Reduced` row; `output/web-game/state-0.json` reports
+  focus index 11, 12 rendered row frames, and
+  `{ preference: "reduced", reduced: true, reducedByMotion: false }`. No fresh
+  browser-error artifact was emitted.
+- Strict TypeScript passes. Full `npm run validate` passes documentation,
+  runtime/data, canonical world-asset rejection, deployment/cache, enemy
+  variety, Minor Arcana overlays, enforced bundle budgets, and all nine
+  sequencing scenarios. Production entry is 677.8 KB minified and combined
+  boot code is 706.4 KB minified; the non-blocking preferred 675 KB entry
+  warning remains.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Independent Ambience Audio Control
+
+- Separated the environmental ambience drone from the adaptive Music gain.
+  Music, SFX, and Ambience now have independent runtime controls and persistence
+  instead of Music changing both score and environment together.
+- Added `Ambience` as the fourth audio row and thirteenth Settings control
+  across Menu, Route, and Battle. Keyboard, standard gamepad, pointer, and touch
+  all operate the slider through the shared Settings system.
+- Preserved established sound balance and player preferences during migration:
+  a missing `birdsquad.ambienceVolume` inherits the saved Music volume, while a
+  fresh profile keeps the prior 78% effective ambience level.
+- Rebalanced the Settings panel into six left-column rows at 62px spacing and
+  seven right-column rows at 54px spacing. The inspected panel remains readable
+  above the Full Screen and Close commands at the supported minimum viewport.
+- Added the independent value to Menu/Route/Battle text telemetry, profile
+  preference capture, Flock Record export, transactional restore, owned-key
+  cleanup, and rollback snapshots. Older version-1 backups without the field
+  remain compatible and inherit their archived Music level.
+- Focused regressions prove that changing Ambience does not change Music or SFX,
+  all 20 Settings interaction targets remain at least 44px, remappable controls
+  still open and function from their shifted row, and both backup download plus
+  legacy transactional restore succeed. The neighboring color-cue,
+  screen-shake, reduced-flash, and screen-reader suite passes 4/4.
+- The required shared client opened Settings and adjusted Ambience with real
+  input. The inspected `output/web-game/shot-0.png` shows the focused
+  `Ambience: 85%` row without overlap; `output/web-game/state-0.json` reports
+  focus index 3, 13 rendered row frames, three volume sliders, Music 78%, SFX
+  88%, and Ambience 85%. No fresh browser-error artifact was emitted.
+- Strict TypeScript passes. Full `npm run validate` passes documentation,
+  runtime/data, 961 optimized runtime assets, canonical world-asset rejection,
+  deployment/cache, enemy variety, Minor Arcana overlays, enforced bundle
+  budgets, and all nine sequencing scenarios. Production entry is 678.3 KB
+  minified and combined boot code is 707.0 KB minified; the non-blocking
+  preferred 675 KB entry warning remains.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Opt-In Screen-Reader Bundle Split
+
+- Moved the scene-to-speech summary formatter into
+  `src/game/screen-reader-summary.ts` and load it dynamically only when Screen
+  Reader announcements are enabled. Default players no longer download or
+  parse narration logic they do not use.
+- Kept preference loading, ARIA-region setup, observer lifecycle, explicit
+  announcements, and synchronous text-state reporting in the boot path. A
+  saved On preference still starts the observer immediately and loads the
+  formatter before its first scene summary.
+- Added `summaryLoaded` to accessibility telemetry. The default shared-client
+  boot reports `{ preference: "off", regionReady: true,
+  observerActive: false, summaryLoaded: false }`.
+- Extended the opt-in browser regression to inspect real resource entries. It
+  proves the formatter is absent on default boot, appears after enabling Screen
+  Reader, and still produces correct Menu, Route, Combat, card-selection, and
+  Settings-focus announcements.
+- The required shared client produced `output/web-game/shot-0.png` and
+  `output/web-game/state-0.json` from a clean default boot. The title is
+  interactive, the narration formatter remains unloaded, and no fresh
+  browser-error artifact was emitted.
+- Production entry fell from 678.3 KB to 675.0 KB and now meets the preferred
+  entry target without a warning. Combined boot code fell to 703.6 KB minified
+  / 188.2 KB gzip. The opt-in formatter is 3.5 KB minified / 1.5 KB gzip.
+- Strict TypeScript, production build, focused screen-reader coverage, and full
+  `npm run validate` pass, including documentation, runtime/data, 961 optimized
+  runtime assets, canonical world-asset rejection, deployment/cache, enemy
+  variety, Minor Arcana overlays, every enforced bundle budget, and all nine
+  sequencing scenarios.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Evidence-Based Defeat Review
+
+- Replaced the generic loss presentation with a concise flight review built
+  from the completed run: fatal move, top damage pressure, blocked damage, and
+  one actionable adjustment chosen from observed play.
+- Added evidence-backed coaching for unused Wingbeats, uncovered Tells, Open
+  Sky exposure, low tempo, and seeded retry fallback without exposing hidden
+  information or changing difficulty.
+- Kept both exact-seed `Replay Flight` and copyable seeded-flight sharing in the
+  outcome panel. Their implementation remains lazy inside the boss-dossier
+  chunk, and deployment validation now protects that capability-level boundary
+  instead of requiring its obsolete standalone chunk name.
+- Extended opt-in screen-reader narration with the fatal hit, evidence,
+  coaching tip, focused command, and Confirm instruction.
+- Added outcome cleanup and depth ownership so fatal attack FX are retired and
+  the restrained outcome flourish cannot cover the title, review, or commands.
+- Added a focused regression for review data, presentation bounds, command
+  separation, replay/share availability, and stale-FX cleanup; the neighboring
+  screen-reader, wind-up, replay, input-focus, and outcome-flourish cases pass.
+- The final required shared-client run used real title, route, combat, and
+  repeated Roost input. The inspected
+  `.artifacts/defeat-review-client-release-final/shot-0.png` shows a clean,
+  unobstructed `UNSPENT WINGBEATS` review after `Strike 6`; its state reports
+  full art, zero active particles, no rendered tell/trail/contact/recovery
+  layers, two commands, and no failed asset groups. No browser-error artifact
+  was emitted.
+- Full `npm run validate` passes documentation, runtime/data, 961 optimized
+  runtime assets, canonical world-asset rejection, deployment/cache, enemy
+  variety, Minor Arcana overlays, bundle budgets, and all 13 critical
+  sequencing scenarios. Combined boot is 703.9 KB minified / 188.0 KB gzip;
+  the lazy boss dossier is 12.5 KB / 5.0 KB gzip.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Directionless Attack-Tell Contract
+
+- Deleted the obsolete arrow-filled
+  `assets/concept-art/fx/sources/combat-enemy-attack-tell-source-v1.png`.
+  `combat-enemy-attack-tell-source-v2-directionless.png` is now the only owned
+  source for this effect, preventing future implementation and art audits from
+  mistaking the superseded direction cue for current work.
+- Added `tools/validate-combat-fx-contracts.mjs` to
+  `validate:runtime-assets`. It requires the canonical v2 source, forbids v1,
+  and protects the runtime PNG's 512x512 RGBA contract, transparent corners,
+  fully clear central 30%, centered alpha mass, rotational neutrality, and
+  balanced perimeter.
+- The approved runtime asset has 33,937 visible perimeter pixels, zero visible
+  pixels in the protected center, 10.43 mean 180-degree alpha difference, and a
+  1.05 maximum/minimum quadrant ratio.
+- Added a critical minimum-viewport accessibility regression. At 1000x560 with
+  Lean effects, reduced motion, and high contrast, both attack-tell layers are
+  visible, centered on the enemy, unflipped, stable through the wind-up, and at
+  least 60 CSS pixels across. The inspected screenshot is
+  `.artifacts/test-results/directionless-attack-tell/minimum-landscape-lean-reduced-high-contrast.png`.
+- The required shared client used real title, route, and Roost input to capture
+  `.artifacts/attack-tell-contract-release-final/shot-0.png`. It shows the live
+  `Strike 6` wind-up with the Roof Rat visible through the open center,
+  Cohesion held at 38/38, two tell layers, full art, no failed asset groups, and
+  no browser-error artifact.
+- Full `npm run validate` passes documentation, runtime/data, 961 optimized
+  runtime assets, canonical world-asset and retired-tell rejection,
+  deployment/cache, enemy variety, Minor Arcana overlays, bundle budgets, and
+  all 14 critical sequencing scenarios.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Accessible Flight Details
+
+- Added `Flight Details` to completed-run outcomes. The on-demand report shows
+  the final deck and upgrades, reconstructed deterministic route path,
+  Waymarks, used Supplies, route timing, reward recruits/skips, Signal choices,
+  encounter objectives, cards and overextensions, blocked damage and unspent
+  Wingbeats, plus the final difficulty, duration, Cohesion, damage, and Scrap.
+- Kept the outcome report out of the default boot path. Its aggregation and
+  presentation live with the dynamically loaded boss-dossier module; opening
+  the report supplies only the current run and small lookup callbacks.
+- Added complete pointer, keyboard, and gamepad behavior. Confirm/A and Back/B
+  close the report, Previous/Next remain paused during review, focus returns to
+  `Flight Details`, and the 190x58 pointer close target has a visible focus
+  treatment.
+- Extended opt-in screen-reader narration for both wins and losses with the
+  result, final deck, route path, Waymarks, and Confirm/Back instruction.
+- Added a critical 1000x560 regression with rich run data. It protects all five
+  section bounds, section/close separation, full view-model content, keyboard
+  and gamepad close/reopen, real pointer close, and screen-reader copy. Visual
+  review caught a cramped Results/Close edge; the Results section was tightened
+  and moved upward before the final pass.
+- The final required shared client used real title, route, combat, repeated
+  Roost, outcome navigation, and Confirm input. The inspected
+  `.artifacts/flight-details-client-final/shot-0.png` shows the report over a
+  real defeat; state reports full art, 10 final-deck entries, populated route,
+  decision, and result data, visible `Close Flight Details` focus, no failed
+  asset groups, and no browser-error artifact.
+- Production build passes. Bundle validation reports the app entry at 677.2 KB
+  minified / 178.1 KB gzip, below the enforced 700 KB ceiling but 2.2 KB over
+  the preferred 675 KB target. Combined boot is 706.2 KB / 188.6 KB; the lazy
+  boss dossier is 17.3 KB / 6.5 KB.
+- Full `npm run validate` passes documentation, runtime/data, 961 optimized
+  runtime assets, canonical world-asset and retired-tell rejection, deployment
+  cache/security, enemy variety, Minor Arcana overlays, bundle budgets, and all
+  15 critical sequencing scenarios.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-25 Durable Flight Log And History Validation
+
+- Added `Flock Record -> Flight Log`, exposing every completed flight in the
+  bounded 50-flight local journal through seven-row pages. Each entry presents
+  result, seed, leader, difficulty, mode, date, duration, Cohesion, turn count,
+  final deck size, route stops, Waymarks, and Supplies.
+- Reused the complete outcome `Flight Details` report for historical flights.
+  Players can review the recorded deck and upgrades, route, kit, decisions, and
+  results, then copy the exact deterministic seeded-flight URL.
+- Replaced the permissive run-history cast with a strict bounded sanitizer. It
+  scans no more than 200 candidates, retains at most 50 valid summaries,
+  de-duplicates IDs with the newest occurrence winning, validates nested
+  content against owned runtime data, clamps numeric fields, and ignores
+  malformed records. The sanitized journal remains covered by the existing
+  mirrored persistence and transactional local backup/restore boundary.
+- Added consistent pointer, configurable keyboard, and gamepad navigation for
+  the log, review, copy, close, and return paths. Newer/Older pointer controls,
+  Page Up/Down, and controller shoulders cross pages while preserving the
+  selected row. The opt-in screen reader announces the selected flight, result,
+  seed, leader, page position, report counts, focused action, and legal
+  bindings.
+- Added a critical 1000x560 regression that injects valid, duplicate, malformed,
+  and unknown-content records. It proves newest-first ordering, newest-wins
+  de-duplication, invalid-content removal, ten surviving records across two
+  pages, 58-game-pixel rows and paging controls (at least 44 CSS pixels),
+  keyboard, controller, and pointer paging/review, screen-reader output, seeded
+  clipboard sharing, focus changes, and Back behavior. Seven neighboring save,
+  restore, export, and input tests pass with it. Both minimum-size pages were
+  visually inspected at
+  `.artifacts/test-results/flight-log/minimum-landscape-history.png` and
+  `.artifacts/test-results/flight-log/minimum-landscape-history-page-2.png`.
+- The final required shared client drove the complete real flow through title,
+  route, combat, defeat, Main Menu, Flock Record, Flight Log, and recorded
+  review. The inspected
+  `.artifacts/flight-log-pagination-client-final/shot-0.png` shows the persisted
+  defeat with a 10-card deck, populated route, decision, and result sections,
+  `Copy Flight Link` focus, page metadata in text state, and no browser-error
+  artifact.
+- Full `npm run validate` passes documentation, runtime/data, 961 optimized
+  runtime assets, canonical world-asset and retired-tell rejection, deployment
+  cache/security, enemy variety, Minor Arcana overlays, hard bundle budgets,
+  and all 16 critical sequencing scenarios. Pagination remains entirely inside
+  lazy Profile and screen-reader chunks, so the app entry remains 681.1 KB
+  minified / 179.1 KB gzip and combined boot remains 710.2 KB / 189.7 KB gzip.
+  Both enforced limits pass; the preferred 675 KB entry and 710 KB combined
+  targets emit aspirational warnings.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Accessible Combat Inspector Navigation
+
+- Closed the pointer-and-wheel-only gap in the combat Deck, Draw, and Discard
+  inspectors. Remapped Previous/Next, Tab/Shift+Tab, and Up/Down navigate rows;
+  D-pad directions provide the same movement; controller shoulders page by
+  seven rows; and Back/B closes through the existing state-safe combat path.
+- Changed inspector focus identity from the shared card definition ID to the
+  unique card instance ID. Duplicate copies now receive one unambiguous
+  selection, resolve the correct details, and remain ordered consistently by
+  zone, display name, and instance.
+- Added a strong cyan row outline and left focus marker that remains clear
+  against the ornate generated frames. Mouse-wheel scrolling now keeps the
+  selected row inside the visible window, and the binding-aware hint uses the
+  player's remapped controls.
+- Extended the opt-in screen reader summary with the open pile, selected
+  position and count, card name, zone, Wingbeat cost, active rules text,
+  remapped keyboard bindings, controller paging, and close control.
+- Added a critical 1000x560 regression with twelve duplicate-definition card
+  instances. It proves one-row movement, seven-row controller paging, correct
+  instance selection, seven visible rows, at least 44-CSS-pixel targets, the
+  focus ring, narration, canonical card details, and closing without changing
+  turn, Wingbeats, or Cohesion. The three neighboring pile-inspector tests pass.
+- The required shared client drove title -> route -> live combat -> Draw Pile.
+  The inspected
+  `.artifacts/combat-pile-accessibility-client-release-final/shot-0.png` shows
+  `Locked Nest` selected with the cyan focus treatment and readable card
+  details. Authoritative state reports item 2 of 5, a healthy lazy inspector
+  renderer, full asset readiness, and no browser-error artifact.
+- Full `npm run validate` passes documentation, runtime/data, 961 optimized
+  runtime assets, canonical world-asset and retired-tell rejection, deployment
+  cache/security, enemy variety, Minor Arcana overlays, hard bundle budgets,
+  and all 17 critical sequencing scenarios. The app entry is 683.1 KB minified
+  / 179.6 KB gzip and combined boot is 712.1 KB / 190.2 KB gzip. Both enforced
+  limits pass; the preferred 675 KB entry and 710 KB combined targets emit
+  warnings.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Cleared-Card Zone And Run-Deck Integrity
+
+- Fixed a progression-data-loss path in `exhaustSelf()`. A card described as
+  cleared only for the current combat previously entered no pile, so later
+  `allDeckCards()` snapshots could silently remove it from the run. Cleared
+  cards now enter a dedicated combat-only pile.
+- Included the Cleared pile in permanent deck reconstruction, post-combat
+  rewards and Preen eligibility, run snapshots, outcome summaries, and deck
+  size reporting. It remains excluded from the draw/discard reshuffle cycle,
+  preserving the intended once-per-combat behavior.
+- Extended Deck Review with Cleared rows, a fourth zone counter using the
+  release-card icon, stable unique-instance selection, art loading, detail
+  presentation, and keyboard/controller navigation. Text state reports Deck,
+  Draw, Hand, Discard, and Cleared totals independently.
+- Extended screen-reader output with the selected card's Cleared zone and a
+  concise nonzero cleared-card count during ordinary combat.
+- Visual inspection exposed Bent Feather as incorrectly labeled `ATTACK`.
+  Self-applied Winded had matched the broad debuff classifier; attack inference
+  now requires `applyWinded(target, ...)`, so self-pressure Snags correctly
+  present as `UTILITY`.
+- Added a critical 1000x560 browser regression using the real Bent Feather. It
+  plays the card, proves the playable-zone total falls by one while the
+  permanent deck remains 11, verifies the next run snapshot still contains the
+  card, navigates to the Cleared row with keyboard input, checks screen-reader
+  copy and the four zone badges, and captures
+  `.artifacts/test-results/cleared-card-zone/minimum-landscape-cleared-card.png`.
+  Three neighboring inspector regressions pass with it.
+- The required shared client independently drove title -> route -> live combat
+  -> Deck Review. The inspected
+  `.artifacts/cleared-zone-client-final/shot-0.png` shows the four-zone header,
+  complete card detail, and uncramped input hint. Authoritative state reports
+  5 Draw, 5 Hand, 0 Discard, 0 Cleared, a 10-card deck, full art, a healthy
+  lazy inspector renderer, and no browser-error artifact.
+- Full `npm run validate` passes documentation, runtime/data, 961 optimized
+  runtime assets, canonical world-asset and retired-tell rejection, deployment
+  cache/security, enemy variety, Minor Arcana overlays, hard bundle budgets,
+  and all 18 critical sequencing scenarios. The app entry is 683.4 KB minified
+  / 179.7 KB gzip and combined boot is 712.5 KB / 190.3 KB gzip. Both enforced
+  limits pass; the preferred 675 KB entry and 710 KB combined targets warn.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Singleton Deck Ownership And Duplicate-Safe Persistence
+
+- Made the documented one-of-a-kind deck rule an enforced runtime and save-data
+  invariant. Active-run recovery, completed-flight history, combat restoration,
+  and combat snapshots now canonicalize by card ID, preserve stable order,
+  discard unknown definitions, and retain the upgraded state if any duplicate
+  entry is upgraded.
+- Route Snag effects reject a card already carried by the flock and add a
+  concise route-log explanation. Specific route rewards also reject stale
+  duplicate grants instead of silently creating a second card.
+- Combat Snag-to-draw and Snag-to-discard effects now check Draw, Hand,
+  Discard, and Cleared together. Rejected pressure emits block audio, a visible
+  `Snag blocked` callout, and a combat-log line naming both the enemy and the
+  already-owned card.
+- Made route decision previews follow the same contract. A repeated specific
+  card or Snag reports Deck N -> N, while a new card reports the real one-card
+  increase; consecutive effects share the projected singleton set.
+- Added a critical 1000x560 browser regression that repeats the same route
+  Snag, restores deliberately duplicated base/upgraded save entries, repeats
+  both combat Snag destinations, verifies upgraded-state precedence and
+  singleton snapshots, navigates to Tangled Line in Deck Review, and checks
+  screen-reader output. The inspected capture is
+  `.artifacts/test-results/singleton-deck/minimum-landscape-singleton-snag.png`.
+- The required shared client independently drove title -> route -> live combat
+  -> Deck Review. The inspected `.artifacts/singleton-deck-client/shot-0.png`
+  shows complete card details and the four-zone header. Authoritative state
+  reports 5 Draw, 5 Hand, 0 Discard, 0 Cleared, ten unique deck IDs, full art,
+  a healthy lazy inspector, and no browser-error artifact.
+- Full `npm run validate` passes documentation, runtime/data, 961 optimized
+  runtime assets, canonical world-asset and retired-tell rejection, deployment
+  cache/security, enemy variety, Minor Arcana overlays, hard bundle budgets,
+  and all 19 critical sequencing scenarios. The app entry is 684.3 KB minified
+  / 179.9 KB gzip and combined boot is 713.5 KB / 190.6 KB gzip. Both enforced
+  limits pass; the preferred 675 KB entry and 710 KB combined targets warn.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Preferred Boot Targets Restored
+
+- Extracted route/combat Flock Stats presentation into a retryable lazy module
+  and route card-hover, Deck Review detail, and market dossiers into a
+  preload-on-route lazy card-detail module. The route abandon confirmation now
+  reuses the existing lazy system-overlay boundary.
+- Preserved interaction recovery: Flock Stats load failure remains closeable
+  and retryable; card hover shows an immediate shell, ignores stale async
+  completions after pointer-out, and re-renders when portrait art arrives.
+- Added opt-in module composition reporting, hard 8 KB and 10 KB budgets for
+  the Flock Stats and card-detail chunks, and deployment checks that reject
+  accidental title-screen preloading.
+- Production app entry is 674.8 KB minified / 177.6 KB gzip and combined boot
+  is 703.9 KB / 188.3 KB gzip. Both preferred 675 KB and 710 KB targets now
+  pass, down from 684.3 KB and 713.5 KB after singleton-deck closure.
+- Focused hover, Flock Stats, abandon-confirmation, and 1000x560 route command
+  regressions pass. Shared-client captures at
+  `.artifacts/flock-stats-lazy-client-2/shot-0.png` and
+  `.artifacts/card-detail-lazy-client-final/shot-0.png` report full art, generated
+  presentation frames, and no browser errors. The minimum-viewport confirm is
+  `.artifacts/test-results/min-supported/route-confirm-exit-1000x560.png`.
+- Full `npm run validate` passes every release gate and all 19 critical
+  sequencing scenarios. Remaining release evidence is still five genuinely
+  observed fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Eager Card-Detail Legacy Cleanup
+
+- Removed two obsolete card-hover frame helpers left in `src/main.ts` after
+  route/deck/market card details moved to the lazy `card-hover-detail` module
+  and combat dossiers moved to `render-hand`.
+- Restored strict TypeScript compilation with unused declarations forbidden.
+  Full card-choice hover details and the generated combat hover dossier still
+  pass their focused browser regressions.
+- Production build, bundle validation, and deployment cache/security checks
+  pass. App entry remains 675.0 KB minified / 177.6 KB gzip and combined boot
+  remains 704.1 KB / 188.3 KB gzip, both at their preferred targets.
+- The required shared client reached a full-art, interactive route with both
+  lazy detail textures loaded and no failed asset groups. The inspected capture
+  is `output/web-game/shot-0.png`.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Distinct Waymark Reward Identities
+
+- Removed the last four duplicate Waymark trigger/effect signatures across all
+  58 rewards. Black Ink Pin now banks two held cards plus Resonance, Parade
+  Mirror rewards sequencing a third card, Fresh Pinfeather grants immediate
+  Molt Wingbeat tempo plus a draw, and Double-Packed Buckle chains Supply use
+  into immediate Wingbeat while preserving its next-Supply repeat.
+- Preserved the counterpart niches: Wind-Step Tag provides delayed energy and
+  one retained card, Plumes Applause Cap rewards a clean Roost, Molt Metronome
+  pays out next turn, and Supply Bell favors draw velocity.
+- Runtime validation now rejects any future Waymarks with identical trigger
+  and sorted-effect signatures. The focused browser regression verifies exact
+  trigger timing, once-per-combat latching, immediate-versus-delayed tempo,
+  Supply-repeat consumption, and visible combat feedback.
+- Strict TypeScript, focused Waymark regressions, runtime validation, seeded
+  balance/economy audits, content audit, production build, bundle budgets, and
+  deployment cache/security validation pass. The app entry is 675.0 KB
+  minified / 177.6 KB gzip and combined boot is 704.1 KB / 188.3 KB gzip.
+- The inspected focused capture is
+  `.artifacts/test-results/waymark-identity/double-packed-feedback.png`. The
+  required shared client independently reached the full-art First Flight board
+  at `output/web-game/shot-0.png`, with five readable cards, intact onboarding
+  marks, and no fresh browser-error artifact.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Strategic Starter Preens
+
+- Audited all 110 cards at base and Preened states. No two different cards
+  share an exact cost, target, normal-effect, and Molt-effect signature; the
+  identical pairs are the intentionally non-upgradable Snags. Runtime
+  validation now rejects future cross-card combat-identity collisions across
+  all 220 base/Preened states.
+- Reworked all seven starter cards whose Preen previously changed only numbers.
+  First Flight gains first-play Wingbeat tempo; Plume Flash draws when
+  Resonance was already held; Quill Point and Quill Fledgling turn established
+  Winded into Wingbeat; Open Basin converts full-Cohesion healing into Open Sky
+  Guard; Locked Nest adds Guard after a complete brace; and Nest Fledgling
+  primes the next Nest brace after fully covering the incoming hit.
+- Runtime validation now requires every card in every Leader's shared
+  ten-card starter deck to change decision shape, condition, effect, or cost
+  when Preened. All ten currently satisfy that contract.
+- The focused browser regression executes the new conditions on both sides of
+  every gate and confirms exact draw, Wingbeat, Cover, Guard, next-turn draw,
+  and next-Nest results. The inspected in-combat Preen dossier is
+  `.artifacts/test-results/starter-preen-first-flight.png`.
+- The required shared client independently reached a full-art, interactive
+  First Flight battle at `output/web-game/shot-0.png`; the five opening cards,
+  `START HERE` and `PLAY HERE` guidance, incoming forecast, and text state agree,
+  with no fresh browser-error artifact.
+- Full `npm run validate` passes documentation, runtime/data, 961 optimized
+  assets, world and direction-neutral combat-FX contracts, bundle and deployment
+  gates, enemy variety, Minor Arcana overlays, and all 20 critical sequencing
+  scenarios. App entry remains 675.0 KB minified / 177.6 KB gzip and combined
+  boot remains 704.1 KB / 188.3 KB gzip. Balance, content, and 500-seed economy
+  audits also pass.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Strategic Common Reward Preens
+
+- Extended the strategic Preen standard to the cards players encounter most
+  often after the starter deck. All 24 common reward cards now change decision
+  shape when Preened; 22 formerly number-only upgrades were redesigned.
+- The new upgrade hooks reward distinct play patterns: finishing weakened
+  targets, reading attack intent, spending or holding Resonance, preserving
+  full Cohesion, maintaining Open Sky, completing a brace, timing first plays,
+  breaking enemy Cover, retaining a hand, and banking next-turn resources.
+- Corrected the covered-target resolution order for Sheathed Quills, Scattered
+  Quills, and Scavenger Eye so their Cover-dependent rewards resolve before
+  the card removes or consumes that Cover.
+- Runtime validation now rejects any common reward whose Preen only increases
+  numbers. The focused regression checks all 24 authored transformations and
+  executes representative true/false branches in combat. Its inspected dossier
+  capture is `.artifacts/test-results/common-preen-crossed-quills.png`.
+- The required shared client reached a full-art, interactive First Flight
+  battle at `output/web-game/shot-0.png`; five opening cards, onboarding marks,
+  target state, and incoming forecast render cleanly. No fresh browser-error
+  artifact was produced.
+- Full `npm run validate` passes documentation, runtime/data, 961 optimized
+  assets, canonical world and direction-neutral combat-FX contracts, bundle and
+  deployment gates, enemy variety, Minor Arcana overlays, and all 21 critical
+  sequencing scenarios. App entry remains 675.0 KB minified / 177.6 KB gzip
+  and combined boot remains 704.1 KB / 188.3 KB gzip. Balance, content, and
+  500-seed economy audits also pass.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Strategic Reward-Wide Preens
+
+- Completed the strategic Preen pass across the entire reward pool. Redesigned
+  59 formerly number-only upgrades: 24 uncommon, 11 rare, and 24 legendary.
+  Together with the prior starter/common work, all 100 playable cards now gain
+  a new decision, condition, effect, or cost tradeoff when Preened.
+- New hooks reinforce each card's existing identity: Cover breaking, Winded
+  setup, Resonance spending and hoarding, Open Sky, full/low Cohesion,
+  complete braces, suit sequencing, first-play timing, finishers, recursion,
+  retention, and next-turn planning.
+- Runtime validation now enforces the decision-shape contract for all 90 reward
+  cards by rarity, while the 220-state cross-card identity check still rejects
+  duplicate base/Preened combat signatures.
+- The reward-Preen regression statically verifies all 90 reward transformations
+  and exact authored hooks for the 81 redesigned cards, then executes
+  representative true/false branches from every rarity in live combat. It also
+  replaced a fixed dossier-art delay with explicit texture readiness and a
+  rendered-image assertion. The inspected full-art capture is
+  `.artifacts/test-results/common-preen-crossed-quills.png`.
+- The required shared client independently reached the full-art, interactive
+  First Flight battle at `output/web-game/shot-0.png`, with five readable cards,
+  accurate onboarding marks, no pending or failed asset groups, and no fresh
+  browser-error artifact.
+- Full `npm run validate` passes documentation, runtime/data, 961 optimized
+  assets, canonical world and direction-neutral combat-FX contracts, bundle and
+  deployment gates, enemy variety, Minor Arcana overlays, and all 21 critical
+  sequencing scenarios. App entry remains 675.0 KB minified / 177.6 KB gzip,
+  combined boot remains 704.1 KB / 188.3 KB gzip, and runtime data is
+  310.2 KB / 58.9 KB gzip. Balance, content, and 500-seed economy audits pass.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Clear-Center Attack Tell and Cross-Stance Card Identity
+
+- Accepted the open-center enemy pre-attack replacement as the canonical
+  runtime tell. The former arrow-filled source remains deleted; the active PNG
+  and WebP contain only the balanced perimeter ring, so the existing animated
+  threat flourish carries the warning without covering the enemy.
+- Re-ran the minimum-landscape tell regression in lean graphics, reduced
+  motion, and high contrast. The inspected wind-up capture is
+  `.artifacts/test-results/directionless-attack-tell/minimum-landscape-lean-reduced-high-contrast.png`;
+  the enemy remains visible through the transparent center and neither tell
+  layer flips toward a target.
+- Eliminated five active-stance collisions discovered by the stricter card
+  audit. Plume Matron now ignites empty Resonance and converts Molt Resonance
+  into Wingbeats; Twin Basin Bond rewards an already-Winded target with
+  recovery; Shared Nest reads an attacking enemy and braces with Cover; Shiny
+  Toolkit retains its broader Plume-sequencing role.
+- Runtime validation now rejects any different cards that share the same cost,
+  inferred active target, and ordered effect list in an individual Normal or
+  Molt stance. All 420 base/Preened active stances pass this identity contract.
+- Focused live-combat coverage executes both sides of the new Resonance,
+  Winded, and attack-intent branches. The neighboring Preen, preview-order,
+  Molt-transform, and next-attack prediction regressions also pass.
+- The required shared client independently reached a full-art battle at
+  `.artifacts/goal-final-swap/shot-0.png`; state reported no pending or failed
+  asset groups and produced no browser-error artifact.
+- Production build, documentation, runtime/data, 961 optimized assets,
+  canonical world and direction-neutral combat-FX contracts, bundle and
+  deployment gates, enemy variety, Minor Arcana overlays, all 21 critical
+  sequencing scenarios, and the balance/content/500-seed economy audits pass.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Configurable Text Pace
+
+- Added a separate Text Pace preference with Relaxed, Standard, and Fast modes
+  to the shared Menu, Route, and paused-Combat Settings panel. The new fourteenth
+  row uses the same pointer, keyboard, gamepad, touch-target, focus-ring, and
+  storage-fallback contracts as the other settings.
+- Text Pace scales only readable presentation windows: encounter-intro dismissal
+  floors, combat-banner holds, and floating-callout holds. Relaxed uses a 1.45x
+  hold scale, Standard 1x, and Fast 0.65x. Combat Pace, damage timing, effect
+  order, animation locks, enemy Tells, and combat math remain independent.
+- Added `textPacing` to authoritative Menu, Route, and Battle text state with
+  the active preference and concrete timing values. Save Data backup/restore
+  now includes `birdsquad.textPace`; older backups without the field restore
+  safely to Standard.
+- Focused coverage proves all three encounter reading floors, real banner
+  lifetime differences, pointer persistence across scenes, keyboard/gamepad
+  navigation, minimum touch targets, blocked-storage fallback, adjacent
+  Color Cues/Screen Shake/Flashes/Screen Reader navigation, current backup
+  export, and legacy restore compatibility.
+- The required shared client opened the complete fourteen-row panel at
+  `.artifacts/text-pace-client-settings/shot-0.png`. Text Pace is visible
+  between Combat Pace and Screen Reader, all rows are unclipped, text state
+  reports the Standard 600 ms reading floor, and no browser-error artifact was
+  produced.
+- Production build and all 22 critical sequencing scenarios pass. App entry is
+  675.8 KB minified / 177.9 KB gzip: below the 700 KB hard budget and 0.8 KB
+  above the preferred target; combined boot remains below its preferred target
+  at 705.1 KB / 188.6 KB gzip.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Configurable Animation Pace
+
+- Added a standalone Animation Pace preference with Relaxed, Standard, and
+  Fast modes to the shared Menu, Route, and paused-Combat Settings surface.
+  It is the fifteenth setting row and supports pointer, touch, keyboard,
+  standard gamepad, focus-ring, and blocked-storage interaction.
+- Animation Pace scales visual tween and sprite-animation clocks to 0.8x, 1x,
+  or 1.3x across menu, profile, route, and combat scenes. Combat Pace timers,
+  damage resolution, enemy intent, Text Pace reading floors, effect order, and
+  game math remain independent.
+- The preference persists as `birdsquad.animationPace`, participates in local
+  Save Data backup/restore, and defaults legacy backups without the field to
+  Standard. Completed-run telemetry now records the selected animation pace,
+  and the local dashboard reports its distribution.
+- Rebalanced the complete Settings panel into eight left-column and seven
+  right-column rows. The new control uses a 276x58 interaction target; all
+  fifteen rows and both bottom commands remain visible without overlap.
+- Focused browser coverage proves the visual clock rates are ordered while
+  combat and text pacing stay fixed, then covers pointer persistence across
+  scenes, keyboard/gamepad navigation, minimum viewport touch targets,
+  adjacent visual-accessibility controls, screen-reader focus, current backup
+  export, and legacy restore compatibility.
+- The required shared client selected Fast with a real pointer and produced
+  `.artifacts/animation-pace-client-fast/shot-0.png`. Text state reports focus
+  on Animation Pace plus 1.3x tween and sprite clocks, all fifteen rows are
+  unclipped, and no browser-error artifact was produced.
+- Full `npm run validate` passes documentation, runtime/data, 961 optimized
+  assets, world and direction-neutral combat-FX contracts, bundle/deployment,
+  enemy variety, Minor Arcana overlays, and all 23 critical sequencing
+  scenarios. App entry is 676.8 KB minified / 178.2 KB gzip: below the 700 KB
+  hard cap and 1.8 KB above the preferred target; combined boot remains below
+  its preferred target at 706.1 KB / 188.9 KB gzip.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Complete Browser Matrix Stabilization
+
+- Ran the complete production Playwright matrix after the Settings and
+  direction-neutral attack-tell work. The first sweep found 16 isolated
+  failures among 214 scenarios; the surrounding gameplay, accessibility,
+  persistence, responsiveness, and content systems remained operational.
+- Fixed a real fresh-route art omission by wiring reward badges and the
+  cache, Open Sky, and Sky Guard choice medallions into RouteScene's deferred
+  UI bundle. These assets now appear on the first route without relying on a
+  prior BattleScene preload.
+- Hardened scene text-state reporting across menu/profile handoffs so a stale
+  reporter cannot read a destroyed camera. The shared browser harness now
+  waits for active BattleScene roots and FX layers instead of accepting
+  recycled scene references.
+- Replaced race-prone route/reward visual sampling with full-art or live-scene
+  readiness, corrected a recursive route-supply frame counter, and aligned
+  assertions with the current 15 Settings rows, 58 px touch targets, three
+  outcome commands, and authored Waymark timing.
+- The final production sweep passes all 214/214 browser scenarios with zero
+  failures in 28.8 minutes. Evidence is stored in
+  `.artifacts/full-e2e-final-clean-gate.out.log`.
+- Full `npm run validate` passes documentation, runtime/data, 961 optimized
+  assets, canonical world and direction-neutral combat-FX contracts,
+  bundle/deployment/security checks, enemy variety, Minor Arcana overlays,
+  and all 23 critical sequencing scenarios. App entry is 677.0 KB minified /
+  178.2 KB gzip under the 700 KB hard cap; combined boot is 706.3 KB /
+  188.9 KB gzip.
+- Remaining release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 First-Run Route Command Hit Target
+
+- A fresh-state production-client pass found that the visible `TAKE ROUTE`
+  label did not accept pointer input; only its adjacent round medallion was
+  interactive. This made a correct first-run click appear ignored.
+- Expanded the route commit hit target to cover the complete visible label
+  and medallion while retaining the existing 82 px vertical touch target,
+  hover tooltip, keyboard input, and gamepad input.
+- Added a real-canvas pointer regression that clicks the label center, proves
+  the hit target encloses the full label, and waits for BattleScene. The
+  focused production Playwright scenario passes.
+- Replayed that exact label click with the required shared production client.
+  `.artifacts/first-run-audit/battle-pointer-fixed/shot-0.png` reaches the
+  playable First Flight hand with full art, route commit progress `1`, no
+  pending animation, and no browser errors.
+- This automation establishes interaction correctness and first-run
+  readiness; it does not replace the five genuinely observed fresh-player
+  sessions still required through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Direction-Neutral Enemy Wind-Up Chain
+
+- A live first-combat capture revealed that the approved direction-neutral
+  tell asset was still paired with a separate enemy-to-flock action trail
+  during Wind-up. The extra streak recreated the left-pointing read even
+  though the tell artwork itself no longer contained an arrow.
+- Removed the directional trail from damaging Wind-up presentation. The
+  enemy-centered perimeter flourish, move plaque, target glow, audio cue, and
+  readable hold remain; directional travel still begins during Commit, where
+  the enemy actually releases the attack.
+- The minimum 1000x560 Lean + Reduced Motion + High Contrast regression now
+  asserts that Wind-up renders two neutral tell layers and zero action-trail
+  objects. The broader timed attack-resolution regression also proves that
+  the trail is absent in Wind-up while damage remains deferred until Impact.
+- Both focused production scenarios pass. The required shared client drove a
+  fresh run through Route, Roost, and the live `Strike 6` Wind-up; text state
+  reports the tell rendered, action trail `0`, full art, and no browser
+  errors. Inspected captures are
+  `.artifacts/first-combat-audit/windup-directionless/shot-0.png` and
+  `.artifacts/test-results/directionless-attack-tell/minimum-landscape-lean-reduced-high-contrast.png`.
+- Remaining qualitative release evidence is unchanged: five genuinely
+  observed fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Approved Directionless Attack-Tell Swap
+
+- Confirmed the user-approved, centerpiece-free eight-node perimeter ring is
+  the canonical enemy attack-tell treatment. The owned v2 directionless source
+  remains paired with the existing 512x512 runtime PNG/WebP; the retired
+  arrow-filled source stays deleted.
+- Runtime asset validation passes with a completely clear center, 33,937
+  visible perimeter pixels, balanced quadrants, and a direction-neutral
+  silhouette. Both focused combat regressions pass and continue to prove the
+  live tell is centered, unflipped, and has no action trail during Wind-up.
+- The required shared client captured a fresh real `Strike 6` warning at
+  `.artifacts/attack-tell-approved-swap-final/shot-0.png`. The two-layer ring
+  and existing flourish render around an unobstructed Roof Rat, Cohesion stays
+  at 38/38 before Impact, full art is ready, and no browser-error artifact was
+  produced.
+- The game remains live at `http://127.0.0.1:5201/`.
+
+## 2026-07-26 Persistent Waymark Review And Comparison
+
+- Reworked the Route owned-Waymark drawer into a persistent review surface:
+  selecting a Waymark now exposes its full description, friendly trigger,
+  numbered effect order, synergy tags, source, rarity, and art without relying
+  on hover.
+- Added pin-to-compare behavior across pointer/touch, keyboard `C`, and
+  controller `X`. Arrow keys, Tab, configured Previous/Next controls, pointer,
+  scrolling, and Back all retain one coherent selected/pinned state.
+- Added matching Route text-state and screen-reader summaries, including exact
+  trigger and ordered raw effect grammar for automation and accessibility.
+- Kept the review renderer on demand in `src/game/waymark-review.ts` at
+  2.9 KB / 1.4 KB gzip. Moved Route's large diagnostic snapshot assembly into
+  `src/game/route-debug-state.ts` at 19.5 KB / 4.3 KB gzip, restoring production
+  startup budgets to 681.0 KB entry and 710.2 KB combined boot. Both chunks
+  have hard size limits and are prohibited from title-screen modulepreloads.
+- Focused pointer, keyboard, controller, screen-reader, scroll, and minimum-size
+  tests pass. The inspected comparison capture is
+  `.artifacts/test-results/route-waymark-comparison.png`. The required shared
+  client loaded the full Route snapshot in
+  `.artifacts/waymark-swap-shared-client/`, reported 655 ms to first
+  interaction, and produced no browser error artifact.
+- `npm run validate` passes every release validator and all 23 critical
+  sequencing scenarios. The direction-neutral open-center enemy tell contract
+  also remains green: clear center, 33,937 perimeter pixels, 10.43 rotational
+  difference, and 1.05 quadrant ratio.
+- Remaining qualitative release evidence is unchanged: five genuinely
+  observed fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Searchable Route Deck Review
+
+- A live route audit found that Deck Review presented polished card rows and
+  details but offered no way to organize a growing run deck.
+- Added cycling filters for All, each suit, Special, and Preened cards; Run,
+  Cost, and Name sorting; and a 24-character Find field that searches card
+  identity, bird, role, target, suit, and rules text.
+- Added 58 px pointer targets plus keyboard and controller navigation:
+  Up/Down selects cards, Left/Right changes the filter, Confirm changes the
+  sort, `/` starts Find, and Escape closes or leaves text entry. Filtering
+  reselects a valid card and provides a clear zero-results state.
+- Extended route text state and screen-reader summaries with visible/total
+  counts, active filter and sort, query, selection, controls, and the
+  currently visible card set.
+- The interaction, generated-art, and minimum-viewport Playwright scenarios
+  pass together, as do TypeScript and documentation validation. The required
+  shared production client verified both the default and PLUMES + COST states
+  with no browser errors; inspected captures are
+  `.artifacts/deck-review-audit/organized/shot-0.png` and
+  `.artifacts/deck-review-audit/filtered/shot-0.png`.
+- Remaining qualitative release evidence is unchanged: five genuinely
+  observed fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Four-Zone Combat Card Browser
+
+- A live combat audit found that Draw and Discard could be opened separately,
+  but their header zone badges were passive, the Deck badge showed the hand
+  count instead of the complete deck, and Cleared cards had no dedicated
+  exhaust-like pile inspector.
+- Turned Deck, Draw, Discard, and Cleared into labeled, stateful browser tabs
+  with 70x58 pointer targets. A player can move between all four zones without
+  closing the overlay; each switch resets selection and scrolling safely and
+  requests only the relevant card art.
+- Up/Down and Tab select cards, Previous/Next and controller D-pad Left/Right
+  switch zones, controller shoulders page, and pointer input activates every
+  tab. Empty zones retain inspector focus and show `No cards in this pile`
+  instead of dropping accessibility state.
+- Corrected the Deck badge to report the complete combat deck and extended
+  `render_game_to_text` plus screen-reader summaries with all four counts,
+  the active zone, empty-state information, selection, and exact bindings.
+- Five focused production scenarios pass together across generated art,
+  pointer, keyboard, controller, screen reader, cleared-card persistence, and
+  the minimum viewport. Full `npm run validate` also passes all release
+  validators and 23 critical sequencing scenarios; only the existing
+  preferred bundle-size advisories remain.
+- The required shared production client drove a fresh flight into combat,
+  opened Draw, and switched to empty Cleared with real pointer input. Inspected
+  captures are `.artifacts/combat-zone-browser-audit/draw-verified/shot-0.png`
+  and `.artifacts/combat-zone-browser-audit/cleared-verified/shot-0.png`;
+  both text states match the screen and neither produced a browser-error file.
+- Remaining qualitative release evidence is unchanged: five genuinely
+  observed fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Pinned Route Card Comparison
+
+- Audited Deck Review against the product requirement to compare cards,
+  upgrades, relics, and effects quickly. Filtering and full dossiers were
+  present, but comparing two cards still required memorizing the first card.
+- Added a pinned two-column comparison with card art, cost, role, target,
+  current and Preen/Base rules, flock stats, and a plain-language delta strip.
+  Cost badges are 58 px pin targets; `C` and controller `X` pin or repin the
+  selected card while normal Up/Down navigation changes the comparison target.
+- Extended route text state and screen-reader summaries with the pinned and
+  selected cards, comparison deltas, renderer readiness, and exact controls.
+- Split the renderer into the on-demand `card-comparison` module. It keeps the
+  selected dossier readable while loading, has a recoverable failure state,
+  a 6 KB hard budget, exactly-one-chunk deployment validation, and no eager
+  modulepreload. Production output is 3.4 KB / 1.3 KB gzip; the existing card
+  detail module is restored to 8.6 KB / 2.6 KB gzip under its unchanged limit.
+- Four focused Playwright scenarios pass across real pointer input, keyboard,
+  controller, screen reader, generated dossier art, and minimum viewport.
+  Full `npm run validate` also passes every release validator and all 23
+  critical sequencing scenarios; only the existing preferred bundle-size
+  advisories remain. The required shared client confirmed the lazy renderer
+  loaded with matching text state and no browser errors; inspected capture:
+  `.artifacts/deck-comparison-audit/lazy-verified/shot-0.png`.
+- Remaining qualitative release evidence is unchanged: five genuinely
+  observed fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Base-Versus-Preened Deck Comparison
+
+- Completed the unused same-card pin state in Route Deck Review. Pinning a
+  different card still compares cards; pinning the selected card now opens an
+  exact Base-versus-Preened comparison without adding another screen or input.
+- Both columns derive from the authoritative runtime card contracts and show
+  normal rules, Molt rules, cost, role, target, card art, and flock stats.
+  Preened stats are consolidated into final totals, while the delta strip
+  preserves the exact added stat or changed decision shape.
+- The existing 58 px pointer pin, keyboard `C`, and controller `X` paths all
+  reach the upgrade comparison. Text state exposes `mode: preen`, both forms,
+  renderer readiness, and totals; the screen reader announces the Base and
+  Preened roles, targets, and summary.
+- The focused scenario and four-test Deck Review/minimum-viewport suite pass.
+  Production bundle and deployment gates pass with the on-demand comparison
+  at 3.5 KB / 1.3 KB gzip under its unchanged 6 KB hard limit. Full
+  `npm run validate` also passes every release validator and all 23 critical
+  sequencing scenarios; only the existing preferred bundle-size advisories
+  remain.
+- The required shared client verified the final full-resolution dossier,
+  matching serialized state, consolidated Cohesion `+3`, and no browser
+  errors. Inspected capture:
+  `.artifacts/deck-comparison-audit/preen-totals-verified/shot-0.png`.
+- Remaining qualitative release evidence is unchanged: five genuinely
+  observed fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 On-Demand Route Review And Run-Kit Presentation
+
+- Completed the approved enemy-attack tell swap with the open-center,
+  direction-neutral perimeter flourish as the sole canonical runtime/source
+  treatment. The subject remains visible during wind-up and no directional
+  arrow or dense centerpiece remains.
+- Moved the complete Route Deck Review browser, complete owned-Waymark drawer,
+  and Supply drawer presentation into interaction-only modules while preserving
+  pointer, keyboard, controller, screen-reader, filtering, sorting, search,
+  selection, pinning, scrolling, and failure/loading behavior.
+- Added explicit lazy-renderer readiness to Route text state and hard size,
+  exactly-one-chunk, immutable-cache, and no-modulepreload deployment contracts
+  for `route-deck-browser`, `waymark-review`, and `route-supply-drawer`.
+- Production output is 676.1 KB / 179.1 KB gzip for the app entry and
+  705.4 KB / 189.8 KB gzip for combined boot. All hard limits pass; the entry
+  remains 1.1 KB above the 675 KB preferred advisory. On-demand chunks are
+  5.5 KB / 2.2 KB gzip, 4.6 KB / 2.1 KB gzip, and 1.3 KB / 0.8 KB gzip.
+- Focused Deck Review, Supply drawer, and Waymark pointer/keyboard/controller
+  scenarios pass together. All release validators and all 23 critical
+  sequencing scenarios pass. The required shared client confirmed the Deck
+  browser loaded on demand, its serialized state matched the screen, and no
+  browser-error artifact was produced. Inspected capture:
+  `.artifacts/route-lazy-run-kit-shared-client/shot-0.png`.
+- Remaining qualitative release evidence is unchanged: five genuinely
+  observed fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 On-Demand Route Reward Review
+
+- Moved the post-choice Route reward ceremony into
+  `src/game/route-reward-overlay.ts`. RouteScene still owns authoritative
+  reward generation, projections, costs, state restoration, claiming,
+  cancellation, and progression; the interaction-only module owns the
+  decision panel, card/item/effect showcase, and Confirm/Cancel presentation.
+- Added a guarded loading/failure surface, retry-on-reopen behavior, and
+  `routeRewardRenderer` text-state telemetry. The minimum-viewport scenario
+  proves the chunk stays cold before a reward opens, loads before interaction,
+  preserves its 58 px Confirm target, and leaves no undersized pointer target.
+- Added a 6 KB hard chunk budget, exactly-one-hashed-chunk deployment rule,
+  and no-modulepreload contract. Production output is 674.4 KB / 178.5 KB
+  gzip for the app entry and 703.7 KB / 189.2 KB gzip for combined boot, both
+  below their preferred targets with no advisory. The new on-demand chunk is
+  3.6 KB / 1.6 KB gzip.
+- The focused Route decision/outcome scenario passes and the inspected
+  minimum-viewport capture is
+  `.artifacts/test-results/min-supported/route-reward-claim-1000x560.png`.
+  All release validators and all 23 critical sequencing scenarios pass.
+  The required shared client kept the reward module cold through a real fresh
+  route/combat path with matching telemetry and no browser-error artifact;
+  evidence is under `.artifacts/route-reward-lazy-fast-fight-client-v7/`.
+- Remaining qualitative release evidence is unchanged: five genuinely
+  observed fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 One-Flight Strategy Achievements
+
+- Added four horizontal, one-flight achievements using metrics the finished-run
+  record already owns: `Live Wire` (3 Surges), `Still Air` (3 clean fights),
+  `Brace Brigade` (24 blocked damage), and `Every Promise` (3 district
+  contracts). A qualifying loss can earn them, while separate near misses never
+  combine through lifetime totals. Existing achievement ids and account saves
+  remain additive and compatible.
+- Replaced the Flock Record's silent eight-row cutoff with shared six-row
+  pagination for achievements and contract badges. Pointer controls, Page
+  Up/Page Down, and LB/RB drive the same bounded page state; text state exposes
+  the visible range, item names, exact requirements, earned flags, and input
+  labels. Paging controls retain 76x58 hit areas.
+- The focused regression proves two cumulative near-miss losses unlock nothing,
+  one qualifying loss unlocks all four challenges, older account fields survive,
+  all 12 achievement rows are reachable, and a seven-badge contract collection
+  reaches its second page through the same input model. The inspected minimum
+  landscape capture is
+  `.artifacts/test-results/strategy-achievements/minimum-landscape-page-2.png`.
+- The required shared client opened Flock Record and paged to the new challenges
+  with a real pointer; its matching text state and inspected capture are under
+  `.artifacts/strategy-achievements-profile-client/`, with no browser-error
+  artifact.
+- `npm run build` and full `npm run validate` pass. All release validators and
+  all 24 critical sequencing scenarios are green. App entry is 674.5 KiB /
+  178.6 KiB gzip and combined boot is 704.3 KiB / 189.4 KiB gzip, inside both
+  preferred budgets.
+- Remaining qualitative release evidence is unchanged: five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md`.
+
+## 2026-07-26 Completion Evidence Audit
+
+- Re-ran the exact current production test workflow serially. Runtime-data,
+  optimized-asset, canonical-world, and combat-FX contract validation passed,
+  followed by all 219 Playwright scenarios in 30.5 minutes.
+- Corrected two test-harness ownership/readiness faults found by the first
+  exhaustive pass. Reward-delta assertions now read the owning BattleScene
+  instead of a global text hook that RouteScene can legitimately reclaim, and
+  the Route Waymark rail assertion now waits for the actual lazy-rendered
+  object. Both focused regressions and the complete suite pass.
+- Current deterministic audits are green: content has 32 passing checks with
+  no drift or pending entries; economy has 500 passing seeded samples; balance
+  validates all four district pressure scaffolds. The critical 24-scenario
+  release gate and production bundle/deployment checks also passed in the
+  immediately preceding validation run.
+- This proves the current build's mechanical behavior, runtime data, asset
+  wiring, accessibility contracts, supported layouts, saves, progression,
+  security policy, and performance budgets. It does not prove subjective fun,
+  fairness, clarity, or replay intent.
+- No `.artifacts/playtest-sessions/` directory exists. The current dashboard
+  explicitly reports `seeded pipeline harness (not human playtest evidence)`
+  and `0/10` complete latest-run rating sets. The remaining release gate is
+  therefore five genuinely fresh, observed human sessions with complete
+  ratings and observer notes under `docs/game/playtest-runbook.md`.
+- Further speculative balance or content changes are not justified before
+  those sessions identify a repeated confusion point or low experience rating.
+
+## 2026-07-26 Fresh-Player Entry Recheck
+
+- Rechecked the exact tester URL at `http://127.0.0.1:5201/?playtest=1` with the
+  required shared browser client. The production menu loaded with all 24
+  essential title assets and all 12 compact assets ready, matching serialized
+  menu state, and no browser-error artifact.
+- Visually inspected the full-resolution capture at
+  `.artifacts/playtest-entry-audit/shot-0.png`. Setup focus, leader identity,
+  Ascension, flight length, Start Run, How to Play, Settings, Codex, and Flock
+  Record remain visible and coherent for a fresh tester.
+- External evidence is unchanged: `.artifacts/playtest-sessions/` does not
+  exist and the dashboard still has zero complete human rating sets. The goal
+  remains active pending the five observed sessions in the playtest runbook.
+
+## 2026-07-26 Standardized Human Observation Evidence
+
+- Added `docs/game/playtest-observer-template.md`, a privacy-conscious
+  per-session sheet covering fresh-player identity, device/input, silent
+  observations, every required mechanic, friction events, first-fight
+  comprehension, post-run questions, tester ratings, and observer summary.
+- Updated the playtest runbook to require matching each sheet to its JSON
+  export filename and run ID. This prevents ratings, telemetry, and notes from
+  being mixed between testers while keeping observer notes separate from the
+  machine-generated dashboard.
+- `npm run validate:docs` passes. The remaining gate still requires five real
+  people; the template reduces collection ambiguity but is not session
+  evidence itself.

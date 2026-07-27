@@ -204,6 +204,15 @@ while the runtime recovers the last valid mirror. Controls, graphics, contrast,
 motion, combat pace, music/SFX volume, mute state, and the highest unlocked tier
 are stored as separate preferences.
 
+Run history is treated as untrusted persisted input. The runtime scans a
+bounded candidate set, validates each summary and its nested cards, route,
+items, decisions, and results against owned runtime data, de-duplicates IDs
+with the newest occurrence winning, and retains at most 50 valid flights.
+`Flock Record -> Flight Log` presents all retained flights in seven-row pages
+and can reconstruct the same complete `Flight Details` report used at the
+outcome. Historical `Copy Flight Link` actions derive only the deterministic
+seed and mode from the sanitized record.
+
 `src/game/save-backup.ts` is the single full-backup boundary. It writes a
 versioned `bird-squad-save` JSON document containing only the owned records and
 preferences above. Restore accepts at most 2 MB, runs every section through the
@@ -255,6 +264,25 @@ contract are part of the shipped runtime.
   cross-check and do not need individual card art manifest entries.
 - `CodexScene` lazy-loads extended codex data. Do not eagerly import that data
   into boot paths unless bundle budgets are intentionally revisited.
+- Optional route presentation is split by interaction: Flock Stats lives in
+  `src/game/flock-stats-overlay.ts`; card hover, Deck Review detail, and market
+  dossiers live in `src/game/card-hover-detail.ts`; the pinned Deck Review
+  side-by-side renderer lives in `src/game/card-comparison.ts` and loads only
+  after the first comparison is pinned; the Deck Review browser shell, controls,
+  index, and navigation live in `src/game/route-deck-browser.ts`; owned Waymark
+  drawer, trigger/effect-order review, and pinned comparison live in
+  `src/game/waymark-review.ts`; the Supply drawer lives in
+  `src/game/route-supply-drawer.ts`; the post-choice Route reward review lives
+  in `src/game/route-reward-overlay.ts`; system confirmations and settings live
+  in `src/game/system-overlays.ts`. Route's automation/accessibility snapshot lives in
+  `src/game/route-debug-state.ts` and loads when RouteScene opens instead of on
+  the title screen. Keep these modules out of title-screen modulepreloads and
+  preserve their retry/fallback behavior when extending them.
+- Screen-reader preference and state remain synchronous in
+  `src/game/screen-reader-accessibility.ts`; polling and live announcements are
+  opt-in through `src/game/screen-reader-runtime.ts`, which then loads
+  `screen-reader-summary.ts`. Keep both runtime modules off the default
+  title-screen preload path.
 - Generated/source art belongs under `.generated/`; optimized runtime assets
   belong under `assets/runtime/` and should be referenced through manifests or
   Vite-managed imports.

@@ -138,7 +138,8 @@
         "effects": [
           "damage(target, 5)",
           "gainCover(4)",
-          "if firstPlayedThisCombat then draw(1)"
+          "if firstPlayedThisCombat then draw(1)",
+          "if firstPlayedThisCombat then gainWingbeat(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -179,6 +180,7 @@
       "upgrade": {
         "effects": [
           "if hasResonance then damage(target, 3)",
+          "if hasResonance then draw(1)",
           "damage(target, 3)",
           "gainResonance(2)"
         ],
@@ -255,7 +257,8 @@
       "upgrade": {
         "effects": [
           "damage(target, 5)",
-          "if targetBelowHalf then damage(target, 4)"
+          "if targetBelowHalf then damage(target, 4)",
+          "if targetBelowHalf then gainWingbeat(1)"
         ],
         "flockStats": {
           "damage": 1
@@ -295,6 +298,7 @@
         "effects": [
           "damage(target, 5)",
           "if targetWinded then draw(1)",
+          "if targetWinded then gainWingbeat(1)",
           "applyWinded(target, 1)"
         ],
         "flockStats": {
@@ -333,7 +337,8 @@
       "upgrade": {
         "effects": [
           "heal(5)",
-          "if fullCohesion then draw(1)"
+          "if fullCohesion then draw(1)",
+          "if fullCohesion then gainOpenSkyGuard(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -374,7 +379,8 @@
         "effects": [
           "heal(3)",
           "draw(1)",
-          "if fullCohesion then gainOpenSkyGuard(2)"
+          "if fullCohesion then gainOpenSkyGuard(2)",
+          "if fullCohesion then retainHand(1)"
         ],
         "flockStats": {
           "regen": 1
@@ -414,7 +420,8 @@
         "effects": [
           "gainCover(8)",
           "retainHand(1)",
-          "if fullyBlocksNextAttack then nextTurnDraw(2)"
+          "if fullyBlocksNextAttack then nextTurnDraw(2)",
+          "if fullyBlocksNextAttack then gainOpenSkyGuard(1)"
         ],
         "flockStats": {
           "cover": 1
@@ -457,7 +464,8 @@
           "gainCover(6)",
           "draw(1)",
           "discard(1)",
-          "if fullyBlocksNextAttack then retainHand(1)"
+          "if fullyBlocksNextAttack then retainHand(1)",
+          "if fullyBlocksNextAttack then gainWingbeat(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -536,6 +544,7 @@
       "upgrade": {
         "effects": [
           "if hasResonance then gainEnergyNextTurn(1)",
+          "if hasResonance then retainHand(1)",
           "gainResonance(2)",
           "draw(1)"
         ],
@@ -580,7 +589,8 @@
           "damage(target, 5)",
           "if hasResonance then spendResonance(1)",
           "if spentResonance then draw(2)",
-          "if spentResonance then damage(target, 3)"
+          "if spentResonance then damage(target, 3)",
+          "if spentResonance then gainWingbeat(1)"
         ],
         "flockStats": {
           "damage": 1
@@ -658,7 +668,8 @@
         "effects": [
           "damage(target, 6)",
           "if resonanceAtLeast(2) then spendResonance(2)",
-          "if spentResonance then damage(target, 7)"
+          "if spentResonance then damage(target, 7)",
+          "if spentResonance then applyWinded(target, 1)"
         ],
         "flockStats": {
           "resonance": 1
@@ -739,6 +750,7 @@
         "effects": [
           "gainCover(6)",
           "gainResonance(2)",
+          "if targetHasCover then gainWingbeat(1)",
           "if targetHasCover then removeCover(target, 3)"
         ],
         "flockStats": {
@@ -778,7 +790,8 @@
       "upgrade": {
         "effects": [
           "damage(target, 7)",
-          "if targetIntendsAttack then applyWinded(target, 1)"
+          "if targetIntendsAttack then applyWinded(target, 1)",
+          "if targetIntendsAttack then gainCover(2)"
         ],
         "flockStats": {
           "damage": 1
@@ -808,10 +821,10 @@
         "cover-break"
       ],
       "effects": [
-        "removeCover(target, 4)",
-        "gainCover(3)",
         "if targetHasCover then draw(1)",
-        "if targetHasCover then discard(1)"
+        "if targetHasCover then discard(1)",
+        "removeCover(target, 4)",
+        "gainCover(3)"
       ],
       "moltEffects": [
         "damage(target, 4)",
@@ -819,10 +832,11 @@
       ],
       "upgrade": {
         "effects": [
-          "removeCover(target, 6)",
-          "gainCover(5)",
           "if targetHasCover then draw(1)",
-          "if targetHasCover then discard(1)"
+          "if targetHasCover then discard(1)",
+          "if targetHasCover then gainResonance(1)",
+          "removeCover(target, 6)",
+          "gainCover(5)"
         ],
         "flockStats": {
           "damage": 1
@@ -851,8 +865,8 @@
       ],
       "effects": [
         "damageAll(2)",
-        "if targetHasCover then removeCover(target, 3)",
-        "if targetHasCover then gainResonance(1)"
+        "if targetHasCover then gainResonance(1)",
+        "if targetHasCover then removeCover(target, 3)"
       ],
       "moltEffects": [
         "gainCover(2 perCover)",
@@ -862,8 +876,9 @@
       "upgrade": {
         "effects": [
           "damageAll(3)",
-          "if targetHasCover then removeCover(target, 5)",
-          "if targetHasCover then gainResonance(1)"
+          "if targetHasCover then gainResonance(1)",
+          "if targetHasCover then nextTurnDraw(1)",
+          "if targetHasCover then removeCover(target, 5)"
         ],
         "flockStats": {
           "damage": 1
@@ -903,7 +918,8 @@
       "upgrade": {
         "effects": [
           "damage(target, 6)",
-          "if windedAtLeast(2) then draw(2)"
+          "if windedAtLeast(2) then draw(2)",
+          "if windedAtLeast(2) then gainWingbeat(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -941,7 +957,8 @@
       "upgrade": {
         "effects": [
           "loseCohesion(2)",
-          "damage(target, 13)"
+          "damage(target, 13)",
+          "if cohesionBelowHalf then gainWingbeat(1)"
         ],
         "flockStats": {
           "damage": 1
@@ -981,7 +998,8 @@
         "effects": [
           "damage(target, 3)",
           "if targetWinded then damage(target, 4)",
-          "if isMolting then damage(target, 3)"
+          "if isMolting then damage(target, 3)",
+          "if targetWinded then gainResonance(1)"
         ],
         "flockStats": {
           "moltPower": 1
@@ -1015,6 +1033,7 @@
         "if fullCohesion then retainHand(1)"
       ],
       "moltEffects": [
+        "if targetWinded then heal(2)",
         "applyWinded(target, 2)",
         "draw(1)"
       ],
@@ -1022,12 +1041,14 @@
         "effects": [
           "heal(3)",
           "gainCover(4)",
-          "if fullCohesion then retainHand(1)"
+          "if fullCohesion then retainHand(1)",
+          "if fullCohesion then gainEnergyNextTurn(1)"
         ],
         "flockStats": {
           "cover": 1
         },
         "moltEffects": [
+          "if targetWinded then heal(3)",
           "applyWinded(target, 3)",
           "draw(1)"
         ]
@@ -1063,7 +1084,8 @@
         "effects": [
           "gainCover(6)",
           "heal(2)",
-          "if openSky then gainOpenSkyGuard(2)"
+          "if openSky then gainOpenSkyGuard(2)",
+          "if openSky then draw(1)"
         ],
         "flockStats": {
           "regen": 1
@@ -1104,7 +1126,8 @@
         "effects": [
           "gainCover(4)",
           "heal(3)",
-          "if openSky then gainCover(5)"
+          "if openSky then gainCover(5)",
+          "if openSky then retainHand(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -1182,7 +1205,8 @@
       "upgrade": {
         "effects": [
           "returnDiscard(nonMolt, +1)",
-          "heal(3)"
+          "heal(3)",
+          "retainHand(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -1224,7 +1248,8 @@
         "effects": [
           "discardUpTo(2)",
           "heal(5 perDiscarded)",
-          "gainCover(4 perDiscarded)"
+          "gainCover(4 perDiscarded)",
+          "if fullCohesion then nextTurnDraw(1)"
         ],
         "flockStats": {
           "cohesion": 1,
@@ -1264,7 +1289,8 @@
       "upgrade": {
         "effects": [
           "gainCover(7)",
-          "gainOpenSkyGuard(2)"
+          "gainOpenSkyGuard(2)",
+          "if openSky then nextTurnDraw(1)"
         ],
         "flockStats": {
           "cover": 1
@@ -1302,7 +1328,8 @@
       "upgrade": {
         "effects": [
           "gainCover(4)",
-          "nextCoverBonus(nests, 6)"
+          "nextCoverBonus(nests, 6)",
+          "retainHand(1)"
         ],
         "flockStats": {
           "cover": 1
@@ -1343,6 +1370,7 @@
         "effects": [
           "gainCover(7)",
           "if cohesionBelowHalf then gainCover(4)",
+          "if cohesionBelowHalf then gainOpenSkyGuard(1)",
           "if fullyBlocksNextAttack then retainHand(1)"
         ],
         "flockStats": {
@@ -1381,7 +1409,8 @@
       "upgrade": {
         "effects": [
           "gainCover(4)",
-          "retainHand(1)"
+          "retainHand(1)",
+          "if fullyBlocksNextAttack then nextCoverBonus(nests, 2)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -1416,19 +1445,22 @@
       ],
       "moltEffects": [
         "applyWinded(target, 2)",
+        "if targetIntendsAttack then gainCover(2)",
         "draw(1)"
       ],
       "upgrade": {
         "effects": [
           "gainCover(6)",
           "heal(3)",
-          "nextCoverBonus(nests, 3)"
+          "nextCoverBonus(nests, 3)",
+          "if fullyBlocksNextAttack then gainWingbeat(1)"
         ],
         "flockStats": {
           "cohesion": 1
         },
         "moltEffects": [
           "applyWinded(target, 3)",
+          "if targetIntendsAttack then gainCover(3)",
           "draw(1)"
         ]
       },
@@ -1460,7 +1492,8 @@
       "upgrade": {
         "effects": [
           "gainCover(11)",
-          "if fullyBlocksNextAttack then nextTurnDraw(1)"
+          "if fullyBlocksNextAttack then nextTurnDraw(1)",
+          "if fullyBlocksNextAttack then retainHand(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -1504,7 +1537,8 @@
         "effects": [
           "gainResonance(2)",
           "draw(1)",
-          "if playedSuitThisTurn(plumes) then draw(2)"
+          "if playedSuitThisTurn(plumes) then draw(2)",
+          "if playedSuitThisTurn(plumes) then gainWingbeat(1)"
         ],
         "flockStats": {
           "resonance": 1
@@ -1548,7 +1582,8 @@
         "effects": [
           "draw(2)",
           "if targetIntendsAttack then draw(1)",
-          "nextTurnDraw(1)"
+          "nextTurnDraw(1)",
+          "if targetIntendsAttack then gainWingbeat(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -1590,7 +1625,8 @@
         "effects": [
           "heal(7)",
           "draw(1)",
-          "if fullCohesion then gainOpenSkyGuard(1)"
+          "if fullCohesion then gainOpenSkyGuard(1)",
+          "if fullCohesion then retainHand(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -1633,7 +1669,8 @@
         "effects": [
           "gainCover(12)",
           "nextCoverBonus(nests, 4)",
-          "gainOpenSkyGuard(1)"
+          "gainOpenSkyGuard(1)",
+          "if fullyBlocksNextAttack then gainWingbeat(1)"
         ],
         "flockStats": {
           "cover": 1
@@ -1678,7 +1715,8 @@
           "heal(3)",
           "gainCover(4)",
           "gainResonance(2)",
-          "if firstPlayedThisCombat then draw(1)"
+          "if firstPlayedThisCombat then draw(1)",
+          "if firstPlayedThisCombat then gainWingbeat(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -1720,7 +1758,8 @@
         "effects": [
           "gainResonance(2)",
           "if hasResonance then heal(4)",
-          "if hasResonance then gainCover(4)"
+          "if hasResonance then gainCover(4)",
+          "retainHand(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -1761,6 +1800,7 @@
       ],
       "upgrade": {
         "effects": [
+          "if targetBelowHalf then gainWingbeat(1)",
           "damage(target, 8)",
           "if targetBelowHalf then damage(target, 2)",
           "if defeatsEnemy then gainWingbeat(1)"
@@ -1804,7 +1844,8 @@
         "effects": [
           "gainCover(6)",
           "damage(target, 6)",
-          "if targetIntendsAttack then applyWinded(target, 2)"
+          "if targetIntendsAttack then applyWinded(target, 2)",
+          "if targetIntendsAttack then gainWingbeat(1)"
         ],
         "flockStats": {
           "cover": 1
@@ -1890,7 +1931,8 @@
         "effects": [
           "discardUpTo(2)",
           "draw(2)",
-          "gainResonance(2)"
+          "gainResonance(2)",
+          "retainHand(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -1934,6 +1976,7 @@
         "effects": [
           "damage(target, 5)",
           "gainCover(5)",
+          "if targetWinded then gainWingbeat(1)",
           "if targetWinded then damage(target, 5)"
         ],
         "flockStats": {
@@ -1981,7 +2024,8 @@
           "discard(1)",
           "draw(2)",
           "returnDiscard(nonMolt, +1)",
-          "if cohesionBelowHalf then draw(1)"
+          "if cohesionBelowHalf then draw(1)",
+          "if cohesionBelowHalf then retainHand(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -2070,7 +2114,8 @@
         "effects": [
           "heal(4)",
           "gainCover(4)",
-          "if fullCohesion then gainResonance(2)"
+          "if fullCohesion then gainResonance(2)",
+          "if fullCohesion then gainWingbeat(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -2116,6 +2161,7 @@
           "damage(target, 5)",
           "if hasResonance then spendResonance(2)",
           "if spentResonance then damage(target, 6)",
+          "if spentResonance then gainWingbeat(1)",
           "if defeatsEnemy then draw(1)"
         ],
         "flockStats": {
@@ -2161,7 +2207,8 @@
         "effects": [
           "damageAll(6)",
           "draw(1)",
-          "if firstPlayedThisCombat then damageAll(2)"
+          "if firstPlayedThisCombat then damageAll(2)",
+          "if firstPlayedThisCombat then gainWingbeat(1)"
         ],
         "flockStats": {
           "damage": 1
@@ -2205,7 +2252,8 @@
         "effects": [
           "heal(7)",
           "gainOpenSkyGuard(2)",
-          "if cohesionBelowHalf then nextTurnDraw(1)"
+          "if cohesionBelowHalf then nextTurnDraw(1)",
+          "if cohesionBelowHalf then retainHand(1)"
         ],
         "flockStats": {
           "regen": 1
@@ -2249,7 +2297,8 @@
         "effects": [
           "damage(target, 5)",
           "if targetIntendsAttack then applyWinded(target, 2)",
-          "if targetWinded then draw(1)"
+          "if targetWinded then draw(1)",
+          "if targetIntendsAttack then gainWingbeat(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -2291,7 +2340,8 @@
         "effects": [
           "draw(2)",
           "gainResonance(2)",
-          "if firstPlayedThisCombat then gainWingbeat(2)"
+          "if firstPlayedThisCombat then gainWingbeat(2)",
+          "if firstPlayedThisCombat then retainHand(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -2334,7 +2384,8 @@
         "effects": [
           "returnDiscard(nonMolt, +1)",
           "draw(2)",
-          "if hasResonance then gainWingbeat(1)"
+          "if hasResonance then gainWingbeat(1)",
+          "if hasResonance then retainHand(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -2381,7 +2432,8 @@
           "damageAll(6)",
           "draw(1)",
           "if openSky then damageAll(4)",
-          "if fullCohesion then gainOpenSkyGuard(1)"
+          "if fullCohesion then gainOpenSkyGuard(1)",
+          "if openSky then gainWingbeat(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -2425,7 +2477,8 @@
         "effects": [
           "gainResonance(3)",
           "nextTurnDraw(2)",
-          "if hasResonance then gainOpenSkyGuard(1)"
+          "if hasResonance then gainOpenSkyGuard(1)",
+          "retainHand(1)"
         ],
         "flockStats": {
           "resonance": 1
@@ -2469,7 +2522,8 @@
         "effects": [
           "heal(6)",
           "gainCover(4)",
-          "returnDiscard(nonMolt, +1)"
+          "returnDiscard(nonMolt, +1)",
+          "if fullCohesion then gainWingbeat(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -2511,7 +2565,8 @@
       "upgrade": {
         "effects": [
           "damageAll(4)",
-          "if firstPlayedThisCombat then gainWingbeat(1)"
+          "if firstPlayedThisCombat then gainWingbeat(1)",
+          "if firstPlayedThisCombat then nextTurnDraw(1)"
         ],
         "flockStats": {
           "damage": 1
@@ -2554,7 +2609,8 @@
         "effects": [
           "damageAll(4)",
           "if fullCohesion then draw(2)",
-          "if playedSuitThisTurn(plumes) then gainResonance(2)"
+          "if playedSuitThisTurn(plumes) then gainResonance(2)",
+          "if fullCohesion then gainWingbeat(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -2594,7 +2650,8 @@
       "upgrade": {
         "effects": [
           "if targetIntendsAttack then draw(1)",
-          "if targetIntendsAttack then applyWinded(target, 3)"
+          "if targetIntendsAttack then applyWinded(target, 3)",
+          "if targetIntendsAttack then gainWingbeat(1)"
         ],
         "flockStats": {
           "openSkyGuard": 1
@@ -2678,7 +2735,8 @@
         "effects": [
           "damage(target, 4)",
           "applyWinded(target, 2)",
-          "if targetIntendsAttack then gainCover(4)"
+          "if targetIntendsAttack then gainCover(4)",
+          "if targetIntendsAttack then gainWingbeat(1)"
         ],
         "flockStats": {
           "damage": 1
@@ -2718,7 +2776,8 @@
         "effects": [
           "gainCover(5)",
           "heal(3)",
-          "if openSky then gainOpenSkyGuard(1)"
+          "if openSky then gainOpenSkyGuard(1)",
+          "if openSky then retainHand(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -2747,9 +2806,9 @@
         "utility"
       ],
       "effects": [
+        "if targetHasCover then gainResonance(1)",
         "removeCover(target, 3)",
-        "draw(1)",
-        "if targetHasCover then gainResonance(1)"
+        "draw(1)"
       ],
       "moltEffects": [
         "removeCover(target, 5)",
@@ -2757,9 +2816,10 @@
       ],
       "upgrade": {
         "effects": [
+          "if targetHasCover then gainResonance(1)",
+          "if targetHasCover then gainWingbeat(1)",
           "removeCover(target, 5)",
-          "draw(1)",
-          "if targetHasCover then gainResonance(1)"
+          "draw(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -2800,7 +2860,8 @@
         "effects": [
           "gainWingbeat(1)",
           "if openSky then gainOpenSkyGuard(2)",
-          "nextTurnDraw(1)"
+          "nextTurnDraw(1)",
+          "if openSky then retainHand(1)"
         ],
         "flockStats": {
           "openSkyGuard": 1
@@ -2839,7 +2900,8 @@
       "upgrade": {
         "effects": [
           "returnDiscard(nonMolt, +1)",
-          "if fullCohesion then draw(1)"
+          "if fullCohesion then draw(1)",
+          "retainHand(1)"
         ],
         "flockStats": {
           "draw": 1
@@ -2877,7 +2939,8 @@
       "upgrade": {
         "effects": [
           "gainCover(8)",
-          "if cohesionBelowHalf then heal(3)"
+          "if cohesionBelowHalf then heal(3)",
+          "if cohesionBelowHalf then retainHand(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -2923,6 +2986,7 @@
         "effects": [
           "damage(target, 4)",
           "if playedSuitThisTurn(plumes) then gainResonance(2)",
+          "if playedSuitThisTurn(plumes) then gainWingbeat(1)",
           "if playedSuitThisTurn(quills) then applyWinded(target, 2)",
           "if playedSuitThisTurn(basins) then heal(3)",
           "if playedSuitThisTurn(nests) then gainCover(4)"
@@ -2968,7 +3032,8 @@
       "upgrade": {
         "effects": [
           "damageAll(3)",
-          "if firstPlayedThisCombat then gainResonance(2)"
+          "if firstPlayedThisCombat then gainResonance(2)",
+          "if firstPlayedThisCombat then nextTurnDraw(1)"
         ],
         "flockStats": {
           "damage": 1
@@ -3012,7 +3077,8 @@
           "gainCover(5)",
           "gainWingbeat(1)",
           "if openSky then gainOpenSkyGuard(2)",
-          "if fullyBlocksNextAttack then nextTurnDraw(1)"
+          "if fullyBlocksNextAttack then nextTurnDraw(1)",
+          "if fullyBlocksNextAttack then retainHand(1)"
         ],
         "flockStats": {
           "cover": 1
@@ -3054,7 +3120,7 @@
       "upgrade": {
         "effects": [
           "gainCover(2)",
-          "if openSky then gainOpenSkyGuard(1)",
+          "gainOpenSkyGuard(1)",
           "shuffleSelfToDraw()"
         ],
         "flockStats": {
@@ -3097,7 +3163,8 @@
         "effects": [
           "heal(2)",
           "gainCover(5)",
-          "if fullCohesion then draw(1)"
+          "if fullCohesion then draw(1)",
+          "if fullCohesion then gainResonance(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -3136,6 +3203,7 @@
       "upgrade": {
         "effects": [
           "damagePierce(target, 6)",
+          "if targetHasCover then gainWingbeat(1)",
           "if targetHasCover then removeCover(target, 6)"
         ],
         "flockStats": {
@@ -3178,7 +3246,8 @@
         "effects": [
           "gainOpenSkyGuard(2)",
           "heal(3)",
-          "if openSky then draw(1)"
+          "if openSky then draw(1)",
+          "if openSky then retainHand(1)"
         ],
         "flockStats": {
           "openSkyGuard": 1
@@ -3223,7 +3292,8 @@
         "effects": [
           "gainWingbeat(1)",
           "if flockSuit(plumes,3) then draw(1)",
-          "if flockSuit(nests,3) then gainCover(5)"
+          "if flockSuit(nests,3) then gainCover(5)",
+          "if flockSuit(basins,3) then heal(2)"
         ],
         "flockStats": {
           "openSkyGuard": 1
@@ -3308,7 +3378,8 @@
         "effects": [
           "gainCover(6)",
           "gainResonance(1)",
-          "if targetIntendsAttack then gainCover(4)"
+          "if targetIntendsAttack then gainCover(4)",
+          "if targetIntendsAttack then gainWingbeat(1)"
         ],
         "flockStats": {
           "cover": 1
@@ -3347,7 +3418,8 @@
       "upgrade": {
         "effects": [
           "damage(target, 6)",
-          "if resonanceAtLeast(3) then damage(target, 5)"
+          "if resonanceAtLeast(3) then damage(target, 5)",
+          "if resonanceAtLeast(3) then nextTurnDraw(1)"
         ],
         "flockStats": {
           "damage": 1
@@ -3425,7 +3497,8 @@
       "upgrade": {
         "effects": [
           "damage(target, 4)",
-          "resonanceBurst(3)"
+          "resonanceBurst(3)",
+          "if spentResonance then gainWingbeat(1)"
         ],
         "flockStats": {
           "damage": 1
@@ -3454,16 +3527,19 @@
         "setup"
       ],
       "effects": [
+        "if noResonance then gainWingbeat(1)",
         "gainResonance(2)",
         "draw(1)",
         "if playedSuitThisTurn(plumes) then draw(1)"
       ],
       "moltEffects": [
         "damageAll(3)",
-        "if hasResonance then spendResonance(1)"
+        "if hasResonance then spendResonance(1)",
+        "if spentResonance then gainWingbeat(1)"
       ],
       "upgrade": {
         "effects": [
+          "if noResonance then gainWingbeat(1)",
           "gainResonance(3)",
           "draw(1)",
           "if flockSuit(plumes,5) then draw(1)"
@@ -3473,7 +3549,8 @@
         },
         "moltEffects": [
           "damageAll(5)",
-          "if hasResonance then spendResonance(1)"
+          "if hasResonance then spendResonance(1)",
+          "if spentResonance then gainWingbeat(2)"
         ]
       },
       "flockStats": {
@@ -3508,7 +3585,8 @@
       "upgrade": {
         "effects": [
           "damageAll(6)",
-          "if resonanceAtLeast(3) then damageAll(4)"
+          "if resonanceAtLeast(3) then damageAll(4)",
+          "if resonanceAtLeast(3) then gainWingbeat(1)"
         ],
         "flockStats": {
           "damage": 1
@@ -3590,7 +3668,8 @@
       "upgrade": {
         "effects": [
           "overhealCover(8)",
-          "draw(1)"
+          "draw(1)",
+          "if fullCohesion then gainOpenSkyGuard(1)"
         ],
         "flockStats": {
           "regen": 1
@@ -3631,7 +3710,8 @@
         "effects": [
           "heal(6)",
           "gainCover(7)",
-          "draw(1)"
+          "draw(1)",
+          "if fullCohesion then retainHand(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -3673,7 +3753,8 @@
         "effects": [
           "heal(5)",
           "draw(1)",
-          "if openSky then gainOpenSkyGuard(1)"
+          "if openSky then gainOpenSkyGuard(1)",
+          "if fullCohesion then gainWingbeat(1)"
         ],
         "flockStats": {
           "regen": 1
@@ -3716,7 +3797,8 @@
         "effects": [
           "heal(7)",
           "gainOpenSkyGuard(2)",
-          "if fullCohesion then draw(1)"
+          "if fullCohesion then draw(1)",
+          "if fullCohesion then gainWingbeat(1)"
         ],
         "flockStats": {
           "regen": 1
@@ -3760,7 +3842,8 @@
         "effects": [
           "heal(7)",
           "gainCover(8)",
-          "nextTurnDraw(2)"
+          "nextTurnDraw(2)",
+          "if fullCohesion then gainEnergyNextTurn(1)"
         ],
         "flockStats": {
           "cohesion": 1
@@ -3803,6 +3886,7 @@
       "upgrade": {
         "effects": [
           "damage(target, 5)",
+          "if targetWinded then gainResonance(1)",
           "applyWinded(target, 2)",
           "if targetHasCover then damagePierce(target, 5)",
           "if targetWinded then applyWinded(target, 1)"
@@ -3846,7 +3930,8 @@
         "effects": [
           "damage(target, 6)",
           "if targetIntendsAttack then damage(target, 3)",
-          "if targetIntendsAttack then applyWinded(target, 1)"
+          "if targetIntendsAttack then applyWinded(target, 1)",
+          "if targetIntendsAttack then gainWingbeat(1)"
         ],
         "flockStats": {
           "damage": 1
@@ -3887,7 +3972,8 @@
         "effects": [
           "damage(target, 10)",
           "if defeatsEnemy then draw(2)",
-          "if defeatsEnemy then gainWingbeat(2)"
+          "if defeatsEnemy then gainWingbeat(2)",
+          "if defeatsEnemy then retainHand(1)"
         ],
         "flockStats": {
           "damage": 1
@@ -3930,6 +4016,7 @@
         "effects": [
           "damage(target, 4)",
           "if targetWinded then draw(1)",
+          "if targetWinded then gainWingbeat(1)",
           "windedBurst(3)"
         ],
         "flockStats": {
@@ -3970,6 +4057,7 @@
       ],
       "upgrade": {
         "effects": [
+          "if windedAtLeast(3) then gainWingbeat(1)",
           "applyWinded(target, 3)",
           "damage(target, 2 perWinded)"
         ],
@@ -4016,6 +4104,7 @@
         "effects": [
           "damage(target, 8)",
           "if windedAtLeast(3) then damage(target, 5)",
+          "if windedAtLeast(3) then gainWingbeat(1)",
           "if targetHasCover then damagePierce(target, 4)",
           "gainCover(4)"
         ],
@@ -4063,6 +4152,7 @@
           "gainCover(6)",
           "nextCoverBonus(nests, 4)",
           "if targetHasCover then damagePierce(target, 3)",
+          "if fullyBlocksNextAttack then gainWingbeat(1)",
           "if fullyBlocksNextAttack then nextTurnDraw(1)"
         ],
         "flockStats": {
@@ -4103,7 +4193,8 @@
       "upgrade": {
         "effects": [
           "gainCover(9)",
-          "if openSky then heal(4)"
+          "if openSky then heal(4)",
+          "if openSky then retainHand(1)"
         ],
         "flockStats": {
           "cover": 1
@@ -4143,6 +4234,7 @@
       "upgrade": {
         "effects": [
           "gainCover(11)",
+          "if fullyBlocksNextAttack then retainHand(1)",
           "draw(1)",
           "nextCoverBonus(nests, 5)"
         ],
@@ -4184,6 +4276,7 @@
       "upgrade": {
         "effects": [
           "gainCover(7)",
+          "if fullyBlocksNextAttack then gainWingbeat(1)",
           "damage(target, 1 perCover)"
         ],
         "flockStats": {
@@ -4226,6 +4319,7 @@
       "upgrade": {
         "effects": [
           "gainCover(8)",
+          "if fullyBlocksNextAttack then gainWingbeat(1)",
           "heal(4)",
           "if cohesionBelowHalf then draw(1)"
         ],
@@ -4271,7 +4365,8 @@
         "effects": [
           "gainCover(10)",
           "nextCoverBonus(nests, 5)",
-          "gainOpenSkyGuard(2)"
+          "gainOpenSkyGuard(2)",
+          "if fullyBlocksNextAttack then gainEnergyNextTurn(1)"
         ],
         "flockStats": {
           "openSkyGuard": 1

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
 
-export type BattleInspectMode = 'deck' | 'draw' | 'discard';
+export type BattleInspectMode = 'deck' | 'draw' | 'discard' | 'cleared';
 
 export interface BattleInspectStatView {
   icon?: string;
@@ -77,14 +77,16 @@ export interface BattleInspectRenderContext {
   visibleRows: number;
   rowHeight: number;
   drawCount: number;
-  handCount: number;
+  deckCount: number;
   discardCount: number;
+  clearedCount: number;
   fontFamily: string;
   boldFontStyle: string;
   goldColor: string;
   softColor: string;
   cyanColor: string;
   reducedMotion: boolean;
+  inputHint: string;
   assets: BattleInspectAssets;
   decorators: BattleInspectDecorators;
   renderPanel: (cx: number, cy: number, width: number, height: number, accent: number) => BattleInspectFrame;
@@ -93,6 +95,7 @@ export interface BattleInspectRenderContext {
   renderSnagArt: (cardId: string, x: number, y: number, width: number, height: number, alpha: number) => boolean;
   onInspect: (cardId: string) => void;
   onScroll: (delta: number) => void;
+  onSwitchMode: (mode: BattleInspectMode) => void;
   onConfirmSound: () => void;
 }
 
@@ -140,17 +143,48 @@ function addCountBadge(context: BattleInspectRenderContext, x: number, y: number
     .setName('combat-pile-count-badge'));
 }
 
-function renderZoneCount(context: BattleInspectRenderContext, icon: string, value: number, x: number, accent: number) {
+function renderZoneCount(
+  context: BattleInspectRenderContext,
+  mode: BattleInspectMode,
+  label: string,
+  icon: string,
+  value: number,
+  x: number,
+  accent: number,
+) {
   const y = 146;
-  addIcon(context, icon, x, y, 14, 0.92);
-  context.target.add(context.scene.add.circle(x + 25, y, 13, 0x07101c, 0.98).setStrokeStyle(1.5, accent, 0.55));
-  addCountBadge(context, x + 25, y, 34, 0.84);
-  context.target.add(context.scene.add.text(x + 25, y, `${value}`, {
+  const active = context.mode === mode;
+  context.target.add(context.scene.add.rectangle(x, y + 1, 70, 56, active ? 0x102736 : 0x07101c, active ? 0.98 : 0.64)
+    .setStrokeStyle(active ? 2 : 1, active ? 0x8df4ff : accent, active ? 0.96 : 0.34)
+    .setName(`combat-pile-zone-${mode}-frame`));
+  addIcon(context, icon, x - 16, y - 5, 14, active ? 1 : 0.82);
+  context.target.add(context.scene.add.circle(x + 15, y - 5, 13, 0x07101c, 0.98).setStrokeStyle(1.5, accent, active ? 0.8 : 0.5));
+  addCountBadge(context, x + 15, y - 5, 34, active ? 0.96 : 0.78);
+  context.target.add(context.scene.add.text(x + 15, y - 5, `${value}`, {
     fontFamily: context.fontFamily,
     fontSize: '13px',
     fontStyle: context.boldFontStyle,
     color: '#ffffff',
   }).setOrigin(0.5));
+  context.target.add(context.scene.add.text(x, y + 17, label, {
+    fontFamily: context.fontFamily,
+    fontSize: '9px',
+    fontStyle: context.boldFontStyle,
+    color: active ? '#dffbff' : '#aab9c6',
+    align: 'center',
+    fixedWidth: 64,
+  }).setOrigin(0.5));
+  const hit = context.scene.add.rectangle(x, y + 1, 70, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+    .setInteractive({ useHandCursor: true })
+    .setName(`combat-pile-zone-${mode}-hit`)
+    .setData('mode', mode)
+    .setData('active', active);
+  hit.on('pointerdown', () => {
+    if (active) return;
+    context.onConfirmSound();
+    context.onSwitchMode(mode);
+  });
+  context.target.add(hit);
 }
 
 function renderHeader(context: BattleInspectRenderContext, frame: BattleInspectFrame) {
@@ -159,7 +193,13 @@ function renderHeader(context: BattleInspectRenderContext, frame: BattleInspectF
   context.renderClose(frame.right - PANEL.closeX, frame.top + PANEL.closeY);
   addIcon(
     context,
-    context.mode === 'discard' ? 'discard-basket' : context.mode === 'draw' ? 'draw-stack' : 'deck-stack',
+    context.mode === 'discard'
+      ? 'discard-basket'
+      : context.mode === 'draw'
+        ? 'draw-stack'
+        : context.mode === 'cleared'
+          ? 'release-card'
+          : 'deck-stack',
     frame.left + PANEL.headerIconX,
     frame.top + PANEL.headerIconY,
     28,
@@ -180,9 +220,18 @@ function renderHeader(context: BattleInspectRenderContext, frame: BattleInspectF
     stroke: '#020409',
     strokeThickness: deck ? 4 : 0,
   }));
-  renderZoneCount(context, 'draw-stack', context.drawCount, 146, 0x8df4ff);
-  renderZoneCount(context, 'deck-stack', context.handCount, 202, 0xd8a840);
-  renderZoneCount(context, 'discard-basket', context.discardCount, 258, 0xffb86b);
+  renderZoneCount(context, 'deck', 'DECK', 'deck-stack', context.deckCount, 144, 0xd8a840);
+  renderZoneCount(context, 'draw', 'DRAW', 'draw-stack', context.drawCount, 220, 0x8df4ff);
+  renderZoneCount(context, 'discard', 'DISCARD', 'discard-basket', context.discardCount, 296, 0xffb86b);
+  renderZoneCount(context, 'cleared', 'CLEARED', 'release-card', context.clearedCount, 372, 0xc98bff);
+  context.target.add(context.scene.add.text(540, 139, context.inputHint, {
+    fontFamily: context.fontFamily,
+    fontSize: '11px',
+    fontStyle: context.boldFontStyle,
+    color: '#b9c9d8',
+    fixedWidth: 450,
+    maxLines: 2,
+  }).setName('combat-pile-input-hint'));
   if (deck) {
     context.decorators.addSectionTab();
     context.target.add(context.scene.add.text(194, 174, 'CARD INDEX', {
@@ -270,9 +319,19 @@ function renderRow(context: BattleInspectRenderContext, card: BattleInspectCardV
     fixedWidth: 92,
   }));
   addIcon(context, card.zoneIcon, x + 414, y + 16, 14);
+  if (selected) {
+    context.target.add(context.scene.add.rectangle(x + 150, y + 15, 326, MIN_SUPPORTED_TOUCH_TARGET, 0x06151b, 0.02)
+      .setStrokeStyle(3, 0x8df4ff, 0.98)
+      .setName('combat-pile-input-focus-ring')
+      .setData('instanceId', card.id));
+    context.target.add(context.scene.add.rectangle(x - 17, y + 15, 5, 34, 0x8df4ff, 0.96)
+      .setName('combat-pile-input-focus-marker'));
+  }
   const rowHit = context.scene.add.rectangle(x + 150, y + 15, 312, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
     .setInteractive({ useHandCursor: true })
-    .setName('combat-pile-row-hit');
+    .setName('combat-pile-row-hit')
+    .setData('instanceId', card.id)
+    .setData('selected', selected);
   rowHit.on('pointerdown', () => context.onInspect(card.id));
   context.target.add(rowHit);
 }

@@ -18,7 +18,16 @@ import {
   type ControlBindingPage,
 } from './input-bindings';
 import type { GraphicsQualityPreference, GraphicsQualityState } from './graphics-quality';
-import type { VisualContrastPreference, VisualContrastState } from './visual-accessibility';
+import type {
+  ColorCuePreference,
+  ColorCueState,
+  FlashEffectsPreference,
+  FlashEffectsState,
+  ScreenShakePreference,
+  ScreenShakeState,
+  VisualContrastPreference,
+  VisualContrastState,
+} from './visual-accessibility';
 import type { ScreenReaderPreference, ScreenReaderState } from './screen-reader-accessibility';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 
@@ -44,7 +53,9 @@ const UI_FIELD = {
 type UiAdd = (object: Phaser.GameObjects.GameObject) => void;
 type MotionPreference = 'full' | 'system' | 'reduced';
 type CombatPace = 'cinematic' | 'standard' | 'snappy';
-type SettingsRowKind = 'toggle' | 'slider' | 'motion' | 'contrast' | 'graphics' | 'pace' | 'controls' | 'screenReader';
+type AnimationPace = 'relaxed' | 'standard' | 'fast';
+type TextPace = 'relaxed' | 'standard' | 'fast';
+type SettingsRowKind = 'toggle' | 'slider' | 'motion' | 'contrast' | 'graphics' | 'pace' | 'animationPace' | 'textPace' | 'controls' | 'screenReader' | 'colorCues' | 'screenShake' | 'flashEffects';
 type FieldFrame = {
   cx: number;
   cy: number;
@@ -64,10 +75,16 @@ export interface SettingsOverlayOptions {
   onToggleAudio: () => void;
   onSetMusicVolume: (value: number) => void;
   onSetSfxVolume: (value: number) => void;
+  onSetAmbienceVolume: (value: number) => void;
   onSetMotionPreference: (value: MotionPreference) => void;
   onSetVisualContrastPreference: (value: VisualContrastPreference) => void;
+  onSetColorCuePreference: (value: ColorCuePreference) => void;
+  onSetScreenShakePreference: (value: ScreenShakePreference) => void;
+  onSetFlashEffectsPreference: (value: FlashEffectsPreference) => void;
   onSetGraphicsQualityPreference: (value: GraphicsQualityPreference) => void;
   onSetCombatPacePreference: (value: CombatPace) => void;
+  onSetAnimationPacePreference: (value: AnimationPace) => void;
+  onSetTextPacePreference: (value: TextPace) => void;
   onSetScreenReaderPreference: (value: ScreenReaderPreference) => void;
   onToggleFullscreen: () => void;
 }
@@ -88,19 +105,30 @@ export interface PauseOverlayOptions {
   onSettings?: () => void;
 }
 
+export interface ConfirmRunExitOverlayOptions {
+  onKeepPlaying: () => void;
+  onAbandonRun: () => void;
+}
+
 export interface SystemOverlayDependencies {
   audio: {
     isMuted: () => boolean;
-    snapshot: () => { musicVolume: number; sfxVolume: number };
+    snapshot: () => { musicVolume: number; sfxVolume: number; ambienceVolume: number };
     toggleMute: () => void;
   };
   combatPacePreference: () => CombatPace;
+  animationPacePreference: () => AnimationPace;
+  textPacePreference: () => TextPace;
   graphicsQualityState: () => GraphicsQualityState;
   motionState: () => { preference: MotionPreference; reduced: boolean };
+  colorCueState: () => ColorCueState;
+  screenShakeState: () => ScreenShakeState;
+  flashEffectsState: () => FlashEffectsState;
   screenReaderState: () => ScreenReaderState;
   visualContrastState: () => VisualContrastState;
   playUiSound: (kind?: 'confirm' | 'close' | 'locked') => void;
   prefersReducedMotion: () => boolean;
+  activateAudioToggleControl: (scene: Phaser.Scene) => boolean;
   renderAudioToggleControl: (
     scene: Phaser.Scene,
     addTo: UiAdd,
@@ -165,8 +193,34 @@ function combatPaceLabel(value: CombatPace) {
   return 'Standard';
 }
 
+function animationPaceLabel(value: AnimationPace) {
+  if (value === 'relaxed') return 'Relaxed';
+  if (value === 'fast') return 'Fast';
+  return 'Standard';
+}
+
+function textPaceLabel(value: TextPace) {
+  if (value === 'relaxed') return 'Relaxed';
+  if (value === 'fast') return 'Fast';
+  return 'Standard';
+}
+
 function visualContrastLabel(value: VisualContrastPreference) {
   return value === 'high' ? 'High' : 'Standard';
+}
+
+function colorCueLabel(value: ColorCuePreference) {
+  return value === 'reinforced' ? 'Reinforced' : 'Standard';
+}
+
+function screenShakeLabel(state: ScreenShakeState) {
+  if (state.reducedByMotion) return 'Off (Motion)';
+  return state.preference === 'on' ? 'On' : 'Off';
+}
+
+function flashEffectsLabel(state: FlashEffectsState) {
+  if (state.reducedByMotion) return 'Reduced (Motion)';
+  return state.preference === 'reduced' ? 'Reduced' : 'Full';
 }
 
 function screenReaderLabel(value: ScreenReaderPreference) {
@@ -753,6 +807,100 @@ export function renderPauseMenuOverlay(
   }
 }
 
+export function renderConfirmRunExitOverlay(
+  scene: Phaser.Scene,
+  addTo: UiAdd,
+  options: ConfirmRunExitOverlayOptions,
+  dependencies: SystemOverlayDependencies,
+) {
+  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.86)
+    .setInteractive({ useHandCursor: false }));
+  const frameKey = iconKey('confirm-exit-frame');
+  if (scene.textures.exists(frameKey)) {
+    scene.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    addUi(addTo, scene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, frameKey)
+      .setDisplaySize(742, 278)
+      .setAlpha(0.94)
+      .setName('confirm-exit-frame'));
+    addUi(addTo, scene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, frameKey)
+      .setDisplaySize(760, 284)
+      .setAlpha(dependencies.prefersReducedMotion() ? 0.035 : 0.055)
+      .setBlendMode(Phaser.BlendModes.ADD)
+      .setName('confirm-exit-frame'));
+  } else {
+    addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 640, 286, 0x0d1420, 0.98)
+      .setStrokeStyle(3, 0xff7a6e, 0.92));
+  }
+  addUi(addTo, scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 78, 'Abandon this run?', {
+    fontFamily: UI_FONT,
+    fontSize: '30px',
+    fontStyle: UI_BOLD,
+    color: UI_GOLD,
+    stroke: '#000000',
+    strokeThickness: 4,
+  }).setOrigin(0.5));
+  addUi(addTo, scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24, 'Your progress on this run will be lost.', {
+    fontFamily: UI_FONT,
+    fontSize: '16px',
+    color: UI_SOFT,
+    align: 'center',
+    wordWrap: { width: 540 },
+  }).setOrigin(0.5));
+
+  const commandFrameKey = iconKey('confirm-exit-command-frame');
+  const hasCommandFrame = scene.textures.exists(commandFrameKey);
+  const renderCommand = (x: number, danger: boolean) => {
+    addUi(addTo, scene.add.rectangle(x, GAME_HEIGHT / 2 + 56, 230, 54, danger ? 0x2a1014 : 0x122235, hasCommandFrame ? (danger ? 0.24 : 0.18) : 0.98)
+      .setStrokeStyle(2, danger ? 0xff7a6e : 0x7ab8d6, hasCommandFrame ? (danger ? 0.28 : 0.22) : 0.95));
+    if (hasCommandFrame) {
+      scene.textures.get(commandFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+      const command = scene.add.image(x, GAME_HEIGHT / 2 + 56, commandFrameKey)
+        .setDisplaySize(262, 62)
+        .setAlpha(danger ? 0.92 : 0.88)
+        .setName('confirm-exit-command-frame');
+      if (danger) {
+        command.setTint(0xffe5dd);
+        addUi(addTo, scene.add.rectangle(x, GAME_HEIGHT / 2 + 57, 198, 25, 0x54151b, 0.16));
+      }
+      addUi(addTo, command);
+    }
+  };
+  const keepX = GAME_WIDTH / 2 - 140;
+  renderCommand(keepX, false);
+  addUi(addTo, scene.add.text(keepX, GAME_HEIGHT / 2 + 56, 'Keep Playing', {
+    fontFamily: UI_FONT,
+    fontSize: '18px',
+    fontStyle: UI_BOLD,
+    color: '#eef8ff',
+    stroke: '#000000',
+    strokeThickness: 3,
+  }).setOrigin(0.5));
+  const keepHit = addUi(addTo, scene.add.rectangle(keepX, GAME_HEIGHT / 2 + 56, 230, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+    .setInteractive({ useHandCursor: true })
+    .setName('route-confirm-exit-keep-hit'));
+  keepHit.on('pointerdown', options.onKeepPlaying);
+
+  const abandonX = GAME_WIDTH / 2 + 140;
+  renderCommand(abandonX, true);
+  addUi(addTo, scene.add.text(abandonX, GAME_HEIGHT / 2 + 56, 'Abandon Run', {
+    fontFamily: UI_FONT,
+    fontSize: '18px',
+    fontStyle: UI_BOLD,
+    color: '#ffd8d2',
+    stroke: '#000000',
+    strokeThickness: 3,
+  }).setOrigin(0.5));
+  const abandonHit = addUi(addTo, scene.add.rectangle(abandonX, GAME_HEIGHT / 2 + 56, 230, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+    .setInteractive({ useHandCursor: true })
+    .setName('route-confirm-exit-abandon-hit'));
+  abandonHit.on('pointerdown', options.onAbandonRun);
+  addUi(addTo, scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, 'Esc to keep playing', {
+    fontFamily: UI_FONT,
+    fontSize: '12px',
+    color: '#9aaabe',
+  }).setOrigin(0.5).setAlpha(0.88));
+}
+
 export function renderSettingsMenuOverlay(
   scene: Phaser.Scene,
   addTo: UiAdd,
@@ -803,29 +951,50 @@ export function renderSettingsMenuOverlay(
   const audioSnapshot = dependencies.audio.snapshot();
   const motion = dependencies.motionState();
   const contrast = dependencies.visualContrastState();
+  const colorCues = dependencies.colorCueState();
+  const screenShake = dependencies.screenShakeState();
+  const flashEffects = dependencies.flashEffectsState();
   const graphics = dependencies.graphicsQualityState();
   const pace = dependencies.combatPacePreference();
+  const animationPace = dependencies.animationPacePreference();
+  const textPace = dependencies.textPacePreference();
   const screenReader = dependencies.screenReaderState();
   const rows: Array<[string, string, SettingsRowKind]> = [
     ['Audio', dependencies.audio.isMuted() ? 'Muted' : 'On', 'toggle'],
     ['Music', `${Math.round(audioSnapshot.musicVolume * 100)}%`, 'slider'],
     ['SFX', `${Math.round(audioSnapshot.sfxVolume * 100)}%`, 'slider'],
+    ['Ambience', `${Math.round(audioSnapshot.ambienceVolume * 100)}%`, 'slider'],
     ['Controls', controlBindingsAreDefault() ? 'Default' : 'Custom', 'controls'],
     ['Motion', motionPreferenceLabel(motion.preference), 'motion'],
     ['Contrast', visualContrastLabel(contrast.preference), 'contrast'],
     ['Effects', graphicsQualityLabel(graphics.preference), 'graphics'],
     ['Combat Pace', combatPaceLabel(pace), 'pace'],
+    ['Animation Pace', animationPaceLabel(animationPace), 'animationPace'],
+    ['Text Pace', textPaceLabel(textPace), 'textPace'],
     ['Screen Reader', screenReaderLabel(screenReader.preference), 'screenReader'],
+    ['Color Cues', colorCueLabel(colorCues.preference), 'colorCues'],
+    ['Screen Shake', screenShakeLabel(screenShake), 'screenShake'],
+    ['Flashes', flashEffectsLabel(flashEffects), 'flashEffects'],
   ];
   let musicVolume = audioSnapshot.musicVolume;
   let sfxVolume = audioSnapshot.sfxVolume;
+  let ambienceVolume = audioSnapshot.ambienceVolume;
   let motionPreference = motion.preference;
   let contrastPreference = contrast.preference;
+  let colorCuePreference = colorCues.preference;
+  let screenShakePreference = screenShake.preference;
+  let flashEffectsPreference = flashEffects.preference;
   let graphicsPreference = graphics.preference;
   let pacePreference = pace;
+  let animationPacePreference = animationPace;
+  let textPacePreference = textPace;
   let screenReaderPreference = screenReader.preference;
   let controlsValueText: Phaser.GameObjects.Text | undefined;
+  let audioValueText: Phaser.GameObjects.Text | undefined;
+  let audioToggleFrame: Phaser.GameObjects.Image | undefined;
   let openControlsPanel = (_playSound = true) => {};
+  const controlsRowIndex = rows.findIndex(([, , kind]) => kind === 'controls');
+  const leftColumnRows = 8;
   const focusRegistryKey = `birdsquad.settingsFocus.${scene.scene.key}`;
   const storedFocusIndex = Number(scene.registry.get(focusRegistryKey));
   let focusIndex = Number.isFinite(storedFocusIndex)
@@ -833,10 +1002,11 @@ export function renderSettingsMenuOverlay(
     : 0;
   let focusRing: Phaser.GameObjects.Rectangle | undefined;
   const rowPosition = (index: number) => {
-    const rightColumn = index >= 5;
-    const row = rightColumn ? index - 5 : index;
+    const rightColumn = index >= leftColumnRows;
+    const row = rightColumn ? index - leftColumnRows : index;
     const cx = rightColumn ? frame.right - 280 : frame.left + 280;
-    return { cx, y: frame.top + 174 + row * 62, right: cx + 260 };
+    const spacing = rightColumn ? 62 : 54;
+    return { cx, y: frame.top + 174 + row * spacing, right: cx + 260 };
   };
   const setFocus = (index: number) => {
     focusIndex = (index + rows.length) % rows.length;
@@ -854,6 +1024,10 @@ export function renderSettingsMenuOverlay(
     sfxVolume = Math.round(clamp(value, 0, 1) * 20) / 20;
     options.onSetSfxVolume(sfxVolume);
   };
+  const setAmbienceVolume = (value: number) => {
+    ambienceVolume = Math.round(clamp(value, 0, 1) * 20) / 20;
+    options.onSetAmbienceVolume(ambienceVolume);
+  };
   const setMotion = (value: MotionPreference) => {
     motionPreference = value;
     options.onSetMotionPreference(value);
@@ -866,17 +1040,51 @@ export function renderSettingsMenuOverlay(
     contrastPreference = value;
     options.onSetVisualContrastPreference(value);
   };
+  const setColorCues = (value: ColorCuePreference) => {
+    colorCuePreference = value;
+    options.onSetColorCuePreference(value);
+  };
+  const setScreenShake = (value: ScreenShakePreference) => {
+    screenShakePreference = value;
+    options.onSetScreenShakePreference(value);
+  };
+  const setFlashEffects = (value: FlashEffectsPreference) => {
+    flashEffectsPreference = value;
+    options.onSetFlashEffectsPreference(value);
+  };
   const setPace = (value: CombatPace) => {
     pacePreference = value;
     options.onSetCombatPacePreference(value);
+  };
+  const setAnimationPace = (value: AnimationPace) => {
+    animationPacePreference = value;
+    options.onSetAnimationPacePreference(value);
+  };
+  const setTextPace = (value: TextPace) => {
+    textPacePreference = value;
+    options.onSetTextPacePreference(value);
   };
   const setScreenReader = (value: ScreenReaderPreference) => {
     screenReaderPreference = value;
     options.onSetScreenReaderPreference(value);
   };
-  const toggleAudio = () => {
-    dependencies.audio.toggleMute();
+  const refreshAudioPresentation = () => {
+    const muted = dependencies.audio.isMuted();
+    audioValueText?.setText(muted ? 'Muted' : 'On');
+    if (audioToggleFrame) {
+      audioToggleFrame.setAlpha(muted ? 0.52 : 0.7);
+      if (muted) audioToggleFrame.clearTint();
+      else audioToggleFrame.setTint(0xdffaff);
+    }
+  };
+  const notifyAudioToggle = () => {
+    refreshAudioPresentation();
     options.onToggleAudio();
+  };
+  const toggleAudio = () => {
+    if (dependencies.activateAudioToggleControl(scene)) return;
+    dependencies.audio.toggleMute();
+    notifyAudioToggle();
   };
   const adjustFocused = (direction: -1 | 1) => {
     if (focusIndex === 0) {
@@ -884,14 +1092,21 @@ export function renderSettingsMenuOverlay(
       return;
     }
     dependencies.playUiSound('confirm');
+    const kind = rows[focusIndex][2];
     if (focusIndex === 1) setMusicVolume(musicVolume + direction * 0.05);
     else if (focusIndex === 2) setSfxVolume(sfxVolume + direction * 0.05);
-    else if (focusIndex === 3) openControlsPanel();
-    else if (focusIndex === 4) setMotion(adjacentValue(['full', 'system', 'reduced'] as const, motionPreference, direction));
-    else if (focusIndex === 5) setContrast(adjacentValue(['standard', 'high'] as const, contrastPreference, direction));
-    else if (focusIndex === 6) setGraphics(adjacentValue(['full', 'auto', 'lean'] as const, graphicsPreference, direction));
-    else if (focusIndex === 7) setPace(adjacentValue(['cinematic', 'standard', 'snappy'] as const, pacePreference, direction));
-    else setScreenReader(adjacentValue(['off', 'on'] as const, screenReaderPreference, direction));
+    else if (focusIndex === 3) setAmbienceVolume(ambienceVolume + direction * 0.05);
+    else if (kind === 'controls') openControlsPanel();
+    else if (kind === 'motion') setMotion(adjacentValue(['full', 'system', 'reduced'] as const, motionPreference, direction));
+    else if (kind === 'contrast') setContrast(adjacentValue(['standard', 'high'] as const, contrastPreference, direction));
+    else if (kind === 'graphics') setGraphics(adjacentValue(['full', 'auto', 'lean'] as const, graphicsPreference, direction));
+    else if (kind === 'pace') setPace(adjacentValue(['cinematic', 'standard', 'snappy'] as const, pacePreference, direction));
+    else if (kind === 'animationPace') setAnimationPace(adjacentValue(['relaxed', 'standard', 'fast'] as const, animationPacePreference, direction));
+    else if (kind === 'textPace') setTextPace(adjacentValue(['relaxed', 'standard', 'fast'] as const, textPacePreference, direction));
+    else if (kind === 'screenReader') setScreenReader(adjacentValue(['off', 'on'] as const, screenReaderPreference, direction));
+    else if (kind === 'colorCues') setColorCues(adjacentValue(['standard', 'reinforced'] as const, colorCuePreference, direction));
+    else if (kind === 'screenShake') setScreenShake(adjacentValue(['on', 'off'] as const, screenShakePreference, direction));
+    else if (kind === 'flashEffects') setFlashEffects(adjacentValue(['full', 'reduced'] as const, flashEffectsPreference, direction));
   };
   const activateFocused = () => {
     if (focusIndex === 0) {
@@ -899,14 +1114,21 @@ export function renderSettingsMenuOverlay(
       return;
     }
     dependencies.playUiSound('confirm');
+    const kind = rows[focusIndex][2];
     if (focusIndex === 1) setMusicVolume(musicVolume + 0.05);
     else if (focusIndex === 2) setSfxVolume(sfxVolume + 0.05);
-    else if (focusIndex === 3) openControlsPanel();
-    else if (focusIndex === 4) setMotion(adjacentValue(['system', 'full', 'reduced'] as const, motionPreference, 1));
-    else if (focusIndex === 5) setContrast(adjacentValue(['standard', 'high'] as const, contrastPreference, 1));
-    else if (focusIndex === 6) setGraphics(adjacentValue(['auto', 'full', 'lean'] as const, graphicsPreference, 1));
-    else if (focusIndex === 7) setPace(adjacentValue(['cinematic', 'standard', 'snappy'] as const, pacePreference, 1));
-    else setScreenReader(adjacentValue(['off', 'on'] as const, screenReaderPreference, 1));
+    else if (focusIndex === 3) setAmbienceVolume(ambienceVolume + 0.05);
+    else if (kind === 'controls') openControlsPanel();
+    else if (kind === 'motion') setMotion(adjacentValue(['system', 'full', 'reduced'] as const, motionPreference, 1));
+    else if (kind === 'contrast') setContrast(adjacentValue(['standard', 'high'] as const, contrastPreference, 1));
+    else if (kind === 'graphics') setGraphics(adjacentValue(['auto', 'full', 'lean'] as const, graphicsPreference, 1));
+    else if (kind === 'pace') setPace(adjacentValue(['cinematic', 'standard', 'snappy'] as const, pacePreference, 1));
+    else if (kind === 'animationPace') setAnimationPace(adjacentValue(['relaxed', 'standard', 'fast'] as const, animationPacePreference, 1));
+    else if (kind === 'textPace') setTextPace(adjacentValue(['relaxed', 'standard', 'fast'] as const, textPacePreference, 1));
+    else if (kind === 'screenReader') setScreenReader(adjacentValue(['off', 'on'] as const, screenReaderPreference, 1));
+    else if (kind === 'colorCues') setColorCues(adjacentValue(['standard', 'reinforced'] as const, colorCuePreference, 1));
+    else if (kind === 'screenShake') setScreenShake(adjacentValue(['on', 'off'] as const, screenShakePreference, 1));
+    else if (kind === 'flashEffects') setFlashEffects(adjacentValue(['full', 'reduced'] as const, flashEffectsPreference, 1));
   };
   rows.forEach(([label, value, kind], index) => {
     const position = rowPosition(index);
@@ -922,12 +1144,17 @@ export function renderSettingsMenuOverlay(
     focusZone.on('pointerdown', () => {
       setFocus(index);
       if (index === 0) toggleAudio();
-      else if (index === 3) openControlsPanel();
-      else if (index === 4) setMotion(adjacentValue(['system', 'full', 'reduced'] as const, motionPreference, 1));
-      else if (index === 5) setContrast(adjacentValue(['standard', 'high'] as const, contrastPreference, 1));
-      else if (index === 6) setGraphics(adjacentValue(['auto', 'full', 'lean'] as const, graphicsPreference, 1));
-      else if (index === 7) setPace(adjacentValue(['cinematic', 'standard', 'snappy'] as const, pacePreference, 1));
-      else if (index === 8) setScreenReader(adjacentValue(['off', 'on'] as const, screenReaderPreference, 1));
+      else if (kind === 'controls') openControlsPanel();
+      else if (kind === 'motion') setMotion(adjacentValue(['system', 'full', 'reduced'] as const, motionPreference, 1));
+      else if (kind === 'contrast') setContrast(adjacentValue(['standard', 'high'] as const, contrastPreference, 1));
+      else if (kind === 'graphics') setGraphics(adjacentValue(['auto', 'full', 'lean'] as const, graphicsPreference, 1));
+      else if (kind === 'pace') setPace(adjacentValue(['cinematic', 'standard', 'snappy'] as const, pacePreference, 1));
+      else if (kind === 'animationPace') setAnimationPace(adjacentValue(['relaxed', 'standard', 'fast'] as const, animationPacePreference, 1));
+      else if (kind === 'textPace') setTextPace(adjacentValue(['relaxed', 'standard', 'fast'] as const, textPacePreference, 1));
+      else if (kind === 'screenReader') setScreenReader(adjacentValue(['off', 'on'] as const, screenReaderPreference, 1));
+      else if (kind === 'colorCues') setColorCues(adjacentValue(['standard', 'reinforced'] as const, colorCuePreference, 1));
+      else if (kind === 'screenShake') setScreenShake(adjacentValue(['on', 'off'] as const, screenShakePreference, 1));
+      else if (kind === 'flashEffects') setFlashEffects(adjacentValue(['full', 'reduced'] as const, flashEffectsPreference, 1));
     });
     addUi(addTo, scene.add.text(cx - 238, y, label, {
       fontFamily: UI_FONT,
@@ -936,21 +1163,24 @@ export function renderSettingsMenuOverlay(
       color: UI_FIELD.muted,
     }).setOrigin(0, 0.5));
     if (kind === 'slider') {
-      const isMusic = label === 'Music';
+      const slider = label === 'Music'
+        ? { value: audioSnapshot.musicVolume, color: UI_FIELD.cyan, name: 'music', set: setMusicVolume }
+        : label === 'SFX'
+          ? { value: audioSnapshot.sfxVolume, color: UI_FIELD.gold, name: 'sfx', set: setSfxVolume }
+          : { value: audioSnapshot.ambienceVolume, color: UI_FIELD.green, name: 'ambience', set: setAmbienceVolume };
       renderSettingsVolumeSlider(
         scene,
         addTo,
         right - 186,
         y,
         254,
-        isMusic ? audioSnapshot.musicVolume : audioSnapshot.sfxVolume,
-        isMusic ? UI_FIELD.cyan : UI_FIELD.gold,
+        slider.value,
+        slider.color,
         (next) => {
           setFocus(index);
-          if (isMusic) setMusicVolume(next);
-          else setSfxVolume(next);
+          slider.set(next);
         },
-        `system-settings-${isMusic ? 'music' : 'sfx'}-slider-hit`,
+        `system-settings-${slider.name}-slider-hit`,
         dependencies,
       );
       addUi(addTo, scene.add.text(right - 62, y, value, {
@@ -984,6 +1214,26 @@ export function renderSettingsMenuOverlay(
         color: UI_FIELD.text,
         align: 'right',
       }).setOrigin(1, 0.5));
+    } else if (kind === 'animationPace') {
+      const toggle = addSystemSettingsToggleFrame(scene, addTo, right - 144, y, 176, 42, {
+        alpha: 0.7,
+        tint: animationPace === 'standard' ? undefined : 0xdffaff,
+      }, dependencies);
+      const animationHit = addUi(addTo, scene.add.rectangle(right - 144, y, 276, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+        .setName('system-settings-animation-pace-toggle-hit')
+        .setInteractive({ useHandCursor: true }));
+      animationHit.on('pointerdown', () => {
+        setFocus(index);
+        setAnimationPace(adjacentValue(['relaxed', 'standard', 'fast'] as const, animationPacePreference, 1));
+      });
+      if (toggle) toggle.setName('system-settings-animation-pace-frame');
+      addUi(addTo, scene.add.text(right - 96, y, value, {
+        fontFamily: UI_FONT,
+        fontSize: '14px',
+        fontStyle: UI_BOLD,
+        color: UI_FIELD.text,
+        align: 'right',
+      }).setOrigin(1, 0.5));
     } else if (kind === 'contrast') {
       renderSettingsContrastSwitch(scene, addTo, right - 144, y, contrast.preference, () => {
         setFocus(index);
@@ -1009,9 +1259,13 @@ export function renderSettingsMenuOverlay(
         align: 'right',
       }).setOrigin(1, 0.5));
     } else {
-      addSystemSettingsToggleFrame(scene, addTo, right - 144, y, 176, 42, {
+      const toggleFrame = addSystemSettingsToggleFrame(scene, addTo, right - 144, y, 176, 42, {
         alpha: label === 'Audio' && dependencies.audio.isMuted() ? 0.52 : 0.7,
-        tint: (label === 'Audio' && !dependencies.audio.isMuted()) || (kind === 'screenReader' && screenReader.enabled)
+        tint: (label === 'Audio' && !dependencies.audio.isMuted())
+          || (kind === 'screenReader' && screenReader.enabled)
+          || (kind === 'colorCues' && colorCues.reinforced)
+          || (kind === 'screenShake' && screenShake.enabled)
+          || (kind === 'flashEffects' && flashEffects.reduced)
           ? 0xdffaff
           : undefined,
       }, dependencies);
@@ -1022,6 +1276,10 @@ export function renderSettingsMenuOverlay(
         color: UI_FIELD.text,
         align: 'right',
       }).setOrigin(1, 0.5));
+      if (label === 'Audio') {
+        audioValueText = valueText.setName('system-settings-audio-value');
+        audioToggleFrame = toggleFrame;
+      }
       if (kind === 'controls') controlsValueText = valueText;
     }
   });
@@ -1033,9 +1291,9 @@ export function renderSettingsMenuOverlay(
   setFocus(focusIndex);
 
   const audioPosition = rowPosition(0);
-  dependencies.renderAudioToggleControl(scene, addTo, audioPosition.right - 74, audioPosition.y, () => {
+  dependencies.renderAudioToggleControl(scene, addTo, audioPosition.right - 48, audioPosition.y, () => {
     setFocus(0);
-    options.onToggleAudio();
+    notifyAudioToggle();
   });
   dependencies.renderFieldButton(scene, addTo, frame.cx - 112, frame.bottom - 72, 190, MIN_SUPPORTED_TOUCH_TARGET, scene.scale.isFullscreen ? 'Windowed' : 'Full Screen', true, () => {
     options.onToggleFullscreen();
@@ -1087,7 +1345,7 @@ export function renderSettingsMenuOverlay(
     controlsFocusRing = undefined;
     if (wasOpen) {
       if (focusRing?.active) focusRing.setVisible(true);
-      setFocus(3);
+      setFocus(controlsRowIndex);
       if (playSound) dependencies.playUiSound('close');
     }
   };
@@ -1252,7 +1510,7 @@ export function renderSettingsMenuOverlay(
 
   openControlsPanel = (playSound = true) => {
     if (controlsPanel?.active) return;
-    setFocus(3);
+    setFocus(controlsRowIndex);
     focusRing?.setVisible(false);
     scene.registry.set(controlsPanelKey, true);
     scene.registry.set(controlsPageKey, controlsPage);
@@ -1461,7 +1719,7 @@ export function renderHowToPlayOverlay(
       'Quick keys',
       `${controlBindingLabel('roost')} Roosts; ${controlBindingLabel('confirm')} confirms. 1-9 selects; ${controlBindingLabel('skipReward')} skips; ${controlBindingLabel('mute')} mutes.`,
     ],
-    ['Run shape', 'Early routes teach your deck. Later districts add bosses, markets, and Ascension pressure.'],
+    ['Fair draws', 'After the first lesson, fights seed-shuffle the deck and protect playable pressure when the deck has it.'],
   ];
   tips.forEach(([label, value], index) => {
     const y = frame.bottom - 118 + index * 34;

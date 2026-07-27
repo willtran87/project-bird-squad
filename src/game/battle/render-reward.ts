@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { renderCardColorCue } from '../card-color-cues';
 import { MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
 
 export type RewardCeremonyKind = 'card' | 'upgrade' | 'waymark';
@@ -74,6 +75,7 @@ export interface RewardCeremonyRenderContext {
   subtitle: string;
   reducedMotion: boolean;
   leanEffects: boolean;
+  reinforcedColorCues: boolean;
   fontFamily: string;
   boldFontStyle: string;
   goldColor: string;
@@ -454,6 +456,13 @@ function renderCard(context: RewardCeremonyRenderContext, card: RewardCardView, 
     wordWrap: { width: cardWidth - 66 },
     maxLines: 1
   }));
+  if (context.reinforcedColorCues) {
+    renderCardColorCue(scene, target, x + cardWidth / 2 - 54, top + 102, card.label, card.accent, {
+      name: 'reward-color-cue-badge',
+      width: 92,
+      height: 24,
+    });
+  }
   target.add(scene.add.rectangle(x, bottom - 57, cardWidth - 18, 96, 0x05080e, 0.78).setStrokeStyle(1, card.accent, 0.28));
   target.add(scene.add.text(x - cardWidth / 2 + 16, bottom - 94, card.summary, {
     fontFamily,

@@ -32,7 +32,7 @@
     "build:runtime-item-art": "python tools/build-runtime-item-art.py",
     "build:runtime-art": "npm run build:runtime-ui-art && npm run build:runtime-fx-art && npm run build:runtime-item-art && npm run build:runtime-card-art && npm run build:runtime-enemy-art",
     "validate:runtime": "node tools/validate-runtime-data.mjs",
-    "validate:runtime-assets": "node tools/validate-runtime-asset-sizes.mjs && node tools/validate-world-assets.mjs",
+    "validate:runtime-assets": "node tools/validate-runtime-asset-sizes.mjs && node tools/validate-world-assets.mjs && node tools/validate-combat-fx-contracts.mjs",
     "validate:bundle-size": "node tools/validate-bundle-sizes.mjs",
     "validate:deployment-cache": "node tools/validate-deployment-cache.mjs",
     "validate:enemy-variety-contracts": "node tools/export-enemy-variety-prompts.mjs --check",
@@ -45,7 +45,7 @@
     "stats:playtest": "node tools/playtest-stats.mjs --seeded-if-empty",
     "test:e2e": "playwright test",
     "test:checks": "npm run validate:runtime && npm run validate:runtime-assets",
-    "test:sequencing": "playwright test tests/smoke.spec.ts --grep \"card previews preserve|district contracts|essential FX|defeat emits|combat attacks resolve|advanceTime deterministically|combat redraws reuse|holding Hustle accelerates|pause overlay opens\"",
+    "test:sequencing": "playwright test tests/smoke.spec.ts --grep \"card previews preserve|district contracts|essential FX|defeat emits|defeat review explains|flight details expose|flight log safely restores|one-flight strategy achievements|combat pile inspector supports|cleared cards stay|singleton deck rejects|combat attacks resolve|direction-neutral attack tell stays readable|Text Pace scales|Animation Pace scales|advanceTime deterministically|combat redraws reuse|holding Hustle accelerates|pause overlay opens|procedural routes satisfy|opening draws are|starter Preens|reward Preens across every rarity|Ascension mastery tiers\"",
     "validate": "npm run validate:docs && npm run validate:runtime && npm run validate:runtime-assets && npm run validate:bundle-size && npm run validate:deployment-cache && npm run validate:enemy-variety-contracts && npm run validate:minor-overlays && npm run test:sequencing",
     "test": "npm run test:checks && npm run test:e2e",
     "preview": "vite preview --host 127.0.0.1"

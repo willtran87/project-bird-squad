@@ -1,6 +1,11 @@
 import Phaser from 'phaser';
 
 const FLOATING_CALLOUT_TEXTURE = 'combat-floating-callout';
+let feedbackTextHoldScale = 1;
+
+export function setFeedbackTextHoldScale(scale: number): void {
+  feedbackTextHoldScale = Phaser.Math.Clamp(Number.isFinite(scale) ? scale : 1, 0.6, 1.5);
+}
 
 /** Floating combat text that drifts up and fades out, then self-destructs. */
 export function floatingText(
@@ -49,7 +54,7 @@ export function floatingText(
         targets: group,
         y: y - 48,
         alpha: 0,
-        delay: options.holdMs ?? 380,
+        delay: options.holdMs ?? Math.round(380 * feedbackTextHoldScale),
         duration: 330,
         ease: 'Cubic.easeOut',
         onComplete: () => group.destroy(true),
@@ -183,9 +188,11 @@ export function banner(
     width?: number;
     height?: number;
     name?: string;
+    holdMs?: number;
   } = {},
 ): void {
   const group = scene.add.container(x, y).setAlpha(0).setScale(0.92);
+  if (options.name) group.setName(options.name);
   if (options.textureKey && scene.textures.exists(options.textureKey)) {
     scene.textures.get(options.textureKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
     const backing = scene.add.image(0, 0, options.textureKey)
@@ -215,7 +222,7 @@ export function banner(
       scene.tweens.add({
         targets: group,
         alpha: 0,
-        delay: 520,
+        delay: options.holdMs ?? Math.round(520 * feedbackTextHoldScale),
         duration: 320,
         onComplete: () => group.destroy(true),
       }),

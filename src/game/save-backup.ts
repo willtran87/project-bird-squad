@@ -24,11 +24,17 @@ const PREFERENCE_KEYS = {
   controls: 'birdsquad.controlBindings',
   graphicsQuality: 'birdsquad.graphicsQuality',
   visualContrast: 'birdsquad.visualContrast',
+  colorCues: 'birdsquad.colorCues',
+  screenShake: 'birdsquad.screenShake',
+  flashEffects: 'birdsquad.flashEffects',
   motion: 'birdsquad.motionPreference',
   combatPace: 'birdsquad.combatPace',
+  animationPace: 'birdsquad.animationPace',
+  textPace: 'birdsquad.textPace',
   screenReader: 'birdsquad.screenReader',
   musicVolume: 'birdsquad.musicVolume',
   sfxVolume: 'birdsquad.sfxVolume',
+  ambienceVolume: 'birdsquad.ambienceVolume',
   audioMuted: 'birdsquad.audioMuted',
   maxTier: 'birdsquad.maxTier',
 } as const;
@@ -42,11 +48,17 @@ export interface SaveBackupPreferences {
   controls: ControlBindings;
   graphicsQuality: 'auto' | 'full' | 'lean';
   visualContrast: 'standard' | 'high';
+  colorCues: 'standard' | 'reinforced';
+  screenShake: 'on' | 'off';
+  flashEffects: 'full' | 'reduced';
   motion: 'system' | 'full' | 'reduced';
   combatPace: 'cinematic' | 'standard' | 'snappy';
+  animationPace: 'relaxed' | 'standard' | 'fast';
+  textPace: 'relaxed' | 'standard' | 'fast';
   screenReader: 'off' | 'on';
   musicVolume: number;
   sfxVolume: number;
+  ambienceVolume: number;
   audioMuted: boolean;
   maxTier: number;
 }
@@ -111,15 +123,49 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
   const controls = sanitizeControls(value.controls);
   const musicVolume = finiteRange(value.musicVolume, 0, 1);
   const sfxVolume = finiteRange(value.sfxVolume, 0, 1);
+  const ambienceVolume = value.ambienceVolume === undefined
+    ? musicVolume
+    : finiteRange(value.ambienceVolume, 0, 1);
   const maxTier = finiteRange(value.maxTier, 0, MAX_DIFFICULTY);
+  const colorCues = value.colorCues === undefined
+    ? 'standard'
+    : ['standard', 'reinforced'].includes(String(value.colorCues))
+      ? value.colorCues as SaveBackupPreferences['colorCues']
+      : undefined;
+  const screenShake = value.screenShake === undefined
+    ? 'on'
+    : ['on', 'off'].includes(String(value.screenShake))
+      ? value.screenShake as SaveBackupPreferences['screenShake']
+      : undefined;
+  const flashEffects = value.flashEffects === undefined
+    ? 'full'
+    : ['full', 'reduced'].includes(String(value.flashEffects))
+      ? value.flashEffects as SaveBackupPreferences['flashEffects']
+      : undefined;
+  const textPace = value.textPace === undefined
+    ? 'standard'
+    : ['relaxed', 'standard', 'fast'].includes(String(value.textPace))
+      ? value.textPace as SaveBackupPreferences['textPace']
+      : undefined;
+  const animationPace = value.animationPace === undefined
+    ? 'standard'
+    : ['relaxed', 'standard', 'fast'].includes(String(value.animationPace))
+      ? value.animationPace as SaveBackupPreferences['animationPace']
+      : undefined;
   if (
     !controls
+    || !colorCues
+    || !screenShake
+    || !flashEffects
+    || !animationPace
+    || !textPace
     || !['auto', 'full', 'lean'].includes(String(value.graphicsQuality))
     || !['standard', 'high'].includes(String(value.visualContrast))
     || !['system', 'full', 'reduced'].includes(String(value.motion))
     || !['cinematic', 'standard', 'snappy'].includes(String(value.combatPace))
     || musicVolume === undefined
     || sfxVolume === undefined
+    || ambienceVolume === undefined
     || maxTier === undefined
     || typeof value.audioMuted !== 'boolean'
   ) return undefined;
@@ -127,11 +173,17 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
     controls,
     graphicsQuality: value.graphicsQuality as SaveBackupPreferences['graphicsQuality'],
     visualContrast: value.visualContrast as SaveBackupPreferences['visualContrast'],
+    colorCues,
+    screenShake,
+    flashEffects,
     motion: value.motion as SaveBackupPreferences['motion'],
     combatPace: value.combatPace as SaveBackupPreferences['combatPace'],
+    animationPace,
+    textPace,
     screenReader: value.screenReader === 'on' ? 'on' : 'off',
     musicVolume,
     sfxVolume,
+    ambienceVolume,
     audioMuted: value.audioMuted,
     maxTier: Math.floor(maxTier),
   };
@@ -213,11 +265,17 @@ function serializedEntries(bundle: SaveBackupBundle) {
     [PREFERENCE_KEYS.controls, JSON.stringify({ version: 1, bindings: preferences.controls })],
     [PREFERENCE_KEYS.graphicsQuality, preferences.graphicsQuality],
     [PREFERENCE_KEYS.visualContrast, preferences.visualContrast],
+    [PREFERENCE_KEYS.colorCues, preferences.colorCues],
+    [PREFERENCE_KEYS.screenShake, preferences.screenShake],
+    [PREFERENCE_KEYS.flashEffects, preferences.flashEffects],
     [PREFERENCE_KEYS.motion, preferences.motion],
     [PREFERENCE_KEYS.combatPace, preferences.combatPace],
+    [PREFERENCE_KEYS.animationPace, preferences.animationPace],
+    [PREFERENCE_KEYS.textPace, preferences.textPace],
     [PREFERENCE_KEYS.screenReader, preferences.screenReader],
     [PREFERENCE_KEYS.musicVolume, preferences.musicVolume.toFixed(2)],
     [PREFERENCE_KEYS.sfxVolume, preferences.sfxVolume.toFixed(2)],
+    [PREFERENCE_KEYS.ambienceVolume, preferences.ambienceVolume.toFixed(2)],
     [PREFERENCE_KEYS.audioMuted, preferences.audioMuted ? '1' : '0'],
     [PREFERENCE_KEYS.maxTier, String(preferences.maxTier)],
   ]);

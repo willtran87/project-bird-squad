@@ -81,6 +81,9 @@ export function firstFlightGuideStep(progress = firstFlightGuideProgress()): Fir
 export function recordFirstFlightGuideEvent(event: TrackedGuideStep) {
   const progress = firstFlightGuideProgress();
   if (!progress.enabled || progress.completed) return;
+  // Keep gameplay actions unrestricted, but preserve the authored teaching
+  // order so an early action cannot silently satisfy and skip a later lesson.
+  if (firstFlightGuideStep(progress) !== event) return;
   if (event === 'route') progress.routeCommits += 1;
   else if (event === 'card') progress.cardsPlayed += 1;
   else if (event === 'roost') progress.roosts += 1;

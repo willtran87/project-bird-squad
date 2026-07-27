@@ -11,8 +11,10 @@ evidence.
 2. Open the production game with `?playtest=1` appended to its URL.
 3. Do not explain route confirmation, targeting, Roost, Tells, Cover, Flow, or
    reward skipping unless the tester becomes completely stuck.
-4. Observe the questions in the Measurement Plan of
-   `docs/game/game-experience-audit.md` and record concise notes separately.
+4. Copy `docs/game/playtest-observer-template.md` for the session and record
+   the observations and questions it lists. Keep the tester code anonymous.
+5. Ensure the sheet's export filename and run ID match the tester's downloaded
+   JSON so ratings, telemetry, and observer notes cannot be mixed between runs.
 
 The query flag changes no gameplay and uploads nothing. It only adds a local
 export command to the Flock Record.
@@ -33,6 +35,10 @@ completion evidence.
 
 Keep each tester's download as a separate file. The run ID prevents accidental
 duplicates when the dashboard merges files.
+
+Keep each completed observation sheet beside its matching export or in another
+clearly linked evidence folder. The dashboard reads JSON exports only; observer
+notes remain separate human evidence.
 
 ## Build The Dashboard
 
@@ -56,6 +62,7 @@ The five-session gate is satisfied only when:
 - all five testers are genuinely fresh players;
 - observed notes cover route confirmation, targeting, Roost, Tells, Cover, and
   reward selection;
+- each observation sheet names the matching export filename and run ID;
 - all five exported runs contain complete Fun, Fairness, Clarity, and Replay
   ratings from the tester who played that run;
 - at least four of five can explain Cohesion, Cover, Wingbeats, and enemy Tells

@@ -157,8 +157,8 @@ if (failures.length === 0) {
     fail('Battle reward renderer chunk is preloaded by index.html; it should stay lazy until a reward ceremony opens.');
   }
 
-  if (preloadHrefs.some((href) => /run-challenge-/.test(href))) {
-    fail('Run challenge chunk is preloaded by index.html; it should stay lazy until a flight code is copied.');
+  if (preloadHrefs.some((href) => /boss-dossier-/.test(href))) {
+    fail('Boss dossier chunk is preloaded by index.html; defeat review and seeded-flight sharing should stay lazy until an outcome opens.');
   }
 
   if (preloadHrefs.some((href) => /profile-scene-/.test(href))) {
@@ -169,8 +169,44 @@ if (failures.length === 0) {
     fail('System overlays chunk is preloaded by index.html; it should stay lazy until a pause, settings, or guide panel opens.');
   }
 
+  if (preloadHrefs.some((href) => /card-hover-detail-/.test(href))) {
+    fail('Card detail chunk is preloaded by index.html; it should stay lazy until RouteScene opens.');
+  }
+
+  if (preloadHrefs.some((href) => /card-comparison-/.test(href))) {
+    fail('Card comparison chunk is preloaded by index.html; it should stay lazy until a comparison is pinned.');
+  }
+
+  if (preloadHrefs.some((href) => /route-deck-browser-/.test(href))) {
+    fail('Route Deck Review browser is preloaded by index.html; it should stay lazy until the binder opens.');
+  }
+
+  if (preloadHrefs.some((href) => /route-supply-drawer-/.test(href))) {
+    fail('Route Supply drawer is preloaded by index.html; it should stay lazy until the drawer opens.');
+  }
+
+  if (preloadHrefs.some((href) => /route-reward-overlay-/.test(href))) {
+    fail('Route reward review is preloaded by index.html; it should stay lazy until a reward decision opens.');
+  }
+
+  if (preloadHrefs.some((href) => /waymark-review-/.test(href))) {
+    fail('Waymark review chunk is preloaded by index.html; it should stay lazy until the owned Waymark drawer opens.');
+  }
+
+  if (preloadHrefs.some((href) => /route-debug-state-/.test(href))) {
+    fail('Route text-state chunk is preloaded by index.html; it should stay lazy until RouteScene opens.');
+  }
+
+  if (preloadHrefs.some((href) => /flock-stats-overlay-/.test(href))) {
+    fail('Flock Stats chunk is preloaded by index.html; it should stay lazy until its overlay opens.');
+  }
+
   if (preloadHrefs.some((href) => /adaptive-music-/.test(href))) {
     fail('Adaptive music chunk is preloaded by index.html; it should stay lazy until the first audio interaction.');
+  }
+
+  if (preloadHrefs.some((href) => /screen-reader-runtime-/.test(href))) {
+    fail('Screen reader runtime is preloaded by index.html; it should stay lazy until announcements are enabled.');
   }
 
   const files = fs.readdirSync(assetsDir);
@@ -295,9 +331,9 @@ if (failures.length === 0) {
     fail(`Expected exactly one lazy battle reward renderer chunk, found ${battleRewardRendererChunks.length}.`);
   }
 
-  const runChallengeChunks = files.filter((name) => /^run-challenge-.*\.js$/.test(name));
-  if (runChallengeChunks.length !== 1) {
-    fail(`Expected exactly one lazy run-challenge chunk, found ${runChallengeChunks.length}.`);
+  const bossDossierChunks = files.filter((name) => /^boss-dossier-.*\.js$/.test(name));
+  if (bossDossierChunks.length !== 1) {
+    fail(`Expected exactly one lazy boss-dossier chunk, found ${bossDossierChunks.length}.`);
   }
 
   const profileSceneChunks = files.filter((name) => /^profile-scene-.*\.js$/.test(name));
@@ -310,9 +346,39 @@ if (failures.length === 0) {
     fail(`Expected exactly one lazy system-overlays chunk, found ${systemOverlayChunks.length}.`);
   }
 
+  const cardComparisonChunks = files.filter((name) => /^card-comparison-.*\.js$/.test(name));
+  if (cardComparisonChunks.length !== 1) {
+    fail(`Expected exactly one lazy card-comparison chunk, found ${cardComparisonChunks.length}.`);
+  }
+
+  const routeDeckBrowserChunks = files.filter((name) => /^route-deck-browser-.*\.js$/.test(name));
+  if (routeDeckBrowserChunks.length !== 1) {
+    fail(`Expected exactly one lazy route-deck-browser chunk, found ${routeDeckBrowserChunks.length}.`);
+  }
+
+  const routeSupplyDrawerChunks = files.filter((name) => /^route-supply-drawer-.*\.js$/.test(name));
+  if (routeSupplyDrawerChunks.length !== 1) {
+    fail(`Expected exactly one lazy route-supply-drawer chunk, found ${routeSupplyDrawerChunks.length}.`);
+  }
+
+  const routeRewardOverlayChunks = files.filter((name) => /^route-reward-overlay-.*\.js$/.test(name));
+  if (routeRewardOverlayChunks.length !== 1) {
+    fail(`Expected exactly one lazy route-reward-overlay chunk, found ${routeRewardOverlayChunks.length}.`);
+  }
+
+  const waymarkReviewChunks = files.filter((name) => /^waymark-review-.*\.js$/.test(name));
+  if (waymarkReviewChunks.length !== 1) {
+    fail(`Expected exactly one lazy waymark-review chunk, found ${waymarkReviewChunks.length}.`);
+  }
+
   const adaptiveMusicChunks = files.filter((name) => /^adaptive-music-.*\.js$/.test(name));
   if (adaptiveMusicChunks.length !== 1) {
     fail(`Expected exactly one lazy adaptive-music chunk, found ${adaptiveMusicChunks.length}.`);
+  }
+
+  const screenReaderRuntimeChunks = files.filter((name) => /^screen-reader-runtime-.*\.js$/.test(name));
+  if (screenReaderRuntimeChunks.length !== 1) {
+    fail(`Expected exactly one lazy screen-reader runtime chunk, found ${screenReaderRuntimeChunks.length}.`);
   }
 
   const vendorChunks = files.filter((name) => /^vendor-phaser-.*\.js$/.test(name));

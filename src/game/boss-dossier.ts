@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
+import { copySharedRouteLink, type SharedRouteMode } from './run-challenge';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
+import type { RouteNodeType, RuntimeRouteMap } from './types';
 
 export interface BossDossierEnemy {
   id: string;
@@ -47,6 +49,149 @@ interface OutcomeLookups {
 }
 
 type EnemyLookup = (id: string) => BossDossierEnemy | undefined;
+
+interface DefeatReviewDamage {
+  enemyId: string;
+  moveId: string;
+  moveLabel: string;
+  damageTaken: number;
+  blockedDamage: number;
+  hitCount: number;
+}
+
+interface DefeatReviewRunSummary {
+  killedBy?: string;
+  combatResults: Array<{
+    killedByMove?: string;
+    damageTakenByMove?: DefeatReviewDamage[];
+  }>;
+  decisionStats?: {
+    overextensions?: number;
+    lowCardTurns?: number;
+    unspentWingbeatAtRoost?: number;
+  };
+}
+
+export interface DefeatReview {
+  fatalMove: string;
+  signal: 'OPEN SKY' | 'UNSPENT WINGBEATS' | 'UNCOVERED TELL' | 'LOW TEMPO' | 'SEEDED RETRY';
+  headline: string;
+  evidence: string;
+  tip: string;
+  replayNote: string;
+  topPressure?: DefeatReviewDamage;
+}
+
+export interface OutcomeFlightDetails {
+  deck: string[];
+  path: string[];
+  waymarks: string[];
+  supplies: string[];
+  decisions: string[];
+  results: string[];
+}
+
+interface OutcomeFlightSummary {
+  seed: string;
+  result: 'win' | 'loss';
+  difficulty?: number;
+  runMode: string;
+  finalNodeId: string;
+  turnsTaken: number;
+  durationMs: number;
+  currentCohesion: number;
+  maxCohesion: number;
+  scrapEarned: number;
+  scrapSpent: number;
+  finalScrap: number;
+  path: string[];
+  deck: Array<{ id: string; upgraded?: boolean }>;
+  routeMarks: string[];
+  suppliesUsed: string[];
+  signals: Array<{ signalId: string; choiceKey: string }>;
+  cardRewards: Array<{ picked?: string; skipped: boolean }>;
+  routeDecisions: Array<{ decisionMs: number }>;
+  combatResults: Array<{
+    damageDealt: number;
+    cohesionLost: number;
+    objective?: { status: 'complete' | 'failed' | 'active' };
+  }>;
+  decisionStats?: {
+    cardsPlayed: number;
+    overextensions: number;
+    unspentWingbeatAtRoost: number;
+    blockedDamage: number;
+  };
+}
+
+interface OutcomeFlightDetailsLookups {
+  maps: Array<{ map: RuntimeRouteMap; mapIndex: number }>;
+  cardName: (id: string) => string;
+  routeNodeTypeLabel: (type: RouteNodeType) => string;
+  waymarkName: (id: string) => string;
+  supplyName: (id: string) => string;
+  signalChoice: (signalId: string, choiceKey: string) => string;
+  difficultyLabel: (tier: number) => string;
+}
+
+export function buildOutcomeFlightDetails(
+  summary: OutcomeFlightSummary,
+  lookups: OutcomeFlightDetailsLookups,
+): OutcomeFlightDetails {
+  const cap = (lines: string[], maximum: number) => lines.length <= maximum
+    ? lines
+    : [...lines.slice(0, maximum - 1), `+ ${lines.length - maximum + 1} more`];
+  const deck = cap(summary.deck.map((saved, index) => (
+    `${String(index + 1).padStart(2, '0')} · ${lookups.cardName(saved.id)}${saved.upgraded ? '+' : ''}`
+  )), 20);
+  const pathIds = [...summary.path];
+  if (summary.finalNodeId && !pathIds.includes(summary.finalNodeId)) pathIds.push(summary.finalNodeId);
+  const path = cap(pathIds.map((id, index) => {
+    const located = lookups.maps.map(({ map, mapIndex }) => ({
+      mapIndex,
+      node: map.nodes.find((candidate) => candidate.id === id),
+    })).find((entry) => entry.node);
+    const district = located ? located.mapIndex + 1 : '?';
+    return `${String(index + 1).padStart(2, '0')} · D${district} ${located?.node ? lookups.routeNodeTypeLabel(located.node.type).toUpperCase() : 'STOP'} · ${located?.node?.label ?? id}`;
+  }), 20);
+  const pickedRewards = summary.cardRewards
+    .filter((reward) => reward.picked)
+    .map((reward) => lookups.cardName(reward.picked!));
+  const skippedRewards = summary.cardRewards.filter((reward) => reward.skipped).length;
+  const routeDecisionMs = summary.routeDecisions.reduce((sum, decision) => sum + decision.decisionMs, 0);
+  const averageRouteSeconds = summary.routeDecisions.length > 0
+    ? Math.round(routeDecisionMs / summary.routeDecisions.length / 100) / 10
+    : 0;
+  const completedObjectives = summary.combatResults.filter((combat) => combat.objective?.status === 'complete').length;
+  const failedObjectives = summary.combatResults.filter((combat) => combat.objective?.status === 'failed').length;
+  const stats = summary.decisionStats;
+  const decisions = cap([
+    `${summary.routeDecisions.length} route choice${summary.routeDecisions.length === 1 ? '' : 's'} · ${averageRouteSeconds}s average`,
+    `${pickedRewards.length} card recruit${pickedRewards.length === 1 ? '' : 's'} · ${skippedRewards} skipped`,
+    ...(pickedRewards.length > 0 ? [`Recruited · ${pickedRewards.join(' / ')}`] : []),
+    ...summary.signals.map((event) => `Signal · ${lookups.signalChoice(event.signalId, event.choiceKey)}`),
+    `Objectives · ${completedObjectives} complete / ${failedObjectives} missed`,
+    `Cards played · ${stats?.cardsPlayed ?? 0} · Overextensions ${stats?.overextensions ?? 0}`,
+    `Cover blocked · ${stats?.blockedDamage ?? 0} · Unspent Wingbeats ${stats?.unspentWingbeatAtRoost ?? 0}`,
+  ], 8);
+  const totalDealt = summary.combatResults.reduce((sum, combat) => sum + combat.damageDealt, 0);
+  const totalTaken = summary.combatResults.reduce((sum, combat) => sum + combat.cohesionLost, 0);
+  const totalSeconds = Math.max(0, Math.round(summary.durationMs / 1000));
+  const duration = `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
+  return {
+    deck,
+    path,
+    waymarks: summary.routeMarks.map(lookups.waymarkName),
+    supplies: summary.suppliesUsed.map(lookups.supplyName),
+    decisions,
+    results: [
+      `${summary.result.toUpperCase()} · ${lookups.difficultyLabel(summary.difficulty ?? 0)} · ${duration}`,
+      `Cohesion ${summary.currentCohesion}/${summary.maxCohesion} · ${summary.turnsTaken} beats`,
+      `Damage ${totalDealt} dealt / ${totalTaken} taken`,
+      `Scrap ${summary.finalScrap} · +${summary.scrapEarned} earned / ${summary.scrapSpent} spent`,
+    ],
+  };
+}
 
 export interface CodexBossMove {
   id?: string;
@@ -232,6 +377,196 @@ export function nextBossDossierGoal(
   const observed = new Set(observedMoveKeys);
   const remaining = boss.moves.filter((move) => !observed.has(`${boss.id}:${move.id}`)).length;
   return remaining > 0 ? { name: boss.name, remaining } : undefined;
+}
+
+export function buildDefeatReview(summary: DefeatReviewRunSummary | undefined): DefeatReview | undefined {
+  if (!summary) return undefined;
+  const pressureByMove = new Map<string, DefeatReviewDamage>();
+  summary.combatResults.forEach((combat) => {
+    combat.damageTakenByMove?.forEach((pressure) => {
+      const key = `${pressure.enemyId}:${pressure.moveId}:${pressure.moveLabel}`;
+      const current = pressureByMove.get(key);
+      if (current) {
+        current.damageTaken += Math.max(0, pressure.damageTaken);
+        current.blockedDamage += Math.max(0, pressure.blockedDamage);
+        current.hitCount += Math.max(0, pressure.hitCount);
+        return;
+      }
+      pressureByMove.set(key, {
+        enemyId: pressure.enemyId,
+        moveId: pressure.moveId,
+        moveLabel: pressure.moveLabel,
+        damageTaken: Math.max(0, pressure.damageTaken),
+        blockedDamage: Math.max(0, pressure.blockedDamage),
+        hitCount: Math.max(0, pressure.hitCount),
+      });
+    });
+  });
+  const topPressure = [...pressureByMove.values()].sort((a, b) => (
+    b.damageTaken - a.damageTaken
+    || b.blockedDamage - a.blockedDamage
+    || b.hitCount - a.hitCount
+    || a.moveLabel.localeCompare(b.moveLabel)
+  ))[0];
+  const finalCombat = summary.combatResults.at(-1);
+  const fatalMove = summary.killedBy || finalCombat?.killedByMove || topPressure?.moveLabel || 'Final impact';
+  const evidence = topPressure
+    ? `Top pressure · ${topPressure.moveLabel}: ${topPressure.damageTaken} taken / ${topPressure.blockedDamage} blocked`
+    : 'Top pressure · No incoming-damage record available';
+  const overextensions = Math.max(0, summary.decisionStats?.overextensions ?? 0);
+  const unspentWingbeats = Math.max(0, summary.decisionStats?.unspentWingbeatAtRoost ?? 0);
+  const lowCardTurns = Math.max(0, summary.decisionStats?.lowCardTurns ?? 0);
+  let signal: DefeatReview['signal'] = 'SEEDED RETRY';
+  let tip = 'Replay keeps this seed. Change the route or card sequence against the same Tells.';
+  if (overextensions > 0) {
+    signal = 'OPEN SKY';
+    tip = `${overextensions} overextension${overextensions === 1 ? '' : 's'} opened the flock. Stop before the warning unless the extra card beats Open Sky.`;
+  } else if (unspentWingbeats > 0) {
+    signal = 'UNSPENT WINGBEATS';
+    tip = `${unspentWingbeats} Wingbeat${unspentWingbeats === 1 ? ' was' : 's were'} left at Roost. Check Cover, draw, or setup plays before ending the beat.`;
+  } else if (topPressure && topPressure.damageTaken > 0 && topPressure.blockedDamage === 0) {
+    signal = 'UNCOVERED TELL';
+    tip = `No Cover absorbed ${topPressure.moveLabel}. Reserve Cover for its next shown Tell.`;
+  } else if (lowCardTurns > 0) {
+    signal = 'LOW TEMPO';
+    tip = `${lowCardTurns} low-tempo turn${lowCardTurns === 1 ? '' : 's'} used one card or fewer. Use draw or cycle tools earlier.`;
+  }
+  return {
+    fatalMove,
+    signal,
+    headline: `Last hit · ${fatalMove}`,
+    evidence,
+    tip,
+    replayNote: 'Replay preserves the flight seed, route layout, and draw order.',
+    topPressure,
+  };
+}
+
+export function renderDefeatReview(
+  scene: Phaser.Scene,
+  root: Phaser.GameObjects.Container,
+  review: DefeatReview,
+  options: {
+    x: number;
+    y: number;
+    width: number;
+    fontFamily: string;
+    boldStyle: string;
+  }
+) {
+  const height = 110;
+  const left = options.x - options.width / 2 + 12;
+  root.add(scene.add.rectangle(options.x, options.y, options.width, height, 0x03070d, 0.94)
+    .setStrokeStyle(1, 0xff9d6b, 0.34)
+    .setName('run-defeat-review'));
+  root.add(scene.add.text(left, options.y - 49, `FLIGHT REVIEW · ${review.signal}`, {
+    fontFamily: options.fontFamily,
+    fontSize: '10px',
+    fontStyle: options.boldStyle,
+    color: '#ffcfaa',
+    fixedWidth: options.width - 24,
+    maxLines: 1,
+  }).setName('run-defeat-review-signal'));
+  root.add(scene.add.text(left, options.y - 31, review.headline, {
+    fontFamily: options.fontFamily,
+    fontSize: '14px',
+    fontStyle: options.boldStyle,
+    color: '#fff0e8',
+    fixedWidth: options.width - 24,
+    maxLines: 1,
+  }).setName('run-defeat-review-headline'));
+  root.add(scene.add.text(left, options.y - 10, review.evidence, {
+    fontFamily: options.fontFamily,
+    fontSize: '10px',
+    color: '#d7e3ec',
+    fixedWidth: options.width - 24,
+    maxLines: 1,
+  }).setName('run-defeat-review-evidence'));
+  root.add(scene.add.text(left, options.y + 10, review.tip, {
+    fontFamily: options.fontFamily,
+    fontSize: '10px',
+    color: '#b9cad7',
+    fixedWidth: options.width - 24,
+    wordWrap: { width: options.width - 24, useAdvancedWrap: true },
+    lineSpacing: -1,
+    maxLines: 2,
+  }).setName('run-defeat-review-tip'));
+}
+
+export function renderOutcomeFlightSummary(
+  scene: Phaser.Scene,
+  root: Phaser.GameObjects.Container,
+  options: {
+    x: number;
+    win: boolean;
+    review?: DefeatReview;
+    seed: string;
+    runMode: SharedRouteMode;
+    reportFrameLoaded: boolean;
+    softAccent: number;
+    fontFamily: string;
+    boldStyle: string;
+    softColor: string;
+  }
+) {
+  if (options.win) {
+    if (options.reportFrameLoaded) {
+      root.add(scene.add.rectangle(options.x, 492, 244, 92, 0x03070d, 0.9)
+        .setStrokeStyle(1, options.softAccent, 0.1));
+    }
+    root.add(scene.add.text(options.x, 468, 'DISTRICTS HELD', {
+      fontFamily: options.fontFamily,
+      fontSize: '13px',
+      fontStyle: options.boldStyle,
+      color: '#8df4ff',
+    }).setOrigin(0.5));
+  } else if (options.review) {
+    renderDefeatReview(scene, root, options.review, {
+      x: options.x,
+      y: 486,
+      width: 244,
+      fontFamily: options.fontFamily,
+      boldStyle: options.boldStyle,
+    });
+  } else {
+    root.add(scene.add.rectangle(options.x, 486, 244, 110, 0x03070d, 0.94)
+      .setStrokeStyle(1, options.softAccent, 0.22)
+      .setName('run-defeat-review-loading'));
+    root.add(scene.add.text(options.x, 486, 'REVIEWING THE LAST FLIGHT…', {
+      fontFamily: options.fontFamily,
+      fontSize: '12px',
+      fontStyle: options.boldStyle,
+      color: '#ffcfaa',
+    }).setOrigin(0.5));
+  }
+  const labelY = options.win ? 496 : 532;
+  const label = scene.add.text(
+    options.x,
+    labelY,
+    options.win ? `FLIGHT ${options.seed}\nCOPY ROUTE LINK` : `FLIGHT ${options.seed} · COPY SEEDED FLIGHT`,
+    {
+      fontFamily: options.fontFamily,
+      fontSize: options.win ? '13px' : '10px',
+      color: options.softColor,
+      align: 'center',
+      fixedWidth: 232,
+      maxLines: options.win ? 2 : 1,
+    }
+  ).setOrigin(0.5).setName('run-outcome-flight-link-label');
+  root.add(label);
+  const hitY = options.win ? labelY : 523;
+  const hit = scene.add.rectangle(options.x, hitY, 244, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+    .setInteractive({ useHandCursor: true })
+    .setName('run-outcome-flight-link-hit')
+    .setData('label', 'Copy route link');
+  hit.on('pointerdown', () => {
+    void copySharedRouteLink(options.seed, options.runMode).then((copied) => {
+      label.setText(options.win
+        ? `FLIGHT ${options.seed}\n${copied ? 'LINK COPIED' : 'COPY FAILED'}`
+        : `FLIGHT ${options.seed} · ${copied ? 'LINK COPIED' : 'COPY FAILED'}`);
+    });
+  });
+  root.add(hit);
 }
 
 export function renderOutcomeUnlockStrip(
@@ -471,4 +806,160 @@ export function renderOutcomeCommand(
     fontStyle: options.boldStyle,
     color: options.labelColor
   }).setOrigin(0.5));
+}
+
+export function renderOutcomeFlightDetails(
+  scene: Phaser.Scene,
+  root: Phaser.GameObjects.Container,
+  details: OutcomeFlightDetails,
+  options: {
+    title: string;
+    subtitle: string;
+    fontFamily: string;
+    boldStyle: string;
+    focused: boolean;
+    focusedAction?: 'copy' | 'close';
+    copyStatus?: 'idle' | 'copied' | 'failed';
+    onCopy?: () => void;
+    onClose: () => void;
+  }
+) {
+  const addSection = (
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    title: string,
+    lines: string[],
+    accent: number,
+    maxLines: number,
+  ) => {
+    root.add(scene.add.rectangle(x, y, width, height, 0x050a12, 0.96)
+      .setStrokeStyle(1, accent, 0.54)
+      .setName('run-flight-details-section')
+      .setData('section', title));
+    root.add(scene.add.rectangle(x, y - height / 2 + 25, width - 16, 34, 0x0d1a29, 0.92)
+      .setStrokeStyle(1, accent, 0.26));
+    root.add(scene.add.text(x - width / 2 + 18, y - height / 2 + 14, title, {
+      fontFamily: options.fontFamily,
+      fontSize: '13px',
+      fontStyle: options.boldStyle,
+      color: '#ffe1a3',
+      fixedWidth: width - 36,
+      maxLines: 1,
+    }).setName('run-flight-details-section-title'));
+    root.add(scene.add.text(x - width / 2 + 18, y - height / 2 + 52, lines.join('\n') || 'None recorded.', {
+      fontFamily: options.fontFamily,
+      fontSize: '11px',
+      color: '#d7e3ec',
+      fixedWidth: width - 36,
+      wordWrap: { width: width - 36, useAdvancedWrap: true },
+      lineSpacing: 4,
+      maxLines,
+    }).setName('run-flight-details-section-body').setData('section', title));
+  };
+
+  root.add(scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.94)
+    .setInteractive()
+    .setName('run-flight-details-blocker'));
+  root.add(scene.add.rectangle(640, 360, 1120, 620, 0x08111c, 0.99)
+    .setStrokeStyle(3, 0x8df4ff, 0.72)
+    .setName('run-flight-details-panel'));
+  root.add(scene.add.rectangle(640, 84, 1060, 74, 0x0d1a29, 0.98)
+    .setStrokeStyle(1, 0xe8b830, 0.58));
+  root.add(scene.add.text(118, 61, options.title, {
+    fontFamily: 'Georgia, serif',
+    fontSize: '32px',
+    fontStyle: options.boldStyle,
+    color: '#ffe1a3',
+    stroke: '#020409',
+    strokeThickness: 4,
+  }).setName('run-flight-details-title'));
+  root.add(scene.add.text(120, 101, options.subtitle, {
+    fontFamily: options.fontFamily,
+    fontSize: '12px',
+    fontStyle: options.boldStyle,
+    color: '#b9d9e9',
+    fixedWidth: 880,
+    maxLines: 1,
+  }).setName('run-flight-details-subtitle'));
+
+  addSection(246, 358, 330, 450, `FINAL DECK · ${details.deck.length}`, details.deck, 0xc98bff, 20);
+  addSection(600, 358, 342, 450, `ROUTE PATH · ${details.path.length} STOPS`, details.path, 0x8df4ff, 20);
+  addSection(1010, 198, 350, 130, 'KIT AT LANDING', [
+    `Waymarks · ${details.waymarks.join(' / ') || 'None'}`,
+    `Supplies used · ${details.supplies.join(' / ') || 'None'}`,
+  ], 0xe8b830, 4);
+  addSection(1010, 380, 350, 206, 'DECISIONS', details.decisions, 0x9fd8a9, 8);
+  addSection(1010, 542, 350, 112, 'RESULTS', details.results, 0xff9d6b, 4);
+
+  const hasCopy = Boolean(options.onCopy);
+  root.add(scene.add.text(
+    112,
+    641,
+    hasCopy
+      ? 'Previous / Next chooses an action. Confirm selects. Back returns to the Flight Log.'
+      : 'Previous / Next are paused while reviewing. Confirm or Back closes this report.',
+    {
+    fontFamily: options.fontFamily,
+    fontSize: '11px',
+    fontStyle: options.boldStyle,
+    color: '#9fb5c5',
+    fixedWidth: hasCopy ? 600 : 760,
+  }).setName('run-flight-details-input-hint'));
+  if (options.onCopy) {
+    const copyX = 834;
+    const copyY = 640;
+    const copyWidth = 238;
+    const copyLabel = options.copyStatus === 'copied'
+      ? 'Flight Link Copied'
+      : options.copyStatus === 'failed'
+        ? 'Copy Failed'
+        : 'Copy Flight Link';
+    root.add(scene.add.rectangle(copyX, copyY, copyWidth, 52, 0x182032, 0.98)
+      .setStrokeStyle(2, 0xc9a6ff, 0.82)
+      .setName('run-flight-details-copy-frame'));
+    const copyHit = scene.add.rectangle(copyX, copyY, copyWidth, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setName('run-flight-details-copy-hit')
+      .setData('label', 'Copy Flight Link');
+    copyHit.on('pointerdown', options.onCopy);
+    root.add(copyHit);
+    if (options.focused && options.focusedAction === 'copy') {
+      root.add(scene.add.rectangle(copyX, copyY, copyWidth + 10, 64, 0x06151b, 0.03)
+        .setStrokeStyle(3, 0x8df4ff, 0.98)
+        .setName('run-flight-details-input-focus-ring')
+        .setData('action', 'copy'));
+    }
+    root.add(scene.add.text(copyX, copyY, copyLabel, {
+      fontFamily: options.fontFamily,
+      fontSize: '16px',
+      fontStyle: options.boldStyle,
+      color: options.copyStatus === 'failed' ? '#ffb8ad' : '#ead8ff',
+    }).setOrigin(0.5).setName('run-flight-details-copy-label'));
+  }
+  const closeX = 1082;
+  const closeY = 640;
+  const closeWidth = 190;
+  root.add(scene.add.rectangle(closeX, closeY, closeWidth, 52, 0x122235, 0.98)
+    .setStrokeStyle(2, 0x8df4ff, 0.82)
+    .setName('run-flight-details-close-frame'));
+  const closeHit = scene.add.rectangle(closeX, closeY, closeWidth, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+    .setInteractive({ useHandCursor: true })
+    .setName('run-flight-details-close-hit')
+    .setData('label', 'Close Flight Details');
+  closeHit.on('pointerdown', options.onClose);
+  root.add(closeHit);
+  if (options.focused && (!hasCopy || options.focusedAction !== 'copy')) {
+    root.add(scene.add.rectangle(closeX, closeY, closeWidth + 10, 64, 0x06151b, 0.03)
+      .setStrokeStyle(3, 0x8df4ff, 0.98)
+      .setName('run-flight-details-input-focus-ring')
+      .setData('action', 'close'));
+  }
+  root.add(scene.add.text(closeX, closeY, 'Close Review', {
+    fontFamily: options.fontFamily,
+    fontSize: '17px',
+    fontStyle: options.boldStyle,
+    color: '#dffbff',
+  }).setOrigin(0.5).setName('run-flight-details-close-label'));
 }

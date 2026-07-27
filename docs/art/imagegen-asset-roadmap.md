@@ -224,7 +224,6 @@ Current asset-backed FX families exist, but these are the likely future gaps:
 | --- | --- | --- |
 | `combat-overextension-warning` | If overextension gets a dedicated moment | Strained feather harness ring, cracked red/orange enamel, clear warning silhouette. |
 | `combat-boss-phase-break` | Boss phase transitions | Large fractured district seal, boss-colored enamel, screen-center readable but transparent. |
-| `combat-perfect-chain` | Combo/sequence bonuses | Interlocking brass card links with cyan pulse, long horizontal sprite. |
 | `combat-status-cleanse-specific` | If Cleanse branches by status | Small status-specific shatter icons for Fouled/Winded/Open Sky. |
 | `combat-open-sky-break` | Open Sky exposed damage spike | Broken roofline guard and wind slash, distinct from `combat-open-sky-exposure`. |
 | `combat-cache-choice-reveal` | Cache Waymarks grant extra choices | Lockbox lids snapping open, multiple tagged bundles. |
@@ -882,26 +881,6 @@ Lighting/mood: bright contact highlights, warm brass sparks, cyan fracture glow
 Scene/backdrop: perfectly flat solid #00ff00 chroma-key background
 Constraints: no text, no watermark, no cast shadow, do not use #00ff00 in subject
 Avoid: magical portal, dark opaque blob, tiny shard details only visible at full size
-```
-
-#### `combat-perfect-chain`
-
-Source: `assets/concept-art/fx/sources/combat-perfect-chain-source-v1.png`
-Runtime: `assets/runtime/fx/combat-perfect-chain.webp`
-Chroma key: yes, `#00ff00`
-Target size: 768x192 transparent sprite
-
-```text
-Use case: stylized-concept
-Asset type: transparent combat FX sprite
-Primary request: combo or sequence bonus perfect-chain effect
-Subject: interlocking brass card links and feather-shaped clasps carrying a cyan pulse through the chain, with small magenta enamel inlays
-Style/medium: high-resolution painterly game FX, crisp UI-combat hybrid
-Composition/framing: long horizontal sprite, centered, generous transparent padding, readable at 260-520 px wide
-Lighting/mood: confident cyan pulse, warm brass highlights, celebratory but not magical
-Scene/backdrop: perfectly flat solid #00ff00 chroma-key background
-Constraints: no text, no watermark, no cast shadow, do not use #00ff00 in subject
-Avoid: fantasy chain lightning, opaque background plate, illegible tiny links
 ```
 
 #### `combat-status-cleanse-specific`

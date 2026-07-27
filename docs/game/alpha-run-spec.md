@@ -135,15 +135,15 @@ for tuning enemy health.
 
 | ID | Card | Suit | Cost | Base Effect | Improved Effect |
 | --- | --- | --- | ---: | --- | --- |
-| `major_00` | First Flight | Legend | 1 | Deal 3. Gain 2 Cover. First time played each combat, draw 1. | Deal 5. Gain 4 Cover. First time played each combat, draw 1. |
-| `wands_ace` | Plume Flash | Plumes | 1 | Deal 2. Gain 1 Resonance. | Deal 3. Gain 2 Resonance. |
+| `major_00` | First Flight | Legend | 1 | Deal 3. Gain 2 Cover. First time played each combat, draw 1. | Deal 5. Gain 4 Cover. First time played each combat, draw 1 and gain 1 Wingbeat. |
+| `wands_ace` | Plume Flash | Plumes | 1 | Deal 2, plus 2 more if Resonance is held. Gain 1 Resonance. | Deal 3, plus 3 more and draw 1 if Resonance is held. Gain 2 Resonance. |
 | `wands_08` | Plume Rush | Plumes | 0 | Draw 1. If Molting, gain 1 Wingbeat. | Draw 2. If Molting, gain 1 Wingbeat. |
-| `swords_02` | Crossed Quills | Quills | 1 | Deal 4, or 7 if the target is below half health. | Deal 5, or 9 if the target is below half health. |
-| `swords_ace` | Quill Point | Quills | 1 | Deal 3. Apply 1 Winded. | Deal 5. Apply 1 Winded. |
-| `cups_ace` | Open Basin | Basins | 1 | Heal 3 Cohesion. If at full Cohesion, draw 1. | Heal 5 Cohesion. If at full Cohesion, draw 1. |
-| `cups_03` | Basin Chorus | Basins | 1 | Heal 2 Cohesion. Draw 1. | Heal 3 Cohesion. Draw 1. |
-| `pentacles_04` | Locked Nest | Nests | 1 | Gain 7 Cover. | Gain 10 Cover. |
-| `pentacles_02` | Nest Juggle | Nests | 1 | Gain 4 Cover. Draw 1, then discard 1. | Gain 6 Cover. Draw 1, then discard 1. |
+| `swords_02` | Crossed Quills | Quills | 1 | Deal 4, plus 3 if the target is below half health. | Deal 5, plus 4 and gain 1 Wingbeat if the target is below half health. |
+| `swords_ace` | Quill Point | Quills | 1 | Deal 3. If the target is already Winded, draw 1. Apply 1 Winded. | Deal 5. If the target is already Winded, draw 1 and gain 1 Wingbeat. Apply 1 Winded. |
+| `cups_ace` | Open Basin | Basins | 1 | Heal 3 Cohesion. If at full Cohesion, draw 1. | Heal 5 Cohesion. If at full Cohesion, draw 1 and gain 1 Open Sky Guard. |
+| `cups_03` | Basin Chorus | Basins | 1 | Heal 2 and draw 1. At full Cohesion, gain 1 Open Sky Guard. | Heal 3 and draw 1. At full Cohesion, gain 2 Open Sky Guard and retain 1 card. |
+| `pentacles_04` | Locked Nest | Nests | 1 | Gain 6 Cover and retain 1 card. If this fully blocks the next attack, draw 1 extra next turn. | Gain 8 Cover and retain 1 card. If this fully blocks the next attack, draw 2 extra next turn and gain 1 Open Sky Guard. |
+| `pentacles_02` | Nest Juggle | Nests | 1 | Gain 4 Cover. Draw 1, then discard 1. Retain 1 if this fully blocks the next attack. | Gain 6 Cover. Draw 1, then discard 1. Retain 1 and gain 1 Wingbeat if this fully blocks the next attack. |
 | `aviary_25` | Hot Feathers | Molt | 0 | Enter Molt. | Enter Molt. Gain 1 Open Sky Guard this combat. |
 
 ## Alpha Reward Pool
@@ -163,48 +163,51 @@ Reward rules:
 - Major Legend and legendary Aviary cards are heavily down-weighted, so they read
   as rare treats rather than staple street rewards. Lower-rarity Aviary quality
   cards follow the normal rarity weights and are not treated as tarot cards.
+- Every one of the 90 reward cards has a strategic Preen: upgrading changes a
+  condition, sequencing choice, effect, or cost instead of only increasing
+  numbers. Runtime validation enforces this across every rarity.
 
 | ID | Card | Suit | Rarity | Cost | Base Effect | Improved Effect |
 | --- | --- | --- | --- | ---: | --- | --- |
-| `wands_02` | Twin Plume Lookout | Plumes | Common | 1 | Gain 1 Resonance. Draw 1. | Gain 2 Resonance. Draw 1. |
-| `wands_03` | Plume Horizon | Plumes | Common | 1 | Deal 3. Spend 1 Resonance to draw 1. | Deal 5. Spend 1 Resonance to draw 2. |
+| `wands_02` | Twin Plume Lookout | Plumes | Common | 1 | If Resonance is held, bank 1 Wingbeat. Gain 1 Resonance and draw 1. | If Resonance is held, bank 1 Wingbeat and retain 1 card. Gain 2 Resonance and draw 1. |
+| `wands_03` | Plume Horizon | Plumes | Common | 1 | Deal 3. Spend 1 Resonance to draw 1 and deal 2 more. | Deal 5. Spend 1 Resonance to draw 2, deal 3 more, and gain 1 Wingbeat. |
 | `wands_04` | Plume Street Party | Plumes | Common | 1 | Gain 2 Resonance. Gain 2 Cover. | Gain 3 Resonance. Gain 3 Cover. |
-| `wands_05` | Plume Clash | Plumes | Common | 1 | Deal 4. Spend 1 Resonance to deal 2 more. | Deal 6. Spend 1 Resonance to deal 3 more. |
+| `wands_05` | Plume Clash | Plumes | Common | 1 | Deal 4. Spend 2 Resonance to deal 5 more. | Deal 6. Spend 2 Resonance to deal 7 more and apply 1 Winded. |
 | `wands_06` | Plume Victory Wire | Plumes | Uncommon | 1 | Deal 5. If this defeats an enemy, gain 1 Wingbeat. | Deal 7. If this defeats an enemy, gain 1 Wingbeat and draw 1. |
-| `wands_09` | Plume Barricade | Plumes | Uncommon | 1 | Gain 4 Cover. Gain 1 Resonance. | Gain 6 Cover. Gain 2 Resonance. |
-| `swords_03` | Storm Quill | Quills | Common | 1 | Deal 5. If the enemy intends to attack, apply 1 Winded. | Deal 7. If the enemy intends to attack, apply 1 Winded. |
-| `swords_04` | Sheathed Quills | Quills | Common | 0 | Gain 3 Cover. Draw 1, then discard 1. | Gain 5 Cover. Draw 1, then discard 1. |
-| `swords_05` | Scattered Quills | Quills | Common | 1 | Deal 3 to all enemies. | Deal 5 to all enemies. |
-| `swords_fledgling` | Quill Fledgling | Quills | Common | 1 | Deal 4. Draw 1 if the target is Winded. | Deal 6. Draw 1 if the target is Winded. |
-| `swords_06` | Quill Crossing | Quills | Uncommon | 1 | Deal 6. Gain 3 Cover. | Deal 8. Gain 4 Cover. |
-| `swords_07` | Quill Slip | Quills | Uncommon | 0 | Deal 3. If Molting, deal 3 more. | Deal 4. If Molting, deal 5 more. |
-| `cups_02` | Twin Basin Bond | Basins | Common | 1 | Heal 2. Gain 3 Cover. | Heal 3. Gain 5 Cover. |
-| `cups_04` | Closed Basin | Basins | Common | 1 | Gain 5 Cover. Heal 1. | Gain 7 Cover. Heal 2. |
-| `cups_05` | Spilled Basin | Basins | Common | 1 | Heal 4. If Open Sky, gain 1 Open Sky Guard this combat. | Heal 6. If Open Sky, gain 1 Open Sky Guard this combat. |
+| `wands_09` | Plume Barricade | Plumes | Uncommon | 1 | Gain 4 Cover and 1 Resonance. Against a covered target, strip 2 Cover. | Gain 6 Cover and 2 Resonance. Against a covered target, gain 1 Wingbeat and strip 3 Cover. |
+| `swords_03` | Storm Quill | Quills | Common | 1 | Deal 5. If the enemy intends to attack, apply 1 Winded. | Deal 7. If the enemy intends to attack, apply 1 Winded and gain 2 Cover. |
+| `swords_04` | Sheathed Quills | Quills | Common | 0 | Against a covered target, draw 1 then discard 1. Strip 4 Cover and gain 3 Cover. | Against a covered target, draw 1, discard 1, and gain 1 Resonance. Strip 6 Cover and gain 5 Cover. |
+| `swords_05` | Scattered Quills | Quills | Common | 1 | Deal 2 to all enemies. Against a covered target, gain 1 Resonance and strip 3 Cover. | Deal 3 to all enemies. Against a covered target, gain 1 Resonance, draw 1 extra next turn, and strip 5 Cover. |
+| `swords_fledgling` | Quill Fledgling | Quills | Common | 1 | Deal 4. Draw 1 if the target has at least 2 Winded. | Deal 6. If the target has at least 2 Winded, draw 2 and gain 1 Wingbeat. |
+| `swords_06` | Quill Crossing | Quills | Uncommon | 1 | Lose 2 Cohesion. Deal 9. | Lose 2 Cohesion and deal 13. If this leaves Cohesion below half, gain 1 Wingbeat. |
+| `swords_07` | Quill Slip | Quills | Uncommon | 0 | Deal 2, plus 3 if the target is Winded and 2 if Molting. | Deal 3, plus 4 if the target is Winded and 3 if Molting. Against a Winded target, gain 1 Resonance. |
+| `cups_02` | Twin Basin Bond | Basins | Common | 1 | Heal 2 and gain 3 Cover. At full Cohesion, retain 1 card. | Heal 3 and gain 4 Cover. At full Cohesion, retain 1 card and bank 1 Wingbeat. |
+| `cups_04` | Closed Basin | Basins | Common | 1 | Gain 4 Cover and heal 1. In Open Sky, gain 2 Open Sky Guard. | Gain 6 Cover and heal 2. In Open Sky, gain 2 Open Sky Guard and draw 1. |
+| `cups_05` | Spilled Basin | Basins | Common | 1 | Gain 3 Cover and heal 2. In Open Sky, gain 4 more Cover. | Gain 4 Cover and heal 3. In Open Sky, gain 5 more Cover and retain 1 card. |
 | `cups_fledgling` | Basin Fledgling | Basins | Common | 0 | Heal 1. Draw 1. | Heal 2. Draw 1. |
-| `cups_06` | Basin Memory | Basins | Uncommon | 1 | Return a non-Molt card from discard to hand, then draw 1. Heal 2. | Return a non-Molt card from discard to hand, then draw 1. Heal 3. |
-| `cups_08` | Basin Walkaway | Basins | Uncommon | 1 | Discard up to 2 cards. Heal 3 and gain 2 Cover for each discarded. | Discard up to 2 cards. Heal 5 and gain 4 Cover for each discarded. |
-| `pentacles_ace` | Nest Seed | Nests | Common | 1 | Gain 5 Cover and 1 Open Sky Guard. | Gain 7 Cover and 2 Open Sky Guard. |
-| `pentacles_03` | Nest Blueprint | Nests | Common | 1 | Gain 3 Cover. Next Nests card this turn gains +4 Cover. | Gain 4 Cover. Next Nests card this turn gains +6 Cover. |
-| `pentacles_05` | Cold Nest | Nests | Common | 1 | Gain 6 Cover. If Cohesion is below half, gain 3 more. | Gain 8 Cover. If Cohesion is below half, gain 4 more. |
-| `pentacles_fledgling` | Nest Fledgling | Nests | Common | 0 | Gain 2 Cover and retain 1 card. | Gain 4 Cover and retain 1 card. |
-| `pentacles_06` | Shared Nest | Nests | Uncommon | 1 | Gain 5 Cover. Heal 2. | Gain 7 Cover. Heal 3. |
-| `pentacles_08` | Workshop Nest | Nests | Uncommon | 1 | Gain 8 Cover. If this fully blocks the next attack, draw 1 next turn. | Gain 11 Cover. If this fully blocks the next attack, draw 1 next turn. |
+| `cups_06` | Basin Memory | Basins | Uncommon | 1 | Return a non-Molt card from discard to hand. Heal 2. | Return a non-Molt card from discard to hand, heal 3, and retain 1 card. |
+| `cups_08` | Basin Walkaway | Basins | Uncommon | 1 | Discard up to 2 cards. Heal 3 and gain 2 Cover for each discarded. | Discard up to 2 cards. Heal 5 and gain 4 Cover for each discarded. If this reaches full Cohesion, draw 1 extra next turn. |
+| `pentacles_ace` | Nest Seed | Nests | Common | 1 | Gain 5 Cover and 1 Open Sky Guard. | Gain 7 Cover and 2 Open Sky Guard. In Open Sky, draw 1 extra next turn. |
+| `pentacles_03` | Nest Blueprint | Nests | Common | 1 | Gain 3 Cover. The next Nest gains +4 Cover. | Gain 4 Cover, prime the next Nest for +6 Cover, and retain 1 card. |
+| `pentacles_05` | Cold Nest | Nests | Common | 1 | Gain 5 Cover, plus 3 below half Cohesion. Retain 1 if this fully blocks the next attack. | Gain 7 Cover, plus 4 and 1 Open Sky Guard below half Cohesion. Retain 1 if this fully blocks the next attack. |
+| `pentacles_fledgling` | Nest Fledgling | Nests | Common | 0 | Gain 2 Cover and retain 1 card. | Gain 4 Cover and retain 1 card. If this fully blocks the next attack, prime the next Nest brace for +2 Cover. |
+| `pentacles_06` | Shared Nest | Nests | Uncommon | 1 | Gain 4 Cover, heal 2, and prime the next Nest for +2 Cover. | Gain 6 Cover, heal 3, and prime the next Nest for +3 Cover. If fully braced, gain 1 Wingbeat. |
+| `pentacles_08` | Workshop Nest | Nests | Uncommon | 2 | Gain 8 Cover. If this fully blocks the next attack, draw 1 next turn. | Gain 11 Cover. If this fully blocks the next attack, draw 1 next turn and retain 1 card. |
 | `aviary_28` | Hover Check | Aviary | Common | 0 | Draw 1, then discard 1. | Draw 1, discard 1, and gain 2 Cover. |
-| `aviary_29` | Mobbing Call | Aviary | Common | 1 | Deal 2. If the enemy intends to attack, apply 1 Winded. | Deal 3. If the enemy intends to attack, apply 2 Winded. |
-| `aviary_30` | Underwing Shelter | Aviary | Common | 1 | Gain 3 Cover. Heal 2. | Gain 5 Cover. Heal 3. |
-| `aviary_31` | Scavenger Eye | Aviary | Common | 1 | Remove 3 enemy Cover. Draw 1. | Remove 5 enemy Cover. Draw 1. |
-| `aviary_32` | Thermal Lift | Aviary | Uncommon | 1 | Gain 1 Wingbeat. If Open Sky, gain 1 Open Sky Guard. Draw 1 extra next turn. | Gain 1 Wingbeat. If Open Sky, gain 2 Open Sky Guard. Draw 1 extra next turn. |
-| `aviary_33` | Cache Memory | Aviary | Uncommon | 1 | Return a non-Molt card from discard to hand, then draw 1. If at full Cohesion, draw 1. | Return a non-Molt card from discard to hand, then draw 1. If at full Cohesion, draw 1. |
-| `aviary_34` | Brood Shield | Aviary | Uncommon | 1 | Gain 6 Cover. If Cohesion is below half, heal 2. | Gain 8 Cover. If Cohesion is below half, heal 3. |
-| `aviary_35` | Mimic Thread | Aviary | Rare | 1 | Deal 3. Gain a bonus from the suit already played this turn. | Deal 4. Gain a stronger bonus from the suit already played this turn. |
-| `aviary_36` | Drumline Tap | Aviary | Common | 1 | Deal 2 to all enemies. First time played each combat, gain 1 Resonance. | Deal 3 to all enemies. First time played each combat, gain 2 Resonance. |
-| `aviary_37` | Curb Step | Aviary | Common | 1 | Gain 4 Cover. Gain 1 Wingbeat. | Gain 6 Cover. Gain 1 Wingbeat. |
-| `aviary_38` | Spiral Search | Aviary | Common | 0 | Gain 1 Cover. Shuffle this card into the draw pile. | Gain 2 Cover. Shuffle this card into the draw pile. |
-| `aviary_39` | Reed Balance | Aviary | Common | 1 | Heal 1. Gain 4 Cover. If at full Cohesion, draw 1. | Heal 2. Gain 5 Cover. If at full Cohesion, draw 1. |
-| `aviary_40` | Plunge Claim | Aviary | Uncommon | 1 | Deal 4 piercing. If the target has Cover, remove 4 Cover. | Deal 6 piercing. If the target has Cover, remove 6 Cover. |
-| `aviary_41` | Cold Plunge | Aviary | Uncommon | 1 | Gain 1 Open Sky Guard. Heal 2. If Open Sky, draw 1. | Gain 2 Open Sky Guard. Heal 3. If Open Sky, draw 1. |
-| `aviary_42` | Formation Draft | Aviary | Uncommon | 1 | Gain 1 Wingbeat. If the flock has 3 Plumes, draw 1. If the flock has 3 Nests, gain 3 Cover. | Gain 1 Wingbeat. If the flock has 3 Plumes, draw 1. If the flock has 3 Nests, gain 5 Cover. |
+| `aviary_29` | Mobbing Call | Aviary | Common | 1 | Deal 3 and apply 1 Winded. Against an attacker, gain 3 Cover. | Deal 4 and apply 2 Winded. Against an attacker, gain 4 Cover and 1 Wingbeat. |
+| `aviary_30` | Underwing Shelter | Aviary | Common | 1 | Gain 3 Cover and heal 2. In Open Sky, gain 1 Open Sky Guard. | Gain 5 Cover and heal 3. In Open Sky, gain 1 Open Sky Guard and retain 1 card. |
+| `aviary_31` | Scavenger Eye | Aviary | Common | 1 | Against a covered target, gain 1 Resonance. Strip 3 Cover and draw 1. | Against a covered target, gain 1 Resonance and 1 Wingbeat. Strip 5 Cover and draw 1. |
+| `aviary_32` | Thermal Lift | Aviary | Uncommon | 1 | Gain 1 Wingbeat. If Open Sky, gain 1 Open Sky Guard. Draw 1 extra next turn. | Gain 1 Wingbeat. If Open Sky, gain 2 Open Sky Guard and retain 1 card. Draw 1 extra next turn. |
+| `aviary_33` | Cache Memory | Aviary | Uncommon | 1 | Return a non-Molt card from discard to hand. At full Cohesion, draw 1. | Return a non-Molt card from discard to hand. At full Cohesion, draw 1; retain 1 card regardless. |
+| `aviary_34` | Brood Shield | Aviary | Uncommon | 1 | Gain 6 Cover. If Cohesion is below half, heal 2. | Gain 8 Cover. If Cohesion is below half, heal 3 and retain 1 card. |
+| `aviary_35` | Mimic Thread | Aviary | Rare | 1 | Deal 3. Gain a bonus from each suit already played this turn. | Deal 4. Gain stronger suit bonuses; a prior Plume also grants 1 Wingbeat. |
+| `aviary_36` | Drumline Tap | Aviary | Common | 1 | Deal 2 to all enemies. First time played each combat, gain 1 Resonance. | Deal 3 to all enemies. First time played each combat, gain 2 Resonance and draw 1 extra next turn. |
+| `aviary_37` | Curb Step | Aviary | Common | 1 | Gain 3 Cover and 1 Wingbeat. In Open Sky, gain 1 Guard; if fully braced, draw 1 extra next turn. | Gain 5 Cover and 1 Wingbeat. In Open Sky, gain 2 Guard; if fully braced, draw 1 extra next turn and retain 1 card. |
+| `aviary_38` | Spiral Search | Aviary | Common | 0 | Gain 1 Cover and, in Open Sky, 1 Guard. Shuffle this card into the draw pile. | Gain 2 Cover and 1 Open Sky Guard unconditionally. Shuffle this card into the draw pile. |
+| `aviary_39` | Reed Balance | Aviary | Common | 1 | Heal 1 and gain 4 Cover. At full Cohesion, draw 1. | Heal 2 and gain 5 Cover. At full Cohesion, draw 1 and gain 1 Resonance. |
+| `aviary_40` | Plunge Claim | Aviary | Uncommon | 1 | Deal 4 piercing. If the target has Cover, remove 4 Cover. | Deal 6 piercing. If the target has Cover, gain 1 Wingbeat and remove 6 Cover. |
+| `aviary_41` | Cold Plunge | Aviary | Uncommon | 1 | Gain 1 Open Sky Guard. Heal 2. If Open Sky, draw 1. | Gain 2 Open Sky Guard and heal 3. If Open Sky, draw 1 and retain 1 card. |
+| `aviary_42` | Formation Draft | Aviary | Uncommon | 2 | Gain 1 Wingbeat. With 3 Plumes, draw 1; with 3 Nests, gain 3 Cover. | Gain 1 Wingbeat. With 3 Plumes, draw 1; with 3 Nests, gain 5 Cover; with 3 Basins, heal 2. |
 | `aviary_43` | Tool Probe | Aviary | Rare | 1 | Return a non-Molt card from discard to hand, then draw 1. First time played each combat, gain 1 Wingbeat. | Return a non-Molt card from discard to hand, then draw 1. First time played each combat, gain 2 Wingbeat. Draw 1. |
 
 ## Alpha Card Implementation Contract
@@ -220,57 +223,64 @@ Flock Stat rules:
 - Preen Delta applies only after the card is improved.
 - These values are first-pass Alpha tuning, not final full-run balance.
 
+Stance identity rule:
+
+- Every base and Preened Normal or Molt stance must have a distinct active
+  gameplay identity across different cards. Two cards may share vocabulary,
+  but they cannot share the same cost, active target, and ordered effect list.
+  Runtime validation enforces this across all 420 active card stances.
+
 | ID | Target | Tags | Base Effects | Improved Effects | Base Flock Stats | Preen Delta |
 | --- | --- | --- | --- | --- | --- | --- |
 | `major_00` | enemy | attack, cover, draw | `damage(target, 3); gainCover(2); if firstPlayedThisCombat then draw(1)` | `damage(target, 5); gainCover(4); if firstPlayedThisCombat then draw(1)` | `Cohesion +2; Draw +1` | `Cohesion +1` |
 | `wands_ace` | enemy | attack, resonance | `damage(target, 2); gainResonance(1)` | `damage(target, 3); gainResonance(2)` | `Resonance +1` | `Resonance +1` |
 | `wands_08` | none | draw, tempo | `draw(1); if isMolting then gainWingbeat(1)` | `draw(2); if isMolting then gainWingbeat(1)` | `Draw +1` | `Resonance +1` |
-| `swords_02` | enemy | attack, finisher | `damage(target, 4); if targetBelowHalf then damage(target, 3)` | `damage(target, 5); if targetBelowHalf then damage(target, 4)` | `Damage +1` | `Damage +1` |
+| `swords_02` | enemy | attack, finisher | `damage(target, 4); if targetBelowHalf then damage(target, 3)` | `damage(target, 5); if targetBelowHalf then damage(target, 4); if targetBelowHalf then gainWingbeat(1)` | `Damage +1` | `Damage +1` |
 | `swords_ace` | enemy | attack, winded | `damage(target, 3); applyWinded(target, 1)` | `damage(target, 5); applyWinded(target, 1)` | `Damage +1` | `Damage +1` |
 | `cups_ace` | self | heal, draw | `heal(3); if fullCohesion then draw(1)` | `heal(5); if fullCohesion then draw(1)` | `Regen +1` | `Cohesion +1` |
-| `cups_03` | self | heal, draw | `heal(2); draw(1)` | `heal(3); draw(1)` | `Cohesion +1` | `Regen +1` |
+| `cups_03` | self | heal, draw, full-cohesion | `heal(2); draw(1); if fullCohesion then gainOpenSkyGuard(1)` | `heal(3); draw(1); if fullCohesion then gainOpenSkyGuard(2); if fullCohesion then retainHand(1)` | `Cohesion +1` | `Regen +1` |
 | `pentacles_04` | self | cover | `gainCover(7)` | `gainCover(10)` | `Cover +1` | `Cover +1` |
-| `pentacles_02` | self | cover, draw, discard | `gainCover(4); draw(1); discard(1)` | `gainCover(6); draw(1); discard(1)` | `Cover +1` | `Draw +1` |
+| `pentacles_02` | self | cover, draw, discard | `gainCover(4); draw(1); discard(1); if fullyBlocksNextAttack then retainHand(1)` | `gainCover(6); draw(1); discard(1); if fullyBlocksNextAttack then retainHand(1); if fullyBlocksNextAttack then gainWingbeat(1)` | `Cover +1` | `Draw +1` |
 | `aviary_25` | none | molt | `enterMolt()` | `enterMolt(); gainOpenSkyGuard(1)` | `Molt Power +1; Open Sky Guard +1` | `Open Sky Guard +1` |
-| `wands_02` | none | resonance, draw | `gainResonance(1); draw(1)` | `gainResonance(2); draw(1)` | `Resonance +1` | `Draw +1` |
-| `wands_03` | enemy | attack, draw, resonance | `damage(target, 3); if hasResonance then spendResonance(1); if spentResonance then draw(1)` | `damage(target, 5); if hasResonance then spendResonance(1); if spentResonance then draw(2)` | `Resonance +1` | `Damage +1` |
+| `wands_02` | none | resonance, draw | `if hasResonance then gainEnergyNextTurn(1); gainResonance(1); draw(1)` | `if hasResonance then gainEnergyNextTurn(1); if hasResonance then retainHand(1); gainResonance(2); draw(1)` | `Resonance +1` | `Draw +1` |
+| `wands_03` | enemy | attack, draw, resonance | `damage(target, 3); if hasResonance then spendResonance(1); if spentResonance then draw(1); if spentResonance then damage(target, 2)` | `damage(target, 5); if hasResonance then spendResonance(1); if spentResonance then draw(2); if spentResonance then damage(target, 3); if spentResonance then gainWingbeat(1)` | `Resonance +1` | `Damage +1` |
 | `wands_04` | self | resonance, cover | `gainResonance(2); gainCover(2)` | `gainResonance(3); gainCover(3)` | `Resonance +1` | `Cover +1` |
-| `wands_05` | enemy | attack, resonance | `damage(target, 4); if hasResonance then spendResonance(1); if spentResonance then damage(target, 2)` | `damage(target, 6); if hasResonance then spendResonance(1); if spentResonance then damage(target, 3)` | `Damage +1` | `Resonance +1` |
+| `wands_05` | enemy | attack, resonance | `damage(target, 4); if resonanceAtLeast(2) then spendResonance(2); if spentResonance then damage(target, 5)` | `damage(target, 6); if resonanceAtLeast(2) then spendResonance(2); if spentResonance then damage(target, 7); if spentResonance then applyWinded(target, 1)` | `Damage +1` | `Resonance +1` |
 | `wands_06` | enemy | attack, tempo, draw | `damage(target, 5); if defeatsEnemy then gainWingbeat(1)` | `damage(target, 7); if defeatsEnemy then gainWingbeat(1); if defeatsEnemy then draw(1)` | `Resonance +2` | `Damage +1` |
-| `wands_09` | self | cover, resonance | `gainCover(4); gainResonance(1)` | `gainCover(6); gainResonance(2)` | `Resonance +2` | `Cover +1` |
-| `swords_03` | enemy | attack, tell, winded | `damage(target, 5); if targetIntendsAttack then applyWinded(target, 1)` | `damage(target, 7); if targetIntendsAttack then applyWinded(target, 1)` | `Damage +1` | `Damage +1` |
-| `swords_04` | self | cover, draw, discard | `gainCover(3); draw(1); discard(1)` | `gainCover(5); draw(1); discard(1)` | `Draw +1` | `Damage +1` |
-| `swords_05` | allEnemies | attack, aoe | `damageAll(3)` | `damageAll(5)` | `Damage +1` | `Damage +1` |
+| `wands_09` | enemy | cover, resonance, cover-break | `gainCover(4); gainResonance(1); if targetHasCover then removeCover(target, 2)` | `gainCover(6); gainResonance(2); if targetHasCover then gainWingbeat(1); if targetHasCover then removeCover(target, 3)` | `Resonance +2` | `Cover +1` |
+| `swords_03` | enemy | attack, tell, winded | `damage(target, 5); if targetIntendsAttack then applyWinded(target, 1)` | `damage(target, 7); if targetIntendsAttack then applyWinded(target, 1); if targetIntendsAttack then gainCover(2)` | `Damage +1` | `Damage +1` |
+| `swords_04` | enemy | cover, draw, discard, cover-break | `if targetHasCover then draw(1); if targetHasCover then discard(1); removeCover(target, 4); gainCover(3)` | `if targetHasCover then draw(1); if targetHasCover then discard(1); if targetHasCover then gainResonance(1); removeCover(target, 6); gainCover(5)` | `Draw +1` | `Damage +1` |
+| `swords_05` | allEnemies | attack, aoe | `damageAll(2); if targetHasCover then gainResonance(1); if targetHasCover then removeCover(target, 3)` | `damageAll(3); if targetHasCover then gainResonance(1); if targetHasCover then nextTurnDraw(1); if targetHasCover then removeCover(target, 5)` | `Damage +1` | `Damage +1` |
 | `swords_fledgling` | enemy | attack, winded, draw | `damage(target, 4); if targetWinded then draw(1)` | `damage(target, 6); if targetWinded then draw(1)` | `Damage +1` | `Draw +1` |
-| `swords_06` | enemy | attack, cover | `damage(target, 6); gainCover(3)` | `damage(target, 8); gainCover(4)` | `Damage +2` | `Cover +1` |
-| `swords_07` | enemy | attack, molt | `damage(target, 3); if isMolting then damage(target, 3)` | `damage(target, 4); if isMolting then damage(target, 5)` | `Damage +2` | `Molt Power +1` |
-| `cups_02` | self | heal, cover | `heal(2); gainCover(3)` | `heal(3); gainCover(5)` | `Cohesion +1` | `Cover +1` |
-| `cups_04` | self | cover, heal | `gainCover(5); heal(1)` | `gainCover(7); heal(2)` | `Cohesion +1` | `Regen +1` |
-| `cups_05` | self | heal, open-sky | `heal(4); if openSky then gainOpenSkyGuard(1)` | `heal(6); if openSky then gainOpenSkyGuard(1)` | `Open Sky Guard +1` | `Cohesion +1` |
+| `swords_06` | enemy | attack, cover | `loseCohesion(2); damage(target, 9)` | `loseCohesion(2); damage(target, 13); if cohesionBelowHalf then gainWingbeat(1)` | `Damage +2` | `Cover +1` |
+| `swords_07` | enemy | attack, molt | `damage(target, 2); if targetWinded then damage(target, 3); if isMolting then damage(target, 2)` | `damage(target, 3); if targetWinded then damage(target, 4); if isMolting then damage(target, 3); if targetWinded then gainResonance(1)` | `Damage +2` | `Molt Power +1` |
+| `cups_02` | self | heal, cover, retain | `heal(2); gainCover(3); if fullCohesion then retainHand(1)` | `heal(3); gainCover(4); if fullCohesion then retainHand(1); if fullCohesion then gainEnergyNextTurn(1)` | `Cohesion +1` | `Cover +1` |
+| `cups_04` | self | cover, heal, open-sky | `gainCover(4); heal(1); if openSky then gainOpenSkyGuard(2)` | `gainCover(6); heal(2); if openSky then gainOpenSkyGuard(2); if openSky then draw(1)` | `Cohesion +1` | `Regen +1` |
+| `cups_05` | self | cover, heal, open-sky | `gainCover(3); heal(2); if openSky then gainCover(4)` | `gainCover(4); heal(3); if openSky then gainCover(5); if openSky then retainHand(1)` | `Open Sky Guard +1` | `Cohesion +1` |
 | `cups_fledgling` | self | heal, draw | `heal(1); draw(1)` | `heal(2); draw(1)` | `Regen +1` | `Draw +1` |
-| `cups_06` | choice | discard, recursion | `returnDiscard(nonMolt, +1); heal(2)` | `returnDiscard(nonMolt, +1); heal(3)` | `Cohesion +2` | `Draw +1` |
-| `cups_08` | self | discard, heal | `discardUpTo(2); heal(3 perDiscarded); gainCover(2 perDiscarded)` | `discardUpTo(2); heal(5 perDiscarded); gainCover(4 perDiscarded)` | `Regen +2` | `Cohesion +1; Regen +1` |
-| `pentacles_ace` | self | cover, open-sky | `gainCover(5); gainOpenSkyGuard(1)` | `gainCover(7); gainOpenSkyGuard(2)` | `Cover +1` | `Cover +1` |
-| `pentacles_03` | self | cover, setup | `gainCover(3); nextCoverBonus(nests, 4)` | `gainCover(4); nextCoverBonus(nests, 6)` | `Cover +1` | `Cover +1` |
-| `pentacles_05` | self | cover, low-cohesion | `gainCover(6); if cohesionBelowHalf then gainCover(3)` | `gainCover(8); if cohesionBelowHalf then gainCover(4)` | `Cohesion +1` | `Cover +1` |
+| `cups_06` | choice | discard, recursion | `returnDiscard(nonMolt, +1); heal(2)` | `returnDiscard(nonMolt, +1); heal(3); retainHand(1)` | `Cohesion +2` | `Draw +1` |
+| `cups_08` | self | discard, heal | `discardUpTo(2); heal(3 perDiscarded); gainCover(2 perDiscarded)` | `discardUpTo(2); heal(5 perDiscarded); gainCover(4 perDiscarded); if fullCohesion then nextTurnDraw(1)` | `Regen +2` | `Cohesion +1; Regen +1` |
+| `pentacles_ace` | self | cover, open-sky | `gainCover(5); gainOpenSkyGuard(1)` | `gainCover(7); gainOpenSkyGuard(2); if openSky then nextTurnDraw(1)` | `Cover +1` | `Cover +1` |
+| `pentacles_03` | self | cover, setup | `gainCover(3); nextCoverBonus(nests, 4)` | `gainCover(4); nextCoverBonus(nests, 6); retainHand(1)` | `Cover +1` | `Cover +1` |
+| `pentacles_05` | self | cover, low-cohesion, restraint | `gainCover(5); if cohesionBelowHalf then gainCover(3); if fullyBlocksNextAttack then retainHand(1)` | `gainCover(7); if cohesionBelowHalf then gainCover(4); if cohesionBelowHalf then gainOpenSkyGuard(1); if fullyBlocksNextAttack then retainHand(1)` | `Cohesion +1` | `Cover +1` |
 | `pentacles_fledgling` | self | cover, retain | `gainCover(2); retainHand(1)` | `gainCover(4); retainHand(1)` | `Cover +1` | `Cohesion +1` |
-| `pentacles_06` | self | cover, heal | `gainCover(5); heal(2)` | `gainCover(7); heal(3)` | `Cover +2` | `Cohesion +1` |
-| `pentacles_08` | self | cover, draw-next | `gainCover(8); if fullyBlocksNextAttack then nextTurnDraw(1)` | `gainCover(11); if fullyBlocksNextAttack then nextTurnDraw(1)` | `Cover +2` | `Draw +1` |
+| `pentacles_06` | self | cover, heal, setup | `gainCover(4); heal(2); nextCoverBonus(nests, 2)` | `gainCover(6); heal(3); nextCoverBonus(nests, 3); if fullyBlocksNextAttack then gainWingbeat(1)` | `Cover +2` | `Cohesion +1` |
+| `pentacles_08` | self | cover, draw-next | `gainCover(8); if fullyBlocksNextAttack then nextTurnDraw(1)` | `gainCover(11); if fullyBlocksNextAttack then nextTurnDraw(1); if fullyBlocksNextAttack then retainHand(1)` | `Cover +2` | `Draw +1` |
 | `aviary_28` | self | draw, discard, tempo | `draw(1); discard(1)` | `draw(1); discard(1); gainCover(2)` | `Draw +1` | `Draw +1` |
-| `aviary_29` | enemy | attack, winded, tell | `damage(target, 2); if targetIntendsAttack then applyWinded(target, 1)` | `damage(target, 3); if targetIntendsAttack then applyWinded(target, 2)` | `Damage +1` | `Damage +1` |
-| `aviary_30` | self | cover, heal | `gainCover(3); heal(2)` | `gainCover(5); heal(3)` | `Cohesion +1` | `Cohesion +1` |
-| `aviary_31` | enemy | cover, draw, utility | `removeCover(target, 3); draw(1)` | `removeCover(target, 5); draw(1)` | `Draw +1` | `Draw +1` |
-| `aviary_32` | none | tempo, open-sky, draw | `gainWingbeat(1); if openSky then gainOpenSkyGuard(1); nextTurnDraw(1)` | `gainWingbeat(1); if openSky then gainOpenSkyGuard(2); nextTurnDraw(1)` | `Open Sky Guard +1; Draw +1` | `Open Sky Guard +1` |
-| `aviary_33` | choice | recursion, draw | `returnDiscard(nonMolt, +1); if fullCohesion then draw(1)` | `returnDiscard(nonMolt, +1); if fullCohesion then draw(1)` | `Cohesion +1; Draw +1` | `Draw +1` |
-| `aviary_34` | self | cover, heal | `gainCover(6); if cohesionBelowHalf then heal(2)` | `gainCover(8); if cohesionBelowHalf then heal(3)` | `Cover +1; Cohesion +1` | `Cohesion +1` |
-| `aviary_35` | enemy | attack, resonance, winded, heal, cover | `damage(target, 3); if playedSuitThisTurn(plumes) then gainResonance(1); if playedSuitThisTurn(quills) then applyWinded(target, 1); if playedSuitThisTurn(basins) then heal(2); if playedSuitThisTurn(nests) then gainCover(3)` | `damage(target, 4); if playedSuitThisTurn(plumes) then gainResonance(2); if playedSuitThisTurn(quills) then applyWinded(target, 2); if playedSuitThisTurn(basins) then heal(3); if playedSuitThisTurn(nests) then gainCover(4)` | `Draw +1; Damage +1` | `Draw +1; Damage +1` |
-| `aviary_36` | allEnemies | attack, aoe, opener, resonance | `damageAll(2); if firstPlayedThisCombat then gainResonance(1)` | `damageAll(3); if firstPlayedThisCombat then gainResonance(2)` | `Damage +1` | `Damage +1` |
-| `aviary_37` | self | cover, tempo | `gainCover(4); gainWingbeat(1)` | `gainCover(6); gainWingbeat(1)` | `Cover +1` | `Cover +1` |
-| `aviary_38` | none | cover, recursion, loop | `gainCover(1); shuffleSelfToDraw()` | `gainCover(2); shuffleSelfToDraw()` | `Draw +1` | `Draw +1` |
-| `aviary_39` | self | heal, cover, draw | `heal(1); gainCover(4); if fullCohesion then draw(1)` | `heal(2); gainCover(5); if fullCohesion then draw(1)` | `Cohesion +1` | `Cohesion +1` |
-| `aviary_40` | enemy | attack, pierce, cover | `damagePierce(target, 4); if targetHasCover then removeCover(target, 4)` | `damagePierce(target, 6); if targetHasCover then removeCover(target, 6)` | `Damage +2` | `Damage +1` |
-| `aviary_41` | self | open-sky, heal, draw | `gainOpenSkyGuard(1); heal(2); if openSky then draw(1)` | `gainOpenSkyGuard(2); heal(3); if openSky then draw(1)` | `Open Sky Guard +1; Cohesion +1` | `Open Sky Guard +1` |
-| `aviary_42` | none | tempo, draw, cover, formation | `gainWingbeat(1); if flockSuit(plumes,3) then draw(1); if flockSuit(nests,3) then gainCover(3)` | `gainWingbeat(1); if flockSuit(plumes,3) then draw(1); if flockSuit(nests,3) then gainCover(5)` | `Draw +1; Open Sky Guard +1` | `Open Sky Guard +1` |
+| `aviary_29` | enemy | attack, winded, tell | `damage(target, 3); applyWinded(target, 1); if targetIntendsAttack then gainCover(3)` | `damage(target, 4); applyWinded(target, 2); if targetIntendsAttack then gainCover(4); if targetIntendsAttack then gainWingbeat(1)` | `Damage +1` | `Damage +1` |
+| `aviary_30` | self | cover, heal | `gainCover(3); heal(2); if openSky then gainOpenSkyGuard(1)` | `gainCover(5); heal(3); if openSky then gainOpenSkyGuard(1); if openSky then retainHand(1)` | `Cohesion +1` | `Cohesion +1` |
+| `aviary_31` | enemy | cover, draw, utility | `if targetHasCover then gainResonance(1); removeCover(target, 3); draw(1)` | `if targetHasCover then gainResonance(1); if targetHasCover then gainWingbeat(1); removeCover(target, 5); draw(1)` | `Draw +1` | `Draw +1` |
+| `aviary_32` | none | tempo, open-sky, draw | `gainWingbeat(1); if openSky then gainOpenSkyGuard(1); nextTurnDraw(1)` | `gainWingbeat(1); if openSky then gainOpenSkyGuard(2); nextTurnDraw(1); if openSky then retainHand(1)` | `Open Sky Guard +1; Draw +1` | `Open Sky Guard +1` |
+| `aviary_33` | choice | recursion, draw | `returnDiscard(nonMolt, +1); if fullCohesion then draw(1)` | `returnDiscard(nonMolt, +1); if fullCohesion then draw(1); retainHand(1)` | `Cohesion +1; Draw +1` | `Draw +1` |
+| `aviary_34` | self | cover, heal | `gainCover(6); if cohesionBelowHalf then heal(2)` | `gainCover(8); if cohesionBelowHalf then heal(3); if cohesionBelowHalf then retainHand(1)` | `Cover +1; Cohesion +1` | `Cohesion +1` |
+| `aviary_35` | enemy | attack, resonance, winded, heal, cover | `damage(target, 3); if playedSuitThisTurn(plumes) then gainResonance(1); if playedSuitThisTurn(quills) then applyWinded(target, 1); if playedSuitThisTurn(basins) then heal(2); if playedSuitThisTurn(nests) then gainCover(3)` | `damage(target, 4); if playedSuitThisTurn(plumes) then gainResonance(2); if playedSuitThisTurn(plumes) then gainWingbeat(1); if playedSuitThisTurn(quills) then applyWinded(target, 2); if playedSuitThisTurn(basins) then heal(3); if playedSuitThisTurn(nests) then gainCover(4)` | `Draw +1; Damage +1` | `Draw +1; Damage +1` |
+| `aviary_36` | allEnemies | attack, aoe, opener, resonance | `damageAll(2); if firstPlayedThisCombat then gainResonance(1)` | `damageAll(3); if firstPlayedThisCombat then gainResonance(2); if firstPlayedThisCombat then nextTurnDraw(1)` | `Damage +1` | `Damage +1` |
+| `aviary_37` | self | cover, tempo, open-sky | `gainCover(3); gainWingbeat(1); if openSky then gainOpenSkyGuard(1); if fullyBlocksNextAttack then nextTurnDraw(1)` | `gainCover(5); gainWingbeat(1); if openSky then gainOpenSkyGuard(2); if fullyBlocksNextAttack then nextTurnDraw(1); if fullyBlocksNextAttack then retainHand(1)` | `Cover +1` | `Cover +1` |
+| `aviary_38` | none | cover, recursion, loop | `gainCover(1); if openSky then gainOpenSkyGuard(1); shuffleSelfToDraw()` | `gainCover(2); gainOpenSkyGuard(1); shuffleSelfToDraw()` | `Draw +1` | `Draw +1` |
+| `aviary_39` | self | heal, cover, draw | `heal(1); gainCover(4); if fullCohesion then draw(1)` | `heal(2); gainCover(5); if fullCohesion then draw(1); if fullCohesion then gainResonance(1)` | `Cohesion +1` | `Cohesion +1` |
+| `aviary_40` | enemy | attack, pierce, cover | `damagePierce(target, 4); if targetHasCover then removeCover(target, 4)` | `damagePierce(target, 6); if targetHasCover then gainWingbeat(1); if targetHasCover then removeCover(target, 6)` | `Damage +2` | `Damage +1` |
+| `aviary_41` | self | open-sky, heal, draw | `gainOpenSkyGuard(1); heal(2); if openSky then draw(1)` | `gainOpenSkyGuard(2); heal(3); if openSky then draw(1); if openSky then retainHand(1)` | `Open Sky Guard +1; Cohesion +1` | `Open Sky Guard +1` |
+| `aviary_42` | none | tempo, draw, cover, formation | `gainWingbeat(1); if flockSuit(plumes,3) then draw(1); if flockSuit(nests,3) then gainCover(3)` | `gainWingbeat(1); if flockSuit(plumes,3) then draw(1); if flockSuit(nests,3) then gainCover(5); if flockSuit(basins,3) then heal(2)` | `Draw +1; Open Sky Guard +1` | `Open Sky Guard +1` |
 | `aviary_43` | choice | recursion, tempo, draw | `returnDiscard(nonMolt, +1); if firstPlayedThisCombat then gainWingbeat(1)` | `returnDiscard(nonMolt, +1); if firstPlayedThisCombat then gainWingbeat(2); draw(1)` | `Draw +1; Resonance +1` | `Draw +1; Resonance +1` |
 
 ## Alpha Enemies

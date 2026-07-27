@@ -395,12 +395,12 @@
       "family": "suit",
       "rarity": "rare",
       "source": "rival",
-      "trigger": "onTurnEndNoOverextension",
+      "trigger": "onNthCardThisTurn(3)",
       "effects": [
         "gainResonance(1)",
         "nextTurnDraw(1)"
       ],
-      "description": "The first time you Roost after playing cards without overextending each combat, gain 1 Resonance and draw 1 extra next turn.",
+      "description": "The first time you play your third card in a turn each combat, gain 1 Resonance and draw 1 extra next turn.",
       "flavorText": "A thumb-sized mirror that lets a performer read the whole roofline without turning around."
     },
     {
@@ -443,10 +443,10 @@
       "source": "market",
       "trigger": "onRoostWithCardsInHand",
       "effects": [
-        "gainEnergyNextTurn(1)",
-        "retainHand(1)"
+        "gainResonance(1)",
+        "retainHand(2)"
       ],
-      "description": "The first time you Roost with cards still in hand each combat, gain +1 Wingbeat next turn and retain 1 card.",
+      "description": "The first time you Roost with cards still in hand each combat, gain 1 Resonance and retain up to 2 cards.",
       "flavorText": "A sealed ink pin from a rooftop tactician. It marks the decision before the fight begins."
     },
     {
@@ -581,10 +581,10 @@
       "source": "rival",
       "trigger": "onEnterMolt",
       "effects": [
-        "gainEnergyNextTurn(1)",
+        "gainWingbeat(1)",
         "draw(1)"
       ],
-      "description": "The first time you enter Molt each combat, gain +1 Wingbeat next turn and draw 1.",
+      "description": "The first time you enter Molt each combat, gain 1 Wingbeat now and draw 1.",
       "flavorText": "A new feather sealed in wax paper, fragile and bright with the cost of becoming stronger."
     },
     {
@@ -808,9 +808,9 @@
       "trigger": "onSupplyUsed",
       "effects": [
         "repeatNextSupply(1)",
-        "draw(1)"
+        "gainWingbeat(1)"
       ],
-      "description": "After you use a Supply, draw 1 and the next Supply used this combat resolves twice.",
+      "description": "After you use a Supply, gain 1 Wingbeat and the next Supply used this combat resolves twice.",
       "flavorText": "A heavy two-slot harness buckle with mirrored brass teeth. Good packing makes the next tool count twice."
     },
     {

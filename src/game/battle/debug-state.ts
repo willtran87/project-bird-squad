@@ -122,7 +122,6 @@ const FX_TEXTURE_FIELDS = [
   'combatEnemyImpactContact',
   'combatOverextensionWarning',
   'combatBossPhaseBreak',
-  'combatPerfectChain',
   'combatStatusCleanseSpecific',
   'combatOpenSkyBreak',
   'combatCacheChoiceReveal',
@@ -228,6 +227,14 @@ function labelsByName(name: string, roots: DebugRoot[]) {
   return roots.flatMap((root) => walk(nodeChildren(root as DebugNode | undefined)));
 }
 
+function namedCountInTrees(name: string, roots: DebugRoot[]) {
+  const walk = (children: DebugNode[]): number => children.reduce((total, child) => {
+    const own = child.name === name && child.visible !== false && (child.alpha ?? 1) > 0.01 ? 1 : 0;
+    return total + own + walk(nodeChildren(child));
+  }, 0);
+  return roots.reduce((total, root) => total + walk(nodeChildren(root as DebugNode | undefined)), 0);
+}
+
 function loadedTextureState(scene: Phaser.Scene, textureKey: string, count: number): TextureState {
   return {
     loaded: scene.textures.exists(textureKey),
@@ -262,6 +269,16 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
   );
 
   for (const field of FX_TEXTURE_FIELDS) {
+    if (field === 'combatFourSuitRally') {
+      const count = namedCountInTrees('combat-four-suit-flourish', [context.roots.fx]);
+      state[field] = {
+        loaded: true,
+        rendered: count > 0,
+        count,
+        bursts: burstCount(context, field)
+      };
+      continue;
+    }
     const textureKey = combatTextureKey(field);
     const count = field === 'combatCastFocusBurst'
       ? sceneTextureCount(context, textureKey)

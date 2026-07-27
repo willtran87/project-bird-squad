@@ -10,6 +10,7 @@ declare global {
     __birdSquadLastRun?: any;
     __birdSquadStartScene?: (key: string, data?: any) => Promise<any>;
     __birdSquadEnsureScene?: (key: string) => Promise<boolean>;
+    __routeAudit?: any;
     __birdSquadAudio?: () => any;
     render_game_to_text?: () => string;
     advanceTime?: (ms: number) => void;
@@ -65,7 +66,7 @@ async function boot(page: Page, path = '/') {
           || !data?.runState?.seed
           || scene?.runState?.seed === data.runState.seed;
         const battleReady = key !== 'BattleScene'
-          || (Boolean(scene?.fxLayer) && !scene?.combatAnimationPending);
+          || (Boolean(scene?.fxLayer?.active) && Boolean(scene?.root?.active) && !scene?.combatAnimationPending);
         const routeReady = key !== 'RouteScene' || scene?.routeEssentialAssetsReady === true;
         if (active && hasRequestedRouteSeed && battleReady && routeReady) return scene;
         await wait(50);
@@ -118,6 +119,48 @@ test('route readiness gate hides fallback nodes and blocks commitment', async ({
   expect(result.texts).toContain('Charting the route...');
   expect(result.texts.some((text: string) => ['S', 'C', 'N', 'R', 'B', '?', '$', '~'].includes(text))).toBe(false);
   expect(result.state.routeAssetsReady).toBe(false);
+});
+
+test('route becomes playable while optional painted node art streams', async ({ page }) => {
+  test.setTimeout(30_000);
+  await page.route('**/street-*.webp*', async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 3_000));
+    await route.continue();
+  });
+  await boot(page);
+
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const scene: any = await window.__birdSquadStartScene!('RouteScene', {});
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      if (state.assetReadiness?.interactive) break;
+      await wait(25);
+    }
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const texts = scene.children.list
+      .map((child: any) => child.text)
+      .filter((text: unknown): text is string => typeof text === 'string');
+    return {
+      state,
+      texts,
+      enabledRouteTargets: scene.children.list.filter((child: any) => (
+        child.input?.enabled && child.input?.cursor === 'pointer'
+      )).length,
+    };
+  });
+
+  expect(result.state.routeAssetsReady).toBe(true);
+  expect(result.state.assetReadiness).toMatchObject({
+    phase: 'interactive',
+    interactive: true,
+    fullArt: false,
+  });
+  expect(result.state.assetReadiness.pendingGroups).toContain('route-essential-art');
+  expect(result.state.assetReadiness.timeToFirstInteractionMs).toBeLessThan(3_000);
+  expect(result.texts).not.toContain('Charting the route...');
+  expect(result.texts).toContain('S');
+  expect(result.enabledRouteTargets).toBeGreaterThan(0);
 });
 
 test('route and battle report separate interaction and full-art readiness milestones', async ({ page }) => {
@@ -227,6 +270,55 @@ test('route readiness timeout releases a playable fallback and reports the faile
   expect(result.enabledRouteTargets).toBeGreaterThan(0);
 });
 
+test('route commit accepts pointer input across its full visible label and medallion', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    await window.__birdSquadStartScene!('RouteScene', {});
+  });
+
+  const target = await page.evaluate(() => {
+    const route = window.__birdSquadGame.scene.getScene('RouteScene');
+    const hit = route.children.list.find((child: any) => (
+      child.name === 'route-commit-hit' && child.input?.enabled
+    ));
+    const label = route.children.list.find((child: any) => (
+      child.name === 'route-commit-label' && child.type === 'Rectangle'
+    ));
+    if (!hit || !label) throw new Error('Missing route commit command');
+    return {
+      labelCenter: { x: label.x, y: label.y },
+      hitBounds: {
+        left: hit.x - hit.displayWidth / 2,
+        right: hit.x + hit.displayWidth / 2,
+        top: hit.y - hit.displayHeight / 2,
+        bottom: hit.y + hit.displayHeight / 2,
+      },
+      labelBounds: {
+        left: label.x - label.displayWidth / 2,
+        right: label.x + label.displayWidth / 2,
+        top: label.y - label.displayHeight / 2,
+        bottom: label.y + label.displayHeight / 2,
+      },
+    };
+  });
+
+  expect(target.hitBounds.left).toBeLessThanOrEqual(target.labelBounds.left);
+  expect(target.hitBounds.right).toBeGreaterThanOrEqual(target.labelBounds.right);
+  expect(target.hitBounds.top).toBeLessThanOrEqual(target.labelBounds.top);
+  expect(target.hitBounds.bottom).toBeGreaterThanOrEqual(target.labelBounds.bottom);
+
+  const canvas = await page.locator('canvas').boundingBox();
+  if (!canvas) throw new Error('Missing game canvas');
+  await page.mouse.click(
+    canvas.x + canvas.width * (target.labelCenter.x / 1280),
+    canvas.y + canvas.height * (target.labelCenter.y / 720),
+  );
+  await expect.poll(async () => page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.scene;
+  })).toBe('BattleScene');
+});
+
 test('encounter intro queues confirm and pointer dismissal behind its readable window', async ({ page }) => {
   test.setTimeout(60_000);
   await boot(page);
@@ -270,7 +362,10 @@ test('encounter intro queues confirm and pointer dismissal behind its readable w
     );
     window.advanceTime?.(beforeMinimumMs);
     const beforeMinimum = JSON.parse(window.render_game_to_text?.() ?? '{}');
-    window.advanceTime?.(1);
+    window.advanceTime?.(Math.max(
+      1,
+      beforeMinimum.combatIntro.minimumReadableMs - beforeMinimum.combatIntro.elapsedMs + 1,
+    ));
     const keyboardFinished = JSON.parse(window.render_game_to_text?.() ?? '{}');
 
     const pointerScene = await startIntro();
@@ -315,6 +410,86 @@ test('encounter intro queues confirm and pointer dismissal behind its readable w
   expect(result.pointerHit).toBe(true);
   expect(result.pointerFinished.combatIntro).toMatchObject({ active: false, dismissed: true });
   expect(result.pointerFinished.combatAnimationPending).toBe(false);
+});
+
+test('Text Pace scales readable intro and feedback holds without changing combat speed', async ({ page }) => {
+  test.setTimeout(90_000);
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const game = window.__birdSquadGame;
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const run = async (preference: 'relaxed' | 'standard' | 'fast') => {
+      localStorage.setItem('birdsquad.textPace', preference);
+      for (const key of ['MenuScene', 'RouteScene', 'BattleScene']) {
+        if (game.scene.isActive(key)) game.scene.stop(key);
+      }
+      await wait(0);
+      game.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
+      let scene: any;
+      let initial: any;
+      for (let attempt = 0; attempt < 240; attempt += 1) {
+        try {
+          initial = JSON.parse(window.render_game_to_text?.() ?? '{}');
+        } catch {
+          await wait(25);
+          continue;
+        }
+        if (initial.scene === 'BattleScene' && initial.combatIntro?.active) {
+          scene = game.scene.getScene('BattleScene');
+          break;
+        }
+        await wait(25);
+      }
+      if (!scene) throw new Error(`Battle intro did not start for ${preference} Text Pace`);
+      scene.combatIntroStartedAtMs = scene.time.now;
+      initial = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      scene.input.keyboard.emit('keydown-ENTER');
+      const remaining = Math.max(
+        0,
+        initial.combatIntro.minimumReadableMs - initial.combatIntro.elapsedMs,
+      );
+      window.advanceTime?.(Math.max(0, remaining - 1));
+      const beforeFloor = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      window.advanceTime?.(2);
+      const afterFloor = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      scene.combatTurnBanner('Text Pace', '#dffbff', 0x8df4ff);
+      await wait(1000);
+      const bannerAliveAt1000Ms = scene.fxLayer.list.some((child: any) => (
+        child.name === 'combat-turn-banner' && child.active
+      ));
+      return {
+        textPacing: initial.textPacing,
+        combatPacing: initial.combatPacing,
+        beforeFloorActive: beforeFloor.combatIntro.active,
+        afterFloorActive: afterFloor.combatIntro.active,
+        afterFloorDismissed: afterFloor.combatIntro.dismissed,
+        bannerAliveAt1000Ms,
+      };
+    };
+    return {
+      relaxed: await run('relaxed'),
+      standard: await run('standard'),
+      fast: await run('fast'),
+    };
+  });
+
+  expect(result.relaxed.textPacing).toMatchObject({
+    preference: 'relaxed', minimumReadableMs: 870, calloutHoldMs: 551, bannerHoldMs: 754,
+  });
+  expect(result.standard.textPacing).toMatchObject({
+    preference: 'standard', minimumReadableMs: 600, calloutHoldMs: 380, bannerHoldMs: 520,
+  });
+  expect(result.fast.textPacing).toMatchObject({
+    preference: 'fast', minimumReadableMs: 390, calloutHoldMs: 247, bannerHoldMs: 338,
+  });
+  for (const sample of Object.values(result)) {
+    expect(sample.combatPacing.preference).toBe('standard');
+    expect(sample.beforeFloorActive).toBe(true);
+    expect(sample.afterFloorActive).toBe(false);
+    expect(sample.afterFloorDismissed).toBe(true);
+  }
+  expect(result.relaxed.bannerAliveAt1000Ms).toBe(true);
+  expect(result.fast.bannerAliveAt1000Ms).toBe(false);
 });
 
 test('route map loads and previews the boss before the final node', async ({ page }) => {
@@ -809,6 +984,16 @@ test('combat attacks resolve after their animation wind-up', async ({ page }) =>
     scene.playCardAnimated(card, enemy.id);
     await wait(120);
     const during = window.__birdSquadState!();
+    let resolved = during;
+    for (let i = 0; i < 24; i += 1) {
+      const state = window.__birdSquadState!();
+      const enemyHp = state.enemies.find((candidate: any) => candidate.id === enemy.id)?.hp;
+      if (enemyHp < enemyHpBefore && state.combatPlayerHitConfirm?.rendered) {
+        resolved = state;
+        break;
+      }
+      await wait(25);
+    }
     const after = await waitForSettledState();
     return {
       enemyHpBefore,
@@ -823,7 +1008,13 @@ test('combat attacks resolve after their animation wind-up', async ({ page }) =>
       playerCommitmentCueBefore,
       playerCommitmentCueDuring: during.audio?.cueRequests?.playerCommitment ?? 0,
       combatPlayerCommitSigilDuring: during.combatPlayerCommitSigil,
-      combatPlayerHitConfirm: after.combatPlayerHitConfirm,
+      combatPlayerHitConfirm: resolved.combatPlayerHitConfirm,
+      playerCardFeedbackDuring: during.playerCardFeedback,
+      playerCardFeedbackAfter: after.playerCardFeedback,
+      combatPlayerCommitSigilAfter: after.combatPlayerCommitSigil,
+      combatActionTrailAfter: after.combatActionTrail,
+      combatCastFocusBurstAfter: after.combatCastFocusBurst,
+      activeParticleBurstsAfter: after.graphicsRuntime?.activeParticleBursts,
     };
   });
 
@@ -866,10 +1057,14 @@ test('combat attacks resolve after their animation wind-up', async ({ page }) =>
     await wait(160);
     const duringPreamble = window.__birdSquadState!();
     let duringWindup = duringPreamble;
+    let attackTellFlipX: boolean[] = [];
     for (let i = 0; i < 24; i += 1) {
       const state = window.__birdSquadState!();
       if (state.combatEnemyAttackTell?.rendered) {
         duringWindup = state;
+        attackTellFlipX = scene.fxLayer.list
+          .filter((entry: any) => entry.name === 'combat-enemy-attack-tell')
+          .map((entry: any) => entry.flipX);
         break;
       }
       await wait(80);
@@ -907,8 +1102,7 @@ test('combat attacks resolve after their animation wind-up', async ({ page }) =>
       }
       await wait(80);
     }
-    const after = await waitForSettledState();
-    let playerTurnRally = after;
+    let playerTurnRally = duringRecovery;
     for (let i = 0; i < 32; i += 1) {
       const state = window.__birdSquadState!();
       if (state.combatPlayerTurnRally?.rendered) {
@@ -917,6 +1111,7 @@ test('combat attacks resolve after their animation wind-up', async ({ page }) =>
       }
       await wait(80);
     }
+    const after = await waitForSettledState();
     return {
       flockHpBefore,
       preambleBeat: duringPreamble.combatEnemyTurnBeat,
@@ -957,11 +1152,22 @@ test('combat attacks resolve after their animation wind-up', async ({ page }) =>
       combatBeatProgressFrame: heldWindup.combatBeatProgressFrame,
       windupProgress: heldWindup.combatEnemyTurnProgress,
       releaseProgress: heldRelease.combatEnemyTurnProgress,
+      windupActionTrail: duringWindup.combatActionTrail,
       combatEnemyAttackTell: duringWindup.combatEnemyAttackTell,
+      attackTellFlipX,
       combatEnemyWindupPlaque: duringWindup.combatEnemyWindupPlaque,
       combatThreatCharge: duringWindup.combatThreatCharge,
       afterPending: after.combatAnimationPending,
       afterFlockHp: after.flock.hp,
+      afterAttackTell: after.combatEnemyAttackTell,
+      afterWindupPlaque: after.combatEnemyWindupPlaque,
+      afterCommitmentSeal: after.combatEnemyCommitmentSeal,
+      afterActionTrail: after.combatActionTrail,
+      afterPlayerTurnRally: after.combatPlayerTurnRally,
+      afterTurnBanner: after.combatTurnBanner,
+      afterCardDraw: after.combatCardDraw,
+      afterResonanceSurge: after.combatResonanceSurge,
+      afterFloatingCallout: after.combatFloatingCallout,
     };
   });
 
@@ -1007,6 +1213,8 @@ test('combat attacks resolve after their animation wind-up', async ({ page }) =>
   expect(playerAttack.combatPlayerCommitSigilDuring.count).toBeGreaterThanOrEqual(1);
   expect(playerAttack.combatPlayerCommitSigilDuring.bursts).toBeGreaterThanOrEqual(1);
   expect(playerAttack.playerCommitmentCueDuring).toBeGreaterThan(playerAttack.playerCommitmentCueBefore);
+  expect(playerAttack.playerCardFeedbackDuring.active).toBe(true);
+  expect(playerAttack.playerCardFeedbackDuring.transientObjects).toBeGreaterThan(0);
   expect(playerAttack.afterPending).toBe(false);
   expect(playerAttack.afterEnemyHp).toBeLessThan(playerAttack.enemyHpBefore);
   expect(playerAttack.combatPlayerHitConfirm.loaded).toBe(true);
@@ -1014,6 +1222,16 @@ test('combat attacks resolve after their animation wind-up', async ({ page }) =>
   expect(playerAttack.combatPlayerHitConfirm.count).toBeGreaterThanOrEqual(1);
   expect(playerAttack.combatPlayerHitConfirm.bursts).toBeGreaterThanOrEqual(1);
   expect(playerAttack.hitConfirmCueAfter).toBeGreaterThan(playerAttack.hitConfirmCueBefore);
+  expect(playerAttack.playerCardFeedbackAfter).toMatchObject({
+    active: false,
+    baselineObjects: 0,
+    transientObjects: 0,
+  });
+  expect(playerAttack.playerCardFeedbackAfter.lastRetiredObjects).toBeGreaterThan(0);
+  expect(playerAttack.combatPlayerCommitSigilAfter).toMatchObject({ rendered: false, count: 0 });
+  expect(playerAttack.combatActionTrailAfter).toMatchObject({ rendered: false, count: 0 });
+  expect(playerAttack.combatCastFocusBurstAfter).toMatchObject({ rendered: false, count: 0 });
+  expect(playerAttack.activeParticleBurstsAfter).toBe(0);
 
   expect(enemyAttack.duringPending).toBe(true);
   expect(enemyAttack.preambleBeat).toBe('preamble');
@@ -1077,6 +1295,11 @@ test('combat attacks resolve after their animation wind-up', async ({ page }) =>
   expect(enemyAttack.combatEnemyAttackTell.rendered).toBe(true);
   expect(enemyAttack.combatEnemyAttackTell.count).toBeGreaterThanOrEqual(1);
   expect(enemyAttack.combatEnemyAttackTell.bursts).toBeGreaterThanOrEqual(1);
+  expect(enemyAttack.windupActionTrail.loaded).toBe(true);
+  expect(enemyAttack.windupActionTrail.rendered).toBe(false);
+  expect(enemyAttack.windupActionTrail.bursts).toBe(0);
+  expect(enemyAttack.attackTellFlipX.length).toBeGreaterThanOrEqual(1);
+  expect(enemyAttack.attackTellFlipX.every((flipX) => flipX === false)).toBe(true);
   expect(enemyAttack.combatEnemyWindupPlaque.loaded).toBe(true);
   expect(enemyAttack.combatEnemyWindupPlaque.rendered).toBe(true);
   expect(enemyAttack.combatEnemyWindupPlaque.count).toBeGreaterThanOrEqual(1);
@@ -1088,6 +1311,21 @@ test('combat attacks resolve after their animation wind-up', async ({ page }) =>
   expect(enemyAttack.combatThreatCharge.bursts).toBeGreaterThanOrEqual(1);
   expect(enemyAttack.afterPending).toBe(false);
   expect(enemyAttack.afterFlockHp).toBeLessThan(enemyAttack.flockHpBefore);
+  expect(enemyAttack.afterAttackTell.rendered).toBe(false);
+  expect(enemyAttack.afterAttackTell.count).toBe(0);
+  expect(enemyAttack.afterWindupPlaque.rendered).toBe(false);
+  expect(enemyAttack.afterWindupPlaque.count).toBe(0);
+  expect(enemyAttack.afterCommitmentSeal.rendered).toBe(false);
+  expect(enemyAttack.afterCommitmentSeal.count).toBe(0);
+  expect(enemyAttack.afterActionTrail.rendered).toBe(false);
+  expect(enemyAttack.afterActionTrail.count).toBe(0);
+  expect(enemyAttack.afterPlayerTurnRally.rendered).toBe(false);
+  expect(enemyAttack.afterPlayerTurnRally.count).toBe(0);
+  expect(enemyAttack.afterTurnBanner.rendered).toBe(false);
+  expect(enemyAttack.afterTurnBanner.count).toBe(0);
+  expect(enemyAttack.afterCardDraw).toMatchObject({ rendered: false, count: 0 });
+  expect(enemyAttack.afterResonanceSurge).toMatchObject({ rendered: false, count: 0 });
+  expect(enemyAttack.afterFloatingCallout.rendered).toBe(false);
 
   expect(enemySupport.combatEnemyAttackTell.loaded).toBe(true);
   expect(enemySupport.combatEnemyAttackTell.rendered).toBe(false);
@@ -1108,6 +1346,161 @@ test('combat attacks resolve after their animation wind-up', async ({ page }) =>
   expect(enemySupport.combatEnemySupportTell.rendered).toBe(true);
   expect(enemySupport.combatEnemySupportTell.count).toBeGreaterThanOrEqual(1);
   expect(enemySupport.combatEnemySupportTell.bursts).toBeGreaterThanOrEqual(1);
+});
+
+test('direction-neutral attack tell stays readable at minimum landscape in lean reduced motion', async ({ page }) => {
+  test.setTimeout(45_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => {
+    localStorage.setItem('birdsquad.graphicsQuality', 'lean');
+    localStorage.setItem('birdsquad.motionPreference', 'reduced');
+    localStorage.setItem('birdsquad.visualContrast', 'high');
+  });
+  await boot(page);
+
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const state = window.__birdSquadState!();
+      if (scene.fxLayer && state.battleFxPresenter?.ready && state.combatEnemyAttackTell?.loaded) break;
+      await wait(50);
+    }
+    if (!scene.fxLayer) throw new Error('Battle FX layer did not become ready for minimum-landscape tell coverage');
+
+    const enemy = scene.enemies.find((candidate: any) => candidate.hp > 0);
+    const attackMove = enemy?.runtime.moves.find((move: any) =>
+      move.effects.some((effect: string) => effect.includes('damage'))
+    );
+    if (!enemy || !attackMove) throw new Error('Expected a damaging enemy move for minimum-landscape tell coverage');
+
+    scene.fxLayer.removeAll(true);
+    scene.combatEnemyAttackTellBursts = 0;
+    scene.combatEnemyWindupPlaqueBursts = 0;
+    scene.enemyAttackWindupFx(enemy, attackMove);
+    await wait(120);
+
+    const state = window.__birdSquadState!();
+    const canvas = document.querySelector('canvas');
+    if (!canvas) throw new Error('Expected the game canvas');
+    const rect = canvas.getBoundingClientRect();
+    const view = scene.enemyView(enemy);
+    const tellObjects = scene.fxLayer.list
+      .filter((entry: any) => entry.name === 'combat-enemy-attack-tell')
+      .map((entry: any) => ({
+        x: entry.x,
+        y: entry.y,
+        displayWidth: entry.displayWidth,
+        displayHeight: entry.displayHeight,
+        screenDiameter: entry.displayWidth * rect.width / 1280,
+        alpha: entry.alpha,
+        angle: entry.angle,
+        flipX: entry.flipX,
+        visible: entry.visible,
+      }));
+    await wait(360);
+    const stableTellCount = scene.fxLayer.list
+      .filter((entry: any) => entry.name === 'combat-enemy-attack-tell').length;
+
+    return {
+      viewport: { width: innerWidth, height: innerHeight },
+      canvas: {
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+      },
+      enemyView: { x: view.x, y: view.y, scale: view.scale },
+      tellObjects,
+      stableTellCount,
+      graphics: state.graphics,
+      motion: state.motion,
+      contrast: state.visualContrast,
+      attackTell: state.combatEnemyAttackTell,
+      actionTrail: state.combatActionTrail,
+      windupPlaque: state.combatEnemyWindupPlaque,
+    };
+  });
+
+  await page.screenshot({
+    path: '.artifacts/test-results/directionless-attack-tell/minimum-landscape-lean-reduced-high-contrast.png',
+  });
+
+  expect(result.viewport).toEqual({ width: 1000, height: 560 });
+  expect(result.canvas.left).toBeGreaterThanOrEqual(0);
+  expect(result.canvas.top).toBeGreaterThanOrEqual(0);
+  expect(result.canvas.right).toBeLessThanOrEqual(result.viewport.width + 0.5);
+  expect(result.canvas.bottom).toBeLessThanOrEqual(result.viewport.height + 0.5);
+  expect(result.canvas.width).toBeGreaterThanOrEqual(990);
+  expect(result.graphics).toMatchObject({ preference: 'lean', effective: 'lean', lean: true });
+  expect(result.motion).toMatchObject({ preference: 'reduced', reduced: true });
+  expect(result.contrast).toMatchObject({ preference: 'high', highContrast: true, applied: true });
+  expect(result.attackTell).toMatchObject({ loaded: true, rendered: true, count: 2, bursts: 1 });
+  expect(result.actionTrail).toMatchObject({ loaded: true, rendered: false, count: 0, bursts: 0 });
+  expect(result.windupPlaque.loaded).toBe(true);
+  expect(result.windupPlaque.rendered).toBe(true);
+  expect(result.tellObjects).toHaveLength(2);
+  expect(result.tellObjects.every((tell) => tell.visible && tell.flipX === false)).toBe(true);
+  expect(result.tellObjects.every((tell) => Math.abs(tell.angle) <= 4)).toBe(true);
+  expect(result.tellObjects.every((tell) => Math.abs(tell.x - result.enemyView.x) < 0.5)).toBe(true);
+  expect(result.tellObjects.every((tell) => tell.screenDiameter >= 60)).toBe(true);
+  expect(result.stableTellCount).toBe(2);
+});
+
+test('Animation Pace scales visual clocks without changing combat or text pacing', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const game = window.__birdSquadGame;
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const run = async (preference: 'relaxed' | 'standard' | 'fast') => {
+      localStorage.setItem('birdsquad.animationPace', preference);
+      localStorage.setItem('birdsquad.combatPace', 'standard');
+      localStorage.setItem('birdsquad.textPace', 'standard');
+      for (const key of ['MenuScene', 'ProfileScene', 'RouteScene', 'BattleScene']) {
+        if (game.scene.isActive(key)) game.scene.stop(key);
+      }
+      game.scene.start('MenuScene');
+      await wait(30);
+      const scene: any = game.scene.getScene('MenuScene');
+      const target = { progress: 0 };
+      scene.tweens.add({ targets: target, progress: 100, duration: 1000, ease: 'Linear' });
+      await wait(420);
+      const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      scene.tweens.killTweensOf(target);
+      return {
+        progress: target.progress,
+        animationPacing: state.animationPacing,
+        combatPacing: state.combatPacing,
+        textPacing: state.textPacing,
+      };
+    };
+    return {
+      relaxed: await run('relaxed'),
+      standard: await run('standard'),
+      fast: await run('fast'),
+    };
+  });
+
+  expect(result.relaxed.animationPacing).toEqual({
+    preference: 'relaxed', timeScale: 0.8, tweenTimeScale: 0.8, spriteTimeScale: 0.8,
+  });
+  expect(result.standard.animationPacing).toEqual({
+    preference: 'standard', timeScale: 1, tweenTimeScale: 1, spriteTimeScale: 1,
+  });
+  expect(result.fast.animationPacing).toEqual({
+    preference: 'fast', timeScale: 1.3, tweenTimeScale: 1.3, spriteTimeScale: 1.3,
+  });
+  expect(result.relaxed.progress).toBeLessThan(result.standard.progress);
+  expect(result.standard.progress).toBeLessThan(result.fast.progress);
+  for (const sample of Object.values(result)) {
+    expect(sample.combatPacing).toEqual({ preference: 'standard' });
+    expect(sample.textPacing).toMatchObject({ preference: 'standard', minimumReadableMs: 600 });
+  }
 });
 
 test('advanceTime deterministically resolves player and enemy sequencing', async ({ page }) => {
@@ -1235,9 +1628,11 @@ test('combat redraws reuse persistent scenery and coalesce same-frame requests',
   expect(result.queueCoalesced).toBe(7);
   expect(result.queueHandBuilds).toBe(0);
   expect(result.queueHandReuses).toBe(1);
-  expect(result.playerPasses).toBe(2);
+  // Commit, resolution, and post-feedback input unlock each require one
+  // deterministic render pass while the unchanged hand remains reusable.
+  expect(result.playerPasses).toBe(3);
   expect(result.playerHandBuilds).toBe(1);
-  expect(result.playerHandReuses).toBe(1);
+  expect(result.playerHandReuses).toBe(2);
   expect(result.enemyPasses).toBe(3);
   expect(result.enemyHandBuilds).toBe(2);
   expect(result.enemyHandReuses).toBe(1);
@@ -1267,7 +1662,6 @@ test('imagegen combat FX pack renders each wired asset', async ({ page }) => {
     [
       'combatOverextensionWarning',
       'combatBossPhaseBreak',
-      'combatPerfectChain',
       'combatStatusCleanseSpecific',
       'combatOpenSkyBreak',
       'combatCacheChoiceReveal',
@@ -1281,7 +1675,6 @@ test('imagegen combat FX pack renders each wired asset', async ({ page }) => {
 
     scene.combatOverextensionWarning(260, 210, 0.82);
     scene.combatBossPhaseBreak(620, 204, 0.86);
-    scene.combatPerfectChain(950, 210, 0.76);
     scene.combatStatusCleanseSpecific(270, 390, 0.98);
     scene.combatOpenSkyBreak(512, 402, 0.72);
     scene.combatCacheChoiceReveal(760, 396, 0.82);
@@ -1294,7 +1687,6 @@ test('imagegen combat FX pack renders each wired asset', async ({ page }) => {
     return {
       combatOverextensionWarning: state.combatOverextensionWarning,
       combatBossPhaseBreak: state.combatBossPhaseBreak,
-      combatPerfectChain: state.combatPerfectChain,
       combatStatusCleanseSpecific: state.combatStatusCleanseSpecific,
       combatOpenSkyBreak: state.combatOpenSkyBreak,
       combatCacheChoiceReveal: state.combatCacheChoiceReveal,
@@ -1539,6 +1931,7 @@ test('holding Hustle accelerates familiar enemy staging but preserves Impact', a
 });
 
 test('first-flight guidance exposes route tradeoffs and Flow outcome previews', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
   await boot(page);
   const result = await page.evaluate(async () => {
     const g = window.__birdSquadGame;
@@ -1570,6 +1963,17 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
     battle.flock.block = 0;
     battle.flock.flow = Math.max(0, battle.flock.flowMax - 1);
     battle.renderAll();
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    const guideState = JSON.parse(window.render_game_to_text!());
+    const guideAnnouncement = document.getElementById('game-status')?.textContent ?? '';
+    const guidePulseRendered = battle.handLayer.list.some((child: any) => child.name === 'combat-first-card-guide-pulse');
+    const guideCardTagRendered = battle.handLayer.list.some((child: any) => child.name === 'combat-first-card-guide-tag');
+    const guideTargetRendered = battle.root.list.some((child: any) => child.name === 'combat-first-target-guide');
+    const otherPlayableCards = guideState.hand.filter((candidate: any) =>
+      candidate.name !== guideState.firstCombatGuidance.cardName
+      && candidate.cost <= guideState.energy
+      && battle.handCardRects.get(candidate.instanceId)?.input?.enabled
+    ).length;
     const card = battle.hand.find((candidate: any) => {
       const contract = battle.activeCardContract(candidate);
       return contract.target === 'enemy' && battle.cardBuildsFlow(candidate) && battle.effectiveCost(candidate) <= battle.energy;
@@ -1598,6 +2002,13 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
       flowRailBounds,
       guideBounds,
       combatGuidance: battleState.firstCombatGuidance,
+      guideRecommendation: guideState.firstCombatGuidance,
+      guideEnergy: guideState.energy,
+      guideAnnouncement,
+      guidePulseRendered,
+      guideCardTagRendered,
+      guideTargetRendered,
+      otherPlayableCards,
       outcome: battleState.selectedCardOutcome
     };
   });
@@ -1623,7 +2034,21 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
   expect(result.flowHoldRail.holdPreview).toBe(true);
   expect(result.flowRailBounds.width).toBeGreaterThanOrEqual(190);
   expect(result.flowRailBounds.bottom).toBeLessThan(result.guideBounds.top);
-  expect(result.combatGuidance).toEqual({ active: true, rendered: true });
+  expect(result.combatGuidance).toMatchObject({ active: true, rendered: true });
+  expect(result.guideRecommendation).toMatchObject({
+    active: true,
+    rendered: true,
+    cardName: expect.any(String),
+    cost: expect.any(Number),
+    target: expect.any(String),
+  });
+  expect(result.guideRecommendation.cost).toBeLessThanOrEqual(result.guideEnergy);
+  expect(result.guidePulseRendered).toBe(true);
+  expect(result.guideCardTagRendered).toBe(true);
+  expect(result.guideTargetRendered).toBe(true);
+  expect(result.otherPlayableCards).toBeGreaterThan(0);
+  expect(result.guideAnnouncement).toContain(`Start with ${result.guideRecommendation.cardName}`);
+  expect(result.guideAnnouncement).toContain(`targeting ${result.guideRecommendation.target}`);
   expect(result.outcome.result.flow.before).toBe(result.outcome.result.flow.max - 1);
   expect(result.outcome.result.flow.after).toBe(result.outcome.result.flow.max);
   expect(result.outcome.summary).toContain(`Flow ${result.outcome.result.flow.before} -> Surge`);
@@ -1706,13 +2131,23 @@ test('first-flight guide persists, can be skipped or replayed, and completes thr
     await wait(100);
     const battle: any = g.scene.getScene('BattleScene');
     for (let i = 0; i < 120 && (!battle.scene.isActive() || battle.combatAnimationPending); i += 1) await wait(50);
-    const cardStage = JSON.parse(window.render_game_to_text!()).firstFlightGuide;
+    const cardStageState = JSON.parse(window.render_game_to_text!());
+    const cardStage = cardStageState.firstFlightGuide;
+    const cardStageGuidance = cardStageState.firstCombatGuidance;
+    battle.endTurn({ enemyPacing: false });
+    await wait(50);
+    const prematureRoostStage = JSON.parse(window.render_game_to_text!()).firstFlightGuide;
     const card = battle.hand.find((candidate: any) => battle.effectiveCost(candidate) <= battle.energy && battle.activeCardContract(candidate).target !== 'enemy')
       ?? battle.hand.find((candidate: any) => battle.effectiveCost(candidate) <= battle.energy);
     const target = battle.enemies.find((enemy: any) => enemy.hp > 0)?.id;
     battle.playCard(card, target);
     await wait(50);
-    const roostStage = JSON.parse(window.render_game_to_text!()).firstFlightGuide;
+    const roostStageState = JSON.parse(window.render_game_to_text!());
+    const roostStage = roostStageState.firstFlightGuide;
+    const roostStageGuidance = roostStageState.firstCombatGuidance;
+    const firstCardGuideRetired = !battle.handLayer.list.some((child: any) =>
+      child.name === 'combat-first-card-guide-pulse' || child.name === 'combat-first-card-guide-tag'
+    ) && !battle.root.list.some((child: any) => child.name === 'combat-first-target-guide');
     battle.endTurn({ enemyPacing: false });
     await wait(50);
     const rewardStage = JSON.parse(window.render_game_to_text!()).firstFlightGuide;
@@ -1732,7 +2167,11 @@ test('first-flight guide persists, can be skipped or replayed, and completes thr
       replayedGuide,
       routeGuide: routeState.firstFlightGuide,
       cardStage,
+      cardStageGuidance,
+      prematureRoostStage,
       roostStage,
+      roostStageGuidance,
+      firstCardGuideRetired,
       rewardStage,
       completedGuide
     };
@@ -1747,7 +2186,14 @@ test('first-flight guide persists, can be skipped or replayed, and completes thr
   expect(result.replayedGuide.replays).toBe(1);
   expect(result.routeGuide.seen).toContain('route');
   expect(result.cardStage.step).toBe('card');
+  expect(result.cardStageGuidance).toMatchObject({
+    cardName: expect.any(String),
+    target: expect.any(String),
+  });
+  expect(result.prematureRoostStage).toMatchObject({ step: 'card', cardsPlayed: 0, roosts: 0 });
   expect(result.roostStage.step).toBe('roost');
+  expect(result.roostStageGuidance.cardName).toBeUndefined();
+  expect(result.firstCardGuideRetired).toBe(true);
   expect(result.rewardStage.step).toBe('reward');
   expect(result.completedGuide.completed).toBe(true);
   expect(result.completedGuide.enabled).toBe(false);
@@ -2821,7 +3267,7 @@ test('route supply feedback renders generated frame behind toast', async ({ page
     const route: any = g.scene.getScene('RouteScene');
     const countTexture = (items: any[]): number => items.reduce((sum, child) => {
       const self = child.texture?.key === 'ui-icon-route-supply-feedback-frame' ? 1 : 0;
-      const nested = Array.isArray(child.list) ? countTexture(child.list, key) : 0;
+      const nested = Array.isArray(child.list) ? countTexture(child.list) : 0;
       return sum + self + nested;
     }, 0);
     for (let i = 0; i < 40; i += 1) {
@@ -2957,6 +3403,234 @@ test('repeat Supply Waymarks fire on each Supply use', async ({ page }) => {
   expect(result.afterSecond.used).toEqual(['signal_flare', 'emergency_call']);
   expect(result.afterSecond.pending).toBe(1);
   expect(result.afterSecond.log.filter((entry: string) => entry.startsWith('Supply Bell:'))).toHaveLength(2);
+});
+
+test('Waymark rewards have distinct identities and execute their authored tempo', async ({ page }) => {
+  const authored = JSON.parse(await readFile('data/game/alpha-route-marks.json', 'utf8'));
+  const marks = authored.routeMarks as Array<{
+    id: string;
+    trigger: string;
+    effects: string[];
+    description: string;
+  }>;
+  const byId = new Map(marks.map((mark) => [mark.id, mark]));
+  const signatures = marks.map((mark) => `${mark.trigger}|${[...mark.effects].sort().join('|')}`);
+  expect(new Set(signatures).size).toBe(marks.length);
+  expect(byId.get('black_ink_pin')).toMatchObject({
+    trigger: 'onRoostWithCardsInHand',
+    effects: ['gainResonance(1)', 'retainHand(2)'],
+  });
+  expect(byId.get('parade_mirror')).toMatchObject({
+    trigger: 'onNthCardThisTurn(3)',
+    effects: ['gainResonance(1)', 'nextTurnDraw(1)'],
+  });
+  expect(byId.get('fresh_pinfeather')).toMatchObject({
+    trigger: 'onEnterMolt',
+    effects: ['gainWingbeat(1)', 'draw(1)'],
+  });
+  expect(byId.get('double_packed_buckle')).toMatchObject({
+    trigger: 'onSupplyUsed',
+    effects: ['repeatNextSupply(1)', 'gainWingbeat(1)'],
+  });
+
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', {
+      routeNodeId: 'm1_entry',
+      runState: {
+        deck: [{ id: 'major_00' }, { id: 'major_01' }, { id: 'major_02' }, { id: 'major_03' }, { id: 'major_04' }],
+        leaderId: 'fledgling',
+        difficulty: 0,
+        seed: 'distinct-waymark-identities',
+        currentHp: 20,
+        scrap: 0,
+        routeMarks: [],
+        supplies: [],
+        supplySlots: 2,
+        mapIndex: 0,
+        completedRouteNodeIds: [],
+        currentRouteNodeId: 'm1_entry',
+        routeLog: [],
+        nextCombat: undefined,
+        signalChoices: [],
+        rewardEvents: [],
+        suppliesUsed: [],
+        combatResults: [],
+        freePreenNextDistrict: 0,
+      },
+    });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    const template = scene.hand[0] ?? scene.drawPile[0] ?? scene.discardPile[0];
+
+    scene.routeMarks = ['wind_step_tag'];
+    scene.markFiredThisCombat = new Set();
+    scene.pendingRetainHand = 0;
+    scene.nextTurnEnergyBonus = 0;
+    scene.roostRetainPool = [];
+    scene.checkRoostRestraintMarks(2, 0, 1);
+    const windStep = {
+      retained: scene.pendingRetainHand,
+      nextEnergy: scene.nextTurnEnergyBonus,
+      resonance: scene.spark,
+    };
+
+    scene.routeMarks = ['black_ink_pin'];
+    scene.markFiredThisCombat = new Set();
+    scene.pendingRetainHand = 0;
+    scene.nextTurnEnergyBonus = 0;
+    scene.roostRetainPool = [];
+    scene.spark = 0;
+    scene.checkRoostRestraintMarks(2, 0, 1);
+    const blackInk = {
+      retained: scene.pendingRetainHand,
+      nextEnergy: scene.nextTurnEnergyBonus,
+      resonance: scene.spark,
+    };
+
+    scene.routeMarks = ['parade_mirror'];
+    scene.markFiredThisCombat = new Set();
+    scene.spark = 0;
+    scene.nextTurnDrawBonus = 0;
+    scene.cardsPlayedThisTurn = 2;
+    scene.checkNthCardMarks();
+    const paradeBeforeThird = { resonance: scene.spark, nextDraw: scene.nextTurnDrawBonus };
+    scene.cardsPlayedThisTurn = 3;
+    scene.checkNthCardMarks();
+    const paradeAfterThird = { resonance: scene.spark, nextDraw: scene.nextTurnDrawBonus };
+    scene.checkNthCardMarks();
+    const paradeAfterRepeatCheck = { resonance: scene.spark, nextDraw: scene.nextTurnDrawBonus };
+
+    scene.routeMarks = ['plumes_applause_cap'];
+    scene.markFiredThisCombat = new Set();
+    scene.spark = 0;
+    scene.nextTurnDrawBonus = 0;
+    scene.cardsPlayedThisTurn = 3;
+    scene.checkNthCardMarks();
+    const applauseBeforeRoost = { resonance: scene.spark, nextDraw: scene.nextTurnDrawBonus };
+    scene.checkRoostRestraintMarks(0, 0, 3);
+    const applauseAfterRoost = { resonance: scene.spark, nextDraw: scene.nextTurnDrawBonus };
+
+    scene.routeMarks = ['fresh_pinfeather'];
+    scene.markFiredThisCombat = new Set();
+    scene.flock.molt = false;
+    scene.energy = 0;
+    scene.nextTurnEnergyBonus = 0;
+    scene.hand = [];
+    scene.drawPile = [{ ...template, instanceId: 'fresh-pinfeather-draw' }];
+    scene.enterMolt('Fresh Pinfeather test');
+    const freshPinfeather = {
+      energy: scene.energy,
+      nextEnergy: scene.nextTurnEnergyBonus,
+      hand: scene.hand.length,
+    };
+
+    scene.routeMarks = ['molt_metronome'];
+    scene.markFiredThisCombat = new Set();
+    scene.flock.molt = false;
+    scene.energy = 0;
+    scene.nextTurnEnergyBonus = 0;
+    scene.hand = [];
+    scene.drawPile = [{ ...template, instanceId: 'molt-metronome-draw' }];
+    scene.enterMolt('Molt Metronome test');
+    const moltMetronome = {
+      energy: scene.energy,
+      nextEnergy: scene.nextTurnEnergyBonus,
+      hand: scene.hand.length,
+    };
+
+    scene.routeMarks = ['supply_bell'];
+    scene.markFiredThisCombat = new Set();
+    scene.pendingSupplyRepeats = 0;
+    scene.energy = 0;
+    scene.hand = [];
+    scene.drawPile = [{ ...template, instanceId: 'supply-bell-draw' }];
+    scene.runSupplies = ['seed_packet'];
+    scene.runSuppliesUsed = [];
+    scene.flock.hp = 10;
+    scene.useSupply(0);
+    const supplyBell = {
+      energy: scene.energy,
+      hand: scene.hand.length,
+      pending: scene.pendingSupplyRepeats,
+    };
+
+    scene.fxLayer.removeAll(true);
+    scene.waymarkFeedback = [];
+    scene.supplyFeedback = [];
+    scene.routeMarks = ['double_packed_buckle'];
+    scene.markFiredThisCombat = new Set();
+    scene.pendingSupplyRepeats = 0;
+    scene.energy = 0;
+    scene.runSupplies = ['seed_packet', 'seed_packet'];
+    scene.runSuppliesUsed = [];
+    scene.flock.hp = 10;
+    scene.useSupply(0);
+    const doublePackedAfterFirst = {
+      energy: scene.energy,
+      hp: scene.flock.hp,
+      pending: scene.pendingSupplyRepeats,
+      feedback: scene.waymarkFeedback[0],
+    };
+    scene.routeMarks = [];
+    scene.useSupply(0);
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return {
+      windStep,
+      blackInk,
+      paradeBeforeThird,
+      paradeAfterThird,
+      paradeAfterRepeatCheck,
+      applauseBeforeRoost,
+      applauseAfterRoost,
+      freshPinfeather,
+      moltMetronome,
+      supplyBell,
+      doublePackedAfterFirst,
+      doublePackedAfterSecond: {
+        energy: scene.energy,
+        hp: scene.flock.hp,
+        pending: scene.pendingSupplyRepeats,
+        supplyFeedback: state.supplyFeedback?.[0],
+      },
+    };
+  });
+
+  expect(result.windStep).toEqual({ retained: 1, nextEnergy: 1, resonance: 0 });
+  expect(result.blackInk).toEqual({ retained: 2, nextEnergy: 0, resonance: 1 });
+  expect(result.paradeBeforeThird).toEqual({ resonance: 0, nextDraw: 0 });
+  expect(result.paradeAfterThird).toEqual({ resonance: 1, nextDraw: 1 });
+  expect(result.paradeAfterRepeatCheck).toEqual(result.paradeAfterThird);
+  expect(result.applauseBeforeRoost).toEqual({ resonance: 0, nextDraw: 0 });
+  expect(result.applauseAfterRoost).toEqual({ resonance: 1, nextDraw: 1 });
+  expect(result.freshPinfeather).toEqual({ energy: 1, nextEnergy: 0, hand: 1 });
+  expect(result.moltMetronome).toEqual({ energy: 0, nextEnergy: 1, hand: 1 });
+  expect(result.supplyBell).toEqual({ energy: 0, hand: 1, pending: 1 });
+  expect(result.doublePackedAfterFirst).toMatchObject({
+    energy: 1,
+    hp: 16,
+    pending: 1,
+    feedback: {
+      id: 'double_packed_buckle',
+      name: 'Double-Packed Buckle',
+    },
+  });
+  expect(result.doublePackedAfterFirst.feedback.summary).toContain('Wingbeat');
+  expect(result.doublePackedAfterFirst.feedback.summary).toContain('Supply');
+  expect(result.doublePackedAfterSecond).toMatchObject({
+    energy: 1,
+    hp: 28,
+    pending: 0,
+    supplyFeedback: {
+      id: 'seed_packet',
+    },
+  });
+  expect(result.doublePackedAfterSecond.supplyFeedback.summary).toContain('x2');
+
+  await page.screenshot({
+    path: '.artifacts/test-results/waymark-identity/double-packed-feedback.png',
+  });
 });
 
 test('Open Sky softening is distinct from Open Sky Guard', async ({ page }) => {
@@ -3978,8 +4652,8 @@ test('a combat route node resolves through its encounter', async ({ page }) => {
   expect(victoryResult.fanfareAfter).toBeGreaterThan(victoryResult.fanfareBefore);
   expect(turnBannerResult.turn).toBeGreaterThanOrEqual(2);
   expect(turnBannerResult.combatTurnBanner.loaded).toBe(true);
-  expect(turnBannerResult.combatTurnBanner.rendered).toBe(true);
-  expect(turnBannerResult.combatTurnBanner.count).toBeGreaterThanOrEqual(1);
+  expect(turnBannerResult.combatTurnBanner.rendered).toBe(false);
+  expect(turnBannerResult.combatTurnBanner.count).toBe(0);
   expect(turnBannerResult.combatTurnBanner.bursts).toBeGreaterThanOrEqual(1);
 });
 
@@ -4226,7 +4900,9 @@ test('poison pressure applies Fouled and ticks on the next player turn', async (
   expect(result.afterApplyFx.bursts).toBeGreaterThanOrEqual(1);
   expect(result.afterTickFx.loaded).toBe(true);
   expect(result.afterTickFx.rendered).toBe(true);
-  expect(result.afterTickFx.count).toBeGreaterThanOrEqual(2);
+  // The next player turn retires the apply beat before presenting the tick,
+  // so only the live tick sprite remains even though both bursts fired.
+  expect(result.afterTickFx.count).toBeGreaterThanOrEqual(1);
   expect(result.afterTickFx.bursts).toBeGreaterThanOrEqual(2);
   expect(result.log.some((line: string) => line.includes('Fouled pressure'))).toBe(true);
 });
@@ -4264,7 +4940,15 @@ test('flock Cohesion bar exposes incoming damage prediction after Cover', async 
         alpha: Number(child.alpha?.toFixed?.(2) ?? child.alpha),
         name: child.name,
       }));
+    const forecastLabels = (scene.root?.list ?? scene.children.list)
+      .filter((child: any) => child.name === 'combat-incoming-forecast-label')
+      .map((child: any) => child.text);
     const state = window.__birdSquadState!();
+    scene.flock.block = 0;
+    scene.renderAll();
+    const uncoveredForecastLabels = (scene.root?.list ?? scene.children.list)
+      .filter((child: any) => child.name === 'combat-incoming-forecast-label')
+      .map((child: any) => child.text);
     return {
       intentDamage,
       preview: state.flock.incoming,
@@ -4274,6 +4958,8 @@ test('flock Cohesion bar exposes incoming damage prediction after Cover', async 
       gaugeFrameCount: countTexture(scene.root?.list ?? scene.children.list, 'ui-icon-combat-cohesion-gauge-frame'),
       frameObjects,
       gaugeObjects,
+      forecastLabels,
+      uncoveredForecastLabels,
     };
   });
 
@@ -4282,6 +4968,14 @@ test('flock Cohesion bar exposes incoming damage prediction after Cover', async 
   expect(result.preview.hpLoss).toBe(result.intentDamage - 3);
   expect(result.preview.afterHp).toBe(30 - (result.intentDamage - 3));
   expect(result.preview.attackers).toBe(1);
+  expect(result.forecastLabels).toEqual([
+    `Incoming ${result.intentDamage} - Cover 3 = ${result.intentDamage - 3}\nAfter ${30 - (result.intentDamage - 3)} Cohesion`
+  ]);
+  expect(result.forecastLabels[0]).not.toContain('Incoming -');
+  expect(result.uncoveredForecastLabels).toEqual([
+    `Incoming ${result.intentDamage}\nAfter ${30 - result.intentDamage} Cohesion`
+  ]);
+  expect(result.uncoveredForecastLabels[0]).not.toContain('Incoming -');
   expect(result.combatIncomingForecastFrame).toEqual({ loaded: true, rendered: true, count: result.frameCount });
   expect(result.frameCount).toBeGreaterThanOrEqual(1);
   expect(result.frameObjects.every((frame: { width: number; height: number }) => frame.width === 188 && frame.height === 38)).toBe(true);
@@ -4459,6 +5153,7 @@ test('combat backdrop presentation varies by route encounter type', async ({ pag
 });
 
 test('signals/basins/cache present structured choices resolved by the route-effect interpreter', async ({ page }) => {
+  test.setTimeout(90_000);
   await boot(page);
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -4466,6 +5161,11 @@ test('signals/basins/cache present structured choices resolved by the route-effe
     await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('RouteScene');
+    for (let i = 0; i < 160; i += 1) {
+      const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      if (state.assetReadiness?.fullArt) break;
+      await wait(50);
+    }
     const signalChoices = scene.nodeChoiceList({ type: 'signal', payloadId: 'faded_chalk_line' }).map((c: any) => c.key);
     const basinCount = scene.nodeChoiceList({ type: 'basin' }).length;
     const cacheCount = scene.nodeChoiceList({ type: 'cache' }).length;
@@ -6006,6 +6706,7 @@ test('post-combat reward screens render generated choice ceremony art', async ({
 });
 
 test('reward decision chips preview the exact add and Preen outcomes before commitment', async ({ page }) => {
+  test.setTimeout(60_000);
   await boot(page);
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -6018,10 +6719,19 @@ test('reward decision chips preview the exact add and Preen outcomes before comm
       for (let i = 0; i < 100; i += 1) {
         scene.renderAll();
         await wait(40);
-        const state = JSON.parse(window.render_game_to_text!());
+        const state = scene.getTextState();
         if (state.rewardDecisionDeltas?.length === count) return state.rewardDecisionDeltas;
       }
-      throw new Error(`Reward decision deltas did not settle at ${count}.`);
+      const state = scene.getTextState();
+      throw new Error(`Reward decision deltas did not settle at ${count}: ${JSON.stringify({
+        mode: state.mode,
+        rewardChoices: state.rewardChoices?.length,
+        upgradeChoices: state.upgradeChoices?.length,
+        rewardDecisionDeltas: state.rewardDecisionDeltas,
+        battleRewardRenderer: state.battleRewardRenderer,
+        sceneActive: scene.scene.isActive(),
+        rootNames: scene.root?.list?.map((child: any) => child.name).filter(Boolean),
+      })}`);
     };
 
     let scene = await start();
@@ -6177,6 +6887,11 @@ test('market shelves stock multiple finite offers and paid refreshes', async ({ 
     await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('RouteScene');
+    for (let i = 0; i < 160; i += 1) {
+      const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      if (state.assetReadiness?.fullArt) break;
+      await wait(50);
+    }
     const market = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === 'market')
       ?? window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type !== 'boss');
     market.type = 'market';
@@ -8080,6 +8795,882 @@ test('free draw effects require setup instead of refunding every zero-cost play'
   expect(r.molting).toEqual({ hand: 2, draw: 0, energy: 10 });
 });
 
+test('starter Preens add new decisions instead of only larger numbers', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 40 && (!(scene.hand && scene.hand.length) || !scene.battleHandRendererModule); i += 1) await wait(50);
+
+    const starterIds = [
+      'major_00', 'wands_ace', 'wands_fledgling', 'swords_ace', 'swords_fledgling',
+      'cups_ace', 'cups_fledgling', 'pentacles_04', 'pentacles_fledgling', 'aviary_25',
+    ];
+    const deck = [...scene.drawPile, ...scene.hand, ...scene.discardPile];
+    const byId = (id: string) => deck.find((card: any) => card.id === id);
+    const upgraded = (id: string) => ({ ...byId(id), upgraded: true });
+    const shape = (effect: string) => effect.replace(/-?\d+(?:\.\d+)?/g, '#');
+    const changesShape = (card: any) => {
+      const base = card.runtime.effects ?? [];
+      const preened = card.runtime.upgrade.effects ?? [];
+      const baseMolt = card.runtime.moltEffects ?? [];
+      const preenedMolt = card.runtime.upgrade.moltEffects ?? [];
+      const changed = (left: string[], right: string[]) => (
+        left.length !== right.length || left.some((effect, index) => shape(effect) !== shape(right[index] ?? ''))
+      );
+      return changed(base, preened)
+        || changed(baseMolt, preenedMolt)
+        || (Number.isInteger(card.runtime.upgrade.cost) && card.runtime.upgrade.cost !== card.runtime.cost);
+    };
+    const authored = Object.fromEntries(starterIds.map((id) => [id, byId(id)?.runtime.upgrade.effects ?? []]));
+
+    const enemy = scene.enemies[0];
+    const originalEnemyMaxHp = enemy.maxHp;
+    enemy.maxHp = 10_000;
+    enemy.hp = 10_000;
+    enemy.block = 0;
+    scene.flock.molt = false;
+    const fillerTemplate = byId('wands_fledgling');
+    let fillerOrdinal = 0;
+    const fillers = (count: number) => Array.from({ length: count }, () => ({
+      ...fillerTemplate,
+      instanceId: `preen-filler-${fillerOrdinal += 1}`,
+    }));
+    const reset = () => {
+      scene.hand = [];
+      scene.drawPile = [];
+      scene.discardPile = [];
+      scene.energy = 0;
+      scene.spark = 0;
+      scene.flock.flow = 0;
+      scene.flock.block = 0;
+      scene.flock.openSkyGuard = 0;
+      scene.nextTurnDrawBonus = 0;
+      scene.pendingNestCoverBonus = 0;
+      scene.playedCardIdsThisCombat.clear();
+      enemy.hp = 10_000;
+      enemy.block = 0;
+      enemy.weak = 0;
+    };
+
+    reset();
+    scene.drawPile = fillers(1);
+    const firstFlight = upgraded('major_00');
+    scene.resolveCardEffects(firstFlight, enemy.id);
+    const firstFlightOpening = { energy: scene.energy, drawn: scene.hand.length };
+    reset();
+    scene.drawPile = fillers(1);
+    scene.playedCardIdsThisCombat.add('major_00');
+    scene.resolveCardEffects(firstFlight, enemy.id);
+    const firstFlightLater = { energy: scene.energy, drawn: scene.hand.length };
+
+    reset();
+    scene.spark = 1;
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(upgraded('wands_ace'), enemy.id);
+    const plumeWithResonance = { drawn: scene.hand.length, resonance: scene.spark };
+    reset();
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(upgraded('wands_ace'), enemy.id);
+    const plumeWithoutResonance = { drawn: scene.hand.length, resonance: scene.spark };
+
+    reset();
+    enemy.weak = 1;
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(upgraded('swords_ace'), enemy.id);
+    const pointOnWinded = { energy: scene.energy, drawn: scene.hand.length };
+    reset();
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(upgraded('swords_ace'), enemy.id);
+    const pointOnClean = { energy: scene.energy, drawn: scene.hand.length };
+
+    reset();
+    enemy.weak = 2;
+    scene.drawPile = fillers(2);
+    scene.resolveCardEffects(upgraded('swords_fledgling'), enemy.id);
+    const fledglingOnTwoWinded = { energy: scene.energy, drawn: scene.hand.length };
+    reset();
+    enemy.weak = 1;
+    scene.drawPile = fillers(2);
+    scene.resolveCardEffects(upgraded('swords_fledgling'), enemy.id);
+    const fledglingBelowGate = { energy: scene.energy, drawn: scene.hand.length };
+
+    reset();
+    scene.flock.hp = scene.flock.maxHp;
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(upgraded('cups_ace'), enemy.id);
+    const basinAtFull = { guard: scene.flock.openSkyGuard, drawn: scene.hand.length };
+    reset();
+    scene.flock.hp = scene.flock.maxHp - 10;
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(upgraded('cups_ace'), enemy.id);
+    const basinBelowFull = { guard: scene.flock.openSkyGuard, drawn: scene.hand.length };
+
+    reset();
+    scene.incomingNextAttackDamage = () => 8;
+    scene.resolveCardEffects(upgraded('pentacles_04'), enemy.id);
+    const lockedNestBlocks = {
+      cover: scene.flock.block,
+      nextDraw: scene.nextTurnDrawBonus,
+      guard: scene.flock.openSkyGuard,
+    };
+    reset();
+    scene.incomingNextAttackDamage = () => 99;
+    scene.resolveCardEffects(upgraded('pentacles_04'), enemy.id);
+    const lockedNestShort = {
+      cover: scene.flock.block,
+      nextDraw: scene.nextTurnDrawBonus,
+      guard: scene.flock.openSkyGuard,
+    };
+
+    reset();
+    scene.incomingNextAttackDamage = () => 4;
+    scene.resolveCardEffects(upgraded('pentacles_fledgling'), enemy.id);
+    const nestFledglingBlocks = { cover: scene.flock.block, nextNestCover: scene.pendingNestCoverBonus };
+    reset();
+    scene.incomingNextAttackDamage = () => 99;
+    scene.resolveCardEffects(upgraded('pentacles_fledgling'), enemy.id);
+    const nestFledglingShort = { cover: scene.flock.block, nextNestCover: scene.pendingNestCoverBonus };
+
+    reset();
+    scene.hand = [firstFlight];
+    scene.drawPile = deck.filter((card: any) => card.id !== 'major_00');
+    scene.energy = 3;
+    scene.flock.hp = scene.flock.maxHp;
+    enemy.maxHp = originalEnemyMaxHp;
+    enemy.hp = originalEnemyMaxHp;
+    scene.incomingNextAttackDamage = () => 6;
+    scene.renderAll();
+    scene.showCardPreview(firstFlight);
+    await wait(80);
+
+    return {
+      missingStarterCards: starterIds.filter((id) => !byId(id)),
+      decisionShape: Object.fromEntries(starterIds.map((id) => [id, changesShape(byId(id))])),
+      authored,
+      firstFlightOpening,
+      firstFlightLater,
+      plumeWithResonance,
+      plumeWithoutResonance,
+      pointOnWinded,
+      pointOnClean,
+      fledglingOnTwoWinded,
+      fledglingBelowGate,
+      basinAtFull,
+      basinBelowFull,
+      lockedNestBlocks,
+      lockedNestShort,
+      nestFledglingBlocks,
+      nestFledglingShort,
+      previewText: scene.cardPreview?.list?.flatMap((child: any) => (
+        typeof child.text === 'string' ? [child.text] : child.list?.map((nested: any) => nested.text).filter(Boolean) ?? []
+      )) ?? [],
+    };
+  });
+
+  expect(result.missingStarterCards).toEqual([]);
+  expect(Object.values(result.decisionShape).every(Boolean)).toBe(true);
+  expect(result.authored.major_00).toContain('if firstPlayedThisCombat then gainWingbeat(1)');
+  expect(result.authored.wands_ace).toContain('if hasResonance then draw(1)');
+  expect(result.authored.swords_ace).toContain('if targetWinded then gainWingbeat(1)');
+  expect(result.authored.swords_fledgling).toContain('if windedAtLeast(2) then gainWingbeat(1)');
+  expect(result.authored.cups_ace).toContain('if fullCohesion then gainOpenSkyGuard(1)');
+  expect(result.authored.pentacles_04).toContain('if fullyBlocksNextAttack then gainOpenSkyGuard(1)');
+  expect(result.authored.pentacles_fledgling).toContain('if fullyBlocksNextAttack then nextCoverBonus(nests, 2)');
+  expect(result.firstFlightOpening).toEqual({ energy: 1, drawn: 1 });
+  expect(result.firstFlightLater).toEqual({ energy: 0, drawn: 0 });
+  expect(result.plumeWithResonance).toEqual({ drawn: 1, resonance: 3 });
+  expect(result.plumeWithoutResonance).toEqual({ drawn: 0, resonance: 2 });
+  expect(result.pointOnWinded).toEqual({ energy: 1, drawn: 1 });
+  expect(result.pointOnClean).toEqual({ energy: 0, drawn: 0 });
+  expect(result.fledglingOnTwoWinded).toEqual({ energy: 1, drawn: 2 });
+  expect(result.fledglingBelowGate).toEqual({ energy: 0, drawn: 0 });
+  expect(result.basinAtFull).toEqual({ guard: 1, drawn: 1 });
+  expect(result.basinBelowFull).toEqual({ guard: 0, drawn: 0 });
+  expect(result.lockedNestBlocks).toEqual({ cover: 8, nextDraw: 2, guard: 1 });
+  expect(result.lockedNestShort).toEqual({ cover: 8, nextDraw: 0, guard: 0 });
+  expect(result.nestFledglingBlocks).toEqual({ cover: 4, nextNestCover: 2 });
+  expect(result.nestFledglingShort).toEqual({ cover: 4, nextNestCover: 0 });
+  expect(result.previewText).toEqual(expect.arrayContaining(['First Flight+', 'Preen']));
+  await page.screenshot({ path: '.artifacts/test-results/starter-preen-first-flight.png' });
+});
+
+test('reward Preens across every rarity add decisions instead of only larger numbers', async ({ page }) => {
+  const alphaCards = JSON.parse(await readFile('data/game/alpha-cards.json', 'utf8'));
+  const rewardIds = new Set<string>(alphaCards.rewardPool);
+  const rewardCards = alphaCards.cards.filter((card: any) => rewardIds.has(card.id));
+  const commonRewards = rewardCards.filter((card: any) => card.rarity === 'common');
+  const shape = (effect: string) => effect.replace(/-?\d+(?:\.\d+)?/g, '#');
+  const effectsChange = (base: string[] = [], upgraded: string[] = []) => (
+    base.length !== upgraded.length
+    || base.some((effect, index) => shape(effect) !== shape(upgraded[index] ?? ''))
+  );
+  const changesDecision = (card: any) => (
+    effectsChange(card.effects, card.upgrade.effects)
+    || effectsChange(card.moltEffects, card.upgrade.moltEffects)
+    || (Number.isInteger(card.upgrade.cost) && card.upgrade.cost !== card.cost)
+  );
+  const expectedHooks: Record<string, string> = {
+    swords_02: 'if targetBelowHalf then gainWingbeat(1)',
+    cups_03: 'if fullCohesion then retainHand(1)',
+    pentacles_02: 'if fullyBlocksNextAttack then gainWingbeat(1)',
+    wands_02: 'if hasResonance then retainHand(1)',
+    wands_03: 'if spentResonance then gainWingbeat(1)',
+    wands_05: 'if spentResonance then applyWinded(target, 1)',
+    swords_03: 'if targetIntendsAttack then gainCover(2)',
+    swords_04: 'if targetHasCover then gainResonance(1)',
+    swords_05: 'if targetHasCover then nextTurnDraw(1)',
+    cups_02: 'if fullCohesion then gainEnergyNextTurn(1)',
+    cups_04: 'if openSky then draw(1)',
+    cups_05: 'if openSky then retainHand(1)',
+    pentacles_ace: 'if openSky then nextTurnDraw(1)',
+    pentacles_03: 'retainHand(1)',
+    pentacles_05: 'if cohesionBelowHalf then gainOpenSkyGuard(1)',
+    aviary_29: 'if targetIntendsAttack then gainWingbeat(1)',
+    aviary_30: 'if openSky then retainHand(1)',
+    aviary_31: 'if targetHasCover then gainWingbeat(1)',
+    aviary_36: 'if firstPlayedThisCombat then nextTurnDraw(1)',
+    aviary_37: 'if fullyBlocksNextAttack then retainHand(1)',
+    aviary_38: 'gainOpenSkyGuard(1)',
+    aviary_39: 'if fullCohesion then gainResonance(1)',
+    wands_09: 'if targetHasCover then gainWingbeat(1)',
+    swords_06: 'if cohesionBelowHalf then gainWingbeat(1)',
+    swords_07: 'if targetWinded then gainResonance(1)',
+    cups_06: 'retainHand(1)',
+    cups_08: 'if fullCohesion then nextTurnDraw(1)',
+    pentacles_06: 'if fullyBlocksNextAttack then gainWingbeat(1)',
+    pentacles_08: 'if fullyBlocksNextAttack then retainHand(1)',
+    aviary_32: 'if openSky then retainHand(1)',
+    aviary_33: 'retainHand(1)',
+    aviary_34: 'if cohesionBelowHalf then retainHand(1)',
+    aviary_40: 'if targetHasCover then gainWingbeat(1)',
+    aviary_41: 'if openSky then retainHand(1)',
+    aviary_42: 'if flockSuit(basins,3) then heal(2)',
+    wands_07: 'if targetIntendsAttack then gainWingbeat(1)',
+    wands_10: 'if resonanceAtLeast(3) then nextTurnDraw(1)',
+    wands_outrider: 'if spentResonance then gainWingbeat(1)',
+    cups_09: 'if fullCohesion then gainOpenSkyGuard(1)',
+    cups_outrider: 'if fullCohesion then gainWingbeat(1)',
+    swords_08: 'if targetWinded then gainResonance(1)',
+    swords_09: 'if targetIntendsAttack then gainWingbeat(1)',
+    swords_outrider: 'if targetWinded then gainWingbeat(1)',
+    pentacles_07: 'if fullyBlocksNextAttack then gainWingbeat(1)',
+    pentacles_09: 'if openSky then retainHand(1)',
+    pentacles_outrider: 'if fullyBlocksNextAttack then gainWingbeat(1)',
+    aviary_35: 'if playedSuitThisTurn(plumes) then gainWingbeat(1)',
+    wands_elder: 'if resonanceAtLeast(3) then gainWingbeat(1)',
+    cups_10: 'if fullCohesion then retainHand(1)',
+    cups_matron: 'if fullCohesion then gainWingbeat(1)',
+    cups_elder: 'if fullCohesion then gainEnergyNextTurn(1)',
+    swords_10: 'if defeatsEnemy then retainHand(1)',
+    swords_matron: 'if windedAtLeast(3) then gainWingbeat(1)',
+    swords_elder: 'if windedAtLeast(3) then gainWingbeat(1)',
+    pentacles_10: 'if fullyBlocksNextAttack then retainHand(1)',
+    pentacles_matron: 'if fullyBlocksNextAttack then gainWingbeat(1)',
+    pentacles_elder: 'if fullyBlocksNextAttack then gainEnergyNextTurn(1)',
+    major_01: 'if playedSuitThisTurn(plumes) then gainWingbeat(1)',
+    major_02: 'if targetIntendsAttack then gainWingbeat(1)',
+    major_03: 'if fullCohesion then retainHand(1)',
+    major_04: 'if fullyBlocksNextAttack then gainWingbeat(1)',
+    major_05: 'if firstPlayedThisCombat then gainWingbeat(1)',
+    major_06: 'retainHand(1)',
+    major_07: 'if targetBelowHalf then gainWingbeat(1)',
+    major_08: 'if targetIntendsAttack then gainWingbeat(1)',
+    major_10: 'retainHand(1)',
+    major_11: 'if targetWinded then gainWingbeat(1)',
+    major_12: 'if cohesionBelowHalf then retainHand(1)',
+    major_14: 'if fullCohesion then gainWingbeat(1)',
+    major_15: 'if spentResonance then gainWingbeat(1)',
+    major_16: 'if firstPlayedThisCombat then gainWingbeat(1)',
+    major_17: 'if cohesionBelowHalf then retainHand(1)',
+    major_18: 'if targetIntendsAttack then gainWingbeat(1)',
+    major_19: 'if firstPlayedThisCombat then retainHand(1)',
+    major_20: 'if hasResonance then retainHand(1)',
+    major_21: 'if openSky then gainWingbeat(1)',
+    aviary_22: 'retainHand(1)',
+    aviary_23: 'if fullCohesion then gainWingbeat(1)',
+    aviary_24: 'if firstPlayedThisCombat then nextTurnDraw(1)',
+    aviary_26: 'if fullCohesion then gainWingbeat(1)',
+    aviary_27: 'if targetIntendsAttack then gainWingbeat(1)',
+    wands_matron: 'if noResonance then gainWingbeat(1)',
+  };
+
+  expect(rewardCards).toHaveLength(90);
+  expect(commonRewards).toHaveLength(24);
+  expect(Object.fromEntries(['common', 'uncommon', 'rare', 'legendary'].map((rarity) => [
+    rarity,
+    rewardCards.filter((card: any) => card.rarity === rarity).length,
+  ]))).toEqual({ common: 24, uncommon: 27, rare: 13, legendary: 26 });
+  expect(rewardCards.every(changesDecision)).toBe(true);
+  for (const [id, hook] of Object.entries(expectedHooks)) {
+    const card = rewardCards.find((entry: any) => entry.id === id);
+    expect(card?.upgrade.effects).toContain(hook);
+  }
+  const effectBody = (effect: string) => effect.replace(/^if .+? then /, '');
+  const inferMoltTarget = (baseTarget: string, effects: string[] = []) => {
+    const needsEnemy = effects.some((effect) => {
+      const body = effectBody(effect);
+      return /\b(?:damage|damagePierce|applyWinded|removeCover)\(target\b/.test(body)
+        || /\b(?:resonanceBurst|windedBurst)\(/.test(body)
+        || /\bperWinded\b/.test(body)
+        || /\btarget(?:BelowHalf|IntendsAttack|HasCover|Winded)\b/.test(effect)
+        || /\bwindedAtLeast\(/.test(effect);
+    });
+    if (needsEnemy) return 'enemy';
+    if (effects.some((effect) => /\bdamageAll\(/.test(effectBody(effect)))) return 'allEnemies';
+    if (baseTarget === 'choice') return 'choice';
+    return baseTarget === 'none' ? 'none' : 'self';
+  };
+  const stanceOwners = new Map<string, { id: string; state: string; stance: string }>();
+  const stanceCollisions: string[] = [];
+  let authoredStanceCount = 0;
+  for (const card of alphaCards.cards) {
+    for (const upgraded of [false, true]) {
+      const state = upgraded ? 'Preened' : 'base';
+      const cost = upgraded && Number.isInteger(card.upgrade.cost) ? card.upgrade.cost : card.cost;
+      const stances = [
+        { stance: 'normal', target: card.target, effects: upgraded ? card.upgrade.effects : card.effects },
+        {
+          stance: 'Molt',
+          target: inferMoltTarget(card.target, upgraded ? card.upgrade.moltEffects : card.moltEffects),
+          effects: upgraded ? card.upgrade.moltEffects : card.moltEffects,
+        },
+      ];
+      for (const stance of stances) {
+        if (!stance.effects?.length) continue;
+        authoredStanceCount += 1;
+        const signature = JSON.stringify({ cost, target: stance.target, effects: stance.effects });
+        const existing = stanceOwners.get(signature);
+        if (existing && existing.id !== card.id) {
+          stanceCollisions.push(`${card.id}:${state}:${stance.stance} = ${existing.id}:${existing.state}:${existing.stance}`);
+        } else if (!existing) {
+          stanceOwners.set(signature, { id: card.id, state, stance: stance.stance });
+        }
+      }
+    }
+  }
+  expect(authoredStanceCount).toBe(420);
+  expect(stanceCollisions).toEqual([]);
+  const twinBasin = alphaCards.cards.find((card: any) => card.id === 'cups_02');
+  const sharedNest = alphaCards.cards.find((card: any) => card.id === 'pentacles_06');
+  const plumeMatron = alphaCards.cards.find((card: any) => card.id === 'wands_matron');
+  expect(twinBasin.moltEffects[0]).toBe('if targetWinded then heal(2)');
+  expect(twinBasin.upgrade.moltEffects[0]).toBe('if targetWinded then heal(3)');
+  expect(sharedNest.moltEffects).toContain('if targetIntendsAttack then gainCover(2)');
+  expect(sharedNest.upgrade.moltEffects).toContain('if targetIntendsAttack then gainCover(3)');
+  expect(plumeMatron.effects[0]).toBe('if noResonance then gainWingbeat(1)');
+  expect(plumeMatron.moltEffects).toContain('if spentResonance then gainWingbeat(1)');
+  expect(plumeMatron.upgrade.moltEffects).toContain('if spentResonance then gainWingbeat(2)');
+
+  const definitions = Object.fromEntries(rewardCards.map((card: any) => [card.id, card]));
+  await boot(page);
+  const result = await page.evaluate(async (cardDefinitions) => {
+    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const g = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const scene: any = g.scene.getScene('BattleScene');
+    for (let i = 0; i < 40 && (!(scene.hand && scene.hand.length) || !scene.battleHandRendererModule); i += 1) await wait(50);
+    const template = scene.hand[0];
+    const enemy = scene.enemies[0];
+    const originalEnemyMaxHp = enemy.maxHp;
+    let instanceOrdinal = 0;
+    const makeCard = (id: string, upgraded = true) => {
+      const definition = (cardDefinitions as Record<string, any>)[id];
+      return {
+        ...template,
+        id,
+        instanceId: `common-preen-${id}-${instanceOrdinal += 1}`,
+        name: definition.displayName,
+        type: id.startsWith('aviary_') ? 'aviary' : definition.kind === 'legend' ? 'major' : definition.kind === 'molt' ? 'molt' : 'minor',
+        role: definition.tags.includes('attack') ? 'attack' : definition.tags.some((tag: string) => ['cover', 'heal'].includes(tag)) ? 'skill' : 'utility',
+        bird: definition.bird,
+        cost: definition.cost,
+        target: definition.target,
+        upgraded,
+        runtime: {
+          ...template.runtime,
+          ...definition,
+          name: definition.displayName,
+          displayName: definition.displayName,
+          moltEffects: definition.moltEffects ?? [],
+        },
+      };
+    };
+    let fillerOrdinal = 0;
+    const fillers = (count: number) => Array.from({ length: count }, () => ({
+      ...template,
+      instanceId: `common-preen-filler-${fillerOrdinal += 1}`,
+    }));
+    const reset = () => {
+      scene.hand = [];
+      scene.drawPile = [];
+      scene.discardPile = [];
+      scene.energy = 0;
+      scene.spark = 0;
+      scene.flock.flow = 0;
+      scene.flock.hp = scene.flock.maxHp;
+      scene.flock.block = 0;
+      scene.flock.openSkyGuard = 0;
+      scene.flock.exposed = false;
+      scene.flock.molt = false;
+      scene.nextTurnDrawBonus = 0;
+      scene.nextTurnEnergyBonus = 0;
+      scene.pendingNestCoverBonus = 0;
+      scene.pendingRetainHand = 0;
+      scene.playedCardIdsThisCombat.clear();
+      scene.incomingNextAttackDamage = () => 99;
+      enemy.maxHp = 10_000;
+      enemy.hp = 10_000;
+      enemy.block = 0;
+      enemy.weak = 0;
+    };
+
+    reset();
+    enemy.hp = 4_000;
+    scene.resolveCardEffects(makeCard('swords_02'), enemy.id);
+    const finisherBelowHalf = scene.energy;
+    reset();
+    enemy.hp = 8_000;
+    scene.resolveCardEffects(makeCard('swords_02'), enemy.id);
+    const finisherAboveHalf = scene.energy;
+
+    reset();
+    scene.spark = 1;
+    scene.drawPile = fillers(2);
+    scene.resolveCardEffects(makeCard('wands_03'), enemy.id);
+    const horizonWithResonance = { energy: scene.energy, drawn: scene.hand.length, resonance: scene.spark };
+    reset();
+    scene.drawPile = fillers(2);
+    scene.resolveCardEffects(makeCard('wands_03'), enemy.id);
+    const horizonWithoutResonance = { energy: scene.energy, drawn: scene.hand.length, resonance: scene.spark };
+
+    reset();
+    const attackIntent = scene.checkCardCondition('targetIntendsAttack', makeCard('aviary_29'), enemy.id, {
+      previousDiscarded: 0, previousDamageDefeated: false, spentResonance: false, returnSelfToDraw: false, builtFlow: false,
+    });
+    const originalIntentIndex = enemy.intentIndex;
+    const supportIntentIndex = enemy.runtime.moves.findIndex((move: any) => (
+      !(move.effects ?? []).some((effect: string) => /(?:^| then )damage\(/.test(effect))
+    ));
+    if (supportIntentIndex >= 0) enemy.intentIndex = supportIntentIndex;
+    const supportIntent = scene.checkCardCondition('targetIntendsAttack', makeCard('aviary_29'), enemy.id, {
+      previousDiscarded: 0, previousDamageDefeated: false, spentResonance: false, returnSelfToDraw: false, builtFlow: false,
+    });
+    enemy.intentIndex = originalIntentIndex;
+
+    reset();
+    enemy.block = 10;
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(makeCard('swords_04'), enemy.id);
+    const sheathedCovered = {
+      resonance: scene.spark,
+      enemyCover: enemy.block,
+      flockCover: scene.flock.block,
+    };
+    reset();
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(makeCard('swords_04'), enemy.id);
+    const sheathedClean = { resonance: scene.spark, enemyCover: enemy.block };
+
+    reset();
+    enemy.block = 10;
+    scene.resolveCardEffects(makeCard('swords_05'), enemy.id);
+    const scatteredCovered = { resonance: scene.spark, nextDraw: scene.nextTurnDrawBonus, enemyCover: enemy.block };
+
+    reset();
+    enemy.block = 10;
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(makeCard('aviary_31'), enemy.id);
+    const scavengerCovered = { resonance: scene.spark, energy: scene.energy, enemyCover: enemy.block, drawn: scene.hand.length };
+    reset();
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(makeCard('aviary_31'), enemy.id);
+    const scavengerClean = { resonance: scene.spark, energy: scene.energy, drawn: scene.hand.length };
+
+    reset();
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(makeCard('cups_02'), enemy.id);
+    const basinBondFull = { retain: scene.pendingRetainHand, nextEnergy: scene.nextTurnEnergyBonus };
+    reset();
+    scene.flock.hp = scene.flock.maxHp - 10;
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(makeCard('cups_02'), enemy.id);
+    const basinBondLow = { retain: scene.pendingRetainHand, nextEnergy: scene.nextTurnEnergyBonus };
+
+    reset();
+    scene.flock.exposed = true;
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(makeCard('cups_04'), enemy.id);
+    const closedBasinOpenSky = { drawn: scene.hand.length, guard: scene.flock.openSkyGuard };
+    reset();
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(makeCard('cups_04'), enemy.id);
+    const closedBasinSheltered = { drawn: scene.hand.length, guard: scene.flock.openSkyGuard };
+
+    reset();
+    scene.flock.hp = Math.floor(scene.flock.maxHp / 2) - 1;
+    scene.resolveCardEffects(makeCard('pentacles_05'), enemy.id);
+    const coldNestLow = scene.flock.openSkyGuard;
+    reset();
+    scene.resolveCardEffects(makeCard('pentacles_05'), enemy.id);
+    const coldNestHealthy = scene.flock.openSkyGuard;
+
+    reset();
+    scene.incomingNextAttackDamage = () => 6;
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(makeCard('pentacles_02'), enemy.id);
+    const nestJuggleBlocks = scene.energy;
+    reset();
+    scene.incomingNextAttackDamage = () => 99;
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(makeCard('pentacles_02'), enemy.id);
+    const nestJuggleShort = scene.energy;
+
+    reset();
+    scene.resolveCardEffects(makeCard('aviary_36'), enemy.id);
+    const drumlineOpening = scene.nextTurnDrawBonus;
+    reset();
+    scene.playedCardIdsThisCombat.add('aviary_36');
+    scene.resolveCardEffects(makeCard('aviary_36'), enemy.id);
+    const drumlineLater = scene.nextTurnDrawBonus;
+
+    reset();
+    scene.resolveCardEffects(makeCard('aviary_38'), enemy.id);
+    const spiralShelteredGuard = scene.flock.openSkyGuard;
+
+    reset();
+    enemy.block = 10;
+    scene.resolveCardEffects(makeCard('wands_09'), enemy.id);
+    const barricadeCovered = {
+      energy: scene.energy,
+      enemyCover: enemy.block,
+      flockCover: scene.flock.block,
+      resonance: scene.spark,
+    };
+    reset();
+    scene.resolveCardEffects(makeCard('wands_09'), enemy.id);
+    const barricadeClean = { energy: scene.energy, enemyCover: enemy.block };
+
+    reset();
+    scene.flock.hp = Math.floor(scene.flock.maxHp / 2) + 1;
+    scene.resolveCardEffects(makeCard('swords_06'), enemy.id);
+    const crossingDropsLow = { energy: scene.energy, cohesion: scene.flock.hp };
+    reset();
+    scene.flock.hp = scene.flock.maxHp;
+    scene.resolveCardEffects(makeCard('swords_06'), enemy.id);
+    const crossingStaysHigh = { energy: scene.energy, cohesion: scene.flock.hp };
+
+    reset();
+    scene.incomingNextAttackDamage = () => 10;
+    scene.resolveCardEffects(makeCard('pentacles_08'), enemy.id);
+    const workshopBlocks = {
+      cover: scene.flock.block,
+      nextDraw: scene.nextTurnDrawBonus,
+      retain: scene.pendingRetainHand,
+    };
+    reset();
+    scene.incomingNextAttackDamage = () => 99;
+    scene.resolveCardEffects(makeCard('pentacles_08'), enemy.id);
+    const workshopShort = {
+      cover: scene.flock.block,
+      nextDraw: scene.nextTurnDrawBonus,
+      retain: scene.pendingRetainHand,
+    };
+
+    reset();
+    enemy.weak = 1;
+    scene.resolveCardEffects(makeCard('swords_08'), enemy.id);
+    const quillRingPrimed = { resonance: scene.spark, winded: enemy.weak };
+    reset();
+    scene.resolveCardEffects(makeCard('swords_08'), enemy.id);
+    const quillRingClean = { resonance: scene.spark, winded: enemy.weak };
+
+    reset();
+    scene.spark = 2;
+    scene.resolveCardEffects(makeCard('wands_outrider'), enemy.id);
+    const plumeOutriderCharged = { energy: scene.energy, resonance: scene.spark };
+    reset();
+    scene.resolveCardEffects(makeCard('wands_outrider'), enemy.id);
+    const plumeOutriderEmpty = { energy: scene.energy, resonance: scene.spark };
+
+    reset();
+    scene.spark = 3;
+    scene.resolveCardEffects(makeCard('wands_elder'), enemy.id);
+    const plumeElderCharged = scene.energy;
+    reset();
+    scene.resolveCardEffects(makeCard('wands_elder'), enemy.id);
+    const plumeElderEmpty = scene.energy;
+
+    reset();
+    enemy.weak = 3;
+    scene.resolveCardEffects(makeCard('swords_matron'), enemy.id);
+    const quillMatronPrimed = { energy: scene.energy, winded: enemy.weak };
+    reset();
+    scene.resolveCardEffects(makeCard('swords_matron'), enemy.id);
+    const quillMatronClean = { energy: scene.energy, winded: enemy.weak };
+
+    reset();
+    scene.incomingNextAttackDamage = () => 10;
+    scene.resolveCardEffects(makeCard('pentacles_10'), enemy.id);
+    const legacyNestBlocks = { cover: scene.flock.block, retain: scene.pendingRetainHand };
+    reset();
+    scene.incomingNextAttackDamage = () => 99;
+    scene.resolveCardEffects(makeCard('pentacles_10'), enemy.id);
+    const legacyNestShort = { cover: scene.flock.block, retain: scene.pendingRetainHand };
+
+    reset();
+    enemy.hp = 4_000;
+    scene.resolveCardEffects(makeCard('major_07'), enemy.id);
+    const diveLineBelowHalf = scene.energy;
+    reset();
+    enemy.hp = 8_000;
+    scene.resolveCardEffects(makeCard('major_07'), enemy.id);
+    const diveLineAboveHalf = scene.energy;
+
+    reset();
+    scene.spark = 2;
+    scene.resolveCardEffects(makeCard('major_15'), enemy.id);
+    const gleamTrapCharged = { energy: scene.energy, resonance: scene.spark };
+    reset();
+    scene.resolveCardEffects(makeCard('major_15'), enemy.id);
+    const gleamTrapEmpty = { energy: scene.energy, resonance: scene.spark };
+
+    reset();
+    scene.resolveCardEffects(makeCard('major_19'), enemy.id);
+    const morningBurstOpening = scene.pendingRetainHand;
+    reset();
+    scene.playedCardIdsThisCombat.add('major_19');
+    scene.resolveCardEffects(makeCard('major_19'), enemy.id);
+    const morningBurstLater = scene.pendingRetainHand;
+
+    reset();
+    scene.flock.exposed = true;
+    scene.resolveCardEffects(makeCard('major_21'), enemy.id);
+    const longLoopOpenSky = scene.energy;
+    reset();
+    scene.resolveCardEffects(makeCard('major_21'), enemy.id);
+    const longLoopSheltered = scene.energy;
+
+    reset();
+    scene.drawPile = fillers(2);
+    scene.resolveCardEffects(makeCard('wands_matron', false), enemy.id);
+    const plumeMatronIgnites = { energy: scene.energy, resonance: scene.spark, drawn: scene.hand.length };
+    reset();
+    scene.spark = 1;
+    scene.drawPile = fillers(2);
+    scene.resolveCardEffects(makeCard('wands_matron', false), enemy.id);
+    const plumeMatronExtends = { energy: scene.energy, resonance: scene.spark, drawn: scene.hand.length };
+
+    reset();
+    scene.spark = 2;
+    scene.flock.molt = true;
+    scene.resolveCardEffects(makeCard('wands_matron', false), enemy.id);
+    const plumeMatronBaseMolt = { energy: scene.energy, resonance: scene.spark };
+    reset();
+    scene.spark = 2;
+    scene.flock.molt = true;
+    scene.resolveCardEffects(makeCard('wands_matron'), enemy.id);
+    const plumeMatronPreenedMolt = { energy: scene.energy, resonance: scene.spark };
+
+    reset();
+    scene.flock.molt = true;
+    scene.flock.hp = scene.flock.maxHp - 10;
+    enemy.weak = 1;
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(makeCard('cups_02'), enemy.id);
+    const twinBasinPrimedMolt = {
+      cohesion: scene.flock.hp,
+      winded: enemy.weak,
+      drawn: scene.hand.length,
+    };
+    reset();
+    scene.flock.molt = true;
+    scene.flock.hp = scene.flock.maxHp - 10;
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(makeCard('cups_02'), enemy.id);
+    const twinBasinCleanMolt = {
+      cohesion: scene.flock.hp,
+      winded: enemy.weak,
+      drawn: scene.hand.length,
+    };
+
+    reset();
+    enemy.intentIndex = originalIntentIndex;
+    scene.flock.molt = true;
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(makeCard('pentacles_06'), enemy.id);
+    const sharedNestAttackMolt = { cover: scene.flock.block, winded: enemy.weak, drawn: scene.hand.length };
+    reset();
+    if (supportIntentIndex >= 0) enemy.intentIndex = supportIntentIndex;
+    scene.flock.molt = true;
+    scene.drawPile = fillers(1);
+    scene.resolveCardEffects(makeCard('pentacles_06'), enemy.id);
+    const sharedNestSupportMolt = { cover: scene.flock.block, winded: enemy.weak, drawn: scene.hand.length };
+    enemy.intentIndex = originalIntentIndex;
+
+    reset();
+    const previewCard = makeCard('swords_02');
+    previewCard.text = 'Deal 4. If target below half: Deal 3.';
+    previewCard.upgradedText = 'Deal 5. If target below half: Deal 4. If target below half: Gain 1 Wingbeat.';
+    previewCard.moltText = 'Gain 4 Cover. If Cohesion below half: Gain 3 Cover.';
+    previewCard.moltTextUpgraded = 'Gain 5 Cover. If Cohesion below half: Gain 4 Cover.';
+    scene.hand = [previewCard];
+    scene.drawPile = fillers(9);
+    scene.energy = 3;
+    scene.flock.hp = scene.flock.maxHp;
+    enemy.maxHp = originalEnemyMaxHp;
+    enemy.hp = Math.floor(originalEnemyMaxHp / 2) - 1;
+    enemy.block = 0;
+    scene.queueCardArtLoad([previewCard]);
+    for (let i = 0; i < 40 && !scene.textures.exists('card-thumb-swords_02'); i += 1) await wait(50);
+    scene.renderAll();
+    scene.showCardPreview(previewCard);
+    await wait(80);
+    const previewImages = (items: any[]): any[] => items.flatMap((child: any) => [
+      ...(child.texture?.key ? [{
+        key: child.texture.key,
+        visible: child.visible,
+        alpha: child.alpha,
+        width: child.displayWidth,
+        height: child.displayHeight,
+      }] : []),
+      ...(Array.isArray(child.list) ? previewImages(child.list) : []),
+    ]);
+
+    return {
+      finisherBelowHalf,
+      finisherAboveHalf,
+      horizonWithResonance,
+      horizonWithoutResonance,
+      attackIntent,
+      supportIntent,
+      sheathedCovered,
+      sheathedClean,
+      scatteredCovered,
+      scavengerCovered,
+      scavengerClean,
+      basinBondFull,
+      basinBondLow,
+      closedBasinOpenSky,
+      closedBasinSheltered,
+      coldNestLow,
+      coldNestHealthy,
+      nestJuggleBlocks,
+      nestJuggleShort,
+      drumlineOpening,
+      drumlineLater,
+      spiralShelteredGuard,
+      barricadeCovered,
+      barricadeClean,
+      crossingDropsLow,
+      crossingStaysHigh,
+      workshopBlocks,
+      workshopShort,
+      quillRingPrimed,
+      quillRingClean,
+      plumeOutriderCharged,
+      plumeOutriderEmpty,
+      plumeElderCharged,
+      plumeElderEmpty,
+      quillMatronPrimed,
+      quillMatronClean,
+      legacyNestBlocks,
+      legacyNestShort,
+      diveLineBelowHalf,
+      diveLineAboveHalf,
+      gleamTrapCharged,
+      gleamTrapEmpty,
+      morningBurstOpening,
+      morningBurstLater,
+      longLoopOpenSky,
+      longLoopSheltered,
+      plumeMatronIgnites,
+      plumeMatronExtends,
+      plumeMatronBaseMolt,
+      plumeMatronPreenedMolt,
+      twinBasinPrimedMolt,
+      twinBasinCleanMolt,
+      sharedNestAttackMolt,
+      sharedNestSupportMolt,
+      previewText: scene.cardPreview?.list?.flatMap((child: any) => (
+        typeof child.text === 'string' ? [child.text] : child.list?.map((nested: any) => nested.text).filter(Boolean) ?? []
+      )) ?? [],
+      previewImages: previewImages(scene.cardPreview?.list ?? []),
+    };
+  }, definitions);
+
+  expect(result.finisherBelowHalf).toBe(1);
+  expect(result.finisherAboveHalf).toBe(0);
+  expect(result.horizonWithResonance).toEqual({ energy: 1, drawn: 2, resonance: 0 });
+  expect(result.horizonWithoutResonance).toEqual({ energy: 0, drawn: 0, resonance: 0 });
+  expect(result.attackIntent).toBe(true);
+  expect(result.supportIntent).toBe(false);
+  expect(result.sheathedCovered).toEqual({ resonance: 1, enemyCover: 4, flockCover: 5 });
+  expect(result.sheathedClean).toEqual({ resonance: 0, enemyCover: 0 });
+  expect(result.scatteredCovered).toEqual({ resonance: 1, nextDraw: 1, enemyCover: 2 });
+  expect(result.scavengerCovered).toEqual({ resonance: 1, energy: 1, enemyCover: 5, drawn: 1 });
+  expect(result.scavengerClean).toEqual({ resonance: 0, energy: 0, drawn: 1 });
+  expect(result.basinBondFull).toEqual({ retain: 1, nextEnergy: 1 });
+  expect(result.basinBondLow).toEqual({ retain: 0, nextEnergy: 0 });
+  expect(result.closedBasinOpenSky).toEqual({ drawn: 1, guard: 2 });
+  expect(result.closedBasinSheltered).toEqual({ drawn: 0, guard: 0 });
+  expect(result.coldNestLow).toBe(1);
+  expect(result.coldNestHealthy).toBe(0);
+  expect(result.nestJuggleBlocks).toBe(1);
+  expect(result.nestJuggleShort).toBe(0);
+  expect(result.drumlineOpening).toBe(1);
+  expect(result.drumlineLater).toBe(0);
+  expect(result.spiralShelteredGuard).toBe(1);
+  expect(result.barricadeCovered).toEqual({ energy: 1, enemyCover: 7, flockCover: 6, resonance: 2 });
+  expect(result.barricadeClean).toEqual({ energy: 0, enemyCover: 0 });
+  expect(result.crossingDropsLow).toEqual({ energy: 1, cohesion: 18 });
+  expect(result.crossingStaysHigh).toEqual({ energy: 0, cohesion: 36 });
+  expect(result.workshopBlocks).toEqual({ cover: 11, nextDraw: 1, retain: 1 });
+  expect(result.workshopShort).toEqual({ cover: 11, nextDraw: 0, retain: 0 });
+  expect(result.quillRingPrimed).toEqual({ resonance: 1, winded: 4 });
+  expect(result.quillRingClean).toEqual({ resonance: 0, winded: 3 });
+  expect(result.plumeOutriderCharged).toEqual({ energy: 1, resonance: 0 });
+  expect(result.plumeOutriderEmpty).toEqual({ energy: 0, resonance: 0 });
+  expect(result.plumeElderCharged).toBe(1);
+  expect(result.plumeElderEmpty).toBe(0);
+  expect(result.quillMatronPrimed).toEqual({ energy: 1, winded: 6 });
+  expect(result.quillMatronClean).toEqual({ energy: 0, winded: 3 });
+  expect(result.legacyNestBlocks).toEqual({ cover: 11, retain: 1 });
+  expect(result.legacyNestShort).toEqual({ cover: 11, retain: 0 });
+  expect(result.diveLineBelowHalf).toBe(1);
+  expect(result.diveLineAboveHalf).toBe(0);
+  expect(result.gleamTrapCharged).toEqual({ energy: 1, resonance: 0 });
+  expect(result.gleamTrapEmpty).toEqual({ energy: 0, resonance: 0 });
+  expect(result.morningBurstOpening).toBe(1);
+  expect(result.morningBurstLater).toBe(0);
+  expect(result.longLoopOpenSky).toBe(1);
+  expect(result.longLoopSheltered).toBe(0);
+  expect(result.plumeMatronIgnites).toEqual({ energy: 1, resonance: 2, drawn: 1 });
+  expect(result.plumeMatronExtends).toEqual({ energy: 0, resonance: 3, drawn: 1 });
+  expect(result.plumeMatronBaseMolt).toEqual({ energy: 1, resonance: 1 });
+  expect(result.plumeMatronPreenedMolt).toEqual({ energy: 2, resonance: 1 });
+  expect(result.twinBasinPrimedMolt).toEqual({ cohesion: 33, winded: 4, drawn: 1 });
+  expect(result.twinBasinCleanMolt).toEqual({ cohesion: 28, winded: 3, drawn: 1 });
+  expect(result.sharedNestAttackMolt).toEqual({ cover: 5, winded: 3, drawn: 1 });
+  expect(result.sharedNestSupportMolt).toEqual({ cover: 0, winded: 3, drawn: 1 });
+  expect(result.previewText).toEqual(expect.arrayContaining(['Crossed Quills+', 'Preen']));
+  expect(result.previewText.join(' ')).toContain('Gain 1 Wingbeat');
+  expect(result.previewImages).toEqual(expect.arrayContaining([
+    expect.objectContaining({
+      key: expect.stringMatching(/^card-(?:thumb-)?swords_02$/),
+      visible: true,
+      alpha: 1,
+      width: 300,
+      height: 450,
+    }),
+  ]));
+  await page.screenshot({ path: '.artifacts/test-results/common-preen-crossed-quills.png' });
+});
+
 test('route ESC asks to confirm before abandoning a run (does not leave immediately)', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
@@ -8429,7 +10020,9 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
     window.localStorage.removeItem('birdsquad.visualContrast');
     window.localStorage.removeItem('birdsquad.graphicsQuality');
     window.localStorage.removeItem('birdsquad.combatPace');
-    const findSliderHit = (items: any[], control: 'music' | 'sfx'): any | undefined => collect(items)
+    window.localStorage.removeItem('birdsquad.animationPace');
+    window.localStorage.removeItem('birdsquad.textPace');
+    const findSliderHit = (items: any[], control: 'music' | 'sfx' | 'ambience'): any | undefined => collect(items)
       .find((child: any) => child.name === `system-settings-${control}-slider-hit`
         && (child.input?.enabled ?? false));
     const findMotionHit = (items: any[]): any | undefined => collect(items)
@@ -8444,6 +10037,12 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
     const findCombatPaceHit = (items: any[]): any | undefined => collect(items)
       .find((child: any) => child.name === 'system-settings-combat-pace-switch-hit'
         && (child.input?.enabled ?? false));
+    const findAnimationPaceHit = (items: any[]): any | undefined => collect(items)
+      .find((child: any) => child.name === 'system-settings-animation-pace-toggle-hit'
+        && (child.input?.enabled ?? false));
+    const findTextPaceHit = (items: any[]): any | undefined => collect(items)
+      .find((child: any) => child.name === 'system-settings-row-10-hit'
+        && (child.input?.enabled ?? false));
 
     let menu: any = g.scene.getScene('MenuScene');
     menu.input.keyboard.emit('keydown-S');
@@ -8452,7 +10051,8 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
       const ready = countTexture(overlayItems, 'ui-icon-overlay-panel-flourish') >= 1
         && countTexture(overlayItems, 'ui-icon-system-menu-command-frame') >= 2
         && findSliderHit(overlayItems, 'music')
-        && findSliderHit(overlayItems, 'sfx');
+        && findSliderHit(overlayItems, 'sfx')
+        && findSliderHit(overlayItems, 'ambience');
       if (ready) break;
       await wait(50);
     }
@@ -8472,9 +10072,12 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
       .filter((child: any) => child.input?.enabled && [
         'system-settings-music-slider-hit',
         'system-settings-sfx-slider-hit',
+        'system-settings-ambience-slider-hit',
         'system-settings-motion-switch-hit',
         'system-settings-graphics-quality-switch-hit',
-        'system-settings-combat-pace-switch-hit'
+        'system-settings-combat-pace-switch-hit',
+        'system-settings-animation-pace-toggle-hit',
+        'system-settings-row-10-hit'
       ].includes(child.name))
       .map((child: any) => ({ name: child.name, width: child.displayWidth, height: child.displayHeight }));
     const menuGraphicsInitial = menuState.graphics;
@@ -8515,6 +10118,18 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
     menuPaceHit.emit('pointerdown', { x: 804, y: 504, isDown: true });
     await wait(80);
     const menuPaceAfterSnappy = JSON.parse(window.render_game_to_text!()).combatPacing;
+    const menuAnimationPaceInitial = JSON.parse(window.render_game_to_text!()).animationPacing;
+    const menuAnimationPaceHit = findAnimationPaceHit(menu.children.list);
+    if (!menuAnimationPaceHit) throw new Error('Missing menu Animation Pace hit target');
+    menuAnimationPaceHit.emit('pointerdown', { x: 804, y: 428, isDown: true });
+    await wait(80);
+    const menuAnimationPaceAfterFast = JSON.parse(window.render_game_to_text!()).animationPacing;
+    const menuTextPaceInitial = JSON.parse(window.render_game_to_text!()).textPacing;
+    const menuTextPaceHit = findTextPaceHit(menu.children.list);
+    if (!menuTextPaceHit) throw new Error('Missing menu Text Pace row hit target');
+    menuTextPaceHit.emit('pointerdown', { x: 804, y: 552, isDown: true });
+    await wait(80);
+    const menuTextPaceAfterFast = JSON.parse(window.render_game_to_text!()).textPacing;
     const menuMusicHit = findSliderHit(menu.children.list, 'music');
     if (!menuMusicHit) throw new Error('Missing menu Music slider hit target');
     menuMusicHit.emit('pointerdown', { x: 364, y: 266, isDown: true });
@@ -8529,6 +10144,15 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
     menuSfxHit.emit('pointerdown', { x: 434, y: 328, isDown: true });
     await wait(80);
     const menuAudioAfterSfx = JSON.parse(window.render_game_to_text!()).audio;
+    let menuAmbienceHit = findSliderHit(menu.children.list, 'ambience');
+    for (let i = 0; i < 30 && !menuAmbienceHit; i += 1) {
+      await wait(50);
+      menuAmbienceHit = findSliderHit(menu.children.list, 'ambience');
+    }
+    if (!menuAmbienceHit) throw new Error('Missing menu Ambience slider hit target');
+    menuAmbienceHit.emit('pointerdown', { x: 399, y: 390, isDown: true });
+    await wait(80);
+    const menuAudioAfterAmbience = JSON.parse(window.render_game_to_text!()).audio;
     menu.input.keyboard.emit('keydown-ESC');
     await wait(60);
     const menuClosed = JSON.parse(window.render_game_to_text!()).settingsOpen;
@@ -8619,8 +10243,13 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
       menuGraphicsRuntimeAfterLean: menuGraphicsAfterLeanState.graphicsRuntime,
       menuPaceInitial,
       menuPaceAfterSnappy,
+      menuAnimationPaceInitial,
+      menuAnimationPaceAfterFast,
+      menuTextPaceInitial,
+      menuTextPaceAfterFast,
       menuAudioAfterMusic,
       menuAudioAfterSfx,
+      menuAudioAfterAmbience,
       menuTitlePlaqueTelemetry: menuState.systemOverlayTitlePlaque,
       menuFieldCommandFrameTelemetry: menuState.systemFieldCommandFrame,
       menuSettingsRowTelemetry: menuState.systemSettingsRowFrame,
@@ -8648,6 +10277,8 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
       routeVisualContrast: routeState.visualContrast,
       routeGraphics: routeState.graphics,
       routeCombatPacing: routeState.combatPacing,
+      routeAnimationPacing: routeState.animationPacing,
+      routeTextPacing: routeState.textPacing,
       routeClosed,
       battleSettings,
       battleFlourish,
@@ -8671,6 +10302,8 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
       battleGraphics: battleState.graphics,
       battleGraphicsRuntime: battleState.graphicsRuntime,
       battleCombatPacing: battleState.combatPacing,
+      battleAnimationPacing: battleState.animationPacing,
+      battleTextPacing: battleState.textPacing,
       battleDidNotEndTurn: beforeTurn === afterTurn,
       battleClosed
     };
@@ -8697,13 +10330,13 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.menuSettingsRowTelemetry.count).toBeGreaterThanOrEqual(8);
   expect(result.menuSettingsToggleFrame).toBeGreaterThanOrEqual(3);
   expect(result.menuSettingsToggleTelemetry).toEqual({ loaded: true, rendered: true, count: result.menuSettingsToggleFrame });
-  expect(result.menuSettingsVolumeSliderFrame).toBe(2);
-  expect(result.menuSettingsVolumeSliderTelemetry).toEqual({ loaded: true, rendered: true, count: 2 });
+  expect(result.menuSettingsVolumeSliderFrame).toBe(3);
+  expect(result.menuSettingsVolumeSliderTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
   expect(result.menuSettingsMotionSwitchFrame).toBe(3);
   expect(result.menuSettingsMotionSwitchTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
   expect(result.menuSettingsFocusRings).toBe(1);
   expect(result.menuSettingsFocus).toEqual({ index: 0, label: 'Audio' });
-  expect(result.menuSettingsControlTargets).toHaveLength(5);
+  expect(result.menuSettingsControlTargets).toHaveLength(8);
   expect(result.menuSettingsControlTargets.every((target: { width: number; height: number }) => (
     target.width >= 276 && target.height === 58
   ))).toBe(true);
@@ -8723,9 +10356,20 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.menuGraphicsRuntimeAfterLean).toEqual({ ambientParticleEmitters: 0 });
   expect(result.menuPaceInitial.preference).toBe('standard');
   expect(result.menuPaceAfterSnappy.preference).toBe('snappy');
+  expect(result.menuAnimationPaceInitial).toMatchObject({ preference: 'standard', timeScale: 1 });
+  expect(result.menuAnimationPaceAfterFast).toMatchObject({
+    preference: 'fast', timeScale: 1.3, tweenTimeScale: 1.3, spriteTimeScale: 1.3,
+  });
+  expect(result.menuTextPaceInitial).toMatchObject({ preference: 'standard', minimumReadableMs: 600, bannerHoldMs: 520 });
+  expect(result.menuTextPaceAfterFast).toMatchObject({ preference: 'fast', minimumReadableMs: 390, bannerHoldMs: 338 });
   expect(result.menuAudioAfterMusic.musicVolume).toBeCloseTo(0.25, 2);
+  expect(result.menuAudioAfterMusic.ambienceVolume).toBeCloseTo(0.78, 2);
   expect(result.menuAudioAfterSfx.musicVolume).toBeCloseTo(0.25, 2);
   expect(result.menuAudioAfterSfx.sfxVolume).toBeCloseTo(0.65, 2);
+  expect(result.menuAudioAfterSfx.ambienceVolume).toBeCloseTo(0.78, 2);
+  expect(result.menuAudioAfterAmbience.musicVolume).toBeCloseTo(0.25, 2);
+  expect(result.menuAudioAfterAmbience.sfxVolume).toBeCloseTo(0.65, 2);
+  expect(result.menuAudioAfterAmbience.ambienceVolume).toBeCloseTo(0.45, 2);
   expect(result.routeSettings).toBe(true);
   expect(result.routeFlourish).toBeGreaterThanOrEqual(1);
   expect(result.routeCommandFrame).toBeGreaterThanOrEqual(2);
@@ -8738,8 +10382,8 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.routeSettingsRowTelemetry.count).toBeGreaterThanOrEqual(8);
   expect(result.routeSettingsToggleFrame).toBeGreaterThanOrEqual(3);
   expect(result.routeSettingsToggleTelemetry).toEqual({ loaded: true, rendered: true, count: result.routeSettingsToggleFrame });
-  expect(result.routeSettingsVolumeSliderFrame).toBe(2);
-  expect(result.routeSettingsVolumeSliderTelemetry).toEqual({ loaded: true, rendered: true, count: 2 });
+  expect(result.routeSettingsVolumeSliderFrame).toBe(3);
+  expect(result.routeSettingsVolumeSliderTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
   expect(result.routeSettingsMotionSwitchFrame).toBe(3);
   expect(result.routeSettingsMotionSwitchTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
   expect(result.routeSettingsFocusRings).toBe(1);
@@ -8749,6 +10393,10 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.routeVisualContrast).toMatchObject({ preference: 'high', highContrast: true, applied: true });
   expect(result.routeGraphics).toMatchObject({ preference: 'lean', effective: 'lean', lean: true });
   expect(result.routeCombatPacing.preference).toBe('snappy');
+  expect(result.routeAnimationPacing).toMatchObject({
+    preference: 'fast', timeScale: 1.3, tweenTimeScale: 1.3, spriteTimeScale: 1.3,
+  });
+  expect(result.routeTextPacing.preference).toBe('fast');
   expect(result.routeClosed).toBe(false);
   expect(result.battleSettings).toBe(true);
   expect(result.battleFlourish).toBeGreaterThanOrEqual(1);
@@ -8762,8 +10410,8 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.battleSettingsRowTelemetry.count).toBeGreaterThanOrEqual(8);
   expect(result.battleSettingsToggleFrame).toBeGreaterThanOrEqual(3);
   expect(result.battleSettingsToggleTelemetry).toEqual({ loaded: true, rendered: true, count: result.battleSettingsToggleFrame });
-  expect(result.battleSettingsVolumeSliderFrame).toBe(2);
-  expect(result.battleSettingsVolumeSliderTelemetry).toEqual({ loaded: true, rendered: true, count: 2 });
+  expect(result.battleSettingsVolumeSliderFrame).toBe(3);
+  expect(result.battleSettingsVolumeSliderTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
   expect(result.battleSettingsMotionSwitchFrame).toBe(3);
   expect(result.battleSettingsMotionSwitchTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
   expect(result.battleSettingsFocusRings).toBe(1);
@@ -8774,10 +10422,16 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.battleGraphics).toMatchObject({ preference: 'lean', effective: 'lean', lean: true });
   expect(result.battleGraphicsRuntime).toMatchObject({ atmosphereStrips: 10, particleBurstCap: 2 });
   expect(result.battleCombatPacing.preference).toBe('snappy');
+  expect(result.battleAnimationPacing).toMatchObject({
+    preference: 'fast', timeScale: 1.3, tweenTimeScale: 1.3, spriteTimeScale: 1.3,
+  });
+  expect(result.battleTextPacing.preference).toBe('fast');
   expect(result.battleDidNotEndTurn).toBe(true);
   expect(result.battleClosed).toBe(false);
   expect(await page.evaluate(() => localStorage.getItem('birdsquad.graphicsQuality'))).toBe('lean');
   expect(await page.evaluate(() => localStorage.getItem('birdsquad.visualContrast'))).toBe('high');
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.animationPace'))).toBe('fast');
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.textPace'))).toBe('fast');
 });
 
 test('settings and remapping controls keep touch targets at the minimum supported viewport', async ({ page }) => {
@@ -8793,7 +10447,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
     ]);
     return state.settingsOpen
       && collect(menu.settingsOverlay?.list ?? [])
-        .some((child: any) => child.name === 'system-settings-row-8-hit' && child.input?.enabled);
+        .some((child: any) => child.name === 'system-settings-row-14-hit' && child.input?.enabled);
   });
 
   const settingsTargets = await page.evaluate(() => {
@@ -8804,7 +10458,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
     ]);
     const canvas = document.querySelector('canvas')!.getBoundingClientRect();
     const scale = canvas.width / 1280;
-    const names = /^(system-settings-row-\d+-hit|system-settings-(music|sfx)-slider-hit|system-settings-(motion|contrast|graphics-quality|combat-pace)-(switch|toggle)-hit)$/;
+    const names = /^(system-settings-row-\d+-hit|system-settings-(music|sfx|ambience)-slider-hit|system-settings-(motion|contrast|graphics-quality|combat-pace|animation-pace)-(switch|toggle)-hit)$/;
     return collect(menu.settingsOverlay?.list ?? [])
       .filter((child: any) => child.input?.enabled && names.test(child.name ?? ''))
       .map((child: any) => ({
@@ -8814,7 +10468,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
       }));
   });
 
-  expect(settingsTargets).toHaveLength(15);
+  expect(settingsTargets).toHaveLength(23);
   expect(settingsTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
   await page.waitForFunction(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
@@ -8823,7 +10477,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
       ...(Array.isArray(child.list) ? collect(child.list) : []),
     ]);
     return collect(menu.settingsOverlay?.list ?? [])
-      .filter((child: any) => child.texture?.key === 'ui-icon-system-settings-row-frame').length >= 9;
+      .filter((child: any) => child.texture?.key === 'ui-icon-system-settings-row-frame').length >= 15;
   });
   await page.screenshot({ path: '.artifacts/test-results/min-supported/settings-1000x560.png' });
 
@@ -8834,7 +10488,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
       ...(Array.isArray(child.list) ? collect(child.list) : []),
     ]);
     const controls = collect(menu.settingsOverlay?.list ?? [])
-      .find((child: any) => child.name === 'system-settings-row-3-hit' && child.input?.enabled);
+      .find((child: any) => child.name === 'system-settings-row-4-hit' && child.input?.enabled);
     if (!controls) throw new Error('Missing Controls settings row');
     controls.emit('pointerdown', {}, 0, 0, { stopPropagation() {} });
   });
@@ -8987,9 +10641,10 @@ test('deck, pile, and reward commands keep touch targets at the minimum supporte
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
     return state.battleInspectRenderer?.loaded && state.combatPileReviewFrame?.rendered;
   });
-  const pileTargets = await targetSnapshot('BattleScene', '^(combat-pile-row-hit|combat-pile-scroll-(up|down)-hit)$');
+  const pileTargets = await targetSnapshot('BattleScene', '^(combat-pile-row-hit|combat-pile-scroll-(up|down)-hit|combat-pile-zone-(deck|draw|discard|cleared)-hit)$');
   expect(pileTargets.filter((target) => target.name === 'combat-pile-row-hit')).toHaveLength(7);
   expect(pileTargets.filter((target) => target.name.startsWith('combat-pile-scroll-'))).toHaveLength(1);
+  expect(pileTargets.filter((target) => target.name.startsWith('combat-pile-zone-'))).toHaveLength(4);
   expect(pileTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
   expect(await undersizedPointerTargets('BattleScene')).toEqual([]);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/combat-pile-review-1000x560.png' });
@@ -9215,6 +10870,13 @@ test('route decisions and outcome commands keep touch targets at the minimum sup
   expect(await undersizedPointerTargets('RouteScene')).toEqual([]);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/route-market-services-1000x560.png' });
 
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text!());
+    return state.routeRewardRenderer !== undefined;
+  });
+  expect(await page.evaluate(() => JSON.parse(window.render_game_to_text!()).routeRewardRenderer))
+    .toEqual({ requested: false, loaded: false, failed: false });
+
   await page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
     route.marketOpen = false;
@@ -9236,6 +10898,8 @@ test('route decisions and outcome commands keep touch targets at the minimum sup
     return route.children.list.some((child: any) => child.name === 'route-reward-claim-hit' && child.input?.enabled);
   });
   const rewardClaim = await targetSnapshot('RouteScene', '^route-reward-claim-hit$');
+  const routeRewardState = await page.evaluate(() => JSON.parse(window.render_game_to_text!()).routeReward);
+  expect(routeRewardState.renderer).toEqual({ requested: true, loaded: true, failed: false });
   expect(rewardClaim).toHaveLength(1);
   expect(rewardClaim[0].cssWidth).toBeGreaterThanOrEqual(44);
   expect(rewardClaim[0].cssHeight).toBeGreaterThanOrEqual(44);
@@ -9411,6 +11075,358 @@ test('high contrast applies before scene boot and persists across reloads', asyn
   expect(result.filter).toContain('brightness(1.08)');
 });
 
+test('reinforced color cues persist and add suit shapes plus labels to combat decisions', async ({ page }) => {
+  test.setTimeout(180_000);
+  await boot(page);
+
+  await page.keyboard.press('s');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').settingsOpen === true);
+  await page.waitForFunction(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    return (menu.settingsOverlay?.list ?? []).some((child: any) => (
+      child.name === 'system-settings-row-14-hit' && child.input?.enabled
+    ));
+  });
+  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).colorCues)
+    .toEqual({ preference: 'standard', reinforced: false });
+
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').settingsFocus?.label === 'Color Cues');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.colorCues?.reinforced === true
+      && localStorage.getItem('birdsquad.colorCues') === 'reinforced';
+  });
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').settingsOpen === false);
+
+  await boot(page);
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').colorCues?.preference === 'reinforced');
+  await page.evaluate(async () => window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' }));
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.scene === 'BattleScene'
+      && state.mode === 'battle'
+      && state.hand?.length > 0
+      && state.battleHandRenderer?.ready;
+  }, undefined, { timeout: 30_000 });
+
+  const handCues = await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return {
+      hand: JSON.parse(window.render_game_to_text?.() ?? '{}').hand.length,
+      cues: collect(battle.handLayer.list)
+        .filter((child: any) => child.name === 'combat-color-cue-badge')
+        .map((child: any) => ({ label: child.getData('label'), shape: child.getData('shape') })),
+    };
+  });
+  expect(handCues.cues).toHaveLength(handCues.hand);
+  expect(handCues.cues.every((cue: any) => cue.label && cue.shape)).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/color-cues/reinforced-hand.png' });
+
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.rewardChoices = battle.createRewardChoices();
+    battle.mode = 'cardReward';
+    battle.battleInputActive = true;
+    battle.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    if (state.mode !== 'cardReward' || !state.battleRewardRenderer?.ready) return false;
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return collect(battle.root.list).filter((child: any) => child.name === 'reward-color-cue-badge').length
+      === battle.rewardChoices.length;
+  }, undefined, { timeout: 30_000 });
+  const rewardCues = await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return collect(battle.root.list)
+      .filter((child: any) => child.name === 'reward-color-cue-badge')
+      .map((child: any) => ({ label: child.getData('label'), shape: child.getData('shape') }));
+  });
+  expect(rewardCues).toHaveLength(3);
+  expect(rewardCues.every((cue: any) => cue.label && cue.shape)).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/color-cues/reinforced-reward.png' });
+
+  await page.keyboard.press('s');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').settingsOverlayOpen === true);
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const hit = collect(battle.systemOverlayLayer.list)
+      .find((child: any) => child.name === 'system-settings-row-12-hit' && child.input?.enabled);
+    if (!hit) throw new Error('Missing Color Cues settings row');
+    hit.emit('pointerdown', { x: hit.x, y: hit.y, isDown: true });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').colorCues?.preference === 'standard');
+  await boot(page);
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').colorCues?.preference === 'standard');
+  await page.evaluate(async () => window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' }));
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    if (state.scene !== 'BattleScene' || state.mode !== 'battle' || !state.battleHandRenderer?.ready) return false;
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return collect(battle.handLayer.list).filter((child: any) => child.name === 'combat-color-cue-badge').length === 0;
+  }, undefined, { timeout: 30_000 });
+  const standardCueCount = await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return collect(battle.handLayer.list).filter((child: any) => child.name === 'combat-color-cue-badge').length;
+  });
+  expect(standardCueCount).toBe(0);
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.colorCues'))).toBe('standard');
+});
+
+test('screen shake setting persists and Reduced Motion suppresses combat camera shake', async ({ page }) => {
+  test.setTimeout(180_000);
+  await boot(page);
+
+  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).screenShake)
+    .toEqual({ preference: 'on', enabled: true, reducedByMotion: false });
+
+  await page.keyboard.press('s');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').settingsOpen === true);
+  await page.waitForFunction(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    return (menu.settingsOverlay?.list ?? []).some((child: any) => (
+      child.name === 'system-settings-row-14-hit' && child.input?.enabled
+    ));
+  });
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.waitForFunction(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').settingsFocus?.label === 'Screen Shake'
+  ));
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.screenShake?.preference === 'off'
+      && state.screenShake?.enabled === false
+      && state.screenShake?.reducedByMotion === false
+      && localStorage.getItem('birdsquad.screenShake') === 'off';
+  });
+  await page.screenshot({ path: '.artifacts/test-results/screen-shake/screen-shake-off-settings.png' });
+
+  const combatShakeCount = async () => {
+    await page.evaluate(async () => window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' }));
+    await page.waitForFunction(() => {
+      const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      return state.scene === 'BattleScene'
+        && state.mode === 'battle'
+        && state.battleForegroundRenderer?.ready
+        && state.battleHandRenderer?.ready;
+    }, undefined, { timeout: 30_000 });
+    return page.evaluate(() => {
+      const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+      const enemy = battle.enemies.find((candidate: any) => candidate.hp > 0);
+      if (!enemy) throw new Error('Missing live enemy for screen-shake probe');
+      const camera: any = battle.cameras.main;
+      const originalShake = camera.shake;
+      let shakes = 0;
+      camera.shake = () => {
+        shakes += 1;
+        return camera;
+      };
+      try {
+        battle.flock.block = 0;
+        battle.damageFlock(enemy, 1, 'Shake Probe');
+      } finally {
+        camera.shake = originalShake;
+      }
+      return shakes;
+    });
+  };
+
+  await boot(page);
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.screenShake?.preference === 'off' && state.screenShake?.enabled === false;
+  });
+  expect(await combatShakeCount()).toBe(0);
+
+  await page.evaluate(() => {
+    localStorage.setItem('birdsquad.screenShake', 'on');
+    localStorage.setItem('birdsquad.motionPreference', 'reduced');
+  });
+  await boot(page);
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.motion?.preference === 'reduced'
+      && state.screenShake?.preference === 'on'
+      && state.screenShake?.enabled === false
+      && state.screenShake?.reducedByMotion === true;
+  });
+  expect(await combatShakeCount()).toBe(0);
+
+  await page.evaluate(() => {
+    localStorage.setItem('birdsquad.motionPreference', 'full');
+  });
+  await boot(page);
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.motion?.preference === 'full'
+      && state.screenShake?.preference === 'on'
+      && state.screenShake?.enabled === true
+      && state.screenShake?.reducedByMotion === false;
+  });
+  expect(await combatShakeCount()).toBe(1);
+});
+
+test('reduced flashes persist and remove abrupt additive hit layers without hiding impact feedback', async ({ page }) => {
+  test.setTimeout(180_000);
+  await boot(page);
+
+  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).flashEffects)
+    .toEqual({ preference: 'full', reduced: false, reducedByMotion: false });
+
+  await page.keyboard.press('s');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').settingsOpen === true);
+  await page.waitForFunction(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    return (menu.settingsOverlay?.list ?? []).some((child: any) => (
+      child.name === 'system-settings-row-14-hit' && child.input?.enabled
+    ));
+  });
+  await page.keyboard.press('ArrowUp');
+  await page.waitForFunction(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').settingsFocus?.label === 'Flashes'
+  ));
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.flashEffects?.preference === 'reduced'
+      && state.flashEffects?.reduced === true
+      && state.flashEffects?.reducedByMotion === false
+      && localStorage.getItem('birdsquad.flashEffects') === 'reduced';
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    return state.settingsOpen === true
+      && state.settingsFocus?.label === 'Flashes'
+      && state.systemSettingsRowFrame?.count === 15
+      && (menu.settingsOverlay?.list ?? []).some((child: any) => (
+        child.name === 'system-settings-row-14-hit' && child.input?.enabled
+      ));
+  });
+  await page.screenshot({ path: '.artifacts/test-results/reduced-flashes/reduced-flashes-settings.png' });
+
+  const impactLayerCounts = async () => {
+    await page.evaluate(async () => window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' }));
+    await page.waitForFunction(() => {
+      const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+      const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      return state.scene === 'BattleScene'
+        && state.mode === 'battle'
+        && state.battleFxPresenter?.ready
+        && ['combat-impact-flash', 'combat-player-hit-confirm', 'combat-enemy-impact-contact', 'combat-cover-shatter']
+          .every((key) => battle.textures.exists(key));
+    }, undefined, { timeout: 30_000 });
+    return page.evaluate(() => {
+      const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+      const names = [
+        'combat-impact-flash',
+        'combat-player-hit-confirm',
+        'combat-enemy-impact-contact',
+        'combat-cover-shatter',
+      ];
+      battle.fxLayer.list
+        .filter((child: any) => names.includes(child.name))
+        .forEach((child: any) => child.destroy());
+      battle.combatImpactFlashBursts = 0;
+      battle.combatImpactFlash(860, 300, 0xff9d4d, 1, true);
+      battle.combatPlayerHitConfirm(860, 300, 0xff9d4d, true);
+      battle.combatEnemyImpactContact(860, 300, 1040, true);
+      battle.combatCoverShatter(860, 300, 0.8);
+      const count = (name: string) => battle.fxLayer.list.filter((child: any) => child.name === name).length;
+      return {
+        impactFlash: count('combat-impact-flash'),
+        playerHitConfirm: count('combat-player-hit-confirm'),
+        enemyImpactContact: count('combat-enemy-impact-contact'),
+        coverShatter: count('combat-cover-shatter'),
+        impactFlashBursts: battle.combatImpactFlashBursts,
+      };
+    });
+  };
+
+  await boot(page);
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.flashEffects?.preference === 'reduced'
+      && state.flashEffects?.reduced === true
+      && state.flashEffects?.reducedByMotion === false;
+  });
+  expect(await impactLayerCounts()).toEqual({
+    impactFlash: 0,
+    playerHitConfirm: 1,
+    enemyImpactContact: 1,
+    coverShatter: 1,
+    impactFlashBursts: 0,
+  });
+
+  await page.evaluate(() => {
+    localStorage.setItem('birdsquad.flashEffects', 'full');
+    localStorage.setItem('birdsquad.motionPreference', 'reduced');
+  });
+  await boot(page);
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.motion?.preference === 'reduced'
+      && state.flashEffects?.preference === 'full'
+      && state.flashEffects?.reduced === true
+      && state.flashEffects?.reducedByMotion === true;
+  });
+  expect(await impactLayerCounts()).toEqual({
+    impactFlash: 0,
+    playerHitConfirm: 1,
+    enemyImpactContact: 1,
+    coverShatter: 1,
+    impactFlashBursts: 0,
+  });
+
+  await page.evaluate(() => localStorage.setItem('birdsquad.motionPreference', 'full'));
+  await boot(page);
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.motion?.preference === 'full'
+      && state.flashEffects?.preference === 'full'
+      && state.flashEffects?.reduced === false
+      && state.flashEffects?.reducedByMotion === false;
+  });
+  expect(await impactLayerCounts()).toEqual({
+    impactFlash: 1,
+    playerHitConfirm: 2,
+    enemyImpactContact: 2,
+    coverShatter: 2,
+    impactFlashBursts: 1,
+  });
+});
+
 test('opt-in screen reader announcements follow menu, route, combat, and settings focus', async ({ page }) => {
   await boot(page);
   const initial = await page.evaluate(() => {
@@ -9419,21 +11435,33 @@ test('opt-in screen reader announcements follow menu, route, combat, and setting
       live: region?.getAttribute('aria-live'),
       hidden: region?.getAttribute('aria-hidden'),
       text: region?.textContent,
+      runtimeModuleLoaded: performance.getEntriesByType('resource')
+        .some((entry) => entry.name.includes('screen-reader-runtime')),
+      summaryModuleLoaded: performance.getEntriesByType('resource')
+        .some((entry) => entry.name.includes('screen-reader-summary')),
       state: JSON.parse(window.render_game_to_text?.() ?? '{}').screenReader,
     };
   });
-  expect(initial).toMatchObject({ live: 'off', hidden: 'true', text: '', state: { preference: 'off', enabled: false, regionReady: true, observerActive: false } });
+  expect(initial).toMatchObject({
+    live: 'off',
+    hidden: 'true',
+    text: '',
+    runtimeModuleLoaded: false,
+    summaryModuleLoaded: false,
+    state: { preference: 'off', enabled: false, regionReady: true, observerActive: false, summaryLoaded: false },
+  });
 
   await page.keyboard.press('s');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').settingsOpen === true);
   await page.waitForFunction(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
-    const visit = (items: any[]): boolean => items.some((child: any) => (
-      (child.name === 'system-settings-row-8-hit' && child.input?.enabled)
-      || (Array.isArray(child.list) && visit(child.list))
+    return (menu.settingsOverlay?.list ?? []).some((child: any) => (
+      child.name === 'system-settings-row-11-hit' && child.input?.enabled
     ));
-    return visit(menu.children.list);
   });
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').settingsFocus?.label === 'Screen Reader');
   await page.keyboard.press('Enter');
@@ -9448,6 +11476,10 @@ test('opt-in screen reader announcements follow menu, route, combat, and setting
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').settingsOpen === false);
   await page.waitForFunction(() => document.getElementById('game-status')?.textContent?.includes('Bird Squad menu'));
+  expect(await page.evaluate(() => performance.getEntriesByType('resource')
+    .some((entry) => entry.name.includes('screen-reader-summary')))).toBe(true);
+  expect(await page.evaluate(() => performance.getEntriesByType('resource')
+    .some((entry) => entry.name.includes('screen-reader-runtime')))).toBe(true);
   const menuLabelBefore = await page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').titleFocus?.label);
   await page.evaluate(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
@@ -9490,16 +11522,47 @@ test('opt-in screen reader announcements follow menu, route, combat, and setting
   expect(battleAnnouncement).toContain('Wingbeats');
   expect(battleAnnouncement).toContain('Cohesion');
 
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.statOverextensions = 1;
+    battle.flock.hp = 1;
+    battle.flock.block = 0;
+    battle.resolveEnemyEffect(battle.enemies[0], 'damage(flock, 20)', 'Review Strike');
+    battle.checkOutcome();
+    battle.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const spoken = document.getElementById('game-status')?.textContent ?? '';
+    return state.mode === 'defeat'
+      && state.defeatReview?.fatalMove === 'Review Strike'
+      && spoken.includes('Flock scattered')
+      && spoken.includes('Last hit Review Strike')
+      && spoken.includes(state.defeatReview.tip)
+      && spoken.includes('Focused Replay Flight');
+  });
+  const defeatAnnouncement = await page.evaluate(() => document.getElementById('game-status')?.textContent ?? '');
+  expect(defeatAnnouncement).toContain('Top pressure');
+  expect(defeatAnnouncement).toContain('Press Confirm to select');
+
+  await page.evaluate(async () => window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' }));
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.scene === 'BattleScene' && state.mode === 'battle' && state.hand?.length > 0;
+  });
   await page.keyboard.press('s');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').settingsOverlayOpen === true);
   await page.waitForFunction(() => {
     const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
     const visit = (items: any[]): boolean => items.some((child: any) => (
-      (child.name === 'system-settings-row-8-hit' && child.input?.enabled)
+      (child.name === 'system-settings-row-11-hit' && child.input?.enabled)
       || (Array.isArray(child.list) && visit(child.list))
     ));
     return visit(battle.systemOverlayLayer?.list ?? []);
   });
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').settingsFocus?.label === 'Screen Reader');
   await page.keyboard.press('Enter');
@@ -9556,7 +11619,7 @@ test('settings remain usable when browser preference storage is unavailable', as
       graphicsHit.emit('pointerdown', { x: 804, y: 484, isDown: true });
       await wait(80);
       const controlsHit = collect(menu.children.list)
-        .find((child: any) => child.name === 'system-settings-row-3-hit' && child.input?.enabled);
+        .find((child: any) => child.name === 'system-settings-row-4-hit' && child.input?.enabled);
       if (!controlsHit) throw new Error('Missing Controls row while storage is blocked');
       controlsHit.emit('pointerdown', { x: 640, y: 436, isDown: true });
       await wait(80);
@@ -9819,17 +11882,15 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
   await boot(page);
   const snapshot = () => page.evaluate(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
-    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
-      child,
-      ...(Array.isArray(child.list) ? collect(child.list) : []),
-    ]);
-    const objects = collect(menu.children.list);
+    const objects = menu.settingsOverlay?.list ?? [];
     const ring = objects.find((child: any) => child.name === 'system-settings-focus-ring');
     return {
       state: JSON.parse(window.render_game_to_text?.() ?? '{}'),
       listenerCount: menu.input.keyboard.listenerCount('keydown'),
       focusRings: objects.filter((child: any) => child.name === 'system-settings-focus-ring').length,
-      rowTargets: objects.filter((child: any) => /^system-settings-row-\d-hit$/.test(child.name ?? '')).length,
+      rowTargets: objects.filter((child: any) => /^system-settings-row-\d+-hit$/.test(child.name ?? '')).length,
+      hasScreenShakeTarget: objects.some((child: any) => child.name === 'system-settings-row-13-hit' && child.input?.enabled),
+      hasFlashesTarget: objects.some((child: any) => child.name === 'system-settings-row-14-hit' && child.input?.enabled),
       ring: ring ? { index: ring.getData('index'), label: ring.getData('label'), y: Math.round(ring.y) } : undefined,
     };
   });
@@ -9847,19 +11908,24 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
     localStorage.removeItem('birdsquad.visualContrast');
     localStorage.removeItem('birdsquad.graphicsQuality');
     localStorage.removeItem('birdsquad.combatPace');
+    localStorage.removeItem('birdsquad.animationPace');
+    localStorage.removeItem('birdsquad.textPace');
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
     menu.input.keyboard.emit('keydown-S');
   });
   await expect.poll(async () => {
     const current = await snapshot();
-    return current.listenerCount === beforeOpenListeners + 1 && current.focusRings === 1 && current.rowTargets === 9;
+    return current.listenerCount === beforeOpenListeners + 1
+      && current.focusRings === 1
+      && current.hasScreenShakeTarget
+      && current.hasFlashesTarget;
   }).toBe(true);
   await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 0, label: 'Audio' });
   const opened = await snapshot();
   expect(beforeOpenListeners).toBe(1);
   expect(opened.listenerCount).toBe(2);
   expect(opened.focusRings).toBe(1);
-  expect(opened.rowTargets).toBe(9);
+  expect(opened.rowTargets).toBe(15);
   expect(opened.ring).toMatchObject({ index: 0, label: 'Audio' });
 
   const initialMusic = opened.state.audio.musicVolume;
@@ -9881,47 +11947,76 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
   expect(sfxAdjusted.listenerCount).toBe(2);
   expect(sfxAdjusted.focusRings).toBe(1);
 
+  const initialAmbience = sfxAdjusted.state.audio.ambienceVolume;
+  const musicBeforeAmbience = sfxAdjusted.state.audio.musicVolume;
+  const sfxBeforeAmbience = sfxAdjusted.state.audio.sfxVolume;
+  await gamepadDown(13);
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 3, label: 'Ambience' });
+  await gamepadDown(14);
+  await expect.poll(async () => (await snapshot()).state.audio.ambienceVolume).toBeLessThan(initialAmbience);
+  const ambienceAdjusted = await snapshot();
+  expect(ambienceAdjusted.state.audio.musicVolume).toBeCloseTo(musicBeforeAmbience, 4);
+  expect(ambienceAdjusted.state.audio.sfxVolume).toBeCloseTo(sfxBeforeAmbience, 4);
+  expect(ambienceAdjusted.listenerCount).toBe(2);
+  expect(ambienceAdjusted.focusRings).toBe(1);
+
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 4, label: 'Motion' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 5, label: 'Motion' });
   await page.keyboard.press('ArrowRight');
   await expect.poll(async () => (await snapshot()).state.motion.preference).toBe('reduced');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 4, label: 'Motion' });
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 5, label: 'Motion' });
 
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 5, label: 'Contrast' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Contrast' });
   await gamepadDown(15);
   await expect.poll(async () => (await snapshot()).state.visualContrast).toMatchObject({ preference: 'high', highContrast: true, applied: true });
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 5, label: 'Contrast' });
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Contrast' });
 
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Effects' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Effects' });
   await gamepadDown(15);
   await expect.poll(async () => (await snapshot()).state.graphics.preference).toBe('lean');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Effects' });
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Effects' });
 
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Combat Pace' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 8, label: 'Combat Pace' });
   await gamepadDown(15);
   await expect.poll(async () => (await snapshot()).state.combatPacing.preference).toBe('snappy');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Combat Pace' });
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 8, label: 'Combat Pace' });
+
+  await gamepadDown(13);
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 9, label: 'Animation Pace' });
+  await gamepadDown(15);
+  await expect.poll(async () => (await snapshot()).state.animationPacing.preference).toBe('fast');
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 9, label: 'Animation Pace' });
+
+  await gamepadDown(13);
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 10, label: 'Text Pace' });
+  await gamepadDown(15);
+  await expect.poll(async () => (await snapshot()).state.textPacing.preference).toBe('fast');
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 10, label: 'Text Pace' });
 
   await gamepadDown(12);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Effects' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 9, label: 'Animation Pace' });
+  await gamepadDown(12);
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 8, label: 'Combat Pace' });
+  await gamepadDown(12);
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Effects' });
   await gamepadDown(0);
   await expect.poll(async () => (await snapshot()).state.graphics.preference).toBe('auto');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Effects' });
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Effects' });
 
   await gamepadDown(12);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 5, label: 'Contrast' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Contrast' });
   await gamepadDown(0);
   await expect.poll(async () => (await snapshot()).state.visualContrast).toMatchObject({ preference: 'standard', highContrast: false, applied: true });
 
   await gamepadDown(12);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 4, label: 'Motion' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 5, label: 'Motion' });
   await gamepadDown(0);
   await expect.poll(async () => (await snapshot()).state.motion.preference).toBe('system');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 4, label: 'Motion' });
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 5, label: 'Motion' });
 
   await gamepadDown(1);
   await expect.poll(async () => (await snapshot()).state.settingsOpen).toBe(false);
@@ -9950,7 +12045,8 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
       closeFrames: objects.filter((child: any) => child.texture?.key === 'ui-icon-overlay-close-command-frame').length,
       closeMedallions: objects.filter((child: any) => child.texture?.key === 'ui-icon-close-medallion').length,
       settingsFocusRings: objects.filter((child: any) => child.name === 'system-settings-focus-ring' && child.visible).length,
-      settingsRows: objects.filter((child: any) => /^system-settings-row-\d-hit$/.test(child.name ?? '')).length,
+      settingsRows: (scene.settingsOverlay?.list ?? objects)
+        .filter((child: any) => /^system-settings-row-\d+-hit$/.test(child.name ?? '')).length,
     };
   });
 
@@ -9958,14 +12054,23 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
   await expect.poll(async () => (await controlsSnapshot()).state.settingsOpen).toBe(true);
   await expect.poll(async () => {
     const snapshot = await controlsSnapshot();
-    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 8;
+    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 15;
   }).toBe(true);
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  await expect.poll(async () => (await controlsSnapshot()).state.settingsFocus).toEqual({ index: 3, label: 'Controls' });
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(async () => (await controlsSnapshot()).state.settingsFocus).toEqual({ index: 4, label: 'Controls' });
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await controlsSnapshot()).state.controls.panelOpen).toBe(true);
+  await expect.poll(async () => {
+    const current = await controlsSnapshot();
+    return current.panels === 1
+      && current.focusRings === 1
+      && current.bindingRows === 6
+      && current.closeFrames >= 1
+      && current.closeMedallions >= 1;
+  }, { timeout: 20_000 }).toBe(true);
   const opened = await controlsSnapshot();
   expect(opened.panels).toBe(1);
   expect(opened.focusRings).toBe(1);
@@ -10013,6 +12118,10 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
   await page.keyboard.press('Enter');
   await page.waitForTimeout(250);
   expect((await controlsSnapshot()).state.scene).toBe('MenuScene');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(async () => (await controlsSnapshot()).state.titleFocus.current).toBe('primaryRun');
   await page.keyboard.press('p');
   await expect.poll(async () => (await controlsSnapshot()).state.scene, { timeout: 20_000 }).toBe('RouteScene');
   await expect.poll(async () => (await controlsSnapshot()).state.routeAssetsReady, { timeout: 20_000 }).toBe(true);
@@ -10037,8 +12146,9 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
   await expect.poll(async () => (await controlsSnapshot()).state.settingsOpen).toBe(true);
   await expect.poll(async () => {
     const snapshot = await controlsSnapshot();
-    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 8;
+    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 15;
   }).toBe(true);
+  await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
@@ -10180,6 +12290,7 @@ test('run outcomes expose equivalent keyboard and gamepad command focus', async 
   const openOutcome = () => page.evaluate(async () => {
     const scene: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     scene.mode = 'defeat';
+    scene.emitRunSummary('loss');
     scene.battleInputActive = false;
     scene.controllerChoiceIndex = 0;
     scene.renderAll();
@@ -10202,12 +12313,12 @@ test('run outcomes expose equivalent keyboard and gamepad command focus', async 
   });
 
   await openOutcome();
-  await expect.poll(async () => (await snapshot()).commands).toEqual(['Replay Flight', 'Main Menu']);
+  await expect.poll(async () => (await snapshot()).commands).toEqual(['Replay Flight', 'Flight Details', 'Main Menu']);
   expect((await snapshot()).state.combatInputFocus).toMatchObject({
     active: false,
     kind: 'outcome',
     index: 0,
-    count: 2,
+    count: 3,
     label: 'Replay Flight',
     visibleFocus: false,
   });
@@ -10216,16 +12327,36 @@ test('run outcomes expose equivalent keyboard and gamepad command focus', async 
     active: true,
     kind: 'outcome',
     index: 1,
-    count: 2,
-    label: 'Main Menu',
+    count: 3,
+    label: 'Flight Details',
     visibleFocus: true,
   });
   expect((await snapshot()).focusRings).toBe(1);
   await page.keyboard.press('Enter');
+  await expect.poll(async () => (await snapshot()).state).toMatchObject({
+    outcomeFlightDetails: { open: true },
+    combatInputFocus: {
+      active: true,
+      kind: 'outcome',
+      index: 0,
+      count: 1,
+      label: 'Close Flight Details',
+      visibleFocus: true,
+    },
+  });
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await snapshot()).state.outcomeFlightDetails).toMatchObject({ open: false });
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await snapshot()).state.combatInputFocus).toMatchObject({
+    index: 2,
+    count: 3,
+    label: 'Main Menu',
+  });
+  await page.keyboard.press('Enter');
   await expect.poll(async () => JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).scene).toBe('MenuScene');
 
   await openOutcome();
-  await expect.poll(async () => (await snapshot()).commands).toHaveLength(2);
+  await expect.poll(async () => (await snapshot()).commands).toHaveLength(3);
   await page.evaluate(() => {
     const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
     battle.input.gamepad.emit('down', battle.input.gamepad.pad1, { index: 15 }, 1);
@@ -10234,11 +12365,22 @@ test('run outcomes expose equivalent keyboard and gamepad command focus', async 
     active: true,
     kind: 'outcome',
     index: 1,
-    label: 'Main Menu',
+    label: 'Flight Details',
     visibleFocus: true,
   });
   await page.evaluate(() => {
     const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.input.gamepad.emit('down', battle.input.gamepad.pad1, { index: 0 }, 1);
+  });
+  await expect.poll(async () => (await snapshot()).state.outcomeFlightDetails).toMatchObject({ open: true });
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.input.gamepad.emit('down', battle.input.gamepad.pad1, { index: 1 }, 1);
+  });
+  await expect.poll(async () => (await snapshot()).state.outcomeFlightDetails).toMatchObject({ open: false });
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.input.gamepad.emit('down', battle.input.gamepad.pad1, { index: 15 }, 1);
     battle.input.gamepad.emit('down', battle.input.gamepad.pad1, { index: 0 }, 1);
   });
   await expect.poll(async () => JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).scene).toBe('MenuScene');
@@ -10272,15 +12414,17 @@ test('playtest outcomes hand the latest run directly to the local rating panel',
   });
   await expect.poll(async () => (await outcomeState()).commands).toEqual([
     'Replay Flight',
+    'Flight Details',
     'Rate This Run',
     'Main Menu',
   ]);
   await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ArrowRight');
   await expect.poll(async () => (await outcomeState()).state.combatInputFocus).toMatchObject({
     active: true,
     kind: 'outcome',
-    index: 1,
-    count: 3,
+    index: 2,
+    count: 4,
     label: 'Rate This Run',
     visibleFocus: true,
   });
@@ -10464,6 +12608,251 @@ test('title How to Play overlay opens, reports state, and loads its medallion', 
     });
     expect(frame.alpha).toBeGreaterThan(0.6);
   }
+});
+
+test('route deck review supports pointer filters, sorting, find, and keyboard card navigation', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(async () => {
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {});
+    route.openDeckOverlay();
+  });
+
+  const initial = await page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview);
+  expect(initial).toMatchObject({
+    open: true,
+    total: 10,
+    visible: 10,
+    filter: 'all',
+    sort: 'run',
+    query: '',
+    searchActive: false,
+  });
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.browserRenderer?.loaded
+  ))).toBe(true);
+
+  const targets = await page.evaluate(() => {
+    const route = window.__birdSquadGame.scene.getScene('RouteScene');
+    return ['deck-review-filter-hit', 'deck-review-sort-hit', 'deck-review-search-hit'].map((name) => {
+      const hit = route.children.list.find((child: any) => child.name === name && child.input?.enabled);
+      if (!hit) throw new Error(`Missing ${name}`);
+      return { name, width: hit.displayWidth, height: hit.displayHeight };
+    });
+  });
+  expect(targets).toEqual([
+    { name: 'deck-review-filter-hit', width: 132, height: 58 },
+    { name: 'deck-review-sort-hit', width: 124, height: 58 },
+    { name: 'deck-review-search-hit', width: 144, height: 58 },
+  ]);
+
+  await clickNamedGameObject(page, 'RouteScene', 'deck-review-filter-hit');
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview.filter
+  ))).toBe('plumes');
+
+  await page.keyboard.press('/');
+  await page.waitForTimeout(80);
+  await page.keyboard.type('fledgling');
+  await page.keyboard.press('Enter');
+  const searched = await page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview);
+  expect(searched).toMatchObject({
+    filter: 'plumes',
+    query: 'fledgling',
+    searchActive: false,
+    visible: 1,
+  });
+  expect(searched.cards).toEqual([
+    expect.objectContaining({ name: 'Plume Fledgling', suit: 'plumes' }),
+  ]);
+
+  await clickNamedGameObject(page, 'RouteScene', 'deck-review-sort-hit');
+  await clickNamedGameObject(page, 'RouteScene', 'deck-review-search-hit');
+  for (let index = 0; index < 'fledgling'.length; index += 1) {
+    await page.keyboard.press('Backspace');
+  }
+  await page.keyboard.press('Enter');
+  const sorted = await page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview);
+  expect(sorted).toMatchObject({
+    filter: 'plumes',
+    sort: 'cost',
+    query: '',
+    searchActive: false,
+    visible: 2,
+  });
+  expect(sorted.cards.map((card: any) => card.cost)).toEqual([0, 1]);
+
+  const selectedBefore = sorted.selectedCardId;
+  await page.keyboard.press('ArrowDown');
+  const navigated = await page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview);
+  expect(navigated.selectedCardId).not.toBe(selectedBefore);
+  expect(navigated.controls).toMatchObject({
+    cards: 'Up / Down',
+    sort: 'Enter',
+    find: '/',
+    close: 'Esc',
+  });
+});
+
+test('route deck review pins accessible card and Preen comparisons', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  await page.evaluate(async () => {
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {});
+    route.openDeckOverlay();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.deckReview?.open && state.deckReview?.selectedCardId === 'major_00';
+  });
+
+  const pinTargets = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.children.list
+      .filter((child: any) => child.name?.startsWith('deck-review-compare-hit-') && child.input?.enabled)
+      .map((child: any) => ({
+        cardId: child.getData('cardId'),
+        pinned: child.getData('pinned'),
+        width: child.displayWidth,
+        height: child.displayHeight,
+      }));
+  });
+  expect(pinTargets).toHaveLength(7);
+  expect(pinTargets.every((target: any) => target.width === 58 && target.height === 58)).toBe(true);
+  expect(pinTargets.every((target: any) => target.pinned === false)).toBe(true);
+
+  const pinPoint = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const hit = route.children.list.find((child: any) => (
+      child.name === 'deck-review-compare-hit-major_00' && child.input?.enabled
+    ));
+    if (!hit) throw new Error('Missing First Flight comparison pin');
+    return { x: hit.x, y: hit.y };
+  });
+  const pinCanvas = await page.locator('canvas').boundingBox();
+  if (!pinCanvas) throw new Error('Missing game canvas');
+  const pinX = pinCanvas.x + pinCanvas.width * (pinPoint.x / 1280);
+  const pinY = pinCanvas.y + pinCanvas.height * (pinPoint.y / 720);
+  let pointerPinned = false;
+  for (let attempt = 0; attempt < 2 && !pointerPinned; attempt += 1) {
+    await page.mouse.move(pinX, pinY, { steps: 4 });
+    await page.waitForTimeout(80);
+    await page.mouse.down();
+    await page.waitForTimeout(60);
+    pointerPinned = await page.evaluate(() => (
+      JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.comparison?.mode === 'preen'
+    ));
+    await page.mouse.up();
+  }
+  expect(pointerPinned).toBe(true);
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.comparison
+  ))).toMatchObject({
+    active: true,
+    mode: 'preen',
+    summary: 'PREEN CHANGES RULES  /  ADDS COHESION +1',
+    pinned: { id: 'major_00', name: 'First Flight', cost: 1, role: 'attack', target: 'enemy' },
+    selected: {
+      id: 'major_00',
+      name: 'First Flight+',
+      cost: 1,
+      role: 'attack',
+      target: 'enemy',
+      stats: ['Cohesion +3', 'Hand Target +1'],
+    },
+  });
+  await page.waitForFunction(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.children.list.some((child: any) => child.name === 'deck-review-comparison-panel');
+  });
+  await page.waitForFunction(() => document.getElementById('game-status')?.textContent?.includes('Preen preview for First Flight'));
+  const preenPreviewTexts = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.children.list
+      .filter((child: any) => typeof child.text === 'string')
+      .map((child: any) => child.text);
+  });
+  expect(preenPreviewTexts).toContain('PREEN COMPARISON');
+  expect(preenPreviewTexts).toContain('BASE');
+  expect(preenPreviewTexts).toContain('PREENED');
+  expect(preenPreviewTexts).toContain('BASE RULES');
+  expect(preenPreviewTexts).toContain('PREENED RULES');
+  expect(preenPreviewTexts).toContain('BASE MOLT');
+  expect(preenPreviewTexts).toContain('PREENED MOLT');
+
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.comparison
+  ))).toMatchObject({
+    active: true,
+    pinned: { id: 'major_00', name: 'First Flight', cost: 1 },
+    selected: { id: 'wands_ace', name: 'Plume Flash', cost: 1 },
+  });
+  await page.waitForFunction(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.children.list.some((child: any) => child.name === 'deck-review-comparison-panel');
+  });
+  await page.waitForFunction(() => document.getElementById('game-status')?.textContent?.includes('Comparing pinned First Flight'));
+
+  const comparison = await page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const texts = route.children.list
+      .filter((child: any) => typeof child.text === 'string')
+      .map((child: any) => child.text);
+    return {
+      state: state.deckReview,
+      panels: route.children.list.filter((child: any) => child.name === 'deck-review-comparison-panel').length,
+      costBadges: route.children.list.filter((child: any) => child.name === 'deck-review-comparison-cost-badge').length,
+      texts,
+      announcement: document.getElementById('game-status')?.textContent ?? '',
+    };
+  });
+  expect(comparison.panels).toBe(1);
+  expect(comparison.costBadges).toBe(2);
+  expect(comparison.texts).toContain('CARD COMPARISON');
+  expect(comparison.texts).toContain('PINNED');
+  expect(comparison.texts).toContain('SELECTED');
+  expect(comparison.state.controls).toMatchObject({ compare: 'C', compareController: 'X' });
+  expect(comparison.state.controls.compareAction).toContain('Base versus Preened');
+  expect(comparison.announcement).toContain('pin the selected card to compare Base and Preened');
+
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.input.gamepad.emit('down', route.input.gamepad.pad1, { index: 2 }, 1);
+  });
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.comparison
+  ))).toMatchObject({
+    active: true,
+    mode: 'preen',
+    pinned: { id: 'wands_ace', name: 'Plume Flash' },
+    selected: { id: 'wands_ace', name: 'Plume Flash+' },
+  });
+
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.comparison
+  ))).toMatchObject({
+    active: true,
+    pinned: { id: 'wands_ace', name: 'Plume Flash' },
+    selected: { id: 'wands_fledgling', name: 'Plume Fledgling' },
+  });
+  const differentShape = await page.evaluate(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.comparison
+  ));
+  expect(differentShape.summary).toContain('COST 1 TO 0');
+  expect(differentShape.summary).toContain('ROLE ATTACK TO UTILITY');
+  expect(differentShape.summary).toContain('TARGET ENEMY TO NO TARGET');
+  await page.keyboard.press('c');
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.comparison
+  ))).toMatchObject({
+    active: true,
+    mode: 'preen',
+    pinned: { id: 'wands_fledgling', name: 'Plume Fledgling' },
+    selected: { id: 'wands_fledgling', name: 'Plume Fledgling+' },
+  });
 });
 
 test('deck review overlays render generated dossier flourish art', async ({ page }) => {
@@ -10768,7 +13157,7 @@ test('deck review overlays render generated dossier flourish art', async ({ page
   expect(result.routeTitlePlaques).toBe(1);
   expect(result.routeTitlePlaqueObjects[0]).toEqual(expect.objectContaining({
     name: 'deck-review-title-plaque',
-    width: 452,
+    width: 416,
     height: 92,
     visible: true
   }));
@@ -10793,13 +13182,14 @@ test('deck review overlays render generated dossier flourish art', async ({ page
     && frame.height === 24
     && frame.visible
   ))).toBe(true);
-  expect(result.routeSectionTabFrames).toBe(1);
-  expect(result.routeSectionTabFrameObjects[0]).toEqual(expect.objectContaining({
-    name: 'deck-review-section-tab-frame',
-    width: 136,
-    height: 32,
-    visible: true
-  }));
+  expect(result.routeSectionTabFrames).toBe(4);
+  expect(result.routeSectionTabFrameObjects.map((frame: { width: number }) => frame.width).sort((a: number, b: number) => a - b))
+    .toEqual([124, 132, 136, 144]);
+  expect(result.routeSectionTabFrameObjects.every((frame: { name: string; height: number; visible: boolean }) => (
+    frame.name === 'deck-review-section-tab-frame'
+    && [32, 34].includes(frame.height)
+    && frame.visible
+  ))).toBe(true);
   expect(result.routeRowFrames).toBeGreaterThanOrEqual(6);
   expect(result.routeRowFrameObjects.every((frame: { name: string; width: number; height: number; visible: boolean }) => (
     frame.name === 'deck-review-row-frame'
@@ -10919,7 +13309,9 @@ test('flock stats overlays render generated formation flourish art', async ({ pa
     g.scene.stop('MenuScene');
     const route: any = g.scene.getScene('RouteScene');
     route.openFlockOverlay();
-    await wait(80);
+    for (let i = 0; i < 80 && countFlourish(route.children.list) === 0; i += 1) {
+      await wait(50);
+    }
     const routeState = JSON.parse(window.render_game_to_text!());
     const routeFlourish = countFlourish(route.children.list);
     const routeTitlePlaque = countFlockTitlePlaque(route.children.list);
@@ -10964,8 +13356,10 @@ test('flock stats overlays render generated formation flourish art', async ({ pa
     for (let i = 0; i < 80 && !battleFlockTextureKeys.every((key) => battle.textures.exists(key)); i += 1) {
       await wait(50);
     }
-    battle.renderAll();
-    await wait(0);
+    for (let i = 0; i < 80 && countStatsFrame(battle.root?.list ?? battle.children.list) === 0; i += 1) {
+      battle.renderAll();
+      await wait(50);
+    }
     const battleState = JSON.parse(window.render_game_to_text!());
     const battleRoot = battle.root?.list ?? battle.children.list;
     const battleFlourish = countFlourish(battleRoot);
@@ -11199,12 +13593,16 @@ test('run kit drawers render generated inventory flourish art', async ({ page })
     const route: any = g.scene.getScene('RouteScene');
     for (let i = 0; i < 40 && !g.textures.exists('ui-icon-run-kit-drawer-flourish'); i += 1) await wait(50);
     route.openWaymarkDrawer();
-    await wait(80);
+    for (let i = 0; i < 80 && !route.waymarkReviewModule; i += 1) await wait(50);
+    route.renderAll();
+    await wait(0);
     const routeWaymarkState = JSON.parse(window.render_game_to_text!());
     const routeWaymarkFlourish = countFlourish(route.children.list);
     const routeWaymarkTileFrames = countTileFrames(route.children.list);
     route.openSupplyDrawer();
-    await wait(80);
+    for (let i = 0; i < 80 && !route.routeSupplyDrawerModule; i += 1) await wait(50);
+    route.renderAll();
+    await wait(0);
     const routeSupplyState = JSON.parse(window.render_game_to_text!());
     const routeSupplyFlourish = countFlourish(route.children.list);
     const routeSupplyTileFrames = countTileFrames(route.children.list);
@@ -11435,7 +13833,7 @@ test('combat pile inspector renders generated review dossier frame', async ({ pa
   expect(result.combatPileScrollButtonFrame).toEqual({ loaded: true, rendered: true, count: result.scrollButtonFrameObjects });
   expect(result.scrollButtonFrameObjects).toBe(2);
   expect(result.combatPileCountBadge).toEqual({ loaded: true, rendered: true, count: result.countBadgeObjects });
-  expect(result.countBadgeObjects).toBe(result.visibleRows + 3);
+  expect(result.countBadgeObjects).toBe(result.visibleRows + 4);
   expect(result.combatPileDetailChipFrame).toEqual({ loaded: true, rendered: true, count: result.detailChipFrameObjects });
   expect(result.detailChipFrameObjects).toBe(2);
   expect(result.combatPileStatChipFrame).toEqual({ loaded: true, rendered: true, count: result.statChipFrameObjects });
@@ -11446,6 +13844,380 @@ test('combat pile inspector renders generated review dossier frame', async ({ pa
   expect(result.pageIndicatorFrameObjects).toBe(1);
   expect(result.overlayCloseCommandFrame).toEqual({ loaded: true, rendered: true, count: result.closeFrameObjects });
   expect(result.closeFrameObjects).toBe(1);
+});
+
+test('combat pile inspector supports keyboard and controller navigation accessibly', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const game = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    game.scene.stop('MenuScene');
+    const battle: any = game.scene.getScene('BattleScene');
+    for (let index = 0; index < 60 && !battle.hand?.length; index += 1) await wait(50);
+    const seed = battle.hand[0] ?? battle.drawPile[0];
+    if (!seed) throw new Error('No card available for accessible inspector setup');
+    battle.drawPile = Array.from({ length: 12 }, (_, index) => ({
+      ...seed,
+      instanceId: `accessible-inspect-${String(index).padStart(2, '0')}`,
+    }));
+    battle.discardPile = Array.from({ length: 2 }, (_, index) => ({
+      ...seed,
+      instanceId: `accessible-discard-${String(index).padStart(2, '0')}`,
+    }));
+    battle.clearedPile = [{
+      ...seed,
+      instanceId: 'accessible-cleared-00',
+    }];
+    battle.openOverlay('draw');
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.battleInspectRenderer?.loaded && state.cardInspectFocus?.count === 12;
+  });
+  await page.waitForFunction(() => document.getElementById('game-status')?.textContent?.includes('draw pile'));
+  const initial = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(initial.cardInspectFocus).toMatchObject({
+    active: true,
+    overlay: 'draw',
+    instanceId: 'accessible-inspect-00',
+    index: 0,
+    count: 12,
+    visibleStart: 1,
+    visibleEnd: 7,
+    zoneCounts: { deck: expect.any(Number), draw: 12, discard: 2, cleared: 1 },
+    bindings: { select: 'Up / Down', previousZone: 'Left', nextZone: 'Right', back: 'Esc' },
+    controller: { choose: 'D-pad Up / Down', zone: 'D-pad Left / Right', page: 'LB / RB', back: 'B' },
+  });
+
+  const clearedPoint = await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const target = battle.root.list.find((child: any) => child.name === 'combat-pile-zone-cleared-hit');
+    return { x: target.x, y: target.y };
+  });
+  const canvasBounds = await page.locator('canvas').boundingBox();
+  if (!canvasBounds) throw new Error('Missing game canvas');
+  const clearedCanvasPoint = {
+    x: canvasBounds.x + canvasBounds.width * (clearedPoint.x / 1280),
+    y: canvasBounds.y + canvasBounds.height * (clearedPoint.y / 720),
+  };
+  await page.mouse.move(clearedCanvasPoint.x, clearedCanvasPoint.y);
+  await page.waitForTimeout(80);
+  await page.mouse.down();
+  await page.waitForTimeout(40);
+  await page.mouse.up();
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardInspectFocus))
+    .toMatchObject({ overlay: 'cleared', instanceId: 'accessible-cleared-00', count: 1 });
+  await page.waitForFunction(() => document.getElementById('game-status')?.textContent?.includes('cleared pile'));
+
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardInspectFocus))
+    .toMatchObject({ overlay: 'discard', instanceId: 'accessible-discard-00', count: 2 });
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.input.gamepad.emit('down', {}, { index: 14 });
+  });
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardInspectFocus))
+    .toMatchObject({ overlay: 'draw', instanceId: 'accessible-inspect-00', count: 12 });
+
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardInspectFocus?.instanceId))
+    .toBe('accessible-inspect-01');
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardInspectFocus?.instanceId))
+    .toBe('accessible-inspect-02');
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.input.gamepad.emit('down', {}, { index: 5 });
+  });
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardInspectFocus))
+    .toMatchObject({
+      instanceId: 'accessible-inspect-09',
+      index: 9,
+      visibleStart: 4,
+      visibleEnd: 10,
+    });
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.input.gamepad.emit('down', {}, { index: 12 });
+  });
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardInspectFocus?.instanceId))
+    .toBe('accessible-inspect-08');
+  await page.waitForFunction(() => document.getElementById('game-status')?.textContent?.includes('Selected 9 of 12'));
+  await page.screenshot({ path: '.artifacts/test-results/combat-pile-accessibility/minimum-landscape-controller-page.png' });
+
+  const navigated = await page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const rows = battle.root.list.filter((child: any) => child.name === 'combat-pile-row-hit');
+    const zoneTargets = battle.root.list.filter((child: any) => child.name?.startsWith('combat-pile-zone-') && child.name.endsWith('-hit'));
+    const hint = battle.root.list.find((child: any) => child.name === 'combat-pile-input-hint');
+    const focusRings = battle.root.list.filter((child: any) => child.name === 'combat-pile-input-focus-ring');
+    const scale = document.querySelector('canvas')!.getBoundingClientRect().width / 1280;
+    return {
+      state,
+      rows: rows.map((row: any) => ({
+        instanceId: row.getData('instanceId'),
+        selected: row.getData('selected'),
+        width: row.width,
+        height: row.height,
+        cssWidth: Number((row.displayWidth * scale).toFixed(1)),
+        cssHeight: Number((row.displayHeight * scale).toFixed(1)),
+      })),
+      zoneTargets: zoneTargets.map((target: any) => ({
+        mode: target.getData('mode'),
+        active: target.getData('active'),
+        width: target.width,
+        height: target.height,
+        cssWidth: Number((target.displayWidth * scale).toFixed(1)),
+        cssHeight: Number((target.displayHeight * scale).toFixed(1)),
+      })),
+      hint: hint?.text,
+      focusRings: focusRings.map((ring: any) => ({
+        instanceId: ring.getData('instanceId'),
+        width: ring.width,
+        height: ring.height,
+        lineWidth: ring.geom?.lineWidth ?? ring.lineWidth,
+      })),
+      announcement: document.getElementById('game-status')?.textContent ?? '',
+    };
+  });
+  expect(navigated.state.cardInspectFocus).toMatchObject({
+    instanceId: 'accessible-inspect-08',
+    index: 8,
+    count: 12,
+    visibleStart: 4,
+    visibleEnd: 10,
+  });
+  expect(navigated.state.inspectedCard.id).toBe(initial.inspectedCard.id);
+  expect(navigated.rows).toHaveLength(7);
+  expect(navigated.rows.filter((row: any) => row.selected)).toEqual([
+    expect.objectContaining({ instanceId: 'accessible-inspect-08' }),
+  ]);
+  expect(navigated.rows.every((row: any) => row.width === 312 && row.height === 58)).toBe(true);
+  expect(navigated.rows.every((row: any) => row.cssWidth >= 44 && row.cssHeight >= 44)).toBe(true);
+  expect(navigated.zoneTargets).toHaveLength(4);
+  expect(navigated.zoneTargets.map((target: any) => target.mode)).toEqual(['deck', 'draw', 'discard', 'cleared']);
+  expect(navigated.zoneTargets.filter((target: any) => target.active)).toEqual([
+    expect.objectContaining({ mode: 'draw' }),
+  ]);
+  expect(navigated.zoneTargets.every((target: any) => target.width === 70 && target.height === 58)).toBe(true);
+  expect(navigated.zoneTargets.every((target: any) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  expect(navigated.focusRings).toEqual([
+    expect.objectContaining({ instanceId: 'accessible-inspect-08', width: 326, height: 58 }),
+  ]);
+  expect(navigated.hint).toContain('UP / DOWN CARD');
+  expect(navigated.hint).toContain('Left / Right ZONE');
+  expect(navigated.announcement).toContain('draw pile');
+  expect(navigated.announcement).toContain('Selected 9 of 12');
+  expect(navigated.announcement).toContain('Draw 12, Discard 2, Cleared 1');
+  expect(navigated.announcement).toContain('switch zones');
+  expect(navigated.announcement).toContain('controller shoulders to page');
+
+  const beforeClose = navigated.state;
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.input.gamepad.emit('down', {}, { index: 1 });
+  });
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').inspectOverlay))
+    .toBeUndefined();
+  const closed = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(closed).toMatchObject({
+    mode: 'battle',
+    turn: beforeClose.turn,
+    energy: beforeClose.energy,
+    flock: { hp: beforeClose.flock.hp },
+  });
+  expect(closed.cardInspectFocus).toBeUndefined();
+});
+
+test('cleared cards stay in the run deck and remain inspectable for the combat', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  await page.evaluate(async () => {
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {});
+    const runState = structuredClone(route.runState);
+    if (!runState.deck.some((card: any) => card.id === 'bent_feather')) {
+      runState.deck.push({ id: 'bent_feather' });
+    }
+    const battle: any = await window.__birdSquadStartScene!('BattleScene', {
+      runState,
+      routeNodeId: 'm1_entry',
+    });
+    const card = [...battle.hand, ...battle.drawPile, ...battle.discardPile]
+      .find((candidate: any) => candidate.id === 'bent_feather');
+    if (!card) throw new Error('Bent Feather was not restored into combat');
+    battle.hand = battle.hand.filter((candidate: any) => candidate.instanceId !== card.instanceId);
+    battle.drawPile = battle.drawPile.filter((candidate: any) => candidate.instanceId !== card.instanceId);
+    battle.discardPile = battle.discardPile.filter((candidate: any) => candidate.instanceId !== card.instanceId);
+    battle.hand.unshift(card);
+    battle.energy = Math.max(3, battle.energy);
+    battle.playCard(card, battle.enemies[0]?.id, { resolveDelayMs: 0 });
+    battle.openOverlay('cleared');
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.battleInspectRenderer?.loaded
+      && state.inspectOverlay === 'cleared'
+      && state.clearedPile === 1;
+  });
+
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardInspectFocus?.zone))
+    .toBe('Cleared');
+  await page.waitForFunction(() => document.getElementById('game-status')?.textContent?.includes('Bent Feather, Cleared'));
+  await page.screenshot({ path: '.artifacts/test-results/cleared-card-zone/minimum-landscape-cleared-card.png' });
+
+  const result = await page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const snapshot = battle.buildRunStateSnapshot();
+    const headerBadges = battle.root.list.filter((child: any) => (
+      child.name === 'combat-pile-count-badge' && Math.round(child.y) === 141
+    ));
+    const clearedIcons = battle.root.list.filter((child: any) => (
+      child.texture?.key === 'ui-icon-release-card' && Math.round(child.y) === 141
+    ));
+    return {
+      state,
+      playableCards: battle.drawPile.length + battle.hand.length + battle.discardPile.length,
+      clearedIds: battle.clearedPile.map((card: any) => card.id),
+      permanentDeckIds: snapshot.deck.map((card: any) => card.id),
+      headerBadgeCount: headerBadges.length,
+      clearedIconCount: clearedIcons.length,
+      announcement: document.getElementById('game-status')?.textContent ?? '',
+    };
+  });
+
+  expect(result.state).toMatchObject({
+    clearedPile: 1,
+    inspectedCard: {
+      id: 'bent_feather',
+      name: 'Bent Feather',
+      zone: 'Cleared',
+      activeRole: 'utility',
+    },
+    cardInspectFocus: {
+      overlay: 'cleared',
+      label: 'Bent Feather',
+      zone: 'Cleared',
+    },
+    piles: {
+      deck: result.playableCards + 1,
+      draw: expect.any(Number),
+      hand: expect.any(Number),
+      discard: expect.any(Number),
+      cleared: 1,
+    },
+  });
+  expect(result.state.deckSize).toBe(result.playableCards + 1);
+  expect(result.clearedIds).toEqual(['bent_feather']);
+  expect(result.permanentDeckIds).toContain('bent_feather');
+  expect(result.headerBadgeCount).toBe(4);
+  expect(result.clearedIconCount).toBeGreaterThanOrEqual(1);
+  expect(result.announcement).toContain('cleared pile');
+  expect(result.announcement).toContain('Bent Feather, Cleared');
+});
+
+test('singleton deck rejects duplicate Snags and preserves upgraded save state', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+
+  const routeResult = await page.evaluate(async () => {
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {});
+    route.runState.deck = route.runState.deck.filter((card: any) => (
+      card.id !== 'bent_feather' && card.id !== 'tangled_line'
+    ));
+    route.runState.deck.push({ id: 'bent_feather', upgraded: false });
+    const before = route.runState.deck.length;
+    route.resolveRouteEffect('addSnagToDiscard(bent_feather)');
+    route.resolveRouteEffect('addSnagToDraw(bent_feather)');
+    const preview = route.routeChoicePreviewRows({
+      key: 'singleton_safety',
+      text: 'Take the same Snag again.',
+      effects: ['addSnagToDiscard(bent_feather)'],
+      locked: false,
+    }).find((row: any) => row.label === 'Deck');
+    const restoredRunState = structuredClone(route.runState);
+    restoredRunState.deck.push({ id: 'bent_feather', upgraded: true });
+    return {
+      before,
+      after: route.runState.deck.length,
+      bentCount: route.runState.deck.filter((card: any) => card.id === 'bent_feather').length,
+      preview,
+      routeLog: [...route.runState.routeLog],
+      restoredRunState,
+    };
+  });
+
+  expect(routeResult.after).toBe(routeResult.before);
+  expect(routeResult.bentCount).toBe(1);
+  expect(routeResult.preview).toEqual(expect.objectContaining({
+    before: String(routeResult.before),
+    after: String(routeResult.before),
+  }));
+  expect(routeResult.routeLog.at(-1)).toContain('cannot carry a second copy');
+
+  await page.evaluate(async (runState) => {
+    const battle: any = await window.__birdSquadStartScene!('BattleScene', {
+      runState,
+      routeNodeId: 'm1_entry',
+    });
+    const enemy = battle.enemies[0];
+    if (!enemy) throw new Error('Missing enemy for singleton Snag test');
+    battle.resolveEnemyEffect(enemy, 'addSnagToDiscard(bent_feather)', 'Singleton test');
+    battle.resolveEnemyEffect(enemy, 'addSnagToDraw(tangled_line)', 'Singleton test');
+    battle.resolveEnemyEffect(enemy, 'addSnagToDraw(tangled_line)', 'Singleton test');
+    battle.openOverlay('deck');
+  }, routeResult.restoredRunState);
+
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.battleInspectRenderer?.loaded && state.inspectOverlay === 'deck';
+  });
+  for (let index = 0; index < 30; index += 1) {
+    const selectedId = await page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').inspectedCard?.id);
+    if (selectedId === 'tangled_line') break;
+    await page.keyboard.press('ArrowDown');
+  }
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').inspectedCard?.id))
+    .toBe('tangled_line');
+  await page.screenshot({ path: '.artifacts/test-results/singleton-deck/minimum-landscape-singleton-snag.png' });
+
+  const battleResult = await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const allCards = battle.allDeckCards();
+    const snapshot = battle.buildRunStateSnapshot();
+    return {
+      state: JSON.parse(window.render_game_to_text?.() ?? '{}'),
+      bent: allCards.filter((card: any) => card.id === 'bent_feather')
+        .map((card: any) => ({ upgraded: card.upgraded === true })),
+      tangledCount: allCards.filter((card: any) => card.id === 'tangled_line').length,
+      savedBent: snapshot.deck.filter((card: any) => card.id === 'bent_feather'),
+      savedTangledCount: snapshot.deck.filter((card: any) => card.id === 'tangled_line').length,
+      log: [...battle.log],
+      announcement: document.getElementById('game-status')?.textContent ?? '',
+    };
+  });
+
+  expect(battleResult.bent).toEqual([{ upgraded: true }]);
+  expect(battleResult.tangledCount).toBe(1);
+  expect(battleResult.savedBent).toEqual([{ id: 'bent_feather', upgraded: true }]);
+  expect(battleResult.savedTangledCount).toBe(1);
+  expect(battleResult.log.filter((entry: string) => entry.includes('Snag fails'))).toHaveLength(2);
+  expect(battleResult.state.deckIds.filter((id: string) => id === 'bent_feather')).toHaveLength(1);
+  expect(battleResult.state.deckIds.filter((id: string) => id === 'tangled_line')).toHaveLength(1);
+  expect(battleResult.state.inspectedCard).toMatchObject({
+    id: 'tangled_line',
+    name: 'Tangled Line',
+  });
+  expect(battleResult.announcement).toContain('Tangled Line');
 });
 
 test('combat end turn control renders generated roost command frame', async ({ page }) => {
@@ -12037,6 +14809,23 @@ test('mute shortcut reuses rendered audio feedback without re-entering core scen
       const transition = state.titleTransition ?? state.transition;
       return !transition || transition.fadeRunning === false;
     });
+    await page.waitForFunction((key) => {
+      const scene: any = window.__birdSquadGame.scene.getScene(key);
+      const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+        child,
+        ...(Array.isArray(child.list) ? collect(child.list) : []),
+      ]);
+      const hit = collect(scene.children.list)
+        .filter((child: any) => child.name === 'audio-toggle-control-hit' && child.input?.enabled)
+        .at(-1);
+      if (!hit) return false;
+      if (scene.__muteTestStableHit !== hit) {
+        scene.__muteTestStableHit = hit;
+        scene.__muteTestStableSince = performance.now();
+        return false;
+      }
+      return performance.now() - scene.__muteTestStableSince >= 300;
+    }, sceneKey);
   };
 
   const snapshot = (sceneKey: string) => page.evaluate((key) => {
@@ -12074,19 +14863,121 @@ test('mute shortcut reuses rendered audio feedback without re-entering core scen
   for (const surface of surfaces) {
     await startOnly(surface.key, surface.data);
     const before = await snapshot(surface.key);
-    expect(before.hitCount).toBeGreaterThanOrEqual(1);
-    expect(before.visibleBursts).toBe(0);
+    expect(before.hitCount, surface.key).toBeGreaterThanOrEqual(1);
+    expect(before.visibleBursts, surface.key).toBe(0);
 
     await page.keyboard.press('m');
     const during = await snapshot(surface.key);
-    expect(during.audio.muted).toBe(!before.audio.muted);
-    expect(during.hitLabel).toBe(during.audio.muted ? 'Unmute' : 'Mute');
-    expect(during.feedbackBursts).toBe(before.feedbackBursts + 1);
-    expect(during.focus).toBe(before.focus);
-    expect(during.marker).toEqual(before.marker);
+    expect(during.audio.muted, surface.key).toBe(!before.audio.muted);
+    expect(during.hitLabel, surface.key).toBe(during.audio.muted ? 'Unmute' : 'Mute');
+    expect(during.feedbackBursts, surface.key).toBe(before.feedbackBursts + 1);
+    expect(during.focus, surface.key).toBe(before.focus);
+    expect(during.marker, surface.key).toEqual(before.marker);
 
     await page.waitForTimeout(520);
-    expect((await snapshot(surface.key)).visibleBursts).toBe(0);
+    expect((await snapshot(surface.key)).visibleBursts, surface.key).toBe(0);
+  }
+});
+
+test('mute shortcut preserves pause and settings overlays while reusing their audio feedback', async ({ page }) => {
+  test.setTimeout(180_000);
+  await boot(page);
+
+  type OverlayScenario = {
+    name: string;
+    sceneKey: 'MenuScene' | 'RouteScene' | 'BattleScene';
+    openKey: 'p' | 's';
+    settings: boolean;
+    data?: Record<string, unknown>;
+  };
+  const scenarios: OverlayScenario[] = [
+    { name: 'menu settings', sceneKey: 'MenuScene', openKey: 's', settings: true },
+    { name: 'route pause', sceneKey: 'RouteScene', openKey: 'p', settings: false },
+    { name: 'route settings', sceneKey: 'RouteScene', openKey: 's', settings: true },
+    { name: 'battle pause', sceneKey: 'BattleScene', openKey: 'p', settings: false, data: { routeNodeId: 'm1_entry' } },
+    { name: 'battle settings', sceneKey: 'BattleScene', openKey: 's', settings: true, data: { routeNodeId: 'm1_entry' } },
+  ];
+
+  const snapshot = (scenario: OverlayScenario, mark = false) => page.evaluate(({ scenario, mark }) => {
+    const scene: any = window.__birdSquadGame.scene.getScene(scenario.sceneKey);
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const objects = collect(scene.children.list).filter((child: any) => child.active !== false && child.visible !== false);
+    const hits = objects.filter((child: any) => child.name === 'audio-toggle-control-hit' && child.input?.enabled);
+    const topHit = hits.at(-1);
+    if (mark) topHit?.setData('overlayMuteProbe', scenario.name);
+    const focusRing = objects.find((child: any) => child.name === 'system-settings-focus-ring');
+    const audioValue = objects.find((child: any) => child.name === 'system-settings-audio-value');
+    const visibleBursts = objects.filter((child: any) => child.name === 'audio-toggle-wave-burst' && child.alpha > 0.01);
+    return {
+      muted: Boolean(window.__birdSquadAudio?.().muted),
+      hitCount: hits.length,
+      hitLabels: hits.map((hit: any) => hit.getData('label')),
+      topFeedbackBursts: Number(topHit?.getData('feedbackBursts') ?? 0),
+      marker: topHit?.getData('overlayMuteProbe') ?? null,
+      visibleBursts: visibleBursts.length,
+      settingsOpen: Boolean(scene.settingsOverlay?.active ?? scene.settingsOverlayOpen),
+      pauseOpen: Boolean(scene.pauseOverlayOpen),
+      focusIndex: focusRing?.getData('index') ?? null,
+      focusLabel: focusRing?.getData('label') ?? null,
+      audioValue: audioValue?.text ?? null,
+    };
+  }, { scenario, mark });
+
+  for (const scenario of scenarios) {
+    await page.evaluate(async ({ sceneKey, data }) => {
+      const game = window.__birdSquadGame;
+      const target: any = await window.__birdSquadStartScene!(sceneKey, data ?? {});
+      for (const active of game.scene.getScenes(true)) {
+        if (active !== target) game.scene.stop(active.sys.settings.key);
+      }
+    }, { sceneKey: scenario.sceneKey, data: scenario.data });
+    await page.waitForFunction((sceneKey) => {
+      const scene: any = window.__birdSquadGame.scene.getScene(sceneKey);
+      const ready = sceneKey === 'RouteScene'
+        ? scene.routeEssentialAssetsReady
+        : sceneKey === 'BattleScene'
+          ? scene.fxLayer?.active
+          : true;
+      return Boolean(scene.sys.settings.active && ready && scene.textures.exists('ui-icon-audio-toggle-wave-burst'));
+    }, scenario.sceneKey);
+
+    await page.keyboard.press(scenario.openKey);
+    await page.waitForFunction(({ sceneKey, settings }) => {
+      const scene: any = window.__birdSquadGame.scene.getScene(sceneKey);
+      const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+        child,
+        ...(Array.isArray(child.list) ? collect(child.list) : []),
+      ]);
+      const hits = collect(scene.children.list)
+        .filter((child: any) => child.active !== false && child.visible !== false
+          && child.name === 'audio-toggle-control-hit' && child.input?.enabled);
+      const settingsOpen = Boolean(scene.settingsOverlay?.active ?? scene.settingsOverlayOpen);
+      const pauseOpen = Boolean(scene.pauseOverlayOpen);
+      return hits.length >= 2 && (settings ? settingsOpen : pauseOpen && !settingsOpen);
+    }, { sceneKey: scenario.sceneKey, settings: scenario.settings });
+
+    const before = await snapshot(scenario, true);
+    await page.keyboard.press('m');
+    const during = await snapshot(scenario);
+
+    expect(during.muted, scenario.name).toBe(!before.muted);
+    expect(during.hitCount, scenario.name).toBe(before.hitCount);
+    expect(during.marker, scenario.name).toBe(scenario.name);
+    expect(during.topFeedbackBursts, scenario.name).toBe(before.topFeedbackBursts + 1);
+    expect(during.hitLabels, scenario.name).toEqual(Array(during.hitCount).fill(during.muted ? 'Unmute' : 'Mute'));
+    expect(during.settingsOpen, scenario.name).toBe(scenario.settings);
+    expect(during.pauseOpen, scenario.name).toBe(scenario.sceneKey !== 'MenuScene');
+    if (scenario.settings) {
+      expect(during.focusIndex, scenario.name).toBe(0);
+      expect(during.focusLabel, scenario.name).toBe('Audio');
+      expect(during.audioValue, scenario.name).toBe(during.muted ? 'Muted' : 'On');
+    }
+
+    await page.waitForTimeout(520);
+    expect((await snapshot(scenario)).visibleBursts, scenario.name).toBe(0);
   }
 });
 
@@ -12604,6 +15495,14 @@ test('an active run is checkpointed to storage and can be continued', async ({ p
     }));
     route.renderAll();
     const saved = JSON.parse(window.localStorage.getItem('birdsquad.run.active') || 'null');
+    const savedFeedback = JSON.parse(window.render_game_to_text!()).routeCheckpoint;
+    const savedIndicators = route.children.list.filter((child: any) => child.name === 'route-checkpoint-feedback').length;
+    route.renderAll();
+    const repeatedFeedback = JSON.parse(window.render_game_to_text!()).routeCheckpoint;
+    window.advanceTime!(1900);
+    await wait(50);
+    const settledFeedback = JSON.parse(window.render_game_to_text!()).routeCheckpoint;
+    const settledIndicators = route.children.list.filter((child: any) => child.name === 'route-checkpoint-feedback').length;
     // Return to the menu and Continue.
     await window.__birdSquadStartScene!('MenuScene');
     await wait(150);
@@ -12619,6 +15518,11 @@ test('an active run is checkpointed to storage and can be continued', async ({ p
       resumedInvalidActions: route2.runState?.combatResults?.[0]?.decisionStats?.invalidActions,
       resumedCancelledActions: route2.runState?.combatResults?.[0]?.decisionStats?.cancelledActions,
       resumedMovePressure: route2.runState?.combatResults?.[0]?.damageTakenByMove,
+      savedFeedback,
+      repeatedFeedback,
+      savedIndicators,
+      settledFeedback,
+      settledIndicators,
     };
   });
   expect(r.savedScrap).toBe(777);
@@ -12630,6 +15534,27 @@ test('an active run is checkpointed to storage and can be continued', async ({ p
   expect(r.resumedBlockedDamage).toBe(9);
   expect(r.resumedInvalidActions).toBe(4);
   expect(r.resumedCancelledActions).toBe(2);
+  expect(r.savedFeedback).toMatchObject({
+    outcome: 'saved',
+    label: 'FLIGHT SAVED',
+    visible: true,
+    writes: 2,
+    failures: 0,
+  });
+  expect(r.repeatedFeedback).toMatchObject({
+    outcome: 'saved',
+    visible: true,
+    writes: 2,
+    failures: 0,
+  });
+  expect(r.savedIndicators).toBe(1);
+  expect(r.settledFeedback).toMatchObject({
+    outcome: 'saved',
+    visible: false,
+    writes: 2,
+    failures: 0,
+  });
+  expect(r.settledIndicators).toBe(0);
   expect(r.resumedMovePressure).toEqual([{
     enemyId: 'checkpoint-enemy',
     moveId: 'checkpoint-move-0',
@@ -12638,6 +15563,55 @@ test('an active run is checkpointed to storage and can be continued', async ({ p
     blockedDamage: 3,
     hitCount: 1
   }]);
+});
+
+test('route checkpoint feedback truthfully reports storage failure and retries after new progress', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {});
+    for (let i = 0; i < 120 && !route.routeEssentialAssetsReady; i += 1) await wait(50);
+    const initial = JSON.parse(window.render_game_to_text!()).routeCheckpoint;
+    const originalSetItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key: string, value: string) {
+      if (key.startsWith('birdsquad.run.active')) throw new DOMException('Storage unavailable', 'QuotaExceededError');
+      return originalSetItem.call(this, key, value);
+    };
+    route.runState.scrap += 1;
+    route.renderAll();
+    const failed = JSON.parse(window.render_game_to_text!()).routeCheckpoint;
+    const failedIndicators = route.children.list.filter((child: any) => child.name === 'route-checkpoint-feedback').length;
+    Storage.prototype.setItem = originalSetItem;
+    route.runState.scrap += 1;
+    route.renderAll();
+    const recovered = JSON.parse(window.render_game_to_text!()).routeCheckpoint;
+    const stored = JSON.parse(window.localStorage.getItem('birdsquad.run.active') ?? '{}');
+    return {
+      initial,
+      failed,
+      failedIndicators,
+      recovered,
+      storedScrap: stored.scrap,
+      liveScrap: route.runState.scrap,
+    };
+  });
+  expect(result.initial).toMatchObject({ outcome: 'saved', writes: 1, failures: 0 });
+  expect(result.failed).toMatchObject({
+    outcome: 'failed',
+    label: 'SAVE UNAVAILABLE',
+    visible: true,
+    writes: 1,
+    failures: 1,
+  });
+  expect(result.failedIndicators).toBe(1);
+  expect(result.recovered).toMatchObject({
+    outcome: 'saved',
+    label: 'FLIGHT SAVED',
+    visible: true,
+    writes: 2,
+    failures: 1,
+  });
+  expect(result.storedScrap).toBe(result.liveScrap);
 });
 
 test('corrupt or missing primary saves recover the Flock Record and active flight from mirrored checkpoints', async ({ page }) => {
@@ -12791,6 +15765,262 @@ test('Ascension difficulty scales enemy Cohesion and narrows card rewards', asyn
   expect(r.rewardCount).toBe(2); // tier >= 2 narrows rewards from 3 to 2
 });
 
+test('Ascension mastery tiers shift cyclic Tells deterministically while preserving previews and boss scripts', async ({ page }) => {
+  test.setTimeout(90_000);
+  await boot(page);
+  const report = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const g = window.__birdSquadGame;
+    const runState = (difficulty: number, seed: string) => ({
+      deck: [{ id: 'major_07' }],
+      leaderId: 'fledgling',
+      difficulty,
+      runMode: 'full',
+      seed,
+      currentHp: 38,
+      scrap: 0,
+      routeMarks: [],
+      supplies: [],
+      mapIndex: 0,
+      completedRouteNodeIds: [],
+      routeLog: [],
+      nextCombat: undefined,
+      signalChoices: [],
+      rewardEvents: [],
+    });
+    const start = async (difficulty: number, seed: string, routeNodeId = 'm1_entry') => {
+      const scene: any = await window.__birdSquadStartScene!(
+        'BattleScene',
+        { runState: runState(difficulty, seed), routeNodeId },
+      );
+      g.scene.stop('MenuScene');
+      await wait(25);
+      return scene;
+    };
+
+    const standard = await start(0, 'mastery-standard');
+    const standardOpener = standard.enemies[0].intentIndex;
+
+    const shiftedIndices: number[] = [];
+    for (let index = 0; index < 4; index += 1) {
+      const scene = await start(3, `mastery-opener-${index}`);
+      shiftedIndices.push(scene.enemies[0].intentIndex);
+    }
+    const repeatedA = await start(3, 'mastery-repeat');
+    const repeatedAState = window.__birdSquadState!();
+    const repeatedAIndex = repeatedA.enemies[0].intentIndex;
+    const repeatedB = await start(3, 'mastery-repeat');
+    const repeatedBState = window.__birdSquadState!();
+    const repeatedBIndex = repeatedB.enemies[0].intentIndex;
+
+    const restless = await start(6, 'mastery-restless');
+    restless.enemies[0].intentIndex = 1; // Roof Rat's authored Gutter Nibble 4.
+    restless.flock.hp = restless.flock.maxHp;
+    restless.flock.block = 0;
+    restless.prepareEnemyMoveContext();
+    restless.renderAll();
+    const before = window.__birdSquadState!();
+    const hpBefore = restless.flock.hp;
+    restless.resolveEnemyTurn();
+    restless.renderAll();
+    const after = window.__birdSquadState!();
+    const actualLoss = hpBefore - restless.flock.hp;
+
+    const boss = await start(6, 'mastery-boss', 'm1_boss');
+    const bossBefore = boss.enemies[0].intentIndex;
+    boss.resolveEnemyTurn();
+    const bossAfter = boss.enemies[0].intentIndex;
+
+    const restlessRepeat = await start(6, 'mastery-restless');
+    restlessRepeat.enemies[0].intentIndex = 1;
+    restlessRepeat.prepareEnemyMoveContext();
+    restlessRepeat.resolveEnemyTurn();
+    restlessRepeat.renderAll();
+    const repeatedRestlessState = window.__birdSquadState!();
+
+    window.localStorage.setItem('birdsquad.maxTier', '6');
+    const menu: any = await window.__birdSquadStartScene!('MenuScene');
+    menu.selectedDifficulty = 3;
+    menu.updateDifficultyText();
+    const tier3Description = menu.difficultyDescText.text;
+    menu.selectedDifficulty = 6;
+    menu.updateDifficultyText();
+    const tier6Description = menu.difficultyDescText.text;
+
+    return {
+      standardOpener,
+      shiftedIndices,
+      repeated: {
+        indexA: repeatedAIndex,
+        indexB: repeatedBIndex,
+        intentA: repeatedAState.enemies[0].intent,
+        intentB: repeatedBState.enemies[0].intent,
+      },
+      restless: {
+        beforeIndex: before.enemies[0].intentIndex,
+        afterIndex: after.enemies[0].intentIndex,
+        beforeIntent: before.enemies[0].intent,
+        afterIntent: after.enemies[0].intent,
+        preview: before.flock.incoming.total,
+        actualLoss,
+        difficulty: before.difficulty,
+        log: after.log,
+        repeatedAfterIndex: repeatedRestlessState.enemies[0].intentIndex,
+        repeatedAfterIntent: repeatedRestlessState.enemies[0].intent,
+      },
+      boss: { before: bossBefore, after: bossAfter },
+      tier3Description,
+      tier6Description,
+    };
+  });
+
+  expect(report.standardOpener).toBe(0);
+  expect(new Set(report.shiftedIndices)).toEqual(new Set([1, 2]));
+  expect(report.repeated.indexA).toBe(report.repeated.indexB);
+  expect(report.repeated.intentA).toBe(report.repeated.intentB);
+  expect(report.restless.beforeIntent).toBe('Gutter Nibble 4');
+  expect(report.restless.afterIntent).not.toBe(report.restless.beforeIntent);
+  expect(report.restless.afterIndex - report.restless.beforeIndex).toBeGreaterThanOrEqual(1);
+  expect(report.restless.afterIndex - report.restless.beforeIndex).toBeLessThanOrEqual(2);
+  expect(report.restless.repeatedAfterIndex).toBe(report.restless.afterIndex);
+  expect(report.restless.repeatedAfterIntent).toBe(report.restless.afterIntent);
+  expect(report.restless.preview).toBe(report.restless.actualLoss);
+  expect(report.restless.difficulty).toMatchObject({
+    tier: 6,
+    enemyDamageBonus: 1,
+    shiftedOpeners: true,
+    restlessPatterns: true,
+  });
+  expect(report.restless.log.some((entry: string) => entry.includes('reroutes:'))).toBe(true);
+  expect(report.boss).toEqual({ before: 0, after: 1 });
+  expect(report.tier3Description).toContain('seeded alternate Tell');
+  expect(report.tier3Description).toContain('Hit +0');
+  expect(report.tier6Description).toContain('Tells reroute');
+  expect(report.tier6Description).toContain('Hit +1');
+});
+
+test('opening draws are deterministic, varied, and pressure-protected after the curated first fight', async ({ page }) => {
+  await boot(page);
+  const report = await page.evaluate(async () => {
+    const g = window.__birdSquadGame;
+    const scene: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    g.scene.stop('MenuScene');
+    const curated = {
+      state: structuredClone(scene.openingDraw),
+      hand: scene.hand.map((card: any) => card.id),
+    };
+    const tidewardenDeck = [
+      'cups_ace',
+      'cups_02',
+      'cups_03',
+      'cups_fledgling',
+      'cups_09',
+      'cups_outrider',
+      'major_17',
+      'aviary_41',
+      'pentacles_06',
+      'swords_ace',
+    ];
+    const priorCombat = {
+      encounterId: 'prior',
+      nodeId: 'prior-node',
+      nodeType: 'street',
+      enemyIds: [],
+      turnsTaken: 1,
+      damageDealt: 1,
+      cohesionLost: 0,
+    };
+    const runState = (seed: string) => ({
+      deck: tidewardenDeck.map((id) => ({ id })),
+      leaderId: 'tidewarden',
+      difficulty: 0,
+      runMode: 'full',
+      seed,
+      currentHp: 38,
+      scrap: 40,
+      routeMarks: [],
+      supplies: [],
+      supplySlots: 2,
+      mapIndex: 0,
+      completedRouteNodeIds: ['prior-node'],
+      currentRouteNodeId: undefined,
+      routeLog: [],
+      nextCombat: undefined,
+      signalChoices: [],
+      rewardEvents: [],
+      routeDecisions: [],
+      suppliesUsed: [],
+      combatResults: [priorCombat],
+    });
+    const samples = [];
+    for (let index = 0; index < 256; index += 1) {
+      scene.init({ runState: runState(`opening-fairness-${index}`), routeNodeId: 'm1_entry' });
+      const hand = scene.hand.map((card: any) => card.id);
+      samples.push({
+        shuffled: scene.openingDraw.shuffled,
+        protectionSwaps: scene.openingDraw.protectionSwaps,
+        playableCount: scene.hand.filter((card: any) => card.cost <= scene.energy && card.runtime.kind !== 'snag').length,
+        pressureCount: scene.hand.filter((card: any) => (
+          card.cost <= scene.energy
+          && card.runtime.kind !== 'snag'
+          && (card.target === 'enemy' || card.target === 'allEnemies')
+        )).length,
+        hand,
+      });
+    }
+    scene.init({ runState: runState('opening-repeat'), routeNodeId: 'm1_entry' });
+    const repeatedA = {
+      hand: scene.hand.map((card: any) => card.id),
+      rewards: scene.createRewardChoices().map((card: any) => card.id),
+    };
+    scene.init({ runState: runState('opening-repeat'), routeNodeId: 'm1_entry' });
+    const repeatedB = {
+      hand: scene.hand.map((card: any) => card.id),
+      rewards: scene.createRewardChoices().map((card: any) => card.id),
+    };
+    return {
+      curated,
+      samples,
+      repeatedA,
+      repeatedB,
+      uniqueHands: new Set(samples.map((sample) => sample.hand.join('>'))).size,
+      protectedSamples: samples.filter((sample) => sample.protectionSwaps > 0).length,
+    };
+  });
+
+  await test.info().attach('opening-draw-fairness-report', {
+    body: Buffer.from(JSON.stringify({
+      curated: report.curated,
+      uniqueHands: report.uniqueHands,
+      protectedSamples: report.protectedSamples,
+      repeatedA: report.repeatedA,
+      repeatedB: report.repeatedB,
+    }, null, 2)),
+    contentType: 'application/json',
+  });
+  expect(report.curated.state).toMatchObject({
+    shuffled: false,
+    protectionSwaps: 0,
+  });
+  expect(report.curated.hand).toEqual([
+    'major_00',
+    'wands_ace',
+    'wands_fledgling',
+    'swords_ace',
+    'swords_fledgling',
+  ]);
+  expect(report.uniqueHands).toBeGreaterThanOrEqual(220);
+  expect(report.protectedSamples).toBeGreaterThan(80);
+  for (const sample of report.samples) {
+    expect(sample).toMatchObject({
+      shuffled: true,
+      pressureCount: 1,
+    });
+    expect(sample.playableCount).toBeGreaterThanOrEqual(2);
+  }
+  expect(report.repeatedB).toEqual(report.repeatedA);
+});
+
 test('routes are procedurally generated: larger, branching, fully connected', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
@@ -12833,6 +16063,190 @@ test('routes are procedurally generated: larger, branching, fully connected', as
   expect(r.boss).toBe('m1_boss');
 });
 
+test('procedural routes satisfy fairness rules and remain varied across 1024 seeded districts', async ({ page }) => {
+  await boot(page);
+  const report = await page.evaluate(() => {
+    const [
+      routeBlueprints,
+      generateRouteMap,
+      hashSeed,
+      getMapBalanceProfile,
+    ] = window.__routeAudit!;
+    const samplesPerMap = 256;
+    const combatTypes = new Set(['street', 'rival']);
+    const safetyTypes = new Set(['basin', 'nest']);
+    const buildTypes = new Set(['cache', 'market', 'signal', 'nest']);
+    const maps = [];
+
+    for (const blueprint of routeBlueprints) {
+      const balance = getMapBalanceProfile(blueprint.id, blueprint.index).routeGeneration;
+      const signatures = new Set<string>();
+      const pathSignatures = new Set<string>();
+      const streetPayloads = new Set<string>();
+      const rivalPayloads = new Set<string>();
+      const violations: string[] = [];
+      let minNodeCount = Infinity;
+      let maxNodeCount = 0;
+      let minPathCount = Infinity;
+      let maxPathCount = 0;
+
+      for (let sample = 0; sample < samplesPerMap; sample += 1) {
+        const seed = hashSeed(`route-fairness-${sample}`, blueprint.index);
+        const map = generateRouteMap(blueprint, seed);
+        const repeated = sample < 4 ? generateRouteMap(blueprint, seed) : undefined;
+        if (repeated && JSON.stringify(map) !== JSON.stringify(repeated)) {
+          violations.push(`seed ${sample}: non-deterministic output`);
+        }
+        minNodeCount = Math.min(minNodeCount, map.nodes.length);
+        maxNodeCount = Math.max(maxNodeCount, map.nodes.length);
+        const byId = new Map(map.nodes.map((node) => [node.id, node]));
+        const outgoing = new Map<string, string[]>();
+        const incoming = new Map<string, string[]>();
+        for (const edge of map.edges.filter((candidate) => !candidate.locked)) {
+          outgoing.set(edge.from, [...(outgoing.get(edge.from) ?? []), edge.to]);
+          incoming.set(edge.to, [...(incoming.get(edge.to) ?? []), edge.from]);
+        }
+
+        const forward = new Set<string>([map.entryNodeId]);
+        const forwardStack = [map.entryNodeId];
+        while (forwardStack.length) {
+          const current = forwardStack.pop()!;
+          for (const next of outgoing.get(current) ?? []) {
+            if (forward.has(next)) continue;
+            forward.add(next);
+            forwardStack.push(next);
+          }
+        }
+        const reverse = new Set<string>([map.bossNodeId]);
+        const reverseStack = [map.bossNodeId];
+        while (reverseStack.length) {
+          const current = reverseStack.pop()!;
+          for (const previous of incoming.get(current) ?? []) {
+            if (reverse.has(previous)) continue;
+            reverse.add(previous);
+            reverseStack.push(previous);
+          }
+        }
+        if (map.nodes.some((node) => !forward.has(node.id))) violations.push(`seed ${sample}: unreachable node`);
+        if (map.nodes.some((node) => !reverse.has(node.id))) violations.push(`seed ${sample}: node cannot reach boss`);
+        if (map.nodes.some((node) => node.id !== map.entryNodeId && !(incoming.get(node.id)?.length))) {
+          violations.push(`seed ${sample}: missing incoming edge`);
+        }
+        if (map.nodes.some((node) => node.id !== map.bossNodeId && !(outgoing.get(node.id)?.length))) {
+          violations.push(`seed ${sample}: missing outgoing edge`);
+        }
+        if (![...(outgoing.values())].some((targets) => new Set(targets).size >= 2)) {
+          violations.push(`seed ${sample}: no meaningful branch`);
+        }
+        for (const targets of outgoing.values()) {
+          const targetNodes = targets.map((id) => byId.get(id)).filter(Boolean);
+          if (targetNodes.length > 0 && targetNodes.every((node) => node?.type === 'rival')) {
+            violations.push(`seed ${sample}: forced rival path`);
+            break;
+          }
+        }
+
+        const paths: string[][] = [];
+        const stack: string[][] = [[map.entryNodeId]];
+        while (stack.length && paths.length < 5000) {
+          const path = stack.pop()!;
+          const current = path.at(-1)!;
+          if (current === map.bossNodeId) {
+            paths.push(path);
+            continue;
+          }
+          for (const next of outgoing.get(current) ?? []) {
+            if (!path.includes(next)) stack.push([...path, next]);
+          }
+        }
+        minPathCount = Math.min(minPathCount, paths.length);
+        maxPathCount = Math.max(maxPathCount, paths.length);
+        if (paths.length < 2 || paths.length >= 5000) violations.push(`seed ${sample}: invalid path count ${paths.length}`);
+
+        const middleColumns = map.columns.length - 2;
+        const safetyColumnLimit = Math.max(
+          1,
+          Math.floor(middleColumns * (balance.pathRules?.minSafetyBeforeColumnPct ?? 0.7)),
+        );
+        const maxCombat = balance.pathRules?.maxConsecutiveCombat ?? 2;
+        const minSafety = balance.pathRules?.minSafetyBeforeBoss ?? 1;
+        const minBuild = balance.pathRules?.minBuildBeforeBoss ?? 1;
+        const maxPressure = balance.pathRules?.maxPressureScore ?? Math.max(4, middleColumns - 2);
+        for (const pathIds of paths) {
+          const path = pathIds.map((id) => byId.get(id)!).filter(Boolean);
+          const routeNodes = path.filter((node) => node.column >= 1 && node.column <= middleColumns);
+          let consecutiveCombat = 0;
+          let worstCombat = 0;
+          let pressure = 0;
+          for (const node of path) {
+            if (combatTypes.has(node.type)) {
+              consecutiveCombat += 1;
+              worstCombat = Math.max(worstCombat, consecutiveCombat);
+            } else if (node.type !== 'boss') {
+              consecutiveCombat = 0;
+            }
+            if (node.type === 'rival') pressure += 2;
+            else if (node.type === 'street') pressure += 1;
+            else if (safetyTypes.has(node.type)) pressure -= 1;
+          }
+          const safety = routeNodes.filter((node) => (
+            node.column <= safetyColumnLimit && safetyTypes.has(node.type)
+          )).length;
+          const build = routeNodes.filter((node) => buildTypes.has(node.type)).length;
+          if (worstCombat > maxCombat) violations.push(`seed ${sample}: ${worstCombat} consecutive combats`);
+          if (safety < minSafety) violations.push(`seed ${sample}: no timely safety node`);
+          if (build < minBuild) violations.push(`seed ${sample}: no build node`);
+          if (pressure > maxPressure) violations.push(`seed ${sample}: pressure ${pressure} > ${maxPressure}`);
+          pathSignatures.add(path.map((node) => node.type).join('>'));
+        }
+
+        map.nodes.forEach((node) => {
+          if (node.type === 'street' && node.payloadId !== blueprint.entryEncounterId) streetPayloads.add(node.payloadId);
+          if (node.type === 'rival') rivalPayloads.add(node.payloadId);
+        });
+        signatures.add(JSON.stringify({
+          columns: map.columns.map((column) => column.length),
+          nodes: map.nodes.map((node) => [node.column, node.lane, node.type, node.payloadId]),
+          edges: map.edges.map((edge) => [edge.from, edge.to]),
+        }));
+      }
+
+      maps.push({
+        id: blueprint.id,
+        violations: violations.slice(0, 20),
+        uniqueMaps: signatures.size,
+        uniquePathPatterns: pathSignatures.size,
+        streetPayloads: streetPayloads.size,
+        streetPool: blueprint.streetEncounterIds.filter((id) => id !== blueprint.entryEncounterId).length,
+        rivalPayloads: rivalPayloads.size,
+        rivalPool: blueprint.rivalEncounterIds.length,
+        minNodeCount,
+        maxNodeCount,
+        minPathCount,
+        maxPathCount,
+      });
+    }
+    return { samplesPerMap, maps };
+  });
+
+  await test.info().attach('procedural-route-fairness-report', {
+    body: Buffer.from(JSON.stringify(report, null, 2)),
+    contentType: 'application/json',
+  });
+  expect(report.samplesPerMap).toBe(256);
+  for (const map of report.maps) {
+    expect(map.violations, `${map.id} fairness violations`).toEqual([]);
+    expect(map.uniqueMaps, `${map.id} unique generated maps`).toBeGreaterThanOrEqual(220);
+    expect(map.uniquePathPatterns, `${map.id} route-type patterns`).toBeGreaterThanOrEqual(12);
+    expect(map.streetPayloads, `${map.id} street encounter coverage`).toBe(map.streetPool);
+    expect(map.rivalPayloads, `${map.id} rival encounter coverage`).toBe(map.rivalPool);
+    expect(map.minNodeCount).toBeGreaterThanOrEqual(16);
+    expect(map.maxNodeCount).toBeGreaterThan(map.minNodeCount);
+    expect(map.minPathCount).toBeGreaterThanOrEqual(2);
+    expect(map.maxPathCount).toBeGreaterThan(map.minPathCount);
+  }
+});
+
 test('the route map exposes a Flock view (flock examinable between fights)', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
@@ -12853,10 +16267,16 @@ test('the route map exposes a Flock view (flock examinable between fights)', asy
 test('route map exposes boss prep readiness before the final crossing', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const g = window.__birdSquadGame;
     await window.__birdSquadStartScene!('RouteScene', {});
     g.scene.stop('MenuScene');
     const route: any = g.scene.getScene('RouteScene');
+    for (let i = 0; i < 160; i += 1) {
+      const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      if (state.assetReadiness?.fullArt) break;
+      await wait(50);
+    }
     route.selectedNodeId = window.__birdSquadCurrentMap!().bossNodeId;
     route.renderAll();
     const texts = route.children.list
@@ -13015,6 +16435,278 @@ test('a defeat emits a local run-summary artifact', async ({ page }) => {
   expect(Array.isArray(run.suppliesUsed)).toBe(true);
 });
 
+test('defeat review explains the fatal hit, top pressure, and one actionable adjustment', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const game = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    game.scene.stop('MenuScene');
+    const scene: any = game.scene.getScene('BattleScene');
+    for (let i = 0; i < 40 && !scene.flock; i += 1) await wait(50);
+    scene.runCombatResults = [{
+      encounterId: 'enc_prior',
+      nodeId: 'prior-node',
+      nodeType: 'street',
+      enemyIds: ['prior-enemy'],
+      turnsTaken: 3,
+      damageDealt: 10,
+      cohesionLost: 17,
+      damageTakenByMove: [{
+        enemyId: 'prior-enemy',
+        moveId: 'relentless_peck',
+        moveLabel: 'Relentless Peck',
+        damageTaken: 17,
+        blockedDamage: 5,
+        hitCount: 3,
+      }],
+      decisionStats: {
+        cardsPlayed: 7,
+        overextensions: 0,
+        lowCardTurns: 0,
+        noOverextensionTurns: 3,
+        turnEnds: 3,
+        cardsHeldAtRoost: 0,
+        unspentWingbeatAtRoost: 0,
+        maxCardsPlayedTurn: 3,
+        waymarksAtStart: 0,
+        waymarksAtEnd: 0,
+      },
+    }];
+    scene.completedRouteNodeIds = ['prior-node'];
+    scene.statOverextensions = 2;
+    scene.flock.hp = 1;
+    scene.flock.block = 0;
+    scene.resolveEnemyEffect(scene.enemies[0], 'damage(flock, 20)', 'Review Strike');
+    scene.checkOutcome();
+    scene.renderAll();
+    for (let i = 0; i < 80 && !scene.getTextState().defeatReview; i += 1) await wait(50);
+    scene.renderAll();
+    await wait(0);
+
+    const state = scene.getTextState();
+    const frame: any = scene.root.list.find((child: any) => child.name === 'run-defeat-review');
+    const headline: any = scene.root.list.find((child: any) => child.name === 'run-defeat-review-headline');
+    const evidence: any = scene.root.list.find((child: any) => child.name === 'run-defeat-review-evidence');
+    const tip: any = scene.root.list.find((child: any) => child.name === 'run-defeat-review-tip');
+    const copyHit: any = scene.root.list.find((child: any) => child.name === 'run-outcome-flight-link-hit');
+    const commandHits: any[] = scene.root.list.filter((child: any) => child.name === 'run-outcome-command-hit');
+    const staleCombatFxNames = new Set([
+      'combat-enemy-attack-tell',
+      'combat-threat-charge',
+      'combat-enemy-windup-plaque',
+      'combat-enemy-commitment-seal',
+      'combat-action-trail',
+      'combat-enemy-impact-contact',
+      'combat-flock-impact-burst',
+      'combat-enemy-recovery-afterglow',
+      'combat-turn-banner',
+    ]);
+    const within = (outer: any, inner: any) => (
+      inner.left >= outer.left - 0.5
+      && inner.right <= outer.right + 0.5
+      && inner.top >= outer.top - 0.5
+      && inner.bottom <= outer.bottom + 0.5
+    );
+    const frameBounds = frame?.getBounds();
+    return {
+      review: state.defeatReview,
+      headline: headline?.text,
+      evidence: evidence?.text,
+      tip: tip?.text,
+      reviewRendered: Boolean(frame),
+      reviewContainsText: frameBounds
+        ? [headline, evidence, tip].every((entry) => entry && within(frameBounds, entry.getBounds()))
+        : false,
+      copyDoesNotOverlapCommands: copyHit && commandHits.length > 0
+        ? copyHit.getBounds().bottom <= Math.min(...commandHits.map((entry) => entry.getBounds().top))
+        : false,
+      commands: commandHits.map((entry) => entry.getData('label')),
+      flightLinkLabel: scene.root.list.find((child: any) => child.name === 'run-outcome-flight-link-label')?.text,
+      staleCombatFx: scene.fxLayer.list
+        .map((child: any) => child.name)
+        .filter((name: string) => staleCombatFxNames.has(name)),
+      outcomeReportAboveFx: scene.root.depth > scene.fxLayer.depth,
+    };
+  });
+
+  expect(result.review).toMatchObject({
+    fatalMove: 'Review Strike',
+    signal: 'OPEN SKY',
+    headline: 'Last hit · Review Strike',
+    evidence: 'Top pressure · Relentless Peck: 17 taken / 5 blocked',
+    topPressure: {
+      enemyId: 'prior-enemy',
+      moveId: 'relentless_peck',
+      moveLabel: 'Relentless Peck',
+      damageTaken: 17,
+      blockedDamage: 5,
+      hitCount: 3,
+    },
+  });
+  expect(result.review.tip).toContain('2 overextensions opened the flock');
+  expect(result.review.replayNote).toContain('seed');
+  expect(result.headline).toBe(result.review.headline);
+  expect(result.evidence).toBe(result.review.evidence);
+  expect(result.tip).toBe(result.review.tip);
+  expect(result.reviewRendered).toBe(true);
+  expect(result.reviewContainsText).toBe(true);
+  expect(result.copyDoesNotOverlapCommands).toBe(true);
+  expect(result.commands).toEqual(['Replay Flight', 'Flight Details', 'Main Menu']);
+  expect(result.flightLinkLabel).toContain('COPY SEEDED FLIGHT');
+  expect(result.staleCombatFx).toEqual([]);
+  expect(result.outcomeReportAboveFx).toBe(true);
+});
+
+test('flight details expose the final deck, path, kit, decisions, and results accessibly', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+
+  await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const game = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    game.scene.stop('MenuScene');
+    const scene: any = game.scene.getScene('BattleScene');
+    for (let i = 0; i < 40 && !scene.flock; i += 1) await wait(50);
+    const routeNodes = window.__birdSquadCurrentMap?.().nodes.slice(0, 3) ?? [];
+    scene.completedRouteNodeIds = routeNodes.map((node: any) => node.id);
+    scene.runRouteDecisions = routeNodes.map((node: any, index: number) => ({
+      offered: routeNodes.slice(index, index + 2).map((candidate: any) => candidate.id),
+      picked: node.id,
+      decisionMs: 1200 + index * 400,
+    }));
+    scene.runRewardEvents = [
+      { offered: ['wands_02', 'cups_02'], picked: 'wands_02', skipped: false, decisionMs: 1700 },
+      { offered: ['swords_02', 'pentacles_02'], skipped: true, fallback: 'scrap', decisionMs: 900 },
+    ];
+    scene.routeMarks = ['chalk_wingmark'];
+    scene.runSuppliesUsed = ['seed_packet'];
+    scene.runScrapEarned = 88;
+    scene.runScrapSpent = 35;
+    scene.scrap = 93;
+    scene.statDealt = 21;
+    scene.statBlocked = 7;
+    scene.statCardsPlayed = 6;
+    scene.statNoOverextensionTurns = 2;
+    scene.statUnspentWingbeatAtRoost = 1;
+    scene.runStartedAtMs = Date.now() - 74_000;
+    scene.flock.hp = 1;
+    scene.flock.block = 0;
+    scene.resolveEnemyEffect(scene.enemies[0], 'damage(flock, 20)', 'Review Strike');
+    scene.checkOutcome();
+    scene.renderAll();
+  });
+
+  await expect.poll(async () => page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.combatInputFocus?.count;
+  })).toBe(3);
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.combatInputFocus?.label;
+  })).toBe('Flight Details');
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.outcomeFlightDetails?.open;
+  })).toBe(true);
+  await expect.poll(async () => page.evaluate(() => document.getElementById('game-status')?.textContent ?? '')).toContain('Flight details');
+
+  await page.screenshot({
+    path: '.artifacts/test-results/flight-details/minimum-landscape-defeat-review.png',
+  });
+  const review = await page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const panel: any = scene.root.list.find((child: any) => child.name === 'run-flight-details-panel');
+    const sections: any[] = scene.root.list.filter((child: any) => child.name === 'run-flight-details-section');
+    const bodies: any[] = scene.root.list.filter((child: any) => child.name === 'run-flight-details-section-body');
+    const closeHit: any = scene.root.list.find((child: any) => child.name === 'run-flight-details-close-hit');
+    const panelBounds = panel?.getBounds();
+    const contained = (outer: any, inner: any) => (
+      inner.left >= outer.left - 0.5
+      && inner.right <= outer.right + 0.5
+      && inner.top >= outer.top - 0.5
+      && inner.bottom <= outer.bottom + 0.5
+    );
+    const overlaps = (a: any, b: any) => (
+      a.left < b.right
+      && a.right > b.left
+      && a.top < b.bottom
+      && a.bottom > b.top
+    );
+    return {
+      state,
+      title: scene.root.list.find((child: any) => child.name === 'run-flight-details-title')?.text,
+      sectionNames: sections.map((section) => section.getData('section')),
+      sectionBodies: Object.fromEntries(bodies.map((body) => [body.getData('section'), body.text])),
+      allSectionsInsidePanel: panelBounds
+        ? [...sections, ...bodies, closeHit].every((entry) => entry && contained(panelBounds, entry.getBounds()))
+        : false,
+      closeDoesNotOverlapSections: closeHit
+        ? sections.every((section) => !overlaps(closeHit.getBounds(), section.getBounds()))
+        : false,
+      closeTarget: { width: closeHit?.width, height: closeHit?.height, enabled: closeHit?.input?.enabled },
+      focusRings: scene.root.list.filter((child: any) => child.name === 'run-flight-details-input-focus-ring').length,
+      announcement: document.getElementById('game-status')?.textContent ?? '',
+    };
+  });
+
+  expect(review.state).toMatchObject({
+    mode: 'defeat',
+    outcomeFlightDetails: {
+      open: true,
+      details: {
+        waymarks: ['Chalk Wingmark'],
+        supplies: ['Seed Packet'],
+      },
+    },
+    combatInputFocus: {
+      active: true,
+      kind: 'outcome',
+      index: 0,
+      count: 1,
+      label: 'Close Flight Details',
+      visibleFocus: true,
+    },
+  });
+  expect(review.state.outcomeFlightDetails.details.deck.length).toBeGreaterThanOrEqual(10);
+  expect(review.state.outcomeFlightDetails.details.deck.some((line: string) => line.includes('First Flight'))).toBe(true);
+  expect(review.state.outcomeFlightDetails.details.path.length).toBeGreaterThanOrEqual(3);
+  expect(review.state.outcomeFlightDetails.details.path.every((line: string) => /D\d/.test(line))).toBe(true);
+  expect(review.state.outcomeFlightDetails.details.decisions.join(' ')).toContain('route choices');
+  expect(review.state.outcomeFlightDetails.details.decisions.join(' ')).toContain('card recruit');
+  expect(review.state.outcomeFlightDetails.details.results[0]).toContain('LOSS');
+  expect(review.title).toBe('Flight Details');
+  expect(review.sectionNames).toEqual(['FINAL DECK · 10', 'ROUTE PATH · 3 STOPS', 'KIT AT LANDING', 'DECISIONS', 'RESULTS']);
+  expect(review.sectionBodies['KIT AT LANDING']).toContain('Chalk Wingmark');
+  expect(review.sectionBodies['KIT AT LANDING']).toContain('Seed Packet');
+  expect(review.allSectionsInsidePanel).toBe(true);
+  expect(review.closeDoesNotOverlapSections).toBe(true);
+  expect(review.closeTarget).toEqual({ width: 190, height: 58, enabled: true });
+  expect(review.focusRings).toBe(1);
+  expect(review.announcement).toContain('Final deck has');
+  expect(review.announcement).toContain('Route path has');
+  expect(review.announcement).toContain('Press Confirm or Back to close');
+
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').outcomeFlightDetails?.open)).toBe(false);
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').outcomeFlightDetails?.open)).toBe(true);
+  const canvas = await page.locator('canvas').boundingBox();
+  if (!canvas) throw new Error('Expected game canvas for Flight Details pointer close');
+  await page.mouse.click(
+    canvas.x + canvas.width * (1082 / 1280),
+    canvas.y + canvas.height * (640 / 720),
+  );
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').outcomeFlightDetails?.open)).toBe(false);
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').mode)).toBe('defeat');
+});
+
 test('outcome replay preserves the flight seed and setup through keyboard confirmation', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
@@ -13042,6 +16734,9 @@ test('outcome replay preserves the flight seed and setup through keyboard confir
     battle.emitRunSummary('loss');
     battle.controllerChoiceIndex = 0;
     battle.renderAll();
+    for (let i = 0; i < 80 && !battle.root.list.some((child: any) => child.name === 'run-outcome-flight-link-label'); i += 1) {
+      await wait(50);
+    }
     const outcomeTexts = battle.root.list
       .filter((child: any) => typeof child.text === 'string')
       .map((child: any) => child.text);
@@ -13228,7 +16923,7 @@ test('outcome flight codes copy a shared route link that launches the same seed 
     let flightCodeHit: any;
     for (let i = 0; i < 80 && (!flightCode || !flightCodeHit); i += 1) {
       const objects = collectObjects(battle.root?.list ?? []);
-      flightCode = objects.find((child: any) => child.text?.includes('COPY ROUTE LINK'));
+      flightCode = objects.find((child: any) => child.name === 'run-outcome-flight-link-label');
       flightCodeHit = objects.find((child: any) => child.name === 'run-outcome-flight-link-hit');
       if (!flightCode || !flightCodeHit) await wait(50);
     }
@@ -13342,7 +17037,7 @@ test('run-complete outcome celebrates fresh meta progress with a record strip', 
   expect(result.runOutcomeStatRowFrame.count).toBe(10);
   expect(result.runOutcomeCommandFrame.loaded).toBe(true);
   expect(result.runOutcomeCommandFrame.rendered).toBe(true);
-  expect(result.runOutcomeCommandFrame.count).toBe(2);
+  expect(result.runOutcomeCommandFrame.count).toBe(3);
   expect(result.runOutcomeReportFrame.loaded).toBe(true);
   expect(result.runOutcomeReportFrame.rendered).toBe(true);
   expect(result.runOutcomeReportFrame.count).toBe(1);
@@ -13357,6 +17052,181 @@ test('run-complete outcome celebrates fresh meta progress with a record strip', 
   expect(result.unlockHighlights.items.some((item: any) => item.kind === 'record')).toBe(true);
   expect(result.account.leaderRecords.fledgling.clears['full:0']).toEqual({ wins: 1, fastestRunTurns: 4 });
   expect(result.rootTexts.some((text: string) => text.startsWith('NEW PROGRESS:'))).toBe(true);
+});
+
+test('one-flight strategy achievements reward varied play without cumulative grind', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await boot(page);
+  const runs = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const game = window.__birdSquadGame;
+    window.localStorage.removeItem('birdsquad.account');
+    const finishLoss = async (
+      surgesTriggered: number,
+      cleanFights: number,
+      blockedDamage: number,
+      completedContracts: number,
+    ) => {
+      await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_boss' });
+      game.scene.stop('MenuScene');
+      const scene: any = game.scene.getScene('BattleScene');
+      for (let i = 0; i < 40 && !scene.flock; i += 1) await wait(50);
+      const fightCount = Math.max(1, cleanFights);
+      scene.runCombatResults = Array.from({ length: fightCount }, (_, index) => ({
+        nodeId: index === fightCount - 1 ? 'm1_boss' : `strategy-${index}`,
+        encounterId: `strategy-${index}`,
+        turnsTaken: 4,
+        cohesionLost: index < cleanFights ? 0 : 1,
+        decisionStats: {
+          cardsPlayed: 3,
+          overextensions: 0,
+          lowCardTurns: 0,
+          noOverextensionTurns: 1,
+          cardsHeldAtRoost: 0,
+          unspentWingbeatAtRoost: 0,
+          maxCardsPlayedTurn: 3,
+          surgesTriggered: index === 0 ? surgesTriggered : 0,
+          blockedDamage: index === 0 ? blockedDamage : 0,
+          invalidActions: 0,
+          cancelledActions: 0,
+        },
+      }));
+      scene.runDistrictContracts = Array.from({ length: completedContracts }, (_, mapIndex) => ({
+        mapIndex,
+        id: 'hold_line',
+        baselineCombatResults: 0,
+        baselineRewardEvents: 0,
+        baselineSnags: 0,
+        completed: true,
+        rewardClaimed: true,
+      }));
+      scene.mode = 'defeat';
+      scene.emitRunSummary('loss');
+      return {
+        newAchievements: [...scene.lastRunRewards.newAchievements],
+        progress: { ...scene.lastRunRewards.account.leaderProgress.fledgling },
+      };
+    };
+    return {
+      firstNearMiss: await finishLoss(2, 2, 23, 2),
+      secondNearMiss: await finishLoss(2, 2, 23, 2),
+      qualifying: await finishLoss(3, 3, 24, 3),
+      account: JSON.parse(window.localStorage.getItem('birdsquad.account') ?? '{}'),
+    };
+  });
+
+  const strategyIds = ['live_wire', 'still_air', 'brace_brigade', 'every_promise'];
+  expect(runs.firstNearMiss.newAchievements).toEqual([]);
+  expect(runs.secondNearMiss.newAchievements).toEqual([]);
+  expect(runs.secondNearMiss.progress).toMatchObject({
+    surges: 4,
+    cleanFights: 4,
+    blockedDamage: 46,
+    contracts: 4,
+  });
+  expect(runs.qualifying.newAchievements).toEqual(strategyIds);
+  expect(runs.account.losses).toBe(3);
+  expect(runs.account.wins).toBe(0);
+  expect(runs.account.achievements).toEqual(strategyIds);
+
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').badgePagination?.page === 1);
+  const firstPage = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(firstPage.badgePagination).toMatchObject({
+    page: 1,
+    pageCount: 2,
+    visibleStart: 1,
+    visibleEnd: 6,
+    visibleCount: 6,
+    total: 12,
+  });
+
+  await page.keyboard.press('PageDown');
+  const keyboardPage = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(keyboardPage.badgePagination).toMatchObject({
+    page: 2,
+    pageCount: 2,
+    visibleStart: 7,
+    visibleEnd: 12,
+    visibleCount: 6,
+  });
+  expect(keyboardPage.badgePagination.items.filter((item: any) => strategyIds.includes(item.id))).toEqual([
+    { id: 'live_wire', name: 'Live Wire', description: 'Trigger 3 Surges in one flight.', earned: true },
+    { id: 'still_air', name: 'Still Air', description: 'Clear 3 fights without losing Cohesion in one flight.', earned: true },
+    { id: 'brace_brigade', name: 'Brace Brigade', description: 'Block 24 damage in one flight.', earned: true },
+    { id: 'every_promise', name: 'Every Promise', description: 'Complete 3 district contracts in one flight.', earned: true },
+  ]);
+
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 4 });
+  });
+  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).badgePagination.page).toBe(1);
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.children.list.find((child: any) => child.name === 'profile-badge-page-next')?.emit('pointerdown');
+  });
+  const pointerPage = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(pointerPage.badgePagination.page).toBe(2);
+  await page.screenshot({
+    path: '.artifacts/test-results/strategy-achievements/minimum-landscape-page-2.png',
+    fullPage: true,
+  });
+  const pagerGeometry = await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    return profile.children.list
+      .filter((child: any) => child.name?.startsWith('profile-badge-page-') && child.input?.enabled)
+      .map((child: any) => ({ name: child.name, width: child.displayWidth, height: child.displayHeight }));
+  });
+  expect(pagerGeometry).toEqual([
+    { name: 'profile-badge-page-previous', width: 76, height: 58 },
+  ]);
+
+  await page.evaluate(async () => {
+    const account = JSON.parse(window.localStorage.getItem('birdsquad.account') ?? '{}');
+    account.contractBadges = [
+      '0:hold_line',
+      '1:clean_flight',
+      '2:bright_signal',
+      '3:lean_route',
+      '0:clean_flight',
+      '1:bright_signal',
+      '2:lean_route',
+    ];
+    window.localStorage.setItem('birdsquad.account', JSON.stringify(account));
+    await window.__birdSquadStartScene!('ProfileScene');
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').badgePagination?.page === 1);
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.badgeView = 'contracts';
+    profile.renderPremiumProfileScene();
+  });
+  let contractPage = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(contractPage.badgePagination).toMatchObject({
+    page: 1,
+    pageCount: 2,
+    visibleCount: 6,
+    total: 7,
+  });
+  await page.keyboard.press('PageDown');
+  contractPage = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(contractPage.badgePagination).toMatchObject({
+    page: 2,
+    pageCount: 2,
+    visibleStart: 7,
+    visibleEnd: 7,
+    visibleCount: 1,
+    total: 7,
+  });
+  expect(contractPage.badgePagination.items).toEqual([
+    {
+      id: '2:lean_route',
+      name: 'Lean Route',
+      description: 'District 3 / Skip two card rewards',
+      earned: true,
+    },
+  ]);
 });
 
 test('Leader records separate Full and Quick clears and only celebrate real improvements', async ({ page }) => {
@@ -13532,6 +17402,22 @@ test('Flock Leader signatures fire at their once-per-combat hooks', async ({ pag
     await wait(80);
     const fledglingState = window.__birdSquadState!();
     const fledglingFlow = fledgling.flock.flow;
+    const fledglingRallyVisuals = fledgling.fxLayer.list
+      .filter((entry: any) => entry.name === 'combat-four-suit-flourish')
+      .map((entry: any) => ({
+        type: entry.type,
+        centerClear: entry.getData('centerClear'),
+        presentation: entry.getData('presentation'),
+        radius: entry.getData('radius'),
+      }));
+    const fledglingLegacyRallyTextures = fledgling.fxLayer.list
+      .filter((entry: any) => entry.texture?.key === 'combat-four-suit-rally').length;
+    const fledglingLegacyPerfectChainTextures = fledgling.fxLayer.list
+      .filter((entry: any) => entry.texture?.key === 'combat-perfect-chain').length;
+    const fledglingLegacyTexturesLoaded = {
+      rally: fledgling.textures.exists('combat-four-suit-rally'),
+      perfectChain: fledgling.textures.exists('combat-perfect-chain'),
+    };
 
     const spark = await start('spark_caller');
     spark.fxLayer.removeAll(true);
@@ -13578,6 +17464,10 @@ test('Flock Leader signatures fire at their once-per-combat hooks', async ({ pag
     return {
       fledglingFlow,
       fledglingFourSuitRally: fledglingState.combatFourSuitRally,
+      fledglingRallyVisuals,
+      fledglingLegacyRallyTextures,
+      fledglingLegacyPerfectChainTextures,
+      fledglingLegacyTexturesLoaded,
       fledglingLog: fledglingState.log,
       sparkDraw,
       sparkEcho: sparkState.combatSparkEcho,
@@ -13598,6 +17488,18 @@ test('Flock Leader signatures fire at their once-per-combat hooks', async ({ pag
   expect(r.fledglingFourSuitRally.rendered).toBe(true);
   expect(r.fledglingFourSuitRally.count).toBeGreaterThanOrEqual(1);
   expect(r.fledglingFourSuitRally.bursts).toBe(1);
+  expect(r.fledglingRallyVisuals).toEqual([
+    expect.objectContaining({
+      type: 'Graphics',
+      centerClear: true,
+      presentation: 'segmented-perimeter',
+      radius: 94,
+    })
+  ]);
+  expect(r.fledglingRallyVisuals[0].radius * 2 * 1.12).toBeLessThanOrEqual(215);
+  expect(r.fledglingLegacyRallyTextures).toBe(0);
+  expect(r.fledglingLegacyPerfectChainTextures).toBe(0);
+  expect(r.fledglingLegacyTexturesLoaded).toEqual({ rally: false, perfectChain: false });
   expect(r.fledglingLog.some((entry: string) => entry.startsWith('Four-Suit Rally:'))).toBe(true);
   expect(r.sparkDraw).toBe(1);
   expect(r.sparkEcho.loaded).toBe(true);
@@ -13831,10 +17733,10 @@ test('locked Flock Leaders are gated until unlocked, and the Profile screen rend
   expect(r.profileKeyListenersBefore).toEqual({ escape: 1, mute: 1 });
   expect(r.profileKeyListenersAfter).toEqual(r.profileKeyListenersBefore);
   expect(r.profileTouchTargets.filter((target: { width: number; height: number }) => target.width === 124)).toEqual([
-    { width: 124, height: 56 },
-    { width: 124, height: 56 }
+    { width: 124, height: 58 },
+    { width: 124, height: 58 }
   ]);
-  expect(r.profileTouchTargets).toContainEqual({ width: 186, height: 56 });
+  expect(r.profileTouchTargets).toContainEqual({ width: 186, height: 58 });
   expect(r.contractProfileText.contractBadges).toContain('0:clean_flight');
   expect(r.contractBadgeLabels.length).toBeGreaterThanOrEqual(2);
   expect(r.profileText.profileRecordFlourish.loaded).toBe(true);
@@ -13876,7 +17778,7 @@ test('locked Flock Leaders are gated until unlocked, and the Profile screen rend
     rendered: true,
     count: r.profileRecordRowFrameObjects.length
   });
-  expect(r.profileRecordRowFrameObjects.length).toBe(r.profileText.progression.leaderTotal + r.profileText.progression.achievementTotal);
+  expect(r.profileRecordRowFrameObjects.length).toBe(r.profileText.progression.leaderTotal + r.profileText.badgePagination.visibleCount);
   expect(r.profileRecordRowFrameObjects.some((obj: { visible: boolean; alpha: number }) => obj.visible && obj.alpha > 0.4)).toBe(true);
   expect(r.profileRecordRowFrameObjects.some((obj: { visible: boolean; alpha: number }) => obj.visible && obj.alpha < 0.25)).toBe(true);
   expect(r.profileRecordRowFrameObjects.every((obj: { displayWidth: number; displayHeight: number }) => obj.displayWidth >= 310 && obj.displayHeight >= 40)).toBe(true);
@@ -13942,7 +17844,7 @@ test('locked Flock Leaders are gated until unlocked, and the Profile screen rend
   expect(r.leaderRecordIcons.some((icon: { alpha: number }) => icon.alpha > 0.85)).toBe(true);
   expect(r.leaderRecordIcons.some((icon: { alpha: number }) => icon.alpha < 0.35)).toBe(true);
   expect(r.achievementTextureLoaded).toBe(true);
-  expect(r.achievementIcons.length).toBe(r.profileText.progression.achievementTotal);
+  expect(r.achievementIcons.length).toBe(r.profileText.badgePagination.visibleCount);
   expect(r.achievementIcons.some((icon: { alpha: number }) => icon.alpha > 0.9)).toBe(true);
 });
 
@@ -13969,6 +17871,7 @@ test('Flock Record focus follows remapped keyboard and gamepad controls with one
   });
   expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).focus.current).toBe('achievements');
 
+  await page.keyboard.press('d');
   await page.keyboard.press('d');
   await page.keyboard.press('d');
   await page.keyboard.press('d');
@@ -14004,7 +17907,7 @@ test('Flock Record focus follows remapped keyboard and gamepad controls with one
   await page.keyboard.press('Space');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').scene === 'MenuScene');
   const finalState = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
-  expect((finalState.audio.cueRequests.confirm ?? 0) - (initial.audio.cueRequests.confirm ?? 0)).toBe(10);
+  expect((finalState.audio.cueRequests.confirm ?? 0) - (initial.audio.cueRequests.confirm ?? 0)).toBe(11);
   expect((finalState.audio.cueRequests.close ?? 0) - (initial.audio.cueRequests.close ?? 0)).toBe(3);
 });
 
@@ -14032,11 +17935,17 @@ test('Flock Record downloads a complete local save backup without uploading data
     }
     localStorage.setItem('birdsquad.graphicsQuality', 'lean');
     localStorage.setItem('birdsquad.visualContrast', 'high');
+    localStorage.setItem('birdsquad.colorCues', 'reinforced');
+    localStorage.setItem('birdsquad.screenShake', 'off');
+    localStorage.setItem('birdsquad.flashEffects', 'reduced');
     localStorage.setItem('birdsquad.motionPreference', 'reduced');
     localStorage.setItem('birdsquad.combatPace', 'snappy');
+    localStorage.setItem('birdsquad.animationPace', 'fast');
+    localStorage.setItem('birdsquad.textPace', 'fast');
     localStorage.setItem('birdsquad.screenReader', 'on');
     localStorage.setItem('birdsquad.musicVolume', '0.35');
     localStorage.setItem('birdsquad.sfxVolume', '0.65');
+    localStorage.setItem('birdsquad.ambienceVolume', '0.55');
     localStorage.setItem('birdsquad.audioMuted', '1');
     localStorage.setItem('birdsquad.maxTier', '2');
     localStorage.setItem('unrelated.origin.key', 'must-not-export');
@@ -14067,16 +17976,16 @@ test('Flock Record downloads a complete local save backup without uploading data
       activeRun: { seed: 'backup-flight', leaderId: 'talon', difficulty: 1 },
       runHistory: [{ id: 'backup-history-1' }],
       preferences: {
-        graphicsQuality: 'lean', visualContrast: 'high', motion: 'reduced', combatPace: 'snappy',
-        screenReader: 'on',
-        musicVolume: 0.35, sfxVolume: 0.65, audioMuted: true, maxTier: 2,
+        graphicsQuality: 'lean', visualContrast: 'high', colorCues: 'reinforced', screenShake: 'off', flashEffects: 'reduced',
+        motion: 'reduced', combatPace: 'snappy', animationPace: 'fast', textPace: 'fast', screenReader: 'on',
+        musicVolume: 0.35, sfxVolume: 0.65, ambienceVolume: 0.55, audioMuted: true, maxTier: 2,
       },
     },
   });
   expect(Object.keys(payload.data)).toEqual(['account', 'activeRun', 'runHistory', 'guide', 'preferences']);
   expect(Object.keys(payload.data.preferences).sort()).toEqual([
-    'audioMuted', 'combatPace', 'controls', 'graphicsQuality', 'maxTier',
-    'motion', 'musicVolume', 'screenReader', 'sfxVolume', 'visualContrast',
+    'ambienceVolume', 'animationPace', 'audioMuted', 'colorCues', 'combatPace', 'controls', 'flashEffects', 'graphicsQuality', 'maxTier',
+    'motion', 'musicVolume', 'screenReader', 'screenShake', 'sfxVolume', 'textPace', 'visualContrast',
   ]);
   expect(Object.keys(payload.data.preferences.controls).length).toBeGreaterThan(0);
   expect(raw).not.toContain('must-not-export');
@@ -14145,10 +18054,16 @@ test('Flock Record previews and confirms a transactional save restore', async ({
     }
     localStorage.setItem('birdsquad.graphicsQuality', 'lean');
     localStorage.setItem('birdsquad.visualContrast', 'high');
+    localStorage.setItem('birdsquad.colorCues', 'reinforced');
+    localStorage.setItem('birdsquad.screenShake', 'off');
+    localStorage.setItem('birdsquad.flashEffects', 'reduced');
     localStorage.setItem('birdsquad.motionPreference', 'reduced');
     localStorage.setItem('birdsquad.combatPace', 'snappy');
+    localStorage.setItem('birdsquad.animationPace', 'relaxed');
+    localStorage.setItem('birdsquad.textPace', 'relaxed');
     localStorage.setItem('birdsquad.musicVolume', '0.40');
     localStorage.setItem('birdsquad.sfxVolume', '0.60');
+    localStorage.setItem('birdsquad.ambienceVolume', '0.30');
     localStorage.setItem('birdsquad.audioMuted', '1');
     localStorage.setItem('birdsquad.maxTier', '2');
   });
@@ -14160,7 +18075,11 @@ test('Flock Record previews and confirms a transactional save restore', async ({
   const download = await downloadPromise;
   const downloadedPath = await download.path();
   if (!downloadedPath) throw new Error('Restore fixture backup was not downloaded');
-  const backupRaw = await readFile(downloadedPath, 'utf8');
+  const legacyBackup = JSON.parse(await readFile(downloadedPath, 'utf8'));
+  delete legacyBackup.data.preferences.ambienceVolume;
+  delete legacyBackup.data.preferences.animationPace;
+  delete legacyBackup.data.preferences.textPace;
+  const backupRaw = JSON.stringify(legacyBackup);
 
   await page.evaluate(() => {
     const current = JSON.stringify({ runs: 1, wins: 0, losses: 1 });
@@ -14172,7 +18091,12 @@ test('Flock Record previews and confirms a transactional save restore', async ({
     localStorage.removeItem('birdsquad.run.active.backup');
     localStorage.setItem('birdsquad.graphicsQuality', 'full');
     localStorage.setItem('birdsquad.visualContrast', 'standard');
+    localStorage.setItem('birdsquad.colorCues', 'standard');
+    localStorage.setItem('birdsquad.screenShake', 'on');
+    localStorage.setItem('birdsquad.flashEffects', 'full');
     localStorage.setItem('birdsquad.motionPreference', 'full');
+    localStorage.setItem('birdsquad.animationPace', 'fast');
+    localStorage.setItem('birdsquad.textPace', 'fast');
     localStorage.setItem('unrelated.origin.key', 'keep-current');
   });
   const chooserPromise = page.waitForEvent('filechooser');
@@ -14203,7 +18127,13 @@ test('Flock Record previews and confirms a transactional save restore', async ({
     activeRun: JSON.parse(localStorage.getItem('birdsquad.run.active') ?? '{}'),
     graphics: localStorage.getItem('birdsquad.graphicsQuality'),
     contrast: localStorage.getItem('birdsquad.visualContrast'),
+    colorCues: localStorage.getItem('birdsquad.colorCues'),
+    screenShake: localStorage.getItem('birdsquad.screenShake'),
+    flashEffects: localStorage.getItem('birdsquad.flashEffects'),
     motion: localStorage.getItem('birdsquad.motionPreference'),
+    animationPace: localStorage.getItem('birdsquad.animationPace'),
+    textPace: localStorage.getItem('birdsquad.textPace'),
+    ambienceVolume: localStorage.getItem('birdsquad.ambienceVolume'),
     accountMirror: localStorage.getItem('birdsquad.account.backup') === localStorage.getItem('birdsquad.account'),
     runMirror: localStorage.getItem('birdsquad.runs.backup') === localStorage.getItem('birdsquad.runs'),
     activeMirror: localStorage.getItem('birdsquad.run.active.backup') === localStorage.getItem('birdsquad.run.active'),
@@ -14214,7 +18144,10 @@ test('Flock Record previews and confirms a transactional save restore', async ({
   expect(restored.runHistory).toEqual([expect.objectContaining({ id: 'restore-history' })]);
   expect(restored.activeRun).toMatchObject({ seed: 'restore-target', leaderId: 'talon', scrap: 33 });
   expect(restored).toMatchObject({
-    graphics: 'lean', contrast: 'high', motion: 'reduced',
+    graphics: 'lean', contrast: 'high', colorCues: 'reinforced', screenShake: 'off', flashEffects: 'reduced', motion: 'reduced',
+    animationPace: 'standard',
+    textPace: 'standard',
+    ambienceVolume: '0.40',
     accountMirror: true, runMirror: true, activeMirror: true, guideMirror: true,
     unrelated: 'keep-current',
   });
@@ -14285,7 +18218,8 @@ test('playtest mode exports local run history from the Flock Record without an u
     replay: 5,
     updatedAt: expect.any(String),
   };
-  expect(locallyRated.primary).toEqual([{ ...exportedRun, experienceFeedback: expectedFeedback }]);
+  expect(locallyRated.primary).toHaveLength(1);
+  expect(locallyRated.primary[0]).toMatchObject({ ...exportedRun, experienceFeedback: expectedFeedback });
   expect(locallyRated.mirror).toEqual(locallyRated.primary);
   expect(locallyRated.view).toMatchObject({
     enabled: true,
@@ -14296,10 +18230,262 @@ test('playtest mode exports local run history from the Flock Record without an u
     complete: true,
     status: 'saved',
   });
-  expect(payload).toEqual([{ ...exportedRun, experienceFeedback: expectedFeedback }]);
+  expect(payload).toEqual(locallyRated.primary);
   expect(state.playtestExport).toEqual({ enabled: true, localOnly: true, runs: 1, status: 'downloaded' });
   expect(labels).toContain('1 local run downloaded');
   expect(mutatingRequests).toEqual([]);
+});
+
+test('flight log safely restores, reviews, and shares recent completed flights', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  const now = Date.now();
+  const run = (overrides: Record<string, unknown>) => ({
+    id: `run-${now}-base`,
+    seed: 'history-base',
+    result: 'loss',
+    leaderId: 'fledgling',
+    difficulty: 0,
+    runMode: 'quick',
+    mapId: 'map_01_rooftop_blocks',
+    finalNodeId: 'm1_entry',
+    turnsTaken: 4,
+    durationMs: 48_000,
+    currentCohesion: 0,
+    maxCohesion: 38,
+    scrapEarned: 12,
+    scrapSpent: 5,
+    finalScrap: 47,
+    path: ['m1_entry'],
+    deck: [{ id: 'wands_ace' }, { id: 'cups_ace' }],
+    routeMarks: [],
+    suppliesUsed: [],
+    signals: [],
+    cardRewards: [],
+    routeDecisions: [{ offered: ['m1_entry'], picked: 'm1_entry', decisionMs: 1500 }],
+    combatResults: [{
+      encounterId: 'rooftop_first_flight',
+      nodeId: 'm1_entry',
+      nodeType: 'street',
+      enemyIds: ['roof_rat'],
+      turnsTaken: 4,
+      damageDealt: 18,
+      cohesionLost: 38,
+    }],
+    districtContracts: [],
+    seenEnemyMoves: [],
+    combatPace: 'standard',
+    firstFlightGuide: { enabled: false, completed: true },
+    decisionStats: { cardsPlayed: 5, overextensions: 1, blockedDamage: 4, unspentWingbeatAtRoost: 2 },
+    ...overrides,
+  });
+  const older = run({
+    id: `run-${now - 60_000}-older`,
+    seed: 'history-older',
+    result: 'loss',
+    difficulty: 2,
+  });
+  const superseded = run({
+    id: `run-${now}-newest`,
+    seed: 'superseded-copy',
+    result: 'loss',
+  });
+  const newest = run({
+    id: `run-${now}-newest`,
+    seed: 'history-newest',
+    result: 'win',
+    leaderId: 'talon',
+    difficulty: 3,
+    runMode: 'full',
+    turnsTaken: 9,
+    durationMs: 92_000,
+    currentCohesion: 24,
+    deck: [
+      { id: 'wands_ace', upgraded: true },
+      { id: 'cups_ace' },
+      { id: 'not-a-card' },
+    ],
+    routeMarks: ['chalk_wingmark', 'not-a-waymark'],
+    suppliesUsed: ['seed_packet', 'not-a-supply'],
+    cardRewards: [{ offered: ['wands_02'], picked: 'wands_02', skipped: false }],
+  });
+  const middle = Array.from({ length: 8 }, (_, index) => run({
+    id: `run-${now - 50_000 + index * 5_000}-middle-${index + 1}`,
+    seed: `history-middle-${index + 1}`,
+    result: index % 2 === 0 ? 'win' : 'loss',
+  }));
+  await page.addInitScript((runs) => {
+    localStorage.setItem('birdsquad.screenReader', 'on');
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => localStorage.setItem('flight-log-copied-link', value),
+      },
+    });
+    const raw = JSON.stringify(runs);
+    localStorage.setItem('birdsquad.runs', raw);
+    localStorage.setItem('birdsquad.runs.backup', raw);
+  }, [older, superseded, { broken: true }, ...middle, newest]);
+  await boot(page);
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.scene === 'ProfileScene' && state.flightHistory?.count === 10;
+  });
+
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-flight-log-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').flightHistory?.open === true);
+  await page.waitForFunction(() => document.getElementById('game-status')?.textContent?.includes('recorded flights'));
+  await page.screenshot({ path: '.artifacts/test-results/flight-log/minimum-landscape-history.png' });
+  const log = await page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const scene: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    const rows = scene.children.list.filter((child: any) => child.name?.startsWith('profile-flight-log-row-'));
+    const pageButtons = scene.children.list.filter((child: any) => child.name?.startsWith('profile-flight-log-page-'));
+    const preview = scene.children.list.find((child: any) => child.name === 'profile-flight-log-preview');
+    const scale = document.querySelector('canvas')!.getBoundingClientRect().width / 1280;
+    return {
+      state,
+      rows: rows.map((row: any) => ({
+        width: row.width,
+        height: row.height,
+        cssWidth: Number((row.displayWidth * scale).toFixed(1)),
+        cssHeight: Number((row.displayHeight * scale).toFixed(1)),
+        enabled: row.input?.enabled,
+        runId: row.getData('runId'),
+      })),
+      pageButtons: pageButtons.map((button: any) => ({
+        name: button.name,
+        width: button.width,
+        height: button.height,
+        cssWidth: Number((button.displayWidth * scale).toFixed(1)),
+        cssHeight: Number((button.displayHeight * scale).toFixed(1)),
+        enabled: button.input?.enabled ?? false,
+      })),
+      preview: preview ? { width: preview.width, height: preview.height } : null,
+      announcement: document.getElementById('game-status')?.textContent ?? '',
+    };
+  });
+  expect(log.state.flightHistory).toMatchObject({
+    open: true,
+    count: 10,
+    selectedIndex: 0,
+    page: 1,
+    pageCount: 2,
+    visibleStart: 1,
+    visibleEnd: 7,
+    selected: {
+      id: newest.id,
+      seed: 'history-newest',
+      result: 'win',
+      leader: 'The Talon',
+      deckSize: 2,
+      waymarks: 1,
+      supplies: 1,
+    },
+    loading: false,
+    review: null,
+  });
+  expect(log.rows.map((row: any) => row.runId)).toEqual([
+    newest.id,
+    middle[7].id,
+    middle[6].id,
+    middle[5].id,
+    middle[4].id,
+    middle[3].id,
+    middle[2].id,
+  ]);
+  expect(log.rows.every((row: any) => row.width === 352 && row.height === 58 && row.enabled)).toBe(true);
+  expect(log.rows.every((row: any) => row.cssWidth >= 44 && row.cssHeight >= 44)).toBe(true);
+  expect(log.pageButtons).toEqual(expect.arrayContaining([
+    expect.objectContaining({ name: 'profile-flight-log-page-newer', width: 72, height: 58, enabled: false }),
+    expect.objectContaining({ name: 'profile-flight-log-page-older', width: 72, height: 58, enabled: true }),
+  ]));
+  expect(log.pageButtons.every((button: any) => button.cssWidth >= 44 && button.cssHeight >= 44)).toBe(true);
+  expect(log.preview).toEqual({ width: 420, height: 450 });
+  expect(log.announcement).toContain('Flight Log');
+  expect(log.announcement).toContain('10 recorded flights');
+  expect(log.announcement).toContain('Page 1 of 2');
+
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').flightHistory?.selected?.id)).toBe(middle[7].id);
+  await page.keyboard.press('PageDown');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').flightHistory)).toMatchObject({
+    selectedIndex: 8,
+    selected: { id: middle[0].id },
+    page: 2,
+    pageCount: 2,
+    visibleStart: 8,
+    visibleEnd: 10,
+  });
+  await page.screenshot({ path: '.artifacts/test-results/flight-log/minimum-landscape-history-page-2.png' });
+  await page.keyboard.press('PageUp');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').flightHistory?.selected?.id)).toBe(middle[7].id);
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 5 });
+  });
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').flightHistory?.selected?.id)).toBe(middle[0].id);
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 4 });
+  });
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').flightHistory?.selected?.id)).toBe(middle[7].id);
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => Boolean(JSON.parse(window.render_game_to_text?.() ?? '{}').flightHistory?.review));
+  await page.waitForFunction(() => document.getElementById('game-status')?.textContent?.includes('Recorded flight history-newest'));
+  await page.screenshot({ path: '.artifacts/test-results/flight-log/minimum-landscape-recorded-review.png' });
+  const review = await page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const scene: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    const root: any = scene.children.list.find((child: any) => child.name === 'profile-flight-review-root');
+    const copy: any = root?.list.find((child: any) => child.name === 'run-flight-details-copy-hit');
+    const close: any = root?.list.find((child: any) => child.name === 'run-flight-details-close-hit');
+    const focus: any = root?.list.find((child: any) => child.name === 'run-flight-details-input-focus-ring');
+    return {
+      state,
+      copy: { width: copy?.width, height: copy?.height, enabled: copy?.input?.enabled },
+      close: { width: close?.width, height: close?.height, enabled: close?.input?.enabled },
+      focusAction: focus?.getData('action'),
+      announcement: document.getElementById('game-status')?.textContent ?? '',
+    };
+  });
+  expect(review.state.flightHistory.review).toMatchObject({
+    id: newest.id,
+    seed: 'history-newest',
+    runMode: 'full',
+    focusedAction: 'copy',
+    copyStatus: 'idle',
+    details: {
+      deck: [expect.stringContaining('Plume Flash+'), expect.stringContaining('Open Basin')],
+      waymarks: ['Chalk Wingmark'],
+      supplies: ['Seed Packet'],
+    },
+  });
+  expect(review.state.flightHistory.review.details.results[0]).toContain('WIN');
+  expect(review.copy).toEqual({ width: 238, height: 58, enabled: true });
+  expect(review.close).toEqual({ width: 190, height: 58, enabled: true });
+  expect(review.focusAction).toBe('copy');
+  expect(review.announcement).toContain('Recorded flight history-newest');
+  expect(review.announcement).toContain('Focused action copy');
+
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').flightHistory?.review?.copyStatus)).toBe('copied');
+  expect(await page.evaluate(() => localStorage.getItem('flight-log-copied-link'))).toContain('flight=history-newest');
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').flightHistory?.review?.focusedAction)).toBe('close');
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').flightHistory?.review)).toBe(null);
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-flight-log-page-older');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').flightHistory?.page)).toBe(2);
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-flight-log-row-9');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').flightHistory?.review?.id)).toBe(older.id);
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').flightHistory?.review)).toBe(null);
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').flightHistory?.open)).toBe(false);
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').scene)).toBe('ProfileScene');
 });
 
 test('route marks are real relics: combatStart marks reshape the fight', async ({ page }) => {
@@ -14376,16 +18562,24 @@ test('route marks are real relics: combatStart marks reshape the fight', async (
     scene.markFiredThisCombat = new Set();
     scene.cardsPlayedThisTurn = 2;
     scene.spark = 0;
-    scene.checkRoostRestraintMarks(0, 0, 2);
+    scene.checkNthCardMarks();
+    scene.cardsPlayedThisTurn = 3;
+    scene.checkNthCardMarks();
     const paradeResonance = scene.spark;
 
     scene.routeMarks = ['fresh_pinfeather'];
     scene.markFiredThisCombat = new Set();
     scene.flock.molt = false;
     scene.nextTurnEnergyBonus = 0;
+    const energyBeforePinfeather = scene.energy;
     const handBeforePinfeather = scene.hand.length;
     scene.enterMolt('test');
-    const pinfeather = { nextEnergy: scene.nextTurnEnergyBonus, hand: scene.hand.length, beforeHand: handBeforePinfeather };
+    const pinfeather = {
+      immediateEnergy: scene.energy - energyBeforePinfeather,
+      nextEnergy: scene.nextTurnEnergyBonus,
+      hand: scene.hand.length,
+      beforeHand: handBeforePinfeather
+    };
 
     scene.routeMarks = ['harbor_bead_strand'];
     scene.markFiredThisTurn = new Set();
@@ -14468,7 +18662,8 @@ test('route marks are real relics: combatStart marks reshape the fight', async (
   expect(r.relay.energy).toBe(4);
   expect(r.relay.hand).toBeGreaterThanOrEqual(r.relay.beforeHand + 1);
   expect(r.paradeResonance).toBe(1);
-  expect(r.pinfeather.nextEnergy).toBe(1);
+  expect(r.pinfeather.immediateEnergy).toBe(1);
+  expect(r.pinfeather.nextEnergy).toBe(0);
   expect(r.pinfeather.hand).toBeGreaterThanOrEqual(r.pinfeather.beforeHand + 1);
   expect(r.harborNextDraw).toBe(1);
   expect(r.nestLining.cover).toBe(8);
@@ -14626,6 +18821,137 @@ test('route HUD Waymarks chip opens found Waymarks drawer', async ({ page }) => 
   await page.screenshot({ path: '.artifacts/test-results/route-hud-waymarks-drawer.png' });
 });
 
+test('route Waymark review exposes trigger order and pinned comparison across inputs', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.addInitScript(() => {
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => {
+    await window.__birdSquadStartScene!('RouteScene', {
+      runState: {
+        deck: [{ id: 'major_00' }, { id: 'wands_ace' }, { id: 'cups_ace' }],
+        leaderId: 'fledgling',
+        difficulty: 0,
+        seed: 'route-waymark-review',
+        currentHp: 36,
+        scrap: 40,
+        routeMarks: ['chalk_wingmark', 'wire_map', 'rain_gutter', 'rooftop_shortcut'],
+        supplies: [],
+        mapIndex: 0,
+        completedRouteNodeIds: [],
+        currentRouteNodeId: undefined,
+        routeLog: [],
+        nextCombat: undefined,
+        signalChoices: [],
+        rewardEvents: [],
+        suppliesUsed: [],
+        combatResults: [],
+        freePreenNextDistrict: 0,
+      },
+    });
+    window.__birdSquadGame.scene.stop('MenuScene');
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.openWaymarkDrawer();
+  });
+
+  await expect.poll(async () => page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text!());
+    return state.waymarkReview?.renderer?.loaded;
+  })).toBe(true);
+
+  const initial = await page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text!());
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const pin = route.children.getByName('route-waymark-pin-hit');
+    return {
+      review: state.waymarkReview,
+      pinTarget: pin ? { width: pin.displayWidth, height: pin.displayHeight } : undefined,
+      panelCount: route.children.list.filter((child: any) => child.name === 'route-waymark-review-panel').length,
+      orderedRows: route.children.list.filter((child: any) => child.name === 'route-waymark-effect-order').length,
+    };
+  });
+
+  expect(initial.review).toMatchObject({
+    open: true,
+    count: 4,
+    selectedIndex: 0,
+    comparing: false,
+    selected: {
+      id: 'chalk_wingmark',
+      name: 'Chalk Wingmark',
+      trigger: 'First enemy Cover break each turn',
+      effects: [
+        { order: 1, text: 'Gain 3 Cover.', grammar: 'gainCover(3)' },
+        { order: 2, text: 'Gain 1 Resonance.', grammar: 'gainResonance(1)' },
+        { order: 3, text: 'Draw 1 next turn.', grammar: 'nextTurnDraw(1)' },
+      ],
+    },
+    renderer: { requested: true, loaded: true, failed: false },
+  });
+  expect(initial.pinTarget).toEqual({ width: 112, height: 58 });
+  expect(initial.panelCount).toBe(1);
+  expect(initial.orderedRows).toBe(3);
+
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.children.getByName('route-waymark-pin-hit')?.emit('pointerdown');
+  });
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(window.render_game_to_text!()).waymarkReview.pinned?.id
+  ))).toBe('chalk_wingmark');
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.children.getByName('route-waymark-tile-wire_map')?.emit('pointerdown');
+  });
+  await expect.poll(async () => page.evaluate(() => {
+    const review = JSON.parse(window.render_game_to_text!()).waymarkReview;
+    return `${review.pinned?.id}|${review.selected?.id}|${review.comparing}`;
+  })).toBe('chalk_wingmark|wire_map|true');
+
+  const compared = await page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text!());
+    const region = document.getElementById('game-status');
+    return {
+      review: state.waymarkReview,
+      announcement: region?.textContent ?? '',
+    };
+  });
+  expect(compared.review.selected).toMatchObject({
+    id: 'wire_map',
+    trigger: 'After resolving a Signal',
+  });
+  expect(compared.review.pinned).toMatchObject({
+    id: 'chalk_wingmark',
+    trigger: 'First enemy Cover break each turn',
+  });
+  await expect.poll(async () => page.evaluate(() => (
+    document.getElementById('game-status')?.textContent ?? ''
+  ))).toContain('Comparing pinned Chalk Wingmark');
+  await page.screenshot({ path: '.artifacts/test-results/route-waymark-comparison.png' });
+
+  await page.keyboard.press('Tab');
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(window.render_game_to_text!()).waymarkReview.selected?.id
+  ))).toBe('rain_gutter');
+
+  const controllerPinned = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.input.gamepad.emit('down', {}, { index: 2 });
+    return JSON.parse(window.render_game_to_text!()).waymarkReview;
+  });
+  expect(controllerPinned).toMatchObject({
+    comparing: false,
+    selected: { id: 'rain_gutter' },
+    pinned: { id: 'rain_gutter' },
+  });
+
+  await page.keyboard.press('c');
+  await expect.poll(async () => page.evaluate(() => (
+    JSON.parse(window.render_game_to_text!()).waymarkReview.pinned
+  ))).toBeUndefined();
+});
+
 test('waymark drawer renders generated scroll rail when carried artifacts overflow', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
@@ -14670,7 +18996,9 @@ test('waymark drawer renders generated scroll rail when carried artifacts overfl
     const route: any = g.scene.getScene('RouteScene');
     for (let i = 0; i < 40 && !g.textures.exists('ui-icon-route-waymark-scroll-rail-frame'); i += 1) await wait(50);
     route.openWaymarkDrawer();
-    await wait(80);
+    for (let i = 0; i < 100 && !route.children.list.some(
+      (child: any) => child.texture?.key === 'ui-icon-route-waymark-scroll-rail-frame'
+    ); i += 1) await wait(40);
     const routeState = JSON.parse(window.render_game_to_text!()).routeWaymarkScrollRailFrame;
     const routeObjects = route.children.list
       .filter((child: any) => child.texture?.key === 'ui-icon-route-waymark-scroll-rail-frame')
@@ -14715,7 +19043,8 @@ test('waymark drawer renders generated scroll rail when carried artifacts overfl
   expect(result.battleState).toEqual({ loaded: true, rendered: true, count: 1 });
   expect(result.routeObjects).toHaveLength(1);
   expect(result.battleObjects).toHaveLength(1);
-  expect(result.routeObjects[0].displayHeight).toBeGreaterThan(300);
+  expect(result.routeObjects[0].displayHeight).toBeGreaterThan(150);
+  expect(result.routeObjects[0].displayHeight).toBeLessThan(300);
   expect(result.battleObjects[0].displayHeight).toBeGreaterThan(300);
 });
 
@@ -16730,10 +21059,9 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
     battle.routeMarks = ['double_packed_buckle'];
     battle.markFiredThisCombat = new Set();
     battle.pendingSupplyRepeats = 0;
-    if (battle.drawPile.length === 0 && battle.hand.length > 0) battle.drawPile = [{ ...battle.hand[0], instanceId: 'buckle-draw' }];
-    const handBeforeBuckle = battle.hand.length;
+    const energyBeforeBuckle = battle.energy;
     battle.checkSupplyUsedMarks();
-    const afterDoublePacked = { pending: battle.pendingSupplyRepeats, hand: battle.hand.length, beforeHand: handBeforeBuckle };
+    const afterDoublePacked = { pending: battle.pendingSupplyRepeats, energy: battle.energy, beforeEnergy: energyBeforeBuckle };
     battle.routeMarks = [];
     battle.runSupplies = ['seed_packet'];
     battle.runSuppliesUsed = [];
@@ -16851,7 +21179,7 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
   expect(r.afterSparkClip.block).toBe(7);
   expect(r.afterQuietRoost.hp).toBe(23);
   expect(r.afterDoublePacked.pending).toBe(1);
-  expect(r.afterDoublePacked.hand).toBeGreaterThanOrEqual(r.afterDoublePacked.beforeHand + 1);
+  expect(r.afterDoublePacked.energy).toBe(r.afterDoublePacked.beforeEnergy + 1);
   expect(r.afterRepeatedSupply.hp).toBe(32);
   expect(r.afterRepeatedSupply.pending).toBe(0);
   expect(r.afterRepeatedSupply.feedback.id).toBe('seed_packet');
@@ -17129,7 +21457,7 @@ test('new balance verbs: timed Waymarks, self-loop cards, and anti-Cover conditi
     const card = s.hand[0];
     const enemy = s.enemies[0];
 
-    s.routeMarks = ['black_ink_pin'];
+    s.routeMarks = ['wind_step_tag'];
     s.markFiredThisCombat = new Set();
     s.energy = 3;
     s.nextTurnEnergyBonus = 0;
@@ -17139,8 +21467,9 @@ test('new balance verbs: timed Waymarks, self-loop cards, and anti-Cover conditi
     s.routeMarks = ['fresh_pinfeather'];
     s.markFiredThisCombat = new Set();
     s.nextTurnEnergyBonus = 0;
+    const energyBeforeMolt = s.energy;
     s.checkEnterMoltMarks();
-    const nextEnergyAfterMolt = s.nextTurnEnergyBonus;
+    const immediateEnergyAfterMolt = s.energy - energyBeforeMolt;
 
     const fakeLoopCard = {
       ...card,
@@ -17204,7 +21533,7 @@ test('new balance verbs: timed Waymarks, self-loop cards, and anti-Cover conditi
 
     return {
       nextEnergyAfterHeldCardRoost,
-      nextEnergyAfterMolt,
+      immediateEnergyAfterMolt,
       returnSelfToDraw: loopOutcome.returnSelfToDraw,
       enemyBlockAfterBreaker: enemy.block,
       enemyHpAfterBreaker: enemy.hp,
@@ -17212,7 +21541,7 @@ test('new balance verbs: timed Waymarks, self-loop cards, and anti-Cover conditi
     };
   });
   expect(r.nextEnergyAfterHeldCardRoost).toBe(1);
-  expect(r.nextEnergyAfterMolt).toBe(1);
+  expect(r.immediateEnergyAfterMolt).toBe(1);
   expect(r.returnSelfToDraw).toBe(true);
   expect(r.enemyBlockAfterBreaker).toBe(3);
   expect(r.enemyHpAfterBreaker).toBeLessThanOrEqual(48);

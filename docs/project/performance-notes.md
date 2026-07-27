@@ -8,7 +8,7 @@ The experience pass adds Quick Flight routing, progressive first-flight lessons,
 - app entry: `699.3 KB` minified / `178.7 KB` gzip
 - Phaser vendor: `1313.6 KB` minified / `339.5 KB` gzip
 
-The combined hard budget is `725 KB` with a `710 KB` warning target. The warning remains active so follow-up scene extraction must earn back the 14.8 KB target overage. The persistent First Flight Guide lives in the existing `game-core` chunk, keeping the app entry below its 700 KB hard ceiling. Codex data and combat preview remain genuinely lazy and are rejected if module-preloaded by deployment validation.
+The combined hard budget is `725 KB` with a `710 KB` warning target. The warning remains active so follow-up scene extraction must earn back the 14.8 KB target overage. The persistent First Flight Guide remains available on the opening path; optional presentation and accessibility engines cross explicit lazy boundaries. Codex data and combat preview remain genuinely lazy and are rejected if module-preloaded by deployment validation.
 
 Status: current runtime optimization baseline.
 
@@ -1495,3 +1495,83 @@ medallions remain crisp in the title and larger How to Play seal.
 | --- | ---: |
 | App entry | 648.8 KB / 170.1 KB gzip |
 | Combined boot | 677.2 KB / 180.4 KB gzip |
+
+## Optional Route Presentation Boundaries (2026-07-26)
+
+Recent production work raised the app entry above its preferred 675 KB target
+even though every hard bundle limit still passed. A build-only composition
+report confirmed that the remaining cost lived in `src/main.ts`, not shared
+runtime data. Three non-opening-path presentation families now cross genuine
+dynamic-import boundaries:
+
+- route and combat Flock Stats use `flock-stats-overlay`;
+- route hover, Deck Review detail, and market dossiers use
+  `card-hover-detail`;
+- route abandon confirmation reuses `system-overlays`.
+
+Route creation preloads card detail so hover remains responsive after the title
+transition. The first hover still has a lightweight shell and ignores late
+loads after dismissal. Flock Stats explicitly exposes loading/failure states
+that can always be closed and retried.
+
+The size validator now requires the Flock Stats chunk to stay at or below 8 KB
+and the card-detail chunk at or below 10 KB. Deployment validation also rejects
+either as an eager modulepreload. Current production output is:
+
+| JavaScript metric | Current |
+| --- | ---: |
+| App entry | 674.8 KB / 177.6 KB gzip |
+| Combined boot | 703.9 KB / 188.3 KB gzip |
+| Lazy Flock Stats | 5.5 KB / 2.0 KB gzip |
+| Lazy card detail | 8.6 KB / 2.6 KB gzip |
+
+Both preferred boot targets pass without relaxing their thresholds. Full
+release validation and all 19 critical sequencing scenarios pass.
+
+## On-Demand Deck Comparison (2026-07-26)
+
+Route Deck Review now supports pinned, side-by-side card comparison. Pinning a
+different card compares two cards; pinning the selected card compares its Base
+and Preened normal rules, Molt rules, role, target, and flock-stat totals. The
+renderer lives in `card-comparison`, loads on the first pin, and leaves the
+selected card's normal dossier readable while the request is in flight. A
+failed request remains recoverable by unpinning and repinning.
+
+The existing card-detail 10 KB hard budget remains unchanged. The comparison
+has its own 6 KB hard budget, deployment validation requires exactly one
+hashed chunk, and `index.html` may not modulepreload it. Current production
+output is:
+
+| JavaScript metric | Current |
+| --- | ---: |
+| App entry | 691.6 KB / 182.0 KB gzip |
+| Combined boot | 720.9 KB / 192.7 KB gzip |
+| Lazy card detail | 8.6 KB / 2.6 KB gzip |
+| Lazy card comparison | 3.5 KB / 1.3 KB gzip |
+
+The hard bundle and deployment gates pass. The existing preferred 675 KB app
+entry and 710 KB combined-boot advisories remain visible.
+
+## Default-Off Screen Reader Runtime (2026-07-26)
+
+The accessibility preference and compact state façade remain available at
+boot, but the polling engine now lives in `screen-reader-runtime`. With Screen
+Reader off—the default—the runtime and its existing summary module are absent
+from network resources, no polling interval runs, and the HTML status region
+retains its static `aria-live="off"` contract. Enabling announcements loads the
+runtime, activates the live region, and then loads the scene-summary module;
+disabling announcements stops the observer and clears the region.
+
+The size validator enforces a 4 KB hard ceiling for the runtime chunk.
+Deployment validation requires exactly one hashed copy and rejects it from
+module preloads. Current production output is:
+
+| JavaScript metric | Current |
+| --- | ---: |
+| App entry | 675.0 KB / 177.6 KB gzip |
+| Combined boot | 704.1 KB / 188.3 KB gzip |
+| Lazy screen-reader runtime | 1.4 KB / 0.7 KB gzip |
+
+Both preferred boot targets pass. Focused coverage proves the runtime and
+summary stay cold while off, load on opt-in, announce through menu, route,
+combat, and settings focus, and stop cleanly when disabled.

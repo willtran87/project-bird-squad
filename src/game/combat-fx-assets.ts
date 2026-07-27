@@ -24,7 +24,6 @@ import combatCoverBlockBurstUrl from '../../assets/runtime/fx/combat-cover-block
 import combatEnemyCoverBlockUrl from '../../assets/runtime/fx/combat-enemy-cover-block.webp';
 import combatPerfectBraceRiposteUrl from '../../assets/runtime/fx/combat-perfect-brace-riposte.webp';
 import combatPinnedOpeningStrikeUrl from '../../assets/runtime/fx/combat-pinned-opening-strike.webp';
-import combatFourSuitRallyUrl from '../../assets/runtime/fx/combat-four-suit-rally.webp';
 import combatSparkEchoUrl from '../../assets/runtime/fx/combat-spark-echo.webp';
 import combatOverflowShelterUrl from '../../assets/runtime/fx/combat-overflow-shelter.webp';
 import combatFormationShiftUrl from '../../assets/runtime/fx/combat-formation-shift.webp';
@@ -63,7 +62,6 @@ import combatFlockImpactBurstUrl from '../../assets/runtime/fx/combat-flock-impa
 import combatEnemyImpactContactUrl from '../../assets/runtime/fx/combat-enemy-impact-contact.webp';
 import combatOverextensionWarningUrl from '../../assets/runtime/fx/combat-overextension-warning.webp';
 import combatBossPhaseBreakUrl from '../../assets/runtime/fx/combat-boss-phase-break.webp';
-import combatPerfectChainUrl from '../../assets/runtime/fx/combat-perfect-chain.webp';
 import combatStatusCleanseSpecificUrl from '../../assets/runtime/fx/combat-status-cleanse-specific.webp';
 import combatOpenSkyBreakUrl from '../../assets/runtime/fx/combat-open-sky-break.webp';
 import combatCacheChoiceRevealUrl from '../../assets/runtime/fx/combat-cache-choice-reveal.webp';
@@ -104,7 +102,6 @@ export const combatFxImageAssets: RuntimeImageAsset[] = [
   { key: 'combat-enemy-cover-block', url: combatEnemyCoverBlockUrl },
   { key: 'combat-perfect-brace-riposte', url: combatPerfectBraceRiposteUrl },
   { key: 'combat-pinned-opening-strike', url: combatPinnedOpeningStrikeUrl },
-  { key: 'combat-four-suit-rally', url: combatFourSuitRallyUrl },
   { key: 'combat-spark-echo', url: combatSparkEchoUrl },
   { key: 'combat-overflow-shelter', url: combatOverflowShelterUrl },
   { key: 'combat-formation-shift', url: combatFormationShiftUrl },
@@ -142,7 +139,6 @@ export const combatFxImageAssets: RuntimeImageAsset[] = [
   { key: 'combat-enemy-impact-contact', url: combatEnemyImpactContactUrl },
   { key: 'combat-overextension-warning', url: combatOverextensionWarningUrl },
   { key: 'combat-boss-phase-break', url: combatBossPhaseBreakUrl },
-  { key: 'combat-perfect-chain', url: combatPerfectChainUrl },
   { key: 'combat-status-cleanse-specific', url: combatStatusCleanseSpecificUrl },
   { key: 'combat-open-sky-break', url: combatOpenSkyBreakUrl },
   { key: 'combat-cache-choice-reveal', url: combatCacheChoiceRevealUrl },
@@ -467,7 +463,7 @@ export function resolveEnemyTurnAnimated(
           }
           if (dealsDamage(move)) host.enemyMotionCues.delete(enemy.id);
           host.runSeenEnemyMoves.add(host.enemyMovePacingKey(enemy, move));
-          enemy.intentIndex += 1;
+          host.advanceEnemyIntent(enemy);
           host.renderAll();
           schedule(impactHoldDelay, () => {
             if (host.mode !== 'battle') return abort();

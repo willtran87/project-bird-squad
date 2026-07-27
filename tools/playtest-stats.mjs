@@ -83,7 +83,9 @@ function seededRuns() {
       durationMs: combatResults.reduce((sum, combat) => sum + combat.durationMs, 0) + 120_000,
       scrapEarned: 30 + i * 3, scrapSpent: 12 + (i % 4) * 4, finalScrap: 18 + i,
       currentCohesion: loss ? 0 : 12 + i, path: routeDecisions.map((decision) => decision.picked),
-      combatResults, routeDecisions, cardRewards, combatPace: ['cinematic', 'standard', 'snappy'][i % 3],
+      combatResults, routeDecisions, cardRewards,
+      combatPace: ['cinematic', 'standard', 'snappy'][i % 3],
+      animationPace: ['relaxed', 'standard', 'fast'][i % 3],
       firstFlightGuide: { completed: i > 1, skipped: i === 1 ? 1 : 0 },
     };
   });
@@ -165,6 +167,7 @@ const leaderRows = tally(runs.map((run) => run.leaderId ?? 'unknown')).map(([lea
 });
 const deathRows = tally(runs.filter((run) => run.result === 'loss').map((run) => `${run.mapId ?? 'unknown'} / ${run.killedBy ?? run.combatResults?.at(-1)?.killedByMove ?? 'unknown'}`));
 const paceRows = tally(runs.map((run) => run.combatPace ?? 'unrecorded'));
+const animationPaceRows = tally(runs.map((run) => run.animationPace ?? 'unrecorded'));
 const firstFightDurations = runs.map((run) => run.combatResults?.[0]?.durationMs).filter(Number.isFinite);
 const activeDecisionTimes = runs.map((run) => [
   ...(run.routeDecisions ?? []).map((decision) => decision.decisionMs ?? 0),
@@ -225,6 +228,7 @@ const lines = [
   '', '## Enemy Move Pressure', '', table(['Enemy / move', 'Cohesion lost', 'Cover blocked', 'Hits'], movePressureRows.length ? movePressureRows.slice(0, 16) : [['None', 0, 0, 0]]),
   '', '## Input Friction', '', table(['Invalid card/target actions', 'Cancelled selections'], [[invalidActions, cancelledActions]]),
   '', '## Combat Pacing', '', table(['Preference', 'Runs'], paceRows),
+  '', '## Animation Pacing', '', table(['Preference', 'Runs'], animationPaceRows),
   '', '## Telemetry Contract', '',
   '- `turnsTaken`: total of `combatResults[].turnsTaken`.',
   '- Economy: `scrapEarned`, `scrapSpent`, and `finalScrap` remain separate.',
@@ -233,6 +237,7 @@ const lines = [
   '- Deaths use the final `killedByMove` when available.',
   '- Enemy pressure uses `combatResults[].damageTakenByMove` resolved at Impact.',
   '- Input friction uses `decisionStats.invalidActions` and `decisionStats.cancelledActions` from live click handlers.',
+  '- Presentation preference uses `animationPace` captured when the run ends.',
   '- Subjective evidence uses only runs with complete 1-5 `experienceFeedback` ratings for fun, fairness, clarity, and replay intent.',
 ];
 

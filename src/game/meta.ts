@@ -193,6 +193,10 @@ export const achievements: Achievement[] = [
   { id: 'swift_wings', name: 'Swift Wings', desc: 'Win a final fight in 5 beats or fewer.', check: (r) => r.result === 'win' && r.turns <= 5 },
   { id: 'lean_flock', name: 'Lean Flock', desc: 'Win with a deck of 12 cards or fewer.', check: (r) => r.result === 'win' && r.deckSize <= 12 },
   { id: 'grand_flock', name: 'Grand Flock', desc: 'Win with a deck of 22 cards or more.', check: (r) => r.result === 'win' && r.deckSize >= 22 },
+  { id: 'live_wire', name: 'Live Wire', desc: 'Trigger 3 Surges in one flight.', check: (r) => (r.surgesTriggered ?? 0) >= 3 },
+  { id: 'still_air', name: 'Still Air', desc: 'Clear 3 fights without losing Cohesion in one flight.', check: (r) => (r.cleanFights ?? 0) >= 3 },
+  { id: 'brace_brigade', name: 'Brace Brigade', desc: 'Block 24 damage in one flight.', check: (r) => (r.blockedDamage ?? 0) >= 24 },
+  { id: 'every_promise', name: 'Every Promise', desc: 'Complete 3 district contracts in one flight.', check: (r) => (r.completedContracts?.length ?? 0) >= 3 },
 ];
 
 // Leader unlock rules — returns ids newly unlocked given the updated account.

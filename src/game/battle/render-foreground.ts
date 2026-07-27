@@ -18,6 +18,7 @@ export interface BattleForegroundEnemyView {
   block: number;
   weak: number;
   selected: boolean;
+  guideTarget: boolean;
   elite: boolean;
   boss: boolean;
   x: number;
@@ -151,6 +152,18 @@ function renderEnemy(context: BattleForegroundRenderContext, enemy: BattleForegr
   context.registerEnemyPose(enemy.id, poseGroup, s);
   breathGroup.add(poseGroup);
   if (enemy.selected) renderTargetReticle(context, enemy);
+  if (enemy.guideTarget) {
+    const guideY = enemy.y - 88 * s;
+    target.add(scene.add.rectangle(enemy.x, guideY, 86 * s, 22 * s, 0x231d08, 0.94)
+      .setStrokeStyle(2, 0xd8a840, 0.98)
+      .setName('combat-first-target-guide'));
+    target.add(scene.add.text(enemy.x, guideY, 'PLAY HERE', {
+      fontFamily,
+      fontSize: `${Math.round(10 * s)}px`,
+      fontStyle: boldFontStyle,
+      color: '#fff0b8',
+    }).setOrigin(0.5).setName('combat-first-target-guide'));
+  }
 
   poseGroup.add(scene.add.ellipse(
     0,

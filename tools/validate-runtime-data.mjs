@@ -336,6 +336,45 @@ const inferMoltTarget = (baseTarget, effects = []) => {
 };
 
 const cardsById = new Map();
+const cardDecisionSignatures = new Map();
+const normalStanceSignatures = new Map();
+const moltStanceSignatures = new Map();
+let registeredStanceCount = 0;
+const registerCardStanceSignature = (signatures, card, state, stance, effects, cost, target) => {
+  if (!Array.isArray(effects) || effects.length === 0) return;
+  registeredStanceCount += 1;
+  const signature = JSON.stringify({ cost, target, effects });
+  const existing = signatures.get(signature);
+  if (existing && existing.id !== card.id) {
+    fail(`data/game/alpha-cards.json:${card.id}:${state}: duplicates ${stance} stance identity of "${existing.id}" (${existing.state})`);
+    return;
+  }
+  if (!existing) signatures.set(signature, { id: card.id, state });
+};
+const registerCardDecisionSignature = (card, state, effects, moltEffects, cost) => {
+  const signature = JSON.stringify({
+    cost,
+    target: card.target,
+    effects: effects ?? [],
+    moltEffects: moltEffects ?? [],
+  });
+  const existing = cardDecisionSignatures.get(signature);
+  if (existing && existing.id !== card.id) {
+    fail(`data/game/alpha-cards.json:${card.id}:${state}: duplicates combat identity of "${existing.id}" (${existing.state})`);
+    return;
+  }
+  if (!existing) cardDecisionSignatures.set(signature, { id: card.id, state });
+  registerCardStanceSignature(normalStanceSignatures, card, state, 'normal', effects, cost, card.target);
+  registerCardStanceSignature(
+    moltStanceSignatures,
+    card,
+    state,
+    'Molt',
+    moltEffects,
+    cost,
+    inferMoltTarget(card.target, moltEffects),
+  );
+};
 let moltTargetShiftCount = 0;
 for (const card of alphaCards.cards ?? []) {
   const label = `data/game/alpha-cards.json:${card.id ?? '<missing id>'}`;
@@ -413,16 +452,39 @@ for (const card of alphaCards.cards ?? []) {
   if (card.kind !== 'snag' && statTotal < 1) {
     fail(`${label}: every playable card must grant at least one Flock Stat`);
   }
+
+  registerCardDecisionSignature(card, 'base', card.effects, card.moltEffects, card.cost);
+  if (card.upgrade) {
+    registerCardDecisionSignature(
+      card,
+      'Preened',
+      card.upgrade.effects,
+      card.upgrade.moltEffects,
+      Number.isInteger(card.upgrade.cost) ? card.upgrade.cost : card.cost,
+    );
+  }
 }
 
 if (moltTargetShiftCount > 0) {
   notes.push(`${moltTargetShiftCount} card(s) derive a different active Molt target from moltEffects than their base target.`);
 }
+notes.push(`${(alphaCards.cards ?? []).length * 2} base/Preened card states have no cross-card combat identity collisions.`);
+notes.push(`${registeredStanceCount} normal/Molt stances have no cross-card active-stance identity collisions.`);
 
 const starterDeck = alphaCards.starterDeck ?? [];
 const rewardPool = alphaCards.rewardPool ?? [];
 const starterSet = new Set(starterDeck);
 const rewardSet = new Set(rewardPool);
+const effectDecisionShape = (effect) => effect.replace(/-?\d+(?:\.\d+)?/g, '#');
+const effectsChangeDecisionShape = (baseEffects = [], upgradeEffects = []) => (
+  baseEffects.length !== upgradeEffects.length
+  || baseEffects.some((effect, index) => effectDecisionShape(effect) !== effectDecisionShape(upgradeEffects[index] ?? ''))
+);
+const cardUpgradeChangesDecisionShape = (card) => (
+  (Number.isInteger(card?.upgrade?.cost) && card.upgrade.cost !== card.cost)
+  || effectsChangeDecisionShape(card?.effects, card?.upgrade?.effects)
+  || effectsChangeDecisionShape(card?.moltEffects, card?.upgrade?.moltEffects)
+);
 
 // Snags are not part of the starter deck or reward pool (they are injected at
 // runtime), so they are excluded from the deck-partition count.
@@ -446,6 +508,27 @@ for (const id of [...starterDeck, ...rewardPool]) {
     fail(`data/game/alpha-cards.json: listed card "${id}" is missing from cards`);
   }
 }
+for (const id of starterDeck) {
+  const card = cardsById.get(id);
+  if (!card?.upgrade) continue;
+  if (!cardUpgradeChangesDecisionShape(card)) {
+    fail(`data/game/alpha-cards.json:${id}: starter upgrade only changes numbers; it must add a new decision, condition, effect, or cost tradeoff`);
+  }
+}
+notes.push(`${starterDeck.length} starter card upgrade(s) change their decision shape instead of only increasing numbers.`);
+const rewardCards = rewardPool.map((id) => cardsById.get(id));
+for (const card of rewardCards) {
+  if (!cardUpgradeChangesDecisionShape(card)) {
+    fail(`data/game/alpha-cards.json:${card.id}: ${card.rarity} reward upgrade only changes numbers; it must add a new decision, condition, effect, or cost tradeoff`);
+  }
+}
+const rewardRarityCounts = Object.entries(
+  rewardCards.reduce((counts, card) => {
+    counts[card.rarity] = (counts[card.rarity] ?? 0) + 1;
+    return counts;
+  }, {})
+).map(([rarity, count]) => `${count} ${rarity}`).join(', ');
+notes.push(`${rewardCards.length} reward upgrade(s) change their decision shape instead of only increasing numbers (${rewardRarityCounts}).`);
 for (const id of starterSet) {
   if (rewardSet.has(id)) {
     fail(`data/game/alpha-cards.json: card "${id}" appears in both starterDeck and rewardPool`);
@@ -632,6 +715,7 @@ for (const content of mapContents) {
 
 // Route Marks (next-level-data-contracts §6)
 const routeMarkIds = new Set();
+const routeMarkSignatures = new Map();
 for (const mark of alphaRouteMarks.routeMarks ?? []) {
   const label = `data/game/alpha-route-marks.json:${mark.id ?? '<missing id>'}`;
   if (!mark.id || typeof mark.id !== 'string') { fail(`${label}: missing id`); continue; }
@@ -648,6 +732,13 @@ for (const mark of alphaRouteMarks.routeMarks ?? []) {
     : (mark.effect ? [mark.effect] : []);
   if (markEffects.length === 0) fail(`${label}: missing effect/effects`);
   validateEffects(markEffects, `${label}:effects`, validMarkVerbs);
+  const signature = `${mark.trigger}|${[...markEffects].sort().join('|')}`;
+  const duplicateSignatureId = routeMarkSignatures.get(signature);
+  if (duplicateSignatureId) {
+    fail(`${label}: duplicates trigger/effect identity of route mark "${duplicateSignatureId}"`);
+  } else {
+    routeMarkSignatures.set(signature, mark.id);
+  }
   const iconPath = `assets/runtime/waymarks/icons/${mark.id}.webp`;
   if (!fs.existsSync(path.join(root, iconPath))) {
     fail(`${label}: missing reward icon at ${iconPath}`);

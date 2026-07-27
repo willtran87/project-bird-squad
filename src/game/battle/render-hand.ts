@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { renderCardColorCue } from '../card-color-cues';
 
 export interface BattleHandCardPreviewView {
   name: string;
@@ -18,9 +19,11 @@ export interface BattleHandCardPreviewView {
 export interface BattleHandCardView {
   instanceId: string;
   name: string;
+  label: string;
   cost: number;
   canPay: boolean;
   selected: boolean;
+  guideCard: boolean;
   guideMolt: boolean;
   accent: number;
   usesMolt: boolean;
@@ -66,6 +69,7 @@ export interface BattleHandRenderContext {
   cyanColor: string;
   assets: BattleHandAssets;
   reducedMotion: boolean;
+  reinforcedColorCues: boolean;
   cards: BattleHandCardView[];
   cardLeft: (index: number, count: number) => number;
   renderRichText: (
@@ -166,12 +170,17 @@ function addSelectedPulse(
 ) {
   const { scene, target, cardWidth, cardHeight, reducedMotion } = context;
   if (!textureReady(scene, context.assets.selectedPulse)) return;
-  const emphasized = card.selected || card.guideMolt;
+  const emphasized = card.selected || card.guideMolt || card.guideCard;
+  const guidePulseName = card.guideMolt
+    ? 'combat-molt-guide-pulse'
+    : card.guideCard
+      ? 'combat-first-card-guide-pulse'
+      : 'combat-hand-selected-pulse';
   const pulse = scene.add.image(centerX, context.handY, context.assets.selectedPulse)
     .setDisplaySize(card.selected ? cardWidth + 38 : cardWidth + 32, card.selected ? cardHeight + 54 : cardHeight + 46)
-    .setAlpha(card.selected ? 0.54 : card.guideMolt ? 0.42 : 0)
+    .setAlpha(card.selected ? 0.54 : card.guideMolt ? 0.42 : card.guideCard ? 0.38 : 0)
     .setBlendMode(Phaser.BlendModes.ADD)
-    .setName(card.guideMolt ? 'combat-molt-guide-pulse' : 'combat-hand-selected-pulse');
+    .setName(guidePulseName);
   target.add(pulse);
   result.selectionPulses.set(card.instanceId, pulse);
   if (emphasized && !reducedMotion) {
@@ -199,7 +208,11 @@ function renderCard(
   const top = handY - cardHeight / 2;
   const bottom = handY + cardHeight / 2;
   const rect = scene.add.rectangle(centerX, handY, cardWidth, cardHeight, 0x0a0f18, 1)
-    .setStrokeStyle(card.selected ? 5 : card.guideMolt ? 4 : 2, card.selected ? 0x24d0d6 : card.guideMolt ? 0xff9d4d : card.accent, 1)
+    .setStrokeStyle(
+      card.selected ? 5 : card.guideMolt || card.guideCard ? 4 : 2,
+      card.selected ? 0x24d0d6 : card.guideMolt ? 0xff9d4d : card.guideCard ? 0xd8a840 : card.accent,
+      1,
+    )
     .setInteractive({ useHandCursor: card.canPay });
   rect.on('pointerdown', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
     event?.stopPropagation();
@@ -217,9 +230,10 @@ function renderCard(
   addSelectedPulse(context, result, card, centerX);
 
   if (textureReady(scene, context.assets.cardFrame)) {
+    const guided = card.guideMolt || card.guideCard;
     const frame = scene.add.image(centerX, handY, context.assets.cardFrame)
-      .setDisplaySize(card.selected ? cardWidth + 24 : card.guideMolt ? cardWidth + 20 : cardWidth + 16, card.selected ? cardHeight + 36 : card.guideMolt ? cardHeight + 30 : cardHeight + 24)
-      .setAlpha(card.selected ? 0.96 : card.guideMolt ? 0.82 : card.canPay ? 0.52 : 0.26)
+      .setDisplaySize(card.selected ? cardWidth + 24 : guided ? cardWidth + 20 : cardWidth + 16, card.selected ? cardHeight + 36 : guided ? cardHeight + 30 : cardHeight + 24)
+      .setAlpha(card.selected ? 0.96 : guided ? 0.82 : card.canPay ? 0.52 : 0.26)
       .setName('combat-hand-card-frame');
     target.add(frame);
     result.frames.set(card.instanceId, frame);
@@ -254,6 +268,25 @@ function renderCard(
       color: '#ffe1bd',
       align: 'center',
     }).setOrigin(0.5, 0).setName('combat-molt-guide-tag'));
+  }
+  if (card.guideCard && !card.guideMolt) {
+    target.add(scene.add.rectangle(centerX, top + 42, 82, 18, 0x231d08, 0.94)
+      .setStrokeStyle(1, 0xd8a840, 0.98)
+      .setName('combat-first-card-guide-tag'));
+    target.add(scene.add.text(centerX, top + 35, 'START HERE', {
+      fontFamily,
+      fontSize: '9px',
+      fontStyle: boldFontStyle,
+      color: '#fff0b8',
+      align: 'center',
+    }).setOrigin(0.5, 0).setName('combat-first-card-guide-tag'));
+  }
+  if (context.reinforcedColorCues) {
+    renderCardColorCue(scene, target, left + 44, top + 68, card.label, card.accent, {
+      name: 'combat-color-cue-badge',
+      width: 82,
+      height: 24,
+    });
   }
   target.add(scene.add.circle(left + 16, top + 16, 14, card.cost === 0 ? 0x24d0d6 : 0xe8b830, 1).setStrokeStyle(2, 0x05080e, 0.9));
   target.add(scene.add.text(left + 16, top + 16, `${card.cost}`, {
@@ -343,21 +376,30 @@ export function refreshBattleHandSelection(
   cards.forEach((card) => {
     const rect = result.rects.get(card.instanceId);
     if (!rect?.scene) return;
-    rect.setStrokeStyle(card.selected ? 5 : card.guideMolt ? 4 : 2, card.selected ? 0x24d0d6 : card.guideMolt ? 0xff9d4d : card.accent, 1);
+    const guided = card.guideMolt || card.guideCard;
+    rect.setStrokeStyle(
+      card.selected ? 5 : guided ? 4 : 2,
+      card.selected ? 0x24d0d6 : card.guideMolt ? 0xff9d4d : card.guideCard ? 0xd8a840 : card.accent,
+      1,
+    );
     const frame = result.frames.get(card.instanceId);
     if (frame?.scene) {
       frame
-        .setDisplaySize(card.selected ? context.cardWidth + 24 : card.guideMolt ? context.cardWidth + 20 : context.cardWidth + 16, card.selected ? context.cardHeight + 36 : card.guideMolt ? context.cardHeight + 30 : context.cardHeight + 24)
-        .setAlpha(card.selected ? 0.96 : card.guideMolt ? 0.82 : card.canPay ? 0.52 : 0.26);
+        .setDisplaySize(card.selected ? context.cardWidth + 24 : guided ? context.cardWidth + 20 : context.cardWidth + 16, card.selected ? context.cardHeight + 36 : guided ? context.cardHeight + 30 : context.cardHeight + 24)
+        .setAlpha(card.selected ? 0.96 : guided ? 0.82 : card.canPay ? 0.52 : 0.26);
     }
     const pulse = result.selectionPulses.get(card.instanceId);
     if (!pulse?.scene) return;
     context.scene.tweens.killTweensOf(pulse);
     pulse
       .setDisplaySize(card.selected ? context.cardWidth + 38 : context.cardWidth + 32, card.selected ? context.cardHeight + 54 : context.cardHeight + 46)
-      .setAlpha(card.selected ? 0.54 : card.guideMolt ? 0.42 : 0)
-      .setName(card.guideMolt ? 'combat-molt-guide-pulse' : 'combat-hand-selected-pulse');
-    if ((card.selected || card.guideMolt) && !context.reducedMotion) {
+      .setAlpha(card.selected ? 0.54 : card.guideMolt ? 0.42 : card.guideCard ? 0.38 : 0)
+      .setName(card.guideMolt
+        ? 'combat-molt-guide-pulse'
+        : card.guideCard
+          ? 'combat-first-card-guide-pulse'
+          : 'combat-hand-selected-pulse');
+    if ((card.selected || guided) && !context.reducedMotion) {
       context.scene.tweens.add({
         targets: pulse,
         alpha: 0.34,

@@ -5,6 +5,8 @@ import { difficultyLabel } from './difficulty';
 import { flockLeaders } from './leaders';
 import { achievements, isLeaderUnlocked, leaderMastery, loadAccount, type PlayerAccount } from './meta';
 import { bindControlActions, controlBindingLabel } from './input-bindings';
+import { renderOutcomeFlightDetails, type OutcomeFlightDetails } from './boss-dossier';
+import { copySharedRouteLink, type SharedRouteMode } from './run-challenge';
 import {
   applySaveBackup,
   createSaveBackup,
@@ -23,6 +25,8 @@ const UI_ICON_PREVIEW_SCALE = 2.2;
 const UI_GOLD = '#ffe1a3';
 const UI_MUTED = '#8fa3b6';
 const UI_SOFT = '#b9c7d6';
+const FLIGHT_LOG_PAGE_SIZE = 7;
+const BADGE_PAGE_SIZE = 6;
 const UI_FIELD = {
   ink: 0x070b12,
   gold: 0xd8a840,
@@ -63,9 +67,34 @@ export interface LatestPlaytestRun {
   result: 'win' | 'loss';
   feedback?: PlaytestExperienceFeedback;
 }
+export interface FlightHistoryEntry {
+  id: string;
+  seed: string;
+  result: 'win' | 'loss';
+  leader: string;
+  difficulty: string;
+  runMode: SharedRouteMode;
+  completedAtMs: number;
+  durationMs: number;
+  currentCohesion: number;
+  maxCohesion: number;
+  turns: number;
+  deckSize: number;
+  stops: number;
+  waymarks: number;
+  supplies: number;
+}
+export interface FlightHistoryReview {
+  id: string;
+  seed: string;
+  runMode: SharedRouteMode;
+  subtitle: string;
+  details: OutcomeFlightDetails;
+}
 export type ProfileFocus =
   | 'achievements'
   | 'contracts'
+  | 'flightLog'
   | 'return'
   | 'saveData'
   | 'saveDownload'
@@ -91,6 +120,7 @@ type FieldFrame = {
 
 export interface ProfileViewState {
   badgeView: ProfileBadgeView;
+  badgePage: number;
   focus: ProfileFocus;
   entryFadePlayed: boolean;
   revealBursts: number;
@@ -103,6 +133,14 @@ export interface ProfileViewState {
   saveDataStatus: 'idle' | 'downloaded' | 'invalid' | 'restoreReady' | 'restoreFailed' | 'restored';
   saveDataMessage: string;
   pendingRestore?: SaveRestorePreview;
+  flightLogOpen: boolean;
+  flightLogIndex: number;
+  flightReviewLoading: boolean;
+  flightReviewRequestedId?: string;
+  flightReview?: FlightHistoryReview;
+  flightReviewAction: 0 | 1;
+  flightCopyStatus: 'idle' | 'copied' | 'failed';
+  flightLogMessage: string;
 }
 
 export interface ProfileSceneDependencies {
@@ -120,6 +158,8 @@ export interface ProfileSceneDependencies {
   };
   districtContracts: ReadonlyArray<{ id: string; name: string; goal: string }>;
   exportRunHistory: () => string;
+  flightHistory: () => FlightHistoryEntry[];
+  loadFlightReview: (id: string) => Promise<FlightHistoryReview | undefined>;
   latestPlaytestRun: () => LatestPlaytestRun | undefined;
   saveLatestPlaytestFeedback: (feedback: PlaytestExperienceFeedback) => boolean;
   saveData: SaveBackupRuntimeDependencies;
@@ -223,7 +263,8 @@ function leaderPersonalRecord(account: PlayerAccount, leaderId: string) {
 }
 
 function profileFocusOrder(state: ProfileViewState): ProfileFocus[] {
-  if (!state.saveDataOpen) return ['achievements', 'contracts', 'return', 'saveData'];
+  if (state.flightLogOpen) return ['flightLog'];
+  if (!state.saveDataOpen) return ['achievements', 'contracts', 'flightLog', 'return', 'saveData'];
   if (state.pendingRestore) return ['restoreConfirm', 'restoreCancel'];
   const order: ProfileFocus[] = ['saveDownload', 'saveRestore'];
   if (playtestExportEnabled()) {
@@ -231,6 +272,30 @@ function profileFocusOrder(state: ProfileViewState): ProfileFocus[] {
     order.push('playtestExport');
   }
   return order;
+}
+
+function profileBadgePageCount(state: ProfileViewState) {
+  const total = state.badgeView === 'achievements'
+    ? achievements.length
+    : loadAccount().contractBadges.length;
+  return Math.max(1, Math.ceil(total / BADGE_PAGE_SIZE));
+}
+
+function cycleBadgePage(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  direction: -1 | 1,
+) {
+  const pageCount = profileBadgePageCount(state);
+  const nextPage = Phaser.Math.Clamp(state.badgePage + direction, 0, pageCount - 1);
+  if (nextPage === state.badgePage) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  state.badgePage = nextPage;
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
 }
 
 const playtestFocusKey: Partial<Record<ProfileFocus, PlaytestRatingKey>> = {
@@ -291,6 +356,130 @@ function cycleProfileFocus(
   state.focus = order[(Math.max(0, current) + direction + order.length) % order.length];
   dependencies.playUiSound('confirm');
   renderProfileScene(scene, state, dependencies);
+}
+
+function openFlightLog(scene: Phaser.Scene, state: ProfileViewState, dependencies: ProfileSceneDependencies) {
+  const history = dependencies.flightHistory();
+  if (history.length === 0) {
+    state.flightLogMessage = 'Complete a flight to begin the log.';
+    dependencies.playUiSound('locked');
+    renderProfileScene(scene, state, dependencies);
+    return;
+  }
+  state.flightLogOpen = true;
+  state.flightLogIndex = Math.min(state.flightLogIndex, history.length - 1);
+  state.flightReviewLoading = false;
+  state.flightReviewRequestedId = undefined;
+  state.flightReview = undefined;
+  state.flightReviewAction = 0;
+  state.flightCopyStatus = 'idle';
+  state.flightLogMessage = '';
+  state.focus = 'flightLog';
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function closeFlightLog(scene: Phaser.Scene, state: ProfileViewState, dependencies: ProfileSceneDependencies) {
+  state.flightLogOpen = false;
+  state.flightReviewLoading = false;
+  state.flightReviewRequestedId = undefined;
+  state.flightReview = undefined;
+  state.flightCopyStatus = 'idle';
+  state.focus = 'flightLog';
+  dependencies.playUiSound('close');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function closeFlightReview(scene: Phaser.Scene, state: ProfileViewState, dependencies: ProfileSceneDependencies) {
+  state.flightReview = undefined;
+  state.flightReviewLoading = false;
+  state.flightReviewRequestedId = undefined;
+  state.flightReviewAction = 0;
+  state.flightCopyStatus = 'idle';
+  dependencies.playUiSound('close');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function cycleFlightHistory(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  direction: -1 | 1,
+) {
+  if (state.flightReview) {
+    state.flightReviewAction = state.flightReviewAction === 0 ? 1 : 0;
+  } else {
+    const history = dependencies.flightHistory();
+    if (history.length === 0) return;
+    state.flightLogIndex = (state.flightLogIndex + direction + history.length) % history.length;
+    state.flightLogMessage = '';
+  }
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function pageFlightHistory(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  direction: -1 | 1,
+) {
+  if (state.flightReview) return;
+  const history = dependencies.flightHistory();
+  if (history.length <= FLIGHT_LOG_PAGE_SIZE) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  const pageCount = Math.ceil(history.length / FLIGHT_LOG_PAGE_SIZE);
+  const currentPage = Math.floor(state.flightLogIndex / FLIGHT_LOG_PAGE_SIZE);
+  const nextPage = Phaser.Math.Clamp(currentPage + direction, 0, pageCount - 1);
+  if (nextPage === currentPage) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  const row = state.flightLogIndex % FLIGHT_LOG_PAGE_SIZE;
+  state.flightLogIndex = Math.min(nextPage * FLIGHT_LOG_PAGE_SIZE + row, history.length - 1);
+  state.flightLogMessage = '';
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function openSelectedFlight(scene: Phaser.Scene, state: ProfileViewState, dependencies: ProfileSceneDependencies) {
+  const selected = dependencies.flightHistory()[state.flightLogIndex];
+  if (!selected || state.flightReviewLoading) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  state.flightReviewLoading = true;
+  state.flightReviewRequestedId = selected.id;
+  state.flightCopyStatus = 'idle';
+  state.flightLogMessage = 'Opening the recorded flight...';
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+  void dependencies.loadFlightReview(selected.id).then((review) => {
+    if (!scene.scene.isActive() || state.flightReviewRequestedId !== selected.id) return;
+    state.flightReviewLoading = false;
+    if (review) {
+      state.flightReview = review;
+      state.flightReviewAction = 0;
+      state.flightLogMessage = '';
+    } else {
+      state.flightReviewRequestedId = undefined;
+      state.flightLogMessage = 'This flight could not be reconstructed safely.';
+    }
+    renderProfileScene(scene, state, dependencies);
+  });
+}
+
+function copyReviewedFlight(scene: Phaser.Scene, state: ProfileViewState, dependencies: ProfileSceneDependencies) {
+  const review = state.flightReview;
+  if (!review) return;
+  void copySharedRouteLink(review.seed, review.runMode).then((copied) => {
+    if (!scene.scene.isActive() || state.flightReview?.id !== review.id) return;
+    state.flightCopyStatus = copied ? 'copied' : 'failed';
+    dependencies.playUiSound(copied ? 'confirm' : 'locked');
+    renderProfileScene(scene, state, dependencies);
+  });
 }
 
 function openSaveData(scene: Phaser.Scene, state: ProfileViewState, dependencies: ProfileSceneDependencies) {
@@ -388,9 +577,11 @@ function activateProfileFocus(scene: Phaser.Scene, state: ProfileViewState, depe
   }
   dependencies.playUiSound(state.focus === 'return' || state.focus === 'restoreCancel' ? 'close' : 'confirm');
   if (state.focus === 'achievements' || state.focus === 'contracts') {
+    if (state.badgeView !== state.focus) state.badgePage = 0;
     state.badgeView = state.focus;
     renderProfileScene(scene, state, dependencies);
   } else if (state.focus === 'return') scene.scene.start('MenuScene');
+  else if (state.focus === 'flightLog') openFlightLog(scene, state, dependencies);
   else if (state.focus === 'saveData') openSaveData(scene, state, dependencies);
   else if (state.focus === 'saveDownload') downloadFullSave(scene, state, dependencies);
   else if (state.focus === 'saveRestore') selectSaveToRestore(scene, state, dependencies);
@@ -420,6 +611,14 @@ export function startProfileScene(
   state.revealBursts = 0;
   if (playtestExportEnabled()) syncLatestPlaytestRun(state, dependencies);
   const returnToMenu = () => {
+    if (state.flightReview) {
+      closeFlightReview(scene, state, dependencies);
+      return;
+    }
+    if (state.flightLogOpen) {
+      closeFlightLog(scene, state, dependencies);
+      return;
+    }
     if (state.saveDataOpen) {
       dependencies.playUiSound('close');
       closeSaveData(scene, state, dependencies);
@@ -433,27 +632,77 @@ export function startProfileScene(
   };
   bindControlActions(scene, {
     back: returnToMenu,
-    previous: () => cycleProfileFocus(scene, state, dependencies, -1),
-    next: () => cycleProfileFocus(scene, state, dependencies, 1),
-    confirm: () => activateProfileFocus(scene, state, dependencies),
+    previous: () => state.flightLogOpen
+      ? cycleFlightHistory(scene, state, dependencies, -1)
+      : cycleProfileFocus(scene, state, dependencies, -1),
+    next: () => state.flightLogOpen
+      ? cycleFlightHistory(scene, state, dependencies, 1)
+      : cycleProfileFocus(scene, state, dependencies, 1),
+    confirm: () => {
+      if (!state.flightLogOpen) {
+        activateProfileFocus(scene, state, dependencies);
+      } else if (!state.flightReview) {
+        openSelectedFlight(scene, state, dependencies);
+      } else if (state.flightReviewAction === 0) {
+        copyReviewedFlight(scene, state, dependencies);
+      } else {
+        closeFlightReview(scene, state, dependencies);
+      }
+    },
     mute: toggleMute,
     fullscreen: () => scene.scale.toggleFullscreen(),
   });
   const onTab = (event: KeyboardEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    cycleProfileFocus(scene, state, dependencies, event.shiftKey ? -1 : 1);
+    if (state.flightLogOpen) cycleFlightHistory(scene, state, dependencies, event.shiftKey ? -1 : 1);
+    else cycleProfileFocus(scene, state, dependencies, event.shiftKey ? -1 : 1);
+  };
+  const onPageUp = (event: KeyboardEvent) => {
+    if (state.saveDataOpen || state.flightReview) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (state.flightLogOpen) pageFlightHistory(scene, state, dependencies, -1);
+    else cycleBadgePage(scene, state, dependencies, -1);
+  };
+  const onPageDown = (event: KeyboardEvent) => {
+    if (state.saveDataOpen || state.flightReview) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (state.flightLogOpen) pageFlightHistory(scene, state, dependencies, 1);
+    else cycleBadgePage(scene, state, dependencies, 1);
   };
   const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button) => {
-    if (button.index === 12 || button.index === 14) cycleProfileFocus(scene, state, dependencies, -1);
-    else if (button.index === 13 || button.index === 15) cycleProfileFocus(scene, state, dependencies, 1);
-    else if (button.index === 0) activateProfileFocus(scene, state, dependencies);
+    if (button.index === 12 || button.index === 14) {
+      if (state.flightLogOpen) cycleFlightHistory(scene, state, dependencies, -1);
+      else cycleProfileFocus(scene, state, dependencies, -1);
+    } else if (button.index === 13 || button.index === 15) {
+      if (state.flightLogOpen) cycleFlightHistory(scene, state, dependencies, 1);
+      else cycleProfileFocus(scene, state, dependencies, 1);
+    } else if (button.index === 0) {
+      if (!state.flightLogOpen) activateProfileFocus(scene, state, dependencies);
+      else if (!state.flightReview) openSelectedFlight(scene, state, dependencies);
+      else if (state.flightReviewAction === 0) copyReviewedFlight(scene, state, dependencies);
+      else closeFlightReview(scene, state, dependencies);
+    }
+    else if (button.index === 4 && !state.saveDataOpen && !state.flightReview) {
+      if (state.flightLogOpen) pageFlightHistory(scene, state, dependencies, -1);
+      else cycleBadgePage(scene, state, dependencies, -1);
+    }
+    else if (button.index === 5 && !state.saveDataOpen && !state.flightReview) {
+      if (state.flightLogOpen) pageFlightHistory(scene, state, dependencies, 1);
+      else cycleBadgePage(scene, state, dependencies, 1);
+    }
     else if (button.index === 1) returnToMenu();
   };
   scene.input.keyboard?.on('keydown-TAB', onTab);
+  scene.input.keyboard?.on('keydown-PAGE_UP', onPageUp);
+  scene.input.keyboard?.on('keydown-PAGE_DOWN', onPageDown);
   scene.input.gamepad?.on('down', onGamepadDown);
   scene.events.once('shutdown', () => {
     scene.input.keyboard?.off('keydown-TAB', onTab);
+    scene.input.keyboard?.off('keydown-PAGE_UP', onPageUp);
+    scene.input.keyboard?.off('keydown-PAGE_DOWN', onPageDown);
     scene.input.gamepad?.off('down', onGamepadDown);
   });
 
@@ -493,8 +742,35 @@ export function renderProfileScene(
     unlocked: isLeaderUnlocked(account, leader.id),
     ...leaderPersonalRecord(account, leader.id),
   }));
+  const allBadges = state.badgeView === 'achievements'
+    ? achievements.map((achievement) => ({
+        id: achievement.id,
+        name: achievement.name,
+        description: achievement.desc,
+        earned: earned.includes(achievement.id),
+      }))
+    : account.contractBadges.map((badge) => {
+        const [mapIndexText, id] = badge.split(':');
+        const definition = dependencies.districtContracts.find((candidate) => candidate.id === id);
+        return {
+          id: badge,
+          name: definition?.name ?? id,
+          description: `District ${Number(mapIndexText) + 1} / ${definition?.goal ?? 'Contract complete'}`,
+          earned: true,
+        };
+      });
+  const badgePageCount = Math.max(1, Math.ceil(allBadges.length / BADGE_PAGE_SIZE));
+  state.badgePage = Phaser.Math.Clamp(state.badgePage, 0, badgePageCount - 1);
+  const badgeVisibleStart = state.badgePage * BADGE_PAGE_SIZE;
+  const visibleBadges = allBadges.slice(badgeVisibleStart, badgeVisibleStart + BADGE_PAGE_SIZE);
   const playtestMode = playtestExportEnabled();
   const playtestRuns = playtestRunPayload(dependencies.exportRunHistory()) ?? [];
+  const flightHistory = dependencies.flightHistory();
+  state.flightLogIndex = Math.max(0, Math.min(state.flightLogIndex, Math.max(0, flightHistory.length - 1)));
+  const flightLogPage = Math.floor(state.flightLogIndex / FLIGHT_LOG_PAGE_SIZE);
+  const flightLogPageCount = Math.max(1, Math.ceil(flightHistory.length / FLIGHT_LOG_PAGE_SIZE));
+  const flightLogVisibleStart = flightHistory.length > 0 ? flightLogPage * FLIGHT_LOG_PAGE_SIZE : 0;
+  const flightLogVisibleEnd = Math.min(flightHistory.length, flightLogVisibleStart + FLIGHT_LOG_PAGE_SIZE);
   const focusOrder = profileFocusOrder(state);
   if (!focusOrder.includes(state.focus)) state.focus = focusOrder[0];
 
@@ -521,6 +797,24 @@ export function renderProfileScene(
       cardTotal,
     },
     badgeView: state.badgeView,
+    badgePagination: {
+      page: state.badgePage + 1,
+      pageCount: badgePageCount,
+      visibleStart: allBadges.length > 0 ? badgeVisibleStart + 1 : 0,
+      visibleEnd: badgeVisibleStart + visibleBadges.length,
+      visibleCount: visibleBadges.length,
+      total: allBadges.length,
+      items: visibleBadges.map((badge) => ({
+        id: badge.id,
+        name: badge.name,
+        description: badge.description,
+        earned: badge.earned,
+      })),
+      inputs: {
+        keyboard: 'Page Up / Page Down',
+        controller: 'LB / RB',
+      },
+    },
     focus: {
       current: state.focus,
       order: focusOrder,
@@ -531,9 +825,9 @@ export function renderProfileScene(
     },
     transition: {
       entryFadePlayed: state.entryFadePlayed,
-      fadeRunning: scene.cameras.main.fadeEffect.isRunning,
-      fadeComplete: scene.cameras.main.fadeEffect.isComplete,
-      fadeProgress: Number(scene.cameras.main.fadeEffect.progress.toFixed(3)),
+      fadeRunning: scene.cameras.main?.fadeEffect?.isRunning ?? false,
+      fadeComplete: scene.cameras.main?.fadeEffect?.isComplete ?? false,
+      fadeProgress: Number((scene.cameras.main?.fadeEffect?.progress ?? 0).toFixed(3)),
     },
     contractBadges: [...account.contractBadges],
     leaderRecords: leaderRecordRows,
@@ -563,6 +857,26 @@ export function renderProfileScene(
         leaders: state.pendingRestore.leaders,
         activeRun: state.pendingRestore.activeRun,
         exportedAt: state.pendingRestore.exportedAt,
+      } : null,
+    },
+    flightHistory: {
+      open: state.flightLogOpen,
+      count: flightHistory.length,
+      selectedIndex: flightHistory.length > 0 ? state.flightLogIndex : null,
+      selected: flightHistory[state.flightLogIndex] ?? null,
+      page: flightHistory.length > 0 ? flightLogPage + 1 : 0,
+      pageCount: flightHistory.length > 0 ? flightLogPageCount : 0,
+      visibleStart: flightHistory.length > 0 ? flightLogVisibleStart + 1 : 0,
+      visibleEnd: flightLogVisibleEnd,
+      loading: state.flightReviewLoading,
+      message: state.flightLogMessage,
+      review: state.flightReview ? {
+        id: state.flightReview.id,
+        seed: state.flightReview.seed,
+        runMode: state.flightReview.runMode,
+        details: state.flightReview.details,
+        focusedAction: state.flightReviewAction === 0 ? 'copy' : 'close',
+        copyStatus: state.flightCopyStatus,
       } : null,
     },
     profileRecordFlourish: profileRecordFlourishState(scene, state),
@@ -694,27 +1008,11 @@ export function renderProfileScene(
       if (state.badgeView === tab.view) return;
       dependencies.playUiSound('confirm');
       state.badgeView = tab.view;
+      state.badgePage = 0;
       renderProfileScene(scene, state, dependencies);
     });
   });
 
-  const visibleBadges = state.badgeView === 'achievements'
-    ? achievements.map((achievement) => ({
-        id: achievement.id,
-        name: achievement.name,
-        description: achievement.desc,
-        earned: earned.includes(achievement.id),
-      }))
-    : account.contractBadges.map((badge) => {
-        const [mapIndexText, id] = badge.split(':');
-        const definition = dependencies.districtContracts.find((candidate) => candidate.id === id);
-        return {
-          id: badge,
-          name: definition?.name ?? id,
-          description: `District ${Number(mapIndexText) + 1} / ${definition?.goal ?? 'Contract complete'}`,
-          earned: true,
-        };
-      });
   if (visibleBadges.length === 0) {
     scene.add.text(badgeX + 150, frame.top + 286, 'Complete a district contract to place its mark here.', {
       fontFamily: UI_FONT,
@@ -725,7 +1023,7 @@ export function renderProfileScene(
       wordWrap: { width: 270 },
     }).setOrigin(0.5);
   }
-  visibleBadges.slice(0, 8).forEach((badge, index) => {
+  visibleBadges.forEach((badge, index) => {
     const y = frame.top + 260 + index * 39;
     renderProfileRecordRowFrame(scene, badgeX + 150, y, 300, 35, UI_FIELD.brass, badge.earned);
     const icon = addProfileIconImage(scene, 'achievement-medallion', badgeX + 17, y, 12);
@@ -745,7 +1043,66 @@ export function renderProfileScene(
       maxLines: 1,
     }).setResolution(2);
   });
+  if (badgePageCount > 1) {
+    scene.add.text(
+      badgeX + 150,
+      frame.top + 486,
+      'Page Up / Down  ·  LB / RB',
+      {
+        fontFamily: UI_FONT,
+        fontSize: '9px',
+        fontStyle: UI_BOLD,
+        color: UI_FIELD.cyanText,
+      },
+    ).setResolution(2).setOrigin(0.5).setName('profile-badge-page-hint');
+    dependencies.renderFieldButton(
+      scene,
+      () => {},
+      badgeX + 54,
+      frame.top + 522,
+      76,
+      MIN_SUPPORTED_TOUCH_TARGET,
+      'Prev',
+      state.badgePage > 0,
+      () => cycleBadgePage(scene, state, dependencies, -1),
+      UI_FIELD.cyan,
+      false,
+    ).setName('profile-badge-page-previous');
+    scene.add.text(badgeX + 150, frame.top + 522, `${state.badgePage + 1} / ${badgePageCount}`, {
+      fontFamily: UI_FONT,
+      fontSize: '12px',
+      fontStyle: UI_BOLD,
+      color: UI_FIELD.warm,
+    }).setResolution(2).setOrigin(0.5).setName('profile-badge-page-label');
+    dependencies.renderFieldButton(
+      scene,
+      () => {},
+      badgeX + 246,
+      frame.top + 522,
+      76,
+      MIN_SUPPORTED_TOUCH_TARGET,
+      'Next',
+      state.badgePage < badgePageCount - 1,
+      () => cycleBadgePage(scene, state, dependencies, 1),
+      UI_FIELD.cyan,
+      false,
+    ).setName('profile-badge-page-next');
+  }
 
+  const flightLogHit = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    frame.left + 116,
+    frame.bottom - 30,
+    184,
+    56,
+    `Flight Log ${flightHistory.length}`,
+    flightHistory.length > 0,
+    () => openFlightLog(scene, state, dependencies),
+    UI_FIELD.violet,
+  );
+  flightLogHit.setName('profile-flight-log-hit');
+  renderProfileFocusRing(scene, flightLogHit, state.focus === 'flightLog', 'flightLog');
   const returnHit = renderProfileReturnCommand(scene, dependencies, GAME_WIDTH / 2, frame.bottom - 30, 186, 56, () => scene.scene.start('MenuScene'));
   returnHit.setName('profile-return-hit');
   renderProfileFocusRing(scene, returnHit, state.focus === 'return', 'return');
@@ -764,15 +1121,213 @@ export function renderProfileScene(
   saveHit.setName('profile-save-data-hit');
   renderProfileFocusRing(scene, saveHit, state.focus === 'saveData', 'saveData');
   if (!state.saveDataOpen) {
-    scene.add.text(frame.left + 36, frame.bottom - 47, `${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate\n${controlBindingLabel('confirm')}: Select`, {
+    scene.add.text(frame.left + 24, frame.bottom - 76, `${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate  ${controlBindingLabel('confirm')}: Select`, {
       fontFamily: UI_FONT,
-      fontSize: '10px',
+      fontSize: '9px',
       fontStyle: UI_BOLD,
       color: UI_FIELD.cyanText,
-      lineSpacing: 3,
     }).setResolution(2).setName('profile-input-hint');
   }
   if (state.saveDataOpen) renderSaveDataOverlay(scene, state, dependencies, playtestMode, playtestRuns.length);
+  if (state.flightLogOpen) renderFlightLogOverlay(scene, state, dependencies, flightHistory);
+}
+
+function renderFlightLogOverlay(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  history: FlightHistoryEntry[],
+) {
+  const close = () => closeFlightLog(scene, state, dependencies);
+  const page = Math.floor(state.flightLogIndex / FLIGHT_LOG_PAGE_SIZE);
+  const pageCount = Math.max(1, Math.ceil(history.length / FLIGHT_LOG_PAGE_SIZE));
+  const pageStart = page * FLIGHT_LOG_PAGE_SIZE;
+  const pageEntries = history.slice(pageStart, pageStart + FLIGHT_LOG_PAGE_SIZE);
+  const pageEnd = pageStart + pageEntries.length;
+  scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020408, 0.9)
+    .setInteractive()
+    .setName('profile-flight-log-blocker');
+  const panel = dependencies.renderFieldPanel(scene, () => {}, GAME_WIDTH / 2, 360, 1040, 620, {
+    accent: UI_FIELD.violet,
+    fill: UI_FIELD.ink,
+  });
+  dependencies.renderCloseControl(scene, () => {}, panel.right - 42, panel.top + 38, close);
+  scene.add.text(panel.left + 40, panel.top + 28, 'FLIGHT LOG', {
+    fontFamily: 'Georgia, serif',
+    fontSize: '30px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.warm,
+    stroke: '#020409',
+    strokeThickness: 4,
+  }).setResolution(2).setName('profile-flight-log-title');
+  scene.add.text(panel.left + 42, panel.top + 72, 'Up to 50 completed flights stay local, survive reloads, and remain part of Save Data backups.', {
+    fontFamily: UI_FONT,
+    fontSize: '12px',
+    color: UI_SOFT,
+    fixedWidth: 850,
+    maxLines: 1,
+  }).setResolution(2);
+  scene.add.text(panel.left + 42, panel.top + 98, `${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Choose   Page Up / Down or LB / RB: Page   ${controlBindingLabel('confirm')}: Review   ${controlBindingLabel('back')}: Return`, {
+    fontFamily: UI_FONT,
+    fontSize: '10px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.cyanText,
+  }).setResolution(2).setName('profile-flight-log-input-hint');
+
+  scene.add.rectangle(panel.left + 220, panel.top + 365, 378, 480, 0x070d16, 0.94)
+    .setStrokeStyle(1, UI_FIELD.violet, 0.46)
+    .setName('profile-flight-log-list-panel');
+  scene.add.text(panel.left + 48, panel.top + 135, `FLIGHTS ${pageStart + 1}-${pageEnd} OF ${history.length}  /  PAGE ${page + 1}/${pageCount}`, {
+    fontFamily: UI_FONT,
+    fontSize: '10px',
+    fontStyle: UI_BOLD,
+    color: '#ead8ff',
+    fixedWidth: 214,
+  }).setResolution(2);
+  const newerPageHit = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    panel.left + 292,
+    panel.top + 145,
+    72,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Newer',
+    page > 0,
+    () => pageFlightHistory(scene, state, dependencies, -1),
+    UI_FIELD.cyan,
+    false,
+  ).setName('profile-flight-log-page-newer');
+  const olderPageHit = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    panel.left + 372,
+    panel.top + 145,
+    72,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Older',
+    page < pageCount - 1,
+    () => pageFlightHistory(scene, state, dependencies, 1),
+    UI_FIELD.violet,
+    false,
+  ).setName('profile-flight-log-page-older');
+  newerPageHit.setData('page', Math.max(1, page));
+  olderPageHit.setData('page', Math.min(pageCount, page + 2));
+  pageEntries.forEach((entry, index) => {
+    const globalIndex = pageStart + index;
+    const y = panel.top + 214 + index * 60;
+    const selected = globalIndex === state.flightLogIndex;
+    const hit = scene.add.rectangle(panel.left + 220, y, 352, MIN_SUPPORTED_TOUCH_TARGET, selected ? 0x183451 : 0x0b1420, 0.96)
+      .setStrokeStyle(selected ? 3 : 1, selected ? UI_FIELD.cyan : 0x4c526d, selected ? 0.98 : 0.46)
+      .setInteractive({ useHandCursor: true })
+      .setName(`profile-flight-log-row-${globalIndex}`)
+      .setData('runId', entry.id);
+    hit.on('pointerdown', () => {
+      state.flightLogIndex = globalIndex;
+      openSelectedFlight(scene, state, dependencies);
+    });
+    scene.add.text(panel.left + 58, y - 18, `${entry.result === 'win' ? 'WIN' : 'LOSS'}  ·  ${entry.difficulty}  ·  ${entry.runMode === 'quick' ? 'Quick' : 'Full'}`, {
+      fontFamily: UI_FONT,
+      fontSize: '12px',
+      fontStyle: UI_BOLD,
+      color: entry.result === 'win' ? '#a9f4b7' : '#ffb8ad',
+      fixedWidth: 320,
+      maxLines: 1,
+    }).setResolution(2);
+    scene.add.text(panel.left + 58, y + 4, `${entry.leader}  ·  ${entry.deckSize} cards  ·  ${entry.stops} stops`, {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      color: selected ? '#dffbff' : UI_SOFT,
+      fixedWidth: 320,
+      maxLines: 1,
+    }).setResolution(2);
+  });
+
+  const selected = history[state.flightLogIndex];
+  const previewX = panel.left + 638;
+  scene.add.rectangle(previewX, panel.top + 354, 420, 450, 0x07101a, 0.96)
+    .setStrokeStyle(1, UI_FIELD.cyan, 0.48)
+    .setName('profile-flight-log-preview');
+  if (!selected) {
+    scene.add.text(previewX, panel.top + 344, 'No completed flights yet.', {
+      fontFamily: UI_FONT,
+      fontSize: '16px',
+      fontStyle: UI_BOLD,
+      color: UI_MUTED,
+    }).setOrigin(0.5);
+  } else {
+    const totalSeconds = Math.max(0, Math.round(selected.durationMs / 1000));
+    const duration = `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
+    scene.add.text(previewX, panel.top + 150, selected.result === 'win' ? 'COMPLETED FLIGHT' : 'SCATTERED FLIGHT', {
+      fontFamily: UI_FONT,
+      fontSize: '14px',
+      fontStyle: UI_BOLD,
+      color: selected.result === 'win' ? '#a9f4b7' : '#ffb8ad',
+    }).setOrigin(0.5);
+    scene.add.text(previewX, panel.top + 184, `FLIGHT ${selected.seed}`, {
+      fontFamily: UI_FONT,
+      fontSize: '18px',
+      fontStyle: UI_BOLD,
+      color: UI_FIELD.warm,
+      fixedWidth: 380,
+      align: 'center',
+      maxLines: 1,
+    }).setOrigin(0.5);
+    scene.add.text(previewX, panel.top + 218, `${selected.leader}  ·  ${selected.difficulty}  ·  ${selected.runMode === 'quick' ? 'Quick' : 'Full'}`, {
+      fontFamily: UI_FONT,
+      fontSize: '12px',
+      color: UI_FIELD.cyanText,
+      fixedWidth: 380,
+      align: 'center',
+      maxLines: 1,
+    }).setOrigin(0.5);
+    scene.add.text(previewX - 166, panel.top + 262, [
+      `Recorded       ${formatFlightDate(selected.completedAtMs)}`,
+      `Duration       ${duration}`,
+      `Cohesion       ${selected.currentCohesion}/${selected.maxCohesion}`,
+      `Beats          ${selected.turns}`,
+      `Final deck     ${selected.deckSize} cards`,
+      `Route          ${selected.stops} stops`,
+      `Waymarks       ${selected.waymarks}`,
+      `Supplies used  ${selected.supplies}`,
+    ].join('\n'), {
+      fontFamily: UI_FONT,
+      fontSize: '12px',
+      color: '#d7e3ec',
+      lineSpacing: 10,
+      fixedWidth: 332,
+    }).setResolution(2);
+    scene.add.text(previewX, panel.bottom - 82, state.flightLogMessage || 'Confirm to inspect the complete deck, path, kit, decisions, and results.', {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: state.flightLogMessage.includes('could not') ? '#ffb8ad' : UI_FIELD.cyanText,
+      fixedWidth: 360,
+      align: 'center',
+      wordWrap: { width: 360 },
+      maxLines: 2,
+    }).setOrigin(0.5);
+  }
+
+  if (state.flightReview) {
+    const root = scene.add.container(0, 0).setName('profile-flight-review-root');
+    renderOutcomeFlightDetails(scene, root, state.flightReview.details, {
+      title: 'Recorded Flight',
+      subtitle: state.flightReview.subtitle,
+      fontFamily: UI_FONT,
+      boldStyle: UI_BOLD,
+      focused: true,
+      focusedAction: state.flightReviewAction === 0 ? 'copy' : 'close',
+      copyStatus: state.flightCopyStatus,
+      onCopy: () => copyReviewedFlight(scene, state, dependencies),
+      onClose: () => closeFlightReview(scene, state, dependencies),
+    });
+  }
+}
+
+function formatFlightDate(value: number) {
+  if (!Number.isFinite(value) || value <= 0) return 'Earlier flight';
+  const date = new Date(value);
+  return Number.isNaN(date.valueOf()) ? 'Earlier flight' : date.toLocaleDateString();
 }
 
 function renderSaveDataOverlay(

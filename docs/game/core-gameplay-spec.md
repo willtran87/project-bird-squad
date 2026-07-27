@@ -530,6 +530,18 @@ must never grant permanent combat stats.
 ## Visual, Graphics, And Motion Preferences
 
 - Motion is an accessibility preference with System, Full, and Reduced modes. It governs animation behavior and presentation timing without changing combat math.
+- Combat Pace is a sequencing preference with Cinematic, Standard, and Snappy
+  modes. It governs repeated enemy staging and combat animation delays without
+  changing effect order, intent accuracy, or combat math.
+- Animation Pace is a visual-motion preference with Relaxed, Standard, and
+  Fast modes. It scales Phaser tween and sprite-animation clocks to 0.8x, 1x,
+  or 1.3x across menu, route, profile, and combat presentation. Combat timers,
+  effect resolution, enemy intent, text reading floors, and game math remain
+  unchanged.
+- Text Pace is a reading preference with Relaxed, Standard, and Fast modes.
+  It scales encounter-intro reading floors and the hold time of combat banners
+  and floating callouts. It does not change damage resolution, animation locks,
+  turn timing, or any gameplay rule.
 - Contrast is a visual-accessibility preference with Standard and High modes. High increases luminance separation across the complete playfield so text, controls, status rails, and active targets stand apart without replacing authored art or changing game rules.
 - Screen Reader is an assistive-technology preference with Off and On modes.
   On mirrors current focus, route selection, combat resources, selected-card
@@ -539,7 +551,10 @@ must never grant permanent combat stats.
 - Lean removes passive title particles, reduces route set-piece ambience, halves optional particle density, caps concurrent combat particle bursts at two, and renders a smaller static combat-atmosphere field.
 - Primary card and enemy attack art, wind-up/release/impact beats, intent tells, hit confirmation, reward choices, and all interactive controls remain present in every Effects mode.
 - Effects quality must never change combat sequencing, animation locks, damage timing, enemy pacing, random outcomes, or balance.
-- Contrast and Effects preferences persist locally when browser storage is available and remain usable for the current session when storage is blocked.
+- Contrast, Effects, Combat Pace, Animation Pace, and Text Pace preferences
+  persist locally when browser storage is available, are included in local
+  Save Data backups, and remain usable for the current session when storage is
+  blocked.
 
 ## Visual Hierarchy
 
@@ -605,3 +620,19 @@ Leaders, modes, and out-of-range tiers, and older accounts migrate with an empty
 record table rather than fabricated history.
 
 Pointer activation and Enter confirm the local rematch; Escape returns to the main menu. This keeps retry intent explicit while preserving the strategic value of learning and sharing a route.
+
+## Strategy Achievements
+
+The Flock Record includes one-flight challenges alongside clear and deck-size
+milestones. `Live Wire` asks for three Surges, `Still Air` asks for three fights
+without Cohesion loss, `Brace Brigade` asks for 24 blocked damage, and
+`Every Promise` asks for three completed district contracts. These challenges
+evaluate one finished flight at a time, never cumulative lifetime totals, and
+can be earned on a defeat so a strong strategic story still matters when the
+final fight is lost.
+
+Achievement ids are additive save data: older accounts keep every earned id and
+gain no fabricated completion. Flock Record badge rows are paged six at a time
+instead of silently truncating the collection. Pointer controls, Page Up/Page
+Down, and LB/RB all reach the same page state; the text-state contract exposes
+the visible range, exact requirements, earned state, and input labels.

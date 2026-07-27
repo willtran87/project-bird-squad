@@ -172,7 +172,12 @@ alternatives, can be skipped or replayed, and records local progression. After
 that sequence is complete, a one-time contextual Molt lesson waits until an
 actual Molt card reaches hand, identifies that card without blocking alternatives,
 explains the Beat/Open Sky tradeoff, and retires permanently when the card is
-played. Skipping the core guide also suppresses the contextual lesson.
+played. The opening combat step now deterministically marks one affordable,
+Flow-building enemy card with `START HERE`, identifies the current legal target
+with `PLAY HERE`, names the card, Wingbeat cost, and enemy in the guide rail,
+and provides the same recommendation to screen-reader users. Other legal cards
+and targets remain interactive, and the marks retire as soon as any valid first
+card is played. Skipping the core guide also suppresses the contextual lesson.
 
 The How to Play overlay is a useful reference, but it is not an onboarding
 sequence. A first-time player must infer too much from compact labels.
@@ -283,7 +288,7 @@ Correct and add:
 - route node previews, selections, and time-to-commit
 - invalid or cancelled card/target actions
 - tutorial steps viewed, completed, replayed, or skipped
-- animation-speed preference
+- animation-speed preference (`animationPace`, now captured on completed runs)
 
 Add a developer-only run dashboard that reads local summaries and shows:
 
@@ -643,6 +648,14 @@ weekly route remains intentionally deferred until observed retention proves the
 base loop: adding calendar pressure now would contradict the no-streak/no-FOMO
 direction.
 
+Replay goals now also include four one-flight strategy achievements for Surges,
+clean fights, blocked damage, and district contracts. They unlock from one
+qualifying win or loss and never combine near-miss lifetime totals, so they
+reward a deliberately different flight rather than repetitive farming. The
+Flock Record pages achievements and contract badges six at a time with pointer,
+keyboard, and controller access, preventing later goals from being hidden after
+the original eight-row capacity.
+
 ### P2. Choose A Mobile Product Direction
 
 Implementation status: complete for the desktop-first direction (2026-07-14).
@@ -860,3 +873,59 @@ keyboard/controller navigation begins, and `combatInputFocus` exposes the
 player-facing label, target, position, bindings, and visible-focus state.
 Reward narration now identifies the focused Card, Preen, or Waymark choice
 instead of announcing only card-reward options.
+
+Combat pile inspection now follows that contract as well. Deck, Draw, and
+Discard reviews support remapped Previous/Next, Tab/Shift+Tab, Up/Down, D-pad
+navigation, controller-shoulder paging, and Back/B close behavior. Focus is
+tracked by unique card instance rather than shared card definition, which keeps
+duplicate copies unambiguous. A high-visibility row outline, binding-aware
+instruction strip, and screen-reader announcement expose the selected
+position, card rules, zone, cost, paging controls, and close control without
+advancing combat.
+
+Cards that clear themselves now remain visible and trustworthy. They move into
+a dedicated combat-only Cleared pile, appear as Cleared rows and a fourth count
+inside Deck Review, stay out of the current combat's reshuffle, and return with
+the permanent run deck after combat. The same zone and count are exposed to the
+screen reader, preventing a once-per-combat card from appearing to vanish or
+being silently deleted from later run snapshots.
+
+## Singleton Ownership Is Now Trustworthy
+
+The flock's intended one-of-a-kind deck rule now holds across route choices,
+enemy pressure, active-run recovery, completed-flight history, combat setup,
+and post-combat snapshots. A repeated Snag cannot quietly inflate the current
+fight and then disappear from the next save: route previews show no deck
+increase, route logs explain the no-op, and combat supplies matching visual,
+audio, and written `Snag blocked` feedback. If damaged or legacy save data
+contains duplicate entries, recovery keeps one stable card and preserves the
+upgraded version. Deck Review and screen-reader inspection therefore describe
+the same durable deck the run will actually save.
+
+## Deck Decisions Are Directly Comparable
+
+Route Deck Review now supports filtering, sorting, searching, and persistent
+pinning. Pinning one card and moving selection compares two cards directly;
+pinning the selected card compares its Base and Preened forms. Both columns
+show normal rules, Molt rules, cost, role, target, art, and consolidated flock
+stats, while the bottom strip names the changed decision shape or added stat.
+The same comparison contract is available through pointer, keyboard,
+controller, serialized text state, and screen-reader narration.
+
+## Current Completion Evidence
+
+The exact current build passes runtime-data validation, 961 optimized runtime
+asset checks, canonical-world asset validation, the direction-neutral combat
+FX contract, and all 219 serial Playwright scenarios. Current content,
+economy, and balance audits are also green. This is strong evidence for
+mechanical correctness, stability, input parity, accessibility behavior,
+supported layouts, save recovery, progression integrity, asset wiring, and
+deployment performance.
+
+It is not human evidence for fun, fairness, clarity, or replay intent. There is
+currently no `.artifacts/playtest-sessions/` directory, and the generated
+dashboard identifies its source as `seeded pipeline harness (not human playtest
+evidence)` with `0/10` complete rating responses. The only unproven release
+gate is therefore the five genuinely fresh observed sessions defined in
+`docs/game/playtest-runbook.md`. No additional balance or content change should
+be inferred until those sessions reveal repeated confusion or low ratings.

@@ -120,7 +120,14 @@ export function resolveRouteEffect(effect: string, context: RouteEffectContext) 
       pick?.effects.forEach((inner) => resolveRouteEffect(inner, context));
       break;
     }
-    case 'addSnagToDiscard': case 'addSnagToDraw': if (arg0) rs.deck.push({ id: arg0 }); break;
+    case 'addSnagToDiscard':
+    case 'addSnagToDraw':
+      if (arg0 && !rs.deck.some((card) => card.id === arg0)) {
+        rs.deck.push({ id: arg0 });
+      } else if (arg0) {
+        rs.routeLog.push('That Snag is already in the deck; the flock cannot carry a second copy.');
+      }
+      break;
     case 'addCard': context.grantCard(arg0); break;
     case 'preenCard': for (let i = 0; i < (n || 1); i += 1) context.preenFirstAvailableCard(); break;
     case 'releaseCard': context.releaseFirstReleasable(n || 1); break;

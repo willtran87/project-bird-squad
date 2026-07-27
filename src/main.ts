@@ -25,8 +25,17 @@ import {
   routeBlueprints,
 } from './game/runtime-data';
 import { generateRouteMap, hashSeed } from './game/route-gen';
+import {
+  deterministicChance,
+  deterministicRankedIds,
+  finiteInt,
+  prepareOpeningDraw,
+  rarityStep,
+  seededRng,
+  stringArray,
+  type OpeningDrawState,
+} from './game/deterministic-draw';
 import type {
-  CardRarity,
   EnemyRole,
   EnemyMove,
   MarketPriceBand,
@@ -40,9 +49,18 @@ import type {
   RuntimeSupply
 } from './game/types';
 import type { ReserveEnemyContract } from './game/runtime-data';
-import { banner, burst, fadeRect, floatingText, shakeCamera, strike } from './game/fx';
+import { banner, burst, fadeRect, floatingText, setFeedbackTextHoldScale, shakeCamera, strike } from './game/fx';
 import { defaultLeaderId, flockLeaders, getLeader } from './game/leaders';
-import { difficultyAdds, difficultyLabel, difficultyMods, MAX_DIFFICULTY } from './game/difficulty';
+import {
+  advanceAscensionEnemyIntent,
+  applyAscensionOpeningIntents,
+  difficultyAdds,
+  difficultyLabel,
+  difficultyMods,
+  difficultyStatSummary,
+  MAX_DIFFICULTY,
+  type DifficultyMods,
+} from './game/difficulty';
 import { achievements, discoverCards, isLeaderUnlocked, leaderMastery, leaderUnlockHints, loadAccount, recordRun, type PlayerAccount } from './game/meta';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './game/theme';
 import {
@@ -70,6 +88,7 @@ import {
   markFirstMoltGuideSeen,
   recordFirstFlightGuideEvent,
   replayFirstFlightGuide,
+  sanitizeGuide,
   skipFirstFlightGuide
 } from './game/first-flight-guide';
 import {
@@ -99,10 +118,20 @@ import {
 } from './game/graphics-quality';
 import {
   applyVisualContrastPreference,
+  colorCuePreference,
+  colorCueState,
+  flashEffectsPreference,
+  flashEffectsState,
+  screenShakePreference,
+  screenShakeState,
+  setColorCuePreference,
+  setFlashEffectsPreference,
+  setScreenShakePreference,
   setVisualContrastPreference,
   visualContrastState,
 } from './game/visual-accessibility';
 import {
+  announceScreenReader,
   initializeScreenReaderAccessibility,
   screenReaderPreference,
   screenReaderState,
@@ -111,6 +140,7 @@ import {
 import type { StorageRecoveryNotice } from './game/storage-recovery-notice';
 import type { AdaptiveMusicSequencer, AdaptiveMusicSnapshot } from './game/adaptive-music';
 import { getMapBalanceProfile } from './game/balance';
+import { enemyInitials, enemyStatus } from './game/enemy-display';
 import { parseEffect, parseEffectValue } from './game/effects/effect-parser';
 import {
   checkRouteCondition as checkRouteEffectCondition,
@@ -142,13 +172,15 @@ type CodexDataModule = typeof import('./game/codex-data');
 type BossDossierModule = typeof import('./game/boss-dossier');
 type AdaptiveMusicModule = typeof import('./game/adaptive-music');
 const LAZY_LOAD_FAILED = 'Load failed';
-type InspectOverlay = 'deck' | 'draw' | 'discard' | 'flock';
+type InspectOverlay = 'deck' | 'draw' | 'discard' | 'cleared' | 'flock';
 type CardType = 'major' | 'minor' | 'molt' | 'aviary';
 type CardRole = 'attack' | 'skill' | 'utility';
 type TargetType = 'enemy' | 'allEnemies' | 'self' | 'none' | 'choice';
 type NodeChoiceOption = { key: string; text: string; effects: string[]; locked: boolean; lockedText?: string };
 type CardPickerMode = 'preen' | 'release';
 type MarketCategory = 'cards' | 'waymarks' | 'supplies' | 'services' | 'catalog';
+type DeckReviewFilter = 'all' | 'plumes' | 'quills' | 'basins' | 'nests' | 'special' | 'preened';
+type DeckReviewSort = 'run' | 'cost' | 'name';
 type MarketDecisionPreview = string[];
 type RouteCardPickerPlan = { mode: CardPickerMode; count: number };
 type PendingRouteReward = {
@@ -470,7 +502,9 @@ type EnemyMotionCue = 'windup' | 'attack' | 'hit';
 type EnemyTurnBeat = 'idle' | 'preamble' | 'windup' | 'release' | 'impact' | 'recovery' | 'interlude';
 type MotionPreference = 'system' | 'full' | 'reduced';
 type CombatPace = 'cinematic' | 'standard' | 'snappy';
-const SETTINGS_CONTROL_LABELS = ['Audio', 'Music', 'SFX', 'Controls', 'Motion', 'Contrast', 'Effects', 'Combat Pace', 'Screen Reader'] as const;
+type AnimationPace = 'relaxed' | 'standard' | 'fast';
+type TextPace = 'relaxed' | 'standard' | 'fast';
+const SETTINGS_CONTROL_LABELS = ['Audio', 'Music', 'SFX', 'Ambience', 'Controls', 'Motion', 'Contrast', 'Effects', 'Combat Pace', 'Animation Pace', 'Text Pace', 'Screen Reader', 'Color Cues', 'Screen Shake', 'Flashes'] as const;
 
 function settingsFocusState(scene: Phaser.Scene, open: boolean) {
   if (!open) return undefined;
@@ -613,6 +647,12 @@ interface RenderPayload {
   scene: string;
   assetReadiness?: SceneAssetReadinessState;
   combatAnimationPending?: boolean;
+  playerCardFeedback?: {
+    active: boolean;
+    baselineObjects: number;
+    transientObjects: number;
+    lastRetiredObjects: number;
+  };
   combatIntro?: {
     active: boolean;
     dismissQueued: boolean;
@@ -625,12 +665,14 @@ interface RenderPayload {
   combatEnemyTurnMove?: string;
   combatEnemyTurnProgress?: EnemyTurnProgress;
   combatEnemyTurnAcceleration?: EnemyTurnAcceleration;
+  difficulty?: DifficultyMods & { label: string };
   audio?: {
     muted: boolean;
     mood: AudioMood;
     unlocked: boolean;
     musicVolume: number;
     sfxVolume: number;
+    ambienceVolume: number;
     cueRequests: Partial<Record<AudioCue, number>>;
   };
   motion?: {
@@ -639,6 +681,9 @@ interface RenderPayload {
     systemReduced: boolean;
   };
   visualContrast?: ReturnType<typeof visualContrastState>;
+  colorCues?: ReturnType<typeof colorCueState>;
+  screenShake?: ReturnType<typeof currentScreenShakeState>;
+  flashEffects?: ReturnType<typeof currentFlashEffectsState>;
   graphics?: ReturnType<typeof graphicsQualityState>;
   screenReader?: ReturnType<typeof screenReaderState>;
   graphicsRuntime?: {
@@ -685,6 +730,9 @@ interface RenderPayload {
   combatPacing?: {
     preference: CombatPace;
   };
+  animationPacing?: ReturnType<typeof animationPacingState>;
+  textPacing?: ReturnType<typeof textPacingState>;
+  openingDraw?: OpeningDrawState;
   combatRender?: {
     requests: number;
     passes: number;
@@ -779,6 +827,11 @@ interface RenderPayload {
     loaded: boolean;
     rendered: boolean;
     count: number;
+  };
+  defeatReview?: import('./game/boss-dossier').DefeatReview;
+  outcomeFlightDetails?: {
+    open: boolean;
+    details?: import('./game/boss-dossier').OutcomeFlightDetails;
   };
   battleHudRail?: {
     loaded: boolean;
@@ -1058,12 +1111,6 @@ interface RenderPayload {
     bursts: number;
   };
   combatBossPhaseBreak?: {
-    loaded: boolean;
-    rendered: boolean;
-    count: number;
-    bursts: number;
-  };
-  combatPerfectChain?: {
     loaded: boolean;
     rendered: boolean;
     count: number;
@@ -1382,7 +1429,13 @@ interface RenderPayload {
     breakPreview: boolean;
     holdPreview: boolean;
   };
-  firstCombatGuidance?: { active: boolean; rendered: boolean };
+  firstCombatGuidance?: {
+    active: boolean;
+    rendered: boolean;
+    cardName?: string;
+    cost?: number;
+    target?: string;
+  };
   firstFlightGuide?: ReturnType<typeof firstFlightGuideState>;
   firstMoltGuide?: ReturnType<typeof firstMoltGuideState> & {
     cardId?: string;
@@ -1425,10 +1478,25 @@ interface RenderPayload {
     upgradedText: string;
     flockStats: Array<{ label: string; value: number }>;
   };
+  cardInspectFocus?: {
+    active: boolean;
+    overlay: 'deck' | 'draw' | 'discard' | 'cleared';
+    instanceId?: string;
+    index: number;
+    count: number;
+    visibleStart: number;
+    visibleEnd: number;
+    label?: string;
+    zone?: string;
+    zoneCounts: { deck: number; draw: number; discard: number; cleared: number };
+    bindings: { select: string; previousZone: string; nextZone: string; back: string };
+    controller: { choose: string; zone: string; page: string; back: string };
+  };
   selectedEnemy?: string;
   deckIds: string[];
   drawPile: number;
   discardPile: number;
+  clearedPile: number;
   deckSize: number;
   flock: {
     hp: number;
@@ -1460,6 +1528,7 @@ interface RenderPayload {
     solo: boolean;
     damageBonus: number;
     intent: string;
+    intentIndex: number;
   }>;
   route: {
     mapId: string;
@@ -1720,6 +1789,42 @@ interface RenderPayload {
     count: number;
   };
   waymarkDrawerOpen?: boolean;
+  waymarkReview?: {
+    open: boolean;
+    count: number;
+    selectedIndex: number;
+    scrollRow: number;
+    comparing: boolean;
+    selected?: {
+      id: string;
+      name: string;
+      family: string;
+      rarity: string;
+      source: string;
+      trigger: string;
+      description: string;
+      effects: Array<{ order: number; text: string; grammar: string }>;
+      tags: string[];
+    };
+    pinned?: {
+      id: string;
+      name: string;
+      trigger: string;
+      effects: Array<{ order: number; text: string; grammar: string }>;
+      tags: string[];
+    };
+    renderer: {
+      requested: boolean;
+      loaded: boolean;
+      failed: boolean;
+    };
+    controls: {
+      select: string;
+      pin: string;
+      pinController: string;
+      close: string;
+    };
+  };
   supplyDrawerOpen?: boolean;
   confirmExitOpen?: boolean;
   waymarkFeedback?: WaymarkFeedback[];
@@ -1781,8 +1886,10 @@ interface RenderPayload {
   };
   piles: {
     deck: number;
+    draw: number;
     hand: number;
     discard: number;
+    cleared: number;
   };
   flockStats: Array<{
     label: string;
@@ -1832,6 +1939,7 @@ interface RunSummary {
   districtContracts: DistrictContractState[];
   seenEnemyMoves: string[];
   combatPace: CombatPace;
+  animationPace: AnimationPace;
   firstFlightGuide: ReturnType<typeof firstFlightGuideState>;
   experienceFeedback?: import('./game/profile-scene').PlaytestExperienceFeedback;
   decisionStats?: {
@@ -1862,6 +1970,12 @@ declare global {
     __birdSquadLastRun?: RunSummary;
     __birdSquadExportRuns?: () => string;
     __birdSquadCurrentMap?: () => RuntimeRouteMap;
+    __routeAudit?: readonly [
+      typeof routeBlueprints,
+      typeof generateRouteMap,
+      typeof hashSeed,
+      typeof getMapBalanceProfile,
+    ];
     __birdSquadEnsureScene?: (sceneKey: string) => Promise<boolean>;
     __birdSquadAudio?: () => {
       muted: boolean;
@@ -1869,6 +1983,7 @@ declare global {
       unlocked: boolean;
       musicVolume?: number;
       sfxVolume?: number;
+      ambienceVolume?: number;
       music?: { pattern: string; active: boolean; step: number; pulses: number };
     };
     __birdSquadShowKeywordTooltip?: (sceneKey: string, keyword: string, x: number, y: number) => {
@@ -1903,26 +2018,6 @@ const HUD_MENU_PANEL = {
 const DECK_DETAIL_LAYOUT = {
   panelCx: 826,
   panelCy: 379,
-  panelW: 620,
-  panelH: 430,
-  artX: 664,
-  artY: 402,
-  artW: 236,
-  artH: 354,
-  costX: 550,
-  costY: 200,
-  textX: 826,
-  textW: 282,
-  titleY: 184,
-  metaY: 234,
-  targetY: 262,
-  statusY: 292,
-  currentHeaderY: 322,
-  currentBodyY: 346,
-  alternateHeaderY: 430,
-  alternateBodyY: 454,
-  statsHeaderY: 512,
-  statsY: 536
 };
 const MENU_BORDER_WIDTH = 1.5;
 const MENU_BORDER_COLOR = 0x7ab8d6;
@@ -1937,6 +2032,8 @@ const ROUTE_NODE_FOCUS_PAD = 10;
 const ROUTE_NODE_LAYOUT_PAD = 4;
 const ROUTE_CONFIRM_ICON_SIZE = 36;
 const ROUTE_CONFIRM_HIT_SIZE = 82;
+const ROUTE_CONFIRM_LABEL_OFFSET_X = -86;
+const ROUTE_CONFIRM_LABEL_WIDTH = 128;
 const ROUTE_COMMIT_STREAK_TEXTURE = 'route-commit-streak';
 const ROUTE_COMMIT_STREAK_DELAY_MS = 520;
 const TITLE_RUN_LAUNCH_FLOURISH_TEXTURE = 'title-run-launch-flourish';
@@ -1951,6 +2048,7 @@ const FLOCK_ART_X = 230;
 const FLOCK_ART_Y = 340;
 const PLAYER_ATTACK_RESOLVE_DELAY_MS = 430;
 const PLAYER_CARD_RESOLVE_DELAY_MS = 300;
+const PLAYER_CARD_FEEDBACK_SETTLE_MS = 240;
 const PLAYER_TURN_HANDOFF_DELAY_MS = 900;
 const ENEMY_TURN_PREAMBLE_MS = 800;
 const ENEMY_ATTACK_WINDUP_MS = 2600;
@@ -1985,6 +2083,8 @@ const MULTI_ENCOUNTER_HEALTH_MULT = 1.2;
 const MULTI_ENCOUNTER_DAMAGE_BONUS = 2;
 const CARD_REVIEW_VISIBLE_ROWS = 7;
 const CARD_REVIEW_ROW_H = 58;
+const DECK_REVIEW_FILTERS: DeckReviewFilter[] = ['all', 'plumes', 'quills', 'basins', 'nests', 'special', 'preened'];
+const DECK_REVIEW_SORTS: DeckReviewSort[] = ['run', 'cost', 'name'];
 const BASE_COHESION = 36;
 const BASE_WINGBEATS = 3;
 const BASE_HAND_TARGET = 4;
@@ -2042,7 +2142,6 @@ const COMBAT_COVER_BLOCK_BURST_TEXTURE = 'combat-cover-block-burst';
 const COMBAT_ENEMY_COVER_BLOCK_TEXTURE = 'combat-enemy-cover-block';
 const COMBAT_PERFECT_BRACE_RIPOSTE_TEXTURE = 'combat-perfect-brace-riposte';
 const COMBAT_PINNED_OPENING_STRIKE_TEXTURE = 'combat-pinned-opening-strike';
-const COMBAT_FOUR_SUIT_RALLY_TEXTURE = 'combat-four-suit-rally';
 const COMBAT_SPARK_ECHO_TEXTURE = 'combat-spark-echo';
 const COMBAT_OVERFLOW_SHELTER_TEXTURE = 'combat-overflow-shelter';
 const COMBAT_FORMATION_SHIFT_TEXTURE = 'combat-formation-shift';
@@ -2080,7 +2179,6 @@ const COMBAT_FLOCK_IMPACT_BURST_TEXTURE = 'combat-flock-impact-burst';
 const COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE = 'combat-enemy-impact-contact';
 const COMBAT_OVEREXTENSION_WARNING_TEXTURE = 'combat-overextension-warning';
 const COMBAT_BOSS_PHASE_BREAK_TEXTURE = 'combat-boss-phase-break';
-const COMBAT_PERFECT_CHAIN_TEXTURE = 'combat-perfect-chain';
 const COMBAT_STATUS_CLEANSE_SPECIFIC_TEXTURE = 'combat-status-cleanse-specific';
 const COMBAT_OPEN_SKY_BREAK_TEXTURE = 'combat-open-sky-break';
 const COMBAT_CACHE_CHOICE_REVEAL_TEXTURE = 'combat-cache-choice-reveal';
@@ -2200,6 +2298,112 @@ function loadBattleInspectRendererModule() {
     });
   }
   return battleInspectRendererModulePromise;
+}
+
+type FlockStatsOverlayModule = typeof import('./game/flock-stats-overlay');
+let flockStatsOverlayModulePromise: Promise<FlockStatsOverlayModule> | undefined;
+function loadFlockStatsOverlayModule() {
+  if (!flockStatsOverlayModulePromise) {
+    const request = import('./game/flock-stats-overlay');
+    flockStatsOverlayModulePromise = request;
+    void request.catch(() => {
+      if (flockStatsOverlayModulePromise === request) flockStatsOverlayModulePromise = undefined;
+    });
+  }
+  return flockStatsOverlayModulePromise;
+}
+
+type CardHoverDetailModule = typeof import('./game/card-hover-detail');
+type CardHoverDetailView = import('./game/card-hover-detail').CardHoverDetailView;
+let cardHoverDetailModulePromise: Promise<CardHoverDetailModule> | undefined;
+function loadCardHoverDetailModule() {
+  if (!cardHoverDetailModulePromise) {
+    const request = import('./game/card-hover-detail');
+    cardHoverDetailModulePromise = request;
+    void request.catch(() => {
+      if (cardHoverDetailModulePromise === request) cardHoverDetailModulePromise = undefined;
+    });
+  }
+  return cardHoverDetailModulePromise;
+}
+
+type CardComparisonModule = typeof import('./game/card-comparison');
+let cardComparisonModulePromise: Promise<CardComparisonModule> | undefined;
+function loadCardComparisonModule() {
+  if (!cardComparisonModulePromise) {
+    const request = import('./game/card-comparison');
+    cardComparisonModulePromise = request;
+    void request.catch(() => {
+      if (cardComparisonModulePromise === request) cardComparisonModulePromise = undefined;
+    });
+  }
+  return cardComparisonModulePromise;
+}
+
+type RouteDeckBrowserModule = typeof import('./game/route-deck-browser');
+let routeDeckBrowserModulePromise: Promise<RouteDeckBrowserModule> | undefined;
+function loadRouteDeckBrowserModule() {
+  if (!routeDeckBrowserModulePromise) {
+    const request = import('./game/route-deck-browser');
+    routeDeckBrowserModulePromise = request;
+    void request.catch(() => {
+      if (routeDeckBrowserModulePromise === request) routeDeckBrowserModulePromise = undefined;
+    });
+  }
+  return routeDeckBrowserModulePromise;
+}
+
+type RouteSupplyDrawerModule = typeof import('./game/route-supply-drawer');
+let routeSupplyDrawerModulePromise: Promise<RouteSupplyDrawerModule> | undefined;
+function loadRouteSupplyDrawerModule() {
+  if (!routeSupplyDrawerModulePromise) {
+    const request = import('./game/route-supply-drawer');
+    routeSupplyDrawerModulePromise = request;
+    void request.catch(() => {
+      if (routeSupplyDrawerModulePromise === request) routeSupplyDrawerModulePromise = undefined;
+    });
+  }
+  return routeSupplyDrawerModulePromise;
+}
+
+type RouteRewardOverlayModule = typeof import('./game/route-reward-overlay');
+let routeRewardOverlayModulePromise: Promise<RouteRewardOverlayModule> | undefined;
+function loadRouteRewardOverlayModule() {
+  if (!routeRewardOverlayModulePromise) {
+    const request = import('./game/route-reward-overlay');
+    routeRewardOverlayModulePromise = request;
+    void request.catch(() => {
+      if (routeRewardOverlayModulePromise === request) routeRewardOverlayModulePromise = undefined;
+    });
+  }
+  return routeRewardOverlayModulePromise;
+}
+
+type WaymarkReviewModule = typeof import('./game/waymark-review');
+type SceneWaymarkReviewEntry = import('./game/waymark-review').SceneWaymarkReviewEntry;
+let waymarkReviewModulePromise: Promise<WaymarkReviewModule> | undefined;
+function loadWaymarkReviewModule() {
+  if (!waymarkReviewModulePromise) {
+    const request = import('./game/waymark-review');
+    waymarkReviewModulePromise = request;
+    void request.catch(() => {
+      if (waymarkReviewModulePromise === request) waymarkReviewModulePromise = undefined;
+    });
+  }
+  return waymarkReviewModulePromise;
+}
+
+type RouteDebugStateModule = typeof import('./game/route-debug-state');
+let routeDebugStateModulePromise: Promise<RouteDebugStateModule> | undefined;
+function loadRouteDebugStateModule() {
+  if (!routeDebugStateModulePromise) {
+    const request = import('./game/route-debug-state');
+    routeDebugStateModulePromise = request;
+    void request.catch(() => {
+      if (routeDebugStateModulePromise === request) routeDebugStateModulePromise = undefined;
+    });
+  }
+  return routeDebugStateModulePromise;
 }
 
 type BattleHudRendererModule = typeof import('./game/battle/render-hud');
@@ -3074,7 +3278,7 @@ const battleCoreUiIconIds: UiIconId[] = [
 ];
 const battleInspectUiIconIds = uiIconIdsFor(
   ['combat-pile-', 'combat-stats-', 'deck-review-', 'flock-stats-'],
-  ['card-hover-dossier-frame', 'card-hover-stat-chip-frame', 'overlay-close-command-frame', 'overlay-panel-flourish']
+  ['card-hover-dossier-frame', 'card-hover-stat-chip-frame', 'overlay-close-command-frame', 'overlay-panel-flourish', 'release-card']
 );
 const battleDrawerUiIconIds = uiIconIdsFor(
   ['run-kit-'],
@@ -3089,25 +3293,13 @@ const battleSystemUiIconIds = uiIconIdsFor(
   ['audio-toggle-pulse-ring', 'audio-toggle-wave-burst', 'close-medallion', 'overlay-close-command-frame', 'overlay-panel-flourish', 'system-field-command-frame', 'system-menu-command-frame', 'system-overlay-title-plaque', 'system-pause-detail-row-frame']
 );
 const routeUiIconIds = uiIconIdsFor(
-  ['boss-prep-', 'card-picker-', 'deck-review-', 'district-advance-', 'flock-stats-', 'market-', 'route-', 'run-kit-', 'system-'],
-  ['audio-toggle-pulse-ring', 'card-hover-dossier-frame', 'card-hover-stat-chip-frame', 'close-medallion', 'confirm-exit-command-frame', 'confirm-exit-frame', 'deck-stack', 'flock-heart', 'locked-padlock', 'overlay-close-command-frame', 'overlay-panel-flourish', 'scrap-gear', 'supply-pouch', 'waymark-compass']
+  ['boss-prep-', 'card-picker-', 'deck-review-', 'district-advance-', 'flock-stats-', 'market-', 'reward-', 'route-', 'run-kit-', 'system-'],
+  ['audio-toggle-pulse-ring', 'cache-lockbox-medallion', 'card-hover-dossier-frame', 'card-hover-stat-chip-frame', 'close-medallion', 'confirm-exit-command-frame', 'confirm-exit-frame', 'deck-stack', 'flock-heart', 'locked-padlock', 'open-sky-medallion', 'overlay-close-command-frame', 'overlay-panel-flourish', 'scrap-gear', 'sky-guard-medallion', 'supply-pouch', 'waymark-compass']
 );
 const routeEssentialUiIconIds: UiIconId[] = [
-  'cache-lockbox-medallion',
-  'open-sky-medallion',
   'route-map-frame',
   'route-selected-node-ring',
   'route-commit-medallion',
-  'route-district-banner',
-  'route-boss-beacon-ring',
-  'reward-card-badge',
-  'reward-waymark-badge',
-  'reward-supply-badge',
-  'reward-preen-badge',
-  'reward-heal-badge',
-  'reward-scrap-badge',
-  'reward-spark-burst',
-  'sky-guard-medallion'
 ];
 const battleEssentialUiIconIds: UiIconId[] = [
   'battle-hud-command-rail',
@@ -3505,6 +3697,7 @@ function buttonIconForLabel(label: string): UiIconId | undefined {
 
 function zoneIconForLabel(zone: string): UiIconId {
   if (zone === 'Discard') return 'discard-basket';
+  if (zone === 'Cleared') return 'release-card';
   if (zone === 'Hand') return 'deck-stack';
   return 'draw-stack';
 }
@@ -3644,6 +3837,8 @@ function supplyCodexIconForLabel(label: string): UiIconId | undefined {
 
 const MOTION_PREFERENCE_STORAGE_KEY = 'birdsquad.motionPreference';
 const COMBAT_PACE_STORAGE_KEY = 'birdsquad.combatPace';
+const ANIMATION_PACE_STORAGE_KEY = 'birdsquad.animationPace';
+const TEXT_PACE_STORAGE_KEY = 'birdsquad.textPace';
 
 function systemPrefersReducedMotion(): boolean {
   return typeof window !== 'undefined'
@@ -3669,6 +3864,14 @@ function motionState() {
   return { preference, reduced, systemReduced };
 }
 
+function currentScreenShakeState() {
+  return screenShakeState(motionState().reduced);
+}
+
+function currentFlashEffectsState() {
+  return flashEffectsState(motionState().reduced);
+}
+
 function combatPacePreference(): CombatPace {
   if (typeof window === 'undefined') return 'standard';
   const stored = safeStorageGet(COMBAT_PACE_STORAGE_KEY);
@@ -3683,6 +3886,71 @@ function setCombatPacePreference(value: CombatPace) {
 function combatPacingState() {
   return { preference: combatPacePreference() };
 }
+
+function animationPacePreference(): AnimationPace {
+  if (typeof window === 'undefined') return 'standard';
+  const stored = safeStorageGet(ANIMATION_PACE_STORAGE_KEY);
+  return stored === 'relaxed' || stored === 'fast' ? stored : 'standard';
+}
+
+function animationPaceTimeScale(preference = animationPacePreference()) {
+  if (preference === 'relaxed') return 0.8;
+  if (preference === 'fast') return 1.3;
+  return 1;
+}
+
+function animationPacingState(scene?: Phaser.Scene) {
+  const preference = animationPacePreference();
+  const timeScale = animationPaceTimeScale(preference);
+  return {
+    preference,
+    timeScale,
+    tweenTimeScale: scene?.tweens.timeScale ?? timeScale,
+    spriteTimeScale: scene?.anims.globalTimeScale ?? timeScale,
+  };
+}
+
+function syncSceneAnimationPace(scene: Phaser.Scene) {
+  const timeScale = animationPaceTimeScale();
+  scene.tweens.timeScale = timeScale;
+  scene.anims.globalTimeScale = timeScale;
+}
+
+function setAnimationPacePreference(scene: Phaser.Scene, value: AnimationPace) {
+  if (typeof window !== 'undefined') safeStorageSet(ANIMATION_PACE_STORAGE_KEY, value);
+  syncSceneAnimationPace(scene);
+}
+
+function textPacePreference(): TextPace {
+  if (typeof window === 'undefined') return 'standard';
+  const stored = safeStorageGet(TEXT_PACE_STORAGE_KEY);
+  return stored === 'relaxed' || stored === 'fast' ? stored : 'standard';
+}
+
+function textPaceScale(preference = textPacePreference()) {
+  if (preference === 'relaxed') return 1.45;
+  if (preference === 'fast') return 0.65;
+  return 1;
+}
+
+function textPacingState() {
+  const preference = textPacePreference();
+  const holdScale = textPaceScale(preference);
+  return {
+    preference,
+    holdScale,
+    minimumReadableMs: Math.round(COMBAT_INTRO_MIN_DISMISS_MS * holdScale),
+    calloutHoldMs: Math.round(380 * holdScale),
+    bannerHoldMs: Math.round(520 * holdScale),
+  };
+}
+
+function setTextPacePreference(value: TextPace) {
+  if (typeof window !== 'undefined') safeStorageSet(TEXT_PACE_STORAGE_KEY, value);
+  setFeedbackTextHoldScale(textPaceScale(value));
+}
+
+setFeedbackTextHoldScale(textPaceScale());
 
 function prefersReducedMotion(): boolean {
   return motionState().reduced;
@@ -3699,36 +3967,38 @@ let activeMapIndex = 0;
 let activeSeed = 'alpha';
 const generatedMapCache = new Map<string, RuntimeRouteMap>();
 
-function currentMap(): RuntimeRouteMap {
-  const blueprint = routeBlueprints[activeMapIndex] ?? routeBlueprints[0];
-  const key = `${activeSeed}:${activeMapIndex}`;
+function generatedMapFor(seed: string, mapIndex: number): RuntimeRouteMap {
+  const blueprint = routeBlueprints[mapIndex] ?? routeBlueprints[0];
+  const key = `${seed}:${mapIndex}`;
   let map = generatedMapCache.get(key);
   if (!map) {
-    map = generateRouteMap(blueprint, hashSeed(activeSeed, activeMapIndex));
+    map = generateRouteMap(blueprint, hashSeed(seed, mapIndex));
     generatedMapCache.set(key, map);
   }
   return map;
 }
 
-function deterministicChance(key: string, chance: number): boolean {
-  if (chance <= 0) return false;
-  if (chance >= 1) return true;
-  return (hashSeed(key, 0x9e3779b9) / 0xffffffff) < chance;
+function currentMap(): RuntimeRouteMap {
+  return generatedMapFor(activeSeed, activeMapIndex);
 }
 
-function seededRng(key: string) {
-  let state = hashSeed(key, 0x85ebca6b) >>> 0;
-  return () => {
-    state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
-    return state / 0x100000000;
-  };
-}
-
-function deterministicRankedIds(ids: string[], key: string) {
-  return [...new Set(ids)].sort((a, b) => {
-    const scoreA = hashSeed(`${key}:${a}`, 0x27d4eb2d);
-    const scoreB = hashSeed(`${key}:${b}`, 0x27d4eb2d);
-    return scoreA - scoreB || a.localeCompare(b);
+function buildOutcomeFlightDetailsFor(summary: RunSummary, module: BossDossierModule) {
+  const maps = runMapIndices(summary.runMode).map((mapIndex) => ({
+    map: generatedMapFor(summary.seed, mapIndex),
+    mapIndex,
+  }));
+  return module.buildOutcomeFlightDetails(summary, {
+    maps,
+    cardName: (id) => cardLibrary[id]?.name ?? id,
+    routeNodeTypeLabel,
+    waymarkName: (id) => alphaRouteMarkLibrary.get(id)?.name ?? id,
+    supplyName: (id) => alphaSupplyLibrary.get(id)?.name ?? id,
+    signalChoice: (signalId, choiceKey) => {
+      const signal = alphaSignalLibrary.get(signalId);
+      const choice = signal?.choices.find((candidate) => candidate.key === choiceKey);
+      return `${signal?.title ?? signalId}: ${choice?.text ?? choiceKey}`;
+    },
+    difficultyLabel,
   });
 }
 
@@ -3739,26 +4009,6 @@ function priceInBand(band: MarketPriceBand, rarityStep = 0, districtStep = activ
 
 function runSupplyCapacity(runState: Pick<RunState, 'supplySlots'>) {
   return Math.max(BASE_SUPPLY_SLOTS, runState.supplySlots ?? BASE_SUPPLY_SLOTS);
-}
-
-function cardRarityStep(rarity: CardRarity) {
-  if (rarity === 'legendary') return 3;
-  if (rarity === 'rare') return 2;
-  if (rarity === 'uncommon') return 1;
-  return 0;
-}
-
-function routeMarkRarityStep(rarity: RouteMarkRarity) {
-  if (rarity === 'boss') return 3;
-  if (rarity === 'rare') return 2;
-  if (rarity === 'uncommon') return 1;
-  return 0;
-}
-
-function supplyRarityStep(rarity: RuntimeSupply['rarity']) {
-  if (rarity === 'rare') return 2;
-  if (rarity === 'uncommon') return 1;
-  return 0;
 }
 
 const MARKET_SUPPLY_PROXY_MARKS: Record<string, string> = {
@@ -3863,6 +4113,7 @@ class BirdAudioDirector {
   private muted = this.loadMuted();
   private musicVolume = this.loadVolume('birdsquad.musicVolume', 0.78);
   private sfxVolume = this.loadVolume('birdsquad.sfxVolume', 0.88);
+  private ambienceVolume = this.loadVolume('birdsquad.ambienceVolume', this.musicVolume);
   private cueRequests: Partial<Record<AudioCue, number>> = {};
 
   setMood(mood: AudioMood) {
@@ -4120,6 +4371,7 @@ class BirdAudioDirector {
       unlocked: Boolean(this.ctx && this.ctx.state === 'running'),
       musicVolume: this.musicVolume,
       sfxVolume: this.sfxVolume,
+      ambienceVolume: this.ambienceVolume,
       music,
       cueRequests: { ...this.cueRequests }
     };
@@ -4128,15 +4380,20 @@ class BirdAudioDirector {
   setMusicVolume(value: number) {
     this.musicVolume = clamp(value, 0, 1);
     this.storeVolume('birdsquad.musicVolume', this.musicVolume);
+    this.adaptiveMusic?.setVolume(this.musicVolume);
+  }
+
+  setAmbienceVolume(value: number) {
+    this.ambienceVolume = clamp(value, 0, 1);
+    this.storeVolume('birdsquad.ambienceVolume', this.ambienceVolume);
     if (this.ambience && this.ctx) {
-      const droneTarget = this.ambienceProfile(this.ambience.mood).volume * this.musicVolume;
+      const droneTarget = this.ambienceProfile(this.ambience.mood).volume * this.ambienceVolume;
       const now = this.ctx.currentTime;
       const gain = this.ambience.gain.gain;
       gain.cancelScheduledValues(now);
       gain.setValueAtTime(Math.max(0.0001, gain.value), now);
       gain.exponentialRampToValueAtTime(Math.max(0.0001, droneTarget), now + 0.16);
     }
-    this.adaptiveMusic?.setVolume(this.musicVolume);
   }
 
   setSfxVolume(value: number) {
@@ -4195,7 +4452,7 @@ class BirdAudioDirector {
     const profile = this.ambienceProfile(mood);
     const gain = ctx.createGain();
     gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, profile.volume * this.musicVolume), ctx.currentTime + 0.8);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, profile.volume * this.ambienceVolume), ctx.currentTime + 0.8);
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
     filter.frequency.setValueAtTime(profile.filter, ctx.currentTime);
@@ -4384,6 +4641,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   create(data: { reopenSettings?: boolean; reopenHelp?: boolean; reopenLeaderTooltip?: { id: string; anchorX: number } } = {}) {
+    syncSceneAnimationPace(this);
     const generation = ++this.menuGeneration;
     if (!data.reopenSettings) {
       this.registry.set(controlPanelRegistryKey(this), false);
@@ -4898,9 +5156,9 @@ class MenuScene extends Phaser.Scene {
       titleBoot: this.titleBootState(),
       titleTransition: {
         generation: this.menuGeneration,
-        fadeRunning: this.cameras.main.fadeEffect.isRunning,
-        fadeComplete: this.cameras.main.fadeEffect.isComplete,
-        fadeProgress: Number(this.cameras.main.fadeEffect.progress.toFixed(3)),
+        fadeRunning: this.cameras.main?.fadeEffect?.isRunning ?? false,
+        fadeComplete: this.cameras.main?.fadeEffect?.isComplete ?? false,
+        fadeProgress: Number((this.cameras.main?.fadeEffect?.progress ?? 0).toFixed(3)),
       },
       selectedLeader: this.selectedLeaderId,
       selectedDifficulty: this.selectedDifficulty,
@@ -5015,9 +5273,14 @@ class MenuScene extends Phaser.Scene {
       audio: birdAudio.snapshot(),
       motion: motionState(),
       visualContrast: visualContrastState(),
+      colorCues: colorCueState(),
+      screenShake: currentScreenShakeState(),
+      flashEffects: currentFlashEffectsState(),
       graphics: graphicsQualityState(),
       screenReader: screenReaderState(),
       combatPacing: combatPacingState(),
+      animationPacing: animationPacingState(this),
+      textPacing: textPacingState(),
       graphicsRuntime: {
         ambientParticleEmitters: this.children.list.filter((child) => child.name === 'title-ambient-particles').length,
       },
@@ -5206,13 +5469,17 @@ class MenuScene extends Phaser.Scene {
       title: 'Settings',
       subtitle: 'Title controls',
       onClose: () => this.closeSettingsOverlay(),
-      onToggleAudio: () => this.refreshSettingsOverlay(),
+      onToggleAudio: () => this.updateMenuTextState(),
       onSetMusicVolume: (value) => {
         birdAudio.setMusicVolume(value);
         this.refreshSettingsOverlay();
       },
       onSetSfxVolume: (value) => {
         birdAudio.setSfxVolume(value);
+        this.refreshSettingsOverlay();
+      },
+      onSetAmbienceVolume: (value) => {
+        birdAudio.setAmbienceVolume(value);
         this.refreshSettingsOverlay();
       },
       onSetMotionPreference: (value) => {
@@ -5224,6 +5491,18 @@ class MenuScene extends Phaser.Scene {
         setVisualContrastPreference(value);
         this.refreshSettingsOverlay();
       },
+      onSetColorCuePreference: (value) => {
+        setColorCuePreference(value);
+        this.refreshSettingsOverlay();
+      },
+      onSetScreenShakePreference: (value) => {
+        setScreenShakePreference(value);
+        this.refreshSettingsOverlay();
+      },
+      onSetFlashEffectsPreference: (value) => {
+        setFlashEffectsPreference(value);
+        this.refreshSettingsOverlay();
+      },
       onSetGraphicsQualityPreference: (value) => {
         setGraphicsQualityPreference(value);
         this.syncHomeParticles();
@@ -5231,6 +5510,14 @@ class MenuScene extends Phaser.Scene {
       },
       onSetCombatPacePreference: (value) => {
         setCombatPacePreference(value);
+        this.refreshSettingsOverlay();
+      },
+      onSetAnimationPacePreference: (value) => {
+        setAnimationPacePreference(this, value);
+        this.refreshSettingsOverlay();
+      },
+      onSetTextPacePreference: (value) => {
+        setTextPacePreference(value);
         this.refreshSettingsOverlay();
       },
       onSetScreenReaderPreference: (value) => {
@@ -5299,8 +5586,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   private difficultyStatLine() {
-    const mods = difficultyMods(this.selectedDifficulty);
-    return `Mods: Cohesion x${mods.enemyHpMult.toFixed(2)} | Rewards ${mods.rewardChoices} | Hit +${mods.enemyDamageBonus} | Open Sky +${mods.openSkyBonus}`;
+    return difficultyStatSummary(this.selectedDifficulty);
   }
 
   private showStorageRecoveryNotice(generation: number) {
@@ -5793,6 +6079,8 @@ const profileSceneDependencies: import('./game/profile-scene').ProfileSceneDepen
   audio: birdAudio,
   districtContracts: DISTRICT_CONTRACT_DEFINITIONS,
   exportRunHistory: () => JSON.stringify(loadRunHistory()),
+  flightHistory: () => profileFlightHistory(),
+  loadFlightReview: (id) => loadProfileFlightReview(id),
   latestPlaytestRun: () => latestPlaytestRunForRating(),
   saveLatestPlaytestFeedback: (feedback) => saveLatestPlaytestFeedback(feedback),
   saveData: {
@@ -5804,11 +6092,17 @@ const profileSceneDependencies: import('./game/profile-scene').ProfileSceneDepen
         controls: controlBindingsSnapshot(),
         graphicsQuality: graphicsQualityState().preference,
         visualContrast: visualContrastState().preference,
+        colorCues: colorCuePreference(),
+        screenShake: screenShakePreference(),
+        flashEffects: flashEffectsPreference(),
         motion: motionPreference(),
         combatPace: combatPacePreference(),
+        animationPace: animationPacePreference(),
+        textPace: textPacePreference(),
         screenReader: screenReaderPreference(),
         musicVolume: audio.musicVolume,
         sfxVolume: audio.sfxVolume,
+        ambienceVolume: audio.ambienceVolume,
         audioMuted: birdAudio.isMuted(),
         maxTier: getMaxUnlockedTier(),
       };
@@ -5833,6 +6127,7 @@ const profileSceneDependencies: import('./game/profile-scene').ProfileSceneDepen
 class ProfileScene extends Phaser.Scene {
   private readonly profileViewState: import('./game/profile-scene').ProfileViewState = {
     badgeView: 'achievements',
+    badgePage: 0,
     entryFadePlayed: false,
     revealBursts: 0,
     playtestExportStatus: 'idle',
@@ -5842,6 +6137,12 @@ class ProfileScene extends Phaser.Scene {
     saveDataStatus: 'idle',
     saveDataMessage: '',
     focus: 'achievements',
+    flightLogOpen: false,
+    flightLogIndex: 0,
+    flightReviewLoading: false,
+    flightReviewAction: 0,
+    flightCopyStatus: 'idle',
+    flightLogMessage: '',
   };
   private profileRenderer?: ProfileSceneModule['renderProfileScene'];
   private openSaveDataOnCreate = false;
@@ -5856,6 +6157,7 @@ class ProfileScene extends Phaser.Scene {
 
   set badgeView(value: import('./game/profile-scene').ProfileViewState['badgeView']) {
     this.profileViewState.badgeView = value;
+    this.profileViewState.badgePage = 0;
   }
 
   init(data: { openSaveData?: boolean } = {}) {
@@ -5867,10 +6169,12 @@ class ProfileScene extends Phaser.Scene {
   }
 
   create() {
+    syncSceneAnimationPace(this);
     const openSaveData = this.openSaveDataOnCreate;
     this.openSaveDataOnCreate = false;
     this.profileViewState.entryFadePlayed = false;
     this.profileViewState.revealBursts = 0;
+    this.profileViewState.badgePage = 0;
     this.profileViewState.playtestExportStatus = 'idle';
     this.profileViewState.playtestFeedbackStatus = 'idle';
     this.profileViewState.playtestFeedback = {};
@@ -5880,6 +6184,14 @@ class ProfileScene extends Phaser.Scene {
     this.profileViewState.saveDataStatus = 'idle';
     this.profileViewState.saveDataMessage = '';
     this.profileViewState.pendingRestore = undefined;
+    this.profileViewState.flightLogOpen = false;
+    this.profileViewState.flightLogIndex = 0;
+    this.profileViewState.flightReviewLoading = false;
+    this.profileViewState.flightReviewRequestedId = undefined;
+    this.profileViewState.flightReview = undefined;
+    this.profileViewState.flightReviewAction = 0;
+    this.profileViewState.flightCopyStatus = 'idle';
+    this.profileViewState.flightLogMessage = '';
     this.profileViewState.focus = openSaveData ? 'playtestFun' : 'achievements';
     this.renderProfileLoading();
     void loadProfileSceneModule()
@@ -5944,6 +6256,8 @@ interface CodexEnemyEntry {
   health?: number;
 }
 
+type RouteCheckpointOutcome = 'idle' | 'saved' | 'failed';
+
 // Codex: a collection screen reachable from the menu. Cards stay discovery
 // gated; reserve enemy concepts are browsable as a design/bestiary section.
 class RouteScene extends Phaser.Scene {
@@ -5972,7 +6286,7 @@ class RouteScene extends Phaser.Scene {
   private pauseOverlayOpen = false;
   private settingsOverlayOpen = false;
   private marketNodeId: string | undefined;
-  private marketMessage = '';
+  marketMessage = '';
   private marketRefreshCount = 0;
   private marketCardShelf: MarketCardListing[] = [];
   private marketWaymarkShelf: MarketWaymarkListing[] = [];
@@ -5980,15 +6294,21 @@ class RouteScene extends Phaser.Scene {
   private inspectedCardId: string | undefined;
   private hoverCardDetail?: Phaser.GameObjects.Container;
   private marketItemHover?: Phaser.GameObjects.Container;
-  private marketDecisionPreview: MarketDecisionPreview = [];
+  marketDecisionPreview: MarketDecisionPreview = [];
   private routeChoiceHover?: Phaser.GameObjects.Container;
   private cardReviewScroll = 0;
+  private deckReviewFilter: DeckReviewFilter = 'all';
+  private deckReviewSort: DeckReviewSort = 'run';
+  private deckReviewQuery = '';
+  private deckReviewSearchActive = false;
+  private deckReviewCompareCardId: string | undefined;
   private cardPickerScroll = 0;
   private routeWaymarkScroll = 0;
+  private routeWaymarkSelectedId: string | undefined;
+  private routeWaymarkPinnedId: string | undefined;
   private routeEventArtRequested = new Set<RouteNode['type']>();
   private routeEssentialAssetsReady = false;
   private routeEssentialUiReady = false;
-  private routeEssentialArtReady = false;
   private routeAssetReadiness = new SceneAssetReadinessTracker();
   private routeMapBackdrop?: RuntimeImageAsset;
   private supplyFeedback: SupplyFeedback[] = [];
@@ -6002,7 +6322,45 @@ class RouteScene extends Phaser.Scene {
   private routeCommitPending = false;
   private routeDecisionStartedAtMs = 0;
   private systemOverlayRefreshQueued = false;
+  private flockStatsOverlayModule?: FlockStatsOverlayModule;
+  private flockStatsOverlayLoading = false;
+  private flockStatsOverlayFailed = false;
+  private cardHoverDetailModule?: CardHoverDetailModule;
+  private cardHoverDetailLoading = false;
+  private cardHoverDetailRequest?: CardHoverDetailView;
+  private cardComparisonModule?: CardComparisonModule;
+  private cardComparisonLoading = false;
+  private cardComparisonFailed = false;
+  private routeDeckBrowserModule?: RouteDeckBrowserModule;
+  private routeDeckBrowserLoading = false;
+  private routeDeckBrowserFailed = false;
+  private routeSupplyDrawerModule?: RouteSupplyDrawerModule;
+  private routeSupplyDrawerLoading = false;
+  private routeSupplyDrawerFailed = false;
+  private routeRewardOverlayModule?: RouteRewardOverlayModule;
+  private routeRewardOverlayLoading = false;
+  private routeRewardOverlayFailed = false;
+  private waymarkReviewModule?: WaymarkReviewModule;
+  private waymarkReviewLoading = false;
+  private waymarkReviewFailed = false;
+  private routeDebugStateModule?: RouteDebugStateModule;
   private controllerButtonsDown = new Set<string>();
+  private routeCheckpointAttempt?: string;
+  private routeCheckpointIndicator?: Phaser.GameObjects.Container;
+  private routeCheckpointTimer?: Phaser.Time.TimerEvent;
+  private routeCheckpointState: {
+    outcome: RouteCheckpointOutcome;
+    label: string;
+    visible: boolean;
+    writes: number;
+    failures: number;
+  } = {
+    outcome: 'idle',
+    label: '',
+    visible: false,
+    writes: 0,
+    failures: 0,
+  };
 
   constructor() {
     super('RouteScene');
@@ -6071,12 +6429,18 @@ class RouteScene extends Phaser.Scene {
     this.hoverCardDetail = undefined;
     this.marketItemHover = undefined;
     this.cardReviewScroll = 0;
+    this.deckReviewFilter = 'all';
+    this.deckReviewSort = 'run';
+    this.deckReviewQuery = '';
+    this.deckReviewSearchActive = false;
+    this.deckReviewCompareCardId = undefined;
     this.cardPickerScroll = 0;
     this.routeWaymarkScroll = 0;
+    this.routeWaymarkSelectedId = undefined;
+    this.routeWaymarkPinnedId = undefined;
     this.routeEventArtRequested.clear();
     this.routeEssentialAssetsReady = false;
     this.routeEssentialUiReady = false;
-    this.routeEssentialArtReady = false;
     this.routeAssetReadiness.reset([
       'route-essential-ui',
       'route-essential-art',
@@ -6093,6 +6457,31 @@ class RouteScene extends Phaser.Scene {
     this.routeCommitStreakBursts = 0;
     this.routeCommitPending = false;
     this.systemOverlayRefreshQueued = false;
+    this.flockStatsOverlayLoading = false;
+    this.flockStatsOverlayFailed = false;
+    this.cardHoverDetailLoading = false;
+    this.cardHoverDetailRequest = undefined;
+    this.cardComparisonLoading = false;
+    this.cardComparisonFailed = false;
+    this.routeDeckBrowserLoading = false;
+    this.routeDeckBrowserFailed = false;
+    this.routeSupplyDrawerLoading = false;
+    this.routeSupplyDrawerFailed = false;
+    this.routeRewardOverlayLoading = false;
+    this.routeRewardOverlayFailed = false;
+    this.waymarkReviewLoading = false;
+    this.waymarkReviewFailed = false;
+    this.routeCheckpointAttempt = undefined;
+    this.routeCheckpointIndicator = undefined;
+    this.routeCheckpointTimer?.remove(false);
+    this.routeCheckpointTimer = undefined;
+    this.routeCheckpointState = {
+      outcome: 'idle',
+      label: '',
+      visible: false,
+      writes: 0,
+      failures: 0,
+    };
   }
 
   preload() {
@@ -6110,13 +6499,22 @@ class RouteScene extends Phaser.Scene {
   }
 
   create() {
+    syncSceneAnimationPace(this);
     birdAudio.setMood('route');
     window.__birdSquadAudio = () => birdAudio.snapshot();
+    void loadRouteDebugStateModule()
+      .then((module) => {
+        if (!this.sys.settings.active) return;
+        this.routeDebugStateModule = module;
+        this.updateTextState();
+      })
+      .catch((error) => console.warn('Route text-state module failed to load.', error));
     this.time.paused = false;
     this.tweens.resumeAll();
     this.cameras.main.setBackgroundColor('#08101d');
     this.cameras.main.fadeIn(200);
     this.queueRouteEssentialAssetLoad();
+    this.preloadCardHoverDetail();
     queueTrackedUiIconAssets(this, routeUiIconIds, 'Route UI', (result) => {
       this.routeAssetReadiness.settle('route-full-ui', result);
       this.markRouteFullArtReady();
@@ -6132,12 +6530,36 @@ class RouteScene extends Phaser.Scene {
     }
 
     this.input.keyboard?.on('keydown-UP', () => {
-      if (!controlActionForCode('ArrowUp')) this.cycleSelectableRouteNode(-1);
+      if (controlActionForCode('ArrowUp')) return;
+      if (this.waymarkDrawerOpen) this.moveRouteWaymarkSelection(-3);
+      else if (this.deckOverlayOpen) this.moveDeckReviewSelection(-1);
+      else this.cycleSelectableRouteNode(-1);
     });
     this.input.keyboard?.on('keydown-DOWN', () => {
-      if (!controlActionForCode('ArrowDown')) this.cycleSelectableRouteNode(1);
+      if (controlActionForCode('ArrowDown')) return;
+      if (this.waymarkDrawerOpen) this.moveRouteWaymarkSelection(3);
+      else if (this.deckOverlayOpen) this.moveDeckReviewSelection(1);
+      else this.cycleSelectableRouteNode(1);
     });
-    this.input.keyboard?.on('keydown-TAB', () => this.cycleSelectableRouteNode(1));
+    this.input.keyboard?.on('keydown-TAB', () => {
+      if (this.waymarkDrawerOpen) this.moveRouteWaymarkSelection(1);
+      else if (this.deckOverlayOpen) this.moveDeckReviewSelection(1);
+      else this.cycleSelectableRouteNode(1);
+    });
+    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.handleDeckReviewSearchKey(event));
+    this.input.keyboard?.on('keydown-C', (event: KeyboardEvent) => {
+      if (!this.waymarkDrawerOpen || controlActionForCode(event.code)) return;
+      event.preventDefault?.();
+      this.toggleRouteWaymarkPin();
+    });
+    const onRouteGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: { index?: number }) => {
+      if (button.index === 2) {
+        if (this.waymarkDrawerOpen) this.toggleRouteWaymarkPin();
+        else if (this.deckOverlayOpen && !this.deckReviewSearchActive) this.toggleDeckReviewComparison();
+      }
+    };
+    this.input.gamepad?.on('down', onRouteGamepadDown);
+    this.events.once('shutdown', () => this.input.gamepad?.off('down', onRouteGamepadDown));
     ['ONE', 'TWO', 'THREE', 'FOUR'].forEach((key, index) => this.input.keyboard?.on(`keydown-${key}`, () => {
       if (this.marketOpen) {
         const category: MarketCategory[] = ['cards', 'waymarks', 'supplies', 'services'];
@@ -6149,31 +6571,84 @@ class RouteScene extends Phaser.Scene {
       if (choice) this.chooseDistrictContract(choice.id);
     }));
     bindControlActions(this, {
-      confirm: () => this.activateRouteSelection(),
-      previous: () => {
+      confirm: () => {
+        if (this.deckOverlayOpen) {
+          if (this.deckReviewSearchActive) this.setDeckReviewSearchActive(false);
+          else this.cycleDeckReviewSort(1);
+          return;
+        }
+        this.activateRouteSelection();
+      },
+      previous: (event) => {
+        if (this.deckReviewSearchActive) {
+          if (event) this.handleDeckReviewSearchKey(event);
+          return;
+        }
+        if (this.waymarkDrawerOpen) {
+          this.moveRouteWaymarkSelection(-1);
+          return;
+        }
+        if (this.deckOverlayOpen) {
+          this.cycleDeckReviewFilter(-1);
+          return;
+        }
         if (!this.settingsOverlayOpen && !this.pauseOverlayOpen) this.cycleSelectableRouteNode(-1);
       },
-      next: () => {
+      next: (event) => {
+        if (this.deckReviewSearchActive) {
+          if (event) this.handleDeckReviewSearchKey(event);
+          return;
+        }
+        if (this.waymarkDrawerOpen) {
+          this.moveRouteWaymarkSelection(1);
+          return;
+        }
+        if (this.deckOverlayOpen) {
+          this.cycleDeckReviewFilter(1);
+          return;
+        }
         if (!this.settingsOverlayOpen && !this.pauseOverlayOpen) this.cycleSelectableRouteNode(1);
       },
-      mute: () => {
+      mute: (event) => {
+        if (this.deckReviewSearchActive) {
+          if (event) this.handleDeckReviewSearchKey(event);
+          return;
+        }
         if (!activateRenderedAudioToggleControl(this)) {
           birdAudio.toggleMute();
           this.refreshRouteSystemOverlay();
         }
       },
-      fullscreen: () => this.scale.toggleFullscreen(),
-      settings: () => {
+      fullscreen: (event) => {
+        if (this.deckReviewSearchActive) {
+          if (event) this.handleDeckReviewSearchKey(event);
+          return;
+        }
+        this.scale.toggleFullscreen();
+      },
+      settings: (event) => {
+        if (this.deckReviewSearchActive) {
+          if (event) this.handleDeckReviewSearchKey(event);
+          return;
+        }
         if (!this.routeEssentialAssetsReady) return;
         if (!this.pauseOverlayOpen) this.setRoutePaused(true);
         if (!this.settingsOverlayOpen) this.openSettingsOverlay();
       },
-      pause: () => {
+      pause: (event) => {
+        if (this.deckReviewSearchActive) {
+          if (event) this.handleDeckReviewSearchKey(event);
+          return;
+        }
         if (!this.routeEssentialAssetsReady) return;
         this.togglePauseOverlay();
       },
       back: () => {
         if (!this.routeEssentialAssetsReady) return;
+        if (this.deckReviewSearchActive) {
+          this.setDeckReviewSearchActive(false);
+          return;
+        }
         if (this.settingsOverlayOpen) {
           this.settingsOverlayOpen = false;
           playUiSound('close');
@@ -6243,6 +6718,7 @@ class RouteScene extends Phaser.Scene {
     }
     killTweensForScene(this);
     this.children.removeAll(true);
+    this.routeCheckpointIndicator = undefined;
     this.hoverCardDetail = undefined;
     this.marketItemHover = undefined;
     this.marketDecisionPreview = [];
@@ -6280,11 +6756,70 @@ class RouteScene extends Phaser.Scene {
     if (this.pauseOverlayOpen) this.renderPauseOverlay();
     if (this.settingsOverlayOpen) this.renderSettingsOverlay();
     this.replayMarketPurchaseFlourish();
-    this.updateTextState();
     if (!this.marketOpen && !this.nodeChoiceOpen && !this.pendingRouteReward && !this.cardPickerMode) {
-      persistActiveRun(this.runState); // checkpoint: resume lands back on the route map
+      this.checkpointRouteIfChanged(); // checkpoint: resume lands back on the route map
     }
+    this.renderRouteCheckpointFeedback();
+    this.updateTextState();
     if (this.pauseOverlayOpen) this.tweens.pauseAll();
+  }
+
+  private checkpointRouteIfChanged() {
+    let snapshot: string;
+    try {
+      snapshot = JSON.stringify(this.runState);
+    } catch {
+      snapshot = '';
+    }
+    if (snapshot === this.routeCheckpointAttempt) return;
+    this.routeCheckpointAttempt = snapshot;
+    const saved = snapshot.length > 0 && persistActiveRun(this.runState);
+    this.routeCheckpointState = {
+      outcome: saved ? 'saved' : 'failed',
+      label: saved ? 'FLIGHT SAVED' : 'SAVE UNAVAILABLE',
+      visible: true,
+      writes: this.routeCheckpointState.writes + (saved ? 1 : 0),
+      failures: this.routeCheckpointState.failures + (saved ? 0 : 1),
+    };
+    if (!saved) {
+      announceScreenReader('Flight could not be saved. Keep this tab open to preserve the current run.');
+    }
+    this.routeCheckpointTimer?.remove(false);
+    this.routeCheckpointTimer = this.time.delayedCall(saved ? 1800 : 4200, () => {
+      this.routeCheckpointState.visible = false;
+      this.routeCheckpointIndicator?.destroy(true);
+      this.routeCheckpointIndicator = undefined;
+      this.updateTextState();
+    });
+  }
+
+  private renderRouteCheckpointFeedback() {
+    this.routeCheckpointIndicator?.destroy(true);
+    this.routeCheckpointIndicator = undefined;
+    if (!this.routeCheckpointState.visible || !this.routeEssentialAssetsReady) return;
+    const saved = this.routeCheckpointState.outcome === 'saved';
+    const x = GAME_WIDTH - 166;
+    const y = 101;
+    const indicator = this.add.container(x, y)
+      .setDepth(48)
+      .setName('route-checkpoint-feedback');
+    const plate = this.add.graphics().setName('route-checkpoint-feedback-plate');
+    plate.fillStyle(0x050b14, 0.9);
+    plate.fillRoundedRect(-82, -14, 164, 28, 8);
+    plate.lineStyle(1.5, saved ? UI_FIELD.cyan : 0xff9b7a, 0.86);
+    plate.strokeRoundedRect(-82, -14, 164, 28, 8);
+    const pip = this.add.circle(-64, 0, 4, saved ? UI_FIELD.cyan : 0xff765f, 0.95)
+      .setStrokeStyle(1, saved ? UI_FIELD.gold : 0xffc1a8, 0.9);
+    const label = this.add.text(-53, 0, this.routeCheckpointState.label, {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: saved ? '#bff8ff' : '#ffd0bf',
+      stroke: '#03070d',
+      strokeThickness: 2,
+    }).setOrigin(0, 0.5);
+    indicator.add([plate, pip, label]);
+    this.routeCheckpointIndicator = indicator;
   }
 
   private cycleSelectableRouteNode(direction: -1 | 1) {
@@ -6335,8 +6870,11 @@ class RouteScene extends Phaser.Scene {
   }
 
   private queueRouteEssentialAssetLoad() {
-    const finish = () => {
-      if (!this.routeEssentialUiReady || !this.routeEssentialArtReady || !this.sys.settings.active) return;
+    const openInteractiveRoute = () => {
+      // The route map already has complete procedural/glyph fallbacks. Do not
+      // hold the first decision behind the much heavier district backdrop and
+      // eight painted node icons; they can replace the fallbacks in place.
+      if (!this.routeEssentialUiReady || this.routeEssentialAssetsReady || !this.sys.settings.active) return;
       this.routeEssentialAssetsReady = true;
       this.routeAssetReadiness.markInteractive();
       this.markRouteFullArtReady();
@@ -6345,18 +6883,19 @@ class RouteScene extends Phaser.Scene {
     queueRequiredUiIconAssets(this, routeEssentialUiIconIds, 'Essential route UI', (result) => {
       this.routeAssetReadiness.settle('route-essential-ui', result);
       this.routeEssentialUiReady = true;
-      finish();
+      openInteractiveRoute();
     });
-    queueRouteSceneEssentialArt(this, currentMap().id, 'Route node art', (backdrop, result) => {
-      this.routeMapBackdrop = backdrop;
-      this.routeAssetReadiness.settle('route-essential-art', result);
-      this.routeEssentialArtReady = true;
-      finish();
+      queueRouteSceneEssentialArt(this, currentMap().id, 'Route node art', (backdrop, result) => {
+        this.routeMapBackdrop = backdrop;
+        this.routeAssetReadiness.settle('route-essential-art', result);
+        this.markRouteFullArtReady();
+      if (this.routeEssentialAssetsReady) this.renderAll();
     });
   }
 
   private markRouteFullArtReady() {
     if (!this.routeEssentialAssetsReady) return;
+    if (!this.routeAssetReadiness.groupSettled('route-essential-art')) return;
     if (!this.routeAssetReadiness.groupSettled('route-full-ui')) return;
     this.routeAssetReadiness.markFullArt();
   }
@@ -6365,6 +6904,21 @@ class RouteScene extends Phaser.Scene {
     const pad = this.input.gamepad?.pad1;
     if (!pad?.connected) {
       this.controllerButtonsDown.clear();
+      return;
+    }
+    if (this.deckOverlayOpen) {
+      const deckControls: Array<[string, boolean, () => void]> = [
+        ['deck-up', pad.up, () => this.moveDeckReviewSelection(-1)],
+        ['deck-down', pad.down, () => this.moveDeckReviewSelection(1)],
+        ['deck-filter-previous', pad.left, () => this.cycleDeckReviewFilter(-1)],
+        ['deck-filter-next', pad.right, () => this.cycleDeckReviewFilter(1)],
+        ['deck-sort', pad.A, () => this.cycleDeckReviewSort(1)],
+      ];
+      deckControls.forEach(([id, pressed, action]) => {
+        if (pressed && !this.controllerButtonsDown.has(id)) action();
+        if (pressed) this.controllerButtonsDown.add(id);
+        else this.controllerButtonsDown.delete(id);
+      });
       return;
     }
     const controls: Array<[string, boolean, () => void]> = [
@@ -6617,72 +7171,16 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderConfirmExitOverlay() {
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.86)
-      .setInteractive({ useHandCursor: false });
-    const frameAsset = uiIconAssets['confirm-exit-frame'];
-    if (this.textures.exists(frameAsset.key)) {
-      this.textures.get(frameAsset.key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, frameAsset.key)
-        .setDisplaySize(742, 278)
-        .setAlpha(0.94)
-        .setName('confirm-exit-frame');
-      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, frameAsset.key)
-        .setDisplaySize(760, 284)
-        .setAlpha(prefersReducedMotion() ? 0.035 : 0.055)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setName('confirm-exit-frame');
-    } else {
-      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 640, 286, 0x0d1420, 0.98)
-        .setStrokeStyle(3, 0xff7a6e, 0.92);
-    }
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 78, 'Abandon this run?', {
-      fontFamily: UI_FONT, fontSize: '30px', fontStyle: UI_BOLD, color: UI_GOLD, stroke: '#000000', strokeThickness: 4
-    }).setOrigin(0.5);
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24, 'Your progress on this run will be lost.', {
-      fontFamily: UI_FONT, fontSize: '16px', color: UI_SOFT, align: 'center', wordWrap: { width: 540 }
-    }).setOrigin(0.5);
-
-    const hasCommandFrame = this.textures.exists(uiIconAssets['confirm-exit-command-frame'].key);
-    this.add.rectangle(GAME_WIDTH / 2 - 140, GAME_HEIGHT / 2 + 56, 230, 54, 0x122235, hasCommandFrame ? 0.18 : 0.98)
-      .setStrokeStyle(2, 0x7ab8d6, hasCommandFrame ? 0.22 : 0.95);
-    this.renderConfirmExitCommandFrame(GAME_WIDTH / 2 - 140, GAME_HEIGHT / 2 + 56);
-    this.add.text(GAME_WIDTH / 2 - 140, GAME_HEIGHT / 2 + 56, 'Keep Playing', {
-      fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: '#eef8ff', stroke: '#000000', strokeThickness: 3
-    }).setOrigin(0.5);
-    const keepHit = this.add.rectangle(GAME_WIDTH / 2 - 140, GAME_HEIGHT / 2 + 56, 230, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-      .setInteractive({ useHandCursor: true })
-      .setName('route-confirm-exit-keep-hit');
-    keepHit.on('pointerdown', () => { this.confirmExitOpen = false; this.renderAll(); });
-
-    this.add.rectangle(GAME_WIDTH / 2 + 140, GAME_HEIGHT / 2 + 56, 230, 54, 0x2a1014, hasCommandFrame ? 0.24 : 0.98)
-      .setStrokeStyle(2, 0xff7a6e, hasCommandFrame ? 0.28 : 0.95);
-    this.renderConfirmExitCommandFrame(GAME_WIDTH / 2 + 140, GAME_HEIGHT / 2 + 56, true);
-    this.add.text(GAME_WIDTH / 2 + 140, GAME_HEIGHT / 2 + 56, 'Abandon Run', {
-      fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: '#ffd8d2', stroke: '#000000', strokeThickness: 3
-    }).setOrigin(0.5);
-    const abandonHit = this.add.rectangle(GAME_WIDTH / 2 + 140, GAME_HEIGHT / 2 + 56, 230, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-      .setInteractive({ useHandCursor: true })
-      .setName('route-confirm-exit-abandon-hit');
-    abandonHit.on('pointerdown', () => { clearActiveRun(); this.scene.start('MenuScene'); });
-
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, 'Esc to keep playing', {
-      fontFamily: UI_FONT, fontSize: '12px', color: '#9aaabe'
-    }).setOrigin(0.5).setAlpha(0.88);
-  }
-
-  private renderConfirmExitCommandFrame(x: number, y: number, danger = false) {
-    const key = uiIconAssets['confirm-exit-command-frame'].key;
-    if (!this.textures.exists(key)) return false;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const frame = this.add.image(x, y, key)
-      .setDisplaySize(262, 62)
-      .setAlpha(danger ? 0.92 : 0.88)
-      .setName('confirm-exit-command-frame');
-    if (danger) {
-      frame.setTint(0xffe5dd);
-      this.add.rectangle(x, y + 1, 198, 25, 0x54151b, 0.16);
-    }
-    return true;
+    renderConfirmRunExitOverlay(this, () => {}, {
+      onKeepPlaying: () => {
+        this.confirmExitOpen = false;
+        this.renderAll();
+      },
+      onAbandonRun: () => {
+        clearActiveRun();
+        this.scene.start('MenuScene');
+      },
+    });
   }
 
   private renderBackdrop() {
@@ -6751,7 +7249,7 @@ class RouteScene extends Phaser.Scene {
         playUiSound('close');
         this.scene.start('MenuScene');
       },
-      onToggleAudio: () => this.refreshRouteSystemOverlay(),
+      onToggleAudio: () => this.updateTextState(),
       onSettings: () => this.openSettingsOverlay()
     });
   }
@@ -6765,13 +7263,17 @@ class RouteScene extends Phaser.Scene {
         playUiSound('close');
         this.refreshRouteSystemOverlay();
       },
-      onToggleAudio: () => this.refreshRouteSystemOverlay(),
+      onToggleAudio: () => this.updateTextState(),
       onSetMusicVolume: (value) => {
         birdAudio.setMusicVolume(value);
         this.refreshRouteSystemOverlay();
       },
       onSetSfxVolume: (value) => {
         birdAudio.setSfxVolume(value);
+        this.refreshRouteSystemOverlay();
+      },
+      onSetAmbienceVolume: (value) => {
+        birdAudio.setAmbienceVolume(value);
         this.refreshRouteSystemOverlay();
       },
       onSetMotionPreference: (value) => {
@@ -6782,12 +7284,32 @@ class RouteScene extends Phaser.Scene {
         setVisualContrastPreference(value);
         this.refreshRouteSystemOverlay();
       },
+      onSetColorCuePreference: (value) => {
+        setColorCuePreference(value);
+        this.refreshRouteSystemOverlay();
+      },
+      onSetScreenShakePreference: (value) => {
+        setScreenShakePreference(value);
+        this.refreshRouteSystemOverlay();
+      },
+      onSetFlashEffectsPreference: (value) => {
+        setFlashEffectsPreference(value);
+        this.refreshRouteSystemOverlay();
+      },
       onSetGraphicsQualityPreference: (value) => {
         setGraphicsQualityPreference(value);
         this.refreshRouteSystemOverlay();
       },
       onSetCombatPacePreference: (value) => {
         setCombatPacePreference(value);
+        this.refreshRouteSystemOverlay();
+      },
+      onSetAnimationPacePreference: (value) => {
+        setAnimationPacePreference(this, value);
+        this.refreshRouteSystemOverlay();
+      },
+      onSetTextPacePreference: (value) => {
+        setTextPacePreference(value);
         this.refreshRouteSystemOverlay();
       },
       onSetScreenReaderPreference: (value) => {
@@ -6884,7 +7406,7 @@ class RouteScene extends Phaser.Scene {
       && !this.runState.currentRouteNodeId;
   }
 
-  private districtAdvanceFlourishState() {
+  districtAdvanceFlourishState() {
     const key = uiIconAssets['district-advance-flourish'].key;
     const count = this.children.list.filter((child: any) => (
       child.texture?.key === key || child.name === 'district-advance-flourish'
@@ -6909,7 +7431,7 @@ class RouteScene extends Phaser.Scene {
     return this.selectedNodeId === bossId || this.selectableNodeIds.has(bossId);
   }
 
-  private districtAdvanceTitlePlaqueState() {
+  districtAdvanceTitlePlaqueState() {
     const key = uiIconAssets['district-advance-title-plaque'].key;
     const count = countTextureInGameObjects(this.children.list, key);
     return {
@@ -7597,14 +8119,25 @@ class RouteScene extends Phaser.Scene {
     if (!this.selectedNodeId || !this.selectableNodeIds.has(this.selectedNodeId)) return;
     const nodeId = this.selectedNodeId;
     const confirm = this.routeLayout().confirm;
-    const hit = this.add.rectangle(confirm.cx, confirm.cy, ROUTE_CONFIRM_HIT_SIZE, ROUTE_CONFIRM_HIT_SIZE, 0x000000, 0.01)
+    const labelCx = confirm.cx + ROUTE_CONFIRM_LABEL_OFFSET_X;
+    const hitLeft = labelCx - ROUTE_CONFIRM_LABEL_WIDTH / 2;
+    const hitRight = confirm.cx + ROUTE_CONFIRM_HIT_SIZE / 2;
+    const hit = this.add.rectangle(
+      (hitLeft + hitRight) / 2,
+      confirm.cy,
+      hitRight - hitLeft,
+      ROUTE_CONFIRM_HIT_SIZE,
+      0x000000,
+      0.01
+    )
+      .setName('route-commit-hit')
       .setInteractive({ useHandCursor: true });
     const icon = addUiIconImage(this, 'route-commit-medallion', confirm.cx, confirm.cy, ROUTE_CONFIRM_ICON_SIZE);
     if (icon) icon.setAlpha(0.98);
-    this.add.rectangle(confirm.cx - 86, confirm.cy, 128, 30, 0x06111a, 0.96)
+    this.add.rectangle(labelCx, confirm.cy, ROUTE_CONFIRM_LABEL_WIDTH, 30, 0x06111a, 0.96)
       .setStrokeStyle(1, UI_FIELD.gold, 0.72)
       .setName('route-commit-label');
-    this.add.text(confirm.cx - 86, confirm.cy, 'TAKE ROUTE', {
+    this.add.text(labelCx, confirm.cy, 'TAKE ROUTE', {
       fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: UI_GOLD
     }).setOrigin(0.5).setName('route-commit-label');
     const iconBaseScaleX = icon?.scaleX ?? 1;
@@ -7941,7 +8474,7 @@ class RouteScene extends Phaser.Scene {
     return { x, y };
   }
 
-  private nodeVisualBounds(node: RouteNode) {
+  nodeVisualBounds(node: RouteNode) {
     const { x, y } = this.nodePosition(node);
     const iconSize = node.type === 'boss' ? ROUTE_BOSS_NODE_ICON_SIZE : ROUTE_NODE_ICON_SIZE;
     const horizontal = iconSize / 2 + ROUTE_NODE_FOCUS_PAD;
@@ -7990,7 +8523,7 @@ class RouteScene extends Phaser.Scene {
     return prefersReducedMotion() ? 0 : ROUTE_COMMIT_STREAK_DELAY_MS;
   }
 
-  private routeCommitStreakState() {
+  routeCommitStreakState() {
     const count = countTextureInGameObjects(this.children.list, ROUTE_COMMIT_STREAK_TEXTURE);
     return {
       loaded: this.textures.exists(ROUTE_COMMIT_STREAK_TEXTURE),
@@ -8408,6 +8941,7 @@ class RouteScene extends Phaser.Scene {
         };
         this.nodeChoiceOpen = false;
         this.hideRouteChoiceDetail();
+        this.routeRewardOverlayFailed = false;
         this.queueRouteRewardUiLoad();
         this.queueRouteRewardCardArtLoad();
         this.renderAll();
@@ -8425,6 +8959,7 @@ class RouteScene extends Phaser.Scene {
     this.pendingRouteReward = this.preparePendingRouteReward(node, choice, restoreState);
     this.nodeChoiceOpen = false;
     this.hideRouteChoiceDetail();
+    this.routeRewardOverlayFailed = false;
     this.queueRouteRewardUiLoad();
     this.queueRouteRewardCardArtLoad();
     this.queueRouteRewardItemArtLoad();
@@ -8714,7 +9249,7 @@ class RouteScene extends Phaser.Scene {
     this.renderAll();
   }
 
-  private claimRouteReward() {
+  claimRouteReward() {
     const pending = this.pendingRouteReward;
     if (!pending) return;
     if (this.routeCardRewardChoices.length > 0) return;
@@ -8837,16 +9372,16 @@ class RouteScene extends Phaser.Scene {
     return ids[Math.floor(Math.random() * ids.length)];
   }
 
-  private chooseRouteRewardCard(cardId: string) {
+  chooseRouteRewardCard(cardId: string) {
     const pending = this.pendingRouteReward;
     if (!pending) return;
     const reward = this.routeCardRewardChoices.find((card) => card.id === cardId);
     if (!reward) return;
     if (pending.projectedState) this.runState = cloneRunState(pending.projectedState);
     else if (!pending.effectsAppliedOnOpen) this.applyPendingRouteRewardEffects(pending, true, true);
-    this.runState.deck.push({ id: reward.id });
-    discoverCards([reward.id]);
-    this.runState.routeLog.push(`${displayName(reward)} joins the flock.`);
+    if (this.grantSpecificCard(reward.id)) {
+      this.runState.routeLog.push(`${displayName(reward)} joins the flock.`);
+    }
     this.runState.routeLog = this.runState.routeLog.slice(-8);
     const pickerPlan = this.routeRewardPickerPlan(pending.effects);
     if (pickerPlan && this.pickerEligibleCards(pickerPlan.mode, 'route').length > 0) {
@@ -8856,7 +9391,7 @@ class RouteScene extends Phaser.Scene {
     this.finishPendingRouteReward(pending);
   }
 
-  private cancelRouteCardReward() {
+  cancelRouteCardReward() {
     const pending = this.pendingRouteReward;
     if (!pending) return;
     this.runState = cloneRunState(pending.restoreState);
@@ -9346,7 +9881,7 @@ class RouteScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
   }
 
-  private renderRouteRewardItemShowcase(item: PendingRouteRewardItem, x: number, y: number, w: number, h: number, companionCards: Card[] = []) {
+  renderRouteRewardItemShowcase(item: PendingRouteRewardItem, x: number, y: number, w: number, h: number, companionCards: Card[] = []) {
     const isSupply = item.kind === 'supply';
     const supply = isSupply ? alphaSupplyLibrary.get(item.id) : undefined;
     const mark = !isSupply ? alphaRouteMarkLibrary.get(item.id) : undefined;
@@ -9541,7 +10076,7 @@ class RouteScene extends Phaser.Scene {
     return true;
   }
 
-  private renderRouteRewardEffectShowcase(pending: PendingRouteReward, x: number, y: number, w: number, h: number) {
+  renderRouteRewardEffectShowcase(pending: PendingRouteReward, x: number, y: number, w: number, h: number) {
     const accent = pending.accent;
     const previewCards = pending.previewCards ?? [];
     this.add.rectangle(x, y, w, h, 0x06101a, 0.9)
@@ -9660,126 +10195,48 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderRouteCardRewardOverlay() {
-    const pending = this.pendingRouteReward;
-    if (!pending) return;
-    const node = currentMap().nodes.find((candidate) => candidate.id === pending.nodeId);
-    const accent = pending.accent;
-    const hasCardChoices = this.routeCardRewardChoices.length > 0;
-    const isDecline = pending.effects.length === 0;
-    if (hasCardChoices || (pending.previewCards?.length ?? 0) > 0) this.queueRouteRewardCardArtLoad();
-    if (pending.previewItem) this.queueRouteRewardItemArtLoad();
-    this.renderRouteEventBackdrop(node, 0.86);
-    if (node) this.renderRouteEventAtmosphere(node, accent);
-    const profile = ROUTE_SET_PIECE_PROFILES[pending.nodeType];
-    const confirmName = profile?.residentName?.split(' ')[0] ?? routeNodeTypeLabel(pending.nodeType);
-    const frame = renderFieldPanel(this, () => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 8, 940, 558, {
-      eyebrow: node ? routeNodeTypeLabel(node.type) : 'Route Reward',
-      title: hasCardChoices ? 'Choose a Reward' : isDecline ? `Leave ${routeNodeTypeLabel(pending.nodeType)}` : pending.nodeType === 'cache' ? 'Open This Drawer' : 'Review This Choice',
-      subtitle: hasCardChoices
-        ? `Pick one card from this ${routeNodeTypeLabel(pending.nodeType).toLowerCase()}, or cancel back to ${confirmName}.`
-        : isDecline
-          ? `Leave without taking a reward, or cancel back to ${confirmName}.`
-          : `Confirm this choice, or cancel back to ${confirmName}.`,
-      accent,
-      fill: 0x07101a
-    });
-    this.add.rectangle(frame.cx, frame.cy, frame.w - 36, frame.h - 36, 0x020409, 0.16);
-    this.add.text(frame.left + 54, frame.top + 112, compactSentenceText(pending.choiceText, 58, 1), {
-      fontFamily: UI_FONT,
-      fontSize: '16px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      fixedWidth: 360,
-      fixedHeight: 42,
-      wordWrap: { width: 360 },
-      maxLines: 2
-    });
-    this.add.text(frame.left + 54, frame.top + 164, compactSentenceText(pending.effectText || 'No reward will be taken.', 104, 1), {
-      fontFamily: UI_FONT,
-      fontSize: '13px',
-      fontStyle: UI_BOLD,
-      color: UI_SOFT,
-      fixedWidth: 360,
-      fixedHeight: 38,
-      wordWrap: { width: 360 },
-      maxLines: 2
-    });
-    const decisionPreview = pending.decisionPreview ?? ['NO STATE CHANGE'];
-    this.add.text(frame.left + 54, frame.top + 214, 'DECISION', {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: UI_CYAN,
-      letterSpacing: 1.2,
-    });
-    decisionPreview.slice(0, 7).forEach((row, index) => {
-      const rowY = frame.top + 244 + index * 38;
-      this.renderRouteChoicePreviewRowFrame(frame.left + 220, rowY, 342, 31, 0.7);
-      this.add.text(frame.left + 66, rowY - 8, compactSentenceText(row, 46, 1), {
+    if (!this.routeRewardOverlayModule) {
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.76)
+        .setInteractive({ useHandCursor: false });
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 620, 220, 0x050a12, 0.97)
+        .setStrokeStyle(1.5, this.routeRewardOverlayFailed ? UI_FIELD.danger : UI_FIELD.gold, 0.62);
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 12, this.routeRewardOverlayFailed
+        ? 'Reward review unavailable'
+        : 'Opening reward review?', {
         fontFamily: UI_FONT,
-        fontSize: '11px',
+        fontSize: '18px',
         fontStyle: UI_BOLD,
-        color: row.startsWith('NEXT FIGHT') || row.startsWith('ENEMY COVER') ? '#ffd5cc' : '#e8f4ff',
-        fixedWidth: 308,
-        maxLines: 1,
-      });
-    });
-    this.add.rectangle(frame.left + 408, frame.cy + 14, 2, 396, accent, 0.36);
-    if (!hasCardChoices) {
-      const panelX = frame.left + 672;
-      const panelY = frame.top + 326;
-      if (!pending.previewItem || !this.renderRouteRewardItemShowcase(pending.previewItem, panelX, panelY, 410, 238, pending.previewCards ?? [])) {
-        this.renderRouteRewardEffectShowcase(pending, panelX, panelY, 410, 238);
-      }
-      const claim = this.add.rectangle(frame.right - 158, frame.bottom - 48, 180, 38, 0x102235, 0.98)
-        .setStrokeStyle(2, accent, 0.92);
-      const claimHit = this.add.rectangle(frame.right - 158, frame.bottom - 48, 180, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-        .setInteractive({ useHandCursor: true })
-        .setName('route-reward-claim-hit');
-      claimHit.on('pointerover', () => claim.setFillStyle(0x18314a, 1));
-      claimHit.on('pointerout', () => claim.setFillStyle(0x102235, 0.98));
-      claimHit.on('pointerdown', () => {
-        playUiSound('confirm');
-        this.claimRouteReward();
-      });
-      const claimLabel = isDecline ? 'Leave' : pending.nodeType === 'cache' ? 'Claim' : 'Confirm';
-      this.add.text(frame.right - 158, frame.bottom - 60, claimLabel, {
-        fontFamily: UI_FONT,
-        fontSize: '15px',
-        fontStyle: UI_BOLD,
-        color: UI_GOLD,
-        align: 'center',
-        fixedWidth: 150
-      }).setOrigin(0.5, 0);
-    }
-    this.routeCardRewardChoices.forEach((card, index) => {
-      const cardW = 148;
-      const cardH = Math.round(cardW * 1.5);
-      const x = frame.left + 540 + index * 190;
-      const y = frame.top + 336;
-      const accentColor = card.type === 'major' ? UI_FIELD.gold : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
-      addRewardRevealHaloFx(this, x, y, cardW + 68, cardH + 98, 0.18);
-      this.renderRouteRewardCardOption(card, x, y, cardW, cardH, accentColor);
-      this.add.rectangle(x, y + cardH / 2 + 24, cardW + 16, 34, 0x020409, 0.94)
-        .setStrokeStyle(1, accentColor, 0.72);
-      this.add.text(x, y + cardH / 2 + 12, displayName(card), {
+        color: this.routeRewardOverlayFailed ? '#ffb09a' : UI_FIELD.warm,
+      }).setOrigin(0.5);
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 26, this.routeRewardOverlayFailed
+        ? 'Cancel and reopen the choice to retry.'
+        : 'Preparing the decision preview.', {
         fontFamily: UI_FONT,
         fontSize: '12px',
-        fontStyle: UI_BOLD,
-        color: UI_GOLD,
-        align: 'center',
-        fixedWidth: cardW,
-        fixedHeight: 28,
-        wordWrap: { width: cardW },
-        maxLines: 2
-      }).setOrigin(0.5, 0);
-      const hit = this.add.rectangle(x, y + 8, cardW + 18, cardH + 76, 0x000000, 0.01)
-        .setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', () => this.chooseRouteRewardCard(card.id));
-      hit.on('pointerover', () => this.showHoverCardDetail(card, 'Cache reward', card.cost, x, y));
-      hit.on('pointerout', () => this.hideHoverCardDetail());
-    });
-    this.renderRouteEventCancelButton(frame.left + 126, frame.bottom - 48, 166, 38, 'Cancel', () => this.cancelRouteCardReward());
+        color: UI_SOFT,
+      }).setOrigin(0.5);
+      this.ensureRouteRewardOverlay();
+      return;
+    }
+    this.routeRewardOverlayModule.renderRouteRewardOverlay(this);
+  }
+
+  private ensureRouteRewardOverlay() {
+    if (this.routeRewardOverlayModule || this.routeRewardOverlayLoading || this.routeRewardOverlayFailed) return;
+    this.routeRewardOverlayLoading = true;
+    void loadRouteRewardOverlayModule()
+      .then((module) => {
+        if (!this.sys.settings.active) return;
+        this.routeRewardOverlayModule = module;
+        this.routeRewardOverlayLoading = false;
+        if (this.pendingRouteReward) this.renderAll();
+      })
+      .catch((error) => {
+        this.routeRewardOverlayLoading = false;
+        this.routeRewardOverlayFailed = true;
+        console.warn(LAZY_LOAD_FAILED, error);
+        if (this.sys.settings.active && this.pendingRouteReward) this.renderAll();
+      });
   }
 
   private applyProjectedMarketPurchaseTriggers(runState: RunState) {
@@ -9904,28 +10361,99 @@ class RouteScene extends Phaser.Scene {
     const adjustedAnchorX = this.marketOpen && zone.startsWith('Market offer')
       ? 440
       : anchorX;
-    const detail = setDisplayTreeDepth(
-      renderFloatingCardDetail(this, card, displayZone, cost, adjustedAnchorX, anchorY),
-      23020
-    ) as Phaser.GameObjects.Container;
-    this.hoverCardDetail = this.add.container(0, 0).setDepth(23020);
-    this.hoverCardDetail.add(detail);
+    const contract = activeCardContract(card, false);
+    this.cardHoverDetailRequest = {
+      name: displayName(card),
+      bird: card.bird,
+      label: cardLabel(card),
+      zone: displayZone,
+      cost,
+      anchorX: adjustedAnchorX,
+      anchorY,
+      accent: card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card),
+      artKey: loadedCardArtKey(this, card),
+      snagBorderKey: isSnagCard(card) ? snagCardBorderAsset.key : undefined,
+      target: targetLabel(contract.target),
+      role: contract.role,
+      currentText: contract.text,
+      upgradedText: card.upgraded ? 'Already preened.' : card.upgradedText,
+      baseText: displayText(card),
+      moltText: card.moltText ? (card.upgraded && card.moltTextUpgraded ? card.moltTextUpgraded : card.moltText) : undefined,
+      usesMolt: contract.usesMolt,
+      stats: cardStatRows(card),
+      reducedMotion: prefersReducedMotion(),
+      dossierFrameKey: uiIconAssets['card-hover-dossier-frame'].key,
+      statChipFrameKey: uiIconAssets['card-hover-stat-chip-frame'].key,
+    };
+    this.renderHoverCardDetailRequest();
     this.queueCardPortraitArtLoad(card, 'Hover art', () => {
-      if (!this.hoverCardDetail) return;
-      this.hoverCardDetail.destroy(true);
-      const reloadedDetail = setDisplayTreeDepth(
-        renderFloatingCardDetail(this, card, displayZone, cost, adjustedAnchorX, anchorY),
-        23020
-      ) as Phaser.GameObjects.Container;
-      this.hoverCardDetail = this.add.container(0, 0).setDepth(23020);
-      this.hoverCardDetail.add(reloadedDetail);
+      if (!this.cardHoverDetailRequest || this.cardHoverDetailRequest.name !== displayName(card)) return;
+      this.cardHoverDetailRequest.artKey = loadedCardArtKey(this, card);
+      this.renderHoverCardDetailRequest();
     });
   }
 
   private hideHoverCardDetail() {
     this.hoverCardDetail?.destroy(true);
     this.hoverCardDetail = undefined;
+    this.cardHoverDetailRequest = undefined;
     this.marketDecisionPreview = [];
+  }
+
+  private preloadCardHoverDetail() {
+    if (this.cardHoverDetailModule || this.cardHoverDetailLoading) return;
+    this.cardHoverDetailLoading = true;
+    void loadCardHoverDetailModule()
+      .then((module) => {
+        if (!this.scene.isActive()) return;
+        this.cardHoverDetailModule = module;
+        this.cardHoverDetailLoading = false;
+        this.renderHoverCardDetailRequest();
+        if (this.deckOverlayOpen || this.cardPickerMode) this.renderAll();
+      })
+      .catch(() => {
+        if (!this.scene.isActive()) return;
+        this.cardHoverDetailLoading = false;
+      });
+  }
+
+  private renderHoverCardDetailRequest() {
+    const view = this.cardHoverDetailRequest;
+    if (!view) return;
+    this.hoverCardDetail?.destroy(true);
+    this.hoverCardDetail = this.add.container(0, 0).setDepth(23020);
+    if (this.cardHoverDetailModule) {
+      const detail = setDisplayTreeDepth(
+        this.cardHoverDetailModule.renderCardHoverDetail(this, view),
+        23020
+      ) as Phaser.GameObjects.Container;
+      this.hoverCardDetail.add(detail);
+      return;
+    }
+    const cx = view.anchorX < GAME_WIDTH / 2
+      ? Math.min(GAME_WIDTH - 168, view.anchorX + 232)
+      : Math.max(168, view.anchorX - 232);
+    const cy = clamp(view.anchorY, 72, GAME_HEIGHT - 72);
+    this.hoverCardDetail.add(this.renderLazyDetailFallback(
+      view.name,
+      'Opening full card detail…',
+      view.accent,
+      cx,
+      cy,
+    ));
+    this.preloadCardHoverDetail();
+  }
+
+  private renderLazyDetailFallback(title: string, body: string, accent: number, x: number, y: number) {
+    return this.add.container(x, y, [
+      this.add.rectangle(0, 0, 300, 120, 0x06090f, 0.98).setStrokeStyle(2, accent, 0.9),
+      this.add.text(0, -26, title, {
+        fontFamily: UI_FONT, fontSize: '20px', fontStyle: UI_BOLD, color: UI_GOLD,
+      }).setOrigin(0.5),
+      this.add.text(0, 16, body, {
+        fontFamily: UI_FONT, fontSize: '12px', color: UI_SOFT, wordWrap: { width: 270 }, align: 'center',
+      }).setOrigin(0.5),
+    ]).setDepth(23040);
   }
 
   private showMarketWaymarkDetail(mark: RuntimeRouteMark, price: number, anchorX: number, anchorY: number) {
@@ -10000,28 +10528,6 @@ class RouteScene extends Phaser.Scene {
     });
   }
 
-  private renderMarketDetailDossierFrame(w: number, h: number, enabled: boolean) {
-    const key = uiIconAssets['market-detail-dossier-frame'].key;
-    if (!this.textures.exists(key)) return [];
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const displayW = w + 52;
-    const displayH = h + 56;
-    const frame = this.add.image(w / 2, h / 2, key)
-      .setDisplaySize(displayW, displayH)
-      .setAlpha(enabled ? 0.86 : 0.54)
-      .setName('market-detail-dossier-frame');
-    const glint = this.add.image(w / 2, h / 2, key)
-      .setDisplaySize(displayW + 8, displayH + 8)
-      .setAlpha(enabled ? 0.18 : 0.08)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setName('market-detail-dossier-frame');
-    if (!enabled) {
-      frame.setTint(0x8fa4bd);
-      glint.setTint(0x8fa4bd);
-    }
-    return [frame, glint];
-  }
-
   private showMarketItemDetail(opts: {
     title: string;
     kicker: string;
@@ -10036,66 +10542,17 @@ class RouteScene extends Phaser.Scene {
     this.hideMarketItemDetail();
     this.hideHoverCardDetail();
     this.marketDecisionPreview = [...(opts.decisionPreview ?? [])];
-    const w = 306;
-    const body = this.add.text(16, 74, opts.body, {
-      fontFamily: UI_FONT,
-      fontSize: '13px',
-      color: '#dbe6f2',
-      lineSpacing: 3,
-      wordWrap: { width: w - 32 },
-      maxLines: 4
-    });
     const afterPurchase = opts.price === undefined || (opts.decisionPreview?.length ?? 0) > 0
       ? ''
       : `  /  After purchase: ${Math.max(0, this.runState.scrap - opts.price)} Scrap`;
-    const decisionText = opts.decisionPreview?.length ? `\nDECISION\n${opts.decisionPreview.join('\n')}` : '';
-    const meta = this.add.text(16, 86 + body.height, `${opts.meta}${afterPurchase}${decisionText}`, {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: UI_CYAN,
-      lineSpacing: 2,
-      wordWrap: { width: w - 32 },
-      maxLines: 9
-    });
-    const h = Math.max(150, 104 + body.height + meta.height);
-    const bg = this.add.rectangle(0, 0, w, h, 0x07101a, 1)
-      .setOrigin(0, 0)
-      .setStrokeStyle(2, opts.accent, 1);
-    const frameArt = this.renderMarketDetailDossierFrame(w, h, opts.price === undefined || this.runState.scrap >= opts.price);
-    const rail = this.add.rectangle(0, 0, w, 4, opts.accent, 1).setOrigin(0, 0);
-    const title = this.add.text(16, 13, opts.title, {
-      fontFamily: UI_FONT,
-      fontSize: '17px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      wordWrap: { width: opts.price === undefined ? w - 32 : w - 118 },
-      maxLines: 2
-    });
-    const price = opts.price === undefined
-      ? undefined
-      : this.add.text(w - 16, 16, `${opts.price}`, {
-        fontFamily: UI_FONT,
-        fontSize: '17px',
-        fontStyle: UI_BOLD,
-        color: '#f0c36f'
-      }).setOrigin(1, 0);
-    const scrapIcon = opts.price === undefined ? undefined : addUiIconImage(this, 'scrap-gear', w - 72, 27, 11)?.setAlpha(0.94);
-    const kicker = this.add.text(16, 52, opts.kicker.toUpperCase(), {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: '#91a6b8',
-      wordWrap: { width: w - 32 },
-      maxLines: 1
-    });
-    const panelChildren = [bg, ...frameArt, rail, title, ...(price ? [price] : []), ...(scrapIcon ? [scrapIcon] : []), kicker, body, meta];
-    const panel = this.add.container(0, 0, panelChildren).setDepth(23040);
-    const px = Math.max(12, Math.min(GAME_WIDTH - w - 12, opts.anchorX - w / 2));
-    const above = opts.anchorY - h - 22;
-    const py = above > 10 ? above : Math.min(GAME_HEIGHT - h - 12, opts.anchorY + 48);
-    panel.setPosition(px, py);
-    this.marketItemHover = panel;
+    this.marketItemHover = this.cardHoverDetailModule?.renderMarketItemDetail(this, {
+      ...opts,
+      afterPurchase,
+      decisionPreview: opts.decisionPreview ?? [],
+      enabled: opts.price === undefined || this.runState.scrap >= opts.price,
+      dossierFrameKey: uiIconAssets['market-detail-dossier-frame'].key,
+      scrapIconKey: uiIconAssets['scrap-gear'].key,
+    }) ?? this.renderLazyDetailFallback(opts.title, opts.body, opts.accent, opts.anchorX, opts.anchorY - 70);
   }
 
   private hideMarketItemDetail() {
@@ -10185,9 +10642,16 @@ class RouteScene extends Phaser.Scene {
   }
 
   private grantSpecificCard(cardId: string) {
-    if (!cardLibrary[cardId]) return;
+    const card = cardLibrary[cardId];
+    if (!card) return false;
+    if (this.runState.deck.some((saved) => saved.id === cardId)) {
+      this.runState.routeLog.push(`${card.runtime.displayName} is already in the flock; no duplicate was added.`);
+      this.runState.routeLog = this.runState.routeLog.slice(-8);
+      return false;
+    }
     this.runState.deck.push({ id: cardId });
     discoverCards([cardId]);
+    return true;
   }
 
   private selectCardRewardId(selector: string) {
@@ -10808,6 +11272,7 @@ class RouteScene extends Phaser.Scene {
     let openSkyCut = this.runState.nextCombat?.reduceNextOpenSky ?? 0;
     let enemyCover = this.runState.nextCombat?.enemyCover ?? 0;
     let bossShield = this.runState.nextCombat?.bossDamageShield ?? 0;
+    const ownedCardIds = new Set(this.runState.deck.map((card) => card.id));
     const supplyCap = runSupplyCapacity(this.runState);
     const setRow = (id: string, label: string, before: string, after: string, color: string) => {
       rows.set(id, { label, before: rows.get(id)?.before ?? before, after, color });
@@ -10859,12 +11324,24 @@ class RouteScene extends Phaser.Scene {
           setRow('hp', 'Cohesion', `${before}/${maxHp}`, `${hp}/${maxHp}`, '#e4fbe9');
           break;
         }
-        case 'addCard':
+        case 'addCard': {
+          const before = deck;
+          const isSpecificCard = Boolean(cardLibrary[arg0]);
+          if (!isSpecificCard || !ownedCardIds.has(arg0)) {
+            deck += 1;
+            if (isSpecificCard) ownedCardIds.add(arg0);
+          }
+          setRow('deck', 'Deck', `${before}`, `${deck}`, '#fff0b8');
+          break;
+        }
         case 'addSnagToDiscard':
         case 'addSnagToDraw': {
           const before = deck;
-          deck += 1;
-          setRow('deck', 'Deck', `${before}`, `${deck}`, parsed.name === 'addCard' ? '#fff0b8' : '#ffd5cc');
+          if (arg0 && !ownedCardIds.has(arg0)) {
+            deck += 1;
+            ownedCardIds.add(arg0);
+          }
+          setRow('deck', 'Deck', `${before}`, `${deck}`, '#ffd5cc');
           break;
         }
         case 'releaseCard': {
@@ -11445,7 +11922,7 @@ class RouteScene extends Phaser.Scene {
     }
   }
 
-  private routeChoiceDecisionFrameState() {
+  routeChoiceDecisionFrameState() {
     const key = uiIconAssets['route-choice-decision-frame'].key;
     const count = this.children.list.filter((child: any) => (
       child.texture?.key === key || child.name === 'route-choice-decision-frame'
@@ -11457,7 +11934,7 @@ class RouteScene extends Phaser.Scene {
     };
   }
 
-  private routeEventTitlePlaqueState() {
+  routeEventTitlePlaqueState() {
     const key = uiIconAssets['route-event-title-plaque'].key;
     const count = countTextureInGameObjects(this.children.list, key);
     return {
@@ -11467,7 +11944,7 @@ class RouteScene extends Phaser.Scene {
     };
   }
 
-  private routeChoiceOptionFrameState() {
+  routeChoiceOptionFrameState() {
     const key = uiIconAssets['route-choice-option-frame'].key;
     const count = countTextureInGameObjects(this.children.list, key);
     return {
@@ -11477,7 +11954,7 @@ class RouteScene extends Phaser.Scene {
     };
   }
 
-  private routeChoiceDetailFrameState() {
+  routeChoiceDetailFrameState() {
     const key = uiIconAssets['route-choice-detail-frame'].key;
     const count = countTextureInGameObjects(this.routeChoiceHover?.list ?? [], key);
     return {
@@ -11487,7 +11964,7 @@ class RouteScene extends Phaser.Scene {
     };
   }
 
-  private routeChoicePreviewRowFrameState() {
+  routeChoicePreviewRowFrameState() {
     const key = uiIconAssets['route-choice-preview-row-frame'].key;
     const count = countTextureInGameObjects(this.routeChoiceHover?.list ?? [], key);
     return {
@@ -12430,7 +12907,7 @@ class RouteScene extends Phaser.Scene {
     return { x: layout.utilityX + 300, y: layout.serviceBaseY + serviceCount * 58 };
   }
 
-  private marketPurchaseFlourishState() {
+  marketPurchaseFlourishState() {
     const key = uiIconAssets['market-purchase-flourish'].key;
     const count = this.children.list.filter((child: any) => child.texture?.key === key || child.name === 'market-purchase-flourish').length;
     return {
@@ -12448,7 +12925,7 @@ class RouteScene extends Phaser.Scene {
     this.updateTextState();
   }
 
-  private marketOfferTrayState() {
+  marketOfferTrayState() {
     const key = uiIconAssets['market-offer-tray'].key;
     const count = countTextureInGameObjects(this.children.list, key);
     return {
@@ -12458,7 +12935,7 @@ class RouteScene extends Phaser.Scene {
     };
   }
 
-  private marketPriceChipFrameState() {
+  marketPriceChipFrameState() {
     const key = uiIconAssets['market-price-chip-frame'].key;
     const count = countTextureInGameObjects(this.children.list, key);
     return {
@@ -12468,7 +12945,7 @@ class RouteScene extends Phaser.Scene {
     };
   }
 
-  private marketServiceButtonFrameState() {
+  marketServiceButtonFrameState() {
     const key = uiIconAssets['market-service-button-frame'].key;
     const count = countTextureInGameObjects(this.children.list, key);
     return {
@@ -12478,7 +12955,7 @@ class RouteScene extends Phaser.Scene {
     };
   }
 
-  private marketItemLabelFrameState() {
+  marketItemLabelFrameState() {
     const key = uiIconAssets['market-item-label-frame'].key;
     const count = countTextureInGameObjects(this.children.list, key);
     return {
@@ -12488,7 +12965,7 @@ class RouteScene extends Phaser.Scene {
     };
   }
 
-  private marketCardPriceTagFrameState() {
+  marketCardPriceTagFrameState() {
     const key = uiIconAssets['market-card-price-tag-frame'].key;
     const count = countTextureInGameObjects(this.children.list, key);
     return {
@@ -12498,7 +12975,7 @@ class RouteScene extends Phaser.Scene {
     };
   }
 
-  private marketObjectBackplateFrameState() {
+  marketObjectBackplateFrameState() {
     const key = uiIconAssets['market-object-backplate-frame'].key;
     const count = countTextureInGameObjects(this.children.list, key);
     return {
@@ -12508,7 +12985,7 @@ class RouteScene extends Phaser.Scene {
     };
   }
 
-  private marketSectionHeaderFrameState() {
+  marketSectionHeaderFrameState() {
     const key = uiIconAssets['market-section-header-frame'].key;
     const count = countTextureInGameObjects(this.children.list, key);
     return {
@@ -12518,7 +12995,7 @@ class RouteScene extends Phaser.Scene {
     };
   }
 
-  private marketVendorTitlePlaqueState() {
+  marketVendorTitlePlaqueState() {
     const key = uiIconAssets['market-vendor-title-plaque'].key;
     const count = countTextureInGameObjects(this.children.list, key);
     return {
@@ -12744,7 +13221,7 @@ class RouteScene extends Phaser.Scene {
       picked.add(id);
       listings.push({
         id,
-        price: priceInBand(slot.price, cardRarityStep(card.runtime.rarity))
+        price: priceInBand(slot.price, rarityStep(card.runtime.rarity))
       });
     }
     return listings;
@@ -12773,7 +13250,7 @@ class RouteScene extends Phaser.Scene {
       picked.add(id);
       listings.push({
         id,
-        price: priceInBand(slot.price, routeMarkRarityStep(mark.rarity))
+        price: priceInBand(slot.price, rarityStep(mark.rarity))
       });
     }
     return listings;
@@ -12804,7 +13281,7 @@ class RouteScene extends Phaser.Scene {
       listings.push({
         id: 'supply',
         supplyId: supply.id,
-        price: priceInBand(slot.price, supplyRarityStep(supply.rarity))
+        price: priceInBand(slot.price, rarityStep(supply.rarity))
       });
     }
     return listings;
@@ -12898,7 +13375,7 @@ class RouteScene extends Phaser.Scene {
     this.scene.restart({ runState: cloneRunState(this.runState) });
   }
 
-  private marketCardOffer() {
+  marketCardOffer() {
     const listing = this.marketCardShelf.find((offer) => !offer.sold);
     if (!listing) return undefined;
     const card = cloneCard(listing.id);
@@ -12913,7 +13390,7 @@ class RouteScene extends Phaser.Scene {
     }));
   }
 
-  private marketRouteMarkOffer() {
+  marketRouteMarkOffer() {
     const listing = this.marketWaymarkShelf.find((offer) => !offer.sold);
     const mark = listing ? alphaRouteMarkLibrary.get(listing.id) : undefined;
     return mark ? { id: mark.id, name: mark.name, text: mark.description, price: listing?.price ?? MARKET_ROUTE_MARK_PRICE } : undefined;
@@ -12930,7 +13407,7 @@ class RouteScene extends Phaser.Scene {
     });
   }
 
-  private marketPreenCandidate() {
+  marketPreenCandidate() {
     return this.firstPreenCandidate();
   }
 
@@ -12945,7 +13422,7 @@ class RouteScene extends Phaser.Scene {
   private marketPreenPrice(card?: Card) {
     const shelfPreen = !card ? this.marketUtilityShelf.find((offer) => offer.id === 'preen' && !offer.sold) : undefined;
     if (shelfPreen) return shelfPreen.price;
-    const raritySurcharge = card ? Math.min(2, cardRarityStep(card.runtime.rarity)) * 10 : 0;
+    const raritySurcharge = card ? Math.min(2, rarityStep(card.runtime.rarity)) * 10 : 0;
     return Math.max(35, MARKET_PREEN_PRICE + raritySurcharge - this.routeMarkValue('passive', 'reducePreenPrice'));
   }
 
@@ -12989,8 +13466,33 @@ class RouteScene extends Phaser.Scene {
     this.supplyDrawerOpen = false;
     this.inspectedCardId = undefined;
     this.cardReviewScroll = 0;
+    this.deckReviewFilter = 'all';
+    this.deckReviewSort = 'run';
+    this.deckReviewQuery = '';
+    this.deckReviewSearchActive = false;
+    this.deckReviewCompareCardId = undefined;
+    this.routeDeckBrowserFailed = false;
     this.renderAll();
+    this.ensureRouteDeckBrowser();
     this.queueDeckCardArtLoad();
+  }
+
+  private ensureRouteDeckBrowser() {
+    if (this.routeDeckBrowserModule || this.routeDeckBrowserLoading || this.routeDeckBrowserFailed) return;
+    this.routeDeckBrowserLoading = true;
+    void loadRouteDeckBrowserModule()
+      .then((module) => {
+        if (!this.sys.settings.active) return;
+        this.routeDeckBrowserModule = module;
+        this.routeDeckBrowserLoading = false;
+        if (this.deckOverlayOpen) this.renderAll();
+      })
+      .catch((error) => {
+        this.routeDeckBrowserLoading = false;
+        this.routeDeckBrowserFailed = true;
+        console.warn(LAZY_LOAD_FAILED, error);
+        if (this.sys.settings.active && this.deckOverlayOpen) this.renderAll();
+      });
   }
 
   private openFlockOverlay() {
@@ -12998,7 +13500,27 @@ class RouteScene extends Phaser.Scene {
     this.deckOverlayOpen = false;
     this.waymarkDrawerOpen = false;
     this.supplyDrawerOpen = false;
+    this.ensureFlockStatsOverlay();
     this.renderAll();
+  }
+
+  private ensureFlockStatsOverlay() {
+    if (this.flockStatsOverlayModule || this.flockStatsOverlayLoading) return;
+    this.flockStatsOverlayLoading = true;
+    this.flockStatsOverlayFailed = false;
+    void loadFlockStatsOverlayModule()
+      .then((module) => {
+        if (!this.sys.settings.active) return;
+        this.flockStatsOverlayModule = module;
+        this.flockStatsOverlayLoading = false;
+        if (this.flockOverlayOpen) this.renderAll();
+      })
+      .catch((error) => {
+        this.flockStatsOverlayLoading = false;
+        this.flockStatsOverlayFailed = true;
+        console.warn(LAZY_LOAD_FAILED, error);
+        if (this.sys.settings.active && this.flockOverlayOpen) this.renderAll();
+      });
   }
 
   private closeFlockOverlay() {
@@ -13007,17 +13529,24 @@ class RouteScene extends Phaser.Scene {
   }
 
   private openWaymarkDrawer() {
+    const marks = this.ownedRouteMarkDefs();
     this.waymarkDrawerOpen = true;
     this.routeWaymarkScroll = 0;
+    this.routeWaymarkSelectedId = marks[0]?.id;
+    this.routeWaymarkPinnedId = undefined;
+    this.waymarkReviewFailed = false;
     this.deckOverlayOpen = false;
     this.flockOverlayOpen = false;
     this.supplyDrawerOpen = false;
     this.renderAll();
     this.queueRouteWaymarkArtLoad();
+    this.ensureWaymarkReviewModule();
   }
 
   private closeWaymarkDrawer() {
     this.waymarkDrawerOpen = false;
+    this.routeWaymarkSelectedId = undefined;
+    this.routeWaymarkPinnedId = undefined;
     this.renderAll();
   }
 
@@ -13026,8 +13555,28 @@ class RouteScene extends Phaser.Scene {
     this.deckOverlayOpen = false;
     this.flockOverlayOpen = false;
     this.waymarkDrawerOpen = false;
+    this.routeSupplyDrawerFailed = false;
     this.renderAll();
+    this.ensureRouteSupplyDrawer();
     this.queueRouteSupplyArtLoad();
+  }
+
+  private ensureRouteSupplyDrawer() {
+    if (this.routeSupplyDrawerModule || this.routeSupplyDrawerLoading || this.routeSupplyDrawerFailed) return;
+    this.routeSupplyDrawerLoading = true;
+    void loadRouteSupplyDrawerModule()
+      .then((module) => {
+        if (!this.sys.settings.active) return;
+        this.routeSupplyDrawerModule = module;
+        this.routeSupplyDrawerLoading = false;
+        if (this.supplyDrawerOpen) this.renderAll();
+      })
+      .catch((error) => {
+        this.routeSupplyDrawerLoading = false;
+        this.routeSupplyDrawerFailed = true;
+        console.warn(LAZY_LOAD_FAILED, error);
+        if (this.sys.settings.active && this.supplyDrawerOpen) this.renderAll();
+      });
   }
 
   private closeSupplyDrawer() {
@@ -13041,189 +13590,244 @@ class RouteScene extends Phaser.Scene {
       .filter((mark): mark is RuntimeRouteMark => Boolean(mark));
   }
 
+  private ensureWaymarkReviewModule() {
+    if (this.waymarkReviewModule || this.waymarkReviewLoading || this.waymarkReviewFailed) return;
+    this.waymarkReviewLoading = true;
+    void loadWaymarkReviewModule()
+      .then((module) => {
+        this.waymarkReviewModule = module;
+        this.waymarkReviewLoading = false;
+        if (this.sys.settings.active && this.waymarkDrawerOpen) this.renderAll();
+      })
+      .catch((error) => {
+        this.waymarkReviewLoading = false;
+        this.waymarkReviewFailed = true;
+        console.warn(LAZY_LOAD_FAILED, error);
+        if (this.sys.settings.active && this.waymarkDrawerOpen) this.renderAll();
+      });
+  }
+
+  private selectedRouteWaymark() {
+    const marks = this.ownedRouteMarkDefs();
+    return marks.find((mark) => mark.id === this.routeWaymarkSelectedId) ?? marks[0];
+  }
+
+  private pinnedRouteWaymark() {
+    return this.ownedRouteMarkDefs().find((mark) => mark.id === this.routeWaymarkPinnedId);
+  }
+
+  private selectRouteWaymark(id: string, announce = true) {
+    const marks = this.ownedRouteMarkDefs();
+    const index = marks.findIndex((mark) => mark.id === id);
+    if (index < 0 || this.routeWaymarkSelectedId === id) return;
+    this.routeWaymarkSelectedId = id;
+    const selectedRow = Math.floor(index / 3);
+    if (selectedRow < this.routeWaymarkScroll) this.routeWaymarkScroll = selectedRow;
+    else if (selectedRow >= this.routeWaymarkScroll + 2) this.routeWaymarkScroll = selectedRow - 1;
+    if (announce) playUiSound('confirm');
+    this.renderAll();
+  }
+
+  private moveRouteWaymarkSelection(delta: number) {
+    if (!this.waymarkDrawerOpen) return;
+    const marks = this.ownedRouteMarkDefs();
+    if (marks.length === 0) return;
+    const current = Math.max(0, marks.findIndex((mark) => mark.id === this.selectedRouteWaymark()?.id));
+    const next = (current + delta % marks.length + marks.length) % marks.length;
+    this.selectRouteWaymark(marks[next].id);
+  }
+
+  private toggleRouteWaymarkPin(id = this.selectedRouteWaymark()?.id) {
+    if (!this.waymarkDrawerOpen || !id) return;
+    this.routeWaymarkPinnedId = this.routeWaymarkPinnedId === id ? undefined : id;
+    this.ensureWaymarkReviewModule();
+    playUiSound(this.routeWaymarkPinnedId ? 'confirm' : 'close');
+    this.renderAll();
+  }
+
+  private routeWaymarkReviewEntry(mark: RuntimeRouteMark): SceneWaymarkReviewEntry {
+    return {
+      id: mark.id,
+      name: mark.name,
+      meta: `${routeMarkFamilyLabel(mark.family)} / ${mark.rarity.toUpperCase()} / ${mark.source.toUpperCase()}`,
+      trigger: formatWaymarkTrigger(mark.trigger),
+      description: mark.description,
+      effects: routeMarkEffects(mark).map((effect) => formatEffects([effect])),
+      tags: waymarkSynergyTags(mark),
+      accent: routeMarkAccent(mark),
+      artKey: waymarkCompactArtAssets[mark.id]?.key,
+      flavorText: mark.flavorText ?? '',
+      glyph: waymarkGlyph(mark),
+      tileMeta: `${routeMarkFamilyLabel(mark.family)} / ${mark.rarity}`,
+      summary: compactEffectGrammar(routeMarkEffects(mark), 72, 2),
+    };
+  }
+
+  routeWaymarkTextEntry(mark: RuntimeRouteMark) {
+    return {
+      id: mark.id,
+      name: mark.name,
+      family: routeMarkFamilyLabel(mark.family),
+      rarity: mark.rarity,
+      source: mark.source,
+      trigger: formatWaymarkTrigger(mark.trigger),
+      description: mark.description,
+      effects: routeMarkEffects(mark).map((effect, index) => ({
+        order: index + 1,
+        text: formatEffects([effect]),
+        grammar: effect,
+      })),
+      tags: waymarkSynergyTags(mark),
+    };
+  }
+
 
   private renderRouteWaymarkDrawer() {
     const marks = this.ownedRouteMarkDefs();
+    const selected = this.selectedRouteWaymark();
+    const pinned = this.pinnedRouteWaymark();
     this.queueRouteWaymarkArtLoad();
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.66)
-      .setInteractive({ useHandCursor: false });
 
-    const panelW = HUD_MENU_PANEL.w;
-    const panelH = HUD_MENU_PANEL.h;
-    const frame = renderFieldPanel(this, () => {}, HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy, panelW, panelH, {
-      eyebrow: 'Route Kit',
-      title: 'Found Waymarks',
-      subtitle: `${marks.length} artifact item${marks.length === 1 ? '' : 's'} carried this run`,
-      accent: UI_FIELD.violet
-    });
-    addRunKitDrawerFlourish(this, () => {}, frame, { alpha: 0.11, tint: 0xe7d8ff, yOffset: 8 });
-    addUiIconImage(this, 'waymark-compass', frame.left + HUD_MENU_PANEL.headerIconX, frame.top + HUD_MENU_PANEL.headerIconY, 28)?.setAlpha(0.92);
-    renderCloseControl(this, () => {}, frame.right - HUD_MENU_PANEL.closeX, frame.top + HUD_MENU_PANEL.closeY, () => this.closeWaymarkDrawer());
-
-    if (marks.length === 0) {
-      addUiIconImage(this, 'waymark-compass', frame.left + 88, frame.top + 160, 34)?.setAlpha(0.32);
-      this.add.text(frame.left + 126, frame.top + 150, '0 found', {
-        fontFamily: UI_FONT,
-        fontSize: '14px',
-        fontStyle: UI_BOLD,
-        color: UI_MUTED,
-        wordWrap: { width: panelW - 108 }
+    if (this.waymarkReviewModule) {
+      const entries = marks.map((mark) => this.routeWaymarkReviewEntry(mark));
+      this.waymarkReviewModule.renderSceneWaymarkDrawer(this, {
+        entries,
+        selected: entries.find((entry) => entry.id === selected?.id),
+        pinned: entries.find((entry) => entry.id === pinned?.id),
+        scrollRow: this.routeWaymarkScroll,
+        onClose: () => this.closeWaymarkDrawer(),
+        onSelect: (id) => this.selectRouteWaymark(id),
+        onPin: () => this.toggleRouteWaymarkPin(),
       });
       return;
     }
 
-    const columns = 3;
-    const visibleRows = 3;
-    const tileW = 252;
-    const tileH = 104;
-    const startX = frame.left + 64;
-    const startY = frame.top + 128;
-    const totalRows = Math.ceil(marks.length / columns);
-    const maxScrollRows = Math.max(0, totalRows - visibleRows);
-    this.routeWaymarkScroll = clamp(Math.round(this.routeWaymarkScroll), 0, maxScrollRows);
-    const visible = marks.slice(this.routeWaymarkScroll * columns, (this.routeWaymarkScroll + visibleRows) * columns);
-    visible.forEach((mark, index) => {
-      const col = index % columns;
-      const row = Math.floor(index / columns);
-      const x = startX + col * 272;
-      const y = startY + row * 112;
-      renderCompactItemTile(this, () => {}, x, y, tileW, tileH, {
-        kind: 'waymark',
-        id: mark.id,
-        glyph: waymarkGlyph(mark),
-        accent: routeMarkAccent(mark),
-        name: mark.name,
-        summary: compactEffectGrammar(routeMarkEffects(mark), 72, 2)
-      });
-    });
-
-    if (maxScrollRows > 0) {
-      const trackH = visibleRows * 112 - 8;
-      const trackX = frame.right - 38;
-      const trackY = startY + trackH / 2;
-      const thumbH = Math.max(34, trackH * (visibleRows / totalRows));
-      const thumbTravel = trackH - thumbH;
-      const thumbY = trackY - trackH / 2 + thumbH / 2 + (this.routeWaymarkScroll / maxScrollRows) * thumbTravel;
-      addRouteWaymarkScrollRailFrame(this, () => {}, trackX, trackY, trackH, thumbY, thumbH);
-    }
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.72)
+      .setInteractive({ useHandCursor: false });
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 620, 220, 0x050a12, 0.97)
+      .setStrokeStyle(1.5, this.waymarkReviewFailed ? UI_FIELD.danger : UI_FIELD.violet, 0.62)
+      .setName('route-waymark-review-panel');
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 12, this.waymarkReviewFailed
+      ? 'Waymark detail unavailable'
+      : 'Opening Waymark detail?', {
+      fontFamily: UI_FONT,
+      fontSize: '18px',
+      fontStyle: UI_BOLD,
+      color: this.waymarkReviewFailed ? '#ffb09a' : UI_FIELD.warm,
+    }).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 26, this.waymarkReviewFailed
+      ? 'Close and reopen the drawer to retry.'
+      : 'Reading trigger and effect order.', {
+      fontFamily: UI_FONT,
+      fontSize: '12px',
+      color: UI_SOFT,
+    }).setOrigin(0.5);
+    this.ensureWaymarkReviewModule();
   }
 
 
   private renderRouteSupplyDrawer() {
     this.queueRouteSupplyArtLoad();
     const capacity = runSupplyCapacity(this.runState);
-    const supplies = Array.from({ length: capacity }, (_entry, index) => this.runState.supplies[index]);
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.66)
-      .setInteractive({ useHandCursor: false });
-
-    const frame = renderFieldPanel(this, () => {}, HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy, HUD_MENU_PANEL.w, HUD_MENU_PANEL.h, {
-      eyebrow: 'Run Kit',
-      title: 'Packed Supplies',
-      subtitle: `${this.runState.supplies.length}/${capacity} supply slot${capacity === 1 ? '' : 's'} filled`,
-      accent: 0xffb86b
-    });
-    addRunKitDrawerFlourish(this, () => {}, frame, { alpha: 0.1, tint: 0xffe1a3, yOffset: 8 });
-    addUiIconImage(this, 'supply-pouch', frame.left + HUD_MENU_PANEL.headerIconX, frame.top + HUD_MENU_PANEL.headerIconY, 28)?.setAlpha(0.92);
-    renderCloseControl(this, () => {}, frame.right - HUD_MENU_PANEL.closeX, frame.top + HUD_MENU_PANEL.closeY, () => this.closeSupplyDrawer());
-
-    if (capacity === 0) {
-      addUiIconImage(this, 'supply-pouch', frame.left + 88, frame.top + 160, 34)?.setAlpha(0.32);
-      this.add.text(frame.left + 126, frame.top + 150, '0 slots', {
+    if (!this.routeSupplyDrawerModule) {
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.72)
+        .setInteractive({ useHandCursor: false });
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 620, 220, 0x050a12, 0.97)
+        .setStrokeStyle(1.5, this.routeSupplyDrawerFailed ? UI_FIELD.danger : UI_FIELD.gold, 0.62);
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 12, this.routeSupplyDrawerFailed
+        ? 'Supply drawer unavailable'
+        : 'Opening Supply drawer?', {
         fontFamily: UI_FONT,
-        fontSize: '14px',
+        fontSize: '18px',
         fontStyle: UI_BOLD,
-        color: UI_MUTED,
-        wordWrap: { width: frame.w - 108 }
-      });
+        color: this.routeSupplyDrawerFailed ? '#ffb09a' : UI_FIELD.warm,
+      }).setOrigin(0.5);
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 26, this.routeSupplyDrawerFailed
+        ? 'Close and reopen the drawer to retry.'
+        : 'Checking packed tools.', {
+        fontFamily: UI_FONT,
+        fontSize: '12px',
+        color: UI_SOFT,
+      }).setOrigin(0.5);
+      this.ensureRouteSupplyDrawer();
       return;
     }
 
-    const columns = 3;
-    const tileW = 252;
-    const tileH = 104;
-    const startX = frame.left + 64;
-    const startY = frame.top + 128;
-    supplies.forEach((supplyId, index) => {
-      const col = index % columns;
-      const row = Math.floor(index / columns);
-      const x = startX + col * 272;
-      const y = startY + row * 112;
-      const supply = supplyId ? alphaSupplyLibrary.get(supplyId) : undefined;
-      if (!supply) {
-        renderEmptySupplySlotTile(this, () => {}, x, y, tileW, tileH);
-        return;
-      }
-      const usable = supply.timing !== 'combat';
-      const bg = renderCompactItemTile(this, () => {}, x, y, tileW, tileH, {
-        kind: 'supply',
-        id: supply.id,
-        glyph: this.supplyGlyph(supply),
-        accent: supplyAccent(supply),
-        name: supply.name,
-        summary: compactEffectGrammar(supply.effects, 72, 2),
-        enabled: usable,
-        actionLabel: usable ? 'USE' : 'COMBAT'
-      });
-      if (usable) {
-        bg.setInteractive({ useHandCursor: true });
-        bg.on('pointerdown', () => this.useRouteSupply(index));
-      }
+    this.routeSupplyDrawerModule.renderRouteSupplyDrawer(this, {
+      entries: Array.from({ length: capacity }, (_entry, index) => {
+        const supply = alphaSupplyLibrary.get(this.runState.supplies[index] ?? '');
+        if (!supply) return {};
+        return {
+          id: supply.id,
+          glyph: this.supplyGlyph(supply),
+          accent: supplyAccent(supply),
+          name: supply.name,
+          summary: compactEffectGrammar(supply.effects, 72, 2),
+          usable: supply.timing !== 'combat',
+        };
+      }),
+      filled: this.runState.supplies.length,
+      capacity,
+      onClose: () => this.closeSupplyDrawer(),
+      onUse: (index) => this.useRouteSupply(index),
     });
   }
 
   private scrollRouteWaymarks(deltaRows: number) {
-    const maxScrollRows = Math.max(0, Math.ceil(this.ownedRouteMarkDefs().length / 3) - 3);
+    const marks = this.ownedRouteMarkDefs();
+    const maxScrollRows = Math.max(0, Math.ceil(marks.length / 3) - 2);
     const next = clamp(this.routeWaymarkScroll + deltaRows, 0, maxScrollRows);
     if (next === this.routeWaymarkScroll) return;
     this.routeWaymarkScroll = next;
+    const selectedColumn = Math.max(0, marks.findIndex((mark) => mark.id === this.selectedRouteWaymark()?.id)) % 3;
+    this.routeWaymarkSelectedId = marks[Math.min(marks.length - 1, next * 3 + selectedColumn)]?.id;
     this.renderAll();
   }
 
   // Flock passive stats sourced from the run deck so the flock is examinable
   // between fights without duplicating run-resource readouts from the HUD.
   private renderRouteFlockOverlay() {
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.78)
-      .setInteractive({ useHandCursor: false });
     const rows = buildFlockStatRows(cardsFromSave(this.runState.deck), this.runMaxHp())
       .filter((row) => row.label !== 'Cohesion');
-
-    const panelW = 820;
-    const panelH = 540;
-    const panelX = GAME_WIDTH / 2;
-    const panelY = GAME_HEIGHT / 2;
-    const panelTop = panelY - panelH / 2;
-    const frame = renderFieldPanel(this, () => {}, panelX, panelY, panelW, panelH, {
+    if (this.flockStatsOverlayModule) {
+      this.flockStatsOverlayModule.renderRouteFlockStats({
+        scene: this,
+        rows,
+        renderFieldPanel,
+        renderCloseControl,
+        onClose: () => this.closeFlockOverlay(),
+        reducedMotion: prefersReducedMotion(),
+      });
+      return;
+    }
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.78)
+      .setInteractive({ useHandCursor: false });
+    const frame = renderFieldPanel(this, () => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2, 820, 540, {
       eyebrow: 'Crew Dossier',
-      accent: UI_FIELD.cyan
+      accent: this.flockStatsOverlayFailed ? UI_FIELD.danger : UI_FIELD.cyan,
     });
-    addFlockStatsFlourish(this, () => {}, frame, { alpha: 0.11, yOffset: 8 });
-    const titleCx = frame.left + 330;
-    const titleCy = frame.top + 56;
-    addFlockStatsTitlePlaque(this, () => {}, titleCx, titleCy, 560, 86, { alpha: 0.58 });
-    this.add.text(titleCx, titleCy - 6, 'Flock Stats', {
+    renderCloseControl(this, () => {}, frame.right - 72, frame.top + 54, () => this.closeFlockOverlay());
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 12, this.flockStatsOverlayFailed ? 'Flock Stats unavailable' : 'Opening Flock Stats…', {
       fontFamily: UI_FONT,
-      fontSize: '28px',
+      fontSize: '24px',
       fontStyle: UI_BOLD,
-      color: UI_FIELD.warm,
-      stroke: '#020409',
-      strokeThickness: 3
+      color: this.flockStatsOverlayFailed ? '#ffb09a' : UI_FIELD.warm,
     }).setOrigin(0.5);
-    addFlockStatsCaptionFrame(this, () => {}, titleCx, titleCy + 60, 520, 34, { alpha: 0.4 });
-    this.add.text(titleCx, titleCy + 60, 'Passive bonuses from owned cards. Build them up across the run.', {
+    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 28, this.flockStatsOverlayFailed
+      ? 'Close and reopen the dossier to retry.'
+      : 'Tallying passive bonuses.', {
       fontFamily: UI_FONT,
       fontSize: '14px',
       color: UI_SOFT,
-      align: 'center',
-      wordWrap: { width: 460 }
     }).setOrigin(0.5);
-    renderFlockStatTable(this, () => {}, rows, 390, panelTop + 124);
-    renderCloseControl(this, () => {}, frame.right - 72, frame.top + 54, () => this.closeFlockOverlay());
   }
 
   private closeDeckOverlay() {
     this.deckOverlayOpen = false;
     this.inspectedCardId = undefined;
     this.cardReviewScroll = 0;
+    this.deckReviewSearchActive = false;
+    this.deckReviewCompareCardId = undefined;
     this.renderAll();
   }
 
@@ -13238,607 +13842,397 @@ class RouteScene extends Phaser.Scene {
     this.renderAll();
   }
 
-  private mapDeckCards() {
+  private toggleDeckReviewComparison(cardId = this.inspectedCardId) {
+    if (!this.deckOverlayOpen || this.deckReviewSearchActive) return;
+    const selected = getInspectedEntry(this.mapDeckCards(), cardId)?.card;
+    if (!selected) {
+      playUiSound('locked');
+      return;
+    }
+    this.deckReviewCompareCardId = this.deckReviewCompareCardId === selected.id
+      ? undefined
+      : selected.id;
+    if (this.deckReviewCompareCardId) {
+      this.cardComparisonFailed = false;
+      this.ensureCardComparisonModule();
+    }
+    playUiSound(this.deckReviewCompareCardId ? 'confirm' : 'close');
+    this.renderAll();
+  }
+
+  private ensureCardComparisonModule() {
+    if (this.cardComparisonModule || this.cardComparisonLoading || this.cardComparisonFailed) return;
+    this.cardComparisonLoading = true;
+    this.cardComparisonFailed = false;
+    void loadCardComparisonModule()
+      .then((module) => {
+        this.cardComparisonModule = module;
+        this.cardComparisonLoading = false;
+        if (this.scene.isActive() && this.deckOverlayOpen && this.deckReviewCompareCardId) {
+          this.renderAll();
+        }
+      })
+      .catch((error) => {
+        this.cardComparisonLoading = false;
+        this.cardComparisonFailed = true;
+        console.warn('Card comparison renderer failed to load.', error);
+        if (this.scene.isActive() && this.deckOverlayOpen && this.deckReviewCompareCardId) {
+          this.renderAll();
+        }
+      });
+  }
+
+  private deckReviewComparison(selected: Card | undefined) {
+    const pinned = this.allMapDeckCards().find(({ card }) => card.id === this.deckReviewCompareCardId)?.card;
+    if (!pinned || !selected) return undefined;
+    const mode: 'preen' | 'cards' = pinned.id === selected.id ? 'preen' : 'cards';
+    const leftCard = mode === 'preen' ? { ...selected, upgraded: false } : pinned;
+    const rightCard = mode === 'preen' ? { ...selected, upgraded: true } : selected;
+    const pinnedContract = activeCardContract(leftCard, false);
+    const selectedContract = activeCardContract(rightCard, false);
+    const cost = leftCard.cost === rightCard.cost
+      ? `COST SAME ${leftCard.cost}`
+      : `COST ${leftCard.cost} TO ${rightCard.cost}`;
+    const role = pinnedContract.role === selectedContract.role
+      ? `ROLE SAME ${pinnedContract.role.toUpperCase()}`
+      : `ROLE ${pinnedContract.role.toUpperCase()} TO ${selectedContract.role.toUpperCase()}`;
+    const target = pinnedContract.target === selectedContract.target
+      ? `TARGET SAME ${targetLabel(pinnedContract.target).toUpperCase()}`
+      : `TARGET ${targetLabel(pinnedContract.target).toUpperCase()} TO ${targetLabel(selectedContract.target).toUpperCase()}`;
+    const baseStats = cardStatRows(leftCard);
+    const statChange = cardStatRows(rightCard).find((row) => !baseStats.includes(row));
+    const summary = mode === 'preen'
+      ? [
+          leftCard.text === rightCard.upgradedText ? 'PREEN KEEPS RULES' : 'PREEN CHANGES RULES',
+          pinnedContract.role === selectedContract.role ? '' : role,
+          pinnedContract.target === selectedContract.target ? '' : target,
+          statChange ? `ADDS ${statChange.toUpperCase()}` : '',
+        ].filter(Boolean).slice(0, 3).join('  /  ')
+      : `${cost}  /  ${role}  /  ${target}`;
+    return {
+      pinned: leftCard,
+      selected: rightCard,
+      active: true,
+      mode,
+      summary,
+      pinnedContract,
+      selectedContract,
+    };
+  }
+
+  private allMapDeckCards() {
     return cardsFromSave(this.runState.deck).map((card) => ({ card, zone: 'Flock' }));
   }
 
-  private renderMapDeckOverlay() {
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.76)
-      .setInteractive({ useHandCursor: false });
-    const frame = renderFieldPanel(this, () => {}, HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy, HUD_MENU_PANEL.w, HUD_MENU_PANEL.h, {
-      eyebrow: 'Field Binder',
-      accent: UI_FIELD.gold
-    });
-    addDeckReviewFlourish(this, () => {}, frame, { alpha: 0.11, yOffset: 10 });
-    addDeckReviewTitlePlaque(this, () => {}, frame.left + 284, frame.top + 62, 452, 92, { alpha: 0.76 });
-    this.add.text(frame.left + 92, frame.top + 44, `Deck Review (${this.mapDeckCards().length})`, {
-      fontFamily: UI_FONT,
-      fontSize: '28px',
-      fontStyle: UI_BOLD,
-      color: UI_FIELD.warm,
-      stroke: '#020409',
-      strokeThickness: 4
-    });
-    this.add.text(frame.left + 92, frame.top + 75, `Flock deck / Cohesion ${this.runState.currentHp}/${this.runMaxHp()}`, {
-      fontFamily: UI_FONT,
-      fontSize: '14px',
-      color: UI_SOFT,
-      wordWrap: { width: 330 },
-      stroke: '#020409',
-      strokeThickness: 2
-    });
-    addUiIconImage(this, 'deck-stack', frame.left + HUD_MENU_PANEL.headerIconX, frame.top + HUD_MENU_PANEL.headerIconY, 28)?.setAlpha(0.9);
-    addUiIconImage(this, 'flock-heart', frame.left + 292, frame.top + 86, 20)?.setAlpha(0.85);
-    renderCloseControl(this, () => {}, frame.right - HUD_MENU_PANEL.closeX, frame.top + HUD_MENU_PANEL.closeY, () => this.closeDeckOverlay());
-
-    this.renderMapCardBrowser();
+  private deckReviewFilterLabel(filter = this.deckReviewFilter) {
+    if (filter === 'all') return 'ALL';
+    if (filter === 'special') return 'SPECIAL';
+    if (filter === 'preened') return 'PREENED';
+    return filter.toUpperCase();
   }
 
-  private renderMapCardBrowser() {
+  private deckReviewSortLabel(sort = this.deckReviewSort) {
+    if (sort === 'run') return 'RUN';
+    return sort.toUpperCase();
+  }
+
+  private mapDeckCards() {
+    const query = this.deckReviewQuery.trim().toLocaleLowerCase();
+    const cards = this.allMapDeckCards().filter(({ card }) => {
+      const filterMatches = this.deckReviewFilter === 'all'
+        || (this.deckReviewFilter === 'preened' && card.upgraded)
+        || (this.deckReviewFilter === 'special' && !card.runtime.suit)
+        || card.runtime.suit === this.deckReviewFilter;
+      if (!filterMatches) return false;
+      if (!query) return true;
+      const contract = activeCardContract(card, false);
+      return [
+        displayName(card),
+        card.bird,
+        cardLabel(card),
+        card.runtime.suit ?? '',
+        contract.role,
+        contract.target,
+        contract.text,
+        card.upgradedText,
+      ].join(' ').toLocaleLowerCase().includes(query);
+    });
+    if (this.deckReviewSort === 'cost') {
+      cards.sort((a, b) => a.card.cost - b.card.cost || displayName(a.card).localeCompare(displayName(b.card)));
+    } else if (this.deckReviewSort === 'name') {
+      cards.sort((a, b) => displayName(a.card).localeCompare(displayName(b.card)) || a.card.cost - b.card.cost);
+    }
+    return cards;
+  }
+
+  private resetDeckReviewSelection() {
+    this.cardReviewScroll = 0;
+    this.inspectedCardId = this.mapDeckCards()[0]?.card.id;
+  }
+
+  private cycleDeckReviewFilter(delta: -1 | 1) {
+    if (!this.deckOverlayOpen || this.deckReviewSearchActive) return;
+    const current = Math.max(0, DECK_REVIEW_FILTERS.indexOf(this.deckReviewFilter));
+    this.deckReviewFilter = DECK_REVIEW_FILTERS[(current + delta + DECK_REVIEW_FILTERS.length) % DECK_REVIEW_FILTERS.length];
+    this.resetDeckReviewSelection();
+    playUiSound('confirm');
+    this.renderAll();
+  }
+
+  private cycleDeckReviewSort(delta: -1 | 1) {
+    if (!this.deckOverlayOpen || this.deckReviewSearchActive) return;
+    const current = Math.max(0, DECK_REVIEW_SORTS.indexOf(this.deckReviewSort));
+    this.deckReviewSort = DECK_REVIEW_SORTS[(current + delta + DECK_REVIEW_SORTS.length) % DECK_REVIEW_SORTS.length];
+    this.resetDeckReviewSelection();
+    playUiSound('confirm');
+    this.renderAll();
+  }
+
+  private moveDeckReviewSelection(delta: -1 | 1) {
+    if (!this.deckOverlayOpen || this.deckReviewSearchActive) return;
     const cards = this.mapDeckCards();
-    addDeckReviewSectionTabFrame(this, () => {}, 194, 172, 136, 32, { alpha: 0.76 });
-    this.add.text(194, 172, 'CARD INDEX', {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: '#d8f7ff',
-      stroke: '#020409',
-      strokeThickness: 2,
-      align: 'center',
-      fixedWidth: 112
-    }).setOrigin(0.5);
+    if (cards.length === 0) return;
+    const selected = getInspectedEntry(cards, this.inspectedCardId);
+    const current = Math.max(0, cards.findIndex(({ card }) => card.id === selected?.card.id));
+    const next = (current + delta + cards.length) % cards.length;
+    this.inspectedCardId = cards[next].card.id;
+    if (next < this.cardReviewScroll) this.cardReviewScroll = next;
+    else if (next >= this.cardReviewScroll + CARD_REVIEW_VISIBLE_ROWS) {
+      this.cardReviewScroll = next - CARD_REVIEW_VISIBLE_ROWS + 1;
+    }
+    playUiSound('confirm');
+    this.renderAll();
+  }
 
+  private setDeckReviewSearchActive(active: boolean) {
+    if (!this.deckOverlayOpen || this.deckReviewSearchActive === active) return;
+    this.deckReviewSearchActive = active;
+    playUiSound(active ? 'confirm' : 'close');
+    this.renderAll();
+  }
+
+  private setDeckReviewQuery(query: string) {
+    const next = query.slice(0, 24);
+    if (next === this.deckReviewQuery) return;
+    this.deckReviewQuery = next;
+    this.resetDeckReviewSelection();
+    this.renderAll();
+  }
+
+  private handleDeckReviewSearchKey(event: KeyboardEvent) {
+    if (!this.deckOverlayOpen || this.settingsOverlayOpen || this.pauseOverlayOpen) return;
+    const taggedEvent = event as KeyboardEvent & { __birdSquadDeckSearchHandled?: boolean };
+    if (taggedEvent.__birdSquadDeckSearchHandled) return;
+    if (!this.deckReviewSearchActive) {
+      if ((event.key.toLocaleLowerCase() === 'c' || event.code === 'KeyC') && !controlActionForCode(event.code)) {
+        taggedEvent.__birdSquadDeckSearchHandled = true;
+        event.preventDefault?.();
+        this.toggleDeckReviewComparison();
+        return;
+      }
+      if (event.key === '/' || event.code === 'Slash') {
+        taggedEvent.__birdSquadDeckSearchHandled = true;
+        event.preventDefault?.();
+        this.setDeckReviewSearchActive(true);
+      }
+      return;
+    }
+    if (event.key === 'Backspace') {
+      taggedEvent.__birdSquadDeckSearchHandled = true;
+      event.preventDefault?.();
+      this.setDeckReviewQuery(this.deckReviewQuery.slice(0, -1));
+      return;
+    }
+    if (event.key === 'Enter' || event.key === 'Escape') return;
+    if (event.key.length !== 1 || !/^[a-z0-9 '\-]$/i.test(event.key)) return;
+    taggedEvent.__birdSquadDeckSearchHandled = true;
+    event.preventDefault?.();
+    this.setDeckReviewQuery(`${this.deckReviewQuery}${event.key}`);
+  }
+
+  private renderMapDeckOverlay() {
+    const cards = this.mapDeckCards();
+    const totalCards = this.allMapDeckCards().length;
     const selectedEntry = getInspectedEntry(cards, this.inspectedCardId);
-    this.renderCardReviewColumn(cards, selectedEntry, (id) => this.inspectDeckCard(id), (delta) => this.scrollDeck(delta));
-    if (selectedEntry) this.renderRouteCardDetailPanel(selectedEntry.card, selectedEntry.zone);
-  }
+    this.cardReviewScroll = clamp(this.cardReviewScroll, 0, Math.max(0, cards.length - CARD_REVIEW_VISIBLE_ROWS));
 
-  private renderCardReviewColumn(
-    cards: Array<{ card: Card; zone: string }>,
-    selectedEntry: { card: Card; zone: string } | undefined,
-    onInspect: (cardId: string) => void,
-    onScroll: (delta: number) => void
-  ) {
-    const scrollMax = Math.max(0, cards.length - CARD_REVIEW_VISIBLE_ROWS);
-    this.cardReviewScroll = clamp(this.cardReviewScroll, 0, scrollMax);
-    const visible = cards.slice(this.cardReviewScroll, this.cardReviewScroll + CARD_REVIEW_VISIBLE_ROWS);
-
-    visible.forEach(({ card, zone }, index) => {
-      const x = 140;
-      const y = 198 + index * CARD_REVIEW_ROW_H;
-      const selected = selectedEntry?.card.id === card.id;
-      this.add.rectangle(x + 150, y + 15, 312, 42, selected ? 0x1d2224 : 0x0f151d, selected ? 0.96 : 0.44)
-        .setStrokeStyle(selected ? 1.5 : 1, selected ? 0xd8a840 : card.upgraded ? 0x24d0d6 : 0xffffff, selected ? 0.95 : 0.08);
-      addDeckReviewRowFrame(this, () => {}, x + 140, y + 15, { selected, upgraded: card.upgraded });
-      this.add.rectangle(x + 150, y + 31, 280, 1, card.upgraded ? 0x24d0d6 : 0xd8a840, selected ? 0.6 : 0.18);
-      addDeckReviewCostBadge(this, () => {}, x + 14, y + 15, 34, { zero: card.cost === 0, selected });
-      this.add.text(x + 14, y + 15, `${card.cost}`, {
+    if (!this.routeDeckBrowserModule) {
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.76)
+        .setInteractive({ useHandCursor: false });
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 620, 220, 0x050a12, 0.97)
+        .setStrokeStyle(1.5, this.routeDeckBrowserFailed ? UI_FIELD.danger : UI_FIELD.gold, 0.62);
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 12, this.routeDeckBrowserFailed
+        ? 'Deck Review unavailable'
+        : 'Opening Deck Review?', {
         fontFamily: UI_FONT,
-        fontSize: '13px',
+        fontSize: '18px',
         fontStyle: UI_BOLD,
-        color: '#f6f2df',
-        stroke: '#020409',
-        strokeThickness: 2
+        color: this.routeDeckBrowserFailed ? '#ffb09a' : UI_FIELD.warm,
       }).setOrigin(0.5);
-      this.add.text(x + 36, y + 5, displayName(card), {
+      this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 26, this.routeDeckBrowserFailed
+        ? 'Close and reopen the binder to retry.'
+        : 'Indexing the flock deck.', {
         fontFamily: UI_FONT,
-        fontSize: '14px',
-        fontStyle: UI_BOLD,
-        color: UI_GOLD,
-        wordWrap: { width: 170 }
-      });
-      addDeckReviewMetaChipFrame(this, () => {}, x + 252, y + 16, 118, 24, { selected, upgraded: card.upgraded });
-      this.add.text(x + 194, y + 11, `${cardLabel(card)} / ${zone}`, {
-        fontFamily: UI_FONT,
-        fontSize: '9px',
-        fontStyle: UI_BOLD,
-        color: '#8df4ff',
-        align: 'center',
-        fixedWidth: 116
-      });
-      const rowHit = this.add.rectangle(x + 150, y + 15, 312, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-        .setInteractive({ useHandCursor: true })
-        .setName('deck-review-row-hit');
-      rowHit.on('pointerdown', () => onInspect(card.id));
-    });
-
-    this.renderScrollButton(480, 214, 'Up', this.cardReviewScroll > 0, () => onScroll(-1));
-    this.renderScrollButton(480, 610, 'Down', this.cardReviewScroll < scrollMax, () => onScroll(1));
-    addDeckReviewPageIndicatorFrame(this, () => {}, 480, 651);
-    this.add.text(480, 651, `${this.cardReviewScroll + 1}-${this.cardReviewScroll + visible.length} / ${cards.length}`, {
-      fontFamily: UI_FONT,
-      fontSize: '12px',
-      color: '#b9c9d8',
-      align: 'center',
-      fixedWidth: 100,
-      stroke: '#000000',
-      strokeThickness: 2
-    }).setOrigin(0.5);
-  }
-
-  private renderScrollButton(x: number, y: number, label: string, enabled: boolean, onClick: () => void) {
-    const frameKey = uiIconAssets['deck-review-scroll-button-frame'].key;
-    const hasFrame = this.textures.exists(frameKey);
-    if (!hasFrame) {
-      renderFieldButton(this, () => {}, x, y, 72, 28, label, enabled, onClick, UI_FIELD.gold)
-        .setName(`deck-review-scroll-${label.toLowerCase()}-hit`);
+        fontSize: '12px',
+        color: UI_SOFT,
+      }).setOrigin(0.5);
+      this.ensureRouteDeckBrowser();
       return;
     }
 
-    const button = this.add.rectangle(x, y, 78, 32, 0x141a22, enabled ? 0.16 : 0.08)
-      .setStrokeStyle(1, UI_FIELD.gold, enabled ? 0.16 : 0.06);
-    this.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const frame = this.add.image(x, y, frameKey)
-      .setDisplaySize(82, 34)
-      .setAlpha(enabled ? 0.82 : 0.34)
-      .setName('deck-review-scroll-button-frame');
-    const hit = this.add.rectangle(x, y, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-      .setName(`deck-review-scroll-${label.toLowerCase()}-hit`);
-    if (enabled) {
-      hit.setInteractive({ useHandCursor: true });
-      hit.on('pointerdown', onClick);
-      hit.on('pointerover', () => {
-        button.setFillStyle(0x1e2833, 0.24);
-        frame.setAlpha(0.96);
-        frame.setDisplaySize(86, 36);
-      });
-      hit.on('pointerout', () => {
-        button.setFillStyle(0x141a22, 0.16);
-        frame.setAlpha(0.82);
-        frame.setDisplaySize(82, 34);
-      });
+    this.routeDeckBrowserModule.renderRouteDeckBrowser(this, {
+      cards: cards.map(({ card, zone }) => ({
+        id: card.id,
+        name: displayName(card),
+        cost: card.cost,
+        label: cardLabel(card),
+        zone,
+        upgraded: Boolean(card.upgraded),
+        selected: selectedEntry?.card.id === card.id,
+        pinned: this.deckReviewCompareCardId === card.id,
+      })),
+      totalCards,
+      currentHp: this.runState.currentHp,
+      maxHp: this.runMaxHp(),
+      scroll: this.cardReviewScroll,
+      filterLabel: this.deckReviewFilterLabel(),
+      sortLabel: this.deckReviewSortLabel(),
+      query: this.deckReviewQuery,
+      searchActive: this.deckReviewSearchActive,
+      onClose: () => this.closeDeckOverlay(),
+      onCycleFilter: () => this.cycleDeckReviewFilter(1),
+      onCycleSort: () => this.cycleDeckReviewSort(1),
+      onToggleSearch: () => this.setDeckReviewSearchActive(!this.deckReviewSearchActive),
+      onInspect: (id) => this.inspectDeckCard(id),
+      onCompare: (id) => this.toggleDeckReviewComparison(id),
+      onScroll: (delta) => this.scrollDeck(delta),
+    });
+
+    const comparison = this.deckReviewComparison(selectedEntry?.card);
+    if (comparison) this.renderRouteCardComparison(comparison);
+    else if (selectedEntry) this.renderRouteCardDetailPanel(selectedEntry.card, selectedEntry.zone);
+  }
+
+  private routeCardComparisonView(card: Card, zone: string) {
+    const contract = activeCardContract(card, false);
+    return {
+      name: displayName(card),
+      bird: card.bird,
+      label: cardLabel(card),
+      zone,
+      cost: card.cost,
+      accent: card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : 0x7ab8d6,
+      artKey: loadedCardArtKey(this, card),
+      snagBorderKey: isSnagCard(card) ? snagCardBorderAsset.key : undefined,
+      target: targetLabel(contract.target),
+      role: contract.role,
+      currentText: contract.text,
+      alternateText: contract.usesMolt ? displayText(card) : card.upgraded ? 'Already preened.' : card.upgradedText,
+      usesMolt: contract.usesMolt,
+      stats: cardStatRows(card),
+    };
+  }
+
+  private routeCardPreenComparisonView(card: Card, upgraded: boolean) {
+    const previewCard = { ...card, upgraded };
+    const view = this.routeCardComparisonView(previewCard, upgraded ? 'Preened Form' : 'Base Form');
+    const moltContract = activeCardContract(previewCard, true);
+    const hasMolt = previewCard.runtime.moltEffects?.length;
+    return {
+      ...view,
+      currentLabel: upgraded ? 'PREENED RULES' : 'BASE RULES',
+      alternateLabel: upgraded ? 'PREENED MOLT' : 'BASE MOLT',
+      alternateText: hasMolt ? moltContract.text : 'No Molt ability.',
+      usesMolt: Boolean(hasMolt),
+      stats: cardStatTotalRows(previewCard),
+    };
+  }
+
+  private renderRouteCardComparison(comparison: {
+    pinned: Card;
+    selected: Card;
+    summary: string;
+    mode: 'cards' | 'preen';
+  }) {
+    this.queueCardPortraitArtLoad(comparison.pinned, 'Comparison art');
+    this.queueCardPortraitArtLoad(comparison.selected, 'Comparison art');
+    this.ensureCardComparisonModule();
+    if (!this.cardComparisonModule) {
+      this.renderRouteCardDetailPanel(comparison.selected, 'Selected');
+      this.add.text(826, 571, this.cardComparisonFailed
+        ? 'COMPARISON UNAVAILABLE / UNPIN AND REPIN TO RETRY'
+        : 'OPENING COMPARISON…', {
+        fontFamily: UI_FONT,
+        fontSize: '10px',
+        fontStyle: UI_BOLD,
+        color: this.cardComparisonFailed ? '#ffc78f' : '#dffbff',
+        align: 'center',
+        fixedWidth: 420,
+        backgroundColor: '#07151f',
+        padding: { x: 8, y: 6 },
+      }).setOrigin(0.5).setName('deck-review-comparison-loading');
+      return;
     }
-    this.add.text(x, y, label.toUpperCase(), {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: enabled ? '#f8df9d' : '#6f7b86',
-      align: 'center',
-      fixedWidth: 58,
-      stroke: '#000000',
-      strokeThickness: 2
-    }).setOrigin(0.5);
+    this.cardComparisonModule.renderSceneCardComparison(this, {
+      pinned: comparison.mode === 'preen'
+        ? this.routeCardPreenComparisonView(comparison.pinned, false)
+        : this.routeCardComparisonView(comparison.pinned, 'Pinned'),
+      selected: comparison.mode === 'preen'
+        ? this.routeCardPreenComparisonView(comparison.selected, true)
+        : this.routeCardComparisonView(comparison.selected, 'Selected'),
+      summary: comparison.summary,
+      title: comparison.mode === 'preen' ? 'PREEN COMPARISON' : 'CARD COMPARISON',
+      leftHeading: comparison.mode === 'preen' ? 'BASE' : 'PINNED',
+      rightHeading: comparison.mode === 'preen' ? 'PREENED' : 'SELECTED',
+      dossierFrameKey: uiIconAssets['card-hover-dossier-frame'].key,
+      detailFrameKey: uiIconAssets['deck-review-detail-frame'].key,
+      costBadgeKey: uiIconAssets['deck-review-cost-badge'].key,
+    });
   }
 
   private renderRouteCardDetailPanel(card: Card, zone: string) {
     this.queueCardPortraitArtLoad(card, 'Deck art');
-    renderSceneCardDetail(this, card, zone, card.cost);
+    const contract = activeCardContract(card, false);
+    this.cardHoverDetailModule?.renderSceneCardDetail(this, {
+      name: displayName(card),
+      bird: card.bird,
+      label: cardLabel(card),
+      zone,
+      cost: card.cost,
+      accent: card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : 0x7ab8d6,
+      artKey: loadedCardArtKey(this, card),
+      snagBorderKey: isSnagCard(card) ? snagCardBorderAsset.key : undefined,
+      target: targetLabel(contract.target),
+      role: contract.role,
+      currentText: contract.text,
+      alternateText: contract.usesMolt ? displayText(card) : card.upgraded ? 'Already preened.' : card.upgradedText,
+      usesMolt: contract.usesMolt,
+      stats: cardStatRows(card),
+      reducedMotion: prefersReducedMotion(),
+      dossierFrameKey: uiIconAssets['card-hover-dossier-frame'].key,
+      detailFrameKey: uiIconAssets['deck-review-detail-frame'].key,
+      costBadgeKey: uiIconAssets['deck-review-cost-badge'].key,
+    });
   }
 
   private updateTextState() {
-    const inspected = this.deckOverlayOpen
-      ? inspectedCardPayload(getInspectedEntry(this.mapDeckCards(), this.inspectedCardId), undefined)
-      : undefined;
-    const marketNode = currentMap().nodes.find((node) => node.id === this.marketNodeId);
-    const choiceNode = currentMap().nodes.find((node) => node.id === this.nodeChoiceNodeId);
-    const marketBackdrop = this.routeEventBackdropAsset(marketNode);
-    const choiceBackdrop = this.routeEventBackdropAsset(choiceNode);
-    const routeMapBackdrop = this.routeMapBackdrop;
     window.advanceTime = (ms: number) => advanceGameTime(this.game, ms);
-    window.render_game_to_text = () => JSON.stringify({
-      mode: 'routeSelection',
-      scene: 'RouteScene',
-      routeAssetsReady: this.routeEssentialAssetsReady,
-      assetReadiness: this.routeAssetReadiness.snapshot(),
-      audio: birdAudio.snapshot(),
-      motion: motionState(),
-      visualContrast: visualContrastState(),
-      graphics: graphicsQualityState(),
-      screenReader: screenReaderState(),
-      combatPacing: combatPacingState(),
-      graphicsRuntime: {
-        ambientAnimations: graphicsQualityState().ambientAnimations,
-      },
-      audioTogglePulseRing: {
-        loaded: this.textures.exists(uiIconAssets['audio-toggle-pulse-ring'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['audio-toggle-pulse-ring'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['audio-toggle-pulse-ring'].key)
-      },
-      audioToggleWaveBurst: audioToggleWaveBurstState(this, this.children.list),
-      map: {
-        id: currentMap().id,
-        name: currentMap().name,
-        index: currentMap().index,
-        entryNodeId: currentMap().entryNodeId,
-        bossNodeId: currentMap().bossNodeId
-      },
-      routeMapBackdrop: {
-        assetKey: routeMapBackdrop?.key ?? '',
-        loaded: !!routeMapBackdrop && this.textures.exists(routeMapBackdrop.key),
-        rendered: !!routeMapBackdrop && this.children.list.some((child: any) => child.name === 'route-map-backdrop' && child.texture?.key === routeMapBackdrop.key)
-      },
-      run: {
-        currentNodeId: this.runState.currentRouteNodeId ?? '',
-        completedNodeIds: [...this.runState.completedRouteNodeIds],
-        deckSize: this.runState.deck.length,
-        currentHp: this.runState.currentHp,
-        maxHp: this.runMaxHp(),
-        scrap: this.runState.scrap,
-        routeMarks: [...this.runState.routeMarks],
-        supplies: [...this.runState.supplies],
-        supplySlots: runSupplyCapacity(this.runState)
-      },
-      routeStatus: this.routeStatusSummary(),
-      routeBossBeaconRing: {
-        loaded: this.textures.exists(uiIconAssets['route-boss-beacon-ring'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['route-boss-beacon-ring'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['route-boss-beacon-ring'].key)
-      },
-      districtBanner: {
-        loaded: this.textures.exists(uiIconAssets['route-district-banner'].key),
-        district: runDistrictOrdinal(this.runState.runMode, activeMapIndex),
-        districtCount: runMapIndices(this.runState.runMode).length,
-        mapName: currentMap().name
-      },
-      districtAdvanceFlourish: this.districtAdvanceFlourishState(),
-      districtAdvanceTitlePlaque: this.districtAdvanceTitlePlaqueState(),
-      bossPrepDossier: {
-        loaded: this.textures.exists(uiIconAssets['boss-prep-dossier-flourish'].key),
-        rendered: this.children.list.some((child: any) => child.texture?.key === uiIconAssets['boss-prep-dossier-flourish'].key)
-      },
-      bossPrepReadinessChipFrame: {
-        loaded: this.textures.exists(uiIconAssets['boss-prep-readiness-chip-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['boss-prep-readiness-chip-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['boss-prep-readiness-chip-frame'].key)
-      },
-      bossPrepPressurePlaque: {
-        loaded: this.textures.exists(uiIconAssets['boss-prep-pressure-plaque'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['boss-prep-pressure-plaque'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['boss-prep-pressure-plaque'].key)
-      },
-      bossPrepSignalModule: {
-        loaded: this.textures.exists(uiIconAssets['boss-prep-signal-module'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['boss-prep-signal-module'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['boss-prep-signal-module'].key)
-      },
-      bossPrepRouteForPlate: {
-        loaded: this.textures.exists(uiIconAssets['boss-prep-route-for-plate'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['boss-prep-route-for-plate'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['boss-prep-route-for-plate'].key)
-      },
-      supplyFeedback: [...this.supplyFeedback],
-      routeSupplyFeedbackFrame: {
-        loaded: this.textures.exists(uiIconAssets['route-supply-feedback-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['route-supply-feedback-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['route-supply-feedback-frame'].key)
-      },
-      routeMapFrame: {
-        loaded: this.textures.exists(uiIconAssets['route-map-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['route-map-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['route-map-frame'].key)
-      },
-      routeNodeTooltipFrame: {
-        loaded: this.textures.exists(uiIconAssets['route-node-tooltip-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['route-node-tooltip-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['route-node-tooltip-frame'].key)
-      },
-      routeRiskMeterFrame: {
-        loaded: this.textures.exists(uiIconAssets['route-risk-meter-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['route-risk-meter-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['route-risk-meter-frame'].key)
-      },
-      routeCommitTooltipFrame: {
-        loaded: this.textures.exists(uiIconAssets['route-commit-tooltip-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['route-commit-tooltip-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['route-commit-tooltip-frame'].key)
-      },
-      routeCommitPending: this.routeCommitPending,
-      routeCommitStreak: this.routeCommitStreakState(),
-      routeSelectedNodeRing: {
-        loaded: this.textures.exists(uiIconAssets['route-selected-node-ring'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['route-selected-node-ring'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['route-selected-node-ring'].key)
-      },
-      cardPickerFrame: {
-        loaded: this.textures.exists(uiIconAssets['card-picker-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['card-picker-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['card-picker-frame'].key),
-        mode: this.cardPickerMode ?? '',
-        context: this.cardPickerContext ?? ''
-      },
-      cardPickerScrollButtonFrame: {
-        loaded: this.textures.exists(uiIconAssets['card-picker-scroll-button-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['card-picker-scroll-button-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['card-picker-scroll-button-frame'].key)
-      },
-      cardPickerCostBadge: {
-        loaded: this.textures.exists(uiIconAssets['card-picker-cost-badge'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['card-picker-cost-badge'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['card-picker-cost-badge'].key)
-      },
-      cardPickerPageIndicatorFrame: {
-        loaded: this.textures.exists(uiIconAssets['card-picker-page-indicator-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['card-picker-page-indicator-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['card-picker-page-indicator-frame'].key)
-      },
-      cardPickerNameplateFrame: {
-        loaded: this.textures.exists(uiIconAssets['card-picker-nameplate-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['card-picker-nameplate-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['card-picker-nameplate-frame'].key)
-      },
-      cardPickerContextPlaque: {
-        loaded: this.textures.exists(uiIconAssets['card-picker-context-plaque'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['card-picker-context-plaque'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['card-picker-context-plaque'].key)
-      },
-      cardPickerDecisionDeltas: this.children.list
-        .filter((child): child is Phaser.GameObjects.Text => child instanceof Phaser.GameObjects.Text && child.name === 'card-picker-decision-delta')
-        .map((child) => child.text),
-      marketEnamelCommandFrame: {
-        loaded: this.textures.exists(uiIconAssets['market-enamel-command-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['market-enamel-command-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['market-enamel-command-frame'].key)
-      },
-      marketSoldSlatFrame: {
-        loaded: this.textures.exists(uiIconAssets['market-sold-slat-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['market-sold-slat-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['market-sold-slat-frame'].key)
-      },
-      marketVendorTitlePlaque: this.marketVendorTitlePlaqueState(),
-      routeEventTitlePlaque: this.routeEventTitlePlaqueState(),
-      routeEventCancelCommandFrame: {
-        loaded: this.textures.exists(uiIconAssets['route-event-cancel-command-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['route-event-cancel-command-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['route-event-cancel-command-frame'].key)
-      },
-      routeChoiceOptionFrame: this.routeChoiceOptionFrameState(),
-      routeChoiceDetailFrame: this.routeChoiceDetailFrameState(),
-      routeChoicePreviewRowFrame: this.routeChoicePreviewRowFrameState(),
-      runKitItemTileFrame: {
-        loaded: this.textures.exists(uiIconAssets['run-kit-item-tile-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['run-kit-item-tile-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['run-kit-item-tile-frame'].key)
-      },
-      runKitEmptySlotFrame: {
-        loaded: this.textures.exists(uiIconAssets['run-kit-empty-slot-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['run-kit-empty-slot-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['run-kit-empty-slot-frame'].key)
-      },
-      routeWaymarkScrollRailFrame: {
-        loaded: this.textures.exists(uiIconAssets['route-waymark-scroll-rail-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['route-waymark-scroll-rail-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['route-waymark-scroll-rail-frame'].key)
-      },
-      confirmExitFrame: {
-        loaded: this.textures.exists(uiIconAssets['confirm-exit-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['confirm-exit-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['confirm-exit-frame'].key)
-      },
-      confirmExitCommandFrame: {
-        loaded: this.textures.exists(uiIconAssets['confirm-exit-command-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['confirm-exit-command-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['confirm-exit-command-frame'].key)
-      },
-      systemSettingsRowFrame: {
-        loaded: this.textures.exists(uiIconAssets['system-settings-row-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-row-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-row-frame'].key)
-      },
-      systemSettingsToggleFrame: {
-        loaded: this.textures.exists(uiIconAssets['system-settings-toggle-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-toggle-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-toggle-frame'].key)
-      },
-      systemSettingsVolumeSliderFrame: {
-        loaded: this.textures.exists(uiIconAssets['system-settings-volume-slider-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-volume-slider-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-volume-slider-frame'].key)
-      },
-      systemSettingsMotionSwitchFrame: {
-        loaded: this.textures.exists(uiIconAssets['system-settings-motion-switch-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-motion-switch-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-motion-switch-frame'].key)
-      },
-      systemFieldCommandFrame: {
-        loaded: this.textures.exists(uiIconAssets['system-field-command-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['system-field-command-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['system-field-command-frame'].key)
-      },
-      systemOverlayTitlePlaque: {
-        loaded: this.textures.exists(uiIconAssets['system-overlay-title-plaque'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['system-overlay-title-plaque'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['system-overlay-title-plaque'].key)
-      },
-      systemPauseDetailRowFrame: {
-        loaded: this.textures.exists(uiIconAssets['system-pause-detail-row-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['system-pause-detail-row-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['system-pause-detail-row-frame'].key)
-      },
-      deckOverlayOpen: this.deckOverlayOpen,
-      flockOverlayOpen: this.flockOverlayOpen,
-      confirmExitOpen: this.confirmExitOpen,
-      flockStatsFlourish: {
-        loaded: this.textures.exists(uiIconAssets['flock-stats-flourish'].key),
-        rendered: this.children.list.some((child: any) => child.texture?.key === uiIconAssets['flock-stats-flourish'].key),
-        count: this.children.list.filter((child: any) => child.texture?.key === uiIconAssets['flock-stats-flourish'].key).length
-      },
-      flockStatsTitlePlaque: {
-        loaded: this.textures.exists(uiIconAssets['flock-stats-title-plaque'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['flock-stats-title-plaque'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['flock-stats-title-plaque'].key)
-      },
-      flockStatsCaptionFrame: {
-        loaded: this.textures.exists(uiIconAssets['flock-stats-caption-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['flock-stats-caption-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['flock-stats-caption-frame'].key)
-      },
-      flockStatsFooterFrame: {
-        loaded: this.textures.exists(uiIconAssets['flock-stats-footer-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['flock-stats-footer-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['flock-stats-footer-frame'].key)
-      },
-      flockStatsHeaderFrame: {
-        loaded: this.textures.exists(uiIconAssets['flock-stats-header-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['flock-stats-header-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['flock-stats-header-frame'].key)
-      },
-      flockStatsRowFrame: {
-        loaded: this.textures.exists(uiIconAssets['flock-stats-row-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['flock-stats-row-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['flock-stats-row-frame'].key)
-      },
-      deckReviewScrollButtonFrame: {
-        loaded: this.textures.exists(uiIconAssets['deck-review-scroll-button-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-scroll-button-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-scroll-button-frame'].key)
-      },
-      deckReviewRowFrame: {
-        loaded: this.textures.exists(uiIconAssets['deck-review-row-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-row-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-row-frame'].key)
-      },
-      deckReviewPageIndicatorFrame: {
-        loaded: this.textures.exists(uiIconAssets['deck-review-page-indicator-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-page-indicator-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-page-indicator-frame'].key)
-      },
-      deckReviewTitlePlaque: {
-        loaded: this.textures.exists(uiIconAssets['deck-review-title-plaque'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-title-plaque'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-title-plaque'].key)
-      },
-      deckReviewDetailFrame: {
-        loaded: this.textures.exists(uiIconAssets['deck-review-detail-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-detail-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-detail-frame'].key)
-      },
-      deckReviewCostBadge: {
-        loaded: this.textures.exists(uiIconAssets['deck-review-cost-badge'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-cost-badge'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-cost-badge'].key)
-      },
-      deckReviewMetaChipFrame: {
-        loaded: this.textures.exists(uiIconAssets['deck-review-meta-chip-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-meta-chip-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-meta-chip-frame'].key)
-      },
-      deckReviewSectionTabFrame: {
-        loaded: this.textures.exists(uiIconAssets['deck-review-section-tab-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-section-tab-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['deck-review-section-tab-frame'].key)
-      },
-      cardHoverDossierFrame: {
-        loaded: this.textures.exists(uiIconAssets['card-hover-dossier-frame'].key),
-        rendered: countTextureInGameObjects(this.hoverCardDetail?.list ?? [], uiIconAssets['card-hover-dossier-frame'].key) > 0,
-        count: countTextureInGameObjects(this.hoverCardDetail?.list ?? [], uiIconAssets['card-hover-dossier-frame'].key)
-      },
-      cardHoverStatChipFrame: {
-        loaded: this.textures.exists(uiIconAssets['card-hover-stat-chip-frame'].key),
-        rendered: countTextureInGameObjects(this.hoverCardDetail?.list ?? [], uiIconAssets['card-hover-stat-chip-frame'].key) > 0,
-        count: countTextureInGameObjects(this.hoverCardDetail?.list ?? [], uiIconAssets['card-hover-stat-chip-frame'].key)
-      },
-      marketItemDetailFrame: {
-        loaded: this.textures.exists(uiIconAssets['market-detail-dossier-frame'].key),
-        rendered: countTextureInGameObjects(this.marketItemHover?.list ?? [], uiIconAssets['market-detail-dossier-frame'].key) > 0,
-        count: countTextureInGameObjects(this.marketItemHover?.list ?? [], uiIconAssets['market-detail-dossier-frame'].key)
-      },
-      waymarkDrawerOpen: this.waymarkDrawerOpen,
-      supplyDrawerOpen: this.supplyDrawerOpen,
-      marketOpen: this.marketOpen,
-      pauseOverlayOpen: this.pauseOverlayOpen,
-      settingsOverlayOpen: this.settingsOverlayOpen,
-      settingsFocus: settingsFocusState(this, this.settingsOverlayOpen),
-      controls: controlsTextState(this, this.settingsOverlayOpen),
-      market: this.marketOpen
-        ? {
-            category: this.marketCategory,
-            scrap: this.runState.scrap,
-            cardOffer: this.marketCardOffer()?.id ?? '',
-            cardOffers: this.marketCardShelf.map((offer) => ({ id: offer.id, price: offer.price, sold: !!offer.sold })),
-            routeMarkOffer: this.marketRouteMarkOffer()?.id ?? '',
-            routeMarkOffers: this.marketWaymarkShelf.map((offer) => ({ id: offer.id, price: offer.price, sold: !!offer.sold })),
-            preenOffer: this.marketPreenCandidate()?.id ?? '',
-            utilityOffers: this.marketUtilityShelf.map((offer) => ({
-              id: offer.id,
-              price: offer.price,
-              supplyId: offer.supplyId ?? '',
-              sold: !!offer.sold
-            })),
-            refreshCost: this.marketRefreshCost(),
-            refreshCount: this.marketRefreshCount,
-            decisionPreview: [...this.marketDecisionPreview],
-            message: this.marketMessage,
-            offerTray: this.marketOfferTrayState(),
-            priceChipFrame: this.marketPriceChipFrameState(),
-            serviceButtonFrame: this.marketServiceButtonFrameState(),
-            itemLabelFrame: this.marketItemLabelFrameState(),
-            cardPriceTagFrame: this.marketCardPriceTagFrameState(),
-            objectBackplateFrame: this.marketObjectBackplateFrameState(),
-            sectionHeaderFrame: this.marketSectionHeaderFrameState(),
-            purchaseFlourish: this.marketPurchaseFlourishState(),
-            backdropAssetKey: marketBackdrop?.key ?? ''
-        }
-        : undefined,
-      nodeChoice: this.nodeChoiceOpen && choiceNode
-        ? {
-            nodeId: choiceNode.id,
-            type: choiceNode.type,
-            backdropAssetKey: choiceBackdrop?.key ?? '',
-            titlePlaque: this.routeEventTitlePlaqueState(),
-            choiceFrame: this.routeChoiceDecisionFrameState(),
-            optionFrame: this.routeChoiceOptionFrameState(),
-            detailFrame: this.routeChoiceDetailFrameState(),
-            previewRowFrame: this.routeChoicePreviewRowFrameState()
-        }
-        : undefined,
-      routeReward: this.pendingRouteReward
-        ? {
-            nodeId: this.pendingRouteReward.nodeId,
-            nodeType: this.pendingRouteReward.nodeType,
-            choiceKey: this.pendingRouteReward.choiceKey,
-            decisionPreview: [...(this.pendingRouteReward.decisionPreview ?? [])],
-            cardChoices: this.routeCardRewardChoices.map((card) => card.id),
-            previewItem: this.pendingRouteReward.previewItem ? { ...this.pendingRouteReward.previewItem } : undefined,
-            previewCards: (this.pendingRouteReward.previewCards ?? []).map((card) => card.id),
-          }
-        : undefined,
-      bossPrep: this.bossPrepReadiness(),
-      districtContract: this.districtContractProgress(),
-      districtContractCelebration: this.districtContractCelebration
-        ? {
-            id: this.districtContractCelebration.id,
-            name: this.districtContractCelebration.name,
-            rewardScrap: this.districtContractCelebration.rewardScrap,
-            remainingMs: Math.max(0, this.districtContractCelebration.expiresAt - Date.now()),
-            rendered: this.children.list.some((child) => child.name === 'district-contract-celebration'),
-          }
-        : undefined,
-      districtContractChoice: this.shouldChooseDistrictContract()
-        ? { open: true, options: this.districtContractChoices().map((choice) => ({ ...choice })) }
-        : { open: false, options: [] },
-      flywayRestoration: {
-        ...this.flywayRestorationProgress(),
-        rendered: this.children.list.some((child) => child.name === 'flyway-restoration')
-      },
-      firstRouteGuidance: {
-        active: this.isFirstRouteDecision() || firstFlightGuideStep() === 'route',
-        rendered: this.children.list.some((child) => child.name === 'first-route-guidance')
-      },
-      firstFlightGuide: firstFlightGuideState(),
-      selectedNodeId: this.selectedNodeId ?? '',
-      inspectedCard: inspected,
-      selectableNodeIds: [...this.selectableNodeIds],
-      nodes: currentMap().nodes.map((node) => ({
-        ...(() => {
-          const position = this.nodePosition(node);
-          return {
-            position,
-            visualBounds: this.nodeVisualBounds(node)
-          };
-        })(),
-        id: node.id,
-        label: node.label,
-        type: node.type,
-        risk: node.risk,
-        column: node.column,
-        lane: node.lane,
-        completed: this.runState.completedRouteNodeIds.includes(node.id),
-        current: this.runState.currentRouteNodeId === node.id,
-        selectable: this.selectableNodeIds.has(node.id),
-        decision: this.nodeDecisionSummary(node),
-        rewardBadges: this.routeRewardBadges(node).map((badge) => badge.id)
-      })),
-      log: this.runState.routeLog.slice(-5)
+    if (!this.routeDebugStateModule) {
+      window.render_game_to_text = () => JSON.stringify({
+        mode: 'routeSelection',
+        scene: 'RouteScene',
+        routeTextStateLoading: true,
+      });
+      return;
+    }
+    this.routeDebugStateModule.updateRouteDebugState(this, {
+      activeMapIndex, advanceGameTime, animationPacingState, audioToggleWaveBurstState, birdAudio,
+      cardStatRows, cardStatTotalRows, colorCueState, combatPacingState, controlBindingLabel,
+      controlsTextState, countTextureInGameObjects, currentFlashEffectsState, currentMap,
+      currentScreenShakeState, displayName, firstFlightGuideState, firstFlightGuideStep,
+      getInspectedEntry, graphicsQualityState, inspectedCardPayload, motionState, runDistrictOrdinal,
+      runMapIndices, runSupplyCapacity, screenReaderState, settingsFocusState, textPacingState,
+      uiIconAssets, visualContrastState,
     });
   }
 
@@ -13903,7 +14297,10 @@ class BattleScene extends Phaser.Scene {
   private flock!: Flock;
   private enemies: Enemy[] = [];
   private drawPile: Card[] = [];
+  private combatRandom!: () => number;
+  private openingDraw!: OpeningDrawState;
   private discardPile: Card[] = [];
+  private clearedPile: Card[] = [];
   private hand: Card[] = [];
   private selectedInstanceId: string | undefined;
   private selectedEnemyId = 'roof-rat';
@@ -14034,6 +14431,8 @@ class BattleScene extends Phaser.Scene {
   private enemyTextureBoundsCache = new Map<string, TextureVisibleBounds>();
   private flockMotionCue?: 'cast' | 'brace' | 'heal' | 'hit';
   private combatAnimationPending = false;
+  private playerCardFxBaseline?: Set<Phaser.GameObjects.GameObject>;
+  private playerCardFxLastRetired = 0;
   private combatEnemyTurnBeat: EnemyTurnBeat = 'idle';
   private combatEnemyTurnMove = '';
   private combatEnemyTurnBeatStartedAtMs = 0;
@@ -14048,6 +14447,7 @@ class BattleScene extends Phaser.Scene {
   private combatIntroElapsedMs = 0;
   private combatIntroFinish?: () => void;
   private outcomeFxPlayed?: GameMode;
+  private outcomeDetailsOpen = false;
   private bossDossierModule?: BossDossierModule;
   private bossDossierLoadRequested = false;
   private combatDefeatBurstBursts = 0;
@@ -14068,7 +14468,6 @@ class BattleScene extends Phaser.Scene {
   private combatEnemyImpactContactBursts = 0;
   private combatOverextensionWarningBursts = 0;
   private combatBossPhaseBreakBursts = 0;
-  private combatPerfectChainBursts = 0;
   private combatStatusCleanseSpecificBursts = 0;
   private combatOpenSkyBreakBursts = 0;
   private combatCacheChoiceRevealBursts = 0;
@@ -14136,6 +14535,9 @@ class BattleScene extends Phaser.Scene {
   private battleInspectRendererModule?: BattleInspectRendererModule;
   private battleInspectRendererLoading = false;
   private battleInspectRendererFailed = false;
+  private flockStatsOverlayModule?: FlockStatsOverlayModule;
+  private flockStatsOverlayLoading = false;
+  private flockStatsOverlayFailed = false;
   private combatEnemyTurnFxAssetsRequested = false;
   private combatOptionalFxAssetsRequested = false;
   private combatOutcomeFxAssetsRequested = false;
@@ -14180,6 +14582,14 @@ class BattleScene extends Phaser.Scene {
     this.flock.flowMax = leader.flowMax ?? this.flock.flowMax;
     this.flock.flow = Math.min(this.flock.flowMax, leader.startFlow ?? 0);
     this.enemies = createEncounterEnemiesForRouteNode(initialRouteNode);
+    const ascension = difficultyMods(this.runDifficulty);
+    applyAscensionOpeningIntents(
+      this.runDifficulty,
+      this.enemies,
+      activeSeed,
+      activeMapIndex,
+      initialRouteNode.id,
+    );
     this.battleFullArtGroups = [
       'battle-current-art',
       'battle-enemy-turn-fx',
@@ -14208,15 +14618,17 @@ class BattleScene extends Phaser.Scene {
     this.encounterObjectiveFeedbackBursts = 0;
     this.enemyDefeatedTurns = new Map();
     // Ascension: scale enemy Cohesion by the run's difficulty tier.
-    const hpMult = difficultyMods(this.runDifficulty).enemyHpMult;
+    const hpMult = ascension.enemyHpMult;
     if (hpMult !== 1) {
       this.enemies.forEach((enemy) => {
         enemy.maxHp = Math.round(enemy.maxHp * hpMult);
         enemy.hp = enemy.maxHp;
       });
     }
+    this.combatRandom = seededRng(`${activeSeed}:combat:${activeMapIndex}:${initialRouteNode.id}`);
     this.drawPile = cardsFromSave(runState.deck);
     this.discardPile = [];
+    this.clearedPile = [];
     this.hand = [];
     this.selectedInstanceId = undefined;
     this.selectedEnemyId = this.enemies[0]?.id ?? '';
@@ -14309,6 +14721,8 @@ class BattleScene extends Phaser.Scene {
     this.handCardFlowIndicators = new Map();
     this.enemyTurnBeatUi = undefined;
     this.combatAnimationPending = false;
+    this.playerCardFxBaseline = undefined;
+    this.playerCardFxLastRetired = 0;
     this.combatEnemyTurnBeat = 'idle';
     this.combatEnemyTurnMove = '';
     this.combatEnemyTurnBeatStartedAtMs = 0;
@@ -14323,6 +14737,7 @@ class BattleScene extends Phaser.Scene {
     this.combatIntroElapsedMs = 0;
     this.combatIntroFinish = undefined;
     this.outcomeFxPlayed = undefined;
+    this.outcomeDetailsOpen = false;
     this.combatTurnBannerBursts = 0;
     this.combatPlayerTurnRallyBursts = 0;
     this.combatDefeatBurstBursts = 0;
@@ -14343,7 +14758,6 @@ class BattleScene extends Phaser.Scene {
     this.combatEnemyImpactContactBursts = 0;
     this.combatOverextensionWarningBursts = 0;
     this.combatBossPhaseBreakBursts = 0;
-    this.combatPerfectChainBursts = 0;
     this.combatStatusCleanseSpecificBursts = 0;
     this.combatOpenSkyBreakBursts = 0;
     this.combatCacheChoiceRevealBursts = 0;
@@ -14412,6 +14826,8 @@ class BattleScene extends Phaser.Scene {
     this.battleRewardRendererFailed = false;
     this.battleInspectRendererLoading = false;
     this.battleInspectRendererFailed = false;
+    this.flockStatsOverlayLoading = false;
+    this.flockStatsOverlayFailed = false;
     this.combatEnemyTurnFxAssetsRequested = false;
     this.combatOptionalFxAssetsRequested = false;
     this.combatOutcomeFxAssetsRequested = false;
@@ -14436,6 +14852,17 @@ class BattleScene extends Phaser.Scene {
     this.combatRoostHandoffBursts = 0;
     this.combatPlayerTurnRallyBursts = 0;
     this.rewardChoiceGlowBurstBursts = 0;
+    const preparedOpening = prepareOpeningDraw(
+      this.drawPile,
+      `${activeSeed}:opening:${activeMapIndex}:${initialRouteNode.id}`,
+      this.runCombatResults.length > 0,
+      this.handTargetSize(),
+    );
+    this.drawPile = preparedOpening.deck;
+    this.openingDraw = preparedOpening.state;
+    if (this.openingDraw.protectionSwaps > 0) {
+      this.log.push('Opening draw steadied: playable pressure is ready.');
+    }
     this.drawToHandSize();
     this.lastFlockState = this.flockState();
   }
@@ -14892,7 +15319,7 @@ class BattleScene extends Phaser.Scene {
         const parsed = parseEffect(effect);
         if (parsed && parsed.name === 'gainSupplyChoice' && this.runSupplies.length < 2) {
           const ids = [...alphaSupplyLibrary.keys()].filter((id) => !this.runSupplies.includes(id));
-          const pick = ids[Math.floor(Math.random() * ids.length)];
+          const pick = ids[Math.floor(this.combatRandom() * ids.length)];
           if (pick) {
             this.runSupplies.push(pick);
             this.logEvent(`${mark.name}: a Supply is stashed for the new district.`);
@@ -14908,7 +15335,7 @@ class BattleScene extends Phaser.Scene {
           this.freePreenNextDistrict += value;
           for (let i = 0; i < value && this.runSupplies.length < this.runSupplyCapacity; i += 1) {
             const ids = [...alphaSupplyLibrary.keys()].filter((id) => !this.runSupplies.includes(id));
-            const pick = ids[Math.floor(Math.random() * ids.length)];
+            const pick = ids[Math.floor(this.combatRandom() * ids.length)];
             if (pick) this.runSupplies.push(pick);
           }
           this.logEvent(`${mark.name}: the next district starts with Preen and packed gear.`);
@@ -14924,6 +15351,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   create() {
+    syncSceneAnimationPace(this);
     birdAudio.setMood(this.battlefieldMood() === 'boss' ? 'boss' : 'battle');
     window.__birdSquadAudio = () => birdAudio.snapshot();
     this.time.paused = false;
@@ -15093,12 +15521,20 @@ class BattleScene extends Phaser.Scene {
       confirm: () => {
         if (!this.fxLayer?.active) return;
         if (this.requestBattleIntroDismiss()) return;
+        if (this.outcomeDetailsOpen) {
+          this.closeOutcomeFlightDetails();
+          return;
+        }
         if (this.settingsOverlayOpen || this.pauseOverlayOpen) return;
         if (this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
         this.activateCombatChoice(this.controllerChoiceIndex);
       },
-      previous: () => this.cycleControllerChoice(-1),
-      next: () => this.cycleControllerChoice(1),
+      previous: () => {
+        if (!this.cycleBattleInspectMode(-1)) this.cycleControllerChoice(-1);
+      },
+      next: () => {
+        if (!this.cycleBattleInspectMode(1)) this.cycleControllerChoice(1);
+      },
       roost: () => {
         if (this.mode === 'battle' && !this.settingsOverlayOpen && !this.pauseOverlayOpen && !this.inspectOverlay && !this.waymarkDrawerOpen && !this.supplyDrawerOpen) {
           this.endTurnAnimated();
@@ -15129,18 +15565,24 @@ class BattleScene extends Phaser.Scene {
     const onTab = (event: KeyboardEvent) => {
       if (controlActionForCode(event.code)) return;
       event.preventDefault?.();
-      this.cycleControllerChoice(event.shiftKey ? -1 : 1);
+      const direction = event.shiftKey ? -1 : 1;
+      if (!this.moveCardReviewFocus(direction)) this.cycleControllerChoice(direction);
     };
     const onUp = () => {
-      if (!controlActionForCode('ArrowUp')) this.cycleLivingEnemy(-1, true);
+      if (controlActionForCode('ArrowUp')) return;
+      if (!this.moveCardReviewFocus(-1)) this.cycleLivingEnemy(-1, true);
     };
     const onDown = () => {
-      if (!controlActionForCode('ArrowDown')) this.cycleLivingEnemy(1, true);
+      if (controlActionForCode('ArrowDown')) return;
+      if (!this.moveCardReviewFocus(1)) this.cycleLivingEnemy(1, true);
     };
     const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: { index?: number }) => {
       switch (button.index) {
         case 0:
-          if (!this.requestBattleIntroDismiss()) this.activateCombatChoice(this.controllerChoiceIndex);
+          if (!this.requestBattleIntroDismiss()) {
+            if (this.outcomeDetailsOpen) this.closeOutcomeFlightDetails();
+            else this.activateCombatChoice(this.controllerChoiceIndex);
+          }
           break; // A
         case 1: this.handleBattleBack(); break; // B
         case 2: // X
@@ -15149,13 +15591,25 @@ class BattleScene extends Phaser.Scene {
         case 3: // Y
           if (this.mode === 'battle' && !this.combatInteractionLocked()) this.endTurnAnimated();
           break;
-        case 4: this.cycleLivingEnemy(-1, true); break; // L1
-        case 5: this.cycleLivingEnemy(1, true); break; // R1
+        case 4:
+          if (!this.moveCardReviewFocus(-1, true)) this.cycleLivingEnemy(-1, true);
+          break; // L1
+        case 5:
+          if (!this.moveCardReviewFocus(1, true)) this.cycleLivingEnemy(1, true);
+          break; // R1
         case 9: this.togglePauseOverlay(); break; // Start
-        case 12: this.cycleLivingEnemy(-1, true); break; // D-pad up
-        case 13: this.cycleLivingEnemy(1, true); break; // D-pad down
-        case 14: this.cycleControllerChoice(-1); break; // D-pad left
-        case 15: this.cycleControllerChoice(1); break; // D-pad right
+        case 12:
+          if (!this.moveCardReviewFocus(-1)) this.cycleLivingEnemy(-1, true);
+          break; // D-pad up
+        case 13:
+          if (!this.moveCardReviewFocus(1)) this.cycleLivingEnemy(1, true);
+          break; // D-pad down
+        case 14:
+          if (!this.cycleBattleInspectMode(-1)) this.cycleControllerChoice(-1);
+          break; // D-pad left
+        case 15:
+          if (!this.cycleBattleInspectMode(1)) this.cycleControllerChoice(1);
+          break; // D-pad right
       }
     };
     this.input.keyboard?.on('keydown-TAB', onTab);
@@ -15187,7 +15641,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private cycleControllerChoice(direction: -1 | 1) {
-    if (this.settingsOverlayOpen || this.pauseOverlayOpen || this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
+    if (this.outcomeDetailsOpen || this.settingsOverlayOpen || this.pauseOverlayOpen || this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
     const count = this.combatChoiceCount();
     if (count <= 0) return;
     this.battleInputActive = true;
@@ -15200,6 +15654,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private combatChoiceCount() {
+    if (this.outcomeDetailsOpen) return 1;
     if (this.mode === 'battle') return this.hand.length;
     if (this.mode === 'waymarkReward') return this.waymarkChoices.length;
     if (this.mode === 'cardReward') return this.rewardChoices.length;
@@ -15223,7 +15678,11 @@ class BattleScene extends Phaser.Scene {
     const reward = this.mode === 'cardReward' ? this.rewardChoices[index] : undefined;
     const upgrade = this.mode === 'upgradeReward' ? this.upgradeChoices[index] : undefined;
     const waymark = this.mode === 'waymarkReward' ? this.waymarkChoices[index] : undefined;
-    const outcome = isRunOutcome(this.mode) ? this.outcomeActions()[index] : undefined;
+    const outcome = isRunOutcome(this.mode)
+      ? this.outcomeDetailsOpen
+        ? { label: 'Close Flight Details' }
+        : this.outcomeActions()[index]
+      : undefined;
     const enemy = this.enemies.find((candidate) => candidate.id === this.selectedEnemyId && candidate.hp > 0);
     const kind: CombatInputChoiceKind | undefined = this.mode === 'battle'
       ? 'card'
@@ -15243,7 +15702,11 @@ class BattleScene extends Phaser.Scene {
         this.mode === 'battle'
           ? Boolean(this.selectedInstanceId && this.hand.some((candidate) => candidate.instanceId === this.selectedInstanceId))
           : isRunOutcome(this.mode)
-            ? this.root?.list.some((child) => child.name === 'run-outcome-input-focus-ring') ?? false
+            ? this.root?.list.some((child) => child.name === (
+              this.outcomeDetailsOpen
+                ? 'run-flight-details-input-focus-ring'
+                : 'run-outcome-input-focus-ring'
+            )) ?? false
           : this.root?.list.some((child) => child.name === 'reward-input-focus-ring') ?? false
       ),
       bindings: {
@@ -15266,6 +15729,10 @@ class BattleScene extends Phaser.Scene {
 
   private activateCombatChoice(index: number) {
     if (!this.fxLayer?.active || this.settingsOverlayOpen || this.pauseOverlayOpen || this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
+    if (this.outcomeDetailsOpen) {
+      this.closeOutcomeFlightDetails();
+      return;
+    }
     if (isRunOutcome(this.mode)) {
       const actions = this.outcomeActions();
       const normalized = Phaser.Math.Clamp(Math.round(index), 0, Math.max(0, actions.length - 1));
@@ -15423,6 +15890,8 @@ class BattleScene extends Phaser.Scene {
     }
     this.introPlayed = true;
     const reduced = prefersReducedMotion();
+    const textTiming = textPacingState();
+    setFeedbackTextHoldScale(textTiming.holdScale);
     const node = currentCombatNodes()[this.currentRouteIndex];
     const c = this.add.container(0, 0);
     this.combatIntroActive = true;
@@ -15514,7 +15983,7 @@ class BattleScene extends Phaser.Scene {
     dismissHit.on('pointerdown', () => this.requestBattleIntroDismiss());
     birdAudio.play('encounter', 0.72);
     if (reduced) {
-      this.time.delayedCall(360, () => finish(false));
+      this.time.delayedCall(textTiming.minimumReadableMs, () => finish(false));
       return;
     }
     c.setAlpha(0);
@@ -15524,7 +15993,7 @@ class BattleScene extends Phaser.Scene {
       duration: 180,
       ease: 'Quad.easeOut',
       yoyo: true,
-      hold: 1360,
+      hold: Math.round(1360 * textTiming.holdScale),
       onComplete: () => finish(false),
     });
     this.fxMoteBurst(GAME_WIDTH / 2, 356, 0x8df4ff, {
@@ -15545,7 +16014,7 @@ class BattleScene extends Phaser.Scene {
     this.combatIntroDismissQueued = true;
     playUiSound('confirm');
     const elapsed = Math.max(0, this.time.now - this.combatIntroStartedAtMs);
-    const remaining = Math.max(0, COMBAT_INTRO_MIN_DISMISS_MS - elapsed);
+    const remaining = Math.max(0, textPacingState().minimumReadableMs - elapsed);
     if (remaining <= 0) {
       this.combatIntroFinish();
       return true;
@@ -15625,8 +16094,12 @@ class BattleScene extends Phaser.Scene {
       if (isRunOutcome(this.mode)) {
         this.clearPersistentHand();
         this.renderOutcome();
-        this.fxLayer.setDepth(80);
-        this.children.bringToTop(this.fxLayer);
+        // Outcome reveal motion belongs between the dimmed battlefield and the
+        // report. Keeping the report above this layer prevents even an opaque
+        // animation frame from masking the title, diagnosis, stats, or actions.
+        this.fxLayer.setDepth(10);
+        this.root.setDepth(20);
+        this.children.bringToTop(this.root);
         return;
       }
       this.handLayer.setVisible(true);
@@ -15794,8 +16267,17 @@ class BattleScene extends Phaser.Scene {
   private combatImpactFlash(x: number, y: number, color: number, direction: 1 | -1 = 1, heavy = false) {
     if (!this.textures.exists(COMBAT_IMPACT_FLASH_TEXTURE)) return;
     this.textures.get(COMBAT_IMPACT_FLASH_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    const reducedFlashes = currentFlashEffectsState().reduced;
+    this.fxGlowPulse(
+      x,
+      y + 4,
+      color,
+      heavy ? 92 : 66,
+      heavy ? 420 : 320,
+      reducedFlashes ? 0.08 : heavy ? 0.24 : 0.16,
+    );
+    if (reducedFlashes) return;
     this.combatImpactFlashBursts += 1;
-    this.fxGlowPulse(x, y + 4, color, heavy ? 92 : 66, heavy ? 420 : 320, heavy ? 0.24 : 0.16);
     const scale = heavy ? 0.7 : 0.52;
     const flash = this.add.image(x, y, COMBAT_IMPACT_FLASH_TEXTURE)
       .setDisplaySize(384 * scale, 384 * scale)
@@ -15826,36 +16308,40 @@ class BattleScene extends Phaser.Scene {
     this.textures.get(COMBAT_PLAYER_HIT_CONFIRM_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
     this.combatPlayerHitConfirmBursts += 1;
     const size = heavy ? 250 : 208;
-    const reduced = prefersReducedMotion();
-    const glow = this.add.image(x, y, COMBAT_PLAYER_HIT_CONFIRM_TEXTURE)
-      .setDisplaySize(size * 1.16, size * 1.16)
-      .setAlpha(reduced ? 0.3 : heavy ? 0.46 : 0.38)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setTint(color)
-      .setAngle(Phaser.Math.Between(-10, 10))
-      .setName('combat-player-hit-confirm');
+    const reducedMotion = prefersReducedMotion();
+    const reducedFlashes = currentFlashEffectsState().reduced;
+    const angle = Phaser.Math.Between(-10, 10);
+    const glow = reducedFlashes
+      ? undefined
+      : this.add.image(x, y, COMBAT_PLAYER_HIT_CONFIRM_TEXTURE)
+        .setDisplaySize(size * 1.16, size * 1.16)
+        .setAlpha(reducedMotion ? 0.3 : heavy ? 0.46 : 0.38)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setTint(color)
+        .setAngle(angle)
+        .setName('combat-player-hit-confirm');
     const burstSprite = this.add.image(x, y, COMBAT_PLAYER_HIT_CONFIRM_TEXTURE)
       .setDisplaySize(size, size)
-      .setAlpha(reduced ? 0.78 : heavy ? 0.94 : 0.86)
-      .setAngle(glow.angle)
+      .setAlpha(reducedMotion ? 0.78 : heavy ? 0.94 : 0.86)
+      .setAngle(angle)
       .setName('combat-player-hit-confirm');
-    this.fxLayer.add([glow, burstSprite]);
-    if (reduced) {
+    this.fxLayer.add(glow ? [glow, burstSprite] : [burstSprite]);
+    if (reducedMotion) {
       this.time.delayedCall(160, () => {
-        glow.destroy();
+        glow?.destroy();
         burstSprite.destroy();
       });
       return;
     }
     this.tweens.add({
-      targets: [glow, burstSprite],
+      targets: glow ? [glow, burstSprite] : [burstSprite],
       scaleX: `+=${heavy ? 0.08 : 0.06}`,
       scaleY: `+=${heavy ? 0.08 : 0.06}`,
       alpha: 0,
       duration: heavy ? 360 : 300,
       ease: 'Cubic.easeOut',
       onComplete: () => {
-        glow.destroy();
+        glow?.destroy();
         burstSprite.destroy();
       },
     });
@@ -15976,30 +16462,33 @@ class BattleScene extends Phaser.Scene {
   private combatEnemyImpactContact(x: number, y: number, fromX: number, heavy = false) {
     if (!this.textures.exists(COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE)) return;
     this.textures.get(COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const reduced = prefersReducedMotion();
+    const reducedMotion = prefersReducedMotion();
+    const reducedFlashes = currentFlashEffectsState().reduced;
     const direction = fromX >= x ? 1 : -1;
     const width = heavy ? 610 : 540;
     const height = width * (256 / 768);
     this.combatEnemyImpactContactBursts += 1;
 
-    const glow = this.add.image(x, y, COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE)
-      .setDisplaySize(width * 1.08, height * 1.08)
-      .setAlpha(reduced ? 0.44 : 0.68)
-      .setTint(0xfff0cf)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setName('combat-enemy-impact-contact');
+    const glow = reducedFlashes
+      ? undefined
+      : this.add.image(x, y, COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE)
+        .setDisplaySize(width * 1.08, height * 1.08)
+        .setAlpha(reducedMotion ? 0.44 : 0.68)
+        .setTint(0xfff0cf)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setName('combat-enemy-impact-contact');
     const contact = this.add.image(x, y, COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE)
       .setDisplaySize(width, height)
-      .setAlpha(reduced ? 0.92 : 0.98)
+      .setAlpha(reducedMotion ? 0.92 : 0.98)
       .setName('combat-enemy-impact-contact');
-    this.fxLayer.add([glow, contact]);
-    this.fxLayer.bringToTop(glow);
+    this.fxLayer.add(glow ? [glow, contact] : [contact]);
+    if (glow) this.fxLayer.bringToTop(glow);
     this.fxLayer.bringToTop(contact);
     this.children.bringToTop(this.fxLayer);
 
-    if (reduced) {
+    if (reducedMotion) {
       this.time.delayedCall(420, () => {
-        glow.destroy();
+        glow?.destroy();
         contact.destroy();
       });
       return;
@@ -16015,17 +16504,19 @@ class BattleScene extends Phaser.Scene {
       spreadX: heavy ? 88 : 68,
       spreadY: 18,
     });
-    this.tweens.add({
-      targets: glow,
-      alpha: 0,
-      scaleX: glow.scaleX * (heavy ? 1.12 : 1.1),
-      scaleY: glow.scaleY * (heavy ? 1.12 : 1.1),
-      x: x - direction * 10,
-      delay: 420,
-      duration: heavy ? 800 : 700,
-      ease: 'Cubic.easeOut',
-      onComplete: () => glow.destroy(),
-    });
+    if (glow) {
+      this.tweens.add({
+        targets: glow,
+        alpha: 0,
+        scaleX: glow.scaleX * (heavy ? 1.12 : 1.1),
+        scaleY: glow.scaleY * (heavy ? 1.12 : 1.1),
+        x: x - direction * 10,
+        delay: 420,
+        duration: heavy ? 800 : 700,
+        ease: 'Cubic.easeOut',
+        onComplete: () => glow.destroy(),
+      });
+    }
     this.tweens.add({
       targets: contact,
       alpha: 0,
@@ -16361,18 +16852,6 @@ class BattleScene extends Phaser.Scene {
     this.fxShockwave(x, y + 6, 0xff9d4d, 150 * scale, 620, 0);
   }
 
-  private combatPerfectChain(x: number, y: number, scale = 1) {
-    if (!this.combatGeneratedFx(COMBAT_PERFECT_CHAIN_TEXTURE, 'combat-perfect-chain', x, y, 440 * scale, 110 * scale, {
-      alpha: 0.9,
-      glowAlpha: 0.28,
-      angle: Phaser.Math.Between(-2, 2),
-      lifeMs: 680,
-      delayMs: 160,
-      scaleOut: 1.06,
-    })) return;
-    this.combatPerfectChainBursts += 1;
-  }
-
   private combatStatusCleanseSpecific(x: number, y: number, scale = 1) {
     if (!this.combatGeneratedFx(COMBAT_STATUS_CLEANSE_SPECIFIC_TEXTURE, 'combat-status-cleanse-specific', x, y, 238 * scale, 79 * scale, {
       alpha: 0.88,
@@ -16470,60 +16949,55 @@ class BattleScene extends Phaser.Scene {
   }
 
   private combatFourSuitRally(x: number, y: number, scale = 1) {
-    if (!this.textures.exists(COMBAT_FOUR_SUIT_RALLY_TEXTURE)) return;
-    this.textures.get(COMBAT_FOUR_SUIT_RALLY_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
     this.combatFourSuitRallyBursts += 1;
-    const crest = this.add.image(x, y, COMBAT_FOUR_SUIT_RALLY_TEXTURE)
-      .setDisplaySize(224 * scale, 224 * scale)
-      .setAlpha(0.72)
-      .setAngle(Phaser.Math.Between(-4, 4))
-      .setName('combat-four-suit-rally');
-    const glow = this.add.image(x, y, COMBAT_FOUR_SUIT_RALLY_TEXTURE)
-      .setDisplaySize(224 * scale, 224 * scale)
-      .setAlpha(0.28)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setAngle(crest.angle)
-      .setName('combat-four-suit-rally');
-    this.fxLayer.add([crest, glow]);
-    this.combatPerfectChain(x, y + 2, Phaser.Math.Clamp(scale, 0.85, 1.1));
-    this.fxMoteBurst(x, y, 0x8df4ff, {
-      count: 18,
-      speed: 118,
-      lifespan: 460,
-      scale: 0.56,
-      gravityY: -18,
-      spreadX: 24,
-      spreadY: 24,
-    });
-    this.fxMoteBurst(x, y + 4, 0xff5bd7, {
-      count: 8,
-      speed: 94,
-      lifespan: 380,
-      scale: 0.4,
-      gravityY: -10,
-      spreadX: 18,
-      spreadY: 18,
-    });
-    if (prefersReducedMotion()) {
-      this.time.delayedCall(180, () => {
-        crest.destroy();
-        glow.destroy();
+    const radius = 94 * scale;
+    const flourish = this.add.graphics()
+      .setPosition(x, y)
+      .setScale(0.86)
+      .setName('combat-four-suit-flourish')
+      .setData('centerClear', true)
+      .setData('presentation', 'segmented-perimeter')
+      .setData('radius', radius);
+    const suitColors = [0xffcf6b, 0xc9a6ff, 0x6fd0e6, 0x8fd6a0];
+    suitColors.forEach((color, index) => {
+      const angle = -Math.PI / 2 + index * Math.PI / 2;
+      const halfSegment = Math.PI * 0.27;
+      flourish.lineStyle(Math.max(2, 4 * scale), color, 0.9);
+      flourish.beginPath();
+      flourish.arc(0, 0, radius, angle - halfSegment, angle + halfSegment);
+      flourish.strokePath();
+      const nodeX = Math.cos(angle) * radius;
+      const nodeY = Math.sin(angle) * radius;
+      flourish.fillStyle(color, 0.94);
+      flourish.fillCircle(nodeX, nodeY, Math.max(3, 5 * scale));
+      flourish.lineStyle(Math.max(1, 1.5 * scale), 0xfff4d6, 0.82);
+      flourish.strokeCircle(nodeX, nodeY, Math.max(4, 7 * scale));
+      this.fxMoteBurst(x + nodeX, y + nodeY, color, {
+        count: 5,
+        speed: 76,
+        lifespan: 420,
+        scale: 0.42,
+        gravityY: -8,
+        spreadX: 12,
+        spreadY: 12,
       });
+    });
+    this.fxLayer.add(flourish);
+    this.fxGlowPulse(x, y, 0xffe1a3, radius * 1.04, 440, 0.08);
+    if (prefersReducedMotion()) {
+      this.time.delayedCall(180, () => flourish.destroy());
       return;
     }
     this.tweens.add({
-      targets: [crest, glow],
-      scaleX: crest.scaleX * 1.14,
-      scaleY: crest.scaleY * 1.14,
-      angle: crest.angle + Phaser.Math.Between(-10, 10),
+      targets: flourish,
+      scaleX: 1.12,
+      scaleY: 1.12,
+      angle: Phaser.Math.Between(-7, 7),
       alpha: 0,
-      delay: 120,
-      duration: 560,
+      delay: 90,
+      duration: 500,
       ease: 'Cubic.easeOut',
-      onComplete: () => {
-        crest.destroy();
-        glow.destroy();
-      },
+      onComplete: () => flourish.destroy(),
     });
   }
 
@@ -16756,22 +17230,24 @@ class BattleScene extends Phaser.Scene {
       .setAlpha(1)
       .setAngle(Phaser.Math.Between(-10, 10))
       .setName('combat-cover-shatter');
-    const flash = this.add.image(x, y - 18, COMBAT_COVER_SHATTER_TEXTURE)
-      .setDisplaySize(450 * scale, 338 * scale)
-      .setAlpha(1)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setAngle(shatter.angle)
-      .setName('combat-cover-shatter');
-    this.fxLayer.add([shatter, flash]);
+    const flash = currentFlashEffectsState().reduced
+      ? undefined
+      : this.add.image(x, y - 18, COMBAT_COVER_SHATTER_TEXTURE)
+        .setDisplaySize(450 * scale, 338 * scale)
+        .setAlpha(1)
+        .setBlendMode(Phaser.BlendModes.ADD)
+        .setAngle(shatter.angle)
+        .setName('combat-cover-shatter');
+    this.fxLayer.add(flash ? [shatter, flash] : [shatter]);
     if (prefersReducedMotion()) {
       this.time.delayedCall(150, () => {
         shatter.destroy();
-        flash.destroy();
+        flash?.destroy();
       });
       return;
     }
     this.tweens.add({
-      targets: [shatter, flash],
+      targets: flash ? [shatter, flash] : [shatter],
       scaleX: shatter.scaleX * 1.16,
       scaleY: shatter.scaleY * 1.16,
       y: shatter.y + 8,
@@ -16781,7 +17257,7 @@ class BattleScene extends Phaser.Scene {
       ease: 'Cubic.easeOut',
       onComplete: () => {
         shatter.destroy();
-        flash.destroy();
+        flash?.destroy();
       },
     });
   }
@@ -17750,43 +18226,23 @@ class BattleScene extends Phaser.Scene {
     if (!this.textures.exists(COMBAT_CAST_FOCUS_BURST_TEXTURE)) return;
     this.textures.get(COMBAT_CAST_FOCUS_BURST_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
     this.combatCastFocusBurstBursts += 1;
+    const size = 220 * scale;
     const burst = this.add.image(x, y, COMBAT_CAST_FOCUS_BURST_TEXTURE)
-      .setDisplaySize(280 * scale, 280 * scale)
-      .setAlpha(0.96)
+      .setDisplaySize(size, size)
+      .setAlpha(0.76)
+      .setTint(color)
       .setName('combat-cast-focus-burst');
-    const halo = this.add.circle(x, y, 78 * scale, 0xdffbff, 0.18)
-      .setStrokeStyle(8 * scale, 0xdffbff, 0.9);
-    const frame = this.add.graphics()
-      .setPosition(x, y)
-      .setAlpha(0.98);
-    frame.lineStyle(7 * scale, 0x06111c, 0.66);
-    frame.strokeCircle(0, 0, 68 * scale);
-    frame.lineStyle(4 * scale, 0xdffbff, 1);
-    frame.strokeCircle(0, 0, 68 * scale);
-    frame.lineStyle(3 * scale, color, 0.92);
-    frame.strokeCircle(0, 0, 92 * scale);
-    frame.fillStyle(0xffffff, 0.88);
-    frame.fillCircle(0, 0, 8 * scale);
-    for (let i = 0; i < 6; i += 1) {
-      const angle = (Math.PI * 2 * i) / 6 - 0.08;
-      frame.lineStyle(3.4 * scale, i % 2 === 0 ? 0xdffbff : color, 0.88);
-      frame.beginPath();
-      frame.moveTo(Math.cos(angle) * 56 * scale, Math.sin(angle) * 56 * scale);
-      frame.lineTo(Math.cos(angle) * 122 * scale, Math.sin(angle) * 122 * scale);
-      frame.strokePath();
-    }
-    const sheen = this.add.rectangle(x + 8 * scale, y - 18 * scale, 172 * scale, 7 * scale, 0xdffbff, 0.72)
-      .setAngle(-14)
-      .setBlendMode(Phaser.BlendModes.ADD);
-    const castParts = [halo, burst, frame, sheen];
-    this.fxLayer.add(castParts);
-    castParts.forEach((child) => this.fxLayer.bringToTop(child));
-    this.time.delayedCall(820, () => castParts.forEach((child) => child.destroy()));
+    this.fxLayer.add(burst);
+    this.fxLayer.bringToTop(burst);
     this.tweens.add({
       targets: burst,
-      angle: 24,
-      duration: 1040,
+      angle: 12,
+      scaleX: burst.scaleX * 1.08,
+      scaleY: burst.scaleY * 1.08,
+      alpha: 0,
+      duration: 420,
       ease: 'Cubic.easeOut',
+      onComplete: () => burst.destroy(),
     });
   }
 
@@ -18373,24 +18829,21 @@ class BattleScene extends Phaser.Scene {
     });
   }
 
-  private combatEnemyAttackTell(x: number, y: number, targetX: number, scale = 1) {
+  private combatEnemyAttackTell(x: number, y: number, scale = 1) {
     if (!this.textures.exists(COMBAT_ENEMY_ATTACK_TELL_TEXTURE)) return;
     this.textures.get(COMBAT_ENEMY_ATTACK_TELL_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
     this.combatEnemyAttackTellBursts += 1;
-    const flipX = targetX < x;
     const size = 210 * scale;
     const angle = Phaser.Math.Between(-4, 4);
     const halo = this.add.image(x, y, COMBAT_ENEMY_ATTACK_TELL_TEXTURE)
       .setDisplaySize(size * 1.08, size * 1.08)
       .setAlpha(0.46)
       .setBlendMode(Phaser.BlendModes.ADD)
-      .setFlipX(flipX)
       .setAngle(angle)
       .setName('combat-enemy-attack-tell');
     const tell = this.add.image(x, y, COMBAT_ENEMY_ATTACK_TELL_TEXTURE)
       .setDisplaySize(size, size)
       .setAlpha(0.96)
-      .setFlipX(flipX)
       .setAngle(angle)
       .setName('combat-enemy-attack-tell');
     this.fxLayer.add([halo, tell]);
@@ -18641,7 +19094,7 @@ class BattleScene extends Phaser.Scene {
     birdAudio.play('threat', Phaser.Math.Clamp(0.72 + pressure * 0.045, 0.78, 1.12));
     if (damage > 0) {
       this.combatThreatCharge(view.x, y, scale);
-      this.combatEnemyAttackTell(view.x, y - 8 * view.scale, FLOCK_FX_X, scale);
+      this.combatEnemyAttackTell(view.x, y - 8 * view.scale, scale);
     } else {
       this.combatEnemySupportCharge(view.x, y, scale);
       this.combatEnemySupportTell(view.x, y - 8 * view.scale, scale);
@@ -18660,7 +19113,9 @@ class BattleScene extends Phaser.Scene {
       spreadY: 12,
     });
     if (damage > 0) {
-      this.fxDirectionalStreak(view.x - 24 * view.scale, y + 16 * view.scale, FLOCK_FX_X + 12, FLOCK_FX_Y + 10, color, 840);
+      // Keep the anticipation tell centered on the acting enemy. A travel
+      // streak here made the neutral perimeter flourish read like an arrow
+      // aimed across the board; directional motion belongs to release.
       this.fxGlowPulse(FLOCK_FX_X, FLOCK_FX_Y + 10, color, 72, 620, 0.12);
     }
   }
@@ -19387,6 +19842,7 @@ class BattleScene extends Phaser.Scene {
         block: enemy.block,
         weak: enemy.weak,
         selected,
+        guideTarget: this.firstCombatGuideTarget(this.firstCombatGuideCard())?.id === enemy.id,
         elite,
         boss,
         x,
@@ -19492,9 +19948,7 @@ class BattleScene extends Phaser.Scene {
         fontFamily: UI_FONT,
         fontSize: '16px',
         fontStyle: UI_BOLD,
-        color: '#ffffff',
-        stroke: '#000000',
-        strokeThickness: 4
+        color: '#ffffff'
       }).setOrigin(0.5));
     });
     const leader = this.add.circle(FLOCK_ART_X, FLOCK_ART_Y, 70, 0x6f4b35, 0.96)
@@ -19506,9 +19960,7 @@ class BattleScene extends Phaser.Scene {
       fontFamily: UI_FONT,
       fontSize: '16px',
       fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      align: 'center',
-      wordWrap: { width: 120 }
+      color: UI_GOLD
     }).setOrigin(0.5));
   }
 
@@ -19522,6 +19974,10 @@ class BattleScene extends Phaser.Scene {
 
   private handleBattleBack() {
     if (!this.fxLayer?.active) return;
+    if (this.outcomeDetailsOpen) {
+      this.closeOutcomeFlightDetails();
+      return;
+    }
     if (isRunOutcome(this.mode)) {
       this.returnToMainMenu();
       return;
@@ -19576,6 +20032,7 @@ class BattleScene extends Phaser.Scene {
     this.time.paused = false;
     this.tweens.resumeAll();
     playUiSound('close');
+    this.requestBattleRender();
   }
 
   private leaveBattleWhilePaused() {
@@ -19603,13 +20060,17 @@ class BattleScene extends Phaser.Scene {
           playUiSound('close');
           this.queueBattleSystemOverlayRender();
         },
-        onToggleAudio: () => this.queueBattleSystemOverlayRender(),
+        onToggleAudio: () => {},
         onSetMusicVolume: (value) => {
           birdAudio.setMusicVolume(value);
           this.queueBattleSystemOverlayRender();
         },
         onSetSfxVolume: (value) => {
           birdAudio.setSfxVolume(value);
+          this.queueBattleSystemOverlayRender();
+        },
+        onSetAmbienceVolume: (value) => {
+          birdAudio.setAmbienceVolume(value);
           this.queueBattleSystemOverlayRender();
         },
         onSetMotionPreference: (value) => {
@@ -19620,12 +20081,34 @@ class BattleScene extends Phaser.Scene {
           setVisualContrastPreference(value);
           this.queueBattleSystemOverlayRender();
         },
+        onSetColorCuePreference: (value) => {
+          setColorCuePreference(value);
+          this.handRenderKey = '';
+          this.requestBattleRender();
+          this.queueBattleSystemOverlayRender();
+        },
+        onSetScreenShakePreference: (value) => {
+          setScreenShakePreference(value);
+          this.queueBattleSystemOverlayRender();
+        },
+        onSetFlashEffectsPreference: (value) => {
+          setFlashEffectsPreference(value);
+          this.queueBattleSystemOverlayRender();
+        },
         onSetGraphicsQualityPreference: (value) => {
           setGraphicsQualityPreference(value);
           this.queueBattleSystemOverlayRender();
         },
         onSetCombatPacePreference: (value) => {
           setCombatPacePreference(value);
+          this.queueBattleSystemOverlayRender();
+        },
+        onSetAnimationPacePreference: (value) => {
+          setAnimationPacePreference(this, value);
+          this.queueBattleSystemOverlayRender();
+        },
+        onSetTextPacePreference: (value) => {
+          setTextPacePreference(value);
           this.queueBattleSystemOverlayRender();
         },
         onSetScreenReaderPreference: (value) => {
@@ -19658,7 +20141,7 @@ class BattleScene extends Phaser.Scene {
         playUiSound('close');
         this.scene.start('MenuScene');
       },
-      onToggleAudio: () => this.queueBattleSystemOverlayRender(),
+      onToggleAudio: () => {},
       onSettings: () => this.openSettingsOverlay()
     });
     this.children.bringToTop(layer);
@@ -19920,7 +20403,13 @@ class BattleScene extends Phaser.Scene {
     const guideStep = firstFlightGuideStep();
     markFirstFlightGuideSeen(guideStep);
     const text = guideStep === 'card'
-      ? 'GUIDE: PLAY  /  Wingbeats pay card costs  /  Cards build Flow; full Flow becomes Surge'
+      ? (() => {
+          const card = this.firstCombatGuideCard();
+          const target = card ? this.firstCombatGuideTarget(card) : undefined;
+          if (!card) return 'GUIDE: PLAY  /  Wingbeats pay card costs  /  Cards build Flow; full Flow becomes Surge';
+          const cost = this.effectiveCost(card);
+          return `GUIDE: START HERE  /  ${displayName(card)} costs ${cost} Wingbeat${cost === 1 ? '' : 's'}  /  Play on ${target?.name ?? 'the highlighted target'}  /  Builds Flow`;
+        })()
       : guideStep === 'roost'
         ? `GUIDE: ROOST  /  End the beat when ready  /  Incoming ${incoming.total} - Cover ${incoming.blocked} = ${incoming.hpLoss} Cohesion`
         : `GUIDE: READ THE TELL  /  Incoming ${incoming.total} - Cover ${incoming.blocked} = ${incoming.hpLoss}  /  Unblocked hits break Flow`;
@@ -20427,9 +20916,11 @@ class BattleScene extends Phaser.Scene {
     return {
       instanceId: card.instanceId,
       name: displayName(card),
+      label: cardLabel(card),
       cost,
       canPay: cost <= this.energy && this.mode === 'battle',
       selected,
+      guideCard: this.firstCombatGuideCard()?.instanceId === card.instanceId,
       guideMolt: this.firstMoltGuideCard()?.instanceId === card.instanceId,
       accent: card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card),
       usesMolt: Boolean(contract.usesMolt),
@@ -20469,6 +20960,7 @@ class BattleScene extends Phaser.Scene {
       boldFontStyle: UI_BOLD,
       cyanColor: UI_CYAN,
       reducedMotion: prefersReducedMotion(),
+      reinforcedColorCues: colorCueState().reinforced,
       assets: {
         handRail: uiIconAssets['combat-hand-rail'].key,
         cardFrame: uiIconAssets['combat-hand-card-frame'].key,
@@ -20521,13 +21013,26 @@ class BattleScene extends Phaser.Scene {
         fontFamily: UI_FONT, fontSize: '11px', color: canPay ? UI_BODY : UI_MUTED,
         fixedWidth: CARD_W - 18, align: 'center', maxLines: 3, wordWrap: { width: CARD_W - 18 },
       }).setOrigin(0.5));
-      if (guideMolt) {
-        this.handLayer.add(this.add.text(centerX, HAND_Y - CARD_H / 2 + 35, 'MOLT CARD', {
-          fontFamily: UI_FONT, fontSize: '9px', fontStyle: UI_BOLD, color: '#ffe1bd',
-          backgroundColor: '#2a1208', fixedWidth: 70, align: 'center',
-        }).setOrigin(0.5, 0).setName('combat-molt-guide-tag'));
+      if (colorCueState().reinforced) {
+        this.handLayer.add(this.add.text(left + 4, HAND_Y - CARD_H / 2 + 57, fallbackCardColorCue(card), {
+          fontFamily: UI_FONT,
+          fontSize: '9px',
+          color: '#f4f8fb',
+        }).setName('combat-color-cue-badge').setData('label', cardLabel(card)));
       }
     });
+  }
+
+  private firstCombatGuideCard() {
+    if (firstFlightGuideStep() !== 'card' || !this.isGuidedFirstCombat() || this.mode !== 'battle') return undefined;
+    const affordable = this.hand.filter((card) => this.effectiveCost(card) <= this.energy && !isSnagCard(card));
+    return affordable.find((card) => this.activeCardContract(card).target === 'enemy' && this.cardBuildsFlow(card))
+      ?? affordable[0];
+  }
+
+  private firstCombatGuideTarget(card = this.firstCombatGuideCard()) {
+    if (!card || this.activeCardContract(card).target !== 'enemy') return undefined;
+    return this.getLivingEnemy(this.selectedEnemyId);
   }
 
   private firstMoltGuideCard() {
@@ -20549,7 +21054,7 @@ class BattleScene extends Phaser.Scene {
         contract.effects.join(';'),
       ].join(':');
     }).join('|');
-    return `${this.mode}:${this.energy}:${this.flock.molt ? 1 : 0}:${this.selectedInstanceId ?? ''}:${this.firstMoltGuideCard()?.instanceId ?? ''}:${cards}`;
+    return `${colorCueState().preference}:${this.mode}:${this.energy}:${this.flock.molt ? 1 : 0}:${this.selectedInstanceId ?? ''}:${this.firstCombatGuideCard()?.instanceId ?? ''}:${this.firstMoltGuideCard()?.instanceId ?? ''}:${cards}`;
   }
 
   private clearPersistentHand() {
@@ -21398,6 +21903,7 @@ class BattleScene extends Phaser.Scene {
       subtitle,
       reducedMotion: prefersReducedMotion(),
       leanEffects: prefersLeanEffects(),
+      reinforcedColorCues: colorCueState().reinforced,
       fontFamily: UI_FONT,
       boldFontStyle: UI_BOLD,
       goldColor: UI_GOLD,
@@ -21484,6 +21990,16 @@ class BattleScene extends Phaser.Scene {
         wordWrap: { width: 206 },
         maxLines: 4
       }).setOrigin(0.5));
+      if (!isWaymark && colorCueState().reinforced) {
+        this.root.add(this.add.text(x, 278, fallbackCardColorCue(card), {
+          fontFamily: UI_FONT,
+          fontSize: '10px',
+          fontStyle: UI_BOLD,
+          color: '#f4f8fb',
+          backgroundColor: '#06111a',
+          padding: { x: 7, y: 5 },
+        }).setOrigin(0.5).setName('reward-color-cue-badge').setData('label', cardLabel(card)));
+      }
     }
     if (this.mode !== 'cardReward') return;
     const skip = this.add.rectangle(GAME_WIDTH / 2, 652, 324, 48, 0x2a2320, 0.96).setStrokeStyle(2, 0xd8a840, 0.9).setInteractive({ useHandCursor: true });
@@ -21503,13 +22019,19 @@ class BattleScene extends Phaser.Scene {
     if (overlay === 'deck') this.queueCardArtLoad(this.allDeckCards());
     if (overlay === 'draw') this.queueCardArtLoad(this.drawPile);
     if (overlay === 'discard') this.queueCardArtLoad(this.discardPile);
+    if (overlay === 'cleared') this.queueCardArtLoad(this.clearedPile);
     this.inspectOverlay = overlay;
     this.selectedInstanceId = undefined;
-    this.inspectedCardId = undefined;
+    this.inspectedCardId = overlay === 'flock'
+      ? undefined
+      : this.battleInspectCards(overlay)[0]?.card.instanceId;
     this.supplyDrawerOpen = false;
     this.waymarkDrawerOpen = false;
     this.cardReviewScroll = 0;
-    if (overlay !== 'flock') {
+    if (overlay === 'flock') {
+      this.flockStatsOverlayFailed = false;
+      this.ensureFlockStatsOverlay();
+    } else {
       this.battleInspectRendererFailed = false;
       this.ensureBattleInspectRenderer();
     }
@@ -21523,18 +22045,71 @@ class BattleScene extends Phaser.Scene {
     this.requestBattleRender();
   }
 
+  private switchBattleInspectMode(mode: BattleInspectMode) {
+    if (!this.inspectOverlay || this.inspectOverlay === 'flock' || this.inspectOverlay === mode) return;
+    if (mode === 'deck') this.queueCardArtLoad(this.allDeckCards());
+    if (mode === 'draw') this.queueCardArtLoad(this.drawPile);
+    if (mode === 'discard') this.queueCardArtLoad(this.discardPile);
+    if (mode === 'cleared') this.queueCardArtLoad(this.clearedPile);
+    this.inspectOverlay = mode;
+    this.cardReviewScroll = 0;
+    this.inspectedCardId = this.battleInspectCards(mode)[0]?.card.instanceId;
+    this.requestBattleRender();
+  }
+
+  private cycleBattleInspectMode(direction: -1 | 1) {
+    if (!this.inspectOverlay || this.inspectOverlay === 'flock') return false;
+    const modes: BattleInspectMode[] = ['deck', 'draw', 'discard', 'cleared'];
+    const current = Math.max(0, modes.indexOf(this.inspectOverlay));
+    const next = modes[(current + direction + modes.length) % modes.length];
+    playUiSound('confirm');
+    this.switchBattleInspectMode(next);
+    return true;
+  }
+
   private renderInspectOverlay(overlay: InspectOverlay) {
     this.queueBattleInspectUiLoad();
     if (overlay === 'flock') {
-      const scrim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.76)
-        .setInteractive({ useHandCursor: false });
-      this.root.add(scrim);
-      const frame = renderFieldPanel(this, (obj) => this.root.add(obj), HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy, HUD_MENU_PANEL.w, HUD_MENU_PANEL.h, {
-        accent: UI_FIELD.cyan
+      if (this.flockStatsOverlayModule) {
+        this.flockStatsOverlayModule.renderBattleFlockStats({
+          scene: this,
+          root: this.root,
+          rows: this.flockStatRows(),
+          battleRows: [
+            ['Beat', `${this.turn}`],
+            ['Damage dealt', `${this.statDealt}`],
+            ['Damage taken', `${this.statTaken}`],
+            ['Damage blocked', `${this.statBlocked}`],
+            ['Cards played', `${this.statCardsPlayed}`],
+            ['Enemies down', `${this.statDefeated}`],
+          ],
+          renderFieldPanel,
+          renderCloseControl,
+          onClose: () => this.closeOverlay(),
+          reducedMotion: prefersReducedMotion(),
+        });
+        return;
+      }
+      const addTo = (object: Phaser.GameObjects.GameObject) => this.root.add(object);
+      addTo(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.76)
+        .setInteractive({ useHandCursor: false }));
+      const frame = renderFieldPanel(this, addTo, HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy, HUD_MENU_PANEL.w, HUD_MENU_PANEL.h, {
+        accent: this.flockStatsOverlayFailed ? UI_FIELD.danger : UI_FIELD.cyan,
       });
-      addFlockStatsFlourish(this, (obj) => this.root.add(obj), frame, { alpha: 0.1, yOffset: 10 });
-      renderCloseControl(this, (obj) => this.root.add(obj), frame.right - HUD_MENU_PANEL.closeX, frame.top + HUD_MENU_PANEL.closeY, () => this.closeOverlay());
-      this.renderFlockStatsOverlay();
+      renderCloseControl(this, addTo, frame.right - HUD_MENU_PANEL.closeX, frame.top + HUD_MENU_PANEL.closeY, () => this.closeOverlay());
+      addTo(this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 12, this.flockStatsOverlayFailed ? 'Flock Stats unavailable' : 'Opening Flock Stats…', {
+        fontFamily: UI_FONT,
+        fontSize: '24px',
+        fontStyle: UI_BOLD,
+        color: this.flockStatsOverlayFailed ? '#ffb09a' : UI_GOLD,
+      }).setOrigin(0.5));
+      addTo(this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 28, this.flockStatsOverlayFailed
+        ? 'Close and reopen the dossier to retry.'
+        : 'Tallying passive bonuses.', {
+        fontFamily: UI_FONT,
+        fontSize: '14px',
+        color: UI_SOFT,
+      }).setOrigin(0.5));
       return;
     }
 
@@ -21584,18 +22159,44 @@ class BattleScene extends Phaser.Scene {
       });
   }
 
+  private ensureFlockStatsOverlay() {
+    if (this.flockStatsOverlayModule || this.flockStatsOverlayLoading) return;
+    this.flockStatsOverlayLoading = true;
+    this.flockStatsOverlayFailed = false;
+    void loadFlockStatsOverlayModule()
+      .then((module) => {
+        if (!this.sys.settings.active) return;
+        this.flockStatsOverlayModule = module;
+        this.flockStatsOverlayLoading = false;
+        if (this.inspectOverlay === 'flock') this.requestBattleRender();
+      })
+      .catch((error) => {
+        this.flockStatsOverlayLoading = false;
+        this.flockStatsOverlayFailed = true;
+        console.warn(LAZY_LOAD_FAILED, error);
+        if (this.sys.settings.active && this.inspectOverlay === 'flock') this.requestBattleRender();
+      });
+  }
+
   private battleInspectCards(overlay: BattleInspectMode) {
-    return overlay === 'deck'
+    const entries = overlay === 'deck'
       ? this.deckReviewCards()
       : overlay === 'draw'
         ? this.drawPile.map((card) => ({ card, zone: 'Draw' }))
-        : this.discardPile.map((card) => ({ card, zone: 'Discard' }));
+        : overlay === 'discard'
+          ? this.discardPile.map((card) => ({ card, zone: 'Discard' }))
+          : this.clearedPile.map((card) => ({ card, zone: 'Cleared' }));
+    return entries.sort((a, b) => (
+      zoneRank(a.zone) - zoneRank(b.zone)
+      || displayName(a.card).localeCompare(displayName(b.card))
+      || a.card.instanceId.localeCompare(b.card.instanceId)
+    ));
   }
 
   private battleInspectCardView(card: Card, zone: string): BattleInspectCardView {
     const contract = this.activeCardContract(card);
     return {
-      id: card.id,
+      id: card.instanceId,
       name: displayName(card),
       bird: card.bird,
       label: cardLabel(card),
@@ -21620,7 +22221,7 @@ class BattleScene extends Phaser.Scene {
 
   private battleInspectRenderContext(overlay: BattleInspectMode): import('./game/battle/render-inspect').BattleInspectRenderContext {
     const entries = this.battleInspectCards(overlay);
-    const cardsById = new Map(entries.map(({ card }) => [card.id, card]));
+    const cardsById = new Map(entries.map(({ card }) => [card.instanceId, card]));
     const cards = entries.map(({ card, zone }) => this.battleInspectCardView(card, zone));
     return {
       scene: this,
@@ -21632,21 +22233,25 @@ class BattleScene extends Phaser.Scene {
         ? `Deck Review (${this.allDeckCards().length})`
         : overlay === 'draw'
           ? `Draw Pile (${cards.length})`
-          : `Discard (${cards.length})`,
+          : overlay === 'discard'
+            ? `Discard (${cards.length})`
+            : `Cleared (${cards.length})`,
       cards,
       selectedCardId: this.inspectedCardId,
       scroll: this.cardReviewScroll,
       visibleRows: CARD_REVIEW_VISIBLE_ROWS,
       rowHeight: CARD_REVIEW_ROW_H,
       drawCount: this.drawPile.length,
-      handCount: this.hand.length,
+      deckCount: this.allDeckCards().length,
       discardCount: this.discardPile.length,
+      clearedCount: this.clearedPile.length,
       fontFamily: UI_FONT,
       boldFontStyle: UI_BOLD,
       goldColor: UI_GOLD,
       softColor: UI_SOFT,
       cyanColor: UI_CYAN,
       reducedMotion: prefersReducedMotion(),
+      inputHint: `UP / DOWN CARD  |  ${controlBindingLabel('previous')} / ${controlBindingLabel('next')} ZONE  |  LB / RB PAGE  |  ${controlBindingLabel('back')} CLOSE`,
       assets: {
         pileReviewFrame: uiIconAssets['combat-pile-review-frame'].key,
         pileRowFrame: uiIconAssets['combat-pile-row-frame'].key,
@@ -21661,7 +22266,7 @@ class BattleScene extends Phaser.Scene {
         addFlourish: (frame, mode) => {
           addDeckReviewFlourish(this, (obj) => this.root.add(obj), frame, {
             alpha: mode === 'discard' ? 0.1 : 0.12,
-            tint: mode === 'draw' ? 0xdffaff : undefined,
+            tint: mode === 'draw' ? 0xdffaff : mode === 'cleared' ? 0xe7c8ff : undefined,
             yOffset: 10
           });
         },
@@ -21682,6 +22287,7 @@ class BattleScene extends Phaser.Scene {
       },
       onInspect: (cardId) => this.inspectCard(cardId),
       onScroll: (delta) => this.scrollCardReview(delta),
+      onSwitchMode: (mode) => this.switchBattleInspectMode(mode),
       onConfirmSound: () => playUiSound('confirm')
     };
   }
@@ -21691,130 +22297,68 @@ class BattleScene extends Phaser.Scene {
     this.requestBattleRender();
   }
 
-  private scrollCardReview(delta: number) {
-    if (!this.inspectOverlay || this.inspectOverlay === 'flock') return;
-    const cards = this.inspectOverlay === 'deck'
-      ? this.deckReviewCards()
-      : this.inspectOverlay === 'draw'
-        ? this.drawPile.map((card) => ({ card, zone: 'Draw' }))
-        : this.discardPile.map((card) => ({ card, zone: 'Discard' }));
-    this.cardReviewScroll = clamp(this.cardReviewScroll + delta, 0, Math.max(0, cards.length - CARD_REVIEW_VISIBLE_ROWS));
+  private moveCardReviewFocus(direction: -1 | 1, page = false) {
+    if (!this.inspectOverlay || this.inspectOverlay === 'flock') return false;
+    const cards = this.battleInspectCards(this.inspectOverlay);
+    if (cards.length === 0) {
+      playUiSound('locked');
+      return true;
+    }
+    const current = Math.max(0, cards.findIndex(({ card }) => card.instanceId === this.inspectedCardId));
+    const step = page ? CARD_REVIEW_VISIBLE_ROWS : 1;
+    const next = clamp(current + direction * step, 0, cards.length - 1);
+    if (next === current) {
+      playUiSound('locked');
+      return true;
+    }
+    this.inspectedCardId = cards[next].card.instanceId;
+    if (next < this.cardReviewScroll) this.cardReviewScroll = next;
+    else if (next >= this.cardReviewScroll + CARD_REVIEW_VISIBLE_ROWS) {
+      this.cardReviewScroll = next - CARD_REVIEW_VISIBLE_ROWS + 1;
+    }
+    playUiSound('confirm');
     this.requestBattleRender();
+    return true;
   }
 
-  private renderFlockStatsOverlay() {
-    const headerCx = 390;
-    const headerCy = 100;
-    addFlockStatsTitlePlaque(this, (obj) => this.root.add(obj), headerCx, headerCy, 560, 86, { alpha: 0.5 });
-    this.root.add(this.add.text(headerCx, headerCy - 7, 'Flock Stats', {
-      fontFamily: UI_FONT, fontSize: '32px', fontStyle: UI_BOLD, color: UI_GOLD
-    }).setOrigin(0.5));
-    addFlockStatsCaptionFrame(this, (obj) => this.root.add(obj), headerCx, headerCy + 53, 520, 34, { alpha: 0.38 });
-    this.root.add(this.add.text(headerCx, headerCy + 53, 'Base values plus passive stats from owned cards.', {
-      fontFamily: UI_FONT, fontSize: '16px', color: UI_SOFT, align: 'center', wordWrap: { width: 460 }
-    }).setOrigin(0.5));
-    renderFlockStatTable(this, (obj) => this.root.add(obj), this.flockStatRows(), 140, 168);
-    addFlockStatsFooterFrame(this, (obj) => this.root.add(obj), 405, 566, 540, 36, { alpha: 0.36 });
-    this.root.add(this.add.text(140, 558, 'Flock Stats update when cards join, leave, or are preened.', {
-      fontFamily: UI_FONT, fontSize: '15px', color: '#91a6b8'
-    }));
-
-    const rx = 720;
-    const tallyFrameKey = uiIconAssets['combat-stats-tally-frame'].key;
-    const tallyFrameX = rx + 254;
-    const tallyFrameY = 310;
-    const tallyFrameW = 286;
-    const tallyFrameH = 338;
-    if (this.textures.exists(tallyFrameKey)) {
-      this.textures.get(tallyFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      const tallyFrame = this.add.image(tallyFrameX, tallyFrameY, tallyFrameKey)
-        .setDisplaySize(tallyFrameW, tallyFrameH)
-        .setAlpha(0.56)
-        .setName('combat-stats-tally-frame');
-      this.root.add(tallyFrame);
-      if (!prefersReducedMotion()) {
-        const glint = this.add.image(tallyFrameX, tallyFrameY, tallyFrameKey)
-          .setDisplaySize(tallyFrameW, tallyFrameH)
-          .setBlendMode(Phaser.BlendModes.ADD)
-          .setAlpha(0.035)
-          .setName('combat-stats-tally-frame');
-        this.root.add(glint);
-        this.tweens.add({
-          targets: glint,
-          alpha: 0.02,
-          duration: 1500,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut',
-        });
-      }
-    } else {
-      this.root.add(this.add.rectangle(tallyFrameX, tallyFrameY + 8, tallyFrameW - 22, 286, 0x07101c, 0.56)
-        .setStrokeStyle(1, UI_FIELD.cyan, 0.42)
-        .setName('combat-stats-tally-frame-fallback'));
+  private scrollCardReview(delta: number) {
+    if (!this.inspectOverlay || this.inspectOverlay === 'flock') return;
+    const cards = this.battleInspectCards(this.inspectOverlay);
+    const nextScroll = clamp(this.cardReviewScroll + delta, 0, Math.max(0, cards.length - CARD_REVIEW_VISIBLE_ROWS));
+    if (nextScroll === this.cardReviewScroll) return;
+    this.cardReviewScroll = nextScroll;
+    const selected = cards.findIndex(({ card }) => card.instanceId === this.inspectedCardId);
+    if (selected < nextScroll || selected >= nextScroll + CARD_REVIEW_VISIBLE_ROWS) {
+      const nextSelected = delta > 0
+        ? Math.min(cards.length - 1, nextScroll + CARD_REVIEW_VISIBLE_ROWS - 1)
+        : nextScroll;
+      this.inspectedCardId = cards[nextSelected]?.card.instanceId;
     }
-    const tallyTitlePlaqueKey = uiIconAssets['combat-stats-tally-title-plaque'].key;
-    const hasTallyTitlePlaque = this.textures.exists(tallyTitlePlaqueKey);
-    if (hasTallyTitlePlaque) {
-      this.textures.get(tallyTitlePlaqueKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      this.root.add(this.add.image(rx + 132, 178, tallyTitlePlaqueKey)
-        .setDisplaySize(318, 54)
-        .setAlpha(0.38)
-        .setName('combat-stats-tally-title-plaque'));
-    } else {
-      this.root.add(this.add.rectangle(rx + 132, 181, 300, 30, 0x07101c, 0.2)
-        .setStrokeStyle(1, UI_FIELD.cyan, 0.12)
-        .setName('combat-stats-tally-title-plaque-fallback'));
-    }
-    this.root.add(this.add.text(rx, 168, 'This Combat', tableHeaderStyle()));
-    const tallyRowFrameKey = uiIconAssets['combat-stats-tally-row-frame'].key;
-    const hasTallyRowFrame = this.textures.exists(tallyRowFrameKey);
-    if (hasTallyRowFrame) this.textures.get(tallyRowFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const battleRows: Array<[string, string]> = [
-      ['Beat', `${this.turn}`],
-      ['Damage dealt', `${this.statDealt}`],
-      ['Damage taken', `${this.statTaken}`],
-      ['Damage blocked', `${this.statBlocked}`],
-      ['Cards played', `${this.statCardsPlayed}`],
-      ['Enemies down', `${this.statDefeated}`],
-    ];
-    battleRows.forEach((row, index) => {
-      const y = 215 + index * 36;
-      if (hasTallyRowFrame) {
-        const rowFrame = this.add.image(rx + 132, y + 12, tallyRowFrameKey)
-          .setDisplaySize(314, 30)
-          .setAlpha(index % 2 === 0 ? 0.34 : 0.28)
-          .setName('combat-stats-tally-row-frame');
-        this.root.add(rowFrame);
-      } else {
-        this.root.add(this.add.rectangle(rx + 132, y + 13, 300, 24, 0x07101c, 0.18)
-          .setStrokeStyle(1, 0xffffff, 0.06)
-          .setName('combat-stats-tally-row-frame-fallback'));
-      }
-      this.root.add(this.add.rectangle(rx + 132, y + 29, 300, 1, 0xffffff, index % 2 === 0 ? 0.08 : 0.04));
-      this.root.add(this.add.text(rx, y, row[0], tableCellStyle('#cdd9e6')));
-      this.root.add(this.add.text(rx + 260, y, row[1], { ...tableCellStyle('#ffffff'), align: 'right' }).setOrigin(1, 0));
-    });
+    this.requestBattleRender();
   }
 
   private deckReviewCards() {
     return [
       ...this.drawPile.map((card) => ({ card, zone: 'Deck' })),
       ...this.hand.map((card) => ({ card, zone: 'Hand' })),
-      ...this.discardPile.map((card) => ({ card, zone: 'Discard' }))
+      ...this.discardPile.map((card) => ({ card, zone: 'Discard' })),
+      ...this.clearedPile.map((card) => ({ card, zone: 'Cleared' }))
     ];
   }
 
   private outcomeActions(): Array<{
-    id: 'replay' | 'rate' | 'menu';
+    id: 'replay' | 'details' | 'rate' | 'menu';
     label: string;
     activate: () => void;
   }> {
     const actions: Array<{
-      id: 'replay' | 'rate' | 'menu';
+      id: 'replay' | 'details' | 'rate' | 'menu';
       label: string;
       activate: () => void;
     }> = [{ id: 'replay', label: 'Replay Flight', activate: () => this.replayLastFlight() }];
+    if (window.__birdSquadLastRun) {
+      actions.push({ id: 'details', label: 'Flight Details', activate: () => this.openOutcomeFlightDetails() });
+    }
     if (PLAYTEST_MODE && window.__birdSquadLastRun) {
       actions.push({ id: 'rate', label: 'Rate This Run', activate: () => this.openPlaytestRunRating() });
     }
@@ -21822,11 +22366,40 @@ class BattleScene extends Phaser.Scene {
     return actions;
   }
 
+  private outcomeFlightDetails(): import('./game/boss-dossier').OutcomeFlightDetails | undefined {
+    const summary = window.__birdSquadLastRun;
+    if (!summary || !this.bossDossierModule) return undefined;
+    return buildOutcomeFlightDetailsFor(summary, this.bossDossierModule);
+  }
+
+  private openOutcomeFlightDetails() {
+    if (!isRunOutcome(this.mode) || !window.__birdSquadLastRun) {
+      playUiSound('locked');
+      return;
+    }
+    playUiSound('confirm');
+    this.outcomeDetailsOpen = true;
+    this.controllerChoiceIndex = 0;
+    this.requestBattleRender();
+  }
+
+  private closeOutcomeFlightDetails() {
+    if (!this.outcomeDetailsOpen) return;
+    playUiSound('close');
+    this.outcomeDetailsOpen = false;
+    this.controllerChoiceIndex = Math.max(0, this.outcomeActions().findIndex((action) => action.id === 'details'));
+    this.requestBattleRender();
+  }
+
   private renderOutcome() {
     this.queueBattleRewardUiLoad();
     this.queueOutcomeDossierLoad();
     const win = this.mode === 'runComplete';
-    const killedBy = win ? '' : (this.enemies.find((enemy) => enemy.hp > 0)?.name ?? '');
+    const summary = window.__birdSquadLastRun;
+    const defeatReview = win ? undefined : this.bossDossierModule?.buildDefeatReview(summary);
+    const killedBy = win
+      ? ''
+      : defeatReview?.fatalMove ?? summary?.killedBy ?? this.enemies.find((enemy) => enemy.hp > 0)?.name ?? '';
     const cx = GAME_WIDTH / 2;
     const accent = win ? 0xe8b830 : 0xff7a6e;
     const softAccent = win ? 0x8df4ff : 0xff9d6b;
@@ -21899,14 +22472,14 @@ class BattleScene extends Phaser.Scene {
     }).setOrigin(0.5));
     this.root.add(this.add.text(cx, 212, win
       ? 'The flyway is restored - every district answers to the flock.'
-      : `Scattered at ${currentMap().name}${killedBy ? ` by ${killedBy}` : ''}.`, {
+      : `Scattered at ${currentMap().name}${killedBy ? `. Last hit: ${killedBy}` : ''}.`, {
       fontFamily: UI_FONT, fontSize: '16px', color: UI_SOFT, align: 'center', wordWrap: { width: 540 }
     }).setOrigin(0.5));
 
     const crestKey = uiIconAssets['run-outcome-crest'].key;
     if (this.textures.exists(crestKey)) {
       const crest = this.add.image(panelLeft + 126, 342, crestKey)
-        .setDisplaySize(176, 176)
+        .setDisplaySize(win ? 176 : 160, win ? 176 : 160)
         .setAlpha(win ? 0.98 : 0.78)
         .setAngle(win ? 0 : -5);
       if (!win) crest.setTint(0xffb2a4);
@@ -21928,38 +22501,22 @@ class BattleScene extends Phaser.Scene {
       }
     }
 
-    if (reportFrameLoaded) {
-      this.root.add(this.add.rectangle(panelLeft + 126, 492, 244, 92, 0x03070d, win ? 0.9 : 0.92)
-        .setStrokeStyle(1, softAccent, 0.1));
-    }
-    this.root.add(this.add.text(panelLeft + 126, 468, win ? 'DISTRICTS HELD' : 'ROOFLINE RECOVERABLE', {
+    this.bossDossierModule?.renderOutcomeFlightSummary(this, this.root, {
+      x: panelLeft + 126,
+      win,
+      review: defeatReview,
+      seed: activeSeed,
+      runMode: this.runMode,
+      reportFrameLoaded,
+      softAccent,
       fontFamily: UI_FONT,
-      fontSize: '13px',
-      fontStyle: UI_BOLD,
-      color: win ? '#8df4ff' : '#ffcfaa'
-    }).setOrigin(0.5));
-    const flightCode = this.add.text(panelLeft + 126, 496, `FLIGHT ${activeSeed}\nCOPY ROUTE LINK`, {
-      fontFamily: UI_FONT,
-      fontSize: '13px',
-      color: UI_SOFT,
-      align: 'center'
-    }).setOrigin(0.5);
-    this.root.add(flightCode);
-    const flightCodeHit = this.add.rectangle(panelLeft + 126, 496, 244, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-      .setInteractive({ useHandCursor: true })
-      .setName('run-outcome-flight-link-hit')
-      .setData('label', 'Copy route link');
-    flightCodeHit.on('pointerdown', () => {
-      import('./game/run-challenge')
-        .then(({ copySharedRouteLink }) => copySharedRouteLink(activeSeed, this.runMode))
-        .then((copied) => flightCode.setText(`FLIGHT ${activeSeed}\n${copied ? 'LINK COPIED' : 'COPY FAILED'}`));
+      boldStyle: UI_BOLD,
+      softColor: UI_SOFT,
     });
-    this.root.add(flightCodeHit);
 
     // Recap stats, drawn from the same run state RunSummary captures.
     const runDistrictCount = runMapIndices(this.runMode).length;
     const districts = win ? runDistrictCount : runDistrictOrdinal(this.runMode, activeMapIndex);
-    const summary = window.__birdSquadLastRun;
     const totalTaken = summary?.combatResults.reduce((sum, combat) => sum + combat.cohesionLost, 0) ?? this.statTaken;
     const totalDealt = summary?.combatResults.reduce((sum, combat) => sum + combat.damageDealt, 0) ?? this.statDealt;
     const stats: Array<[string, string]> = [
@@ -22024,8 +22581,8 @@ class BattleScene extends Phaser.Scene {
     const outcomeActions = this.outcomeActions();
     const outcomeIndex = this.normalizeCombatChoiceIndex();
     const compactCommands = outcomeActions.length > 2;
-    const commandSpacing = compactCommands ? 232 : 280;
-    const commandWidth = compactCommands ? 210 : 256;
+    const commandSpacing = outcomeActions.length > 3 ? 214 : compactCommands ? 232 : 280;
+    const commandWidth = outcomeActions.length > 3 ? 190 : compactCommands ? 210 : 256;
     outcomeActions.forEach((action, index) => {
       const x = cx + (index - (outcomeActions.length - 1) / 2) * commandSpacing;
       const style = action.id === 'replay'
@@ -22037,6 +22594,15 @@ class BattleScene extends Phaser.Scene {
             stroke: 0xd8a840,
             frameTint: win ? undefined : 0xffb195,
           }
+        : action.id === 'details'
+          ? {
+              labelColor: '#dffbff',
+              iconId: 'release-card',
+              baseFill: 0x0b2530,
+              hoverFill: 0x123b4b,
+              stroke: 0x8df4ff,
+              frameTint: 0xcfefff,
+            }
         : action.id === 'rate'
           ? {
               labelColor: '#dffbff',
@@ -22069,7 +22635,7 @@ class BattleScene extends Phaser.Scene {
         fontFamily: UI_FONT,
         boldStyle: UI_BOLD,
         width: commandWidth,
-        fontSize: compactCommands ? 17 : 20,
+        fontSize: outcomeActions.length > 3 ? 15 : compactCommands ? 17 : 20,
         focused: this.battleInputActive && outcomeIndex === index,
         onActivate: action.activate,
         addIcon: addCommandIcon,
@@ -22101,6 +22667,17 @@ class BattleScene extends Phaser.Scene {
         pulseRing: (x, y, fxColor, radius, duration) => this.pulseRing(x, y, fxColor, radius, duration),
         moteBurst: (x, y, fxColor, config) => this.fxMoteBurst(x, y, fxColor, config as Parameters<typeof this.fxMoteBurst>[3]),
         playAnimation: (key, x, y, config) => this.playFxAnimation(key, x, y, config as Parameters<typeof this.playFxAnimation>[3])
+      });
+    }
+    const flightDetails = this.outcomeDetailsOpen ? this.outcomeFlightDetails() : undefined;
+    if (flightDetails && this.bossDossierModule) {
+      this.bossDossierModule.renderOutcomeFlightDetails(this, this.root, flightDetails, {
+        title: 'Flight Details',
+        subtitle: `${summary?.result === 'win' ? 'Completed' : 'Scattered'} flight ${summary?.seed ?? activeSeed} · ${getLeader(summary?.leaderId).name} · ${difficultyLabel(summary?.difficulty ?? 0)}`,
+        fontFamily: UI_FONT,
+        boldStyle: UI_BOLD,
+        focused: this.battleInputActive,
+        onClose: () => this.closeOutcomeFlightDetails(),
       });
     }
   }
@@ -22299,6 +22876,41 @@ class BattleScene extends Phaser.Scene {
     this.playCard(card, enemyId, { resolveDelayMs: this.combatTimingDelay(delay) });
   }
 
+  private beginPlayerCardFxWindow() {
+    this.playerCardFxBaseline = new Set(this.fxLayer?.list ?? []);
+    this.playerCardFxLastRetired = 0;
+  }
+
+  private playerCardFxTransientCount() {
+    const baseline = this.playerCardFxBaseline;
+    if (!baseline || !this.fxLayer) return 0;
+    return this.fxLayer.list.reduce(
+      (count, object) => count + (baseline.has(object) || object.active === false ? 0 : 1),
+      0,
+    );
+  }
+
+  private retirePlayerCardFxWindow(destroyTransient: boolean) {
+    const baseline = this.playerCardFxBaseline;
+    if (!baseline || !this.fxLayer) {
+      this.playerCardFxBaseline = undefined;
+      return 0;
+    }
+    let retired = 0;
+    if (destroyTransient) {
+      for (const object of [...this.fxLayer.list]) {
+        if (baseline.has(object) || object.active === false) continue;
+        retired += 1;
+        object.destroy();
+      }
+      this.activeGeneratedFxSprites = 0;
+      this.activeFxParticleBursts = 0;
+    }
+    this.playerCardFxBaseline = undefined;
+    this.playerCardFxLastRetired = retired;
+    return retired;
+  }
+
   private playCard(card: Card, enemyId = this.selectedEnemyId, options: PlayCardOptions = {}) {
     if (this.combatInteractionLocked()) return;
     const contract = this.activeCardContract(card);
@@ -22324,18 +22936,27 @@ class BattleScene extends Phaser.Scene {
     this.cardsPlayedThisTurn += 1;
     if (cost === 0) this.zeroCostThisTurn += 1;
     this.statMaxCardsPlayedTurn = Math.max(this.statMaxCardsPlayedTurn, this.cardsPlayedThisTurn);
+    const resolveDelayMs = options.resolveDelayMs ?? 0;
+    if (resolveDelayMs > 0) this.beginPlayerCardFxWindow();
     this.playCardCastFx(playedCard, enemyId, handIndexBeforePlay, handSizeBeforePlay, contract);
 
-    const resolveDelayMs = options.resolveDelayMs ?? 0;
     if (resolveDelayMs > 0) {
       this.combatAnimationPending = true;
       this.selectedInstanceId = undefined;
       this.renderAll();
       this.combatPlayerCommitSigil(playedCard, enemyId, contract, resolveDelayMs);
       this.time.delayedCall(resolveDelayMs, () => {
-        this.combatAnimationPending = false;
-        if (this.mode !== 'battle') return;
         this.finishPlayedCardResolution(playedCard, enemyId, contract, handIndexBeforePlay, handSizeBeforePlay);
+        if (this.mode !== 'battle') {
+          this.retirePlayerCardFxWindow(false);
+          this.combatAnimationPending = false;
+          return;
+        }
+        this.time.delayedCall(this.combatTimingDelay(PLAYER_CARD_FEEDBACK_SETTLE_MS), () => {
+          this.retirePlayerCardFxWindow(true);
+          this.combatAnimationPending = false;
+          if (this.mode === 'battle') this.renderAll();
+        });
       });
       return;
     }
@@ -22364,7 +22985,10 @@ class BattleScene extends Phaser.Scene {
 
     // A snag like Bad Directions shuffles itself back into the draw pile instead
     // of discarding, so it keeps clogging the hand until removed at a deck node.
-    if (outcome.exhaustSelf) this.logEvent(`${displayName(playedCard)} is cleared for this combat.`);
+    if (outcome.exhaustSelf) {
+      this.clearedPile.push(playedCard);
+      this.logEvent(`${displayName(playedCard)} is cleared for this combat.`);
+    }
     else if (outcome.returnSelfToDraw) this.addCardToDrawRandom(playedCard);
     else {
       this.discardPile.push(playedCard);
@@ -22375,11 +22999,7 @@ class BattleScene extends Phaser.Scene {
     this.renderAll();
     if (this.mode === 'battle') {
       const castColor = suitFxMeta(playedCard.runtime.suit).color;
-      this.time.delayedCall(220, () => {
-        if (this.sys.settings.active && this.mode === 'battle') {
-          this.fxCastFocusBurst(FLOCK_FX_X + 118, FLOCK_FX_Y - 126, castColor, 0.88);
-        }
-      });
+      this.fxCastFocusBurst(FLOCK_FX_X, FLOCK_FX_Y - 24, castColor, 0.82);
     }
   }
 
@@ -22556,7 +23176,7 @@ class BattleScene extends Phaser.Scene {
           floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 8, `-${damage}`, '#ff7a6e');
           this.combatImpactFlash(FLOCK_FX_X, FLOCK_FX_Y + 18, 0xff9d6b, -1, damage >= 8);
           this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y + 32, 0xff9d6b, 16, 155);
-          shakeCamera(this, 0.004);
+          if (currentScreenShakeState().enabled) shakeCamera(this, 0.004);
         }
       },
       healFlock: (value, source, overflowToCover = false) => this.healFlock(value, source, overflowToCover),
@@ -22895,7 +23515,7 @@ class BattleScene extends Phaser.Scene {
       burst(this, this.fxLayer, view.x, view.y, meta.color, 8);
       this.sparkBurst(view.x, view.y - 18, meta.color, card ? 18 : 10, damage >= 8 ? 210 : 150);
       this.pulseRing(view.x, view.y - 18, meta.color, damage >= 8 ? 88 : 58, 420);
-      if (damage >= 8) shakeCamera(this, 0.004);
+      if (damage >= 8 && currentScreenShakeState().enabled) shakeCamera(this, 0.004);
       if (enemy.hp > 0) {
         // Drain the lost segment of the enemy HP bar.
         const left = bar.x - bar.w / 2;
@@ -23105,6 +23725,13 @@ class BattleScene extends Phaser.Scene {
   }
 
   private startPlayerTurn(options: StartPlayerTurnOptions = {}) {
+    // Enemy-turn presentation is intentionally generous, but none of it should
+    // compete with the next hand. Retire the resolved phase as one unit before
+    // the player-turn rally enters.
+    killTweensForTree(this, this.fxLayer);
+    this.fxLayer.removeAll(true);
+    this.activeGeneratedFxSprites = 0;
+    this.activeFxParticleBursts = 0;
     this.turn += 1;
     this.energy = 3 + this.nextTurnEnergyBonus;
     this.nextTurnEnergyBonus = 0;
@@ -23132,15 +23759,41 @@ class BattleScene extends Phaser.Scene {
     this.roostRetainPool = [];
     if ((this.flockStats().resonance ?? 0) > 0) this.gainResonance(this.flockStats().resonance ?? 0);
     this.logEvent(`Turn ${this.turn} starts.`);
-    // Staggered so it follows the fading "Enemy Turn" banner rather than overlapping it.
-    const announceDelayMs = options.announceDelayMs ?? PLAYER_TURN_HANDOFF_DELAY_MS;
+    const announceDelayMs = options.announceDelayMs ?? 0;
+    if (announceDelayMs <= 0) {
+      options.onReady?.();
+      return;
+    }
+    // Use the resolved-enemy handoff for the ceremony, then retire it before
+    // input unlocks so a fast first card cannot stack two major FX beats.
+    this.combatPlayerTurnRally();
+    this.combatTurnBanner('Your Turn', '#8fd6a0', 0x8fd6a0);
     this.time.delayedCall(announceDelayMs, () => {
-      if (this.mode === 'battle') {
-        this.combatPlayerTurnRally();
-        this.combatTurnBanner('Your Turn', '#8fd6a0', 0x8fd6a0);
-      }
+      this.retirePlayerTurnTransitionFx();
       options.onReady?.();
     });
+  }
+
+  private retirePlayerTurnTransitionFx() {
+    // startPlayerTurn begins with an empty FX layer, so everything added before
+    // onReady belongs to the protected handoff: rally/banner, draw cards,
+    // start-of-turn Resonance/Regen callouts, and their particles. Clear that
+    // complete presentation beat before the first actionable frame.
+    killTweensForTree(this, this.fxLayer);
+    this.fxLayer.removeAll(true);
+    this.activeGeneratedFxSprites = 0;
+    this.activeFxParticleBursts = 0;
+  }
+
+  private retireCombatFxForOutcome() {
+    // The outcome reveal intentionally renders above the dimmed battlefield.
+    // Retire the resolved combat beat first so its Tell, trail, plaque, impact,
+    // and looping tweens cannot sit above the report panel.
+    killTweensForTree(this, this.fxLayer);
+    this.fxLayer.removeAll(true);
+    this.activeGeneratedFxSprites = 0;
+    this.activeFxParticleBursts = 0;
+    this.playerCardFxBaseline = undefined;
   }
 
   private applyOverextensionPenalty() {
@@ -23168,7 +23821,7 @@ class BattleScene extends Phaser.Scene {
       }
       this.runSeenEnemyMoves.add(this.enemyMovePacingKey(enemy, move));
       // Advance the move counter; currentMove() maps it through the attack pattern.
-      enemy.intentIndex += 1;
+      this.advanceEnemyIntent(enemy);
       if (this.flock.hp <= 0) break;
     }
 
@@ -23185,6 +23838,20 @@ class BattleScene extends Phaser.Scene {
     this.resolveEnemyTurn();
     this.setEnemyTurnBeat('idle');
     onComplete();
+  }
+
+  advanceEnemyIntent(enemy: Enemy) {
+    const currentNodeId = currentCombatNodes()[this.currentRouteIndex]?.id ?? 'encounter';
+    if (advanceAscensionEnemyIntent(
+      this.runDifficulty,
+      enemy,
+      activeSeed,
+      activeMapIndex,
+      currentNodeId,
+      this.turn,
+    )) {
+      this.logEvent(`${enemy.name} reroutes: ${currentMove(enemy).label} is next.`);
+    }
   }
 
   private tickOpenSkyAfterEnemyPhase() {
@@ -23266,6 +23933,12 @@ class BattleScene extends Phaser.Scene {
       case 'addSnagToDiscard': {
         const snagId = parsed.args[0];
         if (snagId && cardLibrary[snagId]) {
+          if (this.hasCardInDeck(snagId)) {
+            this.logEvent(`${enemy.name}'s Snag fails - ${cardLibrary[snagId].runtime.displayName} is already in the deck.`);
+            birdAudio.play('block');
+            floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 44, 'Snag blocked', '#7ab8d6');
+            break;
+          }
           discoverCards([snagId]);
           this.discardPile.push(cloneCard(snagId));
           this.logEvent(`${enemy.name} tangles the route - ${cardLibrary[snagId].runtime.displayName} drops into your discard.`);
@@ -23276,8 +23949,14 @@ class BattleScene extends Phaser.Scene {
       case 'addSnagToDraw': {
         const snagId = parsed.args[0];
         if (snagId && cardLibrary[snagId]) {
+          if (this.hasCardInDeck(snagId)) {
+            this.logEvent(`${enemy.name}'s Snag fails - ${cardLibrary[snagId].runtime.displayName} is already in the deck.`);
+            birdAudio.play('block');
+            floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 44, 'Snag blocked', '#7ab8d6');
+            break;
+          }
           discoverCards([snagId]);
-          const at = Math.floor(Math.random() * (this.drawPile.length + 1));
+          const at = Math.floor(this.combatRandom() * (this.drawPile.length + 1));
           this.drawPile.splice(at, 0, cloneCard(snagId));
           this.logEvent(`${enemy.name} fouls your draw with ${cardLibrary[snagId].runtime.displayName}.`);
         }
@@ -23303,7 +23982,7 @@ class BattleScene extends Phaser.Scene {
       case 'front':
         return allies[0];
       case 'random':
-        return allies[Math.floor(Math.random() * allies.length)];
+        return allies[Math.floor(this.combatRandom() * allies.length)];
       case 'lowest':
       default:
         return [...allies].sort((a, b) => (a.hp / a.maxHp) - (b.hp / b.maxHp))[0];
@@ -23389,7 +24068,11 @@ class BattleScene extends Phaser.Scene {
     return currentMove(enemy).effects.reduce((total, effect) => {
       const parsed = parseEffect(effect);
       if (!parsed || parsed.name !== 'damage') return total;
-      return total + parseEffectValue(parsed.args[1] ?? parsed.args[0], 0) + enemy.nextAttackBonus + enemy.damageBonus;
+      return total
+        + parseEffectValue(parsed.args[1] ?? parsed.args[0], 0)
+        + enemy.nextAttackBonus
+        + enemy.damageBonus
+        + difficultyMods(this.runDifficulty).enemyDamageBonus;
     }, 0);
   }
 
@@ -23498,7 +24181,7 @@ class BattleScene extends Phaser.Scene {
       }
       floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 8, `-${damage}`, '#ff7a6e');
       this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y + 32, 0xff9d6b, 16, 155);
-      shakeCamera(this, 0.005);
+      if (currentScreenShakeState().enabled) shakeCamera(this, 0.005);
       // Drain the lost segment of the Cohesion bar.
       const left = FLOCK_HP_BAR.x - FLOCK_HP_BAR.w / 2;
       const xNew = left + FLOCK_HP_BAR.w * Math.max(0, this.flock.hp / this.flock.maxHp);
@@ -23897,9 +24580,13 @@ class BattleScene extends Phaser.Scene {
     return picked.slice(0, count);
   }
 
-  private drawToHandSize() {
+  private handTargetSize() {
     const plumesKeystone = this.keystoneActive('plumes') && this.runLeaderId !== 'spark_caller' ? 1 : 0; // Spark gets its draw from Spark Echo instead.
-    this.drawCards(Math.max(0, BASE_HAND_TARGET + plumesKeystone + (this.flockStats().draw ?? 0) + this.nextTurnDrawBonus - this.hand.length));
+    return Math.max(0, BASE_HAND_TARGET + plumesKeystone + (this.flockStats().draw ?? 0) + this.nextTurnDrawBonus);
+  }
+
+  private drawToHandSize() {
+    this.drawCards(Math.max(0, this.handTargetSize() - this.hand.length));
     this.nextTurnDrawBonus = 0;
   }
 
@@ -23922,7 +24609,7 @@ class BattleScene extends Phaser.Scene {
 
   private reshuffleDiscardIntoDraw() {
     this.drawPile = this.discardPile.splice(0);
-    shuffle(this.drawPile);
+    shuffle(this.drawPile, this.combatRandom);
     this.animateShuffle();
   }
 
@@ -24110,7 +24797,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private addCardToDrawRandom(card: Card) {
-    const at = Math.floor(Math.random() * (this.drawPile.length + 1));
+    const at = Math.floor(this.combatRandom() * (this.drawPile.length + 1));
     this.drawPile.splice(at, 0, card);
   }
 
@@ -24134,6 +24821,7 @@ class BattleScene extends Phaser.Scene {
       birdAudio.setMood('defeat');
       birdAudio.play('defeat');
       this.emitRunSummary('loss');
+      this.retireCombatFxForOutcome();
       this.logEvent('The flock scatters.');
     }
   }
@@ -24209,6 +24897,7 @@ class BattleScene extends Phaser.Scene {
       districtContracts: this.runDistrictContracts.map((contract) => ({ ...contract })),
       seenEnemyMoves: [...this.runSeenEnemyMoves],
       combatPace: combatPacePreference(),
+      animationPace: animationPacePreference(),
       firstFlightGuide: firstFlightGuideState(),
       decisionStats
     };
@@ -24250,7 +24939,7 @@ class BattleScene extends Phaser.Scene {
       const available = pool.filter((id) => remaining.includes(id));
       if (available.length === 0 || chosen.length >= maxChoices) return;
       const total = available.reduce((sum, id) => sum + weightOf(id), 0);
-      let roll = Math.random() * total;
+      let roll = this.combatRandom() * total;
       let index = 0;
       for (; index < available.length - 1; index += 1) {
         roll -= weightOf(available[index]);
@@ -24287,7 +24976,7 @@ class BattleScene extends Phaser.Scene {
 
   private createUpgradeChoices() {
     const candidates = this.allDeckCards().filter((card) => !card.upgraded);
-    shuffle(candidates);
+    shuffle(candidates, this.combatRandom);
     return candidates.slice(0, 3);
   }
 
@@ -24302,7 +24991,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private allDeckCards() {
-    return [...this.drawPile, ...this.discardPile, ...this.hand];
+    return [...this.drawPile, ...this.discardPile, ...this.hand, ...this.clearedPile];
   }
 
   private buildRunStateSnapshot(): RunState {
@@ -24387,6 +25076,8 @@ class BattleScene extends Phaser.Scene {
     const battlefield = this.currentBattlefieldAsset();
     const districtBattlefield = BATTLEFIELD_ASSETS[currentMap().id] ?? DEFAULT_BATTLEFIELD_ASSET;
     const flowStatus = (this.root?.list.find((child) => child.name === 'combat-flow-status') as Phaser.GameObjects.Text | undefined)?.text ?? '';
+    const firstCombatGuideCard = this.firstCombatGuideCard();
+    const firstCombatGuideTarget = this.firstCombatGuideTarget(firstCombatGuideCard);
     const presentationDebugState = this.battleDebugStateModule?.buildBattlePresentationDebugState({
       scene: this,
       roots: {
@@ -24404,11 +25095,17 @@ class BattleScene extends Phaser.Scene {
       scene: 'BattleScene',
       assetReadiness: this.battleAssetReadiness.snapshot(),
       combatAnimationPending: this.combatAnimationPending,
+      playerCardFeedback: {
+        active: Boolean(this.playerCardFxBaseline),
+        baselineObjects: this.playerCardFxBaseline?.size ?? 0,
+        transientObjects: this.playerCardFxTransientCount(),
+        lastRetiredObjects: this.playerCardFxLastRetired,
+      },
       combatIntro: {
         active: this.combatIntroActive,
         dismissQueued: this.combatIntroDismissQueued,
         dismissed: this.combatIntroDismissed,
-        minimumReadableMs: COMBAT_INTRO_MIN_DISMISS_MS,
+        minimumReadableMs: textPacingState().minimumReadableMs,
         elapsedMs: this.combatIntroActive
           ? Math.max(0, Math.round(this.time.now - this.combatIntroStartedAtMs))
           : this.combatIntroElapsedMs,
@@ -24418,12 +25115,21 @@ class BattleScene extends Phaser.Scene {
       combatEnemyTurnMove: this.combatEnemyTurnMove,
       combatEnemyTurnProgress: this.enemyTurnBeatProgress(),
       combatEnemyTurnAcceleration: this.combatFxModule?.enemyTurnAccelerationState(this),
+      difficulty: {
+        ...difficultyMods(this.runDifficulty),
+        label: difficultyLabel(this.runDifficulty),
+      },
       audio: birdAudio.snapshot(),
       motion: motionState(),
       visualContrast: visualContrastState(),
+      colorCues: colorCueState(),
+      screenShake: currentScreenShakeState(),
+      flashEffects: currentFlashEffectsState(),
       graphics: graphicsQualityState(),
       screenReader: screenReaderState(),
       combatPacing: combatPacingState(),
+      animationPacing: animationPacingState(this),
+      textPacing: textPacingState(),
       graphicsRuntime: {
         atmosphereStrips: countTextureInGameObjects(this.backdropLayer?.list ?? [], COMBAT_ATMOSPHERE_TEXTURE),
         activeParticleBursts: this.activeFxParticleBursts,
@@ -24479,6 +25185,7 @@ class BattleScene extends Phaser.Scene {
         loaded: Boolean(this.battleInspectRendererModule),
         failed: this.battleInspectRendererFailed
       },
+      openingDraw: { ...this.openingDraw },
       ...presentationDebugState,
       audioToggleWaveBurst: audioToggleWaveBurstState(this, this.children.list),
       paused: this.pauseOverlayOpen,
@@ -24490,6 +25197,15 @@ class BattleScene extends Phaser.Scene {
         flourishLoaded: this.textures.exists(uiIconAssets['progression-unlock-flourish'].key),
         items: this.outcomeUnlockHighlights()
       },
+      defeatReview: this.mode === 'defeat'
+        ? this.bossDossierModule?.buildDefeatReview(window.__birdSquadLastRun)
+        : undefined,
+      outcomeFlightDetails: isRunOutcome(this.mode)
+        ? {
+            open: this.outcomeDetailsOpen,
+            details: this.outcomeDetailsOpen ? this.outcomeFlightDetails() : undefined,
+          }
+        : undefined,
       encounter: this.encounter,
       encounterObjective: this.encounterObjectiveTextState(),
       encounterObjectiveFeedback: {
@@ -24517,7 +25233,10 @@ class BattleScene extends Phaser.Scene {
       },
       firstCombatGuidance: {
         active: this.isGuidedFirstCombat() || Boolean(this.firstMoltGuideCard()),
-        rendered: this.root?.list.some((child) => child.name === 'first-combat-guidance') ?? false
+        rendered: this.root?.list.some((child) => child.name === 'first-combat-guidance') ?? false,
+        cardName: firstCombatGuideCard ? displayName(firstCombatGuideCard) : undefined,
+        cost: firstCombatGuideCard ? this.effectiveCost(firstCombatGuideCard) : undefined,
+        target: firstCombatGuideTarget?.name,
       },
       firstFlightGuide: firstFlightGuideState(),
       firstMoltGuide: {
@@ -24536,10 +25255,12 @@ class BattleScene extends Phaser.Scene {
       selectedCard: this.selectedInstanceId,
       selectedCardOutcome: this.selectedCardOutcomePreview(),
       inspectedCard: this.getInspectedCardPayload(),
+      cardInspectFocus: this.cardInspectFocusState(),
       selectedEnemy: this.selectedEnemyId,
       deckIds: this.allDeckCards().map((card) => card.id),
       drawPile: this.drawPile.length,
       discardPile: this.discardPile.length,
+      clearedPile: this.clearedPile.length,
       deckSize: this.allDeckCards().length,
       flock: {
         hp: this.flock.hp,
@@ -24605,7 +25326,8 @@ class BattleScene extends Phaser.Scene {
         roles: enemy.roles,
         solo: enemy.solo,
         damageBonus: enemy.damageBonus,
-        intent: currentMove(enemy).label
+        intent: currentMove(enemy).label,
+        intentIndex: enemy.intentIndex,
       })),
       route: {
         mapId: currentMap().id,
@@ -24626,9 +25348,11 @@ class BattleScene extends Phaser.Scene {
       waymarkFeedback: [...this.waymarkFeedback],
       supplyFeedback: [...this.supplyFeedback],
       piles: {
-        deck: this.drawPile.length,
+        deck: this.allDeckCards().length,
+        draw: this.drawPile.length,
         hand: this.hand.length,
-        discard: this.discardPile.length
+        discard: this.discardPile.length,
+        cleared: this.clearedPile.length
       },
       flockStats: this.flockStatRows().map((row) => ({
         label: row.label,
@@ -24647,7 +25371,7 @@ class BattleScene extends Phaser.Scene {
   private getInspectedCardPayload() {
     if (!this.inspectOverlay || this.inspectOverlay === 'flock') return undefined;
     const entries = this.battleInspectCards(this.inspectOverlay);
-    const entry = entries.find(({ card }) => card.id === this.inspectedCardId) ?? entries[0];
+    const entry = entries.find(({ card }) => card.instanceId === this.inspectedCardId) ?? entries[0];
     if (!entry) return undefined;
     const contract = this.activeCardContract(entry.card);
     return {
@@ -24669,6 +25393,60 @@ class BattleScene extends Phaser.Scene {
         label: flockStatLabel(key),
         value: Number(value)
       }))
+    };
+  }
+
+  private cardInspectFocusState(): RenderPayload['cardInspectFocus'] {
+    if (!this.inspectOverlay || this.inspectOverlay === 'flock') return undefined;
+    const entries = this.battleInspectCards(this.inspectOverlay);
+    const zoneCounts = {
+      deck: this.allDeckCards().length,
+      draw: this.drawPile.length,
+      discard: this.discardPile.length,
+      cleared: this.clearedPile.length,
+    };
+    const bindings = {
+      select: 'Up / Down',
+      previousZone: controlBindingLabel('previous'),
+      nextZone: controlBindingLabel('next'),
+      back: controlBindingLabel('back'),
+    };
+    const controller = {
+      choose: 'D-pad Up / Down',
+      zone: 'D-pad Left / Right',
+      page: 'LB / RB',
+      back: 'B',
+    };
+    if (entries.length === 0) {
+      return {
+        active: true,
+        overlay: this.inspectOverlay,
+        index: 0,
+        count: 0,
+        visibleStart: 0,
+        visibleEnd: 0,
+        label: 'No cards',
+        zoneCounts,
+        bindings,
+        controller,
+      };
+    }
+    const index = Math.max(0, entries.findIndex(({ card }) => card.instanceId === this.inspectedCardId));
+    const selected = entries[index];
+    const visibleStart = clamp(this.cardReviewScroll, 0, Math.max(0, entries.length - CARD_REVIEW_VISIBLE_ROWS));
+    return {
+      active: true,
+      overlay: this.inspectOverlay,
+      instanceId: selected.card.instanceId,
+      index,
+      count: entries.length,
+      visibleStart: visibleStart + 1,
+      visibleEnd: Math.min(entries.length, visibleStart + CARD_REVIEW_VISIBLE_ROWS),
+      label: displayName(selected.card),
+      zone: selected.zone,
+      zoneCounts,
+      bindings,
+      controller,
     };
   }
 
@@ -24746,8 +25524,8 @@ function createEncounterEnemiesForRouteNode(routeNode: RouteNode): Enemy[] {
 // the player can close the tab and Continue. Written from the route checkpoint
 // (RouteScene.renderAll) and cleared on win / loss / abandon.
 const ACTIVE_RUN_KEY = 'birdsquad.run.active';
-function persistActiveRun(runState: RunState): void {
-  writeJournaledJson(ACTIVE_RUN_KEY, runState);
+function persistActiveRun(runState: RunState): boolean {
+  return writeJournaledJson(ACTIVE_RUN_KEY, runState);
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -24755,10 +25533,58 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 const RUN_HISTORY_KEY = 'birdsquad.runs';
 function sanitizeRunHistory(value: unknown): RunSummary[] | undefined {
   if (!Array.isArray(value)) return undefined;
-  return value.filter(isRecord).slice(-50) as unknown as RunSummary[];
+  const byId = new Map<string, RunSummary>();
+  value.slice(-200).forEach((entry) => {
+    const summary = sanitizeRunSummary(entry);
+    if (!summary) return;
+    byId.delete(summary.id);
+    byId.set(summary.id, summary);
+  });
+  return [...byId.values()].slice(-50);
 }
 function loadRunHistory(): RunSummary[] {
   return readJournaledJson(RUN_HISTORY_KEY, sanitizeRunHistory) ?? [];
+}
+function runCompletedAtMs(summary: RunSummary) {
+  const timestamp = /^run-(\d+)-/.exec(summary.id)?.[1];
+  return timestamp ? finiteInt(Number(timestamp), 0, 0) : 0;
+}
+function profileFlightHistory(): import('./game/profile-scene').FlightHistoryEntry[] {
+  return loadRunHistory().slice(-50).reverse().map((summary) => {
+    const path = new Set(summary.path);
+    if (summary.finalNodeId) path.add(summary.finalNodeId);
+    return {
+      id: summary.id,
+      seed: summary.seed,
+      result: summary.result,
+      leader: getLeader(summary.leaderId).name,
+      difficulty: difficultyLabel(summary.difficulty ?? 0),
+      runMode: summary.runMode,
+      completedAtMs: runCompletedAtMs(summary),
+      durationMs: summary.durationMs,
+      currentCohesion: summary.currentCohesion,
+      maxCohesion: summary.maxCohesion,
+      turns: summary.turnsTaken,
+      deckSize: summary.deck.length,
+      stops: path.size,
+      waymarks: summary.routeMarks.length,
+      supplies: summary.suppliesUsed.length,
+    };
+  });
+}
+async function loadProfileFlightReview(id: string): Promise<import('./game/profile-scene').FlightHistoryReview | undefined> {
+  const summary = loadRunHistory().find((entry) => entry.id === id);
+  if (!summary) return undefined;
+  const module = await loadBossDossierModule();
+  const date = runCompletedAtMs(summary);
+  const dateLabel = date > 0 ? new Date(date).toLocaleDateString() : 'Earlier flight';
+  return {
+    id: summary.id,
+    seed: summary.seed,
+    runMode: summary.runMode,
+    subtitle: `${summary.result === 'win' ? 'Completed' : 'Scattered'} ${dateLabel} · ${getLeader(summary.leaderId).name} · ${difficultyLabel(summary.difficulty ?? 0)} · Flight ${summary.seed}`,
+    details: buildOutcomeFlightDetailsFor(summary, module),
+  };
 }
 function playtestRating(value: unknown): number | undefined {
   if (!Number.isFinite(value)) return undefined;
@@ -24775,6 +25601,81 @@ function sanitizedPlaytestFeedback(value: unknown): import('./game/profile-scene
     updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : undefined,
   };
   return Object.values(feedback).some((entry) => entry !== undefined) ? feedback : undefined;
+}
+function sanitizeRunSummary(value: unknown): RunSummary | undefined {
+  if (!isRecord(value)) return undefined;
+  const id = typeof value.id === 'string' ? value.id.trim().slice(0, 96) : '';
+  const seed = typeof value.seed === 'string' ? value.seed.trim().slice(0, 64) : '';
+  if (!id || !seed || (value.result !== 'win' && value.result !== 'loss')) return undefined;
+  const guideProgress = sanitizeGuide(value.firstFlightGuide) ?? sanitizeGuide({})!;
+  const decision = isRecord(value.decisionStats) ? value.decisionStats : undefined;
+  const deck = Array.isArray(value.deck)
+    ? canonicalSavedCards(value.deck.filter(isRecord).flatMap((entry) => (
+        typeof entry.id === 'string' && Boolean(cardLibrary[entry.id])
+          ? [{ id: entry.id, upgraded: entry.upgraded === true }]
+          : []
+      ))).slice(0, 200)
+    : [];
+  const safeNodeIds = (input: unknown) => stringArray(input)
+    .filter((entry) => /^[a-z0-9_-]{1,96}$/i.test(entry))
+    .slice(0, 128);
+  return {
+    id,
+    seed,
+    result: value.result,
+    leaderId: typeof value.leaderId === 'string' && flockLeaders.some((leader) => leader.id === value.leaderId)
+      ? value.leaderId
+      : defaultLeaderId,
+    difficulty: finiteInt(value.difficulty, 0, 0, MAX_DIFFICULTY),
+    runMode: value.runMode === 'quick' ? 'quick' : 'full',
+    mapId: typeof value.mapId === 'string' ? value.mapId.slice(0, 96) : '',
+    finalNodeId: typeof value.finalNodeId === 'string' ? value.finalNodeId.slice(0, 96) : '',
+    killedBy: typeof value.killedBy === 'string' ? value.killedBy.slice(0, 120) : undefined,
+    turnsTaken: finiteInt(value.turnsTaken, 0, 0, 100_000),
+    durationMs: finiteInt(value.durationMs, 0, 0, 7 * 24 * 60 * 60 * 1000),
+    currentCohesion: finiteInt(value.currentCohesion, 0, 0, 10_000),
+    maxCohesion: finiteInt(value.maxCohesion, BASE_COHESION, 1, 10_000),
+    scrapEarned: finiteInt(value.scrapEarned, 0, 0, 1_000_000),
+    scrapSpent: finiteInt(value.scrapSpent, 0, 0, 1_000_000),
+    finalScrap: finiteInt(value.finalScrap, 0, 0, 1_000_000),
+    path: safeNodeIds(value.path),
+    deck,
+    routeMarks: stringArray(value.routeMarks).filter((entry) => alphaRouteMarkLibrary.has(entry)).slice(0, 64),
+    suppliesUsed: stringArray(value.suppliesUsed).filter((entry) => alphaSupplyLibrary.has(entry)).slice(0, 64),
+    signals: sanitizeSignalChoices(value.signals).slice(0, 128),
+    cardRewards: sanitizeRewardEvents(value.cardRewards).slice(0, 128),
+    routeDecisions: sanitizeRouteDecisions(value.routeDecisions).slice(0, 128),
+    combatResults: sanitizeCombatResults(value.combatResults).slice(0, 128),
+    districtContracts: sanitizeDistrictContracts(value.districtContracts).slice(0, alphaMaps.length),
+    seenEnemyMoves: stringArray(value.seenEnemyMoves).filter((entry) => entry.length <= 160).slice(0, 2048),
+    combatPace: value.combatPace === 'cinematic' || value.combatPace === 'snappy'
+      ? value.combatPace
+      : 'standard',
+    animationPace: value.animationPace === 'relaxed' || value.animationPace === 'fast'
+      ? value.animationPace
+      : 'standard',
+    firstFlightGuide: { ...guideProgress, step: firstFlightGuideStep(guideProgress) },
+    experienceFeedback: sanitizedPlaytestFeedback(value.experienceFeedback),
+    decisionStats: decision ? {
+      cardsPlayed: finiteInt(decision.cardsPlayed, 0, 0, 1_000_000),
+      overextensions: finiteInt(decision.overextensions, 0, 0, 1_000_000),
+      lowCardTurns: finiteInt(decision.lowCardTurns, 0, 0, 1_000_000),
+      noOverextensionTurns: finiteInt(decision.noOverextensionTurns, 0, 0, 1_000_000),
+      cardsHeldAtRoost: finiteInt(decision.cardsHeldAtRoost, 0, 0, 1_000_000),
+      unspentWingbeatAtRoost: finiteInt(decision.unspentWingbeatAtRoost, 0, 0, 1_000_000),
+      maxCardsPlayedTurn: finiteInt(decision.maxCardsPlayedTurn, 0, 0, 1_000_000),
+      finalWaymarks: finiteInt(decision.finalWaymarks, 0, 0, 1_000),
+      blockedDamage: finiteInt(decision.blockedDamage, 0, 0, 1_000_000),
+      invalidActions: finiteInt(decision.invalidActions, 0, 0, 1_000_000),
+      cancelledActions: finiteInt(decision.cancelledActions, 0, 0, 1_000_000),
+      bossEntryCohesion: Number.isFinite(decision.bossEntryCohesion)
+        ? finiteInt(decision.bossEntryCohesion, 0, 0, 10_000)
+        : undefined,
+      bossEntryScrap: Number.isFinite(decision.bossEntryScrap)
+        ? finiteInt(decision.bossEntryScrap, 0, 0, 1_000_000)
+        : undefined,
+    } : undefined,
+  };
 }
 function latestPlaytestRunForRating(): import('./game/profile-scene').LatestPlaytestRun | undefined {
   const latest = loadRunHistory().at(-1);
@@ -24801,15 +25702,6 @@ function saveLatestPlaytestFeedback(feedback: import('./game/profile-scene').Pla
   if (!writeJournaledJson(RUN_HISTORY_KEY, next)) return false;
   if (window.__birdSquadLastRun?.id === updated.id) window.__birdSquadLastRun = updated;
   return true;
-}
-function stringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
-}
-function finiteNumber(value: unknown, fallback: number) {
-  return Number.isFinite(value) ? Number(value) : fallback;
-}
-function finiteInt(value: unknown, fallback: number, min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER) {
-  return clamp(Math.floor(finiteNumber(value, fallback)), min, max);
 }
 function validRouteNodeType(value: unknown): value is RouteNode['type'] {
   return value === 'street' || value === 'rival' || value === 'boss' || value === 'basin' ||
@@ -24946,10 +25838,10 @@ function sanitizeDistrictContracts(value: unknown): DistrictContractState[] {
 }
 function sanitizeActiveRun(value: unknown): RunState | undefined {
   if (!isRecord(value) || !Array.isArray(value.deck)) return undefined;
-  const deck = value.deck.filter(isRecord).flatMap((entry) => {
+  const deck = canonicalSavedCards(value.deck.filter(isRecord).flatMap((entry) => {
     if (typeof entry.id !== 'string' || !cardLibrary[entry.id]) return [];
     return [{ id: entry.id, upgraded: entry.upgraded === true }];
-  });
+  }));
   if (deck.length === 0) return undefined;
   const leaderId = typeof value.leaderId === 'string' && flockLeaders.some((leader) => leader.id === value.leaderId)
     ? value.leaderId
@@ -25096,20 +25988,30 @@ function cloneRunState(runState: RunState): RunState {
   };
 }
 
-function cardsFromSave(savedCards: SavedCard[]): Card[] {
-  return savedCards.map((saved) => {
+function canonicalSavedCards(savedCards: readonly SavedCard[]): SavedCard[] {
+  const byId = new Map<string, SavedCard>();
+  savedCards.forEach((saved) => {
+    if (!cardLibrary[saved.id]) return;
+    const existing = byId.get(saved.id);
+    if (!existing) {
+      byId.set(saved.id, { id: saved.id, upgraded: saved.upgraded === true });
+    } else if (saved.upgraded === true && !existing.upgraded) {
+      existing.upgraded = true;
+    }
+  });
+  return [...byId.values()];
+}
+
+function cardsFromSave(savedCards: readonly SavedCard[]): Card[] {
+  return canonicalSavedCards(savedCards).map((saved) => {
     const card = cloneCard(saved.id);
     card.upgraded = saved.upgraded;
     return card;
   });
 }
 
-function saveCards(cards: Card[]): SavedCard[] {
-  const byId = new Map<string, SavedCard>();
-  cards.forEach((card) => {
-    if (!byId.has(card.id)) byId.set(card.id, { id: card.id, upgraded: card.upgraded });
-  });
-  return [...byId.values()];
+function saveCards(cards: readonly Card[]): SavedCard[] {
+  return canonicalSavedCards(cards.map((card) => ({ id: card.id, upgraded: card.upgraded })));
 }
 
 function displayName(card: Card) {
@@ -25126,6 +26028,26 @@ function cardLabel(card: Card) {
   if (card.type === 'major') return 'LEGEND';
   if (card.type === 'minor') return suitLabel(card);
   return 'MOLT';
+}
+
+function fallbackCardColorCue(card: Card) {
+  const label = cardLabel(card);
+  const glyph = label === 'PLUMES'
+    ? '▲'
+    : label === 'BASINS'
+      ? '≈'
+      : label === 'QUILLS'
+        ? '◇'
+        : label === 'NESTS'
+          ? '■'
+          : label === 'LEGEND'
+            ? '★'
+            : label === 'AVIARY'
+              ? '»'
+              : label === 'SNAG'
+                ? '×'
+                : '○';
+  return `${glyph} ${label}`;
 }
 
 function suitLabel(card: Card) {
@@ -25226,7 +26148,8 @@ function effectsOnlyAffectFlock(effects: string[]) {
 function effectsActAsAttack(effects: string[]) {
   return effects.some((effect) => {
     const body = effectBody(effect);
-    return /\b(?:damage|damagePierce|damageAll|applyWinded|removeCover|resonanceBurst|windedBurst)\(/.test(body)
+    return /\b(?:damage|damagePierce|damageAll|removeCover|resonanceBurst|windedBurst)\(/.test(body)
+      || /\bapplyWinded\(target\b/.test(body)
       || /\btarget(?:BelowHalf|IntendsAttack|HasCover|Winded)\b/.test(effect)
       || /\bwindedAtLeast\(/.test(effect);
   });
@@ -25343,18 +26266,6 @@ function bossGoonViewAt(index: number, count: number): { x: number; y: number; s
     ],
   };
   return layouts[Math.min(3, count)]?.[index] ?? layouts[3][layouts[3].length - 1];
-}
-
-function enemyStatus(enemy: Enemy) {
-  const statuses: string[] = [];
-  if (enemy.block > 0) statuses.push(`${enemy.block} Cover`);
-  if (enemy.weak > 0) statuses.push(`${enemy.weak} Winded`);
-  return statuses.join(' / ');
-}
-
-function enemyInitials(name: string): string {
-  const words = name.split(/\s+/).filter((word) => word.toLowerCase() !== 'the');
-  return words.slice(0, 2).map((word) => word[0]?.toUpperCase() ?? '').join('') || '?';
 }
 
 function intentCoverValue(intent: { effects: string[] }) {
@@ -25552,28 +26463,9 @@ function zoneRank(zone: string) {
   if (zone === 'Hand') return 0;
   if (zone === 'Draw' || zone === 'Deck') return 1;
   if (zone === 'Discard') return 2;
-  return 3;
+  if (zone === 'Cleared') return 3;
+  return 4;
 }
-
-function tableHeaderStyle() {
-  return {
-    fontFamily: UI_FONT,
-    fontSize: '14px',
-    fontStyle: UI_BOLD,
-    color: '#91a6b8'
-  };
-}
-
-function tableCellStyle(color: string) {
-  return {
-    fontFamily: UI_FONT,
-    fontSize: '16px',
-    fontStyle: UI_BOLD,
-    color
-  };
-}
-
-
 
 const UI_FIELD = {
   ink: 0x070b12,
@@ -26028,18 +26920,21 @@ function renderUnifiedRunHud(
         .setStrokeStyle(1, 0xff6f6f, 0.7)
         .setName('combat-incoming-forecast-frame-fallback'));
     }
-    const forecastSuffix = incoming.blocked > 0 ? ` / Block ${incoming.blocked}` : '';
-    addUi(addTo, scene.add.text(fx, fy, `Incoming -${incoming.hpLoss} / After ${incoming.afterHp}${forecastSuffix}`, {
+    const forecastMath = incoming.blocked > 0
+      ? `Incoming ${incoming.total} - Cover ${incoming.blocked} = ${incoming.hpLoss}`
+      : `Incoming ${incoming.hpLoss}`;
+    addUi(addTo, scene.add.text(fx, fy, `${forecastMath}\nAfter ${incoming.afterHp} Cohesion`, {
       fontFamily: UI_FONT,
-      fontSize: '11px',
+      fontSize: '10px',
       fontStyle: UI_BOLD,
       color: '#ffe5dd',
       stroke: '#180807',
-      strokeThickness: 4,
+      strokeThickness: 3,
       fixedWidth: 178,
       align: 'center',
-      maxLines: 1
-    }).setOrigin(0.5));
+      lineSpacing: -2,
+      maxLines: 2
+    }).setOrigin(0.5).setName('combat-incoming-forecast-label'));
   }
   const flockIcon = addUiIconImage(scene, 'flock-heart', hpLeft, FLOCK_HP_BAR.y + 1, 28);
   if (flockIcon) addUi(addTo, flockIcon);
@@ -26533,69 +27428,6 @@ function addDeckReviewTitlePlaque(
   return plaque;
 }
 
-function addFlockStatsTitlePlaque(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  cx: number,
-  cy: number,
-  width: number,
-  height: number,
-  opts: { alpha?: number; tint?: number } = {}
-) {
-  const key = uiIconAssets['flock-stats-title-plaque'].key;
-  if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const plaque = scene.add.image(cx, cy, key)
-    .setDisplaySize(width, height)
-    .setAlpha(opts.alpha ?? 0.56)
-    .setName('flock-stats-title-plaque');
-  if (opts.tint !== undefined) plaque.setTint(opts.tint);
-  addUi(addTo, plaque);
-  return plaque;
-}
-
-function addFlockStatsCaptionFrame(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  cx: number,
-  cy: number,
-  width: number,
-  height: number,
-  opts: { alpha?: number; tint?: number } = {}
-) {
-  const key = uiIconAssets['flock-stats-caption-frame'].key;
-  if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const frame = scene.add.image(cx, cy, key)
-    .setDisplaySize(width, height)
-    .setAlpha(opts.alpha ?? 0.4)
-    .setName('flock-stats-caption-frame');
-  if (opts.tint !== undefined) frame.setTint(opts.tint);
-  addUi(addTo, frame);
-  return frame;
-}
-
-function addFlockStatsFooterFrame(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  cx: number,
-  cy: number,
-  width: number,
-  height: number,
-  opts: { alpha?: number; tint?: number } = {}
-) {
-  const key = uiIconAssets['flock-stats-footer-frame'].key;
-  if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const frame = scene.add.image(cx, cy, key)
-    .setDisplaySize(width, height)
-    .setAlpha(opts.alpha ?? 0.36)
-    .setName('flock-stats-footer-frame');
-  if (opts.tint !== undefined) frame.setTint(opts.tint);
-  addUi(addTo, frame);
-  return frame;
-}
-
 function addDeckReviewDetailFrame(
   scene: Phaser.Scene,
   addTo: UiAdd,
@@ -26713,92 +27545,6 @@ function addDeckReviewSectionTabFrame(
   if (opts.tint !== undefined) tab.setTint(opts.tint);
   addUi(addTo, tab);
   return tab;
-}
-
-function addFlockStatsFlourish(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  frame: { cx: number; cy: number; w: number; h: number },
-  opts: { alpha?: number; tint?: number; yOffset?: number } = {}
-) {
-  const key = uiIconAssets['flock-stats-flourish'].key;
-  if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const alpha = opts.alpha ?? 0.12;
-  const flourish = scene.add.image(frame.cx, frame.cy + (opts.yOffset ?? 0), key)
-    .setDisplaySize(Math.min(frame.w - 46, 1040), Math.min(frame.h - 34, 560))
-    .setAlpha(prefersReducedMotion() ? Math.min(alpha, 0.09) : alpha)
-    .setBlendMode(Phaser.BlendModes.ADD);
-  if (opts.tint !== undefined) flourish.setTint(opts.tint);
-  addUi(addTo, flourish);
-  if (!prefersReducedMotion()) {
-    scene.tweens.add({
-      targets: flourish,
-      alpha: alpha * 0.68,
-      scaleX: flourish.scaleX * 1.008,
-      scaleY: flourish.scaleY * 1.008,
-      duration: 2400,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
-  }
-  return flourish;
-}
-
-function addCardHoverDossierFrame(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  cx: number,
-  cy: number,
-  width: number,
-  height: number,
-  opts: { alpha?: number; tint?: number } = {}
-) {
-  const key = uiIconAssets['card-hover-dossier-frame'].key;
-  if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const alpha = opts.alpha ?? 0.96;
-  const frame = scene.add.image(cx, cy, key)
-    .setDisplaySize(width, height)
-    .setAlpha(prefersReducedMotion() ? Math.min(alpha, 0.88) : alpha);
-  if (opts.tint !== undefined) frame.setTint(opts.tint);
-  addUi(addTo, frame);
-  if (!prefersReducedMotion()) {
-    scene.tweens.add({
-      targets: frame,
-      alpha: alpha * 0.92,
-      scaleX: frame.scaleX * 1.004,
-      scaleY: frame.scaleY * 1.004,
-      duration: 1800,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
-  }
-  return frame;
-}
-
-function addCardHoverStatChipFrame(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  cx: number,
-  cy: number,
-  width: number,
-  height: number,
-  opts: { alpha?: number; tint?: number } = {}
-) {
-  const key = uiIconAssets['card-hover-stat-chip-frame'].key;
-  if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const alpha = opts.alpha ?? 0.86;
-  const frame = scene.add.image(cx, cy, key)
-    .setDisplaySize(width, height)
-    .setAlpha(alpha)
-    .setName('card-hover-stat-chip-frame');
-  if (opts.tint !== undefined) frame.setTint(opts.tint);
-  addUi(addTo, frame);
-  return frame;
 }
 
 function addRunKitDrawerFlourish(
@@ -26961,6 +27707,47 @@ function renderFieldButton(
   return hit;
 }
 
+function runPauseIndependentUiFeedback(
+  scene: Phaser.Scene,
+  target: Phaser.GameObjects.Image,
+  duration: number,
+  onProgress: (progress: number) => void,
+  onComplete?: () => void,
+) {
+  const priorCleanup = target.getData('pauseIndependentFeedbackCleanup') as (() => void) | undefined;
+  priorCleanup?.();
+  let animationFrame = 0;
+  let startedAt: number | undefined;
+  let cleanedUp = false;
+  const cleanup = () => {
+    if (cleanedUp) return;
+    cleanedUp = true;
+    if (animationFrame) cancelAnimationFrame(animationFrame);
+    target.off(Phaser.GameObjects.Events.DESTROY, cleanup);
+    if (target.active && target.getData('pauseIndependentFeedbackCleanup') === cleanup) {
+      target.setData('pauseIndependentFeedbackCleanup', undefined);
+    }
+  };
+  const onFrame = (time: number) => {
+    if (!target.active || !scene.sys.settings.active) {
+      cleanup();
+      return;
+    }
+    startedAt ??= time;
+    const progress = Phaser.Math.Clamp((time - startedAt) / duration, 0, 1);
+    onProgress(Phaser.Math.Easing.Sine.Out(progress));
+    if (progress < 1) {
+      animationFrame = requestAnimationFrame(onFrame);
+      return;
+    }
+    cleanup();
+    onComplete?.();
+  };
+  target.setData('pauseIndependentFeedbackCleanup', cleanup);
+  target.once(Phaser.GameObjects.Events.DESTROY, cleanup);
+  animationFrame = requestAnimationFrame(onFrame);
+}
+
 function renderAudioToggleControl(scene: Phaser.Scene, addTo: UiAdd, x: number, y: number, onToggle?: () => void) {
   const hit = addUi(addTo, scene.add.rectangle(x, y, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.08)
     .setInteractive({ useHandCursor: true })
@@ -26992,35 +27779,41 @@ function renderAudioToggleControl(scene: Phaser.Scene, addTo: UiAdd, x: number, 
     pulse?.setAlpha(birdAudio.isMuted() ? 0.14 : 0.24);
     icon?.setScale((19 * UI_ICON_PREVIEW_SCALE) / icon.width, (19 * UI_ICON_PREVIEW_SCALE) / icon.height);
   });
+  hit.on('audio-state-change', refresh);
   hit.on('pointerdown', () => {
     birdAudio.toggleMute();
     hit.setData('feedbackBursts', Number(hit.getData('feedbackBursts') ?? 0) + 1);
-    refresh();
+    refreshRenderedAudioToggleControls(scene);
     if (pulse) {
+      scene.tweens.killTweensOf(pulse);
+      const pulseStartAlpha = birdAudio.isMuted() ? 0.58 : 0.74;
+      const pulseEndAlpha = birdAudio.isMuted() ? 0.14 : 0.24;
       pulse.setScale(basePulseScaleX * 1.18, basePulseScaleY * 1.18).setAlpha(birdAudio.isMuted() ? 0.58 : 0.74);
-      scene.tweens.add({
-        targets: pulse,
-        scaleX: basePulseScaleX,
-        scaleY: basePulseScaleY,
-        alpha: birdAudio.isMuted() ? 0.14 : 0.24,
-        duration: 260,
-        ease: 'Sine.easeOut'
+      runPauseIndependentUiFeedback(scene, pulse, 260, (progress) => {
+        pulse.setScale(
+          Phaser.Math.Linear(basePulseScaleX * 1.18, basePulseScaleX, progress),
+          Phaser.Math.Linear(basePulseScaleY * 1.18, basePulseScaleY, progress),
+        );
+        pulse.setAlpha(Phaser.Math.Linear(pulseStartAlpha, pulseEndAlpha, progress));
       });
     }
     if (burst) {
       scene.tweens.killTweensOf(burst);
+      const burstEndScaleX = prefersReducedMotion() ? baseBurstScaleX : baseBurstScaleX * 1.34;
+      const burstEndScaleY = prefersReducedMotion() ? baseBurstScaleY : baseBurstScaleY * 1.34;
+      const burstStartAlpha = birdAudio.isMuted() ? 0.42 : 0.68;
       burst
         .setVisible(true)
         .setScale(baseBurstScaleX * 0.82, baseBurstScaleY * 0.82)
-        .setAlpha(birdAudio.isMuted() ? 0.42 : 0.68);
-      scene.tweens.add({
-        targets: burst,
-        scaleX: prefersReducedMotion() ? baseBurstScaleX : baseBurstScaleX * 1.34,
-        scaleY: prefersReducedMotion() ? baseBurstScaleY : baseBurstScaleY * 1.34,
-        alpha: 0,
-        duration: prefersReducedMotion() ? 140 : 420,
-        ease: 'Sine.easeOut',
-        onComplete: () => {
+        .setAlpha(burstStartAlpha);
+      runPauseIndependentUiFeedback(scene, burst, prefersReducedMotion() ? 140 : 420, (progress) => {
+        burst.setScale(
+          Phaser.Math.Linear(baseBurstScaleX * 0.82, burstEndScaleX, progress),
+          Phaser.Math.Linear(baseBurstScaleY * 0.82, burstEndScaleY, progress),
+        );
+        burst.setAlpha(Phaser.Math.Linear(burstStartAlpha, 0, progress));
+      }, () => {
+        if (burst.active) {
           burst.setVisible(false).setScale(baseBurstScaleX, baseBurstScaleY);
         }
       });
@@ -27044,6 +27837,17 @@ function findRenderedAudioToggleControl(children: any[]): Phaser.GameObjects.Rec
     }
   }
   return match;
+}
+
+function refreshRenderedAudioToggleControls(scene: Phaser.Scene) {
+  const visit = (children: any[]) => {
+    for (const child of children ?? []) {
+      if (!child || child.active === false) continue;
+      if (child.name === 'audio-toggle-control-hit') child.emit('audio-state-change');
+      if (Array.isArray(child.list)) visit(child.list);
+    }
+  };
+  visit(scene.children.list);
 }
 
 function activateRenderedAudioToggleControl(scene: Phaser.Scene) {
@@ -27073,6 +27877,17 @@ function renderPauseMenuOverlay(
     module.renderPauseMenuOverlay(scene, addTo, options, systemOverlayDependencies);
   });
 }
+
+function renderConfirmRunExitOverlay(
+  scene: Phaser.Scene,
+  addTo: UiAdd,
+  options: import('./game/system-overlays').ConfirmRunExitOverlayOptions,
+) {
+  renderLazySystemOverlay(scene, addTo, options.onKeepPlaying, (module) => {
+    module.renderConfirmRunExitOverlay(scene, addTo, options, systemOverlayDependencies);
+  });
+}
+
 type SystemOverlaysModule = typeof import('./game/system-overlays');
 let systemOverlaysModulePromise: Promise<SystemOverlaysModule> | undefined;
 
@@ -27090,12 +27905,18 @@ function loadSystemOverlaysModule() {
 const systemOverlayDependencies: import('./game/system-overlays').SystemOverlayDependencies = {
   audio: birdAudio,
   combatPacePreference,
+  animationPacePreference,
+  textPacePreference,
   graphicsQualityState,
   motionState,
+  colorCueState,
+  screenShakeState: currentScreenShakeState,
+  flashEffectsState: currentFlashEffectsState,
   screenReaderState,
   visualContrastState,
   playUiSound,
   prefersReducedMotion,
+  activateAudioToggleControl: activateRenderedAudioToggleControl,
   renderAudioToggleControl,
   renderCloseControl,
   renderFieldButton,
@@ -27192,221 +28013,6 @@ function inspectedCardPayload(entry: { card: Card; zone: string } | undefined, c
   };
 }
 
-function renderFloatingCardDetail(scene: Phaser.Scene, card: Card, zone: string, cost: number, anchorX: number, anchorY: number, molting = false) {
-  const w = 300;
-  const h = 450;
-  const margin = 18;
-  const cx = anchorX < GAME_WIDTH / 2
-    ? Math.min(GAME_WIDTH - w / 2 - margin, anchorX + 232)
-    : Math.max(w / 2 + margin, anchorX - 232);
-  const cy = Math.max(h / 2 + margin, Math.min(GAME_HEIGHT - h / 2 - margin, anchorY));
-  const left = cx - w / 2;
-  const top = cy - h / 2;
-  const bottom = cy + h / 2;
-  const accent = card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
-  const contract = activeCardContract(card, molting);
-  const container = scene.add.container(0, 0);
-  const add = (child: Phaser.GameObjects.GameObject) => { container.add(child); return child; };
-
-  add(scene.add.rectangle(cx, cy, w + 8, h + 8, 0x06090f, 0.99).setStrokeStyle(3, accent, 1));
-  const key = loadedCardArtKey(scene, card);
-  if (key && scene.textures.exists(key)) {
-    add(scene.add.image(cx, cy, key).setDisplaySize(w, h).setAlpha(0.98));
-  } else if (!renderSnagCardBorder(scene, (obj) => add(obj), card, cx, cy, w, h, 0.98)) {
-    add(scene.add.rectangle(cx, cy, w, h, 0x141d2b, 0.95));
-    add(scene.add.text(cx, cy - 42, cardLabel(card), {
-      fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: '#7ab8d6',
-      wordWrap: { width: w - 50 }, align: 'center'
-    }).setOrigin(0.5));
-  } else {
-    add(scene.add.rectangle(cx, cy, w, h, 0x05101a, 0.12));
-  }
-  addCardHoverDossierFrame(scene, add, cx, cy, w + 26, h + 38, { alpha: 0.94 });
-
-  add(scene.add.rectangle(cx, top + 24, w - 4, 44, 0x05080e, 0.76));
-  add(scene.add.text(left + 52, top + 9, displayName(card), {
-    fontFamily: UI_FONT, fontSize: '20px', fontStyle: UI_BOLD, color: '#ffe7b0', wordWrap: { width: w - 72 }
-  }));
-  add(scene.add.circle(left + 26, top + 24, 20, cost === 0 ? 0x24d0d6 : 0xe8b830, 1).setStrokeStyle(2, 0x05080e, 0.9));
-  add(scene.add.text(left + 26, top + 24, `${cost}`, {
-    fontFamily: UI_FONT, fontSize: '23px', fontStyle: UI_BOLD, color: '#06101c'
-  }).setOrigin(0.5));
-
-  add(scene.add.rectangle(cx, top + 60, w - 4, 24, 0x05080e, 0.68));
-  const detailMeta = zone.startsWith('Market /') ? zone : `${card.bird} / ${cardLabel(card)} / ${zone}`;
-  add(scene.add.text(cx, top + 54, detailMeta, {
-    fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: UI_CYAN,
-    align: 'center', wordWrap: { width: w - 16 }
-  }).setOrigin(0.5, 0));
-
-  const panelH = card.moltText || contract.usesMolt ? 202 : 170;
-  add(scene.add.rectangle(cx, bottom - panelH / 2 - 4, w - 4, panelH, 0x05080e, 0.93));
-  add(scene.add.rectangle(cx, bottom - panelH - 4, w - 4, 2, accent, 0.85));
-  let yy = bottom - panelH + 8;
-  const tx = left + 16;
-  const wrap = w - 32;
-  if (contract.usesMolt) {
-    add(scene.add.rectangle(left + 50, yy + 8, 84, 20, 0x2a1208, 0.92)
-      .setStrokeStyle(1, 0xff9d4d, 0.72));
-    add(scene.add.text(left + 50, yy + 2, 'MOLT', {
-      fontFamily: UI_FONT, fontSize: '10px', fontStyle: UI_BOLD, color: '#ffc78f',
-      align: 'center',
-      fixedWidth: 74
-    }).setOrigin(0.5, 0));
-    yy += 27;
-  }
-  add(scene.add.text(tx, yy, `${targetLabel(contract.target)} / ${contract.role.toUpperCase()}`, {
-    fontFamily: UI_FONT, fontSize: '10px', fontStyle: UI_BOLD, color: contract.usesMolt ? '#ffc78f' : '#91a6b8'
-  }));
-  yy += 15;
-  const current = add(scene.add.text(tx, yy, contract.text, {
-    fontFamily: UI_FONT, fontSize: '12px', color: '#dce8f2', lineSpacing: 1, wordWrap: { width: wrap }, maxLines: 3
-  })) as Phaser.GameObjects.Text;
-  yy += current.height + 8;
-  add(scene.add.text(tx, yy, contract.usesMolt ? 'Base' : 'Preen', {
-    fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: UI_GOLD
-  }));
-  yy += 15;
-  const upgraded = add(scene.add.text(tx, yy, contract.usesMolt ? displayText(card) : card.upgraded ? 'Already preened.' : card.upgradedText, {
-    fontFamily: UI_FONT, fontSize: '12px', color: '#cfe0ef', lineSpacing: 1, wordWrap: { width: wrap }, maxLines: 2
-  })) as Phaser.GameObjects.Text;
-  yy += upgraded.height + 8;
-  if (!contract.usesMolt && card.moltText && yy < bottom - 40) {
-    add(scene.add.text(tx, yy, 'Molt', {
-      fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: '#ffc78f'
-    }));
-    yy += 15;
-    const molt = add(scene.add.text(tx, yy, card.upgraded && card.moltTextUpgraded ? card.moltTextUpgraded : card.moltText, {
-      fontFamily: UI_FONT, fontSize: '11px', color: '#ffc78f', fontStyle: UI_BOLD, lineSpacing: 1, wordWrap: { width: wrap }, maxLines: 3
-    })) as Phaser.GameObjects.Text;
-    yy += molt.height + 7;
-  }
-  add(scene.add.text(tx, Math.min(yy, bottom - 28), 'Flock Stats', {
-    fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: UI_GOLD
-  }));
-  const stats = cardStatRows(card);
-  addCardHoverStatChipFrame(scene, add, cx, bottom - 17, w - 38, 34, { alpha: 0.8 });
-  add(scene.add.text(tx, bottom - 16, stats.length > 0 ? stats.join('   ') : 'None', {
-    fontFamily: UI_FONT,
-    fontSize: '11px',
-    fontStyle: UI_BOLD,
-    color: stats.length > 0 ? '#8df4ff' : '#91a6b8',
-    align: 'center',
-    wordWrap: { width: wrap }
-  }).setOrigin(0, 1));
-  return container;
-}
-
-function renderSceneCardDetail(scene: Phaser.Scene, card: Card, zone: string, cost: number, molting = false) {
-  const accent = card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : 0x7ab8d6;
-  const contract = activeCardContract(card, molting);
-  renderFieldPanel(scene, () => {}, DECK_DETAIL_LAYOUT.panelCx, DECK_DETAIL_LAYOUT.panelCy, DECK_DETAIL_LAYOUT.panelW, DECK_DETAIL_LAYOUT.panelH, { accent, fill: UI_FIELD.ink });
-  addDeckReviewDetailFrame(scene, () => {}, DECK_DETAIL_LAYOUT.panelCx, DECK_DETAIL_LAYOUT.panelCy, 642, 444, { alpha: 0.62 });
-
-  const key = loadedCardArtKey(scene, card);
-  if (key && scene.textures.exists(key)) {
-    scene.add.image(DECK_DETAIL_LAYOUT.artX, DECK_DETAIL_LAYOUT.artY, key)
-      .setDisplaySize(DECK_DETAIL_LAYOUT.artW, DECK_DETAIL_LAYOUT.artH)
-      .setAlpha(0.92);
-  } else if (!renderSnagCardBorder(scene, undefined, card, DECK_DETAIL_LAYOUT.artX, DECK_DETAIL_LAYOUT.artY, DECK_DETAIL_LAYOUT.artW, DECK_DETAIL_LAYOUT.artH, 0.92)) {
-    scene.add.rectangle(DECK_DETAIL_LAYOUT.artX, DECK_DETAIL_LAYOUT.artY, DECK_DETAIL_LAYOUT.artW, DECK_DETAIL_LAYOUT.artH, 0x141f2f, 0.95)
-      .setStrokeStyle(1, 0x49606d, 0.8);
-    scene.add.text(DECK_DETAIL_LAYOUT.artX, DECK_DETAIL_LAYOUT.artY, cardLabel(card), {
-      fontFamily: UI_FONT,
-      fontSize: '18px',
-      fontStyle: UI_BOLD,
-      color: '#7ab8d6',
-      wordWrap: { width: 190 },
-      align: 'center'
-    }).setOrigin(0.5);
-  } else {
-    scene.add.rectangle(DECK_DETAIL_LAYOUT.artX, DECK_DETAIL_LAYOUT.artY, DECK_DETAIL_LAYOUT.artW, DECK_DETAIL_LAYOUT.artH, 0x05101a, 0.12);
-  }
-  addCardHoverDossierFrame(
-    scene,
-    () => {},
-    DECK_DETAIL_LAYOUT.artX,
-    DECK_DETAIL_LAYOUT.artY,
-    DECK_DETAIL_LAYOUT.artW + 28,
-    DECK_DETAIL_LAYOUT.artH + 42,
-    { alpha: 0.92 }
-  );
-
-  addDeckReviewCostBadge(scene, () => {}, DECK_DETAIL_LAYOUT.costX, DECK_DETAIL_LAYOUT.costY, 46, { zero: cost === 0, selected: true });
-  scene.add.text(DECK_DETAIL_LAYOUT.costX, DECK_DETAIL_LAYOUT.costY, `${cost}`, {
-    fontFamily: UI_FONT,
-    fontSize: '17px',
-    fontStyle: UI_BOLD,
-    color: '#f6f2df',
-    stroke: '#020409',
-    strokeThickness: 2
-  }).setOrigin(0.5);
-  scene.add.text(DECK_DETAIL_LAYOUT.textX, DECK_DETAIL_LAYOUT.titleY, displayName(card), {
-    fontFamily: UI_FONT,
-    fontSize: '26px',
-    fontStyle: UI_BOLD,
-    color: UI_GOLD,
-    wordWrap: { width: DECK_DETAIL_LAYOUT.textW }
-  });
-  scene.add.text(DECK_DETAIL_LAYOUT.textX, DECK_DETAIL_LAYOUT.metaY, `${card.bird} / ${cardLabel(card)} / ${zone}`, {
-    fontFamily: UI_FONT,
-    fontSize: '15px',
-    fontStyle: UI_BOLD,
-    color: '#7ab8d6',
-    wordWrap: { width: DECK_DETAIL_LAYOUT.textW }
-  });
-  scene.add.text(DECK_DETAIL_LAYOUT.textX, DECK_DETAIL_LAYOUT.targetY, `${targetLabel(contract.target)} / ${contract.role.toUpperCase()}`, {
-    fontFamily: UI_FONT,
-    fontSize: '14px',
-    color: contract.usesMolt ? '#ffc78f' : UI_SOFT
-  });
-  if (contract.usesMolt) {
-    scene.add.rectangle(DECK_DETAIL_LAYOUT.textX + 40, DECK_DETAIL_LAYOUT.statusY + 9, 80, 22, 0x2a1208, 0.96)
-      .setStrokeStyle(1, 0xff9d4d, 0.82);
-    scene.add.text(DECK_DETAIL_LAYOUT.textX + 40, DECK_DETAIL_LAYOUT.statusY, 'MOLT', {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: '#ffc78f',
-      align: 'center',
-      fixedWidth: 72
-    }).setOrigin(0.5, 0);
-  }
-  scene.add.text(DECK_DETAIL_LAYOUT.textX, DECK_DETAIL_LAYOUT.currentHeaderY, contract.usesMolt ? 'Now (Molt)' : 'Now', detailHeaderStyle());
-  scene.add.text(DECK_DETAIL_LAYOUT.textX, DECK_DETAIL_LAYOUT.currentBodyY, contract.text, detailBodyStyle(DECK_DETAIL_LAYOUT.textW, 3));
-  scene.add.text(DECK_DETAIL_LAYOUT.textX, DECK_DETAIL_LAYOUT.alternateHeaderY, contract.usesMolt ? 'Base' : 'Preen', detailHeaderStyle());
-  scene.add.text(DECK_DETAIL_LAYOUT.textX, DECK_DETAIL_LAYOUT.alternateBodyY, contract.usesMolt ? displayText(card) : card.upgraded ? 'Already preened.' : card.upgradedText, detailBodyStyle(DECK_DETAIL_LAYOUT.textW, 2));
-  scene.add.text(DECK_DETAIL_LAYOUT.textX, DECK_DETAIL_LAYOUT.statsHeaderY, 'Flock Stats', detailHeaderStyle());
-  const stats = cardStatRows(card);
-  scene.add.text(DECK_DETAIL_LAYOUT.textX, DECK_DETAIL_LAYOUT.statsY, stats.length > 0 ? stats.join('   ') : 'None', {
-    fontFamily: UI_FONT,
-    fontSize: '14px',
-    fontStyle: UI_BOLD,
-    color: stats.length > 0 ? '#8df4ff' : '#91a6b8',
-    wordWrap: { width: DECK_DETAIL_LAYOUT.textW }
-  });
-}
-
-function detailHeaderStyle() {
-  return {
-    fontFamily: UI_FONT,
-    fontSize: '15px',
-    fontStyle: UI_BOLD,
-    color: UI_GOLD
-  };
-}
-
-function detailBodyStyle(width: number, maxLines?: number) {
-  return {
-    fontFamily: UI_FONT,
-    fontSize: '14px',
-    color: '#dce8f2',
-    lineSpacing: 3,
-    wordWrap: { width },
-    ...(maxLines ? { maxLines } : {})
-  };
-}
-
 function targetLabel(target: TargetType) {
   if (target === 'allEnemies') return 'All Enemies';
   if (target === 'self') return 'Flock';
@@ -27429,6 +28035,14 @@ function flockStatLabel(key: string) {
 
 function cardStatRows(card: Card) {
   return cardStatEntries(card).map(({ key, value }) => `${flockStatLabel(key)} +${value}`);
+}
+
+function cardStatTotalRows(card: Card) {
+  const totals = cardStatEntries(card).reduce<Record<string, number>>((result, { key, value }) => {
+    result[key] = (result[key] ?? 0) + value;
+    return result;
+  }, {});
+  return Object.entries(totals).map(([key, value]) => `${flockStatLabel(key)} +${value}`);
 }
 
 function cardStatEntries(card: Card) {
@@ -27552,6 +28166,35 @@ function routeMarkFamilyLabel(family: RuntimeRouteMark['family']) {
     case 'bossPrep': return 'Boss';
     default: return 'Waymark';
   }
+}
+
+function formatWaymarkTrigger(trigger: string) {
+  const suit = /^onSuitPlayed\(([^)]+)\)$/.exec(trigger)?.[1];
+  if (suit) return `First ${suit[0].toUpperCase()}${suit.slice(1)} card played each turn`;
+  const nth = /^onNthCardThisTurn\((\d+)\)$/.exec(trigger)?.[1];
+  if (nth) return `Card ${nth} played each turn`;
+  const lowCard = /^onLowCardTurn\((\d+)\)$/.exec(trigger)?.[1];
+  if (lowCard) return `Roost after playing ${lowCard} or fewer cards`;
+  const labels: Record<string, string> = {
+    afterMarketPurchase: 'After each Market purchase',
+    afterStreetEncounter: 'After each Street Encounter',
+    basinHeal: 'When a Basin Stop heals the flock',
+    cacheChoice: 'When choosing a Rooftop Cache reward',
+    combatStart: 'At the start of each combat',
+    firstOpenSkyIncrease: 'First Open Sky increase each combat',
+    mapStart: 'At the start of the next district',
+    onEnemyCoverBroken: 'First enemy Cover break each turn',
+    onEnterMolt: 'When the flock enters Molt',
+    onHealFlock: 'First time the flock heals each turn',
+    onResonanceSpent: 'First time Resonance is spent each turn',
+    onRoostWithCardsInHand: 'First Roost with cards in hand each combat',
+    onRoostWithWingbeat: 'First Roost with unspent Wingbeat each combat',
+    onSupplyUsed: 'Whenever a Supply is used',
+    onTurnEndNoHpLoss: 'First enemy turn with no Cohesion loss each combat',
+    onTurnEndNoOverextension: 'First clean Roost without overextension each combat',
+    signalResolved: 'After resolving a Signal',
+  };
+  return labels[trigger] ?? trigger.replace(/([a-z])([A-Z])/g, '$1 $2');
 }
 
 function routeMarkEffects(mark: RuntimeRouteMark): string[] {
@@ -28194,59 +28837,6 @@ function buildFlockStatRows(cards: Card[], maxHp: number, energyBonus = 0, openS
   ];
 }
 
-// Renders the Stat / Base / Flock / Now table. addTo lets each scene re-parent
-// the objects into its own layer (BattleScene.root vs the RouteScene display list).
-function renderFlockStatTable(
-  scene: Phaser.Scene,
-  addTo: (obj: Phaser.GameObjects.GameObject) => void,
-  rows: FlockStatRow[],
-  leftX: number,
-  topY: number,
-): void {
-  const headerFrameKey = uiIconAssets['flock-stats-header-frame'].key;
-  const hasHeaderFrame = scene.textures.exists(headerFrameKey);
-  if (hasHeaderFrame) {
-    scene.textures.get(headerFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    addTo(scene.add.image(leftX + 270, topY + 20, headerFrameKey)
-      .setDisplaySize(566, 30)
-      .setAlpha(0.42)
-      .setName('flock-stats-header-frame'));
-  } else {
-    addTo(scene.add.rectangle(leftX + 270, topY + 14, 540, 28, 0x07101c, 0.18)
-      .setStrokeStyle(1, UI_FIELD.gold, 0.18)
-      .setName('flock-stats-header-frame-fallback'));
-  }
-  addTo(scene.add.text(leftX, topY, 'Stat', tableHeaderStyle()));
-  addTo(scene.add.text(leftX + 232, topY, 'Base', tableHeaderStyle()));
-  addTo(scene.add.text(leftX + 330, topY, 'Flock', tableHeaderStyle()));
-  addTo(scene.add.text(leftX + 446, topY, 'Now', tableHeaderStyle()));
-  addTo(scene.add.rectangle(leftX + 270, topY + 25, 540, 1, UI_FIELD.gold, 0.28));
-  const rowFrameKey = uiIconAssets['flock-stats-row-frame'].key;
-  const hasRowFrame = scene.textures.exists(rowFrameKey);
-  if (hasRowFrame) scene.textures.get(rowFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  rows.forEach((row, index) => {
-    const y = topY + 37 + index * 33;
-    if (hasRowFrame) {
-      const frame = scene.add.image(leftX + 270, y + 10, rowFrameKey)
-        .setDisplaySize(566, 34)
-        .setAlpha(row.bonus > 0 ? 0.56 : 0.42)
-        .setName('flock-stats-row-frame');
-      if (row.bonus > 0) frame.setTint(0xdffbff);
-      addTo(frame);
-    } else {
-      addTo(scene.add.rectangle(leftX + 270, y + 11, 540, 26, 0x07101c, row.bonus > 0 ? 0.38 : 0.24)
-        .setStrokeStyle(1, row.bonus > 0 ? UI_FIELD.cyan : 0xffffff, row.bonus > 0 ? 0.32 : 0.08)
-        .setName('flock-stats-row-frame-fallback'));
-    }
-    addTo(scene.add.rectangle(leftX + 270, y + 25, 540, 1, 0xffffff, index % 2 === 0 ? 0.08 : 0.04));
-    if (row.bonus > 0) addTo(scene.add.rectangle(leftX - 8, y + 9, 3, 18, UI_FIELD.cyan, 0.82));
-    addTo(scene.add.text(leftX, y, row.label, tableCellStyle('#ffe1a3')));
-    addTo(scene.add.text(leftX + 240, y, `${row.base}`, tableCellStyle('#dce8f2')));
-    addTo(scene.add.text(leftX + 338, y, row.bonus > 0 ? `+${row.bonus}` : `${row.bonus}`, tableCellStyle(row.bonus > 0 ? '#8df4ff' : '#91a6b8')));
-    addTo(scene.add.text(leftX + 454, y, `${row.total}`, tableCellStyle('#ffffff')));
-  });
-}
-
 function aggregateFlockStats(cards: Card[]) {
   const stats: Record<string, number> = {};
   for (const card of cards) {
@@ -28268,9 +28858,9 @@ function shouldPreserveDrawingBufferForCapture() {
   return params.get('capture') === '1' || params.get('preserveDrawingBuffer') === '1' || navigator.webdriver;
 }
 
-function shuffle<T>(items: T[]) {
+function shuffle<T>(items: T[], random: () => number = Math.random) {
   for (let i = items.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(random() * (i + 1));
     [items[i], items[j]] = [items[j], items[i]];
   }
   return items;
@@ -28280,20 +28870,25 @@ function shuffle<T>(items: T[]) {
 // this deliberately narrow bridge so the boot path does not have to evaluate
 // two thousand lines of collection and dossier presentation code.
 export {
-  addCodexDossierFrame, addCodexEntryFrame, addSupplyArtImage, addUiIconImage, addWaymarkArtImage,
+  addCodexDossierFrame, addCodexEntryFrame, addDeckReviewCostBadge, addDeckReviewFlourish, addRewardRevealHaloFx,
+  addDeckReviewMetaChipFrame, addDeckReviewPageIndicatorFrame, addDeckReviewRowFrame,
+  addDeckReviewSectionTabFrame, addDeckReviewTitlePlaque, addRouteWaymarkScrollRailFrame, addRunKitDrawerFlourish,
+  addSupplyArtImage, addUiIconImage, addWaymarkArtImage,
   advanceGameTime, alphaEnemyLibrary, alphaRouteMarkLibrary, alphaRouteMarkSet, alphaSupplyLibrary,
   bindControlActions, birdAudio, cardArtAssets, cardCompactArtAsset, cardLabel, cardLibrary, clamp,
-  controlActionForCode, controlBindingLabel,
+  compactSentenceText, controlActionForCode, controlBindingLabel, currentMap,
   codexIconForLabel, codexLeaderArtAssets, codexUiIconIds, compactCardArtKey, compactEffectSummary,
   countTextureInGameObjects, displayName, enemyArtAssets, enemyCodexIconForLabel, flockLeaders,
   GAME_HEIGHT, GAME_WIDTH, getLeader, hideKwTooltip, isAviaryCard, isLeaderUnlocked, isSnagCard,
   itemTypeCodexIconForLabel, KEYWORDS, killTweensForTree, LAZY_LOAD_FAILED, leaderUnlockHints,
   loadAccount, loadBossDossierModule, loadedCardArtKey, playUiSound, queueReserveEnemyArtAssets,
   queueRuntimeImageAssets, queueUiIconAssets, activateRenderedAudioToggleControl,
-  renderAudioToggleControl, renderRichText,
-  renderSnagCardBorder, reserveEnemyArtAsset, routeMarkEffectGrammar, routeMarkEffectText,
+  renderAudioToggleControl, renderCloseControl, renderCompactItemTile, renderEmptySupplySlotTile,
+  renderFieldButton, renderFieldPanel, renderRichText,
+  renderSnagCardBorder, reserveEnemyArtAsset, ROUTE_SET_PIECE_PROFILES, routeMarkEffectGrammar, routeMarkEffectText,
+  routeNodeTypeLabel,
   showKwTooltip, suitAccentColor, supplyArtAssets, supplyCodexIconForLabel, supplyCompactArtAssets,
-  supplySynergyTags, UI_BODY, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, UI_MUTED, UI_SOFT,
+  supplySynergyTags, HUD_MENU_PANEL, UI_BODY, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, UI_MUTED, UI_SOFT,
   uiIconAssets, waymarkArtAssets, waymarkCodexIconForLabel, waymarkCompactArtAssets, waymarkGlyph,
   waymarkSynergyTags,
 };
@@ -28364,6 +28959,12 @@ window.__birdSquadEnsureScene = async (sceneKey: string) => {
   return Boolean(game.scene.getScene(sceneKey));
 };
 window.__birdSquadCurrentMap = () => currentMap();
+window.__routeAudit = [
+  routeBlueprints,
+  generateRouteMap,
+  hashSeed,
+  getMapBalanceProfile,
+];
 window.__birdSquadAudio = () => birdAudio.snapshot();
 window.__birdSquadShowKeywordTooltip = (sceneKey: string, keyword: string, x: number, y: number) => {
   const scene = window.__birdSquadGame?.scene.getScene(sceneKey);
