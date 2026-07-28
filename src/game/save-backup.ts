@@ -8,10 +8,13 @@ import {
 } from './input-bindings';
 import { loadAccount, sanitizeAccount, type PlayerAccount } from './meta';
 import { safeStorageGet, safeStorageRemove, safeStorageSet } from './safe-storage';
+import { sanitizeCardPersonalTags } from './card-personal-tags';
+import { sanitizeCardShowcase } from './card-showcase';
 
 const SAVE_FORMAT = 'bird-squad-save';
 const SAVE_VERSION = 1;
 const MAX_BACKUP_BYTES = 2_000_000;
+const CODEX_CARD_LENSES = ['all', 'collected', 'new', 'tagged', 'uncollected', 'seen'] as const;
 
 const JOURNALED_KEYS = {
   account: 'birdsquad.account',
@@ -64,7 +67,7 @@ export interface SaveBackupPreferences {
   ambienceVolume: number;
   audioMuted: boolean;
   maxTier: number;
-  codexCardLens: 'all' | 'collected' | 'uncollected' | 'seen';
+  codexCardLens: typeof CODEX_CARD_LENSES[number];
   codexCardSearch: string;
   codexCardSort: 'binder' | 'name' | 'rarity' | 'recent';
 }
@@ -160,7 +163,7 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
       : undefined;
   const codexCardLens = value.codexCardLens === undefined
     ? 'all'
-    : ['all', 'collected', 'uncollected', 'seen'].includes(String(value.codexCardLens))
+    : CODEX_CARD_LENSES.includes(value.codexCardLens as SaveBackupPreferences['codexCardLens'])
       ? value.codexCardLens as SaveBackupPreferences['codexCardLens']
       : undefined;
   const codexCardSearch = value.codexCardSearch === undefined
@@ -220,7 +223,9 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
 
 function currentCodexCardLens(): SaveBackupPreferences['codexCardLens'] {
   const value = safeStorageGet(PREFERENCE_KEYS.codexCardLens);
-  return value === 'collected' || value === 'uncollected' || value === 'seen' ? value : 'all';
+  return CODEX_CARD_LENSES.includes(value as SaveBackupPreferences['codexCardLens'])
+    ? value as SaveBackupPreferences['codexCardLens']
+    : 'all';
 }
 
 function currentCodexCardSearch() {
@@ -239,12 +244,15 @@ function currentCodexCardSort(): SaveBackupPreferences['codexCardSort'] {
 
 export function createSaveBackup(dependencies: SaveBackupRuntimeDependencies): SaveBackupBundle {
   const activeRun = dependencies.currentActiveRun();
+  const account = loadAccount();
+  account.cardTags = sanitizeCardPersonalTags(account.cardTags, account.discoveredCards);
+  account.showcase = sanitizeCardShowcase(account.showcase, account.discoveredCards);
   return {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,
     exportedAt: new Date().toISOString(),
     data: {
-      account: loadAccount(),
+      account,
       ...(activeRun === undefined ? {} : { activeRun }),
       runHistory: dependencies.currentRunHistory(),
       guide: firstFlightGuideProgress(),
@@ -279,6 +287,8 @@ export function parseSaveBackup(raw: string, dependencies: SaveBackupRuntimeDepe
   if (!account || !runHistory || !guide || !preferences || (hasActiveRun && activeRun === undefined)) {
     return { ok: false, error: 'Backup data failed schema validation; nothing was changed.' };
   }
+  account.cardTags = sanitizeCardPersonalTags(account.cardTags, account.discoveredCards);
+  account.showcase = sanitizeCardShowcase(account.showcase, account.discoveredCards);
   const bundle: SaveBackupBundle = {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,

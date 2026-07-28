@@ -6,11 +6,13 @@ import { readJournaledJson, writeJournaledJson } from './safe-storage';
 // unlockable Flock Leaders. Stored in localStorage, updated on each finished run.
 
 export type CardAcquisitionSource = 'starter_flock' | 'combat_reward' | 'route_reward' | 'market' | 'snag';
+export type CardPersonalTag = 'staple' | 'experiment' | 'keepsake';
 
 export interface CardCollectionRecord {
   timesClaimed: number;
   firstAcquiredAt: number;
   firstSource: CardAcquisitionSource;
+  isNew?: true;
   targetCompletedAt?: number;
   targetSource?: CardAcquisitionSource;
 }
@@ -27,6 +29,8 @@ export interface PlayerAccount {
   achievements: string[];
   discoveredCards: string[]; // card ids the player has encountered (for the Codex)
   favoriteCards: string[]; // discovered cards the player has marked as personal favorites
+  cardTags?: Partial<Record<string, CardPersonalTag>>; // private, non-power organization for discovered cards
+  showcase?: string[]; // up to three discovered cards deliberately presented in Flock Record
   hunt?: string[]; // up to three discovered, uncollected cards the player is actively hunting
   cardCollection: Record<string, CardCollectionRecord>; // permanent claim history; playable copies remain run-specific
   observedEnemyMoves: string[]; // enemyId:moveId keys witnessed during combat
@@ -149,7 +153,6 @@ function sanitizeLeaderRecords(value: unknown): Record<string, LeaderPersonalRec
 
 export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
   if (!isRecord(value)) return undefined;
-  const base = defaultAccount();
   const wins = finiteInt(value.wins);
   const losses = finiteInt(value.losses);
   const fastestWinTurns = value.fastestWinTurns === null || value.fastestWinTurns === undefined
@@ -171,7 +174,6 @@ export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
       }))
     : {};
   return {
-    ...base,
     runs: Math.max(finiteInt(value.runs), wins + losses),
     wins,
     losses,
@@ -183,6 +185,8 @@ export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
     achievements: stringList(value.achievements),
     discoveredCards,
     favoriteCards: stringList(value.favoriteCards).filter((id) => discoveredCards.includes(id)),
+    cardTags: value.cardTags as Partial<Record<string, CardPersonalTag>>,
+    showcase: value.showcase as string[],
     hunt: stringList(value.hunt).slice(0, 3),
     cardCollection,
     observedEnemyMoves: stringList(value.observedEnemyMoves),

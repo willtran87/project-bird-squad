@@ -12,6 +12,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
     cardStatRows,
     cardStatTotalRows,
     colorCueState,
+    collectionGoalSummary,
     combatPacingState,
     controlBindingLabel,
     controlsTextState,
@@ -113,6 +114,18 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
           district: runDistrictOrdinal(scene.runState.runMode, activeMapIndex),
           districtCount: runMapIndices(scene.runState.runMode).length,
           mapName: currentMap().name
+        },
+        collectionGoal: {
+          ...collectionGoalSummary(),
+          rendered: scene.children.list.some((child: any) => child.name === 'route-collection-goal-hit'),
+          opening: scene.routeCodexOpening,
+          input: {
+            pointer: true,
+            keyboard: 'G',
+            controller: 'R3',
+            destination: 'Collection Atlas',
+            returnsTo: 'Route',
+          },
         },
         districtAdvanceFlourish: scene.districtAdvanceFlourishState(),
         districtAdvanceTitlePlaque: scene.districtAdvanceTitlePlaqueState(),

@@ -65,6 +65,7 @@ import {
   achievements, discoverCards, isLeaderUnlocked, leaderMastery, leaderUnlockHints,
   loadAccount, recordRun, type CardAcquisitionSource, type CardCollectionRecord, type PlayerAccount
 } from './game/meta';
+import { collectionMilestoneProgress, unlockCollectionMilestones } from './game/collection-milestone-progress';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './game/theme';
 import {
   queuePreloadImageAssets,
@@ -3689,6 +3690,63 @@ function hudIconForLabel(label: string): UiIconId | undefined {
   }
 }
 
+const COLLECTION_MILESTONE_NAMES: Record<string, string> = {
+  collection_first_shelf: 'First Shelf',
+  collection_suit_sampler: 'Four Winds',
+  collection_curator: "Curator's Eye",
+  collection_wayfinder: 'Marked Routes',
+  collection_many_roads: 'Many Roads Home',
+  collection_citywide: 'Citywide Binder',
+};
+
+function collectionGoalSummary(account = loadAccount()) {
+  const milestones = collectionMilestoneProgress(account);
+  const next = milestones.find((milestone) => !milestone.complete);
+  return {
+    owned: Object.keys(account.cardCollection).length,
+    total: Object.keys(cardLibrary).length,
+    completed: milestones.filter((milestone) => milestone.complete).length,
+    milestoneTotal: milestones.length,
+    next: next ? {
+      ...next,
+      name: COLLECTION_MILESTONE_NAMES[next.id] ?? 'Collection Goal',
+    } : null,
+    allComplete: !next,
+    optional: true,
+    affectsPower: false,
+    timeLimited: false,
+    destination: 'Collection Atlas',
+  };
+}
+
+type CollectionGoalStripModule = typeof import('./game/collection-goal-strip');
+let collectionGoalStripModulePromise: Promise<CollectionGoalStripModule> | undefined;
+
+function loadCollectionGoalStripModule() {
+  collectionGoalStripModulePromise ??= import('./game/collection-goal-strip');
+  return collectionGoalStripModulePromise;
+}
+
+function renderCollectionGoalStrip(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  width: number,
+  name: string,
+  onOpen: () => void,
+) {
+  const goal = collectionGoalSummary();
+  void loadCollectionGoalStripModule().then((module) => {
+    if (!scene.sys.settings.active || scene.children.list.some((child) => child.name === name)) return;
+    module.renderCollectionGoalStrip(scene, x, y, width, name, goal, onOpen, {
+      addIcon: (target, iconX, iconY) => addUiIconImage(target, 'codex-medallion', iconX, iconY, 13),
+      playConfirm: () => playUiSound('confirm'),
+    });
+    (scene as any).updateMenuTextState?.();
+    (scene as any).updateTextState?.();
+  });
+}
+
 function buttonIconForLabel(label: string): UiIconId | undefined {
   const normalized = label.toLowerCase();
   if (normalized === 'up') return 'scroll-up-chevron';
@@ -3700,7 +3758,7 @@ function buttonIconForLabel(label: string): UiIconId | undefined {
   if (normalized.includes('remove') || normalized.includes('release')) return 'release-card';
   if (normalized.includes('buy') || normalized.includes('market')) return 'market-basket';
   if (normalized.includes('settings')) return 'settings-medallion';
-  if (normalized.includes('codex')) return 'codex-medallion';
+  if (normalized.includes('codex') || normalized.includes('collection')) return 'codex-medallion';
   if (normalized.includes('how to play') || normalized.includes('help')) return 'help-medallion';
   if (normalized.includes('flock record') || normalized.includes('record')) return 'record-medallion';
   if (normalized === 'start run' || normalized === 'start new run' || normalized === 'continue run') return 'start-run-medallion';
@@ -4067,9 +4125,9 @@ const cardLibrary: Record<string, Card> = Object.fromEntries(
 function recordCardAcquisitions(
   ids: string[],
   source: CardAcquisitionSource,
-): { firstCopies: string[]; completedTargets: string[] } {
+): { firstCopies: string[]; completedTargets: string[]; newMilestones: string[] } {
   const uniqueIds = [...new Set(ids.filter((id) => Boolean(cardLibrary[id])))];
-  if (uniqueIds.length === 0) return { firstCopies: [], completedTargets: [] };
+  if (uniqueIds.length === 0) return { firstCopies: [], completedTargets: [], newMilestones: [] };
   const account = loadAccount();
   const discovered = new Set(account.discoveredCards);
   const targets = new Set((account.hunt ?? []).filter((id) => !account.cardCollection[id] && Boolean(cardLibrary[id])));
@@ -4082,7 +4140,7 @@ function recordCardAcquisitions(
     if (!prior) firstCopies.push(id);
     const next: CardCollectionRecord = prior
       ? { ...prior, timesClaimed: prior.timesClaimed + 1 }
-      : { timesClaimed: 1, firstAcquiredAt: now, firstSource: source };
+      : { timesClaimed: 1, firstAcquiredAt: now, firstSource: source, isNew: true };
     if (targets.delete(id)) {
       completedTargets.push(id);
       next.targetCompletedAt = now;
@@ -4092,8 +4150,9 @@ function recordCardAcquisitions(
   });
   account.discoveredCards = [...discovered];
   account.hunt = [...targets];
+  const newMilestones = unlockCollectionMilestones(account);
   writeJournaledJson('birdsquad.account', account);
-  return { firstCopies, completedTargets };
+  return { firstCopies, completedTargets, newMilestones };
 }
 
 const arcanaRewardPool = alphaCardSet.rewardPool;
@@ -4856,7 +4915,15 @@ class MenuScene extends Phaser.Scene {
     });
 
     this.menuFocusTargets.set('profile', this.renderTopUtilityButton(GAME_WIDTH - 92, 38, 'Flock Record', 'profile', () => this.scene.start('ProfileScene')));
-    this.menuFocusTargets.set('codex', this.renderTopUtilityButton(GAME_WIDTH - 240, 38, 'Codex', 'codex', () => this.openCodex()));
+    this.menuFocusTargets.set('codex', this.renderTopUtilityButton(GAME_WIDTH - 240, 38, 'Collection', 'codex', () => this.openCodex(true)));
+    renderCollectionGoalStrip(
+      this,
+      GAME_WIDTH - 212,
+      88,
+      400,
+      'title-collection-goal-hit',
+      () => this.openCodex(true),
+    );
     this.installMenuFocusInput();
     this.renderMenuFocusHint();
     this.updateMenuFocusRing();
@@ -4881,7 +4948,7 @@ class MenuScene extends Phaser.Scene {
       case 'secondaryRun': return SHARED_ROUTE_SEED ? 'Shared Route' : 'Start New Run';
       case 'howToPlay': return 'How to Play';
       case 'settings': return 'Settings';
-      case 'codex': return 'Codex';
+      case 'codex': return 'Collection';
       case 'profile': return 'Flock Record';
     }
   }
@@ -4974,7 +5041,7 @@ class MenuScene extends Phaser.Scene {
         this.openSettingsOverlay();
         break;
       case 'codex':
-        this.openCodex();
+        this.openCodex(true);
         return;
       case 'profile':
         this.scene.start('ProfileScene');
@@ -5144,7 +5211,7 @@ class MenuScene extends Phaser.Scene {
       .setData('label', this.menuFocusLabel());
   }
 
-  private openCodex() {
+  private openCodex(openCollectionAtlas = false) {
     if (this.codexOpening) return;
     this.codexOpening = true;
     const game = this.game;
@@ -5161,7 +5228,7 @@ class MenuScene extends Phaser.Scene {
         registerCodexScene(game, module);
         if (!game.scene.isActive('MenuScene')) return;
         if (notice.active) notice.destroy();
-        game.scene.getScene('MenuScene').scene.start('CodexScene');
+        game.scene.getScene('MenuScene').scene.start('CodexScene', { openCollectionAtlas });
       })
       .catch((error) => {
         console.warn(LAZY_LOAD_FAILED, error);
@@ -5187,6 +5254,15 @@ class MenuScene extends Phaser.Scene {
       settingsFocus: settingsFocusState(this, Boolean(this.settingsOverlay)),
       controls: controlsTextState(this, Boolean(this.settingsOverlay)),
       helpOpen: Boolean(this.helpOverlay),
+      collectionGoal: {
+        ...collectionGoalSummary(this.menuAccount),
+        rendered: this.children.list.some((child) => child.name === 'title-collection-goal-hit'),
+        input: {
+          pointer: true,
+          keyboardFocus: 'codex',
+          controllerFocus: 'codex',
+        },
+      },
       titleFocus: {
         current: this.menuFocus,
         label: this.menuFocusLabel(),
@@ -6161,6 +6237,29 @@ const profileSceneDependencies: import('./game/profile-scene').ProfileSceneDepen
   queueUiIconAssets: (scene, ids, warning, onComplete) => {
     queueUiIconAssets(scene, ids as UiIconId[], warning, onComplete);
   },
+  cardShowcaseEntry: (id) => {
+    const card = cardLibrary[id];
+    if (!card) return undefined;
+    return {
+      id,
+      name: displayName(card),
+      family: cardLabel(card),
+      rarity: card.runtime.rarity.toUpperCase(),
+      artKey: cardCompactArtAsset(card)?.key,
+    };
+  },
+  queueCardShowcaseAssets: (scene, ids, onComplete) => {
+    const assets = uniqueImageAssets(ids.flatMap((id) => {
+      const card = cardLibrary[id];
+      const asset = card ? cardCompactArtAsset(card) : undefined;
+      return asset ? [asset] : [];
+    }));
+    if (assets.length === 0) {
+      onComplete?.();
+      return;
+    }
+    queueRuntimeImageAssets(scene, assets, 'Profile showcase art', onComplete);
+  },
   renderAudioToggleControl,
   renderCloseControl,
   renderFieldButton,
@@ -6392,6 +6491,7 @@ class RouteScene extends Phaser.Scene {
   private routeCheckpointAttempt?: string;
   private routeCheckpointIndicator?: Phaser.GameObjects.Container;
   private routeCheckpointTimer?: Phaser.Time.TimerEvent;
+  private routeCodexOpening = false;
   private routeCheckpointState: {
     outcome: RouteCheckpointOutcome;
     label: string;
@@ -6519,6 +6619,7 @@ class RouteScene extends Phaser.Scene {
     this.routeCheckpointIndicator = undefined;
     this.routeCheckpointTimer?.remove(false);
     this.routeCheckpointTimer = undefined;
+    this.routeCodexOpening = false;
     this.routeCheckpointState = {
       outcome: 'idle',
       label: '',
@@ -6600,10 +6701,23 @@ class RouteScene extends Phaser.Scene {
       if (button.index === 2) {
         if (this.waymarkDrawerOpen) this.toggleRouteWaymarkPin();
         else if (this.deckOverlayOpen && !this.deckReviewSearchActive) this.toggleDeckReviewComparison();
-      }
+      } else if (
+        button.index === 11
+        && this.children.list.some((child) => child.name === 'route-collection-goal-hit')
+      ) this.openRouteCollectionGoals();
     };
+    const onCollectionGoals = (event: KeyboardEvent) => {
+      if (!this.children.list.some((child) => child.name === 'route-collection-goal-hit')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      this.openRouteCollectionGoals();
+    };
+    this.input.keyboard?.on('keydown-G', onCollectionGoals);
     this.input.gamepad?.on('down', onRouteGamepadDown);
-    this.events.once('shutdown', () => this.input.gamepad?.off('down', onRouteGamepadDown));
+    this.events.once('shutdown', () => {
+      this.input.keyboard?.off('keydown-G', onCollectionGoals);
+      this.input.gamepad?.off('down', onRouteGamepadDown);
+    });
     ['ONE', 'TWO', 'THREE', 'FOUR'].forEach((key, index) => this.input.keyboard?.on(`keydown-${key}`, () => {
       if (this.marketOpen) {
         const category: MarketCategory[] = ['cards', 'waymarks', 'supplies', 'services'];
@@ -7271,6 +7385,53 @@ class RouteScene extends Phaser.Scene {
     });
     renderPauseToggleControl(this, () => {}, GAME_WIDTH - 82, 45, () => this.togglePauseOverlay());
     renderAudioToggleControl(this, () => {}, GAME_WIDTH - 34, 45, () => this.updateTextState());
+    if (
+      !this.pauseOverlayOpen
+      && !this.settingsOverlayOpen
+      && !this.deckOverlayOpen
+      && !this.flockOverlayOpen
+      && !this.waymarkDrawerOpen
+      && !this.supplyDrawerOpen
+      && !this.marketOpen
+      && !this.nodeChoiceOpen
+      && !this.pendingRouteReward
+      && !this.cardPickerMode
+      && !this.shouldChooseDistrictContract()
+    ) {
+      renderCollectionGoalStrip(
+        this,
+        870,
+        104,
+        300,
+        'route-collection-goal-hit',
+        () => this.openRouteCollectionGoals(),
+      );
+    }
+  }
+
+  private openRouteCollectionGoals() {
+    if (this.routeCodexOpening || !this.routeEssentialAssetsReady) return;
+    this.routeCodexOpening = true;
+    persistActiveRun(this.runState);
+    const returnData = { runState: cloneRunState(this.runState) };
+    const game = this.game;
+    void loadCodexSceneModule()
+      .then((module) => {
+        if (!this.sys.settings.active) return;
+        registerCodexScene(game, module);
+        this.scene.start('CodexScene', {
+          openCollectionAtlas: true,
+          returnScene: 'RouteScene',
+          returnData,
+        });
+      })
+      .catch((error) => {
+        console.warn(LAZY_LOAD_FAILED, error);
+        if (!this.sys.settings.active) return;
+        this.routeCodexOpening = false;
+        playUiSound('locked');
+        this.updateTextState();
+      });
   }
 
   private renderPauseOverlay() {
@@ -14295,7 +14456,7 @@ class RouteScene extends Phaser.Scene {
       currentScreenShakeState, displayName, firstFlightGuideState, firstFlightGuideStep,
       getInspectedEntry, graphicsQualityState, inspectedCardPayload, motionState, runDistrictOrdinal,
       runMapIndices, runSupplyCapacity, screenReaderState, settingsFocusState, textPacingState,
-      uiIconAssets, visualContrastState,
+      uiIconAssets, visualContrastState, collectionGoalSummary,
     });
   }
 

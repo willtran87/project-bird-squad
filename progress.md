@@ -4264,3 +4264,232 @@ sessions through `docs/game/playtest-runbook.md`.
 - Next collector-loop priority is a player-chosen collection target or wishlist
   with meaningful non-power milestones. Five genuinely observed fresh-player
   sessions remain required qualitative evidence.
+
+## 2026-07-28 Durable Newly Acquired Card Acknowledgement
+
+- Added durable unread state directly to each first-copy collection record.
+  Every authoritative acquisition source sets `isNew` atomically with the
+  permanent claim; repeat flight claims preserve the marker instead of creating
+  duplicates, while legacy collections default to no notification flood.
+- Added a fifth `New` Collection Lens plus explicit purple `NEW` thumbnail
+  labels. Undiscovered cards remain private, the marker is not color-only, and
+  its state does not affect ownership, reward odds, playable copies, or run
+  power.
+- A new card dossier replaces the otherwise-disabled collected/Hunt command
+  with a 142x46 `NEW / MARK SEEN` action. Pointer/touch, keyboard `N`, and
+  controller `LT` acknowledge that card intentionally. The dossier text and
+  screen-reader summary explain the consequence before the action.
+- A 132x46 `CLEAR ALL` command occupies the unused right grid gutter whenever
+  unread cards exist. Pointer/touch, keyboard `N`, controller `LT`, and logical
+  focus all clear notification state in bulk without removing any collection
+  record. Its scene-level pointer region is authoritative so later root
+  overlays cannot intercept the visible command.
+- Malformed non-boolean unread flags are ignored and repaired when the Codex
+  loads. Flock Record export and transactional restore preserve valid unread
+  state inside the existing account record. `render_game_to_text` exposes
+  count, ids, visible ids, detail state, New-lens state, controls, persistence,
+  and the explicit non-ownership contract.
+- Thirteen focused acquisition/Codex/backup regressions pass together,
+  including first and repeated combat claims, Hunt completion, starter-flock
+  claims, provenance sanitation, Favorites, Hunt List, all five Collection
+  Lens states, search, sort, per-card acknowledgement, and bulk acknowledgement
+  through pointer, keyboard, and controller.
+- Full `npm run validate` passes documentation, 110-card runtime data, 961
+  optimized runtime assets, canonical-world and directionless combat-FX
+  contracts, deployment hardening, enemy variety, Minor Arcana overlays, and
+  all 24 critical sequencing scenarios. The hard game-core budget remains
+  green at 30.0 KiB; combined boot is 706.9 KiB / 190.3 KiB gzip. The existing
+  677.0 KiB app-entry preference remains advisory.
+- The required shared production client completed a fresh Start Run -> Route
+  -> Title -> Codex -> New Lens path. Text state reported 10 collected and 10
+  new cards before a real bulk-clear pointer action, then 10 collected and zero
+  new cards afterward. Inspected captures are
+  `.artifacts/codex-new-shared-client-lens/shot-0.png` and
+  `.artifacts/codex-new-shared-client-clear/shot-0.png`; neither run emitted a
+  browser-error artifact.
+- The broader card-collector objective remains active. A useful next collection
+  milestone is richer completion breakdown and personal organization beyond
+  Favorites/Hunt/New, while five genuinely observed fresh-player sessions
+  remain necessary qualitative release evidence.
+
+## 2026-07-28 Permanent Collection Atlas
+
+- Corrected the Codex collection rail so its `COLLECTION` count and progress
+  stage are grounded in permanent ownership, not mere discovery. Discovery
+  milestones remain intact under an explicit `cardDiscovery` text-state
+  contract and still feed the next-flight discovery goal.
+- Added a full Collection Atlas reachable from every card tab through the
+  280x46 rail, keyboard `G`, controller `R3`, logical focus, and pointer/touch.
+  It reports exact overall, seven-family, and four-rarity ownership totals plus
+  first-acquisition path counts.
+- Collection stages use encouraging shelf/archive language from `Ready to
+  Begin` through `Collection Complete`. The view compares permanent collection
+  with aggregate encounter counts without listing any undiscovered card id,
+  name, rules text, or other concealed identity.
+- All seven family rows are actionable binder shelves. Pointer, keyboard,
+  controller, and screen-reader users can browse a row, hear its owned/total and
+  encountered/total counts, and open that family directly. Back, `G`, and `R3`
+  close the modal without changing the active family.
+- The modal stays readable at 1280x720 and the supported 1000x560 compact
+  landscape viewport. It preserves established Codex Tab order and existing
+  Favorites, Hunt List, New-marker, Collection Lens, search, sorting, and
+  detail behavior.
+- Focused and adjacent Codex regressions pass for discovery goals, the complete
+  Atlas interaction contract, Favorites, Hunt List, New markers, Collection
+  Lens, search, sorting, Snags, remapped controls, and screen readers. The full
+  `npm run validate` production gate passes all validators and all 24 critical
+  sequencing scenarios.
+- Production remains within hard budgets: combined boot is 706.9 KiB minified /
+  190.3 KiB gzip, game core is 30.0 KiB, and the lazy Codex scene is 108.7 KiB /
+  27.3 KiB gzip. The existing 677.0 KiB app-entry preference remains advisory.
+- The required shared production client completed Start Run -> Route -> Title
+  -> Codex -> Collection Atlas with 10 permanent starter cards, exact
+  family/rarity/source totals, a rendered focus ring, and no browser-error
+  artifact. The inspected capture and text state are in
+  `.artifacts/collection-atlas-shared-client/`.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence, and
+  deeper personal organization such as tags, locks, or saved collection views
+  remains a useful future collector-loop milestone.
+
+## 2026-07-28 Persistent Personal Card Tags
+
+- Added three private, non-power card tags: `Staple`, `Experiment`, and
+  `Keepsake`. A discovered card dossier cycles them with a 180x46
+  pointer/touch action, keyboard `V`, or controller `L3`; a fourth activation
+  clears the tag.
+- Added a sixth `Tagged` Collection Lens and a text-bearing tag badge on each
+  tagged thumbnail. Tags also participate in card search, while undiscovered
+  identities remain concealed and tag state never affects ownership, reward
+  odds, playable copies, or run power.
+- Tags live in the journaled player account, survive the existing atomic
+  primary/backup save pair, export through Flock Record, and restore
+  transactionally. A shared sanitizer removes unknown tag values and tags for
+  undiscovered cards before Codex display, mutation, export, or restore.
+- Text state and screen-reader summaries expose the tagged count, ids, current
+  dossier value, visible Tagged-lens subset, inputs, persistence, privacy, and
+  non-power contract. Empty Tagged sets give direct, non-color-only guidance
+  without overwhelming the card browser.
+- Ten adjacent Codex regressions pass together for collection provenance,
+  Favorites, Hunt List, New markers, all six Collection Lens states, personal
+  tags, search, sorting, and the Collection Atlas. Focused backup download and
+  transactional restore coverage also passes with valid tags preserved and
+  invalid data removed.
+- Full `npm run validate` passes documentation, 110-card runtime data, 961
+  optimized assets, canonical-world and directionless attack-tell contracts,
+  deployment hardening, enemy variety, Minor Arcana overlays, bundle gates,
+  and all 24 critical sequencing scenarios. Combined boot is 707.0 KiB /
+  190.4 KiB gzip; the hard game-core cap remains green at 30.0 KiB. The
+  existing 677.0 KiB app-entry preference remains advisory.
+- The required shared client completed Start Run -> Route -> Codex -> card
+  dossier -> tag assignment -> Tagged Lens. Text state reported one persistent
+  `Staple` tag on `major_00`, the screenshot visibly retained both `NEW` and
+  `STAPLE` labels without obscuring the card, and no browser-error artifact was
+  emitted. Evidence is in `.artifacts/personal-tags-shared-client/`.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence; a
+  useful next milestone is a small set of collection achievements tied to
+  varied families and acquisition paths rather than repetitive grinding.
+
+## 2026-07-28 Breadth-Based Collection Milestones
+
+- Added six permanent collector achievements: First Shelf, Four Winds,
+  Curator's Eye, Marked Routes, Many Roads Home, and Citywide Binder. Their
+  requirements reward a modest first collection, suit breadth, all three
+  personal tags, completed Hunt goals, four non-starter acquisition paths, and
+  all seven card families instead of repetitive high-count farming.
+- Collection claims evaluate and unlock eligible milestones inside the same
+  journaled account transaction as ownership. Personal-tag changes evaluate
+  Curator's Eye inside their existing journaled mutation. Legacy accounts are
+  reconciled when the Codex loads, without duplicate achievement ids or a
+  second save system.
+- The Collection Atlas now retains compact first-acquisition counts and adds
+  three visible current goal rows with exact progress bars, completion labels,
+  and named badge rewards. Completed count, all six goals, the next goal, and
+  the explicit non-power/privacy contract are available in text state and
+  screen-reader summaries without exposing undiscovered card identities.
+- Flock Record now includes the six collector badges on a third achievement
+  page. Earned counts and progress rails include both flight and collection
+  achievements; incomplete badge descriptions show exact progress, completed
+  badges show their reward, and Profile text state reports that rewards never
+  affect gameplay power.
+- Split the small acquisition-time progress evaluator from the 1.2 KiB lazy
+  presentation module so names, descriptions, and badge copy load only with
+  Codex/Profile. Combined boot is 708.1 KiB / 190.8 KiB gzip, and the hard
+  game-core cap remains green at 30.0 KiB. The existing 678.1 KiB app-entry
+  preference remains advisory.
+- Focused and adjacent coverage passes for real starter transactions,
+  idempotent legacy reconciliation, all six progress/completion contracts,
+  journal backup parity, Flock Record pagination, screen readers, personal
+  tags, Hunt List, the Collection Atlas, and save download/restore. A held
+  pointer sequence replaced zero-frame synthetic clicks in the Atlas/tag tests,
+  matching human input and removing frame-boundary flakes without weakening
+  pointer coverage.
+- Full `npm run validate` passes documentation, 110-card runtime data, 961
+  optimized assets, canonical-world and directionless attack-tell contracts,
+  deployment hardening, enemy variety, Minor Arcana overlays, bundle gates,
+  and all 24 critical sequencing scenarios.
+- The required shared client completed Start Run -> Route -> Codex -> Collection
+  Atlas. It showed 10 permanent starter cards, two earned badges, Curator's Eye
+  as the next 0/3 goal, a logical Atlas focus ring, and zero browser errors.
+  The inspected screenshot and state are in
+  `.artifacts/collection-milestones-shared-client/`.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence. A
+  useful next collector milestone is a profile showcase that lets players
+  present a small curated set of favorite cards without adding account power.
+
+## 2026-07-28 Three-Card Flock Record Showcase
+
+- Added a persistent, identity-only Showcase for up to three discovered cards.
+  A card dossier now exposes a 180-by-46 pointer target plus contextual G / R3
+  controls. Removing a card preserves the remaining order; trying to add a
+  fourth plays locked feedback and never silently replaces an existing choice.
+- Added a dedicated Flock Record Showcase tab with the selected compact card
+  art, names, family, and rarity. Empty and filled states explain that choices
+  are managed in the Codex and never affect gameplay power. Keyboard,
+  controller, text-state, and screen-reader navigation include the new tab.
+- Added strict showcase sanitation for duplicate, undiscovered, malformed, and
+  over-cap data. Codex startup repairs legacy state, journaled writes preserve
+  deliberate order, and full Save Data download/transactional restore sanitize
+  and retain the same three choices.
+- Focused tests cover keyboard, held pointer, controller R3, full-cap refusal,
+  screen-reader output, minimum-landscape rendering, real card art, save
+  download, and transactional restore. `npm run validate` passes all production
+  gates and 24 critical sequencing scenarios; combined boot is 708.4 KiB /
+  190.9 KiB gzip, with game-core still at its 30.0 KiB hard limit.
+- The required shared production client completed Start Run -> Route -> Codex
+  -> card dossier -> Showcase. Text state reported First Flight as 1/3,
+  persisted and non-power, with zero browser error artifacts. The inspected
+  screenshot and state are in `.artifacts/card-showcase-shared-client/`.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence. A useful
+  next collector milestone is stronger collection-goal discovery from the
+  title/route surfaces without adding manipulative urgency.
+
+## 2026-07-28 Collection Path Goal Discovery
+
+- Renamed the title Codex utility to Collection and added a calm Collection
+  Path strip that shows permanent-card and badge progress plus the next
+  optional goal. It states the useful target without a deadline, rotating
+  urgency, or gameplay-power incentive and opens the Collection Atlas directly.
+- Added the same compact progress affordance to stable Route screens. Pointer,
+  G, and controller R3 all deep-link to the Atlas; closing it restores the
+  exact active flight, including its route seed and run state.
+- Added origin-aware Codex navigation, synchronous text-state contracts, and
+  screen-reader summaries for both surfaces. Minimum-landscape layouts retain
+  independent lanes for collection progress, route guidance, and autosave
+  status without overlaps.
+- Split the decorative Collection Path renderer into a 1.3 KiB on-demand
+  chunk. Production build, type checking, deployment-cache validation, and
+  bundle hard limits pass; combined boot is 710.9 KiB / 191.8 KiB gzip, with
+  the remaining 0.9 KiB preferred-target excess reported as advisory.
+- Focused Playwright coverage passes title and route pointer access, G and R3
+  access, screen-reader language, and lossless return to the active flight.
+  The required shared production client opened the Atlas from the new title
+  strip with zero browser error artifacts; its inspected screenshot and state
+  are in `.artifacts/collection-path-shared-client/`.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence. A useful
+  next milestone is saved favorite deck/loadout records that preserve player
+  identity without adding collection power.

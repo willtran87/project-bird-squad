@@ -32,8 +32,13 @@ export function screenReaderSummary(payload: unknown): string {
   if (scene === 'MenuScene' || mode === 'menu') {
     if (payload.helpOpen === true) return 'How to Play is open. Press Back to close.';
     const focus = isRecord(payload.titleFocus) ? payload.titleFocus : undefined;
+    const collectionGoal = isRecord(payload.collectionGoal) ? payload.collectionGoal : undefined;
+    const nextGoal = isRecord(collectionGoal?.next) ? collectionGoal.next : undefined;
     const label = text(focus?.label) || 'Choose a setup, then start a run';
-    return `Bird Squad menu. ${label}. Press Confirm to select.`;
+    const collectionSummary = collectionGoal
+      ? ` Collection path: ${number(collectionGoal.owned) ?? 0} of ${number(collectionGoal.total) ?? 0} cards, ${number(collectionGoal.completed) ?? 0} of ${number(collectionGoal.milestoneTotal) ?? 0} badges.${nextGoal ? ` Next optional goal, ${text(nextGoal.name)}, ${number(nextGoal.current) ?? 0} of ${number(nextGoal.target) ?? 0}.` : ' All collection badges earned.'} No deadline and no gameplay power.`
+      : '';
+    return `Bird Squad menu. ${label}.${collectionSummary} Press Confirm to select.`;
   }
 
   if (scene === 'ProfileScene' || mode === 'profile') {
@@ -58,8 +63,16 @@ export function screenReaderSummary(payload: unknown): string {
       return `Flight Log. ${count} recorded flight${count === 1 ? '' : 's'}. Page ${page} of ${pageCount}. Selected ${selectedIndex + 1} of ${count}, ${result}${seed ? `, flight ${seed}` : ''}${leader ? `, ${leader}` : ''}. Use Previous and Next to choose a flight, Page Up and Page Down or controller shoulders to change pages, Confirm for the complete review, and Back to return.`;
     }
     const focus = isRecord(payload.focus) ? payload.focus : undefined;
+    const collectionMilestones = isRecord(payload.collectionMilestones) ? payload.collectionMilestones : undefined;
+    const showcase = isRecord(payload.cardShowcase) ? payload.cardShowcase : undefined;
+    const nextMilestone = isRecord(collectionMilestones?.next) ? collectionMilestones.next : undefined;
     const current = spaced(text(focus?.current)) || 'Flock Record';
-    return `Flock Record. ${current}. Press Confirm to select, or Back to return.`;
+    const milestoneSummary = collectionMilestones
+      ? ` Collector milestones ${number(collectionMilestones.completed) ?? 0} of ${number(collectionMilestones.total) ?? 0} earned.${nextMilestone ? ` Next, ${text(nextMilestone.name)}, ${number(nextMilestone.current) ?? 0} of ${number(nextMilestone.target) ?? 0}.` : ''} Collector badges never affect power.`
+      : '';
+    const showcaseItems = records(showcase?.items);
+    const showcaseSummary = ` Showcase ${number(showcase?.count) ?? 0} of ${number(showcase?.capacity) ?? 3}.${showcaseItems.length > 0 ? ` Presented cards: ${showcaseItems.map((item) => text(item.name)).filter(Boolean).join(', ')}.` : ' No cards presented; add discovered cards from their Codex dossiers.'} Showcase choices never affect power.`;
+    return `Flock Record. ${current}.${milestoneSummary}${showcaseSummary} Press Confirm to select, or Back to return.`;
   }
 
   if (scene === 'RouteScene' || mode === 'routeSelection') {
@@ -122,10 +135,15 @@ export function screenReaderSummary(payload: unknown): string {
     const hp = number(run?.currentHp);
     const maxHp = number(run?.maxHp);
     const scrap = number(run?.scrap);
+    const collectionGoal = isRecord(payload.collectionGoal) ? payload.collectionGoal : undefined;
+    const nextGoal = isRecord(collectionGoal?.next) ? collectionGoal.next : undefined;
     const resources = hp === undefined || maxHp === undefined
       ? ''
       : ` Cohesion ${hp} of ${maxHp}.${scrap === undefined ? '' : ` Scrap ${scrap}.`}`;
-    return `Route, ${mapName}. Selected ${nodeLabel}${risk ? `, ${risk} risk` : ''}.${resources} Press Confirm to inspect or commit.`;
+    const collectionSummary = collectionGoal
+      ? ` Collection path: ${number(collectionGoal.owned) ?? 0} of ${number(collectionGoal.total) ?? 0} cards.${nextGoal ? ` Next optional goal, ${text(nextGoal.name)}, ${number(nextGoal.current) ?? 0} of ${number(nextGoal.target) ?? 0}.` : ' All collection badges earned.'} Use G, controller R3, or the route collection strip to open the Atlas and return here without changing the flight.`
+      : '';
+    return `Route, ${mapName}. Selected ${nodeLabel}${risk ? `, ${risk} risk` : ''}.${resources}${collectionSummary} Press Confirm to inspect or commit.`;
   }
 
   if (scene === 'BattleScene') {
@@ -240,11 +258,18 @@ export function screenReaderSummary(payload: unknown): string {
     const count = number(focus?.count);
     const detail = text(payload.detailOpen);
     const favorites = isRecord(payload.cardFavorites) ? payload.cardFavorites : undefined;
+    const personalTags = isRecord(payload.personalCardTags) ? payload.personalCardTags : undefined;
     const hunt = isRecord(payload.collectionHunt) ? payload.collectionHunt : undefined;
+    const showcase = isRecord(payload.cardShowcase) ? payload.cardShowcase : undefined;
     const ownership = isRecord(payload.cardOwnership) ? payload.cardOwnership : undefined;
+    const newCards = isRecord(payload.newlyAcquiredCards) ? payload.newlyAcquiredCards : undefined;
     const collectionLens = isRecord(payload.cardCollectionLens) ? payload.cardCollectionLens : undefined;
     const cardSearch = isRecord(payload.cardSearch) ? payload.cardSearch : undefined;
     const cardSort = isRecord(payload.cardSort) ? payload.cardSort : undefined;
+    const collectionAtlas = isRecord(payload.collectionAtlas) ? payload.collectionAtlas : undefined;
+    const atlasOverall = isRecord(collectionAtlas?.overall) ? collectionAtlas.overall : undefined;
+    const atlasSelected = isRecord(collectionAtlas?.selectedFamily) ? collectionAtlas.selectedFamily : undefined;
+    const atlasNextMilestone = isRecord(collectionAtlas?.nextMilestone) ? collectionAtlas.nextMilestone : undefined;
     const detailOwnership = isRecord(ownership?.detail) ? ownership.detail : undefined;
     const collectedCount = number(ownership?.collectedCount) ?? 0;
     const discoveredCount = number(payload.cardsDiscovered) ?? 0;
@@ -252,6 +277,14 @@ export function screenReaderSummary(payload: unknown): string {
     const favoriteView = favorites?.viewActive === true;
     const favoriteViewEmpty = favorites?.viewEmpty === true;
     const favoriteCount = number(favorites?.count) ?? 0;
+    const personalTagCount = number(personalTags?.count) ?? 0;
+    const visiblePersonalTagCount = Array.isArray(personalTags?.visibleIds)
+      ? personalTags.visibleIds.length
+      : 0;
+    const detailPersonalTag = spaced(text(personalTags?.detailTag));
+    const detailPersonalTagLabel = detailPersonalTag
+      ? `${detailPersonalTag[0].toUpperCase()}${detailPersonalTag.slice(1)}`
+      : '';
     const detailTargeted = hunt?.detailTargeted === true;
     const canTarget = hunt?.detailCanTarget === true;
     const huntView = hunt?.viewActive === true;
@@ -259,6 +292,10 @@ export function screenReaderSummary(payload: unknown): string {
     const huntCount = number(hunt?.count) ?? 0;
     const huntCapacity = number(hunt?.capacity) ?? 3;
     const huntCompleted = number(hunt?.completed) ?? 0;
+    const showcaseCount = number(showcase?.count) ?? 0;
+    const showcaseCapacity = number(showcase?.capacity) ?? 3;
+    const detailShowcased = showcase?.detailShowcased === true;
+    const detailCanShowcase = showcase?.detailCanAdd === true;
     const lensLabel = spaced(text(collectionLens?.label)) || 'all';
     const lensVisible = number(collectionLens?.visibleCount) ?? 0;
     const lensBase = number(collectionLens?.baseCount) ?? 0;
@@ -267,6 +304,10 @@ export function screenReaderSummary(payload: unknown): string {
     const searchMatches = number(cardSearch?.matchCount) ?? 0;
     const searchVisible = number(cardSearch?.visibleCount) ?? 0;
     const sortLabel = spaced(text(cardSort?.label)) || 'binder';
+    const newCardCount = number(newCards?.count) ?? 0;
+    const detailNew = newCards?.detailNew === true;
+    const atlasCollected = number(atlasOverall?.owned) ?? collectedCount;
+    const atlasTotal = number(atlasOverall?.total) ?? number(payload.cardsTotal) ?? 0;
     const itemPosition = zone === 'entries' && position !== undefined && count !== undefined
       ? ` Item ${position + 1} of ${count}.`
       : '';
@@ -277,6 +318,17 @@ export function screenReaderSummary(payload: unknown): string {
       ? favoriteViewEmpty
         ? ' No favorite cards yet. Open a discovered card and choose Favorite to add it here.'
         : ` Showing ${favoriteCount} favorite card${favoriteCount === 1 ? '' : 's'}.`
+      : '';
+    const personalTagState = section === 'cards'
+      ? detail
+        ? detailPersonalTagLabel
+          ? ` Personal tag ${detailPersonalTagLabel}. Use V or controller L3 to change it; tags are private and never affect power.`
+          : ' No personal tag. Use V or controller L3 to choose Staple, Experiment, or Keepsake.'
+        : personalTags?.lensActive === true
+          ? visiblePersonalTagCount > 0
+            ? ` Showing ${visiblePersonalTagCount} personally tagged card${visiblePersonalTagCount === 1 ? '' : 's'} in this set; ${personalTagCount} tagged across the collection.`
+            : ' No personal tags in this set. Open a discovered card and use V or controller L3 to choose one.'
+          : ` ${personalTagCount} personally tagged card${personalTagCount === 1 ? '' : 's'}.`
       : '';
     const huntState = detail
       ? detailOwnership
@@ -294,12 +346,28 @@ export function screenReaderSummary(payload: unknown): string {
         ? ` Hunt List empty. Open a discovered, uncollected card and choose Track. Up to ${huntCapacity} cards can be tracked without changing reward odds.`
         : ` Showing ${huntCount} active Hunt List target${huntCount === 1 ? '' : 's'}; ${huntCompleted} completed.`
       : '';
+    const showcaseState = section === 'cards' && detail
+      ? detailShowcased
+        ? ` Presented in Flock Record. Use G or controller R3 to remove it from the showcase. ${showcaseCount} of ${showcaseCapacity} slots used.`
+        : detailCanShowcase
+          ? ` Use G or controller R3 to present this card in Flock Record. ${showcaseCount} of ${showcaseCapacity} slots used. Showcase choices never affect power.`
+          : ` Flock Record showcase full at ${showcaseCount} of ${showcaseCapacity}. Remove a presented card before adding this one; existing choices are never replaced automatically.`
+      : '';
     const ownershipState = section === 'cards'
       ? detail
         ? detailOwnership
           ? ` Collected permanently, with ${number(detailOwnership.timesClaimed) ?? 1} flight claims. Playable copies and upgrades are specific to each flight.`
           : ' Discovered but not yet collected. Claim it during a flight to create its permanent collection record.'
         : ` ${collectedCount} collected and ${discoveredCount} discovered.`
+      : '';
+    const newCardState = section === 'cards'
+      ? detail
+        ? detailNew
+          ? ' New to collection. Choose Mark Seen, press N, or use controller LT to acknowledge this marker.'
+          : ''
+        : newCardCount > 0
+          ? ` ${newCardCount} new card marker${newCardCount === 1 ? '' : 's'}. Use N, controller LT, or Clear All to acknowledge them without changing ownership.`
+          : ' No new card markers.'
       : '';
     const collectionLensState = section === 'cards' && !detail
       ? ` Collection lens ${lensLabel}, showing ${lensVisible} of ${lensBase} ${cardSearch?.active === true ? 'search matches' : 'cards in this set'}.${collectionLens?.empty === true ? ' No cards match this lens.' : ''} Use L or controller LB to change the lens.`
@@ -309,12 +377,17 @@ export function screenReaderSummary(payload: unknown): string {
         ? ` Find cards field active.${searchQuery ? ` Current query ${searchQuery}.` : ''} Type to filter, Enter to apply, or Escape to cancel.`
         : searchQuery
           ? ` Find cards query ${searchQuery}, ${searchMatches} match${searchMatches === 1 ? '' : 'es'} in ${searchScope}; ${searchVisible} visible after the collection lens.${cardSearch?.empty === true ? ' No cards match this search.' : ''} Use slash or controller RB to edit or clear it.`
-          : ' Use slash or controller RB to find cards by name, rules, keyword, character, set, type, cost, rarity, or ownership.'
+          : ' Use slash or controller RB to find cards by name, rules, keyword, character, set, type, cost, rarity, ownership, personal tag, or showcase status.'
       : '';
     const cardSortState = section === 'cards' && !detail
       ? ` Sorted by ${sortLabel}. Use R or controller RT to change sorting.`
       : '';
-    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${huntState}${huntViewState}${ownershipState}${cardSearchState}${cardSortState}${collectionLensState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
+    const collectionAtlasState = section === 'cards' && !detail
+      ? collectionAtlas?.open === true
+        ? ` Collection Atlas open. ${atlasCollected} of ${atlasTotal} cards permanently collected. Collector milestones ${number(collectionAtlas?.completedMilestones) ?? 0} of ${records(collectionAtlas?.milestones).length} earned.${atlasNextMilestone ? ` Next, ${text(atlasNextMilestone.name)}, ${number(atlasNextMilestone.current) ?? 0} of ${number(atlasNextMilestone.target) ?? 0}.` : ''} Focused ${spaced(text(atlasSelected?.name)) || 'set'}, ${number(atlasSelected?.owned) ?? 0} of ${number(atlasSelected?.total) ?? 0} collected and ${number(atlasSelected?.discovered) ?? 0} encountered. Milestone badges never affect power. Use Up and Down to browse sets, Confirm to open one, or G, controller R3, or Back to close.`
+        : ` Collection Atlas has permanent set, rarity, acquisition-path, and collector-milestone progress for ${atlasCollected} of ${atlasTotal} cards. Use G or controller R3 to open it.`
+      : '';
+    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${personalTagState}${showcaseState}${huntState}${huntViewState}${ownershipState}${newCardState}${cardSearchState}${cardSortState}${collectionLensState}${collectionAtlasState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : collectionAtlas?.open === true ? 'Choose a set or close the Collection Atlas.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
   }
   return scene ? `${spaced(scene)}.` : '';
 }

@@ -5,8 +5,13 @@ import { difficultyLabel } from './difficulty';
 import { flockLeaders } from './leaders';
 import { achievements, isLeaderUnlocked, leaderMastery, loadAccount, type PlayerAccount } from './meta';
 import { bindControlActions, controlBindingLabel } from './input-bindings';
+import { CARD_SHOWCASE_LIMIT, sanitizeCardShowcase } from './card-showcase';
 import { renderOutcomeFlightDetails, type OutcomeFlightDetails } from './boss-dossier';
 import { copySharedRouteLink, type SharedRouteMode } from './run-challenge';
+import {
+  COLLECTION_MILESTONE_COUNT,
+  collectionMilestoneSnapshots,
+} from './collection-milestones';
 import {
   applySaveBackup,
   createSaveBackup,
@@ -53,7 +58,14 @@ const profileUiIconIds = [
   'record-medallion',
 ] as const;
 
-type ProfileBadgeView = 'achievements' | 'contracts';
+type ProfileBadgeView = 'achievements' | 'contracts' | 'showcase';
+export interface ProfileShowcaseEntry {
+  id: string;
+  name: string;
+  family: string;
+  rarity: string;
+  artKey?: string;
+}
 export type PlaytestRatingKey = 'fun' | 'fairness' | 'clarity' | 'replay';
 export interface PlaytestExperienceFeedback {
   fun?: number;
@@ -94,6 +106,7 @@ export interface FlightHistoryReview {
 export type ProfileFocus =
   | 'achievements'
   | 'contracts'
+  | 'showcase'
   | 'flightLog'
   | 'return'
   | 'saveData'
@@ -171,6 +184,12 @@ export interface ProfileSceneDependencies {
     scene: Phaser.Scene,
     ids: readonly string[],
     warning: string,
+    onComplete?: () => void,
+  ) => void;
+  cardShowcaseEntry: (id: string) => ProfileShowcaseEntry | undefined;
+  queueCardShowcaseAssets: (
+    scene: Phaser.Scene,
+    ids: readonly string[],
     onComplete?: () => void,
   ) => void;
   renderAudioToggleControl: (scene: Phaser.Scene, addTo: UiAdd, x: number, y: number) => unknown;
@@ -264,7 +283,7 @@ function leaderPersonalRecord(account: PlayerAccount, leaderId: string) {
 
 function profileFocusOrder(state: ProfileViewState): ProfileFocus[] {
   if (state.flightLogOpen) return ['flightLog'];
-  if (!state.saveDataOpen) return ['achievements', 'contracts', 'flightLog', 'return', 'saveData'];
+  if (!state.saveDataOpen) return ['achievements', 'contracts', 'showcase', 'flightLog', 'return', 'saveData'];
   if (state.pendingRestore) return ['restoreConfirm', 'restoreCancel'];
   const order: ProfileFocus[] = ['saveDownload', 'saveRestore'];
   if (playtestExportEnabled()) {
@@ -275,8 +294,9 @@ function profileFocusOrder(state: ProfileViewState): ProfileFocus[] {
 }
 
 function profileBadgePageCount(state: ProfileViewState) {
+  if (state.badgeView === 'showcase') return 1;
   const total = state.badgeView === 'achievements'
-    ? achievements.length
+    ? achievements.length + COLLECTION_MILESTONE_COUNT
     : loadAccount().contractBadges.length;
   return Math.max(1, Math.ceil(total / BADGE_PAGE_SIZE));
 }
@@ -576,7 +596,7 @@ function activateProfileFocus(scene: Phaser.Scene, state: ProfileViewState, depe
     return;
   }
   dependencies.playUiSound(state.focus === 'return' || state.focus === 'restoreCancel' ? 'close' : 'confirm');
-  if (state.focus === 'achievements' || state.focus === 'contracts') {
+  if (state.focus === 'achievements' || state.focus === 'contracts' || state.focus === 'showcase') {
     if (state.badgeView !== state.focus) state.badgePage = 0;
     state.badgeView = state.focus;
     renderProfileScene(scene, state, dependencies);
@@ -709,6 +729,14 @@ export function startProfileScene(
   dependencies.queueUiIconAssets(scene, profileUiIconIds, 'Profile UI', () => {
     if (scene.scene.isActive()) renderProfileScene(scene, state, dependencies);
   });
+  const account = loadAccount();
+  dependencies.queueCardShowcaseAssets(
+    scene,
+    sanitizeCardShowcase(account.showcase, account.discoveredCards),
+    () => {
+      if (scene.scene.isActive()) renderProfileScene(scene, state, dependencies);
+    },
+  );
   renderProfileScene(scene, state, dependencies);
 }
 
@@ -732,9 +760,31 @@ export function renderProfileScene(
 
   const account = loadAccount();
   const leaderCount = flockLeaders.filter((leader) => isLeaderUnlocked(account, leader.id)).length;
-  const earned = account.achievements;
+  const collectionMilestones = collectionMilestoneSnapshots(account);
+  const collectionMilestoneBadges = collectionMilestones.map((milestone) => ({
+    id: milestone.id,
+    name: milestone.name,
+    description: milestone.complete
+      ? `${milestone.current}/${milestone.target} complete / ${milestone.reward}`
+      : `${milestone.current}/${milestone.target} / ${milestone.description}`,
+    earned: milestone.complete || milestone.earned,
+  }));
+  const allAchievementBadges = [
+    ...achievements.map((achievement) => ({
+      id: achievement.id,
+      name: achievement.name,
+      description: achievement.desc,
+      earned: account.achievements.includes(achievement.id),
+    })),
+    ...collectionMilestoneBadges,
+  ];
+  const earned = allAchievementBadges.filter((badge) => badge.earned).map((badge) => badge.id);
   const discovered = account.discoveredCards.length;
   const cardTotal = alphaCardSet.cards.length;
+  const cardShowcase = sanitizeCardShowcase(account.showcase, account.discoveredCards);
+  const showcaseEntries = cardShowcase
+    .map((id) => dependencies.cardShowcaseEntry(id))
+    .filter((entry): entry is ProfileShowcaseEntry => Boolean(entry));
   const winRate = account.runs > 0 ? Math.round((account.wins / account.runs) * 100) : 0;
   const leaderRecordRows = flockLeaders.map((leader) => ({
     id: leader.id,
@@ -743,13 +793,9 @@ export function renderProfileScene(
     ...leaderPersonalRecord(account, leader.id),
   }));
   const allBadges = state.badgeView === 'achievements'
-    ? achievements.map((achievement) => ({
-        id: achievement.id,
-        name: achievement.name,
-        description: achievement.desc,
-        earned: earned.includes(achievement.id),
-      }))
-    : account.contractBadges.map((badge) => {
+    ? allAchievementBadges
+    : state.badgeView === 'contracts'
+      ? account.contractBadges.map((badge) => {
         const [mapIndexText, id] = badge.split(':');
         const definition = dependencies.districtContracts.find((candidate) => candidate.id === id);
         return {
@@ -758,7 +804,8 @@ export function renderProfileScene(
           description: `District ${Number(mapIndexText) + 1} / ${definition?.goal ?? 'Contract complete'}`,
           earned: true,
         };
-      });
+      })
+      : [];
   const badgePageCount = Math.max(1, Math.ceil(allBadges.length / BADGE_PAGE_SIZE));
   state.badgePage = Phaser.Math.Clamp(state.badgePage, 0, badgePageCount - 1);
   const badgeVisibleStart = state.badgePage * BADGE_PAGE_SIZE;
@@ -791,12 +838,27 @@ export function renderProfileScene(
       leadersUnlocked: leaderCount,
       leaderTotal: flockLeaders.length,
       achievementsEarned: earned.length,
-      achievementTotal: achievements.length,
+      achievementTotal: allAchievementBadges.length,
+      collectionMilestonesEarned: collectionMilestones.filter((milestone) => milestone.complete).length,
+      collectionMilestoneTotal: collectionMilestones.length,
       contractBadges: account.contractBadges.length,
       discoveredCards: discovered,
       cardTotal,
     },
     badgeView: state.badgeView,
+    cardShowcase: {
+      count: showcaseEntries.length,
+      capacity: CARD_SHOWCASE_LIMIT,
+      ids: showcaseEntries.map((entry) => entry.id),
+      items: showcaseEntries,
+      empty: showcaseEntries.length === 0,
+      full: showcaseEntries.length >= CARD_SHOWCASE_LIMIT,
+      selected: state.badgeView === 'showcase',
+      location: 'Flock Record',
+      managedIn: 'Codex card dossiers',
+      affectsPower: false,
+      persisted: true,
+    },
     badgePagination: {
       page: state.badgePage + 1,
       pageCount: badgePageCount,
@@ -830,6 +892,13 @@ export function renderProfileScene(
       fadeProgress: Number((scene.cameras.main?.fadeEffect?.progress ?? 0).toFixed(3)),
     },
     contractBadges: [...account.contractBadges],
+    collectionMilestones: {
+      completed: collectionMilestones.filter((milestone) => milestone.complete).length,
+      total: collectionMilestones.length,
+      next: collectionMilestones.find((milestone) => !milestone.complete) ?? null,
+      items: collectionMilestones,
+      rewardsAffectPower: false,
+    },
     leaderRecords: leaderRecordRows,
     playtestExport: {
       enabled: playtestMode,
@@ -937,7 +1006,7 @@ export function renderProfileScene(
   });
 
   renderProgressRail(scene, frame.left + 44, frame.top + 198, 304, 'Leaders unlocked', leaderCount, flockLeaders.length, UI_FIELD.cyan);
-  renderProgressRail(scene, frame.left + 44, frame.top + 244, 304, 'Achievements', earned.length, achievements.length, UI_FIELD.brass);
+  renderProgressRail(scene, frame.left + 44, frame.top + 244, 304, 'Achievements', earned.length, allAchievementBadges.length, UI_FIELD.brass);
   renderProgressRail(scene, frame.left + 44, frame.top + 290, 304, 'Codex cards seen', discovered, cardTotal, UI_FIELD.violet);
 
   renderProfileSectionTabFrame(scene, frame.left + 150, frame.top + 350, 220, UI_FIELD.cyan);
@@ -987,19 +1056,20 @@ export function renderProfileScene(
   const badgeX = frame.left + 392;
   renderProfileSectionTabFrame(scene, badgeX + 146, frame.top + 210, 300, UI_FIELD.brass);
   const tabs: Array<{ view: ProfileBadgeView; x: number; label: string }> = [
-    { view: 'achievements', x: badgeX + 88, label: 'Achievements' },
-    { view: 'contracts', x: badgeX + 222, label: `Contracts ${account.contractBadges.length}` },
+    { view: 'achievements', x: badgeX + 50, label: 'Badges' },
+    { view: 'contracts', x: badgeX + 150, label: `Contracts ${account.contractBadges.length}` },
+    { view: 'showcase', x: badgeX + 250, label: `Showcase ${showcaseEntries.length}` },
   ];
   tabs.forEach((tab) => {
     const selected = state.badgeView === tab.view;
     const focused = state.focus === tab.view;
-    const hit = scene.add.rectangle(tab.x, frame.top + 210, 124, MIN_SUPPORTED_TOUCH_TARGET, selected ? 0x183451 : 0x0d1420, 0.94)
+    const hit = scene.add.rectangle(tab.x, frame.top + 210, 94, MIN_SUPPORTED_TOUCH_TARGET, selected ? 0x183451 : 0x0d1420, 0.94)
       .setStrokeStyle(focused ? 3 : 1, focused ? UI_FIELD.cyan : selected ? UI_FIELD.gold : UI_FIELD.cyan, focused ? 0.98 : selected ? 0.86 : 0.34)
       .setInteractive({ useHandCursor: true })
       .setName(`profile-${tab.view}-tab-hit`);
     scene.add.text(tab.x, frame.top + 210, tab.label, {
       fontFamily: UI_FONT,
-      fontSize: '12px',
+      fontSize: tab.view === 'showcase' ? '10px' : '11px',
       fontStyle: UI_BOLD,
       color: selected ? UI_GOLD : UI_SOFT,
     }).setResolution(2).setOrigin(0.5);
@@ -1013,7 +1083,9 @@ export function renderProfileScene(
     });
   });
 
-  if (visibleBadges.length === 0) {
+  if (state.badgeView === 'showcase') {
+    renderCardShowcase(scene, badgeX, frame.top, showcaseEntries);
+  } else if (visibleBadges.length === 0) {
     scene.add.text(badgeX + 150, frame.top + 286, 'Complete a district contract to place its mark here.', {
       fontFamily: UI_FONT,
       fontSize: '13px',
@@ -1023,7 +1095,7 @@ export function renderProfileScene(
       wordWrap: { width: 270 },
     }).setOrigin(0.5);
   }
-  visibleBadges.forEach((badge, index) => {
+  if (state.badgeView !== 'showcase') visibleBadges.forEach((badge, index) => {
     const y = frame.top + 260 + index * 39;
     renderProfileRecordRowFrame(scene, badgeX + 150, y, 300, 35, UI_FIELD.brass, badge.earned);
     const icon = addProfileIconImage(scene, 'achievement-medallion', badgeX + 17, y, 12);
@@ -1043,7 +1115,7 @@ export function renderProfileScene(
       maxLines: 1,
     }).setResolution(2);
   });
-  if (badgePageCount > 1) {
+  if (state.badgeView !== 'showcase' && badgePageCount > 1) {
     scene.add.text(
       badgeX + 150,
       frame.top + 486,
@@ -1130,6 +1202,88 @@ export function renderProfileScene(
   }
   if (state.saveDataOpen) renderSaveDataOverlay(scene, state, dependencies, playtestMode, playtestRuns.length);
   if (state.flightLogOpen) renderFlightLogOverlay(scene, state, dependencies, flightHistory);
+}
+
+function renderCardShowcase(
+  scene: Phaser.Scene,
+  x: number,
+  top: number,
+  entries: readonly ProfileShowcaseEntry[],
+) {
+  scene.add.text(x + 150, top + 253, 'YOUR PRESENTED FLOCK', {
+    fontFamily: UI_FONT,
+    fontSize: '11px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.warm,
+  }).setResolution(2).setOrigin(0.5).setName('profile-showcase-title');
+  if (entries.length === 0) {
+    scene.add.rectangle(x + 150, top + 365, 282, 170, 0x0b1420, 0.88)
+      .setStrokeStyle(1, UI_FIELD.violet, 0.52)
+      .setName('profile-showcase-empty-frame');
+    scene.add.text(
+      x + 150,
+      top + 365,
+      'No cards presented yet.\n\nOpen a discovered card in the Codex,\nthen choose ADD TO SHOWCASE or press G / R3.',
+      {
+        fontFamily: UI_FONT,
+        fontSize: '12px',
+        color: UI_SOFT,
+        align: 'center',
+        lineSpacing: 6,
+        wordWrap: { width: 244 },
+      },
+    ).setResolution(2).setOrigin(0.5).setName('profile-showcase-empty');
+  } else {
+    entries.forEach((entry, index) => {
+      const cx = x + 48 + index * 102;
+      const cy = top + 345;
+      scene.add.rectangle(cx, cy, 86, 126, 0x09111c, 0.96)
+        .setStrokeStyle(2, UI_FIELD.violet, 0.76)
+        .setName('profile-showcase-card-frame')
+        .setData('cardId', entry.id);
+      if (entry.artKey && scene.textures.exists(entry.artKey)) {
+        scene.textures.get(entry.artKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+        scene.add.image(cx, cy, entry.artKey)
+          .setDisplaySize(78, 116)
+          .setName('profile-showcase-card-art')
+          .setData('cardId', entry.id);
+      } else {
+        scene.add.text(cx, cy, entry.name, {
+          fontFamily: UI_FONT,
+          fontSize: '11px',
+          fontStyle: UI_BOLD,
+          color: UI_FIELD.warm,
+          align: 'center',
+          wordWrap: { width: 68 },
+        }).setResolution(2).setOrigin(0.5);
+      }
+      scene.add.text(cx, top + 421, entry.name, {
+        fontFamily: UI_FONT,
+        fontSize: '10px',
+        fontStyle: UI_BOLD,
+        color: UI_FIELD.warm,
+        align: 'center',
+        fixedWidth: 92,
+        wordWrap: { width: 92 },
+        maxLines: 2,
+      }).setResolution(2).setOrigin(0.5, 0).setName('profile-showcase-card-name').setData('cardId', entry.id);
+      scene.add.text(cx, top + 451, `${entry.family} / ${entry.rarity}`, {
+        fontFamily: UI_FONT,
+        fontSize: '8px',
+        fontStyle: UI_BOLD,
+        color: UI_FIELD.cyanText,
+        fixedWidth: 94,
+        align: 'center',
+        maxLines: 1,
+      }).setResolution(2).setOrigin(0.5, 0).setName('profile-showcase-card-meta').setData('cardId', entry.id);
+    });
+  }
+  scene.add.text(x + 150, top + 494, `${entries.length}/${CARD_SHOWCASE_LIMIT} presented / identity only / no power`, {
+    fontFamily: UI_FONT,
+    fontSize: '9px',
+    fontStyle: UI_BOLD,
+    color: UI_MUTED,
+  }).setResolution(2).setOrigin(0.5).setName('profile-showcase-note');
 }
 
 function renderFlightLogOverlay(

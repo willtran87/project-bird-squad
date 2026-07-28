@@ -6589,11 +6589,13 @@ test('card rewards distinguish discovery from permanent collection claims and ce
     const afterSecond = JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}');
     return {
       afterFirst: afterFirst.cardCollection[firstId],
+      newAfterFirst: afterFirst.cardCollection[firstId]?.isNew,
       firstLog,
       firstAudio,
       repeatedPreview,
       repeatedLabels,
       afterSecond: afterSecond.cardCollection[firstId],
+      newAfterSecond: afterSecond.cardCollection[firstId]?.isNew,
       secondLog: scene.log.find((entry: string) => entry.includes('Collection history updated.')),
       secondAudio: window.__birdSquadAudio?.(),
     };
@@ -6604,6 +6606,7 @@ test('card rewards distinguish discovery from permanent collection claims and ce
     firstSource: 'combat_reward',
   });
   expect(claims.afterFirst.firstAcquiredAt).toBeGreaterThan(0);
+  expect(claims.newAfterFirst).toBe(true);
   expect(claims.firstLog).toContain('First collection claim!');
   expect(claims.firstAudio.cueRequests.objectiveComplete).toBeGreaterThan(firstStage.audioBefore.cueRequests.objectiveComplete ?? 0);
   expect(claims.repeatedPreview).toEqual({ firstClaim: false, timesClaimed: 1, targeted: false, runCopyTemporary: true });
@@ -6613,6 +6616,7 @@ test('card rewards distinguish discovery from permanent collection claims and ce
     firstSource: 'combat_reward',
     firstAcquiredAt: claims.afterFirst.firstAcquiredAt,
   });
+  expect(claims.newAfterSecond).toBe(true);
   expect(claims.secondLog).toContain('Collection history updated.');
   expect(claims.secondAudio.cueRequests.reward).toBeGreaterThan(claims.firstAudio.cueRequests.reward ?? 0);
 });
@@ -6716,6 +6720,7 @@ test('claiming a Hunt List reward completes an atomic non-power collection miles
     timesClaimed: 1,
     firstSource: 'combat_reward',
     targetSource: 'combat_reward',
+    isNew: true,
   });
   expect(result.account.cardCollection[preview.targetId].firstAcquiredAt).toBeGreaterThan(0);
   expect(result.account.cardCollection[preview.targetId].targetCompletedAt)
@@ -17123,7 +17128,7 @@ test('Codex card collections expose discovery milestones and feed the next-fligh
     codex.activeTab = 2;
     codex.renderAll();
     let codexState = JSON.parse(window.render_game_to_text?.() ?? '{}');
-    for (let i = 0; i < 80 && !codexState.cardCollection; i += 1) {
+    for (let i = 0; i < 80 && !codexState.cardDiscovery; i += 1) {
       await wait(50);
       codexState = JSON.parse(window.render_game_to_text?.() ?? '{}');
     }
@@ -17150,12 +17155,13 @@ test('Codex card collections expose discovery milestones and feed the next-fligh
     }
     return {
       collection: codexState.cardCollection,
+      discovery: codexState.cardDiscovery,
       railCount,
       collectionHeading: codexTexts.find((text) => text.includes('PLUMES COLLECTION')) ?? '',
       nextGoal: outcomeTexts.find((text) => text.startsWith('NEXT FLIGHT')) ?? ''
     };
   });
-  expect(result.collection).toMatchObject({
+  expect(result.discovery).toMatchObject({
     id: 'plumes',
     name: 'Plumes',
     found: 3,
@@ -17164,6 +17170,16 @@ test('Codex card collections expose discovery milestones and feed the next-fligh
     nextMilestone: 'Trail Mark',
     nextTarget: 4,
     complete: false
+  });
+  expect(result.collection).toMatchObject({
+    id: 'plumes',
+    name: 'Plumes',
+    found: 0,
+    owned: 0,
+    discovered: 3,
+    total: 14,
+    stage: 'Ready to Begin',
+    complete: false,
   });
   expect(result.railCount).toBe(1);
   expect(result.collectionHeading).toContain('PLUMES COLLECTION');
@@ -17403,25 +17419,29 @@ test('one-flight strategy achievements reward varied play without cumulative gri
   expect(runs.qualifying.newAchievements).toEqual(strategyIds);
   expect(runs.account.losses).toBe(3);
   expect(runs.account.wins).toBe(0);
-  expect(runs.account.achievements).toEqual(strategyIds);
+  expect(runs.account.achievements).toEqual([
+    'collection_first_shelf',
+    'collection_suit_sampler',
+    ...strategyIds,
+  ]);
 
   await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').badgePagination?.page === 1);
   const firstPage = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(firstPage.badgePagination).toMatchObject({
     page: 1,
-    pageCount: 2,
+    pageCount: 3,
     visibleStart: 1,
     visibleEnd: 6,
     visibleCount: 6,
-    total: 12,
+    total: 18,
   });
 
   await page.keyboard.press('PageDown');
   const keyboardPage = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(keyboardPage.badgePagination).toMatchObject({
     page: 2,
-    pageCount: 2,
+    pageCount: 3,
     visibleStart: 7,
     visibleEnd: 12,
     visibleCount: 6,
@@ -17456,6 +17476,7 @@ test('one-flight strategy achievements reward varied play without cumulative gri
   });
   expect(pagerGeometry).toEqual([
     { name: 'profile-badge-page-previous', width: 76, height: 58 },
+    { name: 'profile-badge-page-next', width: 76, height: 58 },
   ]);
 
   await page.evaluate(async () => {
@@ -18151,6 +18172,7 @@ test('Flock Record focus follows remapped keyboard and gamepad controls with one
   await page.keyboard.press('d');
   await page.keyboard.press('d');
   await page.keyboard.press('d');
+  await page.keyboard.press('d');
   expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).focus.current).toBe('saveData');
   await page.evaluate(() => {
     const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
@@ -18183,7 +18205,7 @@ test('Flock Record focus follows remapped keyboard and gamepad controls with one
   await page.keyboard.press('Space');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').scene === 'MenuScene');
   const finalState = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
-  expect((finalState.audio.cueRequests.confirm ?? 0) - (initial.audio.cueRequests.confirm ?? 0)).toBe(11);
+  expect((finalState.audio.cueRequests.confirm ?? 0) - (initial.audio.cueRequests.confirm ?? 0)).toBe(12);
   expect((finalState.audio.cueRequests.close ?? 0) - (initial.audio.cueRequests.close ?? 0)).toBe(3);
 });
 
@@ -18193,6 +18215,11 @@ test('Flock Record downloads a complete local save backup without uploading data
       runs: 7, wins: 3, losses: 4, unlockedLeaders: ['fledgling', 'talon'],
       achievements: ['first_win'], discoveredCards: ['major_00', 'wands_ace'],
       favoriteCards: ['major_00'], hunt: ['wands_ace'], bestWinTier: 1,
+      cardTags: { major_00: 'keepsake', wands_ace: 'experiment' },
+      showcase: ['major_00', 'wands_ace'],
+      cardCollection: {
+        major_00: { timesClaimed: 1, firstAcquiredAt: 1_718_323_200_000, firstSource: 'combat_reward', isNew: true },
+      },
     };
     const activeRun = {
       deck: [{ id: 'major_00', upgraded: true }], leaderId: 'talon', difficulty: 1,
@@ -18259,6 +18286,11 @@ test('Flock Record downloads a complete local save backup without uploading data
         discoveredCards: ['major_00', 'wands_ace'],
         favoriteCards: ['major_00'],
         hunt: ['wands_ace'],
+        cardTags: { major_00: 'keepsake', wands_ace: 'experiment' },
+        showcase: ['major_00', 'wands_ace'],
+        cardCollection: {
+          major_00: { timesClaimed: 1, firstAcquiredAt: 1_718_323_200_000, firstSource: 'combat_reward', isNew: true },
+        },
       },
       activeRun: { seed: 'backup-flight', leaderId: 'talon', difficulty: 1 },
       runHistory: [{ id: 'backup-history-1' }],
@@ -18326,6 +18358,10 @@ test('Flock Record previews and confirms a transactional save restore', async ({
       runs: 9, wins: 4, losses: 5, unlockedLeaders: ['fledgling', 'talon'],
       achievements: ['first_win'], discoveredCards: ['major_00', 'wands_ace'],
       favoriteCards: ['major_00'], hunt: ['wands_ace'], bestWinTier: 1,
+      cardTags: { major_00: 'keepsake', wands_ace: 'experiment' },
+      cardCollection: {
+        major_00: { timesClaimed: 1, firstAcquiredAt: 1_718_323_200_000, firstSource: 'combat_reward', isNew: true },
+      },
     };
     const activeRun = {
       deck: [{ id: 'major_00' }], leaderId: 'talon', difficulty: 1,
@@ -18370,6 +18406,7 @@ test('Flock Record previews and confirms a transactional save restore', async ({
   const downloadedPath = await download.path();
   if (!downloadedPath) throw new Error('Restore fixture backup was not downloaded');
   const legacyBackup = JSON.parse(await readFile(downloadedPath, 'utf8'));
+  legacyBackup.data.account.showcase = ['major_00', 'missing_card', 'major_00', 'wands_ace', 'extra_card'];
   delete legacyBackup.data.preferences.ambienceVolume;
   delete legacyBackup.data.preferences.animationPace;
   delete legacyBackup.data.preferences.textPace;
@@ -18447,6 +18484,11 @@ test('Flock Record previews and confirms a transactional save restore', async ({
     discoveredCards: ['major_00', 'wands_ace'],
     favoriteCards: ['major_00'],
     hunt: ['wands_ace'],
+    cardTags: { major_00: 'keepsake', wands_ace: 'experiment' },
+    showcase: ['major_00', 'wands_ace'],
+    cardCollection: {
+      major_00: { timesClaimed: 1, firstAcquiredAt: 1_718_323_200_000, firstSource: 'combat_reward', isNew: true },
+    },
   });
   expect(restored.runHistory).toEqual([expect.objectContaining({ id: 'restore-history' })]);
   expect(restored.activeRun).toMatchObject({ seed: 'restore-target', leaderId: 'talon', scrap: 33 });
@@ -19741,6 +19783,11 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
     const acct = JSON.parse(window.localStorage.getItem('birdsquad.account') || '{}');
     const discoveredCount = (acct.discoveredCards || []).length;
     const collectionRecords = Object.values(acct.cardCollection ?? {});
+    const newlyAcquiredIds = Object.entries(acct.cardCollection ?? {})
+      .filter(([, record]: [string, any]) => record.isNew === true)
+      .map(([id]) => id);
+    const collectionAchievementIds = (acct.achievements ?? [])
+      .filter((id: string) => id.startsWith('collection_'));
     await window.__birdSquadStartScene!('CodexScene');
     await wait(200);
     const active = g.scene.getScenes(true).map((s: any) => s.scene.key).includes('CodexScene');
@@ -19903,6 +19950,8 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
     return {
       discoveredCount,
       collectionRecords,
+      newlyAcquiredIds,
+      collectionAchievementIds,
       active,
       codexFound: cs.discovered ? cs.discovered.size : 0,
       codexIconLoaded,
@@ -19934,6 +19983,10 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
   });
   expect(r.discoveredCount).toBeGreaterThanOrEqual(8); // Spark-Caller's 10-card deck (distinct ids)
   expect(r.collectionRecords).toHaveLength(r.discoveredCount);
+  expect(r.newlyAcquiredIds).toHaveLength(r.discoveredCount);
+  expect(r.collectionAchievementIds).toEqual([
+    'collection_first_shelf',
+  ]);
   expect(r.collectionRecords.every((record: any) => (
     record.timesClaimed === 1
     && record.firstSource === 'starter_flock'
@@ -20214,6 +20267,164 @@ test('codex: collection records show claim provenance and keep flight copies exp
   await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
     timeout: 5_000,
   }).toContain('Discovered but not yet collected');
+});
+
+test('codex: new first-copy markers support a New lens and intentional per-card or bulk acknowledgement', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => {
+    const account = {
+      discoveredCards: ['major_00', 'major_01', 'major_02', 'wands_ace'],
+      cardCollection: {
+        major_00: { timesClaimed: 1, firstAcquiredAt: 10, firstSource: 'starter_flock', isNew: true },
+        major_01: { timesClaimed: 2, firstAcquiredAt: 20, firstSource: 'combat_reward', isNew: true },
+        major_02: { timesClaimed: 1, firstAcquiredAt: 30, firstSource: 'route_reward', isNew: true },
+        wands_ace: { timesClaimed: 1, firstAcquiredAt: 40, firstSource: 'market', isNew: 'invalid' },
+      },
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.codexCardLens', 'new');
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => {
+    const cs: any = await window.__birdSquadStartScene!('CodexScene');
+    cs.activeSection = 'cards';
+    cs.activeTab = 0;
+    cs.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.newlyAcquiredCards?.count === 3
+      && state.cardCollectionLens?.id === 'new'
+      && state.cardCollectionLens?.visibleIds?.length === 3;
+  });
+
+  const initial = await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const walk = (entry: any): any[] => [entry, ...(Array.isArray(entry?.list) ? entry.list.flatMap(walk) : [])];
+    const objects = walk(cs.root);
+    const bulk = objects.find((entry: any) => entry.name === 'codex-clear-new-cards-hit');
+    const marker = objects.find((entry: any) => entry.name === 'codex-new-card-marker' && entry.getData('cardId') === 'major_00');
+    return {
+      state: JSON.parse(window.render_game_to_text?.() ?? '{}'),
+      markerIds: objects
+        .filter((entry: any) => entry.name === 'codex-new-card-marker')
+        .map((entry: any) => entry.getData('cardId')),
+      bulk: { x: bulk.x, y: bulk.y, width: bulk.displayWidth, height: bulk.displayHeight, count: bulk.getData('count') },
+      firstCardPoint: { x: marker.x, y: marker.y },
+      account: JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}'),
+    };
+  });
+  expect(initial.state.newlyAcquiredCards).toMatchObject({
+    count: 3,
+    ids: ['major_00', 'major_01', 'major_02'],
+    visibleIds: ['major_00', 'major_01', 'major_02'],
+    lensActive: true,
+    bulkControlRendered: true,
+    keyboard: 'N',
+    controller: 'LT',
+    affectsOwnership: false,
+    persisted: true,
+  });
+  expect(initial.markerIds).toEqual(['major_00', 'major_01', 'major_02']);
+  expect(initial.bulk).toMatchObject({ width: 132, height: 46, count: 3 });
+  expect(initial.account.cardCollection.wands_ace.isNew).toBeUndefined();
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
+    .toContain('3 new card markers');
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-new-cards-lens.png' });
+
+  const canvas = await page.locator('canvas').boundingBox();
+  if (!canvas) throw new Error('Missing game canvas');
+  await page.mouse.click(
+    canvas.x + canvas.width * (initial.firstCardPoint.x / 1280),
+    canvas.y + canvas.height * (initial.firstCardPoint.y / 720),
+  );
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').detailOpen === 'major_00');
+  const markSeen = await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const hit = cs.root.getByName('codex-card-mark-seen-hit');
+    return { x: hit.x, y: hit.y, width: hit.displayWidth, height: hit.displayHeight };
+  });
+  expect(markSeen).toMatchObject({ width: 142, height: 46 });
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
+    .toContain('New to collection');
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-new-card-detail.png' });
+  await page.mouse.click(
+    canvas.x + canvas.width * (markSeen.x / 1280),
+    canvas.y + canvas.height * (markSeen.y / 720),
+  );
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').newlyAcquiredCards?.count === 2);
+  let persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}'));
+  expect(persisted.cardCollection.major_00).toMatchObject({
+    timesClaimed: 1,
+    firstAcquiredAt: 10,
+    firstSource: 'starter_flock',
+  });
+  expect(persisted.cardCollection.major_00.isNew).toBeUndefined();
+
+  await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    cs.detailId = 'major_01';
+    cs.renderAll();
+  });
+  await page.keyboard.press('n');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').newlyAcquiredCards?.count === 1);
+  await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    cs.detailId = 'major_02';
+    cs.renderAll();
+    cs.input.gamepad.emit('down', {}, { index: 6 });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').newlyAcquiredCards?.count === 0);
+  persisted = await page.evaluate(() => JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}'));
+  expect(Object.values(persisted.cardCollection).filter((record: any) => record.isNew === true)).toHaveLength(0);
+  expect(Object.keys(persisted.cardCollection)).toEqual(['major_00', 'major_01', 'major_02', 'wands_ace']);
+
+  const seedNewMarkers = async (ids: string[]) => {
+    await page.evaluate(async (cardIds) => {
+      const account = JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}');
+      cardIds.forEach((id) => { account.cardCollection[id].isNew = true; });
+      const raw = JSON.stringify(account);
+      localStorage.setItem('birdsquad.account', raw);
+      localStorage.setItem('birdsquad.account.backup', raw);
+      const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+      cs.activeSection = 'cards';
+      cs.activeTab = 0;
+      cs.cardCollection = account.cardCollection;
+      cs.newlyAcquiredCards = new Set(cardIds);
+      cs.detailId = undefined;
+      cs.focusZone = 'sections';
+      cs.gridScroll = 0;
+      cs.gridScrollTarget = 0;
+      cs.renderAll();
+    }, ids);
+    await page.waitForFunction((count) => (
+      JSON.parse(window.render_game_to_text?.() ?? '{}').newlyAcquiredCards?.count === count
+    ), ids.length);
+  };
+
+  await seedNewMarkers(['major_00', 'major_01', 'major_02']);
+  await page.mouse.click(
+    canvas.x + canvas.width * (initial.bulk.x / 1280),
+    canvas.y + canvas.height * (initial.bulk.y / 720),
+  );
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').newlyAcquiredCards?.count === 0);
+
+  await seedNewMarkers(['major_00', 'major_01']);
+  await page.keyboard.press('n');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').newlyAcquiredCards?.count === 0);
+
+  await seedNewMarkers(['major_02']);
+  await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    cs.input.gamepad.emit('down', {}, { index: 6 });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').newlyAcquiredCards?.count === 0);
+  const finalAccount = await page.evaluate(() => JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}'));
+  expect(Object.values(finalAccount.cardCollection).filter((record: any) => record.isNew === true)).toHaveLength(0);
+  expect(Object.keys(finalAccount.cardCollection)).toEqual(['major_00', 'major_01', 'major_02', 'wands_ace']);
 });
 
 test('codex: Favorites view groups personal cards and explains its empty state accessibly', async ({ page }) => {
@@ -20549,7 +20760,7 @@ test('codex: Collection Lens filters ownership with pointer, keyboard, controlle
     id: 'collected',
     label: 'Collected',
     index: 1,
-    count: 4,
+    count: 6,
     visibleCount: 1,
     visibleIds: ['wands_02'],
     keyboard: 'L',
@@ -20566,8 +20777,24 @@ test('codex: Collection Lens filters ownership with pointer, keyboard, controlle
     canvas.x + canvas.width * (initial.hit.x / 1280),
     canvas.y + canvas.height * (initial.hit.y / 720),
   );
-  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardCollectionLens?.id === 'uncollected');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardCollectionLens?.id === 'new');
   let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.codexFocus).toMatchObject({ zone: 'secondaryTabs', label: 'New filter' });
+  expect(state.cardCollectionLens).toMatchObject({ visibleCount: 0, visibleIds: [], empty: true });
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.codexCardLens')))
+    .toBe('new');
+
+  await page.keyboard.press('l');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardCollectionLens?.id === 'tagged');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.codexFocus).toMatchObject({ zone: 'secondaryTabs', label: 'Tagged filter' });
+  expect(state.cardCollectionLens).toMatchObject({ visibleCount: 0, visibleIds: [], empty: true });
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.codexCardLens')))
+    .toBe('tagged');
+
+  await page.keyboard.press('l');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardCollectionLens?.id === 'uncollected');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(state.codexFocus).toMatchObject({ zone: 'secondaryTabs', label: 'Uncollected filter' });
   expect(state.cardCollectionLens.visibleIds).not.toContain('wands_02');
   expect(state.cardCollectionLens.visibleIds).toContain('wands_ace');
@@ -20636,6 +20863,180 @@ test('codex: Collection Lens filters ownership with pointer, keyboard, controlle
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-collection-lens-empty.png' });
 });
 
+test('codex: personal tags organize discovered cards through pointer, keyboard, controller, search, a Tagged lens, and save sanitation', async ({ page }) => {
+  await page.addInitScript(() => {
+    const account = {
+      discoveredCards: ['major_00', 'wands_ace', 'wands_02'],
+      favoriteCards: [],
+      cardTags: {
+        major_00: 'keepsake',
+        wands_ace: 'experiment',
+        wands_02: 'invalid',
+        major_21: 'staple',
+      },
+      cardCollection: {
+        wands_ace: {
+          timesClaimed: 1,
+          firstAcquiredAt: Date.UTC(2026, 6, 2),
+          firstSource: 'combat_reward',
+        },
+      },
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.codexCardLens', 'all');
+    localStorage.setItem('birdsquad.codexCardSearch', '');
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => {
+    const cs: any = await window.__birdSquadStartScene!('CodexScene');
+    cs.activeSection = 'cards';
+    cs.activeTab = 2;
+    cs.detailId = 'wands_ace';
+    cs.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const cs: any = window.__birdSquadGame?.scene?.getScene('CodexScene');
+    return state.personalCardTags?.detailTag === 'experiment'
+      && cs?.root?.getByName?.('codex-card-tag-hit')?.input?.enabled;
+  });
+
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.personalCardTags).toMatchObject({
+    count: 2,
+    ids: ['major_00', 'wands_ace'],
+    entries: [
+      { id: 'major_00', tag: 'keepsake' },
+      { id: 'wands_ace', tag: 'experiment' },
+    ],
+    available: ['staple', 'experiment', 'keepsake'],
+    detailId: 'wands_ace',
+    detailTag: 'experiment',
+    keyboard: 'V',
+    controller: 'L3',
+    private: true,
+    affectsPower: false,
+    persisted: true,
+  });
+  expect(JSON.stringify(state.personalCardTags)).not.toContain('major_21');
+  expect(JSON.stringify(state.personalCardTags)).not.toContain('invalid');
+
+  const tagPoint = await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const hit = cs.root.getByName('codex-card-tag-hit');
+    return { x: hit.x, y: hit.y, width: hit.displayWidth, height: hit.displayHeight };
+  });
+  expect(tagPoint).toMatchObject({ width: 180, height: 46 });
+  const canvas = await page.locator('canvas').boundingBox();
+  if (!canvas) throw new Error('Missing game canvas');
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-personal-tag-detail-before-pointer.png' });
+  await page.waitForTimeout(100);
+  const tagClientX = canvas.x + canvas.width * (tagPoint.x / 1280);
+  const tagClientY = canvas.y + canvas.height * (tagPoint.y / 720);
+  await page.mouse.move(tagClientX, tagClientY);
+  await page.mouse.down();
+  await page.waitForTimeout(50);
+  await page.mouse.up();
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').personalCardTags?.detailTag === 'keepsake');
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Personal tag Keepsake');
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-personal-tag-detail.png' });
+
+  await page.keyboard.press('v');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').personalCardTags?.detailTag === '');
+  await page.keyboard.press('v');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').personalCardTags?.detailTag === 'staple');
+  await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    cs.input.gamepad.emit('down', cs.input.gamepad.pad1, { index: 10 }, 1);
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').personalCardTags?.detailTag === 'experiment');
+
+  const persisted = await page.evaluate(() => ({
+    account: localStorage.getItem('birdsquad.account'),
+    backup: localStorage.getItem('birdsquad.account.backup'),
+  }));
+  expect(JSON.parse(persisted.account ?? '{}').cardTags).toEqual({ major_00: 'keepsake', wands_ace: 'experiment' });
+  expect(persisted.backup).toBe(persisted.account);
+
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').detailOpen === '');
+  for (const expected of ['collected', 'new', 'tagged']) {
+    await page.keyboard.press('l');
+    await page.waitForFunction((lens) => (
+      JSON.parse(window.render_game_to_text?.() ?? '{}').cardCollectionLens?.id === lens
+    ), expected);
+  }
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardCollectionLens).toMatchObject({
+    id: 'tagged',
+    label: 'Tagged',
+    visibleIds: ['wands_ace'],
+    visibleCount: 1,
+  });
+  expect(state.personalCardTags).toMatchObject({
+    lensActive: true,
+    visibleIds: ['wands_ace'],
+  });
+  const tagMarkers = await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const walk = (entry: any): any[] => [entry, ...(Array.isArray(entry?.list) ? entry.list.flatMap(walk) : [])];
+    return walk(cs.root)
+      .filter((entry: any) => entry.name === 'codex-card-tag-marker')
+      .map((entry: any) => ({ id: entry.getData('cardId'), tag: entry.getData('tag') }));
+  });
+  expect(tagMarkers).toEqual([{ id: 'wands_ace', tag: 'experiment' }]);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-personal-tag-lens.png' });
+
+  await page.keyboard.press('/');
+  const searchInput = page.locator('#codex-card-search-input');
+  await expect(searchInput).toBeVisible();
+  await searchInput.fill('experiment');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardSearch?.query === 'experiment');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardSearch).toMatchObject({
+    matchedIds: ['wands_ace'],
+    visibleIds: ['wands_ace'],
+  });
+
+  await page.keyboard.press('/');
+  await expect(searchInput).toBeVisible();
+  await searchInput.fill('');
+  await page.keyboard.press('Enter');
+  await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    cs.activeTab = 4;
+    cs.detailId = undefined;
+    cs.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.cardCollectionLens?.id === 'tagged' && state.cardCollectionLens?.empty === true;
+  });
+  const empty = await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const walk = (entry: any): any[] => [entry, ...(Array.isArray(entry?.list) ? entry.list.flatMap(walk) : [])];
+    const texts = walk(cs.root)
+      .filter((entry: any) => entry.type === 'Text')
+      .map((entry: any) => entry.text);
+    return {
+      state: JSON.parse(window.render_game_to_text?.() ?? '{}'),
+      texts,
+    };
+  });
+  expect(empty.texts).toContain('TAGGED LENS');
+  expect(empty.texts).toContain('No cards in this set have a personal tag yet.\nOpen a discovered card and choose PERSONAL TAG, or press V / L3.');
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('No personal tags in this set');
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-personal-tag-empty.png' });
+});
+
 test('codex: card search filters real metadata without revealing undiscovered cards and supports pointer, keyboard, controller, persistence, and screen readers', async ({ page }) => {
   await page.addInitScript(() => {
     const account = {
@@ -20687,7 +21088,7 @@ test('codex: card search filters real metadata without revealing undiscovered ca
     persisted: true,
   });
   expect(state.cardSearch.fields).toEqual([
-    'name', 'rules', 'keyword', 'character', 'set', 'type', 'cost', 'rarity', 'ownership',
+    'name', 'rules', 'keyword', 'character', 'set', 'type', 'cost', 'rarity', 'ownership', 'personal tag', 'showcase',
   ]);
   expect(state.cardCollectionLens).toMatchObject({ baseCount: 1, setCount: 14, visibleIds: ['wands_02'] });
   await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
@@ -20708,7 +21109,7 @@ test('codex: card search filters real metadata without revealing undiscovered ca
   const searchInput = page.locator('#codex-card-search-input');
   await expect(searchInput).toBeVisible();
   await expect(searchInput).toBeFocused();
-  await expect(searchInput).toHaveAttribute('aria-label', /name, rules, keyword, character, set, type, cost, rarity, or ownership/i);
+  await expect(searchInput).toHaveAttribute('aria-label', /name, rules, keyword, character, set, type, cost, rarity, ownership, or personal tag/i);
   const inputBounds = await searchInput.boundingBox();
   expect(inputBounds?.width).toBeGreaterThanOrEqual(188);
   expect(inputBounds?.height).toBeGreaterThanOrEqual(40);
@@ -20927,6 +21328,669 @@ test('codex: card sorting supports binder, name, rarity, and acquisition recency
   });
   state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(state.cardSort.visibleIds).toEqual(['wands_04', 'wands_02', 'wands_ace', 'wands_03']);
+});
+
+test('codex: Collection Atlas reports permanent set, rarity, and acquisition progress with pointer, keyboard, controller, and screen-reader access', async ({ page }) => {
+  await page.addInitScript(() => {
+    const account = {
+      discoveredCards: [
+        'major_00', 'major_01', 'aviary_22', 'wands_ace', 'wands_02',
+        'swords_ace', 'cups_ace', 'pentacles_ace', 'tangled_line',
+      ],
+      favoriteCards: [],
+      cardCollection: {
+        major_00: { timesClaimed: 1, firstAcquiredAt: 10, firstSource: 'starter_flock' },
+        aviary_22: { timesClaimed: 1, firstAcquiredAt: 20, firstSource: 'combat_reward' },
+        wands_ace: { timesClaimed: 1, firstAcquiredAt: 30, firstSource: 'route_reward' },
+        swords_ace: { timesClaimed: 1, firstAcquiredAt: 40, firstSource: 'market' },
+        tangled_line: { timesClaimed: 1, firstAcquiredAt: 50, firstSource: 'snag' },
+      },
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+    localStorage.setItem('birdsquad.codexCardSearch', '');
+    localStorage.setItem('birdsquad.codexCardLens', 'all');
+  });
+  await boot(page);
+  await page.evaluate(async () => {
+    const cs: any = await window.__birdSquadStartScene!('CodexScene');
+    cs.activeSection = 'cards';
+    cs.activeTab = 2;
+    cs.detailId = undefined;
+    cs.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.collectionAtlas?.overall?.owned === 5
+      && state.cardCollection?.id === 'plumes';
+  });
+
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardCollection).toMatchObject({
+    id: 'plumes',
+    name: 'Plumes',
+    found: 1,
+    owned: 1,
+    discovered: 2,
+    total: 14,
+    stage: 'First Shelf',
+  });
+  expect(state.collectionAtlas).toMatchObject({
+    open: false,
+    keyboard: 'G',
+    controller: 'R3',
+    revealsUndiscoveredIdentities: false,
+    overall: { owned: 5, discovered: 9, total: 110 },
+  });
+  expect(state.collectionAtlas.families.map((family: any) => ({
+    id: family.id,
+    owned: family.owned,
+    total: family.total,
+  }))).toEqual([
+    { id: 'major', owned: 1, total: 22 },
+    { id: 'aviary', owned: 1, total: 22 },
+    { id: 'plumes', owned: 1, total: 14 },
+    { id: 'quills', owned: 1, total: 14 },
+    { id: 'basins', owned: 0, total: 14 },
+    { id: 'nests', owned: 0, total: 14 },
+    { id: 'snags', owned: 1, total: 10 },
+  ]);
+  expect(state.collectionAtlas.rarities.reduce((sum: number, rarity: any) => sum + rarity.total, 0)).toBe(110);
+  expect(state.collectionAtlas.rarities.reduce((sum: number, rarity: any) => sum + rarity.owned, 0)).toBe(5);
+  expect(state.collectionAtlas.sources).toEqual([
+    { id: 'starter_flock', name: 'Starter Flock', count: 1 },
+    { id: 'combat_reward', name: 'Fight Rewards', count: 1 },
+    { id: 'route_reward', name: 'Route Choices', count: 1 },
+    { id: 'market', name: 'Canal Market', count: 1 },
+    { id: 'snag', name: 'Enemy Snags', count: 1 },
+  ]);
+  expect(JSON.stringify(state.collectionAtlas)).not.toContain('major_21');
+  expect(JSON.stringify(state.collectionAtlas)).not.toContain('The World');
+
+  const rail = await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const hit = cs.root.getByName('codex-card-collection-atlas-hit');
+    return { x: hit.x, y: hit.y, width: hit.displayWidth, height: hit.displayHeight };
+  });
+  expect(rail.width).toBeGreaterThanOrEqual(280);
+  expect(rail.height).toBeGreaterThanOrEqual(44);
+  const canvas = await page.locator('canvas').boundingBox();
+  if (!canvas) throw new Error('Missing game canvas');
+  await page.waitForTimeout(200);
+  const railClientX = canvas.x + canvas.width * (rail.x / 1280);
+  const railClientY = canvas.y + canvas.height * (rail.y / 720);
+  await page.mouse.move(railClientX, railClientY);
+  await page.mouse.down();
+  await page.waitForTimeout(50);
+  await page.mouse.up();
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionAtlas?.open === true);
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.codexFocus).toMatchObject({
+    zone: 'progressOverlay',
+    index: 2,
+    count: 7,
+    label: 'Plumes collection, 1 of 14 collected',
+    ringRendered: true,
+  });
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Collection Atlas open');
+  expect(await page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
+    .toContain('Focused Plumes, 1 of 14 collected and 2 encountered');
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-collection-atlas.png' });
+
+  const quillsHit = await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const hit = cs.root.list.find((entry: any) => (
+      entry.name === 'codex-collection-atlas-family-hit' && entry.getData('family') === 'quills'
+    ));
+    return { x: hit.x, y: hit.y };
+  });
+  await page.mouse.click(
+    canvas.x + canvas.width * (quillsHit.x / 1280),
+    canvas.y + canvas.height * (quillsHit.y / 720),
+  );
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.collectionAtlas?.open === false && state.cardCollection?.id === 'quills';
+  });
+
+  await page.keyboard.press('g');
+  await page.keyboard.press('ArrowDown');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.collectionAtlas).toMatchObject({
+    open: true,
+    selectedIndex: 4,
+    selectedFamily: { id: 'basins', owned: 0, discovered: 1, total: 14 },
+  });
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardCollection?.id === 'basins');
+
+  const gamepadDown = (index: number) => page.evaluate((buttonIndex) => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    cs.input.gamepad.emit('down', cs.input.gamepad.pad1, { index: buttonIndex }, 1);
+  }, index);
+  await gamepadDown(11);
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionAtlas?.open === true);
+  await gamepadDown(11);
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionAtlas?.open === false);
+  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).cardCollection.id).toBe('basins');
+
+  await gamepadDown(11);
+  await gamepadDown(13);
+  await gamepadDown(0);
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardCollection?.id === 'nests');
+  await gamepadDown(11);
+  await gamepadDown(1);
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionAtlas?.open === false);
+  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).cardCollection.id).toBe('nests');
+
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.keyboard.press('g');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionAtlas?.open === true);
+  await page.screenshot({ path: '.artifacts/test-results/codex-collection-atlas-minimum-landscape.png', fullPage: true });
+  const panelBounds = await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const panel = cs.root.getByName('codex-collection-atlas-panel');
+    return {
+      left: panel.getBounds().left,
+      top: panel.getBounds().top,
+      right: panel.getBounds().right,
+      bottom: panel.getBounds().bottom,
+    };
+  });
+  expect(panelBounds).toEqual({ left: 70, top: 58, right: 1210, bottom: 646 });
+});
+
+test('collection milestones reward breadth, acquisition variety, Hunt goals, and personal curation without power', async ({ page }) => {
+  await page.addInitScript(() => {
+    const ids = [
+      'major_00',
+      'wands_ace',
+      'swords_ace',
+      'cups_ace',
+      'pentacles_04',
+      'aviary_25',
+      'swords_fledgling',
+      'cups_fledgling',
+      'pentacles_fledgling',
+      'wands_fledgling',
+    ];
+    const cardCollection = Object.fromEntries(ids.map((id) => [id, {
+      timesClaimed: 1,
+      firstAcquiredAt: Date.UTC(2026, 6, 28),
+      firstSource: 'starter_flock',
+    }]));
+    const account = {
+      achievements: [],
+      discoveredCards: ids,
+      favoriteCards: [],
+      cardTags: { major_00: 'staple' },
+      cardCollection,
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => {
+    const cs: any = await window.__birdSquadStartScene!('CodexScene');
+    cs.activeSection = 'cards';
+    cs.activeTab = 0;
+    cs.detailId = undefined;
+    cs.renderAll();
+  });
+  await page.keyboard.press('g');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionAtlas?.open === true);
+
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.collectionAtlas).toMatchObject({
+    completedMilestones: 2,
+    nextMilestone: {
+      id: 'collection_curator',
+      name: "Curator's Eye",
+      current: 1,
+      target: 3,
+      complete: false,
+      reward: "Curator's Eye badge",
+    },
+  });
+  expect(state.collectionAtlas.milestones.map((milestone: any) => ({
+    id: milestone.id,
+    current: milestone.current,
+    target: milestone.target,
+    complete: milestone.complete,
+  }))).toEqual([
+    { id: 'collection_first_shelf', current: 10, target: 10, complete: true },
+    { id: 'collection_suit_sampler', current: 4, target: 4, complete: true },
+    { id: 'collection_curator', current: 1, target: 3, complete: false },
+    { id: 'collection_wayfinder', current: 0, target: 3, complete: false },
+    { id: 'collection_many_roads', current: 0, target: 4, complete: false },
+    { id: 'collection_citywide', current: 6, target: 7, complete: false },
+  ]);
+  expect(state.collectionAtlas.milestones.every((milestone: any) => (
+    milestone.reward.endsWith('badge') && !('power' in milestone)
+  ))).toBe(true);
+  const partialRows = await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const walk = (entry: any): any[] => [entry, ...(Array.isArray(entry?.list) ? entry.list.flatMap(walk) : [])];
+    return walk(cs.root)
+      .filter((entry: any) => entry.name === 'codex-collection-milestone-row')
+      .map((entry: any) => ({ id: entry.getData('milestoneId'), complete: entry.getData('complete') }));
+  });
+  expect(partialRows).toEqual([
+    { id: 'collection_curator', complete: false },
+    { id: 'collection_wayfinder', complete: false },
+    { id: 'collection_many_roads', complete: false },
+  ]);
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Collector milestones 2 of 6 earned');
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/collection-milestones-progress.png' });
+
+  await page.evaluate(async () => {
+    const account = JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}');
+    account.cardTags = {
+      major_00: 'staple',
+      wands_ace: 'experiment',
+      swords_ace: 'keepsake',
+    };
+    account.cardCollection.major_00.targetCompletedAt = Date.UTC(2026, 6, 29);
+    account.cardCollection.wands_ace.targetCompletedAt = Date.UTC(2026, 6, 29);
+    account.cardCollection.swords_ace.targetCompletedAt = Date.UTC(2026, 6, 29);
+    account.cardCollection.aviary_25.firstSource = 'combat_reward';
+    account.cardCollection.wands_ace.firstSource = 'route_reward';
+    account.cardCollection.swords_ace.firstSource = 'market';
+    account.discoveredCards.push('tangled_line');
+    account.cardCollection.tangled_line = {
+      timesClaimed: 1,
+      firstAcquiredAt: Date.UTC(2026, 6, 29),
+      firstSource: 'snag',
+    };
+    localStorage.setItem('birdsquad.account', JSON.stringify(account));
+    await window.__birdSquadStartScene!('CodexScene');
+  });
+  await page.keyboard.press('g');
+  await page.waitForFunction(() => {
+    const atlas = JSON.parse(window.render_game_to_text?.() ?? '{}').collectionAtlas;
+    return atlas?.open === true && atlas.completedMilestones === 6;
+  });
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.collectionAtlas.milestones.every((milestone: any) => milestone.complete && milestone.earned)).toBe(true);
+  expect(state.collectionAtlas.nextMilestone).toMatchObject({
+    id: 'collection_citywide',
+    current: 7,
+    target: 7,
+    complete: true,
+  });
+  const persisted = await page.evaluate(() => ({
+    account: localStorage.getItem('birdsquad.account'),
+    backup: localStorage.getItem('birdsquad.account.backup'),
+  }));
+  const persistedAccount = JSON.parse(persisted.account ?? '{}');
+  expect(persistedAccount.achievements.filter((id: string) => id.startsWith('collection_'))).toEqual([
+    'collection_first_shelf',
+    'collection_suit_sampler',
+    'collection_curator',
+    'collection_wayfinder',
+    'collection_many_roads',
+    'collection_citywide',
+  ]);
+  expect(persisted.backup).toBe(persisted.account);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/collection-milestones-complete.png' });
+
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').badgePagination?.page === 1);
+  await page.keyboard.press('PageDown');
+  await page.keyboard.press('PageDown');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').badgePagination?.page === 3);
+  const profile = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(profile.progression).toMatchObject({
+    achievementsEarned: 6,
+    achievementTotal: 18,
+    collectionMilestonesEarned: 6,
+    collectionMilestoneTotal: 6,
+  });
+  expect(profile.collectionMilestones).toMatchObject({
+    completed: 6,
+    total: 6,
+    next: null,
+    rewardsAffectPower: false,
+  });
+  expect(profile.badgePagination.items.map((item: any) => ({
+    id: item.id,
+    earned: item.earned,
+  }))).toEqual([
+    { id: 'collection_first_shelf', earned: true },
+    { id: 'collection_suit_sampler', earned: true },
+    { id: 'collection_curator', earned: true },
+    { id: 'collection_wayfinder', earned: true },
+    { id: 'collection_many_roads', earned: true },
+    { id: 'collection_citywide', earned: true },
+  ]);
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Collector milestones 6 of 6 earned');
+  await page.screenshot({ path: '.artifacts/test-results/collection-milestones-profile.png', fullPage: true });
+});
+
+test('collection path surfaces the next optional goal from title and route and returns to the active flight', async ({ page }) => {
+  await page.addInitScript(() => {
+    const ids = [
+      'major_00', 'wands_ace', 'swords_ace', 'cups_ace', 'pentacles_04',
+      'aviary_25', 'swords_fledgling', 'cups_fledgling', 'pentacles_fledgling', 'wands_fledgling',
+    ];
+    const account = {
+      achievements: [],
+      discoveredCards: ids,
+      favoriteCards: [],
+      cardTags: { major_00: 'staple' },
+      cardCollection: Object.fromEntries(ids.map((id) => [id, {
+        timesClaimed: 1,
+        firstAcquiredAt: Date.UTC(2026, 6, 28),
+        firstSource: 'starter_flock',
+      }])),
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionGoal?.rendered === true);
+
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.collectionGoal).toMatchObject({
+    owned: 10,
+    total: 110,
+    completed: 2,
+    milestoneTotal: 6,
+    next: {
+      id: 'collection_curator',
+      name: "Curator's Eye",
+      current: 1,
+      target: 3,
+      complete: false,
+    },
+    allComplete: false,
+    optional: true,
+    affectsPower: false,
+    timeLimited: false,
+    destination: 'Collection Atlas',
+    rendered: true,
+    input: {
+      pointer: true,
+      keyboardFocus: 'codex',
+      controllerFocus: 'codex',
+    },
+  });
+  const titleStrip = await page.evaluate(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    const hit = menu.children.list.find((child: any) => child.name === 'title-collection-goal-hit');
+    const label = menu.children.list.find((child: any) => child.name === 'title-collection-goal-hit-label');
+    return {
+      bounds: { left: hit.getBounds().left, top: hit.getBounds().top, right: hit.getBounds().right, bottom: hit.getBounds().bottom },
+      interactive: hit.input?.enabled === true,
+      label: label?.text,
+    };
+  });
+  expect(titleStrip.bounds).toEqual({ left: 868, top: 59, right: 1268, bottom: 117 });
+  expect(titleStrip.interactive).toBe(true);
+  expect(titleStrip.label).toContain("CURATOR'S EYE  1/3");
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('No deadline and no gameplay power');
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.screenshot({ path: '.artifacts/test-results/collection-path-title.png', fullPage: true });
+
+  await clickNamedGameObject(page, 'MenuScene', 'title-collection-goal-hit');
+  await page.waitForFunction(() => {
+    const current = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return current.mode === 'codex' && current.collectionAtlas?.open === true;
+  });
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.origin).toMatchObject({ scene: 'MenuScene', label: 'Title', preservesActiveRun: false });
+  expect(state.collectionAtlas.nextMilestone).toMatchObject({ id: 'collection_curator', current: 1, target: 3 });
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').scene === 'MenuScene');
+
+  await page.evaluate(async () => window.__birdSquadStartScene!('RouteScene', {}));
+  await page.waitForFunction(() => {
+    const current = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return current.scene === 'RouteScene' && current.routeAssetsReady === true && current.collectionGoal?.rendered === true;
+  });
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  const routeSeed = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.runState.seed;
+  });
+  expect(state.collectionGoal).toMatchObject({
+    owned: 10,
+    completed: 2,
+    next: { id: 'collection_curator', current: 1, target: 3 },
+    optional: true,
+    affectsPower: false,
+    timeLimited: false,
+    rendered: true,
+    input: {
+      pointer: true,
+      keyboard: 'G',
+      controller: 'R3',
+      destination: 'Collection Atlas',
+      returnsTo: 'Route',
+    },
+  });
+  const routeStrip = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const hit = route.children.list.find((child: any) => child.name === 'route-collection-goal-hit');
+    return {
+      bounds: { left: hit.getBounds().left, top: hit.getBounds().top, right: hit.getBounds().right, bottom: hit.getBounds().bottom },
+      interactive: hit.input?.enabled === true,
+    };
+  });
+  expect(routeStrip.bounds).toEqual({ left: 720, top: 75, right: 1020, bottom: 133 });
+  expect(routeStrip.interactive).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/collection-path-route.png', fullPage: true });
+
+  await clickNamedGameObject(page, 'RouteScene', 'route-collection-goal-hit');
+  await page.waitForFunction(() => {
+    const current = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return current.mode === 'codex'
+      && current.collectionAtlas?.open === true
+      && current.origin?.scene === 'RouteScene';
+  });
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.origin).toMatchObject({ scene: 'RouteScene', label: 'Route', preservesActiveRun: true });
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => {
+    const current = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return current.scene === 'RouteScene' && current.routeAssetsReady === true;
+  });
+  const returnedSeed = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.runState.seed;
+  });
+  expect(returnedSeed).toBe(routeSeed);
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Use G, controller R3');
+
+  await page.keyboard.press('g');
+  await page.waitForFunction(() => {
+    const current = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return current.mode === 'codex' && current.origin?.scene === 'RouteScene' && current.collectionAtlas?.open === true;
+  });
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').scene === 'RouteScene');
+
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.input.gamepad.emit('down', route.input.gamepad.pad1, { index: 11 }, 1);
+  });
+  await page.waitForFunction(() => {
+    const current = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return current.mode === 'codex' && current.origin?.scene === 'RouteScene' && current.collectionAtlas?.open === true;
+  });
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').scene === 'RouteScene');
+});
+
+test('card showcase preserves three deliberate choices across Codex controls, Flock Record, and save backups', async ({ page }) => {
+  await page.addInitScript(() => {
+    const account = {
+      discoveredCards: ['major_00', 'wands_ace', 'swords_ace', 'cups_ace', 'pentacles_ace'],
+      favoriteCards: [],
+      showcase: ['major_00', 'wands_ace', 'major_00', 'missing_card', 'swords_ace', 'cups_ace'],
+      cardCollection: {},
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => {
+    const codex: any = await window.__birdSquadStartScene!('CodexScene');
+    codex.activeSection = 'cards';
+    codex.activeTab = 2;
+    codex.detailId = 'cups_ace';
+    codex.renderAll();
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardShowcase?.count === 3);
+
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardShowcase).toMatchObject({
+    count: 3,
+    capacity: 3,
+    ids: ['major_00', 'wands_ace', 'swords_ace'],
+    detailId: 'cups_ace',
+    detailShowcased: false,
+    detailCanAdd: false,
+    full: true,
+    keyboard: 'G',
+    controller: 'R3',
+    location: 'Flock Record',
+    affectsPower: false,
+    persisted: true,
+    replacesAtCapacity: false,
+  });
+  const sanitizedAccount = JSON.parse(await page.evaluate(() => localStorage.getItem('birdsquad.account') ?? '{}'));
+  expect(sanitizedAccount.showcase).toEqual(['major_00', 'wands_ace', 'swords_ace']);
+  const fullLabel = await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    return codex.root.getByName('codex-card-showcase-label')?.text;
+  });
+  expect(fullLabel).toBe('SHOWCASE FULL');
+  const beforeLocked = state.audio.cueRequests.locked ?? 0;
+  await page.keyboard.press('g');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardShowcase.ids).toEqual(['major_00', 'wands_ace', 'swords_ace']);
+  expect((state.audio.cueRequests.locked ?? 0) - beforeLocked).toBe(1);
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('existing choices are never replaced automatically');
+
+  await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    codex.detailId = 'major_00';
+    codex.renderAll();
+  });
+  await page.keyboard.press('g');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardShowcase?.count === 2);
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardShowcase.ids).toEqual(['wands_ace', 'swords_ace']);
+
+  const showcaseHit = await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const hit = codex.root.getByName('codex-card-showcase-hit');
+    return { x: hit.x, y: hit.y, width: hit.displayWidth, height: hit.displayHeight };
+  });
+  expect(showcaseHit.width).toBeGreaterThanOrEqual(180);
+  expect(showcaseHit.height).toBeGreaterThanOrEqual(46);
+  const canvas = await page.locator('canvas').boundingBox();
+  if (!canvas) throw new Error('Missing game canvas');
+  const hitX = canvas.x + canvas.width * (showcaseHit.x / 1280);
+  const hitY = canvas.y + canvas.height * (showcaseHit.y / 720);
+  await page.mouse.move(hitX, hitY);
+  await page.mouse.down();
+  await page.waitForTimeout(50);
+  await page.mouse.up();
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardShowcase?.count === 3);
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardShowcase.ids).toEqual(['wands_ace', 'swords_ace', 'major_00']);
+
+  await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    codex.detailId = 'wands_ace';
+    codex.renderAll();
+    codex.input.gamepad.emit('down', codex.input.gamepad.pad1, { index: 11 }, 1);
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardShowcase?.count === 2);
+  await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    codex.detailId = 'cups_ace';
+    codex.renderAll();
+    codex.input.gamepad.emit('down', codex.input.gamepad.pad1, { index: 11 }, 1);
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardShowcase?.ids?.includes('cups_ace'));
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardShowcase.ids).toEqual(['swords_ace', 'major_00', 'cups_ace']);
+
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-showcase-tab-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardShowcase?.selected === true);
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardShowcase).toMatchObject({
+    count: 3,
+    capacity: 3,
+    ids: ['swords_ace', 'major_00', 'cups_ace'],
+    empty: false,
+    full: true,
+    selected: true,
+    location: 'Flock Record',
+    managedIn: 'Codex card dossiers',
+    affectsPower: false,
+    persisted: true,
+  });
+  expect(state.cardShowcase.items.map((item: any) => item.name)).toEqual([
+    'Quill Point',
+    'First Flight',
+    'Open Basin',
+  ]);
+  const showcaseRender = await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    return {
+      art: profile.children.list
+        .filter((child: any) => child.name === 'profile-showcase-card-art')
+        .map((child: any) => child.getData('cardId')),
+      names: profile.children.list
+        .filter((child: any) => child.name === 'profile-showcase-card-name')
+        .map((child: any) => child.text),
+    };
+  });
+  expect(showcaseRender.art).toEqual(['swords_ace', 'major_00', 'cups_ace']);
+  expect(showcaseRender.names).toEqual(['Quill Point', 'First Flight', 'Open Basin']);
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Presented cards: Quill Point, First Flight, Open Basin');
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.screenshot({ path: '.artifacts/test-results/card-showcase-profile.png', fullPage: true });
+
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-save-data-hit');
+  const downloadPromise = page.waitForEvent('download');
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-save-download-hit');
+  const download = await downloadPromise;
+  const downloadedPath = await download.path();
+  if (!downloadedPath) throw new Error('Showcase save backup did not produce a local file');
+  const payload = JSON.parse(await readFile(downloadedPath, 'utf8'));
+  expect(payload.data.account.showcase).toEqual(['swords_ace', 'major_00', 'cups_ace']);
 });
 
 test('codex: snag cards retain their dedicated tab and render card art', async ({ page }) => {
