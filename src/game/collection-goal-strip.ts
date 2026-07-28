@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
+import { safeStorageGet } from './safe-storage';
 
 export interface CollectionGoalStripSummary {
   owned: number;
@@ -14,6 +15,19 @@ export interface CollectionGoalStripDependencies {
   playConfirm: () => void;
 }
 
+export function newestUnreviewedCardId() {
+  try {
+    const account = JSON.parse(safeStorageGet('birdsquad.account') ?? '{}') as {
+      cardCollection?: Record<string, { isNew?: boolean; firstAcquiredAt?: number }>;
+    };
+    return Object.entries(account.cardCollection ?? {})
+      .filter(([, record]) => record?.isNew === true)
+      .sort(([, left], [, right]) => (right.firstAcquiredAt ?? 0) - (left.firstAcquiredAt ?? 0))[0]?.[0];
+  } catch {
+    return undefined;
+  }
+}
+
 export function renderCollectionGoalStrip(
   scene: Phaser.Scene,
   x: number,
@@ -21,14 +35,17 @@ export function renderCollectionGoalStrip(
   width: number,
   name: string,
   goal: CollectionGoalStripSummary,
-  onOpen: () => void,
+  onOpen: (cardId?: string) => void,
   dependencies: CollectionGoalStripDependencies,
 ) {
+  const newCardId = newestUnreviewedCardId();
   const hit = scene.add.rectangle(x, y, width, MIN_SUPPORTED_TOUCH_TARGET, 0x07131f, 0.94)
     .setStrokeStyle(2, 0xc9a6ff, 0.68)
     .setInteractive({ useHandCursor: true })
     .setName(name)
-    .setData('collectionGoal', goal);
+    .setData('collectionGoal', goal)
+    .setData('newCardId', newCardId ?? '')
+    .setData('destination', newCardId ? 'Newest card dossier' : 'Collection Atlas');
   dependencies.addIcon(scene, x - width / 2 + 25, y)?.setAlpha(0.9);
   const textLeft = x - width / 2 + 48;
   scene.add.text(textLeft, y - 13, width < 350
@@ -39,9 +56,11 @@ export function renderCollectionGoalStrip(
     fontStyle: 'bold',
     color: '#8df4ff',
   }).setResolution(2).setOrigin(0, 0.5).setName(`${name}-kicker`);
-  scene.add.text(textLeft, y + 10, goal.next
-    ? `NEXT: ${goal.next.name.toUpperCase()}  ${goal.next.current}/${goal.next.target}${width >= 350 ? '  /  OPEN ATLAS' : '  /  G / R3'}`
-    : `ALL COLLECTION BADGES EARNED${width >= 350 ? '  /  OPEN ATLAS' : ''}`, {
+  scene.add.text(textLeft, y + 10, newCardId
+    ? `NEW CARD READY  /  VIEW DOSSIER${width >= 350 ? '' : '  /  G / R3'}`
+    : goal.next
+      ? `NEXT: ${goal.next.name.toUpperCase()}  ${goal.next.current}/${goal.next.target}${width >= 350 ? '  /  OPEN ATLAS' : '  /  G / R3'}`
+      : `ALL COLLECTION BADGES EARNED${width >= 350 ? '  /  OPEN ATLAS' : ''}`, {
     fontFamily: 'Arial',
     fontSize: width >= 350 ? '11px' : '10px',
     fontStyle: 'bold',
@@ -53,7 +72,7 @@ export function renderCollectionGoalStrip(
   hit.on('pointerout', () => hit.setFillStyle(0x07131f, 0.94).setStrokeStyle(2, 0xc9a6ff, 0.68));
   hit.on('pointerdown', () => {
     dependencies.playConfirm();
-    onOpen();
+    onOpen(newCardId);
   });
   return hit;
 }

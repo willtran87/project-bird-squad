@@ -4882,3 +4882,514 @@ sessions through `docs/game/playtest-runbook.md`.
   preferred targets remain advisory warnings.
 - The broader card-collector objective remains active. Five genuinely observed
   fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Collection Signals
+
+- Added a read-only Collection Signals view to Flight Lab for the selected
+  Folio. It directly covers the four collection-context questions left open by
+  the deck-library objective: permanently owned cards used by no saved Folio,
+  cards appearing across the most distinct Folios, newest first-acquisition
+  records, and card pairs that co-occur in saved Folios around the current
+  list.
+- The analysis is deterministic and transparent. Usage includes active and
+  archived Folios, counts duplicate copies only once per Folio, excludes
+  unknown or non-owned card definitions, uses the permanent first-acquired
+  timestamp for recency, and defines a pair only as two owned cards sharing a
+  saved Folio.
+- Signals deliberately avoid prescriptive deck advice: there is no score,
+  ranking by win rate, auto-edit, crafting pressure, resource spend, or
+  gameplay-power effect. Current-Folio membership is labeled so players can
+  interpret the evidence without being told which choice is correct.
+- Pointer, keyboard, and controller access is complete. The Signals button,
+  `G`, or controller R3 opens from Flight Lab; the close controls, `G`, Back,
+  controller B, or controller R3 return to the Lab. Text state and
+  screen-reader narration expose every list, count, methodology rule, safety
+  rule, and control.
+- Focused browser coverage proves active/archive counts, duplicate suppression,
+  recent ordering, unused detection, pair co-occurrence, missing-definition
+  exclusion, pointer/keyboard/controller paths, screen-reader output, minimum
+  landscape rendering, and byte-stable account storage.
+- The inspected focused visual is
+  `.artifacts/test-results/flight-collection-signals.png`. The required shared
+  client drove the real title -> Flock Record -> Folios -> Flight Lab ->
+  Collection Signals pointer journey against a seeded local account, reported
+  7 owned cards, 4 Folios, 2 unused cards, and 5 pair rows, and emitted no
+  browser errors. Evidence is under
+  `.artifacts/collection-signals-shared-client-final-typography-v2/`.
+- All nine adjacent Folio scenarios pass together. Strict TypeScript with
+  unused checks, `git diff --check`, `npm run build`, and full
+  `npm run validate` pass. Validation covers 110 cards, 961 optimized assets,
+  canonical-world and directionless attack-tell contracts, deployment
+  hardening, bundle hard limits, and all 32 critical browser scenarios.
+  Combined boot remains 720.3 KiB / 194.7 KiB gzip; the app-entry and combined
+  preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Private Card Journal
+
+- Added a private 240-character Card Journal to every discovered-card Codex
+  dossier. Players can preserve combo ideas, collection goals, and personal
+  memories without turning those notes into scores, recommendations, or
+  gameplay power.
+- Journal text is normalized at the Codex and save-backup boundaries. Unsafe
+  control characters, empty notes, unknown card ids, duplicate whitespace, and
+  over-limit text are removed safely, while intentional line breaks remain.
+  Opening the Codex also reconciles malformed journal data back into the
+  journaled primary and recovery saves.
+- The journal is readable directly beside collection status and rules, and is
+  searchable from the existing Codex Find field. The editor has a complete
+  framed prompt, a native accessible textarea, visible privacy language, and
+  explicit save/cancel behavior.
+- Pointer, keyboard, and controller paths are complete: the journal panel,
+  `J`, or controller Start opens the editor; Enter or controller A saves;
+  Shift+Enter inserts a line break; Escape or controller B cancels. Blur safely
+  saves, and scene shutdown removes the native editor without leaking input.
+- Text state and screen-reader narration expose the note, editor state,
+  character limit, input paths, privacy, backup inclusion, share-code
+  exclusion, persistence, searchability, and no-power contract.
+- Focused browser coverage proves malformed-save repair, length enforcement,
+  pointer/keyboard/controller editing, save/cancel behavior, local
+  persistence, private-note search, screen-reader narration, the native editor
+  frame, and complete local save-backup inclusion. Adjacent favorites,
+  new-marker, Hunt List, personal-tag, and card-search scenarios pass.
+- Inspected visuals are
+  `.artifacts/test-results/codex-private-card-journal.png` and
+  `.artifacts/test-results/codex-private-card-journal-editor.png`. The required
+  shared client drove a fresh title -> first flight -> Collection Atlas ->
+  First Flight dossier -> Card Journal pointer journey, reported the private
+  journal editor open with backup inclusion and no power effect, and emitted
+  no browser errors; evidence is under
+  `.artifacts/card-journal-shared-client-final-v2/`.
+- The journal sanitizer remains off the eager game-core path. Strict
+  TypeScript with unused checks, `git diff --check`, `npm run build`, and full
+  `npm run validate` pass. Validation covers 110 cards, 961 optimized assets,
+  canonical-world and directionless attack-tell contracts, deployment
+  hardening, bundle hard limits, and all 33 critical browser scenarios.
+  Combined boot remains 720.3 KiB / 194.7 KiB gzip; app-entry and combined
+  preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Saved Collection Views
+
+- Added four private Saved Collection View slots to the Codex. Each captures
+  the active card set, collection lens, sanitized search query, and sort mode,
+  directly covering the collector-objective requirement to preserve complex
+  filter combinations as reusable views.
+- Saved-view records use stable set ids rather than tab positions, canonical
+  generated names, unique validated ids, normalized 40-character queries, and
+  a strict four-slot cap. Malformed, duplicate, unknown, and over-capacity
+  local records are repaired on Codex entry. Exact duplicates select the
+  existing record; a full shelf refuses the new view without silently
+  replacing anything.
+- Applying a view restores all four browsing dimensions and their existing
+  preference keys, resets grid navigation safely, and never changes
+  discovery, permanent ownership, reward odds, or card power. Complete save
+  downloads now include the sanitized view shelf, and transactional restore
+  writes it back with the other owned preferences.
+- Pointer, keyboard, and controller access is complete. The split Lens/Views
+  header control, `B`, or controller Select opens the shelf; Up/Down chooses;
+  Enter or controller A applies; Ctrl+S or controller X saves; Delete or
+  controller Y removes; and Back, `B`, controller B, controller Select, or the
+  framed close controls return to the Codex. Ctrl+S deliberately avoids
+  stealing the globally configurable plain-S Settings binding.
+- Text state and screen-reader narration expose the current combination,
+  selected view, every saved criterion, slot status, input paths, privacy,
+  backup inclusion, persistence, no-overwrite behavior, and no-power contract.
+- Corrected the Card Journal controller mapping found during this audit: the
+  visible Start instruction now listens to controller Start (button 9), while
+  controller RT remains dedicated to card sorting on the grid. The focused
+  Journal browser scenario passes with the corrected mapping.
+- Focused browser coverage proves malformed-storage repair, canonical naming,
+  pointer save, keyboard apply/delete, controller Select/D-pad/A, preference
+  restoration, four-slot refusal, screen-reader output, and complete
+  save-backup download/restore. The inspected focused visual is
+  `.artifacts/test-results/codex-saved-collection-views.png`.
+- The required shared client drove the real title -> Collection Atlas ->
+  Codex -> Saved Views journey, saved a first reusable view, reported one
+  private persisted view with backup inclusion and no power effect, rendered
+  the populated shelf cleanly at 1280x720, and emitted no browser errors.
+  Evidence is under `.artifacts/card-saved-views-shared-client-final/`.
+- Strict TypeScript with unused checks, `git diff --check`, `npm run build`,
+  and full `npm run validate` pass. Validation covers 110 cards, 961 optimized
+  assets, canonical-world and directionless attack-tell contracts, deployment
+  hardening, bundle hard limits, and all 34 critical browser scenarios.
+  Combined boot remains 720.3 KiB / 194.7 KiB gzip; app-entry and combined
+  preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Active Collection Filters
+
+- Added a dedicated active-filter rail to the card Codex. Restrictive search
+  and collection-lens criteria now render as labeled removable chips, with a
+  separate Clear All action whenever either restriction is active.
+- Each chip can be removed directly with pointer input, focused through the
+  existing logical Tab order and cleared with Enter or Delete, or selected
+  with the controller D-pad and cleared with A. Clear All resets search and
+  lens together while deliberately preserving the selected card set and sort
+  order.
+- The collection set remains navigation context and sorting remains ordering,
+  so neither is mislabeled as a removable restriction. Existing preference
+  persistence is retained, and removing filters does not alter discovery,
+  ownership, Saved Views, reward odds, or card power.
+- The Codex reserves the filter rail only while restrictions are active. Card
+  artwork keeps its existing size, filtered empty states remain below the
+  controls, and clearing the final chip collapses the header back to the
+  original grid position without a dead band.
+- Text state and screen-reader narration expose every chip, the selected
+  action, individual and bulk removal paths, persistence, and the explicit
+  set/sort preservation contract.
+- Focused browser coverage proves real Phaser pointer hit targets, independent
+  search and lens removal, keyboard and controller paths, bulk clear,
+  preference writes, screen-reader output, 44-pixel hit areas, and unchanged
+  set/sort context. Adjacent search, sorting, Saved Views, and filter-chip
+  scenarios pass together.
+- The required shared client rendered the populated lens chip and Clear All
+  rail cleanly at 1280x720, then removed the lens through a real pointer path,
+  restored the 158-pixel grid top, and emitted no browser errors. Evidence is
+  under `.artifacts/card-active-filter-chips-shared-client-final/` and
+  `.artifacts/card-active-filter-chip-removal-shared-client-final/`.
+- `git diff --check`, focused browser coverage, adjacent collection coverage,
+  and full `npm run validate` pass. Validation covers 110 runtime cards, 961
+  optimized assets, canonical-world and directionless attack-tell contracts,
+  deployment hardening, bundle hard limits, and all 35 critical browser
+  scenarios. Combined boot remains 720.3 KiB / 194.7 KiB gzip; app-entry and
+  combined preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Conservative Typo-Tolerant Card Search
+
+- Upgraded Codex Find from exact substring-only matching to a conservative,
+  deterministic typo-tolerant matcher while preserving exact partial typing
+  as the primary behavior.
+- The policy is intentionally narrow and inspectable: four-character terms
+  allow only an adjacent transposition, five-to-eight-character terms allow
+  one edit, terms of nine or more characters allow two edits, numeric terms
+  always require exact matches, and every query term must still match.
+- Fuzzy comparison uses normalized whole metadata words and remains behind the
+  existing discovery boundary. Discovered cards can match name, rules,
+  keyword, bird, set, type, cost, rarity, ownership, personal tag, private
+  journal, and showcase metadata; undiscovered cards still expose only their
+  family and ownership vocabulary to search.
+- The matching engine is isolated in `src/game/codex-card-search.ts` and
+  reports exact versus typo-assisted results without guessing a replacement
+  query or silently rewriting the player's text.
+- Typo-assisted results receive a restrained `TYPO` label in the Find control,
+  while screen-reader output announces how many results used typo help. A
+  zero-result state now explains that every term must match and points directly
+  to spelling review, the removable Search chip, and Clear All.
+- Focused browser coverage proves an adjacent transposition and missing letter
+  recover the intended discovered card, while a short substitution, unmatched
+  second term, hidden-card identity, and numeric typo remain blocked. It also
+  proves exact prefixes and exact multi-term searches keep their original
+  behavior.
+- The inspected focused visual is
+  `.artifacts/test-results/codex-typo-tolerant-search.png`. The required shared
+  client exercised the rebuilt title-to-Collection journey, exposed the
+  complete typo policy in runtime text state, and emitted no browser errors;
+  evidence is under `.artifacts/card-typo-search-shared-client-final/`.
+- `npm run build`, `git diff --check`, focused and adjacent browser coverage,
+  and full `npm run validate` pass. Validation covers 110 runtime cards, 961
+  optimized assets, canonical-world and directionless attack-tell contracts,
+  deployment hardening, bundle hard limits, and all 36 critical browser
+  scenarios. Combined boot remains 720.3 KiB / 194.7 KiB gzip; app-entry and
+  combined preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Exact Card Inspection Return
+
+- Made the Codex card-detail round trip an explicit contract instead of relying
+  on incidental in-scene state. Opening a card now captures its section, set,
+  collection lens, search text, sort order, stable card ID, selected index, and
+  exact grid scroll position before showing the full dossier.
+- Every close path shares one restoration routine: the pointer Close control or
+  backdrop, keyboard Escape, controller B, and the scene Back action all return
+  to the captured browser context. When membership is unchanged, the selected
+  card and both scroll values are restored exactly.
+- If an inspection action legitimately removes the card from the current view,
+  restoration resolves by stable ID, reports the membership change, selects a
+  safe nearby card, and scrolls it into view instead of claiming an impossible
+  exact return.
+- Named card hit targets and runtime diagnostics now expose the one-action open
+  path and captured/restored context. Screen-reader narration tells the player
+  that closing returns to the same set, lens, query, sort, selected card, and
+  prior scroll position.
+- Focused browser coverage starts deliberately deep in a filtered Plumes
+  binder, opens the selected card with a real pointer, and proves exact
+  restoration of `Plumes`, `Collected`, the `Plumes` query, Name sort, card
+  index 11, and scroll position 340. The same test repeats the round trip with
+  keyboard Enter/Escape and controller A/B and verifies persisted preferences
+  remain untouched.
+- Inspected focused visuals are
+  `.artifacts/test-results/codex-inspection-return-detail.png` and
+  `.artifacts/test-results/codex-inspection-return-grid.png`. The required
+  shared client exercised the rebuilt production bundle, exposed the complete
+  return contract, rendered cleanly at 1280x720, and emitted no browser errors;
+  evidence is under `.artifacts/card-inspection-return-shared-client-final/`.
+- `git diff --check`, focused and adjacent browser coverage, and full
+  `npm run validate` pass. Validation covers 110 runtime cards, 961 optimized
+  assets, canonical-world and directionless attack-tell contracts, deployment
+  hardening, bundle hard limits, and all 37 critical browser scenarios.
+  Combined boot remains 720.3 KiB / 194.7 KiB gzip; app-entry and combined
+  preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Saved Folio Card Usage
+
+- Audited the existing Codex organization model and confirmed Binder, Name,
+  Rarity, and true first-acquisition Recent sorting were already complete.
+  The next concrete state-language gap was saved-deck usage: cards could appear
+  in private Flight Folios without any collection-browser indication.
+- Added a derived, read-only Folio usage index in
+  `src/game/card-folio-usage.ts`. It sanitizes saved records, counts each card
+  at most once per Folio even if malformed input repeats it, and distinguishes
+  active from archived usage without mutating decks, ownership, or card power.
+- Discovered cards used in saved Folios now receive a compact second-line
+  thumbnail marker beneath ownership. Active usage reads `FOLIO N` in cyan;
+  archive-only usage reads `ARCHIVE N` in violet, keeping gameplay art, cost,
+  title, favorite, Hunt, New, and personal-tag states unobscured.
+- Added a seventh `In Folios` collection lens and made it compatible with
+  active filter chips, persistence, reusable Saved Views, zero-result guidance,
+  exact inspection return, and conservative search terms such as `folio`,
+  `deck used`, `active`, and `archive`.
+- Full card inspection now reports total, active, and archived Folio counts and
+  explicitly explains that the state is private organization only. Runtime
+  diagnostics and screen-reader narration expose the same distinction and
+  include saved Folio usage in the documented search field list.
+- Focused browser coverage proves deduplication, active/archive-only markers,
+  Folio metadata search, real pointer, keyboard, and controller lens changes,
+  the populated dossier, screen-reader wording, 44-pixel input geometry, and
+  byte-for-byte unchanged saved deck records.
+- Inspected focused visuals are
+  `.artifacts/test-results/codex-folio-usage-grid.png` and
+  `.artifacts/test-results/codex-folio-usage-detail.png`. The required shared
+  client exercised the rebuilt production bundle through the actual `In
+  Folios` lens, rendered its filter chip and complete empty state cleanly at
+  1280x720, exposed the full runtime contract, and emitted no browser errors;
+  evidence is under `.artifacts/card-folio-usage-shared-client-final/`.
+- `npm run build`, `git diff --check`, focused and adjacent collection coverage,
+  and full `npm run validate` pass. Validation covers 110 runtime cards, 961
+  optimized assets, canonical-world and directionless attack-tell contracts,
+  deployment hardening, bundle hard limits, and all 38 critical browser
+  scenarios. Combined boot remains 720.3 KiB / 194.7 KiB gzip; app-entry and
+  combined preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Permanent Card Acquisition Paths
+
+- Audited the Collection Atlas against the set-completion requirement and found
+  that it reported historical first-claim counts but did not explain how the
+  selected shelf's missing cards could currently be obtained. Card dossiers
+  also omitted whether availability was permanent, seasonal, rotating, gated,
+  or expired.
+- Added one canonical acquisition model in
+  `src/game/card-acquisition-paths.ts`. It derives Starter Flock membership from
+  validated leader decks, reward eligibility from the shared Alpha reward
+  pool, and Enemy Snag availability from card kind. Fight rewards, route
+  choices, and Canal Market stock therefore share the same source of truth as
+  gameplay.
+- The selected Atlas shelf now reports its exact missing count and overlapping
+  eligible path counts as `STARTER`, `FIGHTS`, `ROUTE`, `MARKET`, or `SNAGS`.
+  It separately reports encountered versus concealed missing cards without
+  emitting any undiscovered card ID or name.
+- Atlas copy now states `PERMANENT / NO ROTATION / NO SEASON / NO STORE GATE`.
+  The same contract is exposed in runtime diagnostics and screen-reader
+  narration, alongside a zero-path invariant proving all 110 cards remain
+  obtainable as future content changes.
+- Full inspection now includes a concise `HOW TO ACQUIRE` section with the
+  card's exact paths. Starter cards name the applicable Flock Leaders;
+  reward-pool cards explain fight, route, and market availability; Snags
+  explain that an enemy must insert the card during combat. Existing ownership,
+  Hunt, Folio, Journal, effect, and return-context behavior remains intact.
+- Focused browser coverage proves 13 missing Plumes split into one encountered
+  and 12 concealed entries, validates all source counts without identity
+  leakage, opens Twin Plume Lookout through a real keyboard action, verifies
+  its Spark-Caller and reward paths, and separately verifies Tangled Line has
+  only the Enemy Snag path.
+- Inspected focused visuals are
+  `.artifacts/test-results/codex-acquisition-paths-atlas.png` and
+  `.artifacts/test-results/codex-acquisition-paths-card.png`. The required
+  shared client exercised the rebuilt production Atlas on a fresh account,
+  confirmed 22 concealed Major cards, permanent path counts, zero pathless
+  cards, and no browser errors; evidence is under
+  `.artifacts/card-acquisition-paths-shared-client-final/`.
+- `npm run build`, `git diff --check`, focused and adjacent collection coverage,
+  and full `npm run validate` pass. Validation covers 110 runtime cards, 961
+  optimized assets, canonical-world and directionless attack-tell contracts,
+  deployment hardening, bundle hard limits, and all 39 critical browser
+  scenarios. Combined boot remains 720.3 KiB / 194.7 KiB gzip; app-entry and
+  combined preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Large-Library Codex Virtualization
+
+- Audited the Codex rendering path against the large-library responsiveness
+  requirement. The underlying design was already strong: two-row overscan,
+  visible-row-only art requests, smooth movement of the existing grid layer,
+  and thresholded rerenders instead of rebuilding every animation frame.
+- Promoted those implicit behaviors into a runtime contract reporting source
+  entries, rendered entries, skipped offscreen entries, overscan, art-queue
+  scope, rerender distance, and the loading-placeholder strategy.
+- Named the existing identity-and-family fallback as a card-art placeholder.
+  When a canonical art key is still loading, the fallback now adds a restrained
+  `ART STREAMING` label; the card name, family, ownership, and interaction
+  remain available instead of presenting a blank or frozen shelf.
+- Capped large diagnostic ID arrays at 256 while retaining complete counts and
+  explicit truncation flags. This prevents accessibility/test diagnostics from
+  serializing an entire very large library while preserving exact behavior for
+  the current 110-card catalog and every existing browser assertion.
+- Added a synthetic 10,000-card browser stress scenario. It proves more than
+  500,000 pixels of scroll range, no more than 25 rendered cards at the top or
+  30 at a fractional deep-scroll boundary, at least 9,970 skipped offscreen
+  entries, bounded art placeholders, capped diagnostics, and render completion
+  below the conservative 2.5-second failure threshold.
+- The inspected stress visual is
+  `.artifacts/test-results/codex-virtualized-large-library.png`; it shows a
+  readable identity/family fallback at deep scroll rather than blank cards.
+  The required shared client exercised the rebuilt production Major shelf,
+  reported 22 source entries, 20 rendered entries, two skipped entries, and no
+  browser errors; evidence is under
+  `.artifacts/codex-virtualization-shared-client-final/`.
+- `npm run build`, `git diff --check`, focused and adjacent Codex coverage, and
+  full `npm run validate` pass. Validation covers 110 runtime cards, 961
+  optimized assets, canonical-world and directionless attack-tell contracts,
+  deployment hardening, bundle hard limits, and all 40 critical browser
+  scenarios. Combined boot remains 720.3 KiB / 194.7 KiB gzip; app-entry and
+  combined preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Reward Card Inspection Parity
+
+- Audited full card inspection outside the Codex and found an input-parity gap:
+  combat and route reward cards exposed rich detail on mouse hover, while
+  keyboard, controller, and touch confirmation immediately claimed a card.
+  Route card rewards also lacked complete keyboard/controller choice and Back
+  behavior.
+- Added a visible `INSPECT` command to every combat-card, Preen, and route-card
+  reward. Every command meets the 44-pixel touch-target minimum. Pointer/touch,
+  remappable Roost (`R` by default), and controller `Y` now open the same full
+  card dossier without claiming or changing the reward.
+- Full inspection dims the decision beneath it, preserves the focused reward
+  index, and returns through Back/Esc, controller `B`, Confirm/`A`, or a tap on
+  the scrim. Reward options and the current deck remain byte-for-byte
+  unchanged until the player explicitly claims a card.
+- Completed route reward input parity: arrows/D-pad move between choices,
+  Confirm/`A` claims, Roost/`Y` inspects, and Back/`B` cancels to the originating
+  route choice. Focus rings, compact input guidance, runtime diagnostics, and
+  screen-reader summaries describe the same behavior.
+- Kept startup disciplined by moving shared reward-inspection state and chrome
+  into a dedicated lazy chunk used by the existing hand and hover-detail
+  boundaries. Combined boot is 724.7 KiB / 195.7 KiB gzip, below the 725 KiB
+  hard budget; all lazy reward modules remain under their individual limits.
+- Added a mandatory browser scenario covering combat and route inspection,
+  exact focus restoration, unchanged options/decks, modal rendering, and
+  touch-target dimensions. Inspected visuals are
+  `.artifacts/test-results/reward-card-inspection-combat.png` and
+  `.artifacts/test-results/reward-card-inspection-route.png`.
+- The required shared client reached the rebuilt full-art route with no pending
+  or failed asset groups and no browser error artifact; evidence is under
+  `.artifacts/reward-inspection-shared-client-final-3/`.
+- Focused and adjacent reward coverage passes, `git diff --check` passes, and
+  full `npm run validate` passes all runtime/data/asset/deployment checks and
+  all 41 mandatory browser scenarios. The app-entry and combined preferred
+  bundle targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Preen and Release Picker Input Parity
+
+- Audited route and Canal Market Preen/Release pickers after reward-inspection
+  parity. Their cards were still pointer-only, controller focus never entered
+  the grid, and Back could dead-end a route picker instead of safely restoring
+  the originating decision.
+- Added one persistent picker focus shared by keyboard, controller, pointer,
+  and touch. Previous/Next and D-pad navigation now traverse the complete
+  eligible deck, move the two-row viewport to keep focus visible, and retain
+  the exact card when returning from inspection.
+- Added a distinct `INSPECT` command beneath every visible candidate. Each
+  target is at least 44 pixels high and opens the same full card dossier without
+  Preening, Releasing, spending Scrap, or advancing a route decision.
+- Full inspection now has a blocking scrim, mode label, and explicit
+  non-destructive return guidance. Back/Esc, controller `B`, Confirm/`A`, and
+  tapping outside close it; only a subsequent explicit Confirm/`A` or card tap
+  applies the focused decision.
+- Completed cancellation parity. Back/`B` closes inspection first, returns a
+  Canal Market picker to the market without a purchase, and restores a route
+  picker to its original node choice and pre-decision deck instead of leaving
+  the player trapped.
+- Runtime diagnostics and screen-reader summaries now report picker mode,
+  context, focused card and index, scroll row, affordability, rendered focus
+  ring, inspect-target count, inspection state, and the exact preserved return
+  index.
+- Added a mandatory browser scenario that drives a 30-card Preen grid through
+  keyboard scrolling and pointer inspection, applies then cancels to prove
+  route-state recovery, and drives a Market Release through controller D-pad,
+  `Y`, `B`, and `A` while proving the deck and Scrap remain unchanged until
+  confirmation.
+- Inspected visuals are
+  `.artifacts/test-results/card-picker-input-preen.png`,
+  `.artifacts/test-results/card-picker-inspection-preen.png`,
+  `.artifacts/test-results/card-picker-input-release.png`, and
+  `.artifacts/test-results/card-picker-inspection-release.png`. They show clear
+  focus, readable undimmed grids, intact card art, and modal return guidance.
+- The required shared client reached the rebuilt full-art route with no pending
+  or failed asset groups and no browser error artifact; evidence is under
+  `.artifacts/card-picker-shared-client/`.
+- Fresh build, documentation/runtime/data/asset/world/FX/deployment checks,
+  `git diff --check`, and the hard bundle gate pass. Combined boot is 724.9 KiB
+  / 195.7 KiB gzip, below the 725 KiB hard limit; preferred app-entry and
+  combined targets remain advisory warnings. All 42 mandatory browser
+  scenarios pass in 10.3 minutes with an empty stderr log.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Direct New-Card Dossier Return
+
+- Audited first-copy, repeat-claim, and post-claim presentation. Existing
+  rewards already distinguish `NEW TO COLLECTION`, prior flight claims, and
+  Hunt completion; claim persistence records source, first-acquired time, and
+  claim count atomically with distinct audio and log feedback. The remaining
+  gap was the lack of a direct post-claim path to the new card's full dossier.
+- The existing collection strip now detects the newest unreviewed permanent
+  card and changes its destination to `NEW CARD READY / VIEW DOSSIER`. It uses
+  the durable `isNew` record rather than run-deck order, rarity, or reward odds.
+- Pointer/touch, route `G`, and controller `R3` now open that exact card in the
+  Codex instead of stopping at the Collection Atlas. The Codex selects the
+  correct card family, clears unrelated saved lens/search context for this
+  explicit direct entry, and opens full art, rules, provenance, acquisition
+  paths, private journal, showcase, and collection controls in one action.
+- Direct inspection does not clear the New marker. The player must explicitly
+  choose `MARK SEEN`, press `N`, or use controller `LT`; after acknowledgement,
+  the route strip advances to the next-newest unreviewed card.
+- Entering Codex checkpoints the active flight and carries exact return data.
+  Back/Esc or controller `B` closes the dossier first and then returns to the
+  same route with deck, Cohesion, Scrap, and route progress unchanged.
+- Route runtime diagnostics and screen-reader narration expose the exact
+  unreviewed card destination, input paths, marker-preservation guarantee, and
+  reversible return to the active flight.
+- Added a mandatory browser scenario covering a 58-pixel route target, exact
+  newest-card selection, genuine pointer entry, keyboard acknowledgement and
+  next-card entry, controller entry/return, persistent marker order, and
+  unchanged run resources across every round trip.
+- Inspected visuals are
+  `.artifacts/test-results/new-card-direct-route-strip.png` and
+  `.artifacts/test-results/new-card-direct-dossier.png`. The required shared
+  client independently opened a fresh starter card's exact dossier from the
+  live route strip, preserved its New state and Route origin, and emitted no
+  browser error artifact; evidence is under
+  `.artifacts/new-card-shortcut-shared-client/`.
+- Fresh build, documentation/runtime/data/asset/world/FX/deployment checks,
+  `git diff --check`, and the hard bundle gate pass. Combined boot is 725.0 KiB
+  / 195.8 KiB gzip at the unchanged 725 KiB hard limit; preferred app-entry
+  and combined targets remain advisory warnings. All 43 mandatory browser
+  scenarios pass in 10.6 minutes with an empty stderr log.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.

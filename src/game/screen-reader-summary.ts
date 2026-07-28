@@ -98,6 +98,25 @@ export function screenReaderSummary(payload: unknown): string {
         : '';
       return `Folio Organizer for ${text(organizer.deckName)}. Current folder ${text(organizer.folderLabel)}. Strategy labels: ${labels.join(', ') || 'none'}. ${labels.length} of ${number(organizer.tagLimit) ?? 3} labels used. Active section ${section}. Selected ${text(selected?.label)}: ${text(selected?.description)}.${limitMessage} Organization is private, included in save backups, excluded from BSF share codes, and never affects power. Use Tab or controller shoulders to switch sections; Previous, Next, Up, Down, or controller D-pad to choose; Confirm or controller A to apply; P or controller X for Folio Identity; R or controller Y to rename; and Back or controller B to return.`;
     }
+    const collectionSignals = isRecord(folios?.collectionSignals) ? folios.collectionSignals : undefined;
+    if (collectionSignals?.open === true) {
+      const unused = records(collectionSignals.unused)
+        .map((card) => text(card.name))
+        .filter(Boolean)
+        .join(', ');
+      const frequent = records(collectionSignals.frequentlyFiled)
+        .map((card) => `${text(card.name)}, ${number(card.folioCount) ?? 0} Folios`)
+        .join('; ');
+      const recent = records(collectionSignals.recentlyAcquired)
+        .map((card) => `${text(card.name)}${number(card.folioCount) === 0 ? ', unused' : ''}`)
+        .join('; ');
+      const pairs = records(collectionSignals.commonlyPaired).map((pair) => {
+        const first = isRecord(pair.first) ? pair.first : undefined;
+        const second = isRecord(pair.second) ? pair.second : undefined;
+        return `${text(first?.name)} with ${text(second?.name)}, ${number(pair.folioCount) ?? 0} Folios`;
+      }).join('; ');
+      return `Collection Signals for ${text(collectionSignals.deckName)}. ${number(collectionSignals.ownedCount) ?? 0} permanently owned cards across ${number(collectionSignals.activeFolioCount) ?? 0} active and ${number(collectionSignals.archivedFolioCount) ?? 0} archived Folios. ${number(collectionSignals.unusedCount) ?? 0} owned cards are unused.${unused ? ` Unused shown: ${unused}.` : ''}${frequent ? ` Many Folios: ${frequent}.` : ''}${recent ? ` New arrivals: ${recent}.` : ''}${pairs ? ` Common pairs touching this Folio: ${pairs}.` : ''} Usage counts distinct saved Folios including Archive, duplicate copies count once per Folio, recent means first acquired, and a pair means two owned cards share a Folio. These are descriptive signals, not recommendations; they never edit the Folio or affect power. Use G, Back, controller B or right stick, or pointer to return to Flight Lab.`;
+    }
     const fieldRecord = isRecord(folios?.fieldRecord) ? folios.fieldRecord : undefined;
     if (fieldRecord?.open === true) {
       if (fieldRecord.notesEditing === true) {
@@ -165,7 +184,7 @@ export function screenReaderSummary(payload: unknown): string {
       const issues = Array.isArray(flightLab.issues)
         ? flightLab.issues.map(text).filter(Boolean).join(' ')
         : '';
-      return `Flight Lab for ${text(flightLab.deckName)}. ${flightLab.legalForStandardFlight === true ? 'Standard ready.' : 'Review needed.'} ${number(flightLab.savedCopies) ?? 0} saved copies, ${number(flightLab.playableCards) ?? 0} playable cards, average cost ${number(flightLab.averageCost) ?? 0}. Cost curve: ${curve || 'empty'}. Roles: ${roles || 'none'}. Families: ${families || 'none'}. Resource hooks: ${hooks || 'none'}. Sample hand ${number(sample?.number) ?? 1}: ${sampleCards || 'no cards'}. ${number(sample?.playableCount) ?? 0} playable now and ${number(sample?.pressureCount) ?? 0} pressure cards. Across ${number(consistency?.sampleCount) ?? 0} deterministic hands, ${number(consistency?.averagePlayable) ?? 0} average playable, ${number(consistency?.atLeastTwoPlayablePercent) ?? 0} percent open with two playable, and ${number(consistency?.pressurePercent) ?? 0} percent include pressure.${issues ? ` ${issues}` : ''} Practice uses the real protected combat opening draw, never changes the folio, never affects power, and spends no Scrap. Use N or controller left stick for the Field Record, R or controller Y for the Revision Trail, T or controller X for the Tuning Bench, Previous and Next, Space, or controller A to deal, and Back or controller B to close the Lab.`;
+      return `Flight Lab for ${text(flightLab.deckName)}. ${flightLab.legalForStandardFlight === true ? 'Standard ready.' : 'Review needed.'} ${number(flightLab.savedCopies) ?? 0} saved copies, ${number(flightLab.playableCards) ?? 0} playable cards, average cost ${number(flightLab.averageCost) ?? 0}. Cost curve: ${curve || 'empty'}. Roles: ${roles || 'none'}. Families: ${families || 'none'}. Resource hooks: ${hooks || 'none'}. Sample hand ${number(sample?.number) ?? 1}: ${sampleCards || 'no cards'}. ${number(sample?.playableCount) ?? 0} playable now and ${number(sample?.pressureCount) ?? 0} pressure cards. Across ${number(consistency?.sampleCount) ?? 0} deterministic hands, ${number(consistency?.averagePlayable) ?? 0} average playable, ${number(consistency?.atLeastTwoPlayablePercent) ?? 0} percent open with two playable, and ${number(consistency?.pressurePercent) ?? 0} percent include pressure.${issues ? ` ${issues}` : ''} Practice uses the real protected combat opening draw, never changes the folio, never affects power, and spends no Scrap. Use G or controller right stick for Collection Signals, N or controller left stick for the Field Record, R or controller Y for the Revision Trail, T or controller X for the Tuning Bench, Previous and Next, Space, or controller A to deal, and Back or controller B to close the Lab.`;
     }
     const nextMilestone = isRecord(collectionMilestones?.next) ? collectionMilestones.next : undefined;
     const current = spaced(text(focus?.current)) || 'Flock Record';
@@ -238,6 +257,31 @@ export function screenReaderSummary(payload: unknown): string {
         : '';
       return `Deck review. ${visible} of ${total} cards. Filter ${filter}. Sort ${sort}.${query ? ` Find ${query}.` : ''} Selected ${selectedName}${selectedCost === undefined ? '' : `, ${selectedCost} Wingbeats`}.${comparisonSummary}${saveSummary} Use Up and Down to choose a card, Previous and Next to change filter, Confirm to change sort, C or controller X to pin a comparison; pin the selected card to compare Base and Preened, V or controller Y to save this flight without replacing an existing folio, slash to find, and Back to close.`;
     }
+    const cardPicker = isRecord(payload.cardPickerInput) ? payload.cardPickerInput : undefined;
+    if (cardPicker) {
+      const pickerMode = text(cardPicker.mode) === 'preen' ? 'Preen' : 'Release';
+      const index = number(cardPicker.focusIndex) ?? 0;
+      const count = number(cardPicker.count) ?? 0;
+      const cost = number(cardPicker.cost);
+      const costLabel = text(cardPicker.context) === 'market' ? 'Scrap' : 'Wingbeats';
+      if (cardPicker.inspectionOpen === true) {
+        return `Full card inspection. ${text(cardPicker.cardName) || `${pickerMode} candidate`}${cost === undefined ? '' : `, ${cost} ${costLabel}`}. No card has been changed${costLabel === 'Scrap' ? ' and no Scrap has been spent' : ''}. Use Back, controller B, Confirm, controller A, or tap outside to return to card ${index + 1} of ${count}.`;
+      }
+      return `${pickerMode} card picker. Focused ${text(cardPicker.cardName) || 'card'}${cost === undefined ? '' : `, ${cost} ${costLabel}`}, card ${index + 1} of ${count}.${cardPicker.affordable === false ? ' Not enough Scrap.' : ''} Use Previous and Next or the D-pad to choose, Confirm or A to ${pickerMode.toLowerCase()}, Roost or Y to inspect without applying, and Back or B to cancel.`;
+    }
+    const routeReward = isRecord(payload.routeReward) ? payload.routeReward : undefined;
+    if (routeReward) {
+      const routeInspection = isRecord(routeReward.inspection) ? routeReward.inspection : undefined;
+      const routeFocus = isRecord(routeReward.inputFocus) ? routeReward.inputFocus : undefined;
+      if (routeInspection?.open === true) {
+        return `Full card inspection. ${text(routeInspection.cardName) || 'Reward card'}${number(routeInspection.cost) === undefined ? '' : `, ${number(routeInspection.cost)} Wingbeats`}. No reward has been claimed. Use Back, controller B, or tap outside to return to choice ${number(routeInspection.returnIndex) === undefined ? '' : (number(routeInspection.returnIndex) ?? 0) + 1}.`;
+      }
+      const cardChoices = Array.isArray(routeReward.cardChoices) ? routeReward.cardChoices.length : 0;
+      if (cardChoices > 0) {
+        const index = number(routeFocus?.index) ?? 0;
+        return `Route reward choice. Focused card ${index + 1} of ${cardChoices}. Use Previous and Next or the D-pad to choose, Confirm or A to claim, Roost or Y to inspect, and Back or B to cancel without claiming.`;
+      }
+    }
     const map = isRecord(payload.map) ? payload.map : undefined;
     const run = isRecord(payload.run) ? payload.run : undefined;
     const selectedNodeId = text(payload.selectedNodeId);
@@ -256,12 +300,18 @@ export function screenReaderSummary(payload: unknown): string {
       ? ''
       : ` Cohesion ${hp} of ${maxHp}.${scrap === undefined ? '' : ` Scrap ${scrap}.`}`;
     const collectionSummary = collectionGoal
-      ? ` Collection path: ${number(collectionGoal.owned) ?? 0} of ${number(collectionGoal.total) ?? 0} cards.${nextGoal ? ` Next optional goal, ${text(nextGoal.name)}, ${number(nextGoal.current) ?? 0} of ${number(nextGoal.target) ?? 0}.` : ' All collection badges earned.'} Use G, controller R3, or the route collection strip to open the Atlas and return here without changing the flight.`
+      ? ` Collection path: ${number(collectionGoal.owned) ?? 0} of ${number(collectionGoal.total) ?? 0} cards.${nextGoal ? ` Next optional goal, ${text(nextGoal.name)}, ${number(nextGoal.current) ?? 0} of ${number(nextGoal.target) ?? 0}.` : ' All collection badges earned.'}${text(collectionGoal.newCardId) ? ' A newly claimed card is ready for review. Use G, controller R3, or the route collection strip to open its exact dossier and return here without changing the flight or clearing its New marker.' : ' Use G, controller R3, or the route collection strip to open the Atlas and return here without changing the flight.'}`
       : '';
     return `Route, ${mapName}. Selected ${nodeLabel}${risk ? `, ${risk} risk` : ''}.${resources}${collectionSummary} Press Confirm to inspect or commit.`;
   }
 
   if (scene === 'BattleScene') {
+    const rewardInspection = isRecord(payload.rewardInspection) ? payload.rewardInspection : undefined;
+    if (rewardInspection?.open === true) {
+      const cost = number(rewardInspection.cost);
+      const rules = text(rewardInspection.rules);
+      return `Full card inspection. ${text(rewardInspection.cardName) || 'Reward card'}${cost === undefined ? '' : `, ${cost} Wingbeats`}.${rules ? ` ${rules}` : ''} No reward has been claimed. Use Back, controller B, Confirm, controller A, or tap outside to return to the same choice.`;
+    }
     const inspect = isRecord(payload.cardInspectFocus) ? payload.cardInspectFocus : undefined;
     if (inspect?.active === true) {
       const card = isRecord(payload.inspectedCard) ? payload.inspectedCard : undefined;
@@ -345,7 +395,7 @@ export function screenReaderSummary(payload: unknown): string {
       const focused = focusedLabel
         ? ` Focused ${focusedLabel}${focusedIndex !== undefined && focusedCount !== undefined ? `, choice ${focusedIndex + 1} of ${focusedCount}` : ''}.`
         : '';
-      return `Reward choice.${focused}${collectionNote}${choices.length ? ` Options: ${choices.join(', ')}.` : ''} Use Previous and Next to choose, then Confirm. Use Skip Reward for Scrap when available.`;
+      return `Reward choice.${focused}${collectionNote}${choices.length ? ` Options: ${choices.join(', ')}.` : ''} Use Previous and Next to choose, Confirm to claim, and Roost or controller Y to inspect without claiming. Use Skip Reward for Scrap when available.`;
     }
     if (selectedCard) {
       const name = text(selectedCard.name) || 'card';
@@ -374,18 +424,27 @@ export function screenReaderSummary(payload: unknown): string {
     const detail = text(payload.detailOpen);
     const favorites = isRecord(payload.cardFavorites) ? payload.cardFavorites : undefined;
     const personalTags = isRecord(payload.personalCardTags) ? payload.personalCardTags : undefined;
+    const cardJournal = isRecord(payload.cardJournal) ? payload.cardJournal : undefined;
+    const savedViews = isRecord(payload.savedCollectionViews) ? payload.savedCollectionViews : undefined;
     const hunt = isRecord(payload.collectionHunt) ? payload.collectionHunt : undefined;
     const showcase = isRecord(payload.cardShowcase) ? payload.cardShowcase : undefined;
     const ownership = isRecord(payload.cardOwnership) ? payload.cardOwnership : undefined;
+    const acquisition = isRecord(payload.cardAcquisition) ? payload.cardAcquisition : undefined;
+    const folioUsage = isRecord(payload.cardFolioUsage) ? payload.cardFolioUsage : undefined;
     const newCards = isRecord(payload.newlyAcquiredCards) ? payload.newlyAcquiredCards : undefined;
     const collectionLens = isRecord(payload.cardCollectionLens) ? payload.cardCollectionLens : undefined;
+    const activeFilters = isRecord(payload.activeCardFilters) ? payload.activeCardFilters : undefined;
     const cardSearch = isRecord(payload.cardSearch) ? payload.cardSearch : undefined;
     const cardSort = isRecord(payload.cardSort) ? payload.cardSort : undefined;
+    const inspectionReturn = isRecord(payload.inspectionReturn) ? payload.inspectionReturn : undefined;
     const collectionAtlas = isRecord(payload.collectionAtlas) ? payload.collectionAtlas : undefined;
     const atlasOverall = isRecord(collectionAtlas?.overall) ? collectionAtlas.overall : undefined;
     const atlasSelected = isRecord(collectionAtlas?.selectedFamily) ? collectionAtlas.selectedFamily : undefined;
+    const atlasSelectedMissing = isRecord(collectionAtlas?.selectedMissing) ? collectionAtlas.selectedMissing : undefined;
     const atlasNextMilestone = isRecord(collectionAtlas?.nextMilestone) ? collectionAtlas.nextMilestone : undefined;
     const detailOwnership = isRecord(ownership?.detail) ? ownership.detail : undefined;
+    const detailAcquisition = isRecord(acquisition?.detail) ? acquisition.detail : undefined;
+    const detailFolioUsage = isRecord(folioUsage?.detail) ? folioUsage.detail : undefined;
     const collectedCount = number(ownership?.collectedCount) ?? 0;
     const discoveredCount = number(payload.cardsDiscovered) ?? 0;
     const detailFavorite = favorites?.detailFavorite === true;
@@ -400,6 +459,10 @@ export function screenReaderSummary(payload: unknown): string {
     const detailPersonalTagLabel = detailPersonalTag
       ? `${detailPersonalTag[0].toUpperCase()}${detailPersonalTag.slice(1)}`
       : '';
+    const detailJournalNote = spaced(text(cardJournal?.detailNote)).replace(/\s+/g, ' ').trim();
+    const detailJournalSentence = detailJournalNote && /[.!?]$/.test(detailJournalNote)
+      ? detailJournalNote
+      : `${detailJournalNote}.`;
     const detailTargeted = hunt?.detailTargeted === true;
     const canTarget = hunt?.detailCanTarget === true;
     const huntView = hunt?.viewActive === true;
@@ -418,9 +481,11 @@ export function screenReaderSummary(payload: unknown): string {
     const searchScope = spaced(text(cardSearch?.scope)) || 'current set';
     const searchMatches = number(cardSearch?.matchCount) ?? 0;
     const searchVisible = number(cardSearch?.visibleCount) ?? 0;
+    const typoMatches = number(cardSearch?.typoMatchCount) ?? 0;
     const sortLabel = spaced(text(cardSort?.label)) || 'binder';
     const newCardCount = number(newCards?.count) ?? 0;
     const detailNew = newCards?.detailNew === true;
+    const folioCardCount = number(folioUsage?.cardCount) ?? 0;
     const atlasCollected = number(atlasOverall?.owned) ?? collectedCount;
     const atlasTotal = number(atlasOverall?.total) ?? number(payload.cardsTotal) ?? 0;
     const itemPosition = zone === 'entries' && position !== undefined && count !== undefined
@@ -444,6 +509,37 @@ export function screenReaderSummary(payload: unknown): string {
             ? ` Showing ${visiblePersonalTagCount} personally tagged card${visiblePersonalTagCount === 1 ? '' : 's'} in this set; ${personalTagCount} tagged across the collection.`
             : ' No personal tags in this set. Open a discovered card and use V or controller L3 to choose one.'
           : ` ${personalTagCount} personally tagged card${personalTagCount === 1 ? '' : 's'}.`
+      : '';
+    if (cardJournal?.editing === true) {
+      return `Editing the private Card Journal for ${text(cardJournal.detailName) || 'this card'}. The limit is ${number(cardJournal.maxLength) ?? 240} characters. Press Enter or controller A to save, Shift plus Enter for a new line, or Escape or controller B to cancel. The note is included in local save backups, excluded from shared deck codes, and never affects play.`;
+    }
+    if (savedViews?.open === true) {
+      const items = records(savedViews.items);
+      const selectedIndex = Math.max(0, number(savedViews.selectedIndex) ?? 0);
+      const selected = items[selectedIndex];
+      const selectedName = text(selected?.name);
+      const query = text(selected?.query);
+      const criteria = selected
+        ? `${text(selected.tabLabel) || 'Cards'}, ${text(selected.lensLabel) || 'All'} lens, ${query ? `search ${query}` : 'no search'}, ${text(selected.sortLabel) || 'Binder'} order`
+        : 'No saved view selected';
+      const status = text(savedViews.status);
+      const statusText = status === 'saved'
+        ? ' View saved.'
+        : status === 'duplicate'
+          ? ' That exact view is already saved.'
+          : status === 'full'
+            ? ' The four-view shelf is full.'
+            : status === 'deleted'
+              ? ' View removed without changing collection data.'
+              : status === 'failed'
+                ? ' The view could not be stored; nothing changed.'
+                : '';
+      return `Saved Collection Views open. ${items.length} of ${number(savedViews.capacity) ?? 4} saved.${selectedName ? ` Selected ${selectedIndex + 1} of ${items.length}, ${selectedName}: ${criteria}.` : ' No saved views yet; save the current combination.'}${statusText} Use Up and Down to choose, Confirm or controller A to apply, Control plus S or controller X to save the current view, Delete or controller Y to remove the selected view, or B, controller Select, or Back to close. Saved views are private, included in complete save backups, and never affect card power, ownership, or reward odds.`;
+    }
+    const cardJournalState = section === 'cards' && detail
+      ? detailJournalNote
+        ? ` Private Card Journal note: ${detailJournalSentence} Use J, controller Start, or the journal panel to edit it. The note is included in local save backups, excluded from shared deck codes, and never affects power.`
+        : ' No private Card Journal note yet. Use J, controller Start, or the journal panel to add one; it is included in local save backups, excluded from shared deck codes, and never affects power.'
       : '';
     const huntState = detail
       ? detailOwnership
@@ -475,6 +571,21 @@ export function screenReaderSummary(payload: unknown): string {
           : ' Discovered but not yet collected. Claim it during a flight to create its permanent collection record.'
         : ` ${collectedCount} collected and ${discoveredCount} discovered.`
       : '';
+    const starterLeaderNames = Array.isArray(detailAcquisition?.starterLeaderNames)
+      ? detailAcquisition.starterLeaderNames.map(text).filter(Boolean)
+      : [];
+    const acquisitionState = section === 'cards' && detail && detailAcquisition
+      ? ` Permanently available with no seasonal rotation, expiration, or store gate. Acquisition paths: ${records(detailAcquisition.paths).map((path) => spaced(text(path.label))).filter(Boolean).join(', ') || 'none recorded'}.${starterLeaderNames.length > 0 ? ` Starter options: ${starterLeaderNames.join(', ')}.` : ''}`
+      : '';
+    const folioUsageState = section === 'cards'
+      ? detail
+        ? detailFolioUsage
+          ? ` Used in ${number(detailFolioUsage.total) ?? 0} saved Flight Folio${number(detailFolioUsage.total) === 1 ? '' : 's'}: ${number(detailFolioUsage.active) ?? 0} active and ${number(detailFolioUsage.archived) ?? 0} archived. This private organization never changes card power or ownership.`
+          : ' Not used in a saved Flight Folio.'
+        : folioUsage?.lensActive === true
+          ? ` Showing ${lensVisible} card${lensVisible === 1 ? '' : 's'} used in saved Flight Folios.`
+          : ` ${folioCardCount} discovered card${folioCardCount === 1 ? '' : 's'} used in saved Flight Folios.`
+      : '';
     const newCardState = section === 'cards'
       ? detail
         ? detailNew
@@ -487,22 +598,33 @@ export function screenReaderSummary(payload: unknown): string {
     const collectionLensState = section === 'cards' && !detail
       ? ` Collection lens ${lensLabel}, showing ${lensVisible} of ${lensBase} ${cardSearch?.active === true ? 'search matches' : 'cards in this set'}.${collectionLens?.empty === true ? ' No cards match this lens.' : ''} Use L or controller LB to change the lens.`
       : '';
+    const activeFilterItems = records(activeFilters?.chips)
+      .filter((chip) => chip.clearAll !== true);
+    const activeFiltersState = section === 'cards' && !detail && activeFilterItems.length > 0
+      ? ` Active filter chips: ${activeFilterItems.map((chip) => `${text(chip.label)}, ${text(chip.value)}`).join('; ')}. Focus a chip and press Confirm, Delete, or controller A to remove it individually, or choose Clear All to reset search and lens together. The current set and sorting stay in place.`
+      : '';
     const cardSearchState = section === 'cards' && !detail
       ? cardSearch?.editing === true
         ? ` Find cards field active.${searchQuery ? ` Current query ${searchQuery}.` : ''} Type to filter, Enter to apply, or Escape to cancel.`
         : searchQuery
-          ? ` Find cards query ${searchQuery}, ${searchMatches} match${searchMatches === 1 ? '' : 'es'} in ${searchScope}; ${searchVisible} visible after the collection lens.${cardSearch?.empty === true ? ' No cards match this search.' : ''} Use slash or controller RB to edit or clear it.`
-          : ' Use slash or controller RB to find cards by name, rules, keyword, character, set, type, cost, rarity, ownership, personal tag, or showcase status.'
+          ? ` Find cards query ${searchQuery}, ${searchMatches} match${searchMatches === 1 ? '' : 'es'} in ${searchScope}; ${searchVisible} visible after the collection lens.${typoMatches > 0 ? ` Typo-tolerant matching helped with ${typoMatches} result${typoMatches === 1 ? '' : 's'}.` : ''}${cardSearch?.empty === true ? ' No card matches every search term. Check spelling, remove the Search chip, or choose Clear All.' : ''} Use slash or controller RB to edit or clear it.`
+          : ' Use slash or controller RB to find cards by name, rules, keyword, character, set, type, cost, rarity, ownership, saved Folio usage, personal tag, private journal, or showcase status. Search tolerates conservative misspellings while requiring every term to match.'
       : '';
     const cardSortState = section === 'cards' && !detail
       ? ` Sorted by ${sortLabel}. Use R or controller RT to change sorting.`
       : '';
+    const inspectionReturnState = detail && inspectionReturn?.captured === true
+      ? ` Closing this inspection returns to ${spaced(text(inspectionReturn.set)) || 'the same set'}, ${spaced(text(inspectionReturn.lens)) || 'the same lens'} lens${text(inspectionReturn.query) ? `, search ${text(inspectionReturn.query)}` : ''}, ${spaced(text(inspectionReturn.sort)) || 'the same'} order, selected card, and prior scroll position.`
+      : '';
+    const savedViewsState = section === 'cards' && !detail
+      ? ` ${number(savedViews?.count) ?? 0} of ${number(savedViews?.capacity) ?? 4} reusable collection views saved. Use B or controller Select to manage combinations of set, lens, search, and sorting. Saved views are private, included in complete save backups, and never affect power.`
+      : '';
     const collectionAtlasState = section === 'cards' && !detail
       ? collectionAtlas?.open === true
-        ? ` Collection Atlas open. ${atlasCollected} of ${atlasTotal} cards permanently collected. Collector milestones ${number(collectionAtlas?.completedMilestones) ?? 0} of ${records(collectionAtlas?.milestones).length} earned.${atlasNextMilestone ? ` Next, ${text(atlasNextMilestone.name)}, ${number(atlasNextMilestone.current) ?? 0} of ${number(atlasNextMilestone.target) ?? 0}.` : ''} Focused ${spaced(text(atlasSelected?.name)) || 'set'}, ${number(atlasSelected?.owned) ?? 0} of ${number(atlasSelected?.total) ?? 0} collected and ${number(atlasSelected?.discovered) ?? 0} encountered. Milestone badges never affect power. Use Up and Down to browse sets, Confirm to open one, or G, controller R3, or Back to close.`
+        ? ` Collection Atlas open. ${atlasCollected} of ${atlasTotal} cards permanently collected. Collector milestones ${number(collectionAtlas?.completedMilestones) ?? 0} of ${records(collectionAtlas?.milestones).length} earned.${atlasNextMilestone ? ` Next, ${text(atlasNextMilestone.name)}, ${number(atlasNextMilestone.current) ?? 0} of ${number(atlasNextMilestone.target) ?? 0}.` : ''} Focused ${spaced(text(atlasSelected?.name)) || 'set'}, ${number(atlasSelected?.owned) ?? 0} of ${number(atlasSelected?.total) ?? 0} collected and ${number(atlasSelected?.discovered) ?? 0} encountered.${atlasSelectedMissing ? ` ${number(atlasSelectedMissing.count) ?? 0} missing; available through ${records(atlasSelectedMissing.paths).map((path) => `${spaced(text(path.name))} for ${number(path.count) ?? 0}`).join(', ') || 'no remaining paths'}. All cards are permanent with no rotation, season, or store gate; undiscovered identities remain concealed.` : ''} Milestone badges never affect power. Use Up and Down to browse sets, Confirm to open one, or G, controller R3, or Back to close.`
         : ` Collection Atlas has permanent set, rarity, acquisition-path, and collector-milestone progress for ${atlasCollected} of ${atlasTotal} cards. Use G or controller R3 to open it.`
       : '';
-    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${personalTagState}${showcaseState}${huntState}${huntViewState}${ownershipState}${newCardState}${cardSearchState}${cardSortState}${collectionLensState}${collectionAtlasState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : collectionAtlas?.open === true ? 'Choose a set or close the Collection Atlas.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
+    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${personalTagState}${cardJournalState}${showcaseState}${huntState}${huntViewState}${ownershipState}${acquisitionState}${folioUsageState}${newCardState}${cardSearchState}${cardSortState}${collectionLensState}${activeFiltersState}${savedViewsState}${collectionAtlasState}${inspectionReturnState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : collectionAtlas?.open === true ? 'Choose a set or close the Collection Atlas.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
   }
   return scene ? `${spaced(scene)}.` : '';
 }

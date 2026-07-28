@@ -89,6 +89,7 @@ export interface RewardCeremonyRenderContext {
   skip?: { scrap: number; deckSize: number; scrapAfter: number };
   addIcon: (icon: string, x: number, y: number, size: number) => Phaser.GameObjects.Image | undefined;
   onCardSelect: (cardId: string) => void;
+  onCardInspect: (cardId: string) => void;
   onCardHover: (cardId: string, x: number, y: number) => void;
   onCardOut: () => void;
   onWaymarkSelect: (waymarkId: string) => void;
@@ -531,6 +532,31 @@ function renderCard(context: RewardCeremonyRenderContext, card: RewardCardView, 
       maxLines: 1
     }).setName(card.footerUsesObservations ? 'reward-build-observation' : 'reward-card-stat'));
   });
+  const inspectY = bottom + 28;
+  const inspect = scene.add.rectangle(x, inspectY, 132, MIN_SUPPORTED_TOUCH_TARGET, 0x102534, 0.99)
+    .setStrokeStyle(2, card.focused ? 0x8df4ff : card.accent, 0.94)
+    .setInteractive({ useHandCursor: true })
+    .setName('reward-card-inspect-hit');
+  inspect.on('pointerdown', (
+    _pointer: Phaser.Input.Pointer,
+    _localX: number,
+    _localY: number,
+    event?: Phaser.Types.Input.EventData,
+  ) => {
+    event?.stopPropagation();
+    context.onCardInspect(card.id);
+  });
+  inspect.on('pointerover', () => inspect.setFillStyle(0x18384b, 1));
+  inspect.on('pointerout', () => inspect.setFillStyle(0x102534, 0.99));
+  target.add(inspect);
+  target.add(scene.add.text(x, inspectY, 'INSPECT', {
+    fontFamily,
+    fontSize: '11px',
+    fontStyle: boldFontStyle,
+    color: '#dffbff',
+    align: 'center',
+    fixedWidth: 118,
+  }).setOrigin(0.5).setName('reward-card-inspect-label'));
   hoverRing = addHoverRing(context, x, y, hoverWidth, hoverHeight);
   if (hoverRing) target.add(hoverRing);
   return glow.burst;

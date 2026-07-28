@@ -31,6 +31,7 @@ export interface PlayerAccount {
   discoveredCards: string[]; // card ids the player has encountered (for the Codex)
   favoriteCards: string[]; // discovered cards the player has marked as personal favorites
   cardTags?: Partial<Record<string, CardPersonalTag>>; // private, non-power organization for discovered cards
+  cardJournal?: Partial<Record<string, string>>; // sanitized at Codex and backup boundaries
   showcase?: string[]; // up to three discovered cards deliberately presented in Flock Record
   decks?: SavedDeckRecord[]; // capped, identity-focused snapshots of meaningful flight decks
   hunt?: string[]; // up to three discovered, uncollected cards the player is actively hunting
@@ -144,9 +145,7 @@ function sanitizeLeaderRecords(value: unknown): Record<string, LeaderPersonalRec
       if (!/^(full|quick):[0-6]$/.test(key) || !isRecord(rawClear)) return [];
       const wins = finiteInt(rawClear.wins);
       if (!wins) return [];
-      const fastestRunTurns = rawClear.fastestRunTurns == null
-        ? null
-        : finiteInt(rawClear.fastestRunTurns, 0, 1) || null;
+      const fastestRunTurns = finiteInt(rawClear.fastestRunTurns, 0, 1) || null;
       return [[key, { wins, fastestRunTurns }]];
     }));
     return [[leaderId, { clears }]];
@@ -157,9 +156,7 @@ export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
   if (!isRecord(value)) return undefined;
   const wins = finiteInt(value.wins);
   const losses = finiteInt(value.losses);
-  const fastestWinTurns = value.fastestWinTurns == null
-    ? null
-    : finiteInt(value.fastestWinTurns, 0, 1) || null;
+  const fastestWinTurns = finiteInt(value.fastestWinTurns, 0, 1) || null;
   const unlockedLeaders = stringList(value.unlockedLeaders).filter((id) => LEADER_IDS.has(id));
   const discoveredCards = stringList(value.discoveredCards);
   const cardCollection = sanitizeCardCollection(value.cardCollection, discoveredCards);
@@ -188,6 +185,7 @@ export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
     discoveredCards,
     favoriteCards: stringList(value.favoriteCards).filter((id) => discoveredCards.includes(id)),
     cardTags: value.cardTags as Partial<Record<string, CardPersonalTag>>,
+    cardJournal: value.cardJournal as Partial<Record<string, string>>,
     showcase: value.showcase as string[],
     // Flight Folios are fully sanitized at their route/profile/backup boundaries.
     decks: value.decks as SavedDeckRecord[],

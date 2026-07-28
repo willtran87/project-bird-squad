@@ -522,3 +522,11 @@ export function renderBattleHandPreview(
   target.add(container);
   return container;
 }
+
+export {
+  closeRewardCardInspection,
+  focusedRewardCard,
+  openRewardCardInspection,
+  renderRewardInspectButton,
+  syncRewardCardInspection,
+} from '../reward-card-inspection';

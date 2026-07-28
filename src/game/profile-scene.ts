@@ -53,6 +53,10 @@ import {
   type SavedDeckLabReplacement,
 } from './saved-deck-lab';
 import {
+  analyzeSavedDeckCollectionSignals,
+  type SavedDeckCollectionSignals,
+} from './saved-deck-collection-signals';
+import {
   compareSavedDeckRevisions,
   restoreSavedDeckRevision,
   savedDeckRevisionTargets,
@@ -246,6 +250,8 @@ export interface ProfileViewState {
   savedDeckDescriptionInput?: HTMLInputElement;
   savedDeckLabOpen: boolean;
   savedDeckLabSample: number;
+  savedDeckCollectionSignalsOpen: boolean;
+  savedDeckCollectionSignalsDeckId?: string;
   savedDeckFieldRecordOpen: boolean;
   savedDeckFieldRecordDeckId?: string;
   savedDeckNotesInput?: HTMLTextAreaElement;
@@ -922,6 +928,47 @@ function cycleSavedDeckLabSample(
   }
   state.savedDeckLabSample = next;
   dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function savedDeckCollectionSignalsState(
+  state: ProfileViewState,
+  account = loadAccount(),
+) {
+  const decks = sanitizeSavedDecks(account.decks);
+  const deck = decks.find((candidate) => candidate.id === state.savedDeckCollectionSignalsDeckId);
+  if (!deck) return undefined;
+  return analyzeSavedDeckCollectionSignals(deck, decks, account.cardCollection, alphaCardLibrary);
+}
+
+function openSavedDeckCollectionSignals(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  const selected = selectedSavedDeck(state);
+  if (!selected || state.savedDeckRenameInput || state.savedDeckCodeInput) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  state.savedDeckLabOpen = false;
+  state.savedDeckCollectionSignalsOpen = true;
+  state.savedDeckCollectionSignalsDeckId = selected.id;
+  state.savedDeckStatus = 'idle';
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function closeSavedDeckCollectionSignals(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  state.savedDeckCollectionSignalsOpen = false;
+  state.savedDeckLabOpen = true;
+  state.savedDeckLabSample = 0;
+  state.savedDeckStatus = 'idle';
+  dependencies.playUiSound('close');
   renderProfileScene(scene, state, dependencies);
 }
 
@@ -1976,6 +2023,10 @@ export function startProfileScene(
       renderProfileScene(scene, state, dependencies);
       return;
     }
+    if (state.savedDeckCollectionSignalsOpen) {
+      closeSavedDeckCollectionSignals(scene, state, dependencies);
+      return;
+    }
     if (state.savedDeckFieldRecordOpen) {
       closeSavedDeckFieldRecord(scene, state, dependencies);
       return;
@@ -2031,6 +2082,8 @@ export function startProfileScene(
       ? cycleSavedDeckIdentityChoice(scene, state, dependencies, -1)
       : state.savedDeckOrganizerOpen
       ? cycleSavedDeckOrganizerChoice(scene, state, dependencies, -1)
+      : state.savedDeckCollectionSignalsOpen
+      ? dependencies.playUiSound('locked')
       : state.savedDeckFieldRecordOpen
       ? dependencies.playUiSound('locked')
       : state.savedDeckHistoryOpen
@@ -2048,6 +2101,8 @@ export function startProfileScene(
       ? cycleSavedDeckIdentityChoice(scene, state, dependencies, 1)
       : state.savedDeckOrganizerOpen
       ? cycleSavedDeckOrganizerChoice(scene, state, dependencies, 1)
+      : state.savedDeckCollectionSignalsOpen
+      ? dependencies.playUiSound('locked')
       : state.savedDeckFieldRecordOpen
       ? dependencies.playUiSound('locked')
       : state.savedDeckHistoryOpen
@@ -2066,6 +2121,8 @@ export function startProfileScene(
         applySavedDeckIdentityChoice(scene, state, dependencies);
       } else if (state.savedDeckOrganizerOpen) {
         applySavedDeckOrganizerChoice(scene, state, dependencies);
+      } else if (state.savedDeckCollectionSignalsOpen) {
+        dependencies.playUiSound('locked');
       } else if (state.savedDeckFieldRecordOpen) {
         beginSavedDeckNotes(scene, state, dependencies);
       } else if (state.savedDeckHistoryOpen) {
@@ -2092,6 +2149,7 @@ export function startProfileScene(
     event.stopPropagation();
     if (state.savedDeckIdentityOpen) switchSavedDeckIdentitySection(scene, state, dependencies);
     else if (state.savedDeckOrganizerOpen) switchSavedDeckOrganizerSection(scene, state, dependencies);
+    else if (state.savedDeckCollectionSignalsOpen) dependencies.playUiSound('locked');
     else if (state.savedDeckFieldRecordOpen) dependencies.playUiSound('locked');
     else if (state.savedDeckHistoryOpen) cycleSavedDeckHistoryTarget(scene, state, dependencies, event.shiftKey ? -1 : 1);
     else if (state.savedDeckWorkshopOpen) cycleSavedDeckWorkshopSuggestion(scene, state, dependencies, event.shiftKey ? -1 : 1);
@@ -2105,6 +2163,7 @@ export function startProfileScene(
     event.stopPropagation();
     if (state.savedDeckIdentityOpen) cycleSavedDeckIdentityChoice(scene, state, dependencies, -1);
     else if (state.savedDeckOrganizerOpen) cycleSavedDeckOrganizerChoice(scene, state, dependencies, -1);
+    else if (state.savedDeckCollectionSignalsOpen) dependencies.playUiSound('locked');
     else if (state.savedDeckFieldRecordOpen) dependencies.playUiSound('locked');
     else if (state.savedDeckHistoryOpen) cycleSavedDeckHistoryTarget(scene, state, dependencies, -1);
     else if (state.savedDeckWorkshopOpen) cycleSavedDeckWorkshopCard(scene, state, dependencies, -1);
@@ -2118,6 +2177,7 @@ export function startProfileScene(
     event.stopPropagation();
     if (state.savedDeckIdentityOpen) cycleSavedDeckIdentityChoice(scene, state, dependencies, 1);
     else if (state.savedDeckOrganizerOpen) cycleSavedDeckOrganizerChoice(scene, state, dependencies, 1);
+    else if (state.savedDeckCollectionSignalsOpen) dependencies.playUiSound('locked');
     else if (state.savedDeckFieldRecordOpen) dependencies.playUiSound('locked');
     else if (state.savedDeckHistoryOpen) cycleSavedDeckHistoryTarget(scene, state, dependencies, 1);
     else if (state.savedDeckWorkshopOpen) cycleSavedDeckWorkshopCard(scene, state, dependencies, 1);
@@ -2159,6 +2219,12 @@ export function startProfileScene(
         beginSavedDeckRename(scene, state, dependencies);
       } else if (button.index === 1) {
         closeSavedDeckOrganizer(scene, state, dependencies);
+      }
+      return;
+    }
+    if (state.savedDeckCollectionSignalsOpen) {
+      if (button.index === 1 || button.index === 11) {
+        closeSavedDeckCollectionSignals(scene, state, dependencies);
       }
       return;
     }
@@ -2211,6 +2277,8 @@ export function startProfileScene(
         openSavedDeckHistory(scene, state, dependencies);
       } else if (button.index === 10) {
         openSavedDeckFieldRecord(scene, state, dependencies);
+      } else if (button.index === 11) {
+        openSavedDeckCollectionSignals(scene, state, dependencies);
       }
       return;
     }
@@ -2287,6 +2355,7 @@ export function startProfileScene(
       || state.savedDeckCodeInput
       || state.savedDeckOrganizerOpen
       || state.savedDeckIdentityOpen
+      || state.savedDeckCollectionSignalsOpen
       || state.savedDeckLabOpen
       || state.savedDeckFieldRecordOpen
       || state.savedDeckHistoryOpen
@@ -2303,6 +2372,7 @@ export function startProfileScene(
       || state.savedDeckRenameInput
       || state.savedDeckCodeInput
       || state.savedDeckIdentityOpen
+      || state.savedDeckCollectionSignalsOpen
       || state.savedDeckLabOpen
       || state.savedDeckFieldRecordOpen
       || state.savedDeckHistoryOpen
@@ -2320,6 +2390,7 @@ export function startProfileScene(
       || state.savedDeckCodeInput
       || state.savedDeckOrganizerOpen
       || state.savedDeckIdentityOpen
+      || state.savedDeckCollectionSignalsOpen
       || state.savedDeckLabOpen
       || state.savedDeckFieldRecordOpen
       || state.savedDeckHistoryOpen
@@ -2337,6 +2408,7 @@ export function startProfileScene(
       || state.savedDeckCodeInput
       || state.savedDeckOrganizerOpen
       || state.savedDeckIdentityOpen
+      || state.savedDeckCollectionSignalsOpen
       || state.savedDeckLabOpen
       || state.savedDeckFieldRecordOpen
       || state.savedDeckHistoryOpen
@@ -2354,6 +2426,7 @@ export function startProfileScene(
       || state.savedDeckCodeInput
       || state.savedDeckOrganizerOpen
       || state.savedDeckIdentityOpen
+      || state.savedDeckCollectionSignalsOpen
       || state.savedDeckLabOpen
       || state.savedDeckFieldRecordOpen
       || state.savedDeckHistoryOpen
@@ -2371,6 +2444,7 @@ export function startProfileScene(
       || state.savedDeckCodeInput
       || state.savedDeckOrganizerOpen
       || state.savedDeckIdentityOpen
+      || state.savedDeckCollectionSignalsOpen
       || state.savedDeckLabOpen
       || state.savedDeckFieldRecordOpen
       || state.savedDeckHistoryOpen
@@ -2387,6 +2461,7 @@ export function startProfileScene(
       || state.savedDeckRenameInput
       || state.savedDeckCodeInput
       || state.savedDeckOrganizerOpen
+      || state.savedDeckCollectionSignalsOpen
       || state.savedDeckLabOpen
       || state.savedDeckFieldRecordOpen
       || state.savedDeckHistoryOpen
@@ -2420,6 +2495,7 @@ export function startProfileScene(
       || state.savedDeckCodeInput
       || state.savedDeckOrganizerOpen
       || state.savedDeckIdentityOpen
+      || state.savedDeckCollectionSignalsOpen
       || state.savedDeckLabOpen
       || state.savedDeckFieldRecordOpen
       || state.savedDeckHistoryOpen
@@ -2437,6 +2513,7 @@ export function startProfileScene(
       || state.savedDeckCodeInput
       || state.savedDeckOrganizerOpen
       || state.savedDeckIdentityOpen
+      || state.savedDeckCollectionSignalsOpen
       || state.savedDeckLabOpen
       || state.savedDeckFieldRecordOpen
       || state.savedDeckHistoryOpen
@@ -2451,6 +2528,16 @@ export function startProfileScene(
     event.preventDefault();
     event.stopPropagation();
     cycleSavedDeckLabSample(scene, state, dependencies, 1);
+  };
+  const onSavedDeckCollectionSignals = (event: KeyboardEvent) => {
+    if (!state.savedDeckLabOpen && !state.savedDeckCollectionSignalsOpen) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (state.savedDeckCollectionSignalsOpen) {
+      closeSavedDeckCollectionSignals(scene, state, dependencies);
+    } else {
+      openSavedDeckCollectionSignals(scene, state, dependencies);
+    }
   };
   const onSavedDeckWorkshop = (event: KeyboardEvent) => {
     if (!state.savedDeckLabOpen || state.savedDeckWorkshopOpen) return;
@@ -2518,6 +2605,7 @@ export function startProfileScene(
   scene.input.keyboard?.on('keydown-V', onSavedDeckArchiveView);
   scene.input.keyboard?.on('keydown-A', onSavedDeckArchive);
   scene.input.keyboard?.on('keydown-SPACE', onSavedDeckLabDeal);
+  scene.input.keyboard?.on('keydown-G', onSavedDeckCollectionSignals);
   scene.input.keyboard?.on('keydown-T', onSavedDeckWorkshop);
   scene.input.keyboard?.on('keydown-R', onSavedDeckHistory);
   scene.input.keyboard?.on('keydown-N', onSavedDeckFieldRecord);
@@ -2545,6 +2633,7 @@ export function startProfileScene(
     scene.input.keyboard?.off('keydown-V', onSavedDeckArchiveView);
     scene.input.keyboard?.off('keydown-A', onSavedDeckArchive);
     scene.input.keyboard?.off('keydown-SPACE', onSavedDeckLabDeal);
+    scene.input.keyboard?.off('keydown-G', onSavedDeckCollectionSignals);
     scene.input.keyboard?.off('keydown-T', onSavedDeckWorkshop);
     scene.input.keyboard?.off('keydown-R', onSavedDeckHistory);
     scene.input.keyboard?.off('keydown-N', onSavedDeckFieldRecord);
@@ -2623,6 +2712,14 @@ export function renderProfileScene(
   const savedDeckLab = state.savedDeckLabOpen && savedDecks[state.savedDeckIndex]
     ? analyzeSavedDeck(savedDecks[state.savedDeckIndex], alphaCardLibrary, state.savedDeckLabSample)
     : undefined;
+  let savedDeckCollectionSignals = state.savedDeckCollectionSignalsOpen
+    ? savedDeckCollectionSignalsState(state, account)
+    : undefined;
+  if (state.savedDeckCollectionSignalsOpen && !savedDeckCollectionSignals) {
+    state.savedDeckCollectionSignalsOpen = false;
+    state.savedDeckCollectionSignalsDeckId = undefined;
+    savedDeckCollectionSignals = undefined;
+  }
   let savedDeckHistory = state.savedDeckHistoryOpen
     ? savedDeckHistoryState(state, account)
     : undefined;
@@ -2978,6 +3075,7 @@ export function renderProfileScene(
         inputs: {
           previous: `${controlBindingLabel('previous')} / D-pad Left / LB`,
           dealAgain: `${controlBindingLabel('next')} / ${controlBindingLabel('confirm')} / Space / A`,
+          collectionSignals: 'G / controller R3 / pointer',
           fieldRecord: 'N / controller L3 / pointer',
           revisionTrail: 'R / controller Y / pointer',
           tune: 'T / controller X / pointer',
@@ -2989,6 +3087,28 @@ export function renderProfileScene(
         input: 'L / controller R3 / pointer',
         affectsPower: false,
         spendsResources: false,
+      },
+      collectionSignals: savedDeckCollectionSignals ? {
+        open: true,
+        deckId: savedDeckCollectionSignals.deckId,
+        deckName: savedDeckCollectionSignals.deckName,
+        ownedCount: savedDeckCollectionSignals.ownedCount,
+        folioCount: savedDeckCollectionSignals.folioCount,
+        activeFolioCount: savedDeckCollectionSignals.activeFolioCount,
+        archivedFolioCount: savedDeckCollectionSignals.archivedFolioCount,
+        unusedCount: savedDeckCollectionSignals.unusedCount,
+        unused: savedDeckCollectionSignals.unused,
+        frequentlyFiled: savedDeckCollectionSignals.frequentlyFiled,
+        recentlyAcquired: savedDeckCollectionSignals.recentlyAcquired,
+        commonlyPaired: savedDeckCollectionSignals.commonlyPaired,
+        rules: savedDeckCollectionSignals.rules,
+        inputs: {
+          close: `${controlBindingLabel('back')} / G / controller B or R3 / pointer`,
+        },
+      } : {
+        open: false,
+        input: 'Flight Lab: G / controller R3 / pointer',
+        affectsPower: false,
       },
       fieldRecord: savedDeckFieldRecord ? {
         open: true,
@@ -3528,6 +3648,9 @@ export function renderProfileScene(
   }
   if (state.savedDeckLabOpen && savedDeckLab) {
     renderSavedDeckLab(scene, state, dependencies, savedDecks[state.savedDeckIndex], savedDeckLab);
+  }
+  if (state.savedDeckCollectionSignalsOpen && savedDeckCollectionSignals) {
+    renderSavedDeckCollectionSignals(scene, state, dependencies, savedDeckCollectionSignals);
   }
   if (state.savedDeckFieldRecordOpen && savedDeckFieldRecord) {
     renderSavedDeckFieldRecord(scene, state, dependencies, savedDeckFieldRecord);
@@ -4264,6 +4387,20 @@ function renderSavedDeckLab(
     color: '#b9ffdb',
   }).setResolution(2).setOrigin(0.5);
 
+  const collectionSignals = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    200,
+    626,
+    126,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Signals',
+    true,
+    () => openSavedDeckCollectionSignals(scene, state, dependencies),
+    UI_FIELD.gold,
+    false,
+  );
+  collectionSignals.setName('profile-flight-lab-collection-signals-hit');
   const fieldRecord = dependencies.renderFieldButton(
     scene,
     () => {},
@@ -4348,6 +4485,226 @@ function renderSavedDeckLab(
     false,
   );
   close.setName('profile-flight-lab-close-hit');
+}
+
+function renderSavedDeckCollectionSignals(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  signals: SavedDeckCollectionSignals,
+) {
+  scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x02050a, 0.9)
+    .setInteractive()
+    .setName('profile-collection-signals-scrim');
+  scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 1040, 632, 0x07111c, 0.995)
+    .setStrokeStyle(3, UI_FIELD.gold, 0.94)
+    .setName('profile-collection-signals-frame');
+  scene.add.text(154, 58, 'COLLECTION SIGNALS', {
+    fontFamily: 'Georgia, serif',
+    fontSize: '29px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.warm,
+    stroke: '#020409',
+    strokeThickness: 4,
+  }).setResolution(2).setName('profile-collection-signals-title');
+  scene.add.text(154, 96, `${signals.deckName}  /  READ-ONLY COLLECTION CONTEXT`, {
+    fontFamily: UI_FONT,
+    fontSize: '12px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.cyanText,
+    fixedWidth: 760,
+  }).setResolution(2).setName('profile-collection-signals-deck-name');
+  dependencies.renderCloseControl(
+    scene,
+    () => {},
+    1110,
+    76,
+    () => closeSavedDeckCollectionSignals(scene, state, dependencies),
+  );
+
+  const metrics: Array<[string, number, number]> = [
+    ['OWNED CARDS', signals.ownedCount, UI_FIELD.cyan],
+    ['SAVED FOLIOS', signals.folioCount, UI_FIELD.violet],
+    ['IN ARCHIVE', signals.archivedFolioCount, UI_FIELD.green],
+    ['UNUSED', signals.unusedCount, UI_FIELD.gold],
+  ];
+  metrics.forEach(([label, value, accent], index) => {
+    const x = 264 + index * 250;
+    scene.add.rectangle(x, 140, 224, 48, 0x0d2231, 0.94)
+      .setStrokeStyle(1, accent, 0.72);
+    scene.add.text(x - 96, 131, label, {
+      fontFamily: UI_FONT,
+      fontSize: '8px',
+      fontStyle: UI_BOLD,
+      color: UI_MUTED,
+    }).setResolution(2);
+    scene.add.text(x + 96, 140, String(value), {
+      fontFamily: UI_FONT,
+      fontSize: '16px',
+      fontStyle: UI_BOLD,
+      color: accent === UI_FIELD.gold ? UI_FIELD.warm : UI_FIELD.cyanText,
+    }).setResolution(2).setOrigin(1, 0.5);
+  });
+
+  type SignalRow = { title: string; detail: string; ids: string[]; current?: boolean };
+  const dateLabel = (timestamp: number) => timestamp > 0
+    ? new Date(timestamp).toISOString().slice(0, 10)
+    : 'DATE UNKNOWN';
+  const columns: Array<{
+    id: string;
+    title: string;
+    description: string;
+    accent: number;
+    rows: SignalRow[];
+    empty: string;
+  }> = [
+    {
+      id: 'unused',
+      title: 'UNUSED OWNED',
+      description: 'Owned, in no saved Folio',
+      accent: UI_FIELD.gold,
+      rows: signals.unused.map((card) => ({
+        title: card.name,
+        detail: `${dateLabel(card.firstAcquiredAt)} / NEVER FILED`,
+        ids: [card.id],
+      })),
+      empty: signals.ownedCount === 0 ? 'No permanent cards collected yet.' : 'Every owned card appears in a saved Folio.',
+    },
+    {
+      id: 'frequent',
+      title: 'MANY FOLIOS',
+      description: 'Distinct Folios, copies ignored',
+      accent: UI_FIELD.cyan,
+      rows: signals.frequentlyFiled.map((card) => ({
+        title: card.name,
+        detail: `${card.folioCount} FOLIO${card.folioCount === 1 ? '' : 'S'} / ${card.activeFolioCount} ACTIVE${card.inSelectedFolio ? ' / HERE' : ''}`,
+        ids: [card.id],
+        current: card.inSelectedFolio,
+      })),
+      empty: 'No owned cards appear in a saved Folio yet.',
+    },
+    {
+      id: 'recent',
+      title: 'NEW ARRIVALS',
+      description: 'First-acquired, newest first',
+      accent: UI_FIELD.green,
+      rows: signals.recentlyAcquired.map((card) => ({
+        title: card.name,
+        detail: `${dateLabel(card.firstAcquiredAt)} / ${card.folioCount === 0 ? 'UNUSED' : `${card.folioCount} FOLIO${card.folioCount === 1 ? '' : 'S'}`}`,
+        ids: [card.id],
+        current: card.inSelectedFolio,
+      })),
+      empty: 'No permanent acquisition records yet.',
+    },
+    {
+      id: 'paired',
+      title: 'COMMON PAIRS',
+      description: 'Share a Folio; touches this list',
+      accent: UI_FIELD.violet,
+      rows: signals.commonlyPaired.map((pair) => ({
+        title: `${pair.first.name} + ${pair.second.name}`,
+        detail: `${pair.folioCount} FOLIO${pair.folioCount === 1 ? '' : 'S'} / ${pair.activeFolioCount} ACTIVE${pair.bothInSelectedFolio ? ' / BOTH HERE' : ''}`,
+        ids: [pair.first.id, pair.second.id],
+        current: pair.bothInSelectedFolio,
+      })),
+      empty: 'No owned card pair around this Folio yet.',
+    },
+  ];
+  columns.forEach((column, columnIndex) => {
+    const x = 264 + columnIndex * 250;
+    scene.add.rectangle(x, 366, 224, 390, 0x091622, 0.96)
+      .setStrokeStyle(1, column.accent, 0.64)
+      .setName(`profile-collection-signals-${column.id}-panel`);
+    scene.add.text(x, 185, column.title, {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: column.accent === UI_FIELD.gold ? UI_FIELD.warm : UI_FIELD.cyanText,
+      fixedWidth: 204,
+      align: 'center',
+    }).setResolution(2).setOrigin(0.5);
+    scene.add.text(x, 209, column.description, {
+      fontFamily: UI_FONT,
+      fontSize: '9px',
+      color: UI_MUTED,
+      fixedWidth: 204,
+      align: 'center',
+    }).setResolution(2).setOrigin(0.5);
+    if (column.rows.length === 0) {
+      scene.add.text(x, 358, column.empty, {
+        fontFamily: UI_FONT,
+        fontSize: '11px',
+        color: UI_SOFT,
+        align: 'center',
+        fixedWidth: 180,
+        wordWrap: { width: 180 },
+      }).setResolution(2).setOrigin(0.5).setName(`profile-collection-signals-${column.id}-empty`);
+      return;
+    }
+    column.rows.forEach((row, rowIndex) => {
+      const y = 255 + rowIndex * 58;
+      scene.add.rectangle(x, y, 204, 50, row.current ? 0x123244 : 0x0b1824, 0.96)
+        .setStrokeStyle(row.current ? 2 : 1, row.current ? UI_FIELD.cyan : column.accent, row.current ? 0.84 : 0.34)
+        .setName(`profile-collection-signals-${column.id}-row`)
+        .setData('cardIds', row.ids)
+        .setData('currentFolio', row.current === true);
+      scene.add.text(x - 92, y - 18, row.title, {
+        fontFamily: UI_FONT,
+        fontSize: '10px',
+        fontStyle: UI_BOLD,
+        color: row.current ? '#dffbff' : UI_FIELD.warm,
+        fixedWidth: 184,
+        maxLines: 2,
+        wordWrap: { width: 184 },
+      }).setResolution(2);
+      scene.add.text(x - 92, y + 11, row.detail, {
+        fontFamily: UI_FONT,
+        fontSize: '8px',
+        fontStyle: UI_BOLD,
+        color: row.current ? UI_FIELD.cyanText : UI_MUTED,
+        fixedWidth: 184,
+        maxLines: 1,
+      }).setResolution(2);
+    });
+  });
+
+  scene.add.text(
+    154,
+    579,
+    'Usage = distinct saved Folios, including Archive / duplicate copies count once / pair = same Folio',
+    {
+      fontFamily: UI_FONT,
+      fontSize: '9px',
+      fontStyle: UI_BOLD,
+      color: UI_FIELD.cyanText,
+      fixedWidth: 850,
+    },
+  ).setResolution(2).setName('profile-collection-signals-method');
+  scene.add.text(
+    154,
+    600,
+    'Descriptive context only / no recommendations / no Folio edits / no gameplay power',
+    {
+      fontFamily: UI_FONT,
+      fontSize: '9px',
+      fontStyle: UI_BOLD,
+      color: '#b9ffdb',
+      fixedWidth: 850,
+    },
+  ).setResolution(2).setName('profile-collection-signals-safety');
+  dependencies.renderFieldButton(
+    scene,
+    () => {},
+    1040,
+    626,
+    126,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Back to Lab',
+    true,
+    () => closeSavedDeckCollectionSignals(scene, state, dependencies),
+    UI_FIELD.cyan,
+    false,
+  ).setName('profile-collection-signals-close-hit');
 }
 
 function renderSavedDeckNotesPrompt(scene: Phaser.Scene, deck: SavedDeckRecord) {

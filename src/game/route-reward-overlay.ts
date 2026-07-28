@@ -1,6 +1,8 @@
+import Phaser from 'phaser';
 import {
   addRewardRevealHaloFx,
   compactSentenceText,
+  controlBindingLabel,
   currentMap,
   displayName,
   GAME_HEIGHT,
@@ -36,7 +38,7 @@ export function renderRouteRewardOverlay(scene: any) {
     eyebrow: node ? routeNodeTypeLabel(node.type) : 'Route Reward',
     title: hasCardChoices ? 'Choose a Reward' : isDecline ? `Leave ${routeNodeTypeLabel(pending.nodeType)}` : pending.nodeType === 'cache' ? 'Open This Drawer' : 'Review This Choice',
     subtitle: hasCardChoices
-      ? `Pick one card from this ${routeNodeTypeLabel(pending.nodeType).toLowerCase()}, or cancel back to ${confirmName}.`
+      ? `Pick one card from this ${routeNodeTypeLabel(pending.nodeType).toLowerCase()}, inspect before claiming, or cancel back to ${confirmName}.`
       : isDecline
         ? `Leave without taking a reward, or cancel back to ${confirmName}.`
         : `Confirm this choice, or cancel back to ${confirmName}.`,
@@ -120,6 +122,11 @@ export function renderRouteRewardOverlay(scene: any) {
     const accentColor = card.type === 'major' ? UI_FIELD.gold : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
     addRewardRevealHaloFx(scene, x, y, cardW + 68, cardH + 98, 0.18);
     scene.renderRouteRewardCardOption(card, x, y, cardW, cardH, accentColor);
+    if (index === scene.routeRewardChoiceIndex) {
+      scene.add.rectangle(x, y + 8, cardW + 30, cardH + 88, 0x000000, 0)
+        .setStrokeStyle(4, UI_FIELD.cyan, 1)
+        .setName('route-reward-input-focus-ring');
+    }
     scene.add.rectangle(x, y + cardH / 2 + 24, cardW + 16, 34, 0x020409, 0.94)
       .setStrokeStyle(1, accentColor, 0.72);
     scene.add.text(x, y + cardH / 2 + 12, displayName(card), {
@@ -136,8 +143,72 @@ export function renderRouteRewardOverlay(scene: any) {
     const hit = scene.add.rectangle(x, y + 8, cardW + 18, cardH + 76, 0x000000, 0.01)
       .setInteractive({ useHandCursor: true });
     hit.on('pointerdown', () => scene.chooseRouteRewardCard(card.id));
-    hit.on('pointerover', () => scene.showHoverCardDetail(card, 'Cache reward', card.cost, x, y));
+    hit.on('pointerover', () => {
+      scene.setRouteRewardChoice(card.id);
+      scene.showHoverCardDetail(card, 'Cache reward', card.cost, x, y);
+    });
     hit.on('pointerout', () => scene.hideHoverCardDetail());
+    const inspectY = frame.bottom - 48;
+    const inspect = scene.add.rectangle(x, inspectY, 126, MIN_SUPPORTED_TOUCH_TARGET, 0x102534, 0.99)
+      .setStrokeStyle(2, index === scene.routeRewardChoiceIndex ? UI_FIELD.cyan : accentColor, 0.94)
+      .setInteractive({ useHandCursor: true })
+      .setName('route-reward-card-inspect-hit');
+    inspect.on('pointerdown', (
+      _pointer: Phaser.Input.Pointer,
+      _localX: number,
+      _localY: number,
+      event?: Phaser.Types.Input.EventData,
+    ) => {
+      event?.stopPropagation();
+      scene.openRouteRewardInspection(card.id);
+    });
+    inspect.on('pointerover', () => inspect.setFillStyle(0x18384b, 1));
+    inspect.on('pointerout', () => inspect.setFillStyle(0x102534, 0.99));
+    scene.add.text(x, inspectY, 'INSPECT', {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: '#dffbff',
+    }).setOrigin(0.5).setName('route-reward-card-inspect-label');
   });
   scene.renderRouteEventCancelButton(frame.left + 126, frame.bottom - 48, 166, 38, 'Cancel', () => scene.cancelRouteCardReward());
+  if (hasCardChoices) {
+    scene.add.text(frame.right - 28, frame.top + 90, 'D-PAD / ARROWS  CHOOSE    A / ENTER  CLAIM    Y / R  INSPECT    B / ESC  BACK', {
+      fontFamily: UI_FONT,
+      fontSize: '9px',
+      fontStyle: UI_BOLD,
+      color: '#bfe8f4',
+    }).setOrigin(1, 0.5).setName('route-reward-input-hint');
+  }
+  renderRouteRewardInspection(scene);
+}
+
+function renderRouteRewardInspection(scene: any) {
+  if (!scene.routeRewardInspectionCardId) return;
+  const card = scene.routeCardRewardChoices.find((candidate: any) => (
+    candidate.id === scene.routeRewardInspectionCardId
+  ));
+  if (!card) {
+    scene.routeRewardInspectionCardId = undefined;
+    return;
+  }
+  const scrim = scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.86)
+    .setInteractive({ useHandCursor: true })
+    .setDepth(23010)
+    .setName('route-reward-inspection-scrim');
+  scrim.on('pointerdown', () => scene.closeRouteRewardInspection());
+  scene.add.text(GAME_WIDTH / 2, 38, 'FULL CARD INSPECTION', {
+    fontFamily: UI_FONT,
+    fontSize: '13px',
+    fontStyle: UI_BOLD,
+    color: '#ffe08a',
+    letterSpacing: 1.4,
+  }).setOrigin(0.5).setDepth(23030);
+  scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 34, `${controlBindingLabel('back')} / B / TAP OUTSIDE  RETURN TO THIS CHOICE`, {
+    fontFamily: UI_FONT,
+    fontSize: '12px',
+    fontStyle: UI_BOLD,
+    color: '#dffbff',
+  }).setOrigin(0.5).setDepth(23030);
+  scene.showHoverCardDetail(card, 'Route reward inspection', card.cost, GAME_WIDTH / 2, GAME_HEIGHT / 2);
 }

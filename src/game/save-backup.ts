@@ -10,6 +10,12 @@ import { loadAccount, sanitizeAccount, type PlayerAccount } from './meta';
 import { safeStorageGet, safeStorageRemove, safeStorageSet } from './safe-storage';
 import { sanitizeCardPersonalTags } from './card-personal-tags';
 import { sanitizeCardShowcase } from './card-showcase';
+import { sanitizeCardJournalNotes } from './card-journal';
+import {
+  CODEX_SAVED_VIEW_STORAGE_KEY,
+  sanitizeCodexSavedViews,
+  type CodexSavedView,
+} from './codex-saved-views';
 import { sanitizeSavedDecks } from './saved-decks';
 
 const SAVE_FORMAT = 'bird-squad-save';
@@ -44,6 +50,7 @@ const PREFERENCE_KEYS = {
   codexCardLens: 'birdsquad.codexCardLens',
   codexCardSearch: 'birdsquad.codexCardSearch',
   codexCardSort: 'birdsquad.codexCardSort',
+  codexSavedViews: CODEX_SAVED_VIEW_STORAGE_KEY,
 } as const;
 
 const ALL_OWNED_STORAGE_KEYS = [
@@ -71,6 +78,7 @@ export interface SaveBackupPreferences {
   codexCardLens: typeof CODEX_CARD_LENSES[number];
   codexCardSearch: string;
   codexCardSort: 'binder' | 'name' | 'rarity' | 'recent';
+  codexSavedViews: CodexSavedView[];
 }
 
 export interface SaveBackupBundle {
@@ -89,7 +97,7 @@ export interface SaveBackupBundle {
 export interface SaveBackupRuntimeDependencies {
   currentActiveRun: () => unknown | undefined;
   currentRunHistory: () => unknown[];
-  currentPreferences: () => Omit<SaveBackupPreferences, 'codexCardLens' | 'codexCardSearch' | 'codexCardSort'>;
+  currentPreferences: () => Omit<SaveBackupPreferences, 'codexCardLens' | 'codexCardSearch' | 'codexCardSort' | 'codexSavedViews'>;
   sanitizeActiveRun: (value: unknown) => unknown | undefined;
   sanitizeRunHistory: (value: unknown) => unknown[] | undefined;
 }
@@ -179,6 +187,7 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
     : ['binder', 'name', 'rarity', 'recent'].includes(String(value.codexCardSort))
       ? value.codexCardSort as SaveBackupPreferences['codexCardSort']
       : undefined;
+  const codexSavedViews = sanitizeCodexSavedViews(value.codexSavedViews);
   if (
     !controls
     || !colorCues
@@ -219,6 +228,7 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
     codexCardLens,
     codexCardSearch,
     codexCardSort,
+    codexSavedViews,
   };
 }
 
@@ -243,10 +253,19 @@ function currentCodexCardSort(): SaveBackupPreferences['codexCardSort'] {
   return value === 'name' || value === 'rarity' || value === 'recent' ? value : 'binder';
 }
 
+function currentCodexSavedViews() {
+  try {
+    return sanitizeCodexSavedViews(JSON.parse(safeStorageGet(PREFERENCE_KEYS.codexSavedViews) ?? '[]'));
+  } catch {
+    return [];
+  }
+}
+
 export function createSaveBackup(dependencies: SaveBackupRuntimeDependencies): SaveBackupBundle {
   const activeRun = dependencies.currentActiveRun();
   const account = loadAccount();
   account.cardTags = sanitizeCardPersonalTags(account.cardTags, account.discoveredCards);
+  account.cardJournal = sanitizeCardJournalNotes(account.cardJournal, account.discoveredCards);
   account.showcase = sanitizeCardShowcase(account.showcase, account.discoveredCards);
   account.decks = sanitizeSavedDecks(account.decks);
   return {
@@ -264,6 +283,7 @@ export function createSaveBackup(dependencies: SaveBackupRuntimeDependencies): S
         codexCardLens: currentCodexCardLens(),
         codexCardSearch: currentCodexCardSearch(),
         codexCardSort: currentCodexCardSort(),
+        codexSavedViews: currentCodexSavedViews(),
       },
     },
   };
@@ -290,6 +310,7 @@ export function parseSaveBackup(raw: string, dependencies: SaveBackupRuntimeDepe
     return { ok: false, error: 'Backup data failed schema validation; nothing was changed.' };
   }
   account.cardTags = sanitizeCardPersonalTags(account.cardTags, account.discoveredCards);
+  account.cardJournal = sanitizeCardJournalNotes(account.cardJournal, account.discoveredCards);
   account.showcase = sanitizeCardShowcase(account.showcase, account.discoveredCards);
   account.decks = sanitizeSavedDecks(account.decks);
   const bundle: SaveBackupBundle = {
@@ -345,6 +366,7 @@ function serializedEntries(bundle: SaveBackupBundle) {
     [PREFERENCE_KEYS.codexCardLens, preferences.codexCardLens],
     [PREFERENCE_KEYS.codexCardSearch, preferences.codexCardSearch],
     [PREFERENCE_KEYS.codexCardSort, preferences.codexCardSort],
+    [PREFERENCE_KEYS.codexSavedViews, JSON.stringify(preferences.codexSavedViews)],
   ]);
 }
 

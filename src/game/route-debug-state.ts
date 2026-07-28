@@ -119,6 +119,8 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
           ...collectionGoalSummary(),
           rendered: scene.children.list.some((child: any) => child.name === 'route-collection-goal-hit'),
           opening: scene.routeCodexOpening,
+          newCardId: scene.children.getByName('route-collection-goal-hit')?.getData('newCardId') || undefined,
+          destination: scene.children.getByName('route-collection-goal-hit')?.getData('destination') || 'Collection Atlas',
           input: {
             pointer: true,
             keyboard: 'G',
@@ -193,6 +195,39 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
           mode: scene.cardPickerMode ?? '',
           context: scene.cardPickerContext ?? ''
         },
+        cardPickerInput: scene.cardPickerMode
+          ? (() => {
+              const entries = scene.pickerEligibleCards(scene.cardPickerMode);
+              const index = Math.max(0, Math.min(
+                entries.length - 1,
+                Math.round(scene.cardPickerFocusIndex ?? 0),
+              ));
+              const focused = entries[index];
+              return {
+                mode: scene.cardPickerMode,
+                context: scene.cardPickerContext,
+                count: entries.length,
+                focusIndex: index,
+                cardIndex: focused?.index,
+                cardId: focused?.card?.id,
+                cardName: focused?.name,
+                cost: focused?.cost,
+                affordable: scene.cardPickerContext !== 'market' || scene.runState.scrap >= (focused?.cost ?? 0),
+                scrollRow: scene.cardPickerScroll,
+                focusVisible: scene.children.list.some((child: any) => child.name === 'card-picker-input-focus-ring'),
+                inspectTargets: scene.children.list.filter((child: any) => child.name === 'card-picker-card-inspect-hit').length,
+                inspectionOpen: Boolean(scene.cardPickerInspectionOpen),
+                returnIndex: index,
+                decisionPreserved: true,
+                controls: {
+                  choose: 'Arrow keys / D-pad',
+                  apply: 'Confirm / A',
+                  inspect: 'Roost / Y / Inspect',
+                  back: 'Back / B',
+                },
+              };
+            })()
+          : undefined,
         cardPickerScrollButtonFrame: {
           loaded: scene.textures.exists(uiIconAssets['card-picker-scroll-button-frame'].key),
           rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['card-picker-scroll-button-frame'].key) > 0,
@@ -567,6 +602,31 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
               },
               decisionPreview: [...(scene.pendingRouteReward.decisionPreview ?? [])],
               cardChoices: scene.routeCardRewardChoices.map((card: any) => card.id),
+              inputFocus: scene.routeCardRewardChoices.length > 0
+                ? {
+                    index: scene.routeRewardChoiceIndex,
+                    cardId: scene.focusedRouteRewardCard()?.id,
+                    visible: scene.children.list.some((child: any) => child.name === 'route-reward-input-focus-ring'),
+                    controls: {
+                      choose: 'Arrow keys / D-pad',
+                      claim: 'Confirm / A',
+                      inspect: 'Roost / Y',
+                      back: 'Back / B',
+                    },
+                  }
+                : undefined,
+              inspection: {
+                open: Boolean(scene.routeRewardInspectionCardId),
+                cardId: scene.routeRewardInspectionCardId,
+                cardName: scene.routeRewardInspectionCardId
+                  ? scene.routeCardRewardChoices.find((card: any) => card.id === scene.routeRewardInspectionCardId)?.name
+                  : undefined,
+                cost: scene.routeRewardInspectionCardId
+                  ? scene.routeCardRewardChoices.find((card: any) => card.id === scene.routeRewardInspectionCardId)?.cost
+                  : undefined,
+                returnIndex: scene.routeRewardChoiceIndex,
+                selectActionPreserved: true,
+              },
               previewItem: scene.pendingRouteReward.previewItem ? { ...scene.pendingRouteReward.previewItem } : undefined,
               previewCards: (scene.pendingRouteReward.previewCards ?? []).map((card: any) => card.id),
             }

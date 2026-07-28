@@ -1,4 +1,19 @@
 import Phaser from 'phaser';
+export {
+  closeCardPickerInspection,
+  closeRouteRewardInspection,
+  cycleCardPickerFocus,
+  cycleRouteRewardChoice,
+  focusedCardPickerEntry,
+  focusedRouteRewardCard,
+  handleRouteRewardAction,
+  openCardPickerInspection,
+  openRouteRewardInspection,
+  renderCardPickerInput,
+  renderCardPickerInspection,
+  setRouteRewardChoice,
+  updateRouteRewardGamepad,
+} from './reward-card-inspection';
 
 const UI_FONT = 'Arial';
 const UI_BOLD = 'bold';

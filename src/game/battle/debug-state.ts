@@ -326,5 +326,26 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
     visible: rewardHoverVisible
   };
 
-  return state;
+  const battle = context.counters as any;
+  const rewardInspectionCard = battle.rewardInspectionCardId
+    ? (battle.mode === 'cardReward' ? battle.rewardChoices : battle.upgradeChoices)
+        .find((card: any) => card.id === battle.rewardInspectionCardId)
+    : undefined;
+  return {
+    ...state,
+    rewardInspection: {
+      open: Boolean(battle.rewardInspectionCardId),
+      cardId: battle.rewardInspectionCardId,
+      cardName: rewardInspectionCard?.runtime?.displayName ?? rewardInspectionCard?.name,
+      cost: rewardInspectionCard?.cost,
+      rules: rewardInspectionCard ? battle.activeCardContract(rewardInspectionCard).text : undefined,
+      source: battle.mode === 'cardReward'
+        ? 'combatReward'
+        : battle.mode === 'upgradeReward'
+          ? 'preenReward'
+          : undefined,
+      returnIndex: battle.controllerChoiceIndex,
+      selectActionPreserved: true,
+    },
+  };
 }
