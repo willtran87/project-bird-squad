@@ -65,6 +65,7 @@ export function screenReaderSummary(payload: unknown): string {
     const focus = isRecord(payload.focus) ? payload.focus : undefined;
     const collectionMilestones = isRecord(payload.collectionMilestones) ? payload.collectionMilestones : undefined;
     const showcase = isRecord(payload.cardShowcase) ? payload.cardShowcase : undefined;
+    const folios = isRecord(payload.savedFlightFolios) ? payload.savedFlightFolios : undefined;
     const nextMilestone = isRecord(collectionMilestones?.next) ? collectionMilestones.next : undefined;
     const current = spaced(text(focus?.current)) || 'Flock Record';
     const milestoneSummary = collectionMilestones
@@ -72,7 +73,11 @@ export function screenReaderSummary(payload: unknown): string {
       : '';
     const showcaseItems = records(showcase?.items);
     const showcaseSummary = ` Showcase ${number(showcase?.count) ?? 0} of ${number(showcase?.capacity) ?? 3}.${showcaseItems.length > 0 ? ` Presented cards: ${showcaseItems.map((item) => text(item.name)).filter(Boolean).join(', ')}.` : ' No cards presented; add discovered cards from their Codex dossiers.'} Showcase choices never affect power.`;
-    return `Flock Record. ${current}.${milestoneSummary}${showcaseSummary} Press Confirm to select, or Back to return.`;
+    const folioItems = records(folios?.items);
+    const selectedFolioId = text(folios?.selected);
+    const selectedFolio = folioItems.find((item) => text(item.id) === selectedFolioId);
+    const folioSummary = ` Flight Folios ${number(folios?.count) ?? 0} of ${number(folios?.capacity) ?? 6}.${selectedFolio ? ` Selected ${text(selectedFolio.name)}, ${text(selectedFolio.leader)}, ${number(selectedFolio.cardCount) ?? 0} cards${selectedFolio.favorite === true ? ', favorite' : ''}.` : ' Save a deck from Route Deck Review.'} Folios preserve identity and never affect gameplay power.${folios?.viewActive === true ? ' Use Previous and Next to select, C or controller X to favorite, and R or controller Y to rename.' : ''}`;
+    return `Flock Record. ${current}.${milestoneSummary}${showcaseSummary}${folioSummary} Press Confirm to select, or Back to return.`;
   }
 
   if (scene === 'RouteScene' || mode === 'routeSelection') {
@@ -112,6 +117,7 @@ export function screenReaderSummary(payload: unknown): string {
       const selectedName = text(selected?.name) || 'no matching card';
       const selectedCost = number(selected?.cost);
       const comparison = isRecord(deckReview.comparison) ? deckReview.comparison : undefined;
+      const savedFlights = isRecord(deckReview.savedFlights) ? deckReview.savedFlights : undefined;
       const pinned = isRecord(comparison?.pinned) ? comparison.pinned : undefined;
       const compared = isRecord(comparison?.selected) ? comparison.selected : undefined;
       const comparisonSummary = comparison?.active === true && comparison?.mode === 'preen' && pinned && compared
@@ -121,7 +127,10 @@ export function screenReaderSummary(payload: unknown): string {
         : pinned
           ? ` Pinned ${text(pinned.name)}. Choose another card to compare.`
           : '';
-      return `Deck review. ${visible} of ${total} cards. Filter ${filter}. Sort ${sort}.${query ? ` Find ${query}.` : ''} Selected ${selectedName}${selectedCost === undefined ? '' : `, ${selectedCost} Wingbeats`}.${comparisonSummary} Use Up and Down to choose a card, Previous and Next to change filter, Confirm to change sort, C or controller X to pin a comparison; pin the selected card to compare Base and Preened, slash to find, and Back to close.`;
+      const saveSummary = savedFlights
+        ? ` Saved Flight Folios ${number(savedFlights.count) ?? 0} of ${number(savedFlights.capacity) ?? 6}.${savedFlights.status === 'saved' ? ' Current deck saved.' : savedFlights.status === 'full' ? ' Folios are full; no saved deck was replaced.' : savedFlights.status === 'failed' ? ' Save failed; no existing folio changed.' : ''}`
+        : '';
+      return `Deck review. ${visible} of ${total} cards. Filter ${filter}. Sort ${sort}.${query ? ` Find ${query}.` : ''} Selected ${selectedName}${selectedCost === undefined ? '' : `, ${selectedCost} Wingbeats`}.${comparisonSummary}${saveSummary} Use Up and Down to choose a card, Previous and Next to change filter, Confirm to change sort, C or controller X to pin a comparison; pin the selected card to compare Base and Preened, V or controller Y to save this flight without replacing an existing folio, slash to find, and Back to close.`;
     }
     const map = isRecord(payload.map) ? payload.map : undefined;
     const run = isRecord(payload.run) ? payload.run : undefined;

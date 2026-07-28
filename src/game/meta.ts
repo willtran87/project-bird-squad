@@ -1,6 +1,7 @@
 import { flockLeaders } from './leaders';
 import { MAX_DIFFICULTY } from './difficulty';
 import { readJournaledJson, writeJournaledJson } from './safe-storage';
+import type { SavedDeckRecord } from './saved-decks';
 
 // Persistent player meta-progression: lifetime stats, achievements, and
 // unlockable Flock Leaders. Stored in localStorage, updated on each finished run.
@@ -31,6 +32,7 @@ export interface PlayerAccount {
   favoriteCards: string[]; // discovered cards the player has marked as personal favorites
   cardTags?: Partial<Record<string, CardPersonalTag>>; // private, non-power organization for discovered cards
   showcase?: string[]; // up to three discovered cards deliberately presented in Flock Record
+  decks?: SavedDeckRecord[]; // capped, identity-focused snapshots of meaningful flight decks
   hunt?: string[]; // up to three discovered, uncollected cards the player is actively hunting
   cardCollection: Record<string, CardCollectionRecord>; // permanent claim history; playable copies remain run-specific
   observedEnemyMoves: string[]; // enemyId:moveId keys witnessed during combat
@@ -141,8 +143,8 @@ function sanitizeLeaderRecords(value: unknown): Record<string, LeaderPersonalRec
     const clears = Object.fromEntries(Object.entries(rawRecord.clears).flatMap(([key, rawClear]) => {
       if (!/^(full|quick):[0-6]$/.test(key) || !isRecord(rawClear)) return [];
       const wins = finiteInt(rawClear.wins);
-      if (wins < 1) return [];
-      const fastestRunTurns = rawClear.fastestRunTurns === null || rawClear.fastestRunTurns === undefined
+      if (!wins) return [];
+      const fastestRunTurns = rawClear.fastestRunTurns == null
         ? null
         : finiteInt(rawClear.fastestRunTurns, 0, 1) || null;
       return [[key, { wins, fastestRunTurns }]];
@@ -155,7 +157,7 @@ export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
   if (!isRecord(value)) return undefined;
   const wins = finiteInt(value.wins);
   const losses = finiteInt(value.losses);
-  const fastestWinTurns = value.fastestWinTurns === null || value.fastestWinTurns === undefined
+  const fastestWinTurns = value.fastestWinTurns == null
     ? null
     : finiteInt(value.fastestWinTurns, 0, 1) || null;
   const unlockedLeaders = stringList(value.unlockedLeaders).filter((id) => LEADER_IDS.has(id));
@@ -187,6 +189,8 @@ export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
     favoriteCards: stringList(value.favoriteCards).filter((id) => discoveredCards.includes(id)),
     cardTags: value.cardTags as Partial<Record<string, CardPersonalTag>>,
     showcase: value.showcase as string[],
+    // Flight Folios are fully sanitized at their route/profile/backup boundaries.
+    decks: value.decks as SavedDeckRecord[],
     hunt: stringList(value.hunt).slice(0, 3),
     cardCollection,
     observedEnemyMoves: stringList(value.observedEnemyMoves),
@@ -197,11 +201,11 @@ export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
 }
 
 export function loadAccount(): PlayerAccount {
-  return readJournaledJson(ACCOUNT_KEY, sanitizeAccount) ?? defaultAccount();
+  return readJournaledJson(ACCOUNT_KEY, sanitizeAccount) || defaultAccount();
 }
 
-function saveAccount(account: PlayerAccount): void {
-  writeJournaledJson(ACCOUNT_KEY, account);
+export function saveAccount(account: PlayerAccount): boolean {
+  return writeJournaledJson(ACCOUNT_KEY, account);
 }
 
 export interface Achievement {
@@ -258,7 +262,7 @@ export function leaderMastery(account: PlayerAccount, leaderId: string): LeaderM
   const progress = account.leaderProgress[leaderId] ?? {
     surges: 0, cleanFights: 0, swiftFights: 0, blockedDamage: 0, contracts: 0
   };
-  if (runs < 1) return { level: 0, title: 'Unflown', current: runs, target: 1, nextGoal: 'Complete one run' };
+  if (!runs) return { level: 0, title: 'Unflown', current: runs, target: 1, nextGoal: 'Complete one run' };
   const specialty = leaderId === 'spark_caller'
     ? { current: progress.surges, target: 6, goal: 'Trigger six Surges' }
     : leaderId === 'talon'
@@ -288,15 +292,15 @@ export function recordRun(record: RunRecord): { account: PlayerAccount; newLeade
     account.winsByLeader[record.leaderId] = (account.winsByLeader[record.leaderId] ?? 0) + 1;
     account.bestWinTier = Math.max(account.bestWinTier, record.difficulty);
     account.fastestWinTurns = account.fastestWinTurns === null ? record.turns : Math.min(account.fastestWinTurns, record.turns);
-    const mode = record.runMode ?? 'full';
+    const mode = record.runMode || 'full';
     const tier = Math.max(0, Math.min(MAX_DIFFICULTY, finiteInt(record.difficulty)));
     const totalRunTurns = finiteInt(record.totalRunTurns, finiteInt(record.turns, 1, 1), 1);
     const key = `${mode}:${tier}`;
-    const leaderRecord = account.leaderRecords[record.leaderId] ?? { clears: {} };
+    const leaderRecord = account.leaderRecords[record.leaderId] || { clears: {} };
     const beforeBestFullWinTier = Math.max(-1, ...Object.keys(leaderRecord.clears)
       .filter((recordKey) => recordKey.startsWith('full:'))
       .map((recordKey) => Number(recordKey.slice(5))));
-    const prior = leaderRecord.clears[key] ?? { wins: 0, fastestRunTurns: null };
+    const prior = leaderRecord.clears[key] || { wins: 0, fastestRunTurns: null };
     const firstClear = prior.wins === 0;
     const fasterClear = prior.fastestRunTurns === null || totalRunTurns < prior.fastestRunTurns;
     leaderRecord.clears[key] = {
@@ -317,7 +321,7 @@ export function recordRun(record: RunRecord): { account: PlayerAccount; newLeade
   } else {
     account.losses += 1;
   }
-  const progress = account.leaderProgress[record.leaderId] ?? {
+  const progress = account.leaderProgress[record.leaderId] || {
     surges: 0, cleanFights: 0, swiftFights: 0, blockedDamage: 0, contracts: 0
   };
   progress.surges += record.surgesTriggered ?? 0;
@@ -352,14 +356,13 @@ export function isLeaderUnlocked(account: PlayerAccount, id: string): boolean {
 // Mark cards as encountered (seen in a starting deck or offered/added in a run)
 // so they appear in the Codex. Returns the count newly discovered.
 export function discoverCards(ids: string[]): number {
-  if (ids.length === 0) return 0;
   const account = loadAccount();
   const known = new Set(account.discoveredCards);
   let added = 0;
   for (const id of ids) {
     if (id && !known.has(id)) { known.add(id); added += 1; }
   }
-  if (added > 0) {
+  if (added) {
     account.discoveredCards = [...known];
     saveAccount(account);
   }

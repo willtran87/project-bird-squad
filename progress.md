@@ -4493,3 +4493,40 @@ sessions through `docs/game/playtest-runbook.md`.
   fresh-player sessions remain necessary qualitative release evidence. A useful
   next milestone is saved favorite deck/loadout records that preserve player
   identity without adding collection power.
+
+## 2026-07-28 Saved Flight Folios
+
+- Added six durable Flight Folio slots for preserving meaningful active decks.
+  Saving from Route Deck Review retains exact card order, duplicate copies,
+  Base/Preened state, leader, flight seed, and run mode. Pointer, V, and
+  controller Y all use the same journaled account write.
+- Capacity is refusal-only: a seventh save plays locked feedback and never
+  replaces, rotates, or edits an existing folio. Malformed, empty, duplicate-id,
+  oversized, and invalid-card records are sanitized at route, Profile, and
+  backup boundaries.
+- Added a Flock Record Folios view with two readable records per page, six-slot
+  pagination, explicit selection, favorites, and custom names. Pointer and
+  keyboard/controller controls are represented in text state and screen-reader
+  summaries; rename uses an accessible native input so physical and on-screen
+  keyboards share the same commit/cancel path.
+- Full Save Data download and transactional restore preserve sanitized folios,
+  custom names, favorites, duplicates, and Preened state. The feature is
+  identity-only and explicitly reports that it never affects gameplay power.
+- Focused end-to-end coverage passes pointer, V, controller Y, capacity refusal,
+  exact deck persistence, favorite toggling, custom rename, minimum-landscape
+  rendering, backup download, and transactional recovery. Adjacent Deck Review,
+  Profile focus, touch-target, Save Data, and Showcase scenarios pass.
+- Full `npm run validate` passes documentation, 110-card runtime data, 961
+  optimized assets, canonical-world and directionless attack-tell contracts,
+  deployment hardening, enemy variety, Minor Arcana overlays, bundle gates,
+  and all 24 critical sequencing scenarios. Game core remains inside its
+  30.0 KiB hard cap; combined boot is 714.1 KiB / 192.8 KiB gzip, below the
+  hard ceiling with a 4.1 KiB advisory preferred-target excess.
+- The required shared production client completed Continue Run -> Deck Review
+  -> Save Flight. Text state reported one of six folios saved, persisted,
+  non-power, and refusal-only, with zero browser error artifacts. The inspected
+  screenshot and state are in `.artifacts/flight-folios-shared-client/`.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence. A useful
+  next milestone is deck-library duplication/version history or collection
+  locking that builds on these durable identity records.

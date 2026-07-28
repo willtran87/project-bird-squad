@@ -63,9 +63,14 @@ import {
 } from './game/difficulty';
 import {
   achievements, discoverCards, isLeaderUnlocked, leaderMastery, leaderUnlockHints,
-  loadAccount, recordRun, type CardAcquisitionSource, type CardCollectionRecord, type PlayerAccount
+  loadAccount, recordRun, saveAccount, type CardAcquisitionSource, type CardCollectionRecord, type PlayerAccount
 } from './game/meta';
 import { collectionMilestoneProgress, unlockCollectionMilestones } from './game/collection-milestone-progress';
+import {
+  createSavedDeckRecord,
+  sanitizeSavedDecks,
+  SAVED_DECK_LIMIT,
+} from './game/saved-decks';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './game/theme';
 import {
   queuePreloadImageAssets,
@@ -6286,6 +6291,8 @@ class ProfileScene extends Phaser.Scene {
     flightReviewAction: 0,
     flightCopyStatus: 'idle',
     flightLogMessage: '',
+    savedDeckIndex: 0,
+    savedDeckStatus: 'idle',
   };
   private profileRenderer?: ProfileSceneModule['renderProfileScene'];
   private openSaveDataOnCreate = false;
@@ -6335,6 +6342,10 @@ class ProfileScene extends Phaser.Scene {
     this.profileViewState.flightReviewAction = 0;
     this.profileViewState.flightCopyStatus = 'idle';
     this.profileViewState.flightLogMessage = '';
+    this.profileViewState.savedDeckIndex = 0;
+    this.profileViewState.savedDeckStatus = 'idle';
+    this.profileViewState.savedDeckRenameInput?.remove();
+    this.profileViewState.savedDeckRenameInput = undefined;
     this.profileViewState.focus = openSaveData ? 'playtestFun' : 'achievements';
     this.renderProfileLoading();
     void loadProfileSceneModule()
@@ -6445,6 +6456,7 @@ class RouteScene extends Phaser.Scene {
   private deckReviewQuery = '';
   private deckReviewSearchActive = false;
   private deckReviewCompareCardId: string | undefined;
+  private deckSaveStatus: 'idle' | 'saved' | 'full' | 'failed' = 'idle';
   private cardPickerScroll = 0;
   private routeWaymarkScroll = 0;
   private routeWaymarkSelectedId: string | undefined;
@@ -6578,6 +6590,7 @@ class RouteScene extends Phaser.Scene {
     this.deckReviewQuery = '';
     this.deckReviewSearchActive = false;
     this.deckReviewCompareCardId = undefined;
+    this.deckSaveStatus = 'idle';
     this.cardPickerScroll = 0;
     this.routeWaymarkScroll = 0;
     this.routeWaymarkSelectedId = undefined;
@@ -6701,10 +6714,19 @@ class RouteScene extends Phaser.Scene {
       if (button.index === 2) {
         if (this.waymarkDrawerOpen) this.toggleRouteWaymarkPin();
         else if (this.deckOverlayOpen && !this.deckReviewSearchActive) this.toggleDeckReviewComparison();
+      } else if (button.index === 3 && this.deckOverlayOpen && !this.deckReviewSearchActive) {
+        this.saveCurrentDeckToFolio();
       } else if (
         button.index === 11
         && this.children.list.some((child) => child.name === 'route-collection-goal-hit')
       ) this.openRouteCollectionGoals();
+    };
+    const onSaveDeck = (event: KeyboardEvent) => {
+      if (!this.deckOverlayOpen || this.deckReviewSearchActive) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      this.saveCurrentDeckToFolio();
     };
     const onCollectionGoals = (event: KeyboardEvent) => {
       if (!this.children.list.some((child) => child.name === 'route-collection-goal-hit')) return;
@@ -6712,9 +6734,11 @@ class RouteScene extends Phaser.Scene {
       event.stopPropagation();
       this.openRouteCollectionGoals();
     };
+    this.input.keyboard?.on('keydown-V', onSaveDeck);
     this.input.keyboard?.on('keydown-G', onCollectionGoals);
     this.input.gamepad?.on('down', onRouteGamepadDown);
     this.events.once('shutdown', () => {
+      this.input.keyboard?.off('keydown-V', onSaveDeck);
       this.input.keyboard?.off('keydown-G', onCollectionGoals);
       this.input.gamepad?.off('down', onRouteGamepadDown);
     });
@@ -13695,10 +13719,62 @@ class RouteScene extends Phaser.Scene {
     this.deckReviewQuery = '';
     this.deckReviewSearchActive = false;
     this.deckReviewCompareCardId = undefined;
+    this.deckSaveStatus = 'idle';
     this.routeDeckBrowserFailed = false;
     this.renderAll();
     this.ensureRouteDeckBrowser();
     this.queueDeckCardArtLoad();
+  }
+
+  savedDeckRecordState() {
+    const savedDecks = sanitizeSavedDecks(loadAccount().decks);
+    return {
+      count: savedDecks.length,
+      capacity: SAVED_DECK_LIMIT,
+      status: this.deckSaveStatus,
+      canSave: savedDecks.length < SAVED_DECK_LIMIT && this.runState.deck.length > 0,
+      currentDeckCards: this.runState.deck.length,
+      persisted: true,
+      affectsPower: false,
+      refusesReplacementAtCapacity: true,
+      location: 'Flock Record / Folios',
+      input: {
+        pointer: true,
+        keyboard: 'V',
+        controller: 'Y',
+      },
+    };
+  }
+
+  private saveCurrentDeckToFolio() {
+    if (!this.deckOverlayOpen || this.deckReviewSearchActive) return;
+    const account = loadAccount();
+    const savedDecks = sanitizeSavedDecks(account.decks);
+    if (savedDecks.length >= SAVED_DECK_LIMIT) {
+      this.deckSaveStatus = 'full';
+      playUiSound('locked');
+      this.renderAll();
+      return;
+    }
+    const leaderId = this.runState.leaderId ?? defaultLeaderId;
+    const leader = getLeader(leaderId);
+    const record = createSavedDeckRecord({
+      name: `${leader.name} Flight ${savedDecks.length + 1}`,
+      leaderId,
+      cards: this.runState.deck,
+      sourceSeed: this.runState.seed ?? '',
+      runMode: this.runState.runMode ?? 'full',
+    });
+    account.decks = [record, ...savedDecks];
+    if (!saveAccount(account)) {
+      this.deckSaveStatus = 'failed';
+      playUiSound('locked');
+      this.renderAll();
+      return;
+    }
+    this.deckSaveStatus = 'saved';
+    playUiSound('confirm');
+    this.renderAll();
   }
 
   private ensureRouteDeckBrowser() {
@@ -14323,6 +14399,7 @@ class RouteScene extends Phaser.Scene {
       sortLabel: this.deckReviewSortLabel(),
       query: this.deckReviewQuery,
       searchActive: this.deckReviewSearchActive,
+      savedDecks: this.savedDeckRecordState(),
       onClose: () => this.closeDeckOverlay(),
       onCycleFilter: () => this.cycleDeckReviewFilter(1),
       onCycleSort: () => this.cycleDeckReviewSort(1),
@@ -14330,6 +14407,7 @@ class RouteScene extends Phaser.Scene {
       onInspect: (id) => this.inspectDeckCard(id),
       onCompare: (id) => this.toggleDeckReviewComparison(id),
       onScroll: (delta) => this.scrollDeck(delta),
+      onSaveDeck: () => this.saveCurrentDeckToFolio(),
     });
 
     const comparison = this.deckReviewComparison(selectedEntry?.card);

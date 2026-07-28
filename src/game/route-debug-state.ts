@@ -304,6 +304,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
         deckOverlayOpen: scene.deckOverlayOpen,
         deckReview: {
           open: scene.deckOverlayOpen,
+          savedFlights: scene.savedDeckRecordState(),
           browserRenderer: {
             requested: Boolean(scene.routeDeckBrowserModule || scene.routeDeckBrowserLoading || scene.routeDeckBrowserFailed),
             loaded: Boolean(scene.routeDeckBrowserModule),

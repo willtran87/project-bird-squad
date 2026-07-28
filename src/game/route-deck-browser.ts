@@ -46,6 +46,12 @@ export interface RouteDeckBrowserView {
   sortLabel: string;
   query: string;
   searchActive: boolean;
+  savedDecks: {
+    count: number;
+    capacity: number;
+    status: 'idle' | 'saved' | 'full' | 'failed';
+    canSave: boolean;
+  };
   onClose: () => void;
   onCycleFilter: () => void;
   onCycleSort: () => void;
@@ -53,6 +59,7 @@ export interface RouteDeckBrowserView {
   onInspect: (id: string) => void;
   onCompare: (id: string) => void;
   onScroll: (delta: number) => void;
+  onSaveDeck: () => void;
 }
 
 function compactLabel(value: string, maxChars: number) {
@@ -79,7 +86,7 @@ function renderModeControl(
   hit.on('pointerdown', onActivate);
   hit.on('pointerover', () => frame.setAlpha(1));
   hit.on('pointerout', () => frame.setAlpha(active ? 0.98 : 0.78));
-  scene.add.text(x, y, compactLabel(label, 20), {
+  scene.add.text(x, y, compactLabel(label, Math.max(20, Math.floor(width / 8))), {
     fontFamily: UI_FONT,
     fontSize: '9px',
     fontStyle: UI_BOLD,
@@ -247,14 +254,31 @@ export function renderRouteDeckBrowser(scene: Phaser.Scene, view: RouteDeckBrows
     ? `FIND ${view.query}${view.searchActive ? '_' : ''}`
     : view.searchActive ? 'FIND TYPE...' : 'FIND /';
   renderModeControl(scene, 944, 126, 144, searchLabel, 'deck-review-search-hit', view.onToggleSearch, view.searchActive);
-  scene.add.text(804, 154, 'UP/DOWN CARD  /  LEFT/RIGHT FILTER  /  A SORT  /  C/X PIN  /  SAME = PREEN', {
+  const saveLabel = view.savedDecks.status === 'saved'
+    ? `SAVED ${view.savedDecks.count}/${view.savedDecks.capacity}`
+    : view.savedDecks.status === 'full'
+      ? `FOLIOS FULL ${view.savedDecks.count}/${view.savedDecks.capacity}`
+      : view.savedDecks.status === 'failed'
+        ? 'SAVE FAILED'
+        : `SAVE FLIGHT ${view.savedDecks.count}/${view.savedDecks.capacity} · V/Y`;
+  renderModeControl(
+    scene,
+    1120,
+    126,
+    180,
+    saveLabel,
+    'deck-review-save-folio-hit',
+    view.onSaveDeck,
+    view.savedDecks.status === 'saved',
+  );
+  scene.add.text(884, 154, 'UP/DOWN CARD  /  LEFT/RIGHT FILTER  /  A SORT  /  C/X PIN  /  V/Y SAVE', {
     fontFamily: UI_FONT,
     fontSize: '9px',
     fontStyle: UI_BOLD,
     color: '#8fa9b7',
     stroke: '#020409',
     strokeThickness: 2,
-    fixedWidth: 430,
+    fixedWidth: 600,
     align: 'center',
   }).setOrigin(0.5);
   addDeckReviewSectionTabFrame(scene, () => {}, 194, 172, 136, 32, { alpha: 0.76 });

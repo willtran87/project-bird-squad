@@ -10,6 +10,7 @@ import { loadAccount, sanitizeAccount, type PlayerAccount } from './meta';
 import { safeStorageGet, safeStorageRemove, safeStorageSet } from './safe-storage';
 import { sanitizeCardPersonalTags } from './card-personal-tags';
 import { sanitizeCardShowcase } from './card-showcase';
+import { sanitizeSavedDecks } from './saved-decks';
 
 const SAVE_FORMAT = 'bird-squad-save';
 const SAVE_VERSION = 1;
@@ -247,6 +248,7 @@ export function createSaveBackup(dependencies: SaveBackupRuntimeDependencies): S
   const account = loadAccount();
   account.cardTags = sanitizeCardPersonalTags(account.cardTags, account.discoveredCards);
   account.showcase = sanitizeCardShowcase(account.showcase, account.discoveredCards);
+  account.decks = sanitizeSavedDecks(account.decks);
   return {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,
@@ -289,6 +291,7 @@ export function parseSaveBackup(raw: string, dependencies: SaveBackupRuntimeDepe
   }
   account.cardTags = sanitizeCardPersonalTags(account.cardTags, account.discoveredCards);
   account.showcase = sanitizeCardShowcase(account.showcase, account.discoveredCards);
+  account.decks = sanitizeSavedDecks(account.decks);
   const bundle: SaveBackupBundle = {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,

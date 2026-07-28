@@ -3,7 +3,7 @@ import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 import { alphaCardSet } from './runtime-data';
 import { difficultyLabel } from './difficulty';
 import { flockLeaders } from './leaders';
-import { achievements, isLeaderUnlocked, leaderMastery, loadAccount, type PlayerAccount } from './meta';
+import { achievements, isLeaderUnlocked, leaderMastery, loadAccount, saveAccount, type PlayerAccount } from './meta';
 import { bindControlActions, controlBindingLabel } from './input-bindings';
 import { CARD_SHOWCASE_LIMIT, sanitizeCardShowcase } from './card-showcase';
 import { renderOutcomeFlightDetails, type OutcomeFlightDetails } from './boss-dossier';
@@ -12,6 +12,14 @@ import {
   COLLECTION_MILESTONE_COUNT,
   collectionMilestoneSnapshots,
 } from './collection-milestones';
+import {
+  renameSavedDeck,
+  sanitizeSavedDecks,
+  SAVED_DECK_LIMIT,
+  SAVED_DECK_NAME_LIMIT,
+  toggleSavedDeckFavorite,
+  type SavedDeckRecord,
+} from './saved-decks';
 import {
   applySaveBackup,
   createSaveBackup,
@@ -32,6 +40,7 @@ const UI_MUTED = '#8fa3b6';
 const UI_SOFT = '#b9c7d6';
 const FLIGHT_LOG_PAGE_SIZE = 7;
 const BADGE_PAGE_SIZE = 6;
+const SAVED_DECK_PAGE_SIZE = 2;
 const UI_FIELD = {
   ink: 0x070b12,
   gold: 0xd8a840,
@@ -58,7 +67,7 @@ const profileUiIconIds = [
   'record-medallion',
 ] as const;
 
-type ProfileBadgeView = 'achievements' | 'contracts' | 'showcase';
+type ProfileBadgeView = 'achievements' | 'contracts' | 'showcase' | 'folios';
 export interface ProfileShowcaseEntry {
   id: string;
   name: string;
@@ -107,6 +116,7 @@ export type ProfileFocus =
   | 'achievements'
   | 'contracts'
   | 'showcase'
+  | 'folios'
   | 'flightLog'
   | 'return'
   | 'saveData'
@@ -154,6 +164,9 @@ export interface ProfileViewState {
   flightReviewAction: 0 | 1;
   flightCopyStatus: 'idle' | 'copied' | 'failed';
   flightLogMessage: string;
+  savedDeckIndex: number;
+  savedDeckStatus: 'idle' | 'favorited' | 'unfavorited' | 'renamed' | 'failed';
+  savedDeckRenameInput?: HTMLInputElement;
 }
 
 export interface ProfileSceneDependencies {
@@ -283,7 +296,7 @@ function leaderPersonalRecord(account: PlayerAccount, leaderId: string) {
 
 function profileFocusOrder(state: ProfileViewState): ProfileFocus[] {
   if (state.flightLogOpen) return ['flightLog'];
-  if (!state.saveDataOpen) return ['achievements', 'contracts', 'showcase', 'flightLog', 'return', 'saveData'];
+  if (!state.saveDataOpen) return ['achievements', 'contracts', 'showcase', 'folios', 'flightLog', 'return', 'saveData'];
   if (state.pendingRestore) return ['restoreConfirm', 'restoreCancel'];
   const order: ProfileFocus[] = ['saveDownload', 'saveRestore'];
   if (playtestExportEnabled()) {
@@ -295,6 +308,9 @@ function profileFocusOrder(state: ProfileViewState): ProfileFocus[] {
 
 function profileBadgePageCount(state: ProfileViewState) {
   if (state.badgeView === 'showcase') return 1;
+  if (state.badgeView === 'folios') {
+    return Math.max(1, Math.ceil(sanitizeSavedDecks(loadAccount().decks).length / SAVED_DECK_PAGE_SIZE));
+  }
   const total = state.badgeView === 'achievements'
     ? achievements.length + COLLECTION_MILESTONE_COUNT
     : loadAccount().contractBadges.length;
@@ -314,8 +330,155 @@ function cycleBadgePage(
     return;
   }
   state.badgePage = nextPage;
+  if (state.badgeView === 'folios') state.savedDeckIndex = nextPage * SAVED_DECK_PAGE_SIZE;
   dependencies.playUiSound('confirm');
   renderProfileScene(scene, state, dependencies);
+}
+
+function selectedSavedDeck(state: ProfileViewState) {
+  const decks = sanitizeSavedDecks(loadAccount().decks);
+  state.savedDeckIndex = Phaser.Math.Clamp(state.savedDeckIndex, 0, Math.max(0, decks.length - 1));
+  return decks[state.savedDeckIndex];
+}
+
+function selectSavedDeck(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  index: number,
+) {
+  const decks = sanitizeSavedDecks(loadAccount().decks);
+  if (decks.length === 0) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  const next = Phaser.Math.Clamp(index, 0, decks.length - 1);
+  if (next === state.savedDeckIndex) return;
+  state.savedDeckIndex = next;
+  state.badgePage = Math.floor(next / SAVED_DECK_PAGE_SIZE);
+  state.savedDeckStatus = 'idle';
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function cycleSavedDeck(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  direction: -1 | 1,
+) {
+  const decks = sanitizeSavedDecks(loadAccount().decks);
+  if (decks.length === 0) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  selectSavedDeck(scene, state, dependencies, (state.savedDeckIndex + direction + decks.length) % decks.length);
+}
+
+function toggleSelectedSavedDeckFavorite(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  const account = loadAccount();
+  const decks = sanitizeSavedDecks(account.decks);
+  const selected = decks[state.savedDeckIndex];
+  if (!selected) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  account.decks = toggleSavedDeckFavorite(decks, selected.id);
+  if (!saveAccount(account)) {
+    state.savedDeckStatus = 'failed';
+    dependencies.playUiSound('locked');
+  } else {
+    state.savedDeckStatus = selected.favorite ? 'unfavorited' : 'favorited';
+    dependencies.playUiSound(selected.favorite ? 'close' : 'confirm');
+  }
+  renderProfileScene(scene, state, dependencies);
+}
+
+function closeSavedDeckRename(state: ProfileViewState) {
+  state.savedDeckRenameInput?.remove();
+  state.savedDeckRenameInput = undefined;
+}
+
+function beginSavedDeckRename(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  const selected = selectedSavedDeck(state);
+  if (!selected || state.savedDeckRenameInput) {
+    if (!selected) dependencies.playUiSound('locked');
+    return;
+  }
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = selected.name;
+  input.maxLength = SAVED_DECK_NAME_LIMIT;
+  input.setAttribute('aria-label', 'Saved flight name');
+  input.setAttribute('autocomplete', 'off');
+  Object.assign(input.style, {
+    position: 'fixed',
+    left: '50%',
+    top: '50%',
+    width: 'min(420px, calc(100vw - 48px))',
+    transform: 'translate(-50%, -50%)',
+    zIndex: '10000',
+    boxSizing: 'border-box',
+    padding: '14px 18px',
+    border: '2px solid #8df4ff',
+    borderRadius: '4px',
+    outline: '4px solid rgba(5, 12, 20, 0.92)',
+    background: '#0a1420',
+    color: '#ffe1a3',
+    font: 'bold 18px Arial',
+    textAlign: 'center',
+  });
+  document.body.append(input);
+  state.savedDeckRenameInput = input;
+  state.savedDeckStatus = 'idle';
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+
+  let finished = false;
+  const finish = (commit: boolean) => {
+    if (finished) return;
+    finished = true;
+    if (commit) {
+      const account = loadAccount();
+      const decks = sanitizeSavedDecks(account.decks);
+      account.decks = renameSavedDeck(decks, selected.id, input.value);
+      if (saveAccount(account)) {
+        state.savedDeckStatus = 'renamed';
+        dependencies.playUiSound('confirm');
+      } else {
+        state.savedDeckStatus = 'failed';
+        dependencies.playUiSound('locked');
+      }
+    } else {
+      dependencies.playUiSound('close');
+    }
+    closeSavedDeckRename(state);
+    if (scene.scene.isActive()) renderProfileScene(scene, state, dependencies);
+  };
+  input.addEventListener('keydown', (event) => {
+    event.stopPropagation();
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      finish(true);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      finish(false);
+    }
+  });
+  input.addEventListener('blur', () => finish(true), { once: true });
+  scene.events.once('shutdown', () => closeSavedDeckRename(state));
+  window.setTimeout(() => {
+    input.focus();
+    input.select();
+  }, 0);
 }
 
 const playtestFocusKey: Partial<Record<ProfileFocus, PlaytestRatingKey>> = {
@@ -596,7 +759,7 @@ function activateProfileFocus(scene: Phaser.Scene, state: ProfileViewState, depe
     return;
   }
   dependencies.playUiSound(state.focus === 'return' || state.focus === 'restoreCancel' ? 'close' : 'confirm');
-  if (state.focus === 'achievements' || state.focus === 'contracts' || state.focus === 'showcase') {
+  if (state.focus === 'achievements' || state.focus === 'contracts' || state.focus === 'showcase' || state.focus === 'folios') {
     if (state.badgeView !== state.focus) state.badgePage = 0;
     state.badgeView = state.focus;
     renderProfileScene(scene, state, dependencies);
@@ -631,6 +794,12 @@ export function startProfileScene(
   state.revealBursts = 0;
   if (playtestExportEnabled()) syncLatestPlaytestRun(state, dependencies);
   const returnToMenu = () => {
+    if (state.savedDeckRenameInput) {
+      closeSavedDeckRename(state);
+      dependencies.playUiSound('close');
+      renderProfileScene(scene, state, dependencies);
+      return;
+    }
     if (state.flightReview) {
       closeFlightReview(scene, state, dependencies);
       return;
@@ -654,10 +823,14 @@ export function startProfileScene(
     back: returnToMenu,
     previous: () => state.flightLogOpen
       ? cycleFlightHistory(scene, state, dependencies, -1)
-      : cycleProfileFocus(scene, state, dependencies, -1),
+      : state.badgeView === 'folios' && state.focus === 'folios'
+        ? cycleSavedDeck(scene, state, dependencies, -1)
+        : cycleProfileFocus(scene, state, dependencies, -1),
     next: () => state.flightLogOpen
       ? cycleFlightHistory(scene, state, dependencies, 1)
-      : cycleProfileFocus(scene, state, dependencies, 1),
+      : state.badgeView === 'folios' && state.focus === 'folios'
+        ? cycleSavedDeck(scene, state, dependencies, 1)
+        : cycleProfileFocus(scene, state, dependencies, 1),
     confirm: () => {
       if (!state.flightLogOpen) {
         activateProfileFocus(scene, state, dependencies);
@@ -693,6 +866,16 @@ export function startProfileScene(
     else cycleBadgePage(scene, state, dependencies, 1);
   };
   const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button) => {
+    if (state.badgeView === 'folios' && state.focus === 'folios' && !state.savedDeckRenameInput) {
+      if (button.index === 2) {
+        toggleSelectedSavedDeckFavorite(scene, state, dependencies);
+        return;
+      }
+      if (button.index === 3) {
+        beginSavedDeckRename(scene, state, dependencies);
+        return;
+      }
+    }
     if (button.index === 12 || button.index === 14) {
       if (state.flightLogOpen) cycleFlightHistory(scene, state, dependencies, -1);
       else cycleProfileFocus(scene, state, dependencies, -1);
@@ -715,14 +898,31 @@ export function startProfileScene(
     }
     else if (button.index === 1) returnToMenu();
   };
+  const onSavedDeckFavorite = (event: KeyboardEvent) => {
+    if (state.badgeView !== 'folios' || state.focus !== 'folios' || state.savedDeckRenameInput) return;
+    event.preventDefault();
+    event.stopPropagation();
+    toggleSelectedSavedDeckFavorite(scene, state, dependencies);
+  };
+  const onSavedDeckRename = (event: KeyboardEvent) => {
+    if (state.badgeView !== 'folios' || state.focus !== 'folios' || state.savedDeckRenameInput) return;
+    event.preventDefault();
+    event.stopPropagation();
+    beginSavedDeckRename(scene, state, dependencies);
+  };
   scene.input.keyboard?.on('keydown-TAB', onTab);
   scene.input.keyboard?.on('keydown-PAGE_UP', onPageUp);
   scene.input.keyboard?.on('keydown-PAGE_DOWN', onPageDown);
+  scene.input.keyboard?.on('keydown-C', onSavedDeckFavorite);
+  scene.input.keyboard?.on('keydown-R', onSavedDeckRename);
   scene.input.gamepad?.on('down', onGamepadDown);
   scene.events.once('shutdown', () => {
+    closeSavedDeckRename(state);
     scene.input.keyboard?.off('keydown-TAB', onTab);
     scene.input.keyboard?.off('keydown-PAGE_UP', onPageUp);
     scene.input.keyboard?.off('keydown-PAGE_DOWN', onPageDown);
+    scene.input.keyboard?.off('keydown-C', onSavedDeckFavorite);
+    scene.input.keyboard?.off('keydown-R', onSavedDeckRename);
     scene.input.gamepad?.off('down', onGamepadDown);
   });
 
@@ -785,6 +985,8 @@ export function renderProfileScene(
   const showcaseEntries = cardShowcase
     .map((id) => dependencies.cardShowcaseEntry(id))
     .filter((entry): entry is ProfileShowcaseEntry => Boolean(entry));
+  const savedDecks = sanitizeSavedDecks(account.decks);
+  state.savedDeckIndex = Phaser.Math.Clamp(state.savedDeckIndex, 0, Math.max(0, savedDecks.length - 1));
   const winRate = account.runs > 0 ? Math.round((account.wins / account.runs) * 100) : 0;
   const leaderRecordRows = flockLeaders.map((leader) => ({
     id: leader.id,
@@ -806,10 +1008,18 @@ export function renderProfileScene(
         };
       })
       : [];
-  const badgePageCount = Math.max(1, Math.ceil(allBadges.length / BADGE_PAGE_SIZE));
+  const badgePageCount = state.badgeView === 'folios'
+    ? Math.max(1, Math.ceil(savedDecks.length / SAVED_DECK_PAGE_SIZE))
+    : Math.max(1, Math.ceil(allBadges.length / BADGE_PAGE_SIZE));
   state.badgePage = Phaser.Math.Clamp(state.badgePage, 0, badgePageCount - 1);
+  if (state.badgeView === 'folios' && savedDecks.length > 0) {
+    const selectedPage = Math.floor(state.savedDeckIndex / SAVED_DECK_PAGE_SIZE);
+    if (selectedPage !== state.badgePage) state.savedDeckIndex = state.badgePage * SAVED_DECK_PAGE_SIZE;
+  }
   const badgeVisibleStart = state.badgePage * BADGE_PAGE_SIZE;
   const visibleBadges = allBadges.slice(badgeVisibleStart, badgeVisibleStart + BADGE_PAGE_SIZE);
+  const savedDeckVisibleStart = state.badgePage * SAVED_DECK_PAGE_SIZE;
+  const visibleSavedDecks = savedDecks.slice(savedDeckVisibleStart, savedDeckVisibleStart + SAVED_DECK_PAGE_SIZE);
   const playtestMode = playtestExportEnabled();
   const playtestRuns = playtestRunPayload(dependencies.exportRunHistory()) ?? [];
   const flightHistory = dependencies.flightHistory();
@@ -858,6 +1068,42 @@ export function renderProfileScene(
       managedIn: 'Codex card dossiers',
       affectsPower: false,
       persisted: true,
+    },
+    savedFlightFolios: {
+      count: savedDecks.length,
+      capacity: SAVED_DECK_LIMIT,
+      items: savedDecks.map((deck) => ({
+        id: deck.id,
+        name: deck.name,
+        leaderId: deck.leaderId,
+        leader: flockLeaders.find((leader) => leader.id === deck.leaderId)?.name ?? deck.leaderId,
+        cardCount: deck.cards.length,
+        upgradedCount: deck.cards.filter((card) => card.upgraded).length,
+        cards: deck.cards.map((card) => ({ ...card })),
+        favorite: deck.favorite,
+        sourceSeed: deck.sourceSeed,
+        runMode: deck.runMode,
+        createdAt: deck.createdAt,
+        updatedAt: deck.updatedAt,
+      })),
+      empty: savedDecks.length === 0,
+      full: savedDecks.length >= SAVED_DECK_LIMIT,
+      selected: savedDecks[state.savedDeckIndex]?.id ?? null,
+      selectedIndex: savedDecks.length > 0 ? state.savedDeckIndex : null,
+      viewActive: state.badgeView === 'folios',
+      page: state.badgePage + 1,
+      pageCount: badgePageCount,
+      status: state.savedDeckStatus,
+      renaming: Boolean(state.savedDeckRenameInput),
+      persisted: true,
+      affectsPower: false,
+      refusesReplacementAtCapacity: true,
+      inputs: {
+        select: `${controlBindingLabel('previous')} / ${controlBindingLabel('next')}`,
+        favorite: 'C / controller X',
+        rename: 'R / controller Y / pointer',
+        page: 'Page Up / Page Down / LB / RB',
+      },
     },
     badgePagination: {
       page: state.badgePage + 1,
@@ -1054,22 +1300,23 @@ export function renderProfileScene(
   });
 
   const badgeX = frame.left + 392;
-  renderProfileSectionTabFrame(scene, badgeX + 146, frame.top + 210, 300, UI_FIELD.brass);
+  renderProfileSectionTabFrame(scene, badgeX + 146, frame.top + 210, 312, UI_FIELD.brass);
   const tabs: Array<{ view: ProfileBadgeView; x: number; label: string }> = [
-    { view: 'achievements', x: badgeX + 50, label: 'Badges' },
-    { view: 'contracts', x: badgeX + 150, label: `Contracts ${account.contractBadges.length}` },
-    { view: 'showcase', x: badgeX + 250, label: `Showcase ${showcaseEntries.length}` },
+    { view: 'achievements', x: badgeX + 32, label: 'Badges' },
+    { view: 'contracts', x: badgeX + 108, label: `Contracts ${account.contractBadges.length}` },
+    { view: 'showcase', x: badgeX + 184, label: `Showcase ${showcaseEntries.length}` },
+    { view: 'folios', x: badgeX + 260, label: `Folios ${savedDecks.length}` },
   ];
   tabs.forEach((tab) => {
     const selected = state.badgeView === tab.view;
     const focused = state.focus === tab.view;
-    const hit = scene.add.rectangle(tab.x, frame.top + 210, 94, MIN_SUPPORTED_TOUCH_TARGET, selected ? 0x183451 : 0x0d1420, 0.94)
+    const hit = scene.add.rectangle(tab.x, frame.top + 210, 72, MIN_SUPPORTED_TOUCH_TARGET, selected ? 0x183451 : 0x0d1420, 0.94)
       .setStrokeStyle(focused ? 3 : 1, focused ? UI_FIELD.cyan : selected ? UI_FIELD.gold : UI_FIELD.cyan, focused ? 0.98 : selected ? 0.86 : 0.34)
       .setInteractive({ useHandCursor: true })
       .setName(`profile-${tab.view}-tab-hit`);
     scene.add.text(tab.x, frame.top + 210, tab.label, {
       fontFamily: UI_FONT,
-      fontSize: tab.view === 'showcase' ? '10px' : '11px',
+      fontSize: '9px',
       fontStyle: UI_BOLD,
       color: selected ? UI_GOLD : UI_SOFT,
     }).setResolution(2).setOrigin(0.5);
@@ -1085,6 +1332,8 @@ export function renderProfileScene(
 
   if (state.badgeView === 'showcase') {
     renderCardShowcase(scene, badgeX, frame.top, showcaseEntries);
+  } else if (state.badgeView === 'folios') {
+    renderSavedFlightFolios(scene, state, dependencies, badgeX, frame.top, savedDecks, visibleSavedDecks, savedDeckVisibleStart);
   } else if (visibleBadges.length === 0) {
     scene.add.text(badgeX + 150, frame.top + 286, 'Complete a district contract to place its mark here.', {
       fontFamily: UI_FONT,
@@ -1095,7 +1344,7 @@ export function renderProfileScene(
       wordWrap: { width: 270 },
     }).setOrigin(0.5);
   }
-  if (state.badgeView !== 'showcase') visibleBadges.forEach((badge, index) => {
+  if (state.badgeView !== 'showcase' && state.badgeView !== 'folios') visibleBadges.forEach((badge, index) => {
     const y = frame.top + 260 + index * 39;
     renderProfileRecordRowFrame(scene, badgeX + 150, y, 300, 35, UI_FIELD.brass, badge.earned);
     const icon = addProfileIconImage(scene, 'achievement-medallion', badgeX + 17, y, 12);
@@ -1202,6 +1451,134 @@ export function renderProfileScene(
   }
   if (state.saveDataOpen) renderSaveDataOverlay(scene, state, dependencies, playtestMode, playtestRuns.length);
   if (state.flightLogOpen) renderFlightLogOverlay(scene, state, dependencies, flightHistory);
+}
+
+function renderSavedFlightFolios(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  x: number,
+  top: number,
+  allDecks: readonly SavedDeckRecord[],
+  visibleDecks: readonly SavedDeckRecord[],
+  visibleStart: number,
+) {
+  scene.add.text(x + 150, top + 253, 'SAVED FLIGHT FOLIOS', {
+    fontFamily: UI_FONT,
+    fontSize: '11px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.warm,
+  }).setResolution(2).setOrigin(0.5).setName('profile-folios-title');
+
+  if (allDecks.length === 0) {
+    scene.add.rectangle(x + 150, top + 366, 282, 154, 0x0b1420, 0.88)
+      .setStrokeStyle(1, UI_FIELD.violet, 0.52)
+      .setName('profile-folios-empty-frame');
+    scene.add.text(
+      x + 150,
+      top + 366,
+      'No flights saved yet.\n\nOpen Deck Review during a flight,\nthen choose SAVE FLIGHT or press V / Y.\nSaved folios never change gameplay power.',
+      {
+        fontFamily: UI_FONT,
+        fontSize: '12px',
+        color: UI_SOFT,
+        align: 'center',
+        lineSpacing: 5,
+        wordWrap: { width: 244 },
+      },
+    ).setResolution(2).setOrigin(0.5).setName('profile-folios-empty');
+    return;
+  }
+
+  visibleDecks.forEach((deck, visibleIndex) => {
+    const index = visibleStart + visibleIndex;
+    const y = top + 302 + visibleIndex * 76;
+    const selected = index === state.savedDeckIndex;
+    const leader = flockLeaders.find((candidate) => candidate.id === deck.leaderId)?.name ?? deck.leaderId;
+    const cardNames = deck.cards.slice(0, 3).map((saved) => (
+      alphaCardSet.cards.find((card) => card.id === saved.id)?.displayName ?? saved.id
+    ));
+    const hit = scene.add.rectangle(x + 150, y, 300, 68, selected ? 0x183451 : 0x0d1420, 0.94)
+      .setStrokeStyle(selected ? 3 : 1, selected ? UI_FIELD.cyan : deck.favorite ? UI_FIELD.gold : UI_FIELD.violet, selected ? 0.98 : 0.52)
+      .setInteractive({ useHandCursor: true })
+      .setName('profile-folio-row-hit')
+      .setData('deckId', deck.id)
+      .setData('index', index);
+    hit.on('pointerdown', () => {
+      state.focus = 'folios';
+      selectSavedDeck(scene, state, dependencies, index);
+    });
+    scene.add.text(x + 20, y - 26, `${deck.favorite ? '★ ' : ''}${deck.name}`, {
+      fontFamily: UI_FONT,
+      fontSize: '13px',
+      fontStyle: UI_BOLD,
+      color: deck.favorite ? UI_GOLD : UI_FIELD.warm,
+      fixedWidth: 258,
+    }).setResolution(2).setName('profile-folio-name').setData('deckId', deck.id);
+    scene.add.text(x + 20, y - 7, `${leader.toUpperCase()}  ·  ${deck.cards.length} CARDS  ·  ${deck.cards.filter((card) => card.upgraded).length} PREENED`, {
+      fontFamily: UI_FONT,
+      fontSize: '9px',
+      fontStyle: UI_BOLD,
+      color: UI_FIELD.cyanText,
+      fixedWidth: 260,
+    }).setResolution(2);
+    scene.add.text(x + 20, y + 11, `${cardNames.join(', ')}${deck.cards.length > 3 ? ', …' : ''}`, {
+      fontFamily: UI_FONT,
+      fontSize: '9px',
+      color: UI_MUTED,
+      fixedWidth: 260,
+    }).setResolution(2);
+  });
+
+  const selected = allDecks[state.savedDeckIndex];
+  const status = state.savedDeckRenameInput
+    ? 'TYPE A NAME  ·  ENTER SAVE  ·  ESC CANCEL'
+    : state.savedDeckStatus === 'favorited'
+      ? 'FAVORITE SAVED'
+      : state.savedDeckStatus === 'unfavorited'
+        ? 'FAVORITE REMOVED'
+        : state.savedDeckStatus === 'renamed'
+          ? 'CUSTOM NAME SAVED'
+          : state.savedDeckStatus === 'failed'
+            ? 'SAVE FAILED  ·  ORIGINAL FOLIO KEPT'
+            : 'PREV/NEXT SELECT  ·  C/X FAVORITE  ·  R/Y RENAME';
+  scene.add.text(x + 150, top + 445, status, {
+    fontFamily: UI_FONT,
+    fontSize: '9px',
+    fontStyle: UI_BOLD,
+    color: state.savedDeckStatus === 'failed' ? '#ffb09a' : UI_FIELD.cyanText,
+    fixedWidth: 300,
+    align: 'center',
+  }).setResolution(2).setOrigin(0.5).setName('profile-folio-status');
+
+  const favorite = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    x + 76,
+    top + 474,
+    132,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    selected?.favorite ? 'Unfavorite' : 'Favorite',
+    Boolean(selected) && !state.savedDeckRenameInput,
+    () => toggleSelectedSavedDeckFavorite(scene, state, dependencies),
+    UI_FIELD.gold,
+    false,
+  );
+  favorite.setName('profile-folio-favorite-hit');
+  const rename = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    x + 224,
+    top + 474,
+    132,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Rename',
+    Boolean(selected) && !state.savedDeckRenameInput,
+    () => beginSavedDeckRename(scene, state, dependencies),
+    UI_FIELD.violet,
+    false,
+  );
+  rename.setName('profile-folio-rename-hit');
 }
 
 function renderCardShowcase(

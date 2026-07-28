@@ -88,5 +88,5 @@ for (const leader of flockLeaders) {
 export const defaultLeaderId = flockLeaders[0].id;
 
 export function getLeader(id: string | undefined): FlockLeader {
-  return flockLeaders.find((leader) => leader.id === id) ?? flockLeaders[0];
+  return flockLeaders.find((leader) => leader.id === id) || flockLeaders[0];
 }

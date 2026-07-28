@@ -18173,6 +18173,7 @@ test('Flock Record focus follows remapped keyboard and gamepad controls with one
   await page.keyboard.press('d');
   await page.keyboard.press('d');
   await page.keyboard.press('d');
+  await page.keyboard.press('d');
   expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).focus.current).toBe('saveData');
   await page.evaluate(() => {
     const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
@@ -18205,7 +18206,7 @@ test('Flock Record focus follows remapped keyboard and gamepad controls with one
   await page.keyboard.press('Space');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').scene === 'MenuScene');
   const finalState = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
-  expect((finalState.audio.cueRequests.confirm ?? 0) - (initial.audio.cueRequests.confirm ?? 0)).toBe(12);
+  expect((finalState.audio.cueRequests.confirm ?? 0) - (initial.audio.cueRequests.confirm ?? 0)).toBe(13);
   expect((finalState.audio.cueRequests.close ?? 0) - (initial.audio.cueRequests.close ?? 0)).toBe(3);
 });
 
@@ -18359,6 +18360,17 @@ test('Flock Record previews and confirms a transactional save restore', async ({
       achievements: ['first_win'], discoveredCards: ['major_00', 'wands_ace'],
       favoriteCards: ['major_00'], hunt: ['wands_ace'], bestWinTier: 1,
       cardTags: { major_00: 'keepsake', wands_ace: 'experiment' },
+      decks: [{
+        id: 'restore-folio',
+        name: 'Restored Rooftop',
+        leaderId: 'talon',
+        cards: [{ id: 'major_00', upgraded: true }, { id: 'wands_ace', upgraded: false }],
+        createdAt: 1_718_323_200_000,
+        updatedAt: 1_718_323_200_000,
+        favorite: true,
+        sourceSeed: 'restore-folio-seed',
+        runMode: 'quick',
+      }],
       cardCollection: {
         major_00: { timesClaimed: 1, firstAcquiredAt: 1_718_323_200_000, firstSource: 'combat_reward', isNew: true },
       },
@@ -18407,6 +18419,10 @@ test('Flock Record previews and confirms a transactional save restore', async ({
   if (!downloadedPath) throw new Error('Restore fixture backup was not downloaded');
   const legacyBackup = JSON.parse(await readFile(downloadedPath, 'utf8'));
   legacyBackup.data.account.showcase = ['major_00', 'missing_card', 'major_00', 'wands_ace', 'extra_card'];
+  legacyBackup.data.account.decks.push(
+    { ...legacyBackup.data.account.decks[0], name: 'Duplicate Must Drop' },
+    { id: 'empty-folio', name: 'Empty Must Drop', leaderId: 'talon', cards: [] },
+  );
   delete legacyBackup.data.preferences.ambienceVolume;
   delete legacyBackup.data.preferences.animationPace;
   delete legacyBackup.data.preferences.textPace;
@@ -18486,6 +18502,15 @@ test('Flock Record previews and confirms a transactional save restore', async ({
     hunt: ['wands_ace'],
     cardTags: { major_00: 'keepsake', wands_ace: 'experiment' },
     showcase: ['major_00', 'wands_ace'],
+    decks: [{
+      id: 'restore-folio',
+      name: 'Restored Rooftop',
+      leaderId: 'talon',
+      cards: [{ id: 'major_00', upgraded: true }, { id: 'wands_ace', upgraded: false }],
+      favorite: true,
+      sourceSeed: 'restore-folio-seed',
+      runMode: 'quick',
+    }],
     cardCollection: {
       major_00: { timesClaimed: 1, firstAcquiredAt: 1_718_323_200_000, firstSource: 'combat_reward', isNew: true },
     },
@@ -21840,6 +21865,184 @@ test('collection path surfaces the next optional goal from title and route and r
   await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').scene === 'RouteScene');
+});
+
+test('saved flight folios preserve exact decks, refuse replacement, and support favorite names and backup', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.addInitScript(() => {
+    const account = {
+      discoveredCards: ['major_00', 'wands_ace', 'swords_ace'],
+      favoriteCards: [],
+      cardCollection: {},
+      decks: [
+        {
+          id: 'legacy-folio',
+          name: 'Trusted Line',
+          leaderId: 'fledgling',
+          cards: [{ id: 'major_00', upgraded: true }],
+          createdAt: 100,
+          updatedAt: 100,
+          favorite: true,
+          sourceSeed: 'trusted-seed',
+          runMode: 'full',
+        },
+        {
+          id: 'legacy-folio',
+          name: 'Duplicate Must Drop',
+          leaderId: 'fledgling',
+          cards: [{ id: 'wands_ace', upgraded: false }],
+          createdAt: 101,
+          updatedAt: 101,
+          favorite: false,
+          sourceSeed: 'duplicate-seed',
+          runMode: 'full',
+        },
+        { id: 'empty-folio', name: 'Empty Must Drop', leaderId: 'fledgling', cards: [] },
+      ],
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => {
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {});
+    route.runState.deck = [
+      { id: 'major_00', upgraded: true },
+      { id: 'major_00', upgraded: false },
+      { id: 'wands_ace', upgraded: true },
+    ];
+    route.runState.leaderId = 'spark_caller';
+    route.runState.seed = 'folio-flight-seed';
+    route.runState.runMode = 'quick';
+    route.openDeckOverlay();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.deckReview?.open === true && state.deckReview?.browserRenderer?.loaded === true;
+  });
+
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.deckReview.savedFlights).toMatchObject({
+    count: 1,
+    capacity: 6,
+    status: 'idle',
+    canSave: true,
+    currentDeckCards: 3,
+    persisted: true,
+    affectsPower: false,
+    refusesReplacementAtCapacity: true,
+    location: 'Flock Record / Folios',
+    input: { pointer: true, keyboard: 'V', controller: 'Y' },
+  });
+  await clickNamedGameObject(page, 'RouteScene', 'deck-review-save-folio-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.savedFlights?.count === 2);
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.deckReview.savedFlights.status).toBe('saved');
+  let account = JSON.parse(await page.evaluate(() => localStorage.getItem('birdsquad.account') ?? '{}'));
+  expect(account.decks).toHaveLength(2);
+  expect(account.decks[0]).toMatchObject({
+    name: 'The Spark-Caller Flight 2',
+    leaderId: 'spark_caller',
+    cards: [
+      { id: 'major_00', upgraded: true },
+      { id: 'major_00', upgraded: false },
+      { id: 'wands_ace', upgraded: true },
+    ],
+    sourceSeed: 'folio-flight-seed',
+    runMode: 'quick',
+    favorite: false,
+  });
+  expect(account.decks[1].id).toBe('legacy-folio');
+
+  await page.keyboard.press('v');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.savedFlights?.count === 3);
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.input.gamepad.emit('down', route.input.gamepad.pad1, { index: 3 }, 1);
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.savedFlights?.count === 4);
+  await page.keyboard.press('v');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.savedFlights?.count === 5);
+  await page.keyboard.press('v');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.savedFlights?.count === 6);
+  const idsAtCapacity = await page.evaluate(() => (
+    JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}').decks.map((deck: any) => deck.id)
+  ));
+  await page.keyboard.press('v');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.savedFlights?.status === 'full');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.deckReview.savedFlights).toMatchObject({ count: 6, capacity: 6, status: 'full', canSave: false });
+  expect(await page.evaluate(() => (
+    JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}').decks.map((deck: any) => deck.id)
+  ))).toEqual(idsAtCapacity);
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Folios are full; no saved deck was replaced');
+
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folios-tab-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.viewActive === true);
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios).toMatchObject({
+    count: 6,
+    capacity: 6,
+    empty: false,
+    full: true,
+    selectedIndex: 0,
+    viewActive: true,
+    page: 1,
+    pageCount: 3,
+    persisted: true,
+    affectsPower: false,
+    refusesReplacementAtCapacity: true,
+  });
+  expect(state.savedFlightFolios.items[0]).toMatchObject({
+    leader: 'The Spark-Caller',
+    cardCount: 3,
+    upgradedCount: 2,
+    favorite: false,
+    sourceSeed: 'folio-flight-seed',
+    runMode: 'quick',
+  });
+
+  await page.keyboard.press('c');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'favorited');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.items[0].favorite).toBe(true);
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-rename-hit');
+  const renameInput = page.locator('input[aria-label="Saved flight name"]');
+  await expect(renameInput).toBeVisible();
+  await renameInput.fill('Canal Spark Archive');
+  await renameInput.press('Enter');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'renamed');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.items[0]).toMatchObject({ name: 'Canal Spark Archive', favorite: true });
+  expect(state.savedFlightFolios.renaming).toBe(false);
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Selected Canal Spark Archive, The Spark-Caller, 3 cards, favorite');
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.screenshot({ path: '.artifacts/test-results/saved-flight-folios-profile.png', fullPage: true });
+
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-save-data-hit');
+  const downloadPromise = page.waitForEvent('download');
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-save-download-hit');
+  const download = await downloadPromise;
+  const downloadedPath = await download.path();
+  if (!downloadedPath) throw new Error('Flight Folios backup did not produce a local file');
+  const payload = JSON.parse(await readFile(downloadedPath, 'utf8'));
+  expect(payload.data.account.decks).toHaveLength(6);
+  expect(payload.data.account.decks[0]).toMatchObject({
+    name: 'Canal Spark Archive',
+    favorite: true,
+    cards: [
+      { id: 'major_00', upgraded: true },
+      { id: 'major_00', upgraded: false },
+      { id: 'wands_ace', upgraded: true },
+    ],
+  });
 });
 
 test('card showcase preserves three deliberate choices across Codex controls, Flock Record, and save backups', async ({ page }) => {
