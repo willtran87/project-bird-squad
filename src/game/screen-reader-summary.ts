@@ -243,6 +243,8 @@ export function screenReaderSummary(payload: unknown): string {
     const hunt = isRecord(payload.collectionHunt) ? payload.collectionHunt : undefined;
     const ownership = isRecord(payload.cardOwnership) ? payload.cardOwnership : undefined;
     const collectionLens = isRecord(payload.cardCollectionLens) ? payload.cardCollectionLens : undefined;
+    const cardSearch = isRecord(payload.cardSearch) ? payload.cardSearch : undefined;
+    const cardSort = isRecord(payload.cardSort) ? payload.cardSort : undefined;
     const detailOwnership = isRecord(ownership?.detail) ? ownership.detail : undefined;
     const collectedCount = number(ownership?.collectedCount) ?? 0;
     const discoveredCount = number(payload.cardsDiscovered) ?? 0;
@@ -260,6 +262,11 @@ export function screenReaderSummary(payload: unknown): string {
     const lensLabel = spaced(text(collectionLens?.label)) || 'all';
     const lensVisible = number(collectionLens?.visibleCount) ?? 0;
     const lensBase = number(collectionLens?.baseCount) ?? 0;
+    const searchQuery = text(cardSearch?.query);
+    const searchScope = spaced(text(cardSearch?.scope)) || 'current set';
+    const searchMatches = number(cardSearch?.matchCount) ?? 0;
+    const searchVisible = number(cardSearch?.visibleCount) ?? 0;
+    const sortLabel = spaced(text(cardSort?.label)) || 'binder';
     const itemPosition = zone === 'entries' && position !== undefined && count !== undefined
       ? ` Item ${position + 1} of ${count}.`
       : '';
@@ -295,9 +302,19 @@ export function screenReaderSummary(payload: unknown): string {
         : ` ${collectedCount} collected and ${discoveredCount} discovered.`
       : '';
     const collectionLensState = section === 'cards' && !detail
-      ? ` Collection lens ${lensLabel}, showing ${lensVisible} of ${lensBase} cards in this set.${collectionLens?.empty === true ? ' No cards match this lens.' : ''} Use L or controller LB to change the lens.`
+      ? ` Collection lens ${lensLabel}, showing ${lensVisible} of ${lensBase} ${cardSearch?.active === true ? 'search matches' : 'cards in this set'}.${collectionLens?.empty === true ? ' No cards match this lens.' : ''} Use L or controller LB to change the lens.`
       : '';
-    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${huntState}${huntViewState}${ownershipState}${collectionLensState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
+    const cardSearchState = section === 'cards' && !detail
+      ? cardSearch?.editing === true
+        ? ` Find cards field active.${searchQuery ? ` Current query ${searchQuery}.` : ''} Type to filter, Enter to apply, or Escape to cancel.`
+        : searchQuery
+          ? ` Find cards query ${searchQuery}, ${searchMatches} match${searchMatches === 1 ? '' : 'es'} in ${searchScope}; ${searchVisible} visible after the collection lens.${cardSearch?.empty === true ? ' No cards match this search.' : ''} Use slash or controller RB to edit or clear it.`
+          : ' Use slash or controller RB to find cards by name, rules, keyword, character, set, type, cost, rarity, or ownership.'
+      : '';
+    const cardSortState = section === 'cards' && !detail
+      ? ` Sorted by ${sortLabel}. Use R or controller RT to change sorting.`
+      : '';
+    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${huntState}${huntViewState}${ownershipState}${cardSearchState}${cardSortState}${collectionLensState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
   }
   return scene ? `${spaced(scene)}.` : '';
 }

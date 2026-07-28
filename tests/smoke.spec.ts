@@ -18226,6 +18226,8 @@ test('Flock Record downloads a complete local save backup without uploading data
     localStorage.setItem('birdsquad.audioMuted', '1');
     localStorage.setItem('birdsquad.maxTier', '2');
     localStorage.setItem('birdsquad.codexCardLens', 'seen');
+    localStorage.setItem('birdsquad.codexCardSearch', 'Twin Plume');
+    localStorage.setItem('birdsquad.codexCardSort', 'recent');
     localStorage.setItem('unrelated.origin.key', 'must-not-export');
   });
   await boot(page);
@@ -18265,12 +18267,14 @@ test('Flock Record downloads a complete local save backup without uploading data
         motion: 'reduced', combatPace: 'snappy', animationPace: 'fast', textPace: 'fast', screenReader: 'on',
         musicVolume: 0.35, sfxVolume: 0.65, ambienceVolume: 0.55, audioMuted: true, maxTier: 2,
         codexCardLens: 'seen',
+        codexCardSearch: 'Twin Plume',
+        codexCardSort: 'recent',
       },
     },
   });
   expect(Object.keys(payload.data)).toEqual(['account', 'activeRun', 'runHistory', 'guide', 'preferences']);
   expect(Object.keys(payload.data.preferences).sort()).toEqual([
-    'ambienceVolume', 'animationPace', 'audioMuted', 'codexCardLens', 'colorCues', 'combatPace', 'controls', 'flashEffects',
+    'ambienceVolume', 'animationPace', 'audioMuted', 'codexCardLens', 'codexCardSearch', 'codexCardSort', 'colorCues', 'combatPace', 'controls', 'flashEffects',
     'graphicsQuality', 'maxTier', 'motion', 'musicVolume', 'screenReader', 'screenShake', 'sfxVolume', 'textPace', 'visualContrast',
   ]);
   expect(Object.keys(payload.data.preferences.controls).length).toBeGreaterThan(0);
@@ -18354,6 +18358,8 @@ test('Flock Record previews and confirms a transactional save restore', async ({
     localStorage.setItem('birdsquad.audioMuted', '1');
     localStorage.setItem('birdsquad.maxTier', '2');
     localStorage.setItem('birdsquad.codexCardLens', 'seen');
+    localStorage.setItem('birdsquad.codexCardSearch', 'Twin Plume');
+    localStorage.setItem('birdsquad.codexCardSort', 'recent');
   });
   await boot(page);
   await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
@@ -18386,6 +18392,8 @@ test('Flock Record previews and confirms a transactional save restore', async ({
     localStorage.setItem('birdsquad.animationPace', 'fast');
     localStorage.setItem('birdsquad.textPace', 'fast');
     localStorage.setItem('birdsquad.codexCardLens', 'all');
+    localStorage.setItem('birdsquad.codexCardSearch', 'replace me');
+    localStorage.setItem('birdsquad.codexCardSort', 'binder');
     localStorage.setItem('unrelated.origin.key', 'keep-current');
   });
   const chooserPromise = page.waitForEvent('filechooser');
@@ -18424,6 +18432,8 @@ test('Flock Record previews and confirms a transactional save restore', async ({
     textPace: localStorage.getItem('birdsquad.textPace'),
     ambienceVolume: localStorage.getItem('birdsquad.ambienceVolume'),
     codexCardLens: localStorage.getItem('birdsquad.codexCardLens'),
+    codexCardSearch: localStorage.getItem('birdsquad.codexCardSearch'),
+    codexCardSort: localStorage.getItem('birdsquad.codexCardSort'),
     accountMirror: localStorage.getItem('birdsquad.account.backup') === localStorage.getItem('birdsquad.account'),
     runMirror: localStorage.getItem('birdsquad.runs.backup') === localStorage.getItem('birdsquad.runs'),
     activeMirror: localStorage.getItem('birdsquad.run.active.backup') === localStorage.getItem('birdsquad.run.active'),
@@ -18446,6 +18456,8 @@ test('Flock Record previews and confirms a transactional save restore', async ({
     textPace: 'standard',
     ambienceVolume: '0.40',
     codexCardLens: 'seen',
+    codexCardSearch: 'Twin Plume',
+    codexCardSort: 'recent',
     accountMirror: true, runMirror: true, activeMirror: true, guideMirror: true,
     unrelated: 'keep-current',
   });
@@ -20622,6 +20634,299 @@ test('codex: Collection Lens filters ownership with pointer, keyboard, controlle
     timeout: 5_000,
   }).toContain('No cards match this lens');
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-collection-lens-empty.png' });
+});
+
+test('codex: card search filters real metadata without revealing undiscovered cards and supports pointer, keyboard, controller, persistence, and screen readers', async ({ page }) => {
+  await page.addInitScript(() => {
+    const account = {
+      discoveredCards: ['major_00', 'wands_ace', 'wands_02', 'wands_03'],
+      favoriteCards: [],
+      cardCollection: {
+        wands_02: {
+          timesClaimed: 2,
+          firstAcquiredAt: Date.UTC(2026, 6, 2),
+          firstSource: 'combat_reward',
+        },
+      },
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.codexCardLens', 'all');
+    localStorage.setItem('birdsquad.codexCardSearch', 'Twin Plume');
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => {
+    const cs: any = await window.__birdSquadStartScene!('CodexScene');
+    cs.activeSection = 'cards';
+    cs.activeTab = 2;
+    cs.detailId = undefined;
+    cs.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.cardSearch?.query === 'Twin Plume'
+      && state.cardSearch?.matchedIds?.length === 1
+      && state.cardSearch?.matchedIds?.[0] === 'wands_02';
+  });
+
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardSearch).toMatchObject({
+    active: true,
+    editing: false,
+    scope: 'Plumes',
+    matchCount: 1,
+    visibleCount: 1,
+    matchedIds: ['wands_02'],
+    keyboard: '/',
+    controller: 'RB',
+    nativeInput: false,
+    maxLength: 40,
+    revealsUndiscoveredDetails: false,
+    persisted: true,
+  });
+  expect(state.cardSearch.fields).toEqual([
+    'name', 'rules', 'keyword', 'character', 'set', 'type', 'cost', 'rarity', 'ownership',
+  ]);
+  expect(state.cardCollectionLens).toMatchObject({ baseCount: 1, setCount: 14, visibleIds: ['wands_02'] });
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Find cards query Twin Plume');
+
+  const searchHit = await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const hit = cs.root.getByName('codex-card-search-hit');
+    return { x: hit.x, y: hit.y };
+  });
+  const canvas = await page.locator('canvas').boundingBox();
+  if (!canvas) throw new Error('Missing game canvas');
+  await page.mouse.click(
+    canvas.x + canvas.width * (searchHit.x / 1280),
+    canvas.y + canvas.height * (searchHit.y / 720),
+  );
+  const searchInput = page.locator('#codex-card-search-input');
+  await expect(searchInput).toBeVisible();
+  await expect(searchInput).toBeFocused();
+  await expect(searchInput).toHaveAttribute('aria-label', /name, rules, keyword, character, set, type, cost, rarity, or ownership/i);
+  const inputBounds = await searchInput.boundingBox();
+  expect(inputBounds?.width).toBeGreaterThanOrEqual(188);
+  expect(inputBounds?.height).toBeGreaterThanOrEqual(40);
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardSearch).toMatchObject({ editing: true, nativeInput: true });
+  await page.screenshot({ path: '.artifacts/test-results/codex-card-search-editing.png', fullPage: true });
+
+  await searchInput.fill('resonance draw');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.cardSearch?.query === 'resonance draw'
+      && state.cardSearch?.matchedIds?.includes('wands_02')
+      && state.cardSearch?.editing === false;
+  });
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.codexCardSearch'))).toBe('resonance draw');
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-card-search-populated.png' });
+
+  await page.keyboard.press('/');
+  await expect(searchInput).toBeVisible();
+  await searchInput.fill('Street Party');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardSearch?.empty === true);
+  const hiddenResult = await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const walk = (entry: any): any[] => [entry, ...(Array.isArray(entry?.list) ? entry.list.flatMap(walk) : [])];
+    const objects = walk(cs.root);
+    return {
+      state: JSON.parse(window.render_game_to_text?.() ?? '{}'),
+      emptyPanels: objects.filter((entry: any) => entry.name === 'codex-card-search-empty-state').length,
+      texts: objects.filter((entry: any) => entry.type === 'Text').map((entry: any) => entry.text),
+    };
+  });
+  expect(hiddenResult.state.cardSearch).toMatchObject({
+    query: 'Street Party',
+    matchCount: 0,
+    matchedIds: [],
+    visibleIds: [],
+    empty: true,
+  });
+  expect(hiddenResult.emptyPanels).toBe(1);
+  expect(hiddenResult.texts).toContain('NO CARDS FOUND');
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('No cards match this search');
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-card-search-empty.png' });
+
+  await page.keyboard.press('/');
+  await searchInput.fill('Plume Flash');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardSearch?.editing === false);
+  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).cardSearch.query).toBe('Street Party');
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.codexCardSearch'))).toBe('Street Party');
+
+  await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    cs.input.gamepad.emit('down', cs.input.gamepad.pad1, { index: 5 }, 1);
+  });
+  await expect(searchInput).toBeVisible();
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.codexFocus).toMatchObject({ zone: 'search', label: 'Find cards, current query Street Party' });
+  expect(state.cardSearch).toMatchObject({ editing: true, nativeInput: true, controller: 'RB' });
+  await searchInput.fill('');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardSearch?.active === false);
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.codexCardSearch'))).toBe('');
+
+  await page.keyboard.press('/');
+  await searchInput.fill('Twin Plume');
+  await page.keyboard.press('Enter');
+  await page.evaluate(async () => {
+    const cs: any = await window.__birdSquadStartScene!('CodexScene');
+    cs.activeSection = 'cards';
+    cs.activeTab = 2;
+    cs.renderAll();
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardSearch?.query === 'Twin Plume');
+  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).cardSearch.matchedIds)
+    .toEqual(['wands_02']);
+
+  await page.keyboard.press('/');
+  await expect(searchInput).toBeVisible();
+  await page.setViewportSize({ width: 844, height: 390 });
+  await expect(searchInput).toBeHidden();
+  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).cardSearch.editing).toBe(false);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.keyboard.press('/');
+  await expect(searchInput).toBeVisible();
+  const mobileInputBounds = await searchInput.boundingBox();
+  expect(mobileInputBounds?.width).toBeGreaterThanOrEqual(190);
+  expect(mobileInputBounds?.height).toBeGreaterThanOrEqual(46);
+  expect(mobileInputBounds?.x).toBeGreaterThanOrEqual(0);
+  expect((mobileInputBounds?.x ?? 0) + (mobileInputBounds?.width ?? 0)).toBeLessThanOrEqual(1000);
+  await page.screenshot({ path: '.artifacts/test-results/codex-card-search-minimum-landscape-editing.png', fullPage: true });
+  await page.keyboard.press('Escape');
+});
+
+test('codex: card sorting supports binder, name, rarity, and acquisition recency without leaking unfound metadata', async ({ page }) => {
+  await page.addInitScript(() => {
+    const account = {
+      discoveredCards: ['major_00', 'wands_ace', 'wands_02', 'wands_03', 'wands_04'],
+      favoriteCards: [],
+      cardCollection: {
+        wands_ace: {
+          timesClaimed: 1,
+          firstAcquiredAt: Date.UTC(2026, 5, 1),
+          firstSource: 'starter_flock',
+        },
+        wands_02: {
+          timesClaimed: 2,
+          firstAcquiredAt: Date.UTC(2026, 5, 3),
+          firstSource: 'combat_reward',
+        },
+        wands_04: {
+          timesClaimed: 1,
+          firstAcquiredAt: Date.UTC(2026, 5, 4),
+          firstSource: 'market_purchase',
+        },
+      },
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.codexCardLens', 'all');
+    localStorage.setItem('birdsquad.codexCardSearch', '');
+    localStorage.setItem('birdsquad.codexCardSort', 'binder');
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => {
+    const cs: any = await window.__birdSquadStartScene!('CodexScene');
+    cs.activeSection = 'cards';
+    cs.activeTab = 2;
+    cs.detailId = undefined;
+    cs.renderAll();
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardSort?.id === 'binder');
+
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardSort).toMatchObject({
+    id: 'binder',
+    label: 'Binder',
+    index: 0,
+    count: 4,
+    discoveredIds: ['wands_02', 'wands_03', 'wands_04', 'wands_ace'],
+    collectedIds: ['wands_02', 'wands_04', 'wands_ace'],
+    keyboard: 'R',
+    controller: 'RT',
+    hidesUndiscoveredMetadata: true,
+    persisted: true,
+  });
+  const binderHiddenIds = state.cardSort.visibleIds.filter((id: string) => !state.cardSort.discoveredIds.includes(id));
+  const sortHit = await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const hit = cs.root.getByName('codex-card-sort-hit');
+    return { x: hit.x, y: hit.y, width: hit.displayWidth, height: hit.displayHeight };
+  });
+  expect(sortHit.width).toBeGreaterThanOrEqual(62);
+  expect(sortHit.height).toBeGreaterThanOrEqual(46);
+  const canvas = await page.locator('canvas').boundingBox();
+  if (!canvas) throw new Error('Missing game canvas');
+  await page.mouse.click(
+    canvas.x + canvas.width * (sortHit.x / 1280),
+    canvas.y + canvas.height * (sortHit.y / 720),
+  );
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardSort?.id === 'name');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.codexFocus).toMatchObject({ zone: 'sort', label: 'Sort cards, Name' });
+  expect(state.cardSort.discoveredIds).toEqual(['wands_ace', 'wands_03', 'wands_04', 'wands_02']);
+  expect(state.cardSort.visibleIds.slice(state.cardSort.discoveredIds.length)).toEqual(binderHiddenIds);
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.codexCardSort'))).toBe('name');
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Sorted by Name. Use R or controller RT');
+
+  await page.keyboard.press('r');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardSort?.id === 'rarity');
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.codexCardSort'))).toBe('rarity');
+
+  await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    cs.input.gamepad.emit('down', cs.input.gamepad.pad1, { index: 7 }, 1);
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardSort?.id === 'recent');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardSort).toMatchObject({
+    label: 'Recent',
+    discoveredIds: ['wands_04', 'wands_02', 'wands_ace', 'wands_03'],
+    collectedIds: ['wands_04', 'wands_02', 'wands_ace'],
+  });
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.codexCardSort'))).toBe('recent');
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-card-sort-recent.png' });
+
+  await page.keyboard.press('/');
+  const searchInput = page.locator('#codex-card-search-input');
+  await expect(searchInput).toBeVisible();
+  await searchInput.fill('resonance');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardSearch?.query === 'resonance');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardSort).toMatchObject({
+    id: 'recent',
+    visibleIds: ['wands_04', 'wands_02', 'wands_ace', 'wands_03'],
+  });
+  expect(state.cardSearch.visibleIds).toEqual(state.cardSort.visibleIds);
+
+  await page.evaluate(async () => {
+    const cs: any = await window.__birdSquadStartScene!('CodexScene');
+    cs.activeSection = 'cards';
+    cs.activeTab = 2;
+    cs.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.cardSort?.id === 'recent' && state.cardSearch?.query === 'resonance';
+  });
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.cardSort.visibleIds).toEqual(['wands_04', 'wands_02', 'wands_ace', 'wands_03']);
 });
 
 test('codex: snag cards retain their dedicated tab and render card art', async ({ page }) => {

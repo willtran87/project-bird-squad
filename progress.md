@@ -75,6 +75,89 @@ Current follow-up: System Settings motion preference control polish after the en
   grows. Five genuinely observed fresh-player sessions remain necessary
   qualitative release evidence.
 
+## 2026-07-28 Persistent Metadata-Aware Codex Card Search
+
+- Added a dedicated Codex `FIND CARDS` field that composes with the active card
+  set, Favorites/Hunt List views, and Collection Lens. Multi-token,
+  case/diacritic-insensitive matching covers the card metadata the game
+  actually models: name, rules/effects, keywords, bird/character, set/suit,
+  kind/type/target, cost, rarity, and ownership.
+- Search deliberately protects discovery. Discovered cards expose their useful
+  searchable dossier metadata; unfound cards match only safe structural/family
+  and ownership terms, so a hidden card cannot be revealed by searching its
+  name or rules. The zero-result panel names the query and gives a direct edit/
+  clear path instead of leaving an empty binder.
+- Pointer/touch opens a real native search input; `/`, focused Confirm, and
+  controller `RB` use the same path. Enter applies, Escape restores the
+  pre-edit query, Tab/focus-ring navigation includes the control, and the field
+  has a 40-character limit plus a full screen-reader label. The editor keeps a
+  physical 190x46 minimum target at the 1000x560 supported floor and dismisses
+  itself whenever the authoritative platform gate hides the game.
+- The query persists in `birdsquad.codexCardSearch`, appears in
+  `render_game_to_text`, is announced with result/lens counts, and is included
+  in local Flock Record export and transactional restore. Legacy backups safely
+  default to an empty query.
+- Strict TypeScript passes. The six neighboring Codex focus/favorite/Hunt/
+  Lens/search scenarios pass together, and the focused search plus backup/
+  restore run passes 3/3. Full `npm run validate` passes all validators and all
+  24 critical sequencing scenarios. Production remains at 676.9 KB / 179.4 KB
+  gzip app entry, 706.9 KB / 190.3 KB gzip combined boot, and 30.0 KB game
+  core; the lazy Codex scene is 89.5 KB / 23.2 KB gzip. The unchanged 1.9 KB
+  app-entry preference advisory remains while every hard budget passes.
+- Inspected captures:
+  `.artifacts/test-results/codex-card-search-editing.png`,
+  `.artifacts/test-results/codex-card-search-populated.png`,
+  `.artifacts/test-results/codex-card-search-empty.png`, and
+  `.artifacts/test-results/codex-card-search-minimum-landscape-editing.png`.
+  The required shared production client used real pointer input from title to
+  Codex to search focus; its state reports `editing: true`,
+  `nativeInput: true`, the complete field contract, and no browser-error
+  artifact under `.artifacts/codex-search-shared-client/`.
+- Next collector-loop priority is explicit sorting (name, rarity, acquisition
+  recency) plus a newly-acquired marker/clear flow. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Persistent Privacy-Safe Codex Card Sorting
+
+- Split the existing Find Cards header control into two clear, independent
+  targets without increasing header density. `SORT` cycles through `Binder`,
+  `Name`, `Rarity`, and `Recent`; its current state remains visible beside the
+  search query and composes with set tabs, Favorites/Hunt List, Collection
+  Lens, and search results.
+- Sorting protects discovery: Name and Rarity order only discovered cards by
+  visible metadata while unfound slots remain in stable binder order. Recent
+  uses the journaled `firstAcquiredAt` provenance for collected cards, then
+  places seen/uncollected cards before unfound slots. No hidden name, rarity, or
+  acquisition inference is exposed.
+- Pointer/touch uses a separate 62x46 segment, keyboard `R` and controller `RT`
+  cycle the same four-state model, and Tab/focus-ring navigation reaches Sort
+  independently from Find. `render_game_to_text` exposes visible, discovered,
+  and collected order plus the privacy guarantee; screen-reader summaries
+  announce the active mode and controls.
+- `birdsquad.codexCardSort` persists the mode and participates in local Flock
+  Record export and transactional restore. Legacy backups default safely to
+  Binder.
+- Strict TypeScript passes. The focused sort scenario proves pointer, keyboard,
+  controller, all four orderings, stable hidden slots, timestamp ordering,
+  search composition, scene reload persistence, focus state, and screen-reader
+  output. Both save-backup scenarios pass, and the complete neighboring Codex
+  suite passes 7/7. Full `npm run validate` passes all validators plus all 24
+  critical sequencing scenarios.
+- Production remains unchanged at 676.9 KB / 179.4 KB gzip app entry,
+  706.9 KB / 190.3 KB gzip combined boot, and 30.0 KB game core. The lazy Codex
+  scene is 92.8 KB / 23.9 KB gzip; the unchanged 1.9 KB preferred app-entry
+  advisory remains while every hard budget passes.
+- Inspected evidence:
+  `.artifacts/test-results/codex-card-sort-recent.png` and
+  `.artifacts/codex-sort-shared-client/shot-0.png`. The required shared
+  production client used real pointer input from title to Codex and cycled
+  Binder -> Name -> Rarity -> Recent; state reports `recent`, Sort focus,
+  `hidesUndiscoveredMetadata: true`, and no browser-error artifact.
+- Next collector-loop priority is a newly acquired marker with an intentional
+  per-card and bulk-clear flow, followed by acquisition-source/date filtering.
+  Five genuinely observed fresh-player sessions remain necessary qualitative
+  release evidence.
+
 Current follow-up: Enemy-turn readability/gravity pass after feedback that enemies still took turns too fast. `src/main.ts` now gives animated enemy beats explicit progress state (`combatEnemyTurnProgress`) and upgrades the existing top-right beat badge into an enemy phase strip during enemy actions, showing labels like `WIND-UP`, `COMMIT`, `IMPACT`, and the current move with a filling progress rail. Reduced-motion combat now keeps readable timing instead of collapsing drama: combat delays scale to 75% with a 520ms minimum, and reduced-motion wind-up tell art/plaque/charge assets remain visible through the wind-up beat while still skipping the busy motion particles. The normal animated enemy path remains damage-safe: Cohesion still does not change until the impact beat; the synchronous `resolveEnemyTurn()` balance/harness path remains unchanged. `tests/smoke.spec.ts` now asserts the phase strip renders, wind-up/commit durations stay substantial, and reduced-motion wind-up keeps both the attack tell and generated move plaque visible before impact. Verification passed: `npx tsc --noEmit --noUnusedLocals --noUnusedParameters`, focused `npx playwright test tests/smoke.spec.ts --grep "combat attacks resolve after their animation wind-up|combat reduced-motion enemy turn still holds damage until impact" --workers=1 --reporter=line`, `npm run validate:runtime`, `npm run build`, the required shared web-game client on `http://127.0.0.1:5199/?playwright=1`, and `git diff --check -- src\main.ts tests\smoke.spec.ts progress.md` with only existing LF-to-CRLF warnings. Frozen visual captures are in `.artifacts/test-results/enemy-turn-readable-gravity/`: high-res wind-up, desktop commit, mobile wind-up, and reduced-motion desktop wind-up all report pending enemy action, HP held at 38/38, `combatBeatProgressFrame.rendered: true`, zero page errors, and expected tell/plaque/commitment visuals. Visual inspection confirmed the phase strip reads at the top-right without covering the HUD, and reduced-motion now visibly holds `Strike 6` through wind-up.
 
 Current follow-up: System Settings volume slider polish for consumer-facing audio control depth. Built-in imagegen produced a textless brass/gunmetal/cyan/magenta horizontal settings slider frame on flat chroma key, preserved at `assets/concept-art/ui/icons/sources/system-settings-volume-slider-frame-source-v1.png` (source from `C:\Users\Will\.codex\generated_images\019f1b98-0644-7463-8b1f-5b77ecf5ad23\ig_099fee8815c27164016a4dbb9d6420819699990371b2d6202e.png`). Local key removal detected `#05f605` and wrote `.artifacts/test-results/system-settings-volume-slider/system-settings-volume-slider-frame-keyed-raw.png` with 1,116,609 transparent pixels and 6,559 partial-alpha pixels. The normalized runtime asset is `assets/runtime/ui/icons/system-settings-volume-slider-frame.png` (768x192, 146,181 bytes), with source visible bounds `(168, 215, 2003, 508)`, crop box `(104, 163, 2067, 560)`, runtime visible bounds `(23, 36, 745, 155)`, transparent corners, 65,519 opaque pixels, 6,556 partial-alpha pixels, and zero visible/edge green heuristic pixels. `src/main.ts` now registers/preloads `system-settings-volume-slider-frame`, adds persistent separate Music/SFX volume controls to `BirdAudioDirector`, applies Music volume to ambience and SFX volume to procedural cues, fixes first-run volume loading so missing localStorage uses defaults instead of `Number(null) === 0`, and renders two interactive slider rows in the shared Settings overlay for menu, route, and battle. Battle/Menu/Route text state now reports `audio.musicVolume`, `audio.sfxVolume`, and `systemSettingsVolumeSliderFrame.loaded/rendered/count`. The focused Settings smoke now clicks the actual slider hit targets, proves Music changes to 25% and SFX to 65%, and asserts the generated slider frames render in all three Settings contexts. Verification passed: `npx tsc --noEmit --noUnusedLocals --noUnusedParameters`, focused `npx playwright test tests/smoke.spec.ts --grep "settings overlay opens" --workers=1 --reporter=line`, `npm run validate:runtime-assets`, `npm run validate:runtime`, `npm run build`, the required shared web-game client on `http://127.0.0.1:5199/?playwright=1`, and `git diff --check -- src\main.ts tests\smoke.spec.ts progress.md` with only existing LF-to-CRLF warnings. Production built-preview captures on temporary `http://127.0.0.1:4331/?playwright=1` are in `.artifacts/test-results/system-settings-volume-slider/built-preview/`: high-res 2560x1600, desktop 1440x900, and mobile 390x844 all report Settings open, `systemSettingsVolumeSliderFrame { loaded: true, rendered: true, count: 2 }`, 5 settings row frames, 3 toggle frames, default Music/SFX volumes 0.78/0.88, visible slider geometry at stage `(804, 328)` and `(804, 380)`, and zero page/console errors. Visual inspection confirmed the larger Settings panel, generated slider hardware, percentage labels, bottom controls, close control, and fixed-canvas mobile letterbox stay readable without overlap. Temporary preview port 4331 was stopped after verification.

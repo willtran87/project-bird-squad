@@ -24,10 +24,22 @@ import {
   type RuntimeRouteMark, type RuntimeSupply, type TextureVisibleBounds, type UiIconId,
 } from '../main';
 
-type CodexFocusZone = 'sections' | 'primaryTabs' | 'secondaryTabs' | 'entries' | 'back' | 'detail';
+type CodexFocusZone = 'sections' | 'search' | 'sort' | 'primaryTabs' | 'secondaryTabs' | 'entries' | 'back' | 'detail';
 type CardCollectionLens = 'all' | 'collected' | 'uncollected' | 'seen';
+type CardSortMode = 'binder' | 'name' | 'rarity' | 'recent';
 const COLLECTION_TARGET_LIMIT = 3;
 const CARD_COLLECTION_LENS_KEY = 'birdsquad.codexCardLens';
+const CARD_SEARCH_KEY = 'birdsquad.codexCardSearch';
+const CARD_SORT_KEY = 'birdsquad.codexCardSort';
+const CARD_SEARCH_MAX_LENGTH = 40;
+const CARD_SEARCH_X = 245;
+const CARD_SEARCH_Y = 42;
+const CARD_SEARCH_WIDTH = 190;
+const CARD_SEARCH_HEIGHT = 42;
+const CARD_SORT_WIDTH = 62;
+const CARD_SEARCH_ACTION_WIDTH = CARD_SEARCH_WIDTH - CARD_SORT_WIDTH;
+const CARD_SEARCH_ACTION_X = CARD_SEARCH_X - CARD_SORT_WIDTH / 2;
+const CARD_SORT_X = CARD_SEARCH_X + CARD_SEARCH_ACTION_WIDTH / 2;
 
 interface CodexFocusEntry {
   id: string;
@@ -53,6 +65,11 @@ export class CodexScene extends Phaser.Scene {
   private favoriteCards = new Set<string>();
   private collectionTargets = new Set<string>();
   private cardCollectionLens: CardCollectionLens = 'all';
+  private cardSortMode: CardSortMode = 'binder';
+  private cardSearchQuery = '';
+  private cardSearchBeforeEdit = '';
+  private cardSearchEditing = false;
+  private cardSearchInput?: HTMLInputElement;
   private cardCollection: ReturnType<typeof loadAccount>['cardCollection'] = {};
   private observedEnemyMoves = new Set<string>();
   private detailId?: string;
@@ -102,6 +119,12 @@ export class CodexScene extends Phaser.Scene {
     { id: 'collected', label: 'Collected', match: (card) => Boolean(this.cardCollection[card.id]) },
     { id: 'uncollected', label: 'Uncollected', match: (card) => !this.cardCollection[card.id] },
     { id: 'seen', label: 'Seen', match: (card) => this.discovered.has(card.id) && !this.cardCollection[card.id] },
+  ];
+  private readonly cardSortModes: Array<{ id: CardSortMode; label: string }> = [
+    { id: 'binder', label: 'Binder' },
+    { id: 'name', label: 'Name' },
+    { id: 'rarity', label: 'Rarity' },
+    { id: 'recent', label: 'Recent' },
   ];
   private readonly enemyTabs: Array<{ label: string; match: (e: CodexEnemyEntry) => boolean }> = [
     { label: 'All', match: () => true },
@@ -180,6 +203,11 @@ export class CodexScene extends Phaser.Scene {
     this.cardCollectionLens = this.cardCollectionLenses.some((lens) => lens.id === savedLens)
       ? savedLens as CardCollectionLens
       : 'all';
+    this.cardSearchQuery = this.sanitizeCardSearchQuery(safeStorageGet(CARD_SEARCH_KEY) ?? '', true);
+    const savedSort = safeStorageGet(CARD_SORT_KEY);
+    this.cardSortMode = this.cardSortModes.some((mode) => mode.id === savedSort)
+      ? savedSort as CardSortMode
+      : 'binder';
     this.collectionTargets = new Set((account.hunt ?? []).filter((id) => (
       this.discovered.has(id) && !this.cardCollection[id] && Boolean(cardLibrary[id])
     )));
@@ -199,31 +227,71 @@ export class CodexScene extends Phaser.Scene {
       fullscreen: () => this.scale.toggleFullscreen(),
     });
     const onTab = (event: KeyboardEvent) => {
+      if (this.cardSearchEditing) return;
       event.preventDefault();
       event.stopPropagation();
       this.cycleCodexFocusZone(event.shiftKey ? -1 : 1);
     };
     const onUp = (event?: KeyboardEvent) => {
+      if (this.cardSearchEditing) return;
       if (event?.code && controlActionForCode(event.code)) return;
       this.moveCodexVertical(-1);
     };
     const onDown = (event?: KeyboardEvent) => {
+      if (this.cardSearchEditing) return;
       if (event?.code && controlActionForCode(event.code)) return;
       this.moveCodexVertical(1);
     };
     const onFavorite = (event: KeyboardEvent) => {
+      if (this.cardSearchEditing) return;
       if (event.repeat || this.activeSection !== 'cards' || !this.detailId) return;
       this.toggleCurrentCardFavorite();
     };
     const onTarget = (event: KeyboardEvent) => {
+      if (this.cardSearchEditing) return;
       if (event.repeat || this.activeSection !== 'cards' || !this.detailId) return;
       this.toggleCurrentCollectionTarget();
     };
     const onCollectionLens = (event: KeyboardEvent) => {
+      if (this.cardSearchEditing) return;
       if (event.repeat || this.activeSection !== 'cards' || this.detailId) return;
       this.cycleCardCollectionLens(1);
     };
+    const onCardSort = (event: KeyboardEvent) => {
+      if (this.cardSearchEditing) return;
+      if (event.repeat || this.activeSection !== 'cards' || this.detailId) return;
+      this.cycleCardSortMode(1);
+    };
+    const onCardSearch = (event: KeyboardEvent) => {
+      if (
+        this.cardSearchEditing
+        || event.repeat
+        || this.activeSection !== 'cards'
+        || this.detailId
+        || (event.key !== '/' && event.code !== 'Slash')
+      ) return;
+      event.preventDefault();
+      event.stopPropagation();
+      this.openCardSearch();
+    };
+    const onCardSearchPointer = (pointer: Phaser.Input.Pointer) => {
+      if (
+        this.cardSearchEditing
+        || this.activeSection !== 'cards'
+        || this.detailId
+        || Math.abs(pointer.x - CARD_SEARCH_X) > CARD_SEARCH_WIDTH / 2
+        || Math.abs(pointer.y - CARD_SEARCH_Y) > MIN_SUPPORTED_TOUCH_TARGET / 2
+      ) return;
+      const sortBoundary = CARD_SEARCH_X - CARD_SEARCH_WIDTH / 2 + CARD_SEARCH_ACTION_WIDTH;
+      if (pointer.x >= sortBoundary) this.cycleCardSortMode(1);
+      else this.scheduleCardSearchOpen();
+    };
     const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button) => {
+      if (this.cardSearchEditing) {
+        if (button.index === 0) this.finishCardSearch(true);
+        else if (button.index === 1) this.finishCardSearch(false);
+        return;
+      }
       if (button.index === 12) this.moveCodexVertical(-1);
       else if (button.index === 13) this.moveCodexVertical(1);
       else if (button.index === 14) this.moveCodexHorizontal(-1);
@@ -233,6 +301,8 @@ export class CodexScene extends Phaser.Scene {
       else if (button.index === 2 && this.activeSection === 'cards' && this.detailId) this.toggleCurrentCardFavorite();
       else if (button.index === 3 && this.activeSection === 'cards' && this.detailId) this.toggleCurrentCollectionTarget();
       else if (button.index === 4 && this.activeSection === 'cards' && !this.detailId) this.cycleCardCollectionLens(1);
+      else if (button.index === 5 && this.activeSection === 'cards' && !this.detailId) this.openCardSearch();
+      else if (button.index === 7 && this.activeSection === 'cards' && !this.detailId) this.cycleCardSortMode(1);
     };
     this.input.keyboard?.on('keydown-TAB', onTab);
     this.input.keyboard?.on('keydown-UP', onUp);
@@ -240,6 +310,9 @@ export class CodexScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-C', onFavorite);
     this.input.keyboard?.on('keydown-T', onTarget);
     this.input.keyboard?.on('keydown-L', onCollectionLens);
+    this.input.keyboard?.on('keydown-R', onCardSort);
+    this.input.keyboard?.on('keydown', onCardSearch);
+    this.input.on('pointerdown', onCardSearchPointer);
     this.input.gamepad?.on('down', onGamepadDown);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard?.off('keydown-TAB', onTab);
@@ -248,7 +321,11 @@ export class CodexScene extends Phaser.Scene {
       this.input.keyboard?.off('keydown-C', onFavorite);
       this.input.keyboard?.off('keydown-T', onTarget);
       this.input.keyboard?.off('keydown-L', onCollectionLens);
+      this.input.keyboard?.off('keydown-R', onCardSort);
+      this.input.keyboard?.off('keydown', onCardSearch);
+      this.input.off('pointerdown', onCardSearchPointer);
       this.input.gamepad?.off('down', onGamepadDown);
+      this.finishCardSearch(true, false);
     });
     this.input.on('wheel', (_p: unknown, _o: unknown, _dx: number, dy: number) => {
       if (this.detailId) {
@@ -355,16 +432,290 @@ export class CodexScene extends Phaser.Scene {
       ?? this.cardCollectionLenses[0];
   }
 
+  private activeCardSortMode() {
+    return this.cardSortModes.find((mode) => mode.id === this.cardSortMode)
+      ?? this.cardSortModes[0];
+  }
+
+  private compareDiscoveredCardNames(a: Card, b: Card) {
+    const aDiscovered = this.discovered.has(a.id);
+    const bDiscovered = this.discovered.has(b.id);
+    if (aDiscovered !== bDiscovered) return aDiscovered ? -1 : 1;
+    if (!aDiscovered) return a.id.localeCompare(b.id);
+    return displayName(a).localeCompare(displayName(b)) || a.id.localeCompare(b.id);
+  }
+
+  private sortCodexCards(cards: Card[]) {
+    const rarityOrder: Record<string, number> = {
+      legendary: 0,
+      rare: 1,
+      uncommon: 2,
+      common: 3,
+    };
+    return [...cards].sort((a, b) => {
+      if (this.cardSortMode === 'binder') return a.id.localeCompare(b.id);
+      if (this.cardSortMode === 'name') return this.compareDiscoveredCardNames(a, b);
+      if (this.cardSortMode === 'rarity') {
+        const aDiscovered = this.discovered.has(a.id);
+        const bDiscovered = this.discovered.has(b.id);
+        if (aDiscovered !== bDiscovered) return aDiscovered ? -1 : 1;
+        if (!aDiscovered) return a.id.localeCompare(b.id);
+        return (
+          (rarityOrder[a.runtime.rarity] ?? 9) - (rarityOrder[b.runtime.rarity] ?? 9)
+          || this.compareDiscoveredCardNames(a, b)
+        );
+      }
+      const aCollection = this.cardCollection[a.id];
+      const bCollection = this.cardCollection[b.id];
+      if (Boolean(aCollection) !== Boolean(bCollection)) return aCollection ? -1 : 1;
+      if (aCollection && bCollection) {
+        return (
+          bCollection.firstAcquiredAt - aCollection.firstAcquiredAt
+          || this.compareDiscoveredCardNames(a, b)
+        );
+      }
+      return this.compareDiscoveredCardNames(a, b);
+    });
+  }
+
   private currentCardTabCards(): Card[] {
     const tab = this.tabs[this.activeTab];
-    return this.allCards()
-      .filter(tab?.match ?? (() => true))
-      .sort((a, b) => a.id.localeCompare(b.id));
+    return this.sortCodexCards(this.allCards().filter(tab?.match ?? (() => true)));
+  }
+
+  private sanitizeCardSearchQuery(value: string, trim: boolean) {
+    const clean = value
+      .replace(/[\u0000-\u001f\u007f]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .slice(0, CARD_SEARCH_MAX_LENGTH);
+    return trim ? clean.trim() : clean.replace(/^\s+/, '');
+  }
+
+  private normalizeCardSearchText(value: string) {
+    return value
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase()
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private cardSearchText(card: Card) {
+    const discovered = this.discovered.has(card.id);
+    const ownership = this.cardCollection[card.id]
+      ? 'collected owned permanent'
+      : discovered
+        ? 'seen discovered uncollected unowned'
+        : 'unfound undiscovered unowned';
+    const family = [
+      card.runtime.suit,
+      card.runtime.kind,
+      this.tabs.find((tab) => tab.match(card))?.label,
+      ownership,
+    ];
+    if (!discovered) return this.normalizeCardSearchText(family.filter(Boolean).join(' '));
+    return this.normalizeCardSearchText([
+      ...family,
+      displayName(card),
+      card.name,
+      card.bird,
+      card.type,
+      card.role,
+      card.target,
+      card.runtime.target,
+      card.runtime.rarity,
+      `cost ${card.cost}`,
+      `${card.cost} cost`,
+      card.text,
+      card.upgradedText,
+      card.heldText,
+      card.moltText,
+      card.moltTextUpgraded,
+      ...card.runtime.tags,
+      ...card.runtime.effects,
+      ...(card.runtime.moltEffects ?? []),
+      ...(card.runtime.heldEffects ?? []),
+      ...card.runtime.upgrade.effects,
+    ].filter(Boolean).join(' '));
+  }
+
+  private cardMatchesSearch(card: Card) {
+    const query = this.normalizeCardSearchText(this.cardSearchQuery);
+    if (!query) return true;
+    const haystack = this.cardSearchText(card);
+    return query.split(' ').every((token) => haystack.includes(token));
+  }
+
+  private currentCardSearchMatches() {
+    return this.currentCardTabCards().filter((card) => this.cardMatchesSearch(card));
   }
 
   private currentCodexCards(): Card[] {
     const lens = this.activeCardCollectionLens();
-    return this.currentCardTabCards().filter(lens.match);
+    return this.currentCardSearchMatches().filter(lens.match);
+  }
+
+  private setCardSortMode(index: number, persist = true) {
+    const next = this.cardSortModes[
+      (index + this.cardSortModes.length) % this.cardSortModes.length
+    ];
+    if (!next) return;
+    this.cardSortMode = next.id;
+    this.detailId = undefined;
+    this.entryFocusIndex = 0;
+    this.resetCodexScroll();
+    if (persist) safeStorageSet(CARD_SORT_KEY, next.id);
+  }
+
+  private cycleCardSortMode(direction: -1 | 1) {
+    const current = Math.max(
+      0,
+      this.cardSortModes.findIndex((mode) => mode.id === this.cardSortMode),
+    );
+    playUiSound('confirm');
+    this.focusZone = 'sort';
+    this.setCardSortMode(current + direction);
+    this.renderAll();
+  }
+
+  private positionCardSearchInput = () => {
+    const input = this.cardSearchInput;
+    const canvas = this.game?.canvas;
+    if (!input || !canvas?.isConnected) return;
+    const gameContainer = document.getElementById('game-container');
+    if (gameContainer && window.getComputedStyle(gameContainer).display === 'none') {
+      this.finishCardSearch(true);
+      return;
+    }
+    const bounds = canvas.getBoundingClientRect();
+    const scaleX = bounds.width / GAME_WIDTH;
+    const scaleY = bounds.height / GAME_HEIGHT;
+    const viewport = window.visualViewport;
+    const viewportLeft = viewport?.offsetLeft ?? 0;
+    const viewportTop = viewport?.offsetTop ?? 0;
+    const viewportWidth = viewport?.width ?? window.innerWidth;
+    const viewportHeight = viewport?.height ?? window.innerHeight;
+    const viewportRight = viewportLeft + viewportWidth;
+    const viewportBottom = viewportTop + viewportHeight;
+    const width = Math.min(Math.max(CARD_SEARCH_WIDTH * scaleX, 190), Math.max(120, viewportWidth - 16));
+    const height = Math.min(Math.max(CARD_SEARCH_HEIGHT * scaleY, MIN_SUPPORTED_TOUCH_TARGET), 56);
+    const centerX = bounds.left + CARD_SEARCH_X * scaleX;
+    const centerY = bounds.top + CARD_SEARCH_Y * scaleY;
+    const minLeft = viewportLeft + 8;
+    const maxLeft = Math.max(minLeft, viewportRight - width - 8);
+    input.style.left = `${clamp(centerX - width / 2, minLeft, maxLeft)}px`;
+    input.style.top = `${clamp(
+      centerY - height / 2,
+      viewportTop + 8,
+      Math.max(viewportTop + 8, viewportBottom - height - 8),
+    )}px`;
+    input.style.width = `${width}px`;
+    input.style.height = `${height}px`;
+    input.style.fontSize = `${clamp(13 * Math.min(scaleX, scaleY), 13, 18)}px`;
+  };
+
+  private openCardSearch() {
+    if (this.activeSection !== 'cards' || this.detailId || this.cardSearchInput) return;
+    this.focusZone = 'search';
+    this.cardSearchBeforeEdit = this.cardSearchQuery;
+    this.cardSearchEditing = true;
+    playUiSound('confirm');
+    this.renderAll();
+
+    const input = document.createElement('input');
+    input.id = 'codex-card-search-input';
+    input.type = 'search';
+    input.value = this.cardSearchQuery;
+    input.maxLength = CARD_SEARCH_MAX_LENGTH;
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.enterKeyHint = 'search';
+    input.setAttribute('aria-label', 'Find cards by name, rules, keyword, character, set, type, cost, rarity, or ownership');
+    input.setAttribute('aria-keyshortcuts', '/');
+    Object.assign(input.style, {
+      position: 'fixed',
+      zIndex: '2147483000',
+      boxSizing: 'border-box',
+      margin: '0',
+      padding: '0 11px',
+      border: '2px solid #8df4ff',
+      borderRadius: '5px',
+      outline: 'none',
+      background: 'rgba(8, 20, 32, 0.99)',
+      color: '#e7f8ff',
+      caretColor: '#f5d38a',
+      boxShadow: '0 0 0 2px rgba(5, 7, 12, 0.9), 0 0 16px rgba(141, 244, 255, 0.34)',
+      fontFamily: UI_FONT,
+      fontWeight: '700',
+      letterSpacing: '0.02em',
+      appearance: 'none',
+    });
+    this.cardSearchInput = input;
+    input.addEventListener('input', () => {
+      if (this.cardSearchInput !== input) return;
+      this.cardSearchQuery = this.sanitizeCardSearchQuery(input.value, false);
+      if (input.value !== this.cardSearchQuery) input.value = this.cardSearchQuery;
+      this.entryFocusIndex = 0;
+      this.resetCodexScroll();
+      safeStorageSet(CARD_SEARCH_KEY, this.sanitizeCardSearchQuery(this.cardSearchQuery, true));
+      this.renderAll();
+      this.positionCardSearchInput();
+    });
+    input.addEventListener('keydown', (event) => {
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        this.finishCardSearch(true);
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        this.finishCardSearch(false);
+      }
+    });
+    input.addEventListener('blur', () => {
+      if (this.cardSearchInput === input) this.finishCardSearch(true);
+    });
+    document.body.append(input);
+    window.addEventListener('resize', this.positionCardSearchInput);
+    window.addEventListener('scroll', this.positionCardSearchInput, true);
+    window.visualViewport?.addEventListener('resize', this.positionCardSearchInput);
+    window.visualViewport?.addEventListener('scroll', this.positionCardSearchInput);
+    this.positionCardSearchInput();
+    window.requestAnimationFrame(() => {
+      if (this.cardSearchInput !== input) return;
+      input.focus({ preventScroll: true });
+      input.select();
+    });
+  }
+
+  private scheduleCardSearchOpen() {
+    this.focusZone = 'search';
+    window.setTimeout(() => {
+      if (this.sys.settings.active && this.activeSection === 'cards' && !this.detailId) {
+        this.openCardSearch();
+      }
+    }, 0);
+  }
+
+  private finishCardSearch(commit: boolean, rerender = true) {
+    const input = this.cardSearchInput;
+    if (!input) return;
+    const next = commit
+      ? this.sanitizeCardSearchQuery(input.value, true)
+      : this.cardSearchBeforeEdit;
+    this.cardSearchInput = undefined;
+    this.cardSearchEditing = false;
+    window.removeEventListener('resize', this.positionCardSearchInput);
+    window.removeEventListener('scroll', this.positionCardSearchInput, true);
+    window.visualViewport?.removeEventListener('resize', this.positionCardSearchInput);
+    window.visualViewport?.removeEventListener('scroll', this.positionCardSearchInput);
+    input.remove();
+    this.cardSearchQuery = next;
+    this.entryFocusIndex = 0;
+    this.resetCodexScroll();
+    safeStorageSet(CARD_SEARCH_KEY, next);
+    if (rerender && this.sys.settings.active && this.root?.active) this.renderAll();
   }
 
   private setCardCollectionLens(index: number, persist = true) {
@@ -554,6 +905,7 @@ export class CodexScene extends Phaser.Scene {
   private codexFocusZones(): CodexFocusZone[] {
     if (this.detailId) return ['detail'];
     const zones: CodexFocusZone[] = ['sections'];
+    if (this.activeSection === 'cards') zones.push('search', 'sort');
     if (this.activeSection === 'cards' || this.activeSection === 'items' || this.activeSection === 'enemies') {
       zones.push('primaryTabs');
     }
@@ -623,6 +975,12 @@ export class CodexScene extends Phaser.Scene {
       index = sectionIndex;
       count = this.sections.length;
       label = `${this.sections[index]?.label ?? 'Cards'} section`;
+    } else if (this.focusZone === 'search') {
+      label = this.cardSearchQuery
+        ? `Find cards, current query ${this.cardSearchQuery}`
+        : 'Find cards';
+    } else if (this.focusZone === 'sort') {
+      label = `Sort cards, ${this.activeCardSortMode().label}`;
     } else if (this.focusZone === 'primaryTabs') {
       index = this.activePrimaryTabIndex();
       count = primaryLabels.length;
@@ -772,6 +1130,9 @@ export class CodexScene extends Phaser.Scene {
         ? Math.max(0, this.cardCollectionLenses.findIndex((lens) => lens.id === this.cardCollectionLens))
         : this.activeItemFilterTab;
       this.setActiveSecondaryTab(current + direction);
+    } else if (this.focusZone === 'sort') {
+      const current = Math.max(0, this.cardSortModes.findIndex((mode) => mode.id === this.cardSortMode));
+      this.setCardSortMode(current + direction);
     } else if (this.focusZone === 'entries') {
       const entries = this.codexFocusEntries();
       if (entries.length > 0) this.entryFocusIndex = (this.entryFocusIndex + direction + entries.length) % entries.length;
@@ -808,6 +1169,14 @@ export class CodexScene extends Phaser.Scene {
 
   private activateCodexFocus() {
     this.normalizeCodexFocus();
+    if (this.focusZone === 'search') {
+      this.openCardSearch();
+      return;
+    }
+    if (this.focusZone === 'sort') {
+      this.cycleCardSortMode(1);
+      return;
+    }
     if (this.focusZone === 'detail') {
       this.closeCodexDetail(true);
       return;
@@ -830,6 +1199,10 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private handleCodexBack() {
+    if (this.cardSearchEditing) {
+      this.finishCardSearch(false);
+      return;
+    }
     if (this.detailId) {
       this.closeCodexDetail(true);
       return;
@@ -979,9 +1352,11 @@ export class CodexScene extends Phaser.Scene {
     const favoriteView = cardView === 'favorites';
     const targetView = cardView === 'targets';
     const cardTabCards = cardMode ? this.currentCardTabCards() : [];
+    const cardSearchMatches = cardMode ? cardTabCards.filter((card) => this.cardMatchesSearch(card)) : [];
+    const cardSearchActive = Boolean(this.normalizeCardSearchText(this.cardSearchQuery));
     const activeLens = this.activeCardCollectionLens();
     const targetMilestones = Object.values(this.cardCollection).filter((record) => Boolean(record.targetCompletedAt)).length;
-    const cards = cardMode ? cardTabCards.filter(activeLens.match) : [];
+    const cards = cardMode ? cardSearchMatches.filter(activeLens.match) : [];
     const activeCardCollection = cardMode
       ? this.codexBossDossierModule?.cardDiscoverySets(
         all,
@@ -1045,11 +1420,45 @@ export class CodexScene extends Phaser.Scene {
         index: this.cardCollectionLenses.indexOf(activeLens),
         count: this.cardCollectionLenses.length,
         visibleCount: cards.length,
-        baseCount: cardTabCards.length,
-        empty: cardMode && cardTabCards.length > 0 && cards.length === 0,
+        baseCount: cardSearchMatches.length,
+        setCount: cardTabCards.length,
+        empty: cardMode && cardSearchMatches.length > 0 && cards.length === 0,
         visibleIds: cards.map((card) => card.id),
         keyboard: 'L',
         controller: 'LB',
+        persisted: true,
+      },
+      cardSearch: {
+        query: this.cardSearchQuery,
+        normalizedQuery: this.normalizeCardSearchText(this.cardSearchQuery),
+        active: cardSearchActive,
+        editing: this.cardSearchEditing,
+        scope: this.tabs[this.activeTab]?.label ?? 'Cards',
+        setCount: cardTabCards.length,
+        matchCount: cardSearchMatches.length,
+        visibleCount: cards.length,
+        matchedIds: cardSearchMatches.map((card) => card.id),
+        visibleIds: cards.map((card) => card.id),
+        empty: cardMode && cardSearchActive && cardSearchMatches.length === 0,
+        keyboard: '/',
+        controller: 'RB',
+        nativeInput: Boolean(this.cardSearchInput),
+        maxLength: CARD_SEARCH_MAX_LENGTH,
+        fields: ['name', 'rules', 'keyword', 'character', 'set', 'type', 'cost', 'rarity', 'ownership'],
+        revealsUndiscoveredDetails: false,
+        persisted: true,
+      },
+      cardSort: {
+        id: this.cardSortMode,
+        label: this.activeCardSortMode().label,
+        index: this.cardSortModes.findIndex((mode) => mode.id === this.cardSortMode),
+        count: this.cardSortModes.length,
+        visibleIds: cards.map((card) => card.id),
+        discoveredIds: cards.filter((card) => this.discovered.has(card.id)).map((card) => card.id),
+        collectedIds: cards.filter((card) => Boolean(this.cardCollection[card.id])).map((card) => card.id),
+        keyboard: 'R',
+        controller: 'RT',
+        hidesUndiscoveredMetadata: true,
         persisted: true,
       },
       itemCount: itemAll.length,
@@ -1135,9 +1544,11 @@ export class CodexScene extends Phaser.Scene {
     this.gridRenderScroll = this.gridScroll;
     this.gridRenderCellH = cellH;
     if (cardMode) {
-      const lensEmpty = cardTabCards.length > 0 && cards.length === 0;
+      const searchEmpty = cardSearchActive && cardSearchMatches.length === 0;
+      const lensEmpty = cardSearchMatches.length > 0 && cards.length === 0;
       if (favoriteView && cardTabCards.length === 0) this.renderFavoriteEmptyState(grid, top, bottom);
       else if (targetView && cardTabCards.length === 0) this.renderHuntListEmptyState(grid, top, bottom);
+      else if (searchEmpty) this.renderCardSearchEmptyState(grid, top, bottom);
       else if (lensEmpty) this.renderCardCollectionLensEmptyState(grid, top, bottom, activeLens.label);
       cards.forEach((card, i) => {
         const cx = gridLeft + (i % cols) * cellW + cellW / 2;
@@ -1246,7 +1657,10 @@ export class CodexScene extends Phaser.Scene {
       strokeThickness: 3
     }).setOrigin(0.5));
     renderAudioToggleControl(this, (obj) => this.root.add(obj), GAME_WIDTH - 174, 42);
-    if (cardMode) this.renderCardCollectionLensControl(430, 42);
+    if (cardMode) {
+      this.renderCardSearchControl(CARD_SEARCH_X, CARD_SEARCH_Y);
+      this.renderCardCollectionLensControl(430, 42);
+    }
 
     const sectionMeta: Record<CodexSection, string> = {
       cards: `${found}/${all.length}`,
@@ -1505,6 +1919,22 @@ export class CodexScene extends Phaser.Scene {
       const index = Math.max(0, this.sections.findIndex((section) => section.id === this.activeSection));
       return { x: 568 + index * 110, y: 42, width: 110, height: MIN_SUPPORTED_TOUCH_TARGET };
     }
+    if (this.focusZone === 'search') {
+      return {
+        x: CARD_SEARCH_ACTION_X,
+        y: CARD_SEARCH_Y,
+        width: CARD_SEARCH_ACTION_WIDTH + 4,
+        height: MIN_SUPPORTED_TOUCH_TARGET,
+      };
+    }
+    if (this.focusZone === 'sort') {
+      return {
+        x: CARD_SORT_X,
+        y: CARD_SEARCH_Y,
+        width: CARD_SORT_WIDTH + 4,
+        height: MIN_SUPPORTED_TOUCH_TARGET,
+      };
+    }
     if (this.focusZone === 'primaryTabs') {
       const index = this.activePrimaryTabIndex();
       if (this.activeSection === 'cards') {
@@ -1546,9 +1976,9 @@ export class CodexScene extends Phaser.Scene {
     const label = detail
       ? `Up / Down: Scroll   |   C / X: Favorite   |   T / Y: Hunt   |   ${controlBindingLabel('confirm')}: Close   |   ${controlBindingLabel('back')}: Back`
       : this.activeSection === 'cards'
-        ? `Tab: Focus   |   L / LB: Collection Lens   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate   |   ${controlBindingLabel('confirm')}: Select   |   ${controlBindingLabel('back')}: Back`
+        ? `Tab: Focus   |   Slash / RB: Find   |   R / RT: Sort   |   L / LB: Lens   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate   |   ${controlBindingLabel('confirm')}: Select   |   ${controlBindingLabel('back')}: Back`
         : `Tab: Focus   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate   |   ${controlBindingLabel('confirm')}: Select   |   ${controlBindingLabel('back')}: Back`;
-    const width = detail ? 880 : this.activeSection === 'cards' ? 900 : 710;
+    const width = detail ? 880 : this.activeSection === 'cards' ? 1080 : 710;
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 13, width, 22, 0x05070c, 0.86)
       .setStrokeStyle(1, UI_FIELD.cyan, 0.34)
       .setName('codex-input-hint-backdrop'));
@@ -1946,6 +2376,134 @@ export class CodexScene extends Phaser.Scene {
         wordWrap: { width: 520 },
       },
     ).setResolution(2).setOrigin(0.5));
+  }
+
+  private renderCardSearchEmptyState(
+    layer: Phaser.GameObjects.Container,
+    top: number,
+    bottom: number,
+  ) {
+    const cx = GAME_WIDTH / 2;
+    const cy = (top + bottom) / 2 - 6;
+    const query = this.cardSearchQuery.length > 28
+      ? `${this.cardSearchQuery.slice(0, 27)}…`
+      : this.cardSearchQuery;
+    layer.add(this.add.rectangle(cx, cy, 650, 238, 0x0b1521, 0.98)
+      .setStrokeStyle(2, UI_FIELD.cyan, 0.8)
+      .setName('codex-card-search-empty-state'));
+    layer.add(this.add.text(cx, cy - 46, 'NO CARDS FOUND', {
+      fontFamily: UI_FONT,
+      fontSize: '22px',
+      fontStyle: UI_BOLD,
+      color: '#b8e8f4',
+      stroke: '#05070c',
+      strokeThickness: 3,
+    }).setResolution(2).setOrigin(0.5));
+    layer.add(this.add.text(cx, cy - 10, `“${query}”`, {
+      fontFamily: UI_FONT,
+      fontSize: '17px',
+      fontStyle: UI_BOLD,
+      color: '#f5d38a',
+      stroke: '#05070c',
+      strokeThickness: 2,
+    }).setResolution(2).setOrigin(0.5));
+    layer.add(this.add.text(
+      cx,
+      cy + 52,
+      `No cards in ${this.tabs[this.activeTab]?.label ?? 'this set'} match this search.\nPress / or controller RB to edit or clear it.`,
+      {
+        fontFamily: UI_FONT,
+        fontSize: '14px',
+        color: UI_SOFT,
+        align: 'center',
+        lineSpacing: 5,
+        wordWrap: { width: 560 },
+      },
+    ).setResolution(2).setOrigin(0.5));
+  }
+
+  private renderCardSearchControl(x: number, y: number) {
+    const searchActive = this.focusZone === 'search' || this.cardSearchEditing;
+    const sortActive = this.focusZone === 'sort';
+    const matches = this.currentCardSearchMatches().length;
+    const query = this.cardSearchQuery;
+    const sort = this.activeCardSortMode();
+    const displayQuery = query.length > 11 ? `${query.slice(0, 10)}…` : query;
+    this.root.add(this.add.rectangle(x, y, CARD_SEARCH_WIDTH, CARD_SEARCH_HEIGHT, 0x0b1724, 0.98)
+      .setStrokeStyle(2, UI_FIELD.cyan, searchActive || sortActive ? 0.98 : 0.66)
+      .setName('codex-card-search-control'));
+    this.root.add(this.add.rectangle(
+      CARD_SEARCH_ACTION_X,
+      y,
+      CARD_SEARCH_ACTION_WIDTH - 4,
+      CARD_SEARCH_HEIGHT - 4,
+      searchActive ? 0x183047 : 0x0b1724,
+      0.98,
+    ));
+    this.root.add(this.add.rectangle(
+      CARD_SORT_X,
+      y,
+      CARD_SORT_WIDTH - 4,
+      CARD_SEARCH_HEIGHT - 4,
+      sortActive ? 0x3a2b13 : 0x101a25,
+      0.98,
+    ));
+    this.root.add(this.add.rectangle(
+      CARD_SEARCH_X - CARD_SEARCH_WIDTH / 2 + CARD_SEARCH_ACTION_WIDTH,
+      y,
+      1,
+      CARD_SEARCH_HEIGHT - 8,
+      UI_FIELD.cyan,
+      0.42,
+    ));
+    const hit = this.add.rectangle(
+      CARD_SEARCH_ACTION_X,
+      y,
+      CARD_SEARCH_ACTION_WIDTH,
+      MIN_SUPPORTED_TOUCH_TARGET,
+      0x020409,
+      0.001,
+    )
+      .setInteractive({ useHandCursor: true })
+      .setName('codex-card-search-hit')
+      .setData('query', query);
+    this.root.add(hit);
+    const sortHit = this.add.rectangle(
+      CARD_SORT_X,
+      y,
+      CARD_SORT_WIDTH,
+      MIN_SUPPORTED_TOUCH_TARGET,
+      0x020409,
+      0.001,
+    )
+      .setInteractive({ useHandCursor: true })
+      .setName('codex-card-sort-hit')
+      .setData('sort', sort.id);
+    this.root.add(sortHit);
+    this.root.add(this.add.text(CARD_SEARCH_ACTION_X, y - 9, query ? `FIND · ${matches}` : 'FIND CARDS', {
+      fontFamily: UI_FONT,
+      fontSize: '8px',
+      fontStyle: UI_BOLD,
+      color: '#7f93a8',
+    }).setResolution(2).setOrigin(0.5).setName('codex-card-search-kicker'));
+    this.root.add(this.add.text(CARD_SEARCH_ACTION_X, y + 8, query ? displayQuery : '/  OR  RB', {
+      fontFamily: UI_FONT,
+      fontSize: query ? '11px' : '10px',
+      fontStyle: UI_BOLD,
+      color: query ? '#f5d38a' : '#b8e8f4',
+    }).setResolution(2).setOrigin(0.5).setName('codex-card-search-label'));
+    this.root.add(this.add.text(CARD_SORT_X, y - 9, 'SORT', {
+      fontFamily: UI_FONT,
+      fontSize: '8px',
+      fontStyle: UI_BOLD,
+      color: '#7f93a8',
+    }).setResolution(2).setOrigin(0.5).setName('codex-card-sort-kicker'));
+    this.root.add(this.add.text(CARD_SORT_X, y + 8, sort.label.toUpperCase(), {
+      fontFamily: UI_FONT,
+      fontSize: sort.id === 'rarity' ? '8px' : '9px',
+      fontStyle: UI_BOLD,
+      color: '#f5d38a',
+    }).setResolution(2).setOrigin(0.5).setName('codex-card-sort-label'));
   }
 
   private renderCardCollectionLensControl(x: number, y: number) {

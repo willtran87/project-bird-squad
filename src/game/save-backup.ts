@@ -38,6 +38,8 @@ const PREFERENCE_KEYS = {
   audioMuted: 'birdsquad.audioMuted',
   maxTier: 'birdsquad.maxTier',
   codexCardLens: 'birdsquad.codexCardLens',
+  codexCardSearch: 'birdsquad.codexCardSearch',
+  codexCardSort: 'birdsquad.codexCardSort',
 } as const;
 
 const ALL_OWNED_STORAGE_KEYS = [
@@ -63,6 +65,8 @@ export interface SaveBackupPreferences {
   audioMuted: boolean;
   maxTier: number;
   codexCardLens: 'all' | 'collected' | 'uncollected' | 'seen';
+  codexCardSearch: string;
+  codexCardSort: 'binder' | 'name' | 'rarity' | 'recent';
 }
 
 export interface SaveBackupBundle {
@@ -81,7 +85,7 @@ export interface SaveBackupBundle {
 export interface SaveBackupRuntimeDependencies {
   currentActiveRun: () => unknown | undefined;
   currentRunHistory: () => unknown[];
-  currentPreferences: () => Omit<SaveBackupPreferences, 'codexCardLens'>;
+  currentPreferences: () => Omit<SaveBackupPreferences, 'codexCardLens' | 'codexCardSearch' | 'codexCardSort'>;
   sanitizeActiveRun: (value: unknown) => unknown | undefined;
   sanitizeRunHistory: (value: unknown) => unknown[] | undefined;
 }
@@ -159,6 +163,18 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
     : ['all', 'collected', 'uncollected', 'seen'].includes(String(value.codexCardLens))
       ? value.codexCardLens as SaveBackupPreferences['codexCardLens']
       : undefined;
+  const codexCardSearch = value.codexCardSearch === undefined
+    ? ''
+    : typeof value.codexCardSearch === 'string'
+      && value.codexCardSearch.length <= 40
+      && !/[\u0000-\u001f\u007f]/.test(value.codexCardSearch)
+      ? value.codexCardSearch.replace(/\s+/g, ' ').trim()
+      : undefined;
+  const codexCardSort = value.codexCardSort === undefined
+    ? 'binder'
+    : ['binder', 'name', 'rarity', 'recent'].includes(String(value.codexCardSort))
+      ? value.codexCardSort as SaveBackupPreferences['codexCardSort']
+      : undefined;
   if (
     !controls
     || !colorCues
@@ -167,6 +183,8 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
     || !animationPace
     || !textPace
     || !codexCardLens
+    || codexCardSearch === undefined
+    || !codexCardSort
     || !['auto', 'full', 'lean'].includes(String(value.graphicsQuality))
     || !['standard', 'high'].includes(String(value.visualContrast))
     || !['system', 'full', 'reduced'].includes(String(value.motion))
@@ -195,12 +213,28 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
     audioMuted: value.audioMuted,
     maxTier: Math.floor(maxTier),
     codexCardLens,
+    codexCardSearch,
+    codexCardSort,
   };
 }
 
 function currentCodexCardLens(): SaveBackupPreferences['codexCardLens'] {
   const value = safeStorageGet(PREFERENCE_KEYS.codexCardLens);
   return value === 'collected' || value === 'uncollected' || value === 'seen' ? value : 'all';
+}
+
+function currentCodexCardSearch() {
+  const value = safeStorageGet(PREFERENCE_KEYS.codexCardSearch) ?? '';
+  return value
+    .replace(/[\u0000-\u001f\u007f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 40);
+}
+
+function currentCodexCardSort(): SaveBackupPreferences['codexCardSort'] {
+  const value = safeStorageGet(PREFERENCE_KEYS.codexCardSort);
+  return value === 'name' || value === 'rarity' || value === 'recent' ? value : 'binder';
 }
 
 export function createSaveBackup(dependencies: SaveBackupRuntimeDependencies): SaveBackupBundle {
@@ -218,6 +252,8 @@ export function createSaveBackup(dependencies: SaveBackupRuntimeDependencies): S
         ...dependencies.currentPreferences(),
         controls: controlBindingsSnapshot(),
         codexCardLens: currentCodexCardLens(),
+        codexCardSearch: currentCodexCardSearch(),
+        codexCardSort: currentCodexCardSort(),
       },
     },
   };
@@ -294,6 +330,8 @@ function serializedEntries(bundle: SaveBackupBundle) {
     [PREFERENCE_KEYS.audioMuted, preferences.audioMuted ? '1' : '0'],
     [PREFERENCE_KEYS.maxTier, String(preferences.maxTier)],
     [PREFERENCE_KEYS.codexCardLens, preferences.codexCardLens],
+    [PREFERENCE_KEYS.codexCardSearch, preferences.codexCardSearch],
+    [PREFERENCE_KEYS.codexCardSort, preferences.codexCardSort],
   ]);
 }
 
