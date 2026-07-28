@@ -125,6 +125,9 @@ export function restoreSavedDeckRevision(
   restored.lineageId = lineageId;
   restored.revision = revision;
   restored.parentId = source.id;
+  if (target.description) restored.description = target.description;
+  if (target.coverCardId) restored.coverCardId = target.coverCardId;
+  if (target.sleeve) restored.sleeve = target.sleeve;
   if (target.notes) restored.notes = target.notes;
   if (target.folder) restored.folder = target.folder;
   if (target.tags?.length) restored.tags = [...target.tags];

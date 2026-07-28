@@ -77,6 +77,9 @@ export function duplicateSavedDeck(
   duplicate.lineageId = lineageId;
   duplicate.revision = revision;
   duplicate.parentId = source.id;
+  if (source.description) duplicate.description = source.description;
+  if (source.coverCardId) duplicate.coverCardId = source.coverCardId;
+  if (source.sleeve) duplicate.sleeve = source.sleeve;
   if (source.notes) duplicate.notes = source.notes;
   if (source.folder) duplicate.folder = source.folder;
   if (source.tags?.length) duplicate.tags = [...source.tags];
@@ -127,6 +130,11 @@ export function tuneSavedDeck(
   tuned.lineageId = lineageId;
   tuned.revision = revision;
   tuned.parentId = source.id;
+  if (source.description) tuned.description = source.description;
+  if (source.coverCardId && cards.some((card) => card.id === source.coverCardId)) {
+    tuned.coverCardId = source.coverCardId;
+  }
+  if (source.sleeve) tuned.sleeve = source.sleeve;
   if (source.notes) tuned.notes = source.notes;
   if (source.folder) tuned.folder = source.folder;
   if (source.tags?.length) tuned.tags = [...source.tags];

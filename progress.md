@@ -4833,3 +4833,52 @@ sessions through `docs/game/playtest-runbook.md`.
   preferred targets remain advisory warnings.
 - The broader card-collector objective remains active. Five genuinely observed
   fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Private Folio Identity
+
+- Added preserved cosmetic identity to saved Flight Folios: a normalized
+  120-character private description, a cover card chosen from the Folio's
+  actual saved cards, and four distinct card-back sleeves (Field Canvas,
+  Signal Violet, Canal Teal, and Rooftop Ember).
+- Legacy and malformed saves remain safe. Invalid covers and sleeves fall back
+  to the first saved card and Field Canvas without persisting unnecessary
+  defaults; descriptions collapse unsafe whitespace and stop at the documented
+  limit. A cover removed by a tuned revision safely falls back instead of
+  pointing at a card no longer present.
+- Identity is collection expression only. It persists locally and in exported
+  save backups, remains excluded from stable BSF1 share codes, never affects
+  gameplay power, and follows exact immutable copy semantics: forks and tuned
+  revisions inherit valid source identity, while restored revisions inherit
+  the selected historical target's identity.
+- Added a complete Folio Identity screen reached directly from the Organizer.
+  It presents loaded cover art, clear assigned/focused states, four readable
+  sleeve previews, the private description, and large apply/edit/back actions.
+  The Folio library now shows the selected sleeve and description at a glance.
+- Pointer, keyboard, and controller flows are complete: Folio Identity,
+  `P`, controller X, or pointer opens from the Organizer; Tab or controller
+  shoulders switches cover/sleeve sections; arrows, D-pad, and page controls
+  choose; Enter/controller A applies; `E`, controller X, or pointer edits the
+  description; Back/controller B returns to the Organizer.
+- Text state and screen-reader narration expose the current and focused cover,
+  sleeve, description, limit, available choices, privacy behavior, backup
+  behavior, share-code exclusion, no-power contract, and complete controls.
+- Focused browser coverage proves invalid-metadata recovery, all three input
+  methods, description save/cancel behavior, real cover-art loading, local
+  persistence, backup inclusion, byte-stable BSF1 privacy, fork inheritance,
+  tuning inheritance, and historical-restore inheritance. All nine adjacent
+  Folio scenarios pass together.
+- The inspected minimum-landscape visuals are
+  `.artifacts/test-results/flight-folio-identity.png` and
+  `.artifacts/test-results/flight-folio-identity-library.png`. The required
+  shared production client opened a clean Flock Record -> Folios state,
+  reported the complete identity input/privacy contract, rendered its empty
+  state correctly, and emitted no browser errors; evidence is under
+  `.artifacts/flight-folio-identity-shared-client/`.
+- Strict TypeScript with unused checks, `git diff --check`, `npm run build`,
+  and full `npm run validate` pass. Validation covers 110 cards, 961 optimized
+  assets, canonical-world and directionless attack-tell contracts, deployment
+  hardening, bundle hard limits, and all 31 critical browser scenarios.
+  Combined boot is 720.3 KiB / 194.7 KiB gzip; the app-entry and combined
+  preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.

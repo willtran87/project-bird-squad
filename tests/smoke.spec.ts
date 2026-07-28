@@ -22703,6 +22703,9 @@ test('Tuning Bench ranks owned replacements and saves one immutable role-aware r
         favorite: true,
         sourceSeed: 'source-seed',
         runMode: 'quick',
+        description: 'Keep the Preened core while testing pressure.',
+        coverCardId: 'major_00',
+        sleeve: 'signal',
         folder: 'workbench',
         tags: ['pressure', 'combo'],
       }],
@@ -22819,6 +22822,10 @@ test('Tuning Bench ranks owned replacements and saves one immutable role-aware r
     archived: false,
     sourceSeed: 'source-seed',
     runMode: 'quick',
+    description: 'Keep the Preened core while testing pressure.',
+    coverCardId: 'major_00',
+    sleeve: 'signal',
+    sleeveLabel: 'Signal Violet',
     folder: 'workbench',
     tags: [
       { id: 'pressure', label: 'Pressure' },
@@ -22941,6 +22948,9 @@ test('Revision Trail restores an exact earlier deck as a new immutable revision'
           archived: true,
           sourceSeed: 'parent-private-seed',
           runMode: 'quick',
+          description: 'Archived guard line with a Molt finish.',
+          coverCardId: 'wands_ace',
+          sleeve: 'canal',
           folder: 'signature',
           tags: ['guard', 'molt'],
         },
@@ -23094,6 +23104,10 @@ test('Revision Trail restores an exact earlier deck as a new immutable revision'
     leaderId: 'spark_caller',
     sourceSeed: 'parent-private-seed',
     runMode: 'quick',
+    description: 'Archived guard line with a Molt finish.',
+    coverCardId: 'wands_ace',
+    sleeve: 'canal',
+    sleeveLabel: 'Canal Teal',
     folder: 'signature',
     tags: [
       { id: 'guard', label: 'Guard' },
@@ -23600,6 +23614,238 @@ test('Folio Organizer preserves private folders and strategy labels across every
   }))).toEqual([
     { folder: 'ready', tags: ['guard', 'flow', 'molt'] },
     { folder: 'ready', tags: ['guard', 'flow', 'molt'] },
+  ]);
+});
+
+test('Folio Identity preserves private descriptions, cover cards, and card-back sleeves', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => localStorage.setItem('test.identityCode', value),
+      },
+    });
+    const account = {
+      discoveredCards: ['major_00', 'wands_ace', 'cups_ace'],
+      favoriteCards: [],
+      cardCollection: {},
+      decks: [{
+        id: 'identity-source',
+        lineageId: 'identity-lineage',
+        revision: 1,
+        name: 'Canal Signal Study',
+        leaderId: 'spark_caller',
+        cards: [
+          { id: 'major_00', upgraded: true },
+          { id: 'wands_ace', upgraded: false },
+          { id: 'cups_ace', upgraded: true },
+        ],
+        createdAt: 100,
+        updatedAt: 100,
+        favorite: false,
+        archived: false,
+        sourceSeed: 'private-identity-seed',
+        runMode: 'quick',
+        description: '  Test   pressure   lines  ',
+        coverCardId: 'missing-card',
+        sleeve: 'invalid-sleeve',
+      }],
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folios-tab-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.viewActive === true);
+
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.items[0]).toMatchObject({
+    id: 'identity-source',
+    description: 'Test pressure lines',
+    coverCardId: 'major_00',
+    coverCardName: 'First Flight',
+    sleeve: 'field',
+    sleeveLabel: 'Field Canvas',
+  });
+  expect(state.savedFlightFolios.shareCode).toMatchObject({
+    excludesIdentity: true,
+    excludesOrganization: true,
+    excludesPrivateNotes: true,
+  });
+
+  await page.keyboard.press('e');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'codeCopied');
+  const shareCodeBeforeIdentity = await page.evaluate(() => localStorage.getItem('test.identityCode'));
+
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-organize-hit');
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-organizer-identity-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.identity?.open === true);
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.identity).toMatchObject({
+    open: true,
+    deckId: 'identity-source',
+    deckName: 'Canal Signal Study',
+    description: 'Test pressure lines',
+    descriptionLimit: 120,
+    descriptionEditing: false,
+    section: 'cover',
+    coverCardId: 'major_00',
+    sleeve: 'field',
+    sleeveLabel: 'Field Canvas',
+    private: true,
+    includedInBackups: true,
+    excludedFromShareCodes: true,
+    affectsPower: false,
+  });
+  expect(state.savedFlightFolios.identity.coverCards).toHaveLength(3);
+  expect(state.savedFlightFolios.identity.sleeves).toHaveLength(4);
+  expect(state.savedFlightFolios.identity.coverCard).toMatchObject({
+    id: 'major_00',
+    name: 'First Flight',
+    selected: true,
+    available: true,
+  });
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Cover, sleeve, and description are cosmetic collection metadata');
+
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => {
+    const identity = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.identity;
+    return identity?.status === 'personalized' && identity?.coverCardId === 'wands_ace';
+  });
+  await page.keyboard.press('Tab');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.identity?.section === 'sleeve');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => {
+    const identity = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.identity;
+    return identity?.status === 'personalized' && identity?.sleeve === 'canal';
+  });
+
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    const rooftop = profile.children.list.find(
+      (child: any) => child.name === 'profile-folio-identity-sleeve-hit' && child.getData('sleeveId') === 'rooftop',
+    );
+    rooftop.emit('pointerdown');
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.identity?.sleeve === 'rooftop');
+
+  await page.keyboard.press('e');
+  const descriptionInput = page.locator('input[aria-label="Private Folio description"]');
+  await expect(descriptionInput).toBeVisible();
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.identity.descriptionEditing).toBe(true);
+  await descriptionInput.fill('Pressure pivots into a safe Molt finish.');
+  await descriptionInput.press('Enter');
+  await page.waitForFunction(() => {
+    const identity = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.identity;
+    return identity?.status === 'descriptionSaved'
+      && identity?.description === 'Pressure pivots into a safe Molt finish.';
+  });
+  await page.screenshot({ path: '.artifacts/test-results/flight-folio-identity.png', fullPage: true });
+
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 4 });
+    profile.input.gamepad.emit('down', {}, { index: 13 });
+    profile.input.gamepad.emit('down', {}, { index: 0 });
+  });
+  await page.waitForFunction(() => {
+    const identity = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.identity;
+    return identity?.section === 'cover' && identity?.coverCardId === 'cups_ace';
+  });
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 2 });
+  });
+  await expect(descriptionInput).toBeVisible();
+  await descriptionInput.fill('Cancelled controller edit.');
+  await descriptionInput.press('Escape');
+  await page.waitForFunction(() => {
+    const identity = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.identity;
+    return identity?.descriptionEditing === false
+      && identity?.description === 'Pressure pivots into a safe Molt finish.';
+  });
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 1 });
+  });
+  await page.waitForFunction(() => {
+    const folios = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios;
+    return folios?.identity?.open === false && folios?.organizer?.open === true;
+  });
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer?.open === false);
+  await page.screenshot({ path: '.artifacts/test-results/flight-folio-identity-library.png', fullPage: true });
+
+  await page.keyboard.press('e');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'codeCopied');
+  expect(await page.evaluate(() => localStorage.getItem('test.identityCode'))).toBe(shareCodeBeforeIdentity);
+  await page.keyboard.press('d');
+  await page.waitForFunction(() => {
+    const folios = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios;
+    return folios?.status === 'duplicated' && folios?.count === 2;
+  });
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.items[0]).toMatchObject({
+    lineageId: 'identity-lineage',
+    revision: 2,
+    parentId: 'identity-source',
+    description: 'Pressure pivots into a safe Molt finish.',
+    coverCardId: 'cups_ace',
+    sleeve: 'rooftop',
+    sleeveLabel: 'Rooftop Ember',
+  });
+
+  const account = JSON.parse(await page.evaluate(() => localStorage.getItem('birdsquad.account') ?? '{}'));
+  expect(account.decks.map((entry: any) => ({
+    description: entry.description,
+    coverCardId: entry.coverCardId,
+    sleeve: entry.sleeve,
+  }))).toEqual([
+    {
+      description: 'Pressure pivots into a safe Molt finish.',
+      coverCardId: 'cups_ace',
+      sleeve: 'rooftop',
+    },
+    {
+      description: 'Pressure pivots into a safe Molt finish.',
+      coverCardId: 'cups_ace',
+      sleeve: 'rooftop',
+    },
+  ]);
+
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-save-data-hit');
+  const downloadPromise = page.waitForEvent('download');
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-save-download-hit');
+  const download = await downloadPromise;
+  const downloadedPath = await download.path();
+  if (!downloadedPath) throw new Error('Folio Identity backup did not produce a local file');
+  const backup = JSON.parse(await readFile(downloadedPath, 'utf8'));
+  expect(backup.data.account.decks.map((entry: any) => ({
+    description: entry.description,
+    coverCardId: entry.coverCardId,
+    sleeve: entry.sleeve,
+  }))).toEqual([
+    {
+      description: 'Pressure pivots into a safe Molt finish.',
+      coverCardId: 'cups_ace',
+      sleeve: 'rooftop',
+    },
+    {
+      description: 'Pressure pivots into a safe Molt finish.',
+      coverCardId: 'cups_ace',
+      sleeve: 'rooftop',
+    },
   ]);
 });
 

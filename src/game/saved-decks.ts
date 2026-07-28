@@ -3,6 +3,7 @@ export const SAVED_DECK_ARCHIVE_LIMIT = 24;
 export const SAVED_DECK_TOTAL_LIMIT = SAVED_DECK_LIMIT + SAVED_DECK_ARCHIVE_LIMIT;
 export const SAVED_DECK_CARD_LIMIT = 60;
 export const SAVED_DECK_NAME_LIMIT = 32;
+export const SAVED_DECK_DESCRIPTION_LIMIT = 120;
 export const SAVED_DECK_NOTES_LIMIT = 240;
 export const SAVED_DECK_TAG_LIMIT = 3;
 
@@ -24,8 +25,44 @@ export const SAVED_DECK_TAGS = [
   { id: 'challenge', label: 'Challenge', description: 'Self-imposed or unusual constraints.' },
 ] as const;
 
+export const SAVED_DECK_SLEEVES = [
+  {
+    id: 'field',
+    label: 'Field Canvas',
+    description: 'Weathered blue canvas with a clear brass flight mark.',
+    primary: 0x102332,
+    accent: 0x7ab8d6,
+    ink: 0xf0c36f,
+  },
+  {
+    id: 'signal',
+    label: 'Signal Violet',
+    description: 'Deep violet cloth crossed by a bright rooftop signal.',
+    primary: 0x201b36,
+    accent: 0xc9a6ff,
+    ink: 0x8df4ff,
+  },
+  {
+    id: 'canal',
+    label: 'Canal Teal',
+    description: 'Tidewatch teal with warm repair-market stitching.',
+    primary: 0x0e3032,
+    accent: 0x8fd6a0,
+    ink: 0xffe1a3,
+  },
+  {
+    id: 'rooftop',
+    label: 'Rooftop Ember',
+    description: 'Charcoal fabric with an ember-red skyline seam.',
+    primary: 0x2b1b1b,
+    accent: 0xe58d6b,
+    ink: 0xffd7a0,
+  },
+] as const;
+
 export type SavedDeckFolderId = typeof SAVED_DECK_FOLDERS[number]['id'];
 export type SavedDeckTagId = typeof SAVED_DECK_TAGS[number]['id'];
+export type SavedDeckSleeveId = typeof SAVED_DECK_SLEEVES[number]['id'];
 
 export interface SavedDeckCard {
   id: string;
@@ -46,6 +83,9 @@ export interface SavedDeckRecord {
   archived: boolean;
   sourceSeed: string;
   runMode: 'full' | 'quick';
+  description?: string;
+  coverCardId?: string;
+  sleeve?: Exclude<SavedDeckSleeveId, 'field'>;
   notes?: string;
   folder?: Exclude<SavedDeckFolderId, 'unfiled'>;
   tags?: SavedDeckTagId[];
@@ -90,6 +130,12 @@ function safeFolder(value: unknown): Exclude<SavedDeckFolderId, 'unfiled'> | und
   )?.id as Exclude<SavedDeckFolderId, 'unfiled'> | undefined;
 }
 
+function safeSleeve(value: unknown): Exclude<SavedDeckSleeveId, 'field'> | undefined {
+  return SAVED_DECK_SLEEVES.find(
+    (sleeve) => sleeve.id !== 'field' && sleeve.id === value,
+  )?.id as Exclude<SavedDeckSleeveId, 'field'> | undefined;
+}
+
 function safeTags(value: unknown) {
   if (!Array.isArray(value)) return [];
   const valid = new Set<SavedDeckTagId>();
@@ -132,6 +178,12 @@ export function sanitizeSavedDecks(value: unknown): SavedDeckRecord[] {
     const rawParentId = safeText(raw.parentId, 80);
     const parentId = rawParentId && /^[a-z0-9_-]+$/i.test(rawParentId) ? rawParentId : '';
     const notes = safeNotes(raw.notes);
+    const description = safeText(raw.description, SAVED_DECK_DESCRIPTION_LIMIT);
+    const coverCardId = safeText(raw.coverCardId, 80);
+    const validCoverCardId = coverCardId && cards.some((card) => card.id === coverCardId)
+      ? coverCardId
+      : '';
+    const sleeve = safeSleeve(raw.sleeve);
     const folder = safeFolder(raw.folder);
     const tags = safeTags(raw.tags);
     return [{
@@ -150,6 +202,9 @@ export function sanitizeSavedDecks(value: unknown): SavedDeckRecord[] {
       archived: raw.archived === true,
       sourceSeed,
       runMode: raw.runMode === 'quick' ? 'quick' : 'full',
+      ...(description ? { description } : {}),
+      ...(validCoverCardId ? { coverCardId: validCoverCardId } : {}),
+      ...(sleeve ? { sleeve } : {}),
       ...(notes ? { notes } : {}),
       ...(folder ? { folder } : {}),
       ...(tags.length > 0 ? { tags } : {}),
@@ -223,6 +278,54 @@ export function updateSavedDeckNotes(
     return cleanNotes
       ? { ...withoutNotes, notes: cleanNotes, updatedAt: now }
       : { ...withoutNotes, updatedAt: now };
+  });
+}
+
+export function updateSavedDeckDescription(
+  decks: readonly SavedDeckRecord[],
+  id: string,
+  description: string,
+  now = Date.now(),
+) {
+  const cleanDescription = safeText(description, SAVED_DECK_DESCRIPTION_LIMIT);
+  return decks.map((deck) => {
+    if (deck.id !== id) return deck;
+    const updated = { ...deck };
+    delete updated.description;
+    return cleanDescription
+      ? { ...updated, description: cleanDescription, updatedAt: now }
+      : { ...updated, updatedAt: now };
+  });
+}
+
+export function setSavedDeckCoverCard(
+  decks: readonly SavedDeckRecord[],
+  id: string,
+  coverCardId: string,
+  now = Date.now(),
+) {
+  return decks.map((deck) => {
+    if (deck.id !== id || !deck.cards.some((card) => card.id === coverCardId)) return deck;
+    return deck.coverCardId === coverCardId
+      ? deck
+      : { ...deck, coverCardId, updatedAt: now };
+  });
+}
+
+export function setSavedDeckSleeve(
+  decks: readonly SavedDeckRecord[],
+  id: string,
+  sleeve: SavedDeckSleeveId,
+  now = Date.now(),
+) {
+  if (!SAVED_DECK_SLEEVES.some((candidate) => candidate.id === sleeve)) return [...decks];
+  return decks.map((deck) => {
+    if (deck.id !== id) return deck;
+    const updated = { ...deck };
+    delete updated.sleeve;
+    return sleeve === 'field'
+      ? { ...updated, updatedAt: now }
+      : { ...updated, sleeve, updatedAt: now };
   });
 }
 

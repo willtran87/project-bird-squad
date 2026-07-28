@@ -66,6 +66,19 @@ export function screenReaderSummary(payload: unknown): string {
     const collectionMilestones = isRecord(payload.collectionMilestones) ? payload.collectionMilestones : undefined;
     const showcase = isRecord(payload.cardShowcase) ? payload.cardShowcase : undefined;
     const folios = isRecord(payload.savedFlightFolios) ? payload.savedFlightFolios : undefined;
+    const identity = isRecord(folios?.identity) ? folios.identity : undefined;
+    if (identity?.open === true) {
+      if (identity.descriptionEditing === true) {
+        return `Editing the private Folio description for ${text(identity.deckName)}. Type one line up to ${number(identity.descriptionLimit) ?? 120} characters, press Enter to save, or Escape to cancel. The description is included in backups, excluded from BSF share codes, and never affects play.`;
+      }
+      const cover = isRecord(identity.coverCard) ? identity.coverCard : undefined;
+      const selectedSleeve = isRecord(identity.selectedSleeve) ? identity.selectedSleeve : undefined;
+      const activeSection = text(identity.section) === 'sleeve' ? 'card-back sleeves' : 'cover cards';
+      const selected = selectedSleeve
+        ? `${text(selectedSleeve.label)}: ${text(selectedSleeve.description)}`
+        : `${text(cover?.name)}${cover?.selected === true ? ', currently set' : ''}`;
+      return `Folio Identity for ${text(identity.deckName)}. Current cover card ${text(cover?.name)}. Current card-back sleeve ${text(identity.sleeveLabel)}. Private description: ${text(identity.description) || 'none yet'}. Active section ${activeSection}. Selected ${selected}. Cover, sleeve, and description are cosmetic collection metadata, included in save backups, excluded from BSF share codes, and never affect power. Use Tab or controller shoulders to switch sections; Previous, Next, Up, Down, or controller D-pad to choose; Confirm or controller A to apply; E or controller X to edit the description; and Back or controller B to return to the Folio Organizer.`;
+    }
     const organizer = isRecord(folios?.organizer) ? folios.organizer : undefined;
     if (organizer?.open === true) {
       if (folios?.renaming === true) {
@@ -83,7 +96,7 @@ export function screenReaderSummary(payload: unknown): string {
       const limitMessage = text(organizer.status) === 'tagLimit'
         ? ' The three-label limit is reached; remove one before adding another.'
         : '';
-      return `Folio Organizer for ${text(organizer.deckName)}. Current folder ${text(organizer.folderLabel)}. Strategy labels: ${labels.join(', ') || 'none'}. ${labels.length} of ${number(organizer.tagLimit) ?? 3} labels used. Active section ${section}. Selected ${text(selected?.label)}: ${text(selected?.description)}.${limitMessage} Organization is private, included in save backups, excluded from BSF share codes, and never affects power. Use Tab or controller shoulders to switch sections; Previous, Next, Up, Down, or controller D-pad to choose; Confirm or controller A to apply; R or controller Y to rename; and Back or controller B to return.`;
+      return `Folio Organizer for ${text(organizer.deckName)}. Current folder ${text(organizer.folderLabel)}. Strategy labels: ${labels.join(', ') || 'none'}. ${labels.length} of ${number(organizer.tagLimit) ?? 3} labels used. Active section ${section}. Selected ${text(selected?.label)}: ${text(selected?.description)}.${limitMessage} Organization is private, included in save backups, excluded from BSF share codes, and never affects power. Use Tab or controller shoulders to switch sections; Previous, Next, Up, Down, or controller D-pad to choose; Confirm or controller A to apply; P or controller X for Folio Identity; R or controller Y to rename; and Back or controller B to return.`;
     }
     const fieldRecord = isRecord(folios?.fieldRecord) ? folios.fieldRecord : undefined;
     if (fieldRecord?.open === true) {
@@ -169,7 +182,7 @@ export function screenReaderSummary(payload: unknown): string {
     const selectedTags = Array.isArray(selectedFolio?.tags)
       ? selectedFolio.tags.map((tag) => isRecord(tag) ? text(tag.label) : '').filter(Boolean)
       : [];
-    const folioSummary = ` Flight Folios ${number(folios?.count) ?? 0} active of ${number(folios?.capacity) ?? 6}, and ${number(folios?.archivedCount) ?? 0} archived of ${number(folios?.archiveCapacity) ?? 24}. Viewing ${archiveView ? 'Archive' : 'Active'}.${selectedFolio ? ` Selected ${text(selectedFolio.name)}, ${text(selectedFolio.leader)}, ${number(selectedFolio.cardCount) ?? 0} cards, revision ${number(selectedFolio.revision) ?? 1}${selectedFolio.favorite === true ? ', favorite' : ''}${selectedFolio.archived === true ? ', archived' : ''}, folder ${text(selectedFolio.folderLabel)}${selectedTags.length > 0 ? `, labels ${selectedTags.join(', ')}` : ''}.` : archiveView ? ' The Archive is empty.' : ' Save a deck from Route Deck Review or import a flight code.'} Archived Folios preserve their identity and never affect gameplay power. BSF version ${number(shareCode?.version) ?? 1} codes use a checksum and exclude account data, custom names, flight seeds, private notes, folders, and labels.${folios?.viewActive === true ? ` Use Previous and Next to select, O or controller A to organize, C or controller X to favorite, R or controller Y to rename, A or controller Start to ${archiveView ? 'restore' : 'archive'}, V or controller Select to switch libraries, D or controller left trigger to fork without changing the original, E or controller right trigger to copy a share code, I or controller left stick to import, and L or controller right stick to open the Flight Lab.` : ''}`;
+    const folioSummary = ` Flight Folios ${number(folios?.count) ?? 0} active of ${number(folios?.capacity) ?? 6}, and ${number(folios?.archivedCount) ?? 0} archived of ${number(folios?.archiveCapacity) ?? 24}. Viewing ${archiveView ? 'Archive' : 'Active'}.${selectedFolio ? ` Selected ${text(selectedFolio.name)}, ${text(selectedFolio.leader)}, ${number(selectedFolio.cardCount) ?? 0} cards, revision ${number(selectedFolio.revision) ?? 1}${selectedFolio.favorite === true ? ', favorite' : ''}${selectedFolio.archived === true ? ', archived' : ''}, folder ${text(selectedFolio.folderLabel)}${selectedTags.length > 0 ? `, labels ${selectedTags.join(', ')}` : ''}, cover ${text(selectedFolio.coverCardName)}, card back ${text(selectedFolio.sleeveLabel)}${text(selectedFolio.description) ? `, description ${text(selectedFolio.description)}` : ''}.` : archiveView ? ' The Archive is empty.' : ' Save a deck from Route Deck Review or import a flight code.'} Archived Folios preserve their identity and never affect gameplay power. BSF version ${number(shareCode?.version) ?? 1} codes use a checksum and exclude account data, custom names, flight seeds, private notes, folders, labels, descriptions, cover choices, and sleeves.${folios?.viewActive === true ? ` Use Previous and Next to select, O or controller A to organize, C or controller X to favorite, R or controller Y to rename, A or controller Start to ${archiveView ? 'restore' : 'archive'}, V or controller Select to switch libraries, D or controller left trigger to fork without changing the original, E or controller right trigger to copy a share code, I or controller left stick to import, and L or controller right stick to open the Flight Lab.` : ''}`;
     return `Flock Record. ${current}.${milestoneSummary}${showcaseSummary}${folioSummary} Press Confirm to select, or Back to return.`;
   }
 

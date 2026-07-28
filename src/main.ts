@@ -6298,6 +6298,9 @@ class ProfileScene extends Phaser.Scene {
     savedDeckOrganizerOpen: false,
     savedDeckOrganizerSection: 'folder',
     savedDeckOrganizerIndex: 0,
+    savedDeckIdentityOpen: false,
+    savedDeckIdentitySection: 'cover',
+    savedDeckIdentityIndex: 0,
     savedDeckLabOpen: false,
     savedDeckLabSample: 0,
     savedDeckFieldRecordOpen: false,
@@ -6366,6 +6369,12 @@ class ProfileScene extends Phaser.Scene {
     this.profileViewState.savedDeckOrganizerDeckId = undefined;
     this.profileViewState.savedDeckOrganizerSection = 'folder';
     this.profileViewState.savedDeckOrganizerIndex = 0;
+    this.profileViewState.savedDeckIdentityOpen = false;
+    this.profileViewState.savedDeckIdentityDeckId = undefined;
+    this.profileViewState.savedDeckIdentitySection = 'cover';
+    this.profileViewState.savedDeckIdentityIndex = 0;
+    this.profileViewState.savedDeckDescriptionInput?.remove();
+    this.profileViewState.savedDeckDescriptionInput = undefined;
     this.profileViewState.savedDeckLabOpen = false;
     this.profileViewState.savedDeckLabSample = 0;
     this.profileViewState.savedDeckFieldRecordOpen = false;
