@@ -5,6 +5,14 @@ import { readJournaledJson, writeJournaledJson } from './safe-storage';
 // Persistent player meta-progression: lifetime stats, achievements, and
 // unlockable Flock Leaders. Stored in localStorage, updated on each finished run.
 
+export type CardAcquisitionSource = 'starter_flock' | 'combat_reward' | 'route_reward' | 'market' | 'snag';
+
+export interface CardCollectionRecord {
+  timesClaimed: number;
+  firstAcquiredAt: number;
+  firstSource: CardAcquisitionSource;
+}
+
 export interface PlayerAccount {
   runs: number;
   wins: number;
@@ -16,6 +24,8 @@ export interface PlayerAccount {
   unlockedLeaders: string[];
   achievements: string[];
   discoveredCards: string[]; // card ids the player has encountered (for the Codex)
+  favoriteCards: string[]; // discovered cards the player has marked as personal favorites
+  cardCollection: Record<string, CardCollectionRecord>; // permanent claim history; playable copies remain run-specific
   observedEnemyMoves: string[]; // enemyId:moveId keys witnessed during combat
   contractBadges: string[];
   leaderProgress: Record<string, LeaderProgress>;
@@ -77,7 +87,7 @@ export function defaultAccount(): PlayerAccount {
   return {
     runs: 0, wins: 0, losses: 0, winsByLeader: {}, runsByLeader: {}, bestWinTier: -1,
     fastestWinTurns: null, unlockedLeaders: [...STARTING_LEADERS], achievements: [],
-    discoveredCards: [], observedEnemyMoves: [], contractBadges: [], leaderProgress: {}, leaderRecords: {},
+    discoveredCards: [], favoriteCards: [], cardCollection: {}, observedEnemyMoves: [], contractBadges: [], leaderProgress: {}, leaderRecords: {},
   };
 }
 
@@ -102,12 +112,18 @@ function countRecord(value: unknown): Record<string, number> {
     .map(([id, count]) => [id, finiteInt(count)]));
 }
 
-function parsePersonalRecordKey(key: string): { mode: RunRecordMode; tier: number } | undefined {
-  const match = /^(full|quick):(\d+)$/.exec(key);
-  if (!match) return undefined;
-  const tier = Number(match[2]);
-  if (!Number.isInteger(tier) || tier < 0 || tier > MAX_DIFFICULTY) return undefined;
-  return { mode: match[1] as RunRecordMode, tier };
+function sanitizeCardCollection(value: unknown, discovered: string[]): Record<string, CardCollectionRecord> {
+  const result: Record<string, CardCollectionRecord> = {};
+  if (!isRecord(value)) return result;
+  for (const id in value) {
+    const raw = value[id];
+    if (!discovered.includes(id) || !isRecord(raw)) continue;
+    const timesClaimed = finiteInt(raw.timesClaimed);
+    if (!timesClaimed) continue;
+    raw.timesClaimed = timesClaimed;
+    result[id] = raw as unknown as CardCollectionRecord;
+  }
+  return result;
 }
 
 function sanitizeLeaderRecords(value: unknown): Record<string, LeaderPersonalRecords> {
@@ -115,7 +131,7 @@ function sanitizeLeaderRecords(value: unknown): Record<string, LeaderPersonalRec
   return Object.fromEntries(Object.entries(value).flatMap(([leaderId, rawRecord]) => {
     if (!LEADER_IDS.has(leaderId) || !isRecord(rawRecord) || !isRecord(rawRecord.clears)) return [];
     const clears = Object.fromEntries(Object.entries(rawRecord.clears).flatMap(([key, rawClear]) => {
-      if (!parsePersonalRecordKey(key) || !isRecord(rawClear)) return [];
+      if (!/^(full|quick):[0-6]$/.test(key) || !isRecord(rawClear)) return [];
       const wins = finiteInt(rawClear.wins);
       if (wins < 1) return [];
       const fastestRunTurns = rawClear.fastestRunTurns === null || rawClear.fastestRunTurns === undefined
@@ -136,6 +152,7 @@ export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
     ? null
     : finiteInt(value.fastestWinTurns, 0, 1) || null;
   const unlockedLeaders = stringList(value.unlockedLeaders).filter((id) => LEADER_IDS.has(id));
+  const discoveredCards = stringList(value.discoveredCards);
   const leaderProgress = isRecord(value.leaderProgress)
     ? Object.fromEntries(Object.entries(value.leaderProgress).flatMap(([id, progress]) => {
         if (!LEADER_IDS.has(id) || !isRecord(progress)) return [];
@@ -159,7 +176,9 @@ export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
     fastestWinTurns,
     unlockedLeaders: [...new Set([...STARTING_LEADERS, ...unlockedLeaders])],
     achievements: stringList(value.achievements),
-    discoveredCards: stringList(value.discoveredCards),
+    discoveredCards,
+    favoriteCards: stringList(value.favoriteCards).filter((id) => discoveredCards.includes(id)),
+    cardCollection: sanitizeCardCollection(value.cardCollection, discoveredCards),
     observedEnemyMoves: stringList(value.observedEnemyMoves),
     contractBadges: stringList(value.contractBadges),
     leaderProgress,

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
+import { writeJournaledJson } from './safe-storage';
 import {
   activateRenderedAudioToggleControl, addCodexDossierFrame, addCodexEntryFrame, addSupplyArtImage,
   addUiIconImage, addWaymarkArtImage,
@@ -46,6 +47,8 @@ export class CodexScene extends Phaser.Scene {
   private activeItemTypeTab = 0;
   private activeItemFilterTab = 0;
   private discovered = new Set<string>();
+  private favoriteCards = new Set<string>();
+  private cardCollection: ReturnType<typeof loadAccount>['cardCollection'] = {};
   private observedEnemyMoves = new Set<string>();
   private detailId?: string;
   private detailScroll = 0;
@@ -71,7 +74,10 @@ export class CodexScene extends Phaser.Scene {
   private static readonly GRID_TOP = 158;
   private static readonly ITEM_GRID_TOP = 190;
   private static readonly GRID_BOTTOM = 690;
-  private readonly tabs: Array<{ label: string; match: (c: Card) => boolean }> = [
+  private static readonly CARD_TAB_START_X = 56;
+  private static readonly CARD_TAB_STEP = 112;
+  private static readonly CARD_TAB_WIDTH = 104;
+  private readonly tabs: Array<{ label: string; match: (c: Card) => boolean; favorites?: boolean }> = [
     { label: 'Major', match: (c) => c.id.startsWith('major_') },
     { label: 'Aviary', match: (c) => c.id.startsWith('aviary_') },
     { label: 'Plumes', match: (c) => c.runtime.suit === 'plumes' },
@@ -79,6 +85,7 @@ export class CodexScene extends Phaser.Scene {
     { label: 'Basins', match: (c) => c.runtime.suit === 'basins' },
     { label: 'Nests', match: (c) => c.runtime.suit === 'nests' },
     { label: 'Snags', match: (c) => c.runtime.kind === 'snag' },
+    { label: 'Favorites', match: (c) => this.favoriteCards.has(c.id), favorites: true },
   ];
   private readonly enemyTabs: Array<{ label: string; match: (e: CodexEnemyEntry) => boolean }> = [
     { label: 'All', match: () => true },
@@ -151,6 +158,8 @@ export class CodexScene extends Phaser.Scene {
     this.root = this.add.container(0, 0);
     const account = loadAccount();
     this.discovered = new Set(account.discoveredCards);
+    this.favoriteCards = new Set(account.favoriteCards);
+    this.cardCollection = account.cardCollection;
     this.observedEnemyMoves = new Set(account.observedEnemyMoves);
     void this.ensureCodexData();
     queueUiIconAssets(this, codexUiIconIds, 'Codex UI', () => this.renderAll());
@@ -179,6 +188,10 @@ export class CodexScene extends Phaser.Scene {
       if (event?.code && controlActionForCode(event.code)) return;
       this.moveCodexVertical(1);
     };
+    const onFavorite = (event: KeyboardEvent) => {
+      if (event.repeat || this.activeSection !== 'cards' || !this.detailId) return;
+      this.toggleCurrentCardFavorite();
+    };
     const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button) => {
       if (button.index === 12) this.moveCodexVertical(-1);
       else if (button.index === 13) this.moveCodexVertical(1);
@@ -186,15 +199,18 @@ export class CodexScene extends Phaser.Scene {
       else if (button.index === 15) this.moveCodexHorizontal(1);
       else if (button.index === 0) this.activateCodexFocus();
       else if (button.index === 1) this.handleCodexBack();
+      else if (button.index === 2 && this.activeSection === 'cards' && this.detailId) this.toggleCurrentCardFavorite();
     };
     this.input.keyboard?.on('keydown-TAB', onTab);
     this.input.keyboard?.on('keydown-UP', onUp);
     this.input.keyboard?.on('keydown-DOWN', onDown);
+    this.input.keyboard?.on('keydown-C', onFavorite);
     this.input.gamepad?.on('down', onGamepadDown);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard?.off('keydown-TAB', onTab);
       this.input.keyboard?.off('keydown-UP', onUp);
       this.input.keyboard?.off('keydown-DOWN', onDown);
+      this.input.keyboard?.off('keydown-C', onFavorite);
       this.input.gamepad?.off('down', onGamepadDown);
     });
     this.input.on('wheel', (_p: unknown, _o: unknown, _dx: number, dy: number) => {
@@ -853,6 +869,7 @@ export class CodexScene extends Phaser.Scene {
     this.queueArt();
     const all = this.allCards();
     const found = all.filter((c) => this.discovered.has(c.id)).length;
+    const collectedIds = all.filter((card) => Boolean(this.cardCollection[card.id])).map((card) => card.id);
     const enemyAll = this.allCodexEnemies();
     const reserveEnemyCount = this.allReserveEnemies().length;
     const encounterEnemyCount = this.allEncounterEnemies().length;
@@ -869,6 +886,10 @@ export class CodexScene extends Phaser.Scene {
     const cardMode = this.activeSection === 'cards';
     const itemMode = this.activeSection === 'items';
     const leaderMode = this.activeSection === 'leaders';
+    const favoriteView = cardMode && Boolean(this.tabs[this.activeTab]?.favorites);
+    const cards = cardMode
+      ? this.allCards().filter(this.tabs[this.activeTab].match).sort((a, b) => a.id.localeCompare(b.id))
+      : [];
     const activeCardCollection = cardMode
       ? this.codexBossDossierModule?.cardDiscoverySets(
         all,
@@ -882,6 +903,29 @@ export class CodexScene extends Phaser.Scene {
       audio: birdAudio.snapshot(),
       cardsDiscovered: found,
       cardsTotal: all.length,
+      cardFavorites: {
+        count: this.favoriteCards.size,
+        ids: [...this.favoriteCards],
+        detailId: this.activeSection === 'cards' ? this.detailId ?? '' : '',
+        detailFavorite: Boolean(this.activeSection === 'cards' && this.detailId && this.favoriteCards.has(this.detailId)),
+        keyboard: 'C',
+        controller: 'X',
+        viewActive: favoriteView,
+        viewEmpty: favoriteView && cards.length === 0,
+        visibleIds: favoriteView ? cards.map((card) => card.id) : [],
+      },
+      cardOwnership: {
+        collectedCount: collectedIds.length,
+        collectedIds,
+        detailId: this.activeSection === 'cards' ? this.detailId ?? '' : '',
+        detail: this.activeSection === 'cards' && this.detailId
+          ? this.cardCollection[this.detailId] ?? null
+          : null,
+        discoveredNotCollected: all
+          .filter((card) => this.discovered.has(card.id) && !this.cardCollection[card.id])
+          .map((card) => card.id),
+        runCopiesTemporary: true,
+      },
       itemCount: itemAll.length,
       leaderCount: leaders.length,
       enemyCount: enemyAll.length,
@@ -949,9 +993,6 @@ export class CodexScene extends Phaser.Scene {
     // 1) Scrollable grid. Drawn FIRST so the
     //    header/footer curtains below can hide anything scrolled out of view
     //    (WebGL doesn't support geometry masks, so we clip with opaque strips).
-    const cards = cardMode
-      ? this.allCards().filter(this.tabs[this.activeTab].match).sort((a, b) => a.id.localeCompare(b.id))
-      : [];
     const glossaryMode = this.activeSection === 'glossary';
     const cols = cardMode ? 5 : leaderMode ? 3 : glossaryMode ? 2 : 4;
     const cellW = cardMode ? 202 : leaderMode ? 360 : glossaryMode ? 580 : 274;
@@ -968,6 +1009,7 @@ export class CodexScene extends Phaser.Scene {
     this.gridRenderScroll = this.gridScroll;
     this.gridRenderCellH = cellH;
     if (cardMode) {
+      if (favoriteView && cards.length === 0) this.renderFavoriteEmptyState(grid, top, bottom);
       cards.forEach((card, i) => {
         const cx = gridLeft + (i % cols) * cellW + cellW / 2;
         const cy = top + Math.floor(i / cols) * cellH + cellH / 2;
@@ -1018,7 +1060,9 @@ export class CodexScene extends Phaser.Scene {
     this.root.add(this.add.rectangle(838, 42, 486, 54, 0x05080e, 0.64).setStrokeStyle(1, 0x22364d, 0.72));
     this.root.add(this.add.text(40, 24, 'Codex', { fontFamily: 'Georgia, serif', fontSize: '34px', fontStyle: UI_BOLD, color: UI_GOLD, stroke: '#000000', strokeThickness: 4 }));
     const subtitle = cardMode
-      ? `${found} / ${all.length} cards discovered`
+      ? favoriteView
+        ? `${cards.length} favorite card${cards.length === 1 ? '' : 's'} / ${found} discovered`
+        : `${collectedIds.length} collected / ${found} discovered / ${all.length} total`
       : itemMode
         ? `${itemAll.length} items (${waymarkAll.length} Waymarks / ${supplyAll.length} Supplies)`
         : glossaryMode
@@ -1097,18 +1141,19 @@ export class CodexScene extends Phaser.Scene {
 
     if (cardMode) {
       this.tabs.forEach((tab, i) => {
-        const tx = 64 + i * 124;
+        const tx = CodexScene.CARD_TAB_START_X + i * CodexScene.CARD_TAB_STEP;
         const active = i === this.activeTab;
         const tabCards = this.allCards().filter(tab.match);
         const got = tabCards.filter((c) => this.discovered.has(c.id)).length;
         const sampleCard = tabCards[0];
-        const accent = sampleCard ? this.cardAccent(sampleCard) : 0x7ab8d6;
-        this.renderCodexTab(tx, 116, 116, 40, tab.label, `${got}/${tabCards.length}`, active, accent, () => {
+        const accent = tab.favorites ? UI_FIELD.gold : sampleCard ? this.cardAccent(sampleCard) : 0x7ab8d6;
+        const meta = tab.favorites ? `${tabCards.length}` : `${got}/${tabCards.length}`;
+        this.renderCodexTab(tx, 116, CodexScene.CARD_TAB_WIDTH, 40, tab.label, meta, active, accent, () => {
           this.focusZone = 'primaryTabs';
           playUiSound('confirm');
           this.setActivePrimaryTab(i);
           this.renderAll();
-        }, 13);
+        }, tab.favorites ? 11 : 12);
       });
       if (activeCardCollection) {
         const activeCards = this.allCards().filter(this.tabs[this.activeTab].match);
@@ -1320,7 +1365,14 @@ export class CodexScene extends Phaser.Scene {
     }
     if (this.focusZone === 'primaryTabs') {
       const index = this.activePrimaryTabIndex();
-      if (this.activeSection === 'cards') return { x: 64 + index * 124, y: 116, width: 122, height: MIN_SUPPORTED_TOUCH_TARGET };
+      if (this.activeSection === 'cards') {
+        return {
+          x: CodexScene.CARD_TAB_START_X + index * CodexScene.CARD_TAB_STEP,
+          y: 116,
+          width: CodexScene.CARD_TAB_WIDTH,
+          height: MIN_SUPPORTED_TOUCH_TARGET,
+        };
+      }
       if (this.activeSection === 'items') return { x: 72 + index * 132, y: 102, width: 126, height: MIN_SUPPORTED_TOUCH_TARGET };
       return { x: 72 + index * 150, y: 116, width: 146, height: MIN_SUPPORTED_TOUCH_TARGET };
     }
@@ -1347,9 +1399,9 @@ export class CodexScene extends Phaser.Scene {
   private renderCodexInputHint() {
     const detail = Boolean(this.detailId);
     const label = detail
-      ? `Up / Down: Scroll   |   ${controlBindingLabel('confirm')}: Close   |   ${controlBindingLabel('back')}: Back`
+      ? `Up / Down: Scroll   |   C / X: Favorite   |   ${controlBindingLabel('confirm')}: Close   |   ${controlBindingLabel('back')}: Back`
       : `Tab: Focus   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate   |   ${controlBindingLabel('confirm')}: Select   |   ${controlBindingLabel('back')}: Back`;
-    const width = detail ? 530 : 710;
+    const width = detail ? 720 : 710;
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 13, width, 22, 0x05070c, 0.86)
       .setStrokeStyle(1, UI_FIELD.cyan, 0.34)
       .setName('codex-input-hint-backdrop'));
@@ -1594,6 +1646,73 @@ export class CodexScene extends Phaser.Scene {
     } else {
       this.drawLockedCardBack(layer, card, cx, cy, aw, ah, accent);
     }
+    if (found) {
+      const collected = Boolean(this.cardCollection[card.id]);
+      const width = collected ? 82 : 52;
+      layer.add(this.add.rectangle(cx, cy - ah / 2 + 18, width, 20, collected ? 0x3b2b0b : 0x102534, 0.96)
+        .setStrokeStyle(1, collected ? UI_FIELD.gold : UI_FIELD.cyan, 0.96)
+        .setName('codex-card-ownership-marker')
+        .setData('cardId', card.id)
+        .setData('collected', collected));
+      layer.add(this.add.text(cx, cy - ah / 2 + 18, collected ? 'COLLECTED' : 'SEEN', {
+        fontFamily: UI_FONT,
+        fontSize: '9px',
+        fontStyle: UI_BOLD,
+        color: collected ? '#ffe08a' : '#b8e8f4',
+        stroke: '#05070c',
+        strokeThickness: 2,
+      }).setResolution(2).setOrigin(0.5).setName('codex-card-ownership-label').setData('cardId', card.id));
+    }
+    if (found && this.favoriteCards.has(card.id)) {
+      layer.add(this.add.circle(cx + aw / 2 - 18, cy - ah / 2 + 18, 16, 0x07101c, 0.94)
+        .setStrokeStyle(2, UI_FIELD.gold, 0.98)
+        .setName('codex-favorite-marker')
+        .setData('cardId', card.id));
+      layer.add(this.add.text(cx + aw / 2 - 18, cy - ah / 2 + 18, '★', {
+        fontFamily: 'Georgia, serif',
+        fontSize: '18px',
+        color: '#ffe08a',
+        stroke: '#05070c',
+        strokeThickness: 2,
+      }).setResolution(2).setOrigin(0.5).setName('codex-favorite-marker-label').setData('cardId', card.id));
+    }
+  }
+
+  private renderFavoriteEmptyState(layer: Phaser.GameObjects.Container, top: number, bottom: number) {
+    const cx = GAME_WIDTH / 2;
+    const cy = (top + bottom) / 2 - 6;
+    layer.add(this.add.rectangle(cx, cy, 620, 248, 0x0b1521, 0.98)
+      .setStrokeStyle(2, UI_FIELD.gold, 0.82)
+      .setName('codex-favorites-empty-state'));
+    layer.add(this.add.circle(cx, cy - 52, 38, 0x2a2211, 0.96).setStrokeStyle(2, UI_FIELD.gold, 0.9));
+    layer.add(this.add.text(cx, cy - 52, '☆', {
+      fontFamily: 'Georgia, serif',
+      fontSize: '42px',
+      color: '#ffe08a',
+      stroke: '#05070c',
+      strokeThickness: 3,
+    }).setResolution(2).setOrigin(0.5));
+    layer.add(this.add.text(cx, cy + 8, 'NO FAVORITES YET', {
+      fontFamily: UI_FONT,
+      fontSize: '22px',
+      fontStyle: UI_BOLD,
+      color: UI_GOLD,
+      stroke: '#05070c',
+      strokeThickness: 3,
+    }).setResolution(2).setOrigin(0.5));
+    layer.add(this.add.text(
+      cx,
+      cy + 58,
+      'Open any discovered card and choose ☆ FAVORITE.\nFavorite cards are saved locally and gathered here.',
+      {
+        fontFamily: UI_FONT,
+        fontSize: '14px',
+        color: UI_SOFT,
+        align: 'center',
+        lineSpacing: 5,
+        wordWrap: { width: 520 },
+      },
+    ).setResolution(2).setOrigin(0.5));
   }
 
   private waymarkAccent(mark: RuntimeRouteMark) {
@@ -2278,6 +2397,64 @@ export class CodexScene extends Phaser.Scene {
     return 0x7ab8d6;
   }
 
+  private toggleCurrentCardFavorite() {
+    const id = this.activeSection === 'cards' ? this.detailId : undefined;
+    if (!id || !this.discovered.has(id)) {
+      playUiSound('locked');
+      return;
+    }
+    const account = loadAccount();
+    const favorites = new Set(account.favoriteCards);
+    const favorite = !favorites.has(id);
+    if (favorite) favorites.add(id);
+    else favorites.delete(id);
+    account.favoriteCards = [...favorites];
+    writeJournaledJson('birdsquad.account', account);
+    if (favorite) this.favoriteCards.add(id);
+    else this.favoriteCards.delete(id);
+    playUiSound('confirm');
+    this.renderAll();
+  }
+
+  private renderCardFavoriteControl(x: number, y: number, card: Card) {
+    const favorite = this.favoriteCards.has(card.id);
+    const accent = favorite ? UI_FIELD.gold : UI_FIELD.cyan;
+    const hit = this.add.rectangle(x, y, 142, 46, favorite ? 0x392d12 : 0x102534, 0.98)
+      .setStrokeStyle(2, accent, 0.96)
+      .setInteractive({ useHandCursor: true })
+      .setName('codex-card-favorite-hit')
+      .setData('cardId', card.id)
+      .setData('favorite', favorite);
+    hit.on('pointerover', () => hit.setFillStyle(favorite ? 0x51401a : 0x17384b, 1));
+    hit.on('pointerout', () => hit.setFillStyle(favorite ? 0x392d12 : 0x102534, 0.98));
+    hit.on('pointerdown', () => this.toggleCurrentCardFavorite());
+    this.root.add(hit);
+    this.root.add(this.add.text(x, y, favorite ? '★  FAVORITED' : '☆  FAVORITE', {
+      fontFamily: UI_FONT,
+      fontSize: '12px',
+      fontStyle: UI_BOLD,
+      color: favorite ? '#ffe08a' : '#b8e8f4',
+      stroke: '#05070c',
+      strokeThickness: 2,
+    }).setResolution(2).setOrigin(0.5).setName('codex-card-favorite-label').setData('cardId', card.id));
+  }
+
+  private cardAcquisitionSourceLabel(source: string) {
+    switch (source) {
+      case 'starter_flock': return 'Starter flock';
+      case 'combat_reward': return 'Fight reward';
+      case 'route_reward': return 'Route choice';
+      case 'market': return 'Canal market';
+      case 'snag': return 'Enemy Snag';
+      default: return 'Flight claim';
+    }
+  }
+
+  private cardAcquisitionDateLabel(timestamp: number) {
+    const date = new Date(timestamp);
+    return Number.isNaN(date.getTime()) ? 'Date unavailable' : date.toISOString().slice(0, 10);
+  }
+
   private renderDetail(id: string) {
     const card = cardLibrary[id];
     if (!card) return;
@@ -2341,6 +2518,28 @@ export class CodexScene extends Phaser.Scene {
     });
     this.root.add(meta);
     yy += Math.max(26, meta.height + 8);
+
+    const collection = this.cardCollection[card.id];
+    heading('COLLECTION STATUS', '#e8c24a');
+    if (collection) {
+      para(
+        `COLLECTED / ${collection.timesClaimed} FLIGHT CLAIM${collection.timesClaimed === 1 ? '' : 'S'} / FIRST: ${this.cardAcquisitionSourceLabel(collection.firstSource).toUpperCase()} / ${this.cardAcquisitionDateLabel(collection.firstAcquiredAt)}`,
+        { color: '#ffe08a', size: 12 },
+      );
+      yy += 5;
+      para('Permanent collection record. Playable copies, Preens, and transformations remain specific to each flight.', {
+        color: '#b8e8f4',
+        size: 12,
+      });
+    } else {
+      para('DISCOVERED / NOT YET COLLECTED', { color: '#b8e8f4', size: 12 });
+      yy += 5;
+      para('Seen in an offer or preview. Claim it during a flight to create its permanent collection record.', {
+        color: '#a9b9c8',
+        size: 12,
+      });
+    }
+    yy += 12;
 
     // Effect - base + preened (keywords highlighted, hoverable).
     heading('EFFECT', '#7f93a8');
@@ -2445,6 +2644,7 @@ export class CodexScene extends Phaser.Scene {
       this.renderCodexScrollCue(right - 64, mBottom - 18, this.detailScroll >= this.detailMaxScroll);
     }
 
+    this.renderCardFavoriteControl(right - 132, mTop + 26, card);
     this.renderCodexCloseControl(right - 26, mTop + 26, closeDetail);
   }
 

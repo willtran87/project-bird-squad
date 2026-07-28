@@ -198,10 +198,19 @@ export function screenReaderSummary(payload: unknown): string {
       const focusedLabel = text(inputFocus?.label);
       const focusedIndex = number(inputFocus?.index);
       const focusedCount = number(inputFocus?.count);
+      const focusedChoice = focusedIndex === undefined ? undefined : source[focusedIndex];
+      const collection = mode === 'cardReward' && focusedChoice && isRecord(focusedChoice.collection)
+        ? focusedChoice.collection
+        : undefined;
+      const collectionNote = collection
+        ? collection.firstClaim === true
+          ? ' This would be its first permanent collection record; the playable copy is for this flight.'
+          : ` Already collected, with ${number(collection.timesClaimed) ?? 0} prior flight claims; this playable copy is for this flight.`
+        : '';
       const focused = focusedLabel
         ? ` Focused ${focusedLabel}${focusedIndex !== undefined && focusedCount !== undefined ? `, choice ${focusedIndex + 1} of ${focusedCount}` : ''}.`
         : '';
-      return `Reward choice.${focused}${choices.length ? ` Options: ${choices.join(', ')}.` : ''} Use Previous and Next to choose, then Confirm. Use Skip Reward for Scrap when available.`;
+      return `Reward choice.${focused}${collectionNote}${choices.length ? ` Options: ${choices.join(', ')}.` : ''} Use Previous and Next to choose, then Confirm. Use Skip Reward for Scrap when available.`;
     }
     if (selectedCard) {
       const name = text(selectedCard.name) || 'card';
@@ -228,10 +237,34 @@ export function screenReaderSummary(payload: unknown): string {
     const position = number(focus?.index);
     const count = number(focus?.count);
     const detail = text(payload.detailOpen);
+    const favorites = isRecord(payload.cardFavorites) ? payload.cardFavorites : undefined;
+    const ownership = isRecord(payload.cardOwnership) ? payload.cardOwnership : undefined;
+    const detailOwnership = isRecord(ownership?.detail) ? ownership.detail : undefined;
+    const collectedCount = number(ownership?.collectedCount) ?? 0;
+    const discoveredCount = number(payload.cardsDiscovered) ?? 0;
+    const detailFavorite = favorites?.detailFavorite === true;
+    const favoriteView = favorites?.viewActive === true;
+    const favoriteViewEmpty = favorites?.viewEmpty === true;
+    const favoriteCount = number(favorites?.count) ?? 0;
     const itemPosition = zone === 'entries' && position !== undefined && count !== undefined
       ? ` Item ${position + 1} of ${count}.`
       : '';
-    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
+    const favoriteState = detail
+      ? ` This card is ${detailFavorite ? 'favorited' : 'not favorited'}. Use C or controller X to ${detailFavorite ? 'remove it from' : 'add it to'} favorites.`
+      : '';
+    const favoriteViewState = favoriteView
+      ? favoriteViewEmpty
+        ? ' No favorite cards yet. Open a discovered card and choose Favorite to add it here.'
+        : ` Showing ${favoriteCount} favorite card${favoriteCount === 1 ? '' : 's'}.`
+      : '';
+    const ownershipState = section === 'cards'
+      ? detail
+        ? detailOwnership
+          ? ` Collected permanently, with ${number(detailOwnership.timesClaimed) ?? 1} flight claims. Playable copies and upgrades are specific to each flight.`
+          : ' Discovered but not yet collected. Claim it during a flight to create its permanent collection record.'
+        : ` ${collectedCount} collected and ${discoveredCount} discovered.`
+      : '';
+    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${ownershipState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
   }
   return scene ? `${spaced(scene)}.` : '';
 }

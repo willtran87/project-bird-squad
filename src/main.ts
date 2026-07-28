@@ -61,7 +61,10 @@ import {
   MAX_DIFFICULTY,
   type DifficultyMods,
 } from './game/difficulty';
-import { achievements, discoverCards, isLeaderUnlocked, leaderMastery, leaderUnlockHints, loadAccount, recordRun, type PlayerAccount } from './game/meta';
+import {
+  achievements, discoverCards, isLeaderUnlocked, leaderMastery, leaderUnlockHints,
+  loadAccount, recordRun, type CardAcquisitionSource, type CardCollectionRecord, type PlayerAccount
+} from './game/meta';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './game/theme';
 import {
   queuePreloadImageAssets,
@@ -1514,7 +1517,16 @@ interface RenderPayload {
   };
   hand: Array<{ id: string; name: string; bird: string; cost: number; type: CardType; role: CardRole; target: TargetType; activeTarget?: TargetType; activeRole?: CardRole; activeText?: string; usesMolt?: boolean }>;
   waymarkChoices?: Array<{ id: string; name: string; family: string; rarity: RouteMarkRarity; source: string; description: string }>;
-  rewardChoices?: Array<{ id: string; name: string; bird: string; cost: number; type: CardType; target: TargetType; observations: string[] }>;
+  rewardChoices?: Array<{
+    id: string;
+    name: string;
+    bird: string;
+    cost: number;
+    type: CardType;
+    target: TargetType;
+    observations: string[];
+    collection: { firstClaim: boolean; timesClaimed: number; runCopyTemporary: true };
+  }>;
   upgradeChoices?: Array<{ id: string; name: string; bird: string; cost: number; type: CardType; target: TargetType }>;
   rewardDecisionDeltas?: string[];
   enemies: Array<{
@@ -4051,6 +4063,30 @@ function currentCombatNodeIds(): Set<string> {
 const cardLibrary: Record<string, Card> = Object.fromEntries(
   alphaCardSet.cards.map((card) => [card.id, createCardTemplate(card)])
 );
+
+function recordCardAcquisitions(
+  ids: string[],
+  source: CardAcquisitionSource,
+): { firstCopies: string[] } {
+  const uniqueIds = [...new Set(ids.filter((id) => Boolean(cardLibrary[id])))];
+  if (uniqueIds.length === 0) return { firstCopies: [] };
+  const account = loadAccount();
+  const discovered = new Set(account.discoveredCards);
+  const now = Date.now();
+  const firstCopies: string[] = [];
+  uniqueIds.forEach((id) => {
+    discovered.add(id);
+    const prior = account.cardCollection[id];
+    if (!prior) firstCopies.push(id);
+    const next: CardCollectionRecord = prior
+      ? { ...prior, timesClaimed: prior.timesClaimed + 1 }
+      : { timesClaimed: 1, firstAcquiredAt: now, firstSource: source };
+    account.cardCollection[id] = next;
+  });
+  account.discoveredCards = [...discovered];
+  writeJournaledJson('birdsquad.account', account);
+  return { firstCopies };
+}
 
 const arcanaRewardPool = alphaCardSet.rewardPool;
 
@@ -9253,7 +9289,11 @@ class RouteScene extends Phaser.Scene {
     const pending = this.pendingRouteReward;
     if (!pending) return;
     if (this.routeCardRewardChoices.length > 0) return;
-    if (pending.projectedState) this.runState = cloneRunState(pending.projectedState);
+    if (pending.projectedState) {
+      this.runState = cloneRunState(pending.projectedState);
+      const priorIds = new Set(pending.restoreState.deck.map((card) => card.id));
+      recordCardAcquisitions(this.runState.deck.map((card) => card.id).filter((id) => !priorIds.has(id)), 'route_reward');
+    }
     const pickerPlan = this.routeRewardPickerPlan(pending.effects);
     if (pickerPlan && this.pickerEligibleCards(pickerPlan.mode, 'route').length > 0) {
       if (!pending.projectedState && !pending.effectsAppliedOnOpen) this.applyPendingRouteRewardEffects(pending, false, true);
@@ -10641,7 +10681,7 @@ class RouteScene extends Phaser.Scene {
     this.grantSpecificCard(granted);
   }
 
-  private grantSpecificCard(cardId: string) {
+  private grantSpecificCard(cardId: string, source: CardAcquisitionSource = 'route_reward') {
     const card = cardLibrary[cardId];
     if (!card) return false;
     if (this.runState.deck.some((saved) => saved.id === cardId)) {
@@ -10650,7 +10690,7 @@ class RouteScene extends Phaser.Scene {
       return false;
     }
     this.runState.deck.push({ id: cardId });
-    discoverCards([cardId]);
+    recordCardAcquisitions([cardId], source);
     return true;
   }
 
@@ -13112,10 +13152,12 @@ class RouteScene extends Phaser.Scene {
     const anchor = this.marketCardOfferAnchor(slotIndex);
     this.spendRouteScrap(listing.price);
     this.runState.deck.push({ id: offer.id, upgraded: offer.upgraded });
+    const acquisition = recordCardAcquisitions([offer.id], 'market');
     listing.sold = true;
     this.applyRouteMarkTrigger('afterMarketPurchase');
-    discoverCards([offer.id]);
-    this.marketMessage = `${displayName(offer)} joins the flock for ${listing.price} Scrap.`;
+    this.marketMessage = acquisition.firstCopies.includes(offer.id)
+      ? `First collection claim! ${displayName(offer)} joins this flight for ${listing.price} Scrap.`
+      : `${displayName(offer)} joins this flight for ${listing.price} Scrap. Collection history updated.`;
     this.renderMarketPurchaseFeedback(anchor.x, anchor.y, offer.type === 'major' ? UI_FIELD.gold : suitAccentColor(offer));
     this.queueMarketShelfArtLoad();
   }
@@ -21827,7 +21869,7 @@ class BattleScene extends Phaser.Scene {
     };
   }
 
-  private rewardCardView(card: Card, index: number) {
+  private rewardCardView(card: Card, index: number, collection?: CardCollectionRecord) {
     const needTags = this.cardNeedTags(card);
     const stats = cardStatRows(card).slice(0, 2);
     return {
@@ -21843,6 +21885,9 @@ class BattleScene extends Phaser.Scene {
       accentText: card.type === 'major' ? '#ffe1a3' : card.type === 'molt' ? '#e6c4ff' : '#8df4ff',
       footerRows: needTags.length > 0 ? needTags : stats,
       footerUsesObservations: needTags.length > 0,
+      collectionStatus: this.mode === 'cardReward'
+        ? { firstClaim: !collection, timesClaimed: collection?.timesClaimed ?? 0 }
+        : undefined,
       decisionPreview: {
         kind: (this.mode === 'upgradeReward' ? 'preen' : 'add') as 'add' | 'preen',
         deckBefore: this.allDeckCards().length,
@@ -21891,6 +21936,7 @@ class BattleScene extends Phaser.Scene {
     const mode = this.mode;
     const isCardReward = mode === 'cardReward';
     const cards = mode === 'cardReward' ? this.rewardChoices : mode === 'upgradeReward' ? this.upgradeChoices : [];
+    const cardCollection = isCardReward ? loadAccount().cardCollection : {};
     const title = mode === 'cardReward' ? 'Add to the Flock' : mode === 'upgradeReward' ? 'Preen a Card' : 'Claim a Waymark';
     const subtitle = mode === 'cardReward' ? 'Pick a card or take Scrap.' : mode === 'upgradeReward' ? 'Pick one owned card.' : 'Pick one route artifact.';
     const result = this.battleRewardRendererModule.renderRewardCeremony({
@@ -21921,7 +21967,7 @@ class BattleScene extends Phaser.Scene {
         snagBorder: snagCardBorderAsset.key
       },
       deckNeeds: isCardReward ? this.rewardDeckNeedView() : undefined,
-      cards: cards.map((card, index) => this.rewardCardView(card, index)),
+      cards: cards.map((card, index) => this.rewardCardView(card, index, cardCollection[card.id])),
       waymarks: this.waymarkChoices.map((mark, index) => this.rewardWaymarkView(mark, index)),
       skip: isCardReward ? {
         scrap: this.currentSkipScrapReward(),
@@ -23939,7 +23985,7 @@ class BattleScene extends Phaser.Scene {
             floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 44, 'Snag blocked', '#7ab8d6');
             break;
           }
-          discoverCards([snagId]);
+          recordCardAcquisitions([snagId], 'snag');
           this.discardPile.push(cloneCard(snagId));
           this.logEvent(`${enemy.name} tangles the route - ${cardLibrary[snagId].runtime.displayName} drops into your discard.`);
           this.animateDiscard(1, this.enemyView(enemy).x, this.enemyView(enemy).y, 0.9);
@@ -23955,7 +24001,7 @@ class BattleScene extends Phaser.Scene {
             floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 44, 'Snag blocked', '#7ab8d6');
             break;
           }
-          discoverCards([snagId]);
+          recordCardAcquisitions([snagId], 'snag');
           const at = Math.floor(this.combatRandom() * (this.drawPile.length + 1));
           this.drawPile.splice(at, 0, cloneCard(snagId));
           this.logEvent(`${enemy.name} fouls your draw with ${cardLibrary[snagId].runtime.displayName}.`);
@@ -24205,9 +24251,13 @@ class BattleScene extends Phaser.Scene {
       this.resolvePostCardReward();
       return;
     }
+    const acquisition = recordCardAcquisitions([reward.id], 'combat_reward');
+    const firstCollectionClaim = acquisition.firstCopies.includes(reward.id);
     this.discardPile.push(cloneCard(reward.id));
-    birdAudio.play('reward');
-    this.logEvent(`${displayName(reward)} joins the flock.`);
+    birdAudio.play(firstCollectionClaim ? 'objectiveComplete' : 'reward');
+    this.logEvent(firstCollectionClaim
+      ? `First collection claim! ${displayName(reward)} joins this flight.`
+      : `${displayName(reward)} joins this flight. Collection history updated.`);
     this.applyFlockStats(false);
     this.runRewardEvents.push({ offered: this.rewardChoices.map((card) => card.id), picked: reward.id, skipped: false, decisionMs: Math.max(0, Date.now() - this.rewardDecisionStartedAtMs) });
     recordFirstFlightGuideEvent('reward');
@@ -25075,6 +25125,7 @@ class BattleScene extends Phaser.Scene {
   private getTextState(): RenderPayload {
     const battlefield = this.currentBattlefieldAsset();
     const districtBattlefield = BATTLEFIELD_ASSETS[currentMap().id] ?? DEFAULT_BATTLEFIELD_ASSET;
+    const cardCollection = this.rewardChoices.length > 0 ? loadAccount().cardCollection : {};
     const flowStatus = (this.root?.list.find((child) => child.name === 'combat-flow-status') as Phaser.GameObjects.Text | undefined)?.text ?? '';
     const firstCombatGuideCard = this.firstCombatGuideCard();
     const firstCombatGuideTarget = this.firstCombatGuideTarget(firstCombatGuideCard);
@@ -25303,7 +25354,12 @@ class BattleScene extends Phaser.Scene {
         cost: card.cost,
         type: card.type,
         target: card.target,
-        observations: this.cardNeedTags(card)
+        observations: this.cardNeedTags(card),
+        collection: {
+          firstClaim: !cardCollection[card.id],
+          timesClaimed: cardCollection[card.id]?.timesClaimed ?? 0,
+          runCopyTemporary: true as const,
+        }
       })),
       upgradeChoices: this.upgradeChoices.map((card) => ({
         id: card.id,
@@ -25919,7 +25975,7 @@ function cloneCard(id: string): Card {
 
 function createInitialRunState(leaderId?: string, difficulty = 0, runMode: RunMode = 'full', seed = Math.random().toString(36).slice(2, 10)): RunState {
   const leader = getLeader(leaderId);
-  discoverCards(leader.startingDeckIds); // the starting deck is "found" for the Codex
+  recordCardAcquisitions(leader.startingDeckIds, 'starter_flock');
   return {
     deck: leader.startingDeckIds.map((id) => ({ id })),
     leaderId: leader.id,

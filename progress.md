@@ -4036,3 +4036,103 @@ sessions through `docs/game/playtest-runbook.md`.
 - `npm run validate:docs` passes. The remaining gate still requires five real
   people; the template reduces collection ambiguity but is not session
   evidence itself.
+
+## 2026-07-28 Persistent Codex Card Favorites
+
+- Re-audited the game against the expanded card-collector objective. The Codex
+  already persisted card discovery and set milestones, but it had no durable
+  way for players to express attachment to individual cards.
+- Added `favoriteCards` to the journaled account schema. Existing accounts and
+  legacy backups default safely to an empty list, unknown or undiscovered
+  favorite ids are discarded during sanitation, and favorite state remains
+  separate from combat power, reward pools, and run availability.
+- Every discovered card dossier now has a 142x46 `FAVORITE` / `FAVORITED`
+  command with star-state labeling. Pointer/touch, keyboard `C`, and controller
+  `X` all toggle the same state; favorited cards receive a persistent,
+  non-color-only star marker in the collection grid.
+- Extended `render_game_to_text` with favorite count, ids, active detail state,
+  and bindings. The lazy screen-reader summary announces whether the open card
+  is favorited and how to change it.
+- Focused production regressions prove pointer, keyboard, controller,
+  sanitation, journaled persistence, grid markers, local backup export, and
+  transactional restore. The required shared client completed a fresh
+  Start Run -> Route -> Menu -> Codex path and favorited First Flight with a
+  real pointer. The inspected final capture is
+  `.artifacts/codex-favorite-shared-client-final-v2/shot-1.png`; text state
+  reports `major_00`, one favorite, and no browser-error artifact.
+- The initial release pass found the shared game-core chunk 0.1 KB above its
+  hard budget. Moving the write operation into the already-lazy Codex boundary
+  restored the gate: game core is 29.9 KB, app entry is 674.5 KB, and combined
+  boot is 704.4 KB. Full `npm run validate` passes all validators and all 24
+  critical sequencing scenarios.
+- Next collector-loop priority is an explicit Favorites collection view or
+  filter so a larger personal set can be browsed as a group. The five genuine
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Favorites Collection View
+
+- Added a dedicated eighth `Favorites` card tab to the Codex. The compact
+  104x46 tab layout preserves the existing collection milestone rail and gives
+  pointer/touch, keyboard, and controller users the same reachable filter.
+- The populated view isolates favorited discovered cards, retains their
+  non-color-only gold star markers, and reports favorite/discovered totals.
+  The empty view replaces a blank grid with a centered, readable explanation
+  of how to favorite a discovered card and where that state is saved.
+- Extended `render_game_to_text` with active-view, empty-view, and visible-id
+  state. Screen-reader output now announces both populated counts and the
+  actionable empty-state instructions.
+- Focused regressions pass for save backup/restore, remapped Codex navigation,
+  run discovery, persistent pointer/keyboard/controller favorites, the new
+  populated and empty views, Snags isolation, and every detail dossier frame.
+- The required shared production client ended on a populated Favorites view
+  with `major_00` as its sole visible id and no browser error artifact. Visual
+  inspection passed at
+  `.artifacts/codex-favorites-view-shared-client/shot-1.png`; the independently
+  captured empty state passed at
+  `.artifacts/test-results/codex-favorites-empty.png`.
+- Full `npm run validate` passes all documentation, runtime-data, asset,
+  canonical-world, combat-FX, deployment, overlay, and enemy-variety checks,
+  plus all 24 critical sequencing scenarios. The combined boot remains within
+  budget at 704.4 KB minified / 189.4 KB gzip; game core remains 29.9 KB.
+- The broader card-collector objective remains active. Acquisition/ownership
+  semantics and collection-driven goals should be audited next, while five
+  genuinely observed fresh-player sessions remain required qualitative
+  evidence.
+
+## 2026-07-28 Permanent Card Collection Provenance
+
+- Separated card discovery from permanent collection ownership. Seeing a card
+  in an offer still reveals it in the Codex, while starter-flock cards, combat
+  rewards, route choices, market purchases, and enemy Snags now create or
+  update an atomic journaled collection record.
+- Each record preserves its first acquisition timestamp and source plus its
+  lifetime flight-claim count. Repeated claims update history instead of
+  creating worthless duplicate inventory. Playable copies, Preens, and
+  transformations remain specific to the current flight, so collection growth
+  expands identity and history without adding account power or gating runs.
+- Combat rewards now mark first copies as `NEW TO COLLECTION`, celebrate the
+  claim with the objective-complete audio cue, and distinguish later flight
+  claims. Market and route/Snag acquisition paths use the same source-aware
+  transaction model.
+- The Codex now reports collected, discovered, and total counts; every revealed
+  card has a non-color-only `COLLECTED` or `SEEN` marker. Card dossiers show
+  claim count, original source, acquisition date, and the explicit
+  permanent-record/run-copy distinction. Reward and Codex text states and
+  screen-reader summaries expose the same semantics.
+- Focused Playwright coverage passes 10/10 across route rewards, combat reward
+  first/repeat claims, market purchases, Snags, starter records, favorites,
+  collection sanitation, local backup, and transactional restore.
+- The required shared production client completed Start Run -> Route -> Codex
+  -> Favorites with 10 collected starter records and no browser errors. The
+  inspected populated binder capture is
+  `.artifacts/collection-ownership-shared-client/shot-0.png`; it visibly shows
+  First Flight with both the favorite star and `COLLECTED` label.
+- Full `npm run validate` passes documentation, runtime data, 961 optimized
+  runtime assets, canonical-world and combat-FX contracts, bundle and
+  deployment-cache checks, enemy-variety and Minor Arcana overlay checks, and
+  all 24 critical sequencing scenarios. Production is 675.7 KB app entry,
+  30.0 KB game core, and 705.7 KB combined boot / 189.9 KB gzip. The unchanged
+  675 KB app-entry preference remains a 0.7 KB advisory; every hard gate passes.
+- Next collector-loop priority is a player-chosen collection target or wishlist
+  with meaningful non-power milestones. Five genuinely observed fresh-player
+  sessions remain required qualitative evidence.
