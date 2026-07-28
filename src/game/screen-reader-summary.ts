@@ -203,9 +203,11 @@ export function screenReaderSummary(payload: unknown): string {
         ? focusedChoice.collection
         : undefined;
       const collectionNote = collection
-        ? collection.firstClaim === true
-          ? ' This would be its first permanent collection record; the playable copy is for this flight.'
-          : ` Already collected, with ${number(collection.timesClaimed) ?? 0} prior flight claims; this playable copy is for this flight.`
+        ? collection.targeted === true
+          ? ' Hunt target. Claiming it completes a permanent personal milestone; reward odds were not changed.'
+          : collection.firstClaim === true
+            ? ' This would be its first permanent collection record; the playable copy is for this flight.'
+            : ` Already collected, with ${number(collection.timesClaimed) ?? 0} prior flight claims; this playable copy is for this flight.`
         : '';
       const focused = focusedLabel
         ? ` Focused ${focusedLabel}${focusedIndex !== undefined && focusedCount !== undefined ? `, choice ${focusedIndex + 1} of ${focusedCount}` : ''}.`
@@ -238,6 +240,7 @@ export function screenReaderSummary(payload: unknown): string {
     const count = number(focus?.count);
     const detail = text(payload.detailOpen);
     const favorites = isRecord(payload.cardFavorites) ? payload.cardFavorites : undefined;
+    const hunt = isRecord(payload.collectionHunt) ? payload.collectionHunt : undefined;
     const ownership = isRecord(payload.cardOwnership) ? payload.cardOwnership : undefined;
     const detailOwnership = isRecord(ownership?.detail) ? ownership.detail : undefined;
     const collectedCount = number(ownership?.collectedCount) ?? 0;
@@ -246,6 +249,13 @@ export function screenReaderSummary(payload: unknown): string {
     const favoriteView = favorites?.viewActive === true;
     const favoriteViewEmpty = favorites?.viewEmpty === true;
     const favoriteCount = number(favorites?.count) ?? 0;
+    const detailTargeted = hunt?.detailTargeted === true;
+    const canTarget = hunt?.detailCanTarget === true;
+    const huntView = hunt?.viewActive === true;
+    const huntViewEmpty = hunt?.viewEmpty === true;
+    const huntCount = number(hunt?.count) ?? 0;
+    const huntCapacity = number(hunt?.capacity) ?? 3;
+    const huntCompleted = number(hunt?.completed) ?? 0;
     const itemPosition = zone === 'entries' && position !== undefined && count !== undefined
       ? ` Item ${position + 1} of ${count}.`
       : '';
@@ -257,6 +267,22 @@ export function screenReaderSummary(payload: unknown): string {
         ? ' No favorite cards yet. Open a discovered card and choose Favorite to add it here.'
         : ` Showing ${favoriteCount} favorite card${favoriteCount === 1 ? '' : 's'}.`
       : '';
+    const huntState = detail
+      ? detailOwnership
+        ? detailOwnership.targetCompletedAt
+          ? ' This card completed a Hunt List milestone.'
+          : ''
+        : detailTargeted
+          ? ' Active Hunt List target. Use T or controller Y to stop tracking it. Reward odds are unchanged.'
+          : canTarget
+            ? ' Use T or controller Y to track this card on the Hunt List. Reward odds are unchanged.'
+            : ` Hunt List full at ${huntCount} of ${huntCapacity}.`
+      : '';
+    const huntViewState = huntView
+      ? huntViewEmpty
+        ? ` Hunt List empty. Open a discovered, uncollected card and choose Track. Up to ${huntCapacity} cards can be tracked without changing reward odds.`
+        : ` Showing ${huntCount} active Hunt List target${huntCount === 1 ? '' : 's'}; ${huntCompleted} completed.`
+      : '';
     const ownershipState = section === 'cards'
       ? detail
         ? detailOwnership
@@ -264,7 +290,7 @@ export function screenReaderSummary(payload: unknown): string {
           : ' Discovered but not yet collected. Claim it during a flight to create its permanent collection record.'
         : ` ${collectedCount} collected and ${discoveredCount} discovered.`
       : '';
-    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${ownershipState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
+    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${huntState}${huntViewState}${ownershipState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
   }
   return scene ? `${spaced(scene)}.` : '';
 }

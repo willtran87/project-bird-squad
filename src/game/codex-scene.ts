@@ -25,6 +25,7 @@ import {
 } from '../main';
 
 type CodexFocusZone = 'sections' | 'primaryTabs' | 'secondaryTabs' | 'entries' | 'back' | 'detail';
+const COLLECTION_TARGET_LIMIT = 3;
 
 interface CodexFocusEntry {
   id: string;
@@ -48,6 +49,7 @@ export class CodexScene extends Phaser.Scene {
   private activeItemFilterTab = 0;
   private discovered = new Set<string>();
   private favoriteCards = new Set<string>();
+  private collectionTargets = new Set<string>();
   private cardCollection: ReturnType<typeof loadAccount>['cardCollection'] = {};
   private observedEnemyMoves = new Set<string>();
   private detailId?: string;
@@ -74,10 +76,10 @@ export class CodexScene extends Phaser.Scene {
   private static readonly GRID_TOP = 158;
   private static readonly ITEM_GRID_TOP = 190;
   private static readonly GRID_BOTTOM = 690;
-  private static readonly CARD_TAB_START_X = 56;
-  private static readonly CARD_TAB_STEP = 112;
+  private static readonly CARD_TAB_START_X = 54;
+  private static readonly CARD_TAB_STEP = 104;
   private static readonly CARD_TAB_WIDTH = 104;
-  private readonly tabs: Array<{ label: string; match: (c: Card) => boolean; favorites?: boolean }> = [
+  private readonly tabs: Array<{ label: string; match: (c: Card) => boolean; view?: 'favorites' | 'targets' }> = [
     { label: 'Major', match: (c) => c.id.startsWith('major_') },
     { label: 'Aviary', match: (c) => c.id.startsWith('aviary_') },
     { label: 'Plumes', match: (c) => c.runtime.suit === 'plumes' },
@@ -85,7 +87,8 @@ export class CodexScene extends Phaser.Scene {
     { label: 'Basins', match: (c) => c.runtime.suit === 'basins' },
     { label: 'Nests', match: (c) => c.runtime.suit === 'nests' },
     { label: 'Snags', match: (c) => c.runtime.kind === 'snag' },
-    { label: 'Favorites', match: (c) => this.favoriteCards.has(c.id), favorites: true },
+    { label: 'Favorites', match: (c) => this.favoriteCards.has(c.id), view: 'favorites' },
+    { label: 'Hunt List', match: (c) => this.collectionTargets.has(c.id), view: 'targets' },
   ];
   private readonly enemyTabs: Array<{ label: string; match: (e: CodexEnemyEntry) => boolean }> = [
     { label: 'All', match: () => true },
@@ -160,6 +163,9 @@ export class CodexScene extends Phaser.Scene {
     this.discovered = new Set(account.discoveredCards);
     this.favoriteCards = new Set(account.favoriteCards);
     this.cardCollection = account.cardCollection;
+    this.collectionTargets = new Set((account.hunt ?? []).filter((id) => (
+      this.discovered.has(id) && !this.cardCollection[id] && Boolean(cardLibrary[id])
+    )));
     this.observedEnemyMoves = new Set(account.observedEnemyMoves);
     void this.ensureCodexData();
     queueUiIconAssets(this, codexUiIconIds, 'Codex UI', () => this.renderAll());
@@ -192,6 +198,10 @@ export class CodexScene extends Phaser.Scene {
       if (event.repeat || this.activeSection !== 'cards' || !this.detailId) return;
       this.toggleCurrentCardFavorite();
     };
+    const onTarget = (event: KeyboardEvent) => {
+      if (event.repeat || this.activeSection !== 'cards' || !this.detailId) return;
+      this.toggleCurrentCollectionTarget();
+    };
     const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button) => {
       if (button.index === 12) this.moveCodexVertical(-1);
       else if (button.index === 13) this.moveCodexVertical(1);
@@ -200,17 +210,20 @@ export class CodexScene extends Phaser.Scene {
       else if (button.index === 0) this.activateCodexFocus();
       else if (button.index === 1) this.handleCodexBack();
       else if (button.index === 2 && this.activeSection === 'cards' && this.detailId) this.toggleCurrentCardFavorite();
+      else if (button.index === 3 && this.activeSection === 'cards' && this.detailId) this.toggleCurrentCollectionTarget();
     };
     this.input.keyboard?.on('keydown-TAB', onTab);
     this.input.keyboard?.on('keydown-UP', onUp);
     this.input.keyboard?.on('keydown-DOWN', onDown);
     this.input.keyboard?.on('keydown-C', onFavorite);
+    this.input.keyboard?.on('keydown-T', onTarget);
     this.input.gamepad?.on('down', onGamepadDown);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard?.off('keydown-TAB', onTab);
       this.input.keyboard?.off('keydown-UP', onUp);
       this.input.keyboard?.off('keydown-DOWN', onDown);
       this.input.keyboard?.off('keydown-C', onFavorite);
+      this.input.keyboard?.off('keydown-T', onTarget);
       this.input.gamepad?.off('down', onGamepadDown);
     });
     this.input.on('wheel', (_p: unknown, _o: unknown, _dx: number, dy: number) => {
@@ -886,7 +899,10 @@ export class CodexScene extends Phaser.Scene {
     const cardMode = this.activeSection === 'cards';
     const itemMode = this.activeSection === 'items';
     const leaderMode = this.activeSection === 'leaders';
-    const favoriteView = cardMode && Boolean(this.tabs[this.activeTab]?.favorites);
+    const cardView = cardMode ? this.tabs[this.activeTab]?.view : undefined;
+    const favoriteView = cardView === 'favorites';
+    const targetView = cardView === 'targets';
+    const targetMilestones = Object.values(this.cardCollection).filter((record) => Boolean(record.targetCompletedAt)).length;
     const cards = cardMode
       ? this.allCards().filter(this.tabs[this.activeTab].match).sort((a, b) => a.id.localeCompare(b.id))
       : [];
@@ -913,6 +929,27 @@ export class CodexScene extends Phaser.Scene {
         viewActive: favoriteView,
         viewEmpty: favoriteView && cards.length === 0,
         visibleIds: favoriteView ? cards.map((card) => card.id) : [],
+      },
+      collectionHunt: {
+        count: this.collectionTargets.size,
+        capacity: COLLECTION_TARGET_LIMIT,
+        ids: [...this.collectionTargets],
+        completed: targetMilestones,
+        detailId: this.activeSection === 'cards' ? this.detailId ?? '' : '',
+        detailTargeted: Boolean(this.activeSection === 'cards' && this.detailId && this.collectionTargets.has(this.detailId)),
+        detailCanTarget: Boolean(
+          this.activeSection === 'cards'
+          && this.detailId
+          && this.discovered.has(this.detailId)
+          && !this.cardCollection[this.detailId]
+          && (this.collectionTargets.has(this.detailId) || this.collectionTargets.size < COLLECTION_TARGET_LIMIT)
+        ),
+        keyboard: 'T',
+        controller: 'Y',
+        changesRewardOdds: false,
+        viewActive: targetView,
+        viewEmpty: targetView && cards.length === 0,
+        visibleIds: targetView ? cards.map((card) => card.id) : [],
       },
       cardOwnership: {
         collectedCount: collectedIds.length,
@@ -1010,6 +1047,7 @@ export class CodexScene extends Phaser.Scene {
     this.gridRenderCellH = cellH;
     if (cardMode) {
       if (favoriteView && cards.length === 0) this.renderFavoriteEmptyState(grid, top, bottom);
+      if (targetView && cards.length === 0) this.renderHuntListEmptyState(grid, top, bottom);
       cards.forEach((card, i) => {
         const cx = gridLeft + (i % cols) * cellW + cellW / 2;
         const cy = top + Math.floor(i / cols) * cellH + cellH / 2;
@@ -1062,7 +1100,9 @@ export class CodexScene extends Phaser.Scene {
     const subtitle = cardMode
       ? favoriteView
         ? `${cards.length} favorite card${cards.length === 1 ? '' : 's'} / ${found} discovered`
-        : `${collectedIds.length} collected / ${found} discovered / ${all.length} total`
+        : targetView
+          ? `${cards.length}/${COLLECTION_TARGET_LIMIT} active hunts / ${targetMilestones} completed`
+          : `${collectedIds.length} collected / ${found} discovered / ${all.length} total`
       : itemMode
         ? `${itemAll.length} items (${waymarkAll.length} Waymarks / ${supplyAll.length} Supplies)`
         : glossaryMode
@@ -1146,21 +1186,29 @@ export class CodexScene extends Phaser.Scene {
         const tabCards = this.allCards().filter(tab.match);
         const got = tabCards.filter((c) => this.discovered.has(c.id)).length;
         const sampleCard = tabCards[0];
-        const accent = tab.favorites ? UI_FIELD.gold : sampleCard ? this.cardAccent(sampleCard) : 0x7ab8d6;
-        const meta = tab.favorites ? `${tabCards.length}` : `${got}/${tabCards.length}`;
+        const accent = tab.view === 'favorites'
+          ? UI_FIELD.gold
+          : tab.view === 'targets'
+            ? 0xff9b6a
+            : sampleCard ? this.cardAccent(sampleCard) : 0x7ab8d6;
+        const meta = tab.view === 'targets'
+          ? `${tabCards.length}/${COLLECTION_TARGET_LIMIT}`
+          : tab.view === 'favorites'
+            ? `${tabCards.length}`
+            : `${got}/${tabCards.length}`;
         this.renderCodexTab(tx, 116, CodexScene.CARD_TAB_WIDTH, 40, tab.label, meta, active, accent, () => {
           this.focusZone = 'primaryTabs';
           playUiSound('confirm');
           this.setActivePrimaryTab(i);
           this.renderAll();
-        }, tab.favorites ? 11 : 12);
+        }, tab.view ? 10 : 11);
       });
       if (activeCardCollection) {
         const activeCards = this.allCards().filter(this.tabs[this.activeTab].match);
         this.codexBossDossierModule?.renderCardCollectionRail(this, this.root, activeCardCollection, {
-          x: 1074,
+          x: 1100,
           y: 116,
-          width: 330,
+          width: 280,
           accent: activeCards[0] ? this.cardAccent(activeCards[0]) : 0x7ab8d6,
           fontFamily: UI_FONT,
           boldStyle: UI_BOLD
@@ -1399,9 +1447,9 @@ export class CodexScene extends Phaser.Scene {
   private renderCodexInputHint() {
     const detail = Boolean(this.detailId);
     const label = detail
-      ? `Up / Down: Scroll   |   C / X: Favorite   |   ${controlBindingLabel('confirm')}: Close   |   ${controlBindingLabel('back')}: Back`
+      ? `Up / Down: Scroll   |   C / X: Favorite   |   T / Y: Hunt   |   ${controlBindingLabel('confirm')}: Close   |   ${controlBindingLabel('back')}: Back`
       : `Tab: Focus   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate   |   ${controlBindingLabel('confirm')}: Select   |   ${controlBindingLabel('back')}: Back`;
-    const width = detail ? 720 : 710;
+    const width = detail ? 880 : 710;
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 13, width, 22, 0x05070c, 0.86)
       .setStrokeStyle(1, UI_FIELD.cyan, 0.34)
       .setName('codex-input-hint-backdrop'));
@@ -1676,6 +1724,20 @@ export class CodexScene extends Phaser.Scene {
         strokeThickness: 2,
       }).setResolution(2).setOrigin(0.5).setName('codex-favorite-marker-label').setData('cardId', card.id));
     }
+    if (found && this.collectionTargets.has(card.id)) {
+      layer.add(this.add.circle(cx + aw / 2 - 18, cy - ah / 2 + 54, 16, 0x28130e, 0.96)
+        .setStrokeStyle(2, 0xff9b6a, 0.98)
+        .setName('codex-hunt-marker')
+        .setData('cardId', card.id));
+      layer.add(this.add.text(cx + aw / 2 - 18, cy - ah / 2 + 54, '◎', {
+        fontFamily: UI_FONT,
+        fontSize: '18px',
+        fontStyle: UI_BOLD,
+        color: '#ffc09f',
+        stroke: '#05070c',
+        strokeThickness: 2,
+      }).setResolution(2).setOrigin(0.5).setName('codex-hunt-marker-label').setData('cardId', card.id));
+    }
   }
 
   private renderFavoriteEmptyState(layer: Phaser.GameObjects.Container, top: number, bottom: number) {
@@ -1711,6 +1773,44 @@ export class CodexScene extends Phaser.Scene {
         align: 'center',
         lineSpacing: 5,
         wordWrap: { width: 520 },
+      },
+    ).setResolution(2).setOrigin(0.5));
+  }
+
+  private renderHuntListEmptyState(layer: Phaser.GameObjects.Container, top: number, bottom: number) {
+    const cx = GAME_WIDTH / 2;
+    const cy = (top + bottom) / 2 - 6;
+    layer.add(this.add.rectangle(cx, cy, 660, 260, 0x11131a, 0.98)
+      .setStrokeStyle(2, 0xff9b6a, 0.86)
+      .setName('codex-hunt-empty-state'));
+    layer.add(this.add.circle(cx, cy - 58, 38, 0x28130e, 0.96).setStrokeStyle(2, 0xff9b6a, 0.94));
+    layer.add(this.add.text(cx, cy - 58, '◎', {
+      fontFamily: UI_FONT,
+      fontSize: '42px',
+      fontStyle: UI_BOLD,
+      color: '#ffc09f',
+      stroke: '#05070c',
+      strokeThickness: 3,
+    }).setResolution(2).setOrigin(0.5));
+    layer.add(this.add.text(cx, cy + 4, 'YOUR HUNT LIST IS OPEN', {
+      fontFamily: UI_FONT,
+      fontSize: '22px',
+      fontStyle: UI_BOLD,
+      color: '#ffc09f',
+      stroke: '#05070c',
+      strokeThickness: 3,
+    }).setResolution(2).setOrigin(0.5));
+    layer.add(this.add.text(
+      cx,
+      cy + 64,
+      `Open a discovered, uncollected card and choose ◎ TRACK.\nKeep up to ${COLLECTION_TARGET_LIMIT} personal goals. Hunts never change reward odds.`,
+      {
+        fontFamily: UI_FONT,
+        fontSize: '14px',
+        color: UI_SOFT,
+        align: 'center',
+        lineSpacing: 5,
+        wordWrap: { width: 560 },
       },
     ).setResolution(2).setOrigin(0.5));
   }
@@ -2416,6 +2516,29 @@ export class CodexScene extends Phaser.Scene {
     this.renderAll();
   }
 
+  private toggleCurrentCollectionTarget() {
+    const id = this.activeSection === 'cards' ? this.detailId : undefined;
+    if (!id || !this.discovered.has(id) || this.cardCollection[id]) {
+      playUiSound('locked');
+      return;
+    }
+    const account = loadAccount();
+    const targets = new Set((account.hunt ?? []).filter((targetId) => (
+      this.discovered.has(targetId) && !this.cardCollection[targetId] && Boolean(cardLibrary[targetId])
+    )));
+    const targeted = targets.has(id);
+    if (targeted) targets.delete(id);
+    else if (targets.size >= COLLECTION_TARGET_LIMIT) {
+      playUiSound('locked');
+      return;
+    } else targets.add(id);
+    account.hunt = [...targets];
+    writeJournaledJson('birdsquad.account', account);
+    this.collectionTargets = targets;
+    playUiSound('confirm');
+    this.renderAll();
+  }
+
   private renderCardFavoriteControl(x: number, y: number, card: Card) {
     const favorite = this.favoriteCards.has(card.id);
     const accent = favorite ? UI_FIELD.gold : UI_FIELD.cyan;
@@ -2437,6 +2560,42 @@ export class CodexScene extends Phaser.Scene {
       stroke: '#05070c',
       strokeThickness: 2,
     }).setResolution(2).setOrigin(0.5).setName('codex-card-favorite-label').setData('cardId', card.id));
+  }
+
+  private renderCardTargetControl(x: number, y: number, card: Card) {
+    const collected = Boolean(this.cardCollection[card.id]);
+    const targeted = this.collectionTargets.has(card.id);
+    const full = !targeted && this.collectionTargets.size >= COLLECTION_TARGET_LIMIT;
+    const enabled = !collected && !full;
+    const label = collected
+      ? '✓  COLLECTED'
+      : targeted
+        ? '◎  TRACKED'
+        : full
+          ? `${COLLECTION_TARGET_LIMIT}/${COLLECTION_TARGET_LIMIT}  HUNT FULL`
+          : '◎  TRACK';
+    const accent = targeted ? 0xff9b6a : enabled ? UI_FIELD.cyan : 0x627184;
+    const hit = this.add.rectangle(x, y, 142, 46, targeted ? 0x3a1d14 : enabled ? 0x102534 : 0x151b24, 0.98)
+      .setStrokeStyle(2, accent, enabled ? 0.96 : 0.62)
+      .setInteractive({ useHandCursor: enabled })
+      .setName('codex-card-target-hit')
+      .setData('cardId', card.id)
+      .setData('targeted', targeted)
+      .setData('enabled', enabled);
+    hit.on('pointerover', () => {
+      if (enabled) hit.setFillStyle(targeted ? 0x54291c : 0x17384b, 1);
+    });
+    hit.on('pointerout', () => hit.setFillStyle(targeted ? 0x3a1d14 : enabled ? 0x102534 : 0x151b24, 0.98));
+    hit.on('pointerdown', () => this.toggleCurrentCollectionTarget());
+    this.root.add(hit);
+    this.root.add(this.add.text(x, y, label, {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: targeted ? '#ffc09f' : enabled ? '#b8e8f4' : '#91a0ad',
+      stroke: '#05070c',
+      strokeThickness: 2,
+    }).setResolution(2).setOrigin(0.5).setName('codex-card-target-label').setData('cardId', card.id));
   }
 
   private cardAcquisitionSourceLabel(source: string) {
@@ -2531,6 +2690,13 @@ export class CodexScene extends Phaser.Scene {
         color: '#b8e8f4',
         size: 12,
       });
+      if (collection.targetCompletedAt) {
+        yy += 5;
+        para(
+          `HUNT COMPLETED / ${this.cardAcquisitionSourceLabel(collection.targetSource ?? collection.firstSource).toUpperCase()} / ${this.cardAcquisitionDateLabel(collection.targetCompletedAt)}`,
+          { color: '#ffc09f', size: 12 },
+        );
+      }
     } else {
       para('DISCOVERED / NOT YET COLLECTED', { color: '#b8e8f4', size: 12 });
       yy += 5;
@@ -2538,6 +2704,13 @@ export class CodexScene extends Phaser.Scene {
         color: '#a9b9c8',
         size: 12,
       });
+      yy += 5;
+      para(
+        this.collectionTargets.has(card.id)
+          ? 'ACTIVE HUNT TARGET / Claiming it records a personal milestone. Reward odds are unchanged.'
+          : `Choose ◎ TRACK to add this card to your Hunt List (${this.collectionTargets.size}/${COLLECTION_TARGET_LIMIT}). Reward odds are unchanged.`,
+        { color: this.collectionTargets.has(card.id) ? '#ffc09f' : '#91a6b8', size: 12 },
+      );
     }
     yy += 12;
 
@@ -2644,7 +2817,8 @@ export class CodexScene extends Phaser.Scene {
       this.renderCodexScrollCue(right - 64, mBottom - 18, this.detailScroll >= this.detailMaxScroll);
     }
 
-    this.renderCardFavoriteControl(right - 132, mTop + 26, card);
+    this.renderCardFavoriteControl(artX - 78, mBottom - 24, card);
+    this.renderCardTargetControl(artX + 78, mBottom - 24, card);
     this.renderCodexCloseControl(right - 26, mTop + 26, closeDetail);
   }
 

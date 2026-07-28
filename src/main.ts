@@ -1525,7 +1525,7 @@ interface RenderPayload {
     type: CardType;
     target: TargetType;
     observations: string[];
-    collection: { firstClaim: boolean; timesClaimed: number; runCopyTemporary: true };
+    collection: { firstClaim: boolean; timesClaimed: number; targeted: boolean; runCopyTemporary: true };
   }>;
   upgradeChoices?: Array<{ id: string; name: string; bird: string; cost: number; type: CardType; target: TargetType }>;
   rewardDecisionDeltas?: string[];
@@ -4067,13 +4067,15 @@ const cardLibrary: Record<string, Card> = Object.fromEntries(
 function recordCardAcquisitions(
   ids: string[],
   source: CardAcquisitionSource,
-): { firstCopies: string[] } {
+): { firstCopies: string[]; completedTargets: string[] } {
   const uniqueIds = [...new Set(ids.filter((id) => Boolean(cardLibrary[id])))];
-  if (uniqueIds.length === 0) return { firstCopies: [] };
+  if (uniqueIds.length === 0) return { firstCopies: [], completedTargets: [] };
   const account = loadAccount();
   const discovered = new Set(account.discoveredCards);
+  const targets = new Set((account.hunt ?? []).filter((id) => !account.cardCollection[id] && Boolean(cardLibrary[id])));
   const now = Date.now();
   const firstCopies: string[] = [];
+  const completedTargets: string[] = [];
   uniqueIds.forEach((id) => {
     discovered.add(id);
     const prior = account.cardCollection[id];
@@ -4081,11 +4083,17 @@ function recordCardAcquisitions(
     const next: CardCollectionRecord = prior
       ? { ...prior, timesClaimed: prior.timesClaimed + 1 }
       : { timesClaimed: 1, firstAcquiredAt: now, firstSource: source };
+    if (targets.delete(id)) {
+      completedTargets.push(id);
+      next.targetCompletedAt = now;
+      next.targetSource = source;
+    }
     account.cardCollection[id] = next;
   });
   account.discoveredCards = [...discovered];
+  account.hunt = [...targets];
   writeJournaledJson('birdsquad.account', account);
-  return { firstCopies };
+  return { firstCopies, completedTargets };
 }
 
 const arcanaRewardPool = alphaCardSet.rewardPool;
@@ -9292,7 +9300,14 @@ class RouteScene extends Phaser.Scene {
     if (pending.projectedState) {
       this.runState = cloneRunState(pending.projectedState);
       const priorIds = new Set(pending.restoreState.deck.map((card) => card.id));
-      recordCardAcquisitions(this.runState.deck.map((card) => card.id).filter((id) => !priorIds.has(id)), 'route_reward');
+      const acquisition = recordCardAcquisitions(
+        this.runState.deck.map((card) => card.id).filter((id) => !priorIds.has(id)),
+        'route_reward',
+      );
+      acquisition.completedTargets.forEach((id) => {
+        this.runState.routeLog.push(`Hunt complete! ${cardLibrary[id].runtime.displayName} is now a permanent collection milestone.`);
+      });
+      this.runState.routeLog = this.runState.routeLog.slice(-8);
     }
     const pickerPlan = this.routeRewardPickerPlan(pending.effects);
     if (pickerPlan && this.pickerEligibleCards(pickerPlan.mode, 'route').length > 0) {
@@ -10690,7 +10705,11 @@ class RouteScene extends Phaser.Scene {
       return false;
     }
     this.runState.deck.push({ id: cardId });
-    recordCardAcquisitions([cardId], source);
+    const acquisition = recordCardAcquisitions([cardId], source);
+    if (acquisition.completedTargets.includes(cardId)) {
+      this.runState.routeLog.push(`Hunt complete! ${card.runtime.displayName} is now a permanent collection milestone.`);
+      this.runState.routeLog = this.runState.routeLog.slice(-8);
+    }
     return true;
   }
 
@@ -13155,9 +13174,11 @@ class RouteScene extends Phaser.Scene {
     const acquisition = recordCardAcquisitions([offer.id], 'market');
     listing.sold = true;
     this.applyRouteMarkTrigger('afterMarketPurchase');
-    this.marketMessage = acquisition.firstCopies.includes(offer.id)
-      ? `First collection claim! ${displayName(offer)} joins this flight for ${listing.price} Scrap.`
-      : `${displayName(offer)} joins this flight for ${listing.price} Scrap. Collection history updated.`;
+    this.marketMessage = acquisition.completedTargets.includes(offer.id)
+      ? `Hunt complete! ${displayName(offer)} joins this flight for ${listing.price} Scrap. Milestone recorded.`
+      : acquisition.firstCopies.includes(offer.id)
+        ? `First collection claim! ${displayName(offer)} joins this flight for ${listing.price} Scrap.`
+        : `${displayName(offer)} joins this flight for ${listing.price} Scrap. Collection history updated.`;
     this.renderMarketPurchaseFeedback(anchor.x, anchor.y, offer.type === 'major' ? UI_FIELD.gold : suitAccentColor(offer));
     this.queueMarketShelfArtLoad();
   }
@@ -21869,7 +21890,7 @@ class BattleScene extends Phaser.Scene {
     };
   }
 
-  private rewardCardView(card: Card, index: number, collection?: CardCollectionRecord) {
+  private rewardCardView(card: Card, index: number, collection?: CardCollectionRecord, targeted = false) {
     const needTags = this.cardNeedTags(card);
     const stats = cardStatRows(card).slice(0, 2);
     return {
@@ -21886,7 +21907,7 @@ class BattleScene extends Phaser.Scene {
       footerRows: needTags.length > 0 ? needTags : stats,
       footerUsesObservations: needTags.length > 0,
       collectionStatus: this.mode === 'cardReward'
-        ? { firstClaim: !collection, timesClaimed: collection?.timesClaimed ?? 0 }
+        ? { firstClaim: !collection, timesClaimed: collection?.timesClaimed ?? 0, targeted }
         : undefined,
       decisionPreview: {
         kind: (this.mode === 'upgradeReward' ? 'preen' : 'add') as 'add' | 'preen',
@@ -21936,7 +21957,9 @@ class BattleScene extends Phaser.Scene {
     const mode = this.mode;
     const isCardReward = mode === 'cardReward';
     const cards = mode === 'cardReward' ? this.rewardChoices : mode === 'upgradeReward' ? this.upgradeChoices : [];
-    const cardCollection = isCardReward ? loadAccount().cardCollection : {};
+    const account = isCardReward ? loadAccount() : undefined;
+    const cardCollection = account?.cardCollection ?? {};
+    const collectionTargets = new Set(account?.hunt ?? []);
     const title = mode === 'cardReward' ? 'Add to the Flock' : mode === 'upgradeReward' ? 'Preen a Card' : 'Claim a Waymark';
     const subtitle = mode === 'cardReward' ? 'Pick a card or take Scrap.' : mode === 'upgradeReward' ? 'Pick one owned card.' : 'Pick one route artifact.';
     const result = this.battleRewardRendererModule.renderRewardCeremony({
@@ -21967,7 +21990,7 @@ class BattleScene extends Phaser.Scene {
         snagBorder: snagCardBorderAsset.key
       },
       deckNeeds: isCardReward ? this.rewardDeckNeedView() : undefined,
-      cards: cards.map((card, index) => this.rewardCardView(card, index, cardCollection[card.id])),
+      cards: cards.map((card, index) => this.rewardCardView(card, index, cardCollection[card.id], collectionTargets.has(card.id))),
       waymarks: this.waymarkChoices.map((mark, index) => this.rewardWaymarkView(mark, index)),
       skip: isCardReward ? {
         scrap: this.currentSkipScrapReward(),
@@ -23985,7 +24008,10 @@ class BattleScene extends Phaser.Scene {
             floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 44, 'Snag blocked', '#7ab8d6');
             break;
           }
-          recordCardAcquisitions([snagId], 'snag');
+          const acquisition = recordCardAcquisitions([snagId], 'snag');
+          if (acquisition.completedTargets.includes(snagId)) {
+            this.logEvent(`Hunt complete! ${cardLibrary[snagId].runtime.displayName} enters the permanent collection.`);
+          }
           this.discardPile.push(cloneCard(snagId));
           this.logEvent(`${enemy.name} tangles the route - ${cardLibrary[snagId].runtime.displayName} drops into your discard.`);
           this.animateDiscard(1, this.enemyView(enemy).x, this.enemyView(enemy).y, 0.9);
@@ -24001,7 +24027,10 @@ class BattleScene extends Phaser.Scene {
             floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 44, 'Snag blocked', '#7ab8d6');
             break;
           }
-          recordCardAcquisitions([snagId], 'snag');
+          const acquisition = recordCardAcquisitions([snagId], 'snag');
+          if (acquisition.completedTargets.includes(snagId)) {
+            this.logEvent(`Hunt complete! ${cardLibrary[snagId].runtime.displayName} enters the permanent collection.`);
+          }
           const at = Math.floor(this.combatRandom() * (this.drawPile.length + 1));
           this.drawPile.splice(at, 0, cloneCard(snagId));
           this.logEvent(`${enemy.name} fouls your draw with ${cardLibrary[snagId].runtime.displayName}.`);
@@ -24253,11 +24282,14 @@ class BattleScene extends Phaser.Scene {
     }
     const acquisition = recordCardAcquisitions([reward.id], 'combat_reward');
     const firstCollectionClaim = acquisition.firstCopies.includes(reward.id);
+    const targetCompleted = acquisition.completedTargets.includes(reward.id);
     this.discardPile.push(cloneCard(reward.id));
-    birdAudio.play(firstCollectionClaim ? 'objectiveComplete' : 'reward');
-    this.logEvent(firstCollectionClaim
-      ? `First collection claim! ${displayName(reward)} joins this flight.`
-      : `${displayName(reward)} joins this flight. Collection history updated.`);
+    birdAudio.play(firstCollectionClaim || targetCompleted ? 'objectiveComplete' : 'reward');
+    this.logEvent(targetCompleted
+      ? `Hunt complete! ${displayName(reward)} joins this flight. Permanent milestone recorded.`
+      : firstCollectionClaim
+        ? `First collection claim! ${displayName(reward)} joins this flight.`
+        : `${displayName(reward)} joins this flight. Collection history updated.`);
     this.applyFlockStats(false);
     this.runRewardEvents.push({ offered: this.rewardChoices.map((card) => card.id), picked: reward.id, skipped: false, decisionMs: Math.max(0, Date.now() - this.rewardDecisionStartedAtMs) });
     recordFirstFlightGuideEvent('reward');
@@ -25125,7 +25157,9 @@ class BattleScene extends Phaser.Scene {
   private getTextState(): RenderPayload {
     const battlefield = this.currentBattlefieldAsset();
     const districtBattlefield = BATTLEFIELD_ASSETS[currentMap().id] ?? DEFAULT_BATTLEFIELD_ASSET;
-    const cardCollection = this.rewardChoices.length > 0 ? loadAccount().cardCollection : {};
+    const rewardAccount = this.rewardChoices.length > 0 ? loadAccount() : undefined;
+    const cardCollection = rewardAccount?.cardCollection ?? {};
+    const collectionTargets = new Set(rewardAccount?.hunt ?? []);
     const flowStatus = (this.root?.list.find((child) => child.name === 'combat-flow-status') as Phaser.GameObjects.Text | undefined)?.text ?? '';
     const firstCombatGuideCard = this.firstCombatGuideCard();
     const firstCombatGuideTarget = this.firstCombatGuideTarget(firstCombatGuideCard);
@@ -25358,6 +25392,7 @@ class BattleScene extends Phaser.Scene {
         collection: {
           firstClaim: !cardCollection[card.id],
           timesClaimed: cardCollection[card.id]?.timesClaimed ?? 0,
+          targeted: collectionTargets.has(card.id),
           runCopyTemporary: true as const,
         }
       })),

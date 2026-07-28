@@ -11,6 +11,8 @@ export interface CardCollectionRecord {
   timesClaimed: number;
   firstAcquiredAt: number;
   firstSource: CardAcquisitionSource;
+  targetCompletedAt?: number;
+  targetSource?: CardAcquisitionSource;
 }
 
 export interface PlayerAccount {
@@ -25,6 +27,7 @@ export interface PlayerAccount {
   achievements: string[];
   discoveredCards: string[]; // card ids the player has encountered (for the Codex)
   favoriteCards: string[]; // discovered cards the player has marked as personal favorites
+  hunt?: string[]; // up to three discovered, uncollected cards the player is actively hunting
   cardCollection: Record<string, CardCollectionRecord>; // permanent claim history; playable copies remain run-specific
   observedEnemyMoves: string[]; // enemyId:moveId keys witnessed during combat
   contractBadges: string[];
@@ -96,7 +99,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function finiteInt(value: unknown, fallback = 0, min = 0) {
-  return Number.isFinite(value) ? Math.max(min, Math.floor(Number(value))) : fallback;
+  return Number.isFinite(value) ? Math.max(min, Math.floor(value as number)) : fallback;
 }
 
 function stringList(value: unknown) {
@@ -113,17 +116,18 @@ function countRecord(value: unknown): Record<string, number> {
 }
 
 function sanitizeCardCollection(value: unknown, discovered: string[]): Record<string, CardCollectionRecord> {
-  const result: Record<string, CardCollectionRecord> = {};
-  if (!isRecord(value)) return result;
+  if (!isRecord(value)) return {};
   for (const id in value) {
     const raw = value[id];
-    if (!discovered.includes(id) || !isRecord(raw)) continue;
+    if (!isRecord(raw) || !discovered.includes(id)) {
+      delete value[id];
+      continue;
+    }
     const timesClaimed = finiteInt(raw.timesClaimed);
-    if (!timesClaimed) continue;
-    raw.timesClaimed = timesClaimed;
-    result[id] = raw as unknown as CardCollectionRecord;
+    if (timesClaimed) raw.timesClaimed = timesClaimed;
+    else delete value[id];
   }
-  return result;
+  return value as Record<string, CardCollectionRecord>;
 }
 
 function sanitizeLeaderRecords(value: unknown): Record<string, LeaderPersonalRecords> {
@@ -153,6 +157,7 @@ export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
     : finiteInt(value.fastestWinTurns, 0, 1) || null;
   const unlockedLeaders = stringList(value.unlockedLeaders).filter((id) => LEADER_IDS.has(id));
   const discoveredCards = stringList(value.discoveredCards);
+  const cardCollection = sanitizeCardCollection(value.cardCollection, discoveredCards);
   const leaderProgress = isRecord(value.leaderProgress)
     ? Object.fromEntries(Object.entries(value.leaderProgress).flatMap(([id, progress]) => {
         if (!LEADER_IDS.has(id) || !isRecord(progress)) return [];
@@ -178,7 +183,8 @@ export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
     achievements: stringList(value.achievements),
     discoveredCards,
     favoriteCards: stringList(value.favoriteCards).filter((id) => discoveredCards.includes(id)),
-    cardCollection: sanitizeCardCollection(value.cardCollection, discoveredCards),
+    hunt: stringList(value.hunt).slice(0, 3),
+    cardCollection,
     observedEnemyMoves: stringList(value.observedEnemyMoves),
     contractBadges: stringList(value.contractBadges),
     leaderProgress,

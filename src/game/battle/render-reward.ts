@@ -34,7 +34,7 @@ export interface RewardCardView {
   footerRows: string[];
   footerUsesObservations: boolean;
   decisionPreview: RewardDecisionPreview;
-  collectionStatus?: { firstClaim: boolean; timesClaimed: number };
+  collectionStatus?: { firstClaim: boolean; timesClaimed: number; targeted: boolean };
   artKey?: string;
   snag: boolean;
   focused: boolean;
@@ -485,16 +485,21 @@ function renderCard(context: RewardCeremonyRenderContext, card: RewardCardView, 
   }
   if (card.collectionStatus) {
     const firstClaim = card.collectionStatus.firstClaim;
-    const label = firstClaim ? 'NEW TO COLLECTION' : `COLLECTED / ${card.collectionStatus.timesClaimed} FLIGHT CLAIM${card.collectionStatus.timesClaimed === 1 ? '' : 'S'}`;
-    const width = firstClaim ? 142 : 174;
-    target.add(scene.add.rectangle(x, bottom - 126, width, 22, firstClaim ? 0x3b2b0b : 0x102534, 0.98)
-      .setStrokeStyle(1, firstClaim ? 0xffcf6b : 0x8df4ff, 0.96)
+    const targeted = card.collectionStatus.targeted;
+    const label = targeted
+      ? 'HUNT TARGET / CLAIM TO COMPLETE'
+      : firstClaim
+        ? 'NEW TO COLLECTION'
+        : `COLLECTED / ${card.collectionStatus.timesClaimed} FLIGHT CLAIM${card.collectionStatus.timesClaimed === 1 ? '' : 'S'}`;
+    const width = targeted ? 198 : firstClaim ? 142 : 174;
+    target.add(scene.add.rectangle(x, bottom - 126, width, 22, targeted || firstClaim ? 0x3b2b0b : 0x102534, 0.98)
+      .setStrokeStyle(1, targeted || firstClaim ? 0xffcf6b : 0x8df4ff, 0.96)
       .setName('reward-collection-status'));
     target.add(scene.add.text(x, bottom - 126, label, {
       fontFamily,
-      fontSize: firstClaim ? '10px' : '9px',
+      fontSize: targeted ? '9px' : firstClaim ? '10px' : '9px',
       fontStyle: boldFontStyle,
-      color: firstClaim ? '#ffe08a' : '#b8e8f4',
+      color: targeted || firstClaim ? '#ffe08a' : '#b8e8f4',
       align: 'center',
       fixedWidth: width - 10,
       maxLines: 1,
