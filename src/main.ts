@@ -67,6 +67,7 @@ import {
 } from './game/meta';
 import { collectionMilestoneProgress, unlockCollectionMilestones } from './game/collection-milestone-progress';
 import {
+  activeSavedDecks,
   createSavedDeckRecord,
   sanitizeSavedDecks,
   SAVED_DECK_LIMIT,
@@ -6292,7 +6293,13 @@ class ProfileScene extends Phaser.Scene {
     flightCopyStatus: 'idle',
     flightLogMessage: '',
     savedDeckIndex: 0,
+    savedDeckArchiveView: false,
     savedDeckStatus: 'idle',
+    savedDeckLabOpen: false,
+    savedDeckLabSample: 0,
+    savedDeckWorkshopOpen: false,
+    savedDeckWorkshopCardIndex: 0,
+    savedDeckWorkshopSuggestionIndex: 0,
   };
   private profileRenderer?: ProfileSceneModule['renderProfileScene'];
   private openSaveDataOnCreate = false;
@@ -6343,9 +6350,18 @@ class ProfileScene extends Phaser.Scene {
     this.profileViewState.flightCopyStatus = 'idle';
     this.profileViewState.flightLogMessage = '';
     this.profileViewState.savedDeckIndex = 0;
+    this.profileViewState.savedDeckArchiveView = false;
     this.profileViewState.savedDeckStatus = 'idle';
     this.profileViewState.savedDeckRenameInput?.remove();
     this.profileViewState.savedDeckRenameInput = undefined;
+    this.profileViewState.savedDeckCodeInput?.remove();
+    this.profileViewState.savedDeckCodeInput = undefined;
+    this.profileViewState.savedDeckLabOpen = false;
+    this.profileViewState.savedDeckLabSample = 0;
+    this.profileViewState.savedDeckWorkshopOpen = false;
+    this.profileViewState.savedDeckWorkshopDeckId = undefined;
+    this.profileViewState.savedDeckWorkshopCardIndex = 0;
+    this.profileViewState.savedDeckWorkshopSuggestionIndex = 0;
     this.profileViewState.focus = openSaveData ? 'playtestFun' : 'achievements';
     this.renderProfileLoading();
     void loadProfileSceneModule()
@@ -13727,10 +13743,12 @@ class RouteScene extends Phaser.Scene {
   }
 
   savedDeckRecordState() {
-    const savedDecks = sanitizeSavedDecks(loadAccount().decks);
+    const allSavedDecks = sanitizeSavedDecks(loadAccount().decks);
+    const savedDecks = activeSavedDecks(allSavedDecks);
     return {
       count: savedDecks.length,
       capacity: SAVED_DECK_LIMIT,
+      archived: allSavedDecks.length - savedDecks.length,
       status: this.deckSaveStatus,
       canSave: savedDecks.length < SAVED_DECK_LIMIT && this.runState.deck.length > 0,
       currentDeckCards: this.runState.deck.length,
@@ -13749,7 +13767,8 @@ class RouteScene extends Phaser.Scene {
   private saveCurrentDeckToFolio() {
     if (!this.deckOverlayOpen || this.deckReviewSearchActive) return;
     const account = loadAccount();
-    const savedDecks = sanitizeSavedDecks(account.decks);
+    const allSavedDecks = sanitizeSavedDecks(account.decks);
+    const savedDecks = activeSavedDecks(allSavedDecks);
     if (savedDecks.length >= SAVED_DECK_LIMIT) {
       this.deckSaveStatus = 'full';
       playUiSound('locked');
@@ -13765,7 +13784,7 @@ class RouteScene extends Phaser.Scene {
       sourceSeed: this.runState.seed ?? '',
       runMode: this.runState.runMode ?? 'full',
     });
-    account.decks = [record, ...savedDecks];
+    account.decks = [record, ...allSavedDecks];
     if (!saveAccount(account)) {
       this.deckSaveStatus = 'failed';
       playUiSound('locked');

@@ -1,4 +1,6 @@
 export const SAVED_DECK_LIMIT = 6;
+export const SAVED_DECK_ARCHIVE_LIMIT = 24;
+export const SAVED_DECK_TOTAL_LIMIT = SAVED_DECK_LIMIT + SAVED_DECK_ARCHIVE_LIMIT;
 export const SAVED_DECK_CARD_LIMIT = 60;
 export const SAVED_DECK_NAME_LIMIT = 32;
 
@@ -12,9 +14,13 @@ export interface SavedDeckRecord {
   name: string;
   leaderId: string;
   cards: SavedDeckCard[];
+  lineageId: string;
+  revision: number;
+  parentId?: string;
   createdAt: number;
   updatedAt: number;
   favorite: boolean;
+  archived: boolean;
   sourceSeed: string;
   runMode: 'full' | 'quick';
 }
@@ -54,7 +60,7 @@ export function sanitizeSavedDecks(value: unknown): SavedDeckRecord[] {
   if (!Array.isArray(value)) return [];
   const usedIds = new Set<string>();
   const now = Date.now();
-  return value.flatMap((raw, index): SavedDeckRecord[] => {
+  const records = value.flatMap((raw, index): SavedDeckRecord[] => {
     if (!isRecord(raw)) return [];
     const id = safeText(raw.id, 80);
     const name = safeText(raw.name, SAVED_DECK_NAME_LIMIT);
@@ -66,34 +72,66 @@ export function sanitizeSavedDecks(value: unknown): SavedDeckRecord[] {
     if (!id || usedIds.has(id) || !name || !leaderId || cards.length === 0) return [];
     usedIds.add(id);
     const createdAt = safeTime(raw.createdAt, now + index);
+    const rawLineageId = safeText(raw.lineageId, 80);
+    const lineageId = rawLineageId && /^[a-z0-9_-]+$/i.test(rawLineageId) ? rawLineageId : id;
+    const rawParentId = safeText(raw.parentId, 80);
+    const parentId = rawParentId && /^[a-z0-9_-]+$/i.test(rawParentId) ? rawParentId : '';
     return [{
       id,
       name,
       leaderId,
       cards,
+      lineageId,
+      revision: Number.isFinite(raw.revision)
+        ? Math.max(1, Math.min(9999, Math.floor(Number(raw.revision))))
+        : 1,
+      ...(parentId && parentId !== id ? { parentId } : {}),
       createdAt,
       updatedAt: Math.max(createdAt, safeTime(raw.updatedAt, createdAt)),
       favorite: raw.favorite === true,
+      archived: raw.archived === true,
       sourceSeed,
       runMode: raw.runMode === 'quick' ? 'quick' : 'full',
     }];
-  }).slice(0, SAVED_DECK_LIMIT);
+  });
+  let activeCount = 0;
+  let archivedCount = 0;
+  return records.filter((record) => {
+    if (record.archived) {
+      archivedCount += 1;
+      return archivedCount <= SAVED_DECK_ARCHIVE_LIMIT;
+    }
+    activeCount += 1;
+    return activeCount <= SAVED_DECK_LIMIT;
+  }).slice(0, SAVED_DECK_TOTAL_LIMIT);
+}
+
+export function activeSavedDecks(decks: readonly SavedDeckRecord[]) {
+  return decks.filter((deck) => !deck.archived);
+}
+
+export function archivedSavedDecks(decks: readonly SavedDeckRecord[]) {
+  return decks.filter((deck) => deck.archived);
 }
 
 export function createSavedDeckRecord(input: NewSavedDeck): SavedDeckRecord {
   const now = input.now ?? Date.now();
   const random = globalThis.crypto?.randomUUID?.() ?? `${now.toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  const id = input.id ?? `flight-${random}`;
   return {
-    id: input.id ?? `flight-${random}`,
+    id,
     name: safeText(input.name, SAVED_DECK_NAME_LIMIT) || 'Saved Flight',
     leaderId: input.leaderId,
     cards: input.cards.slice(0, SAVED_DECK_CARD_LIMIT).map((card) => ({
       id: card.id,
       upgraded: card.upgraded === true,
     })),
+    lineageId: id,
+    revision: 1,
     createdAt: now,
     updatedAt: now,
     favorite: false,
+    archived: false,
     sourceSeed: safeText(input.sourceSeed, 80),
     runMode: input.runMode,
   };
@@ -117,5 +155,20 @@ export function toggleSavedDeckFavorite(
 ) {
   return decks.map((deck) => deck.id === id
     ? { ...deck, favorite: !deck.favorite, updatedAt: now }
+    : deck);
+}
+
+export function setSavedDeckArchived(
+  decks: readonly SavedDeckRecord[],
+  id: string,
+  archived: boolean,
+  now = Date.now(),
+) {
+  const source = decks.find((deck) => deck.id === id);
+  if (!source || source.archived === archived) return [...decks];
+  if (archived && archivedSavedDecks(decks).length >= SAVED_DECK_ARCHIVE_LIMIT) return [...decks];
+  if (!archived && activeSavedDecks(decks).length >= SAVED_DECK_LIMIT) return [...decks];
+  return decks.map((deck) => deck.id === id
+    ? { ...deck, archived, updatedAt: now }
     : deck);
 }

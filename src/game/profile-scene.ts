@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
-import { alphaCardSet } from './runtime-data';
+import { alphaCardLibrary, alphaCardSet } from './runtime-data';
 import { difficultyLabel } from './difficulty';
 import { flockLeaders } from './leaders';
 import { achievements, isLeaderUnlocked, leaderMastery, loadAccount, saveAccount, type PlayerAccount } from './meta';
@@ -13,13 +13,31 @@ import {
   collectionMilestoneSnapshots,
 } from './collection-milestones';
 import {
+  activeSavedDecks,
+  archivedSavedDecks,
   renameSavedDeck,
   sanitizeSavedDecks,
+  SAVED_DECK_ARCHIVE_LIMIT,
   SAVED_DECK_LIMIT,
   SAVED_DECK_NAME_LIMIT,
+  setSavedDeckArchived,
   toggleSavedDeckFavorite,
   type SavedDeckRecord,
 } from './saved-decks';
+import {
+  duplicateSavedDeck,
+  importSavedDeckCode,
+  SAVED_DECK_CODE_LIMIT,
+  SAVED_DECK_CODE_VERSION,
+  savedDeckShareCode,
+  tuneSavedDeck,
+} from './saved-deck-library';
+import {
+  analyzeSavedDeck,
+  suggestSavedDeckReplacements,
+  type SavedDeckLabAnalysis,
+  type SavedDeckLabReplacement,
+} from './saved-deck-lab';
 import {
   applySaveBackup,
   createSaveBackup,
@@ -40,7 +58,7 @@ const UI_MUTED = '#8fa3b6';
 const UI_SOFT = '#b9c7d6';
 const FLIGHT_LOG_PAGE_SIZE = 7;
 const BADGE_PAGE_SIZE = 6;
-const SAVED_DECK_PAGE_SIZE = 2;
+const SAVED_DECK_PAGE_SIZE = 1;
 const UI_FIELD = {
   ink: 0x070b12,
   gold: 0xd8a840,
@@ -165,8 +183,32 @@ export interface ProfileViewState {
   flightCopyStatus: 'idle' | 'copied' | 'failed';
   flightLogMessage: string;
   savedDeckIndex: number;
-  savedDeckStatus: 'idle' | 'favorited' | 'unfavorited' | 'renamed' | 'failed';
+  savedDeckArchiveView: boolean;
+  savedDeckStatus:
+    | 'idle'
+    | 'favorited'
+    | 'unfavorited'
+    | 'renamed'
+    | 'duplicated'
+    | 'tuned'
+    | 'archived'
+    | 'restored'
+    | 'archiveFull'
+    | 'activeFull'
+    | 'full'
+    | 'codeCopied'
+    | 'copyFailed'
+    | 'imported'
+    | 'invalidCode'
+    | 'failed';
   savedDeckRenameInput?: HTMLInputElement;
+  savedDeckCodeInput?: HTMLInputElement;
+  savedDeckLabOpen: boolean;
+  savedDeckLabSample: number;
+  savedDeckWorkshopOpen: boolean;
+  savedDeckWorkshopDeckId?: string;
+  savedDeckWorkshopCardIndex: number;
+  savedDeckWorkshopSuggestionIndex: number;
 }
 
 export interface ProfileSceneDependencies {
@@ -309,12 +351,20 @@ function profileFocusOrder(state: ProfileViewState): ProfileFocus[] {
 function profileBadgePageCount(state: ProfileViewState) {
   if (state.badgeView === 'showcase') return 1;
   if (state.badgeView === 'folios') {
-    return Math.max(1, Math.ceil(sanitizeSavedDecks(loadAccount().decks).length / SAVED_DECK_PAGE_SIZE));
+    const decks = savedDecksForView(state, sanitizeSavedDecks(loadAccount().decks));
+    return Math.max(1, Math.ceil(decks.length / SAVED_DECK_PAGE_SIZE));
   }
   const total = state.badgeView === 'achievements'
     ? achievements.length + COLLECTION_MILESTONE_COUNT
     : loadAccount().contractBadges.length;
   return Math.max(1, Math.ceil(total / BADGE_PAGE_SIZE));
+}
+
+function savedDecksForView(
+  state: ProfileViewState,
+  decks: readonly SavedDeckRecord[],
+) {
+  return state.savedDeckArchiveView ? archivedSavedDecks(decks) : activeSavedDecks(decks);
 }
 
 function cycleBadgePage(
@@ -336,7 +386,7 @@ function cycleBadgePage(
 }
 
 function selectedSavedDeck(state: ProfileViewState) {
-  const decks = sanitizeSavedDecks(loadAccount().decks);
+  const decks = savedDecksForView(state, sanitizeSavedDecks(loadAccount().decks));
   state.savedDeckIndex = Phaser.Math.Clamp(state.savedDeckIndex, 0, Math.max(0, decks.length - 1));
   return decks[state.savedDeckIndex];
 }
@@ -347,7 +397,7 @@ function selectSavedDeck(
   dependencies: ProfileSceneDependencies,
   index: number,
 ) {
-  const decks = sanitizeSavedDecks(loadAccount().decks);
+  const decks = savedDecksForView(state, sanitizeSavedDecks(loadAccount().decks));
   if (decks.length === 0) {
     dependencies.playUiSound('locked');
     return;
@@ -367,12 +417,292 @@ function cycleSavedDeck(
   dependencies: ProfileSceneDependencies,
   direction: -1 | 1,
 ) {
-  const decks = sanitizeSavedDecks(loadAccount().decks);
+  const decks = savedDecksForView(state, sanitizeSavedDecks(loadAccount().decks));
   if (decks.length === 0) {
     dependencies.playUiSound('locked');
     return;
   }
   selectSavedDeck(scene, state, dependencies, (state.savedDeckIndex + direction + decks.length) % decks.length);
+}
+
+function toggleSavedDeckArchiveView(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  state.savedDeckArchiveView = !state.savedDeckArchiveView;
+  state.savedDeckIndex = 0;
+  state.badgePage = 0;
+  state.savedDeckStatus = 'idle';
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function toggleSelectedSavedDeckArchived(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  const account = loadAccount();
+  const decks = sanitizeSavedDecks(account.decks);
+  const selected = selectedSavedDeck(state);
+  if (!selected) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  const archived = archivedSavedDecks(decks);
+  const active = activeSavedDecks(decks);
+  if (!selected.archived && archived.length >= SAVED_DECK_ARCHIVE_LIMIT) {
+    state.savedDeckStatus = 'archiveFull';
+    dependencies.playUiSound('locked');
+    renderProfileScene(scene, state, dependencies);
+    return;
+  }
+  if (selected.archived && active.length >= SAVED_DECK_LIMIT) {
+    state.savedDeckStatus = 'activeFull';
+    dependencies.playUiSound('locked');
+    renderProfileScene(scene, state, dependencies);
+    return;
+  }
+  const next = setSavedDeckArchived(decks, selected.id, !selected.archived);
+  const changed = next.find((deck) => deck.id === selected.id)?.archived !== selected.archived;
+  if (!changed) {
+    state.savedDeckStatus = 'failed';
+    dependencies.playUiSound('locked');
+  } else {
+    account.decks = next;
+    if (!saveAccount(account)) {
+      state.savedDeckStatus = 'failed';
+      dependencies.playUiSound('locked');
+    } else {
+      state.savedDeckArchiveView = !selected.archived;
+      state.savedDeckIndex = 0;
+      state.badgePage = 0;
+      state.savedDeckStatus = selected.archived ? 'restored' : 'archived';
+      dependencies.playUiSound(selected.archived ? 'confirm' : 'close');
+    }
+  }
+  renderProfileScene(scene, state, dependencies);
+}
+
+function openSavedDeckLab(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  const selected = selectedSavedDeck(state);
+  if (!selected || state.savedDeckRenameInput || state.savedDeckCodeInput) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  state.savedDeckLabOpen = true;
+  state.savedDeckLabSample = 0;
+  state.savedDeckStatus = 'idle';
+  dependencies.playUiSound('confirm');
+  dependencies.queueCardShowcaseAssets(
+    scene,
+    [...new Set(selected.cards.map((card) => card.id).filter((id) => alphaCardLibrary.has(id)))],
+    () => {
+      if (scene.scene.isActive() && state.savedDeckLabOpen) renderProfileScene(scene, state, dependencies);
+    },
+  );
+  renderProfileScene(scene, state, dependencies);
+}
+
+function closeSavedDeckLab(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  state.savedDeckLabOpen = false;
+  state.focus = 'folios';
+  dependencies.playUiSound('close');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function cycleSavedDeckLabSample(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  direction: -1 | 1,
+) {
+  if (!state.savedDeckLabOpen) return;
+  const next = Phaser.Math.Clamp(state.savedDeckLabSample + direction, 0, 999);
+  if (next === state.savedDeckLabSample) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  state.savedDeckLabSample = next;
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+}
+
+interface SavedDeckWorkshopState {
+  deck: SavedDeckRecord;
+  cardIndex: number;
+  sourceCard: SavedDeckRecord['cards'][number];
+  sourceName: string;
+  suggestions: SavedDeckLabReplacement[];
+}
+
+function savedDeckWorkshopState(
+  state: ProfileViewState,
+  account = loadAccount(),
+): SavedDeckWorkshopState | undefined {
+  const decks = sanitizeSavedDecks(account.decks);
+  const deck = decks.find((candidate) => candidate.id === state.savedDeckWorkshopDeckId);
+  if (!deck || deck.cards.length === 0) return undefined;
+  const cardIndex = Phaser.Math.Clamp(state.savedDeckWorkshopCardIndex, 0, deck.cards.length - 1);
+  const sourceCard = deck.cards[cardIndex];
+  const sourceName = alphaCardLibrary.get(sourceCard.id)?.displayName ?? sourceCard.id;
+  const ownedCardIds = Object.entries(account.cardCollection)
+    .filter(([, record]) => record.timesClaimed > 0)
+    .map(([id]) => id);
+  const suggestions = suggestSavedDeckReplacements(
+    deck,
+    cardIndex,
+    ownedCardIds,
+    alphaCardLibrary,
+  );
+  return { deck, cardIndex, sourceCard, sourceName, suggestions };
+}
+
+function queueSavedDeckWorkshopAssets(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  const workshop = savedDeckWorkshopState(state);
+  if (!workshop) return;
+  const ids = [workshop.sourceCard.id, ...workshop.suggestions.map((candidate) => candidate.id)]
+    .filter((id) => alphaCardLibrary.has(id));
+  dependencies.queueCardShowcaseAssets(scene, [...new Set(ids)], () => {
+    if (scene.scene.isActive() && state.savedDeckWorkshopOpen) renderProfileScene(scene, state, dependencies);
+  });
+}
+
+function openSavedDeckWorkshop(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  const selected = selectedSavedDeck(state);
+  if (!selected || state.savedDeckRenameInput || state.savedDeckCodeInput) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  state.savedDeckLabOpen = false;
+  state.savedDeckWorkshopOpen = true;
+  state.savedDeckWorkshopDeckId = selected.id;
+  state.savedDeckWorkshopCardIndex = 0;
+  state.savedDeckWorkshopSuggestionIndex = 0;
+  state.savedDeckStatus = 'idle';
+  dependencies.playUiSound('confirm');
+  queueSavedDeckWorkshopAssets(scene, state, dependencies);
+  renderProfileScene(scene, state, dependencies);
+}
+
+function closeSavedDeckWorkshop(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  state.savedDeckWorkshopOpen = false;
+  state.savedDeckLabOpen = true;
+  state.savedDeckLabSample = 0;
+  state.savedDeckStatus = 'idle';
+  dependencies.playUiSound('close');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function cycleSavedDeckWorkshopCard(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  direction: -1 | 1,
+) {
+  const workshop = savedDeckWorkshopState(state);
+  if (!workshop) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  state.savedDeckWorkshopCardIndex = (
+    workshop.cardIndex + direction + workshop.deck.cards.length
+  ) % workshop.deck.cards.length;
+  state.savedDeckWorkshopSuggestionIndex = 0;
+  dependencies.playUiSound('confirm');
+  queueSavedDeckWorkshopAssets(scene, state, dependencies);
+  renderProfileScene(scene, state, dependencies);
+}
+
+function cycleSavedDeckWorkshopSuggestion(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  direction: -1 | 1,
+) {
+  const workshop = savedDeckWorkshopState(state);
+  if (!workshop || workshop.suggestions.length === 0) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  state.savedDeckWorkshopSuggestionIndex = (
+    state.savedDeckWorkshopSuggestionIndex + direction + workshop.suggestions.length
+  ) % workshop.suggestions.length;
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function saveSavedDeckWorkshopRevision(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  const account = loadAccount();
+  const decks = sanitizeSavedDecks(account.decks);
+  const workshop = savedDeckWorkshopState(state, account);
+  const replacement = workshop?.suggestions[
+    Phaser.Math.Clamp(state.savedDeckWorkshopSuggestionIndex, 0, Math.max(0, workshop.suggestions.length - 1))
+  ];
+  if (!workshop || !replacement) {
+    state.savedDeckStatus = 'failed';
+    dependencies.playUiSound('locked');
+    renderProfileScene(scene, state, dependencies);
+    return;
+  }
+  if (activeSavedDecks(decks).length >= SAVED_DECK_LIMIT) {
+    state.savedDeckStatus = 'activeFull';
+    dependencies.playUiSound('locked');
+    renderProfileScene(scene, state, dependencies);
+    return;
+  }
+  const tuned = tuneSavedDeck(
+    decks,
+    workshop.deck.id,
+    workshop.cardIndex,
+    replacement.id,
+  );
+  if (tuned.length !== decks.length + 1) {
+    state.savedDeckStatus = 'failed';
+    dependencies.playUiSound('locked');
+    renderProfileScene(scene, state, dependencies);
+    return;
+  }
+  account.decks = tuned;
+  if (!saveAccount(account)) {
+    state.savedDeckStatus = 'failed';
+    dependencies.playUiSound('locked');
+    renderProfileScene(scene, state, dependencies);
+    return;
+  }
+  state.savedDeckWorkshopOpen = false;
+  state.savedDeckWorkshopDeckId = undefined;
+  state.savedDeckArchiveView = false;
+  state.savedDeckIndex = 0;
+  state.badgePage = 0;
+  state.savedDeckStatus = 'tuned';
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
 }
 
 function toggleSelectedSavedDeckFavorite(
@@ -382,7 +712,7 @@ function toggleSelectedSavedDeckFavorite(
 ) {
   const account = loadAccount();
   const decks = sanitizeSavedDecks(account.decks);
-  const selected = decks[state.savedDeckIndex];
+  const selected = selectedSavedDeck(state);
   if (!selected) {
     dependencies.playUiSound('locked');
     return;
@@ -398,9 +728,76 @@ function toggleSelectedSavedDeckFavorite(
   renderProfileScene(scene, state, dependencies);
 }
 
+function duplicateSelectedSavedDeck(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  const account = loadAccount();
+  const decks = sanitizeSavedDecks(account.decks);
+  const selected = selectedSavedDeck(state);
+  const active = activeSavedDecks(decks);
+  if (!selected || active.length >= SAVED_DECK_LIMIT) {
+    state.savedDeckStatus = active.length >= SAVED_DECK_LIMIT ? 'full' : 'failed';
+    dependencies.playUiSound('locked');
+    renderProfileScene(scene, state, dependencies);
+    return;
+  }
+  const duplicated = duplicateSavedDeck(decks, selected.id);
+  if (duplicated.length !== decks.length + 1) {
+    state.savedDeckStatus = 'failed';
+    dependencies.playUiSound('locked');
+    renderProfileScene(scene, state, dependencies);
+    return;
+  }
+  account.decks = duplicated;
+  if (!saveAccount(account)) {
+    state.savedDeckStatus = 'failed';
+    dependencies.playUiSound('locked');
+  } else {
+    state.savedDeckArchiveView = false;
+    state.savedDeckIndex = 0;
+    state.badgePage = 0;
+    state.savedDeckStatus = 'duplicated';
+    dependencies.playUiSound('confirm');
+  }
+  renderProfileScene(scene, state, dependencies);
+}
+
+function copySelectedSavedDeckCode(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  const selected = selectedSavedDeck(state);
+  if (!selected) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  const code = savedDeckShareCode(selected);
+  void (async () => {
+    let copied = false;
+    try {
+      await navigator.clipboard?.writeText(code);
+      copied = Boolean(navigator.clipboard);
+    } catch {
+      copied = false;
+    }
+    if (!scene.scene.isActive()) return;
+    state.savedDeckStatus = copied ? 'codeCopied' : 'copyFailed';
+    dependencies.playUiSound(copied ? 'confirm' : 'locked');
+    renderProfileScene(scene, state, dependencies);
+  })();
+}
+
 function closeSavedDeckRename(state: ProfileViewState) {
   state.savedDeckRenameInput?.remove();
   state.savedDeckRenameInput = undefined;
+}
+
+function closeSavedDeckImport(state: ProfileViewState) {
+  state.savedDeckCodeInput?.remove();
+  state.savedDeckCodeInput = undefined;
 }
 
 function beginSavedDeckRename(
@@ -409,7 +806,7 @@ function beginSavedDeckRename(
   dependencies: ProfileSceneDependencies,
 ) {
   const selected = selectedSavedDeck(state);
-  if (!selected || state.savedDeckRenameInput) {
+  if (!selected || state.savedDeckRenameInput || state.savedDeckCodeInput) {
     if (!selected) dependencies.playUiSound('locked');
     return;
   }
@@ -479,6 +876,98 @@ function beginSavedDeckRename(
     input.focus();
     input.select();
   }, 0);
+}
+
+function beginSavedDeckImport(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  const decks = sanitizeSavedDecks(loadAccount().decks);
+  if (activeSavedDecks(decks).length >= SAVED_DECK_LIMIT) {
+    state.savedDeckStatus = 'full';
+    dependencies.playUiSound('locked');
+    renderProfileScene(scene, state, dependencies);
+    return;
+  }
+  if (state.savedDeckCodeInput || state.savedDeckRenameInput) return;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.maxLength = SAVED_DECK_CODE_LIMIT;
+  input.placeholder = `Paste a BSF${SAVED_DECK_CODE_VERSION} flight code`;
+  input.setAttribute('aria-label', 'Flight share code');
+  input.setAttribute('autocomplete', 'off');
+  input.setAttribute('autocapitalize', 'off');
+  input.setAttribute('spellcheck', 'false');
+  Object.assign(input.style, {
+    position: 'fixed',
+    left: '50%',
+    top: '50%',
+    width: 'min(640px, calc(100vw - 48px))',
+    transform: 'translate(-50%, -50%)',
+    zIndex: '10000',
+    boxSizing: 'border-box',
+    padding: '14px 18px',
+    border: '2px solid #8df4ff',
+    borderRadius: '4px',
+    outline: '4px solid rgba(5, 12, 20, 0.92)',
+    background: '#0a1420',
+    color: '#ffe1a3',
+    font: 'bold 16px monospace',
+    textAlign: 'center',
+  });
+  document.body.append(input);
+  state.savedDeckCodeInput = input;
+  state.savedDeckStatus = 'idle';
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+
+  let finished = false;
+  const finish = (commit: boolean) => {
+    if (finished) return;
+    finished = true;
+    if (commit) {
+      const result = importSavedDeckCode(input.value);
+      const account = loadAccount();
+      const current = sanitizeSavedDecks(account.decks);
+      if (!result.ok) {
+        state.savedDeckStatus = 'invalidCode';
+        dependencies.playUiSound('locked');
+      } else if (activeSavedDecks(current).length >= SAVED_DECK_LIMIT) {
+        state.savedDeckStatus = 'full';
+        dependencies.playUiSound('locked');
+      } else {
+        account.decks = [result.deck, ...current];
+        if (saveAccount(account)) {
+          state.savedDeckArchiveView = false;
+          state.savedDeckIndex = 0;
+          state.badgePage = 0;
+          state.savedDeckStatus = 'imported';
+          dependencies.playUiSound('confirm');
+        } else {
+          state.savedDeckStatus = 'failed';
+          dependencies.playUiSound('locked');
+        }
+      }
+    } else {
+      dependencies.playUiSound('close');
+    }
+    closeSavedDeckImport(state);
+    if (scene.scene.isActive()) renderProfileScene(scene, state, dependencies);
+  };
+  input.addEventListener('keydown', (event) => {
+    event.stopPropagation();
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      finish(true);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      finish(false);
+    }
+  });
+  input.addEventListener('blur', () => finish(true), { once: true });
+  scene.events.once('shutdown', () => closeSavedDeckImport(state));
+  window.setTimeout(() => input.focus(), 0);
 }
 
 const playtestFocusKey: Partial<Record<ProfileFocus, PlaytestRatingKey>> = {
@@ -794,6 +1283,20 @@ export function startProfileScene(
   state.revealBursts = 0;
   if (playtestExportEnabled()) syncLatestPlaytestRun(state, dependencies);
   const returnToMenu = () => {
+    if (state.savedDeckWorkshopOpen) {
+      closeSavedDeckWorkshop(scene, state, dependencies);
+      return;
+    }
+    if (state.savedDeckLabOpen) {
+      closeSavedDeckLab(scene, state, dependencies);
+      return;
+    }
+    if (state.savedDeckCodeInput) {
+      closeSavedDeckImport(state);
+      dependencies.playUiSound('close');
+      renderProfileScene(scene, state, dependencies);
+      return;
+    }
     if (state.savedDeckRenameInput) {
       closeSavedDeckRename(state);
       dependencies.playUiSound('close');
@@ -821,18 +1324,30 @@ export function startProfileScene(
   };
   bindControlActions(scene, {
     back: returnToMenu,
-    previous: () => state.flightLogOpen
+    previous: () => state.savedDeckWorkshopOpen
+      ? cycleSavedDeckWorkshopCard(scene, state, dependencies, -1)
+      : state.savedDeckLabOpen
+      ? cycleSavedDeckLabSample(scene, state, dependencies, -1)
+      : state.flightLogOpen
       ? cycleFlightHistory(scene, state, dependencies, -1)
       : state.badgeView === 'folios' && state.focus === 'folios'
         ? cycleSavedDeck(scene, state, dependencies, -1)
         : cycleProfileFocus(scene, state, dependencies, -1),
-    next: () => state.flightLogOpen
+    next: () => state.savedDeckWorkshopOpen
+      ? cycleSavedDeckWorkshopCard(scene, state, dependencies, 1)
+      : state.savedDeckLabOpen
+      ? cycleSavedDeckLabSample(scene, state, dependencies, 1)
+      : state.flightLogOpen
       ? cycleFlightHistory(scene, state, dependencies, 1)
       : state.badgeView === 'folios' && state.focus === 'folios'
         ? cycleSavedDeck(scene, state, dependencies, 1)
         : cycleProfileFocus(scene, state, dependencies, 1),
     confirm: () => {
-      if (!state.flightLogOpen) {
+      if (state.savedDeckWorkshopOpen) {
+        saveSavedDeckWorkshopRevision(scene, state, dependencies);
+      } else if (state.savedDeckLabOpen) {
+        cycleSavedDeckLabSample(scene, state, dependencies, 1);
+      } else if (!state.flightLogOpen) {
         activateProfileFocus(scene, state, dependencies);
       } else if (!state.flightReview) {
         openSelectedFlight(scene, state, dependencies);
@@ -848,31 +1363,94 @@ export function startProfileScene(
   const onTab = (event: KeyboardEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    if (state.flightLogOpen) cycleFlightHistory(scene, state, dependencies, event.shiftKey ? -1 : 1);
+    if (state.savedDeckWorkshopOpen) cycleSavedDeckWorkshopSuggestion(scene, state, dependencies, event.shiftKey ? -1 : 1);
+    else if (state.savedDeckLabOpen) cycleSavedDeckLabSample(scene, state, dependencies, event.shiftKey ? -1 : 1);
+    else if (state.flightLogOpen) cycleFlightHistory(scene, state, dependencies, event.shiftKey ? -1 : 1);
     else cycleProfileFocus(scene, state, dependencies, event.shiftKey ? -1 : 1);
   };
   const onPageUp = (event: KeyboardEvent) => {
     if (state.saveDataOpen || state.flightReview) return;
     event.preventDefault();
     event.stopPropagation();
-    if (state.flightLogOpen) pageFlightHistory(scene, state, dependencies, -1);
+    if (state.savedDeckWorkshopOpen) cycleSavedDeckWorkshopCard(scene, state, dependencies, -1);
+    else if (state.savedDeckLabOpen) cycleSavedDeckLabSample(scene, state, dependencies, -1);
+    else if (state.flightLogOpen) pageFlightHistory(scene, state, dependencies, -1);
     else cycleBadgePage(scene, state, dependencies, -1);
   };
   const onPageDown = (event: KeyboardEvent) => {
     if (state.saveDataOpen || state.flightReview) return;
     event.preventDefault();
     event.stopPropagation();
-    if (state.flightLogOpen) pageFlightHistory(scene, state, dependencies, 1);
+    if (state.savedDeckWorkshopOpen) cycleSavedDeckWorkshopCard(scene, state, dependencies, 1);
+    else if (state.savedDeckLabOpen) cycleSavedDeckLabSample(scene, state, dependencies, 1);
+    else if (state.flightLogOpen) pageFlightHistory(scene, state, dependencies, 1);
     else cycleBadgePage(scene, state, dependencies, 1);
   };
   const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button) => {
-    if (state.badgeView === 'folios' && state.focus === 'folios' && !state.savedDeckRenameInput) {
+    if (state.savedDeckWorkshopOpen) {
+      if (button.index === 12) {
+        cycleSavedDeckWorkshopSuggestion(scene, state, dependencies, -1);
+      } else if (button.index === 13) {
+        cycleSavedDeckWorkshopSuggestion(scene, state, dependencies, 1);
+      } else if (button.index === 14 || button.index === 4) {
+        cycleSavedDeckWorkshopCard(scene, state, dependencies, -1);
+      } else if (button.index === 15 || button.index === 5) {
+        cycleSavedDeckWorkshopCard(scene, state, dependencies, 1);
+      } else if (button.index === 0) {
+        saveSavedDeckWorkshopRevision(scene, state, dependencies);
+      } else if (button.index === 1) {
+        closeSavedDeckWorkshop(scene, state, dependencies);
+      }
+      return;
+    }
+    if (state.savedDeckLabOpen) {
+      if (button.index === 12 || button.index === 14 || button.index === 4) {
+        cycleSavedDeckLabSample(scene, state, dependencies, -1);
+      } else if (button.index === 13 || button.index === 15 || button.index === 5 || button.index === 0) {
+        cycleSavedDeckLabSample(scene, state, dependencies, 1);
+      } else if (button.index === 1) {
+        closeSavedDeckLab(scene, state, dependencies);
+      } else if (button.index === 2) {
+        openSavedDeckWorkshop(scene, state, dependencies);
+      }
+      return;
+    }
+    if (
+      state.badgeView === 'folios'
+      && state.focus === 'folios'
+      && !state.savedDeckRenameInput
+      && !state.savedDeckCodeInput
+    ) {
       if (button.index === 2) {
         toggleSelectedSavedDeckFavorite(scene, state, dependencies);
         return;
       }
       if (button.index === 3) {
         beginSavedDeckRename(scene, state, dependencies);
+        return;
+      }
+      if (button.index === 6) {
+        duplicateSelectedSavedDeck(scene, state, dependencies);
+        return;
+      }
+      if (button.index === 7) {
+        copySelectedSavedDeckCode(scene, state, dependencies);
+        return;
+      }
+      if (button.index === 10) {
+        beginSavedDeckImport(scene, state, dependencies);
+        return;
+      }
+      if (button.index === 11) {
+        openSavedDeckLab(scene, state, dependencies);
+        return;
+      }
+      if (button.index === 8) {
+        toggleSavedDeckArchiveView(scene, state, dependencies);
+        return;
+      }
+      if (button.index === 9) {
+        toggleSelectedSavedDeckArchived(scene, state, dependencies);
         return;
       }
     }
@@ -899,30 +1477,167 @@ export function startProfileScene(
     else if (button.index === 1) returnToMenu();
   };
   const onSavedDeckFavorite = (event: KeyboardEvent) => {
-    if (state.badgeView !== 'folios' || state.focus !== 'folios' || state.savedDeckRenameInput) return;
+    if (
+      state.badgeView !== 'folios'
+      || state.focus !== 'folios'
+      || state.savedDeckRenameInput
+      || state.savedDeckCodeInput
+      || state.savedDeckLabOpen
+      || state.savedDeckWorkshopOpen
+    ) return;
     event.preventDefault();
     event.stopPropagation();
     toggleSelectedSavedDeckFavorite(scene, state, dependencies);
   };
   const onSavedDeckRename = (event: KeyboardEvent) => {
-    if (state.badgeView !== 'folios' || state.focus !== 'folios' || state.savedDeckRenameInput) return;
+    if (
+      state.badgeView !== 'folios'
+      || state.focus !== 'folios'
+      || state.savedDeckRenameInput
+      || state.savedDeckCodeInput
+      || state.savedDeckLabOpen
+      || state.savedDeckWorkshopOpen
+    ) return;
     event.preventDefault();
     event.stopPropagation();
     beginSavedDeckRename(scene, state, dependencies);
+  };
+  const onSavedDeckDuplicate = (event: KeyboardEvent) => {
+    if (
+      state.badgeView !== 'folios'
+      || state.focus !== 'folios'
+      || state.savedDeckRenameInput
+      || state.savedDeckCodeInput
+      || state.savedDeckLabOpen
+      || state.savedDeckWorkshopOpen
+    ) return;
+    event.preventDefault();
+    event.stopPropagation();
+    duplicateSelectedSavedDeck(scene, state, dependencies);
+  };
+  const onSavedDeckCopy = (event: KeyboardEvent) => {
+    if (
+      state.badgeView !== 'folios'
+      || state.focus !== 'folios'
+      || state.savedDeckRenameInput
+      || state.savedDeckCodeInput
+      || state.savedDeckLabOpen
+      || state.savedDeckWorkshopOpen
+    ) return;
+    event.preventDefault();
+    event.stopPropagation();
+    copySelectedSavedDeckCode(scene, state, dependencies);
+  };
+  const onSavedDeckImport = (event: KeyboardEvent) => {
+    if (
+      state.badgeView !== 'folios'
+      || state.focus !== 'folios'
+      || state.savedDeckRenameInput
+      || state.savedDeckCodeInput
+      || state.savedDeckLabOpen
+      || state.savedDeckWorkshopOpen
+    ) return;
+    event.preventDefault();
+    event.stopPropagation();
+    beginSavedDeckImport(scene, state, dependencies);
+  };
+  const onSavedDeckLab = (event: KeyboardEvent) => {
+    if (
+      state.badgeView !== 'folios'
+      || state.focus !== 'folios'
+      || state.savedDeckRenameInput
+      || state.savedDeckCodeInput
+      || state.savedDeckLabOpen
+      || state.savedDeckWorkshopOpen
+    ) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openSavedDeckLab(scene, state, dependencies);
+  };
+  const onSavedDeckArchiveView = (event: KeyboardEvent) => {
+    if (
+      state.badgeView !== 'folios'
+      || state.focus !== 'folios'
+      || state.savedDeckRenameInput
+      || state.savedDeckCodeInput
+      || state.savedDeckLabOpen
+      || state.savedDeckWorkshopOpen
+    ) return;
+    event.preventDefault();
+    event.stopPropagation();
+    toggleSavedDeckArchiveView(scene, state, dependencies);
+  };
+  const onSavedDeckArchive = (event: KeyboardEvent) => {
+    if (
+      state.badgeView !== 'folios'
+      || state.focus !== 'folios'
+      || state.savedDeckRenameInput
+      || state.savedDeckCodeInput
+      || state.savedDeckLabOpen
+      || state.savedDeckWorkshopOpen
+    ) return;
+    event.preventDefault();
+    event.stopPropagation();
+    toggleSelectedSavedDeckArchived(scene, state, dependencies);
+  };
+  const onSavedDeckLabDeal = (event: KeyboardEvent) => {
+    if (!state.savedDeckLabOpen) return;
+    event.preventDefault();
+    event.stopPropagation();
+    cycleSavedDeckLabSample(scene, state, dependencies, 1);
+  };
+  const onSavedDeckWorkshop = (event: KeyboardEvent) => {
+    if (!state.savedDeckLabOpen || state.savedDeckWorkshopOpen) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openSavedDeckWorkshop(scene, state, dependencies);
+  };
+  const onSavedDeckWorkshopSuggestionUp = (event: KeyboardEvent) => {
+    if (!state.savedDeckWorkshopOpen) return;
+    event.preventDefault();
+    event.stopPropagation();
+    cycleSavedDeckWorkshopSuggestion(scene, state, dependencies, -1);
+  };
+  const onSavedDeckWorkshopSuggestionDown = (event: KeyboardEvent) => {
+    if (!state.savedDeckWorkshopOpen) return;
+    event.preventDefault();
+    event.stopPropagation();
+    cycleSavedDeckWorkshopSuggestion(scene, state, dependencies, 1);
   };
   scene.input.keyboard?.on('keydown-TAB', onTab);
   scene.input.keyboard?.on('keydown-PAGE_UP', onPageUp);
   scene.input.keyboard?.on('keydown-PAGE_DOWN', onPageDown);
   scene.input.keyboard?.on('keydown-C', onSavedDeckFavorite);
   scene.input.keyboard?.on('keydown-R', onSavedDeckRename);
+  scene.input.keyboard?.on('keydown-D', onSavedDeckDuplicate);
+  scene.input.keyboard?.on('keydown-E', onSavedDeckCopy);
+  scene.input.keyboard?.on('keydown-I', onSavedDeckImport);
+  scene.input.keyboard?.on('keydown-L', onSavedDeckLab);
+  scene.input.keyboard?.on('keydown-V', onSavedDeckArchiveView);
+  scene.input.keyboard?.on('keydown-A', onSavedDeckArchive);
+  scene.input.keyboard?.on('keydown-SPACE', onSavedDeckLabDeal);
+  scene.input.keyboard?.on('keydown-T', onSavedDeckWorkshop);
+  scene.input.keyboard?.on('keydown-UP', onSavedDeckWorkshopSuggestionUp);
+  scene.input.keyboard?.on('keydown-DOWN', onSavedDeckWorkshopSuggestionDown);
   scene.input.gamepad?.on('down', onGamepadDown);
   scene.events.once('shutdown', () => {
     closeSavedDeckRename(state);
+    closeSavedDeckImport(state);
     scene.input.keyboard?.off('keydown-TAB', onTab);
     scene.input.keyboard?.off('keydown-PAGE_UP', onPageUp);
     scene.input.keyboard?.off('keydown-PAGE_DOWN', onPageDown);
     scene.input.keyboard?.off('keydown-C', onSavedDeckFavorite);
     scene.input.keyboard?.off('keydown-R', onSavedDeckRename);
+    scene.input.keyboard?.off('keydown-D', onSavedDeckDuplicate);
+    scene.input.keyboard?.off('keydown-E', onSavedDeckCopy);
+    scene.input.keyboard?.off('keydown-I', onSavedDeckImport);
+    scene.input.keyboard?.off('keydown-L', onSavedDeckLab);
+    scene.input.keyboard?.off('keydown-V', onSavedDeckArchiveView);
+    scene.input.keyboard?.off('keydown-A', onSavedDeckArchive);
+    scene.input.keyboard?.off('keydown-SPACE', onSavedDeckLabDeal);
+    scene.input.keyboard?.off('keydown-T', onSavedDeckWorkshop);
+    scene.input.keyboard?.off('keydown-UP', onSavedDeckWorkshopSuggestionUp);
+    scene.input.keyboard?.off('keydown-DOWN', onSavedDeckWorkshopSuggestionDown);
     scene.input.gamepad?.off('down', onGamepadDown);
   });
 
@@ -985,8 +1700,31 @@ export function renderProfileScene(
   const showcaseEntries = cardShowcase
     .map((id) => dependencies.cardShowcaseEntry(id))
     .filter((entry): entry is ProfileShowcaseEntry => Boolean(entry));
-  const savedDecks = sanitizeSavedDecks(account.decks);
+  const allSavedDecks = sanitizeSavedDecks(account.decks);
+  const activeDecks = activeSavedDecks(allSavedDecks);
+  const archivedDecks = archivedSavedDecks(allSavedDecks);
+  const savedDecks = state.savedDeckArchiveView ? archivedDecks : activeDecks;
   state.savedDeckIndex = Phaser.Math.Clamp(state.savedDeckIndex, 0, Math.max(0, savedDecks.length - 1));
+  if (state.savedDeckLabOpen && savedDecks.length === 0) state.savedDeckLabOpen = false;
+  const savedDeckLab = state.savedDeckLabOpen && savedDecks[state.savedDeckIndex]
+    ? analyzeSavedDeck(savedDecks[state.savedDeckIndex], alphaCardLibrary, state.savedDeckLabSample)
+    : undefined;
+  let savedDeckWorkshop = state.savedDeckWorkshopOpen
+    ? savedDeckWorkshopState(state, account)
+    : undefined;
+  if (state.savedDeckWorkshopOpen && !savedDeckWorkshop) {
+    state.savedDeckWorkshopOpen = false;
+    state.savedDeckWorkshopDeckId = undefined;
+    savedDeckWorkshop = undefined;
+  }
+  if (savedDeckWorkshop) {
+    state.savedDeckWorkshopCardIndex = savedDeckWorkshop.cardIndex;
+    state.savedDeckWorkshopSuggestionIndex = Phaser.Math.Clamp(
+      state.savedDeckWorkshopSuggestionIndex,
+      0,
+      Math.max(0, savedDeckWorkshop.suggestions.length - 1),
+    );
+  }
   const winRate = account.runs > 0 ? Math.round((account.wins / account.runs) * 100) : 0;
   const leaderRecordRows = flockLeaders.map((leader) => ({
     id: leader.id,
@@ -1070,8 +1808,12 @@ export function renderProfileScene(
       persisted: true,
     },
     savedFlightFolios: {
-      count: savedDecks.length,
+      count: activeDecks.length,
       capacity: SAVED_DECK_LIMIT,
+      archivedCount: archivedDecks.length,
+      archiveCapacity: SAVED_DECK_ARCHIVE_LIMIT,
+      view: state.savedDeckArchiveView ? 'archive' : 'active',
+      viewCount: savedDecks.length,
       items: savedDecks.map((deck) => ({
         id: deck.id,
         name: deck.name,
@@ -1080,14 +1822,18 @@ export function renderProfileScene(
         cardCount: deck.cards.length,
         upgradedCount: deck.cards.filter((card) => card.upgraded).length,
         cards: deck.cards.map((card) => ({ ...card })),
+        lineageId: deck.lineageId,
+        revision: deck.revision,
+        parentId: deck.parentId ?? null,
         favorite: deck.favorite,
+        archived: deck.archived,
         sourceSeed: deck.sourceSeed,
         runMode: deck.runMode,
         createdAt: deck.createdAt,
         updatedAt: deck.updatedAt,
       })),
       empty: savedDecks.length === 0,
-      full: savedDecks.length >= SAVED_DECK_LIMIT,
+      full: activeDecks.length >= SAVED_DECK_LIMIT,
       selected: savedDecks[state.savedDeckIndex]?.id ?? null,
       selectedIndex: savedDecks.length > 0 ? state.savedDeckIndex : null,
       viewActive: state.badgeView === 'folios',
@@ -1095,13 +1841,115 @@ export function renderProfileScene(
       pageCount: badgePageCount,
       status: state.savedDeckStatus,
       renaming: Boolean(state.savedDeckRenameInput),
+      importing: Boolean(state.savedDeckCodeInput),
       persisted: true,
       affectsPower: false,
       refusesReplacementAtCapacity: true,
+      canDuplicate: !state.savedDeckArchiveView && savedDecks.length > 0 && activeDecks.length < SAVED_DECK_LIMIT,
+      canImport: activeDecks.length < SAVED_DECK_LIMIT,
+      canArchive: !state.savedDeckArchiveView && savedDecks.length > 0 && archivedDecks.length < SAVED_DECK_ARCHIVE_LIMIT,
+      canRestore: state.savedDeckArchiveView && savedDecks.length > 0 && activeDecks.length < SAVED_DECK_LIMIT,
+      archiveRefusesDeletion: true,
+      shareCode: {
+        version: SAVED_DECK_CODE_VERSION,
+        prefix: `BSF${SAVED_DECK_CODE_VERSION}`,
+        checksumValidated: true,
+        excludesAccountData: true,
+        excludesCustomName: true,
+        excludesFlightSeed: true,
+        preservesCardOrder: true,
+        preservesDuplicates: true,
+        preservesPreenedState: true,
+      },
+      flightLab: savedDeckLab ? {
+        open: true,
+        deckId: savedDecks[state.savedDeckIndex].id,
+        deckName: savedDecks[state.savedDeckIndex].name,
+        savedCopies: savedDeckLab.savedCopies,
+        playableCards: savedDeckLab.playableCards,
+        duplicateCopies: savedDeckLab.duplicateCopies,
+        unavailableCopies: savedDeckLab.unavailableCopies,
+        preenedCards: savedDeckLab.preenedCards,
+        legalForStandardFlight: savedDeckLab.legalForStandardFlight,
+        issues: savedDeckLab.issues,
+        averageCost: savedDeckLab.averageCost,
+        costCurve: savedDeckLab.costCurve,
+        roles: savedDeckLab.roles,
+        families: savedDeckLab.families,
+        resourceHooks: savedDeckLab.resourceHooks,
+        consistency: savedDeckLab.consistency,
+        sample: {
+          ...savedDeckLab.sample,
+          cards: savedDeckLab.sample.cards.map((card) => ({
+            id: card.id,
+            name: card.name,
+            cost: card.cost,
+            upgraded: card.upgraded,
+            family: card.family,
+            role: card.role,
+            playable: card.playable,
+            pressure: card.pressure,
+          })),
+        },
+        rules: savedDeckLab.rules,
+        inputs: {
+          previous: `${controlBindingLabel('previous')} / D-pad Left / LB`,
+          dealAgain: `${controlBindingLabel('next')} / ${controlBindingLabel('confirm')} / Space / A`,
+          close: `${controlBindingLabel('back')} / controller B / pointer`,
+        },
+      } : {
+        open: false,
+        available: savedDecks.length > 0,
+        input: 'L / controller R3 / pointer',
+        affectsPower: false,
+        spendsResources: false,
+      },
+      workshop: savedDeckWorkshop ? {
+        open: true,
+        deckId: savedDeckWorkshop.deck.id,
+        deckName: savedDeckWorkshop.deck.name,
+        sourceArchived: savedDeckWorkshop.deck.archived,
+        sourceCardIndex: savedDeckWorkshop.cardIndex,
+        sourceCardNumber: savedDeckWorkshop.cardIndex + 1,
+        sourceCardCount: savedDeckWorkshop.deck.cards.length,
+        sourceCard: {
+          id: savedDeckWorkshop.sourceCard.id,
+          name: savedDeckWorkshop.sourceName,
+          upgraded: savedDeckWorkshop.sourceCard.upgraded,
+          available: alphaCardLibrary.has(savedDeckWorkshop.sourceCard.id),
+        },
+        suggestionIndex: state.savedDeckWorkshopSuggestionIndex,
+        suggestions: savedDeckWorkshop.suggestions,
+        selectedSuggestion: savedDeckWorkshop.suggestions[state.savedDeckWorkshopSuggestionIndex] ?? null,
+        ownedCandidatesOnly: true,
+        createsNewRevision: true,
+        preservesSource: true,
+        replacementIsBase: true,
+        canSave: activeDecks.length < SAVED_DECK_LIMIT && savedDeckWorkshop.suggestions.length > 0,
+        activeCount: activeDecks.length,
+        capacity: SAVED_DECK_LIMIT,
+        status: state.savedDeckStatus,
+        inputs: {
+          sourceCard: `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} / LB / RB`,
+          suggestion: 'Up / Down / D-pad Up / Down / pointer',
+          save: `${controlBindingLabel('confirm')} / controller A / pointer`,
+          close: `${controlBindingLabel('back')} / controller B / pointer`,
+        },
+      } : {
+        open: false,
+        input: 'Flight Lab: T / controller X / pointer',
+        affectsPower: false,
+      },
       inputs: {
         select: `${controlBindingLabel('previous')} / ${controlBindingLabel('next')}`,
         favorite: 'C / controller X',
         rename: 'R / controller Y / pointer',
+        duplicate: 'D / controller LT / pointer',
+        copyCode: 'E / controller RT / pointer',
+        importCode: 'I / controller L3 / pointer',
+        flightLab: 'L / controller R3 / pointer',
+        archiveOrRestore: 'A / controller Start / pointer',
+        switchLibrary: 'V / controller Select / pointer',
         page: 'Page Up / Page Down / LB / RB',
       },
     },
@@ -1209,7 +2057,7 @@ export function renderProfileScene(
     fill: UI_FIELD.ink,
   });
   renderProfileRecordFlourish(scene, state, dependencies, frame);
-  if (!state.saveDataOpen) {
+  if (!state.saveDataOpen && state.badgeView !== 'folios') {
     dependencies.renderAudioToggleControl(scene, () => {}, 48, 38);
     dependencies.renderCloseControl(scene, () => {}, frame.right - 64, frame.top + 42, () => scene.scene.start('MenuScene'));
   }
@@ -1333,7 +2181,18 @@ export function renderProfileScene(
   if (state.badgeView === 'showcase') {
     renderCardShowcase(scene, badgeX, frame.top, showcaseEntries);
   } else if (state.badgeView === 'folios') {
-    renderSavedFlightFolios(scene, state, dependencies, badgeX, frame.top, savedDecks, visibleSavedDecks, savedDeckVisibleStart);
+    renderSavedFlightFolios(
+      scene,
+      state,
+      dependencies,
+      badgeX,
+      frame.top,
+      savedDecks,
+      visibleSavedDecks,
+      savedDeckVisibleStart,
+      activeDecks.length,
+      archivedDecks.length,
+    );
   } else if (visibleBadges.length === 0) {
     scene.add.text(badgeX + 150, frame.top + 286, 'Complete a district contract to place its mark here.', {
       fontFamily: UI_FONT,
@@ -1451,6 +2310,575 @@ export function renderProfileScene(
   }
   if (state.saveDataOpen) renderSaveDataOverlay(scene, state, dependencies, playtestMode, playtestRuns.length);
   if (state.flightLogOpen) renderFlightLogOverlay(scene, state, dependencies, flightHistory);
+  if (state.savedDeckCodeInput) renderSavedDeckCodePrompt(scene);
+  if (state.savedDeckLabOpen && savedDeckLab) {
+    renderSavedDeckLab(scene, state, dependencies, savedDecks[state.savedDeckIndex], savedDeckLab);
+  }
+  if (state.savedDeckWorkshopOpen && savedDeckWorkshop) {
+    renderSavedDeckWorkshop(scene, state, dependencies, savedDeckWorkshop, activeDecks.length);
+  }
+}
+
+function renderSavedDeckCodePrompt(scene: Phaser.Scene) {
+  scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x02050a, 0.8)
+    .setInteractive()
+    .setName('profile-folio-import-scrim');
+  scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 720, 196, 0x081421, 0.98)
+    .setStrokeStyle(3, UI_FIELD.cyan, 0.94)
+    .setName('profile-folio-import-prompt-frame');
+  scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 68, `IMPORT BSF${SAVED_DECK_CODE_VERSION} FLIGHT CODE`, {
+    fontFamily: 'Georgia, serif',
+    fontSize: '24px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.warm,
+    stroke: '#020409',
+    strokeThickness: 3,
+  }).setResolution(2).setOrigin(0.5).setName('profile-folio-import-prompt-title');
+  scene.add.text(
+    GAME_WIDTH / 2,
+    GAME_HEIGHT / 2 + 62,
+    'Paste into the focused field  ·  Enter: Import  ·  Esc: Cancel\nVersion and checksum are verified before any save changes.',
+    {
+      fontFamily: UI_FONT,
+      fontSize: '13px',
+      fontStyle: UI_BOLD,
+      color: UI_FIELD.cyanText,
+      align: 'center',
+      lineSpacing: 6,
+    },
+  ).setResolution(2).setOrigin(0.5).setName('profile-folio-import-prompt-help');
+}
+
+function renderSavedDeckLab(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  deck: SavedDeckRecord,
+  analysis: SavedDeckLabAnalysis,
+) {
+  scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x02050a, 0.88)
+    .setInteractive()
+    .setName('profile-flight-lab-scrim');
+  scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 1040, 632, 0x07111c, 0.99)
+    .setStrokeStyle(3, UI_FIELD.cyan, 0.92)
+    .setName('profile-flight-lab-frame');
+  scene.add.text(154, 62, 'FLIGHT LAB', {
+    fontFamily: 'Georgia, serif',
+    fontSize: '29px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.warm,
+    stroke: '#020409',
+    strokeThickness: 4,
+  }).setResolution(2).setName('profile-flight-lab-title');
+  scene.add.text(154, 100, `${deck.name}  ·  REV ${deck.revision}`, {
+    fontFamily: UI_FONT,
+    fontSize: '13px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.cyanText,
+    fixedWidth: 620,
+  }).setResolution(2).setName('profile-flight-lab-deck-name');
+  const legalLabel = analysis.legalForStandardFlight ? 'STANDARD READY' : 'REVIEW NEEDED';
+  scene.add.rectangle(1030, 88, 192, 46, analysis.legalForStandardFlight ? 0x143a30 : 0x3b241b, 0.96)
+    .setStrokeStyle(2, analysis.legalForStandardFlight ? UI_FIELD.green : UI_FIELD.gold, 0.92);
+  scene.add.text(1030, 88, legalLabel, {
+    fontFamily: UI_FONT,
+    fontSize: '12px',
+    fontStyle: UI_BOLD,
+    color: analysis.legalForStandardFlight ? '#b9ffdb' : '#ffd7a0',
+  }).setResolution(2).setOrigin(0.5).setName('profile-flight-lab-legality');
+
+  scene.add.rectangle(336, 366, 392, 480, 0x0a1724, 0.96)
+    .setStrokeStyle(1, UI_FIELD.violet, 0.58);
+  scene.add.text(158, 142, 'DECK SHAPE', {
+    fontFamily: UI_FONT,
+    fontSize: '13px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.warm,
+  }).setResolution(2);
+  const metrics = [
+    ['SAVED', analysis.savedCopies],
+    ['PLAYABLE', analysis.playableCards],
+    ['PREENED', analysis.preenedCards],
+    ['AVG COST', analysis.averageCost.toFixed(2)],
+  ];
+  metrics.forEach(([label, value], index) => {
+    const x = 202 + index * 90;
+    scene.add.rectangle(x, 184, 80, 56, 0x0d2231, 0.94)
+      .setStrokeStyle(1, index === 3 ? UI_FIELD.gold : UI_FIELD.cyan, 0.58);
+    scene.add.text(x, 170, String(label), {
+      fontFamily: UI_FONT,
+      fontSize: '8px',
+      fontStyle: UI_BOLD,
+      color: UI_MUTED,
+    }).setResolution(2).setOrigin(0.5);
+    scene.add.text(x, 194, String(value), {
+      fontFamily: UI_FONT,
+      fontSize: '15px',
+      fontStyle: UI_BOLD,
+      color: index === 3 ? UI_FIELD.warm : UI_FIELD.cyanText,
+    }).setResolution(2).setOrigin(0.5);
+  });
+
+  scene.add.text(158, 228, 'COST CURVE', {
+    fontFamily: UI_FONT,
+    fontSize: '10px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.cyanText,
+  }).setResolution(2);
+  const maxCurve = Math.max(1, ...analysis.costCurve.map((entry) => entry.count));
+  analysis.costCurve.forEach((entry, index) => {
+    const x = 202 + index * 90;
+    const height = 10 + Math.round(entry.count / maxCurve * 38);
+    scene.add.rectangle(x, 286 - height / 2, 50, height, index === 3 ? UI_FIELD.gold : UI_FIELD.violet, 0.74)
+      .setStrokeStyle(1, index === 3 ? UI_FIELD.gold : UI_FIELD.cyan, 0.7);
+    scene.add.text(x, 298, `${entry.label}  ·  ${entry.count}`, {
+      fontFamily: UI_FONT,
+      fontSize: '9px',
+      fontStyle: UI_BOLD,
+      color: UI_SOFT,
+    }).setResolution(2).setOrigin(0.5);
+  });
+
+  const compactRows: Array<[string, Array<{ label: string; count: number }>]> = [
+    ['ROLES', analysis.roles],
+    ['FAMILIES', analysis.families],
+    ['RESOURCE HOOKS', analysis.resourceHooks],
+  ];
+  compactRows.forEach(([label, entries], index) => {
+    const y = 330 + index * 62;
+    scene.add.text(158, y, label, {
+      fontFamily: UI_FONT,
+      fontSize: '9px',
+      fontStyle: UI_BOLD,
+      color: UI_MUTED,
+    }).setResolution(2);
+    scene.add.text(158, y + 20, entries.map((entry) => `${entry.label} ${entry.count}`).join('  ·  ') || 'None', {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      fontStyle: UI_BOLD,
+      color: UI_SOFT,
+      fixedWidth: 354,
+      wordWrap: { width: 354 },
+      maxLines: 2,
+    }).setResolution(2);
+  });
+  const issueText = analysis.issues.length > 0
+    ? analysis.issues.join('\n')
+    : 'Current singleton rules recognize every saved card. Practice never changes the folio.';
+  scene.add.rectangle(336, 552, 356, 90, analysis.issues.length > 0 ? 0x2d1d18 : 0x10271f, 0.9)
+    .setStrokeStyle(1, analysis.issues.length > 0 ? UI_FIELD.gold : UI_FIELD.green, 0.7);
+  scene.add.text(172, 520, analysis.issues.length > 0 ? 'WHY REVIEW IS NEEDED' : 'NON-DESTRUCTIVE PRACTICE', {
+    fontFamily: UI_FONT,
+    fontSize: '9px',
+    fontStyle: UI_BOLD,
+    color: analysis.issues.length > 0 ? '#ffd7a0' : '#b9ffdb',
+  }).setResolution(2);
+  scene.add.text(172, 540, issueText, {
+    fontFamily: UI_FONT,
+    fontSize: '10px',
+    color: UI_SOFT,
+    fixedWidth: 328,
+    wordWrap: { width: 328 },
+    maxLines: 3,
+  }).setResolution(2).setName('profile-flight-lab-issues');
+
+  scene.add.rectangle(826, 366, 548, 480, 0x091622, 0.96)
+    .setStrokeStyle(1, UI_FIELD.cyan, 0.52);
+  scene.add.text(566, 142, `SAMPLE HAND ${analysis.sample.number}`, {
+    fontFamily: UI_FONT,
+    fontSize: '13px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.warm,
+  }).setResolution(2).setName('profile-flight-lab-sample-title');
+  scene.add.text(1100, 144, `${analysis.rules.wingbeats} WINGBEATS  ·  ${analysis.rules.handSize} DRAW`, {
+    fontFamily: UI_FONT,
+    fontSize: '9px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.cyanText,
+  }).setResolution(2).setOrigin(1, 0);
+  analysis.sample.cards.forEach((card, index) => {
+    const x = 610 + index * 104;
+    const y = 250;
+    scene.add.rectangle(x, y, 92, 150, card.playable ? 0x102637 : 0x1d1820, 0.98)
+      .setStrokeStyle(2, card.pressure ? UI_FIELD.gold : card.playable ? UI_FIELD.cyan : UI_FIELD.violet, 0.8)
+      .setName('profile-flight-lab-card-frame')
+      .setData('cardId', card.id);
+    const entry = dependencies.cardShowcaseEntry(card.id);
+    if (entry?.artKey && scene.textures.exists(entry.artKey)) {
+      scene.textures.get(entry.artKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+      scene.add.image(x, y - 14, entry.artKey)
+        .setDisplaySize(84, 116)
+        .setName('profile-flight-lab-card-art')
+        .setData('cardId', card.id);
+    } else {
+      scene.add.text(x, y - 14, card.name, {
+        fontFamily: UI_FONT,
+        fontSize: '11px',
+        fontStyle: UI_BOLD,
+        color: UI_FIELD.warm,
+        align: 'center',
+        wordWrap: { width: 74 },
+      }).setResolution(2).setOrigin(0.5);
+    }
+    scene.add.circle(x - 33, y - 58, 14, 0x08111b, 0.98)
+      .setStrokeStyle(2, UI_FIELD.gold, 0.9);
+    scene.add.text(x - 33, y - 58, `${card.cost}`, {
+      fontFamily: UI_FONT,
+      fontSize: '13px',
+      fontStyle: UI_BOLD,
+      color: UI_FIELD.warm,
+    }).setResolution(2).setOrigin(0.5);
+    scene.add.text(x, y + 48, `${card.upgraded ? 'PREENED  ·  ' : ''}${card.role.toUpperCase()}`, {
+      fontFamily: UI_FONT,
+      fontSize: '8px',
+      fontStyle: UI_BOLD,
+      color: card.playable ? UI_FIELD.cyanText : '#d9a9bd',
+      fixedWidth: 86,
+      align: 'center',
+    }).setResolution(2).setOrigin(0.5);
+  });
+  if (analysis.sample.cards.length === 0) {
+    scene.add.text(826, 250, 'No currently playable card definitions are available for this folio.', {
+      fontFamily: UI_FONT,
+      fontSize: '13px',
+      color: UI_SOFT,
+      align: 'center',
+      fixedWidth: 480,
+      wordWrap: { width: 480 },
+    }).setResolution(2).setOrigin(0.5);
+  }
+  scene.add.text(
+    826,
+    350,
+    `${analysis.sample.playableCount}/${analysis.sample.cards.length} playable now  ·  ${analysis.sample.pressureCount} pressure  ·  ${analysis.sample.totalCost} total cost  ·  ${analysis.sample.protectionSwaps} protection swaps`,
+    {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      fontStyle: UI_BOLD,
+      color: UI_FIELD.cyanText,
+      fixedWidth: 500,
+      align: 'center',
+    },
+  ).setResolution(2).setOrigin(0.5).setName('profile-flight-lab-sample-summary');
+  scene.add.text(566, 390, `DRAW CONSISTENCY  ·  ${analysis.consistency.sampleCount} DETERMINISTIC HANDS`, {
+    fontFamily: UI_FONT,
+    fontSize: '10px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.warm,
+  }).setResolution(2);
+  const pressureText = analysis.consistency.pressureAvailable
+    ? `${analysis.consistency.pressurePercent}% pressure`
+    : 'No pressure card in deck';
+  const consistencyRows = [
+    `${analysis.consistency.averagePlayable} avg playable  ·  ${analysis.consistency.atLeastTwoPlayablePercent}% open with two playable`,
+    `${pressureText}  ·  ${analysis.consistency.uniqueHands}/${analysis.consistency.sampleCount} distinct hands`,
+    `${analysis.consistency.averageProtectionSwaps} avg protection swaps  ·  exact folio order remains unchanged`,
+  ];
+  consistencyRows.forEach((row, index) => {
+    scene.add.rectangle(826, 430 + index * 38, 500, 30, 0x0d2231, 0.9)
+      .setStrokeStyle(1, index === 1 ? UI_FIELD.gold : UI_FIELD.violet, 0.44);
+    scene.add.text(826, 430 + index * 38, row, {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      color: UI_SOFT,
+      align: 'center',
+      fixedWidth: 476,
+    }).setResolution(2).setOrigin(0.5);
+  });
+  scene.add.text(826, 552, 'Representative practice only  ·  no Scrap spent  ·  no save or run changes', {
+    fontFamily: UI_FONT,
+    fontSize: '10px',
+    fontStyle: UI_BOLD,
+    color: '#b9ffdb',
+  }).setResolution(2).setOrigin(0.5);
+
+  const tune = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    460,
+    626,
+    150,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Tune Copy',
+    true,
+    () => openSavedDeckWorkshop(scene, state, dependencies),
+    UI_FIELD.green,
+    false,
+  );
+  tune.setName('profile-flight-lab-tune-hit');
+  const previous = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    650,
+    626,
+    170,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Previous Hand',
+    state.savedDeckLabSample > 0,
+    () => cycleSavedDeckLabSample(scene, state, dependencies, -1),
+    UI_FIELD.violet,
+    false,
+  );
+  previous.setName('profile-flight-lab-previous-hit');
+  const deal = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    846,
+    626,
+    190,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Deal Again',
+    true,
+    () => cycleSavedDeckLabSample(scene, state, dependencies, 1),
+    UI_FIELD.gold,
+    false,
+  );
+  deal.setName('profile-flight-lab-deal-hit');
+  const close = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    1042,
+    626,
+    150,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Close Lab',
+    true,
+    () => closeSavedDeckLab(scene, state, dependencies),
+    UI_FIELD.cyan,
+    false,
+  );
+  close.setName('profile-flight-lab-close-hit');
+}
+
+function renderSavedDeckWorkshop(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  workshop: SavedDeckWorkshopState,
+  activeCount: number,
+) {
+  scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x02050a, 0.9)
+    .setInteractive()
+    .setName('profile-folio-workshop-scrim');
+  scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 1040, 632, 0x07111c, 0.995)
+    .setStrokeStyle(3, UI_FIELD.green, 0.92)
+    .setName('profile-folio-workshop-frame');
+  scene.add.text(154, 62, 'TUNING BENCH', {
+    fontFamily: 'Georgia, serif',
+    fontSize: '29px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.warm,
+    stroke: '#020409',
+    strokeThickness: 4,
+  }).setResolution(2).setName('profile-folio-workshop-title');
+  scene.add.text(154, 100, `${workshop.deck.name}  ·  REV ${workshop.deck.revision} SOURCE`, {
+    fontFamily: UI_FONT,
+    fontSize: '13px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.cyanText,
+    fixedWidth: 650,
+  }).setResolution(2).setName('profile-folio-workshop-deck-name');
+  const canSave = activeCount < SAVED_DECK_LIMIT && workshop.suggestions.length > 0;
+  const capacityLabel = activeCount >= SAVED_DECK_LIMIT
+    ? 'ARCHIVE AN ACTIVE FOLIO FIRST'
+    : 'SAVES AS A NEW REVISION';
+  scene.add.rectangle(1000, 88, 252, 46, canSave ? 0x143a30 : 0x3b241b, 0.96)
+    .setStrokeStyle(2, canSave ? UI_FIELD.green : UI_FIELD.gold, 0.92);
+  scene.add.text(1000, 88, capacityLabel, {
+    fontFamily: UI_FONT,
+    fontSize: '10px',
+    fontStyle: UI_BOLD,
+    color: canSave ? '#b9ffdb' : '#ffd7a0',
+  }).setResolution(2).setOrigin(0.5).setName('profile-folio-workshop-capacity');
+
+  scene.add.rectangle(336, 354, 392, 468, 0x0a1724, 0.96)
+    .setStrokeStyle(1, UI_FIELD.violet, 0.58);
+  scene.add.text(158, 138, `CARD ${workshop.cardIndex + 1} OF ${workshop.deck.cards.length} TO REPLACE`, {
+    fontFamily: UI_FONT,
+    fontSize: '11px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.warm,
+  }).setResolution(2).setName('profile-folio-workshop-source-position');
+  const sourceEntry = dependencies.cardShowcaseEntry(workshop.sourceCard.id);
+  if (sourceEntry?.artKey && scene.textures.exists(sourceEntry.artKey)) {
+    scene.textures.get(sourceEntry.artKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    scene.add.image(336, 310, sourceEntry.artKey)
+      .setDisplaySize(176, 264)
+      .setName('profile-folio-workshop-source-art')
+      .setData('cardId', workshop.sourceCard.id);
+  } else {
+    scene.add.rectangle(336, 310, 176, 264, 0x111c28, 0.98)
+      .setStrokeStyle(2, UI_FIELD.violet, 0.8);
+    scene.add.text(336, 300, workshop.sourceName, {
+      fontFamily: UI_FONT,
+      fontSize: '18px',
+      fontStyle: UI_BOLD,
+      color: UI_FIELD.warm,
+      align: 'center',
+      fixedWidth: 150,
+      wordWrap: { width: 150 },
+    }).setResolution(2).setOrigin(0.5);
+    if (!alphaCardLibrary.has(workshop.sourceCard.id)) {
+      scene.add.text(336, 376, 'DEFINITION UNAVAILABLE\nSAFE TO REPLACE', {
+        fontFamily: UI_FONT,
+        fontSize: '9px',
+        fontStyle: UI_BOLD,
+        color: '#ffd7a0',
+        align: 'center',
+      }).setResolution(2).setOrigin(0.5).setName('profile-folio-workshop-source-unavailable');
+    }
+  }
+  scene.add.text(336, 462, `${workshop.sourceName}${workshop.sourceCard.upgraded ? '  ·  PREENED' : '  ·  BASE'}`, {
+    fontFamily: UI_FONT,
+    fontSize: '11px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.cyanText,
+    align: 'center',
+    fixedWidth: 330,
+  }).setResolution(2).setOrigin(0.5).setName('profile-folio-workshop-source-name');
+
+  const previous = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    238,
+    538,
+    148,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Previous Card',
+    workshop.deck.cards.length > 1,
+    () => cycleSavedDeckWorkshopCard(scene, state, dependencies, -1),
+    UI_FIELD.violet,
+    false,
+  );
+  previous.setName('profile-folio-workshop-previous-hit');
+  const next = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    434,
+    538,
+    148,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Next Card',
+    workshop.deck.cards.length > 1,
+    () => cycleSavedDeckWorkshopCard(scene, state, dependencies, 1),
+    UI_FIELD.violet,
+    false,
+  );
+  next.setName('profile-folio-workshop-next-hit');
+
+  scene.add.rectangle(826, 354, 548, 468, 0x091622, 0.96)
+    .setStrokeStyle(1, UI_FIELD.cyan, 0.52);
+  scene.add.text(566, 138, 'OWNED ROLE-SIMILAR REPLACEMENTS', {
+    fontFamily: UI_FONT,
+    fontSize: '11px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.warm,
+  }).setResolution(2);
+  scene.add.text(1094, 140, 'UP / DOWN TO CHOOSE', {
+    fontFamily: UI_FONT,
+    fontSize: '8px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.cyanText,
+  }).setResolution(2).setOrigin(1, 0);
+  workshop.suggestions.forEach((candidate, index) => {
+    const y = 190 + index * 68;
+    const selected = index === state.savedDeckWorkshopSuggestionIndex;
+    const hit = scene.add.rectangle(826, y, 510, 58, selected ? 0x17364a : 0x0d2231, 0.96)
+      .setStrokeStyle(selected ? 3 : 1, selected ? UI_FIELD.green : UI_FIELD.violet, selected ? 0.96 : 0.42)
+      .setInteractive({ useHandCursor: true })
+      .setName('profile-folio-workshop-suggestion-hit')
+      .setData('cardId', candidate.id)
+      .setData('index', index);
+    hit.on('pointerdown', () => {
+      state.savedDeckWorkshopSuggestionIndex = index;
+      dependencies.playUiSound('confirm');
+      renderProfileScene(scene, state, dependencies);
+    });
+    const entry = dependencies.cardShowcaseEntry(candidate.id);
+    if (entry?.artKey && scene.textures.exists(entry.artKey)) {
+      scene.add.image(594, y, entry.artKey)
+        .setDisplaySize(36, 52)
+        .setName('profile-folio-workshop-suggestion-art')
+        .setData('cardId', candidate.id);
+    }
+    scene.add.circle(630, y, 15, 0x08111b, 0.98).setStrokeStyle(2, UI_FIELD.gold, 0.9);
+    scene.add.text(630, y, `${candidate.cost}`, {
+      fontFamily: UI_FONT,
+      fontSize: '13px',
+      fontStyle: UI_BOLD,
+      color: UI_FIELD.warm,
+    }).setResolution(2).setOrigin(0.5);
+    scene.add.text(656, y - 19, candidate.name, {
+      fontFamily: UI_FONT,
+      fontSize: '12px',
+      fontStyle: UI_BOLD,
+      color: selected ? '#b9ffdb' : UI_FIELD.warm,
+      fixedWidth: 210,
+    }).setResolution(2);
+    scene.add.text(1080, y - 18, `${candidate.family.toUpperCase()}  ·  ${candidate.role.toUpperCase()}`, {
+      fontFamily: UI_FONT,
+      fontSize: '8px',
+      fontStyle: UI_BOLD,
+      color: UI_FIELD.cyanText,
+    }).setResolution(2).setOrigin(1, 0);
+    scene.add.text(656, y + 3, candidate.reasons.join('  ·  '), {
+      fontFamily: UI_FONT,
+      fontSize: '9px',
+      color: UI_SOFT,
+      fixedWidth: 420,
+    }).setResolution(2);
+  });
+  if (workshop.suggestions.length === 0) {
+    scene.add.text(826, 326, 'No other permanently owned cards are valid for this slot.\nClaim more cards, then return to tune this Folio.', {
+      fontFamily: UI_FONT,
+      fontSize: '14px',
+      color: UI_SOFT,
+      align: 'center',
+      fixedWidth: 460,
+      wordWrap: { width: 460 },
+      lineSpacing: 8,
+    }).setResolution(2).setOrigin(0.5).setName('profile-folio-workshop-empty');
+  }
+  const selectedSuggestion = workshop.suggestions[state.savedDeckWorkshopSuggestionIndex];
+  scene.add.text(826, 538, selectedSuggestion
+    ? `${workshop.sourceName}  →  ${selectedSuggestion.name}  ·  source remains unchanged`
+    : 'Source remains unchanged  ·  no revision can be created yet', {
+    fontFamily: UI_FONT,
+    fontSize: '10px',
+    fontStyle: UI_BOLD,
+    color: selectedSuggestion ? '#b9ffdb' : '#ffd7a0',
+    align: 'center',
+    fixedWidth: 500,
+  }).setResolution(2).setOrigin(0.5).setName('profile-folio-workshop-summary');
+
+  const save = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    824,
+    626,
+    250,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    activeCount >= SAVED_DECK_LIMIT ? 'Active Folios Full' : 'Save Tuned Revision',
+    canSave,
+    () => saveSavedDeckWorkshopRevision(scene, state, dependencies),
+    UI_FIELD.green,
+    false,
+  );
+  save.setName('profile-folio-workshop-save-hit');
+  const close = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    1060,
+    626,
+    150,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Back to Lab',
+    true,
+    () => closeSavedDeckWorkshop(scene, state, dependencies),
+    UI_FIELD.cyan,
+    false,
+  );
+  close.setName('profile-folio-workshop-close-hit');
 }
 
 function renderSavedFlightFolios(
@@ -1462,22 +2890,60 @@ function renderSavedFlightFolios(
   allDecks: readonly SavedDeckRecord[],
   visibleDecks: readonly SavedDeckRecord[],
   visibleStart: number,
+  activeCount: number,
+  archivedCount: number,
 ) {
-  scene.add.text(x + 150, top + 253, 'SAVED FLIGHT FOLIOS', {
+  scene.add.text(x + 48, top + 253, state.savedDeckArchiveView ? 'ARCHIVE' : 'ACTIVE', {
     fontFamily: UI_FONT,
     fontSize: '11px',
     fontStyle: UI_BOLD,
     color: UI_FIELD.warm,
   }).setResolution(2).setOrigin(0.5).setName('profile-folios-title');
+  const textInputOpen = Boolean(
+    state.savedDeckRenameInput
+    || state.savedDeckCodeInput
+    || state.savedDeckLabOpen
+    || state.savedDeckWorkshopOpen
+  );
+  const libraryHit = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    x + 158,
+    top + 253,
+    108,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    state.savedDeckArchiveView ? `Active ${activeCount}` : `Archive ${archivedCount}`,
+    !textInputOpen,
+    () => toggleSavedDeckArchiveView(scene, state, dependencies),
+    UI_FIELD.violet,
+    false,
+  );
+  libraryHit.setName('profile-folio-library-hit');
+  const importHit = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    x + 260,
+    top + 253,
+    82,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Import',
+    activeCount < SAVED_DECK_LIMIT && !textInputOpen,
+    () => beginSavedDeckImport(scene, state, dependencies),
+    UI_FIELD.cyan,
+    false,
+  );
+  importHit.setName('profile-folio-import-hit');
 
   if (allDecks.length === 0) {
-    scene.add.rectangle(x + 150, top + 366, 282, 154, 0x0b1420, 0.88)
+    scene.add.rectangle(x + 150, top + 376, 282, 174, 0x0b1420, 0.88)
       .setStrokeStyle(1, UI_FIELD.violet, 0.52)
       .setName('profile-folios-empty-frame');
     scene.add.text(
       x + 150,
-      top + 366,
-      'No flights saved yet.\n\nOpen Deck Review during a flight,\nthen choose SAVE FLIGHT or press V / Y.\nSaved folios never change gameplay power.',
+      top + 376,
+      state.savedDeckArchiveView
+        ? `Archive is empty.\n\nArchive an active folio without deleting it.\nRestore when an active slot is open.\nV / controller Select returns to Active.`
+        : `No active flights saved yet.\n\nSave one from Route Deck Review,\nor import a checksum-validated BSF${SAVED_DECK_CODE_VERSION} code.\nArchived folios remain preserved.`,
       {
         fontFamily: UI_FONT,
         fontSize: '12px',
@@ -1487,18 +2953,28 @@ function renderSavedFlightFolios(
         wordWrap: { width: 244 },
       },
     ).setResolution(2).setOrigin(0.5).setName('profile-folios-empty');
+    if (state.savedDeckStatus === 'restored' || state.savedDeckStatus === 'archived') {
+      scene.add.text(x + 150, top + 486, state.savedDeckStatus === 'restored'
+        ? 'FOLIO RESTORED TO ACTIVE'
+        : 'FOLIO ARCHIVED WITHOUT DELETION', {
+        fontFamily: UI_FONT,
+        fontSize: '9px',
+        fontStyle: UI_BOLD,
+        color: UI_FIELD.cyanText,
+      }).setResolution(2).setOrigin(0.5).setName('profile-folio-status');
+    }
     return;
   }
 
   visibleDecks.forEach((deck, visibleIndex) => {
     const index = visibleStart + visibleIndex;
-    const y = top + 302 + visibleIndex * 76;
+    const y = top + 314 + visibleIndex * 82;
     const selected = index === state.savedDeckIndex;
     const leader = flockLeaders.find((candidate) => candidate.id === deck.leaderId)?.name ?? deck.leaderId;
     const cardNames = deck.cards.slice(0, 3).map((saved) => (
       alphaCardSet.cards.find((card) => card.id === saved.id)?.displayName ?? saved.id
     ));
-    const hit = scene.add.rectangle(x + 150, y, 300, 68, selected ? 0x183451 : 0x0d1420, 0.94)
+    const hit = scene.add.rectangle(x + 150, y, 300, 76, selected ? 0x183451 : 0x0d1420, 0.94)
       .setStrokeStyle(selected ? 3 : 1, selected ? UI_FIELD.cyan : deck.favorite ? UI_FIELD.gold : UI_FIELD.violet, selected ? 0.98 : 0.52)
       .setInteractive({ useHandCursor: true })
       .setName('profile-folio-row-hit')
@@ -1508,21 +2984,21 @@ function renderSavedFlightFolios(
       state.focus = 'folios';
       selectSavedDeck(scene, state, dependencies, index);
     });
-    scene.add.text(x + 20, y - 26, `${deck.favorite ? '★ ' : ''}${deck.name}`, {
+    scene.add.text(x + 20, y - 31, `${deck.favorite ? '★ ' : ''}${deck.name}`, {
       fontFamily: UI_FONT,
       fontSize: '13px',
       fontStyle: UI_BOLD,
       color: deck.favorite ? UI_GOLD : UI_FIELD.warm,
       fixedWidth: 258,
     }).setResolution(2).setName('profile-folio-name').setData('deckId', deck.id);
-    scene.add.text(x + 20, y - 7, `${leader.toUpperCase()}  ·  ${deck.cards.length} CARDS  ·  ${deck.cards.filter((card) => card.upgraded).length} PREENED`, {
+    scene.add.text(x + 20, y - 11, `${leader.toUpperCase()}  ·  ${deck.cards.length} CARDS  ·  ${deck.cards.filter((card) => card.upgraded).length} PREENED  ·  REV ${deck.revision}`, {
       fontFamily: UI_FONT,
       fontSize: '9px',
       fontStyle: UI_BOLD,
       color: UI_FIELD.cyanText,
       fixedWidth: 260,
     }).setResolution(2);
-    scene.add.text(x + 20, y + 11, `${cardNames.join(', ')}${deck.cards.length > 3 ? ', …' : ''}`, {
+    scene.add.text(x + 20, y + 10, `${cardNames.join(', ')}${deck.cards.length > 3 ? ', …' : ''}`, {
       fontFamily: UI_FONT,
       fontSize: '9px',
       color: UI_MUTED,
@@ -1531,22 +3007,46 @@ function renderSavedFlightFolios(
   });
 
   const selected = allDecks[state.savedDeckIndex];
-  const status = state.savedDeckRenameInput
-    ? 'TYPE A NAME  ·  ENTER SAVE  ·  ESC CANCEL'
+  const status = state.savedDeckCodeInput
+    ? `PASTE BSF${SAVED_DECK_CODE_VERSION} CODE  ·  ENTER IMPORT  ·  ESC CANCEL`
+    : state.savedDeckRenameInput
+      ? 'TYPE A NAME  ·  ENTER SAVE  ·  ESC CANCEL'
     : state.savedDeckStatus === 'favorited'
       ? 'FAVORITE SAVED'
       : state.savedDeckStatus === 'unfavorited'
         ? 'FAVORITE REMOVED'
         : state.savedDeckStatus === 'renamed'
           ? 'CUSTOM NAME SAVED'
+          : state.savedDeckStatus === 'duplicated'
+            ? 'FORK SAVED  ·  ORIGINAL REVISION KEPT'
+            : state.savedDeckStatus === 'tuned'
+              ? 'TUNED REVISION SAVED  ·  SOURCE FOLIO KEPT'
+            : state.savedDeckStatus === 'archived'
+              ? 'ARCHIVED  ·  ORIGINAL IDENTITY + REVISION PRESERVED'
+              : state.savedDeckStatus === 'restored'
+                ? 'RESTORED TO ACTIVE  ·  ORIGINAL IDENTITY PRESERVED'
+                : state.savedDeckStatus === 'archiveFull'
+                  ? `ARCHIVE FULL  ·  ${SAVED_DECK_ARCHIVE_LIMIT} FOLIOS PRESERVED`
+                  : state.savedDeckStatus === 'activeFull'
+                    ? 'ACTIVE FOLIOS FULL  ·  ARCHIVE RECORD KEPT'
+            : state.savedDeckStatus === 'full'
+              ? 'FOLIOS FULL  ·  NO ORIGINAL WAS REPLACED'
+              : state.savedDeckStatus === 'codeCopied'
+                ? `BSF${SAVED_DECK_CODE_VERSION} CODE COPIED  ·  PRIVATE DATA EXCLUDED`
+                : state.savedDeckStatus === 'copyFailed'
+                  ? 'COPY FAILED  ·  FOLIO UNCHANGED'
+                  : state.savedDeckStatus === 'imported'
+                    ? 'SHARED FLIGHT IMPORTED AS A NEW LINE'
+                    : state.savedDeckStatus === 'invalidCode'
+                      ? 'CODE REJECTED  ·  CHECK VERSION + CHECKSUM'
           : state.savedDeckStatus === 'failed'
             ? 'SAVE FAILED  ·  ORIGINAL FOLIO KEPT'
-            : 'PREV/NEXT SELECT  ·  C/X FAVORITE  ·  R/Y RENAME';
-  scene.add.text(x + 150, top + 445, status, {
+            : 'IMMUTABLE REVISIONS  ·  FORK BEFORE EXPERIMENTING';
+  scene.add.text(x + 150, top + 371, status, {
     fontFamily: UI_FONT,
     fontSize: '9px',
     fontStyle: UI_BOLD,
-    color: state.savedDeckStatus === 'failed' ? '#ffb09a' : UI_FIELD.cyanText,
+    color: ['failed', 'copyFailed', 'invalidCode', 'full', 'archiveFull', 'activeFull'].includes(state.savedDeckStatus) ? '#ffb09a' : UI_FIELD.cyanText,
     fixedWidth: 300,
     align: 'center',
   }).setResolution(2).setOrigin(0.5).setName('profile-folio-status');
@@ -1554,12 +3054,12 @@ function renderSavedFlightFolios(
   const favorite = dependencies.renderFieldButton(
     scene,
     () => {},
-    x + 76,
-    top + 474,
-    132,
+    x + 48,
+    top + 405,
+    84,
     MIN_SUPPORTED_TOUCH_TARGET,
     selected?.favorite ? 'Unfavorite' : 'Favorite',
-    Boolean(selected) && !state.savedDeckRenameInput,
+    Boolean(selected) && !textInputOpen,
     () => toggleSelectedSavedDeckFavorite(scene, state, dependencies),
     UI_FIELD.gold,
     false,
@@ -1568,17 +3068,75 @@ function renderSavedFlightFolios(
   const rename = dependencies.renderFieldButton(
     scene,
     () => {},
-    x + 224,
-    top + 474,
-    132,
+    x + 150,
+    top + 405,
+    84,
     MIN_SUPPORTED_TOUCH_TARGET,
     'Rename',
-    Boolean(selected) && !state.savedDeckRenameInput,
+    Boolean(selected) && !textInputOpen,
     () => beginSavedDeckRename(scene, state, dependencies),
     UI_FIELD.violet,
     false,
   );
   rename.setName('profile-folio-rename-hit');
+  const archive = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    x + 252,
+    top + 405,
+    84,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    selected?.archived ? 'Restore' : 'Archive',
+    Boolean(selected)
+      && !textInputOpen
+      && (selected?.archived ? activeCount < SAVED_DECK_LIMIT : archivedCount < SAVED_DECK_ARCHIVE_LIMIT),
+    () => toggleSelectedSavedDeckArchived(scene, state, dependencies),
+    selected?.archived ? UI_FIELD.green : UI_FIELD.gold,
+    false,
+  );
+  archive.setName('profile-folio-archive-hit');
+  const duplicate = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    x + 48,
+    top + 455,
+    84,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Fork Copy',
+    Boolean(selected) && activeCount < SAVED_DECK_LIMIT && !textInputOpen,
+    () => duplicateSelectedSavedDeck(scene, state, dependencies),
+    UI_FIELD.cyan,
+    false,
+  );
+  duplicate.setName('profile-folio-duplicate-hit');
+  const copy = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    x + 150,
+    top + 455,
+    84,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    `Copy BSF${SAVED_DECK_CODE_VERSION}`,
+    Boolean(selected) && !textInputOpen,
+    () => copySelectedSavedDeckCode(scene, state, dependencies),
+    UI_FIELD.violet,
+    false,
+  );
+  copy.setName('profile-folio-copy-code-hit');
+  const lab = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    x + 252,
+    top + 455,
+    84,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Flight Lab',
+    Boolean(selected) && !textInputOpen,
+    () => openSavedDeckLab(scene, state, dependencies),
+    UI_FIELD.violet,
+    false,
+  );
+  lab.setName('profile-folio-lab-hit');
 }
 
 function renderCardShowcase(

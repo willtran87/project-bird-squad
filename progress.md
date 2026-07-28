@@ -4530,3 +4530,177 @@ sessions through `docs/game/playtest-runbook.md`.
   fresh-player sessions remain necessary qualitative release evidence. A useful
   next milestone is deck-library duplication/version history or collection
   locking that builds on these durable identity records.
+
+## 2026-07-28 Safe Folio Forks And BSF1 Flight Codes
+
+- Extended Flight Folios into a reversible experimentation library. `Fork Copy`
+  creates a new exact record with a stable lineage id, numbered revision, and
+  parent link while retaining the trusted original unchanged. Repeated forks
+  normalize their names to one readable base plus the current revision instead
+  of accumulating suffixes.
+- Added compact, deterministic `BSF1` deck codes with a payload checksum.
+  Codes preserve leader, run mode, exact card order, duplicate copies, and
+  Base/Preened state while deliberately excluding account data, custom names,
+  favorites, timestamps, and private flight seeds.
+- Added pointer, keyboard, and controller access for fork (`D` / `LT`), copy
+  (`E` / `RT`), and import (`I` / `L3`). Import uses an accessible native input
+  for physical and on-screen keyboards plus a clear in-canvas modal prompt,
+  verifies version/checksum/deck shape before writing, and imports into a fresh
+  identity line.
+- The existing six-slot refusal contract applies to forks and imports: at
+  capacity the action is locked and no original or other folio is replaced.
+  Malformed lineage ids, revisions, and parent ids are sanitized at the same
+  route/Profile/backup boundaries as the underlying deck records.
+- Profile text state and screen-reader summaries expose revision lineage,
+  capacity, action availability, code version, checksum validation, privacy
+  exclusions, exact-card guarantees, and all input methods. One folio is shown
+  per page so the four 132x46 management actions and touch pagination remain
+  readable at the supported 1000x560 minimum landscape viewport.
+- Focused coverage proves pointer/keyboard/controller forks, original
+  preservation, exact decoded payload shape, checksum rejection without
+  mutation, valid import, repeated revision naming, capacity refusal,
+  minimum-viewport presentation, and screen-reader output. Adjacent original
+  Folio behavior, remapped Profile focus, and transactional backup restore
+  with revision lineage pass together.
+- Full `npm run validate` passes documentation, 110-card runtime data, 961
+  optimized assets, canonical-world and directionless attack-tell contracts,
+  deployment hardening, enemy variety, Minor Arcana overlays, bundle hard
+  gates, and all 24 critical sequencing scenarios. Game core remains at its
+  30.0 KiB hard cap; combined boot is 714.5 KiB / 192.9 KiB gzip, with the
+  existing 4.5 KiB preferred-target excess remaining advisory.
+- The required shared production client opened Flock Record -> Folios -> Import
+  from a clean account. Text state reported an active native import, complete
+  BSF1 integrity/privacy contracts, zero saved records changed, and no browser
+  errors. The inspected canvas capture and state are in
+  `.artifacts/flight-folio-library-shared-client-final/`; the full-page visual
+  proof including the native field is
+  `.artifacts/test-results/flight-folio-import-prompt.png`.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence. A useful
+  next deck-library milestone is sample-hand/test-draw analysis or richer deck
+  statistics that make experimentation feel more like play.
+
+## 2026-07-28 Flight Lab Deck Practice
+
+- Added a non-destructive Flight Lab to saved Flight Folios. It reports saved
+  versus currently playable cards, Preened count, average Wingbeat cost, cost
+  curve, card roles, families, resource hooks, singleton-rule duplicates, and
+  unavailable definitions without rewriting the underlying folio.
+- Sample Hand uses the same seeded shuffle and opening protection routine as
+  combat. Players can repeatedly deal five-card, three-Wingbeat hands and see
+  playable count, pressure access, total cost, and protection swaps. A
+  sixteen-hand consistency summary reports average playable cards, two-card
+  opening reliability, pressure frequency, distinct hands, and average swaps.
+- Practice seeds derive only from the exact shareable deck shape, leader, and
+  run mode. Custom names, account identity, timestamps, favorites, and private
+  flight seeds never influence or leak into the sample. Re-selecting a sample
+  index reproduces the exact hand; sampling never spends Scrap, affects power,
+  starts a run, or mutates the saved order.
+- Profile Folios expose pointer, keyboard, and controller access: Flight Lab
+  button, `L`, or controller R3 opens it; Previous/Next, Space, controller
+  shoulders/D-pad/A, and large touch commands deal samples; Back/controller B
+  closes it. Screen-reader narration includes the complete deck shape, sample,
+  consistency, legality issues, non-mutation guarantee, and controls.
+- Focused browser coverage proves duplicate and unavailable-card reporting,
+  exact curve/role/family statistics, deterministic replay, real protected
+  five-card hands, loaded art, byte-for-byte local-save preservation, all three
+  input methods, accessible narration, and minimum 1000x560 presentation.
+  Inspected visual evidence is
+  `.artifacts/test-results/flight-lab-profile.png`.
+- `npm run build` and the full `npm run validate` gate pass. Validation covers
+  110 cards, 961 optimized assets, canonical-world and directionless tell
+  contracts, deployment hardening, bundle hard limits, and all 25 critical
+  browser scenarios. Combined boot remains 714.6 KiB / 192.9 KiB gzip; the
+  existing 675 KiB entry and 710 KiB combined preferred targets remain advisory
+  warnings.
+- The required production shared client opened Flock Record -> Folios from a
+  clean account, confirmed the Lab is unavailable without a saved deck, and
+  emitted no browser errors. Its inspected screenshot and text state are under
+  `.artifacts/flight-lab-shared-client-final-v2/`.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Non-Destructive Flight Folio Archive
+
+- Added a durable Active/Archive split to Flight Folios so the six active slots
+  can be reused without deleting valued decks. Existing records migrate as
+  active; each archived record retains its id, lineage, revision, parent,
+  exact card order, Base/Preened state, custom name, favorite, source seed, and
+  run mode.
+- Active capacity remains six and now governs Route Deck Review saves, imports,
+  and forks. The archive retains up to 24 additional identities. Sanitization
+  independently caps both sides, rejects duplicate ids, and never lets excess
+  active records evict preserved archive records.
+- Archiving immediately frees an active slot. Restoring is enabled only when a
+  slot is open; keyboard attempts at full capacity report the reason and leave
+  local storage byte-for-byte unchanged. Forking an archived revision creates
+  a new active revision while preserving the archived source.
+- Flock Record now has explicit Active and Archive views, live counts, complete
+  empty states, a large Archive/Restore action, and readable locked feedback.
+  Pointer controls are joined by `V` / controller Select to switch libraries
+  and `A` / controller Start to archive or restore. Favorite, rename, BSF1
+  sharing, and Flight Lab inspection continue to work for archived records.
+- Profile text state and screen-reader narration expose active/archive counts,
+  capacities, selected state, action availability, safety guarantees, and all
+  controls. Route Deck Review separately reports the active count and how many
+  identities are archived.
+- Focused coverage proves legacy migration, 6+24 independent caps, pointer
+  archive, route reuse of the freed slot, checksum-stable sharing before and
+  after archive, full-capacity restore refusal without mutation, controller
+  library switching/archive, keyboard restore, and exact identity/card
+  preservation. All four adjacent Folio suites pass together.
+- The exact 1000x560 Archive-full state was visually inspected at
+  `.artifacts/test-results/flight-folio-archive-profile.png`. The required
+  production shared client opened Flock Record -> Folios from a clean account,
+  confirmed complete Active/Archive empty-state text and controls, and emitted
+  no browser errors; evidence is under
+  `.artifacts/flight-folio-archive-shared-client/`.
+- `npm run build`, strict TypeScript with unused checks, `git diff --check`, and
+  full `npm run validate` pass. Validation covers 110 cards, 961 optimized
+  assets, canonical-world and directionless tell contracts, deployment
+  hardening, bundle hard limits, and all 26 critical browser scenarios.
+  Combined boot is 715.2 KiB / 193.1 KiB gzip; the existing app-entry and
+  combined preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Immutable Role-Aware Folio Tuning
+
+- Added a Tuning Bench to Flight Lab that turns deck analysis into one-card
+  experiments without changing the saved source. Each successful tune creates
+  a new active revision in the same lineage, records its parent, preserves
+  every untouched card and card state exactly, and inserts the selected
+  replacement at Base state.
+- Replacement suggestions are restricted to cards permanently owned by the
+  account. Deterministic ranking prioritizes the source card's combat role,
+  family, Wingbeat cost, target, and resource hooks; it excludes Snags,
+  unavailable definitions, the source card, and cards already present in the
+  remaining saved deck.
+- The bench supports Base, Preened, and unavailable source entries, exposes up
+  to five readable recommendations with explicit reasons, and refuses to save
+  at the six-active-Folio limit without changing storage. The archived source
+  model and BSF1 privacy/integrity guarantees remain intact.
+- Pointer, keyboard, and controller flows are complete: the Lab's Tune Copy
+  command, `T`, or controller X opens the bench; arrows/Page Up/Page Down and
+  controller D-pad/shoulders choose the source and candidate; Enter/controller
+  A saves; Back/controller B returns to the Lab. Screen-reader narration
+  includes source state, recommendation evidence, capacity, immutable revision
+  behavior, and controls.
+- Focused coverage proves owned-only deterministic ranking, unavailable-source
+  handling, exact one-card replacement, unchanged source data, revision
+  lineage, all three input methods, loaded card art, and byte-for-byte
+  full-capacity refusal. The complete five-suite Folio regression group passes.
+  The inspected 1000x560 visual is
+  `.artifacts/test-results/flight-folio-tuning-bench.png`.
+- The required production shared client opened Flock Record -> Folios from a
+  clean account with valid complete text state and no browser errors. Its
+  inspected screenshot and state are under
+  `.artifacts/flight-folio-tuning-shared-client/`.
+- Strict TypeScript with unused checks, `git diff --check`, and full
+  `npm run validate` pass. Validation covers 110 cards, 961 optimized assets,
+  canonical-world and directionless attack-tell contracts, deployment
+  hardening, bundle hard limits, and all 27 critical browser scenarios.
+  Combined boot is 715.4 KiB / 193.2 KiB gzip; the app-entry and combined
+  preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.

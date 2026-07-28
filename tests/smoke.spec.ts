@@ -18365,6 +18365,9 @@ test('Flock Record previews and confirms a transactional save restore', async ({
         name: 'Restored Rooftop',
         leaderId: 'talon',
         cards: [{ id: 'major_00', upgraded: true }, { id: 'wands_ace', upgraded: false }],
+        lineageId: 'restore-lineage',
+        revision: 3,
+        parentId: 'restore-parent',
         createdAt: 1_718_323_200_000,
         updatedAt: 1_718_323_200_000,
         favorite: true,
@@ -18507,6 +18510,9 @@ test('Flock Record previews and confirms a transactional save restore', async ({
       name: 'Restored Rooftop',
       leaderId: 'talon',
       cards: [{ id: 'major_00', upgraded: true }, { id: 'wands_ace', upgraded: false }],
+      lineageId: 'restore-lineage',
+      revision: 3,
+      parentId: 'restore-parent',
       favorite: true,
       sourceSeed: 'restore-folio-seed',
       runMode: 'quick',
@@ -21993,7 +21999,7 @@ test('saved flight folios preserve exact decks, refuse replacement, and support 
     selectedIndex: 0,
     viewActive: true,
     page: 1,
-    pageCount: 3,
+    pageCount: 6,
     persisted: true,
     affectsPower: false,
     refusesReplacementAtCapacity: true,
@@ -22022,7 +22028,7 @@ test('saved flight folios preserve exact decks, refuse replacement, and support 
   expect(state.savedFlightFolios.renaming).toBe(false);
   await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
     timeout: 5_000,
-  }).toContain('Selected Canal Spark Archive, The Spark-Caller, 3 cards, favorite');
+  }).toContain('Selected Canal Spark Archive, The Spark-Caller, 3 cards, revision 1, favorite');
   await page.setViewportSize({ width: 1000, height: 560 });
   await page.screenshot({ path: '.artifacts/test-results/saved-flight-folios-profile.png', fullPage: true });
 
@@ -22043,6 +22049,827 @@ test('saved flight folios preserve exact decks, refuse replacement, and support 
       { id: 'wands_ace', upgraded: true },
     ],
   });
+});
+
+test('flight folio forks preserve revisions and BSF1 codes import exact privacy-safe decks', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => localStorage.setItem('test.flightCode', value),
+      },
+    });
+    const account = {
+      discoveredCards: ['major_00', 'wands_ace'],
+      favoriteCards: [],
+      cardCollection: {},
+      decks: [{
+        id: 'trusted-line',
+        name: 'Private Canary Notes',
+        leaderId: 'spark_caller',
+        cards: [
+          { id: 'major_00', upgraded: true },
+          { id: 'major_00', upgraded: false },
+          { id: 'wands_ace', upgraded: true },
+        ],
+        createdAt: 100,
+        updatedAt: 100,
+        favorite: true,
+        sourceSeed: 'private-flight-seed',
+        runMode: 'quick',
+      }],
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folios-tab-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.viewActive === true);
+
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios).toMatchObject({
+    count: 1,
+    capacity: 6,
+    page: 1,
+    pageCount: 1,
+    canDuplicate: true,
+    canImport: true,
+    shareCode: {
+      version: 1,
+      prefix: 'BSF1',
+      checksumValidated: true,
+      excludesAccountData: true,
+      excludesCustomName: true,
+      excludesFlightSeed: true,
+      preservesCardOrder: true,
+      preservesDuplicates: true,
+      preservesPreenedState: true,
+    },
+    inputs: {
+      duplicate: 'D / controller LT / pointer',
+      copyCode: 'E / controller RT / pointer',
+      importCode: 'I / controller L3 / pointer',
+    },
+  });
+  expect(state.savedFlightFolios.items[0]).toMatchObject({
+    id: 'trusted-line',
+    lineageId: 'trusted-line',
+    revision: 1,
+    parentId: null,
+  });
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('fork without changing the original');
+
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-duplicate-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'duplicated');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios).toMatchObject({ count: 2, selectedIndex: 0, page: 1, pageCount: 2 });
+  expect(state.savedFlightFolios.items[0]).toMatchObject({
+    name: 'Private Canary Notes Fork 2',
+    lineageId: 'trusted-line',
+    revision: 2,
+    parentId: 'trusted-line',
+    favorite: false,
+    sourceSeed: 'private-flight-seed',
+    cards: [
+      { id: 'major_00', upgraded: true },
+      { id: 'major_00', upgraded: false },
+      { id: 'wands_ace', upgraded: true },
+    ],
+  });
+  expect(state.savedFlightFolios.items[1]).toMatchObject({
+    id: 'trusted-line',
+    name: 'Private Canary Notes',
+    lineageId: 'trusted-line',
+    revision: 1,
+    parentId: null,
+    favorite: true,
+  });
+
+  await page.keyboard.press('e');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'codeCopied');
+  const copied = await page.evaluate(() => localStorage.getItem('test.flightCode') ?? '');
+  expect(copied).toMatch(/^BSF1\.[A-Za-z0-9_-]+\.[a-z0-9]+$/);
+  const decoded = await page.evaluate((code) => {
+    const payload = code.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(payload + '='.repeat((4 - payload.length % 4) % 4));
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(binary, (character) => character.charCodeAt(0))));
+  }, copied);
+  expect(decoded).toEqual([
+    'spark_caller',
+    1,
+    [['major_00', 1], ['major_00', 0], ['wands_ace', 1]],
+  ]);
+  expect(JSON.stringify(decoded)).not.toContain('Private Canary Notes');
+  expect(JSON.stringify(decoded)).not.toContain('private-flight-seed');
+
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-import-hit');
+  let codeInput = page.locator('input[aria-label="Flight share code"]');
+  await expect(codeInput).toBeVisible();
+  expect(await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    return [
+      'profile-folio-import-scrim',
+      'profile-folio-import-prompt-frame',
+      'profile-folio-import-prompt-title',
+      'profile-folio-import-prompt-help',
+    ].every((name) => profile.children.list.some((child: any) => child.name === name));
+  })).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/flight-folio-import-prompt.png', fullPage: true });
+  await codeInput.fill(`${copied.slice(0, -1)}x`);
+  await codeInput.press('Enter');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'invalidCode');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.count).toBe(2);
+  expect(state.savedFlightFolios.importing).toBe(false);
+
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 10 });
+  });
+  codeInput = page.locator('input[aria-label="Flight share code"]');
+  await expect(codeInput).toBeVisible();
+  await codeInput.fill(copied);
+  await codeInput.press('Enter');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'imported');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios).toMatchObject({ count: 3, selectedIndex: 0, page: 1, pageCount: 3 });
+  expect(state.savedFlightFolios.items[0]).toMatchObject({
+    name: 'Shared Flight',
+    leaderId: 'spark_caller',
+    revision: 1,
+    parentId: null,
+    favorite: false,
+    sourceSeed: '',
+    runMode: 'quick',
+    cards: [
+      { id: 'major_00', upgraded: true },
+      { id: 'major_00', upgraded: false },
+      { id: 'wands_ace', upgraded: true },
+    ],
+  });
+  expect(state.savedFlightFolios.items[0].lineageId).toBe(state.savedFlightFolios.items[0].id);
+
+  await page.keyboard.press('d');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.count === 4);
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 6 });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.count === 5);
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 7 });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'codeCopied');
+  await page.keyboard.press('d');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.count === 6);
+  const idsAtCapacity = await page.evaluate(() => (
+    JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}').decks.map((deck: any) => deck.id)
+  ));
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 6 });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'full');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios).toMatchObject({
+    count: 6,
+    full: true,
+    canDuplicate: false,
+    canImport: false,
+    refusesReplacementAtCapacity: true,
+  });
+  expect(await page.evaluate(() => (
+    JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}').decks.map((deck: any) => deck.id)
+  ))).toEqual(idsAtCapacity);
+
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.screenshot({ path: '.artifacts/test-results/flight-folio-library-profile.png', fullPage: true });
+});
+
+test('Flight Lab explains deck shape and replays deterministic protected sample hands without changing the folio', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.addInitScript(() => {
+    const cards = [
+      'major_00',
+      'wands_ace',
+      'wands_fledgling',
+      'swords_ace',
+      'swords_fledgling',
+      'cups_ace',
+      'cups_fledgling',
+      'pentacles_04',
+      'pentacles_fledgling',
+      'aviary_25',
+      'major_00',
+      'retired_rooftop_card',
+    ].map((id) => ({ id, upgraded: false }));
+    const account = {
+      discoveredCards: cards.map((card) => card.id),
+      favoriteCards: [],
+      cardCollection: {},
+      decks: [{
+        id: 'lab-flight',
+        lineageId: 'lab-flight',
+        revision: 1,
+        name: 'Canal Pressure Study',
+        leaderId: 'spark_caller',
+        cards,
+        createdAt: 100,
+        updatedAt: 100,
+        favorite: false,
+        sourceSeed: 'private-seed-that-must-not-drive-practice',
+        runMode: 'quick',
+      }],
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folios-tab-hit');
+  const folioBeforePractice = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
+
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-lab-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.flightLab?.open === true);
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.flightLab).toMatchObject({
+    open: true,
+    deckId: 'lab-flight',
+    deckName: 'Canal Pressure Study',
+    savedCopies: 12,
+    playableCards: 10,
+    duplicateCopies: 1,
+    unavailableCopies: 1,
+    preenedCards: 0,
+    legalForStandardFlight: false,
+    averageCost: 0.6,
+    costCurve: [
+      { label: '0', count: 4 },
+      { label: '1', count: 6 },
+      { label: '2', count: 0 },
+      { label: '3+', count: 0 },
+    ],
+    roles: [
+      { label: 'Pressure', count: 4 },
+      { label: 'Guard', count: 4 },
+      { label: 'Engine', count: 1 },
+      { label: 'Utility', count: 1 },
+    ],
+    families: [
+      { label: 'Plumes', count: 2 },
+      { label: 'Quills', count: 2 },
+      { label: 'Basins', count: 2 },
+      { label: 'Nests', count: 2 },
+      { label: 'Legend', count: 1 },
+      { label: 'Aviary', count: 1 },
+    ],
+    consistency: {
+      sampleCount: 16,
+      atLeastTwoPlayablePercent: 100,
+      pressureAvailable: true,
+      pressurePercent: 100,
+    },
+    sample: {
+      index: 0,
+      number: 1,
+      playableCount: 5,
+      pressureCount: 1,
+    },
+    rules: {
+      handSize: 5,
+      wingbeats: 3,
+      deterministic: true,
+      usesCombatOpeningProtection: true,
+      exactSavedOrderUnaffected: true,
+      affectsPower: false,
+      spendsResources: false,
+    },
+  });
+  expect(state.savedFlightFolios.flightLab.issues).toHaveLength(2);
+  expect(state.savedFlightFolios.flightLab.resourceHooks.length).toBeGreaterThan(0);
+  const firstSample = state.savedFlightFolios.flightLab.sample;
+  expect(firstSample.cards).toHaveLength(5);
+  expect(new Set(firstSample.cards.map((card: any) => card.id)).size).toBe(5);
+
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Flight Lab for Canal Pressure Study');
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('spends no Scrap');
+  expect(await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    const names = new Set(profile.children.list.map((child: any) => child.name));
+    return [
+      'profile-flight-lab-frame',
+      'profile-flight-lab-legality',
+      'profile-flight-lab-sample-title',
+      'profile-flight-lab-deal-hit',
+      'profile-flight-lab-close-hit',
+    ].every((name) => names.has(name));
+  })).toBe(true);
+  await expect.poll(() => page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    return profile.children.list.filter((child: any) => child.name === 'profile-flight-lab-card-art').length;
+  }), { timeout: 15_000 }).toBe(5);
+
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-flight-lab-deal-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.flightLab?.sample?.index === 1);
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.flightLab.sample.number).toBe(2);
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-flight-lab-previous-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.flightLab?.sample?.index === 0);
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.flightLab.sample).toEqual(firstSample);
+
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.flightLab?.sample?.index === 1);
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 0 });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.flightLab?.sample?.index === 2);
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.account'))).toBe(folioBeforePractice);
+
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.screenshot({ path: '.artifacts/test-results/flight-lab-profile.png', fullPage: true });
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 1 });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.flightLab?.open === false);
+  await page.keyboard.press('l');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.flightLab?.open === true);
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.flightLab.sample.index).toBe(0);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.flightLab?.open === false);
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.account'))).toBe(folioBeforePractice);
+});
+
+test('Flight Folio archive preserves identities, frees active capacity, and refuses unsafe restore', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => localStorage.setItem('test.archiveCode', value),
+      },
+    });
+    const decks = Array.from({ length: 6 }, (_, index) => ({
+      id: `trusted-${index + 1}`,
+      name: index === 0 ? 'Trusted Canal Line' : `Active Flight ${index + 1}`,
+      leaderId: index === 0 ? 'spark_caller' : 'fledgling',
+      cards: index === 0
+        ? [
+          { id: 'major_00', upgraded: true },
+          { id: 'wands_ace', upgraded: false },
+          { id: 'cups_ace', upgraded: false },
+        ]
+        : [{ id: 'major_00', upgraded: false }],
+      lineageId: index === 0 ? 'canal-lineage' : `trusted-${index + 1}`,
+      revision: index === 0 ? 4 : 1,
+      parentId: index === 0 ? 'trusted-parent' : undefined,
+      createdAt: 100 + index,
+      updatedAt: 100 + index,
+      favorite: index === 0,
+      sourceSeed: `private-${index + 1}`,
+      runMode: index === 0 ? 'quick' : 'full',
+    }));
+    const account = {
+      discoveredCards: ['major_00', 'wands_ace', 'cups_ace'],
+      favoriteCards: [],
+      cardCollection: {},
+      decks,
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folios-tab-hit');
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios).toMatchObject({
+    count: 6,
+    capacity: 6,
+    archivedCount: 0,
+    archiveCapacity: 24,
+    view: 'active',
+    viewCount: 6,
+    full: true,
+    canArchive: true,
+    canRestore: false,
+    archiveRefusesDeletion: true,
+    inputs: {
+      archiveOrRestore: 'A / controller Start / pointer',
+      switchLibrary: 'V / controller Select / pointer',
+    },
+  });
+  expect(state.savedFlightFolios.items[0]).toMatchObject({
+    id: 'trusted-1',
+    lineageId: 'canal-lineage',
+    revision: 4,
+    parentId: 'trusted-parent',
+    archived: false,
+  });
+
+  await page.keyboard.press('e');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'codeCopied');
+  const activeCode = await page.evaluate(() => localStorage.getItem('test.archiveCode'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-archive-hit');
+  await page.waitForFunction(() => {
+    const folios = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios;
+    return folios?.status === 'archived' && folios?.view === 'archive';
+  });
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios).toMatchObject({
+    count: 5,
+    archivedCount: 1,
+    view: 'archive',
+    viewCount: 1,
+    canArchive: false,
+    canRestore: true,
+  });
+  expect(state.savedFlightFolios.items[0]).toMatchObject({
+    id: 'trusted-1',
+    name: 'Trusted Canal Line',
+    lineageId: 'canal-lineage',
+    revision: 4,
+    parentId: 'trusted-parent',
+    favorite: true,
+    archived: true,
+    sourceSeed: 'private-1',
+    runMode: 'quick',
+    cards: [
+      { id: 'major_00', upgraded: true },
+      { id: 'wands_ace', upgraded: false },
+      { id: 'cups_ace', upgraded: false },
+    ],
+  });
+  await page.keyboard.press('e');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'codeCopied');
+  expect(await page.evaluate(() => localStorage.getItem('test.archiveCode'))).toBe(activeCode);
+
+  await page.evaluate(async () => {
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {});
+    route.runState.deck = [
+      { id: 'major_00', upgraded: false },
+      { id: 'wands_ace', upgraded: true },
+    ];
+    route.runState.leaderId = 'spark_caller';
+    route.runState.seed = 'fresh-active-slot';
+    route.runState.runMode = 'quick';
+    route.openDeckOverlay();
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.open === true);
+  let routeState = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(routeState.deckReview.savedFlights).toMatchObject({
+    count: 5,
+    capacity: 6,
+    archived: 1,
+    canSave: true,
+  });
+  await page.keyboard.press('v');
+  await page.waitForFunction(
+    () => JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.savedFlights?.count === 6,
+    undefined,
+    { timeout: 10_000 },
+  );
+
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folios-tab-hit');
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-library-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.view === 'archive');
+  const beforeRefusedRestore = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
+  await page.keyboard.press('a');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'activeFull');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios).toMatchObject({
+    count: 6,
+    archivedCount: 1,
+    view: 'archive',
+    canRestore: false,
+  });
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.account'))).toBe(beforeRefusedRestore);
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Viewing Archive');
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('controller Start to restore');
+
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.screenshot({ path: '.artifacts/test-results/flight-folio-archive-profile.png', fullPage: true });
+
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 8 });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.view === 'active');
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 9 });
+  });
+  await page.waitForFunction(() => {
+    const folios = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios;
+    return folios?.status === 'archived' && folios?.archivedCount === 2;
+  });
+  await page.keyboard.press('a');
+  await page.waitForFunction(() => {
+    const folios = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios;
+    return folios?.status === 'restored' && folios?.view === 'active';
+  });
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios).toMatchObject({
+    count: 6,
+    archivedCount: 1,
+    view: 'active',
+    full: true,
+  });
+  const account = JSON.parse(await page.evaluate(() => localStorage.getItem('birdsquad.account') ?? '{}'));
+  const trusted = account.decks.find((deck: any) => deck.id === 'trusted-1');
+  expect(trusted).toMatchObject({
+    lineageId: 'canal-lineage',
+    revision: 4,
+    parentId: 'trusted-parent',
+    archived: true,
+    cards: [
+      { id: 'major_00', upgraded: true },
+      { id: 'wands_ace', upgraded: false },
+      { id: 'cups_ace', upgraded: false },
+    ],
+  });
+  expect(account.decks.filter((deck: any) => deck.archived === true)).toHaveLength(1);
+  expect(account.decks.filter((deck: any) => deck.archived !== true)).toHaveLength(6);
+
+  await page.evaluate(() => {
+    const active = Array.from({ length: 7 }, (_, index) => ({
+      id: `cap-active-${index}`,
+      name: `Cap Active ${index}`,
+      leaderId: 'fledgling',
+      cards: [{ id: 'major_00', upgraded: false }],
+      createdAt: 1000 + index,
+      updatedAt: 1000 + index,
+      favorite: false,
+      sourceSeed: '',
+      runMode: 'full',
+      archived: false,
+    }));
+    const archived = Array.from({ length: 25 }, (_, index) => ({
+      id: `cap-archive-${index}`,
+      name: `Cap Archive ${index}`,
+      leaderId: 'fledgling',
+      cards: [{ id: 'major_00', upgraded: false }],
+      createdAt: 2000 + index,
+      updatedAt: 2000 + index,
+      favorite: false,
+      sourceSeed: '',
+      runMode: 'full',
+      archived: true,
+    }));
+    const current = JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}');
+    const raw = JSON.stringify({ ...current, decks: [...active, ...archived] });
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+  });
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folios-tab-hit');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios).toMatchObject({
+    count: 6,
+    archivedCount: 24,
+    capacity: 6,
+    archiveCapacity: 24,
+    canArchive: false,
+  });
+  const beforeArchiveCapRefusal = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
+  await page.keyboard.press('a');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'archiveFull');
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.account'))).toBe(beforeArchiveCapRefusal);
+});
+
+test('Tuning Bench ranks owned replacements and saves one immutable role-aware revision', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.addInitScript(() => {
+    const claimed = (time: number) => ({
+      timesClaimed: 1,
+      firstAcquiredAt: time,
+      firstSource: 'combat_reward',
+    });
+    const account = {
+      discoveredCards: [
+        'major_00',
+        'wands_ace',
+        'wands_02',
+        'wands_03',
+        'wands_fledgling',
+        'swords_02',
+        'cups_02',
+        'pentacles_04',
+      ],
+      favoriteCards: [],
+      cardCollection: {
+        wands_02: claimed(10),
+        wands_03: claimed(11),
+        wands_fledgling: claimed(12),
+        swords_02: claimed(13),
+        cups_02: claimed(14),
+      },
+      decks: [{
+        id: 'tuning-source',
+        lineageId: 'tuning-lineage',
+        revision: 1,
+        name: 'Plume Pressure Study',
+        leaderId: 'spark_caller',
+        cards: [
+          { id: 'wands_ace', upgraded: true },
+          { id: 'retired_plume_card', upgraded: false },
+          { id: 'major_00', upgraded: true },
+          { id: 'pentacles_04', upgraded: false },
+        ],
+        createdAt: 100,
+        updatedAt: 100,
+        favorite: true,
+        sourceSeed: 'source-seed',
+        runMode: 'quick',
+      }],
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folios-tab-hit');
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-lab-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.flightLab?.open === true);
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-flight-lab-tune-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.workshop?.open === true);
+
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.workshop).toMatchObject({
+    open: true,
+    deckId: 'tuning-source',
+    deckName: 'Plume Pressure Study',
+    sourceArchived: false,
+    sourceCardIndex: 0,
+    sourceCardNumber: 1,
+    sourceCardCount: 4,
+    sourceCard: {
+      id: 'wands_ace',
+      name: 'Plume Flash',
+      upgraded: true,
+      available: true,
+    },
+    suggestionIndex: 0,
+    selectedSuggestion: {
+      id: 'wands_03',
+      name: 'Plume Horizon',
+      cost: 1,
+      family: 'Plumes',
+      role: 'Pressure',
+      reasons: ['same pressure role', 'keeps Plumes', 'same cost'],
+    },
+    ownedCandidatesOnly: true,
+    createsNewRevision: true,
+    preservesSource: true,
+    replacementIsBase: true,
+    canSave: true,
+    activeCount: 1,
+    capacity: 6,
+  });
+  expect(state.savedFlightFolios.workshop.suggestions.map((candidate: any) => candidate.id))
+    .not.toContain('major_00');
+  expect(state.savedFlightFolios.workshop.suggestions.map((candidate: any) => candidate.id))
+    .not.toContain('pentacles_04');
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('permanently owned role-similar replacements');
+  await expect.poll(() => page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    return profile.children.list.filter((child: any) => child.name === 'profile-folio-workshop-suggestion-art').length;
+  }), { timeout: 15_000 }).toBeGreaterThan(0);
+
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.screenshot({ path: '.artifacts/test-results/flight-folio-tuning-bench.png', fullPage: true });
+
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 1 });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.flightLab?.open === true);
+  await page.keyboard.press('t');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.workshop?.open === true);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.flightLab?.open === true);
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 2 });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.workshop?.open === true);
+
+  await page.keyboard.press('ArrowRight');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.workshop?.sourceCardIndex === 1);
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.workshop.sourceCard).toMatchObject({
+    id: 'retired_plume_card',
+    available: false,
+  });
+  expect(state.savedFlightFolios.workshop.suggestions.length).toBeGreaterThan(0);
+  await page.keyboard.press('ArrowLeft');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.workshop?.sourceCardIndex === 0);
+  await page.keyboard.press('ArrowDown');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.workshop?.suggestionIndex === 1);
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 12 });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.workshop?.suggestionIndex === 0);
+  const beforeTune = JSON.parse(await page.evaluate(() => localStorage.getItem('birdsquad.account') ?? '{}'));
+  const sourceBefore = beforeTune.decks.find((deck: any) => deck.id === 'tuning-source');
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 0 });
+  });
+  await page.waitForFunction(() => {
+    const folios = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios;
+    return folios?.status === 'tuned' && folios?.count === 2;
+  });
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.items[0]).toMatchObject({
+    name: 'Plume Pressure Study Tune 2',
+    lineageId: 'tuning-lineage',
+    revision: 2,
+    parentId: 'tuning-source',
+    favorite: false,
+    archived: false,
+    sourceSeed: 'source-seed',
+    runMode: 'quick',
+    cards: [
+      { id: 'wands_03', upgraded: false },
+      { id: 'retired_plume_card', upgraded: false },
+      { id: 'major_00', upgraded: true },
+      { id: 'pentacles_04', upgraded: false },
+    ],
+  });
+  expect(state.savedFlightFolios.items[1]).toMatchObject({
+    id: 'tuning-source',
+    lineageId: 'tuning-lineage',
+    revision: 1,
+    favorite: true,
+    cards: sourceBefore.cards,
+  });
+  const afterTune = JSON.parse(await page.evaluate(() => localStorage.getItem('birdsquad.account') ?? '{}'));
+  expect(afterTune.decks.find((deck: any) => deck.id === 'tuning-source')).toEqual({
+    ...sourceBefore,
+    archived: false,
+  });
+
+  await page.evaluate(() => {
+    const account = JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}');
+    const extras = Array.from({ length: 4 }, (_, index) => ({
+      id: `tune-cap-${index}`,
+      name: `Tune Capacity ${index}`,
+      leaderId: 'fledgling',
+      cards: [{ id: 'major_00', upgraded: false }],
+      createdAt: 500 + index,
+      updatedAt: 500 + index,
+      favorite: false,
+      archived: false,
+      sourceSeed: '',
+      runMode: 'full',
+    }));
+    const raw = JSON.stringify({ ...account, decks: [...account.decks, ...extras] });
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+  });
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folios-tab-hit');
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-lab-hit');
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-flight-lab-tune-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.workshop?.open === true);
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.workshop).toMatchObject({
+    canSave: false,
+    activeCount: 6,
+    capacity: 6,
+  });
+  const beforeFullTune = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.workshop?.status === 'activeFull');
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.account'))).toBe(beforeFullTune);
 });
 
 test('card showcase preserves three deliberate choices across Codex controls, Flock Record, and save backups', async ({ page }) => {

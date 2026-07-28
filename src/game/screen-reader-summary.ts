@@ -66,6 +66,38 @@ export function screenReaderSummary(payload: unknown): string {
     const collectionMilestones = isRecord(payload.collectionMilestones) ? payload.collectionMilestones : undefined;
     const showcase = isRecord(payload.cardShowcase) ? payload.cardShowcase : undefined;
     const folios = isRecord(payload.savedFlightFolios) ? payload.savedFlightFolios : undefined;
+    const workshop = isRecord(folios?.workshop) ? folios.workshop : undefined;
+    if (workshop?.open === true) {
+      const source = isRecord(workshop.sourceCard) ? workshop.sourceCard : undefined;
+      const selected = isRecord(workshop.selectedSuggestion) ? workshop.selectedSuggestion : undefined;
+      const suggestions = records(workshop.suggestions);
+      const reasons = Array.isArray(selected?.reasons) ? selected.reasons.map(text).filter(Boolean).join(', ') : '';
+      return `Tuning Bench for ${text(workshop.deckName)}. Replacing card ${number(workshop.sourceCardNumber) ?? 1} of ${number(workshop.sourceCardCount) ?? 0}, ${text(source?.name)}${source?.upgraded === true ? ', Preened' : ', Base'}${source?.available === false ? ', definition unavailable' : ''}. ${suggestions.length} permanently owned role-similar replacements.${selected ? ` Selected ${text(selected.name)}, ${number(selected.cost) ?? 0} Wingbeats, ${text(selected.family)}, ${text(selected.role)}.${reasons ? ` Reasons: ${reasons}.` : ''}` : ' No valid owned replacement is available.'} Saving creates a new revision with one Base replacement and preserves the source Folio unchanged. ${workshop.canSave === true ? 'A tuned revision can be saved.' : `A tuned revision cannot be saved${number(workshop.activeCount) === number(workshop.capacity) ? ' because active Folios are full; archive one first' : ''}.`} Use Previous and Next or controller shoulders to choose the source card, Up and Down or controller D-pad to choose a replacement, Confirm or controller A to save, and Back or controller B to return to Flight Lab.`;
+    }
+    const flightLab = isRecord(folios?.flightLab) ? folios.flightLab : undefined;
+    if (flightLab?.open === true) {
+      const curve = records(flightLab.costCurve)
+        .map((entry) => `${text(entry.label)} Wingbeats, ${number(entry.count) ?? 0}`)
+        .join('; ');
+      const roles = records(flightLab.roles)
+        .map((entry) => `${text(entry.label)} ${number(entry.count) ?? 0}`)
+        .join(', ');
+      const families = records(flightLab.families)
+        .map((entry) => `${text(entry.label)} ${number(entry.count) ?? 0}`)
+        .join(', ');
+      const hooks = records(flightLab.resourceHooks)
+        .map((entry) => `${text(entry.label)} ${number(entry.count) ?? 0}`)
+        .join(', ');
+      const consistency = isRecord(flightLab.consistency) ? flightLab.consistency : undefined;
+      const sample = isRecord(flightLab.sample) ? flightLab.sample : undefined;
+      const sampleCards = records(sample?.cards)
+        .map((card) => `${text(card.name)}, ${number(card.cost) ?? 0} Wingbeats${card.upgraded === true ? ', Preened' : ''}`)
+        .join('; ');
+      const issues = Array.isArray(flightLab.issues)
+        ? flightLab.issues.map(text).filter(Boolean).join(' ')
+        : '';
+      return `Flight Lab for ${text(flightLab.deckName)}. ${flightLab.legalForStandardFlight === true ? 'Standard ready.' : 'Review needed.'} ${number(flightLab.savedCopies) ?? 0} saved copies, ${number(flightLab.playableCards) ?? 0} playable cards, average cost ${number(flightLab.averageCost) ?? 0}. Cost curve: ${curve || 'empty'}. Roles: ${roles || 'none'}. Families: ${families || 'none'}. Resource hooks: ${hooks || 'none'}. Sample hand ${number(sample?.number) ?? 1}: ${sampleCards || 'no cards'}. ${number(sample?.playableCount) ?? 0} playable now and ${number(sample?.pressureCount) ?? 0} pressure cards. Across ${number(consistency?.sampleCount) ?? 0} deterministic hands, ${number(consistency?.averagePlayable) ?? 0} average playable, ${number(consistency?.atLeastTwoPlayablePercent) ?? 0} percent open with two playable, and ${number(consistency?.pressurePercent) ?? 0} percent include pressure.${issues ? ` ${issues}` : ''} Practice uses the real protected combat opening draw, never changes the folio, never affects power, and spends no Scrap. Use Previous and Next, Space, or controller A to deal; Back or controller B closes the Lab.`;
+    }
     const nextMilestone = isRecord(collectionMilestones?.next) ? collectionMilestones.next : undefined;
     const current = spaced(text(focus?.current)) || 'Flock Record';
     const milestoneSummary = collectionMilestones
@@ -76,7 +108,9 @@ export function screenReaderSummary(payload: unknown): string {
     const folioItems = records(folios?.items);
     const selectedFolioId = text(folios?.selected);
     const selectedFolio = folioItems.find((item) => text(item.id) === selectedFolioId);
-    const folioSummary = ` Flight Folios ${number(folios?.count) ?? 0} of ${number(folios?.capacity) ?? 6}.${selectedFolio ? ` Selected ${text(selectedFolio.name)}, ${text(selectedFolio.leader)}, ${number(selectedFolio.cardCount) ?? 0} cards${selectedFolio.favorite === true ? ', favorite' : ''}.` : ' Save a deck from Route Deck Review.'} Folios preserve identity and never affect gameplay power.${folios?.viewActive === true ? ' Use Previous and Next to select, C or controller X to favorite, and R or controller Y to rename.' : ''}`;
+    const shareCode = isRecord(folios?.shareCode) ? folios.shareCode : undefined;
+    const archiveView = text(folios?.view) === 'archive';
+    const folioSummary = ` Flight Folios ${number(folios?.count) ?? 0} active of ${number(folios?.capacity) ?? 6}, and ${number(folios?.archivedCount) ?? 0} archived of ${number(folios?.archiveCapacity) ?? 24}. Viewing ${archiveView ? 'Archive' : 'Active'}.${selectedFolio ? ` Selected ${text(selectedFolio.name)}, ${text(selectedFolio.leader)}, ${number(selectedFolio.cardCount) ?? 0} cards, revision ${number(selectedFolio.revision) ?? 1}${selectedFolio.favorite === true ? ', favorite' : ''}${selectedFolio.archived === true ? ', archived' : ''}.` : archiveView ? ' The Archive is empty.' : ' Save a deck from Route Deck Review or import a flight code.'} Archived Folios preserve their identity and never affect gameplay power. BSF version ${number(shareCode?.version) ?? 1} codes use a checksum and exclude account data, custom names, and flight seeds.${folios?.viewActive === true ? ` Use Previous and Next to select, C or controller X to favorite, R or controller Y to rename, A or controller Start to ${archiveView ? 'restore' : 'archive'}, V or controller Select to switch libraries, D or controller left trigger to fork without changing the original, E or controller right trigger to copy a share code, I or controller left stick to import, and L or controller right stick to open the Flight Lab.` : ''}`;
     return `Flock Record. ${current}.${milestoneSummary}${showcaseSummary}${folioSummary} Press Confirm to select, or Back to return.`;
   }
 
