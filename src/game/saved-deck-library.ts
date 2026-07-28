@@ -78,6 +78,8 @@ export function duplicateSavedDeck(
   duplicate.revision = revision;
   duplicate.parentId = source.id;
   if (source.notes) duplicate.notes = source.notes;
+  if (source.folder) duplicate.folder = source.folder;
+  if (source.tags?.length) duplicate.tags = [...source.tags];
   return [duplicate, ...decks];
 }
 
@@ -126,6 +128,8 @@ export function tuneSavedDeck(
   tuned.revision = revision;
   tuned.parentId = source.id;
   if (source.notes) tuned.notes = source.notes;
+  if (source.folder) tuned.folder = source.folder;
+  if (source.tags?.length) tuned.tags = [...source.tags];
   return [tuned, ...decks];
 }
 

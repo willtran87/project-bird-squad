@@ -4790,3 +4790,46 @@ sessions through `docs/game/playtest-runbook.md`.
   preferred targets remain advisory warnings.
 - The broader card-collector objective remains active. Five genuinely observed
   fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Private Folio Folders And Strategy Labels
+
+- Added a private Folio Organizer with four clear folders: Open Shelf,
+  Workbench, Flight Ready, and Signature. Eight descriptive strategy labels
+  cover Pressure, Guard, Flow, Molt, Economy, Combo, Flexible, and Challenge,
+  with a readable three-label limit that prevents visual and organizational
+  clutter.
+- Folder and label data are validated on load. Invalid and duplicate labels are
+  removed, legacy saves remain compatible, and empty organization metadata is
+  omitted rather than rewriting older records unnecessarily.
+- Pointer, keyboard, and controller flows are complete: Organize, `O`, or
+  controller A opens the organizer; Tab or controller shoulders switch
+  sections; arrows, D-pad, and page keys choose an option; Enter/controller A
+  applies it; `R` or controller Y renames; Back/controller B closes. Empty
+  libraries disable Organize cleanly.
+- Organization remains player-owned metadata rather than gameplay power. It is
+  preserved in local saves and exported backups, excluded from stable BSF1
+  share codes, and inherited by forks, tuned revisions, and restored
+  revisions. The Folio list now presents folder and strategy identity at a
+  glance.
+- Text state and screen-reader narration expose the active folder, labels,
+  limit, focused option, descriptions, privacy behavior, backup behavior,
+  share-code exclusion, no-power contract, and complete controls.
+- Focused browser coverage proves sanitizer behavior, pointer/keyboard/
+  controller operation, the three-label refusal and recovery path, renaming,
+  local persistence, backup inclusion, byte-stable BSF1 privacy, and immutable
+  copy inheritance. All eight adjacent Folio suites pass together.
+- The inspected organizer and library visuals are
+  `.artifacts/test-results/flight-folio-organizer.png` and
+  `.artifacts/test-results/flight-folio-organizer-library.png`. The required
+  shared client opened a clean Flock Record -> Folios state, rendered its
+  disabled empty-state command correctly, reported complete organizer input
+  and privacy state, and emitted no browser errors; evidence is under
+  `.artifacts/flight-folio-organizer-shared-client/`.
+- Strict TypeScript with unused checks, `git diff --check`, and full
+  `npm run validate` pass. Validation covers 110 cards, 961 optimized assets,
+  canonical-world and directionless attack-tell contracts, deployment
+  hardening, bundle hard limits, and all 30 critical browser scenarios.
+  Combined boot is 718.5 KiB / 194.2 KiB gzip; the app-entry and combined
+  preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.

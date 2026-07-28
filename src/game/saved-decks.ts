@@ -4,6 +4,28 @@ export const SAVED_DECK_TOTAL_LIMIT = SAVED_DECK_LIMIT + SAVED_DECK_ARCHIVE_LIMI
 export const SAVED_DECK_CARD_LIMIT = 60;
 export const SAVED_DECK_NAME_LIMIT = 32;
 export const SAVED_DECK_NOTES_LIMIT = 240;
+export const SAVED_DECK_TAG_LIMIT = 3;
+
+export const SAVED_DECK_FOLDERS = [
+  { id: 'unfiled', label: 'Open Shelf', description: 'No collection folder assigned.' },
+  { id: 'workbench', label: 'Workbench', description: 'Brews and experiments still being shaped.' },
+  { id: 'ready', label: 'Flight Ready', description: 'Trusted lists prepared for another run.' },
+  { id: 'signature', label: 'Signature', description: 'Personal favorites that define your flock.' },
+] as const;
+
+export const SAVED_DECK_TAGS = [
+  { id: 'pressure', label: 'Pressure', description: 'Direct damage and tempo.' },
+  { id: 'guard', label: 'Guard', description: 'Cover, healing, and survival.' },
+  { id: 'flow', label: 'Flow', description: 'Draw, Wingbeats, and hand shaping.' },
+  { id: 'molt', label: 'Molt', description: 'Molt setup and transformed effects.' },
+  { id: 'economy', label: 'Economy', description: 'Scrap, Supplies, and route value.' },
+  { id: 'combo', label: 'Combo', description: 'Sequenced engines and payoffs.' },
+  { id: 'flexible', label: 'Flexible', description: 'Adaptable plans and mixed roles.' },
+  { id: 'challenge', label: 'Challenge', description: 'Self-imposed or unusual constraints.' },
+] as const;
+
+export type SavedDeckFolderId = typeof SAVED_DECK_FOLDERS[number]['id'];
+export type SavedDeckTagId = typeof SAVED_DECK_TAGS[number]['id'];
 
 export interface SavedDeckCard {
   id: string;
@@ -25,6 +47,8 @@ export interface SavedDeckRecord {
   sourceSeed: string;
   runMode: 'full' | 'quick';
   notes?: string;
+  folder?: Exclude<SavedDeckFolderId, 'unfiled'>;
+  tags?: SavedDeckTagId[];
 }
 
 export interface NewSavedDeck {
@@ -60,6 +84,22 @@ function safeNotes(value: unknown) {
     .trim();
 }
 
+function safeFolder(value: unknown): Exclude<SavedDeckFolderId, 'unfiled'> | undefined {
+  return SAVED_DECK_FOLDERS.find(
+    (folder) => folder.id !== 'unfiled' && folder.id === value,
+  )?.id as Exclude<SavedDeckFolderId, 'unfiled'> | undefined;
+}
+
+function safeTags(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  const valid = new Set<SavedDeckTagId>();
+  value.forEach((candidate) => {
+    const tag = SAVED_DECK_TAGS.find((entry) => entry.id === candidate)?.id;
+    if (tag && valid.size < SAVED_DECK_TAG_LIMIT) valid.add(tag);
+  });
+  return [...valid];
+}
+
 function safeTime(value: unknown, fallback: number) {
   return Number.isFinite(value) && Number(value) > 0 ? Math.floor(Number(value)) : fallback;
 }
@@ -92,6 +132,8 @@ export function sanitizeSavedDecks(value: unknown): SavedDeckRecord[] {
     const rawParentId = safeText(raw.parentId, 80);
     const parentId = rawParentId && /^[a-z0-9_-]+$/i.test(rawParentId) ? rawParentId : '';
     const notes = safeNotes(raw.notes);
+    const folder = safeFolder(raw.folder);
+    const tags = safeTags(raw.tags);
     return [{
       id,
       name,
@@ -109,6 +151,8 @@ export function sanitizeSavedDecks(value: unknown): SavedDeckRecord[] {
       sourceSeed,
       runMode: raw.runMode === 'quick' ? 'quick' : 'full',
       ...(notes ? { notes } : {}),
+      ...(folder ? { folder } : {}),
+      ...(tags.length > 0 ? { tags } : {}),
     }];
   });
   let activeCount = 0;
@@ -179,6 +223,47 @@ export function updateSavedDeckNotes(
     return cleanNotes
       ? { ...withoutNotes, notes: cleanNotes, updatedAt: now }
       : { ...withoutNotes, updatedAt: now };
+  });
+}
+
+export function setSavedDeckFolder(
+  decks: readonly SavedDeckRecord[],
+  id: string,
+  folder: SavedDeckFolderId,
+  now = Date.now(),
+) {
+  if (!SAVED_DECK_FOLDERS.some((candidate) => candidate.id === folder)) return [...decks];
+  return decks.map((deck) => {
+    if (deck.id !== id) return deck;
+    const updated = { ...deck };
+    delete updated.folder;
+    return folder === 'unfiled'
+      ? { ...updated, updatedAt: now }
+      : { ...updated, folder, updatedAt: now };
+  });
+}
+
+export function toggleSavedDeckTag(
+  decks: readonly SavedDeckRecord[],
+  id: string,
+  tag: SavedDeckTagId,
+  now = Date.now(),
+) {
+  if (!SAVED_DECK_TAGS.some((candidate) => candidate.id === tag)) return [...decks];
+  return decks.map((deck) => {
+    if (deck.id !== id) return deck;
+    const current = safeTags(deck.tags);
+    const next = current.includes(tag)
+      ? current.filter((candidate) => candidate !== tag)
+      : current.length < SAVED_DECK_TAG_LIMIT
+        ? [...current, tag]
+        : current;
+    if (next.length === current.length && next.every((candidate, index) => candidate === current[index])) return deck;
+    const updated = { ...deck };
+    delete updated.tags;
+    return next.length > 0
+      ? { ...updated, tags: next, updatedAt: now }
+      : { ...updated, updatedAt: now };
   });
 }
 

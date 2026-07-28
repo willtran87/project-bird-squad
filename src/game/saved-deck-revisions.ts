@@ -126,5 +126,7 @@ export function restoreSavedDeckRevision(
   restored.revision = revision;
   restored.parentId = source.id;
   if (target.notes) restored.notes = target.notes;
+  if (target.folder) restored.folder = target.folder;
+  if (target.tags?.length) restored.tags = [...target.tags];
   return [restored, ...decks];
 }

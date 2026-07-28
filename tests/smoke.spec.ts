@@ -22703,6 +22703,8 @@ test('Tuning Bench ranks owned replacements and saves one immutable role-aware r
         favorite: true,
         sourceSeed: 'source-seed',
         runMode: 'quick',
+        folder: 'workbench',
+        tags: ['pressure', 'combo'],
       }],
     };
     const raw = JSON.stringify(account);
@@ -22817,6 +22819,11 @@ test('Tuning Bench ranks owned replacements and saves one immutable role-aware r
     archived: false,
     sourceSeed: 'source-seed',
     runMode: 'quick',
+    folder: 'workbench',
+    tags: [
+      { id: 'pressure', label: 'Pressure' },
+      { id: 'combo', label: 'Combo' },
+    ],
     cards: [
       { id: 'wands_03', upgraded: false },
       { id: 'retired_plume_card', upgraded: false },
@@ -22934,6 +22941,8 @@ test('Revision Trail restores an exact earlier deck as a new immutable revision'
           archived: true,
           sourceSeed: 'parent-private-seed',
           runMode: 'quick',
+          folder: 'signature',
+          tags: ['guard', 'molt'],
         },
         {
           id: 'trail-root',
@@ -23085,6 +23094,11 @@ test('Revision Trail restores an exact earlier deck as a new immutable revision'
     leaderId: 'spark_caller',
     sourceSeed: 'parent-private-seed',
     runMode: 'quick',
+    folder: 'signature',
+    tags: [
+      { id: 'guard', label: 'Guard' },
+      { id: 'molt', label: 'Molt' },
+    ],
     cards: [
       { id: 'major_00', upgraded: true },
       { id: 'wands_ace', upgraded: true },
@@ -23368,6 +23382,225 @@ test('Folio Field Record links exact flights and keeps private matchup notes saf
   if (!downloadedPath) throw new Error('Field Record save backup did not produce a local file');
   const backup = JSON.parse(await readFile(downloadedPath, 'utf8'));
   expect(backup.data.account.decks.map((entry: any) => entry.notes)).toEqual([savedNotes, savedNotes]);
+});
+
+test('Folio Organizer preserves private folders and strategy labels across every immutable copy path', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => localStorage.setItem('test.organizerCode', value),
+      },
+    });
+    const account = {
+      discoveredCards: ['major_00', 'wands_ace', 'cups_ace'],
+      favoriteCards: [],
+      cardCollection: {},
+      decks: [{
+        id: 'organized-source',
+        lineageId: 'organized-lineage',
+        revision: 1,
+        name: 'Rooftop Engine Study',
+        leaderId: 'spark_caller',
+        cards: [
+          { id: 'major_00', upgraded: true },
+          { id: 'wands_ace', upgraded: false },
+          { id: 'cups_ace', upgraded: true },
+        ],
+        createdAt: 100,
+        updatedAt: 100,
+        favorite: false,
+        archived: false,
+        sourceSeed: 'private-organizer-seed',
+        runMode: 'quick',
+        folder: 'workbench',
+        tags: ['pressure', 'pressure', 'invalid-label', 'guard'],
+      }],
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folios-tab-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.viewActive === true);
+
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.items[0]).toMatchObject({
+    id: 'organized-source',
+    folder: 'workbench',
+    folderLabel: 'Workbench',
+    tags: [
+      { id: 'pressure', label: 'Pressure' },
+      { id: 'guard', label: 'Guard' },
+    ],
+  });
+  expect(state.savedFlightFolios.shareCode).toMatchObject({
+    excludesOrganization: true,
+    excludesPrivateNotes: true,
+  });
+  expect(state.savedFlightFolios.inputs.organize).toBe('O / controller A / pointer');
+
+  await page.keyboard.press('e');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'codeCopied');
+  const shareCodeBeforeOrganization = await page.evaluate(() => localStorage.getItem('test.organizerCode'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-organize-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer?.open === true);
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.organizer).toMatchObject({
+    open: true,
+    deckId: 'organized-source',
+    deckName: 'Rooftop Engine Study',
+    folder: 'workbench',
+    folderLabel: 'Workbench',
+    tags: ['pressure', 'guard'],
+    tagLabels: ['Pressure', 'Guard'],
+    tagLimit: 3,
+    section: 'folder',
+    selectedFolder: {
+      id: 'workbench',
+      label: 'Workbench',
+    },
+    private: true,
+    includedInBackups: true,
+    excludedFromShareCodes: true,
+    affectsPower: false,
+  });
+  expect(state.savedFlightFolios.organizer.folders).toHaveLength(4);
+  expect(state.savedFlightFolios.organizer.availableTags).toHaveLength(8);
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Organization is private, included in save backups, excluded from BSF share codes');
+
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    const ready = profile.children.list.find(
+      (child: any) => child.name === 'profile-folio-organizer-folder-hit' && child.getData('folderId') === 'ready',
+    );
+    ready.emit('pointerdown');
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer?.folder === 'ready');
+  await page.screenshot({ path: '.artifacts/test-results/flight-folio-organizer.png', fullPage: true });
+
+  await page.keyboard.press('Tab');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer?.section === 'tags');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => {
+    const organizer = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer;
+    return organizer?.status === 'organized' && organizer?.tags?.includes('flow');
+  });
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer?.status === 'tagLimit');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.organizer.tags).toEqual(['pressure', 'guard', 'flow']);
+  expect(state.savedFlightFolios.organizer.selectedTag.id).toBe('molt');
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('three-label limit is reached');
+
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => {
+    const tags = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer?.tags ?? [];
+    return !tags.includes('pressure');
+  });
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => {
+    const tags = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer?.tags ?? [];
+    return tags.includes('molt');
+  });
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.organizer.tags).toEqual(['guard', 'flow', 'molt']);
+
+  await page.keyboard.press('r');
+  const renameInput = page.locator('input[aria-label="Saved flight name"]');
+  await expect(renameInput).toBeVisible();
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.organizer.open).toBe(true);
+  expect(state.savedFlightFolios.renaming).toBe(true);
+  await renameInput.fill('Rooftop Signature Engine');
+  await renameInput.press('Enter');
+  await page.waitForFunction(() => {
+    const organizer = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer;
+    return organizer?.open === true && organizer?.deckName === 'Rooftop Signature Engine';
+  });
+
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 4 });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer?.section === 'folder');
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 1 });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer?.open === false);
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', {}, { index: 0 });
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer?.open === true);
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer?.open === false);
+  await page.screenshot({ path: '.artifacts/test-results/flight-folio-organizer-library.png', fullPage: true });
+
+  await page.keyboard.press('e');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'codeCopied');
+  expect(await page.evaluate(() => localStorage.getItem('test.organizerCode'))).toBe(shareCodeBeforeOrganization);
+  await page.keyboard.press('d');
+  await page.waitForFunction(() => {
+    const folios = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios;
+    return folios?.status === 'duplicated' && folios?.count === 2;
+  });
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.items[0]).toMatchObject({
+    lineageId: 'organized-lineage',
+    revision: 2,
+    parentId: 'organized-source',
+    folder: 'ready',
+    tags: [
+      { id: 'guard', label: 'Guard' },
+      { id: 'flow', label: 'Flow' },
+      { id: 'molt', label: 'Molt' },
+    ],
+  });
+  const account = JSON.parse(await page.evaluate(() => localStorage.getItem('birdsquad.account') ?? '{}'));
+  expect(account.decks[0]).toMatchObject({
+    folder: 'ready',
+    tags: ['guard', 'flow', 'molt'],
+  });
+  expect(account.decks.find((entry: any) => entry.id === 'organized-source')).toMatchObject({
+    name: 'Rooftop Signature Engine',
+    folder: 'ready',
+    tags: ['guard', 'flow', 'molt'],
+  });
+
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-save-data-hit');
+  const downloadPromise = page.waitForEvent('download');
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-save-download-hit');
+  const download = await downloadPromise;
+  const downloadedPath = await download.path();
+  if (!downloadedPath) throw new Error('Folio Organizer backup did not produce a local file');
+  const backup = JSON.parse(await readFile(downloadedPath, 'utf8'));
+  expect(backup.data.account.decks.map((entry: any) => ({
+    folder: entry.folder,
+    tags: entry.tags,
+  }))).toEqual([
+    { folder: 'ready', tags: ['guard', 'flow', 'molt'] },
+    { folder: 'ready', tags: ['guard', 'flow', 'molt'] },
+  ]);
 });
 
 test('card showcase preserves three deliberate choices across Codex controls, Flock Record, and save backups', async ({ page }) => {
