@@ -37,6 +37,7 @@ const PREFERENCE_KEYS = {
   ambienceVolume: 'birdsquad.ambienceVolume',
   audioMuted: 'birdsquad.audioMuted',
   maxTier: 'birdsquad.maxTier',
+  codexCardLens: 'birdsquad.codexCardLens',
 } as const;
 
 const ALL_OWNED_STORAGE_KEYS = [
@@ -61,6 +62,7 @@ export interface SaveBackupPreferences {
   ambienceVolume: number;
   audioMuted: boolean;
   maxTier: number;
+  codexCardLens: 'all' | 'collected' | 'uncollected' | 'seen';
 }
 
 export interface SaveBackupBundle {
@@ -79,7 +81,7 @@ export interface SaveBackupBundle {
 export interface SaveBackupRuntimeDependencies {
   currentActiveRun: () => unknown | undefined;
   currentRunHistory: () => unknown[];
-  currentPreferences: () => SaveBackupPreferences;
+  currentPreferences: () => Omit<SaveBackupPreferences, 'codexCardLens'>;
   sanitizeActiveRun: (value: unknown) => unknown | undefined;
   sanitizeRunHistory: (value: unknown) => unknown[] | undefined;
 }
@@ -152,6 +154,11 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
     : ['relaxed', 'standard', 'fast'].includes(String(value.animationPace))
       ? value.animationPace as SaveBackupPreferences['animationPace']
       : undefined;
+  const codexCardLens = value.codexCardLens === undefined
+    ? 'all'
+    : ['all', 'collected', 'uncollected', 'seen'].includes(String(value.codexCardLens))
+      ? value.codexCardLens as SaveBackupPreferences['codexCardLens']
+      : undefined;
   if (
     !controls
     || !colorCues
@@ -159,6 +166,7 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
     || !flashEffects
     || !animationPace
     || !textPace
+    || !codexCardLens
     || !['auto', 'full', 'lean'].includes(String(value.graphicsQuality))
     || !['standard', 'high'].includes(String(value.visualContrast))
     || !['system', 'full', 'reduced'].includes(String(value.motion))
@@ -186,7 +194,13 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
     ambienceVolume,
     audioMuted: value.audioMuted,
     maxTier: Math.floor(maxTier),
+    codexCardLens,
   };
+}
+
+function currentCodexCardLens(): SaveBackupPreferences['codexCardLens'] {
+  const value = safeStorageGet(PREFERENCE_KEYS.codexCardLens);
+  return value === 'collected' || value === 'uncollected' || value === 'seen' ? value : 'all';
 }
 
 export function createSaveBackup(dependencies: SaveBackupRuntimeDependencies): SaveBackupBundle {
@@ -203,6 +217,7 @@ export function createSaveBackup(dependencies: SaveBackupRuntimeDependencies): S
       preferences: {
         ...dependencies.currentPreferences(),
         controls: controlBindingsSnapshot(),
+        codexCardLens: currentCodexCardLens(),
       },
     },
   };
@@ -278,6 +293,7 @@ function serializedEntries(bundle: SaveBackupBundle) {
     [PREFERENCE_KEYS.ambienceVolume, preferences.ambienceVolume.toFixed(2)],
     [PREFERENCE_KEYS.audioMuted, preferences.audioMuted ? '1' : '0'],
     [PREFERENCE_KEYS.maxTier, String(preferences.maxTier)],
+    [PREFERENCE_KEYS.codexCardLens, preferences.codexCardLens],
   ]);
 }
 

@@ -242,6 +242,7 @@ export function screenReaderSummary(payload: unknown): string {
     const favorites = isRecord(payload.cardFavorites) ? payload.cardFavorites : undefined;
     const hunt = isRecord(payload.collectionHunt) ? payload.collectionHunt : undefined;
     const ownership = isRecord(payload.cardOwnership) ? payload.cardOwnership : undefined;
+    const collectionLens = isRecord(payload.cardCollectionLens) ? payload.cardCollectionLens : undefined;
     const detailOwnership = isRecord(ownership?.detail) ? ownership.detail : undefined;
     const collectedCount = number(ownership?.collectedCount) ?? 0;
     const discoveredCount = number(payload.cardsDiscovered) ?? 0;
@@ -256,6 +257,9 @@ export function screenReaderSummary(payload: unknown): string {
     const huntCount = number(hunt?.count) ?? 0;
     const huntCapacity = number(hunt?.capacity) ?? 3;
     const huntCompleted = number(hunt?.completed) ?? 0;
+    const lensLabel = spaced(text(collectionLens?.label)) || 'all';
+    const lensVisible = number(collectionLens?.visibleCount) ?? 0;
+    const lensBase = number(collectionLens?.baseCount) ?? 0;
     const itemPosition = zone === 'entries' && position !== undefined && count !== undefined
       ? ` Item ${position + 1} of ${count}.`
       : '';
@@ -290,7 +294,10 @@ export function screenReaderSummary(payload: unknown): string {
           : ' Discovered but not yet collected. Claim it during a flight to create its permanent collection record.'
         : ` ${collectedCount} collected and ${discoveredCount} discovered.`
       : '';
-    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${huntState}${huntViewState}${ownershipState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
+    const collectionLensState = section === 'cards' && !detail
+      ? ` Collection lens ${lensLabel}, showing ${lensVisible} of ${lensBase} cards in this set.${collectionLens?.empty === true ? ' No cards match this lens.' : ''} Use L or controller LB to change the lens.`
+      : '';
+    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${huntState}${huntViewState}${ownershipState}${collectionLensState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
   }
   return scene ? `${spaced(scene)}.` : '';
 }

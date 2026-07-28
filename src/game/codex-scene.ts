@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
-import { writeJournaledJson } from './safe-storage';
+import { safeStorageGet, safeStorageSet, writeJournaledJson } from './safe-storage';
 import {
   activateRenderedAudioToggleControl, addCodexDossierFrame, addCodexEntryFrame, addSupplyArtImage,
   addUiIconImage, addWaymarkArtImage,
@@ -25,7 +25,9 @@ import {
 } from '../main';
 
 type CodexFocusZone = 'sections' | 'primaryTabs' | 'secondaryTabs' | 'entries' | 'back' | 'detail';
+type CardCollectionLens = 'all' | 'collected' | 'uncollected' | 'seen';
 const COLLECTION_TARGET_LIMIT = 3;
+const CARD_COLLECTION_LENS_KEY = 'birdsquad.codexCardLens';
 
 interface CodexFocusEntry {
   id: string;
@@ -50,6 +52,7 @@ export class CodexScene extends Phaser.Scene {
   private discovered = new Set<string>();
   private favoriteCards = new Set<string>();
   private collectionTargets = new Set<string>();
+  private cardCollectionLens: CardCollectionLens = 'all';
   private cardCollection: ReturnType<typeof loadAccount>['cardCollection'] = {};
   private observedEnemyMoves = new Set<string>();
   private detailId?: string;
@@ -89,6 +92,16 @@ export class CodexScene extends Phaser.Scene {
     { label: 'Snags', match: (c) => c.runtime.kind === 'snag' },
     { label: 'Favorites', match: (c) => this.favoriteCards.has(c.id), view: 'favorites' },
     { label: 'Hunt List', match: (c) => this.collectionTargets.has(c.id), view: 'targets' },
+  ];
+  private readonly cardCollectionLenses: Array<{
+    id: CardCollectionLens;
+    label: string;
+    match: (card: Card) => boolean;
+  }> = [
+    { id: 'all', label: 'All', match: () => true },
+    { id: 'collected', label: 'Collected', match: (card) => Boolean(this.cardCollection[card.id]) },
+    { id: 'uncollected', label: 'Uncollected', match: (card) => !this.cardCollection[card.id] },
+    { id: 'seen', label: 'Seen', match: (card) => this.discovered.has(card.id) && !this.cardCollection[card.id] },
   ];
   private readonly enemyTabs: Array<{ label: string; match: (e: CodexEnemyEntry) => boolean }> = [
     { label: 'All', match: () => true },
@@ -163,6 +176,10 @@ export class CodexScene extends Phaser.Scene {
     this.discovered = new Set(account.discoveredCards);
     this.favoriteCards = new Set(account.favoriteCards);
     this.cardCollection = account.cardCollection;
+    const savedLens = safeStorageGet(CARD_COLLECTION_LENS_KEY);
+    this.cardCollectionLens = this.cardCollectionLenses.some((lens) => lens.id === savedLens)
+      ? savedLens as CardCollectionLens
+      : 'all';
     this.collectionTargets = new Set((account.hunt ?? []).filter((id) => (
       this.discovered.has(id) && !this.cardCollection[id] && Boolean(cardLibrary[id])
     )));
@@ -202,6 +219,10 @@ export class CodexScene extends Phaser.Scene {
       if (event.repeat || this.activeSection !== 'cards' || !this.detailId) return;
       this.toggleCurrentCollectionTarget();
     };
+    const onCollectionLens = (event: KeyboardEvent) => {
+      if (event.repeat || this.activeSection !== 'cards' || this.detailId) return;
+      this.cycleCardCollectionLens(1);
+    };
     const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button) => {
       if (button.index === 12) this.moveCodexVertical(-1);
       else if (button.index === 13) this.moveCodexVertical(1);
@@ -211,12 +232,14 @@ export class CodexScene extends Phaser.Scene {
       else if (button.index === 1) this.handleCodexBack();
       else if (button.index === 2 && this.activeSection === 'cards' && this.detailId) this.toggleCurrentCardFavorite();
       else if (button.index === 3 && this.activeSection === 'cards' && this.detailId) this.toggleCurrentCollectionTarget();
+      else if (button.index === 4 && this.activeSection === 'cards' && !this.detailId) this.cycleCardCollectionLens(1);
     };
     this.input.keyboard?.on('keydown-TAB', onTab);
     this.input.keyboard?.on('keydown-UP', onUp);
     this.input.keyboard?.on('keydown-DOWN', onDown);
     this.input.keyboard?.on('keydown-C', onFavorite);
     this.input.keyboard?.on('keydown-T', onTarget);
+    this.input.keyboard?.on('keydown-L', onCollectionLens);
     this.input.gamepad?.on('down', onGamepadDown);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.input.keyboard?.off('keydown-TAB', onTab);
@@ -224,6 +247,7 @@ export class CodexScene extends Phaser.Scene {
       this.input.keyboard?.off('keydown-DOWN', onDown);
       this.input.keyboard?.off('keydown-C', onFavorite);
       this.input.keyboard?.off('keydown-T', onTarget);
+      this.input.keyboard?.off('keydown-L', onCollectionLens);
       this.input.gamepad?.off('down', onGamepadDown);
     });
     this.input.on('wheel', (_p: unknown, _o: unknown, _dx: number, dy: number) => {
@@ -324,6 +348,46 @@ export class CodexScene extends Phaser.Scene {
 
   private allCards(): Card[] {
     return Object.values(cardLibrary);
+  }
+
+  private activeCardCollectionLens() {
+    return this.cardCollectionLenses.find((lens) => lens.id === this.cardCollectionLens)
+      ?? this.cardCollectionLenses[0];
+  }
+
+  private currentCardTabCards(): Card[] {
+    const tab = this.tabs[this.activeTab];
+    return this.allCards()
+      .filter(tab?.match ?? (() => true))
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  private currentCodexCards(): Card[] {
+    const lens = this.activeCardCollectionLens();
+    return this.currentCardTabCards().filter(lens.match);
+  }
+
+  private setCardCollectionLens(index: number, persist = true) {
+    const next = this.cardCollectionLenses[
+      (index + this.cardCollectionLenses.length) % this.cardCollectionLenses.length
+    ];
+    if (!next) return;
+    this.cardCollectionLens = next.id;
+    this.detailId = undefined;
+    this.entryFocusIndex = 0;
+    this.resetCodexScroll();
+    if (persist) safeStorageSet(CARD_COLLECTION_LENS_KEY, next.id);
+  }
+
+  private cycleCardCollectionLens(direction: -1 | 1) {
+    const current = Math.max(
+      0,
+      this.cardCollectionLenses.findIndex((lens) => lens.id === this.cardCollectionLens),
+    );
+    playUiSound('confirm');
+    this.focusZone = 'secondaryTabs';
+    this.setCardCollectionLens(current + direction);
+    this.renderAll();
   }
 
   private allReserveEnemies(): CodexEnemyEntry[] {
@@ -464,9 +528,7 @@ export class CodexScene extends Phaser.Scene {
   private codexFocusEntries(): CodexFocusEntry[] {
     if (this.activeSection === 'cards') {
       const family = this.tabs[this.activeTab]?.label ?? 'Card';
-      return this.allCards()
-        .filter(this.tabs[this.activeTab]?.match ?? (() => true))
-        .sort((a, b) => a.id.localeCompare(b.id))
+      return this.currentCodexCards()
         .map((card, index) => ({
           id: card.id,
           label: this.discovered.has(card.id) ? displayName(card) : `Undiscovered ${family} card ${index + 1}`,
@@ -495,7 +557,10 @@ export class CodexScene extends Phaser.Scene {
     if (this.activeSection === 'cards' || this.activeSection === 'items' || this.activeSection === 'enemies') {
       zones.push('primaryTabs');
     }
-    if (this.activeSection === 'items' && this.currentItemFilterTabs().length > 0) zones.push('secondaryTabs');
+    if (
+      this.activeSection === 'cards'
+      || (this.activeSection === 'items' && this.currentItemFilterTabs().length > 0)
+    ) zones.push('secondaryTabs');
     if (this.codexFocusEntries().length > 0) zones.push('entries');
     zones.push('back');
     return zones;
@@ -548,7 +613,9 @@ export class CodexScene extends Phaser.Scene {
     const entries = this.codexFocusEntries();
     const sectionIndex = Math.max(0, this.sections.findIndex((section) => section.id === this.activeSection));
     const primaryLabels = this.primaryTabLabels();
-    const secondaryLabels = this.currentItemFilterTabs().map((tab) => tab.label);
+    const secondaryLabels = this.activeSection === 'cards'
+      ? this.cardCollectionLenses.map((lens) => lens.label)
+      : this.currentItemFilterTabs().map((tab) => tab.label);
     let index = 0;
     let count = 1;
     let label = 'Codex';
@@ -561,7 +628,9 @@ export class CodexScene extends Phaser.Scene {
       count = primaryLabels.length;
       label = `${primaryLabels[index] ?? 'All'} filter`;
     } else if (this.focusZone === 'secondaryTabs') {
-      index = this.activeItemFilterTab;
+      index = this.activeSection === 'cards'
+        ? Math.max(0, this.cardCollectionLenses.findIndex((lens) => lens.id === this.cardCollectionLens))
+        : this.activeItemFilterTab;
       count = secondaryLabels.length;
       label = `${secondaryLabels[index] ?? 'All'} filter`;
     } else if (this.focusZone === 'entries') {
@@ -663,6 +732,10 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private setActiveSecondaryTab(index: number) {
+    if (this.activeSection === 'cards') {
+      this.setCardCollectionLens(index);
+      return;
+    }
     const tabs = this.currentItemFilterTabs();
     if (tabs.length === 0) return;
     this.activeItemFilterTab = (index + tabs.length) % tabs.length;
@@ -695,7 +768,10 @@ export class CodexScene extends Phaser.Scene {
     } else if (this.focusZone === 'primaryTabs') {
       this.setActivePrimaryTab(this.activePrimaryTabIndex() + direction);
     } else if (this.focusZone === 'secondaryTabs') {
-      this.setActiveSecondaryTab(this.activeItemFilterTab + direction);
+      const current = this.activeSection === 'cards'
+        ? Math.max(0, this.cardCollectionLenses.findIndex((lens) => lens.id === this.cardCollectionLens))
+        : this.activeItemFilterTab;
+      this.setActiveSecondaryTab(current + direction);
     } else if (this.focusZone === 'entries') {
       const entries = this.codexFocusEntries();
       if (entries.length > 0) this.entryFocusIndex = (this.entryFocusIndex + direction + entries.length) % entries.length;
@@ -836,7 +912,7 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private queueArt() {
-    const cards = this.allCards().filter(this.tabs[this.activeTab].match).sort((a, b) => a.id.localeCompare(b.id));
+    const cards = this.currentCodexCards();
     const items = this.currentCodexItems();
     const leaders = this.allLeaders();
     const enemies = this.currentCodexEnemies();
@@ -902,10 +978,10 @@ export class CodexScene extends Phaser.Scene {
     const cardView = cardMode ? this.tabs[this.activeTab]?.view : undefined;
     const favoriteView = cardView === 'favorites';
     const targetView = cardView === 'targets';
+    const cardTabCards = cardMode ? this.currentCardTabCards() : [];
+    const activeLens = this.activeCardCollectionLens();
     const targetMilestones = Object.values(this.cardCollection).filter((record) => Boolean(record.targetCompletedAt)).length;
-    const cards = cardMode
-      ? this.allCards().filter(this.tabs[this.activeTab].match).sort((a, b) => a.id.localeCompare(b.id))
-      : [];
+    const cards = cardMode ? cardTabCards.filter(activeLens.match) : [];
     const activeCardCollection = cardMode
       ? this.codexBossDossierModule?.cardDiscoverySets(
         all,
@@ -927,7 +1003,7 @@ export class CodexScene extends Phaser.Scene {
         keyboard: 'C',
         controller: 'X',
         viewActive: favoriteView,
-        viewEmpty: favoriteView && cards.length === 0,
+        viewEmpty: favoriteView && cardTabCards.length === 0,
         visibleIds: favoriteView ? cards.map((card) => card.id) : [],
       },
       collectionHunt: {
@@ -948,7 +1024,7 @@ export class CodexScene extends Phaser.Scene {
         controller: 'Y',
         changesRewardOdds: false,
         viewActive: targetView,
-        viewEmpty: targetView && cards.length === 0,
+        viewEmpty: targetView && cardTabCards.length === 0,
         visibleIds: targetView ? cards.map((card) => card.id) : [],
       },
       cardOwnership: {
@@ -962,6 +1038,19 @@ export class CodexScene extends Phaser.Scene {
           .filter((card) => this.discovered.has(card.id) && !this.cardCollection[card.id])
           .map((card) => card.id),
         runCopiesTemporary: true,
+      },
+      cardCollectionLens: {
+        id: activeLens.id,
+        label: activeLens.label,
+        index: this.cardCollectionLenses.indexOf(activeLens),
+        count: this.cardCollectionLenses.length,
+        visibleCount: cards.length,
+        baseCount: cardTabCards.length,
+        empty: cardMode && cardTabCards.length > 0 && cards.length === 0,
+        visibleIds: cards.map((card) => card.id),
+        keyboard: 'L',
+        controller: 'LB',
+        persisted: true,
       },
       itemCount: itemAll.length,
       leaderCount: leaders.length,
@@ -1046,8 +1135,10 @@ export class CodexScene extends Phaser.Scene {
     this.gridRenderScroll = this.gridScroll;
     this.gridRenderCellH = cellH;
     if (cardMode) {
-      if (favoriteView && cards.length === 0) this.renderFavoriteEmptyState(grid, top, bottom);
-      if (targetView && cards.length === 0) this.renderHuntListEmptyState(grid, top, bottom);
+      const lensEmpty = cardTabCards.length > 0 && cards.length === 0;
+      if (favoriteView && cardTabCards.length === 0) this.renderFavoriteEmptyState(grid, top, bottom);
+      else if (targetView && cardTabCards.length === 0) this.renderHuntListEmptyState(grid, top, bottom);
+      else if (lensEmpty) this.renderCardCollectionLensEmptyState(grid, top, bottom, activeLens.label);
       cards.forEach((card, i) => {
         const cx = gridLeft + (i % cols) * cellW + cellW / 2;
         const cy = top + Math.floor(i / cols) * cellH + cellH / 2;
@@ -1099,10 +1190,12 @@ export class CodexScene extends Phaser.Scene {
     this.root.add(this.add.text(40, 24, 'Codex', { fontFamily: 'Georgia, serif', fontSize: '34px', fontStyle: UI_BOLD, color: UI_GOLD, stroke: '#000000', strokeThickness: 4 }));
     const subtitle = cardMode
       ? favoriteView
-        ? `${cards.length} favorite card${cards.length === 1 ? '' : 's'} / ${found} discovered`
+        ? `${cardTabCards.length} favorite card${cardTabCards.length === 1 ? '' : 's'} / ${found} discovered${activeLens.id === 'all' ? '' : ` / ${activeLens.label} lens: ${cards.length}`}`
         : targetView
-          ? `${cards.length}/${COLLECTION_TARGET_LIMIT} active hunts / ${targetMilestones} completed`
-          : `${collectedIds.length} collected / ${found} discovered / ${all.length} total`
+          ? `${cardTabCards.length}/${COLLECTION_TARGET_LIMIT} active hunts / ${targetMilestones} completed${activeLens.id === 'all' ? '' : ` / ${activeLens.label} lens: ${cards.length}`}`
+          : activeLens.id === 'all'
+            ? `${collectedIds.length} collected / ${found} discovered / ${all.length} total`
+            : `${activeLens.label} lens: ${cards.length}/${cardTabCards.length} in ${this.tabs[this.activeTab]?.label ?? 'Cards'} / ${collectedIds.length} collected`
       : itemMode
         ? `${itemAll.length} items (${waymarkAll.length} Waymarks / ${supplyAll.length} Supplies)`
         : glossaryMode
@@ -1153,6 +1246,7 @@ export class CodexScene extends Phaser.Scene {
       strokeThickness: 3
     }).setOrigin(0.5));
     renderAudioToggleControl(this, (obj) => this.root.add(obj), GAME_WIDTH - 174, 42);
+    if (cardMode) this.renderCardCollectionLensControl(430, 42);
 
     const sectionMeta: Record<CodexSection, string> = {
       cards: `${found}/${all.length}`,
@@ -1425,6 +1519,9 @@ export class CodexScene extends Phaser.Scene {
       return { x: 72 + index * 150, y: 116, width: 146, height: MIN_SUPPORTED_TOUCH_TARGET };
     }
     if (this.focusZone === 'secondaryTabs') {
+      if (this.activeSection === 'cards') {
+        return { x: 430, y: 42, width: 162, height: MIN_SUPPORTED_TOUCH_TARGET };
+      }
       return { x: 62 + this.activeItemFilterTab * 108, y: 160, width: 106, height: MIN_SUPPORTED_TOUCH_TARGET };
     }
     return undefined;
@@ -1448,8 +1545,10 @@ export class CodexScene extends Phaser.Scene {
     const detail = Boolean(this.detailId);
     const label = detail
       ? `Up / Down: Scroll   |   C / X: Favorite   |   T / Y: Hunt   |   ${controlBindingLabel('confirm')}: Close   |   ${controlBindingLabel('back')}: Back`
-      : `Tab: Focus   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate   |   ${controlBindingLabel('confirm')}: Select   |   ${controlBindingLabel('back')}: Back`;
-    const width = detail ? 880 : 710;
+      : this.activeSection === 'cards'
+        ? `Tab: Focus   |   L / LB: Collection Lens   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate   |   ${controlBindingLabel('confirm')}: Select   |   ${controlBindingLabel('back')}: Back`
+        : `Tab: Focus   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate   |   ${controlBindingLabel('confirm')}: Select   |   ${controlBindingLabel('back')}: Back`;
+    const width = detail ? 880 : this.activeSection === 'cards' ? 900 : 710;
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 13, width, 22, 0x05070c, 0.86)
       .setStrokeStyle(1, UI_FIELD.cyan, 0.34)
       .setName('codex-input-hint-backdrop'));
@@ -1813,6 +1912,66 @@ export class CodexScene extends Phaser.Scene {
         wordWrap: { width: 560 },
       },
     ).setResolution(2).setOrigin(0.5));
+  }
+
+  private renderCardCollectionLensEmptyState(
+    layer: Phaser.GameObjects.Container,
+    top: number,
+    bottom: number,
+    lensLabel: string,
+  ) {
+    const cx = GAME_WIDTH / 2;
+    const cy = (top + bottom) / 2 - 6;
+    layer.add(this.add.rectangle(cx, cy, 610, 226, 0x0b1521, 0.98)
+      .setStrokeStyle(2, UI_FIELD.cyan, 0.8)
+      .setName('codex-card-lens-empty-state'));
+    layer.add(this.add.text(cx, cy - 40, `${lensLabel.toUpperCase()} LENS`, {
+      fontFamily: UI_FONT,
+      fontSize: '22px',
+      fontStyle: UI_BOLD,
+      color: '#b8e8f4',
+      stroke: '#05070c',
+      strokeThickness: 3,
+    }).setResolution(2).setOrigin(0.5));
+    layer.add(this.add.text(
+      cx,
+      cy + 28,
+      `No cards in this set match the ${lensLabel} lens.\nChoose COLLECTION LENS or press L / LB to keep browsing.`,
+      {
+        fontFamily: UI_FONT,
+        fontSize: '14px',
+        color: UI_SOFT,
+        align: 'center',
+        lineSpacing: 5,
+        wordWrap: { width: 520 },
+      },
+    ).setResolution(2).setOrigin(0.5));
+  }
+
+  private renderCardCollectionLensControl(x: number, y: number) {
+    const lens = this.activeCardCollectionLens();
+    const active = this.focusZone === 'secondaryTabs';
+    this.root.add(this.add.rectangle(x, y, 156, 42, active ? 0x183047 : 0x0b1724, 0.98)
+      .setStrokeStyle(2, UI_FIELD.cyan, active ? 0.98 : 0.66)
+      .setName('codex-card-lens-control'));
+    const hit = this.add.rectangle(x, y, 156, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setName('codex-card-lens-hit')
+      .setData('lens', lens.id);
+    hit.on('pointerdown', () => this.cycleCardCollectionLens(1));
+    this.root.add(hit);
+    this.root.add(this.add.text(x, y - 9, 'COLLECTION LENS', {
+      fontFamily: UI_FONT,
+      fontSize: '9px',
+      fontStyle: UI_BOLD,
+      color: '#7f93a8',
+    }).setResolution(2).setOrigin(0.5));
+    this.root.add(this.add.text(x, y + 8, lens.label.toUpperCase(), {
+      fontFamily: UI_FONT,
+      fontSize: '13px',
+      fontStyle: UI_BOLD,
+      color: '#b8e8f4',
+    }).setResolution(2).setOrigin(0.5).setName('codex-card-lens-label'));
   }
 
   private waymarkAccent(mark: RuntimeRouteMark) {
