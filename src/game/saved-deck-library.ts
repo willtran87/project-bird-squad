@@ -77,6 +77,7 @@ export function duplicateSavedDeck(
   duplicate.lineageId = lineageId;
   duplicate.revision = revision;
   duplicate.parentId = source.id;
+  if (source.notes) duplicate.notes = source.notes;
   return [duplicate, ...decks];
 }
 
@@ -124,6 +125,7 @@ export function tuneSavedDeck(
   tuned.lineageId = lineageId;
   tuned.revision = revision;
   tuned.parentId = source.id;
+  if (source.notes) tuned.notes = source.notes;
   return [tuned, ...decks];
 }
 

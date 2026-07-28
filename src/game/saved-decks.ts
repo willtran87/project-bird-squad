@@ -3,6 +3,7 @@ export const SAVED_DECK_ARCHIVE_LIMIT = 24;
 export const SAVED_DECK_TOTAL_LIMIT = SAVED_DECK_LIMIT + SAVED_DECK_ARCHIVE_LIMIT;
 export const SAVED_DECK_CARD_LIMIT = 60;
 export const SAVED_DECK_NAME_LIMIT = 32;
+export const SAVED_DECK_NOTES_LIMIT = 240;
 
 export interface SavedDeckCard {
   id: string;
@@ -23,6 +24,7 @@ export interface SavedDeckRecord {
   archived: boolean;
   sourceSeed: string;
   runMode: 'full' | 'quick';
+  notes?: string;
 }
 
 export interface NewSavedDeck {
@@ -43,6 +45,19 @@ function safeText(value: unknown, maxLength: number) {
   return typeof value === 'string'
     ? value.replace(/\s+/g, ' ').trim().slice(0, maxLength)
     : '';
+}
+
+function safeNotes(value: unknown) {
+  if (typeof value !== 'string') return '';
+  return value
+    .replace(/\r\n?/g, '\n')
+    .replace(/[\u0000-\u0009\u000b-\u001f\u007f]/g, ' ')
+    .split('\n')
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n')
+    .slice(0, SAVED_DECK_NOTES_LIMIT)
+    .trim();
 }
 
 function safeTime(value: unknown, fallback: number) {
@@ -76,6 +91,7 @@ export function sanitizeSavedDecks(value: unknown): SavedDeckRecord[] {
     const lineageId = rawLineageId && /^[a-z0-9_-]+$/i.test(rawLineageId) ? rawLineageId : id;
     const rawParentId = safeText(raw.parentId, 80);
     const parentId = rawParentId && /^[a-z0-9_-]+$/i.test(rawParentId) ? rawParentId : '';
+    const notes = safeNotes(raw.notes);
     return [{
       id,
       name,
@@ -92,6 +108,7 @@ export function sanitizeSavedDecks(value: unknown): SavedDeckRecord[] {
       archived: raw.archived === true,
       sourceSeed,
       runMode: raw.runMode === 'quick' ? 'quick' : 'full',
+      ...(notes ? { notes } : {}),
     }];
   });
   let activeCount = 0;
@@ -146,6 +163,23 @@ export function renameSavedDeck(
   const cleanName = safeText(name, SAVED_DECK_NAME_LIMIT);
   if (!cleanName) return [...decks];
   return decks.map((deck) => deck.id === id ? { ...deck, name: cleanName, updatedAt: now } : deck);
+}
+
+export function updateSavedDeckNotes(
+  decks: readonly SavedDeckRecord[],
+  id: string,
+  notes: string,
+  now = Date.now(),
+) {
+  const cleanNotes = safeNotes(notes);
+  return decks.map((deck) => {
+    if (deck.id !== id) return deck;
+    const withoutNotes = { ...deck };
+    delete withoutNotes.notes;
+    return cleanNotes
+      ? { ...withoutNotes, notes: cleanNotes, updatedAt: now }
+      : { ...withoutNotes, updatedAt: now };
+  });
 }
 
 export function toggleSavedDeckFavorite(

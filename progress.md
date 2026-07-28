@@ -4704,3 +4704,89 @@ sessions through `docs/game/playtest-runbook.md`.
   preferred targets remain advisory warnings.
 - The broader card-collector objective remains active. Five genuinely observed
   fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Immutable Flight Folio Revision Trail
+
+- Added a Revision Trail to Flight Lab so preserved Folio lineages are visible
+  and recoverable in-game. The direct parent is prioritized even when a newer
+  sibling revision exists, while every active and archived revision in the
+  lineage remains selectable.
+- Comparison reports positional card replacements, additions, removals,
+  Base/Preened state changes, unchanged cards, leader changes, and run-mode
+  changes. Current and selected revision summaries clearly identify archived
+  targets and show card art for changed entries; complete machine-readable and
+  screen-reader state includes every change.
+- Restore is immutable: it copies the selected revision's exact leader, mode,
+  source seed, card order, and Base/Preened states into a new active revision.
+  The current source and selected target remain byte-for-byte preserved, and
+  the new revision records the current Folio as its parent.
+- Identical playable revisions cannot create redundant restores. Restores also
+  refuse safely when all six active slots are occupied; both refusal paths
+  leave local storage unchanged and explain the reason. Archived targets can
+  be restored without first moving or rewriting them.
+- Pointer, keyboard, and controller flows are complete: Revision Trail,
+  `R`, or controller Y opens from Flight Lab; arrows, Tab, Page Up/Page Down,
+  pointer rows, D-pad, and shoulders choose a revision; Enter/controller A
+  restores; Back/controller B returns to the Lab. Flight Lab still exposes
+  tuning separately through `T` / controller X.
+- Focused browser coverage proves direct-parent ordering, active/archive
+  lineage visibility, exact card and state deltas, exact-match refusal,
+  pointer/keyboard/controller access, loaded change art, exact immutable
+  restore fidelity, revision numbering and parentage, and full-capacity
+  refusal. All six adjacent Folio suites pass together.
+- The inspected minimum-landscape visual is
+  `.artifacts/test-results/flight-folio-revision-trail.png`. The required
+  production shared client opened a clean Flock Record -> Folios state,
+  reported the Revision Trail input contract, and emitted no browser errors;
+  evidence is under `.artifacts/flight-folio-revision-shared-client/`.
+- `npm run build`, strict TypeScript with unused checks, `git diff --check`, and
+  full `npm run validate` pass. Validation covers 110 cards, 961 optimized
+  assets, canonical-world and directionless attack-tell contracts, deployment
+  hardening, bundle hard limits, and all 28 critical browser scenarios.
+  Combined boot is 715.6 KiB / 193.2 KiB gzip; the app-entry and combined
+  preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Exact-Match Folio Field Records
+
+- Added a private Field Record to Flight Lab that links a saved Folio to its
+  exact completed-flight history. A flight matches only when leader, run mode,
+  ordered card ids, and every Base/Preened state are identical, so nearby
+  variants never contaminate a deck's record.
+- Each Field Record summarizes flights, wins, losses, win rate, average turns,
+  fastest win, best Cohesion, and the five most recent exact matches. It also
+  explains the matching contract and makes clear that records do not affect
+  gameplay power.
+- Added optional private matchup notes with a 240-character limit, normalized
+  multiline input, explicit save/cancel behavior, and accessible editing
+  instructions. Notes persist in local saves and exported backups, follow
+  forks, tuned copies, and restored revisions, and remain excluded from BSF1
+  share codes.
+- Pointer, keyboard, and controller flows are complete: Field Record,
+  `N`, or controller L3 opens from Flight Lab; `E`, Enter, controller A, or
+  the notes button edits notes; Enter saves, Shift+Enter inserts a line,
+  Escape cancels editing, and Back/controller B returns to the Lab.
+- Text state and screen-reader narration expose exact-match rules, metrics,
+  recent results, note privacy, note length, editing status, storage behavior,
+  and all controls. Flight history now carries the normalized leader and final
+  ordered deck needed to compute the record without mutating old results.
+- Focused browser coverage proves exact matching against four near-miss deck
+  variants, metric calculations, chronological results, pointer/keyboard/
+  controller access, note save and cancel paths, local persistence, backup
+  inclusion, fork inheritance, and byte-stable BSF1 privacy. The complete
+  seven-suite Folio regression path is covered by the production gate.
+- The inspected minimum-landscape visual is
+  `.artifacts/test-results/flight-folio-field-record.png`. The required shared
+  client opened a clean Flock Record -> Folios state, reported the Field Record
+  input and privacy contract, rendered correctly, and emitted no browser
+  errors; evidence is under
+  `.artifacts/flight-folio-field-record-shared-client/`.
+- Strict TypeScript with unused checks, `git diff --check`, and full
+  `npm run validate` pass. Validation covers 110 cards, 961 optimized assets,
+  canonical-world and directionless attack-tell contracts, deployment
+  hardening, bundle hard limits, and all 29 critical browser scenarios.
+  Combined boot is 716.4 KiB / 193.4 KiB gzip; the app-entry and combined
+  preferred targets remain advisory warnings.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.

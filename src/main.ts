@@ -6297,6 +6297,9 @@ class ProfileScene extends Phaser.Scene {
     savedDeckStatus: 'idle',
     savedDeckLabOpen: false,
     savedDeckLabSample: 0,
+    savedDeckFieldRecordOpen: false,
+    savedDeckHistoryOpen: false,
+    savedDeckHistoryTargetIndex: 0,
     savedDeckWorkshopOpen: false,
     savedDeckWorkshopCardIndex: 0,
     savedDeckWorkshopSuggestionIndex: 0,
@@ -6358,6 +6361,13 @@ class ProfileScene extends Phaser.Scene {
     this.profileViewState.savedDeckCodeInput = undefined;
     this.profileViewState.savedDeckLabOpen = false;
     this.profileViewState.savedDeckLabSample = 0;
+    this.profileViewState.savedDeckFieldRecordOpen = false;
+    this.profileViewState.savedDeckFieldRecordDeckId = undefined;
+    this.profileViewState.savedDeckNotesInput?.remove();
+    this.profileViewState.savedDeckNotesInput = undefined;
+    this.profileViewState.savedDeckHistoryOpen = false;
+    this.profileViewState.savedDeckHistoryDeckId = undefined;
+    this.profileViewState.savedDeckHistoryTargetIndex = 0;
     this.profileViewState.savedDeckWorkshopOpen = false;
     this.profileViewState.savedDeckWorkshopDeckId = undefined;
     this.profileViewState.savedDeckWorkshopCardIndex = 0;
@@ -25906,6 +25916,7 @@ function profileFlightHistory(): import('./game/profile-scene').FlightHistoryEnt
       id: summary.id,
       seed: summary.seed,
       result: summary.result,
+      leaderId: summary.leaderId ?? defaultLeaderId,
       leader: getLeader(summary.leaderId).name,
       difficulty: difficultyLabel(summary.difficulty ?? 0),
       runMode: summary.runMode,
@@ -25915,6 +25926,7 @@ function profileFlightHistory(): import('./game/profile-scene').FlightHistoryEnt
       maxCohesion: summary.maxCohesion,
       turns: summary.turnsTaken,
       deckSize: summary.deck.length,
+      deck: summary.deck.map((card) => ({ id: card.id, upgraded: card.upgraded === true })),
       stops: path.size,
       waymarks: summary.routeMarks.length,
       supplies: summary.suppliesUsed.length,

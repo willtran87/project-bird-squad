@@ -66,6 +66,43 @@ export function screenReaderSummary(payload: unknown): string {
     const collectionMilestones = isRecord(payload.collectionMilestones) ? payload.collectionMilestones : undefined;
     const showcase = isRecord(payload.cardShowcase) ? payload.cardShowcase : undefined;
     const folios = isRecord(payload.savedFlightFolios) ? payload.savedFlightFolios : undefined;
+    const fieldRecord = isRecord(folios?.fieldRecord) ? folios.fieldRecord : undefined;
+    if (fieldRecord?.open === true) {
+      if (fieldRecord.notesEditing === true) {
+        return `Editing private matchup notes for ${text(fieldRecord.deckName)}, revision ${number(fieldRecord.revision) ?? 1}. The limit is 240 characters. Press Enter to save, Shift plus Enter for a new line, or Escape to cancel. Notes remain local, are included in save backups, never enter BSF share codes, and never affect play.`;
+      }
+      const recent = records(fieldRecord.recent).map((flight) => (
+        `${text(flight.result)}, flight ${text(flight.seed)}, ${text(flight.difficulty)}, ${number(flight.turns) ?? 0} turns, ${number(flight.currentCohesion) ?? 0} of ${number(flight.maxCohesion) ?? 0} Cohesion`
+      )).join('; ');
+      const notes = spaced(text(fieldRecord.notes));
+      const flights = number(fieldRecord.flights) ?? 0;
+      return `Folio Field Record for ${text(fieldRecord.deckName)}, revision ${number(fieldRecord.revision) ?? 1}${fieldRecord.archived === true ? ', archived' : ''}. ${flights} exact-match flight${flights === 1 ? '' : 's'}, ${number(fieldRecord.wins) ?? 0} wins, ${number(fieldRecord.losses) ?? 0} losses, ${flights > 0 ? `${number(fieldRecord.winRate) ?? 0} percent win rate, average ${number(fieldRecord.averageTurns) ?? 0} turns` : 'no win rate yet'}${fieldRecord.fastestWinTurns == null ? '' : `, fastest win ${number(fieldRecord.fastestWinTurns) ?? 0} turns`}. Matching requires the same leader, mode, card order, and Base or Preened states.${recent ? ` Recent results: ${recent}.` : ' Complete a flight with this exact Folio to start its record.'} Private matchup notes: ${notes || 'none yet'}. Notes stay local, are included in backups, never enter BSF share codes, and never affect power. Use Confirm, E, controller A, or pointer to edit notes, and Back or controller B to return to Flight Lab.`;
+    }
+    const revisionTrail = isRecord(folios?.revisionTrail) ? folios.revisionTrail : undefined;
+    if (revisionTrail?.open === true) {
+      const source = isRecord(revisionTrail.source) ? revisionTrail.source : undefined;
+      const target = isRecord(revisionTrail.selectedTarget) ? revisionTrail.selectedTarget : undefined;
+      const comparison = isRecord(revisionTrail.comparison) ? revisionTrail.comparison : undefined;
+      const changes = records(comparison?.cardChanges).map((change) => {
+        const current = isRecord(change.current) ? change.current : undefined;
+        const next = isRecord(change.target) ? change.target : undefined;
+        const currentLabel = current
+          ? `${text(current.name)}${current.upgraded === true ? ', Preened' : ', Base'}`
+          : 'empty slot';
+        const targetLabel = next
+          ? `${text(next.name)}${next.upgraded === true ? ', Preened' : ', Base'}`
+          : 'empty slot';
+        return `card ${number(change.position) ?? 0}, ${currentLabel} to ${targetLabel}`;
+      }).join('; ');
+      const metadata = [
+        comparison?.leaderChanged === true ? `leader changes to ${text(target?.leader)}` : '',
+        comparison?.runModeChanged === true ? `mode changes to ${text(target?.runMode)}` : '',
+      ].filter(Boolean).join(', ');
+      if (!target) {
+        return `Revision Trail for ${text(source?.name)}, revision ${number(source?.revision) ?? 1}. This is the first preserved revision in its lineage, so there is nothing earlier to compare or restore. The Folio remains unchanged. Use Back or controller B to return to Flight Lab.`;
+      }
+      return `Revision Trail for ${text(source?.name)}, current revision ${number(source?.revision) ?? 1}. Selected ${target.id === source?.parentId ? 'direct parent, ' : ''}${text(target.name)}, revision ${number(target.revision) ?? 1}${target.archived === true ? ', archived' : ''}. ${comparison?.exactMatch === true ? `The playable decks match exactly, with ${number(comparison.unchangedCards) ?? 0} unchanged cards.` : `${records(comparison?.cardChanges).length} card changes${metadata ? `, ${metadata}` : ''}: ${changes || 'no positional card changes'}.`} Restoring copies the selected revision's exact card order and Base or Preened states into a new active revision; source and target remain preserved. ${revisionTrail.canRestore === true ? 'Restore is available.' : number(revisionTrail.activeCount) === number(revisionTrail.capacity) ? 'Restore is unavailable because active Folios are full; archive one first.' : 'Restore is unnecessary because the playable decks match.'} Use Previous and Next, Up and Down, pointer, or controller shoulders to choose a revision, Confirm or controller A to restore, and Back or controller B to return to Flight Lab.`;
+    }
     const workshop = isRecord(folios?.workshop) ? folios.workshop : undefined;
     if (workshop?.open === true) {
       const source = isRecord(workshop.sourceCard) ? workshop.sourceCard : undefined;
@@ -96,7 +133,7 @@ export function screenReaderSummary(payload: unknown): string {
       const issues = Array.isArray(flightLab.issues)
         ? flightLab.issues.map(text).filter(Boolean).join(' ')
         : '';
-      return `Flight Lab for ${text(flightLab.deckName)}. ${flightLab.legalForStandardFlight === true ? 'Standard ready.' : 'Review needed.'} ${number(flightLab.savedCopies) ?? 0} saved copies, ${number(flightLab.playableCards) ?? 0} playable cards, average cost ${number(flightLab.averageCost) ?? 0}. Cost curve: ${curve || 'empty'}. Roles: ${roles || 'none'}. Families: ${families || 'none'}. Resource hooks: ${hooks || 'none'}. Sample hand ${number(sample?.number) ?? 1}: ${sampleCards || 'no cards'}. ${number(sample?.playableCount) ?? 0} playable now and ${number(sample?.pressureCount) ?? 0} pressure cards. Across ${number(consistency?.sampleCount) ?? 0} deterministic hands, ${number(consistency?.averagePlayable) ?? 0} average playable, ${number(consistency?.atLeastTwoPlayablePercent) ?? 0} percent open with two playable, and ${number(consistency?.pressurePercent) ?? 0} percent include pressure.${issues ? ` ${issues}` : ''} Practice uses the real protected combat opening draw, never changes the folio, never affects power, and spends no Scrap. Use Previous and Next, Space, or controller A to deal; Back or controller B closes the Lab.`;
+      return `Flight Lab for ${text(flightLab.deckName)}. ${flightLab.legalForStandardFlight === true ? 'Standard ready.' : 'Review needed.'} ${number(flightLab.savedCopies) ?? 0} saved copies, ${number(flightLab.playableCards) ?? 0} playable cards, average cost ${number(flightLab.averageCost) ?? 0}. Cost curve: ${curve || 'empty'}. Roles: ${roles || 'none'}. Families: ${families || 'none'}. Resource hooks: ${hooks || 'none'}. Sample hand ${number(sample?.number) ?? 1}: ${sampleCards || 'no cards'}. ${number(sample?.playableCount) ?? 0} playable now and ${number(sample?.pressureCount) ?? 0} pressure cards. Across ${number(consistency?.sampleCount) ?? 0} deterministic hands, ${number(consistency?.averagePlayable) ?? 0} average playable, ${number(consistency?.atLeastTwoPlayablePercent) ?? 0} percent open with two playable, and ${number(consistency?.pressurePercent) ?? 0} percent include pressure.${issues ? ` ${issues}` : ''} Practice uses the real protected combat opening draw, never changes the folio, never affects power, and spends no Scrap. Use N or controller left stick for the Field Record, R or controller Y for the Revision Trail, T or controller X for the Tuning Bench, Previous and Next, Space, or controller A to deal, and Back or controller B to close the Lab.`;
     }
     const nextMilestone = isRecord(collectionMilestones?.next) ? collectionMilestones.next : undefined;
     const current = spaced(text(focus?.current)) || 'Flock Record';
