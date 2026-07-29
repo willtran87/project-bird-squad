@@ -20394,6 +20394,214 @@ test('codex: protected owned cards persist across pointer keyboard controller se
   expect(final.favoriteCards).toEqual(initial.favoriteCards);
 });
 
+test('codex: active flight playable status distinguishes Base, Preened, absent, and no-flight copies', async ({ page }) => {
+  await page.addInitScript(() => {
+    const account = {
+      discoveredCards: ['major_00', 'major_01', 'wands_ace'],
+      cardCollection: {
+        major_00: {
+          timesClaimed: 2,
+          firstAcquiredAt: Date.UTC(2026, 6, 1),
+          firstSource: 'combat_reward',
+        },
+        major_01: {
+          timesClaimed: 1,
+          firstAcquiredAt: Date.UTC(2026, 6, 2),
+          firstSource: 'route_choice',
+        },
+        wands_ace: {
+          timesClaimed: 1,
+          firstAcquiredAt: Date.UTC(2026, 6, 3),
+          firstSource: 'starter',
+        },
+      },
+    };
+    const accountRaw = JSON.stringify(account);
+    const activeRun = {
+      deck: [
+        { id: 'major_00', upgraded: false },
+        { id: 'wands_ace', upgraded: false },
+        { id: 'major_00', upgraded: true },
+        { id: 'missing_card', upgraded: true },
+      ],
+      currentHp: 38,
+      scrap: 20,
+      routeMarks: [],
+      supplies: [],
+      mapIndex: 0,
+      completedRouteNodeIds: [],
+      routeLog: [],
+    };
+    const runRaw = JSON.stringify(activeRun);
+    localStorage.setItem('birdsquad.account', accountRaw);
+    localStorage.setItem('birdsquad.account.backup', accountRaw);
+    localStorage.setItem('birdsquad.run.active', runRaw);
+    localStorage.setItem('birdsquad.run.active.backup', runRaw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  const runBefore = await page.evaluate(() => ({
+    primary: localStorage.getItem('birdsquad.run.active'),
+    backup: localStorage.getItem('birdsquad.run.active.backup'),
+    collection: structuredClone(JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}').cardCollection),
+  }));
+
+  await page.evaluate(async () => {
+    const codex: any = await window.__birdSquadStartScene!('CodexScene');
+    codex.activeSection = 'cards';
+    codex.activeTab = 0;
+    codex.detailId = 'major_00';
+    codex.detailScroll = 0;
+    codex.detailScrollTarget = 0;
+    codex.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.activeFlightCards?.detail?.state === 'preened';
+  });
+
+  const preened = await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const texts = codex.root.list
+      .filter((entry: any) => typeof entry?.text === 'string')
+      .map((entry: any) => entry.text);
+    return {
+      state: JSON.parse(window.render_game_to_text?.() ?? '{}'),
+      texts,
+      status: document.getElementById('game-status')?.textContent ?? '',
+      primary: localStorage.getItem('birdsquad.run.active'),
+      backup: localStorage.getItem('birdsquad.run.active.backup'),
+      collection: structuredClone(JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}').cardCollection),
+    };
+  });
+  expect(preened.state.activeFlightCards).toMatchObject({
+    active: true,
+    deckSize: 2,
+    ids: ['major_00', 'wands_ace'],
+    entries: [
+      { id: 'major_00', state: 'preened', playableQuantity: 1 },
+      { id: 'wands_ace', state: 'base', playableQuantity: 1 },
+    ],
+    detailId: 'major_00',
+    detail: {
+      id: 'major_00',
+      inDeck: true,
+      playableQuantity: 1,
+      state: 'preened',
+    },
+    source: 'autosaved route checkpoint',
+    temporary: true,
+    singletonCopies: true,
+    affectsPermanentOwnership: false,
+    affectsSavedFolios: false,
+    readOnly: true,
+    searchable: true,
+  });
+  expect(preened.texts).toContain('ACTIVE FLIGHT / 1 PLAYABLE COPY / PREENED');
+  expect(preened.status).toContain('In the active flight: one playable Preened copy');
+  expect(preened.primary).toBe(runBefore.primary);
+  expect(preened.backup).toBe(runBefore.backup);
+  expect(preened.collection).toEqual(runBefore.collection);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-active-flight-card-usage.png' });
+
+  const searchable = await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    codex.detailId = undefined;
+    codex.cardSearchQuery = 'active flight preened';
+    codex.gridScroll = 0;
+    codex.gridScrollTarget = 0;
+    codex.renderAll();
+    return JSON.parse(window.render_game_to_text?.() ?? '{}');
+  });
+  expect(searchable.cardSearch).toMatchObject({
+    query: 'active flight preened',
+    matchCount: 1,
+    matchedIds: ['major_00'],
+  });
+  expect(searchable.cardSearch.fields).toContain('active flight usage');
+
+  const absent = await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    codex.cardSearchQuery = '';
+    codex.detailId = 'major_01';
+    codex.detailScroll = 0;
+    codex.detailScrollTarget = 0;
+    codex.renderAll();
+    return {
+      state: JSON.parse(window.render_game_to_text?.() ?? '{}'),
+      texts: codex.root.list
+        .filter((entry: any) => typeof entry?.text === 'string')
+        .map((entry: any) => entry.text),
+    };
+  });
+  expect(absent.state.activeFlightCards.detail).toMatchObject({
+    id: 'major_01',
+    inDeck: false,
+    playableQuantity: 0,
+    state: 'not-in-flight',
+  });
+  expect(absent.texts).toContain('ACTIVE FLIGHT / 0 PLAYABLE COPIES / NOT IN CURRENT DECK');
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
+    .toContain('Not in the active flight deck; playable quantity there is zero');
+
+  await page.evaluate(async () => {
+    const nextRun = JSON.stringify({
+      deck: [{ id: 'major_00', upgraded: false }],
+      currentHp: 30,
+      scrap: 25,
+      routeMarks: [],
+      supplies: [],
+      mapIndex: 0,
+      completedRouteNodeIds: [],
+      routeLog: [],
+    });
+    localStorage.setItem('birdsquad.run.active', nextRun);
+    localStorage.setItem('birdsquad.run.active.backup', nextRun);
+    const codex: any = await window.__birdSquadStartScene!('CodexScene');
+    codex.activeSection = 'cards';
+    codex.activeTab = 0;
+    codex.detailId = 'major_00';
+    codex.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.activeFlightCards?.detail?.state === 'base';
+  });
+  expect(await page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').activeFlightCards.detail))
+    .toMatchObject({ id: 'major_00', inDeck: true, playableQuantity: 1, state: 'base' });
+
+  await page.evaluate(async () => {
+    localStorage.removeItem('birdsquad.run.active');
+    localStorage.removeItem('birdsquad.run.active.backup');
+    const codex: any = await window.__birdSquadStartScene!('CodexScene');
+    codex.activeSection = 'cards';
+    codex.activeTab = 0;
+    codex.detailId = 'major_00';
+    codex.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.activeFlightCards?.detail?.state === 'no-active-flight';
+  });
+  const noFlight = await page.evaluate(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').activeFlightCards
+  ));
+  expect(noFlight).toMatchObject({
+    active: false,
+    deckSize: 0,
+    ids: [],
+    entries: [],
+    detail: {
+      id: 'major_00',
+      inDeck: false,
+      playableQuantity: 0,
+      state: 'no-active-flight',
+    },
+  });
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
+    .toContain('No active flight, so there are zero flight-specific playable copies');
+});
+
 test('codex: private Card Journal supports sanitized pointer, keyboard, controller, search, and screen-reader flows', async ({ page }) => {
   await page.addInitScript(() => {
     const account = {
@@ -28734,9 +28942,50 @@ test('new card shortcut opens the exact dossier and returns to the active run ac
     detailNew: true,
     persisted: true,
   });
+  expect(directState.activeFlightCards).toMatchObject({
+    active: true,
+    deckSize: 3,
+    detail: {
+      id: newestId,
+      inDeck: true,
+      playableQuantity: 1,
+      state: 'base',
+      canOpenDeckReview: true,
+    },
+    deckReviewHandoff: {
+      pointer: true,
+      keyboard: 'D',
+      controller: 'RB',
+      requiresRouteOrigin: true,
+      exactCardSelection: true,
+      preservesRun: true,
+      editsDeck: false,
+      savesFolio: false,
+    },
+  });
   expect(await page.evaluate((id) => (
     JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}').cardCollection[id].isNew
   ), newestId)).toBe(true);
+  const handoffPoint = await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const hit = codex.root.getByName('codex-card-flight-deck-hit');
+    return {
+      x: hit.x,
+      y: hit.y,
+      width: hit.displayWidth,
+      height: hit.displayHeight,
+      cardId: hit.getData('cardId'),
+      state: hit.getData('state'),
+    };
+  });
+  expect(handoffPoint).toMatchObject({
+    cardId: newestId,
+    state: 'base',
+    width: 224,
+    height: 44,
+  });
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
+    .toContain('Use D, controller right shoulder, or View in Flight Deck');
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/new-card-direct-dossier.png' });
 
   await page.keyboard.press('n');
@@ -28746,11 +28995,37 @@ test('new card shortcut opens the exact dossier and returns to the active run ac
   }, newestId);
   directState = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(directState.newlyAcquiredCards).toMatchObject({ count: 1, detailNew: false });
-  await page.keyboard.press('Escape');
+  await page.mouse.click(
+    canvas.x + canvas.width * (handoffPoint.x / 1280),
+    canvas.y + canvas.height * (handoffPoint.y / 720),
+  );
+  await page.waitForFunction((id) => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.scene === 'RouteScene'
+      && state.deckReview?.open === true
+      && state.deckReview?.selectedCardId === id
+      && state.deckReview?.browserRenderer?.loaded === true;
+  }, newestId);
+  let deckHandoff = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(deckHandoff.run).toMatchObject({ currentHp: 31, scrap: 73, deckSize: 3 });
+  expect(deckHandoff.deckReview).toMatchObject({
+    open: true,
+    total: 3,
+    selectedCardId: newestId,
+    filter: 'all',
+    sort: 'run',
+    query: '',
+    searchActive: false,
+  });
+  expect(deckHandoff.deckReview.cards.find((card: any) => card.id === newestId))
+    .toMatchObject({ id: newestId, upgraded: false });
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/new-card-flight-deck-handoff.png' });
   await page.keyboard.press('Escape');
   await page.waitForFunction((id) => {
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
-    return state.scene === 'RouteScene' && state.collectionGoal?.newCardId === id;
+    return state.scene === 'RouteScene'
+      && state.deckReview?.open === false
+      && state.collectionGoal?.newCardId === id;
   }, olderId);
   let returned = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(returned.run).toMatchObject({ currentHp: 31, scrap: 73, deckSize: 3 });
@@ -28760,9 +29035,21 @@ test('new card shortcut opens the exact dossier and returns to the active run ac
   await page.waitForFunction((id) => JSON.parse(window.render_game_to_text?.() ?? '{}').detailOpen === id, olderId);
   directState = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(directState.newlyAcquiredCards).toMatchObject({ count: 1, detailId: olderId, detailNew: true });
+  await page.keyboard.press('d');
+  await page.waitForFunction((id) => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.scene === 'RouteScene'
+      && state.deckReview?.open === true
+      && state.deckReview?.selectedCardId === id;
+  }, olderId);
+  deckHandoff = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(deckHandoff.run).toMatchObject({ currentHp: 31, scrap: 73, deckSize: 3 });
+  expect(deckHandoff.deckReview).toMatchObject({ selectedCardId: olderId, total: 3 });
   await page.keyboard.press('Escape');
-  await page.keyboard.press('Escape');
-  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').scene === 'RouteScene');
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.scene === 'RouteScene' && state.deckReview?.open === false;
+  });
 
   await page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
@@ -28776,16 +29063,19 @@ test('new card shortcut opens the exact dossier and returns to the active run ac
   });
   await page.evaluate(() => {
     const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
-    codex.input.gamepad.emit('down', codex.input.gamepad.pad1, { index: 1 }, 1);
+    codex.input.gamepad.emit('down', codex.input.gamepad.pad1, { index: 5 }, 1);
   });
-  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').detailOpen === '');
-  await page.evaluate(() => {
-    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
-    codex.input.gamepad.emit('down', codex.input.gamepad.pad1, { index: 1 }, 1);
-  });
-  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').scene === 'RouteScene');
+  await page.waitForFunction((id) => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.scene === 'RouteScene'
+      && state.deckReview?.open === true
+      && state.deckReview?.selectedCardId === id;
+  }, olderId);
   returned = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(returned.run).toMatchObject({ currentHp: 31, scrap: 73, deckSize: 3 });
+  expect(returned.deckReview).toMatchObject({ selectedCardId: olderId, total: 3 });
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview?.open === false);
   expect(await page.evaluate((ids) => {
     const account = JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}');
     return ids.map((id) => account.cardCollection[id].isNew === true);

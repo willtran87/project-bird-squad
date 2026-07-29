@@ -452,6 +452,7 @@ export function screenReaderSummary(payload: unknown): string {
     const ownership = isRecord(payload.cardOwnership) ? payload.cardOwnership : undefined;
     const acquisition = isRecord(payload.cardAcquisition) ? payload.cardAcquisition : undefined;
     const folioUsage = isRecord(payload.cardFolioUsage) ? payload.cardFolioUsage : undefined;
+    const activeFlightCards = isRecord(payload.activeFlightCards) ? payload.activeFlightCards : undefined;
     const newCards = isRecord(payload.newlyAcquiredCards) ? payload.newlyAcquiredCards : undefined;
     const collectionLens = isRecord(payload.cardCollectionLens) ? payload.cardCollectionLens : undefined;
     const activeFilters = isRecord(payload.activeCardFilters) ? payload.activeCardFilters : undefined;
@@ -466,6 +467,7 @@ export function screenReaderSummary(payload: unknown): string {
     const detailOwnership = isRecord(ownership?.detail) ? ownership.detail : undefined;
     const detailAcquisition = isRecord(acquisition?.detail) ? acquisition.detail : undefined;
     const detailFolioUsage = isRecord(folioUsage?.detail) ? folioUsage.detail : undefined;
+    const detailActiveFlight = isRecord(activeFlightCards?.detail) ? activeFlightCards.detail : undefined;
     const collectedCount = number(ownership?.collectedCount) ?? 0;
     const discoveredCount = number(payload.cardsDiscovered) ?? 0;
     const detailFavorite = favorites?.detailFavorite === true;
@@ -619,6 +621,13 @@ export function screenReaderSummary(payload: unknown): string {
           ? ` Showing ${lensVisible} card${lensVisible === 1 ? '' : 's'} used in saved Flight Folios.`
           : ` ${folioCardCount} discovered card${folioCardCount === 1 ? '' : 's'} used in saved Flight Folios.`
       : '';
+    const activeFlightState = section === 'cards' && detail && detailActiveFlight
+      ? activeFlightCards?.active === true
+        ? detailActiveFlight.inDeck === true
+          ? ` In the active flight: one playable ${text(detailActiveFlight.state) === 'preened' ? 'Preened' : 'Base'} copy. This checkpoint copy is run-specific and does not change permanent ownership or saved Folios.${detailActiveFlight.canOpenDeckReview === true ? ' Use D, controller right shoulder, or View in Flight Deck to return to the route with this exact card selected in Deck Review; this does not edit or save the deck.' : ''}`
+          : ' Not in the active flight deck; playable quantity there is zero. Permanent ownership and saved Folios are unchanged.'
+        : ' No active flight, so there are zero flight-specific playable copies. Permanent ownership and saved Folios remain available independently.'
+      : '';
     const newCardState = section === 'cards'
       ? detail
         ? detailNew
@@ -657,7 +666,7 @@ export function screenReaderSummary(payload: unknown): string {
         ? ` Collection Atlas open. ${atlasCollected} of ${atlasTotal} cards permanently collected. Collector milestones ${number(collectionAtlas?.completedMilestones) ?? 0} of ${records(collectionAtlas?.milestones).length} earned.${atlasNextMilestone ? ` Next, ${text(atlasNextMilestone.name)}, ${number(atlasNextMilestone.current) ?? 0} of ${number(atlasNextMilestone.target) ?? 0}.` : ''} Focused ${spaced(text(atlasSelected?.name)) || 'set'}, ${number(atlasSelected?.owned) ?? 0} of ${number(atlasSelected?.total) ?? 0} collected and ${number(atlasSelected?.discovered) ?? 0} encountered.${atlasSelectedMissing ? ` ${number(atlasSelectedMissing.count) ?? 0} missing; available through ${records(atlasSelectedMissing.paths).map((path) => `${spaced(text(path.name))} for ${number(path.count) ?? 0}`).join(', ') || 'no remaining paths'}. All cards are permanent with no rotation, season, or store gate; undiscovered identities remain concealed.` : ''} Milestone badges never affect power. Use Up and Down to browse sets, Confirm to open one, or G, controller R3, or Back to close.`
         : ` Collection Atlas has permanent set, rarity, acquisition-path, and collector-milestone progress for ${atlasCollected} of ${atlasTotal} cards. Use G or controller R3 to open it.`
       : '';
-    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${protectionState}${personalTagState}${cardJournalState}${showcaseState}${huntState}${huntViewState}${ownershipState}${acquisitionState}${folioUsageState}${newCardState}${cardSearchState}${cardSortState}${collectionLensState}${activeFiltersState}${savedViewsState}${collectionAtlasState}${inspectionReturnState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : collectionAtlas?.open === true ? 'Choose a set or close the Collection Atlas.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
+    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${protectionState}${personalTagState}${cardJournalState}${showcaseState}${huntState}${huntViewState}${ownershipState}${acquisitionState}${activeFlightState}${folioUsageState}${newCardState}${cardSearchState}${cardSortState}${collectionLensState}${activeFiltersState}${savedViewsState}${collectionAtlasState}${inspectionReturnState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : collectionAtlas?.open === true ? 'Choose a set or close the Collection Atlas.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
   }
   return scene ? `${spaced(scene)}.` : '';
 }

@@ -1931,6 +1931,7 @@ interface RenderPayload {
 
 interface RouteSceneData {
   runState?: RunState;
+  card?: string;
 }
 
 interface BattleSceneData {
@@ -6583,6 +6584,7 @@ class RouteScene extends Phaser.Scene {
     this.registry.set(controlPanelRegistryKey(this), false);
     this.registry.remove(controlCaptureRegistryKey(this));
     this.runState = cloneRunState(data.runState ?? createInitialRunState());
+    const deckReviewCardIndex = this.runState.deck.findIndex((card) => card.id === data.card);
     activeMapIndex = this.runState.mapIndex ?? 0;
     activeSeed = this.runState.seed ?? 'alpha';
     this.ensureDistrictContract();
@@ -6626,7 +6628,7 @@ class RouteScene extends Phaser.Scene {
     this.cardPickerContext = undefined;
     this.cardPickerRemainingPicks = 0;
     this.marketPickerUtilitySlot = undefined;
-    this.deckOverlayOpen = false;
+    this.deckOverlayOpen = deckReviewCardIndex >= 0;
     this.flockOverlayOpen = false;
     this.waymarkDrawerOpen = false;
     this.supplyDrawerOpen = false;
@@ -6640,10 +6642,10 @@ class RouteScene extends Phaser.Scene {
     this.marketCardShelf = [];
     this.marketWaymarkShelf = [];
     this.marketUtilityShelf = [];
-    this.inspectedCardId = undefined;
+    this.inspectedCardId = data.card;
     this.hoverCardDetail = undefined;
     this.marketItemHover = undefined;
-    this.cardReviewScroll = 0;
+    this.cardReviewScroll = Math.max(0, deckReviewCardIndex - CARD_REVIEW_VISIBLE_ROWS + 1);
     this.deckReviewFilter = 'all';
     this.deckReviewSort = 'run';
     this.deckReviewQuery = '';
@@ -13844,7 +13846,6 @@ class RouteScene extends Phaser.Scene {
     this.routeDeckBrowserFailed = false;
     this.renderAll();
     this.ensureRouteDeckBrowser();
-    this.queueDeckCardArtLoad();
   }
 
   savedDeckRecordState() {
@@ -13903,6 +13904,7 @@ class RouteScene extends Phaser.Scene {
 
   private ensureRouteDeckBrowser() {
     if (this.routeDeckBrowserModule || this.routeDeckBrowserLoading || this.routeDeckBrowserFailed) return;
+    this.queueDeckCardArtLoad();
     this.routeDeckBrowserLoading = true;
     void loadRouteDeckBrowserModule()
       .then((module) => {
@@ -14838,7 +14840,6 @@ class BattleScene extends Phaser.Scene {
   private lastFlockState: FlockState = 'holding';
   // Floating large-card preview shown while hovering a hand card.
   private cardPreview?: Phaser.GameObjects.Container;
-  private rewardInspectionLayer?: Phaser.GameObjects.Container;
   private selectionOutcomePreview?: Phaser.GameObjects.Container;
   private handCardRects = new Map<string, Phaser.GameObjects.Rectangle>();
   private handCardArtLayers = new Map<string, Phaser.GameObjects.Container>();
@@ -15108,7 +15109,6 @@ class BattleScene extends Phaser.Scene {
     this.rewardChoices = [];
     this.upgradeChoices = [];
     this.rewardInspectionCardId = undefined;
-    this.rewardInspectionLayer = undefined;
     this.controllerChoiceIndex = 0;
     this.battleInputActive = false;
     this.log = [`${currentMap().name}: ${initialRouteNode.label} begins.`];
@@ -26435,10 +26435,6 @@ function getMaxUnlockedTier(): number {
 function unlockTier(tier: number): void {
   const next = Math.min(MAX_DIFFICULTY, tier);
   if (next > getMaxUnlockedTier()) safeStorageSet(MAX_TIER_KEY, String(next));
-}
-
-function createStartingDeck(leaderId?: string): Card[] {
-  return getLeader(leaderId).startingDeckIds.map((id) => cloneCard(id));
 }
 
 let cardInstanceCounter = 0;

@@ -5525,3 +5525,83 @@ sessions through `docs/game/playtest-runbook.md`.
 - The broader card-collector objective remains active. Five genuinely observed
   fresh-player sessions through `docs/game/playtest-runbook.md` remain necessary
   qualitative release evidence.
+
+## 2026-07-29 Active Flight Playable Copies
+
+- Audited the collection dossier against the current-flight checkpoint and
+  closed the remaining ambiguity between permanent ownership, saved Folio
+  usage, and a playable run copy. Every discovered card dossier now says
+  whether the suspended flight contains one Base copy, one Preened copy, or
+  zero copies; when no flight exists, it says so explicitly.
+- Added `src/game/active-flight-card-usage.ts`, a read-only journaled checkpoint
+  projection on the lazy Codex side. It accepts only known card IDs,
+  canonicalizes duplicate checkpoint entries to one singleton copy, preserves
+  a Preened state if any duplicate reports it, uses the standard backup
+  recovery path, and never writes collection ownership or saved Folios.
+- The status appears directly beneath permanent collection history. Supporting
+  copy explains that Preening and removal are flight-specific, while permanent
+  ownership and private Folios remain independent. Search recognizes
+  `active flight`, `playable copy`, `base`, and `preened` only for cards
+  actually present in the active deck.
+- Runtime diagnostics expose the exact active deck IDs, singleton playable
+  quantities, Base/Preened states, checkpoint source, read-only contract, and
+  non-effects on ownership and Folios. Screen-reader summaries narrate the same
+  one-copy, zero-copy, and no-flight distinctions.
+- Added the 47th mandatory sequencing scenario. It repairs duplicate and
+  unknown checkpoint entries, verifies Preened and Base canonicalization,
+  searches active-flight state, distinguishes an owned card absent from the
+  deck, refreshes after a new checkpoint, handles no active flight, and proves
+  the active-run primary/backup bytes and collection records remain unchanged.
+- Focused visual evidence is
+  `.artifacts/test-results/codex-active-flight-card-usage.png`. The required
+  production shared client used real pointer input for Start Run and the route
+  New Card shortcut, then opened First Flight with
+  `activeFlightCards.detail { inDeck: true, playableQuantity: 1, state: "base" }`,
+  exact Route return preservation, and no browser error artifact. Its inspected
+  evidence is `.artifacts/active-flight-shared-client/final/shot-0.png`.
+- Production build and bundle gates pass. App entry remains 695.0 KiB and
+  combined boot remains 725.0 KiB, preserving the unchanged hard limit while
+  preferred targets remain advisory warnings. Full `npm run validate` passes
+  documentation, runtime/data/assets/world/FX/deployment checks and all 47
+  mandatory browser scenarios in 10.9 minutes.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md` remain necessary
+  qualitative release evidence.
+
+## 2026-07-29 New Card Flight Deck Handoff
+
+- Closed the acquisition-to-deck-review gap for cards already in the active
+  flight. A Route-origin card dossier now presents `VIEW IN FLIGHT DECK` only
+  when that exact card has a playable run copy; title-origin dossiers and cards
+  absent from the active deck do not offer the action.
+- Pointer, keyboard `D`, and controller right shoulder all return to the
+  preserved Route scene with Deck Review already open on the exact card. The
+  handoff is inspection-only: it does not edit the run deck, save a Folio,
+  change filters or sorting, acknowledge a new-card marker, or alter HP, Scrap,
+  ownership, and checkpoint state.
+- The fixed 224 by 44 pixel header action keeps the card art and dossier body
+  visible. Runtime diagnostics and the screen-reader summary expose the action,
+  its input parity, exact-selection guarantee, Route-origin requirement, and
+  read-only contract.
+- Expanded the mandatory new-card shortcut regression across genuine pointer,
+  keyboard, and controller paths. It verifies Base active-flight status,
+  unchanged new-card acknowledgement until the explicit Mark Seen action,
+  exact Deck Review selection for two different cards, preserved run state,
+  safe Escape return, and unchanged collection markers.
+- Focused evidence is
+  `.artifacts/test-results/new-card-direct-dossier.png` and
+  `.artifacts/test-results/new-card-flight-deck-handoff.png`. The required
+  production shared client used real pointer input for Start Run, the New Card
+  shortcut, and View in Flight Deck; it finished with Deck Review open on
+  `major_00`, the lazy renderer loaded, the ten-card run intact, and no browser
+  error artifact. Its inspected final image is
+  `.artifacts/new-card-flight-deck-shared-client-final/shot-0.png`.
+- Production build, strict TypeScript, focused Playwright, and the unchanged
+  bundle limits pass. The handoff initialization was compacted without changing
+  behavior; combined boot is 742,399 bytes against the 742,400-byte hard cap.
+  Full `npm run validate` passes all documentation, runtime/data/assets/world,
+  direction-neutral FX, deployment, bundle, and content gates plus all 47
+  mandatory Chromium scenarios in 11.6 minutes.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md` remain necessary
+  qualitative release evidence.

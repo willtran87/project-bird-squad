@@ -17,6 +17,10 @@ import {
 import { CARD_SHOWCASE_LIMIT, sanitizeCardShowcase } from './card-showcase';
 import { sanitizeLockedCards } from './card-protection';
 import {
+  loadActiveFlightCardUsage,
+  type ActiveFlightCardUsage,
+} from './active-flight-card-usage';
+import {
   CARD_ACQUISITION_PATHS,
   cardAcquisitionProfile,
 } from './card-acquisition-paths';
@@ -152,6 +156,7 @@ export class CodexScene extends Phaser.Scene {
   private collectionTargets = new Set<string>();
   private newlyAcquiredCards = new Set<string>();
   private cardFolioUsage: CardFolioUsageIndex = {};
+  private activeFlightCardUsage?: ActiveFlightCardUsage;
   private cardTags: Partial<Record<string, CardPersonalTag>> = {};
   private cardJournal: CardJournalNotes = {};
   private cardJournalInput?: HTMLTextAreaElement;
@@ -340,6 +345,7 @@ export class CodexScene extends Phaser.Scene {
     this.cardShowcase = cardShowcase;
     this.cardCollection = account.cardCollection;
     this.cardFolioUsage = cardFolioUsageIndex(account.decks);
+    this.activeFlightCardUsage = loadActiveFlightCardUsage(new Set(Object.keys(cardLibrary)));
     this.collectionAtlasOpen = this.openAtlasOnCreate;
     this.collectionAtlasFamilyIndex = 0;
     if (this.collectionAtlasOpen) this.focusZone = 'progressOverlay';
@@ -449,6 +455,10 @@ export class CodexScene extends Phaser.Scene {
     const onCardTag = (event: KeyboardEvent) => {
       if (this.nativeTextInputActive() || event.repeat || this.activeSection !== 'cards' || !this.detailId) return;
       this.cycleCurrentCardTag();
+    };
+    const onOpenFlightDeck = (event: KeyboardEvent) => {
+      if (this.nativeTextInputActive() || event.repeat || this.activeSection !== 'cards' || !this.detailId) return;
+      this.openCurrentCardInFlightDeck();
     };
     const onCardJournal = (event: KeyboardEvent) => {
       if (this.nativeTextInputActive() || event.repeat || this.activeSection !== 'cards' || !this.detailId) return;
@@ -613,7 +623,10 @@ export class CodexScene extends Phaser.Scene {
       else if (button.index === 2 && this.activeSection === 'cards' && this.detailId) this.toggleCurrentCardFavorite();
       else if (button.index === 3 && this.activeSection === 'cards' && this.detailId) this.toggleCurrentCollectionTarget();
       else if (button.index === 4 && this.activeSection === 'cards' && !this.detailId) this.cycleCardCollectionLens(1);
-      else if (button.index === 5 && this.activeSection === 'cards' && !this.detailId) this.openCardSearch();
+      else if (button.index === 5 && this.activeSection === 'cards') {
+        if (this.detailId) this.openCurrentCardInFlightDeck();
+        else this.openCardSearch();
+      }
       else if (button.index === 6 && this.activeSection === 'cards') {
         if (this.detailId) this.acknowledgeCurrentNewCard();
         else this.clearAllNewCards();
@@ -633,6 +646,7 @@ export class CodexScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-C', onFavorite);
     this.input.keyboard?.on('keydown-T', onTarget);
     this.input.keyboard?.on('keydown-V', onCardTag);
+    this.input.keyboard?.on('keydown-D', onOpenFlightDeck);
     this.input.keyboard?.on('keydown-J', onCardJournal);
     this.input.keyboard?.on('keydown-L', onCollectionLens);
     this.input.keyboard?.on('keydown-R', onCardSort);
@@ -654,6 +668,7 @@ export class CodexScene extends Phaser.Scene {
       this.input.keyboard?.off('keydown-C', onFavorite);
       this.input.keyboard?.off('keydown-T', onTarget);
       this.input.keyboard?.off('keydown-V', onCardTag);
+      this.input.keyboard?.off('keydown-D', onOpenFlightDeck);
       this.input.keyboard?.off('keydown-J', onCardJournal);
       this.input.keyboard?.off('keydown-L', onCollectionLens);
       this.input.keyboard?.off('keydown-R', onCardSort);
@@ -1200,6 +1215,11 @@ export class CodexScene extends Phaser.Scene {
       this.cardFolioUsage[card.id]
         ? `folio folios saved deck deck used ${this.cardFolioUsage[card.id].active ? 'active' : ''} ${this.cardFolioUsage[card.id].archived ? 'archive archived' : ''}`
         : '',
+      this.activeFlightCardUsage?.cards[card.id]
+        ? `active flight current deck playable copy ${this.activeFlightCardUsage.cards[card.id]}`
+        : this.activeFlightCardUsage
+          ? 'outside current flight deck zero playable copies'
+          : '',
       `cost ${card.cost}`,
       `${card.cost} cost`,
       card.text,
@@ -2306,6 +2326,8 @@ export class CodexScene extends Phaser.Scene {
     const folioUsageEntries = all
       .filter((card) => this.discovered.has(card.id) && Boolean(this.cardFolioUsage[card.id]))
       .map((card) => ({ id: card.id, ...this.cardFolioUsage[card.id] }));
+    const activeFlightEntries = Object.entries(this.activeFlightCardUsage?.cards ?? {})
+      .map(([id, state]) => ({ id, state, playableQuantity: 1 }));
     const enemyAll = this.allCodexEnemies();
     const reserveEnemyCount = this.allReserveEnemies().length;
     const encounterEnemyCount = this.allEncounterEnemies().length;
@@ -2562,6 +2584,40 @@ export class CodexScene extends Phaser.Scene {
         derivedFromPrivateFolios: true,
         affectsPower: false,
       },
+      activeFlightCards: {
+        active: Boolean(this.activeFlightCardUsage),
+        deckSize: this.activeFlightCardUsage?.deckSize ?? 0,
+        ids: activeFlightEntries.map((entry) => entry.id),
+        entries: activeFlightEntries,
+        detailId: this.activeSection === 'cards' ? this.detailId ?? '' : '',
+        detail: this.activeSection === 'cards' && this.detailId
+          ? {
+              id: this.detailId,
+              inDeck: Boolean(this.activeFlightCardUsage?.cards[this.detailId]),
+              playableQuantity: this.activeFlightCardUsage?.cards[this.detailId] ? 1 : 0,
+              state: this.activeFlightCardUsage?.cards[this.detailId]
+                ?? (this.activeFlightCardUsage ? 'not-in-flight' : 'no-active-flight'),
+              canOpenDeckReview: this.canOpenCurrentCardInFlightDeck(this.detailId),
+            }
+          : null,
+        source: 'autosaved route checkpoint',
+        temporary: true,
+        singletonCopies: true,
+        affectsPermanentOwnership: false,
+        affectsSavedFolios: false,
+        readOnly: true,
+        searchable: true,
+        deckReviewHandoff: {
+          pointer: true,
+          keyboard: 'D',
+          controller: 'RB',
+          requiresRouteOrigin: true,
+          exactCardSelection: true,
+          preservesRun: true,
+          editsDeck: false,
+          savesFolio: false,
+        },
+      },
       newlyAcquiredCards: {
         count: newlyAcquiredIds.length,
         ids: newlyAcquiredIds,
@@ -2654,7 +2710,7 @@ export class CodexScene extends Phaser.Scene {
         controller: 'RB',
         nativeInput: Boolean(this.cardSearchInput),
         maxLength: CARD_SEARCH_MAX_LENGTH,
-        fields: ['name', 'rules', 'keyword', 'character', 'set', 'type', 'cost', 'rarity', 'ownership', 'saved Folio usage', 'personal tag', 'private journal', 'showcase', 'protection'],
+        fields: ['name', 'rules', 'keyword', 'character', 'set', 'type', 'cost', 'rarity', 'ownership', 'active flight usage', 'saved Folio usage', 'personal tag', 'private journal', 'showcase', 'protection'],
         revealsUndiscoveredDetails: false,
         persisted: true,
       },
@@ -5401,6 +5457,27 @@ export class CodexScene extends Phaser.Scene {
     this.renderAll();
   }
 
+  private canOpenCurrentCardInFlightDeck(id = this.detailId) {
+    return Boolean(
+      id
+      && this.returnScene === 'RouteScene'
+      && this.activeFlightCardUsage?.cards[id]
+    );
+  }
+
+  private openCurrentCardInFlightDeck() {
+    const id = this.activeSection === 'cards' ? this.detailId : undefined;
+    if (!this.canOpenCurrentCardInFlightDeck(id)) {
+      playUiSound('locked');
+      return;
+    }
+    playUiSound('confirm');
+    this.scene.start('RouteScene', {
+      ...(this.returnData ?? {}),
+      card: id,
+    });
+  }
+
   private toggleCurrentCollectionTarget() {
     const id = this.activeSection === 'cards' ? this.detailId : undefined;
     if (id && this.cardCollection[id]) {
@@ -5509,6 +5586,33 @@ export class CodexScene extends Phaser.Scene {
       stroke: '#05070c',
       strokeThickness: 2,
     }).setResolution(2).setOrigin(0.5).setName('codex-card-showcase-label').setData('cardId', card.id));
+  }
+
+  private renderCardFlightDeckControl(x: number, y: number, card: Card) {
+    const hit = this.add.rectangle(x, y, 224, 44, 0x102534, 0.99)
+      .setStrokeStyle(2, UI_FIELD.cyan, 0.96)
+      .setInteractive({ useHandCursor: true })
+      .setName('codex-card-flight-deck-hit')
+      .setData('cardId', card.id)
+      .setData('state', this.activeFlightCardUsage?.cards[card.id] ?? '');
+    hit.on('pointerover', () => hit.setFillStyle(0x17384b, 1));
+    hit.on('pointerout', () => hit.setFillStyle(0x102534, 0.99));
+    hit.on('pointerdown', () => this.openCurrentCardInFlightDeck());
+    this.root.add(hit);
+    this.root.add(this.add.text(x, y - 9, 'ACTIVE FLIGHT  /  D / RB', {
+      fontFamily: UI_FONT,
+      fontSize: '8px',
+      fontStyle: UI_BOLD,
+      color: '#91a6b8',
+    }).setResolution(2).setOrigin(0.5).setName('codex-card-flight-deck-hint').setData('cardId', card.id));
+    this.root.add(this.add.text(x, y + 9, 'VIEW IN FLIGHT DECK', {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: '#b8e8f4',
+      stroke: '#05070c',
+      strokeThickness: 2,
+    }).setResolution(2).setOrigin(0.5).setName('codex-card-flight-deck-label').setData('cardId', card.id));
   }
 
   private renderClearNewCardsControl(x: number, y: number) {
@@ -5740,7 +5844,8 @@ export class CodexScene extends Phaser.Scene {
     // top & bottom (WebGL has no geometry masks).
     const tx = artX + artW / 2 + 26;
     const wrap = right - tx - 108;
-    const viewTop = mTop + 16;
+    const flightDeckAction = this.canOpenCurrentCardInFlightDeck(card.id);
+    const viewTop = mTop + 16 + (flightDeckAction ? 48 : 0);
     const viewBottom = mBottom - 44;
     const viewH = viewBottom - viewTop;
     const flav = this.codexData?.getCardFlavor(card.id);
@@ -5814,6 +5919,33 @@ export class CodexScene extends Phaser.Scene {
       );
     }
     const folioUsage = this.cardFolioUsage[card.id];
+    const activeFlightState = this.activeFlightCardUsage?.cards[card.id];
+    yy += 5;
+    if (this.activeFlightCardUsage) {
+      para(
+        activeFlightState
+          ? `ACTIVE FLIGHT / 1 PLAYABLE COPY / ${activeFlightState.toUpperCase()}`
+          : 'ACTIVE FLIGHT / 0 PLAYABLE COPIES / NOT IN CURRENT DECK',
+        { color: activeFlightState ? '#8df4ff' : '#91a6b8', size: 12 },
+      );
+      yy += 5;
+      para(
+        activeFlightState
+          ? 'Run-specific checkpoint state. Preening or removing this copy does not change permanent ownership or saved Folios.'
+          : 'This card remains permanently owned or discovered as shown above; the current flight deck is separate.',
+        { color: '#91a6b8', size: 12 },
+      );
+    } else {
+      para('NO ACTIVE FLIGHT / 0 FLIGHT-SPECIFIC PLAYABLE COPIES', {
+        color: '#91a6b8',
+        size: 12,
+      });
+      yy += 5;
+      para('Permanent ownership and saved Folios remain available independently of a suspended flight.', {
+        color: '#91a6b8',
+        size: 12,
+      });
+    }
     if (folioUsage) {
       yy += 5;
       para(
@@ -6016,6 +6148,7 @@ export class CodexScene extends Phaser.Scene {
     this.renderCardTargetControl(artX + 78, mBottom - 24, card);
     this.renderCardTagControl(tx + 96, mBottom - 24, card);
     this.renderCardShowcaseControl(tx + 296, mBottom - 24, card);
+    if (flightDeckAction) this.renderCardFlightDeckControl(tx + wrap / 2, mTop + 28, card);
     this.renderCodexCloseControl(right - 26, mTop + 26, closeDetail);
     if (this.cardJournalInput && this.cardJournalEditingId === card.id) {
       this.renderCardJournalPrompt(card);
