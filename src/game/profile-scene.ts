@@ -15,6 +15,7 @@ import {
 import {
   activeSavedDecks,
   archivedSavedDecks,
+  createSavedDeckRecord,
   renameSavedDeck,
   sanitizeSavedDecks,
   SAVED_DECK_ARCHIVE_LIMIT,
@@ -226,6 +227,8 @@ export interface ProfileViewState {
     | 'organized'
     | 'personalized'
     | 'descriptionSaved'
+    | 'templateCreated'
+    | 'templateUnavailable'
     | 'tagLimit'
     | 'archived'
     | 'restored'
@@ -239,6 +242,8 @@ export interface ProfileViewState {
     | 'failed';
   savedDeckRenameInput?: HTMLInputElement;
   savedDeckCodeInput?: HTMLInputElement;
+  savedDeckTemplateOpen?: boolean;
+  savedDeckTemplateIndex?: number;
   savedDeckOrganizerOpen: boolean;
   savedDeckOrganizerDeckId?: string;
   savedDeckOrganizerSection: 'folder' | 'tags';
@@ -543,6 +548,112 @@ function toggleSelectedSavedDeckArchived(
       dependencies.playUiSound(selected.archived ? 'confirm' : 'close');
     }
   }
+  renderProfileScene(scene, state, dependencies);
+}
+
+function savedDeckTemplateOptions(account = loadAccount()) {
+  const owned = new Set(Object.entries(account.cardCollection)
+    .filter(([, record]) => record.timesClaimed > 0)
+    .map(([id]) => id));
+  const activeCount = activeSavedDecks(sanitizeSavedDecks(account.decks)).length;
+  return flockLeaders.map((leader) => {
+    const missing = leader.startingDeckIds.filter((id) => !owned.has(id));
+    const unlocked = isLeaderUnlocked(account, leader.id);
+    const available = activeCount < SAVED_DECK_LIMIT && unlocked && missing.length === 0;
+    return {
+      leader,
+      unlocked,
+      owned: leader.startingDeckIds.length - missing.length,
+      missing: missing.length,
+      available,
+      reason: activeCount >= SAVED_DECK_LIMIT
+        ? 'Active Folios full'
+        : !unlocked
+          ? 'Leader locked'
+          : missing.length > 0
+            ? `Claim ${missing.length} starter card${missing.length === 1 ? '' : 's'}`
+            : 'Ready to build',
+    };
+  });
+}
+
+function openSavedDeckTemplate(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  state.savedDeckTemplateOpen = true;
+  state.savedDeckTemplateIndex = 0;
+  state.savedDeckStatus = 'idle';
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function closeSavedDeckTemplate(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  state.savedDeckTemplateOpen = false;
+  state.savedDeckTemplateIndex = 0;
+  dependencies.playUiSound('close');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function cycleSavedDeckTemplate(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  direction: -1 | 1,
+) {
+  const options = savedDeckTemplateOptions();
+  state.savedDeckTemplateIndex = (
+    (state.savedDeckTemplateIndex ?? 0) + direction + options.length
+  ) % options.length;
+  state.savedDeckStatus = 'idle';
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function createSavedDeckFromTemplate(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  const account = loadAccount();
+  const decks = sanitizeSavedDecks(account.decks);
+  const options = savedDeckTemplateOptions(account);
+  const selected = options[Phaser.Math.Clamp(state.savedDeckTemplateIndex ?? 0, 0, options.length - 1)];
+  if (!selected?.available) {
+    state.savedDeckStatus = 'templateUnavailable';
+    dependencies.playUiSound('locked');
+    renderProfileScene(scene, state, dependencies);
+    return;
+  }
+  const priorTemplates = decks.filter((deck) => (
+    deck.sourceSeed === `starter-template:${selected.leader.id}`
+  )).length;
+  const record = createSavedDeckRecord({
+    name: `${selected.leader.name} Starter${priorTemplates > 0 ? ` ${priorTemplates + 1}` : ''}`,
+    leaderId: selected.leader.id,
+    cards: selected.leader.startingDeckIds.map((id) => ({ id })),
+    sourceSeed: `starter-template:${selected.leader.id}`,
+    runMode: 'full',
+  });
+  account.decks = [record, ...decks];
+  if (!saveAccount(account)) {
+    state.savedDeckStatus = 'failed';
+    dependencies.playUiSound('locked');
+    renderProfileScene(scene, state, dependencies);
+    return;
+  }
+  state.savedDeckTemplateOpen = false;
+  state.savedDeckTemplateIndex = 0;
+  state.savedDeckArchiveView = false;
+  state.savedDeckIndex = 0;
+  state.badgePage = 0;
+  state.savedDeckStatus = 'templateCreated';
+  dependencies.playUiSound('confirm');
   renderProfileScene(scene, state, dependencies);
 }
 
@@ -2117,8 +2228,14 @@ export function startProfileScene(
   dependencies: ProfileSceneDependencies,
 ) {
   state.revealBursts = 0;
+  state.savedDeckTemplateOpen = false;
+  state.savedDeckTemplateIndex = 0;
   if (playtestExportEnabled()) syncLatestPlaytestRun(state, dependencies);
   const returnToMenu = () => {
+    if (state.savedDeckTemplateOpen) {
+      closeSavedDeckTemplate(scene, state, dependencies);
+      return;
+    }
     if (state.savedDeckDescriptionInput) {
       closeSavedDeckDescription(state);
       dependencies.playUiSound('close');
@@ -2192,7 +2309,9 @@ export function startProfileScene(
   };
   bindControlActions(scene, {
     back: returnToMenu,
-    previous: () => state.savedDeckIdentityOpen
+    previous: () => state.savedDeckTemplateOpen
+      ? cycleSavedDeckTemplate(scene, state, dependencies, -1)
+      : state.savedDeckIdentityOpen
       ? cycleSavedDeckIdentityChoice(scene, state, dependencies, -1)
       : state.savedDeckOrganizerOpen
       ? cycleSavedDeckOrganizerChoice(scene, state, dependencies, -1)
@@ -2211,7 +2330,9 @@ export function startProfileScene(
       : state.badgeView === 'folios' && state.focus === 'folios'
         ? cycleSavedDeck(scene, state, dependencies, -1)
         : cycleProfileFocus(scene, state, dependencies, -1),
-    next: () => state.savedDeckIdentityOpen
+    next: () => state.savedDeckTemplateOpen
+      ? cycleSavedDeckTemplate(scene, state, dependencies, 1)
+      : state.savedDeckIdentityOpen
       ? cycleSavedDeckIdentityChoice(scene, state, dependencies, 1)
       : state.savedDeckOrganizerOpen
       ? cycleSavedDeckOrganizerChoice(scene, state, dependencies, 1)
@@ -2231,7 +2352,9 @@ export function startProfileScene(
         ? cycleSavedDeck(scene, state, dependencies, 1)
         : cycleProfileFocus(scene, state, dependencies, 1),
     confirm: () => {
-      if (state.savedDeckIdentityOpen) {
+      if (state.savedDeckTemplateOpen) {
+        createSavedDeckFromTemplate(scene, state, dependencies);
+      } else if (state.savedDeckIdentityOpen) {
         applySavedDeckIdentityChoice(scene, state, dependencies);
       } else if (state.savedDeckOrganizerOpen) {
         applySavedDeckOrganizerChoice(scene, state, dependencies);
@@ -2261,7 +2384,8 @@ export function startProfileScene(
   const onTab = (event: KeyboardEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    if (state.savedDeckIdentityOpen) switchSavedDeckIdentitySection(scene, state, dependencies);
+    if (state.savedDeckTemplateOpen) cycleSavedDeckTemplate(scene, state, dependencies, event.shiftKey ? -1 : 1);
+    else if (state.savedDeckIdentityOpen) switchSavedDeckIdentitySection(scene, state, dependencies);
     else if (state.savedDeckOrganizerOpen) switchSavedDeckOrganizerSection(scene, state, dependencies);
     else if (state.savedDeckCollectionSignalsOpen) dependencies.playUiSound('locked');
     else if (state.savedDeckFieldRecordOpen) dependencies.playUiSound('locked');
@@ -2275,7 +2399,8 @@ export function startProfileScene(
     if (state.saveDataOpen || state.flightReview) return;
     event.preventDefault();
     event.stopPropagation();
-    if (state.savedDeckIdentityOpen) cycleSavedDeckIdentityChoice(scene, state, dependencies, -1);
+    if (state.savedDeckTemplateOpen) cycleSavedDeckTemplate(scene, state, dependencies, -1);
+    else if (state.savedDeckIdentityOpen) cycleSavedDeckIdentityChoice(scene, state, dependencies, -1);
     else if (state.savedDeckOrganizerOpen) cycleSavedDeckOrganizerChoice(scene, state, dependencies, -1);
     else if (state.savedDeckCollectionSignalsOpen) dependencies.playUiSound('locked');
     else if (state.savedDeckFieldRecordOpen) dependencies.playUiSound('locked');
@@ -2289,7 +2414,8 @@ export function startProfileScene(
     if (state.saveDataOpen || state.flightReview) return;
     event.preventDefault();
     event.stopPropagation();
-    if (state.savedDeckIdentityOpen) cycleSavedDeckIdentityChoice(scene, state, dependencies, 1);
+    if (state.savedDeckTemplateOpen) cycleSavedDeckTemplate(scene, state, dependencies, 1);
+    else if (state.savedDeckIdentityOpen) cycleSavedDeckIdentityChoice(scene, state, dependencies, 1);
     else if (state.savedDeckOrganizerOpen) cycleSavedDeckOrganizerChoice(scene, state, dependencies, 1);
     else if (state.savedDeckCollectionSignalsOpen) dependencies.playUiSound('locked');
     else if (state.savedDeckFieldRecordOpen) dependencies.playUiSound('locked');
@@ -2300,6 +2426,18 @@ export function startProfileScene(
     else cycleBadgePage(scene, state, dependencies, 1);
   };
   const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button) => {
+    if (state.savedDeckTemplateOpen) {
+      if (button.index === 12 || button.index === 14 || button.index === 4) {
+        cycleSavedDeckTemplate(scene, state, dependencies, -1);
+      } else if (button.index === 13 || button.index === 15 || button.index === 5) {
+        cycleSavedDeckTemplate(scene, state, dependencies, 1);
+      } else if (button.index === 0) {
+        createSavedDeckFromTemplate(scene, state, dependencies);
+      } else if (button.index === 1) {
+        closeSavedDeckTemplate(scene, state, dependencies);
+      }
+      return;
+    }
     if (state.savedDeckIdentityOpen) {
       if (state.savedDeckDescriptionInput) return;
       if (button.index === 12 || button.index === 14) {
@@ -2404,6 +2542,10 @@ export function startProfileScene(
       && !state.savedDeckRenameInput
       && !state.savedDeckCodeInput
     ) {
+      if (button.index === 5) {
+        openSavedDeckTemplate(scene, state, dependencies);
+        return;
+      }
       if (button.index === 0) {
         openSavedDeckOrganizer(scene, state, dependencies);
         return;
@@ -2463,7 +2605,28 @@ export function startProfileScene(
     }
     else if (button.index === 1) returnToMenu();
   };
+  const onSavedDeckTemplate = (event: KeyboardEvent) => {
+    if (
+      state.savedDeckTemplateOpen
+      ||
+      state.badgeView !== 'folios'
+      || state.focus !== 'folios'
+      || state.savedDeckRenameInput
+      || state.savedDeckCodeInput
+      || state.savedDeckOrganizerOpen
+      || state.savedDeckIdentityOpen
+      || state.savedDeckCollectionSignalsOpen
+      || state.savedDeckLabOpen
+      || state.savedDeckFieldRecordOpen
+      || state.savedDeckHistoryOpen
+      || state.savedDeckWorkshopOpen
+    ) return;
+    event.preventDefault();
+    event.stopPropagation();
+    openSavedDeckTemplate(scene, state, dependencies);
+  };
   const onSavedDeckFavorite = (event: KeyboardEvent) => {
+    if (state.savedDeckTemplateOpen) return;
     if (
       state.badgeView !== 'folios'
       || state.focus !== 'folios'
@@ -2482,6 +2645,7 @@ export function startProfileScene(
     toggleSelectedSavedDeckFavorite(scene, state, dependencies);
   };
   const onSavedDeckRename = (event: KeyboardEvent) => {
+    if (state.savedDeckTemplateOpen) return;
     if (
       state.badgeView !== 'folios'
       || state.focus !== 'folios'
@@ -2499,6 +2663,7 @@ export function startProfileScene(
     beginSavedDeckRename(scene, state, dependencies);
   };
   const onSavedDeckDuplicate = (event: KeyboardEvent) => {
+    if (state.savedDeckTemplateOpen) return;
     if (
       state.badgeView !== 'folios'
       || state.focus !== 'folios'
@@ -2517,6 +2682,7 @@ export function startProfileScene(
     duplicateSelectedSavedDeck(scene, state, dependencies);
   };
   const onSavedDeckCopy = (event: KeyboardEvent) => {
+    if (state.savedDeckTemplateOpen) return;
     if (
       state.badgeView !== 'folios'
       || state.focus !== 'folios'
@@ -2535,6 +2701,7 @@ export function startProfileScene(
     copySelectedSavedDeckCode(scene, state, dependencies);
   };
   const onSavedDeckImport = (event: KeyboardEvent) => {
+    if (state.savedDeckTemplateOpen) return;
     if (
       state.badgeView !== 'folios'
       || state.focus !== 'folios'
@@ -2553,6 +2720,7 @@ export function startProfileScene(
     beginSavedDeckImport(scene, state, dependencies);
   };
   const onSavedDeckLab = (event: KeyboardEvent) => {
+    if (state.savedDeckTemplateOpen) return;
     if (
       state.badgeView !== 'folios'
       || state.focus !== 'folios'
@@ -2571,6 +2739,7 @@ export function startProfileScene(
     openSavedDeckLab(scene, state, dependencies);
   };
   const onSavedDeckOrganizer = (event: KeyboardEvent) => {
+    if (state.savedDeckTemplateOpen) return;
     if (
       state.badgeView !== 'folios'
       || state.focus !== 'folios'
@@ -2604,6 +2773,7 @@ export function startProfileScene(
     beginSavedDeckDescription(scene, state, dependencies);
   };
   const onSavedDeckArchiveView = (event: KeyboardEvent) => {
+    if (state.savedDeckTemplateOpen) return;
     if (
       state.badgeView !== 'folios'
       || state.focus !== 'folios'
@@ -2622,6 +2792,7 @@ export function startProfileScene(
     toggleSavedDeckArchiveView(scene, state, dependencies);
   };
   const onSavedDeckArchive = (event: KeyboardEvent) => {
+    if (state.savedDeckTemplateOpen) return;
     if (
       state.badgeView !== 'folios'
       || state.focus !== 'folios'
@@ -2716,6 +2887,7 @@ export function startProfileScene(
   scene.input.keyboard?.on('keydown-TAB', onTab);
   scene.input.keyboard?.on('keydown-PAGE_UP', onPageUp);
   scene.input.keyboard?.on('keydown-PAGE_DOWN', onPageDown);
+  scene.input.keyboard?.on('keydown-K', onSavedDeckTemplate);
   scene.input.keyboard?.on('keydown-C', onSavedDeckFavorite);
   scene.input.keyboard?.on('keydown-R', onSavedDeckRename);
   scene.input.keyboard?.on('keydown-D', onSavedDeckDuplicate);
@@ -2745,6 +2917,7 @@ export function startProfileScene(
     scene.input.keyboard?.off('keydown-TAB', onTab);
     scene.input.keyboard?.off('keydown-PAGE_UP', onPageUp);
     scene.input.keyboard?.off('keydown-PAGE_DOWN', onPageDown);
+    scene.input.keyboard?.off('keydown-K', onSavedDeckTemplate);
     scene.input.keyboard?.off('keydown-C', onSavedDeckFavorite);
     scene.input.keyboard?.off('keydown-R', onSavedDeckRename);
     scene.input.keyboard?.off('keydown-D', onSavedDeckDuplicate);
@@ -2831,6 +3004,16 @@ export function renderProfileScene(
   const activeDecks = activeSavedDecks(allSavedDecks);
   const archivedDecks = archivedSavedDecks(allSavedDecks);
   const savedDecks = state.savedDeckArchiveView ? archivedDecks : activeDecks;
+  const savedDeckTemplates = state.savedDeckTemplateOpen
+    ? savedDeckTemplateOptions(account)
+    : undefined;
+  if (savedDeckTemplates) {
+    state.savedDeckTemplateIndex = Phaser.Math.Clamp(
+      state.savedDeckTemplateIndex ?? 0,
+      0,
+      Math.max(0, savedDeckTemplates.length - 1),
+    );
+  }
   state.savedDeckIndex = Phaser.Math.Clamp(state.savedDeckIndex, 0, Math.max(0, savedDecks.length - 1));
   if (state.savedDeckLabOpen && savedDecks.length === 0) state.savedDeckLabOpen = false;
   const savedDeckLab = state.savedDeckLabOpen && savedDecks[state.savedDeckIndex]
@@ -3048,6 +3231,41 @@ export function renderProfileScene(
       canArchive: !state.savedDeckArchiveView && savedDecks.length > 0 && archivedDecks.length < SAVED_DECK_ARCHIVE_LIMIT,
       canRestore: state.savedDeckArchiveView && savedDecks.length > 0 && activeDecks.length < SAVED_DECK_LIMIT,
       archiveRefusesDeletion: true,
+      template: savedDeckTemplates ? {
+        open: true,
+        selectedIndex: state.savedDeckTemplateIndex ?? 0,
+        selectedLeaderId: savedDeckTemplates[state.savedDeckTemplateIndex ?? 0]?.leader.id ?? null,
+        activeCount: activeDecks.length,
+        capacity: SAVED_DECK_LIMIT,
+        items: savedDeckTemplates.map((option) => ({
+          leaderId: option.leader.id,
+          leader: option.leader.name,
+          bird: option.leader.bird,
+          suit: option.leader.suit,
+          cardCount: option.leader.startingDeckIds.length,
+          ownedCount: option.owned,
+          missingCount: option.missing,
+          unlocked: option.unlocked,
+          available: option.available,
+          reason: option.reason,
+        })),
+        status: state.savedDeckStatus,
+        createsNewRecord: true,
+        grantsOwnership: false,
+        changesCollectionHistory: false,
+        usesBaseCards: true,
+        runMode: 'full',
+        source: 'owned leader starter',
+        inputs: {
+          choose: `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} / D-pad / pointer`,
+          build: `${controlBindingLabel('confirm')} / controller A / pointer`,
+          close: `${controlBindingLabel('back')} / controller B / pointer`,
+        },
+      } : {
+        open: false,
+        input: 'K / controller RB / pointer',
+        grantsOwnership: false,
+      },
       shareCode: {
         version: SAVED_DECK_CODE_VERSION,
         prefix: `BSF${SAVED_DECK_CODE_VERSION}`,
@@ -3768,6 +3986,9 @@ export function renderProfileScene(
   }
   if (state.saveDataOpen) renderSaveDataOverlay(scene, state, dependencies, playtestMode, playtestRuns.length);
   if (state.flightLogOpen) renderFlightLogOverlay(scene, state, dependencies, flightHistory);
+  if (state.savedDeckTemplateOpen && savedDeckTemplates) {
+    renderSavedDeckTemplatePicker(scene, state, dependencies, savedDeckTemplates);
+  }
   if (state.savedDeckCodeInput) renderSavedDeckCodePrompt(scene);
   if (state.savedDeckOrganizerOpen && savedDeckOrganizer) {
     renderSavedDeckOrganizer(scene, state, dependencies, savedDeckOrganizer);
@@ -3934,7 +4155,11 @@ function renderSavedDeckOrganizer(
 
   const status = state.savedDeckStatus === 'tagLimit'
     ? 'THREE-LABEL LIMIT  /  REMOVE ONE BEFORE ADDING ANOTHER'
-    : state.savedDeckStatus === 'organized'
+    : state.savedDeckStatus === 'templateCreated'
+      ? 'STARTER FOLIO BUILT / OWNERSHIP + COLLECTION HISTORY UNCHANGED'
+      : state.savedDeckStatus === 'templateUnavailable'
+        ? 'STARTER FOLIO NOT BUILT / REQUIREMENTS SHOWN'
+        : state.savedDeckStatus === 'organized'
       ? 'ORGANIZATION SAVED  /  INCLUDED IN BACKUPS  /  EXCLUDED FROM BSF CODES'
       : 'ORGANIZATION IS PRIVATE  /  NO EFFECT ON FLIGHT POWER';
   scene.add.text(640, 566, status, {
@@ -5683,6 +5908,7 @@ function renderSavedFlightFolios(
   const textInputOpen = Boolean(
     state.savedDeckRenameInput
     || state.savedDeckCodeInput
+    || state.savedDeckTemplateOpen
     || state.savedDeckOrganizerOpen
     || state.savedDeckIdentityOpen
     || state.savedDeckDescriptionInput
@@ -5692,12 +5918,26 @@ function renderSavedFlightFolios(
     || state.savedDeckHistoryOpen
     || state.savedDeckWorkshopOpen
   );
+  const templateHit = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    x + 31,
+    top + 253,
+    58,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'New',
+    !textInputOpen,
+    () => openSavedDeckTemplate(scene, state, dependencies),
+    UI_FIELD.green,
+    false,
+  );
+  templateHit.setName('profile-folio-template-hit');
   const organizeHit = dependencies.renderFieldButton(
     scene,
     () => {},
-    x + 48,
+    x + 101,
     top + 253,
-    84,
+    72,
     MIN_SUPPORTED_TOUCH_TARGET,
     'Organize',
     allDecks.length > 0 && !textInputOpen,
@@ -5709,9 +5949,9 @@ function renderSavedFlightFolios(
   const libraryHit = dependencies.renderFieldButton(
     scene,
     () => {},
-    x + 158,
+    x + 190,
     top + 253,
-    108,
+    94,
     MIN_SUPPORTED_TOUCH_TARGET,
     state.savedDeckArchiveView ? `Active ${activeCount}` : `Archive ${archivedCount}`,
     !textInputOpen,
@@ -5723,9 +5963,9 @@ function renderSavedFlightFolios(
   const importHit = dependencies.renderFieldButton(
     scene,
     () => {},
-    x + 260,
+    x + 271,
     top + 253,
-    82,
+    64,
     MIN_SUPPORTED_TOUCH_TARGET,
     'Import',
     activeCount < SAVED_DECK_LIMIT && !textInputOpen,
@@ -5744,7 +5984,7 @@ function renderSavedFlightFolios(
       top + 376,
       state.savedDeckArchiveView
         ? `Archive is empty.\n\nArchive an active folio without deleting it.\nRestore when an active slot is open.\nV / controller Select returns to Active.`
-        : `No active flights saved yet.\n\nSave one from Route Deck Review,\nor import a checksum-validated BSF${SAVED_DECK_CODE_VERSION} code.\nArchived folios remain preserved.`,
+        : `No active Folios yet.\n\nBuild one from an owned leader starter,\nsave a flight from Route Deck Review,\nor import a checksum-validated BSF${SAVED_DECK_CODE_VERSION} code.`,
       {
         fontFamily: UI_FONT,
         fontSize: '12px',
@@ -6252,6 +6492,162 @@ function formatFlightDate(value: number) {
   if (!Number.isFinite(value) || value <= 0) return 'Earlier flight';
   const date = new Date(value);
   return Number.isNaN(date.valueOf()) ? 'Earlier flight' : date.toLocaleDateString();
+}
+
+function renderSavedDeckTemplatePicker(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+  options: ReturnType<typeof savedDeckTemplateOptions>,
+) {
+  const selectedIndex = Phaser.Math.Clamp(state.savedDeckTemplateIndex ?? 0, 0, options.length - 1);
+  const selected = options[selectedIndex];
+  scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020408, 0.9)
+    .setInteractive()
+    .setName('profile-folio-template-blocker');
+  const panel = dependencies.renderFieldPanel(scene, () => {}, GAME_WIDTH / 2, 360, 960, 630, {
+    accent: UI_FIELD.cyan,
+    fill: UI_FIELD.ink,
+  });
+  dependencies.renderCloseControl(
+    scene,
+    () => {},
+    panel.right - 42,
+    panel.top + 38,
+    () => closeSavedDeckTemplate(scene, state, dependencies),
+  );
+  scene.add.text(panel.left + 42, panel.top + 28, 'BUILD A STARTER FOLIO', {
+    fontFamily: 'Georgia, serif',
+    fontSize: '29px',
+    fontStyle: UI_BOLD,
+    color: UI_FIELD.warm,
+    stroke: '#020409',
+    strokeThickness: 4,
+  }).setResolution(2).setName('profile-folio-template-title');
+  scene.add.text(
+    panel.left + 44,
+    panel.top + 72,
+    'Turn a fully owned leader starter into a reversible Folio. This never grants cards or changes collection history.',
+    {
+      fontFamily: UI_FONT,
+      fontSize: '12px',
+      color: UI_SOFT,
+      fixedWidth: 830,
+      maxLines: 1,
+    },
+  ).setResolution(2).setName('profile-folio-template-subtitle');
+  scene.add.text(
+    panel.left + 44,
+    panel.top + 98,
+    `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} / D-pad: Choose   ${controlBindingLabel('confirm')} / A: Build   ${controlBindingLabel('back')} / B: Cancel`,
+    {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      fontStyle: UI_BOLD,
+      color: UI_FIELD.cyanText,
+    },
+  ).setResolution(2).setName('profile-folio-template-input-hint');
+
+  options.forEach((option, index) => {
+    const y = panel.top + 148 + index * 78;
+    const focused = index === selectedIndex;
+    const accent = option.available ? UI_FIELD.green : option.unlocked ? UI_FIELD.gold : 0x667381;
+    const hit = scene.add.rectangle(
+      panel.cx,
+      y,
+      842,
+      64,
+      focused ? 0x173247 : 0x0b1420,
+      0.97,
+    )
+      .setStrokeStyle(focused ? 3 : 1, focused ? UI_FIELD.cyan : accent, focused ? 0.98 : 0.55)
+      .setInteractive({ useHandCursor: true })
+      .setName('profile-folio-template-row')
+      .setData('leaderId', option.leader.id)
+      .setData('index', index)
+      .setData('available', option.available)
+      .setData('missing', option.missing);
+    hit.on('pointerdown', () => {
+      state.savedDeckTemplateIndex = index;
+      state.savedDeckStatus = 'idle';
+      dependencies.playUiSound('confirm');
+      renderProfileScene(scene, state, dependencies);
+    });
+    scene.add.text(panel.left + 84, y - 22, option.leader.name, {
+      fontFamily: UI_FONT,
+      fontSize: '15px',
+      fontStyle: UI_BOLD,
+      color: option.unlocked ? UI_FIELD.warm : '#82909d',
+      fixedWidth: 340,
+    }).setResolution(2).setName('profile-folio-template-leader').setData('leaderId', option.leader.id);
+    scene.add.text(panel.left + 84, y + 4, `${option.leader.bird}  /  ${option.leader.suit}`, {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      color: option.unlocked ? UI_SOFT : '#697684',
+      fixedWidth: 340,
+    }).setResolution(2);
+    scene.add.text(panel.cx + 130, y - 18, `${option.owned}/${option.leader.startingDeckIds.length} OWNED`, {
+      fontFamily: UI_FONT,
+      fontSize: '12px',
+      fontStyle: UI_BOLD,
+      color: option.available ? '#b9ffdb' : '#ffd7a0',
+      fixedWidth: 160,
+      align: 'right',
+    }).setResolution(2);
+    scene.add.text(panel.right - 84, y + 5, option.reason.toUpperCase(), {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      fontStyle: UI_BOLD,
+      color: option.available ? '#b9ffdb' : option.unlocked ? '#ffd7a0' : '#82909d',
+      fixedWidth: 220,
+      align: 'right',
+      maxLines: 1,
+    }).setResolution(2).setOrigin(1, 0);
+  });
+
+  const message = state.savedDeckStatus === 'templateUnavailable'
+    ? `${selected?.reason ?? 'Template unavailable'}. No Folio or ownership data changed.`
+    : selected?.available
+      ? 'Creates a new Base-card Full Flight Folio. You can tune, rename, archive, or launch it afterward.'
+      : selected?.reason ?? 'Choose a leader template.';
+  scene.add.text(panel.cx, panel.bottom - 82, message, {
+    fontFamily: UI_FONT,
+    fontSize: '11px',
+    fontStyle: UI_BOLD,
+    color: selected?.available ? UI_FIELD.cyanText : '#ffd7a0',
+    fixedWidth: 660,
+    align: 'center',
+    maxLines: 2,
+  }).setResolution(2).setOrigin(0.5).setName('profile-folio-template-detail');
+  const build = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    panel.cx - 110,
+    panel.bottom - 38,
+    190,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Build Folio',
+    Boolean(selected?.available),
+    () => createSavedDeckFromTemplate(scene, state, dependencies),
+    UI_FIELD.green,
+    false,
+  ).setName('profile-folio-template-build-hit');
+  build
+    .setData('leaderId', selected?.leader.id ?? null)
+    .setData('available', selected?.available ?? false);
+  dependencies.renderFieldButton(
+    scene,
+    () => {},
+    panel.cx + 110,
+    panel.bottom - 38,
+    170,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    'Cancel',
+    true,
+    () => closeSavedDeckTemplate(scene, state, dependencies),
+    UI_FIELD.gold,
+    false,
+  ).setName('profile-folio-template-cancel-hit');
 }
 
 function renderSaveDataOverlay(
