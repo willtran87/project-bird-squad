@@ -266,6 +266,14 @@ export interface ProfileViewState {
 
 export interface ProfileSceneDependencies {
   advanceGameTime: (game: Phaser.Game, ms: number) => void;
+  hasActiveRun: () => boolean;
+  run: (
+    leaderId: string,
+    difficulty: number,
+    runMode: SavedDeckRecord['runMode'],
+    seed: undefined,
+    cards: SavedDeckRecord['cards'],
+  ) => unknown;
   audio: {
     isMuted: () => boolean;
     play: (kind: 'profileRecord', volume?: number) => void;
@@ -929,6 +937,112 @@ function cycleSavedDeckLabSample(
   state.savedDeckLabSample = next;
   dependencies.playUiSound('confirm');
   renderProfileScene(scene, state, dependencies);
+}
+
+type SavedDeckLaunchBlock =
+  | 'activeFlight'
+  | 'archived'
+  | 'lockedLeader'
+  | 'reviewNeeded'
+  | 'unownedCards';
+
+interface SavedDeckLaunchState {
+  available: boolean;
+  block?: SavedDeckLaunchBlock;
+  missingOwnedIds: string[];
+  label: string;
+  detail: string;
+}
+
+function savedDeckLaunchState(
+  deck: SavedDeckRecord,
+  analysis: SavedDeckLabAnalysis,
+  account: PlayerAccount,
+  dependencies: ProfileSceneDependencies,
+): SavedDeckLaunchState {
+  const owned = new Set(Object.entries(account.cardCollection)
+    .filter(([, record]) => record.timesClaimed > 0)
+    .map(([id]) => id));
+  const missingOwnedIds = [...new Set(deck.cards.map((card) => card.id))]
+    .filter((id) => !owned.has(id));
+  if (dependencies.hasActiveRun()) {
+    return {
+      available: false,
+      block: 'activeFlight',
+      missingOwnedIds,
+      label: 'Flight Active',
+      detail: 'Resume or finish the active flight before launching another.',
+    };
+  }
+  if (deck.archived) {
+    return {
+      available: false,
+      block: 'archived',
+      missingOwnedIds,
+      label: 'Restore to Fly',
+      detail: 'Archived Folios stay preserved; restore this one to Active first.',
+    };
+  }
+  if (!isLeaderUnlocked(account, deck.leaderId)) {
+    return {
+      available: false,
+      block: 'lockedLeader',
+      missingOwnedIds,
+      label: 'Leader Locked',
+      detail: 'Unlock this Folio leader before taking the saved deck into a flight.',
+    };
+  }
+  if (!analysis.legalForStandardFlight) {
+    return {
+      available: false,
+      block: 'reviewNeeded',
+      missingOwnedIds,
+      label: 'Review Folio',
+      detail: 'Resolve duplicate or unavailable card definitions before launch.',
+    };
+  }
+  if (missingOwnedIds.length > 0) {
+    return {
+      available: false,
+      block: 'unownedCards',
+      missingOwnedIds,
+      label: `Claim ${missingOwnedIds.length} Card${missingOwnedIds.length === 1 ? '' : 's'}`,
+      detail: 'Shared codes never grant collection ownership. Claim every card before launch.',
+    };
+  }
+  return {
+    available: true,
+    missingOwnedIds: [],
+    label: 'Fly This Folio',
+    detail: 'Tier 0 / fresh route / exact saved order and Base or Preened states.',
+  };
+}
+
+function launchSelectedSavedDeck(
+  scene: Phaser.Scene,
+  state: ProfileViewState,
+  dependencies: ProfileSceneDependencies,
+) {
+  const deck = selectedSavedDeck(state);
+  if (!deck) {
+    dependencies.playUiSound('locked');
+    return;
+  }
+  const launch = savedDeckLaunchState(
+    deck,
+    analyzeSavedDeck(deck, alphaCardLibrary, state.savedDeckLabSample),
+    loadAccount(),
+    dependencies,
+  );
+  if (!launch.available) {
+    dependencies.playUiSound('locked');
+    renderProfileScene(scene, state, dependencies);
+    return;
+  }
+  dependencies.playUiSound('confirm');
+  scene.scene.start('RouteScene', {
+    runState: dependencies.run(deck.leaderId, 0, deck.runMode, undefined, deck.cards),
+  });
 }
 
 function savedDeckCollectionSignalsState(
@@ -2269,6 +2383,8 @@ export function startProfileScene(
         cycleSavedDeckLabSample(scene, state, dependencies, -1);
       } else if (button.index === 13 || button.index === 15 || button.index === 5 || button.index === 0) {
         cycleSavedDeckLabSample(scene, state, dependencies, 1);
+      } else if (button.index === 9) {
+        launchSelectedSavedDeck(scene, state, dependencies);
       } else if (button.index === 1) {
         closeSavedDeckLab(scene, state, dependencies);
       } else if (button.index === 2) {
@@ -2529,6 +2645,12 @@ export function startProfileScene(
     event.stopPropagation();
     cycleSavedDeckLabSample(scene, state, dependencies, 1);
   };
+  const onSavedDeckLaunch = (event: KeyboardEvent) => {
+    if (!state.savedDeckLabOpen) return;
+    event.preventDefault();
+    event.stopPropagation();
+    launchSelectedSavedDeck(scene, state, dependencies);
+  };
   const onSavedDeckCollectionSignals = (event: KeyboardEvent) => {
     if (!state.savedDeckLabOpen && !state.savedDeckCollectionSignalsOpen) return;
     event.preventDefault();
@@ -2605,6 +2727,7 @@ export function startProfileScene(
   scene.input.keyboard?.on('keydown-V', onSavedDeckArchiveView);
   scene.input.keyboard?.on('keydown-A', onSavedDeckArchive);
   scene.input.keyboard?.on('keydown-SPACE', onSavedDeckLabDeal);
+  scene.input.keyboard?.on('keydown-S', onSavedDeckLaunch);
   scene.input.keyboard?.on('keydown-G', onSavedDeckCollectionSignals);
   scene.input.keyboard?.on('keydown-T', onSavedDeckWorkshop);
   scene.input.keyboard?.on('keydown-R', onSavedDeckHistory);
@@ -2633,6 +2756,7 @@ export function startProfileScene(
     scene.input.keyboard?.off('keydown-V', onSavedDeckArchiveView);
     scene.input.keyboard?.off('keydown-A', onSavedDeckArchive);
     scene.input.keyboard?.off('keydown-SPACE', onSavedDeckLabDeal);
+    scene.input.keyboard?.off('keydown-S', onSavedDeckLaunch);
     scene.input.keyboard?.off('keydown-G', onSavedDeckCollectionSignals);
     scene.input.keyboard?.off('keydown-T', onSavedDeckWorkshop);
     scene.input.keyboard?.off('keydown-R', onSavedDeckHistory);
@@ -2711,6 +2835,9 @@ export function renderProfileScene(
   if (state.savedDeckLabOpen && savedDecks.length === 0) state.savedDeckLabOpen = false;
   const savedDeckLab = state.savedDeckLabOpen && savedDecks[state.savedDeckIndex]
     ? analyzeSavedDeck(savedDecks[state.savedDeckIndex], alphaCardLibrary, state.savedDeckLabSample)
+    : undefined;
+  const savedDeckLaunch = savedDeckLab
+    ? savedDeckLaunchState(savedDecks[state.savedDeckIndex], savedDeckLab, account, dependencies)
     : undefined;
   let savedDeckCollectionSignals = state.savedDeckCollectionSignalsOpen
     ? savedDeckCollectionSignalsState(state, account)
@@ -3072,6 +3199,7 @@ export function renderProfileScene(
           })),
         },
         rules: savedDeckLab.rules,
+        launch: savedDeckLaunch,
         inputs: {
           previous: `${controlBindingLabel('previous')} / D-pad Left / LB`,
           dealAgain: `${controlBindingLabel('next')} / ${controlBindingLabel('confirm')} / Space / A`,
@@ -3079,6 +3207,7 @@ export function renderProfileScene(
           fieldRecord: 'N / controller L3 / pointer',
           revisionTrail: 'R / controller Y / pointer',
           tune: 'T / controller X / pointer',
+          launch: 'S / controller Start / pointer',
           close: `${controlBindingLabel('back')} / controller B / pointer`,
         },
       } : {
@@ -3647,7 +3776,14 @@ export function renderProfileScene(
     renderSavedDeckIdentity(scene, state, dependencies, savedDeckIdentity);
   }
   if (state.savedDeckLabOpen && savedDeckLab) {
-    renderSavedDeckLab(scene, state, dependencies, savedDecks[state.savedDeckIndex], savedDeckLab);
+    renderSavedDeckLab(
+      scene,
+      state,
+      dependencies,
+      savedDecks[state.savedDeckIndex],
+      savedDeckLab,
+      savedDeckLaunch!,
+    );
   }
   if (state.savedDeckCollectionSignalsOpen && savedDeckCollectionSignals) {
     renderSavedDeckCollectionSignals(scene, state, dependencies, savedDeckCollectionSignals);
@@ -4150,6 +4286,7 @@ function renderSavedDeckLab(
   dependencies: ProfileSceneDependencies,
   deck: SavedDeckRecord,
   analysis: SavedDeckLabAnalysis,
+  launch: SavedDeckLaunchState,
 ) {
   scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x02050a, 0.88)
     .setInteractive()
@@ -4173,14 +4310,39 @@ function renderSavedDeckLab(
     fixedWidth: 620,
   }).setResolution(2).setName('profile-flight-lab-deck-name');
   const legalLabel = analysis.legalForStandardFlight ? 'STANDARD READY' : 'REVIEW NEEDED';
-  scene.add.rectangle(1030, 88, 192, 46, analysis.legalForStandardFlight ? 0x143a30 : 0x3b241b, 0.96)
-    .setStrokeStyle(2, analysis.legalForStandardFlight ? UI_FIELD.green : UI_FIELD.gold, 0.92);
-  scene.add.text(1030, 88, legalLabel, {
+  const launchHit = dependencies.renderFieldButton(
+    scene,
+    () => {},
+    1030,
+    82,
+    192,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    launch.label,
+    launch.available,
+    () => launchSelectedSavedDeck(scene, state, dependencies),
+    launch.available ? UI_FIELD.green : UI_FIELD.gold,
+    false,
+  );
+  launchHit
+    .setName('profile-flight-lab-launch-hit')
+    .setData('available', launch.available)
+    .setData('block', launch.block ?? null)
+    .setData('missingOwnedIds', launch.missingOwnedIds);
+  scene.add.text(154, 113, legalLabel, {
     fontFamily: UI_FONT,
-    fontSize: '12px',
+    fontSize: '8px',
     fontStyle: UI_BOLD,
     color: analysis.legalForStandardFlight ? '#b9ffdb' : '#ffd7a0',
-  }).setResolution(2).setOrigin(0.5).setName('profile-flight-lab-legality');
+  }).setResolution(2).setName('profile-flight-lab-legality');
+  scene.add.text(784, 100, launch.detail, {
+    fontFamily: UI_FONT,
+    fontSize: '9px',
+    fontStyle: UI_BOLD,
+    color: launch.available ? '#b9ffdb' : '#ffd7a0',
+    fixedWidth: 360,
+    align: 'right',
+    maxLines: 2,
+  }).setResolution(2).setOrigin(1, 0.5).setName('profile-flight-lab-launch-detail');
 
   scene.add.rectangle(336, 366, 392, 480, 0x0a1724, 0.96)
     .setStrokeStyle(1, UI_FIELD.violet, 0.58);

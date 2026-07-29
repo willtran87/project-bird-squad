@@ -28622,3 +28622,198 @@ test('new card shortcut opens the exact dossier and returns to the active run ac
     return ids.map((id) => account.cardCollection[id].isNew === true);
   }, [newestId, olderId])).toEqual([false, true]);
 });
+
+test('owned Folio launches the exact saved deck across pointer keyboard and controller without overwriting active flights', async ({ page }) => {
+  test.setTimeout(180_000);
+  const cards = [
+    { id: 'major_00', upgraded: true },
+    { id: 'wands_ace', upgraded: false },
+    { id: 'wands_fledgling', upgraded: false },
+    { id: 'swords_ace', upgraded: false },
+    { id: 'swords_fledgling', upgraded: true },
+    { id: 'cups_ace', upgraded: false },
+    { id: 'cups_fledgling', upgraded: false },
+    { id: 'pentacles_04', upgraded: false },
+    { id: 'pentacles_fledgling', upgraded: false },
+    { id: 'aviary_25', upgraded: false },
+  ];
+  await page.addInitScript(({ savedCards }) => {
+    const claimed = (index: number) => ({
+      timesClaimed: 1,
+      firstAcquiredAt: 1_780_000_000_000 + index,
+      firstSource: 'combat_reward',
+    });
+    const account = {
+      runs: 1,
+      wins: 0,
+      losses: 1,
+      winsByLeader: {},
+      runsByLeader: { fledgling: 1 },
+      bestWinTier: -1,
+      fastestWinTurns: null,
+      unlockedLeaders: ['fledgling', 'spark_caller'],
+      achievements: [],
+      discoveredCards: savedCards.map((card: any) => card.id),
+      favoriteCards: [],
+      cardCollection: Object.fromEntries(
+        savedCards.slice(0, -1).map((card: any, index: number) => [card.id, claimed(index)]),
+      ),
+      observedEnemyMoves: [],
+      contractBadges: [],
+      leaderProgress: {},
+      leaderRecords: {},
+      decks: [{
+        id: 'owned-launch-folio',
+        lineageId: 'owned-launch-folio',
+        revision: 3,
+        name: 'Exact Rooftop Replay',
+        leaderId: 'fledgling',
+        cards: savedCards,
+        createdAt: 1_780_000_100_000,
+        updatedAt: 1_780_000_200_000,
+        favorite: true,
+        archived: false,
+        sourceSeed: 'private-source-seed',
+        runMode: 'quick',
+      }],
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  }, { savedCards: cards });
+  await boot(page);
+
+  const openLab = async () => {
+    await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+    await clickNamedGameObject(page, 'ProfileScene', 'profile-folios-tab-hit');
+    await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-lab-hit');
+    await page.waitForFunction(() => (
+      JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.flightLab?.open === true
+    ));
+  };
+  const clearActiveFlight = async () => {
+    await page.evaluate(() => {
+      localStorage.removeItem('birdsquad.run.active');
+      localStorage.removeItem('birdsquad.run.active.backup');
+      localStorage.removeItem('birdsquad.run.active.corrupt');
+    });
+  };
+  const assertExactRoute = async () => {
+    await page.waitForFunction(() => {
+      const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      const persisted = JSON.parse(localStorage.getItem('birdsquad.run.active') ?? '{}');
+      return state.scene === 'RouteScene' && state.run?.deckSize > 0 && persisted.deck?.length > 0;
+    });
+    const launched = await page.evaluate(() => {
+      const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+      return {
+        state: JSON.parse(window.render_game_to_text?.() ?? '{}'),
+        deck: route.runState.deck,
+        leaderId: route.runState.leaderId,
+        runMode: route.runState.runMode,
+        difficulty: route.runState.difficulty,
+        seed: route.runState.seed,
+        routeLog: route.runState.routeLog,
+        persisted: JSON.parse(localStorage.getItem('birdsquad.run.active') ?? '{}'),
+      };
+    });
+    expect(launched.state.run.deckSize).toBe(cards.length);
+    expect(launched.deck).toEqual(cards);
+    expect(launched.persisted.deck).toEqual(cards);
+    expect(launched).toMatchObject({
+      leaderId: 'fledgling',
+      runMode: 'quick',
+      difficulty: 0,
+      routeLog: ['The flock gathers at Rooftop Blocks.'],
+    });
+    expect(launched.seed).not.toBe('private-source-seed');
+  };
+
+  await openLab();
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.flightLab.launch).toMatchObject({
+    available: false,
+    block: 'unownedCards',
+    missingOwnedIds: ['aviary_25'],
+    label: 'Claim 1 Card',
+  });
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain('Shared codes never grant ownership');
+  const accountBeforeBlockedLaunch = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
+  await page.keyboard.press('s');
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', profile.input.gamepad.pad1, { index: 9 }, 1);
+  });
+  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).scene).toBe('ProfileScene');
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.account'))).toBe(accountBeforeBlockedLaunch);
+
+  await page.evaluate(() => {
+    const account = JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}');
+    account.cardCollection.aviary_25 = {
+      timesClaimed: 1,
+      firstAcquiredAt: 1_780_000_000_099,
+      firstSource: 'route_reward',
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+  });
+  await openLab();
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.flightLab.launch).toMatchObject({
+    available: true,
+    missingOwnedIds: [],
+    label: 'Fly This Folio',
+  });
+  expect(state.savedFlightFolios.flightLab.inputs.launch).toBe('S / controller Start / pointer');
+  const launchTarget = await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    const hit = profile.children.getByName('profile-flight-lab-launch-hit');
+    return {
+      width: hit.displayWidth,
+      height: hit.displayHeight,
+      available: hit.getData('available'),
+      block: hit.getData('block'),
+    };
+  });
+  expect(launchTarget).toMatchObject({ width: 192, available: true, block: null });
+  expect(launchTarget.height).toBeGreaterThanOrEqual(44);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/folio-launch-flight-lab.png' });
+  const folioBeforeLaunch = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-flight-lab-launch-hit');
+  await assertExactRoute();
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.account'))).toBe(folioBeforeLaunch);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/folio-launch-route.png' });
+
+  await openLab();
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.flightLab.launch).toMatchObject({
+    available: false,
+    block: 'activeFlight',
+    label: 'Flight Active',
+  });
+  const activeBeforeBlockedLaunch = await page.evaluate(() => localStorage.getItem('birdsquad.run.active'));
+  await page.keyboard.press('s');
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', profile.input.gamepad.pad1, { index: 9 }, 1);
+  });
+  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).scene).toBe('ProfileScene');
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.run.active'))).toBe(activeBeforeBlockedLaunch);
+
+  await clearActiveFlight();
+  await openLab();
+  await page.keyboard.press('s');
+  await assertExactRoute();
+
+  await clearActiveFlight();
+  await openLab();
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', profile.input.gamepad.pad1, { index: 9 }, 1);
+  });
+  await assertExactRoute();
+});

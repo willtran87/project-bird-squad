@@ -5393,3 +5393,40 @@ sessions through `docs/game/playtest-runbook.md`.
   scenarios pass in 10.6 minutes with an empty stderr log.
 - The broader card-collector objective remains active. Five genuinely observed
   fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-28 Owned Folio Exact Launch
+
+- Audited the permanent collection loop from owning cards through tuning a
+  Flight Folio and found that a legal saved Folio could be analyzed and revised
+  but not actually flown.
+- Flight Lab now offers `Fly This Folio`, starting a fresh Tier 0 route with the
+  saved leader, run mode, exact card order, and exact Base or Preened states.
+  Launching creates a new random route seed and leaves the immutable Folio
+  revision byte-for-byte unchanged.
+- Launch is deliberately blocked for an active flight, archived Folio, locked
+  leader, duplicate or unavailable card definition, or any card not permanently
+  owned. Shared BSF codes never grant collection ownership, and blocked attempts
+  cannot replace the active checkpoint.
+- Pointer/touch, keyboard `S`, and controller Start all launch through the same
+  guarded path. The primary action is 192 by 44 pixels, with visible readiness
+  or blocking detail plus complete runtime and screen-reader diagnostics.
+- Exact Folio launches do not record starter-card acquisitions. The new run is
+  autosaved normally, and Cohesion correctly includes the saved cards' Base and
+  Preened flock-stat contributions.
+- Added a mandatory browser scenario covering an unowned shared-code card,
+  ownership restoration, genuine pointer launch, keyboard and controller
+  launches, exact persisted deck/leader/mode/state, fresh seed, immutable Folio
+  data, and byte-exact protection of an existing active flight.
+- Inspected visuals are
+  `.artifacts/test-results/folio-launch-flight-lab.png` and
+  `.artifacts/test-results/folio-launch-route.png`. The required shared client
+  independently reached a saved interactive route with no failed or timed-out
+  asset groups and no browser error artifact; evidence is under
+  `.artifacts/folio-launch-shared-client/`.
+- Fresh production build, documentation/runtime/data/asset/world/FX/deployment
+  checks, `git diff --check`, and the unchanged hard bundle gate pass. Combined
+  boot remains 725.0 KiB / 195.8 KiB gzip at the 725 KiB hard limit; preferred
+  app-entry and combined targets remain advisory warnings. All 44 mandatory
+  browser scenarios pass in 10.6 minutes with an empty stderr log.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions remain necessary qualitative release evidence.

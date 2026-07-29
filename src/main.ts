@@ -6212,6 +6212,8 @@ function loadProfileSceneModule() {
 
 const profileSceneDependencies: import('./game/profile-scene').ProfileSceneDependencies = {
   advanceGameTime,
+  hasActiveRun,
+  run: createInitialRunState,
   audio: birdAudio,
   districtContracts: DISTRICT_CONTRACT_DEFINITIONS,
   exportRunHistory: () => JSON.stringify(loadRunHistory()),
@@ -26454,16 +26456,25 @@ function cloneCard(id: string): Card {
   return { ...template, instanceId: nextCardInstanceId(id) };
 }
 
-function createInitialRunState(leaderId?: string, difficulty = 0, runMode: RunMode = 'full', seed = Math.random().toString(36).slice(2, 10)): RunState {
+function createInitialRunState(
+  leaderId?: string,
+  difficulty = 0,
+  runMode: RunMode = 'full',
+  seed = Math.random().toString(36).slice(2, 10),
+  folioCards?: readonly SavedCard[],
+): RunState {
   const leader = getLeader(leaderId);
-  recordCardAcquisitions(leader.startingDeckIds, 'starter_flock');
+  const deck = folioCards
+    ? canonicalSavedCards(folioCards)
+    : leader.startingDeckIds.map((id) => ({ id }));
+  if (!folioCards) recordCardAcquisitions(leader.startingDeckIds, 'starter_flock');
   return {
-    deck: leader.startingDeckIds.map((id) => ({ id })),
+    deck,
     leaderId: leader.id,
     difficulty,
     runMode,
     seed,
-    currentHp: BASE_COHESION + (aggregateFlockStats(createStartingDeck(leader.id)).cohesion ?? 0),
+    currentHp: BASE_COHESION + (aggregateFlockStats(cardsFromSave(deck)).cohesion ?? 0),
     scrap: STARTING_SCRAP,
     scrapEarned: 0,
     scrapSpent: 0,
