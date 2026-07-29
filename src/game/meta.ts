@@ -30,6 +30,7 @@ export interface PlayerAccount {
   achievements: string[];
   discoveredCards: string[]; // card ids the player has encountered (for the Codex)
   favoriteCards: string[]; // discovered cards the player has marked as personal favorites
+  lockedCards?: string[]; // permanently owned cards protected from any future destructive collection action
   cardTags?: Partial<Record<string, CardPersonalTag>>; // private, non-power organization for discovered cards
   cardJournal?: Partial<Record<string, string>>; // sanitized at Codex and backup boundaries
   showcase?: string[]; // up to three discovered cards deliberately presented in Flock Record
@@ -184,6 +185,8 @@ export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
     achievements: stringList(value.achievements),
     discoveredCards,
     favoriteCards: stringList(value.favoriteCards).filter((id) => discoveredCards.includes(id)),
+    // Dedicated Codex and backup boundaries validate ownership and de-duplicate.
+    lockedCards: value.lockedCards as string[],
     cardTags: value.cardTags as Partial<Record<string, CardPersonalTag>>,
     cardJournal: value.cardJournal as Partial<Record<string, string>>,
     showcase: value.showcase as string[],

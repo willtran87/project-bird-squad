@@ -5477,3 +5477,51 @@ sessions through `docs/game/playtest-runbook.md`.
 - The broader card-collector objective remains active. Five genuinely observed
   fresh-player sessions through `docs/game/playtest-runbook.md` remain necessary
   qualitative release evidence.
+
+## 2026-07-29 Protected Owned Cards
+
+- Closed the explicit collection-ownership gap around locking beloved cards.
+  Every permanently owned card dossier now uses the existing Hunt action slot
+  as `Protect Card`; protected cards show a persistent `Protected` state.
+  Unowned cards keep the Hunt List behavior, so one pointer target and the
+  existing `T` / controller `Y` input remain contextually consistent.
+- Protection is private collection metadata. It is restricted to genuinely
+  owned cards, de-duplicated, strips invalid and unowned IDs, survives scene
+  restarts and normal account writes, and is included in complete local save
+  downloads and transactional restores. It never changes ownership history,
+  playable copies, card power, reward odds, or the active flight.
+- Bird Squad currently has no card conversion or destruction action. The
+  dossier, runtime diagnostics, and screen-reader summary say this directly;
+  protection records player intent and is the guard future destructive tools
+  must honor rather than pretending a destructive system already exists.
+- Search now recognizes `protected`, `locked`, and related safety terms for
+  owned cards. Runtime text state reports exact IDs, current detail eligibility,
+  pointer/keyboard/controller parity, backup inclusion, persistence, privacy,
+  and non-power guarantees. The dossier adds a concise collection-status line
+  plus a 142 by 46 pixel control.
+- Added the 46th mandatory sequencing scenario. It repairs duplicate,
+  unowned, and missing lock IDs; exercises genuine pointer, keyboard, and
+  controller toggles; verifies protected-card search; proves unowned `T`
+  remains Hunt; restarts the Codex; and confirms favorites, collection history,
+  and flight state are unchanged. Adjacent Hunt List and save backup/restore
+  regressions pass.
+- Inspected focused evidence is
+  `.artifacts/test-results/codex-card-protection.png`. The required independent
+  production client drove title -> fresh flight -> newest-card dossier -> Mark
+  Seen -> Protect by real pointer, reported `cardProtection.detailProtected`
+  with no browser error artifact, and produced
+  `.artifacts/protected-card-shared-client/final/shot-0.png`.
+- Production build and the unchanged hard bundle limits pass. App entry remains
+  695.0 KiB and combined boot remains 725.0 KiB; the preferred targets remain
+  advisory warnings. A semantics-preserving storage cleanup recovered the
+  handful of bytes needed without relaxing any budget.
+- Full `npm run validate` passes every documentation, runtime, data, asset,
+  canonical-world, direction-neutral FX, deployment, and bundle gate plus all
+  46 mandatory browser scenarios in a clean 13.4-minute run. The first run
+  reached 45/46 because the evidence-heavy all-rarity Preen regression exhausted
+  its old 30-second ceiling while taking its final screenshot; that existing
+  scenario now has the same 90-second allowance as other long browser cases,
+  passed in isolation, and passed in the complete clean rerun.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md` remain necessary
+  qualitative release evidence.

@@ -67,15 +67,15 @@ export function readJournaledJson<T>(key: string, sanitize: (value: unknown) => 
   const raw = safeStorageGet(key);
   const parsed = decode(raw, sanitize);
   const backupKey = `${key}${BACKUP_SUFFIX}`;
-  if (parsed !== undefined && raw !== null) {
-    if (safeStorageGet(backupKey) !== raw) safeStorageSet(backupKey, raw);
+  if (parsed !== undefined) {
+    if (safeStorageGet(backupKey) !== raw) safeStorageSet(backupKey, raw!);
     return parsed;
   }
 
   const backupRaw = safeStorageGet(backupKey);
   const backup = decode(backupRaw, sanitize);
-  if (backup !== undefined && backupRaw !== null) {
-    safeStorageSet(key, backupRaw);
+  if (backup !== undefined) {
+    safeStorageSet(key, backupRaw!);
     rememberRecovery(key, 'recovered');
     return backup;
   }
@@ -110,5 +110,5 @@ export function removeJournaledJson(key: string): void {
 }
 
 export function consumeStorageRecoveryEvents(): StorageRecoveryEvent[] {
-  return recoveryEvents.splice(0, recoveryEvents.length);
+  return recoveryEvents.splice(0);
 }

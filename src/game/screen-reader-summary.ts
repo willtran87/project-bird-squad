@@ -443,6 +443,7 @@ export function screenReaderSummary(payload: unknown): string {
     const count = number(focus?.count);
     const detail = text(payload.detailOpen);
     const favorites = isRecord(payload.cardFavorites) ? payload.cardFavorites : undefined;
+    const protection = isRecord(payload.cardProtection) ? payload.cardProtection : undefined;
     const personalTags = isRecord(payload.personalCardTags) ? payload.personalCardTags : undefined;
     const cardJournal = isRecord(payload.cardJournal) ? payload.cardJournal : undefined;
     const savedViews = isRecord(payload.savedCollectionViews) ? payload.savedCollectionViews : undefined;
@@ -468,6 +469,9 @@ export function screenReaderSummary(payload: unknown): string {
     const collectedCount = number(ownership?.collectedCount) ?? 0;
     const discoveredCount = number(payload.cardsDiscovered) ?? 0;
     const detailFavorite = favorites?.detailFavorite === true;
+    const detailProtected = protection?.detailProtected === true;
+    const detailProtectionEligible = protection?.detailEligible === true;
+    const protectedCount = number(protection?.count) ?? 0;
     const favoriteView = favorites?.viewActive === true;
     const favoriteViewEmpty = favorites?.viewEmpty === true;
     const favoriteCount = number(favorites?.count) ?? 0;
@@ -518,6 +522,15 @@ export function screenReaderSummary(payload: unknown): string {
       ? favoriteViewEmpty
         ? ' No favorite cards yet. Open a discovered card and choose Favorite to add it here.'
         : ` Showing ${favoriteCount} favorite card${favoriteCount === 1 ? '' : 's'}.`
+      : '';
+    const protectionState = section === 'cards'
+      ? detail
+        ? detailProtectionEligible
+          ? detailProtected
+            ? ' This owned card is protected. Use T or controller Y to remove protection. Protection is private, included in complete save backups, and has no effect on power or reward odds.'
+            : ' This owned card is not protected. Use T or controller Y to protect it against future conversion or destruction tools. Bird Squad currently has no destructive card action; protection is private, backup-safe, and has no effect on play.'
+          : ''
+        : ` ${protectedCount} owned card${protectedCount === 1 ? '' : 's'} protected.`
       : '';
     const personalTagState = section === 'cards'
       ? detail
@@ -628,7 +641,7 @@ export function screenReaderSummary(payload: unknown): string {
         ? ` Find cards field active.${searchQuery ? ` Current query ${searchQuery}.` : ''} Type to filter, Enter to apply, or Escape to cancel.`
         : searchQuery
           ? ` Find cards query ${searchQuery}, ${searchMatches} match${searchMatches === 1 ? '' : 'es'} in ${searchScope}; ${searchVisible} visible after the collection lens.${typoMatches > 0 ? ` Typo-tolerant matching helped with ${typoMatches} result${typoMatches === 1 ? '' : 's'}.` : ''}${cardSearch?.empty === true ? ' No card matches every search term. Check spelling, remove the Search chip, or choose Clear All.' : ''} Use slash or controller RB to edit or clear it.`
-          : ' Use slash or controller RB to find cards by name, rules, keyword, character, set, type, cost, rarity, ownership, saved Folio usage, personal tag, private journal, or showcase status. Search tolerates conservative misspellings while requiring every term to match.'
+          : ' Use slash or controller RB to find cards by name, rules, keyword, character, set, type, cost, rarity, ownership, saved Folio usage, personal tag, private journal, showcase status, or protection status. Search tolerates conservative misspellings while requiring every term to match.'
       : '';
     const cardSortState = section === 'cards' && !detail
       ? ` Sorted by ${sortLabel}. Use R or controller RT to change sorting.`
@@ -644,7 +657,7 @@ export function screenReaderSummary(payload: unknown): string {
         ? ` Collection Atlas open. ${atlasCollected} of ${atlasTotal} cards permanently collected. Collector milestones ${number(collectionAtlas?.completedMilestones) ?? 0} of ${records(collectionAtlas?.milestones).length} earned.${atlasNextMilestone ? ` Next, ${text(atlasNextMilestone.name)}, ${number(atlasNextMilestone.current) ?? 0} of ${number(atlasNextMilestone.target) ?? 0}.` : ''} Focused ${spaced(text(atlasSelected?.name)) || 'set'}, ${number(atlasSelected?.owned) ?? 0} of ${number(atlasSelected?.total) ?? 0} collected and ${number(atlasSelected?.discovered) ?? 0} encountered.${atlasSelectedMissing ? ` ${number(atlasSelectedMissing.count) ?? 0} missing; available through ${records(atlasSelectedMissing.paths).map((path) => `${spaced(text(path.name))} for ${number(path.count) ?? 0}`).join(', ') || 'no remaining paths'}. All cards are permanent with no rotation, season, or store gate; undiscovered identities remain concealed.` : ''} Milestone badges never affect power. Use Up and Down to browse sets, Confirm to open one, or G, controller R3, or Back to close.`
         : ` Collection Atlas has permanent set, rarity, acquisition-path, and collector-milestone progress for ${atlasCollected} of ${atlasTotal} cards. Use G or controller R3 to open it.`
       : '';
-    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${personalTagState}${cardJournalState}${showcaseState}${huntState}${huntViewState}${ownershipState}${acquisitionState}${folioUsageState}${newCardState}${cardSearchState}${cardSortState}${collectionLensState}${activeFiltersState}${savedViewsState}${collectionAtlasState}${inspectionReturnState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : collectionAtlas?.open === true ? 'Choose a set or close the Collection Atlas.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
+    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${protectionState}${personalTagState}${cardJournalState}${showcaseState}${huntState}${huntViewState}${ownershipState}${acquisitionState}${folioUsageState}${newCardState}${cardSearchState}${cardSortState}${collectionLensState}${activeFiltersState}${savedViewsState}${collectionAtlasState}${inspectionReturnState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : collectionAtlas?.open === true ? 'Choose a set or close the Collection Atlas.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
   }
   return scene ? `${spaced(scene)}.` : '';
 }

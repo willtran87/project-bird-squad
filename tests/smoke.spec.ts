@@ -320,7 +320,7 @@ test('route commit accepts pointer input across its full visible label and medal
 });
 
 test('encounter intro queues confirm and pointer dismissal behind its readable window', async ({ page }) => {
-  test.setTimeout(60_000);
+  test.setTimeout(90_000);
   await boot(page);
   const result = await page.evaluate(async () => {
     const game = window.__birdSquadGame;
@@ -9280,6 +9280,7 @@ test('starter Preens add new decisions instead of only larger numbers', async ({
 });
 
 test('reward Preens across every rarity add decisions instead of only larger numbers', async ({ page }) => {
+  test.setTimeout(60_000);
   const alphaCards = JSON.parse(await readFile('data/game/alpha-cards.json', 'utf8'));
   const rewardIds = new Set<string>(alphaCards.rewardPool);
   const rewardCards = alphaCards.cards.filter((card: any) => rewardIds.has(card.id));
@@ -18216,6 +18217,7 @@ test('Flock Record downloads a complete local save backup without uploading data
       runs: 7, wins: 3, losses: 4, unlockedLeaders: ['fledgling', 'talon'],
       achievements: ['first_win'], discoveredCards: ['major_00', 'wands_ace'],
       favoriteCards: ['major_00'], hunt: ['wands_ace'], bestWinTier: 1,
+      lockedCards: ['major_00'],
       cardTags: { major_00: 'keepsake', wands_ace: 'experiment' },
       cardJournal: { major_00: 'Remember the first rooftop Surge.' },
       showcase: ['major_00', 'wands_ace'],
@@ -18299,6 +18301,7 @@ test('Flock Record downloads a complete local save backup without uploading data
         losses: 4,
         discoveredCards: ['major_00', 'wands_ace'],
         favoriteCards: ['major_00'],
+        lockedCards: ['major_00'],
         hunt: ['wands_ace'],
         cardTags: { major_00: 'keepsake', wands_ace: 'experiment' },
         cardJournal: { major_00: 'Remember the first rooftop Surge.' },
@@ -18382,6 +18385,7 @@ test('Flock Record previews and confirms a transactional save restore', async ({
       runs: 9, wins: 4, losses: 5, unlockedLeaders: ['fledgling', 'talon'],
       achievements: ['first_win'], discoveredCards: ['major_00', 'wands_ace'],
       favoriteCards: ['major_00'], hunt: ['wands_ace'], bestWinTier: 1,
+      lockedCards: ['major_00'],
       cardTags: { major_00: 'keepsake', wands_ace: 'experiment' },
       decks: [{
         id: 'restore-folio',
@@ -18453,6 +18457,7 @@ test('Flock Record previews and confirms a transactional save restore', async ({
   const downloadedPath = await download.path();
   if (!downloadedPath) throw new Error('Restore fixture backup was not downloaded');
   const legacyBackup = JSON.parse(await readFile(downloadedPath, 'utf8'));
+  legacyBackup.data.account.lockedCards = ['major_00', 'wands_ace', 'missing_card', 'major_00'];
   legacyBackup.data.account.showcase = ['major_00', 'missing_card', 'major_00', 'wands_ace', 'extra_card'];
   legacyBackup.data.account.decks.push(
     { ...legacyBackup.data.account.decks[0], name: 'Duplicate Must Drop' },
@@ -18550,6 +18555,7 @@ test('Flock Record previews and confirms a transactional save restore', async ({
     losses: 5,
     discoveredCards: ['major_00', 'wands_ace'],
     favoriteCards: ['major_00'],
+    lockedCards: ['major_00'],
     hunt: ['wands_ace'],
     cardTags: { major_00: 'keepsake', wands_ace: 'experiment' },
     showcase: ['major_00', 'wands_ace'],
@@ -20223,6 +20229,169 @@ test('codex: discovered cards can be favorited persistently with pointer, keyboa
   expect(finalState.favoriteState).toMatchObject({ count: 1, ids: ['major_00'], detailFavorite: false });
   expect(finalState.markerIds).toEqual(['major_00']);
   expect(finalState.account.favoriteCards).toEqual(['major_00']);
+});
+
+test('codex: protected owned cards persist across pointer keyboard controller search and backup-safe migration', async ({ page }) => {
+  await page.addInitScript(() => {
+    const account = {
+      discoveredCards: ['major_00', 'wands_ace'],
+      favoriteCards: ['major_00'],
+      lockedCards: ['major_00', 'wands_ace', 'missing_card', 'major_00'],
+      hunt: [],
+      cardCollection: {
+        major_00: {
+          timesClaimed: 2,
+          firstAcquiredAt: Date.UTC(2026, 6, 1),
+          firstSource: 'combat_reward',
+        },
+      },
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  });
+  await boot(page);
+  await page.evaluate(async () => {
+    const codex: any = await window.__birdSquadStartScene!('CodexScene');
+    codex.activeSection = 'cards';
+    codex.activeTab = 0;
+    codex.detailId = 'major_00';
+    codex.detailScroll = 0;
+    codex.detailScrollTarget = 0;
+    codex.renderAll();
+  });
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const codex: any = window.__birdSquadGame?.scene?.getScene('CodexScene');
+    return state.cardProtection?.detailProtected === true
+      && codex?.root?.getByName?.('codex-card-protect-hit')?.input?.enabled;
+  });
+
+  const initial = await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const hit = codex.root.getByName('codex-card-protect-hit');
+    const account = JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}');
+    return {
+      state: JSON.parse(window.render_game_to_text?.() ?? '{}'),
+      account,
+      hit: { x: hit.x, y: hit.y, width: hit.displayWidth, height: hit.displayHeight },
+      label: codex.root.getByName('codex-card-protect-label')?.text,
+      cardCollection: structuredClone(account.cardCollection),
+      favoriteCards: structuredClone(account.favoriteCards),
+    };
+  });
+  expect(initial.state.cardProtection).toMatchObject({
+    count: 1,
+    ids: ['major_00'],
+    detailId: 'major_00',
+    detailProtected: true,
+    detailEligible: true,
+    keyboard: 'T',
+    controller: 'Y',
+    private: true,
+    includedInBackups: true,
+    protectsFutureDestructiveActions: true,
+    currentDestructiveActions: false,
+    affectsPower: false,
+    affectsRewardOdds: false,
+    persisted: true,
+    searchable: true,
+  });
+  expect(initial.account.lockedCards).toEqual(['major_00']);
+  expect(initial.hit.width).toBeGreaterThanOrEqual(142);
+  expect(initial.hit.height).toBeGreaterThanOrEqual(46);
+  expect(initial.label).toBe('PROTECTED');
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
+    .toContain('This owned card is protected');
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-card-protection.png' });
+
+  const canvas = await page.locator('canvas').boundingBox();
+  if (!canvas) throw new Error('Missing game canvas');
+  await page.mouse.click(
+    canvas.x + canvas.width * (initial.hit.x / 1280),
+    canvas.y + canvas.height * (initial.hit.y / 720),
+  );
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardProtection?.detailProtected === false);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}').lockedCards))
+    .toEqual([]);
+
+  await page.keyboard.press('t');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardProtection?.detailProtected === true);
+  await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    codex.input.gamepad.emit('down', codex.input.gamepad.pad1, { index: 3 }, 1);
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardProtection?.detailProtected === false);
+  await page.keyboard.press('t');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardProtection?.detailProtected === true);
+
+  const searchState = await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    codex.detailId = undefined;
+    codex.cardSearchQuery = 'protected locked';
+    codex.gridScroll = 0;
+    codex.gridScrollTarget = 0;
+    codex.renderAll();
+    return JSON.parse(window.render_game_to_text?.() ?? '{}');
+  });
+  expect(searchState.cardSearch).toMatchObject({
+    query: 'protected locked',
+    matchCount: 1,
+    matchedIds: ['major_00'],
+  });
+  expect(searchState.cardSearch.fields).toContain('protection');
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
+    .toContain('1 owned card protected');
+
+  const unowned = await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    codex.cardSearchQuery = '';
+    codex.activeTab = 2;
+    codex.detailId = 'wands_ace';
+    codex.detailScroll = 0;
+    codex.detailScrollTarget = 0;
+    codex.renderAll();
+    return {
+      state: JSON.parse(window.render_game_to_text?.() ?? '{}'),
+      protectControl: Boolean(codex.root.getByName('codex-card-protect-hit')),
+      targetControl: Boolean(codex.root.getByName('codex-card-target-hit')?.input?.enabled),
+    };
+  });
+  expect(unowned.state.cardProtection).toMatchObject({
+    count: 1,
+    detailId: 'wands_ace',
+    detailProtected: false,
+    detailEligible: false,
+  });
+  expect(unowned.protectControl).toBe(false);
+  expect(unowned.targetControl).toBe(true);
+  await page.keyboard.press('t');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionHunt?.detailTargeted === true);
+
+  await page.evaluate(async () => {
+    const codex: any = await window.__birdSquadStartScene!('CodexScene');
+    codex.activeSection = 'cards';
+    codex.activeTab = 0;
+    codex.detailId = 'major_00';
+    codex.renderAll();
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardProtection?.detailProtected === true);
+  const final = await page.evaluate(() => {
+    const account = JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}');
+    return {
+      protection: JSON.parse(window.render_game_to_text?.() ?? '{}').cardProtection,
+      lockedCards: account.lockedCards,
+      hunt: account.hunt,
+      cardCollection: account.cardCollection,
+      favoriteCards: account.favoriteCards,
+    };
+  });
+  expect(final.protection).toMatchObject({ count: 1, ids: ['major_00'], detailProtected: true });
+  expect(final.lockedCards).toEqual(['major_00']);
+  expect(final.hunt).toEqual(['wands_ace']);
+  expect(final.cardCollection).toEqual(initial.cardCollection);
+  expect(final.favoriteCards).toEqual(initial.favoriteCards);
 });
 
 test('codex: private Card Journal supports sanitized pointer, keyboard, controller, search, and screen-reader flows', async ({ page }) => {

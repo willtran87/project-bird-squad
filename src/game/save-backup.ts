@@ -11,6 +11,7 @@ import { safeStorageGet, safeStorageRemove, safeStorageSet } from './safe-storag
 import { sanitizeCardPersonalTags } from './card-personal-tags';
 import { sanitizeCardShowcase } from './card-showcase';
 import { sanitizeCardJournalNotes } from './card-journal';
+import { sanitizeLockedCards } from './card-protection';
 import {
   CODEX_SAVED_VIEW_STORAGE_KEY,
   sanitizeCodexSavedViews,
@@ -264,6 +265,14 @@ function currentCodexSavedViews() {
 export function createSaveBackup(dependencies: SaveBackupRuntimeDependencies): SaveBackupBundle {
   const activeRun = dependencies.currentActiveRun();
   const account = loadAccount();
+  let storedLockedCards: unknown;
+  try {
+    const storedAccount = JSON.parse(safeStorageGet(JOURNALED_KEYS.account) ?? '{}');
+    storedLockedCards = isRecord(storedAccount) ? storedAccount.lockedCards : undefined;
+  } catch {
+    storedLockedCards = undefined;
+  }
+  account.lockedCards = sanitizeLockedCards(storedLockedCards, account.cardCollection);
   account.cardTags = sanitizeCardPersonalTags(account.cardTags, account.discoveredCards);
   account.cardJournal = sanitizeCardJournalNotes(account.cardJournal, account.discoveredCards);
   account.showcase = sanitizeCardShowcase(account.showcase, account.discoveredCards);
@@ -309,6 +318,10 @@ export function parseSaveBackup(raw: string, dependencies: SaveBackupRuntimeDepe
   if (!account || !runHistory || !guide || !preferences || (hasActiveRun && activeRun === undefined)) {
     return { ok: false, error: 'Backup data failed schema validation; nothing was changed.' };
   }
+  account.lockedCards = sanitizeLockedCards(
+    isRecord(parsed.data.account) ? parsed.data.account.lockedCards : undefined,
+    account.cardCollection,
+  );
   account.cardTags = sanitizeCardPersonalTags(account.cardTags, account.discoveredCards);
   account.cardJournal = sanitizeCardJournalNotes(account.cardJournal, account.discoveredCards);
   account.showcase = sanitizeCardShowcase(account.showcase, account.discoveredCards);

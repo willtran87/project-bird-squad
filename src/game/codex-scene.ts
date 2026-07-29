@@ -15,6 +15,7 @@ import {
   type CardJournalNotes,
 } from './card-journal';
 import { CARD_SHOWCASE_LIMIT, sanitizeCardShowcase } from './card-showcase';
+import { sanitizeLockedCards } from './card-protection';
 import {
   CARD_ACQUISITION_PATHS,
   cardAcquisitionProfile,
@@ -147,6 +148,7 @@ export class CodexScene extends Phaser.Scene {
   private activeItemFilterTab = 0;
   private discovered = new Set<string>();
   private favoriteCards = new Set<string>();
+  private lockedCards = new Set<string>();
   private collectionTargets = new Set<string>();
   private newlyAcquiredCards = new Set<string>();
   private cardFolioUsage: CardFolioUsageIndex = {};
@@ -308,6 +310,16 @@ export class CodexScene extends Phaser.Scene {
     const account = loadAccount();
     this.discovered = new Set(account.discoveredCards);
     this.favoriteCards = new Set(account.favoriteCards);
+    let storedLockedCards: unknown;
+    try {
+      storedLockedCards = (JSON.parse(safeStorageGet('birdsquad.account') ?? '{}') as { lockedCards?: unknown }).lockedCards;
+    } catch {
+      storedLockedCards = undefined;
+    }
+    const lockedCards = sanitizeLockedCards(storedLockedCards, account.cardCollection);
+    const repairedLockedState = JSON.stringify(lockedCards) !== JSON.stringify(storedLockedCards ?? []);
+    account.lockedCards = lockedCards;
+    this.lockedCards = new Set(lockedCards);
     const cardTags = sanitizeCardPersonalTags(account.cardTags, account.discoveredCards);
     const repairedTagState = Object.keys(cardTags).length !== Object.keys(account.cardTags ?? {}).length;
     account.cardTags = cardTags;
@@ -344,6 +356,7 @@ export class CodexScene extends Phaser.Scene {
       || repairedTagState
       || repairedJournalState
       || repairedShowcase
+      || repairedLockedState
       || repairedCollectionMilestones.length > 0
     ) {
       writeJournaledJson('birdsquad.account', account);
@@ -1183,6 +1196,7 @@ export class CodexScene extends Phaser.Scene {
       this.cardTags[card.id],
       this.cardJournal[card.id],
       this.cardShowcase.includes(card.id) ? 'showcase presented flock record' : '',
+      this.lockedCards.has(card.id) ? 'protected locked card lock safety' : '',
       this.cardFolioUsage[card.id]
         ? `folio folios saved deck deck used ${this.cardFolioUsage[card.id].active ? 'active' : ''} ${this.cardFolioUsage[card.id].archived ? 'archive archived' : ''}`
         : '',
@@ -2286,6 +2300,7 @@ export class CodexScene extends Phaser.Scene {
     );
     const found = all.filter((c) => this.discovered.has(c.id)).length;
     const collectedIds = all.filter((card) => Boolean(this.cardCollection[card.id])).map((card) => card.id);
+    const lockedIds = all.filter((card) => this.lockedCards.has(card.id)).map((card) => card.id);
     const taggedIds = all.filter((card) => Boolean(this.cardTags[card.id])).map((card) => card.id);
     const newlyAcquiredIds = all.filter((card) => this.newlyAcquiredCards.has(card.id)).map((card) => card.id);
     const folioUsageEntries = all
@@ -2354,6 +2369,31 @@ export class CodexScene extends Phaser.Scene {
         viewActive: favoriteView,
         viewEmpty: favoriteView && cardTabCards.length === 0,
         visibleIds: favoriteView ? cards.map((card) => card.id) : [],
+      },
+      cardProtection: {
+        count: lockedIds.length,
+        ids: lockedIds,
+        detailId: this.activeSection === 'cards' ? this.detailId ?? '' : '',
+        detailProtected: Boolean(
+          this.activeSection === 'cards'
+          && this.detailId
+          && this.lockedCards.has(this.detailId)
+        ),
+        detailEligible: Boolean(
+          this.activeSection === 'cards'
+          && this.detailId
+          && this.cardCollection[this.detailId]
+        ),
+        keyboard: 'T',
+        controller: 'Y',
+        private: true,
+        includedInBackups: true,
+        protectsFutureDestructiveActions: true,
+        currentDestructiveActions: false,
+        affectsPower: false,
+        affectsRewardOdds: false,
+        persisted: true,
+        searchable: true,
       },
       personalCardTags: {
         count: taggedIds.length,
@@ -2614,7 +2654,7 @@ export class CodexScene extends Phaser.Scene {
         controller: 'RB',
         nativeInput: Boolean(this.cardSearchInput),
         maxLength: CARD_SEARCH_MAX_LENGTH,
-        fields: ['name', 'rules', 'keyword', 'character', 'set', 'type', 'cost', 'rarity', 'ownership', 'saved Folio usage', 'personal tag', 'private journal', 'showcase'],
+        fields: ['name', 'rules', 'keyword', 'character', 'set', 'type', 'cost', 'rarity', 'ownership', 'saved Folio usage', 'personal tag', 'private journal', 'showcase', 'protection'],
         revealsUndiscoveredDetails: false,
         persisted: true,
       },
@@ -3570,7 +3610,7 @@ export class CodexScene extends Phaser.Scene {
       : this.collectionAtlasOpen
       ? `Up / Down: Browse sets   |   ${controlBindingLabel('confirm')}: Open set   |   G / R3 / ${controlBindingLabel('back')}: Close atlas`
       : detail
-      ? `Up/Down: Scroll   |   C/X: Favorite   |   V/L3: Tag   |   T/Y: Hunt   |   G/R3: Showcase   |   J/Start: Journal   |   N/LT: Seen   |   ${controlBindingLabel('confirm')}: Close`
+      ? `Up/Down: Scroll   |   C/X: Favorite   |   V/L3: Tag   |   T/Y: Hunt / Protect   |   G/R3: Showcase   |   J/Start: Journal   |   N/LT: Seen   |   ${controlBindingLabel('confirm')}: Close`
       : this.activeSection === 'cards'
         ? `Tab: Focus   |   B / Select: Views   |   G / R3: Atlas   |   / / RB: Find   |   R / RT: Sort   |   L / LB: Lens${activeFilterHint}   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate`
         : `Tab: Focus   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate   |   ${controlBindingLabel('confirm')}: Select   |   ${controlBindingLabel('back')}: Back`;
@@ -5337,9 +5377,37 @@ export class CodexScene extends Phaser.Scene {
     this.renderAll();
   }
 
+  private toggleCurrentCardProtection() {
+    const id = this.activeSection === 'cards' ? this.detailId : undefined;
+    if (!id || !this.cardCollection[id]) {
+      playUiSound('locked');
+      return;
+    }
+    const account = loadAccount();
+    if (!account.cardCollection[id]) {
+      playUiSound('locked');
+      return;
+    }
+    const lockedCards = new Set(this.lockedCards);
+    if (lockedCards.has(id)) lockedCards.delete(id);
+    else lockedCards.add(id);
+    account.lockedCards = [...lockedCards];
+    if (!writeJournaledJson('birdsquad.account', account)) {
+      playUiSound('locked');
+      return;
+    }
+    this.lockedCards = lockedCards;
+    playUiSound('confirm');
+    this.renderAll();
+  }
+
   private toggleCurrentCollectionTarget() {
     const id = this.activeSection === 'cards' ? this.detailId : undefined;
-    if (!id || !this.discovered.has(id) || this.cardCollection[id]) {
+    if (id && this.cardCollection[id]) {
+      this.toggleCurrentCardProtection();
+      return;
+    }
+    if (!id || !this.discovered.has(id)) {
       playUiSound('locked');
       return;
     }
@@ -5492,16 +5560,43 @@ export class CodexScene extends Phaser.Scene {
       return;
     }
     const collected = Boolean(this.cardCollection[card.id]);
+    if (collected) {
+      const protectedCard = this.lockedCards.has(card.id);
+      const hit = this.add.rectangle(x, y, 142, 46, protectedCard ? 0x392d12 : 0x102534, 0.98)
+        .setStrokeStyle(2, protectedCard ? UI_FIELD.gold : UI_FIELD.cyan, 0.96)
+        .setInteractive({ useHandCursor: true })
+        .setName('codex-card-protect-hit')
+        .setData('cardId', card.id)
+        .setData('protected', protectedCard)
+        .setData('enabled', true);
+      hit.on('pointerover', () => hit.setFillStyle(protectedCard ? 0x51401a : 0x17384b, 1));
+      hit.on('pointerout', () => hit.setFillStyle(protectedCard ? 0x392d12 : 0x102534, 0.98));
+      hit.on('pointerdown', () => this.toggleCurrentCardProtection());
+      this.root.add(hit);
+      this.root.add(this.add.text(x, y - 9, 'CARD SAFETY  /  T / Y', {
+        fontFamily: UI_FONT,
+        fontSize: '8px',
+        fontStyle: UI_BOLD,
+        color: protectedCard ? '#ffe08a' : '#91a6b8',
+      }).setResolution(2).setOrigin(0.5).setName('codex-card-protect-hint').setData('cardId', card.id));
+      this.root.add(this.add.text(x, y + 9, protectedCard ? 'PROTECTED' : 'PROTECT CARD', {
+        fontFamily: UI_FONT,
+        fontSize: '11px',
+        fontStyle: UI_BOLD,
+        color: protectedCard ? '#ffe08a' : '#b8e8f4',
+        stroke: '#05070c',
+        strokeThickness: 2,
+      }).setResolution(2).setOrigin(0.5).setName('codex-card-protect-label').setData('cardId', card.id));
+      return;
+    }
     const targeted = this.collectionTargets.has(card.id);
     const full = !targeted && this.collectionTargets.size >= COLLECTION_TARGET_LIMIT;
-    const enabled = !collected && !full;
-    const label = collected
-      ? '✓  COLLECTED'
-      : targeted
-        ? '◎  TRACKED'
-        : full
-          ? `${COLLECTION_TARGET_LIMIT}/${COLLECTION_TARGET_LIMIT}  HUNT FULL`
-          : '◎  TRACK';
+    const enabled = !full;
+    const label = targeted
+      ? '◎  TRACKED'
+      : full
+        ? `${COLLECTION_TARGET_LIMIT}/${COLLECTION_TARGET_LIMIT}  HUNT FULL`
+        : '◎  TRACK';
     const accent = targeted ? 0xff9b6a : enabled ? UI_FIELD.cyan : 0x627184;
     const hit = this.add.rectangle(x, y, 142, 46, targeted ? 0x3a1d14 : enabled ? 0x102534 : 0x151b24, 0.98)
       .setStrokeStyle(2, accent, enabled ? 0.96 : 0.62)
@@ -5689,6 +5784,13 @@ export class CodexScene extends Phaser.Scene {
         color: '#b8e8f4',
         size: 12,
       });
+      yy += 5;
+      para(
+        this.lockedCards.has(card.id)
+          ? 'PROTECTED / Reserved against future conversion or destruction tools. Private, backup-safe, and no effect on play.'
+          : 'UNPROTECTED / Choose PROTECT CARD, press T, or use controller Y to reserve it against future destructive tools.',
+        { color: this.lockedCards.has(card.id) ? '#ffe08a' : '#91a6b8', size: 12 },
+      );
       if (collection.targetCompletedAt) {
         yy += 5;
         para(
