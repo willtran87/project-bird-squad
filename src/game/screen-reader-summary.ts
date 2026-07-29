@@ -66,6 +66,19 @@ export function screenReaderSummary(payload: unknown): string {
     const collectionMilestones = isRecord(payload.collectionMilestones) ? payload.collectionMilestones : undefined;
     const showcase = isRecord(payload.cardShowcase) ? payload.cardShowcase : undefined;
     const folios = isRecord(payload.savedFlightFolios) ? payload.savedFlightFolios : undefined;
+    const template = isRecord(folios?.template) ? folios.template : undefined;
+    if (template?.open === true) {
+      const options = records(template.items);
+      const selectedIndex = number(template.selectedIndex) ?? 0;
+      const selected = options[selectedIndex];
+      const missingNames = Array.isArray(selected?.missingNames)
+        ? selected.missingNames.map(text).filter(Boolean)
+        : [];
+      const requirement = selected?.available === true
+        ? 'Ready to build.'
+        : `${text(selected?.reason) || 'Template unavailable'}.${missingNames.length > 0 ? ` Missing cards: ${missingNames.join(', ')}.` : ''}`;
+      return `Build a Starter Folio. Selected ${selectedIndex + 1} of ${options.length}, ${text(selected?.leader)}, ${text(selected?.bird)}, ${text(selected?.suit)}. ${number(selected?.ownedCount) ?? 0} of ${number(selected?.cardCount) ?? 0} starter cards permanently owned. ${requirement} Building creates a new revision 1 Full Flight Folio with Base cards. It never grants cards, changes collection history, replaces another Folio, or starts a flight. Use Previous and Next, D-pad, controller shoulders, or pointer to choose; Confirm, controller A, or pointer to build; and Back, controller B, or pointer to cancel.`;
+    }
     const identity = isRecord(folios?.identity) ? folios.identity : undefined;
     if (identity?.open === true) {
       if (identity.descriptionEditing === true) {
@@ -205,7 +218,10 @@ export function screenReaderSummary(payload: unknown): string {
     const selectedTags = Array.isArray(selectedFolio?.tags)
       ? selectedFolio.tags.map((tag) => isRecord(tag) ? text(tag.label) : '').filter(Boolean)
       : [];
-    const folioSummary = ` Flight Folios ${number(folios?.count) ?? 0} active of ${number(folios?.capacity) ?? 6}, and ${number(folios?.archivedCount) ?? 0} archived of ${number(folios?.archiveCapacity) ?? 24}. Viewing ${archiveView ? 'Archive' : 'Active'}.${selectedFolio ? ` Selected ${text(selectedFolio.name)}, ${text(selectedFolio.leader)}, ${number(selectedFolio.cardCount) ?? 0} cards, revision ${number(selectedFolio.revision) ?? 1}${selectedFolio.favorite === true ? ', favorite' : ''}${selectedFolio.archived === true ? ', archived' : ''}, folder ${text(selectedFolio.folderLabel)}${selectedTags.length > 0 ? `, labels ${selectedTags.join(', ')}` : ''}, cover ${text(selectedFolio.coverCardName)}, card back ${text(selectedFolio.sleeveLabel)}${text(selectedFolio.description) ? `, description ${text(selectedFolio.description)}` : ''}.` : archiveView ? ' The Archive is empty.' : ' Save a deck from Route Deck Review or import a flight code.'} Archived Folios preserve their identity and never affect gameplay power. BSF version ${number(shareCode?.version) ?? 1} codes use a checksum and exclude account data, custom names, flight seeds, private notes, folders, labels, descriptions, cover choices, and sleeves.${folios?.viewActive === true ? ` Use Previous and Next to select, O or controller A to organize, C or controller X to favorite, R or controller Y to rename, A or controller Start to ${archiveView ? 'restore' : 'archive'}, V or controller Select to switch libraries, D or controller left trigger to fork without changing the original, E or controller right trigger to copy a share code, I or controller left stick to import, and L or controller right stick to open the Flight Lab.` : ''}`;
+    const folioStatus = text(folios?.status) === 'templateCreated'
+      ? ' A starter Folio was built; ownership and collection history were unchanged.'
+      : '';
+    const folioSummary = ` Flight Folios ${number(folios?.count) ?? 0} active of ${number(folios?.capacity) ?? 6}, and ${number(folios?.archivedCount) ?? 0} archived of ${number(folios?.archiveCapacity) ?? 24}. Viewing ${archiveView ? 'Archive' : 'Active'}.${selectedFolio ? ` Selected ${text(selectedFolio.name)}, ${text(selectedFolio.leader)}, ${number(selectedFolio.cardCount) ?? 0} cards, revision ${number(selectedFolio.revision) ?? 1}${selectedFolio.favorite === true ? ', favorite' : ''}${selectedFolio.archived === true ? ', archived' : ''}, folder ${text(selectedFolio.folderLabel)}${selectedTags.length > 0 ? `, labels ${selectedTags.join(', ')}` : ''}, cover ${text(selectedFolio.coverCardName)}, card back ${text(selectedFolio.sleeveLabel)}${text(selectedFolio.description) ? `, description ${text(selectedFolio.description)}` : ''}.` : archiveView ? ' The Archive is empty.' : ' Build from an owned leader starter, save a deck from Route Deck Review, or import a flight code.'}${folioStatus} Archived Folios preserve their identity and never affect gameplay power. BSF version ${number(shareCode?.version) ?? 1} codes use a checksum and exclude account data, custom names, flight seeds, private notes, folders, labels, descriptions, cover choices, and sleeves.${folios?.viewActive === true ? ` Use K, controller right shoulder, or pointer to build from an owned starter; Previous and Next to select; O or controller A to organize; C or controller X to favorite; R or controller Y to rename; A or controller Start to ${archiveView ? 'restore' : 'archive'}; V or controller Select to switch libraries; D or controller left trigger to fork without changing the original; E or controller right trigger to copy a share code; I or controller left stick to import; and L or controller right stick to open the Flight Lab.` : ''}`;
     return `Flock Record. ${current}.${milestoneSummary}${showcaseSummary}${folioSummary} Press Confirm to select, or Back to return.`;
   }
 

@@ -5430,3 +5430,50 @@ sessions through `docs/game/playtest-runbook.md`.
   browser scenarios pass in 10.6 minutes with an empty stderr log.
 - The broader card-collector objective remains active. Five genuinely observed
   fresh-player sessions remain necessary qualitative release evidence.
+
+## 2026-07-29 Owned Starter Folio Builder
+
+- Closed the deck-library gap between permanent ownership and the existing
+  Folio tuning/launch tools. Flock Record / Folios now offers `New`, opening a
+  five-leader starter-template picker that reports leader lock state and exact
+  permanent ownership progress.
+- A template is buildable only when the leader is unlocked, all ten starter
+  cards are permanently owned, and an active Folio slot is free. Missing-card
+  diagnostics retain the complete ID/name list; the visual footer shows a
+  bounded three-card preview plus the remaining count.
+- Building creates a distinct immutable revision 1 Full Flight Folio with the
+  leader's exact singleton card order, every card at Base, and a
+  `starter-template:<leader>` source. It never grants ownership, changes
+  collection history, starts a run, replaces another Folio, or modifies any
+  existing revision. The result can immediately use the existing rename,
+  organize, tune, archive, share, practice, and exact-launch paths.
+- Pointer/touch, keyboard (`K`, navigation, Confirm, Back), and controller
+  (`RB`, D-pad/shoulders, `A`, `B`) have complete parity. Every row and command
+  meets the 44-pixel touch minimum, unavailable confirmation gives explicit
+  feedback, and active-capacity refusal leaves the account byte-for-byte
+  unchanged.
+- Runtime text state exposes selection, availability, ownership, exact missing
+  cards, capacity, source, card state, run mode, inputs, and non-granting
+  guarantees. Screen-reader narration describes the complete modal, missing
+  cards, safe cancellation, and post-build success.
+- Added the 45th mandatory sequencing scenario. It builds exact Fledgling,
+  Spark-Caller, and Talon starters through genuine pointer, keyboard, and
+  controller paths; proves Base/order/revision/source persistence; verifies
+  missing-card and capacity refusal; and confirms collection history and active
+  run storage are unchanged. Its inspected owned-state capture is
+  `.artifacts/test-results/folio-starter-template-picker.png`.
+- The required independent production client found and drove the new surface
+  from title to Flock Record, changed leader selection, and caught a footer
+  overflow that was then fixed. Final inspected evidence is
+  `.artifacts/folio-starter-shared-client-final-2/shot-0.png`; text state reports
+  the selected Spark-Caller, all five ownership records, Base/full guarantees,
+  and no browser error artifact.
+- `npm run build`, focused regression coverage, `git diff --check`, balance,
+  content, and 500-seed economy audits pass. Full `npm run validate` passes
+  documentation, runtime/data/assets/world/FX/deployment checks, hard bundle
+  limits, and all 45 mandatory browser scenarios in 11.8 minutes. App entry is
+  695.0 KiB and combined boot is exactly 725.0 KiB; both preferred targets warn
+  while the unchanged hard limits pass.
+- The broader card-collector objective remains active. Five genuinely observed
+  fresh-player sessions through `docs/game/playtest-runbook.md` remain necessary
+  qualitative release evidence.

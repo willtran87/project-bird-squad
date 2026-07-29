@@ -558,6 +558,9 @@ function savedDeckTemplateOptions(account = loadAccount()) {
   const activeCount = activeSavedDecks(sanitizeSavedDecks(account.decks)).length;
   return flockLeaders.map((leader) => {
     const missing = leader.startingDeckIds.filter((id) => !owned.has(id));
+    const missingNames = missing.map((id) => (
+      alphaCardSet.cards.find((card) => card.id === id)?.displayName ?? id
+    ));
     const unlocked = isLeaderUnlocked(account, leader.id);
     const available = activeCount < SAVED_DECK_LIMIT && unlocked && missing.length === 0;
     return {
@@ -565,6 +568,8 @@ function savedDeckTemplateOptions(account = loadAccount()) {
       unlocked,
       owned: leader.startingDeckIds.length - missing.length,
       missing: missing.length,
+      missingIds: missing,
+      missingNames,
       available,
       reason: activeCount >= SAVED_DECK_LIMIT
         ? 'Active Folios full'
@@ -2608,8 +2613,7 @@ export function startProfileScene(
   const onSavedDeckTemplate = (event: KeyboardEvent) => {
     if (
       state.savedDeckTemplateOpen
-      ||
-      state.badgeView !== 'folios'
+      || state.badgeView !== 'folios'
       || state.focus !== 'folios'
       || state.savedDeckRenameInput
       || state.savedDeckCodeInput
@@ -3245,6 +3249,8 @@ export function renderProfileScene(
           cardCount: option.leader.startingDeckIds.length,
           ownedCount: option.owned,
           missingCount: option.missing,
+          missingIds: option.missingIds,
+          missingNames: option.missingNames,
           unlocked: option.unlocked,
           available: option.available,
           reason: option.reason,
@@ -4155,11 +4161,7 @@ function renderSavedDeckOrganizer(
 
   const status = state.savedDeckStatus === 'tagLimit'
     ? 'THREE-LABEL LIMIT  /  REMOVE ONE BEFORE ADDING ANOTHER'
-    : state.savedDeckStatus === 'templateCreated'
-      ? 'STARTER FOLIO BUILT / OWNERSHIP + COLLECTION HISTORY UNCHANGED'
-      : state.savedDeckStatus === 'templateUnavailable'
-        ? 'STARTER FOLIO NOT BUILT / REQUIREMENTS SHOWN'
-        : state.savedDeckStatus === 'organized'
+    : state.savedDeckStatus === 'organized'
       ? 'ORGANIZATION SAVED  /  INCLUDED IN BACKUPS  /  EXCLUDED FROM BSF CODES'
       : 'ORGANIZATION IS PRIVATE  /  NO EFFECT ON FLIGHT POWER';
   scene.add.text(640, 566, status, {
@@ -6076,7 +6078,11 @@ function renderSavedFlightFolios(
     ? `PASTE BSF${SAVED_DECK_CODE_VERSION} CODE  ·  ENTER IMPORT  ·  ESC CANCEL`
     : state.savedDeckRenameInput
       ? 'TYPE A NAME  ·  ENTER SAVE  ·  ESC CANCEL'
-    : state.savedDeckStatus === 'organized'
+    : state.savedDeckStatus === 'templateCreated'
+      ? 'STARTER FOLIO BUILT  /  OWNERSHIP + COLLECTION HISTORY UNCHANGED'
+      : state.savedDeckStatus === 'templateUnavailable'
+        ? 'STARTER FOLIO NOT BUILT  /  REQUIREMENTS SHOWN'
+        : state.savedDeckStatus === 'organized'
       ? 'FOLDER + LABELS SAVED  ·  PRIVATE COLLECTION METADATA'
       : state.savedDeckStatus === 'personalized'
         ? 'COVER + CARD BACK SAVED  ·  PRIVATE COSMETIC IDENTITY'
@@ -6121,7 +6127,16 @@ function renderSavedFlightFolios(
     fontFamily: UI_FONT,
     fontSize: '9px',
     fontStyle: UI_BOLD,
-    color: ['failed', 'copyFailed', 'invalidCode', 'full', 'archiveFull', 'activeFull', 'tagLimit'].includes(state.savedDeckStatus) ? '#ffb09a' : UI_FIELD.cyanText,
+    color: [
+      'failed',
+      'copyFailed',
+      'invalidCode',
+      'full',
+      'archiveFull',
+      'activeFull',
+      'tagLimit',
+      'templateUnavailable',
+    ].includes(state.savedDeckStatus) ? '#ffb09a' : UI_FIELD.cyanText,
     fixedWidth: 300,
     align: 'center',
   }).setResolution(2).setOrigin(0.5).setName('profile-folio-status');
@@ -6605,11 +6620,16 @@ function renderSavedDeckTemplatePicker(
     }).setResolution(2).setOrigin(1, 0);
   });
 
+  const missingPreview = selected?.unlocked && selected.missingNames.length > 0
+    ? `${selected.missingNames.slice(0, 3).join(', ')}${selected.missingNames.length > 3 ? `, +${selected.missingNames.length - 3} more` : ''}`
+    : '';
   const message = state.savedDeckStatus === 'templateUnavailable'
-    ? `${selected?.reason ?? 'Template unavailable'}. No Folio or ownership data changed.`
+    ? `${selected?.reason ?? 'Template unavailable'}${missingPreview ? `: ${missingPreview}` : ''}. No Folio or ownership data changed.`
     : selected?.available
       ? 'Creates a new Base-card Full Flight Folio. You can tune, rename, archive, or launch it afterward.'
-      : selected?.reason ?? 'Choose a leader template.';
+      : missingPreview
+        ? `${selected.reason}: ${missingPreview}.`
+        : selected?.reason ?? 'Choose a leader template.';
   scene.add.text(panel.cx, panel.bottom - 82, message, {
     fontFamily: UI_FONT,
     fontSize: '11px',
@@ -6617,6 +6637,7 @@ function renderSavedDeckTemplatePicker(
     color: selected?.available ? UI_FIELD.cyanText : '#ffd7a0',
     fixedWidth: 660,
     align: 'center',
+    wordWrap: { width: 660 },
     maxLines: 2,
   }).setResolution(2).setOrigin(0.5).setName('profile-folio-template-detail');
   const build = dependencies.renderFieldButton(

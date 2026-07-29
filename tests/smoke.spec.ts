@@ -28817,3 +28817,275 @@ test('owned Folio launches the exact saved deck across pointer keyboard and cont
   });
   await assertExactRoute();
 });
+
+test('owned starter templates create reversible Folios across pointer keyboard and controller without granting cards', async ({ page }) => {
+  test.setTimeout(180_000);
+  const starters = {
+    fledgling: ['major_00', 'wands_ace', 'wands_fledgling', 'swords_ace', 'swords_fledgling', 'cups_ace', 'cups_fledgling', 'pentacles_04', 'pentacles_fledgling', 'aviary_25'],
+    spark_caller: ['wands_ace', 'wands_02', 'wands_03', 'wands_05', 'wands_fledgling', 'wands_outrider', 'major_19', 'aviary_28', 'swords_ace', 'pentacles_fledgling'],
+    talon: ['swords_ace', 'swords_02', 'swords_03', 'swords_04', 'swords_fledgling', 'swords_08', 'major_18', 'aviary_29', 'pentacles_04', 'cups_03'],
+  };
+  const discovered = [...new Set(Object.values(starters).flat())];
+  await page.addInitScript(({ ids, fledglingCards }) => {
+    const cardCollection = Object.fromEntries(fledglingCards.map((id: string, index: number) => [id, {
+      timesClaimed: 1,
+      firstAcquiredAt: 1_780_100_000_000 + index,
+      firstSource: 'starter_flock',
+    }]));
+    const account = {
+      runs: 0,
+      wins: 0,
+      losses: 0,
+      unlockedLeaders: ['fledgling', 'spark_caller'],
+      discoveredCards: ids,
+      favoriteCards: [],
+      cardCollection,
+      decks: [],
+    };
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  }, { ids: discovered, fledglingCards: starters.fledgling });
+  await boot(page);
+
+  const openFolios = async () => {
+    await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+    await clickNamedGameObject(page, 'ProfileScene', 'profile-folios-tab-hit');
+    await page.waitForFunction(() => (
+      JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.viewActive === true
+    ));
+  };
+  const clickTemplateLeader = async (leaderId: string) => {
+    const center = await page.evaluate((id) => {
+      const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+      const hit = profile.children.list.find((child: any) => (
+        child.name === 'profile-folio-template-row'
+        && child.getData('leaderId') === id
+        && child.input?.enabled
+      ));
+      if (!hit) throw new Error(`Missing starter template row for ${id}`);
+      return { x: hit.x, y: hit.y };
+    }, leaderId);
+    const canvas = await page.locator('canvas').boundingBox();
+    if (!canvas) throw new Error('Missing game canvas');
+    await page.mouse.click(
+      canvas.x + canvas.width * (center.x / 1280),
+      canvas.y + canvas.height * (center.y / 720),
+    );
+  };
+  const accountCollection = () => page.evaluate(() => (
+    structuredClone(JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}').cardCollection)
+  ));
+  const claimCards = async (cardIds: string[], leaderId: string) => {
+    await page.evaluate(({ ids, leader }) => {
+      const account = JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}');
+      account.unlockedLeaders = [...new Set([...(account.unlockedLeaders ?? []), leader])];
+      account.discoveredCards = [...new Set([...(account.discoveredCards ?? []), ...ids])];
+      ids.forEach((id: string, index: number) => {
+        account.cardCollection[id] ??= {
+          timesClaimed: 1,
+          firstAcquiredAt: 1_780_200_000_000 + index,
+          firstSource: 'combat_reward',
+        };
+      });
+      const raw = JSON.stringify(account);
+      localStorage.setItem('birdsquad.account', raw);
+      localStorage.setItem('birdsquad.account.backup', raw);
+    }, { ids: cardIds, leader: leaderId });
+  };
+
+  await openFolios();
+  const emptySummary = await expect.poll(
+    () => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''),
+    { timeout: 5_000 },
+  ).toContain('Build from an owned leader starter');
+  void emptySummary;
+  const newTarget = await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    const hit = profile.children.getByName('profile-folio-template-hit');
+    return { width: hit.displayWidth, height: hit.displayHeight, enabled: hit.input?.enabled };
+  });
+  expect(newTarget).toMatchObject({ width: 58, enabled: true });
+  expect(newTarget.height).toBeGreaterThanOrEqual(44);
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-template-hit');
+
+  let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  const fledglingOption = state.savedFlightFolios.template.items.find((item: any) => item.leaderId === 'fledgling');
+  const sparkOption = state.savedFlightFolios.template.items.find((item: any) => item.leaderId === 'spark_caller');
+  const talonOption = state.savedFlightFolios.template.items.find((item: any) => item.leaderId === 'talon');
+  expect(state.savedFlightFolios.template).toMatchObject({
+    open: true,
+    selectedLeaderId: 'fledgling',
+    activeCount: 0,
+    capacity: 6,
+    createsNewRecord: true,
+    grantsOwnership: false,
+    changesCollectionHistory: false,
+    usesBaseCards: true,
+    runMode: 'full',
+  });
+  expect(fledglingOption).toMatchObject({ ownedCount: 10, missingCount: 0, unlocked: true, available: true });
+  expect(sparkOption).toMatchObject({ unlocked: true, available: false, reason: 'Claim 6 starter cards' });
+  expect(sparkOption.missingIds).toHaveLength(6);
+  expect(sparkOption.missingNames).toHaveLength(6);
+  expect(talonOption).toMatchObject({ unlocked: false, available: false, reason: 'Leader locked' });
+  const modalTargets = await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    const rows = profile.children.list.filter((child: any) => child.name === 'profile-folio-template-row');
+    const build = profile.children.getByName('profile-folio-template-build-hit');
+    return {
+      rows: rows.map((row: any) => ({ width: row.displayWidth, height: row.displayHeight })),
+      build: { width: build.displayWidth, height: build.displayHeight, available: build.getData('available') },
+    };
+  });
+  expect(modalTargets.rows).toHaveLength(5);
+  expect(modalTargets.rows.every((row: any) => row.height >= 44)).toBe(true);
+  expect(modalTargets.build).toMatchObject({ width: 190, available: true });
+  expect(modalTargets.build.height).toBeGreaterThanOrEqual(44);
+  await expect.poll(
+    () => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''),
+    { timeout: 5_000 },
+  ).toContain('It never grants cards');
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/folio-starter-template-picker.png' });
+
+  const beforeBlockedAccount = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
+  await clickTemplateLeader('spark_caller');
+  await page.keyboard.press('Enter');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.template).toMatchObject({
+    open: true,
+    selectedLeaderId: 'spark_caller',
+    status: 'templateUnavailable',
+  });
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.account'))).toBe(beforeBlockedAccount);
+  await expect.poll(
+    () => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''),
+    { timeout: 5_000 },
+  ).toContain('Missing cards');
+
+  const collectionBeforePointerBuild = await accountCollection();
+  await clickTemplateLeader('fledgling');
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-template-build-hit');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios).toMatchObject({ count: 1, status: 'templateCreated' });
+  expect(state.savedFlightFolios.template.open).toBe(false);
+  expect(state.savedFlightFolios.items[0]).toMatchObject({
+    name: 'The Fledgling Flock Starter',
+    leaderId: 'fledgling',
+    revision: 1,
+    archived: false,
+    sourceSeed: 'starter-template:fledgling',
+    runMode: 'full',
+  });
+  expect(state.savedFlightFolios.items[0].cards).toEqual(
+    starters.fledgling.map((id) => ({ id, upgraded: false })),
+  );
+  expect(await accountCollection()).toEqual(collectionBeforePointerBuild);
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.run.active'))).toBeNull();
+  const successStatus = await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    return profile.children.getByName('profile-folio-status')?.text;
+  });
+  expect(successStatus).toContain('STARTER FOLIO BUILT');
+  await expect.poll(
+    () => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''),
+    { timeout: 5_000 },
+  ).toContain('ownership and collection history were unchanged');
+
+  await claimCards(starters.spark_caller, 'spark_caller');
+  await openFolios();
+  await page.keyboard.press('k');
+  await page.waitForFunction(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.template?.open === true
+  ));
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.count === 2
+  ));
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.items[0]).toMatchObject({
+    name: 'The Spark-Caller Starter',
+    leaderId: 'spark_caller',
+    sourceSeed: 'starter-template:spark_caller',
+    revision: 1,
+    runMode: 'full',
+  });
+  expect(state.savedFlightFolios.items[0].cards).toEqual(
+    starters.spark_caller.map((id) => ({ id, upgraded: false })),
+  );
+
+  await claimCards(starters.talon, 'talon');
+  await openFolios();
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', profile.input.gamepad.pad1, { index: 5 }, 1);
+    profile.input.gamepad.emit('down', profile.input.gamepad.pad1, { index: 13 }, 1);
+    profile.input.gamepad.emit('down', profile.input.gamepad.pad1, { index: 13 }, 1);
+    profile.input.gamepad.emit('down', profile.input.gamepad.pad1, { index: 0 }, 1);
+  });
+  await page.waitForFunction(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.count === 3
+  ));
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.items[0]).toMatchObject({
+    name: 'The Talon Starter',
+    leaderId: 'talon',
+    sourceSeed: 'starter-template:talon',
+    revision: 1,
+    runMode: 'full',
+  });
+  expect(state.savedFlightFolios.items[0].cards).toEqual(
+    starters.talon.map((id) => ({ id, upgraded: false })),
+  );
+
+  await page.evaluate(() => {
+    const account = JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}');
+    const source = account.decks[0];
+    while (account.decks.filter((deck: any) => !deck.archived).length < 6) {
+      const suffix = account.decks.length + 1;
+      account.decks.push({
+        ...structuredClone(source),
+        id: `capacity-folio-${suffix}`,
+        lineageId: `capacity-folio-${suffix}`,
+        name: `Capacity Folio ${suffix}`,
+        createdAt: source.createdAt + suffix,
+        updatedAt: source.updatedAt + suffix,
+      });
+    }
+    const raw = JSON.stringify(account);
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+  });
+  await openFolios();
+  await page.keyboard.press('k');
+  await page.waitForFunction(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.template?.open === true
+  ));
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.template.items.every((item: any) => (
+    item.available === false && item.reason === 'Active Folios full'
+  ))).toBe(true);
+  const fullAccount = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
+  await page.keyboard.press('Enter');
+  state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(state.savedFlightFolios.template).toMatchObject({
+    open: true,
+    status: 'templateUnavailable',
+    activeCount: 6,
+  });
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.account'))).toBe(fullAccount);
+  await expect.poll(
+    () => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''),
+    { timeout: 5_000 },
+  ).toContain('Active Folios full');
+  await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    profile.input.gamepad.emit('down', profile.input.gamepad.pad1, { index: 1 }, 1);
+  });
+  await page.waitForFunction(() => (
+    JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.template?.open === false
+  ));
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.run.active'))).toBeNull();
+});
