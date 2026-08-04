@@ -3763,13 +3763,15 @@ export class CodexScene extends Phaser.Scene {
       this.textures.get(tabFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
       this.root.add(this.add.image(x, y, tabFrameKey)
         .setDisplaySize(w, h + 5)
-        .setAlpha(active ? 0.72 : 0.46)
-        .setName('codex-tab-frame'));
+        .setAlpha(active ? 0.82 : 0.18)
+        .setName('codex-tab-frame')
+        .setData('active', active)
+        .setData('label', label));
     }
     const iconId = iconOverride ?? codexIconForLabel(label);
     const icon = iconId ? addUiIconImage(this, iconId, x - w / 2 + 18, y - 2, Math.min(26, h - 10)) : undefined;
     if (icon) {
-      icon.setAlpha(active ? 0.96 : 0.56);
+      icon.setAlpha(active ? 0.96 : 0.3);
       this.root.add(icon);
     }
     this.root.add(this.add.text(x + (icon ? 8 : 0), y - 8, label, {

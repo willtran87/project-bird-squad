@@ -86,7 +86,7 @@ const UI_GOLD = '#ffe1a3';
 const UI_MUTED = '#8fa3b6';
 const UI_SOFT = '#b9c7d6';
 const FLIGHT_LOG_PAGE_SIZE = 7;
-const BADGE_PAGE_SIZE = 6;
+const BADGE_PAGE_SIZE = 5;
 const SAVED_DECK_PAGE_SIZE = 1;
 const UI_FIELD = {
   ink: 0x070b12,
@@ -3831,11 +3831,11 @@ export function renderProfileScene(
 
   const badgeX = frame.left + 392;
   renderProfileSectionTabFrame(scene, badgeX + 146, frame.top + 210, 312, UI_FIELD.brass);
-  const tabs: Array<{ view: ProfileBadgeView; x: number; label: string }> = [
-    { view: 'achievements', x: badgeX + 32, label: 'Badges' },
-    { view: 'contracts', x: badgeX + 108, label: `Contracts ${account.contractBadges.length}` },
-    { view: 'showcase', x: badgeX + 184, label: `Showcase ${showcaseEntries.length}` },
-    { view: 'folios', x: badgeX + 260, label: `Folios ${savedDecks.length}` },
+  const tabs: Array<{ view: ProfileBadgeView; x: number; label: string; count: number }> = [
+    { view: 'achievements', x: badgeX + 32, label: 'Badges', count: earned.length },
+    { view: 'contracts', x: badgeX + 108, label: 'Contracts', count: account.contractBadges.length },
+    { view: 'showcase', x: badgeX + 184, label: 'Showcase', count: showcaseEntries.length },
+    { view: 'folios', x: badgeX + 260, label: 'Folios', count: savedDecks.length },
   ];
   tabs.forEach((tab) => {
     const selected = state.badgeView === tab.view;
@@ -3843,13 +3843,28 @@ export function renderProfileScene(
     const hit = scene.add.rectangle(tab.x, frame.top + 210, 72, MIN_SUPPORTED_TOUCH_TARGET, selected ? 0x183451 : 0x0d1420, 0.94)
       .setStrokeStyle(focused ? 3 : 1, focused ? UI_FIELD.cyan : selected ? UI_FIELD.gold : UI_FIELD.cyan, focused ? 0.98 : selected ? 0.86 : 0.34)
       .setInteractive({ useHandCursor: true })
-      .setName(`profile-${tab.view}-tab-hit`);
-    scene.add.text(tab.x, frame.top + 210, tab.label, {
+      .setName(`profile-${tab.view}-tab-hit`)
+      .setData('label', tab.label)
+      .setData('count', tab.count)
+      .setData('selected', selected);
+    scene.add.text(tab.x, frame.top + 203, tab.label, {
       fontFamily: UI_FONT,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: UI_BOLD,
       color: selected ? UI_GOLD : UI_SOFT,
-    }).setResolution(2).setOrigin(0.5);
+      fixedWidth: 70,
+      align: 'center',
+      maxLines: 1,
+    }).setResolution(2).setOrigin(0.5).setName('profile-badge-tab-label').setData('view', tab.view);
+    scene.add.text(tab.x, frame.top + 220, `${tab.count}`, {
+      fontFamily: UI_FONT,
+      fontSize: '10px',
+      fontStyle: UI_BOLD,
+      color: selected ? UI_FIELD.warm : UI_MUTED,
+      fixedWidth: 70,
+      align: 'center',
+      maxLines: 1,
+    }).setResolution(2).setOrigin(0.5).setName('profile-badge-tab-count').setData('view', tab.view);
     hit.on('pointerdown', () => {
       state.focus = tab.view;
       if (state.badgeView === tab.view) return;
@@ -3886,7 +3901,7 @@ export function renderProfileScene(
     }).setOrigin(0.5);
   }
   if (state.badgeView !== 'showcase' && state.badgeView !== 'folios') visibleBadges.forEach((badge, index) => {
-    const y = frame.top + 260 + index * 39;
+    const y = frame.top + 256 + index * 39;
     renderProfileRecordRowFrame(scene, badgeX + 150, y, 300, 35, UI_FIELD.brass, badge.earned);
     const icon = addProfileIconImage(scene, 'achievement-medallion', badgeX + 17, y, 12);
     icon?.setAlpha(badge.earned ? 0.95 : 0.34);
@@ -3896,27 +3911,16 @@ export function renderProfileScene(
       fontSize: '12px',
       fontStyle: UI_BOLD,
       color: badge.earned ? '#ffe1a3' : '#7b8794',
-    }).setResolution(2);
+    }).setResolution(2).setName('profile-badge-name').setData('badgeId', badge.id);
     scene.add.text(badgeX + 34, y + 3, badge.description, {
       fontFamily: UI_FONT,
       fontSize: '10px',
       color: badge.earned ? '#cdd9e6' : '#5f6c7a',
       wordWrap: { width: 244 },
       maxLines: 1,
-    }).setResolution(2);
+    }).setResolution(2).setName('profile-badge-description').setData('badgeId', badge.id);
   });
   if (state.badgeView !== 'showcase' && badgePageCount > 1) {
-    scene.add.text(
-      badgeX + 150,
-      frame.top + 486,
-      'Page Up / Down  ·  LB / RB',
-      {
-        fontFamily: UI_FONT,
-        fontSize: '9px',
-        fontStyle: UI_BOLD,
-        color: UI_FIELD.cyanText,
-      },
-    ).setResolution(2).setOrigin(0.5).setName('profile-badge-page-hint');
     dependencies.renderFieldButton(
       scene,
       () => {},

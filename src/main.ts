@@ -6119,7 +6119,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   private createAnimatedTitle() {
-    const logo = this.add.container(GAME_WIDTH / 2, -224)
+    const logo = this.add.container(GAME_WIDTH / 2, 144)
       .setName('title-logo')
       .setAlpha(0)
       .setAngle(-2.5);
@@ -8162,8 +8162,8 @@ class RouteScene extends Phaser.Scene {
       const primaryPreview = previewEdges.primary.has(key);
       const secondaryPreview = previewEdges.secondary.has(key);
       const available = this.selectableNodeIds.has(edge.to);
-      const color = lit ? 0x87b884 : primaryPreview ? 0xbf7842 : available ? 0x4fb2a9 : secondaryPreview ? 0x657f89 : 0x263d4b;
-      const alpha = lit ? 0.82 : primaryPreview ? 0.96 : available ? 0.64 : secondaryPreview ? 0.28 : 0.14;
+      const color = lit ? 0x87b884 : primaryPreview ? 0xbf7842 : available ? 0x4fb2a9 : secondaryPreview ? 0x7893a0 : 0x345466;
+      const alpha = lit ? 0.88 : primaryPreview ? 0.96 : available ? 0.74 : secondaryPreview ? 0.38 : 0.22;
       const dotRadius = lit ? 1.45 : primaryPreview ? 1.45 : available ? 1.28 : secondaryPreview ? 1.22 : 1.05;
       const curve = this.drawRouteEdgePath(lines, from, to, key, color, alpha, dotRadius);
       if (available || primaryPreview) {
@@ -8195,17 +8195,17 @@ class RouteScene extends Phaser.Scene {
       ? currentMap().nodes.find((candidate) => candidate.id === this.selectedNodeId)
       : undefined;
     if (!node && !guided && !firstDecision) return;
-    const guidePrefix = guided ? 'GUIDE: TAKE ROUTE  /  ' : firstDecision ? 'FIRST FLIGHT  /  ' : '';
+    const guidePrefix = guided ? 'TAKE ROUTE   |   ' : firstDecision ? 'FIRST FLIGHT   |   ' : '';
     const text = node
-      ? `${guidePrefix}GAIN  ${this.nodeDecisionSummary(node).benefit}  /  RISK  ${this.nodeDecisionSummary(node).risk}`
-      : `${guided ? 'GUIDE  /  ' : firstDecision ? 'FIRST FLIGHT  /  ' : ''}Choose a bright route, then review its gain and risk`;
+      ? `${guidePrefix}GAIN  ${this.nodeDecisionSummary(node).benefit}   |   RISK  ${this.nodeDecisionSummary(node).risk}`
+      : `${guided ? 'TAKE ROUTE   |   ' : firstDecision ? 'FIRST FLIGHT   |   ' : ''}CHOOSE A BRIGHT NODE   |   REVIEW GAIN + RISK`;
     const name = guided || firstDecision ? 'first-route-guidance' : 'route-decision-dock';
     this.add.rectangle(382, 104, 650, 42, 0x06111a, 0.96)
       .setStrokeStyle(2, node ? UI_FIELD.gold : UI_FIELD.cyan, 0.86)
       .setName(name);
     this.add.text(382, 104, text, {
       fontFamily: UI_FONT,
-      fontSize: '13px',
+      fontSize: '14px',
       fontStyle: UI_BOLD,
       color: '#e7fbff',
       fixedWidth: 620,
@@ -8588,8 +8588,12 @@ class RouteScene extends Phaser.Scene {
     hitTarget.on('pointerover', () => { tip = this.showNodeTooltip(node, x, y - radius - 8); });
     hitTarget.on('pointerout', () => { tip?.destroy(true); tip = undefined; });
 
-    const visualAlpha = completed ? 0.26 : selected ? 1 : selectable ? 0.84 : 0.3;
-    this.renderRouteNodeTypeIcon(node.type, x, y, iconSize, visualAlpha);
+    const visualState = completed ? 'completed' : selected ? 'selected' : selectable ? 'selectable' : 'future';
+    const visualAlpha = completed ? 0.34 : selected ? 1 : selectable ? 0.94 : 0.46;
+    this.renderRouteNodeTypeIcon(node.type, x, y, iconSize, visualAlpha)
+      .setName('route-node-icon')
+      .setData('routeNodeId', node.id)
+      .setData('routeNodeState', visualState);
 
   }
 
@@ -9946,14 +9950,14 @@ class RouteScene extends Phaser.Scene {
 
   private renderCardPickerScrollButton(x: number, y: number, direction: 'up' | 'down', enabled: boolean, onClick: () => void) {
     const accent = enabled ? UI_FIELD.gold : 0x3f4c58;
-    const visual = this.add.rectangle(x, y, 46, 36, enabled ? 0x0d1420 : 0x0a0e15, enabled ? 0.78 : 0.54)
+    const visual = this.add.rectangle(x, y, 54, 44, enabled ? 0x0d1420 : 0x0a0e15, enabled ? 0.78 : 0.54)
       .setStrokeStyle(1.5, accent, enabled ? 0.82 : 0.46);
     const frameKey = uiIconAssets['card-picker-scroll-button-frame'].key;
     let frame: Phaser.GameObjects.Image | undefined;
     if (this.textures.exists(frameKey)) {
       this.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
       frame = this.add.image(x, y, frameKey)
-        .setDisplaySize(48, 36)
+        .setDisplaySize(56, 44)
         .setAlpha(enabled ? 0.88 : 0.36)
         .setName('card-picker-scroll-button-frame');
     }
@@ -9966,12 +9970,12 @@ class RouteScene extends Phaser.Scene {
     hit.on('pointerover', () => {
       visual.setFillStyle(0x182637, 0.92);
       if (!frame) return;
-      frame.setDisplaySize(52, 39).setAlpha(0.98);
+      frame.setDisplaySize(60, 47).setAlpha(0.98);
     });
     hit.on('pointerout', () => {
       visual.setFillStyle(0x0d1420, 0.78);
       if (!frame) return;
-      frame.setDisplaySize(48, 36).setAlpha(0.88);
+      frame.setDisplaySize(56, 44).setAlpha(0.88);
     });
     hit.on('pointerdown', () => {
       playUiSound('confirm');
@@ -9998,13 +10002,13 @@ class RouteScene extends Phaser.Scene {
   private renderCardPickerPageIndicatorFrame(x: number, y: number) {
     const key = uiIconAssets['card-picker-page-indicator-frame'].key;
     if (!this.textures.exists(key)) {
-      this.add.rectangle(x, y, 80, 30, 0x050b12, 0.86)
+      this.add.rectangle(x, y, 88, 34, 0x050b12, 0.86)
         .setStrokeStyle(1.5, UI_FIELD.cyan, 0.5);
       return;
     }
     this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
     this.add.image(x, y, key)
-      .setDisplaySize(80, 30)
+      .setDisplaySize(88, 34)
       .setAlpha(0.88)
       .setName('card-picker-page-indicator-frame');
   }
@@ -10078,12 +10082,12 @@ class RouteScene extends Phaser.Scene {
       tint: mode === 'preen' ? 0xdffaff : 0xffd5cc
     });
     this.add.rectangle(frame.cx, frame.cy, frame.w - 36, frame.h - 36, 0x020409, 0.14);
-    this.add.text(frame.right - 28, frame.top + 90, `ARROWS / D-PAD  CHOOSE    ENTER / A / TAP  ${this.cardPickerArmedIndex === undefined ? 'SELECT' : 'CONFIRM'}    ESC / B  BACK`, {
+    this.add.text(frame.right - 28, frame.top + 90, `ARROWS / D-PAD  CARD   |   ENTER / A / TAP  ${this.cardPickerArmedIndex === undefined ? 'SELECT' : 'CONFIRM'}   |   ESC / B  BACK`, {
       fontFamily: UI_FONT,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: UI_BOLD,
       color: '#bfe8f4',
-    }).setOrigin(1, 0.5).setName('card-picker-input-hint');
+    }).setResolution(2).setOrigin(1, 0.5).setName('card-picker-input-hint');
     this.renderCardPickerContextPlaque(frame.left + 222, frame.top + 128);
     this.add.text(frame.left + 222, frame.top + 114, node?.label ?? 'Workshop stop', {
       fontFamily: UI_FONT,
@@ -10099,7 +10103,7 @@ class RouteScene extends Phaser.Scene {
     visible.forEach((entry, i) => {
       const cardW = 94;
       const cardH = Math.round(cardW * 1.5);
-      const x = frame.left + 450 + (i % columns) * 112;
+      const x = frame.left + 440 + (i % columns) * 112;
       const y = frame.top + 184 + Math.floor(i / columns) * rowGap;
       const affordable = !isMarketPicker || this.runState.scrap >= entry.cost;
       const armed = this.cardPickerArmedIndex === entry.index;
@@ -10176,19 +10180,21 @@ class RouteScene extends Phaser.Scene {
       );
     });
     if (eligible.length > visibleCount) {
-      const scrollX = frame.right - 40;
+      const scrollX = frame.right - 44;
       this.renderCardPickerScrollButton(scrollX, frame.top + 184, 'up', this.cardPickerScroll > 0, () => this.scrollCardPicker(-1));
       this.renderCardPickerScrollButton(scrollX, frame.top + 184 + rowGap, 'down', this.cardPickerScroll < maxScroll, () => this.scrollCardPicker(1));
-      this.renderCardPickerPageIndicatorFrame(scrollX, frame.top + 232 + rowGap);
-      this.add.text(scrollX, frame.top + 218 + rowGap, `${firstVisible + 1}-${firstVisible + visible.length} / ${eligible.length}`, {
+      const indicatorY = frame.top + 232 + rowGap;
+      this.renderCardPickerPageIndicatorFrame(scrollX, indicatorY);
+      this.add.text(scrollX, indicatorY, `${firstVisible + 1}-${firstVisible + visible.length} OF ${eligible.length}`, {
         fontFamily: UI_FONT,
-        fontSize: '12px',
+        fontSize: '13px',
         fontStyle: UI_BOLD,
         color: '#c5e8f5',
         align: 'center',
+        fixedWidth: 82,
         stroke: '#05080e',
         strokeThickness: 2
-      }).setOrigin(0.5, 0);
+      }).setOrigin(0.5);
     }
     if (isMarketPicker) {
       this.renderMarketEnamelButton(frame.left + 318, frame.bottom - 48, 176, 38, 'Back to Market', true, () => this.cancelMarketCardPicker(), UI_FIELD.cyan, '13px');
@@ -12685,11 +12691,11 @@ class RouteScene extends Phaser.Scene {
     }
     this.marketCardShelf.forEach((listing, i) => {
       const card = cloneCard(listing.id);
-      const artW = 190;
+      const artW = 176;
       const artH = Math.round(artW * 1.5);
       const cardW = artW + 8;
       const cardH = artH + 8;
-      const cardX = x - 250 + i * 205;
+      const cardX = x - 290 + i * 175;
       const cardY = y - 4 + (i % 2 === 0 ? -8 : 8);
       const enabled = !listing.sold && this.runState.scrap >= listing.price;
       const accent = card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
@@ -20895,7 +20901,7 @@ class BattleScene extends Phaser.Scene {
     if (moltCard) {
       markFirstMoltGuideSeen();
       return {
-        text: `GUIDE: MOLT  /  Play ${displayName(moltCard)}  /  Cheaper abilities this Beat; Roost leaves Open Sky`,
+        text: `MOLT   |   PLAY ${displayName(moltCard)}   |   CHEAPER THIS BEAT   |   ROOST: OPEN SKY`,
         accent: 0xff9d4d,
       };
     }
@@ -20907,13 +20913,13 @@ class BattleScene extends Phaser.Scene {
       ? (() => {
           const card = this.firstCombatGuideCard();
           const target = card ? this.firstCombatGuideTarget(card) : undefined;
-          if (!card) return 'GUIDE: PLAY  /  Wingbeats pay card costs  /  Cards build Flow; full Flow becomes Surge';
+          if (!card) return 'PLAY A CARD   |   WINGBEAT PAYS COST   |   BUILD FLOW   |   FULL FLOW: SURGE';
           const cost = this.effectiveCost(card);
-          return `GUIDE: START HERE  /  ${displayName(card)} costs ${cost} Wingbeat${cost === 1 ? '' : 's'}  /  Play on ${target?.name ?? 'the highlighted target'}  /  Builds Flow`;
+          return `START ${displayName(card)}   |   COST ${cost} WINGBEAT${cost === 1 ? '' : 'S'}   |   TARGET ${target?.name ?? 'HIGHLIGHTED'}   |   BUILD FLOW`;
         })()
       : guideStep === 'roost'
-        ? `GUIDE: ROOST  /  End the beat when ready  /  Incoming ${incoming.total} - Cover ${incoming.blocked} = ${incoming.hpLoss} Cohesion`
-        : `GUIDE: READ THE TELL  /  Incoming ${incoming.total} - Cover ${incoming.blocked} = ${incoming.hpLoss}  /  Unblocked hits break Flow`;
+        ? `ROOST WHEN READY   |   INCOMING ${incoming.total}   |   COVER ${incoming.blocked}   |   COHESION -${incoming.hpLoss}`
+        : `READ THE TELL   |   INCOMING ${incoming.total}   |   COVER ${incoming.blocked}   |   FLOW BREAKS IF HIT`;
     return { text, accent: this.cardsPlayedThisTurn === 0 ? UI_FIELD.gold : UI_FIELD.cyan };
   }
 
@@ -20922,17 +20928,21 @@ class BattleScene extends Phaser.Scene {
     const rewardMode = this.mode === 'cardReward' || this.mode === 'upgradeReward' || this.mode === 'waymarkReward';
     if (this.mode !== 'battle' && !rewardMode) return;
     if (!rewardMode && !this.isGuidedFirstCombat() && (this.cardsPlayedThisTurn > 0 || Boolean(this.selectedInstanceId))) return;
-    const y = rewardMode ? 168 : 448;
+    const y = rewardMode ? 213 : 448;
+    const skipBinding = controlBindingLabel('skipReward');
+    const skipControls = skipBinding.toUpperCase() === 'X' ? skipBinding : `${skipBinding} / X`;
     const text = rewardMode
-      ? `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} or D-pad: Choose   |   ${controlBindingLabel('confirm')} or A: ${this.rewardChoiceArmedId ? 'Confirm' : 'Select'}${this.mode === 'cardReward' || this.mode === 'upgradeReward' ? `   |   ${controlBindingLabel('roost')} or Y: Inspect` : ''}${this.mode === 'cardReward' ? `   |   ${controlBindingLabel('skipReward')} or X: Skip` : ''}`
-      : `${controlBindingLabel('previous')} / ${controlBindingLabel('next')}  CARD   ·   ↑ / ↓  TARGET   ·   ${controlBindingLabel('confirm')}  PLAY   ·   ${controlBindingLabel('roost')}  ROOST`;
-    const width = rewardMode ? 900 : 620;
-    this.root.add(this.add.rectangle(GAME_WIDTH / 2, y, width, rewardMode ? 30 : 24, 0x020711, rewardMode ? 0.97 : 0.82)
-      .setStrokeStyle(rewardMode ? 2 : 1, UI_FIELD.cyan, rewardMode ? 0.88 : 0.52)
+      ? `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} / D-PAD  CHOOSE   |   ${controlBindingLabel('confirm')} / A  ${this.rewardChoiceArmedId ? 'CONFIRM' : 'SELECT'}${this.mode === 'cardReward' || this.mode === 'upgradeReward' ? `   |   ${controlBindingLabel('roost')} / Y  INSPECT` : ''}${this.mode === 'cardReward' ? `   |   ${skipControls}  SKIP` : ''}`
+      : `${controlBindingLabel('previous')} / ${controlBindingLabel('next')}  CARD   |   UP / DOWN  TARGET   |   ${controlBindingLabel('confirm')}  PLAY   |   ${controlBindingLabel('roost')}  ROOST`;
+    const width = rewardMode
+      ? this.mode === 'cardReward' ? 820 : this.mode === 'upgradeReward' ? 690 : 500
+      : 680;
+    this.root.add(this.add.rectangle(GAME_WIDTH / 2, y, width, rewardMode ? 24 : 28, 0x020711, rewardMode ? 0.9 : 0.82)
+      .setStrokeStyle(1, UI_FIELD.cyan, rewardMode ? 0.62 : 0.52)
       .setName('combat-input-hint'));
     this.root.add(this.add.text(GAME_WIDTH / 2, y, text, {
       fontFamily: UI_FONT,
-      fontSize: rewardMode ? '12px' : '10px',
+      fontSize: rewardMode ? '13px' : '12px',
       fontStyle: UI_BOLD,
       color: '#f4fdff',
       stroke: '#020711',

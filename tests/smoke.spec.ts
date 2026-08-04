@@ -631,6 +631,14 @@ test('route map loads and previews the boss before the final node', async ({ pag
         name: child.name,
         visible: child.visible,
       }));
+    const routeNodeIcons = collectObjects(route.children)
+      .filter((child: any) => child.name === 'route-node-icon')
+      .map((child: any) => ({
+        id: child.getData('routeNodeId'),
+        state: child.getData('routeNodeState'),
+        alpha: Number(child.alpha?.toFixed?.(3) ?? child.alpha),
+        visible: child.visible,
+      }));
     return {
       active: g.scene.getScenes(true).map((s: any) => s.scene.key).includes('RouteScene'),
       texturesLoaded: expected.every((key) => route.textures.exists(key)),
@@ -695,7 +703,9 @@ test('route map loads and previews the boss before the final node', async ({ pag
       bossPrepRouteForPlate: state.bossPrepRouteForPlate,
       hasRewardBadges: state.nodes.some((node: any) => (node.rewardBadges ?? []).length > 0),
       bossRewardBadges: state.nodes.find((node: any) => node.id === state.map.bossNodeId)?.rewardBadges ?? [],
-      cacheRewardBadges: state.nodes.find((node: any) => node.type === 'cache')?.rewardBadges ?? []
+      cacheRewardBadges: state.nodes.find((node: any) => node.type === 'cache')?.rewardBadges ?? [],
+      routeNodeCount: finalState.nodes.length,
+      routeNodeIcons
     };
   });
   expect(result.active).toBe(true);
@@ -835,6 +845,12 @@ test('route map loads and previews the boss before the final node', async ({ pag
   expect(result.cacheRewardBadges).toContain('heal');
   expect(result.cacheRewardBadges).toContain('supply');
   expect(result.cacheRewardBadges).toContain('scrap');
+  expect(result.routeNodeIcons).toHaveLength(result.routeNodeCount);
+  expect(result.routeNodeIcons.every((node: any) => node.visible)).toBe(true);
+  expect(result.routeNodeIcons.find((node: any) => node.state === 'selected')?.alpha).toBe(1);
+  const futureRouteNodes = result.routeNodeIcons.filter((node: any) => node.state === 'future');
+  expect(futureRouteNodes.length).toBeGreaterThan(0);
+  expect(futureRouteNodes.every((node: any) => node.alpha >= 0.45 && node.alpha < 0.9)).toBe(true);
 });
 
 test('route commit renders generated travel streak before changing scenes', async ({ page }) => {
@@ -1982,7 +1998,10 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
     battle.onCardClicked(card.instanceId);
     const battleState = JSON.parse(window.render_game_to_text!());
     const flowRailRect = battle.root.list.find((child: any) => child.name === 'combat-flow-rail')?.getBounds();
-    const guideRect = battle.root.list.find((child: any) => child.name === 'first-combat-guidance' && child.geom)?.getBounds();
+    const guidePanel = battle.root.list.find((child: any) => child.name === 'first-combat-guidance' && child.geom);
+    const guideLabel = battle.root.list.find((child: any) => child.name === 'first-combat-guidance' && typeof child.text === 'string');
+    const guideRect = guidePanel?.getBounds();
+    const guideLabelRect = guideLabel?.getBounds();
     const flowRailBounds = flowRailRect && {
       width: flowRailRect.width,
       bottom: flowRailRect.y + flowRailRect.height,
@@ -2001,6 +2020,13 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
       flowHoldRail: flowHoldState.flowRail,
       flowRailBounds,
       guideBounds,
+      guideVisual: {
+        text: guideLabel?.text,
+        fontSize: Number.parseFloat(guideLabel?.style?.fontSize ?? '0'),
+        panelSize: guidePanel ? [guidePanel.displayWidth, guidePanel.displayHeight] : [],
+        leftInset: guideRect && guideLabelRect ? guideLabelRect.left - guideRect.left : -1,
+        rightInset: guideRect && guideLabelRect ? guideRect.right - guideLabelRect.right : -1,
+      },
       combatGuidance: battleState.firstCombatGuidance,
       guideRecommendation: guideState.firstCombatGuidance,
       guideEnergy: guideState.energy,
@@ -2043,6 +2069,11 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
     target: expect.any(String),
   });
   expect(result.guideRecommendation.cost).toBeLessThanOrEqual(result.guideEnergy);
+  expect(result.guideVisual.text).toMatch(/^START .+ {3}\| {3}COST \d+ WINGBEATS? {3}\| {3}TARGET .+ {3}\| {3}BUILD FLOW$/);
+  expect(result.guideVisual.fontSize).toBe(13);
+  expect(result.guideVisual.panelSize).toEqual([640, 34]);
+  expect(result.guideVisual.leftInset).toBeGreaterThanOrEqual(14);
+  expect(result.guideVisual.rightInset).toBeGreaterThanOrEqual(14);
   expect(result.guidePulseRendered).toBe(true);
   expect(result.guideCardTagRendered).toBe(true);
   expect(result.guideTargetRendered).toBe(true);
@@ -2254,7 +2285,7 @@ test('contextual Molt lesson waits for a Molt card, respects skip, and retires a
     const active = JSON.parse(window.render_game_to_text!());
     const activeObjects = scene.handLayer.list.filter((child: any) => child.name?.startsWith('combat-molt-guide'));
     const guideText = scene.root.list
-      .filter((child: any) => typeof child.text === 'string' && child.text.includes('GUIDE: MOLT'))
+      .filter((child: any) => typeof child.text === 'string' && child.text.startsWith('MOLT   |'))
       .map((child: any) => child.text);
     const storedSeen = JSON.parse(window.localStorage.getItem(guideKey) ?? '{}');
 
@@ -2286,7 +2317,9 @@ test('contextual Molt lesson waits for a Molt card, respects skip, and retires a
   expect(result.cardName).toBe('Hot Feathers');
   expect(result.activeObjectNames).toContain('combat-molt-guide-pulse');
   expect(result.activeObjectNames).toContain('combat-molt-guide-tag');
-  expect(result.guideText).toEqual([expect.stringContaining('Play Hot Feathers')]);
+  expect(result.guideText).toEqual([
+    `MOLT   |   PLAY ${result.cardName}   |   CHEAPER THIS BEAT   |   ROOST: OPEN SKY`,
+  ]);
   expect(result.storedSeen.moltLessonSeen).toBe(1);
   expect(result.completed).toMatchObject({ eligible: false, active: false, seen: 1, completed: true, rendered: false });
   expect(result.storedCompleted.moltLessonCompleted).toBe(true);
@@ -6861,6 +6894,16 @@ test('reward choices require intentional commitment across pointer keyboard and 
   const snapshot = () => page.evaluate(() => {
     const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const hintPanel = scene.root?.list.find((child: any) => child.name === 'combat-input-hint' && child.type === 'Rectangle');
+    const hintLabel = scene.root?.list.find((child: any) => child.name === 'combat-input-hint' && child.type === 'Text');
+    const hintPanelBounds = hintPanel?.getBounds();
+    const hintLabelBounds = hintLabel?.getBounds();
+    const deckNeedBounds = scene.root?.list
+      .filter((child: any) => String(child.name).startsWith('reward-deck-need-chip-frame'))
+      .map((child: any) => child.getBounds());
+    const decisionBounds = scene.root?.list
+      .filter((child: any) => child.name === 'reward-decision-delta' && child.type === 'Rectangle')
+      .map((child: any) => child.getBounds());
     return {
       state,
       deckSize: scene.allDeckCards().length,
@@ -6870,6 +6913,20 @@ test('reward choices require intentional commitment across pointer keyboard and 
       confirmLabels: scene.root?.list
         ?.filter((child: any) => child.type === 'Text' && child.text?.includes('CONFIRM'))
         .map((child: any) => child.text) ?? [],
+      rewardHint: {
+        text: hintLabel?.text,
+        fontSize: Number.parseFloat(hintLabel?.style?.fontSize ?? '0'),
+        panelSize: hintPanel ? [hintPanel.displayWidth, hintPanel.displayHeight] : [],
+        panelY: hintPanel?.y,
+        leftInset: hintPanelBounds && hintLabelBounds ? hintLabelBounds.left - hintPanelBounds.left : -1,
+        rightInset: hintPanelBounds && hintLabelBounds ? hintPanelBounds.right - hintLabelBounds.right : -1,
+        deckGap: hintPanelBounds && deckNeedBounds?.length
+          ? hintPanelBounds.top - Math.max(...deckNeedBounds.map((bounds: any) => bounds.bottom))
+          : -1,
+        choiceGap: hintPanelBounds && decisionBounds?.length
+          ? Math.min(...decisionBounds.map((bounds: any) => bounds.top)) - hintPanelBounds.bottom
+          : -1,
+      },
       liveText: document.getElementById('game-status')?.textContent ?? '',
     };
   });
@@ -6934,6 +6991,16 @@ test('reward choices require intentional commitment across pointer keyboard and 
   expect(pointerArmed.deckSize).toBe(initial.deckSize);
   expect(pointerArmed.rewardEvents).toBe(initial.rewardEvents);
   expect(pointerArmed.confirmLabels).toContain('CONFIRM PICK  /  BACK CANCELS');
+  expect(pointerArmed.rewardHint).toMatchObject({
+    text: 'Left / Right / D-PAD  CHOOSE   |   Enter / A  CONFIRM   |   R / Y  INSPECT   |   X  SKIP',
+    fontSize: 13,
+    panelSize: [820, 24],
+    panelY: 213,
+  });
+  expect(pointerArmed.rewardHint.leftInset).toBeGreaterThanOrEqual(8);
+  expect(pointerArmed.rewardHint.rightInset).toBeGreaterThanOrEqual(8);
+  expect(pointerArmed.rewardHint.deckGap).toBeGreaterThanOrEqual(2);
+  expect(pointerArmed.rewardHint.choiceGap).toBeGreaterThanOrEqual(2);
   expect(pointerArmed.liveText).toContain('is selected. Activate Confirm');
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-choice-confirmation-1000x560.png' });
 
@@ -7008,6 +7075,18 @@ test('route card rewards require intentional commitment across pointer keyboard 
   const snapshot = () => page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const hintPanel = route.children.list.find((child: any) => child.type === 'Rectangle' && child.displayWidth === 500 && child.displayHeight === 42);
+    const hintLabel = route.children.list.find((child: any) => child.name === 'route-reward-input-hint');
+    const divider = route.children.list.find((child: any) => child.type === 'Rectangle' && child.displayWidth === 2 && child.displayHeight === 396);
+    const focusRing = route.children.list.find((child: any) => child.name === 'route-reward-input-focus-ring');
+    const edges = (child: any) => {
+      const bounds = child?.getBounds();
+      return bounds ? { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom } : undefined;
+    };
+    const panelEdges = edges(hintPanel);
+    const labelEdges = edges(hintLabel);
+    const dividerEdges = edges(divider);
+    const focusEdges = edges(focusRing);
     return {
       state,
       deckIds: route.runState.deck.map((card: any) => card.id),
@@ -7020,6 +7099,16 @@ test('route card rewards require intentional commitment across pointer keyboard 
       inputHints: route.children.list
         .filter((child: any) => child.name === 'route-reward-input-hint')
         .map((child: any) => child.text),
+      inputHintVisual: {
+        text: hintLabel?.text,
+        fontSize: Number.parseFloat(hintLabel?.style?.fontSize ?? '0'),
+        panelSize: hintPanel ? [hintPanel.displayWidth, hintPanel.displayHeight] : [],
+        panelY: hintPanel?.y,
+        leftInset: panelEdges && labelEdges ? labelEdges.left - panelEdges.left : -1,
+        rightInset: panelEdges && labelEdges ? panelEdges.right - labelEdges.right : -1,
+        dividerGap: panelEdges && dividerEdges ? panelEdges.left - dividerEdges.right : -1,
+        choiceGap: panelEdges && focusEdges ? focusEdges.top - panelEdges.bottom : -1,
+      },
       liveText: document.getElementById('game-status')?.textContent ?? '',
     };
   });
@@ -7105,7 +7194,19 @@ test('route card rewards require intentional commitment across pointer keyboard 
   expect(pointerArmed.choices).toEqual(pointerInitial.choices);
   expect(pointerArmed.armedCardId).toBe(pointerInitial.choices[1]);
   expect(pointerArmed.confirmLabels).toContain('CONFIRM PICK\nBACK CANCELS');
-  expect(pointerArmed.inputHints.some((hint: string) => hint.includes('A / ENTER  CONFIRM'))).toBe(true);
+  expect(pointerArmed.inputHints).toEqual([
+    'ARROWS / D-PAD  CHOOSE   |   ENTER / A  CONFIRM\nR / Y  INSPECT   |   ESC / B  BACK',
+  ]);
+  expect(pointerArmed.inputHintVisual).toMatchObject({
+    text: 'ARROWS / D-PAD  CHOOSE   |   ENTER / A  CONFIRM\nR / Y  INSPECT   |   ESC / B  BACK',
+    fontSize: 12,
+    panelSize: [500, 42],
+    panelY: 205,
+  });
+  expect(pointerArmed.inputHintVisual.leftInset).toBeGreaterThanOrEqual(12);
+  expect(pointerArmed.inputHintVisual.rightInset).toBeGreaterThanOrEqual(12);
+  expect(pointerArmed.inputHintVisual.dividerGap).toBeGreaterThanOrEqual(12);
+  expect(pointerArmed.inputHintVisual.choiceGap).toBeGreaterThanOrEqual(20);
   expect(pointerArmed.liveText).toContain('is selected. Confirm');
   await page.locator('canvas').screenshot({
     path: '.artifacts/test-results/route-reward-choice-confirmation-1000x560.png',
@@ -7911,6 +8012,27 @@ test('market purchases require intentional input and block route commitment acro
     routeCommitBlocked: true,
   });
 
+  const marketInputHelp = async () => page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.children.list
+      .filter((child: any) => child.name === 'market-input-help')
+      .map((child: any) => ({
+        type: child.type,
+        text: child.text,
+        width: child.displayWidth,
+        height: child.displayHeight,
+        fontSize: Number.parseFloat(child.style?.fontSize ?? '0'),
+      }));
+  });
+  const browsingHelp = await marketInputHelp();
+  expect(browsingHelp).toHaveLength(2);
+  expect(browsingHelp.find((item: any) => item.type === 'Rectangle')).toMatchObject({ width: 760, height: 32 });
+  expect(browsingHelp.find((item: any) => item.type === 'Text')).toMatchObject({
+    text: 'LEFT / RIGHT  OFFER   |   ENTER / A  BUY   |   1-4 / LB / RB  SECTION',
+    width: 742,
+    fontSize: 12,
+  });
+
   await page.keyboard.press('ArrowRight');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.focusId === 'card:1');
   await page.keyboard.press('Enter');
@@ -7949,11 +8071,38 @@ test('market purchases require intentional input and block route commitment acro
   await clickMarketTarget('card:0');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.armed === true);
   await page.waitForFunction(() => document.getElementById('game-status')?.textContent?.includes('Purchase confirmation is armed'));
-  const armed = await page.evaluate(() => JSON.parse(window.render_game_to_text!()).market);
+  const armedResult = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const offerTargets = route.children.list
+      .filter((child: any) => child.input?.enabled && child.getData?.('marketFocusId')?.startsWith('card:'));
+    offerTargets[0]?.emit('pointerover');
+    const inspectorBounds = route.hoverCardDetail?.getBounds?.();
+    const offerBounds = offerTargets.map((child: any) => child.getBounds());
+    const rightmostOffer = Math.max(...offerBounds.map((bounds: any) => bounds.right));
+    return {
+      market: JSON.parse(window.render_game_to_text!()).market,
+      layout: {
+        inspectorLeft: inspectorBounds?.left,
+        rightmostOffer,
+        gap: inspectorBounds ? inspectorBounds.left - rightmostOffer : -1,
+      },
+    };
+  });
+  const armed = armedResult.market;
   const armedAnnouncement = await page.locator('#game-status').textContent();
   expect(armed.cardOffers.filter((offer: any) => offer.sold)).toHaveLength(1);
   expect(armed.input).toMatchObject({ focusId: 'card:0', armed: true, focusVisible: true });
+  expect(armedResult.layout.inspectorLeft).toBeGreaterThan(armedResult.layout.rightmostOffer);
+  expect(armedResult.layout.gap).toBeGreaterThanOrEqual(8);
   expect(armedAnnouncement).toContain('Route commitment is blocked while the Market is open');
+  const confirmationHelp = await marketInputHelp();
+  expect(confirmationHelp).toHaveLength(2);
+  expect(confirmationHelp.find((item: any) => item.type === 'Rectangle')).toMatchObject({ width: 760, height: 32 });
+  expect(confirmationHelp.find((item: any) => item.type === 'Text')).toEqual(expect.objectContaining({
+    text: expect.stringMatching(/^CONFIRM .+ \| {3}ENTER \/ A \/ TAP AGAIN {3}\| {3}BACK {2}CANCEL$/),
+    width: 742,
+    fontSize: 12,
+  }));
   await page.screenshot({ path: '.artifacts/test-results/market-intentional-purchase-1000x560.png' });
 
   await page.keyboard.press('Escape');
@@ -8921,6 +9070,17 @@ test('route preen picker keeps large decks inside a two-row viewport', async ({ 
     const rangeTexts = () => route.children.list
       .filter((child: any) => typeof child.text === 'string')
       .map((child: any) => child.text);
+    const pageRange = () => route.children.list
+      .filter((child: any) => typeof child.text === 'string' && child.text.includes('OF 18'))
+      .map((child: any) => {
+        const bounds = child.getBounds();
+        return {
+          text: child.text,
+          fontSize: Number.parseFloat(child.style?.fontSize ?? '0'),
+          width: Math.round(child.displayWidth),
+          bounds: { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom }
+        };
+      })[0];
     const scrollButtonFrames = () => route.children.list
       .filter((child: any) => child.texture?.key === 'ui-icon-card-picker-scroll-button-frame')
       .map((child: any) => ({
@@ -8978,15 +9138,15 @@ test('route preen picker keeps large decks inside a two-row viewport', async ({ 
     const firstPageHitAreas = pickerHitAreas();
     const firstPageScrollButtonFrames = scrollButtonFrames();
     const firstPagePageIndicatorFrames = pageIndicatorFrames();
+    const firstPageRange = pageRange();
     const lastDecisionDeltaBounds = decisionDeltaBounds().at(-1);
     const firstPageNameplateFrames = nameplateFrames();
     const firstPageContextPlaques = contextPlaques();
     const firstPageCancelCommandFrames = cancelCommandFrames();
     const hasCancelLabel = rangeTexts().includes('Cancel');
     const hasContextLabel = rangeTexts().includes(nest.label ?? 'Workshop stop');
-    const firstPageRange = rangeTexts().find((text: string) => text.includes(' / 18'));
     route.scrollCardPicker(1);
-    const secondPageRange = rangeTexts().find((text: string) => text.includes(' / 18'));
+    const secondPageRange = pageRange();
     const updatedState = JSON.parse(window.render_game_to_text!());
     const pickerScrollButtonFrameState = updatedState.cardPickerScrollButtonFrame;
     const pickerPageIndicatorFrameState = updatedState.cardPickerPageIndicatorFrame;
@@ -9000,6 +9160,13 @@ test('route preen picker keeps large decks inside a two-row viewport', async ({ 
       firstPageArtCount: visibleCardArtCount(),
       firstPageScrollButtonFrames,
       firstPagePageIndicatorFrames,
+      pageRangeInsideIndicator: firstPagePageIndicatorFrames.some((frame: any) => (
+        firstPageRange
+        && firstPageRange.bounds.left >= frame.bounds.left
+        && firstPageRange.bounds.right <= frame.bounds.right
+        && firstPageRange.bounds.top >= frame.bounds.top
+        && firstPageRange.bounds.bottom <= frame.bounds.bottom
+      )),
       pageIndicatorOverlapsLastDelta: firstPagePageIndicatorFrames.some((frame: any) => (
         lastDecisionDeltaBounds
         && frame.bounds.left < lastDecisionDeltaBounds.right
@@ -9026,8 +9193,8 @@ test('route preen picker keeps large decks inside a two-row viewport', async ({ 
   expect(result.firstPageCount).toBe(10);
   expect(result.firstPageArtCount).toBeGreaterThanOrEqual(10);
   expect(result.maxHitBottom).toBeLessThan(650);
-  expect(result.firstPageRange).toBe('1-10 / 18');
-  expect(result.secondPageRange).toBe('6-15 / 18');
+  expect(result.firstPageRange).toEqual(expect.objectContaining({ text: '1-10 OF 18', fontSize: 13, width: 82 }));
+  expect(result.secondPageRange).toEqual(expect.objectContaining({ text: '6-15 OF 18', fontSize: 13, width: 82 }));
   expect(result.scroll).toBe(1);
   expect(result.pickerFrameState).toEqual(expect.objectContaining({
     loaded: true,
@@ -9079,16 +9246,17 @@ test('route preen picker keeps large decks inside a two-row viewport', async ({ 
   expect(result.firstPagePageIndicatorFrames).toHaveLength(1);
   expect(result.firstPagePageIndicatorFrames[0]).toEqual(expect.objectContaining({
     name: 'card-picker-page-indicator-frame',
-    width: 80,
-    height: 30,
+    width: 88,
+    height: 34,
     visible: true
   }));
+  expect(result.pageRangeInsideIndicator).toBe(true);
   expect(result.pageIndicatorOverlapsLastDelta).toBe(false);
   expect(result.firstPageScrollButtonFrames).toHaveLength(2);
   expect(result.firstPageScrollButtonFrames.every((frame: { name: string; width: number; height: number; visible: boolean }) => (
     frame.name === 'card-picker-scroll-button-frame'
-    && frame.width === 48
-    && frame.height === 36
+    && frame.width === 56
+    && frame.height === 44
     && frame.visible
   ))).toBe(true);
   expect(result.routeEventCancelCommandFrameState).toEqual({
@@ -11667,6 +11835,39 @@ test('settings and remapping controls keep touch targets at the minimum supporte
     return collect(menu.settingsOverlay?.list ?? [])
       .filter((child: any) => child.texture?.key === 'ui-icon-system-settings-row-frame').length >= 15;
   });
+  const settingsRowHierarchy = async () => page.evaluate(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return collect(menu.settingsOverlay?.list ?? [])
+      .filter((child: any) => /^system-settings-row-frame-\d+$/.test(child.name ?? ''))
+      .map((child: any) => ({
+        index: Number(child.name.replace('system-settings-row-frame-', '')),
+        alpha: child.alpha,
+      }))
+      .sort((a: any, b: any) => a.index - b.index);
+  });
+  const initialRowHierarchy = await settingsRowHierarchy();
+  expect(initialRowHierarchy).toHaveLength(15);
+  expect(initialRowHierarchy[0].alpha).toBeCloseTo(0.82, 2);
+  expect(Math.max(...initialRowHierarchy.slice(1).map((row) => row.alpha))).toBeLessThanOrEqual(0.44);
+
+  await page.evaluate(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const musicRow = collect(menu.settingsOverlay?.list ?? [])
+      .find((child: any) => child.name === 'system-settings-row-1-hit');
+    if (!musicRow) throw new Error('Missing Music settings row');
+    musicRow.emit('pointerover');
+  });
+  const movedRowHierarchy = await settingsRowHierarchy();
+  expect(movedRowHierarchy[0].alpha).toBeCloseTo(0.44, 2);
+  expect(movedRowHierarchy[1].alpha).toBeCloseTo(0.82, 2);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/settings-1000x560.png' });
 
   await page.evaluate(() => {
@@ -11689,6 +11890,44 @@ test('settings and remapping controls keep touch targets at the minimum supporte
     return collect(menu.settingsOverlay?.list ?? [])
       .some((child: any) => child.name === 'system-controls-done-hit' && child.input?.enabled);
   });
+  const controlsVisualHierarchy = async () => page.evaluate(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const objects = collect(menu.settingsOverlay?.list ?? []);
+    return {
+      backdropFillAlpha: objects.find((child: any) => child.name === 'system-controls-modal-backdrop')?.fillAlpha,
+      rows: objects
+        .filter((child: any) => /^system-controls-row-frame-\d+$/.test(child.name ?? ''))
+        .map((child: any) => ({
+          index: Number(child.name.replace('system-controls-row-frame-', '')),
+          alpha: child.alpha,
+        }))
+        .sort((a: any, b: any) => a.index - b.index),
+    };
+  });
+  const initialControlsHierarchy = await controlsVisualHierarchy();
+  expect(initialControlsHierarchy.backdropFillAlpha).toBeCloseTo(0.97, 2);
+  expect(initialControlsHierarchy.rows).toHaveLength(6);
+  expect(initialControlsHierarchy.rows[0].alpha).toBeCloseTo(0.82, 2);
+  expect(Math.max(...initialControlsHierarchy.rows.slice(1).map((row) => row.alpha))).toBeLessThanOrEqual(0.42);
+
+  await page.evaluate(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const backBinding = collect(menu.settingsOverlay?.list ?? [])
+      .find((child: any) => child.name === 'system-controls-binding-back-hit');
+    if (!backBinding) throw new Error('Missing Back control binding');
+    backBinding.emit('pointerover');
+  });
+  const movedControlsHierarchy = await controlsVisualHierarchy();
+  expect(movedControlsHierarchy.rows[0].alpha).toBeCloseTo(0.42, 2);
+  expect(movedControlsHierarchy.rows[1].alpha).toBeCloseTo(0.82, 2);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/settings-controls-1000x560.png' });
 
   const remappingTargets = await page.evaluate(() => {
@@ -11742,6 +11981,47 @@ test('shared onboarding and pause commands keep touch targets at the minimum sup
   const helpTargets = await targetSnapshot('MenuScene');
   expect(helpTargets).toHaveLength(2);
   expect(helpTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
+  const helpFooter = await page.evaluate(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    const objects = collect(menu.helpOverlay?.list ?? []);
+    const bounds = (child: any) => {
+      const value = child.getBounds();
+      return { left: value.left, right: value.right, top: value.top, bottom: value.bottom };
+    };
+    const labels = objects
+      .filter((child: any) => child.name === 'how-to-play-tip-label')
+      .map((child: any) => ({ text: child.text, fontSize: Number.parseFloat(child.style?.fontSize ?? '0'), bounds: bounds(child) }));
+    const values = objects
+      .filter((child: any) => child.name === 'how-to-play-tip-value')
+      .map((child: any) => ({ text: child.text, fontSize: Number.parseFloat(child.style?.fontSize ?? '0'), bounds: bounds(child) }));
+    const rows = objects
+      .filter((child: any) => child.name === 'how-to-play-tip-row-frame')
+      .map((child: any) => ({ width: child.displayWidth, height: child.displayHeight, bounds: bounds(child) }))
+      .sort((a: any, b: any) => a.bounds.top - b.bounds.top);
+    const buttonTop = Math.min(...objects
+      .filter((child: any) => child.name === 'system-field-button-hit')
+      .map((child: any) => bounds(child).top));
+    return { labels, values, rows, buttonTop };
+  });
+  expect(helpFooter.labels.map((item: any) => ({ text: item.text, fontSize: item.fontSize }))).toEqual([
+    { text: 'QUICK KEYS', fontSize: 12 },
+    { text: 'FAIR DRAWS', fontSize: 12 },
+  ]);
+  expect(helpFooter.values.map((item: any) => ({ text: item.text, fontSize: item.fontSize }))).toEqual([
+    { text: 'R Roost  |  Enter Confirm  |  1-9 Cards  |  X Skip  |  M Mute', fontSize: 13 },
+    { text: 'After the lesson, seeded shuffles vary fights and preserve playable pressure.', fontSize: 13 },
+  ]);
+  expect(helpFooter.rows.map((row: any) => [row.width, row.height])).toEqual([[616, 28], [616, 28]]);
+  expect(helpFooter.rows[1].bounds.top - helpFooter.rows[0].bounds.bottom).toBeGreaterThanOrEqual(4);
+  expect(helpFooter.buttonTop - helpFooter.rows[1].bounds.bottom).toBeGreaterThanOrEqual(8);
+  helpFooter.rows.forEach((row: any, index: number) => {
+    expect(helpFooter.labels[index].bounds.left - row.bounds.left).toBeGreaterThanOrEqual(20);
+    expect(row.bounds.right - helpFooter.values[index].bounds.right).toBeGreaterThanOrEqual(20);
+  });
   await page.screenshot({ path: '.artifacts/test-results/min-supported/how-to-play-1000x560.png' });
 
   await page.keyboard.press('Escape');
@@ -11917,6 +12197,46 @@ test('Codex and Flock Record controls keep touch targets at the minimum supporte
   expect(codexTargets.filter((target) => target.name === 'codex-back-hit')).toHaveLength(1);
   expect(codexTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
   expect(await undersizedPointerTargets('CodexScene')).toEqual([]);
+  await page.waitForFunction(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return collect(codex.children.list)
+      .filter((child: any) => child.name === 'codex-tab-frame').length === 17;
+  });
+  const codexTabHierarchy = () => page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return collect(codex.children.list)
+      .filter((child: any) => child.name === 'codex-tab-frame')
+      .map((child: any) => ({
+        label: child.getData('label'),
+        active: child.getData('active'),
+        alpha: child.alpha,
+      }));
+  });
+  const initialCodexHierarchy = await codexTabHierarchy();
+  expect(initialCodexHierarchy).toHaveLength(17);
+  expect(initialCodexHierarchy.filter((tab) => tab.active).map((tab) => tab.label)).toEqual(['Items', 'Supplies', 'All']);
+  expect(initialCodexHierarchy.filter((tab) => tab.active).every((tab) => Math.abs(tab.alpha - 0.82) < 0.001)).toBe(true);
+  expect(initialCodexHierarchy.filter((tab) => !tab.active).every((tab) => tab.alpha <= 0.18)).toBe(true);
+
+  await page.evaluate(() => {
+    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    const combatFilter = codex.root.list
+      .find((child: any) => child.name === 'codex-tab-hit' && child.getData('label') === 'Combat');
+    if (!combatFilter) throw new Error('Missing Combat item filter');
+    combatFilter.emit('pointerdown');
+  });
+  const filteredCodexHierarchy = await codexTabHierarchy();
+  expect(filteredCodexHierarchy.filter((tab) => tab.active).map((tab) => tab.label)).toEqual(['Items', 'Supplies', 'Combat']);
+  expect(filteredCodexHierarchy.filter((tab) => tab.active).every((tab) => Math.abs(tab.alpha - 0.82) < 0.001)).toBe(true);
+  expect(filteredCodexHierarchy.filter((tab) => !tab.active).every((tab) => tab.alpha <= 0.18)).toBe(true);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/codex-items-1000x560.png' });
 
   await page.evaluate(() => {
@@ -11956,10 +12276,65 @@ test('Codex and Flock Record controls keep touch targets at the minimum supporte
   }, exportedRun);
   await boot(page, '/?playtest=1');
   await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
-  const profileTabs = await targetSnapshot('ProfileScene', '^profile-(achievements|contracts)-tab-hit$');
-  expect(profileTabs).toHaveLength(2);
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.profileSectionTabFrame?.rendered === true && state.profileSectionTabFrame?.count >= 2;
+  });
+  const profileTabs = await targetSnapshot('ProfileScene', '^profile-(achievements|contracts|showcase|folios)-tab-hit$');
+  expect(profileTabs).toHaveLength(4);
   expect(profileTabs.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
   expect(await undersizedPointerTargets('ProfileScene')).toEqual([]);
+  const profileTabTypography = await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    const views = ['achievements', 'contracts', 'showcase', 'folios'];
+    return views.map((view) => {
+      const hit = profile.children.list.find((child: any) => child.name === `profile-${view}-tab-hit`);
+      const label = profile.children.list.find((child: any) => child.name === 'profile-badge-tab-label' && child.getData('view') === view);
+      const count = profile.children.list.find((child: any) => child.name === 'profile-badge-tab-count' && child.getData('view') === view);
+      const hitBounds = hit?.getBounds();
+      const labelBounds = label?.getBounds();
+      const countBounds = count?.getBounds();
+      return {
+        view,
+        label: label?.text,
+        count: count?.text,
+        selected: hit?.getData('selected'),
+        labelFontSize: Number.parseFloat(label?.style?.fontSize ?? '0'),
+        countFontSize: Number.parseFloat(count?.style?.fontSize ?? '0'),
+        contained: Boolean(hitBounds && labelBounds && countBounds
+          && labelBounds.left >= hitBounds.left && labelBounds.right <= hitBounds.right
+          && countBounds.left >= hitBounds.left && countBounds.right <= hitBounds.right
+          && labelBounds.top >= hitBounds.top && countBounds.bottom <= hitBounds.bottom),
+      };
+    });
+  });
+  expect(profileTabTypography.map((tab) => tab.label)).toEqual(['Badges', 'Contracts', 'Showcase', 'Folios']);
+  expect(profileTabTypography.filter((tab) => tab.selected).map((tab) => tab.view)).toEqual(['achievements']);
+  expect(profileTabTypography.every((tab) => tab.labelFontSize === 12 && tab.countFontSize === 10)).toBe(true);
+  expect(profileTabTypography.every((tab) => tab.contained)).toBe(true);
+  const profileBadgePagerLayout = await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    const descriptions = profile.children.list
+      .filter((child: any) => child.name === 'profile-badge-description')
+      .sort((left: any, right: any) => left.y - right.y);
+    const next = profile.children.list.find((child: any) => child.name === 'profile-badge-page-next');
+    const lastDescription = descriptions.at(-1);
+    const lastBounds = lastDescription?.getBounds();
+    const nextBounds = next?.getBounds();
+    return {
+      descriptions: descriptions.length,
+      lastBadgeId: lastDescription?.getData('badgeId'),
+      shortcutHints: profile.children.list.filter((child: any) => child.name === 'profile-badge-page-hint').length,
+      clearance: lastBounds && nextBounds ? nextBounds.top - lastBounds.bottom : -1,
+    };
+  });
+  expect(profileBadgePagerLayout).toMatchObject({
+    descriptions: 5,
+    lastBadgeId: 'iron_flock',
+    shortcutHints: 0,
+  });
+  expect(profileBadgePagerLayout.clearance).toBeGreaterThanOrEqual(48);
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/profile-main-1000x560.png' });
   await clickNamedGameObject(page, 'ProfileScene', 'profile-save-data-hit');
   await page.waitForFunction(() => {
     const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
@@ -12170,6 +12545,26 @@ test('run HUD, card picker, market close, and combat log keep touch targets at t
   expect(routeHudTargets).toHaveLength(4);
   expectTouchFloor(routeHudTargets);
   expect(await undersizedPointerTargets('RouteScene')).toEqual([]);
+  const routeGuidance = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const objects = route.children.list.filter((child: any) => child.name === 'first-route-guidance');
+    const panel = objects.find((child: any) => child.type === 'Rectangle');
+    const label = objects.find((child: any) => child.type === 'Text');
+    const panelBounds = panel?.getBounds();
+    const labelBounds = label?.getBounds();
+    return {
+      text: label?.text,
+      fontSize: Number.parseFloat(label?.style?.fontSize ?? '0'),
+      panelSize: panel ? [panel.displayWidth, panel.displayHeight] : [],
+      leftInset: panelBounds && labelBounds ? labelBounds.left - panelBounds.left : -1,
+      rightInset: panelBounds && labelBounds ? panelBounds.right - labelBounds.right : -1,
+    };
+  });
+  expect(routeGuidance.text).toMatch(/^TAKE ROUTE {3}\| {3}GAIN {2}.+ {3}\| {3}RISK {2}.+$/);
+  expect(routeGuidance.fontSize).toBe(14);
+  expect(routeGuidance.panelSize).toEqual([650, 42]);
+  expect(routeGuidance.leftInset).toBeGreaterThanOrEqual(14);
+  expect(routeGuidance.rightInset).toBeGreaterThanOrEqual(14);
   expect(await page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
     return route.children.list.filter((child: any) => child.name === 'route-checkpoint-feedback').length;
@@ -12190,6 +12585,51 @@ test('run HUD, card picker, market close, and combat log keep touch targets at t
   expect(pickerTargets.map((target) => target.name).sort()).toEqual(['card-picker-scroll-down-hit', 'route-event-cancel-hit']);
   expectTouchFloor(pickerTargets);
   expect(await undersizedPointerTargets('RouteScene')).toEqual([]);
+  const pickerRail = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const indicator = route.children.list.find((child: any) => child.name === 'card-picker-page-indicator-frame');
+    const range = route.children.list.find((child: any) => typeof child.text === 'string' && child.text.includes(' OF '));
+    const inputHint = route.children.list.find((child: any) => child.name === 'card-picker-input-hint');
+    const contextPlaque = route.children.list.find((child: any) => child.name === 'card-picker-context-plaque');
+    const cardHits = route.children.list.filter((child: any) => child.name === 'card-picker-card-hit');
+    const scrollFrames = route.children.list.filter((child: any) => child.name === 'card-picker-scroll-button-frame');
+    const indicatorBounds = indicator?.getBounds();
+    const rangeBounds = range?.getBounds();
+    const hintBounds = inputHint?.getBounds();
+    const contextBounds = contextPlaque?.getBounds();
+    return {
+      text: range?.text,
+      fontSize: Number.parseFloat(range?.style?.fontSize ?? '0'),
+      inputHint: inputHint ? {
+        text: inputHint.text,
+        fontSize: Number.parseFloat(inputHint.style?.fontSize ?? '0'),
+      } : undefined,
+      hintContextGap: hintBounds && contextBounds ? hintBounds.left - contextBounds.right : -1,
+      indicatorSize: indicator ? [indicator.displayWidth, indicator.displayHeight] : [],
+      scrollSizes: scrollFrames.map((frame: any) => [frame.displayWidth, frame.displayHeight]),
+      cardGutter: indicatorBounds
+        ? indicatorBounds.left - Math.max(...cardHits.map((hit: any) => hit.getBounds().right))
+        : -1,
+      rangeInsideIndicator: !!indicatorBounds && !!rangeBounds
+        && rangeBounds.left >= indicatorBounds.left
+        && rangeBounds.right <= indicatorBounds.right
+        && rangeBounds.top >= indicatorBounds.top
+        && rangeBounds.bottom <= indicatorBounds.bottom,
+    };
+  });
+  expect(pickerRail).toMatchObject({
+    text: '1-10 OF 15',
+    fontSize: 13,
+    inputHint: {
+      text: 'ARROWS / D-PAD  CARD   |   ENTER / A / TAP  SELECT   |   ESC / B  BACK',
+      fontSize: 12,
+    },
+    indicatorSize: [88, 34],
+    rangeInsideIndicator: true,
+  });
+  expect(pickerRail.hintContextGap).toBeGreaterThanOrEqual(24);
+  expect(pickerRail.scrollSizes).toEqual([[56, 44], [56, 44]]);
+  expect(pickerRail.cardGutter).toBeGreaterThanOrEqual(8);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/route-card-picker-1000x560.png' });
 
   await page.evaluate(() => {
@@ -12235,6 +12675,26 @@ test('run HUD, card picker, market close, and combat log keep touch targets at t
   expect(battleTargets).toHaveLength(4);
   expectTouchFloor(battleTargets);
   expect(await undersizedPointerTargets('BattleScene')).toEqual([]);
+  const combatHint = await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [
+      child,
+      ...(Array.isArray(child.list) ? collect(child.list) : []),
+    ]);
+    return collect(battle.children.list)
+      .filter((child: any) => child.name === 'combat-input-hint')
+      .map((child: any) => ({
+        type: child.type,
+        text: child.text,
+        width: child.displayWidth,
+        height: child.displayHeight,
+        fontSize: Number.parseFloat(child.style?.fontSize ?? '0'),
+      }));
+  });
+  expect(combatHint).toHaveLength(2);
+  expect(combatHint.find((item: any) => item.type === 'Rectangle')).toMatchObject({ width: 680, height: 28 });
+  expect(combatHint.find((item: any) => item.type === 'Text')).toMatchObject({ fontSize: 12 });
+  expect(combatHint.find((item: any) => item.type === 'Text')?.text).toContain('UP / DOWN  TARGET');
   await page.screenshot({ path: '.artifacts/test-results/min-supported/combat-run-hud-1000x560.png' });
 });
 
@@ -12734,7 +13194,7 @@ test('opt-in screen reader announcements follow menu, route, combat, and setting
       && spoken.includes('Focused Replay Flight');
   });
   const defeatAnnouncement = await page.evaluate(() => document.getElementById('game-status')?.textContent ?? '');
-  expect(defeatAnnouncement).toContain('Top pressure');
+  expect(defeatAnnouncement).toContain('Pressure');
   expect(defeatAnnouncement).toContain('Press Confirm to select');
 
   await page.evaluate(async () => window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' }));
@@ -13794,7 +14254,7 @@ test('title How to Play overlay opens, reports state, and loads its medallion', 
   for (const frame of result.tipRowFrameObjects) {
     expect(frame).toMatchObject({
       displayWidth: 616,
-      displayHeight: 30,
+      displayHeight: 28,
       name: 'how-to-play-tip-row-frame',
       visible: true,
     });
@@ -13836,6 +14296,41 @@ test('route deck review supports pointer filters, sorting, find, and keyboard ca
     { name: 'deck-review-sort-hit', width: 124, height: 58 },
     { name: 'deck-review-search-hit', width: 144, height: 58 },
   ]);
+
+  const controlRail = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const rail = route.children.list.find((child: any) => child.name === 'deck-review-control-rail');
+    const guide = route.children.list.find((child: any) => child.name === 'deck-review-control-guide');
+    const pageLabel = route.children.list.find((child: any) => child.name === 'deck-review-page-label');
+    if (!rail || !guide || !pageLabel) throw new Error('Missing deck review footer controls');
+    return {
+      rail: { x: rail.x, y: rail.y, width: rail.displayWidth, height: rail.displayHeight },
+      guide: {
+        x: guide.x,
+        y: guide.y,
+        fontSize: guide.style.fontSize,
+        text: guide.text,
+      },
+      pageLabel: {
+        right: pageLabel.getBounds().right,
+        centerY: pageLabel.y,
+      },
+    };
+  });
+  expect(controlRail).toEqual({
+    rail: { x: 884, y: 651, width: 600, height: 32 },
+    guide: {
+      x: 884,
+      y: 651,
+      fontSize: '12px',
+      text: 'UP / DOWN  CARD   |   LEFT / RIGHT  FILTER   |   ENTER  SORT   |   C / X  PIN   |   V / Y  SAVE',
+    },
+    pageLabel: {
+      right: expect.any(Number),
+      centerY: 651,
+    },
+  });
+  expect(controlRail.rail.x - controlRail.rail.width / 2 - controlRail.pageLabel.right).toBeGreaterThanOrEqual(24);
 
   await clickNamedGameObject(page, 'RouteScene', 'deck-review-filter-hit');
   await expect.poll(async () => page.evaluate(() => (
@@ -16173,6 +16668,36 @@ test('mute shortcut preserves pause and settings overlays while reusing their au
   }
 });
 
+test('title logo entrance stays inside the canvas while visible', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await boot(page);
+  const entrance = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    await window.__birdSquadStartScene!('MenuScene');
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    await wait(420);
+    const logo = menu.children.list.find((child: any) => child.name === 'title-logo');
+    const bounds = logo?.getBounds?.();
+    return {
+      alpha: logo?.alpha,
+      bounds: bounds ? {
+        left: bounds.left,
+        top: bounds.top,
+        right: bounds.right,
+        bottom: bounds.bottom,
+      } : undefined,
+    };
+  });
+  await page.screenshot({ path: '.artifacts/test-results/title-logo-entrance-safe-area-1024x768.png' });
+  expect(entrance.alpha).toBeGreaterThan(0.1);
+  expect(entrance.alpha).toBeLessThan(1);
+  expect(entrance.bounds).toBeTruthy();
+  expect(entrance.bounds!.left).toBeGreaterThanOrEqual(0);
+  expect(entrance.bounds!.top).toBeGreaterThanOrEqual(0);
+  expect(entrance.bounds!.right).toBeLessThanOrEqual(1280);
+  expect(entrance.bounds!.bottom).toBeLessThanOrEqual(720);
+});
+
 test('title screen fits landscape tablet viewport with all utility icons visible', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await boot(page);
@@ -17632,6 +18157,7 @@ test('a defeat emits a local run-summary artifact', async ({ page }) => {
 });
 
 test('defeat review explains the fatal hit, top pressure, and one actionable adjustment', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 560 });
   await boot(page);
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -17682,9 +18208,12 @@ test('defeat review explains the fatal hit, top pressure, and one actionable adj
 
     const state = scene.getTextState();
     const frame: any = scene.root.list.find((child: any) => child.name === 'run-defeat-review');
+    const signal: any = scene.root.list.find((child: any) => child.name === 'run-defeat-review-signal');
     const headline: any = scene.root.list.find((child: any) => child.name === 'run-defeat-review-headline');
     const evidence: any = scene.root.list.find((child: any) => child.name === 'run-defeat-review-evidence');
     const tip: any = scene.root.list.find((child: any) => child.name === 'run-defeat-review-tip');
+    const copyRail: any = scene.root.list.find((child: any) => child.name === 'run-outcome-flight-link-rail');
+    const copyLabel: any = scene.root.list.find((child: any) => child.name === 'run-outcome-flight-link-label');
     const copyHit: any = scene.root.list.find((child: any) => child.name === 'run-outcome-flight-link-hit');
     const commandHits: any[] = scene.root.list.filter((child: any) => child.name === 'run-outcome-command-hit');
     const staleCombatFxNames = new Set([
@@ -17714,23 +18243,34 @@ test('defeat review explains the fatal hit, top pressure, and one actionable adj
       reviewContainsText: frameBounds
         ? [headline, evidence, tip].every((entry) => entry && within(frameBounds, entry.getBounds()))
         : false,
+      reviewSize: frame ? [frame.displayWidth, frame.displayHeight] : [],
+      reviewFontSizes: [signal, headline, evidence, tip].map((entry) => Number.parseFloat(entry?.style?.fontSize ?? '0')),
+      copyRailSize: copyRail ? [copyRail.displayWidth, copyRail.displayHeight] : [],
+      copyRailY: copyRail?.y,
+      copyLabelFontSize: Number.parseFloat(copyLabel?.style?.fontSize ?? '0'),
+      copyLabelContained: copyRail && copyLabel ? within(copyRail.getBounds(), copyLabel.getBounds()) : false,
+      reviewToCopyGap: frame && copyRail ? copyRail.getBounds().top - frame.getBounds().bottom : -1,
+      copyToCommandsGap: copyRail && commandHits.length > 0
+        ? Math.min(...commandHits.map((entry) => entry.getBounds().top)) - copyRail.getBounds().bottom
+        : -1,
       copyDoesNotOverlapCommands: copyHit && commandHits.length > 0
         ? copyHit.getBounds().bottom <= Math.min(...commandHits.map((entry) => entry.getBounds().top))
         : false,
       commands: commandHits.map((entry) => entry.getData('label')),
-      flightLinkLabel: scene.root.list.find((child: any) => child.name === 'run-outcome-flight-link-label')?.text,
+      flightLinkLabel: copyLabel?.text,
       staleCombatFx: scene.fxLayer.list
         .map((child: any) => child.name)
         .filter((name: string) => staleCombatFxNames.has(name)),
       outcomeReportAboveFx: scene.root.depth > scene.fxLayer.depth,
     };
   });
+  await page.screenshot({ path: '.artifacts/test-results/min-supported/defeat-review-1000x560.png' });
 
   expect(result.review).toMatchObject({
     fatalMove: 'Review Strike',
     signal: 'OPEN SKY',
     headline: 'Last hit · Review Strike',
-    evidence: 'Top pressure · Relentless Peck: 17 taken / 5 blocked',
+    evidence: 'Pressure · Relentless Peck · 17 hit / 5 Cover',
     topPressure: {
       enemyId: 'prior-enemy',
       moveId: 'relentless_peck',
@@ -17747,6 +18287,14 @@ test('defeat review explains the fatal hit, top pressure, and one actionable adj
   expect(result.tip).toBe(result.review.tip);
   expect(result.reviewRendered).toBe(true);
   expect(result.reviewContainsText).toBe(true);
+  expect(result.reviewSize).toEqual([244, 88]);
+  expect(result.reviewFontSizes).toEqual([11, 14, 11, 11]);
+  expect(result.copyRailSize).toEqual([244, 28]);
+  expect(result.copyRailY).toBe(531);
+  expect(result.copyLabelFontSize).toBe(12);
+  expect(result.copyLabelContained).toBe(true);
+  expect(result.reviewToCopyGap).toBe(0);
+  expect(result.copyToCommandsGap).toBeGreaterThanOrEqual(8);
   expect(result.copyDoesNotOverlapCommands).toBe(true);
   expect(result.commands).toEqual(['Replay Flight', 'Flight Details', 'Main Menu']);
   expect(result.flightLinkLabel).toContain('COPY SEEDED FLIGHT');
@@ -18345,10 +18893,10 @@ test('one-flight strategy achievements reward varied play without cumulative gri
   const firstPage = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(firstPage.badgePagination).toMatchObject({
     page: 1,
-    pageCount: 3,
+    pageCount: 4,
     visibleStart: 1,
-    visibleEnd: 6,
-    visibleCount: 6,
+    visibleEnd: 5,
+    visibleCount: 5,
     total: 18,
   });
 
@@ -18356,16 +18904,14 @@ test('one-flight strategy achievements reward varied play without cumulative gri
   const keyboardPage = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(keyboardPage.badgePagination).toMatchObject({
     page: 2,
-    pageCount: 3,
-    visibleStart: 7,
-    visibleEnd: 12,
-    visibleCount: 6,
+    pageCount: 4,
+    visibleStart: 6,
+    visibleEnd: 10,
+    visibleCount: 5,
   });
   expect(keyboardPage.badgePagination.items.filter((item: any) => strategyIds.includes(item.id))).toEqual([
     { id: 'live_wire', name: 'Live Wire', description: 'Trigger 3 Surges in one flight.', earned: true },
     { id: 'still_air', name: 'Still Air', description: 'Clear 3 fights without losing Cohesion in one flight.', earned: true },
-    { id: 'brace_brigade', name: 'Brace Brigade', description: 'Block 24 damage in one flight.', earned: true },
-    { id: 'every_promise', name: 'Every Promise', description: 'Complete 3 district contracts in one flight.', earned: true },
   ]);
 
   await page.evaluate(() => {
@@ -18418,7 +18964,7 @@ test('one-flight strategy achievements reward varied play without cumulative gri
   expect(contractPage.badgePagination).toMatchObject({
     page: 1,
     pageCount: 2,
-    visibleCount: 6,
+    visibleCount: 5,
     total: 7,
   });
   await page.keyboard.press('PageDown');
@@ -18426,12 +18972,18 @@ test('one-flight strategy achievements reward varied play without cumulative gri
   expect(contractPage.badgePagination).toMatchObject({
     page: 2,
     pageCount: 2,
-    visibleStart: 7,
+    visibleStart: 6,
     visibleEnd: 7,
-    visibleCount: 1,
+    visibleCount: 2,
     total: 7,
   });
   expect(contractPage.badgePagination.items).toEqual([
+    {
+      id: '1:bright_signal',
+      name: 'Bright Signal',
+      description: 'District 2 / Trigger Surge in three fights',
+      earned: true,
+    },
     {
       id: '2:lean_route',
       name: 'Lean Route',
@@ -20853,7 +21405,9 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
         visible: child.visible,
         displayWidth: Math.round(child.displayWidth),
         displayHeight: Math.round(child.displayHeight),
-        name: child.name
+        name: child.name,
+        active: child.getData('active'),
+        label: child.getData('label')
       }));
     const codexGridScrollCueFrames = collect(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-grid-scroll-cue-frame')
@@ -21033,8 +21587,10 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
   expect(r.codexArtPreviewFrames[0].alpha).toBeGreaterThan(0.8);
   expect(r.codexTabFrames).toHaveLength(14);
   expect(r.codexTabFrames.every((frame: { name: string; visible: boolean }) => frame.name === 'codex-tab-frame' && frame.visible)).toBe(true);
-  expect(r.codexTabFrames.some((frame: { alpha: number }) => frame.alpha > 0.7)).toBe(true);
-  expect(r.codexTabFrames.every((frame: { alpha: number; displayHeight: number }) => frame.alpha >= 0.45 && frame.displayHeight >= 35)).toBe(true);
+  expect(r.codexTabFrames.filter((frame: { active: boolean }) => frame.active).map((frame: { label: string }) => frame.label)).toEqual(['Cards', 'Major']);
+  expect(r.codexTabFrames.filter((frame: { active: boolean }) => frame.active).every((frame: { alpha: number }) => frame.alpha === 0.82)).toBe(true);
+  expect(r.codexTabFrames.filter((frame: { active: boolean }) => !frame.active).every((frame: { alpha: number }) => frame.alpha === 0.18)).toBe(true);
+  expect(r.codexTabFrames.every((frame: { displayHeight: number }) => frame.displayHeight >= 35)).toBe(true);
   expect(r.codexGridScrollCueFrames).toHaveLength(1);
   expect(r.codexGridScrollCueFrames[0]).toMatchObject({ name: 'codex-grid-scroll-cue-frame', visible: true });
   expect(r.codexGridScrollCueFrames[0].displayWidth).toBe(150);
@@ -24303,6 +24859,9 @@ test('collection milestones reward breadth, acquisition variety, Hunt goals, and
   await page.keyboard.press('PageDown');
   await page.keyboard.press('PageDown');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').badgePagination?.page === 3);
+  const collectionPageThree = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  await page.keyboard.press('PageDown');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').badgePagination?.page === 4);
   const profile = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(profile.progression).toMatchObject({
     achievementsEarned: 6,
@@ -24316,7 +24875,9 @@ test('collection milestones reward breadth, acquisition variety, Hunt goals, and
     next: null,
     rewardsAffectPower: false,
   });
-  expect(profile.badgePagination.items.map((item: any) => ({
+  expect([...collectionPageThree.badgePagination.items, ...profile.badgePagination.items]
+    .filter((item: any) => item.id.startsWith('collection_'))
+    .map((item: any) => ({
     id: item.id,
     earned: item.earned,
   }))).toEqual([
@@ -29637,6 +30198,17 @@ test('card picker inspection preserves Preen and Release decisions across pointe
     armed: true,
     commitBlockedUntilSelected: false,
     controls: { apply: 'Confirm / A / second pointer activation commits' },
+  });
+  expect(await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const hint = route.children.list.find((object: any) => object.name === 'card-picker-input-hint');
+    return hint ? {
+      text: hint.text,
+      fontSize: Number.parseFloat(hint.style?.fontSize ?? '0'),
+    } : undefined;
+  })).toEqual({
+    text: 'ARROWS / D-PAD  CARD   |   ENTER / A / TAP  CONFIRM   |   ESC / B  BACK',
+    fontSize: 12,
   });
   await page.locator('canvas').screenshot({
     path: '.artifacts/test-results/card-picker-confirmation-preen-1000x560.png',

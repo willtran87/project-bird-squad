@@ -275,7 +275,7 @@ function renderDeckNeeds(context: RewardCeremonyRenderContext) {
   const y = 182;
   target.add(scene.add.text(width / 2, y - 22, deckNeeds.guide, {
     fontFamily, fontSize: '12px', fontStyle: boldFontStyle, color: '#7f93a8'
-  }).setOrigin(0.5));
+  }).setOrigin(0.5).setName('reward-deck-read-guide'));
   const labels = deckNeeds.entries.map(({ label, rank }) => `${label}: ${rank}`);
   const widths = labels.map((label) => label.length * 8 + 58);
   let x = width / 2 - widths.reduce((sum, value) => sum + value, 0) / 2;

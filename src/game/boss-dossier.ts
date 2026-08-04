@@ -411,8 +411,8 @@ export function buildDefeatReview(summary: DefeatReviewRunSummary | undefined): 
   const finalCombat = summary.combatResults.at(-1);
   const fatalMove = summary.killedBy || finalCombat?.killedByMove || topPressure?.moveLabel || 'Final impact';
   const evidence = topPressure
-    ? `Top pressure · ${topPressure.moveLabel}: ${topPressure.damageTaken} taken / ${topPressure.blockedDamage} blocked`
-    : 'Top pressure · No incoming-damage record available';
+    ? `Pressure · ${topPressure.moveLabel} · ${topPressure.damageTaken} hit / ${topPressure.blockedDamage} Cover`
+    : 'Pressure · No incoming-damage record available';
   const overextensions = Math.max(0, summary.decisionStats?.overextensions ?? 0);
   const unspentWingbeats = Math.max(0, summary.decisionStats?.unspentWingbeatAtRoost ?? 0);
   const lowCardTurns = Math.max(0, summary.decisionStats?.lowCardTurns ?? 0);
@@ -454,43 +454,43 @@ export function renderDefeatReview(
     boldStyle: string;
   }
 ) {
-  const height = 110;
+  const height = 88;
   const left = options.x - options.width / 2 + 12;
   root.add(scene.add.rectangle(options.x, options.y, options.width, height, 0x03070d, 0.94)
     .setStrokeStyle(1, 0xff9d6b, 0.34)
     .setName('run-defeat-review'));
-  root.add(scene.add.text(left, options.y - 49, `FLIGHT REVIEW · ${review.signal}`, {
+  root.add(scene.add.text(left, options.y - 37, `FLIGHT REVIEW · ${review.signal}`, {
     fontFamily: options.fontFamily,
-    fontSize: '10px',
+    fontSize: '11px',
     fontStyle: options.boldStyle,
     color: '#ffcfaa',
     fixedWidth: options.width - 24,
     maxLines: 1,
-  }).setName('run-defeat-review-signal'));
-  root.add(scene.add.text(left, options.y - 31, review.headline, {
+  }).setResolution(2).setName('run-defeat-review-signal'));
+  root.add(scene.add.text(left, options.y - 21, review.headline, {
     fontFamily: options.fontFamily,
     fontSize: '14px',
     fontStyle: options.boldStyle,
     color: '#fff0e8',
     fixedWidth: options.width - 24,
     maxLines: 1,
-  }).setName('run-defeat-review-headline'));
-  root.add(scene.add.text(left, options.y - 10, review.evidence, {
+  }).setResolution(2).setName('run-defeat-review-headline'));
+  root.add(scene.add.text(left, options.y - 3, review.evidence, {
     fontFamily: options.fontFamily,
-    fontSize: '10px',
+    fontSize: '11px',
     color: '#d7e3ec',
     fixedWidth: options.width - 24,
     maxLines: 1,
-  }).setName('run-defeat-review-evidence'));
-  root.add(scene.add.text(left, options.y + 10, review.tip, {
+  }).setResolution(2).setName('run-defeat-review-evidence'));
+  root.add(scene.add.text(left, options.y + 15, review.tip, {
     fontFamily: options.fontFamily,
-    fontSize: '10px',
+    fontSize: '11px',
     color: '#b9cad7',
     fixedWidth: options.width - 24,
     wordWrap: { width: options.width - 24, useAdvancedWrap: true },
     lineSpacing: -1,
     maxLines: 2,
-  }).setName('run-defeat-review-tip'));
+  }).setResolution(2).setName('run-defeat-review-tip'));
 }
 
 export function renderOutcomeFlightSummary(
@@ -523,38 +523,41 @@ export function renderOutcomeFlightSummary(
   } else if (options.review) {
     renderDefeatReview(scene, root, options.review, {
       x: options.x,
-      y: 486,
+      y: 473,
       width: 244,
       fontFamily: options.fontFamily,
       boldStyle: options.boldStyle,
     });
   } else {
-    root.add(scene.add.rectangle(options.x, 486, 244, 110, 0x03070d, 0.94)
+    root.add(scene.add.rectangle(options.x, 473, 244, 88, 0x03070d, 0.94)
       .setStrokeStyle(1, options.softAccent, 0.22)
       .setName('run-defeat-review-loading'));
-    root.add(scene.add.text(options.x, 486, 'REVIEWING THE LAST FLIGHT…', {
+    root.add(scene.add.text(options.x, 473, 'REVIEWING THE LAST FLIGHT…', {
       fontFamily: options.fontFamily,
       fontSize: '12px',
       fontStyle: options.boldStyle,
       color: '#ffcfaa',
     }).setOrigin(0.5));
   }
-  const labelY = options.win ? 496 : 532;
+  const labelY = options.win ? 496 : 531;
+  if (!options.win) root.add(scene.add.rectangle(options.x, labelY, 244, 28, 0x07131d, 0.96)
+    .setStrokeStyle(1, options.softAccent, 0.48)
+    .setName('run-outcome-flight-link-rail'));
   const label = scene.add.text(
     options.x,
     labelY,
     options.win ? `FLIGHT ${options.seed}\nCOPY ROUTE LINK` : `FLIGHT ${options.seed} · COPY SEEDED FLIGHT`,
     {
       fontFamily: options.fontFamily,
-      fontSize: options.win ? '13px' : '10px',
+      fontSize: options.win ? '13px' : '12px',
       color: options.softColor,
       align: 'center',
       fixedWidth: 232,
       maxLines: options.win ? 2 : 1,
     }
-  ).setOrigin(0.5).setName('run-outcome-flight-link-label');
+  ).setOrigin(0.5).setResolution(2).setName('run-outcome-flight-link-label');
   root.add(label);
-  const hitY = options.win ? labelY : 523;
+  const hitY = options.win ? labelY : 524;
   const hit = scene.add.rectangle(options.x, hitY, 244, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
     .setInteractive({ useHandCursor: true })
     .setName('run-outcome-flight-link-hit')

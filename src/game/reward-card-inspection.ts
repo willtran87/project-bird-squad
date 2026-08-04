@@ -198,7 +198,7 @@ export function renderMarketInputHelp(scene: Phaser.Scene, x: number, y: number)
     .find((candidate: any) => candidate.getData('marketFocusId') === owner.marketFocusId);
   const armed = owner.marketFocusArmedId === owner.marketFocusId;
   const label = marketTargetLabel(owner, target);
-  scene.add.rectangle(x, y, 720, 28, 0x020409, 0.9)
+  scene.add.rectangle(x, y, 760, 32, 0x020409, 0.9)
     .setStrokeStyle(1, armed ? 0xffcf70 : 0x49606d, armed ? 0.9 : 0.5)
     .setDepth(23050)
     .setName('market-input-help');
@@ -206,15 +206,15 @@ export function renderMarketInputHelp(scene: Phaser.Scene, x: number, y: number)
     x,
     y,
     armed
-      ? `CONFIRM ${label.toUpperCase()}  /  ENTER · A · TAP AGAIN  /  BACK CANCELS`
-      : 'CHOOSE OFFER  ← → · D-PAD  /  BUY  ENTER · A  /  SECTIONS  1–4 · LB RB',
+      ? `CONFIRM ${label.toUpperCase()}   |   ENTER / A / TAP AGAIN   |   BACK  CANCEL`
+      : 'LEFT / RIGHT  OFFER   |   ENTER / A  BUY   |   1-4 / LB / RB  SECTION',
     {
       fontFamily: 'Arial',
-      fontSize: '11px',
+      fontSize: '12px',
       fontStyle: 'bold',
       color: armed ? '#ffe1a3' : '#dffbff',
       align: 'center',
-      fixedWidth: 700,
+      fixedWidth: 742,
     },
   ).setOrigin(0.5).setDepth(23051).setName('market-input-help');
 }

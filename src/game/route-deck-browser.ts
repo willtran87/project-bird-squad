@@ -215,7 +215,7 @@ function renderCardColumn(scene: Phaser.Scene, view: RouteDeckBrowserView) {
     fixedWidth: 100,
     stroke: '#000000',
     strokeThickness: 2,
-  }).setOrigin(0.5);
+  }).setOrigin(0.5).setName('deck-review-page-label');
 }
 
 export function renderRouteDeckBrowser(scene: Phaser.Scene, view: RouteDeckBrowserView) {
@@ -271,16 +271,21 @@ export function renderRouteDeckBrowser(scene: Phaser.Scene, view: RouteDeckBrows
     view.onSaveDeck,
     view.savedDecks.status === 'saved',
   );
-  scene.add.text(884, 154, 'UP/DOWN CARD  /  LEFT/RIGHT FILTER  /  A SORT  /  C/X PIN  /  V/Y SAVE', {
+  scene.add.rectangle(884, 651, 600, 32, UI_FIELD.rail, 0.78)
+    .setStrokeStyle(1, UI_FIELD.cyan, 0.34)
+    .setName('deck-review-control-rail');
+  scene.add.rectangle(600, 651, 3, 20, UI_FIELD.cyan, 0.72);
+  scene.add.rectangle(1168, 651, 3, 20, UI_FIELD.gold, 0.72);
+  scene.add.text(884, 651, 'UP / DOWN  CARD   |   LEFT / RIGHT  FILTER   |   ENTER  SORT   |   C / X  PIN   |   V / Y  SAVE', {
     fontFamily: UI_FONT,
-    fontSize: '9px',
+    fontSize: '12px',
     fontStyle: UI_BOLD,
-    color: '#8fa9b7',
+    color: '#b9d6e3',
     stroke: '#020409',
     strokeThickness: 2,
-    fixedWidth: 600,
+    fixedWidth: 568,
     align: 'center',
-  }).setOrigin(0.5);
+  }).setOrigin(0.5).setResolution(2).setName('deck-review-control-guide');
   addDeckReviewSectionTabFrame(scene, () => {}, 194, 172, 136, 32, { alpha: 0.76 });
   scene.add.text(194, 172, 'CARD INDEX', {
     fontFamily: UI_FONT,

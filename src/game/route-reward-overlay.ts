@@ -188,12 +188,19 @@ export function renderRouteRewardOverlay(scene: any) {
   });
   scene.renderRouteEventCancelButton(frame.left + 126, frame.bottom - 48, 166, 38, 'Cancel', () => scene.cancelRouteCardReward());
   if (hasCardChoices) {
-    scene.add.text(frame.right - 28, frame.top + 90, `D-PAD / ARROWS  CHOOSE    A / ENTER  ${scene.routeRewardArmedCardId ? 'CONFIRM' : 'SELECT'}    Y / R  INSPECT    B / ESC  BACK`, {
+    const hintX = frame.left + 672;
+    const hintY = frame.top + 116;
+    scene.add.rectangle(hintX, hintY, 500, 42, 0x020711, 0.86)
+      .setStrokeStyle(1, UI_FIELD.cyan, 0.55);
+    const hintText = `ARROWS / D-PAD  CHOOSE   |   ENTER / A  ${scene.routeRewardArmedCardId ? 'CONFIRM' : 'SELECT'}\nR / Y  INSPECT   |   ESC / B  BACK`;
+    scene.add.text(hintX, hintY, hintText, {
       fontFamily: UI_FONT,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: UI_BOLD,
       color: '#bfe8f4',
-    }).setOrigin(1, 0.5).setName('route-reward-input-hint');
+      fixedWidth: 476,
+      align: 'center',
+    }).setOrigin(0.5).setResolution(2).setName('route-reward-input-hint');
   }
   renderRouteRewardInspection(scene);
 }

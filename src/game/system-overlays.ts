@@ -1001,6 +1001,8 @@ export function renderSettingsMenuOverlay(
     ? Math.round(clamp(storedFocusIndex, 0, rows.length - 1))
     : 0;
   let focusRing: Phaser.GameObjects.Rectangle | undefined;
+  const rowFrames: Array<Phaser.GameObjects.Image | undefined> = [];
+  const restingRowFrameAlpha = (index: number) => index % 2 === 0 ? 0.44 : 0.3;
   const rowPosition = (index: number) => {
     const rightColumn = index >= leftColumnRows;
     const row = rightColumn ? index - leftColumnRows : index;
@@ -1014,6 +1016,9 @@ export function renderSettingsMenuOverlay(
     focusRing?.setPosition(position.cx, position.y);
     focusRing?.setData('index', focusIndex);
     focusRing?.setData('label', rows[focusIndex][0]);
+    rowFrames.forEach((rowFrame, rowIndex) => {
+      rowFrame?.setAlpha(rowIndex === focusIndex ? 0.82 : restingRowFrameAlpha(rowIndex));
+    });
     scene.registry.set(focusRegistryKey, focusIndex);
   };
   const setMusicVolume = (value: number) => {
@@ -1134,9 +1139,11 @@ export function renderSettingsMenuOverlay(
     const position = rowPosition(index);
     const { cx, y, right } = position;
     addUi(addTo, scene.add.rectangle(cx, y, 502, 42, 0x050a12, index % 2 === 0 ? 0.42 : 0.26));
-    addSystemSettingsRowFrame(scene, addTo, cx, y, 530, MIN_SUPPORTED_TOUCH_TARGET, {
-      alpha: index % 2 === 0 ? 0.78 : 0.68,
+    const rowFrame = addSystemSettingsRowFrame(scene, addTo, cx, y, 530, MIN_SUPPORTED_TOUCH_TARGET, {
+      alpha: restingRowFrameAlpha(index),
     }, dependencies);
+    rowFrame?.setName(`system-settings-row-frame-${index}`);
+    rowFrames[index] = rowFrame;
     const focusZone = addUi(addTo, scene.add.rectangle(cx, y, 530, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
       .setName(`system-settings-row-${index}-hit`)
       .setInteractive({ useHandCursor: kind !== 'slider' }));
@@ -1304,6 +1311,8 @@ export function renderSettingsMenuOverlay(
   const controlsFocusKey = controlPanelFocusRegistryKey(scene);
   let controlsPanel: Phaser.GameObjects.Container | undefined;
   let controlsFocusRing: Phaser.GameObjects.Rectangle | undefined;
+  let controlsRowFrames: Array<Phaser.GameObjects.Image | undefined> = [];
+  const restingControlsRowFrameAlpha = (index: number) => index % 2 === 0 ? 0.42 : 0.28;
   let controlsPage: ControlBindingPage = scene.registry.get(controlsPageKey) === 'utility' ? 'utility' : 'play';
   let controlsFocusIndex = Number(scene.registry.get(controlsFocusKey));
   if (!Number.isFinite(controlsFocusIndex)) controlsFocusIndex = 0;
@@ -1333,6 +1342,9 @@ export function renderSettingsMenuOverlay(
     const definition = pageDefinitions()[controlsFocusIndex];
     controlsFocusRing.setData('index', controlsFocusIndex);
     controlsFocusRing.setData('label', definition?.label ?? (controlsFocusIndex === 6 ? 'Reset Defaults' : 'Done'));
+    controlsRowFrames.forEach((rowFrame, rowIndex) => {
+      rowFrame?.setAlpha(rowIndex === controlsFocusIndex ? 0.82 : restingControlsRowFrameAlpha(rowIndex));
+    });
   };
 
   const closeControlsPanel = (playSound = true) => {
@@ -1391,8 +1403,9 @@ export function renderSettingsMenuOverlay(
     controlsPanel?.destroy(true);
     const panel = scene.add.container(0, 0).setName('system-controls-panel');
     controlsPanel = addUi(addTo, panel);
+    controlsRowFrames = [];
     const addPanel: UiAdd = (object) => panel.add(object);
-    addUi(addPanel, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.94)
+    addUi(addPanel, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.97)
       .setInteractive({ useHandCursor: false })
       .setName('system-controls-modal-backdrop'));
     const controlFrame = dependencies.renderFieldPanel(scene, addPanel, GAME_WIDTH / 2, GAME_HEIGHT / 2, 760, 660, {
@@ -1447,9 +1460,11 @@ export function renderSettingsMenuOverlay(
     definitions.forEach((definition, index) => {
       const y = controlFrame.top + 200 + index * MIN_SUPPORTED_TOUCH_TARGET;
       addUi(addPanel, scene.add.rectangle(controlFrame.cx, y, 548, 42, 0x050a12, index % 2 === 0 ? 0.42 : 0.26));
-      addSystemSettingsRowFrame(scene, addPanel, controlFrame.cx, y, 566, MIN_SUPPORTED_TOUCH_TARGET, {
-        alpha: index % 2 === 0 ? 0.76 : 0.66,
+      const rowFrame = addSystemSettingsRowFrame(scene, addPanel, controlFrame.cx, y, 566, MIN_SUPPORTED_TOUCH_TARGET, {
+        alpha: restingControlsRowFrameAlpha(index),
       }, dependencies);
+      rowFrame?.setName(`system-controls-row-frame-${index}`);
+      controlsRowFrames[index] = rowFrame;
       const hit = addUi(addPanel, scene.add.rectangle(controlFrame.cx, y, 566, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
         .setName(`system-controls-binding-${definition.action}-hit`)
         .setInteractive({ useHandCursor: true }));
@@ -1715,31 +1730,40 @@ export function renderHowToPlayOverlay(
   const tips: Array<[string, string]> = [
     [
       'Quick keys',
-      `${controlBindingLabel('roost')} Roosts; ${controlBindingLabel('confirm')} confirms. 1-9 selects; ${controlBindingLabel('skipReward')} skips; ${controlBindingLabel('mute')} mutes.`,
+      `${controlBindingLabel('roost')} Roost  |  ${controlBindingLabel('confirm')} Confirm  |  1-9 Cards  |  ${controlBindingLabel('skipReward')} Skip  |  ${controlBindingLabel('mute')} Mute`,
     ],
-    ['Fair draws', 'After the first lesson, fights seed-shuffle the deck and protect playable pressure when the deck has it.'],
+    ['Fair draws', 'After the lesson, seeded shuffles vary fights and preserve playable pressure.'],
   ];
   tips.forEach(([label, value], index) => {
-    const y = frame.bottom - 112 + index * 30;
+    const y = frame.bottom - 125 + index * 32;
+    const accent = index % 2 === 0 ? UI_FIELD.cyan : UI_FIELD.brass;
+    const textAccent = index % 2 === 0 ? UI_CYAN : UI_GOLD;
     const tipFrame = addHowToPlayTipRowFrame(
       scene,
       addTo,
       frame.cx,
       y,
       616,
-      30,
+      28,
       index % 2 === 0 ? 0.34 : 0.24,
-      index % 2 === 0 ? UI_FIELD.cyan : UI_FIELD.brass,
+      accent,
     );
     if (!tipFrame) addUi(addTo, scene.add.rectangle(frame.cx, y, 590, 24, 0x050a12, 0.28));
-    addUi(addTo, scene.add.text(frame.cx, y, `${label.toUpperCase()}  ·  ${value}`, {
+    addUi(addTo, scene.add.text(frame.cx - 286, y, label.toUpperCase(), {
       fontFamily: UI_FONT,
-      fontSize: '11px',
-      color: UI_FIELD.text,
-      fixedWidth: 570,
-      align: 'center',
+      fontSize: '12px',
+      fontStyle: UI_BOLD,
+      color: textAccent,
+      fixedWidth: 82,
       maxLines: 1,
-    }).setOrigin(0.5));
+    }).setOrigin(0, 0.5).setResolution(2).setName('how-to-play-tip-label'));
+    addUi(addTo, scene.add.text(frame.cx - 200, y, value, {
+      fontFamily: UI_FONT,
+      fontSize: '13px',
+      color: UI_FIELD.text,
+      fixedWidth: 484,
+      maxLines: 1,
+    }).setOrigin(0, 0.5).setResolution(2).setName('how-to-play-tip-value'));
   });
 
   const guideLabel = options.guide.enabled && !options.guide.completed ? 'Skip Guide' : 'Replay Guide';

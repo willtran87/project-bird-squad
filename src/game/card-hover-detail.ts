@@ -98,7 +98,7 @@ export function renderCardHoverDetail(scene: Phaser.Scene, view: CardHoverDetail
   const h = marketInspector ? 430 : 450;
   const margin = 18;
   const cx = marketInspector
-    ? 1116
+    ? 1130
     : view.anchorX < 640
       ? Math.min(1280 - w / 2 - margin, view.anchorX + 232)
       : Math.max(w / 2 + margin, view.anchorX - 232);
