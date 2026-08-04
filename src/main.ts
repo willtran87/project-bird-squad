@@ -4814,12 +4814,13 @@ class MenuScene extends Phaser.Scene {
     this.menuFocusTargets.set('howToPlay', this.renderTopUtilityButton(GAME_WIDTH - 536, 38, 'How to Play', 'howToPlay', () => this.openHelpOverlay()));
     this.menuFocusTargets.set('settings', this.renderTopUtilityButton(GAME_WIDTH - 388, 38, 'Settings', 'settings', () => this.openSettingsOverlay()));
 
-    // Keep difficulty near the run action without adding a full-width dock, so
-    // the splash art stays visible behind the compact controls.
+    // Keep difficulty near the run action without adding a full-width dock. A
+    // stronger local backplate keeps the setup legible over the detailed key art.
     this.selectedDifficulty = Math.min(this.selectedDifficulty, getMaxUnlockedTier());
     const plaqueRendered = this.renderTitleAscensionPlaque(228, 642);
-    const difficultyPanel = this.add.rectangle(228, 642, 314, 102, 0x05070c, plaqueRendered ? 0.42 : 0.68)
-      .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, plaqueRendered ? 0.36 : 0.64);
+    const difficultyPanel = this.add.rectangle(228, 642, 314, 102, 0x05070c, plaqueRendered ? 0.62 : 0.76)
+      .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, plaqueRendered ? 0.5 : 0.7)
+      .setName('title-ascension-backplate');
     this.menuFocusTargets.set('difficulty', difficultyPanel);
     addUiIconImage(this, 'ascension-medallion', 88, 602, 14)?.setAlpha(0.92);
     this.add.text(144, 600, 'ASCENSION', {
@@ -4880,9 +4881,12 @@ class MenuScene extends Phaser.Scene {
       const px = 178 + index * 231;
       const py = 516;
       const unlocked = isLeaderUnlocked(this.menuAccount, leader.id);
-      const rect = this.add.rectangle(px, py, 196, 60, unlocked ? 0x0d1420 : 0x080b10, unlocked ? 0.82 : 0.48)
-        .setStrokeStyle(MENU_BORDER_WIDTH, unlocked ? 0x2a4555 : 0x222a33, unlocked ? 0.72 : 0.28)
-        .setInteractive({ useHandCursor: unlocked });
+      const rect = this.add.rectangle(px, py, 196, 60, unlocked ? 0x0d1420 : 0x080b10, unlocked ? 0.88 : 0.68)
+        .setStrokeStyle(MENU_BORDER_WIDTH, unlocked ? 0x2a4555 : 0x36414d, unlocked ? 0.76 : 0.46)
+        .setInteractive({ useHandCursor: unlocked })
+        .setName('title-leader-choice-backplate')
+        .setData('leaderId', leader.id)
+        .setData('unlocked', unlocked);
       const cardFrame = this.renderTitleLeaderCardFrame(px, py, unlocked);
       const selectedFlourish = unlocked ? this.renderTitleLeaderSelectedFlourish(px, py) : undefined;
       rect.on('pointerover', () => this.showLeaderTooltip(leader.id, px));
@@ -4899,7 +4903,7 @@ class MenuScene extends Phaser.Scene {
       const selectedIcon = unlocked ? addUiIconImage(this, 'leader-ready-medallion', px - 76, py - 17, 12) : undefined;
       selectedIcon?.setAlpha(0).setVisible(false);
       this.add.text(px, py - 17, leader.name, {
-        fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: unlocked ? '#ffe1a3' : '#5a6675', align: 'center', stroke: '#05070c', strokeThickness: 1, wordWrap: { width: 184 }
+        fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: unlocked ? '#ffe1a3' : '#8290a0', align: 'center', stroke: '#05070c', strokeThickness: 1, wordWrap: { width: 184 }
       }).setResolution(2).setOrigin(0.5);
       if (!unlocked) addUiIconImage(this, 'leader-lock-medallion', px - 73, py + 15, 13)?.setAlpha(0.58);
       const mastery = leaderMastery(this.menuAccount, leader.id);
@@ -4954,9 +4958,9 @@ class MenuScene extends Phaser.Scene {
     this.menuFocusTargets.set('codex', this.renderTopUtilityButton(GAME_WIDTH - 240, 38, 'Collection', 'codex', () => this.openCodex(true)));
     renderCollectionGoalStrip(
       this,
-      GAME_WIDTH - 212,
+      GAME_WIDTH - 184,
       88,
-      400,
+      352,
       'title-collection-goal-hit',
       (cardId) => this.openCodex(!cardId, cardId),
     );
@@ -6055,10 +6059,10 @@ class MenuScene extends Phaser.Scene {
       if (!entry.unlocked) return; // locked panels keep their dimmed style
       const selected = entry.id === id;
       entry.rect.setStrokeStyle(MENU_BORDER_WIDTH, selected ? 0xe8b830 : 0x2a4555, selected ? 1 : 0.46);
-      entry.rect.setFillStyle(selected ? 0x1b2535 : 0x0d1420, selected ? 0.96 : 0.66);
+      entry.rect.setFillStyle(selected ? 0x1b2535 : 0x0d1420, selected ? 0.96 : 0.86);
       entry.selectedIcon?.setVisible(selected).setAlpha(selected ? 0.94 : 0);
       entry.cardFrame?.clearTint();
-      entry.cardFrame?.setAlpha(selected ? 0.96 : 0.42);
+      entry.cardFrame?.setAlpha(selected ? 0.96 : 0.58);
       entry.selectedFlourish?.setVisible(selected).setAlpha(selected ? 0.94 : 0);
     });
     if (this.menuFocus === 'leader') this.updateMenuFocusRing();
@@ -7518,8 +7522,6 @@ class RouteScene extends Phaser.Scene {
     });
     renderPauseToggleControl(this, () => {}, GAME_WIDTH - 82, 45, () => this.togglePauseOverlay());
     renderAudioToggleControl(this, () => {}, GAME_WIDTH - 34, 45, () => this.updateTextState());
-    const hasUnreviewedCard = Object.values(loadAccount().cardCollection)
-      .some((record) => record.isNew === true);
     if (
       !this.pauseOverlayOpen
       && !this.settingsOverlayOpen
@@ -7532,7 +7534,6 @@ class RouteScene extends Phaser.Scene {
       && !this.pendingRouteReward
       && !this.cardPickerMode
       && !this.shouldChooseDistrictContract()
-      && (hasUnreviewedCard || (!this.selectedNodeId && !this.routeCheckpointState.visible))
     ) {
       renderCollectionGoalStrip(
         this,
@@ -7924,7 +7925,8 @@ class RouteScene extends Phaser.Scene {
     const top = frame.cy - frame.h / 2;
     const key = uiIconAssets['boss-prep-dossier-flourish'].key;
     this.add.rectangle(frame.cx, frame.cy, frame.w, frame.h, 0x050a12, 0.66)
-      .setStrokeStyle(1, UI_FIELD.brass, 0.42);
+      .setStrokeStyle(1, UI_FIELD.brass, 0.42)
+      .setName('boss-prep-dossier-backplate');
     if (this.textures.exists(key)) {
       this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
       const dossier = this.add.image(frame.cx, frame.cy - 6, key)
@@ -7959,21 +7961,31 @@ class RouteScene extends Phaser.Scene {
       fontStyle: UI_BOLD,
       color: UI_FIELD.cyanText
     }).setResolution(2);
-    this.add.text(left + 30, top + 24, prep.bossName, {
+    this.add.text(left + 30, top + 21, prep.bossName, {
       fontFamily: 'Georgia, serif',
       fontSize: '15px',
       fontStyle: UI_BOLD,
       color: UI_GOLD,
       fixedWidth: 196,
       maxLines: 1
-    }).setResolution(2);
-    this.add.text(left + 30, top + 43, `Pressure: ${compactSentenceText(`P2 at 50% / ${prep.pressure}`, 27, 1)}`, {
+    }).setResolution(2).setName('boss-prep-name');
+    const pressure = prep.pressure.split(',').map((tag) => {
+      switch (tag.trim()) {
+        case 'openSky': return 'SKY';
+        case 'multi': return 'MULTI';
+        case 'winded': return 'WIND';
+        default: return tag.trim().toUpperCase();
+      }
+    }).join(' / ');
+    this.add.text(left + 30, top + 38, `P2 50% · ${pressure}`, {
       fontFamily: UI_FONT,
-      fontSize: '10px',
+      fontSize: '9px',
       color: UI_SOFT,
-      fixedWidth: 188,
-      maxLines: 1
-    }).setResolution(2);
+      fixedWidth: 196,
+      maxLines: 2,
+      lineSpacing: -6,
+      wordWrap: { width: 196, useAdvancedWrap: true }
+    }).setResolution(2).setName('boss-prep-pressure');
 
     const readinessRows: Array<[string, 'low' | 'steady' | 'strong']> = [
       ['Cover', prep.readiness.cover],
@@ -8008,7 +8020,14 @@ class RouteScene extends Phaser.Scene {
     }
 
     const needs = prep.needs.length > 0 ? prep.needs.join(' / ') : 'Ready';
-    const useful = prep.usefulNodes.length > 0 ? prep.usefulNodes.join(' / ') : 'Final crossing';
+    const useful = prep.usefulNodes.length > 0
+      ? prep.usefulNodes.map((label) => {
+          if (label === 'Rooftop Cache') return 'CACHE';
+          if (label === 'Lantern Roost') return 'ROOST';
+          if (label === 'Rival Crew') return 'RIVAL';
+          return label.toUpperCase();
+        }).join(' / ')
+      : 'FINAL CROSSING';
     const routeForPlateKey = uiIconAssets['boss-prep-route-for-plate'].key;
     if (this.textures.exists(routeForPlateKey)) {
       this.textures.get(routeForPlateKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
@@ -8031,13 +8050,13 @@ class RouteScene extends Phaser.Scene {
       fixedWidth: 202,
       maxLines: 1
     }).setResolution(2);
-    this.add.text(left + 596, top + 43, `Useful: ${compactSentenceText(useful, 22, 1)}`, {
+    this.add.text(left + 596, top + 43, `Useful: ${useful}`, {
       fontFamily: UI_FONT,
-      fontSize: '10px',
+      fontSize: '9px',
       color: UI_SOFT,
       fixedWidth: 206,
       maxLines: 1
-    }).setResolution(2);
+    }).setResolution(2).setName('boss-prep-useful');
   }
 
   private renderBossPrepReadinessChip(label: string, value: 'low' | 'steady' | 'strong', x: number, y: number, w = 108) {
@@ -9821,7 +9840,7 @@ class RouteScene extends Phaser.Scene {
     });
   }
 
-  private applyCardPick(index: number) {
+  applyCardPick(index: number) {
     this.cardPickerArmedIndex = undefined;
     this.cardPickerInspectionOpen = false;
     if (this.cardPickerContext === 'market') {
@@ -9933,9 +9952,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private cardPickerMaxScroll(totalCards: number) {
-    const columns = 5;
-    const visibleRows = 2;
-    return Math.max(0, Math.ceil(totalCards / columns) - visibleRows);
+    return Math.max(0, Math.ceil(totalCards / 5) - 2);
   }
 
   private scrollCardPicker(deltaRows: number) {
@@ -9944,6 +9961,7 @@ class RouteScene extends Phaser.Scene {
     const next = clamp(this.cardPickerScroll + deltaRows, 0, this.cardPickerMaxScroll(totalCards));
     if (next === this.cardPickerScroll) return;
     this.cardPickerScroll = next;
+    this.cardPickerFocusIndex = next * 5;
     this.hideHoverCardDetail();
     this.renderAll();
   }
@@ -10051,8 +10069,7 @@ class RouteScene extends Phaser.Scene {
     const node = currentMap().nodes.find((candidate) => candidate.id === (isMarketPicker ? this.marketNodeId : this.nodeChoiceNodeId));
     const accent = mode === 'preen' ? UI_FIELD.cyan : UI_FIELD.danger;
     const columns = 5;
-    const visibleRows = 2;
-    const visibleCount = columns * visibleRows;
+    const visibleCount = 10;
     const rowGap = 190;
     const remainingPicks = Math.max(1, this.cardPickerRemainingPicks || 1);
     const maxScroll = this.cardPickerMaxScroll(eligible.length);
@@ -10176,7 +10193,7 @@ class RouteScene extends Phaser.Scene {
         .setName('card-picker-card-hit');
       if (affordable) button.on('pointerdown', () => this.requestCardPick(entry.index));
       this.cardHoverDetailModule?.renderCardPickerInput(
-        this, button, entry, x, y, cardW, cardH, accent, affordable, firstVisible + i,
+        this, button, entry, x, y, cardW, cardH, accent, firstVisible + i,
       );
     });
     if (eligible.length > visibleCount) {
@@ -10455,124 +10472,6 @@ class RouteScene extends Phaser.Scene {
       else if (mark) this.showRewardWaymarkDetail(mark, x, y);
     });
     hit.on('pointerout', () => this.hideMarketItemDetail());
-    return true;
-  }
-
-  renderRouteRewardEffectShowcase(pending: PendingRouteReward, x: number, y: number, w: number, h: number) {
-    const accent = pending.accent;
-    const previewCards = pending.previewCards ?? [];
-    this.add.rectangle(x, y, w, h, 0x06101a, 0.9)
-      .setStrokeStyle(2, accent, 0.76);
-    this.add.rectangle(x, y - h / 2 + 16, w - 28, 3, accent, 0.72);
-
-    if (previewCards.length > 0) {
-      const cardSlots = previewCards.slice(0, 2);
-      const compactCards = cardSlots.length > 1;
-      cardSlots.forEach((card, index) => {
-        const cardX = compactCards ? x + 48 + index * 116 : x + 102;
-        const cardW = compactCards ? 86 : 108;
-        const cardH = Math.round(cardW * 1.5);
-        const cardY = compactCards ? y - 10 : y - 4;
-        const cardKindLabel = card.runtime.kind === 'snag'
-          ? 'SNAG CARD'
-          : `${card.runtime.rarity.toUpperCase()} CARD`;
-        const cardAccent = card.runtime.kind === 'snag' ? UI_FIELD.danger : UI_FIELD.gold;
-        const cardTextColor = card.runtime.kind === 'snag' ? '#ffd5cc' : UI_GOLD;
-        addRewardRevealHaloFx(this, cardX, cardY, cardW + 54, cardH + 70, card.runtime.kind === 'snag' ? 0.14 : 0.18);
-        this.add.text(cardX, y - 100, cardKindLabel, {
-          fontFamily: UI_FONT,
-          fontSize: compactCards ? '9px' : '10px',
-          fontStyle: UI_BOLD,
-          color: card.runtime.kind === 'snag' ? '#ffd5cc' : UI_CYAN,
-          align: 'center',
-          wordWrap: { width: compactCards ? 104 : 150 },
-          maxLines: 1
-        }).setOrigin(0.5, 0);
-        this.renderRouteRewardCardOption(card, cardX, cardY, cardW, cardH, cardAccent);
-        this.add.rectangle(cardX, y + 93, compactCards ? 104 : 138, 28, 0x020409, 0.94)
-          .setStrokeStyle(1, cardAccent, 0.72);
-        this.add.text(cardX, y + 83, displayName(card), {
-          fontFamily: UI_FONT,
-          fontSize: compactCards ? '10px' : '11px',
-          fontStyle: UI_BOLD,
-          color: cardTextColor,
-          align: 'center',
-          wordWrap: { width: compactCards ? 96 : 126 },
-          maxLines: 2
-        }).setOrigin(0.5, 0);
-        const cardHit = this.add.rectangle(cardX, cardY, cardW + 18, cardH + 76, 0x000000, 0.01)
-          .setInteractive({ useHandCursor: true });
-        cardHit.on('pointerover', () => this.showHoverCardDetail(card, `${routeNodeTypeLabel(pending.nodeType)} preview`, card.cost, cardX, cardY));
-        cardHit.on('pointerout', () => this.hideHoverCardDetail());
-      });
-      this.add.rectangle(x, y + 2, 1, h - 44, accent, 0.36);
-    }
-
-    const tokens = routeEffectTokens(pending.effects);
-    const rows = this.routeChoicePreviewRows({
-      key: pending.choiceKey,
-      text: pending.choiceText,
-      effects: pending.effects,
-      locked: false
-    });
-    const leftX = previewCards.length > 0 ? x - 116 : x;
-    const tileW = previewCards.length > 0 ? 146 : 332;
-    const tileH = 56;
-    const listTop = y - 68;
-    const positiveTokens = tokens.filter((token) => token.color !== UI_FIELD.danger);
-    const riskTokens = tokens.filter((token) => token.color === UI_FIELD.danger);
-    const visualTokens = tokens.length <= 3
-      ? tokens
-      : [...positiveTokens.slice(0, Math.max(1, 3 - Math.min(2, riskTokens.length))), ...riskTokens.slice(0, 2)].slice(0, 3);
-    if (visualTokens.length > 0) addRewardRevealHaloFx(this, leftX, y + 4, tileW + 28, 190, 0.12);
-    if (visualTokens.length === 0) {
-      this.add.text(leftX, y - 12, 'No reward will be taken.', {
-        fontFamily: UI_FONT,
-        fontSize: '15px',
-        fontStyle: UI_BOLD,
-        color: UI_SOFT,
-        align: 'center',
-        wordWrap: { width: tileW - 20 },
-        maxLines: 2
-      }).setOrigin(0.5, 0);
-    } else {
-      visualTokens.forEach((token, index) => {
-        const ty = listTop + index * (tileH + 8);
-        this.add.rectangle(leftX, ty, tileW, tileH, 0x020409, 0.68)
-          .setStrokeStyle(1, token.color, 0.68);
-        const compactTokenRow = tileW < 160;
-        const iconX = leftX - tileW / 2 + (compactTokenRow ? 25 : 34);
-        const labelX = leftX - tileW / 2 + (compactTokenRow ? 52 : 78);
-        if (token.scrap) {
-          addUiIconImage(this, token.icon ?? 'scrap-gear', iconX, ty, compactTokenRow ? 16 : 18)?.setAlpha(0.94);
-        } else if (token.icon) {
-          addUiIconImage(this, token.icon, iconX, ty, compactTokenRow ? 16 : 18)?.setAlpha(0.92);
-        }
-        this.add.text(labelX, ty, token.label, {
-          fontFamily: UI_FONT,
-          fontSize: compactTokenRow ? '12px' : '14px',
-          fontStyle: UI_BOLD,
-          color: token.textColor,
-          wordWrap: { width: tileW - (compactTokenRow ? 62 : 94) },
-          maxLines: 1
-        }).setOrigin(0, 0.5);
-      });
-    }
-    if (rows.length > 0 && visualTokens.length === 0) {
-      const summary = rows
-        .slice(0, 3)
-        .map((row) => `${row.label} ${this.routeChoiceChangeAmountText(row)}`)
-        .join(' / ');
-      this.add.text(leftX, y + 80, summary, {
-        fontFamily: UI_FONT,
-        fontSize: '11px',
-        fontStyle: UI_BOLD,
-        color: UI_SOFT,
-        align: 'center',
-        wordWrap: { width: tileW },
-        maxLines: 2
-      }).setOrigin(0.5, 0);
-    }
     return true;
   }
 
@@ -11271,9 +11170,18 @@ class RouteScene extends Phaser.Scene {
     this.renderMarketVendor(frame);
     this.renderMarketVendorTitle(frame);
     if (this.marketCategory !== 'catalog') {
-      this.add.rectangle(820, 432, 770, 470, 0x020409, 0.34)
-        .setStrokeStyle(1, 0x49606d, 0.14)
-        .setName('market-merchandise-scrim');
+      const servicesFocused = this.marketCategory === 'services';
+      this.add.rectangle(
+        servicesFocused ? 780 : 820,
+        servicesFocused ? 350 : 432,
+        servicesFocused ? 520 : 770,
+        servicesFocused ? 350 : 470,
+        0x020409,
+        servicesFocused ? 0.58 : 0.34,
+      )
+        .setStrokeStyle(1, 0x49606d, servicesFocused ? 0.26 : 0.14)
+        .setName('market-merchandise-scrim')
+        .setData('category', this.marketCategory);
     }
 
     this.renderMarketCategoryTabs(frame);
@@ -11784,7 +11692,7 @@ class RouteScene extends Phaser.Scene {
     return [...rows.values()].slice(0, 5);
   }
 
-  private routeChoiceChangeAmountText(row: { before: string; after: string }) {
+  routeChoiceChangeAmountText(row: { before: string; after: string }) {
     const leadingNumber = (value: string) => {
       const match = /^([+-]?\d+)/.exec(value);
       return match ? Number(match[1]) : undefined;
@@ -13068,18 +12976,20 @@ class RouteScene extends Phaser.Scene {
         color: enabled ? '#dffbff' : '#748494',
         fixedWidth: w - 156,
         maxLines: 1
-      }).setOrigin(0, 0.5);
+      }).setOrigin(0, 0.5).setName('market-service-label');
     }
-    this.renderMarketPriceChipFrame(x + 38, y, 86, 36, enabled, serviceFrame ? 0.3 : 0.54);
+    const costFrame = this.renderMarketPriceChipFrame(x + w / 2 - 44, y, 96, 36, enabled, serviceFrame ? 0.3 : 0.54);
+    costFrame?.setData('role', 'service-cost');
     this.add.text(x + w / 2 - 9, y - 9, `${price}`, {
       fontFamily: UI_FONT,
       fontSize: '14px',
       fontStyle: UI_BOLD,
       color: enabled ? '#f0c36f' : '#91a6b8',
       align: 'right'
-    }).setOrigin(1, 0);
-    addUiIconImage(this, 'scrap-gear', x + 8, y, 20)
-      ?.setAlpha(enabled ? 0.94 : 0.46);
+    }).setOrigin(1, 0).setName('market-service-cost-value');
+    addUiIconImage(this, 'scrap-gear', x + w / 2 - 76, y, 20)
+      ?.setAlpha(enabled ? 0.94 : 0.46)
+      .setName('market-service-cost-icon');
   }
 
   private renderMarketServiceButtonFrame(x: number, y: number, w: number, h: number, enabled: boolean) {
@@ -14742,14 +14652,14 @@ class RouteScene extends Phaser.Scene {
         default: return [];
       }
     };
-    const usefulNodes = currentMap().nodes
+    const usefulNodes = [...new Set(currentMap().nodes
       .filter((node) => !this.runState.completedRouteNodeIds.includes(node.id))
       .filter((node) => {
         if (!['basin', 'nest', 'market', 'rival', 'cache', 'signal'].includes(node.type)) return false;
         return needs.length === 0 || nodePrepTags(node).some((tag) => needs.includes(tag));
       })
-      .slice(0, 4)
-      .map((node) => routeNodeTypeLabel(node.type).replace(' Workshop', ''));
+      .map((node) => routeNodeTypeLabel(node.type).replace(' Workshop', '')))]
+      .slice(0, 4);
     return {
       bossName: encounter?.name ?? bossNode?.label ?? 'Boss',
       pressure: encounter?.tags.filter((tag) => ['cover', 'heavy', 'snag', 'openSky', 'multi', 'tempo', 'winded'].includes(tag)).join(', ') || 'unknown',
@@ -29439,7 +29349,7 @@ export {
   queueRuntimeImageAssets, queueUiIconAssets, activateRenderedAudioToggleControl,
   renderAudioToggleControl, renderCloseControl, renderCompactItemTile, renderEmptySupplySlotTile,
   renderFieldButton, renderFieldPanel, renderRichText,
-  renderSnagCardBorder, reserveEnemyArtAsset, ROUTE_SET_PIECE_PROFILES, routeMarkEffectGrammar, routeMarkEffectText,
+  renderSnagCardBorder, reserveEnemyArtAsset, ROUTE_SET_PIECE_PROFILES, routeEffectTokens, routeMarkEffectGrammar, routeMarkEffectText,
   routeNodeTypeLabel,
   showKwTooltip, suitAccentColor, supplyArtAssets, supplyCodexIconForLabel, supplyCompactArtAssets,
   supplySynergyTags, HUD_MENU_PANEL, UI_BODY, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, UI_MUTED, UI_SOFT,

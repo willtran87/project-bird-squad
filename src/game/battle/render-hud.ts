@@ -475,26 +475,36 @@ export function renderBattleSelectionPreview(
 
   const y = 440;
   const container = scene.add.container(0, 0).setName('combat-selection-preview');
-  container.add(scene.add.rectangle(gameWidth / 2, y, 510, 38, 0x07101a, 0.97)
+  container.add(scene.add.rectangle(gameWidth / 2, y, 600, 42, 0x07101a, 0.97)
     .setStrokeStyle(2, context.cyan, 0.88)
     .setName('combat-outcome-preview'));
-  container.add(scene.add.text(gameWidth / 2, y - 8, `${preview.card}  ->  ${preview.target}  ·  ACTIVATE AGAIN TO PLAY`, {
+  container.add(scene.add.text(gameWidth / 2 - 284, y - 9, `${preview.card}  →  ${preview.target}`, {
+    fontFamily,
+    fontSize: '11px',
+    fontStyle: boldFontStyle,
+    color: '#ffe7a8',
+    fixedWidth: 402,
+    align: 'left',
+    maxLines: 1,
+  }).setOrigin(0, 0.5).setName('combat-selection-card-target'));
+  container.add(scene.add.rectangle(gameWidth / 2 + 208, y - 9, 144, 18, 0x102534, 0.98)
+    .setStrokeStyle(1, context.gold, 0.72)
+    .setName('combat-selection-command-frame'));
+  container.add(scene.add.text(gameWidth / 2 + 208, y - 9, 'CONFIRM TO PLAY', {
     fontFamily,
     fontSize: '10px',
     fontStyle: boldFontStyle,
-    color: '#ffe7a8',
-    fixedWidth: 480,
-    align: 'center',
-  }).setOrigin(0.5));
-  container.add(scene.add.text(gameWidth / 2, y + 8, preview.summary, {
+    color: '#dffbff',
+  }).setOrigin(0.5).setName('combat-selection-command'));
+  container.add(scene.add.text(gameWidth / 2, y + 9, preview.summary, {
     fontFamily,
     fontSize: '11px',
     fontStyle: boldFontStyle,
     color: '#dffbff',
-    fixedWidth: 480,
+    fixedWidth: 570,
     align: 'center',
     maxLines: 1,
-  }).setOrigin(0.5));
+  }).setOrigin(0.5).setName('combat-selection-summary'));
   root.add(container);
   return container;
 }

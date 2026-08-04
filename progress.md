@@ -6509,3 +6509,556 @@ sessions through `docs/game/playtest-runbook.md`.
 - Test-resource cleanup was audited for both verification rounds. The exact preview
   trees rooted at PIDs `49016` and `34820` were stopped, ports `42955`, `42956`, and
   `5373` are released, and temporary choreography, PID, and log files were removed.
+
+## 2026-08-04 Flock Record Leader-Ledger Polish
+
+- Continued the minimum-viewport audit and found the five Flock Leader rows
+  descended into the bright footer flourish. Locked entries lost contrast against
+  the ornament, and the final row nearly merged with the Flight Log command rail.
+- Added a restrained ink gradient behind the leader ledger, shifted its section
+  heading upward, and tightened the five-row rhythm to 36 scene pixels while
+  retaining the existing 13px leader names, 11px status labels, 40px generated row
+  frames, record details, and medallions.
+- Added stable leader-row, name, status, and curtain metadata. The minimum-viewport
+  regression now requires the exact five-leader order, the 0.08-to-0.82 backing
+  fade, consistent row spacing, full curtain containment, and at least 16 scene
+  pixels before Flight Log. The broader locked/unlocked leader regression also now
+  targets the generated pager by stable names instead of an obsolete fallback
+  rectangle width and reflects the actual 312px badge-section frame.
+- Both focused regressions pass. The inspected 1000x560 evidence is
+  `.artifacts/test-results/min-supported/profile-main-1000x560.png`.
+- The required shared client followed the production title -> Flock Record path.
+  Its state confirms all five leaders, five visible badges, ten generated record
+  rows, and the active profile flourish with no browser error artifact; the native
+  capture is in `.artifacts/web-game-profile-leader-ledger-final/`.
+- The production build and bundle validation pass. The Profile lazy chunk is
+  159.3 KB, combined boot remains 725.0 KB, and only the existing preferred-target
+  warnings remain.
+- Test-resource cleanup was audited. The exact preview tree rooted at PID `51160`
+  was stopped, ports `42957` and `5373` are released, and temporary choreography,
+  PID, and log files were removed.
+
+## 2026-08-04 Save Data Rating-Grid Containment Polish
+
+- Audited the expanded Save Data/playtest overlay at 1000x560 and found every
+  rating row's fifth score sat beyond the right edge of its track. The 58-scene-
+  pixel minimum touch spacing had been applied to a score group positioned for
+  smaller visual boxes, leaving each `5` visibly detached from its row.
+- Shifted the complete five-score group 50 scene pixels left without reducing or
+  overlapping the touch targets. All score boxes now align inside the 574px row
+  track while the labels, selected state, row cycling, direct pointer scoring, and
+  keyboard/gamepad focus behavior remain unchanged.
+- Added stable names and rating-key metadata to the four visual tracks. The
+  minimum-viewport regression now requires all four exact rows, five score targets
+  per row, even 58px center spacing, full track containment, the existing 27 total
+  interactive targets, and the no-undersized-target contract.
+- The focused regression passes, and the corrected populated 1000x560 capture was
+  inspected at `.artifacts/test-results/min-supported/profile-playtest-1000x560.png`.
+- The required shared client followed the production title -> Flock Record -> Save
+  Data path with `?playtest=1`. Its state confirms the overlay and playtest mode are
+  active with no browser error artifact; its empty-run alignment evidence is in
+  `.artifacts/web-game-profile-save-rating-grid-final/`.
+- The production build and bundle validation pass. The Profile lazy chunk is
+  159.4 KB, combined boot remains 725.0 KB, and only the existing preferred-target
+  warnings remain.
+- Test-resource cleanup was audited. The exact preview tree rooted at PID `26420`
+  was stopped, ports `42958` and `5373` are released, and temporary choreography,
+  PID, and log files were removed.
+
+## 2026-08-04 Codex Grid Footer-Fade Polish
+
+- Widened the minimum-viewport audit beyond Flock Record and found the Codex
+  grid's intentionally partial next row ended on a hard crop immediately above
+  the command rail. The clipped borders and readable fragments competed with the
+  footer instead of reading as a deliberate scroll affordance.
+- Added a 72-scene-pixel, eight-step ink fade over the bottom of every scrollable
+  Codex grid. Its opacity rises monotonically from 0.05 to 0.90, the existing
+  scroll medallion remains above it, and the fade disappears at maximum scroll so
+  the final row is never veiled.
+- Added stable strip names plus step, progress, alpha, and grid-bound metadata.
+  The existing 1000x560 regression now requires eight contiguous 9px strips across
+  the full 1280px scene, exact 618-to-690 containment, increasing opacity, and no
+  remaining strips at the end of the list. The focused Codex/Flock Record scenario
+  passes, including its existing touch-target checks.
+- Inspected the corrected Supplies/Combat evidence at
+  `.artifacts/test-results/min-supported/codex-items-1000x560.png`. The required
+  shared production client followed title -> Codex and confirmed a positive grid
+  scroll range, rendered entry and scroll-cue frames, and no browser error artifact;
+  its native card-grid proof is in `.artifacts/web-game-codex-grid-fade-final/`.
+- The production build and post-build bundle validation pass. The Codex scene
+  chunk is 160.4 KB, combined boot remains 725.0 KB, and only the existing
+  preferred-target warnings remain. Frontend-checklist MCP tools were unavailable,
+  so the scoped visual, interaction, minimum-target, and responsive review was
+  completed manually and through the existing browser contract.
+- Test-resource cleanup was audited. The exact preview tree rooted at PID `54152`
+  was stopped, ports `42959` and `5373` are released, no scoped Playwright browser
+  process remains, and temporary choreography and preview logs were removed.
+
+## 2026-08-04 Route Card-Picker Inspection-Rail Polish
+
+- Audited the 1000x560 route card picker and found ten full-width `INSPECT`
+  controls repeated beneath the ten visible cards. Those controls overlapped the
+  card nameplate/selection region, hid useful labels, and gave a secondary action
+  as much visual weight as the cards themselves.
+- Removed the per-card Inspect blocks and consolidated inspection into one
+  224x64 `INSPECT FOCUSED` control in the unused left context rail. The focused
+  card ring, pointer hover focus, `R / Y` inspection shortcut, modal inspection,
+  two-step Preen/Release confirmation, and card selection targets are unchanged.
+  Pointer paging now moves focus to the first card in the newly visible row, so
+  the shared inspector cannot target an off-screen card.
+- Updated card-picker telemetry and regressions from ten inspection targets to one.
+  The minimum-viewport contract requires the single target, exact label/binding,
+  224x64 size, at least 16px below the context plaque, at least 48px before the
+  card grid, and the existing minimum CSS touch floor. The full Preen/Release
+  pointer, keyboard, controller, inspection-return, and decision-preservation
+  scenario still passes.
+- Both focused production-preview tests pass. Inspected evidence is at
+  `.artifacts/test-results/min-supported/route-card-picker-1000x560.png` and
+  `.artifacts/test-results/card-picker-input-preen.png`; card names and decision
+  deltas are visible again without repeated button blocks.
+- The first production bundle check usefully caught combined boot at 725.1 KB,
+  0.1 KB above the hard budget. Moved the shared-control composition into the
+  existing lazy inspection module and simplified picker paging math; the final
+  build and bundle gate pass at 725.0 KB combined boot. The entry is 695.0 KB and
+  the lazy reward-card-inspection chunk is 16.6 KB.
+- The required shared client followed title -> route on the production preview,
+  confirmed full route art and interactivity with no browser error artifact, and
+  wrote evidence to `.artifacts/web-game-card-picker-polish-final/`. Frontend-
+  checklist MCP tools were unavailable, so the focus, overlap, touch-target, and
+  responsive review used the existing Phaser/Playwright contracts.
+- Test-resource cleanup was audited. The exact preview tree rooted at PID `48616`
+  was stopped, ports `42960` and `5373` are released, no scoped Playwright browser
+  process remains, and temporary choreography and preview logs were removed.
+
+## 2026-08-04 Settings Footer-Hierarchy Polish
+
+- Audited the Settings overlay at the 1000x560 minimum viewport and found two
+  equivalent Close actions: the standard modal close control in the top-right and
+  a second full-size footer button beside Full Screen. The duplicate made a single
+  dismissal choice compete with the only footer-specific action.
+- Removed the redundant footer Close and centered the 190x58 Full Screen/Windowed
+  command. The top-right pointer control remains, while Esc, keyboard/gamepad row
+  focus, and minimum touch sizing are unchanged.
+- Added a footer regression that requires exactly one enabled fullscreen field
+  action with the expected label, centered x-position, and 190x58 hit area. Updated
+  the menu and battle overlay frame counts to assert the consolidated single footer
+  command while retaining route-scene compatibility with controls behind the overlay.
+- The minimum-viewport settings/remapping test, menu/route/battle settings test,
+  and keyboard/gamepad navigation test pass. The corrected 1000x560 evidence is at
+  `.artifacts/test-results/min-supported/settings-1000x560.png`.
+- The production build and bundle-size gate pass at 725.0 KB combined boot. The
+  required shared production client opened Settings from the title screen, reported
+  `settingsOpen: true`, exactly one settings field-command frame, and no browser
+  errors; native evidence is in `.artifacts/web-game-settings-footer-polish-final/`.
+  Frontend-checklist MCP tools were unavailable, so the hierarchy, responsive,
+  interaction, and touch-target review was completed manually and via Playwright.
+- Test-resource cleanup was audited. The exact preview tree rooted at PID `53320`
+  (including its esbuild and console children) was stopped, ports `42961` and `5373`
+  are released, the preview is unreachable, and no scoped Node/browser processes remain.
+
+## 2026-08-04 How-to-Play Action-Hierarchy Polish
+
+- Revisited the minimum-viewport How-to-Play overlay after the Settings cleanup
+  and found the same duplicate dismissal hierarchy: a conventional top-right Close
+  control plus an equally weighted footer Close beside the guide-specific action.
+- Removed the redundant footer Close and centered the 190x56 Skip Guide/Replay
+  Guide action. The corner Close and Esc dismissal remain available, while the
+  footer now contains only the action unique to this screen.
+- Strengthened the shared onboarding regression to require one enabled guide field
+  command at scene x=640 and retain the existing minimum 44px CSS touch floor,
+  information-row containment, typography, spacing, and route-pause checks.
+- The full Skip Guide -> Replay Guide -> live guide completion scenario and the
+  minimum-viewport onboarding/pause scenario pass. The corrected 1000x560 capture
+  is at `.artifacts/test-results/min-supported/how-to-play-1000x560.png`.
+- The production build and bundle-size gate pass at 725.0 KB combined boot. The
+  required shared client opened How to Play from the production title screen and
+  reported four topic frames, two tip rows, exactly one field command, and no
+  browser errors; native evidence is in
+  `.artifacts/web-game-how-to-play-hierarchy-final/`. Frontend-checklist MCP tools
+  were unavailable, so the focused hierarchy, responsive, interaction, and target
+  audit was completed manually and through Playwright.
+- Test-resource cleanup was audited. The exact preview tree rooted at PID `33896`
+  (including its esbuild and console children) was stopped, ports `42962` and `5373`
+  are released, the preview is unreachable, and no scoped Node/browser processes remain.
+
+## 2026-08-04 Route Reward Effect-Balance Polish
+
+- Audited the remaining minimum-viewport route/outcome captures and found the
+  non-card reward review's effect token pinned to the top of its 410x238 showcase.
+  A fixed 190px reveal halo then occupied the empty lower half, making simple
+  one-effect choices such as Rain Pipe's Heal 40% look unfinished.
+- Centered effect-token stacks by their actual one-to-three-row count, retained
+  exact 64px row spacing, and sized the reveal halo to the content stack. Single
+  effects now sit at the showcase center; two- and three-effect decisions remain
+  evenly distributed without changing choice resolution or hit targets.
+- Added stable showcase/token-frame names and row metadata. The minimum-viewport
+  regression now requires the real Rain Pipe token to be the sole 332x56 row and
+  share the showcase's x/y center, alongside all existing 44px touch-floor checks.
+- The first production bundle check correctly rejected 725.2 KB combined boot.
+  Moved the route-only effect-showcase renderer out of the startup scene and into
+  the existing lazy reward-inspection boundary; the final build passes at 722.5 KB
+  combined boot, while the route-reward overlay remains within its 6 KB hard cap.
+- Strict unused-code TypeScript, the route decision/outcome scenario, and the
+  broader route-choice/market economy flow pass. The corrected 1000x560 evidence
+  is at `.artifacts/test-results/min-supported/route-reward-claim-1000x560.png`.
+- The required shared client followed the settled production title into an
+  interactive 17-node route with no browser errors; its final evidence is in
+  `.artifacts/web-game-route-reward-balance-final/settled/`. Frontend-checklist MCP
+  tools were unavailable, so the hierarchy, responsive, and interaction review
+  was completed manually and with Playwright.
+- Test-resource cleanup was audited. The exact preview tree rooted at PID `33348`
+  (including its esbuild and console children) was stopped, ports `42963` and `5373`
+  are released, the preview is unreachable, the temporary choreography file was
+  removed, and no scoped Node/browser processes remain.
+
+## 2026-08-04 Route Exit-Confirmation Spacing Polish
+
+- Audited the abandon-run confirmation at the 1000x560 minimum viewport and found
+  the `Esc to keep playing` hint touching the upper ornament of both action frames,
+  visually merging secondary keyboard guidance with the two primary decisions.
+- Raised the hint into the open band between the loss warning and action rail,
+  strengthened its muted contrast, and added stable subtitle/hint names. Keep
+  Playing and Abandon Run retain their positions, pointer targets, and bindings.
+- Strengthened the minimum-viewport regression to measure both subtitle-to-hint
+  and hint-to-frame separation, require at least 10 scene pixels on each side,
+  and retain the existing 44px CSS touch floor for both actions.
+- Strict unused-code TypeScript, the complete route decision/outcome viewport
+  scenario, and the real first-Esc-open / second-Esc-dismiss flow pass. The
+  corrected built-preview evidence is at
+  `.artifacts/test-results/min-supported/route-confirm-exit-1000x560.png`.
+- The production build and bundle-size gate pass at 722.5 KB combined boot. The
+  required shared production client reached an interactive 17-node Rooftop Blocks
+  route with full art and no browser error artifact; evidence is in
+  `.artifacts/web-game-route-exit-hint-final/settled/`. Frontend-checklist MCP
+  tools were unavailable, so the focused hierarchy and interaction review used
+  the existing Phaser/Playwright contracts and direct screenshot inspection.
+- Test-resource cleanup was audited. The exact preview tree rooted at PID `51888`
+  (including esbuild and console children) was stopped, ports `42964` and `5373`
+  are released, the preview is unreachable, the temporary choreography file was
+  removed, and no scoped Node/browser processes remain.
+
+## 2026-08-04 Market Services Focus-and-Cost Polish
+
+- Audited the 1000x560 Services market and found its compact decision rail
+  competing directly with the stall's richly detailed props. The broad 34% wash
+  did not establish a clear foreground, while each Scrap gear floated between the
+  service label and its far-right price, splitting every row into three zones.
+- Replaced the broad Services wash with a non-interactive 520x350 focused curtain
+  at 58% fill opacity, centered around the header and three decisions. Other market
+  categories retain their existing broad treatment and the vendor remains clear.
+- Consolidated every service gear and number into a right-aligned 96x36 cost
+  capsule. Labels retain at least 8 scene pixels from the capsule, cost frames sit
+  at least 10 pixels inside their command frames, and all decisions retain their
+  original pointer, keyboard, controller, and purchase behavior.
+- Strengthened the minimum-viewport regression to prove the curtain is behind all
+  decisions, non-interactive, padded by at least 64 scene pixels around the action
+  rail, and that all three cost clusters keep their exact containment. The first
+  run usefully caught that Phaser rectangle opacity is exposed as `fillAlpha`
+  rather than display-object `alpha`; the corrected assertion and rerun pass.
+- Strict unused-code TypeScript, the complete route decision/outcome viewport
+  scenario, market category switching, and intentional pointer/keyboard/controller
+  purchase flow pass. The corrected built-preview evidence is at
+  `.artifacts/test-results/min-supported/route-market-services-1000x560.png`.
+- The production build and bundle-size gate pass at 722.8 KB combined boot. The
+  required shared client reached a full-art, interactive 24-node route with no
+  browser error artifact; evidence is in
+  `.artifacts/web-game-market-services-polish-final/settled/`. Frontend-checklist
+  MCP tools were unavailable, so the focused hierarchy and interaction audit used
+  the existing Phaser/Playwright contracts and direct screenshot inspection.
+- Test-resource cleanup was audited. The exact preview tree rooted at PID `28572`
+  (including esbuild and console children) was stopped, ports `42965` and `5373`
+  are released, the preview is unreachable, the temporary choreography file was
+  removed, and no scoped Node/browser processes remain.
+
+## 2026-08-04 Controls Footer-Hierarchy Polish
+
+- Audited the 1000x560 Controls panel and found two equivalent dismissal actions:
+  the standard top-right Close control and a full-size footer `Done` command. This
+  made dismissal compete with `Reset Defaults`, the only footer-specific action.
+- Removed the duplicate footer Done and centered Reset Defaults beneath the six
+  bindings. The corner Close, Esc, controller Back, both binding-page tabs, capture
+  cancellation, and immediate binding persistence remain unchanged.
+- Simplified Controls focus from eight destinations to seven: six bindings plus
+  Reset Defaults. Arrow/Tab navigation wraps across those seven; Left/Right and
+  controller D-pad cannot drift into a removed slot while Reset is focused.
+- Strengthened the minimum-viewport regression to require exactly one centered
+  196x58 footer hit target and nine total 44px-minimum remapping targets. Extended
+  the live remapping scenario to prove controller Right stays on Reset and
+  controller Back returns to Settings; the unavailable-storage fallback now uses
+  the preserved two-Esc dismissal path.
+- Strict unused-code TypeScript, the minimum-viewport Settings/remapping scenario,
+  unavailable-storage flow, and full keyboard/controller binding persistence and
+  reset scenario pass. Built-preview evidence is at
+  `.artifacts/test-results/min-supported/settings-controls-1000x560.png`.
+- The production build and bundle-size gate pass at 722.8 KB combined boot; the
+  lazy system-overlays chunk shrank from 29.8 KB to 29.5 KB. The required shared
+  client opened the exact Menu -> Settings -> Controls surface with no browser
+  error artifact; native evidence is in
+  `.artifacts/web-game-controls-footer-polish-final/controls/`. Frontend-checklist
+  MCP tools were unavailable, so the focused hierarchy and interaction audit used
+  the existing Phaser/Playwright contracts and direct screenshot inspection.
+- Test-resource cleanup was audited. The exact preview tree rooted at PID `42048`
+  (including esbuild and console children) was stopped, ports `42966` and `5373`
+  are released, the preview is unreachable, the temporary choreography file was
+  removed, and no scoped Node/browser processes remain.
+
+## 2026-08-04 Title Setup-Contrast Polish
+
+- Audited the real 1000x560 title screen and found the lower setup controls
+  competing with the detailed flock key art. Available and locked leader choices
+  plus the Ascension setup were visually receding into the background even though
+  their pointer targets and navigation were already correct.
+- Strengthened only the local decision backplates: the selected leader remains the
+  strongest tier, available leaders now retain a readable dark field, locked
+  leaders keep a clearly subdued but legible treatment, and Ascension has enough
+  opacity to separate its values from the scene. No full-width curtain was added,
+  so the character art and open title composition remain intact.
+- Added stable `title-leader-choice-backplate` and
+  `title-ascension-backplate` scene names/data. The minimum-viewport regression now
+  proves the selected/available/locked opacity tiers and retains the existing 44px
+  CSS touch floor for every title action.
+- Strict unused-code TypeScript, the minimum supported-display/title scenario,
+  leader hover dossier, leader selection/starter-deck flow, and locked-leader
+  gating all pass. The inspected built-preview minimum capture is at
+  `.artifacts/test-results/min-supported/title-1000x560.png`.
+- The production build and bundle-size gate pass at 722.9 KB combined boot. The
+  required shared production client selected The Spark-Caller with real title
+  input, matched the visual state to `render_game_to_text`, and produced no browser
+  error artifact; evidence is in
+  `.artifacts/web-game-title-choice-contrast-final/shot-0.png`. Frontend-checklist
+  MCP tools were unavailable, so the focused hierarchy and interaction audit used
+  the existing Phaser/Playwright contracts and direct screenshot inspection.
+- Test-resource cleanup was audited. The exact preview tree rooted at PID `31068`
+  (including esbuild and console children) was stopped, ports `42967` and `5373`
+  are released, the preview is unreachable, the temporary choreography file was
+  removed, and no Bird Squad-scoped Node/browser processes remain. A separate
+  Playwright session for another project on port 3000 was detected and deliberately
+  left untouched.
+
+## 2026-08-04 Title Collection-Strip Hierarchy Polish
+
+- Audited the title screen at 1280x720 and 1000x560 and found the 400px collection
+  goal strip extending into the stable logo backplate's visual footprint. This made
+  a secondary progress shortcut compete with the primary Bird Squad mark.
+- Reduced the strip to 352px and shifted it beneath the Collection/Flock Record
+  utilities. It now keeps 8px of right-canvas padding and at least 32px from the
+  stable logo artwork while preserving both full progress lines and Open Atlas.
+  The transient gold title-impact flecks remain free to pass behind the opaque
+  strip rather than being mistaken for persistent logo bounds.
+- Strengthened the minimum-viewport regression with exact strip bounds, label
+  containment, logo-core separation, pointer availability, and the existing 44px
+  title target floor. Added a dedicated longer-label regression using Curator's
+  Eye that verifies containment and the real pointer transition into Collection
+  Atlas. Both focused built-preview scenarios and strict unused-code TypeScript
+  pass. Inspected evidence is at
+  `.artifacts/test-results/title-collection-goal-1000x560.png` and
+  `.artifacts/test-results/min-supported/title-1000x560.png`.
+- The older combined title/route collection-path scenario was also attempted while
+  developing the regression. Its new title assertions completed, but its unchanged
+  route half timed out after the Codex return while waiting for the Route collection
+  debug `rendered` flag; the accessibility snapshot already showed the Route view.
+  The unrelated cross-scene readiness issue was left scoped out and its original
+  test flow was restored.
+- The production build and bundle-size gate pass at 722.9 KB combined boot. The
+  required shared client inspected the exact title strip, activated it with a real
+  pointer, reached Collection Atlas, matched both `render_game_to_text` states, and
+  produced no browser error artifact. Evidence is in
+  `.artifacts/web-game-title-collection-strip-final/`. Frontend-checklist MCP tools
+  were unavailable, so the hierarchy and interaction audit used the existing
+  Phaser/Playwright contracts and direct screenshot inspection.
+- Test-resource cleanup was audited. The exact preview tree rooted at PID `42460`
+  (including esbuild and console children) was stopped, ports `42968` and `5373`
+  are released, the preview is unreachable, the temporary choreography file was
+  removed, and no Bird Squad-scoped Node/browser processes remain.
+
+## 2026-08-04 Stable Route Collection-Path Polish
+
+- Reproduced the prior Atlas-return timeout and ruled out the runtime image
+  loader: Route reached first interaction in roughly 0.6 seconds while its
+  optional full-art batches continued loading normally. The missing affordance
+  was a render gate that required `selectedNodeId` to be empty even though Route
+  initialization always selects the first available node.
+- Restored the Collection Path strip on every stable, non-modal Route screen.
+  Existing pause, settings, deck, flock, Waymark, Supply, market, node-choice,
+  reward, picker, and district-contract overlays still suppress it. The strip's
+  300x58 lane remains separate from route guidance and the autosave chip.
+- Strict unused-code TypeScript passes. The built collection-path regression now
+  completes Title -> Atlas -> Route -> Atlas -> Route through pointer, keyboard
+  `G`, and controller `R3`, preserves the exact flight seed across every return,
+  and finishes in 14.6 seconds. Inspected visual evidence is at
+  `.artifacts/test-results/collection-path-route.png`.
+- The production build produced by the focused regression passes the bundle hard
+  gate at 722.8 KB combined boot. The required shared production client completed
+  Title -> Route -> newest-card dossier -> Route using real pointer input, ended
+  with full art and `collectionGoal.rendered` settled, and emitted no browser
+  error artifact. Evidence is under
+  `.artifacts/web-game-route-collection-stable-final/client/`.
+- Test-resource cleanup was audited. The preview tree rooted at PID `52756`
+  (including PID `22548` console and PID `29880` esbuild) was stopped, ports
+  `42969` and `5373` are free and unreachable, the temporary choreography file
+  was removed, and no Bird Squad-scoped Node/browser/esbuild processes remain.
+- Next useful collection polish remains observation-driven: verify this stable
+  Route shortcut in the planned fresh-player sessions before adding any more
+  collection prompts or urgency.
+
+## 2026-08-04 Route Collection-Plate Hierarchy Polish
+
+- Audited the built normal and new-card Route states at the minimum supported
+  viewport. The secondary Collection Path panel was visibly 58px tall—larger
+  than the 42px primary gain/risk decision dock—and sat only 12px above the
+  district banner because its visible plate also served as its touch target.
+- Separated presentation from interaction in the shared Collection Path
+  renderer. Compact Route instances now use a quieter 44px visual plate with
+  reduced resting opacity and stroke strength while retaining the full 300x58
+  invisible pointer/touch target. The title's 352x58 treatment remains
+  unchanged, and hover still strengthens the compact plate itself.
+- Extended the collection-path regression to prove the exact 300x58 Route hit
+  bounds, the 300x44 visible plate bounds, and containment of both text lines.
+  Strict unused-code TypeScript passes. The standard milestone/Atlas and
+  new-card/dossier tests both pass across pointer, keyboard, and controller
+  round trips. Inspected built screenshots are
+  `.artifacts/test-results/collection-path-route.png`,
+  `.artifacts/test-results/new-card-direct-route-strip.png`, and
+  `.artifacts/test-results/collection-path-title.png`.
+- The production build and bundle hard gate pass at 722.8 KB combined boot.
+  The required shared client completed Title -> Route -> newest-card dossier ->
+  Route with real pointer input, full art settled, the collection goal rendered,
+  two confirm/two close cues, and no browser-error artifact. Evidence is under
+  `.artifacts/web-game-route-collection-compact-final/client/`.
+- Test-resource cleanup was audited. The preview tree rooted at PID `35832`
+  (including PID `19108` console and PID `52612` esbuild) was stopped, ports
+  `42970` and `5373` are free and unreachable, the temporary choreography file
+  was removed, and no Bird Squad-scoped Node/browser/esbuild processes remain.
+- Next useful UI audit: compare the persistent Route decision dock against the
+  boss-prep dossier at minimum landscape before changing either surface.
+
+## 2026-08-04 Boss-Prep Dossier Copy Polish
+
+- Audited the current boss-selected Route at the 1000x560 minimum viewport.
+  Panel geometry was sound: the gain/risk decision dock, compact Collection Path,
+  district banner, 788x56 boss-prep footer, and commit control retained separate
+  lanes. The actionable footer copy was the weak point: raw `openSky` casing and
+  the first four route nodes could yield repeated, truncated labels such as two
+  Rooftop Caches followed by an ellipsis.
+- Deduplicated boss-prep recommendations by node type before applying the
+  four-item cap. The player now receives distinct preparation options rather
+  than repeated instances of the same procedural node.
+- Rewrote only the compact visual lines with stable player-facing shorthand:
+  `P2 50% · COVER / SNAG / SKY / MULTI` and concise node labels such as `ROOST`,
+  `CACHE`, and `RIVAL`. The complete phase name/opener and canonical node names
+  remain available in text state and screen-reader output.
+- Added stable names for the boss-prep backplate, pressure line, and useful-node
+  line. The focused regression now proves unique recommendations, exact visible
+  pressure copy, an untruncated 2-4 item useful list, and the 788x56 footer bounds.
+  Strict unused-code TypeScript, runtime validation, the production build, and
+  the focused boss-prep browser test pass. Inspected exact-surface evidence is at
+  `.artifacts/test-results/boss-prep-dossier-current-1000x560.png`.
+- The bundle hard gate passes at 723.1 KB combined boot. The required shared
+  production client reached a fully settled Route with four distinct derived
+  boss-prep recommendations and no browser-error artifact; evidence is under
+  `.artifacts/web-game-boss-prep-copy-final/client/`.
+- Test-resource cleanup was audited. The preview tree rooted at PID `3660`
+  (including PID `42284` console and PID `51220` esbuild) was stopped, ports
+  `42971` and `5373` are free and unreachable, the temporary choreography file
+  was removed, and no Bird Squad-scoped Node/browser/esbuild processes remain.
+- Next useful polish: inspect long boss names across all four districts against
+  the fixed 196px footer name lane before changing dossier geometry.
+
+## 2026-08-04 Cross-District Boss-Prep Fit Polish
+
+- Audited all four district boss names and pressure sets against the fixed 196px
+  boss-prep footer lane at the 1000x560 minimum viewport. All 16-20 character
+  boss names already fit at the intended 15px display size, so no unnecessary
+  per-name scaling was introduced.
+- Preserved the complete pressure vocabulary for every district while allowing
+  the longer five- and six-tag sets to wrap to at most two lines. The readout now
+  uses 9px type with tight leading inside the existing 788x56 dossier instead of
+  shrinking the longest district to an unreadable single line.
+- Added a four-map regression that measures each boss name with the live canvas
+  font context, checks every wrapped pressure line against the 196px lane, and
+  proves the complete pressure block stays inside the backplate. The capture
+  setup also confirms district contracts before screenshots so the exact footer
+  is reviewed at full contrast rather than dimmed behind the contract modal.
+- Strict unused-code TypeScript, runtime-data validation, the production build,
+  and the all-district focused browser regression pass. Inspected screenshots
+  are `.artifacts/test-results/boss-prep-district-1-1000x560.png` through
+  `.artifacts/test-results/boss-prep-district-4-1000x560.png`.
+- The bundle hard gate passes at 723.2 KB combined boot (195.0 KB gzip); the
+  existing 710 KB target warning remains non-blocking. The required shared
+  production client reached a fully settled full-art Route, selected the entry
+  node, exposed the expected boss-prep state, and emitted no browser-error
+  artifact. Evidence is under
+  `.artifacts/web-game-boss-prep-cross-district-final/client/`.
+- Test-resource cleanup was audited. The preview tree rooted at PID `51908`
+  (including PID `47056` console and PID `53504` esbuild) was stopped, ports
+  `42972` and `5373` are free and unreachable, the temporary choreography file
+  was removed, and no Bird Squad-scoped Node/browser/esbuild processes remain.
+- Next useful polish should move to another observed minimum-viewport surface;
+  the boss-prep footer now has measured coverage for every current district.
+
+## 2026-08-04 Combat Confirmation-Rail Hierarchy Polish
+
+- Audited the selected-card confirmation at the 1000x560 minimum viewport. Its
+  single header line combined a variable card name, variable target name, and
+  `ACTIVATE AGAIN TO PLAY`, making the safety instruction compete with the
+  actual decision and leaving later long-name encounters fragile.
+- Widened the compact rail from 510x38 to 600x42 and separated it into three
+  clear regions: `Card → Target` at 11px, a fixed 144x18 `CONFIRM TO PLAY`
+  capsule at 10px, and the exact projected outcome at 11px beneath them. The
+  existing card selection, enemy targeting, second-activation commit, Esc/B
+  cancel, keyboard, pointer, controller, and screen-reader behavior is unchanged.
+- Added stable names for the decision, command frame, command label, and outcome
+  text. A new minimum-viewport regression renders the real longest card and
+  enemy names (`Plume Victory Wire → Mongoose Counterfighter`) and proves their
+  natural width, eight-pixel command separation, complete panel containment,
+  and long three-part outcome fit. Existing intentional-selection coverage now
+  asserts the consolidated command by stable object identity.
+- Strict unused-code TypeScript and both focused browser regressions pass. The
+  normal selected-card capture is
+  `.artifacts/test-results/combat-card-intentional-selection-1000x560.png`; the
+  inspected worst-case capture is
+  `.artifacts/test-results/combat-selection-long-content-1000x560.png`.
+- The production build and bundle hard gate pass at 723.2 KB combined boot
+  (195.1 KB gzip), with the existing 710 KB preferred-target warning unchanged.
+  The required shared client completed Title → Route → Combat, advanced through
+  the first-combat guide, armed First Flight against Roof Rat through real
+  pointer input, matched the three projected deltas in text state, settled full
+  art, and emitted no browser-error artifact. Evidence is under
+  `.artifacts/web-game-combat-confirmation-rail-final/client-selected/`.
+- Test-resource cleanup was audited. The preview tree rooted at PID `31180`
+  (including PID `54652` console and PID `54692` esbuild) was stopped, ports
+  `42973` and `5373` are free and unreachable, the temporary choreography file
+  was removed, and no Bird Squad-scoped Node/browser/esbuild processes remain.
+- Next useful polish should audit another variable-content combat surface, such
+  as multi-enemy intent labels, rather than adding more chrome to this rail.
+
+## 2026-08-04 Multi-Enemy Intent-Ownership Polish
+
+- Audited live enemy move labels and status lanes at the 1000x560 minimum
+  viewport. A permanent move-name row would compete with status chips and boss
+  objectives, so the detailed move remains in the existing intent tooltip.
+- The real three-enemy Gutter Baron formation exposed the stronger problem:
+  Roof Rat A's right-side `8` and Roof Rat B's forced-left `8` occupied the same
+  gap and read as one detached value. Multi-enemy intent rings are now compact
+  and dock against their owner's health bar, while actual right-edge fit decides
+  whether an outer badge must flip inward. The roomier single-enemy treatment
+  remains intact with a slightly tighter decorative ring.
+- Added a deterministic elite-formation regression using the real
+  `enc_gutter_baron` payload. It proves all three names fit their vitals frames,
+  each intent ring overlaps only its owner bar, and no ring collides with a
+  foreign bar or another badge. The inspected exact capture is
+  `.artifacts/test-results/combat-multi-enemy-1000x560.png`.
+- The new multi-enemy regression and existing intentional card-selection flow
+  pass. The production build passes, and the bundle gate caught the foreground
+  lazy chunk slightly over its 8 KB cap; simplifying the same geometry brought
+  it back under the unchanged hard limit. Combined boot remains 723.2 KB with
+  the existing preferred-target warning unchanged.
+- The required shared production client completed Title -> Route -> Combat,
+  dismissed the encounter intro, and reached interactive full art with one
+  enemy, one intent ring, no pending/failed/timed-out asset groups, and no error
+  artifact. Evidence is under
+  `.artifacts/web-game-multi-enemy-intent-ownership-final/client-settled/`.
+- Test-resource cleanup was audited. The production preview descendants
+  (`48052` Vite and `26520` esbuild) were stopped, ports `42974` and `5373` are
+  free and unreachable, the temporary choreography file was removed, and no
+  Bird Squad-scoped Node/browser/esbuild processes remain.

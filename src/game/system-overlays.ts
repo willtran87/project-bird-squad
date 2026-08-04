@@ -845,7 +845,7 @@ export function renderConfirmRunExitOverlay(
     color: UI_SOFT,
     align: 'center',
     wordWrap: { width: 540 },
-  }).setOrigin(0.5));
+  }).setOrigin(0.5).setName('route-confirm-exit-subtitle'));
 
   const commandFrameKey = iconKey('confirm-exit-command-frame');
   const hasCommandFrame = scene.textures.exists(commandFrameKey);
@@ -894,11 +894,11 @@ export function renderConfirmRunExitOverlay(
     .setInteractive({ useHandCursor: true })
     .setName('route-confirm-exit-abandon-hit'));
   abandonHit.on('pointerdown', options.onAbandonRun);
-  addUi(addTo, scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, 'Esc to keep playing', {
+  addUi(addTo, scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 4, 'Esc to keep playing', {
     fontFamily: UI_FONT,
     fontSize: '12px',
-    color: '#9aaabe',
-  }).setOrigin(0.5).setAlpha(0.88));
+    color: '#b8c5d8',
+  }).setOrigin(0.5).setAlpha(0.92).setName('route-confirm-exit-escape-hint'));
 }
 
 export function renderSettingsMenuOverlay(
@@ -1302,10 +1302,9 @@ export function renderSettingsMenuOverlay(
     setFocus(0);
     notifyAudioToggle();
   });
-  dependencies.renderFieldButton(scene, addTo, frame.cx - 112, frame.bottom - 72, 190, MIN_SUPPORTED_TOUCH_TARGET, scene.scale.isFullscreen ? 'Windowed' : 'Full Screen', true, () => {
+  dependencies.renderFieldButton(scene, addTo, frame.cx, frame.bottom - 72, 190, MIN_SUPPORTED_TOUCH_TARGET, scene.scale.isFullscreen ? 'Windowed' : 'Full Screen', true, () => {
     options.onToggleFullscreen();
   }, UI_FIELD.cyan);
-  dependencies.renderFieldButton(scene, addTo, frame.cx + 112, frame.bottom - 72, 190, MIN_SUPPORTED_TOUCH_TARGET, 'Close', true, dismissSettingsOverlay, UI_FIELD.gold);
 
   const controlsPageKey = controlPanelPageRegistryKey(scene);
   const controlsFocusKey = controlPanelFocusRegistryKey(scene);
@@ -1316,7 +1315,7 @@ export function renderSettingsMenuOverlay(
   let controlsPage: ControlBindingPage = scene.registry.get(controlsPageKey) === 'utility' ? 'utility' : 'play';
   let controlsFocusIndex = Number(scene.registry.get(controlsFocusKey));
   if (!Number.isFinite(controlsFocusIndex)) controlsFocusIndex = 0;
-  controlsFocusIndex = Math.round(clamp(controlsFocusIndex, 0, 7));
+  controlsFocusIndex = Math.round(clamp(controlsFocusIndex, 0, 6));
   const storedCaptureAction = scene.registry.get(controlsCaptureKey);
   let captureAction = reopenControlsPanel
     && CONTROL_BINDING_DEFINITIONS.some((definition) => definition.action === storedCaptureAction)
@@ -1328,12 +1327,12 @@ export function renderSettingsMenuOverlay(
   const pageDefinitions = () => CONTROL_BINDING_DEFINITIONS.filter((definition) => definition.page === controlsPage);
   const controlsFocusGeometry = (index: number, controlFrame: FieldFrame) => index < 6
     ? { x: controlFrame.cx, y: controlFrame.top + 200 + index * MIN_SUPPORTED_TOUCH_TARGET, width: 566, height: MIN_SUPPORTED_TOUCH_TARGET }
-    : { x: index === 6 ? controlFrame.left + 210 : controlFrame.right - 210, y: controlFrame.bottom - 58, width: 196, height: 58 };
+    : { x: controlFrame.cx, y: controlFrame.bottom - 58, width: 196, height: 58 };
 
   const updateControlsValue = () => controlsValueText?.setText(controlBindingsAreDefault() ? 'Default' : 'Custom');
 
   const setControlsFocus = (index: number, controlFrame?: FieldFrame) => {
-    controlsFocusIndex = (index + 8) % 8;
+    controlsFocusIndex = (index + 7) % 7;
     scene.registry.set(controlsFocusKey, controlsFocusIndex);
     if (!controlsFocusRing || !controlFrame) return;
     const geometry = controlsFocusGeometry(controlsFocusIndex, controlFrame);
@@ -1341,7 +1340,7 @@ export function renderSettingsMenuOverlay(
     controlsFocusRing.setDisplaySize(geometry.width, geometry.height);
     const definition = pageDefinitions()[controlsFocusIndex];
     controlsFocusRing.setData('index', controlsFocusIndex);
-    controlsFocusRing.setData('label', definition?.label ?? (controlsFocusIndex === 6 ? 'Reset Defaults' : 'Done'));
+    controlsFocusRing.setData('label', definition?.label ?? 'Reset Defaults');
     controlsRowFrames.forEach((rowFrame, rowIndex) => {
       rowFrame?.setAlpha(rowIndex === controlsFocusIndex ? 0.82 : restingControlsRowFrameAlpha(rowIndex));
     });
@@ -1395,8 +1394,7 @@ export function renderSettingsMenuOverlay(
   const activateControlsFocus = () => {
     const definition = pageDefinitions()[controlsFocusIndex];
     if (definition) beginControlCapture(definition.action);
-    else if (controlsFocusIndex === 6) resetAllControls();
-    else closeControlsPanel();
+    else resetAllControls();
   };
 
   renderControlsPanel = () => {
@@ -1501,19 +1499,15 @@ export function renderSettingsMenuOverlay(
       wordWrap: { width: 520 },
     }).setOrigin(0.5));
 
-    dependencies.renderFieldButton(scene, addPanel, controlFrame.left + 210, controlFrame.bottom - 58, 190, 56, 'Reset Defaults', true, resetAllControls, UI_FIELD.cyan);
-    dependencies.renderFieldButton(scene, addPanel, controlFrame.right - 210, controlFrame.bottom - 58, 190, 56, 'Done', true, () => closeControlsPanel(), UI_FIELD.gold);
-    [6, 7].forEach((index) => {
-      const geometry = controlsFocusGeometry(index, controlFrame);
-      const hit = addUi(addPanel, scene.add.rectangle(geometry.x, geometry.y, geometry.width, geometry.height, 0x020409, 0.001)
-        .setName(index === 6 ? 'system-controls-reset-hit' : 'system-controls-done-hit')
-        .setInteractive({ useHandCursor: true }));
-      hit.on('pointerover', () => setControlsFocus(index, controlFrame));
-      hit.on('pointerdown', () => {
-        setControlsFocus(index, controlFrame);
-        if (index === 6) resetAllControls();
-        else closeControlsPanel();
-      });
+    dependencies.renderFieldButton(scene, addPanel, controlFrame.cx, controlFrame.bottom - 58, 190, 56, 'Reset Defaults', true, resetAllControls, UI_FIELD.cyan);
+    const resetGeometry = controlsFocusGeometry(6, controlFrame);
+    const resetHit = addUi(addPanel, scene.add.rectangle(resetGeometry.x, resetGeometry.y, resetGeometry.width, resetGeometry.height, 0x020409, 0.001)
+      .setName('system-controls-reset-hit')
+      .setInteractive({ useHandCursor: true }));
+    resetHit.on('pointerover', () => setControlsFocus(6, controlFrame));
+    resetHit.on('pointerdown', () => {
+      setControlsFocus(6, controlFrame);
+      resetAllControls();
     });
 
     const geometry = controlsFocusGeometry(controlsFocusIndex, controlFrame);
@@ -1570,7 +1564,7 @@ export function renderSettingsMenuOverlay(
         if (controlsFocusIndex >= 6) setControlsFocus(6, controlsPanel.getData('frame'));
         else setControlsPage(controlsPage === 'play' ? 'utility' : 'play');
       } else if (event.key === 'ArrowRight' || matchesControlAction(event, 'next')) {
-        if (controlsFocusIndex >= 6) setControlsFocus(7, controlsPanel.getData('frame'));
+        if (controlsFocusIndex >= 6) setControlsFocus(6, controlsPanel.getData('frame'));
         else setControlsPage(controlsPage === 'play' ? 'utility' : 'play');
       } else if (event.key === 'Enter' || event.key === ' ' || matchesControlAction(event, 'confirm')) activateControlsFocus();
       else if (event.key === 'Escape' || matchesControlAction(event, 'back')) closeControlsPanel();
@@ -1606,7 +1600,7 @@ export function renderSettingsMenuOverlay(
         if (controlsFocusIndex >= 6) setControlsFocus(6, controlFrame);
         else setControlsPage(controlsPage === 'play' ? 'utility' : 'play');
       } else if (!captureAction && button.index === 15) {
-        if (controlsFocusIndex >= 6) setControlsFocus(7, controlFrame);
+        if (controlsFocusIndex >= 6) setControlsFocus(6, controlFrame);
         else setControlsPage(controlsPage === 'play' ? 'utility' : 'play');
       } else if (!captureAction && button.index === 0) activateControlsFocus();
       else if (!captureAction && button.index === 1) closeControlsPanel();
@@ -1767,6 +1761,5 @@ export function renderHowToPlayOverlay(
   });
 
   const guideLabel = options.guide.enabled && !options.guide.completed ? 'Skip Guide' : 'Replay Guide';
-  dependencies.renderFieldButton(scene, addTo, frame.cx - 112, frame.bottom - 42, 190, 56, guideLabel, true, options.onGuideAction, UI_FIELD.cyan);
-  dependencies.renderFieldButton(scene, addTo, frame.cx + 112, frame.bottom - 42, 190, 56, 'Close', true, options.onClose, UI_FIELD.gold);
+  dependencies.renderFieldButton(scene, addTo, frame.cx, frame.bottom - 42, 190, 56, guideLabel, true, options.onGuideAction, UI_FIELD.cyan);
 }

@@ -1,5 +1,136 @@
 import Phaser from 'phaser';
+import {
+  addRewardRevealHaloFx,
+  addUiIconImage,
+  displayName,
+  routeEffectTokens,
+  routeNodeTypeLabel,
+  UI_BOLD,
+  UI_CYAN,
+  UI_FIELD,
+  UI_FONT,
+  UI_GOLD,
+  UI_SOFT,
+} from '../main';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
+
+export function renderRouteRewardEffectShowcase(scene: any, pending: any, x: number, y: number, w: number, h: number) {
+  const accent = pending.accent;
+  const previewCards = pending.previewCards ?? [];
+  scene.add.rectangle(x, y, w, h, 0x06101a, 0.9)
+    .setStrokeStyle(2, accent, 0.76)
+    .setName('route-reward-effect-showcase');
+  scene.add.rectangle(x, y - h / 2 + 16, w - 28, 3, accent, 0.72);
+
+  if (previewCards.length > 0) {
+    const cardSlots = previewCards.slice(0, 2);
+    const compactCards = cardSlots.length > 1;
+    cardSlots.forEach((card: any, index: number) => {
+      const cardX = compactCards ? x + 48 + index * 116 : x + 102;
+      const cardW = compactCards ? 86 : 108;
+      const cardH = Math.round(cardW * 1.5);
+      const cardY = compactCards ? y - 10 : y - 4;
+      const cardKindLabel = card.runtime.kind === 'snag' ? 'SNAG CARD' : `${card.runtime.rarity.toUpperCase()} CARD`;
+      const cardAccent = card.runtime.kind === 'snag' ? UI_FIELD.danger : UI_FIELD.gold;
+      const cardTextColor = card.runtime.kind === 'snag' ? '#ffd5cc' : UI_GOLD;
+      addRewardRevealHaloFx(scene, cardX, cardY, cardW + 54, cardH + 70, card.runtime.kind === 'snag' ? 0.14 : 0.18);
+      scene.add.text(cardX, y - 100, cardKindLabel, {
+        fontFamily: UI_FONT,
+        fontSize: compactCards ? '9px' : '10px',
+        fontStyle: UI_BOLD,
+        color: card.runtime.kind === 'snag' ? '#ffd5cc' : UI_CYAN,
+        align: 'center',
+        wordWrap: { width: compactCards ? 104 : 150 },
+        maxLines: 1,
+      }).setOrigin(0.5, 0);
+      scene.renderRouteRewardCardOption(card, cardX, cardY, cardW, cardH, cardAccent);
+      scene.add.rectangle(cardX, y + 93, compactCards ? 104 : 138, 28, 0x020409, 0.94)
+        .setStrokeStyle(1, cardAccent, 0.72);
+      scene.add.text(cardX, y + 83, displayName(card), {
+        fontFamily: UI_FONT,
+        fontSize: compactCards ? '10px' : '11px',
+        fontStyle: UI_BOLD,
+        color: cardTextColor,
+        align: 'center',
+        wordWrap: { width: compactCards ? 96 : 126 },
+        maxLines: 2,
+      }).setOrigin(0.5, 0);
+      const cardHit = scene.add.rectangle(cardX, cardY, cardW + 18, cardH + 76, 0x000000, 0.01)
+        .setInteractive({ useHandCursor: true });
+      cardHit.on('pointerover', () => scene.showHoverCardDetail(card, `${routeNodeTypeLabel(pending.nodeType)} preview`, card.cost, cardX, cardY));
+      cardHit.on('pointerout', () => scene.hideHoverCardDetail());
+    });
+    scene.add.rectangle(x, y + 2, 1, h - 44, accent, 0.36);
+  }
+
+  const tokens = routeEffectTokens(pending.effects);
+  const rows = scene.routeChoicePreviewRows({
+    key: pending.choiceKey,
+    text: pending.choiceText,
+    effects: pending.effects,
+    locked: false,
+  });
+  const leftX = previewCards.length > 0 ? x - 116 : x;
+  const tileW = previewCards.length > 0 ? 146 : 332;
+  const tileH = 56;
+  const positiveTokens = tokens.filter((token) => token.color !== UI_FIELD.danger);
+  const riskTokens = tokens.filter((token) => token.color === UI_FIELD.danger);
+  const visualTokens = tokens.length <= 3
+    ? tokens
+    : [...positiveTokens.slice(0, Math.max(1, 3 - Math.min(2, riskTokens.length))), ...riskTokens.slice(0, 2)].slice(0, 3);
+  const listTop = y - (visualTokens.length - 1) * 32;
+  if (visualTokens.length > 0) {
+    addRewardRevealHaloFx(scene, leftX, y, tileW + 28, Math.min(h - 32, 94 + (visualTokens.length - 1) * 64), 0.12);
+  }
+  if (visualTokens.length === 0) {
+    scene.add.text(leftX, y - 12, 'No reward will be taken.', {
+      fontFamily: UI_FONT,
+      fontSize: '15px',
+      fontStyle: UI_BOLD,
+      color: UI_SOFT,
+      align: 'center',
+      wordWrap: { width: tileW - 20 },
+      maxLines: 2,
+    }).setOrigin(0.5, 0);
+  } else {
+    visualTokens.forEach((token, index) => {
+      const ty = listTop + index * 64;
+      scene.add.rectangle(leftX, ty, tileW, tileH, 0x020409, 0.68)
+        .setStrokeStyle(1, token.color, 0.68)
+        .setName('route-reward-effect-token-frame')
+        .setData('index', index)
+        .setData('count', visualTokens.length);
+      const compactTokenRow = tileW < 160;
+      const iconX = leftX - tileW / 2 + (compactTokenRow ? 25 : 34);
+      const labelX = leftX - tileW / 2 + (compactTokenRow ? 52 : 78);
+      if (token.scrap) {
+        addUiIconImage(scene, token.icon ?? 'scrap-gear', iconX, ty, compactTokenRow ? 16 : 18)?.setAlpha(0.94);
+      } else if (token.icon) {
+        addUiIconImage(scene, token.icon, iconX, ty, compactTokenRow ? 16 : 18)?.setAlpha(0.92);
+      }
+      scene.add.text(labelX, ty, token.label, {
+        fontFamily: UI_FONT,
+        fontSize: compactTokenRow ? '12px' : '14px',
+        fontStyle: UI_BOLD,
+        color: token.textColor,
+        wordWrap: { width: tileW - (compactTokenRow ? 62 : 94) },
+        maxLines: 1,
+      }).setOrigin(0, 0.5);
+    });
+  }
+  if (rows.length > 0 && visualTokens.length === 0) {
+    const summary = rows.slice(0, 3).map((row: any) => `${row.label} ${scene.routeChoiceChangeAmountText(row)}`).join(' / ');
+    scene.add.text(leftX, y + 80, summary, {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: UI_SOFT,
+      align: 'center',
+      wordWrap: { width: tileW },
+      maxLines: 2,
+    }).setOrigin(0.5, 0);
+  }
+}
 
 function cardPickerEntries(scene: any) {
   return scene.cardPickerMode ? scene.pickerEligibleCards(scene.cardPickerMode) : [];
@@ -348,7 +479,6 @@ export function renderCardPickerInput(
   cardWidth: number,
   cardHeight: number,
   accent: number,
-  affordable: boolean,
   focusIndex: number,
 ) {
   const owner = scene as any;
@@ -366,18 +496,26 @@ export function renderCardPickerInput(
       .setStrokeStyle(3, armed ? 0xffcf70 : 0x8df4ff, 1)
       .setName('card-picker-input-focus-ring');
   }
-  const inspectY = y + cardHeight / 2 + 25;
-  const inspect = scene.add.rectangle(
-    x,
-    inspectY,
-    cardWidth,
-    MIN_SUPPORTED_TOUCH_TARGET,
-    focused ? 0x12324a : 0x102534,
-    0.99,
-  )
-    .setStrokeStyle(2, focused ? 0x8df4ff : accent, affordable ? 0.96 : 0.72)
+  if (focusIndex === owner.cardPickerScroll * 5) {
+    renderCardPickerInspectControl(scene, 342, 301, 224, accent);
+  }
+}
+
+export function renderCardPickerInspectControl(
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  width: number,
+  accent: number,
+) {
+  const owner = scene as any;
+  const inspect = scene.add.rectangle(x, y, width, 64, 0x102534, 0.98)
+    .setStrokeStyle(2, accent, 0.9)
     .setInteractive({ useHandCursor: true })
     .setName('card-picker-card-inspect-hit');
+  inspect.setData('label', 'Inspect focused card');
+  inspect.on('pointerover', () => inspect.setFillStyle(0x173a50, 1).setStrokeStyle(2, 0x8df4ff, 1));
+  inspect.on('pointerout', () => inspect.setFillStyle(0x102534, 0.98).setStrokeStyle(2, accent, 0.9));
   inspect.on('pointerdown', (
     _pointer: Phaser.Input.Pointer,
     _localX: number,
@@ -385,14 +523,20 @@ export function renderCardPickerInput(
     event?: Phaser.Types.Input.EventData,
   ) => {
     event?.stopPropagation();
-    openCardPickerInspection(owner, focusIndex);
+    openCardPickerInspection(owner, owner.cardPickerFocusIndex);
   });
-  scene.add.text(x, inspectY, 'INSPECT', {
+  scene.add.text(x, y - 9, 'INSPECT FOCUSED', {
     fontFamily: 'Arial',
-    fontSize: '10px',
+    fontSize: '12px',
     fontStyle: 'bold',
-    color: focused ? '#ffffff' : '#dffbff',
+    color: '#dffbff',
   }).setOrigin(0.5).setName('card-picker-card-inspect-label');
+  scene.add.text(x, y + 12, 'FULL CARD  ·  R / Y', {
+    fontFamily: 'Arial',
+    fontSize: '9px',
+    fontStyle: 'bold',
+    color: '#91b9c8',
+  }).setOrigin(0.5).setName('card-picker-card-inspect-binding');
 }
 
 export function renderCardPickerInspection(

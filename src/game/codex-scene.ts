@@ -205,6 +205,8 @@ export class CodexScene extends Phaser.Scene {
   private static readonly GRID_TOP = 158;
   private static readonly ITEM_GRID_TOP = 190;
   private static readonly GRID_BOTTOM = 690;
+  private static readonly GRID_BOTTOM_FADE_HEIGHT = 72;
+  private static readonly GRID_BOTTOM_FADE_STEPS = 8;
   private static readonly CARD_TAB_START_X = 54;
   private static readonly CARD_TAB_STEP = 104;
   private static readonly CARD_TAB_WIDTH = 104;
@@ -2897,7 +2899,30 @@ export class CodexScene extends Phaser.Scene {
     }
     this.root.add(grid);
 
-    // 2) Curtains hide grid overflow above/below the viewport.
+    // 2) Curtains hide grid overflow above/below the viewport. While more rows
+    //    remain, a short ink fade lets the partial next row recede into the
+    //    command rail instead of ending on a hard crop.
+    if (this.gridScroll < this.gridMaxScroll - 0.5) {
+      const fadeStepH = CodexScene.GRID_BOTTOM_FADE_HEIGHT / CodexScene.GRID_BOTTOM_FADE_STEPS;
+      for (let step = 0; step < CodexScene.GRID_BOTTOM_FADE_STEPS; step += 1) {
+        const progress = (step + 1) / CodexScene.GRID_BOTTOM_FADE_STEPS;
+        const alpha = 0.04 + progress * progress * 0.86;
+        const strip = this.add.rectangle(
+          GAME_WIDTH / 2,
+          bottom - CodexScene.GRID_BOTTOM_FADE_HEIGHT + fadeStepH * (step + 0.5),
+          GAME_WIDTH,
+          fadeStepH,
+          0x070a11,
+          alpha,
+        )
+          .setName('codex-grid-bottom-fade-strip')
+          .setData('step', step)
+          .setData('progress', progress)
+          .setData('fadeAlpha', alpha)
+          .setData('gridBottom', bottom);
+        this.root.add(strip);
+      }
+    }
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, top / 2, GAME_WIDTH, top, 0x070a11, 1));
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, (bottom + GAME_HEIGHT) / 2, GAME_WIDTH, GAME_HEIGHT - bottom, 0x070a11, 1));
 

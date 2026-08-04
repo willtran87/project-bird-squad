@@ -20,6 +20,7 @@ import {
   UI_SOFT,
 } from '../main';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
+import { renderRouteRewardEffectShowcase } from './reward-card-inspection';
 
 export {
   cardPickerDecisionDelta,
@@ -104,7 +105,7 @@ export function renderRouteRewardOverlay(scene: any) {
     const panelX = frame.left + 672;
     const panelY = frame.top + 326;
     if (!pending.previewItem || !scene.renderRouteRewardItemShowcase(pending.previewItem, panelX, panelY, 410, 238, pending.previewCards ?? [])) {
-      scene.renderRouteRewardEffectShowcase(pending, panelX, panelY, 410, 238);
+      renderRouteRewardEffectShowcase(scene, pending, panelX, panelY, 410, 238);
     }
     const claim = scene.add.rectangle(frame.right - 158, frame.bottom - 48, 180, 38, 0x102235, 0.98)
       .setStrokeStyle(2, accent, 0.92);

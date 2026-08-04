@@ -277,17 +277,21 @@ function renderEnemy(context: BattleForegroundRenderContext, enemy: BattleForegr
     ? (enemy.incomingDamage <= 6 ? 0xf5d38a : enemy.incomingDamage <= 10 ? 0xff9d4d : 0xff5247)
     : isBrace ? 0xffcf7a : enemy.hasSupport ? 0x8fd6a0 : 0xc98bff;
   const badgeValue = enemy.incomingDamage > 0 ? `${enemy.incomingDamage}` : isBrace ? `+${enemy.bracePressure}` : enemy.hasSupport ? '+' : '!';
-  const bossEnemy = context.enemies.length > 1 ? context.enemies.find((candidate) => candidate.boss) : undefined;
-  const intentSide = enemy.boss ? -1 : bossEnemy && enemy.x < bossEnemy.x ? -1 : enemy.x > context.width - 210 * s ? -1 : 1;
-  const bx = enemy.x + intentSide * (hp.w / 2 + 38 * s);
+  const crowdedIntent = context.enemies.length > 1;
+  const intentOffset = (crowdedIntent ? 12 : 30) * s;
+  const intentRadius = (crowdedIntent ? 20 : 24) * s;
+  const intentRingSize = intentRadius * 2.5;
+  const intentSide = enemy.boss
+    || enemy.x + hp.w / 2 + intentOffset + intentRingSize / 2 > context.width - 4 ? -1 : 1;
+  const bx = enemy.x + intentSide * (hp.w / 2 + intentOffset);
   const by = hp.y;
   if (scene.textures.exists(textures.enemyIntentRing)) {
     scene.textures.get(textures.enemyIntentRing).setFilter(Phaser.Textures.FilterMode.LINEAR);
     target.add(scene.add.image(bx, by, textures.enemyIntentRing)
-      .setDisplaySize(70 * s, 70 * s)
+      .setDisplaySize(intentRingSize, intentRingSize)
       .setAlpha(enemy.incomingDamage > 0 ? 0.88 : 0.68));
   }
-  const badge = scene.add.circle(bx, by, 24 * s, 0x10171f, 0.96)
+  const badge = scene.add.circle(bx, by, intentRadius, 0x10171f, 0.96)
     .setStrokeStyle(enemy.incomingDamage >= 11 ? 5 : 3, ringColor, 1);
   context.attachTooltip(
     badge,

@@ -3785,15 +3785,29 @@ export function renderProfileScene(
   renderProgressRail(scene, frame.left + 44, frame.top + 244, 304, 'Achievements', earned.length, allAchievementBadges.length, UI_FIELD.brass);
   renderProgressRail(scene, frame.left + 44, frame.top + 290, 304, 'Codex cards seen', discovered, cardTotal, UI_FIELD.violet);
 
-  renderProfileSectionTabFrame(scene, frame.left + 150, frame.top + 350, 220, UI_FIELD.cyan);
-  scene.add.text(frame.left + 70, frame.top + 338, 'Flock Leaders', {
+  const leaderCurtainLeft = frame.left + 38;
+  const leaderCurtainTop = frame.top + 318;
+  const leaderCurtainWidth = 300;
+  const leaderCurtainHeight = 284;
+  scene.add.graphics()
+    .setName('profile-leader-list-curtain')
+    .setData('left', leaderCurtainLeft)
+    .setData('top', leaderCurtainTop)
+    .setData('right', leaderCurtainLeft + leaderCurtainWidth)
+    .setData('bottom', leaderCurtainTop + leaderCurtainHeight)
+    .setData('topAlpha', 0.08)
+    .setData('bottomAlpha', 0.82)
+    .fillGradientStyle(UI_FIELD.ink, UI_FIELD.ink, UI_FIELD.ink, UI_FIELD.ink, 0.08, 0.08, 0.82, 0.82)
+    .fillRect(leaderCurtainLeft, leaderCurtainTop, leaderCurtainWidth, leaderCurtainHeight);
+  renderProfileSectionTabFrame(scene, frame.left + 150, frame.top + 342, 220, UI_FIELD.cyan);
+  scene.add.text(frame.left + 70, frame.top + 330, 'Flock Leaders', {
     fontFamily: UI_FONT,
     fontSize: '17px',
     fontStyle: UI_BOLD,
     color: UI_FIELD.warm,
   }).setResolution(2);
   flockLeaders.forEach((leader, index) => {
-    const y = frame.top + 382 + index * 39;
+    const y = frame.top + 372 + index * 36;
     const unlocked = isLeaderUnlocked(account, leader.id);
     const mastery = leaderMastery(account, leader.id);
     const personal = leaderPersonalRecord(account, leader.id);
@@ -3802,7 +3816,9 @@ export function renderProfileScene(
       personal.fastestFullWinTurns !== null ? `FULL ${personal.fastestFullWinTurns}B` : '',
       personal.fastestQuickWinTurns !== null ? `QUICK ${personal.fastestQuickWinTurns}B` : '',
     ].filter(Boolean);
-    renderProfileRecordRowFrame(scene, frame.left + 188, y, 296, 32, UI_FIELD.cyan, unlocked);
+    renderProfileRecordRowFrame(scene, frame.left + 188, y, 296, 32, UI_FIELD.cyan, unlocked)
+      .setName('profile-leader-row-frame')
+      .setData('leaderId', leader.id);
     const icon = addProfileIconImage(scene, 'leader-record-medallion', frame.left + 56, y, 10);
     icon?.setAlpha(unlocked ? 0.9 : 0.28);
     if (!unlocked) icon?.setTint(0x687684);
@@ -3812,13 +3828,13 @@ export function renderProfileScene(
       fontStyle: UI_BOLD,
       color: unlocked ? UI_FIELD.warm : '#6b7785',
       wordWrap: { width: 160 },
-    }).setResolution(2);
+    }).setResolution(2).setName('profile-leader-name').setData('leaderId', leader.id);
     scene.add.text(frame.left + 326, y - 12, unlocked ? `${mastery.title} ${mastery.current}/${mastery.target}` : 'Locked', {
       fontFamily: UI_FONT,
       fontSize: '11px',
       fontStyle: UI_BOLD,
       color: unlocked ? UI_FIELD.cyanText : '#788694',
-    }).setResolution(2).setOrigin(1, 0);
+    }).setResolution(2).setOrigin(1, 0).setName('profile-leader-status').setData('leaderId', leader.id);
     if (unlocked) {
       scene.add.text(frame.left + 326, y + 3, personalParts.join('  /  ') || 'NO WIN RECORD', {
         fontFamily: UI_FONT,
@@ -6846,7 +6862,9 @@ function renderSaveDataOverlay(
       const focused = state.focus === focus;
       const selected = state.playtestFeedback[key];
       scene.add.rectangle(panel.cx, y, 574, 42, 0x0b1420, focused ? 0.94 : 0.68)
-        .setStrokeStyle(1, focused ? UI_FIELD.cyan : 0x344b5b, focused ? 0.88 : 0.45);
+        .setStrokeStyle(1, focused ? UI_FIELD.cyan : 0x344b5b, focused ? 0.88 : 0.45)
+        .setName(`profile-playtest-feedback-${key}-track`)
+        .setData('ratingKey', key);
       const rowHit = scene.add.rectangle(panel.cx, y, 574, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
         .setName(`profile-playtest-feedback-${key}-row`);
       if (enabled) {
@@ -6867,7 +6885,7 @@ function renderSaveDataOverlay(
         color: selected ? UI_FIELD.cyanText : UI_FIELD.muted,
       }).setResolution(2);
       for (let rating = 1; rating <= 5; rating += 1) {
-        const x = panel.right - 274 + (rating - 1) * MIN_SUPPORTED_TOUCH_TARGET;
+        const x = panel.right - 324 + (rating - 1) * MIN_SUPPORTED_TOUCH_TARGET;
         const chosen = selected === rating;
         scene.add.rectangle(x, y, 34, 24, chosen ? UI_FIELD.violet : 0x141b22, chosen ? 0.92 : 0.86)
           .setStrokeStyle(1, chosen ? 0xf0d8ff : 0x66798a, chosen ? 0.95 : 0.6);
@@ -6948,9 +6966,9 @@ function renderProfileRecordRowFrame(
       .setAlpha(active ? 0.44 : 0.22)
       .setName('profile-record-row-frame');
     if (!active) row.setTint(0x707986);
-    return;
+    return row;
   }
-  scene.add.rectangle(cx, cy, width, height, active ? 0x111a25 : 0x0d141d, 0.9)
+  return scene.add.rectangle(cx, cy, width, height, active ? 0x111a25 : 0x0d141d, 0.9)
     .setStrokeStyle(1, active ? accent : 0x34404b, active ? 0.55 : 0.32);
 }
 
