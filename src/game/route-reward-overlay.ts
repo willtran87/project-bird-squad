@@ -21,6 +21,19 @@ import {
 } from '../main';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 
+export {
+  cardPickerDecisionDelta,
+  closeRouteRewardInspection,
+  cycleRouteRewardChoice,
+  focusedRouteRewardCard,
+  handleRouteRewardAction,
+  openRouteRewardInspection,
+  requestCardPick,
+  requestRouteRewardCard,
+  setRouteRewardChoice,
+  updateRouteRewardGamepad,
+} from './reward-card-inspection';
+
 export function renderRouteRewardOverlay(scene: any) {
   const pending = scene.pendingRouteReward;
   if (!pending) return;
@@ -118,18 +131,19 @@ export function renderRouteRewardOverlay(scene: any) {
     const cardW = 148;
     const cardH = Math.round(cardW * 1.5);
     const x = frame.left + 540 + index * 190;
-    const y = frame.top + 336;
+    const y = frame.top + 312;
+    const armed = scene.routeRewardArmedCardId === card.id;
     const accentColor = card.type === 'major' ? UI_FIELD.gold : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
     addRewardRevealHaloFx(scene, x, y, cardW + 68, cardH + 98, 0.18);
     scene.renderRouteRewardCardOption(card, x, y, cardW, cardH, accentColor);
     if (index === scene.routeRewardChoiceIndex) {
       scene.add.rectangle(x, y + 8, cardW + 30, cardH + 88, 0x000000, 0)
-        .setStrokeStyle(4, UI_FIELD.cyan, 1)
+        .setStrokeStyle(4, armed ? UI_FIELD.gold : UI_FIELD.cyan, 1)
         .setName('route-reward-input-focus-ring');
     }
     scene.add.rectangle(x, y + cardH / 2 + 24, cardW + 16, 34, 0x020409, 0.94)
       .setStrokeStyle(1, accentColor, 0.72);
-    scene.add.text(x, y + cardH / 2 + 12, displayName(card), {
+    scene.add.text(x, y + cardH / 2 + 12, armed ? 'CONFIRM PICK\nBACK CANCELS' : displayName(card), {
       fontFamily: UI_FONT,
       fontSize: '12px',
       fontStyle: UI_BOLD,
@@ -141,16 +155,17 @@ export function renderRouteRewardOverlay(scene: any) {
       maxLines: 2
     }).setOrigin(0.5, 0);
     const hit = scene.add.rectangle(x, y + 8, cardW + 18, cardH + 76, 0x000000, 0.01)
-      .setInteractive({ useHandCursor: true });
-    hit.on('pointerdown', () => scene.chooseRouteRewardCard(card.id));
+      .setInteractive({ useHandCursor: true })
+      .setName('route-reward-card-hit');
+    hit.on('pointerdown', () => scene.requestRouteRewardCard(card.id));
     hit.on('pointerover', () => {
       scene.setRouteRewardChoice(card.id);
-      scene.showHoverCardDetail(card, 'Cache reward', card.cost, x, y);
+      if (scene.routeRewardArmedCardId !== card.id) scene.showHoverCardDetail(card, 'Cache reward', card.cost, x, y);
     });
     hit.on('pointerout', () => scene.hideHoverCardDetail());
     const inspectY = frame.bottom - 48;
     const inspect = scene.add.rectangle(x, inspectY, 126, MIN_SUPPORTED_TOUCH_TARGET, 0x102534, 0.99)
-      .setStrokeStyle(2, index === scene.routeRewardChoiceIndex ? UI_FIELD.cyan : accentColor, 0.94)
+      .setStrokeStyle(2, armed ? UI_FIELD.gold : index === scene.routeRewardChoiceIndex ? UI_FIELD.cyan : accentColor, 0.94)
       .setInteractive({ useHandCursor: true })
       .setName('route-reward-card-inspect-hit');
     inspect.on('pointerdown', (
@@ -173,7 +188,7 @@ export function renderRouteRewardOverlay(scene: any) {
   });
   scene.renderRouteEventCancelButton(frame.left + 126, frame.bottom - 48, 166, 38, 'Cancel', () => scene.cancelRouteCardReward());
   if (hasCardChoices) {
-    scene.add.text(frame.right - 28, frame.top + 90, 'D-PAD / ARROWS  CHOOSE    A / ENTER  CLAIM    Y / R  INSPECT    B / ESC  BACK', {
+    scene.add.text(frame.right - 28, frame.top + 90, `D-PAD / ARROWS  CHOOSE    A / ENTER  ${scene.routeRewardArmedCardId ? 'CONFIRM' : 'SELECT'}    Y / R  INSPECT    B / ESC  BACK`, {
       fontFamily: UI_FONT,
       fontSize: '9px',
       fontStyle: UI_BOLD,

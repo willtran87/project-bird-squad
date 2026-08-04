@@ -106,6 +106,15 @@ acknowledged immediately and once: a compact generated callout shows either
 mirror the result. Repeated redraws cannot replay the callout or cue. This
 feedback is informational and does not interrupt card input or enemy sequencing.
 
+Bosses have one authored phase transition. Crossing from above half Cohesion to
+half or below while the boss survives immediately starts Phase II: the boss
+discards its current Cover and stored attack bonus, resets its Tell counter, and
+switches to its named deterministic Phase II move loop. The half-Cohesion marker,
+phase badge, selected-card outcome preview, and boss-prep dossier all disclose
+the threshold. The transition log and callout name the new pattern and its first
+Tell. A single hit that defeats the boss does not trigger Phase II, and a phase
+transition can occur only once per fight.
+
 Good turns should ask the player to choose between at least two attractive
 options:
 

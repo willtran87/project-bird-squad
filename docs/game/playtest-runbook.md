@@ -1,8 +1,13 @@
 # First-Run Playtest Runbook
 
-Bird Squad's release gate requires five observed first-run sessions. Automated
-and seeded runs prove the telemetry pipeline, but they do not count as human
-evidence.
+Human first-run playtesting is optional for the current release under the
+project-owner waiver recorded on 2026-07-30. The release may proceed on the
+automated production evidence while accepting that fun, fairness, clarity, and
+replay intent have not been validated with fresh players.
+
+This runbook remains the required standard if human evidence is collected
+later. Automated and seeded runs prove the telemetry pipeline, but they never
+count as human evidence and must not be presented as such.
 
 ## Prepare Each Tester
 
@@ -55,9 +60,9 @@ JSON exports. It merges and deduplicates run IDs, then writes
 Do not use `--seeded` or `--seeded-if-empty` for release evidence. Those modes
 are pipeline checks only.
 
-## Release Evidence
+## Optional Human Evidence Standard
 
-The five-session gate is satisfied only when:
+A future five-session evidence set is credible only when:
 
 - all five testers are genuinely fresh players;
 - observed notes cover route confirmation, targeting, Roost, Tells, Cover, and

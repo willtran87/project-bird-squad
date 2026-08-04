@@ -952,6 +952,12 @@
         ],
         "loopFrom": 1
       },
+      "phaseTwoName": "Chokepoint Lockdown",
+      "phaseTwoMoveIds": [
+        "chokepoint_call",
+        "heavy_strike",
+        "tar_toss"
+      ],
       "rewards": {
         "bossRouteMarkChoices": 3,
         "rareCardChoices": 3,

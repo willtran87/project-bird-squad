@@ -172,11 +172,9 @@ function renderComparisonColumn(
 
 export function renderSceneWaymarkReview(scene: Phaser.Scene, view: SceneWaymarkReviewView) {
   const comparing = Boolean(view.pinned && view.pinned.id !== view.selected.id);
-  scene.add.rectangle(644, 508, 958, 224, 0x020409, 0.38);
-  scene.add.rectangle(640, 504, 958, 224, 0x050a12, 0.97)
-    .setStrokeStyle(1.5, 0xc9a6ff, 0.54)
+  scene.add.rectangle(640, 504, 958, 224, 0x050a12, 0.92)
+    .setStrokeStyle(1, 0xc9a6ff, 0.36)
     .setName('route-waymark-review-panel');
-  scene.add.rectangle(640, 398, 870, 1, 0xc9a6ff, 0.24);
   renderPinControl(scene, view);
 
   if (comparing && view.pinned) {

@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { controlBindingLabel } from '../input-bindings';
 
 type DebugNode = Phaser.GameObjects.GameObject & {
   alpha?: number;
@@ -327,12 +328,61 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
   };
 
   const battle = context.counters as any;
+  const selectedCombatCard = battle.mode === 'battle'
+    ? battle.hand.find((card: any) => card.instanceId === battle.selectedInstanceId)
+    : undefined;
   const rewardInspectionCard = battle.rewardInspectionCardId
     ? (battle.mode === 'cardReward' ? battle.rewardChoices : battle.upgradeChoices)
         .find((card: any) => card.id === battle.rewardInspectionCardId)
     : undefined;
+  const armedRewardChoice = battle.rewardChoiceArmedId
+    ? [...battle.waymarkChoices, ...battle.rewardChoices, ...battle.upgradeChoices]
+        .find((choice: any) => choice.id === battle.rewardChoiceArmedId)
+    : undefined;
   return {
     ...state,
+    cardPlayConfirmation: {
+      available: battle.mode === 'battle' && battle.hand.length > 0,
+      armed: Boolean(selectedCombatCard),
+      cardId: selectedCombatCard?.instanceId,
+      cardName: selectedCombatCard?.runtime?.displayName ?? selectedCombatCard?.name,
+      target: selectedCombatCard ? battle.activeCardContract(selectedCombatCard).target : undefined,
+      commitBlockedUntilSelected: battle.mode === 'battle' && !selectedCombatCard,
+      input: {
+        keyboard: controlBindingLabel('confirm'),
+        controller: 'A',
+        pointer: 'Activate selected card again or choose its enemy target',
+        cancel: `${controlBindingLabel('back')} / B`,
+      },
+    },
+    rewardSkip: {
+      available: battle.mode === 'cardReward' && battle.rewardChoices.length > 0,
+      armed: Boolean(battle.rewardSkipArmed),
+      scrap: battle.currentSkipScrapReward(),
+      deckSize: battle.allDeckCards().length,
+      scrapAfter: battle.scrap + battle.currentSkipScrapReward(),
+      commitBlockedUntilConfirmed: battle.mode === 'cardReward' && battle.rewardChoices.length > 0,
+      input: {
+        keyboard: controlBindingLabel('skipReward'),
+        controller: 'X',
+        pointer: 'Activate Skip twice',
+        cancel: `${controlBindingLabel('back')} / B`,
+      },
+    },
+    rewardChoiceConfirmation: {
+      available: ['waymarkReward', 'cardReward', 'upgradeReward'].includes(battle.mode),
+      armed: Boolean(armedRewardChoice),
+      mode: battle.mode,
+      choiceId: armedRewardChoice?.id,
+      choiceName: armedRewardChoice?.runtime?.displayName ?? armedRewardChoice?.name,
+      commitBlockedUntilSelected: ['waymarkReward', 'cardReward', 'upgradeReward'].includes(battle.mode) && !armedRewardChoice,
+      input: {
+        keyboard: controlBindingLabel('confirm'),
+        controller: 'A',
+        pointer: 'Activate choice twice',
+        cancel: `${controlBindingLabel('back')} / B`,
+      },
+    },
     rewardInspection: {
       open: Boolean(battle.rewardInspectionCardId),
       cardId: battle.rewardInspectionCardId,

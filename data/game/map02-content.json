@@ -545,6 +545,12 @@
         ],
         "loopFrom": 1
       },
+      "phaseTwoName": "Floodgate Pressure",
+      "phaseTwoMoveIds": [
+        "tide_call",
+        "drown_press",
+        "heavy_lunge_14"
+      ],
       "rewards": {
         "bossRouteMarkChoices": 3,
         "rareCardChoices": 3,

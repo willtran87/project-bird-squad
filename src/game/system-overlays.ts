@@ -1631,7 +1631,7 @@ export function renderHowToPlayOverlay(
   options: HowToPlayOverlayOptions,
   dependencies: SystemOverlayDependencies,
 ) {
-  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.84)
+  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.93)
     .setInteractive({ useHandCursor: false }));
   const frame = dependencies.renderFieldPanel(scene, addTo, GAME_WIDTH / 2, GAME_HEIGHT / 2, 760, 500, {
     accent: UI_FIELD.brass,
@@ -1693,9 +1693,7 @@ export function renderHowToPlayOverlay(
     const row = Math.floor(index / 2);
     const x = frame.left + 212 + column * 336;
     const y = frame.top + 202 + row * 108;
-    addUi(addTo, scene.add.rectangle(x, y, 304, 84, 0x0b1017, 0.9).setStrokeStyle(1, card.accent, 0.52));
-    addHowToPlayTopicCardFrame(scene, addTo, x, y, 326, 96, card.accent, dependencies);
-    addUi(addTo, scene.add.rectangle(x, y - 38, 280, 2, card.accent, 0.72));
+    addHowToPlayTopicCardFrame(scene, addTo, x, y, 312, 84, card.accent, dependencies);
     const cardIcon = addIconImage(scene, card.icon, x - 122, y - 10, 26);
     if (cardIcon) addUi(addTo, cardIcon.setAlpha(0.92));
     addUi(addTo, scene.add.text(x - 86, y - 28, card.title, {
@@ -1722,34 +1720,26 @@ export function renderHowToPlayOverlay(
     ['Fair draws', 'After the first lesson, fights seed-shuffle the deck and protect playable pressure when the deck has it.'],
   ];
   tips.forEach(([label, value], index) => {
-    const y = frame.bottom - 118 + index * 34;
+    const y = frame.bottom - 112 + index * 30;
     const tipFrame = addHowToPlayTipRowFrame(
       scene,
       addTo,
       frame.cx,
       y,
       616,
-      38,
-      index % 2 === 0 ? 0.76 : 0.66,
+      30,
+      index % 2 === 0 ? 0.34 : 0.24,
       index % 2 === 0 ? UI_FIELD.cyan : UI_FIELD.brass,
     );
-    if (!tipFrame) {
-      addUi(addTo, scene.add.rectangle(frame.cx, y, 590, 26, 0x050a12, index % 2 === 0 ? 0.42 : 0.26));
-    } else {
-      addUi(addTo, scene.add.rectangle(frame.cx + 66, y, 454, 18, 0x02070b, 0.26));
-    }
-    addUi(addTo, scene.add.text(frame.left + 96, y, label, {
+    if (!tipFrame) addUi(addTo, scene.add.rectangle(frame.cx, y, 590, 24, 0x050a12, 0.28));
+    addUi(addTo, scene.add.text(frame.cx, y, `${label.toUpperCase()}  ·  ${value}`, {
       fontFamily: UI_FONT,
-      fontSize: '13px',
-      fontStyle: UI_BOLD,
-      color: UI_FIELD.muted,
-    }).setOrigin(0, 0.5));
-    addUi(addTo, scene.add.text(frame.left + 208, y, value, {
-      fontFamily: UI_FONT,
-      fontSize: '13px',
+      fontSize: '11px',
       color: UI_FIELD.text,
-      wordWrap: { width: 492 },
-    }).setOrigin(0, 0.5));
+      fixedWidth: 570,
+      align: 'center',
+      maxLines: 1,
+    }).setOrigin(0.5));
   });
 
   const guideLabel = options.guide.enabled && !options.guide.completed ? 'Skip Guide' : 'Replay Guide';

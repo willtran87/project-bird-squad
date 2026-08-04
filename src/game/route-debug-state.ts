@@ -213,6 +213,12 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
                 cardName: focused?.name,
                 cost: focused?.cost,
                 affordable: scene.cardPickerContext !== 'market' || scene.runState.scrap >= (focused?.cost ?? 0),
+                armed: scene.cardPickerArmedIndex === focused?.index,
+                armedCardIndex: scene.cardPickerArmedIndex,
+                armedCardId: scene.cardPickerArmedIndex === undefined
+                  ? undefined
+                  : scene.runState.deck[scene.cardPickerArmedIndex]?.id,
+                commitBlockedUntilSelected: scene.cardPickerArmedIndex === undefined,
                 scrollRow: scene.cardPickerScroll,
                 focusVisible: scene.children.list.some((child: any) => child.name === 'card-picker-input-focus-ring'),
                 inspectTargets: scene.children.list.filter((child: any) => child.name === 'card-picker-card-inspect-hit').length,
@@ -221,9 +227,11 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
                 decisionPreserved: true,
                 controls: {
                   choose: 'Arrow keys / D-pad',
-                  apply: 'Confirm / A',
+                  apply: scene.cardPickerArmedIndex === undefined
+                    ? 'Confirm / A / pointer selects'
+                    : 'Confirm / A / second pointer activation commits',
                   inspect: 'Roost / Y / Inspect',
-                  back: 'Back / B',
+                  back: scene.cardPickerArmedIndex === undefined ? 'Back / B closes' : 'Back / B cancels selection',
                 },
               };
             })()
@@ -567,6 +575,29 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
               refreshCount: scene.marketRefreshCount,
               decisionPreview: [...scene.marketDecisionPreview],
               message: scene.marketMessage,
+              input: (() => {
+                const targets = scene.children.list.filter((child: any) => (
+                  child.input?.enabled && typeof child.getData?.('marketFocusId') === 'string'
+                ));
+                const focused = targets.find((child: any) => (
+                  child.getData('marketFocusId') === scene.marketFocusId
+                )) ?? targets[0];
+                return {
+                  focusId: focused?.getData('marketFocusId') ?? '',
+                  label: focused?.getData('label') ?? '',
+                  index: Math.max(0, targets.indexOf(focused)),
+                  count: targets.length,
+                  armed: scene.marketFocusArmedId === focused?.getData('marketFocusId'),
+                  focusVisible: scene.children.list.some((child: any) => child.name === 'market-input-focus-ring'),
+                  routeCommitBlocked: true,
+                  controls: {
+                    choose: 'Previous / Next / D-pad / pointer',
+                    buy: 'Confirm / A / second pointer activation',
+                    categories: '1-4 / controller shoulders / pointer',
+                    close: 'Back / B / pointer',
+                  },
+                };
+              })(),
               offerTray: scene.marketOfferTrayState(),
               priceChipFrame: scene.marketPriceChipFrameState(),
               serviceButtonFrame: scene.marketServiceButtonFrameState(),
@@ -606,10 +637,14 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
                 ? {
                     index: scene.routeRewardChoiceIndex,
                     cardId: scene.focusedRouteRewardCard()?.id,
+                    cardName: scene.focusedRouteRewardCard()?.name,
+                    armed: Boolean(scene.routeRewardArmedCardId),
+                    armedCardId: scene.routeRewardArmedCardId,
+                    commitBlockedUntilSelected: !scene.routeRewardArmedCardId,
                     visible: scene.children.list.some((child: any) => child.name === 'route-reward-input-focus-ring'),
                     controls: {
                       choose: 'Arrow keys / D-pad',
-                      claim: 'Confirm / A',
+                      claim: scene.routeRewardArmedCardId ? 'Confirm / A commits' : 'Confirm / A selects',
                       inspect: 'Roost / Y',
                       back: 'Back / B',
                     },

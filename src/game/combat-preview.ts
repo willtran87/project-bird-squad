@@ -20,7 +20,17 @@ interface PreviewContract {
   usesMolt?: boolean;
 }
 
-export interface CombatPreviewConfig<CardT extends CardEffectCard, EnemyT extends CardEffectEnemy, FlockT extends PreviewFlock> {
+interface PreviewEnemy extends CardEffectEnemy {
+  phase?: 1 | 2;
+  runtime?: {
+    type?: string;
+    phaseTwoName?: string;
+    phaseTwoMoveIds?: string[];
+    moves?: Array<{ id: string; label: string }>;
+  };
+}
+
+export interface CombatPreviewConfig<CardT extends CardEffectCard, EnemyT extends PreviewEnemy, FlockT extends PreviewFlock> {
   card: CardT;
   enemyId: string;
   contract: PreviewContract;
@@ -56,7 +66,7 @@ export interface CombatPreviewConfig<CardT extends CardEffectCard, EnemyT extend
 
 export function simulateCombatCardOutcome<
   CardT extends CardEffectCard,
-  EnemyT extends CardEffectEnemy,
+  EnemyT extends PreviewEnemy,
   FlockT extends PreviewFlock
 >(config: CombatPreviewConfig<CardT, EnemyT, FlockT>) {
   const flock = { ...config.flock };
@@ -79,6 +89,7 @@ export function simulateCombatCardOutcome<
   let nextTurnEnergy = config.nextTurnEnergy;
   let firstAttack = config.firstAttack;
   let blockedDamage = 0;
+  let bossPhaseBreak: { enemyId: string; name: string; nextIntent?: string } | undefined;
   const state = createCardEffectResolutionState(config.contract.usesMolt ? config.moltPower : 0);
   const livingEnemies = () => enemies.filter((enemy) => enemy.hp > 0);
   const getLivingEnemy = (id: string) => livingEnemies().find((enemy) => enemy.id === id);
@@ -125,6 +136,7 @@ export function simulateCombatCardOutcome<
     damageEnemy: (id, amount, _source, _card, pierceCover = false, flockDamageBonus = 0) => {
       const enemy = getLivingEnemy(id);
       if (!enemy) return false;
+      const hpBefore = enemy.hp;
       const damage = config.damageOutcome(
         amount,
         flock,
@@ -137,6 +149,23 @@ export function simulateCombatCardOutcome<
       blockedDamage += damage.blocked;
       if (!pierceCover) enemy.block -= damage.blocked;
       enemy.hp = Math.max(0, enemy.hp - damage.hpDamage);
+      const phaseIds = enemy.runtime?.phaseTwoMoveIds;
+      if (!bossPhaseBreak
+        && enemy.runtime?.type === 'boss'
+        && enemy.phase !== 2
+        && phaseIds?.length
+        && hpBefore > enemy.maxHp / 2
+        && enemy.hp > 0
+        && enemy.hp <= enemy.maxHp / 2) {
+        enemy.phase = 2;
+        enemy.block = 0;
+        enemy.nextAttackBonus = 0;
+        bossPhaseBreak = {
+          enemyId: enemy.id,
+          name: enemy.runtime.phaseTwoName ?? 'Phase II',
+          nextIntent: enemy.runtime.moves?.find((move) => move.id === phaseIds[0])?.label
+        };
+      }
       return enemy.hp <= 0;
     },
     gainBlock: (amount, _source, card) => {
@@ -217,6 +246,7 @@ export function simulateCombatCardOutcome<
     },
     enemyDamage,
     blockedDamage,
+    bossPhaseBreak,
     coverGain: flock.block - before.block,
     cohesionDelta: flock.hp - before.hp,
     flowGain: flock.flow - before.flow,

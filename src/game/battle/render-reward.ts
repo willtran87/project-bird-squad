@@ -38,6 +38,7 @@ export interface RewardCardView {
   artKey?: string;
   snag: boolean;
   focused: boolean;
+  armed: boolean;
 }
 
 export interface RewardWaymarkView {
@@ -52,6 +53,7 @@ export interface RewardWaymarkView {
   accent: number;
   artKey?: string;
   focused: boolean;
+  armed: boolean;
 }
 
 export interface RewardTextureKeys {
@@ -86,7 +88,12 @@ export interface RewardCeremonyRenderContext {
   deckNeeds?: RewardDeckNeedView;
   cards?: RewardCardView[];
   waymarks?: RewardWaymarkView[];
-  skip?: { scrap: number; deckSize: number; scrapAfter: number };
+  skip?: {
+    scrap: number;
+    deckSize: number;
+    scrapAfter: number;
+    armed: boolean;
+  };
   addIcon: (icon: string, x: number, y: number, size: number) => Phaser.GameObjects.Image | undefined;
   onCardSelect: (cardId: string) => void;
   onCardInspect: (cardId: string) => void;
@@ -179,23 +186,10 @@ function addChoiceFrame(context: RewardCeremonyRenderContext, x: number, y: numb
   const { scene, textures, reducedMotion } = context;
   if (!scene.textures.exists(textures.choiceCardFrame)) return undefined;
   scene.textures.get(textures.choiceCardFrame).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const frame = scene.add.image(x, y, textures.choiceCardFrame)
+  return scene.add.image(x, y, textures.choiceCardFrame)
     .setDisplaySize(width, height)
     .setAlpha(reducedMotion ? Math.min(alpha, 0.68) : alpha)
     .setName('reward-choice-card-frame');
-  if (!reducedMotion) {
-    scene.tweens.add({
-      targets: frame,
-      alpha: alpha * 0.86,
-      scaleX: frame.scaleX * 1.004,
-      scaleY: frame.scaleY * 1.004,
-      duration: 1680,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
-  }
-  return frame;
 }
 
 function addHoverRing(context: RewardCeremonyRenderContext, x: number, y: number, width: number, height: number) {
@@ -207,34 +201,6 @@ function addHoverRing(context: RewardCeremonyRenderContext, x: number, y: number
     .setAlpha(0)
     .setVisible(false)
     .setName('reward-choice-hover-ring');
-}
-
-function showHoverRing(context: RewardCeremonyRenderContext, ring: Phaser.GameObjects.Image | undefined, width: number, height: number, alpha: number) {
-  if (!ring) return;
-  const { scene, reducedMotion } = context;
-  scene.tweens.killTweensOf(ring);
-  ring.setDisplaySize(width, height)
-    .setAlpha(reducedMotion ? Math.min(alpha, 0.68) : alpha)
-    .setAngle(0)
-    .setVisible(true);
-  if (!reducedMotion) {
-    scene.tweens.add({
-      targets: ring,
-      alpha: alpha * 0.58,
-      scaleX: ring.scaleX * 1.018,
-      scaleY: ring.scaleY * 1.018,
-      duration: 720,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
-  }
-}
-
-function hideHoverRing(context: RewardCeremonyRenderContext, ring: Phaser.GameObjects.Image | undefined) {
-  if (!ring) return;
-  context.scene.tweens.killTweensOf(ring);
-  ring.setVisible(false).setAlpha(0);
 }
 
 function renderBackdrop(context: RewardCeremonyRenderContext) {
@@ -362,7 +328,8 @@ function compactDeltaPart(text: string, max = 12) {
   return value.length <= max ? value : `${value.slice(0, max - 3).trimEnd()}...`;
 }
 
-function rewardDecisionLabel(preview: RewardDecisionPreview) {
+function rewardDecisionLabel(preview: RewardDecisionPreview, armed: boolean) {
+  if (armed) return 'CONFIRM PICK  /  BACK CANCELS';
   if (preview.kind === 'add') return `ADD  /  DECK ${preview.deckBefore} > ${preview.deckBefore + 1}`;
   const beforeParts = preview.before.split(/[.;]\s+/);
   const afterParts = preview.after.split(/[.;]\s+/);
@@ -395,10 +362,11 @@ function renderCard(context: RewardCeremonyRenderContext, card: RewardCardView, 
   hit.on('pointerdown', () => context.onCardSelect(card.id));
   hit.on('pointerover', () => {
     context.onCardHover(card.id, x, y);
-    showHoverRing(context, hoverRing, hoverWidth, hoverHeight, card.upgraded ? 0.9 : 0.82);
+    hoverRing?.setAlpha(card.upgraded ? 0.9 : 0.82)
+      .setVisible(true);
   });
   hit.on('pointerout', () => {
-    hideHoverRing(context, hoverRing);
+    hoverRing?.setVisible(false).setAlpha(0);
     context.onCardOut();
   });
   const spotlight = addSpotlight(context, x, y + 116, 226, 132, card.upgraded ? 0.014 : 0.008);
@@ -414,18 +382,20 @@ function renderCard(context: RewardCeremonyRenderContext, card: RewardCardView, 
       .setStrokeStyle(4, 0x8df4ff, 1)
       .setName('reward-input-focus-ring'));
   }
-  target.add(scene.add.rectangle(x, top - 8, 204, 22, 0x06111a, 0.98)
-    .setStrokeStyle(1, card.accent, 0.86)
-    .setName('reward-decision-delta'));
-  target.add(scene.add.text(x, top - 8, rewardDecisionLabel(card.decisionPreview), {
-    fontFamily,
-    fontSize: '9px',
-    fontStyle: boldFontStyle,
-    color: '#f4f8fb',
-    align: 'center',
-    fixedWidth: 196,
-    maxLines: 1,
-  }).setOrigin(0.5).setName('reward-decision-delta'));
+  if (card.focused || card.armed) {
+    target.add(scene.add.rectangle(x, top - 8, 204, 22, 0x06111a, 0.98)
+      .setStrokeStyle(1, card.accent, 0.86)
+      .setName('reward-decision-delta'));
+    target.add(scene.add.text(x, top - 8, rewardDecisionLabel(card.decisionPreview, card.armed), {
+      fontFamily,
+      fontSize: '9px',
+      fontStyle: boldFontStyle,
+      color: '#f4f8fb',
+      align: 'center',
+      fixedWidth: 196,
+      maxLines: 1,
+    }).setOrigin(0.5).setName('reward-decision-delta'));
+  }
   renderCardArt(context, card, x, y);
   target.add(scene.add.rectangle(x, top + 18, cardWidth - 18, 2, card.accent, 0.78));
   target.add(scene.add.rectangle(x, bottom - 18, cardWidth - 18, 2, card.accent, 0.55));
@@ -517,7 +487,7 @@ function renderCard(context: RewardCeremonyRenderContext, card: RewardCardView, 
     fixedHeight: 18,
     maxLines: 1
   }));
-  card.footerRows.slice(0, 2).forEach((text, index) => {
+  (card.focused || card.armed ? card.footerRows.slice(0, 2) : []).forEach((text, index) => {
     const caution = text.startsWith('!');
     const neutral = text.startsWith('=');
     target.add(scene.add.text(x - cardWidth / 2 + 70, bottom - 47 + index * 18, text, {
@@ -533,7 +503,7 @@ function renderCard(context: RewardCeremonyRenderContext, card: RewardCardView, 
     }).setName(card.footerUsesObservations ? 'reward-build-observation' : 'reward-card-stat'));
   });
   const inspectY = bottom + 28;
-  const inspect = scene.add.rectangle(x, inspectY, 132, MIN_SUPPORTED_TOUCH_TARGET, 0x102534, 0.99)
+  const inspect = scene.add.rectangle(x, inspectY, 92, MIN_SUPPORTED_TOUCH_TARGET, 0x102534, card.focused ? 0.99 : 0.72)
     .setStrokeStyle(2, card.focused ? 0x8df4ff : card.accent, 0.94)
     .setInteractive({ useHandCursor: true })
     .setName('reward-card-inspect-hit');
@@ -549,13 +519,13 @@ function renderCard(context: RewardCeremonyRenderContext, card: RewardCardView, 
   inspect.on('pointerover', () => inspect.setFillStyle(0x18384b, 1));
   inspect.on('pointerout', () => inspect.setFillStyle(0x102534, 0.99));
   target.add(inspect);
-  target.add(scene.add.text(x, inspectY, 'INSPECT', {
+  target.add(scene.add.text(x, inspectY, card.focused ? 'INSPECT' : 'DETAIL', {
     fontFamily,
     fontSize: '11px',
     fontStyle: boldFontStyle,
     color: '#dffbff',
     align: 'center',
-    fixedWidth: 118,
+    fixedWidth: 84,
   }).setOrigin(0.5).setName('reward-card-inspect-label'));
   hoverRing = addHoverRing(context, x, y, hoverWidth, hoverHeight);
   if (hoverRing) target.add(hoverRing);
@@ -615,7 +585,7 @@ function renderWaymark(context: RewardCeremonyRenderContext, waymark: RewardWaym
   target.add(scene.add.text(x, y + 24, `${waymark.familyLabel} / ${waymark.source}`, {
     fontFamily, fontSize: '12px', fontStyle: boldFontStyle, color: cyanColor, align: 'center'
   }).setOrigin(0.5));
-  target.add(scene.add.text(x, y + 48, waymark.rarity.toUpperCase(), {
+  target.add(scene.add.text(x, y + 48, waymark.armed ? 'CONFIRM PICK / BACK CANCELS' : waymark.rarity.toUpperCase(), {
     fontFamily, fontSize: '11px', fontStyle: boldFontStyle, color: waymark.rarity === 'boss' ? '#ffb1a4' : '#ffcf6b', align: 'center'
   }).setOrigin(0.5));
   renderTagRow(context, x - 102, y + 76, waymark.tags, waymark.accent, 204);
@@ -650,12 +620,27 @@ function renderSkip(context: RewardCeremonyRenderContext) {
   target.add(hit);
   const icon = context.addIcon('scrap-gear', width / 2 - 132, 652, 30);
   if (icon) target.add(icon.setAlpha(0.95));
-  target.add(scene.add.text(width / 2 + 10, 646, `Skip  +${context.skip.scrap} Scrap`, {
-    fontFamily, fontSize: '15px', fontStyle: boldFontStyle, color: goldColor
-  }).setOrigin(0.5));
-  target.add(scene.add.text(width / 2 + 10, 664, `Deck stays ${context.skip.deckSize}  /  After: ${context.skip.scrapAfter} Scrap`, {
-    fontFamily, fontSize: '10px', color: '#dce8f2'
-  }).setOrigin(0.5));
+  target.add(scene.add.text(
+    width / 2 + 10,
+    646,
+    context.skip.armed
+      ? `Confirm Skip  +${context.skip.scrap} Scrap`
+      : `Skip  +${context.skip.scrap} Scrap`,
+    {
+      fontFamily, fontSize: '15px', fontStyle: boldFontStyle, color: goldColor
+    },
+  ).setOrigin(0.5));
+  target.add(scene.add.text(
+    width / 2 + 10,
+    664,
+    context.skip.armed
+      ? 'SKIP / X / TAP 2X · BACK CANCELS'
+      : `Deck stays ${context.skip.deckSize}  /  After: ${context.skip.scrapAfter} Scrap`,
+    {
+      fontFamily,
+      fontSize: '10px',
+    },
+  ).setOrigin(0.5));
 }
 
 /** Render card, Preen, or Waymark reward ceremony presentation from explicit view data. */
@@ -668,8 +653,13 @@ export function renderRewardCeremony(context: RewardCeremonyRenderContext) {
       glowBursts += renderWaymark(context, waymark, index, 336 + index * 304, 404);
     });
   } else {
-    (context.cards ?? []).forEach((card, index) => {
-      glowBursts += renderCard(context, card, 336 + index * 304, 402);
+    const cards = context.cards ?? [];
+    const hasPrimaryCard = cards.some((card) => card.focused || card.armed);
+    cards.forEach((card, index) => {
+      const visibleCard = !hasPrimaryCard && index === 0
+        ? { ...card, focused: true }
+        : card;
+      glowBursts += renderCard(context, visibleCard, 336 + index * 304, 402);
     });
     if (context.kind === 'card') renderSkip(context);
   }

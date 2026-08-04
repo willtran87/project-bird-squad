@@ -623,6 +623,20 @@ const validateEnemy = (enemy, file) => {
     } else {
       fail(`${label}: unknown attackPattern type "${pattern?.type}"`);
     }
+    if (enemy.type === 'boss') {
+      if (!enemy.phaseTwoName || typeof enemy.phaseTwoName !== 'string') {
+        fail(`${label}: boss needs a phaseTwoName`);
+      }
+      if (!Array.isArray(enemy.phaseTwoMoveIds) || enemy.phaseTwoMoveIds.length < 2) {
+        fail(`${label}: boss needs at least two phaseTwoMoveIds`);
+      } else {
+        enemy.phaseTwoMoveIds.forEach((id) => {
+          if (!moveIds.has(id)) fail(`${label}: phaseTwoMoveIds references unknown move "${id}"`);
+        });
+      }
+    } else if (enemy.phaseTwoName !== undefined || enemy.phaseTwoMoveIds !== undefined) {
+      fail(`${label}: only bosses may define Phase II`);
+    }
 
     // Snag-existence: every addSnagTo{Discard,Draw}(id) reference must resolve to
     // a kind:'snag' card (next-level-data-contracts §8.1). Catches dangling refs.

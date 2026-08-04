@@ -213,6 +213,11 @@ Acceptance:
   after the first fight
 - tutorial completion and skipped-step counts are recorded locally
 
+Owner waiver (2026-07-30): these human-observation criteria remain useful
+future QA, but they are not a blocker for the current release. The project
+accepts the residual risk and does not claim that fresh-player comprehension
+has been proven.
+
 ### P0. Gate First Interaction On Essential Art Readiness
 
 Implementation status: complete in runtime and automated recovery coverage.
@@ -409,6 +414,37 @@ proves displayed Add/Preen outcomes against the resulting deck and upgraded
 card. The shared Market/route workbench picker now carries that preview into the
 final card commitment: Preen cards show their first changed normal, Molt, or
 Flock Stat result, while Release cards show the exact live deck-size reduction.
+Those deck modifications now use the same intentional commitment boundary as
+other irreversible choices. A direct card activation selects without changing
+the deck or spending Scrap; activating it again commits. Arrow/D-pad navigation
+counts as deliberate selection so one Confirm/A remains fast, while Back/B and
+full inspection clear the armed choice without applying it. The picker renders
+the exact armed card, `CONFIRM PREEN` or `CONFIRM RELEASE`, and the cancellation
+path at the supported minimum landscape. Cross-input coverage proves route
+Preen rollback and paid Market Release preserve deck, Scrap, and offer state
+until the second activation.
+Reward commitment now follows the same intentional-action contract. A direct
+pointer, number-key, Confirm, or controller-A activation selects and previews a
+card, Preen, or Waymark without mutating the run; activating that same choice
+again commits it. Previous/Next and D-pad navigation count as deliberate
+selection, so Confirm/A stays a single responsive commit afterward. Back/B
+cancels the armed choice, Skip and inspection disarm it, the selected card keeps
+its subject visible instead of opening the hover dossier over the confirmation
+rail, and the screen-reader/debug contracts expose the exact armed choice and
+cancel path. Mandatory browser coverage proves pointer, keyboard, controller,
+and cancellation behavior across all three reward types at the supported
+1000-by-560 minimum landscape.
+Route-event and cache card rewards now carry the same commitment contract
+through their final card choice. Pointer activation selects without changing
+the deck, a second activation commits, and explicit Previous/Next or D-pad
+navigation arms the focused card so one Confirm/A commits. Back/B first clears
+the armed card while preserving the pending reward and offered choices.
+Inspection clears the armed state, pointer hover remains non-committing, and
+the gold focus frame, `CONFIRM PICK / BACK CANCELS` rail, input hint,
+screen-reader summary, and debug state all expose the current commitment
+boundary. Mandatory browser coverage proves pointer, keyboard, controller,
+cancellation, pending-reward preservation, and exact-card delivery at the
+supported 1000-by-560 minimum landscape.
 Paid choices retain their per-card Scrap badge and full hover dossier, and
 focused parity coverage proves both Market commits plus recalculation after a
 route workbench removal. Market coverage now includes every purchase family:
@@ -813,7 +849,7 @@ Qualitative questions:
 - Do not treat passing simulation targets as proof that route choices are fun.
 - Do not treat high-resolution screenshots as proof that portrait mobile works.
 
-## Release Gate For The Next Experience Milestone
+## Automated Release Gate For The Next Experience Milestone
 
 The next milestone is ready when:
 
@@ -826,8 +862,8 @@ The next milestone is ready when:
 - run telemetry measures total run behavior accurately
 - the outcome screen gives the player a specific next-run mastery goal
 - portrait mobile is either deliberately supported or deliberately gated
-- five observed first-run sessions produce no repeated confusion around route
-  confirmation, targeting, Roost, Tells, Cover, or reward skipping
+- the owner-approved human-playtest waiver is disclosed anywhere release
+  evidence is summarized, without presenting seeded runs as human evidence
 
 ## Implemented Accessibility Follow-Through
 
@@ -912,6 +948,24 @@ stats, while the bottom strip names the changed decision shape or added stat.
 The same comparison contract is available through pointer, keyboard,
 controller, serialized text state, and screen-reader narration.
 
+## Bosses Now Change Strategy Mid-Fight
+
+All four district bosses now switch to a named, authored Phase II loop when
+they survive crossing half Cohesion. The shift is deterministic rather than a
+hidden random modifier: current Cover and stored attack force break, the Tell
+counter restarts, and the first move of the final pattern appears immediately.
+Each boss uses its existing move identity in a tighter late-fight order, so the
+transition changes sequencing and defensive timing without introducing
+unreadable one-off rules.
+
+The route dossier discloses the 50% threshold before commitment. In battle, the
+Cohesion rail has a midpoint marker and persistent phase badge; selecting a
+threshold-crossing card forecasts Phase II, the new opener, and lost enemy
+Cover before the second activation commits. The transition then has generated
+break FX, audio, written log evidence, text-state telemetry, and screen-reader
+narration. A lethal crossing skips Phase II, and the latched phase prevents a
+second transition.
+
 ## Current Completion Evidence
 
 The exact current build passes runtime-data validation, 961 optimized runtime
@@ -925,7 +979,12 @@ deployment performance.
 It is not human evidence for fun, fairness, clarity, or replay intent. There is
 currently no `.artifacts/playtest-sessions/` directory, and the generated
 dashboard identifies its source as `seeded pipeline harness (not human playtest
-evidence)` with `0/10` complete rating responses. The only unproven release
-gate is therefore the five genuinely fresh observed sessions defined in
-`docs/game/playtest-runbook.md`. No additional balance or content change should
-be inferred until those sessions reveal repeated confusion or low ratings.
+evidence)` with `0/10` complete rating responses.
+
+Project-owner decision (2026-07-30): the five-session human evidence gate is
+waived for the current release. The build may proceed on its automated
+production evidence with the explicit residual risk that subjective fun,
+fairness, clarity, replay intent, and fresh-player comprehension remain
+unverified. `docs/game/playtest-runbook.md` remains the standard for optional
+future sessions. Seeded telemetry must not be relabeled as human evidence or
+used to justify speculative balance claims.

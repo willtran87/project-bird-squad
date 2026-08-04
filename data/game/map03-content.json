@@ -566,6 +566,12 @@
         ],
         "loopFrom": 1
       },
+      "phaseTwoName": "Beacon Overload",
+      "phaseTwoMoveIds": [
+        "charge_the_beacon",
+        "spire_toll_8",
+        "beacon_break_14"
+      ],
       "rewards": {
         "bossRouteMarkChoices": 3,
         "rareCardChoices": 3,

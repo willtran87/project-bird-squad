@@ -21,6 +21,8 @@ export interface BattleForegroundEnemyView {
   guideTarget: boolean;
   elite: boolean;
   boss: boolean;
+  phase: 1 | 2;
+  phaseName?: string;
   x: number;
   y: number;
   scale: number;
@@ -239,6 +241,28 @@ function renderEnemy(context: BattleForegroundRenderContext, enemy: BattleForegr
     hpFraction > 0.34 ? 0xb23b33 : 0xff5247,
     0.95,
   ));
+  if (enemy.boss) {
+    const phaseTwo = enemy.phase === 2;
+    const phaseColor = phaseTwo ? 0xff9d4d : 0xf5c85b;
+    target.add(scene.add.rectangle(hp.x, hp.y, 2 * s, hp.h - 4, phaseColor, 0.9)
+      .setName('combat-boss-phase-threshold'));
+    const phaseY = hp.y - 27 * s;
+    const phasePanel = scene.add.rectangle(hp.x, phaseY, 188 * s, 20 * s, 0x11171e, 0.94)
+      .setStrokeStyle(2, phaseColor, 0.96)
+      .setName('combat-boss-phase-badge');
+    target.add(phasePanel);
+    target.add(scene.add.text(
+      hp.x,
+      phaseY,
+      phaseTwo ? `PHASE II  /  ${enemy.phaseName ?? 'FINAL PATTERN'}` : 'PHASE I  /  SHIFTS AT 50%',
+      {
+        fontFamily,
+        fontSize: `${Math.round(10 * s)}px`,
+        fontStyle: boldFontStyle,
+        color: phaseTwo ? '#ffd5ad' : '#fff1b8'
+      }
+    ).setOrigin(0.5).setName('combat-boss-phase-badge'));
+  }
   target.add(scene.add.text(hp.x, hp.y, `${enemy.name.replace(/^The\s+/, '')}  ${enemy.hp}/${enemy.maxHp}`, {
     fontFamily,
     fontSize: `${Math.round((enemy.boss ? 15 : 18) * s)}px`,

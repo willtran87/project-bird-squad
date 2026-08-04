@@ -149,6 +149,10 @@ export interface RuntimeEnemy {
   rewardScrap?: number;
   moves: EnemyMove[];
   attackPattern: AttackPattern;
+  // Bosses switch to this authored loop once they cross half Cohesion.
+  // Keeping the loop in data makes the transition deterministic and previewable.
+  phaseTwoName?: string;
+  phaseTwoMoveIds?: string[];
   rewards: EnemyRewards;
 }
 

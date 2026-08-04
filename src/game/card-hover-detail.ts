@@ -1,16 +1,27 @@
 import Phaser from 'phaser';
 export {
+  activateMarketFocus,
+  bindMarketInputs,
+  cardPickerDecisionDelta,
   closeCardPickerInspection,
   closeRouteRewardInspection,
   cycleCardPickerFocus,
+  cycleMarketCategory,
+  cycleMarketFocus,
   cycleRouteRewardChoice,
   focusedCardPickerEntry,
   focusedRouteRewardCard,
   handleRouteRewardAction,
   openCardPickerInspection,
   openRouteRewardInspection,
+  requestRouteRewardCard,
   renderCardPickerInput,
   renderCardPickerInspection,
+  renderMarketCategoryTabs,
+  renderMarketInputHelp,
+  renderMarketSectionHeader,
+  requestCardPick,
+  resetMarketFocus,
   setRouteRewardChoice,
   updateRouteRewardGamepad,
 } from './reward-card-inspection';
@@ -82,17 +93,23 @@ export interface MarketItemDetailView {
 }
 
 export function renderCardHoverDetail(scene: Phaser.Scene, view: CardHoverDetailView) {
-  const w = 300;
-  const h = 450;
+  const marketInspector = view.zone.startsWith('Market /');
+  const w = marketInspector ? 270 : 300;
+  const h = marketInspector ? 430 : 450;
   const margin = 18;
-  const cx = view.anchorX < 640
-    ? Math.min(1280 - w / 2 - margin, view.anchorX + 232)
-    : Math.max(w / 2 + margin, view.anchorX - 232);
-  const cy = Math.max(h / 2 + margin, Math.min(720 - h / 2 - margin, view.anchorY));
+  const cx = marketInspector
+    ? 1116
+    : view.anchorX < 640
+      ? Math.min(1280 - w / 2 - margin, view.anchorX + 232)
+      : Math.max(w / 2 + margin, view.anchorX - 232);
+  const cy = marketInspector
+    ? 394
+    : Math.max(h / 2 + margin, Math.min(720 - h / 2 - margin, view.anchorY));
   const left = cx - w / 2;
   const top = cy - h / 2;
   const bottom = cy + h / 2;
-  const container = scene.add.container(0, 0);
+  const container = scene.add.container(0, 0)
+    .setName(marketInspector ? 'market-fixed-card-inspector' : 'card-hover-detail');
   const add = <T extends Phaser.GameObjects.GameObject>(child: T) => {
     container.add(child);
     return child;

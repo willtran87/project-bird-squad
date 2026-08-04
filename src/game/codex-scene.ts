@@ -1946,8 +1946,8 @@ export class CodexScene extends Phaser.Scene {
       top: this.currentGridTop(),
       bottom: CodexScene.GRID_BOTTOM,
       cols: cardMode ? 5 : leaderMode ? 3 : glossaryMode ? 2 : 4,
-      cellW: cardMode ? 202 : leaderMode ? 360 : glossaryMode ? 580 : 274,
-      cellH: cardMode ? 286 : itemMode ? 176 : leaderMode ? 238 : glossaryMode ? 94 : 228,
+      cellW: cardMode ? 202 : itemMode ? 360 : leaderMode ? 360 : glossaryMode ? 580 : 274,
+      cellH: cardMode ? 286 : itemMode ? 148 : leaderMode ? 238 : glossaryMode ? 94 : 228,
     };
   }
 
@@ -1964,8 +1964,8 @@ export class CodexScene extends Phaser.Scene {
     return {
       x: gridLeft + (index % shape.cols) * shape.cellW + shape.cellW / 2,
       y: shape.top + Math.floor(index / shape.cols) * shape.cellH + shape.cellH / 2 - this.gridScroll,
-      width: cardMode ? 198 : itemMode ? 258 : leaderMode ? 338 : glossaryMode ? shape.cellW - 16 : 258,
-      height: cardMode ? 290 : itemMode ? 160 : leaderMode ? 220 : glossaryMode ? shape.cellH - 10 : 212,
+      width: cardMode ? 198 : itemMode ? 342 : leaderMode ? 338 : glossaryMode ? shape.cellW - 16 : 258,
+      height: cardMode ? 290 : itemMode ? 134 : leaderMode ? 220 : glossaryMode ? shape.cellH - 10 : 212,
     };
   }
 
@@ -2837,9 +2837,9 @@ export class CodexScene extends Phaser.Scene {
     //    header/footer curtains below can hide anything scrolled out of view
     //    (WebGL doesn't support geometry masks, so we clip with opaque strips).
     const glossaryMode = this.activeSection === 'glossary';
-    const cols = cardMode ? 5 : leaderMode ? 3 : glossaryMode ? 2 : 4;
-    const cellW = cardMode ? 202 : leaderMode ? 360 : glossaryMode ? 580 : 274;
-    const cellH = cardMode ? 286 : itemMode ? 176 : leaderMode ? 238 : glossaryMode ? 94 : 228;
+    const cols = cardMode ? 5 : itemMode ? 3 : leaderMode ? 3 : glossaryMode ? 2 : 4;
+    const cellW = cardMode ? 202 : itemMode ? 360 : leaderMode ? 360 : glossaryMode ? 580 : 274;
+    const cellH = cardMode ? 286 : itemMode ? 148 : leaderMode ? 238 : glossaryMode ? 94 : 228;
     const gridLeft = (GAME_WIDTH - cols * cellW) / 2;
     const rows = Math.ceil((cardMode ? cards.length : itemMode ? items.length : leaderMode ? leaders.length : glossaryMode ? glossaryTerms.length : enemies.length) / cols);
     this.gridMaxScroll = Math.max(0, rows * cellH - (bottom - top) + 12);
@@ -4717,8 +4717,8 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private renderSupplyThumb(layer: Phaser.GameObjects.Container, supply: RuntimeSupply, cx: number, cy: number) {
-    const w = 252;
-    const h = 154;
+    const w = 330;
+    const h = 126;
     const accent = this.supplyAccent(supply);
     const bg = this.add.rectangle(cx, cy, w, h, 0x0d1720, 0.96)
       .setStrokeStyle(2, accent, 0.9)
@@ -4727,30 +4727,26 @@ export class CodexScene extends Phaser.Scene {
     bg.on('pointerout', () => bg.setFillStyle(0x0d1720, 0.96));
     bg.on('pointerdown', () => this.openCodexDetail(supply.id));
     layer.add(bg);
-    addCodexEntryFrame(this, (obj) => layer.add(obj), { cx, cy, w, h }, { alpha: 0.42, padX: 18, padY: 18 });
     layer.add(this.add.rectangle(cx, cy - h / 2 + 7, w - 16, 4, accent, 0.82));
     const artAsset = supplyCompactArtAssets[supply.id];
     if (artAsset && this.textures.exists(artAsset.key)) {
-      layer.add(addSupplyArtImage(this, cx - 92, cy - 34, artAsset.key).setDisplaySize(70, 70));
+      layer.add(addSupplyArtImage(this, cx - 132, cy - 20, artAsset.key).setDisplaySize(64, 64));
     } else {
-      layer.add(this.add.text(cx - 92, cy - 35, this.supplyGlyph(supply), {
+      layer.add(this.add.text(cx - 132, cy - 20, this.supplyGlyph(supply), {
         fontFamily: UI_FONT, fontSize: '22px', fontStyle: UI_BOLD, color: '#e7eef7'
       }).setOrigin(0.5));
     }
-    layer.add(this.add.text(cx - 48, cy - 58, supply.name, {
+    layer.add(this.add.text(cx - 90, cy - 50, supply.name, {
       fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: UI_GOLD,
-      wordWrap: { width: 168 }
+      wordWrap: { width: 238 }, maxLines: 1,
     }).setOrigin(0, 0));
-    layer.add(this.add.text(cx - 48, cy - 20, `${this.supplyCategoryLabel(supply)} / ${supply.rarity}`, {
-      fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: UI_CYAN,
-      wordWrap: { width: 168 }
+    layer.add(this.add.text(cx - 90, cy - 24, `${this.supplyCategoryLabel(supply)} / ${supply.rarity}  ·  ${this.supplyTimingLabel(supply)} / ${this.supplyAnswerLabel(supply)}`, {
+      fontFamily: UI_FONT, fontSize: '10px', fontStyle: UI_BOLD, color: UI_CYAN,
+      wordWrap: { width: 238 }, maxLines: 1,
     }).setOrigin(0, 0));
-    this.addCodexChip(layer, cx - 58, cy + 11, 98, this.supplyTimingLabel(supply), accent);
-    this.addCodexChip(layer, cx + 52, cy + 11, 106, this.supplyAnswerLabel(supply), accent);
-    layer.add(this.add.text(cx - 112, cy + 38, compactEffectSummary(supply.effects, 94), {
+    layer.add(this.add.text(cx - 90, cy + 4, compactEffectSummary(supply.effects, 82), {
       fontFamily: UI_FONT, fontSize: '12px', color: UI_BODY,
-      align: 'center', wordWrap: { width: w - 28 },
-      maxLines: 2
+      wordWrap: { width: 238 }, maxLines: 2,
     }).setOrigin(0, 0));
   }
 
@@ -4831,8 +4827,8 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private renderWaymarkThumb(layer: Phaser.GameObjects.Container, mark: RuntimeRouteMark, cx: number, cy: number) {
-    const w = 252;
-    const h = 154;
+    const w = 330;
+    const h = 126;
     const accent = this.waymarkAccent(mark);
     const bg = this.add.rectangle(cx, cy, w, h, 0x0d1420, 0.96)
       .setStrokeStyle(2, accent, 0.9)
@@ -4841,31 +4837,27 @@ export class CodexScene extends Phaser.Scene {
     bg.on('pointerout', () => bg.setFillStyle(0x0d1420, 0.96));
     bg.on('pointerdown', () => this.openCodexDetail(mark.id));
     layer.add(bg);
-    addCodexEntryFrame(this, (obj) => layer.add(obj), { cx, cy, w, h }, { alpha: 0.42, padX: 18, padY: 18 });
     layer.add(this.add.rectangle(cx, cy - h / 2 + 7, w - 16, 4, accent, 0.82));
 
     const artAsset = waymarkCompactArtAssets[mark.id];
     if (artAsset && this.textures.exists(artAsset.key)) {
-      layer.add(addWaymarkArtImage(this, cx - 92, cy - 34, artAsset.key).setDisplaySize(70, 70));
+      layer.add(addWaymarkArtImage(this, cx - 132, cy - 20, artAsset.key).setDisplaySize(64, 64));
     } else {
-      layer.add(this.add.text(cx - 92, cy - 35, waymarkGlyph(mark), {
+      layer.add(this.add.text(cx - 132, cy - 20, waymarkGlyph(mark), {
         fontFamily: UI_FONT, fontSize: '22px', fontStyle: UI_BOLD, color: '#e7eef7'
       }).setOrigin(0.5));
     }
-    layer.add(this.add.text(cx - 48, cy - 58, mark.name, {
+    layer.add(this.add.text(cx - 90, cy - 50, mark.name, {
       fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: UI_GOLD,
-      wordWrap: { width: 168 }
+      wordWrap: { width: 238 }, maxLines: 1,
     }).setOrigin(0, 0));
-    layer.add(this.add.text(cx - 48, cy - 20, `${this.waymarkFamilyLabel(mark)} / ${mark.rarity}`, {
-      fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: UI_CYAN,
-      wordWrap: { width: 168 }
+    layer.add(this.add.text(cx - 90, cy - 24, `${this.waymarkFamilyLabel(mark)} / ${mark.rarity}  ·  ${mark.source}`, {
+      fontFamily: UI_FONT, fontSize: '10px', fontStyle: UI_BOLD, color: UI_CYAN,
+      wordWrap: { width: 238 }, maxLines: 1,
     }).setOrigin(0, 0));
-    this.addCodexChip(layer, cx - 58, cy + 11, 98, this.waymarkFamilyLabel(mark), accent);
-    this.addCodexChip(layer, cx + 52, cy + 11, 106, mark.source, accent);
-    layer.add(this.add.text(cx - 112, cy + 38, compactEffectSummary(routeMarkEffectText(mark), 94), {
+    layer.add(this.add.text(cx - 90, cy + 4, compactEffectSummary(routeMarkEffectText(mark), 82), {
       fontFamily: UI_FONT, fontSize: '12px', color: UI_BODY,
-      align: 'center', wordWrap: { width: w - 28 },
-      maxLines: 2
+      wordWrap: { width: 238 }, maxLines: 2,
     }).setOrigin(0, 0));
   }
 

@@ -296,7 +296,7 @@ function renderCard(
     color: '#06101c',
   }).setOrigin(0.5));
 
-  const panelHeight = card.selected ? 72 : 48;
+  const panelHeight = card.selected ? 64 : 40;
   target.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - 3, cardWidth - 6, panelHeight, 0x05080e, 0.82));
   target.add(scene.add.rectangle(centerX, bottom - panelHeight - 3, cardWidth - 6, 2, card.accent, 0.85));
   if (card.selected) {
@@ -314,7 +314,7 @@ function renderCard(
       color: card.canPay ? '#c7d4df' : '#7f8b98',
       align: 'center',
       fixedWidth: cardWidth - 16,
-      maxLines: 2,
+      maxLines: 1,
       wordWrap: { width: cardWidth - 16 },
     }).setOrigin(0.5, 0));
   }
@@ -523,10 +523,41 @@ export function renderBattleHandPreview(
   return container;
 }
 
+export function renderRewardSkipFallback(scene: any) {
+  const target = scene.root as Phaser.GameObjects.Container;
+  const width = 1280;
+  const scrap = scene.currentSkipScrapReward();
+  const armed = Boolean(scene.rewardSkipArmed);
+  const hit = scene.add.rectangle(width / 2, 652, 324, 48, 0x2a2320, 0.96)
+    .setStrokeStyle(armed ? 4 : 2, armed ? 0xffdc76 : 0xd8a840, 0.98)
+    .setInteractive({ useHandCursor: true })
+    .setName('reward-skip-hit');
+  hit.on('pointerdown', () => scene.requestSkipCardReward());
+  target.add(hit);
+  target.add(scene.add.text(
+    width / 2,
+    armed ? 646 : 652,
+    `${armed ? 'Confirm Skip' : 'Skip'}  +${scrap} Scrap`,
+    { fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: '#f4d78b' },
+  ).setOrigin(0.5));
+  if (armed) {
+    target.add(scene.add.text(width / 2, 664, 'SKIP AGAIN / X / TAP AGAIN  ·  BACK CANCELS', {
+      fontFamily: 'Arial',
+      fontSize: '10px',
+      fontStyle: 'bold',
+      color: '#b8c8d8',
+    }).setOrigin(0.5));
+  }
+}
+
 export {
+  armCombatRewardAt,
   closeRewardCardInspection,
   focusedRewardCard,
   openRewardCardInspection,
+  renderCombatRewardFallback,
   renderRewardInspectButton,
+  requestCombatReward,
+  requestCombatRewardAt,
   syncRewardCardInspection,
 } from '../reward-card-inspection';

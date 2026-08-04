@@ -4919,20 +4919,14 @@ function renderSavedDeckCollectionSignals(
   ];
   metrics.forEach(([label, value, accent], index) => {
     const x = 264 + index * 250;
-    scene.add.rectangle(x, 140, 224, 48, 0x0d2231, 0.94)
-      .setStrokeStyle(1, accent, 0.72);
-    scene.add.text(x - 96, 131, label, {
+    scene.add.text(x, 140, `${label}  ${value}`, {
       fontFamily: UI_FONT,
-      fontSize: '8px',
-      fontStyle: UI_BOLD,
-      color: UI_MUTED,
-    }).setResolution(2);
-    scene.add.text(x + 96, 140, String(value), {
-      fontFamily: UI_FONT,
-      fontSize: '16px',
+      fontSize: '11px',
       fontStyle: UI_BOLD,
       color: accent === UI_FIELD.gold ? UI_FIELD.warm : UI_FIELD.cyanText,
-    }).setResolution(2).setOrigin(1, 0.5);
+      fixedWidth: 224,
+      align: 'center',
+    }).setResolution(2).setOrigin(0.5);
   });
 
   type SignalRow = { title: string; detail: string; ids: string[]; current?: boolean };
@@ -5001,9 +4995,9 @@ function renderSavedDeckCollectionSignals(
   ];
   columns.forEach((column, columnIndex) => {
     const x = 264 + columnIndex * 250;
-    scene.add.rectangle(x, 366, 224, 390, 0x091622, 0.96)
-      .setStrokeStyle(1, column.accent, 0.64)
+    scene.add.rectangle(x, 366, 224, 390, 0x091622, 0.46)
       .setName(`profile-collection-signals-${column.id}-panel`);
+    if (columnIndex > 0) scene.add.rectangle(x - 125, 366, 1, 376, column.accent, 0.28);
     scene.add.text(x, 185, column.title, {
       fontFamily: UI_FONT,
       fontSize: '11px',
@@ -5032,8 +5026,8 @@ function renderSavedDeckCollectionSignals(
     }
     column.rows.forEach((row, rowIndex) => {
       const y = 255 + rowIndex * 58;
-      scene.add.rectangle(x, y, 204, 50, row.current ? 0x123244 : 0x0b1824, 0.96)
-        .setStrokeStyle(row.current ? 2 : 1, row.current ? UI_FIELD.cyan : column.accent, row.current ? 0.84 : 0.34)
+      scene.add.rectangle(x, y, 204, 50, row.current ? 0x123244 : 0x0b1824, row.current ? 0.92 : rowIndex % 2 === 0 ? 0.58 : 0.32)
+        .setStrokeStyle(row.current ? 2 : 0, row.current ? UI_FIELD.cyan : column.accent, row.current ? 0.84 : 0)
         .setName(`profile-collection-signals-${column.id}-row`)
         .setData('cardIds', row.ids)
         .setData('currentFolio', row.current === true);
@@ -5048,7 +5042,7 @@ function renderSavedDeckCollectionSignals(
       }).setResolution(2);
       scene.add.text(x - 92, y + 11, row.detail, {
         fontFamily: UI_FONT,
-        fontSize: '8px',
+        fontSize: '9px',
         fontStyle: UI_BOLD,
         color: row.current ? UI_FIELD.cyanText : UI_MUTED,
         fixedWidth: 184,

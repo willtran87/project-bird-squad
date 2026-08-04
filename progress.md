@@ -5605,3 +5605,374 @@ sessions through `docs/game/playtest-runbook.md`.
 - The broader card-collector objective remains active. Five genuinely observed
   fresh-player sessions through `docs/game/playtest-runbook.md` remain necessary
   qualitative release evidence.
+
+## 2026-07-30 Human Playtest Gate Waiver
+
+- The project owner explicitly chose to forego human playtesting for the current
+  release. The five-session requirement is no longer a blocking release gate.
+- Updated the authoritative experience audit and playtest runbook to record the
+  2026-07-30 waiver. The runbook remains available as the required standard if
+  optional human QA is conducted later.
+- The waiver does not convert seeded automation into human evidence. Mechanical
+  correctness, stability, accessibility, supported layouts, persistence,
+  performance, asset wiring, and deterministic behavior retain their existing
+  automated evidence; subjective fun, fairness, clarity, replay intent, and
+  fresh-player comprehension remain explicitly unverified.
+- Future release summaries must disclose that residual risk and must not use the
+  seeded dashboard to justify speculative balance changes.
+
+## 2026-07-30 Compact Card Picker Pagination Clearance
+
+- Audited representative production UI surfaces at desktop and the supported
+  1000 by 560 minimum landscape, including Settings, How to Play, Route and
+  Combat HUDs, deck and pile review, rewards, market services, run outcomes,
+  Codex search and detail, profile, and the Route card picker.
+- Corrected one reproducible compact-layout collision in the Preen/Release card
+  picker: its page-indicator frame intruded into the fifth card's decision-delta
+  plaque. The indicator is now an 80-pixel rail aligned to the frame's right
+  edge, leaving the card action and comparison text unobstructed.
+- Extended the existing large-deck picker regression to measure the page rail
+  against the final visible decision delta and reject any intersection. Promoted
+  that regression into `npm run test:sequencing`, increasing the permanent
+  mandatory browser gate from 47 to 48 scenarios.
+- Focused strict TypeScript and both picker/minimum-layout browser tests pass.
+  The inspected exact-surface evidence is
+  `.artifacts/test-results/min-supported/route-card-picker-1000x560.png`.
+- The required production shared client booted the built game through genuine
+  pointer input to Route at 1280 by 720. Full art became ready in 1,773 ms,
+  time to first interaction was 349 ms, no asset group failed or timed out, and
+  no browser error artifact was emitted. Inspected evidence is
+  `.artifacts/compact-picker-shared-client/shot-0.png` and its exported state.
+- Full `npm run validate` passes documentation, runtime data, 961 optimized
+  assets, canonical world-asset rejection, direction-neutral combat FX,
+  deployment headers, bundle hard limits, content contracts, and all 48
+  mandatory Chromium scenarios in 14.6 minutes. Combined boot remains 742,397
+  bytes against the 742,400-byte hard cap; preferred bundle targets remain
+  advisory warnings.
+- The owner-approved human-playtest waiver remains in force. This automated and
+  visual evidence verifies the compact-layout defect and release mechanics, but
+  does not establish subjective fun, fairness, learnability, or replay intent.
+
+## 2026-07-30 Intentional Market Purchase Input Parity
+
+- Closed an irreversible-input gap in the Route Market. Confirm can no longer
+  fall through to route commitment while the Market is open, including before
+  the lazy Market input module finishes loading.
+- Added a visible Market focus model with keyboard Previous/Next, arrow, Tab,
+  Enter, section shortcuts `1` through `4`, and Back support. Controller D-pad,
+  `A`, shoulder buttons, and `B` provide equivalent navigation, purchase,
+  category, and exit behavior.
+- Pointer and touch purchases now require a second activation before Scrap is
+  spent. The first activation arms a gold confirmation state; Back cancels that
+  state without spending or leaving. Focus repairs to the next available offer
+  after a sale.
+- Screen-reader and runtime diagnostics expose the selected offer, armed state,
+  supported controls, and the route-commitment safety block. The compact
+  1000-by-560 confirmation rail remains readable alongside the card dossier.
+- Promoted the cross-input purchase regression into `npm run test:sequencing`,
+  increasing the permanent mandatory browser gate from 48 to 49 scenarios.
+  Inspected evidence is
+  `.artifacts/test-results/market-intentional-purchase-1000x560.png`.
+- The required production shared client reached Route at 1280 by 720 through
+  genuine pointer input. Full art became ready in 1,836 ms, first interaction
+  was available in 450 ms, every asset group completed, and no browser error
+  artifact was emitted.
+- Full `npm run validate` passes documentation, runtime data, 961 optimized
+  assets, canonical world-asset rejection, direction-neutral combat FX,
+  deployment headers, bundle hard limits, content contracts, and all 49
+  mandatory Chromium scenarios in 12.4 minutes. Combined boot is 724.7 KB
+  against the 725 KB hard limit; preferred bundle targets remain advisory
+  warnings.
+- The owner-approved human-playtest waiver remains in force. These automated,
+  accessibility, and visual checks establish intentional input behavior and
+  mechanical safety, but not subjective fun, fairness, clarity, or replay
+  intent.
+
+## 2026-07-30 Intentional Card Reward Skip Confirmation
+
+- Closed the remaining irreversible-input gap on post-combat card rewards.
+  Skipping a card can no longer happen from one stray pointer, keyboard, or
+  controller activation: the first activation arms a visible confirmation and
+  the second commits the skip.
+- Back or controller `B` cancels the armed state without adding Scrap, emitting
+  a reward event, changing the deck, or leaving the reward screen. Moving card
+  focus or opening card inspection also disarms Skip, while normal card
+  selection remains a single responsive action.
+- The compact reward rail changes to `Confirm Skip +12 Scrap` while armed and
+  keeps the second-activation and Back-cancel instruction readable at the
+  supported 1000-by-560 minimum landscape. Inspected evidence is
+  `.artifacts/test-results/reward-skip-confirmation-1000x560.png`.
+- Screen-reader output announces the exact Scrap outcome, the two-activation
+  requirement, supported inputs, and cancellation path. Runtime diagnostics
+  expose availability, armed state, projected Scrap, deck size, the
+  commit-until-confirmed block, and remapped keyboard/controller labels.
+- Promoted the cross-input confirmation regression into
+  `npm run test:sequencing`, increasing the permanent mandatory browser gate
+  from 49 to 50 scenarios. Focused reward-skip tests pass 3 of 3, and adjacent
+  reward-art, remapped-input, and end-turn-isolation regressions pass 3 of 3.
+- The required production shared client reached a live full-art battle at
+  1280 by 720 with no pending, failed, or timed-out asset groups and no browser
+  error artifact. Inspected evidence is
+  `.artifacts/reward-skip-shared-client/shot-0.png` and its exported state.
+- Full `npm run validate` passes documentation, runtime data, 961 optimized
+  assets, canonical world-asset rejection, direction-neutral combat FX,
+  deployment headers, content contracts, bundle hard limits, and all 50
+  mandatory Chromium scenarios in 13.3 minutes. Combined boot is 742,376 bytes
+  against the 742,400-byte hard cap; the reward renderer is exactly 14,336
+  bytes against its hard cap. Preferred bundle targets remain advisory
+  warnings.
+- The owner-approved human-playtest waiver remains in force. These automated,
+  accessibility, and visual checks establish input parity, mechanical safety,
+  and supported-layout behavior, but not subjective fun, fairness, clarity,
+  fresh-player comprehension, or replay intent.
+
+## 2026-07-30 Intentional Combat Card Commitment
+
+- Audited the checklist requirement to prevent accidental card plays and found
+  one concrete inconsistency: enemy-target cards already required selection
+  plus a target, but self, utility, area, and choice cards fired from a single
+  pointer, keyboard, or controller activation.
+- Standardized combat commitment without adding a modal. The first activation
+  selects the card, exposes its resolver-driven outcome preview, and spends
+  nothing; activating that selected card again commits it. Enemy-target cards
+  may still commit by choosing the enemy. Explicit keyboard/controller
+  navigation already selects, so one subsequent Confirm/`A` remains the fast
+  deliberate path.
+- Back or controller `B` cancels a selected card without changing the hand,
+  Wingbeats, card-play count, or combat state, and now records that cancellation
+  truthfully in run telemetry. Switching to another card remains immediate.
+- Moved the selected-outcome rail from over the center card art into the open
+  strip above the hand. It now says `ACTIVATE AGAIN TO PLAY` while preserving
+  all five card subjects, the combat log, enemy intent, and Roost at the
+  supported 1000-by-560 minimum. Inspected evidence is
+  `.artifacts/test-results/combat-card-intentional-selection-1000x560.png`.
+- Screen-reader narration now distinguishes enemy targets from self/area
+  targets, names the remapped Confirm binding, explains the second-activation
+  and target alternatives, and states that Back/`B` cancels without playing.
+  Runtime diagnostics expose availability, armed card identity, active target,
+  the selection-before-commit block, and pointer/keyboard/controller inputs.
+- Promoted the pointer/keyboard/controller regression into
+  `npm run test:sequencing`, increasing the permanent mandatory browser gate
+  from 50 to 51 scenarios. Focused preview/input/telemetry/Molt regressions pass
+  5 of 5, the final rail/preview checks pass 3 of 3, and adjacent intro,
+  real-pointer, Molt-target, and discard-order checks pass 4 of 4.
+- The required production shared client drove title to Route to live combat,
+  then selected Plume Fledgling with one genuine pointer activation. The card
+  remained in hand, confirmation reported armed with target `none`, every asset
+  group completed, and no browser error artifact was emitted. Inspected
+  evidence is
+  `.artifacts/card-intentional-selection-shared-client/shot-0.png` and its
+  exported state.
+- Full `npm run validate` passes documentation, runtime data, 961 optimized
+  assets, canonical world-asset rejection, direction-neutral combat FX,
+  deployment headers, content contracts, all bundle hard limits, and all 51
+  mandatory Chromium scenarios in 13.6 minutes. Simplifying duplicate input
+  logic reduced combined boot to 742,078 bytes against the 742,400-byte hard
+  cap; preferred bundle targets remain advisory warnings.
+- The owner-approved human-playtest waiver remains in force. These automated,
+  accessibility, and visual checks establish intentional card commitment,
+  mechanical safety, input parity, and supported-layout behavior, but not
+  subjective fun, fairness, clarity, fresh-player comprehension, or replay
+  intent.
+
+## 2026-07-30 Intentional Reward Choice Commitment
+
+- Card, Preen, and Waymark ceremonies no longer mutate the run on the first
+  direct activation. The first pointer/number/Confirm/A activation arms the
+  exact choice; activating it again commits. Previous/Next or D-pad navigation
+  counts as deliberate selection, preserving a one-press Confirm/A commit.
+- Back/B cancels the armed choice without changing the deck, upgrades,
+  Waymarks, or reward event ledger. Skip and full-card inspection disarm the
+  choice so modes cannot carry competing confirmations.
+- The armed card's existing decision rail changes to
+  `CONFIRM PICK / BACK CANCELS`, the top input rail changes from Select to
+  Confirm, and the armed pointer card suppresses its hover dossier so all three
+  subjects and Skip stay visible. Inspected minimum-landscape evidence:
+  `.artifacts/test-results/reward-choice-confirmation-1000x560.png`.
+- Screen-reader output and lazy debug state expose the candidate, supported
+  inputs, double-activation contract, and cancel path through
+  `rewardChoiceConfirmation`.
+- Reward commitment and the compact failure renderer now live with the existing
+  lazy reward-inspection interaction helpers. This recovered boot budget rather
+  than raising limits. Production build and strict TypeScript pass; the bundle
+  validator reports 723.6 KB combined boot under the 725 KB hard cap and a
+  13.6 KB reward renderer under its 14 KB hard cap.
+- Focused Playwright coverage
+  `reward choices require intentional commitment across pointer keyboard and
+  controller` passes in about one minute and is now part of the mandatory
+  sequencing gate. Human playtesting remains owner-waived; this automation
+  proves behavior and presentation, not subjective fun or comprehension.
+- Final verification is green: `npm run validate` passes every static release
+  gate plus all 52 mandatory sequencing scenarios in 11.8 minutes. The required
+  built-preview shared client drove title -> route -> live combat with the
+  interaction helper loaded, complete renderer/state telemetry, no newly
+  emitted browser-error artifact, and inspected evidence at
+  `output/web-game/shot-0.png`. The targeted reward capture remains the visual
+  source of truth for the newly armed ceremony state.
+
+## 2026-07-30 Route Reward Input Readiness
+
+- The complete release gate exposed a cold-load race in route-event card
+  rewards: the reward overlay could render enabled card hit targets before the
+  separate card-detail interaction module assigned itself to `RouteScene`.
+  Pointer activation then optional-chained into an unavailable helper and
+  silently did nothing.
+- The lazy route-reward overlay now re-exports the shared route-reward
+  interaction contract. `RouteScene` resolves reward focus, selection,
+  inspection, keyboard actions, and gamepad updates through the loaded overlay
+  first, with the card-detail module as a secondary source. A rendered,
+  interactive reward overlay therefore always owns working input even while
+  the optional hover-detail loader is still cold.
+- The mandatory pointer/keyboard/controller regression explicitly clears and
+  holds the card-detail module unavailable before the first pointer activation.
+  It still arms the exact second card, preserves the pending reward and deck,
+  shows `CONFIRM PICK / BACK CANCELS`, cancels safely, and commits only on the
+  second activation.
+- Strict TypeScript and the focused cold-helper regression pass. The inspected
+  minimum-landscape evidence is
+  `.artifacts/test-results/route-reward-choice-confirmation-1000x560.png`.
+- The production build and hard bundle gate pass at 724.2 KB combined boot
+  against the unchanged 725 KB cap. The required built-preview shared client
+  reached a full-art route in 1,372 ms with first interaction in 260 ms, no
+  failed or timed-out asset groups, and no newly emitted browser-error
+  artifact; inspected evidence is `output/web-game/shot-0.png`.
+- Final `npm run validate` passes documentation, runtime data, 961 optimized
+  assets, canonical world and direction-neutral combat-FX contracts,
+  deployment and bundle gates, and all 53 mandatory Chromium scenarios in
+  14.0 minutes.
+
+## 2026-07-30 Intentional Preen and Release Commitment
+
+- Audited the remaining irreversible deck pickers and found that route Preen
+  and Market Release still upgraded or removed a card, and could spend Scrap,
+  on a single direct activation.
+- Both pickers now use the same intentional commitment contract as combat,
+  rewards, and Market purchases. The first pointer activation selects and arms
+  the exact card without changing the deck or Scrap; the second commits.
+  Arrow/D-pad navigation deliberately selects, so one subsequent Confirm/`A`
+  remains the fast path.
+- Back/`B` first disarms without mutation. Full-card inspection also disarms
+  and returns to the exact focused card. Route cancellation still restores the
+  original deck after partial multi-Preen work, while Market Release charges
+  the exact displayed cost only when the second activation commits.
+- Armed cards use a gold `CONFIRM PREEN` or `CONFIRM RELEASE` decision rail
+  with `BACK CANCELS`; the top command rail changes from Select to Confirm.
+  While the Market picker owns input, the inactive Market command rail,
+  bindings, and Close control are suppressed. Inspected minimum-landscape
+  evidence is
+  `.artifacts/test-results/card-picker-confirmation-preen-1000x560.png` and
+  `.artifacts/test-results/card-picker-confirmation-release-1000x560.png`.
+- Screen-reader narration and lazy route diagnostics expose the armed card,
+  exact cost, selection-before-commit block, supported inputs, and the
+  no-mutation cancel guarantee.
+- Picker commitment and compact decision-delta formatting were moved into the
+  existing lazy reward-card interaction chunk rather than raising bundle
+  limits. First activation is queued against that shared helper if it is still
+  cold, and discarded if the picker closes before loading finishes.
+- The mandatory picker regression independently proves cold-helper queuing and
+  cancellation, then exercises genuine canvas pointer, keyboard inspection,
+  and controller arm/cancel/commit flows. A three-repeat stress run passes
+  3 of 3.
+- Production build and strict TypeScript pass. The unchanged hard bundle gate
+  passes at 724.6 KB combined boot against 725 KB; the 694.6 KB app entry and
+  combined boot remain above their 675 KB and 710 KB preferred warning targets.
+- The required built-preview shared client reached first Route interaction in
+  305 ms and full art in 1,334 ms, with no pending, failed, or timed-out asset
+  groups and no newly emitted browser-error artifact. Inspected evidence is
+  `output/web-game/shot-0.png`.
+- Final `npm run validate` passes documentation, runtime data, 961 optimized
+  assets, canonical world and direction-neutral combat-FX contracts,
+  deployment security/cache headers, bundle gates, content contracts, and all
+  53 mandatory Chromium scenarios in 13.1 minutes.
+- The owner-approved human-playtest waiver remains in force. These automated,
+  accessibility, and visual checks establish intentional commitment,
+  mechanical safety, input parity, and supported-layout behavior, but not
+  subjective fun, fairness, clarity, fresh-player comprehension, or replay
+  intent.
+
+## 2026-07-31 Deterministic Boss Phase II
+
+- All four district bosses now have authored, named Phase II patterns:
+  Tar-Crowned Crow uses `Chokepoint Lockdown`, Canal Gatekeeper uses
+  `Floodgate Pressure`, Beacon-Breaker uses `Beacon Overload`, and Roost Warden
+  uses `Final Signal`. Runtime-data validation requires every boss to name its
+  second phase and reference at least two valid moves; non-bosses cannot define
+  one.
+- A surviving boss crosses into Phase II exactly once when damage reduces it
+  from above half Cohesion to half or below. The transition resets the intent
+  loop to its authored opener and clears enemy Cover plus queued attack force,
+  so the new Tell is fair and deterministic. Lethal damage skips the
+  transition, and further damage below half cannot retrigger it.
+- Card selection previews the exact post-hit Cohesion, named phase, next Tell,
+  and defensive reset before commitment. Live resolution uses the same state
+  transition, and the combat log, screen reader, debug state, boss dossier,
+  route preparation, midpoint marker, Phase badge, audio, and phase-break FX
+  all expose the change.
+- Focused pointer coverage proves preview/live parity, the one-time threshold,
+  Cover reset, intent reset, screen-reader narration, and visual badge at
+  minimum landscape. Inspected evidence is
+  `.artifacts/test-results/boss-phase-two-1000x560.png`.
+- Strict TypeScript, runtime data validation, production build, and hard bundle
+  gates pass. Phase preview and outcome formatting remain in lazy combat
+  chunks; combined boot is 724.2 KB against the unchanged 725 KB hard cap.
+  The 694.3 KB app entry and combined boot remain above their 675 KB and
+  710 KB preferred warning targets.
+- The required built-preview shared client reached first Route interaction in
+  348 ms and full art in 1,449 ms, with no pending, failed, or timed-out asset
+  groups and no browser-error artifact. Inspected evidence is
+  `output/web-game-boss-phase-slice/shot-0.png`.
+- Final sequencing validation passes all 54 mandatory Chromium scenarios in
+  13.2 minutes, including the new real-pointer boss transition test and the
+  existing Ascension boss-script regression.
+- Test-resource cleanup was explicitly audited. Isolated preview PID `78608`
+  was stopped after capture; tracked sequencing PIDs `21636`, `22556`,
+  `22568`, and `21196` exited normally. All are absent, port `42934` has no
+  listener, and no Bird Squad Playwright, preview, or validation command
+  remains. The unrelated service on port `4187` was not touched.
+- The owner-approved human-playtest waiver remains in force. These automated,
+  accessibility, and visual checks establish deterministic behavior and
+  supported-layout presentation, but not subjective fun, fairness, clarity,
+  fresh-player comprehension, or replay intent.
+
+## 2026-08-03 Visual Density Cleanup
+
+- Converted the prior clutter audit into quieter default states while preserving
+  every pointer, keyboard, controller, and screen-reader action. Card pickers no
+  longer open a full dossier on ordinary hover; explicit Inspect remains the
+  full-card path. Market card details now occupy a fixed right-side inspector
+  while the offer row shifts left to keep every purchasable card visible.
+- Combat now uses a slimmer event ribbon, a shorter contextual controls strip,
+  and tighter unselected hand summaries. Route collection/save/guidance notices
+  are mutually suppressed when a higher-priority decision or overlay owns the
+  screen. Successful first-route saves no longer compete with the route guide;
+  save failures and high-priority unreviewed-card dossier shortcuts remain
+  visible.
+- How to Play, Collection Signals, Waymark review, reward cards, and Codex item
+  tiles retain their data and interactions with fewer nested frames. Codex
+  items move from four cramped columns to three wider, summary-first columns.
+- Reward cards show decision deltas and observation rows on only the focused or
+  armed choice. Restored/synthetic ceremonies with no focus now promote the
+  first card visually, ensuring exactly one concise primary summary remains.
+- Minimum-landscape and targeted captures were visually inspected for How to
+  Play, route guidance, Market, card pickers and full inspection, combat HUD,
+  Codex Items/detail, Collection Signals, Waymark comparison, and rewards.
+  Evidence is in `.artifacts/test-results/min-supported/`,
+  `.artifacts/test-results/market-intentional-purchase-1000x560.png`,
+  `.artifacts/test-results/card-picker-confirmation-preen-1000x560.png`,
+  `.artifacts/test-results/flight-collection-signals.png`, and
+  `.artifacts/test-results/route-waymark-comparison.png`.
+- Strict TypeScript and the production build pass. Runtime data, bundle, cache,
+  docs, asset, content-contract, and diff-hygiene gates pass; combined boot is
+  724.8 KB against the unchanged 725 KB hard limit, with the existing preferred
+  target warnings remaining. Focused visual regressions pass. Final
+  `npm run validate` passes every static gate and all 54 mandatory Chromium
+  scenarios in 12.9 minutes, including the corrected unreviewed-card dossier
+  shortcut across pointer, keyboard, and controller paths.
+- The required shared web-game client booted the production title and launched
+  a first Route using player inputs. Both state snapshots report full assets and
+  no browser errors; evidence is in `.artifacts/web-game-visual-density/` and
+  `.artifacts/web-game-visual-density-route/`.
+- Test-resource cleanup was audited. Preview PID `40892` was stopped after
+  capture, port `42935` is released, tracked Playwright/validation processes
+  exited, the temporary choreography file was removed, and no Bird Squad test,
+  client, preview, or validation process remains.

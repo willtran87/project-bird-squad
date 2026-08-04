@@ -102,6 +102,90 @@ export interface BattleSelectionPreviewContext {
   gold: number;
 }
 
+interface SelectionOutcome {
+  contract: { target: string; effects: string[] };
+  target?: { name: string };
+  enemyStates: Array<{
+    id: string;
+    hpBefore: number;
+    hpAfter: number;
+    maxHp: number;
+    blockBefore: number;
+    blockAfter: number;
+    defeated: boolean;
+  }>;
+  flockBefore: { hp: number; block: number; flow: number; energy: number; resonance: number };
+  flockAfter: { hp: number; maxHp: number; block: number; flow: number; flowMax: number; energy: number; resonance: number };
+  enemyDamage: number;
+  coverGain: number;
+  cohesionDelta: number;
+  flowGain: number;
+  energyDelta: number;
+  resonanceDelta: number;
+  nextTurnDrawDelta: number;
+  nextTurnEnergyDelta: number;
+  moltPowerApplied: number;
+  bossPhaseBreak?: { enemyId: string; name: string; nextIntent?: string };
+}
+
+export function formatBattleSelectionOutcome(
+  card: string,
+  enemyId: string,
+  fallbackSummary: string,
+  moltPowerTotal: number,
+  outcome: SelectionOutcome,
+) {
+  const targetState = outcome.enemyStates.find((enemy) => enemy.id === enemyId);
+  const phaseBreak = outcome.bossPhaseBreak;
+  const parts: string[] = [];
+  if (targetState && targetState.hpAfter !== targetState.hpBefore) {
+    parts.push(targetState.defeated
+      ? `Cohesion ${targetState.hpBefore} -> DEFEATED`
+      : `Cohesion ${targetState.hpBefore} -> ${targetState.hpAfter}`);
+  } else if (outcome.enemyDamage > 0) {
+    const defeated = outcome.enemyStates.filter((enemy) => enemy.hpBefore > 0 && enemy.defeated).length;
+    parts.push(`${outcome.enemyDamage} total damage${defeated > 0 ? ` / ${defeated} defeated` : ''}`);
+  }
+  if (phaseBreak) parts.push(`Phase II: ${phaseBreak.name}${phaseBreak.nextIntent ? ` / next ${phaseBreak.nextIntent}` : ''}`);
+  if (targetState && targetState.blockAfter !== targetState.blockBefore) {
+    parts.push(`Enemy Cover ${targetState.blockBefore} -> ${targetState.blockAfter}`);
+  }
+  if (outcome.moltPowerApplied > 0) parts.push(`Molt Power +${outcome.moltPowerApplied}`);
+  if (outcome.coverGain !== 0) parts.push(`Cover ${outcome.flockBefore.block} -> ${outcome.flockAfter.block}`);
+  if (outcome.cohesionDelta !== 0) parts.push(`Flock ${outcome.flockBefore.hp} -> ${outcome.flockAfter.hp} Cohesion`);
+  if (outcome.flowGain > 0) parts.push(outcome.flockAfter.flow >= outcome.flockAfter.flowMax
+    ? `Flow ${outcome.flockBefore.flow} -> Surge`
+    : `Flow ${outcome.flockBefore.flow} -> ${outcome.flockAfter.flow}`);
+  if (outcome.energyDelta !== 0) parts.push(`Wingbeats ${outcome.flockBefore.energy} -> ${outcome.flockAfter.energy}`);
+  if (outcome.resonanceDelta !== 0) parts.push(`Resonance ${outcome.flockBefore.resonance} -> ${outcome.flockAfter.resonance}`);
+  if (outcome.nextTurnDrawDelta !== 0) parts.push(`Next draw ${outcome.nextTurnDrawDelta > 0 ? '+' : ''}${outcome.nextTurnDrawDelta}`);
+  if (outcome.nextTurnEnergyDelta !== 0) parts.push(`Next Wingbeats ${outcome.nextTurnEnergyDelta > 0 ? '+' : ''}${outcome.nextTurnEnergyDelta}`);
+  return {
+    card,
+    target: outcome.contract.target === 'enemy'
+      ? outcome.target?.name ?? 'Choose target'
+      : outcome.contract.target === 'allEnemies' ? 'All enemies' : 'Flock',
+    summary: parts.length > 0 ? parts.slice(0, 3).join('  /  ') : fallbackSummary,
+    moltPower: outcome.moltPowerApplied > 0
+      ? { total: moltPowerTotal, applied: outcome.moltPowerApplied }
+      : undefined,
+    result: {
+      bossPhaseBreak: phaseBreak,
+      targetHp: targetState ? {
+        enemyId: targetState.id,
+        before: targetState.hpBefore,
+        after: targetState.hpAfter,
+        max: targetState.maxHp,
+        defeated: targetState.defeated
+      } : undefined,
+      targetCover: targetState ? { before: targetState.blockBefore, after: targetState.blockAfter } : undefined,
+      flockCohesion: { before: outcome.flockBefore.hp, after: outcome.flockAfter.hp, max: outcome.flockAfter.maxHp },
+      flockCover: { before: outcome.flockBefore.block, after: outcome.flockAfter.block },
+      flow: { before: outcome.flockBefore.flow, after: outcome.flockAfter.flow, max: outcome.flockAfter.flowMax }
+    }
+  };
+}
+
 function textureReady(scene: Phaser.Scene, key: string) {
   if (!key || !scene.textures.exists(key)) return false;
   scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
@@ -163,20 +247,20 @@ function renderCombatLog(context: BattleHudRenderContext) {
   const { scene, root, assets, fontFamily } = context;
   const x = 650;
   const y = 404;
-  const w = 390;
-  const h = 50;
+  const w = 326;
+  const h = 38;
   const hit = scene.add.rectangle(x, y, w, Math.max(h, MIN_SUPPORTED_TOUCH_TARGET), 0x000000, 0.001)
     .setInteractive({ useHandCursor: true })
     .setName('combat-log-hit');
   context.attachTooltip(hit, 'Combat Log', context.log.tooltip);
 
-  root.add(scene.add.rectangle(x, y, w - 64, h - 22, 0x07111a, 0.48)
+  root.add(scene.add.rectangle(x, y, w - 36, h - 14, 0x07111a, 0.42)
     .setStrokeStyle(1, 0x101b27, 0.52)
     .setName('combat-log-frame-backplate'));
   if (textureReady(scene, assets.logFrame)) {
     root.add(scene.add.image(x, y, assets.logFrame)
       .setDisplaySize(w, h)
-      .setAlpha(0.34)
+      .setAlpha(0.26)
       .setName('combat-log-frame'));
   } else {
     root.add(scene.add.rectangle(x, y, w - 20, h - 18, 0x07111a, 0.78)
@@ -185,18 +269,18 @@ function renderCombatLog(context: BattleHudRenderContext) {
   }
   root.add(hit);
 
-  const beadX = x - 164;
+  const beadX = x - 135;
   if (textureReady(scene, assets.logEventBead)) {
     root.add(scene.add.image(beadX, y, assets.logEventBead)
       .setDisplaySize(18, 18)
       .setAlpha(0.7)
       .setName('combat-log-event-bead'));
   }
-  root.add(scene.add.text(x - 146, y, context.log.latest, {
+  root.add(scene.add.text(x - 119, y, context.log.latest, {
     fontFamily,
     fontSize: '12px',
     color: '#d9e4ee',
-    fixedWidth: 306,
+    fixedWidth: 246,
     maxLines: 1,
   }).setOrigin(0, 0.5));
 }
@@ -389,12 +473,12 @@ export function renderBattleSelectionPreview(
     }).setOrigin(0.5).setName('combat-enemy-outcome-preview'));
   }
 
-  const y = 520;
+  const y = 440;
   const container = scene.add.container(0, 0).setName('combat-selection-preview');
   container.add(scene.add.rectangle(gameWidth / 2, y, 510, 38, 0x07101a, 0.97)
     .setStrokeStyle(2, context.cyan, 0.88)
     .setName('combat-outcome-preview'));
-  container.add(scene.add.text(gameWidth / 2, y - 8, `${preview.card}  ->  ${preview.target}`, {
+  container.add(scene.add.text(gameWidth / 2, y - 8, `${preview.card}  ->  ${preview.target}  ·  ACTIVATE AGAIN TO PLAY`, {
     fontFamily,
     fontSize: '10px',
     fontStyle: boldFontStyle,
