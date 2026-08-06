@@ -395,6 +395,9 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
           ? 'preenReward'
           : undefined,
       returnIndex: battle.controllerChoiceIndex,
+      returnArmed: Boolean(armedRewardChoice),
+      returnChoiceId: armedRewardChoice?.id,
+      returnChoiceName: armedRewardChoice?.runtime?.displayName ?? armedRewardChoice?.name,
       selectActionPreserved: true,
     },
   };

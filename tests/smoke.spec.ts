@@ -1997,6 +1997,8 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
     if (!card) throw new Error('Expected a targeted Flow-building card in the opening hand');
     battle.onCardClicked(card.instanceId);
     const battleState = JSON.parse(window.render_game_to_text!());
+    const visibleFlowHints = [...battle.handCardFlowIndicators.values()]
+      .filter((indicator: any) => indicator.container.visible).length;
     const flowRailRect = battle.root.list.find((child: any) => child.name === 'combat-flow-rail')?.getBounds();
     const guidePanel = battle.root.list.find((child: any) => child.name === 'first-combat-guidance' && child.geom);
     const guideLabel = battle.root.list.find((child: any) => child.name === 'first-combat-guidance' && typeof child.text === 'string');
@@ -2034,6 +2036,7 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
       guidePulseRendered,
       guideCardTagRendered,
       guideTargetRendered,
+      visibleFlowHints,
       otherPlayableCards,
       outcome: battleState.selectedCardOutcome
     };
@@ -2042,6 +2045,9 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.waitForTimeout(150);
   await page.screenshot({ path: '.artifacts/test-results/flow-centered-hud/selected-surge-next-1024x768.png' });
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.waitForTimeout(150);
+  await page.screenshot({ path: '.artifacts/test-results/flow-centered-hud/first-combat-numbered-guidance-1000x560.png' });
 
   expect(result.routeGuidance).toEqual({ active: true, rendered: true });
   expect(result.selectedRouteGuidance).toEqual({ active: true, rendered: true });
@@ -2069,14 +2075,15 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
     target: expect.any(String),
   });
   expect(result.guideRecommendation.cost).toBeLessThanOrEqual(result.guideEnergy);
-  expect(result.guideVisual.text).toMatch(/^START .+ {3}\| {3}COST \d+ WINGBEATS? {3}\| {3}TARGET .+ {3}\| {3}BUILD FLOW$/);
-  expect(result.guideVisual.fontSize).toBe(13);
-  expect(result.guideVisual.panelSize).toEqual([640, 34]);
+  expect(result.guideVisual.text).toMatch(/^1 {2}SELECT .+ {3}→ {3}2 {2}TARGET .+ {3}• {3}\d+ WINGBEATS? {3}• {3}FLOW \+1$/);
+  expect(result.guideVisual.fontSize).toBe(12);
+  expect(result.guideVisual.panelSize).toEqual([600, 32]);
   expect(result.guideVisual.leftInset).toBeGreaterThanOrEqual(14);
   expect(result.guideVisual.rightInset).toBeGreaterThanOrEqual(14);
   expect(result.guidePulseRendered).toBe(true);
   expect(result.guideCardTagRendered).toBe(true);
   expect(result.guideTargetRendered).toBe(true);
+  expect(result.visibleFlowHints).toBe(1);
   expect(result.otherPlayableCards).toBeGreaterThan(0);
   expect(result.guideAnnouncement).toContain(`Start with ${result.guideRecommendation.cardName}`);
   expect(result.guideAnnouncement).toContain(`targeting ${result.guideRecommendation.target}`);
@@ -6899,7 +6906,10 @@ test('card reward skip requires intentional confirmation across pointer keyboard
     scene.rewardChoices = scene.createRewardChoices().slice(0, 3);
     scene.rewardDecisionStartedAtMs = Date.now();
     scene.mode = 'cardReward';
+    scene.rewardChoiceArmedId = undefined;
     scene.rewardSkipArmed = false;
+    scene.controllerChoiceIndex = 0;
+    scene.battleInputActive = false;
     scene.renderAll();
   });
   await page.waitForFunction(() => {
@@ -6923,6 +6933,24 @@ test('card reward skip requires intentional confirmation across pointer keyboard
       scrap: scene.scrap,
       rewardEvents: scene.runRewardEvents.length,
       skipTexts,
+      skipTitles: scene.root.list
+        .filter((child: any) => child.name === 'reward-skip-title')
+        .map((child: any) => child.text),
+      skipSummaries: scene.root.list
+        .filter((child: any) => child.name === 'reward-skip-summary')
+        .map((child: any) => child.text),
+      skipRings: scene.root.list
+        .filter((child: any) => child.name === 'reward-skip-focus-ring')
+        .map((child: any) => ({ width: child.lineWidth, color: child.strokeColor })),
+      choiceRings: scene.root.list
+        .filter((child: any) => child.name === 'reward-input-focus-ring')
+        .map((child: any) => ({ width: child.lineWidth, color: child.strokeColor })),
+      choiceRingXs: scene.root.list
+        .filter((child: any) => child.name === 'reward-input-focus-ring')
+        .map((child: any) => child.x),
+      inputHints: scene.root.list
+        .filter((child: any) => child.name === 'combat-input-hint' && child.type === 'Text')
+        .map((child: any) => child.text),
       liveText: document.getElementById('game-status')?.textContent ?? '',
     };
   });
@@ -6945,7 +6973,10 @@ test('card reward skip requires intentional confirmation across pointer keyboard
     scene.mode = 'cardReward';
     scene.rewardChoices = scene.createRewardChoices().slice(0, 3);
     scene.upgradeChoices = [];
+    scene.rewardChoiceArmedId = undefined;
     scene.rewardSkipArmed = false;
+    scene.controllerChoiceIndex = 0;
+    scene.battleInputActive = false;
     scene.rewardDecisionStartedAtMs = Date.now();
     scene.renderAll();
   });
@@ -6961,14 +6992,26 @@ test('card reward skip requires intentional confirmation across pointer keyboard
     commitBlockedUntilConfirmed: true,
     input: { keyboard: 'X', controller: 'X', pointer: 'Activate Skip twice', cancel: 'Esc / B' },
   });
+  expect(initial.skipTitles).toEqual([`Skip  +${initial.state.rewardSkip.scrap} Scrap`]);
+  expect(initial.skipSummaries).toEqual([`Deck stays ${initial.state.rewardSkip.deckSize}  /  After: ${initial.state.rewardSkip.scrapAfter} Scrap`]);
+  expect(initial.skipRings).toEqual([]);
+  expect(initial.choiceRings).toEqual([]);
+  expect(initial.state.combatInputFocus).toMatchObject({ active: false, index: 0, visibleFocus: false });
 
   await clickSkip();
   await expect.poll(async () => (await snapshot()).state.rewardSkip.armed).toBe(true);
   const pointerArmed = await snapshot();
   expect(pointerArmed.scrap).toBe(initial.scrap);
   expect(pointerArmed.rewardEvents).toBe(initial.rewardEvents);
-  expect(pointerArmed.skipTexts.join(' ')).toContain('Confirm Skip');
-  expect(pointerArmed.skipTexts.join(' ')).toContain('BACK CANCELS');
+  expect(pointerArmed.skipTitles).toEqual(initial.skipTitles);
+  expect(pointerArmed.skipSummaries).toEqual(initial.skipSummaries);
+  expect(pointerArmed.skipTexts.join(' ')).not.toContain('Confirm Skip');
+  expect(pointerArmed.skipTexts.join(' ')).not.toContain('BACK CANCELS');
+  expect(pointerArmed.skipRings).toEqual([{ width: 3, color: 0xd8a840 }]);
+  expect(pointerArmed.choiceRings).toEqual([]);
+  expect(pointerArmed.inputHints).toEqual([
+    `CONFIRM SKIP +${initial.state.rewardSkip.scrap} SCRAP   |   X / CONTROLLER X / TAP AGAIN   |   Esc / B  CANCEL   |   Left / Right  CHOOSE CARD`,
+  ]);
   expect(pointerArmed.liveText).toContain('Skip confirmation');
   await page.screenshot({ path: '.artifacts/test-results/reward-skip-confirmation-1000x560.png' });
 
@@ -6978,7 +7021,52 @@ test('card reward skip requires intentional confirmation across pointer keyboard
   expect(pointerCancelled.scrap).toBe(initial.scrap);
   expect(pointerCancelled.rewardEvents).toBe(initial.rewardEvents);
   expect(pointerCancelled.state.mode).toBe('cardReward');
+  expect(pointerCancelled.skipTitles).toEqual(initial.skipTitles);
+  expect(pointerCancelled.skipSummaries).toEqual(initial.skipSummaries);
+  expect(pointerCancelled.skipRings).toEqual([]);
+  expect(pointerCancelled.choiceRings).toEqual([]);
+  expect(pointerCancelled.state.combatInputFocus).toMatchObject({ active: false, index: 0, visibleFocus: false });
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-skip-pointer-cancel-neutral-1000x560.png' });
 
+  await clickSkip();
+  await page.keyboard.press('Enter');
+  await expect.poll(async () => (await snapshot()).state.rewardSkip.armed).toBe(true);
+  expect((await snapshot()).state.rewardChoiceConfirmation?.armed).toBe(false);
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await snapshot()).state.rewardChoiceConfirmation?.armed).toBe(true);
+  const enteredFirstCard = await snapshot();
+  expect(enteredFirstCard.state.rewardSkip.armed).toBe(false);
+  expect(enteredFirstCard.state.combatInputFocus).toMatchObject({ active: true, index: 0, visibleFocus: true });
+  expect(enteredFirstCard.choiceRings).toEqual([{ width: 3, color: 0xd8a840 }]);
+  expect(enteredFirstCard.choiceRingXs).toEqual([336]);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-skip-to-first-card-1000x560.png' });
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await snapshot()).state.rewardChoiceConfirmation?.armed).toBe(false);
+
+  await resetReward();
+  await clickSkip();
+  await page.keyboard.press('ArrowLeft');
+  await expect.poll(async () => (await snapshot()).state.rewardChoiceConfirmation?.armed).toBe(true);
+  const enteredLastCard = await snapshot();
+  expect(enteredLastCard.state.rewardSkip.armed).toBe(false);
+  expect(enteredLastCard.state.combatInputFocus).toMatchObject({ active: true, index: 2, visibleFocus: true });
+  expect(enteredLastCard.choiceRings).toEqual([{ width: 3, color: 0xd8a840 }]);
+  expect(enteredLastCard.choiceRingXs).toEqual([944]);
+  await page.keyboard.press('Escape');
+
+  await resetReward();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await snapshot()).state.rewardChoiceConfirmation?.armed).toBe(true);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('x');
+  await expect.poll(async () => (await snapshot()).state.rewardSkip.armed).toBe(true);
+  await page.keyboard.press('Escape');
+  const restoredPriorFocus = await snapshot();
+  expect(restoredPriorFocus.state.combatInputFocus).toMatchObject({ active: true, index: 1, visibleFocus: true });
+  expect(restoredPriorFocus.choiceRings).toEqual([{ width: 3, color: 0x8df4ff }]);
+  expect(restoredPriorFocus.choiceRingXs).toEqual([640]);
+
+  await resetReward();
   await clickSkip();
   await clickSkip();
   await expect.poll(async () => (await snapshot()).state.mode).toBe('upgradeReward');
@@ -7004,6 +7092,7 @@ test('card reward skip requires intentional confirmation across pointer keyboard
   await expect.poll(async () => (await snapshot()).state.rewardSkip.armed).toBe(false);
   expect((await snapshot()).state.mode).toBe('cardReward');
   expect((await snapshot()).scrap).toBe(controllerBefore.scrap);
+  expect((await snapshot()).choiceRings).toEqual([]);
   await gamepadDown(2);
   await gamepadDown(2);
   await expect.poll(async () => (await snapshot()).state.mode).toBe('upgradeReward');
@@ -7031,6 +7120,13 @@ test('reward choices require intentional commitment across pointer keyboard and 
     const decisionBounds = scene.root?.list
       .filter((child: any) => child.name === 'reward-decision-delta' && child.type === 'Rectangle')
       .map((child: any) => child.getBounds());
+    const cardHits = scene.root?.list.filter((child: any) => child.name === 'reward-choice-card-hit') ?? [];
+    const waymarkHits = scene.root?.list.filter((child: any) => child.name === 'reward-waymark-hit') ?? [];
+    const focusRings = scene.root?.list.filter((child: any) => child.name === 'reward-input-focus-ring') ?? [];
+    const focusRingBounds = focusRings.map((child: any) => child.getBounds());
+    const hoverRings = scene.root?.list.filter((child: any) => child.name === 'reward-choice-hover-ring') ?? [];
+    const inspectHits = scene.root?.list.filter((child: any) => child.name === 'reward-card-inspect-hit') ?? [];
+    const inspectLabels = scene.root?.list.filter((child: any) => child.name === 'reward-card-inspect-label') ?? [];
     return {
       state,
       deckSize: scene.allDeckCards().length,
@@ -7040,9 +7136,26 @@ test('reward choices require intentional commitment across pointer keyboard and 
       confirmLabels: scene.root?.list
         ?.filter((child: any) => child.type === 'Text' && child.text?.includes('CONFIRM'))
         .map((child: any) => child.text) ?? [],
+      focusChrome: {
+        cardBorders: cardHits.map((child: any) => ({ width: child.lineWidth, color: child.strokeColor })),
+        waymarkBorders: waymarkHits.map((child: any) => ({ width: child.lineWidth, color: child.strokeColor })),
+        rings: focusRings.map((child: any) => ({ width: child.lineWidth, color: child.strokeColor })),
+      },
+      inspectChrome: {
+        labels: inspectLabels.map((child: any) => ({ text: child.text, color: child.style?.color })),
+        buttons: inspectHits.map((child: any) => ({
+          enabled: Boolean(child.input?.enabled),
+          disabled: child.getData('disabled'),
+          fillAlpha: child.fillAlpha,
+          fillColor: child.fillColor,
+          strokeColor: child.strokeColor,
+        })),
+      },
       rewardHint: {
         text: hintLabel?.text,
         fontSize: Number.parseFloat(hintLabel?.style?.fontSize ?? '0'),
+        textColor: hintLabel?.style?.color,
+        strokeColor: hintPanel?.strokeColor,
         panelSize: hintPanel ? [hintPanel.displayWidth, hintPanel.displayHeight] : [],
         panelY: hintPanel?.y,
         leftInset: hintPanelBounds && hintLabelBounds ? hintLabelBounds.left - hintPanelBounds.left : -1,
@@ -7053,8 +7166,27 @@ test('reward choices require intentional commitment across pointer keyboard and 
         choiceGap: hintPanelBounds && decisionBounds?.length
           ? Math.min(...decisionBounds.map((bounds: any) => bounds.top)) - hintPanelBounds.bottom
           : -1,
+        focusGap: hintPanelBounds && focusRingBounds.length
+          ? Math.min(...focusRingBounds.map((bounds: any) => bounds.top)) - hintPanelBounds.bottom
+          : -1,
       },
       liveText: document.getElementById('game-status')?.textContent ?? '',
+      inspectionFooter: scene.rewardInspectionLayer?.list
+        ?.filter((child: any) => child.type === 'Text' && child.text?.includes('RETURN TO'))
+        .map((child: any) => child.text) ?? [],
+      hoverChrome: {
+        visibleRings: hoverRings.filter((child: any) => child.visible !== false && child.alpha > 0.01).length,
+        previewOpen: Boolean(scene.cardPreview?.active),
+        previewBounds: (() => {
+          const bounds = scene.cardPreview?.getBounds?.();
+          return bounds ? {
+            left: Math.round(bounds.left),
+            top: Math.round(bounds.top),
+            right: Math.round(bounds.right),
+            bottom: Math.round(bounds.bottom),
+          } : undefined;
+        })(),
+      },
     };
   });
   const waitForReward = async (mode: string) => {
@@ -7096,6 +7228,55 @@ test('reward choices require intentional commitment across pointer keyboard and 
       canvas.y + canvas.height * (center.y / 720),
     );
   };
+  const moveToReward = async (index: number) => {
+    const center = await page.evaluate((choiceIndex) => {
+      const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+      const hits = scene.root.list.filter((child: any) => child.name === 'reward-choice-card-hit' && child.input?.enabled);
+      const hit = hits[choiceIndex];
+      if (!hit) throw new Error(`Missing reward choice ${choiceIndex}`);
+      return { x: hit.x, y: hit.y };
+    }, index);
+    const canvas = await page.locator('canvas').boundingBox();
+    if (!canvas) throw new Error('Missing game canvas');
+    await page.mouse.move(
+      canvas.x + canvas.width * (center.x / 1280),
+      canvas.y + canvas.height * (center.y / 720),
+    );
+  };
+  const moveAwayFromRewards = async () => {
+    const canvas = await page.locator('canvas').boundingBox();
+    if (!canvas) throw new Error('Missing game canvas');
+    await page.mouse.move(canvas.x + 8, canvas.y + 8);
+  };
+  const clickSkip = async () => {
+    const center = await page.evaluate(() => {
+      const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+      const hit = scene.root.list.find((child: any) => child.name === 'reward-skip-hit' && child.input?.enabled);
+      if (!hit) throw new Error('Missing reward skip command');
+      return { x: hit.x, y: hit.y };
+    });
+    const canvas = await page.locator('canvas').boundingBox();
+    if (!canvas) throw new Error('Missing game canvas');
+    await page.mouse.click(
+      canvas.x + canvas.width * (center.x / 1280),
+      canvas.y + canvas.height * (center.y / 720),
+    );
+  };
+  const clickInspect = async (index: number) => {
+    const center = await page.evaluate((choiceIndex) => {
+      const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+      const hits = scene.root.list.filter((child: any) => child.name === 'reward-card-inspect-hit');
+      const hit = hits[choiceIndex];
+      if (!hit) throw new Error(`Missing reward Inspect ${choiceIndex}`);
+      return { x: hit.x, y: hit.y };
+    }, index);
+    const canvas = await page.locator('canvas').boundingBox();
+    if (!canvas) throw new Error('Missing game canvas');
+    await page.mouse.click(
+      canvas.x + canvas.width * (center.x / 1280),
+      canvas.y + canvas.height * (center.y / 720),
+    );
+  };
   const gamepadDown = (index: number) => page.evaluate((buttonIndex) => {
     const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
     scene.input.gamepad.emit('down', scene.input.gamepad.pad1, { index: buttonIndex }, 1);
@@ -7110,6 +7291,35 @@ test('reward choices require intentional commitment across pointer keyboard and 
     commitBlockedUntilSelected: true,
     input: { keyboard: 'Enter', controller: 'A', pointer: 'Activate choice twice', cancel: 'Esc / B' },
   });
+  expect(initial.focusChrome.cardBorders).toHaveLength(3);
+  expect(initial.focusChrome.cardBorders.every((border: any) => border.width === 2 && border.color !== 0x8df4ff)).toBe(true);
+  expect(initial.focusChrome.rings).toEqual([]);
+  expect(initial.inspectChrome.labels).toEqual([
+    { text: 'INSPECT', color: '#dffbff' },
+    { text: 'INSPECT', color: '#dffbff' },
+    { text: 'INSPECT', color: '#dffbff' },
+  ]);
+  expect(initial.inspectChrome.buttons.every((button: any) => (
+    button.enabled
+    && button.disabled === false
+    && button.fillAlpha === 0.88
+    && button.strokeColor !== 0x8df4ff
+  ))).toBe(true);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-choice-neutral-1000x560.png' });
+
+  await moveToReward(0);
+  await expect.poll(async () => {
+    const hover = (await snapshot()).hoverChrome;
+    return hover.visibleRings === 1 && hover.previewOpen && hover.previewBounds;
+  }).toBeTruthy();
+  const browsingHover = (await snapshot()).hoverChrome;
+  expect(browsingHover.previewBounds).toMatchObject({ top: expect.any(Number), right: expect.any(Number) });
+  expect(browsingHover.previewBounds.top).toBeGreaterThanOrEqual(0);
+  expect(browsingHover.previewBounds.right).toBeLessThanOrEqual(1280);
+  expect(browsingHover.previewBounds.left).toBeGreaterThan(450);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-hover-browse-1000x560.png' });
+  await moveAwayFromRewards();
+  await expect.poll(async () => (await snapshot()).hoverChrome).toMatchObject({ visibleRings: 0, previewOpen: false });
 
   await clickReward(1);
   await expect.poll(async () => (await snapshot()).state.rewardChoiceConfirmation?.armed).toBe(true);
@@ -7117,10 +7327,19 @@ test('reward choices require intentional commitment across pointer keyboard and 
   expect(pointerArmed.state.mode).toBe('cardReward');
   expect(pointerArmed.deckSize).toBe(initial.deckSize);
   expect(pointerArmed.rewardEvents).toBe(initial.rewardEvents);
-  expect(pointerArmed.confirmLabels).toContain('CONFIRM PICK  /  BACK CANCELS');
+  expect(pointerArmed.focusChrome.rings).toEqual([{ width: 3, color: 0xd8a840 }]);
+  expect(pointerArmed.inspectChrome).toEqual(initial.inspectChrome);
+  expect(pointerArmed.confirmLabels).toEqual([
+    'CONFIRM PICK   |   Enter / A / TAP AGAIN   |   Esc / B  CANCEL   |   R / Y  INSPECT   |   X  SKIP INSTEAD',
+  ]);
+  expect(pointerArmed.state.rewardDecisionDeltas).toEqual([
+    `ADD  /  DECK ${initial.deckSize} > ${initial.deckSize + 1}`,
+  ]);
   expect(pointerArmed.rewardHint).toMatchObject({
-    text: 'Left / Right / D-PAD  CHOOSE   |   Enter / A  CONFIRM   |   R / Y  INSPECT   |   X  SKIP',
+    text: pointerArmed.confirmLabels[0],
     fontSize: 13,
+    textColor: '#ffe08a',
+    strokeColor: 0xd8a840,
     panelSize: [820, 24],
     panelY: 213,
   });
@@ -7128,7 +7347,48 @@ test('reward choices require intentional commitment across pointer keyboard and 
   expect(pointerArmed.rewardHint.rightInset).toBeGreaterThanOrEqual(8);
   expect(pointerArmed.rewardHint.deckGap).toBeGreaterThanOrEqual(2);
   expect(pointerArmed.rewardHint.choiceGap).toBeGreaterThanOrEqual(2);
+  expect(pointerArmed.rewardHint.focusGap).toBeGreaterThanOrEqual(4);
   expect(pointerArmed.liveText).toContain('is selected. Activate Confirm');
+  const armedChoiceId = pointerArmed.state.rewardChoiceConfirmation.choiceId;
+  const armedChoiceName = pointerArmed.state.rewardChoiceConfirmation.choiceName;
+  await clickInspect(2);
+  await expect.poll(async () => (await snapshot()).state.rewardInspection).toMatchObject({
+    open: true,
+    returnArmed: true,
+    returnChoiceId: armedChoiceId,
+    returnChoiceName: armedChoiceName,
+    returnIndex: 1,
+  });
+  const inspectingArmedChoice = await snapshot();
+  expect(inspectingArmedChoice.state.rewardInspection.cardId).not.toBe(armedChoiceId);
+  expect(inspectingArmedChoice.state.rewardChoiceConfirmation).toMatchObject({
+    armed: true,
+    choiceId: armedChoiceId,
+  });
+  expect(inspectingArmedChoice.liveText).toContain(`${armedChoiceName} remains selected`);
+  expect(inspectingArmedChoice.inspectionFooter).toEqual([
+    'Esc / B / TAP OUTSIDE  RETURN TO CONFIRM PICK',
+  ]);
+  expect(inspectingArmedChoice.deckSize).toBe(initial.deckSize);
+  expect(inspectingArmedChoice.rewardEvents).toBe(initial.rewardEvents);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-card-inspection-armed-1000x560.png' });
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await snapshot()).state.rewardInspection?.open).toBe(false);
+  const returnedToArmedChoice = await snapshot();
+  expect(returnedToArmedChoice.state.rewardChoiceConfirmation).toMatchObject({
+    armed: true,
+    choiceId: armedChoiceId,
+  });
+  expect(returnedToArmedChoice.state.combatInputFocus).toMatchObject({ active: true, index: 1 });
+  expect(returnedToArmedChoice.focusChrome.rings).toEqual([{ width: 3, color: 0xd8a840 }]);
+  expect(returnedToArmedChoice.confirmLabels).toEqual(pointerArmed.confirmLabels);
+  expect(returnedToArmedChoice.deckSize).toBe(initial.deckSize);
+  expect(returnedToArmedChoice.rewardEvents).toBe(initial.rewardEvents);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-card-inspection-return-armed-1000x560.png' });
+  await moveToReward(2);
+  await expect.poll(async () => (await snapshot()).hoverChrome).toMatchObject({ visibleRings: 0, previewOpen: false });
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-hover-locked-card-confirmation-1000x560.png' });
+  await moveAwayFromRewards();
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-choice-confirmation-1000x560.png' });
 
   await page.keyboard.press('Escape');
@@ -7137,6 +7397,38 @@ test('reward choices require intentional commitment across pointer keyboard and 
   expect(cancelled.state.mode).toBe('cardReward');
   expect(cancelled.deckSize).toBe(initial.deckSize);
   expect(cancelled.rewardEvents).toBe(initial.rewardEvents);
+
+  await clickSkip();
+  await expect.poll(async () => (await snapshot()).state.rewardSkip?.armed).toBe(true);
+  const skipArmed = await snapshot();
+  expect(skipArmed.inspectChrome.labels).toEqual([
+    { text: 'INSPECT', color: '#667b89' },
+    { text: 'INSPECT', color: '#667b89' },
+    { text: 'INSPECT', color: '#667b89' },
+  ]);
+  expect(skipArmed.inspectChrome.buttons).toEqual([
+    { enabled: false, disabled: true, fillAlpha: 0.48, fillColor: 0x0a141c, strokeColor: 0x49606d },
+    { enabled: false, disabled: true, fillAlpha: 0.48, fillColor: 0x0a141c, strokeColor: 0x49606d },
+    { enabled: false, disabled: true, fillAlpha: 0.48, fillColor: 0x0a141c, strokeColor: 0x49606d },
+  ]);
+  await clickInspect(0);
+  await gamepadDown(3);
+  expect((await snapshot()).state).toMatchObject({
+    mode: 'cardReward',
+    rewardSkip: { armed: true },
+    rewardInspection: { open: false },
+  });
+  await moveToReward(2);
+  await expect.poll(async () => (await snapshot()).hoverChrome).toMatchObject({ visibleRings: 0, previewOpen: false });
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-hover-locked-skip-confirmation-1000x560.png' });
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-skip-inspect-locked-1000x560.png' });
+  await moveAwayFromRewards();
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await snapshot()).state.rewardSkip?.armed).toBe(false);
+  await clickInspect(0);
+  await expect.poll(async () => (await snapshot()).state.rewardInspection?.open).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await snapshot()).state.rewardInspection?.open).toBe(false);
 
   await clickReward(1);
   await clickReward(1);
@@ -7158,6 +7450,12 @@ test('reward choices require intentional commitment across pointer keyboard and 
     kind: 'upgradeReward',
     index: (beforeKeyboard.state.combatInputFocus.index + 1) % beforeKeyboard.state.combatInputFocus.count,
   });
+  expect(keyboardSelected.confirmLabels).toEqual([
+    'CONFIRM PICK   |   Enter / A / TAP AGAIN   |   Esc / B  CANCEL   |   R / Y  INSPECT',
+  ]);
+  expect(keyboardSelected.state.rewardDecisionDeltas).toHaveLength(1);
+  expect(keyboardSelected.state.rewardDecisionDeltas.every((label: string) => !label.includes('CONFIRM') && !label.includes('BACK CANCELS'))).toBe(true);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/upgrade-reward-choice-confirmation-1000x560.png' });
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await snapshot()).state.mode).not.toBe('upgradeReward');
   expect((await snapshot()).upgraded).toBe(beforeKeyboard.upgraded + 1);
@@ -7181,6 +7479,13 @@ test('reward choices require intentional commitment across pointer keyboard and 
   });
   const controllerSelected = await snapshot();
   expect(controllerSelected.routeMarks).toEqual(beforeController.routeMarks);
+  expect(controllerSelected.focusChrome.waymarkBorders).toHaveLength(3);
+  expect(controllerSelected.focusChrome.waymarkBorders.every((border: any) => border.width === 2 && border.color !== 0x8df4ff)).toBe(true);
+  expect(controllerSelected.focusChrome.rings).toEqual([{ width: 3, color: 0xd8a840 }]);
+  expect(controllerSelected.confirmLabels).toEqual([
+    'CONFIRM PICK   |   Enter / A / TAP AGAIN   |   Esc / B  CANCEL',
+  ]);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/waymark-reward-choice-confirmation-1000x560.png' });
   const selectedMarkId = controllerSelected.state.rewardChoiceConfirmation.choiceId;
   await gamepadDown(1);
   await expect.poll(async () => (await snapshot()).state.rewardChoiceConfirmation?.armed).toBe(false);
@@ -7191,6 +7496,345 @@ test('reward choices require intentional commitment across pointer keyboard and 
   await expect.poll(async () => (await snapshot()).state.mode).toBe('cardReward');
   expect((await snapshot()).routeMarks).toContain(committedMarkId);
   expect(committedMarkId).not.toBe(selectedMarkId);
+});
+
+test('reward renderer loading skeleton preserves ceremony anchors until choices unlock', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+
+  await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const game = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_boss' });
+    game.scene.stop('MenuScene');
+    const battle: any = game.scene.getScene('BattleScene');
+    for (let index = 0; index < 60 && !(battle.hand?.length && battle.battleHandRendererModule); index += 1) {
+      await wait(50);
+    }
+    for (let index = 0; index < 60 && !battle.getTextState().screenReader?.observerActive; index += 1) {
+      await wait(50);
+    }
+    const region = document.getElementById('game-status');
+    (window as any).__rewardTransitionAnnouncements = [];
+    new MutationObserver(() => {
+      const announcement = region?.textContent?.trim();
+      if (announcement) (window as any).__rewardTransitionAnnouncements.push(announcement);
+    }).observe(region!, { childList: true, characterData: true, subtree: true });
+    battle.rewardChoices = battle.hand.slice(0, 3);
+    battle.controllerChoiceIndex = 0;
+    battle.battleInputActive = true;
+    battle.rewardChoiceArmedId = undefined;
+    battle.rewardSkipArmed = false;
+    battle.mode = 'cardReward';
+    battle.battleRewardRendererModule = undefined;
+    battle.battleRewardRendererLoading = true;
+    battle.battleRewardRendererFailed = false;
+    battle.renderAll();
+  });
+
+  const snapshot = () => page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const objects = battle.root.list;
+    const geometry = (object: any) => ({
+      x: object.x,
+      y: object.y,
+      width: object.displayWidth,
+      height: object.displayHeight,
+    });
+    return {
+      state: battle.getTextState(),
+      titles: objects
+        .filter((object: any) => object.name === 'reward-loading-title')
+        .map((object: any) => ({ text: object.text, ...geometry(object) })),
+      loadingLabels: objects
+        .filter((object: any) => object.name === 'reward-renderer-loading')
+        .map((object: any) => object.text),
+      slots: objects
+        .filter((object: any) => object.name === 'reward-loading-choice-slot')
+        .map(geometry),
+      inspectSlots: objects
+        .filter((object: any) => object.name === 'reward-loading-inspect-slot')
+        .map(geometry),
+      skipSlots: objects
+        .filter((object: any) => object.name === 'reward-loading-skip-slot')
+        .map(geometry),
+      choiceHits: objects
+        .filter((object: any) => object.name === 'reward-choice-card-hit' || object.name === 'reward-waymark-hit' || object.name === 'reward-fallback-choice-hit')
+        .map(geometry),
+      inputHints: objects
+        .filter((object: any) => object.name === 'combat-input-hint' && object.type === 'Text')
+        .map((object: any) => object.text),
+      inputRails: objects
+        .filter((object: any) => object.name === 'combat-input-hint' && object.type === 'Rectangle')
+        .map(geometry),
+      liveText: document.getElementById('game-status')?.textContent?.trim() ?? '',
+      announcements: [...((window as any).__rewardTransitionAnnouncements ?? [])],
+    };
+  });
+
+  await expect.poll(async () => (await snapshot()).liveText).toBe('Reward choices are loading. Input is locked until every option is visible.');
+  const loadingCard = await snapshot();
+  expect(loadingCard.state.battleRewardRenderer).toMatchObject({ requested: true, ready: false, loaded: false, failed: false });
+  expect(loadingCard.titles).toEqual([{ text: 'Add to the Flock', x: 640, y: 91, width: 1060, height: 52 }]);
+  expect(loadingCard.loadingLabels).toEqual(['Preparing choices · Input unlocks when every option is visible.']);
+  expect(loadingCard.slots).toEqual([336, 640, 944].map((x) => ({ x, y: 402, width: 228, height: 312 })));
+  expect(loadingCard.inspectSlots).toEqual([336, 640, 944].map((x) => ({ x, y: 586, width: 92, height: 58 })));
+  expect(loadingCard.skipSlots).toEqual([{ x: 640, y: 652, width: 324, height: 48 }]);
+  expect(loadingCard.choiceHits).toEqual([]);
+  expect(loadingCard.inputHints).toEqual(['PREPARING CHOICES   |   INPUT LOCKED UNTIL EVERY OPTION IS VISIBLE']);
+  expect(loadingCard.inputRails).toEqual([{ x: 640, y: 213, width: 820, height: 24 }]);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-loading-card-1000x560.png' });
+
+  await page.evaluate(async () => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.renderAll();
+    battle.renderAll();
+    battle.renderAll();
+    await new Promise((resolve) => setTimeout(resolve, 700));
+  });
+  const repeatedLoading = await snapshot();
+  expect(repeatedLoading.announcements.filter((message: string) => message === loadingCard.liveText)).toHaveLength(1);
+
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.battleRewardRendererLoading = false;
+    battle.renderAll();
+  });
+  await expect.poll(async () => (await snapshot()).state.battleRewardRenderer).toMatchObject({ ready: true, loaded: true, failed: false });
+  await expect.poll(async () => (await snapshot()).liveText).toMatch(/^Reward choices ready\./);
+  const readyCard = await snapshot();
+  expect(readyCard.choiceHits).toEqual(loadingCard.slots);
+  expect(readyCard.inputRails).toEqual(loadingCard.inputRails);
+  expect(readyCard.inputHints.every((label: string) => !label.includes('INPUT LOCKED'))).toBe(true);
+  expect(readyCard.liveText).toContain('Options:');
+  expect(readyCard.announcements.filter((message: string) => message.startsWith('Reward choices ready.'))).toHaveLength(1);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-loading-transition-ready-1000x560.png' });
+
+  await page.evaluate(async () => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.renderAll();
+    battle.renderAll();
+    await new Promise((resolve) => setTimeout(resolve, 700));
+  });
+  const repeatedReady = await snapshot();
+  expect(repeatedReady.announcements.filter((message: string) => message.startsWith('Reward choices ready.'))).toHaveLength(1);
+
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.waymarkChoices = battle.createWaymarkRewardChoices().slice(0, 3);
+    battle.mode = 'waymarkReward';
+    battle.battleRewardRendererModule = undefined;
+    battle.battleRewardRendererLoading = true;
+    battle.battleRewardRendererFailed = false;
+    battle.renderAll();
+  });
+  const loadingWaymark = await snapshot();
+  expect(loadingWaymark.titles).toEqual([{ text: 'Claim a Waymark', x: 640, y: 91, width: 1060, height: 52 }]);
+  expect(loadingWaymark.slots).toEqual([336, 640, 944].map((x) => ({ x, y: 404, width: 248, height: 306 })));
+  expect(loadingWaymark.inspectSlots).toEqual([]);
+  expect(loadingWaymark.skipSlots).toEqual([]);
+  expect(loadingWaymark.choiceHits).toEqual([]);
+  expect(loadingWaymark.inputHints).toEqual(['PREPARING CHOICES   |   INPUT LOCKED UNTIL EVERY OPTION IS VISIBLE']);
+  expect(loadingWaymark.inputRails).toEqual([{ x: 640, y: 213, width: 500, height: 24 }]);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-loading-waymark-1000x560.png' });
+});
+
+test('reward renderer fallback keeps card identity and one stable focus ring', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await boot(page);
+
+  await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const game = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_boss' });
+    game.scene.stop('MenuScene');
+    const battle: any = game.scene.getScene('BattleScene');
+    for (let index = 0; index < 60 && !(battle.hand?.length && battle.battleHandRendererModule); index += 1) {
+      await wait(50);
+    }
+    battle.rewardChoices = battle.hand.slice(0, 3);
+    battle.rewardDecisionStartedAtMs = Date.now();
+    battle.controllerChoiceIndex = 1;
+    battle.battleInputActive = true;
+    battle.rewardChoiceArmedId = undefined;
+    battle.rewardSkipArmed = false;
+    battle.mode = 'cardReward';
+    battle.battleRewardRendererModule = undefined;
+    battle.battleRewardRendererLoading = false;
+    battle.battleRewardRendererFailed = true;
+    battle.renderAll();
+  });
+
+  const snapshot = () => page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const objects = battle.root.list;
+    return {
+      state: battle.getTextState(),
+      deckSize: battle.allDeckCards().length,
+      names: objects
+        .filter((object: any) => object.name === 'reward-fallback-choice-name')
+        .map((object: any) => object.text),
+      borders: objects
+        .filter((object: any) => object.name === 'reward-fallback-choice-hit')
+        .map((object: any) => ({ width: object.lineWidth, color: object.strokeColor })),
+      rings: objects
+        .filter((object: any) => object.name === 'reward-input-focus-ring')
+        .map((object: any) => ({ width: object.lineWidth, color: object.strokeColor })),
+      contexts: objects
+        .filter((object: any) => object.name === 'reward-fallback-decision-context')
+        .map((object: any) => ({ text: object.text, width: object.displayWidth, maxLines: object.style.maxLines })),
+      contextChips: objects
+        .filter((object: any) => object.name === 'reward-fallback-context-chip')
+        .map((object: any) => ({ width: object.displayWidth, height: object.displayHeight, borderWidth: object.lineWidth })),
+      hints: objects
+        .filter((object: any) => object.name === 'combat-input-hint' && object.type === 'Text')
+        .map((object: any) => object.text),
+      scrap: battle.scrap,
+      rewardEvents: battle.runRewardEvents.length,
+      skipTitles: objects
+        .filter((object: any) => object.name === 'reward-skip-title')
+        .map((object: any) => object.text),
+      skipSummaries: objects
+        .filter((object: any) => object.name === 'reward-skip-summary')
+        .map((object: any) => object.text),
+      skipBorders: objects
+        .filter((object: any) => object.name === 'reward-skip-hit')
+        .map((object: any) => ({ width: object.lineWidth, color: object.strokeColor })),
+      skipRings: objects
+        .filter((object: any) => object.name === 'reward-skip-focus-ring')
+        .map((object: any) => ({ width: object.lineWidth, color: object.strokeColor })),
+      inspectButtons: objects
+        .filter((object: any) => object.name === 'reward-card-inspect-hit')
+        .map((object: any) => ({
+          enabled: Boolean(object.input?.enabled),
+          disabled: object.getData('disabled'),
+          fillAlpha: object.fillAlpha,
+          fillColor: object.fillColor,
+          strokeColor: object.strokeColor,
+        })),
+      inspectLabels: objects
+        .filter((object: any) => object.name === 'reward-card-inspect-label')
+        .map((object: any) => ({ text: object.text, color: object.style?.color })),
+    };
+  });
+
+  const initial = await snapshot();
+  expect(initial.state.battleRewardRenderer).toMatchObject({ ready: true, loaded: false, failed: true });
+  expect(initial.names).toHaveLength(3);
+  expect(initial.names.every((name: string) => !name.includes('CONFIRM'))).toBe(true);
+  expect(initial.borders).toHaveLength(3);
+  expect(initial.borders.every((border: any) => border.width === 2)).toBe(true);
+  expect(initial.rings).toEqual([{ width: 3, color: 0x8df4ff }]);
+  expect(initial.contexts).toEqual([{ text: `ADD  /  DECK ${initial.deckSize} > ${initial.deckSize + 1}`, width: 196, maxLines: 1 }]);
+  expect(initial.contextChips).toEqual([{ width: 204, height: 26, borderWidth: 1 }]);
+  expect(initial.skipTitles).toEqual([`Skip  +${initial.state.rewardSkip.scrap} Scrap`]);
+  expect(initial.skipSummaries).toEqual([`Deck stays ${initial.deckSize}  /  After: ${initial.state.rewardSkip.scrapAfter} Scrap`]);
+  expect(initial.skipBorders).toEqual([{ width: 2, color: 0xd8a840 }]);
+  expect(initial.skipRings).toEqual([]);
+  expect(initial.inspectButtons.every((button: any) => button.enabled && button.disabled === false)).toBe(true);
+  expect(initial.inspectLabels.every((label: any) => label.text === 'INSPECT' && label.color === '#dffbff')).toBe(true);
+
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.requestRewardChoice(battle.rewardChoices[1].id);
+  });
+  await expect.poll(async () => (await snapshot()).state.rewardChoiceConfirmation?.armed).toBe(true);
+  const armed = await snapshot();
+  expect(armed.deckSize).toBe(initial.deckSize);
+  expect(armed.names).toEqual(initial.names);
+  expect(armed.rings).toEqual([{ width: 3, color: 0xd8a840 }]);
+  expect(armed.contexts).toEqual(initial.contexts);
+  expect(armed.hints).toEqual([
+    'CONFIRM PICK   |   Enter / A / TAP AGAIN   |   Esc / B  CANCEL   |   R / Y  INSPECT   |   X  SKIP INSTEAD',
+  ]);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-fallback-confirmation-1000x560.png' });
+
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await snapshot()).state.rewardChoiceConfirmation?.armed).toBe(false);
+  const cancelled = await snapshot();
+  expect(cancelled.deckSize).toBe(initial.deckSize);
+  expect(cancelled.names).toEqual(initial.names);
+  expect(cancelled.rings).toEqual([{ width: 3, color: 0x8df4ff }]);
+
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.requestSkipCardReward();
+  });
+  await expect.poll(async () => (await snapshot()).state.rewardSkip?.armed).toBe(true);
+  const skipArmed = await snapshot();
+  expect(skipArmed.deckSize).toBe(initial.deckSize);
+  expect(skipArmed.scrap).toBe(initial.scrap);
+  expect(skipArmed.rewardEvents).toBe(initial.rewardEvents);
+  expect(skipArmed.skipTitles).toEqual(initial.skipTitles);
+  expect(skipArmed.skipSummaries).toEqual(initial.skipSummaries);
+  expect(skipArmed.skipBorders).toEqual(initial.skipBorders);
+  expect(skipArmed.skipRings).toEqual([{ width: 3, color: 0xd8a840 }]);
+  expect(skipArmed.rings).toEqual([]);
+  expect(skipArmed.inspectButtons).toEqual([
+    { enabled: false, disabled: true, fillAlpha: 0.48, fillColor: 0x0a141c, strokeColor: 0x49606d },
+    { enabled: false, disabled: true, fillAlpha: 0.48, fillColor: 0x0a141c, strokeColor: 0x49606d },
+    { enabled: false, disabled: true, fillAlpha: 0.48, fillColor: 0x0a141c, strokeColor: 0x49606d },
+  ]);
+  expect(skipArmed.inspectLabels).toEqual([
+    { text: 'INSPECT', color: '#667b89' },
+    { text: 'INSPECT', color: '#667b89' },
+    { text: 'INSPECT', color: '#667b89' },
+  ]);
+  expect(skipArmed.hints).toEqual([
+    `CONFIRM SKIP +${initial.state.rewardSkip.scrap} SCRAP   |   X / CONTROLLER X / TAP AGAIN   |   Esc / B  CANCEL   |   Left / Right  CHOOSE CARD`,
+  ]);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-fallback-skip-confirmation-1000x560.png' });
+
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await snapshot()).state.rewardSkip?.armed).toBe(false);
+  const skipCancelled = await snapshot();
+  expect(skipCancelled.deckSize).toBe(initial.deckSize);
+  expect(skipCancelled.scrap).toBe(initial.scrap);
+  expect(skipCancelled.rewardEvents).toBe(initial.rewardEvents);
+  expect(skipCancelled.skipTitles).toEqual(initial.skipTitles);
+  expect(skipCancelled.skipSummaries).toEqual(initial.skipSummaries);
+  expect(skipCancelled.skipRings).toEqual([]);
+  expect(skipCancelled.rings).toEqual([{ width: 3, color: 0x8df4ff }]);
+
+  await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.upgradeChoices = battle.rewardChoices;
+    battle.controllerChoiceIndex = 0;
+    battle.rewardChoiceArmedId = undefined;
+    battle.mode = 'upgradeReward';
+    battle.renderAll();
+  });
+  const preen = await snapshot();
+  expect(preen.contexts).toHaveLength(1);
+  expect(preen.contexts[0]).toMatchObject({ width: 196, maxLines: 1 });
+  expect(preen.contexts[0].text).toMatch(/^PREEN  \/  .+ > .+$/);
+  expect(preen.contexts[0].text).not.toContain('CONFIRM');
+  expect(preen.contextChips).toEqual([{ width: 204, height: 26, borderWidth: 1 }]);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-fallback-preen-1000x560.png' });
+
+  const waymarkMeta = await page.evaluate(() => {
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.waymarkChoices = battle.createWaymarkRewardChoices().slice(0, 3);
+    battle.controllerChoiceIndex = 0;
+    battle.rewardChoiceArmedId = undefined;
+    battle.mode = 'waymarkReward';
+    battle.renderAll();
+    return battle.waymarkChoices.map((choice: any, index: number) => {
+      const view = battle.rewardWaymarkView(choice, index);
+      const rarity = view.rarity.toUpperCase();
+      const family = view.familyLabel.toUpperCase();
+      return rarity === family ? `${rarity} WAYMARK` : `${rarity}  /  ${family}`;
+    });
+  });
+  const waymarks = await snapshot();
+  expect(waymarks.contexts.map((context: any) => context.text)).toEqual(waymarkMeta);
+  expect(waymarks.contexts.every((context: any) => context.width === 196 && context.maxLines === 1)).toBe(true);
+  expect(waymarks.contextChips).toHaveLength(3);
+  expect(waymarks.contextChips.every((chip: any) => chip.width === 204 && chip.height === 26 && chip.borderWidth === 1)).toBe(true);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-fallback-waymarks-1000x560.png' });
 });
 
 test('route card rewards require intentional commitment across pointer keyboard and controller', async ({ page }) => {
@@ -7206,6 +7850,8 @@ test('route card rewards require intentional commitment across pointer keyboard 
     const hintLabel = route.children.list.find((child: any) => child.name === 'route-reward-input-hint');
     const divider = route.children.list.find((child: any) => child.type === 'Rectangle' && child.displayWidth === 2 && child.displayHeight === 396);
     const focusRing = route.children.list.find((child: any) => child.name === 'route-reward-input-focus-ring');
+    const inspectHits = route.children.list.filter((child: any) => child.name === 'route-reward-card-inspect-hit');
+    const inspectLabels = route.children.list.filter((child: any) => child.name === 'route-reward-card-inspect-label');
     const edges = (child: any) => {
       const bounds = child?.getBounds();
       return bounds ? { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom } : undefined;
@@ -7220,12 +7866,19 @@ test('route card rewards require intentional commitment across pointer keyboard 
       pending: Boolean(route.pendingRouteReward),
       choices: route.routeCardRewardChoices.map((card: any) => card.id),
       armedCardId: route.routeRewardArmedCardId,
-      confirmLabels: route.children.list
-        .filter((child: any) => child.type === 'Text' && String(child.text).includes('CONFIRM PICK'))
+      cancelLabels: route.children.list
+        .filter((child: any) => child.name === 'route-event-cancel-hit' && child.input?.enabled)
+        .map((child: any) => child.getData('label')),
+      cardCommandLabels: route.children.list
+        .filter((child: any) => child.type === 'Text' && (String(child.text).includes('CONFIRM PICK') || String(child.text).includes('BACK CANCELS')))
         .map((child: any) => child.text),
       inputHints: route.children.list
         .filter((child: any) => child.name === 'route-reward-input-hint')
         .map((child: any) => child.text),
+      inspectChrome: {
+        labels: inspectLabels.map((child: any) => child.text),
+        buttons: inspectHits.map((child: any) => ({ fillAlpha: child.fillAlpha, strokeColor: child.strokeColor })),
+      },
       inputHintVisual: {
         text: hintLabel?.text,
         fontSize: Number.parseFloat(hintLabel?.style?.fontSize ?? '0'),
@@ -7237,6 +7890,21 @@ test('route card rewards require intentional commitment across pointer keyboard 
         choiceGap: panelEdges && focusEdges ? focusEdges.top - panelEdges.bottom : -1,
       },
       liveText: document.getElementById('game-status')?.textContent ?? '',
+      hoverDetail: (() => {
+        const bounds = route.hoverCardDetail?.getBounds?.();
+        return {
+          open: Boolean(route.hoverCardDetail?.active),
+          bounds: bounds ? {
+            left: Math.round(bounds.left),
+            top: Math.round(bounds.top),
+            right: Math.round(bounds.right),
+            bottom: Math.round(bounds.bottom),
+          } : undefined,
+        };
+      })(),
+      inspectionFooter: route.children.list
+        .filter((child: any) => child.type === 'Text' && child.text?.includes('RETURN TO'))
+        .map((child: any) => child.text),
     };
   });
   const openReward = async (suffix: string) => {
@@ -7288,6 +7956,61 @@ test('route card rewards require intentional commitment across pointer keyboard 
       canvas.y + canvas.height * (center.y / 720),
     );
   };
+  const moveToReward = async (index: number) => {
+    const center = await page.evaluate((choiceIndex) => {
+      const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+      const hits = route.children.list.filter(
+        (child: any) => child.name === 'route-reward-card-hit' && child.input?.enabled,
+      );
+      const hit = hits[choiceIndex];
+      if (!hit) throw new Error(`Missing route reward choice ${choiceIndex}`);
+      return { x: hit.x, y: hit.y };
+    }, index);
+    const canvas = await page.locator('canvas').boundingBox();
+    if (!canvas) throw new Error('Missing game canvas');
+    await page.mouse.move(
+      canvas.x + canvas.width * (center.x / 1280),
+      canvas.y + canvas.height * (center.y / 720),
+    );
+  };
+  const moveAwayFromRewards = async () => {
+    const canvas = await page.locator('canvas').boundingBox();
+    if (!canvas) throw new Error('Missing game canvas');
+    await page.mouse.move(canvas.x + 8, canvas.y + 8);
+  };
+  const clickInspect = async (index: number) => {
+    const center = await page.evaluate((choiceIndex) => {
+      const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+      const hits = route.children.list.filter(
+        (child: any) => child.name === 'route-reward-card-inspect-hit' && child.input?.enabled,
+      );
+      const hit = hits[choiceIndex];
+      if (!hit) throw new Error(`Missing route reward Inspect ${choiceIndex}`);
+      return { x: hit.x, y: hit.y };
+    }, index);
+    const canvas = await page.locator('canvas').boundingBox();
+    if (!canvas) throw new Error('Missing game canvas');
+    await page.mouse.click(
+      canvas.x + canvas.width * (center.x / 1280),
+      canvas.y + canvas.height * (center.y / 720),
+    );
+  };
+  const clickCancel = async () => {
+    const center = await page.evaluate(() => {
+      const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+      const hit = route.children.list.find(
+        (child: any) => child.name === 'route-event-cancel-hit' && child.input?.enabled,
+      );
+      if (!hit) throw new Error('Missing route reward Cancel control');
+      return { x: hit.x, y: hit.y };
+    });
+    const canvas = await page.locator('canvas').boundingBox();
+    if (!canvas) throw new Error('Missing game canvas');
+    await page.mouse.click(
+      canvas.x + canvas.width * (center.x / 1280),
+      canvas.y + canvas.height * (center.y / 720),
+    );
+  };
   const pressRoutePad = (partial: Record<string, boolean>) => page.evaluate((pressed) => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
     route.cardHoverDetailModule.updateRouteRewardGamepad(route, {
@@ -7307,6 +8030,31 @@ test('route card rewards require intentional commitment across pointer keyboard 
     commitBlockedUntilSelected: true,
     controls: { claim: 'Confirm / A selects' },
   });
+  expect(pointerInitial.cancelLabels).toEqual(['Cancel']);
+  expect(pointerInitial.inspectChrome.labels).toEqual(['INSPECT', 'INSPECT']);
+  expect(pointerInitial.inspectChrome.buttons.every((button: any) => button.fillAlpha === 0.88 && button.strokeColor !== 0x8df4ff)).toBe(true);
+
+  await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    for (let index = 0; index < 60 && !route.cardHoverDetailModule; index += 1) await wait(50);
+    if (!route.cardHoverDetailModule) throw new Error('Route card-detail renderer did not load');
+  });
+  await moveToReward(0);
+  await expect.poll(async () => (await snapshot()).hoverDetail.open).toBe(true);
+  const neutralHover = await snapshot();
+  expect(neutralHover.state.routeReward.inputFocus).toMatchObject({
+    index: 0,
+    cardId: pointerInitial.choices[0],
+    armed: false,
+  });
+  expect(neutralHover.hoverDetail.bounds.top).toBeGreaterThanOrEqual(0);
+  expect(neutralHover.hoverDetail.bounds.right).toBeLessThanOrEqual(1280);
+  await page.locator('canvas').screenshot({
+    path: '.artifacts/test-results/route-reward-hover-browse-1000x560.png',
+  });
+  await moveAwayFromRewards();
+  await expect.poll(async () => (await snapshot()).hoverDetail.open).toBe(false);
 
   await page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
@@ -7320,12 +8068,13 @@ test('route card rewards require intentional commitment across pointer keyboard 
   expect(pointerArmed.pending).toBe(true);
   expect(pointerArmed.choices).toEqual(pointerInitial.choices);
   expect(pointerArmed.armedCardId).toBe(pointerInitial.choices[1]);
-  expect(pointerArmed.confirmLabels).toContain('CONFIRM PICK\nBACK CANCELS');
-  expect(pointerArmed.inputHints).toEqual([
-    'ARROWS / D-PAD  CHOOSE   |   ENTER / A  CONFIRM\nR / Y  INSPECT   |   ESC / B  BACK',
-  ]);
+  expect(pointerArmed.inspectChrome).toEqual(pointerInitial.inspectChrome);
+  expect(pointerArmed.cancelLabels).toEqual(['Clear pick']);
+  expect(pointerArmed.cardCommandLabels).toEqual(['CONFIRM PICK   |   ENTER / A / TAP CARD AGAIN\nESC / B  CLEAR PICK   |   R / Y  INSPECT']);
+  expect(pointerArmed.inputHints).toHaveLength(1);
+  expect(pointerArmed.inputHints[0]).toBe(pointerArmed.cardCommandLabels[0]);
   expect(pointerArmed.inputHintVisual).toMatchObject({
-    text: 'ARROWS / D-PAD  CHOOSE   |   ENTER / A  CONFIRM\nR / Y  INSPECT   |   ESC / B  BACK',
+    text: pointerArmed.inputHints[0],
     fontSize: 12,
     panelSize: [500, 42],
     panelY: 205,
@@ -7335,23 +8084,97 @@ test('route card rewards require intentional commitment across pointer keyboard 
   expect(pointerArmed.inputHintVisual.dividerGap).toBeGreaterThanOrEqual(12);
   expect(pointerArmed.inputHintVisual.choiceGap).toBeGreaterThanOrEqual(20);
   expect(pointerArmed.liveText).toContain('is selected. Confirm');
+  await moveToReward(0);
+  await expect.poll(async () => (await snapshot()).hoverDetail.open).toBe(false);
+  const armedAfterHover = await snapshot();
+  expect(armedAfterHover.armedCardId).toBe(pointerInitial.choices[1]);
+  expect(armedAfterHover.state.routeReward.inputFocus).toMatchObject({
+    index: 1,
+    armed: true,
+    armedCardId: pointerInitial.choices[1],
+    visible: true,
+  });
+  expect(armedAfterHover.inputHints).toEqual(pointerArmed.inputHints);
+  expect(armedAfterHover.deckIds).toEqual(pointerInitial.deckIds);
+  await page.locator('canvas').screenshot({
+    path: '.artifacts/test-results/route-reward-hover-locked-confirmation-1000x560.png',
+  });
+  await moveAwayFromRewards();
+  await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.cardHoverDetailLoading = false;
+    route.preloadCardHoverDetail();
+    for (let index = 0; index < 60 && !route.cardHoverDetailModule; index += 1) await wait(50);
+    if (!route.cardHoverDetailModule) throw new Error('Route card-detail renderer did not load');
+    route.renderAll();
+  });
+  await clickInspect(0);
+  await expect.poll(async () => (await snapshot()).state.routeReward?.inspection).toMatchObject({
+    open: true,
+    cardId: pointerInitial.choices[0],
+    returnArmed: true,
+    returnChoiceId: pointerInitial.choices[1],
+    returnIndex: 1,
+  });
+  const inspectingArmedRouteChoice = await snapshot();
+  expect(inspectingArmedRouteChoice.state.routeReward.inputFocus).toMatchObject({
+    index: 1,
+    armed: true,
+    armedCardId: pointerInitial.choices[1],
+  });
+  expect(inspectingArmedRouteChoice.liveText).toContain('remains selected');
+  expect(inspectingArmedRouteChoice.inspectionFooter).toEqual([
+    'Esc / B / TAP OUTSIDE  RETURN TO CONFIRM PICK',
+  ]);
+  expect(inspectingArmedRouteChoice.deckIds).toEqual(pointerInitial.deckIds);
+  expect(inspectingArmedRouteChoice.pending).toBe(true);
+  await page.locator('canvas').screenshot({
+    path: '.artifacts/test-results/route-reward-inspection-armed-1000x560.png',
+  });
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await snapshot()).state.routeReward?.inspection?.open).toBe(false);
+  const returnedToArmedRouteChoice = await snapshot();
+  expect(returnedToArmedRouteChoice.state.routeReward.inputFocus).toMatchObject({
+    index: 1,
+    armed: true,
+    armedCardId: pointerInitial.choices[1],
+    visible: true,
+  });
+  expect(returnedToArmedRouteChoice.armedCardId).toBe(pointerInitial.choices[1]);
+  expect(returnedToArmedRouteChoice.inputHints).toEqual(pointerArmed.inputHints);
+  expect(returnedToArmedRouteChoice.deckIds).toEqual(pointerInitial.deckIds);
+  await page.locator('canvas').screenshot({
+    path: '.artifacts/test-results/route-reward-inspection-return-armed-1000x560.png',
+  });
   await page.locator('canvas').screenshot({
     path: '.artifacts/test-results/route-reward-choice-confirmation-1000x560.png',
   });
 
-  await page.keyboard.press('Escape');
+  await clickCancel();
   await expect.poll(async () => (await snapshot()).state.routeReward?.inputFocus?.armed).toBe(false);
   const pointerCancelled = await snapshot();
   expect(pointerCancelled.deckIds).toEqual(pointerInitial.deckIds);
   expect(pointerCancelled.pending).toBe(true);
   expect(pointerCancelled.choices).toEqual(pointerInitial.choices);
+  expect(pointerCancelled.cancelLabels).toEqual(['Cancel']);
+  await page.locator('canvas').screenshot({
+    path: '.artifacts/test-results/route-reward-pointer-cancel-pick-1000x560.png',
+  });
 
+  await clickCancel();
+  await expect.poll(async () => (await snapshot()).pending).toBe(false);
+  const pointerAbandoned = await snapshot();
+  expect(pointerAbandoned.deckIds).toEqual(pointerInitial.deckIds);
+
+  await openReward('pointer-commit');
+  const pointerCommitInitial = await snapshot();
   await clickReward(1);
   await clickReward(1);
   await expect.poll(async () => (await snapshot()).pending).toBe(false);
   const pointerCommitted = await snapshot();
-  expect(pointerCommitted.deckIds).toHaveLength(pointerInitial.deckIds.length + 1);
-  expect(pointerCommitted.deckIds).toContain(pointerInitial.choices[1]);
+  expect(pointerCommitted.deckIds).toHaveLength(pointerCommitInitial.deckIds.length + 1);
+  expect(pointerCommitted.deckIds).toContain(pointerCommitInitial.choices[1]);
 
   await openReward('keyboard');
   const keyboardInitial = await snapshot();
@@ -8194,6 +9017,104 @@ test('market purchases require intentional input and block route commitment acro
       canvas.y + canvas.height * (center.y / 720),
     );
   };
+  const moveToMarketTarget = async (focusId: string) => {
+    const center = await page.evaluate((id) => {
+      const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+      const target = route.children.list.find((child: any) => (
+        child.input?.enabled && child.getData?.('marketFocusId') === id
+      ));
+      if (!target) throw new Error(`Missing Market target ${id}`);
+      return { x: target.x, y: target.y };
+    }, focusId);
+    const canvas = await page.locator('canvas').boundingBox();
+    if (!canvas) throw new Error('Missing game canvas');
+    await page.mouse.move(
+      canvas.x + canvas.width * (center.x / 1280),
+      canvas.y + canvas.height * (center.y / 720),
+    );
+  };
+  const clickMarketCommand = async (label: string) => {
+    const center = await page.evaluate((commandLabel) => {
+      const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+      const target = route.children.list.find((child: any) => (
+        child.name === 'market-enamel-button-hit'
+        && child.input?.enabled
+        && child.getData?.('label') === commandLabel
+      ));
+      if (!target) throw new Error(`Missing Market ${commandLabel} control`);
+      return { x: target.x, y: target.y };
+    }, label);
+    const canvas = await page.locator('canvas').boundingBox();
+    if (!canvas) throw new Error('Missing game canvas');
+    await page.mouse.click(
+      canvas.x + canvas.width * (center.x / 1280),
+      canvas.y + canvas.height * (center.y / 720),
+    );
+  };
+  const clickMarketTab = async (label: string) => {
+    const center = await page.evaluate((tabLabel) => {
+      const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+      const target = route.children.list.find((child: any) => (
+        child.name === 'market-category-tab-hit'
+        && child.input?.enabled
+        && child.getData?.('label') === tabLabel
+      ));
+      if (!target) throw new Error(`Missing Market ${tabLabel} tab`);
+      return { x: target.x, y: target.y };
+    }, label);
+    const canvas = await page.locator('canvas').boundingBox();
+    if (!canvas) throw new Error('Missing game canvas');
+    await page.mouse.click(
+      canvas.x + canvas.width * (center.x / 1280),
+      canvas.y + canvas.height * (center.y / 720),
+    );
+  };
+  const marketDecision = () => page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return {
+      open: route.marketOpen,
+      focusId: route.marketFocusId,
+      armedId: route.marketFocusArmedId,
+      scrap: route.runState.scrap,
+      deckIds: route.runState.deck.map((card: any) => card.id),
+      sold: route.marketCardShelf.map((offer: any) => !!offer.sold),
+      commands: route.children.list
+        .filter((child: any) => child.name === 'market-enamel-button-hit' && child.input?.enabled)
+        .map((child: any) => child.getData('label')),
+    };
+  });
+  const marketHoverHierarchy = (focusId: string) => page.evaluate((id) => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const target = route.children.list.find((child: any) => child.getData?.('marketFocusId') === id);
+    const ring = route.children.list.find((child: any) => child.name === 'market-input-focus-ring');
+    return {
+      target: target ? { x: target.x, y: target.y } : undefined,
+      ring: ring ? { x: ring.x, y: ring.y, strokeColor: ring.strokeColor } : undefined,
+      hoverOpen: Boolean(route.hoverCardDetail?.active),
+      input: JSON.parse(window.render_game_to_text!()).market.input,
+    };
+  }, focusId);
+  const marketSectionState = () => page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const target = route.children.list.find((child: any) => (
+      child.getData?.('marketFocusId') === route.marketFocusId
+    ));
+    const ring = route.children.list.find((child: any) => child.name === 'market-input-focus-ring');
+    return {
+      category: route.marketCategory,
+      focusId: route.marketFocusId,
+      armedId: route.marketFocusArmedId,
+      scrap: route.runState.scrap,
+      deckIds: route.runState.deck.map((card: any) => card.id),
+      sold: route.marketCardShelf.map((offer: any) => !!offer.sold),
+      hoverOpen: Boolean(route.hoverCardDetail?.active),
+      ring: ring ? { x: ring.x, y: ring.y, strokeColor: ring.strokeColor } : undefined,
+      target: target ? { x: target.x, y: target.y } : undefined,
+      commands: route.children.list
+        .filter((child: any) => child.name === 'market-enamel-button-hit' && child.input?.enabled)
+        .map((child: any) => child.getData('label')),
+    };
+  });
 
   await clickMarketTarget('card:0');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.armed === true);
@@ -8222,6 +9143,14 @@ test('market purchases require intentional input and block route commitment acro
   expect(armedResult.layout.inspectorLeft).toBeGreaterThan(armedResult.layout.rightmostOffer);
   expect(armedResult.layout.gap).toBeGreaterThanOrEqual(8);
   expect(armedAnnouncement).toContain('Route commitment is blocked while the Market is open');
+  const armedDecision = await marketDecision();
+  expect(armedDecision).toMatchObject({
+    open: true,
+    focusId: 'card:0',
+    armedId: 'card:0',
+  });
+  expect(armedDecision.commands).toContain('Clear');
+  expect(armedDecision.commands).not.toContain('Close');
   const confirmationHelp = await marketInputHelp();
   expect(confirmationHelp).toHaveLength(2);
   expect(confirmationHelp.find((item: any) => item.type === 'Rectangle')).toMatchObject({ width: 760, height: 32 });
@@ -8232,9 +9161,140 @@ test('market purchases require intentional input and block route commitment acro
   }));
   await page.screenshot({ path: '.artifacts/test-results/market-intentional-purchase-1000x560.png' });
 
+  await moveToMarketTarget('card:2');
+  const armedAfterHover = await marketHoverHierarchy('card:0');
+  expect(armedAfterHover.input).toMatchObject({ focusId: 'card:0', armed: true });
+  expect(armedAfterHover.ring).toMatchObject({
+    ...armedAfterHover.target,
+    strokeColor: 0xffcf70,
+  });
+  expect(armedAfterHover.hoverOpen).toBe(false);
+  expect((await marketDecision()).commands).toContain('Clear');
+  await page.screenshot({ path: '.artifacts/test-results/market-hover-locked-confirmation-1000x560.png' });
+
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.armed === false);
-  expect(await page.evaluate(() => JSON.parse(window.render_game_to_text!()).marketOpen)).toBe(true);
+  const keyboardCancelled = await marketDecision();
+  expect(keyboardCancelled).toEqual({
+    ...armedDecision,
+    armedId: undefined,
+    commands: expect.arrayContaining(['Close']),
+  });
+
+  await moveToMarketTarget('card:2');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.focusId === 'card:2');
+  const neutralAfterHover = await marketHoverHierarchy('card:2');
+  expect(neutralAfterHover.input).toMatchObject({ focusId: 'card:2', armed: false });
+  expect(neutralAfterHover.ring).toMatchObject({
+    ...neutralAfterHover.target,
+    strokeColor: 0x8df4ff,
+  });
+  expect(neutralAfterHover.hoverOpen).toBe(true);
+  await page.screenshot({ path: '.artifacts/test-results/market-hover-browse-1000x560.png' });
+
+  await clickMarketTarget('card:0');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.armed === true);
+  await clickMarketCommand('Clear');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.armed === false);
+  const pointerCancelled = await marketDecision();
+  expect(pointerCancelled).toEqual({
+    ...keyboardCancelled,
+    commands: expect.arrayContaining(['Close']),
+  });
+  await page.screenshot({ path: '.artifacts/test-results/market-purchase-cleared-1000x560.png' });
+
+  await clickMarketTarget('card:0');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.armed === true);
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.input.gamepad.emit('down', route.input.gamepad.pad1, { index: 1 }, 1);
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.armed === false);
+  expect(await marketDecision()).toEqual(pointerCancelled);
+
+  const sectionSwitchBaseline = await marketSectionState();
+  await clickMarketTarget('card:0');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.armed === true);
+  await clickMarketTab('Crew Cards');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.armed === false);
+  const sameSectionClear = await marketSectionState();
+  expect(sameSectionClear).toMatchObject({
+    category: 'cards',
+    focusId: 'card:0',
+    armedId: undefined,
+    scrap: sectionSwitchBaseline.scrap,
+    deckIds: sectionSwitchBaseline.deckIds,
+    sold: sectionSwitchBaseline.sold,
+    hoverOpen: false,
+    ring: { ...sameSectionClear.target, strokeColor: 0x8df4ff },
+    commands: expect.arrayContaining(['Close']),
+  });
+  expect(sameSectionClear.commands).not.toContain('Clear');
+  await page.screenshot({ path: '.artifacts/test-results/market-same-section-tab-cleared-1000x560.png' });
+
+  await clickMarketTarget('card:0');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.armed === true);
+  await clickMarketTab('Waymarks');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.category === 'waymarks');
+  const pointerSectionSwitch = await marketSectionState();
+  expect(pointerSectionSwitch).toMatchObject({
+    category: 'waymarks',
+    armedId: undefined,
+    scrap: sectionSwitchBaseline.scrap,
+    deckIds: sectionSwitchBaseline.deckIds,
+    sold: sectionSwitchBaseline.sold,
+    hoverOpen: false,
+    ring: { ...pointerSectionSwitch.target, strokeColor: 0x8df4ff },
+    commands: expect.arrayContaining(['Close']),
+  });
+  expect(pointerSectionSwitch.focusId).toMatch(/^waymark:/);
+  expect(pointerSectionSwitch.commands).not.toContain('Clear');
+  await page.screenshot({ path: '.artifacts/test-results/market-section-switch-pointer-1000x560.png' });
+
+  await page.keyboard.press('1');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.category === 'cards');
+  await clickMarketTarget('card:0');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.armed === true);
+  await page.keyboard.press('3');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.category === 'supplies');
+  const keyboardSectionSwitch = await marketSectionState();
+  expect(keyboardSectionSwitch).toMatchObject({
+    category: 'supplies',
+    armedId: undefined,
+    scrap: sectionSwitchBaseline.scrap,
+    deckIds: sectionSwitchBaseline.deckIds,
+    sold: sectionSwitchBaseline.sold,
+    hoverOpen: false,
+    ring: { ...keyboardSectionSwitch.target, strokeColor: 0x8df4ff },
+    commands: expect.arrayContaining(['Close']),
+  });
+  expect(keyboardSectionSwitch.focusId).toMatch(/^utility:/);
+  expect(keyboardSectionSwitch.commands).not.toContain('Clear');
+
+  await clickMarketTarget(keyboardSectionSwitch.focusId);
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.armed === true);
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.input.gamepad.emit('down', route.input.gamepad.pad1, { index: 5 }, 1);
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.category === 'services');
+  const controllerSectionSwitch = await marketSectionState();
+  expect(controllerSectionSwitch).toMatchObject({
+    category: 'services',
+    armedId: undefined,
+    scrap: sectionSwitchBaseline.scrap,
+    deckIds: sectionSwitchBaseline.deckIds,
+    sold: sectionSwitchBaseline.sold,
+    hoverOpen: false,
+    ring: { ...controllerSectionSwitch.target, strokeColor: 0x8df4ff },
+    commands: expect.arrayContaining(['Close']),
+  });
+  expect(controllerSectionSwitch.commands).not.toContain('Clear');
+  await page.screenshot({ path: '.artifacts/test-results/market-section-switch-controller-1000x560.png' });
+
+  await page.keyboard.press('1');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.category === 'cards');
+
   await clickMarketTarget('card:0');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.armed === true);
   await clickMarketTarget('card:0');
@@ -8290,6 +9350,304 @@ test('market purchases require intentional input and block route commitment acro
     supplies: suppliesBefore + 1,
     routeCommitCalls: 0,
   });
+
+  const mixedBaseline = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.marketCardShelf.forEach((offer: any, index: number) => {
+      offer.price = 40 + index * 40;
+      offer.sold = false;
+    });
+    route.runState.scrap = 100;
+    route.marketCategory = 'cards';
+    route.marketFocusId = undefined;
+    route.marketFocusArmedId = undefined;
+    route.renderAll();
+    const disabled = route.children.list
+      .filter((child: any) => child.input?.enabled && child.getData?.('marketFocusId') === 0)
+      .sort((a: any, b: any) => a.x - b.x)[0];
+    if (!disabled) throw new Error('Missing mixed-shelf unavailable inspection target');
+    return {
+      disabled: { x: disabled.x, y: disabled.y },
+      scrap: route.runState.scrap,
+      deckIds: route.runState.deck.map((card: any) => card.id),
+      sold: route.marketCardShelf.map((offer: any) => !!offer.sold),
+      input: JSON.parse(window.render_game_to_text!()).market.input,
+    };
+  });
+  expect(mixedBaseline.input).toMatchObject({
+    focusId: 'card:0',
+    index: 0,
+    count: 2,
+    armed: false,
+    focusVisible: true,
+  });
+  await page.keyboard.press('ArrowRight');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.focusId === 'card:1');
+  await page.keyboard.press('ArrowRight');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.focusId === 'card:0');
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.controllerButtonsDown.clear();
+    route.cardHoverDetailModule.updateRouteRewardGamepad(route, {
+      left: true, right: false, up: false, down: false, A: false,
+    }, route.controllerButtonsDown);
+  });
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.focusId === 'card:1');
+  const mixedCanvas = await page.locator('canvas').boundingBox();
+  if (!mixedCanvas) throw new Error('Missing game canvas');
+  const mixedDisabledPoint = {
+    x: mixedCanvas.x + mixedCanvas.width * (mixedBaseline.disabled.x / 1280),
+    y: mixedCanvas.y + mixedCanvas.height * (mixedBaseline.disabled.y / 720),
+  };
+  await page.mouse.move(mixedDisabledPoint.x, mixedDisabledPoint.y);
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text!());
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return state.market.input.focusId === 'card:1'
+      && state.market.input.focusVisible === false
+      && Boolean(route.hoverCardDetail?.active);
+  });
+  const mixedHover = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const ring = route.children.list.find((child: any) => child.name === 'market-input-focus-ring');
+    return {
+      sceneFocusId: route.marketFocusId,
+      input: JSON.parse(window.render_game_to_text!()).market.input,
+      ringVisible: ring?.visible,
+      hoverOpen: Boolean(route.hoverCardDetail?.active),
+      inspectionZone: route.cardHoverDetailRequest?.zone,
+    };
+  });
+  expect(mixedHover).toMatchObject({
+    sceneFocusId: 'card:1',
+    input: { focusId: 'card:1', count: 2, armed: false, focusVisible: false },
+    ringVisible: false,
+    hoverOpen: true,
+    inspectionZone: 'Market / NEED 20 MORE SCRAP',
+  });
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
+    .toContain('Unavailable in this section');
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
+    .toContain('NEED 20 MORE SCRAP');
+  await page.screenshot({ path: '.artifacts/test-results/market-mixed-shelf-inspection-1000x560.png' });
+  await page.mouse.click(mixedDisabledPoint.x, mixedDisabledPoint.y);
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.input.focusId === '');
+  await page.keyboard.press('Enter');
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.controllerButtonsDown.clear();
+    route.cardHoverDetailModule.updateRouteRewardGamepad(route, {
+      left: false, right: false, up: false, down: false, A: true,
+    }, route.controllerButtonsDown);
+  });
+  const mixedAfterDisabledConfirm = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return {
+      scrap: route.runState.scrap,
+      deckIds: route.runState.deck.map((card: any) => card.id),
+      sold: route.marketCardShelf.map((offer: any) => !!offer.sold),
+      armedId: route.marketFocusArmedId,
+      input: JSON.parse(window.render_game_to_text!()).market.input,
+    };
+  });
+  expect(mixedAfterDisabledConfirm).toEqual({
+    scrap: mixedBaseline.scrap,
+    deckIds: mixedBaseline.deckIds,
+    sold: mixedBaseline.sold,
+    armedId: undefined,
+    input: expect.objectContaining({ focusId: '', index: -1, count: 2, armed: false, focusVisible: false }),
+  });
+  await page.keyboard.press('ArrowRight');
+  await page.waitForFunction(() => {
+    const input = JSON.parse(window.render_game_to_text!()).market.input;
+    return input.focusId === 'card:0' && input.focusVisible === true;
+  });
+  await page.mouse.move(mixedCanvas.x + 4, mixedCanvas.y + 4);
+
+  const fullSupply = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const capacity = Number(JSON.parse(window.render_game_to_text!()).routeStatus.supplies.split('/')[1]);
+    const supplyId = route.marketUtilityShelf.find((offer: any) => offer.supplyId)?.supplyId ?? 'supply_bell';
+    route.runState.supplies = Array.from({ length: capacity }, () => supplyId);
+    route.runState.scrap = 999;
+    route.marketCategory = 'supplies';
+    route.marketFocusId = undefined;
+    route.marketFocusArmedId = undefined;
+    route.renderAll();
+    const target = route.children.list.find((child: any) => (
+      child.input?.enabled && child.getData?.('marketFocusId') === 0
+    ));
+    if (!target) throw new Error('Missing full-pouch Supply inspection target');
+    return { x: target.x, y: target.y };
+  });
+  await page.mouse.move(
+    mixedCanvas.x + mixedCanvas.width * (fullSupply.x / 1280),
+    mixedCanvas.y + mixedCanvas.height * (fullSupply.y / 720),
+  );
+  await page.waitForFunction(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return Boolean(route.marketItemHover?.active);
+  });
+  const fullSupplyDetail = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.marketItemHover.list
+      .filter((child: any) => child.type === 'Text')
+      .map((child: any) => child.text)
+      .join('\n');
+  });
+  expect(fullSupplyDetail).toContain('SUPPLY POUCH FULL');
+  expect(fullSupplyDetail).not.toMatch(/SUPPLIES \d+\/\d+ >/);
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
+    .toContain('SUPPLY POUCH FULL');
+  await page.screenshot({ path: '.artifacts/test-results/market-full-supply-reason-1000x560.png' });
+  await page.mouse.move(mixedCanvas.x + 4, mixedCanvas.y + 4);
+
+  const noPreen = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.runState.deck.forEach((entry: any) => { entry.upgraded = true; });
+    route.marketCategory = 'services';
+    route.marketFocusId = undefined;
+    route.marketFocusArmedId = undefined;
+    route.renderAll();
+    const target = route.children.list.find((child: any) => (
+      child.input?.enabled
+      && child.getData?.('marketFocusId') === 0
+      && child.getData?.('label') === 'Preen a Card'
+    ));
+    if (!target) throw new Error('Missing no-eligible-card Preen inspection target');
+    return { x: target.x, y: target.y };
+  });
+  await page.mouse.move(
+    mixedCanvas.x + mixedCanvas.width * (noPreen.x / 1280),
+    mixedCanvas.y + mixedCanvas.height * (noPreen.y / 720),
+  );
+  await page.waitForFunction(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return Boolean(route.marketItemHover?.active);
+  });
+  const noPreenDetail = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.marketItemHover.list
+      .filter((child: any) => child.type === 'Text')
+      .map((child: any) => child.text)
+      .join('\n');
+  });
+  expect(noPreenDetail).toContain('NO ELIGIBLE CARD');
+  expect(noPreenDetail).not.toContain('CHOOSE CARD FIRST');
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
+    .toContain('Preen a Card, NO ELIGIBLE CARD');
+  await page.screenshot({ path: '.artifacts/test-results/market-no-eligible-service-reason-1000x560.png' });
+  await page.mouse.move(mixedCanvas.x + 4, mixedCanvas.y + 4);
+
+  const unavailableWaymark = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.runState.scrap = 0;
+    route.marketCategory = 'waymarks';
+    route.marketFocusId = undefined;
+    route.marketFocusArmedId = undefined;
+    route.renderAll();
+    const target = route.children.list.find((child: any) => (
+      child.input?.enabled && child.getData?.('marketFocusId') === 0
+    ));
+    if (!target) throw new Error('Missing unaffordable Waymark inspection target');
+    const listing = route.marketWaymarkShelf.find((offer: any) => !offer.sold);
+    return { x: target.x, y: target.y, shortfall: listing.price };
+  });
+  await page.mouse.move(
+    mixedCanvas.x + mixedCanvas.width * (unavailableWaymark.x / 1280),
+    mixedCanvas.y + mixedCanvas.height * (unavailableWaymark.y / 720),
+  );
+  await page.waitForFunction(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return Boolean(route.marketItemHover?.active);
+  });
+  const unavailableWaymarkDetail = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.marketItemHover.list
+      .filter((child: any) => child.type === 'Text')
+      .map((child: any) => child.text)
+      .join('\n');
+  });
+  expect(unavailableWaymarkDetail).toContain(`NEED ${unavailableWaymark.shortfall} MORE SCRAP`);
+  expect(unavailableWaymarkDetail).not.toMatch(/WAYMARKS \d+ > /);
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
+    timeout: 5_000,
+  }).toContain(`NEED ${unavailableWaymark.shortfall} MORE SCRAP`);
+  await page.screenshot({ path: '.artifacts/test-results/market-unavailable-waymark-reason-1000x560.png' });
+  await page.mouse.move(mixedCanvas.x + 4, mixedCanvas.y + 4);
+
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.runState.scrap = 0;
+    route.renderAll();
+  });
+  await page.keyboard.press('1');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.category === 'cards');
+  const unavailableBaseline = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const unavailable = route.children.list.find((child: any) => (
+      child.input?.enabled && child.getData?.('marketFocusId') === 0
+    ));
+    if (!unavailable) throw new Error('Missing unavailable Market inspection target');
+    return {
+      target: { x: unavailable.x, y: unavailable.y },
+      scrap: route.runState.scrap,
+      deckIds: route.runState.deck.map((card: any) => card.id),
+      sold: route.marketCardShelf.map((offer: any) => !!offer.sold),
+      input: JSON.parse(window.render_game_to_text!()).market.input,
+      actionableTargets: route.children.list.filter((child: any) => (
+        child.input?.enabled && typeof child.getData?.('marketFocusId') === 'string'
+      )).length,
+    };
+  });
+  expect(unavailableBaseline).toMatchObject({
+    scrap: 0,
+    input: { focusId: '', count: 0, armed: false, focusVisible: false },
+    actionableTargets: 0,
+  });
+  const unavailableCanvas = await page.locator('canvas').boundingBox();
+  if (!unavailableCanvas) throw new Error('Missing game canvas');
+  await page.mouse.click(
+    unavailableCanvas.x + unavailableCanvas.width * (unavailableBaseline.target.x / 1280),
+    unavailableCanvas.y + unavailableCanvas.height * (unavailableBaseline.target.y / 720),
+  );
+  await page.keyboard.press('Enter');
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.controllerButtonsDown.clear();
+    route.cardHoverDetailModule.updateRouteRewardGamepad(route, {
+      left: false, right: false, up: false, down: false, A: true,
+    }, route.controllerButtonsDown);
+  });
+  const unavailableAfterInputs = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return {
+      scrap: route.runState.scrap,
+      deckIds: route.runState.deck.map((card: any) => card.id),
+      sold: route.marketCardShelf.map((offer: any) => !!offer.sold),
+      armedId: route.marketFocusArmedId,
+      hoverOpen: Boolean(route.hoverCardDetail?.active),
+      focusRings: route.children.list.filter((child: any) => child.name === 'market-input-focus-ring').length,
+      help: route.children.list
+        .filter((child: any) => child.name === 'market-input-help' && child.type === 'Text')
+        .map((child: any) => child.text),
+      commands: route.children.list
+        .filter((child: any) => child.name === 'market-enamel-button-hit' && child.input?.enabled)
+        .map((child: any) => child.getData('label')),
+    };
+  });
+  expect(unavailableAfterInputs).toEqual({
+    scrap: unavailableBaseline.scrap,
+    deckIds: unavailableBaseline.deckIds,
+    sold: unavailableBaseline.sold,
+    armedId: undefined,
+    hoverOpen: true,
+    focusRings: 0,
+    help: ['LEFT / RIGHT  OFFER   |   ENTER / A  BUY   |   1-4 / LB / RB  SECTION'],
+    commands: expect.arrayContaining(['Close']),
+  });
+  expect(unavailableAfterInputs.commands).not.toContain('Clear');
+  await page.screenshot({ path: '.artifacts/test-results/market-unavailable-inspection-1000x560.png' });
 
   await page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
@@ -30755,6 +32113,8 @@ test('reward card inspection preserves combat and route choices across pointer k
     open: true,
     cardId: routeOpen.rewardIds[1],
     returnIndex: 1,
+    returnArmed: true,
+    returnChoiceId: routeOpen.rewardIds[1],
     selectActionPreserved: true,
   });
   expect(routeOpen.inspectHits).toHaveLength(routeOpen.rewardIds.length);
@@ -30774,7 +32134,12 @@ test('reward card inspection preserves combat and route choices across pointer k
     };
   });
   expect(routeClosed.state.routeReward.inspection).toMatchObject({ open: false, returnIndex: 1 });
-  expect(routeClosed.state.routeReward.inputFocus).toMatchObject({ index: 1, cardId: routeOpen.rewardIds[1] });
+  expect(routeClosed.state.routeReward.inputFocus).toMatchObject({
+    index: 1,
+    cardId: routeOpen.rewardIds[1],
+    armed: true,
+    armedCardId: routeOpen.rewardIds[1],
+  });
   expect(routeClosed.rewardIds).toEqual(routeOpen.rewardIds);
   expect(routeClosed.deck).toEqual(routeOpen.deckBefore);
 });
@@ -30889,10 +32254,21 @@ test('card picker inspection preserves Preen and Release decisions across pointe
   )).toBe(true);
   const pointerArmed = await page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const rail = route.children.list.find((object: any) => object.name === 'card-picker-confirmation-rail');
+    const namedText = (name: string) => route.children.list.find((object: any) => object.name === name)?.text;
     return {
       state: JSON.parse(window.render_game_to_text?.() ?? '{}').cardPickerInput,
       upgraded: route.runState.deck.filter((card: any) => card.upgraded).length,
       remaining: route.cardPickerRemainingPicks,
+      presentation: {
+        railSize: rail ? [rail.displayWidth, rail.displayHeight] : [],
+        title: namedText('card-picker-confirmation-title'),
+        summary: namedText('card-picker-confirmation-summary'),
+        command: namedText('card-picker-confirmation-command'),
+        cardDeltas: route.children.list
+          .filter((object: any) => object.name === 'card-picker-decision-delta')
+          .map((object: any) => object.text),
+      },
     };
   });
   expect(pointerArmed.upgraded).toBe(preenStart.upgraded);
@@ -30902,6 +32278,13 @@ test('card picker inspection preserves Preen and Release decisions across pointe
     commitBlockedUntilSelected: false,
     controls: { apply: 'Confirm / A / second pointer activation commits' },
   });
+  expect(pointerArmed.presentation).toMatchObject({
+    railSize: [560, 42],
+    command: 'CONFIRM',
+  });
+  expect(pointerArmed.presentation.title).toMatch(/^PREEN  /);
+  expect(pointerArmed.presentation.summary.length).toBeGreaterThan(0);
+  expect(pointerArmed.presentation.cardDeltas.every((text: string) => !text.includes('CONFIRM') && !text.includes('BACK CANCELS'))).toBe(true);
   expect(await page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
     const hint = route.children.list.find((object: any) => object.name === 'card-picker-input-hint');
@@ -31102,6 +32485,11 @@ test('card picker inspection preserves Preen and Release decisions across pointe
     };
     press({ A: true });
     press({});
+    const rail = route.children.list.find((object: any) => object.name === 'card-picker-confirmation-rail');
+    const backFrame = route.children.list.find((object: any) => object.texture?.key === 'ui-icon-market-enamel-command-frame');
+    const namedText = (name: string) => route.children.list.find((object: any) => object.name === name)?.text;
+    const railBounds = rail?.getBounds();
+    const backBounds = backFrame?.getBounds();
     return {
       focusedCost: focused.cost,
       state: JSON.parse(window.render_game_to_text?.() ?? '{}').cardPickerInput,
@@ -31109,6 +32497,16 @@ test('card picker inspection preserves Preen and Release decisions across pointe
       scrap: route.runState.scrap,
       sold: route.marketUtilityShelf[releaseIndex]?.sold,
       pickerMode: route.cardPickerMode,
+      presentation: {
+        railSize: rail ? [rail.displayWidth, rail.displayHeight] : [],
+        title: namedText('card-picker-confirmation-title'),
+        summary: namedText('card-picker-confirmation-summary'),
+        command: namedText('card-picker-confirmation-command'),
+        backGap: railBounds && backBounds ? railBounds.left - backBounds.right : -1,
+        cardDeltas: route.children.list
+          .filter((object: any) => object.name === 'card-picker-decision-delta')
+          .map((object: any) => object.text),
+      },
     };
   }, releaseOpen.releaseIndex);
   expect(releaseArmed.state).toMatchObject({ armed: true, commitBlockedUntilSelected: false });
@@ -31116,6 +32514,14 @@ test('card picker inspection preserves Preen and Release decisions across pointe
   expect(releaseArmed.scrap).toBe(releaseOpen.before.scrap);
   expect(releaseArmed.sold).toBe(releaseOpen.before.sold);
   expect(releaseArmed.pickerMode).toBe('release');
+  expect(releaseArmed.presentation).toMatchObject({
+    railSize: [560, 42],
+    command: 'CONFIRM',
+  });
+  expect(releaseArmed.presentation.title).toMatch(/^RELEASE  /);
+  expect(releaseArmed.presentation.summary).toContain(`${releaseArmed.focusedCost} SCRAP`);
+  expect(releaseArmed.presentation.backGap).toBeGreaterThanOrEqual(20);
+  expect(releaseArmed.presentation.cardDeltas.every((text: string) => !text.includes('CONFIRM') && !text.includes('BACK CANCELS'))).toBe(true);
   await page.locator('canvas').screenshot({
     path: '.artifacts/test-results/card-picker-confirmation-release-1000x560.png',
   });

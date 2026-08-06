@@ -409,16 +409,17 @@ function renderCommandStrip(context: BattleHudRenderContext) {
 function renderGuidance(context: BattleHudRenderContext) {
   if (!context.guidance) return;
   const { scene, root, gameWidth, fontFamily, boldFontStyle, guidance } = context;
-  root.add(scene.add.rectangle(gameWidth / 2, 112, 640, 34, 0x06111a, 0.94)
+  root.add(scene.add.rectangle(gameWidth / 2, 112, 600, 32, 0x06111a, 0.94)
     .setStrokeStyle(2, guidance.accent, 0.8)
     .setName('first-combat-guidance'));
   root.add(scene.add.text(gameWidth / 2, 112, guidance.text, {
     fontFamily,
-    fontSize: '13px',
+    fontSize: '12px',
     fontStyle: boldFontStyle,
     color: '#f1f8ff',
-    fixedWidth: 610,
+    fixedWidth: 572,
     align: 'center',
+    maxLines: 1,
   }).setOrigin(0.5).setName('first-combat-guidance'));
 }
 

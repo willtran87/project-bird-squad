@@ -156,12 +156,12 @@ function renderEnemy(context: BattleForegroundRenderContext, enemy: BattleForegr
   if (enemy.selected) renderTargetReticle(context, enemy);
   if (enemy.guideTarget) {
     const guideY = enemy.y - 88 * s;
-    target.add(scene.add.rectangle(enemy.x, guideY, 86 * s, 22 * s, 0x231d08, 0.94)
+    target.add(scene.add.circle(enemy.x, guideY, 13 * s, 0x231d08, 0.96)
       .setStrokeStyle(2, 0xd8a840, 0.98)
       .setName('combat-first-target-guide'));
-    target.add(scene.add.text(enemy.x, guideY, 'PLAY HERE', {
+    target.add(scene.add.text(enemy.x, guideY, '2', {
       fontFamily,
-      fontSize: `${Math.round(10 * s)}px`,
+      fontSize: `${Math.round(12 * s)}px`,
       fontStyle: boldFontStyle,
       color: '#fff0b8',
     }).setOrigin(0.5).setName('combat-first-target-guide'));

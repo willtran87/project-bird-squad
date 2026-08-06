@@ -7062,3 +7062,956 @@ sessions through `docs/game/playtest-runbook.md`.
   (`48052` Vite and `26520` esbuild) were stopped, ports `42974` and `5373` are
   free and unreachable, the temporary choreography file was removed, and no
   Bird Squad-scoped Node/browser/esbuild processes remain.
+
+## 2026-08-04 First-Combat Guidance Hierarchy Polish
+
+- Audited the settled first-combat teaching state at the 1000x560 minimum
+  viewport. The same action was expressed by a wide instruction rail, a
+  `START HERE` card panel, and a `PLAY HERE` enemy panel, while every Flow card
+  repeated the same `SURGE NEXT / +1 FLOW` footer.
+- Consolidated the lesson into one 600x32 numbered rail:
+  `1 SELECT Card -> 2 TARGET Enemy`, followed by the exact Wingbeat cost and
+  Flow gain. The recommended card and enemy now carry compact `1` and `2`
+  anchor badges instead of duplicate word panels. Screen-reader guidance and
+  stable object identities remain unchanged.
+- During the guided first combat, the Flow footer now stays on the recommended
+  or selected Flow card instead of repeating across every playable option.
+  Other affordable cards remain interactive, and normal non-tutorial Surge
+  forecasting still labels every relevant card.
+- Extended the existing first-flight regression to prove the shorter copy,
+  600x32 rail geometry, 12px type, preserved recommendation/target markers,
+  multiple playable alternatives, and exactly one visible tutorial Flow hint.
+  The inspected exact capture is
+  `.artifacts/test-results/flow-centered-hud/first-combat-numbered-guidance-1000x560.png`.
+- Strict unused-code TypeScript, the focused first-flight browser regression,
+  the production build, and all unchanged lazy renderer bundle caps pass.
+  Combined boot remains 723.2 KB; the existing preferred-target warning is
+  unchanged.
+- The required shared production client completed Title -> Route -> Combat,
+  dismissed the encounter intro, and reached interactive full art with the
+  numbered guide active, no pending/failed/timed-out asset groups, and no error
+  artifact. Evidence is under
+  `.artifacts/web-game-first-combat-guidance-final/client/`.
+- Test-resource cleanup was audited. The preview descendants (`51772` Vite and
+  `49752` esbuild) were stopped, ports `42976` and `5373` are free and
+  unreachable, the temporary choreography file was removed, and no Bird
+  Squad-scoped Node/browser/esbuild processes remain.
+- Next useful polish: audit the market card-release confirmation state, where
+  the selected card currently carries two lines of confirmation copy inside an
+  already dense 10-card grid.
+
+## 2026-08-04 Card-Picker Confirmation-Rail Polish
+
+- Audited the armed Preen and market Release states at the 1000x560 minimum
+  viewport. The selected card replaced its useful deck/stat delta with two
+  stacked lines of `CONFIRM` and `BACK CANCELS`, crowding a compact 94px card
+  while the footer lane beside Cancel/Back to Market remained unused.
+- Preserved each card's actual decision delta in the grid and moved the armed
+  action into one 560x42 footer rail. The rail names the exact card, shows Scrap
+  plus deck/stat impact, and reserves a fixed command capsule for `CONFIRM`.
+  Long titles and deltas are compacted before rendering, and the market rail
+  keeps a measured 20px+ gap from the Back to Market command.
+- Kept pointer, keyboard, and controller semantics unchanged: first activation
+  arms, Back cancels without spending or changing the deck, and the second
+  activation commits. Screen-reader state continues to expose the same safety
+  contract.
+- Moved the new rail renderer into the already-lazy card picker/inspection
+  presentation boundary. That recovered roughly 0.8 KB from the boot path;
+  combined boot is 723.4 KB instead of the 724.2 KB inline version and remains
+  below the unchanged 725 KB hard cap.
+- Extended the existing end-to-end picker regression to cover both Preen and
+  Release rails, exact 560x42 geometry, fixed command copy, preserved card
+  deltas, market Scrap summary, footer separation, cancellation, and commit.
+  Inspected built-preview captures are
+  `.artifacts/test-results/card-picker-confirmation-preen-1000x560.png` and
+  `.artifacts/test-results/card-picker-confirmation-release-1000x560.png`.
+- Strict unused-code TypeScript, the complete picker pointer/keyboard/controller
+  regression, the production build, and all bundle hard gates pass. The shared
+  production client completed Title -> Route -> Combat with interactive full
+  art, no pending/failed/timed-out asset groups, and no browser error artifact;
+  evidence is under
+  `.artifacts/web-game-card-picker-confirmation-rail-final/client/`.
+- Test-resource cleanup was audited. The preview descendants (`42308` Vite and
+  `53876` esbuild) were stopped, ports `42977` and `5373` are free and
+  unreachable, the temporary choreography file was removed, and no Bird
+  Squad-scoped Node/browser/esbuild processes remain.
+- Next useful polish: inspect the remaining reward/market confirmation surfaces
+  for card-local safety copy that can reuse a reserved command lane without
+  adding more permanent chrome.
+
+## 2026-08-04 Route-Reward Confirmation Hierarchy Polish
+
+- Audited the route card-reward confirmation state at the 1000x560 minimum
+  viewport. Arming a reward replaced its nameplate with `CONFIRM PICK / BACK
+  CANCELS`, so the most important identity disappeared while the existing top
+  instruction panel repeated generic confirmation guidance.
+- Kept both card names visible throughout selection and commitment. The one
+  existing input panel now becomes a gold confirmation rail when armed, with a
+  single `CONFIRM PICK`, explicit second-activation wording, Cancel, and Inspect
+  bindings; no additional chrome was added to the overlay.
+- Preserved pointer, keyboard, and controller behavior: first activation arms,
+  Back cancels without changing the deck or pending reward, and the second
+  activation commits. Screen-reader state retains the same intentional-choice
+  contract.
+- Centralized the two route-reward input strings in the already-loaded shared
+  reward helper. This kept the route overlay lazy chunk at 5.9 KB, below its 6
+  KB hard cap, after an initial inline version correctly failed the budget gate.
+- Extended the existing route reward regression to prove the confirmation copy
+  exists only in the command rail, card-local confirmation/back copy is absent,
+  the 500x42 panel keeps its measured insets and gaps, and all three input paths
+  preserve cancel/commit semantics. The inspected built-preview capture is
+  `.artifacts/test-results/route-reward-choice-confirmation-1000x560.png`.
+- Strict TypeScript, the exact pointer/keyboard/controller regression, the
+  production build, and all bundle hard gates pass. Existing soft warnings
+  remain unchanged at 693.4 KB for the app entry and 723.4 KB combined boot.
+- The required shared production client completed Title -> Route -> Combat with
+  full art, no pending/failed/timed-out asset groups, and no console-error
+  artifact. The final inspected 1280x720 evidence is under
+  `.artifacts/web-game-route-reward-final/`.
+- Test-resource cleanup was audited from root PID `52404`: all npm/Vite/esbuild
+  descendants were stopped deepest-first, port `42978` is free and unreachable,
+  the temporary action file was removed, and no Bird Squad-scoped preview
+  process remains.
+- Next useful polish: move battle reward card confirmation out of its tiny
+  card-top delta strip while keeping the Skip rail's alternative action clear.
+
+## 2026-08-04 Battle-Reward Confirmation-Rail Polish
+
+- Audited armed Add, Preen, and Waymark rewards at the 1000x560 minimum
+  viewport. Card-top decision strips and waymark rarity rows were being replaced
+  by duplicate `CONFIRM PICK / BACK CANCELS` copy while the stronger top input
+  rail stayed generic and the Scrap rail competed for attention.
+- Made the existing top input panel the sole confirmation rail. It switches to
+  gold when armed and exposes Confirm, second activation, Cancel, and the
+  contextually available Inspect/Skip Instead bindings without adding chrome.
+- Preserved decision information in every choice: Add cards keep their exact
+  deck-size delta, Preen cards keep their before/after improvement, and Waymarks
+  keep their rarity. The Scrap rail remains an explicit alternative instead of
+  appearing to be the armed action.
+- Kept pointer, keyboard, and controller semantics unchanged. First activation
+  arms, Back cancels without applying the reward, second activation commits,
+  and Skip remains available from the armed card-reward state.
+- Extended the existing reward commitment regression to prove confirmation copy
+  appears only in the gold command rail, real card deltas survive arming, and
+  all three reward types preserve their interaction contracts. Inspected
+  built-preview captures are
+  `.artifacts/test-results/reward-choice-confirmation-1000x560.png`,
+  `.artifacts/test-results/upgrade-reward-choice-confirmation-1000x560.png`, and
+  `.artifacts/test-results/waymark-reward-choice-confirmation-1000x560.png`.
+- Strict TypeScript, the exact pointer/keyboard/controller regression, the
+  production build, and all bundle hard gates pass. The reward renderer shrank
+  to 13.7 KB; combined boot is 723.6 KB under the unchanged 725 KB hard cap.
+  Existing soft warnings remain at 693.7 KB app entry and 723.6 KB combined.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, no pending/failed/timed-out asset groups, and no browser
+  error artifact. Evidence is under
+  `.artifacts/web-game-battle-reward-confirmation-final/`.
+- Test-resource cleanup was audited from root PID `31348`: all npm/Vite/esbuild
+  descendants were stopped deepest-first, port `42979` is free and unreachable,
+  the temporary action file was removed, and no Bird Squad-scoped Node/browser/
+  esbuild process remains.
+- Next useful polish: audit the reward ceremony's default (unarmed) focus state
+  for duplicated cyan borders and decide whether hover, keyboard focus, and
+  selection can be differentiated with fewer nested frames.
+
+## 2026-08-04 Reward Focus-Chrome Polish
+
+- Audited default focus and armed commitment across card, Preen, and Waymark
+  rewards at the 1000x560 minimum viewport. Focused choices stacked a thick cyan
+  interactive border beneath a second thick cyan focus rectangle, making the
+  ornamental frames read like multiple competing selection states.
+- Reduced every choice's persistent semantic border to a subtle 2px suit/rarity
+  accent and reserved one 3px outer ring for interaction state. Ordinary focus
+  is cyan; armed commitment is gold, matching the confirmation command rail.
+  Hover remains a separate transient art treatment.
+- Applied the same hierarchy to Waymarks and named their hit targets for exact
+  regression coverage. No interaction geometry, touch target, card content, or
+  input behavior changed.
+- Extended the reward commitment regression to measure all card and Waymark
+  border widths/colors, prove there is exactly one focus ring, and distinguish
+  cyan default focus from gold armed commitment. Inspected built-preview
+  captures are `.artifacts/test-results/reward-choice-focus-1000x560.png`,
+  `.artifacts/test-results/reward-choice-confirmation-1000x560.png`, and
+  `.artifacts/test-results/waymark-reward-choice-confirmation-1000x560.png`.
+- Strict TypeScript, the complete reward pointer/keyboard/controller regression,
+  production build, and all bundle hard gates pass. The reward renderer remains
+  13.7 KB and combined boot remains 723.6 KB under the 725 KB hard cap; existing
+  soft warnings remain unchanged.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, no pending/failed/timed-out asset groups, and no browser
+  error artifact. Evidence is under `.artifacts/web-game-reward-focus-final/`.
+- Test-resource cleanup was audited from root PID `44884`: all npm/Vite/esbuild
+  descendants were stopped deepest-first, port `42980` is free and unreachable,
+  the temporary action file was removed, and no Bird Squad-scoped Node/browser/
+  esbuild process remains.
+- Next useful polish: audit reward-card Inspect buttons, where focus currently
+  changes both the label (`DETAIL` to `INSPECT`) and border emphasis; decide
+  whether a stable label with one focus cue would reduce micro-jitter.
+
+## 2026-08-04 Reward Inspect-Button Stability Polish
+
+- Audited reward Inspect buttons while moving focus and arming choices at the
+  1000x560 minimum viewport. Battle reward buttons changed label from `DETAIL`
+  to `INSPECT`, fill opacity, and border color even though every button performed
+  the same action; route reward buttons repeated card focus with another cyan or
+  gold border.
+- Standardized every battle and route reward button on the truthful `INSPECT`
+  label, a neutral 0.88 baseline fill, and a 2px suit accent. Hover alone raises
+  the fill; focus and armed commitment remain exclusively on the card's cyan or
+  gold outer ring. Pointer-out now restores the same baseline instead of making
+  previously hovered unselected buttons permanently brighter.
+- Applied the same stable style and hover restoration to the battle reward
+  fallback renderer so lazy-load timing cannot reintroduce the old micro-jitter.
+  Touch targets and inspection callbacks are unchanged.
+- Extended the battle and route reward commitment regressions to prove labels,
+  fills, and border colors remain identical when focus moves or a choice arms.
+  The dedicated combat/route card-inspection regression also passes, covering
+  modal open, Back return, exact choice preservation, and unchanged deck state.
+- Inspected built-preview captures are
+  `.artifacts/test-results/reward-choice-focus-1000x560.png`,
+  `.artifacts/test-results/reward-choice-confirmation-1000x560.png`,
+  `.artifacts/test-results/route-reward-choice-confirmation-1000x560.png`,
+  `.artifacts/test-results/reward-card-inspection-combat.png`, and
+  `.artifacts/test-results/reward-card-inspection-route.png`.
+- Strict TypeScript, three focused pointer/keyboard/controller/inspection tests,
+  the production build, and all bundle hard gates pass. The route reward chunk
+  is 5.9 KB, reward renderer 13.7 KB, and combined boot 723.6 KB under the 725
+  KB hard cap; existing soft warnings remain unchanged.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, no pending/failed/timed-out asset groups, and no browser
+  error artifact. Evidence is under
+  `.artifacts/web-game-reward-inspect-buttons-final/`.
+- Test-resource cleanup was audited from root PID `52060`: all npm/Vite/esbuild
+  descendants were stopped deepest-first, port `42981` is free and unreachable,
+  the temporary action file was removed, and no Bird Squad-scoped Node/browser/
+  esbuild process remains.
+- Next useful polish: bring the battle reward fallback choices in line with the
+  primary renderer by removing their duplicate thick focus border and card-name
+  `CONFIRM /` prefix while preserving loading resilience.
+
+## 2026-08-04 Reward Fallback Hierarchy Polish
+
+- Forced the battle reward renderer into its lazy-load failure path at the
+  1000x560 minimum viewport and audited the degraded ceremony independently of
+  the primary renderer. The fallback repeated commitment in every card name and
+  stacked a thick semantic border beneath a second thick focus rectangle.
+- Kept card identity stable by removing the `CONFIRM /` name prefix, reduced the
+  persistent choice border to a 2px suit accent, and reserved one 3px outer ring
+  for interaction state. Ordinary focus remains cyan and armed commitment is
+  gold; the existing top command rail is now the sole owner of confirmation and
+  cancellation instructions.
+- Added an exact fallback regression that forces renderer failure, measures all
+  choice borders, proves there is exactly one focus ring, arms a choice without
+  mutating the deck, and verifies Back restores cyan focus while preserving the
+  card names. The inspected built-preview capture is
+  `.artifacts/test-results/reward-fallback-confirmation-1000x560.png`.
+- Strict TypeScript, the focused fallback regression, production build, and all
+  bundle hard gates pass. The shared reward-inspection chunk is 20.5 KB and
+  combined boot remains 723.6 KB under the 725 KB hard cap; the existing 693.7
+  KB app-entry and 723.6 KB combined soft warnings remain.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, no pending/failed/timed-out asset groups, and no browser
+  error artifact. Evidence is under
+  `.artifacts/web-game-reward-fallback-final/`.
+- Test-resource cleanup was audited from root PID `47600`: all npm/Vite/esbuild
+  descendants were stopped deepest-first, port `42982` is free and unreachable,
+  port `5373` is free, the temporary action file was removed, and no Bird
+  Squad-scoped Node/browser/esbuild process remains.
+- Next useful polish: compare the fallback's text-only choice bodies against the
+  primary renderer's compact Add/Preen deltas and Waymark rarity cues, adding
+  only the decision-critical context that can fit without weakening resilience.
+
+## 2026-08-04 Reward Fallback Decision-Context Polish
+
+- Audited the forced lazy-renderer failure path at the 1000x560 minimum viewport
+  across Add, Preen, and Waymark ceremonies. The prior fallback preserved rules
+  text but omitted the compact comparison cues available in the primary reward
+  renderer, making degraded choices slower to evaluate.
+- Added one bounded 204x26 context chip above the focused card name. Add rewards
+  show the deck-size change and Preen rewards show the first meaningful before/
+  after rule delta; both remain single-line and appear only on the active choice.
+- Added a terse rarity/family chip to every fallback Waymark so artifact roles
+  remain comparable without another description block. Identical classifications
+  collapse cleanly (`BOSS WAYMARK`) instead of repeating `BOSS / BOSS`.
+- Extended the forced-fallback regression to exercise real card, upgrade, and
+  boss-Waymark pools, verify the chips' exact 204x26 bounds and one-line labels,
+  preserve the existing focus/commit/cancel contract, and reject vacuous empty
+  Waymark fixtures. Inspected built-preview captures are
+  `.artifacts/test-results/reward-fallback-confirmation-1000x560.png`,
+  `.artifacts/test-results/reward-fallback-preen-1000x560.png`, and
+  `.artifacts/test-results/reward-fallback-waymarks-1000x560.png`.
+- Strict TypeScript, the focused three-mode fallback regression, production
+  build, and every bundle hard gate pass. The shared reward-inspection chunk is
+  21.5 KB and combined boot remains 723.6 KB under the 725 KB hard cap; existing
+  693.7 KB app-entry and 723.6 KB combined soft warnings remain.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, no pending/failed/timed-out asset groups, and no browser
+  error artifact. Evidence is under
+  `.artifacts/web-game-reward-fallback-context-final/`.
+- Test-resource cleanup was audited from root PID `51616`: every npm/Vite/esbuild
+  descendant was stopped deepest-first, ports `42983` and `5373` are free, the
+  preview is unreachable, the temporary action file was removed, and no runtime
+  from this test run remains.
+- Next useful polish: audit the reward renderer's loading placeholder against
+  the final ceremony anchors so a slow chunk request does not visibly jump the
+  title, choice rail, or input guidance when the primary/fallback UI appears.
+
+## 2026-08-04 Reward Loading-Transition Polish
+
+- Audited the lazy reward renderer's unresolved state at the 1000x560 minimum
+  viewport. It previously replaced the ceremony with a centered spinner while
+  still displaying normal Select/Inspect commands even though reward input was
+  intentionally blocked, causing both a layout jump and misleading guidance.
+- Replaced the spinner with a non-interactive ceremony skeleton: the landmark
+  kicker/title stay at their final header coordinates, three card or Waymark
+  silhouettes occupy the exact final choice centers and dimensions, Inspect and
+  Skip placeholders reserve their final card-reward geometry, and the subtitle
+  explains that options unlock together.
+- Kept the command rail at y=213 and its mode-specific width, but now labels the
+  unresolved state `PREPARING CHOICES / INPUT LOCKED` instead of advertising
+  unavailable controls. When the real lazy renderer resolves, only the rail copy
+  and the choice contents change; the card centers and rail geometry do not.
+- Moved the loading presentation into the already-lazy shared reward helper and
+  aligned fallback card/Waymark centers and Inspect buttons with the primary
+  ceremony. This avoids spending scarce boot budget on failure/loading chrome.
+- Added an exact transition regression that freezes the module in loading state,
+  proves no interactive choice hit areas exist, measures every placeholder and
+  input rail, then releases the real dynamic import and verifies its 228x312 card
+  hit areas replace the skeleton without moving. It separately covers the wider
+  248x306 Waymark geometry and mode-specific 500px rail.
+- Inspected built-preview captures are
+  `.artifacts/test-results/reward-loading-card-1000x560.png`,
+  `.artifacts/test-results/reward-loading-transition-ready-1000x560.png`, and
+  `.artifacts/test-results/reward-loading-waymark-1000x560.png`; the aligned
+  failure path remains covered by
+  `.artifacts/test-results/reward-fallback-confirmation-1000x560.png`.
+- Strict TypeScript, both focused loading/fallback regressions, production build,
+  and every bundle hard gate pass. App entry improved to 693.4 KB and combined
+  boot to 723.4 KB under the 725 KB hard cap; existing preferred-target warnings
+  remain. The shared reward-inspection chunk is 22.9 KB.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, no pending/failed/timed-out asset groups, and no browser
+  error artifact. Evidence is under `.artifacts/web-game-reward-loading-final/`.
+- Test-resource cleanup was audited from root PID `41200`: every npm/Vite/esbuild
+  descendant was stopped deepest-first, ports `42984` and `5373` are free, the
+  preview is unreachable, the temporary action file was removed, and no runtime
+  from this test run remains.
+- Next useful polish: audit assistive narration across the locked-to-ready reward
+  transition so screen-reader text announces availability once without repeating
+  the loading explanation on every asset-driven render.
+
+## 2026-08-04 Reward Loading-Narration Polish
+
+- Audited the opt-in live region while the lazy reward renderer is unresolved.
+  Visual input was correctly locked, but the polled summary immediately named
+  choices and advertised Select/Inspect/commit controls, contradicting the
+  loading rail and inviting an action the scene intentionally rejects.
+- Made the lazy screen-reader summary honor `battleRewardRenderer.ready`. While
+  unresolved it now emits one stable sentence: reward choices are loading and
+  input stays locked until every option is visible. Once the renderer or failure
+  fallback is ready, the summary begins `Reward choices ready`, names the real
+  options, and restores the truthful navigation/commit instructions.
+- Reused the runtime's existing normalized-message suppression instead of adding
+  timers or scene-local announcement flags. Identical asset-driven renders remain
+  silent, while a genuinely new later reward session can announce loading again.
+- Extended the exact loading-transition regression with the screen-reader opt-in
+  and a MutationObserver over `#game-status`. Three forced loading rerenders
+  produce exactly one locked announcement; the dynamic renderer transition
+  produces exactly one ready announcement; two additional ready rerenders stay
+  silent. The ready text contains the offered option names.
+- The broader menu -> route -> combat -> settings screen-reader regression also
+  passes, proving the focused reward change does not disturb existing focus and
+  settings narration. Built visual captures remain unchanged at
+  `.artifacts/test-results/reward-loading-card-1000x560.png` and
+  `.artifacts/test-results/reward-loading-transition-ready-1000x560.png`.
+- Strict TypeScript, both focused and broad accessibility regressions, production
+  build, and every bundle hard gate pass. Combined boot remains 723.4 KB under
+  the 725 KB hard cap; the modified lazy screen-reader summary is 41.8 KB.
+- The required shared production client completed Title -> Route -> Combat with
+  screen reader off, interactive full art, no pending/failed/timed-out asset
+  groups, and no browser error artifact, confirming the default path is unchanged.
+  Evidence is under `.artifacts/web-game-reward-screen-reader-final/`.
+- Test-resource cleanup was audited from root PID `33576`: every npm/Vite/esbuild
+  descendant was stopped deepest-first, ports `42985` and `5373` are free, the
+  preview is unreachable, the temporary action file was removed, and no runtime
+  from this test run remains.
+- Next useful polish: audit the fallback Skip confirmation, which still combines
+  a thick armed border with separate command copy while card-choice commitment
+  now uses the cleaner shared gold-rail hierarchy.
+
+## 2026-08-04 Reward Skip-Focus Polish
+
+- Unified Skip confirmation in both the primary and fallback card-reward
+  renderers. The Skip control now keeps a stable `Skip +N Scrap` title and
+  `Deck stays X / After: Y Scrap` summary instead of changing its identity or
+  embedding a second set of commit/cancel instructions when armed.
+- Moved all armed-state commands into the existing shared gold confirmation
+  rail. Pointer, keyboard, and controller entry now consistently show the exact
+  commit, cancel, and card-navigation actions in one place.
+- Reduced the armed Skip treatment to one 3px gold focus ring while preserving
+  its normal 2px border. Skip now owns the only active focal point: the implicit
+  cyan card ring is suppressed while Skip is armed and restored after cancel.
+- Kept screen-reader confirmation explicit, and preserved pointer, keyboard,
+  and controller double-confirm behavior. Cancelling does not alter deck size,
+  scrap, or reward event counts.
+- Inspected built-preview captures are
+  `.artifacts/test-results/reward-skip-confirmation-1000x560.png` and
+  `.artifacts/test-results/reward-fallback-skip-confirmation-1000x560.png`.
+- Strict TypeScript, both focused Skip regressions, production build, and every
+  bundle hard gate pass. Moving fallback Skip rendering into the existing lazy
+  reward helper reduced `render-hand` to 9.0 KB; app entry is 693.7 KB and
+  combined boot is 723.7 KB under the 725 KB hard cap. Existing preferred-target
+  warnings remain.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, no pending/failed/timed-out asset groups, and no browser
+  error artifact. The exact final frame was visually inspected at
+  `.artifacts/web-game-reward-skip-focus-final/shot-2.png`.
+- Test-resource cleanup was audited from root PID `49472`: every
+  npm/Vite/esbuild descendant was stopped deepest-first, the temporary action
+  file was removed, and final port/runtime checks confirm no process from this
+  test run remains.
+- Next useful polish: audit the card/Skip focus handoff when moving Left/Right
+  after arming Skip, including pointer-only entry and reinforced color cues, so
+  restored focus always reads as intentional rather than stale.
+
+## 2026-08-04 Reward Focus-Handoff Polish
+
+- Removed the primary renderer's synthetic Card 1 focus on pointer-only reward
+  entry. A fresh card reward and a pointer-cancelled Skip now return to a truly
+  neutral state instead of implying keyboard focus the player never established;
+  the fallback renderer already followed this model.
+- Skip confirmation no longer activates card focus behind its gold ring. Escape
+  or controller B restores the exact prior state: neutral stays neutral, while
+  an existing keyboard/controller card focus returns at the same index.
+- Made Skip-to-card navigation deterministic. Right enters and arms Card 1 and
+  Left enters and arms the final offered card when Skip began from neutral;
+  navigation from an established card focus still advances relative to it.
+- Confirm/A now leaves an armed Skip untouched, matching the gold command rail:
+  only the mapped Skip key, controller X, or a second pointer activation commits
+  the Scrap choice. This prevents a hidden stale card from being armed by an
+  unrelated confirm input.
+- Tightened primary card focus-ring height so its border has a measured gap from
+  the command rail instead of touching it. The regression requires at least four
+  game-space pixels of separation at the 1000x560 minimum viewport.
+- Inspected built-preview captures are
+  `.artifacts/test-results/reward-choice-neutral-1000x560.png`,
+  `.artifacts/test-results/reward-skip-confirmation-1000x560.png`,
+  `.artifacts/test-results/reward-skip-pointer-cancel-neutral-1000x560.png`,
+  `.artifacts/test-results/reward-skip-to-first-card-1000x560.png`, and
+  `.artifacts/test-results/reward-choice-confirmation-1000x560.png`.
+- Strict TypeScript, both focused reward regressions, production build, and every
+  bundle hard gate pass. App entry is 693.9 KB and combined boot is 723.9 KB
+  under the 725 KB hard cap; the existing preferred-target warnings remain.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, no pending/failed/timed-out asset groups, and no browser
+  error artifact. The exact inspected frame and state are under
+  `.artifacts/web-game-reward-focus-handoff-verified/`.
+- Test-resource cleanup was audited from final preview root PID `24968`: every
+  npm/Vite/esbuild descendant was stopped deepest-first and the temporary action
+  script was removed. The earlier preview root PID `25880` and both focused-test
+  ports were likewise cleaned immediately after use.
+- Next useful polish: audit reward card hover previews while another card or Skip
+  owns commitment, so pointer movement never overlays comparison detail on top
+  of the active confirmation hierarchy.
+
+## 2026-08-04 Reward Hover-Hierarchy Polish
+
+- Preserved rich pointer browsing while a reward is neutral: hovering a choice
+  shows exactly one hover ring plus the full card dossier, without implying a
+  keyboard/controller commitment.
+- Positioned the reward dossier on the opposite side of the hovered card and
+  added enough vertical inset for the generated outer flourish. The complete
+  frame stays on-canvas at 1000x560 and the hovered card remains unobscured.
+- Suppressed reward hover rings and dossiers whenever any card or Skip owns the
+  gold confirmation state. Arming either choice also clears stale preview state,
+  so pointer movement cannot compete with the commit/cancel hierarchy.
+- Preserved the existing intentional-commit behavior across pointer, keyboard,
+  and controller input, including cancel restoration and neutral focus handoff.
+  The broader card-choice hover-detail regression also continues to pass.
+- Inspected built-preview captures are
+  `.artifacts/test-results/reward-hover-browse-1000x560.png`,
+  `.artifacts/test-results/reward-hover-locked-card-confirmation-1000x560.png`,
+  and `.artifacts/test-results/reward-hover-locked-skip-confirmation-1000x560.png`.
+- Strict TypeScript, both focused reward regressions, production build, and all
+  bundle hard gates pass. `render-reward` is 13.8 KB, `render-hand` is 9.0 KB,
+  app entry is 694.0 KB, and combined boot is 723.9 KB under the 725 KB hard
+  cap; the existing preferred-target warnings remain.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, five cards, one enemy, no pending/failed/timed-out asset
+  groups, and no browser error artifact. The exact inspected frame is
+  `.artifacts/web-game-reward-hover-hierarchy-final/shot-0.png`.
+- Test-resource cleanup was audited from final preview root PID `32076`: all six
+  npm/Vite/esbuild descendants were stopped deepest-first, the temporary action
+  file was removed, and focused-test ports `42992`/`42993` plus preview port
+  `42994` were released. No runtime from this test run remains.
+- Next useful polish: audit reward Inspect behavior while Skip owns commitment,
+  so pointer inspection either visibly pauses/restores Skip or becomes
+  unavailable in exact agreement with the gold command rail.
+
+## 2026-08-04 Reward Skip-Inspect Lock Polish
+
+- Aligned the reward Inspect controls with Skip's gold confirmation rail. While
+  Skip is armed, all three Inspect buttons remain readable but use a muted fill,
+  neutral border, and disabled pointer state; Skip stays the sole bright focal
+  action and no hidden inspection affordance competes with commit/cancel.
+- Added a defensive input guard so direct keyboard/controller or programmatic
+  inspection attempts cannot clear an armed Skip. The card reward, deck size,
+  Scrap, and reward event count remain unchanged until Skip is committed or
+  explicitly cancelled.
+- Restored the normal cyan Inspect affordance immediately after cancellation.
+  Full card inspection still opens and returns to the same reward choice during
+  neutral browsing, and inspection remains available during card confirmation
+  where the command rail explicitly advertises it.
+- Applied the same disabled treatment and behavior to the lazy fallback reward
+  renderer, keeping degraded-mode interaction semantics identical to the full
+  ceremony renderer.
+- Visually inspected built-preview captures at
+  `.artifacts/test-results/reward-skip-inspect-locked-1000x560.png` and
+  `.artifacts/test-results/reward-fallback-skip-confirmation-1000x560.png`.
+- `git diff --check`, strict TypeScript, both focused Playwright reward
+  regressions, production build, and all bundle hard gates pass. Combined boot
+  is 724.0 KB under the 725 KB hard cap; the existing 710 KB preferred-target
+  warning remains.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, five cards, one enemy, no pending/failed/timed-out asset
+  groups, and no browser error artifact. Its exact inspected frame is
+  `.artifacts/web-game-reward-skip-inspect-final/shot-0.png`.
+- Test cleanup was audited from focused-test root PID `23724` and final preview
+  root PID `25624`. Both complete descendant trees were removed, ports `42995`
+  and `42996` were released, the preview became unreachable, and the temporary
+  shared-client action file was deleted. No runtime from either run remains.
+- Next useful polish: audit the card-confirmation-to-inspection return path so
+  closing a dossier restores the exact armed card and its gold rail instead of
+  quietly returning to an unarmed selection.
+
+## 2026-08-04 Reward Inspection Return-State Polish
+
+- Preserved an armed reward choice while its full dossier is open. Inspecting
+  the selected card—or pointer-inspecting a different offered card—now pauses
+  the decision without clearing its selected card ID, deck state, or reward
+  event state.
+- Restored the exact armed card index, gold focus ring, decision delta, and
+  shared confirmation rail when inspection closes. Back now closes the dossier
+  before it can cancel the underlying choice, so confirmation still requires a
+  separate deliberate input afterward.
+- Extended render-game text with explicit inspection return state: whether a
+  choice remains armed plus its ID and name. Screen-reader copy now says which
+  reward remains selected and that closing restores its confirmation.
+- Visual review caught misleading modal chrome when Card 3 was inspected while
+  Card 2 remained armed. The footer now reads `RETURN TO CONFIRM PICK` for an
+  armed decision and keeps `RETURN TO THIS CHOICE` for neutral inspection.
+- Visually inspected built-preview captures at
+  `.artifacts/test-results/reward-card-inspection-armed-1000x560.png` and
+  `.artifacts/test-results/reward-card-inspection-return-armed-1000x560.png`.
+- `git diff --check`, strict TypeScript, the focused reward commitment test, the
+  broader combat/route inspection regression, production builds, and all bundle
+  hard gates pass. Combined boot is 724.4 KB under the 725 KB hard cap; existing
+  preferred-target warnings remain.
+- One visual rerun initially failed because its new footer observation had been
+  added to the wrong test snapshot helper. The harness placement was corrected
+  and the exact scenario then passed; the game behavior itself remained sound.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, five cards, one enemy, no pending/failed/timed-out asset
+  groups, and no browser error artifact. Its inspected frame is
+  `.artifacts/web-game-reward-inspection-return-final/shot-0.png`.
+- Test cleanup covered roots `28160`, `51420`, and `40304`; final preview cleanup
+  covered root `24396`. Every recorded descendant was removed, ports
+  `42997`-`43000` were released, the preview became unreachable, and the
+  temporary shared-client action file was deleted.
+- Next useful polish: bring route reward-card inspection to the same reversible
+  confirmation model, so opening its dossier never discards an already armed
+  route reward choice.
+
+## 2026-08-04 Route Reward Inspection Return-State Polish
+
+- Brought route reward-card inspection into parity with combat rewards. Opening
+  a dossier now preserves the armed route card ID and exact choice index, even
+  when the pointer inspects the other offered card.
+- Closing by Back, controller B, Confirm, controller A, or the scrim returns to
+  the original gold focus ring and confirmation rail. The deck, pending reward,
+  offered cards, and route decision remain unchanged until a separate commit or
+  cancel input.
+- Extended route render-game text with explicit `returnArmed` and
+  `returnChoiceId` inspection state. Screen-reader copy resolves the selected
+  card name from the preserved input focus and announces that confirmation will
+  be restored.
+- Updated route inspection chrome to say `RETURN TO CONFIRM PICK` while a card
+  remains armed and retain `RETURN TO THIS CHOICE` for neutral inspection.
+- Kept the lazy-detail resilience check, then loaded the real card-detail module
+  for visual verification. The full dossier stays on-canvas while the dimmed
+  armed card remains visible behind it.
+- Visually inspected built-preview captures at
+  `.artifacts/test-results/route-reward-inspection-armed-1000x560.png` and
+  `.artifacts/test-results/route-reward-inspection-return-armed-1000x560.png`.
+- Strict TypeScript, route commitment, broader combat/route inspection,
+  production build, and all bundle hard gates pass. The first bundle audit found
+  the route text-state chunk just over 24 KB; reusing the existing focused-card
+  name removed redundant metadata and restored it to 23.9 KB. Combined boot is
+  724.6 KB under the 725 KB hard cap; preferred-target warnings remain.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, five cards, one enemy, no pending/failed/timed-out asset
+  groups, and no browser error artifact. Its inspected frame is
+  `.artifacts/web-game-route-reward-inspection-return-final/shot-0.png`.
+- Test cleanup covered roots `47568` and `33508`; final preview cleanup covered
+  root `50048`. All descendants were removed, ports `43001`-`43003` were
+  released, the preview became unreachable, and the temporary shared-client
+  action file was deleted.
+- Next useful polish: audit route reward hover while a card is armed. Pointer
+  movement currently risks clearing confirmation or opening competing detail;
+  it should preserve the selected card and keep the gold rail authoritative.
+
+## 2026-08-04 Route Reward Hover-Hierarchy Polish
+
+- Split route reward hover into two deliberate visual modes. Neutral browsing
+  still moves focus and opens the full card dossier, preserving useful detail
+  before the player commits to a choice.
+- Once a card is armed, hovering either reward is read-only: it no longer
+  changes the selected card ID or index, clears confirmation, or opens a
+  competing dossier over the gold confirmation rail.
+- Preserved the exact chosen card, deck state, pending reward, and route input
+  hints throughout armed pointer movement. The gold ring and `CONFIRM PICK`
+  rail remain the dominant, stable action hierarchy.
+- Visually inspected the exact focused captures at
+  `.artifacts/test-results/route-reward-hover-browse-1000x560.png` and
+  `.artifacts/test-results/route-reward-hover-locked-confirmation-1000x560.png`.
+  The neutral dossier stays on-canvas and outside the hovered reward; the armed
+  state contains no stale hover panel.
+- `git diff --check`, strict TypeScript, the focused route commitment test,
+  production build, and all bundle hard gates pass. Combined boot remains
+  724.6 KB under the 725 KB hard cap; existing preferred-target warnings remain.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, five cards, one enemy, no pending/failed/timed-out asset
+  groups, and no browser error artifact. Its inspected frame is
+  `.artifacts/web-game-route-reward-hover-hierarchy-final/shot-0.png`.
+- Focused-test cleanup released port `43004` with no matching runtime left.
+  Final preview cleanup removed root PID `32708` and its exact descendant tree,
+  released port `43005`, made the preview unreachable, and deleted the
+  temporary shared-client action file.
+- Next useful polish: align the pointer Cancel button with Esc/controller B
+  while a route reward is armed. Its first activation should clear confirmation
+  before a later activation abandons the entire reward choice.
+
+## 2026-08-04 Route Reward Pointer-Cancel Polish
+
+- Aligned the visible route-reward cancel control with keyboard Back/Esc and
+  controller B. While a card is armed, its first activation now clears only the
+  reversible selection; a later activation from neutral browsing abandons the
+  reward and restores the pre-event route state.
+- Changed the armed button label to `Clear pick` and the confirmation rail to
+  `ESC / B CLEAR PICK`, making the first action's limited scope explicit. Once
+  cleared, both the cyan focus state and plain `Cancel` label return.
+- Centralized the two-stage rule in `cancelRouteCardReward`, so the built overlay
+  and its degraded/fallback input path share the same behavior. Deck contents,
+  pending choices, and event state remain unchanged after the first activation.
+- Extended the route commitment regression to pointer-click the actual cancel
+  hit target, verify the first click preserves the reward, verify the second
+  abandons it, then reopen and successfully commit a card. Keyboard and
+  controller branches continue to pass in the same scenario.
+- Visually inspected built-preview captures at
+  `.artifacts/test-results/route-reward-hover-locked-confirmation-1000x560.png`
+  and `.artifacts/test-results/route-reward-pointer-cancel-pick-1000x560.png`.
+  Both labels fit cleanly, and the gold-to-cyan hierarchy change is immediate.
+- The first bundle audit found the inline overlay behavior 0.1 KB over its 6 KB
+  hard budget. Consolidating the rule into the scene-level cancel entry point
+  and tightening the armed copy restored the lazy overlay to 6.0 KB. Production
+  build and all bundle hard gates pass; combined boot is 724.7 KB under the
+  725 KB cap, with existing preferred-target warnings remaining.
+- Final focused verification passed under root PID `53104`; all 26 observed
+  processes were removed and port `43007` was released. An earlier successful
+  iteration under PID `37640` also removed all 23 tracked processes and released
+  port `43006`.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, five cards, one enemy, no pending/failed/timed-out asset
+  groups, and no browser error artifact. Its inspected frame is
+  `.artifacts/web-game-route-reward-pointer-clear-final/shot-0.png`.
+- Final preview cleanup removed root PID `28980` and all six tracked processes,
+  released port `43008`, made the preview unreachable, and deleted the temporary
+  shared-client action file.
+- Next useful polish: audit confirmation cancellation in the Market so pointer,
+  keyboard, and controller all visibly return from an armed purchase to the
+  same focused offer without closing the shop or changing Scrap.
+
+## 2026-08-04 Market Purchase-Cancel Polish
+
+- Made the Market's existing top-right command context-aware. It now reads
+  `Clear` while a purchase is armed and returns to `Close` after the reversible
+  selection is cleared, avoiding another permanent button or crowded panel.
+- Centralized the two-stage behavior in `leaveMarket`: an armed invocation now
+  clears only `marketFocusArmedId`, preserves the focused offer, and rerenders;
+  a neutral invocation still settles the Market route node and leaves the shop.
+  This also gives the lazy-input fallback path the same safe behavior.
+- Declared the Market focus and armed-focus fields on `RouteScene` instead of
+  relying solely on dynamic lazy-module attachment, keeping the scene contract
+  type-safe without adding runtime code.
+- Extended the intentional-purchase regression across Esc, the actual pointer
+  `Clear` hit target, and controller B. Every cancellation preserves the open
+  shop, focused card, Scrap, deck, and sold inventory; the same offer can still
+  be armed and purchased afterward.
+- Visually inspected the built-preview armed and cleared states at
+  `.artifacts/test-results/market-intentional-purchase-1000x560.png` and
+  `.artifacts/test-results/market-purchase-cleared-1000x560.png`. The compact
+  command fits cleanly above the dossier and the cyan neutral focus returns.
+- Strict TypeScript, `git diff --check`, the focused Market Playwright scenario,
+  production build, and all bundle hard gates pass. Combined boot is 724.9 KB
+  under the 725 KB cap; existing preferred-target warnings remain.
+- Focused verification ran under root PID `42656`; all 23 observed processes
+  were removed and port `43009` was released.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, five cards, one enemy, no pending/failed/timed-out asset
+  groups, and no browser error artifact. Its inspected frame is
+  `.artifacts/web-game-market-clear-final/shot-0.png`.
+- Final preview cleanup removed root PID `48760` and all six tracked processes,
+  released port `43010`, made the preview unreachable, and deleted the temporary
+  shared-client action file.
+- Next useful polish: audit Market confirmation while hovering or inspecting
+  another offer, ensuring the gold purchase state never leaves stale dossier
+  copy or an ambiguous command when focus changes.
+
+## 2026-08-04 Market Hover-Hierarchy Polish
+
+- Fixed neutral Market hover focus without rebuilding the shop. Moving across
+  offers now repositions and resizes the existing cyan focus ring in place,
+  updates render-game text, and keeps the newly hovered card dossier open.
+- Made cross-offer hover read-only while a purchase is armed. The original gold
+  ring, focused offer, confirmation rail, and `Clear` command remain stable;
+  any competing dossier opened by the hovered offer is immediately suppressed.
+- Preserved deliberate keyboard/controller behavior: directional focus changes
+  still cancel an armed purchase and rerender, while incidental pointer movement
+  can no longer create a mixed old-selection/new-dossier state.
+- Extended the Market regression with exact target/ring coordinates, cyan and
+  gold stroke colors, focused IDs, armed state, dossier visibility, and command
+  labels for both neutral and armed cross-hover paths.
+- Visually inspected built-preview captures at
+  `.artifacts/test-results/market-hover-locked-confirmation-1000x560.png` and
+  `.artifacts/test-results/market-hover-browse-1000x560.png`. The armed state is
+  uncluttered; neutral browsing places the dossier beside the newly focused card.
+- Strict TypeScript, `git diff --check`, the focused Market Playwright scenario,
+  production build, and all bundle hard gates pass. Combined boot remains
+  724.9 KB under the 725 KB cap, and the shared inspection chunk remains within
+  its 24 KB hard limit; existing preferred-target warnings remain.
+- Focused verification ran under root PID `38700`; all 21 observed processes
+  were removed and port `43011` was released.
+- The required shared production client completed Title -> Route -> Combat with
+  interactive full art, five cards, one enemy, no pending/failed/timed-out asset
+  groups, and no browser error artifact. Its inspected frame is
+  `.artifacts/web-game-market-hover-hierarchy-final/shot-0.png`.
+- Final preview cleanup removed root PID `54704` and all six tracked processes,
+  released port `43012`, made the preview unreachable, and deleted the temporary
+  shared-client action file.
+- Next useful polish: audit Market section switching while a purchase is armed,
+  ensuring pointer tabs, number keys, and controller shoulders all cancel safely
+  without stale gold focus, stale dossier content, or unintended spending.
+
+## 2026-08-04 Market Section-Switch Safety Polish
+
+- Moved Market focus cancellation into `RouteScene.setMarketCategory` itself.
+  Every genuine section change now clears both the focused offer and armed
+  purchase before changing inventory, independent of the lazy inspection module.
+- Extended the intentional-purchase regression across pointer tabs, number keys,
+  and controller shoulders. Each path now proves that section changes preserve
+  Scrap, deck contents, and sold stock while removing the old gold confirmation,
+  old dossier, and `Clear` command before establishing a fresh cyan focus.
+- Kept the interaction compact: no new controls or explanatory panels were
+  added. The existing section tabs and input hint continue to communicate all
+  three input paths.
+- Visually inspected built-preview captures at
+  `.artifacts/test-results/market-section-switch-pointer-1000x560.png` and
+  `.artifacts/test-results/market-section-switch-controller-1000x560.png`.
+  Waymarks and Services both restore an uncluttered neutral browsing state.
+- Strict TypeScript, the production build, `git diff --check`, the focused
+  Market Playwright scenario, and all bundle hard gates pass. Combined boot is
+  724.8 KB under the 725 KB cap; existing preferred-target warnings remain.
+- Focused verification ran under root PID `33172`; all 18 observed processes
+  were removed and port `43013` was released and made unreachable.
+- The required shared production client completed without console/page errors;
+  its inspected frame is
+  `.artifacts/web-game-market-section-switch-final/shot-0.png`.
+- Final preview cleanup removed root PID `22532` and children `19664` and
+  `18552` deepest-first, released port `43014`, made the preview unreachable,
+  and deleted the temporary shared-client action file.
+- Next useful polish: audit same-section Market tab activation while a purchase
+  is armed so a repeated click cannot look like a failed cancellation gesture.
+
+## 2026-08-04 Market Selected-Tab Cancellation Polish
+
+- Made repeated activation of the already-selected Market section reversible
+  while a purchase is armed. Clicking `Crew Cards` again now clears the gold
+  confirmation through the existing Market cancellation path, preserves the
+  focused offer, and restores its cyan browsing ring.
+- Kept neutral repeated tab activations inert, so ordinary browsing does not
+  rerender, play unnecessary feedback, or shift focus.
+- Reused `leaveMarket`'s established armed-cancellation branch rather than
+  duplicating cleanup. The first implementation exceeded the 725 KB combined
+  boot gate; consolidation brought the final build back to 724.9 KB.
+- Extended the focused Market regression to prove the selected-tab gesture
+  preserves category, focused offer, Scrap, deck, and sold stock while clearing
+  the dossier, armed ID, gold ring, and `Clear` command.
+- Visually inspected the built-preview result at
+  `.artifacts/test-results/market-same-section-tab-cleared-1000x560.png`; the
+  card shelf returns to a clean cyan focus with the compact `Close` action.
+- Strict TypeScript, production build, `git diff --check`, the focused Market
+  Playwright scenario, and all bundle hard gates pass. Existing preferred-size
+  warnings remain.
+- Focused verification ran under root PID `46876`; all 18 observed processes
+  were removed and port `43015` was released and made unreachable.
+- The required shared production client reached the Route scene without a
+  console/page error artifact. Its inspected frame is
+  `.artifacts/web-game-market-same-section-final/shot-0.png`.
+- Final preview cleanup removed root PID `49800` and children `33908` and
+  `25716` deepest-first, released port `43016`, made the preview unreachable,
+  and deleted the temporary shared-client action file.
+- Next useful polish: audit unaffordable and sold Market offers across pointer,
+  keyboard, and controller so unavailable stock never presents an actionable
+  confirmation or ambiguous purchase feedback.
+
+## 2026-08-04 Market Unavailable-Stock Polish
+
+- Kept unsold but unaffordable Market cards, Waymarks, Supplies, and Services
+  available for pointer inspection while removing their hand cursor and
+  actionable Market focus ID. They can no longer enter keyboard/controller
+  focus order or arm a purchase confirmation.
+- Extended the focused Market regression to prove pointer click, `Enter`, and
+  controller `A` cannot spend Scrap, alter the deck, or mark stock sold when no
+  offer is affordable. Hover inspection remains available without a focus ring.
+- Corrected two empty-state false positives exposed by the regression: route
+  debug state no longer reports an armed offer when both IDs are absent, and
+  the Market help rail no longer turns gold or says `CONFIRM OFFER` when there
+  is no actionable target.
+- Visually inspected the built-preview result at
+  `.artifacts/test-results/market-unavailable-inspection-1000x560.png`; the
+  unavailable card dossier is readable, no selection ring is present, and the
+  bottom rail remains the neutral `BUY` instruction.
+- Strict TypeScript, production build, the focused Playwright scenario, and all
+  bundle hard gates pass. Combined boot remains 724.9 KB under the 725 KB hard
+  cap; existing preferred-size warnings remain.
+- Final focused verification ran under root PID `42344`; all 15 observed
+  processes were gone after completion and port `43019` was released and made
+  unreachable. Earlier isolated diagnostic runs on ports `43017`-`43019` were
+  also cleaned without touching unrelated processes.
+- The required shared production client reached an interactive, full-art Route
+  scene with no pending, failed, or timed-out asset groups and no browser error
+  artifact. Its inspected frame is
+  `.artifacts/web-game-market-unavailable-final/shot-0.png`.
+- Final preview cleanup removed root PID `50128` and children `6752` and `8284`
+  deepest-first, released port `43020`, made the preview unreachable, and
+  deleted the temporary shared-client action file. Port `5373` also remains
+  free.
+- Next useful polish: audit partially affordable shelves so keyboard/controller
+  navigation consistently skips disabled offers while pointer hover remains a
+  read-only inspection path.
+
+## 2026-08-04 Market Mixed-Shelf Focus Polish
+
+- Hardened mixed Market shelves where affordable and unaffordable offers appear
+  together. Keyboard and controller navigation now cycle only through offers
+  that can actually be purchased.
+- Disabled pointer hover temporarily yields the actionable cyan focus ring so
+  the inspection dossier cannot visually compete with an older selection.
+  Leaving the disabled offer restores the prior ring without changing focus.
+- Disabled pointer activation now clears stale Market focus. A following
+  `Enter` or controller `A` cannot silently purchase the previously focused
+  affordable offer; directional input cleanly resumes at the first valid offer.
+- Removed the fallback purchase of the first Market target when no explicit
+  focus exists, and made route debug state report the true `-1`/hidden focus
+  state instead of synthesizing a selection.
+- The first visual pass exposed a misleading unaffordable-card projection
+  (`SCRAP 100 > 0`). Card dossiers now replace impossible transaction previews
+  with the exact shortfall, such as `NEED 20 MORE SCRAP`.
+- Visually inspected the final built-preview capture at
+  `.artifacts/test-results/market-mixed-shelf-inspection-1000x560.png`; two
+  affordable offers remain bright, disabled stock stays readable, no action
+  ring competes with the dossier, and the shortfall is explicit.
+- Strict TypeScript, production build, the focused pointer/keyboard/controller
+  Playwright scenario, and every bundle hard gate pass. Consolidating the
+  shortfall logic and removing redundant sold-state checks recovered the hard
+  gate after an intermediate build exceeded it; combined boot is 725.0 KB.
+- Final focused verification ran under root PID `54564`; all 15 observed
+  processes were removed and port `43022` was released and made unreachable.
+  The earlier isolated run on port `43021` was also fully cleaned.
+- The required shared production client reached an interactive, full-art Route
+  scene with no pending, failed, or timed-out asset groups and no browser error
+  artifact. Its inspected frame is
+  `.artifacts/web-game-market-mixed-final/shot-0.png`.
+- Final preview cleanup removed root PID `49612` and children `28584` and
+  `30568` deepest-first, released port `43023`, made the preview unreachable,
+  and deleted the temporary shared-client action file. Port `5373` remains free.
+- Next useful polish: give non-card Market dossiers equally precise disabled
+  reasons, especially full Supply pouches and services with no eligible card,
+  without adding clutter to the offer shelf.
+
+## 2026-08-04 Market Disabled-Reason Dossier Polish
+
+- Replaced misleading non-card purchase projections with compact, exact
+  disabled reasons inside the existing hover dossier. A full consumable loadout
+  now says `SUPPLY POUCH FULL`, and Preen/Release services with no valid deck
+  target say `NO ELIGIBLE CARD`.
+- Added Waymark parity: unaffordable Waymarks now report their exact Scrap
+  shortfall instead of projecting a purchase that cannot occur.
+- Kept the offer shelves uncluttered. All new explanation stays inside the
+  optional dossier, preserving the existing dimmed stock treatment and compact
+  bottom input rail.
+- Consolidated Supply, service, and Waymark reason selection in the lazy Market
+  interaction module. Equivalent array-length truthiness cleanups recovered the
+  entry bytes required to keep the release bundle under its hard gate.
+- Extended the intentional-purchase regression with a full 2/2 Supply pouch,
+  an all-upgraded deck, and a zero-Scrap Waymark shelf. It proves the exact
+  reason copy appears and impossible transaction deltas do not.
+- Visually inspected the built-preview captures at
+  `.artifacts/test-results/market-full-supply-reason-1000x560.png`,
+  `.artifacts/test-results/market-no-eligible-service-reason-1000x560.png`, and
+  `.artifacts/test-results/market-unavailable-waymark-reason-1000x560.png`.
+  Each dossier remains readable without adding permanent shelf text.
+- Strict TypeScript, production build, the focused pointer/keyboard/controller
+  Playwright scenario, and every bundle hard gate pass. Combined boot remains
+  725.0 KB; existing preferred-target warnings remain.
+- A first focused run under root PID `27556` found only a test label mismatch
+  (`Preen` versus `Preen a Card`); its tree exited and port `43024` was verified
+  free and unreachable. Corrected runs under roots `44164`, `30064`, and final
+  root `49660` passed; ports `43025`, `43026`, and `43028` were released with no
+  matching runtime left behind.
+- The required final shared production client reached an interactive, full-art
+  Route scene with no pending, failed, or timed-out asset groups and no browser
+  error artifact. Its inspected frame is
+  `.artifacts/web-game-market-disabled-reasons-final2/shot-0.png`.
+- Final preview cleanup removed root PID `12896` and children `27792` and
+  `51932` deepest-first, released port `43029`, made the preview unreachable,
+  and deleted the temporary shared-client action file. Ports `43024`-`43029`
+  and `5373` are all free.
+- Next useful polish: expose these disabled reasons to screen-reader
+  announcements so non-pointer players receive the same precise explanation
+  when an offer is unavailable.
+
+## 2026-08-04 Market Unavailable-Offer Screen-Reader Polish
+
+- Market screen-reader summaries now name every unavailable offer in the active
+  section and state its exact reason: Scrap shortfall, full Supply pouch, or no
+  eligible card. Keyboard and controller focus still skip impossible purchases,
+  so accessibility information no longer weakens the accidental-buy guardrail.
+- Kept the reason calculation in the lazy Market interaction module that already
+  owns dossier previews, then exposed the resulting list through route text
+  state. This removed duplicated rules and restored the route diagnostic chunk
+  after an intermediate build exceeded its 24 KB hard budget.
+- Made `marketUtilityDecisionPreview` an explicit scene API because the lazy
+  Market module invokes it dynamically; strict TypeScript now recognizes that
+  integration boundary.
+- Extended the intentional-purchase regression to assert live-region copy for
+  mixed-price cards, full Supplies, unavailable Preen, and unaffordable
+  Waymarks. The focused pointer/keyboard/controller/screen-reader scenario
+  passes in 1.5 minutes on isolated port `43031`.
+- Production build and every bundle hard gate pass. Combined boot remains
+  725.0 KB; route debug state is 23.9 KB and the Market interaction module is
+  25.7 KB. Existing preferred-target warnings remain.
+- Visually inspected the exact built Market service capture at
+  `.artifacts/test-results/market-no-eligible-service-reason-1000x560.png`;
+  the reason remains confined to the dossier with no added shelf clutter.
+- The required shared production client reached an interactive, full-art Route
+  with no pending, failed, or timed-out asset groups. Its inspected frame is
+  `.artifacts/web-game-market-screen-reader-final3/shot-0.png`.
+- The first focused run on port `43030` exposed a missing facade re-export; the
+  runner exited and the port was verified free. The passing run released port
+  `43031`. Shared preview cleanup removed the exact remaining Vite child PID
+  `42992`, released port `43032`, made the endpoint unreachable, and deleted the
+  temporary action file. Ports `43030`-`43032` and `5373` are all free with no
+  matching runtime left behind.
+- Next useful polish: make sold-out Market stock equally concise in the spoken
+  section inventory without repeating it in the visible shelf labels.

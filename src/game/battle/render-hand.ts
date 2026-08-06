@@ -270,16 +270,16 @@ function renderCard(
     }).setOrigin(0.5, 0).setName('combat-molt-guide-tag'));
   }
   if (card.guideCard && !card.guideMolt) {
-    target.add(scene.add.rectangle(centerX, top + 42, 82, 18, 0x231d08, 0.94)
-      .setStrokeStyle(1, 0xd8a840, 0.98)
+    target.add(scene.add.circle(centerX, top + 42, 12, 0x231d08, 0.96)
+      .setStrokeStyle(2, 0xd8a840, 0.98)
       .setName('combat-first-card-guide-tag'));
-    target.add(scene.add.text(centerX, top + 35, 'START HERE', {
+    target.add(scene.add.text(centerX, top + 42, '1', {
       fontFamily,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: boldFontStyle,
       color: '#fff0b8',
       align: 'center',
-    }).setOrigin(0.5, 0).setName('combat-first-card-guide-tag'));
+    }).setOrigin(0.5).setName('combat-first-card-guide-tag'));
   }
   if (context.reinforcedColorCues) {
     renderCardColorCue(scene, target, left + 44, top + 68, card.label, card.accent, {
@@ -425,7 +425,9 @@ export function renderBattleHandPreview(
   const previewWidth = 300;
   const previewHeight = Math.round(previewWidth * 1.5);
   const centerX = Phaser.Math.Clamp(previewX, previewWidth / 2 + 8, width - previewWidth / 2 - 8);
-  const centerY = Math.max(previewHeight / 2 + 8, handY - cardHeight / 2 - previewHeight / 2 - 2);
+  // The generated dossier frame extends beyond the 300x450 card body; keep
+  // that outer flourish on-canvas as well as the interactive content.
+  const centerY = Math.max(previewHeight / 2 + 20, handY - cardHeight / 2 - previewHeight / 2 - 2);
   const top = centerY - previewHeight / 2;
   const bottom = centerY + previewHeight / 2;
   const container = scene.add.container(0, 0);
@@ -523,39 +525,14 @@ export function renderBattleHandPreview(
   return container;
 }
 
-export function renderRewardSkipFallback(scene: any) {
-  const target = scene.root as Phaser.GameObjects.Container;
-  const width = 1280;
-  const scrap = scene.currentSkipScrapReward();
-  const armed = Boolean(scene.rewardSkipArmed);
-  const hit = scene.add.rectangle(width / 2, 652, 324, 48, 0x2a2320, 0.96)
-    .setStrokeStyle(armed ? 4 : 2, armed ? 0xffdc76 : 0xd8a840, 0.98)
-    .setInteractive({ useHandCursor: true })
-    .setName('reward-skip-hit');
-  hit.on('pointerdown', () => scene.requestSkipCardReward());
-  target.add(hit);
-  target.add(scene.add.text(
-    width / 2,
-    armed ? 646 : 652,
-    `${armed ? 'Confirm Skip' : 'Skip'}  +${scrap} Scrap`,
-    { fontFamily: 'Arial', fontSize: '15px', fontStyle: 'bold', color: '#f4d78b' },
-  ).setOrigin(0.5));
-  if (armed) {
-    target.add(scene.add.text(width / 2, 664, 'SKIP AGAIN / X / TAP AGAIN  ·  BACK CANCELS', {
-      fontFamily: 'Arial',
-      fontSize: '10px',
-      fontStyle: 'bold',
-      color: '#b8c8d8',
-    }).setOrigin(0.5));
-  }
-}
-
 export {
   armCombatRewardAt,
   closeRewardCardInspection,
   focusedRewardCard,
   openRewardCardInspection,
+  renderCombatRewardLoading,
   renderCombatRewardFallback,
+  renderRewardSkipFallback,
   renderRewardInspectButton,
   requestCombatReward,
   requestCombatRewardAt,

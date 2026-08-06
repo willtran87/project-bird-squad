@@ -14,6 +14,12 @@ import {
 } from '../main';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 
+export function routeRewardInputHint(armed: boolean) {
+  return armed
+    ? 'CONFIRM PICK   |   ENTER / A / TAP CARD AGAIN\nESC / B  CLEAR PICK   |   R / Y  INSPECT'
+    : 'ARROWS / D-PAD  CHOOSE   |   ENTER / A  SELECT\nR / Y  INSPECT   |   ESC / B  BACK';
+}
+
 export function renderRouteRewardEffectShowcase(scene: any, pending: any, x: number, y: number, w: number, h: number) {
   const accent = pending.accent;
   const previewCards = pending.previewCards ?? [];
@@ -161,6 +167,44 @@ function compactCardPickerDeltaPart(text: string, max = 16) {
   return value.length <= max ? value : `${value.slice(0, max - 3).trimEnd()}...`;
 }
 
+export function renderCardPickerConfirmationRail(
+  scene: any,
+  frame: { left: number; bottom: number },
+  view: { mode: 'preen' | 'release'; name: string; cost: number; delta: string; isMarketPicker: boolean },
+) {
+  const railX = frame.left + 720;
+  const railY = frame.bottom - 48;
+  scene.add.rectangle(railX, railY, 560, 42, 0x06111a, 0.97)
+    .setStrokeStyle(2, UI_FIELD.gold, 0.88)
+    .setName('card-picker-confirmation-rail');
+  scene.add.text(railX - 258, railY - 8, `${view.mode === 'preen' ? 'PREEN' : 'RELEASE'}  ${compactCardPickerDeltaPart(view.name, 30)}`, {
+    fontFamily: UI_FONT,
+    fontSize: '12px',
+    fontStyle: UI_BOLD,
+    color: UI_GOLD,
+    fixedWidth: 350,
+    maxLines: 1,
+  }).setResolution(2).setOrigin(0, 0.5).setName('card-picker-confirmation-title');
+  const delta = compactCardPickerDeltaPart(view.delta.replace(/\s*\n\s*/g, ' '), 40);
+  scene.add.text(railX - 258, railY + 9, `${view.isMarketPicker ? `${view.cost} SCRAP  •  ` : ''}${delta}`, {
+    fontFamily: UI_FONT,
+    fontSize: '10px',
+    fontStyle: UI_BOLD,
+    color: '#c7d4df',
+    fixedWidth: 350,
+    maxLines: 1,
+  }).setResolution(2).setOrigin(0, 0.5).setName('card-picker-confirmation-summary');
+  scene.add.rectangle(railX + 205, railY, 126, 24, 0x102534, 0.98)
+    .setStrokeStyle(1, UI_FIELD.gold, 0.76)
+    .setName('card-picker-confirmation-command-frame');
+  scene.add.text(railX + 205, railY, 'CONFIRM', {
+    fontFamily: UI_FONT,
+    fontSize: '11px',
+    fontStyle: UI_BOLD,
+    color: '#dffbff',
+  }).setResolution(2).setOrigin(0.5).setName('card-picker-confirmation-command');
+}
+
 function compactCardPickerDeltaPair(before: string, after: string): [string, string] {
   if (!before) return ['NEW EFFECT', compactCardPickerDeltaPart(after)];
   if (!after) return [compactCardPickerDeltaPart(before), 'REMOVED'];
@@ -243,6 +287,40 @@ function marketTargetLabel(scene: any, target: any) {
   return price === undefined ? label : `${label}, ${price} Scrap`;
 }
 
+export function marketPreview(scene: any, listing: any, preview?: string[]) {
+  if (scene.runState.scrap < listing.price) {
+    return [`NEED ${listing.price - scene.runState.scrap} MORE SCRAP`];
+  }
+  if (preview) return preview;
+  if (scene.marketUtilityEnabled(listing)) return scene.marketUtilityDecisionPreview(listing);
+  return [listing.supplyId ? 'SUPPLY POUCH FULL' : 'NO ELIGIBLE CARD'];
+}
+
+export function marketUnavailableOffers(scene: any) {
+  if (scene.marketCategory === 'cards') {
+    return scene.marketCardOffers()
+      .filter((offer: any) => !offer.sold && scene.runState.scrap < offer.price)
+      .map((offer: any) => ({ label: displayName(offer.card), reason: marketPreview(scene, offer)[0] }));
+  }
+  if (scene.marketCategory === 'waymarks') {
+    return scene.marketRouteMarkOffers()
+      .filter((offer: any) => !offer.sold && scene.runState.scrap < offer.price)
+      .map((offer: any) => ({ label: offer.name, reason: marketPreview(scene, offer)[0] }));
+  }
+  const offers = scene.marketUtilityShelf
+    .filter((offer: any) => !offer.sold)
+    .filter((offer: any) => scene.marketCategory === 'supplies' ? offer.id === 'supply' : offer.id !== 'supply')
+    .filter((offer: any) => !scene.marketUtilityEnabled(offer))
+    .map((offer: any) => ({ label: scene.marketUtilityLabel(offer), reason: marketPreview(scene, offer)[0] }));
+  if (scene.marketCategory === 'services' && scene.runState.scrap < scene.marketRefreshCost()) {
+    offers.push({
+      label: 'Refresh stock',
+      reason: `NEED ${scene.marketRefreshCost() - scene.runState.scrap} MORE SCRAP`,
+    });
+  }
+  return offers;
+}
+
 function activateMarketTarget(scene: any, target: any) {
   const [kind, rawIndex] = String(target?.getData('marketFocusId') ?? '').split(':');
   const index = Number(rawIndex);
@@ -261,16 +339,55 @@ export function resetMarketFocus(scene: any) {
 
 export function bindMarketInputs(scene: any) {
   const targets = marketInputTargets(scene);
+  const unavailableTargets = scene.children.list.filter((child: any) => (
+    child.input?.enabled && child.getData?.('marketFocusId') === 0
+  ));
   if (!targets.some((target: any) => target.getData('marketFocusId') === scene.marketFocusId)) {
     scene.marketFocusId = targets[0]?.getData('marketFocusId');
     scene.marketFocusArmedId = undefined;
   }
+  unavailableTargets.forEach((target: any) => {
+    target.on('pointerover', () => {
+      if (scene.marketFocusArmedId) {
+        scene.hideHoverCardDetail();
+        scene.hideMarketItemDetail();
+        return;
+      }
+      scene.children.list.find((child: any) => child.name === 'market-input-focus-ring')
+        ?.setVisible(false);
+      scene.updateTextState();
+    });
+    target.on('pointerout', () => {
+      scene.children.list.find((child: any) => child.name === 'market-input-focus-ring')
+        ?.setVisible(Boolean(scene.marketFocusId));
+      scene.updateTextState();
+    });
+    target.on('pointerdown', (
+      _pointer: Phaser.Input.Pointer,
+      _localX: number,
+      _localY: number,
+      event?: Phaser.Types.Input.EventData,
+    ) => {
+      event?.stopPropagation();
+      resetMarketFocus(scene);
+      scene.children.list.find((child: any) => child.name === 'market-input-focus-ring')
+        ?.setVisible(false);
+      scene.updateTextState();
+    });
+  });
   targets.forEach((target: any) => {
     const id = target.getData('marketFocusId');
     target.on('pointerover', () => {
+      if (scene.marketFocusArmedId) {
+        if (scene.marketFocusId !== id) scene.hideHoverCardDetail();
+        return;
+      }
       if (scene.marketFocusId === id) return;
       scene.marketFocusId = id;
-      scene.marketFocusArmedId = undefined;
+      scene.children.list.find((child: any) => child.name === 'market-input-focus-ring')
+        ?.setPosition(target.x, target.y)
+        .setDisplaySize(target.displayWidth + 8, target.displayHeight + 8)
+        .setStrokeStyle(3, 0x8df4ff, 1);
       scene.updateTextState();
     });
     target.on('pointerdown', (
@@ -310,8 +427,7 @@ export function cycleMarketFocus(scene: any, direction: -1 | 1) {
 
 export function activateMarketFocus(scene: any) {
   const target = marketInputTargets(scene)
-    .find((candidate: any) => candidate.getData('marketFocusId') === scene.marketFocusId)
-    ?? marketInputTargets(scene)[0];
+    .find((candidate: any) => candidate.getData('marketFocusId') === scene.marketFocusId);
   if (!target) return false;
   resetMarketFocus(scene);
   return activateMarketTarget(scene, target);
@@ -327,7 +443,7 @@ export function renderMarketInputHelp(scene: Phaser.Scene, x: number, y: number)
   const owner = scene as any;
   const target = marketInputTargets(owner)
     .find((candidate: any) => candidate.getData('marketFocusId') === owner.marketFocusId);
-  const armed = owner.marketFocusArmedId === owner.marketFocusId;
+  const armed = !!target && owner.marketFocusArmedId === owner.marketFocusId;
   const label = marketTargetLabel(owner, target);
   scene.add.rectangle(x, y, 760, 32, 0x020409, 0.9)
     .setStrokeStyle(1, armed ? 0xffcf70 : 0x49606d, armed ? 0.9 : 0.5)
@@ -612,10 +728,7 @@ export function cycleRouteRewardChoice(scene: any, direction: -1 | 1) {
 
 export function setRouteRewardChoice(scene: any, cardId: string) {
   const index = scene.routeCardRewardChoices.findIndex((card: any) => card.id === cardId);
-  if (index >= 0) {
-    if (scene.routeRewardArmedCardId !== cardId) scene.routeRewardArmedCardId = undefined;
-    scene.routeRewardChoiceIndex = index;
-  }
+  if (index >= 0 && !scene.routeRewardArmedCardId) scene.routeRewardChoiceIndex = index;
 }
 
 export function requestRouteRewardCard(scene: any, cardId: string, onArm: () => void) {
@@ -636,8 +749,10 @@ export function requestRouteRewardCard(scene: any, cardId: string, onArm: () => 
 export function openRouteRewardInspection(scene: any, cardId: string) {
   const index = scene.routeCardRewardChoices.findIndex((card: any) => card.id === cardId);
   if (index < 0) return undefined;
-  scene.routeRewardChoiceIndex = index;
-  scene.routeRewardArmedCardId = undefined;
+  const armedReturnIndex = scene.routeRewardArmedCardId
+    ? scene.routeCardRewardChoices.findIndex((card: any) => card.id === scene.routeRewardArmedCardId)
+    : -1;
+  scene.routeRewardChoiceIndex = armedReturnIndex >= 0 ? armedReturnIndex : index;
   scene.routeRewardInspectionCardId = cardId;
   scene.renderAll();
   return scene.routeCardRewardChoices[index];
@@ -689,8 +804,99 @@ export function requestCombatRewardAt(scene: any, index: number, onArm: () => vo
   return reward ? requestCombatReward(scene, reward.id, onArm) : false;
 }
 
+export function renderCombatRewardLoading(scene: any) {
+  const target = scene.root as Phaser.GameObjects.Container;
+  const waymark = scene.mode === 'waymarkReward';
+  const cardReward = scene.mode === 'cardReward';
+  const title = cardReward ? 'Add to the Flock' : scene.mode === 'upgradeReward' ? 'Preen a Card' : 'Claim a Waymark';
+  const choiceY = waymark ? 404 : 402;
+  const choiceWidth = waymark ? 248 : 228;
+  const choiceHeight = waymark ? 306 : 312;
+  target.add(scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9).setName('reward-loading-backdrop'));
+  target.add(scene.add.rectangle(640, 98, 612, 114, 0x07101c, 0.82)
+    .setStrokeStyle(2, 0xd8a840, 0.46)
+    .setName('reward-loading-header'));
+  target.add(scene.add.text(640, 64, 'ROOFTOP LANDMARK', {
+    fontFamily: UI_FONT, fontSize: '12px', fontStyle: UI_BOLD, color: UI_CYAN
+  }).setOrigin(0.5));
+  target.add(scene.add.text(640, 91, title, {
+    fontFamily: UI_FONT, fontSize: '34px', fontStyle: UI_BOLD, color: UI_GOLD,
+    align: 'center', fixedWidth: 1060, fixedHeight: 52, maxLines: 1
+  }).setOrigin(0.5).setName('reward-loading-title'));
+  target.add(scene.add.text(640, 128, 'Preparing choices · Input unlocks when every option is visible.', {
+    fontFamily: UI_FONT, fontSize: '15px', color: UI_SOFT,
+    align: 'center', fixedWidth: 1020, fixedHeight: 28, maxLines: 1
+  }).setOrigin(0.5).setName('reward-renderer-loading'));
+  [336, 640, 944].forEach((x) => {
+    target.add(scene.add.rectangle(x, choiceY, choiceWidth, choiceHeight, 0x07101c, 0.86)
+      .setStrokeStyle(2, 0x49606d, 0.66)
+      .setName('reward-loading-choice-slot'));
+    target.add(scene.add.rectangle(x, choiceY - 82, choiceWidth - 34, 118, 0x10202d, 0.72));
+    target.add(scene.add.rectangle(x, choiceY + 22, choiceWidth - 58, 12, 0x263847, 0.72));
+    target.add(scene.add.rectangle(x, choiceY + 48, choiceWidth - 86, 8, 0x263847, 0.54));
+    if (!waymark) target.add(scene.add.rectangle(x, 586, 92, MIN_SUPPORTED_TOUCH_TARGET, 0x102534, 0.58)
+      .setStrokeStyle(2, 0x49606d, 0.54)
+      .setName('reward-loading-inspect-slot'));
+  });
+  if (cardReward) target.add(scene.add.rectangle(640, 652, 324, 48, 0x2a2320, 0.58)
+    .setStrokeStyle(2, 0xd8a840, 0.46)
+    .setName('reward-loading-skip-slot'));
+}
+
+export function renderRewardSkipFallback(scene: any) {
+  const target = scene.root as Phaser.GameObjects.Container;
+  const scrap = scene.currentSkipScrapReward();
+  const deckSize = scene.allDeckCards().length;
+  const armed = Boolean(scene.rewardSkipArmed);
+  const hit = scene.add.rectangle(640, 652, 324, 48, 0x2a2320, 0.96)
+    .setStrokeStyle(2, 0xd8a840, 0.9)
+    .setInteractive({ useHandCursor: true })
+    .setName('reward-skip-hit');
+  hit.on('pointerdown', () => scene.requestSkipCardReward());
+  target.add(hit);
+  if (armed) target.add(scene.add.rectangle(640, 652, 344, 68, 0x000000, 0)
+    .setStrokeStyle(3, 0xd8a840, 1)
+    .setName('reward-skip-focus-ring'));
+  target.add(scene.add.text(640, 646, `Skip  +${scrap} Scrap`, {
+    fontFamily: UI_FONT, fontSize: '15px', fontStyle: UI_BOLD, color: UI_GOLD,
+  }).setOrigin(0.5).setName('reward-skip-title'));
+  target.add(scene.add.text(640, 664, `Deck stays ${deckSize}  /  After: ${scene.scrap + scrap} Scrap`, {
+    fontFamily: UI_FONT, fontSize: '10px', color: UI_SOFT,
+  }).setOrigin(0.5).setName('reward-skip-summary'));
+}
+
+function compactFallbackDecisionPart(text: string, max = 12) {
+  const value = text.replace(/\s+/g, ' ').replace(/[.]$/, '').trim();
+  return value.length <= max ? value : `${value.slice(0, max - 3).trimEnd()}...`;
+}
+
+function fallbackCardDecisionLabel(view: any) {
+  const preview = view.decisionPreview;
+  if (preview.kind === 'add') return `ADD  /  DECK ${preview.deckBefore} > ${preview.deckBefore + 1}`;
+  const beforeParts = preview.before.split(/[.;]\s+/);
+  const afterParts = preview.after.split(/[.;]\s+/);
+  const moltBeforeParts = preview.moltBefore.split(/[.;]\s+/);
+  const moltAfterParts = preview.moltAfter.split(/[.;]\s+/);
+  const pairs: Array<[string, string]> = [
+    ...beforeParts.map((before: string, index: number) => [before, afterParts[index] ?? ''] as [string, string]),
+    ...moltBeforeParts.map((before: string, index: number) => [before, moltAfterParts[index] ?? ''] as [string, string]),
+  ];
+  const changed = pairs.find(([before, after]) => before !== after && after) ?? pairs.find(([, after]) => after);
+  const change = changed
+    ? `${compactFallbackDecisionPart(changed[0])} > ${compactFallbackDecisionPart(changed[1])}`
+    : preview.statChanges[0] ?? 'Ability improved';
+  return `PREEN  /  ${change}`;
+}
+
+function fallbackWaymarkContextLabel(view: any) {
+  const rarity = view.rarity.toUpperCase();
+  const family = view.familyLabel.toUpperCase();
+  return rarity === family ? `${rarity} WAYMARK` : `${rarity}  /  ${family}`;
+}
+
 export function renderCombatRewardFallback(scene: any) {
   const waymark = scene.mode === 'waymarkReward';
+  const choiceY = waymark ? 404 : 402;
   const choices = waymark ? scene.waymarkChoices : scene.mode === 'cardReward' ? scene.rewardChoices : scene.upgradeChoices;
   const target = scene.root as Phaser.GameObjects.Container;
   target.add(scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9));
@@ -700,17 +906,30 @@ export function renderCombatRewardFallback(scene: any) {
   choices.forEach((choice: any, index: number) => {
     const x = 336 + index * 304;
     const view = waymark ? scene.rewardWaymarkView(choice, index) : scene.rewardCardView(choice, index);
-    const hit = scene.add.rectangle(x, 390, 248, 300, 0x07101c, 0.98)
-      .setStrokeStyle(view.focused ? 5 : 3, view.armed ? 0xffcf6b : view.focused ? 0x8df4ff : view.accent, 0.95)
-      .setInteractive({ useHandCursor: true });
+    const hit = scene.add.rectangle(x, choiceY, 248, 300, 0x07101c, 0.98)
+      .setStrokeStyle(2, view.accent, 0.9)
+      .setInteractive({ useHandCursor: true })
+      .setName('reward-fallback-choice-hit');
     hit.on('pointerdown', () => scene.requestRewardChoice(view.id));
     target.add(hit);
-    if (view.focused) target.add(scene.add.rectangle(x, 390, 278, 336, 0x000000, 0)
-      .setStrokeStyle(4, view.armed ? 0xffcf6b : 0x8df4ff, 1).setName('reward-input-focus-ring'));
-    target.add(scene.add.text(x, 342, `${view.armed ? 'CONFIRM / ' : ''}${view.name}`, {
+    if (view.focused) target.add(scene.add.rectangle(x, choiceY, 278, 336, 0x000000, 0)
+      .setStrokeStyle(3, view.armed ? 0xd8a840 : 0x8df4ff, 1).setName('reward-input-focus-ring'));
+    if (waymark || view.focused || view.armed) {
+      const contextLabel = waymark
+        ? fallbackWaymarkContextLabel(view)
+        : fallbackCardDecisionLabel(view);
+      target.add(scene.add.rectangle(x, 264, 204, 26, 0x06111a, 0.98)
+        .setStrokeStyle(1, view.accent, 0.86)
+        .setName('reward-fallback-context-chip'));
+      target.add(scene.add.text(x, 264, contextLabel, {
+        fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#f4f8fb',
+        align: 'center', fixedWidth: 196, maxLines: 1
+      }).setOrigin(0.5).setName('reward-fallback-decision-context'));
+    }
+    target.add(scene.add.text(x, 342, view.name, {
       fontFamily: 'Arial', fontSize: '21px', fontStyle: 'bold', color: '#ffe08a',
       align: 'center', wordWrap: { width: 210 }
-    }).setOrigin(0.5));
+    }).setOrigin(0.5).setName('reward-fallback-choice-name'));
     target.add(scene.add.text(x, 420, waymark ? view.description : view.summary, {
       fontFamily: 'Arial', fontSize: '14px', color: '#dce8f2',
       align: 'center', wordWrap: { width: 206 }, maxLines: 4
@@ -719,11 +938,11 @@ export function renderCombatRewardFallback(scene: any) {
       scene,
       target,
       x,
-      y: 574,
+      y: 586,
       accent: view.accent,
-      focused: view.focused,
       fontFamily: 'Arial',
       boldFontStyle: 'bold',
+      enabled: !(scene.mode === 'cardReward' && scene.rewardSkipArmed),
       onInspect: () => scene.openRewardCardInspection(view.id),
     });
   });
@@ -888,31 +1107,44 @@ export function renderRewardInspectButton(context: {
   x: number;
   y: number;
   accent: number;
-  focused: boolean;
   fontFamily: string;
   boldFontStyle: string;
+  enabled?: boolean;
   onInspect: () => void;
 }) {
   const { scene, target, x, y } = context;
-  const hit = scene.add.rectangle(x, y, 132, MIN_SUPPORTED_TOUCH_TARGET, 0x102534, 0.99)
-    .setStrokeStyle(2, context.focused ? 0x8df4ff : context.accent, 0.94)
-    .setInteractive({ useHandCursor: true })
+  const enabled = context.enabled !== false;
+  const hit = scene.add.rectangle(
+    x,
+    y,
+    132,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    enabled ? 0x102534 : 0x0a141c,
+    enabled ? 0.88 : 0.48,
+  )
+    .setStrokeStyle(2, enabled ? context.accent : 0x49606d, enabled ? 0.9 : 0.42)
+    .setData('disabled', !enabled)
     .setName('reward-card-inspect-hit');
-  hit.on('pointerdown', (
-    _pointer: Phaser.Input.Pointer,
-    _localX: number,
-    _localY: number,
-    event?: Phaser.Types.Input.EventData,
-  ) => {
-    event?.stopPropagation();
-    context.onInspect();
-  });
+  if (enabled) {
+    hit.setInteractive({ useHandCursor: true });
+    hit.on('pointerdown', (
+      _pointer: Phaser.Input.Pointer,
+      _localX: number,
+      _localY: number,
+      event?: Phaser.Types.Input.EventData,
+    ) => {
+      event?.stopPropagation();
+      context.onInspect();
+    });
+    hit.on('pointerover', () => hit.setFillStyle(0x18384b, 1));
+    hit.on('pointerout', () => hit.setFillStyle(0x102534, 0.88));
+  }
   target.add(hit);
   target.add(scene.add.text(x, y, 'INSPECT', {
     fontFamily: context.fontFamily,
     fontSize: '11px',
     fontStyle: context.boldFontStyle,
-    color: '#dffbff',
+    color: enabled ? '#dffbff' : '#667b89',
   }).setOrigin(0.5).setName('reward-card-inspect-label'));
 }
 
@@ -924,6 +1156,7 @@ export function renderRewardInspectionChrome(context: {
   fontFamily: string;
   boldFontStyle: string;
   backLabel: string;
+  returnLabel: string;
   onClose: () => void;
 }) {
   const { scene, target, width, height, fontFamily, boldFontStyle } = context;
@@ -940,7 +1173,7 @@ export function renderRewardInspectionChrome(context: {
     color: '#ffe08a',
     letterSpacing: 1.4,
   }).setOrigin(0, 0.5));
-  layer.add(scene.add.text(width / 2, height - 34, `${context.backLabel} / B / TAP OUTSIDE  RETURN TO THIS CHOICE`, {
+  layer.add(scene.add.text(width / 2, height - 34, `${context.backLabel} / B / TAP OUTSIDE  ${context.returnLabel}`, {
     fontFamily,
     fontSize: '12px',
     fontStyle: boldFontStyle,
@@ -957,6 +1190,7 @@ export function syncRewardCardInspection(scene: any, chrome: {
   fontFamily: string;
   boldFontStyle: string;
   backLabel: string;
+  returnLabel: string;
   onClose: () => void;
 }) {
   scene.rewardInspectionLayer?.destroy(true);

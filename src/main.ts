@@ -644,10 +644,10 @@ class SceneAssetReadinessTracker {
       timeToFirstInteractionMs: elapsed(this.firstInteractionAtMs),
       timeToFullArtMs: elapsed(this.fullArtAtMs),
       pendingGroups: entries.filter(([, state]) => !state.settled).map(([group]) => group),
-      failedGroups: entries.filter(([, state]) => state.failedKeys.length > 0).map(([group]) => group),
+      failedGroups: entries.filter(([, state]) => state.failedKeys.length).map(([group]) => group),
       timedOutGroups: entries.filter(([, state]) => state.timedOut).map(([group]) => group),
       failures: entries
-        .filter(([, state]) => state.failedKeys.length > 0)
+        .filter(([, state]) => state.failedKeys.length)
         .map(([group, state]) => ({ group, keys: [...state.failedKeys] })),
     };
   }
@@ -3607,7 +3607,7 @@ function queueReserveEnemyArtAssets(
   warning: string,
   onComplete?: () => void
 ) {
-  if (ids.length === 0) return;
+  if (!ids.length) return;
   void loadReserveEnemyArtAssetsModule()
     .then(({ reserveEnemyArtAssetsFor }) => {
       if (!sceneCanQueueRuntimeAssets(scene)) return;
@@ -3706,7 +3706,7 @@ function cacheDrawerProfile(choice: NodeChoiceOption, index = 0): CacheDrawerPro
     seal: 'Unfiled seal',
     note: 'Marn: Useful things still need a record.',
     tell: routeEffectSummary(choice.effects),
-    icon: choice.effects.length === 0 ? 'route-neutral-medallion' : 'route-pin',
+    icon: !choice.effects.length ? 'route-neutral-medallion' : 'route-pin',
     accent: 0xd8a840
   };
 }
@@ -4163,7 +4163,7 @@ function recordCardAcquisitions(
   source: CardAcquisitionSource,
 ): { firstCopies: string[]; completedTargets: string[]; newMilestones: string[] } {
   const uniqueIds = [...new Set(ids.filter((id) => Boolean(cardLibrary[id])))];
-  if (uniqueIds.length === 0) return { firstCopies: [], completedTargets: [], newMilestones: [] };
+  if (!uniqueIds.length) return { firstCopies: [], completedTargets: [], newMilestones: [] };
   const account = loadAccount();
   const discovered = new Set(account.discoveredCards);
   const targets = new Set((account.hunt ?? []).filter((id) => !account.cardCollection[id] && Boolean(cardLibrary[id])));
@@ -5751,10 +5751,10 @@ class MenuScene extends Phaser.Scene {
 
   private showStorageRecoveryNotice(generation: number) {
     const events = consumeStorageRecoveryEvents();
-    if (events.length === 0 && !this.storageRecoveryNotice) return;
+    if (!events.length && !this.storageRecoveryNotice) return;
     void import('./game/storage-recovery-notice').then((recovery) => {
       if (!this.scene.isActive() || generation !== this.menuGeneration) return;
-      if (events.length > 0) this.storageRecoveryNotice = recovery.createStorageRecoveryNotice(events);
+      if (events.length) this.storageRecoveryNotice = recovery.createStorageRecoveryNotice(events);
       if (this.storageRecoveryNotice) recovery.renderStorageRecoveryNotice(this, this.storageRecoveryNotice, UI_FONT, UI_BOLD);
     }).catch(() => {});
   }
@@ -5841,7 +5841,7 @@ class MenuScene extends Phaser.Scene {
     const emitters = this.children.list.filter((child) => child.name === 'title-ambient-particles');
     if (prefersReducedMotion() || prefersLeanEffects()) {
       emitters.forEach((emitter) => emitter.destroy());
-    } else if (emitters.length === 0) {
+    } else if (!emitters.length) {
       this.createHomeParticles();
     }
     this.updateMenuTextState();
@@ -6296,7 +6296,7 @@ const profileSceneDependencies: import('./game/profile-scene').ProfileSceneDepen
       const asset = card ? cardCompactArtAsset(card) : undefined;
       return asset ? [asset] : [];
     }));
-    if (assets.length === 0) {
+    if (!assets.length) {
       onComplete?.();
       return;
     }
@@ -6533,6 +6533,8 @@ class RouteScene extends Phaser.Scene {
   private inspectedCardId: string | undefined;
   private hoverCardDetail?: Phaser.GameObjects.Container;
   private marketItemHover?: Phaser.GameObjects.Container;
+  marketFocusId?: string;
+  marketFocusArmedId?: string;
   marketDecisionPreview: MarketDecisionPreview = [];
   private routeChoiceHover?: Phaser.GameObjects.Container;
   private cardReviewScroll = 0;
@@ -7063,7 +7065,7 @@ class RouteScene extends Phaser.Scene {
     }
     if (snapshot === this.routeCheckpointAttempt) return;
     this.routeCheckpointAttempt = snapshot;
-    const saved = snapshot.length > 0 && persistActiveRun(this.runState);
+    const saved = !!snapshot.length && persistActiveRun(this.runState);
     this.routeCheckpointState = {
       outcome: saved ? 'saved' : 'failed',
       label: saved ? 'FLIGHT SAVED' : 'SAVE UNAVAILABLE',
@@ -7121,7 +7123,7 @@ class RouteScene extends Phaser.Scene {
     if (this.routeCommitPending || this.pauseOverlayOpen || this.settingsOverlayOpen || this.confirmExitOpen) return;
     if (this.deckOverlayOpen || this.flockOverlayOpen || this.waymarkDrawerOpen || this.supplyDrawerOpen || this.marketOpen || this.nodeChoiceOpen || this.pendingRouteReward || this.cardPickerMode) return;
     const selectable = this.getSelectableNodes();
-    if (selectable.length === 0) return;
+    if (!selectable.length) return;
     const current = selectable.findIndex((node) => node.id === this.selectedNodeId);
     const next = current < 0 ? 0 : (current + direction + selectable.length) % selectable.length;
     this.selectedNodeId = selectable[next].id;
@@ -7322,7 +7324,7 @@ class RouteScene extends Phaser.Scene {
   marketShelfArtAssets() {
     return uniqueImageAssets([
       ...this.marketCardShelf.map((offer) => cardThumbArtAssets[offer.id] ?? cardArtAssets[offer.id]),
-      this.marketWaymarkShelf.length > 0 ? uiIconAssets['market-waymark-badge'] : undefined,
+      this.marketWaymarkShelf.length ? uiIconAssets['market-waymark-badge'] : undefined,
       ...this.marketUtilityShelf.map((offer) => this.marketUtilityShelfArtAsset(offer)),
       uiIconAssets['market-refresh-service']
     ]);
@@ -7371,7 +7373,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private queueCardPickerArtLoad(entries: Array<{ card: Card }>) {
-    if (entries.length === 0) return;
+    if (!entries.length) return;
     queueRuntimeImageAssets(
       this,
       uniqueImageAssets(entries.map((entry) => cardCompactArtAsset(entry.card))),
@@ -8019,8 +8021,8 @@ class RouteScene extends Phaser.Scene {
       }
     }
 
-    const needs = prep.needs.length > 0 ? prep.needs.join(' / ') : 'Ready';
-    const useful = prep.usefulNodes.length > 0
+    const needs = prep.needs.length ? prep.needs.join(' / ') : 'Ready';
+    const useful = prep.usefulNodes.length
       ? prep.usefulNodes.map((label) => {
           if (label === 'Rooftop Cache') return 'CACHE';
           if (label === 'Lantern Roost') return 'ROOST';
@@ -8046,7 +8048,7 @@ class RouteScene extends Phaser.Scene {
       fontFamily: UI_FONT,
       fontSize: '12px',
       fontStyle: UI_BOLD,
-      color: prep.needs.length > 0 ? '#ffcfaa' : '#dffbe7',
+      color: prep.needs.length ? '#ffcfaa' : '#dffbe7',
       fixedWidth: 202,
       maxLines: 1
     }).setResolution(2);
@@ -8787,7 +8789,7 @@ class RouteScene extends Phaser.Scene {
       container.add(this.add.rectangle(riskX + i * 8, iconY, 5, 18, routeNodeRiskColor(node.risk), i < riskCount ? 0.92 : 0.22));
     }
     const badgeStartX = cx - width / 2 + 84;
-    if (badges.length > 0) {
+    if (badges.length) {
       const sparkleX = badgeStartX + (badges.length - 1) * 13.5;
       addRewardSparkBurstFx(this, sparkleX, iconY, Math.min(96, 36 + badges.length * 15))
         .forEach((object) => container.add(object));
@@ -9245,7 +9247,7 @@ class RouteScene extends Phaser.Scene {
     const scrapCost = this.scrapCostOfEffects(choice.effects);
     if (scrapCost > this.runState.scrap) return;
     const pickerRestoreState = cloneRunState(this.runState);
-    if (choice.effects.length === 0) {
+    if (!choice.effects.length) {
       this.runState.routeLog.push(`${node.label}: ${choice.text}`);
       this.runState.routeLog = this.runState.routeLog.slice(-8);
       this.returnToRouteMapAfterNode(node.id);
@@ -9286,7 +9288,7 @@ class RouteScene extends Phaser.Scene {
     }
     this.runState.routeLog.push(`${node.label}: ${choice.text}`);
     this.runState.routeLog = this.runState.routeLog.slice(-8);
-    if (pickerPlan && this.pickerEligibleCards(pickerPlan.mode).length > 0) {
+    if (pickerPlan && this.pickerEligibleCards(pickerPlan.mode).length) {
       this.cardPickerMode = pickerPlan.mode;
       this.cardPickerContext = 'route';
       this.cardPickerRemainingPicks = pickerPlan.count;
@@ -9302,7 +9304,7 @@ class RouteScene extends Phaser.Scene {
     }
     if (routeCardRewardSelector) {
       const choices = this.staticRouteCardRewardChoices(node.id, choice.key, routeCardRewardSelector);
-      if (choices.length > 0) {
+      if (choices.length) {
         this.routeCardRewardChoices = choices;
         this.routeRewardChoiceIndex = 0;
         this.routeRewardInspectionCardId = undefined;
@@ -9529,7 +9531,7 @@ class RouteScene extends Phaser.Scene {
     if (!before.nextCombat?.startOpenSky && after.nextCombat?.startOpenSky) rows.push('NEXT FIGHT GROUNDED > OPEN SKY');
     const pickerPlan = this.routeRewardPickerPlan(effects);
     if (pickerPlan) rows.push(`NEXT CHOOSE ${pickerPlan.count} CARD${pickerPlan.count === 1 ? '' : 'S'} TO ${pickerPlan.mode === 'preen' ? 'PREEN' : 'REMOVE'}`);
-    return (rows.length > 0 ? rows : ['NO STATE CHANGE']).slice(0, 7);
+    return (rows.length ? rows : ['NO STATE CHANGE']).slice(0, 7);
   }
 
   private routeCardRewardSelector(effects: string[]) {
@@ -9640,7 +9642,7 @@ class RouteScene extends Phaser.Scene {
   claimRouteReward() {
     const pending = this.pendingRouteReward;
     if (!pending) return;
-    if (this.routeCardRewardChoices.length > 0) return;
+    if (this.routeCardRewardChoices.length) return;
     if (pending.projectedState) {
       this.runState = cloneRunState(pending.projectedState);
       const priorIds = new Set(pending.restoreState.deck.map((card) => card.id));
@@ -9654,7 +9656,7 @@ class RouteScene extends Phaser.Scene {
       this.runState.routeLog = this.runState.routeLog.slice(-8);
     }
     const pickerPlan = this.routeRewardPickerPlan(pending.effects);
-    if (pickerPlan && this.pickerEligibleCards(pickerPlan.mode, 'route').length > 0) {
+    if (pickerPlan && this.pickerEligibleCards(pickerPlan.mode, 'route').length) {
       if (!pending.projectedState && !pending.effectsAppliedOnOpen) this.applyPendingRouteRewardEffects(pending, false, true);
       this.openRoutePickerForPendingReward(pending, pickerPlan);
       return;
@@ -9679,7 +9681,7 @@ class RouteScene extends Phaser.Scene {
       });
     }
     const choices: Card[] = [];
-    while (pool.length > 0 && choices.length < 2) {
+    while (pool.length && choices.length < 2) {
       const index = Math.floor(Math.random() * pool.length);
       const [id] = pool.splice(index, 1);
       if (id) choices.push(cloneCard(id));
@@ -9753,7 +9755,7 @@ class RouteScene extends Phaser.Scene {
     } else if (selector === 'randomNonBoss') {
       pool = pool.filter((markId) => alphaRouteMarkLibrary.get(markId)?.rarity !== 'boss');
     }
-    if (pool.length === 0) return undefined;
+    if (!pool.length) return undefined;
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
@@ -9767,7 +9769,7 @@ class RouteScene extends Phaser.Scene {
       return runState.supplies.includes(selector) ? undefined : selector;
     }
     const ids = [...alphaSupplyLibrary.keys()].filter((candidate) => !runState.supplies.includes(candidate));
-    if (ids.length === 0) return undefined;
+    if (!ids.length) return undefined;
     return ids[Math.floor(Math.random() * ids.length)];
   }
 
@@ -9785,7 +9787,7 @@ class RouteScene extends Phaser.Scene {
     }
     this.runState.routeLog = this.runState.routeLog.slice(-8);
     const pickerPlan = this.routeRewardPickerPlan(pending.effects);
-    if (pickerPlan && this.pickerEligibleCards(pickerPlan.mode, 'route').length > 0) {
+    if (pickerPlan && this.pickerEligibleCards(pickerPlan.mode, 'route').length) {
       this.openRoutePickerForPendingReward(pending, pickerPlan);
       return;
     }
@@ -9795,6 +9797,12 @@ class RouteScene extends Phaser.Scene {
   cancelRouteCardReward() {
     const pending = this.pendingRouteReward;
     if (!pending) return;
+    if (this.routeRewardArmedCardId) {
+      this.routeRewardArmedCardId = undefined;
+      this.hideHoverCardDetail();
+      this.renderAll();
+      return;
+    }
     this.runState = cloneRunState(pending.restoreState);
     this.routeCardRewardChoices = [];
     this.routeRewardChoiceIndex = 0;
@@ -9860,7 +9868,7 @@ class RouteScene extends Phaser.Scene {
     }
     this.cardPickerRemainingPicks = Math.max(0, (this.cardPickerRemainingPicks || 1) - 1);
     this.runState.routeLog = this.runState.routeLog.slice(-8);
-    if (this.cardPickerRemainingPicks > 0 && this.pickerEligibleCards(mode, 'route').length > 0) {
+    if (this.cardPickerRemainingPicks > 0 && this.pickerEligibleCards(mode, 'route').length) {
       const remaining = this.pickerEligibleCards(mode, 'route');
       this.cardPickerFocusIndex = clamp(this.cardPickerFocusIndex, 0, remaining.length - 1);
       this.cardPickerScroll = clamp(this.cardPickerScroll, 0, this.cardPickerMaxScroll(remaining.length));
@@ -10117,6 +10125,7 @@ class RouteScene extends Phaser.Scene {
       wordWrap: { width: 220 },
       maxLines: 2
     }).setOrigin(0.5, 0);
+    let armedConfirmation: { name: string; cost: number; delta: string } | undefined;
     visible.forEach((entry, i) => {
       const cardW = 94;
       const cardH = Math.round(cardW * 1.5);
@@ -10175,18 +10184,19 @@ class RouteScene extends Phaser.Scene {
       ) ?? (mode === 'release'
         ? `DECK ${this.runState.deck.length} > ${Math.max(0, this.runState.deck.length - 1)}`
         : 'ABILITY\n> IMPROVED');
+      if (armed) armedConfirmation = { name: `${entry.name}${entry.upgraded ? '+' : ''}`, cost: entry.cost, delta: decisionDelta };
       const decisionY = y + 48;
-      this.add.rectangle(x, decisionY, cardW - 2, mode === 'preen' || armed ? 34 : 24, 0x03101a, 0.94)
+      this.add.rectangle(x, decisionY, cardW - 2, mode === 'preen' ? 34 : 24, 0x03101a, 0.94)
         .setStrokeStyle(armed ? 2 : 1, armed ? UI_FIELD.gold : affordable ? accent : 0x3f4c58, affordable ? 0.9 : 0.48);
-      this.add.text(x, decisionY, armed ? `CONFIRM ${mode === 'preen' ? 'PREEN' : 'RELEASE'}\nBACK CANCELS` : decisionDelta, {
+      this.add.text(x, decisionY, decisionDelta, {
         fontFamily: UI_FONT,
-        fontSize: mode === 'preen' || armed ? '9px' : '10px',
+        fontSize: mode === 'preen' ? '9px' : '10px',
         fontStyle: UI_BOLD,
         color: armed ? UI_GOLD : affordable ? '#f4f8fb' : '#748494',
         align: 'center',
         fixedWidth: cardW - 8,
         lineSpacing: -1,
-        maxLines: mode === 'preen' || armed ? 2 : 1
+        maxLines: mode === 'preen' ? 2 : 1
       }).setResolution(2).setOrigin(0.5).setName('card-picker-decision-delta');
       const button = this.add.rectangle(x, y + 10, cardW + 12, cardH + 54, 0x000000, 0.01)
         .setInteractive({ useHandCursor: affordable })
@@ -10196,6 +10206,13 @@ class RouteScene extends Phaser.Scene {
         this, button, entry, x, y, cardW, cardH, accent, firstVisible + i,
       );
     });
+    if (armedConfirmation) {
+      this.cardHoverDetailModule?.renderCardPickerConfirmationRail(this, frame, {
+        mode,
+        ...armedConfirmation,
+        isMarketPicker,
+      });
+    }
     if (eligible.length > visibleCount) {
       const scrollX = frame.right - 44;
       this.renderCardPickerScrollButton(scrollX, frame.top + 184, 'up', this.cardPickerScroll > 0, () => this.scrollCardPicker(-1));
@@ -10590,7 +10607,7 @@ class RouteScene extends Phaser.Scene {
     return this.marketProjectionRows(projected);
   }
 
-  private marketUtilityDecisionPreview(listing: MarketUtilityListing): MarketDecisionPreview {
+  marketUtilityDecisionPreview(listing: MarketUtilityListing): MarketDecisionPreview {
     if (listing.id === 'preen' || listing.id === 'release') {
       return ['CHOOSE CARD FIRST', 'COST + RESULT SHOWN PER CARD'];
     }
@@ -10637,8 +10654,11 @@ class RouteScene extends Phaser.Scene {
   ) {
     this.hideMarketItemDetail();
     this.hideHoverCardDetail();
-    this.marketDecisionPreview = [...decisionPreview];
-    const displayZone = decisionPreview.length > 0 ? `Market / ${decisionPreview.join(' / ')}` : zone;
+    const preview = this.marketOpen && cost > this.runState.scrap
+      ? [`NEED ${cost - this.runState.scrap} MORE SCRAP`]
+      : decisionPreview;
+    this.marketDecisionPreview = [...preview];
+    const displayZone = preview.length ? `Market / ${preview.join(' / ')}` : zone;
     const adjustedAnchorX = this.marketOpen && zone.startsWith('Market offer')
       ? 440
       : anchorX;
@@ -10745,7 +10765,9 @@ class RouteScene extends Phaser.Scene {
       body: mark.description,
       meta: `Trigger: ${mark.trigger}\nEffect: ${routeMarkEffectGrammar(mark)}`,
       price,
-      decisionPreview: listing ? this.marketWaymarkDecisionPreview(listing) : [],
+      decisionPreview: listing
+        ? this.cardHoverDetailModule?.marketPreview(this, listing, this.marketWaymarkDecisionPreview(listing)) ?? []
+        : [],
       accent: UI_FIELD.gold,
       anchorX,
       anchorY
@@ -10764,7 +10786,7 @@ class RouteScene extends Phaser.Scene {
           ? 'Final cost and result are shown on each eligible card.'
           : 'One-time preparation; applied immediately.',
       price: listing.price,
-      decisionPreview: this.marketUtilityDecisionPreview(listing),
+      decisionPreview: this.cardHoverDetailModule?.marketPreview(this, listing) ?? [],
       accent: listing.id === 'supply' ? UI_FIELD.green : listing.id === 'release' ? UI_FIELD.danger : UI_FIELD.cyan,
       anchorX,
       anchorY
@@ -10964,7 +10986,7 @@ class RouteScene extends Phaser.Scene {
         return rarity === 'uncommon' || rarity === 'rare';
       });
     }
-    if (pool.length === 0) return;
+    if (!pool.length) return;
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
@@ -11212,7 +11234,7 @@ class RouteScene extends Phaser.Scene {
     if (!this.cardPickerMode) {
       this.cardHoverDetailModule?.bindMarketInputs(this);
       this.cardHoverDetailModule?.renderMarketInputHelp(this, 716, frame.bottom - 15);
-      this.renderMarketEnamelButton(frame.right - 48, frame.top + 42, 86, 30, 'Close', true, () => {
+      this.renderMarketEnamelButton(frame.right - 48, frame.top + 42, 86, 30, this.marketFocusArmedId ? 'Clear' : 'Close', true, () => {
         playUiSound('close');
         this.leaveMarket();
       }, UI_FIELD.danger, '13px');
@@ -11828,9 +11850,15 @@ class RouteScene extends Phaser.Scene {
   }
 
   private setMarketCategory(category: MarketCategory) {
-    if (this.marketCategory === category) return;
+    if (this.marketCategory === category) {
+      if (!this.marketFocusArmedId) return;
+      playUiSound('close');
+      this.leaveMarket();
+      return;
+    }
     playUiSound('confirm');
-    this.cardHoverDetailModule?.resetMarketFocus(this);
+    this.marketFocusId = undefined;
+    this.marketFocusArmedId = undefined;
     this.marketCategory = category;
     this.marketItemHover = undefined;
     this.hoverCardDetail = undefined;
@@ -11871,7 +11899,13 @@ class RouteScene extends Phaser.Scene {
     const card = this.routeRewardInteractionModule()?.openRouteRewardInspection(this, cardId);
     if (card) {
       playUiSound('confirm');
-      announceScreenReader(`Inspecting ${displayName(card)}. Back returns to the same route reward without claiming it.`);
+      const armedCard = this.routeRewardArmedCardId
+        ? this.routeCardRewardChoices.find((choice) => choice.id === this.routeRewardArmedCardId)
+        : undefined;
+      const returnMessage = armedCard
+        ? `${displayName(armedCard)} remains selected; Back restores its confirmation without claiming it.`
+        : 'Back returns to the same route reward without claiming it.';
+      announceScreenReader(`Inspecting ${displayName(card)}. ${returnMessage}`);
     }
   }
 
@@ -12626,12 +12660,12 @@ class RouteScene extends Phaser.Scene {
       } else {
         this.add.rectangle(cardX, cardY, artW, artH, 0x05101a, 0.12);
       }
-      this.renderMarketPriceTag(cardX, cardY + artH / 2 + 2, listing.price, enabled && !listing.sold, accent, 'BUY');
+      this.renderMarketPriceTag(cardX, cardY + artH / 2 + 2, listing.price, enabled, accent, 'BUY');
       if (listing.sold) this.renderMarketSoldSlat(cardX, cardY, cardW, cardH);
       if (!listing.sold) {
         const hit = this.add.rectangle(cardX, cardY + 8, cardW + 12, cardH + 34, 0x000000, 0.01)
-          .setInteractive({ useHandCursor: true })
-          .setData('marketFocusId', `card:${i}`)
+          .setInteractive({ useHandCursor: enabled })
+          .setData('marketFocusId', enabled ? `card:${i}` : 0)
           .setData('label', displayName(card));
         hit.on('pointerover', () => this.showHoverCardDetail(
           card,
@@ -12681,12 +12715,12 @@ class RouteScene extends Phaser.Scene {
           strokeThickness: 2
         }).setOrigin(0.5, 0);
       }
-      this.renderMarketItemLabelBox(itemX, rowY + 68, 128, 48, 'WAYMARKER', mark.name, listing.price, enabled && !listing.sold, UI_FIELD.gold);
+      this.renderMarketItemLabelBox(itemX, rowY + 68, 128, 48, 'WAYMARKER', mark.name, listing.price, enabled, UI_FIELD.gold);
       if (listing.sold) this.renderMarketSoldSlat(itemX, rowY + 24, 128, 126);
       if (!listing.sold) {
         const hit = this.add.rectangle(itemX, rowY + 24, 136, 160, 0x000000, 0.01)
-          .setInteractive({ useHandCursor: true })
-          .setData('marketFocusId', `waymark:${i}`)
+          .setInteractive({ useHandCursor: enabled })
+          .setData('marketFocusId', enabled ? `waymark:${i}` : 0)
           .setData('label', mark.name);
         hit.on('pointerover', () => this.showMarketWaymarkDetail(mark, listing.price, itemX, rowY));
         hit.on('pointerout', () => this.hideMarketItemDetail());
@@ -12730,16 +12764,16 @@ class RouteScene extends Phaser.Scene {
           48,
           this.marketUtilityServiceIcon(listing),
           listing.price,
-          enabled && !listing.sold,
+          enabled,
           accent,
           this.marketUtilityLabel(listing)
         );
         if (listing.sold) this.renderMarketSoldSlat(serviceX, serviceY, serviceWidth + 2, 48);
         if (!listing.sold) {
           const hit = this.add.rectangle(serviceX, serviceY, serviceWidth + 10, MIN_SUPPORTED_TOUCH_TARGET, 0x000000, 0.01)
-            .setInteractive({ useHandCursor: true })
+            .setInteractive({ useHandCursor: enabled })
             .setName('market-service-hit')
-            .setData('marketFocusId', `utility:${i}`)
+            .setData('marketFocusId', enabled ? `utility:${i}` : 0)
             .setData('label', this.marketUtilityLabel(listing));
           hit.on('pointerover', () => this.showMarketUtilityDetail(listing, serviceX, serviceY));
           hit.on('pointerout', () => this.hideMarketItemDetail());
@@ -12794,14 +12828,14 @@ class RouteScene extends Phaser.Scene {
         'SUPPLY',
         this.marketUtilityLabel(listing),
         listing.price,
-        enabled && !listing.sold,
+        enabled,
         accent
       );
       if (listing.sold) this.renderMarketSoldSlat(supplyX, rowY + 24, 128, 126);
       if (!listing.sold) {
         const hit = this.add.rectangle(supplyX, rowY + 24, 136, 160, 0x000000, 0.01)
-          .setInteractive({ useHandCursor: true })
-          .setData('marketFocusId', `utility:${i}`)
+          .setInteractive({ useHandCursor: enabled })
+          .setData('marketFocusId', enabled ? `utility:${i}` : 0)
           .setData('label', this.marketUtilityLabel(listing));
         hit.on('pointerover', () => this.showMarketUtilityDetail(listing, supplyX, rowY));
         hit.on('pointerout', () => this.hideMarketItemDetail());
@@ -13584,11 +13618,11 @@ class RouteScene extends Phaser.Scene {
   private createMarketUtilityShelf(rng: () => number): MarketUtilityListing[] {
     const listings: MarketUtilityListing[] = [];
     const preenPrices = this.pickerEligibleCards('preen', 'market').map((entry) => entry.cost);
-    if (preenPrices.length > 0) listings.push({ id: 'preen', price: Math.min(...preenPrices) });
+    if (preenPrices.length) listings.push({ id: 'preen', price: Math.min(...preenPrices) });
     const releasePrices = this.pickerEligibleCards('release', 'market').map((entry) => entry.cost);
-    if (releasePrices.length > 0) listings.push({ id: 'release', price: Math.min(...releasePrices) });
-    if (activeMapIndex >= 1) listings.push({ id: MARKET_BOSS_GUARD, price: 120 + activeMapIndex * 35 });
-    if (activeMapIndex >= 1) listings.push({ id: MARKET_ROUTE_SCOUT, price: 80 + activeMapIndex * 25 });
+    if (releasePrices.length) listings.push({ id: 'release', price: Math.min(...releasePrices) });
+    if (activeMapIndex) listings.push({ id: MARKET_BOSS_GUARD, price: 120 + activeMapIndex * 35 });
+    if (activeMapIndex) listings.push({ id: MARKET_ROUTE_SCOUT, price: 80 + activeMapIndex * 25 });
 
     const pickedSupplies = new Set(this.runState.supplies ?? []);
     for (const slot of alphaMarketConfig.supplySlots) {
@@ -13683,6 +13717,11 @@ class RouteScene extends Phaser.Scene {
   }
 
   private leaveMarket() {
+    if (this.marketFocusArmedId) {
+      this.marketFocusArmedId = undefined;
+      this.renderAll();
+      return;
+    }
     const node = currentMap().nodes.find((candidate) => candidate.id === this.marketNodeId);
     this.completePendingRouteNode(node?.id);
     this.runState.routeLog.push(node ? `${node.label}: market business settled.` : 'Market business settled.');
@@ -14364,7 +14403,7 @@ class RouteScene extends Phaser.Scene {
   private moveDeckReviewSelection(delta: -1 | 1) {
     if (!this.deckOverlayOpen || this.deckReviewSearchActive) return;
     const cards = this.mapDeckCards();
-    if (cards.length === 0) return;
+    if (!cards.length) return;
     const selected = getInspectedEntry(cards, this.inspectedCardId);
     const current = Math.max(0, cards.findIndex(({ card }) => card.id === selected?.card.id));
     const next = (current + delta + cards.length) % cards.length;
@@ -15588,9 +15627,9 @@ class BattleScene extends Phaser.Scene {
   }
 
   private retainCards(amount: number, source: string): RetainSource {
-    if (this.roostRetainPool.length > 0) {
+    if (this.roostRetainPool.length) {
       const retained = this.roostRetainPool.splice(Math.max(0, this.roostRetainPool.length - amount), amount);
-      if (retained.length > 0) {
+      if (retained.length) {
         const retainedIds = new Set(retained.map((card) => card.instanceId));
         this.discardPile = this.discardPile.filter((card) => !retainedIds.has(card.instanceId));
         this.hand.push(...retained);
@@ -15919,6 +15958,7 @@ class BattleScene extends Phaser.Scene {
         }
         if (this.settingsOverlayOpen || this.pauseOverlayOpen) return;
         if (this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
+        if (this.mode === 'cardReward' && this.rewardSkipArmed) return;
         this.activateCombatChoice(this.controllerChoiceIndex);
       },
       previous: () => {
@@ -15985,6 +16025,7 @@ class BattleScene extends Phaser.Scene {
           if (!this.requestBattleIntroDismiss()) {
             if (this.rewardInspectionCardId) this.closeRewardCardInspection();
             else if (this.outcomeDetailsOpen) this.closeOutcomeFlightDetails();
+            else if (this.mode === 'cardReward' && this.rewardSkipArmed) return;
             else this.activateCombatChoice(this.controllerChoiceIndex);
           }
           break; // A
@@ -16054,9 +16095,12 @@ class BattleScene extends Phaser.Scene {
     if (this.rewardInspectionCardId || this.outcomeDetailsOpen || this.settingsOverlayOpen || this.pauseOverlayOpen || this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
     const count = this.combatChoiceCount();
     if (count <= 0) return;
+    const enteringCardsFromSkip = this.mode === 'cardReward' && this.rewardSkipArmed && !this.battleInputActive;
     this.rewardSkipArmed = false;
     this.battleInputActive = true;
-    this.controllerChoiceIndex = (this.controllerChoiceIndex + direction + count) % count;
+    this.controllerChoiceIndex = enteringCardsFromSkip
+      ? direction > 0 ? 0 : count - 1
+      : (this.controllerChoiceIndex + direction + count) % count;
     if (this.mode === 'battle') {
       this.selectedInstanceId = this.hand[this.controllerChoiceIndex]?.instanceId;
     } else {
@@ -20373,6 +20417,10 @@ class BattleScene extends Phaser.Scene {
 
   private handleBattleBack() {
     if (!this.fxLayer?.active) return;
+    if (this.rewardInspectionCardId) {
+      this.closeRewardCardInspection();
+      return;
+    }
     if (this.rewardChoiceArmedId) {
       this.rewardChoiceArmedId = undefined;
       playUiSound('close');
@@ -20384,10 +20432,6 @@ class BattleScene extends Phaser.Scene {
       playUiSound('close');
       announceScreenReader('Skip cancelled; reward unchanged.');
       this.requestBattleRender();
-      return;
-    }
-    if (this.rewardInspectionCardId) {
-      this.closeRewardCardInspection();
       return;
     }
     if (this.outcomeDetailsOpen) {
@@ -20823,9 +20867,9 @@ class BattleScene extends Phaser.Scene {
       ? (() => {
           const card = this.firstCombatGuideCard();
           const target = card ? this.firstCombatGuideTarget(card) : undefined;
-          if (!card) return 'PLAY A CARD   |   WINGBEAT PAYS COST   |   BUILD FLOW   |   FULL FLOW: SURGE';
+          if (!card) return '1  SELECT A CARD   →   2  PLAY IT   •   BUILD FLOW   •   FULL FLOW: SURGE';
           const cost = this.effectiveCost(card);
-          return `START ${displayName(card)}   |   COST ${cost} WINGBEAT${cost === 1 ? '' : 'S'}   |   TARGET ${target?.name ?? 'HIGHLIGHTED'}   |   BUILD FLOW`;
+          return `1  SELECT ${displayName(card)}   →   2  TARGET ${target?.name ?? 'HIGHLIGHTED'}   •   ${cost} WINGBEAT${cost === 1 ? '' : 'S'}   •   FLOW +1`;
         })()
       : guideStep === 'roost'
         ? `ROOST WHEN READY   |   INCOMING ${incoming.total}   |   COVER ${incoming.blocked}   |   COHESION -${incoming.hpLoss}`
@@ -20834,27 +20878,38 @@ class BattleScene extends Phaser.Scene {
   }
 
   private renderCombatInputHint() {
-    if (!this.battleInputActive || this.settingsOverlayOpen || this.pauseOverlayOpen || this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
     const rewardMode = this.mode === 'cardReward' || this.mode === 'upgradeReward' || this.mode === 'waymarkReward';
+    const skipCommitmentActive = this.mode === 'cardReward' && this.rewardSkipArmed;
+    if ((!this.battleInputActive && !skipCommitmentActive) || this.settingsOverlayOpen || this.pauseOverlayOpen || this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
     if (this.mode !== 'battle' && !rewardMode) return;
     if (!rewardMode && !this.isGuidedFirstCombat() && (this.cardsPlayedThisTurn > 0 || Boolean(this.selectedInstanceId))) return;
     const y = rewardMode ? 213 : 448;
     const skipBinding = controlBindingLabel('skipReward');
     const skipControls = skipBinding.toUpperCase() === 'X' ? skipBinding : `${skipBinding} / X`;
+    const rewardLocked = rewardMode && !this.rewardPresentationReady();
+    const armedSkip = this.mode === 'cardReward' && this.rewardSkipArmed;
+    const armedChoiceReward = rewardMode && Boolean(this.rewardChoiceArmedId);
+    const armedReward = armedSkip || armedChoiceReward;
     const text = rewardMode
-      ? `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} / D-PAD  CHOOSE   |   ${controlBindingLabel('confirm')} / A  ${this.rewardChoiceArmedId ? 'CONFIRM' : 'SELECT'}${this.mode === 'cardReward' || this.mode === 'upgradeReward' ? `   |   ${controlBindingLabel('roost')} / Y  INSPECT` : ''}${this.mode === 'cardReward' ? `   |   ${skipControls}  SKIP` : ''}`
+      ? rewardLocked
+        ? 'PREPARING CHOICES   |   INPUT LOCKED UNTIL EVERY OPTION IS VISIBLE'
+        : armedSkip
+          ? `CONFIRM SKIP +${this.currentSkipScrapReward()} SCRAP   |   ${skipControls} / CONTROLLER X / TAP AGAIN   |   ${controlBindingLabel('back')} / B  CANCEL   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}  CHOOSE CARD`
+        : armedChoiceReward
+        ? `CONFIRM PICK   |   ${controlBindingLabel('confirm')} / A / TAP AGAIN   |   ${controlBindingLabel('back')} / B  CANCEL${this.mode === 'cardReward' || this.mode === 'upgradeReward' ? `   |   ${controlBindingLabel('roost')} / Y  INSPECT` : ''}${this.mode === 'cardReward' ? `   |   ${skipControls}  SKIP INSTEAD` : ''}`
+        : `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} / D-PAD  CHOOSE   |   ${controlBindingLabel('confirm')} / A  SELECT${this.mode === 'cardReward' || this.mode === 'upgradeReward' ? `   |   ${controlBindingLabel('roost')} / Y  INSPECT` : ''}${this.mode === 'cardReward' ? `   |   ${skipControls}  SKIP` : ''}`
       : `${controlBindingLabel('previous')} / ${controlBindingLabel('next')}  CARD   |   UP / DOWN  TARGET   |   ${controlBindingLabel('confirm')}  PLAY   |   ${controlBindingLabel('roost')}  ROOST`;
     const width = rewardMode
       ? this.mode === 'cardReward' ? 820 : this.mode === 'upgradeReward' ? 690 : 500
       : 680;
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, y, width, rewardMode ? 24 : 28, 0x020711, rewardMode ? 0.9 : 0.82)
-      .setStrokeStyle(1, UI_FIELD.cyan, rewardMode ? 0.62 : 0.52)
+      .setStrokeStyle(1, armedReward ? UI_FIELD.gold : UI_FIELD.cyan, armedReward ? 0.92 : rewardMode ? 0.62 : 0.52)
       .setName('combat-input-hint'));
     this.root.add(this.add.text(GAME_WIDTH / 2, y, text, {
       fontFamily: UI_FONT,
       fontSize: rewardMode ? '13px' : '12px',
       fontStyle: UI_BOLD,
-      color: '#f4fdff',
+      color: armedReward ? '#ffe08a' : '#f4fdff',
       stroke: '#020711',
       strokeThickness: rewardMode ? 3 : 2,
       fixedWidth: width - 18,
@@ -21332,6 +21387,7 @@ class BattleScene extends Phaser.Scene {
     const cost = this.effectiveCost(card);
     const buildsFlow = this.cardBuildsFlow(card);
     const surgeNext = this.flock.flow === this.flock.flowMax - 1;
+    const guideCard = this.firstCombatGuideCard()?.instanceId === card.instanceId;
     const statLabels: Record<string, string> = {
       cohesion: 'Cohesion', damage: 'Damage', cover: 'Cover', draw: 'Hand', resonance: 'Res/turn', regen: 'Regen', moltPower: 'Molt', openSkyGuard: 'Sky Guard',
     };
@@ -21342,13 +21398,15 @@ class BattleScene extends Phaser.Scene {
       cost,
       canPay: cost <= this.energy && this.mode === 'battle',
       selected,
-      guideCard: this.firstCombatGuideCard()?.instanceId === card.instanceId,
+      guideCard,
       guideMolt: this.firstMoltGuideCard()?.instanceId === card.instanceId,
       accent: card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card),
       usesMolt: Boolean(contract.usesMolt),
       summary: compactCardEffectSummary(contract.effects),
       buildsFlow,
-      flowVisible: buildsFlow && this.flock.flow < this.flock.flowMax && (selected || surgeNext),
+      flowVisible: buildsFlow
+        && this.flock.flow < this.flock.flowMax
+        && (selected || (surgeNext && (!this.isGuidedFirstCombat() || guideCard))),
       surgeNext,
       artKey: compactCardArtKey(card),
       snag: isSnagCard(card),
@@ -22227,7 +22285,7 @@ class BattleScene extends Phaser.Scene {
       upgraded: Boolean(card.upgraded),
       accent: card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card),
       accentText: card.type === 'major' ? '#ffe1a3' : card.type === 'molt' ? '#e6c4ff' : '#8df4ff',
-      footerRows: needTags.length > 0 ? needTags : stats,
+      footerRows: needTags.length ? needTags : stats,
       footerUsesObservations: needTags.length > 0,
       collectionStatus: this.mode === 'cardReward'
         ? { firstClaim: !collection, timesClaimed: collection?.timesClaimed ?? 0, targeted }
@@ -22243,7 +22301,7 @@ class BattleScene extends Phaser.Scene {
       },
       artKey: compactCardArtKey(card),
       snag: isSnagCard(card),
-      focused: this.battleInputActive && index === this.controllerChoiceIndex,
+      focused: !this.rewardSkipArmed && this.battleInputActive && index === this.controllerChoiceIndex,
       armed: this.rewardChoiceArmedId === card.id,
     };
   }
@@ -22327,7 +22385,7 @@ class BattleScene extends Phaser.Scene {
       onCardSelect: (cardId) => this.requestRewardChoice(cardId),
       onCardInspect: (cardId) => this.openRewardCardInspection(cardId),
       onCardHover: (cardId, x, y) => {
-        if (this.rewardChoiceArmedId === cardId) return this.hideCardPreview();
+        if (this.rewardChoiceArmedId || this.rewardSkipArmed) return this.hideCardPreview();
         const card = cards.find((candidate) => candidate.id === cardId);
         if (card) this.showChoiceCardDetail(card, x, y);
       },
@@ -22339,19 +22397,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private renderRewardRendererLoading() {
-    this.root.add(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.88));
-    this.root.add(this.add.circle(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 34, 28, 0x07131d, 0.96).setStrokeStyle(3, 0xd8a840, 0.88));
-    this.root.add(this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 20, 'Preparing the landmark...', {
-      fontFamily: UI_FONT,
-      fontSize: '24px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD
-    }).setOrigin(0.5).setName('reward-renderer-loading'));
-    this.root.add(this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 54, 'Choices stay locked until every option is visible.', {
-      fontFamily: UI_FONT,
-      fontSize: '13px',
-      color: UI_SOFT
-    }).setOrigin(0.5));
+    this.battleHandRendererModule?.renderCombatRewardLoading(this);
   }
 
   private renderRewardRendererFallback() {
@@ -22362,7 +22408,8 @@ class BattleScene extends Phaser.Scene {
   }
 
   private showChoiceCardDetail(card: Card, x: number, _y: number) {
-    this.showCardPreview(card, x);
+    const previewX = x <= GAME_WIDTH / 2 ? GAME_WIDTH - 170 : 170;
+    this.showCardPreview(card, previewX);
   }
 
   private focusedRewardCard() {
@@ -22379,12 +22426,25 @@ class BattleScene extends Phaser.Scene {
   }
 
   private openRewardCardInspection(cardId: string) {
+    if (this.mode === 'cardReward' && this.rewardSkipArmed) return;
     this.rewardSkipArmed = false;
-    this.rewardChoiceArmedId = undefined;
+    const armedChoiceId = this.rewardChoiceArmedId;
+    const choices = this.mode === 'cardReward' ? this.rewardChoices : this.upgradeChoices;
+    const armedReturnIndex = armedChoiceId
+      ? choices.findIndex((choice) => choice.id === armedChoiceId)
+      : -1;
     const card = this.battleHandRendererModule?.openRewardCardInspection(this, cardId);
     if (card) {
+      if (armedReturnIndex >= 0) {
+        this.controllerChoiceIndex = armedReturnIndex;
+        this.battleInputActive = true;
+        this.requestBattleRender();
+      }
       playUiSound('confirm');
-      announceScreenReader(`Inspecting ${displayName(card)}. Back returns to the same reward choice without claiming it.`);
+      const returnMessage = armedReturnIndex >= 0
+        ? `${displayName(choices[armedReturnIndex])} remains selected; Back restores its confirmation without claiming it.`
+        : 'Back returns to the same reward choice without claiming it.';
+      announceScreenReader(`Inspecting ${displayName(card)}. ${returnMessage}`);
     }
   }
 
@@ -22400,6 +22460,7 @@ class BattleScene extends Phaser.Scene {
       fontFamily: UI_FONT,
       boldFontStyle: UI_BOLD,
       backLabel: controlBindingLabel('back'),
+      returnLabel: this.rewardChoiceArmedId ? 'RETURN TO CONFIRM PICK' : 'RETURN TO THIS CHOICE',
       onClose: () => this.closeRewardCardInspection(),
     });
   }
@@ -24076,16 +24137,16 @@ class BattleScene extends Phaser.Scene {
     const retained = retainCount > 0 ? this.hand.splice(this.hand.length - retainCount, retainCount) : [];
     this.pendingRetainHand = 0;
     const discardedThisRoost: Card[] = [];
-    while (this.hand.length > 0) {
+    while (this.hand.length) {
       const card = this.hand.pop();
       if (card) {
         discardedThisRoost.push(card);
         this.discardPile.push(card);
       }
     }
-    if (discardedThisRoost.length > 0) this.animateDiscard(discardedThisRoost.length, GAME_WIDTH - 330, HAND_Y - 20, 1);
+    if (discardedThisRoost.length) this.animateDiscard(discardedThisRoost.length, GAME_WIDTH - 330, HAND_Y - 20, 1);
     this.roostRetainPool = discardedThisRoost;
-    if (retained.length > 0) {
+    if (retained.length) {
       this.hand = retained;
       this.logEvent(`Retained ${retained.length} card${retained.length === 1 ? '' : 's'} for next turn.`);
     }
@@ -24646,6 +24707,7 @@ class BattleScene extends Phaser.Scene {
     this.rewardChoiceArmedId = undefined;
     if (this.rewardSkipArmed) return this.skipCardReward();
     this.rewardSkipArmed = true;
+    this.hideCardPreview();
     playUiSound('confirm');
     this.requestBattleRender();
   }
@@ -24696,7 +24758,7 @@ class BattleScene extends Phaser.Scene {
     this.rewardChoiceArmedId = undefined;
     this.rewardChoices = this.createRewardChoices();
     this.rewardDecisionStartedAtMs = Date.now();
-    if (this.rewardChoices.length > 0) {
+    if (this.rewardChoices.length) {
       this.mode = 'cardReward';
       this.controllerChoiceIndex = 0;
       this.battleInputActive = false;
@@ -24735,7 +24797,7 @@ class BattleScene extends Phaser.Scene {
     this.rewardSkipArmed = false;
     this.rewardChoiceArmedId = undefined;
     this.upgradeChoices = this.shouldOfferUpgradeReward() ? this.createUpgradeChoices() : [];
-    if (this.upgradeChoices.length > 0) {
+    if (this.upgradeChoices.length) {
       this.mode = 'upgradeReward';
       this.controllerChoiceIndex = 0;
       this.battleInputActive = false;
@@ -24903,7 +24965,7 @@ class BattleScene extends Phaser.Scene {
         if (parsed.name === 'startNextCombatOpenSky') mods.startOpenSky = true;
       }
     }
-    return Object.keys(mods).length > 0 ? mods : undefined;
+    return Object.keys(mods).length ? mods : undefined;
   }
 
   private currentCombatResult(routeNode: RouteNode | undefined, nodeId: string): CombatResultSummary {
@@ -25044,7 +25106,7 @@ class BattleScene extends Phaser.Scene {
       const card = this.drawPile.shift();
       if (card) { this.hand.push(card); drawnCards.push(card); drawn += 1; }
     }
-    if (drawnCards.length > 0 && this.root?.active) this.queueCardArtLoad(drawnCards);
+    if (drawnCards.length && this.root?.active) this.queueCardArtLoad(drawnCards);
     if (drawn > 0) this.animateDraw(drawn, reshuffledDuringDraw);
   }
 
@@ -25408,7 +25470,7 @@ class BattleScene extends Phaser.Scene {
       : [];
     pickWeighted(synergyPool);
 
-    while (chosen.length < maxChoices && remaining.length > 0) {
+    while (chosen.length < maxChoices && remaining.length) {
       pickWeighted(remaining);
     }
     discoverCards(chosen); // offered cards count as "found" in the Codex
@@ -25516,7 +25578,7 @@ class BattleScene extends Phaser.Scene {
   private getTextState(): RenderPayload {
     const battlefield = this.currentBattlefieldAsset();
     const districtBattlefield = BATTLEFIELD_ASSETS[currentMap().id] ?? DEFAULT_BATTLEFIELD_ASSET;
-    const rewardAccount = this.rewardChoices.length > 0 ? loadAccount() : undefined;
+    const rewardAccount = this.rewardChoices.length ? loadAccount() : undefined;
     const cardCollection = rewardAccount?.cardCollection ?? {};
     const collectionTargets = new Set(rewardAccount?.hunt ?? []);
     const flowStatus = (this.root?.list.find((child) => child.name === 'combat-flow-status') as Phaser.GameObjects.Text | undefined)?.text ?? '';
@@ -26172,7 +26234,7 @@ function sanitizeNextCombat(value: unknown): NextCombatMods | undefined {
   if (Number.isFinite(value.enemyCover)) mods.enemyCover = Math.max(0, Number(value.enemyCover));
   if (value.startOpenSky === true) mods.startOpenSky = true;
   if (Number.isFinite(value.bossDamageShield)) mods.bossDamageShield = Math.max(0, Number(value.bossDamageShield));
-  return Object.keys(mods).length > 0 ? mods : undefined;
+  return Object.keys(mods).length ? mods : undefined;
 }
 function sanitizeSignalChoices(value: unknown): SignalChoiceEvent[] {
   if (!Array.isArray(value)) return [];
@@ -26308,7 +26370,7 @@ function sanitizeActiveRun(value: unknown): RunState | undefined {
     leaderId,
     difficulty: finiteInt(value.difficulty, 0, 0, MAX_DIFFICULTY),
     runMode: value.runMode === 'quick' ? 'quick' : 'full',
-    seed: typeof value.seed === 'string' && value.seed.length > 0 ? value.seed : 'alpha',
+    seed: typeof value.seed === 'string' && value.seed.length ? value.seed : 'alpha',
     currentHp: finiteInt(value.currentHp, BASE_COHESION, 1),
     scrap: finiteInt(value.scrap, STARTING_SCRAP, 0),
     scrapEarned: finiteInt(value.scrapEarned, 0, 0),
@@ -26635,7 +26697,7 @@ function inferActiveTarget(baseTarget: TargetType, effects: string[]): TargetTyp
 function inferActiveRole(effects: string[], fallback: CardRole): CardRole {
   if (effectsActAsAttack(effects)) return 'attack';
   if (effectsActAsSkill(effects)) return 'skill';
-  if (effects.length > 0) return 'utility';
+  if (effects.length) return 'utility';
   return fallback;
 }
 
@@ -28660,7 +28722,7 @@ function formatWaymarkTrigger(trigger: string) {
 }
 
 function routeMarkEffects(mark: RuntimeRouteMark): string[] {
-  if (Array.isArray(mark.effects) && mark.effects.length > 0) return mark.effects;
+  if (Array.isArray(mark.effects) && mark.effects.length) return mark.effects;
   return mark.effect ? [mark.effect] : [];
 }
 
@@ -28825,11 +28887,11 @@ function routeEffectSummaryWithPreview(
       const mark = alphaRouteMarkLibrary.get(previewItem.id);
       return mark ? `Gain ${mark.name}` : routeEffectSummary([effect]);
     }
-    if ((parsed.name === 'addSnagToDiscard' || parsed.name === 'addSnagToDraw') && previewCards.length > 0) {
+    if ((parsed.name === 'addSnagToDiscard' || parsed.name === 'addSnagToDraw') && previewCards.length) {
       const card = previewCards.find((candidate) => candidate.id === parsed.args[0]) ?? previewCards[0];
       return `Add ${displayName(card)} to the deck`;
     }
-    if (parsed.name === 'addCard' && previewCards.length > 0) {
+    if (parsed.name === 'addCard' && previewCards.length) {
       const card = previewCards.find((candidate) => candidate.runtime.kind !== 'snag');
       return card ? `Add ${displayName(card)}` : routeEffectSummary([effect]);
     }

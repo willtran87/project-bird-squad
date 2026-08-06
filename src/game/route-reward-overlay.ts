@@ -20,7 +20,7 @@ import {
   UI_SOFT,
 } from '../main';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
-import { renderRouteRewardEffectShowcase } from './reward-card-inspection';
+import { renderRouteRewardEffectShowcase, routeRewardInputHint } from './reward-card-inspection';
 
 export {
   cardPickerDecisionDelta,
@@ -144,7 +144,7 @@ export function renderRouteRewardOverlay(scene: any) {
     }
     scene.add.rectangle(x, y + cardH / 2 + 24, cardW + 16, 34, 0x020409, 0.94)
       .setStrokeStyle(1, accentColor, 0.72);
-    scene.add.text(x, y + cardH / 2 + 12, armed ? 'CONFIRM PICK\nBACK CANCELS' : displayName(card), {
+    scene.add.text(x, y + cardH / 2 + 12, displayName(card), {
       fontFamily: UI_FONT,
       fontSize: '12px',
       fontStyle: UI_BOLD,
@@ -160,13 +160,17 @@ export function renderRouteRewardOverlay(scene: any) {
       .setName('route-reward-card-hit');
     hit.on('pointerdown', () => scene.requestRouteRewardCard(card.id));
     hit.on('pointerover', () => {
+      if (scene.routeRewardArmedCardId) {
+        scene.hideHoverCardDetail();
+        return;
+      }
       scene.setRouteRewardChoice(card.id);
-      if (scene.routeRewardArmedCardId !== card.id) scene.showHoverCardDetail(card, 'Cache reward', card.cost, x, y);
+      scene.showHoverCardDetail(card, 'Cache reward', card.cost, x, y);
     });
     hit.on('pointerout', () => scene.hideHoverCardDetail());
     const inspectY = frame.bottom - 48;
-    const inspect = scene.add.rectangle(x, inspectY, 126, MIN_SUPPORTED_TOUCH_TARGET, 0x102534, 0.99)
-      .setStrokeStyle(2, armed ? UI_FIELD.gold : index === scene.routeRewardChoiceIndex ? UI_FIELD.cyan : accentColor, 0.94)
+    const inspect = scene.add.rectangle(x, inspectY, 126, MIN_SUPPORTED_TOUCH_TARGET, 0x102534, 0.88)
+      .setStrokeStyle(2, accentColor, 0.9)
       .setInteractive({ useHandCursor: true })
       .setName('route-reward-card-inspect-hit');
     inspect.on('pointerdown', (
@@ -179,7 +183,7 @@ export function renderRouteRewardOverlay(scene: any) {
       scene.openRouteRewardInspection(card.id);
     });
     inspect.on('pointerover', () => inspect.setFillStyle(0x18384b, 1));
-    inspect.on('pointerout', () => inspect.setFillStyle(0x102534, 0.99));
+    inspect.on('pointerout', () => inspect.setFillStyle(0x102534, 0.88));
     scene.add.text(x, inspectY, 'INSPECT', {
       fontFamily: UI_FONT,
       fontSize: '11px',
@@ -187,18 +191,26 @@ export function renderRouteRewardOverlay(scene: any) {
       color: '#dffbff',
     }).setOrigin(0.5).setName('route-reward-card-inspect-label');
   });
-  scene.renderRouteEventCancelButton(frame.left + 126, frame.bottom - 48, 166, 38, 'Cancel', () => scene.cancelRouteCardReward());
+  scene.renderRouteEventCancelButton(
+    frame.left + 126,
+    frame.bottom - 48,
+    166,
+    38,
+    scene.routeRewardArmedCardId ? 'Clear pick' : 'Cancel',
+    () => scene.cancelRouteCardReward(),
+  );
   if (hasCardChoices) {
     const hintX = frame.left + 672;
     const hintY = frame.top + 116;
+    const armed = !!scene.routeRewardArmedCardId;
     scene.add.rectangle(hintX, hintY, 500, 42, 0x020711, 0.86)
-      .setStrokeStyle(1, UI_FIELD.cyan, 0.55);
-    const hintText = `ARROWS / D-PAD  CHOOSE   |   ENTER / A  ${scene.routeRewardArmedCardId ? 'CONFIRM' : 'SELECT'}\nR / Y  INSPECT   |   ESC / B  BACK`;
+      .setStrokeStyle(1, armed ? UI_FIELD.gold : UI_FIELD.cyan, armed ? 0.92 : 0.55);
+    const hintText = routeRewardInputHint(armed);
     scene.add.text(hintX, hintY, hintText, {
       fontFamily: UI_FONT,
       fontSize: '12px',
       fontStyle: UI_BOLD,
-      color: '#bfe8f4',
+      color: armed ? '#ffe08a' : '#bfe8f4',
       fixedWidth: 476,
       align: 'center',
     }).setOrigin(0.5).setResolution(2).setName('route-reward-input-hint');
@@ -227,7 +239,8 @@ function renderRouteRewardInspection(scene: any) {
     color: '#ffe08a',
     letterSpacing: 1.4,
   }).setOrigin(0.5).setDepth(23030);
-  scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 34, `${controlBindingLabel('back')} / B / TAP OUTSIDE  RETURN TO THIS CHOICE`, {
+  const returnLabel = scene.routeRewardArmedCardId ? 'RETURN TO CONFIRM PICK' : 'RETURN TO THIS CHOICE';
+  scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 34, `${controlBindingLabel('back')} / B / TAP OUTSIDE  ${returnLabel}`, {
     fontFamily: UI_FONT,
     fontSize: '12px',
     fontStyle: UI_BOLD,

@@ -328,8 +328,7 @@ function compactDeltaPart(text: string, max = 12) {
   return value.length <= max ? value : `${value.slice(0, max - 3).trimEnd()}...`;
 }
 
-function rewardDecisionLabel(preview: RewardDecisionPreview, armed: boolean) {
-  if (armed) return 'CONFIRM PICK  /  BACK CANCELS';
+function rewardDecisionLabel(preview: RewardDecisionPreview) {
   if (preview.kind === 'add') return `ADD  /  DECK ${preview.deckBefore} > ${preview.deckBefore + 1}`;
   const beforeParts = preview.before.split(/[.;]\s+/);
   const afterParts = preview.after.split(/[.;]\s+/);
@@ -346,7 +345,14 @@ function rewardDecisionLabel(preview: RewardDecisionPreview, armed: boolean) {
   return `PREEN  /  ${change}`;
 }
 
-function renderCard(context: RewardCeremonyRenderContext, card: RewardCardView, x: number, y: number) {
+function renderCard(
+  context: RewardCeremonyRenderContext,
+  card: RewardCardView,
+  x: number,
+  y: number,
+  hoverEnabled: boolean,
+  inspectEnabled: boolean,
+) {
   const { scene, target, fontFamily, boldFontStyle, goldColor, softColor } = context;
   const cardWidth = 228;
   const cardHeight = 312;
@@ -356,11 +362,16 @@ function renderCard(context: RewardCeremonyRenderContext, card: RewardCardView, 
   const bottom = y + cardHeight / 2;
   let hoverRing: Phaser.GameObjects.Image | undefined;
   const hit = scene.add.rectangle(x, y, cardWidth, cardHeight, 0x07101c, 0.98)
-    .setStrokeStyle(card.focused ? 5 : 3, card.focused ? 0x8df4ff : card.accent, 1)
+    .setStrokeStyle(2, card.accent, 0.9)
     .setInteractive({ useHandCursor: true })
     .setName('reward-choice-card-hit');
   hit.on('pointerdown', () => context.onCardSelect(card.id));
   hit.on('pointerover', () => {
+    if (!hoverEnabled) {
+      hoverRing?.setVisible(false).setAlpha(0);
+      context.onCardOut();
+      return;
+    }
     context.onCardHover(card.id, x, y);
     hoverRing?.setAlpha(card.upgraded ? 0.9 : 0.82)
       .setVisible(true);
@@ -378,15 +389,15 @@ function renderCard(context: RewardCeremonyRenderContext, card: RewardCardView, 
   const frame = addChoiceFrame(context, x, y, cardWidth + 32, cardHeight + 44, card.upgraded ? 0.54 : 0.34);
   if (frame) target.add(frame);
   if (card.focused) {
-    target.add(scene.add.rectangle(x, y, cardWidth + 30, cardHeight + 42, 0x000000, 0)
-      .setStrokeStyle(4, 0x8df4ff, 1)
+    target.add(scene.add.rectangle(x, y, cardWidth + 30, cardHeight + 32, 0x000000, 0)
+      .setStrokeStyle(3, card.armed ? 0xd8a840 : 0x8df4ff, 1)
       .setName('reward-input-focus-ring'));
   }
   if (card.focused || card.armed) {
     target.add(scene.add.rectangle(x, top - 8, 204, 22, 0x06111a, 0.98)
       .setStrokeStyle(1, card.accent, 0.86)
       .setName('reward-decision-delta'));
-    target.add(scene.add.text(x, top - 8, rewardDecisionLabel(card.decisionPreview, card.armed), {
+    target.add(scene.add.text(x, top - 8, rewardDecisionLabel(card.decisionPreview), {
       fontFamily,
       fontSize: '9px',
       fontStyle: boldFontStyle,
@@ -503,27 +514,37 @@ function renderCard(context: RewardCeremonyRenderContext, card: RewardCardView, 
     }).setName(card.footerUsesObservations ? 'reward-build-observation' : 'reward-card-stat'));
   });
   const inspectY = bottom + 28;
-  const inspect = scene.add.rectangle(x, inspectY, 92, MIN_SUPPORTED_TOUCH_TARGET, 0x102534, card.focused ? 0.99 : 0.72)
-    .setStrokeStyle(2, card.focused ? 0x8df4ff : card.accent, 0.94)
-    .setInteractive({ useHandCursor: true })
+  const inspect = scene.add.rectangle(
+    x,
+    inspectY,
+    92,
+    MIN_SUPPORTED_TOUCH_TARGET,
+    inspectEnabled ? 0x102534 : 0x0a141c,
+    inspectEnabled ? 0.88 : 0.48,
+  )
+    .setStrokeStyle(2, inspectEnabled ? card.accent : 0x49606d, inspectEnabled ? 0.9 : 0.42)
+    .setData('disabled', !inspectEnabled)
     .setName('reward-card-inspect-hit');
-  inspect.on('pointerdown', (
-    _pointer: Phaser.Input.Pointer,
-    _localX: number,
-    _localY: number,
-    event?: Phaser.Types.Input.EventData,
-  ) => {
-    event?.stopPropagation();
-    context.onCardInspect(card.id);
-  });
-  inspect.on('pointerover', () => inspect.setFillStyle(0x18384b, 1));
-  inspect.on('pointerout', () => inspect.setFillStyle(0x102534, 0.99));
+  if (inspectEnabled) {
+    inspect.setInteractive({ useHandCursor: true });
+    inspect.on('pointerdown', (
+      _pointer: Phaser.Input.Pointer,
+      _localX: number,
+      _localY: number,
+      event?: Phaser.Types.Input.EventData,
+    ) => {
+      event?.stopPropagation();
+      context.onCardInspect(card.id);
+    });
+    inspect.on('pointerover', () => inspect.setFillStyle(0x18384b, 1));
+    inspect.on('pointerout', () => inspect.setFillStyle(0x102534, 0.88));
+  }
   target.add(inspect);
-  target.add(scene.add.text(x, inspectY, card.focused ? 'INSPECT' : 'DETAIL', {
+  target.add(scene.add.text(x, inspectY, 'INSPECT', {
     fontFamily,
     fontSize: '11px',
     fontStyle: boldFontStyle,
-    color: '#dffbff',
+    color: inspectEnabled ? '#dffbff' : '#667b89',
     align: 'center',
     fixedWidth: 84,
   }).setOrigin(0.5).setName('reward-card-inspect-label'));
@@ -555,8 +576,9 @@ function renderWaymark(context: RewardCeremonyRenderContext, waymark: RewardWaym
   const width = 248;
   const height = 306;
   const hit = scene.add.rectangle(x, y, width, height, 0x07101c, 0.98)
-    .setStrokeStyle(waymark.focused ? 5 : 3, waymark.focused ? 0x8df4ff : waymark.accent, 0.95)
-    .setInteractive({ useHandCursor: true });
+    .setStrokeStyle(2, waymark.accent, 0.86)
+    .setInteractive({ useHandCursor: true })
+    .setName('reward-waymark-hit');
   hit.on('pointerdown', () => context.onWaymarkSelect(waymark.id));
   const spotlight = addSpotlight(context, x, y + 118, 236, 136, 0.018);
   if (spotlight) target.add(spotlight);
@@ -568,7 +590,7 @@ function renderWaymark(context: RewardCeremonyRenderContext, waymark: RewardWaym
   if (frame) target.add(frame);
   if (waymark.focused) {
     target.add(scene.add.rectangle(x, y, width + 34, height + 46, 0x000000, 0)
-      .setStrokeStyle(4, 0x8df4ff, 1)
+      .setStrokeStyle(3, waymark.armed ? 0xd8a840 : 0x8df4ff, 1)
       .setName('reward-input-focus-ring'));
   }
   if (waymark.artKey && scene.textures.exists(waymark.artKey)) {
@@ -585,7 +607,7 @@ function renderWaymark(context: RewardCeremonyRenderContext, waymark: RewardWaym
   target.add(scene.add.text(x, y + 24, `${waymark.familyLabel} / ${waymark.source}`, {
     fontFamily, fontSize: '12px', fontStyle: boldFontStyle, color: cyanColor, align: 'center'
   }).setOrigin(0.5));
-  target.add(scene.add.text(x, y + 48, waymark.armed ? 'CONFIRM PICK / BACK CANCELS' : waymark.rarity.toUpperCase(), {
+  target.add(scene.add.text(x, y + 48, waymark.rarity.toUpperCase(), {
     fontFamily, fontSize: '11px', fontStyle: boldFontStyle, color: waymark.rarity === 'boss' ? '#ffb1a4' : '#ffcf6b', align: 'center'
   }).setOrigin(0.5));
   renderTagRow(context, x - 102, y + 76, waymark.tags, waymark.accent, 204);
@@ -618,29 +640,28 @@ function renderSkip(context: RewardCeremonyRenderContext) {
     .setName('reward-skip-hit');
   hit.on('pointerdown', context.onSkip);
   target.add(hit);
+  if (context.skip.armed) target.add(scene.add.rectangle(width / 2, 652, 344, 68, 0x000000, 0)
+    .setStrokeStyle(3, 0xd8a840, 1)
+    .setName('reward-skip-focus-ring'));
   const icon = context.addIcon('scrap-gear', width / 2 - 132, 652, 30);
   if (icon) target.add(icon.setAlpha(0.95));
   target.add(scene.add.text(
     width / 2 + 10,
     646,
-    context.skip.armed
-      ? `Confirm Skip  +${context.skip.scrap} Scrap`
-      : `Skip  +${context.skip.scrap} Scrap`,
+    `Skip  +${context.skip.scrap} Scrap`,
     {
       fontFamily, fontSize: '15px', fontStyle: boldFontStyle, color: goldColor
     },
-  ).setOrigin(0.5));
+  ).setOrigin(0.5).setName('reward-skip-title'));
   target.add(scene.add.text(
     width / 2 + 10,
     664,
-    context.skip.armed
-      ? 'SKIP / X / TAP 2X · BACK CANCELS'
-      : `Deck stays ${context.skip.deckSize}  /  After: ${context.skip.scrapAfter} Scrap`,
+    `Deck stays ${context.skip.deckSize}  /  After: ${context.skip.scrapAfter} Scrap`,
     {
       fontFamily,
       fontSize: '10px',
     },
-  ).setOrigin(0.5));
+  ).setOrigin(0.5).setName('reward-skip-summary'));
 }
 
 /** Render card, Preen, or Waymark reward ceremony presentation from explicit view data. */
@@ -654,12 +675,17 @@ export function renderRewardCeremony(context: RewardCeremonyRenderContext) {
     });
   } else {
     const cards = context.cards ?? [];
-    const hasPrimaryCard = cards.some((card) => card.focused || card.armed);
+    const skipCommitmentActive = context.kind === 'card' && context.skip?.armed === true;
+    const commitmentActive = cards.some((card) => card.armed) || skipCommitmentActive;
     cards.forEach((card, index) => {
-      const visibleCard = !hasPrimaryCard && index === 0
-        ? { ...card, focused: true }
-        : card;
-      glowBursts += renderCard(context, visibleCard, 336 + index * 304, 402);
+      glowBursts += renderCard(
+        context,
+        card,
+        336 + index * 304,
+        402,
+        !commitmentActive,
+        !skipCommitmentActive,
+      );
     });
     if (context.kind === 'card') renderSkip(context);
   }

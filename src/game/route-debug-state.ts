@@ -573,6 +573,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
               })),
               refreshCost: scene.marketRefreshCost(),
               refreshCount: scene.marketRefreshCount,
+              unavailableOffers: scene.cardHoverDetailModule?.marketUnavailableOffers(scene) ?? [],
               decisionPreview: [...scene.marketDecisionPreview],
               message: scene.marketMessage,
               input: (() => {
@@ -581,14 +582,16 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
                 ));
                 const focused = targets.find((child: any) => (
                   child.getData('marketFocusId') === scene.marketFocusId
-                )) ?? targets[0];
+                ));
                 return {
                   focusId: focused?.getData('marketFocusId') ?? '',
                   label: focused?.getData('label') ?? '',
-                  index: Math.max(0, targets.indexOf(focused)),
+                  index: focused ? targets.indexOf(focused) : -1,
                   count: targets.length,
-                  armed: scene.marketFocusArmedId === focused?.getData('marketFocusId'),
-                  focusVisible: scene.children.list.some((child: any) => child.name === 'market-input-focus-ring'),
+                  armed: !!focused && scene.marketFocusArmedId === focused.getData('marketFocusId'),
+                  focusVisible: scene.children.list.some((child: any) => (
+                    child.name === 'market-input-focus-ring' && child.visible
+                  )),
                   routeCommitBlocked: true,
                   controls: {
                     choose: 'Previous / Next / D-pad / pointer',
@@ -660,6 +663,8 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
                   ? scene.routeCardRewardChoices.find((card: any) => card.id === scene.routeRewardInspectionCardId)?.cost
                   : undefined,
                 returnIndex: scene.routeRewardChoiceIndex,
+                returnArmed: Boolean(scene.routeRewardArmedCardId),
+                returnChoiceId: scene.routeRewardArmedCardId,
                 selectActionPreserved: true,
               },
               previewItem: scene.pendingRouteReward.previewItem ? { ...scene.pendingRouteReward.previewItem } : undefined,

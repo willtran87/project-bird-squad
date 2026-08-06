@@ -298,17 +298,25 @@ export function screenReaderSummary(payload: unknown): string {
       const index = number(input?.index) ?? 0;
       const count = number(input?.count) ?? 0;
       const focus = text(input?.label) || 'no available offer';
+      const unavailable = records(market.unavailableOffers)
+        .map((offer) => `${text(offer.label) || 'Offer'}, ${spaced(text(offer.reason))}`)
+        .join('; ');
       const confirmation = input?.armed === true
         ? ' Purchase confirmation is armed. Confirm, controller A, or activate the same offer again to buy; moving focus or pressing Back cancels.'
         : ' Choose an offer before buying; a first pointer activation only arms the purchase.';
-      return `Market, ${spaced(text(market.category))}. ${number(market.scrap) ?? 0} Scrap. Selected ${focus}, offer ${Math.min(index + 1, count)} of ${count}.${confirmation} Use Previous and Next or the D-pad to choose, Confirm or controller A to buy, keys 1 through 4 or controller shoulders to change sections, and Back or controller B to leave. Route commitment is blocked while the Market is open.`;
+      return `Market, ${spaced(text(market.category))}. ${number(market.scrap) ?? 0} Scrap. Selected ${focus}, offer ${Math.min(index + 1, count)} of ${count}.${unavailable ? ` Unavailable in this section: ${unavailable}.` : ''}${confirmation} Use Previous and Next or the D-pad to choose, Confirm or controller A to buy, keys 1 through 4 or controller shoulders to change sections, and Back or controller B to leave. Route commitment is blocked while the Market is open.`;
     }
     const routeReward = isRecord(payload.routeReward) ? payload.routeReward : undefined;
     if (routeReward) {
       const routeInspection = isRecord(routeReward.inspection) ? routeReward.inspection : undefined;
       const routeFocus = isRecord(routeReward.inputFocus) ? routeReward.inputFocus : undefined;
       if (routeInspection?.open === true) {
-        return `Full card inspection. ${text(routeInspection.cardName) || 'Reward card'}${number(routeInspection.cost) === undefined ? '' : `, ${number(routeInspection.cost)} Wingbeats`}. No reward has been claimed. Use Back, controller B, or tap outside to return to choice ${number(routeInspection.returnIndex) === undefined ? '' : (number(routeInspection.returnIndex) ?? 0) + 1}.`;
+        const returnIndex = number(routeInspection.returnIndex);
+        const returnChoice = text(routeFocus?.cardName) || 'the selected route reward';
+        const returnTarget = routeInspection.returnArmed === true
+          ? `${returnChoice} remains selected. Use Back, controller B, Confirm, controller A, or tap outside to restore its confirmation.`
+          : `Use Back, controller B, Confirm, controller A, or tap outside to return to choice ${returnIndex === undefined ? '' : returnIndex + 1}.`;
+        return `Full card inspection. ${text(routeInspection.cardName) || 'Reward card'}${number(routeInspection.cost) === undefined ? '' : `, ${number(routeInspection.cost)} Wingbeats`}. No reward has been claimed. ${returnTarget}`;
       }
       const cardChoices = Array.isArray(routeReward.cardChoices) ? routeReward.cardChoices.length : 0;
       if (cardChoices > 0) {
@@ -347,7 +355,11 @@ export function screenReaderSummary(payload: unknown): string {
     if (rewardInspection?.open === true) {
       const cost = number(rewardInspection.cost);
       const rules = text(rewardInspection.rules);
-      return `Full card inspection. ${text(rewardInspection.cardName) || 'Reward card'}${cost === undefined ? '' : `, ${cost} Wingbeats`}.${rules ? ` ${rules}` : ''} No reward has been claimed. Use Back, controller B, Confirm, controller A, or tap outside to return to the same choice.`;
+      const returnChoice = text(rewardInspection.returnChoiceName) || 'the selected reward';
+      const returnTarget = rewardInspection.returnArmed === true
+        ? `${returnChoice} remains selected. Use Back, controller B, Confirm, controller A, or tap outside to restore its confirmation.`
+        : 'Use Back, controller B, Confirm, controller A, or tap outside to return to the same choice.';
+      return `Full card inspection. ${text(rewardInspection.cardName) || 'Reward card'}${cost === undefined ? '' : `, ${cost} Wingbeats`}.${rules ? ` ${rules}` : ''} No reward has been claimed. ${returnTarget}`;
     }
     const inspect = isRecord(payload.cardInspectFocus) ? payload.cardInspectFocus : undefined;
     if (inspect?.active === true) {
@@ -413,6 +425,10 @@ export function screenReaderSummary(payload: unknown): string {
       return `Enemy turn, ${enemyMove}.${phaseNote}${latestLog ? ` ${latestLog}` : ''} Cohesion ${hp} of ${maxHp}.`;
     }
     if (mode === 'cardReward' || mode === 'upgradeReward' || mode === 'waymarkReward') {
+      const rewardRenderer = isRecord(payload.battleRewardRenderer) ? payload.battleRewardRenderer : undefined;
+      if (rewardRenderer && rewardRenderer.ready !== true) {
+        return 'Reward choices are loading. Input is locked until every option is visible.';
+      }
       const source = mode === 'cardReward'
         ? records(payload.rewardChoices)
         : mode === 'upgradeReward'
@@ -450,7 +466,7 @@ export function screenReaderSummary(payload: unknown): string {
           ? ` Skip confirmation is armed for ${number(rewardSkip.scrap) ?? 0} Scrap. Activate ${text(isRecord(rewardSkip.input) ? rewardSkip.input.keyboard : undefined) || 'Skip Reward'}, controller X, or Skip again to commit; Back or controller B cancels without skipping.`
           : ` Skip is available for ${number(rewardSkip.scrap) ?? 0} Scrap and requires two activations; the first only arms confirmation.`
         : '';
-      return `Reward choice.${focused}${collectionNote}${choices.length ? ` Options: ${choices.join(', ')}.` : ''}${claimInstruction} Use Roost or controller Y to inspect without claiming.${skipInstruction}`;
+      return `Reward choices ready.${focused}${collectionNote}${choices.length ? ` Options: ${choices.join(', ')}.` : ''}${claimInstruction} Use Roost or controller Y to inspect without claiming.${skipInstruction}`;
     }
     if (selectedCard) {
       const name = text(selectedCard.name) || 'card';
