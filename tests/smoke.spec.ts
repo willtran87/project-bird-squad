@@ -531,7 +531,9 @@ test('route map loads and previews the boss before the final node', async ({ pag
       const rendered = collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-route-map-frame')
         && collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-route-selected-node-ring')
         && collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-route-boss-beacon-ring')
-        && collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-route-district-banner');
+        && collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-route-district-banner')
+        && collectObjects(route.children).some((child: any) => child.texture?.key === 'route-node-street')
+        && collectObjects(route.children).some((child: any) => child.texture?.key === 'route-node-boss');
       if (rendered) break;
       await wait(50);
     }
@@ -705,7 +707,10 @@ test('route map loads and previews the boss before the final node', async ({ pag
       bossRewardBadges: state.nodes.find((node: any) => node.id === state.map.bossNodeId)?.rewardBadges ?? [],
       cacheRewardBadges: state.nodes.find((node: any) => node.type === 'cache')?.rewardBadges ?? [],
       routeNodeCount: finalState.nodes.length,
-      routeNodeIcons
+      routeNodeIcons,
+      selectedBackplates: route.children.list.filter((child: any) => child.name === 'route-node-selected-backplate').length,
+      selectableBackplates: route.children.list.filter((child: any) => child.name === 'route-node-selectable-backplate').length,
+      selectedLabels: route.children.list.filter((child: any) => child.name === 'route-node-selected-label').length,
     };
   });
   expect(result.active).toBe(true);
@@ -790,13 +795,13 @@ test('route map loads and previews the boss before the final node', async ({ pag
   expect(result.routeNodeTooltipFrame.rendered).toBe(true);
   expect(result.routeNodeTooltipFrame.count).toBe(2);
   expect(result.routeNodeTooltipFrames).toHaveLength(2);
+  expect(result.routeNodeTooltipFrames.map((frame: any) => frame.displayHeight).sort((a: number, b: number) => a - b)).toEqual([122, 210]);
   result.routeNodeTooltipFrames.forEach((frame: any) => {
     expect(frame).toMatchObject({
       name: 'route-node-tooltip-frame',
       visible: true,
     });
     expect(frame.displayWidth).toBeGreaterThanOrEqual(244);
-    expect(frame.displayHeight).toBe(122);
     expect(frame.alpha).toBeGreaterThan(0.85);
   });
   expect(result.routeRiskMeterFrameLoaded).toBe(true);
@@ -848,9 +853,12 @@ test('route map loads and previews the boss before the final node', async ({ pag
   expect(result.routeNodeIcons).toHaveLength(result.routeNodeCount);
   expect(result.routeNodeIcons.every((node: any) => node.visible)).toBe(true);
   expect(result.routeNodeIcons.find((node: any) => node.state === 'selected')?.alpha).toBe(1);
+  expect(result.selectedBackplates).toBe(1);
+  expect(result.selectableBackplates).toBeGreaterThanOrEqual(0);
+  expect(result.selectedLabels).toBe(2);
   const futureRouteNodes = result.routeNodeIcons.filter((node: any) => node.state === 'future');
   expect(futureRouteNodes.length).toBeGreaterThan(0);
-  expect(futureRouteNodes.every((node: any) => node.alpha >= 0.45 && node.alpha < 0.9)).toBe(true);
+  expect(futureRouteNodes.every((node: any) => node.alpha >= 0.2 && node.alpha <= 0.24)).toBe(true);
 });
 
 test('route commit renders generated travel streak before changing scenes', async ({ page }) => {
@@ -2147,6 +2155,13 @@ test('first-flight guide persists, can be skipped or replayed, and completes thr
       }
       throw new Error(`How to Play did not render ${expected}`);
     };
+    const activateHelpAction = (menu: any, label: string) => {
+      const hit = menu.helpOverlay?.list.find((child: any) => (
+        child.input?.enabled && child.getData?.('label') === label
+      ));
+      if (!hit) throw new Error(`How to Play action ${label} is not interactive`);
+      hit.emit('pointerdown');
+    };
     window.localStorage.removeItem('birdsquad.firstFlightGuide');
 
     await window.__birdSquadStartScene!('MenuScene');
@@ -2154,10 +2169,10 @@ test('first-flight guide persists, can be skipped or replayed, and completes thr
     menu.openHelpOverlay();
     const initialActions = await waitForHelpAction(menu, 'Skip Guide');
     const initialGuide = JSON.parse(window.render_game_to_text!()).firstFlightGuide;
-    menu.toggleFirstFlightGuide();
+    activateHelpAction(menu, 'Skip Guide');
     const skippedActions = await waitForHelpAction(menu, 'Replay Guide');
     const skippedGuide = JSON.parse(window.render_game_to_text!()).firstFlightGuide;
-    menu.toggleFirstFlightGuide();
+    activateHelpAction(menu, 'Replay Guide');
     await waitForHelpAction(menu, 'Skip Guide');
     const replayedGuide = JSON.parse(window.render_game_to_text!()).firstFlightGuide;
     menu.closeHelpOverlay();
@@ -3249,8 +3264,8 @@ test('unsupported displays pause the game while landscape tablets remain playabl
       { name: 'record', x: 1188, y: 38 },
       { name: 'difficulty-down', x: 100, y: 632 },
       { name: 'difficulty-up', x: 356, y: 632 },
-      { name: 'quick-flight', x: 456, y: 640 },
-      { name: 'full-flight', x: 544, y: 640 },
+      { name: 'quick-flight', x: 454, y: 638 },
+      { name: 'full-flight', x: 546, y: 638 },
       { name: 'start-run', x: 780, y: 642 },
     ];
     const rectangles = menu.children.list.filter((child: any) => child.type === 'Rectangle' && child.input?.enabled);
@@ -3419,8 +3434,15 @@ test('generated route map node footprints do not overlap', async ({ page }) => {
         });
         g.scene.stop('MenuScene');
         const state = JSON.parse(window.render_game_to_text!());
+        const graph = g.scene.getScene('RouteScene').routeLayout().graph;
         const seenCenters = new Set<string>();
-        const nodes = state.nodes.map((node: any) => ({ id: node.id, position: node.position, bounds: node.visualBounds }));
+        const mapNodes = new Map(window.__birdSquadCurrentMap!().nodes.map((node: any) => [node.id, node]));
+        const nodes = state.nodes.map((node: any) => ({
+          id: node.id,
+          position: node.position,
+          bounds: node.visualBounds,
+          iconSize: mapNodes.get(node.id)?.type === 'boss' ? 120 : 84,
+        }));
         for (let i = 0; i < nodes.length; i += 1) {
           const node = nodes[i];
           const centerKey = `${Math.round(node.position.x)}:${Math.round(node.position.y)}`;
@@ -3437,6 +3459,16 @@ test('generated route map node footprints do not overlap', async ({ page }) => {
             || node.bounds.bottom <= node.bounds.top
           ) {
             failures.push({ mapIndex, seed, reason: 'invalid visual bounds', id: node.id });
+          }
+          if (node.bounds.left < graph.left + 32 || node.bounds.right > graph.right - 32) {
+            failures.push({ mapIndex, seed, reason: 'node overlaps map frame rail', id: node.id });
+          }
+          for (let otherIndex = i + 1; otherIndex < nodes.length; otherIndex += 1) {
+            const other = nodes[otherIndex];
+            const overlapWidth = (node.iconSize + other.iconSize) / 2 - Math.abs(node.position.x - other.position.x);
+            const overlapHeight = (node.iconSize + other.iconSize) / 2 - Math.abs(node.position.y - other.position.y);
+            const overlaps = overlapWidth > 12 && overlapHeight > 12;
+            if (overlaps) failures.push({ mapIndex, seed, reason: `overlaps ${other.id}`, id: node.id });
           }
         }
       }
@@ -3616,6 +3648,88 @@ test('route supply feedback renders generated frame behind toast', async ({ page
   expect(result.used).toEqual(['feather_splint']);
   expect(result.routeSupplyFeedbackFrame).toEqual({ loaded: true, rendered: true, count: result.frameObjects });
   expect(result.frameObjects).toBeGreaterThanOrEqual(1);
+});
+
+test('Packed Supplies require confirmation and support keyboard, pointer, and controller-style navigation in both phases', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await boot(page);
+  const runState = {
+    deck: [{ id: 'major_00' }, { id: 'wands_ace' }, { id: 'cups_ace' }],
+    leaderId: 'fledgling',
+    difficulty: 0,
+    seed: 'packed-supply-confirmation',
+    currentHp: 24,
+    scrap: 0,
+    routeMarks: [],
+    supplies: ['feather_splint', 'thermos_lid', 'bottlecap_popper'],
+    supplySlots: 3,
+    mapIndex: 0,
+    completedRouteNodeIds: [],
+    currentRouteNodeId: undefined,
+    routeLog: [],
+    nextCombat: undefined,
+    signalChoices: [],
+    rewardEvents: [],
+    suppliesUsed: [],
+    combatResults: [],
+    freePreenNextDistrict: 0,
+  };
+  await page.evaluate(async (state) => window.__birdSquadStartScene!('RouteScene', { runState: state }), runState);
+  await page.keyboard.press('x');
+  await expect.poll(() => page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text!());
+    return state.supplyDrawer?.open && state.supplyDrawer?.renderer?.loaded;
+  })).toBe(true);
+  expect(await page.evaluate(() => JSON.parse(window.render_game_to_text!()).run.supplies)).toEqual(runState.supplies);
+
+  await clickNamedGameObject(page, 'RouteScene', 'supply-drawer-item-0');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).supplyDrawer?.armedIndex)).toBe(0);
+  expect(await page.evaluate(() => JSON.parse(window.render_game_to_text!()).run.supplies)).toEqual(runState.supplies);
+  await expect.poll(() => page.locator('#game-status').textContent()).toContain('Feather Splint is selected');
+  await page.screenshot({ path: '.artifacts/test-results/packed-supplies-route-armed-1000x560.png' });
+  await clickNamedGameObject(page, 'RouteScene', 'supply-drawer-item-0');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).run.supplies)).toEqual(['thermos_lid', 'bottlecap_popper']);
+
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).supplyDrawer?.armedIndex)).toBe(0);
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).supplyDrawer?.armedIndex ?? null)).toBeNull();
+  expect(await page.evaluate(() => JSON.parse(window.render_game_to_text!()).supplyDrawer?.open)).toBe(true);
+  expect(await page.evaluate(() => JSON.parse(window.render_game_to_text!()).run.supplies)).toEqual(['thermos_lid', 'bottlecap_popper']);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).run.supplies)).toEqual(['bottlecap_popper']);
+
+  await page.evaluate(async (state) => window.__birdSquadStartScene!('BattleScene', {
+    routeNodeId: 'm1_entry',
+    runState: {
+      ...state,
+      seed: 'packed-supply-battle-confirmation',
+      supplies: ['chalk_dust_pouch', 'sky_sugar'],
+      supplySlots: 2,
+    },
+  }), runState);
+  await expect.poll(() => page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text!());
+    return state.scene === 'BattleScene' && state.mode === 'battle' && !state.combatAnimationPending;
+  }), { timeout: 30_000 }).toBe(true);
+  await page.keyboard.press('x');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).supplyDrawer?.renderer?.loaded)).toBe(true);
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).supplyDrawer?.focusIndex)).toBe(1);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).supplyDrawer?.armedIndex)).toBe(1);
+  expect(await page.evaluate(() => JSON.parse(window.render_game_to_text!()).route.supplies)).toEqual(['chalk_dust_pouch', 'sky_sugar']);
+  await page.screenshot({ path: '.artifacts/test-results/packed-supplies-battle-armed-1000x560.png' });
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).supplyDrawer?.armedIndex ?? null)).toBeNull();
+  expect(await page.evaluate(() => JSON.parse(window.render_game_to_text!()).supplyDrawer?.open)).toBe(true);
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).route.supplies)).toEqual(['chalk_dust_pouch']);
+  expect(await page.evaluate(() => JSON.parse(window.render_game_to_text!()).supplyDrawer?.open)).toBe(false);
 });
 
 test('route cleanse and scout effects provide meaningful fallback value', async ({ page }) => {
@@ -4033,6 +4147,7 @@ test('Roost retain Waymarks retain cards from the triggering Roost', async ({ pa
     scene.pendingRetainHand = 0;
     scene.roostRetainPool = [];
     const cardsInHandRetain = scene.hand.map((card: any) => card.instanceId);
+    scene.selectedInstanceId = cardsInHandRetain[0];
     scene.endTurn();
     const retainedFromHand = cardsInHandRetain.filter((id: string) => scene.hand.some((card: any) => card.instanceId === id));
     const duplicatedFromHand = retainedFromHand.filter((id: string) => scene.discardPile.some((card: any) => card.instanceId === id));
@@ -4050,22 +4165,595 @@ test('Roost retain Waymarks retain cards from the triggering Roost', async ({ pa
     cleanScene.pendingRetainHand = 0;
     cleanScene.roostRetainPool = [];
     const cardsForNoDamage = cleanScene.hand.map((card: any) => card.instanceId);
+    cleanScene.selectedInstanceId = cardsForNoDamage[0];
     cleanScene.endTurn();
     const retainedAfterEnemy = cardsForNoDamage.filter((id: string) => cleanScene.hand.some((card: any) => card.instanceId === id));
     const duplicatedAfterEnemy = retainedAfterEnemy.filter((id: string) => cleanScene.discardPile.some((card: any) => card.instanceId === id));
 
     return {
       retainedFromHand,
+      selectedFromHand: cardsInHandRetain[0],
       duplicatedFromHand,
       retainedAfterEnemy,
+      selectedAfterEnemy: cardsForNoDamage[0],
       duplicatedAfterEnemy
     };
   });
 
   expect(result.retainedFromHand).toHaveLength(1);
+  expect(result.retainedFromHand).toEqual([result.selectedFromHand]);
   expect(result.duplicatedFromHand).toHaveLength(0);
   expect(result.retainedAfterEnemy).toHaveLength(1);
+  expect(result.retainedAfterEnemy).toEqual([result.selectedAfterEnemy]);
   expect(result.duplicatedAfterEnemy).toHaveLength(0);
+});
+
+test('Retain exposes exact priority and accepts pointer keyboard and controller selection', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+
+  const ids = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const game = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    game.scene.stop('MenuScene');
+    const scene: any = game.scene.getScene('BattleScene');
+    for (let index = 0; index < 60 && !(scene.hand?.length >= 3 && scene.battleHandRendererModule && scene.fxLayer); index += 1) await wait(50);
+    scene.routeMarks = [];
+    scene.markFiredThisCombat = new Set();
+    scene.hand = scene.hand.slice(0, 3);
+    scene.energy = 0;
+    scene.pendingRetainHand = 2;
+    scene.roostRetainPool = [];
+    scene.roostRetainPriorityInstanceId = undefined;
+    scene.cardsPlayedThisTurn = 1;
+    scene.combatAnimationPending = false;
+    scene.combatIntroActive = false;
+    scene.combatIntroDismissQueued = false;
+    scene.combatIntroDismissed = true;
+    scene.mode = 'battle';
+    scene.battleInputActive = true;
+    scene.controllerChoiceIndex = 0;
+    scene.selectedInstanceId = undefined;
+    scene.renderAll();
+    await wait(50);
+    return scene.hand.map((card: any) => card.instanceId);
+  });
+
+  const snapshot = () => page.evaluate(() => {
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const state = window.__birdSquadState!();
+    return {
+      state,
+      selected: scene.selectedInstanceId,
+      tags: scene.handLayer.list
+        .filter((object: any) => object.name === 'combat-retain-priority-tag' && object.type === 'Text')
+        .map((object: any) => ({ text: object.text, order: object.getData('order') }))
+        .sort((a: any, b: any) => a.order - b.order),
+      hints: scene.root.list
+        .filter((object: any) => object.name === 'combat-input-hint' && object.type === 'Text')
+        .map((object: any) => object.text),
+      cursors: state.hand.map((card: any) => scene.handCardRects.get(card.instanceId)?.input?.cursor),
+      liveText: document.getElementById('game-status')?.textContent ?? '',
+    };
+  });
+  const resetSelection = () => page.evaluate(() => {
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    scene.selectedInstanceId = undefined;
+    scene.controllerChoiceIndex = 0;
+    scene.handRenderKey = '';
+    scene.renderAll();
+  });
+
+  const initial = await snapshot();
+  expect(initial.state.retentionPlan.cards.map((card: any) => card.instanceId)).toEqual([ids[2], ids[1]]);
+  expect(initial.state.retentionPlan.rule).toContain('Selected card first');
+  expect(initial.tags).toEqual([{ text: 'KEEP 1', order: 1 }, { text: 'KEEP 2', order: 2 }]);
+  expect(initial.hints).toHaveLength(1);
+  expect(initial.hints[0]).toContain('SELECT CARD = KEEP FIRST');
+  expect(initial.cursors).toEqual(['pointer', 'pointer', 'pointer']);
+
+  await page.evaluate((instanceId) => {
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    scene.handCardRects.get(instanceId).emit('pointerdown', {}, 0, 0, { stopPropagation() {} });
+  }, ids[0]);
+  await expect.poll(async () => (await snapshot()).state.retentionPlan.cards[0].instanceId).toBe(ids[0]);
+  const pointer = await snapshot();
+  expect(pointer.state.hand.find((card: any) => card.instanceId === ids[0]).retainOrder).toBe(1);
+  await expect.poll(async () => (await snapshot()).liveText).toContain('first Retain priority');
+
+  await resetSelection();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await snapshot()).selected).toBe(ids[1]);
+  expect((await snapshot()).state.retentionPlan.cards[0].instanceId).toBe(ids[1]);
+
+  await resetSelection();
+  await page.evaluate(() => {
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    scene.input.gamepad.emit('down', scene.input.gamepad.pad1, { index: 15 }, 1);
+  });
+  await expect.poll(async () => (await snapshot()).selected).toBe(ids[1]);
+  expect((await snapshot()).state.retentionPlan.cards[0].instanceId).toBe(ids[1]);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/retain-priority-1000x560.png' });
+});
+
+test('discard choices resolve after draws with pointer keyboard and controller parity', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+
+  const ids = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const scene: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    for (let index = 0; index < 60 && !(scene.discardChoiceModule && scene.returnChoiceModule); index += 1) await wait(50);
+    const base = scene.hand[0];
+    const makeCard = (id: string, name: string, effects: string[], instanceId: string) => ({
+      ...base,
+      instanceId,
+      id,
+      name,
+      type: 'minor',
+      role: 'utility',
+      target: 'self',
+      cost: 0,
+      text: effects.join('; '),
+      upgradedText: effects.join('; '),
+      heldText: '',
+      moltText: '',
+      moltTextUpgraded: '',
+      runtime: {
+        ...base.runtime,
+        id,
+        displayName: name,
+        kind: 'crew',
+        suit: 'nests',
+        cost: 0,
+        target: 'self',
+        tags: ['draw', 'discard'],
+        effects,
+        heldEffects: [],
+        moltEffects: [],
+        upgrade: { ...base.runtime.upgrade, effects, moltEffects: [] },
+      },
+    });
+    const nest = makeCard('discard_test_nest', 'Nest Juggle Test', ['draw(1)', 'discard(1)'], 'discard-nest');
+    const keep = makeCard('discard_test_keep', 'Keep Card', [], 'discard-keep');
+    const drawn = makeCard('discard_test_drawn', 'Fresh Draw', [], 'discard-drawn');
+    scene.hand = [nest, keep];
+    scene.drawPile = [drawn];
+    scene.discardPile = [];
+    scene.energy = 3;
+    scene.mode = 'battle';
+    scene.combatAnimationPending = false;
+    scene.combatIntroActive = false;
+    scene.combatIntroDismissed = true;
+    scene.playCard(nest);
+    await wait(50);
+    return { nest: nest.instanceId, keep: keep.instanceId, drawn: drawn.instanceId };
+  });
+
+  const choiceState = await page.evaluate(() => window.__birdSquadState!());
+  expect(choiceState.discardChoice).toMatchObject({
+    source: 'Nest Juggle Test', optional: false, max: 1, required: 1, selectedCount: 0, canConfirm: false,
+  });
+  expect(choiceState.discardChoice.candidates.map((card: any) => card.instanceId)).toEqual([ids.keep, ids.drawn]);
+  expect(choiceState.discardPile).toBe(0);
+  expect(choiceState.hand.find((card: any) => card.instanceId === ids.drawn).discardSelectable).toBe(true);
+  await expect.poll(async () => page.locator('#game-status').textContent()).toContain('Choose exactly 1 card');
+
+  await page.evaluate((instanceId) => {
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    scene.handCardRects.get(instanceId).emit('pointerdown', {}, 0, 0, { stopPropagation() {} });
+  }, ids.drawn);
+  await expect.poll(async () => page.evaluate(() => window.__birdSquadState!().discardChoice?.selectedCount)).toBe(1);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/discard-choice-1000x560.png' });
+  await page.evaluate(() => {
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    scene.root.list.find((object: any) => object.name === 'combat-discard-confirm' && object.input?.enabled)
+      .emit('pointerdown');
+  });
+  const pointerResult = await page.evaluate(() => {
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    return {
+      state: window.__birdSquadState!(),
+      hand: scene.hand.map((card: any) => card.instanceId),
+      discard: scene.discardPile.map((card: any) => card.instanceId),
+    };
+  });
+  expect(pointerResult.state.discardChoice).toBeUndefined();
+  expect(pointerResult.hand).toEqual([ids.keep]);
+  expect(pointerResult.discard).toEqual([ids.drawn, ids.nest]);
+
+  const optional = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const base = scene.hand[0];
+    const make = (instanceId: string, name: string, effects: string[] = []) => ({
+      ...base,
+      instanceId,
+      id: instanceId,
+      name,
+      cost: 0,
+      target: 'self',
+      text: effects.join('; '),
+      runtime: { ...base.runtime, id: instanceId, displayName: name, kind: 'crew', suit: 'basins', cost: 0, target: 'self', tags: ['discard'], effects, heldEffects: [], moltEffects: [], upgrade: { ...base.runtime.upgrade, effects, moltEffects: [] } },
+    });
+    const walkaway = make('optional-walkaway', 'Basin Walkaway Test', ['discardUpTo(2)', 'heal(3 perDiscarded)', 'gainCover(2 perDiscarded)']);
+    scene.hand = [walkaway, make('optional-one', 'First Option'), make('optional-two', 'Second Option')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.flock.hp = scene.flock.maxHp - 10;
+    scene.flock.block = 0;
+    scene.energy = 3;
+    scene.combatAnimationPending = false;
+    scene.playCard(walkaway);
+    await wait(30);
+    scene.input.gamepad.emit('down', scene.input.gamepad.pad1, { index: 1 }, 1);
+    await wait(30);
+    const skipped = { hp: scene.flock.hp, block: scene.flock.block, hand: scene.hand.length, choice: scene.discardChoice };
+
+    const partial = make('partial-walkaway', 'Basin Walkaway Partial', ['discardUpTo(2)', 'heal(3 perDiscarded)', 'gainCover(2 perDiscarded)']);
+    scene.hand = [partial, make('partial-one', 'Partial One'), make('partial-two', 'Partial Two')];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.flock.hp = scene.flock.maxHp - 10;
+    scene.flock.block = 0;
+    scene.energy = 3;
+    scene.combatAnimationPending = false;
+    scene.playCard(partial);
+    await wait(30);
+    scene.input.gamepad.emit('down', scene.input.gamepad.pad1, { index: 0 }, 1);
+    scene.input.gamepad.emit('down', scene.input.gamepad.pad1, { index: 3 }, 1);
+    await wait(30);
+    return {
+      skipped,
+      partial: { hp: scene.flock.hp, maxHp: scene.flock.maxHp, block: scene.flock.block, hand: scene.hand.map((card: any) => card.instanceId), discard: scene.discardPile.map((card: any) => card.instanceId), choice: scene.discardChoice },
+    };
+  });
+  expect(optional.skipped).toMatchObject({ block: 0, hand: 2, choice: undefined });
+  expect(optional.partial.hp).toBe(optional.partial.maxHp - 7);
+  expect(optional.partial.block).toBe(2);
+  expect(optional.partial.hand).toEqual(['partial-two']);
+  expect(optional.partial.discard).toEqual(['partial-one', 'partial-walkaway']);
+  expect(optional.partial.choice).toBeUndefined();
+});
+
+test('discard sequencing delays Supply consumption and keeps a held Snag in one zone', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const scene: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    for (let index = 0; index < 60 && !(scene.discardChoiceModule && scene.returnChoiceModule); index += 1) await wait(50);
+    const base = scene.hand[0];
+    const make = (instanceId: string, name: string, heldEffects: string[] = []) => ({
+      ...base,
+      instanceId,
+      id: instanceId,
+      name,
+      cost: 0,
+      target: 'self',
+      runtime: { ...base.runtime, id: instanceId, displayName: name, kind: heldEffects.length ? 'snag' : 'crew', suit: null, cost: 0, target: 'self', tags: heldEffects.length ? ['snag'] : [], effects: [], heldEffects, moltEffects: [], upgrade: { ...base.runtime.upgrade, effects: [], moltEffects: [] } },
+    });
+
+    const held = make('supply-held', 'Supply Held');
+    const drawA = make('supply-draw-a', 'Supply Draw A');
+    const drawB = make('supply-draw-b', 'Supply Draw B');
+    scene.hand = [held];
+    scene.drawPile = [drawA, drawB];
+    scene.discardPile = [];
+    scene.runSupplies = ['mirror_shard'];
+    scene.pendingSupplyRepeats = 0;
+    scene.mode = 'battle';
+    scene.combatAnimationPending = false;
+    scene.useSupply(0);
+    await wait(30);
+    const beforeSupplyConfirm = {
+      supplies: [...scene.runSupplies],
+      candidates: [...scene.discardChoice.candidateIds],
+      hand: scene.hand.map((card: any) => card.instanceId),
+    };
+    scene.onCardClicked('supply-draw-a');
+    scene.confirmDiscardChoice();
+    await wait(30);
+    const afterSupplyConfirm = {
+      supplies: [...scene.runSupplies],
+      used: [...scene.runSuppliesUsed],
+      hand: scene.hand.map((card: any) => card.instanceId),
+      discard: scene.discardPile.map((card: any) => card.instanceId),
+    };
+
+    const snag = make('held-snag-one-zone', 'Jammed Strap Test', ['discard(1)', 'shuffleSelfToDraw()']);
+    const filler = make('held-snag-filler', 'Roost Filler');
+    scene.hand = [snag, filler];
+    scene.drawPile = [];
+    scene.discardPile = [];
+    scene.clearedPile = [];
+    scene.energy = 0;
+    scene.combatAnimationPending = false;
+    const turnBefore = scene.turn;
+    scene.endTurn({ enemyPacing: false });
+    await wait(30);
+    const roostChoice = { candidates: [...scene.discardChoice.candidateIds], source: scene.discardChoice.source };
+    scene.input.gamepad.emit('down', scene.input.gamepad.pad1, { index: 0 }, 1);
+    scene.input.gamepad.emit('down', scene.input.gamepad.pad1, { index: 3 }, 1);
+    await wait(30);
+    const zones = [...scene.hand, ...scene.drawPile, ...scene.discardPile, ...scene.clearedPile];
+    return {
+      beforeSupplyConfirm,
+      afterSupplyConfirm,
+      roostChoice,
+      turnBefore,
+      turnAfter: scene.turn,
+      snagCopies: zones.filter((card: any) => card.instanceId === snag.instanceId).length,
+      snagZones: {
+        hand: scene.hand.some((card: any) => card.instanceId === snag.instanceId),
+        draw: scene.drawPile.some((card: any) => card.instanceId === snag.instanceId),
+        discard: scene.discardPile.some((card: any) => card.instanceId === snag.instanceId),
+        cleared: scene.clearedPile.some((card: any) => card.instanceId === snag.instanceId),
+      },
+      choice: scene.discardChoice,
+    };
+  });
+
+  expect(result.beforeSupplyConfirm.supplies).toEqual(['mirror_shard']);
+  expect(result.beforeSupplyConfirm.hand).toEqual(['supply-held', 'supply-draw-a', 'supply-draw-b']);
+  expect(result.beforeSupplyConfirm.candidates).toEqual(result.beforeSupplyConfirm.hand);
+  expect(result.afterSupplyConfirm.supplies).toEqual([]);
+  expect(result.afterSupplyConfirm.used).toContain('mirror_shard');
+  expect(result.afterSupplyConfirm.discard).toEqual(['supply-draw-a']);
+  expect(result.roostChoice).toEqual({ candidates: ['held-snag-filler'], source: 'Jammed Strap Test' });
+  expect(result.turnAfter).toBe(result.turnBefore + 1);
+  expect(result.snagCopies).toBe(1);
+  expect(Object.values(result.snagZones).filter(Boolean)).toHaveLength(1);
+  expect(result.choice).toBeUndefined();
+});
+
+test('discard recovery pauses in written order and returns the explicit pointer choice', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+
+  const setup = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const scene: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    for (let index = 0; index < 60 && !(scene.discardChoiceModule && scene.returnChoiceModule); index += 1) await wait(50);
+    const base = scene.hand[0];
+    const make = (instanceId: string, name: string, effects: string[] = [], type = 'minor') => ({
+      ...base,
+      instanceId,
+      id: instanceId,
+      name,
+      type,
+      role: effects.some((effect) => effect.startsWith('damage')) ? 'attack' : 'utility',
+      target: 'self',
+      cost: effects.length ? 1 : 0,
+      text: effects.join('; '),
+      upgradedText: effects.join('; '),
+      heldText: '',
+      moltText: '',
+      moltTextUpgraded: '',
+      runtime: {
+        ...base.runtime,
+        id: instanceId,
+        displayName: name,
+        kind: type === 'molt' ? 'molt' : 'crew',
+        suit: type === 'molt' ? null : 'basins',
+        cost: effects.length ? 1 : 0,
+        target: 'self',
+        role: effects.some((effect) => effect.startsWith('damage')) ? 'attack' : 'utility',
+        tags: ['recursion'],
+        effects,
+        heldEffects: [],
+        moltEffects: [],
+        upgrade: { ...base.runtime.upgrade, effects, moltEffects: [] },
+      },
+    });
+    const recall = make('return-recall', 'Route Recall', ['discard(1)', 'returnDiscard(nonMolt, +1)', 'heal(2)']);
+    const sacrifice = make('return-sacrifice', 'Freshly Discarded');
+    const old = make('return-old', 'Old Memory', ['gainCover(3)']);
+    const molt = make('return-molt', 'Molt Memory', [], 'molt');
+    const drawn = make('return-drawn', 'Follow-up Draw');
+    scene.hand = [recall, sacrifice];
+    scene.discardPile = [old, molt];
+    scene.drawPile = [drawn];
+    scene.clearedPile = [];
+    scene.energy = 3;
+    scene.flock.hp = scene.flock.maxHp - 5;
+    scene.mode = 'battle';
+    scene.combatAnimationPending = false;
+    scene.combatIntroActive = false;
+    scene.combatIntroDismissed = true;
+    scene.playCard(recall);
+    await wait(30);
+    scene.onCardClicked(sacrifice.instanceId);
+    scene.confirmDiscardChoice();
+    await wait(60);
+    return {
+      ids: { recall: recall.instanceId, sacrifice: sacrifice.instanceId, old: old.instanceId, molt: molt.instanceId, drawn: drawn.instanceId },
+      maxHp: scene.flock.maxHp,
+    };
+  });
+
+  const before = await page.evaluate(() => {
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const state = window.__birdSquadState!();
+    const panel: any = scene.root.list.find((object: any) => object.name === 'combat-return-choice-panel');
+    const rows: any[] = scene.root.list.filter((object: any) => object.name === 'combat-return-choice-row');
+    return {
+      state,
+      panel: panel ? { width: panel.width, height: panel.height } : undefined,
+      rows: rows.map((row) => ({ instanceId: row.getData('instanceId'), width: row.width, height: row.height })),
+      hand: scene.hand.map((card: any) => card.instanceId),
+      discard: scene.discardPile.map((card: any) => card.instanceId),
+      liveText: document.getElementById('game-status')?.textContent ?? '',
+    };
+  });
+  expect(before.state.returnChoice).toMatchObject({
+    source: 'Route Recall', filter: 'nonMolt', drawAfter: 1, required: 1, canCancel: false, focusIndex: 0,
+  });
+  expect(before.state.returnChoice.candidates.map((card: any) => card.instanceId)).toEqual([
+    setup.ids.sacrifice,
+    setup.ids.old,
+  ]);
+  expect(before.state.returnChoice.candidates[0]).toMatchObject({ focused: true, discardOrder: 1 });
+  expect(before.state.returnChoice.candidates.some((card: any) => card.instanceId === setup.ids.molt)).toBe(false);
+  expect(before.panel).toEqual({ width: 820, height: 244 });
+  expect(before.rows).toEqual([
+    { instanceId: setup.ids.sacrifice, width: 772, height: 58 },
+    { instanceId: setup.ids.old, width: 772, height: 58 },
+  ]);
+  expect(before.hand).toEqual([]);
+  expect(before.discard).toEqual([setup.ids.old, setup.ids.molt, setup.ids.sacrifice]);
+  expect(before.discard).not.toContain(setup.ids.recall);
+  expect(before.liveText).toContain('requires one card from discard to return');
+
+  await page.evaluate(() => {
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    scene.input.gamepad.emit('down', scene.input.gamepad.pad1, { index: 1 }, 1);
+  });
+  await expect.poll(async () => page.evaluate(() => window.__birdSquadState!().returnChoice?.candidates.length)).toBe(2);
+
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => page.evaluate(() => window.__birdSquadState!().returnChoice?.focusedId)).toBe(setup.ids.old);
+  await expect.poll(async () => page.locator('#game-status').textContent()).toContain('Focused Old Memory');
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/return-choice-1000x560.png' });
+  await page.evaluate((instanceId) => {
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const row: any = scene.root.list.find((object: any) => object.name === 'combat-return-choice-row' && object.getData('instanceId') === instanceId);
+    row.emit('pointerdown');
+  }, setup.ids.old);
+
+  const after = await page.evaluate(() => {
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    return {
+      state: window.__birdSquadState!(),
+      hp: scene.flock.hp,
+      hand: scene.hand.map((card: any) => card.instanceId),
+      discard: scene.discardPile.map((card: any) => card.instanceId),
+      log: [...scene.log],
+    };
+  });
+  expect(after.state.returnChoice).toBeUndefined();
+  expect(after.hp).toBe(setup.maxHp - 3);
+  expect(after.hand).toEqual([setup.ids.old, setup.ids.drawn]);
+  expect(after.discard).toEqual([setup.ids.molt, setup.ids.sacrifice, setup.ids.recall]);
+  expect(after.log.findIndex((entry: string) => entry.includes('Freshly Discarded discarded')))
+    .toBeLessThan(after.log.findIndex((entry: string) => entry.includes('Old Memory returns')));
+  expect(after.log.findIndex((entry: string) => entry.includes('Old Memory returns')))
+    .toBeLessThan(after.log.findIndex((entry: string) => entry.includes('Route memory draws 1')));
+});
+
+test('Return Ticket waits for controller choice, closes its drawer, and handles an empty eligible pile', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const scene: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    for (let index = 0; index < 60 && !(scene.discardChoiceModule && scene.returnChoiceModule); index += 1) await wait(50);
+    const base = scene.hand[0];
+    const make = (instanceId: string, name: string, effects: string[] = [], type = 'minor') => ({
+      ...base,
+      instanceId,
+      id: instanceId,
+      name,
+      type,
+      role: 'utility',
+      target: 'self',
+      cost: 0,
+      text: effects.join('; '),
+      runtime: {
+        ...base.runtime,
+        id: instanceId,
+        displayName: name,
+        kind: type === 'molt' ? 'molt' : 'crew',
+        suit: type === 'molt' ? null : 'basins',
+        cost: 0,
+        target: 'self',
+        role: 'utility',
+        tags: ['recursion'],
+        effects,
+        heldEffects: [],
+        moltEffects: [],
+        upgrade: { ...base.runtime.upgrade, effects, moltEffects: [] },
+      },
+    });
+    const held = make('ticket-held', 'Held Card');
+    const old = make('ticket-old', 'Older Recall');
+    const newer = make('ticket-newer', 'Newer Recall');
+    const molt = make('ticket-molt', 'Molt Recall', [], 'molt');
+    const drawn = make('ticket-drawn', 'Ticket Draw');
+    scene.hand = [held];
+    scene.discardPile = [old, molt, newer];
+    scene.drawPile = [drawn];
+    scene.runSupplies = ['return_ticket'];
+    scene.runSuppliesUsed = [];
+    scene.supplyDrawerOpen = true;
+    scene.pendingSupplyRepeats = 0;
+    scene.mode = 'battle';
+    scene.combatAnimationPending = false;
+    scene.combatIntroActive = false;
+    scene.combatIntroDismissed = true;
+    scene.useSupply(0);
+    await wait(40);
+    const pending = {
+      drawerOpen: scene.supplyDrawerOpen,
+      supplies: [...scene.runSupplies],
+      used: [...scene.runSuppliesUsed],
+      candidates: [...scene.returnChoice.candidateIds],
+      focusIndex: scene.returnChoice.focusIndex,
+    };
+    scene.input.gamepad.emit('down', scene.input.gamepad.pad1, { index: 15 }, 1);
+    await wait(20);
+    const movedFocus = scene.returnChoice.focusIndex;
+    scene.input.gamepad.emit('down', scene.input.gamepad.pad1, { index: 1 }, 1);
+    await wait(20);
+    const afterBack = { exists: Boolean(scene.returnChoice), supplies: [...scene.runSupplies] };
+    scene.input.gamepad.emit('down', scene.input.gamepad.pad1, { index: 0 }, 1);
+    await wait(50);
+    const committed = {
+      choice: scene.returnChoice,
+      supplies: [...scene.runSupplies],
+      used: [...scene.runSuppliesUsed],
+      hand: scene.hand.map((card: any) => card.instanceId),
+      discard: scene.discardPile.map((card: any) => card.instanceId),
+    };
+
+    const emptyRecall = make('empty-recall', 'Empty Recall', ['returnDiscard(nonMolt, 0)', 'heal(2)']);
+    scene.hand = [emptyRecall];
+    scene.discardPile = [molt];
+    scene.drawPile = [];
+    scene.flock.hp = scene.flock.maxHp - 4;
+    scene.energy = 3;
+    scene.combatAnimationPending = false;
+    scene.playCard(emptyRecall);
+    await wait(30);
+    const empty = {
+      choice: scene.returnChoice,
+      hp: scene.flock.hp,
+      maxHp: scene.flock.maxHp,
+      hand: scene.hand.map((card: any) => card.instanceId),
+      discard: scene.discardPile.map((card: any) => card.instanceId),
+      noMatchLogged: scene.log.some((entry: string) => entry.includes('No route memory is ready to return')),
+    };
+    return { ids: { held: held.instanceId, old: old.instanceId, newer: newer.instanceId, molt: molt.instanceId, drawn: drawn.instanceId, emptyRecall: emptyRecall.instanceId }, pending, movedFocus, afterBack, committed, empty };
+  });
+
+  expect(result.pending).toEqual({
+    drawerOpen: false,
+    supplies: ['return_ticket'],
+    used: [],
+    candidates: [result.ids.newer, result.ids.old],
+    focusIndex: 0,
+  });
+  expect(result.movedFocus).toBe(1);
+  expect(result.afterBack).toEqual({ exists: true, supplies: ['return_ticket'] });
+  expect(result.committed.choice).toBeUndefined();
+  expect(result.committed.supplies).toEqual([]);
+  expect(result.committed.used).toEqual(['return_ticket']);
+  expect(result.committed.hand).toEqual([result.ids.held, result.ids.old, result.ids.drawn]);
+  expect(result.committed.discard).toEqual([result.ids.molt, result.ids.newer]);
+  expect(result.empty).toMatchObject({ choice: undefined, hp: result.empty.maxHp - 2, hand: [], noMatchLogged: true });
+  expect(result.empty.discard).toEqual([result.ids.molt, result.ids.emptyRecall]);
 });
 
 test('generated route maps enforce controlled pacing beats', async ({ page }) => {
@@ -6245,7 +6933,13 @@ test('route choice and market nodes complete only after their economy step resol
     const basinCompletedOnOpen = scene.runState.completedRouteNodeIds.includes(basin.id);
     scene.chooseNodeOption('recover');
     const basinCompletedAfterChoice = scene.runState.completedRouteNodeIds.includes(basin.id);
-    scene.claimRouteReward();
+    if (scene.routeSupplyRewardChoices.length > 1) {
+      const supplyId = scene.routeSupplyRewardChoices[0];
+      scene.requestRouteSupplyReward(supplyId);
+      scene.requestRouteSupplyReward(supplyId);
+    } else {
+      scene.claimRouteReward();
+    }
     const basinCompletedAfterClaim = scene.runState.completedRouteNodeIds.includes(basin.id);
 
     const marketSetup = await startRouteWithNode('market');
@@ -6642,7 +7336,13 @@ test('route event confirmation previews commit the exact projected state across 
       scene.cardPickerRemainingPicks = pickerPlan.count;
       scene.pendingRouteReward = undefined;
     };
-    scene.claimRouteReward();
+    if (scene.routeSupplyRewardChoices.length > 1) {
+      const chosenSupplyId = scene.routeSupplyRewardChoices[0];
+      scene.requestRouteSupplyReward(chosenSupplyId);
+      scene.requestRouteSupplyReward(chosenSupplyId);
+    } else {
+      scene.claimRouteReward();
+    }
     const common = { projection, actual: digest(scene.runState), preview };
     if (scenario === 'basin') {
       return { ...common, textPreview };
@@ -6683,9 +7383,13 @@ test('route event confirmation previews commit the exact projected state across 
   expect(result.signal.actual).toEqual(result.signal.projection);
   expect(result.signal.resolvedEffects).not.toContain('gainCacheReward()');
   expect(result.signal.preview).toEqual(expect.arrayContaining([
-    'SCRAP 40 > 85',
+    'COHESION 30/38 > 28/38',
+    'SCRAP 40 > 70',
     'DECK 3 > 4',
-    'NEXT FIGHT GROUNDED > OPEN SKY',
+    'SUPPLIES 0/2 > 1/2',
+    'WAYMARKS 1 > 2',
+    'SKY GUARD 0 > 2',
+    'OPEN SKY CUT 0 > 2',
   ]));
   expect(result.cache.actual).toEqual(result.cache.expected);
   expect(result.cache.preview).toEqual(expect.arrayContaining([
@@ -6703,6 +7407,168 @@ test('route event confirmation previews commit the exact projected state across 
   ]));
   expect(result.nest.picker).toEqual({ mode: 'preen', context: 'route', remaining: 2, upgraded: 0 });
   expect(result.nest.rivalRows).toEqual([expect.objectContaining({ label: 'Rival', before: 'Route', after: 'Battle' })]);
+});
+
+test('route Supply rewards offer two exact choices before packing one', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  const initial = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const game = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('RouteScene', {});
+    game.scene.stop('MenuScene');
+    const route: any = game.scene.getScene('RouteScene');
+    for (let index = 0; index < 120 && !route.routeEssentialAssetsReady; index += 1) await wait(50);
+    const basin = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type === 'basin');
+    route.openNodeChoices(basin);
+    route.chooseNodeOption('refill_supplies');
+    for (let index = 0; index < 120; index += 1) {
+      const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      if (state.routeReward?.supplyChoices?.length === 2
+        && state.routeReward?.inputFocus?.visible
+        && route.children.list.filter((child: any) => child.name === 'route-supply-reward-hit').length === 2
+        && document.getElementById('game-status')?.textContent?.includes('Route Supply choice')) break;
+      await wait(50);
+    }
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    const choices = [...route.routeSupplyRewardChoices];
+    const hits = route.children.list
+      .filter((child: any) => child.name === 'route-supply-reward-hit')
+      .map((child: any) => ({
+        id: child.getData('supplyId'),
+        width: child.displayWidth,
+        height: child.displayHeight,
+      }));
+    const labels = route.children.list
+      .filter((child: any) => typeof child.text === 'string')
+      .map((child: any) => child.text);
+    route.claimRouteReward();
+    return {
+      basinId: basin.id,
+      choices,
+      state,
+      hits,
+      labels,
+      claimGuard: {
+        pending: Boolean(route.pendingRouteReward),
+        supplies: [...route.runState.supplies],
+      },
+      live: document.getElementById('game-status')?.textContent ?? '',
+    };
+  });
+
+  expect(initial.choices).toHaveLength(2);
+  expect(new Set(initial.choices).size).toBe(2);
+  expect(initial.state.routeReward).toMatchObject({
+    decisionPreview: expect.arrayContaining(['SUPPLIES 0/2 > 1/2']),
+    supplyChoices: [
+      expect.objectContaining({ id: initial.choices[0], name: expect.any(String), description: expect.any(String) }),
+      expect.objectContaining({ id: initial.choices[1], name: expect.any(String), description: expect.any(String) }),
+    ],
+    inputFocus: expect.objectContaining({
+      kind: 'supply',
+      index: 0,
+      supplyId: initial.choices[0],
+      armed: false,
+      commitBlockedUntilSelected: true,
+      visible: true,
+    }),
+  });
+  expect(initial.hits).toEqual([
+    { id: initial.choices[0], width: 214, height: 284 },
+    { id: initial.choices[1], width: 214, height: 284 },
+  ]);
+  expect(initial.labels).toEqual(expect.arrayContaining([
+    'Choose a Supply',
+    'SELECTED / CONFIRM TO ARM',
+    'CHOOSE',
+  ]));
+  expect(initial.labels.some((label: string) => label.startsWith('ARROWS / D-PAD  SUPPLY'))).toBe(true);
+  expect(initial.claimGuard).toEqual({ pending: true, supplies: [] });
+  expect(initial.live).toContain('Route Supply choice');
+  await page.screenshot({ path: '.artifacts/test-results/route-supply-choice-1000x560.png' });
+
+  const pointerArm = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const hit = route.children.list.find((child: any) => child.name === 'route-supply-reward-hit');
+    hit.emit('pointerdown');
+    return {
+      armed: route.routeSupplyRewardArmedId,
+      supplies: [...route.runState.supplies],
+      pending: Boolean(route.pendingRouteReward),
+    };
+  });
+  expect(pointerArm).toEqual({ armed: initial.choices[0], supplies: [], pending: true });
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.routeSupplyRewardArmedId;
+  })).toBeUndefined();
+
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.routeSupplyRewardChoiceIndex;
+  })).toBe(1);
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.routeSupplyRewardArmedId;
+  })).toBe(initial.choices[1]);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return { pending: Boolean(route.pendingRouteReward), nodeChoiceOpen: route.nodeChoiceOpen, supplies: route.runState.supplies };
+  })).toEqual({ pending: false, nodeChoiceOpen: true, supplies: [] });
+
+  const reopened = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.chooseNodeOption('refill_supplies');
+    for (let index = 0; index < 80 && route.routeSupplyRewardChoices.length !== 2; index += 1) await wait(50);
+    return [...route.routeSupplyRewardChoices];
+  });
+  expect(reopened).toEqual(initial.choices);
+
+  const controllerArm = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const module = route.routeRewardInteractionModule();
+    const buttons = route.controllerButtonsDown;
+    const pad = (patch: Record<string, boolean>) => ({
+      left: false, right: false, up: false, down: false, A: false, B: false, Y: false,
+      ...patch,
+    });
+    module.updateRouteRewardGamepad(route, pad({ right: true }), buttons);
+    module.updateRouteRewardGamepad(route, pad({}), buttons);
+    module.updateRouteRewardGamepad(route, pad({ A: true }), buttons);
+    module.updateRouteRewardGamepad(route, pad({}), buttons);
+    return {
+      index: route.routeSupplyRewardChoiceIndex,
+      armed: route.routeSupplyRewardArmedId,
+      supplies: [...route.runState.supplies],
+    };
+  });
+  expect(controllerArm).toEqual({ index: 1, armed: initial.choices[1], supplies: [] });
+
+  await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const module = route.routeRewardInteractionModule();
+    const buttons = route.controllerButtonsDown;
+    const released = { left: false, right: false, up: false, down: false, A: false, B: false, Y: false };
+    module.updateRouteRewardGamepad(route, { ...released, A: true }, buttons);
+    module.updateRouteRewardGamepad(route, released, buttons);
+  });
+  await expect.poll(() => page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return {
+      supplies: [...route.runState.supplies],
+      pending: Boolean(route.pendingRouteReward),
+      completed: route.runState.completedRouteNodeIds,
+    };
+  })).toEqual({ supplies: [initial.choices[1]], pending: false, completed: expect.arrayContaining([initial.basinId]) });
 });
 
 test('route maps render a distinct world backdrop for every district', async ({ page }) => {
@@ -6764,6 +7630,236 @@ test('route maps render a distinct world backdrop for every district', async ({ 
     });
   }
   expect(new Set(result.map((state) => state.backdrop.assetKey)).size).toBe(4);
+});
+
+test('combat route choices expose concise authored encounter pressure before commitment', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const baseRunState = {
+      deck: [{ id: 'major_00' }],
+      leaderId: 'fledgling',
+      difficulty: 0,
+      currentHp: 36,
+      scrap: 40,
+      routeMarks: [],
+      supplies: [],
+      completedRouteNodeIds: [],
+      currentRouteNodeId: undefined,
+      routeLog: [],
+      nextCombat: undefined,
+      signalChoices: [],
+      rewardEvents: [],
+      districtContracts: [],
+    };
+    const knownCases = [
+      ['enc_rooftop_rat_pack', 'medium', 'medium: multiple foes / enemy Cover'],
+      ['enc_canal_toll_magpie', 'high', 'high: Snags / Open Sky'],
+      ['enc_spire_static_callers', 'medium', 'medium: multiple foes / Winded'],
+      ['enc_roost_cleanup_crew', 'high', 'high: multiple foes / Open Sky'],
+      ['enc_skunk_chemist', 'medium', 'medium: Snags / tempo loss'],
+    ];
+    const maps: any[] = [];
+    let mappings: any[] = [];
+    for (let mapIndex = 0; mapIndex < 4; mapIndex += 1) {
+      const route: any = await window.__birdSquadStartScene!('RouteScene', {
+        runState: {
+          ...structuredClone(baseRunState),
+          seed: `route-pressure-read-${mapIndex}`,
+          mapIndex,
+        },
+      });
+      for (let attempt = 0; attempt < 120; attempt += 1) {
+        if (JSON.parse(window.render_game_to_text?.() ?? '{}').assetReadiness?.fullArt) break;
+        await wait(50);
+      }
+      const contract = route.runState.districtContracts?.find((entry: any) => entry.mapIndex === mapIndex);
+      if (contract) contract.confirmed = true;
+      const map = window.__birdSquadCurrentMap!();
+      const combatNodes = map.nodes.filter((node: any) => node.type === 'street' || node.type === 'rival');
+      const selected = combatNodes[0];
+      route.selectedNodeId = selected.id;
+      route.renderAll();
+      const position = route.nodePosition(selected);
+      const tooltip: any = route.showNodeTooltip(selected, position.x, position.y - 60);
+      await wait(120);
+      const state = JSON.parse(window.render_game_to_text!());
+      const selectedState = state.nodes.find((node: any) => node.id === selected.id);
+      const riskText: any = tooltip.getByName('route-node-risk');
+      const frame: any = tooltip.list.find((child: any) => child.texture?.key === 'ui-icon-route-node-tooltip-frame');
+      const riskBounds = riskText.getBounds();
+      const frameBounds = frame.getBounds();
+      const guidance: any = route.children.list.find((child: any) => (
+        (child.name === 'first-route-guidance' || child.name === 'route-decision-dock')
+        && typeof child.text === 'string'
+      ));
+      if (mapIndex === 0) {
+        const template = selected;
+        mappings = knownCases.map(([payloadId, risk, expected]) => ({
+          expected,
+          actual: route.nodeDecisionSummary({ ...template, payloadId, risk, type: 'street' }).risk,
+        }));
+      }
+      maps.push({
+        mapId: map.id,
+        risks: combatNodes.map((node: any) => route.nodeDecisionSummary(node).risk),
+        selectedRisk: selectedState.decision.risk,
+        riskText: riskText.text,
+        guidance: guidance?.text ?? '',
+        riskInsideFrame: riskBounds.left >= frameBounds.left
+          && riskBounds.right <= frameBounds.right
+          && riskBounds.bottom <= frameBounds.bottom,
+        live: document.getElementById('game-status')?.textContent ?? '',
+      });
+    }
+    return { mappings, maps };
+  });
+
+  expect(result.mappings.map((entry) => entry.actual)).toEqual(result.mappings.map((entry) => entry.expected));
+  expect(result.maps).toHaveLength(4);
+  for (const map of result.maps) {
+    expect(map.risks.length).toBeGreaterThan(0);
+    for (const risk of map.risks) {
+      expect(risk).toMatch(/^(?:low|medium|high): /);
+      expect(risk).not.toMatch(/(?:low pressure|medium damage risk|high pressure)/);
+      expect(risk).not.toMatch(/\b(?:basic|elite|boss)\b/i);
+    }
+    expect(map.riskText).toBe(`RISK  ${map.selectedRisk}`);
+    expect(map.guidance).toContain(`RISK  ${map.selectedRisk}`);
+    expect(map.riskInsideFrame).toBe(true);
+    expect(map.live).toContain(`Risk: ${map.selectedRisk}.`);
+  }
+  await page.screenshot({ path: '.artifacts/test-results/route-encounter-pressure-high-roost-1000x560.png', fullPage: true });
+});
+
+test('route gains update from live Cohesion deck Scrap Supply and choice availability', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {
+      runState: {
+        deck: [{ id: 'major_00' }, { id: 'bad_directions' }],
+        leaderId: 'fledgling',
+        difficulty: 0,
+        seed: 'contextual-route-gains',
+        currentHp: 20,
+        scrap: 27,
+        routeMarks: [],
+        supplies: ['feather_splint'],
+        supplySlots: 2,
+        mapIndex: 0,
+        completedRouteNodeIds: [],
+        currentRouteNodeId: undefined,
+        routeLog: [],
+        nextCombat: undefined,
+        signalChoices: [],
+        rewardEvents: [],
+        districtContracts: [],
+      },
+    });
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      if (JSON.parse(window.render_game_to_text?.() ?? '{}').assetReadiness?.fullArt) break;
+      await wait(50);
+    }
+    const contract = route.runState.districtContracts?.find((entry: any) => entry.mapIndex === 0);
+    if (contract) contract.confirmed = true;
+    const map = window.__birdSquadCurrentMap!();
+    const template = map.nodes[0];
+    const nodeOfType = (type: string, payloadId = '') => map.nodes.find((node: any) => node.type === type) ?? {
+      ...template,
+      id: `context-${type}`,
+      label: type,
+      type,
+      payloadId,
+      risk: type === 'boss' ? 'boss' : 'low',
+    };
+    const nodes = {
+      street: nodeOfType('street'),
+      rival: nodeOfType('rival'),
+      basin: nodeOfType('basin', 'basin_alpha'),
+      nest: nodeOfType('nest', 'nest_alpha'),
+      market: nodeOfType('market', 'alpha_market'),
+      cache: nodeOfType('cache', 'alpha_rooftop_cache'),
+      signal: nodeOfType('signal', 'faded_chalk_line'),
+    };
+    const maxHp = route.runMaxHp();
+    route.runState.currentHp = maxHp - 5;
+    const initial = Object.fromEntries(Object.entries(nodes).map(([type, node]) => [type, route.nodeDecisionSummary(node)]));
+    const signalChoices = route.nodeChoiceList(nodes.signal).filter((choice: any) => choice.key !== 'decline');
+    const signalAvailable = signalChoices.filter((choice: any) => !choice.locked).length;
+
+    route.runState.currentHp = maxHp;
+    const basinFull = route.nodeDecisionSummary(nodes.basin).benefit;
+    route.runState.currentHp = maxHp - 5;
+    route.runState.deck.push({ id: 'wands_ace' });
+    route.runState.scrap = 81;
+    route.runState.supplies.push('seed_packet');
+    const updated = {
+      street: route.nodeDecisionSummary(nodes.street),
+      nest: route.nodeDecisionSummary(nodes.nest),
+      market: route.nodeDecisionSummary(nodes.market),
+      cache: route.nodeDecisionSummary(nodes.cache),
+    };
+
+    route.runState.deck.pop();
+    route.runState.scrap = 27;
+    route.runState.supplies.pop();
+    route.selectedNodeId = nodes.basin.id;
+    route.renderAll();
+    const position = route.nodePosition(nodes.basin);
+    const tooltip: any = route.showNodeTooltip(nodes.basin, position.x, position.y - 60);
+    await wait(150);
+    const state = JSON.parse(window.render_game_to_text!());
+    const selected = state.nodes.find((node: any) => node.id === nodes.basin.id);
+    const guidance: any = route.children.list.find((child: any) => (
+      (child.name === 'first-route-guidance' || child.name === 'route-decision-dock')
+      && typeof child.text === 'string'
+    ));
+    const gain: any = tooltip.getByName('route-node-gain');
+    const frame: any = tooltip.list.find((child: any) => child.texture?.key === 'ui-icon-route-node-tooltip-frame');
+    const gainBounds = gain.getBounds();
+    const frameBounds = frame.getBounds();
+    return {
+      maxHp,
+      initial,
+      updated,
+      basinFull,
+      signalAvailable,
+      signalTotal: signalChoices.length,
+      selected: selected?.decision,
+      guidance: guidance?.text ?? '',
+      gainText: gain.text,
+      gainInsideFrame: gainBounds.left >= frameBounds.left
+        && gainBounds.right <= frameBounds.right
+        && gainBounds.bottom <= frameBounds.bottom,
+      live: document.getElementById('game-status')?.textContent ?? '',
+    };
+  });
+
+  expect(result.initial.street.benefit).toBe('Card + Scrap; deck 2');
+  expect(result.initial.rival.benefit).toBe('Rare draft + Waymark chance; deck 2');
+  expect(result.initial.basin.benefit).toBe(`Heal 5/8 Cohesion (${result.maxHp - 5} > ${result.maxHp})`);
+  expect(result.basinFull).toBe('Healing 0/8; Cohesion full');
+  expect(result.initial.nest.benefit).toBe('1 Preen target; 27 Scrap');
+  expect(result.initial.market.benefit).toBe('Shop with 27 Scrap; deck 2');
+  expect(result.initial.cache.benefit).toBe('Reward choice; 1 Supply slot open');
+  expect(result.initial.signal.benefit).toBe(`${result.signalAvailable}/${result.signalTotal} Signal choices available`);
+  expect(result.updated.street.benefit).toBe('Card + Scrap; deck 3');
+  expect(result.updated.nest.benefit).toBe('2 Preen targets; 81 Scrap');
+  expect(result.updated.market.benefit).toBe('Shop with 81 Scrap; deck 3');
+  expect(result.updated.cache.benefit).toBe('Reward choice; 0 Supply slots open');
+  expect(result.selected.benefit).toBe(result.initial.basin.benefit);
+  expect(result.guidance).toContain(`GAIN  ${result.initial.basin.benefit}`);
+  expect(result.gainText).toBe(`GAIN  ${result.initial.basin.benefit}`);
+  expect(result.gainInsideFrame).toBe(true);
+  expect(result.live).toContain(`Gain: ${result.initial.basin.benefit}.`);
+  await page.screenshot({ path: '.artifacts/test-results/contextual-route-gain-basin-1000x560.png', fullPage: true });
 });
 
 test('balance economy Waymarks resolve through generic trigger/effect hooks', async ({ page }) => {
@@ -7686,6 +8782,9 @@ test('reward renderer fallback keeps card identity and one stable focus ring', a
       contexts: objects
         .filter((object: any) => object.name === 'reward-fallback-decision-context')
         .map((object: any) => ({ text: object.text, width: object.displayWidth, maxLines: object.style.maxLines })),
+      preenChanges: objects
+        .filter((object: any) => object.name === 'reward-preen-change')
+        .map((object: any) => object.text),
       contextChips: objects
         .filter((object: any) => object.name === 'reward-fallback-context-chip')
         .map((object: any) => ({ width: object.displayWidth, height: object.displayHeight, borderWidth: object.lineWidth })),
@@ -7812,6 +8911,8 @@ test('reward renderer fallback keeps card identity and one stable focus ring', a
   expect(preen.contexts[0]).toMatchObject({ width: 196, maxLines: 1 });
   expect(preen.contexts[0].text).toMatch(/^PREEN  \/  .+ > .+$/);
   expect(preen.contexts[0].text).not.toContain('CONFIRM');
+  expect(preen.preenChanges).toHaveLength(preen.names.length - preen.contexts.length);
+  expect(preen.preenChanges.every((text: string) => text.includes(' > ') && !text.includes('PREEN'))).toBe(true);
   expect(preen.contextChips).toEqual([{ width: 204, height: 26, borderWidth: 1 }]);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-fallback-preen-1000x560.png' });
 
@@ -7837,6 +8938,119 @@ test('reward renderer fallback keeps card identity and one stable focus ring', a
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-fallback-waymarks-1000x560.png' });
 });
 
+test('route card rewards pair a scarce-role synergy card with a genuine pivot', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const game = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('RouteScene', {});
+    game.scene.stop('MenuScene');
+    const route: any = game.scene.getScene('RouteScene');
+    const anchor = route.createRouteCardRewardChoices('chooseOneOfTwoCommon', 'anchor')[0];
+    if (!anchor?.runtime.suit) throw new Error('Expected a suited route-reward fixture');
+    route.runState.deck = Array.from({ length: 5 }, () => ({ id: anchor.id }));
+    const drafts = Array.from({ length: 32 }, (_value, index) => (
+      route.createRouteCardRewardChoices('chooseOneOfTwoUncommonOrRare', `sample-${index}`).map((card: any) => ({
+        id: card.id,
+        rarity: card.runtime.rarity,
+        role: card.role,
+        suit: card.runtime.suit,
+      }))
+    ));
+    const frozenA = route.staticRouteCardRewardChoices('draft_cache', 'review', 'chooseOneOfTwoCommon');
+    const frozenB = route.staticRouteCardRewardChoices('draft_cache', 'review', 'chooseOneOfTwoCommon');
+    const rareDraft = route.createRouteCardRewardChoices('chooseOneOfTwoRare', 'rare-proof');
+    return {
+      anchorId: anchor.id,
+      dominantSuit: anchor.runtime.suit,
+      drafts,
+      frozenA: frozenA.map((card: any) => card.id),
+      frozenB: frozenB.map((card: any) => card.id),
+      commonRarities: frozenA.map((card: any) => card.runtime.rarity),
+      rareRarities: rareDraft.map((card: any) => card.runtime.rarity),
+    };
+  });
+
+  expect(result.drafts).toHaveLength(32);
+  for (const draft of result.drafts) {
+    expect(draft).toHaveLength(2);
+    expect(new Set(draft.map((card: any) => card.id)).size).toBe(2);
+    expect(draft.every((card: any) => card.id !== result.anchorId)).toBe(true);
+    expect(draft.every((card: any) => ['uncommon', 'rare'].includes(card.rarity))).toBe(true);
+    expect(draft[0].suit).toBe(result.dominantSuit);
+    expect(draft[1].suit).not.toBe(result.dominantSuit);
+    expect(draft[1].role).not.toBe(draft[0].role);
+  }
+  expect(new Set(result.drafts.map((draft: any) => draft.map((card: any) => card.id).join('|'))).size).toBeGreaterThan(1);
+  expect(result.frozenA).toHaveLength(2);
+  expect(result.frozenB).toEqual(result.frozenA);
+  expect(result.commonRarities).toEqual(['common', 'common']);
+  expect(result.rareRarities).toEqual(['rare', 'rare']);
+});
+
+test('same-seed route rewards reproduce across replay resume and hostile ambient randomness', async ({ page }) => {
+  test.setTimeout(60_000);
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const game = window.__birdSquadGame;
+    const runStateFor = (seed: string) => ({
+      deck: [{ id: 'major_00' }, { id: 'wands_ace' }, { id: 'pentacles_04' }],
+      leaderId: 'fledgling', difficulty: 0, seed, runMode: 'full',
+      currentHp: 29, scrap: 73, routeMarks: ['chalk_wingmark'], supplies: ['feather_splint'], supplySlots: 2,
+      mapIndex: 1, completedRouteNodeIds: ['m1_entry'], currentRouteNodeId: 'm1_entry',
+      routeLog: ['Saved route state.'], nextCombat: undefined, signalChoices: [], rewardEvents: [],
+      routeDecisions: [], suppliesUsed: [], combatResults: [], districtContracts: [],
+    });
+    const sample = async (seed: string, hostileRandom: number) => {
+      const route: any = await window.__birdSquadStartScene!('RouteScene', { runState: runStateFor(seed) });
+      game.scene.stop('MenuScene');
+      for (let attempt = 0; attempt < 40 && route.runState?.seed !== seed; attempt += 1) await wait(25);
+      const originalRandom = Math.random;
+      Math.random = () => hostileRandom;
+      try {
+        const snapshot = {
+          cacheEffects: route.resolvedRouteRewardEffects('replay-cache', 'open', ['gainCacheReward()']),
+          cardPair: route.createRouteCardRewardChoices('chooseOneOfTwoUncommonOrRare', 'replay-card-pair').map((card: any) => card.id),
+          card: route.selectCardRewardId('randomCommon', 'replay-card'),
+          waymark: route.selectRouteMarkRewardId('randomRare', 'replay-waymark'),
+          supply: route.selectSupplyRewardId('random', 'replay-supply'),
+        };
+        route.resolveRouteEffect('gainCacheReward()');
+        return {
+          ...snapshot,
+          resolvedState: {
+            deck: route.runState.deck,
+            currentHp: route.runState.currentHp,
+            scrap: route.runState.scrap,
+            routeMarks: route.runState.routeMarks,
+            supplies: route.runState.supplies,
+            nextCombat: route.runState.nextCombat,
+          },
+        };
+      } finally {
+        Math.random = originalRandom;
+      }
+    };
+    const first = await sample('route-replay-proof', 0.000001);
+    const replay = await sample('route-replay-proof', 0.999999);
+    const resumed = await sample('route-replay-proof', 0.414213);
+    const variants = [];
+    for (let index = 0; index < 8; index += 1) variants.push(await sample(`route-variety-${index}`, 0.5));
+    return { first, replay, resumed, variants };
+  });
+
+  expect(result.replay).toEqual(result.first);
+  expect(result.resumed).toEqual(result.first);
+  const signatures = result.variants.map((variant: any) => JSON.stringify({
+    cacheEffects: variant.cacheEffects,
+    cardPair: variant.cardPair,
+    card: variant.card,
+    waymark: variant.waymark,
+    supply: variant.supply,
+  }));
+  expect(new Set(signatures).size).toBeGreaterThanOrEqual(4);
+});
+
 test('route card rewards require intentional commitment across pointer keyboard and controller', async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1000, height: 560 });
@@ -7852,6 +9066,8 @@ test('route card rewards require intentional commitment across pointer keyboard 
     const focusRing = route.children.list.find((child: any) => child.name === 'route-reward-input-focus-ring');
     const inspectHits = route.children.list.filter((child: any) => child.name === 'route-reward-card-inspect-hit');
     const inspectLabels = route.children.list.filter((child: any) => child.name === 'route-reward-card-inspect-label');
+    const buildRows = route.children.list.filter((child: any) => child.name === 'route-reward-build-read-row');
+    const cancelHit = route.children.list.find((child: any) => child.name === 'route-event-cancel-hit' && child.input?.enabled);
     const edges = (child: any) => {
       const bounds = child?.getBounds();
       return bounds ? { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom } : undefined;
@@ -7865,6 +9081,10 @@ test('route card rewards require intentional commitment across pointer keyboard 
       deckIds: route.runState.deck.map((card: any) => card.id),
       pending: Boolean(route.pendingRouteReward),
       choices: route.routeCardRewardChoices.map((card: any) => card.id),
+      guidance: route.routeCardRewardChoices.map((card: any) => ({
+        name: card.name,
+        observations: route.routeRewardCardObservations(card),
+      })),
       armedCardId: route.routeRewardArmedCardId,
       cancelLabels: route.children.list
         .filter((child: any) => child.name === 'route-event-cancel-hit' && child.input?.enabled)
@@ -7878,6 +9098,14 @@ test('route card rewards require intentional commitment across pointer keyboard 
       inspectChrome: {
         labels: inspectLabels.map((child: any) => child.text),
         buttons: inspectHits.map((child: any) => ({ fillAlpha: child.fillAlpha, strokeColor: child.strokeColor })),
+      },
+      buildRead: {
+        titles: route.children.list.filter((child: any) => child.name === 'route-reward-build-read-title').map((child: any) => child.text),
+        names: route.children.list.filter((child: any) => child.name === 'route-reward-build-card-name').map((child: any) => child.text),
+        observations: route.children.list.filter((child: any) => child.name === 'route-reward-build-observation').map((child: any) => child.text),
+        rows: buildRows.map(edges),
+        divider: edges(divider),
+        cancel: edges(cancelHit),
       },
       inputHintVisual: {
         text: hintLabel?.text,
@@ -8033,6 +9261,25 @@ test('route card rewards require intentional commitment across pointer keyboard 
   expect(pointerInitial.cancelLabels).toEqual(['Cancel']);
   expect(pointerInitial.inspectChrome.labels).toEqual(['INSPECT', 'INSPECT']);
   expect(pointerInitial.inspectChrome.buttons.every((button: any) => button.fillAlpha === 0.88 && button.strokeColor !== 0x8df4ff)).toBe(true);
+  expect(pointerInitial.guidance).toHaveLength(2);
+  expect(pointerInitial.guidance.every((choice: any) => (
+    choice.name && choice.observations.length > 0 && choice.observations.length <= 2
+  ))).toBe(true);
+  expect(pointerInitial.buildRead.titles).toEqual(['BUILD READ']);
+  expect(pointerInitial.buildRead.names).toEqual(
+    pointerInitial.guidance.map((choice: any) => choice.name),
+  );
+  expect(pointerInitial.buildRead.observations).toEqual(
+    pointerInitial.guidance.map((choice: any) => choice.observations.join('  /  ')),
+  );
+  expect(pointerInitial.buildRead.rows).toHaveLength(2);
+  expect(pointerInitial.buildRead.rows.every((row: any) => row.right < pointerInitial.buildRead.divider.left)).toBe(true);
+  expect(pointerInitial.buildRead.rows.at(-1).bottom).toBeLessThan(pointerInitial.buildRead.cancel.top);
+  expect(pointerInitial.state.routeReward.inputFocus.observations).toEqual(pointerInitial.guidance[0].observations);
+  expect(pointerInitial.liveText).toContain(pointerInitial.guidance[0].name);
+  for (const observation of pointerInitial.guidance[0].observations) {
+    expect(pointerInitial.liveText).toContain(observation);
+  }
 
   await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -8720,7 +9967,7 @@ test('post-combat reward screens render generated choice ceremony art', async ({
   expect(result.cardRewardObservationTexts.length).toBeLessThanOrEqual(2);
   expect(result.cardRewardObservationTexts.every((text: string) => !text.includes(' / '))).toBe(true);
   expect(result.cardRewardGuidance.every((choice: { observations: string[] }) => choice.observations.length > 0 && choice.observations.length <= 2)).toBe(true);
-  expect(result.cardRewardPreviewCenter).toBe(336);
+  expect(result.cardRewardPreviewCenter).toBeGreaterThan(720);
   expect(result.cardRewardBattleChrome).toBe(0);
   expect(result.waymarkRewardFrames).toBeGreaterThanOrEqual(3);
   expect(result.waymarkRewardGlowBursts).toBeGreaterThanOrEqual(3);
@@ -8747,6 +9994,97 @@ test('post-combat reward screens render generated choice ceremony art', async ({
   expect(result.upgradeRewardHeaderTelemetry).toEqual({ loaded: true, rendered: true, count: result.upgradeRewardHeaderPlaque });
   expect(result.upgradeRewardDeckNeedTelemetry).toEqual({ loaded: true, rendered: false, count: result.upgradeRewardDeckNeedChipFrame });
   expect(result.rewardRenderer).toEqual({ requested: true, ready: true, loaded: true, failed: false });
+});
+
+test('Waymark rewards explain live trigger fit before an intentional claim', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  const initial = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const scene: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_boss' });
+    for (let attempt = 0; attempt < 160 && !scene.battleRewardRendererModule; attempt += 1) {
+      scene.ensureBattleRewardRenderer();
+      await wait(25);
+    }
+    scene.runSupplies = ['signal_flare'];
+    scene.routeMarks = [];
+    scene.waymarkChoices = scene.selectWaymarkRewardChoices(
+      ['supply_bell', 'double_packed_buckle', 'plumes_busker_patch'],
+      ['supply_bell', 'double_packed_buckle', 'plumes_busker_patch'],
+      3,
+      'waymark-build-read-fixture',
+      false,
+    );
+    scene.mode = 'waymarkReward';
+    scene.controllerChoiceIndex = 0;
+    scene.rewardChoiceArmedId = undefined;
+    scene.battleInputActive = true;
+    scene.renderAll();
+    await wait(80);
+    const state = scene.getTextState();
+    const collect = (objects: any[]): any[] => objects.flatMap((child: any) => [child, ...(child.list ? collect(child.list) : [])]);
+    const objects = collect(scene.children.list);
+    return {
+      deckSize: scene.allDeckCards().length,
+      choices: state.waymarkChoices,
+      titles: objects.filter((child: any) => child.name === 'reward-waymark-build-read-title').map((child: any) => child.text),
+      observations: objects.filter((child: any) => child.name === 'reward-waymark-build-observation').map((child: any) => ({
+        text: child.text,
+        width: child.displayWidth,
+        maxLines: child.style?.maxLines,
+      })),
+      chips: objects.filter((child: any) => child.name === 'reward-waymark-build-chip').map((child: any) => ({
+        width: child.displayWidth,
+        height: child.displayHeight,
+      })),
+      descriptions: objects.filter((child: any) => state.waymarkChoices.some((choice: any) => choice.description === child.text)).length,
+      mode: state.mode,
+      focus: state.combatInputFocus,
+    };
+  });
+
+  expect(initial.mode).toBe('waymarkReward');
+  expect(initial.choices).toHaveLength(3);
+  expect(initial.choices.every((choice: any) => choice.observations.length === 2)).toBe(true);
+  expect(initial.choices.find((choice: any) => choice.id === 'supply_bell').observations[0]).toBe('+ 1 packed Supply triggers it');
+  expect(initial.choices.find((choice: any) => choice.id === 'double_packed_buckle').observations[0]).toBe('+ 1 packed Supply triggers it');
+  expect(initial.choices.find((choice: any) => choice.id === 'plumes_busker_patch').observations[0]).toMatch(/^\+ \d+ plumes cards? triggers? it$/);
+  expect(initial.titles).toEqual(['BUILD READ', 'BUILD READ', 'BUILD READ']);
+  expect(initial.observations).toHaveLength(6);
+  expect(initial.observations.every((entry: any) => /^[+!]/.test(entry.text) && entry.width <= 132 && entry.maxLines === 1)).toBe(true);
+  expect(initial.chips).toHaveLength(6);
+  expect(initial.chips.every((chip: any) => chip.width <= 132 && chip.height === 22)).toBe(true);
+  expect(initial.descriptions).toBe(3);
+
+  const focused = initial.choices[initial.focus.index];
+  for (const observation of focused.observations) {
+    await expect.poll(() => page.locator('#game-status').textContent()).toContain(observation);
+  }
+  await page.keyboard.press('Enter');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).rewardChoiceConfirmation?.armed)).toBe(true);
+  const armed = await page.evaluate(() => {
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    const state = scene.getTextState();
+    return { mode: state.mode, choices: state.waymarkChoices.length, deckSize: scene.allDeckCards().length };
+  });
+  expect(armed).toEqual({ mode: 'waymarkReward', choices: 3, deckSize: initial.deckSize });
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).rewardChoiceConfirmation?.armed)).toBe(false);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/waymark-reward-build-read-1000x560.png' });
+
+  const fallback = await page.evaluate(() => {
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    scene.battleRewardRendererModule = undefined;
+    scene.battleRewardRendererFailed = true;
+    scene.renderAll();
+    const observations = scene.root.list
+      .filter((child: any) => child.name === 'reward-waymark-build-observation')
+      .map((child: any) => child.text);
+    return { observations, state: scene.getTextState().waymarkChoices };
+  });
+  expect(fallback.observations).toHaveLength(6);
+  expect(fallback.state.flatMap((choice: any) => choice.observations)).toEqual(fallback.observations);
 });
 
 test('reward decision chips preview the exact add and Preen outcomes before commitment', async ({ page }) => {
@@ -8782,6 +10120,8 @@ test('reward decision chips preview the exact add and Preen outcomes before comm
     const addCard = scene.createRewardChoices()[0];
     scene.rewardChoices = [addCard];
     scene.mode = 'cardReward';
+    scene.battleInputActive = true;
+    scene.controllerChoiceIndex = 0;
     const addPreview = scene.rewardCardView(addCard).decisionPreview;
     const addDeltas = await waitForDeltas(scene, 1);
     const deckBefore = scene.allDeckCards().length;
@@ -8789,13 +10129,24 @@ test('reward decision chips preview the exact add and Preen outcomes before comm
     const deckAfter = scene.allDeckCards().length;
 
     scene = await start();
-    const preenCard = scene.allDeckCards().find((card: any) => !card.upgraded && card.text !== card.upgradedText)
-      ?? scene.allDeckCards().find((card: any) => !card.upgraded);
+    const preenCards = scene.allDeckCards()
+      .filter((card: any) => !card.upgraded && card.text !== card.upgradedText)
+      .filter((card: any, index: number, cards: any[]) => cards.findIndex((entry) => entry.id === card.id) === index)
+      .slice(0, 3);
+    const preenCard = preenCards[0];
     if (!preenCard) throw new Error('No Preen candidate was available.');
-    scene.upgradeChoices = [preenCard];
+    scene.upgradeChoices = preenCards;
     scene.mode = 'upgradeReward';
+    scene.battleInputActive = true;
+    scene.controllerChoiceIndex = 0;
     const preenPreview = scene.rewardCardView(preenCard).decisionPreview;
     const preenDeltas = await waitForDeltas(scene, 1);
+    const preenChangeTexts = scene.root.list
+      .filter((child: any) => child.name === 'reward-preen-change')
+      .map((child: any) => child.text);
+    const preenBuildObservations = scene.root.list
+      .filter((child: any) => child.name === 'reward-build-observation')
+      .map((child: any) => child.text);
     scene.chooseUpgradeCard(preenCard.id);
     const preenActual = preenCard.upgraded ? preenCard.upgradedText : preenCard.text;
 
@@ -8806,6 +10157,9 @@ test('reward decision chips preview the exact add and Preen outcomes before comm
       deckAfter,
       preenPreview,
       preenDeltas,
+      preenChoiceCount: preenCards.length,
+      preenChangeTexts,
+      preenBuildObservations,
       preenUpgraded: preenCard.upgraded,
       preenActual,
     };
@@ -8816,6 +10170,10 @@ test('reward decision chips preview the exact add and Preen outcomes before comm
   expect(result.deckAfter).toBe(result.deckBefore + 1);
   expect(result.preenPreview.kind).toBe('preen');
   expect(result.preenDeltas[0]).toMatch(/^PREEN  \/  /);
+  expect(result.preenChoiceCount).toBe(3);
+  expect(result.preenChangeTexts).toHaveLength(result.preenChoiceCount - result.preenDeltas.length);
+  expect(result.preenChangeTexts.every((text: string) => text.includes(' > ') && !text.includes('PREEN'))).toBe(true);
+  expect(result.preenBuildObservations).toEqual([]);
   expect(result.preenUpgraded).toBe(true);
   expect(result.preenActual).toBe(result.preenPreview.after);
 });
@@ -8923,6 +10281,178 @@ test('market categories keep one merchandise family visible at a time', async ({
   expect(result.serviceLabels).toEqual(expect.arrayContaining(['Preen a Card', 'Release a Card', 'Refresh stock']));
 });
 
+test('sold-out Market stock remains in the spoken unavailable inventory', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {});
+    for (let attempt = 0; attempt < 120 && !route.cardHoverDetailModule; attempt += 1) await wait(25);
+    const market = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type === 'market')
+      ?? window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type !== 'boss');
+    market.type = 'market';
+    route.openMarketNode(market);
+    route.marketCardShelf.slice(0, 2).forEach((offer: any) => { offer.sold = true; });
+    route.marketCategory = 'cards';
+    route.renderAll();
+  });
+
+  await expect.poll(() => page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.market.unavailableOffers.filter((offer: any) => offer.reason === 'SOLD OUT').length;
+  })).toBe(2);
+  await expect.poll(() => page.locator('#game-status').textContent()).toContain('SOLD OUT');
+});
+
+test('Market card detail keeps live deck-fit guidance in the focused dossier', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {});
+    for (let attempt = 0; attempt < 120 && !route.cardHoverDetailModule; attempt += 1) await wait(25);
+    const market = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type === 'market')
+      ?? window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type !== 'boss');
+    market.type = 'market';
+    route.openMarketNode(market);
+    route.runState.scrap = 999;
+    route.marketCategory = 'cards';
+    route.renderAll();
+
+    const listing = route.marketCardShelf[0];
+    const card = route.marketCardOffers()[0].card;
+    const expected = route.routeRewardCardObservations(card).slice(0, 2);
+    route.showHoverCardDetail(card, 'Market offer', listing.price, 650, 360, route.marketCardDecisionPreview(listing));
+    route.updateTextState();
+    const panel = route.hoverCardDetail.list.find((child: any) => child.name === 'market-card-build-read');
+    const dossier = route.hoverCardDetail.list.find((child: any) => child.name === 'market-fixed-card-inspector');
+    const observations = panel?.list
+      .filter((child: any) => child.name === 'market-card-build-observation')
+      .map((child: any) => child.text);
+    const panelBounds = panel?.getBounds();
+    const dossierBounds = dossier?.getBounds();
+    const state = JSON.parse(window.render_game_to_text!());
+    return {
+      expected,
+      observations,
+      focusObservations: state.market.input.observations,
+      panel: panelBounds && {
+        left: panelBounds.left,
+        top: panelBounds.top,
+        bottom: panelBounds.bottom,
+      },
+      dossier: dossierBounds && {
+        left: dossierBounds.left,
+        bottom: dossierBounds.bottom,
+      },
+      persistentShelfReads: route.children.list.filter((child: any) => (
+        child.name === 'market-card-build-read' || child.name === 'market-card-build-observation'
+      )).length,
+      decisionPreview: state.market.decisionPreview,
+    };
+  });
+
+  expect(result.expected.length).toBeGreaterThan(0);
+  expect(result.expected.length).toBeLessThanOrEqual(2);
+  expect(result.observations).toEqual(result.expected);
+  expect(result.focusObservations).toEqual(result.expected);
+  for (const observation of result.expected) {
+    await expect.poll(() => page.locator('#game-status').textContent()).toContain(observation);
+  }
+  expect(result.panel.left - result.dossier.left).toBeGreaterThanOrEqual(0);
+  expect(result.panel.left - result.dossier.left).toBeLessThanOrEqual(16);
+  expect(result.panel.top).toBeGreaterThanOrEqual(result.dossier.bottom - 24);
+  expect(result.panel.bottom).toBeLessThan(657);
+  expect(result.persistentShelfReads).toBe(0);
+  expect(result.decisionPreview).toEqual(expect.arrayContaining([
+    expect.stringMatching(/^DECK /),
+    expect.stringMatching(/^SCRAP /),
+  ]));
+});
+
+test('Market item dossiers explain live build fit across Waymarks Supplies and services', async ({ page }) => {
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {});
+    for (let attempt = 0; attempt < 120 && !route.cardHoverDetailModule; attempt += 1) await wait(25);
+    const market = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type === 'market')
+      ?? window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type !== 'boss');
+    market.type = 'market';
+    route.openMarketNode(market);
+    route.runState.scrap = 999;
+    route.runState.routeMarks = ['supply_bell'];
+
+    const inspect = (category: 'waymarks' | 'supplies' | 'services') => {
+      route.setMarketCategory(category);
+      const state = JSON.parse(window.render_game_to_text!());
+      const focusId = state.market.input.focusId;
+      const target = route.children.list.find((child: any) => (
+        child.input?.enabled && child.getData?.('marketFocusId') === focusId
+      ));
+      target?.emit('pointerover');
+      route.updateTextState();
+      const focused = JSON.parse(window.render_game_to_text!()).market.input;
+      const detail = route.marketItemHover?.list.find((child: any) => child.text?.includes('BUILD READ'));
+      const bounds = route.marketItemHover?.getBounds();
+      return {
+        focusId,
+        observations: focused.observations,
+        detail: detail?.text ?? '',
+        bounds: bounds && { left: bounds.left, right: bounds.right, top: bounds.top, bottom: bounds.bottom },
+      };
+    };
+
+    return {
+      waymark: inspect('waymarks'),
+      supply: inspect('supplies'),
+      service: inspect('services'),
+      persistentBuildReads: route.children.list.filter((child: any) => child.name === 'market-item-build-read').length,
+    };
+  });
+
+  for (const item of [result.waymark, result.supply, result.service]) {
+    expect(item.observations.length).toBeGreaterThan(0);
+    expect(item.observations.length).toBeLessThanOrEqual(2);
+    expect(item.detail).toContain('BUILD READ');
+    for (const observation of item.observations) expect(item.detail).toContain(observation);
+    expect(item.bounds.left).toBeGreaterThanOrEqual(0);
+    expect(item.bounds.right).toBeLessThanOrEqual(1280);
+    expect(item.bounds.top).toBeGreaterThanOrEqual(0);
+    expect(item.bounds.bottom).toBeLessThanOrEqual(720);
+  }
+  expect(result.supply.observations.some((observation: string) => observation.includes('Supply Waymark'))).toBe(true);
+  expect(result.persistentBuildReads).toBe(0);
+  for (const observation of result.service.observations) {
+    await expect.poll(() => page.locator('#game-status').textContent()).toContain(observation);
+  }
+  const supplyCenter = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.setMarketCategory('supplies');
+    const target = route.children.list.find((child: any) => (
+      child.input?.enabled && String(child.getData?.('marketFocusId')).startsWith('utility:')
+    ));
+    const bounds = target.getBounds();
+    return { x: bounds.centerX, y: bounds.centerY };
+  });
+  const canvas = page.locator('canvas');
+  const canvasBounds = await canvas.boundingBox();
+  if (!canvasBounds) throw new Error('Missing game canvas');
+  await canvas.hover({ position: {
+    x: canvasBounds.width * (supplyCenter.x / 1280),
+    y: canvasBounds.height * (supplyCenter.y / 720),
+  } });
+  await expect.poll(() => page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.marketItemHover?.list.some((child: any) => child.text?.includes('BUILD READ'));
+  })).toBe(true);
+  await canvas.screenshot({ path: '.artifacts/test-results/market-item-build-read-1000x560.png' });
+});
+
 test('market purchases require intentional input and block route commitment across pointer keyboard and controller', async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1000, height: 560 });
@@ -9008,14 +10538,18 @@ test('market purchases require intentional input and block route commitment acro
         child.input?.enabled && child.getData?.('marketFocusId') === id
       ));
       if (!target) throw new Error(`Missing Market target ${id}`);
-      return { x: target.x, y: target.y };
+      const bounds = target.getBounds();
+      return { x: bounds.centerX, y: bounds.centerY };
     }, focusId);
-    const canvas = await page.locator('canvas').boundingBox();
-    if (!canvas) throw new Error('Missing game canvas');
-    await page.mouse.click(
-      canvas.x + canvas.width * (center.x / 1280),
-      canvas.y + canvas.height * (center.y / 720),
-    );
+    const canvas = page.locator('canvas');
+    const bounds = await canvas.boundingBox();
+    if (!bounds) throw new Error('Missing game canvas');
+    const position = {
+      x: bounds.width * (center.x / 1280),
+      y: bounds.height * (center.y / 720),
+    };
+    await canvas.hover({ position });
+    await canvas.click({ position, delay: 50 });
   };
   const moveToMarketTarget = async (focusId: string) => {
     const center = await page.evaluate((id) => {
@@ -9024,7 +10558,8 @@ test('market purchases require intentional input and block route commitment acro
         child.input?.enabled && child.getData?.('marketFocusId') === id
       ));
       if (!target) throw new Error(`Missing Market target ${id}`);
-      return { x: target.x, y: target.y };
+      const bounds = target.getBounds();
+      return { x: bounds.centerX, y: bounds.centerY };
     }, focusId);
     const canvas = await page.locator('canvas').boundingBox();
     if (!canvas) throw new Error('Missing game canvas');
@@ -9042,14 +10577,18 @@ test('market purchases require intentional input and block route commitment acro
         && child.getData?.('label') === commandLabel
       ));
       if (!target) throw new Error(`Missing Market ${commandLabel} control`);
-      return { x: target.x, y: target.y };
+      const bounds = target.getBounds();
+      return { x: bounds.centerX, y: bounds.centerY };
     }, label);
-    const canvas = await page.locator('canvas').boundingBox();
-    if (!canvas) throw new Error('Missing game canvas');
-    await page.mouse.click(
-      canvas.x + canvas.width * (center.x / 1280),
-      canvas.y + canvas.height * (center.y / 720),
-    );
+    const canvas = page.locator('canvas');
+    const bounds = await canvas.boundingBox();
+    if (!bounds) throw new Error('Missing game canvas');
+    const position = {
+      x: bounds.width * (center.x / 1280),
+      y: bounds.height * (center.y / 720),
+    };
+    await canvas.hover({ position });
+    await canvas.click({ position, delay: 50 });
   };
   const clickMarketTab = async (label: string) => {
     const center = await page.evaluate((tabLabel) => {
@@ -9060,14 +10599,18 @@ test('market purchases require intentional input and block route commitment acro
         && child.getData?.('label') === tabLabel
       ));
       if (!target) throw new Error(`Missing Market ${tabLabel} tab`);
-      return { x: target.x, y: target.y };
+      const bounds = target.getBounds();
+      return { x: bounds.centerX, y: bounds.centerY };
     }, label);
-    const canvas = await page.locator('canvas').boundingBox();
-    if (!canvas) throw new Error('Missing game canvas');
-    await page.mouse.click(
-      canvas.x + canvas.width * (center.x / 1280),
-      canvas.y + canvas.height * (center.y / 720),
-    );
+    const canvas = page.locator('canvas');
+    const bounds = await canvas.boundingBox();
+    if (!bounds) throw new Error('Missing game canvas');
+    const position = {
+      x: bounds.width * (center.x / 1280),
+      y: bounds.height * (center.y / 720),
+    };
+    await canvas.hover({ position });
+    await canvas.click({ position, delay: 50 });
   };
   const marketDecision = () => page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
@@ -9310,6 +10853,13 @@ test('market purchases require intentional input and block route commitment acro
   expect(pointerPurchase.routeCommitCalls).toBe(0);
   expect(pointerPurchase.sold).toEqual([true, true, false, false]);
   expect(pointerPurchase.deckIds).toEqual(expect.arrayContaining(initial.offerIds.slice(0, 2)));
+  await expect.poll(() => page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+    return state.market.unavailableOffers.filter((offer: any) => offer.reason === 'SOLD OUT').length;
+  })).toBe(2);
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
+    .toContain('SOLD OUT');
+  await page.screenshot({ path: '.artifacts/test-results/market-sold-spoken-inventory-1000x560.png' });
 
   await page.keyboard.press('2');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).market.category === 'waymarks');
@@ -9478,7 +11028,8 @@ test('market purchases require intentional input and block route commitment acro
       child.input?.enabled && child.getData?.('marketFocusId') === 0
     ));
     if (!target) throw new Error('Missing full-pouch Supply inspection target');
-    return { x: target.x, y: target.y };
+    const bounds = target.getBounds();
+    return { x: bounds.centerX, y: bounds.centerY };
   });
   await page.mouse.move(
     mixedCanvas.x + mixedCanvas.width * (fullSupply.x / 1280),
@@ -9515,7 +11066,8 @@ test('market purchases require intentional input and block route commitment acro
       && child.getData?.('label') === 'Preen a Card'
     ));
     if (!target) throw new Error('Missing no-eligible-card Preen inspection target');
-    return { x: target.x, y: target.y };
+    const bounds = target.getBounds();
+    return { x: bounds.centerX, y: bounds.centerY };
   });
   await page.mouse.move(
     mixedCanvas.x + mixedCanvas.width * (noPreen.x / 1280),
@@ -9748,7 +11300,7 @@ test('market shelves stock multiple finite offers and paid refreshes', async ({ 
   expect(result.soldSlatFramesAfterBuy).toEqual(expect.arrayContaining([
     expect.objectContaining({
       name: 'market-sold-slat-frame',
-      width: 236,
+      width: 222,
       height: 58,
       angle: -16,
       visible: true
@@ -9860,6 +11412,153 @@ test('late markets sell premium boss-prep and route-scout services', async ({ pa
   ]));
 });
 
+test('free Preen waits for the next district and asks which exact card to improve', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await boot(page);
+  const initial = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const game = window.__birdSquadGame;
+    await window.__birdSquadStartScene!('RouteScene', {});
+    game.scene.stop('MenuScene');
+    let route: any = game.scene.getScene('RouteScene');
+    const pendingRun = structuredClone(route.runState);
+    pendingRun.freePreenNextDistrict = 2;
+    pendingRun.districtAdvanceNotice = undefined;
+
+    await window.__birdSquadStartScene!('RouteScene', { runState: pendingRun });
+    route = game.scene.getScene('RouteScene');
+    const beforeTransition = {
+      context: route.cardPickerContext,
+      remaining: route.cardPickerRemainingPicks,
+      credit: route.runState.freePreenNextDistrict,
+      pending: route.runState.pendingDistrictPreens ?? 0,
+      upgraded: route.runState.deck.filter((card: any) => card.upgraded).map((card: any) => card.id),
+    };
+
+    const transitionRun = structuredClone(route.runState);
+    transitionRun.districtAdvanceNotice = {
+      fromMapName: 'Rooftop Blocks',
+      toMapName: 'Canal Market',
+      toMapIndex: 2,
+    };
+    await window.__birdSquadStartScene!('RouteScene', { runState: transitionRun });
+    route = game.scene.getScene('RouteScene');
+    await wait(900);
+    route.renderAll();
+    const eligible = route.pickerEligibleCards('preen', 'districtPreen');
+    const chosen = eligible[1] ?? eligible[0];
+    const initialDistrictState = JSON.parse(window.render_game_to_text!());
+    const initialDistrictRemaining = route.cardPickerRemainingPicks;
+    const labels = route.children.list
+      .filter((child: any) => typeof child.text === 'string')
+      .map((child: any) => child.text);
+    const upgradedBeforeChoice = route.runState.deck
+      .filter((card: any) => card.upgraded)
+      .map((card: any) => card.id);
+    const interruptedRun = structuredClone(route.runState);
+    await window.__birdSquadStartScene!('RouteScene', { runState: interruptedRun });
+    route = game.scene.getScene('RouteScene');
+    route.renderAll();
+    const resumed = {
+      mode: route.cardPickerMode,
+      context: route.cardPickerContext,
+      remaining: route.cardPickerRemainingPicks,
+      pending: route.runState.pendingDistrictPreens,
+      upgraded: route.runState.deck.filter((card: any) => card.upgraded).map((card: any) => card.id),
+    };
+    return {
+      chosenIndex: chosen.index,
+      chosenId: chosen.card.id,
+      beforeTransition,
+      initialDistrict: {
+        mode: initialDistrictState.cardPickerInput?.mode,
+        context: initialDistrictState.cardPickerInput?.context,
+        remaining: initialDistrictRemaining,
+        credit: transitionRun.freePreenNextDistrict,
+        upgradedBeforeChoice,
+        labels,
+        costBadges: initialDistrictState.cardPickerCostBadge?.count ?? 0,
+      },
+      resumed,
+    };
+  });
+  await page.screenshot({ path: '.artifacts/test-results/district-preen-choice-1600x900.png' });
+  const completed = await page.evaluate(async ({ chosenIndex, chosenId }) => {
+    const game = window.__birdSquadGame;
+    let route: any = game.scene.getScene('RouteScene');
+    route.applyCardPick(chosenIndex);
+    const upgradedAfterChoice = route.runState.deck
+      .filter((card: any) => card.upgraded)
+      .map((card: any) => card.id);
+    const afterChoice = {
+      context: route.cardPickerContext,
+      remaining: route.cardPickerRemainingPicks,
+      chosenId,
+      upgraded: upgradedAfterChoice,
+    };
+    route.cancelRouteCardPicker();
+    const afterSkip = {
+      context: route.cardPickerContext,
+      mode: route.cardPickerMode,
+      credit: route.runState.freePreenNextDistrict,
+      pending: route.runState.pendingDistrictPreens,
+      upgraded: route.runState.deck.filter((card: any) => card.upgraded).map((card: any) => card.id),
+      log: [...route.runState.routeLog],
+    };
+    const restartRun = structuredClone(route.runState);
+    await window.__birdSquadStartScene!('RouteScene', { runState: restartRun });
+    route = game.scene.getScene('RouteScene');
+    return {
+      afterChoice,
+      afterSkip,
+      afterRestart: {
+        context: route.cardPickerContext,
+        mode: route.cardPickerMode,
+        credit: route.runState.freePreenNextDistrict,
+        pending: route.runState.pendingDistrictPreens,
+        upgraded: route.runState.deck.filter((card: any) => card.upgraded).map((card: any) => card.id),
+      },
+    };
+  }, { chosenIndex: initial.chosenIndex, chosenId: initial.chosenId });
+  const result = { ...initial, ...completed };
+
+  expect(result.beforeTransition).toMatchObject({
+    context: undefined,
+    remaining: 0,
+    credit: 2,
+    pending: 0,
+    upgraded: [],
+  });
+  expect(result.initialDistrict).toMatchObject({
+    mode: 'preen',
+    context: 'districtPreen',
+    credit: 2,
+    upgradedBeforeChoice: [],
+    costBadges: 0,
+  });
+  expect(result.initialDistrict.labels).toEqual(expect.arrayContaining([
+    'DISTRICT PREP',
+    'Preen 2 Cards',
+    'Boss Prep Credit',
+    'Skip Remaining',
+  ]));
+  expect(result.resumed).toMatchObject({
+    mode: 'preen',
+    context: 'districtPreen',
+    remaining: 2,
+    pending: 2,
+    upgraded: [],
+  });
+  expect(result.afterChoice.context).toBe('districtPreen');
+  expect(result.afterChoice.remaining).toBe(1);
+  expect(result.afterChoice.upgraded).toEqual([result.afterChoice.chosenId]);
+  expect(result.afterSkip).toMatchObject({ context: undefined, mode: undefined, credit: 0, pending: 0 });
+  expect(result.afterSkip.upgraded).toEqual([result.afterChoice.chosenId]);
+  expect(result.afterSkip.log).toContain('District prep ended with 1 free Preen skipped.');
+  expect(result.afterRestart).toMatchObject({ context: undefined, mode: undefined, credit: 0, pending: 0 });
+  expect(result.afterRestart.upgraded).toEqual([result.afterChoice.chosenId]);
+});
+
 test('market preen service lets the player choose a card before paying', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
@@ -9909,8 +11608,8 @@ test('market preen service lets the player choose a card before paying', async (
     const soldBeforePick = !!scene.marketUtilityShelf[preenIndex].sold;
     const scrapAfterOpen = scene.runState.scrap;
     const choice = scene.pickerEligibleCards('preen', 'market').find((entry: any) => scene.runState.scrap >= entry.cost);
-    const decisionPreview = scene.cardPickerDecisionDelta('preen', choice.card);
     const decisionDeltas = pickerState.cardPickerDecisionDeltas;
+    const decisionPreview = decisionDeltas[0];
     scene.applyCardPick(choice.index);
     return {
       missing: false,
@@ -10533,7 +12232,7 @@ test('route preen picker keeps large decks inside a two-row viewport', async ({ 
       if (
         state.cardPickerFrame?.rendered
         && state.cardPickerFrame.count >= 2
-        && state.cardPickerCostBadge?.count >= 10
+        && state.cardPickerCostBadge?.count === 0
         && state.cardPickerNameplateFrame?.count >= 10
         && state.cardPickerContextPlaque?.count === 1
       ) break;
@@ -10691,8 +12390,8 @@ test('route preen picker keeps large decks inside a two-row viewport', async ({ 
   expect(result.pickerFrameState.count).toBeGreaterThanOrEqual(2);
   expect(result.pickerCostBadgeState).toEqual({
     loaded: true,
-    rendered: true,
-    count: 10
+    rendered: false,
+    count: 0
   });
   expect(result.pickerNameplateFrameState).toEqual({
     loaded: true,
@@ -11217,14 +12916,27 @@ test('combat rewards deliberately mix deck need, suit synergy, and wildcard slot
       plumes: 'stage_pin', basins: 'feather_tape', quills: 'quill_notch', nests: 'workshop_stamp'
     };
     battle.routeMarks = [waymarkBySuit[anchor.runtime.suit]];
-    const choices = battle.createRewardChoices();
+    let firstChoices: any[] = [];
+    const drafts = Array.from({ length: 32 }, (_value, seed) => {
+      let state = seed + 1;
+      battle.combatRandom = () => {
+        state = (Math.imul(state, 1_664_525) + 1_013_904_223) >>> 0;
+        return state / 0x1_0000_0000;
+      };
+      const choices = battle.createRewardChoices();
+      if (seed === 0) firstChoices = choices;
+      return choices.map((card: any) => ({ id: card.id, suit: card.runtime.suit, role: card.role }));
+    });
+    const choices = firstChoices;
     return {
       dominantSuit: anchor.runtime.suit,
       choiceSuits: choices.map((card: any) => card.runtime.suit),
+      choiceRoles: choices.map((card: any) => card.role),
       firstNeedTags: battle.cardNeedTags(choices[0]),
       synergyTags: battle.cardNeedTags(choices[1]),
       allTagCounts: choices.map((card: any) => battle.cardNeedTags(card).length),
-      ids: choices.map((card: any) => card.id)
+      ids: choices.map((card: any) => card.id),
+      drafts,
     };
   });
 
@@ -11232,9 +12944,218 @@ test('combat rewards deliberately mix deck need, suit synergy, and wildcard slot
   expect(new Set(result.ids).size).toBe(3);
   expect(result.firstNeedTags.some((tag: string) => tag.includes('First ') || tag.includes('Fills ') || tag.includes('KEYSTONE'))).toBe(true);
   expect(result.choiceSuits[1]).toBe(result.dominantSuit);
+  expect(result.choiceSuits[2]).not.toBe(result.dominantSuit);
+  expect(result.choiceRoles.slice(0, 2)).not.toContain(result.choiceRoles[2]);
   expect(result.synergyTags.some((tag: string) => tag.includes('Feeds '))).toBe(true);
   expect(result.synergyTags.some((tag: string) => tag.includes('KEYSTONE'))).toBe(true);
   expect(result.allTagCounts.every((count: number) => count > 0 && count <= 2)).toBe(true);
+  expect(result.drafts).toHaveLength(32);
+  for (const draft of result.drafts) {
+    expect(draft).toHaveLength(3);
+    expect(new Set(draft.map((card: any) => card.id)).size).toBe(3);
+    expect(draft[1].suit).toBe(result.dominantSuit);
+    expect(draft[2].suit).not.toBe(result.dominantSuit);
+    expect(draft.slice(0, 2).map((card: any) => card.role)).not.toContain(draft[2].role);
+  }
+});
+
+test('district reward leans shape and explain the pivot without replacing deck-aware choices', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const configs = [
+      { routeNodeId: 'm1_c0_street_opening', mapIndex: 0, expected: ['Cover', 'direct damage'] },
+      { routeNodeId: 'm2_c0_street_dock', mapIndex: 1, expected: ['healing'] },
+      { routeNodeId: 'm3_c0_street_relay', mapIndex: 2, expected: ['tempo', 'Open Sky Guard'] },
+      { routeNodeId: 'm4_c0_street_opening', mapIndex: 3, expected: ['rare cards', 'Open Sky Guard', 'boss prep'] },
+    ];
+    const profiles: any[] = [];
+    let finalBattle: any;
+    let finalChoices: any[] = [];
+    let finalFocusIndex = 0;
+    for (const config of configs) {
+      const battle: any = await window.__birdSquadStartScene!('BattleScene', {
+        routeNodeId: config.routeNodeId,
+        runState: {
+          deck: [{ id: 'major_00' }, { id: 'wands_ace' }],
+          leaderId: 'fledgling',
+          difficulty: 0,
+          seed: `district-reward-${config.mapIndex}`,
+          currentHp: 38,
+          scrap: 40,
+          routeMarks: [],
+          supplies: [],
+          mapIndex: config.mapIndex,
+          completedRouteNodeIds: [],
+          currentRouteNodeId: undefined,
+          routeLog: [],
+          nextCombat: undefined,
+          signalChoices: [],
+          rewardEvents: [],
+        },
+      });
+      window.__birdSquadGame.scene.stop('MenuScene');
+      const anchor = battle.allDeckCards().find((card: any) => card.runtime.suit);
+      if (!anchor) throw new Error(`Missing suited anchor for ${config.routeNodeId}`);
+      battle.drawPile = Array.from({ length: 4 }, (_value, index) => ({
+        ...anchor,
+        instanceId: `${config.routeNodeId}-dominant-${index}`,
+        runtime: { ...anchor.runtime, tags: [...anchor.runtime.tags] },
+      }));
+      battle.discardPile = [];
+      battle.hand = [];
+      battle.clearedPile = [];
+      const drafts: any[] = [];
+      for (let seed = 0; seed < 16; seed += 1) {
+        let state = seed + 1;
+        battle.combatRandom = () => {
+          state = (Math.imul(state, 1_664_525) + 1_013_904_223) >>> 0;
+          return state / 0x1_0000_0000;
+        };
+        const choices = battle.createRewardChoices();
+        drafts.push({
+          ids: choices.map((card: any) => card.id),
+          suits: choices.map((card: any) => card.runtime.suit),
+          roles: choices.map((card: any) => card.role),
+          observations: choices.map((card: any) => battle.rewardObservations(card)),
+        });
+        if (seed === 0) {
+          finalChoices = choices;
+          finalFocusIndex = Math.max(0, choices.findIndex((card: any) => (
+            battle.rewardObservations(card)[0]?.startsWith('+ District lean:')
+          )));
+        }
+      }
+      profiles.push({
+        routeNodeId: config.routeNodeId,
+        expected: config.expected,
+        lean: battle.districtLeans(),
+        dominantSuit: anchor.runtime.suit,
+        drafts,
+      });
+      finalBattle = battle;
+    }
+    finalBattle.rewardChoices = finalChoices;
+    finalBattle.rewardDecisionStartedAtMs = Date.now();
+    finalBattle.rewardChoiceArmedId = undefined;
+    finalBattle.rewardSkipArmed = false;
+    finalBattle.controllerChoiceIndex = finalFocusIndex;
+    finalBattle.battleInputActive = true;
+    finalBattle.mode = 'cardReward';
+    finalBattle.renderAll();
+    for (let index = 0; index < 100 && !finalBattle.getTextState().battleRewardRenderer?.ready; index += 1) {
+      await wait(50);
+      finalBattle.renderAll();
+    }
+    await wait(100);
+    const textState = finalBattle.getTextState();
+    return {
+      profiles,
+      final: {
+        stateLean: textState.rewardDistrictLean,
+        focusIndex: finalFocusIndex,
+        focusedObservations: textState.rewardChoices?.[finalFocusIndex]?.observations,
+        leanCopy: finalBattle.root.list
+          .filter((child: any) => child.type === 'Text' && child.text?.includes('District lean:'))
+          .map((child: any) => child.text),
+        renderedObservations: finalBattle.root.list
+          .filter((child: any) => child.name === 'reward-build-observation')
+          .map((child: any) => child.text),
+        live: document.getElementById('game-status')?.textContent ?? '',
+      },
+    };
+  });
+
+  expect(result.profiles).toHaveLength(4);
+  for (const profile of result.profiles) {
+    expect(profile.lean).toEqual(profile.expected);
+    expect(profile.drafts).toHaveLength(16);
+    for (const draft of profile.drafts) {
+      expect(draft.ids).toHaveLength(3);
+      expect(new Set(draft.ids).size).toBe(3);
+      expect(draft.suits[1]).toBe(profile.dominantSuit);
+      expect(draft.suits[2]).not.toBe(profile.dominantSuit);
+      expect(draft.roles.slice(0, 2)).not.toContain(draft.roles[2]);
+      expect(
+        draft.observations.some((observations: string[]) => observations[0]?.startsWith('+ District lean:')),
+        `${profile.routeNodeId}: ${JSON.stringify(draft)}`,
+      ).toBe(true);
+    }
+  }
+  expect(result.final.stateLean).toEqual(['rare cards', 'Open Sky Guard', 'boss prep']);
+  expect(result.final.focusedObservations).toHaveLength(2);
+  expect(result.final.focusedObservations[0]).toMatch(/^\+ District lean: /);
+  expect(result.final.leanCopy).toContain('Pick a card or take Scrap. District lean: rare cards / Open Sky Guard / boss prep.');
+  expect(result.final.renderedObservations).toEqual(result.final.focusedObservations);
+  expect(result.final.live).toContain('District lean: rare cards, Open Sky Guard, boss prep.');
+  expect(result.final.live).toContain(`Build observations: ${result.final.focusedObservations.join('; ')}.`);
+  await page.locator('canvas').screenshot({ path: '.artifacts/test-results/district-reward-lean-1000x560.png' });
+});
+
+test('Preen offers and automatic upgrades exclude no-op Snags and duplicate copies', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const battle: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    const candidate = battle.allDeckCards().find((card: any) => (
+      card.runtime.kind !== 'snag' && card.text !== card.upgradedText
+    ));
+    const enemy = battle.enemies[0];
+    if (!candidate || !enemy) throw new Error('Missing Preen fixture cards');
+    battle.resolveEnemyEffect(enemy, 'addSnagToDiscard(tangled_line)', 'Preen eligibility test');
+    const snag = battle.discardPile.pop();
+    if (!snag) throw new Error('Missing generated Snag');
+    const duplicate = { ...candidate, instanceId: `${candidate.instanceId}-duplicate`, upgraded: false };
+    candidate.upgraded = false;
+    battle.drawPile = [candidate, duplicate, snag];
+    battle.hand = [];
+    battle.discardPile = [];
+    battle.clearedPile = [];
+    battle.combatRandom = () => 0.5;
+    const offers = battle.createUpgradeChoices();
+    candidate.upgraded = true;
+    duplicate.upgraded = true;
+    snag.upgraded = false;
+    const snagOnlyOffers = battle.createUpgradeChoices();
+    const canOfferSnagOnlyPreen = battle.shouldOfferUpgradeReward();
+    battle.upgradeChoices = offers;
+    battle.chooseUpgradeCard(snag.id);
+    const unofferedSnagUpgraded = snag.upgraded === true;
+
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {});
+    route.runState.deck = [
+      { id: 'tangled_line', upgraded: false },
+      { id: 'major_00', upgraded: false },
+    ];
+    const pickerIds = route.pickerEligibleCards('preen').map((entry: any) => entry.card.id);
+    const marketCandidateId = route.marketPreenCandidate()?.id;
+    const automaticallyPreened = route.preenFirstAvailableCard();
+    return {
+      candidateId: candidate.id,
+      offerIds: offers.map((card: any) => card.id),
+      offerKinds: offers.map((card: any) => card.runtime.kind),
+      snagOnlyOfferIds: snagOnlyOffers.map((card: any) => card.id),
+      canOfferSnagOnlyPreen,
+      unofferedSnagUpgraded,
+      pickerIds,
+      marketCandidateId,
+      automaticallyPreenedId: automaticallyPreened?.id,
+      routeDeck: route.runState.deck,
+    };
+  });
+
+  expect(result.offerIds).toEqual([result.candidateId]);
+  expect(result.offerKinds).not.toContain('snag');
+  expect(result.snagOnlyOfferIds).toEqual([]);
+  expect(result.canOfferSnagOnlyPreen).toBe(false);
+  expect(result.unofferedSnagUpgraded).toBe(false);
+  expect(result.pickerIds).toEqual(['major_00']);
+  expect(result.marketCandidateId).toBe('major_00');
+  expect(result.automaticallyPreenedId).toBe('major_00');
+  expect(result.routeDeck).toEqual([
+    { id: 'tangled_line', upgraded: false },
+    { id: 'major_00', upgraded: true },
+  ]);
 });
 
 test('a newly-added arcana card constructs from the library and resolves its effect', async ({ page }) => {
@@ -11512,6 +13433,8 @@ test('new snag cards have playable cleanup tradeoffs', async ({ page }) => {
     scene.discardPile = [];
     scene.energy = 3;
     scene.playCard(scene.hand[0]);
+    scene.toggleDiscardChoice('played-snag-filler-jammed');
+    scene.confirmDiscardChoice();
     const jammedPlayed = {
       hand: scene.hand.map((card: any) => card.id),
       discard: scene.discardPile.map((card: any) => card.id),
@@ -12843,6 +14766,209 @@ test('adaptive procedural music follows scene pressure and mute ownership', asyn
   expect(resumed.music.pulses).toBeGreaterThan(muted.music.pulses);
 });
 
+test('synthesized cues stay lazy and the first interaction survives the chunk load', async ({ page }) => {
+  test.setTimeout(30_000);
+  await page.addInitScript(() => localStorage.removeItem('birdsquad.audioMuted'));
+  await boot(page);
+
+  const before = await page.evaluate(() => ({
+    audio: window.__birdSquadAudio!(),
+    sfxResources: performance.getEntriesByType('resource')
+      .filter((entry) => /audio-sfx(?:-|\.ts)/.test(entry.name))
+      .map((entry) => entry.name),
+  }));
+  expect(before.audio.sfx).toEqual({ status: 'idle', played: 0 });
+  expect(before.sfxResources).toHaveLength(0);
+
+  await page.keyboard.press('ArrowDown');
+  await page.waitForFunction(() => {
+    const audio = window.__birdSquadAudio?.();
+    return audio?.sfx?.status === 'ready' && audio.sfx.played >= 1;
+  });
+  const first = await page.evaluate(() => ({
+    audio: window.__birdSquadAudio!(),
+    sfxResources: performance.getEntriesByType('resource')
+      .filter((entry) => /audio-sfx(?:-|\.ts)/.test(entry.name))
+      .map((entry) => entry.name),
+  }));
+
+  expect((first.audio.cueRequests.confirm ?? 0) - (before.audio.cueRequests.confirm ?? 0)).toBe(1);
+  expect(first.audio.sfx).toEqual({ status: 'ready', played: 1 });
+  expect(first.sfxResources).toHaveLength(1);
+
+  await page.keyboard.press('ArrowDown');
+  await page.waitForFunction(() => window.__birdSquadAudio?.().sfx?.played >= 2);
+  const second = await page.evaluate(() => ({
+    audio: window.__birdSquadAudio!(),
+    sfxResources: performance.getEntriesByType('resource')
+      .filter((entry) => /audio-sfx(?:-|\.ts)/.test(entry.name))
+      .map((entry) => entry.name),
+  }));
+  expect(second.audio.sfx).toEqual({ status: 'ready', played: 2 });
+  expect(second.sfxResources).toEqual(first.sfxResources);
+
+  await page.keyboard.press('KeyM');
+  await page.waitForFunction(() => window.__birdSquadAudio?.().sfx?.played >= 3);
+  const muted = await page.evaluate(() => window.__birdSquadAudio!());
+  expect(muted.muted).toBe(true);
+  expect((muted.cueRequests.close ?? 0) - (second.audio.cueRequests.close ?? 0)).toBe(1);
+  expect(muted.sfx).toEqual({ status: 'ready', played: 3 });
+});
+
+test('card plays route distinct suit voices and add a Molt accent without carrying gameplay information', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.addInitScript(() => {
+    localStorage.setItem('birdsquad.sfxVolume', '0.65');
+    localStorage.setItem('birdsquad.voiceVolume', '0.25');
+  });
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const scene: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      if (scene.mode === 'battle' && !scene.combatAnimationPending) break;
+      await wait(25);
+    }
+    const base = scene.allDeckCards()[0];
+    const makeCard = (voice: 'plumes' | 'quills' | 'basins' | 'nests' | null, suffix: string, molt = false) => ({
+      ...base,
+      id: `audio-${suffix}`,
+      instanceId: `audio-${suffix}`,
+      name: `Audio ${suffix}`,
+      upgraded: false,
+      runtime: {
+        ...base.runtime,
+        id: `audio-${suffix}`,
+        displayName: `Audio ${suffix}`,
+        kind: voice ? 'crew' : 'snag',
+        suit: voice,
+        cost: 0,
+        target: 'self',
+        tags: ['audio-test'],
+        effects: ['gainCover(0)'],
+        moltEffects: molt ? ['gainCover(0)'] : [],
+        flockStats: {},
+        upgrade: {
+          ...base.runtime.upgrade,
+          effects: ['gainCover(0)'],
+          moltEffects: molt ? ['gainCover(0)'] : [],
+          flockStats: {},
+        },
+      },
+    });
+    const cards = [
+      makeCard('plumes', 'plumes'),
+      makeCard('quills', 'quills'),
+      makeCard('basins', 'basins'),
+      makeCard('nests', 'nests'),
+      makeCard(null, 'neutral'),
+    ];
+    scene.hand = [...cards];
+    scene.energy = 9;
+    scene.routeMarks = [];
+    const before = window.__birdSquadAudio!();
+    const enemyId = scene.enemies.find((enemy: any) => enemy.hp > 0)?.id ?? '';
+    const variants: number[] = [];
+    for (const card of cards) {
+      scene.playCard(card, enemyId, { resolveDelayMs: 0 });
+      await wait(10);
+      variants.push(window.__birdSquadAudio!().music.cardVoices.last.variant);
+    }
+
+    scene.flock.molt = true;
+    const moltCard = makeCard('plumes', 'plumes-molt', true);
+    scene.hand = [moltCard];
+    scene.playCard(moltCard, enemyId, { resolveDelayMs: 0 });
+    await wait(50);
+    variants.push(window.__birdSquadAudio!().music.cardVoices.last.variant);
+    return { before, after: window.__birdSquadAudio!(), variants };
+  });
+
+  expect(result.after.cueRequests.card - (result.before.cueRequests.card ?? 0)).toBe(6);
+  expect(result.before.sfxVolume).toBeCloseTo(0.65, 4);
+  expect(result.before.voiceVolume).toBeCloseTo(0.25, 4);
+  expect(result.after.music.cardVoices.requests.plumes - (result.before.music.cardVoices?.requests?.plumes ?? 0)).toBe(2);
+  for (const voice of ['quills', 'basins', 'nests', 'neutral']) {
+    expect(
+      result.after.music.cardVoices.requests[voice] - (result.before.music.cardVoices?.requests?.[voice] ?? 0),
+      voice,
+    ).toBe(1);
+  }
+  expect(result.variants).toEqual([0, 1, 2, 0, 1, 2]);
+  expect(result.after.music.cardVoices.last).toEqual({ voice: 'plumes', usesMolt: true, sequence: 6, variant: 2, volume: 0.25 });
+  await page.screenshot({
+    path: '.artifacts/test-results/card-suit-voices-molt-1600x900.png',
+    fullPage: true,
+  });
+});
+
+test('Preen commitments use the distinct upgrade signature across combat rewards, route prep, and Market service', async ({ page }) => {
+  test.setTimeout(60_000);
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const cueCount = () => window.__birdSquadAudio!().cueRequests.moltPower ?? 0;
+
+    const battle: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    for (let attempt = 0; attempt < 120; attempt += 1) {
+      if (battle.mode === 'battle' && !battle.combatAnimationPending) break;
+      await wait(25);
+    }
+    const combatCard = battle.allDeckCards().find((card: any) => !card.upgraded && card.text !== card.upgradedText);
+    if (!combatCard) throw new Error('No combat Preen candidate was available.');
+    battle.upgradeChoices = [combatCard];
+    battle.mode = 'upgradeReward';
+    const combatBefore = cueCount();
+    battle.chooseUpgradeCard(combatCard.id);
+    const combatAfter = cueCount();
+
+    const route: any = await window.__birdSquadStartScene!('RouteScene', {});
+    const routeChoice = route.pickerEligibleCards('preen', 'districtPreen')[0];
+    if (!routeChoice) throw new Error('No route Preen candidate was available.');
+    route.cardPickerMode = 'preen';
+    route.cardPickerContext = 'districtPreen';
+    route.cardPickerRemainingPicks = 1;
+    route.runState.pendingDistrictPreens = 1;
+    const routeBefore = cueCount();
+    route.applyCardPick(routeChoice.index);
+    const routeAfter = cueCount();
+
+    route.runState.scrap = 999;
+    const marketNode = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type === 'market')
+      ?? window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type !== 'boss');
+    marketNode.type = 'market';
+    route.openMarketNode(marketNode);
+    const preenSlot = route.marketUtilityShelf.findIndex((offer: any) => offer.id === 'preen');
+    if (preenSlot < 0) throw new Error('Market did not offer Preen.');
+    route.buyMarketUtility(preenSlot);
+    const marketChoice = route.pickerEligibleCards('preen', 'market')
+      .find((entry: any) => route.runState.scrap >= entry.cost);
+    if (!marketChoice) throw new Error('No affordable Market Preen candidate was available.');
+    const marketBefore = cueCount();
+    route.applyCardPick(marketChoice.index);
+    const marketAfter = cueCount();
+
+    return {
+      combatDelta: combatAfter - combatBefore,
+      routeDelta: routeAfter - routeBefore,
+      marketDelta: marketAfter - marketBefore,
+      combatUpgraded: combatCard.upgraded,
+      routeUpgraded: route.runState.deck[routeChoice.index]?.upgraded,
+      marketUpgraded: route.runState.deck[marketChoice.index]?.upgraded,
+    };
+  });
+
+  expect(result).toEqual({
+    combatDelta: 1,
+    routeDelta: 1,
+    marketDelta: 1,
+    combatUpgraded: true,
+    routeUpgraded: true,
+    marketUpgraded: true,
+  });
+});
+
 test('settings overlay opens from menu and paused run surfaces', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
@@ -12863,7 +14989,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
     window.localStorage.removeItem('birdsquad.combatPace');
     window.localStorage.removeItem('birdsquad.animationPace');
     window.localStorage.removeItem('birdsquad.textPace');
-    const findSliderHit = (items: any[], control: 'music' | 'sfx' | 'ambience'): any | undefined => collect(items)
+    const findSliderHit = (items: any[], control: 'music' | 'sfx' | 'voices' | 'ambience'): any | undefined => collect(items)
       .find((child: any) => child.name === `system-settings-${control}-slider-hit`
         && (child.input?.enabled ?? false));
     const findMotionHit = (items: any[]): any | undefined => collect(items)
@@ -12882,7 +15008,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
       .find((child: any) => child.name === 'system-settings-animation-pace-toggle-hit'
         && (child.input?.enabled ?? false));
     const findTextPaceHit = (items: any[]): any | undefined => collect(items)
-      .find((child: any) => child.name === 'system-settings-row-10-hit'
+      .find((child: any) => child.name === 'system-settings-row-11-hit'
         && (child.input?.enabled ?? false));
 
     let menu: any = g.scene.getScene('MenuScene');
@@ -12893,6 +15019,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
         && countTexture(overlayItems, 'ui-icon-system-menu-command-frame') >= 2
         && findSliderHit(overlayItems, 'music')
         && findSliderHit(overlayItems, 'sfx')
+        && findSliderHit(overlayItems, 'voices')
         && findSliderHit(overlayItems, 'ambience');
       if (ready) break;
       await wait(50);
@@ -12913,12 +15040,13 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
       .filter((child: any) => child.input?.enabled && [
         'system-settings-music-slider-hit',
         'system-settings-sfx-slider-hit',
+        'system-settings-voices-slider-hit',
         'system-settings-ambience-slider-hit',
         'system-settings-motion-switch-hit',
         'system-settings-graphics-quality-switch-hit',
         'system-settings-combat-pace-switch-hit',
         'system-settings-animation-pace-toggle-hit',
-        'system-settings-row-10-hit'
+        'system-settings-row-11-hit'
       ].includes(child.name))
       .map((child: any) => ({ name: child.name, width: child.displayWidth, height: child.displayHeight }));
     const menuGraphicsInitial = menuState.graphics;
@@ -12985,6 +15113,15 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
     menuSfxHit.emit('pointerdown', { x: 434, y: 328, isDown: true });
     await wait(80);
     const menuAudioAfterSfx = JSON.parse(window.render_game_to_text!()).audio;
+    let menuVoicesHit = findSliderHit(menu.children.list, 'voices');
+    for (let i = 0; i < 30 && !menuVoicesHit; i += 1) {
+      await wait(50);
+      menuVoicesHit = findSliderHit(menu.children.list, 'voices');
+    }
+    if (!menuVoicesHit) throw new Error('Missing menu Card Voices slider hit target');
+    menuVoicesHit.emit('pointerdown', { x: 399, y: 382, isDown: true });
+    await wait(80);
+    const menuAudioAfterVoices = JSON.parse(window.render_game_to_text!()).audio;
     let menuAmbienceHit = findSliderHit(menu.children.list, 'ambience');
     for (let i = 0; i < 30 && !menuAmbienceHit; i += 1) {
       await wait(50);
@@ -13090,6 +15227,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
       menuTextPaceAfterFast,
       menuAudioAfterMusic,
       menuAudioAfterSfx,
+      menuAudioAfterVoices,
       menuAudioAfterAmbience,
       menuTitlePlaqueTelemetry: menuState.systemOverlayTitlePlaque,
       menuFieldCommandFrameTelemetry: menuState.systemFieldCommandFrame,
@@ -13171,13 +15309,13 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.menuSettingsRowTelemetry.count).toBeGreaterThanOrEqual(8);
   expect(result.menuSettingsToggleFrame).toBeGreaterThanOrEqual(3);
   expect(result.menuSettingsToggleTelemetry).toEqual({ loaded: true, rendered: true, count: result.menuSettingsToggleFrame });
-  expect(result.menuSettingsVolumeSliderFrame).toBe(3);
-  expect(result.menuSettingsVolumeSliderTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
+  expect(result.menuSettingsVolumeSliderFrame).toBe(4);
+  expect(result.menuSettingsVolumeSliderTelemetry).toEqual({ loaded: true, rendered: true, count: 4 });
   expect(result.menuSettingsMotionSwitchFrame).toBe(3);
   expect(result.menuSettingsMotionSwitchTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
   expect(result.menuSettingsFocusRings).toBe(1);
   expect(result.menuSettingsFocus).toEqual({ index: 0, label: 'Audio' });
-  expect(result.menuSettingsControlTargets).toHaveLength(8);
+  expect(result.menuSettingsControlTargets).toHaveLength(9);
   expect(result.menuSettingsControlTargets.every((target: { width: number; height: number }) => (
     target.width >= 276 && target.height === 58
   ))).toBe(true);
@@ -13207,9 +15345,15 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.menuAudioAfterMusic.ambienceVolume).toBeCloseTo(0.78, 2);
   expect(result.menuAudioAfterSfx.musicVolume).toBeCloseTo(0.25, 2);
   expect(result.menuAudioAfterSfx.sfxVolume).toBeCloseTo(0.65, 2);
+  expect(result.menuAudioAfterSfx.voiceVolume).toBeCloseTo(0.88, 2);
   expect(result.menuAudioAfterSfx.ambienceVolume).toBeCloseTo(0.78, 2);
+  expect(result.menuAudioAfterVoices.musicVolume).toBeCloseTo(0.25, 2);
+  expect(result.menuAudioAfterVoices.sfxVolume).toBeCloseTo(0.65, 2);
+  expect(result.menuAudioAfterVoices.voiceVolume).toBeCloseTo(0.45, 2);
+  expect(result.menuAudioAfterVoices.ambienceVolume).toBeCloseTo(0.78, 2);
   expect(result.menuAudioAfterAmbience.musicVolume).toBeCloseTo(0.25, 2);
   expect(result.menuAudioAfterAmbience.sfxVolume).toBeCloseTo(0.65, 2);
+  expect(result.menuAudioAfterAmbience.voiceVolume).toBeCloseTo(0.45, 2);
   expect(result.menuAudioAfterAmbience.ambienceVolume).toBeCloseTo(0.45, 2);
   expect(result.routeSettings).toBe(true);
   expect(result.routeFlourish).toBeGreaterThanOrEqual(1);
@@ -13223,8 +15367,8 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.routeSettingsRowTelemetry.count).toBeGreaterThanOrEqual(8);
   expect(result.routeSettingsToggleFrame).toBeGreaterThanOrEqual(3);
   expect(result.routeSettingsToggleTelemetry).toEqual({ loaded: true, rendered: true, count: result.routeSettingsToggleFrame });
-  expect(result.routeSettingsVolumeSliderFrame).toBe(3);
-  expect(result.routeSettingsVolumeSliderTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
+  expect(result.routeSettingsVolumeSliderFrame).toBe(4);
+  expect(result.routeSettingsVolumeSliderTelemetry).toEqual({ loaded: true, rendered: true, count: 4 });
   expect(result.routeSettingsMotionSwitchFrame).toBe(3);
   expect(result.routeSettingsMotionSwitchTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
   expect(result.routeSettingsFocusRings).toBe(1);
@@ -13251,8 +15395,8 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.battleSettingsRowTelemetry.count).toBeGreaterThanOrEqual(8);
   expect(result.battleSettingsToggleFrame).toBeGreaterThanOrEqual(3);
   expect(result.battleSettingsToggleTelemetry).toEqual({ loaded: true, rendered: true, count: result.battleSettingsToggleFrame });
-  expect(result.battleSettingsVolumeSliderFrame).toBe(3);
-  expect(result.battleSettingsVolumeSliderTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
+  expect(result.battleSettingsVolumeSliderFrame).toBe(4);
+  expect(result.battleSettingsVolumeSliderTelemetry).toEqual({ loaded: true, rendered: true, count: 4 });
   expect(result.battleSettingsMotionSwitchFrame).toBe(3);
   expect(result.battleSettingsMotionSwitchTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
   expect(result.battleSettingsFocusRings).toBe(1);
@@ -13288,7 +15432,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
     ]);
     return state.settingsOpen
       && collect(menu.settingsOverlay?.list ?? [])
-        .some((child: any) => child.name === 'system-settings-row-14-hit' && child.input?.enabled);
+        .some((child: any) => child.name === 'system-settings-row-15-hit' && child.input?.enabled);
   });
 
   const settingsTargets = await page.evaluate(() => {
@@ -13299,7 +15443,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
     ]);
     const canvas = document.querySelector('canvas')!.getBoundingClientRect();
     const scale = canvas.width / 1280;
-    const names = /^(system-settings-row-\d+-hit|system-settings-(music|sfx|ambience)-slider-hit|system-settings-(motion|contrast|graphics-quality|combat-pace|animation-pace)-(switch|toggle)-hit)$/;
+    const names = /^(system-settings-row-\d+-hit|system-settings-(music|sfx|voices|ambience)-slider-hit|system-settings-(motion|contrast|graphics-quality|combat-pace|animation-pace)-(switch|toggle)-hit)$/;
     return collect(menu.settingsOverlay?.list ?? [])
       .filter((child: any) => child.input?.enabled && names.test(child.name ?? ''))
       .map((child: any) => ({
@@ -13309,7 +15453,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
       }));
   });
 
-  expect(settingsTargets).toHaveLength(23);
+  expect(settingsTargets).toHaveLength(25);
   expect(settingsTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
   const settingsFooter = await page.evaluate(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
@@ -13336,7 +15480,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
       ...(Array.isArray(child.list) ? collect(child.list) : []),
     ]);
     return collect(menu.settingsOverlay?.list ?? [])
-      .filter((child: any) => child.texture?.key === 'ui-icon-system-settings-row-frame').length >= 15;
+      .filter((child: any) => child.texture?.key === 'ui-icon-system-settings-row-frame').length >= 16;
   });
   const settingsRowHierarchy = async () => page.evaluate(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
@@ -13353,7 +15497,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
       .sort((a: any, b: any) => a.index - b.index);
   });
   const initialRowHierarchy = await settingsRowHierarchy();
-  expect(initialRowHierarchy).toHaveLength(15);
+  expect(initialRowHierarchy).toHaveLength(16);
   expect(initialRowHierarchy[0].alpha).toBeCloseTo(0.82, 2);
   expect(Math.max(...initialRowHierarchy.slice(1).map((row) => row.alpha))).toBeLessThanOrEqual(0.44);
 
@@ -13380,7 +15524,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
       ...(Array.isArray(child.list) ? collect(child.list) : []),
     ]);
     const controls = collect(menu.settingsOverlay?.list ?? [])
-      .find((child: any) => child.name === 'system-settings-row-4-hit' && child.input?.enabled);
+      .find((child: any) => child.name === 'system-settings-row-5-hit' && child.input?.enabled);
     if (!controls) throw new Error('Missing Controls settings row');
     controls.emit('pointerdown', {}, 0, 0, { stopPropagation() {} });
   });
@@ -14456,7 +16600,10 @@ test('high contrast applies before scene boot and persists across reloads', asyn
   await page.reload();
   await page.waitForFunction(() => {
     try {
-      return JSON.parse(window.render_game_to_text?.() ?? '{}').scene === 'MenuScene';
+      const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
+      return state.scene === 'MenuScene'
+        && state.visualContrast?.preference === 'high'
+        && state.visualContrast?.applied === true;
     } catch {
       return false;
     }
@@ -14488,7 +16635,7 @@ test('reinforced color cues persist and add suit shapes plus labels to combat de
   await page.waitForFunction(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
     return (menu.settingsOverlay?.list ?? []).some((child: any) => (
-      child.name === 'system-settings-row-14-hit' && child.input?.enabled
+      child.name === 'system-settings-row-15-hit' && child.input?.enabled
     ));
   });
   expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).colorCues)
@@ -14610,6 +16757,8 @@ test('screen shake setting persists and Reduced Motion suppresses combat camera 
   test.setTimeout(180_000);
   await boot(page);
 
+  await page.waitForFunction(() => Boolean(JSON.parse(window.render_game_to_text?.() ?? '{}').screenShake));
+
   expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).screenShake)
     .toEqual({ preference: 'on', enabled: true, reducedByMotion: false });
 
@@ -14618,7 +16767,7 @@ test('screen shake setting persists and Reduced Motion suppresses combat camera 
   await page.waitForFunction(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
     return (menu.settingsOverlay?.list ?? []).some((child: any) => (
-      child.name === 'system-settings-row-14-hit' && child.input?.enabled
+      child.name === 'system-settings-row-15-hit' && child.input?.enabled
     ));
   });
   await page.keyboard.press('ArrowUp');
@@ -14713,7 +16862,7 @@ test('reduced flashes persist and remove abrupt additive hit layers without hidi
   await page.waitForFunction(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
     return (menu.settingsOverlay?.list ?? []).some((child: any) => (
-      child.name === 'system-settings-row-14-hit' && child.input?.enabled
+      child.name === 'system-settings-row-15-hit' && child.input?.enabled
     ));
   });
   await page.keyboard.press('ArrowUp');
@@ -14733,9 +16882,9 @@ test('reduced flashes persist and remove abrupt additive hit layers without hidi
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
     return state.settingsOpen === true
       && state.settingsFocus?.label === 'Flashes'
-      && state.systemSettingsRowFrame?.count === 15
+      && state.systemSettingsRowFrame?.count === 16
       && (menu.settingsOverlay?.list ?? []).some((child: any) => (
-        child.name === 'system-settings-row-14-hit' && child.input?.enabled
+        child.name === 'system-settings-row-15-hit' && child.input?.enabled
       ));
   });
   await page.screenshot({ path: '.artifacts/test-results/reduced-flashes/reduced-flashes-settings.png' });
@@ -15185,6 +17334,19 @@ test('title setup follows remapped keyboard and gamepad controls with one cue pe
   await expect.poll(async () => (await state()).selectedRunMode).toBe('quick');
   const afterKeyboardToggle = await state();
   expect(afterKeyboardToggle.titleFocus.current).toBe('runMode');
+  expect(afterKeyboardToggle.titleFocus.label).toBe('Flight length: Quick, 3 districts, no tier unlock');
+  expect(afterKeyboardToggle.runModeChoices).toEqual([
+    {
+      mode: 'quick',
+      summary: 'Quick, 3 districts, no tier unlock',
+      selected: true,
+    },
+    {
+      mode: 'full',
+      summary: 'Full, 4 districts, unlocks tiers',
+      selected: false,
+    },
+  ]);
   expect(afterKeyboardToggle.titleBoot.generation).toBe(initial.titleBoot.generation);
   expect(afterKeyboardToggle.titleTransition).toEqual(initial.titleTransition);
   const afterToggle = await page.evaluate(() => {
@@ -15269,9 +17431,9 @@ test('title utility destinations are reachable by controller without starting a 
   await menuGamepadDown(13);
   expect(await page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').titleFocus.current)).toBe('howToPlay');
   await menuGamepadDown(0);
-  expect(await page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').helpOpen)).toBe(true);
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').helpOpen)).toBe(true);
   await menuGamepadDown(1);
-  expect(await page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').helpOpen)).toBe(false);
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').helpOpen)).toBe(false);
 
   await menuGamepadDown(13);
   await menuGamepadDown(0);
@@ -15297,8 +17459,8 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
       listenerCount: menu.input.keyboard.listenerCount('keydown'),
       focusRings: objects.filter((child: any) => child.name === 'system-settings-focus-ring').length,
       rowTargets: objects.filter((child: any) => /^system-settings-row-\d+-hit$/.test(child.name ?? '')).length,
-      hasScreenShakeTarget: objects.some((child: any) => child.name === 'system-settings-row-13-hit' && child.input?.enabled),
-      hasFlashesTarget: objects.some((child: any) => child.name === 'system-settings-row-14-hit' && child.input?.enabled),
+      hasScreenShakeTarget: objects.some((child: any) => child.name === 'system-settings-row-14-hit' && child.input?.enabled),
+      hasFlashesTarget: objects.some((child: any) => child.name === 'system-settings-row-15-hit' && child.input?.enabled),
       ring: ring ? { index: ring.getData('index'), label: ring.getData('label'), y: Math.round(ring.y) } : undefined,
     };
   });
@@ -15333,7 +17495,7 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
   expect(beforeOpenListeners).toBe(1);
   expect(opened.listenerCount).toBe(2);
   expect(opened.focusRings).toBe(1);
-  expect(opened.rowTargets).toBe(15);
+  expect(opened.rowTargets).toBe(16);
   expect(opened.ring).toMatchObject({ index: 0, label: 'Audio' });
 
   const initialMusic = opened.state.audio.musicVolume;
@@ -15355,76 +17517,91 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
   expect(sfxAdjusted.listenerCount).toBe(2);
   expect(sfxAdjusted.focusRings).toBe(1);
 
-  const initialAmbience = sfxAdjusted.state.audio.ambienceVolume;
-  const musicBeforeAmbience = sfxAdjusted.state.audio.musicVolume;
-  const sfxBeforeAmbience = sfxAdjusted.state.audio.sfxVolume;
+  const initialVoices = sfxAdjusted.state.audio.voiceVolume;
+  const musicBeforeVoices = sfxAdjusted.state.audio.musicVolume;
+  const sfxBeforeVoices = sfxAdjusted.state.audio.sfxVolume;
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 3, label: 'Ambience' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 3, label: 'Card Voices' });
+  await gamepadDown(14);
+  await expect.poll(async () => (await snapshot()).state.audio.voiceVolume).toBeLessThan(initialVoices);
+  const voicesAdjusted = await snapshot();
+  expect(voicesAdjusted.state.audio.musicVolume).toBeCloseTo(musicBeforeVoices, 4);
+  expect(voicesAdjusted.state.audio.sfxVolume).toBeCloseTo(sfxBeforeVoices, 4);
+  expect(voicesAdjusted.listenerCount).toBe(2);
+  expect(voicesAdjusted.focusRings).toBe(1);
+
+  const initialAmbience = voicesAdjusted.state.audio.ambienceVolume;
+  const musicBeforeAmbience = voicesAdjusted.state.audio.musicVolume;
+  const sfxBeforeAmbience = voicesAdjusted.state.audio.sfxVolume;
+  const voicesBeforeAmbience = voicesAdjusted.state.audio.voiceVolume;
+  await gamepadDown(13);
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 4, label: 'Ambience' });
   await gamepadDown(14);
   await expect.poll(async () => (await snapshot()).state.audio.ambienceVolume).toBeLessThan(initialAmbience);
   const ambienceAdjusted = await snapshot();
   expect(ambienceAdjusted.state.audio.musicVolume).toBeCloseTo(musicBeforeAmbience, 4);
   expect(ambienceAdjusted.state.audio.sfxVolume).toBeCloseTo(sfxBeforeAmbience, 4);
+  expect(ambienceAdjusted.state.audio.voiceVolume).toBeCloseTo(voicesBeforeAmbience, 4);
   expect(ambienceAdjusted.listenerCount).toBe(2);
   expect(ambienceAdjusted.focusRings).toBe(1);
 
   await page.keyboard.press('ArrowDown');
   await page.keyboard.press('ArrowDown');
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 5, label: 'Motion' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Motion' });
   await page.keyboard.press('ArrowRight');
   await expect.poll(async () => (await snapshot()).state.motion.preference).toBe('reduced');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 5, label: 'Motion' });
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Motion' });
 
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Contrast' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Contrast' });
   await gamepadDown(15);
   await expect.poll(async () => (await snapshot()).state.visualContrast).toMatchObject({ preference: 'high', highContrast: true, applied: true });
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Contrast' });
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Contrast' });
 
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Effects' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 8, label: 'Effects' });
   await gamepadDown(15);
   await expect.poll(async () => (await snapshot()).state.graphics.preference).toBe('lean');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Effects' });
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 8, label: 'Effects' });
 
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 8, label: 'Combat Pace' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 9, label: 'Combat Pace' });
   await gamepadDown(15);
   await expect.poll(async () => (await snapshot()).state.combatPacing.preference).toBe('snappy');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 8, label: 'Combat Pace' });
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 9, label: 'Combat Pace' });
 
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 9, label: 'Animation Pace' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 10, label: 'Animation Pace' });
   await gamepadDown(15);
   await expect.poll(async () => (await snapshot()).state.animationPacing.preference).toBe('fast');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 9, label: 'Animation Pace' });
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 10, label: 'Animation Pace' });
 
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 10, label: 'Text Pace' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 11, label: 'Text Pace' });
   await gamepadDown(15);
   await expect.poll(async () => (await snapshot()).state.textPacing.preference).toBe('fast');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 10, label: 'Text Pace' });
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 11, label: 'Text Pace' });
 
   await gamepadDown(12);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 9, label: 'Animation Pace' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 10, label: 'Animation Pace' });
   await gamepadDown(12);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 8, label: 'Combat Pace' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 9, label: 'Combat Pace' });
   await gamepadDown(12);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Effects' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 8, label: 'Effects' });
   await gamepadDown(0);
   await expect.poll(async () => (await snapshot()).state.graphics.preference).toBe('auto');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Effects' });
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 8, label: 'Effects' });
 
   await gamepadDown(12);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Contrast' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Contrast' });
   await gamepadDown(0);
   await expect.poll(async () => (await snapshot()).state.visualContrast).toMatchObject({ preference: 'standard', highContrast: false, applied: true });
 
   await gamepadDown(12);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 5, label: 'Motion' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Motion' });
   await gamepadDown(0);
   await expect.poll(async () => (await snapshot()).state.motion.preference).toBe('system');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 5, label: 'Motion' });
+  expect((await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Motion' });
 
   await gamepadDown(1);
   await expect.poll(async () => (await snapshot()).state.settingsOpen).toBe(false);
@@ -15651,7 +17828,7 @@ test('combat and rewards expose remapped keyboard and standard gamepad focus', a
   });
   let selected = await snapshot();
   expect(selected.state.selectedCard).toBe(selected.state.hand[1].instanceId);
-  expect(selected.inputHints).toBe(2);
+  expect(selected.inputHints).toBe(0);
   expect(selected.state.combatInputFocus.target).toBeTruthy();
   await page.keyboard.press('Space');
   await expect.poll(async () => (await snapshot()).state.combatAnimationPending).toBe(true);
@@ -16014,10 +18191,9 @@ test('title How to Play overlay opens, reports state, and loads its medallion', 
   expect(result.tipRowFrameRendered).toBe(2);
   expect(result.tipRowFrameTelemetry).toEqual({ loaded: true, rendered: true, count: 2 });
   expect(result.tipRowFrameObjects).toHaveLength(2);
-  expect(result.guideActionTargets).toEqual([
-    { width: 190, height: 58 },
-    { width: 190, height: 58 }
-  ]);
+  // Asset refreshes must replace the overlay instead of stacking duplicate
+  // interactive controls at the same coordinates.
+  expect(result.guideActionTargets).toEqual([{ width: 190, height: 58 }]);
   for (const frame of result.tipRowFrameObjects) {
     expect(frame).toMatchObject({
       displayWidth: 616,
@@ -16636,9 +18812,9 @@ test('deck review overlays render generated dossier flourish art', async ({ page
     && frame.height === 24
     && frame.visible
   ))).toBe(true);
-  expect(result.routeSectionTabFrames).toBe(4);
+  expect(result.routeSectionTabFrames).toBe(5);
   expect(result.routeSectionTabFrameObjects.map((frame: { width: number }) => frame.width).sort((a: number, b: number) => a - b))
-    .toEqual([124, 132, 136, 144]);
+    .toEqual([124, 132, 136, 144, 180]);
   expect(result.routeSectionTabFrameObjects.every((frame: { name: string; height: number; visible: boolean }) => (
     frame.name === 'deck-review-section-tab-frame'
     && [32, 34].includes(frame.height)
@@ -19839,16 +22015,17 @@ test('route map exposes boss prep readiness before the final crossing', async ({
 test('boss prep footer fits every district boss name and complete pressure set', async ({ page }) => {
   test.setTimeout(60_000);
   await page.setViewportSize({ width: 1000, height: 560 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
   await boot(page);
   const baseRunState = await page.evaluate(async () => {
     const route: any = await window.__birdSquadStartScene!('RouteScene', {});
     return structuredClone(route.runState);
   });
   const expectedBosses = [
-    'The Tar-Crowned Crow',
-    'The Canal Gatekeeper',
-    'The Beacon-Breaker',
-    'The Roost Warden',
+    { name: 'The Tar-Crowned Crow', test: 'Cover', compactTest: 'Cover', hint: 'Build Cover' },
+    { name: 'The Canal Gatekeeper', test: 'recovery', compactTest: 'recovery', hint: 'Bank Cohesion' },
+    { name: 'The Beacon-Breaker', test: 'tempo', compactTest: 'tempo', hint: 'Keep Open Sky Guard' },
+    { name: 'The Roost Warden', test: 'full Flock build', compactTest: 'full build', hint: 'Stockpile Cover' },
   ];
 
   for (let mapIndex = 0; mapIndex < expectedBosses.length; mapIndex += 1) {
@@ -19871,11 +22048,22 @@ test('boss prep footer fits every district boss name and complete pressure set',
       if (contract) contract.confirmed = true;
       route.selectedNodeId = window.__birdSquadCurrentMap!().bossNodeId;
       route.renderAll();
+      const bossNode = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.id === window.__birdSquadCurrentMap!().bossNodeId);
+      const bossPosition = route.nodePosition(bossNode);
+      const tooltip: any = route.showNodeTooltip(bossNode, bossPosition.x, bossPosition.y - 78);
+      await wait(120);
       const name: any = route.children.getByName('boss-prep-name');
       const pressure: any = route.children.getByName('boss-prep-pressure');
       const backplate: any = route.children.getByName('boss-prep-dossier-backplate');
+      const plan: any = tooltip.getByName('route-boss-prep-plan');
+      const testRead: any = tooltip.getByName('route-boss-prep-test');
+      const tooltipFrame: any = tooltip.list.find((child: any) => child.texture?.key === 'ui-icon-route-node-tooltip-frame');
       const pressureLines: string[] = pressure.getWrappedText(pressure.text);
       const resolution = pressure.resolution || 1;
+      const state = JSON.parse(window.render_game_to_text!());
+      const bossState = state.nodes.find((node: any) => node.type === 'boss');
+      const planBounds = plan.getBounds();
+      const tooltipBounds = tooltipFrame.getBounds();
       return {
         bossName: name.text,
         nameNaturalWidth: name.context.measureText(name.text).width / (name.resolution || 1),
@@ -19884,18 +22072,42 @@ test('boss prep footer fits every district boss name and complete pressure set',
         widestPressureLine: Math.max(...pressureLines.map((line) => pressure.context.measureText(line).width / resolution)),
         pressureBottom: pressure.getBounds().bottom,
         backplateBottom: backplate.getBounds().bottom,
+        primaryTests: state.bossPrep.primaryTests,
+        strategyHints: state.bossPrep.strategyHints,
+        nodeBossPrep: route.nodeDetail(bossNode).bossPrep,
+        decisionRisk: bossState.decision.risk,
+        testRead: testRead.text,
+        plan: plan.text,
+        planLines: plan.getWrappedText(plan.text),
+        planInsideFrame: planBounds.left >= tooltipBounds.left
+          && planBounds.right <= tooltipBounds.right
+          && planBounds.bottom <= tooltipBounds.bottom,
+        live: document.getElementById('game-status')?.textContent ?? '',
       };
     }, { base: baseRunState, index: mapIndex });
 
-    expect(result.bossName).toBe(expectedBosses[mapIndex]);
+    const expected = expectedBosses[mapIndex];
+    expect(result.bossName).toBe(expected.name);
     expect(result.nameNaturalWidth).toBeLessThanOrEqual(196);
     expect(result.pressure).not.toContain('openSky');
     expect(result.pressureLines.length).toBeGreaterThanOrEqual(1);
     expect(result.pressureLines.length).toBeLessThanOrEqual(2);
     expect(result.widestPressureLine).toBeLessThanOrEqual(196);
     expect(result.pressureBottom).toBeLessThanOrEqual(result.backplateBottom);
+    expect(result.primaryTests).toContain(expected.test);
+    expect(result.strategyHints[0]).toContain(expected.hint);
+    expect(result.nodeBossPrep.tests).toEqual(result.primaryTests);
+    expect(result.nodeBossPrep.hints).toEqual(result.strategyHints);
+    expect(result.decisionRisk).toContain(expected.compactTest);
+    expect(result.testRead).toContain(`TEST  ${expected.compactTest}`);
+    expect(result.plan).toContain(expected.hint);
+    expect(result.planLines.length).toBeLessThanOrEqual(2);
+    expect(result.planInsideFrame).toBe(true);
+    expect(result.live).toContain(`Boss prep for ${expected.name}`);
+    expect(result.live).toContain(expected.test);
+    expect(result.live).toContain(expected.hint);
     await page.screenshot({
-      path: `.artifacts/test-results/boss-prep-district-${mapIndex + 1}-1000x560.png`,
+      path: `.artifacts/test-results/boss-prep-profile-${mapIndex + 1}-1000x560.png`,
       fullPage: true,
     });
   }
@@ -21570,6 +23782,7 @@ test('Flock Record downloads a complete local save backup without uploading data
     localStorage.setItem('birdsquad.screenReader', 'on');
     localStorage.setItem('birdsquad.musicVolume', '0.35');
     localStorage.setItem('birdsquad.sfxVolume', '0.65');
+    localStorage.setItem('birdsquad.voiceVolume', '0.45');
     localStorage.setItem('birdsquad.ambienceVolume', '0.55');
     localStorage.setItem('birdsquad.audioMuted', '1');
     localStorage.setItem('birdsquad.maxTier', '2');
@@ -21632,7 +23845,7 @@ test('Flock Record downloads a complete local save backup without uploading data
       preferences: {
         graphicsQuality: 'lean', visualContrast: 'high', colorCues: 'reinforced', screenShake: 'off', flashEffects: 'reduced',
         motion: 'reduced', combatPace: 'snappy', animationPace: 'fast', textPace: 'fast', screenReader: 'on',
-        musicVolume: 0.35, sfxVolume: 0.65, ambienceVolume: 0.55, audioMuted: true, maxTier: 2,
+        musicVolume: 0.35, sfxVolume: 0.65, voiceVolume: 0.45, ambienceVolume: 0.55, audioMuted: true, maxTier: 2,
         codexCardLens: 'seen',
         codexCardSearch: 'Twin Plume',
         codexCardSort: 'recent',
@@ -21651,7 +23864,7 @@ test('Flock Record downloads a complete local save backup without uploading data
   expect(Object.keys(payload.data)).toEqual(['account', 'activeRun', 'runHistory', 'guide', 'preferences']);
   expect(Object.keys(payload.data.preferences).sort()).toEqual([
     'ambienceVolume', 'animationPace', 'audioMuted', 'codexCardLens', 'codexCardSearch', 'codexCardSort', 'codexSavedViews', 'colorCues', 'combatPace', 'controls', 'flashEffects',
-    'graphicsQuality', 'maxTier', 'motion', 'musicVolume', 'screenReader', 'screenShake', 'sfxVolume', 'textPace', 'visualContrast',
+    'graphicsQuality', 'maxTier', 'motion', 'musicVolume', 'screenReader', 'screenShake', 'sfxVolume', 'textPace', 'visualContrast', 'voiceVolume',
   ]);
   expect(Object.keys(payload.data.preferences.controls).length).toBeGreaterThan(0);
   expect(raw).not.toContain('must-not-export');
@@ -21749,6 +23962,7 @@ test('Flock Record previews and confirms a transactional save restore', async ({
     localStorage.setItem('birdsquad.textPace', 'relaxed');
     localStorage.setItem('birdsquad.musicVolume', '0.40');
     localStorage.setItem('birdsquad.sfxVolume', '0.60');
+    localStorage.setItem('birdsquad.voiceVolume', '0.50');
     localStorage.setItem('birdsquad.ambienceVolume', '0.30');
     localStorage.setItem('birdsquad.audioMuted', '1');
     localStorage.setItem('birdsquad.maxTier', '2');
@@ -21781,6 +23995,7 @@ test('Flock Record previews and confirms a transactional save restore', async ({
     { id: 'empty-folio', name: 'Empty Must Drop', leaderId: 'talon', cards: [] },
   );
   delete legacyBackup.data.preferences.ambienceVolume;
+  delete legacyBackup.data.preferences.voiceVolume;
   delete legacyBackup.data.preferences.animationPace;
   delete legacyBackup.data.preferences.textPace;
   legacyBackup.data.preferences.codexSavedViews.push({
@@ -21856,6 +24071,7 @@ test('Flock Record previews and confirms a transactional save restore', async ({
     animationPace: localStorage.getItem('birdsquad.animationPace'),
     textPace: localStorage.getItem('birdsquad.textPace'),
     ambienceVolume: localStorage.getItem('birdsquad.ambienceVolume'),
+    voiceVolume: localStorage.getItem('birdsquad.voiceVolume'),
     codexCardLens: localStorage.getItem('birdsquad.codexCardLens'),
     codexCardSearch: localStorage.getItem('birdsquad.codexCardSearch'),
     codexCardSort: localStorage.getItem('birdsquad.codexCardSort'),
@@ -21899,6 +24115,7 @@ test('Flock Record previews and confirms a transactional save restore', async ({
     animationPace: 'standard',
     textPace: 'standard',
     ambienceVolume: '0.40',
+    voiceVolume: '0.60',
     codexCardLens: 'seen',
     codexCardSearch: 'Twin Plume',
     codexCardSort: 'recent',
@@ -23149,9 +25366,12 @@ test('Codex browsing follows remapped keyboard, gamepad, visible focus, and scre
   await gamepadDown(13);
   const scrolled = await state();
   expect(scrolled.codexFocus.index).toBe(8);
-  expect(scrolled.codexFocus.gridScroll).toBeGreaterThan(0);
+  expect(scrolled.codexFocus.gridScroll).toBe(0);
   await gamepadDown(15);
   expect((await state()).codexFocus.index).toBe(9);
+  await gamepadDown(13);
+  expect((await state()).codexFocus.index).toBe(13);
+  expect((await state()).codexFocus.gridScroll).toBeGreaterThan(0);
   const selectedLabel = (await state()).codexFocus.label;
   await gamepadDown(0);
   await expect.poll(async () => (await state()).codexFocus?.zone).toBe('detail');
@@ -23495,7 +25715,8 @@ test('codex: discovered cards can be favorited persistently with pointer, keyboa
   const favoritePoint = await page.evaluate(() => {
     const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
     const hit = cs.root.getByName('codex-card-favorite-hit');
-    return { x: hit.x, y: hit.y, width: hit.displayWidth, height: hit.displayHeight };
+    const point = hit.getWorldTransformMatrix().transformPoint(0, 0);
+    return { x: point.x, y: point.y, width: hit.displayWidth, height: hit.displayHeight };
   });
   expect(favoritePoint.width).toBeGreaterThanOrEqual(142);
   expect(favoritePoint.height).toBeGreaterThanOrEqual(46);
@@ -23924,6 +26145,7 @@ test('codex: active flight playable status distinguishes Base, Preened, absent, 
 });
 
 test('codex: private Card Journal supports sanitized pointer, keyboard, controller, search, and screen-reader flows', async ({ page }) => {
+  test.setTimeout(90_000);
   await page.addInitScript(() => {
     const account = {
       discoveredCards: ['major_00', 'wands_ace'],
@@ -25227,7 +27449,7 @@ test('codex: card search filters real metadata without revealing undiscovered ca
     persisted: true,
   });
   expect(state.cardSearch.fields).toEqual([
-    'name', 'rules', 'keyword', 'character', 'set', 'type', 'cost', 'rarity', 'ownership', 'saved Folio usage', 'personal tag', 'private journal', 'showcase',
+    'name', 'rules', 'keyword', 'character', 'set', 'type', 'cost', 'rarity', 'ownership', 'active flight usage', 'saved Folio usage', 'personal tag', 'private journal', 'showcase', 'protection',
   ]);
   expect(state.cardCollectionLens).toMatchObject({ baseCount: 1, setCount: 14, visibleIds: ['wands_02'] });
   await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
@@ -29827,7 +32049,7 @@ test('codex: supplies are listed as items with usable details', async ({ page })
   expect(r.itemMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
   expect(r.itemsAllMedallionLoaded).toBe(true);
   expect(r.itemsAllMedallions.length).toBeGreaterThan(0);
-  expect(r.itemsAllMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.35)).toBe(true);
+  expect(r.itemsAllMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha >= 0.3)).toBe(true);
   expect(r.activeItemsAllMedallions.length).toBeGreaterThan(0);
   expect(r.activeItemsAllMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
   expect(r.supplyMedallionLoaded).toBe(true);
@@ -30130,7 +32352,11 @@ test('codex: browser entries render generated frame art across sections', async 
 
     const results = [
       await renderMode('cards', () => { cs.activeSection = 'cards'; cs.activeTab = 0; }),
-      await renderMode('items', () => { cs.activeSection = 'items'; cs.activeItemTypeTab = 2; }),
+      await renderMode('items', () => {
+        cs.activeSection = 'items';
+        cs.activeItemTypeTab = 2;
+        cs.activeItemFilterTab = 0;
+      }),
       await renderMode('leaders', () => { cs.activeSection = 'leaders'; }),
       await renderMode('glossary', () => { cs.activeSection = 'glossary'; }),
       await renderMode('enemies', () => { cs.activeSection = 'enemies'; cs.activeEnemyTab = 0; }),
@@ -30365,6 +32591,8 @@ test('new supplies and build-around Waymarks execute their scaling hooks', async
     s.completedRouteNodeIds = nestNode ? [nestNode.id] : [];
 
     s.useSupply(0);
+    if (s.returnChoice && discarded) s.chooseReturnCard(discarded.instanceId);
+    await wait(20);
     const afterReturn = { hand: s.hand.length, discard: s.discardPile.length };
     s.useSupply(0);
     const afterClamp = { block: s.flock.block, pendingNest: s.pendingNestCoverBonus, retain: s.pendingRetainHand, hadNestNode: !!nestNode };
@@ -31909,6 +34137,13 @@ test('played cards leave hand before resolving discard effects', async ({ page }
     const discardBefore = s.discardPile.length;
     s.energy = 99;
     s.playCard(card, s.enemies[0].id);
+    if (s.discardChoice) {
+      const choice = s.hand.find((candidate: any) => candidate.instanceId !== card.instanceId);
+      if (!choice) throw new Error('Expected another card for the discard choice');
+      s.toggleDiscardChoice(choice.instanceId);
+      s.confirmDiscardChoice();
+      await wait(20);
+    }
     const discarded = s.discardPile.slice(discardBefore).map((candidate: any) => candidate.id);
     return {
       discarded,

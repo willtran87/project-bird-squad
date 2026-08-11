@@ -76,6 +76,10 @@ export default defineConfig(({ command }) => ({
             || moduleId.includes('/assets/runtime/enemies/enemy-art-manifest.json')
           ) return 'runtime-data';
           if (
+            moduleId.includes('/src/game/input-bindings')
+            || moduleId.includes('/src/game/effects/retain')
+          ) return 'interaction-rules';
+          if (
             moduleId.includes('/src/game/route-gen')
             || moduleId.includes('/src/game/fx')
             || moduleId.includes('/src/game/leaders')

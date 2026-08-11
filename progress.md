@@ -1,5 +1,35 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+Current follow-up: Same-seed route reward fidelity from the comprehensive product audit. The title and outcome surfaces promised replayable/shareable route seeds, but several player-visible route rolls still consumed ambient `Math.random()`, so identical runs could diverge after audio or cosmetic FX activity and after a save/resume. Route Cache outcomes, two-card drafts, single-card grants, Waymark grants, Supply grants, and nested random route effects now derive from one stable seed/state/salt contract covering the flight seed, district, current node, decision key, deck/Preen state, held Waymarks and Supplies, Cohesion, and Scrap. Reopening a decision keeps its frozen projection, resuming the same state reproduces it, and different seeds retain reward variety; record IDs and cosmetic particle/audio jitter intentionally remain outside the gameplay contract. Focused Chromium coverage proves replay/resume equality under three hostile ambient-randomness values, broad cross-seed variety, structured route-draft quality, and exact preview-to-commit parity across route event families. Strict TypeScript, production build, docs, runtime data, 961 runtime assets, world/FX contracts, deployment cache, enemy-variety/card-overlay contracts, 32 content checks, encounter balance, and the 500-seed economy audit pass; the consolidated gate finishes with all 55 interaction-heavy sequencing scenarios green in 16.5 minutes. The app entry is 675.3 KiB and combined boot is 705.3 KiB, below their hard budgets; the ~0.3 KiB aspirational entry warning is retained because moving this shared contract into the already-tight game-core chunk correctly fails its harder 30 KiB boundary. The required shared production client reached a fully interactive/full-art Rooftop Blocks route in 1.35 seconds with no pending, failed, or timed-out asset groups and no browser-error artifact; the inspected capture is `.artifacts/visual-audit/seeded-route-rewards-shared-client/shot-0.png`. Temporary choreography was deleted, preview port 43160 was stopped, and final cleanup confirms ports 43160 and 5373 are free, unreachable, and have no matching workspace Node/browser processes.
+
+Current follow-up: Contextual route gains from the comprehensive product audit. Reachable nodes already named a category-level gain and their authored pressure, but the route still could not answer `why this path now?` from the current flight. A shared decision policy now keeps the existing two-row `GAIN / RISK` hierarchy while making gain copy live: combat drafts name deck size; Basins show effective healing after the Cohesion cap; Nests count only meaningful Preen targets and show held Scrap; Markets show purchasing Scrap plus deck size; Caches show open Supply capacity; and Signals show available versus total authored choices after current costs and requirements. Boss reward/test authority remains district-authored, encounter risks retain their two-pressure cap, and no future random reward is exposed. The same exact read flows through the top decision dock, hover dossier, serialized route node, and opt-in screen-reader narration without adding persistent map clutter. Focused Chromium coverage mutates Cohesion, deck contents, Scrap, Supplies, and eligibility in one live RouteScene, proves every category recomputes, verifies visual/state/live-region parity and tooltip containment, and passes beside route layout, boss dossier, encounter pressure, and the complete menu/route/combat/settings screen-reader regression. The inspected minimum-viewport capture is `.artifacts/test-results/contextual-route-gain-basin-1000x560.png`. Strict TypeScript, production build, docs, runtime data, 961 runtime assets, world/FX contracts, deployment cache, 32 content checks, encounter balance, 500-seed economy, and bundle gates pass at 674.7 KiB app entry and 704.6 KiB combined boot. The required shared production client reached a fully interactive/full-art route with no pending, failed, or timed-out asset groups and no browser-error artifact; `.artifacts/visual-audit/contextual-route-gains-shared-client/shot-0.png` shows the natural `Card + Scrap; deck 10` read while text state proves full-Cohesion Basin waste, ten Preen targets, 40 Scrap Market context, two open Supply slots, and 3/3 Signal availability. Temporary choreography was deleted, preview port 43159 was stopped, and final cleanup confirms ports 43159 and 5373 are free, unreachable, and have no matching workspace Node/browser processes.
+
+Current follow-up: Actionable encounter-pressure reads from the comprehensive product audit. Combat route choices no longer repeat only generic low/medium/high pressure: a shared priority vocabulary converts authored encounter tags into at most two compact, player-facing threats such as multiple foes, Snags, Open Sky, Winded, enemy Cover, Heavy strikes, tempo loss, poison, support units, Molt triggers, or Scrap theft, while taxonomy-only basic/elite/boss tags never consume the limited space. The same exact severity-plus-pressure string now drives the selected top decision dock, route-node tooltip, serialized decision state, and opt-in screen-reader narration, preserving a single truthful route choice across visual, pointer, and accessibility surfaces. Deterministic Chromium coverage proves representative exact mappings across all four districts and validates every generated street/rival node, tooltip containment, top-dock parity, and live-region output. The new test and the adjacent route/boss-preview regression pass; the legacy layout assertion now explicitly requires one 122px standard tooltip and the intentionally taller 210px boss dossier. The inspected minimum-viewport capture is `.artifacts/test-results/route-encounter-pressure-high-roost-1000x560.png`. Strict TypeScript, production build, documentation, runtime data, 961 runtime assets, world/FX contracts, deployment cache, 32 content checks, encounter balance, 500-seed economy, and bundle gates pass at 674.9 KiB app entry and 704.9 KiB combined boot. The required shared production client reached a fully interactive/full-art Rooftop Blocks route with no pending, failed, or timed-out asset groups and no browser-error artifact; `.artifacts/visual-audit/route-encounter-pressure-shared-client/shot-0.png` shows `RISK medium: enemy Cover` cleanly contained in the persistent decision dock, while state verifies concrete reads throughout the generated route. Temporary choreography was deleted, preview port 43158 was stopped, and final cleanup confirms ports 43158 and 5373 are free, unreachable, and have no matching workspace Node/browser processes.
+
+Current follow-up: District-specific boss preparation accuracy from the comprehensive product audit. All four map profiles already authored distinct `primaryTests`, `thesis`, and `bossPrepHints`, but the live boss-node detail reduced every final crossing to the same generic Cover/Molt story and screen-reader route narration omitted strategy. Map profiles now remain the single authority: compact labels drive the selected boss risk read and generated hover dossier, the first authored hint fills an on-demand two-line `PLAN` panel, and the existing always-visible footer continues to show live deck/Supply readiness plus useful remaining nodes. Route text state exposes the exact unabridged tests and strategy hints, and screen-reader route summaries announce the boss, tests, current build gaps, and first plan without requiring pointer hover. Dead reward/lesson fields in the old node-detail builder were removed, keeping startup smaller rather than duplicating dormant data. Four-district Chromium coverage proves exact source/state/visual/narration parity for Tar-Crowned Crow, Canal Gatekeeper, Beacon-Breaker, and Roost Warden profiles; the wider route/backdrop and opt-in screen-reader regressions also pass. Visual inspection caught the first plan panel extending a few pixels outside its generated frame; the final 12px two-line panel is fully contained and readable at 1000x560. Captures are `.artifacts/test-results/boss-prep-profile-{1..4}-1000x560.png`. Strict TypeScript, production build, docs, runtime data, 961 runtime assets, world/FX contracts, deployment cache, 32 content checks, encounter balance, 500-seed economy, and bundle gates pass at 674.8 KiB app entry and 704.8 KiB combined boot, with Route text state restored to its strict 24.0 KiB limit. The required shared production client drove title -> Rooftop Blocks -> future-boss hover and captured the accurate live dossier at `.artifacts/visual-audit/boss-prep-profile-shared-client/shot-0.png`; full art was ready, no asset group was pending/failed, and no browser-error artifact was produced. Temporary choreography was deleted, preview port 43157 was stopped, and final cleanup confirms ports 43157 and 5373 are free, unreachable, and have no matching workspace Node/browser processes.
+
+Current follow-up: District-aware combat card rewards from the comprehensive product audit. All four authored map `rewardBias` profiles now shape the live structured draft instead of remaining inert data: Rooftop Blocks favors Cover/direct damage, Canal Markets healing, Signal Spires tempo/Open Sky Guard, and High Roost rare/Open Sky Guard/boss-prep cards. The draft still preserves its need, dominant-suit synergy, and off-suit/new-role pivot structure, prefers at most one eligible district-aligned choice, and keeps weighted rarity random rather than guaranteeing a particular card. Reward ceremony subtitles, focused two-chip `BUILD READ`, serialized state, and screen-reader narration expose the district lean and the matching card instead of hiding the influence. The reusable affinity/draft/observation policy lives in the existing balance/runtime-data chunk, and the run design spec records the contract. Deterministic Chromium coverage samples 16 seeds in each district (64 drafts), proves three unique deck-aware choices and an observable thematic match, then verifies generated rendering, state, narration, pointer/keyboard/controller commitment, Waymark narration, and ceremony-art compatibility; all five focused reward regressions pass. The inspected minimum-viewport capture is `.artifacts/test-results/district-reward-lean-1000x560.png`. Strict TypeScript, production build, docs, runtime data, 961 runtime assets, world/FX contracts, deployment cache, 32 content checks, encounter balance, 500-seed economy, and bundle gates pass at the 675.0 KiB app-entry target and 704.9 KiB combined boot. The required shared production client reached a fully interactive/full-art Rooftop Blocks route with zero pending/failed/timed-out asset groups and no browser-error artifact at `.artifacts/visual-audit/district-reward-lean-shared-client/`. Temporary choreography was deleted, preview port 43156 was stopped, and final cleanup confirms ports 43156 and 5373 are free, unreachable, and have no matching workspace Node/browser processes.
+
+Current follow-up: Waymark reward build-fit clarity from the comprehensive product audit. Post-combat Waymark choices now replace generic synergy labels with a shared, live `BUILD READ`: each generated and guarded-fallback choice shows at most two compact chips/observations derived from the current deck, packed Supplies, Molt/recovery/anti-Cover/Resonance support, carried family lanes, and known route/combat trigger timing. The same policy now powers Market Waymark dossiers, so acquisition surfaces cannot drift; focused observations are serialized in battle text state and announced by the screen-reader summary before intentional confirmation. Normal card rewards also retain a useful first-choice read when pointer input has not established focus, then show only the focused/armed card's read, avoiding both a blank default ceremony and three-card annotation clutter. The inspected 1000x560 capture at `.artifacts/test-results/waymark-reward-build-read-1000x560.png` shows three distinct Waymarks with readable art, rarity/family/source metadata, Supply/Plumes counts, new-family lanes, rules text, and controls. Four focused Chromium regressions pass for pointer/keyboard/controller commitment, generated ceremony art, guarded fallback parity, exact live observations, and opposite-side card inspection. Strict TypeScript/production build, docs, runtime data, 961 runtime assets, world/FX contracts, deployment cache, content drift, encounter balance, 500-seed economy, and bundle gates pass at 674.9 KiB app entry and 704.8 KiB combined boot; the reward renderer is 13.9 KiB, route reward overlay 5.2 KiB, and shared Waymark read 3.1 KiB. The required shared production client reached a fully loaded Rooftop Blocks route with no failed/timed-out asset groups or browser-error artifact at `.artifacts/visual-audit/waymark-build-read-shared-client/`. Temporary choreography was deleted, preview port 43155 was stopped, and final cleanup confirms ports 43155 and 5373 are free, unreachable, and have no matching workspace Node/browser processes.
+
+Current follow-up: Market-wide build-fit guidance from the comprehensive product audit. The card shelf already explained live deck fit, but Waymarks, Supplies, Preen/Release, boss preparation, route planning, and stock refresh still presented isolated rules and costs. Every focused Market category now exposes at most two descriptive `BUILD READ` observations derived from the actual flight: suit/Molt/anti-Cover/recovery/Resonance card support, packed Supply and carried Waymark triggers, missing Cohesion, route-versus-combat timing, hand setup, formation safety, deck size, eligible Preens, boss prep, and refresh tradeoffs. The observations sit inside the on-demand item dossier without adding permanent shelf copy, remain separate from exact purchase projections, follow keyboard/controller/pointer focus in text state, and are announced by the existing screen-reader Market summary. Following the web-game skill's startup guidance, the analysis policy lives in the already-lazy reward/inspection boundary; app entry stays below its preferred target at 674.4 KiB, combined boot is 704.3 KiB, card detail is 9.9 KiB under its strict 10 KiB cap, and Route debug state remains 24.0 KiB. Focused Chromium coverage proves visual/state/live-region parity for cards, Waymarks, Supplies, and services, caps every read at two observations, keeps dossiers inside the 1280x720 stage, preserves intentional purchase controls, and passes alongside the full pointer/keyboard/controller Market commitment regression. Strict TypeScript, production build, runtime/content/balance/economy, bundle, and deployment-cache gates pass. The inspected minimum-viewport dossier is `.artifacts/test-results/market-item-build-read-1000x560.png`; it shows Wire Snips with a carried Supply-Waymark trigger, a one-use anti-Cover role, exact pouch/Scrap deltas, readable shelf prices, and no persistent clutter. The required production shared client reached a fully rendered route with no failed/timed-out assets or browser-error artifact at `.artifacts/visual-audit/market-item-build-read-shared-client/`. Temporary choreography was deleted, preview port 43154 was stopped, and final cleanup verifies both preview and Playwright ports free with no matching workspace Node/browser processes.
+
+Current follow-up: Market card-acquisition hierarchy and deck-fit clarity from the comprehensive product audit. Combat and route card rewards already exposed live need/synergy/curve/crowding/Molt observations, but Market cards compressed only the purchase deltas into the dossier metadata and offered no equivalent focused guidance or narration. Market card focus now caches the same authoritative deck/Waymark observations used by the other acquisition surfaces; opening a card dossier attaches a compact two-line `BUILD READ` footer below the rules/stats panel, while the four-card shelf remains art/name/price-first with no permanent text added. Market text state exposes the focused observations and screen-reader narration reads them before purchase confirmation. The focused Chromium contract proves the rendered rows equal the live deck calculation, stay inside the dossier/control geometry, remain absent from the persistent shelf, preserve exact `DECK`/`SCRAP` previews, and reach the live region; the existing full pointer/keyboard/controller confirmation suite and every-purchase preview/commit parity suite also pass. Strict TypeScript, production build, runtime/content/balance/economy, bundle, and deployment-cache checks pass at 673.9 KiB app entry, 703.9 KiB combined boot, 9.9 KiB card detail, and the restored strict 24.0 KiB Route text-state boundary. The required production shared client completed two real combats on seed `market-route-4`, claimed both card rewards, entered the connected Market with 100 Scrap/12 cards/33 of 39 Cohesion, and armed (without buying) Closed Basin. `.artifacts/visual-audit/market-build-read-live-final-3/shot-0.png` and `state-0.json` show `DECK 12 > 13`, `SCRAP 100 > 25`, `+ Adds Molt safety`, and `! Skill role crowded`, with the generated dossier loaded, shelf art/prices clear, and no browser-error artifact. The temporary action file was deleted; preview port 43153 and Playwright port 5373 are free, unreachable, and have no matching workspace Node/browser processes.
+
+Current follow-up: Route-reward build-direction clarity from the comprehensive product audit. The prior pass made Cache and Signal card drafts complementary, but their ceremony still exposed only card art and names while combat rewards explained live deck consequences; screen-reader narration also omitted the neutral focused card's identity and rationale. Extracted the existing need/synergy/curve/crowding/Molt observation policy into the shared balance chunk and now reuse it unchanged for combat and route cards. Card-choice route ceremonies reserve the previously empty lower-left decision space for a compact two-row `BUILD READ`, naming each offer with at most two descriptive observations while preserving both cards, Inspect, Cancel, exact state deltas, and intentional confirmation. The focused route choice's name and observations are also serialized and announced before arming. The generated-art route overlay and text-state chunks remain within their strict 6 KiB and 24 KiB ceilings; moving duplicate observation logic out of startup reduces the app entry to 673.6 KiB and combined boot to 703.6 KiB. Focused Chromium coverage proves all visual rows match authoritative observations, clear the divider/Cancel bounds, survive pointer/keyboard/controller commitment and inspection, and preserve combat reward guidance; strict TypeScript, runtime/content/balance/economy, production build, bundle, and deployment-cache gates pass. The required shared production client cleared live combat and opened Rooftop Cache drawer 27's rare-card branch; `.artifacts/visual-audit/route-build-read-final/shot-0.png` and `state-0.json` show Tool Probe versus Canal Shelter with readable consequences, exact Cohesion/deck deltas, a loaded renderer, no armed accidental claim, and no browser error artifact. Temporary choreography and preview port 43152 are removed/stopped during final cleanup.
+
+Current follow-up: Deck-aware route-card drafts from the comprehensive product audit. Cache and Signal card rewards still sampled two random cards from their constrained rarity pool even after combat rewards gained need/synergy/pivot composition, so route events could present redundant deckbuilding choices. Route drafts now use a shared balance policy: the first offer targets the deck's least-represented role and favors its dominant suit when that role exists in the eligible pool; the second prefers a distinct role and off-suit pivot, with graceful fallback for tight rarity pools. Existing common/rare/uncommon-or-rare selectors, owned-card exclusion, two-card uniqueness, and per-node frozen outcomes remain intact. Combat rewards reuse the extracted dominant-suit counter, keeping startup size at the 675.0 KB preferred target and combined boot at 704.9 KB. Focused coverage evaluates 32 seeded route drafts, exact rarity constraints, frozen IDs, and adjacent combat drafting; strict TypeScript, runtime/content/balance/economy audits, production build, bundle and deployment-cache gates, the existing route commitment regression, and focused Chromium reruns pass. The required shared production client cleared live combat, committed Rooftop Cache drawer 27's rare-card branch, and rendered the inspected final choice at `.artifacts/visual-audit/route-draft-live-final/shot-0.png` with a loaded renderer, two complementary rare offers, exact Cohesion/deck deltas, intentional confirmation, and no browser error artifact. Temporary action choreography and preview port 43151 are removed/stopped during final cleanup.
+
+Current follow-up: Preen ceremony decision-hierarchy cleanup from the comprehensive product audit. The live reward ceremony still reused acquisition-oriented deck-need observations such as crowded-role warnings and Molt-option advice when the player was choosing which owned card to upgrade. The lazy reward renderer and its guarded fallback now derive a compact exact before/after change from the existing structured Preen preview for every option: the focused/armed card uses the prominent selection chip, while each unfocused card uses one inline delta, eliminating both irrelevant guidance and duplicate focused information. Normal card drafts retain their build-role observations. Focused Chromium coverage verifies three meaningful choices communicate exactly once, acquisition observations are absent only in Preen mode, commitment still applies the previewed upgraded effect, and the fallback preserves the same hierarchy. Strict TypeScript, the production build, bundle budget, and deployment-cache gate pass; app entry remains exactly 675.0 KB, combined boot is 704.9 KB, and the reward renderer is 14,326 bytes under its 14 KiB ceiling. The required shared production client completed the seeded `preen2` fight and reward chain against the built output; `.artifacts/visual-audit/preen-presentation-final-clean-2/shot-0.png` and `state-0.json` show three distinct choices, one signal per choice, a ready loaded renderer, an armed intentional confirmation, and no browser errors. Port 43150 and the temporary action choreography were cleaned up after verification.
+
+Current follow-up: Meaningful Preen eligibility across the core deckbuilding loop. The upgrade audit found ten Snag cards whose base and Preened effects, Molt effects, costs, and flock stats are intentionally identical; post-combat Preen offers and automatic Nest/boss-prep Preens still treated them as valid, allowing a visible or automatic reward to produce no benefit. Added one structural upgrade predicate and a distinct-candidate pool, then applied it consistently to combat offers, post-combat reward gating, route/Market card pickers, Market candidate previews, automatic Nest rewards, and carried boss-prep Preens. A three-card offer can no longer spend multiple slots on duplicate copies, and Preen commitment now accepts only an ID actually present in the current offer. Focused Chromium coverage proves Snags cannot appear or consume automatic upgrades, duplicate copies collapse to one offer, Snag-only decks suppress empty Preen ceremonies, exact decision chips still settle under real focus, and Market selection/payment remains intentional. The runtime/content/balance/economy audits, strict TypeScript, production build, bundle gate, and deployment-cache gate pass; app entry is exactly 675.0 KB and combined boot is 705.1 KB. The required shared production client completed the seeded `preen2` fight through Waymark and card rewards into a ready three-choice Preen ceremony; all choices were unique and meaningful, the focused exact delta rendered cleanly, and the inspected capture is `.artifacts/visual-audit/preen-eligibility-final-built/shot-0.png`. Port 43140 is free and unreachable, no matching Node/browser process remains, and the temporary action file was deleted.
+
+Current follow-up: Reward-draft choice quality from the comprehensive product audit. The combat reward generator's documented wildcard slot previously sampled the unrestricted remainder, so a draft could repeat both the roles and the dominant suit already represented by its need and synergy picks. The third slot is now a real pivot: it scores the remaining pool for a role not already offered and, when possible, a suit outside the current deck's dominant suit, while retaining a deterministic weighted fallback for constrained pools. Focused coverage evaluates 32 seeded drafts and requires three unique cards, a dominant-suit synergy pick, and an off-suit/new-role pivot every time. Strict TypeScript, runtime/content/balance/economy/deployment-cache audits, the focused Chromium rerun, production build, and bundle budgets all pass; the build remains under preferred limits at 675.0 KB app entry and 704.9 KB combined boot. The required shared production client completed a full live fight and visually verified the ready three-card ceremony at `.artifacts/visual-audit/reward-draft-diversity-final-5/shot-0.png` with no renderer failure or browser error artifact. Temporary test actions and the preview server were removed/stopped after verification.
+
+Current follow-up: Title run-length decision clarity from the comprehensive product audit. The live production title check found that Quick and Full only exposed district counts even though the choice also controls Ascension-tier progression. The compact selector now uses larger 86x68 decision cards and states the complete tradeoff in place: `Quick / 3 districts / No tier unlock` versus `Full / 4 districts / Unlocks tiers`. Keyboard and controller focus announce the same consequence, and lazy menu debug state exposes both summaries and the selected option for deterministic accessibility/input coverage. The pass also fixed strict-TypeScript regressions left by the recent menu extraction by removing stale First Flight imports and making the state/methods consumed by lazy menu modules public. Focused remapped-keyboard/gamepad/pointer coverage passes, strict TypeScript passes, and the production build is back under both preferred limits at 674.9 KB app entry and 704.9 KB combined boot. The required shared production client verified the focused selector visually at `.artifacts/visual-audit/run-length-clarity-final/shot-0.png` with no browser error artifact. Temporary preview ports 43120-43122 were stopped after verification.
+
+Current follow-up: Route-map hierarchy and startup-boundary polish from the comprehensive product audit. Added `src/game/route-map-renderer.ts`, a guarded 4.3 KB / 1.9 KB gzip route-only presentation chunk for edges, aligned column guides, node hierarchy, selection labels, route commitment controls, and first-route guidance. RouteScene waits for the renderer result alongside essential UI, retains a compact playable fallback on timeout/failure, and no longer loads route presentation in the title entry. Future nodes now sit at 22% opacity, selected/selectable nodes use strong non-color-only backplates, the active node carries a persistent `SELECTED` chip, neutral icons are smaller, entry/boss art clears the map frame rails, and deterministic columns replace overlap-prone random drift. The route smoke now waits for painted-node replacement across engines and asserts backplates, labels, and hierarchy; the 48-layout seeded audit now rejects invalid bounds, rail collisions, and material icon overlap. Production build and size/deployment gates pass at 674.8 KB app entry / 180.0 KB gzip, 704.8 KB combined boot, and 4.3 KB route renderer. Focused Chromium layout/presentation coverage passes; Firefox’s initial late-art race was fixed without reducing assertions and its rerun passes; Chromium and WebKit passed the same cross-browser route contract. Built desktop and portrait-gate screenshots were visually inspected under `.artifacts/visual-audit/route-hierarchy/` with zero page/console errors. All temporary preview/test ports were stopped and verified before handoff.
+
 Current follow-up: On-demand battle card/pile inspector extraction. Added `src/game/battle/render-inspect.ts`, an 8.6 KB / 2.9 KB gzip optional module that owns deck/draw/discard review framing, counts, rows, scrolling, art, rules text, chips, and detail presentation without owning pile state, card rules, costs, selection, or callbacks. BattleScene requests it only when a combat card index opens, reports `battleInspectRenderer` telemetry, retains the successful module across scene reuse, shows explicit loading/failure panels, and retries a failed import on the next open. Production entry is now 653.5 KB / 170.5 KB gzip and combined entry + game-core is 682.0 KB / 180.9 KB gzip, improving the fresh pre-extraction baseline by 4.6 KB / 1.1 KB gzip. Added a 12 KB hard budget and deployment rules requiring exactly one hashed, non-preloaded `render-inspect` chunk. Strict TypeScript and two focused pile/inspector regressions pass. The required production client proved the module stays cold through normal combat, then opened Draw with a real pointer, loaded successfully with zero browser errors, and produced the inspected capture under `.artifacts/web-game-inspect-renderer/`. Major battle render-helper extraction is complete; a full lazy BattleScene remains optional P2.
 
 Final verification: `npm run validate` passes all release gates and nine sequencing scenarios. The first full browser pass caught one legacy deck-review test's fixed 80 ms assumption; it now waits on explicit `battleInspectRenderer.loaded` plus rendered flourish telemetry without weakening its generated-art assertions. The focused deck/pile rerun passes, followed by a clean 155-test Chromium rerun in 17.8 minutes on one worker.
@@ -8015,3 +8045,382 @@ sessions through `docs/game/playtest-runbook.md`.
   matching runtime left behind.
 - Next useful polish: make sold-out Market stock equally concise in the spoken
   section inventory without repeating it in the visible shelf labels.
+
+## 2026-08-08 Release Confidence Foundation
+
+- Completed the remaining Market narration parity item: sold card, Waymark,
+  and Supply stock now remains in the active section's spoken unavailable
+  inventory with the concise reason `SOLD OUT`. Visible shelves keep their
+  existing sold slats, so the accessibility improvement adds no screen clutter.
+- Added a focused sold-stock regression plus exact 1000x560 capture at
+  `.artifacts/test-results/market-sold-spoken-inventory-1000x560.png`. The full
+  intentional Market interaction scenario passes in Chromium; its canvas test
+  helpers now use rendered world-space hit-area centers instead of assuming
+  every interactive object's local origin is its clickable center.
+- Added an opt-in Chromium/Firefox/WebKit Playwright project matrix and the
+  `npm run test:cross-browser` command. Boot, screen-reader navigation, and the
+  concise sold-stock narration scenario pass in all three engines. The longer
+  Market scenario also passed in Firefox; WebKit traversed the core purchase
+  flow but its optional hover tail is intentionally excluded from the compact
+  matrix because that monolithic scenario exceeds a practical smoke-test time.
+- Added `npm run validate:release-evidence` and `npm run release:verify`. The
+  evidence validator requires five unique non-seeded run exports with all four
+  experience ratings and matching observer notes, plus passing revision-linked
+  audits for low-end Windows, Android tablet, iPad, NVDA, and VoiceOver. It does
+  not create or prepopulate passing evidence.
+- Documented the final evidence workflow in
+  `docs/game/release-evidence-runbook.md` and linked it from the docs index.
+  The validator currently fails honestly at 0/5 human runs and no manual audit
+  file; those findings require real people and physical/assistive environments.
+- Production build, strict TypeScript, runtime-data, documentation, syntax,
+  bundle, and focused browser checks pass. Combined boot remains 725.0 KB
+  minified / 195.7 KB gzip, with the existing preferred-target warnings but no
+  hard-budget regression.
+- The required shared production client reached a fully interactive, full-art
+  Route scene in 426 ms and full art in 1759 ms, with no failed or timed-out
+  asset groups and no browser-error artifact. The inspected capture and state
+  are under `.artifacts/web-game-release-route-settled/`.
+- All launched preview/test servers were stopped. Ports 43041-43045 are free
+  and unreachable, no matching Node/Playwright runtime remains, and the
+  temporary shared-client action file was deleted.
+
+## 2026-08-08 Title Clarity and Boot-Path Headroom
+
+- Deferred menu diagnostics, optional title overlays/tooltips, the Start Run
+  flourish, and Profile scene construction until their first real use. The
+  interaction boundaries retain retry behavior and test-only scene
+  registration while removing nonessential work from the opening path.
+- Reduced the production app entry from 695.0 KB to 675.0 KB and combined boot
+  code from 725.0 KB to 705.0 KB. Both preferred targets now pass; hard limits
+  were not weakened. Added hard budgets for the four new lazy chunks.
+- Added a shared lower-third title scrim after inspecting the 1280x720
+  production capture. Leader, Ascension, flight-length, and Start Run controls
+  now read as one command layer instead of competing with the detailed key art.
+- Fixed Help refresh behavior so it leaves one 190x58 guide action target
+  rather than stacked duplicate interactive controls. Updated the focused
+  regression to enforce the uncluttered result.
+- Production build, bundle, deployment-cache, runtime-data, and documentation
+  gates pass. Five affected Chromium flows pass: title boot, Settings, Help,
+  Start Run flourish/transition, and locked-leader/Profile rendering.
+- The compact three-browser matrix is green across Chromium, Firefox, and
+  WebKit. Its first pass exposed a fast-engine timing assumption in the
+  transitional menu diagnostics; the synchronous facade now preserves the
+  screen-reader contract while the full diagnostics chunk loads, and the two
+  affected engine cases pass on rerun.
+- Used the required shared production client for title, Help, and Route action
+  chains and visually inspected all three captures under
+  `.artifacts/visual-audit/`; no browser error artifacts were produced.
+- Stopped every launched test/preview runtime. Ports 43046-43050 were verified
+  free and unreachable, no matching Node/browser runtime remained, and all
+  temporary action JSON files were deleted through the patch workflow.
+- Remaining release evidence is intentionally external: five unique human run
+  exports plus low-end Windows, Android tablet, iPad, NVDA, and VoiceOver audit
+  records must be collected from real people and devices before the evidence
+  gate can pass.
+
+## 2026-08-09 Retain Priority and Roost Clarity
+
+- Replaced Retain's invisible edge-of-hand behavior with one explicit contract:
+  the selected card is kept first, then remaining slots take the rightmost
+  unplayed cards. Retain earned after the enemy acts uses the selection captured
+  at Roost and the same fallback order; retained cards never remain duplicated
+  in discard.
+- Added numbered `KEEP 1`, `KEEP 2`, and later priority tags directly to the
+  affected hand cards, plus one compact Roost rail naming the exact cards that
+  will survive. Pointer selection now accepts an unaffordable card when Retain
+  is active, while a second activation still cannot play it without Wingbeats.
+  Keyboard, controller, fallback renderer, serialized state, keyword tooltip,
+  and opt-in screen-reader narration all share the same plan.
+- Updated the core gameplay and Alpha specifications so Retain is documented as
+  a shipped shared term instead of a parked mechanic. Added the focused Retain
+  regression to the sequencing gate.
+- Focused Chromium coverage proves pre-enemy and post-enemy selection priority,
+  no discard duplication, exact fallback order, pointer/keyboard/controller
+  parity, unaffordable pointer focus, numbered visual tags, concise hint copy,
+  and live-region narration. Both Retain scenarios pass, and the inspected
+  minimum-viewport evidence is
+  `.artifacts/test-results/retain-priority-1000x560.png`.
+- Split shared input and Retain rules into a budgeted `interaction-rules` chunk
+  and counted it in combined boot. Production bundle gates now pass without
+  warnings: app entry 673.5 KB, game core 29.9 KB, interaction rules 5.2 KB,
+  and combined boot 708.6 KB. Strict TypeScript, production build,
+  documentation, runtime data, 961 runtime assets, world/FX contracts,
+  deployment cache, and bundle gates pass.
+- The required shared production client reached a fully interactive, full-art
+  Rooftop Blocks combat with five cards, one enemy, all renderers ready, no
+  pending or failed asset groups, and no browser-error artifact. The inspected
+  frame and state are under `.artifacts/retain-shared-client-final/`.
+  Temporary choreography was deleted; preview port 43161 and test port 5373 are
+  free, the preview endpoint is unreachable, and no matching test Node/browser
+  process remains.
+
+## 2026-08-09 Explicit Discard Decisions
+
+- Replaced automatic right-edge discard resolution with an explicit combat
+  decision. `discard(N)` now requires the exact available count, while
+  `discardUpTo(N)` accepts zero through N and can be skipped with Back/B.
+- Effects resolve in written order: earlier draws finish before the discard
+  prompt, newly drawn cards are eligible, and later `perDiscarded` effects use
+  the actual confirmed count. Supplies are consumed only after confirmation.
+- Applied the same choice contract to played cards, Supplies, and Roost-held
+  Snags. The resolving Snag is excluded from its own candidates, and zone
+  de-duplication before shuffle prevents Jammed Strap from existing in two
+  piles at once.
+- Added a compact discard rail, exact count/progress copy, focus and selection
+  outlines, `CHOOSE`/`DROP N` card tags, a 44 px confirm target, and equivalent
+  pointer, keyboard, controller, serialized-state, and screen-reader behavior.
+  The inspected minimum-viewport evidence is
+  `.artifacts/test-results/discard-choice-1000x560.png`.
+- Moved the workflow into the lazy `discard-choice` battle module. Its 4.9 KB
+  chunk passes a 6 KB hard budget and is verified as a single non-preloaded
+  deployment asset. The app entry is 680.1 KB and combined boot is 715.3 KB;
+  both remain below the 700/725 KB hard caps, with preferred-target warnings
+  retained rather than weakening any existing limit.
+- The complete 58-case sequencing suite passed before the final mechanical
+  extraction. After extraction, strict TypeScript, production build, bundle,
+  deployment-cache, and five focused Chromium flows passed, covering Retain,
+  both discard-choice paths, held Snags, and playable-build cleanup.
+- The required shared production client traversed Title to Route to an
+  interactive full-art battle with all readiness groups settled and no browser
+  error artifact. Evidence is under `.artifacts/discard-shared-client-final/`.
+  Temporary choreography was deleted; preview port 43162 and test port 5373
+  were left free and unreachable with no matching test runtime remaining.
+
+## 2026-08-09 Explicit Discard Recovery
+
+- Audited the recurring `returnDiscard` effect used by six card families and
+  Return Ticket. Although the cards promised a discard-pile choice, combat
+  silently returned the first eligible card; the canonical spec also mislabeled
+  the second argument as a cost modifier even though runtime uses it as a
+  follow-up draw count.
+- `returnDiscard(filter, drawAfter)` now pauses in written effect order and
+  presents the live eligible pile. Cards discarded earlier in the same effect
+  are immediately eligible, Molt cards stay excluded for `nonMolt`, the chosen
+  card returns before the authored draw, and later effects resume afterward.
+  An empty eligible pool logs the miss and continues safely.
+- Added a dynamically sized, paged chooser with live cost, role, compact rules,
+  exact pile order, 58px rows, strong focus, and a dimmed battlefield. Pointer,
+  keyboard, controller, serialized-state, and screen-reader paths share the
+  same mandatory choice. Back/B explains that a committed effect cannot be
+  cancelled. The inspected minimum-viewport capture is
+  `.artifacts/test-results/return-choice-1000x560.png`.
+- Return Ticket and future choice-producing Supplies remain packed until the
+  choice resolves. Using a combat Supply now closes the kit drawer before
+  resolution so a required card-zone decision cannot be hidden behind it.
+- Kept the existing 6 KiB discard-module budget intact by separating the new
+  workflow into `return-choice` (4.8 KiB) beside `discard-choice` (4.8 KiB).
+  Deployment validation requires exactly one non-preloaded chunk for each.
+  The app entry is 684.1 KiB and combined boot is 719.3 KiB, below the 700/725
+  KiB hard caps with the existing preferred-target warnings retained.
+- Strict TypeScript, production build, documentation, runtime data, 961 runtime
+  assets, world/FX, enemy-variety, minor-overlay, bundle, and deployment-cache
+  gates pass. Nine affected discard/recovery/Supply Chromium flows pass after
+  updating the legacy Return Ticket assertion to make the new explicit choice.
+- The required shared production client traversed Title to Route to a fully
+  interactive/full-art Rooftop Blocks battle with both choice readiness groups
+  settled, no pending/failed/timed-out assets, and no browser-error artifact.
+  Evidence is under `.artifacts/return-choice-shared-client-final/`.
+
+## 2026-08-09 Explicit District Preen
+
+- Corrected `freePreenNextDistrict`: the benefit previously fired on the next
+  RouteScene reload (including ordinary same-district combat) and silently
+  upgraded the first eligible deck card. Credits now persist until a real boss
+  district transition, then open the shared card picker exactly once.
+- District prep supports multiple credits, exact Base-to-Preened previews,
+  two-step pointer/keyboard/controller confirmation, full-card inspection, and
+  an intentional `Skip Preen` / `Skip Remaining` exit. A partial selection
+  keeps committed upgrades and clearly logs how many credits were skipped.
+- The remaining credit count is sanitized and persisted with the active run;
+  reloading while district prep is open restores the same mandatory choice,
+  while finishing or skipping clears it so it cannot be duplicated.
+- Removed misleading card-energy badges from non-Market Preen/Remove pickers;
+  paid Market services retain their actual Scrap price badges. The dedicated picker
+  names the source as `Boss Prep Credit` and states that skipping changes
+  nothing.
+- Added the focused next-district timing/choice/restart regression to the
+  sequencing gate and updated the large-deck picker assertion for the cleaner
+  free-choice layout. The 1600x900 inspected capture is
+  `.artifacts/test-results/district-preen-choice-1600x900.png`.
+- The required shared production client traversed Title to a fully interactive,
+  full-art Rooftop Blocks route with no failed or pending asset groups and no
+  browser-error artifact. Evidence is under
+  `.artifacts/district-preen-shared-client-route-final/`; all preview and test
+  ports used by this pass were stopped and verified unreachable.
+
+## 2026-08-09 Explicit Route Supply Choices
+
+- Corrected the direct-route `gainSupplyChoice(1)` contract. Basin, Cache, and
+  Signal rewards that promise “choose 1 of 2 Supplies” now expose two exact,
+  deterministic, unowned offers instead of silently packing one random item.
+  Passive trigger sites remain automatic because no route decision is open.
+- Added a compact two-card Supply review with full item art, rarity/category/
+  timing, concise effects, strong focus and armed states, and a two-step commit
+  that prevents accidental packing. Cancelling restores the original route
+  option, while reopening the same decision preserves its offers.
+- Pointer, remapped keyboard, controller, serialized state, and opt-in
+  screen-reader paths share the same selection. The generic reward claim path
+  is blocked while a Supply choice is unresolved, and the chosen Supply is the
+  exact item used by the projected and committed run state.
+- Added the focused regression to the sequencing gate and updated the route
+  effect contract/specification. The minimum-viewport evidence is
+  `.artifacts/test-results/route-supply-choice-1000x560.png`.
+- Preserved the hard bundle ceilings by moving Supply presentation and reward
+  choice serialization into the existing lazy reward workflow. Production
+  gates pass at 688.6 KiB for the app entry, 723.8 KiB combined boot, 23.4 KiB
+  for route text state, and 5.8 KiB for the route reward overlay; preferred
+  target warnings remain intact.
+- Strict TypeScript, production build, documentation, runtime data, 961 runtime
+  assets, world/FX, enemy-variety, minor-overlay, deployment-cache, bundle, four
+  focused reward flows, and the complete 62-case sequencing suite pass.
+- The required shared production client reached a fully interactive, full-art
+  Rooftop Blocks route with no pending, failed, or timed-out asset groups and no
+  browser-error artifact. Evidence is under
+  `.artifacts/route-supply-shared-client-final/`. Temporary choreography was
+  deleted; ports 43185 and 43187-43189 are free and unreachable with no matching
+  test process remaining.
+
+## 2026-08-09 Packed Supplies and Presentation Polish
+
+- Replaced the Route-only Supply list and Battle-only shortcut behavior with a
+  shared Packed Supplies drawer. Route and combat now expose the same item art,
+  timing, effect copy, named focus, and two-step arm/confirm contract across
+  pointer, remapped keyboard, and controller input. The contextual Run Kit / Skip
+  binding no longer spends the first item accidentally.
+- Added serialized Route and Battle drawer state plus opt-in screen-reader
+  summaries, and verified both phases at the minimum viewport. Inspected evidence
+  is `.artifacts/test-results/packed-supplies-route-armed-1000x560.png` and
+  `.artifacts/test-results/packed-supplies-battle-armed-1000x560.png`.
+- Improved remaining visual consistency: Codex Supply and Waymark rows now use
+  the same generated entry frames as the other sections, route travel streaks
+  start visibly, and the title input-hint rail has a real gap below the animated
+  logo instead of touching its lower edge.
+- Isolated Route-only Flight Folio persistence behind a single non-preloaded
+  `saved-decks` chunk (6.3 KiB minified / 2.4 KiB gzip), with deployment checks
+  preventing accidental eager loading or preload. Combined boot is 725.0 KiB
+  minified / 195.4 KiB gzip and the app entry is 689.8 KiB / 182.2 KiB gzip;
+  hard limits pass while the existing preferred-target warnings remain visible.
+- Audited the complete 290-scenario browser suite. The first clean sweep passed
+  288 cases and identified two final deterministic contracts: lazy high-contrast
+  debug readiness and the title logo/hint boundary. Both were corrected and
+  passed together; the long Card Journal parity test also received appropriate
+  timeout headroom after a production-gate-only timeout and passed in isolation
+  and inside the final gate.
+- Final `npm run validate` passes documentation, runtime data, 961 runtime assets,
+  world/FX, bundle, deployment-cache, enemy-variety, Minor Arcana overlays, and
+  all 63 critical Chromium scenarios in one run. Balance, content (32 checks),
+  and economy (2,000 seeds) audits also pass. Test/preview ports 43190-43207 were
+  scoped to exact listeners, stopped after use, and verified clean.
+
+## 2026-08-09 Suit-Specific Card Audio Identity
+
+- Replaced the one-size-fits-all card cue with a shared physical cast transient
+  plus distinct Web Audio voices for Plumes, Quills, Basins, Nests, and neutral/
+  Snag cards. A card that actually uses Molt adds its own ascending shimmer.
+- Kept the layer strictly presentational: suit glyphs, labels, color-independent
+  card identity, cast FX, Molt text, combat log, and serialized text state remain
+  complete without sound. Voices obey the existing SFX and mute preferences.
+- Kept all oscillator plans and telemetry inside the existing interaction-loaded,
+  non-preloaded `adaptive-music` boundary. The chunk is 5.8 KiB minified / 2.1
+  KiB gzip, below its 8 KiB cap. Four crowded utility cues were reduced from
+  three notes to two, leaving the app entry at 689.8 KiB / 182.2 KiB gzip and
+  combined boot at 724.9 KiB / 195.4 KiB gzip under the unchanged 725 KiB hard
+  ceiling.
+- Added a six-cast regression covering every voice and the Molt accent to the
+  critical sequencing gate. The inspected 1600x900 battle frame is
+  `.artifacts/test-results/card-suit-voices-molt-1600x900.png`.
+- The required shared production client traversed Title to a settled Rooftop
+  Blocks route with adaptive audio active and no browser errors; evidence is in
+  `.artifacts/card-audio-shared-client/`. Its exact preview PID was stopped.
+- Final `npm run validate` passes documentation, runtime data, 961 runtime assets,
+  world/FX, bundle, deployment-cache, enemy-variety, Minor Arcana overlays, and
+  all 64 critical Chromium scenarios. Ports 43208-43211 are free, with no
+  matching workspace Playwright or Vite preview process left running.
+
+## 2026-08-09 Repetition-Safe Card Voices and Preen Payoff
+
+- Closed the next actionable audio findings from the product checklist. Every
+  consecutive card cast now rotates through three restrained pitch variants
+  while retaining its suit identity; the variation is cosmetic and remains
+  fully redundant with card glyphs, labels, FX, log copy, and text state.
+- Successful Preens now use the established Molt-power upgrade signature in all
+  three player-committed workflows: post-combat reward, district prep, and the
+  Market service. Arming or inspecting stays quiet; the signature fires exactly
+  once only after the saved card changes to its Preened form.
+- Extended adaptive-audio telemetry with sequence and variant identity. A new
+  critical regression proves the exact `0, 1, 2, 0, 1, 2` cycle across all five
+  card voices and Molt, while a second regression proves one upgrade cue and one
+  card mutation for each Preen workflow.
+- The implementation remains inside the interaction-loaded, non-preloaded
+  `adaptive-music` boundary. Production measures 689.8 KiB / 182.2 KiB gzip for
+  the app entry, 725.0 KiB / 195.4 KiB gzip for combined boot, and 5.8 KiB / 2.1
+  KiB gzip for adaptive audio. The unchanged 725 KiB hard ceiling passes.
+- The required shared production client naturally traversed Title, Route, and a
+  full-art Rooftop Blocks battle, then played a real Plumes card. Serialized
+  state reports voice `plumes`, sequence 1, variant 0, active battle music, no
+  pending/failed/timed-out assets, and no browser errors. Evidence is under
+  `.artifacts/audio-variation-shared-client/play/`.
+- The consolidated command passed documentation, runtime data, 961 runtime
+  assets, world/FX, bundle, deployment-cache, enemy-variety, and Minor Arcana
+  gates. Its first 31 of 65 critical scenarios reported green before the tool
+  session boundary closed; the exact remaining 34-scenario shard then passed in
+  10.2 minutes, preserving complete 65-scenario coverage. The focused two-test
+  audio run also passed. Ports 43212-43215 are free, and the temporary shared-
+  client choreography was deleted.
+- The owner-approved human-playtest waiver remains in force. These results are
+  production automation and visual inspection, not evidence for subjective fun
+  or fresh-player comprehension.
+
+## 2026-08-09 Interaction-Loaded Synthesized SFX
+
+- Moved every non-card UI and combat Web Audio recipe from the opening app entry
+  into one interaction-loaded `audio-sfx` boundary while preserving the exact
+  cue signatures, SFX volume ownership, and ambient/adaptive audio layers.
+- Preserved first-action feedback: the director queues the initiating cue across
+  the import, reports ready/played state for diagnostics, retries failed loads,
+  and lets the close signature complete when that same action enables mute.
+- Added hard deployment contracts requiring exactly one hashed `audio-sfx`
+  chunk, forbidding its modulepreload, and capping it at 8 KiB. The emitted chunk
+  is 6.0 KiB minified / 2.0 KiB gzip.
+- Production app entry fell from 689.8 KiB to 683.6 KiB and combined boot from
+  725.0 KiB to 718.8 KiB without weakening a threshold. Gzip fell from 182.2 to
+  180.5 KiB for entry and from 195.4 to 193.7 KiB combined.
+- A focused Chromium regression proves no SFX resource exists before input, the
+  first confirm request becomes an audible synthesized cue after the chunk
+  resolves, and a second cue reuses the same resource. TypeScript, production
+  build, bundle-size, and deployment-cache gates pass; port 43216 was verified
+  clean after Playwright shut down its preview and browser.
+- The permanent critical sequencing gate now includes that regression. The
+  consolidated 65-case gate plus the focused final assertion passed, followed
+  by a clean 293/293 complete Chromium suite in 50.5 minutes. That full run also
+  passed adaptive scene-pressure music, card voices, audio feedback on every
+  game surface, mute without scene re-entry, and mute while overlays stay open.
+- The required shared production client reached a full-art, interactive Rooftop
+  Blocks route with five synthesized cues played, adaptive route music active,
+  no failed/pending/timed-out asset groups, and no browser-error artifact.
+  Evidence is under `.artifacts/sfx-lazy-shared-client/play/`; its temporary
+  choreography was deleted. Ports 43216-43220 and their matching preview/test
+  process chains were verified clean.
+
+## 2026-08-10 Independent Card Voice Volume
+
+- Added a fourth independent audio preference, `Card Voices`, alongside Music,
+  SFX, and Ambience. Card-cast voice synthesis now reads only this value while
+  interface/combat cues continue to use SFX.
+- Preserved existing player intent: installs without the new preference inherit
+  the current SFX value, and legacy Flock Record backups without
+  `voiceVolume` sanitize and restore using their saved SFX value.
+- Expanded the Settings overlay to a balanced 8-by-8 grid. Mouse, keyboard,
+  standard gamepad, focus-ring, screen-reader text-state, and minimum 44 CSS-px
+  touch-target coverage now include the fourth slider on title, route, and
+  paused-combat surfaces.
+- Card-voice diagnostics record the effective volume without adding gameplay
+  information. The playback regression proves SFX at 65% and voices at 25%
+  remain independent through six suit/Molt casts.
+- Production TypeScript/build, bundle-size, and deployment-cache checks pass.
+  App entry is 684.0 KiB / 180.6 KiB gzip, combined boot is 719.1 KiB / 193.8
+  KiB gzip, and adaptive audio remains 5.8 KiB / 2.2 KiB gzip. The six affected
+  Chromium scenarios pass, including Settings on all surfaces, minimum viewport,
+  keyboard/gamepad navigation, complete backup export, and legacy restore.
+- Playwright shut down both temporary preview/browser chains; ports 43222 and
+  43223 were verified free before publishing.

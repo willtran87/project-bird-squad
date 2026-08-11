@@ -45,6 +45,7 @@ const PREFERENCE_KEYS = {
   screenReader: 'birdsquad.screenReader',
   musicVolume: 'birdsquad.musicVolume',
   sfxVolume: 'birdsquad.sfxVolume',
+  voiceVolume: 'birdsquad.voiceVolume',
   ambienceVolume: 'birdsquad.ambienceVolume',
   audioMuted: 'birdsquad.audioMuted',
   maxTier: 'birdsquad.maxTier',
@@ -73,6 +74,7 @@ export interface SaveBackupPreferences {
   screenReader: 'off' | 'on';
   musicVolume: number;
   sfxVolume: number;
+  voiceVolume: number;
   ambienceVolume: number;
   audioMuted: boolean;
   maxTier: number;
@@ -142,6 +144,9 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
   const controls = sanitizeControls(value.controls);
   const musicVolume = finiteRange(value.musicVolume, 0, 1);
   const sfxVolume = finiteRange(value.sfxVolume, 0, 1);
+  const voiceVolume = value.voiceVolume === undefined
+    ? sfxVolume
+    : finiteRange(value.voiceVolume, 0, 1);
   const ambienceVolume = value.ambienceVolume === undefined
     ? musicVolume
     : finiteRange(value.ambienceVolume, 0, 1);
@@ -205,6 +210,7 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
     || !['cinematic', 'standard', 'snappy'].includes(String(value.combatPace))
     || musicVolume === undefined
     || sfxVolume === undefined
+    || voiceVolume === undefined
     || ambienceVolume === undefined
     || maxTier === undefined
     || typeof value.audioMuted !== 'boolean'
@@ -223,6 +229,7 @@ function sanitizePreferences(value: unknown): SaveBackupPreferences | undefined 
     screenReader: value.screenReader === 'on' ? 'on' : 'off',
     musicVolume,
     sfxVolume,
+    voiceVolume,
     ambienceVolume,
     audioMuted: value.audioMuted,
     maxTier: Math.floor(maxTier),
@@ -373,6 +380,7 @@ function serializedEntries(bundle: SaveBackupBundle) {
     [PREFERENCE_KEYS.screenReader, preferences.screenReader],
     [PREFERENCE_KEYS.musicVolume, preferences.musicVolume.toFixed(2)],
     [PREFERENCE_KEYS.sfxVolume, preferences.sfxVolume.toFixed(2)],
+    [PREFERENCE_KEYS.voiceVolume, preferences.voiceVolume.toFixed(2)],
     [PREFERENCE_KEYS.ambienceVolume, preferences.ambienceVolume.toFixed(2)],
     [PREFERENCE_KEYS.audioMuted, preferences.audioMuted ? '1' : '0'],
     [PREFERENCE_KEYS.maxTier, String(preferences.maxTier)],

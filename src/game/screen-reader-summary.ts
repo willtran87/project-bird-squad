@@ -18,6 +18,30 @@ function spaced(value: string) {
   return value.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim();
 }
 
+function supplyDrawerSummary(payload: Record<string, unknown>) {
+  const drawer = isRecord(payload.supplyDrawer) ? payload.supplyDrawer : undefined;
+  if (payload.supplyDrawerOpen !== true || drawer?.open !== true) return '';
+  const entries = records(drawer.entries);
+  const packed = entries.filter((entry) => entry.empty !== true);
+  const focusIndex = number(drawer.focusIndex) ?? 0;
+  const focused = entries[focusIndex];
+  const packedPosition = focused
+    ? Math.max(0, packed.indexOf(focused)) + 1
+    : 0;
+  const armed = number(drawer.armedIndex) === focusIndex;
+  const controls = isRecord(drawer.controls) ? drawer.controls : undefined;
+  const name = text(focused?.name) || 'empty slot';
+  const timing = spaced(text(focused?.timing));
+  const details = (text(focused?.description) || text(focused?.summary)).replace(/[.!?]+$/, '');
+  const availability = focused?.usable === false && focused?.empty !== true
+    ? ' It belongs to the other phase and cannot be used here.'
+    : '';
+  const action = armed
+    ? `${name} is selected. Use ${text(controls?.confirm) || 'Confirm, controller A, or a second activation'} to consume it. Back clears the selection and keeps it packed.`
+    : `Use ${text(controls?.select) || 'Previous, Next, D-pad, or pointer'} to browse. Activate once to select; ${text(controls?.confirm) || 'Confirm, controller A, or a second activation'} consumes it.`;
+  return `Packed Supplies. ${packed.length} item${packed.length === 1 ? '' : 's'} packed.${focused?.empty === true ? ` Focused empty slot ${focusIndex + 1}.` : ` Focused ${packedPosition} of ${packed.length}, ${name}${timing ? `, ${timing} timing` : ''}.${details ? ` ${details}.` : ''}`}${availability} ${action} ${text(controls?.close) || 'Back or controller B'} closes the Run Kit.`;
+}
+
 export function screenReaderSummary(payload: unknown): string {
   if (!isRecord(payload)) return '';
   const mode = text(payload.mode);
@@ -226,6 +250,8 @@ export function screenReaderSummary(payload: unknown): string {
   }
 
   if (scene === 'RouteScene' || mode === 'routeSelection') {
+    const supplySummary = supplyDrawerSummary(payload);
+    if (supplySummary) return supplySummary;
     const waymarkReview = isRecord(payload.waymarkReview) ? payload.waymarkReview : undefined;
     if (payload.waymarkDrawerOpen === true && waymarkReview?.open === true) {
       const selected = isRecord(waymarkReview.selected) ? waymarkReview.selected : undefined;
@@ -298,13 +324,16 @@ export function screenReaderSummary(payload: unknown): string {
       const index = number(input?.index) ?? 0;
       const count = number(input?.count) ?? 0;
       const focus = text(input?.label) || 'no available offer';
+      const observations = Array.isArray(input?.observations)
+        ? input.observations.map(text).filter(Boolean).join('; ')
+        : '';
       const unavailable = records(market.unavailableOffers)
         .map((offer) => `${text(offer.label) || 'Offer'}, ${spaced(text(offer.reason))}`)
         .join('; ');
       const confirmation = input?.armed === true
         ? ' Purchase confirmation is armed. Confirm, controller A, or activate the same offer again to buy; moving focus or pressing Back cancels.'
         : ' Choose an offer before buying; a first pointer activation only arms the purchase.';
-      return `Market, ${spaced(text(market.category))}. ${number(market.scrap) ?? 0} Scrap. Selected ${focus}, offer ${Math.min(index + 1, count)} of ${count}.${unavailable ? ` Unavailable in this section: ${unavailable}.` : ''}${confirmation} Use Previous and Next or the D-pad to choose, Confirm or controller A to buy, keys 1 through 4 or controller shoulders to change sections, and Back or controller B to leave. Route commitment is blocked while the Market is open.`;
+      return `Market, ${spaced(text(market.category))}. ${number(market.scrap) ?? 0} Scrap. Selected ${focus}, offer ${Math.min(index + 1, count)} of ${count}.${observations ? ` Build observations: ${observations}.` : ''}${unavailable ? ` Unavailable in this section: ${unavailable}.` : ''}${confirmation} Use Previous and Next or the D-pad to choose, Confirm or controller A to buy, keys 1 through 4 or controller shoulders to change sections, and Back or controller B to leave. Route commitment is blocked while the Market is open.`;
     }
     const routeReward = isRecord(payload.routeReward) ? payload.routeReward : undefined;
     if (routeReward) {
@@ -318,17 +347,33 @@ export function screenReaderSummary(payload: unknown): string {
           : `Use Back, controller B, Confirm, controller A, or tap outside to return to choice ${returnIndex === undefined ? '' : returnIndex + 1}.`;
         return `Full card inspection. ${text(routeInspection.cardName) || 'Reward card'}${number(routeInspection.cost) === undefined ? '' : `, ${number(routeInspection.cost)} Wingbeats`}. No reward has been claimed. ${returnTarget}`;
       }
+      const supplyChoices = Array.isArray(routeReward.supplyChoices) ? routeReward.supplyChoices.length : 0;
+      if (supplyChoices > 1) {
+        const index = number(routeFocus?.index) ?? 0;
+        const focusedName = text(routeFocus?.supplyName) || 'Supply';
+        const description = spaced(text(routeFocus?.description));
+        const timing = spaced(text(routeFocus?.timing));
+        const confirmation = routeFocus?.armed === true
+          ? ` ${focusedName} is selected. Confirm, controller A, or activate it again to pack it; Back or controller B clears the selection.`
+          : ' Choose a Supply before claiming; the first activation selects and the second confirms.';
+        return `Route Supply choice. Focused Supply ${index + 1} of ${supplyChoices}, ${focusedName}${timing ? `, ${timing} timing` : ''}.${description ? ` ${description}.` : ''}${confirmation} Use Previous and Next or the D-pad to compare, and Back or B to return without claiming.`;
+      }
       const cardChoices = Array.isArray(routeReward.cardChoices) ? routeReward.cardChoices.length : 0;
       if (cardChoices > 0) {
         const index = number(routeFocus?.index) ?? 0;
+        const focusedName = text(routeFocus?.cardName) || 'Reward card';
+        const observations = Array.isArray(routeFocus?.observations)
+          ? routeFocus.observations.map(text).filter(Boolean).join('; ')
+          : '';
         const confirmation = routeFocus?.armed === true
-          ? ` ${text(routeFocus.cardName) || 'Reward card'} is selected. Confirm, controller A, or activate it again to claim; Back or controller B cancels the selection without claiming.`
+          ? ` ${focusedName} is selected. Confirm, controller A, or activate it again to claim; Back or controller B cancels the selection without claiming.`
           : ' A direct activation selects without claiming; activate the same card again to commit. Previous, Next, or the D-pad deliberately selects a card, so Confirm or controller A commits it once.';
-        return `Route reward choice. Focused card ${index + 1} of ${cardChoices}.${confirmation} Use Roost or Y to inspect, and Back or B to return without claiming.`;
+        return `Route reward choice. Focused card ${index + 1} of ${cardChoices}, ${focusedName}.${observations ? ` Build observations: ${observations}.` : ''}${confirmation} Use Roost or Y to inspect, and Back or B to return without claiming.`;
       }
     }
     const map = isRecord(payload.map) ? payload.map : undefined;
     const run = isRecord(payload.run) ? payload.run : undefined;
+    const bossPrep = isRecord(payload.bossPrep) ? payload.bossPrep : undefined;
     const selectedNodeId = text(payload.selectedNodeId);
     const nodes = records(payload.nodes);
     const selected = nodes.find((node) => text(node.id) === selectedNodeId)
@@ -336,6 +381,7 @@ export function screenReaderSummary(payload: unknown): string {
     const mapName = text(map?.name) || 'current district';
     const nodeLabel = text(selected?.label) || 'available route';
     const risk = text(selected?.risk);
+    const decision = isRecord(selected?.decision) ? selected.decision : undefined;
     const hp = number(run?.currentHp);
     const maxHp = number(run?.maxHp);
     const scrap = number(run?.scrap);
@@ -347,10 +393,27 @@ export function screenReaderSummary(payload: unknown): string {
     const collectionSummary = collectionGoal
       ? ` Collection path: ${number(collectionGoal.owned) ?? 0} of ${number(collectionGoal.total) ?? 0} cards.${nextGoal ? ` Next optional goal, ${text(nextGoal.name)}, ${number(nextGoal.current) ?? 0} of ${number(nextGoal.target) ?? 0}.` : ' All collection badges earned.'}${text(collectionGoal.newCardId) ? ' A newly claimed card is ready for review. Use G, controller R3, or the route collection strip to open its exact dossier and return here without changing the flight or clearing its New marker.' : ' Use G, controller R3, or the route collection strip to open the Atlas and return here without changing the flight.'}`
       : '';
-    return `Route, ${mapName}. Selected ${nodeLabel}${risk ? `, ${risk} risk` : ''}.${resources}${collectionSummary} Press Confirm to inspect or commit.`;
+    const bossTests = Array.isArray(bossPrep?.primaryTests) ? bossPrep.primaryTests.map(text).filter(Boolean) : [];
+    const bossNeeds = Array.isArray(bossPrep?.needs) ? bossPrep.needs.map(text).filter(Boolean) : [];
+    const bossHints = Array.isArray(bossPrep?.strategyHints) ? bossPrep.strategyHints.map(text).filter(Boolean) : [];
+    const bossSummary = bossPrep
+      ? ` Boss prep for ${text(bossPrep.bossName) || 'the final crossing'}: tests ${bossTests.join(', ') || spaced(text(bossPrep.pressure)) || 'adaptation'}.${bossNeeds.length ? ` Current build gaps: ${bossNeeds.join(', ')}.` : ' Current build covers the tracked readiness gaps.'}${bossHints[0] ? ` Plan: ${bossHints[0]}` : ''}`
+      : '';
+    const decisionSummary = decision
+      ? ` Gain: ${text(decision.benefit) || 'route progress'}. Risk: ${text(decision.risk) || risk || 'unknown pressure'}.`
+      : risk ? ` ${risk} risk.` : '';
+    const routeSupplyDrawer = isRecord(payload.supplyDrawer) ? payload.supplyDrawer : undefined;
+    const routeSupplyControls = isRecord(routeSupplyDrawer?.controls) ? routeSupplyDrawer.controls : undefined;
+    const runKitControls = text(routeSupplyControls?.open);
+    return `Route, ${mapName}. Selected ${nodeLabel}.${decisionSummary}${resources}${bossSummary}${collectionSummary} Press Confirm to inspect or commit.${runKitControls ? ` Open Packed Supplies with ${runKitControls}.` : ''}`;
   }
 
   if (scene === 'BattleScene') {
+    const supplySummary = supplyDrawerSummary(payload);
+    if (supplySummary) return supplySummary;
+    const battleSupplyDrawer = isRecord(payload.supplyDrawer) ? payload.supplyDrawer : undefined;
+    const battleSupplyControls = isRecord(battleSupplyDrawer?.controls) ? battleSupplyDrawer.controls : undefined;
+    const runKitControls = text(battleSupplyControls?.open);
     const rewardInspection = isRecord(payload.rewardInspection) ? payload.rewardInspection : undefined;
     if (rewardInspection?.open === true) {
       const cost = number(rewardInspection.cost);
@@ -412,6 +475,14 @@ export function screenReaderSummary(payload: unknown): string {
     const enemies = records(payload.enemies);
     const selectedCardId = text(payload.selectedCard);
     const selectedCard = hand.find((card) => text(card.instanceId) === selectedCardId);
+    const retentionPlan = isRecord(payload.retentionPlan) ? payload.retentionPlan : undefined;
+    const retainedCards = records(retentionPlan?.cards)
+      .sort((a, b) => (number(a.order) ?? 0) - (number(b.order) ?? 0));
+    const retainedNames = retainedCards.map((card) => text(card.name)).filter(Boolean);
+    const retainedPriorityId = text(retentionPlan?.selectedPriority);
+    const retentionSummary = retainedNames.length > 0
+      ? ` Roost will keep ${retainedNames.join(', ')} in that priority order.${retainedPriorityId ? ' The selected card has first Retain priority.' : ' Select a card before Roost to give it first Retain priority; remaining slots keep the rightmost unplayed cards.'}`
+      : '';
     const selectedEnemyId = text(payload.selectedEnemy);
     const selectedEnemy = enemies.find((enemy) => text(enemy.id) === selectedEnemyId);
     const phaseTwoBoss = enemies.find((enemy) => number(enemy.phase) === 2 && (number(enemy.hp) ?? 0) > 0);
@@ -439,6 +510,12 @@ export function screenReaderSummary(payload: unknown): string {
       const focusedIndex = number(inputFocus?.index);
       const focusedCount = number(inputFocus?.count);
       const focusedChoice = focusedIndex === undefined ? undefined : source[focusedIndex];
+      const buildObservations = (mode === 'cardReward' || mode === 'waymarkReward') && focusedChoice && Array.isArray(focusedChoice.observations)
+        ? focusedChoice.observations.map(text).filter(Boolean).join('; ')
+        : '';
+      const districtLean = mode === 'cardReward' && Array.isArray(payload.rewardDistrictLean)
+        ? payload.rewardDistrictLean.map(text).filter(Boolean).join(', ')
+        : '';
       const collection = mode === 'cardReward' && focusedChoice && isRecord(focusedChoice.collection)
         ? focusedChoice.collection
         : undefined;
@@ -466,7 +543,27 @@ export function screenReaderSummary(payload: unknown): string {
           ? ` Skip confirmation is armed for ${number(rewardSkip.scrap) ?? 0} Scrap. Activate ${text(isRecord(rewardSkip.input) ? rewardSkip.input.keyboard : undefined) || 'Skip Reward'}, controller X, or Skip again to commit; Back or controller B cancels without skipping.`
           : ` Skip is available for ${number(rewardSkip.scrap) ?? 0} Scrap and requires two activations; the first only arms confirmation.`
         : '';
-      return `Reward choices ready.${focused}${collectionNote}${choices.length ? ` Options: ${choices.join(', ')}.` : ''}${claimInstruction} Use Roost or controller Y to inspect without claiming.${skipInstruction}`;
+      return `Reward choices ready.${districtLean ? ` District lean: ${districtLean}.` : ''}${focused}${buildObservations ? ` Build observations: ${buildObservations}.` : ''}${collectionNote}${choices.length ? ` Options: ${choices.join(', ')}.` : ''}${claimInstruction} Use Roost or controller Y to inspect without claiming.${skipInstruction}`;
+    }
+    const returnChoice = isRecord(payload.returnChoice) ? payload.returnChoice : undefined;
+    if (returnChoice) {
+      const candidates = records(returnChoice.candidates);
+      const focused = candidates.find((card) => card.focused === true);
+      const drawAfter = number(returnChoice.drawAfter) ?? 0;
+      const optionNames = candidates.map((card) => text(card.name)).filter(Boolean);
+      return `${text(returnChoice.source) || 'Effect'} requires one card from discard to return. ${candidates.length} eligible option${candidates.length === 1 ? '' : 's'}${optionNames.length ? `: ${optionNames.join(', ')}` : ''}.${focused ? ` Focused ${text(focused.name)}, cost ${number(focused.cost) ?? 0}, ${text(focused.role)}. ${text(focused.summary)}` : ''}${drawAfter > 0 ? ` After the return, draw ${drawAfter}.` : ''} Use Previous and Next or D-pad to choose; Confirm, controller A, Roost, controller Y, or pointer returns the focused card. Back or controller B cannot cancel this committed effect.`;
+    }
+    const discardChoice = isRecord(payload.discardChoice) ? payload.discardChoice : undefined;
+    if (discardChoice) {
+      const candidates = records(discardChoice.candidates);
+      const selected = candidates
+        .filter((card) => card.selected === true)
+        .sort((a, b) => (number(a.order) ?? 0) - (number(b.order) ?? 0));
+      const focusedIndex = number(inputFocus?.index);
+      const focused = focusedIndex === undefined ? undefined : hand[focusedIndex];
+      const max = number(discardChoice.max) ?? 0;
+      const optional = discardChoice.optional === true;
+      return `${text(discardChoice.source) || 'Effect'} requires a discard choice. ${optional ? `Choose up to ${max}` : `Choose exactly ${max}`} card${max === 1 ? '' : 's'}. ${selected.length} selected${selected.length ? `: ${selected.map((card) => text(card.name)).join(', ')}` : ''}.${focused ? ` Focused ${text(focused.name)}.` : ''} Use Previous and Next or D-pad to choose, Confirm, controller A, or pointer to toggle, and Roost, controller Y, or the confirm button to continue.${optional ? ' Back or controller B keeps the rest of the hand.' : ''}`;
     }
     if (selectedCard) {
       const name = text(selectedCard.name) || 'card';
@@ -478,7 +575,8 @@ export function screenReaderSummary(payload: unknown): string {
       const commit = text(bindings?.confirm) || 'Confirm';
       const targetAction = activeTarget === 'enemy' ? ' Choose the enemy target, or' : '';
       const outcome = isRecord(payload.selectedCardOutcome) ? text(payload.selectedCardOutcome.summary) : '';
-      return `Turn ${turn}. Selected ${name}, cost ${cost}.${target}${rules ? ` ${rules}` : ''}${outcome ? ` Preview: ${outcome}.` : ''}${phaseNote} Wingbeats ${energy}. Cohesion ${hp} of ${maxHp}.${targetAction} press ${commit}, controller A, or activate the selected card again to play. Back or controller B cancels without playing.`;
+      const canPay = cost <= energy;
+      return `Turn ${turn}. Selected ${name}, cost ${cost}.${target}${rules ? ` ${rules}` : ''}${outcome ? ` Preview: ${outcome}.` : ''}${phaseNote} Wingbeats ${energy}. Cohesion ${hp} of ${maxHp}.${retentionSummary}${canPay ? `${targetAction} press ${commit}, controller A, or activate the selected card again to play.` : ' Not enough Wingbeats to play this card; it remains selected for Retain priority.'} Back or controller B cancels without playing.`;
     }
     const firstCombatGuidance = isRecord(payload.firstCombatGuidance) ? payload.firstCombatGuidance : undefined;
     const guideCardName = text(firstCombatGuidance?.cardName);
@@ -487,7 +585,7 @@ export function screenReaderSummary(payload: unknown): string {
       const guideTarget = text(firstCombatGuidance?.target);
       return `First flight guide. Start with ${guideCardName}, cost ${guideCost} Wingbeat${guideCost === 1 ? '' : 's'}${guideTarget ? `, targeting ${guideTarget}` : ''}. Cards build Flow. Full Flow becomes Surge.`;
     }
-    return `Combat, turn ${turn}. Wingbeats ${energy}. Cohesion ${hp} of ${maxHp}. ${hand.length} cards in hand, ${enemies.filter((enemy) => (number(enemy.hp) ?? 0) > 0).length} enemies.${phaseNote}${cleared > 0 ? ` ${cleared} card${cleared === 1 ? '' : 's'} cleared for this combat.` : ''}${latestLog ? ` ${latestLog}` : ''}`;
+    return `Combat, turn ${turn}. Wingbeats ${energy}. Cohesion ${hp} of ${maxHp}. ${hand.length} cards in hand, ${enemies.filter((enemy) => (number(enemy.hp) ?? 0) > 0).length} enemies.${retentionSummary}${phaseNote}${cleared > 0 ? ` ${cleared} card${cleared === 1 ? '' : 's'} cleared for this combat.` : ''}${latestLog ? ` ${latestLog}` : ''}${runKitControls ? ` Open Packed Supplies with ${runKitControls}.` : ''}`;
   }
 
   if (mode === 'codex') {

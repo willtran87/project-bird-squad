@@ -1,5 +1,6 @@
 import type Phaser from 'phaser';
 import { controlBindingLabel } from '../input-bindings';
+import { alphaSupplyLibrary } from '../runtime-data';
 
 type DebugNode = Phaser.GameObjects.GameObject & {
   alpha?: number;
@@ -341,6 +342,36 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
     : undefined;
   return {
     ...state,
+    supplyDrawer: {
+      open: Boolean(battle.supplyDrawerOpen),
+      focusIndex: battle.supplyDrawerFocusIndex ?? 0,
+      inputActive: Boolean(battle.supplyDrawerInputActive),
+      armedIndex: battle.supplyDrawerArmedIndex,
+      entries: Array.from({ length: battle.runSupplyCapacity ?? 0 }, (_entry, index) => {
+        const supply = alphaSupplyLibrary.get(battle.runSupplies[index] ?? '');
+        return supply
+          ? {
+              id: supply.id,
+              name: supply.name,
+              description: supply.description,
+              summary: supply.effects.slice(0, 3).join(' | ').slice(0, 96),
+              timing: supply.timing,
+              usable: supply.timing !== 'route',
+            }
+          : { empty: true, usable: false };
+      }),
+      renderer: {
+        requested: Boolean(battle.battleSupplyDrawerModule || battle.battleSupplyDrawerLoading || battle.battleSupplyDrawerFailed),
+        loaded: Boolean(battle.battleSupplyDrawerModule),
+        failed: Boolean(battle.battleSupplyDrawerFailed),
+      },
+      controls: {
+        open: `${controlBindingLabel('skipReward')} / controller X`,
+        select: 'Previous / Next / Arrow keys / Tab / D-pad / pointer',
+        confirm: `${controlBindingLabel('confirm')} / controller A / second tap`,
+        close: `${controlBindingLabel('back')} / controller B`,
+      },
+    },
     cardPlayConfirmation: {
       available: battle.mode === 'battle' && battle.hand.length > 0,
       armed: Boolean(selectedCombatCard),

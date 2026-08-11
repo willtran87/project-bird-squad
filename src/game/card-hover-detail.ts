@@ -14,6 +14,8 @@ export {
   handleRouteRewardAction,
   marketPreview,
   marketUnavailableOffers,
+  marketUtilityBuildObservations as marketItemNotes,
+  marketWaymarkBuildObservations as marketMarkNotes,
   openCardPickerInspection,
   openRouteRewardInspection,
   requestRouteRewardCard,
@@ -21,6 +23,7 @@ export {
   renderCardPickerInspection,
   renderCardPickerConfirmationRail,
   renderMarketCategoryTabs,
+  renderMarketCardBuildRead,
   renderMarketInputHelp,
   renderMarketSectionHeader,
   requestCardPick,
@@ -86,6 +89,7 @@ export interface MarketItemDetailView {
   meta: string;
   price?: number;
   afterPurchase: string;
+  build: string[];
   decisionPreview: string[];
   accent: number;
   anchorX: number;
@@ -120,7 +124,7 @@ export function renderCardHoverDetail(scene: Phaser.Scene, view: CardHoverDetail
 
   add(scene.add.rectangle(cx, cy, w + 8, h + 8, 0x06090f, 0.99).setStrokeStyle(3, view.accent, 1));
   if (view.artKey && scene.textures.exists(view.artKey)) {
-    add(scene.add.image(cx, cy, view.artKey).setDisplaySize(w, h).setAlpha(0.98));
+    add(scene.add.image(cx, cy, view.artKey).setDisplaySize(w, h));
   } else if (view.snagBorderKey && scene.textures.exists(view.snagBorderKey)) {
     add(scene.add.rectangle(cx, cy, w, h, 0x07090d, 0.98));
     add(scene.add.image(cx, cy, view.snagBorderKey).setDisplaySize(w, h));
@@ -364,7 +368,6 @@ export function renderSceneCardDetail(scene: Phaser.Scene, view: SceneCardDetail
     scene.textures.get(view.costBadgeKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
     const badge = scene.add.image(layout.costX, layout.costY, view.costBadgeKey)
       .setDisplaySize(46, 46)
-      .setAlpha(0.98)
       .setName('deck-review-cost-badge');
     if (view.cost === 0) badge.setTint(0xd9fdff);
   } else {
@@ -446,17 +449,20 @@ export function renderMarketItemDetail(scene: Phaser.Scene, view: MarketItemDeta
     wordWrap: { width: w - 32 },
     maxLines: 4,
   });
+  const buildText = view.build.length > 0
+    ? `\nBUILD READ\n${view.build.join('\n')}`
+    : '';
   const decisionText = view.decisionPreview.length > 0
     ? `\nDECISION\n${view.decisionPreview.join('\n')}`
     : '';
-  const meta = scene.add.text(16, 86 + body.height, `${view.meta}${view.afterPurchase}${decisionText}`, {
+  const meta = scene.add.text(16, 86 + body.height, `${view.meta}${view.afterPurchase}${buildText}${decisionText}`, {
     fontFamily: UI_FONT,
     fontSize: '11px',
     fontStyle: UI_BOLD,
     color: UI_CYAN,
     lineSpacing: 2,
     wordWrap: { width: w - 32 },
-    maxLines: 9,
+    maxLines: 12,
   });
   const h = Math.max(150, 104 + body.height + meta.height);
   const bg = scene.add.rectangle(0, 0, w, h, 0x07101a, 1)

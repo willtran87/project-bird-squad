@@ -59,21 +59,25 @@ npm run validate:deployment-cache
 ```
 
 The production build emits a lightweight HTML boot shell, Phaser vendor,
-runtime-data and game-core boot chunks, the app entry chunk, a lazy Codex data
+runtime-data, game-core, and interaction-rules boot chunks, the app entry chunk, a lazy Codex data
 chunk, and lazy combat-preview, battle-FX-presenter, battle-backdrop-renderer,
 battle-foreground-renderer, battle-reward-renderer,
 the battle HUD renderer, the battle hand renderer, the battle inspect renderer,
 Profile, system-overlay, and adaptive-music
-chunks. `index.html` may preload the three boot dependencies; Codex data,
+chunks. `index.html` may preload the four boot dependencies; Codex data,
 combat preview logic, the reusable battle FX presentation foundation,
 battle-only district/mood/atmosphere rendering, and combatant/intent rendering,
 combat piles, Roost/log controls, beat timing, objectives, and forecasts,
 hand cards, selection pulses, Flow hints, late art refresh, and hover dossiers,
 combat deck/draw/discard indexes, scrolling, card art, and rules dossiers,
 post-combat card, Preen, and Waymark ceremony rendering,
-Profile presentation, and pause/settings/guide presentation are fetched only
-when their surfaces need them. The adaptive procedural score is fetched only
-after the first audio interaction, when the browser permits sound playback.
+route-map presentation, saved Flight Folios, Profile presentation, and pause/settings/guide presentation are fetched only
+when their surfaces need them. The adaptive procedural score and suit-specific
+card-voice synthesizer are fetched only after the first audio interaction, when
+the browser permits sound playback. The synthesized UI and combat cue recipes
+likewise remain in a separate `audio-sfx` chunk until the first requested cue;
+the request is queued across that initial fetch so the first audible action is
+not discarded.
 
 The platform-size gate is an external TypeScript entry rather than inline HTML.
 Vite may fold it into the app entry, but the emitted `index.html` must contain no
@@ -81,7 +85,7 @@ inline executable script so `script-src 'self'` remains enforceable.
 
 `validate:deployment-cache` checks the local build artifact contract that supports
 these headers: hashed JS/CSS asset names, a single app entry chunk, a single
-Phaser vendor chunk, single runtime-data and game-core boot chunks, a single lazy
+Phaser vendor chunk, single runtime-data, game-core, and interaction-rules boot chunks, a single lazy
 Codex chunk, and no modulepreload for non-boot chunks.
 It also requires the emitted `_headers` manifest, rejects inline executable
 scripts, validates the strict CSP directives and browser-hardening headers, and
@@ -105,11 +109,20 @@ It requires exactly one `render-hud` chunk and rejects preloading battle piles,
 commands, beat timing, objective, guidance, and forecast presentation.
 It requires exactly one `render-hand` chunk and rejects preloading battle hand
 composition, selection motion, Flow hints, and hover dossiers.
+It requires one `discard-choice` and one `return-choice` chunk and rejects
+preloading either combat decision workflow before BattleScene opens.
 It requires exactly one `render-inspect` chunk and rejects preloading card/pile
 review composition until the player opens a combat deck, draw, or discard index.
 It requires exactly one `render-reward` chunk and rejects preloading reward
 ceremony composition until a post-combat card, Preen, or Waymark choice opens.
-It also requires one `adaptive-music` chunk and rejects preloading it.
+It requires exactly one `route-map-renderer` chunk and rejects preloading route
+edges, node hierarchy, and route commitment controls before RouteScene opens.
+It requires exactly one `saved-decks` chunk and rejects preloading persisted
+Flight Folio sanitation and record creation before RouteScene opens.
+It also requires one `adaptive-music` chunk, which owns adaptive score and card
+voice synthesis, and rejects preloading it.
+It requires exactly one `audio-sfx` chunk as well and rejects preloading its UI
+and combat cue recipes before the first requested sound.
 
 ## Rollback Rule
 

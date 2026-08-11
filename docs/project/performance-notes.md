@@ -1,5 +1,33 @@
 # Performance Notes
 
+## August 2026 Route Hierarchy Boundary
+
+Route-map presentation now lives in the guarded `route-map-renderer` lazy chunk.
+RouteScene waits for either the renderer or its bounded failure path before it
+becomes interactive; a compact, clickable fallback keeps route commitment
+playable if the optional presentation request fails. The production contract
+requires exactly one hashed renderer chunk, rejects module-preloading it, and
+caps it at 5 KB.
+
+The same pass reduces route-map clutter: future nodes render at 22% opacity,
+selected and selectable states gain non-color-only backplates, the selected
+node has a persistent label, neutral icons are smaller, endpoints clear the
+decorative frame rails, and generated columns no longer receive random drift.
+Column guides follow the real node centers. A 48-layout seeded regression now
+rejects duplicate centers, invalid bounds, rail collisions, and material icon
+overlap.
+
+Measured from the production build on 2026-08-08:
+
+- app entry: `674.8 KB` minified / `180.0 KB` gzip
+- app entry plus game-core: `704.8 KB` minified / `190.9 KB` gzip
+- route-map renderer: `4.3 KB` minified / `1.9 KB` gzip
+
+The app entry and combined boot code are both below their warning targets.
+Chromium, Firefox, and WebKit exercise the route presentation contract; built
+desktop and portrait-gate captures live under
+`.artifacts/visual-audit/route-hierarchy/`.
+
 ## July 2026 Experience Pass Baseline
 
 The experience pass adds Quick Flight routing, progressive first-flight lessons, district contract selection, build-shaped reward drafts, restoration feedback, contract badge browsing, and keyboard/controller input parity. After five-pass modern Terser compression, the measured production baseline is:
@@ -1575,3 +1603,123 @@ module preloads. Current production output is:
 Both preferred boot targets pass. Focused coverage proves the runtime and
 summary stay cold while off, load on opt-in, announce through menu, route,
 combat, and settings focus, and stop cleanly when disabled.
+
+## Optional Title and Profile Boundaries (2026-08-08)
+
+The title now keeps diagnostics, Help/Settings/Codex presentation, leader
+tooltips, the Start Run flourish, and the full Flock Record scene behind
+interaction-driven imports. The title itself still paints immediately; these
+boundaries defer only presentation and diagnostics that are not needed to
+choose a flock and understand the opening screen. Loading failures remain
+retryable, and automation can still register Profile and Codex scenes on
+demand.
+
+The title's lower command zone now shares a restrained dark scrim so leader,
+Ascension, flight-length, and Start Run controls read as one layer over the
+detailed key art. Help asset refreshes replace their prior overlay cleanly,
+leaving one action target instead of stacking duplicate interactive controls.
+
+| JavaScript metric | Current |
+| --- | ---: |
+| App entry | 675.0 KB / 180.4 KB gzip |
+| Combined boot | 705.0 KB / 191.3 KB gzip |
+| Lazy menu diagnostics | 5.5 KB / 2.2 KB gzip |
+| Lazy optional title UI | 4.1 KB / 1.8 KB gzip |
+| Lazy title launch | 2.5 KB / 1.2 KB gzip |
+| Lazy Profile scene | 164.0 KB / 41.4 KB gzip |
+
+The size gate now caps all four new chunks. Both preferred boot targets pass
+without relaxing their thresholds. Production build, deployment-cache,
+runtime-data, documentation, and the five affected Chromium flows pass. The
+shared production client also completed title, Help, and Route action chains
+without browser errors; inspected captures live under
+`.artifacts/visual-audit/`.
+
+## Route-Only Flight Folio Records (2026-08-09)
+
+Packed Supplies gained shared route/combat focus, confirmation, controller, and
+screen-reader state. The added interaction contract pushed combined boot code
+from 724.0 KB to 730.9 KB, exposing that saved Flight Folio sanitation and
+record creation were still bundled into the opening path even though those
+operations are only needed after entering RouteScene.
+
+`src/game/saved-decks.ts` now crosses a real route-only dynamic-import boundary.
+RouteScene warms it after entry, and saving still has a retryable load path. The
+battle Packed Supplies text-state assembly also remains with the existing lazy
+battle diagnostics module. Bundle validation caps `saved-decks` at 8 KB and the
+expanded battle diagnostics module at 10 KB; deployment validation requires one
+hashed saved-decks chunk and rejects module-preloading it.
+
+| JavaScript metric | Current |
+| --- | ---: |
+| App entry | 689.8 KB / 182.2 KB gzip |
+| Combined boot | 725.0 KB / 195.4 KB gzip |
+| Lazy saved Flight Folios | 6.3 KB / 2.4 KB gzip |
+| Lazy battle diagnostics | 8.8 KB / 3.2 KB gzip |
+
+The unchanged 725 KB hard boot ceiling passes. The 675 KB app-entry and 710 KB
+combined-boot preferred targets remain visible as advisories for the next scene
+extraction pass.
+
+## Suit Card Voices (2026-08-09)
+
+Suit-specific card-play voices and the Molt shimmer live inside the existing
+interaction-loaded `adaptive-music` boundary. This keeps the Web Audio plans,
+noise buffers, and oscillator helpers out of the opening path and preserves the
+single non-preloaded audio chunk contract. The adaptive chunk is 5.8 KB
+minified / 2.1 KB gzip, below its 8 KB hard cap.
+
+The same boundary now rotates three subtle pitch variants for consecutive card
+casts. Preen commitments reuse the established Molt-power upgrade signature
+only after the card mutation succeeds, so route, Market, and post-combat
+upgrades gain a distinct payoff without another boot-side cue or audio asset.
+
+The small boot-side router was paid for without relaxing any gate. Four crowded
+three-note utility cues (district advance, profile record, objective complete,
+and Market purchase) now use cleaner two-note signatures. The resulting
+production build measures 689.8 KB / 182.2 KB gzip for the app entry and 725.0
+KB / 195.4 KB gzip for combined boot code. The 725 KB hard ceiling passes; the
+existing preferred-target warnings remain visible.
+
+## Interaction-Loaded Synthesized SFX (2026-08-09)
+
+The UI and combat sound recipes now live in `audio-sfx`, a dedicated dynamic
+boundary fetched on the first requested non-card cue. The director queues that
+request across the import, retains the close cue that confirms a mute action,
+retries a failed import, and exposes loaded/played telemetry for deterministic
+verification. Ambient scene beds and adaptive score/card voices retain their
+existing ownership and volume controls.
+
+The size validator caps the new module at 8 KB. Deployment validation requires
+exactly one hashed `audio-sfx` chunk and rejects module-preloading it. Focused
+and complete browser coverage prove the module is absent before interaction,
+the first cue plays after loading, later cues reuse the same resource, and mute
+feedback remains correct across title, route, combat, pause, and settings.
+
+| JavaScript metric | Before | Current |
+| --- | ---: | ---: |
+| App entry | 689.8 KB / 182.2 KB gzip | 683.6 KB / 180.5 KB gzip |
+| Combined boot | 725.0 KB / 195.4 KB gzip | 718.8 KB / 193.7 KB gzip |
+| Lazy synthesized SFX | bundled in entry | 6.0 KB / 2.0 KB gzip |
+
+The unchanged hard ceilings pass with 6.2 KB of restored combined-boot
+headroom. The preferred 675 KB app-entry and 710 KB combined-boot advisories
+remain visible for the next extraction pass.
+
+## Independent Card Voice Volume (2026-08-10)
+
+The fourth audio preference adds only scalar routing to the opening director;
+the Settings renderer, backup/profile surfaces, and card oscillator plans stay
+inside their existing lazy chunks. No new runtime boundary or preload was
+introduced.
+
+| JavaScript metric | Current |
+| --- | ---: |
+| App entry | 684.0 KB / 180.6 KB gzip |
+| Combined boot | 719.1 KB / 193.8 KB gzip |
+| Lazy adaptive music/card voices | 5.8 KB / 2.2 KB gzip |
+| Lazy Settings overlay | 29.8 KB / 9.0 KB gzip |
+
+Bundle-size and deployment-cache validation pass without changing a hard cap.
+The preferred 675 KB entry and 710 KB combined targets remain advisory and
+visible.

@@ -970,8 +970,9 @@ second transition.
 
 The exact current build passes runtime-data validation, 961 optimized runtime
 asset checks, canonical-world asset validation, the direction-neutral combat
-FX contract, and all 219 serial Playwright scenarios. Current content,
-economy, and balance audits are also green. This is strong evidence for
+FX contract, the complete serial Playwright suite, and the interaction-heavy
+release sequencing gate. Current content, economy, and balance audits are also
+green. This is strong evidence for
 mechanical correctness, stability, input parity, accessibility behavior,
 supported layouts, save recovery, progression integrity, asset wiring, and
 deployment performance.

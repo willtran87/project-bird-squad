@@ -111,7 +111,7 @@ if (failures.length === 0) {
     fail(`index.html references non-hashed asset names: ${unhashedRefs.join(', ')}`);
   }
 
-  const bootPreloadPattern = /\/assets\/(?:vendor-phaser|runtime-data|game-core)-[A-Za-z0-9_-]+\.js$/;
+  const bootPreloadPattern = /\/assets\/(?:vendor-phaser|runtime-data|game-core|interaction-rules)-[A-Za-z0-9_-]+\.js$/;
   const unexpectedPreloads = preloadHrefs.filter((href) => !bootPreloadPattern.test(href));
   if (unexpectedPreloads.length > 0) {
     fail(`index.html modulepreloads non-boot chunks: ${unexpectedPreloads.join(', ')}`);
@@ -149,6 +149,14 @@ if (failures.length === 0) {
     fail('Battle hand renderer chunk is preloaded by index.html; it should stay lazy until BattleScene opens.');
   }
 
+  if (preloadHrefs.some((href) => /discard-choice-/.test(href))) {
+    fail('Discard choice chunk is preloaded by index.html; it should stay lazy until BattleScene opens.');
+  }
+
+  if (preloadHrefs.some((href) => /return-choice-/.test(href))) {
+    fail('Discard return choice chunk is preloaded by index.html; it should stay lazy until BattleScene opens.');
+  }
+
   if (preloadHrefs.some((href) => /render-inspect-/.test(href))) {
     fail('Battle inspect renderer chunk is preloaded by index.html; it should stay lazy until a combat card index opens.');
   }
@@ -181,6 +189,10 @@ if (failures.length === 0) {
     fail('Route Deck Review browser is preloaded by index.html; it should stay lazy until the binder opens.');
   }
 
+  if (preloadHrefs.some((href) => /saved-decks-/.test(href))) {
+    fail('Saved Flight Folios are preloaded by index.html; they should stay lazy until RouteScene opens.');
+  }
+
   if (preloadHrefs.some((href) => /route-supply-drawer-/.test(href))) {
     fail('Route Supply drawer is preloaded by index.html; it should stay lazy until the drawer opens.');
   }
@@ -197,12 +209,20 @@ if (failures.length === 0) {
     fail('Route text-state chunk is preloaded by index.html; it should stay lazy until RouteScene opens.');
   }
 
+  if (preloadHrefs.some((href) => /route-map-renderer-/.test(href))) {
+    fail('Route map renderer chunk is preloaded by index.html; it should stay lazy until RouteScene opens.');
+  }
+
   if (preloadHrefs.some((href) => /flock-stats-overlay-/.test(href))) {
     fail('Flock Stats chunk is preloaded by index.html; it should stay lazy until its overlay opens.');
   }
 
   if (preloadHrefs.some((href) => /adaptive-music-/.test(href))) {
     fail('Adaptive music chunk is preloaded by index.html; it should stay lazy until the first audio interaction.');
+  }
+
+  if (preloadHrefs.some((href) => /audio-sfx-/.test(href))) {
+    fail('Synthesized SFX chunk is preloaded by index.html; it should stay lazy until the first sound cue.');
   }
 
   if (preloadHrefs.some((href) => /screen-reader-runtime-/.test(href))) {
@@ -321,6 +341,16 @@ if (failures.length === 0) {
     fail(`Expected exactly one lazy battle hand renderer chunk, found ${battleHandRendererChunks.length}.`);
   }
 
+  const discardChoiceChunks = files.filter((name) => /^discard-choice-.*\.js$/.test(name));
+  if (discardChoiceChunks.length !== 1) {
+    fail(`Expected exactly one lazy discard-choice chunk, found ${discardChoiceChunks.length}.`);
+  }
+
+  const returnChoiceChunks = files.filter((name) => /^return-choice-.*\.js$/.test(name));
+  if (returnChoiceChunks.length !== 1) {
+    fail(`Expected exactly one lazy return-choice chunk, found ${returnChoiceChunks.length}.`);
+  }
+
   const battleInspectRendererChunks = files.filter((name) => /^render-inspect-.*\.js$/.test(name));
   if (battleInspectRendererChunks.length !== 1) {
     fail(`Expected exactly one lazy battle inspect renderer chunk, found ${battleInspectRendererChunks.length}.`);
@@ -356,6 +386,11 @@ if (failures.length === 0) {
     fail(`Expected exactly one lazy route-deck-browser chunk, found ${routeDeckBrowserChunks.length}.`);
   }
 
+  const savedDeckChunks = files.filter((name) => /^saved-decks-.*\.js$/.test(name));
+  if (savedDeckChunks.length !== 1) {
+    fail(`Expected exactly one lazy saved-decks chunk, found ${savedDeckChunks.length}.`);
+  }
+
   const routeSupplyDrawerChunks = files.filter((name) => /^route-supply-drawer-.*\.js$/.test(name));
   if (routeSupplyDrawerChunks.length !== 1) {
     fail(`Expected exactly one lazy route-supply-drawer chunk, found ${routeSupplyDrawerChunks.length}.`);
@@ -371,9 +406,19 @@ if (failures.length === 0) {
     fail(`Expected exactly one lazy waymark-review chunk, found ${waymarkReviewChunks.length}.`);
   }
 
+  const routeMapRendererChunks = files.filter((name) => /^route-map-renderer-.*\.js$/.test(name));
+  if (routeMapRendererChunks.length !== 1) {
+    fail(`Expected exactly one lazy route-map-renderer chunk, found ${routeMapRendererChunks.length}.`);
+  }
+
   const adaptiveMusicChunks = files.filter((name) => /^adaptive-music-.*\.js$/.test(name));
   if (adaptiveMusicChunks.length !== 1) {
     fail(`Expected exactly one lazy adaptive-music chunk, found ${adaptiveMusicChunks.length}.`);
+  }
+
+  const audioSfxChunks = files.filter((name) => /^audio-sfx-.*\.js$/.test(name));
+  if (audioSfxChunks.length !== 1) {
+    fail(`Expected exactly one lazy audio-sfx chunk, found ${audioSfxChunks.length}.`);
   }
 
   const screenReaderRuntimeChunks = files.filter((name) => /^screen-reader-runtime-.*\.js$/.test(name));
@@ -396,12 +441,17 @@ if (failures.length === 0) {
     fail(`Expected exactly one game-core boot chunk, found ${gameCoreChunks.length}.`);
   }
 
+  const interactionRuleChunks = files.filter((name) => /^interaction-rules-.*\.js$/.test(name));
+  if (interactionRuleChunks.length !== 1) {
+    fail(`Expected exactly one interaction-rules boot chunk, found ${interactionRuleChunks.length}.`);
+  }
+
   const appChunks = files.filter((name) => /^index-.*\.js$/.test(name));
   if (appChunks.length !== 1) {
     fail(`Expected exactly one app entry chunk, found ${appChunks.length}.`);
   }
 
-  const unreferencedBootChunks = [...vendorChunks, ...runtimeChunks, ...gameCoreChunks, ...appChunks].filter((name) => !html.includes(`/assets/${name}`));
+  const unreferencedBootChunks = [...vendorChunks, ...runtimeChunks, ...gameCoreChunks, ...interactionRuleChunks, ...appChunks].filter((name) => !html.includes(`/assets/${name}`));
   if (unreferencedBootChunks.length > 0) {
     fail(`index.html does not reference required boot chunks: ${unreferencedBootChunks.join(', ')}`);
   }

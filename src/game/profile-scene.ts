@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import * as runtime from '../main';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 import { alphaCardLibrary, alphaCardSet } from './runtime-data';
 import { difficultyLabel } from './difficulty';
@@ -271,6 +272,7 @@ export interface ProfileViewState {
 
 export interface ProfileSceneDependencies {
   advanceGameTime: (game: Phaser.Game, ms: number) => void;
+  syncSceneAnimationPace: (scene: Phaser.Scene) => void;
   hasActiveRun: () => boolean;
   run: (
     leaderId: string,
@@ -337,6 +339,182 @@ export interface ProfileSceneDependencies {
     height: number,
     options: { accent: number; fill: number },
   ) => FieldFrame;
+}
+
+function initialProfileViewState(): ProfileViewState {
+  return {
+    badgeView: 'achievements',
+    badgePage: 0,
+    entryFadePlayed: false,
+    revealBursts: 0,
+    playtestExportStatus: 'idle',
+    playtestFeedbackStatus: 'idle',
+    playtestFeedback: {},
+    saveDataOpen: false,
+    saveDataStatus: 'idle',
+    saveDataMessage: '',
+    focus: 'achievements',
+    flightLogOpen: false,
+    flightLogIndex: 0,
+    flightReviewLoading: false,
+    flightReviewAction: 0,
+    flightCopyStatus: 'idle',
+    flightLogMessage: '',
+    savedDeckIndex: 0,
+    savedDeckArchiveView: false,
+    savedDeckStatus: 'idle',
+    savedDeckOrganizerOpen: false,
+    savedDeckOrganizerSection: 'folder',
+    savedDeckOrganizerIndex: 0,
+    savedDeckIdentityOpen: false,
+    savedDeckIdentitySection: 'cover',
+    savedDeckIdentityIndex: 0,
+    savedDeckLabOpen: false,
+    savedDeckLabSample: 0,
+    savedDeckCollectionSignalsOpen: false,
+    savedDeckFieldRecordOpen: false,
+    savedDeckHistoryOpen: false,
+    savedDeckHistoryTargetIndex: 0,
+    savedDeckWorkshopOpen: false,
+    savedDeckWorkshopCardIndex: 0,
+    savedDeckWorkshopSuggestionIndex: 0,
+  };
+}
+
+export function createProfileSceneClass(dependencies: ProfileSceneDependencies): new () => Phaser.Scene {
+  return class ProfileScene extends Phaser.Scene {
+    private readonly profileViewState = initialProfileViewState();
+    private openSaveDataOnCreate = false;
+
+    constructor() {
+      super('ProfileScene');
+    }
+
+    get badgeView() {
+      return this.profileViewState.badgeView;
+    }
+
+    set badgeView(value: ProfileViewState['badgeView']) {
+      this.profileViewState.badgeView = value;
+      this.profileViewState.badgePage = 0;
+    }
+
+    init(data: { openSaveData?: boolean } = {}) {
+      this.openSaveDataOnCreate = playtestExportEnabled() && data.openSaveData === true;
+    }
+
+    get profileRecordRevealBursts() {
+      return this.profileViewState.revealBursts;
+    }
+
+    create() {
+      dependencies.syncSceneAnimationPace(this);
+      const openSaveData = this.openSaveDataOnCreate;
+      this.openSaveDataOnCreate = false;
+      this.profileViewState.savedDeckRenameInput?.remove();
+      this.profileViewState.savedDeckCodeInput?.remove();
+      this.profileViewState.savedDeckDescriptionInput?.remove();
+      this.profileViewState.savedDeckNotesInput?.remove();
+      Object.keys(this.profileViewState).forEach((key) => {
+        delete (this.profileViewState as unknown as Record<string, unknown>)[key];
+      });
+      Object.assign(this.profileViewState, initialProfileViewState(), {
+        saveDataOpen: openSaveData,
+        focus: openSaveData ? 'playtestFun' : 'achievements',
+      });
+      startProfileScene(this, this.profileViewState, dependencies);
+    }
+
+    renderPremiumProfileScene() {
+      renderProfileScene(this, this.profileViewState, dependencies);
+    }
+  };
+}
+
+export function createRuntimeProfileSceneClass(): new () => Phaser.Scene {
+  const dependencies: ProfileSceneDependencies = {
+    advanceGameTime: runtime.advanceGameTime,
+    syncSceneAnimationPace: runtime.syncSceneAnimationPace,
+    hasActiveRun: runtime.hasActiveRun,
+    run: runtime.createInitialRunState,
+    audio: runtime.birdAudio,
+    districtContracts: runtime.DISTRICT_CONTRACT_DEFINITIONS,
+    exportRunHistory: () => JSON.stringify(runtime.loadRunHistory()),
+    flightHistory: runtime.profileFlightHistory,
+    loadFlightReview: runtime.loadProfileFlightReview,
+    latestPlaytestRun: runtime.latestPlaytestRunForRating,
+    saveLatestPlaytestFeedback: runtime.saveLatestPlaytestFeedback,
+    saveData: {
+      currentActiveRun: runtime.loadActiveRun,
+      currentRunHistory: runtime.loadRunHistory,
+      currentPreferences: () => {
+        const audio = runtime.birdAudio.snapshot();
+        return {
+          controls: runtime.controlBindingsSnapshot(),
+          graphicsQuality: runtime.graphicsQualityState().preference,
+          visualContrast: runtime.visualContrastState().preference,
+          colorCues: runtime.colorCuePreference(),
+          screenShake: runtime.screenShakePreference(),
+          flashEffects: runtime.flashEffectsPreference(),
+          motion: runtime.motionPreference(),
+          combatPace: runtime.combatPacePreference(),
+          animationPace: runtime.animationPacePreference(),
+          textPace: runtime.textPacePreference(),
+          screenReader: runtime.screenReaderPreference(),
+          musicVolume: audio.musicVolume,
+          sfxVolume: audio.sfxVolume,
+          voiceVolume: audio.voiceVolume,
+          ambienceVolume: audio.ambienceVolume,
+          audioMuted: runtime.birdAudio.isMuted(),
+          maxTier: runtime.getMaxUnlockedTier(),
+        };
+      },
+      sanitizeActiveRun: runtime.sanitizeActiveRun,
+      sanitizeRunHistory: runtime.sanitizeRunHistory,
+    },
+    killTweensForScene: runtime.killTweensForScene,
+    playUiSound: runtime.playUiSound,
+    prefersReducedMotion: runtime.prefersReducedMotion,
+    activateAudioToggleControl: runtime.activateRenderedAudioToggleControl,
+    queueUiIconAssets: (scene, ids, warning, onComplete) => {
+      runtime.queueUiIconAssets(scene, ids as runtime.UiIconId[], warning, onComplete);
+    },
+    cardShowcaseEntry: (id) => {
+      const card = runtime.cardLibrary[id];
+      if (!card) return undefined;
+      return {
+        id,
+        name: runtime.displayName(card),
+        family: runtime.cardLabel(card),
+        rarity: card.runtime.rarity.toUpperCase(),
+        artKey: runtime.cardCompactArtAsset(card)?.key,
+      };
+    },
+    queueCardShowcaseAssets: (scene, ids, onComplete) => {
+      const assets = runtime.uniqueImageAssets(ids.flatMap((id) => {
+        const card = runtime.cardLibrary[id];
+        const asset = card ? runtime.cardCompactArtAsset(card) : undefined;
+        return asset ? [asset] : [];
+      }));
+      if (!assets.length) {
+        onComplete?.();
+        return;
+      }
+      runtime.queueRuntimeImageAssets(scene, assets, 'Profile showcase art', onComplete);
+    },
+    renderAudioToggleControl: runtime.renderAudioToggleControl,
+    renderCloseControl: runtime.renderCloseControl,
+    renderFieldButton: runtime.renderFieldButton,
+    renderFieldPanel: runtime.renderFieldPanel,
+  };
+  return createProfileSceneClass(dependencies);
+}
+
+let runtimeProfileSceneRegistered = false;
+export function registerRuntimeProfileScene(game: Phaser.Game) {
+  if (runtimeProfileSceneRegistered) return;
+  game.scene.add('ProfileScene', createRuntimeProfileSceneClass(), false);
+  runtimeProfileSceneRegistered = true;
 }
 
 function playtestExportEnabled() {

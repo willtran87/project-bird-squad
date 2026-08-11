@@ -43,7 +43,7 @@ export const CONTROL_BINDING_DEFINITIONS: readonly ControlBindingDefinition[] = 
   { action: 'pause', label: 'Pause', page: 'play', defaultCode: 'KeyP' },
   { action: 'roost', label: 'Roost', page: 'play', defaultCode: 'KeyR' },
   { action: 'hustle', label: 'Hustle', page: 'utility', defaultCode: 'Space' },
-  { action: 'skipReward', label: 'Skip Reward', page: 'utility', defaultCode: 'KeyX' },
+  { action: 'skipReward', label: 'Run Kit / Skip', page: 'utility', defaultCode: 'KeyX' },
   { action: 'mute', label: 'Mute', page: 'utility', defaultCode: 'KeyM' },
   { action: 'fullscreen', label: 'Full Screen', page: 'utility', defaultCode: 'KeyF' },
   { action: 'settings', label: 'Settings', page: 'utility', defaultCode: 'KeyS' },

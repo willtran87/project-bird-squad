@@ -75,6 +75,7 @@ export interface SettingsOverlayOptions {
   onToggleAudio: () => void;
   onSetMusicVolume: (value: number) => void;
   onSetSfxVolume: (value: number) => void;
+  onSetVoiceVolume: (value: number) => void;
   onSetAmbienceVolume: (value: number) => void;
   onSetMotionPreference: (value: MotionPreference) => void;
   onSetVisualContrastPreference: (value: VisualContrastPreference) => void;
@@ -113,7 +114,7 @@ export interface ConfirmRunExitOverlayOptions {
 export interface SystemOverlayDependencies {
   audio: {
     isMuted: () => boolean;
-    snapshot: () => { musicVolume: number; sfxVolume: number; ambienceVolume: number };
+    snapshot: () => { musicVolume: number; sfxVolume: number; voiceVolume: number; ambienceVolume: number };
     toggleMute: () => void;
   };
   combatPacePreference: () => CombatPace;
@@ -963,6 +964,7 @@ export function renderSettingsMenuOverlay(
     ['Audio', dependencies.audio.isMuted() ? 'Muted' : 'On', 'toggle'],
     ['Music', `${Math.round(audioSnapshot.musicVolume * 100)}%`, 'slider'],
     ['SFX', `${Math.round(audioSnapshot.sfxVolume * 100)}%`, 'slider'],
+    ['Card Voices', `${Math.round(audioSnapshot.voiceVolume * 100)}%`, 'slider'],
     ['Ambience', `${Math.round(audioSnapshot.ambienceVolume * 100)}%`, 'slider'],
     ['Controls', controlBindingsAreDefault() ? 'Default' : 'Custom', 'controls'],
     ['Motion', motionPreferenceLabel(motion.preference), 'motion'],
@@ -978,6 +980,7 @@ export function renderSettingsMenuOverlay(
   ];
   let musicVolume = audioSnapshot.musicVolume;
   let sfxVolume = audioSnapshot.sfxVolume;
+  let voiceVolume = audioSnapshot.voiceVolume;
   let ambienceVolume = audioSnapshot.ambienceVolume;
   let motionPreference = motion.preference;
   let contrastPreference = contrast.preference;
@@ -1007,7 +1010,7 @@ export function renderSettingsMenuOverlay(
     const rightColumn = index >= leftColumnRows;
     const row = rightColumn ? index - leftColumnRows : index;
     const cx = rightColumn ? frame.right - 280 : frame.left + 280;
-    const spacing = rightColumn ? 62 : 54;
+    const spacing = 54;
     return { cx, y: frame.top + 174 + row * spacing, right: cx + 260 };
   };
   const setFocus = (index: number) => {
@@ -1028,6 +1031,10 @@ export function renderSettingsMenuOverlay(
   const setSfxVolume = (value: number) => {
     sfxVolume = Math.round(clamp(value, 0, 1) * 20) / 20;
     options.onSetSfxVolume(sfxVolume);
+  };
+  const setVoiceVolume = (value: number) => {
+    voiceVolume = Math.round(clamp(value, 0, 1) * 20) / 20;
+    options.onSetVoiceVolume(voiceVolume);
   };
   const setAmbienceVolume = (value: number) => {
     ambienceVolume = Math.round(clamp(value, 0, 1) * 20) / 20;
@@ -1100,7 +1107,8 @@ export function renderSettingsMenuOverlay(
     const kind = rows[focusIndex][2];
     if (focusIndex === 1) setMusicVolume(musicVolume + direction * 0.05);
     else if (focusIndex === 2) setSfxVolume(sfxVolume + direction * 0.05);
-    else if (focusIndex === 3) setAmbienceVolume(ambienceVolume + direction * 0.05);
+    else if (focusIndex === 3) setVoiceVolume(voiceVolume + direction * 0.05);
+    else if (focusIndex === 4) setAmbienceVolume(ambienceVolume + direction * 0.05);
     else if (kind === 'controls') openControlsPanel();
     else if (kind === 'motion') setMotion(adjacentValue(['full', 'system', 'reduced'] as const, motionPreference, direction));
     else if (kind === 'contrast') setContrast(adjacentValue(['standard', 'high'] as const, contrastPreference, direction));
@@ -1122,7 +1130,8 @@ export function renderSettingsMenuOverlay(
     const kind = rows[focusIndex][2];
     if (focusIndex === 1) setMusicVolume(musicVolume + 0.05);
     else if (focusIndex === 2) setSfxVolume(sfxVolume + 0.05);
-    else if (focusIndex === 3) setAmbienceVolume(ambienceVolume + 0.05);
+    else if (focusIndex === 3) setVoiceVolume(voiceVolume + 0.05);
+    else if (focusIndex === 4) setAmbienceVolume(ambienceVolume + 0.05);
     else if (kind === 'controls') openControlsPanel();
     else if (kind === 'motion') setMotion(adjacentValue(['system', 'full', 'reduced'] as const, motionPreference, 1));
     else if (kind === 'contrast') setContrast(adjacentValue(['standard', 'high'] as const, contrastPreference, 1));
@@ -1174,7 +1183,9 @@ export function renderSettingsMenuOverlay(
         ? { value: audioSnapshot.musicVolume, color: UI_FIELD.cyan, name: 'music', set: setMusicVolume }
         : label === 'SFX'
           ? { value: audioSnapshot.sfxVolume, color: UI_FIELD.gold, name: 'sfx', set: setSfxVolume }
-          : { value: audioSnapshot.ambienceVolume, color: UI_FIELD.green, name: 'ambience', set: setAmbienceVolume };
+          : label === 'Card Voices'
+            ? { value: audioSnapshot.voiceVolume, color: UI_FIELD.brass, name: 'voices', set: setVoiceVolume }
+            : { value: audioSnapshot.ambienceVolume, color: UI_FIELD.green, name: 'ambience', set: setAmbienceVolume };
       renderSettingsVolumeSlider(
         scene,
         addTo,

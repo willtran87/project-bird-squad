@@ -64,6 +64,23 @@ Reachable route decisions keep their immediate gain and risk visible after
 selection. The commit control uses both the route medallion and the explicit
 `Take Route` command so confirmation does not depend on icon recall.
 
+Combat-node risk reads combine the route's authored severity with at most two
+actionable encounter pressures, such as multiple foes, Snags, Open Sky, Winded,
+enemy Cover, Heavy strikes, tempo loss, poison, or a support unit. Taxonomy-only
+tags such as `basic`, `elite`, and `boss` never consume those two slots. The same
+compact read appears in the selected-route dock, hover dossier, serialized route
+decision, and screen-reader summary so route planning never depends on color or
+icon recall alone.
+
+Node gains also use the current flight rather than canned category copy. Combat
+nodes name the live deck size; Basins show effective healing after the Cohesion
+cap; Nests show meaningful Preen targets and held Scrap; Markets show purchasing
+Scrap plus deck size; Caches show open Supply capacity; and Signals show how many
+authored choices currently satisfy their costs and requirements. These values
+replace the generic gain phrase in the existing dock/tooltip row, so the route
+answers `why this path now?` without adding a third annotation or revealing a
+future random reward.
+
 Each district also offers one optional contract. Completed contracts persist as
 horizontal Flock Record badges and contribute to Leader mastery; they do not
 grant permanent combat stats.
@@ -260,6 +277,24 @@ Reward ordering after combat:
 
 Singleton card filtering applies before card rewards are shown.
 
+Each district's authored `rewardBias` also shapes card drafts. The three slots
+continue to answer a live deck need, reinforce its leading suit, and preserve a
+distinct-role/off-suit pivot. Within those constraints, the draft prefers one
+card aligned with the district's visible lean when a matching candidate exists;
+after that match, the remaining slots keep their normal weighted variety. This
+never guarantees a specific card or rarity. The reward ceremony names the
+active district lean and marks matching choices so the rule is inspectable
+rather than hidden.
+
+Each map profile is also the authority for boss preparation. `primaryTests`
+drives the compact boss-node risk read, while `bossPrepHints` supplies the
+on-demand plan shown in the boss tooltip and the screen-reader route summary.
+The always-visible footer remains a short live readiness scan derived from the
+current deck, Supplies, encounter tags, and remaining route nodes. Authored
+strategy and live readiness therefore complement one another without turning
+the route board into a permanent wall of instructions. Boss advice must never
+fall back to a generic test when the district profile provides a specific one.
+
 ## Waymarks
 
 Waymarks are Bird Squad's artifact item layer: permanent run modifiers earned by
@@ -360,6 +395,7 @@ Rules:
 - Supplies are consumed when used.
 - Supplies can be combat or route-only, but Alpha should focus on combat use.
 - Supplies should be simple and high-impact.
+- Packed Supplies use one shared interaction in both phases: Run Kit / controller X opens the drawer, Previous/Next or D-pad browses usable items, and Confirm/A activates the focused item. Pointer, keyboard, and controller activation all select first and consume only on a second activation. Back/B clears a selected item before closing, so an accidental input never spends a Supply.
 
 Supply categories:
 

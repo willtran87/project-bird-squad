@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import {
   addRewardRevealHaloFx,
   compactSentenceText,
-  controlBindingLabel,
   currentMap,
   displayName,
   GAME_HEIGHT,
@@ -20,7 +19,7 @@ import {
   UI_SOFT,
 } from '../main';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
-import { renderRouteRewardEffectShowcase, routeRewardInputHint } from './reward-card-inspection';
+import { renderRouteRewardBuildRead, renderRouteRewardEffectShowcase, renderRouteRewardInspection, renderRouteSupplyRewardChoices, routeRewardInputHint } from './reward-card-inspection';
 
 export {
   cardPickerDecisionDelta,
@@ -31,6 +30,7 @@ export {
   openRouteRewardInspection,
   requestCardPick,
   requestRouteRewardCard,
+  routeRewardChoiceDebugState,
   setRouteRewardChoice,
   updateRouteRewardGamepad,
 } from './reward-card-inspection';
@@ -41,8 +41,9 @@ export function renderRouteRewardOverlay(scene: any) {
   const node = currentMap().nodes.find((candidate) => candidate.id === pending.nodeId);
   const accent = pending.accent;
   const hasCardChoices = scene.routeCardRewardChoices.length > 0;
+  const hasSupplyChoices = scene.routeSupplyRewardChoices.length > 1;
   const isDecline = pending.effects.length === 0;
-  if (hasCardChoices || (pending.previewCards?.length ?? 0) > 0) scene.queueRouteRewardCardArtLoad();
+  if (hasCardChoices || pending.previewCards?.length) scene.queueRouteRewardCardArtLoad();
   if (pending.previewItem) scene.queueRouteRewardItemArtLoad();
   scene.renderRouteEventBackdrop(node, 0.86);
   if (node) scene.renderRouteEventAtmosphere(node, accent);
@@ -50,9 +51,11 @@ export function renderRouteRewardOverlay(scene: any) {
   const confirmName = profile?.residentName?.split(' ')[0] ?? routeNodeTypeLabel(pending.nodeType);
   const frame = renderFieldPanel(scene, () => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 8, 940, 558, {
     eyebrow: node ? routeNodeTypeLabel(node.type) : 'Route Reward',
-    title: hasCardChoices ? 'Choose a Reward' : isDecline ? `Leave ${routeNodeTypeLabel(pending.nodeType)}` : pending.nodeType === 'cache' ? 'Open This Drawer' : 'Review This Choice',
+    title: hasCardChoices ? 'Choose a Reward' : hasSupplyChoices ? 'Choose a Supply' : isDecline ? `Leave ${routeNodeTypeLabel(pending.nodeType)}` : pending.nodeType === 'cache' ? 'Open This Drawer' : 'Review This Choice',
     subtitle: hasCardChoices
       ? `Pick one card from this ${routeNodeTypeLabel(pending.nodeType).toLowerCase()}, inspect before claiming, or cancel back to ${confirmName}.`
+      : hasSupplyChoices
+        ? `Pack one of these two Supplies. Select it, confirm again to commit, or cancel back to ${confirmName}.`
       : isDecline
         ? `Leave without taking a reward, or cancel back to ${confirmName}.`
         : `Confirm this choice, or cancel back to ${confirmName}.`,
@@ -100,37 +103,42 @@ export function renderRouteRewardOverlay(scene: any) {
       maxLines: 1,
     });
   });
+  renderRouteRewardBuildRead(scene, frame);
   scene.add.rectangle(frame.left + 408, frame.cy + 14, 2, 396, accent, 0.36);
   if (!hasCardChoices) {
     const panelX = frame.left + 672;
     const panelY = frame.top + 326;
-    if (!pending.previewItem || !scene.renderRouteRewardItemShowcase(pending.previewItem, panelX, panelY, 410, 238, pending.previewCards ?? [])) {
+    if (hasSupplyChoices) {
+      renderRouteSupplyRewardChoices(scene, panelX, panelY + 2);
+    } else if (!pending.previewItem || !scene.renderRouteRewardItemShowcase(pending.previewItem, panelX, panelY, 410, 238, pending.previewCards ?? [])) {
       renderRouteRewardEffectShowcase(scene, pending, panelX, panelY, 410, 238);
     }
-    const claim = scene.add.rectangle(frame.right - 158, frame.bottom - 48, 180, 38, 0x102235, 0.98)
+    if (!hasSupplyChoices) {
+      const claim = scene.add.rectangle(frame.right - 158, frame.bottom - 48, 180, 38, 0x102235, 0.98)
       .setStrokeStyle(2, accent, 0.92);
-    const claimHit = scene.add.rectangle(frame.right - 158, frame.bottom - 48, 180, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      const claimHit = scene.add.rectangle(frame.right - 158, frame.bottom - 48, 180, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
       .setInteractive({ useHandCursor: true })
       .setName('route-reward-claim-hit');
-    claimHit.on('pointerover', () => claim.setFillStyle(0x18314a, 1));
-    claimHit.on('pointerout', () => claim.setFillStyle(0x102235, 0.98));
-    claimHit.on('pointerdown', () => {
-      playUiSound('confirm');
-      scene.claimRouteReward();
-    });
-    const claimLabel = isDecline ? 'Leave' : pending.nodeType === 'cache' ? 'Claim' : 'Confirm';
-    scene.add.text(frame.right - 158, frame.bottom - 60, claimLabel, {
-      fontFamily: UI_FONT,
-      fontSize: '15px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      align: 'center',
-      fixedWidth: 150
-    }).setOrigin(0.5, 0);
+      claimHit.on('pointerover', () => claim.setFillStyle(0x18314a, 1));
+      claimHit.on('pointerout', () => claim.setFillStyle(0x102235, 0.98));
+      claimHit.on('pointerdown', () => {
+        playUiSound('confirm');
+        scene.claimRouteReward();
+      });
+      const claimLabel = isDecline ? 'Leave' : pending.nodeType === 'cache' ? 'Claim' : 'Confirm';
+      scene.add.text(frame.right - 158, frame.bottom - 60, claimLabel, {
+        fontFamily: UI_FONT,
+        fontSize: '15px',
+        fontStyle: UI_BOLD,
+        color: UI_GOLD,
+        align: 'center',
+        fixedWidth: 150
+      }).setOrigin(0.5, 0);
+    }
   }
   scene.routeCardRewardChoices.forEach((card: any, index: number) => {
     const cardW = 148;
-    const cardH = Math.round(cardW * 1.5);
+    const cardH = 222;
     const x = frame.left + 540 + index * 190;
     const y = frame.top + 312;
     const armed = scene.routeRewardArmedCardId === card.id;
@@ -196,7 +204,7 @@ export function renderRouteRewardOverlay(scene: any) {
     frame.bottom - 48,
     166,
     38,
-    scene.routeRewardArmedCardId ? 'Clear pick' : 'Cancel',
+    scene.routeRewardArmedCardId || scene.routeSupplyRewardArmedId ? 'Clear pick' : 'Cancel',
     () => scene.cancelRouteCardReward(),
   );
   if (hasCardChoices) {
@@ -215,36 +223,15 @@ export function renderRouteRewardOverlay(scene: any) {
       align: 'center',
     }).setOrigin(0.5).setResolution(2).setName('route-reward-input-hint');
   }
-  renderRouteRewardInspection(scene);
-}
-
-function renderRouteRewardInspection(scene: any) {
-  if (!scene.routeRewardInspectionCardId) return;
-  const card = scene.routeCardRewardChoices.find((candidate: any) => (
-    candidate.id === scene.routeRewardInspectionCardId
-  ));
-  if (!card) {
-    scene.routeRewardInspectionCardId = undefined;
-    return;
+  if (hasSupplyChoices) {
+    scene.add.text(frame.left + 672, frame.top + 116, `ARROWS / D-PAD  SUPPLY   |   ENTER / A / TAP  ${scene.routeSupplyRewardArmedId ? 'CONFIRM' : 'SELECT'}   |   ESC / B  BACK`, {
+      fontFamily: UI_FONT,
+      fontSize: '11px',
+      fontStyle: UI_BOLD,
+      color: scene.routeSupplyRewardArmedId ? '#ffe08a' : '#bfe8f4',
+      align: 'center',
+      fixedWidth: 490,
+    }).setOrigin(0.5).setResolution(2).setName('route-supply-reward-input-hint');
   }
-  const scrim = scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.86)
-    .setInteractive({ useHandCursor: true })
-    .setDepth(23010)
-    .setName('route-reward-inspection-scrim');
-  scrim.on('pointerdown', () => scene.closeRouteRewardInspection());
-  scene.add.text(GAME_WIDTH / 2, 38, 'FULL CARD INSPECTION', {
-    fontFamily: UI_FONT,
-    fontSize: '13px',
-    fontStyle: UI_BOLD,
-    color: '#ffe08a',
-    letterSpacing: 1.4,
-  }).setOrigin(0.5).setDepth(23030);
-  const returnLabel = scene.routeRewardArmedCardId ? 'RETURN TO CONFIRM PICK' : 'RETURN TO THIS CHOICE';
-  scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 34, `${controlBindingLabel('back')} / B / TAP OUTSIDE  ${returnLabel}`, {
-    fontFamily: UI_FONT,
-    fontSize: '12px',
-    fontStyle: UI_BOLD,
-    color: '#dffbff',
-  }).setOrigin(0.5).setDepth(23030);
-  scene.showHoverCardDetail(card, 'Route reward inspection', card.cost, GAME_WIDTH / 2, GAME_HEIGHT / 2);
+  renderRouteRewardInspection(scene);
 }

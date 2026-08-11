@@ -66,7 +66,7 @@ playable routes):
 - broad Bad Signal system
 - Flock Leader variants
 - complex event chains
-- advanced parked mechanics such as Mark, Bond, Shine, Scry, Discover, Retain,
+- advanced parked mechanics such as Mark, Bond, Shine, Scry, Discover,
   Seed, Route, and temporary cards
 
 ## Map 1 Frame
@@ -127,6 +127,20 @@ Minimum route requirements:
 | Supply slots | 2 |
 | Starting Waymarks | 0 |
 | Starting Snags | 0 |
+
+Discard effects are explicit combat decisions. `discard(N)` requires the exact
+available count, while `discardUpTo(N)` permits zero through N; later
+`perDiscarded` values use the confirmed count. The choice occurs in written
+effect order, so a preceding draw is visible and eligible. A held Snag cannot
+discard itself while resolving its own Roost effect, preventing a self-shuffle
+from leaving duplicate copies across zones.
+
+Discard recovery is also an explicit decision. `returnDiscard(filter,
+drawAfter)` pauses when reached, presents every currently eligible discard card
+with its live cost, role, and rules, returns the player's chosen card, then
+draws the authored follow-up count. The committed card or Supply finishes only
+after that choice; an empty eligible pool continues immediately without
+inventing a card or consuming another effect.
 
 ## Starter Deck
 
@@ -386,6 +400,18 @@ Representative Waymarks:
 
 The player can carry 2 Supplies by default. Later route items can expand that capacity.
 
+When a direct route option says “Choose 1 of 2 Supplies,” the reward review
+shows two deterministic, unowned Supply offers before anything is packed. The
+first activation selects and the second confirms; cancelling restores the
+uncommitted route choice. Passive `gainSupplyChoice(1)` triggers that occur
+outside a route decision continue to stash one seeded Supply automatically.
+
+The Packed Supplies drawer follows the same guarded commitment contract during
+route and combat play. Run Kit (`X` by default) or controller X opens it;
+Previous/Next, arrows, Tab, or D-pad browse phase-usable items; Confirm/A or a
+pointer activation selects, and the same activation again consumes. Back/B
+cancels a selected item before it closes the drawer.
+
 | Supply | Type | Effect |
 | --- | --- | --- |
 | Seed Packet | Snack | Heal 6 Cohesion. |
@@ -554,6 +580,12 @@ Choose one:
 | Preen a Card | Improve 1 owned, unimproved card. |
 | Release a Card | Remove 1 non-required card. Costs 50 Scrap. |
 | Reinforce Gear | Gain 1 random non-boss Waymark if you pay 90 Scrap. |
+
+Deferred Preen credits are not automatic upgrades. A credit remains pending
+through the current district, opens the card picker only after the next boss
+advance, and lets the player choose each eligible card or explicitly skip the
+remaining credits. The picker previews the exact Base-to-Preened change and
+does not show an energy-cost badge for a free route upgrade.
 
 ## Rooftop Cache
 

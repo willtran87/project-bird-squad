@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { renderCardColorCue } from '../card-color-cues';
 import { MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
+import { renderWaymarkBuildTags, waymarkBuildRead } from '../waymark-build-read';
 
 export type RewardCeremonyKind = 'card' | 'upgrade' | 'waymark';
 export type RewardNeedRank = 'low' | 'steady' | 'strong';
@@ -48,6 +49,8 @@ export interface RewardWaymarkView {
   familyLabel: string;
   source: string;
   rarity: string;
+  trigger: string;
+  familyCount: number;
   description: string;
   tags: string[];
   accent: number;
@@ -88,6 +91,8 @@ export interface RewardCeremonyRenderContext {
   deckNeeds?: RewardDeckNeedView;
   cards?: RewardCardView[];
   waymarks?: RewardWaymarkView[];
+  waymarkBuildCards?: any[];
+  waymarkSupplyCount?: number;
   skip?: {
     scrap: number;
     deckSize: number;
@@ -100,6 +105,7 @@ export interface RewardCeremonyRenderContext {
   onCardHover: (cardId: string, x: number, y: number) => void;
   onCardOut: () => void;
   onWaymarkSelect: (waymarkId: string) => void;
+  onWaymarkBuildRead: (waymarkId: string, observations: string[]) => void;
   onSkip: () => void;
 }
 
@@ -338,7 +344,7 @@ function rewardDecisionLabel(preview: RewardDecisionPreview) {
     ...beforeParts.map((before, index) => [before, afterParts[index] ?? ''] as [string, string]),
     ...moltBeforeParts.map((before, index) => [before, moltAfterParts[index] ?? ''] as [string, string]),
   ];
-  const changed = pairs.find(([before, after]) => before !== after && after) ?? pairs.find(([, after]) => after);
+  const changed = pairs.find(([before, after]) => before !== after && after);
   const change = changed
     ? `${compactDeltaPart(changed[0])} > ${compactDeltaPart(changed[1])}`
     : preview.statChanges[0] ?? 'Ability improved';
@@ -498,20 +504,24 @@ function renderCard(
     fixedHeight: 18,
     maxLines: 1
   }));
-  (card.focused || card.armed ? card.footerRows.slice(0, 2) : []).forEach((text, index) => {
+  const preenChoice = context.kind === 'upgrade';
+  const showRead = card.focused || card.armed || (context.cards?.[0] === card && !context.cards.some((choice) => choice.focused || choice.armed));
+  const footerRows = preenChoice
+    ? card.focused ? [] : [rewardDecisionLabel(card.decisionPreview).slice(10)]
+    : showRead ? card.footerRows.slice(0, 2) : [];
+  footerRows.forEach((text, index) => {
     const caution = text.startsWith('!');
     const neutral = text.startsWith('=');
-    target.add(scene.add.text(x - cardWidth / 2 + 70, bottom - 47 + index * 18, text, {
+    target.add(scene.add.text(x - cardWidth / 2 + (preenChoice ? 16 : 70), bottom - 47 + index * 18, text, {
       fontFamily,
       fontSize: '10px',
       fontStyle: boldFontStyle,
       color: caution ? '#ffad73' : neutral ? '#91a6b8' : '#ffcf6b',
       stroke: '#020409',
       strokeThickness: 2,
-      fixedWidth: cardWidth - 86,
-      fixedHeight: 16,
+      fixedWidth: cardWidth - (preenChoice ? 32 : 86),
       maxLines: 1
-    }).setName(card.footerUsesObservations ? 'reward-build-observation' : 'reward-card-stat'));
+    }).setName(preenChoice ? 'reward-preen-change' : card.footerUsesObservations ? 'reward-build-observation' : 'reward-card-stat'));
   });
   const inspectY = bottom + 28;
   const inspect = scene.add.rectangle(
@@ -553,26 +563,10 @@ function renderCard(
   return glow.burst;
 }
 
-function renderTagRow(context: RewardCeremonyRenderContext, x: number, y: number, tags: string[], accent: number, maxWidth: number) {
-  let cursor = x;
-  tags.slice(0, 3).forEach((tag) => {
-    const width = Math.max(70, Math.min(132, tag.length * 7 + 24));
-    if (cursor + width > x + maxWidth) return;
-    context.target.add(context.scene.add.rectangle(cursor + width / 2, y, width, 22, 0x1d3047, 0.98).setStrokeStyle(1, accent, 0.95));
-    context.target.add(context.scene.add.text(cursor + width / 2, y, tag, {
-      fontFamily: context.fontFamily,
-      fontSize: '10px',
-      fontStyle: context.boldFontStyle,
-      color: context.goldColor,
-      align: 'center',
-      fixedWidth: width - 8
-    }).setResolution(2).setOrigin(0.5));
-    cursor += width + 8;
-  });
-}
-
 function renderWaymark(context: RewardCeremonyRenderContext, waymark: RewardWaymarkView, index: number, x: number, y: number) {
   const { scene, target, fontFamily, boldFontStyle, goldColor, cyanColor } = context;
+  const build = waymarkBuildRead(waymark, context.waymarkBuildCards ?? [], context.waymarkSupplyCount ?? 0, waymark.familyCount);
+  context.onWaymarkBuildRead(waymark.id, build.notes);
   const width = 248;
   const height = 306;
   const hit = scene.add.rectangle(x, y, width, height, 0x07101c, 0.98)
@@ -604,15 +598,15 @@ function renderWaymark(context: RewardCeremonyRenderContext, waymark: RewardWaym
   target.add(scene.add.text(x, y - 30, waymark.name, {
     fontFamily, fontSize: '20px', fontStyle: boldFontStyle, color: goldColor, align: 'center', wordWrap: { width: 202 }, maxLines: 2
   }).setOrigin(0.5));
-  target.add(scene.add.text(x, y + 24, `${waymark.familyLabel} / ${waymark.source}`, {
+  target.add(scene.add.text(x, y + 24, `${waymark.rarity.toUpperCase()} / ${waymark.familyLabel} / ${waymark.source}`, {
     fontFamily, fontSize: '12px', fontStyle: boldFontStyle, color: cyanColor, align: 'center'
   }).setOrigin(0.5));
-  target.add(scene.add.text(x, y + 48, waymark.rarity.toUpperCase(), {
-    fontFamily, fontSize: '11px', fontStyle: boldFontStyle, color: waymark.rarity === 'boss' ? '#ffb1a4' : '#ffcf6b', align: 'center'
-  }).setOrigin(0.5));
-  renderTagRow(context, x - 102, y + 76, waymark.tags, waymark.accent, 204);
-  target.add(scene.add.text(x, y + 112, waymark.description, {
-    fontFamily, fontSize: '13px', color: '#d7c5a6', align: 'center', wordWrap: { width: 204 }, maxLines: 3
+  target.add(scene.add.text(x, y + 50, 'BUILD READ', {
+    fontFamily, fontSize: '10px', fontStyle: boldFontStyle, color: waymark.rarity === 'boss' ? '#ffb1a4' : '#ffcf6b', align: 'center'
+  }).setOrigin(0.5).setName('reward-waymark-build-read-title'));
+  renderWaymarkBuildTags(context, x - 102, y + 72, build.tags, waymark.accent, 204);
+  target.add(scene.add.text(x, y + 132, waymark.description, {
+    fontFamily, fontSize: '12px', color: '#d7c5a6', align: 'center', wordWrap: { width: 204 }, maxLines: 2
   }).setOrigin(0.5));
   return glow.burst;
 }

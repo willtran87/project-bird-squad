@@ -19,6 +19,7 @@ should be recorded.
 | Plan the next quality and implementation push | `docs/game/next-level-implementation-spec.md` |
 | Review the current fun, beauty, onboarding, pacing, and retention audit | `docs/game/game-experience-audit.md` |
 | Run and aggregate observed first-run sessions | `docs/game/playtest-runbook.md` |
+| Run final cross-browser, human, device, and assistive-technology release checks | `docs/game/release-evidence-runbook.md` |
 | Work on visual identity, card art, prompts, or style rules | `docs/art/art-bible.md` |
 | Add, replace, or audit route, battlefield, landmark, market, or map-node art | `docs/art/world-asset-contract.md` |
 | Plan future imagegen/chroma-key asset packs | `docs/art/imagegen-asset-roadmap.md` |

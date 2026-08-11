@@ -389,7 +389,7 @@ route-timed Supplies. Validated by name allowlist (§8).
 | `healMissingPct(P, min)` | Heal P% of missing Cohesion, at least `min` (Basin Recover). |
 | `gainRouteMark(idOrSelector)` | Grant a Route Mark; selector: an id, `random`, `randomCommon`, `randomNonBoss`, or `choice`. |
 | `gainSupply(selector)` | Grant a Supply; selector: an id, `random`, or `choice`. |
-| `gainSupplyChoice(N)` | Offer a choice of N Supplies. |
+| `gainSupplyChoice(N)` | Pack N Supplies. Direct route decisions present two deterministic eligible offers for each currently authored `N = 1` reward and commit the player's exact selection; passive triggers use the seeded/random fallback because no route decision is open. |
 | `addSnagToDiscard(id)` / `addSnagToDraw(id)` | Insert a Snag card. |
 | `revealNodes(N)` | Reveal the next N route nodes. |
 | `skipNextStreet()` | Skip the next non-boss Street Encounter. |

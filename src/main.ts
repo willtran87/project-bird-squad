@@ -15,6 +15,7 @@ import {
   alphaEnemyLibrary,
   alphaMaps,
   alphaMarketSet,
+  alphaMapProfileLibrary,
   alphaNestSet,
   alphaRewardProfileLibrary,
   alphaRouteMarkSet,
@@ -36,6 +37,7 @@ import {
   type OpeningDrawState,
 } from './game/deterministic-draw';
 import type {
+  CardSuit,
   EnemyRole,
   EnemyMove,
   MarketPriceBand,
@@ -66,12 +68,6 @@ import {
   loadAccount, recordRun, saveAccount, type CardAcquisitionSource, type CardCollectionRecord, type PlayerAccount
 } from './game/meta';
 import { collectionMilestoneProgress, unlockCollectionMilestones } from './game/collection-milestone-progress';
-import {
-  activeSavedDecks,
-  createSavedDeckRecord,
-  sanitizeSavedDecks,
-  SAVED_DECK_LIMIT,
-} from './game/saved-decks';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './game/theme';
 import {
   queuePreloadImageAssets,
@@ -97,9 +93,7 @@ import {
   markFirstFlightGuideSeen,
   markFirstMoltGuideSeen,
   recordFirstFlightGuideEvent,
-  replayFirstFlightGuide,
   sanitizeGuide,
-  skipFirstFlightGuide
 } from './game/first-flight-guide';
 import {
   consumeStorageRecoveryEvents,
@@ -149,7 +143,8 @@ import {
 } from './game/screen-reader-accessibility';
 import type { StorageRecoveryNotice } from './game/storage-recovery-notice';
 import type { AdaptiveMusicSequencer, AdaptiveMusicSnapshot } from './game/adaptive-music';
-import { getMapBalanceProfile } from './game/balance';
+import type { SynthAudioCue } from './game/audio-sfx';
+import { compactBossTests, distinctMeaningfulUpgradeCards, districtCardRewardLeans, districtRewardAffinity, districtRewardObservations, draftComplementaryRewardPair, draftStructuredRewardChoices, getMapBalanceProfile, hasMeaningfulCardUpgrade, rewardBuildObservations, routeDecisionRead } from './game/balance';
 import { enemyInitials, enemyStatus } from './game/enemy-display';
 import { parseEffect, parseEffectValue } from './game/effects/effect-parser';
 import {
@@ -163,6 +158,13 @@ import {
   type CardEffectContext,
   type CardEffectResolutionState as EffectResolutionState
 } from './game/effects/card-effect-runner';
+import {
+  RETAIN_PRIORITY_RULE,
+  retainInputHint,
+  retainPriorityItems,
+  retainedInOriginalOrder,
+  roostRetainTriggerMatches,
+} from './game/effects/retain';
 import { spendMoltPower } from './game/molt-power';
 import type {
   BattleFxAnimationOptions,
@@ -171,7 +173,7 @@ import type {
 } from './game/battle/fx-presenter';
 
 type GameMode = 'menu' | 'routeSelection' | 'battle' | 'waymarkReward' | 'cardReward' | 'upgradeReward' | 'runComplete' | 'defeat';
-type CombatInputChoiceKind = 'card' | 'cardReward' | 'upgradeReward' | 'waymarkReward' | 'outcome';
+type CombatInputChoiceKind = 'card' | 'returnChoice' | 'cardReward' | 'upgradeReward' | 'waymarkReward' | 'outcome';
 const isRunOutcome = (mode: GameMode) => mode === 'runComplete' || mode === 'defeat';
 const sharedRouteParams = new URLSearchParams(window.location.search);
 const PLAYTEST_MODE = sharedRouteParams.get('playtest') === '1';
@@ -181,6 +183,7 @@ const SHARED_ROUTE_MODE: RunMode = sharedRouteParams.get('length') === 'quick' ?
 type CodexDataModule = typeof import('./game/codex-data');
 type BossDossierModule = typeof import('./game/boss-dossier');
 type AdaptiveMusicModule = typeof import('./game/adaptive-music');
+type AudioSfxModule = typeof import('./game/audio-sfx');
 const LAZY_LOAD_FAILED = 'Load failed';
 type InspectOverlay = 'deck' | 'draw' | 'discard' | 'cleared' | 'flock';
 type CardType = 'major' | 'minor' | 'molt' | 'aviary';
@@ -207,10 +210,15 @@ type PendingRouteReward = {
   previewCards?: Card[];
   projectedState?: RunState;
   decisionPreview?: MarketDecisionPreview;
+  supplyChoices?: string[];
 };
 type PendingRouteRewardItem = { kind: 'supply' | 'waymark'; id: string };
 type RetainSource = 'pending' | 'roostDiscard';
 type RunMode = 'full' | 'quick';
+const RUN_MODE_SUMMARY: Record<RunMode, string> = {
+  quick: 'Quick, 3 districts, no tier unlock',
+  full: 'Full, 4 districts, unlocks tiers',
+};
 type MenuFocus =
   | 'leader'
   | 'difficulty'
@@ -388,6 +396,7 @@ interface RunState {
   suppliesUsed?: string[];
   combatResults?: CombatResultSummary[];
   freePreenNextDistrict?: number;
+  pendingDistrictPreens?: number;
   districtAdvanceNotice?: {
     fromMapName: string;
     toMapName: string;
@@ -515,7 +524,7 @@ type MotionPreference = 'system' | 'full' | 'reduced';
 type CombatPace = 'cinematic' | 'standard' | 'snappy';
 type AnimationPace = 'relaxed' | 'standard' | 'fast';
 type TextPace = 'relaxed' | 'standard' | 'fast';
-const SETTINGS_CONTROL_LABELS = ['Audio', 'Music', 'SFX', 'Ambience', 'Controls', 'Motion', 'Contrast', 'Effects', 'Combat Pace', 'Animation Pace', 'Text Pace', 'Screen Reader', 'Color Cues', 'Screen Shake', 'Flashes'] as const;
+const SETTINGS_CONTROL_LABELS = ['Audio', 'Music', 'SFX', 'Card Voices', 'Ambience', 'Controls', 'Motion', 'Contrast', 'Effects', 'Combat Pace', 'Animation Pace', 'Text Pace', 'Screen Reader', 'Color Cues', 'Screen Shake', 'Flashes'] as const;
 
 function settingsFocusState(scene: Phaser.Scene, open: boolean) {
   if (!open) return undefined;
@@ -683,6 +692,7 @@ interface RenderPayload {
     unlocked: boolean;
     musicVolume: number;
     sfxVolume: number;
+    voiceVolume: number;
     ambienceVolume: number;
     cueRequests: Partial<Record<AudioCue, number>>;
   };
@@ -1461,6 +1471,36 @@ interface RenderPayload {
   };
   selectedCard?: string;
   selectedCardOutcome?: { card: string; target: string; summary: string };
+  discardChoice?: {
+    source: string;
+    optional: boolean;
+    max: number;
+    required: number;
+    selectedCount: number;
+    canConfirm: boolean;
+    candidates: Array<{ instanceId: string; id: string; name: string; selected: boolean; order?: number }>;
+    input: { choose: string; toggle: string; confirm: string; cancel: string };
+  };
+  returnChoice?: {
+    source: string;
+    filter: string;
+    drawAfter: number;
+    required: number;
+    canCancel: boolean;
+    focusIndex: number;
+    focusedId?: string;
+    candidates: Array<{
+      instanceId: string;
+      id: string;
+      name: string;
+      cost: number;
+      role: string;
+      summary: string;
+      focused: boolean;
+      discardOrder: number;
+    }>;
+    input: { choose: string; confirm: string; cancel: string };
+  };
   combatInputFocus?: {
     active: boolean;
     kind?: CombatInputChoiceKind;
@@ -1547,7 +1587,13 @@ interface RenderPayload {
     };
     statuses: string[];
   };
-  hand: Array<{ id: string; name: string; bird: string; cost: number; type: CardType; role: CardRole; target: TargetType; activeTarget?: TargetType; activeRole?: CardRole; activeText?: string; usesMolt?: boolean }>;
+  hand: Array<{ instanceId: string; id: string; name: string; bird: string; cost: number; type: CardType; role: CardRole; target: TargetType; activeTarget?: TargetType; activeRole?: CardRole; activeText?: string; usesMolt?: boolean; retainOrder?: number; discardSelectable?: boolean; discardSelected?: boolean; discardOrder?: number }>;
+  retentionPlan?: {
+    count: number;
+    cards: Array<{ instanceId: string; id: string; name: string; order: number }>;
+    selectedPriority?: string;
+    rule: string;
+  };
   waymarkChoices?: Array<{ id: string; name: string; family: string; rarity: RouteMarkRarity; source: string; description: string }>;
   rewardChoices?: Array<{
     id: string;
@@ -1559,6 +1605,7 @@ interface RenderPayload {
     observations: string[];
     collection: { firstClaim: boolean; timesClaimed: number; targeted: boolean; runCopyTemporary: true };
   }>;
+  rewardDistrictLean?: string[];
   upgradeChoices?: Array<{ id: string; name: string; bird: string; cost: number; type: CardType; target: TargetType }>;
   rewardDecisionDeltas?: string[];
   enemies: Array<{
@@ -1874,6 +1921,32 @@ interface RenderPayload {
     };
   };
   supplyDrawerOpen?: boolean;
+  supplyDrawer?: {
+    open: boolean;
+    focusIndex: number;
+    inputActive: boolean;
+    armedIndex?: number;
+    entries: Array<{
+      id?: string;
+      name?: string;
+      description?: string;
+      summary?: string;
+      timing?: RuntimeSupply['timing'];
+      usable: boolean;
+      empty?: boolean;
+    }>;
+    renderer: {
+      requested: boolean;
+      loaded: boolean;
+      failed: boolean;
+    };
+    controls: {
+      open: string;
+      select: string;
+      confirm: string;
+      close: string;
+    };
+  };
   confirmExitOpen?: boolean;
   waymarkFeedback?: WaymarkFeedback[];
   supplyFeedback?: SupplyFeedback[];
@@ -2032,6 +2105,7 @@ declare global {
       unlocked: boolean;
       musicVolume?: number;
       sfxVolume?: number;
+      voiceVolume?: number;
       ambienceVolume?: number;
       music?: { pattern: string; active: boolean; step: number; pulses: number };
     };
@@ -2075,8 +2149,8 @@ const CARD_W = 164;
 const CARD_H = 246; // true 2:3 card aspect (art is 1024x1536)
 const ROUTE_NODE_RADIUS = 50;
 const ROUTE_BOSS_NODE_RADIUS = 66;
-const ROUTE_NODE_ICON_SIZE = 108;
-const ROUTE_BOSS_NODE_ICON_SIZE = 156;
+const ROUTE_NODE_ICON_SIZE = 84;
+const ROUTE_BOSS_NODE_ICON_SIZE = 120;
 const ROUTE_NODE_FOCUS_PAD = 10;
 const ROUTE_NODE_LAYOUT_PAD = 4;
 const ROUTE_CONFIRM_ICON_SIZE = 36;
@@ -2086,7 +2160,6 @@ const ROUTE_CONFIRM_LABEL_WIDTH = 128;
 const ROUTE_COMMIT_STREAK_TEXTURE = 'route-commit-streak';
 const ROUTE_COMMIT_STREAK_DELAY_MS = 520;
 const TITLE_RUN_LAUNCH_FLOURISH_TEXTURE = 'title-run-launch-flourish';
-const TITLE_RUN_LAUNCH_DELAY_MS = 620;
 // Anchor points for combat FX (floating numbers / bursts), matching the
 // enemy body (battle foreground renderer) and flock panel positions.
 const ENEMY_FX_X = 920;
@@ -2321,6 +2394,19 @@ function loadBattleForegroundRendererModule() {
   return battleForegroundRendererModulePromise;
 }
 
+type RouteMapRendererModule = typeof import('./game/route-map-renderer');
+let routeMapRendererModulePromise: Promise<RouteMapRendererModule> | undefined;
+function loadRouteMapRendererModule() {
+  if (!routeMapRendererModulePromise) {
+    const request = import('./game/route-map-renderer');
+    routeMapRendererModulePromise = request;
+    void request.catch(() => {
+      if (routeMapRendererModulePromise === request) routeMapRendererModulePromise = undefined;
+    });
+  }
+  return routeMapRendererModulePromise;
+}
+
 type BattleRewardRendererModule = typeof import('./game/battle/render-reward');
 let battleRewardRendererModulePromise: Promise<BattleRewardRendererModule> | undefined;
 function loadBattleRewardRendererModule() {
@@ -2455,6 +2541,9 @@ function loadRouteDebugStateModule() {
   return routeDebugStateModulePromise;
 }
 
+type SavedDeckModule = typeof import('./game/saved-decks');
+const loadSavedDeckModule = () => import('./game/saved-decks');
+
 type BattleHudRendererModule = typeof import('./game/battle/render-hud');
 let battleHudRendererModulePromise: Promise<BattleHudRendererModule> | undefined;
 function loadBattleHudRendererModule() {
@@ -2482,6 +2571,35 @@ function loadBattleHandRendererModule() {
   return battleHandRendererModulePromise;
 }
 
+type DiscardChoiceModule = typeof import('./game/battle/discard-choice');
+type CombatDiscardChoice = import('./game/battle/discard-choice').DiscardChoiceState;
+type InterruptibleDecision = import('./game/battle/discard-choice').InterruptibleDecision;
+let discardChoiceModulePromise: Promise<DiscardChoiceModule> | undefined;
+function loadDiscardChoiceModule() {
+  if (!discardChoiceModulePromise) {
+    const request = import('./game/battle/discard-choice');
+    discardChoiceModulePromise = request;
+    void request.catch(() => {
+      if (discardChoiceModulePromise === request) discardChoiceModulePromise = undefined;
+    });
+  }
+  return discardChoiceModulePromise;
+}
+
+type ReturnChoiceModule = typeof import('./game/battle/return-choice');
+type CombatReturnChoice = import('./game/battle/return-choice').ReturnChoiceState;
+let returnChoiceModulePromise: Promise<ReturnChoiceModule> | undefined;
+function loadReturnChoiceModule() {
+  if (!returnChoiceModulePromise) {
+    const request = import('./game/battle/return-choice');
+    returnChoiceModulePromise = request;
+    void request.catch(() => {
+      if (returnChoiceModulePromise === request) returnChoiceModulePromise = undefined;
+    });
+  }
+  return returnChoiceModulePromise;
+}
+
 let bossDossierModulePromise: Promise<BossDossierModule> | undefined;
 function loadBossDossierModule() {
   if (!bossDossierModulePromise) {
@@ -2498,14 +2616,10 @@ type CodexSceneModule = typeof import('./game/codex-scene');
 let codexSceneModulePromise: Promise<CodexSceneModule> | undefined;
 let codexSceneRegistered = false;
 function loadCodexSceneModule() {
-  if (!codexSceneModulePromise) {
-    const request = import('./game/codex-scene');
-    codexSceneModulePromise = request;
-    void request.catch(() => {
-      if (codexSceneModulePromise === request) codexSceneModulePromise = undefined;
-    });
-  }
-  return codexSceneModulePromise;
+  return codexSceneModulePromise ??= import('./game/codex-scene').catch((error) => {
+    codexSceneModulePromise = undefined;
+    throw error;
+  });
 }
 
 function registerCodexScene(game: Phaser.Game, module: CodexSceneModule) {
@@ -4193,50 +4307,7 @@ function recordCardAcquisitions(
 
 const arcanaRewardPool = alphaCardSet.rewardPool;
 
-type AudioCue =
-  | 'confirm'
-  | 'close'
-  | 'locked'
-  | 'route'
-  | 'routeChoice'
-  | 'districtAdvance'
-  | 'profileRecord'
-  | 'objectiveComplete'
-  | 'objectiveMissed'
-  | 'marketPurchase'
-  | 'encounter'
-  | 'supplyUse'
-  | 'card'
-  | 'spend'
-  | 'attack'
-  | 'heavyAttack'
-  | 'hitConfirm'
-  | 'playerCommitment'
-  | 'coverBlock'
-  | 'block'
-  | 'cover'
-  | 'heal'
-  | 'enemyHeal'
-  | 'enemyCover'
-  | 'coverBreak'
-  | 'draw'
-  | 'discard'
-  | 'shuffle'
-  | 'drain'
-  | 'flow'
-  | 'moltPower'
-  | 'cleanse'
-  | 'bank'
-  | 'threat'
-  | 'enemyCommitment'
-  | 'formation'
-  | 'turn'
-  | 'roostHandoff'
-  | 'playerTurnRally'
-  | 'reward'
-  | 'victory'
-  | 'victoryFanfare'
-  | 'defeat';
+type AudioCue = SynthAudioCue | 'card';
 
 type StoppableAudioNode = AudioNode & { stop: (when?: number) => void };
 
@@ -4245,13 +4316,17 @@ class BirdAudioDirector {
   private master?: GainNode;
   private ambience?: { mood: AudioMood; gain: GainNode; nodes: StoppableAudioNode[] };
   private adaptiveMusic?: AdaptiveMusicSequencer;
-  private adaptiveMusicLoad?: Promise<AdaptiveMusicModule>;
+  private adaptiveMusicLoad?: Promise<AdaptiveMusicModule | undefined>;
+  private sfxLoad?: Promise<AudioSfxModule | undefined>;
   private adaptiveMusicRequest = 0;
   private adaptiveMusicStatus: 'idle' | 'loading' | 'ready' | 'error' = 'idle';
+  private sfxStatus: 'idle' | 'loading' | 'ready' | 'error' = 'idle';
+  private sfxPlayed = 0;
   private mood: AudioMood = 'menu';
   private muted = this.loadMuted();
   private musicVolume = this.loadVolume('birdsquad.musicVolume', 0.78);
   private sfxVolume = this.loadVolume('birdsquad.sfxVolume', 0.88);
+  private voiceVolume = this.loadVolume('birdsquad.voiceVolume', this.sfxVolume);
   private ambienceVolume = this.loadVolume('birdsquad.ambienceVolume', this.musicVolume);
   private cueRequests: Partial<Record<AudioCue, number>> = {};
 
@@ -4264,223 +4339,36 @@ class BirdAudioDirector {
     if (this.ctx) this.startAmbience(mood);
   }
 
-  play(cue: AudioCue, intensity = 1) {
+  play(cue: AudioCue, intensity = 1, suit?: CardSuit | null, usesMolt = false) {
     this.cueRequests[cue] = (this.cueRequests[cue] ?? 0) + 1;
     if (this.muted) return;
     const ctx = this.ensureContext();
     if (!ctx) return;
     void ctx.resume?.();
     this.startAmbience(this.mood);
-    const loudness = clamp(intensity, 0.45, 1.8);
-    switch (cue) {
-      case 'confirm':
-        this.tone(420, 610, 0.09, 'sine', 0.036 * loudness);
-        break;
-      case 'close':
-        this.tone(280, 190, 0.1, 'triangle', 0.03 * loudness);
-        break;
-      case 'locked':
-        this.tone(145, 118, 0.13, 'triangle', 0.026 * loudness);
-        break;
-      case 'route':
-        this.chord([220, 330, 440], 0.16, 'triangle', 0.018 * loudness);
-        break;
-      case 'routeChoice':
-        this.noise(0.035, 1460, 0.008 * loudness);
-        this.tone(330, 520, 0.1, 'triangle', 0.012 * loudness, -0.08);
-        this.tone(660, 820, 0.12, 'sine', 0.012 * loudness, 0.12);
-        break;
-      case 'districtAdvance':
-        this.noise(0.06, 1720, 0.012 * loudness);
-        this.tone(220, 340, 0.14, 'triangle', 0.014 * loudness, -0.12);
-        this.tone(440, 760, 0.16, 'sine', 0.016 * loudness, 0.04);
-        this.tone(880, 660, 0.12, 'triangle', 0.01 * loudness, 0.16);
-        break;
-      case 'profileRecord':
-        this.noise(0.035, 1280, 0.008 * loudness);
-        this.tone(250, 360, 0.12, 'triangle', 0.012 * loudness, -0.1);
-        this.tone(500, 760, 0.15, 'sine', 0.014 * loudness, 0.08);
-        this.tone(940, 620, 0.1, 'triangle', 0.008 * loudness, 0.16);
-        break;
-      case 'objectiveComplete':
-        this.noise(0.04, 1760, 0.009 * loudness);
-        this.tone(330, 520, 0.11, 'triangle', 0.013 * loudness, -0.12);
-        this.tone(660, 990, 0.14, 'sine', 0.015 * loudness, 0.08);
-        this.tone(990, 1320, 0.1, 'triangle', 0.009 * loudness, 0.18);
-        break;
-      case 'objectiveMissed':
-        this.noise(0.035, 620, 0.007 * loudness);
-        this.tone(360, 250, 0.13, 'triangle', 0.012 * loudness, -0.1);
-        this.tone(240, 165, 0.16, 'sine', 0.009 * loudness, 0.12);
-        break;
-      case 'marketPurchase':
-        this.noise(0.045, 1680, 0.012 * loudness);
-        this.tone(360, 620, 0.11, 'triangle', 0.018 * loudness, -0.12);
-        this.tone(720, 980, 0.1, 'sine', 0.014 * loudness, 0.1);
-        this.tone(1080, 760, 0.07, 'triangle', 0.009 * loudness, 0.18);
-        break;
-      case 'encounter':
-        this.noise(0.055, 1320, 0.013 * loudness);
-        this.tone(164, 246, 0.16, 'sawtooth', 0.014 * loudness, -0.14);
-        this.tone(328, 492, 0.14, 'triangle', 0.011 * loudness, 0.1);
-        this.tone(720, 540, 0.1, 'sine', 0.007 * loudness, 0.18);
-        break;
-      case 'supplyUse':
-        this.noise(0.055, 1860, 0.014 * loudness);
-        this.tone(260, 390, 0.1, 'triangle', 0.012 * loudness, -0.14);
-        this.tone(520, 880, 0.12, 'sine', 0.017 * loudness, 0.08);
-        this.tone(1180, 760, 0.08, 'triangle', 0.01 * loudness, 0.16);
-        break;
-      case 'card':
-        this.tone(540, 760, 0.12, 'sine', 0.032 * loudness, -0.12);
-        this.tone(920, 520, 0.08, 'triangle', 0.012 * loudness, 0.18);
-        break;
-      case 'spend':
-        this.noise(0.045, 1560, 0.01 * loudness);
-        this.tone(720, 460, 0.09, 'triangle', 0.016 * loudness, -0.1);
-        this.tone(1040, 760, 0.07, 'sine', 0.01 * loudness, 0.14);
-        break;
-      case 'attack':
-        this.noise(0.08, 680, 0.035 * loudness);
-        this.tone(150, 82, 0.1, 'sawtooth', 0.024 * loudness);
-        break;
-      case 'heavyAttack':
-        this.noise(0.12, 520, 0.045 * loudness);
-        this.tone(110, 48, 0.16, 'sawtooth', 0.034 * loudness);
-        break;
-      case 'hitConfirm':
-        this.noise(0.055, 1780, 0.018 * loudness);
-        this.tone(610, 940, 0.08, 'triangle', 0.016 * loudness, -0.08);
-        this.tone(1220, 680, 0.07, 'sine', 0.01 * loudness, 0.14);
-        break;
-      case 'playerCommitment':
-        this.noise(0.052, 1620, 0.013 * loudness);
-        this.tone(360, 620, 0.14, 'triangle', 0.017 * loudness, -0.12);
-        this.tone(720, 1180, 0.12, 'sine', 0.014 * loudness, 0.08);
-        this.tone(1080, 760, 0.08, 'triangle', 0.008 * loudness, 0.16);
-        break;
-      case 'coverBlock':
-        this.noise(0.07, 1260, 0.022 * loudness);
-        this.tone(340, 210, 0.09, 'square', 0.014 * loudness, -0.1);
-        this.tone(760, 520, 0.06, 'triangle', 0.008 * loudness, 0.12);
-        break;
-      case 'block':
-        this.noise(0.08, 1150, 0.026 * loudness);
-        this.tone(310, 250, 0.07, 'square', 0.016 * loudness);
-        break;
-      case 'cover':
-        this.chord([196, 247, 330], 0.12, 'triangle', 0.014 * loudness);
-        break;
-      case 'heal':
-        this.chord([330, 495, 660], 0.18, 'sine', 0.014 * loudness);
-        break;
-      case 'enemyHeal':
-        this.noise(0.07, 980, 0.014 * loudness);
-        this.tone(260, 390, 0.15, 'triangle', 0.014 * loudness, -0.1);
-        this.tone(620, 460, 0.1, 'sawtooth', 0.009 * loudness, 0.12);
-        break;
-      case 'enemyCover':
-        this.noise(0.08, 740, 0.018 * loudness);
-        this.tone(190, 150, 0.13, 'square', 0.014 * loudness, -0.08);
-        this.tone(410, 290, 0.09, 'triangle', 0.01 * loudness, 0.12);
-        break;
-      case 'coverBreak':
-        this.noise(0.09, 1450, 0.024 * loudness);
-        this.tone(520, 260, 0.1, 'square', 0.016 * loudness, -0.12);
-        this.tone(980, 620, 0.08, 'triangle', 0.011 * loudness, 0.14);
-        break;
-      case 'draw':
-        this.noise(0.045, 1800, 0.01 * loudness);
-        this.tone(420, 780, 0.1, 'sine', 0.017 * loudness, -0.14);
-        this.tone(760, 1120, 0.09, 'triangle', 0.012 * loudness, 0.1);
-        break;
-      case 'discard':
-        this.noise(0.06, 1220, 0.014 * loudness);
-        this.tone(520, 310, 0.1, 'triangle', 0.014 * loudness, -0.12);
-        this.tone(760, 420, 0.08, 'sine', 0.009 * loudness, 0.12);
-        break;
-      case 'shuffle':
-        this.noise(0.085, 1720, 0.015 * loudness);
-        this.tone(320, 620, 0.13, 'triangle', 0.016 * loudness, -0.12);
-        this.tone(690, 1040, 0.12, 'sine', 0.012 * loudness, 0.1);
-        this.tone(1040, 760, 0.08, 'triangle', 0.008 * loudness, 0.18);
-        break;
-      case 'drain':
-        this.noise(0.1, 760, 0.024 * loudness);
-        this.tone(420, 148, 0.16, 'triangle', 0.026 * loudness, -0.08);
-        this.tone(760, 210, 0.08, 'sine', 0.012 * loudness, 0.14);
-        break;
-      case 'flow':
-        this.tone(380, 620, 0.12, 'sine', 0.02 * loudness, -0.08);
-        this.tone(760, 1040, 0.1, 'triangle', 0.012 * loudness, 0.12);
-        this.noise(0.05, 1450, 0.01 * loudness);
-        break;
-      case 'moltPower':
-        this.noise(0.055, 2140, 0.009 * loudness);
-        this.tone(310, 540, 0.11, 'triangle', 0.014 * loudness, -0.12);
-        this.tone(620, 930, 0.13, 'sine', 0.013 * loudness, 0.1);
-        this.tone(1240, 880, 0.07, 'triangle', 0.007 * loudness, 0.18);
-        break;
-      case 'cleanse':
-        this.noise(0.06, 1900, 0.012 * loudness);
-        this.tone(520, 860, 0.14, 'sine', 0.018 * loudness, -0.08);
-        this.tone(1040, 720, 0.09, 'triangle', 0.011 * loudness, 0.14);
-        break;
-      case 'bank':
-        this.tone(260, 420, 0.13, 'triangle', 0.016 * loudness, -0.12);
-        this.tone(520, 780, 0.11, 'sine', 0.014 * loudness, 0.08);
-        this.noise(0.045, 1320, 0.008 * loudness);
-        break;
-      case 'threat':
-        this.noise(0.08, 620, 0.02 * loudness);
-        this.tone(180, 120, 0.15, 'sawtooth', 0.018 * loudness, -0.12);
-        this.tone(420, 250, 0.1, 'triangle', 0.012 * loudness, 0.14);
-        break;
-      case 'enemyCommitment':
-        this.noise(0.07, 920, 0.018 * loudness);
-        this.tone(210, 96, 0.18, 'sawtooth', 0.02 * loudness, -0.14);
-        this.tone(520, 270, 0.12, 'triangle', 0.012 * loudness, 0.12);
-        this.tone(880, 410, 0.08, 'sine', 0.007 * loudness, 0.18);
-        break;
-      case 'formation':
-        this.noise(0.055, 1560, 0.012 * loudness);
-        this.tone(260, 420, 0.13, 'triangle', 0.015 * loudness, -0.12);
-        this.tone(520, 880, 0.16, 'sine', 0.014 * loudness, 0.1);
-        this.tone(1040, 760, 0.11, 'triangle', 0.008 * loudness, 0.16);
-        break;
-      case 'turn':
-        this.tone(250, 390, 0.11, 'triangle', 0.022 * loudness);
-        break;
-      case 'roostHandoff':
-        this.noise(0.08, 1180, 0.016 * loudness);
-        this.tone(196, 330, 0.16, 'triangle', 0.018 * loudness, -0.12);
-        this.tone(392, 620, 0.12, 'sine', 0.014 * loudness, 0.08);
-        this.tone(784, 520, 0.1, 'triangle', 0.009 * loudness, 0.16);
-        break;
-      case 'playerTurnRally':
-        this.noise(0.045, 1840, 0.01 * loudness);
-        this.tone(330, 520, 0.14, 'triangle', 0.016 * loudness, -0.12);
-        this.tone(660, 1040, 0.16, 'sine', 0.015 * loudness, 0.08);
-        this.tone(990, 780, 0.1, 'triangle', 0.009 * loudness, 0.16);
-        break;
-      case 'reward':
-        this.chord([392, 494, 659], 0.22, 'sine', 0.017 * loudness);
-        break;
-      case 'victory':
-        this.chord([330, 415, 554, 659], 0.52, 'sine', 0.02 * loudness);
-        break;
-      case 'victoryFanfare':
-        this.noise(0.12, 1900, 0.012 * loudness);
-        this.tone(196, 294, 0.18, 'triangle', 0.018 * loudness, -0.18);
-        window.setTimeout(() => this.tone(330, 494, 0.2, 'sine', 0.018 * loudness, 0.12), 95);
-        window.setTimeout(() => this.chord([392, 494, 659, 784], 0.46, 'sine', 0.022 * loudness), 190);
-        window.setTimeout(() => this.noise(0.08, 2600, 0.008 * loudness), 280);
-        break;
-      case 'defeat':
-        this.tone(196, 82, 0.62, 'triangle', 0.038 * loudness);
-        this.noise(0.28, 360, 0.016 * loudness);
-        break;
+    if (cue === 'card') {
+      void this.adaptiveMusicLoad?.then((module) => {
+        if (module && !this.muted) (this.adaptiveMusic ??= new module.AdaptiveMusicSequencer())
+          .playCardVoice(ctx, this.master!, this.voiceVolume, suit ?? 'neutral', usesMolt, intensity);
+      });
+      return;
     }
+
+    this.sfxStatus = 'loading';
+    const playThroughMute = cue === 'close';
+    const load = this.sfxLoad ??= import('./game/audio-sfx').catch(() => undefined);
+    void load.then((module) => {
+      if (!module) {
+        this.sfxLoad = undefined;
+        this.sfxStatus = 'error';
+        return;
+      }
+      this.sfxStatus = 'ready';
+      if ((!this.muted || playThroughMute) && this.master) {
+        module.playAudioCue(ctx, this.master, this.sfxVolume, cue, intensity);
+        this.sfxPlayed += 1;
+      }
+    });
   }
 
   toggleMute() {
@@ -4510,8 +4398,10 @@ class BirdAudioDirector {
       unlocked: Boolean(this.ctx && this.ctx.state === 'running'),
       musicVolume: this.musicVolume,
       sfxVolume: this.sfxVolume,
+      voiceVolume: this.voiceVolume,
       ambienceVolume: this.ambienceVolume,
       music,
+      sfx: { status: this.sfxStatus, played: this.sfxPlayed },
       cueRequests: { ...this.cueRequests }
     };
   }
@@ -4538,6 +4428,11 @@ class BirdAudioDirector {
   setSfxVolume(value: number) {
     this.sfxVolume = clamp(value, 0, 1);
     this.storeVolume('birdsquad.sfxVolume', this.sfxVolume);
+  }
+
+  setVoiceVolume(value: number) {
+    this.voiceVolume = clamp(value, 0, 1);
+    this.storeVolume('birdsquad.voiceVolume', this.voiceVolume);
   }
 
   private loadMuted() {
@@ -4635,11 +4530,13 @@ class BirdAudioDirector {
     if (!ctx || !master) return;
     const request = ++this.adaptiveMusicRequest;
     this.adaptiveMusicStatus = 'loading';
-    const load = this.adaptiveMusicLoad ??= import('./game/adaptive-music').catch((error: unknown) => {
-      this.adaptiveMusicLoad = undefined;
-      throw error;
-    });
+    const load = this.adaptiveMusicLoad ??= import('./game/adaptive-music').catch(() => undefined);
     void load.then((module) => {
+      if (!module) {
+        this.adaptiveMusicLoad = undefined;
+        if (request === this.adaptiveMusicRequest) this.adaptiveMusicStatus = 'error';
+        return;
+      }
       if (
         request !== this.adaptiveMusicRequest
         || this.muted
@@ -4650,8 +4547,6 @@ class BirdAudioDirector {
       this.adaptiveMusic ??= new module.AdaptiveMusicSequencer();
       this.adaptiveMusic.start(this.ctx, this.master, mood, this.musicVolume);
       this.adaptiveMusicStatus = 'ready';
-    }).catch(() => {
-      if (request === this.adaptiveMusicRequest) this.adaptiveMusicStatus = 'error';
     });
   }
 
@@ -4667,63 +4562,37 @@ class BirdAudioDirector {
     }
   }
 
-  private tone(startFreq: number, endFreq: number, duration: number, type: OscillatorType, volume: number, pan = 0) {
-    const ctx = this.ctx;
-    if (!ctx || !this.master) return;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const panner = 'StereoPannerNode' in window ? ctx.createStereoPanner() : undefined;
-    const now = ctx.currentTime;
-    osc.type = type;
-    osc.frequency.setValueAtTime(Math.max(1, startFreq), now);
-    osc.frequency.exponentialRampToValueAtTime(Math.max(1, endFreq), now + duration);
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume * this.sfxVolume), now + 0.012);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    if (panner) {
-      panner.pan.setValueAtTime(clamp(pan, -1, 1), now);
-      osc.connect(gain);
-      gain.connect(panner);
-      panner.connect(this.master);
-    } else {
-      osc.connect(gain);
-      gain.connect(this.master);
-    }
-    osc.start(now);
-    osc.stop(now + duration + 0.02);
-  }
-
-  private chord(freqs: number[], duration: number, type: OscillatorType, volume: number) {
-    freqs.forEach((freq, index) => {
-      window.setTimeout(() => this.tone(freq, freq * 1.08, duration, type, volume / Math.sqrt(freqs.length), (index - 1) * 0.16), index * 22);
-    });
-  }
-
-  private noise(duration: number, filterFreq: number, volume: number) {
-    const ctx = this.ctx;
-    if (!ctx || !this.master) return;
-    const sampleCount = Math.max(1, Math.floor(ctx.sampleRate * duration));
-    const buffer = ctx.createBuffer(1, sampleCount, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < sampleCount; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / sampleCount);
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(filterFreq, ctx.currentTime);
-    filter.Q.setValueAtTime(1.8, ctx.currentTime);
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(Math.max(0.0001, volume * this.sfxVolume), ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
-    source.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.master);
-    source.start();
-    source.stop(ctx.currentTime + duration + 0.02);
-  }
 }
 
 const birdAudio = new BirdAudioDirector();
+
+type MenuDebugStateModule = typeof import('./game/menu-debug-state');
+let menuDebugStateModulePromise: Promise<MenuDebugStateModule> | undefined;
+function loadMenuDebugStateModule() {
+  menuDebugStateModulePromise ??= import('./game/menu-debug-state').catch((error) => {
+    menuDebugStateModulePromise = undefined;
+    throw error;
+  });
+  return menuDebugStateModulePromise;
+}
+
+type TitleRunLaunchModule = typeof import('./game/title-run-launch');
+let titleRunLaunchModulePromise: Promise<TitleRunLaunchModule> | undefined;
+function loadTitleRunLaunchModule(): Promise<TitleRunLaunchModule> {
+  return titleRunLaunchModulePromise ??= import('./game/title-run-launch').catch((error) => {
+    titleRunLaunchModulePromise = undefined;
+    throw error;
+  });
+}
+
+type MenuOptionalUiModule = typeof import('./game/menu-optional-ui');
+let menuOptionalUiModulePromise: Promise<MenuOptionalUiModule> | undefined;
+function loadMenuOptionalUiModule(): Promise<MenuOptionalUiModule> {
+  return menuOptionalUiModulePromise ??= import('./game/menu-optional-ui').catch((error) => {
+    menuOptionalUiModulePromise = undefined;
+    throw error;
+  });
+}
 
 class BootScene extends Phaser.Scene {
   constructor() {
@@ -4760,8 +4629,8 @@ class MenuScene extends Phaser.Scene {
   private helpOverlay?: Phaser.GameObjects.Container;
   private storageRecoveryNotice?: StorageRecoveryNotice;
   private titleRunLaunchPending = false;
-  private titleRunLaunchFlourishBursts = 0;
-  private codexOpening = false;
+  titleRunLaunchFlourishBursts = 0;
+  codexOpening = false;
   private menuFocus: MenuFocus = 'leader';
   private menuFocusTargets = new Map<MenuFocus, Phaser.GameObjects.Rectangle>();
   private runModeFocusTargets = new Map<RunMode, Phaser.GameObjects.Rectangle>();
@@ -4806,6 +4675,7 @@ class MenuScene extends Phaser.Scene {
     this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'splash')
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
       .setAlpha(1);
+    this.add.rectangle(GAME_WIDTH / 2, 580, GAME_WIDTH, 282, 0x02050a, 0.42);
 
     this.createHomeParticles();
     this.createAnimatedTitle();
@@ -4954,7 +4824,7 @@ class MenuScene extends Phaser.Scene {
       },
     });
 
-    this.menuFocusTargets.set('profile', this.renderTopUtilityButton(GAME_WIDTH - 92, 38, 'Flock Record', 'profile', () => this.scene.start('ProfileScene')));
+    this.menuFocusTargets.set('profile', this.renderTopUtilityButton(GAME_WIDTH - 92, 38, 'Flock Record', 'profile', () => openProfileScene(this)));
     this.menuFocusTargets.set('codex', this.renderTopUtilityButton(GAME_WIDTH - 240, 38, 'Collection', 'codex', () => this.openCodex(true)));
     renderCollectionGoalStrip(
       this,
@@ -4983,7 +4853,7 @@ class MenuScene extends Phaser.Scene {
     switch (this.menuFocus) {
       case 'leader': return `Leader: ${getLeader(this.selectedLeaderId).name}`;
       case 'difficulty': return `Ascension: ${difficultyLabel(this.selectedDifficulty)}`;
-      case 'runMode': return `Flight length: ${this.selectedRunMode === 'quick' ? 'Quick' : 'Full'}`;
+      case 'runMode': return `Flight length: ${RUN_MODE_SUMMARY[this.selectedRunMode]}`;
       case 'primaryRun': return this.menuHasSavedRun ? 'Continue Run' : (SHARED_ROUTE_SEED ? 'Fly Shared Route' : 'Start Run');
       case 'secondaryRun': return SHARED_ROUTE_SEED ? 'Shared Route' : 'Start New Run';
       case 'howToPlay': return 'How to Play';
@@ -5084,7 +4954,7 @@ class MenuScene extends Phaser.Scene {
         this.openCodex(true);
         return;
       case 'profile':
-        this.scene.start('ProfileScene');
+        openProfileScene(this);
         return;
     }
     this.updateMenuFocusRing();
@@ -5148,13 +5018,13 @@ class MenuScene extends Phaser.Scene {
   }
 
   private renderMenuFocusHint() {
-    this.add.rectangle(GAME_WIDTH / 2, 258, 470, 26, 0x05070c, 0.5)
+    this.add.rectangle(GAME_WIDTH / 2, 262, 470, 26, 0x05070c, 0.5)
       .setStrokeStyle(1, UI_FIELD.cyan, 0.28)
       .setDepth(19)
       .setName('title-input-hint-backdrop');
     this.add.text(
       GAME_WIDTH / 2,
-      258,
+      262,
       `Up / Down or Tab: Focus   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Adjust   |   ${controlBindingLabel('confirm')} or A: Select`,
       {
         fontFamily: UI_FONT,
@@ -5165,70 +5035,6 @@ class MenuScene extends Phaser.Scene {
         strokeThickness: 3,
       },
     ).setResolution(2).setOrigin(0.5).setDepth(20).setName('title-input-hint');
-  }
-
-  private titleCompositionState() {
-    const logo = this.children.list.find((child) => child.name === 'title-logo') as Phaser.GameObjects.Container | undefined;
-    const hint = this.children.list.find((child) => child.name === 'title-input-hint') as Phaser.GameObjects.Text | undefined;
-    const hintBackdrop = this.children.list.find((child) => child.name === 'title-input-hint-backdrop') as Phaser.GameObjects.Rectangle | undefined;
-    const logoBounds = logo?.getBounds();
-    const hintBounds = hint?.getBounds();
-    const hintBackdropBounds = hintBackdrop?.getBounds();
-    const hintVisualBounds = hintBackdropBounds ?? hintBounds;
-    const boundsState = (bounds?: Phaser.Geom.Rectangle) => bounds ? {
-      left: Math.round(bounds.left),
-      top: Math.round(bounds.top),
-      right: Math.round(bounds.right),
-      bottom: Math.round(bounds.bottom),
-      width: Math.round(bounds.width),
-      height: Math.round(bounds.height),
-    } : undefined;
-    return {
-      logo: boundsState(logoBounds),
-      hint: boundsState(hintBounds),
-      hintBackdrop: boundsState(hintBackdropBounds),
-      logoWithinCanvas: Boolean(logoBounds
-        && logoBounds.left >= 0
-        && logoBounds.top >= 0
-        && logoBounds.right <= GAME_WIDTH
-        && logoBounds.bottom <= GAME_HEIGHT),
-      hintWithinCanvas: Boolean(hintVisualBounds
-        && hintVisualBounds.left >= 0
-        && hintVisualBounds.top >= 0
-        && hintVisualBounds.right <= GAME_WIDTH
-        && hintVisualBounds.bottom <= GAME_HEIGHT),
-      clear: Boolean(logoBounds && hintVisualBounds
-        && !Phaser.Geom.Intersects.RectangleToRectangle(logoBounds, hintVisualBounds)),
-    };
-  }
-
-  private titleBootState() {
-    const loadedCount = (ids: readonly UiIconId[]) => ids.filter((id) => this.textures.exists(uiIconAssets[id].key)).length;
-    const essentialLoaded = loadedCount(titleMenuUiIconIds);
-    const compactDimensions = titleMenuCompactIconIds.flatMap((id) => {
-      const texture = this.textures.get(uiIconAssets[id].key);
-      const source = texture?.getSourceImage() as { width?: number; height?: number } | undefined;
-      return source?.width && source.height ? [{ width: source.width, height: source.height }] : [];
-    });
-    const essentialTexturePixels = titleMenuUiIconIds.reduce((total, id) => {
-      const source = this.textures.get(uiIconAssets[id].key)?.getSourceImage() as { width?: number; height?: number } | undefined;
-      return total + (source?.width ?? 0) * (source?.height ?? 0);
-    }, 0);
-    return {
-      generation: this.menuGeneration,
-      splashFormat: splashUrl.toLowerCase().includes('.webp') ? 'webp' : 'other',
-      essentialAssetCount: titleMenuUiIconIds.length,
-      essentialLoaded,
-      ready: essentialLoaded === titleMenuUiIconIds.length,
-      essentialTexturePixels,
-      compactAssetCount: titleMenuCompactIconIds.length,
-      compactLoaded: compactDimensions.length,
-      compactMaxDimension: Math.max(0, ...compactDimensions.flatMap(({ width, height }) => [width, height])),
-      deferredHelpAssetCount: deferredHowToPlayUiIconIds.length,
-      deferredHelpLoaded: loadedCount(deferredHowToPlayUiIconIds),
-      deferredSettingsAssetCount: deferredMenuSettingsUiIconIds.length,
-      deferredSettingsLoaded: loadedCount(deferredMenuSettingsUiIconIds),
-    };
   }
 
   private updateMenuFocusRing() {
@@ -5252,202 +5058,23 @@ class MenuScene extends Phaser.Scene {
   }
 
   private openCodex(openCollectionAtlas = false, openCardId?: string) {
-    if (this.codexOpening) return;
-    this.codexOpening = true;
-    const game = this.game;
-    const notice = this.add.text(GAME_WIDTH - 240, 72, 'Opening Codex…', {
-      fontFamily: UI_FONT,
-      fontSize: '12px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      stroke: '#05070c',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(120).setName('codex-scene-loading');
-    void loadCodexSceneModule()
-      .then((module) => {
-        registerCodexScene(game, module);
-        if (!game.scene.isActive('MenuScene')) return;
-        if (notice.active) notice.destroy();
-        game.scene.getScene('MenuScene').scene.start('CodexScene', { openCollectionAtlas, openCardId });
-      })
-      .catch((error) => {
-        console.warn(LAZY_LOAD_FAILED, error);
-        if (!this.sys.settings.active) return;
-        this.codexOpening = false;
-        notice.setText('Codex unavailable · click to retry').setColor('#ffb09a');
-        this.time.delayedCall(2400, () => notice.destroy());
-      });
+    this.runMenuOptionalAction('openCodex', openCollectionAtlas, openCardId);
   }
 
   private updateMenuTextState() {
     window.advanceTime = (ms: number) => advanceGameTime(this.game, ms);
-    window.render_game_to_text = () => JSON.stringify({
-      mode: 'menu',
-      scene: 'MenuScene',
-      prompt: SHARED_ROUTE_SEED ? 'Fly the shared route or choose your own setup.' : 'Choose a setup, then start a run.',
-      storageRecovery: this.storageRecoveryNotice ? {
-        ...this.storageRecoveryNotice,
-        rendered: this.children.list.some((child) => child.name === 'storage-recovery-notice')
-      } : undefined,
-      sharedRoute: SHARED_ROUTE_SEED ? { seed: SHARED_ROUTE_SEED, runMode: this.selectedRunMode } : undefined,
-      settingsOpen: Boolean(this.settingsOverlay),
-      settingsFocus: settingsFocusState(this, Boolean(this.settingsOverlay)),
-      controls: controlsTextState(this, Boolean(this.settingsOverlay)),
-      helpOpen: Boolean(this.helpOverlay),
-      collectionGoal: {
-        ...collectionGoalSummary(this.menuAccount),
-        rendered: this.children.list.some((child) => child.name === 'title-collection-goal-hit'),
-        input: {
-          pointer: true,
-          keyboardFocus: 'codex',
-          controllerFocus: 'codex',
-        },
-      },
-      titleFocus: {
-        current: this.menuFocus,
-        label: this.menuFocusLabel(),
-        order: this.menuFocusOrder(),
-        previous: controlBindingLabel('previous'),
-        next: controlBindingLabel('next'),
-        confirm: controlBindingLabel('confirm'),
-        ringRendered: this.children.list.some((child) => child.name === 'title-menu-focus-ring'),
-      },
-      titleComposition: this.titleCompositionState(),
-      titleBoot: this.titleBootState(),
-      titleTransition: {
-        generation: this.menuGeneration,
-        fadeRunning: this.cameras.main?.fadeEffect?.isRunning ?? false,
-        fadeComplete: this.cameras.main?.fadeEffect?.isComplete ?? false,
-        fadeProgress: Number((this.cameras.main?.fadeEffect?.progress ?? 0).toFixed(3)),
-      },
-      selectedLeader: this.selectedLeaderId,
-      selectedDifficulty: this.selectedDifficulty,
-      selectedRunMode: this.selectedRunMode,
-      maxUnlockedDifficulty: getMaxUnlockedTier(),
-      titleAscensionPlaque: {
-        loaded: this.textures.exists(uiIconAssets['title-ascension-plaque'].key),
-        rendered: this.children.list.some((child: any) => child.texture?.key === uiIconAssets['title-ascension-plaque'].key)
-      },
-      titleAscensionValueFrame: {
-        loaded: this.textures.exists(uiIconAssets['title-ascension-value-frame'].key),
-        rendered: this.children.list.some((child: any) => child.texture?.key === uiIconAssets['title-ascension-value-frame'].key),
-        count: this.children.list.filter((child: any) => child.texture?.key === uiIconAssets['title-ascension-value-frame'].key).length
-      },
-      titleAscensionStepperFrame: {
-        loaded: this.textures.exists(uiIconAssets['title-ascension-stepper-frame'].key),
-        rendered: this.children.list.some((child: any) => child.texture?.key === uiIconAssets['title-ascension-stepper-frame'].key),
-        count: this.children.list.filter((child: any) => child.texture?.key === uiIconAssets['title-ascension-stepper-frame'].key).length
-      },
-      titleAscensionStatusStrip: {
-        loaded: this.textures.exists(uiIconAssets['title-ascension-status-strip'].key),
-        rendered: this.children.list.some((child: any) => child.texture?.key === uiIconAssets['title-ascension-status-strip'].key),
-        count: this.children.list.filter((child: any) => child.texture?.key === uiIconAssets['title-ascension-status-strip'].key).length
-      },
-      titleHomeCommandDais: {
-        loaded: this.textures.exists(uiIconAssets['title-home-command-dais'].key),
-        rendered: this.children.list.some((child: any) => child.texture?.key === uiIconAssets['title-home-command-dais'].key),
-        count: this.children.list.filter((child: any) => child.texture?.key === uiIconAssets['title-home-command-dais'].key).length
-      },
-      titleLogoBackplate: {
-        loaded: this.textures.exists(uiIconAssets['title-logo-backplate'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['title-logo-backplate'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['title-logo-backplate'].key)
-      },
-      titleLeaderCardFrame: {
-        loaded: this.textures.exists(uiIconAssets['title-leader-card-frame'].key),
-        rendered: this.children.list.some((child: any) => child.texture?.key === uiIconAssets['title-leader-card-frame'].key),
-        count: this.children.list.filter((child: any) => child.texture?.key === uiIconAssets['title-leader-card-frame'].key).length
-      },
-      titleLeaderSelectedFlourish: {
-        loaded: this.textures.exists(uiIconAssets['title-leader-selected-flourish'].key),
-        rendered: this.children.list.some((child: any) => child.texture?.key === uiIconAssets['title-leader-selected-flourish'].key && child.visible),
-        count: this.children.list.filter((child: any) => child.texture?.key === uiIconAssets['title-leader-selected-flourish'].key && child.visible).length
-      },
-      titleLeaderHeaderFrame: {
-        loaded: this.textures.exists(uiIconAssets['title-leader-header-frame'].key),
-        rendered: this.children.list.some((child: any) => child.texture?.key === uiIconAssets['title-leader-header-frame'].key),
-        count: this.children.list.filter((child: any) => child.texture?.key === uiIconAssets['title-leader-header-frame'].key).length
-      },
-      titleLeaderTooltipFrame: {
-        loaded: this.textures.exists(uiIconAssets['title-leader-tooltip-frame'].key),
-        rendered: countTextureInGameObjects(this.leaderTooltip?.list ?? [], uiIconAssets['title-leader-tooltip-frame'].key) > 0,
-        count: countTextureInGameObjects(this.leaderTooltip?.list ?? [], uiIconAssets['title-leader-tooltip-frame'].key)
-      },
-      titleStartCommandFrame: {
-        loaded: this.textures.exists(uiIconAssets['title-start-command-frame'].key),
-        rendered: this.children.list.some((child: any) => child.texture?.key === uiIconAssets['title-start-command-frame'].key),
-        count: this.children.list.filter((child: any) => child.texture?.key === uiIconAssets['title-start-command-frame'].key).length
-      },
-      titleRunLaunchFlourish: this.titleRunLaunchFlourishState(),
-      titleUtilityCommandFrame: {
-        loaded: this.textures.exists(uiIconAssets['title-utility-command-frame'].key),
-        rendered: this.children.list.some((child: any) => child.texture?.key === uiIconAssets['title-utility-command-frame'].key),
-        count: this.children.list.filter((child: any) => child.texture?.key === uiIconAssets['title-utility-command-frame'].key).length
-      },
-      audioTogglePulseRing: {
-        loaded: this.textures.exists(uiIconAssets['audio-toggle-pulse-ring'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['audio-toggle-pulse-ring'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['audio-toggle-pulse-ring'].key)
-      },
-      audioToggleWaveBurst: audioToggleWaveBurstState(this, this.children.list),
-      howToPlayTopicCardFrame: {
-        loaded: this.textures.exists(uiIconAssets['how-to-play-topic-card-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['how-to-play-topic-card-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['how-to-play-topic-card-frame'].key)
-      },
-      howToPlayTipRowFrame: {
-        loaded: this.textures.exists(uiIconAssets['how-to-play-tip-row-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['how-to-play-tip-row-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['how-to-play-tip-row-frame'].key)
-      },
-      systemSettingsRowFrame: {
-        loaded: this.textures.exists(uiIconAssets['system-settings-row-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-row-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-row-frame'].key)
-      },
-      systemSettingsToggleFrame: {
-        loaded: this.textures.exists(uiIconAssets['system-settings-toggle-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-toggle-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-toggle-frame'].key)
-      },
-      systemSettingsVolumeSliderFrame: {
-        loaded: this.textures.exists(uiIconAssets['system-settings-volume-slider-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-volume-slider-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-volume-slider-frame'].key)
-      },
-      systemSettingsMotionSwitchFrame: {
-        loaded: this.textures.exists(uiIconAssets['system-settings-motion-switch-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-motion-switch-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['system-settings-motion-switch-frame'].key)
-      },
-      systemFieldCommandFrame: {
-        loaded: this.textures.exists(uiIconAssets['system-field-command-frame'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['system-field-command-frame'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['system-field-command-frame'].key)
-      },
-      systemOverlayTitlePlaque: {
-        loaded: this.textures.exists(uiIconAssets['system-overlay-title-plaque'].key),
-        rendered: countTextureInGameObjects(this.children.list, uiIconAssets['system-overlay-title-plaque'].key) > 0,
-        count: countTextureInGameObjects(this.children.list, uiIconAssets['system-overlay-title-plaque'].key)
-      },
-      audio: birdAudio.snapshot(),
-      motion: motionState(),
-      visualContrast: visualContrastState(),
-      colorCues: colorCueState(),
-      screenShake: currentScreenShakeState(),
-      flashEffects: currentFlashEffectsState(),
-      graphics: graphicsQualityState(),
-      screenReader: screenReaderState(),
-      combatPacing: combatPacingState(),
-      animationPacing: animationPacingState(this),
-      textPacing: textPacingState(),
-      graphicsRuntime: {
-        ambientParticleEmitters: this.children.list.filter((child) => child.name === 'title-ambient-particles').length,
-      },
-      firstFlightGuide: firstFlightGuideState()
+    window.render_game_to_text = () => {
+      void loadMenuDebugStateModule()
+        .then((module) => {
+          if (this.scene.isActive()) module.installMenuDebugState(this);
+        })
+        .catch(() => {});
+      return JSON.stringify({ mode: 'menu', scene: 'MenuScene', screenReader: screenReaderState() });
+    };
+    void menuDebugStateModulePromise?.then((module) => {
+      if (this.scene.isActive()) module.installMenuDebugState(this);
     });
   }
-
   private renderTitleStartCommandFrame(x: number, y: number, w: number, h: number) {
     const key = uiIconAssets['title-start-command-frame'].key;
     if (!this.textures.exists(key)) return undefined;
@@ -5502,18 +5129,6 @@ class MenuScene extends Phaser.Scene {
       });
     }
     return flourish;
-  }
-
-  private renderTitleLeaderTooltipFrame(unlocked: boolean) {
-    const key = uiIconAssets['title-leader-tooltip-frame'].key;
-    if (!this.textures.exists(key)) return undefined;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const frame = this.add.image(0, 0, key)
-      .setDisplaySize(unlocked ? 704 : 680, unlocked ? 126 : 108)
-      .setAlpha(unlocked ? 0.78 : 0.58)
-      .setName('title-leader-tooltip-frame');
-    if (!unlocked) frame.setTint(0x8fa4bd);
-    return frame;
   }
 
   private renderTitleHomeCommandDais() {
@@ -5615,107 +5230,11 @@ class MenuScene extends Phaser.Scene {
   }
 
   private openSettingsOverlay(queueAssets = true) {
-    if (this.settingsOverlay) return;
-    if (this.helpOverlay) this.closeHelpOverlay();
-    if (queueAssets) {
-      queueUiIconAssets(this, menuSettingsUiIconIds, 'Title Settings UI', () => {
-        if (this.scene.isActive() && this.settingsOverlay?.active) this.refreshSettingsOverlay(false);
-      });
-    }
-    const overlay = this.add.container(0, 0).setDepth(80);
-    this.settingsOverlay = overlay;
-    this.menuFocusRing?.setVisible(false);
-    renderSettingsMenuOverlay(this, (obj) => overlay.add(obj), {
-      title: 'Settings',
-      subtitle: 'Title controls',
-      onClose: () => this.closeSettingsOverlay(),
-      onToggleAudio: () => this.updateMenuTextState(),
-      onSetMusicVolume: (value) => {
-        birdAudio.setMusicVolume(value);
-        this.refreshSettingsOverlay();
-      },
-      onSetSfxVolume: (value) => {
-        birdAudio.setSfxVolume(value);
-        this.refreshSettingsOverlay();
-      },
-      onSetAmbienceVolume: (value) => {
-        birdAudio.setAmbienceVolume(value);
-        this.refreshSettingsOverlay();
-      },
-      onSetMotionPreference: (value) => {
-        setMotionPreference(value);
-        this.syncHomeParticles();
-        this.refreshSettingsOverlay();
-      },
-      onSetVisualContrastPreference: (value) => {
-        setVisualContrastPreference(value);
-        this.refreshSettingsOverlay();
-      },
-      onSetColorCuePreference: (value) => {
-        setColorCuePreference(value);
-        this.refreshSettingsOverlay();
-      },
-      onSetScreenShakePreference: (value) => {
-        setScreenShakePreference(value);
-        this.refreshSettingsOverlay();
-      },
-      onSetFlashEffectsPreference: (value) => {
-        setFlashEffectsPreference(value);
-        this.refreshSettingsOverlay();
-      },
-      onSetGraphicsQualityPreference: (value) => {
-        setGraphicsQualityPreference(value);
-        this.syncHomeParticles();
-        this.refreshSettingsOverlay();
-      },
-      onSetCombatPacePreference: (value) => {
-        setCombatPacePreference(value);
-        this.refreshSettingsOverlay();
-      },
-      onSetAnimationPacePreference: (value) => {
-        setAnimationPacePreference(this, value);
-        this.refreshSettingsOverlay();
-      },
-      onSetTextPacePreference: (value) => {
-        setTextPacePreference(value);
-        this.refreshSettingsOverlay();
-      },
-      onSetScreenReaderPreference: (value) => {
-        setScreenReaderPreference(value);
-        this.refreshSettingsOverlay();
-      },
-      onToggleFullscreen: () => this.scale.toggleFullscreen()
-    });
-    this.updateMenuTextState();
-  }
-
-  private refreshSettingsOverlay(queueAssets = true) {
-    this.time.delayedCall(16, () => {
-      if (!this.scene.isActive() || !this.settingsOverlay?.active) return;
-      this.closeSettingsOverlay();
-      this.openSettingsOverlay(queueAssets);
-    });
+    this.runMenuOptionalAction('openSettingsOverlay', queueAssets);
   }
 
   private openHelpOverlay(queueAssets = true) {
-    if (this.helpOverlay) return;
-    if (this.settingsOverlay) this.closeSettingsOverlay();
-    if (queueAssets) {
-      queueUiIconAssets(this, howToPlayUiIconIds, 'How to Play UI', () => {
-        if (!this.scene.isActive() || !this.helpOverlay?.active) return;
-        this.closeHelpOverlay();
-        this.openHelpOverlay(false);
-      });
-    }
-    const overlay = this.add.container(0, 0).setDepth(80);
-    this.helpOverlay = overlay;
-    this.menuFocusRing?.setVisible(false);
-    renderHowToPlayOverlay(this, (obj) => overlay.add(obj), {
-      onClose: () => this.closeHelpOverlay(),
-      guide: firstFlightGuideState(),
-      onGuideAction: () => this.toggleFirstFlightGuide()
-    });
-    this.updateMenuTextState();
+    this.runMenuOptionalAction('openHelpOverlay', queueAssets);
   }
 
   private closeHelpOverlay() {
@@ -5837,7 +5356,7 @@ class MenuScene extends Phaser.Scene {
     }).setName('title-ambient-particles');
   }
 
-  private syncHomeParticles() {
+  syncHomeParticles() {
     const emitters = this.children.list.filter((child) => child.name === 'title-ambient-particles');
     if (prefersReducedMotion() || prefersLeanEffects()) {
       emitters.forEach((emitter) => emitter.destroy());
@@ -5847,40 +5366,31 @@ class MenuScene extends Phaser.Scene {
     this.updateMenuTextState();
   }
 
-  private toggleFirstFlightGuide() {
-    const guide = firstFlightGuideState();
-    if (guide.enabled && !guide.completed) skipFirstFlightGuide();
-    else replayFirstFlightGuide();
-    playUiSound('confirm');
-    this.time.delayedCall(16, () => {
-      if (!this.scene.isActive() || !this.helpOverlay?.active) return;
-      this.closeHelpOverlay();
-      this.openHelpOverlay();
-    });
-  }
-
   private renderRunModeSelector() {
-    const y = 640;
-    this.add.text(500, 598, 'FLIGHT LENGTH', {
+    const y = 638;
+    this.add.text(500, 594, 'FLIGHT LENGTH', {
       fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: '#dce8f2',
       stroke: '#05070c', strokeThickness: 2
     }).setResolution(2).setOrigin(0.5);
     const choices: Array<{ mode: RunMode; x: number; label: string; detail: string }> = [
-      { mode: 'quick', x: 456, label: 'Quick', detail: '3 districts' },
-      { mode: 'full', x: 544, label: 'Full', detail: '4 districts' }
+      { mode: 'quick', x: 454, label: 'Quick', detail: '3 districts\nNo tier unlock' },
+      { mode: 'full', x: 546, label: 'Full', detail: '4 districts\nUnlocks tiers' },
     ];
     choices.forEach((choice) => {
       const selected = choice.mode === this.selectedRunMode;
-      const hit = this.add.rectangle(choice.x, y, 82, MIN_SUPPORTED_TOUCH_TARGET, selected ? 0x183451 : 0x0d1420, 0.95)
+      const hit = this.add.rectangle(choice.x, y, 86, 68, selected ? 0x183451 : 0x0d1420, 0.95)
         .setStrokeStyle(2, selected ? UI_FIELD.gold : UI_FIELD.cyan, selected ? 0.92 : 0.42)
         .setInteractive({ useHandCursor: true })
         .setName('title-run-mode-option');
-      const label = this.add.text(choice.x, y - 10, choice.label, {
+      const label = this.add.text(choice.x, y - 14, choice.label, {
         fontFamily: UI_FONT, fontSize: '14px', fontStyle: UI_BOLD, color: selected ? UI_GOLD : '#dce8f2'
       }).setResolution(2).setOrigin(0.5);
-      const detail = this.add.text(choice.x, y + 10, choice.detail, {
-        fontFamily: UI_FONT, fontSize: '9px', color: selected ? '#e7fbff' : '#8fa3b6'
-      }).setResolution(2).setOrigin(0.5);
+      const detail = this.add.text(choice.x, y + 7, choice.detail, {
+        fontFamily: UI_FONT,
+        fontSize: '9px',
+        color: selected ? '#e7fbff' : '#8fa3b6',
+        align: 'center',
+      }).setResolution(2).setOrigin(0.5, 0);
       hit.setData('mode', choice.mode);
       hit.on('pointerdown', () => {
         this.menuFocus = 'runMode';
@@ -5908,147 +5418,29 @@ class MenuScene extends Phaser.Scene {
     });
   }
 
-  private titleRunLaunchDelayMs() {
-    return prefersReducedMotion() ? 0 : TITLE_RUN_LAUNCH_DELAY_MS;
-  }
-
-  private titleRunLaunchFlourishState() {
-    const count = countTextureInGameObjects(this.children.list, TITLE_RUN_LAUNCH_FLOURISH_TEXTURE);
-    return {
-      loaded: this.textures.exists(TITLE_RUN_LAUNCH_FLOURISH_TEXTURE),
-      rendered: count > 0,
-      count,
-      bursts: this.titleRunLaunchFlourishBursts,
-      pending: this.titleRunLaunchPending
-    };
-  }
-
-  private titleRunLaunchFx(x: number, y: number, w: number) {
-    this.titleRunLaunchFlourishBursts += 1;
-    const reduced = prefersReducedMotion();
-    const leanEffects = prefersLeanEffects();
-    const group = this.add.container(0, 0).setDepth(160).setName('title-run-launch-flourish');
-    const blocker = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.001)
-      .setInteractive({ useHandCursor: false })
-      .setName('title-run-launch-flourish-blocker');
-    const plate = this.add.rectangle(x, y, w + 116, 72, 0x020409, 0.48)
-      .setStrokeStyle(2, UI_FIELD.cyan, 0.34)
-      .setName('title-run-launch-flourish');
-    const rail = this.add.rectangle(x, y + 2, w + 76, 3, UI_FIELD.brass, 0.68)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setName('title-run-launch-flourish');
-    group.add([blocker, plate, rail]);
-
-    if (this.textures.exists(TITLE_RUN_LAUNCH_FLOURISH_TEXTURE)) {
-      this.textures.get(TITLE_RUN_LAUNCH_FLOURISH_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      const displayW = Math.max(430, w + 220);
-      const flourish = this.add.image(x, y - 4, TITLE_RUN_LAUNCH_FLOURISH_TEXTURE)
-        .setDisplaySize(displayW, 142)
-        .setAlpha(reduced ? 0.92 : 0.98)
-        .setName('title-run-launch-flourish');
-      const glow = this.add.image(x, y - 4, TITLE_RUN_LAUNCH_FLOURISH_TEXTURE)
-        .setDisplaySize(displayW + 42, 154)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setAlpha(reduced ? 0.12 : 0.22)
-        .setName('title-run-launch-flourish');
-      group.add([glow, flourish]);
-      if (!reduced) {
-        flourish.setScale(flourish.scaleX * 0.86, flourish.scaleY * 0.92);
-        glow.setScale(glow.scaleX * 0.84, glow.scaleY * 0.92);
-        this.tweens.add({
-          targets: [flourish, glow],
-          scaleX: '+=0.08',
-          scaleY: '+=0.035',
-          alpha: { value: 0, duration: 300, delay: 470 },
-          duration: 760,
-          ease: 'Cubic.easeOut'
-        });
-      }
-    } else {
-      group.add(this.add.triangle(x, y, -44, -20, -44, 20, 76, 0, UI_FIELD.cyan, 0.68)
-        .setStrokeStyle(2, UI_FIELD.brass, 0.82)
-        .setName('title-run-launch-flourish'));
-    }
-
-    const moteCount = reduced ? 4 : leanEffects ? 8 : 16;
-    for (let i = 0; i < moteCount; i += 1) {
-      const side = i % 2 === 0 ? -1 : 1;
-      const mx = x + side * Phaser.Math.Between(44, Math.max(70, Math.round(w / 2) + 62));
-      const my = y + Phaser.Math.Between(-24, 24);
-      const color = i % 3 === 0 ? UI_FIELD.cyan : i % 3 === 1 ? UI_FIELD.brass : 0xc98bff;
-      const mote = this.add.rectangle(mx, my, Phaser.Math.Between(12, 28), 3, color, 0.76)
-        .setAngle(side > 0 ? -5 : 5)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setName('title-run-launch-flourish');
-      group.add(mote);
-      if (!reduced) {
-        this.tweens.add({
-          targets: mote,
-          x: mx + side * Phaser.Math.Between(36, 102),
-          alpha: 0,
-          scaleX: 0.25,
-          duration: 560,
-          delay: i * 18,
-          ease: 'Cubic.easeOut',
-          onComplete: () => mote.destroy()
-        });
-      }
-    }
-
-    if (!reduced) {
-      this.tweens.add({
-        targets: [plate, rail],
-        alpha: { value: 0, duration: 240, delay: 500 },
-        scaleX: '+=0.04',
-        duration: 760,
-        ease: 'Cubic.easeOut',
-        onComplete: () => group.destroy(true)
-      });
-    }
-    this.updateMenuTextState();
-  }
-
   private startRunAnimated(confirmAlreadyPlayed = false, x = 780, y = 642, w = 286) {
-    if (this.titleRunLaunchPending || this.settingsOverlay || this.helpOverlay) return;
-    this.titleRunLaunchPending = true;
-    if (!confirmAlreadyPlayed) playUiSound('confirm');
-    birdAudio.play('route', 0.76);
-    const leaderId = this.selectedLeaderId;
-    const difficulty = this.selectedDifficulty;
-    this.titleRunLaunchFx(x, y, w);
-    this.time.delayedCall(this.titleRunLaunchDelayMs(), () => {
-      this.titleRunLaunchPending = false;
-      if (!this.scene.isActive()) return;
-      this.storageRecoveryNotice = undefined;
-      this.scene.start('RouteScene', { runState: createInitialRunState(leaderId, difficulty, this.selectedRunMode, SHARED_ROUTE_SEED) });
-    });
+    this.runTitleLaunch(false, confirmAlreadyPlayed, x, y, w);
   }
 
   private continueRunAnimated(confirmAlreadyPlayed = false, x = 676, y = 642, w = 252) {
+    this.runTitleLaunch(true, confirmAlreadyPlayed, x, y, w);
+  }
+
+  private runTitleLaunch(resume: boolean, confirmed: boolean, x: number, y: number, width: number) {
     if (this.titleRunLaunchPending || this.settingsOverlay || this.helpOverlay) return;
-    const saved = loadActiveRun();
-    if (!saved) {
-      this.startRunAnimated(confirmAlreadyPlayed, x, y, w);
-      return;
-    }
     this.titleRunLaunchPending = true;
-    if (!confirmAlreadyPlayed) playUiSound('confirm');
-    birdAudio.play('route', 0.76);
-    this.titleRunLaunchFx(x, y, w);
-    this.time.delayedCall(this.titleRunLaunchDelayMs(), () => {
-      this.titleRunLaunchPending = false;
-      if (!this.scene.isActive()) return;
-      this.storageRecoveryNotice = undefined;
-      this.scene.start('RouteScene', { runState: saved });
-    });
+    void loadTitleRunLaunchModule()
+      .then((module) => module.startRunAnimated(this, resume, confirmed, x, y, width))
+      .catch((error) => {
+        console.warn(LAZY_LOAD_FAILED, error);
+        this.titleRunLaunchPending = false;
+        if (resume) this.continueRun();
+        else this.startRun();
+      });
   }
 
   continueRun() {
-    const saved = loadActiveRun();
-    if (!saved) { this.startRun(); return; }
-    birdAudio.play('route');
-    this.storageRecoveryNotice = undefined;
-    this.scene.start('RouteScene', { runState: saved });
+    this.enterRoute(loadActiveRun() ?? createInitialRunState(this.selectedLeaderId, this.selectedDifficulty, this.selectedRunMode, SHARED_ROUTE_SEED));
   }
 
   private selectLeader(id: string) {
@@ -6069,45 +5461,13 @@ class MenuScene extends Phaser.Scene {
   }
 
   private showLeaderTooltip(id: string, anchorX: number) {
-    this.hideLeaderTooltip();
-    const leader = getLeader(id);
-    const unlocked = isLeaderUnlocked(this.menuAccount, leader.id);
-    const tooltipX = Phaser.Math.Clamp(anchorX, 328, GAME_WIDTH - 328);
-    const tooltipY = 404;
-    const tooltip = this.add.container(tooltipX, tooltipY).setDepth(100);
-    const frame = this.renderTitleLeaderTooltipFrame(unlocked);
-    const bg = frame
-      ? this.add.rectangle(0, 0, unlocked ? 574 : 552, unlocked ? 72 : 58, 0x05070c, 0.08)
-      : this.add.rectangle(0, 0, 640, unlocked ? 88 : 72, 0x05070c, 0.86)
-        .setStrokeStyle(2, unlocked ? 0xe8b830 : 0x7ab8d6, unlocked ? 0.9 : 0.68);
-    const title = this.add.text(0, unlocked ? -32 : -22, unlocked
-      ? `${leader.name} - ${leader.suit} / ${leader.bird}`
-      : `${leader.name} - Locked`, {
-      fontFamily: UI_FONT,
-      fontSize: '13px',
-      fontStyle: UI_BOLD,
-      color: unlocked ? '#ffe1a3' : '#9fb1c4',
-      align: 'center',
-      stroke: '#05070c',
-      strokeThickness: 2,
-      wordWrap: { width: 600 },
-    }).setOrigin(0.5);
-    const body = this.add.text(0, unlocked ? 7 : 13, unlocked
-      ? `${leader.blurb}\nSignature: ${leader.signatureName} - ${leader.signatureText}`
-      : leaderUnlockHints[leader.id] ?? 'Locked', {
-      fontFamily: 'Georgia, serif',
-      fontSize: '12px',
-      fontStyle: unlocked ? 'italic' : '',
-      color: unlocked ? '#dce7f2' : '#9fb1c4',
-      align: 'center',
-      stroke: '#05070c',
-      strokeThickness: 2,
-      wordWrap: { width: 584 },
-    }).setOrigin(0.5);
-    body.setLineSpacing(2);
-    tooltip.add(frame ? [frame, bg, title, body] : [bg, title, body]);
-    this.leaderTooltip = tooltip;
-    this.updateMenuTextState();
+    this.runMenuOptionalAction('showLeaderTooltip', id, anchorX);
+  }
+
+  private runMenuOptionalAction(action: keyof MenuOptionalUiModule, ...args: unknown[]) {
+    void loadMenuOptionalUiModule()
+      .then((module) => (module[action] as (scene: Phaser.Scene, ...values: unknown[]) => void)(this, ...args))
+      .catch(console.warn);
   }
 
   private hideLeaderTooltip() {
@@ -6117,9 +5477,13 @@ class MenuScene extends Phaser.Scene {
   }
 
   private startRun() {
+    this.enterRoute(createInitialRunState(this.selectedLeaderId, this.selectedDifficulty, this.selectedRunMode, SHARED_ROUTE_SEED));
+  }
+
+  private enterRoute(runState: RunState) {
     birdAudio.play('route');
     this.storageRecoveryNotice = undefined;
-    this.scene.start('RouteScene', { runState: createInitialRunState(this.selectedLeaderId, this.selectedDifficulty, this.selectedRunMode, SHARED_ROUTE_SEED) });
+    this.scene.start('RouteScene', { runState });
   }
 
   private createAnimatedTitle() {
@@ -6224,245 +5588,29 @@ class MenuScene extends Phaser.Scene {
 type ProfileSceneModule = typeof import('./game/profile-scene');
 let profileSceneModulePromise: Promise<ProfileSceneModule> | undefined;
 function loadProfileSceneModule() {
-  if (!profileSceneModulePromise) {
-    const request = import('./game/profile-scene');
-    profileSceneModulePromise = request;
-    void request.catch(() => {
-      if (profileSceneModulePromise === request) profileSceneModulePromise = undefined;
-    });
-  }
-  return profileSceneModulePromise;
+  return profileSceneModulePromise ??= import('./game/profile-scene').catch((error) => {
+    profileSceneModulePromise = undefined;
+    throw error;
+  });
 }
 
-const profileSceneDependencies: import('./game/profile-scene').ProfileSceneDependencies = {
-  advanceGameTime,
-  hasActiveRun,
-  run: createInitialRunState,
-  audio: birdAudio,
-  districtContracts: DISTRICT_CONTRACT_DEFINITIONS,
-  exportRunHistory: () => JSON.stringify(loadRunHistory()),
-  flightHistory: () => profileFlightHistory(),
-  loadFlightReview: (id) => loadProfileFlightReview(id),
-  latestPlaytestRun: () => latestPlaytestRunForRating(),
-  saveLatestPlaytestFeedback: (feedback) => saveLatestPlaytestFeedback(feedback),
-  saveData: {
-    currentActiveRun: () => loadActiveRun(),
-    currentRunHistory: () => loadRunHistory(),
-    currentPreferences: () => {
-      const audio = birdAudio.snapshot();
-      return {
-        controls: controlBindingsSnapshot(),
-        graphicsQuality: graphicsQualityState().preference,
-        visualContrast: visualContrastState().preference,
-        colorCues: colorCuePreference(),
-        screenShake: screenShakePreference(),
-        flashEffects: flashEffectsPreference(),
-        motion: motionPreference(),
-        combatPace: combatPacePreference(),
-        animationPace: animationPacePreference(),
-        textPace: textPacePreference(),
-        screenReader: screenReaderPreference(),
-        musicVolume: audio.musicVolume,
-        sfxVolume: audio.sfxVolume,
-        ambienceVolume: audio.ambienceVolume,
-        audioMuted: birdAudio.isMuted(),
-        maxTier: getMaxUnlockedTier(),
-      };
-    },
-    sanitizeActiveRun,
-    sanitizeRunHistory,
-  },
-  killTweensForScene,
-  playUiSound,
-  prefersReducedMotion,
-  activateAudioToggleControl: activateRenderedAudioToggleControl,
-  queueUiIconAssets: (scene, ids, warning, onComplete) => {
-    queueUiIconAssets(scene, ids as UiIconId[], warning, onComplete);
-  },
-  cardShowcaseEntry: (id) => {
-    const card = cardLibrary[id];
-    if (!card) return undefined;
-    return {
-      id,
-      name: displayName(card),
-      family: cardLabel(card),
-      rarity: card.runtime.rarity.toUpperCase(),
-      artKey: cardCompactArtAsset(card)?.key,
-    };
-  },
-  queueCardShowcaseAssets: (scene, ids, onComplete) => {
-    const assets = uniqueImageAssets(ids.flatMap((id) => {
-      const card = cardLibrary[id];
-      const asset = card ? cardCompactArtAsset(card) : undefined;
-      return asset ? [asset] : [];
-    }));
-    if (!assets.length) {
-      onComplete?.();
-      return;
-    }
-    queueRuntimeImageAssets(scene, assets, 'Profile showcase art', onComplete);
-  },
-  renderAudioToggleControl,
-  renderCloseControl,
-  renderFieldButton,
-  renderFieldPanel,
-};
-
-// Meta-progression profile: lifetime stats, Leader unlocks, and achievements.
-class ProfileScene extends Phaser.Scene {
-  private readonly profileViewState: import('./game/profile-scene').ProfileViewState = {
-    badgeView: 'achievements',
-    badgePage: 0,
-    entryFadePlayed: false,
-    revealBursts: 0,
-    playtestExportStatus: 'idle',
-    playtestFeedbackStatus: 'idle',
-    playtestFeedback: {},
-    saveDataOpen: false,
-    saveDataStatus: 'idle',
-    saveDataMessage: '',
-    focus: 'achievements',
-    flightLogOpen: false,
-    flightLogIndex: 0,
-    flightReviewLoading: false,
-    flightReviewAction: 0,
-    flightCopyStatus: 'idle',
-    flightLogMessage: '',
-    savedDeckIndex: 0,
-    savedDeckArchiveView: false,
-    savedDeckStatus: 'idle',
-    savedDeckOrganizerOpen: false,
-    savedDeckOrganizerSection: 'folder',
-    savedDeckOrganizerIndex: 0,
-    savedDeckIdentityOpen: false,
-    savedDeckIdentitySection: 'cover',
-    savedDeckIdentityIndex: 0,
-    savedDeckLabOpen: false,
-    savedDeckLabSample: 0,
-    savedDeckCollectionSignalsOpen: false,
-    savedDeckFieldRecordOpen: false,
-    savedDeckHistoryOpen: false,
-    savedDeckHistoryTargetIndex: 0,
-    savedDeckWorkshopOpen: false,
-    savedDeckWorkshopCardIndex: 0,
-    savedDeckWorkshopSuggestionIndex: 0,
-  };
-  private profileRenderer?: ProfileSceneModule['renderProfileScene'];
-  private openSaveDataOnCreate = false;
-
-  constructor() {
-    super('ProfileScene');
-  }
-
-  get badgeView() {
-    return this.profileViewState.badgeView;
-  }
-
-  set badgeView(value: import('./game/profile-scene').ProfileViewState['badgeView']) {
-    this.profileViewState.badgeView = value;
-    this.profileViewState.badgePage = 0;
-  }
-
-  init(data: { openSaveData?: boolean } = {}) {
-    this.openSaveDataOnCreate = PLAYTEST_MODE && data.openSaveData === true;
-  }
-
-  get profileRecordRevealBursts() {
-    return this.profileViewState.revealBursts;
-  }
-
-  create() {
-    syncSceneAnimationPace(this);
-    const openSaveData = this.openSaveDataOnCreate;
-    this.openSaveDataOnCreate = false;
-    this.profileViewState.entryFadePlayed = false;
-    this.profileViewState.revealBursts = 0;
-    this.profileViewState.badgePage = 0;
-    this.profileViewState.playtestExportStatus = 'idle';
-    this.profileViewState.playtestFeedbackStatus = 'idle';
-    this.profileViewState.playtestFeedback = {};
-    this.profileViewState.playtestRunId = undefined;
-    this.profileViewState.playtestRunResult = undefined;
-    this.profileViewState.saveDataOpen = openSaveData;
-    this.profileViewState.saveDataStatus = 'idle';
-    this.profileViewState.saveDataMessage = '';
-    this.profileViewState.pendingRestore = undefined;
-    this.profileViewState.flightLogOpen = false;
-    this.profileViewState.flightLogIndex = 0;
-    this.profileViewState.flightReviewLoading = false;
-    this.profileViewState.flightReviewRequestedId = undefined;
-    this.profileViewState.flightReview = undefined;
-    this.profileViewState.flightReviewAction = 0;
-    this.profileViewState.flightCopyStatus = 'idle';
-    this.profileViewState.flightLogMessage = '';
-    this.profileViewState.savedDeckIndex = 0;
-    this.profileViewState.savedDeckArchiveView = false;
-    this.profileViewState.savedDeckStatus = 'idle';
-    this.profileViewState.savedDeckRenameInput?.remove();
-    this.profileViewState.savedDeckRenameInput = undefined;
-    this.profileViewState.savedDeckCodeInput?.remove();
-    this.profileViewState.savedDeckCodeInput = undefined;
-    this.profileViewState.savedDeckOrganizerOpen = false;
-    this.profileViewState.savedDeckOrganizerDeckId = undefined;
-    this.profileViewState.savedDeckOrganizerSection = 'folder';
-    this.profileViewState.savedDeckOrganizerIndex = 0;
-    this.profileViewState.savedDeckIdentityOpen = false;
-    this.profileViewState.savedDeckIdentityDeckId = undefined;
-    this.profileViewState.savedDeckIdentitySection = 'cover';
-    this.profileViewState.savedDeckIdentityIndex = 0;
-    this.profileViewState.savedDeckDescriptionInput?.remove();
-    this.profileViewState.savedDeckDescriptionInput = undefined;
-    this.profileViewState.savedDeckLabOpen = false;
-    this.profileViewState.savedDeckLabSample = 0;
-    this.profileViewState.savedDeckFieldRecordOpen = false;
-    this.profileViewState.savedDeckFieldRecordDeckId = undefined;
-    this.profileViewState.savedDeckNotesInput?.remove();
-    this.profileViewState.savedDeckNotesInput = undefined;
-    this.profileViewState.savedDeckHistoryOpen = false;
-    this.profileViewState.savedDeckHistoryDeckId = undefined;
-    this.profileViewState.savedDeckHistoryTargetIndex = 0;
-    this.profileViewState.savedDeckWorkshopOpen = false;
-    this.profileViewState.savedDeckWorkshopDeckId = undefined;
-    this.profileViewState.savedDeckWorkshopCardIndex = 0;
-    this.profileViewState.savedDeckWorkshopSuggestionIndex = 0;
-    this.profileViewState.focus = openSaveData ? 'playtestFun' : 'achievements';
-    this.renderProfileLoading();
-    void loadProfileSceneModule()
-      .then((module) => {
-        if (!this.scene.isActive()) return;
-        this.profileRenderer = module.renderProfileScene;
-        module.startProfileScene(this, this.profileViewState, profileSceneDependencies);
-      })
-      .catch((error) => {
-        console.warn('Profile:', error);
-        if (this.scene.isActive()) this.renderProfileLoading(LAZY_LOAD_FAILED);
-      });
-  }
-
-  renderPremiumProfileScene() {
-    this.profileRenderer?.(this, this.profileViewState, profileSceneDependencies);
-  }
-
-  private renderProfileLoading(error?: string) {
-    killTweensForScene(this);
-    this.children.removeAll(true);
-    birdAudio.setMood('menu');
-    this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'splash')
-      .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
-      .setAlpha(0.52);
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.78);
-    this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, error ?? 'Opening Flock Record...', {
-      fontFamily: UI_FONT,
-      fontSize: '24px',
-      fontStyle: UI_BOLD,
-      color: error ? '#ff9b8f' : UI_GOLD,
-    }).setOrigin(0.5);
-    window.render_game_to_text = () => JSON.stringify({
-      mode: error ? 'profileLoadFailed' : 'profileLoading',
-      scene: 'ProfileScene',
-      error,
+function openProfileScene(scene: Phaser.Scene, data: { openSaveData?: boolean } = {}) {
+  window.render_game_to_text = () => JSON.stringify({ mode: 'profileLoading', scene: 'MenuScene' });
+  void loadProfileSceneModule()
+    .then((module) => {
+      module.registerRuntimeProfileScene(scene.game);
+      if (scene.scene.isActive()) scene.scene.start('ProfileScene', data);
+    })
+    .catch((error) => {
+      console.warn('Profile:', error);
+      if (scene.scene.isActive()) {
+        window.render_game_to_text = () => JSON.stringify({
+          mode: 'profileLoadFailed',
+          scene: scene.scene.key,
+          error: LAZY_LOAD_FAILED,
+        });
+      }
     });
-  }
 }
 type CodexSection = 'cards' | 'items' | 'glossary' | 'leaders' | 'enemies';
 type CodexEnemySource = 'encounter' | 'reserve';
@@ -6504,12 +5652,16 @@ class RouteScene extends Phaser.Scene {
   private routeRewardChoiceIndex = 0;
   private routeRewardInspectionCardId: string | undefined;
   routeRewardArmedCardId: string | undefined;
+  routeSupplyRewardChoices: string[] = [];
+  routeSupplyRewardChoiceIndex = 0;
+  routeSupplyRewardArmedId: string | undefined;
   private routeStaticCardRewardChoiceIds = new Map<string, string[]>();
+  private routeStaticSupplyRewardChoiceIds = new Map<string, string[]>();
   private routeStaticItemRewardChoices = new Map<string, PendingRouteRewardItem>();
   private routeStaticCacheRewardEffects = new Map<string, string[]>();
   private pendingRouteReward: PendingRouteReward | undefined;
   private cardPickerMode: CardPickerMode | undefined;
-  private cardPickerContext: 'route' | 'market' | undefined;
+  private cardPickerContext: 'route' | 'market' | 'districtPreen' | undefined;
   private cardPickerRemainingPicks = 0;
   cardPickerFocusIndex = 0;
   cardPickerInspectionOpen = false;
@@ -6519,6 +5671,9 @@ class RouteScene extends Phaser.Scene {
   private flockOverlayOpen = false;
   private waymarkDrawerOpen = false;
   private supplyDrawerOpen = false;
+  private supplyDrawerFocusIndex = 0;
+  private supplyDrawerArmedIndex: number | undefined;
+  private supplyDrawerInputActive = false;
   private marketOpen = false;
   private marketCategory: MarketCategory = 'cards';
   private confirmExitOpen = false;
@@ -6536,6 +5691,7 @@ class RouteScene extends Phaser.Scene {
   marketFocusId?: string;
   marketFocusArmedId?: string;
   marketDecisionPreview: MarketDecisionPreview = [];
+  marketBuildObservations: string[] = [];
   private routeChoiceHover?: Phaser.GameObjects.Container;
   private cardReviewScroll = 0;
   private deckReviewFilter: DeckReviewFilter = 'all';
@@ -6551,6 +5707,8 @@ class RouteScene extends Phaser.Scene {
   private routeEventArtRequested = new Set<RouteNode['type']>();
   private routeEssentialAssetsReady = false;
   private routeEssentialUiReady = false;
+  private routeMapRendererReady = false;
+  private routeMapRendererModule?: RouteMapRendererModule;
   private routeAssetReadiness = new SceneAssetReadinessTracker();
   private routeMapBackdrop?: RuntimeImageAsset;
   private supplyFeedback: SupplyFeedback[] = [];
@@ -6586,6 +5744,7 @@ class RouteScene extends Phaser.Scene {
   private waymarkReviewLoading = false;
   private waymarkReviewFailed = false;
   private routeDebugStateModule?: RouteDebugStateModule;
+  private savedDeckModule?: SavedDeckModule;
   private controllerButtonsDown = new Set<string>();
   private routeCheckpointAttempt?: string;
   private routeCheckpointIndicator?: Phaser.GameObjects.Container;
@@ -6631,14 +5790,13 @@ class RouteScene extends Phaser.Scene {
         expiresAt: Date.now() + 1800,
       };
     }
-    while ((this.runState.freePreenNextDistrict ?? 0) > 0) {
-      const preened = this.preenFirstAvailableCard();
-      this.runState.freePreenNextDistrict = Math.max(0, (this.runState.freePreenNextDistrict ?? 0) - 1);
-      this.runState.routeLog.push(preened
-        ? `Boss prep: ${preened.name} is preened for the new district.`
-        : 'Boss prep: no unpreened card remains.');
-      this.runState.routeLog = this.runState.routeLog.slice(-8);
-      if (!preened) break;
+    const districtAdvanced = Boolean(this.runState.districtAdvanceNotice);
+    const districtPreenPicks = districtAdvanced
+      ? Math.max(0, this.runState.freePreenNextDistrict ?? 0)
+      : Math.max(0, this.runState.pendingDistrictPreens ?? 0);
+    if (districtAdvanced) {
+      this.runState.freePreenNextDistrict = 0;
+      this.runState.pendingDistrictPreens = districtPreenPicks;
     }
     this.selectableNodeIds = new Set(this.getSelectableNodes().map((node) => node.id));
     this.selectedNodeId = this.getSelectableNodes()[0]?.id;
@@ -6650,7 +5808,11 @@ class RouteScene extends Phaser.Scene {
     this.routeRewardChoiceIndex = 0;
     this.routeRewardInspectionCardId = undefined;
     this.routeRewardArmedCardId = undefined;
+    this.routeSupplyRewardChoices = [];
+    this.routeSupplyRewardChoiceIndex = 0;
+    this.routeSupplyRewardArmedId = undefined;
     this.routeStaticCardRewardChoiceIds.clear();
+    this.routeStaticSupplyRewardChoiceIds.clear();
     this.routeStaticItemRewardChoices.clear();
     this.routeStaticCacheRewardEffects.clear();
     this.pendingRouteReward = undefined;
@@ -6665,6 +5827,9 @@ class RouteScene extends Phaser.Scene {
     this.flockOverlayOpen = false;
     this.waymarkDrawerOpen = false;
     this.supplyDrawerOpen = false;
+    this.supplyDrawerFocusIndex = 0;
+    this.supplyDrawerArmedIndex = undefined;
+    this.supplyDrawerInputActive = false;
     this.marketOpen = false;
     this.marketCategory = 'cards';
     this.pauseOverlayOpen = false;
@@ -6692,6 +5857,8 @@ class RouteScene extends Phaser.Scene {
     this.routeEventArtRequested.clear();
     this.routeEssentialAssetsReady = false;
     this.routeEssentialUiReady = false;
+    this.routeMapRendererReady = false;
+    this.routeMapRendererModule = undefined;
     this.routeAssetReadiness.reset([
       'route-essential-ui',
       'route-essential-art',
@@ -6734,6 +5901,22 @@ class RouteScene extends Phaser.Scene {
       writes: 0,
       failures: 0,
     };
+    if (districtPreenPicks > 0) {
+      const eligibleCount = this.pickerEligibleCards('preen', 'districtPreen').length;
+      if (eligibleCount > 0) {
+        this.cardPickerMode = 'preen';
+        this.cardPickerContext = 'districtPreen';
+        this.cardPickerRemainingPicks = Math.min(districtPreenPicks, eligibleCount);
+        this.runState.pendingDistrictPreens = this.cardPickerRemainingPicks;
+        this.runState.routeLog.push(
+          `District prep ready: choose ${this.cardPickerRemainingPicks} card${this.cardPickerRemainingPicks === 1 ? '' : 's'} to Preen.`,
+        );
+      } else {
+        this.runState.pendingDistrictPreens = 0;
+        this.runState.routeLog.push('District prep: no unpreened card remains.');
+      }
+      this.runState.routeLog = this.runState.routeLog.slice(-8);
+    }
   }
 
   preload() {
@@ -6761,11 +5944,29 @@ class RouteScene extends Phaser.Scene {
         this.updateTextState();
       })
       .catch((error) => console.warn('Route text-state module failed to load.', error));
+    void loadSavedDeckModule()
+      .then((module) => {
+        if (!this.sys.settings.active) return;
+        this.savedDeckModule = module;
+      })
+      .catch(console.warn);
     this.time.paused = false;
     this.tweens.resumeAll();
     this.cameras.main.setBackgroundColor('#08101d');
     this.cameras.main.fadeIn(200);
-    this.queueRouteEssentialAssetLoad();
+    void withRuntimeLoadTimeout(loadRouteMapRendererModule(), 'Route map renderer')
+      .then((module) => {
+        if (!this.sys.settings.active) return;
+        this.routeMapRendererModule = module;
+        this.routeMapRendererReady = true;
+        this.queueRouteEssentialAssetLoad();
+      })
+      .catch((error) => {
+        console.warn(LAZY_LOAD_FAILED, error);
+        if (!this.sys.settings.active) return;
+        this.routeMapRendererReady = true;
+        this.queueRouteEssentialAssetLoad();
+      });
     this.preloadCardHoverDetail();
     queueTrackedUiIconAssets(this, routeUiIconIds, 'Route UI', (result) => {
       this.routeAssetReadiness.settle('route-full-ui', result);
@@ -6783,20 +5984,23 @@ class RouteScene extends Phaser.Scene {
 
     this.input.keyboard?.on('keydown-UP', () => {
       if (controlActionForCode('ArrowUp')) return;
-      if (this.waymarkDrawerOpen) this.moveRouteWaymarkSelection(-3);
+      if (this.supplyDrawerOpen) this.moveRouteSupplyFocus(-1);
+      else if (this.waymarkDrawerOpen) this.moveRouteWaymarkSelection(-3);
       else if (this.deckOverlayOpen) this.moveDeckReviewSelection(-1);
       else if (this.marketOpen) this.cardHoverDetailModule?.cycleMarketFocus(this, -1);
       else this.cycleSelectableRouteNode(-1);
     });
     this.input.keyboard?.on('keydown-DOWN', () => {
       if (controlActionForCode('ArrowDown')) return;
-      if (this.waymarkDrawerOpen) this.moveRouteWaymarkSelection(3);
+      if (this.supplyDrawerOpen) this.moveRouteSupplyFocus(1);
+      else if (this.waymarkDrawerOpen) this.moveRouteWaymarkSelection(3);
       else if (this.deckOverlayOpen) this.moveDeckReviewSelection(1);
       else if (this.marketOpen) this.cardHoverDetailModule?.cycleMarketFocus(this, 1);
       else this.cycleSelectableRouteNode(1);
     });
     this.input.keyboard?.on('keydown-TAB', () => {
-      if (this.waymarkDrawerOpen) this.moveRouteWaymarkSelection(1);
+      if (this.supplyDrawerOpen) this.moveRouteSupplyFocus(1);
+      else if (this.waymarkDrawerOpen) this.moveRouteWaymarkSelection(1);
       else if (this.deckOverlayOpen) this.moveDeckReviewSelection(1);
       else if (this.marketOpen) this.cardHoverDetailModule?.cycleMarketFocus(this, 1);
       else this.cycleSelectableRouteNode(1);
@@ -6810,13 +6014,16 @@ class RouteScene extends Phaser.Scene {
     const onRouteGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: { index?: number }) => {
       if (button.index === 1) {
         if (this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'back')) return;
-        if (this.routeRewardInspectionCardId) this.closeRouteRewardInspection();
+        if (this.supplyDrawerOpen) this.cancelOrCloseRouteSupplyDrawer();
+        else if (this.routeRewardInspectionCardId) this.closeRouteRewardInspection();
         else if (this.pendingRouteReward) this.cancelRouteCardReward();
         else if (this.marketOpen) this.leaveMarket();
       } else if (this.marketOpen && !this.cardPickerMode && (button.index === 4 || button.index === 5)) {
         this.cardHoverDetailModule?.cycleMarketCategory(this, button.index === 4 ? -1 : 1);
       } else if (button.index === 2) {
-        if (this.waymarkDrawerOpen) this.toggleRouteWaymarkPin();
+        if (this.supplyDrawerOpen) this.closeSupplyDrawer();
+        else if (!this.deckOverlayOpen && !this.waymarkDrawerOpen && !this.marketOpen && !this.nodeChoiceOpen && !this.pendingRouteReward && !this.cardPickerMode) this.openSupplyDrawer(true);
+        else if (this.waymarkDrawerOpen) this.toggleRouteWaymarkPin();
         else if (this.deckOverlayOpen && !this.deckReviewSearchActive) this.toggleDeckReviewComparison();
       } else if (button.index === 3) {
         if (this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'inspect')) return;
@@ -6860,6 +6067,10 @@ class RouteScene extends Phaser.Scene {
     bindControlActions(this, {
       confirm: () => {
         if (this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'confirm')) return;
+        if (this.supplyDrawerOpen) {
+          this.requestRouteSupplyUse(this.supplyDrawerFocusIndex);
+          return;
+        }
         if (this.deckOverlayOpen) {
           if (this.deckReviewSearchActive) this.setDeckReviewSearchActive(false);
           else this.cycleDeckReviewSort(1);
@@ -6869,6 +6080,10 @@ class RouteScene extends Phaser.Scene {
       },
       previous: (event) => {
         if (this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'previous')) return;
+        if (this.supplyDrawerOpen) {
+          this.moveRouteSupplyFocus(-1);
+          return;
+        }
         if (this.deckReviewSearchActive) {
           if (event) this.handleDeckReviewSearchKey(event);
           return;
@@ -6885,6 +6100,10 @@ class RouteScene extends Phaser.Scene {
       },
       next: (event) => {
         if (this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'next')) return;
+        if (this.supplyDrawerOpen) {
+          this.moveRouteSupplyFocus(1);
+          return;
+        }
         if (this.deckReviewSearchActive) {
           if (event) this.handleDeckReviewSearchKey(event);
           return;
@@ -6934,6 +6153,10 @@ class RouteScene extends Phaser.Scene {
         this.togglePauseOverlay();
       },
       roost: () => { this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'inspect'); },
+      skipReward: () => {
+        if (this.supplyDrawerOpen) this.closeSupplyDrawer();
+        else if (!this.deckOverlayOpen && !this.flockOverlayOpen && !this.waymarkDrawerOpen && !this.marketOpen && !this.nodeChoiceOpen && !this.pendingRouteReward && !this.cardPickerMode) this.openSupplyDrawer(true);
+      },
       back: () => {
         if (!this.routeEssentialAssetsReady) return;
         if (this.deckReviewSearchActive) {
@@ -6978,7 +6201,7 @@ class RouteScene extends Phaser.Scene {
           return;
         }
         if (this.supplyDrawerOpen) {
-          this.closeSupplyDrawer();
+          this.cancelOrCloseRouteSupplyDrawer();
           return;
         }
         this.confirmExitOpen = true;
@@ -7170,7 +6393,7 @@ class RouteScene extends Phaser.Scene {
       // The route map already has complete procedural/glyph fallbacks. Do not
       // hold the first decision behind the much heavier district backdrop and
       // eight painted node icons; they can replace the fallbacks in place.
-      if (!this.routeEssentialUiReady || this.routeEssentialAssetsReady || !this.sys.settings.active) return;
+      if (!this.routeEssentialUiReady || !this.routeMapRendererReady || this.routeEssentialAssetsReady || !this.sys.settings.active) return;
       this.routeEssentialAssetsReady = true;
       this.routeAssetReadiness.markInteractive();
       this.markRouteFullArtReady();
@@ -7211,6 +6434,19 @@ class RouteScene extends Phaser.Scene {
         ['deck-sort', pad.A, () => this.cycleDeckReviewSort(1)],
       ];
       deckControls.forEach(([id, pressed, action]) => {
+        if (pressed && !this.controllerButtonsDown.has(id)) action();
+        if (pressed) this.controllerButtonsDown.add(id);
+        else this.controllerButtonsDown.delete(id);
+      });
+      return;
+    }
+    if (this.supplyDrawerOpen) {
+      const supplyControls: Array<[string, boolean, () => void]> = [
+        ['supply-previous', pad.left || pad.up, () => this.moveRouteSupplyFocus(-1)],
+        ['supply-next', pad.right || pad.down, () => this.moveRouteSupplyFocus(1)],
+        ['supply-confirm', pad.A, () => this.requestRouteSupplyUse(this.supplyDrawerFocusIndex)],
+      ];
+      supplyControls.forEach(([id, pressed, action]) => {
         if (pressed && !this.controllerButtonsDown.has(id)) action();
         if (pressed) this.controllerButtonsDown.add(id);
         else this.controllerButtonsDown.delete(id);
@@ -7384,10 +6620,16 @@ class RouteScene extends Phaser.Scene {
 
   private queueRouteRewardItemArtLoad() {
     const item = this.pendingRouteReward?.previewItem;
-    if (!item) return;
+    const supplyChoices = this.routeSupplyRewardChoices
+      .map((id) => supplyCompactArtAssets[id])
+      .filter((asset): asset is RuntimeImageAsset => Boolean(asset));
+    if (!item && supplyChoices.length === 0) return;
     queueRuntimeImageAssets(
       this,
-      [item.kind === 'supply' ? supplyCompactArtAssets[item.id] : waymarkCompactArtAssets[item.id]],
+      uniqueImageAssets([
+        ...(item ? [item.kind === 'supply' ? supplyCompactArtAssets[item.id] : waymarkCompactArtAssets[item.id]] : []),
+        ...supplyChoices,
+      ]),
       'Item art',
       () => this.renderAll()
     );
@@ -7616,6 +6858,10 @@ class RouteScene extends Phaser.Scene {
       },
       onSetSfxVolume: (value) => {
         birdAudio.setSfxVolume(value);
+        this.refreshRouteSystemOverlay();
+      },
+      onSetVoiceVolume: (value) => {
+        birdAudio.setVoiceVolume(value);
         this.refreshRouteSystemOverlay();
       },
       onSetAmbienceVolume: (value) => {
@@ -8168,37 +7414,87 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderRouteMap() {
-    const positions = new Map(currentMap().nodes.map((node) => [node.id, this.nodePosition(node)]));
     const onChosenPath = new Set(this.runState.completedRouteNodeIds);
     const previewEdges = this.routePreviewEdges();
-    this.renderRouteColumnGuides();
-    const lines = this.add.graphics();
-    currentMap().edges.forEach((edge) => {
-      const from = positions.get(edge.from);
-      const to = positions.get(edge.to);
-      if (!from || !to) return;
-      // Route lines are subdued unless they connect completed (chosen-path) nodes.
-      const lit = onChosenPath.has(edge.from) && onChosenPath.has(edge.to);
-      const key = this.routeEdgeKey(edge.from, edge.to);
-      const primaryPreview = previewEdges.primary.has(key);
-      const secondaryPreview = previewEdges.secondary.has(key);
-      const available = this.selectableNodeIds.has(edge.to);
-      const color = lit ? 0x87b884 : primaryPreview ? 0xbf7842 : available ? 0x4fb2a9 : secondaryPreview ? 0x7893a0 : 0x345466;
-      const alpha = lit ? 0.88 : primaryPreview ? 0.96 : available ? 0.74 : secondaryPreview ? 0.38 : 0.22;
-      const dotRadius = lit ? 1.45 : primaryPreview ? 1.45 : available ? 1.28 : secondaryPreview ? 1.22 : 1.05;
-      const curve = this.drawRouteEdgePath(lines, from, to, key, color, alpha, dotRadius);
-      if (available || primaryPreview) {
-        const marker = curve.getPoint(0.65);
-        lines.fillStyle(0x06111a, primaryPreview ? 0.5 : 0.42);
-        lines.fillCircle(marker.x, marker.y, primaryPreview ? 4.35 : 3.85);
-        lines.fillStyle(primaryPreview ? 0xbf7842 : 0x4fb2a9, primaryPreview ? 0.96 : 0.88);
-        lines.fillCircle(marker.x, marker.y, primaryPreview ? 3.5 : 3);
-      }
+    const nodes = currentMap().nodes.map((node) => {
+      const { x, y } = this.nodePosition(node);
+      const boss = node.type === 'boss';
+      return {
+        id: node.id,
+        type: node.type,
+        column: node.column,
+        x,
+        y,
+        radius: boss ? ROUTE_BOSS_NODE_RADIUS : ROUTE_NODE_RADIUS,
+        iconSize: boss ? ROUTE_BOSS_NODE_ICON_SIZE : ROUTE_NODE_ICON_SIZE,
+        completed: onChosenPath.has(node.id),
+        selected: this.selectedNodeId === node.id,
+        selectable: this.selectableNodeIds.has(node.id),
+        boss,
+      };
     });
-
-    currentMap().nodes.forEach((node) => this.renderRouteNode(node, this.selectableNodeIds.has(node.id)));
-
-    this.renderRouteConfirmButton();
+    if (!this.routeMapRendererModule) {
+      currentMap().edges.forEach((edge) => {
+        const from = nodes.find((node) => node.id === edge.from);
+        const to = nodes.find((node) => node.id === edge.to);
+        if (from && to) this.add.line(0, 0, from.x, from.y, to.x, to.y, 0x4fb2a9, 0.48).setOrigin(0);
+      });
+      currentMap().nodes.forEach((node) => this.renderRouteNodeFallback(node, this.selectableNodeIds.has(node.id)));
+      const selectedNodeId = this.selectedNodeId;
+      if (selectedNodeId && this.selectableNodeIds.has(selectedNodeId)) {
+        const confirm = this.routeLayout().confirm;
+        this.add.rectangle(confirm.cx, confirm.cy, 150, ROUTE_CONFIRM_HIT_SIZE, 0x06111a, 0.96)
+          .setStrokeStyle(2, UI_FIELD.gold, 0.84)
+          .setName('route-commit-hit')
+          .setInteractive({ useHandCursor: true })
+          .on('pointerdown', () => this.commitRouteNodeAnimated(selectedNodeId));
+        this.add.text(confirm.cx, confirm.cy, 'TAKE ROUTE', {
+          fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: UI_GOLD,
+        }).setOrigin(0.5).setName('route-commit-label');
+      }
+      return;
+    }
+    this.routeMapRendererModule.renderRouteMap({
+      scene: this,
+      nodes,
+      edges: currentMap().edges.map((edge) => {
+        const key = this.routeEdgeKey(edge.from, edge.to);
+        return {
+          from: edge.from,
+          to: edge.to,
+          key,
+          lit: onChosenPath.has(edge.from) && onChosenPath.has(edge.to),
+          primaryPreview: previewEdges.primary.has(key),
+          secondaryPreview: previewEdges.secondary.has(key),
+          available: this.selectableNodeIds.has(edge.to),
+        };
+      }),
+      graph: this.routeLayout().graph,
+      columnCount: currentMap().columns.length,
+      activeMapIndex,
+      fontFamily: UI_FONT,
+      boldFontStyle: UI_BOLD,
+      renderNodeIcon: (view, alpha) => this.renderRouteNodeTypeIcon(view.type as RouteNode['type'], view.x, view.y, view.iconSize, alpha),
+      renderBossBeacon: (view, subdued) => this.renderRouteBossBeaconRing(view.x, view.y, subdued),
+      renderSelectedFocus: (view) => this.renderSelectedRouteNodeFocus(view.x, view.y, view.radius),
+      showNodeTooltip: (nodeId, x, anchorY) => {
+        const node = currentMap().nodes.find((candidate) => candidate.id === nodeId);
+        return node ? this.showNodeTooltip(node, x, anchorY) : undefined;
+      },
+      selectNode: (nodeId) => this.selectRouteNode(nodeId),
+      confirm: this.selectedNodeId && this.selectableNodeIds.has(this.selectedNodeId) ? {
+        cx: this.routeLayout().confirm.cx,
+        cy: this.routeLayout().confirm.cy,
+        labelCx: this.routeLayout().confirm.cx + ROUTE_CONFIRM_LABEL_OFFSET_X,
+        labelWidth: ROUTE_CONFIRM_LABEL_WIDTH,
+        hitSize: ROUTE_CONFIRM_HIT_SIZE,
+        goldColor: UI_FIELD.gold,
+        goldText: UI_GOLD,
+        addIcon: () => addUiIconImage(this, 'route-commit-medallion', this.routeLayout().confirm.cx, this.routeLayout().confirm.cy, ROUTE_CONFIRM_ICON_SIZE),
+        showTooltip: () => this.showSimpleTooltip('Take this route', this.routeLayout().confirm.cx, this.routeLayout().confirm.cy - 60),
+        commit: () => this.commitRouteNodeAnimated(this.selectedNodeId!),
+      } : undefined,
+    });
   }
 
   private isFirstRouteDecision() {
@@ -8221,18 +7517,16 @@ class RouteScene extends Phaser.Scene {
       ? `${guidePrefix}GAIN  ${this.nodeDecisionSummary(node).benefit}   |   RISK  ${this.nodeDecisionSummary(node).risk}`
       : `${guided ? 'TAKE ROUTE   |   ' : firstDecision ? 'FIRST FLIGHT   |   ' : ''}CHOOSE A BRIGHT NODE   |   REVIEW GAIN + RISK`;
     const name = guided || firstDecision ? 'first-route-guidance' : 'route-decision-dock';
-    this.add.rectangle(382, 104, 650, 42, 0x06111a, 0.96)
-      .setStrokeStyle(2, node ? UI_FIELD.gold : UI_FIELD.cyan, 0.86)
-      .setName(name);
-    this.add.text(382, 104, text, {
+    this.routeMapRendererModule?.renderRouteGuidance({
+      scene: this,
+      text,
+      name,
+      selected: Boolean(node),
       fontFamily: UI_FONT,
-      fontSize: '14px',
-      fontStyle: UI_BOLD,
-      color: '#e7fbff',
-      fixedWidth: 620,
-      align: 'center',
-      maxLines: 1
-    }).setOrigin(0.5).setName(name);
+      boldFontStyle: UI_BOLD,
+      goldColor: UI_FIELD.gold,
+      cyanColor: UI_FIELD.cyan,
+    });
   }
 
   private districtContractDefinitions() {
@@ -8409,47 +7703,6 @@ class RouteScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(25021).setName('district-contract-celebration');
   }
 
-  private drawRouteEdgePath(
-    graphics: Phaser.GameObjects.Graphics,
-    from: { x: number; y: number },
-    to: { x: number; y: number },
-    edgeKey: string,
-    color: number,
-    alpha: number,
-    dotRadius: number
-  ) {
-    const start = new Phaser.Math.Vector2(from.x + ROUTE_NODE_ICON_SIZE / 2, from.y);
-    const end = new Phaser.Math.Vector2(to.x - ROUTE_NODE_ICON_SIZE / 2, to.y);
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
-    const length = Math.max(1, Math.hypot(dx, dy));
-    const seed = hashSeed(edgeKey, activeMapIndex);
-    const side = (seed & 1) === 0 ? 1 : -1;
-    const bend = clamp(length * 0.16, 14, 34) * side;
-    const control = new Phaser.Math.Vector2(
-      (start.x + end.x) / 2 + (-dy / length) * bend,
-      (start.y + end.y) / 2 + (dx / length) * bend
-    );
-    const curve = new Phaser.Curves.QuadraticBezier(start, control, end);
-    const pointCount = Math.max(7, Math.ceil(length / 16));
-    const points = curve.getSpacedPoints(pointCount);
-
-    graphics.lineStyle(Math.max(1, dotRadius * 1.15), color, Math.min(0.56, alpha * 0.58));
-    points.slice(1).forEach((point, index) => {
-      const previous = points[index];
-      graphics.lineBetween(previous.x, previous.y, point.x, point.y);
-    });
-
-    points.slice(1, -1).forEach((point, index) => {
-      const pulse = index % 3 === 1 ? 0.9 : 1;
-      graphics.fillStyle(0x06111a, Math.min(0.52, alpha * 0.78));
-      graphics.fillCircle(point.x, point.y, dotRadius * pulse + 0.58);
-      graphics.fillStyle(color, alpha);
-      graphics.fillCircle(point.x, point.y, dotRadius * pulse);
-    });
-    return curve;
-  }
-
   private routeEdgeKey(from: string, to: string) {
     return `${from}->${to}`;
   }
@@ -8466,60 +7719,6 @@ class RouteScene extends Phaser.Scene {
         .forEach((candidate) => secondary.add(this.routeEdgeKey(candidate.from, candidate.to)));
     });
     return { primary, secondary };
-  }
-
-  private renderRouteColumnGuides() {
-    const columns = currentMap().columns;
-    const { left: leftX, right: rightX, top, bottom } = this.routeLayout().graph;
-    const colCount = Math.max(1, columns.length);
-    const graphics = this.add.graphics();
-    for (let column = 0; column < colCount; column += 1) {
-      const x = colCount > 1 ? leftX + (column * (rightX - leftX)) / (colCount - 1) : (leftX + rightX) / 2;
-      graphics.lineStyle(1, 0x2a3a4d, column === 0 || column === colCount - 1 ? 0.14 : 0.07);
-      graphics.lineBetween(x, top, x, bottom);
-    }
-  }
-
-  private renderRouteConfirmButton() {
-    if (!this.selectedNodeId || !this.selectableNodeIds.has(this.selectedNodeId)) return;
-    const nodeId = this.selectedNodeId;
-    const confirm = this.routeLayout().confirm;
-    const labelCx = confirm.cx + ROUTE_CONFIRM_LABEL_OFFSET_X;
-    const hitLeft = labelCx - ROUTE_CONFIRM_LABEL_WIDTH / 2;
-    const hitRight = confirm.cx + ROUTE_CONFIRM_HIT_SIZE / 2;
-    const hit = this.add.rectangle(
-      (hitLeft + hitRight) / 2,
-      confirm.cy,
-      hitRight - hitLeft,
-      ROUTE_CONFIRM_HIT_SIZE,
-      0x000000,
-      0.01
-    )
-      .setName('route-commit-hit')
-      .setInteractive({ useHandCursor: true });
-    const icon = addUiIconImage(this, 'route-commit-medallion', confirm.cx, confirm.cy, ROUTE_CONFIRM_ICON_SIZE);
-    if (icon) icon.setAlpha(0.98);
-    this.add.rectangle(labelCx, confirm.cy, ROUTE_CONFIRM_LABEL_WIDTH, 30, 0x06111a, 0.96)
-      .setStrokeStyle(1, UI_FIELD.gold, 0.72)
-      .setName('route-commit-label');
-    this.add.text(labelCx, confirm.cy, 'TAKE ROUTE', {
-      fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: UI_GOLD
-    }).setOrigin(0.5).setName('route-commit-label');
-    const iconBaseScaleX = icon?.scaleX ?? 1;
-    const iconBaseScaleY = icon?.scaleY ?? 1;
-    let tip: Phaser.GameObjects.Container | undefined;
-    hit.on('pointerover', () => {
-      icon?.setScale(iconBaseScaleX * 1.1, iconBaseScaleY * 1.1);
-      tip = this.showSimpleTooltip('Take this route', confirm.cx, confirm.cy - 60);
-    });
-    hit.on('pointerout', () => {
-      icon?.setScale(iconBaseScaleX, iconBaseScaleY);
-      tip?.destroy(true);
-      tip = undefined;
-    });
-    hit.on('pointerdown', () => {
-      this.commitRouteNodeAnimated(nodeId);
-    });
   }
 
   private showSimpleTooltip(label: string, x: number, y: number) {
@@ -8551,71 +7750,52 @@ class RouteScene extends Phaser.Scene {
 
   private nodeDetail(node: RouteNode) {
     const encounter = alphaEncounterLibrary.get(node.payloadId);
-    const profile = encounter ? alphaRewardProfileLibrary.get(encounter.rewardProfileId) : undefined;
-    const rewards = profile
-      ? [
-          Array.isArray(profile.scrap) ? `${profile.scrap[0]}-${profile.scrap[1]} Scrap` : profile.scrap !== undefined ? `${profile.scrap} Scrap` : '',
-          profile.cardReward ? 'new card' : '',
-          profile.preenGuaranteed ? 'Preen' : profile.preenChance ? `${Math.round(profile.preenChance * 100)}% Preen` : '',
-          profile.routeMarkGuaranteed ? 'Waymark' : profile.routeMarkChance ? `${Math.round(profile.routeMarkChance * 100)}% Waymark` : '',
-          profile.bossRouteMarkChoices ? `${WAYMARK_REWARD_CHOICE_COUNT} high-tier Waymarks` : ''
-        ].filter(Boolean).join('  /  ')
-      : nonCombatRewardBias(node.type);
-    const bossRuntime = node.type === 'boss'
-      ? getEncounterEnemiesByPayload(node.payloadId).find((enemy) => enemy.type === 'boss')
-      : undefined;
-    const bossPrep = node.type === 'boss'
-      ? `Final crossing. ${encounter?.name ?? 'The boss'} tests Cover and Molt restraint, then shifts to ${bossRuntime?.phaseTwoName ?? 'Phase II'} at half Cohesion.`
-      : node.type === 'rival'
-        ? 'Rival Crew - an optional boss-prep bet for richer rewards.'
-        : undefined;
+    const profile = node.type === 'boss' ? alphaMapProfileLibrary.get(currentMap().id) : undefined;
     return {
       title: encounter?.name ?? routeNodeTitle(node),
-      type: routeNodeTypeLabel(node.type),
-      lesson: encounter?.lesson ?? nonCombatLesson(node.type),
-      rewards,
-      bossPrep
+      bossPrep: profile ? {
+        thesis: profile.thesis,
+        tests: [...profile.primaryTests],
+        testLabels: compactBossTests(profile.primaryTests),
+        hints: [...profile.bossPrepHints],
+      } : undefined,
     };
   }
 
   private nodeDecisionSummary(node: RouteNode) {
-    const risk = node.risk === 'high' ? 'high pressure' : node.risk === 'medium' ? 'medium damage risk' : 'low pressure';
-    switch (node.type) {
-      case 'basin': return { benefit: `Heal ${routeNodeRecovery(node, this.runState.routeMarks)} Cohesion`, risk: 'no deck growth' };
-      case 'nest': return { benefit: 'Preen or refine a card', risk: 'no recovery' };
-      case 'market': return { benefit: 'Buy cards, Supplies, or Waymarks', risk: 'spends Scrap; stock unknown' };
-      case 'cache': return { benefit: 'Choose a supply cache reward', risk: 'reward varies' };
-      case 'signal': return { benefit: 'Choose a route advantage', risk: 'trade-off attached' };
-      case 'rival': return { benefit: 'Rare card and Waymark chance', risk: 'high pressure' };
-      case 'boss': return { benefit: 'Clear the district for a major reward', risk: 'boss pressure' };
-      default: return { benefit: 'Card reward and Scrap', risk };
-    }
+    const encounter = alphaEncounterLibrary.get(node.payloadId);
+    const choiceNodes = node.type === 'cache' || node.type === 'signal';
+    const choices = choiceNodes ? this.nodeChoiceList(node).filter((choice) => choice.key !== 'decline') : [];
+    return routeDecisionRead({
+      type: node.type,
+      risk: node.risk,
+      encounterTags: encounter?.tags ?? [],
+      recovery: routeNodeRecovery(node, this.runState.routeMarks),
+      currentHp: this.runState.currentHp,
+      maxHp: this.runMaxHp(),
+      preenTargets: node.type === 'nest' ? distinctMeaningfulUpgradeCards(cardsFromSave(this.runState.deck)).length : 0,
+      scrap: this.runState.scrap,
+      deckSize: this.runState.deck.length,
+      openSupplySlots: Math.max(0, runSupplyCapacity(this.runState) - this.runState.supplies.length),
+      availableChoices: choices.filter((choice) => !choice.locked).length,
+      totalChoices: choices.length,
+      bossTests: node.type === 'boss' ? alphaMapProfileLibrary.get(currentMap().id)?.primaryTests ?? [] : [],
+    });
   }
 
-  private renderRouteNode(node: RouteNode, selectable: boolean) {
+  private renderRouteNodeFallback(node: RouteNode, selectable: boolean) {
     const { x, y } = this.nodePosition(node);
-    const completed = this.runState.completedRouteNodeIds.includes(node.id);
-    const selected = this.selectedNodeId === node.id;
     const isBoss = node.type === 'boss';
     const radius = isBoss ? ROUTE_BOSS_NODE_RADIUS : ROUTE_NODE_RADIUS;
     const iconSize = isBoss ? ROUTE_BOSS_NODE_ICON_SIZE : ROUTE_NODE_ICON_SIZE;
-    const hitTarget = this.add.circle(x, y, radius + 10, 0x000000, 0);
-    if (isBoss) this.renderRouteBossBeaconRing(x, y, completed || (!selectable && !selected));
-    if (selected) this.renderSelectedRouteNodeFocus(x, y, radius);
-    // Every node is hoverable for the full preview; selectable nodes commit-select on click.
-    hitTarget.setInteractive({ useHandCursor: selectable });
+    const hitTarget = this.add.circle(x, y, radius + 10, selectable ? 0x123846 : 0x07101a, selectable ? 0.72 : 0.34)
+      .setStrokeStyle(selectable ? 2 : 1, selectable ? UI_FIELD.cyan : 0x345466, selectable ? 0.9 : 0.3)
+      .setInteractive({ useHandCursor: selectable });
     if (selectable) hitTarget.on('pointerdown', () => this.selectRouteNode(node.id));
     let tip: Phaser.GameObjects.Container | undefined;
     hitTarget.on('pointerover', () => { tip = this.showNodeTooltip(node, x, y - radius - 8); });
     hitTarget.on('pointerout', () => { tip?.destroy(true); tip = undefined; });
-
-    const visualState = completed ? 'completed' : selected ? 'selected' : selectable ? 'selectable' : 'future';
-    const visualAlpha = completed ? 0.34 : selected ? 1 : selectable ? 0.94 : 0.46;
-    this.renderRouteNodeTypeIcon(node.type, x, y, iconSize, visualAlpha)
-      .setName('route-node-icon')
-      .setData('routeNodeId', node.id)
-      .setData('routeNodeState', visualState);
-
+    this.renderRouteNodeTypeIcon(node.type, x, y, iconSize, selectable ? 1 : 0.26);
   }
 
   private renderRouteBossBeaconRing(x: number, y: number, completed: boolean) {
@@ -8750,14 +7930,16 @@ class RouteScene extends Phaser.Scene {
     const detail = this.nodeDetail(node);
     const decision = this.nodeDecisionSummary(node);
     const badges = this.routeRewardBadges(node).slice(0, 5);
-    const width = Math.max(220, Math.min(300, Math.max(detail.title.length * 9 + 36, 92 + badges.length * 34)));
+    const width = node.type === 'boss'
+      ? 360
+      : Math.max(220, Math.min(300, Math.max(detail.title.length * 9 + 36, 92 + badges.length * 34)));
     const graph = this.routeLayout().graph;
     const cx = Math.max(graph.left + width / 2, Math.min(graph.right - width / 2, x));
-    const top = anchorY - 22;
+    const top = anchorY - (detail.bossPrep ? 44 : 22);
     const container = this.add.container(0, 0);
     const frameKey = uiIconAssets['route-node-tooltip-frame'].key;
     const frameW = Math.max(244, width + 30);
-    const frameH = 122;
+    const frameH = detail.bossPrep ? 210 : 122;
     if (this.textures.exists(frameKey)) {
       this.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
       container.add(this.add.image(cx, top + 8, frameKey)
@@ -8765,7 +7947,7 @@ class RouteScene extends Phaser.Scene {
         .setAlpha(0.9)
         .setName('route-node-tooltip-frame'));
     } else {
-      container.add(this.add.rectangle(cx, top + 6, width, 58, 0x05161f, 0.98).setStrokeStyle(1, 0x7ab8d6, 0.95));
+      container.add(this.add.rectangle(cx, top + 8, width, detail.bossPrep ? 154 : 58, 0x05161f, 0.98).setStrokeStyle(1, 0x7ab8d6, 0.95));
     }
     container.add(this.add.text(cx, top - 18, detail.title, { fontFamily: UI_FONT, fontSize: '15px', fontStyle: UI_BOLD, color: UI_GOLD }).setOrigin(0.5));
 
@@ -8808,10 +7990,24 @@ class RouteScene extends Phaser.Scene {
     });
     container.add(this.add.text(cx, top + 36, `GAIN  ${decision.benefit}`, {
       fontFamily: UI_FONT, fontSize: '12px', fontStyle: UI_BOLD, color: '#bff4d0', fixedWidth: frameW - 34, align: 'center', maxLines: 1
-    }).setOrigin(0.5, 0));
-    container.add(this.add.text(cx, top + 52, `RISK  ${decision.risk}`, {
+    }).setOrigin(0.5, 0).setName('route-node-gain'));
+    container.add(this.add.text(cx, top + 52, `${detail.bossPrep ? 'TEST' : 'RISK'}  ${decision.risk}`, {
       fontFamily: UI_FONT, fontSize: '12px', color: '#ffc7b5', fixedWidth: frameW - 34, align: 'center', maxLines: 1
-    }).setOrigin(0.5, 0));
+    }).setOrigin(0.5, 0).setName(detail.bossPrep ? 'route-boss-prep-test' : 'route-node-risk'));
+    if (detail.bossPrep) {
+      container.add(this.add.rectangle(cx, top + 86, frameW - 48, 40, 0x050a12, 0.88)
+        .setStrokeStyle(1, UI_FIELD.cyan, 0.28)
+        .setName('route-boss-prep-plan-backplate'));
+      container.add(this.add.text(cx, top + 69, `PLAN  ${compactSentenceText(detail.bossPrep.hints[0] ?? detail.bossPrep.thesis, 104, 1)}`, {
+        fontFamily: UI_FONT,
+        fontSize: '12px',
+        color: '#e7eef7',
+        fixedWidth: frameW - 56,
+        align: 'center',
+        maxLines: 2,
+        wordWrap: { width: frameW - 56, useAdvancedWrap: true },
+      }).setOrigin(0.5, 0).setResolution(2).setName('route-boss-prep-plan'));
+    }
     return container;
   }
 
@@ -8823,7 +8019,9 @@ class RouteScene extends Phaser.Scene {
     // and focus ticks.
     const { left: leftX, right: rightX, top, bottom } = this.routeLayout().graph;
     const colCount = Math.max(1, columns.length);
-    const baseX = colCount > 1 ? leftX + (node.column * (rightX - leftX)) / (colCount - 1) : (leftX + rightX) / 2;
+    const safeLeft = leftX + 132;
+    const safeRight = rightX - 102;
+    const baseX = colCount > 1 ? safeLeft + (node.column * (safeRight - safeLeft)) / (colCount - 1) : (leftX + rightX) / 2;
     const topPad = ROUTE_NODE_ICON_SIZE / 2 + ROUTE_NODE_FOCUS_PAD + ROUTE_NODE_LAYOUT_PAD;
     const bottomPad = ROUTE_NODE_ICON_SIZE / 2 + ROUTE_NODE_FOCUS_PAD + ROUTE_NODE_LAYOUT_PAD;
     const usableTop = top + topPad;
@@ -8834,15 +8032,11 @@ class RouteScene extends Phaser.Scene {
     const stackHeight = laneGap * Math.max(0, columnNodes.length - 1);
     const startY = (usableTop + usableBottom) / 2 - stackHeight / 2;
     const baseY = columnNodes.length > 1 ? startY + laneIndex * laneGap : (top + bottom) / 2;
-    const canDrift = node.id !== currentMap().entryNodeId && node.id !== currentMap().bossNodeId;
-    const seed = hashSeed(`${activeSeed}:${activeMapIndex}:${node.id}:route-position`, node.column * 31 + laneIndex);
-    const driftX = canDrift ? ((seed & 0xff) / 255 - 0.5) * 24 : 0;
-    const driftY = canDrift ? (((seed >>> 8) & 0xff) / 255 - 0.5) * 36 : 0;
     const iconSize = node.type === 'boss' ? ROUTE_BOSS_NODE_ICON_SIZE : ROUTE_NODE_ICON_SIZE;
-    const horizontalPad = iconSize / 2 + ROUTE_NODE_FOCUS_PAD + 2;
+    const horizontalPad = iconSize / 2 + ROUTE_NODE_FOCUS_PAD + 8;
     const verticalPad = iconSize / 2 + ROUTE_NODE_FOCUS_PAD + 2;
-    const x = canDrift ? clamp(baseX + driftX, leftX + horizontalPad, rightX - horizontalPad) : baseX;
-    const y = canDrift ? clamp(baseY + driftY, top + verticalPad, bottom - verticalPad) : baseY;
+    const x = clamp(baseX, leftX + horizontalPad, rightX - horizontalPad);
+    const y = clamp(baseY, top + verticalPad, bottom - verticalPad);
     return { x, y };
   }
 
@@ -8999,7 +8193,7 @@ class RouteScene extends Phaser.Scene {
     )
       .setDisplaySize(displayWidth, displayHeight)
       .setRotation(angle)
-      .setAlpha(reduced ? 0.64 : 0.02)
+      .setAlpha(reduced ? 0.64 : 0.18)
       .setName('route-commit-streak');
     const glow = this.add.image(centerX, centerY, ROUTE_COMMIT_STREAK_TEXTURE)
       .setDisplaySize(displayWidth * 1.05, displayHeight * 1.05)
@@ -9115,6 +8309,7 @@ class RouteScene extends Phaser.Scene {
     this.nodeChoiceNodeId = node.id;
     this.selectableNodeIds = new Set();
     this.routeStaticCardRewardChoiceIds.clear();
+    this.routeStaticSupplyRewardChoiceIds.clear();
     this.routeStaticItemRewardChoices.clear();
     this.routeStaticCacheRewardEffects.clear();
     birdAudio.play('routeChoice', 0.86);
@@ -9229,6 +8424,9 @@ class RouteScene extends Phaser.Scene {
     this.routeRewardChoiceIndex = 0;
     this.routeRewardInspectionCardId = undefined;
     this.routeRewardArmedCardId = undefined;
+    this.routeSupplyRewardChoices = [];
+    this.routeSupplyRewardChoiceIndex = 0;
+    this.routeSupplyRewardArmedId = undefined;
     this.pendingRouteReward = undefined;
     this.nodeChoiceOpen = false;
     this.nodeChoiceNodeId = undefined;
@@ -9360,10 +8558,28 @@ class RouteScene extends Phaser.Scene {
     this.routeRewardChoiceIndex = 0;
     this.routeRewardInspectionCardId = undefined;
     this.routeRewardArmedCardId = undefined;
-    const previewItem = this.staticRouteItemRewardChoice(node.id, choice.key, resolvedEffects);
+    const supplyChoices = this.staticRouteSupplyRewardChoices(node.id, choice.key, resolvedEffects);
+    this.routeSupplyRewardChoices = [...supplyChoices];
+    this.routeSupplyRewardChoiceIndex = 0;
+    this.routeSupplyRewardArmedId = undefined;
+    const previewItem = supplyChoices[0]
+      ? { kind: 'supply' as const, id: supplyChoices[0] }
+      : this.staticRouteItemRewardChoice(node.id, choice.key, resolvedEffects);
     const previewCards = cardSelector ? [] : this.routeRewardPreviewCards(node.id, choice.key, resolvedEffects);
-    const projection = this.projectRouteReward(node, choice, resolvedEffects, restoreState, previewItem, previewCards);
-    const effectText = routeEffectSummaryWithPreview(resolvedEffects, projection.previewItem, projection.previewCards);
+    const projection = this.projectRouteReward(
+      node,
+      choice,
+      resolvedEffects,
+      restoreState,
+      previewItem,
+      previewCards,
+      this.routeRewardRng(restoreState, `${node.id}:${choice.key}:projection`),
+    );
+    const effectText = routeEffectSummaryWithPreview(
+      resolvedEffects,
+      supplyChoices.length > 1 ? undefined : projection.previewItem,
+      projection.previewCards,
+    );
     return {
       nodeId: node.id,
       nodeType: node.type,
@@ -9377,8 +8593,14 @@ class RouteScene extends Phaser.Scene {
       previewItem: projection.previewItem,
       previewCards: projection.previewCards,
       projectedState: projection.runState,
-      decisionPreview: projection.decisionPreview
+      decisionPreview: projection.decisionPreview,
+      supplyChoices,
     };
+  }
+
+  private routeRewardRng(runState: RunState, salt: string) {
+    const deck = runState.deck.map(({ id, upgraded }) => `${id}${upgraded ? '+' : ''}`);
+    return seededRng(`${runState.seed ?? activeSeed}:${runState.mapIndex ?? activeMapIndex}:${runState.currentRouteNodeId ?? 'route'}:${salt}:${deck}:${runState.routeMarks}:${runState.supplies}:${runState.currentHp}:${runState.scrap}`);
   }
 
   private resolvedRouteRewardEffects(nodeId: string, choiceKey: string, effects: string[]) {
@@ -9389,7 +8611,8 @@ class RouteScene extends Phaser.Scene {
       const cached = this.routeStaticCacheRewardEffects.get(key);
       if (cached) return [...cached];
       const options = alphaCacheSet.options;
-      const selected = options[Math.floor(Math.random() * options.length)];
+      const random = seededRng(`${this.runState.seed ?? activeSeed}:${this.runState.mapIndex ?? activeMapIndex}:${key}`);
+      const selected = options[Math.floor(random() * options.length)];
       const resolved = selected ? [...selected.effects] : [];
       this.routeStaticCacheRewardEffects.set(key, resolved);
       return resolved;
@@ -9402,7 +8625,8 @@ class RouteScene extends Phaser.Scene {
     effects: string[],
     restoreState: RunState,
     previewItem?: PendingRouteRewardItem,
-    previewCards: Card[] = []
+    previewCards: Card[] = [],
+    random: () => number = this.routeRewardRng(restoreState, `${node.id}:${choice.key}:projection`),
   ) {
     const projected = cloneRunState(restoreState);
     const capturedCards = previewCards.map((card) => cloneCard(card.id));
@@ -9444,7 +8668,7 @@ class RouteScene extends Phaser.Scene {
       },
       preenFirstAvailableCard: () => undefined,
       releaseFirstReleasable: () => undefined,
-      random: Math.random,
+      random,
     };
     const resolveProjectedEffect = (effect: string) => resolveRouteEffectRule(effect, context);
     effects.forEach((effect) => {
@@ -9642,7 +8866,7 @@ class RouteScene extends Phaser.Scene {
   claimRouteReward() {
     const pending = this.pendingRouteReward;
     if (!pending) return;
-    if (this.routeCardRewardChoices.length) return;
+    if (this.routeCardRewardChoices.length || this.routeSupplyRewardChoices.length > 1) return;
     if (pending.projectedState) {
       this.runState = cloneRunState(pending.projectedState);
       const priorIds = new Set(pending.restoreState.deck.map((card) => card.id));
@@ -9665,7 +8889,7 @@ class RouteScene extends Phaser.Scene {
     this.finishPendingRouteReward(pending);
   }
 
-  private createRouteCardRewardChoices(selector: string) {
+  private createRouteCardRewardChoices(selector: string, salt = selector) {
     const owned = new Set(this.runState.deck.map((card) => card.id));
     const basePool = arcanaRewardPool.filter((id) => !owned.has(id));
     let pool = [...basePool];
@@ -9680,22 +8904,39 @@ class RouteScene extends Phaser.Scene {
         return rarity === 'uncommon' || rarity === 'rare';
       });
     }
-    const choices: Card[] = [];
-    while (pool.length && choices.length < 2) {
-      const index = Math.floor(Math.random() * pool.length);
-      const [id] = pool.splice(index, 1);
-      if (id) choices.push(cloneCard(id));
-    }
-    return choices;
+    // Route rewards are only two cards, so make the tradeoff legible: first
+    // offer the least-represented role (favoring current-suit synergy on ties),
+    // then prefer a different role and an off-suit pivot when the pool permits.
+    return draftComplementaryRewardPair(
+      pool,
+      this.runState.deck.map((card) => card.id),
+      this.routeRewardRng(this.runState, `card-pair:${salt}`),
+      (id) => cardLibrary[id]?.role,
+      (id) => cardLibrary[id]?.runtime.suit ?? undefined,
+    ).map((id) => cloneCard(id));
   }
 
   private staticRouteCardRewardChoices(nodeId: string, choiceKey: string, selector: string) {
     const key = `${nodeId}:${choiceKey}:${selector}`;
     const cachedIds = this.routeStaticCardRewardChoiceIds.get(key);
     if (cachedIds) return cachedIds.map((id) => cloneCard(id));
-    const choices = this.createRouteCardRewardChoices(selector);
+    const choices = this.createRouteCardRewardChoices(selector, key);
     this.routeStaticCardRewardChoiceIds.set(key, choices.map((card) => card.id));
     return choices;
+  }
+
+  routeRewardCardObservations(card: Card) {
+    const waymarks = this.runState.routeMarks.flatMap((id) => {
+      const mark = alphaRouteMarkLibrary.get(id);
+      return mark ? [mark] : [];
+    });
+    return rewardBuildObservations(
+      card,
+      cardsFromSave(this.runState.deck),
+      waymarks,
+      (name) => compactSentenceText(name, 18, 1),
+      KEYSTONE_AT,
+    );
   }
 
   private staticRouteCardPreviewChoice(nodeId: string, choiceKey: string, selector: string) {
@@ -9703,10 +8944,27 @@ class RouteScene extends Phaser.Scene {
     const cachedIds = this.routeStaticCardRewardChoiceIds.get(key);
     const cachedId = cachedIds?.[0];
     if (cachedId && cardLibrary[cachedId]) return cloneCard(cachedId);
-    const id = this.selectCardRewardId(selector);
+    const id = this.selectCardRewardId(selector, key);
     if (!id) return undefined;
     this.routeStaticCardRewardChoiceIds.set(key, [id]);
     return cloneCard(id);
+  }
+
+  private staticRouteSupplyRewardChoices(nodeId: string, choiceKey: string, effects: string[]) {
+    const parsed = effects.map(parseEffect).find((effect) => effect?.name === 'gainSupplyChoice');
+    if (!parsed || this.runState.supplies.length >= runSupplyCapacity(this.runState)) return [];
+    const key = `${nodeId}:${choiceKey}:supply-choice:${parsed.args.join(',')}`;
+    const cached = this.routeStaticSupplyRewardChoiceIds.get(key);
+    if (cached) return [...cached];
+    const pool = [...alphaSupplyLibrary.keys()].filter((id) => !this.runState.supplies.includes(id));
+    const random = this.routeRewardRng(this.runState, key);
+    for (let index = pool.length - 1; index > 0; index -= 1) {
+      const swap = Math.floor(random() * (index + 1));
+      [pool[index], pool[swap]] = [pool[swap], pool[index]];
+    }
+    const choices = pool.slice(0, Math.min(2, pool.length));
+    this.routeStaticSupplyRewardChoiceIds.set(key, choices);
+    return [...choices];
   }
 
   private staticRouteItemRewardChoice(nodeId: string, choiceKey: string, effects: string[]) {
@@ -9722,21 +8980,21 @@ class RouteScene extends Phaser.Scene {
 
     let item: PendingRouteRewardItem | undefined;
     if (parsed.name === 'gainRouteMark') {
-      const id = this.selectRouteMarkRewardId(parsed.args[0] ?? 'random');
+      const id = this.selectRouteMarkRewardId(parsed.args[0] ?? 'random', key);
       if (id) item = { kind: 'waymark', id };
     } else {
-      const id = this.selectSupplyRewardId(parsed.name === 'gainSupplyChoice' ? 'random' : parsed.args[0] ?? 'random');
+      const id = this.selectSupplyRewardId(parsed.name === 'gainSupplyChoice' ? 'random' : parsed.args[0] ?? 'random', key);
       if (id) item = { kind: 'supply', id };
     }
     if (item) this.routeStaticItemRewardChoices.set(key, { ...item });
     return item;
   }
 
-  private selectRouteMarkRewardId(selector: string) {
-    return this.selectRouteMarkRewardIdFor(this.runState, selector);
+  private selectRouteMarkRewardId(selector: string, salt = `waymark:${selector}`) {
+    return this.selectRouteMarkRewardIdFor(this.runState, selector, salt);
   }
 
-  private selectRouteMarkRewardIdFor(runState: Pick<RunState, 'routeMarks'>, selector: string) {
+  private selectRouteMarkRewardIdFor(runState: RunState, selector: string, salt = `waymark:${selector}`) {
     if (selector && !['random', 'randomNonBoss', 'randomCommon', 'randomRare', 'randomUncommonOrRare', 'choice'].includes(selector)) {
       return !runState.routeMarks.includes(selector) && alphaRouteMarkLibrary.has(selector) ? selector : undefined;
     }
@@ -9756,21 +9014,75 @@ class RouteScene extends Phaser.Scene {
       pool = pool.filter((markId) => alphaRouteMarkLibrary.get(markId)?.rarity !== 'boss');
     }
     if (!pool.length) return undefined;
-    return pool[Math.floor(Math.random() * pool.length)];
+    return pool[Math.floor(this.routeRewardRng(runState, salt)() * pool.length)];
   }
 
-  private selectSupplyRewardId(selector: string) {
-    return this.selectSupplyRewardIdFor(this.runState, selector);
+  private selectSupplyRewardId(selector: string, salt = `supply:${selector}`) {
+    return this.selectSupplyRewardIdFor(this.runState, selector, salt);
   }
 
-  private selectSupplyRewardIdFor(runState: Pick<RunState, 'supplies' | 'supplySlots'>, selector: string) {
+  private selectSupplyRewardIdFor(runState: RunState, selector: string, salt = `supply:${selector}`) {
     if ((runState.supplies ?? []).length >= runSupplyCapacity(runState)) return undefined;
     if (selector && !['random', 'choice'].includes(selector) && alphaSupplyLibrary.has(selector)) {
       return runState.supplies.includes(selector) ? undefined : selector;
     }
     const ids = [...alphaSupplyLibrary.keys()].filter((candidate) => !runState.supplies.includes(candidate));
     if (!ids.length) return undefined;
-    return ids[Math.floor(Math.random() * ids.length)];
+    return ids[Math.floor(this.routeRewardRng(runState, salt)() * ids.length)];
+  }
+
+  focusedRouteSupplyReward() {
+    const id = this.routeSupplyRewardChoices[clamp(this.routeSupplyRewardChoiceIndex, 0, this.routeSupplyRewardChoices.length - 1)];
+    return id ? alphaSupplyLibrary.get(id) : undefined;
+  }
+
+  cycleRouteSupplyRewardChoice(delta: number) {
+    if (!this.routeSupplyRewardChoices.length) return;
+    this.routeSupplyRewardChoiceIndex = (
+      this.routeSupplyRewardChoiceIndex + delta + this.routeSupplyRewardChoices.length
+    ) % this.routeSupplyRewardChoices.length;
+    this.routeSupplyRewardArmedId = undefined;
+    this.hideMarketItemDetail();
+    this.renderAll();
+  }
+
+  requestRouteSupplyReward(supplyId: string) {
+    const index = this.routeSupplyRewardChoices.indexOf(supplyId);
+    if (index < 0) return;
+    this.routeSupplyRewardChoiceIndex = index;
+    if (this.routeSupplyRewardArmedId !== supplyId) {
+      this.routeSupplyRewardArmedId = supplyId;
+      playUiSound('confirm');
+      this.renderAll();
+      return;
+    }
+    this.chooseRouteSupplyReward(supplyId);
+  }
+
+  private chooseRouteSupplyReward(supplyId: string) {
+    const pending = this.pendingRouteReward;
+    const node = pending ? currentMap().nodes.find((candidate) => candidate.id === pending.nodeId) : undefined;
+    if (!pending || !node || !this.routeSupplyRewardChoices.includes(supplyId)) return;
+    const projection = this.projectRouteReward(
+      node,
+      { key: pending.choiceKey, text: pending.choiceText, effects: pending.effects, locked: false },
+      pending.effects,
+      pending.restoreState,
+      { kind: 'supply', id: supplyId },
+      pending.previewCards ?? [],
+      this.routeRewardRng(pending.restoreState, `${node.id}:${pending.choiceKey}:projection`),
+    );
+    this.runState = cloneRunState(projection.runState);
+    this.routeSupplyRewardArmedId = undefined;
+    const supply = alphaSupplyLibrary.get(supplyId);
+    if (supply) this.runState.routeLog.push(`Packed ${supply.name}.`);
+    this.runState.routeLog = this.runState.routeLog.slice(-8);
+    const pickerPlan = this.routeRewardPickerPlan(pending.effects);
+    if (pickerPlan && this.pickerEligibleCards(pickerPlan.mode, 'route').length) {
+      this.openRoutePickerForPendingReward(pending, pickerPlan);
+      return;
+    }
+    this.finishPendingRouteReward(pending);
   }
 
   chooseRouteRewardCard(cardId: string) {
@@ -9797,6 +9109,12 @@ class RouteScene extends Phaser.Scene {
   cancelRouteCardReward() {
     const pending = this.pendingRouteReward;
     if (!pending) return;
+    if (this.routeSupplyRewardArmedId) {
+      this.routeSupplyRewardArmedId = undefined;
+      this.hideMarketItemDetail();
+      this.renderAll();
+      return;
+    }
     if (this.routeRewardArmedCardId) {
       this.routeRewardArmedCardId = undefined;
       this.hideHoverCardDetail();
@@ -9808,6 +9126,9 @@ class RouteScene extends Phaser.Scene {
     this.routeRewardChoiceIndex = 0;
     this.routeRewardInspectionCardId = undefined;
     this.routeRewardArmedCardId = undefined;
+    this.routeSupplyRewardChoices = [];
+    this.routeSupplyRewardChoiceIndex = 0;
+    this.routeSupplyRewardArmedId = undefined;
     this.pendingRouteReward = undefined;
     this.nodeChoiceOpen = true;
     this.hideHoverCardDetail();
@@ -9820,7 +9141,7 @@ class RouteScene extends Phaser.Scene {
       .filter(({ saved }) => {
         const card = cardLibrary[saved.id];
         if (!card) return false;
-        if (mode === 'preen') return !saved.upgraded && card.runtime.kind !== 'snag';
+        if (mode === 'preen') return !saved.upgraded && hasMeaningfulCardUpgrade(card.runtime);
         return true;
       })
       .map(({ saved, index }) => {
@@ -9855,18 +9176,21 @@ class RouteScene extends Phaser.Scene {
       this.applyMarketCardPick(index);
       return;
     }
+    const isDistrictPreen = this.cardPickerContext === 'districtPreen';
     const mode = this.cardPickerMode;
     const saved = this.runState.deck[index];
     if (!saved || !mode) return;
     const name = cardLibrary[saved.id]?.name ?? saved.id;
     if (mode === 'preen') {
       saved.upgraded = true;
+      birdAudio.play('moltPower');
       this.runState.routeLog.push(`Preened ${name}.`);
     } else {
       this.runState.routeLog.push(`Removed ${name}.`);
       this.runState.deck.splice(index, 1);
     }
     this.cardPickerRemainingPicks = Math.max(0, (this.cardPickerRemainingPicks || 1) - 1);
+    if (isDistrictPreen) this.runState.pendingDistrictPreens = this.cardPickerRemainingPicks;
     this.runState.routeLog = this.runState.routeLog.slice(-8);
     if (this.cardPickerRemainingPicks > 0 && this.pickerEligibleCards(mode, 'route').length) {
       const remaining = this.pickerEligibleCards(mode, 'route');
@@ -9876,7 +9200,7 @@ class RouteScene extends Phaser.Scene {
       this.renderAll();
       return;
     }
-    this.completePendingRouteNode();
+    if (!isDistrictPreen) this.completePendingRouteNode();
     this.cardPickerMode = undefined;
     this.cardPickerContext = undefined;
     this.cardPickerRemainingPicks = 0;
@@ -9888,6 +9212,10 @@ class RouteScene extends Phaser.Scene {
     this.cardPickerScroll = 0;
     this.nodeChoiceNodeId = undefined;
     this.runState.routeLog = this.runState.routeLog.slice(-8);
+    if (isDistrictPreen) {
+      this.renderAll();
+      return;
+    }
     this.scene.restart({ runState: cloneRunState(this.runState) });
   }
 
@@ -9908,8 +9236,10 @@ class RouteScene extends Phaser.Scene {
   }
 
   private cancelRouteCardPicker() {
+    const isDistrictPreen = this.cardPickerContext === 'districtPreen';
+    const skippedDistrictPreens = Math.max(1, this.cardPickerRemainingPicks || 1);
     const nodeId = this.nodeChoiceNodeId;
-    if (this.routeCardPickerRestoreState) {
+    if (!isDistrictPreen && this.routeCardPickerRestoreState) {
       this.runState = cloneRunState(this.routeCardPickerRestoreState);
     }
     this.cardPickerMode = undefined;
@@ -9921,7 +9251,12 @@ class RouteScene extends Phaser.Scene {
     this.marketPickerUtilitySlot = undefined;
     this.routeCardPickerRestoreState = undefined;
     this.cardPickerScroll = 0;
-    this.nodeChoiceOpen = !!nodeId;
+    this.nodeChoiceOpen = !isDistrictPreen && !!nodeId;
+    if (isDistrictPreen) {
+      this.runState.pendingDistrictPreens = 0;
+      this.runState.routeLog.push(`District prep ended with ${skippedDistrictPreens} free Preen${skippedDistrictPreens === 1 ? '' : 's'} skipped.`);
+      this.runState.routeLog = this.runState.routeLog.slice(-8);
+    }
     this.hideHoverCardDetail();
     this.renderAll();
   }
@@ -9941,6 +9276,7 @@ class RouteScene extends Phaser.Scene {
     listing.sold = true;
     if (mode === 'preen') {
       saved.upgraded = true;
+      birdAudio.play('moltPower');
       this.marketMessage = `${name} is preened for ${entry.cost} Scrap.`;
     } else {
       this.runState.deck.splice(index, 1);
@@ -10073,6 +9409,7 @@ class RouteScene extends Phaser.Scene {
     const mode = this.cardPickerMode;
     if (!mode) return;
     const isMarketPicker = this.cardPickerContext === 'market';
+    const isDistrictPreen = this.cardPickerContext === 'districtPreen';
     const eligible = this.pickerEligibleCards(mode);
     const node = currentMap().nodes.find((candidate) => candidate.id === (isMarketPicker ? this.marketNodeId : this.nodeChoiceNodeId));
     const accent = mode === 'preen' ? UI_FIELD.cyan : UI_FIELD.danger;
@@ -10092,12 +9429,16 @@ class RouteScene extends Phaser.Scene {
       this.renderRouteEventBackdrop(node, 0.82);
     }
     const frame = renderFieldPanel(this, () => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 8, 1040, 558, {
-      eyebrow: isMarketPicker ? 'Market Service' : node ? routeNodeTypeLabel(node.type) : 'Flock Workbench',
+      eyebrow: isMarketPicker ? 'Market Service' : isDistrictPreen ? 'District Prep' : node ? routeNodeTypeLabel(node.type) : 'Flock Workbench',
       title: mode === 'preen'
-        ? remainingPicks > 1 ? `Preen ${remainingPicks} Cards` : 'Preen a Card'
+        ? remainingPicks > 1 ? `Preen ${remainingPicks} Cards` : isDistrictPreen ? 'Choose a Free Preen' : 'Preen a Card'
         : remainingPicks > 1 ? `Remove ${remainingPicks} Cards` : 'Remove a Card',
       subtitle: mode === 'preen'
-        ? isMarketPicker ? 'Select a card, then confirm again to improve it and pay Scrap.' : 'Select a card, then confirm again to improve it.'
+        ? isMarketPicker
+          ? 'Select a card, then confirm again to improve it and pay Scrap.'
+          : isDistrictPreen
+            ? 'Choose exactly which card improves before this district. Skipping changes nothing.'
+            : 'Select a card, then confirm again to improve it.'
         : isMarketPicker ? 'Select a card, then confirm again to remove it and pay Scrap.' : 'Select a card, then confirm again to remove it.',
       accent,
       fill: mode === 'preen' ? 0x071824 : 0x1b1114
@@ -10114,7 +9455,7 @@ class RouteScene extends Phaser.Scene {
       color: '#bfe8f4',
     }).setResolution(2).setOrigin(1, 0.5).setName('card-picker-input-hint');
     this.renderCardPickerContextPlaque(frame.left + 222, frame.top + 128);
-    this.add.text(frame.left + 222, frame.top + 114, node?.label ?? 'Workshop stop', {
+    this.add.text(frame.left + 222, frame.top + 114, isDistrictPreen ? 'Boss Prep Credit' : node?.label ?? 'Workshop stop', {
       fontFamily: UI_FONT,
       fontSize: '15px',
       fontStyle: UI_BOLD,
@@ -10154,15 +9495,17 @@ class RouteScene extends Phaser.Scene {
       } else {
         this.add.rectangle(x, y, cardW, cardH, 0x05101a, 0.12);
       }
-      this.renderCardPickerCostBadge(x - 34, y - 52, affordable);
-      this.add.text(x - 34, y - 60, `${entry.cost}`, {
-        fontFamily: UI_FONT,
-        fontSize: '12px',
-        fontStyle: UI_BOLD,
-        color: affordable ? (entry.cost === 0 ? '#8df4ff' : '#ffe1a3') : '#91a6b8',
-        stroke: '#05080e',
-        strokeThickness: 2
-      }).setOrigin(0.5, 0);
+      if (isMarketPicker) {
+        this.renderCardPickerCostBadge(x - 34, y - 52, affordable);
+        this.add.text(x - 34, y - 60, `${entry.cost}`, {
+          fontFamily: UI_FONT,
+          fontSize: '12px',
+          fontStyle: UI_BOLD,
+          color: affordable ? (entry.cost === 0 ? '#8df4ff' : '#ffe1a3') : '#91a6b8',
+          stroke: '#05080e',
+          strokeThickness: 2
+        }).setOrigin(0.5, 0);
+      }
       this.renderCardPickerNameplateFrame(x, y + 84, affordable);
       this.add.text(x, y + 72, `${entry.name}${entry.upgraded ? '+' : ''}`, {
         fontFamily: UI_FONT,
@@ -10233,7 +9576,14 @@ class RouteScene extends Phaser.Scene {
     if (isMarketPicker) {
       this.renderMarketEnamelButton(frame.left + 318, frame.bottom - 48, 176, 38, 'Back to Market', true, () => this.cancelMarketCardPicker(), UI_FIELD.cyan, '13px');
     } else {
-      this.renderRouteEventCancelButton(frame.left + 126, frame.bottom - 48, 166, 38, 'Cancel', () => this.cancelRouteCardPicker());
+      this.renderRouteEventCancelButton(
+        frame.left + 126,
+        frame.bottom - 48,
+        166,
+        38,
+        isDistrictPreen ? (remainingPicks > 1 ? 'Skip Remaining' : 'Skip Preen') : 'Cancel',
+        () => this.cancelRouteCardPicker(),
+      );
     }
     this.cardHoverDetailModule?.renderCardPickerInspection(
       this, GAME_WIDTH, GAME_HEIGHT, controlBindingLabel('back'),
@@ -10658,6 +10008,9 @@ class RouteScene extends Phaser.Scene {
       ? [`NEED ${cost - this.runState.scrap} MORE SCRAP`]
       : decisionPreview;
     this.marketDecisionPreview = [...preview];
+    this.marketBuildObservations = this.marketOpen && zone.startsWith('Market offer')
+      ? this.routeRewardCardObservations(card).slice(0, 2)
+      : [];
     const displayZone = preview.length ? `Market / ${preview.join(' / ')}` : zone;
     const adjustedAnchorX = this.marketOpen && zone.startsWith('Market offer')
       ? 440
@@ -10729,6 +10082,12 @@ class RouteScene extends Phaser.Scene {
         23020
       ) as Phaser.GameObjects.Container;
       this.hoverCardDetail.add(detail);
+      if (this.marketBuildObservations.length > 0) {
+        this.hoverCardDetail.add(this.cardHoverDetailModule.renderMarketCardBuildRead(
+          this,
+          this.marketBuildObservations,
+        ));
+      }
       return;
     }
     const cx = view.anchorX < GAME_WIDTH / 2
@@ -10765,6 +10124,7 @@ class RouteScene extends Phaser.Scene {
       body: mark.description,
       meta: `Trigger: ${mark.trigger}\nEffect: ${routeMarkEffectGrammar(mark)}`,
       price,
+      observations: this.cardHoverDetailModule?.marketMarkNotes(this, mark) ?? [],
       decisionPreview: listing
         ? this.cardHoverDetailModule?.marketPreview(this, listing, this.marketWaymarkDecisionPreview(listing)) ?? []
         : [],
@@ -10786,6 +10146,7 @@ class RouteScene extends Phaser.Scene {
           ? 'Final cost and result are shown on each eligible card.'
           : 'One-time preparation; applied immediately.',
       price: listing.price,
+      observations: this.cardHoverDetailModule?.marketItemNotes(this, listing) ?? [],
       decisionPreview: this.cardHoverDetailModule?.marketPreview(this, listing) ?? [],
       accent: listing.id === 'supply' ? UI_FIELD.green : listing.id === 'release' ? UI_FIELD.danger : UI_FIELD.cyan,
       anchorX,
@@ -10824,6 +10185,7 @@ class RouteScene extends Phaser.Scene {
       body: 'Refresh the current market offers.',
       meta: `Refresh count: ${this.marketRefreshCount}`,
       price,
+      observations: ['+ Rerolls every unbought offer', `! Costs rise after refresh ${this.marketRefreshCount + 1}`],
       decisionPreview: this.marketRefreshDecisionPreview(price),
       accent: UI_FIELD.cyan,
       anchorX,
@@ -10837,6 +10199,7 @@ class RouteScene extends Phaser.Scene {
     body: string;
     meta: string;
     price?: number;
+    observations?: string[];
     decisionPreview?: MarketDecisionPreview;
     accent: number;
     anchorX: number;
@@ -10845,12 +10208,14 @@ class RouteScene extends Phaser.Scene {
     this.hideMarketItemDetail();
     this.hideHoverCardDetail();
     this.marketDecisionPreview = [...(opts.decisionPreview ?? [])];
+    this.marketBuildObservations = [...(opts.observations ?? [])].slice(0, 2);
     const afterPurchase = opts.price === undefined || (opts.decisionPreview?.length ?? 0) > 0
       ? ''
       : `  /  After purchase: ${Math.max(0, this.runState.scrap - opts.price)} Scrap`;
     this.marketItemHover = this.cardHoverDetailModule?.renderMarketItemDetail(this, {
       ...opts,
       afterPurchase,
+      build: opts.observations ?? [],
       decisionPreview: opts.decisionPreview ?? [],
       enabled: opts.price === undefined || this.runState.scrap >= opts.price,
       dossierFrameKey: uiIconAssets['market-detail-dossier-frame'].key,
@@ -10883,7 +10248,7 @@ class RouteScene extends Phaser.Scene {
 
   // The route-effect interpreter: executes a single route-effect verb against the
   // run state (next-level-data-contracts Â§6.3).
-  private routeEffectContext(): RouteEffectContext {
+  private routeEffectContext(salt = 'route-effect'): RouteEffectContext {
     return {
       runState: this.runState,
       currentMapNodes: () => currentMap().nodes,
@@ -10893,7 +10258,8 @@ class RouteScene extends Phaser.Scene {
       grantSupply: (selector) => this.grantSupply(selector),
       grantCard: (selector) => this.grantCard(selector),
       preenFirstAvailableCard: () => this.preenFirstAvailableCard(),
-      releaseFirstReleasable: (count) => this.releaseFirstReleasable(count)
+      releaseFirstReleasable: (count) => this.releaseFirstReleasable(count),
+      random: this.routeRewardRng(this.runState, salt),
     };
   }
 
@@ -10902,7 +10268,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private resolveRouteEffect(effect: string) {
-    resolveRouteEffectRule(effect, this.routeEffectContext());
+    resolveRouteEffectRule(effect, this.routeEffectContext(effect));
   }
 
   private grantRouteMark(selector: string) {
@@ -10932,6 +10298,10 @@ class RouteScene extends Phaser.Scene {
     supply.effects.forEach((effect) => this.resolveRouteEffect(effect));
     this.recordRouteSupplyFeedback(supply);
     this.runState.supplies.splice(index, 1);
+    const remainingUsable = this.routeUsableSupplyIndices();
+    this.supplyDrawerFocusIndex = remainingUsable[0] ?? 0;
+    this.supplyDrawerArmedIndex = undefined;
+    this.supplyDrawerInputActive = true;
     (this.runState.suppliesUsed ??= []).push(id);
     this.runState.routeLog.push(`Used ${supply.name}: ${supply.description}`);
     this.runState.routeLog = this.runState.routeLog.slice(-8);
@@ -10961,11 +10331,11 @@ class RouteScene extends Phaser.Scene {
     return true;
   }
 
-  private selectCardRewardId(selector: string) {
-    return this.selectCardRewardIdFor(this.runState, selector);
+  private selectCardRewardId(selector: string, salt = `card:${selector}`) {
+    return this.selectCardRewardIdFor(this.runState, selector, salt);
   }
 
-  private selectCardRewardIdFor(runState: Pick<RunState, 'deck'>, selector: string) {
+  private selectCardRewardIdFor(runState: RunState, selector: string, salt = `card:${selector}`) {
     const owned = new Set(runState.deck.map((card) => card.id));
     if (selector && cardLibrary[selector] && !owned.has(selector)) return selector;
     const basePool = arcanaRewardPool.filter((id) => !owned.has(id));
@@ -10987,7 +10357,7 @@ class RouteScene extends Phaser.Scene {
       });
     }
     if (!pool.length) return;
-    return pool[Math.floor(Math.random() * pool.length)];
+    return pool[Math.floor(this.routeRewardRng(runState, salt)() * pool.length)];
   }
 
   private releaseFirstReleasable(count: number) {
@@ -11867,6 +11237,11 @@ class RouteScene extends Phaser.Scene {
 
   private routeRewardInteractionModule() {
     return this.routeRewardOverlayModule ?? this.cardHoverDetailModule;
+  }
+
+  routeRewardChoiceDebugState() {
+    return this.routeRewardOverlayModule?.routeRewardChoiceDebugState(this)
+      ?? { cardChoices: [], supplyChoices: [], inputFocus: undefined };
   }
 
   focusedRouteRewardCard() {
@@ -13747,6 +13122,14 @@ class RouteScene extends Phaser.Scene {
     }));
   }
 
+  marketWaymark(id: string) {
+    return alphaRouteMarkLibrary.get(id);
+  }
+
+  marketSupply(id?: string) {
+    return id ? alphaSupplyLibrary.get(id) : undefined;
+  }
+
   marketRouteMarkOffer() {
     const listing = this.marketWaymarkShelf.find((offer) => !offer.sold);
     const mark = listing ? alphaRouteMarkLibrary.get(listing.id) : undefined;
@@ -13769,7 +13152,9 @@ class RouteScene extends Phaser.Scene {
   }
 
   private firstPreenCandidate() {
-    const saved = this.runState.deck.find((card) => !card.upgraded && cardLibrary[card.id]?.runtime.kind !== 'snag');
+    const saved = this.runState.deck.find((card) => (
+      !card.upgraded && hasMeaningfulCardUpgrade(cardLibrary[card.id]?.runtime)
+    ));
     if (!saved) return undefined;
     const card = cloneCard(saved.id);
     card.upgraded = saved.upgraded;
@@ -13810,7 +13195,9 @@ class RouteScene extends Phaser.Scene {
   }
 
   private preenFirstAvailableCard() {
-    const saved = this.runState.deck.find((card) => !card.upgraded);
+    const saved = this.runState.deck.find((card) => (
+      !card.upgraded && hasMeaningfulCardUpgrade(cardLibrary[card.id]?.runtime)
+    ));
     if (!saved) return undefined;
     saved.upgraded = true;
     return cloneCard(saved.id);
@@ -13835,14 +13222,15 @@ class RouteScene extends Phaser.Scene {
   }
 
   savedDeckRecordState() {
-    const allSavedDecks = sanitizeSavedDecks(loadAccount().decks);
-    const savedDecks = activeSavedDecks(allSavedDecks);
+    const allSavedDecks = this.savedDeckModule?.sanitizeSavedDecks(loadAccount().decks) ?? [];
+    const savedDecks = this.savedDeckModule?.activeSavedDecks(allSavedDecks) ?? [];
+    const capacity = this.savedDeckModule?.SAVED_DECK_LIMIT ?? 6;
     return {
       count: savedDecks.length,
-      capacity: SAVED_DECK_LIMIT,
+      capacity,
       archived: allSavedDecks.length - savedDecks.length,
       status: this.deckSaveStatus,
-      canSave: savedDecks.length < SAVED_DECK_LIMIT && this.runState.deck.length > 0,
+      canSave: Boolean(this.savedDeckModule) && savedDecks.length < capacity && this.runState.deck.length > 0,
       currentDeckCards: this.runState.deck.length,
       persisted: true,
       affectsPower: false,
@@ -13858,6 +13246,22 @@ class RouteScene extends Phaser.Scene {
 
   private saveCurrentDeckToFolio() {
     if (!this.deckOverlayOpen || this.deckReviewSearchActive) return;
+    if (!this.savedDeckModule) {
+      void loadSavedDeckModule()
+        .then((module) => {
+          if (!this.sys.settings.active) return;
+          this.savedDeckModule = module;
+          this.saveCurrentDeckToFolio();
+        })
+        .catch((error) => {
+          console.warn('Flight Folios unavailable.', error);
+          this.deckSaveStatus = 'failed';
+          playUiSound('locked');
+          this.renderAll();
+        });
+      return;
+    }
+    const { activeSavedDecks, createSavedDeckRecord, sanitizeSavedDecks, SAVED_DECK_LIMIT } = this.savedDeckModule;
     const account = loadAccount();
     const allSavedDecks = sanitizeSavedDecks(account.decks);
     const savedDecks = activeSavedDecks(allSavedDecks);
@@ -13912,6 +13316,9 @@ class RouteScene extends Phaser.Scene {
     this.deckOverlayOpen = false;
     this.waymarkDrawerOpen = false;
     this.supplyDrawerOpen = false;
+    this.supplyDrawerFocusIndex = 0;
+    this.supplyDrawerArmedIndex = undefined;
+    this.supplyDrawerInputActive = false;
     this.ensureFlockStatsOverlay();
     this.renderAll();
   }
@@ -13962,8 +13369,19 @@ class RouteScene extends Phaser.Scene {
     this.renderAll();
   }
 
-  private openSupplyDrawer() {
+  private routeUsableSupplyIndices() {
+    return this.runState.supplies.flatMap((id, index) => {
+      const supply = alphaSupplyLibrary.get(id);
+      return supply && supply.timing !== 'combat' ? [index] : [];
+    });
+  }
+
+  private openSupplyDrawer(inputActive = false) {
+    const usable = this.routeUsableSupplyIndices();
     this.supplyDrawerOpen = true;
+    this.supplyDrawerFocusIndex = usable[0] ?? 0;
+    this.supplyDrawerArmedIndex = undefined;
+    this.supplyDrawerInputActive = inputActive;
     this.deckOverlayOpen = false;
     this.flockOverlayOpen = false;
     this.waymarkDrawerOpen = false;
@@ -13993,7 +13411,59 @@ class RouteScene extends Phaser.Scene {
 
   private closeSupplyDrawer() {
     this.supplyDrawerOpen = false;
+    this.supplyDrawerArmedIndex = undefined;
+    this.supplyDrawerInputActive = false;
     this.renderAll();
+  }
+
+  private cancelOrCloseRouteSupplyDrawer() {
+    if (this.supplyDrawerOpen && this.supplyDrawerArmedIndex !== undefined) {
+      this.supplyDrawerArmedIndex = undefined;
+      playUiSound('close');
+      announceScreenReader('Supply use cancelled; the item remains packed.');
+      this.renderAll();
+      return;
+    }
+    this.closeSupplyDrawer();
+  }
+
+  private focusRouteSupply(index: number) {
+    if (!this.routeUsableSupplyIndices().includes(index)) return;
+    if (this.supplyDrawerArmedIndex === undefined) this.supplyDrawerFocusIndex = index;
+  }
+
+  private moveRouteSupplyFocus(direction: -1 | 1) {
+    const usable = this.routeUsableSupplyIndices();
+    if (!usable.length) {
+      playUiSound('locked');
+      return;
+    }
+    const current = usable.indexOf(this.supplyDrawerFocusIndex);
+    this.supplyDrawerFocusIndex = usable[(current < 0 ? 0 : current + direction + usable.length) % usable.length];
+    this.supplyDrawerArmedIndex = undefined;
+    this.supplyDrawerInputActive = true;
+    playUiSound('confirm');
+    this.renderAll();
+  }
+
+  private requestRouteSupplyUse(index: number) {
+    const id = this.runState.supplies[index];
+    const supply = id ? alphaSupplyLibrary.get(id) : undefined;
+    if (!supply || supply.timing === 'combat') {
+      playUiSound('locked');
+      return;
+    }
+    this.supplyDrawerFocusIndex = index;
+    this.supplyDrawerInputActive = true;
+    if (this.supplyDrawerArmedIndex !== index) {
+      this.supplyDrawerArmedIndex = index;
+      playUiSound('confirm');
+      announceScreenReader(`${supply.name} selected. Confirm again to use it, or Back to keep it packed.`);
+      this.renderAll();
+      return;
+    }
+    this.supplyDrawerArmedIndex = undefined;
+    this.useRouteSupply(index);
   }
 
   private ownedRouteMarkDefs() {
@@ -14148,7 +13618,7 @@ class RouteScene extends Phaser.Scene {
         .setStrokeStyle(1.5, this.routeSupplyDrawerFailed ? UI_FIELD.danger : UI_FIELD.gold, 0.62);
       this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 12, this.routeSupplyDrawerFailed
         ? 'Supply drawer unavailable'
-        : 'Opening Supply drawer?', {
+        : 'Opening Supply drawer...', {
         fontFamily: UI_FONT,
         fontSize: '18px',
         fontStyle: UI_BOLD,
@@ -14180,8 +13650,14 @@ class RouteScene extends Phaser.Scene {
       }),
       filled: this.runState.supplies.length,
       capacity,
-      onClose: () => this.closeSupplyDrawer(),
-      onUse: (index) => this.useRouteSupply(index),
+      focusIndex: this.supplyDrawerFocusIndex,
+      inputActive: this.supplyDrawerInputActive,
+      armedIndex: this.supplyDrawerArmedIndex,
+      confirmLabel: controlBindingLabel('confirm'),
+      backLabel: controlBindingLabel('back'),
+      onClose: () => this.cancelOrCloseRouteSupplyDrawer(),
+      onFocus: (index) => this.focusRouteSupply(index),
+      onActivate: (index) => this.requestRouteSupplyUse(index),
     });
   }
 
@@ -14640,9 +14116,9 @@ class RouteScene extends Phaser.Scene {
       return;
     }
     this.routeDebugStateModule.updateRouteDebugState(this, {
-      activeMapIndex, advanceGameTime, animationPacingState, audioToggleWaveBurstState, birdAudio,
+      activeMapIndex, advanceGameTime, alphaSupplyLibrary, animationPacingState, audioToggleWaveBurstState, birdAudio,
       cardStatRows, cardStatTotalRows, colorCueState, combatPacingState, controlBindingLabel,
-      controlsTextState, countTextureInGameObjects, currentFlashEffectsState, currentMap,
+      compactEffectGrammar, controlsTextState, countTextureInGameObjects, currentFlashEffectsState, currentMap,
       currentScreenShakeState, displayName, firstFlightGuideState, firstFlightGuideStep,
       getInspectedEntry, graphicsQualityState, inspectedCardPayload, motionState, runDistrictOrdinal,
       runMapIndices, runSupplyCapacity, screenReaderState, settingsFocusState, textPacingState,
@@ -14658,6 +14134,7 @@ class RouteScene extends Phaser.Scene {
   private bossPrepReadiness() {
     const bossNode = currentMap().nodes.find((node) => node.id === currentMap().bossNodeId);
     const encounter = bossNode ? alphaEncounterLibrary.get(bossNode.payloadId) : undefined;
+    const profile = alphaMapProfileLibrary.get(currentMap().id);
     const boss = bossNode
       ? getEncounterEnemiesByPayload(bossNode.payloadId).find((enemy) => enemy.type === 'boss')
       : undefined;
@@ -14705,6 +14182,10 @@ class RouteScene extends Phaser.Scene {
       readiness,
       needs,
       usefulNodes,
+      thesis: profile?.thesis,
+      primaryTests: profile ? [...profile.primaryTests] : [],
+      testLabels: compactBossTests(profile?.primaryTests ?? []),
+      strategyHints: profile ? [...profile.bossPrepHints] : [],
       phaseHint: boss?.phaseTwoName
         ? `Phase II at 50%: ${boss.phaseTwoName}${phaseOpener ? ` opens with ${phaseOpener.label}` : ''}`
         : undefined,
@@ -14724,6 +14205,8 @@ class BattleScene extends Phaser.Scene {
   private clearedPile: Card[] = [];
   private hand: Card[] = [];
   private selectedInstanceId: string | undefined;
+  private discardChoice: CombatDiscardChoice | undefined;
+  private returnChoice: CombatReturnChoice | undefined;
   private selectedEnemyId = 'roof-rat';
   private energy = 3;
   private nextTurnEnergyBonus = 0;
@@ -14731,6 +14214,7 @@ class BattleScene extends Phaser.Scene {
   private pendingNestCoverBonus = 0;
   private pendingRetainHand = 0;
   private roostRetainPool: Card[] = [];
+  private roostRetainPriorityInstanceId?: string;
   private pendingSupplyRepeats = 0;
   private spark = 0;
   private turn = 1;
@@ -14766,6 +14250,7 @@ class BattleScene extends Phaser.Scene {
   private combatRouteMarkAwarded?: RuntimeRouteMark;
   private combatRouteMarkResolved = false;
   private waymarkChoices: RuntimeRouteMark[] = [];
+  private waymarkRewardBuildObservations: Record<string, string[]> = {};
   private rewardChoices: Card[] = [];
   private upgradeChoices: Card[] = [];
   private rewardInspectionCardId: string | undefined;
@@ -14790,6 +14275,9 @@ class BattleScene extends Phaser.Scene {
   private systemOverlayRefreshQueued = false;
   private waymarkDrawerOpen = false;
   private supplyDrawerOpen = false;
+  private supplyDrawerFocusIndex = 0;
+  private supplyDrawerArmedIndex: number | undefined;
+  private supplyDrawerInputActive = false;
   private waymarkDrawerScroll = 0;
   private cardReviewScroll = 0;
   private optionalArtRequested = false;
@@ -14953,6 +14441,13 @@ class BattleScene extends Phaser.Scene {
   private battleHudRendererModule?: BattleHudRendererModule;
   private battleHandRendererReady = false;
   private battleHandRendererModule?: BattleHandRendererModule;
+  private battleSupplyDrawerModule?: RouteSupplyDrawerModule;
+  private battleSupplyDrawerLoading = false;
+  private battleSupplyDrawerFailed = false;
+  private discardChoiceModule?: DiscardChoiceModule;
+  private discardChoiceModuleReady = false;
+  private returnChoiceModule?: ReturnChoiceModule;
+  private returnChoiceModuleReady = false;
   private battleRewardRendererModule?: BattleRewardRendererModule;
   private battleRewardRendererLoading = false;
   private battleRewardRendererFailed = false;
@@ -15033,6 +14528,8 @@ class BattleScene extends Phaser.Scene {
       'battle-foreground-renderer',
       'battle-hud-renderer',
       'battle-hand-renderer',
+      'battle-discard-choice',
+      'battle-return-choice',
       ...this.battleFullArtGroups,
     ]);
     this.battleFullArtTrackingStarted = false;
@@ -15055,6 +14552,8 @@ class BattleScene extends Phaser.Scene {
     this.clearedPile = [];
     this.hand = [];
     this.selectedInstanceId = undefined;
+    this.discardChoice = undefined;
+    this.returnChoice = undefined;
     this.selectedEnemyId = this.enemies[0]?.id ?? '';
     this.energy = 3;
     this.nextTurnEnergyBonus = 0;
@@ -15062,6 +14561,7 @@ class BattleScene extends Phaser.Scene {
     this.pendingNestCoverBonus = 0;
     this.pendingRetainHand = 0;
     this.roostRetainPool = [];
+    this.roostRetainPriorityInstanceId = undefined;
     this.pendingSupplyRepeats = 0;
     this.spark = 0;
     this.turn = 1;
@@ -15091,6 +14591,7 @@ class BattleScene extends Phaser.Scene {
     this.combatRouteMarkAwarded = undefined;
     this.combatRouteMarkResolved = false;
     this.waymarkChoices = [];
+    this.waymarkRewardBuildObservations = {};
     this.inspectOverlay = undefined;
     this.inspectedCardId = undefined;
     this.pauseOverlayOpen = false;
@@ -15099,6 +14600,9 @@ class BattleScene extends Phaser.Scene {
     this.systemOverlayRefreshQueued = false;
     this.waymarkDrawerOpen = false;
     this.supplyDrawerOpen = false;
+    this.supplyDrawerFocusIndex = 0;
+    this.supplyDrawerArmedIndex = undefined;
+    this.supplyDrawerInputActive = false;
     this.waymarkDrawerScroll = 0;
     this.cardReviewScroll = 0;
     this.rewardChoices = [];
@@ -15148,6 +14652,12 @@ class BattleScene extends Phaser.Scene {
     this.handCardFlowIndicators = new Map();
     this.enemyTurnBeatUi = undefined;
     this.combatAnimationPending = false;
+    this.battleSupplyDrawerLoading = false;
+    this.battleSupplyDrawerFailed = false;
+    this.discardChoiceModule = undefined;
+    this.discardChoiceModuleReady = false;
+    this.returnChoiceModule = undefined;
+    this.returnChoiceModuleReady = false;
     this.playerCardFxBaseline = undefined;
     this.playerCardFxLastRetired = 0;
     this.combatEnemyTurnBeat = 'idle';
@@ -15626,11 +15136,43 @@ class BattleScene extends Phaser.Scene {
     this.applyMarkTrigger('combatStart');
   }
 
+  private roostRestraintMarkMatches(mark: RuntimeRouteMark, cardsHeld: number, wingbeat: number, cardsPlayed: number) {
+    return roostRetainTriggerMatches(mark.trigger, cardsHeld, wingbeat, cardsPlayed, OVEREXTENSION_CARD_THRESHOLD);
+  }
+
+  private projectedRoostRetainCount() {
+    const triggered = this.ownedMarkDefs()
+      .filter((mark) => !this.markFiredThisCombat.has(mark.id))
+      .filter((mark) => this.roostRestraintMarkMatches(mark, this.hand.length, this.energy, this.cardsPlayedThisTurn))
+      .reduce((total, mark) => total + routeMarkEffects(mark).reduce((sum, effect) => {
+        const parsed = parseEffect(effect);
+        return sum + (parsed?.name === 'retainHand' ? Number(parsed.args[0]) || 0 : 0);
+      }, 0), 0);
+    return Math.min(this.hand.length, Math.max(0, this.pendingRetainHand + triggered));
+  }
+
+  private retentionPlan() {
+    const count = this.projectedRoostRetainCount();
+    const cards = retainPriorityItems(this.hand, count, this.selectedInstanceId);
+    return {
+      count,
+      cards,
+      selectedPriority: cards.some((card) => card.instanceId === this.selectedInstanceId)
+        ? this.selectedInstanceId
+        : undefined,
+    };
+  }
+
   private retainCards(amount: number, source: string): RetainSource {
     if (this.roostRetainPool.length) {
-      const retained = this.roostRetainPool.splice(Math.max(0, this.roostRetainPool.length - amount), amount);
+      const retained = retainedInOriginalOrder(
+        this.roostRetainPool,
+        amount,
+        this.roostRetainPriorityInstanceId,
+      );
       if (retained.length) {
         const retainedIds = new Set(retained.map((card) => card.instanceId));
+        this.roostRetainPool = this.roostRetainPool.filter((card) => !retainedIds.has(card.instanceId));
         this.discardPile = this.discardPile.filter((card) => !retainedIds.has(card.instanceId));
         this.hand.push(...retained);
         this.logEvent(`${source} retains ${retained.length} card${retained.length === 1 ? '' : 's'} for next turn.`);
@@ -15669,16 +15211,7 @@ class BattleScene extends Phaser.Scene {
 
   private checkRoostRestraintMarks(cardsHeldAtRoost: number, wingbeatAtRoost: number, cardsPlayedAtRoost: number) {
     for (const mark of this.ownedMarkDefs()) {
-      const lowCard = /^onLowCardTurn\((\d+)\)$/.exec(mark.trigger);
-      if (mark.trigger === 'onRoostWithWingbeat' && wingbeatAtRoost > 0) {
-        this.fireOncePerCombatMark(mark);
-      } else if (mark.trigger === 'onRoostWithCardsInHand' && cardsHeldAtRoost > 0) {
-        this.fireOncePerCombatMark(mark);
-      } else if (mark.trigger === 'onTurnEndNoOverextension' && cardsPlayedAtRoost > 0 && cardsPlayedAtRoost < OVEREXTENSION_CARD_THRESHOLD) {
-        this.fireOncePerCombatMark(mark);
-      } else if (lowCard && cardsPlayedAtRoost > 0 && cardsPlayedAtRoost <= Number(lowCard[1])) {
-        this.fireOncePerCombatMark(mark);
-      }
+      if (this.roostRestraintMarkMatches(mark, cardsHeldAtRoost, wingbeatAtRoost, cardsPlayedAtRoost)) this.fireOncePerCombatMark(mark);
     }
   }
 
@@ -15929,6 +15462,42 @@ class BattleScene extends Phaser.Scene {
         this.battleHandRendererReady = true;
         this.finishCombatCreate();
       });
+    void withRuntimeLoadTimeout(loadDiscardChoiceModule(), 'Discard choice rules')
+      .then((module) => {
+        if (!this.sys.settings.active) return;
+        this.discardChoiceModule = module;
+        this.battleAssetReadiness.settle('battle-discard-choice');
+        this.discardChoiceModuleReady = true;
+        this.finishCombatCreate();
+      })
+      .catch((error) => {
+        console.warn(LAZY_LOAD_FAILED, error);
+        if (!this.sys.settings.active) return;
+        this.battleAssetReadiness.settle('battle-discard-choice', failedModuleLoadResult(
+          'discard choice module',
+          error instanceof RuntimeLoadTimeoutError,
+        ));
+        this.discardChoiceModuleReady = true;
+        this.finishCombatCreate();
+      });
+    void withRuntimeLoadTimeout(loadReturnChoiceModule(), 'Discard return choice rules')
+      .then((module) => {
+        if (!this.sys.settings.active) return;
+        this.returnChoiceModule = module;
+        this.battleAssetReadiness.settle('battle-return-choice');
+        this.returnChoiceModuleReady = true;
+        this.finishCombatCreate();
+      })
+      .catch((error) => {
+        console.warn(LAZY_LOAD_FAILED, error);
+        if (!this.sys.settings.active) return;
+        this.battleAssetReadiness.settle('battle-return-choice', failedModuleLoadResult(
+          'discard return choice module',
+          error instanceof RuntimeLoadTimeoutError,
+        ));
+        this.returnChoiceModuleReady = true;
+        this.finishCombatCreate();
+      });
     void loadCombatPreviewModule()
       .then((module) => {
         if (!this.sys.settings.active) return;
@@ -15957,16 +15526,32 @@ class BattleScene extends Phaser.Scene {
           return;
         }
         if (this.settingsOverlayOpen || this.pauseOverlayOpen) return;
-        if (this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
+        if (this.supplyDrawerOpen) {
+          this.requestBattleSupplyUse(this.supplyDrawerFocusIndex);
+          return;
+        }
+        if (this.inspectOverlay || this.waymarkDrawerOpen) return;
         if (this.mode === 'cardReward' && this.rewardSkipArmed) return;
+        if (this.returnChoice) {
+          this.chooseReturnCard();
+          return;
+        }
         this.activateCombatChoice(this.controllerChoiceIndex);
       },
       previous: () => {
         if (this.rewardInspectionCardId) return;
+        if (this.supplyDrawerOpen) {
+          this.moveBattleSupplyFocus(-1);
+          return;
+        }
         if (!this.cycleBattleInspectMode(-1)) this.cycleControllerChoice(-1);
       },
       next: () => {
         if (this.rewardInspectionCardId) return;
+        if (this.supplyDrawerOpen) {
+          this.moveBattleSupplyFocus(1);
+          return;
+        }
         if (!this.cycleBattleInspectMode(1)) this.cycleControllerChoice(1);
       },
       roost: () => {
@@ -15980,11 +15565,13 @@ class BattleScene extends Phaser.Scene {
           return;
         }
         if (this.mode === 'battle' && !this.settingsOverlayOpen && !this.pauseOverlayOpen && !this.inspectOverlay && !this.waymarkDrawerOpen && !this.supplyDrawerOpen) {
-          this.endTurnAnimated();
+          if (this.discardChoice) this.confirmDiscardChoice();
+          else if (this.returnChoice) this.chooseReturnCard();
+          else this.endTurnAnimated();
         }
       },
       skipReward: () => {
-        if (this.mode === 'cardReward' && this.rewardPresentationReady() && !this.settingsOverlayOpen && !this.pauseOverlayOpen) this.requestSkipCardReward();
+        this.handleBattleSkipOrRunKit();
       },
       fullscreen: () => this.scale.toggleFullscreen(),
       mute: () => {
@@ -16009,14 +15596,26 @@ class BattleScene extends Phaser.Scene {
       if (controlActionForCode(event.code)) return;
       event.preventDefault?.();
       const direction = event.shiftKey ? -1 : 1;
+      if (this.supplyDrawerOpen) {
+        this.moveBattleSupplyFocus(direction);
+        return;
+      }
       if (!this.moveCardReviewFocus(direction)) this.cycleControllerChoice(direction);
     };
     const onUp = () => {
       if (controlActionForCode('ArrowUp')) return;
+      if (this.supplyDrawerOpen) {
+        this.moveBattleSupplyFocus(-1);
+        return;
+      }
       if (!this.moveCardReviewFocus(-1)) this.cycleLivingEnemy(-1, true);
     };
     const onDown = () => {
       if (controlActionForCode('ArrowDown')) return;
+      if (this.supplyDrawerOpen) {
+        this.moveBattleSupplyFocus(1);
+        return;
+      }
       if (!this.moveCardReviewFocus(1)) this.cycleLivingEnemy(1, true);
     };
     const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: { index?: number }) => {
@@ -16025,13 +15624,14 @@ class BattleScene extends Phaser.Scene {
           if (!this.requestBattleIntroDismiss()) {
             if (this.rewardInspectionCardId) this.closeRewardCardInspection();
             else if (this.outcomeDetailsOpen) this.closeOutcomeFlightDetails();
+            else if (this.supplyDrawerOpen) this.requestBattleSupplyUse(this.supplyDrawerFocusIndex);
             else if (this.mode === 'cardReward' && this.rewardSkipArmed) return;
             else this.activateCombatChoice(this.controllerChoiceIndex);
           }
           break; // A
         case 1: this.handleBattleBack(); break; // B
         case 2: // X
-          if (this.mode === 'cardReward' && this.rewardPresentationReady() && !this.settingsOverlayOpen && !this.pauseOverlayOpen) this.requestSkipCardReward();
+          this.handleBattleSkipOrRunKit();
           break;
         case 3: // Y
           if (
@@ -16040,7 +15640,9 @@ class BattleScene extends Phaser.Scene {
             && !this.settingsOverlayOpen
             && !this.pauseOverlayOpen
           ) this.toggleFocusedRewardCardInspection();
-          else if (this.mode === 'battle' && !this.combatInteractionLocked()) this.endTurnAnimated();
+            else if (this.mode === 'battle' && this.discardChoice) this.confirmDiscardChoice();
+            else if (this.mode === 'battle' && this.returnChoice) this.chooseReturnCard();
+            else if (this.mode === 'battle' && !this.combatInteractionLocked()) this.endTurnAnimated();
           break;
         case 4:
           if (!this.moveCardReviewFocus(-1, true)) this.cycleLivingEnemy(-1, true);
@@ -16050,16 +15652,20 @@ class BattleScene extends Phaser.Scene {
           break; // R1
         case 9: this.togglePauseOverlay(); break; // Start
         case 12:
-          if (!this.moveCardReviewFocus(-1)) this.cycleLivingEnemy(-1, true);
+          if (this.supplyDrawerOpen) this.moveBattleSupplyFocus(-1);
+          else if (!this.moveCardReviewFocus(-1)) this.cycleLivingEnemy(-1, true);
           break; // D-pad up
         case 13:
-          if (!this.moveCardReviewFocus(1)) this.cycleLivingEnemy(1, true);
+          if (this.supplyDrawerOpen) this.moveBattleSupplyFocus(1);
+          else if (!this.moveCardReviewFocus(1)) this.cycleLivingEnemy(1, true);
           break; // D-pad down
         case 14:
-          if (!this.cycleBattleInspectMode(-1)) this.cycleControllerChoice(-1);
+          if (this.supplyDrawerOpen) this.moveBattleSupplyFocus(-1);
+          else if (!this.cycleBattleInspectMode(-1)) this.cycleControllerChoice(-1);
           break; // D-pad left
         case 15:
-          if (!this.cycleBattleInspectMode(1)) this.cycleControllerChoice(1);
+          if (this.supplyDrawerOpen) this.moveBattleSupplyFocus(1);
+          else if (!this.cycleBattleInspectMode(1)) this.cycleControllerChoice(1);
           break; // D-pad right
       }
     };
@@ -16093,6 +15699,23 @@ class BattleScene extends Phaser.Scene {
 
   private cycleControllerChoice(direction: -1 | 1) {
     if (this.rewardInspectionCardId || this.outcomeDetailsOpen || this.settingsOverlayOpen || this.pauseOverlayOpen || this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
+    if (this.mode === 'battle' && this.returnChoice) {
+      this.returnChoiceModule?.moveReturnChoice(this, direction);
+      return;
+    }
+    if (this.mode === 'battle' && this.discardChoice) {
+      const candidates = this.discardChoiceModule?.candidateHandIndices(
+        this.discardChoice.candidateIds,
+        this.hand.map((card) => card.instanceId),
+      ) ?? [];
+      if (candidates.length === 0) return;
+      const current = candidates.indexOf(this.controllerChoiceIndex);
+      this.controllerChoiceIndex = candidates[(current < 0 ? 0 : current + direction + candidates.length) % candidates.length];
+      this.battleInputActive = true;
+      playUiSound('confirm');
+      this.requestBattleRender();
+      return;
+    }
     const count = this.combatChoiceCount();
     if (count <= 0) return;
     const enteringCardsFromSkip = this.mode === 'cardReward' && this.rewardSkipArmed && !this.battleInputActive;
@@ -16112,6 +15735,7 @@ class BattleScene extends Phaser.Scene {
 
   private combatChoiceCount() {
     if (this.outcomeDetailsOpen) return 1;
+    if (this.mode === 'battle' && this.returnChoice) return this.returnChoice.candidateIds.length;
     if (this.mode === 'battle') return this.hand.length;
     if (this.mode === 'waymarkReward') return this.waymarkChoices.length;
     if (this.mode === 'cardReward') return this.rewardChoices.length;
@@ -16135,7 +15759,10 @@ class BattleScene extends Phaser.Scene {
   private combatInputFocusState(): NonNullable<RenderPayload['combatInputFocus']> {
     const index = this.normalizeCombatChoiceIndex();
     const count = this.combatChoiceCount();
-    const card = this.mode === 'battle' ? this.hand[index] : undefined;
+    const returnCard = this.mode === 'battle' && this.returnChoice
+      ? this.discardPile.find((candidate) => candidate.instanceId === this.returnChoice!.candidateIds[index])
+      : undefined;
+    const card = this.mode === 'battle' && !this.returnChoice ? this.hand[index] : undefined;
     const reward = this.mode === 'cardReward' ? this.rewardChoices[index] : undefined;
     const upgrade = this.mode === 'upgradeReward' ? this.upgradeChoices[index] : undefined;
     const waymark = this.mode === 'waymarkReward' ? this.waymarkChoices[index] : undefined;
@@ -16146,7 +15773,7 @@ class BattleScene extends Phaser.Scene {
       : undefined;
     const enemy = this.enemies.find((candidate) => candidate.id === this.selectedEnemyId && candidate.hp > 0);
     const kind: CombatInputChoiceKind | undefined = this.mode === 'battle'
-      ? 'card'
+      ? this.returnChoice ? 'returnChoice' : 'card'
       : this.mode === 'cardReward' || this.mode === 'upgradeReward' || this.mode === 'waymarkReward'
         ? this.mode
         : isRunOutcome(this.mode)
@@ -16157,11 +15784,13 @@ class BattleScene extends Phaser.Scene {
       kind,
       index: count > 0 ? index : undefined,
       count,
-      label: card ? displayName(card) : reward ? displayName(reward) : upgrade ? displayName(upgrade) : waymark?.name ?? outcome?.label,
-      target: this.mode === 'battle' ? enemy?.name : undefined,
+      label: returnCard ? displayName(returnCard) : card ? displayName(card) : reward ? displayName(reward) : upgrade ? displayName(upgrade) : waymark?.name ?? outcome?.label,
+      target: this.mode === 'battle' && !this.returnChoice ? enemy?.name : undefined,
       visibleFocus: this.battleInputActive && (
         this.mode === 'battle'
-          ? Boolean(this.selectedInstanceId && this.hand.some((candidate) => candidate.instanceId === this.selectedInstanceId))
+          ? this.returnChoice
+            ? this.root?.list.some((child) => child.name === 'combat-return-choice-row' && child.getData('focused') === true) ?? false
+            : Boolean(this.selectedInstanceId && this.hand.some((candidate) => candidate.instanceId === this.selectedInstanceId))
           : isRunOutcome(this.mode)
             ? this.root?.list.some((child) => child.name === (
               this.outcomeDetailsOpen
@@ -16202,6 +15831,14 @@ class BattleScene extends Phaser.Scene {
       actions[normalized]?.activate();
       return;
     }
+    if (this.mode === 'battle' && this.returnChoice) {
+      const normalized = Phaser.Math.Clamp(Math.round(index), 0, Math.max(0, this.returnChoice.candidateIds.length - 1));
+      this.returnChoice.focusIndex = normalized;
+      this.controllerChoiceIndex = normalized;
+      this.battleInputActive = true;
+      this.chooseReturnCard(this.returnChoice.candidateIds[normalized]);
+      return;
+    }
     if ((this.mode === 'waymarkReward' || this.mode === 'cardReward' || this.mode === 'upgradeReward') && !this.rewardPresentationReady()) return;
     this.battleInputActive = true;
     this.controllerChoiceIndex = Math.max(0, index);
@@ -16225,7 +15862,7 @@ class BattleScene extends Phaser.Scene {
 
   private finishCombatCreate() {
     if (!this.sys.settings.active || !this.root?.active) return;
-    if (!this.battleEssentialUiReady || !this.battleCoreUiReady || !this.combatFxReady || !this.battleFxPresenterReady || !this.battleDebugStateReady || !this.battleBackdropRendererReady || !this.battleForegroundRendererReady || !this.battleHudRendererReady || !this.battleHandRendererReady) return;
+    if (!this.battleEssentialUiReady || !this.battleCoreUiReady || !this.combatFxReady || !this.battleFxPresenterReady || !this.battleDebugStateReady || !this.battleBackdropRendererReady || !this.battleForegroundRendererReady || !this.battleHudRendererReady || !this.battleHandRendererReady || !this.discardChoiceModuleReady || !this.returnChoiceModuleReady) return;
     if (this.fxLayer?.active) return;
     this.fxLayer = this.add.container(0, 0);
     this.ensureFxTextures();
@@ -20452,6 +20089,26 @@ class BattleScene extends Phaser.Scene {
       this.setBattlePaused(false);
       return;
     }
+    if (this.returnChoice) {
+      playUiSound('locked');
+      announceScreenReader('Choose one card from discard to return before continuing.');
+      return;
+    }
+    if (this.discardChoice) {
+      if (this.discardChoice.optional) this.confirmDiscardChoice(true);
+      else {
+        playUiSound('locked');
+        announceScreenReader(`Choose ${this.discardChoice.max} card${this.discardChoice.max === 1 ? '' : 's'} to discard before continuing.`);
+      }
+      return;
+    }
+    if (this.supplyDrawerArmedIndex !== undefined) {
+      this.supplyDrawerArmedIndex = undefined;
+      playUiSound('close');
+      announceScreenReader('Supply use cancelled; the item remains packed.');
+      this.requestBattleRender();
+      return;
+    }
     const hadDismissibleState = Boolean(
       this.selectedInstanceId
       || this.inspectOverlay
@@ -20466,6 +20123,8 @@ class BattleScene extends Phaser.Scene {
     this.inspectedCardId = undefined;
     this.waymarkDrawerOpen = false;
     this.supplyDrawerOpen = false;
+    this.supplyDrawerArmedIndex = undefined;
+    this.supplyDrawerInputActive = false;
     playUiSound('close');
     this.requestBattleRender();
   }
@@ -20528,6 +20187,10 @@ class BattleScene extends Phaser.Scene {
         },
         onSetSfxVolume: (value) => {
           birdAudio.setSfxVolume(value);
+          this.queueBattleSystemOverlayRender();
+        },
+        onSetVoiceVolume: (value) => {
+          birdAudio.setVoiceVolume(value);
           this.queueBattleSystemOverlayRender();
         },
         onSetAmbienceVolume: (value) => {
@@ -20666,15 +20329,7 @@ class BattleScene extends Phaser.Scene {
       },
       onSupplies: () => {
         if (this.combatAnimationPending) return;
-        const nextOpen = !this.supplyDrawerOpen;
-        this.supplyDrawerOpen = nextOpen;
-        this.inspectOverlay = undefined;
-        this.waymarkDrawerOpen = false;
-        if (nextOpen) {
-          this.queueCurrentSupplyArtLoad();
-          this.queueBattleDrawerUiLoad();
-        }
-        this.requestBattleRender();
+        this.toggleBattleSupplyDrawer(false);
       },
       onDeck: () => {
         if (this.combatAnimationPending) return;
@@ -20850,7 +20505,7 @@ class BattleScene extends Phaser.Scene {
   // Compact combat controls live near the piles; permanent text stays out of
   // the playfield so the hand and enemy stage carry the player's attention.
   private battleHudGuidanceView() {
-    if (this.combatAnimationPending || this.mode !== 'battle') return undefined;
+    if (this.combatAnimationPending || this.discardChoice || this.returnChoice || this.mode !== 'battle') return undefined;
     const moltCard = this.firstMoltGuideCard();
     if (moltCard) {
       markFirstMoltGuideSeen();
@@ -20878,11 +20533,57 @@ class BattleScene extends Phaser.Scene {
   }
 
   private renderCombatInputHint() {
+    if (this.returnChoice && !this.settingsOverlayOpen && !this.pauseOverlayOpen) {
+      const cards = this.returnChoice.candidateIds.flatMap((instanceId) => {
+        const card = this.discardPile.find((candidate) => candidate.instanceId === instanceId);
+        if (!card) return [];
+        const contract = this.activeCardContract(card);
+        return [{
+          instanceId: card.instanceId,
+          id: card.id,
+          name: displayName(card),
+          cost: this.effectiveCost(card),
+          role: contract.role,
+          summary: compactSentenceText(compactCardEffectSummary(contract.effects), 76, 2),
+        }];
+      });
+      this.returnChoiceModule?.renderReturnChoiceOverlay({
+        scene: this,
+        target: this.root,
+        gameWidth: GAME_WIDTH,
+        gameHeight: GAME_HEIGHT,
+        fontFamily: UI_FONT,
+        boldFontStyle: UI_BOLD,
+        gold: UI_FIELD.gold,
+        cyan: UI_FIELD.cyan,
+        choice: this.returnChoice,
+        cards,
+        onFocus: (instanceId) => this.focusReturnChoice(instanceId),
+        onChoose: (instanceId) => this.chooseReturnCard(instanceId),
+      });
+      return;
+    }
+    if (this.discardChoice && !this.settingsOverlayOpen && !this.pauseOverlayOpen) {
+      this.discardChoiceModule?.renderDiscardChoiceRail({
+        scene: this,
+        target: this.root,
+        gameWidth: GAME_WIDTH,
+        fontFamily: UI_FONT,
+        boldFontStyle: UI_BOLD,
+        gold: UI_FIELD.gold,
+        danger: UI_FIELD.danger,
+        choice: this.discardChoice,
+        onConfirm: () => this.confirmDiscardChoice(),
+      });
+      return;
+    }
     const rewardMode = this.mode === 'cardReward' || this.mode === 'upgradeReward' || this.mode === 'waymarkReward';
+    const retention = this.mode === 'battle' ? this.retentionPlan() : undefined;
+    const retentionActive = Boolean(retention?.count);
     const skipCommitmentActive = this.mode === 'cardReward' && this.rewardSkipArmed;
     if ((!this.battleInputActive && !skipCommitmentActive) || this.settingsOverlayOpen || this.pauseOverlayOpen || this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
     if (this.mode !== 'battle' && !rewardMode) return;
-    if (!rewardMode && !this.isGuidedFirstCombat() && (this.cardsPlayedThisTurn > 0 || Boolean(this.selectedInstanceId))) return;
+    if (!rewardMode && !retentionActive && !this.isGuidedFirstCombat() && (this.cardsPlayedThisTurn > 0 || Boolean(this.selectedInstanceId))) return;
     const y = rewardMode ? 213 : 448;
     const skipBinding = controlBindingLabel('skipReward');
     const skipControls = skipBinding.toUpperCase() === 'X' ? skipBinding : `${skipBinding} / X`;
@@ -20898,10 +20599,12 @@ class BattleScene extends Phaser.Scene {
         : armedChoiceReward
         ? `CONFIRM PICK   |   ${controlBindingLabel('confirm')} / A / TAP AGAIN   |   ${controlBindingLabel('back')} / B  CANCEL${this.mode === 'cardReward' || this.mode === 'upgradeReward' ? `   |   ${controlBindingLabel('roost')} / Y  INSPECT` : ''}${this.mode === 'cardReward' ? `   |   ${skipControls}  SKIP INSTEAD` : ''}`
         : `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} / D-PAD  CHOOSE   |   ${controlBindingLabel('confirm')} / A  SELECT${this.mode === 'cardReward' || this.mode === 'upgradeReward' ? `   |   ${controlBindingLabel('roost')} / Y  INSPECT` : ''}${this.mode === 'cardReward' ? `   |   ${skipControls}  SKIP` : ''}`
-      : `${controlBindingLabel('previous')} / ${controlBindingLabel('next')}  CARD   |   UP / DOWN  TARGET   |   ${controlBindingLabel('confirm')}  PLAY   |   ${controlBindingLabel('roost')}  ROOST`;
+      : retentionActive
+        ? retainInputHint(retention?.count ?? 0, retention?.cards.map((card) => displayName(card)) ?? [], controlBindingLabel('roost'))
+        : `${controlBindingLabel('previous')} / ${controlBindingLabel('next')}  CARD   |   UP / DOWN  TARGET   |   ${controlBindingLabel('confirm')}  PLAY   |   ${controlBindingLabel('roost')}  ROOST`;
     const width = rewardMode
       ? this.mode === 'cardReward' ? 820 : this.mode === 'upgradeReward' ? 690 : 500
-      : 680;
+      : retentionActive ? 900 : 680;
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, y, width, rewardMode ? 24 : 28, 0x020711, rewardMode ? 0.9 : 0.82)
       .setStrokeStyle(1, armedReward ? UI_FIELD.gold : UI_FIELD.cyan, armedReward ? 0.92 : rewardMode ? 0.62 : 0.52)
       .setName('combat-input-hint'));
@@ -21047,6 +20750,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private renderSelectedCardOutcomePreview() {
+    if (this.discardChoice) return;
     const preview = this.selectedCardOutcomePreview();
     if (!preview || this.combatAnimationPending || this.mode !== 'battle') return;
     const targetHp = preview.result.targetHp;
@@ -21388,6 +21092,10 @@ class BattleScene extends Phaser.Scene {
     const buildsFlow = this.cardBuildsFlow(card);
     const surgeNext = this.flock.flow === this.flock.flowMax - 1;
     const guideCard = this.firstCombatGuideCard()?.instanceId === card.instanceId;
+    const retention = this.discardChoice ? { count: 0, cards: [] as Card[], selectedPriority: undefined } : this.retentionPlan();
+    const retainIndex = retention.cards.findIndex((candidate) => candidate.instanceId === card.instanceId);
+    const discardSelectable = this.discardChoice?.candidateIds.includes(card.instanceId);
+    const discardOrder = this.discardChoice?.selectedIds.indexOf(card.instanceId) ?? -1;
     const statLabels: Record<string, string> = {
       cohesion: 'Cohesion', damage: 'Damage', cover: 'Cover', draw: 'Hand', resonance: 'Res/turn', regen: 'Regen', moltPower: 'Molt', openSkyGuard: 'Sky Guard',
     };
@@ -21408,6 +21116,12 @@ class BattleScene extends Phaser.Scene {
         && this.flock.flow < this.flock.flowMax
         && (selected || (surgeNext && (!this.isGuidedFirstCombat() || guideCard))),
       surgeNext,
+      retainOrder: retainIndex >= 0 ? retainIndex + 1 : undefined,
+      retainSelectable: retention.count > 0,
+      discardSelectable: this.discardChoice ? discardSelectable : undefined,
+      discardSelected: discardOrder >= 0,
+      discardFocused: Boolean(this.discardChoice && this.controllerChoiceIndex === this.hand.indexOf(card)),
+      discardOrder: discardOrder >= 0 ? discardOrder + 1 : undefined,
       artKey: compactCardArtKey(card),
       snag: isSnagCard(card),
       fallbackLabel: cardLabel(card),
@@ -21461,21 +21175,38 @@ class BattleScene extends Phaser.Scene {
         if (card) this.showCardPreview(card);
       },
       onCardOut: () => this.hideCardPreview(),
+      renderDiscardTag: (target: Phaser.GameObjects.Container, card: BattleHandCardView, x: number, y: number) => {
+        this.discardChoiceModule?.renderDiscardChoiceTag({
+          scene: this,
+          target,
+          x,
+          y,
+          selected: Boolean(card.discardSelected),
+          order: card.discardOrder,
+          fontFamily: UI_FONT,
+          boldFontStyle: UI_BOLD,
+        });
+      },
     };
   }
 
   private renderHandFallback() {
     const count = this.hand.length;
+    const retention = this.discardChoice ? { count: 0, cards: [] as Card[] } : this.retentionPlan();
     this.hand.forEach((card, index) => {
       const left = this.handCardLeft(index, count);
       const centerX = left + CARD_W / 2;
       const selected = this.selectedInstanceId === card.instanceId;
       const guideMolt = this.firstMoltGuideCard()?.instanceId === card.instanceId;
       const canPay = this.effectiveCost(card) <= this.energy;
+      const retainIndex = retention.cards.findIndex((candidate) => candidate.instanceId === card.instanceId);
+      const discardSelectable = this.discardChoice?.candidateIds.includes(card.instanceId);
+      const discardOrder = this.discardChoice?.selectedIds.indexOf(card.instanceId) ?? -1;
+      const discardFocused = Boolean(this.discardChoice && this.controllerChoiceIndex === index);
       const accent = card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
       const hit = this.add.rectangle(centerX, HAND_Y, CARD_W, CARD_H, 0x0b1420, 0.98)
-        .setStrokeStyle(selected ? 4 : guideMolt ? 4 : 2, selected ? 0x24d0d6 : guideMolt ? 0xff9d4d : accent, 0.96)
-        .setInteractive({ useHandCursor: canPay });
+        .setStrokeStyle(discardOrder >= 0 ? 5 : discardFocused ? 4 : selected ? 4 : guideMolt ? 4 : 2, discardOrder >= 0 ? UI_FIELD.danger : discardFocused ? UI_FIELD.gold : selected ? 0x24d0d6 : guideMolt ? 0xff9d4d : accent, 0.96)
+        .setInteractive({ useHandCursor: discardSelectable ?? (canPay || retention.count > 0) });
       hit.on('pointerdown', () => this.onCardClicked(card.instanceId));
       hit.on('pointerover', () => this.showCardPreviewFallback(card, centerX));
       hit.on('pointerout', () => this.hideCardPreview());
@@ -21493,6 +21224,28 @@ class BattleScene extends Phaser.Scene {
         fontFamily: UI_FONT, fontSize: '11px', color: canPay ? UI_BODY : UI_MUTED,
         fixedWidth: CARD_W - 18, align: 'center', maxLines: 3, wordWrap: { width: CARD_W - 18 },
       }).setOrigin(0.5));
+      if (retainIndex >= 0) {
+        const keepY = HAND_Y - CARD_H / 2 + (guideMolt || this.firstCombatGuideCard()?.instanceId === card.instanceId ? 70 : 46);
+        this.handLayer.add(this.add.rectangle(left + CARD_W - 42, keepY, 72, 20, 0x08241f, 0.96)
+          .setStrokeStyle(1, 0x8fd6a0, 0.96)
+          .setName('combat-retain-priority-tag')
+          .setData('order', retainIndex + 1));
+        this.handLayer.add(this.add.text(left + CARD_W - 42, keepY, `KEEP ${retainIndex + 1}`, {
+          fontFamily: UI_FONT, fontSize: '9px', fontStyle: UI_BOLD, color: '#dfffe8', align: 'center',
+        }).setOrigin(0.5).setName('combat-retain-priority-tag').setData('order', retainIndex + 1));
+      }
+      if (discardSelectable) {
+        this.discardChoiceModule?.renderDiscardChoiceTag({
+          scene: this,
+          target: this.handLayer,
+          x: left + CARD_W - 42,
+          y: HAND_Y - CARD_H / 2 + 48,
+          selected: discardOrder >= 0,
+          order: discardOrder >= 0 ? discardOrder + 1 : undefined,
+          fontFamily: UI_FONT,
+          boldFontStyle: UI_BOLD,
+        });
+      }
       if (colorCueState().reinforced) {
         this.handLayer.add(this.add.text(left + 4, HAND_Y - CARD_H / 2 + 57, fallbackCardColorCue(card), {
           fontFamily: UI_FONT,
@@ -21521,6 +21274,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private currentHandRenderKey() {
+    const retention = this.retentionPlan();
     const cards = this.hand.map((card) => {
       const contract = this.activeCardContract(card);
       return [
@@ -21534,7 +21288,10 @@ class BattleScene extends Phaser.Scene {
         contract.effects.join(';'),
       ].join(':');
     }).join('|');
-    return `${colorCueState().preference}:${this.mode}:${this.energy}:${this.flock.molt ? 1 : 0}:${this.selectedInstanceId ?? ''}:${this.firstCombatGuideCard()?.instanceId ?? ''}:${this.firstMoltGuideCard()?.instanceId ?? ''}:${cards}`;
+    const discardKey = this.discardChoice
+      ? `${this.discardChoice.source}:${this.discardChoice.max}:${this.discardChoice.optional ? 1 : 0}:${this.discardChoice.candidateIds.join(',')}:${this.discardChoice.selectedIds.join(',')}:${this.controllerChoiceIndex}`
+      : '';
+    return `${colorCueState().preference}:${this.mode}:${this.energy}:${this.flock.molt ? 1 : 0}:${this.selectedInstanceId ?? ''}:${this.firstCombatGuideCard()?.instanceId ?? ''}:${this.firstMoltGuideCard()?.instanceId ?? ''}:${retention.count}:${retention.cards.map((card) => card.instanceId).join(',')}:${discardKey}:${cards}`;
   }
 
   private clearPersistentHand() {
@@ -21818,64 +21575,130 @@ class BattleScene extends Phaser.Scene {
   }
 
 
-  private renderSupplyDrawer() {
-    this.queueBattleDrawerUiLoad();
-    const capacity = this.runSupplyCapacity;
-    const supplies = Array.from({ length: capacity }, (_entry, index) => this.runSupplies[index]);
-    this.root.add(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.76)
-      .setInteractive({ useHandCursor: false }));
-    const frame = renderFieldPanel(this, (obj) => this.root.add(obj), HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy, HUD_MENU_PANEL.w, HUD_MENU_PANEL.h, {
-      eyebrow: 'Run Kit',
-      title: 'Packed Supplies',
-      subtitle: `${this.runSupplies.length}/${capacity} supply slot${capacity === 1 ? '' : 's'} filled`,
-      accent: 0xffb86b
+  private battleUsableSupplyIndices() {
+    return this.runSupplies.flatMap((id, index) => {
+      const supply = alphaSupplyLibrary.get(id);
+      return supply && supply.timing !== 'route' ? [index] : [];
     });
-    addRunKitDrawerFlourish(this, (obj) => this.root.add(obj), frame, { alpha: 0.1, tint: 0xffe1a3, yOffset: 8 });
-    addUiIconImage(this, 'supply-pouch', frame.left + HUD_MENU_PANEL.headerIconX, frame.top + HUD_MENU_PANEL.headerIconY, 28)?.setAlpha(0.92);
-    renderCloseControl(this, (obj) => this.root.add(obj), frame.right - HUD_MENU_PANEL.closeX, frame.top + HUD_MENU_PANEL.closeY, () => {
-      this.supplyDrawerOpen = false;
-      this.requestBattleRender();
-    });
+  }
 
-    if (capacity === 0) {
-      const icon = addUiIconImage(this, 'supply-pouch', frame.left + 88, frame.top + 160, 34);
-      if (icon) this.root.add(icon.setAlpha(0.32));
-      this.root.add(this.add.text(frame.left + 126, frame.top + 150, '0 slots', {
-        fontFamily: UI_FONT, fontSize: '14px', fontStyle: UI_BOLD, color: UI_MUTED, wordWrap: { width: frame.w - 108 }
-      }));
+  private ensureBattleSupplyDrawer() {
+    if (this.battleSupplyDrawerModule || this.battleSupplyDrawerLoading || this.battleSupplyDrawerFailed) return;
+    this.battleSupplyDrawerLoading = true;
+    void loadRouteSupplyDrawerModule()
+      .then((module) => {
+        if (!this.sys.settings.active) return;
+        this.battleSupplyDrawerModule = module;
+        this.battleSupplyDrawerLoading = false;
+        if (this.supplyDrawerOpen) this.requestBattleRender();
+      })
+      .catch((error) => {
+        this.battleSupplyDrawerLoading = false;
+        this.battleSupplyDrawerFailed = true;
+        console.warn(LAZY_LOAD_FAILED, error);
+        if (this.sys.settings.active && this.supplyDrawerOpen) this.requestBattleRender();
+      });
+  }
+
+  private toggleBattleSupplyDrawer(inputActive = false) {
+    if (this.supplyDrawerOpen) {
+      this.supplyDrawerOpen = false;
+      this.supplyDrawerArmedIndex = undefined;
+      this.supplyDrawerInputActive = false;
+      this.requestBattleRender();
       return;
     }
+    if (this.mode !== 'battle' || this.combatInteractionLocked() || this.inspectOverlay || this.waymarkDrawerOpen) return;
+    const usable = this.battleUsableSupplyIndices();
+    this.supplyDrawerOpen = true;
+    this.supplyDrawerFocusIndex = usable[0] ?? 0;
+    this.supplyDrawerArmedIndex = undefined;
+    this.supplyDrawerInputActive = inputActive;
+    this.inspectOverlay = undefined;
+    this.waymarkDrawerOpen = false;
+    this.queueCurrentSupplyArtLoad();
+    this.queueBattleDrawerUiLoad();
+    this.ensureBattleSupplyDrawer();
+    this.requestBattleRender();
+  }
 
-    const columns = 3;
-    const tileW = 252;
-    const tileH = 104;
-    const startX = frame.left + 64;
-    const startY = frame.top + 128;
-    supplies.forEach((supplyId, index) => {
-      const col = index % columns;
-      const row = Math.floor(index / columns);
-      const x = startX + col * 272;
-      const y = startY + row * 112;
-      const supply = supplyId ? alphaSupplyLibrary.get(supplyId) : undefined;
-      if (!supply) {
-        renderEmptySupplySlotTile(this, (obj) => this.root.add(obj), x, y, tileW, tileH);
-        return;
-      }
-      const usable = !this.combatInteractionLocked() && supply.timing !== 'route';
-      const bg = renderCompactItemTile(this, (obj) => this.root.add(obj), x, y, tileW, tileH, {
-        kind: 'supply',
-        id: supply.id,
-        glyph: this.supplyGlyph(supply),
-        accent: supplyAccent(supply),
-        name: supply.name,
-        summary: compactEffectGrammar(supply.effects, 72, 2),
-        enabled: usable,
-        actionLabel: usable ? 'USE' : 'ROUTE'
-      });
-      if (usable) {
-        bg.setInteractive({ useHandCursor: true });
-        bg.on('pointerdown', () => this.useSupply(index));
-      }
+  private focusBattleSupply(index: number) {
+    if (!this.battleUsableSupplyIndices().includes(index)) return;
+    if (this.supplyDrawerArmedIndex === undefined) this.supplyDrawerFocusIndex = index;
+  }
+
+  private moveBattleSupplyFocus(direction: -1 | 1) {
+    const usable = this.battleUsableSupplyIndices();
+    if (!usable.length) {
+      playUiSound('locked');
+      return;
+    }
+    const current = usable.indexOf(this.supplyDrawerFocusIndex);
+    this.supplyDrawerFocusIndex = usable[(current < 0 ? 0 : current + direction + usable.length) % usable.length];
+    this.supplyDrawerArmedIndex = undefined;
+    this.supplyDrawerInputActive = true;
+    playUiSound('confirm');
+    this.requestBattleRender();
+  }
+
+  private requestBattleSupplyUse(index: number) {
+    const id = this.runSupplies[index];
+    const supply = id ? alphaSupplyLibrary.get(id) : undefined;
+    if (!supply || supply.timing === 'route' || this.combatInteractionLocked()) {
+      playUiSound('locked');
+      return;
+    }
+    this.supplyDrawerFocusIndex = index;
+    this.supplyDrawerInputActive = true;
+    if (this.supplyDrawerArmedIndex !== index) {
+      this.supplyDrawerArmedIndex = index;
+      playUiSound('confirm');
+      announceScreenReader(`${supply.name} selected. Confirm again to use it, or Back to keep it packed.`);
+      this.requestBattleRender();
+      return;
+    }
+    this.supplyDrawerArmedIndex = undefined;
+    this.useSupply(index);
+  }
+
+  private renderSupplyDrawer() {
+    this.ensureBattleSupplyDrawer();
+    if (!this.battleSupplyDrawerModule) {
+      this.root.add(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.76)
+        .setInteractive({ useHandCursor: false }));
+      this.root.add(this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, this.battleSupplyDrawerFailed ? 'Supply drawer unavailable' : 'Opening Supply drawer...', {
+        fontFamily: UI_FONT,
+        fontSize: '20px',
+        fontStyle: UI_BOLD,
+        color: this.battleSupplyDrawerFailed ? '#ffb09a' : '#ffe1a3',
+      }).setOrigin(0.5));
+      return;
+    }
+    const capacity = this.runSupplyCapacity;
+    this.battleSupplyDrawerModule.renderRouteSupplyDrawer(this, {
+      entries: Array.from({ length: capacity }, (_entry, index) => {
+        const supply = alphaSupplyLibrary.get(this.runSupplies[index] ?? '');
+        if (!supply) return {};
+        return {
+          id: supply.id,
+          glyph: this.supplyGlyph(supply),
+          accent: supplyAccent(supply),
+          name: supply.name,
+          summary: compactEffectGrammar(supply.effects, 72, 2),
+          usable: !this.combatInteractionLocked() && supply.timing !== 'route',
+        };
+      }),
+      filled: this.runSupplies.length,
+      capacity,
+      focusIndex: this.supplyDrawerFocusIndex,
+      inputActive: this.supplyDrawerInputActive,
+      armedIndex: this.supplyDrawerArmedIndex,
+      confirmLabel: controlBindingLabel('confirm'),
+      backLabel: controlBindingLabel('back'),
+      addTo: (object) => this.root.add(object),
+      onClose: () => this.handleBattleBack(),
+      onFocus: (index) => this.focusBattleSupply(index),
+      onActivate: (index) => this.requestBattleSupplyUse(index),
     });
   }
 
@@ -21990,17 +21813,60 @@ class BattleScene extends Phaser.Scene {
     if (!supply || supply.timing === 'route') return;
     const repeats = this.pendingSupplyRepeats > 0 ? 1 + this.pendingSupplyRepeats : 1;
     this.pendingSupplyRepeats = 0;
-    for (let i = 0; i < repeats; i += 1) {
-    supply.effects.forEach((effect) => this.applySupplyEffect(effect, supply.name));
+    const effects = Array.from({ length: repeats }, () => supply.effects).flat();
+    // A consumed combat Supply commits back to the battlefield. Interactive
+    // card-zone choices must never remain hidden behind the kit drawer.
+    this.supplyDrawerOpen = false;
+    this.supplyDrawerArmedIndex = undefined;
+    this.supplyDrawerInputActive = false;
+    this.resolveSupplyEffectsInteractive(effects, supply.name, () => {
+      const liveIndex = this.runSupplies.indexOf(id);
+      if (liveIndex >= 0) this.runSupplies.splice(liveIndex, 1);
+      this.runSuppliesUsed.push(id);
+      this.showSupplyFeedback(supply, repeats);
+      birdAudio.play('supplyUse', Math.min(1.25, 0.86 + repeats * 0.08));
+      this.combatSupplyUseBurst(344, 232, repeats > 1 ? 0.76 : 0.64);
+      this.checkSupplyUsedMarks();
+      this.logEvent(`Used ${supply.name}.`);
+      this.requestBattleRender();
+    });
+  }
+
+  private resolveSupplyEffectsInteractive(effects: string[], source: string, onComplete: () => void) {
+    if (!this.discardChoiceModule) {
+      effects.forEach((effect) => this.applySupplyEffect(effect, source));
+      onComplete();
+      return;
     }
-    this.runSupplies.splice(index, 1);
-    this.runSuppliesUsed.push(id);
-    this.showSupplyFeedback(supply, repeats);
-    birdAudio.play('supplyUse', Math.min(1.25, 0.86 + repeats * 0.08));
-    this.combatSupplyUseBurst(344, 232, repeats > 1 ? 0.76 : 0.64);
-    this.checkSupplyUsedMarks();
-    this.logEvent(`Used ${supply.name}.`);
-    this.requestBattleRender();
+    this.discardChoiceModule.runInterruptibleSequence({
+      items: effects,
+      detect: (effect) => {
+        let active = effect;
+        const conditional = /^if (.+?) then (.+)$/.exec(active);
+        if (conditional) {
+          if (!this.checkSupplyCondition(conditional[1])) return undefined;
+          active = conditional[2];
+        }
+        const parsed = parseEffect(active);
+        if (parsed && (parsed.name === 'discard' || parsed.name === 'discardUpTo')) return {
+          kind: 'discard' as const,
+          amount: Math.max(0, Number(parsed.args[0]) || 0),
+          optional: parsed.name === 'discardUpTo',
+        };
+        if (parsed?.name === 'returnDiscard') return {
+          kind: 'return' as const,
+          filter: parsed.args[0] || 'nonMolt',
+          drawAfter: Math.max(0, parseEffectValue(parsed.args[1], 0)),
+        };
+        return undefined;
+      },
+      apply: (effect) => this.applySupplyEffect(effect, source),
+      choose: (decision, resume) => {
+        if (decision.kind === 'discard') this.beginDiscardChoice(source, decision.amount, decision.optional, resume);
+        else this.beginReturnChoice(source, decision.filter, decision.drawAfter, resume);
+      },
+      onComplete,
+    });
   }
 
   private checkSupplyCondition(condition: string) {
@@ -22185,44 +22051,29 @@ class BattleScene extends Phaser.Scene {
   }
 
   private cardNeedTags(card: Card): string[] {
-    const summary = this.deckNeedSummary();
-    const tags: Array<[number, string]> = [];
-    const add = (priority: number, text: string) => {
-      if (!tags.some((entry) => entry[1] === text)) tags.push([priority, text]);
-    };
-    const has = (tag: string) => card.runtime.tags.includes(tag);
-    const cards = this.allDeckCards();
-    const count = (predicate: (owned: Card) => boolean) => cards.filter(predicate).length;
-    const capability = (candidate: boolean, owned: number, label: string, rank: 'low' | 'steady' | 'strong') => {
-      if (!candidate) return;
-      if (owned === 0) add(88, `+ First ${label} source`);
-      else if (rank === 'low') add(70, `+ Fills ${label} gap`);
-    };
-    capability(card.role === 'attack' || has('attack'), count((owned) => owned.role === 'attack' || owned.runtime.tags.includes('attack')), 'damage', summary.damage);
-    capability(has('cover'), count((owned) => owned.runtime.tags.includes('cover')), 'Cover', summary.cover);
-    capability(has('heal') || has('regen'), count((owned) => owned.runtime.tags.includes('heal') || owned.runtime.tags.includes('regen')), 'recovery', summary.recovery);
-    capability(has('draw') || has('draw-next'), count((owned) => owned.runtime.tags.includes('draw') || owned.runtime.tags.includes('draw-next')), 'draw', summary.draw);
-    capability(has('winded'), count((owned) => owned.runtime.tags.includes('winded')), 'Winded', 'low');
-    capability(has('pierce'), count((owned) => owned.runtime.tags.includes('pierce')), 'pierce', 'low');
-    capability(has('aoe'), count((owned) => owned.runtime.tags.includes('aoe')), 'area damage', 'low');
-    if ((has('heal') || has('regen')) && summary.recovery === 'strong') add(82, '! Recovery already strong');
-    if ((card.type === 'molt' || has('molt') || has('open-sky')) && summary.moltSafety === 'low') add(72, '+ Adds Molt safety');
-    const suitCount = card.runtime.suit ? cards.filter((owned) => owned.runtime.suit === card.runtime.suit).length : 0;
-    if (card.runtime.suit) {
-      const suit = suitLabel(card);
-      const matchingWaymark = this.routeMarks
-        .map((id) => alphaRouteMarkLibrary.get(id))
-        .find((mark) => mark?.trigger === `onSuitPlayed(${card.runtime.suit})`);
-      if (matchingWaymark) add(100, `+ Feeds ${compactSentenceText(matchingWaymark.name, 18, 1)}`);
-      if (suitCount === KEYSTONE_AT - 1) add(96, `+ ${suit} ${suitCount}>${suitCount + 1} KEYSTONE`);
-      else add(44, `= ${suit} ${suitCount}>${suitCount + 1}`);
-    }
-    const costlyCards = cards.filter((owned) => owned.cost >= 2).length;
-    if (card.cost >= 2 && costlyCards >= 3) add(84, `! ${costlyCards + 1}th 2+ cost`);
-    const sameRole = cards.filter((owned) => owned.role === card.role).length;
-    if (sameRole >= 4) add(62, `! ${card.role === 'attack' ? 'Attack' : card.role === 'skill' ? 'Skill' : 'Utility'} role crowded`);
-    if (card.moltText) add(48, '+ Adds Molt option');
-    return tags.sort((a, b) => b[0] - a[0]).slice(0, 2).map((entry) => entry[1]);
+    const waymarks = this.routeMarks.flatMap((id) => {
+      const mark = alphaRouteMarkLibrary.get(id);
+      return mark ? [mark] : [];
+    });
+    return rewardBuildObservations(
+      card,
+      this.allDeckCards(),
+      waymarks,
+      (name) => compactSentenceText(name, 18, 1),
+      KEYSTONE_AT,
+    );
+  }
+
+  private districtBias() {
+    return alphaMapProfileLibrary.get(currentMap().id)?.rewardBias ?? [];
+  }
+
+  private districtLeans() {
+    return districtCardRewardLeans(this.districtBias());
+  }
+
+  private rewardObservations(card: Card): string[] {
+    return districtRewardObservations(card, this.districtBias(), this.cardNeedTags(card));
   }
 
   private rewardPresentationReady() {
@@ -22272,7 +22123,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private rewardCardView(card: Card, index: number, collection?: CardCollectionRecord, targeted = false) {
-    const needTags = this.cardNeedTags(card);
+    const needTags = this.mode === 'cardReward' ? this.rewardObservations(card) : this.cardNeedTags(card);
     const stats = cardStatRows(card).slice(0, 2);
     return {
       id: card.id,
@@ -22314,6 +22165,8 @@ class BattleScene extends Phaser.Scene {
       familyLabel: routeMarkFamilyLabel(mark.family),
       source: mark.source,
       rarity: mark.rarity,
+      trigger: mark.trigger,
+      familyCount: this.routeMarks.filter((id) => alphaRouteMarkLibrary.get(id)?.family === mark.family).length,
       description: mark.description,
       tags: waymarkSynergyTags(mark),
       accent: mark.family === 'bossPrep' ? 0xff6b57 : mark.family === 'molt' ? 0xc9a6ff : 0xd8a840,
@@ -22344,7 +22197,10 @@ class BattleScene extends Phaser.Scene {
     const cardCollection = account?.cardCollection ?? {};
     const collectionTargets = new Set(account?.hunt ?? []);
     const title = mode === 'cardReward' ? 'Add to the Flock' : mode === 'upgradeReward' ? 'Preen a Card' : 'Claim a Waymark';
-    const subtitle = mode === 'cardReward' ? 'Pick a card or take Scrap.' : mode === 'upgradeReward' ? 'Pick one owned card.' : 'Pick one route artifact.';
+    const districtLean = isCardReward ? this.districtLeans() : [];
+    const subtitle = mode === 'cardReward'
+      ? `Pick a card or take Scrap.${districtLean.length ? ` District lean: ${districtLean.join(' / ')}.` : ''}`
+      : mode === 'upgradeReward' ? 'Pick one card.' : 'Pick one route artifact.';
     const result = this.battleRewardRendererModule.renderRewardCeremony({
       scene: this,
       target: this.root,
@@ -22375,6 +22231,8 @@ class BattleScene extends Phaser.Scene {
       deckNeeds: isCardReward ? this.rewardDeckNeedView() : undefined,
       cards: cards.map((card, index) => this.rewardCardView(card, index, cardCollection[card.id], collectionTargets.has(card.id))),
       waymarks: this.waymarkChoices.map((mark, index) => this.rewardWaymarkView(mark, index)),
+      waymarkBuildCards: this.allDeckCards(),
+      waymarkSupplyCount: this.runSupplies.length,
       skip: isCardReward ? {
         scrap: this.currentSkipScrapReward(),
         deckSize: this.allDeckCards().length,
@@ -22391,6 +22249,9 @@ class BattleScene extends Phaser.Scene {
       },
       onCardOut: () => this.hideCardPreview(),
       onWaymarkSelect: (waymarkId) => this.requestRewardChoice(waymarkId),
+      onWaymarkBuildRead: (waymarkId, observations) => {
+        this.waymarkRewardBuildObservations[waymarkId] = observations;
+      },
       onSkip: () => this.requestSkipCardReward()
     });
     this.rewardChoiceGlowBurstBursts += result.glowBursts;
@@ -23178,24 +23039,35 @@ class BattleScene extends Phaser.Scene {
   }
 
   private onCardClicked(instanceId: string) {
+    if (this.discardChoice) {
+      this.toggleDiscardChoice(instanceId);
+      return;
+    }
     if (this.combatInteractionLocked()) return;
     const cardIndex = this.hand.findIndex((candidate) => candidate.instanceId === instanceId);
     const card = this.hand[cardIndex];
-    if (!card || this.effectiveCost(card) > this.energy) {
+    if (!card) {
+      this.statInvalidActions += 1;
+      return;
+    }
+    const canPay = this.effectiveCost(card) <= this.energy;
+    const retentionActive = this.projectedRoostRetainCount() > 0;
+    if (!canPay && !retentionActive) {
       this.statInvalidActions += 1;
       return;
     }
     this.controllerChoiceIndex = Math.max(0, cardIndex);
     this.normalizeSelectedEnemy();
     if (this.selectedInstanceId === instanceId) {
-      this.playCardAnimated(card);
+      if (canPay) this.playCardAnimated(card);
       return;
     }
     this.selectedInstanceId = instanceId;
     playUiSound('confirm');
     this.hideCardPreview();
     hideKwTooltip();
-    this.refreshHandCardSelection();
+    if (retentionActive) this.requestBattleRender();
+    else this.refreshHandCardSelection();
     this.refreshCombatSelectionPreview();
   }
 
@@ -23246,6 +23118,8 @@ class BattleScene extends Phaser.Scene {
   private combatInteractionLocked() {
     return this.mode !== 'battle'
       || this.combatAnimationPending
+      || Boolean(this.discardChoice)
+      || Boolean(this.returnChoice)
       || this.pauseOverlayOpen
       || this.settingsOverlayOpen;
   }
@@ -23281,7 +23155,7 @@ class BattleScene extends Phaser.Scene {
       return;
     }
     playUiSound('confirm');
-    this.scene.start('ProfileScene', { openSaveData: true });
+    openProfileScene(this, { openSaveData: true });
   }
 
   private returnToMainMenu() {
@@ -23369,7 +23243,7 @@ class BattleScene extends Phaser.Scene {
     if (!playedCard) return;
     recordFirstFlightGuideEvent('card');
     if (playedCard.runtime.kind === 'molt') completeFirstMoltGuide();
-    birdAudio.play('card');
+    birdAudio.play('card', 1, playedCard.runtime.suit, contract.usesMolt);
     this.energy -= cost;
     if (cost > 0) {
       const spendColor = suitFxMeta(playedCard.runtime.suit).color;
@@ -23415,7 +23289,17 @@ class BattleScene extends Phaser.Scene {
     handIndexBeforePlay: number,
     handSizeBeforePlay: number
   ) {
-    const outcome = this.resolveCardEffects(playedCard, enemyId, contract);
+    this.resolveCardEffectsInteractive(playedCard, enemyId, contract, (outcome) => {
+      this.finalizePlayedCardResolution(playedCard, handIndexBeforePlay, handSizeBeforePlay, outcome);
+    });
+  }
+
+  private finalizePlayedCardResolution(
+    playedCard: Card,
+    handIndexBeforePlay: number,
+    handSizeBeforePlay: number,
+    outcome: EffectResolutionState,
+  ) {
     if (playedCard.runtime.suit) {
       this.playedSuitsThisTurn.add(playedCard.runtime.suit);
       this.triggerFledglingSuitRally(playedCard);
@@ -23548,7 +23432,7 @@ class BattleScene extends Phaser.Scene {
     });
   }
 
-  private resolveCardEffects(card: Card, enemyId: string, contract = this.activeCardContract(card)): EffectResolutionState {
+  resolveCardEffects(card: Card, enemyId: string, contract = this.activeCardContract(card)): EffectResolutionState {
     // While Molting, a card resolves its unique Molt ability (do-different)
     // instead of its normal effect. Cards without one fall back to normal.
     const molting = contract.usesMolt;
@@ -23565,7 +23449,73 @@ class BattleScene extends Phaser.Scene {
     return state;
   }
 
-  private resolveHeldSnagEffects() {
+  private resolveCardEffectsInteractive(
+    card: Card,
+    enemyId: string,
+    contract: ActiveCardContract,
+    onComplete: (state: EffectResolutionState) => void,
+  ) {
+    const molting = contract.usesMolt;
+    if (molting) {
+      this.logEvent(`${displayName(card)} molts - ${contract.text}`);
+      floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 40, 'Molt!', '#ff9d4d');
+    }
+    const state = createCardEffectResolutionState(molting ? this.activeMoltPower() : 0);
+    this.resolveCardEffectSequenceInteractive(contract.effects, card, enemyId, state, displayName(card), undefined, () => onComplete(state));
+  }
+
+  private interactiveCardChoiceEffect(effectText: string, card: Card, enemyId: string, state: EffectResolutionState): InterruptibleDecision | undefined {
+    let active = effectText;
+    const conditional = active.match(/^if ([a-zA-Z][a-zA-Z0-9]*(?:\([a-zA-Z0-9_,-]+\))?) then (.+)$/);
+    if (conditional) {
+      if (!this.checkCardCondition(conditional[1], card, enemyId, state)) return undefined;
+      active = conditional[2];
+    }
+    const parsed = parseEffect(active);
+    if (!parsed) return undefined;
+    if (parsed.name === 'discard' || parsed.name === 'discardUpTo') return {
+      kind: 'discard',
+      amount: Math.max(0, parseEffectValue(parsed.args[1] ?? parsed.args[0], state.previousDiscarded, this.getLivingEnemy(enemyId)?.weak ?? 0, this.flock.block)),
+      optional: parsed.name === 'discardUpTo',
+    };
+    if (parsed.name === 'returnDiscard') return {
+      kind: 'return',
+      filter: parsed.args[0] || 'nonMolt',
+      drawAfter: Math.max(0, parseEffectValue(parsed.args[1], state.previousDiscarded, this.getLivingEnemy(enemyId)?.weak ?? 0, this.flock.block)),
+    };
+    return undefined;
+  }
+
+  private resolveCardEffectSequenceInteractive(
+    effects: string[],
+    card: Card,
+    enemyId: string,
+    state: EffectResolutionState,
+    source: string,
+    excludedInstanceId: string | undefined,
+    onComplete: () => void,
+  ) {
+    if (!this.discardChoiceModule) {
+      effects.forEach((effect) => this.resolveCardEffect(effect, card, enemyId, state));
+      onComplete();
+      return;
+    }
+    this.discardChoiceModule.runInterruptibleSequence({
+      items: effects,
+      detect: (effect) => this.interactiveCardChoiceEffect(effect, card, enemyId, state),
+      apply: (effect) => this.resolveCardEffect(effect, card, enemyId, state),
+      choose: (decision, resume) => {
+        if (decision.kind === 'discard') this.beginDiscardChoice(source, decision.amount, decision.optional, resume, excludedInstanceId);
+        else this.beginReturnChoice(source, decision.filter, decision.drawAfter, resume);
+      },
+      onResolved: (decision, count) => {
+        if (decision.kind === 'discard') state.previousDiscarded = count;
+      },
+      onComplete,
+    });
+  }
+
+  resolveHeldSnagEffects() {
     const heldSnags = this.hand.filter((card) => isSnagCard(card) && card.runtime.heldEffects?.length);
     for (const card of heldSnags) {
       const state = createCardEffectResolutionState();
@@ -23829,6 +23779,22 @@ class BattleScene extends Phaser.Scene {
     this.logEvent(`Four-Suit Rally: ${suit} adds +1 Flow.`);
     this.combatFourSuitRally(FLOCK_FX_X + 58, FLOCK_FX_Y - 78, 1);
     this.flowGainFx(this.flock.flow - before, '#ffe1a3');
+  }
+
+  private resolveHeldSnagEffectsInteractive(onComplete: () => void) {
+    const heldSnags = this.hand.filter((card) => isSnagCard(card) && card.runtime.heldEffects?.length);
+    if (this.discardChoiceModule) this.discardChoiceModule.resolveHeldDiscardCards(this, heldSnags, onComplete);
+    else {
+      this.resolveHeldSnagEffects();
+      onComplete();
+    }
+  }
+
+  createDiscardEffectState() { return createCardEffectResolutionState(); }
+
+  presentHeldDiscardCard(card: Card) {
+    this.logEvent(`${displayName(card)} catches at Roost.`);
+    floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 72, 'Snag!', '#ff6b57');
   }
 
   private triggerTalonPinnedOpening(enemy: Enemy) {
@@ -24130,11 +24096,28 @@ class BattleScene extends Phaser.Scene {
     if (cardsPlayedAtRoost > 0 && cardsPlayedAtRoost <= 2) this.statLowCardTurns += 1;
     if (cardsPlayedAtRoost > 0 && cardsPlayedAtRoost < OVEREXTENSION_CARD_THRESHOLD) this.statNoOverextensionTurns += 1;
 
-    this.resolveHeldSnagEffects();
+    this.roostRetainPriorityInstanceId = this.selectedInstanceId
+      && this.hand.some((card) => card.instanceId === this.selectedInstanceId)
+      ? this.selectedInstanceId
+      : undefined;
+    this.resolveHeldSnagEffectsInteractive(() => this.finishEndTurnAfterHeldSnags(cardsHeldAtRoost, wingbeatAtRoost, cardsPlayedAtRoost, options));
+  }
+
+  private finishEndTurnAfterHeldSnags(
+    cardsHeldAtRoost: number,
+    wingbeatAtRoost: number,
+    cardsPlayedAtRoost: number,
+    options: EndTurnOptions,
+  ) {
     this.checkRoostRestraintMarks(cardsHeldAtRoost, wingbeatAtRoost, cardsPlayedAtRoost);
 
-    const retainCount = Math.min(Math.max(0, this.pendingRetainHand), this.hand.length);
-    const retained = retainCount > 0 ? this.hand.splice(this.hand.length - retainCount, retainCount) : [];
+    const retained = retainedInOriginalOrder(
+      this.hand,
+      this.pendingRetainHand,
+      this.roostRetainPriorityInstanceId,
+    );
+    const retainedIds = new Set(retained.map((card) => card.instanceId));
+    this.hand = this.hand.filter((card) => !retainedIds.has(card.instanceId));
     this.pendingRetainHand = 0;
     const discardedThisRoost: Card[] = [];
     while (this.hand.length) {
@@ -24145,7 +24128,7 @@ class BattleScene extends Phaser.Scene {
       }
     }
     if (discardedThisRoost.length) this.animateDiscard(discardedThisRoost.length, GAME_WIDTH - 330, HAND_Y - 20, 1);
-    this.roostRetainPool = discardedThisRoost;
+    this.roostRetainPool = [...discardedThisRoost].reverse();
     if (retained.length) {
       this.hand = retained;
       this.logEvent(`Retained ${retained.length} card${retained.length === 1 ? '' : 's'} for next turn.`);
@@ -24227,6 +24210,7 @@ class BattleScene extends Phaser.Scene {
 
     this.drawToHandSize();
     this.roostRetainPool = [];
+    this.roostRetainPriorityInstanceId = undefined;
     if ((this.flockStats().resonance ?? 0) > 0) this.gainResonance(this.flockStats().resonance ?? 0);
     this.logEvent(`Turn ${this.turn} starts.`);
     const announceDelayMs = options.announceDelayMs ?? 0;
@@ -24712,6 +24696,17 @@ class BattleScene extends Phaser.Scene {
     this.requestBattleRender();
   }
 
+  private handleBattleSkipOrRunKit() {
+    if (this.mode === 'cardReward') {
+      if (this.rewardPresentationReady() && !this.settingsOverlayOpen && !this.pauseOverlayOpen) {
+        this.requestSkipCardReward();
+      }
+      return;
+    }
+    if (this.mode !== 'battle' || this.settingsOverlayOpen || this.pauseOverlayOpen || this.inspectOverlay || this.waymarkDrawerOpen) return;
+    this.toggleBattleSupplyDrawer(true);
+  }
+
   private skipCardReward() {
     this.rewardSkipArmed = false;
     const skipScrap = this.currentSkipScrapReward();
@@ -24737,6 +24732,7 @@ class BattleScene extends Phaser.Scene {
     this.queueBattleRewardUiLoad();
     this.applyCombatEconomyRewards();
     this.waymarkChoices = this.createWaymarkRewardChoices();
+    this.waymarkRewardBuildObservations = {};
     this.rewardChoiceArmedId = undefined;
     if (this.waymarkChoices.length > 1) {
       this.mode = 'waymarkReward';
@@ -24763,7 +24759,7 @@ class BattleScene extends Phaser.Scene {
       this.controllerChoiceIndex = 0;
       this.battleInputActive = false;
     } else {
-      this.logEvent('No new crew cards remain.');
+      this.logEvent('No crew cards remain.');
       this.resolvePostCardReward();
       return;
     }
@@ -24804,17 +24800,17 @@ class BattleScene extends Phaser.Scene {
       this.renderAll();
       return;
     }
-    this.logEvent('No Preen window at this crossing.');
+    this.logEvent('No Preen available.');
     this.returnToRouteMap();
   }
 
   chooseUpgradeCard(cardId: string) {
     this.rewardChoiceArmedId = undefined;
-    const card = this.allDeckCards().find((candidate) => candidate.id === cardId && !candidate.upgraded);
+    const card = this.upgradeChoices.find((candidate) => candidate.id === cardId);
     if (card) {
       card.upgraded = true;
-      birdAudio.play('reward');
-      this.logEvent(`${displayName(card)} is preened.`);
+      birdAudio.play('moltPower');
+      this.logEvent(`${displayName(card)} preened.`);
     }
     this.upgradeChoices = [];
     this.returnToRouteMap();
@@ -25272,6 +25268,52 @@ class BattleScene extends Phaser.Scene {
     return discarded;
   }
 
+  private beginDiscardChoice(
+    source: string,
+    count: number,
+    optional: boolean,
+    onResolve: (discarded: number) => void,
+    excludedInstanceId?: string,
+  ) {
+    if (this.discardChoiceModule) this.discardChoiceModule.beginDiscardChoice(this, source, count, optional, onResolve, excludedInstanceId);
+    else onResolve(this.discardCards(count));
+  }
+
+  private toggleDiscardChoice(instanceId: string) {
+    this.discardChoiceModule?.toggleDiscardChoice(this, instanceId);
+  }
+
+  private confirmDiscardChoice(skip = false) {
+    this.discardChoiceModule?.confirmDiscardChoice(this, skip);
+  }
+
+  private beginReturnChoice(
+    source: string,
+    filter: string,
+    drawAfter: number,
+    onResolve: (returned: number) => void,
+  ) {
+    if (this.returnChoiceModule) this.returnChoiceModule.beginReturnChoice(this, source, filter, drawAfter, onResolve);
+    else {
+      const before = this.hand.length;
+      this.returnDiscardToHand(filter, drawAfter);
+      onResolve(this.hand.length > before ? 1 : 0);
+    }
+  }
+
+  private focusReturnChoice(instanceId: string) {
+    this.returnChoiceModule?.focusReturnChoice(this, instanceId);
+  }
+
+  private chooseReturnCard(instanceId?: string) {
+    this.returnChoiceModule?.chooseReturnCard(this, instanceId);
+  }
+
+  hideDiscardChoiceTooltip() { hideKwTooltip(); }
+  announceDiscardChoice(message: string) { announceScreenReader(message); }
+  playDiscardChoiceSound(cue: 'confirm' | 'locked') { playUiSound(cue); }
+  returnChoiceCardName(card: Card) { return displayName(card); }
+
   private returnDiscardToHand(filter = 'nonMolt', drawAfter = 0) {
     const normalizedFilter = (filter || 'nonMolt').trim();
     const allowMolt = normalizedFilter === 'any' || normalizedFilter === 'all';
@@ -25435,50 +25477,24 @@ class BattleScene extends Phaser.Scene {
   private createRewardChoices() {
     const owned = new Set(this.allDeckCards().map((card) => card.id));
     const remaining = arcanaRewardPool.filter((id) => !owned.has(id));
-    const maxChoices = difficultyMods(this.runDifficulty).rewardChoices;
-    const weightOf = (id: string) => REWARD_RARITY_WEIGHT[cardLibrary[id]?.runtime.rarity ?? 'common'] ?? 50;
-    const chosen: string[] = [];
-    const pickWeighted = (pool: string[]) => {
-      const available = pool.filter((id) => remaining.includes(id));
-      if (available.length === 0 || chosen.length >= maxChoices) return;
-      const total = available.reduce((sum, id) => sum + weightOf(id), 0);
-      let roll = this.combatRandom() * total;
-      let index = 0;
-      for (; index < available.length - 1; index += 1) {
-        roll -= weightOf(available[index]);
-        if (roll <= 0) break;
-      }
-      const id = available[index];
-      chosen.push(id);
-      remaining.splice(remaining.indexOf(id), 1);
-    };
-
-    // Compose a useful draft: solve a current weakness, reinforce the build's
-    // strongest suit, then leave room for a surprising pivot.
-    const needPool = remaining.filter((id) => this.cardNeedTags(cardLibrary[id]).some((tag) => (
-      tag.includes('First ') || tag.includes('Fills ') || tag.includes('KEYSTONE')
-    )));
-    pickWeighted(needPool);
-
-    const suitCounts = new Map<string, number>();
-    this.allDeckCards().forEach((card) => {
-      if (card.runtime.suit) suitCounts.set(card.runtime.suit, (suitCounts.get(card.runtime.suit) ?? 0) + 1);
-    });
-    const dominantSuit = [...suitCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
-    const synergyPool = dominantSuit
-      ? remaining.filter((id) => cardLibrary[id]?.runtime.suit === dominantSuit)
-      : [];
-    pickWeighted(synergyPool);
-
-    while (chosen.length < maxChoices && remaining.length) {
-      pickWeighted(remaining);
-    }
+    const districtBias = this.districtBias();
+    const chosen = draftStructuredRewardChoices(
+      remaining,
+      this.allDeckCards().map((card) => card.id),
+      difficultyMods(this.runDifficulty).rewardChoices,
+      this.combatRandom,
+      (id) => REWARD_RARITY_WEIGHT[cardLibrary[id]?.runtime.rarity ?? 'common'] ?? 50,
+      (id) => this.cardNeedTags(cardLibrary[id]).some((tag) => tag.includes('First ') || tag.includes('Fills ') || tag.includes('KEYSTONE')),
+      (id) => cardLibrary[id]?.role,
+      (id) => cardLibrary[id]?.runtime.suit ?? undefined,
+      (id) => districtRewardAffinity(cardLibrary[id], districtBias).length > 0,
+    );
     discoverCards(chosen); // offered cards count as "found" in the Codex
     return chosen.map((id) => cloneCard(id));
   }
 
   private createUpgradeChoices() {
-    const candidates = this.allDeckCards().filter((card) => !card.upgraded);
+    const candidates = distinctMeaningfulUpgradeCards(this.allDeckCards());
     shuffle(candidates, this.combatRandom);
     return candidates.slice(0, 3);
   }
@@ -25486,7 +25502,7 @@ class BattleScene extends Phaser.Scene {
   private shouldOfferUpgradeReward() {
     const routeNode = currentCombatNodes()[this.currentRouteIndex];
     const profile = rewardProfileForRouteNode(routeNode);
-    if (!profile || this.allDeckCards().every((card) => card.upgraded)) return false;
+    if (!profile || !distinctMeaningfulUpgradeCards(this.allDeckCards()).length) return false;
     if (routeNode?.type === 'rival' || routeNode?.type === 'boss') return true;
     if (profile.preenGuaranteed || (profile.preen ?? 0) > 0) return true;
     if (!profile.preenChance) return false;
@@ -25584,6 +25600,7 @@ class BattleScene extends Phaser.Scene {
     const flowStatus = (this.root?.list.find((child) => child.name === 'combat-flow-status') as Phaser.GameObjects.Text | undefined)?.text ?? '';
     const firstCombatGuideCard = this.firstCombatGuideCard();
     const firstCombatGuideTarget = this.firstCombatGuideTarget(firstCombatGuideCard);
+    const retention = this.retentionPlan();
     const presentationDebugState = this.battleDebugStateModule?.buildBattlePresentationDebugState({
       scene: this,
       roots: {
@@ -25760,6 +25777,52 @@ class BattleScene extends Phaser.Scene {
       combatInputFocus: this.combatInputFocusState(),
       selectedCard: this.selectedInstanceId,
       selectedCardOutcome: this.selectedCardOutcomePreview(),
+      discardChoice: this.discardChoice && this.discardChoiceModule
+        ? this.discardChoiceModule.discardChoiceTextState(
+            this.discardChoice,
+            this.hand.map((card) => ({ instanceId: card.instanceId, id: card.id, name: displayName(card) })),
+            {
+              choose: `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} / D-pad`,
+              toggle: `${controlBindingLabel('confirm')} / A / pointer`,
+              confirm: `${controlBindingLabel('roost')} / Y / pointer`,
+              cancel: this.discardChoice.optional ? `${controlBindingLabel('back')} / B keeps the hand` : 'Mandatory choice',
+            },
+          )
+        : undefined,
+      returnChoice: this.returnChoice && this.returnChoiceModule
+        ? this.returnChoiceModule.returnChoiceTextState(
+            this.returnChoice,
+            this.discardPile.map((card) => {
+              const contract = this.activeCardContract(card);
+              return {
+                instanceId: card.instanceId,
+                id: card.id,
+                name: displayName(card),
+                cost: this.effectiveCost(card),
+                role: contract.role,
+                summary: compactCardEffectSummary(contract.effects),
+              };
+            }),
+            {
+              choose: `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} / D-pad`,
+              confirm: `${controlBindingLabel('confirm')} / A / pointer`,
+              cancel: 'Mandatory choice; Back / B does not cancel',
+            },
+          )
+        : undefined,
+      retentionPlan: retention.count > 0
+        ? {
+            count: retention.count,
+            cards: retention.cards.map((card, index) => ({
+              instanceId: card.instanceId,
+              id: card.id,
+              name: displayName(card),
+              order: index + 1,
+            })),
+            selectedPriority: retention.selectedPriority,
+            rule: RETAIN_PRIORITY_RULE,
+          }
+        : undefined,
       inspectedCard: this.getInspectedCardPayload(),
       cardInspectFocus: this.cardInspectFocusState(),
       selectedEnemy: this.selectedEnemyId,
@@ -25778,6 +25841,7 @@ class BattleScene extends Phaser.Scene {
       },
       hand: this.hand.map((card) => {
         const contract = this.activeCardContract(card);
+        const retainIndex = retention.cards.findIndex((candidate) => candidate.instanceId === card.instanceId);
         return {
           instanceId: card.instanceId,
           id: card.id,
@@ -25790,7 +25854,14 @@ class BattleScene extends Phaser.Scene {
           activeTarget: contract.target,
           activeRole: contract.role,
           activeText: contract.text,
-          usesMolt: contract.usesMolt
+          usesMolt: contract.usesMolt,
+          retainOrder: retainIndex >= 0 ? retainIndex + 1 : undefined,
+          discardSelectable: this.discardChoice?.candidateIds.includes(card.instanceId),
+          discardSelected: this.discardChoice?.selectedIds.includes(card.instanceId),
+          discardOrder: this.discardChoice ? (() => {
+            const index = this.discardChoice!.selectedIds.indexOf(card.instanceId);
+            return index >= 0 ? index + 1 : undefined;
+          })() : undefined,
         };
       }),
       waymarkChoices: this.waymarkChoices.map((mark) => ({
@@ -25800,7 +25871,8 @@ class BattleScene extends Phaser.Scene {
         rarity: mark.rarity,
         source: mark.source,
         description: mark.description,
-        tags: waymarkSynergyTags(mark)
+        tags: waymarkSynergyTags(mark),
+        observations: this.waymarkRewardBuildObservations[mark.id] ?? []
       })),
       rewardChoices: this.rewardChoices.map((card) => ({
         id: card.id,
@@ -25809,7 +25881,7 @@ class BattleScene extends Phaser.Scene {
         cost: card.cost,
         type: card.type,
         target: card.target,
-        observations: this.cardNeedTags(card),
+        observations: this.rewardObservations(card),
         collection: {
           firstClaim: !cardCollection[card.id],
           timesClaimed: cardCollection[card.id]?.timesClaimed ?? 0,
@@ -25817,6 +25889,7 @@ class BattleScene extends Phaser.Scene {
           runCopyTemporary: true as const,
         }
       })),
+      rewardDistrictLean: this.mode === 'cardReward' ? this.districtLeans() : [],
       upgradeChoices: this.upgradeChoices.map((card) => ({
         id: card.id,
         name: displayName(card),
@@ -26391,7 +26464,8 @@ function sanitizeActiveRun(value: unknown): RunState | undefined {
     routeDecisions: sanitizeRouteDecisions(value.routeDecisions),
     suppliesUsed: stringArray(value.suppliesUsed).filter((id) => alphaSupplyLibrary.has(id)),
     combatResults: sanitizeCombatResults(value.combatResults),
-    freePreenNextDistrict: finiteInt(value.freePreenNextDistrict, 0, 0)
+    freePreenNextDistrict: finiteInt(value.freePreenNextDistrict, 0, 0),
+    pendingDistrictPreens: finiteInt(value.pendingDistrictPreens, 0, 0)
   };
 }
 function loadActiveRun(): RunState | undefined {
@@ -26471,6 +26545,7 @@ function createInitialRunState(
     suppliesUsed: [],
     combatResults: [],
     freePreenNextDistrict: 0,
+    pendingDistrictPreens: 0,
     districtAdvanceNotice: undefined
   };
 }
@@ -26508,6 +26583,7 @@ function cloneRunState(runState: RunState): RunState {
       decisionStats: entry.decisionStats ? { ...entry.decisionStats } : undefined
     })),
     freePreenNextDistrict: runState.freePreenNextDistrict ?? 0,
+    pendingDistrictPreens: runState.pendingDistrictPreens ?? 0,
     districtAdvanceNotice: runState.districtAdvanceNotice ? { ...runState.districtAdvanceNotice } : undefined
   };
 }
@@ -26846,6 +26922,7 @@ const KEYWORDS: Record<string, KeywordDef> = {
   Energy: { color: '#ffd54a', def: 'Spent to play cards. Refreshes at the start of each turn.' },
   Draw: { color: '#bcd2e6', def: 'Pull cards from your draw pile into your hand. An empty draw pile reshuffles the discard.' },
   Discard: { color: '#b6a0c8', def: 'Send cards from your hand to the discard pile.' },
+  Retain: { color: '#8fd6a0', def: 'Keep cards in hand through Roost. The selected card is kept first; remaining slots keep the rightmost unplayed cards.' },
   Keystone: { color: '#ffd97a', def: 'A suit aura unlocked by holding 5+ cards of one suit, granting a passive bonus all combat.' },
 };
 const KEYWORD_LIST = Object.keys(KEYWORDS).sort((a, b) => b.length - a.length);
@@ -28983,17 +29060,6 @@ function routeEffectTokens(effects: string[]): RouteEffectToken[] {
   });
 }
 
-function nonCombatRewardBias(type: RouteNode['type']) {
-  switch (type) {
-    case 'basin': return 'Healing / Open Sky Guard / Supply';
-    case 'nest': return 'Preen / Remove / Waymark';
-    case 'market': return 'Cards / Waymarks / Supplies';
-    case 'signal': return 'Varies by choice';
-    case 'cache': return 'Marn appraises numbered lockbox drawers';
-    default: return '';
-  }
-}
-
 function routeNodeRecovery(node: RouteNode, routeMarkIds: string[] = []) {
   if (node.type === 'basin') {
     const bonus = routeMarkIds.reduce((total, id) => {
@@ -29400,22 +29466,34 @@ export {
   addDeckReviewMetaChipFrame, addDeckReviewPageIndicatorFrame, addDeckReviewRowFrame,
   addDeckReviewSectionTabFrame, addDeckReviewTitlePlaque, addRouteWaymarkScrollRailFrame, addRunKitDrawerFlourish,
   addSupplyArtImage, addUiIconImage, addWaymarkArtImage,
-  advanceGameTime, alphaEnemyLibrary, alphaRouteMarkLibrary, alphaRouteMarkSet, alphaSupplyLibrary,
+  SHARED_ROUTE_SEED, advanceGameTime, alphaEnemyLibrary, alphaRouteMarkLibrary, alphaRouteMarkSet, alphaSupplyLibrary,
+  animationPacePreference, animationPacingState, audioToggleWaveBurstState,
   bindControlActions, birdAudio, cardArtAssets, cardCompactArtAsset, cardLabel, cardLibrary, clamp,
-  compactSentenceText, controlActionForCode, controlBindingLabel, currentMap,
+  collectionGoalSummary, colorCuePreference, colorCueState, combatPacePreference, combatPacingState, createInitialRunState,
+  compactSentenceText, controlActionForCode, controlBindingLabel, controlBindingsSnapshot, currentMap,
+  controlsTextState, currentFlashEffectsState, currentScreenShakeState,
   codexIconForLabel, codexLeaderArtAssets, codexUiIconIds, compactCardArtKey, compactEffectSummary,
   countTextureInGameObjects, displayName, enemyArtAssets, enemyCodexIconForLabel, flockLeaders,
-  GAME_HEIGHT, GAME_WIDTH, getLeader, hideKwTooltip, isAviaryCard, isLeaderUnlocked, isSnagCard,
-  itemTypeCodexIconForLabel, KEYWORDS, killTweensForTree, LAZY_LOAD_FAILED, leaderUnlockHints,
-  loadAccount, loadBossDossierModule, loadedCardArtKey, playUiSound, queueReserveEnemyArtAssets,
+  deferredHowToPlayUiIconIds, deferredMenuSettingsUiIconIds, DISTRICT_CONTRACT_DEFINITIONS,
+  firstFlightGuideState, GAME_HEIGHT, GAME_WIDTH, getLeader, getMaxUnlockedTier, howToPlayUiIconIds,
+  graphicsQualityState, hasActiveRun, hideKwTooltip, isAviaryCard, isLeaderUnlocked, isSnagCard,
+  itemTypeCodexIconForLabel, KEYWORDS, killTweensForScene, killTweensForTree, LAZY_LOAD_FAILED, leaderUnlockHints,
+  latestPlaytestRunForRating, loadAccount, loadActiveRun, loadBossDossierModule, loadCodexSceneModule,
+  loadProfileFlightReview, loadRunHistory, loadedCardArtKey, menuSettingsUiIconIds, motionPreference, motionState, playUiSound,
+  prefersReducedMotion, profileFlightHistory, queueReserveEnemyArtAssets,
   queueRuntimeImageAssets, queueUiIconAssets, activateRenderedAudioToggleControl,
   renderAudioToggleControl, renderCloseControl, renderCompactItemTile, renderEmptySupplySlotTile,
-  renderFieldButton, renderFieldPanel, renderRichText,
+  renderFieldButton, renderFieldPanel, renderHowToPlayOverlay, renderRichText, renderSettingsMenuOverlay,
   renderSnagCardBorder, reserveEnemyArtAsset, ROUTE_SET_PIECE_PROFILES, routeEffectTokens, routeMarkEffectGrammar, routeMarkEffectText,
-  routeNodeTypeLabel,
-  showKwTooltip, suitAccentColor, supplyArtAssets, supplyCodexIconForLabel, supplyCompactArtAssets,
+  routeMarkFamilyLabel, routeNodeTypeLabel, registerCodexScene,
+  sanitizeActiveRun, sanitizeRunHistory, saveLatestPlaytestFeedback, screenReaderPreference, screenReaderState,
+  screenShakePreference, flashEffectsPreference, settingsFocusState, setAnimationPacePreference, setColorCuePreference, setCombatPacePreference,
+  setFlashEffectsPreference, setGraphicsQualityPreference, setMotionPreference, setScreenReaderPreference,
+  setScreenShakePreference, setTextPacePreference, setVisualContrastPreference,
+  showKwTooltip, suitAccentColor, supplyAccent, supplyArtAssets, supplyCategoryLabel, supplyCodexIconForLabel, supplyCompactArtAssets,
   supplySynergyTags, HUD_MENU_PANEL, UI_BODY, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, UI_MUTED, UI_SOFT,
-  uiIconAssets, waymarkArtAssets, waymarkCodexIconForLabel, waymarkCompactArtAssets, waymarkGlyph,
+  syncSceneAnimationPace, textPacePreference, textPacingState, titleMenuCompactIconIds, titleMenuUiIconIds,
+  uiIconAssets, uniqueImageAssets, visualContrastState, waymarkArtAssets, waymarkCodexIconForLabel, waymarkCompactArtAssets, waymarkGlyph,
   waymarkSynergyTags,
 };
 export type {
@@ -29453,7 +29531,7 @@ const config: Phaser.Types.Core.GameConfig = {
     touch: true,
     gamepad: true
   },
-  scene: [BootScene, MenuScene, ProfileScene, RouteScene, BattleScene]
+  scene: [BootScene, MenuScene, RouteScene, BattleScene]
 };
 
 // --- Global text crispness -------------------------------------------------
@@ -29482,6 +29560,7 @@ window.__birdSquadEnsureScene = async (sceneKey: string) => {
   const game = window.__birdSquadGame;
   if (!game) return false;
   if (sceneKey === 'CodexScene') registerCodexScene(game, await loadCodexSceneModule());
+  if (sceneKey === 'ProfileScene') (await loadProfileSceneModule()).registerRuntimeProfileScene(game);
   return Boolean(game.scene.getScene(sceneKey));
 };
 window.__birdSquadCurrentMap = () => currentMap();

@@ -6,6 +6,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
   const {
     activeMapIndex,
     advanceGameTime,
+    alphaSupplyLibrary,
     animationPacingState,
     audioToggleWaveBurstState,
     birdAudio,
@@ -14,6 +15,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
     colorCueState,
     collectionGoalSummary,
     combatPacingState,
+    compactEffectGrammar,
     controlBindingLabel,
     controlsTextState,
     countTextureInGameObjects,
@@ -50,6 +52,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
       const marketBackdrop = scene.routeEventBackdropAsset(marketNode);
       const choiceBackdrop = scene.routeEventBackdropAsset(choiceNode);
       const routeMapBackdrop = scene.routeMapBackdrop;
+      const rewardChoices = scene.routeRewardChoiceDebugState();
       const ownedWaymarks = scene.ownedRouteMarkDefs();
       const selectedWaymark = scene.waymarkDrawerOpen ? scene.selectedRouteWaymark() : undefined;
       const pinnedWaymark = scene.waymarkDrawerOpen ? scene.pinnedRouteWaymark() : undefined;
@@ -540,10 +543,32 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
         supplyDrawerOpen: scene.supplyDrawerOpen,
         supplyDrawer: {
           open: scene.supplyDrawerOpen,
+          focusIndex: scene.supplyDrawerFocusIndex,
+          inputActive: scene.supplyDrawerInputActive,
+          armedIndex: scene.supplyDrawerArmedIndex,
+          entries: Array.from({ length: runSupplyCapacity(scene.runState) }, (_entry, index) => {
+            const supply = alphaSupplyLibrary.get(scene.runState.supplies[index] ?? '');
+            return supply
+              ? {
+                  id: supply.id,
+                  name: supply.name,
+                  description: supply.description,
+                  summary: compactEffectGrammar(supply.effects, 96, 3),
+                  timing: supply.timing,
+                  usable: supply.timing !== 'combat',
+                }
+              : { empty: true, usable: false };
+          }),
           renderer: {
             requested: Boolean(scene.routeSupplyDrawerModule || scene.routeSupplyDrawerLoading || scene.routeSupplyDrawerFailed),
             loaded: Boolean(scene.routeSupplyDrawerModule),
             failed: scene.routeSupplyDrawerFailed,
+          },
+          controls: {
+            open: `${controlBindingLabel('skipReward')} / controller X`,
+            select: 'Previous / Next / Arrow keys / Tab / D-pad / pointer',
+            confirm: `${controlBindingLabel('confirm')} / controller A / second tap`,
+            close: `${controlBindingLabel('back')} / controller B`,
           },
         },
         routeRewardRenderer: {
@@ -589,14 +614,15 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
                   index: focused ? targets.indexOf(focused) : -1,
                   count: targets.length,
                   armed: !!focused && scene.marketFocusArmedId === focused.getData('marketFocusId'),
+                  observations: scene.marketBuildObservations,
                   focusVisible: scene.children.list.some((child: any) => (
                     child.name === 'market-input-focus-ring' && child.visible
                   )),
                   routeCommitBlocked: true,
                   controls: {
-                    choose: 'Previous / Next / D-pad / pointer',
-                    buy: 'Confirm / A / second pointer activation',
-                    categories: '1-4 / controller shoulders / pointer',
+                    choose: 'Previous / Next / D-pad / tap',
+                    buy: 'Confirm / A / second activation',
+                    categories: '1-4 / LB / RB / pointer',
                     close: 'Back / B / pointer',
                   },
                 };
@@ -635,24 +661,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
                 failed: scene.routeRewardOverlayFailed,
               },
               decisionPreview: [...(scene.pendingRouteReward.decisionPreview ?? [])],
-              cardChoices: scene.routeCardRewardChoices.map((card: any) => card.id),
-              inputFocus: scene.routeCardRewardChoices.length > 0
-                ? {
-                    index: scene.routeRewardChoiceIndex,
-                    cardId: scene.focusedRouteRewardCard()?.id,
-                    cardName: scene.focusedRouteRewardCard()?.name,
-                    armed: Boolean(scene.routeRewardArmedCardId),
-                    armedCardId: scene.routeRewardArmedCardId,
-                    commitBlockedUntilSelected: !scene.routeRewardArmedCardId,
-                    visible: scene.children.list.some((child: any) => child.name === 'route-reward-input-focus-ring'),
-                    controls: {
-                      choose: 'Arrow keys / D-pad',
-                      claim: scene.routeRewardArmedCardId ? 'Confirm / A commits' : 'Confirm / A selects',
-                      inspect: 'Roost / Y',
-                      back: 'Back / B',
-                    },
-                  }
-                : undefined,
+              ...rewardChoices,
               inspection: {
                 open: Boolean(scene.routeRewardInspectionCardId),
                 cardId: scene.routeRewardInspectionCardId,

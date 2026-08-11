@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const smokePort = Number(process.env.BIRD_SQUAD_SMOKE_PORT ?? 5373);
 const smokeBaseUrl = `http://127.0.0.1:${smokePort}`;
+const browserMatrix = process.env.BIRD_SQUAD_BROWSER_MATRIX === '1';
 
 // Smoke-test harness for Bird Squad (next-level-implementation-spec Validation
 // Plan). Tests assert against the in-game text-state harness exposed on window
@@ -29,5 +30,11 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000,
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: browserMatrix
+    ? [
+        { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+        { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+        { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+      ]
+    : [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
 });

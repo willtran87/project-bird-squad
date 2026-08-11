@@ -44,7 +44,7 @@ in `docs/game/alpha-run-spec.md`.
 - Foundation combat should prioritize readability before adding new mechanics.
 
 Do not add parked mechanics to the foundation by default: Ruffled, Mark, Bond,
-Shine, Scry, Discover, Retain, Cleanse, Route, Seed, replay/reflection, status
+Shine, Scry, Discover, Cleanse, Route, Seed, replay/reflection, status
 conversion, intent delay/freeze, temporary cards, or all-four-suits payoffs.
 
 ## Shared Terms
@@ -57,6 +57,7 @@ conversion, intent delay/freeze, temporary cards, or all-four-suits payoffs.
 | Damage | Reduces enemy health. |
 | Healing | Restores Flock Cohesion. |
 | Draw / Discard | Moves cards through hand, draw pile, and discard pile. |
+| Retain | Keeps cards in hand through Roost. A selected card has first priority; remaining slots keep the rightmost unplayed cards. The same priority applies to Retain earned after the enemy acts. |
 | Enemy Tell | Visible enemy intent for the next enemy action. |
 | Add to the Flock | Post-encounter singleton card reward. |
 | Preen a Card | Improve one owned card. |
@@ -221,8 +222,8 @@ Core verbs:
 | `loseCohesion(N)` | Lose N Cohesion directly. |
 | `damageFlock(N)` | Damage the Flock from a player-card effect. |
 | `draw(N)` | Draw N cards. |
-| `discard(N)` | Player discards N cards. |
-| `discardUpTo(N)` | Player may discard up to N cards. |
+| `discard(N)` | After preceding effects resolve, player chooses exactly N cards from the current hand, or every eligible card if fewer remain. |
+| `discardUpTo(N)` | After preceding effects resolve, player may choose zero through N cards from the current hand. Back/B explicitly chooses zero. |
 | `gainWingbeat(N)` | Gain N Wingbeats this turn. |
 | `loseWingbeat(N)` | Lose N Wingbeats this turn. |
 | `gainEnergyNextTurn(N)` | Gain N extra Wingbeats next turn. |
@@ -233,9 +234,9 @@ Core verbs:
 | `windedBurst(N)` | Consume target Winded and deal N damage per Winded stack. |
 | `enterMolt()` | Enter Molt. |
 | `gainOpenSkyGuard(N)` | Gain N Open Sky Guard for the current combat. |
-| `returnDiscard(filter, costDelta)` | Return one matching discard card to hand with a cost modifier this turn. |
+| `returnDiscard(filter, drawAfter)` | Pause resolution and let the player choose one matching card from discard to return to hand, then draw `drawAfter`; if none match, continue without a return. |
 | `nextCoverBonus(suit, N)` | Next matching suit card this turn gains N base Cover. |
-| `retainHand(N)` | Retain up to N cards at Roost. |
+| `retainHand(N)` | Retain up to N cards through Roost. The selected card is retained first; remaining slots take the rightmost unplayed cards. If Retain resolves after the enemy acts, it uses the selection captured at Roost and the same fallback order. |
 | `nextTurnDraw(N)` | Draw N extra cards at the start of next player turn. |
 | `enemyNextAttackBonus(N)` | Add N damage to the next enemy attack. Used by a small set of risk/reward cards. |
 | `enemyGainCover(N)` | Give the first living enemy N Cover. Used by risk/reward cards. |
@@ -270,7 +271,7 @@ Supported value scalars:
 
 | Scalar | Meaning |
 | --- | --- |
-| `perDiscarded` | Multiply the value by cards actually discarded by the preceding discard effect. |
+| `perDiscarded` | Multiply the value by the exact number the player chose for the preceding `discard` or `discardUpTo` effect, including zero. |
 | `perWinded` | Multiply the value by the target's current Winded stacks. |
 | `perCover` | Multiply the value by current Flock Cover. |
 
@@ -278,7 +279,7 @@ Formula order:
 
 1. Pay card cost.
 2. Select target.
-3. Resolve effects in written order.
+3. Resolve effects in written order. A discard pauses after any preceding draws, so newly drawn cards are eligible. A discard-return pauses when reached and shows the then-current eligible discard pile. Later effects resume only after the required choice resolves.
 4. Add Flock `Damage` to `damage` and `damageAll` values.
 5. Add Flock `Cover` to `gainCover` values.
 6. If the card is using its Molt ability, add Molt Power once to its first positive damage, Cover, or recovery value. `damageAll` receives half Molt Power, rounded up, per target.
@@ -527,13 +528,13 @@ must never grant permanent combat stats.
 ## Input Baseline
 
 - Mouse and touch retain direct manipulation.
-- Settings > Controls exposes two six-action keyboard pages. Play defaults are Enter Confirm, Esc Back, Left/Right Previous/Next, `P` Pause, and `R` Roost. Utility defaults are Space Hustle, `X` Skip Reward, `M` Mute, `F` Full Screen, `S` Settings, and `H` How to Play.
+- Settings > Controls exposes two six-action keyboard pages. Play defaults are Enter Confirm, Esc Back, Left/Right Previous/Next, `P` Pause, and `R` Roost. Utility defaults are Space Hustle, `X` Run Kit / Skip, `M` Mute, `F` Full Screen, `S` Settings, and `H` How to Play. Run Kit opens Packed Supplies during route and combat play; the same action remains Skip during a card reward.
 - Remapping takes effect immediately across active scenes, persists locally when browser storage is available, and swaps conflicting assignments so every configurable action remains reachable. Reset Defaults restores the complete map.
 - Keyboard number keys `1-9` remain reserved for direct hand-card and reward-slot selection.
 - Route arrows or Tab cycle reachable nodes; the configured Confirm action commits; `1-3` chooses a district contract.
 - In combat, configured Previous/Next or Tab moves the visible hand/reward focus, Confirm plays or claims the focused choice, physical Up/Down retargets living enemies when those keys are not remapped, and the separate Roost action ends the Beat. Confirm must never silently substitute for Roost. The current focus, target, bindings, and choice position are exposed through text state.
 - Codex uses Tab or D-pad Up/Down to move between section tabs, collection filters, entries, and Back. Configured Previous/Next or D-pad Left/Right changes the focused section/filter or moves through the entry grid; Confirm/A opens or closes a dossier, and Back/B closes the dossier or returns to title. Grid focus scrolls into view automatically.
-- Standard controllers use D-pad Left/Right for hand/reward choices, D-pad Up/Down or shoulder buttons to retarget, A to confirm/play, B to dismiss or resume, Y to Roost, X to skip a card reward, and Start to pause on the route or in combat.
+- Standard controllers use D-pad Left/Right for hand/reward choices, D-pad Up/Down or shoulder buttons to retarget, A to confirm/play, B to dismiss or resume, Y to Roost, X to open Packed Supplies or skip a card reward, and Start to pause on the route or in combat.
 - Input actions must pass through the same animation and modal locks as pointer actions.
 
 ## Visual, Graphics, And Motion Preferences
@@ -564,6 +565,27 @@ must never grant permanent combat stats.
   persist locally when browser storage is available, are included in local
   Save Data backups, and remain usable for the current session when storage is
   blocked.
+
+## Audio Feedback
+
+- Every played card begins with a shared physical cast transient, then adds a
+  suit voice: rising and bright for Plumes, crisp and cutting for Quills, round
+  and rippling for Basins, low and percussive for Nests, and a restrained paper
+  voice for neutral cards and Snags. Consecutive casts rotate through three
+  subtle pitch variants so repeated play keeps its identity without becoming a
+  mechanically meaningful or erratic signal.
+- A card that actually uses its Molt text adds a short ascending shimmer. The
+  accent reflects resolved card state; it does not predict or alter combat math.
+- Committing a Preen uses a separate upgrade signature in post-combat rewards,
+  district prep, and Market service. Selection/arming remains a quiet interface
+  confirmation; the upgrade signature plays only when the card actually changes.
+- Suit voice, Molt state, draw, discard, upgrade, damage, and reward information
+  must remain readable through card glyphs, color-independent labels, rules
+  text, animation, and text state. Audio reinforces those signals and never
+  carries gameplay-critical information by itself.
+- Card voices use the SFX level and mute preference. Their synthesis shares the
+  interaction-loaded adaptive-audio boundary so it does not enlarge or preload
+  the opening path.
 
 ## Visual Hierarchy
 
@@ -615,6 +637,14 @@ Only one guide step is active at a time. The guide never disables legal alternat
 Every win and defeat exposes a true rematch rather than a default-run reset. `Replay Flight` starts a clean run with the finished flight's Leader, Ascension tier, Quick/Full length, and exact procedural route seed. Deck changes, route progress, Scrap, Supplies, Waymarks, and damage do not carry into the rematch.
 
 The outcome report shows the flight code beside the replay promise. Activating the flight code copies a shareable route link containing the exact seed and Quick/Full length. Opening that link presents `Fly Shared Route` on the title screen and launches the same route while leaving Leader and unlocked Ascension selection under the recipient's control; challenge links never bypass progression locks.
+
+The route seed governs player-visible route randomness as well as graph shape.
+Cache outcomes, route card drafts, single-card grants, Waymarks, Supplies, and
+nested route-effect rolls use stable salts derived from seed, district, node or
+choice, and the decision-relevant run state. Replaying or resuming the same
+state therefore produces the same offers even if ambient audio/FX randomness
+differs; a different seed still produces reward variety. IDs for records and
+cosmetic particle jitter are intentionally outside this gameplay contract.
 
 ## Leader Personal Records
 

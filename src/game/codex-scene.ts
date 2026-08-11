@@ -4754,6 +4754,11 @@ export class CodexScene extends Phaser.Scene {
     bg.on('pointerout', () => bg.setFillStyle(0x0d1720, 0.96));
     bg.on('pointerdown', () => this.openCodexDetail(supply.id));
     layer.add(bg);
+    addCodexEntryFrame(this, (obj) => layer.add(obj), { cx, cy, w, h }, {
+      alpha: 0.36,
+      padX: 18,
+      padY: 16,
+    });
     layer.add(this.add.rectangle(cx, cy - h / 2 + 7, w - 16, 4, accent, 0.82));
     const artAsset = supplyCompactArtAssets[supply.id];
     if (artAsset && this.textures.exists(artAsset.key)) {
@@ -4864,6 +4869,11 @@ export class CodexScene extends Phaser.Scene {
     bg.on('pointerout', () => bg.setFillStyle(0x0d1420, 0.96));
     bg.on('pointerdown', () => this.openCodexDetail(mark.id));
     layer.add(bg);
+    addCodexEntryFrame(this, (obj) => layer.add(obj), { cx, cy, w, h }, {
+      alpha: 0.36,
+      padX: 18,
+      padY: 16,
+    });
     layer.add(this.add.rectangle(cx, cy - h / 2 + 7, w - 16, 4, accent, 0.82));
 
     const artAsset = waymarkCompactArtAssets[mark.id];

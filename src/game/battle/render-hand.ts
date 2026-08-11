@@ -31,6 +31,12 @@ export interface BattleHandCardView {
   buildsFlow: boolean;
   flowVisible: boolean;
   surgeNext: boolean;
+  retainOrder?: number;
+  retainSelectable?: boolean;
+  discardSelectable?: boolean;
+  discardSelected?: boolean;
+  discardFocused?: boolean;
+  discardOrder?: number;
   artKey?: string;
   snag: boolean;
   fallbackLabel: string;
@@ -91,6 +97,12 @@ export interface BattleHandRenderContext {
   onCardClick: (instanceId: string) => void;
   onCardHover: (instanceId: string) => void;
   onCardOut: () => void;
+  renderDiscardTag: (
+    target: Phaser.GameObjects.Container,
+    card: BattleHandCardView,
+    x: number,
+    y: number,
+  ) => void;
 }
 
 export interface BattleHandPreviewContext {
@@ -158,7 +170,7 @@ export function renderBattleHandCardArt(
     context.handY,
     context.cardWidth - 4,
     context.cardHeight - 4,
-    card.canPay ? 1 : 0.55,
+    card.discardSelectable !== undefined ? card.discardSelectable ? 1 : 0.42 : card.canPay ? 1 : 0.55,
   );
 }
 
@@ -170,15 +182,15 @@ function addSelectedPulse(
 ) {
   const { scene, target, cardWidth, cardHeight, reducedMotion } = context;
   if (!textureReady(scene, context.assets.selectedPulse)) return;
-  const emphasized = card.selected || card.guideMolt || card.guideCard;
+  const emphasized = card.discardSelected || card.discardFocused || card.selected || card.guideMolt || card.guideCard;
   const guidePulseName = card.guideMolt
     ? 'combat-molt-guide-pulse'
     : card.guideCard
       ? 'combat-first-card-guide-pulse'
       : 'combat-hand-selected-pulse';
   const pulse = scene.add.image(centerX, context.handY, context.assets.selectedPulse)
-    .setDisplaySize(card.selected ? cardWidth + 38 : cardWidth + 32, card.selected ? cardHeight + 54 : cardHeight + 46)
-    .setAlpha(card.selected ? 0.54 : card.guideMolt ? 0.42 : card.guideCard ? 0.38 : 0)
+    .setDisplaySize(card.discardSelected || card.selected ? cardWidth + 38 : cardWidth + 32, card.discardSelected || card.selected ? cardHeight + 54 : cardHeight + 46)
+    .setAlpha(card.discardSelected ? 0.48 : card.discardFocused ? 0.34 : card.selected ? 0.54 : card.guideMolt ? 0.42 : card.guideCard ? 0.38 : 0)
     .setBlendMode(Phaser.BlendModes.ADD)
     .setName(guidePulseName);
   target.add(pulse);
@@ -209,11 +221,11 @@ function renderCard(
   const bottom = handY + cardHeight / 2;
   const rect = scene.add.rectangle(centerX, handY, cardWidth, cardHeight, 0x0a0f18, 1)
     .setStrokeStyle(
-      card.selected ? 5 : card.guideMolt || card.guideCard ? 4 : 2,
-      card.selected ? 0x24d0d6 : card.guideMolt ? 0xff9d4d : card.guideCard ? 0xd8a840 : card.accent,
+      card.discardSelected ? 5 : card.discardFocused ? 4 : card.selected ? 5 : card.guideMolt || card.guideCard ? 4 : 2,
+      card.discardSelected ? 0xff6b57 : card.discardFocused ? 0xd8a840 : card.selected ? 0x24d0d6 : card.guideMolt ? 0xff9d4d : card.guideCard ? 0xd8a840 : card.accent,
       1,
     )
-    .setInteractive({ useHandCursor: card.canPay });
+    .setInteractive({ useHandCursor: card.discardSelectable ?? (card.canPay || card.retainSelectable) });
   rect.on('pointerdown', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event?: Phaser.Types.Input.EventData) => {
     event?.stopPropagation();
     context.onCardClick(card.instanceId);
@@ -280,6 +292,23 @@ function renderCard(
       color: '#fff0b8',
       align: 'center',
     }).setOrigin(0.5).setName('combat-first-card-guide-tag'));
+  }
+  if (card.retainOrder) {
+    const keepY = top + (card.guideCard || card.guideMolt ? 70 : 46);
+    target.add(scene.add.rectangle(left + cardWidth - 42, keepY, 72, 20, 0x08241f, 0.96)
+      .setStrokeStyle(1, 0x8fd6a0, 0.96)
+      .setName('combat-retain-priority-tag')
+      .setData('order', card.retainOrder));
+    target.add(scene.add.text(left + cardWidth - 42, keepY, `KEEP ${card.retainOrder}`, {
+      fontFamily,
+      fontSize: '9px',
+      fontStyle: boldFontStyle,
+      color: '#dfffe8',
+      align: 'center',
+    }).setOrigin(0.5).setName('combat-retain-priority-tag').setData('order', card.retainOrder));
+  }
+  if (card.discardSelectable) {
+    context.renderDiscardTag(target, card, left + cardWidth - 42, top + 46);
   }
   if (context.reinforcedColorCues) {
     renderCardColorCue(scene, target, left + 44, top + 68, card.label, card.accent, {

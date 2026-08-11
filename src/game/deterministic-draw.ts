@@ -45,12 +45,9 @@ export function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === 'string') : [];
 }
 
-export function finiteNumber(value: unknown, fallback: number) {
-  return Number.isFinite(value) ? Number(value) : fallback;
-}
-
 export function finiteInt(value: unknown, fallback: number, min = Number.MIN_SAFE_INTEGER, max = Number.MAX_SAFE_INTEGER) {
-  return Math.min(max, Math.max(min, Math.floor(finiteNumber(value, fallback))));
+  const number = Number.isFinite(value) ? Number(value) : fallback;
+  return Math.min(max, Math.max(min, Math.floor(number)));
 }
 
 export function prepareOpeningDraw<T extends OpeningDrawCard>(

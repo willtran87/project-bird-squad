@@ -1,10 +1,17 @@
+import type { CardSuit } from './types';
+
 export type AdaptiveMusicMood = 'menu' | 'route' | 'battle' | 'boss' | 'victory' | 'defeat';
+export type CardAudioVoice = CardSuit | 'neutral';
 
 export interface AdaptiveMusicSnapshot {
   pattern: string;
   active: boolean;
   step: number;
   pulses: number;
+  cardVoices?: {
+    requests: Partial<Record<CardAudioVoice, number>>;
+    last?: { voice: CardAudioVoice; usesMolt: boolean; sequence: number; variant: number; volume: number };
+  };
 }
 
 interface MusicProfile {
@@ -29,6 +36,9 @@ export class AdaptiveMusicSequencer {
   private pulses = 0;
   private generation = 0;
   private volume = 0;
+  private cardVoiceRequests: Partial<Record<CardAudioVoice, number>> = {};
+  private cardVoiceSequence = 0;
+  private lastCardVoice?: { voice: CardAudioVoice; usesMolt: boolean; sequence: number; variant: number; volume: number };
 
   start(ctx: AudioContext, master: GainNode, mood: AdaptiveMusicMood, volume: number) {
     if (this.bus && this.ctx === ctx && this.mood === mood) {
@@ -82,7 +92,27 @@ export class AdaptiveMusicSequencer {
       active: Boolean(this.bus && this.volume > 0.001),
       step: this.step,
       pulses: this.pulses,
+      cardVoices: {
+        requests: { ...this.cardVoiceRequests },
+        last: this.lastCardVoice ? { ...this.lastCardVoice } : undefined,
+      },
     };
+  }
+
+  playCardVoice(
+    ctx: AudioContext,
+    master: GainNode,
+    voiceVolume: number,
+    voice: CardAudioVoice,
+    usesMolt: boolean,
+    intensity: number,
+  ) {
+    this.cardVoiceRequests[voice] = (this.cardVoiceRequests[voice] ?? 0) + 1;
+    const sequence = ++this.cardVoiceSequence;
+    const variant = (sequence - 1) % 3;
+    const volume = clamp(voiceVolume, 0, 1);
+    this.lastCardVoice = { voice, usesMolt, sequence, variant, volume };
+    playCardAudioVoice(ctx, master, volume, voice, usesMolt, intensity, variant);
   }
 
   private schedule(profile: MusicProfile, generation: number) {
@@ -173,6 +203,101 @@ function musicProfile(mood: AdaptiveMusicMood): MusicProfile {
       stepMs: 660, duration: 0.36, volume: 0.068, type: 'triangle', filter: 1480, accentEvery: 4, harmony: 7,
     };
   }
+}
+
+type CardAudioTone = readonly [number, number, number, OscillatorType, number, number];
+
+const CARD_AUDIO_VOICES: Record<CardAudioVoice, {
+  noise: readonly [number, number, number];
+  tones: readonly CardAudioTone[];
+}> = {
+  plumes: {
+    noise: [0.045, 1940, 0.008],
+    tones: [[420, 840, 0.1, 'sawtooth', 0.012, -0.12], [840, 1260, 0.11, 'triangle', 0.012, 0.14]],
+  },
+  quills: {
+    noise: [0.035, 2600, 0.009],
+    tones: [[1180, 740, 0.08, 'triangle', 0.014, -0.14], [1560, 980, 0.07, 'sine', 0.01, 0.16]],
+  },
+  basins: {
+    noise: [0.055, 820, 0.007],
+    tones: [[330, 440, 0.15, 'sine', 0.016, -0.12], [495, 370, 0.17, 'sine', 0.014, 0.14]],
+  },
+  nests: {
+    noise: [0.065, 560, 0.011],
+    tones: [[180, 240, 0.13, 'triangle', 0.017, -0.1], [270, 360, 0.1, 'square', 0.009, 0.12]],
+  },
+  neutral: {
+    noise: [0.055, 1320, 0.01],
+    tones: [[390, 330, 0.1, 'triangle', 0.014, -0.1], [620, 510, 0.08, 'sine', 0.009, 0.12]],
+  },
+};
+
+function playCardAudioVoice(
+  ctx: AudioContext,
+  master: GainNode,
+  voiceVolume: number,
+  voice: CardAudioVoice,
+  usesMolt: boolean,
+  intensity: number,
+  variant: number,
+) {
+  const loudness = clamp(intensity, 0.45, 1.8) * voiceVolume;
+  const pitch = [0.97, 1, 1.03][variant];
+  playCardNoise(ctx, master, [0.045, 1540, 0.012], loudness);
+  playCardTone(ctx, master, [520, 680, 0.07, 'triangle', 0.014, -0.08], loudness, pitch);
+  const plan = CARD_AUDIO_VOICES[voice];
+  playCardNoise(ctx, master, plan.noise, loudness);
+  plan.tones.forEach((tone) => playCardTone(ctx, master, tone, loudness, pitch));
+  if (usesMolt) playCardTone(ctx, master, [690, 1380, 0.12, 'sine', 0.01, 0], loudness, pitch);
+}
+
+function playCardTone(ctx: AudioContext, master: GainNode, tone: CardAudioTone, loudness: number, pitch: number) {
+  const [startFrequency, endFrequency, duration, type, volume, pan] = tone;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const panner = 'StereoPannerNode' in window ? ctx.createStereoPanner() : undefined;
+  const now = ctx.currentTime;
+  osc.type = type;
+  osc.frequency.setValueAtTime(startFrequency * pitch, now);
+  osc.frequency.exponentialRampToValueAtTime(endFrequency * pitch, now + duration);
+  gain.gain.setValueAtTime(0.0001, now);
+  gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume * loudness), now + 0.012);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  osc.connect(gain);
+  if (panner) {
+    panner.pan.setValueAtTime(pan, now);
+    gain.connect(panner);
+    panner.connect(master);
+  } else gain.connect(master);
+  osc.start(now);
+  osc.stop(now + duration + 0.02);
+}
+
+function playCardNoise(
+  ctx: AudioContext,
+  master: GainNode,
+  noise: readonly [number, number, number],
+  loudness: number,
+) {
+  const [duration, filterFrequency, volume] = noise;
+  const buffer = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * duration)), ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let index = 0; index < data.length; index += 1) data[index] = (Math.random() * 2 - 1) * (1 - index / data.length);
+  const source = ctx.createBufferSource();
+  const filter = ctx.createBiquadFilter();
+  const gain = ctx.createGain();
+  source.buffer = buffer;
+  filter.type = 'bandpass';
+  filter.frequency.setValueAtTime(filterFrequency, ctx.currentTime);
+  filter.Q.setValueAtTime(1.8, ctx.currentTime);
+  gain.gain.setValueAtTime(Math.max(0.0001, volume * loudness), ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(master);
+  source.start();
+  source.stop(ctx.currentTime + duration + 0.02);
 }
 
 function clamp(value: number, min: number, max: number) {
