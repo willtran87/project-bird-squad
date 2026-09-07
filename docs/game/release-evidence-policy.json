@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "releaseVersion": "0.1.0",
+  "freshPlayerGate": {
+    "status": "waived",
+    "approvedBy": "project-owner",
+    "approvedOn": "2026-07-30",
+    "source": "docs/game/game-experience-audit.md",
+    "reason": "Owner waived the five-session human evidence gate for the current release. Subjective fun, fairness, clarity, replay intent, and fresh-player comprehension remain unverified."
+  }
+}

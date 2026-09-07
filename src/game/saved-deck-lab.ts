@@ -1,8 +1,8 @@
 import { prepareOpeningDraw } from './deterministic-draw';
+import { BASE_HAND_TARGET, flockHandTarget } from './hand-size';
 import type { SavedDeckRecord } from './saved-decks';
 import type { RuntimeCard } from './types';
 
-const LAB_HAND_SIZE = 5;
 const LAB_SAMPLE_COUNT = 16;
 const LAB_ENERGY = 3;
 
@@ -49,10 +49,16 @@ export interface SavedDeckLabAnalysis {
     pressureCount: number;
     totalCost: number;
     protectionSwaps: number;
+    affordableTogether: number;
   };
   rules: {
     handSize: number;
     wingbeats: number;
+    baseHandSize: number;
+    flockDraw: number;
+    keystoneDraw: number;
+    leaderId: string;
+    scope: string;
     deterministic: true;
     usesCombatOpeningProtection: true;
     exactSavedOrderUnaffected: true;
@@ -179,15 +185,23 @@ function fingerprint(deck: SavedDeckRecord) {
   ].join(':');
 }
 
-function draw(cards: SavedDeckLabCard[], key: string) {
-  const prepared = prepareOpeningDraw(cards, key, true, LAB_HAND_SIZE, LAB_ENERGY);
-  const hand = prepared.deck.slice(0, LAB_HAND_SIZE);
+function draw(cards: SavedDeckLabCard[], key: string, handSize: number, shuffled = true) {
+  const prepared = prepareOpeningDraw(cards, key, shuffled, handSize, LAB_ENERGY);
+  const hand = prepared.deck.slice(0, handSize);
+  let remaining = LAB_ENERGY;
+  let affordableTogether = 0;
+  for (const card of hand.filter((entry) => entry.playable).sort((a, b) => a.cost - b.cost)) {
+    if (card.cost > remaining) break;
+    remaining -= card.cost;
+    affordableTogether += 1;
+  }
   return {
     cards: hand,
     playableCount: hand.filter((card) => card.playable).length,
     pressureCount: hand.filter((card) => card.pressure && card.playable).length,
     totalCost: hand.reduce((sum, card) => sum + card.cost, 0),
     protectionSwaps: prepared.state.protectionSwaps,
+    affordableTogether,
   };
 }
 
@@ -198,11 +212,17 @@ export function analyzeSavedDeck(
 ): SavedDeckLabAnalysis {
   const canonical = canonicalLabCards(deck, library);
   const cards = canonical.cards;
+  const flockDraw = cards.reduce((sum, card) => {
+    const runtime = library.get(card.id)!;
+    return sum + (runtime.flockStats.draw ?? 0) + (card.upgraded ? runtime.upgrade.flockStats.draw ?? 0 : 0);
+  }, 0);
+  const plumesKeystone = cards.filter((card) => library.get(card.id)?.suit === 'plumes').length >= 5;
+  const handSize = flockHandTarget(flockDraw, plumesKeystone, deck.leaderId);
   const key = fingerprint(deck);
   const index = Math.max(0, Math.min(999, Math.floor(sampleIndex)));
-  const sample = draw(cards, `${key}:flight-lab:${index}`);
+  const sample = draw(cards, `${key}:flight-lab:${index}`, handSize, index !== 0);
   const hands = Array.from({ length: LAB_SAMPLE_COUNT }, (_, handIndex) => (
-    draw(cards, `${key}:flight-lab:${handIndex}`)
+    draw(cards, `${key}:flight-lab:${handIndex}`, handSize)
   ));
   const pressureAvailable = cards.some((card) => card.pressure && card.playable);
   const issues = [
@@ -250,13 +270,13 @@ export function analyzeSavedDeck(
         ? Number((hands.reduce((sum, hand) => sum + hand.playableCount, 0) / hands.length).toFixed(2))
         : 0,
       atLeastTwoPlayablePercent: cards.length > 0 && hands.length > 0
-        ? Math.round(hands.filter((hand) => hand.playableCount >= Math.min(2, cards.length)).length / hands.length * 100)
+        ? Math.round(hands.filter((hand) => hand.playableCount >= 2).length / hands.length * 100)
         : 0,
       pressureAvailable,
       pressurePercent: pressureAvailable && hands.length > 0
         ? Math.round(hands.filter((hand) => hand.pressureCount > 0).length / hands.length * 100)
         : 0,
-      uniqueHands: new Set(hands.map((hand) => hand.cards.map((card) => `${card.id}${card.upgraded ? '+' : ''}`).join('|'))).size,
+      uniqueHands: new Set(hands.map((hand) => hand.cards.map((card) => `${card.id}${card.upgraded ? '+' : ''}`).sort().join('|'))).size,
       averageProtectionSwaps: hands.length > 0
         ? Number((hands.reduce((sum, hand) => sum + hand.protectionSwaps, 0) / hands.length).toFixed(2))
         : 0,
@@ -267,8 +287,13 @@ export function analyzeSavedDeck(
       ...sample,
     },
     rules: {
-      handSize: LAB_HAND_SIZE,
+      handSize,
       wingbeats: LAB_ENERGY,
+      baseHandSize: BASE_HAND_TARGET,
+      flockDraw,
+      keystoneDraw: plumesKeystone && deck.leaderId !== 'spark_caller' ? 1 : 0,
+      leaderId: deck.leaderId,
+      scope: 'First hand uses saved order; later samples model shuffled openings. Excludes Waymarks, route bonuses, and effects triggered by playing cards.',
       deterministic: true,
       usesCombatOpeningProtection: true,
       exactSavedOrderUnaffected: true,

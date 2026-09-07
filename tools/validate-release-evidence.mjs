@@ -1,11 +1,22 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
+import { freshPlayerGate } from './release-evidence-policy.mjs';
 
 const root = process.cwd();
 const sessionDir = path.join(root, '.artifacts', 'playtest-sessions');
 const auditFile = path.join(root, '.artifacts', 'release-evidence', 'manual-audits.json');
 const failures = [];
+let humanGate = { waived: false };
+try {
+  const policy = JSON.parse(fs.readFileSync(path.join(root, 'docs/game/release-evidence-policy.json'), 'utf8'));
+  const { version } = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  humanGate = freshPlayerGate(policy, version, process.argv.includes('--strict-human'));
+  if (humanGate.error) failures.push(humanGate.error);
+  if (humanGate.notice) console.log(humanGate.notice);
+} catch (error) {
+  failures.push(`Release policy: ${error.message}`);
+}
 const ratings = ['fun', 'fairness', 'clarity', 'replay'];
 const validRating = (value) => Number.isFinite(value) && value >= 1 && value <= 5;
 
@@ -39,7 +50,7 @@ const humanRuns = uniqueRuns.filter((run) => (
   && ratings.every((key) => validRating(run.experienceFeedback?.[key]))
 ));
 
-if (humanRuns.length < 5) {
+if (humanRuns.length < 5 && !humanGate.waived) {
   failures.push(`Fresh-player evidence: found ${humanRuns.length}/5 unique, non-seeded runs with complete Fun, Fairness, Clarity, and Replay ratings.`);
 }
 for (const run of humanRuns.slice(0, 5)) {

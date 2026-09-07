@@ -5,6 +5,11 @@ project-owner waiver recorded on 2026-07-30. The release may proceed on the
 automated production evidence while accepting that fun, fairness, clarity, and
 replay intent have not been validated with fresh players.
 
+The validator reads the version-scoped waiver in
+`docs/game/release-evidence-policy.json` and reports it separately from passed
+evidence. Physical-device and assistive-technology checks are not waived; see
+`docs/game/release-evidence-runbook.md`.
+
 This runbook remains the required standard if human evidence is collected
 later. Automated and seeded runs prove the telemetry pipeline, but they never
 count as human evidence and must not be presented as such.

@@ -121,6 +121,8 @@ export function districtRewardObservations(
 ): string[] {
   const affinity = districtRewardAffinity(card, rewardBias)[0];
   const districtRead = affinity ? `+ District lean: ${affinity}` : undefined;
+  const caution = buildObservations.find((entry) => entry.startsWith('!'));
+  if (districtRead && caution) return [districtRead, caution];
   return [districtRead, ...buildObservations.filter((entry) => entry !== districtRead)]
     .filter((entry): entry is string => Boolean(entry))
     .slice(0, 2);
@@ -349,11 +351,14 @@ export function rewardBuildObservations<T extends RewardObservationCard>(
     else add(44, `= ${label} ${suitCount}>${suitCount + 1}`);
   }
   const costlyCards = count((entry) => entry.cost >= 2);
-  if (card.cost >= 2 && costlyCards >= 3) add(84, `! ${costlyCards + 1}th 2+ cost`);
+  if (card.cost >= 2 && costlyCards >= 3) add(84, `! ${costlyCards + 1} cards cost 2+`);
   const sameRole = count((entry) => entry.role === card.role);
   if (sameRole >= 4) add(62, `! ${card.role === 'attack' ? 'Attack' : card.role === 'skill' ? 'Skill' : 'Utility'} role crowded`);
   if (card.moltText) add(48, '+ Adds Molt option');
-  return observations.sort((left, right) => right[0] - left[0]).slice(0, 2).map((entry) => entry[1]);
+  const ranked = observations.sort((left, right) => right[0] - left[0]).map((entry) => entry[1]);
+  const caution = ranked.find((entry) => entry.startsWith('!'));
+  const benefit = ranked.find((entry) => !entry.startsWith('!'));
+  return caution && benefit ? [benefit, caution] : ranked.slice(0, 2);
 }
 
 function sameStringList(left: readonly string[] | undefined, right: readonly string[] | undefined) {

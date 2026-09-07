@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { flockLeaders } from '../src/game/leaders';
+import type { SavedDeckRecord } from '../src/game/saved-decks';
 
 // The game exposes a deterministic text-state harness on window; these smoke
 // tests drive scenes through it rather than clicking the canvas.
@@ -79,11 +81,13 @@ async function boot(page: Page, path = '/') {
 async function clickNamedGameObject(page: Page, sceneKey: string, name: string) {
   await page.waitForFunction(({ sceneKey: key, name: objectName }) => {
     const scene = window.__birdSquadGame?.scene?.getScene(key);
-    return scene?.children?.list?.some((child: any) => child.name === objectName && child.input?.enabled);
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [child, ...(Array.isArray(child.list) ? collect(child.list) : [])]);
+    return collect(scene?.children?.list ?? []).some((child: any) => child.name === objectName && child.input?.enabled);
   }, { sceneKey, name });
   const center = await page.evaluate(({ sceneKey: key, name: objectName }) => {
     const scene = window.__birdSquadGame.scene.getScene(key);
-    const hit = scene.children.list.find((child: any) => child.name === objectName && child.input?.enabled);
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [child, ...(Array.isArray(child.list) ? collect(child.list) : [])]);
+    const hit = collect(scene.children.list).find((child: any) => child.name === objectName && child.input?.enabled);
     if (!hit) throw new Error(`Missing enabled ${objectName} command`);
     return { x: hit.x, y: hit.y };
   }, { sceneKey, name });
@@ -92,6 +96,7 @@ async function clickNamedGameObject(page: Page, sceneKey: string, name: string) 
   await page.mouse.click(
     canvas.x + canvas.width * (center.x / 1280),
     canvas.y + canvas.height * (center.y / 720),
+    { delay: 50 },
   );
 }
 
@@ -12896,6 +12901,80 @@ test('Quick Flight skips the long middle district and restores the flyway visibl
   expect(result.restorationObjects).toBeGreaterThan(2);
 });
 
+test('reward advice preserves costs alongside competing synergy and district benefits', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const battle: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_c0_street_opening' });
+    const card = { role: 'attack', type: 'card', cost: 2, runtime: { tags: ['attack'], suit: 'plumes', rarity: 'common' } };
+    battle.hand = []; battle.discardPile = []; battle.clearedPile = [];
+    battle.routeMarks = ['stage_pin'];
+    const observe = (candidate: any, owned: any[]) => {
+      battle.drawPile = owned;
+      return battle.cardNeedTags(candidate);
+    };
+    const owned = Array.from({ length: 4 }, () => ({ ...card }));
+    const observations = observe(card, owned);
+    const district = battle.rewardObservations(card);
+    const recovery = { ...card, role: 'skill', cost: 1, runtime: { ...card.runtime, tags: ['heal'] } };
+    return {
+      observations, district,
+      recovery: observe(recovery, Array.from({ length: 4 }, () => recovery)),
+      first: observe(card, []),
+      twentyOne: observe(card, Array.from({ length: 20 }, () => card)),
+      preserved: owned.length === 4 && card.cost === 2,
+    };
+  });
+  expect(result.observations).toEqual(['+ Feeds Stage Pin', '! 5 cards cost 2+']);
+  expect(result.district).toEqual(['+ District lean: direct damage', '! 5 cards cost 2+']);
+  expect(result.recovery).toEqual(['+ Feeds Stage Pin', '! Recovery already strong']);
+  expect(result.first).toEqual(['+ Feeds Stage Pin', '+ First damage source']);
+  expect(result.twentyOne[1]).toBe('! 21 cards cost 2+');
+  expect(result.preserved).toBe(true);
+});
+
+test('reward cost cautions remain visible and announced before commitment', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 2560, height: 1600 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  const expected = await page.evaluate(async () => {
+    const battle: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    let choices: any[] = [];
+    let index = -1;
+    for (let attempt = 0; attempt < 32 && index < 0; attempt++) {
+      choices = battle.createRewardChoices();
+      index = choices.findIndex((card: any) => card.cost >= 2);
+    }
+    if (index < 0) throw new Error('Expected a real 2+ cost reward candidate');
+    const card = choices[index];
+    battle.hand = [];
+    battle.discardPile = [];
+    battle.clearedPile = [];
+    battle.drawPile = Array.from({ length: 4 }, (_, copy) => ({ ...card, instanceId: `cost-advice-${copy}` }));
+    battle.rewardChoices = choices;
+    battle.controllerChoiceIndex = index;
+    battle.rewardChoiceArmedId = undefined;
+    battle.rewardSkipArmed = false;
+    battle.mode = 'cardReward';
+    battle.battleInputActive = true;
+    battle.renderAll();
+    return { observations: battle.rewardObservations(card), count: battle.allDeckCards().length };
+  });
+  expect(expected.observations).toContain('! 5 cards cost 2+');
+  await page.waitForFunction(() => {
+    const battle = window.__birdSquadGame.scene.getScene('BattleScene');
+    return battle.getTextState().battleRewardRenderer?.ready
+      && battle.root.list.some((child: any) => child.name === 'reward-build-observation' && child.text === '! 5 cards cost 2+');
+  });
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? '')).toContain('5 cards cost 2+');
+  for (const size of [{ width: 2560, height: 1600 }, { width: 1000, height: 560 }]) {
+    await page.setViewportSize(size);
+    await page.screenshot({ path: `.artifacts/test-results/reward-tradeoffs/reward-${size.width}x${size.height}.png` });
+  }
+  expect(await page.evaluate(() => window.__birdSquadGame.scene.getScene('BattleScene').allDeckCards().length)).toBe(expected.count);
+  expect(await page.evaluate(() => window.__birdSquadGame.scene.getScene('BattleScene').rewardChoiceArmedId)).toBeUndefined();
+});
+
 test('combat rewards deliberately mix deck need, suit synergy, and wildcard slots', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
@@ -12947,7 +13026,7 @@ test('combat rewards deliberately mix deck need, suit synergy, and wildcard slot
   expect(result.choiceSuits[2]).not.toBe(result.dominantSuit);
   expect(result.choiceRoles.slice(0, 2)).not.toContain(result.choiceRoles[2]);
   expect(result.synergyTags.some((tag: string) => tag.includes('Feeds '))).toBe(true);
-  expect(result.synergyTags.some((tag: string) => tag.includes('KEYSTONE'))).toBe(true);
+  expect(result.synergyTags.some((tag: string) => tag.includes('KEYSTONE') || tag.startsWith('!'))).toBe(true);
   expect(result.allTagCounts.every((count: number) => count > 0 && count <= 2)).toBe(true);
   expect(result.drafts).toHaveLength(32);
   for (const draft of result.drafts) {
@@ -14989,27 +15068,17 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
     window.localStorage.removeItem('birdsquad.combatPace');
     window.localStorage.removeItem('birdsquad.animationPace');
     window.localStorage.removeItem('birdsquad.textPace');
-    const findSliderHit = (items: any[], control: 'music' | 'sfx' | 'voices' | 'ambience'): any | undefined => collect(items)
-      .find((child: any) => child.name === `system-settings-${control}-slider-hit`
-        && (child.input?.enabled ?? false));
-    const findMotionHit = (items: any[]): any | undefined => collect(items)
-      .find((child: any) => child.name === 'system-settings-motion-switch-hit'
-        && (child.input?.enabled ?? false));
-    const findContrastHit = (items: any[]): any | undefined => collect(items)
-      .find((child: any) => child.name === 'system-settings-contrast-toggle-hit'
-        && (child.input?.enabled ?? false));
-    const findGraphicsQualityHit = (items: any[]): any | undefined => collect(items)
-      .find((child: any) => child.name === 'system-settings-graphics-quality-switch-hit'
-        && (child.input?.enabled ?? false));
-    const findCombatPaceHit = (items: any[]): any | undefined => collect(items)
-      .find((child: any) => child.name === 'system-settings-combat-pace-switch-hit'
-        && (child.input?.enabled ?? false));
-    const findAnimationPaceHit = (items: any[]): any | undefined => collect(items)
-      .find((child: any) => child.name === 'system-settings-animation-pace-toggle-hit'
-        && (child.input?.enabled ?? false));
-    const findTextPaceHit = (items: any[]): any | undefined => collect(items)
-      .find((child: any) => child.name === 'system-settings-row-11-hit'
-        && (child.input?.enabled ?? false));
+    const findSetting = (items: any[], name: string, section: number): any => {
+      collect(items).find((child: any) => child.name === `system-settings-section-${section}-hit`)?.emit('pointerdown');
+      return collect(items).find((child: any) => child.name === name && child.input?.enabled);
+    };
+    const findSliderHit = (items: any[], control: string) => findSetting(items, `system-settings-${control}-slider-hit`, 0);
+    const findMotionHit = (items: any[]) => findSetting(items, 'system-settings-motion-switch-hit', 2);
+    const findContrastHit = (items: any[]) => findSetting(items, 'system-settings-contrast-toggle-hit', 2);
+    const findGraphicsQualityHit = (items: any[]) => findSetting(items, 'system-settings-graphics-quality-switch-hit', 1);
+    const findCombatPaceHit = (items: any[]) => findSetting(items, 'system-settings-combat-pace-switch-hit', 1);
+    const findAnimationPaceHit = (items: any[]) => findSetting(items, 'system-settings-animation-pace-toggle-hit', 1);
+    const findTextPaceHit = (items: any[]) => findSetting(items, 'system-settings-row-11-hit', 1);
 
     let menu: any = g.scene.getScene('MenuScene');
     menu.input.keyboard.emit('keydown-S');
@@ -15101,7 +15170,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
     const menuTextPaceAfterFast = JSON.parse(window.render_game_to_text!()).textPacing;
     const menuMusicHit = findSliderHit(menu.children.list, 'music');
     if (!menuMusicHit) throw new Error('Missing menu Music slider hit target');
-    menuMusicHit.emit('pointerdown', { x: 364, y: 266, isDown: true });
+    menuMusicHit.emit('pointerdown', { x: menuMusicHit.x - 50, y: menuMusicHit.y, isDown: true });
     await wait(80);
     const menuAudioAfterMusic = JSON.parse(window.render_game_to_text!()).audio;
     let menuSfxHit = findSliderHit(menu.children.list, 'sfx');
@@ -15110,7 +15179,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
       menuSfxHit = findSliderHit(menu.children.list, 'sfx');
     }
     if (!menuSfxHit) throw new Error('Missing menu SFX slider hit target');
-    menuSfxHit.emit('pointerdown', { x: 434, y: 328, isDown: true });
+    menuSfxHit.emit('pointerdown', { x: menuSfxHit.x + 20, y: menuSfxHit.y, isDown: true });
     await wait(80);
     const menuAudioAfterSfx = JSON.parse(window.render_game_to_text!()).audio;
     let menuVoicesHit = findSliderHit(menu.children.list, 'voices');
@@ -15119,7 +15188,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
       menuVoicesHit = findSliderHit(menu.children.list, 'voices');
     }
     if (!menuVoicesHit) throw new Error('Missing menu Card Voices slider hit target');
-    menuVoicesHit.emit('pointerdown', { x: 399, y: 382, isDown: true });
+    menuVoicesHit.emit('pointerdown', { x: menuVoicesHit.x - 15, y: menuVoicesHit.y, isDown: true });
     await wait(80);
     const menuAudioAfterVoices = JSON.parse(window.render_game_to_text!()).audio;
     let menuAmbienceHit = findSliderHit(menu.children.list, 'ambience');
@@ -15128,7 +15197,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
       menuAmbienceHit = findSliderHit(menu.children.list, 'ambience');
     }
     if (!menuAmbienceHit) throw new Error('Missing menu Ambience slider hit target');
-    menuAmbienceHit.emit('pointerdown', { x: 399, y: 390, isDown: true });
+    menuAmbienceHit.emit('pointerdown', { x: menuAmbienceHit.x - 15, y: menuAmbienceHit.y, isDown: true });
     await wait(80);
     const menuAudioAfterAmbience = JSON.parse(window.render_game_to_text!()).audio;
     menu.input.keyboard.emit('keydown-ESC');
@@ -15314,8 +15383,8 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.menuSettingsMotionSwitchFrame).toBe(3);
   expect(result.menuSettingsMotionSwitchTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
   expect(result.menuSettingsFocusRings).toBe(1);
-  expect(result.menuSettingsFocus).toEqual({ index: 0, label: 'Audio' });
-  expect(result.menuSettingsControlTargets).toHaveLength(9);
+  expect(result.menuSettingsFocus).toMatchObject({ index: 0, label: 'Audio' });
+  expect(result.menuSettingsControlTargets).toHaveLength(4);
   expect(result.menuSettingsControlTargets.every((target: { width: number; height: number }) => (
     target.width >= 276 && target.height === 58
   ))).toBe(true);
@@ -15372,7 +15441,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.routeSettingsMotionSwitchFrame).toBe(3);
   expect(result.routeSettingsMotionSwitchTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
   expect(result.routeSettingsFocusRings).toBe(1);
-  expect(result.routeSettingsFocus).toEqual({ index: 0, label: 'Audio' });
+  expect(result.routeSettingsFocus).toMatchObject({ index: 0, label: 'Audio' });
   expect(result.routeMotion.preference).toBe('reduced');
   expect(result.routeMotion.reduced).toBe(true);
   expect(result.routeVisualContrast).toMatchObject({ preference: 'high', highContrast: true, applied: true });
@@ -15400,7 +15469,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
   expect(result.battleSettingsMotionSwitchFrame).toBe(3);
   expect(result.battleSettingsMotionSwitchTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
   expect(result.battleSettingsFocusRings).toBe(1);
-  expect(result.battleSettingsFocus).toEqual({ index: 0, label: 'Audio' });
+  expect(result.battleSettingsFocus).toMatchObject({ index: 0, label: 'Audio' });
   expect(result.battleMotion.preference).toBe('reduced');
   expect(result.battleMotion.reduced).toBe(true);
   expect(result.battleVisualContrast).toMatchObject({ preference: 'high', highContrast: true, applied: true });
@@ -15432,10 +15501,13 @@ test('settings and remapping controls keep touch targets at the minimum supporte
     ]);
     return state.settingsOpen
       && collect(menu.settingsOverlay?.list ?? [])
-        .some((child: any) => child.name === 'system-settings-row-15-hit' && child.input?.enabled);
+        .some((child: any) => child.name === 'system-settings-row-0-hit' && child.input?.enabled);
   });
 
-  const settingsTargets = await page.evaluate(() => {
+  const settingsTargets: Array<{ name: string; cssWidth: number; cssHeight: number }> = [];
+  for (let section = 0; section < 4; section++) {
+    await clickNamedGameObject(page, 'MenuScene', `system-settings-section-${section}-hit`);
+    settingsTargets.push(...await page.evaluate(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
     const collect = (items: any[]): any[] => items.flatMap((child: any) => [
       child,
@@ -15451,7 +15523,9 @@ test('settings and remapping controls keep touch targets at the minimum supporte
         cssWidth: child.displayWidth * scale,
         cssHeight: child.displayHeight * scale,
       }));
-  });
+    }));
+  }
+  await clickNamedGameObject(page, 'MenuScene', 'system-settings-section-0-hit');
 
   expect(settingsTargets).toHaveLength(25);
   expect(settingsTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
@@ -15517,6 +15591,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
   expect(movedRowHierarchy[1].alpha).toBeCloseTo(0.82, 2);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/settings-1000x560.png' });
 
+  await clickNamedGameObject(page, 'MenuScene', 'system-settings-section-3-hit');
   await page.evaluate(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
     const collect = (items: any[]): any[] => items.flatMap((child: any) => [
@@ -16635,12 +16710,13 @@ test('reinforced color cues persist and add suit shapes plus labels to combat de
   await page.waitForFunction(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
     return (menu.settingsOverlay?.list ?? []).some((child: any) => (
-      child.name === 'system-settings-row-15-hit' && child.input?.enabled
+      child.name === 'system-settings-row-0-hit' && child.input?.enabled
     ));
   });
   expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).colorCues)
     .toEqual({ preference: 'standard', reinforced: false });
 
+  await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
@@ -16722,8 +16798,9 @@ test('reinforced color cues persist and add suit shapes plus labels to combat de
       child,
       ...(Array.isArray(child.list) ? collect(child.list) : []),
     ]);
+    collect(battle.systemOverlayLayer.list).find((child: any) => child.name === 'system-settings-section-2-hit')?.emit('pointerdown');
     const hit = collect(battle.systemOverlayLayer.list)
-      .find((child: any) => child.name === 'system-settings-row-12-hit' && child.input?.enabled);
+      .find((child: any) => child.name === 'system-settings-row-13-hit' && child.input?.enabled);
     if (!hit) throw new Error('Missing Color Cues settings row');
     hit.emit('pointerdown', { x: hit.x, y: hit.y, isDown: true });
   });
@@ -16767,9 +16844,10 @@ test('screen shake setting persists and Reduced Motion suppresses combat camera 
   await page.waitForFunction(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
     return (menu.settingsOverlay?.list ?? []).some((child: any) => (
-      child.name === 'system-settings-row-15-hit' && child.input?.enabled
+      child.name === 'system-settings-row-0-hit' && child.input?.enabled
     ));
   });
+  await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.waitForFunction(() => (
@@ -16854,7 +16932,7 @@ test('reduced flashes persist and remove abrupt additive hit layers without hidi
   test.setTimeout(180_000);
   await boot(page);
 
-  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).flashEffects)
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').flashEffects))
     .toEqual({ preference: 'full', reduced: false, reducedByMotion: false });
 
   await page.keyboard.press('s');
@@ -16862,9 +16940,10 @@ test('reduced flashes persist and remove abrupt additive hit layers without hidi
   await page.waitForFunction(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
     return (menu.settingsOverlay?.list ?? []).some((child: any) => (
-      child.name === 'system-settings-row-15-hit' && child.input?.enabled
+      child.name === 'system-settings-row-0-hit' && child.input?.enabled
     ));
   });
+  await page.keyboard.press('ArrowUp');
   await page.keyboard.press('ArrowUp');
   await page.waitForFunction(() => (
     JSON.parse(window.render_game_to_text?.() ?? '{}').settingsFocus?.label === 'Flashes'
@@ -16981,6 +17060,7 @@ test('reduced flashes persist and remove abrupt additive hit layers without hidi
 });
 
 test('opt-in screen reader announcements follow menu, route, combat, and settings focus', async ({ page }) => {
+  test.setTimeout(90_000);
   await boot(page);
   const initial = await page.evaluate(() => {
     const region = document.getElementById('game-status');
@@ -17009,13 +17089,13 @@ test('opt-in screen reader announcements follow menu, route, combat, and setting
   await page.waitForFunction(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
     return (menu.settingsOverlay?.list ?? []).some((child: any) => (
-      child.name === 'system-settings-row-11-hit' && child.input?.enabled
+      child.name === 'system-settings-row-0-hit' && child.input?.enabled
     ));
   });
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('PageUp');
+  await page.keyboard.press('PageUp');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').settingsFocus?.label === 'Screen Reader');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => {
@@ -17108,15 +17188,15 @@ test('opt-in screen reader announcements follow menu, route, combat, and setting
   await page.waitForFunction(() => {
     const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
     const visit = (items: any[]): boolean => items.some((child: any) => (
-      (child.name === 'system-settings-row-11-hit' && child.input?.enabled)
+      (child.name === 'system-settings-row-0-hit' && child.input?.enabled)
       || (Array.isArray(child.list) && visit(child.list))
     ));
     return visit(battle.systemOverlayLayer?.list ?? []);
   });
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
-  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('PageUp');
+  await page.keyboard.press('PageUp');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').settingsFocus?.label === 'Screen Reader');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => {
@@ -17151,6 +17231,7 @@ test('settings remain usable when browser preference storage is unavailable', as
         await wait(50);
       }
       const collect = (items: any[]): any[] => items.flatMap((child: any) => [child, ...(Array.isArray(child.list) ? collect(child.list) : [])]);
+      collect(menu.children.list).find((child: any) => child.name === 'system-settings-section-2-hit')?.emit('pointerdown');
       const motionHit = collect(menu.children.list)
         .find((child: any) => child.name === 'system-settings-motion-switch-hit' && child.input?.enabled);
       if (!motionHit) throw new Error('Missing Motion control while storage is blocked');
@@ -17161,6 +17242,7 @@ test('settings remain usable when browser preference storage is unavailable', as
       if (!contrastHit) throw new Error('Missing Contrast control while storage is blocked');
       contrastHit.emit('pointerdown', { x: 846, y: 510, isDown: true });
       await wait(80);
+      collect(menu.children.list).find((child: any) => child.name === 'system-settings-section-1-hit')?.emit('pointerdown');
       let graphicsHit = collect(menu.children.list)
         .find((child: any) => child.name === 'system-settings-graphics-quality-switch-hit' && child.input?.enabled);
       if (!graphicsHit) throw new Error('Missing Effects quality control while storage is blocked');
@@ -17171,8 +17253,9 @@ test('settings remain usable when browser preference storage is unavailable', as
       if (!graphicsHit) throw new Error('Missing Effects quality control after first blocked-storage change');
       graphicsHit.emit('pointerdown', { x: 804, y: 484, isDown: true });
       await wait(80);
+      collect(menu.children.list).find((child: any) => child.name === 'system-settings-section-3-hit')?.emit('pointerdown');
       const controlsHit = collect(menu.children.list)
-        .find((child: any) => child.name === 'system-settings-row-4-hit' && child.input?.enabled);
+        .find((child: any) => child.name === 'system-settings-row-5-hit' && child.input?.enabled);
       if (!controlsHit) throw new Error('Missing Controls row while storage is blocked');
       controlsHit.emit('pointerdown', { x: 640, y: 436, isDown: true });
       await wait(80);
@@ -17448,6 +17531,86 @@ test('title utility destinations are reachable by controller without starting a 
   )), { timeout: 20_000 }).toBe(true);
 });
 
+test('grouped Settings isolate hidden controls and preserve focus and values across surfaces', async ({ page }) => {
+  test.setTimeout(120_000);
+  await page.setViewportSize({ width: 2560, height: 1600 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await boot(page);
+  const sections = [
+    { label: 'Audio', rows: [0, 1, 2, 3, 4] },
+    { label: 'Presentation', rows: [8, 9, 10, 11] },
+    { label: 'Accessibility', rows: [6, 7, 12, 13, 14, 15] },
+    { label: 'Controls', rows: [5] },
+  ];
+  const snapshot = () => page.evaluate(() => {
+    const state = JSON.parse(window.render_game_to_text!());
+    const scene = window.__birdSquadGame.scene.getScene(state.scene);
+    const collect = (items: any[]): any[] => items.flatMap((child: any) => [child, ...(Array.isArray(child.list) ? collect(child.list) : [])]);
+    const rows = [...new Set(collect(scene.children.list))].filter((child: any) => /^system-settings-row-\d+-hit$/.test(child.name ?? ''));
+    return {
+      focus: state.settingsFocus,
+      keyboardListeners: scene.input.keyboard.listenerCount('keydown'),
+      gamepadListeners: scene.input.gamepad.listenerCount('down'),
+      visible: rows.filter((row: any) => row.visible).map((row: any) => Number(row.name.split('-')[3])),
+      enabled: rows.filter((row: any) => row.input?.enabled).map((row: any) => Number(row.name.split('-')[3])),
+      bounds: rows.filter((row: any) => row.visible).map((row: any) => ({ top: row.getBounds().top, bottom: row.getBounds().bottom, left: row.getBounds().left, right: row.getBounds().right })),
+    };
+  });
+  for (const sceneKey of ['MenuScene', 'RouteScene', 'BattleScene']) {
+    if (sceneKey !== 'MenuScene') await page.evaluate(async (key) => window.__birdSquadStartScene!(key, key === 'BattleScene' ? { routeNodeId: 'm1_entry' } : {}), sceneKey);
+    await page.keyboard.press('s', { delay: 50 });
+    await expect.poll(async () => (await snapshot()).focus?.section).toBe('Audio');
+    await page.waitForFunction((key) => {
+      const scene = window.__birdSquadGame.scene.getScene(key);
+      const collect = (items: any[]): any[] => items.flatMap((child: any) => [child, ...(Array.isArray(child.list) ? collect(child.list) : [])]);
+      return !scene.load.isLoading() && collect(scene.children.list).some((child: any) => child.name === 'system-settings-row-frame-0');
+    }, sceneKey);
+    const beforeInput = await snapshot();
+    const beforeAudio = await page.evaluate(() => JSON.parse(window.render_game_to_text!()).audio);
+    for (const [index, section] of sections.entries()) {
+      await clickNamedGameObject(page, sceneKey, `system-settings-section-${index}-hit`);
+      await expect.poll(async () => (await snapshot()).focus?.section).toBe(section.label);
+      const current = await snapshot();
+      expect(current.visible.sort((a, b) => a - b)).toEqual([...section.rows].sort((a, b) => a - b));
+      expect(current.enabled.sort((a, b) => a - b)).toEqual(current.visible);
+      expect(current.bounds.every((box) => box.left >= 640 && box.right <= 1180 && box.top >= 190 && box.bottom <= 580)).toBe(true);
+      await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? '')).toContain(`Settings. ${section.label}.`);
+      await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? '')).toContain(`${current.focus.label}: ${current.focus.value}`);
+      await page.screenshot({ path: `.artifacts/test-results/grouped-settings/${sceneKey}-${index}-2560x1600.png` });
+    }
+    const afterAudio = await page.evaluate(() => JSON.parse(window.render_game_to_text!()).audio);
+    for (const preference of ['muted', 'musicVolume', 'sfxVolume', 'voiceVolume', 'ambienceVolume']) expect(afterAudio[preference]).toBe(beforeAudio[preference]);
+    await page.keyboard.press('PageDown', { delay: 50 });
+    await expect.poll(async () => (await snapshot()).focus.section).toBe('Audio');
+    await page.keyboard.press('ArrowDown', { delay: 50 });
+    await page.keyboard.press('ArrowLeft', { delay: 50 });
+    await expect.poll(async () => (await snapshot()).focus).toMatchObject({ section: 'Audio', index: 1, label: 'Music', position: 2, count: 5 });
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await page.evaluate((key) => window.__birdSquadGame.scene.getScene(key).input.gamepad.emit('down', {}, { index: 5 }), sceneKey);
+    await expect.poll(async () => (await snapshot()).focus.section).toBe('Presentation');
+    expect((await snapshot()).keyboardListeners).toBe(beforeInput.keyboardListeners);
+    expect((await snapshot()).gamepadListeners).toBe(beforeInput.gamepadListeners);
+    const mutedBefore = await page.evaluate(() => JSON.parse(window.render_game_to_text!()).audio.muted);
+    await page.keyboard.press('m', { delay: 50 });
+    await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).audio.muted)).toBe(!mutedBefore);
+    expect((await snapshot()).focus.section).toBe('Presentation');
+    await page.keyboard.press('Escape', { delay: 50 });
+  }
+  await page.evaluate(async () => window.__birdSquadStartScene!('MenuScene'));
+  await page.keyboard.press('s', { delay: 50 });
+  for (const size of [{ width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    await page.setViewportSize(size);
+    for (let section = 0; section < sections.length; section++) {
+      await clickNamedGameObject(page, 'MenuScene', `system-settings-section-${section}-hit`);
+      await page.screenshot({ path: `.artifacts/test-results/grouped-settings/Menu-${section}-${size.width}x${size.height}.png` });
+    }
+  }
+  await page.keyboard.press('Escape', { delay: 50 });
+  expect(errors).toEqual([]);
+});
+
 test('settings are fully navigable by keyboard and standard gamepad controls', async ({ page }) => {
   await boot(page);
   const snapshot = () => page.evaluate(() => {
@@ -17459,8 +17622,8 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
       listenerCount: menu.input.keyboard.listenerCount('keydown'),
       focusRings: objects.filter((child: any) => child.name === 'system-settings-focus-ring').length,
       rowTargets: objects.filter((child: any) => /^system-settings-row-\d+-hit$/.test(child.name ?? '')).length,
-      hasScreenShakeTarget: objects.some((child: any) => child.name === 'system-settings-row-14-hit' && child.input?.enabled),
-      hasFlashesTarget: objects.some((child: any) => child.name === 'system-settings-row-15-hit' && child.input?.enabled),
+      hasScreenShakeTarget: objects.some((child: any) => child.name === 'system-settings-row-14-hit'),
+      hasFlashesTarget: objects.some((child: any) => child.name === 'system-settings-row-15-hit'),
       ring: ring ? { index: ring.getData('index'), label: ring.getData('label'), y: Math.round(ring.y) } : undefined,
     };
   });
@@ -17490,7 +17653,7 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
       && current.hasScreenShakeTarget
       && current.hasFlashesTarget;
   }).toBe(true);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 0, label: 'Audio' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 0, label: 'Audio' });
   const opened = await snapshot();
   expect(beforeOpenListeners).toBe(1);
   expect(opened.listenerCount).toBe(2);
@@ -17500,17 +17663,17 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
 
   const initialMusic = opened.state.audio.musicVolume;
   await page.keyboard.press('ArrowDown');
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 1, label: 'Music' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 1, label: 'Music' });
   await page.keyboard.press('ArrowLeft');
   await expect.poll(async () => (await snapshot()).state.audio.musicVolume).toBeLessThan(initialMusic);
   const musicAdjusted = await snapshot();
-  expect(musicAdjusted.state.settingsFocus).toEqual({ index: 1, label: 'Music' });
+  expect(musicAdjusted.state.settingsFocus).toMatchObject({ index: 1, label: 'Music' });
   expect(musicAdjusted.listenerCount).toBe(2);
   expect(musicAdjusted.focusRings).toBe(1);
 
   const initialSfx = musicAdjusted.state.audio.sfxVolume;
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 2, label: 'SFX' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 2, label: 'SFX' });
   await gamepadDown(14);
   await expect.poll(async () => (await snapshot()).state.audio.sfxVolume).toBeLessThan(initialSfx);
   const sfxAdjusted = await snapshot();
@@ -17521,7 +17684,7 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
   const musicBeforeVoices = sfxAdjusted.state.audio.musicVolume;
   const sfxBeforeVoices = sfxAdjusted.state.audio.sfxVolume;
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 3, label: 'Card Voices' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 3, label: 'Card Voices' });
   await gamepadDown(14);
   await expect.poll(async () => (await snapshot()).state.audio.voiceVolume).toBeLessThan(initialVoices);
   const voicesAdjusted = await snapshot();
@@ -17535,7 +17698,7 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
   const sfxBeforeAmbience = voicesAdjusted.state.audio.sfxVolume;
   const voicesBeforeAmbience = voicesAdjusted.state.audio.voiceVolume;
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 4, label: 'Ambience' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 4, label: 'Ambience' });
   await gamepadDown(14);
   await expect.poll(async () => (await snapshot()).state.audio.ambienceVolume).toBeLessThan(initialAmbience);
   const ambienceAdjusted = await snapshot();
@@ -17545,63 +17708,64 @@ test('settings are fully navigable by keyboard and standard gamepad controls', a
   expect(ambienceAdjusted.listenerCount).toBe(2);
   expect(ambienceAdjusted.focusRings).toBe(1);
 
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Motion' });
+  await page.keyboard.press('PageDown');
+  await page.keyboard.press('PageDown');
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 6, label: 'Motion' });
   await page.keyboard.press('ArrowRight');
   await expect.poll(async () => (await snapshot()).state.motion.preference).toBe('reduced');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Motion' });
+  expect((await snapshot()).state.settingsFocus).toMatchObject({ index: 6, label: 'Motion' });
 
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Contrast' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 7, label: 'Contrast' });
   await gamepadDown(15);
   await expect.poll(async () => (await snapshot()).state.visualContrast).toMatchObject({ preference: 'high', highContrast: true, applied: true });
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Contrast' });
+  expect((await snapshot()).state.settingsFocus).toMatchObject({ index: 7, label: 'Contrast' });
 
-  await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 8, label: 'Effects' });
+  await gamepadDown(4);
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 8, label: 'Effects' });
   await gamepadDown(15);
   await expect.poll(async () => (await snapshot()).state.graphics.preference).toBe('lean');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 8, label: 'Effects' });
+  expect((await snapshot()).state.settingsFocus).toMatchObject({ index: 8, label: 'Effects' });
 
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 9, label: 'Combat Pace' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 9, label: 'Combat Pace' });
   await gamepadDown(15);
   await expect.poll(async () => (await snapshot()).state.combatPacing.preference).toBe('snappy');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 9, label: 'Combat Pace' });
+  expect((await snapshot()).state.settingsFocus).toMatchObject({ index: 9, label: 'Combat Pace' });
 
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 10, label: 'Animation Pace' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 10, label: 'Animation Pace' });
   await gamepadDown(15);
   await expect.poll(async () => (await snapshot()).state.animationPacing.preference).toBe('fast');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 10, label: 'Animation Pace' });
+  expect((await snapshot()).state.settingsFocus).toMatchObject({ index: 10, label: 'Animation Pace' });
 
   await gamepadDown(13);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 11, label: 'Text Pace' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 11, label: 'Text Pace' });
   await gamepadDown(15);
   await expect.poll(async () => (await snapshot()).state.textPacing.preference).toBe('fast');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 11, label: 'Text Pace' });
+  expect((await snapshot()).state.settingsFocus).toMatchObject({ index: 11, label: 'Text Pace' });
 
   await gamepadDown(12);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 10, label: 'Animation Pace' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 10, label: 'Animation Pace' });
   await gamepadDown(12);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 9, label: 'Combat Pace' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 9, label: 'Combat Pace' });
   await gamepadDown(12);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 8, label: 'Effects' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 8, label: 'Effects' });
   await gamepadDown(0);
   await expect.poll(async () => (await snapshot()).state.graphics.preference).toBe('auto');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 8, label: 'Effects' });
+  expect((await snapshot()).state.settingsFocus).toMatchObject({ index: 8, label: 'Effects' });
 
-  await gamepadDown(12);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 7, label: 'Contrast' });
+  await gamepadDown(5);
+  await gamepadDown(13);
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 7, label: 'Contrast' });
   await gamepadDown(0);
   await expect.poll(async () => (await snapshot()).state.visualContrast).toMatchObject({ preference: 'standard', highContrast: false, applied: true });
 
   await gamepadDown(12);
-  await expect.poll(async () => (await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Motion' });
+  await expect.poll(async () => (await snapshot()).state.settingsFocus).toMatchObject({ index: 6, label: 'Motion' });
   await gamepadDown(0);
   await expect.poll(async () => (await snapshot()).state.motion.preference).toBe('system');
-  expect((await snapshot()).state.settingsFocus).toEqual({ index: 6, label: 'Motion' });
+  expect((await snapshot()).state.settingsFocus).toMatchObject({ index: 6, label: 'Motion' });
 
   await gamepadDown(1);
   await expect.poll(async () => (await snapshot()).state.settingsOpen).toBe(false);
@@ -17639,13 +17803,10 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
   await expect.poll(async () => (await controlsSnapshot()).state.settingsOpen).toBe(true);
   await expect.poll(async () => {
     const snapshot = await controlsSnapshot();
-    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 15;
+    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 16;
   }).toBe(true);
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await expect.poll(async () => (await controlsSnapshot()).state.settingsFocus).toEqual({ index: 4, label: 'Controls' });
+  await page.keyboard.press('PageUp');
+  await expect.poll(async () => (await controlsSnapshot()).state.settingsFocus).toMatchObject({ index: 5, label: 'Controls' });
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await controlsSnapshot()).state.controls.panelOpen).toBe(true);
   await expect.poll(async () => {
@@ -17731,12 +17892,9 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
   await expect.poll(async () => (await controlsSnapshot()).state.settingsOpen).toBe(true);
   await expect.poll(async () => {
     const snapshot = await controlsSnapshot();
-    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 15;
+    return snapshot.settingsFocusRings === 1 && snapshot.settingsRows === 16;
   }).toBe(true);
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('PageUp');
   await page.keyboard.press('Enter');
   await expect.poll(async () => (await controlsSnapshot()).state.controls.panelOpen).toBe(true);
   for (let index = 0; index < 6; index += 1) await page.keyboard.press('ArrowDown');
@@ -29612,6 +29770,111 @@ test('flight folio forks preserve revisions and BSF1 codes import exact privacy-
   await page.screenshot({ path: '.artifacts/test-results/flight-folio-library-profile.png', fullPage: true });
 });
 
+async function openLabFixture(page: Page, deck: SavedDeckRecord) {
+  await page.evaluate(async (fixture) => {
+    const raw = JSON.stringify({ decks: [fixture] });
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    await window.__birdSquadStartScene!('ProfileScene');
+  }, deck);
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folios-tab-hit');
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-lab-hit');
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text!()).savedFlightFolios?.flightLab?.open);
+  return page.evaluate(() => JSON.parse(window.render_game_to_text!()).savedFlightFolios.flightLab);
+}
+
+test('Flight Lab matches live combat openings for every Leader and Preened deck', async ({ page }) => {
+  test.setTimeout(120_000);
+  await boot(page);
+  for (const leader of flockLeaders) {
+    for (const upgraded of [false, true]) {
+      const deck: SavedDeckRecord = {
+        id: 'parity', lineageId: 'parity', revision: 1, name: 'Opening parity', leaderId: leader.id,
+        cards: leader.startingDeckIds.map((id) => ({ id, upgraded })),
+        createdAt: 1, updatedAt: 1, favorite: false, archived: false, sourceSeed: 'parity', runMode: 'quick',
+      };
+      const analysis = await openLabFixture(page, deck);
+      const actual = await page.evaluate(async (fixture) => {
+        const battle: any = await window.__birdSquadStartScene!('BattleScene', {
+          routeNodeId: 'm1_entry', runState: {
+            deck: fixture.cards, leaderId: fixture.leaderId, difficulty: 0, seed: 'parity', runMode: 'quick',
+            currentHp: 30, scrap: 40, routeMarks: [], supplies: [], supplySlots: 2, completedRouteNodeIds: [], mapIndex: 0,
+            routeLog: [], signalChoices: [], rewardEvents: [], routeDecisions: [], suppliesUsed: [], combatResults: [],
+          },
+        });
+        return { handTarget: battle.handTargetSize(), energy: battle.energy, ids: battle.hand.map((card: any) => card.id) };
+      }, deck);
+      expect(analysis.rules.handSize, `${leader.id} upgraded=${upgraded}`).toBe(actual.handTarget);
+      expect(analysis.rules.wingbeats).toBe(actual.energy);
+      expect(analysis.sample.cards.map((card) => card.id)).toEqual(actual.ids);
+    }
+  }
+});
+
+test('Flight Lab separates opening affordability from resource effects and hand permutations', async ({ page }) => {
+  await boot(page);
+  const library = JSON.parse(await readFile('data/game/alpha-cards.json', 'utf8')).cards;
+  const cards = library.filter((card: any) => card.kind !== 'snag' && card.cost === 2).slice(0, 3);
+  const deck: SavedDeckRecord = {
+    id: 'budget', lineageId: 'budget', revision: 1, name: 'Budget', leaderId: 'fledgling',
+    cards: cards.map((card) => ({ id: card.id, upgraded: false })), createdAt: 1, updatedAt: 1,
+    favorite: false, archived: false, sourceSeed: '', runMode: 'quick',
+  };
+  const analysis = await openLabFixture(page, deck);
+  expect(analysis.sample.playableCount).toBe(3);
+  expect(analysis.sample.affordableTogether).toBe(1);
+  expect(analysis.consistency.uniqueHands).toBe(1);
+  expect((await openLabFixture(page, { ...deck, cards: deck.cards.slice(0, 1) })).consistency.atLeastTwoPlayablePercent).toBe(0);
+});
+
+test('Flight Lab pages large hands without changing samples or saved cards', async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 2560, height: 1600 });
+  const library = JSON.parse(await readFile('data/game/alpha-cards.json', 'utf8')).cards;
+  const cards = library.filter((card: any) => card.kind !== 'snag').slice(0, 60).map((card: any) => ({ id: card.id, upgraded: true }));
+  await page.addInitScript((savedCards) => {
+    const raw = JSON.stringify({ decks: [{ id: 'large-lab', lineageId: 'large-lab', revision: 1, name: 'Large hand study', leaderId: 'fledgling', cards: savedCards, createdAt: 1, updatedAt: 1, runMode: 'quick' }] });
+    localStorage.setItem('birdsquad.account', raw);
+    localStorage.setItem('birdsquad.account.backup', raw);
+    localStorage.setItem('birdsquad.screenReader', 'on');
+  }, cards);
+  await boot(page);
+  await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folios-tab-hit');
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-lab-hit');
+  const snapshot = () => page.evaluate(() => JSON.parse(window.render_game_to_text!()).savedFlightFolios.flightLab);
+  await expect.poll(async () => (await snapshot())?.open).toBe(true);
+  const initial = await snapshot();
+  const storage = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
+  expect(initial.sample.cards.length).toBeGreaterThan(5);
+  await expect.poll(() => page.evaluate(() => window.__birdSquadGame.scene.getScene('ProfileScene').children.list.filter((child: any) => child.name === 'profile-flight-lab-card-art').length)).toBe(5);
+  await page.screenshot({ path: '.artifacts/test-results/flight-lab-large-2560x1600.png' });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.screenshot({ path: '.artifacts/test-results/flight-lab-large-1440x900.png' });
+  await page.setViewportSize({ width: 1000, height: 560 });
+  await page.keyboard.press('PageDown');
+  await expect.poll(async () => (await snapshot()).sample.page).toBe(2);
+  const second = await snapshot();
+  expect(second.sample.index).toBe(0);
+  expect(second.sample.visibleCardIds).toEqual(initial.sample.cards.slice(5, 10).map((card: any) => card.id));
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? '')).toContain('card page 2');
+  await page.screenshot({ path: '.artifacts/test-results/flight-lab-large-1000x560.png' });
+  const bounds = await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    return profile.children.list.filter((child: any) => child.name === 'profile-flight-lab-card-frame').map((child: any) => ({ left: child.getBounds().left, right: child.getBounds().right }));
+  });
+  expect(bounds).toHaveLength(5);
+  expect(bounds.every((bound: any) => bound.left >= 552 && bound.right <= 1100)).toBe(true);
+  await page.evaluate(() => window.__birdSquadGame.scene.getScene('ProfileScene').input.gamepad.emit('down', {}, { index: 12 }));
+  await expect.poll(async () => (await snapshot()).sample.page).toBe(1);
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-flight-lab-hand-next-hit');
+  await expect.poll(async () => (await snapshot()).sample.page).toBe(2);
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-flight-lab-deal-hit');
+  await expect.poll(async () => (await snapshot()).sample.index).toBe(1);
+  expect((await snapshot()).sample.page).toBe(1);
+  expect(await page.evaluate(() => localStorage.getItem('birdsquad.account'))).toBe(storage);
+});
+
 test('Flight Lab explains deck shape and replays deterministic protected sample hands without changing the folio', async ({ page }) => {
   test.setTimeout(120_000);
   await page.addInitScript(() => {
@@ -29701,7 +29964,7 @@ test('Flight Lab explains deck shape and replays deterministic protected sample 
       index: 0,
       number: 1,
       playableCount: 5,
-      pressureCount: 1,
+      pressureCount: 4,
     },
     rules: {
       handSize: 5,

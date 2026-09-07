@@ -1,5 +1,20 @@
 # Performance Notes
 
+## September 2026 Flight Lab Correctness
+
+Flight Lab and live combat now share `src/game/hand-size.ts`; seeded shuffle
+utilities remain unchanged. The new rule initially placed in `deterministic-draw`
+exceeded the core chunk's 30 KiB cap. Separating the deck rule preserves one
+implementation without changing Vite boundaries or raising a budget. This is a
+correctness/ownership change, not a startup-performance improvement.
+
+Production measurement: entry 684.0 KiB / 180.6 KiB gzip, core 29.9 KiB /
+10.9 KiB gzip, combined boot 719.2 KiB / 193.8 KiB gzip, lazy Profile 166.7 KiB /
+42.2 KiB gzip. Phaser remains 1313.6 KiB / 339.5 KiB gzip; Codex data remains
+281.0 KiB / 88.5 KiB gzip. Hard bundle and deployment-cache gates pass; entry
+675 KiB and combined 710 KiB targets remain warnings. Older dated measurements
+below are historical, not the current revision's evidence.
+
 ## August 2026 Route Hierarchy Boundary
 
 Route-map presentation now lives in the guarded `route-map-renderer` lazy chunk.
@@ -1723,3 +1738,14 @@ introduced.
 Bundle-size and deployment-cache validation pass without changing a hard cap.
 The preferred 675 KB entry and 710 KB combined targets remain advisory and
 visible.
+
+### 2026-09-07: grouped Settings and reward tradeoffs
+
+Settings stays in its existing lazy overlay module. Section navigation reuses
+the existing row objects and disables hidden hit targets; no additional runtime
+dependency or art is introduced. Labels increase from 14 to 17 logical pixels,
+values from 13–14 to 16–17, and rows use 64-pixel spacing.
+
+The production entry is 684.1 KB, combined boot code 719.3 KB, game core 29.9 KB,
+and lazy Settings overlay 31.9 KB. Bundle and deployment-cache hard gates pass;
+the existing preferred entry/combined-boot target warnings remain unresolved.

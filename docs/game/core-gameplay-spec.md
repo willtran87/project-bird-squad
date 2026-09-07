@@ -528,6 +528,7 @@ must never grant permanent combat stats.
 ## Input Baseline
 
 - Mouse and touch retain direct manipulation.
+- Settings groups its controls into Audio, Presentation, Accessibility, and Controls. Only the active section accepts pointer input. Up/Down or Tab traverses all settings in section order; Page Up/Page Down or controller LB/RB switches sections. Left/Right adjusts the focused setting. Opt-in announcements include section, label, current value, and position. Section browsing alone never changes a preference.
 - Settings > Controls exposes two six-action keyboard pages. Play defaults are Enter Confirm, Esc Back, Left/Right Previous/Next, `P` Pause, and `R` Roost. Utility defaults are Space Hustle, `X` Run Kit / Skip, `M` Mute, `F` Full Screen, `S` Settings, and `H` How to Play. Run Kit opens Packed Supplies during route and combat play; the same action remains Skip during a card reward.
 - Remapping takes effect immediately across active scenes, persists locally when browser storage is available, and swaps conflicting assignments so every configurable action remains reachable. Reset Defaults restores the complete map.
 - Keyboard number keys `1-9` remain reserved for direct hand-card and reward-slot selection.
@@ -583,7 +584,9 @@ must never grant permanent combat stats.
   must remain readable through card glyphs, color-independent labels, rules
   text, animation, and text state. Audio reinforces those signals and never
   carries gameplay-critical information by itself.
-- Card voices use the SFX level and mute preference. Their synthesis shares the
+- Card voices use the independent Card Voices level and master mute preference.
+  Existing installs and older backups inherit their saved SFX level until the
+  player sets Card Voices independently. Their synthesis shares the
   interaction-loaded adaptive-audio boundary so it does not enlarge or preload
   the opening path.
 

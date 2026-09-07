@@ -8424,3 +8424,83 @@ sessions through `docs/game/playtest-runbook.md`.
   keyboard/gamepad navigation, complete backup export, and legacy restore.
 - Playwright shut down both temporary preview/browser chains; ports 43222 and
   43223 were verified free before publishing.
+
+## 2026-09-07 Product Enhancement Foundation
+
+- Recorded all 52 accepted enhancements with completion evidence in
+  `docs/game/product-enhancement-backlog.md`. This pass completes Flight Lab
+  correctness and release-policy consistency, not the full product backlog.
+- Flight Lab now shares the real base/Flock/Leader hand-size rule with combat,
+  models the first fight's saved order separately from shuffled openings, and
+  includes Preened Flock draw. The three-Wingbeat budget reports individually
+  affordable cards separately from how many it covers together. Card-play
+  effects, route bonuses, Waymarks, and win odds are explicitly out of scope.
+- Fixed one-card decks falsely reporting two playable cards, and counted
+  distinct hand compositions rather than permutations. Added five-card pages
+  for large hands, with pointer, keyboard, controller, and narrator parity.
+- High-resolution inspection caught a clipped Preened/Pressure footer; it now
+  uses two readable lines. Final production captures inspected at 2560x1600,
+  1440x900, and 1000x560 under `.artifacts/test-results/flight-lab-large-*`.
+- Seven focused Chromium scenarios pass, including live parity for all five
+  Leaders before/after Preen, protected opening draws, large-hand paging,
+  deterministic sampling, save preservation, and Tuning Bench integration.
+  Harness corrections: complete RunState fixture and use browser-loaded data
+  instead of importing the game's JSON modules into Node without attributes.
+- Release validation reads a version-scoped record of the existing 2026-07-30
+  owner waiver; it reports WAIVED, never passing human evidence. Four policy
+  tests pass. Strict-human mode still rejects 0/5 sessions. Both modes still
+  reject missing physical Windows/Android/iPad and NVDA/VoiceOver evidence.
+- TypeScript/production build, documentation, runtime data, runtime assets,
+  bundle-size, deployment-cache, and whitespace checks pass. Existing preferred
+  startup-size warnings remain. No hard gate was relaxed.
+- Next work: reward/deck-size tradeoffs, grouped Settings/text readability,
+  then onboarding and non-destructive playable practice. Full browser and
+  physical-device/assistive-technology release qualification remain outstanding.
+- Required shared browser client exercised title, route-to-Codex, and actual
+  turn-one combat; inspected screenshots/text agree, with no error artifacts.
+  Proof is under `.artifacts/flight-lab-shared-client-combat/` and the sibling
+  shared-client directories. The temporary action file was removed; retained
+  screenshots are intentional ignored evidence. Preview PID 42456 was stopped.
+
+## 2026-09-07 — grouped Settings and honest reward tradeoffs
+
+- Split Settings into Audio, Presentation, Accessibility, and Controls without
+  adding a runtime dependency. Hidden rows and nested controls are non-interactive;
+  arrows/Tab traverse all sections, Page Up/Down and LB/RB jump sections. Settings
+  focus/value survives preference redraws; mute outside Audio stays in its section.
+- UI audit and Phaser text guidance informed quieter ornamental backgrounds,
+  64-pixel row spacing, and 16–17-pixel values/labels. Opt-in text announcements now
+  include section, current value, and position. This is automated live-region
+  evidence, not a claim of physical NVDA/VoiceOver qualification.
+- Reward advice keeps a benefit plus the strongest applicable warning instead
+  of allowing Waymark, keystone, or district benefits to hide every downside.
+  Cost-count copy no longer generates incorrect ordinals such as "21th". Current
+  warning scope is base cost, recovery, and role crowding; draw dilution and full
+  effect-timing/engine evaluation remain on the backlog.
+- Regression harness now accounts for section visibility and traverses nested
+  Phaser objects. Duplicate references are deduplicated by identity, not by name,
+  so genuinely duplicated controls still fail. Pointer checks use a 50ms press.
+- Frontend checklist connector was unavailable; source checks and production
+  browser inspection were used. No assets regenerated or hard release gates relaxed.
+- Cross-surface testing reproduced a duplicate mute dispatch after route Settings
+  redraws. Following the event-system skill, a scene-keyed weak cleanup map now
+  retires the previous Settings keyboard/controller owner before a replacement
+  registers. Cleanup is idempotent, and stale teardown cannot clear a new owner's
+  input lock. The regression checks listener counts as well as the resulting value.
+- Verification: 14/15 focused Chromium scenarios passed in the broad pass; the
+  remaining cross-surface case exposed the input-owner bug above. After the fix,
+  that case plus keyboard/controller navigation, persistent remapping, and overlay
+  mute feedback all passed (4/4). No full-suite or cross-browser release claim.
+- Inspected production Settings captures at 2560x1600, 1440x900, and 1000x560 in
+  `.artifacts/test-results/grouped-settings/`; reward warning captures at high and
+  minimum resolution in `.artifacts/test-results/reward-tradeoffs/`. Shared browser
+  client pointer/keyboard exercise completed with no error artifact; its capture
+  is in `.artifacts/shared-client/grouped-settings-verified/` (its lazy text hook
+  retained the menu fallback, so detailed state assertions come from Playwright).
+- TypeScript/production build, docs, runtime data/assets, bundle, deployment-cache,
+  and whitespace checks pass. Preferred startup-size advisories remain. Settings
+  is complete in the backlog; reward downsides/text readability remain partial.
+- Cleanup: all owned browsers exited; diagnostic preview PID 12308 and final
+  preview PID 48416 stopped. Ports 43310–43316 have no remaining listeners.
+  Temporary action/diagnostic/config files removed; ignored screenshot evidence
+  retained intentionally. No commit, push, or deployment performed in this pass.

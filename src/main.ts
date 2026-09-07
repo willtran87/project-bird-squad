@@ -26,6 +26,7 @@ import {
   routeBlueprints,
 } from './game/runtime-data';
 import { generateRouteMap, hashSeed } from './game/route-gen';
+import { BASE_HAND_TARGET, flockHandTarget } from './game/hand-size';
 import {
   deterministicChance,
   deterministicRankedIds,
@@ -530,7 +531,7 @@ function settingsFocusState(scene: Phaser.Scene, open: boolean) {
   if (!open) return undefined;
   const stored = Number(scene.registry.get(`birdsquad.settingsFocus.${scene.scene.key}`));
   const index = Number.isFinite(stored) ? Phaser.Math.Clamp(Math.round(stored), 0, SETTINGS_CONTROL_LABELS.length - 1) : 0;
-  return { index, label: SETTINGS_CONTROL_LABELS[index] };
+  return { index, label: SETTINGS_CONTROL_LABELS[index], ...scene.registry.get(`birdsquad.settingsDetail.${scene.scene.key}`) };
 }
 
 function controlsTextState(scene: Phaser.Scene, settingsOpen: boolean) {
@@ -2209,7 +2210,6 @@ const DECK_REVIEW_FILTERS: DeckReviewFilter[] = ['all', 'plumes', 'quills', 'bas
 const DECK_REVIEW_SORTS: DeckReviewSort[] = ['run', 'cost', 'name'];
 const BASE_COHESION = 36;
 const BASE_WINGBEATS = 3;
-const BASE_HAND_TARGET = 4;
 const BASE_RESONANCE_CAP = 5;
 const BASE_MOLT_POWER = 2;
 const BASE_SUPPLY_SLOTS = 2;
@@ -25080,8 +25080,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private handTargetSize() {
-    const plumesKeystone = this.keystoneActive('plumes') && this.runLeaderId !== 'spark_caller' ? 1 : 0; // Spark gets its draw from Spark Echo instead.
-    return Math.max(0, BASE_HAND_TARGET + plumesKeystone + (this.flockStats().draw ?? 0) + this.nextTurnDrawBonus);
+    return flockHandTarget(this.flockStats().draw ?? 0, this.keystoneActive('plumes'), this.runLeaderId, this.nextTurnDrawBonus);
   }
 
   private drawToHandSize() {

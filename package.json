@@ -35,7 +35,7 @@
     "validate:runtime-assets": "node tools/validate-runtime-asset-sizes.mjs && node tools/validate-world-assets.mjs && node tools/validate-combat-fx-contracts.mjs",
     "validate:bundle-size": "node tools/validate-bundle-sizes.mjs",
     "validate:deployment-cache": "node tools/validate-deployment-cache.mjs",
-    "validate:release-evidence": "node tools/validate-release-evidence.mjs",
+    "validate:release-evidence": "node --test tools/tests/release-evidence-policy.test.mjs && node tools/validate-release-evidence.mjs",
     "validate:enemy-variety-contracts": "node tools/export-enemy-variety-prompts.mjs --check",
     "validate:reserve-enemy-art": "python tools/validate-reserve-enemy-art.py",
     "validate:docs": "node tools/validate-docs.mjs",

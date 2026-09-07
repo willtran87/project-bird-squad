@@ -6,7 +6,14 @@ manual evidence that automation cannot manufacture.
 
 ## Fresh-player evidence
 
-Follow `docs/game/playtest-runbook.md`. Place at least five separate JSON
+The project-owner waiver dated 2026-07-30 applies to the current `0.1.0`
+release's five-session gate only. The version-scoped record is
+`docs/game/release-evidence-policy.json`; the validator prints **WAIVED**, not
+passing human evidence. A missing, invalid, or different-version policy fails
+closed. New releases require an explicit policy decision; do not carry a waiver
+forward automatically. Device and assistive-technology evidence is not waived.
+
+For optional human evidence, follow `docs/game/playtest-runbook.md`. Place at least five separate JSON
 exports and their matching observation sheets in
 `.artifacts/playtest-sessions/`. Each run must be non-seeded, have a unique run
 ID, and include 1–5 ratings for Fun, Fairness, Clarity, and Replay. Each copied
@@ -44,5 +51,11 @@ emulation, or an empty checklist does not count.
 
 `npm run validate` remains deterministic and suitable for normal development.
 It does not claim that subjective experience or physical assistive technology
-was tested. `npm run release:verify` is intentionally incomplete until the
-human and device artifacts exist.
+was tested. `npm run release:verify` remains incomplete until the required
+physical-device and assistive-technology artifacts exist. The current human
+waiver does not remove those requirements or establish subjective quality.
+
+Run `npm run validate:release-evidence -- --strict-human` to require the
+five-session evidence set without modifying the recorded policy. Supplied
+session files must remain valid and rated human runs still require matching
+observer notes even when the minimum session count is waived.

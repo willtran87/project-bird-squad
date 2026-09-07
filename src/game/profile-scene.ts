@@ -256,6 +256,7 @@ export interface ProfileViewState {
   savedDeckDescriptionInput?: HTMLInputElement;
   savedDeckLabOpen: boolean;
   savedDeckLabSample: number;
+  savedDeckLabHandPage: number;
   savedDeckCollectionSignalsOpen: boolean;
   savedDeckCollectionSignalsDeckId?: string;
   savedDeckFieldRecordOpen: boolean;
@@ -371,6 +372,7 @@ function initialProfileViewState(): ProfileViewState {
     savedDeckIdentityIndex: 0,
     savedDeckLabOpen: false,
     savedDeckLabSample: 0,
+    savedDeckLabHandPage: 0,
     savedDeckCollectionSignalsOpen: false,
     savedDeckFieldRecordOpen: false,
     savedDeckHistoryOpen: false,
@@ -1193,6 +1195,7 @@ function openSavedDeckLab(
   }
   state.savedDeckLabOpen = true;
   state.savedDeckLabSample = 0;
+  state.savedDeckLabHandPage = 0;
   state.savedDeckStatus = 'idle';
   dependencies.playUiSound('confirm');
   dependencies.queueCardShowcaseAssets(
@@ -1229,6 +1232,18 @@ function cycleSavedDeckLabSample(
     return;
   }
   state.savedDeckLabSample = next;
+  state.savedDeckLabHandPage = 0;
+  dependencies.playUiSound('confirm');
+  renderProfileScene(scene, state, dependencies);
+}
+
+function cycleSavedDeckLabHandPage(scene: Phaser.Scene, state: ProfileViewState, dependencies: ProfileSceneDependencies, direction: -1 | 1) {
+  const deck = selectedSavedDeck(state);
+  if (!state.savedDeckLabOpen || !deck) return;
+  const count = analyzeSavedDeck(deck, alphaCardLibrary, state.savedDeckLabSample).sample.cards.length;
+  const next = Phaser.Math.Clamp(state.savedDeckLabHandPage + direction, 0, Math.max(0, Math.ceil(count / 5) - 1));
+  if (next === state.savedDeckLabHandPage) return;
+  state.savedDeckLabHandPage = next;
   dependencies.playUiSound('confirm');
   renderProfileScene(scene, state, dependencies);
 }
@@ -2589,7 +2604,7 @@ export function startProfileScene(
     else if (state.savedDeckFieldRecordOpen) dependencies.playUiSound('locked');
     else if (state.savedDeckHistoryOpen) cycleSavedDeckHistoryTarget(scene, state, dependencies, -1);
     else if (state.savedDeckWorkshopOpen) cycleSavedDeckWorkshopCard(scene, state, dependencies, -1);
-    else if (state.savedDeckLabOpen) cycleSavedDeckLabSample(scene, state, dependencies, -1);
+    else if (state.savedDeckLabOpen) cycleSavedDeckLabHandPage(scene, state, dependencies, -1);
     else if (state.flightLogOpen) pageFlightHistory(scene, state, dependencies, -1);
     else cycleBadgePage(scene, state, dependencies, -1);
   };
@@ -2604,7 +2619,7 @@ export function startProfileScene(
     else if (state.savedDeckFieldRecordOpen) dependencies.playUiSound('locked');
     else if (state.savedDeckHistoryOpen) cycleSavedDeckHistoryTarget(scene, state, dependencies, 1);
     else if (state.savedDeckWorkshopOpen) cycleSavedDeckWorkshopCard(scene, state, dependencies, 1);
-    else if (state.savedDeckLabOpen) cycleSavedDeckLabSample(scene, state, dependencies, 1);
+    else if (state.savedDeckLabOpen) cycleSavedDeckLabHandPage(scene, state, dependencies, 1);
     else if (state.flightLogOpen) pageFlightHistory(scene, state, dependencies, 1);
     else cycleBadgePage(scene, state, dependencies, 1);
   };
@@ -2700,9 +2715,13 @@ export function startProfileScene(
       return;
     }
     if (state.savedDeckLabOpen) {
-      if (button.index === 12 || button.index === 14 || button.index === 4) {
+      if (button.index === 12) {
+        cycleSavedDeckLabHandPage(scene, state, dependencies, -1);
+      } else if (button.index === 13) {
+        cycleSavedDeckLabHandPage(scene, state, dependencies, 1);
+      } else if (button.index === 14 || button.index === 4) {
         cycleSavedDeckLabSample(scene, state, dependencies, -1);
-      } else if (button.index === 13 || button.index === 15 || button.index === 5 || button.index === 0) {
+      } else if (button.index === 15 || button.index === 5 || button.index === 0) {
         cycleSavedDeckLabSample(scene, state, dependencies, 1);
       } else if (button.index === 9) {
         launchSelectedSavedDeck(scene, state, dependencies);
@@ -3201,6 +3220,7 @@ export function renderProfileScene(
   const savedDeckLab = state.savedDeckLabOpen && savedDecks[state.savedDeckIndex]
     ? analyzeSavedDeck(savedDecks[state.savedDeckIndex], alphaCardLibrary, state.savedDeckLabSample)
     : undefined;
+  if (savedDeckLab) state.savedDeckLabHandPage = Phaser.Math.Clamp(state.savedDeckLabHandPage, 0, Math.max(0, Math.ceil(savedDeckLab.sample.cards.length / 5) - 1));
   const savedDeckLaunch = savedDeckLab
     ? savedDeckLaunchState(savedDecks[state.savedDeckIndex], savedDeckLab, account, dependencies)
     : undefined;
@@ -3589,6 +3609,9 @@ export function renderProfileScene(
         consistency: savedDeckLab.consistency,
         sample: {
           ...savedDeckLab.sample,
+          page: state.savedDeckLabHandPage + 1,
+          pages: Math.max(1, Math.ceil(savedDeckLab.sample.cards.length / 5)),
+          visibleCardIds: savedDeckLab.sample.cards.slice(state.savedDeckLabHandPage * 5, state.savedDeckLabHandPage * 5 + 5).map((card) => card.id),
           cards: savedDeckLab.sample.cards.map((card) => ({
             id: card.id,
             name: card.name,
@@ -3604,6 +3627,7 @@ export function renderProfileScene(
         launch: savedDeckLaunch,
         inputs: {
           previous: `${controlBindingLabel('previous')} / D-pad Left / LB`,
+          handPages: 'Page Up / Page Down / D-pad Up / D-pad Down / pointer',
           dealAgain: `${controlBindingLabel('next')} / ${controlBindingLabel('confirm')} / Space / A`,
           collectionSignals: 'G / controller R3 / pointer',
           fieldRecord: 'N / controller L3 / pointer',
@@ -4866,7 +4890,10 @@ function renderSavedDeckLab(
 
   scene.add.rectangle(826, 366, 548, 480, 0x091622, 0.96)
     .setStrokeStyle(1, UI_FIELD.cyan, 0.52);
-  scene.add.text(566, 142, `SAMPLE HAND ${analysis.sample.number}`, {
+  const handPages = Math.max(1, Math.ceil(analysis.sample.cards.length / 5));
+  state.savedDeckLabHandPage = Phaser.Math.Clamp(state.savedDeckLabHandPage, 0, handPages - 1);
+  const handOffset = state.savedDeckLabHandPage * 5;
+  scene.add.text(566, 142, analysis.sample.index === 0 ? 'FIRST FIGHT OPENING' : `SHUFFLED HAND ${analysis.sample.number}`, {
     fontFamily: UI_FONT,
     fontSize: '13px',
     fontStyle: UI_BOLD,
@@ -4878,7 +4905,7 @@ function renderSavedDeckLab(
     fontStyle: UI_BOLD,
     color: UI_FIELD.cyanText,
   }).setResolution(2).setOrigin(1, 0);
-  analysis.sample.cards.forEach((card, index) => {
+  analysis.sample.cards.slice(handOffset, handOffset + 5).forEach((card, index) => {
     const x = 610 + index * 104;
     const y = 250;
     scene.add.rectangle(x, y, 92, 150, card.playable ? 0x102637 : 0x1d1820, 0.98)
@@ -4910,14 +4937,14 @@ function renderSavedDeckLab(
       fontStyle: UI_BOLD,
       color: UI_FIELD.warm,
     }).setResolution(2).setOrigin(0.5);
-    scene.add.text(x, y + 48, `${card.upgraded ? 'PREENED  ·  ' : ''}${card.role.toUpperCase()}`, {
+    scene.add.text(x, y + 58, `${card.upgraded ? 'PREENED\n' : ''}${card.role.toUpperCase()}`, {
       fontFamily: UI_FONT,
-      fontSize: '8px',
+      fontSize: '9px',
       fontStyle: UI_BOLD,
       color: card.playable ? UI_FIELD.cyanText : '#d9a9bd',
       fixedWidth: 86,
       align: 'center',
-    }).setResolution(2).setOrigin(0.5);
+    }).setResolution(2).setOrigin(0.5).setName('profile-flight-lab-card-role');
   });
   if (analysis.sample.cards.length === 0) {
     scene.add.text(826, 250, 'No currently playable card definitions are available for this folio.', {
@@ -4931,8 +4958,8 @@ function renderSavedDeckLab(
   }
   scene.add.text(
     826,
-    350,
-    `${analysis.sample.playableCount}/${analysis.sample.cards.length} playable now  ·  ${analysis.sample.pressureCount} pressure  ·  ${analysis.sample.totalCost} total cost  ·  ${analysis.sample.protectionSwaps} protection swaps`,
+    337,
+    `${analysis.sample.playableCount} individually affordable  ·  budget covers up to ${analysis.sample.affordableTogether} together`,
     {
       fontFamily: UI_FONT,
       fontSize: '10px',
@@ -4942,7 +4969,16 @@ function renderSavedDeckLab(
       align: 'center',
     },
   ).setResolution(2).setOrigin(0.5).setName('profile-flight-lab-sample-summary');
-  scene.add.text(566, 390, `DRAW CONSISTENCY  ·  ${analysis.consistency.sampleCount} DETERMINISTIC HANDS`, {
+  scene.add.text(826, 374, `Cards ${analysis.sample.cards.length ? handOffset + 1 : 0}–${Math.min(handOffset + 5, analysis.sample.cards.length)} of ${analysis.sample.cards.length}  ·  Page ${state.savedDeckLabHandPage + 1}/${handPages}`, {
+    fontFamily: UI_FONT, fontSize: '11px', color: UI_SOFT,
+  }).setResolution(2).setOrigin(0.5).setName('profile-flight-lab-hand-page');
+  for (const [direction, x, label] of [[-1, 621, 'Prev Cards'], [1, 1031, 'Next Cards']] as const) {
+    dependencies.renderFieldButton(scene, () => {}, x, 374, 108, MIN_SUPPORTED_TOUCH_TARGET, label,
+      direction < 0 ? state.savedDeckLabHandPage > 0 : state.savedDeckLabHandPage < handPages - 1,
+      () => cycleSavedDeckLabHandPage(scene, state, dependencies, direction), UI_FIELD.cyan, false)
+      .setName(`profile-flight-lab-hand-${direction < 0 ? 'previous' : 'next'}-hit`);
+  }
+  scene.add.text(566, 415, `OPENING STUDY  ·  ${analysis.consistency.sampleCount} SHUFFLED SAMPLES`, {
     fontFamily: UI_FONT,
     fontSize: '10px',
     fontStyle: UI_BOLD,
@@ -4952,14 +4988,14 @@ function renderSavedDeckLab(
     ? `${analysis.consistency.pressurePercent}% pressure`
     : 'No pressure card in deck';
   const consistencyRows = [
-    `${analysis.consistency.averagePlayable} avg playable  ·  ${analysis.consistency.atLeastTwoPlayablePercent}% open with two playable`,
+    `${analysis.consistency.averagePlayable} avg affordable  ·  ${analysis.consistency.atLeastTwoPlayablePercent}% have at least two`,
     `${pressureText}  ·  ${analysis.consistency.uniqueHands}/${analysis.consistency.sampleCount} distinct hands`,
-    `${analysis.consistency.averageProtectionSwaps} avg protection swaps  ·  exact folio order remains unchanged`,
+    `Draw: ${analysis.rules.baseHandSize} base + ${analysis.rules.flockDraw} Flock + ${analysis.rules.keystoneDraw} keystone`,
   ];
   consistencyRows.forEach((row, index) => {
-    scene.add.rectangle(826, 430 + index * 38, 500, 30, 0x0d2231, 0.9)
+    scene.add.rectangle(826, 450 + index * 34, 500, 30, 0x0d2231, 0.9)
       .setStrokeStyle(1, index === 1 ? UI_FIELD.gold : UI_FIELD.violet, 0.44);
-    scene.add.text(826, 430 + index * 38, row, {
+    scene.add.text(826, 450 + index * 34, row, {
       fontFamily: UI_FONT,
       fontSize: '10px',
       color: UI_SOFT,
@@ -4967,11 +5003,12 @@ function renderSavedDeckLab(
       fixedWidth: 476,
     }).setResolution(2).setOrigin(0.5);
   });
-  scene.add.text(826, 552, 'Representative practice only  ·  no Scrap spent  ·  no save or run changes', {
+  scene.add.text(826, 565, 'Deck + Leader only; no Waymarks or card-play effects.\nSample results, not win odds. No Scrap spent or save changes.', {
     fontFamily: UI_FONT,
     fontSize: '10px',
     fontStyle: UI_BOLD,
     color: '#b9ffdb',
+    align: 'center',
   }).setResolution(2).setOrigin(0.5);
 
   const collectionSignals = dependencies.renderFieldButton(

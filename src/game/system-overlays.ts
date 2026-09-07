@@ -902,12 +902,17 @@ export function renderConfirmRunExitOverlay(
   }).setOrigin(0.5).setAlpha(0.92).setName('route-confirm-exit-escape-hint'));
 }
 
+const settingsInputCleanups = new WeakMap<Phaser.Scene, () => void>();
+
 export function renderSettingsMenuOverlay(
   scene: Phaser.Scene,
   addTo: UiAdd,
   options: SettingsOverlayOptions,
   dependencies: SystemOverlayDependencies,
 ) {
+  // A deferred scene redraw can replace a panel before its old destroy callback.
+  // Retire the previous input owner before attaching replacement handlers.
+  settingsInputCleanups.get(scene)?.();
   const lifecycle = addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.84)
     .setInteractive({ useHandCursor: false }));
   const settingsInputKey = settingsOverlayInputRegistryKey(scene);
@@ -924,8 +929,8 @@ export function renderSettingsMenuOverlay(
     accent: UI_FIELD.cyan,
     fill: UI_FIELD.ink,
   });
-  addOverlayPanelFlourish(scene, addTo, frame, { alpha: 0.16, tint: 0xdffaff, yOffset: 4 }, dependencies);
-  addSystemMenuCommandFrame(scene, addTo, frame, { alpha: 0.27, yOffset: 2 }, dependencies);
+  addOverlayPanelFlourish(scene, addTo, frame, { alpha: 0.06, tint: 0xdffaff, yOffset: 4 }, dependencies);
+  addSystemMenuCommandFrame(scene, addTo, frame, { alpha: 0.08, yOffset: 2 }, dependencies);
   const icon = addIconImage(scene, 'settings-medallion', frame.left + 112, frame.top + 118, 54);
   if (icon) addUi(addTo, icon.setAlpha(0.96));
   addSystemOverlayTitlePlaque(scene, addTo, frame.left + 364, frame.top + 96, 424, 88, {
@@ -997,7 +1002,17 @@ export function renderSettingsMenuOverlay(
   let audioToggleFrame: Phaser.GameObjects.Image | undefined;
   let openControlsPanel = (_playSound = true) => {};
   const controlsRowIndex = rows.findIndex(([, , kind]) => kind === 'controls');
-  const leftColumnRows = 8;
+  const sections = [
+    { label: 'Audio', rows: [0, 1, 2, 3, 4], detail: 'Balance music, cues, card voices, and ambience independently.' },
+    { label: 'Presentation', rows: [8, 9, 10, 11], detail: 'Tune visual detail and pacing. Combat rules stay the same.' },
+    { label: 'Accessibility', rows: [6, 7, 12, 13, 14, 15], detail: 'Adjust motion, contrast, announcements, color cues, shake, and flashes.' },
+    { label: 'Controls', rows: [5], detail: 'Remap keyboard actions. Conflicting keys swap safely.' },
+  ];
+  const navigationOrder = sections.flatMap((section) => section.rows);
+  const rowObjects: Phaser.GameObjects.GameObject[][] = rows.map(() => []);
+  const sectionButtons: Phaser.GameObjects.Rectangle[] = [];
+  let sectionDescription: Phaser.GameObjects.Text | undefined;
+  const sectionForRow = (index: number) => sections.findIndex((section) => section.rows.includes(index));
   const focusRegistryKey = `birdsquad.settingsFocus.${scene.scene.key}`;
   const storedFocusIndex = Number(scene.registry.get(focusRegistryKey));
   let focusIndex = Number.isFinite(storedFocusIndex)
@@ -1007,11 +1022,9 @@ export function renderSettingsMenuOverlay(
   const rowFrames: Array<Phaser.GameObjects.Image | undefined> = [];
   const restingRowFrameAlpha = (index: number) => index % 2 === 0 ? 0.44 : 0.3;
   const rowPosition = (index: number) => {
-    const rightColumn = index >= leftColumnRows;
-    const row = rightColumn ? index - leftColumnRows : index;
-    const cx = rightColumn ? frame.right - 280 : frame.left + 280;
-    const spacing = 54;
-    return { cx, y: frame.top + 174 + row * spacing, right: cx + 260 };
+    const row = sections[sectionForRow(index)].rows.indexOf(index);
+    const cx = frame.right - 310;
+    return { cx, y: frame.top + 198 + row * 64, right: cx + 260 };
   };
   const setFocus = (index: number) => {
     focusIndex = (index + rows.length) % rows.length;
@@ -1023,7 +1036,29 @@ export function renderSettingsMenuOverlay(
       rowFrame?.setAlpha(rowIndex === focusIndex ? 0.82 : restingRowFrameAlpha(rowIndex));
     });
     scene.registry.set(focusRegistryKey, focusIndex);
+    const sectionIndex = sectionForRow(focusIndex);
+    rowObjects.forEach((objects, rowIndex) => objects.forEach((object) => {
+      const visible = sectionForRow(rowIndex) === sectionIndex;
+      (object as Phaser.GameObjects.Rectangle).setVisible(visible);
+      if (object.input) object.input.enabled = visible;
+    }));
+    sectionButtons.forEach((button, index) => button
+      .setFillStyle(index === sectionIndex ? 0x183247 : 0x08131e, 0.98)
+      .setStrokeStyle(index === sectionIndex ? 2 : 1, index === sectionIndex ? UI_FIELD.cyan : 0x355163, 1)
+      .setData('selected', index === sectionIndex));
+    sectionDescription?.setText(sections[sectionIndex].detail);
+    scene.registry.set(`birdsquad.settingsDetail.${scene.scene.key}`, {
+      section: sections[sectionIndex].label, value: rows[focusIndex][1],
+      position: sections[sectionIndex].rows.indexOf(focusIndex) + 1,
+      count: sections[sectionIndex].rows.length,
+    });
   };
+  const moveFocus = (direction: number) => setFocus(navigationOrder[
+    (navigationOrder.indexOf(focusIndex) + direction + navigationOrder.length) % navigationOrder.length
+  ]);
+  const changeSection = (direction: number) => setFocus(sections[
+    (sectionForRow(focusIndex) + direction + sections.length) % sections.length
+  ].rows[0]);
   const setMusicVolume = (value: number) => {
     musicVolume = Math.round(clamp(value, 0, 1) * 20) / 20;
     options.onSetMusicVolume(musicVolume);
@@ -1082,6 +1117,7 @@ export function renderSettingsMenuOverlay(
   };
   const refreshAudioPresentation = () => {
     const muted = dependencies.audio.isMuted();
+    rows[0][1] = muted ? 'Muted' : 'On';
     audioValueText?.setText(muted ? 'Muted' : 'On');
     if (audioToggleFrame) {
       audioToggleFrame.setAlpha(muted ? 0.52 : 0.7);
@@ -1091,10 +1127,11 @@ export function renderSettingsMenuOverlay(
   };
   const notifyAudioToggle = () => {
     refreshAudioPresentation();
+    setFocus(focusIndex);
     options.onToggleAudio();
   };
   const toggleAudio = () => {
-    if (dependencies.activateAudioToggleControl(scene)) return;
+    if (sectionForRow(focusIndex) === 0 && dependencies.activateAudioToggleControl(scene)) return;
     dependencies.audio.toggleMute();
     notifyAudioToggle();
   };
@@ -1144,7 +1181,12 @@ export function renderSettingsMenuOverlay(
     else if (kind === 'screenShake') setScreenShake(adjacentValue(['on', 'off'] as const, screenShakePreference, 1));
     else if (kind === 'flashEffects') setFlashEffects(adjacentValue(['full', 'reduced'] as const, flashEffectsPreference, 1));
   };
+const addSettingsObject = addTo;
   rows.forEach(([label, value, kind], index) => {
+    const addTo: UiAdd = (object) => {
+      rowObjects[index].push(object);
+      addSettingsObject(object);
+    };
     const position = rowPosition(index);
     const { cx, y, right } = position;
     addUi(addTo, scene.add.rectangle(cx, y, 502, 42, 0x050a12, index % 2 === 0 ? 0.42 : 0.26));
@@ -1174,9 +1216,9 @@ export function renderSettingsMenuOverlay(
     });
     addUi(addTo, scene.add.text(cx - 238, y, label, {
       fontFamily: UI_FONT,
-      fontSize: '14px',
+      fontSize: '17px',
       fontStyle: UI_BOLD,
-      color: UI_FIELD.muted,
+      color: UI_FIELD.text,
     }).setOrigin(0, 0.5));
     if (kind === 'slider') {
       const slider = label === 'Music'
@@ -1203,7 +1245,7 @@ export function renderSettingsMenuOverlay(
       );
       addUi(addTo, scene.add.text(right - 62, y, value, {
         fontFamily: UI_FONT,
-        fontSize: '13px',
+        fontSize: '16px',
         fontStyle: UI_BOLD,
         color: UI_FIELD.text,
         align: 'right',
@@ -1215,7 +1257,7 @@ export function renderSettingsMenuOverlay(
       }, dependencies);
       addUi(addTo, scene.add.text(right - 62, y, value, {
         fontFamily: UI_FONT,
-        fontSize: '13px',
+        fontSize: '16px',
         fontStyle: UI_BOLD,
         color: motion.reduced ? '#ffe7a8' : UI_FIELD.text,
         align: 'right',
@@ -1227,7 +1269,7 @@ export function renderSettingsMenuOverlay(
       }, dependencies);
       addUi(addTo, scene.add.text(right - 62, y, value, {
         fontFamily: UI_FONT,
-        fontSize: '13px',
+        fontSize: '16px',
         fontStyle: UI_BOLD,
         color: UI_FIELD.text,
         align: 'right',
@@ -1247,7 +1289,7 @@ export function renderSettingsMenuOverlay(
       if (toggle) toggle.setName('system-settings-animation-pace-frame');
       addUi(addTo, scene.add.text(right - 96, y, value, {
         fontFamily: UI_FONT,
-        fontSize: '14px',
+        fontSize: '17px',
         fontStyle: UI_BOLD,
         color: UI_FIELD.text,
         align: 'right',
@@ -1259,7 +1301,7 @@ export function renderSettingsMenuOverlay(
       }, dependencies);
       addUi(addTo, scene.add.text(right - 96, y, value, {
         fontFamily: UI_FONT,
-        fontSize: '14px',
+        fontSize: '17px',
         fontStyle: UI_BOLD,
         color: contrast.highContrast ? UI_CYAN : UI_FIELD.text,
         align: 'right',
@@ -1271,7 +1313,7 @@ export function renderSettingsMenuOverlay(
       }, dependencies);
       addUi(addTo, scene.add.text(right - 62, y, value, {
         fontFamily: UI_FONT,
-        fontSize: '13px',
+        fontSize: '16px',
         fontStyle: UI_BOLD,
         color: graphics.lean ? '#ffe7a8' : UI_FIELD.text,
         align: 'right',
@@ -1289,7 +1331,7 @@ export function renderSettingsMenuOverlay(
       }, dependencies);
       const valueText = addUi(addTo, scene.add.text(right - 96, y, value, {
         fontFamily: UI_FONT,
-        fontSize: '14px',
+        fontSize: '17px',
         fontStyle: UI_BOLD,
         color: UI_FIELD.text,
         align: 'right',
@@ -1306,13 +1348,39 @@ export function renderSettingsMenuOverlay(
   focusRing = addUi(addTo, scene.add.rectangle(initialFocusPosition.cx, initialFocusPosition.y, 536, MIN_SUPPORTED_TOUCH_TARGET, 0x06151b, 0.04)
     .setStrokeStyle(2, UI_FIELD.cyan, 0.96)
     .setName('system-settings-focus-ring'));
-  setFocus(focusIndex);
-
   const audioPosition = rowPosition(0);
-  dependencies.renderAudioToggleControl(scene, addTo, audioPosition.right - 48, audioPosition.y, () => {
+  dependencies.renderAudioToggleControl(scene, (object) => {
+    rowObjects[0].push(object);
+    addTo(object);
+  }, audioPosition.right - 48, audioPosition.y, () => {
     setFocus(0);
     notifyAudioToggle();
   });
+  sections.forEach((section, index) => {
+    const x = frame.left + 226;
+    const y = frame.top + 198 + index * 68;
+    const button = addUi(addTo, scene.add.rectangle(x, y, 280, MIN_SUPPORTED_TOUCH_TARGET, 0x08131e, 0.98)
+      .setInteractive({ useHandCursor: true })
+      .setName(`system-settings-section-${index}-hit`)
+      .setData('label', section.label));
+    button.on('pointerdown', () => {
+      dependencies.playUiSound('confirm');
+      setFocus(section.rows[0]);
+    });
+    sectionButtons.push(button);
+    addUi(addTo, scene.add.text(x - 118, y, section.label, {
+      fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: UI_GOLD,
+    }).setOrigin(0, 0.5));
+  });
+  sectionDescription = addUi(addTo, scene.add.text(frame.left + 88, frame.top + 454, '', {
+    fontFamily: UI_FONT, fontSize: '15px', color: UI_SOFT,
+    wordWrap: { width: 280 }, maxLines: 4,
+  }).setName('system-settings-section-description'));
+  addUi(addTo, scene.add.text(frame.cx, frame.bottom - 30, 'Up / Down / Tab: move   ·   Left / Right: adjust   ·   PgUp / PgDn or LB / RB: section', {
+    fontFamily: UI_FONT, fontSize: '13px', color: UI_CYAN,
+    align: 'center', fixedWidth: 1000,
+  }).setOrigin(0.5).setName('system-settings-navigation-hint'));
+  setFocus(focusIndex);
   dependencies.renderFieldButton(scene, addTo, frame.cx, frame.bottom - 72, 190, MIN_SUPPORTED_TOUCH_TARGET, scene.scale.isFullscreen ? 'Windowed' : 'Full Screen', true, () => {
     options.onToggleFullscreen();
   }, UI_FIELD.cyan);
@@ -1340,7 +1408,10 @@ export function renderSettingsMenuOverlay(
     ? { x: controlFrame.cx, y: controlFrame.top + 200 + index * MIN_SUPPORTED_TOUCH_TARGET, width: 566, height: MIN_SUPPORTED_TOUCH_TARGET }
     : { x: controlFrame.cx, y: controlFrame.bottom - 58, width: 196, height: 58 };
 
-  const updateControlsValue = () => controlsValueText?.setText(controlBindingsAreDefault() ? 'Default' : 'Custom');
+  const updateControlsValue = () => {
+    rows[controlsRowIndex][1] = controlBindingsAreDefault() ? 'Default' : 'Custom';
+    controlsValueText?.setText(rows[controlsRowIndex][1]);
+  };
 
   const setControlsFocus = (index: number, controlFrame?: FieldFrame) => {
     controlsFocusIndex = (index + 7) % 7;
@@ -1540,7 +1611,7 @@ export function renderSettingsMenuOverlay(
   if (reopenControlsPanel) openControlsPanel(false);
 
   const onKeyDown = (event: KeyboardEvent) => {
-    if (!lifecycle.active || !scene.sys.settings.active) return;
+    if (cleanedUp || !lifecycle.active || !scene.sys.settings.active) return;
     let handled = true;
     if (controlsPanel?.active) {
       if (captureAction) {
@@ -1580,9 +1651,11 @@ export function renderSettingsMenuOverlay(
       } else if (event.key === 'Enter' || event.key === ' ' || matchesControlAction(event, 'confirm')) activateControlsFocus();
       else if (event.key === 'Escape' || matchesControlAction(event, 'back')) closeControlsPanel();
       else handled = false;
-    } else if (event.key === 'ArrowUp') setFocus(focusIndex - 1);
-    else if (event.key === 'ArrowDown') setFocus(focusIndex + 1);
-    else if (event.key === 'Tab') setFocus(focusIndex + (event.shiftKey ? -1 : 1));
+    } else if (event.key === 'PageUp') changeSection(-1);
+    else if (event.key === 'PageDown') changeSection(1);
+    else if (event.key === 'ArrowUp') moveFocus(-1);
+    else if (event.key === 'ArrowDown') moveFocus(1);
+    else if (event.key === 'Tab') moveFocus(event.shiftKey ? -1 : 1);
     else if (event.key === 'ArrowLeft' || matchesControlAction(event, 'previous')) adjustFocused(-1);
     else if (event.key === 'ArrowRight' || matchesControlAction(event, 'next')) adjustFocused(1);
     else if (event.key === 'Enter' || event.key === ' ' || matchesControlAction(event, 'confirm')) activateFocused();
@@ -1596,7 +1669,7 @@ export function renderSettingsMenuOverlay(
     }
   };
   const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button) => {
-    if (!lifecycle.active || !scene.sys.settings.active) return;
+    if (cleanedUp || !lifecycle.active || !scene.sys.settings.active) return;
     if (controlsPanel?.active) {
       const controlFrame = controlsPanel.getData('frame') as FieldFrame;
       if (captureAction && button.index === 1) {
@@ -1617,8 +1690,10 @@ export function renderSettingsMenuOverlay(
       else if (!captureAction && button.index === 1) closeControlsPanel();
       return;
     }
-    if (button.index === 12) setFocus(focusIndex - 1);
-    else if (button.index === 13) setFocus(focusIndex + 1);
+    if (button.index === 4) changeSection(-1);
+    else if (button.index === 5) changeSection(1);
+    else if (button.index === 12) moveFocus(-1);
+    else if (button.index === 13) moveFocus(1);
     else if (button.index === 14) adjustFocused(-1);
     else if (button.index === 15) adjustFocused(1);
     else if (button.index === 0) activateFocused();
@@ -1635,12 +1710,17 @@ export function renderSettingsMenuOverlay(
     controlsPanel?.destroy(true);
     controlsPanel = undefined;
     controlsFocusRing = undefined;
-    scene.registry.set(settingsInputKey, false);
+    if (settingsInputCleanups.get(scene) === cleanup) {
+      scene.registry.set(settingsInputKey, false);
+      settingsInputCleanups.delete(scene);
+    }
+    lifecycle.off(Phaser.GameObjects.Events.DESTROY, cleanup);
     scene.events.off(Phaser.Scenes.Events.SHUTDOWN, onSceneShutdown);
   };
   const onSceneShutdown = () => {
     cleanup();
   };
+  settingsInputCleanups.set(scene, cleanup);
   lifecycle.once(Phaser.GameObjects.Events.DESTROY, cleanup);
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, onSceneShutdown);
 }
