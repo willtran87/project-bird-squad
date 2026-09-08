@@ -9,11 +9,21 @@ const BACKUP_SUFFIX = '.backup';
 const CORRUPT_SUFFIX = '.corrupt';
 const MAX_QUARANTINE_LENGTH = 100_000;
 const recoveryEvents: StorageRecoveryEvent[] = [];
+type StorageBackend = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+let memorySession: StorageBackend | undefined;
 
-function storage(): Storage | undefined {
-  if (typeof window === 'undefined') return undefined;
+/** Installing/removing a disposable backend never flushes its data to disk. */
+export function setMemoryStorageSession(backend?: StorageBackend): void {
+  memorySession = backend;
+}
+
+export function memoryStorageSessionActive(): boolean {
+  return memorySession !== undefined;
+}
+
+function storage(): StorageBackend | undefined {
   try {
-    return window.localStorage;
+    return memorySession ?? window.localStorage;
   } catch {
     return undefined;
   }
@@ -59,6 +69,7 @@ function decode<T>(raw: string | null, sanitize: (value: unknown) => T | undefin
 }
 
 function rememberRecovery(key: string, outcome: StorageRecoveryOutcome) {
+  if (memorySession) return;
   if (recoveryEvents.some((event) => event.key === key && event.outcome === outcome)) return;
   recoveryEvents.push({ key, outcome });
 }
@@ -110,5 +121,6 @@ export function removeJournaledJson(key: string): void {
 }
 
 export function consumeStorageRecoveryEvents(): StorageRecoveryEvent[] {
+  if (memorySession) return [];
   return recoveryEvents.splice(0);
 }

@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { renderCardColorCue } from '../card-color-cues';
 import { MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
 import { renderWaymarkBuildTags, waymarkBuildRead } from '../waymark-build-read';
+import { boundedRewardText, renderFocusedBuildRead } from '../reward-card-inspection';
 
 export type RewardCeremonyKind = 'card' | 'upgrade' | 'waymark';
 export type RewardNeedRank = 'low' | 'steady' | 'strong';
@@ -360,7 +361,7 @@ function renderCard(
   inspectEnabled: boolean,
 ) {
   const { scene, target, fontFamily, boldFontStyle, goldColor, softColor } = context;
-  const cardWidth = 228;
+  const cardWidth = 264;
   const cardHeight = 312;
   const hoverWidth = cardWidth + 54;
   const hoverHeight = cardHeight + 78;
@@ -400,28 +401,28 @@ function renderCard(
       .setName('reward-input-focus-ring'));
   }
   if (card.focused || card.armed) {
-    target.add(scene.add.rectangle(x, top - 8, 204, 22, 0x06111a, 0.98)
+    target.add(scene.add.rectangle(x, top - 6, 248, 24, 0x06111a, 0.98)
       .setStrokeStyle(1, card.accent, 0.86)
       .setName('reward-decision-delta'));
-    target.add(scene.add.text(x, top - 8, rewardDecisionLabel(card.decisionPreview), {
+    target.add(scene.add.text(x, top - 6, rewardDecisionLabel(card.decisionPreview), {
       fontFamily,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: boldFontStyle,
       color: '#f4f8fb',
       align: 'center',
-      fixedWidth: 196,
+      fixedWidth: 240,
       maxLines: 1,
     }).setOrigin(0.5).setName('reward-decision-delta'));
   }
   renderCardArt(context, card, x, y);
   target.add(scene.add.rectangle(x, top + 18, cardWidth - 18, 2, card.accent, 0.78));
   target.add(scene.add.rectangle(x, bottom - 18, cardWidth - 18, 2, card.accent, 0.55));
+  target.add(scene.add.rectangle(x, top + 48, cardWidth - 18, 76, 0x05080e, 0.92));
   target.add(scene.add.circle(x - cardWidth / 2 + 24, top + 28, 19, card.cost === 0 ? 0x24d0d6 : 0xd8a840, 1).setStrokeStyle(2, 0x05080e, 0.95));
   target.add(scene.add.text(x - cardWidth / 2 + 24, top + 28, `${card.cost}`, {
     fontFamily, fontSize: '18px', fontStyle: boldFontStyle, color: '#07101c'
   }).setOrigin(0.5));
-  target.add(scene.add.rectangle(x, top + 43, cardWidth - 18, 56, 0x05080e, 0.58));
-  target.add(scene.add.text(x - cardWidth / 2 + 50, top + 24, card.name, {
+  target.add(boundedRewardText(scene.add.text(x - cardWidth / 2 + 50, top + 20, card.name, {
     fontFamily,
     fontSize: '18px',
     fontStyle: boldFontStyle,
@@ -429,63 +430,69 @@ function renderCard(
     stroke: '#020409',
     strokeThickness: 3,
     fixedWidth: cardWidth - 66,
-    fixedHeight: 42,
+    fixedHeight: 46,
     wordWrap: { width: cardWidth - 66 },
     maxLines: 2
-  }));
+  }).setName('reward-card-name'), 2));
   target.add(scene.add.text(x - cardWidth / 2 + 50, top + 68, card.bird, {
     fontFamily,
-    fontSize: '12px',
+    fontSize: '13px',
     fontStyle: boldFontStyle,
     color: softColor,
     stroke: '#020409',
     strokeThickness: 3,
     fixedWidth: cardWidth - 66,
-    fixedHeight: 16,
+    fixedHeight: 20,
     wordWrap: { width: cardWidth - 66 },
     maxLines: 1
   }));
   if (context.reinforcedColorCues) {
-    renderCardColorCue(scene, target, x + cardWidth / 2 - 54, top + 102, card.label, card.accent, {
+    renderCardColorCue(scene, target, x - cardWidth / 2 + 68, top + 106, card.label, card.accent, {
       name: 'reward-color-cue-badge',
       width: 92,
       height: 24,
     });
+  } else {
+    target.add(scene.add.text(x - cardWidth / 2 + 16, top + 96, card.label, {
+      fontFamily, fontSize: '14px', fontStyle: boldFontStyle, color: card.accentText,
+      backgroundColor: '#05080e', padding: { x: 4, y: 2 },
+    }).setName('reward-card-family'));
   }
-  target.add(scene.add.rectangle(x, bottom - 57, cardWidth - 18, 96, 0x05080e, 0.78).setStrokeStyle(1, card.accent, 0.28));
-  target.add(scene.add.text(x - cardWidth / 2 + 16, bottom - 94, card.summary, {
+  target.add(scene.add.rectangle(x, bottom - 60, cardWidth - 18, 104, 0x05080e, 0.97)
+    .setStrokeStyle(1, card.accent, 0.28).setName('reward-card-effect-panel'));
+  target.add(boundedRewardText(scene.add.text(x - cardWidth / 2 + 16, bottom - 104, card.summary, {
     fontFamily,
-    fontSize: '13px',
+    fontSize: '16px',
     color: '#dce8f2',
     stroke: '#020409',
-    strokeThickness: 2,
-    lineSpacing: 1,
+    strokeThickness: 0,
+    lineSpacing: 2,
     fixedWidth: cardWidth - 32,
-    fixedHeight: 54,
+    fixedHeight: 90,
     wordWrap: { width: cardWidth - 32 },
-    maxLines: 3
-  }));
+    maxLines: 4
+  }).setName('reward-card-effect'), 4));
   if (card.molt) {
-    target.add(scene.add.rectangle(x + cardWidth / 2 - 48, bottom - 82, 62, 18, 0x2a1208, 0.9).setStrokeStyle(1, 0xff9d4d, 0.72));
-    target.add(scene.add.text(x + cardWidth / 2 - 48, bottom - 88, 'MOLT', {
-      fontFamily, fontSize: '9px', fontStyle: boldFontStyle, color: '#ffc78f', align: 'center', fixedWidth: 52
-    }).setOrigin(0.5, 0));
+    target.add(scene.add.rectangle(x + cardWidth / 2 - 48, top + 106, 62, 24, 0x2a1208, 0.98).setStrokeStyle(1, 0xff9d4d, 0.72));
+    target.add(scene.add.text(x + cardWidth / 2 - 48, top + 106, 'MOLT', {
+      fontFamily, fontSize: '12px', fontStyle: boldFontStyle, color: '#ffc78f', align: 'center', fixedWidth: 56
+    }).setOrigin(0.5).setName('reward-card-molt-label'));
   }
   if (card.collectionStatus) {
     const firstClaim = card.collectionStatus.firstClaim;
     const targeted = card.collectionStatus.targeted;
     const label = targeted
-      ? 'HUNT TARGET / CLAIM TO COMPLETE'
+      ? 'HUNT TARGET'
       : firstClaim
         ? 'NEW TO COLLECTION'
-        : `COLLECTED / ${card.collectionStatus.timesClaimed} FLIGHT CLAIM${card.collectionStatus.timesClaimed === 1 ? '' : 'S'}`;
-    const width = targeted ? 198 : firstClaim ? 142 : 174;
+        : `COLLECTED / ${card.collectionStatus.timesClaimed} CLAIM${card.collectionStatus.timesClaimed === 1 ? '' : 'S'}`;
+    const width = cardWidth - 24;
     target.add(scene.add.rectangle(x, bottom - 126, width, 22, targeted || firstClaim ? 0x3b2b0b : 0x102534, 0.98)
       .setStrokeStyle(1, targeted || firstClaim ? 0xffcf6b : 0x8df4ff, 0.96)
       .setName('reward-collection-status'));
     target.add(scene.add.text(x, bottom - 126, label, {
       fontFamily,
-      fontSize: targeted ? '9px' : firstClaim ? '10px' : '9px',
+      fontSize: '12px',
       fontStyle: boldFontStyle,
       color: targeted || firstClaim ? '#ffe08a' : '#b8e8f4',
       align: 'center',
@@ -493,35 +500,25 @@ function renderCard(
       maxLines: 1,
     }).setOrigin(0.5).setName('reward-collection-status'));
   }
-  target.add(scene.add.text(x - cardWidth / 2 + 16, bottom - 30, card.label, {
-    fontFamily,
-    fontSize: '12px',
-    fontStyle: boldFontStyle,
-    color: card.accentText,
-    stroke: '#020409',
-    strokeThickness: 2,
-    fixedWidth: 80,
-    fixedHeight: 18,
-    maxLines: 1
-  }));
   const preenChoice = context.kind === 'upgrade';
-  const showRead = card.focused || card.armed || (context.cards?.[0] === card && !context.cards.some((choice) => choice.focused || choice.armed));
   const footerRows = preenChoice
     ? card.focused ? [] : [rewardDecisionLabel(card.decisionPreview).slice(10)]
-    : showRead ? card.footerRows.slice(0, 2) : [];
+    : [];
   footerRows.forEach((text, index) => {
     const caution = text.startsWith('!');
     const neutral = text.startsWith('=');
-    target.add(scene.add.text(x - cardWidth / 2 + (preenChoice ? 16 : 70), bottom - 47 + index * 18, text, {
+    target.add(scene.add.text(x, top - 8 + index * 18, text, {
       fontFamily,
-      fontSize: '10px',
+      fontSize: '12px',
       fontStyle: boldFontStyle,
       color: caution ? '#ffad73' : neutral ? '#91a6b8' : '#ffcf6b',
       stroke: '#020409',
       strokeThickness: 2,
-      fixedWidth: cardWidth - (preenChoice ? 32 : 86),
+      backgroundColor: '#05080e',
+      align: 'center',
+      fixedWidth: cardWidth - 24,
       maxLines: 1
-    }).setName(preenChoice ? 'reward-preen-change' : card.footerUsesObservations ? 'reward-build-observation' : 'reward-card-stat'));
+    }).setOrigin(0.5).setName('reward-preen-change'));
   });
   const inspectY = bottom + 28;
   const inspect = scene.add.rectangle(
@@ -552,7 +549,7 @@ function renderCard(
   target.add(inspect);
   target.add(scene.add.text(x, inspectY, 'INSPECT', {
     fontFamily,
-    fontSize: '11px',
+    fontSize: '14px',
     fontStyle: boldFontStyle,
     color: inspectEnabled ? '#dffbff' : '#667b89',
     align: 'center',
@@ -614,11 +611,12 @@ function renderWaymark(context: RewardCeremonyRenderContext, waymark: RewardWaym
 function renderSkip(context: RewardCeremonyRenderContext) {
   if (!context.skip) return;
   const { scene, target, width, textures, reducedMotion, fontFamily, boldFontStyle, goldColor } = context;
+  const centerX = width / 2 + 342;
   if (scene.textures.exists(textures.skipCommandFrame)) {
     scene.textures.get(textures.skipCommandFrame).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    target.add(scene.add.image(width / 2, 652, textures.skipCommandFrame).setDisplaySize(382, 110).setAlpha(0.88).setName('reward-skip-command-frame'));
+    target.add(scene.add.image(centerX, 652, textures.skipCommandFrame).setDisplaySize(382, 110).setAlpha(0.68).setName('reward-skip-command-frame'));
     if (!reducedMotion) {
-      const glint = scene.add.image(width / 2, 652, textures.skipCommandFrame)
+      const glint = scene.add.image(centerX, 652, textures.skipCommandFrame)
         .setDisplaySize(382, 110)
         .setBlendMode(Phaser.BlendModes.ADD)
         .setAlpha(0.032)
@@ -627,33 +625,35 @@ function renderSkip(context: RewardCeremonyRenderContext) {
       scene.tweens.add({ targets: glint, alpha: 0.018, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
   } else {
-    target.add(scene.add.rectangle(width / 2, 652, 324, 48, 0x2a2320, 0.96).setStrokeStyle(2, 0xd8a840, 0.9).setName('reward-skip-command-frame-fallback'));
+    target.add(scene.add.rectangle(centerX, 652, 324, 58, 0x2a2320, 0.96).setStrokeStyle(2, 0xd8a840, 0.9).setName('reward-skip-command-frame-fallback'));
   }
-  const hit = scene.add.rectangle(width / 2, 652, 324, MIN_SUPPORTED_TOUCH_TARGET, 0x000000, 0.01)
+  target.add(scene.add.rectangle(centerX, 652, 314, 54, 0x05080e, 0.94));
+  const hit = scene.add.rectangle(centerX, 652, 324, MIN_SUPPORTED_TOUCH_TARGET, 0x000000, 0.01)
     .setInteractive({ useHandCursor: true })
     .setName('reward-skip-hit');
   hit.on('pointerdown', context.onSkip);
   target.add(hit);
-  if (context.skip.armed) target.add(scene.add.rectangle(width / 2, 652, 344, 68, 0x000000, 0)
+  if (context.skip.armed) target.add(scene.add.rectangle(centerX, 652, 344, 68, 0x000000, 0)
     .setStrokeStyle(3, 0xd8a840, 1)
     .setName('reward-skip-focus-ring'));
-  const icon = context.addIcon('scrap-gear', width / 2 - 132, 652, 30);
+  const icon = context.addIcon('scrap-gear', centerX - 132, 652, 30);
   if (icon) target.add(icon.setAlpha(0.95));
   target.add(scene.add.text(
-    width / 2 + 10,
-    646,
+    centerX + 10,
+    640,
     `Skip  +${context.skip.scrap} Scrap`,
     {
-      fontFamily, fontSize: '15px', fontStyle: boldFontStyle, color: goldColor
+      fontFamily, fontSize: '18px', fontStyle: boldFontStyle, color: goldColor
     },
   ).setOrigin(0.5).setName('reward-skip-title'));
   target.add(scene.add.text(
-    width / 2 + 10,
+    centerX + 10,
     664,
-    `Deck stays ${context.skip.deckSize}  /  After: ${context.skip.scrapAfter} Scrap`,
+    `Deck ${context.skip.deckSize} unchanged / ${context.skip.scrapAfter} Scrap`,
     {
       fontFamily,
-      fontSize: '10px',
+      fontSize: '13px',
+      color: '#dce8f2',
     },
   ).setOrigin(0.5).setName('reward-skip-summary'));
 }
@@ -681,7 +681,10 @@ export function renderRewardCeremony(context: RewardCeremonyRenderContext) {
         !skipCommitmentActive,
       );
     });
-    if (context.kind === 'card') renderSkip(context);
+    if (context.kind === 'card') {
+      renderFocusedBuildRead(context);
+      renderSkip(context);
+    }
   }
   return { glowBursts };
 }

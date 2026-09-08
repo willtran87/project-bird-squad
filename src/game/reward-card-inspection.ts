@@ -25,6 +25,125 @@ import {
 import { alphaSupplyLibrary } from './runtime-data';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 import { waymarkBuildRead } from './waymark-build-read';
+import type { RewardCeremonyRenderContext } from './battle/render-reward';
+import type { CardHoverDetailView } from './card-hover-detail';
+
+// Market rules get their own reading surface; art remains on the offer shelf.
+// Pagination uses rendered height, so conditional rules are never silently lost.
+export function renderMarketCardDossier(scene: Phaser.Scene, view: CardHoverDetailView) {
+  const panel = scene.add.container(0, 0).setName('market-fixed-card-inspector');
+  const add = <T extends Phaser.GameObjects.GameObject>(child: T) => { panel.add(child); return child; };
+  add(scene.add.rectangle(1130, 414, 270, 470, 0x050b13, 0.99)
+    .setStrokeStyle(2, view.accent, 0.9).setName('market-rules-frame'));
+  if (view.dossierFrameKey && scene.textures.exists(view.dossierFrameKey)) {
+    add(scene.add.image(1130, 414, view.dossierFrameKey).setDisplaySize(296, 470).setAlpha(0.55));
+  }
+  const text = (x: number, y: number, value: string, size = 16, color = '#e6eef6', width = 238) =>
+    add(scene.add.text(x, y, value, {
+      fontFamily: UI_FONT, fontSize: `${size}px`, color,
+      wordWrap: { width }, lineSpacing: 2,
+    }));
+  add(scene.add.circle(1021, 209, 20, view.cost === 0 ? 0x24d0d6 : 0xe8b830, 1));
+  text(1021, 209, String(view.cost), 23, '#06101c').setOrigin(0.5);
+  const title = text(1047, 192, view.name, 20, UI_GOLD, 202).setFontStyle(UI_BOLD);
+  const metaY = Math.max(240, title.y + title.height + 8);
+  text(1011, metaY, view.zone, 14, UI_CYAN);
+  const target = text(1011, metaY + 22, `Now: ${view.target} / ${view.role.toUpperCase()}`, 13, '#adc5d6');
+  const headingY = target.y + target.height + 12;
+  const heading = text(1011, headingY, '', 15, UI_GOLD).setFontStyle(UI_BOLD).setName('market-rules-heading');
+  const body = text(1011, headingY + 24, '').setName('market-rules-body');
+  const stats = text(1011, 0, view.stats.length ? view.stats.join('   ') : 'None', 14, UI_CYAN)
+    .setName('market-rules-stats');
+  stats.y = 572 - stats.height;
+  text(1011, stats.y - 22, 'Current Flock Stats', 14, UI_GOLD).setName('market-rules-stats-heading');
+  add(scene.add.rectangle(1130, stats.y - 32, 238, 1, view.accent, 0.5));
+  const available = stats.y - 46 - body.y;
+  const variants = [
+    { title: view.usesMolt ? 'NOW / MOLT' : 'NOW', text: view.currentText },
+    { title: view.usesMolt ? 'BASE' : 'PREEN', text: view.usesMolt ? view.baseText : view.upgradedText },
+    ...(!view.usesMolt && view.moltText ? [{ title: 'MOLT', text: view.moltText }] : []),
+  ];
+  const pages: Array<{ title: string; text: string }> = [];
+  for (const variant of variants) {
+    const lines = body.getWrappedText(variant.text);
+    let pageLines: string[] = [];
+    for (const line of lines) {
+      body.setText([...pageLines, line].join('\n'));
+      if (body.height > available && pageLines.length) {
+        pages.push({ title: variant.title, text: pageLines.join('\n') });
+        pageLines = [];
+      }
+      pageLines.push(line);
+    }
+    pages.push({ title: variant.title, text: pageLines.join('\n') });
+  }
+  let index = Math.min(Math.max(0, (view.marketRules?.page ?? 1) - 1), pages.length - 1);
+  text(1130, 642, `${controlBindingLabel('roost')} / Y  NEXT RULES`, 12, '#adc5d6').setOrigin(0.5, 1);
+  const refresh = () => {
+    const page = pages[index];
+    heading.setText(`${page.title}  /  ${index + 1} OF ${pages.length}`);
+    body.setText(page.text);
+    view.marketRules = { page: index + 1, total: pages.length, ...page };
+  };
+  const turn = (direction: number) => {
+    index = (index + direction + pages.length) % pages.length;
+    refresh();
+    (scene as any).updateTextState();
+  };
+  panel.setData('turnRulesPage', turn);
+  for (const [x, label, direction] of [[1066, '< PREVIOUS', -1], [1194, 'NEXT >', 1]] as const) {
+    const button = add(scene.add.rectangle(x, 602, 112, 44, 0x132838, 1)
+      .setStrokeStyle(1, 0x7195aa, 0.8).setInteractive({
+        useHandCursor: true,
+        hitArea: new Phaser.Geom.Rectangle(0, (44 - MIN_SUPPORTED_TOUCH_TARGET) / 2, 112, MIN_SUPPORTED_TOUCH_TARGET),
+        hitAreaCallback: Phaser.Geom.Rectangle.Contains,
+      })
+      .setName(direction === 1 ? 'market-rules-next' : 'market-rules-previous'));
+    text(x, 602, label, 13, '#e6f6ff').setOrigin(0.5);
+    button.on('pointerover', () => button.setStrokeStyle(2, 0x8df4ff, 1));
+    button.on('pointerout', () => button.setStrokeStyle(1, 0x7195aa, 0.8));
+    button.on('pointerdown', (_p: unknown, _x: number, _y: number, event?: Phaser.Types.Input.EventData) => {
+      event?.stopPropagation();
+      turn(direction);
+    });
+  }
+  refresh();
+  return panel;
+}
+
+// Truncate at a measured line boundary, never silently clip a partial rule.
+// Inspect retains the complete effect and all conditional/alternate text.
+export function boundedRewardText(text: Phaser.GameObjects.Text, maxLines: number) {
+  const lines = text.getWrappedText();
+  if (lines.length <= maxLines) return text;
+  const visible = lines.slice(0, maxLines);
+  let last = visible[maxLines - 1];
+  const width = text.style.wordWrapWidth ?? text.width;
+  while (last.length && text.context.measureText(`${last}...`).width > width) last = last.slice(0, -1);
+  visible[maxLines - 1] = `${last.trimEnd()}...`;
+  return text.setText(visible.join('\n'));
+}
+
+export function renderFocusedBuildRead(context: Pick<RewardCeremonyRenderContext, 'kind' | 'cards' | 'scene' | 'target' | 'fontFamily' | 'boldFontStyle' | 'width' | 'skip'>) {
+  if (context.kind !== 'card') return;
+  const card = context.cards?.find((choice) => choice.armed || choice.focused) ?? context.cards?.[0];
+  if (!card) return;
+  const { scene, target, fontFamily, boldFontStyle } = context;
+  const left = context.width / 2 - 438;
+  target.add(scene.add.rectangle(left, 618, 584, 78, 0x050c14, 0.98)
+    .setOrigin(0).setStrokeStyle(1, card.accent, 0.6).setName('reward-build-read-panel'));
+  target.add(scene.add.text(left + 14, 624, context.skip?.armed ? 'SKIP / KEEP YOUR CURRENT DECK' : `BUILD READ / ${card.name}`, {
+    fontFamily, fontSize: '13px', fontStyle: boldFontStyle, color: '#bfe8f4',
+    fixedWidth: 556, maxLines: 1,
+  }).setName('reward-build-read-title'));
+  const rows = context.skip?.armed
+    ? ['No new card or passive Flock Stats.', 'Keep the same draw pool; take Scrap instead.']
+    : card.footerRows.slice(0, 2);
+  rows.forEach((text, index) => target.add(scene.add.text(left + 14, 646 + index * 22, text, {
+    fontFamily, fontSize: '16px', color: text.startsWith('!') ? '#ffbc92' : '#f4f8fb',
+    fixedWidth: 556, maxLines: 1,
+  }).setName(context.skip?.armed ? 'reward-skip-tradeoff' : card.footerUsesObservations ? 'reward-build-observation' : 'reward-card-stat')));
+}
 
 export function routeRewardInputHint(armed: boolean) {
   return armed
@@ -236,29 +355,32 @@ export function renderRouteRewardBuildRead(scene: any, frame: any) {
   });
 }
 
-export function renderMarketCardBuildRead(scene: Phaser.Scene, observations: string[]) {
-  const panel = scene.add.container(995, 606).setName('market-card-build-read');
-  panel.add(scene.add.rectangle(0, 0, 270, 48, 0x05080e, 0.97)
+export function renderMarketCardBuildRead(scene: Phaser.Scene, observations: string[], preview: string[] = []) {
+  const panel = scene.add.container(16, 190).setName('market-card-build-read');
+  panel.add(scene.add.rectangle(0, 0, 224, 464, 0x05080e, 0.98)
     .setOrigin(0, 0)
     .setStrokeStyle(2, UI_FIELD.gold, 0.8)
     .setName('market-card-build-read-frame'));
-  panel.add(scene.add.text(14, 8, 'BUILD READ', {
+  panel.add(scene.add.text(14, 14, 'PURCHASE CHECK', {
     fontFamily: UI_FONT,
-    fontSize: '10px',
+    fontSize: '13px',
     fontStyle: UI_BOLD,
     color: UI_CYAN,
     letterSpacing: 1.2,
   }).setName('market-card-build-read-title'));
-  observations.slice(0, 2).forEach((observation, index) => {
-    panel.add(scene.add.text(14, 21 + index * 13, observation, {
-      fontFamily: UI_FONT,
-      fontSize: '9px',
-      fontStyle: UI_BOLD,
-      color: observation.startsWith('!') ? '#ffd0b3' : '#dffbff',
-      fixedWidth: 242,
-      maxLines: 1,
-    }).setName('market-card-build-observation'));
-  });
+  let y = 44;
+  const row = (text: string, name: string, color: string, size = 14) => {
+    const label = scene.add.text(14, y, text, {
+      fontFamily: UI_FONT, fontSize: `${size}px`, color,
+      wordWrap: { width: 196 }, lineSpacing: 2,
+    }).setName(name);
+    panel.add(label);
+    y += label.height + 10;
+  };
+  preview.forEach(text => row(text, 'market-card-purchase-row', UI_GOLD, 15));
+  observations.slice(0, 2).forEach(text => row(text, 'market-card-build-observation', text.startsWith('!') ? '#ffd0b3' : '#dffbff'));
+  row('Buying adds this card to your flight. Permanent collection ownership is kept.', 'market-card-persistence', '#b9cbd8', 13);
+  row('Base hand includes Leader and suit threshold. Waymarks, temporary effects and opening protection can change actual draws.', 'market-card-assumptions', '#b9cbd8', 13);
   return panel;
 }
 
@@ -746,6 +868,7 @@ export function cycleMarketFocus(scene: any, direction: -1 | 1) {
   scene.marketFocusId = targets[next].getData('marketFocusId');
   scene.marketFocusArmedId = undefined;
   scene.renderAll();
+  marketInputTargets(scene).find((target: any) => target.getData('marketFocusId') === scene.marketFocusId)?.emit('pointerover');
   return true;
 }
 
@@ -1024,10 +1147,26 @@ export function renderCardPickerInspection(
   scene.showHoverCardDetail(
     entry.card,
     scene.cardPickerMode === 'preen' ? 'Preen candidate' : 'Release candidate',
-    entry.cost,
+    entry.card.cost,
     width / 2,
     height / 2,
   );
+  const impact = scene.cardPickerDeckImpact(entry.index);
+  if (impact) {
+    const panel = scene.add.container(650, 120).setDepth(23012).setName('card-picker-deck-impact');
+    panel.add(scene.add.rectangle(0, 0, 430, 480, 0x071522, 0.99).setOrigin(0)
+      .setStrokeStyle(1, UI_FIELD.cyan, 0.7));
+    let y = 20;
+    impact.lines.forEach((line: string, index: number) => {
+      const label = scene.add.text(20, y, line, {
+        fontFamily: UI_FONT, fontSize: `${[14, 20, 18, 16, 16, 16, 14, 13][index]}px`,
+        color: index === 0 ? UI_CYAN : index < 3 ? UI_GOLD : '#e6eef5',
+        wordWrap: { width: 390 }, lineSpacing: 3,
+      }).setName('card-picker-impact-line');
+      panel.add(label);
+      y += label.height + 14;
+    });
+  }
 }
 
 export function focusedRouteRewardCard(scene: any) {
@@ -1134,7 +1273,7 @@ export function renderCombatRewardLoading(scene: any) {
   const cardReward = scene.mode === 'cardReward';
   const title = cardReward ? 'Add to the Flock' : scene.mode === 'upgradeReward' ? 'Preen a Card' : 'Claim a Waymark';
   const choiceY = waymark ? 404 : 402;
-  const choiceWidth = waymark ? 248 : 228;
+  const choiceWidth = waymark ? 248 : 264;
   const choiceHeight = waymark ? 306 : 312;
   target.add(scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9).setName('reward-loading-backdrop'));
   target.add(scene.add.rectangle(640, 98, 612, 114, 0x07101c, 0.82)
@@ -1162,7 +1301,7 @@ export function renderCombatRewardLoading(scene: any) {
       .setStrokeStyle(2, 0x49606d, 0.54)
       .setName('reward-loading-inspect-slot'));
   });
-  if (cardReward) target.add(scene.add.rectangle(640, 652, 324, 48, 0x2a2320, 0.58)
+  if (cardReward) target.add(scene.add.rectangle(982, 652, 324, 48, 0x2a2320, 0.58)
     .setStrokeStyle(2, 0xd8a840, 0.46)
     .setName('reward-loading-skip-slot'));
 }
@@ -1172,20 +1311,20 @@ export function renderRewardSkipFallback(scene: any) {
   const scrap = scene.currentSkipScrapReward();
   const deckSize = scene.allDeckCards().length;
   const armed = Boolean(scene.rewardSkipArmed);
-  const hit = scene.add.rectangle(640, 652, 324, 48, 0x2a2320, 0.96)
+  const hit = scene.add.rectangle(982, 652, 324, 48, 0x2a2320, 0.96)
     .setStrokeStyle(2, 0xd8a840, 0.9)
     .setInteractive({ useHandCursor: true })
     .setName('reward-skip-hit');
   hit.on('pointerdown', () => scene.requestSkipCardReward());
   target.add(hit);
-  if (armed) target.add(scene.add.rectangle(640, 652, 344, 68, 0x000000, 0)
+  if (armed) target.add(scene.add.rectangle(982, 652, 344, 68, 0x000000, 0)
     .setStrokeStyle(3, 0xd8a840, 1)
     .setName('reward-skip-focus-ring'));
-  target.add(scene.add.text(640, 646, `Skip  +${scrap} Scrap`, {
-    fontFamily: UI_FONT, fontSize: '15px', fontStyle: UI_BOLD, color: UI_GOLD,
+  target.add(scene.add.text(982, 640, `Skip  +${scrap} Scrap`, {
+    fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: UI_GOLD,
   }).setOrigin(0.5).setName('reward-skip-title'));
-  target.add(scene.add.text(640, 664, `Deck stays ${deckSize}  /  After: ${scene.scrap + scrap} Scrap`, {
-    fontFamily: UI_FONT, fontSize: '10px', color: UI_SOFT,
+  target.add(scene.add.text(982, 664, `Deck ${deckSize} unchanged / ${scene.scrap + scrap} Scrap`, {
+    fontFamily: UI_FONT, fontSize: '13px', color: UI_SOFT,
   }).setOrigin(0.5).setName('reward-skip-summary'));
 }
 
@@ -1258,10 +1397,10 @@ export function renderCombatRewardFallback(scene: any) {
       fontFamily: 'Arial', fontSize: '21px', fontStyle: 'bold', color: '#ffe08a',
       align: 'center', wordWrap: { width: 210 }
     }).setOrigin(0.5).setName('reward-fallback-choice-name'));
-    target.add(scene.add.text(x, 420, waymark ? view.description : view.summary, {
+    target.add(boundedRewardText(scene.add.text(x, 420, waymark ? view.description : view.summary, {
       fontFamily: 'Arial', fontSize: '14px', color: '#dce8f2',
       align: 'center', wordWrap: { width: 206 }, maxLines: 4
-    }).setOrigin(0.5));
+    }).setOrigin(0.5), 4));
     if (build) {
       target.add(scene.add.text(x, 494, 'BUILD READ', {
         fontFamily: 'Arial', fontSize: '10px', fontStyle: 'bold', color: '#ffcf6b'
@@ -1288,6 +1427,11 @@ export function renderCombatRewardFallback(scene: any) {
       enabled: !(scene.mode === 'cardReward' && scene.rewardSkipArmed),
       onInspect: () => scene.openRewardCardInspection(view.id),
     });
+  });
+  if (scene.mode === 'cardReward') renderFocusedBuildRead({
+    scene, target, width: GAME_WIDTH, kind: 'card', fontFamily: UI_FONT, boldFontStyle: UI_BOLD,
+    cards: choices.map((card: any, index: number) => scene.rewardCardView(card, index)),
+    skip: { armed: scene.rewardSkipArmed, scrap: scene.currentSkipScrapReward(), deckSize: scene.allDeckCards().length, scrapAfter: scene.scrap + scene.currentSkipScrapReward() },
   });
 }
 
@@ -1382,6 +1526,14 @@ export function handleRouteRewardAction(
     return true;
   }
   if (scene.marketOpen) {
+    if (action === 'inspect' && scene.marketCategory === 'cards') {
+      const dossier = scene.hoverCardDetail?.list.find((child: any) => child.name === 'market-fixed-card-inspector');
+      if (!dossier) {
+        marketInputTargets(scene).find((target: any) => target.getData('marketFocusId') === scene.marketFocusId)?.emit('pointerover');
+      } else dossier.getData('turnRulesPage')?.(1);
+      scene.updateTextState();
+      return true;
+    }
     if (action === 'previous' || action === 'next') {
       cycleMarketFocus(scene, action === 'previous' ? -1 : 1);
       return true;
@@ -1566,6 +1718,23 @@ export function syncRewardCardInspection(scene: any, chrome: {
   }
   scene.hideCardPreview();
   scene.rewardInspectionLayer = renderRewardInspectionChrome({ scene, ...chrome });
+  const impact = scene.rewardDeckImpact(card);
+  const panel = scene.add.container(54, 184).setName('reward-deck-impact');
+  panel.add(scene.add.rectangle(0, 0, 332, 386, 0x071522, 0.98).setOrigin(0)
+    .setStrokeStyle(1, UI_FIELD.cyan, 0.6));
+  const row = (y: number, text: string, size: number, color: string) => panel.add(scene.add.text(18, y, text, {
+    fontFamily: UI_FONT, fontSize: `${size}px`, color, wordWrap: { width: 296 }, lineSpacing: 3,
+  }).setName('reward-deck-impact-text'));
+  row(18, 'YOUR FLIGHT / BEFORE > AFTER', 14, UI_CYAN);
+  row(48, `Deck: ${impact.deckBefore} > ${impact.deckAfter} cards`, 20, UI_GOLD);
+  row(80, `Base hand target: ${impact.handBefore} > ${impact.handAfter}`, 18, '#f4f8fb');
+  row(116, impact.deckAfter > impact.deckBefore
+    ? 'More cards share the draw pool. Passive gains apply even before this card is drawn.'
+    : 'Same draw pool size. Preen changes this card without adding another copy.', 16, '#dce8f2');
+  row(196, impact.stats.length ? `${scene.mode === 'upgradeReward' ? 'Changed stats after Preen' : 'Flock Stats gained'}: ${impact.stats.join(' / ')}` : 'Flock Stats unchanged.', 16, UI_GOLD);
+  row(252, impact.scope, 15, '#dce8f2');
+  row(308, impact.drawScope, 13, '#b9cbd9');
+  scene.rewardInspectionLayer.add(panel);
   scene.showCardPreview(card, chrome.width / 2);
   scene.cardPreview?.setDepth(910);
 }

@@ -420,6 +420,7 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
       cardName: rewardInspectionCard?.runtime?.displayName ?? rewardInspectionCard?.name,
       cost: rewardInspectionCard?.cost,
       rules: rewardInspectionCard ? battle.activeCardContract(rewardInspectionCard).text : undefined,
+      deckImpact: rewardInspectionCard ? battle.rewardDeckImpact(rewardInspectionCard) : undefined,
       source: battle.mode === 'cardReward'
         ? 'combatReward'
         : battle.mode === 'upgradeReward'

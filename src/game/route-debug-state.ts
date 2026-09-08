@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { memoryStorageSessionActive } from './safe-storage';
 
 export type RouteDebugStateDependencies = Record<string, any>;
 
@@ -39,6 +40,12 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
     visualContrastState
   } = dependencies;
 
+  const iconState = (id: string) => {
+    const key = uiIconAssets[id].key;
+    const count = countTextureInGameObjects(scene.children.list, key);
+    return { loaded: scene.textures.exists(key), rendered: count > 0, count };
+  };
+
   const visibleDeckCards = scene.mapDeckCards();
       const selectedDeckEntry = getInspectedEntry(visibleDeckCards, scene.inspectedCardId);
       const deckComparison = scene.deckOverlayOpen
@@ -60,6 +67,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
       window.render_game_to_text = () => JSON.stringify({
         mode: 'routeSelection',
         scene: 'RouteScene',
+        practice: memoryStorageSessionActive(),
         routeAssetsReady: scene.routeEssentialAssetsReady,
         assetReadiness: scene.routeAssetReadiness.snapshot(),
         audio: birdAudio.snapshot(),
@@ -192,9 +200,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
           count: countTextureInGameObjects(scene.children.list, uiIconAssets['route-selected-node-ring'].key)
         },
         cardPickerFrame: {
-          loaded: scene.textures.exists(uiIconAssets['card-picker-frame'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['card-picker-frame'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['card-picker-frame'].key),
+          ...iconState('card-picker-frame'),
           mode: scene.cardPickerMode ?? '',
           context: scene.cardPickerContext ?? ''
         },
@@ -226,6 +232,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
                 focusVisible: scene.children.list.some((child: any) => child.name === 'card-picker-input-focus-ring'),
                 inspectTargets: scene.children.list.filter((child: any) => child.name === 'card-picker-card-inspect-hit').length,
                 inspectionOpen: Boolean(scene.cardPickerInspectionOpen),
+                deckImpact: scene.cardPickerInspectionOpen && focused ? scene.cardPickerDeckImpact(focused.index) : undefined,
                 returnIndex: index,
                 decisionPreserved: true,
                 controls: {
@@ -239,21 +246,9 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
               };
             })()
           : undefined,
-        cardPickerScrollButtonFrame: {
-          loaded: scene.textures.exists(uiIconAssets['card-picker-scroll-button-frame'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['card-picker-scroll-button-frame'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['card-picker-scroll-button-frame'].key)
-        },
-        cardPickerCostBadge: {
-          loaded: scene.textures.exists(uiIconAssets['card-picker-cost-badge'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['card-picker-cost-badge'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['card-picker-cost-badge'].key)
-        },
-        cardPickerPageIndicatorFrame: {
-          loaded: scene.textures.exists(uiIconAssets['card-picker-page-indicator-frame'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['card-picker-page-indicator-frame'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['card-picker-page-indicator-frame'].key)
-        },
+        cardPickerScrollButtonFrame: iconState('card-picker-scroll-button-frame'),
+        cardPickerCostBadge: iconState('card-picker-cost-badge'),
+        cardPickerPageIndicatorFrame: iconState('card-picker-page-indicator-frame'),
         cardPickerNameplateFrame: {
           loaded: scene.textures.exists(uiIconAssets['card-picker-nameplate-frame'].key),
           rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['card-picker-nameplate-frame'].key) > 0,
@@ -600,6 +595,8 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
               refreshCount: scene.marketRefreshCount,
               unavailableOffers: scene.cardHoverDetailModule?.marketUnavailableOffers(scene) ?? [],
               decisionPreview: [...scene.marketDecisionPreview],
+              previewCard: scene.cardHoverDetailRequest?.marketCardId ? scene.cardHoverDetailRequest.name : undefined,
+              rules: scene.cardHoverDetailRequest?.marketRules,
               message: scene.marketMessage,
               input: (() => {
                 const targets = scene.children.list.filter((child: any) => (

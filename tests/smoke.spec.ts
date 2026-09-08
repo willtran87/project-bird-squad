@@ -8094,7 +8094,7 @@ test('card reward skip requires intentional confirmation across pointer keyboard
     input: { keyboard: 'X', controller: 'X', pointer: 'Activate Skip twice', cancel: 'Esc / B' },
   });
   expect(initial.skipTitles).toEqual([`Skip  +${initial.state.rewardSkip.scrap} Scrap`]);
-  expect(initial.skipSummaries).toEqual([`Deck stays ${initial.state.rewardSkip.deckSize}  /  After: ${initial.state.rewardSkip.scrapAfter} Scrap`]);
+  expect(initial.skipSummaries).toEqual([`Deck ${initial.state.rewardSkip.deckSize} unchanged / ${initial.state.rewardSkip.scrapAfter} Scrap`]);
   expect(initial.skipRings).toEqual([]);
   expect(initial.choiceRings).toEqual([]);
   expect(initial.state.combatInputFocus).toMatchObject({ active: false, index: 0, visibleFocus: false });
@@ -8680,9 +8680,9 @@ test('reward renderer loading skeleton preserves ceremony anchors until choices 
   expect(loadingCard.state.battleRewardRenderer).toMatchObject({ requested: true, ready: false, loaded: false, failed: false });
   expect(loadingCard.titles).toEqual([{ text: 'Add to the Flock', x: 640, y: 91, width: 1060, height: 52 }]);
   expect(loadingCard.loadingLabels).toEqual(['Preparing choices · Input unlocks when every option is visible.']);
-  expect(loadingCard.slots).toEqual([336, 640, 944].map((x) => ({ x, y: 402, width: 228, height: 312 })));
+  expect(loadingCard.slots).toEqual([336, 640, 944].map((x) => ({ x, y: 402, width: 264, height: 312 })));
   expect(loadingCard.inspectSlots).toEqual([336, 640, 944].map((x) => ({ x, y: 586, width: 92, height: 58 })));
-  expect(loadingCard.skipSlots).toEqual([{ x: 640, y: 652, width: 324, height: 48 }]);
+  expect(loadingCard.skipSlots).toEqual([{ x: 982, y: 652, width: 324, height: 48 }]);
   expect(loadingCard.choiceHits).toEqual([]);
   expect(loadingCard.inputHints).toEqual(['PREPARING CHOICES   |   INPUT LOCKED UNTIL EVERY OPTION IS VISIBLE']);
   expect(loadingCard.inputRails).toEqual([{ x: 640, y: 213, width: 820, height: 24 }]);
@@ -8835,7 +8835,7 @@ test('reward renderer fallback keeps card identity and one stable focus ring', a
   expect(initial.contexts).toEqual([{ text: `ADD  /  DECK ${initial.deckSize} > ${initial.deckSize + 1}`, width: 196, maxLines: 1 }]);
   expect(initial.contextChips).toEqual([{ width: 204, height: 26, borderWidth: 1 }]);
   expect(initial.skipTitles).toEqual([`Skip  +${initial.state.rewardSkip.scrap} Scrap`]);
-  expect(initial.skipSummaries).toEqual([`Deck stays ${initial.deckSize}  /  After: ${initial.state.rewardSkip.scrapAfter} Scrap`]);
+  expect(initial.skipSummaries).toEqual([`Deck ${initial.deckSize} unchanged / ${initial.state.rewardSkip.scrapAfter} Scrap`]);
   expect(initial.skipBorders).toEqual([{ width: 2, color: 0xd8a840 }]);
   expect(initial.skipRings).toEqual([]);
   expect(initial.inspectButtons.every((button: any) => button.enabled && button.disabled === false)).toBe(true);
@@ -10310,8 +10310,9 @@ test('sold-out Market stock remains in the spoken unavailable inventory', async 
   await expect.poll(() => page.locator('#game-status').textContent()).toContain('SOLD OUT');
 });
 
-test('Market card detail keeps live deck-fit guidance in the focused dossier', async ({ page }) => {
-  await page.setViewportSize({ width: 1000, height: 560 });
+test('Market card detail keeps live deck-fit guidance in the focused dossier', async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 2560, height: 1600 });
   await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
   await boot(page);
   const result = await page.evaluate(async () => {
@@ -10327,9 +10328,14 @@ test('Market card detail keeps live deck-fit guidance in the focused dossier', a
     route.renderAll();
 
     const listing = route.marketCardShelf[0];
+    listing.id = 'aviary_35';
+    route.renderAll();
     const card = route.marketCardOffers()[0].card;
     const expected = route.routeRewardCardObservations(card).slice(0, 2);
     route.showHoverCardDetail(card, 'Market offer', listing.price, 650, 360, route.marketCardDecisionPreview(listing));
+    // Reproduce a late shelf-art redraw followed by the pending portrait refresh.
+    route.renderAll();
+    route.renderHoverCardDetailRequest();
     route.updateTextState();
     const panel = route.hoverCardDetail.list.find((child: any) => child.name === 'market-card-build-read');
     const dossier = route.hoverCardDetail.list.find((child: any) => child.name === 'market-fixed-card-inspector');
@@ -10356,6 +10362,8 @@ test('Market card detail keeps live deck-fit guidance in the focused dossier', a
         child.name === 'market-card-build-read' || child.name === 'market-card-build-observation'
       )).length,
       decisionPreview: state.market.decisionPreview,
+      badgeCost: route.cardHoverDetailRequest.cost,
+      cardCost: card.cost,
     };
   });
 
@@ -10366,15 +10374,237 @@ test('Market card detail keeps live deck-fit guidance in the focused dossier', a
   for (const observation of result.expected) {
     await expect.poll(() => page.locator('#game-status').textContent()).toContain(observation);
   }
-  expect(result.panel.left - result.dossier.left).toBeGreaterThanOrEqual(0);
-  expect(result.panel.left - result.dossier.left).toBeLessThanOrEqual(16);
-  expect(result.panel.top).toBeGreaterThanOrEqual(result.dossier.bottom - 24);
+  expect(result.panel.left).toBe(16);
+  expect(result.panel.top).toBe(190);
   expect(result.panel.bottom).toBeLessThan(657);
+  expect(result.badgeCost).toBe(result.cardCost);
   expect(result.persistentShelfReads).toBe(0);
   expect(result.decisionPreview).toEqual(expect.arrayContaining([
     expect.stringMatching(/^DECK /),
     expect.stringMatching(/^SCRAP /),
+    expect.stringMatching(/^BASE HAND /),
   ]));
+  await expect.poll(() => page.locator('#game-status').textContent()).toContain('BASE HAND');
+  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    await page.setViewportSize(size);
+    await page.waitForFunction(() => { const b = document.querySelector('canvas')!.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth + 1 && b.bottom <= innerHeight + 1; });
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    const geometry = await page.evaluate(() => {
+      const route = window.__birdSquadGame.scene.getScene('RouteScene');
+      const listing = route.marketCardShelf[0];
+      route.showHoverCardDetail(route.marketCardOffers()[0].card, 'Market offer', listing.price, 650, 360, route.marketCardDecisionPreview(listing));
+      const panel = route.hoverCardDetail.list.find((o: any) => o.name === 'market-card-build-read');
+      const frame = panel.list[0].getBounds();
+      const labels = panel.list.filter((o: any) => o.type === 'Text');
+      const offers = route.children.list.filter((o: any) => String(o.getData?.('marketFocusId') ?? '').startsWith('card:'));
+      return {
+        overflow: labels.some((o: any) => { const b = o.getBounds(); return b.right > frame.right - 10 || b.bottom > frame.bottom - 10; }),
+        smallest: Math.min(...labels.map((o: any) => parseFloat(o.style.fontSize))),
+        overlaps: offers.some((o: any) => { const b = o.getBounds(); return b.left < frame.right && b.right > frame.left && b.top < frame.bottom && b.bottom > frame.top; }),
+      };
+    });
+    expect(geometry).toEqual({ overflow: false, smallest: 13, overlaps: false });
+    await page.screenshot({ path: `.artifacts/test-results/market-purchase-read/${testInfo.project.name}-${size.width}x${size.height}.png` });
+  }
+  expect(await page.evaluate(() => {
+    const route = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.marketCardShelf[0].sold = true;
+    route.renderHoverCardDetailRequest();
+    return { closed: !route.hoverCardDetail && !route.cardHoverDetailRequest, preview: route.marketDecisionPreview };
+  })).toEqual({ closed: true, preview: [] });
+});
+
+test('Market rules pages preserve complete text and purchases across pointer keyboard and controller', async ({ page }, testInfo) => {
+  test.setTimeout(90_000);
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  await page.evaluate(async () => {
+    const route = await window.__birdSquadStartScene!('RouteScene', {});
+    for (let i = 0; i < 120 && !route.cardHoverDetailModule; i++) await new Promise(r => setTimeout(r, 25));
+    const market = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type !== 'boss');
+    market.type = 'market';
+    route.openMarketNode(market);
+    route.runState.scrap = 999;
+    route.marketCategory = 'cards';
+    route.marketCardShelf = [{ id: 'aviary_35', price: 40, sold: false }, { id: 'swords_05', price: 40, sold: false }];
+    route.renderAll();
+  });
+  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    await page.setViewportSize(size);
+    await page.waitForFunction(() => { const b = document.querySelector('canvas')!.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth + 1 && b.bottom <= innerHeight + 1; });
+    const audit = await page.evaluate(() => {
+      const route = window.__birdSquadGame.scene.getScene('RouteScene');
+      const stable = () => JSON.stringify({ run: route.runState, storage: { ...localStorage }, focus: route.marketFocusId, armed: route.marketFocusArmedId });
+      const results = [];
+      for (const offer of route.marketCardOffers()) {
+        route.showHoverCardDetail(offer.card, 'Market offer', offer.price, 650, 360);
+        const view = route.cardHoverDetailRequest;
+        const before = stable();
+        const seen: Record<string, string[]> = {};
+        const violations: string[] = [];
+        for (let i = 0; i < view.marketRules.total; i++) {
+          const dossier = route.hoverCardDetail.list.find((o: any) => o.name === 'market-fixed-card-inspector');
+          const body = dossier.list.find((o: any) => o.name === 'market-rules-body');
+          const stats = dossier.list.find((o: any) => o.name === 'market-rules-stats-heading');
+          const frame = dossier.list.find((o: any) => o.name === 'market-rules-frame').getBounds();
+          for (const button of dossier.list.filter((o: any) => o.input?.enabled)) {
+            if (button.input.hitArea.height < 58 || button.input.hitArea.width < 58) violations.push('small touch target');
+          }
+          const rules = view.marketRules;
+          (seen[rules.title] ??= []).push(rules.text);
+          if (body.getBounds().bottom > stats.getBounds().top - 12) violations.push('footer overlap');
+          if (body.style.maxLines || parseFloat(body.style.fontSize) < 16) violations.push('clipped or small rules');
+          for (const label of dossier.list.filter((o: any) => o.type === 'Text')) {
+            const b = label.getBounds();
+            if (b.left < frame.left + 8 || b.right > frame.right - 8 || b.bottom > frame.bottom - 4) violations.push(label.text);
+          }
+          dossier.getData('turnRulesPage')(1);
+        }
+        const normalize = (value: string) => value.replace(/\s+/g, ' ').trim();
+        results.push({ id: offer.id, violations, unchanged: before === stable(),
+          actual: Object.fromEntries(Object.entries(seen).map(([key, values]) => [key, normalize(values.join(' '))])),
+          expected: { NOW: normalize(view.currentText), PREEN: normalize(view.upgradedText), MOLT: normalize(view.moltText) } });
+      }
+      const offer = route.marketCardOffers()[0];
+      route.showHoverCardDetail(offer.card, 'Market offer', offer.price, 650, 360);
+      route.updateTextState();
+      return results;
+    });
+    for (const result of audit) {
+      expect(result.violations, result.id).toEqual([]);
+      expect(result.actual, result.id).toEqual(result.expected);
+      expect(result.unchanged).toBe(true);
+    }
+    await page.screenshot({ path: `.artifacts/test-results/market-rules/${testInfo.project.name}-${size.width}x${size.height}-now.png` });
+    await page.keyboard.press('r');
+    await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).market.rules.page)).toBe(2);
+    await page.screenshot({ path: `.artifacts/test-results/market-rules/${testInfo.project.name}-${size.width}x${size.height}-next.png` });
+  }
+  const before = await page.evaluate(() => {
+    const route = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.marketFocusArmedId = route.marketFocusId;
+    route.renderAll();
+    return JSON.stringify({ run: route.runState, storage: { ...localStorage }, armed: route.marketFocusArmedId, focus: route.marketFocusId });
+  });
+  // Actual pointer activation outside the shelf must page, never buy or clear an armed offer.
+  await clickNamedGameObject(page, 'RouteScene', 'market-rules-next');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).market.rules.page)).toBe(3);
+  await clickNamedGameObject(page, 'RouteScene', 'market-rules-previous');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).market.rules.page)).toBe(2);
+  await clickNamedGameObject(page, 'RouteScene', 'market-rules-next');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).market.rules.page)).toBe(3);
+  await page.evaluate(() => {
+    const route = window.__birdSquadGame.scene.getScene('RouteScene');
+    route.input.gamepad.emit('down', {}, { index: 3 });
+  });
+  const after = await page.evaluate(() => {
+    const route = window.__birdSquadGame.scene.getScene('RouteScene');
+    const rules = { ...route.cardHoverDetailRequest.marketRules };
+    route.renderAll(); route.renderHoverCardDetailRequest(); route.updateTextState();
+    return { saved: JSON.stringify({ run: route.runState, storage: { ...localStorage }, armed: route.marketFocusArmedId, focus: route.marketFocusId }),
+      rules, restored: route.cardHoverDetailRequest.marketRules };
+  });
+  expect(after.saved).toBe(before);
+  expect(after.restored).toEqual(after.rules);
+  await expect.poll(() => page.locator('#game-status').textContent()).toContain(after.rules.text.replace(/\s+/g, ' '));
+  await page.keyboard.press('2');
+  expect(await page.evaluate(() => {
+    const route = window.__birdSquadGame.scene.getScene('RouteScene');
+    return { visible: !!route.hoverCardDetail, request: !!route.cardHoverDetailRequest, rules: JSON.parse(window.render_game_to_text!()).market.rules ?? null };
+  })).toEqual({ visible: false, request: false, rules: null });
+});
+
+test('Market rules pagination keeps every catalog rule and long name inside its reading bounds', async ({ page }) => {
+  test.setTimeout(90_000);
+  const data = JSON.parse(await readFile('data/game/alpha-cards.json', 'utf8'));
+  await boot(page);
+  const audit = await page.evaluate(async (ids: string[]) => {
+    const route = await window.__birdSquadStartScene!('RouteScene', {});
+    for (let i = 0; i < 120 && !route.cardHoverDetailModule; i++) await new Promise(r => setTimeout(r, 25));
+    route.marketCardShelf = ids.map(id => ({ id, price: 40, sold: false }));
+    const violations: string[] = [];
+    let pages = 0;
+    const normalize = (value: string) => value.replace(/\s+/g, ' ').trim();
+    const catalog = route.marketCardOffers().map((offer: any) => offer.card);
+    catalog.push({ ...catalog[0], id: 'pagination-stress', name: 'An Especially Long Card Name For Layout',
+      text: catalog[0].text.repeat(16), upgradedText: catalog[0].upgradedText.repeat(16) });
+    for (const card of catalog) {
+      for (const usesMolt of [false, true]) {
+        const view: any = { marketCardId: card.id, name: card.name, bird: card.bird, label: 'Card', zone: 'Market / 40 Scrap to buy',
+          cost: card.cost, target: card.target, role: card.role, currentText: usesMolt ? card.moltText : card.text,
+          upgradedText: card.upgradedText, baseText: card.text, moltText: card.moltText, usesMolt,
+          stats: Object.entries(card.runtime.flockStats ?? {}).map(([key, value]) => `${key} +${value}`),
+          accent: 0x8df4ff, reducedMotion: true };
+        const panel = route.cardHoverDetailModule.renderCardHoverDetail(route, view);
+        const body = panel.list.find((o: any) => o.name === 'market-rules-body');
+        const footer = panel.list.find((o: any) => o.name === 'market-rules-stats-heading');
+        const frame = panel.list.find((o: any) => o.name === 'market-rules-frame').getBounds();
+        const seen: Record<string, string[]> = {};
+        for (let i = 0; i < view.marketRules.total; i++) {
+          pages++;
+          const rules = view.marketRules;
+          (seen[rules.title] ??= []).push(rules.text);
+          if (body.getBounds().bottom > footer.getBounds().top - 12) violations.push(`${card.id}: footer`);
+          if (body.style.maxLines || parseFloat(body.style.fontSize) !== 16) violations.push(`${card.id}: clipped`);
+          for (const label of panel.list.filter((o: any) => o.type === 'Text')) {
+            const b = label.getBounds();
+            if (b.right > frame.right - 8 || b.left < frame.left + 8 || b.bottom > frame.bottom - 4) violations.push(`${card.id}: bounds ${label.text}`);
+          }
+          panel.getData('turnRulesPage')(1);
+        }
+        const expected = usesMolt ? { 'NOW / MOLT': card.moltText, BASE: card.text }
+          : { NOW: card.text, PREEN: card.upgradedText, ...(card.moltText ? { MOLT: card.moltText } : {}) };
+        for (const [key, value] of Object.entries(expected)) {
+          if (normalize((seen[key] ?? []).join(' ')) !== normalize(value)) violations.push(`${card.id}: incomplete ${key}`);
+        }
+        panel.destroy(true);
+      }
+    }
+    return { cards: ids.length, pages, violations };
+  }, data.cards.map((card: any) => card.id));
+  expect(audit.cards).toBeGreaterThan(100);
+  expect(audit.pages).toBeGreaterThan(audit.cards * 4);
+  expect(audit.violations).toEqual([]);
+});
+
+test('Market card hand previews match combat and rejected offers do not mutate saves', async ({ page }) => {
+  await boot(page);
+  const results = await page.evaluate(async () => {
+    const route = await window.__birdSquadStartScene!('RouteScene', {});
+    route.runState.deck = ['wands_02', 'wands_03', 'wands_04', 'wands_05'].map(id => ({ id }));
+    route.runState.scrap = 100;
+    route.runState.routeMarks = [];
+    const listing = { id: 'wands_06', price: 40, sold: false };
+    route.marketCardShelf = [listing];
+    const cards = route.pickerEligibleCards('release').map((e: any) => e.card);
+    const addition = route.marketCardOffers()[0].card;
+    const battle = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    battle.hand = []; battle.discardPile = []; battle.clearedPile = []; battle.nextTurnDrawBonus = 0;
+    const cases = [];
+    for (const leader of ['fledgling', 'spark_caller', 'talon', 'tidewarden', 'roostkeeper']) {
+      route.runState.leaderId = leader;
+      const saved = JSON.stringify({ run: route.runState, storage: { ...localStorage } });
+      const preview = route.marketCardDecisionPreview(listing);
+      battle.runLeaderId = leader; battle.drawPile = cards;
+      const before = battle.handTargetSize();
+      battle.drawPile = [...cards, addition];
+      const after = battle.handTargetSize();
+      cases.push({ preview, expected: `BASE HAND ${before} > ${after}`,
+        unchanged: saved === JSON.stringify({ run: route.runState, storage: { ...localStorage } }) });
+    }
+    route.runState.scrap = 10;
+    const saved = JSON.stringify({ run: route.runState, storage: { ...localStorage } });
+    const unavailable = route.marketCardDecisionPreview(listing);
+    const sold = route.marketCardDecisionPreview({ ...listing, sold: true });
+    return { cases, unavailable, sold, unchanged: saved === JSON.stringify({ run: route.runState, storage: { ...localStorage } }) };
+  });
+  for (const result of results.cases) {
+    expect(result.preview).toContain(result.expected);
+    expect(result.unchanged).toBe(true);
+  }
+  expect(results.unavailable).toEqual(['NEED 30 MORE SCRAP']);
+  expect(results.sold).toEqual(['SOLD OUT']);
+  expect(results.unchanged).toBe(true);
 });
 
 test('Market item dossiers explain live build fit across Waymarks Supplies and services', async ({ page }) => {
@@ -10672,7 +10902,7 @@ test('market purchases require intentional input and block route commitment acro
     const offerTargets = route.children.list
       .filter((child: any) => child.input?.enabled && child.getData?.('marketFocusId')?.startsWith('card:'));
     offerTargets[0]?.emit('pointerover');
-    const inspectorBounds = route.hoverCardDetail?.getBounds?.();
+    const inspectorBounds = route.hoverCardDetail?.list.find((child: any) => child.name === 'market-fixed-card-inspector')?.getBounds();
     const offerBounds = offerTargets.map((child: any) => child.getBounds());
     const rightmostOffer = Math.max(...offerBounds.map((bounds: any) => bounds.right));
     return {
@@ -10971,6 +11201,7 @@ test('market purchases require intentional input and block route commitment acro
       ringVisible: ring?.visible,
       hoverOpen: Boolean(route.hoverCardDetail?.active),
       inspectionZone: route.cardHoverDetailRequest?.zone,
+      decisionPreview: JSON.parse(window.render_game_to_text!()).market.decisionPreview,
     };
   });
   expect(mixedHover).toMatchObject({
@@ -10978,7 +11209,8 @@ test('market purchases require intentional input and block route commitment acro
     input: { focusId: 'card:1', count: 2, armed: false, focusVisible: false },
     ringVisible: false,
     hoverOpen: true,
-    inspectionZone: 'Market / NEED 20 MORE SCRAP',
+    inspectionZone: 'Market / 120 Scrap to buy',
+    decisionPreview: ['NEED 20 MORE SCRAP'],
   });
   await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
     .toContain('Unavailable in this section');
@@ -12138,7 +12370,7 @@ test('card choice surfaces expose full card details on hover', async ({ page }) 
 
     return {
       reward: hasFullSections(rewardTexts),
-      market: hasFullSections(marketTexts),
+      market: marketTexts.some(text => text.startsWith('NOW  /')) && marketTexts.includes('Current Flock Stats'),
       preen: hasFullSections(preenTexts),
       rewardTitle: rewardTexts.includes(rewardCard.name),
       marketTitle: marketTexts.includes(marketOffer.name),
@@ -12182,7 +12414,8 @@ test('card choice surfaces expose full card details on hover', async ({ page }) 
   expect(result.rewardFrameCount).toBeGreaterThanOrEqual(1);
   expect(result.rewardStatFrameCount).toBeGreaterThanOrEqual(1);
   expect(result.marketFrameCount).toBeGreaterThanOrEqual(1);
-  expect(result.marketStatFrameCount).toBeGreaterThanOrEqual(1);
+  // The Market uses a dedicated stat footer, not the old overlapping chip ornament.
+  expect(result.marketStatFrameCount).toBe(0);
   expect(result.preenFrameCount).toBeGreaterThanOrEqual(1);
   expect(result.preenStatFrameCount).toBeGreaterThanOrEqual(1);
   expect(result.battleFrameTelemetry).toMatchObject({ loaded: true, rendered: true });
@@ -12899,6 +13132,164 @@ test('Quick Flight skips the long middle district and restores the flyway visibl
   expect(result.banner).toMatchObject({ district: 2, districtCount: 3 });
   expect(result.restoration).toMatchObject({ restoredSegments: 1, totalSegments: 3, rendered: true });
   expect(result.restorationObjects).toBeGreaterThan(2);
+});
+
+test('reward readability separates effects badges and build advice at every supported size', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 2560, height: 1600 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  await page.evaluate(async () => {
+    const battle: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    const candidates = new Map<string, any>();
+    for (let i = 0; i < 64; i++) battle.createRewardChoices().forEach((card: any) => candidates.set(card.id, card));
+    battle.rewardChoices = [...candidates.values()].sort((a, b) => b.text.length - a.text.length).slice(0, 3);
+    battle.mode = 'cardReward';
+    battle.controllerChoiceIndex = 0;
+    battle.battleInputActive = true;
+    battle.renderAll();
+  });
+  await page.waitForFunction(() => window.__birdSquadGame.scene.getScene('BattleScene').root.list.some((child: any) => child.name === 'reward-build-read-panel'));
+  const redrawInput = await page.evaluate(async () => {
+    const battle = window.__birdSquadGame.scene.getScene('BattleScene');
+    const oldHit = battle.root.list.find((o: any) => o.name === 'reward-card-inspect-hit');
+    battle.requestBattleRender();
+    await new Promise<void>((resolve) => battle.events.once('postupdate', resolve));
+    const hits = battle.root.list.filter((o: any) => o.input?.enabled);
+    return {
+      replaced: !battle.root.list.includes(oldHit),
+      count: hits.length,
+      allRegistered: hits.every((o: any) => battle.input._list.includes(o) && !battle.input._pendingInsertion.includes(o)),
+    };
+  });
+  expect(redrawInput.replaced).toBe(true);
+  expect(redrawInput.count).toBeGreaterThanOrEqual(7);
+  expect(redrawInput.allRegistered).toBe(true);
+  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    await page.setViewportSize(size);
+    const geometry = await page.evaluate(() => {
+      const battle = window.__birdSquadGame.scene.getScene('BattleScene');
+      const objects = battle.root.list;
+      const rect = (o: any) => { const b = o.getBounds(); return { left: b.left, right: b.right, top: b.top, bottom: b.bottom }; };
+      const named = (name: string) => objects.filter((o: any) => o.name === name);
+      return {
+        effects: named('reward-card-effect').map((o: any) => ({ ...rect(o), font: parseInt(o.style.fontSize), lines: o.getWrappedText().length })),
+        panels: named('reward-card-effect-panel').map(rect),
+        badges: named('reward-card-molt-label').map(rect),
+        advice: named('reward-build-observation').map((o: any) => ({ ...rect(o), font: parseInt(o.style.fontSize) })),
+        dock: rect(named('reward-build-read-panel')[0]),
+        skip: rect(named('reward-skip-hit')[0]),
+      };
+    });
+    expect(geometry.effects).toHaveLength(3);
+    geometry.effects.forEach((effect: any, index: number) => {
+      expect(effect.font).toBeGreaterThanOrEqual(16);
+      expect(effect.lines).toBeLessThanOrEqual(4);
+      expect(effect.left).toBeGreaterThanOrEqual(geometry.panels[index].left + 4);
+      expect(effect.right).toBeLessThanOrEqual(geometry.panels[index].right - 4);
+      expect(effect.bottom).toBeLessThanOrEqual(geometry.panels[index].bottom);
+      geometry.badges.forEach((badge: any) => expect(badge.bottom).toBeLessThan(effect.top));
+    });
+    expect(geometry.advice.length).toBeGreaterThan(0);
+    geometry.advice.forEach((advice: any) => {
+      expect(advice.font).toBeGreaterThanOrEqual(16);
+      expect(advice.bottom).toBeLessThanOrEqual(geometry.dock.bottom - 4);
+      expect(advice.right).toBeLessThanOrEqual(geometry.dock.right - 4);
+    });
+    expect(geometry.skip.left - geometry.dock.right).toBeGreaterThanOrEqual(20);
+    await page.screenshot({ path: `.artifacts/test-results/reward-readability/cards-${size.width}x${size.height}.png` });
+    await clickNamedGameObject(page, 'BattleScene', 'reward-card-inspect-hit');
+    await page.waitForFunction(() => window.__birdSquadState!().rewardInspection?.open);
+    await page.waitForFunction(() => window.__birdSquadGame.scene.getScene('BattleScene').rewardInspectionLayer?.list.some((o: any) => o.name === 'reward-deck-impact'));
+    const inspection = await page.evaluate(() => {
+      const battle = window.__birdSquadGame.scene.getScene('BattleScene');
+      const panel = battle.rewardInspectionLayer.list.find((o: any) => o.name === 'reward-deck-impact');
+      const box = panel.list[0].getBounds();
+      return {
+        impact: battle.getTextState().rewardInspection.deckImpact,
+        overflow: panel.list.filter((o: any) => o.type === 'Text').some((o: any) => {
+          const b = o.getBounds();
+          return b.left < box.left || b.right > box.right || b.bottom > box.bottom;
+        }),
+        panelRight: box.right,
+        previewLeft: battle.cardPreview.getBounds().left,
+        rulesBottom: battle.cardPreview.list.find((o: any) => o.name === 'card-hover-rules').getBounds().bottom,
+        statsTop: battle.cardPreview.list.find((o: any) => o.name === 'card-hover-stats-title').getBounds().top,
+      };
+    });
+    expect(inspection.overflow).toBe(false);
+    expect(inspection.panelRight).toBeLessThan(inspection.previewLeft);
+    expect(inspection.rulesBottom).toBeLessThan(inspection.statsTop);
+    expect(inspection.impact.deckAfter).toBe(inspection.impact.deckBefore + 1);
+    await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? '')).toContain('Base hand target');
+    await page.screenshot({ path: `.artifacts/test-results/reward-readability/inspect-${size.width}x${size.height}.png` });
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !window.__birdSquadState!().rewardInspection?.open);
+  }
+  const truncation = await page.evaluate(async () => {
+    const battle = window.__birdSquadGame.scene.getScene('BattleScene');
+    const card = battle.rewardChoices[0];
+    const original = card.text;
+    card.text = `${original} ${'An intentionally long conditional explanation for layout verification. '.repeat(8)}`;
+    battle.renderAll();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const effect = battle.root.list.find((o: any) => o.name === 'reward-card-effect');
+    const result = { visible: effect.text, full: battle.rewardCardView(card, 0).summary, lines: effect.getWrappedText().length };
+    card.text = original;
+    battle.renderAll();
+    return result;
+  });
+  expect(truncation.visible.endsWith('...')).toBe(true);
+  expect(truncation.lines).toBeLessThanOrEqual(4);
+  expect(truncation.full.length).toBeGreaterThan(truncation.visible.length);
+  await clickNamedGameObject(page, 'BattleScene', 'reward-skip-hit');
+  await page.waitForFunction(() => window.__birdSquadGame.scene.getScene('BattleScene').root.list.some((o: any) => o.name === 'reward-skip-tradeoff'));
+  await page.screenshot({ path: '.artifacts/test-results/reward-readability/skip-1000x560.png' });
+  await page.keyboard.press('Escape');
+  expect(errors).toEqual([]);
+});
+
+test('reward deck impact matches live draw targets for every Leader and Preen without modifying saves', async ({ page }) => {
+  await boot(page);
+  const result = await page.evaluate(async () => {
+    const battle: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    const candidates = new Map<string, any>();
+    for (let i = 0; i < 96; i++) battle.createRewardChoices().forEach((card: any) => candidates.set(card.id, card));
+    const plumes = [...candidates.values()].filter((card) => card.runtime.suit === 'plumes').slice(0, 5);
+    if (plumes.length < 5) throw new Error('Missing five distinct Plumes for keystone boundary');
+    battle.hand = []; battle.discardPile = []; battle.clearedPile = [];
+    battle.nextTurnDrawBonus = 0;
+    const results: any[] = [];
+    for (const leader of ['fledgling', 'spark_caller', 'talon', 'tidewarden', 'roostkeeper']) {
+      battle.runLeaderId = leader;
+      battle.mode = 'cardReward';
+      battle.drawPile = plumes.slice(0, 4);
+      const before = battle.handTargetSize();
+      const savedBeforeAdd = JSON.stringify(localStorage);
+      const add = battle.rewardDeckImpact(plumes[4]);
+      const addSaveUnchanged = savedBeforeAdd === JSON.stringify(localStorage);
+      const unchanged = battle.drawPile.length === 4 && !plumes[4].upgraded;
+      battle.drawPile = plumes;
+      const after = battle.handTargetSize();
+      battle.mode = 'upgradeReward';
+      const savedBeforePreen = JSON.stringify(localStorage);
+      const preen = battle.rewardDeckImpact(plumes[0]);
+      const preenSaveUnchanged = savedBeforePreen === JSON.stringify(localStorage);
+      const beforePreen = battle.handTargetSize();
+      battle.drawPile = plumes.map((card, index) => index === 0 ? { ...card, upgraded: true } : card);
+      results.push({ leader, before, after, add, preen, beforePreen, afterPreen: battle.handTargetSize(), unchanged, addSaveUnchanged, preenSaveUnchanged });
+    }
+    return { results, savesUnchanged: results.every((row) => row.addSaveUnchanged && row.preenSaveUnchanged) };
+  });
+  expect(result.savesUnchanged).toBe(true);
+  for (const row of result.results) {
+    expect(row.unchanged).toBe(true);
+    expect(row.add).toMatchObject({ deckBefore: 4, deckAfter: 5, handBefore: row.before, handAfter: row.after });
+    expect(row.preen).toMatchObject({ deckBefore: 5, deckAfter: 5, handBefore: row.beforePreen, handAfter: row.afterPreen });
+    expect(row.add.drawScope).toContain('Opening protection');
+  }
 });
 
 test('reward advice preserves costs alongside competing synergy and district benefits', async ({ page }) => {
@@ -15747,14 +16138,14 @@ test('shared onboarding and pause commands keep touch targets at the minimum sup
     return { labels, values, rows, buttonTop };
   });
   expect(helpFooter.labels.map((item: any) => ({ text: item.text, fontSize: item.fontSize }))).toEqual([
-    { text: 'QUICK KEYS', fontSize: 12 },
-    { text: 'FAIR DRAWS', fontSize: 12 },
+    { text: 'QUICK KEYS', fontSize: 14 },
+    { text: 'YOUR PACE', fontSize: 14 },
   ]);
   expect(helpFooter.values.map((item: any) => ({ text: item.text, fontSize: item.fontSize }))).toEqual([
-    { text: 'R Roost  |  Enter Confirm  |  1-9 Cards  |  X Skip  |  M Mute', fontSize: 13 },
-    { text: 'After the lesson, seeded shuffles vary fights and preserve playable pressure.', fontSize: 13 },
+    { text: 'R Roost  |  Enter Confirm  |  1-9 Cards  |  X Skip  |  M Mute', fontSize: 15 },
+    { text: 'Inspect before committing. Skip or replay the guide whenever you like.', fontSize: 15 },
   ]);
-  expect(helpFooter.rows.map((row: any) => [row.width, row.height])).toEqual([[616, 28], [616, 28]]);
+  expect(helpFooter.rows.map((row: any) => [row.width, row.height])).toEqual([[968, 28], [968, 28]]);
   expect(helpFooter.rows[1].bounds.top - helpFooter.rows[0].bounds.bottom).toBeGreaterThanOrEqual(4);
   expect(helpFooter.buttonTop - helpFooter.rows[1].bounds.bottom).toBeGreaterThanOrEqual(8);
   helpFooter.rows.forEach((row: any, index: number) => {
@@ -18246,6 +18637,69 @@ test('playtest outcomes hand the latest run directly to the local rating panel',
   await page.screenshot({ path: '.artifacts/test-results/outcome-input/playtest-rating-no-refade.png' });
 });
 
+test('How to Play teaches the full loop with readable unclipped text and matching narration', async ({ page }) => {
+  test.setTimeout(90_000);
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.setViewportSize({ width: 2560, height: 1600 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  await page.keyboard.press('h');
+  await page.waitForFunction(() => {
+    const state = JSON.parse(window.render_game_to_text!());
+    const menu = window.__birdSquadGame.scene.getScene('MenuScene');
+    // Loaded textures precede the overlay's deferred refresh. Inspect the
+    // finished presentation, not the still-playable loading frame.
+    return state.helpOpen && state.titleBoot.deferredHelpLoaded === state.titleBoot.deferredHelpAssetCount
+      && menu.helpOverlay?.list.filter((o: any) => o.name === 'how-to-play-topic-icon').length === 6;
+  });
+  for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    await page.setViewportSize(size);
+    await page.waitForFunction(() => {
+      const canvas = document.querySelector('canvas')!.getBoundingClientRect();
+      return canvas.left >= 0 && canvas.top >= 0 && canvas.right <= innerWidth + 1 && canvas.bottom <= innerHeight + 1;
+    });
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    const layout = await page.evaluate(() => {
+      const menu = window.__birdSquadGame.scene.getScene('MenuScene');
+      const children = menu.helpOverlay.list;
+      const panels = children.filter((o: any) => o.name === 'how-to-play-topic-panel');
+      const texts = children.filter((o: any) => o.name === 'how-to-play-readable');
+      const icons = children.filter((o: any) => o.name === 'how-to-play-topic-icon');
+      return {
+        state: JSON.parse(window.render_game_to_text!()).helpContent,
+        texts: texts.map((o: any) => o.text),
+        panels: panels.length,
+        icons: icons.length,
+        iconOverlap: icons.some((icon: any, i: number) => icon.getBounds().right + 6 > texts[1 + i * 2].getBounds().left),
+        overflow: panels.some((panel: any, i: number) => {
+          const box = panel.getBounds();
+          return texts.slice(1 + i * 2, 3 + i * 2).some((text: any) => {
+            const b = text.getBounds();
+            return b.left < box.left + 8 || b.right > box.right - 8 || b.top < box.top + 8 || b.bottom > box.bottom - 8;
+          });
+        }),
+        minFont: Math.min(...texts.map((o: any) => parseInt(o.style.fontSize))),
+        clipping: texts.some((o: any) => o.style.maxLines > 0 || o.style.fixedHeight > 0),
+      };
+    });
+    expect(layout.panels).toBe(6);
+    expect(layout.icons).toBe(6);
+    expect(layout.iconOverlap).toBe(false);
+    expect(layout.overflow).toBe(false);
+    expect(layout.minFont).toBeGreaterThanOrEqual(16);
+    expect(layout.clipping).toBe(false);
+    expect(layout.state).toEqual(layout.texts);
+    expect(layout.texts.join(' ')).toContain('Skip keeps the deck and grants Scrap');
+    expect(layout.texts.join(' ')).toContain('without adding a copy');
+    await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent)).toContain('6 / Learn and Fly Again');
+    await page.screenshot({ path: `.artifacts/test-results/full-loop-help/help-${size.width}x${size.height}.png` });
+  }
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !JSON.parse(window.render_game_to_text!()).helpOpen);
+  expect(errors).toEqual([]);
+});
+
 test('title How to Play overlay opens, reports state, and loads its medallion', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
@@ -18354,7 +18808,7 @@ test('title How to Play overlay opens, reports state, and loads its medallion', 
   expect(result.guideActionTargets).toEqual([{ width: 190, height: 58 }]);
   for (const frame of result.tipRowFrameObjects) {
     expect(frame).toMatchObject({
-      displayWidth: 616,
+      displayWidth: 968,
       displayHeight: 28,
       name: 'how-to-play-tip-row-frame',
       visible: true,
@@ -34642,6 +35096,111 @@ test('reward card inspection preserves combat and route choices across pointer k
   expect(routeClosed.deck).toEqual(routeOpen.deckBefore);
 });
 
+test('card picker deck impact stays readable and keeps service prices separate from card costs', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.setViewportSize({ width: 2560, height: 1600 });
+  await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
+  await boot(page);
+  await page.evaluate(async () => window.__birdSquadStartScene!('RouteScene', {}));
+  await page.waitForFunction(() => !!window.__birdSquadGame.scene.getScene('RouteScene').cardHoverDetailModule);
+  for (const mode of ['release', 'preen']) {
+    const original = await page.evaluate(mode => {
+      const route = window.__birdSquadGame.scene.getScene('RouteScene');
+      route.cardPickerMode = mode;
+      route.cardPickerContext = mode === 'release' ? 'market' : 'route';
+      route.marketOpen = mode === 'release';
+      route.runState.scrap = 0;
+      route.cardPickerFocusIndex = 0;
+      route.cardPickerRemainingPicks = 1;
+      route.cardPickerArmedIndex = undefined;
+      route.cardPickerInspectionOpen = false;
+      route.renderAll();
+      return JSON.stringify(route.runState);
+    }, mode);
+    await page.keyboard.press('r');
+    await page.waitForFunction(() => window.__birdSquadGame.scene.getScene('RouteScene').children.list.some((o: any) => o.name === 'card-picker-deck-impact'));
+    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+      await page.setViewportSize(size);
+      await page.waitForFunction(() => { const b = document.querySelector('canvas')!.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth + 1 && b.bottom <= innerHeight + 1; });
+      await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+      const view = await page.evaluate(() => {
+        const route = window.__birdSquadGame.scene.getScene('RouteScene');
+        const panel = route.children.list.find((o: any) => o.name === 'card-picker-deck-impact');
+        const box = panel.list[0].getBounds();
+        const labels = panel.list.filter((o: any) => o.type === 'Text');
+        const fullState = JSON.parse(window.render_game_to_text!());
+        const state = fullState.cardPickerInput;
+        return {
+          state, text: labels.map((o: any) => o.text),
+          iconStates: ['cardPickerFrame', 'cardPickerScrollButtonFrame', 'cardPickerCostBadge', 'cardPickerPageIndicatorFrame']
+            .map(key => fullState[key]),
+          overflow: labels.some((o: any) => { const b = o.getBounds(); return b.right > box.right - 12 || b.bottom > box.bottom - 12; }),
+          gap: box.left - route.hoverCardDetail.getBounds().right,
+          badgeCost: route.cardHoverDetailRequest.cost,
+          cardCost: route.pickerEligibleCards(route.cardPickerMode)[route.cardPickerFocusIndex].card.cost,
+          run: JSON.stringify(route.runState),
+        };
+      });
+      expect(view.overflow).toBe(false);
+      for (const icon of view.iconStates) {
+        expect(typeof icon.loaded).toBe('boolean');
+        expect(icon.rendered).toBe(icon.count > 0);
+      }
+      expect(view.gap).toBeGreaterThan(24);
+      expect(view.text).toEqual(view.state.deckImpact.lines);
+      expect(view.badgeCost).toBe(view.cardCost);
+      expect(view.run).toBe(original);
+      expect(view.state.deckImpact.deckAfter).toBe(view.state.deckImpact.deckBefore - (mode === 'release' ? 1 : 0));
+      if (mode === 'release') expect(view.text.join(' ')).toContain('more.');
+      await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? '')).toContain('Base hand target');
+      await page.screenshot({ path: `.artifacts/test-results/picker-deck-impact/${mode}-${size.width}x${size.height}.png` });
+    }
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !JSON.parse(window.render_game_to_text!()).cardPickerInput.inspectionOpen);
+    expect(await page.evaluate(() => JSON.stringify(window.__birdSquadGame.scene.getScene('RouteScene').runState))).toBe(original);
+  }
+  expect(errors).toEqual([]);
+});
+
+test('card picker projections match combat for every Leader across the suit threshold', async ({ page }) => {
+  await boot(page);
+  const cases = await page.evaluate(async () => {
+    const route = await window.__birdSquadStartScene!('RouteScene', {});
+    route.runState.deck = ['wands_02', 'wands_03', 'wands_04', 'wands_05', 'wands_06']
+      .map((id, i) => ({ id, upgraded: i === 2 }));
+    route.cardPickerContext = 'route';
+    const battle = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    battle.hand = []; battle.discardPile = []; battle.clearedPile = []; battle.nextTurnDrawBonus = 0;
+    const results = [];
+    for (const leader of ['fledgling', 'spark_caller', 'talon', 'tidewarden', 'roostkeeper']) {
+      for (const mode of ['release', 'preen']) {
+        route.runState.leaderId = leader;
+        route.cardPickerMode = mode;
+        const snapshot = JSON.stringify({ run: route.runState, storage: { ...localStorage } });
+        const selected = mode === 'release' ? 2 : 1;
+        const projected = route.cardPickerDeckImpact(selected);
+        const unchanged = snapshot === JSON.stringify({ run: route.runState, storage: { ...localStorage } });
+        const cards = route.pickerEligibleCards('release').map((e: any) => e.card);
+        battle.runLeaderId = leader; battle.drawPile = cards;
+        const before = battle.handTargetSize();
+        battle.drawPile = mode === 'release' ? cards.filter((_: any, i: number) => i !== selected)
+          : cards.map((c: any, i: number) => i === selected ? { ...c, upgraded: true } : c);
+        results.push({ projected, before, after: battle.handTargetSize(), unchanged, copies: battle.drawPile.length });
+      }
+    }
+    return results;
+  });
+  expect(cases).toHaveLength(10);
+  for (const result of cases) {
+    expect(result.projected.handBefore).toBe(result.before);
+    expect(result.projected.handAfter).toBe(result.after);
+    expect(result.projected.deckAfter).toBe(result.copies);
+    expect(result.unchanged).toBe(true);
+  }
+});
+
 test('card picker inspection preserves Preen and Release decisions across pointer keyboard and controller paths', async ({ page }) => {
   test.setTimeout(120_000);
   await page.setViewportSize({ width: 1000, height: 560 });
@@ -35473,8 +36032,8 @@ test('owned Folio launches the exact saved deck across pointer keyboard and cont
       block: hit.getData('block'),
     };
   });
-  expect(launchTarget).toMatchObject({ width: 192, available: true, block: null });
-  expect(launchTarget.height).toBeGreaterThanOrEqual(44);
+  expect(launchTarget).toMatchObject({ width: 180, available: true, block: null });
+  expect(launchTarget.height).toBeGreaterThanOrEqual(58);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/folio-launch-flight-lab.png' });
   const folioBeforeLaunch = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
   await clickNamedGameObject(page, 'ProfileScene', 'profile-flight-lab-launch-hit');

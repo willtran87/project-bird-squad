@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { renderMarketCardDossier } from './reward-card-inspection';
 export {
   activateMarketFocus,
   bindMarketInputs,
@@ -38,6 +39,8 @@ const UI_GOLD = '#ffe1a3';
 const UI_CYAN = '#8df4ff';
 
 export interface CardHoverDetailView {
+  marketCardId?: string;
+  marketRules?: { page: number; total: number; title: string; text: string };
   name: string;
   bird: string;
   label: string;
@@ -100,23 +103,19 @@ export interface MarketItemDetailView {
 }
 
 export function renderCardHoverDetail(scene: Phaser.Scene, view: CardHoverDetailView) {
-  const marketInspector = view.zone.startsWith('Market /');
-  const w = marketInspector ? 270 : 300;
-  const h = marketInspector ? 430 : 450;
+  if (view.zone.startsWith('Market /')) return renderMarketCardDossier(scene, view);
+  const w = 300;
+  const h = 450;
   const margin = 18;
-  const cx = marketInspector
-    ? 1130
-    : view.anchorX < 640
+  const cx = view.anchorX < 640
       ? Math.min(1280 - w / 2 - margin, view.anchorX + 232)
       : Math.max(w / 2 + margin, view.anchorX - 232);
-  const cy = marketInspector
-    ? 394
-    : Math.max(h / 2 + margin, Math.min(720 - h / 2 - margin, view.anchorY));
+  const cy = Math.max(h / 2 + margin, Math.min(720 - h / 2 - margin, view.anchorY));
   const left = cx - w / 2;
   const top = cy - h / 2;
   const bottom = cy + h / 2;
   const container = scene.add.container(0, 0)
-    .setName(marketInspector ? 'market-fixed-card-inspector' : 'card-hover-detail');
+    .setName('card-hover-detail');
   const add = <T extends Phaser.GameObjects.GameObject>(child: T) => {
     container.add(child);
     return child;
@@ -179,9 +178,7 @@ export function renderCardHoverDetail(scene: Phaser.Scene, view: CardHoverDetail
   }).setOrigin(0.5));
 
   add(scene.add.rectangle(cx, top + 60, w - 4, 24, 0x05080e, 0.68));
-  const detailMeta = view.zone.startsWith('Market /')
-    ? view.zone
-    : `${view.bird} / ${view.label} / ${view.zone}`;
+  const detailMeta = `${view.bird} / ${view.label} / ${view.zone}`;
   add(scene.add.text(cx, top + 54, detailMeta, {
     fontFamily: UI_FONT,
     fontSize: '11px',

@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { endPracticeSession, practiceStartingDeck, renderPracticeBadge } from './game/practice-session';
+import { memoryStorageSessionActive } from './game/safe-storage';
 import './style.css';
 import splashUrl from '../assets/splash/bird-squad-canal-run-splash-v11-menu-pop.webp';
 import titleBirdUrl from '../assets/ui/bird-squad-title-bird-textured-v2.png';
@@ -664,6 +666,7 @@ class SceneAssetReadinessTracker {
 }
 
 interface RenderPayload {
+  practice?: boolean;
   mode: GameMode;
   scene: string;
   assetReadiness?: SceneAssetReadinessState;
@@ -1519,6 +1522,7 @@ interface RenderPayload {
     cardName?: string;
     cost?: number;
     rules?: string;
+    deckImpact?: { deckBefore: number; deckAfter: number; handBefore: number; handAfter: number; stats: string[]; scope: string; drawScope: string };
     source?: 'combatReward' | 'preenReward';
     returnIndex: number;
     selectActionPreserved: boolean;
@@ -3489,7 +3493,7 @@ const titleMenuCompactIconIds = [
 const titleMenuUiIconIds = uiIconIdsFor(['title-'], titleMenuCompactIconIds);
 const howToPlayUiIconIds = uiIconIdsFor(
   ['how-to-play-'],
-  ['audio-toggle-medallion', 'audio-toggle-pulse-ring', 'audio-toggle-wave-burst', 'close-medallion', 'help-medallion', 'record-medallion', 'route-pin', 'release-card', 'flock-heart', 'overlay-close-command-frame', 'overlay-panel-flourish', 'system-field-command-frame', 'system-overlay-title-plaque']
+  ['audio-toggle-medallion', 'audio-toggle-pulse-ring', 'audio-toggle-wave-burst', 'close-medallion', 'help-medallion', 'record-medallion', 'route-pin', 'release-card', 'flock-heart', 'draw-stack', 'preen-kit', 'overlay-close-command-frame', 'overlay-panel-flourish', 'system-field-command-frame', 'system-overlay-title-plaque']
 );
 const menuSettingsUiIconIds = uiIconIdsFor(
   ['system-settings-'],
@@ -4649,6 +4653,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   create(data: { reopenSettings?: boolean; reopenHelp?: boolean; reopenLeaderTooltip?: { id: string; anchorX: number } } = {}) {
+    endPracticeSession();
     syncSceneAnimationPace(this);
     const generation = ++this.menuGeneration;
     if (!data.reopenSettings) {
@@ -6234,6 +6239,7 @@ class RouteScene extends Phaser.Scene {
     killTweensForScene(this);
     this.children.removeAll(true);
     this.routeCheckpointIndicator = undefined;
+    renderPracticeBadge(this);
     this.hoverCardDetail = undefined;
     this.marketItemHover = undefined;
     this.marketDecisionPreview = [];
@@ -9169,6 +9175,39 @@ class RouteScene extends Phaser.Scene {
     });
   }
 
+  private cardPickerDeckImpact(index: number) {
+    const before = cardsFromSave(this.runState.deck);
+    if (!before[index] || !this.cardPickerMode) return undefined;
+    const release = this.cardPickerMode === 'release';
+    const after = release ? before.filter((_, i) => i !== index)
+      : before.map((card, i) => i === index ? { ...card, upgraded: true } : card);
+    const beforeStats = aggregateFlockStats(before);
+    const afterStats = aggregateFlockStats(after);
+    const hand = (cards: Card[], stats: Record<string, number>) => flockHandTarget(
+      stats.draw ?? 0, cards.filter(card => card.runtime.suit === 'plumes').length >= KEYSTONE_AT, this.runState.leaderId,
+    );
+    const changes = [...new Set([...Object.keys(beforeStats), ...Object.keys(afterStats)])]
+      .filter(key => (beforeStats[key] ?? 0) !== (afterStats[key] ?? 0))
+      .map(key => `${flockStatLabel(key)}: ${beforeStats[key] ?? 0} > ${afterStats[key] ?? 0}`);
+    const cost = this.cardPickerContext === 'market' ? this.marketCardPickerPrice(this.cardPickerMode, before[index]) : 0;
+    const handBefore = hand(before, beforeStats), handAfter = hand(after, afterStats);
+    return {
+      deckBefore: before.length, deckAfter: after.length, handBefore, handAfter, changes, cost,
+      lines: [
+        `${release ? 'RELEASE' : 'PREEN'} / YOUR FLIGHT`,
+        `Deck: ${before.length} > ${after.length} cards`,
+        `Base hand target: ${handBefore} > ${handAfter}`,
+        changes.length ? `Flock Stats totals\n${changes.join(' / ')}` : 'Flock Stats unchanged.',
+        release ? 'A smaller draw pool, but this card and its passive stats leave the flight.' : 'Same draw pool size. Only this copy receives the upgrade.',
+        this.cardPickerContext === 'market'
+          ? cost > this.runState.scrap ? `Service: ${cost} Scrap. Need ${cost - this.runState.scrap} more.` : `Service: ${cost} Scrap. Remaining: ${this.runState.scrap - cost}.`
+          : 'No Scrap charged for this choice.',
+        'Flight only. Your permanent collection is unchanged.',
+        'Base target includes Leader and suit threshold. Waymarks, opening protection and card effects can change actual draws; purchase triggers are not included.',
+      ],
+    };
+  }
+
   applyCardPick(index: number) {
     this.cardPickerArmedIndex = undefined;
     this.cardPickerInspectionOpen = false;
@@ -9942,11 +9981,18 @@ class RouteScene extends Phaser.Scene {
   }
 
   private marketCardDecisionPreview(listing: MarketCardListing): MarketDecisionPreview {
+    if (listing.sold) return ['SOLD OUT'];
+    if (this.runState.scrap < listing.price) return [`NEED ${listing.price - this.runState.scrap} MORE SCRAP`];
     const projected = cloneRunState(this.runState);
     this.projectedMarketSpend(projected, listing.price);
     projected.deck.push({ id: listing.id });
     this.applyProjectedMarketPurchaseTriggers(projected);
-    return this.marketProjectionRows(projected);
+    const hand = (run: RunState) => {
+      const cards = cardsFromSave(run.deck);
+      return flockHandTarget(aggregateFlockStats(cards).draw ?? 0,
+        cards.filter(card => card.runtime.suit === 'plumes').length >= KEYSTONE_AT, run.leaderId);
+    };
+    return [...this.marketProjectionRows(projected), `BASE HAND ${hand(this.runState)} > ${hand(projected)}`];
   }
 
   private marketWaymarkDecisionPreview(listing: MarketWaymarkListing): MarketDecisionPreview {
@@ -10004,24 +10050,26 @@ class RouteScene extends Phaser.Scene {
   ) {
     this.hideMarketItemDetail();
     this.hideHoverCardDetail();
-    const preview = this.marketOpen && cost > this.runState.scrap
+    const preview = this.marketOpen && !this.cardPickerInspectionOpen && cost > this.runState.scrap
       ? [`NEED ${cost - this.runState.scrap} MORE SCRAP`]
       : decisionPreview;
     this.marketDecisionPreview = [...preview];
     this.marketBuildObservations = this.marketOpen && zone.startsWith('Market offer')
       ? this.routeRewardCardObservations(card).slice(0, 2)
       : [];
-    const displayZone = preview.length ? `Market / ${preview.join(' / ')}` : zone;
+    const marketCard = this.marketOpen && zone.startsWith('Market offer');
+    const displayZone = marketCard ? `Market / ${cost} Scrap to buy` : preview.length ? `Market / ${preview.join(' / ')}` : zone;
     const adjustedAnchorX = this.marketOpen && zone.startsWith('Market offer')
       ? 440
       : anchorX;
     const contract = activeCardContract(card, false);
     this.cardHoverDetailRequest = {
+      marketCardId: marketCard ? card.id : undefined,
       name: displayName(card),
       bird: card.bird,
       label: cardLabel(card),
       zone: displayZone,
-      cost,
+      cost: marketCard ? card.cost : cost,
       anchorX: adjustedAnchorX,
       anchorY,
       accent: card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card),
@@ -10074,6 +10122,16 @@ class RouteScene extends Phaser.Scene {
   private renderHoverCardDetailRequest() {
     const view = this.cardHoverDetailRequest;
     if (!view) return;
+    if (view.marketCardId) {
+      const listing = this.marketCardShelf.find(offer => offer.id === view.marketCardId);
+      if (!this.marketOpen || this.marketCategory !== 'cards' || this.cardPickerMode || !listing || listing.sold) {
+        this.hideHoverCardDetail();
+        return;
+      }
+      this.marketDecisionPreview = this.marketCardDecisionPreview(listing);
+      this.marketBuildObservations = this.routeRewardCardObservations(cloneCard(listing.id)).slice(0, 2);
+      view.zone = `Market / ${listing.price} Scrap to buy`;
+    }
     this.hoverCardDetail?.destroy(true);
     this.hoverCardDetail = this.add.container(0, 0).setDepth(23020);
     if (this.cardHoverDetailModule) {
@@ -10086,6 +10144,7 @@ class RouteScene extends Phaser.Scene {
         this.hoverCardDetail.add(this.cardHoverDetailModule.renderMarketCardBuildRead(
           this,
           this.marketBuildObservations,
+          this.marketDecisionPreview,
         ));
       }
       return;
@@ -10603,6 +10662,7 @@ class RouteScene extends Phaser.Scene {
 
     if (!this.cardPickerMode) {
       this.cardHoverDetailModule?.bindMarketInputs(this);
+      if (this.cardHoverDetailRequest?.marketCardId) this.renderHoverCardDetailRequest();
       this.cardHoverDetailModule?.renderMarketInputHelp(this, 716, frame.bottom - 15);
       this.renderMarketEnamelButton(frame.right - 48, frame.top + 42, 86, 30, this.marketFocusArmedId ? 'Clear' : 'Close', true, () => {
         playUiSound('close');
@@ -12050,7 +12110,7 @@ class RouteScene extends Phaser.Scene {
           cardY,
           this.marketCardDecisionPreview(listing)
         ));
-        hit.on('pointerout', () => this.hideHoverCardDetail());
+        // Keep rules reachable when the pointer moves from the offer to its pager.
       }
     });
   }
@@ -12835,7 +12895,9 @@ class RouteScene extends Phaser.Scene {
     const acquisition = recordCardAcquisitions([offer.id], 'market');
     listing.sold = true;
     this.applyRouteMarkTrigger('afterMarketPurchase');
-    this.marketMessage = acquisition.completedTargets.includes(offer.id)
+    this.marketMessage = memoryStorageSessionActive()
+      ? `${displayName(offer)} joins this practice flight for ${listing.price} Scrap. Nothing saved.`
+      : acquisition.completedTargets.includes(offer.id)
       ? `Hunt complete! ${displayName(offer)} joins this flight for ${listing.price} Scrap. Milestone recorded.`
       : acquisition.firstCopies.includes(offer.id)
         ? `First collection claim! ${displayName(offer)} joins this flight for ${listing.price} Scrap.`
@@ -16110,11 +16172,20 @@ class BattleScene extends Phaser.Scene {
     }
     this.battleRenderQueued = true;
     const token = ++this.battleRenderScheduleToken;
-    this.events.once('postupdate', () => {
+    const rewardMode = this.mode === 'cardReward' || this.mode === 'upgradeReward' || this.mode === 'waymarkReward';
+    // Reward redraws replace all hit targets. Rebuild before InputPlugin flushes
+    // its registration queue so visible buttons are clickable in the same frame.
+    const emitter = rewardMode ? this.game.events : this.events;
+    const event = rewardMode ? Phaser.Core.Events.PRE_STEP : Phaser.Scenes.Events.POST_UPDATE;
+    const cancel = () => emitter.off(event, render);
+    const render = () => {
+      this.events.off(Phaser.Scenes.Events.SHUTDOWN, cancel);
       if (!this.battleRenderQueued || token !== this.battleRenderScheduleToken) return;
       this.battleRenderQueued = false;
       this.performBattleRender();
-    });
+    };
+    emitter.once(event, render);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, cancel);
   }
 
   private renderAll() {
@@ -22131,7 +22202,7 @@ class BattleScene extends Phaser.Scene {
       bird: card.bird,
       cost: card.cost,
       label: cardLabel(card),
-      summary: compactSentenceText(displayText(card), 112, 1),
+      summary: displayText(card),
       molt: Boolean(card.moltText),
       upgraded: Boolean(card.upgraded),
       accent: card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card),
@@ -22154,6 +22225,29 @@ class BattleScene extends Phaser.Scene {
       snag: isSnagCard(card),
       focused: !this.rewardSkipArmed && this.battleInputActive && index === this.controllerChoiceIndex,
       armed: this.rewardChoiceArmedId === card.id,
+    };
+  }
+
+  private rewardDeckImpact(card: Card) {
+    const before = this.allDeckCards();
+    const preen = this.mode === 'upgradeReward';
+    const after = preen
+      ? before.map((owned) => owned.id === card.id ? { ...owned, upgraded: true } : owned)
+      : [...before, card];
+    const handTarget = (cards: Card[]) => flockHandTarget(
+      aggregateFlockStats(cards).draw ?? 0,
+      cards.filter((owned) => owned.runtime.suit === 'plumes').length >= KEYSTONE_AT,
+      this.runLeaderId,
+    );
+    return {
+      deckBefore: before.length, deckAfter: after.length,
+      handBefore: handTarget(before), handAfter: handTarget(after),
+      stats: preen
+        ? cardStatRows({ ...card, upgraded: true }).filter((row) => !cardStatRows(card).includes(row))
+        : cardStatRows(card),
+      scope: preen ? 'Preen changes this flight only; collection ownership is unchanged.'
+        : 'Collection record is permanent; this playable copy joins this flight.',
+      drawScope: 'Base target includes Flock Stats and Leader. Opening protection, retained cards, Waymarks and card effects can change actual draws.',
     };
   }
 
@@ -22778,11 +22872,12 @@ class BattleScene extends Phaser.Scene {
         .setName('run-outcome-title-plaque-fallback'));
     }
 
-    this.root.add(this.add.text(cx, 170, win ? 'Run Complete' : 'Flock Scattered', {
+    this.root.add(this.add.text(cx, 170, memoryStorageSessionActive() ? 'Practice Complete' : win ? 'Run Complete' : 'Flock Scattered', {
       fontFamily: 'Georgia, serif', fontSize: '44px', fontStyle: UI_BOLD,
       color: win ? '#ffe1a3' : '#ffb2a4', stroke: '#000000', strokeThickness: 6
     }).setOrigin(0.5));
-    this.root.add(this.add.text(cx, 212, win
+    this.root.add(this.add.text(cx, 212, memoryStorageSessionActive()
+      ? 'Nothing saved. Your active flight, collection, and records are unchanged.' : win
       ? 'The flyway is restored - every district answers to the flock.'
       : `Scattered at ${currentMap().name}${killedBy ? `. Last hit: ${killedBy}` : ''}.`, {
       fontFamily: UI_FONT, fontSize: '16px', color: UI_SOFT, align: 'center', wordWrap: { width: 540 }
@@ -23144,7 +23239,8 @@ class BattleScene extends Phaser.Scene {
         summary.leaderId,
         summary.difficulty,
         summary.runMode,
-        summary.seed
+        summary.seed,
+        practiceStartingDeck()
       )
     });
   }
@@ -24673,7 +24769,8 @@ class BattleScene extends Phaser.Scene {
     const targetCompleted = acquisition.completedTargets.includes(reward.id);
     this.discardPile.push(cloneCard(reward.id));
     birdAudio.play(firstCollectionClaim || targetCompleted ? 'objectiveComplete' : 'reward');
-    this.logEvent(targetCompleted
+    this.logEvent(memoryStorageSessionActive()
+      ? `${displayName(reward)} joins this practice flight. Nothing saved.` : targetCompleted
       ? `Hunt complete! ${displayName(reward)} joins this flight. Permanent milestone recorded.`
       : firstCollectionClaim
         ? `First collection claim! ${displayName(reward)} joins this flight.`
@@ -25447,6 +25544,7 @@ class BattleScene extends Phaser.Scene {
     };
     window.__birdSquadLastRun = summary;
     clearActiveRun(); // the run is over - no longer resumable
+    if (memoryStorageSessionActive()) return; // Practice never awards records or unlocks.
     if (result === 'win' && this.runMode === 'full') unlockTier(this.runDifficulty + 1); // full-flight clears unlock higher tiers
     // Meta-progression: record the run, unlock Leaders / achievements.
     this.lastRunRewards = recordRun({
@@ -25615,6 +25713,7 @@ class BattleScene extends Phaser.Scene {
     return {
       mode: this.mode,
       scene: 'BattleScene',
+      practice: memoryStorageSessionActive(),
       assetReadiness: this.battleAssetReadiness.snapshot(),
       combatAnimationPending: this.combatAnimationPending,
       playerCardFeedback: {
@@ -27449,6 +27548,7 @@ function renderUnifiedRunHud(
   addTo: UiAdd,
   data: UnifiedRunHudData
 ) {
+  renderPracticeBadge(scene);
   const accent = data.statusColor ? Phaser.Display.Color.HexStringToColor(data.statusColor).color : UI_FIELD.gold;
   const highlight = data.statusLabel && !['ROUTE', 'HOLDING'].includes(data.statusLabel);
   if (data.railIcon && scene.textures.exists(uiIconAssets[data.railIcon].key)) {

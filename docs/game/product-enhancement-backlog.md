@@ -15,15 +15,15 @@ remain in force and do not constitute passing human evidence.
 
 | ID | Enhancement | Completion evidence |
 | --- | --- | --- |
-| 1 | Teach the complete loop | Guide links battle, reward, Preen, and deck decisions without blocking alternatives. |
+| 1 | Teach the complete loop | **Partial (2026-09-07):** readable six-step How to Play overview connects route, battle, reward/Skip, Preen, deck review, and the next flight; the same explanations are narrated. Contextual/playable Preen and deck lessons remain open. |
 | 2 | Playable decision lessons | Optional damage/defense, Flow, and Molt examples explain consequences. |
 | 3 | Contextual help | Repeated confusion offers dismissible, relevant help without repeated nagging. |
 | 4 | Continue summary | Resume explains current build, threat, and actual recovery point. |
-| 5 | Deck-size tradeoffs | Add/remove comparison explains passive gains and draw dilution accurately. |
+| 5 | Deck-size tradeoffs | **Partial (2026-09-08):** combat reward/Preen and route/Market Release/Preen inspection compare deck size, base hand target, passive gains/changed totals, and persistence. Market card purchases now separate Wingbeats from Scrap, show transaction/base-hand deltas and wrapped build advice, and recover current preview rows after late art redraws. Uses the live draw rule with explicit draw assumptions. Broader route-choice and actual draw-probability comparisons remain open. |
 | 6 | Contextual reward advice | Advice considers effective costs, timing, engines, and Waymarks. |
 | 7 | Recommendation downsides | **Partial (2026-09-07):** compact reward advice retains the strongest cost/recovery/role warning alongside a benefit, including district-biased rewards. Live rendered and announced warnings pass before commitment. Draw dilution and effect-timing comparisons remain open. |
 | 8 | Accurate Flight Lab | **Complete (2026-09-07):** shared combat draw rule, explicit assumptions, affordable-together budget, bounded hand pages. Live parity passes for all five Leaders before/after Preen; large-hand keyboard/controller/pointer and save-preservation checks pass. |
-| 9 | Playable practice | Owned decks can exercise representative combat without changing saves or progression. |
+| 9 | Playable practice | **Complete (2026-09-08):** Flight Lab launches real Tier 0 routes/combat with owned legal Folios while keeping the active flight safe. Disposable in-memory persistence, explicit mode/exit/result labels, original-Folio seeded replay, and no permanent records/unlocks. Eighteen checks pass across Chromium/Firefox/WebKit for all launch inputs, card play, rewards/Preen/route return, win/loss, retry, pause exit, refresh, ownership, Leader locks, denied storage, and journal recovery isolation; ordinary-flight regressions pass. |
 | 10 | Dominant-strategy audit | Compare wide/thin decks, recovery, Molt, and hybrids; change only demonstrated imbalances. |
 | 11 | Stalling audit | Check incentives for safe healing/resource farming and preserve legitimate defensive play. |
 | 12 | Defeat explanations | Factual turning points connect to relevant practice without invented counterfactuals. |
@@ -52,10 +52,10 @@ remain in force and do not constitute passing human evidence.
 | ID | Enhancement | Completion evidence |
 | --- | --- | --- |
 | 27 | Grouped Settings | **Complete (2026-09-07):** four sections, pointer/keyboard/controller navigation, hidden-hit isolation, announced values, stable focus, and single-owner listener cleanup. Menu/route/battle and 2560x1600, 1440x900, 1000x560 checks pass. |
-| 28 | Readable text sizes | **Partial (2026-09-07):** Settings labels/values enlarged and inspected at all three validation sizes. Broader game text-size controls and card/advice readability remain open. |
-| 29 | Decision hierarchy | Current choice, consequence, and commitment stand out across key surfaces. |
+| 28 | Readable text sizes | **Partial (2026-09-08):** Settings labels/values, combat reward effects/advice, and How to Play enlarged. Help bodies use uncapped 16px text with tested containment. Reward cards use measured ellipses; full preview allocates rule space from measured text height. Market advice wraps at 14px; its right-hand dossier now presents complete Now, Preen, and Molt rules in measured 16px pages with a separate current-stat footer, pointer and Inspect/Y navigation, and narrated page content. Broader text scaling and other legacy detail surfaces remain open. |
+| 29 | Decision hierarchy | **Partial (2026-09-07):** combat rewards separate effects, Molt badges, focused build advice, Inspect, and Skip. Current choice, consequence, and commitment still need review across other key surfaces. |
 | 30 | Vocabulary | Terms are introduced progressively with contextual definitions. |
-| 31 | Persistence labels | Collection, flight, combat, and temporary changes are unmistakable. |
+| 31 | Persistence labels | **Partial (2026-09-07):** reward/Preen inspection explains permanent collection records versus flight-only playable copies/upgrades. Other collection, combat, and temporary changes remain to be reviewed. |
 | 32 | Trigger feedback | Dense passive chains are grouped with inspectable exact order. |
 | 33 | Input hints | Visible hints follow active input and remapping through transitions. |
 | 34 | Confirmation friction | Consequential choices stay protected; routine actions avoid redundant work. |
@@ -90,10 +90,18 @@ remain in force and do not constitute passing human evidence.
 
 ## Current implementation order
 
-1. Correct Flight Lab's decision information and verify it against live combat.
-2. Improve reward/deck-size advice using the corrected analysis.
-3. Group Settings and establish readable text-size layout constraints.
-4. Connect onboarding, collection, and safe playable practice.
-5. Use measured play evidence for balance, pacing, and content revisions.
+1. Complete readable decision surfaces: reward/deck-size advice, removal, route/market comparisons, and scalable text.
+2. Connect onboarding, collection, defeat explanations, and safe playable practice.
+3. Use measured play evidence for balance, encounter variety, pacing, and economy revisions.
+4. Qualify recovery, physical devices, assistive technology, and performance.
+5. Deepen collection goals, mastery challenges, and district storytelling.
+
+The subsequent 48-point consolidated roadmap reorganizes this accepted scope;
+it does not reset completed items or imply 48 newly missing features. Preserve
+Flight Lab accuracy, grouped Settings, and explicit release-waiver reporting.
+The owner's quality direction is polished, readable, satisfying, replayable
+play. Pursue meaningful choices and experimentation, not compulsory grinding,
+streak pressure, artificial scarcity, or permanent-power chores. Automated
+checks cannot establish subjective fun or replace authentic player feedback.
 
 No item is complete merely because its feature name exists in the source.

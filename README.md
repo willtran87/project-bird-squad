@@ -11,6 +11,19 @@ show a branded platform gate and pause the Phaser loop without discarding the
 current run. Rotating or returning to a supported display resumes the same game
 state.
 
+## Safe Practice
+
+Open **Flock Record → Flight Folios → Flight Lab**, then choose **Practice**
+(U on keyboard, Select on controller). An owned, legal Folio with an unlocked
+Leader can play the real Tier 0 route, battles, rewards, and Preens even while
+another flight is saved. Replay uses the original Folio and seed.
+
+Practice never writes browser storage: the active flight, collection, records,
+unlocks, and backup journals stay untouched. Main Menu or browser reload ends
+practice. Settings changed during practice are also not written to storage;
+reload discards those temporary preferences. **Fly This Folio** remains the
+separate, progression-saving action and cannot overwrite an active flight.
+
 ## Source Of Truth
 
 Start with `docs/README.md`. It owns the documentation map, canonical source

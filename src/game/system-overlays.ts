@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { memoryStorageSessionActive } from './safe-storage';
 import {
   CONTROL_BINDING_DEFINITIONS,
   controlActionLabel,
@@ -756,7 +757,7 @@ export function renderPauseMenuOverlay(
     alpha: 0.5,
     tint: 0xfff0c0,
   });
-  addUi(addTo, scene.add.text(frame.left + 206, frame.top + 72, options.title, {
+  addUi(addTo, scene.add.text(frame.left + 206, frame.top + 72, memoryStorageSessionActive() ? 'Practice Paused' : options.title, {
     fontFamily: 'Georgia, serif',
     fontSize: '34px',
     fontStyle: UI_BOLD,
@@ -764,7 +765,8 @@ export function renderPauseMenuOverlay(
     stroke: '#000000',
     strokeThickness: 4,
   }));
-  addUi(addTo, scene.add.text(frame.left + 208, frame.top + 116, options.subtitle, {
+  addUi(addTo, scene.add.text(frame.left + 208, frame.top + 116, memoryStorageSessionActive()
+    ? 'Nothing saved. Main Menu ends practice.' : options.subtitle, {
     fontFamily: UI_FONT,
     fontSize: '15px',
     fontStyle: UI_BOLD,
@@ -832,7 +834,7 @@ export function renderConfirmRunExitOverlay(
     addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 640, 286, 0x0d1420, 0.98)
       .setStrokeStyle(3, 0xff7a6e, 0.92));
   }
-  addUi(addTo, scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 78, 'Abandon this run?', {
+  addUi(addTo, scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 78, memoryStorageSessionActive() ? 'End practice?' : 'Abandon this run?', {
     fontFamily: UI_FONT,
     fontSize: '30px',
     fontStyle: UI_BOLD,
@@ -840,7 +842,8 @@ export function renderConfirmRunExitOverlay(
     stroke: '#000000',
     strokeThickness: 4,
   }).setOrigin(0.5));
-  addUi(addTo, scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24, 'Your progress on this run will be lost.', {
+  addUi(addTo, scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24, memoryStorageSessionActive()
+    ? 'Practice is discarded. Your saved flight and collection stay unchanged.' : 'Your progress on this run will be lost.', {
     fontFamily: UI_FONT,
     fontSize: '16px',
     color: UI_SOFT,
@@ -883,7 +886,7 @@ export function renderConfirmRunExitOverlay(
 
   const abandonX = GAME_WIDTH / 2 + 140;
   renderCommand(abandonX, true);
-  addUi(addTo, scene.add.text(abandonX, GAME_HEIGHT / 2 + 56, 'Abandon Run', {
+  addUi(addTo, scene.add.text(abandonX, GAME_HEIGHT / 2 + 56, memoryStorageSessionActive() ? 'End Practice' : 'Abandon Run', {
     fontFamily: UI_FONT,
     fontSize: '18px',
     fontStyle: UI_BOLD,
@@ -1733,7 +1736,7 @@ export function renderHowToPlayOverlay(
 ) {
   addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.93)
     .setInteractive({ useHandCursor: false }));
-  const frame = dependencies.renderFieldPanel(scene, addTo, GAME_WIDTH / 2, GAME_HEIGHT / 2, 760, 500, {
+  const frame = dependencies.renderFieldPanel(scene, addTo, GAME_WIDTH / 2, GAME_HEIGHT / 2, 1060, 620, {
     accent: UI_FIELD.brass,
     fill: UI_FIELD.ink,
   });
@@ -1753,63 +1756,76 @@ export function renderHowToPlayOverlay(
     stroke: '#000000',
     strokeThickness: 4,
   }));
-  addUi(addTo, scene.add.text(frame.left + 190, frame.top + 104, 'Guide the flock across rooftop routes, survive tactical card fights, and turn each run into permanent progress.', {
+  addUi(addTo, scene.add.text(frame.left + 190, frame.top + 104, 'Build a flock, learn its combinations, and adapt your next choice. No single build is required.', {
     fontFamily: UI_FONT,
-    fontSize: '14px',
+    fontSize: '16px',
     fontStyle: UI_BOLD,
     color: UI_CYAN,
-    wordWrap: { width: 470 },
-  }));
+    wordWrap: { width: 740 },
+  }).setName('how-to-play-readable'));
   dependencies.renderCloseControl(scene, addTo, frame.right - 68, frame.top + 58, options.onClose);
 
   const cards = [
     {
-      title: 'Plan the Route',
+      title: '1 / Plan the Route',
       icon: 'route-pin',
       accent: UI_FIELD.cyan,
-      body: "Choose streets, markets, caches, and roosts. Read each stop's gain and risk before committing.",
+      body: 'Compare GAIN and RISK. Choose fights, healing, or a Market to suit your current flock.',
     },
     {
-      title: 'Win the Fight',
+      title: '2 / Read, Play, Roost',
       icon: 'release-card',
       accent: UI_FIELD.danger,
-      body: 'Spend Wingbeats on cards. Build Cover, read enemy intent, then Roost when the hand is spent.',
+      body: 'Read enemy intent. Spend Wingbeats on cards; Cover protects Cohesion. Roost ends your turn.',
     },
     {
-      title: 'Care for the Flock',
+      title: '3 / Add or Skip',
+      icon: 'draw-stack',
+      accent: UI_FIELD.green,
+      body: 'Inspect rewards for fit. Adding changes your draw pool and Flock Stats. Skip keeps the deck and grants Scrap.',
+    },
+    {
+      title: '4 / Preen a Card',
+      icon: 'preen-kit',
+      accent: UI_FIELD.brass,
+      body: 'Compare the exact upgrade before choosing. Preen improves a card for this flight without adding a copy.',
+    },
+    {
+      title: '5 / Shape Your Deck',
       icon: 'flock-heart',
       accent: UI_FIELD.green,
-      body: 'Cohesion is run health. Basins, Supplies, and defense keep the flock together.',
+      body: 'Review your deck on the route. Balance damage, Cover, and recovery; leave room to try new combinations.',
     },
     {
-      title: 'Grow Between Runs',
+      title: '6 / Learn and Fly Again',
       icon: 'record-medallion',
-      accent: UI_FIELD.brass,
-      body: 'Runs unlock Leaders, Ascension, achievements, and Codex discoveries.',
+      accent: UI_FIELD.cyan,
+      body: 'Your collection record persists. Flight upgrades do not. Review the result, then try another plan.',
     },
   ];
   cards.forEach((card, index) => {
-    const column = index % 2;
-    const row = Math.floor(index / 2);
-    const x = frame.left + 212 + column * 336;
-    const y = frame.top + 202 + row * 108;
-    addHowToPlayTopicCardFrame(scene, addTo, x, y, 312, 84, card.accent, dependencies);
-    const cardIcon = addIconImage(scene, card.icon, x - 122, y - 10, 26);
-    if (cardIcon) addUi(addTo, cardIcon.setAlpha(0.92));
-    addUi(addTo, scene.add.text(x - 86, y - 28, card.title, {
+    const column = index % 3;
+    const row = Math.floor(index / 3);
+    const x = frame.left + 184 + column * 346;
+    const y = frame.top + 230 + row * 158;
+    addHowToPlayTopicCardFrame(scene, addTo, x, y, 316, 140, card.accent, dependencies);
+    addUi(addTo, scene.add.rectangle(x, y, 304, 128, 0x06111b, 0.96)
+      .setStrokeStyle(1, card.accent, 0.5).setName('how-to-play-topic-panel'));
+    const cardIcon = addIconImage(scene, card.icon, x - 130, y - 43, 24);
+    if (cardIcon) addUi(addTo, cardIcon.setDisplaySize(24, 24).setAlpha(0.92).setName('how-to-play-topic-icon'));
+    addUi(addTo, scene.add.text(x - 110, y - 53, card.title, {
       fontFamily: UI_FONT,
-      fontSize: '15px',
+      fontSize: '17px',
       fontStyle: UI_BOLD,
       color: UI_FIELD.warm,
-    }).setResolution(2));
-    addUi(addTo, scene.add.text(x - 86, y - 5, card.body, {
+    }).setResolution(2).setName('how-to-play-readable'));
+    addUi(addTo, scene.add.text(x - 136, y - 22, card.body, {
       fontFamily: UI_FONT,
-      fontSize: '13px',
-      color: UI_SOFT,
+      fontSize: '16px',
+      color: '#e6eef5',
       lineSpacing: 2,
-      wordWrap: { width: 240 },
-      maxLines: 3,
-    }).setResolution(2));
+      wordWrap: { width: 272 },
+    }).setResolution(2).setName('how-to-play-readable'));
   });
 
   const tips: Array<[string, string]> = [
@@ -1817,36 +1833,36 @@ export function renderHowToPlayOverlay(
       'Quick keys',
       `${controlBindingLabel('roost')} Roost  |  ${controlBindingLabel('confirm')} Confirm  |  1-9 Cards  |  ${controlBindingLabel('skipReward')} Skip  |  ${controlBindingLabel('mute')} Mute`,
     ],
-    ['Fair draws', 'After the lesson, seeded shuffles vary fights and preserve playable pressure.'],
+    ['Your pace', 'Inspect before committing. Skip or replay the guide whenever you like.'],
   ];
   tips.forEach(([label, value], index) => {
     const y = frame.bottom - 125 + index * 32;
     const accent = index % 2 === 0 ? UI_FIELD.cyan : UI_FIELD.brass;
     const textAccent = index % 2 === 0 ? UI_CYAN : UI_GOLD;
-    const tipFrame = addHowToPlayTipRowFrame(
+    addHowToPlayTipRowFrame(
       scene,
       addTo,
       frame.cx,
       y,
-      616,
+      968,
       28,
       index % 2 === 0 ? 0.34 : 0.24,
       accent,
     );
-    if (!tipFrame) addUi(addTo, scene.add.rectangle(frame.cx, y, 590, 24, 0x050a12, 0.28));
-    addUi(addTo, scene.add.text(frame.cx - 286, y, label.toUpperCase(), {
+    addUi(addTo, scene.add.rectangle(frame.cx, y, 940, 28, 0x050a12, 0.94));
+    addUi(addTo, scene.add.text(frame.cx - 458, y, label.toUpperCase(), {
       fontFamily: UI_FONT,
-      fontSize: '12px',
+      fontSize: '14px',
       fontStyle: UI_BOLD,
       color: textAccent,
-      fixedWidth: 82,
+      fixedWidth: 100,
       maxLines: 1,
     }).setOrigin(0, 0.5).setResolution(2).setName('how-to-play-tip-label'));
-    addUi(addTo, scene.add.text(frame.cx - 200, y, value, {
+    addUi(addTo, scene.add.text(frame.cx - 340, y, value, {
       fontFamily: UI_FONT,
-      fontSize: '13px',
+      fontSize: '15px',
       color: UI_FIELD.text,
-      fixedWidth: 484,
+      fixedWidth: 800,
       maxLines: 1,
     }).setOrigin(0, 0.5).setResolution(2).setName('how-to-play-tip-value'));
   });

@@ -501,12 +501,10 @@ export function renderBattleHandPreview(
     color: '#06101c',
   }).setOrigin(0.5));
 
-  const panelHeight = card.alternateText ? 152 : 118;
-  container.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - 4, previewWidth - 4, panelHeight, 0x05080e, 0.92));
-  container.add(scene.add.rectangle(centerX, bottom - panelHeight - 4, previewWidth - 4, 2, card.accent, 0.85));
-  let textY = bottom - panelHeight + 6;
+  const rules = scene.add.container(0, 0).setName('card-hover-rules');
+  let textY = 0;
   if (card.usesMolt) {
-    container.add(scene.add.text(centerX, textY, 'MOLT ACTIVE', {
+    rules.add(scene.add.text(centerX, textY, 'MOLT ACTIVE', {
       fontFamily,
       fontSize: '11px',
       fontStyle: boldFontStyle,
@@ -514,14 +512,14 @@ export function renderBattleHandPreview(
     }).setOrigin(0.5, 0));
     textY += 14;
   }
-  textY += context.renderRichText(container, centerX, textY, card.currentText, {
+  textY += context.renderRichText(rules, centerX, textY, card.currentText, {
     wrap: previewWidth - 24,
     fontSize: 15,
     align: 'center',
     lineSpacing: 2,
   }) + 6;
   if (card.alternateText && card.alternateLabel) {
-    context.renderRichText(container, centerX, textY, `${card.alternateLabel}: ${card.alternateText}`, {
+    textY += context.renderRichText(rules, centerX, textY, `${card.alternateLabel}: ${card.alternateText}`, {
       wrap: previewWidth - 24,
       fontSize: 12,
       align: 'center',
@@ -530,12 +528,16 @@ export function renderBattleHandPreview(
       lineSpacing: 2,
     });
   }
+  const panelHeight = Math.max(card.alternateText ? 152 : 118, textY + 66);
+  container.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - 4, previewWidth - 4, panelHeight, 0x05080e, 0.97));
+  container.add(scene.add.rectangle(centerX, bottom - panelHeight - 4, previewWidth - 4, 2, card.accent, 0.85));
+  container.add(rules.setY(bottom - panelHeight + 6));
   container.add(scene.add.text(centerX, bottom - 43, 'Flock Stats', {
     fontFamily,
     fontSize: '10px',
     fontStyle: boldFontStyle,
     color: context.softColor,
-  }).setOrigin(0.5));
+  }).setOrigin(0.5).setName('card-hover-stats-title'));
   if (textureReady(scene, context.assets.hoverStatChipFrame)) {
     container.add(scene.add.image(centerX, bottom - 18, context.assets.hoverStatChipFrame)
       .setDisplaySize(previewWidth - 40, 34)

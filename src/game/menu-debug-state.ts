@@ -43,6 +43,8 @@ export function installMenuDebugState(scene: any) {
     settingsFocus: settingsFocusState(scene, Boolean(scene.settingsOverlay)),
     controls: controlsTextState(scene, Boolean(scene.settingsOverlay)),
     helpOpen: Boolean(scene.helpOverlay),
+    helpContent: scene.helpOverlay?.list.filter((child: any) => child.name === 'how-to-play-readable')
+      .map((child: any) => child.text),
     collectionGoal: {
       ...collectionGoalSummary(scene.menuAccount),
       rendered: scene.children.list.some((child: any) => child.name === 'title-collection-goal-hit'),

@@ -1,5 +1,15 @@
 # Performance Notes
 
+## September 2026 Safe Practice
+
+Playable practice uses an in-memory storage backend; its snapshot and scene
+presentation live outside the core storage wrapper. No Vite boundaries or
+budgets changed. This is a safe-experimentation feature, not a performance claim.
+The production entry is 688.2 KiB and combined boot code is 723.4 KiB. Hard caps
+pass, including the near-full 30 KiB core budget; preferred entry/combined
+targets of 675/710 KiB remain warnings. Eighteen practice tests pass across the
+three browser engines; that is not evidence of physical-device performance.
+
 ## September 2026 Flight Lab Correctness
 
 Flight Lab and live combat now share `src/game/hand-size.ts`; seeded shuffle
@@ -1749,3 +1759,57 @@ values from 13–14 to 16–17, and rows use 64-pixel spacing.
 The production entry is 684.1 KB, combined boot code 719.3 KB, game core 29.9 KB,
 and lazy Settings overlay 31.9 KB. Bundle and deployment-cache hard gates pass;
 the existing preferred entry/combined-boot target warnings remain unresolved.
+
+### 2026-09-07: reward readability and deck-impact inspection
+
+Reward effects and focused build advice use 16px text with separate layout
+regions. Measured truncation and focused advice are shared with the existing
+lazy reward inspection/fallback utilities; no new runtime dependency or asset
+was added. The hand preview sizes its rule region from rendered text height.
+
+The production entry is 684.9 KB (180.9 KB gzip), combined boot 720.1 KB
+(194.1 KB gzip), reward renderer 13.9 KB, and hand renderer 9.9 KB. All existing
+hard ceilings pass, including 14 KB reward and 10 KB hand-renderer limits.
+The shared reward inspection chunk is 40.6 KB (12.3 KB gzip); this refactor
+preserves lazy boundaries, not a claim that total reward code became smaller.
+Preferred 675 KB entry / 710 KB combined-boot warnings remain unresolved.
+
+### 2026-09-07: readable full-loop help
+
+How to Play uses six clearly separated decision summaries with uncapped 16px
+body text and named rendered content shared with narration. Existing topic
+icons are loaded only with deferred Help assets; no new art or dependency was
+introduced. The lazy system overlay is 32.5 KB (10.1 KB gzip), menu debug state
+5.9 KB, and app entry 685.0 KB. Combined boot remains 720.1 KB (194.1 KB gzip).
+Hard bundle/deployment gates pass; preferred startup warnings remain open.
+
+### 2026-09-07: Release/Preen deck-impact inspection
+
+Route/Market picker inspection adds a before/after comparison without new art,
+dependencies, or preload boundaries. Production entry is 686.4 KB (181.6 KB
+gzip); combined boot is 721.5 KB (194.8 KB gzip). Shared reward inspection is
+41.1 KB (12.4 KB gzip). The first build exceeded the Route diagnostics 24 KB
+hard cap at 24.1 KB. Sharing the four picker icon-state calculations restores
+that chunk to 23.6 KB (5.6 KB gzip), also avoiding duplicate display-list scans.
+All hard bundle and deployment gates pass without changing limits. Preferred
+675 KB entry / 710 KB combined-boot warnings remain open.
+
+### 2026-09-08: readable Market purchase summary
+
+The existing lazy reward-inspection module now holds the wrapped purchase
+summary; no runtime dependency, asset, or new preload was introduced. The
+entry is 687.1 KB (181.8 KB gzip), combined boot 722.3 KB (195.0 KB gzip),
+shared reward inspection 41.6 KB (12.7 KB gzip), Route diagnostics 23.7 KB,
+and screen-reader summary 49.0 KB. All hard bundle/deployment limits pass
+unchanged. Preferred 675 KB entry / 710 KB combined targets remain open.
+
+### 2026-09-08: complete Market rules pages
+
+Measured rules pagination lives alongside existing reward/Market inspection;
+no asset, dependency, preload boundary, or bundle budget was added. Retiring
+the legacy Market branch keeps card detail at 9.9 KB (3.2 KB gzip). Shared
+reward inspection is 44.4 KB (13.7 KB gzip), entry 687.2 KB (181.8 KB gzip),
+combined boot 722.3 KB (195.0 KB gzip), Route diagnostics 23.7 KB, and the
+screen-reader summary 49.2 KB. Hard bundle/deployment gates pass. Preferred
+entry and combined-boot advisories remain; this pass makes no startup-speed
+improvement claim.

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { beginPracticeSession, endPracticeSession } from './practice-session';
 import * as runtime from '../main';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 import { alphaCardLibrary, alphaCardSet } from './runtime-data';
@@ -1268,13 +1269,14 @@ function savedDeckLaunchState(
   analysis: SavedDeckLabAnalysis,
   account: PlayerAccount,
   dependencies: ProfileSceneDependencies,
+  practice = false,
 ): SavedDeckLaunchState {
   const owned = new Set(Object.entries(account.cardCollection)
     .filter(([, record]) => record.timesClaimed > 0)
     .map(([id]) => id));
   const missingOwnedIds = [...new Set(deck.cards.map((card) => card.id))]
     .filter((id) => !owned.has(id));
-  if (dependencies.hasActiveRun()) {
+  if (!practice && dependencies.hasActiveRun()) {
     return {
       available: false,
       block: 'activeFlight',
@@ -1331,6 +1333,7 @@ function launchSelectedSavedDeck(
   scene: Phaser.Scene,
   state: ProfileViewState,
   dependencies: ProfileSceneDependencies,
+  practice = false,
 ) {
   const deck = selectedSavedDeck(state);
   if (!deck) {
@@ -1342,6 +1345,7 @@ function launchSelectedSavedDeck(
     analyzeSavedDeck(deck, alphaCardLibrary, state.savedDeckLabSample),
     loadAccount(),
     dependencies,
+    practice,
   );
   if (!launch.available) {
     dependencies.playUiSound('locked');
@@ -1349,9 +1353,15 @@ function launchSelectedSavedDeck(
     return;
   }
   dependencies.playUiSound('confirm');
-  scene.scene.start('RouteScene', {
-    runState: dependencies.run(deck.leaderId, 0, deck.runMode, undefined, deck.cards),
-  });
+  if (practice && !beginPracticeSession(deck.cards)) return;
+  try {
+    scene.scene.start('RouteScene', {
+      runState: dependencies.run(deck.leaderId, 0, deck.runMode, undefined, deck.cards),
+    });
+  } catch (error) {
+    if (practice) endPracticeSession();
+    throw error;
+  }
 }
 
 function savedDeckCollectionSignalsState(
@@ -2725,6 +2735,8 @@ export function startProfileScene(
         cycleSavedDeckLabSample(scene, state, dependencies, 1);
       } else if (button.index === 9) {
         launchSelectedSavedDeck(scene, state, dependencies);
+      } else if (button.index === 8) {
+        launchSelectedSavedDeck(scene, state, dependencies, true);
       } else if (button.index === 1) {
         closeSavedDeckLab(scene, state, dependencies);
       } else if (button.index === 2) {
@@ -3023,6 +3035,12 @@ export function startProfileScene(
     event.stopPropagation();
     launchSelectedSavedDeck(scene, state, dependencies);
   };
+  const onSavedDeckPractice = (event: KeyboardEvent) => {
+    if (!state.savedDeckLabOpen || event.repeat) return;
+    event.preventDefault();
+    event.stopPropagation();
+    launchSelectedSavedDeck(scene, state, dependencies, true);
+  };
   const onSavedDeckCollectionSignals = (event: KeyboardEvent) => {
     if (!state.savedDeckLabOpen && !state.savedDeckCollectionSignalsOpen) return;
     event.preventDefault();
@@ -3101,6 +3119,7 @@ export function startProfileScene(
   scene.input.keyboard?.on('keydown-A', onSavedDeckArchive);
   scene.input.keyboard?.on('keydown-SPACE', onSavedDeckLabDeal);
   scene.input.keyboard?.on('keydown-S', onSavedDeckLaunch);
+  scene.input.keyboard?.on('keydown-U', onSavedDeckPractice);
   scene.input.keyboard?.on('keydown-G', onSavedDeckCollectionSignals);
   scene.input.keyboard?.on('keydown-T', onSavedDeckWorkshop);
   scene.input.keyboard?.on('keydown-R', onSavedDeckHistory);
@@ -3131,6 +3150,7 @@ export function startProfileScene(
     scene.input.keyboard?.off('keydown-A', onSavedDeckArchive);
     scene.input.keyboard?.off('keydown-SPACE', onSavedDeckLabDeal);
     scene.input.keyboard?.off('keydown-S', onSavedDeckLaunch);
+    scene.input.keyboard?.off('keydown-U', onSavedDeckPractice);
     scene.input.keyboard?.off('keydown-G', onSavedDeckCollectionSignals);
     scene.input.keyboard?.off('keydown-T', onSavedDeckWorkshop);
     scene.input.keyboard?.off('keydown-R', onSavedDeckHistory);
@@ -3625,6 +3645,7 @@ export function renderProfileScene(
         },
         rules: savedDeckLab.rules,
         launch: savedDeckLaunch,
+        practice: savedDeckLaunchState(savedDecks[state.savedDeckIndex], savedDeckLab, account, dependencies, true),
         inputs: {
           previous: `${controlBindingLabel('previous')} / D-pad Left / LB`,
           handPages: 'Page Up / Page Down / D-pad Up / D-pad Down / pointer',
@@ -3634,6 +3655,7 @@ export function renderProfileScene(
           revisionTrail: 'R / controller Y / pointer',
           tune: 'T / controller X / pointer',
           launch: 'S / controller Start / pointer',
+          practice: 'U / controller Select / pointer; nothing saved; Menu or reload ends practice',
           close: `${controlBindingLabel('back')} / controller B / pointer`,
         },
       } : {
@@ -4743,7 +4765,7 @@ function renderSavedDeckLab(
   scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 1040, 632, 0x07111c, 0.99)
     .setStrokeStyle(3, UI_FIELD.cyan, 0.92)
     .setName('profile-flight-lab-frame');
-  scene.add.text(154, 62, 'FLIGHT LAB', {
+  scene.add.text(154, 54, 'FLIGHT LAB', {
     fontFamily: 'Georgia, serif',
     fontSize: '29px',
     fontStyle: UI_BOLD,
@@ -4751,20 +4773,20 @@ function renderSavedDeckLab(
     stroke: '#020409',
     strokeThickness: 4,
   }).setResolution(2).setName('profile-flight-lab-title');
-  scene.add.text(154, 100, `${deck.name}  ·  REV ${deck.revision}`, {
+  scene.add.text(154, 94, `${deck.name}  ·  REV ${deck.revision}`, {
     fontFamily: UI_FONT,
     fontSize: '13px',
     fontStyle: UI_BOLD,
     color: UI_FIELD.cyanText,
-    fixedWidth: 620,
+    fixedWidth: 560,
   }).setResolution(2).setName('profile-flight-lab-deck-name');
   const legalLabel = analysis.legalForStandardFlight ? 'STANDARD READY' : 'REVIEW NEEDED';
   const launchHit = dependencies.renderFieldButton(
     scene,
     () => {},
-    1030,
+    1036,
     82,
-    192,
+    180,
     MIN_SUPPORTED_TOUCH_TARGET,
     launch.label,
     launch.available,
@@ -4777,21 +4799,17 @@ function renderSavedDeckLab(
     .setData('available', launch.available)
     .setData('block', launch.block ?? null)
     .setData('missingOwnedIds', launch.missingOwnedIds);
+  const practice = savedDeckLaunchState(deck, analysis, loadAccount(), dependencies, true);
+  dependencies.renderFieldButton(scene, () => {}, 836, 82, 180, MIN_SUPPORTED_TOUCH_TARGET,
+    'Practice · U', practice.available,
+    () => launchSelectedSavedDeck(scene, state, dependencies, true), UI_FIELD.cyan, false,
+  ).setName('profile-flight-lab-practice-hit').setData('available', practice.available);
   scene.add.text(154, 113, legalLabel, {
     fontFamily: UI_FONT,
     fontSize: '8px',
     fontStyle: UI_BOLD,
     color: analysis.legalForStandardFlight ? '#b9ffdb' : '#ffd7a0',
   }).setResolution(2).setName('profile-flight-lab-legality');
-  scene.add.text(784, 100, launch.detail, {
-    fontFamily: UI_FONT,
-    fontSize: '9px',
-    fontStyle: UI_BOLD,
-    color: launch.available ? '#b9ffdb' : '#ffd7a0',
-    fixedWidth: 360,
-    align: 'right',
-    maxLines: 2,
-  }).setResolution(2).setOrigin(1, 0.5).setName('profile-flight-lab-launch-detail');
 
   scene.add.rectangle(336, 366, 392, 480, 0x0a1724, 0.96)
     .setStrokeStyle(1, UI_FIELD.violet, 0.58);
@@ -4873,15 +4891,15 @@ function renderSavedDeckLab(
     : 'Current singleton rules recognize every saved card. Practice never changes the folio.';
   scene.add.rectangle(336, 552, 356, 90, analysis.issues.length > 0 ? 0x2d1d18 : 0x10271f, 0.9)
     .setStrokeStyle(1, analysis.issues.length > 0 ? UI_FIELD.gold : UI_FIELD.green, 0.7);
-  scene.add.text(172, 520, analysis.issues.length > 0 ? 'WHY REVIEW IS NEEDED' : 'NON-DESTRUCTIVE PRACTICE', {
+  scene.add.text(172, 520, analysis.issues.length > 0 ? 'WHY REVIEW IS NEEDED' : 'REAL FLIGHT', {
     fontFamily: UI_FONT,
     fontSize: '9px',
     fontStyle: UI_BOLD,
     color: analysis.issues.length > 0 ? '#ffd7a0' : '#b9ffdb',
   }).setResolution(2);
-  scene.add.text(172, 540, issueText, {
+  scene.add.text(172, 540, analysis.issues.length > 0 ? issueText : launch.detail, {
     fontFamily: UI_FONT,
-    fontSize: '10px',
+    fontSize: analysis.issues.length > 0 ? '10px' : '14px',
     color: UI_SOFT,
     fixedWidth: 328,
     wordWrap: { width: 328 },
@@ -4978,7 +4996,7 @@ function renderSavedDeckLab(
       () => cycleSavedDeckLabHandPage(scene, state, dependencies, direction), UI_FIELD.cyan, false)
       .setName(`profile-flight-lab-hand-${direction < 0 ? 'previous' : 'next'}-hit`);
   }
-  scene.add.text(566, 415, `OPENING STUDY  ·  ${analysis.consistency.sampleCount} SHUFFLED SAMPLES`, {
+  scene.add.text(566, 415, `OPENING STUDY  ·  ${analysis.consistency.sampleCount} SAMPLES, NOT WIN ODDS`, {
     fontFamily: UI_FONT,
     fontSize: '10px',
     fontStyle: UI_BOLD,
@@ -5003,12 +5021,15 @@ function renderSavedDeckLab(
       fixedWidth: 476,
     }).setResolution(2).setOrigin(0.5);
   });
-  scene.add.text(826, 565, 'Deck + Leader only; no Waymarks or card-play effects.\nSample results, not win odds. No Scrap spent or save changes.', {
+  scene.add.text(826, 559, practice.available
+    ? 'Practice: real battles, nothing saved.\nMenu or reload ends practice; your active flight is safe.'
+    : `Practice locked: ${practice.detail}`, {
     fontFamily: UI_FONT,
-    fontSize: '10px',
+    fontSize: '14px',
     fontStyle: UI_BOLD,
     color: '#b9ffdb',
     align: 'center',
+    wordWrap: { width: 492 },
   }).setResolution(2).setOrigin(0.5);
 
   const collectionSignals = dependencies.renderFieldButton(

@@ -1,3 +1,5 @@
+import { memoryStorageSessionActive } from './safe-storage';
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -43,6 +45,13 @@ function supplyDrawerSummary(payload: Record<string, unknown>) {
 }
 
 export function screenReaderSummary(payload: unknown): string {
+  const summary = describeScreen(payload);
+  return memoryStorageSessionActive()
+    ? `Practice. Nothing saved. Main Menu or reload ends practice; your active flight, collection, and records are unchanged. ${summary}`
+    : summary;
+}
+
+function describeScreen(payload: unknown): string {
   if (!isRecord(payload)) return '';
   const mode = text(payload.mode);
   const scene = text(payload.scene);
@@ -54,7 +63,9 @@ export function screenReaderSummary(payload: unknown): string {
   }
 
   if (scene === 'MenuScene' || mode === 'menu') {
-    if (payload.helpOpen === true) return 'How to Play is open. Press Back to close.';
+    if (payload.helpOpen === true) return ['How to Play is open.',
+      ...(Array.isArray(payload.helpContent) ? payload.helpContent.filter((text): text is string => typeof text === 'string') : []),
+      'Press Back to close.'].join(' ');
     const focus = isRecord(payload.titleFocus) ? payload.titleFocus : undefined;
     const collectionGoal = isRecord(payload.collectionGoal) ? payload.collectionGoal : undefined;
     const nextGoal = isRecord(collectionGoal?.next) ? collectionGoal.next : undefined;
@@ -223,10 +234,15 @@ export function screenReaderSummary(payload: unknown): string {
         ? flightLab.issues.map(text).filter(Boolean).join(' ')
         : '';
       const launch = isRecord(flightLab.launch) ? flightLab.launch : undefined;
-      const launchText = launch?.available === true
+      const practice = isRecord(flightLab.practice) ? flightLab.practice : undefined;
+      let launchText = launch?.available === true
         ? 'This exact owned Folio can launch a fresh Tier 0 route without changing the saved revision.'
         : `Folio launch is unavailable: ${text(launch?.detail) || 'review the saved deck first'}`;
-      return `Flight Lab for ${text(flightLab.deckName)}. ${flightLab.legalForStandardFlight === true ? 'Standard ready.' : 'Review needed.'} ${number(flightLab.savedCopies) ?? 0} saved copies, ${number(flightLab.playableCards) ?? 0} playable cards, average cost ${number(flightLab.averageCost) ?? 0}. Cost curve: ${curve || 'empty'}. Roles: ${roles || 'none'}. Families: ${families || 'none'}. Resource hooks: ${hooks || 'none'}. Sample hand ${number(sample?.number) ?? 1}, card page ${number(sample?.page) ?? 1} of ${number(sample?.pages) ?? 1}: ${sampleCards || 'no cards'}. ${number(sample?.playableCount) ?? 0} individually affordable; the opening budget covers up to ${number(sample?.affordableTogether) ?? 0} together, before card-play effects. Across ${number(consistency?.sampleCount) ?? 0} deterministic hands, ${number(consistency?.averagePlayable) ?? 0} average playable, ${number(consistency?.atLeastTwoPlayablePercent) ?? 0} percent open with two playable, and ${number(consistency?.pressurePercent) ?? 0} percent include pressure.${issues ? ` ${issues}` : ''} ${launchText} Shared codes never grant ownership, archived Folios must be restored, locked leaders stay locked, and an active flight is never overwritten. The first sample uses saved order; later samples use shuffled openings. Draw includes Flock Stats and the Leader's keystone rule. Waymarks, route bonuses, and card-play effects are excluded. These samples are not win odds. Practice uses protected opening draws, never changes the folio, never affects power, and spends no Scrap. Use S, controller Start, or pointer to launch when available; G or controller right stick for Collection Signals, N or controller left stick for the Field Record, R or controller Y for the Revision Trail, T or controller X for the Tuning Bench, Previous and Next, Space, or controller A to deal, Page Up or Page Down and D-pad Up or Down to browse cards in the current hand, and Back or controller B to close the Lab.`;
+      const practiceText = practice?.available === true
+        ? 'Use U, controller Select, or the Practice button for real battles without saving. Your active flight is safe. Main Menu or reload ends practice.'
+        : `Playable practice is unavailable: ${text(practice?.detail) || 'review the Folio first'}.`;
+      launchText += ` ${practiceText}`;
+      return `Flight Lab for ${text(flightLab.deckName)}. ${flightLab.legalForStandardFlight === true ? 'Standard ready.' : 'Review needed.'} ${number(flightLab.savedCopies) ?? 0} saved copies, ${number(flightLab.playableCards) ?? 0} playable cards, average cost ${number(flightLab.averageCost) ?? 0}. Cost curve: ${curve || 'empty'}. Roles: ${roles || 'none'}. Families: ${families || 'none'}. Resource hooks: ${hooks || 'none'}. Sample hand ${number(sample?.number) ?? 1}, card page ${number(sample?.page) ?? 1} of ${number(sample?.pages) ?? 1}: ${sampleCards || 'no cards'}. ${number(sample?.playableCount) ?? 0} individually affordable; the opening budget covers up to ${number(sample?.affordableTogether) ?? 0} together, before card-play effects. Across ${number(consistency?.sampleCount) ?? 0} deterministic hands, ${number(consistency?.averagePlayable) ?? 0} average playable, ${number(consistency?.atLeastTwoPlayablePercent) ?? 0} percent open with two playable, and ${number(consistency?.pressurePercent) ?? 0} percent include pressure.${issues ? ` ${issues}` : ''} ${launchText} Shared codes never grant ownership, archived Folios must be restored, locked leaders stay locked, and an active flight is never overwritten. The first sample uses saved order; later samples use shuffled openings. Draw includes Flock Stats and the Leader's keystone rule. Waymarks, route bonuses, and card-play effects are excluded. These samples are not win odds. Hand sampling uses protected opening draws, never changes the folio, never affects power, and spends no Scrap. Use S, controller Start, or pointer to launch when available; G or controller right stick for Collection Signals, N or controller left stick for the Field Record, R or controller Y for the Revision Trail, T or controller X for the Tuning Bench, Previous and Next, Space, or controller A to deal, Page Up or Page Down and D-pad Up or Down to browse cards in the current hand, and Back or controller B to close the Lab.`;
     }
     const nextMilestone = isRecord(collectionMilestones?.next) ? collectionMilestones.next : undefined;
     const current = spaced(text(focus?.current)) || 'Flock Record';
@@ -312,7 +328,9 @@ export function screenReaderSummary(payload: unknown): string {
       const cost = number(cardPicker.cost);
       const costLabel = text(cardPicker.context) === 'market' ? 'Scrap' : 'Wingbeats';
       if (cardPicker.inspectionOpen === true) {
-        return `Full card inspection. ${text(cardPicker.cardName) || `${pickerMode} candidate`}${cost === undefined ? '' : `, ${cost} ${costLabel}`}. No card has been changed${costLabel === 'Scrap' ? ' and no Scrap has been spent' : ''}. Use Back, controller B, Confirm, controller A, or tap outside to return to card ${index + 1} of ${count}.`;
+        const impact = isRecord(cardPicker.deckImpact) ? cardPicker.deckImpact : undefined;
+        const details = impact && Array.isArray(impact.lines) ? impact.lines.filter((line): line is string => typeof line === 'string').join('. ') : '';
+        return `Full card inspection. ${text(cardPicker.cardName) || `${pickerMode} candidate`}${cost === undefined ? '' : `, ${cost} ${costLabel}`}. ${details} No card has been changed${costLabel === 'Scrap' ? ' and no Scrap has been spent' : ''}. Use Back, controller B, Confirm, controller A, or tap outside to return to card ${index + 1} of ${count}.`;
       }
       if (cardPicker.armed === true) {
         return `${pickerMode} card picker. ${text(cardPicker.cardName) || 'Card'} is selected, card ${index + 1} of ${count}.${cost === undefined ? '' : ` Cost ${cost} ${costLabel}.`} Confirm, controller A, or activate the same card again to ${pickerMode.toLowerCase()}. Back or controller B clears the selection without changing the deck${costLabel === 'Scrap' ? ' or spending Scrap' : ''}.`;
@@ -331,10 +349,14 @@ export function screenReaderSummary(payload: unknown): string {
       const unavailable = records(market.unavailableOffers)
         .map((offer) => `${text(offer.label) || 'Offer'}, ${spaced(text(offer.reason))}`)
         .join('; ');
+      const previewRows = Array.isArray(market.decisionPreview) ? market.decisionPreview.map(text).filter(Boolean).join('; ') : '';
+      const preview = previewRows ? `${text(market.previewCard) ? `${text(market.previewCard)}: ` : ''}${previewRows}` : '';
+      const rules = isRecord(market.rules) ? market.rules : undefined;
+      const rulesRead = rules ? ` Rules ${number(rules.page)} of ${number(rules.total)}, ${text(rules.title)}: ${text(rules.text).replace(/\s+/g, ' ')} Use Inspect or controller Y for the next rules page.` : '';
       const confirmation = input?.armed === true
         ? ' Purchase confirmation is armed. Confirm, controller A, or activate the same offer again to buy; moving focus or pressing Back cancels.'
         : ' Choose an offer before buying; a first pointer activation only arms the purchase.';
-      return `Market, ${spaced(text(market.category))}. ${number(market.scrap) ?? 0} Scrap. Selected ${focus}, offer ${Math.min(index + 1, count)} of ${count}.${observations ? ` Build observations: ${observations}.` : ''}${unavailable ? ` Unavailable in this section: ${unavailable}.` : ''}${confirmation} Use Previous and Next or the D-pad to choose, Confirm or controller A to buy, keys 1 through 4 or controller shoulders to change sections, and Back or controller B to leave. Route commitment is blocked while the Market is open.`;
+      return `Market, ${spaced(text(market.category))}. ${number(market.scrap) ?? 0} Scrap. Selected ${focus}, offer ${Math.min(index + 1, count)} of ${count}.${preview ? ` Purchase preview: ${preview}.` : ''}${rulesRead}${observations ? ` Build observations: ${observations}.` : ''}${unavailable ? ` Unavailable in this section: ${unavailable}.` : ''}${confirmation} Use Previous and Next or the D-pad to choose, Confirm or controller A to buy, keys 1 through 4 or controller shoulders to change sections, and Back or controller B to leave. Route commitment is blocked while the Market is open.`;
     }
     const routeReward = isRecord(payload.routeReward) ? payload.routeReward : undefined;
     if (routeReward) {
@@ -419,11 +441,15 @@ export function screenReaderSummary(payload: unknown): string {
     if (rewardInspection?.open === true) {
       const cost = number(rewardInspection.cost);
       const rules = text(rewardInspection.rules);
+      const impact = isRecord(rewardInspection.deckImpact) ? rewardInspection.deckImpact : undefined;
+      const impactRead = impact
+        ? ` Deck ${number(impact.deckBefore)} to ${number(impact.deckAfter)} cards. Base hand target ${number(impact.handBefore)} to ${number(impact.handAfter)}. ${Array.isArray(impact.stats) && impact.stats.length ? `${rewardInspection.source === 'preenReward' ? 'Changed stats after Preen' : 'Flock Stats gained'}: ${impact.stats.map(text).join(', ')}.` : 'Flock Stats unchanged.'} ${text(impact.scope)} ${text(impact.drawScope)}`
+        : '';
       const returnChoice = text(rewardInspection.returnChoiceName) || 'the selected reward';
       const returnTarget = rewardInspection.returnArmed === true
         ? `${returnChoice} remains selected. Use Back, controller B, Confirm, controller A, or tap outside to restore its confirmation.`
         : 'Use Back, controller B, Confirm, controller A, or tap outside to return to the same choice.';
-      return `Full card inspection. ${text(rewardInspection.cardName) || 'Reward card'}${cost === undefined ? '' : `, ${cost} Wingbeats`}.${rules ? ` ${rules}` : ''} No reward has been claimed. ${returnTarget}`;
+      return `Full card inspection. ${text(rewardInspection.cardName) || 'Reward card'}${cost === undefined ? '' : `, ${cost} Wingbeats`}.${rules ? ` ${rules}` : ''}${impactRead} No reward has been claimed. ${returnTarget}`;
     }
     const inspect = isRecord(payload.cardInspectFocus) ? payload.cardInspectFocus : undefined;
     if (inspect?.active === true) {

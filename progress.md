@@ -1,5 +1,252 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-09-08 — safe playable Folio practice
+
+- Added a separate Flight Lab Practice action (pointer, U, controller Select).
+  It uses real Route/Battle rules with the exact owned Folio and its Preens;
+  it is allowed alongside a saved flight without bypassing ownership, Leader,
+  archive, or legality validation. Seeded replay restores the starting Folio.
+- A disposable storage backend snapshots browser storage in memory before
+  practice begins. All subsequent journal reads, repairs, writes, removals,
+  acquisitions, and guide changes stay there. Nothing is flushed on exit;
+  reload naturally discards it. Actual run records and unlock awards are
+  skipped. Main Menu restores the prior in-memory last-run summary too.
+- UI/input/high-resolution skills guided separated real/practice actions,
+  readable safety copy, persistent HUD badges, scoped pause/end/result wording,
+  narrated mode, and listener cleanup. Frontend checklist connector unavailable;
+  used direct source review and production-browser evidence instead.
+- First test iteration caught a wrong hand-size assertion: First Flight draws
+  a replacement card, so the check now verifies the actual play counter.
+  Screenshot inspection caught and corrected the missing battle practice badge.
+  Later harness fixes used P for Pause and Talon for the locked-Leader fixture;
+  ordinary-flight geometry now expects the intentional 180x58 launch button.
+- Built-game checks cover card play, reward acquisition/Preen/route return,
+  win/loss recording, seeded retry, pause exit, refresh, denied storage, and
+  journal recovery-event isolation. Final cross-engine results are recorded below.
+- Remaining product work is still tracked in the accepted backlog. Do not equate
+  automated practice coverage with playable onboarding lessons, balanced builds,
+  subjective fun, physical-device qualification, or real screen-reader evidence.
+- Final production verification: 18 practice checks passed across Chromium,
+  Firefox, and WebKit (clean exit); two existing Flight Lab/ordinary Folio launch
+  regressions passed in Chromium. Inspected Lab/battle screenshots at 2560x1600,
+  1440x900, and 1000x560 plus reward, result, and pause screens. Evidence:
+  `.artifacts/test-results/practice/` and `practice-regression/`.
+- Required shared client completed a real Practice-button launch to RouteScene;
+  `.artifacts/shared-client/practice-final/` contains the screenshot and state
+  (`practice: true`) and no error file. The initial client fixture omitted
+  discovery/account fields and correctly hit the ownership guard; fixed the
+  fixture, not the ownership rule.
+- Build, runtime data, runtime assets/FX contracts, docs, hard bundle budgets,
+  deployment-cache validation, and diff checks pass. Entry 688.2 KiB and combined
+  boot 723.4 KiB still exceed preferred 675/710 KiB targets; caps were not raised.
+- Release evidence is NOT passing: owner-waived fresh-player sessions remain
+  distinct from evidence; Windows/Android/iPad and NVDA/VoiceOver manual audits
+  are missing. No device or subjective play evidence was fabricated.
+- Backlog count after this pass: 4 complete, 7 partial, 41 open = 48 remaining.
+- Cleanup verified: owned preview PID 56744 stopped, zero listeners on 43371,
+  all test/client commands exited, and three temporary helpers/configs removed.
+  Screenshots and test evidence remain in ignored artifact directories.
+
+## 2026-09-08 — complete Market rules pages
+
+- Replaced the right-hand Market art/text stack with a text-first dossier.
+  Now, Preen, and Molt use measured 16px pages; long descriptions continue
+  without maxLines clipping. Current Flock Stats have their own footer.
+- Pointer previous/next and remappable Inspect / controller Y page without
+  changing the save, purchase focus, or armed confirmation. The dossier stays
+  reachable after leaving the offer; section changes and sold offers dismiss
+  it, while late-art refreshes preserve the current page and purchase summary.
+- UI audit, text, input, and high-resolution skills informed opaque text
+  backing, measured pagination, separate current-state labels, and expanded
+  58px hit areas. Frontend checklist connector unavailable; used source and
+  built-game verification. No new dependency, generated art, or budget increase.
+- Initial cross-engine verification: 12 focused tests passed in Chromium,
+  Firefox, and WebKit, including all 110 catalog cards in normal/Molt states,
+  complete rule reconstruction, long-card geometry at 2560x1600, 1440x900, and
+  1000x560, live narration, non-mutation, and redraw/sold/section lifecycle.
+  A first-run narration assertion exposed retained visual newlines; those
+  are now normalized. Final touch-target and stress-case checks follow below.
+- Final production verification: nine tests passed with clean exit across
+  Chromium, Firefox, and WebKit, including both pager directions, armed-save
+  preservation, 58px hit areas, synthetic multi-page/long-name stress, and the
+  older Battle/reward/Market/Preen detail regression. Build, runtime data,
+  runtime assets, docs, bundle-size, deployment-cache, and whitespace checks
+  pass; preferred startup-size advisories remain, with no hard gates changed.
+- Visually inspected final production captures at 2560x1600, 1440x900, and
+  1000x560 under `.artifacts/test-results/market-rules/`. The required shared
+  client exercised actual focus and page-button input through Scattered Quills
+  Molt, kept 999 Scrap, and completed without an error artifact under
+  `.artifacts/shared-client/market-rules-settled/`. An earlier shared fixture
+  started Route while Menu still preloaded the same streak texture; waiting
+  for Menu readiness resolves that setup race. Its warning evidence remains
+  in `market-rules-final/`; no runtime-loader fix is claimed.
+- Cleanup: owned preview PID 60236 stopped; three temporary helper/action/config
+  files removed. Screenshot/state evidence retained intentionally. No commit,
+  push, or deployment performed.
+- Remaining scope: other legacy card-detail surfaces, effect-prose cleanup,
+  broader text scaling, balance and human playtesting. This is readability
+  evidence, not a claim that the entire game or the subjective fun bar is done.
+
+## 2026-09-08 — Market purchase readability
+
+- Separated card Wingbeats from purchase Scrap and moved the clipped build read
+  into a wrapped, focused purchase panel outside the offer targets. Includes
+  existing projected transaction rows, base hand target, and persistence/draw
+  assumptions. Keyboard/controller focus now opens the same dossier as hover.
+- Fixed late-art refreshes restoring the card dossier without transaction rows;
+  restored previews now resolve current listing/advice and close for sold or
+  removed offers. Announcements identify the inspected card when pointer hover
+  differs from keyboard focus.
+- Final build, runtime data/assets, docs, bundle-size, deployment-cache, and diff
+  checks pass. Nine focused tests pass with clean exit across Chromium, Firefox,
+  and WebKit, covering five-Leader combat parity, rejected-offer non-mutation,
+  sold-offer dismissal, late redraws, transaction parity, and geometry at
+  2560x1600, 1440x900, and 1000x560. Screenshots were visually inspected under
+  `.artifacts/test-results/market-purchase-read/`; the required shared keyboard
+  client produced matching visible/state purchase rows and no error artifact in
+  `.artifacts/shared-client/market-purchase-read-final/`.
+- The broader purchase/navigation scenario passed in Chromium and Firefox on
+  the preceding build. Its combined-run WebKit worker stalled after the browser
+  exited; that runner was interrupted, not counted as a pass. The isolated
+  final-build WebKit rerun also hit the 120-second global/teardown deadline,
+  reported `1 did not run`, and exited 1. That broader scenario remains
+  unverified in WebKit; no underlying runner cause is claimed fixed. The nine
+  final focused checks above completed successfully with exit 0.
+- Remaining: the older right-hand Market card dossier clips long base/Preen
+  rules (Mimic Thread) and can crowd the stat footer (Scattered Quills). Backlog
+  item 28 records this explicitly. This pass improves decision clarity, not
+  complete readability, balance, or human evidence of fun. No commit/push.
+- Cleanup: removed all three temporary Market helper files, stopped the owned
+  preview PID 34664, and verified zero listeners on ports 43350/43351 and no
+  matching Node test helpers. Retained ignored screenshot/state evidence.
+
+## 2026-09-07 — Release/Preen deck-impact inspection
+
+- Continued the accepted quality roadmap with an explicit before/after read for
+  route and Market card-picker inspection. Shows exact one-copy deck change,
+  passive stat totals, authoritative base hand target, service cost/remaining
+  Scrap or shortfall, persistence, and excluded draw/purchase modifiers.
+- The comparison is inspect-only, not extra permanent picker clutter. Corrected
+  inspection's card badge to show Wingbeats instead of a Market service fee;
+  insufficient Scrap no longer redirects the inspected card to the Market offer
+  column. Same comparison lines flow through serialized state and narration.
+- Added geometry/narration/non-mutation checks across three viewport sizes and
+  live combat hand-target parity for all five Leaders, including upgraded cards
+  and crossing the five-Plumes threshold. Corrected an invalid duplicate-card
+  test fixture to respect the singleton-deck contract.
+- Final production build passes; all nine focused Chromium/Firefox/WebKit test
+  cases report passing assertions. The runner retained an idle worker after
+  the last test and required interruption during cleanup (exit 1), so this is
+  not recorded as a clean suite exit. Visually inspected built-preview screenshots at 2560x1600, 1440x900,
+  and 1000x560 under `.artifacts/test-results/picker-deck-impact/`. The required
+  shared pointer client opened the comparison with matching text state and no
+  error artifact under `.artifacts/shared-client/picker-deck-impact-final/`.
+- TypeScript, runtime data, runtime assets, docs, bundle-size, deployment-cache,
+  and diff checks pass. Sharing four picker icon diagnostics brought the Route
+  module from an over-budget 24.1 KB to 23.6 KB without changing hard limits.
+  Preferred startup-size warnings remain open. The earlier matrix had one
+  intermittent WebKit pointer-selection timeout; the unchanged input test passed
+  on the final build, but its underlying timing cause is not claimed fixed.
+- This advances backlog item 5, not the entire roadmap or human fun/balance
+  evidence. Market card purchase and broader route-choice comparisons remain
+  open. No commit or push performed.
+- Cleanup: removed the three temporary picker test scripts/config files and
+  stopped the owned preview PID 56380. Interrupted the idle test runner; its
+  process tree exited. Verified ports 43340/43341 have no listeners and all
+  recorded helper PIDs are gone. Retained ignored screenshot/state evidence.
+
+## 2026-09-07 — full-loop onboarding readability
+
+- Continued the accepted product-quality direction with a focused How to Play
+  pass. The old four-topic summary omitted reward/Skip and Preen decisions;
+  13px capped bodies could conceal the end of an explanation.
+- Replaced it with a numbered six-step overview: route, combat, reward/Skip,
+  Preen, deck review, and learning between flights. Clarified Wingbeats, Cover,
+  Cohesion, ending a turn, draw-pool tradeoffs, and upgrade persistence.
+- Expanded the panel within the stage, used 16px uncapped body text on opaque
+  cards, larger footers, and reused existing art. Exposed rendered explanations
+  through menu state and screen-reader narration instead of announcing only
+  that Help was open. Existing First Flight progress/skip/replay stays unchanged.
+- Initial Chromium checks pass 4/4 including live guide progression. Required
+  shared-client screenshot exposed oversized topic icons and two missing lazy
+  icon requests; corrected sizes/asset membership and added explicit geometry
+  coverage. Final matrix passes 9/9 across Chromium, Firefox, and WebKit, covering
+  the overview, matching narration, minimum touch targets, art, and close flow.
+  The test waits for rendered topic icons after texture loading; the lazy asset
+  callback refreshes the initially playable panel on a later frame.
+- Final screenshot review also caught WebKit capturing an intermediate resize.
+  The test now waits for canvas viewport containment and two animation frames;
+  the strengthened three-browser rerun passes 3/3 and all final captures are
+  visually verified, including the formerly cropped 1440x900 view.
+- Visually inspected built captures at 2560x1600, 1440x900, and 1000x560 under
+  `.artifacts/test-results/full-loop-help/`. The required shared client used the
+  actual Skip Guide pointer target; final screenshot/state agree on Replay Guide
+  and contain all six topics, with no error artifact, under
+  `.artifacts/shared-client/full-loop-help-final/`.
+- Production build/TypeScript, docs/runtime/runtime-assets, hard bundle gates,
+  deployment-cache, and whitespace checks pass. No full release or subjective
+  fun claim: contextual/playable Preen/deck lessons and the broader roadmap
+  remain open. Preferred startup warnings remain recorded in performance notes.
+- Closed owned test browsers, stopped verified preview PIDs 24080 and 57232, removed three
+  temporary helpers, and confirmed ports 43330-43331 are free with no matching
+  helper process. Retained ignored screenshots/state; prior local changes are
+  preserved and this pass is not committed or pushed.
+
+## 2026-09-07 — readable rewards and deck impact
+
+- Current request: implement the product roadmap with professional polish,
+  high readability, and enjoyable replayability. This pass addresses reward
+  decisions; the full accepted backlog remains open. No balance/power changes
+  or manipulative retention systems are introduced.
+- Reward cards expand from 228 to 264 logical pixels; effects use 16px type and
+  measured line-boundary ellipses. Molt/family badges no longer cover effects.
+  Build benefits/cautions move from cramped 10px card footers to a focused 16px
+  dock. Skip has a separate stable command position, also used during loading
+  and renderer failure, with unchanged deliberate-commit/cancel semantics.
+- Full reward/Preen inspection compares deck size, live-rule base hand target,
+  Flock Stats, and persistence without implying exact draw probabilities.
+  It exposes the same information in serialized state and opt-in narration.
+- Visual review found existing long normal/Molt preview text colliding with
+  Flock Stats. The shared hand preview now measures the rule body before placing
+  its panel, reserving a separate stats footer rather than hardcoding 152px.
+- Following UI/text/high-resolution skills: inspect built captures at 2560x1600,
+  1440x900, and 1000x560; include long rules, Preen, inspection return, and Skip.
+  New tests cover geometry, explicit truncation, live draw-target parity across
+  all five Leaders, keystone transition, and non-mutating projections.
+- Initial checks exposed stale loading widths, an undersized label gap, and a
+  reward renderer budget overrun. Fixed anchors/gap; shared measured truncation
+  and build-read rendering now live with existing reward inspection/fallback
+  utilities, preserving the 14KB renderer limit without relaxing budgets.
+- Standalone shared-client direct-scene setup retained a lazy title serializer;
+  its temporary fixture now reads the actual BattleScene serializer. This is
+  test-only setup, not a production state-hook change.
+- Cross-browser testing exposed a WebKit first-click loss: post-update reward
+  redraws destroyed hit targets but deferred new input registration to the next
+  frame. Reward-only queued redraws now use the public game PRE_STEP event;
+  shutdown removes pending callbacks. Combat retains its existing scheduling.
+  The new test requires replacement buttons to be registered in the redraw
+  frame, without retrying a click. Inspection geometry waits for the actual
+  rendered panel rather than assuming serialized open state means painted UI.
+- Final built reward/readability and live draw-target checks pass 6/6 across
+  Chromium, Firefox, and WebKit. Visually reviewed built captures at all three
+  supported audit sizes under `.artifacts/test-results/reward-readability/`.
+  The required shared input client also opened the focused card with a real
+  pointer; screenshot/state agree and no browser-error artifact was produced
+  in `.artifacts/shared-client/reward-inspection-settled/`.
+- `npm run build`, docs/runtime/runtime-assets, bundle-size, deployment-cache,
+  and `git diff --check` pass. Preferred startup warnings remain: 684.9 KB entry
+  and 720.1 KB combined boot; existing hard budgets remain unchanged and pass.
+- Final adjacent Chromium rerun passes 6/6: combat redraw reuse/coalescing,
+  card-preview ordering, Skip confirmation, all reward commitment input paths,
+  renderer fallback, and combat/route inspection round trips. Together with
+  the browser matrix, final runs pass 12/12; this is targeted verification,
+  not a full release qualification or evidence that subjective fun is proven.
+- Removed four temporary fixture/diagnostic/config files, closed owned test
+  browsers, stopped the verified preview process, and confirmed task ports
+  43320-43323 are free with no matching test helper processes. Screenshots/state
+  remain as ignored evidence. Changes stay local; no commit or push requested
+  for this implementation turn.
+
 Current follow-up: Same-seed route reward fidelity from the comprehensive product audit. The title and outcome surfaces promised replayable/shareable route seeds, but several player-visible route rolls still consumed ambient `Math.random()`, so identical runs could diverge after audio or cosmetic FX activity and after a save/resume. Route Cache outcomes, two-card drafts, single-card grants, Waymark grants, Supply grants, and nested random route effects now derive from one stable seed/state/salt contract covering the flight seed, district, current node, decision key, deck/Preen state, held Waymarks and Supplies, Cohesion, and Scrap. Reopening a decision keeps its frozen projection, resuming the same state reproduces it, and different seeds retain reward variety; record IDs and cosmetic particle/audio jitter intentionally remain outside the gameplay contract. Focused Chromium coverage proves replay/resume equality under three hostile ambient-randomness values, broad cross-seed variety, structured route-draft quality, and exact preview-to-commit parity across route event families. Strict TypeScript, production build, docs, runtime data, 961 runtime assets, world/FX contracts, deployment cache, enemy-variety/card-overlay contracts, 32 content checks, encounter balance, and the 500-seed economy audit pass; the consolidated gate finishes with all 55 interaction-heavy sequencing scenarios green in 16.5 minutes. The app entry is 675.3 KiB and combined boot is 705.3 KiB, below their hard budgets; the ~0.3 KiB aspirational entry warning is retained because moving this shared contract into the already-tight game-core chunk correctly fails its harder 30 KiB boundary. The required shared production client reached a fully interactive/full-art Rooftop Blocks route in 1.35 seconds with no pending, failed, or timed-out asset groups and no browser-error artifact; the inspected capture is `.artifacts/visual-audit/seeded-route-rewards-shared-client/shot-0.png`. Temporary choreography was deleted, preview port 43160 was stopped, and final cleanup confirms ports 43160 and 5373 are free, unreachable, and have no matching workspace Node/browser processes.
 
 Current follow-up: Contextual route gains from the comprehensive product audit. Reachable nodes already named a category-level gain and their authored pressure, but the route still could not answer `why this path now?` from the current flight. A shared decision policy now keeps the existing two-row `GAIN / RISK` hierarchy while making gain copy live: combat drafts name deck size; Basins show effective healing after the Cohesion cap; Nests count only meaningful Preen targets and show held Scrap; Markets show purchasing Scrap plus deck size; Caches show open Supply capacity; and Signals show available versus total authored choices after current costs and requirements. Boss reward/test authority remains district-authored, encounter risks retain their two-pressure cap, and no future random reward is exposed. The same exact read flows through the top decision dock, hover dossier, serialized route node, and opt-in screen-reader narration without adding persistent map clutter. Focused Chromium coverage mutates Cohesion, deck contents, Scrap, Supplies, and eligibility in one live RouteScene, proves every category recomputes, verifies visual/state/live-region parity and tooltip containment, and passes beside route layout, boss dossier, encounter pressure, and the complete menu/route/combat/settings screen-reader regression. The inspected minimum-viewport capture is `.artifacts/test-results/contextual-route-gain-basin-1000x560.png`. Strict TypeScript, production build, docs, runtime data, 961 runtime assets, world/FX contracts, deployment cache, 32 content checks, encounter balance, 500-seed economy, and bundle gates pass at 674.7 KiB app entry and 704.6 KiB combined boot. The required shared production client reached a fully interactive/full-art route with no pending, failed, or timed-out asset groups and no browser-error artifact; `.artifacts/visual-audit/contextual-route-gains-shared-client/shot-0.png` shows the natural `Card + Scrap; deck 10` read while text state proves full-Cohesion Basin waste, ten Preen targets, 40 Scrap Market context, two open Supply slots, and 3/3 Signal availability. Temporary choreography was deleted, preview port 43159 was stopped, and final cleanup confirms ports 43159 and 5373 are free, unreachable, and have no matching workspace Node/browser processes.
