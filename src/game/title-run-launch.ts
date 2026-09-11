@@ -12,7 +12,7 @@ import {
   playUiSound,
 } from '../main';
 
-const TITLE_RUN_LAUNCH_DELAY_MS = 620;
+const TITLE_RUN_LAUNCH_DELAY_MS = 180;
 
 export function startRunAnimated(
   scene: any,
@@ -81,8 +81,8 @@ function titleRunLaunchFx(scene: any, x: number, y: number, w: number) {
         targets: [flourish, glow],
         scaleX: '+=0.08',
         scaleY: '+=0.035',
-        alpha: { value: 0, duration: 300, delay: 470 },
-        duration: 760,
+        alpha: { value: 0, duration: 100, delay: 80 },
+        duration: TITLE_RUN_LAUNCH_DELAY_MS,
         ease: 'Cubic.easeOut',
       });
     }
@@ -109,8 +109,7 @@ function titleRunLaunchFx(scene: any, x: number, y: number, w: number) {
         x: mx + side * Phaser.Math.Between(36, 102),
         alpha: 0,
         scaleX: 0.25,
-        duration: 560,
-        delay: i * 18,
+        duration: TITLE_RUN_LAUNCH_DELAY_MS,
         ease: 'Cubic.easeOut',
         onComplete: () => mote.destroy(),
       });
@@ -120,9 +119,9 @@ function titleRunLaunchFx(scene: any, x: number, y: number, w: number) {
   if (!reduced) {
     scene.tweens.add({
       targets: [plate, rail],
-      alpha: { value: 0, duration: 240, delay: 500 },
+      alpha: { value: 0, duration: 100, delay: 80 },
       scaleX: '+=0.04',
-      duration: 760,
+      duration: TITLE_RUN_LAUNCH_DELAY_MS,
       ease: 'Cubic.easeOut',
       onComplete: () => group.destroy(true),
     });

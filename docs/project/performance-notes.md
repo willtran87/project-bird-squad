@@ -1,5 +1,30 @@
 # Performance Notes
 
+## September 11 2026 — title clarity and combat cadence
+
+The title no longer renders redundant generated frames, mastery microcopy, or a
+second Collection goal panel. Start/Continue is the initial focus. Setup lives
+on an opaque surface, with cumulative Ascension modifiers retained for higher
+tiers. Removing the animated logo bounce also separates it from utility controls.
+
+Standard and Snappy use shorter first/repeated enemy tells; Cinematic retains
+its original long sequence. Deterministic single-enemy turn measurements are
+3.40 s Standard, 2.55 s Snappy, and 9.62 s Cinematic, including input handoff.
+Player attack commitment plus feedback is 300 ms on Standard. These are scene-
+clock sequencing measurements, not wall-clock or physical-device FPS claims.
+Real-time software-WebGL samples still showed substantial rendering overhead.
+Animated player actions now require two full board passes instead of three;
+phase-owned enemy art is retired on transition, including accelerated phases.
+
+Roost, rally, and commitment-seal presentation now live in the existing lazy
+combat-FX module; no loading boundary or asset delivery contract changed.
+The Pages-path build (`--base=/project-bird-squad/`) measures 689.3 KiB entry /
+180.4 KiB gzip and 724.6 KiB combined boot / 193.7 KiB gzip, down from the
+published revision's 733.5 KiB combined boot. All hard budgets pass unchanged.
+Phaser is 1313.6 KiB / 339.5 KiB gzip; Codex data is 281.0 KiB / 88.5 KiB gzip.
+Preferred 675/710 KiB targets remain warnings. Combat FX is 18.4 KiB / 5.2 KiB
+gzip and remains absent from boot modulepreloads.
+
 ## September 2026 Safe Practice
 
 Playable practice uses an in-memory storage backend; its snapshot and scene

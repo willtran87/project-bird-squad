@@ -1,5 +1,6 @@
 import type { RuntimeImageAsset } from './runtime-images';
-import type Phaser from 'phaser';
+import Phaser from 'phaser';
+import { birdAudio, GAME_WIDTH, motionState, combatPacingState } from '../main';
 import { controlBindingCode, controlPanelOwnsInput, matchesControlAction } from './input-bindings';
 
 import combatFxAtlasUrl from '../../assets/runtime/fx/combat-fx-atlas.webp';
@@ -69,6 +70,255 @@ import combatMoltTriggerChoiceUrl from '../../assets/runtime/fx/combat-molt-trig
 import combatEnemyHeavyContactUrl from '../../assets/runtime/fx/combat-enemy-heavy-contact.webp';
 import combatEnemyHealBeamUrl from '../../assets/runtime/fx/combat-enemy-heal-beam.webp';
 import combatResourceOvercapUrl from '../../assets/runtime/fx/combat-resource-overcap.webp';
+
+export function presentCombatRoostHandoff(host: any, x = 468, y = 382, scale = 1) {
+  if (!host.textures.exists('combat-roost-handoff')) return;
+  host.textures.get('combat-roost-handoff').setFilter(Phaser.Textures.FilterMode.LINEAR);
+  const reduced = motionState().reduced;
+  const s = Phaser.Math.Clamp(scale, 0.74, 1.12);
+  const width = 560 * s;
+  const height = width * (320 / 768);
+  host.combatRoostHandoffBursts += 1;
+  birdAudio.play('roostHandoff', 0.92);
+  // The persistent turn badge carries the label; no full-board ceremony is
+  // needed for the short handoff in the everyday pacing modes.
+  if (combatPacingState().preference !== 'cinematic') return;
+
+  const shadow = host.add.image(x - 6 * s, y + 12 * s, 'combat-roost-handoff')
+    .setDisplaySize(width * 1.04, height * 1.04)
+    .setTint(0x07101a)
+    .setAlpha(reduced ? 0.32 : 0.42)
+    .setName('combat-roost-handoff');
+  const glow = host.add.image(x, y, 'combat-roost-handoff')
+    .setDisplaySize(width * 1.1, height * 1.1)
+    .setBlendMode(Phaser.BlendModes.ADD)
+    .setAlpha(reduced ? 0.26 : 0.34)
+    .setName('combat-roost-handoff');
+  const crest = host.add.image(x, y, 'combat-roost-handoff')
+    .setDisplaySize(width, height)
+    .setAlpha(reduced ? 0.68 : 0.86)
+    .setName('combat-roost-handoff');
+  host.fxLayer.add([shadow, glow, crest]);
+  host.fxGlowPulse(x - 38 * s, y + 6 * s, 0xe8c24a, 76 * s, 520, 0.12);
+  host.fxMoteBurst(x + 14 * s, y + 8 * s, 0xffcf7a, {
+    count: 18,
+    speed: 118,
+    lifespan: 520,
+    scale: 0.48,
+    gravityY: 18,
+    spreadX: 180 * s,
+    spreadY: 18,
+  });
+
+  if (reduced) {
+    host.time.delayedCall(1100, () => {
+      shadow.destroy();
+      glow.destroy();
+      crest.destroy();
+    });
+    return;
+  }
+
+  const handoffHoldMs = 520;
+  host.tweens.add({
+    targets: shadow,
+    x: shadow.x + 18 * s,
+    y: shadow.y + 2 * s,
+    alpha: 0,
+    delay: handoffHoldMs,
+    duration: 780,
+    ease: 'Cubic.easeOut',
+    onComplete: () => shadow.destroy(),
+  });
+  host.tweens.add({
+    targets: glow,
+    x: x + 34 * s,
+    scaleX: glow.scaleX * 1.1,
+    scaleY: glow.scaleY * 0.92,
+    alpha: 0,
+    delay: handoffHoldMs,
+    duration: 860,
+    ease: 'Sine.easeOut',
+    onComplete: () => glow.destroy(),
+  });
+  host.tweens.add({
+    targets: crest,
+    x: x + 46 * s,
+    y: y - 4 * s,
+    scaleX: crest.scaleX * 1.06,
+    scaleY: crest.scaleY * 0.96,
+    alpha: 0,
+    delay: handoffHoldMs,
+    duration: 920,
+    ease: 'Cubic.easeOut',
+    onComplete: () => crest.destroy(),
+  });
+}
+
+export function presentCombatPlayerTurnRally(host: any, x = GAME_WIDTH / 2, y = 276, scale = 1) {
+  if (!host.textures.exists('combat-player-turn-rally')) return;
+  host.textures.get('combat-player-turn-rally').setFilter(Phaser.Textures.FilterMode.LINEAR);
+  const reduced = motionState().reduced;
+  const s = Phaser.Math.Clamp(scale, 0.74, 1.08);
+  const width = 560 * s;
+  const height = width * (320 / 768);
+  host.combatPlayerTurnRallyBursts += 1;
+  birdAudio.play('playerTurnRally', 0.9);
+  if (combatPacingState().preference !== 'cinematic') return;
+
+  const shadow = host.add.image(x, y + 16 * s, 'combat-player-turn-rally')
+    .setDisplaySize(width * 1.04, height * 1.04)
+    .setTint(0x04121a)
+    .setAlpha(reduced ? 0.3 : 0.38)
+    .setName('combat-player-turn-rally');
+  const glow = host.add.image(x, y, 'combat-player-turn-rally')
+    .setDisplaySize(width * 1.12, height * 1.12)
+    .setBlendMode(Phaser.BlendModes.ADD)
+    .setAlpha(reduced ? 0.3 : 0.42)
+    .setTint(0x8fffe8)
+    .setName('combat-player-turn-rally');
+  const crest = host.add.image(x, y, 'combat-player-turn-rally')
+    .setDisplaySize(width, height)
+    .setAlpha(reduced ? 0.74 : 0.9)
+    .setName('combat-player-turn-rally');
+  host.fxLayer.add([shadow, glow, crest]);
+  host.fxLayer.setDepth(84);
+  host.children.bringToTop(host.fxLayer);
+  host.fxGlowPulse(x, y + 2 * s, 0x8fffe8, 92 * s, 650, 0.16);
+  host.fxMoteBurst(x, y + 10 * s, 0x8fffe8, {
+    count: 18,
+    speed: 126,
+    lifespan: 600,
+    scale: 0.52,
+    gravityY: -12,
+    spreadX: 230 * s,
+    spreadY: 34,
+  });
+  host.fxMoteBurst(x, y + 20 * s, 0xffd37a, {
+    count: 10,
+    speed: 102,
+    lifespan: 520,
+    scale: 0.44,
+    gravityY: -8,
+    spreadX: 190 * s,
+    spreadY: 28,
+  });
+
+  if (reduced) {
+    host.time.delayedCall(1150, () => {
+      shadow.destroy();
+      glow.destroy();
+      crest.destroy();
+    });
+    return;
+  }
+
+  const holdMs = 560;
+  host.tweens.add({
+    targets: shadow,
+    y: shadow.y + 10 * s,
+    alpha: 0,
+    delay: holdMs,
+    duration: 760,
+    ease: 'Cubic.easeOut',
+    onComplete: () => shadow.destroy(),
+  });
+  host.tweens.add({
+    targets: glow,
+    scaleX: glow.scaleX * 1.16,
+    scaleY: glow.scaleY * 1.02,
+    alpha: 0,
+    delay: holdMs,
+    duration: 840,
+    ease: 'Sine.easeOut',
+    onComplete: () => glow.destroy(),
+  });
+  host.tweens.add({
+    targets: crest,
+    y: y - 8 * s,
+    scaleX: crest.scaleX * 1.08,
+    scaleY: crest.scaleY * 0.98,
+    alpha: 0,
+    delay: holdMs,
+    duration: 920,
+    ease: 'Cubic.easeOut',
+    onComplete: () => crest.destroy(),
+  });
+}
+
+export function presentEnemyCommitmentSeal(host: any, enemy: any, move: any, flockX: number, flockY: number) {
+  if (!host.textures.exists('combat-enemy-commitment-seal')) return;
+  host.textures.get('combat-enemy-commitment-seal').setFilter(Phaser.Textures.FilterMode.LINEAR);
+  const view = host.enemyView(enemy);
+  const damage = Math.max(1, host.incomingAttackDamage(enemy));
+  const reduced = motionState().reduced;
+  const x = Phaser.Math.Linear(view.x, flockX, 0.38);
+  const y = Phaser.Math.Linear(view.y, flockY, 0.34) - 26 * view.scale;
+  const size = (enemy.runtime.type === 'boss' ? 226 : 178) * view.scale * Phaser.Math.Clamp(0.94 + damage * 0.018, 0.98, 1.12);
+  const holdMs = host.combatTimingDelay(ENEMY_ATTACK_RELEASE_MS + ENEMY_ATTACK_IMPACT_ANTICIPATION_MS + ENEMY_ATTACK_IMPACT_HOLD_MS, host.enemyMoveTimingScale(enemy, move));
+  host.combatEnemyCommitmentSealBursts += 1;
+  birdAudio.play('enemyCommitment', Phaser.Math.Clamp(0.76 + damage * 0.045, 0.84, 1.28));
+
+  const shadow = host.add.image(x + 10 * view.scale, y + 14 * view.scale, 'combat-enemy-commitment-seal')
+    .setDisplaySize(size * 1.04, size * 1.04)
+    .setAlpha(reduced ? 0.26 : 0.36)
+    .setTint(0x150807)
+    .setName('combat-enemy-commitment-seal');
+  const glow = host.add.image(x, y, 'combat-enemy-commitment-seal')
+    .setDisplaySize(size * 1.12, size * 1.12)
+    .setAlpha(reduced ? 0.3 : 0.44)
+    .setBlendMode(Phaser.BlendModes.ADD)
+    .setTint(0xff8a42)
+    .setName('combat-enemy-commitment-seal');
+  const seal = host.add.image(x, y, 'combat-enemy-commitment-seal')
+    .setDisplaySize(size, size)
+    .setAlpha(reduced ? 0.88 : 0.96)
+    .setName('combat-enemy-commitment-seal');
+  host.fxLayer.add([shadow, glow, seal]);
+  host.fxLayer.setDepth(86);
+  host.children.bringToTop(host.fxLayer);
+
+  if (reduced) {
+    host.time.delayedCall(Math.max(420, holdMs), () => {
+      shadow.destroy();
+      glow.destroy();
+      seal.destroy();
+    });
+    return;
+  }
+
+  host.fxGlowPulse(x, y, 0xff7a42, 92 * view.scale, 520, 0.16);
+  host.fxMoteBurst(x, y + 16 * view.scale, 0xff9d4d, {
+    count: Phaser.Math.Clamp(8 + damage, 10, 22),
+    speed: 110 + damage * 3,
+    lifespan: Math.max(520, Math.min(980, holdMs - 180)),
+    scale: 0.42,
+    gravityY: 8,
+    spreadX: 20,
+    spreadY: 12,
+  });
+  host.tweens.add({
+    targets: [seal, glow],
+    scaleX: '+=0.08',
+    scaleY: '+=0.08',
+    duration: 260,
+    yoyo: true,
+    repeat: 1,
+    ease: 'Sine.easeInOut',
+  });
+  host.tweens.add({
+    targets: [shadow, glow, seal],
+    alpha: 0,
+    duration: 420,
+    delay: Math.max(420, holdMs - 420),
+    ease: 'Cubic.easeIn',
+    onComplete: () => {
+      shadow.destroy();
+      glow.destroy();
+      seal.destroy();
+    },
+  });
+}
 
 export interface CombatFxSpritesheetAsset extends RuntimeImageAsset {
   frameWidth: number;
@@ -212,10 +462,10 @@ export interface EnemyTurnAccelerationState {
 
 const HUSTLE_MULTIPLIER = 2.2;
 const HUSTLE_MINIMUM_MS: Partial<Record<EnemyTurnBeat, number>> = {
-  windup: 900,
-  release: 500,
-  recovery: 350,
-  interlude: 250,
+  windup: 280,
+  release: 120,
+  recovery: 100,
+  interlude: 80,
 };
 
 class EnemyTurnAccelerationController {
@@ -372,13 +622,12 @@ export function enemyTurnAccelerationElapsed(scene: Phaser.Scene) {
   return enemyTurnAccelerationControllers.get(scene)?.elapsed();
 }
 
-const ENEMY_TURN_PREAMBLE_MS = 800;
 const ENEMY_ATTACK_WINDUP_MS = 2600;
 const ENEMY_ATTACK_RELEASE_MS = 1800;
 const ENEMY_ATTACK_IMPACT_ANTICIPATION_MS = 720;
 const ENEMY_ATTACK_IMPACT_HOLD_MS = 1350;
 const ENEMY_ATTACK_RECOVER_MS = 1450;
-const ENEMY_ATTACK_INTERLUDE_MS = 850;
+const ENEMY_ATTACK_INTERLUDE_MS = 120;
 
 export function resolveEnemyTurnAnimated(
   host: any,
@@ -403,7 +652,7 @@ export function resolveEnemyTurnAnimated(
   host.combatTurnBanner('Enemy Turn', '#ff9d6b', 0xff9d6b);
   host.enemies.forEach((enemy: any) => { enemy.block = 0; });
   let attackerIndex = 0;
-  const preambleDelay = host.combatTimingDelay(ENEMY_TURN_PREAMBLE_MS);
+  const preambleDelay = host.enemyTurnPreambleDelay();
   const interludeDelay = host.combatTimingDelay(ENEMY_ATTACK_INTERLUDE_MS);
   const finish = () => {
     host.tickOpenSkyAfterEnemyPhase();
@@ -430,7 +679,7 @@ export function resolveEnemyTurnAnimated(
     host.prepareEnemyMoveContext();
     const move = getCurrentMove(enemy);
     const moveTimingScale = host.enemyMoveTimingScale(enemy, move);
-    const canHustle = moveTimingScale < 1;
+    const canHustle = moveTimingScale < 1 && host.runSeenEnemyMoves.has(host.enemyMovePacingKey(enemy, move));
     const windupDelay = host.combatTimingDelay(ENEMY_ATTACK_WINDUP_MS, moveTimingScale);
     const releaseDelay = host.combatTimingDelay(ENEMY_ATTACK_RELEASE_MS, moveTimingScale);
     const anticipationDelay = host.combatTimingDelay(ENEMY_ATTACK_IMPACT_ANTICIPATION_MS, moveTimingScale);

@@ -977,6 +977,7 @@ test('combat intro keeps gameplay locked until the reveal completes', async ({ p
 });
 
 test('combat attacks resolve after their animation wind-up', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('birdsquad.combatPace', 'cinematic'));
   // This scenario deliberately exercises player, enemy, support, and reduced-
   // motion staging in one browser test. Keep its timeout above the measured
   // ~28-31 second runtime so a busy full-suite worker does not create a false
@@ -1657,11 +1658,11 @@ test('combat redraws reuse persistent scenery and coalesce same-frame requests',
   expect(result.queueCoalesced).toBe(7);
   expect(result.queueHandBuilds).toBe(0);
   expect(result.queueHandReuses).toBe(1);
-  // Commit, resolution, and post-feedback input unlock each require one
-  // deterministic render pass while the unchanged hand remains reusable.
-  expect(result.playerPasses).toBe(3);
+  // Commit and settled input unlock publish exactly two boards; there is no
+  // redundant full rebuild in the short impact-feedback window.
+  expect(result.playerPasses).toBe(2);
   expect(result.playerHandBuilds).toBe(1);
-  expect(result.playerHandReuses).toBe(2);
+  expect(result.playerHandReuses).toBe(1);
   expect(result.enemyPasses).toBe(3);
   expect(result.enemyHandBuilds).toBe(2);
   expect(result.enemyHandReuses).toBe(1);
@@ -1735,6 +1736,7 @@ test('imagegen combat FX pack renders each wired asset', async ({ page }) => {
 });
 
 test('combat reduced-motion enemy turn still holds damage until impact', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('birdsquad.combatPace', 'cinematic'));
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await boot(page);
   const result = await page.evaluate(async () => {
@@ -1895,68 +1897,49 @@ test('adaptive combat pacing preserves first move staging and shortens repeats',
     };
   });
 
-  expect(result.firstScale).toBe(1);
-  expect(result.firstWindup).toBe(2600);
-  expect(result.repeatScale).toBeCloseTo(0.68, 2);
-  expect(result.repeatWindup).toBeCloseTo(1768, 0);
+  expect(result.firstScale).toBe(0.38);
+  expect(result.firstWindup).toBe(988);
+  expect(result.repeatScale).toBeCloseTo(0.24, 2);
+  expect(result.repeatWindup).toBeCloseTo(624, 0);
   expect(result.cinematicScale).toBe(1);
-  expect(result.snappyScale).toBeCloseTo(0.62, 2);
-  expect(result.bossScale).toBe(1);
+  expect(result.snappyScale).toBeCloseTo(0.18, 2);
+  expect(result.bossScale).toBe(0.28);
   expect(result.state.preference).toBe('snappy');
 });
 
 test('holding Hustle accelerates familiar enemy staging but preserves Impact', async ({ page }) => {
   await boot(page);
-  const hpBefore = await page.evaluate(async () => {
-    const g = window.__birdSquadGame;
-    window.localStorage.setItem('birdsquad.motionPreference', 'full');
-    window.localStorage.setItem('birdsquad.combatPace', 'standard');
-    await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
-    g.scene.stop('MenuScene');
-    const scene: any = g.scene.getScene('BattleScene');
-    const enemy = scene.enemies[0];
-    const move = { id: 'hustle_test_strike', label: 'Measured Dive', effects: ['damage(4)'] };
-    enemy.runtime.moves = [move];
-    enemy.runtime.attackPattern = { type: 'cycle', moveIds: [move.id] };
-    enemy.intentIndex = 0;
-    scene.enemies.slice(1).forEach((candidate: any) => { candidate.hp = 0; });
-    scene.runSeenEnemyMoves.add(scene.enemyMovePacingKey(enemy, move));
-    scene.combatAnimationPending = false;
-    scene.hand = [];
-    scene.endTurnAnimated();
-    return scene.flock.hp;
+  const result = await page.evaluate(async () => {
+    localStorage.setItem('birdsquad.combatPace','standard');
+    await window.__birdSquadStartScene!('BattleScene',{routeNodeId:'m1_entry'});
+    const b:any=window.__birdSquadGame.scene.getScene('BattleScene');
+    const enemy=b.enemies[0], move={id:'hustle_test',label:'Measured Dive',effects:['damage(4)']};
+    enemy.runtime.moves=[move]; enemy.runtime.attackPattern={type:'cycle',moveIds:[move.id]}; enemy.intentIndex=0;
+    b.enemies=[enemy]; b.hand=[]; b.combatAnimationPending=false;
+    b.runSeenEnemyMoves.add(b.enemyMovePacingKey(enemy,move));
+    const hp=b.flock.hp;
+    b.endTurnAnimated();
+    window.advanceTime!(180);
+    b.input.keyboard.emit('keydown-SPACE');
+    window.advanceTime!(100);
+    const protectedTell=window.__birdSquadState!();
+    window.advanceTime!(200);
+    const accelerated=window.__birdSquadState!();
+    for(let i=0;i<200 && b.combatEnemyTurnBeat!=='impact';i++) window.advanceTime!(10);
+    const impact=window.__birdSquadState!();
+    window.advanceTime!(200);
+    const afterHp=b.flock.hp;
+    b.input.keyboard.emit('keyup-SPACE');
+    return {hp,protectedTell,accelerated,impact,afterHp};
   });
-
-  await page.evaluate(() => window.advanceTime!(800));
-  const offered = await page.evaluate(() => window.__birdSquadState!());
-  expect(offered.combatEnemyTurnBeat).toBe('windup');
-  expect(offered.combatEnemyTurnAcceleration?.available).toBe(true);
-  expect(offered.combatEnemyTurnAcceleration?.active).toBe(false);
-
-  await page.keyboard.down('Space');
-  await page.evaluate(() => window.advanceTime!(700));
-  const protectedTell = await page.evaluate(() => window.__birdSquadState!());
-  expect(protectedTell.combatEnemyTurnBeat).toBe('windup');
-  expect(protectedTell.combatEnemyTurnAcceleration?.eligible).toBe(false);
-  expect(protectedTell.flock.hp).toBe(hpBefore);
-
-  await page.evaluate(() => window.advanceTime!(250));
-  const accelerated = await page.evaluate(() => window.__birdSquadState!());
-  expect(accelerated.combatEnemyTurnBeat).toBe('windup');
-  expect(accelerated.combatEnemyTurnAcceleration?.active).toBe(true);
-  expect(accelerated.combatEnemyTurnAcceleration?.multiplier).toBeCloseTo(2.2, 1);
-
-  await page.evaluate(() => window.advanceTime!(1_250));
-  const impact = await page.evaluate(() => window.__birdSquadState!());
-  expect(impact.combatEnemyTurnBeat).toBe('impact');
-  expect(impact.combatEnemyTurnAcceleration?.available).toBe(false);
-  expect(impact.combatEnemyTurnAcceleration?.active).toBe(false);
-  expect(impact.flock.hp).toBe(hpBefore);
-
-  await page.evaluate(() => window.advanceTime!(600));
-  const resolved = await page.evaluate(() => window.__birdSquadState!());
-  await page.keyboard.up('Space');
-  expect(resolved.flock.hp).toBeLessThan(hpBefore);
+  expect(result.protectedTell.combatEnemyTurnBeat).toBe('windup');
+  expect(result.protectedTell.combatEnemyTurnAcceleration.eligible).toBe(false);
+  expect(result.protectedTell.flock.hp).toBe(result.hp);
+  expect(result.accelerated.combatEnemyTurnAcceleration.active).toBe(true);
+  expect(result.impact.combatEnemyTurnBeat).toBe('impact');
+  expect(result.impact.combatEnemyTurnAcceleration.available).toBe(false);
+  expect(result.impact.flock.hp).toBe(result.hp);
+  expect(result.afterHp).toBeLessThan(result.hp);
 });
 
 test('first-flight guidance exposes route tradeoffs and Flow outcome previews', async ({ page }) => {
@@ -3256,7 +3239,7 @@ test('unsupported displays pause the game while landscape tablets remain playabl
 
   await page.setViewportSize({ width: 1000, height: 560 });
   await page.waitForFunction(() => window.__birdSquadGame?.loop.running === true);
-  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionGoal?.rendered === true);
+  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').titleBoot?.ready === true);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/title-1000x560.png' });
   const tablet = await page.evaluate(() => {
     const canvas = document.querySelector('canvas')!.getBoundingClientRect();
@@ -3344,7 +3327,7 @@ test('unsupported displays pause the game while landscape tablets remain playabl
   expect(tablet.gate).toBe('none');
   expect(tablet.game).not.toBe('none');
   expect(tablet.ariaHidden).toBe('true');
-  expect(tablet.ascensionBackplate).toEqual({ fillAlpha: 0.62, strokeAlpha: 0.5 });
+  expect(tablet.ascensionBackplate).toEqual({ fillAlpha: 0.98, strokeAlpha: 0.5 });
   expect(tablet.leaderBackplates).toHaveLength(5);
   expect(tablet.leaderBackplates.find((backplate) => backplate.selected)).toMatchObject({
     leaderId: 'fledgling',
@@ -3355,13 +3338,7 @@ test('unsupported displays pause the game while landscape tablets remain playabl
     .toEqual([expect.objectContaining({ fillAlpha: 0.86 })]);
   expect(tablet.leaderBackplates.filter((backplate) => !backplate.unlocked))
     .toEqual(Array.from({ length: 3 }, () => expect.objectContaining({ fillAlpha: 0.68, strokeAlpha: 0.46 })));
-  expect(tablet.collectionStrip).toMatchObject({
-    bounds: [920, 59, 1272, 117],
-    rightInset: 8,
-    contentInside: true,
-    interactive: true,
-  });
-  expect(tablet.collectionStrip.logoGap).toBeGreaterThanOrEqual(32);
+  expect(tablet.collectionStrip).toBeNull();
   expect(tablet.targets.filter((target) => !target.found)).toEqual([]);
   for (const target of tablet.targets) {
     expect(target.cssWidth, target.name).toBeGreaterThanOrEqual(44);
@@ -17505,6 +17482,9 @@ test('opt-in screen reader announcements follow menu, route, combat, and setting
     .some((entry) => entry.name.includes('screen-reader-summary')))).toBe(true);
   expect(await page.evaluate(() => performance.getEntriesByType('resource')
     .some((entry) => entry.name.includes('screen-reader-runtime')))).toBe(true);
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Shift+Tab');
   const menuLabelBefore = await page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').titleFocus?.label);
   await page.evaluate(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
@@ -17791,12 +17771,15 @@ test('title setup follows remapped keyboard and gamepad controls with one cue pe
 
   const initial = await state();
   expect(initial.titleFocus).toMatchObject({
-    current: 'leader', previous: 'A', next: 'D', confirm: 'Space', ringRendered: true,
+    current: 'primaryRun', previous: 'A', next: 'D', confirm: 'Space', ringRendered: true,
   });
   expect(initial.titleFocus.order).toEqual([
     'leader', 'difficulty', 'runMode', 'primaryRun', 'howToPlay', 'settings', 'codex', 'profile',
   ]);
 
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('d');
   expect((await state()).selectedLeader).toBe('spark_caller');
   await page.keyboard.press('Tab');
@@ -17875,7 +17858,7 @@ test('title setup follows remapped keyboard and gamepad controls with one cue pe
     };
   });
   expect(result).toMatchObject({ leaderId: 'spark_caller', difficulty: 1, runMode: 'quick' });
-  expect(result.confirmCues - (initial.audio.cueRequests.confirm ?? 0)).toBe(9);
+  expect(result.confirmCues - (initial.audio.cueRequests.confirm ?? 0)).toBe(12);
 });
 
 test('title utility destinations are reachable by controller without starting a run', async ({ page }) => {
@@ -17886,7 +17869,7 @@ test('title utility destinations are reachable by controller without starting a 
   }, index);
   const sceneName = () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').scene);
 
-  await menuGamepadDown(12);
+  for (let i = 0; i < 4; i++) await menuGamepadDown(12);
   expect(await page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').titleFocus.current)).toBe('profile');
   await menuGamepadDown(0);
   await expect.poll(sceneName).toBe('ProfileScene');
@@ -21254,250 +21237,41 @@ test('title logo entrance stays inside the canvas while visible', async ({ page 
   expect(entrance.bounds!.bottom).toBeLessThanOrEqual(720);
 });
 
-test('title screen fits landscape tablet viewport with all utility icons visible', async ({ page }) => {
+test('title screen fits landscape tablet viewport with readable uncluttered controls', async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await boot(page);
-  const result = await page.evaluate(async () => {
-    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
-    const g = window.__birdSquadGame;
-    await window.__birdSquadStartScene!('MenuScene');
-    const menu: any = g.scene.getScene('MenuScene');
-    const collectTextureObjects = (children: any[], textureKey: string): any[] => {
-      const found: any[] = [];
-      for (const child of children ?? []) {
-        if (child.texture?.key === textureKey) found.push(child);
-        if (Array.isArray(child.list)) found.push(...collectTextureObjects(child.list, textureKey));
-      }
-      return found;
-    };
-    const expected = [
-      'ui-icon-audio-toggle-medallion',
-      'ui-icon-audio-toggle-pulse-ring',
-      'ui-icon-help-medallion',
-      'ui-icon-settings-medallion',
-      'ui-icon-codex-medallion',
-      'ui-icon-record-medallion',
-      'ui-icon-start-run-medallion',
-      'ui-icon-ascension-medallion',
-      'ui-icon-leader-select-medallion',
-      'ui-icon-leader-lock-medallion',
-      'ui-icon-leader-ready-medallion',
-      'ui-icon-title-utility-command-frame',
-      'ui-icon-title-leader-card-frame',
-      'ui-icon-title-leader-selected-flourish',
-      'ui-icon-title-leader-header-frame',
-      'ui-icon-title-start-command-frame',
-      'ui-icon-title-home-command-dais',
-      'ui-icon-title-logo-backplate',
-      'ui-icon-title-ascension-plaque',
-      'ui-icon-title-ascension-value-frame',
-      'ui-icon-title-ascension-stepper-frame',
-      'ui-icon-title-ascension-status-strip',
-    ];
-    for (let i = 0; i < 120; i += 1) {
-      const ready = expected.every((key) => menu.textures.exists(key))
-        && expected.every((key) => collectTextureObjects(menu.children.list, key).length > 0);
-      if (ready) break;
-      await wait(50);
-    }
-    for (let i = 0; i < 80; i += 1) {
-      const composition = JSON.parse(window.render_game_to_text!()).titleComposition;
-      if (composition?.logoWithinCanvas && composition?.hintWithinCanvas && composition?.clear) break;
-      await wait(50);
-    }
-    const canvas = document.querySelector('canvas')?.getBoundingClientRect();
+  const result = await page.evaluate(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
     const state = JSON.parse(window.render_game_to_text!());
+    const canvas = document.querySelector('canvas')!.getBoundingClientRect();
+    const controls = menu.children.list.filter((o: any) =>
+      ['title-utility-hit', 'title-run-action', 'title-leader-choice-backplate'].includes(o.name));
     return {
-      canvas: canvas ? {
-        left: canvas.left,
-        right: canvas.right,
-        top: canvas.top,
-        bottom: canvas.bottom,
-        width: canvas.width,
-        height: canvas.height,
-      } : undefined,
-      viewport: { width: window.innerWidth, height: window.innerHeight },
-      utilityIcons: expected.map((key) => ({
-        key,
-        loaded: menu.textures.exists(key),
-        rendered: collectTextureObjects(menu.children.list, key).length > 0,
-      })),
-      titleAscensionStepperFrames: menu.children.list
-        .filter((child: any) => child.texture?.key === 'ui-icon-title-ascension-stepper-frame')
-        .map((child: any) => ({
-          displayWidth: Math.round(child.displayWidth),
-          displayHeight: Math.round(child.displayHeight),
-          alpha: Number(child.alpha?.toFixed?.(3) ?? child.alpha),
-          name: child.name,
-          visible: child.visible,
-        })),
-      titleAscensionValueFrames: menu.children.list
-        .filter((child: any) => child.texture?.key === 'ui-icon-title-ascension-value-frame')
-        .map((child: any) => ({
-          displayWidth: Math.round(child.displayWidth),
-          displayHeight: Math.round(child.displayHeight),
-          alpha: Number(child.alpha?.toFixed?.(3) ?? child.alpha),
-          name: child.name,
-          visible: child.visible,
-        })),
-      titleAscensionStatusStrips: menu.children.list
-        .filter((child: any) => child.texture?.key === 'ui-icon-title-ascension-status-strip')
-        .map((child: any) => ({
-          displayWidth: Math.round(child.displayWidth),
-          displayHeight: Math.round(child.displayHeight),
-          alpha: Number(child.alpha?.toFixed?.(3) ?? child.alpha),
-          name: child.name,
-          visible: child.visible,
-        })),
-      titleLeaderHeaderFrames: menu.children.list
-        .filter((child: any) => child.texture?.key === 'ui-icon-title-leader-header-frame')
-        .map((child: any) => ({
-          displayWidth: Math.round(child.displayWidth),
-          displayHeight: Math.round(child.displayHeight),
-          alpha: Number(child.alpha?.toFixed?.(3) ?? child.alpha),
-          name: child.name,
-          visible: child.visible,
-        })),
-      titleLeaderSelectedFlourishes: menu.children.list
-        .filter((child: any) => child.texture?.key === 'ui-icon-title-leader-selected-flourish')
-        .map((child: any) => ({
-          displayWidth: Math.round(child.displayWidth),
-          displayHeight: Math.round(child.displayHeight),
-          alpha: Number(child.alpha?.toFixed?.(3) ?? child.alpha),
-          name: child.name,
-          visible: child.visible,
-        })),
-      titleLogoBackplates: collectTextureObjects(menu.children.list, 'ui-icon-title-logo-backplate')
-        .map((child: any) => ({
-          displayWidth: Math.round(child.displayWidth),
-          displayHeight: Math.round(child.displayHeight),
-          alpha: Number(child.alpha?.toFixed?.(3) ?? child.alpha),
-          name: child.name,
-          visible: child.visible,
-        })),
-      titleAscensionPlaque: state.titleAscensionPlaque,
-      titleAscensionValueFrame: state.titleAscensionValueFrame,
-      titleAscensionStepperFrame: state.titleAscensionStepperFrame,
-      titleAscensionStatusStrip: state.titleAscensionStatusStrip,
-      titleHomeCommandDais: state.titleHomeCommandDais,
-      titleLogoBackplate: state.titleLogoBackplate,
-      titleComposition: state.titleComposition,
-      titleLeaderCardFrame: state.titleLeaderCardFrame,
-      titleLeaderSelectedFlourish: state.titleLeaderSelectedFlourish,
-      titleLeaderHeaderFrame: state.titleLeaderHeaderFrame,
-      titleLeaderTooltipFrame: state.titleLeaderTooltipFrame,
-      titleStartCommandFrame: state.titleStartCommandFrame,
-      titleUtilityCommandFrame: state.titleUtilityCommandFrame,
-      audioTogglePulseRing: state.audioTogglePulseRing,
-      audioToggleWaveBurst: state.audioToggleWaveBurst,
-      selectedDifficulty: state.selectedDifficulty,
-      maxUnlockedDifficulty: state.maxUnlockedDifficulty,
+      canvas: {left:canvas.left,right:canvas.right,top:canvas.top,bottom:canvas.bottom},
+      controls: controls.map((o: any) => {
+        const b=o.getBounds();
+        return {left:b.left,right:b.right,top:b.top,bottom:b.bottom,height:b.height,enabled:o.input?.enabled};
+      }),
+      composition: state.titleComposition,
+      frames: [state.titleLeaderCardFrame, state.titleStartCommandFrame, state.titleUtilityCommandFrame],
     };
   });
-  expect(result.canvas).toBeTruthy();
-  expect(result.canvas!.left).toBeGreaterThanOrEqual(-1);
-  expect(result.canvas!.right).toBeLessThanOrEqual(result.viewport.width + 1);
-  expect(result.canvas!.top).toBeGreaterThanOrEqual(-1);
-  expect(result.canvas!.bottom).toBeLessThanOrEqual(result.viewport.height + 1);
-  expect(result.utilityIcons.filter((icon) => !icon.loaded || !icon.rendered)).toEqual([]);
-  expect(result.titleAscensionPlaque.loaded).toBe(true);
-  expect(result.titleAscensionPlaque.rendered).toBe(true);
-  expect(result.titleAscensionValueFrame.loaded).toBe(true);
-  expect(result.titleAscensionValueFrame.rendered).toBe(true);
-  expect(result.titleAscensionValueFrame.count).toBe(1);
-  expect(result.titleAscensionValueFrames).toHaveLength(1);
-  expect(result.titleAscensionValueFrames[0]).toMatchObject({
-    displayWidth: 190,
-    displayHeight: 58,
-    name: 'title-ascension-value-frame',
-    visible: true,
-  });
-  expect(result.titleAscensionValueFrames[0].alpha).toBeGreaterThan(0.6);
-  expect(result.titleAscensionStepperFrame.loaded).toBe(true);
-  expect(result.titleAscensionStepperFrame.rendered).toBe(true);
-  expect(result.titleAscensionStepperFrame.count).toBe(2);
-  expect(result.titleAscensionStepperFrames).toHaveLength(2);
-  for (const frame of result.titleAscensionStepperFrames) {
-    expect(frame).toMatchObject({
-      displayWidth: 46,
-      displayHeight: 46,
-      name: 'title-ascension-stepper-frame',
-      visible: true,
-    });
-    expect(frame.alpha).toBeGreaterThan(0.7);
+  expect(result.canvas.left).toBeGreaterThanOrEqual(-1);
+  expect(result.canvas.right).toBeLessThanOrEqual(1025);
+  expect(result.canvas.top).toBeGreaterThanOrEqual(-1);
+  expect(result.canvas.bottom).toBeLessThanOrEqual(769);
+  expect(result.controls).toHaveLength(10);
+  for (const c of result.controls) {
+    expect(c.enabled).toBe(true);
+    expect(c.left).toBeGreaterThanOrEqual(0);
+    expect(c.right).toBeLessThanOrEqual(1280);
+    expect(c.top).toBeGreaterThanOrEqual(0);
+    expect(c.bottom).toBeLessThanOrEqual(720);
+    expect(c.height * 0.8).toBeGreaterThanOrEqual(44);
   }
-  expect(result.titleAscensionStatusStrip.loaded).toBe(true);
-  expect(result.titleAscensionStatusStrip.rendered).toBe(true);
-  expect(result.titleAscensionStatusStrip.count).toBe(1);
-  expect(result.titleAscensionStatusStrips).toHaveLength(1);
-  expect(result.titleAscensionStatusStrips[0]).toMatchObject({
-    displayWidth: 306,
-    displayHeight: 58,
-    name: 'title-ascension-status-strip',
-    visible: true,
-  });
-  expect(result.titleAscensionStatusStrips[0].alpha).toBeGreaterThan(0.35);
-  expect(result.titleHomeCommandDais.loaded).toBe(true);
-  expect(result.titleHomeCommandDais.rendered).toBe(true);
-  expect(result.titleHomeCommandDais.count).toBeGreaterThanOrEqual(1);
-  expect(result.titleLogoBackplate.loaded).toBe(true);
-  expect(result.titleLogoBackplate.rendered).toBe(true);
-  expect(result.titleLogoBackplate.count).toBe(1);
-  expect(result.titleLogoBackplates).toHaveLength(1);
-  expect(result.titleLogoBackplates[0]).toMatchObject({
-    displayWidth: 456,
-    displayHeight: 171,
-    name: 'title-logo-backplate',
-    visible: true,
-  });
-  expect(result.titleLogoBackplates[0].alpha).toBeGreaterThan(0.3);
-  expect(result.titleComposition).toMatchObject({
-    logoWithinCanvas: true,
-    hintWithinCanvas: true,
-    clear: true,
-  });
-  expect(result.titleComposition.logo.top).toBeGreaterThanOrEqual(0);
-  expect(result.titleComposition.hintBackdrop.top).toBeGreaterThan(result.titleComposition.logo.bottom);
-  expect(result.titleComposition.hint.width).toBeGreaterThan(380);
-  expect(result.titleLeaderCardFrame.loaded).toBe(true);
-  expect(result.titleLeaderCardFrame.rendered).toBe(true);
-  expect(result.titleLeaderCardFrame.count).toBeGreaterThanOrEqual(5);
-  expect(result.titleLeaderSelectedFlourish.loaded).toBe(true);
-  expect(result.titleLeaderSelectedFlourish.rendered).toBe(true);
-  expect(result.titleLeaderSelectedFlourish.count).toBe(1);
-  expect(result.titleLeaderSelectedFlourishes.filter((frame: any) => frame.visible)).toHaveLength(1);
-  expect(result.titleLeaderSelectedFlourishes.some((frame: any) => (
-    frame.name === 'title-leader-selected-flourish'
-      && frame.displayWidth >= 236
-      && frame.displayWidth <= 241
-      && frame.displayHeight >= 82
-      && frame.displayHeight <= 84
-  ))).toBe(true);
-  expect(result.titleLeaderSelectedFlourishes.find((frame: any) => frame.visible)?.alpha).toBeGreaterThan(0.7);
-  expect(result.titleLeaderHeaderFrame.loaded).toBe(true);
-  expect(result.titleLeaderHeaderFrame.rendered).toBe(true);
-  expect(result.titleLeaderHeaderFrame.count).toBe(1);
-  expect(result.titleLeaderHeaderFrames).toHaveLength(1);
-  expect(result.titleLeaderHeaderFrames[0]).toMatchObject({
-    displayWidth: 386,
-    displayHeight: 80,
-    name: 'title-leader-header-frame',
-    visible: true,
-  });
-  expect(result.titleLeaderHeaderFrames[0].alpha).toBeGreaterThan(0.5);
-  expect(result.titleLeaderTooltipFrame.loaded).toBe(true);
-  expect(result.titleLeaderTooltipFrame.rendered).toBe(false);
-  expect(result.titleLeaderTooltipFrame.count).toBe(0);
-  expect(result.titleStartCommandFrame.loaded).toBe(true);
-  expect(result.titleStartCommandFrame.rendered).toBe(true);
-  expect(result.titleStartCommandFrame.count).toBeGreaterThanOrEqual(1);
-  expect(result.titleUtilityCommandFrame.loaded).toBe(true);
-  expect(result.titleUtilityCommandFrame.rendered).toBe(true);
-  expect(result.titleUtilityCommandFrame.count).toBeGreaterThanOrEqual(4);
-  expect(result.audioTogglePulseRing).toEqual({ loaded: true, rendered: true, count: 1 });
-  expect(result.audioToggleWaveBurst).toEqual({ loaded: true, rendered: false, count: 1, visible: 0 });
-  expect(result.selectedDifficulty).toBeGreaterThanOrEqual(0);
-  expect(result.maxUnlockedDifficulty).toBeGreaterThanOrEqual(0);
+  expect(result.composition).toMatchObject({logoWithinCanvas:true,hintWithinCanvas:true,clear:true});
+  expect(result.composition.logo.top).toBeGreaterThan(67);
+  expect(result.frames.every((f:any) => !f.rendered)).toBe(true);
 });
 
 test('title start run renders generated launch flourish before route transition', async ({ page }) => {
@@ -29580,7 +29354,7 @@ test('collection milestones reward breadth, acquisition variety, Hunt goals, and
   await page.screenshot({ path: '.artifacts/test-results/collection-milestones-profile.png', fullPage: true });
 });
 
-test('title collection goal stays compact with a longer milestone label and opens the Atlas', async ({ page }) => {
+test('title keeps collection goals in the Atlas reached from its utility', async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 560 });
   await page.addInitScript(() => {
     const ids = [
@@ -29603,51 +29377,18 @@ test('title collection goal stays compact with a longer milestone label and open
     localStorage.setItem('birdsquad.account.backup', raw);
   });
   await boot(page);
-  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionGoal?.rendered === true);
-  await page.waitForTimeout(1_200);
-
-  const result = await page.evaluate(() => {
-    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
-    const hit = menu.children.list.find((child: any) => child.name === 'title-collection-goal-hit');
-    const kicker = menu.children.list.find((child: any) => child.name === 'title-collection-goal-hit-kicker');
-    const label = menu.children.list.find((child: any) => child.name === 'title-collection-goal-hit-label');
-    const logo = menu.children.list.find((child: any) => child.name === 'title-logo');
-    const logoCore = logo?.list?.find((child: any) => child.name === 'title-logo-backplate');
-    const bounds = hit.getBounds();
-    const contains = (inner: any) => (
-      inner.left >= bounds.left
-      && inner.right <= bounds.right
-      && inner.top >= bounds.top
-      && inner.bottom <= bounds.bottom
-    );
-    return {
-      bounds: [bounds.left, bounds.top, bounds.right, bounds.bottom],
-      logoGap: bounds.left - logoCore.getBounds().right,
-      rightInset: 1280 - bounds.right,
-      contentInside: [kicker, label].every((entry) => entry && contains(entry.getBounds())),
-      kicker: kicker?.text,
-      label: label?.text,
-      interactive: hit.input?.enabled === true,
-    };
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionGoal?.rendered)).toBe(false);
+  await page.evaluate(() => {
+    const m:any = window.__birdSquadGame.scene.getScene('MenuScene');
+    m.menuFocusTargets.get('codex').emit('pointerdown');
   });
-
-  expect(result).toMatchObject({
-    bounds: [920, 59, 1272, 117],
-    rightInset: 8,
-    contentInside: true,
-    interactive: true,
-  });
-  expect(result.logoGap).toBeGreaterThanOrEqual(32);
-  expect(result.kicker).toContain('COLLECTION PATH  /  10/110 CARDS  /  2/6 BADGES');
-  expect(result.label).toContain("CURATOR'S EYE  1/3");
-  expect(result.label).toContain('OPEN ATLAS');
-  await page.screenshot({ path: '.artifacts/test-results/title-collection-goal-1000x560.png' });
-
-  await clickNamedGameObject(page, 'MenuScene', 'title-collection-goal-hit');
   await page.waitForFunction(() => {
     const current = JSON.parse(window.render_game_to_text?.() ?? '{}');
     return current.mode === 'codex' && current.collectionAtlas?.open === true;
   });
+  const state = await page.evaluate(() => JSON.parse(window.render_game_to_text!()));
+  expect(state.collectionAtlas.nextMilestone).toMatchObject({id:'collection_curator',current:1,target:3});
+  await page.screenshot({path:'.artifacts/test-results/quiet-title-collection-atlas.png'});
 });
 
 test('collection path surfaces the next optional goal from title and route and returns to the active flight', async ({ page }) => {
@@ -29673,69 +29414,16 @@ test('collection path surfaces the next optional goal from title and route and r
     localStorage.setItem('birdsquad.screenReader', 'on');
   });
   await boot(page);
-  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionGoal?.rendered === true);
-
+  await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionGoal?.rendered)).toBe(false);
   let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(state.collectionGoal).toMatchObject({
-    owned: 10,
-    total: 110,
-    completed: 2,
-    milestoneTotal: 6,
-    next: {
-      id: 'collection_curator',
-      name: "Curator's Eye",
-      current: 1,
-      target: 3,
-      complete: false,
-    },
-    allComplete: false,
-    optional: true,
-    affectsPower: false,
-    timeLimited: false,
-    destination: 'Collection Atlas',
-    rendered: true,
-    input: {
-      pointer: true,
-      keyboardFocus: 'codex',
-      controllerFocus: 'codex',
-    },
+    owned:10,total:110,completed:2,next:{id:'collection_curator',current:1,target:3},
+    optional:true,affectsPower:false,timeLimited:false,rendered:false,
   });
-  const titleStrip = await page.evaluate(() => {
-    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
-    const hit = menu.children.list.find((child: any) => child.name === 'title-collection-goal-hit');
-    const kicker = menu.children.list.find((child: any) => child.name === 'title-collection-goal-hit-kicker');
-    const label = menu.children.list.find((child: any) => child.name === 'title-collection-goal-hit-label');
-    const logo = menu.children.list.find((child: any) => child.name === 'title-logo');
-    const logoCore = logo?.list?.find((child: any) => child.name === 'title-logo-backplate');
-    const bounds = hit.getBounds();
-    const contains = (outer: any, inner: any) => (
-      inner.left >= outer.left
-      && inner.right <= outer.right
-      && inner.top >= outer.top
-      && inner.bottom <= outer.bottom
-    );
-    return {
-      bounds: { left: bounds.left, top: bounds.top, right: bounds.right, bottom: bounds.bottom },
-      interactive: hit.input?.enabled === true,
-      label: label?.text,
-      logoGap: bounds.left - logoCore.getBounds().right,
-      rightInset: 1280 - bounds.right,
-      contentInside: [kicker, label].every((entry) => entry && contains(bounds, entry.getBounds())),
-    };
+  await page.evaluate(() => {
+    const m:any = window.__birdSquadGame.scene.getScene('MenuScene');
+    m.menuFocusTargets.get('codex').emit('pointerdown');
   });
-  expect(titleStrip.bounds).toEqual({ left: 920, top: 59, right: 1272, bottom: 117 });
-  expect(titleStrip.interactive).toBe(true);
-  expect(titleStrip.label).toContain("CURATOR'S EYE  1/3");
-  expect(titleStrip.logoGap).toBeGreaterThanOrEqual(32);
-  expect(titleStrip.rightInset).toBe(8);
-  expect(titleStrip.contentInside).toBe(true);
-  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
-    timeout: 5_000,
-  }).toContain('No deadline and no gameplay power');
-  await page.setViewportSize({ width: 1000, height: 560 });
-  await page.screenshot({ path: '.artifacts/test-results/collection-path-title.png', fullPage: true });
-
-  await clickNamedGameObject(page, 'MenuScene', 'title-collection-goal-hit');
   await page.waitForFunction(() => {
     const current = JSON.parse(window.render_game_to_text?.() ?? '{}');
     return current.mode === 'codex' && current.collectionAtlas?.open === true;

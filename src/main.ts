@@ -2163,7 +2163,7 @@ const ROUTE_CONFIRM_HIT_SIZE = 82;
 const ROUTE_CONFIRM_LABEL_OFFSET_X = -86;
 const ROUTE_CONFIRM_LABEL_WIDTH = 128;
 const ROUTE_COMMIT_STREAK_TEXTURE = 'route-commit-streak';
-const ROUTE_COMMIT_STREAK_DELAY_MS = 520;
+const ROUTE_COMMIT_STREAK_DELAY_MS = 180;
 const TITLE_RUN_LAUNCH_FLOURISH_TEXTURE = 'title-run-launch-flourish';
 // Anchor points for combat FX (floating numbers / bursts), matching the
 // enemy body (battle foreground renderer) and flock panel positions.
@@ -2173,21 +2173,20 @@ const FLOCK_FX_X = 230;
 const FLOCK_FX_Y = 332;
 const FLOCK_ART_X = 230;
 const FLOCK_ART_Y = 340;
-const PLAYER_ATTACK_RESOLVE_DELAY_MS = 430;
-const PLAYER_CARD_RESOLVE_DELAY_MS = 300;
-const PLAYER_CARD_FEEDBACK_SETTLE_MS = 100;
-const PLAYER_TURN_HANDOFF_DELAY_MS = 900;
-const ENEMY_TURN_PREAMBLE_MS = 800;
+const PLAYER_ATTACK_RESOLVE_DELAY_MS = 240;
+const PLAYER_CARD_RESOLVE_DELAY_MS = 180;
+const PLAYER_CARD_FEEDBACK_SETTLE_MS = 60;
+const PLAYER_TURN_HANDOFF_DELAY_MS = 180;
+const ENEMY_TURN_PREAMBLE_MS = 180;
 const ENEMY_ATTACK_WINDUP_MS = 2600;
 const ENEMY_ATTACK_RELEASE_MS = 1800;
 const ENEMY_ATTACK_IMPACT_ANTICIPATION_MS = 720;
-const ENEMY_ATTACK_IMPACT_HOLD_MS = 1350;
 const ENEMY_ATTACK_RECOVER_MS = 1450;
 const COMBAT_REDUCED_MOTION_TIMING_SCALE = 0.75;
-const COMBAT_REDUCED_MOTION_MIN_DELAY_MS = 520;
-const COMBAT_STANDARD_REPEAT_TIMING_SCALE = 0.68;
-const COMBAT_SNAPPY_TIMING_SCALE = 0.62;
-const COMBAT_SNAPPY_MIN_DELAY_MS = 320;
+const COMBAT_REDUCED_MOTION_MIN_DELAY_MS = 40;
+const COMBAT_STANDARD_REPEAT_TIMING_SCALE = 0.24;
+const COMBAT_SNAPPY_TIMING_SCALE = 0.72;
+const COMBAT_SNAPPY_MIN_DELAY_MS = 40;
 // HP-bar geometry, shared by the foreground renderer / top status bar and the
 // drain animation (fadeRect in damageEnemy / damageFlock / healFlock) so they line up.
 const ENEMY_HP_BAR = { x: 920, y: 318, w: 210, h: 24 };
@@ -2252,8 +2251,6 @@ const COMBAT_TARGET_LOCK_PULSE_TEXTURE = 'combat-target-lock-pulse';
 const COMBAT_ENCOUNTER_INTRO_TEXTURE = 'combat-encounter-intro';
 const COMBAT_INTRO_MIN_DISMISS_MS = 600;
 const COMBAT_TURN_BANNER_TEXTURE = 'combat-turn-banner';
-const COMBAT_ROOST_HANDOFF_TEXTURE = 'combat-roost-handoff';
-const COMBAT_PLAYER_TURN_RALLY_TEXTURE = 'combat-player-turn-rally';
 const COMBAT_DEFEAT_BURST_TEXTURE = 'combat-defeat-burst';
 const COMBAT_IMPACT_FLASH_TEXTURE = 'combat-impact-flash';
 const COMBAT_PLAYER_HIT_CONFIRM_TEXTURE = 'combat-player-hit-confirm';
@@ -2293,7 +2290,6 @@ const COMBAT_ENEMY_ATTACK_TELL_TEXTURE = 'combat-enemy-attack-tell';
 const COMBAT_ENEMY_SUPPORT_CHARGE_TEXTURE = 'combat-enemy-support-charge';
 const COMBAT_ENEMY_SUPPORT_TELL_TEXTURE = 'combat-enemy-support-tell';
 const COMBAT_ENEMY_WINDUP_PLAQUE_TEXTURE = 'combat-enemy-windup-plaque';
-const COMBAT_ENEMY_COMMITMENT_SEAL_TEXTURE = 'combat-enemy-commitment-seal';
 const COMBAT_ENEMY_RECOVERY_AFTERGLOW_TEXTURE = 'combat-enemy-recovery-afterglow';
 const COMBAT_MOLT_SHIFT_TEXTURE = 'combat-molt-shift';
 const COMBAT_OPEN_SKY_GUARD_TEXTURE = 'combat-open-sky-guard';
@@ -4635,7 +4631,7 @@ class MenuScene extends Phaser.Scene {
   private titleRunLaunchPending = false;
   titleRunLaunchFlourishBursts = 0;
   codexOpening = false;
-  private menuFocus: MenuFocus = 'leader';
+  private menuFocus: MenuFocus = 'primaryRun';
   private menuFocusTargets = new Map<MenuFocus, Phaser.GameObjects.Rectangle>();
   private runModeFocusTargets = new Map<RunMode, Phaser.GameObjects.Rectangle>();
   private runModeViews = new Map<RunMode, {
@@ -4680,11 +4676,11 @@ class MenuScene extends Phaser.Scene {
     this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'splash')
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
       .setAlpha(1);
-    this.add.rectangle(GAME_WIDTH / 2, 580, GAME_WIDTH, 282, 0x02050a, 0.42);
+    this.add.rectangle(GAME_WIDTH / 2, 576, GAME_WIDTH, 288, 0x07111b, 0.96).setName('title-setup-surface');
 
     this.createHomeParticles();
     this.createAnimatedTitle();
-    this.renderTitleHomeCommandDais();
+
     renderAudioToggleControl(this, () => {}, 48, 38);
     this.menuFocusTargets.set('howToPlay', this.renderTopUtilityButton(GAME_WIDTH - 536, 38, 'How to Play', 'howToPlay', () => this.openHelpOverlay()));
     this.menuFocusTargets.set('settings', this.renderTopUtilityButton(GAME_WIDTH - 388, 38, 'Settings', 'settings', () => this.openSettingsOverlay()));
@@ -4692,13 +4688,12 @@ class MenuScene extends Phaser.Scene {
     // Keep difficulty near the run action without adding a full-width dock. A
     // stronger local backplate keeps the setup legible over the detailed key art.
     this.selectedDifficulty = Math.min(this.selectedDifficulty, getMaxUnlockedTier());
-    const plaqueRendered = this.renderTitleAscensionPlaque(228, 642);
-    const difficultyPanel = this.add.rectangle(228, 642, 314, 102, 0x05070c, plaqueRendered ? 0.62 : 0.76)
-      .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, plaqueRendered ? 0.5 : 0.7)
+    const difficultyPanel = this.add.rectangle(228, 638, 314, 94, 0x07111b, 0.98)
+      .setStrokeStyle(1, MENU_BORDER_COLOR, 0.5)
       .setName('title-ascension-backplate');
     this.menuFocusTargets.set('difficulty', difficultyPanel);
-    addUiIconImage(this, 'ascension-medallion', 88, 602, 14)?.setAlpha(0.92);
-    this.add.text(144, 600, 'ASCENSION', {
+
+    this.add.text(228, 596, 'ASCENSION', {
       fontFamily: UI_FONT,
       fontSize: '12px',
       fontStyle: UI_BOLD,
@@ -4706,21 +4701,17 @@ class MenuScene extends Phaser.Scene {
       stroke: '#05070c',
       strokeThickness: 2,
     }).setResolution(2).setOrigin(0.5);
-    this.renderTitleAscensionStatusStrip(228, 669);
-    this.renderTitleAscensionValueFrame(228, 630);
-    const hasStepperFrame = this.textures.exists(uiIconAssets['title-ascension-stepper-frame'].key);
-    const dec = this.add.rectangle(100, 632, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x0d1420, hasStepperFrame ? 0.1 : 0.9)
-      .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, hasStepperFrame ? 0.16 : 0.86).setInteractive({ useHandCursor: true });
-    const decFrame = this.renderTitleAscensionStepperFrame(100, 632);
-    dec.on('pointerover', () => decFrame?.setAlpha(0.92));
-    dec.on('pointerout', () => decFrame?.setAlpha(0.72));
+
+    const dec = this.add.rectangle(100, 632, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x0d1420, 0.9)
+      .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, 0.55).setInteractive({ useHandCursor: true });
+    dec.on('pointerover', () => dec.setFillStyle(0x223448, 1));
+    dec.on('pointerout', () => dec.setFillStyle(0x0d1420, 0.9));
     dec.on('pointerdown', () => { this.menuFocus = 'difficulty'; playUiSound('confirm'); this.stepDifficulty(-1); this.updateMenuFocusRing(); });
     this.add.text(100, 631, '<', { fontFamily: UI_FONT, fontSize: '17px', fontStyle: UI_BOLD, color: '#eef7ff', stroke: '#05070c', strokeThickness: 1 }).setResolution(2).setOrigin(0.5);
-    const inc = this.add.rectangle(356, 632, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x0d1420, hasStepperFrame ? 0.1 : 0.9)
-      .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, hasStepperFrame ? 0.16 : 0.86).setInteractive({ useHandCursor: true });
-    const incFrame = this.renderTitleAscensionStepperFrame(356, 632);
-    inc.on('pointerover', () => incFrame?.setAlpha(0.92));
-    inc.on('pointerout', () => incFrame?.setAlpha(0.72));
+    const inc = this.add.rectangle(356, 632, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x0d1420, 0.9)
+      .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, 0.55).setInteractive({ useHandCursor: true });
+    inc.on('pointerover', () => inc.setFillStyle(0x223448, 1));
+    inc.on('pointerout', () => inc.setFillStyle(0x0d1420, 0.9));
     inc.on('pointerdown', () => { this.menuFocus = 'difficulty'; playUiSound('confirm'); this.stepDifficulty(1); this.updateMenuFocusRing(); });
     this.add.text(356, 631, '>', { fontFamily: UI_FONT, fontSize: '17px', fontStyle: UI_BOLD, color: '#eef7ff', stroke: '#05070c', strokeThickness: 1 }).setResolution(2).setOrigin(0.5);
     this.difficultyLabelText = this.add.text(228, 630, '', {
@@ -4741,9 +4732,8 @@ class MenuScene extends Phaser.Scene {
 
     this.menuAccount = loadAccount();
     if (!isLeaderUnlocked(this.menuAccount, this.selectedLeaderId)) this.selectedLeaderId = defaultLeaderId;
-    this.renderTitleLeaderHeaderFrame(GAME_WIDTH / 2, 470);
-    addUiIconImage(this, 'leader-select-medallion', GAME_WIDTH / 2 - 126, 470, 16)?.setAlpha(0.92);
-    this.add.text(GAME_WIDTH / 2 + 14, 470, 'Choose your Flock Leader', {
+
+    this.add.text(GAME_WIDTH / 2, 456, 'FLOCK LEADER', {
       fontFamily: UI_FONT,
       fontSize: '14px',
       fontStyle: UI_BOLD,
@@ -4762,11 +4752,10 @@ class MenuScene extends Phaser.Scene {
         .setName('title-leader-choice-backplate')
         .setData('leaderId', leader.id)
         .setData('unlocked', unlocked);
-      const cardFrame = this.renderTitleLeaderCardFrame(px, py, unlocked);
-      const selectedFlourish = unlocked ? this.renderTitleLeaderSelectedFlourish(px, py) : undefined;
+
       rect.on('pointerover', () => this.showLeaderTooltip(leader.id, px));
       rect.on('pointerout', () => this.hideLeaderTooltip());
-       if (unlocked) {
+      if (unlocked) {
          rect.on('pointerdown', () => {
            this.menuFocus = 'leader';
            playUiSound('confirm');
@@ -4774,28 +4763,28 @@ class MenuScene extends Phaser.Scene {
            this.showLeaderTooltip(leader.id, px);
            this.updateMenuFocusRing();
          });
+      } else {
+        rect.on('pointerdown', () => this.showLeaderTooltip(leader.id, px));
       }
-      const selectedIcon = unlocked ? addUiIconImage(this, 'leader-ready-medallion', px - 76, py - 17, 12) : undefined;
-      selectedIcon?.setAlpha(0).setVisible(false);
+
       this.add.text(px, py - 17, leader.name, {
-        fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: unlocked ? '#ffe1a3' : '#8290a0', align: 'center', stroke: '#05070c', strokeThickness: 1, wordWrap: { width: 184 }
+        fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: unlocked ? '#ffe1a3' : '#8290a0', align: 'center', stroke: '#05070c', strokeThickness: 1, wordWrap: { width: 184 }
       }).setResolution(2).setOrigin(0.5);
-      if (!unlocked) addUiIconImage(this, 'leader-lock-medallion', px - 73, py + 15, 13)?.setAlpha(0.58);
-      const mastery = leaderMastery(this.menuAccount, leader.id);
+
       const detail = unlocked
-        ? `${leader.id === defaultLeaderId ? 'RECOMMENDED FIRST FLIGHT' : `MASTERY: ${mastery.title}`}\n${mastery.nextGoal} (${mastery.current}/${mastery.target})`
-        : 'LOCKED  /  Focus for requirements';
-      const detailText = this.add.text(unlocked ? px : px + 18, py + 15, detail, {
+        ? leader.id === defaultLeaderId ? 'Recommended first flight' : leader.suit
+        : 'Locked · View requirements';
+      const detailText = this.add.text(px, py + 15, detail, {
         fontFamily: UI_FONT,
-        fontSize: unlocked ? '10px' : '9px',
+        fontSize: '12px',
         color: unlocked ? '#dce7f2' : '#8895a5',
         align: 'center',
         stroke: '#05070c',
         strokeThickness: 1,
-        wordWrap: { width: unlocked ? 184 : 132 }
+        wordWrap: { width: 184 }
       }).setResolution(2).setOrigin(0.5);
       detailText.setLineSpacing(2);
-      this.leaderPanels.push({ id: leader.id, rect, unlocked, selectedIcon, cardFrame, selectedFlourish });
+      this.leaderPanels.push({ id: leader.id, rect, unlocked });
     });
     this.selectLeader(this.selectedLeaderId);
 
@@ -4831,14 +4820,7 @@ class MenuScene extends Phaser.Scene {
 
     this.menuFocusTargets.set('profile', this.renderTopUtilityButton(GAME_WIDTH - 92, 38, 'Flock Record', 'profile', () => openProfileScene(this)));
     this.menuFocusTargets.set('codex', this.renderTopUtilityButton(GAME_WIDTH - 240, 38, 'Collection', 'codex', () => this.openCodex(true)));
-    renderCollectionGoalStrip(
-      this,
-      GAME_WIDTH - 184,
-      88,
-      352,
-      'title-collection-goal-hit',
-      (cardId) => this.openCodex(!cardId, cardId),
-    );
+
     this.installMenuFocusInput();
     this.renderMenuFocusHint();
     this.updateMenuFocusRing();
@@ -5023,25 +5005,11 @@ class MenuScene extends Phaser.Scene {
   }
 
   private renderMenuFocusHint() {
-    this.add.rectangle(GAME_WIDTH / 2, 262, 470, 26, 0x05070c, 0.5)
-      .setStrokeStyle(1, UI_FIELD.cyan, 0.28)
-      .setDepth(19)
-      .setName('title-input-hint-backdrop');
-    this.add.text(
-      GAME_WIDTH / 2,
-      262,
-      `Up / Down or Tab: Focus   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Adjust   |   ${controlBindingLabel('confirm')} or A: Select`,
-      {
-        fontFamily: UI_FONT,
-        fontSize: '12px',
-        fontStyle: UI_BOLD,
-        color: '#a9d9e8',
-        stroke: '#05070c',
-        strokeThickness: 3,
-      },
-    ).setResolution(2).setOrigin(0.5).setDepth(20).setName('title-input-hint');
+    this.add.text(GAME_WIDTH / 2, 704,
+      `Tab / ↑↓: Focus   ·   ${controlBindingLabel('previous')}/${controlBindingLabel('next')}: Adjust   ·   ${controlBindingLabel('confirm')} / A: Select`, {
+        fontFamily: UI_FONT, fontSize: '12px', color: '#a6bdcd',
+      }).setResolution(2).setOrigin(0.5).setName('title-input-hint');
   }
-
   private updateMenuFocusRing() {
     const target = this.menuFocusTarget();
     if (!target?.active) return;
@@ -5080,160 +5048,19 @@ class MenuScene extends Phaser.Scene {
       if (this.scene.isActive()) module.installMenuDebugState(this);
     });
   }
-  private renderTitleStartCommandFrame(x: number, y: number, w: number, h: number) {
-    const key = uiIconAssets['title-start-command-frame'].key;
-    if (!this.textures.exists(key)) return undefined;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    return this.add.image(x, y, key)
-      .setDisplaySize(w + 50, h + 42)
-      .setAlpha(0.78)
-      .setName('title-start-command-frame');
-  }
-
-  private renderTitleUtilityCommandFrame(x: number, y: number) {
-    const key = uiIconAssets['title-utility-command-frame'].key;
-    if (!this.textures.exists(key)) return undefined;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    return this.add.image(x, y, key)
-      .setDisplaySize(124, 38)
-      .setAlpha(0.54)
-      .setName('title-utility-command-frame');
-  }
-
-  private renderTitleLeaderCardFrame(x: number, y: number, unlocked: boolean) {
-    const key = uiIconAssets['title-leader-card-frame'].key;
-    if (!this.textures.exists(key)) return undefined;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const frame = this.add.image(x, y, key)
-      .setDisplaySize(222, 74)
-      .setAlpha(unlocked ? 0.58 : 0.18)
-      .setName('title-leader-card-frame');
-    if (!unlocked) frame.setTint(0x718093);
-    return frame;
-  }
-
-  private renderTitleLeaderSelectedFlourish(x: number, y: number) {
-    const key = uiIconAssets['title-leader-selected-flourish'].key;
-    if (!this.textures.exists(key)) return undefined;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const flourish = this.add.image(x, y, key)
-      .setDisplaySize(236, 82)
-      .setAlpha(0)
-      .setVisible(false)
-      .setName('title-leader-selected-flourish');
-    if (!prefersReducedMotion()) {
-      this.tweens.add({
-        targets: flourish,
-        alpha: 0.82,
-        scaleX: flourish.scaleX * 1.018,
-        scaleY: flourish.scaleY * 1.018,
-        duration: 1500,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
-    return flourish;
-  }
-
-  private renderTitleHomeCommandDais() {
-    const key = uiIconAssets['title-home-command-dais'].key;
-    if (!this.textures.exists(key)) return false;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const y = 566;
-    this.add.image(GAME_WIDTH / 2, y, key)
-      .setDisplaySize(1120, 290)
-      .setAlpha(0.34)
-      .setName('title-home-command-dais');
-    return true;
-  }
-
-  private renderTitleAscensionPlaque(x: number, y: number) {
-    const key = uiIconAssets['title-ascension-plaque'].key;
-    if (!this.textures.exists(key)) return false;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    this.add.image(x, y - 1, key)
-      .setDisplaySize(392, 164)
-      .setAlpha(0.62);
-    return true;
-  }
-
-  private renderTitleAscensionValueFrame(x: number, y: number) {
-    const key = uiIconAssets['title-ascension-value-frame'].key;
-    if (!this.textures.exists(key)) {
-      this.add.rectangle(x, y, 178, 36, 0x05070c, 0.64)
-        .setStrokeStyle(1, UI_FIELD.brass, 0.42);
-      return undefined;
-    }
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    return this.add.image(x, y + 1, key)
-      .setDisplaySize(190, 58)
-      .setAlpha(0.66)
-      .setName('title-ascension-value-frame');
-  }
-
-  private renderTitleAscensionStepperFrame(x: number, y: number) {
-    const key = uiIconAssets['title-ascension-stepper-frame'].key;
-    if (!this.textures.exists(key)) return undefined;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    return this.add.image(x, y, key)
-      .setDisplaySize(46, 46)
-      .setAlpha(0.72)
-      .setName('title-ascension-stepper-frame');
-  }
-
-  private renderTitleAscensionStatusStrip(x: number, y: number) {
-    const key = uiIconAssets['title-ascension-status-strip'].key;
-    if (!this.textures.exists(key)) return undefined;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    return this.add.image(x, y, key)
-      .setDisplaySize(306, 58)
-      .setAlpha(0.36)
-      .setName('title-ascension-status-strip');
-  }
-
-  private renderTitleLeaderHeaderFrame(x: number, y: number) {
-    const key = uiIconAssets['title-leader-header-frame'].key;
-    if (!this.textures.exists(key)) return undefined;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    return this.add.image(x, y, key)
-      .setDisplaySize(386, 80)
-      .setAlpha(0.52)
-      .setName('title-leader-header-frame');
-  }
 
   private renderTopUtilityButton(x: number, y: number, label: string, focus: MenuFocus, onClick: () => void) {
-    const hasFrame = this.textures.exists(uiIconAssets['title-utility-command-frame'].key);
-    const button = this.add.rectangle(x, y, 108, MIN_SUPPORTED_TOUCH_TARGET, 0x0d1420, hasFrame ? 0.08 : 0.82)
-      .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, hasFrame ? 0.08 : 0.9)
-      .setInteractive({ useHandCursor: true });
-    const frame = this.renderTitleUtilityCommandFrame(x, y);
-    const iconId = buttonIconForLabel(label);
-    const icon = iconId ? addUiIconImage(this, iconId, x - 39, y, 13) : undefined;
-    const text = this.add.text(x + (icon ? 9 : 0), y, label, {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: '#dce8f2'
+    const button = this.add.rectangle(x, y, 132, MIN_SUPPORTED_TOUCH_TARGET, 0x07111b, 0.94)
+      .setStrokeStyle(1, 0x49606d, 0.55).setInteractive({ useHandCursor: true })
+      .setName('title-utility-hit').setData('label', label);
+    const text = this.add.text(x, y, label, {
+      fontFamily: UI_FONT, fontSize: '14px', color: '#dce8f2',
     }).setResolution(2).setOrigin(0.5);
-    button.on('pointerover', () => {
-      button.setFillStyle(0x1b2535, frame ? 0.18 : 0.96);
-      frame?.setAlpha(0.88);
-      text.setColor('#ffffff');
-    });
-    button.on('pointerout', () => {
-      button.setFillStyle(0x0d1420, frame ? 0.12 : 0.92);
-      frame?.setAlpha(0.68);
-      text.setColor('#dce8f2');
-    });
-    button.on('pointerdown', () => {
-      this.menuFocus = focus;
-      playUiSound('confirm');
-      onClick();
-    });
+    button.on('pointerover', () => { button.setFillStyle(0x223448, 1); text.setColor('#ffffff'); });
+    button.on('pointerout', () => { button.setFillStyle(0x07111b, 0.94); text.setColor('#dce8f2'); });
+    button.on('pointerdown', () => { this.menuFocus = focus; playUiSound('confirm'); onClick(); });
     return button;
   }
-
   private openSettingsOverlay(queueAssets = true) {
     this.runMenuOptionalAction('openSettingsOverlay', queueAssets);
   }
@@ -5262,15 +5089,13 @@ class MenuScene extends Phaser.Scene {
   }
 
   private updateDifficultyText() {
-    this.difficultyLabelText?.setText(difficultyLabel(this.selectedDifficulty));
+    this.difficultyLabelText?.setText(this.selectedDifficulty === 0 ? 'Standard' : `Tier ${this.selectedDifficulty}`);
     const locked = this.selectedDifficulty >= getMaxUnlockedTier() && this.selectedDifficulty < MAX_DIFFICULTY;
     this.difficultyDescText?.setText(
-      `${difficultyAdds(this.selectedDifficulty)}\n${this.difficultyStatLine()}${locked ? '\nWin this tier to unlock the next.' : ''}`,
+      this.selectedDifficulty === 0
+        ? `${difficultyAdds(0)}${locked ? '\nWin to unlock the next tier.' : ''}`
+        : difficultyStatSummary(this.selectedDifficulty),
     );
-  }
-
-  private difficultyStatLine() {
-    return difficultyStatSummary(this.selectedDifficulty);
   }
 
   private showStorageRecoveryNotice(generation: number) {
@@ -5284,36 +5109,18 @@ class MenuScene extends Phaser.Scene {
   }
 
   private makeMenuButton(x: number, y: number, w: number, h: number, text: string, color: number, fontSize: string, focus: MenuFocus, onClick: () => void) {
-    const panel = this.add.rectangle(x, y, w, h, 0x0d1420, 0.92)
-      .setStrokeStyle(MENU_BORDER_WIDTH, color, 0.95)
-      .setInteractive({ useHandCursor: true });
-    const commandFrame = this.renderTitleStartCommandFrame(x, y, w, h);
-    const iconId = buttonIconForLabel(text);
-    const icon = iconId ? addUiIconImage(this, iconId, x - w / 2 + 34, y, Math.min(20, h - 24)) : undefined;
-    icon?.setAlpha(0.94);
-    const label = this.add.text(x + (icon ? 18 : 0), y, text, {
-      fontFamily: UI_FONT, fontSize, fontStyle: UI_BOLD, color: UI_GOLD, stroke: '#111111', strokeThickness: 2
+    const primary = focus === 'primaryRun';
+    const panel = this.add.rectangle(x, y, w, h, primary ? 0xe8b830 : 0x102131, 1)
+      .setStrokeStyle(2, color, 0.95).setInteractive({ useHandCursor: true })
+      .setName('title-run-action').setData('focus', focus);
+    this.add.text(x, y, text, {
+      fontFamily: UI_FONT, fontSize, fontStyle: UI_BOLD, color: primary ? '#101b24' : '#dce8f2',
     }).setResolution(2).setOrigin(0.5);
-    panel.on('pointerover', () => {
-      panel.setFillStyle(0x1b2535, 0.96);
-      label.setColor('#ffffff');
-      icon?.setAlpha(1);
-      commandFrame?.setAlpha(0.96);
-    });
-    panel.on('pointerout', () => {
-      panel.setFillStyle(0x0d1420, 0.92);
-      label.setColor('#ffe1a3');
-      icon?.setAlpha(0.94);
-      commandFrame?.setAlpha(0.78);
-    });
-    panel.on('pointerdown', () => {
-      this.menuFocus = focus;
-      playUiSound('confirm');
-      onClick();
-    });
+    panel.on('pointerover', () => panel.setFillStyle(primary ? 0xffd86d : 0x223448, 1));
+    panel.on('pointerout', () => panel.setFillStyle(primary ? 0xe8b830 : 0x102131, 1));
+    panel.on('pointerdown', () => { this.menuFocus = focus; playUiSound('confirm'); onClick(); });
     return panel;
   }
-
   private ensureHomeParticleTexture() {
     if (this.textures.exists(MENU_SOFT_MOTE_TEXTURE)) return;
     const g = this.add.graphics();
@@ -5492,102 +5299,17 @@ class MenuScene extends Phaser.Scene {
   }
 
   private createAnimatedTitle() {
-    const logo = this.add.container(GAME_WIDTH / 2, 144)
-      .setName('title-logo')
-      .setAlpha(0)
-      .setAngle(-2.5);
-
-    const backplateKey = uiIconAssets['title-logo-backplate'].key;
-    const backplate = this.textures.exists(backplateKey)
-      ? this.add.image(0, 2, backplateKey)
-        .setDisplaySize(456, 171)
-        .setOrigin(0.5)
-        .setAlpha(0.34)
-        .setName('title-logo-backplate')
-      : undefined;
-    if (backplate) this.textures.get(backplateKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-
-    const bird = this.add.image(-10, -54, 'title-bird')
-      .setDisplaySize(284, 136)
-      .setOrigin(0.5)
-      .setAlpha(0);
-    const squad = this.add.image(6, 43, 'title-squad')
-      .setDisplaySize(315, 125)
-      .setOrigin(0.5)
-      .setAlpha(0);
-    logo.add(backplate ? [backplate, bird, squad] : [bird, squad]);
-
-    this.tweens.add({
-      targets: logo,
-      y: 136,
-      alpha: 1,
-      angle: 0,
-      scaleX: { from: 0.86, to: 1 },
-      scaleY: { from: 1.05, to: 1 },
-      duration: 760,
-      ease: 'Cubic.easeIn',
-      onComplete: () => this.playTitleImpact(logo)
-    });
-
-    this.tweens.add({
-      targets: bird,
-      alpha: 1,
-      y: -51,
-      duration: 260,
-      delay: 180,
-      ease: 'Sine.easeOut'
-    });
-
-    this.tweens.add({
-      targets: squad,
-      alpha: 1,
-      y: 38,
-      duration: 260,
-      delay: 250,
-      ease: 'Sine.easeOut'
-    });
-  }
-
-  private playTitleImpact(logo: Phaser.GameObjects.Container) {
-    const finalX = logo.x;
-
-    this.tweens.add({
-      targets: logo,
-      x: { from: finalX - 7, to: finalX },
-      scaleX: { from: 1.1, to: 1 },
-      scaleY: { from: 0.88, to: 1 },
-      duration: 180,
-      ease: 'Back.easeOut'
-    });
-
-    this.time.delayedCall(70, () => this.burstGoldFlecks(logo));
-  }
-
-  private burstGoldFlecks(logo: Phaser.GameObjects.Container) {
-    for (let i = 0; i < 42; i += 1) {
-      const angle = Phaser.Math.DegToRad(-172 + i * 8.4 + Phaser.Math.Between(-8, 8));
-      const distance = Phaser.Math.Between(120, 360);
-      const startX = Phaser.Math.Between(-90, 120);
-      const startY = Phaser.Math.Between(-44, 58);
-      const fleck = this.add.rectangle(startX, startY, Phaser.Math.Between(5, 18), Phaser.Math.Between(2, 5), 0xf1c24c, 1)
-        .setAngle(Phaser.Math.Between(-28, 28))
-        .setAlpha(0.95);
-      logo.add(fleck);
-
-      this.tweens.add({
-        targets: fleck,
-        x: startX + Math.cos(angle) * distance,
-        y: startY + Math.sin(angle) * distance * 0.48,
-        alpha: 0,
-        scaleX: 0.15,
-        scaleY: 0.15,
-        angle: fleck.angle + Phaser.Math.Between(-110, 110),
-        duration: Phaser.Math.Between(520, 860),
-        ease: 'Cubic.easeOut',
-        onComplete: () => fleck.destroy()
-      });
+    const logo = this.add.container(GAME_WIDTH / 2, 200).setName('title-logo');
+    logo.add([
+      this.add.image(-10, -51, 'title-bird').setDisplaySize(284, 136),
+      this.add.image(6, 38, 'title-squad').setDisplaySize(315, 125),
+    ]);
+    if (!prefersReducedMotion()) {
+      logo.setAlpha(0);
+      this.tweens.add({ targets: logo, alpha: 1, duration: 220, ease: 'Sine.easeOut' });
     }
   }
+
 }
 
 type ProfileSceneModule = typeof import('./game/profile-scene');
@@ -18176,6 +17898,7 @@ class BattleScene extends Phaser.Scene {
 
   private combatTurnBanner(text: string, color: string, accent: number) {
     this.combatTurnBannerBursts += 1;
+    if (combatPacePreference() !== 'cinematic') return;
     banner(this, this.fxLayer, GAME_WIDTH / 2, 140, text, color, {
       textureKey: COMBAT_TURN_BANNER_TEXTURE,
       width: 560,
@@ -18194,174 +17917,11 @@ class BattleScene extends Phaser.Scene {
   }
 
   combatRoostHandoff(x = 468, y = 382, scale = 1) {
-    if (!this.textures.exists(COMBAT_ROOST_HANDOFF_TEXTURE)) return;
-    this.textures.get(COMBAT_ROOST_HANDOFF_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const reduced = prefersReducedMotion();
-    const s = Phaser.Math.Clamp(scale, 0.74, 1.12);
-    const width = 560 * s;
-    const height = width * (320 / 768);
-    this.combatRoostHandoffBursts += 1;
-    birdAudio.play('roostHandoff', 0.92);
-
-    const shadow = this.add.image(x - 6 * s, y + 12 * s, COMBAT_ROOST_HANDOFF_TEXTURE)
-      .setDisplaySize(width * 1.04, height * 1.04)
-      .setTint(0x07101a)
-      .setAlpha(reduced ? 0.32 : 0.42)
-      .setName('combat-roost-handoff');
-    const glow = this.add.image(x, y, COMBAT_ROOST_HANDOFF_TEXTURE)
-      .setDisplaySize(width * 1.1, height * 1.1)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setAlpha(reduced ? 0.26 : 0.34)
-      .setName('combat-roost-handoff');
-    const crest = this.add.image(x, y, COMBAT_ROOST_HANDOFF_TEXTURE)
-      .setDisplaySize(width, height)
-      .setAlpha(reduced ? 0.68 : 0.86)
-      .setName('combat-roost-handoff');
-    this.fxLayer.add([shadow, glow, crest]);
-    this.fxGlowPulse(x - 38 * s, y + 6 * s, 0xe8c24a, 76 * s, 520, 0.12);
-    this.fxMoteBurst(x + 14 * s, y + 8 * s, 0xffcf7a, {
-      count: 18,
-      speed: 118,
-      lifespan: 520,
-      scale: 0.48,
-      gravityY: 18,
-      spreadX: 180 * s,
-      spreadY: 18,
-    });
-
-    if (reduced) {
-      this.time.delayedCall(1100, () => {
-        shadow.destroy();
-        glow.destroy();
-        crest.destroy();
-      });
-      return;
-    }
-
-    const handoffHoldMs = 520;
-    this.tweens.add({
-      targets: shadow,
-      x: shadow.x + 18 * s,
-      y: shadow.y + 2 * s,
-      alpha: 0,
-      delay: handoffHoldMs,
-      duration: 780,
-      ease: 'Cubic.easeOut',
-      onComplete: () => shadow.destroy(),
-    });
-    this.tweens.add({
-      targets: glow,
-      x: x + 34 * s,
-      scaleX: glow.scaleX * 1.1,
-      scaleY: glow.scaleY * 0.92,
-      alpha: 0,
-      delay: handoffHoldMs,
-      duration: 860,
-      ease: 'Sine.easeOut',
-      onComplete: () => glow.destroy(),
-    });
-    this.tweens.add({
-      targets: crest,
-      x: x + 46 * s,
-      y: y - 4 * s,
-      scaleX: crest.scaleX * 1.06,
-      scaleY: crest.scaleY * 0.96,
-      alpha: 0,
-      delay: handoffHoldMs,
-      duration: 920,
-      ease: 'Cubic.easeOut',
-      onComplete: () => crest.destroy(),
-    });
+    this.combatFxModule?.presentCombatRoostHandoff(this, x, y, scale);
   }
 
   private combatPlayerTurnRally(x = GAME_WIDTH / 2, y = 276, scale = 1) {
-    if (!this.textures.exists(COMBAT_PLAYER_TURN_RALLY_TEXTURE)) return;
-    this.textures.get(COMBAT_PLAYER_TURN_RALLY_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const reduced = prefersReducedMotion();
-    const s = Phaser.Math.Clamp(scale, 0.74, 1.08);
-    const width = 560 * s;
-    const height = width * (320 / 768);
-    this.combatPlayerTurnRallyBursts += 1;
-    birdAudio.play('playerTurnRally', 0.9);
-
-    const shadow = this.add.image(x, y + 16 * s, COMBAT_PLAYER_TURN_RALLY_TEXTURE)
-      .setDisplaySize(width * 1.04, height * 1.04)
-      .setTint(0x04121a)
-      .setAlpha(reduced ? 0.3 : 0.38)
-      .setName('combat-player-turn-rally');
-    const glow = this.add.image(x, y, COMBAT_PLAYER_TURN_RALLY_TEXTURE)
-      .setDisplaySize(width * 1.12, height * 1.12)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setAlpha(reduced ? 0.3 : 0.42)
-      .setTint(0x8fffe8)
-      .setName('combat-player-turn-rally');
-    const crest = this.add.image(x, y, COMBAT_PLAYER_TURN_RALLY_TEXTURE)
-      .setDisplaySize(width, height)
-      .setAlpha(reduced ? 0.74 : 0.9)
-      .setName('combat-player-turn-rally');
-    this.fxLayer.add([shadow, glow, crest]);
-    this.fxLayer.setDepth(84);
-    this.children.bringToTop(this.fxLayer);
-    this.fxGlowPulse(x, y + 2 * s, 0x8fffe8, 92 * s, 650, 0.16);
-    this.fxMoteBurst(x, y + 10 * s, 0x8fffe8, {
-      count: 18,
-      speed: 126,
-      lifespan: 600,
-      scale: 0.52,
-      gravityY: -12,
-      spreadX: 230 * s,
-      spreadY: 34,
-    });
-    this.fxMoteBurst(x, y + 20 * s, 0xffd37a, {
-      count: 10,
-      speed: 102,
-      lifespan: 520,
-      scale: 0.44,
-      gravityY: -8,
-      spreadX: 190 * s,
-      spreadY: 28,
-    });
-
-    if (reduced) {
-      this.time.delayedCall(1150, () => {
-        shadow.destroy();
-        glow.destroy();
-        crest.destroy();
-      });
-      return;
-    }
-
-    const holdMs = 560;
-    this.tweens.add({
-      targets: shadow,
-      y: shadow.y + 10 * s,
-      alpha: 0,
-      delay: holdMs,
-      duration: 760,
-      ease: 'Cubic.easeOut',
-      onComplete: () => shadow.destroy(),
-    });
-    this.tweens.add({
-      targets: glow,
-      scaleX: glow.scaleX * 1.16,
-      scaleY: glow.scaleY * 1.02,
-      alpha: 0,
-      delay: holdMs,
-      duration: 840,
-      ease: 'Sine.easeOut',
-      onComplete: () => glow.destroy(),
-    });
-    this.tweens.add({
-      targets: crest,
-      y: y - 8 * s,
-      scaleX: crest.scaleX * 1.08,
-      scaleY: crest.scaleY * 0.98,
-      alpha: 0,
-      delay: holdMs,
-      duration: 920,
-      ease: 'Cubic.easeOut',
-      onComplete: () => crest.destroy(),
-    });
+    this.combatFxModule?.presentCombatPlayerTurnRally(this, x, y, scale);
   }
 
   private fxDirectionalStreak(x1: number, y1: number, x2: number, y2: number, color: number, duration = 260, hold = 0) {
@@ -19247,17 +18807,20 @@ class BattleScene extends Phaser.Scene {
     const labelColor = damage > 0 ? '#ffcf7a' : supportMove ? '#8fd6a0' : '#c98bff';
     const y = view.y + (enemy.runtime.type === 'boss' ? 8 : 18);
     const scale = Phaser.Math.Clamp(0.94 + pressure * 0.035, 0.98, enemy.runtime.type === 'boss' ? 1.28 : 1.14);
+    const cinematic = combatPacePreference() === 'cinematic';
+    const tellY = cinematic ? y - 8 * view.scale : view.y - 24 * view.scale;
+    const tellScale = scale * (cinematic ? 1 : 0.55);
 
     birdAudio.play('threat', Phaser.Math.Clamp(0.72 + pressure * 0.045, 0.78, 1.12));
     if (damage > 0) {
-      this.combatThreatCharge(view.x, y, scale);
-      this.combatEnemyAttackTell(view.x, y - 8 * view.scale, scale);
+      if (cinematic) this.combatThreatCharge(view.x, y, scale);
+      this.combatEnemyAttackTell(view.x, tellY, tellScale);
     } else {
-      this.combatEnemySupportCharge(view.x, y, scale);
-      this.combatEnemySupportTell(view.x, y - 8 * view.scale, scale);
+      if (cinematic) this.combatEnemySupportCharge(view.x, y, scale);
+      this.combatEnemySupportTell(view.x, tellY, tellScale);
     }
     this.combatEnemyWindupPlaque(view.x, view.y - 112 * view.scale, move.label, labelColor, scale);
-    if (reduced) return;
+    if (reduced || !cinematic) return;
     this.fxGlowPulse(view.x, y, color, 100 * scale, 760, 0.2);
     this.fxShockwave(view.x, y + 18 * view.scale, color, 98 * scale, 720, -8);
     this.fxMoteBurst(view.x, y + 8, color, {
@@ -19285,14 +18848,14 @@ class BattleScene extends Phaser.Scene {
     const pressure = Math.max(1, damage || intentCoverValue(move) || move.effects.length);
     const color = damage > 0 ? 0xff7a6e : supportMove ? 0x8fd6a0 : 0xc98bff;
     const y = view.y + (enemy.runtime.type === 'boss' ? 10 : 20);
-    const releaseWindowMs = ENEMY_ATTACK_RELEASE_MS + ENEMY_ATTACK_IMPACT_ANTICIPATION_MS;
+    const releaseWindowMs = this.combatTimingDelay(ENEMY_ATTACK_RELEASE_MS + ENEMY_ATTACK_IMPACT_ANTICIPATION_MS, this.enemyMoveTimingScale(enemy, move));
 
     this.fxGlowPulse(view.x, y, color, 78 + pressure * 4, 560, 0.18);
     this.fxShockwave(view.x, y + 18 * view.scale, color, 82 + pressure * 3, 520, -7);
     this.fxMoteBurst(view.x - 18 * view.scale, y + 10, color, {
       count: Phaser.Math.Clamp(8 + pressure * 2, 10, 22),
       speed: 116 + pressure * 3,
-      lifespan: Math.max(760, releaseWindowMs - 280),
+      lifespan: Math.max(120, releaseWindowMs - 80),
       scale: 0.48,
       gravityY: 12,
       spreadX: 18,
@@ -19305,85 +18868,15 @@ class BattleScene extends Phaser.Scene {
         FLOCK_FX_X + 18,
         FLOCK_FX_Y + 16,
         color,
-        900,
-        Math.max(900, releaseWindowMs - 280)
+        Math.min(900, releaseWindowMs * 0.8),
+        Math.max(0, releaseWindowMs - Math.min(900, releaseWindowMs * 0.8))
       );
-      this.fxGlowPulse(FLOCK_FX_X, FLOCK_FX_Y + 18, color, 74, Math.max(760, releaseWindowMs - 300), 0.12);
+      this.fxGlowPulse(FLOCK_FX_X, FLOCK_FX_Y + 18, color, 74, releaseWindowMs, 0.12);
     }
   }
 
   enemyAttackCommitmentSealFx(enemy: Enemy, move: EnemyMove) {
-    if (!this.textures.exists(COMBAT_ENEMY_COMMITMENT_SEAL_TEXTURE) || !moveDealsDamage(move)) return;
-    this.textures.get(COMBAT_ENEMY_COMMITMENT_SEAL_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const view = this.enemyView(enemy);
-    const damage = Math.max(1, this.incomingAttackDamage(enemy));
-    const reduced = prefersReducedMotion();
-    const x = Phaser.Math.Linear(view.x, FLOCK_FX_X, 0.38);
-    const y = Phaser.Math.Linear(view.y, FLOCK_FX_Y, 0.34) - 26 * view.scale;
-    const size = (enemy.runtime.type === 'boss' ? 226 : 178) * view.scale * Phaser.Math.Clamp(0.94 + damage * 0.018, 0.98, 1.12);
-    const holdMs = this.combatTimingDelay(ENEMY_ATTACK_RELEASE_MS + ENEMY_ATTACK_IMPACT_ANTICIPATION_MS + ENEMY_ATTACK_IMPACT_HOLD_MS + 160);
-    this.combatEnemyCommitmentSealBursts += 1;
-    birdAudio.play('enemyCommitment', Phaser.Math.Clamp(0.76 + damage * 0.045, 0.84, 1.28));
-
-    const shadow = this.add.image(x + 10 * view.scale, y + 14 * view.scale, COMBAT_ENEMY_COMMITMENT_SEAL_TEXTURE)
-      .setDisplaySize(size * 1.04, size * 1.04)
-      .setAlpha(reduced ? 0.26 : 0.36)
-      .setTint(0x150807)
-      .setName('combat-enemy-commitment-seal');
-    const glow = this.add.image(x, y, COMBAT_ENEMY_COMMITMENT_SEAL_TEXTURE)
-      .setDisplaySize(size * 1.12, size * 1.12)
-      .setAlpha(reduced ? 0.3 : 0.44)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setTint(0xff8a42)
-      .setName('combat-enemy-commitment-seal');
-    const seal = this.add.image(x, y, COMBAT_ENEMY_COMMITMENT_SEAL_TEXTURE)
-      .setDisplaySize(size, size)
-      .setAlpha(reduced ? 0.88 : 0.96)
-      .setName('combat-enemy-commitment-seal');
-    this.fxLayer.add([shadow, glow, seal]);
-    this.fxLayer.setDepth(86);
-    this.children.bringToTop(this.fxLayer);
-
-    if (reduced) {
-      this.time.delayedCall(Math.max(420, holdMs), () => {
-        shadow.destroy();
-        glow.destroy();
-        seal.destroy();
-      });
-      return;
-    }
-
-    this.fxGlowPulse(x, y, 0xff7a42, 92 * view.scale, 520, 0.16);
-    this.fxMoteBurst(x, y + 16 * view.scale, 0xff9d4d, {
-      count: Phaser.Math.Clamp(8 + damage, 10, 22),
-      speed: 110 + damage * 3,
-      lifespan: Math.max(520, Math.min(980, holdMs - 180)),
-      scale: 0.42,
-      gravityY: 8,
-      spreadX: 20,
-      spreadY: 12,
-    });
-    this.tweens.add({
-      targets: [seal, glow],
-      scaleX: '+=0.08',
-      scaleY: '+=0.08',
-      duration: 260,
-      yoyo: true,
-      repeat: 1,
-      ease: 'Sine.easeInOut',
-    });
-    this.tweens.add({
-      targets: [shadow, glow, seal],
-      alpha: 0,
-      duration: 420,
-      delay: Math.max(420, holdMs - 420),
-      ease: 'Cubic.easeIn',
-      onComplete: () => {
-        shadow.destroy();
-        glow.destroy();
-        seal.destroy();
-      },
-    });
+    if (moveDealsDamage(move)) this.combatFxModule?.presentEnemyCommitmentSeal(this, enemy, move, FLOCK_FX_X, FLOCK_FX_Y);
   }
 
   enemyAttackRecoveryAfterglowFx(enemy: Enemy, move: EnemyMove) {
@@ -19792,6 +19285,8 @@ class BattleScene extends Phaser.Scene {
     const cue = this.enemyMotionCues.get(enemy.id);
     if (!cue || prefersReducedMotion()) return;
     this.enemyMotionCues.delete(enemy.id);
+    // Breathing and the previous pose must not compete with the committed motion.
+    this.tweens.killTweensOf(group);
     if (cue === 'windup') {
       this.tweens.add({
         targets: group,
@@ -19799,22 +19294,22 @@ class BattleScene extends Phaser.Scene {
         y: -14 * scale,
         scaleX: 0.948,
         scaleY: 1.07,
-        duration: 1050,
+        duration: Math.min(1050, this.combatEnemyTurnBeatDurationMs * 0.7),
         ease: 'Sine.easeOut',
       });
       this.tweens.add({
         targets: group,
         alpha: 0.82,
-        duration: 360,
+        duration: Math.max(40, this.combatEnemyTurnBeatDurationMs / 4),
         yoyo: true,
-        repeat: 3,
+        repeat: 1,
         ease: 'Sine.easeInOut',
       });
       return;
     }
     const recoil = cue === 'hit';
     const xShift = (recoil ? 12 : -82) * scale;
-    const duration = recoil ? 90 : 920;
+    const duration = recoil ? 90 : Math.max(80, this.combatEnemyTurnBeatDurationMs);
     this.tweens.add({
       targets: group,
       x: xShift,
@@ -19822,7 +19317,7 @@ class BattleScene extends Phaser.Scene {
       scaleX: recoil ? 0.985 : 1.072,
       scaleY: recoil ? 1.012 : 0.942,
       duration,
-      hold: recoil ? 0 : Math.max(760, ENEMY_ATTACK_RELEASE_MS + ENEMY_ATTACK_IMPACT_ANTICIPATION_MS - duration),
+      hold: recoil ? 0 : this.combatTimingDelay(ENEMY_ATTACK_IMPACT_ANTICIPATION_MS, this.enemyMoveTimingScale(enemy, currentMove(enemy))),
       yoyo: true,
       ease: recoil ? 'Quad.easeOut' : 'Cubic.easeInOut',
       onComplete: () => {
@@ -23229,8 +22724,13 @@ class BattleScene extends Phaser.Scene {
     const pace = combatPacePreference();
     const firstUse = !this.runSeenEnemyMoves.has(this.enemyMovePacingKey(enemy, move));
     const bossFight = currentCombatNodes()[this.currentRouteIndex]?.type === 'boss';
-    if (pace === 'cinematic' || firstUse || bossFight) return 1;
-    return pace === 'snappy' ? COMBAT_SNAPPY_TIMING_SCALE : COMBAT_STANDARD_REPEAT_TIMING_SCALE;
+    if (pace === 'cinematic') return 1;
+    if (firstUse || bossFight) return pace === 'snappy' ? 0.28 : 0.38;
+    return pace === 'snappy' ? 0.18 : COMBAT_STANDARD_REPEAT_TIMING_SCALE;
+  }
+
+  enemyTurnPreambleDelay() {
+    return this.combatTimingDelay(combatPacePreference() === 'cinematic' ? 800 : ENEMY_TURN_PREAMBLE_MS);
   }
 
   prepareEnemyMoveContext() {
@@ -23287,6 +22787,19 @@ class BattleScene extends Phaser.Scene {
   }
 
   private setEnemyTurnBeat(beat: EnemyTurnBeat, move = '', durationMs = 0) {
+    // Retire phase-owned art even when Hustle shortens its original tween.
+    // A windup halo must never linger into another enemy's attack.
+    if (beat !== this.combatEnemyTurnBeat && this.fxLayer) {
+      const names = this.combatEnemyTurnBeat === 'windup'
+        ? ['combat-threat-charge', 'combat-enemy-support-charge', 'combat-enemy-attack-tell', 'combat-enemy-support-tell', 'combat-enemy-windup-plaque']
+        : beat === 'recovery' ? ['combat-enemy-commitment-seal']
+        : beat === 'interlude' || beat === 'idle' ? ['combat-enemy-recovery-afterglow'] : [];
+      for (const object of [...this.fxLayer.list]) {
+        if (!names.includes(object.name)) continue;
+        killTweensForTree(this, object);
+        object.destroy();
+      }
+    }
     this.combatEnemyTurnBeat = beat;
     this.combatEnemyTurnMove = move;
     this.combatEnemyTurnBeatStartedAtMs = this.time?.now ?? 0;
@@ -23311,9 +22824,10 @@ class BattleScene extends Phaser.Scene {
     // keeping route -> first interaction free of those decoded textures.
     this.queueOutcomeCombatFxAssetLoad();
     const contract = this.activeCardContract(card);
-    const delay = contract.target === 'enemy' || contract.target === 'allEnemies'
-      ? PLAYER_ATTACK_RESOLVE_DELAY_MS
-      : PLAYER_CARD_RESOLVE_DELAY_MS;
+    const attack = contract.target === 'enemy' || contract.target === 'allEnemies';
+    const delay = combatPacePreference() === 'cinematic'
+      ? (attack ? 430 : 300)
+      : (attack ? PLAYER_ATTACK_RESOLVE_DELAY_MS : PLAYER_CARD_RESOLVE_DELAY_MS);
     this.playCard(card, enemyId, { resolveDelayMs: this.combatTimingDelay(delay) });
   }
 
@@ -23448,7 +22962,9 @@ class BattleScene extends Phaser.Scene {
     }
     if (!this.hand.some(card => card.instanceId === this.selectedInstanceId)) this.selectedInstanceId = undefined;
     this.checkOutcome();
-    this.renderAll();
+    // Animated cards publish the settled board once when input unlocks. An
+    // intermediate full rebuild here adds a hitch between impact and readiness.
+    if (!this.combatAnimationPending || this.mode !== 'battle') this.renderAll();
     if (this.mode === 'battle') {
       const castColor = suitFxMeta(playedCard.runtime.suit).color;
       this.fxCastFocusBurst(FLOCK_FX_X, FLOCK_FX_Y - 24, castColor, 0.82);
@@ -24269,7 +23785,7 @@ class BattleScene extends Phaser.Scene {
 
     if (options.enemyPacing && this.combatTimingDelay(ENEMY_ATTACK_WINDUP_MS) > 0) {
       this.combatAnimationPending = true;
-      this.setEnemyTurnBeat('preamble', '', this.combatTimingDelay(ENEMY_TURN_PREAMBLE_MS));
+      this.setEnemyTurnBeat('preamble', '', this.enemyTurnPreambleDelay());
       this.resolveEnemyTurnAnimated(() => {
         if (this.flock.hp >= hpBeforeEnemyTurn) this.checkNoDamageTurnMarks();
         this.checkOutcome();
@@ -24280,7 +23796,7 @@ class BattleScene extends Phaser.Scene {
           return;
         }
         this.startPlayerTurn({
-          announceDelayMs: PLAYER_TURN_HANDOFF_DELAY_MS,
+          announceDelayMs: combatPacePreference() === 'cinematic' ? 900 : PLAYER_TURN_HANDOFF_DELAY_MS,
           onReady: () => {
             if (!this.sys.settings.active || this.mode !== 'battle') return;
             this.combatAnimationPending = false;

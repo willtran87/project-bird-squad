@@ -1,5 +1,52 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-09-11 — focused start-menu and action-cadence follow-up
+
+- Responded to the remaining clutter/sluggishness report. Removed redundant
+  title frames, mastery microcopy and duplicate Collection progress. Setup now
+  has an opaque backing, clearer labels, a quiet footer and a static logo clear
+  of utilities. Start/Continue is the initial focus; keyboard/controller setup,
+  saved-run continuation, utility destinations and locked-Leader touch inspection
+  remain available. Higher Ascension retains cumulative numeric modifiers.
+- Standard first/repeated enemy phase scales are .38/.24; Snappy .28/.18;
+  Cinematic preserves the original long staging. Scene-clock first-turn checks
+  measure 3400/2550/9620 ms respectively, including handoff. Standard player
+  commitment/settle timers total 300 ms; next-card preselection never auto-plays.
+- Removed the intermediate card-resolution board rebuild: two passes instead
+  of three. Enemy poses follow the new phase duration, phase-owned tells retire
+  on transitions (including Hustle), and release trails end at impact. Standard
+  and Snappy omit large Roost/rally art that competed with the next action.
+  Final screenshot inspection also removed duplicate large turn banners and
+  reduced stacked windup rings to one compact tell clear of enemy vitals.
+- UI-layout/high-resolution/game-development guidance shaped the hierarchy and
+  sequencing verification. Runtime guidance prompted measured redraw checks and
+  moving Roost/rally/commitment-seal code into the existing lazy combat-FX module.
+- The actual Pages-base build passes unchanged hard bundle gates: 689.3 KiB
+  entry and 724.6 KiB combined boot, versus the published revision's 733.5 KiB.
+  Preferred 675/710 KiB targets remain warnings. Build, docs, data, assets,
+  deployment-cache and whitespace checks pass. An extra strict-unused check
+  reports five pre-existing declarations in render-reward/system-overlays/main;
+  normal project TypeScript build passes. No full-suite release claim.
+- Six new scenarios pass in Chromium, Firefox and WebKit (18/18), including
+  2560x1600, 1440x900, 1000x560, saved-flight focus, Tier 6 containment, all three
+  pacing modes and two-pass card resolution. Existing focused checks cover
+  remaps/controller utilities, collections, intentional input, incremental
+  previews, Hustle, reduced motion, pause, scenery reuse and generated FX.
+- A real-time 2560x1600 software-WebGL sample measured 995 ms wall time / 449 ms
+  synchronous rendering for two card-action passes. This is not a paired device
+  benchmark or an FPS/fun/AT certification; rendering overhead remains a watch
+  item. Gameplay rules/balance/progression were not changed.
+- Evidence: `.artifacts/test-results/menu-flow-final/`,
+  `.artifacts/menu-motion-final-clear-*.png`, and
+  `.artifacts/shared-client/menu-flow-final-clear/`. The in-app preview confirmed
+  one-press Start reaches Route; its temporary tab was closed. No commit, push
+  or publication requested or performed in this pass.
+- Final compact-tell revision passed all 18 cross-browser checks plus four
+  focused timing/reduced-motion/Hustle regressions. Final screenshot and shared
+  client inspection found no console errors or stuck input. Stopped the owned
+  preview server (PID 39792), verified port 43382 is no longer listening, and
+  removed the three temporary test helpers; screenshots and reports are retained.
+
 ## 2026-09-08 — safe playable Folio practice
 
 - Added a separate Flight Lab Practice action (pointer, U, controller Select).

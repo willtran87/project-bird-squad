@@ -56,3 +56,11 @@ but repeated path prefixes raise combined boot code to 733.5 KiB, exceeding the
 725 KiB hard budget. This is an outstanding performance-budget issue; no budget
 was raised or validator disabled. The existing Pages workflow gates on the build,
 not the complete release-qualification suite.
+
+### September 11 follow-up
+
+The subsequent title/cadence pass removes redundant menu decoration and moves
+combat-only ceremony helpers into the existing lazy FX module. Its Pages-path
+build is now 724.6 KiB combined boot and passes the unchanged 725 KiB hard gate.
+The earlier publication overage is resolved in the working tree, not yet
+published. Preferred startup-size targets and human/device qualification remain.
