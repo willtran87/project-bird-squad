@@ -69,6 +69,8 @@ export interface BattleHudRenderContext {
   guidance?: BattleHudGuidanceView;
   objective?: BattleHudObjectiveView;
   onRoost: () => void;
+  roostLabel?: string;
+  roostPreview?: string;
   attachTooltip: (target: BattleHudTooltipTarget, title: string, body: string) => void;
 }
 
@@ -371,38 +373,29 @@ export function renderBattleBeatBadge(context: BattleHudRenderContext) {
 }
 
 function renderCommandStrip(context: BattleHudRenderContext) {
-  const { scene, root, assets } = context;
+  const { scene, root } = context;
   renderCombatLog(context);
   const x = 1192;
   const y = 470;
-  const hit = scene.add.rectangle(x, y, 104, 104, 0x000000, 0.001)
-    .setInteractive({ useHandCursor: true });
+  const hit = scene.add.rectangle(x, y, 164, 74, 0x12333b, 0.98)
+    .setStrokeStyle(2, 0x8df4ff, 0.9)
+    .setName('combat-roost-hit').setInteractive({ useHandCursor: true });
   hit.on('pointerdown', context.onRoost);
   context.attachTooltip(hit, 'End Turn', 'Roost and let enemies act.');
 
-  if (textureReady(scene, assets.roostCommandFrame)) {
-    const frame = scene.add.image(x, y, assets.roostCommandFrame)
-      .setDisplaySize(116, 116)
-      .setAlpha(0.82)
-      .setName('combat-roost-command-frame');
-    hit.on('pointerover', () => frame.setAlpha(0.96));
-    hit.on('pointerout', () => frame.setAlpha(0.82));
-    root.add(frame);
-  }
   root.add(hit);
-  if (textureReady(scene, assets.roostIcon)) {
-    const icon = scene.add.image(x, y, assets.roostIcon).setDisplaySize(74, 74).setAlpha(0.95);
-    hit.on('pointerover', () => icon.setDisplaySize(74, 74).setAlpha(1));
-    hit.on('pointerout', () => icon.setDisplaySize(74, 74).setAlpha(0.95));
-    root.add(icon);
-  } else {
-    root.add(scene.add.text(x, y, 'ROOST', {
+  hit.on('pointerover', () => hit.setFillStyle(0x20515a, 1));
+  hit.on('pointerout', () => hit.setFillStyle(0x12333b, 0.98));
+  root.add(scene.add.text(x, y - 17, context.roostLabel ?? 'Roost · End Turn', {
       fontFamily: context.fontFamily,
-      fontSize: '14px',
+      fontSize: '16px',
       fontStyle: context.boldFontStyle,
       color: '#fff0b8',
-    }).setOrigin(0.5));
-  }
+    }).setOrigin(0.5).setName('combat-roost-label'));
+  root.add(scene.add.text(x, y + 14, context.roostPreview ?? 'Enemies act next', {
+    fontFamily: context.fontFamily, fontSize: '14px', color: '#dffbff',
+    wordWrap: { width: 152 }, align: 'center',
+  }).setOrigin(0.5).setName('combat-roost-preview'));
   return renderBattleBeatBadge(context);
 }
 

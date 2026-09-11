@@ -139,7 +139,7 @@ function renderNode(context: RouteMapRendererContext, node: RouteMapNodeView) {
   hitTarget.on('pointerout', () => { tip?.destroy(true); tip = undefined; });
 
   const visualState = node.completed ? 'completed' : node.selected ? 'selected' : node.selectable ? 'selectable' : 'future';
-  const visualAlpha = node.completed ? 0.24 : node.selected ? 1 : node.selectable ? 0.96 : 0.22;
+  const visualAlpha = node.completed ? 0.32 : node.selected ? 1 : node.selectable ? 0.96 : 0.58;
   context.renderNodeIcon(node, visualAlpha)
     .setName('route-node-icon')
     .setData('routeNodeId', node.id)
@@ -208,7 +208,7 @@ export function renderRouteMap(context: RouteMapRendererContext) {
     const to = nodes.get(edge.to);
     if (!from || !to) return;
     const color = edge.lit ? 0x87b884 : edge.primaryPreview ? 0xd8a840 : edge.available ? 0x24d0d6 : edge.secondaryPreview ? 0x7893a0 : 0x345466;
-    const alpha = edge.lit ? 0.88 : edge.primaryPreview ? 0.98 : edge.available ? 0.9 : edge.secondaryPreview ? 0.22 : 0.1;
+    const alpha = edge.lit ? 0.88 : edge.primaryPreview ? 0.98 : edge.available ? 0.9 : edge.secondaryPreview ? 0.55 : 0.34;
     const dotRadius = edge.lit ? 1.5 : edge.primaryPreview ? 1.8 : edge.available ? 1.55 : edge.secondaryPreview ? 1.05 : 0.9;
     const curve = drawEdgePath(lines, from, to, edge.key, color, alpha, dotRadius, context.activeMapIndex);
     if (edge.available || edge.primaryPreview) {

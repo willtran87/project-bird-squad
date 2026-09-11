@@ -218,14 +218,14 @@ function renderBackdrop(context: RewardCeremonyRenderContext) {
     scene.textures.get(textures.ceremonyBackdrop).setFilter(Phaser.Textures.FilterMode.LINEAR);
     const backdrop = scene.add.image(width / 2, height / 2 + 10, textures.ceremonyBackdrop)
       .setDisplaySize(1224, 612)
-      .setAlpha(reducedMotion ? 0.74 : 0.82)
+      .setAlpha(0.3)
       .setName('reward-ceremony-backdrop');
     target.add(backdrop);
     hasCeremonyBackdrop = true;
     if (!reducedMotion) {
       scene.tweens.add({
         targets: backdrop,
-        alpha: 0.72,
+        alpha: 0.28,
         scaleX: backdrop.scaleX * 1.006,
         scaleY: backdrop.scaleY * 1.006,
         duration: 2200,
@@ -242,7 +242,7 @@ function renderBackdrop(context: RewardCeremonyRenderContext) {
     scene.textures.get(textures.headerPlaque).setFilter(Phaser.Textures.FilterMode.LINEAR);
     target.add(scene.add.image(width / 2, 98, textures.headerPlaque)
       .setDisplaySize(570, 116)
-      .setAlpha(0.56)
+      .setAlpha(0.22)
       .setName('reward-header-plaque'));
   } else {
     target.add(scene.add.rectangle(width / 2, 98, 612, 114, 0x07101c, 0.82)
@@ -478,7 +478,7 @@ function renderCard(
       fontFamily, fontSize: '12px', fontStyle: boldFontStyle, color: '#ffc78f', align: 'center', fixedWidth: 56
     }).setOrigin(0.5).setName('reward-card-molt-label'));
   }
-  if (card.collectionStatus) {
+  if (card.collectionStatus && (card.collectionStatus.firstClaim || card.collectionStatus.targeted)) {
     const firstClaim = card.collectionStatus.firstClaim;
     const targeted = card.collectionStatus.targeted;
     const label = targeted
@@ -522,9 +522,9 @@ function renderCard(
   });
   const inspectY = bottom + 28;
   const inspect = scene.add.rectangle(
-    x,
+    context.kind === 'card' ? x - 76 : x,
     inspectY,
-    92,
+    104,
     MIN_SUPPORTED_TOUCH_TARGET,
     inspectEnabled ? 0x102534 : 0x0a141c,
     inspectEnabled ? 0.88 : 0.48,
@@ -547,7 +547,7 @@ function renderCard(
     inspect.on('pointerout', () => inspect.setFillStyle(0x102534, 0.88));
   }
   target.add(inspect);
-  target.add(scene.add.text(x, inspectY, 'INSPECT', {
+  target.add(scene.add.text(context.kind === 'card' ? x - 76 : x, inspectY, 'INSPECT', {
     fontFamily,
     fontSize: '14px',
     fontStyle: boldFontStyle,
@@ -555,6 +555,17 @@ function renderCard(
     align: 'center',
     fixedWidth: 84,
   }).setOrigin(0.5).setName('reward-card-inspect-label'));
+  if (context.kind === 'card') {
+    const take = scene.add.rectangle(x + 54, inspectY, 144, MIN_SUPPORTED_TOUCH_TARGET, card.armed ? 0x21505a : 0x102534, 0.98)
+      .setStrokeStyle(card.armed ? 2 : 1, card.armed ? 0xffcf6b : 0x49606d, 0.9)
+      .setName('reward-card-take-hit').setData('cardId', card.id);
+    if (inspectEnabled) take.setInteractive({ useHandCursor: true }).on('pointerdown', () => context.onCardSelect(card.id));
+    target.add(take);
+    target.add(scene.add.text(x + 54, inspectY, card.armed ? `Take ${card.name}` : 'Select card', {
+      fontFamily, fontSize: '16px', fontStyle: boldFontStyle, color: card.armed ? '#ffe7a8' : '#dce8f2',
+      wordWrap: { width: 132 }, maxLines: 2, align: 'center',
+    }).setOrigin(0.5).setName('reward-card-take-label'));
+  }
   hoverRing = addHoverRing(context, x, y, hoverWidth, hoverHeight);
   if (hoverRing) target.add(hoverRing);
   return glow.burst;
@@ -612,22 +623,8 @@ function renderSkip(context: RewardCeremonyRenderContext) {
   if (!context.skip) return;
   const { scene, target, width, textures, reducedMotion, fontFamily, boldFontStyle, goldColor } = context;
   const centerX = width / 2 + 342;
-  if (scene.textures.exists(textures.skipCommandFrame)) {
-    scene.textures.get(textures.skipCommandFrame).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    target.add(scene.add.image(centerX, 652, textures.skipCommandFrame).setDisplaySize(382, 110).setAlpha(0.68).setName('reward-skip-command-frame'));
-    if (!reducedMotion) {
-      const glint = scene.add.image(centerX, 652, textures.skipCommandFrame)
-        .setDisplaySize(382, 110)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setAlpha(0.032)
-        .setName('reward-skip-command-frame');
-      target.add(glint);
-      scene.tweens.add({ targets: glint, alpha: 0.018, duration: 1500, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    }
-  } else {
-    target.add(scene.add.rectangle(centerX, 652, 324, 58, 0x2a2320, 0.96).setStrokeStyle(2, 0xd8a840, 0.9).setName('reward-skip-command-frame-fallback'));
-  }
-  target.add(scene.add.rectangle(centerX, 652, 314, 54, 0x05080e, 0.94));
+  target.add(scene.add.rectangle(centerX, 652, 324, 68, 0x07111b, 0.98)
+    .setStrokeStyle(1, 0x49606d, 0.7).setName('reward-skip-command-frame-fallback'));
   const hit = scene.add.rectangle(centerX, 652, 324, MIN_SUPPORTED_TOUCH_TARGET, 0x000000, 0.01)
     .setInteractive({ useHandCursor: true })
     .setName('reward-skip-hit');

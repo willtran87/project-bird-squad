@@ -15116,26 +15116,27 @@ test('pause overlay opens on route and combat without advancing play', async ({ 
   expect(result.fieldCommandFrameLoaded).toBe(true);
   expect(result.titlePlaqueLoaded).toBe(true);
   expect(result.pauseDetailFrameLoaded).toBe(true);
-  expect(result.routeCommandFrame).toBeGreaterThanOrEqual(2);
+  // Pause intentionally uses a quiet panel, not stacked decorative frames.
+  expect(result.routeCommandFrame).toBe(0);
   expect(result.routeFieldCommandFrame).toBeGreaterThanOrEqual(3);
   expect(result.routeFieldCommandFrameTelemetry).toEqual({ loaded: true, rendered: true, count: result.routeFieldCommandFrame });
-  expect(result.routeTitlePlaque).toBe(1);
-  expect(result.routeTitlePlaqueTelemetry).toEqual({ loaded: true, rendered: true, count: 1 });
-  expect(result.routePauseDetailFrame).toBeGreaterThanOrEqual(4);
+  expect(result.routeTitlePlaque).toBe(0);
+  expect(result.routeTitlePlaqueTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.routePauseDetailFrame).toBe(0);
   expect(result.routePauseDetailTelemetry.loaded).toBe(true);
-  expect(result.routePauseDetailTelemetry.count).toBeGreaterThanOrEqual(4);
+  expect(result.routePauseDetailTelemetry.count).toBe(0);
   expect(result.routeDidNotCommit).toBe(true);
   expect(result.routeClosed).toBe(false);
   expect(result.routePauseBlockedDuringCommit).toBe(true);
   expect(result.battlePaused).toBe(true);
-  expect(result.battleCommandFrame).toBeGreaterThanOrEqual(2);
+  expect(result.battleCommandFrame).toBe(0);
   expect(result.battleFieldCommandFrame).toBeGreaterThanOrEqual(3);
   expect(result.battleFieldCommandFrameTelemetry).toEqual({ loaded: true, rendered: true, count: result.battleFieldCommandFrame });
-  expect(result.battleTitlePlaque).toBe(1);
-  expect(result.battleTitlePlaqueTelemetry).toEqual({ loaded: true, rendered: true, count: 1 });
-  expect(result.battlePauseDetailFrame).toBeGreaterThanOrEqual(4);
+  expect(result.battleTitlePlaque).toBe(0);
+  expect(result.battleTitlePlaqueTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.battlePauseDetailFrame).toBe(0);
   expect(result.battlePauseDetailTelemetry.loaded).toBe(true);
-  expect(result.battlePauseDetailTelemetry.count).toBeGreaterThanOrEqual(4);
+  expect(result.battlePauseDetailTelemetry.count).toBe(0);
   expect(result.battlePauseDepths.root).toBeLessThan(result.battlePauseDepths.fx);
   expect(result.battlePauseDepths.overlay).toBeGreaterThan(result.battlePauseDepths.fx);
   expect(result.battleDidNotEndTurn).toBe(true);
@@ -22921,7 +22922,7 @@ test('defeat review explains the fatal hit, top pressure, and one actionable adj
       copyRailY: copyRail?.y,
       copyLabelFontSize: Number.parseFloat(copyLabel?.style?.fontSize ?? '0'),
       copyLabelContained: copyRail && copyLabel ? within(copyRail.getBounds(), copyLabel.getBounds()) : false,
-      reviewToCopyGap: frame && copyRail ? copyRail.getBounds().top - frame.getBounds().bottom : -1,
+      reviewToCopyGap: frame && copyRail ? frame.getBounds().left - copyRail.getBounds().right : -1,
       copyToCommandsGap: copyRail && commandHits.length > 0
         ? Math.min(...commandHits.map((entry) => entry.getBounds().top)) - copyRail.getBounds().bottom
         : -1,
@@ -22959,13 +22960,13 @@ test('defeat review explains the fatal hit, top pressure, and one actionable adj
   expect(result.tip).toBe(result.review.tip);
   expect(result.reviewRendered).toBe(true);
   expect(result.reviewContainsText).toBe(true);
-  expect(result.reviewSize).toEqual([244, 88]);
-  expect(result.reviewFontSizes).toEqual([11, 14, 11, 11]);
+  expect(result.reviewSize).toEqual([452, 140]);
+  expect(result.reviewFontSizes).toEqual([14, 18, 15, 16]);
   expect(result.copyRailSize).toEqual([244, 28]);
   expect(result.copyRailY).toBe(531);
   expect(result.copyLabelFontSize).toBe(12);
   expect(result.copyLabelContained).toBe(true);
-  expect(result.reviewToCopyGap).toBe(0);
+  expect(result.reviewToCopyGap).toBeGreaterThanOrEqual(20);
   expect(result.copyToCommandsGap).toBeGreaterThanOrEqual(8);
   expect(result.copyDoesNotOverlapCommands).toBe(true);
   expect(result.commands).toEqual(['Replay Flight', 'Flight Details', 'Main Menu']);

@@ -2175,7 +2175,7 @@ const FLOCK_ART_X = 230;
 const FLOCK_ART_Y = 340;
 const PLAYER_ATTACK_RESOLVE_DELAY_MS = 430;
 const PLAYER_CARD_RESOLVE_DELAY_MS = 300;
-const PLAYER_CARD_FEEDBACK_SETTLE_MS = 240;
+const PLAYER_CARD_FEEDBACK_SETTLE_MS = 100;
 const PLAYER_TURN_HANDOFF_DELAY_MS = 900;
 const ENEMY_TURN_PREAMBLE_MS = 800;
 const ENEMY_ATTACK_WINDUP_MS = 2600;
@@ -2192,11 +2192,11 @@ const COMBAT_SNAPPY_MIN_DELAY_MS = 320;
 // drain animation (fadeRect in damageEnemy / damageFlock / healFlock) so they line up.
 const ENEMY_HP_BAR = { x: 920, y: 318, w: 210, h: 24 };
 const FLOCK_HP_BAR = { x: 159, y: 44, w: 190, h: 24 };
-const FLOW_HUD_X_OFFSET = 99;
+const FLOW_HUD_X_OFFSET = 154;
 const FLOW_HUD_Y_OFFSET = 36;
-const FLOW_HUD_WIDTH = 196;
+const FLOW_HUD_WIDTH = 304;
 const FLOW_HUD_HEIGHT = 28;
-const FLOW_HUD_PIP_OFFSET = -27;
+const FLOW_HUD_PIP_OFFSET = -54;
 const FLOW_HUD_PIP_GAP = 15;
 // A suit's keystone aura activates once the flock holds this many of that suit.
 // (A suit-biased Leader's starter deck already crosses it, so each Leader opens
@@ -6209,8 +6209,7 @@ class RouteScene extends Phaser.Scene {
           this.cancelOrCloseRouteSupplyDrawer();
           return;
         }
-        this.confirmExitOpen = true;
-        this.renderAll();
+        this.setRoutePaused(true);
       },
     });
     this.input.on('wheel', (_pointer: Phaser.Input.Pointer, _gameObjects: Phaser.GameObjects.GameObject[], _deltaX: number, deltaY: number) => {
@@ -6836,6 +6835,13 @@ class RouteScene extends Phaser.Scene {
       onResume: () => {
         this.setRoutePaused(false);
       },
+      onAbandon: () => {
+        this.pauseOverlayOpen = false;
+        this.confirmExitOpen = true;
+        this.time.paused = false;
+        this.tweens.resumeAll();
+        this.renderAll();
+      },
       onMenu: () => {
         persistActiveRun(this.runState);
         this.time.paused = false;
@@ -6929,7 +6935,7 @@ class RouteScene extends Phaser.Scene {
       this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
       this.add.image(cx, cy, key)
         .setDisplaySize(w, h)
-        .setAlpha(0.78)
+        .setAlpha(0.32)
         .setName('route-map-frame');
       return;
     }
@@ -16266,6 +16272,8 @@ class BattleScene extends Phaser.Scene {
       if (!modalUiOpen) {
         this.fxLayer.setDepth(80);
         this.children.bringToTop(this.fxLayer);
+        const selected = this.getSelectedCard();
+        if (selected && !this.discardChoice && !this.returnChoice) this.showCardPreview(selected);
       }
     } finally {
       const elapsed = performance.now() - startedAt;
@@ -20187,8 +20195,12 @@ class BattleScene extends Phaser.Scene {
       || this.waymarkDrawerOpen
       || this.supplyDrawerOpen
     );
-    if (!hadDismissibleState) return;
+    if (!hadDismissibleState) {
+      if (this.mode === 'battle') this.setBattlePaused(true);
+      return;
+    }
     if (this.selectedInstanceId) this.statCancelledActions += 1;
+    this.hideCardPreview();
     this.selectedInstanceId = undefined;
     this.inspectOverlay = undefined;
     this.inspectedCardId = undefined;
@@ -20654,6 +20666,7 @@ class BattleScene extends Phaser.Scene {
     const skipCommitmentActive = this.mode === 'cardReward' && this.rewardSkipArmed;
     if ((!this.battleInputActive && !skipCommitmentActive) || this.settingsOverlayOpen || this.pauseOverlayOpen || this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
     if (this.mode !== 'battle' && !rewardMode) return;
+    if (!rewardMode && this.selectedInstanceId && !retentionActive) return;
     if (!rewardMode && !retentionActive && !this.isGuidedFirstCombat() && (this.cardsPlayedThisTurn > 0 || Boolean(this.selectedInstanceId))) return;
     const y = rewardMode ? 213 : 448;
     const skipBinding = controlBindingLabel('skipReward');
@@ -20723,6 +20736,8 @@ class BattleScene extends Phaser.Scene {
     const latestEntries = this.log.slice(-4);
     const latest = this.log.at(-1) ?? 'The crossing is quiet.';
     return {
+      roostLabel: `Roost · ${controlBindingLabel('roost')}`,
+      roostPreview: `End turn · ${this.incomingFlockDamagePreview().hpLoss} HP at risk`,
       scene: this,
       root: this.root,
       gameWidth: GAME_WIDTH,
@@ -21245,7 +21260,11 @@ class BattleScene extends Phaser.Scene {
         const card = this.hand.find((candidate) => candidate.instanceId === instanceId);
         if (card) this.showCardPreview(card);
       },
-      onCardOut: () => this.hideCardPreview(),
+      onCardOut: () => {
+        const selected = this.getSelectedCard();
+        if (selected) this.showCardPreview(selected);
+        else this.hideCardPreview();
+      },
       renderDiscardTag: (target: Phaser.GameObjects.Container, card: BattleHandCardView, x: number, y: number) => {
         this.discardChoiceModule?.renderDiscardChoiceTag({
           scene: this,
@@ -21541,9 +21560,8 @@ class BattleScene extends Phaser.Scene {
     this.cardPreview = undefined;
   }
 
-  // A large, readable floating preview of a hand card: big 2:3 art + name + cost
-  // + effect text + the Flock Stats it grants. Lives in fxLayer so it survives a
-  // redraw and overlays the board above the hand.
+  // Readable rules dossier: fixed on the player's side in combat, opposite
+  // the hovered choice in rewards. Lives above the board in fxLayer.
   private showCardPreview(card: Card, previewX = GAME_WIDTH / 2) {
     this.hideCardPreview();
     if (!this.battleHandRendererModule) {
@@ -21553,6 +21571,7 @@ class BattleScene extends Phaser.Scene {
     const view = this.battleHandCardView(card);
     try {
       this.cardPreview = this.battleHandRendererModule.renderBattleHandPreview({
+        combat: this.mode === 'battle',
         scene: this,
         target: this.fxLayer,
         width: GAME_WIDTH,
@@ -22927,16 +22946,9 @@ class BattleScene extends Phaser.Scene {
     const totalTaken = summary?.combatResults.reduce((sum, combat) => sum + combat.cohesionLost, 0) ?? this.statTaken;
     const totalDealt = summary?.combatResults.reduce((sum, combat) => sum + combat.damageDealt, 0) ?? this.statDealt;
     const stats: Array<[string, string]> = [
-      ['Flock Leader', getLeader(this.runLeaderId).name],
-      ['Difficulty', difficultyLabel(this.runDifficulty)],
-      ['Districts', `${districts} / ${runDistrictCount}  -  ${currentMap().name}`],
+      ['Districts', `${districts} / ${runDistrictCount}`],
       ['Encounters cleared', `${this.completedRouteNodeIds.length}`],
-      ['Final Cohesion', `${this.flock.hp} / ${this.flock.maxHp}`],
       ['Damage dealt / taken', `${totalDealt} / ${totalTaken}`],
-      ['Scrap on hand', `${this.scrap}`],
-      ['Deck size', `${this.allDeckCards().length} cards`],
-      ['Supplies used', `${summary?.suppliesUsed.length ?? this.runSuppliesUsed.length}`],
-      ['Waymarks', `${this.routeMarks.length}`],
     ];
     const statFrameKey = uiIconAssets['run-outcome-stat-row-frame'].key;
     this.bossDossierModule?.renderOutcomeStats(this, this.root, stats, {
@@ -23138,7 +23150,21 @@ class BattleScene extends Phaser.Scene {
       this.toggleDiscardChoice(instanceId);
       return;
     }
-    if (this.combatInteractionLocked()) return;
+    if (this.combatInteractionLocked()) {
+      // Selection is harmless during a player-card animation; execution is not.
+      // Never queue a play, and never bypass an enemy turn, choice, or modal.
+      if (this.playerCardFxBaseline && !this.discardChoice && !this.returnChoice
+        && !this.pauseOverlayOpen && !this.settingsOverlayOpen && this.mode === 'battle') {
+        const next = this.hand.find(card => card.instanceId === instanceId);
+        if (next) {
+          this.selectedInstanceId = instanceId;
+          this.controllerChoiceIndex = this.hand.indexOf(next);
+          this.refreshHandCardSelection();
+          this.showCardPreview(next);
+        }
+      }
+      return;
+    }
     const cardIndex = this.hand.findIndex((candidate) => candidate.instanceId === instanceId);
     const card = this.hand[cardIndex];
     if (!card) {
@@ -23164,6 +23190,7 @@ class BattleScene extends Phaser.Scene {
     if (retentionActive) this.requestBattleRender();
     else this.refreshHandCardSelection();
     this.refreshCombatSelectionPreview();
+    this.showCardPreview(card);
   }
 
   private onEnemyClicked(enemyId: string) {
@@ -23313,7 +23340,7 @@ class BattleScene extends Phaser.Scene {
     let retired = 0;
     if (destroyTransient) {
       for (const object of [...this.fxLayer.list]) {
-        if (baseline.has(object) || object.active === false) continue;
+        if (baseline.has(object) || object.active === false || object === this.cardPreview) continue;
         retired += 1;
         object.destroy();
       }
@@ -23327,6 +23354,7 @@ class BattleScene extends Phaser.Scene {
 
   private playCard(card: Card, enemyId = this.selectedEnemyId, options: PlayCardOptions = {}) {
     if (this.combatInteractionLocked()) return;
+    this.hideCardPreview();
     const contract = this.activeCardContract(card);
     const targetEnemy = this.resolvePlayableEnemyTarget(enemyId);
     if (contract.target === 'enemy' && !targetEnemy) return;
@@ -23366,7 +23394,7 @@ class BattleScene extends Phaser.Scene {
           this.combatAnimationPending = false;
           return;
         }
-        this.time.delayedCall(this.combatTimingDelay(PLAYER_CARD_FEEDBACK_SETTLE_MS), () => {
+        this.time.delayedCall(Math.min(PLAYER_CARD_FEEDBACK_SETTLE_MS, this.combatTimingDelay(PLAYER_CARD_FEEDBACK_SETTLE_MS)), () => {
           this.retirePlayerCardFxWindow(true);
           this.combatAnimationPending = false;
           if (this.mode === 'battle') this.renderAll();
@@ -23418,7 +23446,7 @@ class BattleScene extends Phaser.Scene {
       this.discardPile.push(playedCard);
       this.animateDiscard(1, this.handCardLeft(handIndexBeforePlay, handSizeBeforePlay) + CARD_W / 2, HAND_Y, 0.82);
     }
-    this.selectedInstanceId = undefined;
+    if (!this.hand.some(card => card.instanceId === this.selectedInstanceId)) this.selectedInstanceId = undefined;
     this.checkOutcome();
     this.renderAll();
     if (this.mode === 'battle') {
@@ -27620,19 +27648,17 @@ function renderUnifiedRunHud(
         .setStrokeStyle(1, 0xff6f6f, 0.7)
         .setName('combat-incoming-forecast-frame-fallback'));
     }
-    const forecastMath = incoming.blocked > 0
-      ? `Incoming ${incoming.total} - Cover ${incoming.blocked} = ${incoming.hpLoss}`
-      : `Incoming ${incoming.hpLoss}`;
-    addUi(addTo, scene.add.text(fx, fy, `${forecastMath}\nAfter ${incoming.afterHp} Cohesion`, {
+    const forecastMath = `${incoming.hpLoss} damage after Cover`;
+    addUi(addTo, scene.add.text(fx, fy, `${forecastMath}\n${incoming.afterHp} Cohesion left`, {
       fontFamily: UI_FONT,
-      fontSize: '10px',
+      fontSize: '13px',
       fontStyle: UI_BOLD,
       color: '#ffe5dd',
       stroke: '#180807',
       strokeThickness: 3,
       fixedWidth: 178,
       align: 'center',
-      lineSpacing: -2,
+      lineSpacing: 0,
       maxLines: 2
     }).setOrigin(0.5).setName('combat-incoming-forecast-label'));
   }
@@ -27663,7 +27689,7 @@ function renderUnifiedRunHud(
   const contextualMetrics = data.context === 'route'
     ? []
     : [
-        ...(cover > 0 ? [{ label: 'Cover', value: `${cover}`, width: 108, color: 0x7ab8d6, text: '#dffbff', icon: 'cover-shield' as UiIconId }] : []),
+        { label: 'Cover', value: `${cover}`, width: 108, color: 0x7ab8d6, text: '#dffbff', icon: 'cover-shield' as UiIconId },
         { label: 'Wingbeats', value: `${data.wingbeats ?? '0/3'}`, width: 118, color: 0xf5d38a, text: '#ffe7a8', icon: 'wingbeats' as UiIconId },
         ...(`${data.resonance ?? '0/5'}` !== '0/5' ? [{ label: 'Resonance', value: `${data.resonance}`, width: 118, color: 0x8df4ff, text: '#dffbff', icon: 'resonance-battery' as UiIconId }] : [])
       ];
@@ -27688,8 +27714,8 @@ function renderUnifiedRunHud(
     addUi(addTo, scene.add.rectangle(flowX, flowY, FLOW_HUD_WIDTH, FLOW_HUD_HEIGHT, flowFill, 0.96)
       .setStrokeStyle(1.5, flowAccent, 0.88)
       .setName('combat-flow-rail'));
-    addUi(addTo, scene.add.text(flowX - 88, flowY, `FLOW ${flow}/${flowMax}`, {
-      fontFamily: UI_FONT, fontSize: '9px', fontStyle: UI_BOLD, color: '#dffbff'
+    addUi(addTo, scene.add.text(flowX - 140, flowY, `FLOW ${flow}/${flowMax}`, {
+      fontFamily: UI_FONT, fontSize: '12px', fontStyle: UI_BOLD, color: '#dffbff'
     }).setOrigin(0, 0.5));
     const pipStart = flowX + FLOW_HUD_PIP_OFFSET;
     for (let i = 0; i < flowMax; i += 1) {
@@ -27705,12 +27731,12 @@ function renderUnifiedRunHud(
         .setAngle(-12)
         .setName('combat-flow-break-preview'));
     }
-    addUi(addTo, scene.add.text(flowX + 88, flowY, flowStatus, {
+    addUi(addTo, scene.add.text(flowX + 140, flowY, flowStatus, {
       fontFamily: UI_FONT,
-      fontSize: '8px',
+      fontSize: '11px',
       fontStyle: UI_BOLD,
       color: flowStatusColor,
-      fixedWidth: 72,
+      fixedWidth: 84,
       align: 'right',
       maxLines: 1
     }).setOrigin(1, 0.5).setName('combat-flow-status'));
@@ -27732,7 +27758,8 @@ function renderUnifiedRunHud(
       height: 38,
       valueColor: chip.text,
       alpha: 0.82,
-      icon: chip.icon
+      icon: chip.icon,
+      quiet: true,
     });
     if (chip.label === 'Deck' && data.onDeck) {
       const hit = addUi(addTo, scene.add.rectangle(cx, FLOCK_HP_BAR.y + 1, chip.width, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
@@ -27768,7 +27795,7 @@ function renderUnifiedRunHud(
     const chipW = 84;
     const chipH = 24;
     const chipY = FLOCK_HP_BAR.y + 38;
-    let chipCx = hpLeft + FLOCK_HP_BAR.w + 216;
+    let chipCx = 716;
     suitMeta.filter(([suit]) => (data.suitCounts?.[suit] ?? 0) >= KEYSTONE_AT).forEach(([suit, label, hex]) => {
       const n = data.suitCounts?.[suit] ?? 0;
       const on = n >= KEYSTONE_AT;
@@ -27815,13 +27842,13 @@ function renderHudMetricChip(
   label: string,
   value: string,
   accent: number,
-  opts: { valueColor?: string; height?: number; alpha?: number; icon?: UiIconId } = {}
+  opts: { valueColor?: string; height?: number; alpha?: number; icon?: UiIconId; quiet?: boolean } = {}
 ) {
   const height = opts.height ?? 38;
   const compact = height <= 34;
   const topRailY = cy - height / 2 + 2;
   const frameKey = uiIconAssets['combat-hud-metric-chip-frame'].key;
-  const hasFrame = scene.textures.exists(frameKey);
+  const hasFrame = !opts.quiet && scene.textures.exists(frameKey);
   const fillAlpha = opts.alpha ?? 0.78;
   addUi(addTo, scene.add.rectangle(cx, cy, width - 14, height - 8, 0x0b1017, hasFrame ? fillAlpha * 0.82 : fillAlpha)
     .setStrokeStyle(hasFrame ? 0 : 1, accent, hasFrame ? 0 : 0.42));
@@ -27833,7 +27860,7 @@ function renderHudMetricChip(
   } else {
     addUi(addTo, scene.add.rectangle(cx, topRailY, width - 18, 2, accent, 0.72));
   }
-  const iconId = opts.icon ?? hudIconForLabel(label);
+  const iconId = opts.quiet ? undefined : opts.icon ?? hudIconForLabel(label);
   const hasIcon = Boolean(iconId && scene.textures.exists(uiIconAssets[iconId].key));
   if (iconId) {
     const icon = addUiIconImage(scene, iconId, cx - width / 2 + 24, cy + 1, Math.min(28, height - 8));
@@ -27843,7 +27870,7 @@ function renderHudMetricChip(
   if (!hasIcon) {
     addUi(addTo, scene.add.text(textLeft, cy - height / 2 + 6, label.toUpperCase(), {
       fontFamily: UI_FONT,
-      fontSize: compact ? '7px' : '8px',
+      fontSize: opts.quiet ? '12px' : compact ? '7px' : '8px',
       fontStyle: UI_BOLD,
       color: '#91a6b8'
     }));

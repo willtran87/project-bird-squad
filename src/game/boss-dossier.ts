@@ -454,42 +454,42 @@ export function renderDefeatReview(
     boldStyle: string;
   }
 ) {
-  const height = 88;
+  const height = 140;
   const left = options.x - options.width / 2 + 12;
   root.add(scene.add.rectangle(options.x, options.y, options.width, height, 0x03070d, 0.94)
     .setStrokeStyle(1, 0xff9d6b, 0.34)
     .setName('run-defeat-review'));
-  root.add(scene.add.text(left, options.y - 37, `FLIGHT REVIEW · ${review.signal}`, {
+  root.add(scene.add.text(left, options.y - 60, `FLIGHT REVIEW · ${review.signal}`, {
     fontFamily: options.fontFamily,
-    fontSize: '11px',
+    fontSize: '14px',
     fontStyle: options.boldStyle,
     color: '#ffcfaa',
     fixedWidth: options.width - 24,
     maxLines: 1,
   }).setResolution(2).setName('run-defeat-review-signal'));
-  root.add(scene.add.text(left, options.y - 21, review.headline, {
+  root.add(scene.add.text(left, options.y - 38, review.headline, {
     fontFamily: options.fontFamily,
-    fontSize: '14px',
+    fontSize: '18px',
     fontStyle: options.boldStyle,
     color: '#fff0e8',
     fixedWidth: options.width - 24,
     maxLines: 1,
   }).setResolution(2).setName('run-defeat-review-headline'));
-  root.add(scene.add.text(left, options.y - 3, review.evidence, {
+  root.add(scene.add.text(left, options.y - 12, review.evidence, {
     fontFamily: options.fontFamily,
-    fontSize: '11px',
+    fontSize: '15px',
     color: '#d7e3ec',
     fixedWidth: options.width - 24,
     maxLines: 1,
   }).setResolution(2).setName('run-defeat-review-evidence'));
-  root.add(scene.add.text(left, options.y + 15, review.tip, {
+  root.add(scene.add.text(left, options.y + 12, review.tip, {
     fontFamily: options.fontFamily,
-    fontSize: '11px',
+    fontSize: '16px',
     color: '#b9cad7',
     fixedWidth: options.width - 24,
     wordWrap: { width: options.width - 24, useAdvancedWrap: true },
     lineSpacing: -1,
-    maxLines: 2,
+    maxLines: 3,
   }).setResolution(2).setName('run-defeat-review-tip'));
 }
 
@@ -522,9 +522,9 @@ export function renderOutcomeFlightSummary(
     }).setOrigin(0.5));
   } else if (options.review) {
     renderDefeatReview(scene, root, options.review, {
-      x: options.x,
-      y: 473,
-      width: 244,
+      x: 762,
+      y: 470,
+      width: 452,
       fontFamily: options.fontFamily,
       boldStyle: options.boldStyle,
     });
@@ -668,15 +668,15 @@ export function renderOutcomeStats(
   }
 ) {
   const startY = options.hasUnlocks ? 312 : 266;
-  const gap = options.hasUnlocks ? 22 : 28;
-  const rowH = options.hasUnlocks ? 20 : 25;
-  const fontSize = options.hasUnlocks ? '13px' : '15px';
+  const gap = 36;
+  const rowH = 30;
+  const fontSize = '18px';
   const centerX = (options.labelX + options.valueX) / 2;
   const frameLoaded = scene.textures.exists(options.rowFrameKey);
   if (frameLoaded) scene.textures.get(options.rowFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
   if (options.reportFrameLoaded) {
     const matY = startY + ((stats.length - 1) * gap) / 2;
-    root.add(scene.add.rectangle(centerX, matY, 500, options.hasUnlocks ? 246 : 316, 0x03070d, 0.98)
+    root.add(scene.add.rectangle(centerX, matY, 500, stats.length * gap + 8, 0x03070d, 0.98)
       .setStrokeStyle(1, options.softAccent, 0.16));
   }
   stats.forEach((row, index) => {

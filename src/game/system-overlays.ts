@@ -105,6 +105,7 @@ export interface PauseOverlayOptions {
   onMenu: () => void;
   onToggleAudio: () => void;
   onSettings?: () => void;
+  onAbandon?: () => void;
 }
 
 export interface ConfirmRunExitOverlayOptions {
@@ -745,18 +746,12 @@ export function renderPauseMenuOverlay(
 ) {
   addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.82)
     .setInteractive({ useHandCursor: false }));
-  const frame = dependencies.renderFieldPanel(scene, addTo, GAME_WIDTH / 2, GAME_HEIGHT / 2, 620, 430, {
+  const frame = dependencies.renderFieldPanel(scene, addTo, GAME_WIDTH / 2, GAME_HEIGHT / 2, 620, options.onAbandon ? 500 : 430, {
     accent: UI_FIELD.gold,
     fill: UI_FIELD.ink,
   });
-  addOverlayPanelFlourish(scene, addTo, frame, { alpha: 0.14, yOffset: 4 }, dependencies);
-  addSystemMenuCommandFrame(scene, addTo, frame, { alpha: 0.26, yOffset: 2 }, dependencies);
   const icon = addIconImage(scene, 'pause-medallion', frame.left + 112, frame.top + 118, 54);
   if (icon) addUi(addTo, icon.setAlpha(0.96));
-  addSystemOverlayTitlePlaque(scene, addTo, frame.left + 364, frame.top + 96, 424, 88, {
-    alpha: 0.5,
-    tint: 0xfff0c0,
-  });
   addUi(addTo, scene.add.text(frame.left + 206, frame.top + 72, memoryStorageSessionActive() ? 'Practice Paused' : options.title, {
     fontFamily: 'Georgia, serif',
     fontSize: '34px',
@@ -776,38 +771,32 @@ export function renderPauseMenuOverlay(
   options.details.slice(0, 4).forEach(([label, value], index) => {
     const y = frame.top + 170 + index * 34;
     addUi(addTo, scene.add.rectangle(frame.left + 310, y, 390, 25, 0x050a12, index % 2 === 0 ? 0.36 : 0.2));
-    addSystemPauseDetailRowFrame(
-      scene,
-      addTo,
-      frame.left + 310,
-      y,
-      414,
-      36,
-      index % 2 === 0 ? 0.68 : 0.58,
-      dependencies,
-    );
     addUi(addTo, scene.add.text(frame.left + 136, y, label, {
       fontFamily: UI_FONT,
-      fontSize: '14px',
+      fontSize: '16px',
       color: UI_FIELD.muted,
     }).setOrigin(0, 0.5));
-    addUi(addTo, scene.add.text(frame.right - 78, y, value, {
+    addUi(addTo, scene.add.text(frame.left + 486, y, value, {
       fontFamily: UI_FONT,
-      fontSize: '14px',
+      fontSize: '16px',
       fontStyle: UI_BOLD,
       color: UI_FIELD.text,
       align: 'right',
     }).setOrigin(1, 0.5));
   });
   dependencies.renderAudioToggleControl(scene, addTo, frame.right - 74, frame.top + 58, options.onToggleAudio);
+  const commandY = frame.bottom - (options.onAbandon ? 110 : 72);
   if (options.onSettings) {
-    dependencies.renderFieldButton(scene, addTo, frame.left + 132, frame.bottom - 72, 156, 56, 'Resume', true, options.onResume, UI_FIELD.cyan);
-    dependencies.renderFieldButton(scene, addTo, frame.cx, frame.bottom - 72, 156, 56, 'Settings', true, options.onSettings, UI_FIELD.cyan);
-    dependencies.renderFieldButton(scene, addTo, frame.right - 132, frame.bottom - 72, 156, 56, 'Main Menu', true, options.onMenu, UI_FIELD.gold);
+    dependencies.renderFieldButton(scene, addTo, frame.left + 132, commandY, 172, 64, 'Resume', true, options.onResume, UI_FIELD.gold);
+    dependencies.renderFieldButton(scene, addTo, frame.cx, commandY, 156, 56, 'Settings', true, options.onSettings, UI_FIELD.cyan);
+    dependencies.renderFieldButton(scene, addTo, frame.right - 132, commandY, 156, 56, 'Main Menu', true, options.onMenu, UI_FIELD.cyan);
   } else {
     dependencies.renderFieldButton(scene, addTo, frame.left + 174, frame.bottom - 72, 180, 56, 'Resume', true, options.onResume, UI_FIELD.cyan);
     dependencies.renderFieldButton(scene, addTo, frame.right - 174, frame.bottom - 72, 180, 56, 'Main Menu', true, options.onMenu, UI_FIELD.gold);
   }
+  if (options.onAbandon) (dependencies.renderFieldButton(scene, addTo, frame.cx, frame.bottom - 38, 220, 58,
+    memoryStorageSessionActive() ? 'End Practice…' : 'Abandon Flight…', true, options.onAbandon, UI_FIELD.danger) as Phaser.GameObjects.Rectangle)
+    .setName('pause-abandon-hit');
 }
 
 export function renderConfirmRunExitOverlay(

@@ -106,6 +106,7 @@ export interface BattleHandRenderContext {
 }
 
 export interface BattleHandPreviewContext {
+  combat?: boolean;
   scene: Phaser.Scene;
   target: Phaser.GameObjects.Container;
   width: number;
@@ -325,34 +326,26 @@ function renderCard(
     color: '#06101c',
   }).setOrigin(0.5));
 
-  const panelHeight = card.selected ? 64 : 40;
+  const panelHeight = 94;
   target.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - 3, cardWidth - 6, panelHeight, 0x05080e, 0.82));
   target.add(scene.add.rectangle(centerX, bottom - panelHeight - 3, cardWidth - 6, 2, card.accent, 0.85));
-  if (card.selected) {
-    context.renderRichText(target, centerX, bottom - panelHeight + 8, card.summary, {
-      wrap: cardWidth - 16,
-      fontSize: 12,
-      align: 'center',
-      lineSpacing: 3,
-      tooltips: true,
-    });
-  } else {
-    target.add(scene.add.text(centerX, bottom - panelHeight + 8, compactSentenceText(card.summary, 54, 1), {
+  {
+    target.add(scene.add.text(centerX, bottom - panelHeight + 8, compactSentenceText(card.summary, 54, 3), {
       fontFamily,
-      fontSize: '10px',
+      fontSize: '16px',
       color: card.canPay ? '#c7d4df' : '#7f8b98',
       align: 'center',
       fixedWidth: cardWidth - 16,
-      maxLines: 1,
+      maxLines: 4,
       wordWrap: { width: cardWidth - 16 },
-    }).setOrigin(0.5, 0));
+    }).setOrigin(0.5, 0).setName('combat-card-readable-summary'));
   }
 
   if (card.buildsFlow) {
     const container = scene.add.container(0, 0);
-    const background = scene.add.rectangle(centerX, bottom - 8, cardWidth - 18, 18, card.surgeNext ? 0x0d3b45 : 0x071b26, 0.96)
+    const background = scene.add.rectangle(centerX, bottom - panelHeight - 14, cardWidth - 18, 18, card.surgeNext ? 0x0d3b45 : 0x071b26, 0.96)
       .setStrokeStyle(1, card.surgeNext ? 0xd8a840 : 0x24d0d6, 0.82);
-    const label = scene.add.text(centerX, bottom - 8, card.surgeNext ? 'SURGE NEXT  /  +1 FLOW' : '+1 FLOW', {
+    const label = scene.add.text(centerX, bottom - panelHeight - 14, card.surgeNext ? 'SURGE NEXT  /  +1 FLOW' : '+1 FLOW', {
       fontFamily,
       fontSize: '9px',
       fontStyle: boldFontStyle,
@@ -447,111 +440,40 @@ export function refreshBattleHandSelection(
 export function renderBattleHandPreview(
   context: BattleHandPreviewContext,
   card: BattleHandCardPreviewView,
-  instanceId: string,
+  _instanceId: string,
   previewX = context.width / 2,
 ) {
-  const { scene, target, width, handY, cardHeight, fontFamily, boldFontStyle } = context;
-  const previewWidth = 300;
-  const previewHeight = Math.round(previewWidth * 1.5);
-  const centerX = Phaser.Math.Clamp(previewX, previewWidth / 2 + 8, width - previewWidth / 2 - 8);
-  // The generated dossier frame extends beyond the 300x450 card body; keep
-  // that outer flourish on-canvas as well as the interactive content.
-  const centerY = Math.max(previewHeight / 2 + 20, handY - cardHeight / 2 - previewHeight / 2 - 2);
-  const top = centerY - previewHeight / 2;
-  const bottom = centerY + previewHeight / 2;
-  const container = scene.add.container(0, 0);
-  container.add(scene.add.rectangle(centerX, centerY, previewWidth + 8, previewHeight + 8, 0x06090f, 0.99).setStrokeStyle(3, card.accent, 1));
-  const artLayer = scene.add.container(0, 0);
-  addCardArt(
-    { scene, renderSnagArt: context.renderSnagArt },
-    artLayer,
-    { instanceId, artKey: card.artKey, snag: card.snag, fallbackLabel: card.fallbackLabel },
-    centerX,
-    centerY,
-    previewWidth,
-    previewHeight,
-    1,
-  );
-  container.add(artLayer);
-  if (textureReady(scene, context.assets.hoverDossierFrame)) {
-    container.add(scene.add.image(centerX, centerY, context.assets.hoverDossierFrame)
-      .setDisplaySize(previewWidth + 26, previewHeight + 38)
-      .setAlpha(0.94)
-      .setName('card-hover-dossier-frame'));
-  }
-  container.add(scene.add.rectangle(centerX, top + 22, previewWidth - 4, 40, 0x05080e, 0.72));
-  container.add(scene.add.text(centerX - previewWidth / 2 + 52, top + 9, card.name, {
-    fontFamily,
-    fontSize: '21px',
-    fontStyle: boldFontStyle,
-    color: '#ffe7b0',
-    wordWrap: { width: previewWidth - 72 },
-  }));
-  container.add(scene.add.text(centerX + previewWidth / 2 - 12, top + 10, card.upgraded ? 'Preen' : 'Base', {
-    fontFamily,
-    fontSize: '10px',
-    fontStyle: boldFontStyle,
-    color: card.upgraded ? context.cyanColor : context.softColor,
-  }).setOrigin(1, 0));
-  container.add(scene.add.circle(centerX - previewWidth / 2 + 26, top + 24, 20, card.cost === 0 ? 0x24d0d6 : 0xe8b830, 1).setStrokeStyle(2, 0x05080e, 0.9));
-  container.add(scene.add.text(centerX - previewWidth / 2 + 26, top + 24, `${card.cost}`, {
-    fontFamily,
-    fontSize: '23px',
-    fontStyle: boldFontStyle,
-    color: '#06101c',
-  }).setOrigin(0.5));
-
-  const rules = scene.add.container(0, 0).setName('card-hover-rules');
-  let textY = 0;
-  if (card.usesMolt) {
-    rules.add(scene.add.text(centerX, textY, 'MOLT ACTIVE', {
-      fontFamily,
-      fontSize: '11px',
-      fontStyle: boldFontStyle,
-      color: '#ffc78f',
-    }).setOrigin(0.5, 0));
-    textY += 14;
-  }
-  textY += context.renderRichText(rules, centerX, textY, card.currentText, {
-    wrap: previewWidth - 24,
-    fontSize: 15,
-    align: 'center',
-    lineSpacing: 2,
-  }) + 6;
+  const { scene, target, fontFamily, boldFontStyle } = context;
+  // Keep the dossier on the player's side, clear of enemy intents and the hand.
+  const w = 438;
+  const x = context.combat ? 244 : Phaser.Math.Clamp(previewX, w / 2 + 8, context.width - w / 2 - 8);
+  const container = scene.add.container(0, 0).setName('combat-focused-card-dossier');
+  const rules = scene.add.container(0, 0);
+  let y = 0;
+  rules.add(scene.add.text(x, y, card.name, {
+    fontFamily, fontSize: '22px', fontStyle: boldFontStyle, color: '#ffe7b0',
+    wordWrap: { width: w - 32 }, align: 'center',
+  }).setOrigin(0.5, 0).setName('combat-focused-card-name'));
+  y += 58;
+  y += context.renderRichText(rules, x, y, card.currentText, {
+    wrap: w - 32, fontSize: 20, align: 'center', lineSpacing: 3,
+  }) + 14;
   if (card.alternateText && card.alternateLabel) {
-    textY += context.renderRichText(rules, centerX, textY, `${card.alternateLabel}: ${card.alternateText}`, {
-      wrap: previewWidth - 24,
-      fontSize: 12,
-      align: 'center',
-      baseColor: card.usesMolt ? '#b9c7d6' : '#ff9d4d',
-      bold: true,
-      lineSpacing: 2,
-    });
+    y += context.renderRichText(rules, x, y, `${card.alternateLabel}: ${card.alternateText}`, {
+      wrap: w - 32, fontSize: 16, align: 'center', lineSpacing: 2,
+      baseColor: '#ffc78f',
+    }) + 12;
   }
-  const panelHeight = Math.max(card.alternateText ? 152 : 118, textY + 66);
-  container.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - 4, previewWidth - 4, panelHeight, 0x05080e, 0.97));
-  container.add(scene.add.rectangle(centerX, bottom - panelHeight - 4, previewWidth - 4, 2, card.accent, 0.85));
-  container.add(rules.setY(bottom - panelHeight + 6));
-  container.add(scene.add.text(centerX, bottom - 43, 'Flock Stats', {
-    fontFamily,
-    fontSize: '10px',
-    fontStyle: boldFontStyle,
-    color: context.softColor,
-  }).setOrigin(0.5).setName('card-hover-stats-title'));
-  if (textureReady(scene, context.assets.hoverStatChipFrame)) {
-    container.add(scene.add.image(centerX, bottom - 18, context.assets.hoverStatChipFrame)
-      .setDisplaySize(previewWidth - 40, 34)
-      .setAlpha(0.78)
-      .setName('card-hover-stat-chip-frame'));
-  }
-  container.add(scene.add.text(centerX, bottom - 12, card.stats, {
-    fontFamily,
-    fontSize: '11px',
-    fontStyle: boldFontStyle,
-    color: context.cyanColor,
-    align: 'center',
-    wordWrap: { width: previewWidth - 20 },
-  }).setOrigin(0.5, 1));
+  const stats = scene.add.text(x, y, `Cost ${card.cost} · ${card.upgraded ? 'Preened' : 'Base'}\n${card.stats}`, {
+    fontFamily, fontSize: '14px', color: context.cyanColor,
+    wordWrap: { width: w - 32 }, align: 'center',
+  }).setOrigin(0.5, 0);
+  rules.add(stats);
+  y += stats.height + 16;
+  const top = Math.max(110, 416 - y);
+  container.add(scene.add.rectangle(x, top + y / 2, w, y, 0x07111b, 0.99)
+    .setStrokeStyle(2, card.accent, 0.8).setName('combat-focused-card-panel'));
+  container.add(rules.setY(top + 8));
   target.add(container);
   return container;
 }

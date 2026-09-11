@@ -256,6 +256,7 @@ export interface ProfileViewState {
   savedDeckIdentityIndex: number;
   savedDeckDescriptionInput?: HTMLInputElement;
   savedDeckLabOpen: boolean;
+  savedDeckLabToolsOpen?: boolean;
   savedDeckLabSample: number;
   savedDeckLabHandPage: number;
   savedDeckCollectionSignalsOpen: boolean;
@@ -4806,7 +4807,7 @@ function renderSavedDeckLab(
   ).setName('profile-flight-lab-practice-hit').setData('available', practice.available);
   scene.add.text(154, 113, legalLabel, {
     fontFamily: UI_FONT,
-    fontSize: '8px',
+    fontSize: '12px',
     fontStyle: UI_BOLD,
     color: analysis.legalForStandardFlight ? '#b9ffdb' : '#ffd7a0',
   }).setResolution(2).setName('profile-flight-lab-legality');
@@ -4831,7 +4832,7 @@ function renderSavedDeckLab(
       .setStrokeStyle(1, index === 3 ? UI_FIELD.gold : UI_FIELD.cyan, 0.58);
     scene.add.text(x, 170, String(label), {
       fontFamily: UI_FONT,
-      fontSize: '8px',
+      fontSize: '12px',
       fontStyle: UI_BOLD,
       color: UI_MUTED,
     }).setResolution(2).setOrigin(0.5);
@@ -4845,7 +4846,7 @@ function renderSavedDeckLab(
 
   scene.add.text(158, 228, 'COST CURVE', {
     fontFamily: UI_FONT,
-    fontSize: '10px',
+    fontSize: '14px',
     fontStyle: UI_BOLD,
     color: UI_FIELD.cyanText,
   }).setResolution(2);
@@ -4857,7 +4858,7 @@ function renderSavedDeckLab(
       .setStrokeStyle(1, index === 3 ? UI_FIELD.gold : UI_FIELD.cyan, 0.7);
     scene.add.text(x, 298, `${entry.label}  ·  ${entry.count}`, {
       fontFamily: UI_FONT,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: UI_BOLD,
       color: UI_SOFT,
     }).setResolution(2).setOrigin(0.5);
@@ -4872,13 +4873,13 @@ function renderSavedDeckLab(
     const y = 330 + index * 62;
     scene.add.text(158, y, label, {
       fontFamily: UI_FONT,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: UI_BOLD,
       color: UI_MUTED,
     }).setResolution(2);
     scene.add.text(158, y + 20, entries.map((entry) => `${entry.label} ${entry.count}`).join('  ·  ') || 'None', {
       fontFamily: UI_FONT,
-      fontSize: '10px',
+      fontSize: '14px',
       fontStyle: UI_BOLD,
       color: UI_SOFT,
       fixedWidth: 354,
@@ -4893,13 +4894,13 @@ function renderSavedDeckLab(
     .setStrokeStyle(1, analysis.issues.length > 0 ? UI_FIELD.gold : UI_FIELD.green, 0.7);
   scene.add.text(172, 520, analysis.issues.length > 0 ? 'WHY REVIEW IS NEEDED' : 'REAL FLIGHT', {
     fontFamily: UI_FONT,
-    fontSize: '9px',
+    fontSize: '12px',
     fontStyle: UI_BOLD,
     color: analysis.issues.length > 0 ? '#ffd7a0' : '#b9ffdb',
   }).setResolution(2);
   scene.add.text(172, 540, analysis.issues.length > 0 ? issueText : launch.detail, {
     fontFamily: UI_FONT,
-    fontSize: analysis.issues.length > 0 ? '10px' : '14px',
+    fontSize: '14px',
     color: UI_SOFT,
     fixedWidth: 328,
     wordWrap: { width: 328 },
@@ -4919,7 +4920,7 @@ function renderSavedDeckLab(
   }).setResolution(2).setName('profile-flight-lab-sample-title');
   scene.add.text(1100, 144, `${analysis.rules.wingbeats} WINGBEATS  ·  ${analysis.rules.handSize} DRAW`, {
     fontFamily: UI_FONT,
-    fontSize: '9px',
+    fontSize: '12px',
     fontStyle: UI_BOLD,
     color: UI_FIELD.cyanText,
   }).setResolution(2).setOrigin(1, 0);
@@ -4957,7 +4958,7 @@ function renderSavedDeckLab(
     }).setResolution(2).setOrigin(0.5);
     scene.add.text(x, y + 58, `${card.upgraded ? 'PREENED\n' : ''}${card.role.toUpperCase()}`, {
       fontFamily: UI_FONT,
-      fontSize: '9px',
+      fontSize: '12px',
       fontStyle: UI_BOLD,
       color: card.playable ? UI_FIELD.cyanText : '#d9a9bd',
       fixedWidth: 86,
@@ -4980,7 +4981,7 @@ function renderSavedDeckLab(
     `${analysis.sample.playableCount} individually affordable  ·  budget covers up to ${analysis.sample.affordableTogether} together`,
     {
       fontFamily: UI_FONT,
-      fontSize: '10px',
+      fontSize: '14px',
       fontStyle: UI_BOLD,
       color: UI_FIELD.cyanText,
       fixedWidth: 500,
@@ -4998,7 +4999,7 @@ function renderSavedDeckLab(
   }
   scene.add.text(566, 415, `OPENING STUDY  ·  ${analysis.consistency.sampleCount} SAMPLES, NOT WIN ODDS`, {
     fontFamily: UI_FONT,
-    fontSize: '10px',
+    fontSize: '14px',
     fontStyle: UI_BOLD,
     color: UI_FIELD.warm,
   }).setResolution(2);
@@ -5015,7 +5016,7 @@ function renderSavedDeckLab(
       .setStrokeStyle(1, index === 1 ? UI_FIELD.gold : UI_FIELD.violet, 0.44);
     scene.add.text(826, 450 + index * 34, row, {
       fontFamily: UI_FONT,
-      fontSize: '10px',
+      fontSize: '14px',
       color: UI_SOFT,
       align: 'center',
       fixedWidth: 476,
@@ -5032,104 +5033,32 @@ function renderSavedDeckLab(
     wordWrap: { width: 492 },
   }).setResolution(2).setOrigin(0.5);
 
-  const collectionSignals = dependencies.renderFieldButton(
-    scene,
-    () => {},
-    200,
-    626,
-    126,
-    MIN_SUPPORTED_TOUCH_TARGET,
-    'Signals',
-    true,
-    () => openSavedDeckCollectionSignals(scene, state, dependencies),
-    UI_FIELD.gold,
-    false,
-  );
-  collectionSignals.setName('profile-flight-lab-collection-signals-hit');
-  const fieldRecord = dependencies.renderFieldButton(
-    scene,
-    () => {},
-    340,
-    626,
-    126,
-    MIN_SUPPORTED_TOUCH_TARGET,
-    'Field Record',
-    true,
-    () => openSavedDeckFieldRecord(scene, state, dependencies),
-    UI_FIELD.cyan,
-    false,
-  );
-  fieldRecord.setName('profile-flight-lab-field-record-hit');
-  const history = dependencies.renderFieldButton(
-    scene,
-    () => {},
-    480,
-    626,
-    126,
-    MIN_SUPPORTED_TOUCH_TARGET,
-    'Revision Trail',
-    true,
-    () => openSavedDeckHistory(scene, state, dependencies),
-    UI_FIELD.cyan,
-    false,
-  );
-  history.setName('profile-flight-lab-history-hit');
-  const tune = dependencies.renderFieldButton(
-    scene,
-    () => {},
-    620,
-    626,
-    126,
-    MIN_SUPPORTED_TOUCH_TARGET,
-    'Tune Copy',
-    true,
-    () => openSavedDeckWorkshop(scene, state, dependencies),
-    UI_FIELD.green,
-    false,
-  );
-  tune.setName('profile-flight-lab-tune-hit');
-  const previous = dependencies.renderFieldButton(
-    scene,
-    () => {},
-    760,
-    626,
-    126,
-    MIN_SUPPORTED_TOUCH_TARGET,
-    'Previous Hand',
-    state.savedDeckLabSample > 0,
-    () => cycleSavedDeckLabSample(scene, state, dependencies, -1),
-    UI_FIELD.violet,
-    false,
-  );
-  previous.setName('profile-flight-lab-previous-hit');
-  const deal = dependencies.renderFieldButton(
-    scene,
-    () => {},
-    900,
-    626,
-    126,
-    MIN_SUPPORTED_TOUCH_TARGET,
-    'Deal Again',
-    true,
-    () => cycleSavedDeckLabSample(scene, state, dependencies, 1),
-    UI_FIELD.gold,
-    false,
-  );
-  deal.setName('profile-flight-lab-deal-hit');
-  const close = dependencies.renderFieldButton(
-    scene,
-    () => {},
-    1040,
-    626,
-    126,
-    MIN_SUPPORTED_TOUCH_TARGET,
-    'Close Lab',
-    true,
-    () => closeSavedDeckLab(scene, state, dependencies),
-    UI_FIELD.cyan,
-    false,
-  );
-  close.setName('profile-flight-lab-close-hit');
+  const toolActions = [
+    ['Signals · G', 'collection-signals', () => openSavedDeckCollectionSignals(scene, state, dependencies)],
+    ['Field Record · N', 'field-record', () => openSavedDeckFieldRecord(scene, state, dependencies)],
+    ['Revision Trail · R', 'history', () => openSavedDeckHistory(scene, state, dependencies)],
+    ['Tune Copy · T', 'tune', () => openSavedDeckWorkshop(scene, state, dependencies)],
+  ] as const;
+  if (state.savedDeckLabToolsOpen) {
+    scene.add.rectangle(336, 414, 376, 184, 0x07111c, 1).setName('profile-flight-lab-tools-panel');
+    toolActions.forEach(([label, name, action], index) => {
+      dependencies.renderFieldButton(scene, () => {}, 246 + (index % 2) * 180, 370 + Math.floor(index / 2) * 76,
+        166, 58, label, true, action, UI_FIELD.cyan, false).setName(`profile-flight-lab-${name}-hit`);
+    });
+  }
+  const actions = [
+    [240, state.savedDeckLabToolsOpen ? 'Hide tools' : 'Tools', 'tools', true, () => {
+      state.savedDeckLabToolsOpen = !state.savedDeckLabToolsOpen;
+      renderProfileScene(scene, state, dependencies);
+    }],
+    [500, 'Previous Hand', 'previous', state.savedDeckLabSample > 0, () => cycleSavedDeckLabSample(scene, state, dependencies, -1)],
+    [760, 'Deal Again', 'deal', true, () => cycleSavedDeckLabSample(scene, state, dependencies, 1)],
+    [1020, 'Close Lab', 'close', true, () => closeSavedDeckLab(scene, state, dependencies)],
+  ] as const;
+  actions.forEach(([x, label, name, enabled, action]) => {
+    dependencies.renderFieldButton(scene, () => {}, x, 632, 208, 58, label, enabled, action,
+      name === 'deal' ? UI_FIELD.gold : UI_FIELD.cyan, false).setName(`profile-flight-lab-${name}-hit`);
+  });
 }
 
 function renderSavedDeckCollectionSignals(

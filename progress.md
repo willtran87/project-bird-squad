@@ -8751,3 +8751,29 @@ sessions through `docs/game/playtest-runbook.md`.
   preview PID 48416 stopped. Ports 43310–43316 have no remaining listeners.
   Temporary action/diagnostic/config files removed; ignored screenshot evidence
   retained intentionally. No commit, push, or deployment performed in this pass.
+
+## 2026-09-11 — ten-point visual clarity and interaction polish
+
+- Addressed the latest ten audit findings across combat cards, input recovery,
+  Roost, HUD hierarchy, routes, rewards, Back/pause, Flight Lab, pause layout,
+  and post-run review. See `docs/game/visual-polish-resolution.md` for the mapping.
+- UI-layout and high-resolution testing guidance shaped the fixed rules dossier,
+  quieter controls, hierarchy, and verification at 2560x1600, 1440x900, 1000x560.
+- Testing caught and fixed a real next-card selection loss during finalization,
+  reward previews accidentally sharing the combat placement, and a Flow/keystone
+  spacing conflict. Cosmetic recovery is capped at 100 ms, including Snappy mode.
+- Four new production-browser scenarios pass across Chromium, Firefox, WebKit.
+  Focused existing Chromium regressions cover attack timing, input parity, discard,
+  rewards, pause, animation pace, Flight Lab, and defeat-review containment.
+- Production build, docs, data, assets, bundle hard limits, deployment-cache,
+  and whitespace checks pass. Preferred entry/combined startup-size warnings remain.
+- Shared gameplay client completed menu/route/battle input with no error artifact;
+  retained screenshots are under `.artifacts/shared-client/polish-final` and
+  `.artifacts/test-results/polish*`. Human fun/balance, physical-device, and AT
+  qualification remain separate; this does not close the broader product backlog.
+- No commit, push, or deployment requested or performed in this pass.
+- Cleanup: stopped owned preview PID 54872; port 43381 is closed. Stopped verified
+  lingering WebKit workers after completed passing scenarios; runners exited
+  successfully. Expanded 440-state/card and four-keystone bounds checks pass in
+  all three engines and exited normally. Removed temporary config/actions/helper;
+  ignored screenshots remain intentionally. No live owned browser processes remain.
