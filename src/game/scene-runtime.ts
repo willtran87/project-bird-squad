@@ -1,21 +1,26 @@
 import Phaser from 'phaser';
 
-export function advanceSceneTime(scene: Phaser.Scene, requestedMs: number) {
-  if (!scene.sys?.settings?.active) return;
-  let remaining = Phaser.Math.Clamp(Number.isFinite(requestedMs) ? requestedMs : 0, 0, 120_000);
-  const frameMs = 1000 / 60;
-  while (remaining > 0) {
-    const delta = Math.min(frameMs, remaining);
-    scene.time.preUpdate();
-    scene.time.update(scene.time.now + delta, delta);
-    scene.tweens.prevTime -= delta;
-    scene.tweens.tick();
-    remaining -= delta;
-  }
-}
-
 export function advanceGameTime(game: Phaser.Game, requestedMs: number) {
-  game.scene.getScenes(true).forEach((scene) => advanceSceneTime(scene, requestedMs));
+  game.scene.getScenes(true).forEach((scene) => {
+    if (!scene.sys.isActive()) return;
+    let remaining = Phaser.Math.Clamp(Number.isFinite(requestedMs) ? requestedMs : 0, 0, 120_000);
+    const clock = scene.time;
+    const tweens = scene.tweens;
+    const getDelta = tweens.getDelta;
+    let delta = 0;
+    // Phaser measures wall time here. Supply each manual frame's delta without
+    // replacing its tween processing, scaling or cleanup, then restore the clock.
+    tweens.getDelta = () => delta;
+    try {
+      while (remaining > 0) {
+        delta = Math.min(1000 / 60, remaining);
+        clock.preUpdate();
+        clock.update(clock.now + delta, delta);
+        if (!tweens.paused) tweens.tick();
+        remaining -= delta;
+      }
+    } finally { tweens.getDelta = getDelta; }
+  });
 }
 
 export function countTextureInGameObjects(children: any[], textureKey: string): number {

@@ -336,6 +336,9 @@ if (failures.length === 0) {
     fail(`Expected exactly one lazy battle HUD renderer chunk, found ${battleHudRendererChunks.length}.`);
   }
 
+  const combatCardDetailChunks = files.filter((name) => /^combat-card-detail-.*\.js$/.test(name));
+  if (combatCardDetailChunks.length !== 1) fail(`Expected exactly one combat card detail chunk, found ${combatCardDetailChunks.length}.`);
+  if (preloadHrefs.some((href) => /combat-card-detail-/.test(href))) fail('Combat card detail must not be a title preload.');
   const battleHandRendererChunks = files.filter((name) => /^render-hand-.*\.js$/.test(name));
   if (battleHandRendererChunks.length !== 1) {
     fail(`Expected exactly one lazy battle hand renderer chunk, found ${battleHandRendererChunks.length}.`);

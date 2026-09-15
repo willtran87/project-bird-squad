@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { observeChoiceInput } from './game/choice-input-hints';
+import { eventChoiceState, eventChoiceHint, handleEventChoice, renderEventChoiceReader } from './game/route-event-reading';
 import { endPracticeSession, practiceStartingDeck, renderPracticeBadge } from './game/practice-session';
 import { memoryStorageSessionActive } from './game/safe-storage';
 import './style.css';
@@ -150,6 +152,9 @@ import type { SynthAudioCue } from './game/audio-sfx';
 import { compactBossTests, distinctMeaningfulUpgradeCards, districtCardRewardLeans, districtRewardAffinity, districtRewardObservations, draftComplementaryRewardPair, draftStructuredRewardChoices, getMapBalanceProfile, hasMeaningfulCardUpgrade, rewardBuildObservations, routeDecisionRead } from './game/balance';
 import { enemyInitials, enemyStatus } from './game/enemy-display';
 import { parseEffect, parseEffectValue } from './game/effects/effect-parser';
+import { cleanseFlockDebuffs, incomingHit, projectEnemyPhase } from './game/enemy-damage';
+import { fitTextExcerpt } from './game/text-excerpt';
+import { enemyIntentLabel } from './game/enemy-intent';
 import {
   checkRouteCondition as checkRouteEffectCondition,
   resolveRouteEffect as resolveRouteEffectRule,
@@ -223,6 +228,7 @@ const RUN_MODE_SUMMARY: Record<RunMode, string> = {
   full: 'Full, 4 districts, unlocks tiers',
 };
 type MenuFocus =
+  | 'configure'
   | 'leader'
   | 'difficulty'
   | 'runMode'
@@ -633,6 +639,7 @@ class SceneAssetReadinessTracker {
   }
 
   markFullArt() {
+    if ([...this.groups.values()].some((group) => !group.settled || group.failedKeys.length)) return;
     this.fullArtAtMs ??= performance.now();
   }
 
@@ -909,6 +916,7 @@ interface RenderPayload {
     rendered: boolean;
     count: number;
   };
+  keywordTooltip?: { keyword: string; definition: string };
   keywordTooltipFrame?: {
     loaded: boolean;
     rendered: boolean;
@@ -1513,7 +1521,7 @@ interface RenderPayload {
     label?: string;
     target?: string;
     visibleFocus: boolean;
-    bindings: { previous: string; next: string; confirm: string; roost: string; pause: string };
+    bindings: { previous: string; next: string; confirm: string; roost: string; pause: string; history: string };
     controller: { choose: string; target: string; play: string; back: string; pause: string; roost: string };
   };
   rewardInspection?: {
@@ -1569,7 +1577,7 @@ interface RenderPayload {
     label?: string;
     zone?: string;
     zoneCounts: { deck: number; draw: number; discard: number; cleared: number };
-    bindings: { select: string; previousZone: string; nextZone: string; back: string };
+    bindings: { select: string; previousZone: string; nextZone: string; back: string; details: string };
     controller: { choose: string; zone: string; page: string; back: string };
   };
   selectedEnemy?: string;
@@ -1645,6 +1653,7 @@ interface RenderPayload {
     battlefieldMood?: 'street' | 'rival' | 'boss';
   };
   inspectOverlay?: InspectOverlay;
+  combatCardDetail?: { kind?: 'card' | 'history'; card: string; page: number; pageCount: number; heading: string; body: string; controls: string };
   flockStatsFlourish?: {
     loaded: boolean;
     rendered: boolean;
@@ -1889,6 +1898,7 @@ interface RenderPayload {
     count: number;
   };
   waymarkDrawerOpen?: boolean;
+  waymarkReaderNotice?: string;
   waymarkReview?: {
     open: boolean;
     count: number;
@@ -1936,6 +1946,7 @@ interface RenderPayload {
       name?: string;
       description?: string;
       summary?: string;
+      rules?: string;
       timing?: RuntimeSupply['timing'];
       usable: boolean;
       empty?: boolean;
@@ -2179,8 +2190,6 @@ const PLAYER_CARD_FEEDBACK_SETTLE_MS = 60;
 const PLAYER_TURN_HANDOFF_DELAY_MS = 180;
 const ENEMY_TURN_PREAMBLE_MS = 180;
 const ENEMY_ATTACK_WINDUP_MS = 2600;
-const ENEMY_ATTACK_RELEASE_MS = 1800;
-const ENEMY_ATTACK_IMPACT_ANTICIPATION_MS = 720;
 const ENEMY_ATTACK_RECOVER_MS = 1450;
 const COMBAT_REDUCED_MOTION_TIMING_SCALE = 0.75;
 const COMBAT_REDUCED_MOTION_MIN_DELAY_MS = 40;
@@ -2189,13 +2198,13 @@ const COMBAT_SNAPPY_TIMING_SCALE = 0.72;
 const COMBAT_SNAPPY_MIN_DELAY_MS = 40;
 // HP-bar geometry, shared by the foreground renderer / top status bar and the
 // drain animation (fadeRect in damageEnemy / damageFlock / healFlock) so they line up.
-const ENEMY_HP_BAR = { x: 920, y: 318, w: 210, h: 24 };
+const ENEMY_HP_BAR = { x: 920, y: 318, w: 210, h: 12 };
 const FLOCK_HP_BAR = { x: 159, y: 44, w: 190, h: 24 };
-const FLOW_HUD_X_OFFSET = 154;
+const FLOW_HUD_X_OFFSET = 192;
 const FLOW_HUD_Y_OFFSET = 36;
-const FLOW_HUD_WIDTH = 304;
+const FLOW_HUD_WIDTH = 380;
 const FLOW_HUD_HEIGHT = 28;
-const FLOW_HUD_PIP_OFFSET = -54;
+const FLOW_HUD_PIP_OFFSET = -56;
 const FLOW_HUD_PIP_GAP = 15;
 // A suit's keystone aura activates once the flock holds this many of that suit.
 // (A suit-biased Leader's starter deck already crosses it, so each Leader opens
@@ -2515,6 +2524,15 @@ function loadRouteRewardOverlayModule() {
 }
 
 type WaymarkReviewModule = typeof import('./game/waymark-review');
+function ownedWaymarkReviewEntry(mark: RuntimeRouteMark, family = routeMarkFamilyLabel(mark.family)): SceneWaymarkReviewEntry {
+  const effects = routeMarkEffects(mark);
+  return { id: mark.id, name: mark.name, family, rarity: mark.rarity, source: mark.source, grammar: effects,
+    meta: `${family} / ${mark.rarity.toUpperCase()} / ${mark.source.toUpperCase()}`,
+    trigger: formatWaymarkTrigger(mark.trigger, effects), description: mark.description,
+    effects: effects.map(effect => formatEffects([effect])), tags: waymarkSynergyTags(mark),
+    accent: routeMarkAccent(mark), artKey: waymarkCompactArtAssets[mark.id]?.key,
+    flavorText: mark.flavorText ?? '', glyph: waymarkGlyph(mark), tileMeta: '', summary: '' };
+}
 type SceneWaymarkReviewEntry = import('./game/waymark-review').SceneWaymarkReviewEntry;
 let waymarkReviewModulePromise: Promise<WaymarkReviewModule> | undefined;
 function loadWaymarkReviewModule() {
@@ -2632,7 +2650,7 @@ function registerCodexScene(game: Phaser.Game, module: CodexSceneModule) {
 // by rarity so uncommon cards show up often while rares/legendaries still feel special.
 const REWARD_RARITY_WEIGHT: Record<string, number> = { common: 80, uncommon: 75, rare: 32, legendary: 10 };
 const battlefieldRuntimeArtUrls = import.meta.glob([
-  '../assets/runtime/backdrops/rooftop-blocks.webp',
+  '../assets/runtime/backdrops/rooftop-blocks-readability-v2.webp',
   '../assets/runtime/backdrops/canal-markets.webp',
   '../assets/runtime/backdrops/signal-spires.webp',
   '../assets/runtime/backdrops/high-roost.webp',
@@ -2740,7 +2758,7 @@ const MARKET_KIT_ASSETS = {
 const BATTLEFIELD_ASSETS: Record<string, RuntimeImageAsset> = {
   map_01_rooftop_blocks: {
     key: 'battlefield-rooftop-blocks',
-    url: battlefieldRuntimeArtUrls['../assets/runtime/backdrops/rooftop-blocks.webp'] ?? '/assets/runtime/backdrops/rooftop-blocks.webp'
+    url: battlefieldRuntimeArtUrls['../assets/runtime/backdrops/rooftop-blocks-readability-v2.webp'] ?? '/assets/runtime/backdrops/rooftop-blocks-readability-v2.webp'
   },
   map_02_canal_markets: {
     key: 'battlefield-canal-markets',
@@ -3262,12 +3280,8 @@ const uiIconIds = [
   'how-to-play-guide-frame',
   'how-to-play-topic-card-frame',
   'how-to-play-tip-row-frame',
-  'card-picker-frame',
   'card-picker-scroll-button-frame',
-  'card-picker-cost-badge',
   'card-picker-page-indicator-frame',
-  'card-picker-nameplate-frame',
-  'card-picker-context-plaque',
   'route-event-cancel-command-frame',
   'overlay-close-command-frame',
   'deck-review-flourish',
@@ -3465,6 +3479,7 @@ const routeEssentialUiIconIds: UiIconId[] = [
   'route-commit-medallion',
 ];
 const battleEssentialUiIconIds: UiIconId[] = [
+  'flock-heart',
   'battle-hud-command-rail',
   'combat-cohesion-gauge-frame',
   'combat-roost-command-frame',
@@ -4365,8 +4380,7 @@ class BirdAudioDirector {
       }
       this.sfxStatus = 'ready';
       if ((!this.muted || playThroughMute) && this.master) {
-        module.playAudioCue(ctx, this.master, this.sfxVolume, cue, intensity);
-        this.sfxPlayed += 1;
+        if (module.playAudioCue(ctx, this.master, this.sfxVolume, cue, intensity)) this.sfxPlayed += 1;
       }
     });
   }
@@ -4616,6 +4630,8 @@ class BootScene extends Phaser.Scene {
 }
 
 class MenuScene extends Phaser.Scene {
+  private setupOpen = false;
+  private setupObjects: Phaser.GameObjects.GameObject[] = [];
   private selectedLeaderId = defaultLeaderId;
   private leaderPanels: Array<{ id: string; rect: Phaser.GameObjects.Rectangle; unlocked: boolean; selectedIcon?: Phaser.GameObjects.Image; cardFrame?: Phaser.GameObjects.Image; selectedFlourish?: Phaser.GameObjects.Image }> = [];
   private leaderTooltip?: Phaser.GameObjects.Container;
@@ -4670,61 +4686,71 @@ class MenuScene extends Phaser.Scene {
     this.titleRunLaunchPending = false;
     this.titleRunLaunchFlourishBursts = 0;
     this.codexOpening = false;
+    if (!data.reopenSettings && !data.reopenHelp && !data.reopenLeaderTooltip) {
+      this.setupOpen = false;
+      this.menuFocus = 'primaryRun';
+    }
     this.updateMenuTextState();
 
     this.cameras.main.fadeIn(220);
     this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, 'splash')
       .setDisplaySize(GAME_WIDTH, GAME_HEIGHT)
       .setAlpha(1);
-    this.add.rectangle(GAME_WIDTH / 2, 576, GAME_WIDTH, 288, 0x07111b, 0.96).setName('title-setup-surface');
+    const setupSurface = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b1723, 1).setName('title-setup-surface');
+    const scrim = this.add.graphics().setName('title-home-scrim');
+    scrim.fillStyle(0x06121f, 1).fillRect(0, 0, 430, GAME_HEIGHT);
+    scrim.fillGradientStyle(0x06121f, 0x06121f, 0x06121f, 0x06121f, 1, 0, 1, 0);
+    scrim.fillRect(430, 0, 340, GAME_HEIGHT);
+    scrim.fillGradientStyle(0x06121f, 0x06121f, 0x06121f, 0x06121f, 0, 0, 0.95, 0.95);
+    scrim.fillRect(0, 560, GAME_WIDTH, 160);
 
-    this.createHomeParticles();
     this.createAnimatedTitle();
 
     renderAudioToggleControl(this, () => {}, 48, 38);
     this.menuFocusTargets.set('howToPlay', this.renderTopUtilityButton(GAME_WIDTH - 536, 38, 'How to Play', 'howToPlay', () => this.openHelpOverlay()));
     this.menuFocusTargets.set('settings', this.renderTopUtilityButton(GAME_WIDTH - 388, 38, 'Settings', 'settings', () => this.openSettingsOverlay()));
+    const setupStart = this.children.list.length;
 
-    // Keep difficulty near the run action without adding a full-width dock. A
-    // stronger local backplate keeps the setup legible over the detailed key art.
+    this.add.text(80, 112, 'Flight setup', {
+      fontFamily: 'Georgia, serif', fontSize: '40px', color: '#eee8d8',
+    }).setResolution(2);
+    this.add.rectangle(640, 174, 1120, 1, 0x334954);
+    this.add.rectangle(640, 590, 1120, 1, 0x334954);
     this.selectedDifficulty = Math.min(this.selectedDifficulty, getMaxUnlockedTier());
-    const difficultyPanel = this.add.rectangle(228, 638, 314, 94, 0x07111b, 0.98)
-      .setStrokeStyle(1, MENU_BORDER_COLOR, 0.5)
+    const difficultyPanel = this.add.rectangle(350, 496, 540, 128, 0x0b1723, 1)
       .setName('title-ascension-backplate');
     this.menuFocusTargets.set('difficulty', difficultyPanel);
 
-    this.add.text(228, 596, 'ASCENSION', {
+    this.add.text(350, 420, 'Ascension', {
       fontFamily: UI_FONT,
-      fontSize: '12px',
+      fontSize: '20px',
       fontStyle: UI_BOLD,
-      color: '#dce8f2',
-      stroke: '#05070c',
-      strokeThickness: 2,
+      color: '#eee8d8',
+
     }).setResolution(2).setOrigin(0.5);
 
-    const dec = this.add.rectangle(100, 632, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x0d1420, 0.9)
+    const dec = this.add.rectangle(140, 476, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x0b1723, 0.9)
       .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, 0.55).setInteractive({ useHandCursor: true });
     dec.on('pointerover', () => dec.setFillStyle(0x223448, 1));
-    dec.on('pointerout', () => dec.setFillStyle(0x0d1420, 0.9));
+    dec.on('pointerout', () => dec.setFillStyle(0x0b1723, 0.9));
     dec.on('pointerdown', () => { this.menuFocus = 'difficulty'; playUiSound('confirm'); this.stepDifficulty(-1); this.updateMenuFocusRing(); });
-    this.add.text(100, 631, '<', { fontFamily: UI_FONT, fontSize: '17px', fontStyle: UI_BOLD, color: '#eef7ff', stroke: '#05070c', strokeThickness: 1 }).setResolution(2).setOrigin(0.5);
-    const inc = this.add.rectangle(356, 632, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x0d1420, 0.9)
+    this.add.text(140, 476, '‹', { fontFamily: UI_FONT, fontSize: '24px', color: '#eee8d8' }).setResolution(2).setOrigin(0.5);
+    const inc = this.add.rectangle(560, 476, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x0b1723, 0.9)
       .setStrokeStyle(MENU_BORDER_WIDTH, MENU_BORDER_COLOR, 0.55).setInteractive({ useHandCursor: true });
     inc.on('pointerover', () => inc.setFillStyle(0x223448, 1));
-    inc.on('pointerout', () => inc.setFillStyle(0x0d1420, 0.9));
+    inc.on('pointerout', () => inc.setFillStyle(0x0b1723, 0.9));
     inc.on('pointerdown', () => { this.menuFocus = 'difficulty'; playUiSound('confirm'); this.stepDifficulty(1); this.updateMenuFocusRing(); });
-    this.add.text(356, 631, '>', { fontFamily: UI_FONT, fontSize: '17px', fontStyle: UI_BOLD, color: '#eef7ff', stroke: '#05070c', strokeThickness: 1 }).setResolution(2).setOrigin(0.5);
-    this.difficultyLabelText = this.add.text(228, 630, '', {
-      fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: '#ffd76a', stroke: '#05070c', strokeThickness: 2
+    this.add.text(560, 476, '›', { fontFamily: UI_FONT, fontSize: '24px', color: '#eee8d8' }).setResolution(2).setOrigin(0.5);
+    this.difficultyLabelText = this.add.text(350, 476, '', {
+      fontFamily: UI_FONT, fontSize: '20px', fontStyle: UI_BOLD, color: '#eee8d8',
     }).setResolution(2).setOrigin(0.5);
-    this.difficultyDescText = this.add.text(228, 663, '', {
+    this.difficultyDescText = this.add.text(350, 530, '', {
       fontFamily: UI_FONT,
-      fontSize: '11px',
-      color: '#dce7f2',
+      fontSize: '20px',
+      color: '#bfcbd0',
       align: 'center',
-      stroke: '#05070c',
-      strokeThickness: 2,
-      wordWrap: { width: 304 }
+
+      wordWrap: { width: 510 }
     }).setResolution(2).setOrigin(0.5);
     this.difficultyDescText.setLineSpacing(2);
     this.updateDifficultyText();
@@ -4733,21 +4759,20 @@ class MenuScene extends Phaser.Scene {
     this.menuAccount = loadAccount();
     if (!isLeaderUnlocked(this.menuAccount, this.selectedLeaderId)) this.selectedLeaderId = defaultLeaderId;
 
-    this.add.text(GAME_WIDTH / 2, 456, 'FLOCK LEADER', {
+    this.add.text(80, 195, 'Choose your leader', {
       fontFamily: UI_FONT,
-      fontSize: '14px',
+      fontSize: '20px',
       fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      stroke: '#05070c',
-      strokeThickness: 2,
-    }).setResolution(2).setOrigin(0.5);
+      color: '#eee8d8',
+
+    }).setResolution(2).setOrigin(0, 0.5);
     this.leaderPanels = [];
     flockLeaders.forEach((leader, index) => {
       const px = 178 + index * 231;
-      const py = 516;
+      const py = 266;
       const unlocked = isLeaderUnlocked(this.menuAccount, leader.id);
-      const rect = this.add.rectangle(px, py, 196, 60, unlocked ? 0x0d1420 : 0x080b10, unlocked ? 0.88 : 0.68)
-        .setStrokeStyle(MENU_BORDER_WIDTH, unlocked ? 0x2a4555 : 0x36414d, unlocked ? 0.76 : 0.46)
+      const rect = this.add.rectangle(px, py, 196, 100, 0x0b1723, unlocked ? 0.88 : 0.68)
+        .setStrokeStyle(0)
         .setInteractive({ useHandCursor: unlocked })
         .setName('title-leader-choice-backplate')
         .setData('leaderId', leader.id)
@@ -4768,34 +4793,35 @@ class MenuScene extends Phaser.Scene {
       }
 
       this.add.text(px, py - 17, leader.name, {
-        fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: unlocked ? '#ffe1a3' : '#8290a0', align: 'center', stroke: '#05070c', strokeThickness: 1, wordWrap: { width: 184 }
-      }).setResolution(2).setOrigin(0.5);
+        fontFamily: UI_FONT, fontSize: '20px', fontStyle: UI_BOLD, color: unlocked ? '#eee8d8' : '#b0bdc4', align: 'center',  wordWrap: { width: 184 }
+      }).setResolution(2).setOrigin(0.5).setName('title-leader-name').setData('leaderId', leader.id);
 
       const detail = unlocked
-        ? leader.id === defaultLeaderId ? 'Recommended first flight' : leader.suit
-        : 'Locked · View requirements';
-      const detailText = this.add.text(px, py + 15, detail, {
+        ? leader.id === defaultLeaderId ? 'Recommended' : leader.suit
+        : 'Locked · Details';
+      const detailText = this.add.text(px, py + 27, detail, {
         fontFamily: UI_FONT,
-        fontSize: '12px',
-        color: unlocked ? '#dce7f2' : '#8895a5',
+        fontSize: '20px',
+        color: unlocked ? '#bfcbd0' : '#b0bdc4',
         align: 'center',
-        stroke: '#05070c',
-        strokeThickness: 1,
+
         wordWrap: { width: 184 }
-      }).setResolution(2).setOrigin(0.5);
+      }).setResolution(2).setOrigin(0.5).setName('title-leader-detail').setData('leaderId', leader.id);
       detailText.setLineSpacing(2);
       this.leaderPanels.push({ id: leader.id, rect, unlocked });
     });
     this.selectLeader(this.selectedLeaderId);
+    this.setupObjects = [setupSurface, ...this.children.list.slice(setupStart)];
 
-    const savedRun = hasActiveRun();
-    this.menuHasSavedRun = savedRun;
+    const savedRun = loadActiveRun();
+    this.menuHasSavedRun = Boolean(savedRun);
     const newRunLabel = SHARED_ROUTE_SEED ? 'Fly Shared Route' : 'Start Run';
     if (savedRun) {
+      this.runMenuOptionalAction('renderResumeContext', savedRun, generatedMapFor(savedRun.seed ?? activeSeed, savedRun.mapIndex));
       this.primaryRunAction = () => this.continueRunAnimated(true, 676, 642, 252);
       this.secondaryRunAction = () => this.startRunAnimated(true, 962, 642, 204);
       this.menuFocusTargets.set('primaryRun', this.makeMenuButton(676, 642, 252, MIN_SUPPORTED_TOUCH_TARGET, 'Continue Run', 0xe8b830, '20px', 'primaryRun', this.primaryRunAction));
-      this.menuFocusTargets.set('secondaryRun', this.makeMenuButton(962, 642, 204, MIN_SUPPORTED_TOUCH_TARGET, SHARED_ROUTE_SEED ? 'Shared Route' : 'Start New Run', 0x7ab8d6, '15px', 'secondaryRun', this.secondaryRunAction));
+      this.menuFocusTargets.set('secondaryRun', this.makeMenuButton(962, 642, 204, MIN_SUPPORTED_TOUCH_TARGET, SHARED_ROUTE_SEED ? 'Shared Route' : 'Start New Run', 0x7ab8d6, '20px', 'secondaryRun', this.secondaryRunAction));
     } else {
       this.primaryRunAction = () => this.startRunAnimated(true, 780, 642, 286);
       this.menuFocusTargets.set('primaryRun', this.makeMenuButton(780, 642, 286, MIN_SUPPORTED_TOUCH_TARGET, newRunLabel, 0xd8a840, SHARED_ROUTE_SEED ? '20px' : '24px', 'primaryRun', this.primaryRunAction));
@@ -4820,9 +4846,11 @@ class MenuScene extends Phaser.Scene {
 
     this.menuFocusTargets.set('profile', this.renderTopUtilityButton(GAME_WIDTH - 92, 38, 'Flock Record', 'profile', () => openProfileScene(this)));
     this.menuFocusTargets.set('codex', this.renderTopUtilityButton(GAME_WIDTH - 240, 38, 'Collection', 'codex', () => this.openCodex(true)));
+    this.menuFocusTargets.set('configure', this.makeMenuButton(260, 478, 286, 58, 'Flight setup', 0x759bab, '20px', 'configure', () => this.setSetupOpen(!this.setupOpen)));
 
     this.installMenuFocusInput();
     this.renderMenuFocusHint();
+    this.refreshTitleLayout();
     this.updateMenuFocusRing();
     if (data.reopenSettings) this.openSettingsOverlay();
     else if (data.reopenHelp) this.openHelpOverlay();
@@ -4830,9 +4858,10 @@ class MenuScene extends Phaser.Scene {
   }
 
   private menuFocusOrder(): MenuFocus[] {
-    const order: MenuFocus[] = ['leader', 'difficulty', 'runMode', 'primaryRun'];
+    const order: MenuFocus[] = this.setupOpen ? ['leader', 'difficulty', 'runMode', 'primaryRun'] : ['primaryRun'];
     if (this.menuHasSavedRun) order.push('secondaryRun');
-    order.push('howToPlay', 'settings', 'codex', 'profile');
+    order.push('configure');
+    if (!this.setupOpen) order.push('howToPlay', 'settings', 'codex', 'profile');
     return order;
   }
 
@@ -4841,12 +4870,7 @@ class MenuScene extends Phaser.Scene {
       case 'leader': return `Leader: ${getLeader(this.selectedLeaderId).name}`;
       case 'difficulty': return `Ascension: ${difficultyLabel(this.selectedDifficulty)}`;
       case 'runMode': return `Flight length: ${RUN_MODE_SUMMARY[this.selectedRunMode]}`;
-      case 'primaryRun': return this.menuHasSavedRun ? 'Continue Run' : (SHARED_ROUTE_SEED ? 'Fly Shared Route' : 'Start Run');
-      case 'secondaryRun': return SHARED_ROUTE_SEED ? 'Shared Route' : 'Start New Run';
-      case 'howToPlay': return 'How to Play';
-      case 'settings': return 'Settings';
-      case 'codex': return 'Collection';
-      case 'profile': return 'Flock Record';
+      default: return (this.menuFocusTargets.get(this.menuFocus)?.getData('labelObject') as Phaser.GameObjects.Text)?.text ?? '';
     }
   }
 
@@ -4914,6 +4938,9 @@ class MenuScene extends Phaser.Scene {
     if (this.settingsOverlay || this.helpOverlay || this.titleRunLaunchPending) return;
     playUiSound('confirm');
     switch (this.menuFocus) {
+      case 'configure':
+        this.setSetupOpen(!this.setupOpen);
+        return;
       case 'leader': {
         const panel = this.leaderPanels.find((entry) => entry.id === this.selectedLeaderId);
         if (panel) this.showLeaderTooltip(panel.id, panel.rect.x);
@@ -4955,6 +4982,9 @@ class MenuScene extends Phaser.Scene {
     } else if (this.helpOverlay) {
       playUiSound('close');
       this.closeHelpOverlay();
+    } else if (this.setupOpen) {
+      playUiSound('close');
+      this.setSetupOpen(false);
     }
   }
 
@@ -5007,8 +5037,49 @@ class MenuScene extends Phaser.Scene {
   private renderMenuFocusHint() {
     this.add.text(GAME_WIDTH / 2, 704,
       `Tab / ↑↓: Focus   ·   ${controlBindingLabel('previous')}/${controlBindingLabel('next')}: Adjust   ·   ${controlBindingLabel('confirm')} / A: Select`, {
-        fontFamily: UI_FONT, fontSize: '12px', color: '#a6bdcd',
+        fontFamily: UI_FONT, fontSize: '20px', color: '#bfcbd0',
       }).setResolution(2).setOrigin(0.5).setName('title-input-hint');
+  }
+
+  private setSetupOpen(open: boolean) {
+    if (this.titleRunLaunchPending || this.settingsOverlay || this.helpOverlay) return;
+    this.setupOpen = open;
+    this.hideLeaderTooltip();
+    this.menuFocus = open ? 'leader' : 'configure';
+    this.refreshTitleLayout();
+    this.updateMenuFocusRing();
+    this.updateMenuTextState();
+  }
+
+  private refreshTitleLayout() {
+    for (const object of this.setupObjects) {
+      (object as Phaser.GameObjects.Rectangle).setVisible(this.setupOpen);
+      if (object.input) object.input.enabled = this.setupOpen;
+    }
+    (this.children.getByName('title-home-scrim') as Phaser.GameObjects.Graphics)?.setVisible(!this.setupOpen);
+    const logo = this.children.getByName('title-logo') as Phaser.GameObjects.Container;
+    logo?.setPosition(260, this.menuHasSavedRun ? 196 : 224).setVisible(!this.setupOpen);
+    (this.children.getByName('title-resume-context') as Phaser.GameObjects.Text)?.setVisible(!this.setupOpen);
+    (this.children.getByName('title-input-hint') as Phaser.GameObjects.Text)?.setVisible(this.setupOpen);
+    const move = (focus: MenuFocus, x: number, y: number) => {
+      const button = this.menuFocusTargets.get(focus);
+      if (!button) return;
+      button.setPosition(x,y);
+      (button.getData('labelObject') as Phaser.GameObjects.Text)?.setPosition(x,y);
+    };
+    move('primaryRun', this.setupOpen ? 1050 : 260, this.setupOpen ? 642 : this.menuHasSavedRun ? 444 : 426);
+    move('secondaryRun', this.setupOpen ? 790 : 260, this.setupOpen ? 642 : 512);
+    move('configure', 260, this.setupOpen ? 642 : this.menuHasSavedRun ? 580 : 502);
+    const configure = this.menuFocusTargets.get('configure');
+    (configure?.getData('labelObject') as Phaser.GameObjects.Text)?.setText(this.setupOpen ? 'Back to home' : 'Flight setup');
+    for (const [index, focus] of (['howToPlay','settings','codex','profile'] as MenuFocus[]).entries()) {
+      const positions = [[260, this.menuHasSavedRun ? 648 : 574], [1168, 48], [964, 662], [1152, 662]];
+      move(focus, positions[index][0], positions[index][1]);
+      const button = this.menuFocusTargets.get(focus)!;
+      button.setVisible(!this.setupOpen);
+      if (button.input) button.input.enabled = !this.setupOpen;
+      (button.getData('labelObject') as Phaser.GameObjects.Text).setVisible(!this.setupOpen);
+    }
   }
   private updateMenuFocusRing() {
     const target = this.menuFocusTarget();
@@ -5019,10 +5090,10 @@ class MenuScene extends Phaser.Scene {
       target.y,
       target.displayWidth + 10,
       target.displayHeight + 10,
-      0x06151b,
+      0x83aeb6,
       0.04,
     )
-      .setStrokeStyle(3, UI_FIELD.cyan, 0.98)
+      .setStrokeStyle(2, 0x83aeb6, 0.8)
       .setDepth(99)
       .setName('title-menu-focus-ring')
       .setVisible(!this.settingsOverlay && !this.helpOverlay)
@@ -5050,14 +5121,16 @@ class MenuScene extends Phaser.Scene {
   }
 
   private renderTopUtilityButton(x: number, y: number, label: string, focus: MenuFocus, onClick: () => void) {
-    const button = this.add.rectangle(x, y, 132, MIN_SUPPORTED_TOUCH_TARGET, 0x07111b, 0.94)
-      .setStrokeStyle(1, 0x49606d, 0.55).setInteractive({ useHandCursor: true })
+    const button = this.add.rectangle(x, y, 164, MIN_SUPPORTED_TOUCH_TARGET, 0x0b1723, 0.72)
+      .setStrokeStyle(1, 0x83aeb6, 0.32)
+      .setInteractive({ useHandCursor: true })
       .setName('title-utility-hit').setData('label', label);
     const text = this.add.text(x, y, label, {
-      fontFamily: UI_FONT, fontSize: '14px', color: '#dce8f2',
+      fontFamily: UI_FONT, fontSize: '20px', color: '#eee8d8',
     }).setResolution(2).setOrigin(0.5);
-    button.on('pointerover', () => { button.setFillStyle(0x223448, 1); text.setColor('#ffffff'); });
-    button.on('pointerout', () => { button.setFillStyle(0x07111b, 0.94); text.setColor('#dce8f2'); });
+    button.setData('labelObject', text);
+    button.on('pointerover', () => button.setFillStyle(0x223448, 1));
+    button.on('pointerout', () => button.setFillStyle(0x0b1723, 0.72));
     button.on('pointerdown', () => { this.menuFocus = focus; playUiSound('confirm'); onClick(); });
     return button;
   }
@@ -5110,97 +5183,45 @@ class MenuScene extends Phaser.Scene {
 
   private makeMenuButton(x: number, y: number, w: number, h: number, text: string, color: number, fontSize: string, focus: MenuFocus, onClick: () => void) {
     const primary = focus === 'primaryRun';
-    const panel = this.add.rectangle(x, y, w, h, primary ? 0xe8b830 : 0x102131, 1)
-      .setStrokeStyle(2, color, 0.95).setInteractive({ useHandCursor: true })
+    const panel = this.add.rectangle(x, y, w, h, primary ? 0xd8b568 : 0x0b1723, primary ? 1 : 0)
+      .setStrokeStyle(0).setInteractive({ useHandCursor: true })
       .setName('title-run-action').setData('focus', focus);
-    this.add.text(x, y, text, {
-      fontFamily: UI_FONT, fontSize, fontStyle: UI_BOLD, color: primary ? '#101b24' : '#dce8f2',
+    const labelObject = this.add.text(x, y, text, {
+      fontFamily: UI_FONT, fontSize, fontStyle: UI_BOLD, color: primary ? '#101b24' : '#eee8d8',
     }).setResolution(2).setOrigin(0.5);
-    panel.on('pointerover', () => panel.setFillStyle(primary ? 0xffd86d : 0x223448, 1));
-    panel.on('pointerout', () => panel.setFillStyle(primary ? 0xe8b830 : 0x102131, 1));
+    panel.setData('labelObject', labelObject);
+    panel.on('pointerover', () => panel.setFillStyle(primary ? 0xefd293 : 0x223448, 1));
+    panel.on('pointerout', () => panel.setFillStyle(primary ? 0xd8b568 : 0x0b1723, primary ? 1 : 0));
     panel.on('pointerdown', () => { this.menuFocus = focus; playUiSound('confirm'); onClick(); });
     return panel;
   }
-  private ensureHomeParticleTexture() {
-    if (this.textures.exists(MENU_SOFT_MOTE_TEXTURE)) return;
-    const g = this.add.graphics();
-    g.fillStyle(0xffffff, 0.08);
-    g.fillCircle(32, 32, 30);
-    g.fillStyle(0xffffff, 0.12);
-    g.fillCircle(32, 32, 22);
-    g.fillStyle(0xffffff, 0.22);
-    g.fillCircle(32, 32, 13);
-    g.fillStyle(0xffffff, 0.5);
-    g.fillCircle(32, 32, 5);
-    g.generateTexture(MENU_SOFT_MOTE_TEXTURE, 64, 64);
-    g.destroy();
-  }
-
-  private createHomeParticles() {
-    if (prefersReducedMotion() || prefersLeanEffects()) return;
-    this.ensureHomeParticleTexture();
-    const source = {
-      getRandomPoint: (point: Phaser.Types.Math.Vector2Like) => {
-        point.x = Phaser.Math.Between(44, GAME_WIDTH - 44);
-        point.y = Phaser.Math.Between(GAME_HEIGHT - 82, GAME_HEIGHT + 30);
-      },
-    };
-    this.add.particles(0, 0, MENU_SOFT_MOTE_TEXTURE, {
-      emitZone: {
-        type: 'random',
-        source,
-      },
-      frequency: 320,
-      quantity: 1,
-      lifespan: { min: 10500, max: 16000 },
-      radial: false,
-      speedX: { min: -11, max: 11 },
-      speedY: { min: -40, max: -16 },
-      accelerationY: { min: -1.6, max: -0.3 },
-      scale: { start: 0.19, end: 0.58, ease: 'Sine.easeOut' },
-      alpha: { start: 0.36, end: 0, ease: 'Sine.easeIn' },
-      rotate: { min: -14, max: 14 },
-      tint: [0x8df4ff, 0xf1c24c, 0xdce8f2],
-      blendMode: Phaser.BlendModes.ADD,
-      maxAliveParticles: 36,
-      reserve: 36,
-      advance: 10000,
-    }).setName('title-ambient-particles');
-  }
-
   syncHomeParticles() {
-    const emitters = this.children.list.filter((child) => child.name === 'title-ambient-particles');
-    if (prefersReducedMotion() || prefersLeanEffects()) {
-      emitters.forEach((emitter) => emitter.destroy());
-    } else if (!emitters.length) {
-      this.createHomeParticles();
-    }
     this.updateMenuTextState();
   }
 
   private renderRunModeSelector() {
-    const y = 638;
-    this.add.text(500, 594, 'FLIGHT LENGTH', {
-      fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: '#dce8f2',
-      stroke: '#05070c', strokeThickness: 2
+    const y = 490;
+    this.add.text(920, 420, 'Flight length', {
+      fontFamily: UI_FONT, fontSize: '20px', fontStyle: UI_BOLD, color: '#eee8d8',
+
     }).setResolution(2).setOrigin(0.5);
     const choices: Array<{ mode: RunMode; x: number; label: string; detail: string }> = [
-      { mode: 'quick', x: 454, label: 'Quick', detail: '3 districts\nNo tier unlock' },
-      { mode: 'full', x: 546, label: 'Full', detail: '4 districts\nUnlocks tiers' },
+      { mode: 'quick', x: 818, label: 'Quick', detail: '3 districts\nNo tier unlock' },
+      { mode: 'full', x: 1022, label: 'Full', detail: '4 districts\nUnlocks tiers' },
     ];
     choices.forEach((choice) => {
       const selected = choice.mode === this.selectedRunMode;
-      const hit = this.add.rectangle(choice.x, y, 86, 68, selected ? 0x183451 : 0x0d1420, 0.95)
-        .setStrokeStyle(2, selected ? UI_FIELD.gold : UI_FIELD.cyan, selected ? 0.92 : 0.42)
+      const hit = this.add.rectangle(choice.x, y + 10, 192, 104, selected ? 0x193140 : 0x0b1723, 0.95)
+        .setStrokeStyle(2, selected ? 0x83aeb6 : 0x83aeb6, selected ? 0.55 : 0)
         .setInteractive({ useHandCursor: true })
         .setName('title-run-mode-option');
       const label = this.add.text(choice.x, y - 14, choice.label, {
-        fontFamily: UI_FONT, fontSize: '14px', fontStyle: UI_BOLD, color: selected ? UI_GOLD : '#dce8f2'
+        fontFamily: UI_FONT, fontSize: '20px', fontStyle: UI_BOLD, color: '#eee8d8'
       }).setResolution(2).setOrigin(0.5);
       const detail = this.add.text(choice.x, y + 7, choice.detail, {
         fontFamily: UI_FONT,
-        fontSize: '9px',
-        color: selected ? '#e7fbff' : '#8fa3b6',
+        fontSize: '20px',
+        color: selected ? '#eee8d8' : '#a1b5be',
         align: 'center',
       }).setResolution(2).setOrigin(0.5, 0);
       hit.setData('mode', choice.mode);
@@ -5223,10 +5244,10 @@ class MenuScene extends Phaser.Scene {
     this.runModeViews.forEach((view, mode) => {
       const selected = mode === this.selectedRunMode;
       view.hit
-        .setFillStyle(selected ? 0x183451 : 0x0d1420, 0.95)
-        .setStrokeStyle(2, selected ? UI_FIELD.gold : UI_FIELD.cyan, selected ? 0.92 : 0.42);
-      view.label.setColor(selected ? UI_GOLD : '#dce8f2');
-      view.detail.setColor(selected ? '#e7fbff' : '#8fa3b6');
+        .setFillStyle(selected ? 0x193140 : 0x0b1723, 0.95)
+        .setStrokeStyle(2, selected ? 0x83aeb6 : 0x83aeb6, selected ? 0.55 : 0);
+      view.label.setColor(selected ? '#eee8d8' : '#eee8d8');
+      view.detail.setColor(selected ? '#eee8d8' : '#a1b5be');
     });
   }
 
@@ -5240,6 +5261,8 @@ class MenuScene extends Phaser.Scene {
 
   private runTitleLaunch(resume: boolean, confirmed: boolean, x: number, y: number, width: number) {
     if (this.titleRunLaunchPending || this.settingsOverlay || this.helpOverlay) return;
+    const button = this.menuFocusTargets.get(resume || !this.menuHasSavedRun ? 'primaryRun' : 'secondaryRun');
+    if (button) { x = button.x; y = button.y; width = button.width; }
     this.titleRunLaunchPending = true;
     void loadTitleRunLaunchModule()
       .then((module) => module.startRunAnimated(this, resume, confirmed, x, y, width))
@@ -5262,8 +5285,8 @@ class MenuScene extends Phaser.Scene {
     this.leaderPanels.forEach((entry) => {
       if (!entry.unlocked) return; // locked panels keep their dimmed style
       const selected = entry.id === id;
-      entry.rect.setStrokeStyle(MENU_BORDER_WIDTH, selected ? 0xe8b830 : 0x2a4555, selected ? 1 : 0.46);
-      entry.rect.setFillStyle(selected ? 0x1b2535 : 0x0d1420, selected ? 0.96 : 0.86);
+      entry.rect.setStrokeStyle(0);
+      entry.rect.setFillStyle(selected ? 0x193140 : 0x0b1723, selected ? 0.96 : 0.86);
       entry.selectedIcon?.setVisible(selected).setAlpha(selected ? 0.94 : 0);
       entry.cardFrame?.clearTint();
       entry.cardFrame?.setAlpha(selected ? 0.96 : 0.58);
@@ -5277,8 +5300,12 @@ class MenuScene extends Phaser.Scene {
   }
 
   private runMenuOptionalAction(action: keyof MenuOptionalUiModule, ...args: unknown[]) {
+    const generation = this.menuGeneration;
     void loadMenuOptionalUiModule()
-      .then((module) => (module[action] as (scene: Phaser.Scene, ...values: unknown[]) => void)(this, ...args))
+      .then((module) => {
+        if (generation !== this.menuGeneration || !this.scene.isActive() || (action === 'showLeaderTooltip' && !this.setupOpen)) return;
+        (module[action] as (scene: Phaser.Scene, ...values: unknown[]) => void)(this, ...args);
+      })
       .catch(console.warn);
   }
 
@@ -5663,6 +5690,7 @@ class RouteScene extends Phaser.Scene {
   create() {
     syncSceneAnimationPace(this);
     birdAudio.setMood('route');
+    observeChoiceInput(this);
     window.__birdSquadAudio = () => birdAudio.snapshot();
     void loadRouteDebugStateModule()
       .then((module) => {
@@ -5698,7 +5726,7 @@ class RouteScene extends Phaser.Scene {
     queueTrackedUiIconAssets(this, routeUiIconIds, 'Route UI', (result) => {
       this.routeAssetReadiness.settle('route-full-ui', result);
       this.markRouteFullArtReady();
-      this.renderAll();
+      this.refreshRouteArtwork();
     });
     this.renderAll();
     if (this.districtContractCelebration) {
@@ -5711,6 +5739,7 @@ class RouteScene extends Phaser.Scene {
 
     this.input.keyboard?.on('keydown-UP', () => {
       if (controlActionForCode('ArrowUp')) return;
+      if (handleEventChoice(this, 'previous')) return;
       if (this.supplyDrawerOpen) this.moveRouteSupplyFocus(-1);
       else if (this.waymarkDrawerOpen) this.moveRouteWaymarkSelection(-3);
       else if (this.deckOverlayOpen) this.moveDeckReviewSelection(-1);
@@ -5719,27 +5748,47 @@ class RouteScene extends Phaser.Scene {
     });
     this.input.keyboard?.on('keydown-DOWN', () => {
       if (controlActionForCode('ArrowDown')) return;
+      if (handleEventChoice(this, 'next')) return;
       if (this.supplyDrawerOpen) this.moveRouteSupplyFocus(1);
       else if (this.waymarkDrawerOpen) this.moveRouteWaymarkSelection(3);
       else if (this.deckOverlayOpen) this.moveDeckReviewSelection(1);
       else if (this.marketOpen) this.cardHoverDetailModule?.cycleMarketFocus(this, 1);
       else this.cycleSelectableRouteNode(1);
     });
-    this.input.keyboard?.on('keydown-TAB', () => {
+    this.input.keyboard?.on('keydown-TAB', (event: KeyboardEvent) => {
+      if (handleEventChoice(this, event.shiftKey ? 'previous' : 'next')) { event.preventDefault(); return; }
       if (this.supplyDrawerOpen) this.moveRouteSupplyFocus(1);
       else if (this.waymarkDrawerOpen) this.moveRouteWaymarkSelection(1);
       else if (this.deckOverlayOpen) this.moveDeckReviewSelection(1);
       else if (this.marketOpen) this.cardHoverDetailModule?.cycleMarketFocus(this, 1);
       else this.cycleSelectableRouteNode(1);
     });
-    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => this.handleDeckReviewSearchKey(event));
+    this.input.keyboard?.on('keydown', (event: KeyboardEvent) => {
+      if (this.waymarkDrawerOpen && (event.code === 'PageUp' || event.code === 'PageDown') && !controlActionForCode(event.code)) {
+        event.preventDefault();
+        this.waymarkReviewModule?.changeWaymarkPage(this, event.code === 'PageUp' ? -1 : 1);
+        return;
+      }
+      this.handleDeckReviewSearchKey(event);
+    });
     this.input.keyboard?.on('keydown-C', (event: KeyboardEvent) => {
       if (!this.waymarkDrawerOpen || controlActionForCode(event.code)) return;
       event.preventDefault?.();
       this.toggleRouteWaymarkPin();
     });
     const onRouteGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: { index?: number }) => {
+      if (this.settingsOverlayOpen || this.pauseOverlayOpen) return;
+      if (this.waymarkDrawerOpen && (button.index === 4 || button.index === 5)) {
+        this.waymarkReviewModule?.changeWaymarkPage(this, button.index === 4 ? -1 : 1);
+        return;
+      }
+      if (this.deckOverlayOpen && !this.deckReviewSearchActive && (button.index === 4 || button.index === 5)) {
+        this.cardComparisonModule?.changeComparisonPage(this, button.index === 4 ? -1 : 1);
+        this.cardHoverDetailModule?.changeSceneCardDetailPage(this, button.index === 4 ? -1 : 1);
+        return;
+      }
       if (button.index === 1) {
+        if (handleEventChoice(this, 'back')) return;
         if (this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'back')) return;
         if (this.supplyDrawerOpen) this.cancelOrCloseRouteSupplyDrawer();
         else if (this.routeRewardInspectionCardId) this.closeRouteRewardInspection();
@@ -5753,6 +5802,7 @@ class RouteScene extends Phaser.Scene {
         else if (this.waymarkDrawerOpen) this.toggleRouteWaymarkPin();
         else if (this.deckOverlayOpen && !this.deckReviewSearchActive) this.toggleDeckReviewComparison();
       } else if (button.index === 3) {
+        if (handleEventChoice(this, 'inspect')) return;
         if (this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'inspect')) return;
         if (this.deckOverlayOpen && !this.deckReviewSearchActive) this.saveCurrentDeckToFolio();
       } else if (
@@ -5761,7 +5811,7 @@ class RouteScene extends Phaser.Scene {
       ) this.openRouteCollectionGoals();
     };
     const onSaveDeck = (event: KeyboardEvent) => {
-      if (!this.deckOverlayOpen || this.deckReviewSearchActive) return;
+      if (!this.deckOverlayOpen || this.deckReviewSearchActive || controlActionForCode(event.code)) return;
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
@@ -5792,7 +5842,9 @@ class RouteScene extends Phaser.Scene {
       if (choice) this.chooseDistrictContract(choice.id);
     }));
     bindControlActions(this, {
-      confirm: () => {
+      confirm: (event) => {
+        if (event?.repeat && (this.pendingRouteReward || this.nodeChoiceOpen)) return;
+        if (handleEventChoice(this, 'confirm')) return;
         if (this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'confirm')) return;
         if (this.supplyDrawerOpen) {
           this.requestRouteSupplyUse(this.supplyDrawerFocusIndex);
@@ -5806,6 +5858,7 @@ class RouteScene extends Phaser.Scene {
         this.activateRouteSelection();
       },
       previous: (event) => {
+        if (handleEventChoice(this, 'previous')) return;
         if (this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'previous')) return;
         if (this.supplyDrawerOpen) {
           this.moveRouteSupplyFocus(-1);
@@ -5826,6 +5879,7 @@ class RouteScene extends Phaser.Scene {
         if (!this.settingsOverlayOpen && !this.pauseOverlayOpen) this.cycleSelectableRouteNode(-1);
       },
       next: (event) => {
+        if (handleEventChoice(this, 'next')) return;
         if (this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'next')) return;
         if (this.supplyDrawerOpen) {
           this.moveRouteSupplyFocus(1);
@@ -5879,7 +5933,10 @@ class RouteScene extends Phaser.Scene {
         if (!this.routeEssentialAssetsReady) return;
         this.togglePauseOverlay();
       },
-      roost: () => { this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'inspect'); },
+      roost: () => {
+        if (this.waymarkDrawerOpen) { this.toggleRouteWaymarkPin(); return; }
+        if (!handleEventChoice(this, 'inspect')) this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'inspect');
+      },
       skipReward: () => {
         if (this.supplyDrawerOpen) this.closeSupplyDrawer();
         else if (!this.deckOverlayOpen && !this.flockOverlayOpen && !this.waymarkDrawerOpen && !this.marketOpen && !this.nodeChoiceOpen && !this.pendingRouteReward && !this.cardPickerMode) this.openSupplyDrawer(true);
@@ -5905,7 +5962,7 @@ class RouteScene extends Phaser.Scene {
           this.cancelMarketCardPicker();
           return;
         }
-        if (this.nodeChoiceOpen || this.cardPickerMode) return;
+        if (handleEventChoice(this, 'back') || this.cardPickerMode) return;
         if (this.confirmExitOpen) {
           this.confirmExitOpen = false;
           this.renderAll();
@@ -5935,11 +5992,19 @@ class RouteScene extends Phaser.Scene {
       },
     });
     this.input.on('wheel', (_pointer: Phaser.Input.Pointer, _gameObjects: Phaser.GameObjects.GameObject[], _deltaX: number, deltaY: number) => {
+      // Scene-level wheel events also fire over modal scrims. Keep the active
+      // reader/system panel in charge and ignore horizontal-only gestures.
+      if (!deltaY || this.pauseOverlayOpen || this.settingsOverlayOpen || this.confirmExitOpen) return;
+      if (this.cardPickerInspectionOpen || this.routeRewardInspectionCardId) {
+        this.routeRewardInteractionModule()?.handleRouteRewardAction(this, deltaY > 0 ? 'next' : 'previous');
+        return;
+      }
       if (this.cardPickerMode) {
         this.scrollCardPicker(deltaY > 0 ? 1 : -1);
         return;
       }
       if (this.waymarkDrawerOpen) {
+        if (this.waymarkReviewModule?.handleWaymarkWheel(this, _pointer, deltaY)) return;
         this.scrollRouteWaymarks(deltaY > 0 ? 1 : -1);
         return;
       }
@@ -5958,7 +6023,10 @@ class RouteScene extends Phaser.Scene {
       return;
     }
     killTweensForScene(this);
-    this.children.removeAll(true);
+    // DisplayList.removeAll(true) skips removal callbacks; it does not destroy
+    // objects. Retire the snapshot so readers and Settings release their input
+    // listeners/ownership, including children removed by a container's destroy.
+    for (const child of this.children.list.slice()) child.destroy();
     this.routeCheckpointIndicator = undefined;
     renderPracticeBadge(this);
     this.hoverCardDetail = undefined;
@@ -5987,13 +6055,14 @@ class RouteScene extends Phaser.Scene {
     if (this.deckOverlayOpen) this.renderMapDeckOverlay();
     if (this.flockOverlayOpen) this.renderRouteFlockOverlay();
     if (this.waymarkDrawerOpen) this.renderRouteWaymarkDrawer();
-    if (this.supplyDrawerOpen) this.renderRouteSupplyDrawer();
     if (this.marketOpen) this.renderMarketOverlay();
     if (this.nodeChoiceOpen) this.renderNodeChoiceOverlay();
     if (this.pendingRouteReward) this.renderRouteCardRewardOverlay();
     if (this.cardPickerMode) this.renderCardPickerOverlay();
     if (contractChoiceOpen) this.renderDistrictContractChoice();
     if (!this.confirmExitOpen) this.renderRunHud();
+    if (this.supplyDrawerOpen) this.renderRouteSupplyDrawer();
+    renderEventChoiceReader(this);
     if (this.confirmExitOpen) this.renderConfirmExitOverlay();
     if (this.pauseOverlayOpen) this.renderPauseOverlay();
     if (this.settingsOverlayOpen) this.renderSettingsOverlay();
@@ -6044,21 +6113,21 @@ class RouteScene extends Phaser.Scene {
       || this.pauseOverlayOpen || this.settingsOverlayOpen || this.confirmExitOpen) return;
     const saved = this.routeCheckpointState.outcome === 'saved';
     if (saved && this.isFirstRouteDecision()) return;
-    const x = GAME_WIDTH - 166;
-    const y = 101;
+    const x = 210;
+    const y = 656;
     const indicator = this.add.container(x, y)
       .setDepth(48)
       .setName('route-checkpoint-feedback');
     const plate = this.add.graphics().setName('route-checkpoint-feedback-plate');
     plate.fillStyle(0x050b14, 0.9);
-    plate.fillRoundedRect(-82, -14, 164, 28, 8);
+    plate.fillRoundedRect(-126, -20, 252, 40, 6);
     plate.lineStyle(1.5, saved ? UI_FIELD.cyan : 0xff9b7a, 0.86);
-    plate.strokeRoundedRect(-82, -14, 164, 28, 8);
-    const pip = this.add.circle(-64, 0, 4, saved ? UI_FIELD.cyan : 0xff765f, 0.95)
+    plate.strokeRoundedRect(-126, -20, 252, 40, 6);
+    const pip = this.add.circle(-108, 0, 4, saved ? UI_FIELD.cyan : 0xff765f, 0.95)
       .setStrokeStyle(1, saved ? UI_FIELD.gold : 0xffc1a8, 0.9);
-    const label = this.add.text(-53, 0, this.routeCheckpointState.label, {
+    const label = this.add.text(-94, 0, this.routeCheckpointState.label, {
       fontFamily: UI_FONT,
-      fontSize: '11px',
+      fontSize: '18px',
       fontStyle: UI_BOLD,
       color: saved ? '#bff8ff' : '#ffd0bf',
       stroke: '#03070d',
@@ -6083,26 +6152,21 @@ class RouteScene extends Phaser.Scene {
   private renderFlywayRestoration() {
     const { restoredSegments, totalSegments } = this.flywayRestorationProgress();
     if (restoredSegments <= 0) return;
-    const rail = this.add.graphics().setDepth(7).setName('flyway-restoration');
-    rail.lineStyle(5, UI_FIELD.cyan, 0.16);
-    rail.beginPath();
-    rail.moveTo(92, 585);
-    rail.lineTo(280 + restoredSegments * 178, 188);
-    rail.strokePath();
-    rail.lineStyle(2, UI_FIELD.gold, 0.72);
-    rail.beginPath();
-    rail.moveTo(92, 585);
-    rail.lineTo(280 + restoredSegments * 178, 188);
-    rail.strokePath();
-    for (let index = 0; index < restoredSegments; index += 1) {
-      this.add.circle(170 + index * 178, 504 - index * 92, 7, UI_FIELD.cyan, 0.86)
-        .setStrokeStyle(2, UI_FIELD.gold, 0.9)
+    // Meta-progress belongs outside the route graph: a diagonal rail reads as
+    // a playable connection even though it has no corresponding destination.
+    this.add.rectangle(210, 610, 252, 40, 0x050b14, 0.94)
+      .setDepth(7).setName('flyway-restoration');
+    const segmentWidth = (224 - (totalSegments - 1) * 6) / totalSegments;
+    for (let index = 0; index < totalSegments; index += 1) {
+      this.add.rectangle(98 + index * (segmentWidth + 6), 624, segmentWidth, 3,
+        index < restoredSegments ? UI_FIELD.cyan : 0x49606d, 0.9)
+        .setOrigin(0, 0.5)
         .setDepth(8)
         .setName('flyway-restoration');
     }
-    this.add.text(90, 610, `FLYWAY RESTORATION  ${restoredSegments}/${totalSegments}`, {
-      fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: '#bff8ff'
-    }).setDepth(8).setName('flyway-restoration');
+    this.add.text(98, 604, `FLYWAY  ${restoredSegments}/${totalSegments} RESTORED`, {
+      fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: '#bff8ff', resolution: 2,
+    }).setOrigin(0, 0.5).setDepth(8).setName('flyway-restoration');
   }
 
   private flywayRestorationProgress() {
@@ -6174,6 +6238,22 @@ class RouteScene extends Phaser.Scene {
         ['supply-confirm', pad.A, () => this.requestRouteSupplyUse(this.supplyDrawerFocusIndex)],
       ];
       supplyControls.forEach(([id, pressed, action]) => {
+        if (pressed && !this.controllerButtonsDown.has(id)) action();
+        if (pressed) this.controllerButtonsDown.add(id);
+        else this.controllerButtonsDown.delete(id);
+      });
+      return;
+    }
+    if (this.nodeChoiceOpen) {
+      // Share the confirm latch with the route map: a held arrival press must
+      // not choose the first event, or carry through into its reward review.
+      const controls: Array<[string, boolean, () => void]> = [
+        ['previous', pad.left || pad.up, () => handleEventChoice(this, 'previous')],
+        ['next', pad.right || pad.down, () => handleEventChoice(this, 'next')],
+        ['confirm', pad.A, () => handleEventChoice(this, 'confirm')],
+        ['pause', pad.isButtonDown(9), () => this.togglePauseOverlay()],
+      ];
+      controls.forEach(([id, pressed, action]) => {
         if (pressed && !this.controllerButtonsDown.has(id)) action();
         if (pressed) this.controllerButtonsDown.add(id);
         else this.controllerButtonsDown.delete(id);
@@ -6296,9 +6376,13 @@ class RouteScene extends Phaser.Scene {
   private queueMarketShelfArtLoad() {
     queueRuntimeImageAssets(
       this,
-      uniqueImageAssets(this.marketCardShelf.map((offer) => cardThumbArtAssets[offer.id] ?? cardArtAssets[offer.id])),
+      uniqueImageAssets([
+        ...this.marketCardShelf.map((offer) => cardThumbArtAssets[offer.id] ?? cardArtAssets[offer.id]),
+        ...this.marketWaymarkShelf.map((offer) => waymarkCompactArtAssets[offer.id]),
+        ...this.marketUtilityShelf.map((offer) => supplyCompactArtAssets[offer.supplyId ?? '']),
+      ]),
       'Market art',
-      () => this.renderAll()
+      () => this.refreshRouteArtwork()
     );
   }
 
@@ -6308,11 +6392,22 @@ class RouteScene extends Phaser.Scene {
       this,
       ids.map((id) => cardThumbArtAssets[id] ?? cardArtAssets[id]),
       warning,
-      () => this.renderAll()
+      () => this.refreshRouteArtwork()
     );
   }
 
-  private queueCardPortraitArtLoad(card: Pick<Card, 'id'>, warning: string, onComplete: () => void = () => this.renderAll()) {
+  private refreshRouteArtwork() {
+    // Background shelf/UI assets can finish while an explicit reader is open.
+    // Its opaque modal already owns the interaction; rebuild the updated shelf
+    // when reading closes, never replace its controls for an unrelated image.
+    if (this.hoverCardDetail?.active && (this.cardPickerInspectionOpen || this.routeRewardInspectionCardId)) {
+      this.updateTextState();
+      return;
+    }
+    this.renderAll();
+  }
+
+  private queueCardPortraitArtLoad(card: Pick<Card, 'id'>, warning: string, onComplete: () => void = () => this.refreshRouteArtwork()) {
     queueRuntimeImageAssets(
       this,
       [cardArtAssets[card.id]],
@@ -6331,7 +6426,7 @@ class RouteScene extends Phaser.Scene {
       this,
       uniqueImageAssets(cards.map((card) => cardCompactArtAsset(card))),
       'Reward card art',
-      () => this.renderAll()
+      () => this.refreshRouteArtwork()
     );
   }
 
@@ -6341,7 +6436,7 @@ class RouteScene extends Phaser.Scene {
       this,
       uniqueImageAssets(entries.map((entry) => cardCompactArtAsset(entry.card))),
       'Card picker art',
-      () => this.renderAll()
+      () => this.refreshRouteArtwork()
     );
   }
 
@@ -6358,18 +6453,18 @@ class RouteScene extends Phaser.Scene {
         ...supplyChoices,
       ]),
       'Item art',
-      () => this.renderAll()
+      () => this.refreshRouteArtwork()
     );
   }
 
   private queueRouteEventArtLoad(node?: RouteNode) {
     if (!node || this.routeEventArtRequested.has(node.type)) return;
     this.routeEventArtRequested.add(node.type);
-    queueRouteSceneEventArt(this, node.type, `${node.label} art`, () => this.renderAll());
+    queueRouteSceneEventArt(this, node.type, `${node.label} art`, () => this.refreshRouteArtwork());
   }
 
   private queueRouteRewardUiLoad() {
-    queueUiIconAssets(this, ['reward-reveal-halo'], 'Reward UI', () => this.renderAll());
+    queueUiIconAssets(this, ['reward-reveal-halo'], 'Reward UI', () => this.refreshRouteArtwork());
   }
 
   private routeEventBackdropAsset(node?: RouteNode) {
@@ -6393,7 +6488,7 @@ class RouteScene extends Phaser.Scene {
       this,
       this.runState.supplies.map((id) => supplyCompactArtAssets[id]),
       'Route supply art',
-      () => this.renderAll()
+      () => this.refreshRouteArtwork()
     );
   }
 
@@ -6402,7 +6497,7 @@ class RouteScene extends Phaser.Scene {
       this,
       this.runState.routeMarks.map((id) => waymarkCompactArtAssets[id]),
       'Route waymark art',
-      () => this.renderAll()
+      () => this.refreshRouteArtwork()
     );
   }
 
@@ -6506,10 +6601,11 @@ class RouteScene extends Phaser.Scene {
       && !this.cardPickerMode
       && !this.shouldChooseDistrictContract()
     ) {
+      const hasContract = Boolean(this.children.getByName('district-contract'));
       renderCollectionGoalStrip(
         this,
-        870,
-        104,
+        hasContract ? 620 : 870,
+        hasContract ? 656 : 104,
         300,
         'route-collection-goal-hit',
         (cardId) => this.openRouteCollectionGoals(cardId),
@@ -7246,9 +7342,8 @@ class RouteScene extends Phaser.Scene {
       ? currentMap().nodes.find((candidate) => candidate.id === this.selectedNodeId)
       : undefined;
     if (!node && !guided && !firstDecision) return;
-    const guidePrefix = guided ? 'TAKE ROUTE   |   ' : firstDecision ? 'FIRST FLIGHT   |   ' : '';
     const text = node
-      ? `${guidePrefix}GAIN  ${this.nodeDecisionSummary(node).benefit}   |   RISK  ${this.nodeDecisionSummary(node).risk}`
+      ? `GAIN  ${this.nodeDecisionSummary(node).benefit}\nRISK  ${this.nodeDecisionSummary(node).risk}`
       : `${guided ? 'TAKE ROUTE   |   ' : firstDecision ? 'FIRST FLIGHT   |   ' : ''}CHOOSE A BRIGHT NODE   |   REVIEW GAIN + RISK`;
     const name = guided || firstDecision ? 'first-route-guidance' : 'route-decision-dock';
     this.routeMapRendererModule?.renderRouteGuidance({
@@ -7382,22 +7477,17 @@ class RouteScene extends Phaser.Scene {
     if (activeMapIndex === 0 && (this.runState.combatResults?.length ?? 0) === 0) return;
     const progress = this.districtContractProgress();
     if (!progress) return;
-    const x = 1035;
-    const y = 105;
-    const canCycle = false;
-    this.add.rectangle(x, y, 390, 54, 0x06111a, 0.96)
-      .setStrokeStyle(2, progress.completed ? UI_FIELD.green : UI_FIELD.gold, 0.78)
-      .setInteractive({ useHandCursor: canCycle })
+    const x = 975;
+    const y = 104;
+    this.add.rectangle(x, y, 510, 48, 0x06111a, 0.96)
+      .setStrokeStyle(1, progress.completed ? UI_FIELD.green : UI_FIELD.gold, 0.65)
       .setName('district-contract');
-    this.add.text(x - 178, y - 17, progress.completed ? 'CONTRACT COMPLETE' : 'DISTRICT CONTRACT', {
-      fontFamily: UI_FONT, fontSize: '9px', fontStyle: UI_BOLD, color: progress.completed ? '#bff4d0' : '#ffe7a8'
-    });
-    this.add.text(x - 178, y - 2, `${progress.name}  /  ${progress.current}/${progress.target}`, {
-      fontFamily: UI_FONT, fontSize: '12px', fontStyle: UI_BOLD, color: '#f2f7fb', fixedWidth: 350, maxLines: 1
-    });
-    this.add.text(x - 178, y + 14, `${progress.goal}  /  +${progress.rewardScrap} Scrap`, {
-      fontFamily: UI_FONT, fontSize: '9px', color: '#a9bac8', fixedWidth: 350, maxLines: 1
-    });
+    this.add.text(x - 239, y - 21, `${progress.completed ? 'COMPLETE' : 'CONTRACT'}  ${progress.name}  ${progress.current}/${progress.target}`, {
+      fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: progress.completed ? '#bff4d0' : '#ffe7a8'
+    }).setResolution(2).setName('district-contract-title');
+    this.add.text(x - 239, y + 2, `${progress.goal}  /  +${progress.rewardScrap} Scrap`, {
+      fontFamily: UI_FONT, fontSize: '16px', color: '#d2dce5'
+    }).setResolution(2).setName('district-contract-goal');
   }
 
   private renderDistrictContractCelebration() {
@@ -7504,6 +7594,7 @@ class RouteScene extends Phaser.Scene {
       type: node.type,
       risk: node.risk,
       encounterTags: encounter?.tags ?? [],
+      enemyCount: encounter?.enemies.length,
       recovery: routeNodeRecovery(node, this.runState.routeMarks),
       currentHp: this.runState.currentHp,
       maxHp: this.runMaxHp(),
@@ -7663,84 +7754,31 @@ class RouteScene extends Phaser.Scene {
   private showNodeTooltip(node: RouteNode, x: number, anchorY: number) {
     const detail = this.nodeDetail(node);
     const decision = this.nodeDecisionSummary(node);
-    const badges = this.routeRewardBadges(node).slice(0, 5);
-    const width = node.type === 'boss'
-      ? 360
-      : Math.max(220, Math.min(300, Math.max(detail.title.length * 9 + 36, 92 + badges.length * 34)));
+    const width = 440;
+    const height = detail.bossPrep ? 252 : 174;
     const graph = this.routeLayout().graph;
     const cx = Math.max(graph.left + width / 2, Math.min(graph.right - width / 2, x));
-    const top = anchorY - (detail.bossPrep ? 44 : 22);
-    const container = this.add.container(0, 0);
-    const frameKey = uiIconAssets['route-node-tooltip-frame'].key;
-    const frameW = Math.max(244, width + 30);
-    const frameH = detail.bossPrep ? 210 : 122;
-    if (this.textures.exists(frameKey)) {
-      this.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      container.add(this.add.image(cx, top + 8, frameKey)
-        .setDisplaySize(frameW, frameH)
-        .setAlpha(0.9)
-        .setName('route-node-tooltip-frame'));
-    } else {
-      container.add(this.add.rectangle(cx, top + 8, width, detail.bossPrep ? 154 : 58, 0x05161f, 0.98).setStrokeStyle(1, 0x7ab8d6, 0.95));
-    }
-    container.add(this.add.text(cx, top - 18, detail.title, { fontFamily: UI_FONT, fontSize: '15px', fontStyle: UI_BOLD, color: UI_GOLD }).setOrigin(0.5));
-
-    const iconY = top + 11;
-    const typeIcon = this.renderRouteNodeTypeIcon(node.type, cx - width / 2 + 22, iconY, 26, 1);
-    container.add(typeIcon);
-    const riskX = cx - width / 2 + 50;
-    const riskCount = node.risk === 'high' ? 3 : node.risk === 'medium' ? 2 : 1;
-    const riskMeterKey = uiIconAssets['route-risk-meter-frame'].key;
-    if (this.textures.exists(riskMeterKey)) {
-      this.textures.get(riskMeterKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      container.add(this.add.image(riskX + 8, iconY, riskMeterKey)
-        .setDisplaySize(50, 26)
-        .setAlpha(0.84)
-        .setName('route-risk-meter-frame'));
-    } else {
-      container.add(this.add.rectangle(riskX + 8, iconY, 34, 22, 0x05161f, 0.42)
-        .setStrokeStyle(1, 0x7ab8d6, 0.36));
-    }
-    for (let i = 0; i < 3; i += 1) {
-      container.add(this.add.rectangle(riskX + i * 8, iconY, 5, 18, routeNodeRiskColor(node.risk), i < riskCount ? 0.92 : 0.22));
-    }
-    const badgeStartX = cx - width / 2 + 84;
-    if (badges.length) {
-      const sparkleX = badgeStartX + (badges.length - 1) * 13.5;
-      addRewardSparkBurstFx(this, sparkleX, iconY, Math.min(96, 36 + badges.length * 15))
-        .forEach((object) => container.add(object));
-    }
-    badges.forEach((badge, index) => {
-      const bx = badgeStartX + index * 27;
-      container.add(this.add.circle(bx, iconY, 11, 0x07101c, 0.98).setStrokeStyle(1, badge.color, 0.9));
-      const image = addRewardBadgeArtImage(this, badge.id, bx, iconY, 18);
-      if (image) container.add(image.setAlpha(0.96));
-      else container.add(this.add.text(bx, iconY - 1, badge.icon, {
-        fontFamily: UI_FONT,
-        fontSize: '10px',
-        fontStyle: UI_BOLD,
-        color: badge.text
-      }).setOrigin(0.5));
-    });
-    container.add(this.add.text(cx, top + 36, `GAIN  ${decision.benefit}`, {
-      fontFamily: UI_FONT, fontSize: '12px', fontStyle: UI_BOLD, color: '#bff4d0', fixedWidth: frameW - 34, align: 'center', maxLines: 1
-    }).setOrigin(0.5, 0).setName('route-node-gain'));
-    container.add(this.add.text(cx, top + 52, `${detail.bossPrep ? 'TEST' : 'RISK'}  ${decision.risk}`, {
-      fontFamily: UI_FONT, fontSize: '12px', color: '#ffc7b5', fixedWidth: frameW - 34, align: 'center', maxLines: 1
-    }).setOrigin(0.5, 0).setName(detail.bossPrep ? 'route-boss-prep-test' : 'route-node-risk'));
+    const top = Phaser.Math.Clamp(anchorY - height - 12, 160, 624 - height);
+    const container = this.add.container(0, 0).setDepth(120).setName('route-node-tooltip');
+    const dismiss = () => container.destroy(true);
+    this.input.once(Phaser.Input.Events.GAME_OUT, dismiss);
+    container.once(Phaser.GameObjects.Events.DESTROY, () => this.input.off(Phaser.Input.Events.GAME_OUT, dismiss));
+    container.add(this.add.rectangle(cx, top + height / 2, width, height, 0x07121c, 0.98)
+      .setStrokeStyle(1, 0x7ab8d6, 0.65).setName('route-node-tooltip-frame'));
+    const addLine = (text: string, y: number, name: string, color: string, lines: number, size = 18) => {
+      const label = this.add.text(cx - width / 2 + 20, top + y, '', {
+        fontFamily: UI_FONT, fontSize: `${size}px`, color,
+        fontStyle: size > 18 ? UI_BOLD : undefined,
+        wordWrap: { width: width - 40, useAdvancedWrap: true },
+      }).setResolution(2).setName(name);
+      container.add(fitTextExcerpt(label, text, lines));
+    };
+    addLine(detail.title, 16, 'route-node-title', UI_GOLD, 1, 22);
+    addLine(`GAIN  ${decision.benefit}`, 52, 'route-node-gain', '#bff4d0', 2);
+    addLine(`${detail.bossPrep ? 'TEST' : 'RISK'}  ${decision.risk}`, 106,
+      detail.bossPrep ? 'route-boss-prep-test' : 'route-node-risk', '#ffc7b5', 2);
     if (detail.bossPrep) {
-      container.add(this.add.rectangle(cx, top + 86, frameW - 48, 40, 0x050a12, 0.88)
-        .setStrokeStyle(1, UI_FIELD.cyan, 0.28)
-        .setName('route-boss-prep-plan-backplate'));
-      container.add(this.add.text(cx, top + 69, `PLAN  ${compactSentenceText(detail.bossPrep.hints[0] ?? detail.bossPrep.thesis, 104, 1)}`, {
-        fontFamily: UI_FONT,
-        fontSize: '12px',
-        color: '#e7eef7',
-        fixedWidth: frameW - 56,
-        align: 'center',
-        maxLines: 2,
-        wordWrap: { width: frameW - 56, useAdvancedWrap: true },
-      }).setOrigin(0.5, 0).setResolution(2).setName('route-boss-prep-plan'));
+      addLine(`PLAN  ${detail.bossPrep.hints[0] ?? detail.bossPrep.thesis}`, 162, 'route-boss-prep-plan', '#e7eef7', 3);
     }
     return container;
   }
@@ -8041,6 +8079,7 @@ class RouteScene extends Phaser.Scene {
     this.runState.currentRouteNodeId = node.id;
     this.nodeChoiceOpen = true;
     this.nodeChoiceNodeId = node.id;
+    eventChoiceState(this, true);
     this.selectableNodeIds = new Set();
     this.routeStaticCardRewardChoiceIds.clear();
     this.routeStaticSupplyRewardChoiceIds.clear();
@@ -8172,6 +8211,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private chooseNodeOption(key: string) {
+    if (!this.nodeChoiceOpen || this.pauseOverlayOpen || this.settingsOverlayOpen || eventChoiceState(this).open) return;
     const node = currentMap().nodes.find((candidate) => candidate.id === this.nodeChoiceNodeId);
     if (!node) return;
     const choice = this.nodeChoiceList(node).find((entry) => entry.key === key);
@@ -8903,38 +8943,6 @@ class RouteScene extends Phaser.Scene {
     });
   }
 
-  private cardPickerDeckImpact(index: number) {
-    const before = cardsFromSave(this.runState.deck);
-    if (!before[index] || !this.cardPickerMode) return undefined;
-    const release = this.cardPickerMode === 'release';
-    const after = release ? before.filter((_, i) => i !== index)
-      : before.map((card, i) => i === index ? { ...card, upgraded: true } : card);
-    const beforeStats = aggregateFlockStats(before);
-    const afterStats = aggregateFlockStats(after);
-    const hand = (cards: Card[], stats: Record<string, number>) => flockHandTarget(
-      stats.draw ?? 0, cards.filter(card => card.runtime.suit === 'plumes').length >= KEYSTONE_AT, this.runState.leaderId,
-    );
-    const changes = [...new Set([...Object.keys(beforeStats), ...Object.keys(afterStats)])]
-      .filter(key => (beforeStats[key] ?? 0) !== (afterStats[key] ?? 0))
-      .map(key => `${flockStatLabel(key)}: ${beforeStats[key] ?? 0} > ${afterStats[key] ?? 0}`);
-    const cost = this.cardPickerContext === 'market' ? this.marketCardPickerPrice(this.cardPickerMode, before[index]) : 0;
-    const handBefore = hand(before, beforeStats), handAfter = hand(after, afterStats);
-    return {
-      deckBefore: before.length, deckAfter: after.length, handBefore, handAfter, changes, cost,
-      lines: [
-        `${release ? 'RELEASE' : 'PREEN'} / YOUR FLIGHT`,
-        `Deck: ${before.length} > ${after.length} cards`,
-        `Base hand target: ${handBefore} > ${handAfter}`,
-        changes.length ? `Flock Stats totals\n${changes.join(' / ')}` : 'Flock Stats unchanged.',
-        release ? 'A smaller draw pool, but this card and its passive stats leave the flight.' : 'Same draw pool size. Only this copy receives the upgrade.',
-        this.cardPickerContext === 'market'
-          ? cost > this.runState.scrap ? `Service: ${cost} Scrap. Need ${cost - this.runState.scrap} more.` : `Service: ${cost} Scrap. Remaining: ${this.runState.scrap - cost}.`
-          : 'No Scrap charged for this choice.',
-        'Flight only. Your permanent collection is unchanged.',
-        'Base target includes Leader and suit threshold. Waymarks, opening protection and card effects can change actual draws; purchase triggers are not included.',
-      ],
-    };
-  }
 
   applyCardPick(index: number) {
     this.cardPickerArmedIndex = undefined;
@@ -9113,21 +9121,6 @@ class RouteScene extends Phaser.Scene {
     return hit;
   }
 
-  private renderCardPickerCostBadge(x: number, y: number, affordable: boolean) {
-    const key = uiIconAssets['card-picker-cost-badge'].key;
-    if (!this.textures.exists(key)) {
-      this.add.circle(x, y, 14, affordable ? 0xd8a840 : 0x3f4c58, 1)
-        .setStrokeStyle(2, 0x05080e, affordable ? 0.9 : 0.58);
-      return;
-    }
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const badge = this.add.image(x, y, key)
-      .setDisplaySize(37, 37)
-      .setAlpha(affordable ? 0.94 : 0.42)
-      .setName('card-picker-cost-badge');
-    if (!affordable) badge.setTint(0x8192a2);
-  }
-
   private renderCardPickerPageIndicatorFrame(x: number, y: number) {
     const key = uiIconAssets['card-picker-page-indicator-frame'].key;
     if (!this.textures.exists(key)) {
@@ -9140,36 +9133,6 @@ class RouteScene extends Phaser.Scene {
       .setDisplaySize(88, 34)
       .setAlpha(0.88)
       .setName('card-picker-page-indicator-frame');
-  }
-
-  private renderCardPickerNameplateFrame(x: number, y: number, affordable: boolean) {
-    const key = uiIconAssets['card-picker-nameplate-frame'].key;
-    if (!this.textures.exists(key)) {
-      this.add.rectangle(x, y, 98, 28, 0x020409, affordable ? 0.94 : 0.82)
-        .setStrokeStyle(1.5, affordable ? UI_FIELD.gold : 0x3f4c58, affordable ? 0.48 : 0.34);
-      return;
-    }
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const frame = this.add.image(x, y, key)
-      .setDisplaySize(106, 32)
-      .setAlpha(affordable ? 0.88 : 0.4)
-      .setName('card-picker-nameplate-frame');
-    if (!affordable) frame.setTint(0x8192a2);
-  }
-
-  private renderCardPickerContextPlaque(x: number, y: number, width = 336, height = 66) {
-    const key = uiIconAssets['card-picker-context-plaque'].key;
-    if (!this.textures.exists(key)) {
-      this.add.rectangle(x, y, width - 24, height - 18, 0x06121b, 0.78)
-        .setStrokeStyle(1.5, UI_FIELD.cyan, 0.5)
-        .setName('card-picker-context-plaque');
-      return;
-    }
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    this.add.image(x, y, key)
-      .setDisplaySize(width, height)
-      .setAlpha(0.86)
-      .setName('card-picker-context-plaque');
   }
 
   private renderCardPickerOverlay() {
@@ -9190,58 +9153,47 @@ class RouteScene extends Phaser.Scene {
     const visible = eligible.slice(firstVisible, firstVisible + visibleCount);
     this.queueCardPickerArtLoad(visible);
     if (isMarketPicker) {
-      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.72)
+      this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.94)
         .setInteractive({ useHandCursor: false });
     } else {
       this.renderRouteEventBackdrop(node, 0.82);
     }
     const frame = renderFieldPanel(this, () => {}, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 8, 1040, 558, {
-      eyebrow: isMarketPicker ? 'Market Service' : isDistrictPreen ? 'District Prep' : node ? routeNodeTypeLabel(node.type) : 'Flock Workbench',
-      title: mode === 'preen'
-        ? remainingPicks > 1 ? `Preen ${remainingPicks} Cards` : isDistrictPreen ? 'Choose a Free Preen' : 'Preen a Card'
-        : remainingPicks > 1 ? `Remove ${remainingPicks} Cards` : 'Remove a Card',
-      subtitle: mode === 'preen'
+      accent,
+      fill: mode === 'preen' ? 0x071824 : 0x1b1114
+    });
+    this.add.text(frame.left + 28, frame.top + 16, mode === 'preen'
+        ? remainingPicks > 1 ? `Preen ${remainingPicks} Cards${isDistrictPreen ? ' · Free' : ''}` : isDistrictPreen ? 'Choose a Free Preen' : 'Preen a Card'
+        : remainingPicks > 1 ? `Remove ${remainingPicks} Cards` : 'Remove a Card', {
+      fontFamily: UI_FONT, fontSize: '28px', fontStyle: UI_BOLD, color: UI_GOLD, resolution: 2,
+    }).setName('card-picker-title');
+    this.add.text(frame.left + 28, frame.top + 53, mode === 'preen'
         ? isMarketPicker
           ? 'Select a card, then confirm again to improve it and pay Scrap.'
           : isDistrictPreen
             ? 'Choose exactly which card improves before this district. Skipping changes nothing.'
             : 'Select a card, then confirm again to improve it.'
-        : isMarketPicker ? 'Select a card, then confirm again to remove it and pay Scrap.' : 'Select a card, then confirm again to remove it.',
-      accent,
-      fill: mode === 'preen' ? 0x071824 : 0x1b1114
-    });
-    addCardPickerFrame(this, () => {}, frame, {
-      alpha: mode === 'preen' ? 0.34 : 0.3,
-      tint: mode === 'preen' ? 0xdffaff : 0xffd5cc
-    });
-    this.add.rectangle(frame.cx, frame.cy, frame.w - 36, frame.h - 36, 0x020409, 0.14);
-    this.add.text(frame.right - 28, frame.top + 90, `ARROWS / D-PAD  CARD   |   ENTER / A / TAP  ${this.cardPickerArmedIndex === undefined ? 'SELECT' : 'CONFIRM'}   |   ESC / B  BACK`, {
+        : isMarketPicker ? 'Select a card, then confirm again to remove it and pay Scrap.' : 'Select a card, then confirm again to remove it.', {
+      fontFamily: UI_FONT, fontSize: '18px', color: '#c7d4df', resolution: 2,
+      wordWrap: { width: frame.w - 56 },
+    }).setName('card-picker-subtitle');
+    this.add.text(frame.left + 28, frame.top + 89, '', {
       fontFamily: UI_FONT,
-      fontSize: '12px',
+      fontSize: '16px',
       fontStyle: UI_BOLD,
       color: '#bfe8f4',
-    }).setResolution(2).setOrigin(1, 0.5).setName('card-picker-input-hint');
-    this.renderCardPickerContextPlaque(frame.left + 222, frame.top + 128);
-    this.add.text(frame.left + 222, frame.top + 114, isDistrictPreen ? 'Boss Prep Credit' : node?.label ?? 'Workshop stop', {
-      fontFamily: UI_FONT,
-      fontSize: '15px',
-      fontStyle: UI_BOLD,
-      color: UI_CYAN,
-      align: 'center',
-      stroke: '#05080e',
-      strokeThickness: 2,
-      wordWrap: { width: 220 },
-      maxLines: 2
-    }).setOrigin(0.5, 0);
+    }).setResolution(2).setOrigin(0, 0.5).setName('card-picker-input-hint');
     let armedConfirmation: { name: string; cost: number; delta: string } | undefined;
     visible.forEach((entry, i) => {
-      const cardW = 94;
+      const cardW = 70;
       const cardH = Math.round(cardW * 1.5);
-      const x = frame.left + 440 + (i % columns) * 112;
-      const y = frame.top + 184 + Math.floor(i / columns) * rowGap;
+      const x = frame.left + 108 + (i % columns) * 177;
+      const y = frame.top + 178 + Math.floor(i / columns) * rowGap;
       const affordable = !isMarketPicker || this.runState.scrap >= entry.cost;
       const armed = this.cardPickerArmedIndex === entry.index;
-      this.add.rectangle(x + 5, y + 7, cardW, cardH, 0x020409, 0.72);
+      this.add.rectangle(x, y + 19, 162, 184, 0x030b13, 0.94)
+        .setStrokeStyle(1, armed ? UI_FIELD.gold : 0x344654, armed ? 1 : 0.65)
+        .setName('card-picker-choice-plate');
       const key = compactCardArtKey(entry.card);
       if (key && this.textures.exists(key)) {
         this.add.image(x, y, key)
@@ -9263,28 +9215,24 @@ class RouteScene extends Phaser.Scene {
         this.add.rectangle(x, y, cardW, cardH, 0x05101a, 0.12);
       }
       if (isMarketPicker) {
-        this.renderCardPickerCostBadge(x - 34, y - 52, affordable);
-        this.add.text(x - 34, y - 60, `${entry.cost}`, {
+        this.add.text(x, y - 64, `${entry.cost} Scrap`, {
           fontFamily: UI_FONT,
-          fontSize: '12px',
+          fontSize: '16px',
           fontStyle: UI_BOLD,
           color: affordable ? (entry.cost === 0 ? '#8df4ff' : '#ffe1a3') : '#91a6b8',
-          stroke: '#05080e',
-          strokeThickness: 2
-        }).setOrigin(0.5, 0);
+          resolution: 2,
+        }).setOrigin(0.5).setName('card-picker-price');
       }
-      this.renderCardPickerNameplateFrame(x, y + 84, affordable);
-      this.add.text(x, y + 72, `${entry.name}${entry.upgraded ? '+' : ''}`, {
+      const name = `${entry.name}${entry.upgraded ? '+' : ''}`;
+      const nameLabel = this.add.text(x, y + 58, name, {
         fontFamily: UI_FONT,
-        fontSize: '11px',
+        fontSize: '18px',
         fontStyle: UI_BOLD,
         color: affordable ? '#ffe1a3' : '#91a6b8',
         align: 'center',
-        stroke: '#05080e',
-        strokeThickness: 2,
-        wordWrap: { width: cardW - 6 },
-        maxLines: 2
-      }).setOrigin(0.5, 0);
+        wordWrap: { width: 146, useAdvancedWrap: true }, resolution: 2,
+      }).setOrigin(0.5, 0).setName('card-picker-card-name');
+      fitTextExcerpt(nameLabel, name, 2);
       const decisionDelta = this.routeRewardInteractionModule()?.cardPickerDecisionDelta(
         this.runState.deck.length,
         mode,
@@ -9295,22 +9243,9 @@ class RouteScene extends Phaser.Scene {
         ? `DECK ${this.runState.deck.length} > ${Math.max(0, this.runState.deck.length - 1)}`
         : 'ABILITY\n> IMPROVED');
       if (armed) armedConfirmation = { name: `${entry.name}${entry.upgraded ? '+' : ''}`, cost: entry.cost, delta: decisionDelta };
-      const decisionY = y + 48;
-      this.add.rectangle(x, decisionY, cardW - 2, mode === 'preen' ? 34 : 24, 0x03101a, 0.94)
-        .setStrokeStyle(armed ? 2 : 1, armed ? UI_FIELD.gold : affordable ? accent : 0x3f4c58, affordable ? 0.9 : 0.48);
-      this.add.text(x, decisionY, decisionDelta, {
-        fontFamily: UI_FONT,
-        fontSize: mode === 'preen' ? '9px' : '10px',
-        fontStyle: UI_BOLD,
-        color: armed ? UI_GOLD : affordable ? '#f4f8fb' : '#748494',
-        align: 'center',
-        fixedWidth: cardW - 8,
-        lineSpacing: -1,
-        maxLines: mode === 'preen' ? 2 : 1
-      }).setResolution(2).setOrigin(0.5).setName('card-picker-decision-delta');
-      const button = this.add.rectangle(x, y + 10, cardW + 12, cardH + 54, 0x000000, 0.01)
+      const button = this.add.rectangle(x, y + 19, 162, 184, 0x000000, 0.01)
         .setInteractive({ useHandCursor: affordable })
-        .setName('card-picker-card-hit');
+        .setName('card-picker-card-hit').setData('decisionDelta', decisionDelta);
       if (affordable) button.on('pointerdown', () => this.requestCardPick(entry.index));
       this.cardHoverDetailModule?.renderCardPickerInput(
         this, button, entry, x, y, cardW, cardH, accent, firstVisible + i,
@@ -9340,18 +9275,16 @@ class RouteScene extends Phaser.Scene {
         strokeThickness: 2
       }).setOrigin(0.5);
     }
-    if (isMarketPicker) {
-      this.renderMarketEnamelButton(frame.left + 318, frame.bottom - 48, 176, 38, 'Back to Market', true, () => this.cancelMarketCardPicker(), UI_FIELD.cyan, '13px');
-    } else {
-      this.renderRouteEventCancelButton(
-        frame.left + 126,
-        frame.bottom - 48,
-        166,
-        38,
-        isDistrictPreen ? (remainingPicks > 1 ? 'Skip Remaining' : 'Skip Preen') : 'Cancel',
-        () => this.cancelRouteCardPicker(),
-      );
-    }
+    const back = this.add.rectangle(228, 610, 176, 58, 0x102534, 0.98)
+      .setStrokeStyle(1, UI_FIELD.cyan, 0.75).setInteractive({ useHandCursor: true })
+      .setName('route-event-cancel-hit');
+    back.on('pointerover', () => back.setFillStyle(0x173a50, 1));
+    back.on('pointerout', () => back.setFillStyle(0x102534, 0.98));
+    back.on('pointerdown', () => isMarketPicker ? this.cancelMarketCardPicker() : this.cancelRouteCardPicker());
+    this.add.text(228, 610, isMarketPicker ? 'Back to Market'
+      : isDistrictPreen ? (remainingPicks > 1 ? 'Skip Remaining' : 'Skip Preen') : 'Cancel', {
+      fontFamily: UI_FONT, fontSize: '18px', color: '#dffbff', resolution: 2,
+    }).setOrigin(0.5).setName('card-picker-back-label');
     this.cardHoverDetailModule?.renderCardPickerInspection(
       this, GAME_WIDTH, GAME_HEIGHT, controlBindingLabel('back'),
     );
@@ -9414,200 +9347,6 @@ class RouteScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
   }
 
-  renderRouteRewardItemShowcase(item: PendingRouteRewardItem, x: number, y: number, w: number, h: number, companionCards: Card[] = []) {
-    const isSupply = item.kind === 'supply';
-    const supply = isSupply ? alphaSupplyLibrary.get(item.id) : undefined;
-    const mark = !isSupply ? alphaRouteMarkLibrary.get(item.id) : undefined;
-    if (!supply && !mark) return false;
-    const accent = supply ? supplyAccent(supply) : mark ? routeMarkAccent(mark) : UI_FIELD.gold;
-    const title = supply?.name ?? mark?.name ?? 'Found item';
-    const kicker = supply
-      ? `${supplyCategoryLabel(supply)} Supply / ${supply.rarity}`
-      : mark
-        ? `${routeMarkFamilyLabel(mark.family)} Waymark / ${mark.rarity}`
-        : '';
-    const summary = supply
-      ? compactEffectSummary(supply.effects, 110)
-      : mark
-        ? compactEffectSummary(routeMarkEffectText(mark), 110)
-        : '';
-    const key = supply ? supplyCompactArtAssets[supply.id]?.key : mark ? waymarkCompactArtAssets[mark.id]?.key : undefined;
-    const companion = companionCards[0];
-    if (companion) {
-      const itemKindLabel = supply
-        ? `${supply.rarity.toUpperCase()} SUPPLY`
-        : mark
-          ? `${mark.rarity.toUpperCase()} WAYMARK`
-          : 'ITEM';
-      this.add.rectangle(x, y, w, h, 0x06101a, 0.9)
-        .setStrokeStyle(2, accent, 0.76);
-      this.add.rectangle(x, y - h / 2 + 16, w - 28, 3, accent, 0.72);
-
-      const itemCx = x - 104;
-      const cardCx = x + 108;
-      const artY = y - 30;
-      addRewardRevealHaloFx(this, itemCx, artY, 166, 166, 0.2);
-      addRewardRevealHaloFx(this, cardCx, y - 4, 150, 202, 0.16);
-      this.add.text(itemCx, y - 100, itemKindLabel, {
-        fontFamily: UI_FONT,
-        fontSize: '10px',
-        fontStyle: UI_BOLD,
-        color: UI_CYAN,
-        align: 'center',
-        wordWrap: { width: 150 },
-        maxLines: 1
-      }).setOrigin(0.5, 0);
-      this.add.rectangle(itemCx, artY, 118, 118, 0x020409, 0.54)
-        .setStrokeStyle(1, accent, 0.56);
-      if (key && this.textures.exists(key)) {
-        const image = supply
-          ? addSupplyArtImage(this, itemCx, artY, key)
-          : addWaymarkArtImage(this, itemCx, artY, key);
-        image.setDisplaySize(104, 104);
-      } else if (supply) {
-        this.add.text(itemCx, artY - 17, this.supplyGlyph(supply), {
-          fontFamily: UI_FONT,
-          fontSize: '30px',
-          fontStyle: UI_BOLD,
-          color: '#ffe7c9',
-          stroke: '#020409',
-          strokeThickness: 2
-        }).setOrigin(0.5, 0);
-      } else if (mark) {
-        this.add.text(itemCx, artY - 17, waymarkGlyph(mark), {
-          fontFamily: UI_FONT,
-          fontSize: '32px',
-          fontStyle: UI_BOLD,
-          color: '#efe4ff',
-          stroke: '#020409',
-          strokeThickness: 2
-        }).setOrigin(0.5, 0);
-      }
-      this.add.text(itemCx, y + 42, title, {
-        fontFamily: UI_FONT,
-        fontSize: '14px',
-        fontStyle: UI_BOLD,
-        color: UI_GOLD,
-        align: 'center',
-        wordWrap: { width: 158 },
-        maxLines: 2
-      }).setOrigin(0.5, 0);
-      this.add.text(itemCx, y + 79, summary, {
-        fontFamily: UI_FONT,
-        fontSize: '10px',
-        fontStyle: UI_BOLD,
-        color: UI_SOFT,
-        align: 'center',
-        lineSpacing: 1,
-        wordWrap: { width: 168 },
-        maxLines: 2
-      }).setOrigin(0.5, 0);
-      const itemHit = this.add.rectangle(itemCx, y - 1, 170, 210, 0x000000, 0.01)
-        .setInteractive({ useHandCursor: true });
-      itemHit.on('pointerover', () => {
-        if (supply) this.showRewardSupplyDetail(supply, itemCx, y + 18);
-        else if (mark) this.showRewardWaymarkDetail(mark, itemCx, y + 18);
-      });
-      itemHit.on('pointerout', () => this.hideMarketItemDetail());
-
-      this.add.rectangle(x, y + 2, 1, h - 44, accent, 0.36);
-      this.add.text(cardCx, y - 100, 'SNAG CARD', {
-        fontFamily: UI_FONT,
-        fontSize: '10px',
-        fontStyle: UI_BOLD,
-        color: '#ffd5cc',
-        align: 'center',
-        wordWrap: { width: 150 },
-        maxLines: 1
-      }).setOrigin(0.5, 0);
-      this.renderRouteRewardCardOption(companion, cardCx, y - 4, 108, 162, UI_FIELD.danger);
-      this.add.rectangle(cardCx, y + 93, 138, 28, 0x020409, 0.94)
-        .setStrokeStyle(1, UI_FIELD.danger, 0.72);
-      this.add.text(cardCx, y + 83, displayName(companion), {
-        fontFamily: UI_FONT,
-        fontSize: '11px',
-        fontStyle: UI_BOLD,
-        color: '#ffd5cc',
-        align: 'center',
-        wordWrap: { width: 126 },
-        maxLines: 2
-      }).setOrigin(0.5, 0);
-      const cardHit = this.add.rectangle(cardCx, y - 4, 126, 208, 0x000000, 0.01)
-        .setInteractive({ useHandCursor: true });
-      cardHit.on('pointerover', () => this.showHoverCardDetail(companion, 'Cache consequence', companion.cost, cardCx, y - 4));
-      cardHit.on('pointerout', () => this.hideHoverCardDetail());
-      return true;
-    }
-
-    const artX = x - w / 2 + 114;
-    const artY = y - 8;
-    this.add.rectangle(x, y, w, h, 0x06101a, 0.9)
-      .setStrokeStyle(2, accent, 0.76);
-    this.add.rectangle(x, y - h / 2 + 16, w - 28, 3, accent, 0.72);
-    addRewardRevealHaloFx(this, artX, artY, 190, 190, 0.22);
-    this.add.rectangle(artX, artY, 142, 142, 0x020409, 0.54)
-      .setStrokeStyle(1, accent, 0.56);
-    if (key && this.textures.exists(key)) {
-      const image = supply
-        ? addSupplyArtImage(this, artX, artY, key)
-        : addWaymarkArtImage(this, artX, artY, key);
-      image.setDisplaySize(126, 126);
-    } else if (supply) {
-      this.add.text(artX, artY - 18, this.supplyGlyph(supply), {
-        fontFamily: UI_FONT,
-        fontSize: '34px',
-        fontStyle: UI_BOLD,
-        color: '#ffe7c9',
-        stroke: '#020409',
-        strokeThickness: 2
-      }).setOrigin(0.5, 0);
-    } else if (mark) {
-      this.add.text(artX, artY - 18, waymarkGlyph(mark), {
-        fontFamily: UI_FONT,
-        fontSize: '36px',
-        fontStyle: UI_BOLD,
-        color: '#efe4ff',
-        stroke: '#020409',
-        strokeThickness: 2
-      }).setOrigin(0.5, 0);
-    }
-
-    const tx = x - w / 2 + 205;
-    const textW = w - 232;
-    this.add.text(tx, y - 88, title, {
-      fontFamily: UI_FONT,
-      fontSize: '19px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      wordWrap: { width: textW },
-      maxLines: 2
-    });
-    this.add.text(tx, y - 38, kicker, {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: UI_CYAN,
-      wordWrap: { width: textW },
-      maxLines: 1
-    });
-    this.add.text(tx, y - 8, summary, {
-      fontFamily: UI_FONT,
-      fontSize: '13px',
-      fontStyle: UI_BOLD,
-      color: UI_SOFT,
-      lineSpacing: 2,
-      wordWrap: { width: textW },
-      maxLines: 4
-    });
-    const hit = this.add.rectangle(x, y, w - 22, h - 26, 0x000000, 0.01)
-      .setInteractive({ useHandCursor: true });
-    hit.on('pointerover', () => {
-      if (supply) this.showRewardSupplyDetail(supply, x, y);
-      else if (mark) this.showRewardWaymarkDetail(mark, x, y);
-    });
-    hit.on('pointerout', () => this.hideMarketItemDetail());
-    return true;
-  }
 
   private renderRouteCardRewardOverlay() {
     if (!this.routeRewardOverlayModule) {
@@ -9763,6 +9502,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private marketRefreshDecisionPreview(price = this.marketRefreshCost()): MarketDecisionPreview {
+    if (price > this.runState.scrap) return [`NEED ${price - this.runState.scrap} MORE SCRAP`];
     const projected = cloneRunState(this.runState);
     this.projectedMarketSpend(projected, price);
     return [`STOCK ROUND ${this.marketRefreshCount} > ${this.marketRefreshCount + 1}`, ...this.marketProjectionRows(projected)];
@@ -9809,6 +9549,7 @@ class RouteScene extends Phaser.Scene {
       upgradedText: card.upgraded ? 'Already preened.' : card.upgradedText,
       baseText: displayText(card),
       moltText: card.moltText ? (card.upgraded && card.moltTextUpgraded ? card.moltTextUpgraded : card.moltText) : undefined,
+      upgradedMoltText: card.moltTextUpgraded,
       usesMolt: contract.usesMolt,
       stats: cardStatRows(card),
       reducedMotion: prefersReducedMotion(),
@@ -9819,7 +9560,9 @@ class RouteScene extends Phaser.Scene {
     this.queueCardPortraitArtLoad(card, 'Hover art', () => {
       if (!this.cardHoverDetailRequest || this.cardHoverDetailRequest.name !== displayName(card)) return;
       this.cardHoverDetailRequest.artKey = loadedCardArtKey(this, card);
-      this.renderHoverCardDetailRequest();
+      const updateArt = this.hoverCardDetail?.getByName('route-inspection-reader')?.getData('updateArt');
+      if (updateArt) updateArt(this.cardHoverDetailRequest.artKey);
+      else this.renderHoverCardDetailRequest();
     });
   }
 
@@ -9868,13 +9611,6 @@ class RouteScene extends Phaser.Scene {
         23020
       ) as Phaser.GameObjects.Container;
       this.hoverCardDetail.add(detail);
-      if (this.marketBuildObservations.length > 0) {
-        this.hoverCardDetail.add(this.cardHoverDetailModule.renderMarketCardBuildRead(
-          this,
-          this.marketBuildObservations,
-          this.marketDecisionPreview,
-        ));
-      }
       return;
     }
     const cx = view.anchorX < GAME_WIDTH / 2
@@ -9909,7 +9645,7 @@ class RouteScene extends Phaser.Scene {
       title: mark.name,
       kicker: `${routeMarkFamilyLabel(mark.family)} Waymark / ${mark.rarity} / ${mark.source}`,
       body: mark.description,
-      meta: `Trigger: ${mark.trigger}\nEffect: ${routeMarkEffectGrammar(mark)}`,
+      meta: `Trigger: ${formatWaymarkTrigger(mark.trigger, routeMarkEffects(mark))}\nEffect: ${routeMarkEffectText(mark)}`,
       price,
       observations: this.cardHoverDetailModule?.marketMarkNotes(this, mark) ?? [],
       decisionPreview: listing
@@ -9928,7 +9664,7 @@ class RouteScene extends Phaser.Scene {
       kicker: supply ? `${supply.rarity} ${supply.category} / ${supply.timing}` : 'Market service',
       body: supply?.description ?? this.marketUtilityDetail(listing),
       meta: supply
-        ? `Effects: ${supply.effects.join(', ')}`
+        ? `Effects: ${formatEffects(supply.effects)}`
         : listing.id === 'preen' || listing.id === 'release'
           ? 'Final cost and result are shown on each eligible card.'
           : 'One-time preparation; applied immediately.',
@@ -10193,81 +9929,7 @@ class RouteScene extends Phaser.Scene {
     choices.forEach((choice, index) => {
       const x = frame.left + 792;
       const y = frame.top + 164 + index * 82;
-      const button = this.add.rectangle(x, y, 520, 64, choice.locked ? 0x101827 : 0x122235, choice.locked ? 0.62 : 0.94)
-        .setStrokeStyle(1.5, choice.locked ? 0x49606d : accent, choice.locked ? 0.5 : 0.82);
-      if (!choice.locked) {
-        button.setInteractive({ useHandCursor: true });
-        button.on('pointerdown', () => this.chooseNodeOption(choice.key));
-      }
-    this.add.text(x - 238, y - 22, choice.text, {
-      fontFamily: UI_FONT,
-      fontSize: '16px',
-      fontStyle: UI_BOLD,
-      color: choice.locked ? '#7f93a8' : '#ffe1a3',
-      fixedWidth: 456,
-      fixedHeight: 20,
-      wordWrap: { width: 456 },
-      maxLines: 1
-    });
-      this.add.text(x - 238, y + 2, compactSentenceText(choice.locked && choice.lockedText ? choice.lockedText : routeEffectSummary(choice.effects), 94, 1), {
-        fontFamily: UI_FONT,
-        fontSize: '13px',
-        color: choice.locked ? '#ff9d4d' : '#b9c7d6',
-        fixedWidth: 456,
-        fixedHeight: 32,
-        wordWrap: { width: 456 },
-        maxLines: 2
-      });
-    });
-  }
-
-  private renderRouteEventCancelButton(x: number, y: number, w: number, h: number, labelText: string, onClick: () => void) {
-    const accent = UI_FIELD.danger;
-    const frameKey = uiIconAssets['route-event-cancel-command-frame'].key;
-    this.add.rectangle(x + 4, y + 5, w, h, 0x020409, 0.46).setDepth(22000);
-    const visual = this.add.rectangle(x, y, w, h, 0x141820, this.textures.exists(frameKey) ? 0.08 : 0.94)
-      .setStrokeStyle(1, accent, 0.84)
-      .setDepth(22001);
-    let frame: Phaser.GameObjects.Image | undefined;
-    if (this.textures.exists(frameKey)) {
-      this.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      frame = this.add.image(x, y, frameKey)
-        .setDisplaySize(w + 22, h + 14)
-        .setAlpha(0.92)
-        .setDepth(22002)
-        .setName('route-event-cancel-command-frame');
-    } else {
-      this.add.rectangle(x, y - h / 2 + 4, w - 22, 2, accent, 0.8).setDepth(22002);
-    }
-    const icon = addUiIconImage(this, 'close-medallion', x - w / 2 + 20, y, Math.min(22, h - 8));
-    icon?.setDepth(22003).setAlpha(0.94);
-    const label = this.add.text(x + 25, y - 8, labelText, {
-      fontFamily: UI_FONT,
-      fontSize: '13px',
-      fontStyle: UI_BOLD,
-      color: '#ffd5cc',
-      align: 'center',
-      fixedWidth: Math.max(62, w - 78),
-      maxLines: 1
-    }).setDepth(22003).setOrigin(0.5, 0);
-    const hit = this.add.rectangle(x, y, Math.max(w, MIN_SUPPORTED_TOUCH_TARGET), Math.max(h, MIN_SUPPORTED_TOUCH_TARGET), 0x020409, 0.001)
-      .setDepth(22004)
-      .setInteractive({ useHandCursor: true })
-      .setName('route-event-cancel-hit')
-      .setData('label', labelText);
-    hit.on('pointerover', () => {
-      visual.setFillStyle(0x2a1720, frame ? 0.16 : 0.98);
-      frame?.setDisplaySize(w + 28, h + 17).setAlpha(1);
-      label.setColor('#ffffff');
-    });
-    hit.on('pointerout', () => {
-      visual.setFillStyle(0x141820, frame ? 0.08 : 0.94);
-      frame?.setDisplaySize(w + 22, h + 14).setAlpha(0.92);
-      label.setColor('#ffd5cc');
-    });
-    hit.on('pointerdown', () => {
-      playUiSound('close');
-      onClick();
+      this.renderRouteEventChoiceTile(node, choice, x, y, 520, 72, index, accent);
     });
   }
 
@@ -10351,10 +10013,10 @@ class RouteScene extends Phaser.Scene {
     if (this.marketCategory !== 'catalog') {
       const servicesFocused = this.marketCategory === 'services';
       this.add.rectangle(
-        servicesFocused ? 780 : 820,
-        servicesFocused ? 350 : 432,
-        servicesFocused ? 520 : 770,
-        servicesFocused ? 350 : 470,
+        servicesFocused ? 830 : 820,
+        432,
+        servicesFocused ? 600 : 770,
+        servicesFocused ? 400 : 470,
         0x020409,
         servicesFocused ? 0.58 : 0.34,
       )
@@ -10375,23 +10037,23 @@ class RouteScene extends Phaser.Scene {
       this.renderMarketWaymarkOffers(frame.left + 458, goodsRowY);
       this.renderMarketUtilityOffers(frame.left + 810, frame.top + 292, goodsRowY);
     } else if (this.marketCategory === 'cards') {
-      this.renderMarketSectionHeader(720, frame.top + 132, 720, 'Crew Cards', 'Permanent deck options', UI_FIELD.gold);
+      this.renderMarketSectionHeader(852, frame.top + 132, 640, 'Crew Cards', 'Permanent deck options', UI_FIELD.gold);
       this.renderMarketCardOffers(640, frame.top + 356);
     } else if (this.marketCategory === 'waymarks') {
-      this.renderMarketSectionHeader(760, frame.top + 132, 600, 'Waymarks', 'Run modifiers', UI_FIELD.violet);
+      this.renderMarketSectionHeader(820, frame.top + 132, 540, 'Waymarks', 'Run modifiers', UI_FIELD.violet);
       this.renderMarketWaymarkOffers(760, frame.top + 354);
     } else if (this.marketCategory === 'supplies') {
-      this.renderMarketSectionHeader(820, frame.top + 132, 600, 'Supplies', 'One-use tools', UI_FIELD.green);
+      this.renderMarketSectionHeader(820, frame.top + 132, 540, 'Supplies', 'One-use tools', UI_FIELD.green);
       this.renderMarketUtilityOffers(760, frame.top + 250, frame.top + 354, 'supplies');
     } else {
-      this.renderMarketSectionHeader(780, frame.top + 132, 520, 'Services', 'Deck tuning and route preparation', UI_FIELD.cyan);
+      this.renderMarketSectionHeader(820, frame.top + 132, 540, 'Services', 'Deck tuning and route preparation', UI_FIELD.cyan);
       this.renderMarketUtilityOffers(480, frame.top + 254, undefined, 'services');
     }
 
     if (!this.cardPickerMode) {
       this.cardHoverDetailModule?.bindMarketInputs(this);
       if (this.cardHoverDetailRequest?.marketCardId) this.renderHoverCardDetailRequest();
-      this.cardHoverDetailModule?.renderMarketInputHelp(this, 716, frame.bottom - 15);
+      this.cardHoverDetailModule?.renderMarketInputHelp(this, 716, frame.bottom - 8);
       this.renderMarketEnamelButton(frame.right - 48, frame.top + 42, 86, 30, this.marketFocusArmedId ? 'Clear' : 'Close', true, () => {
         playUiSound('close');
         this.leaveMarket();
@@ -10593,61 +10255,15 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderRouteEventTitlePlaque(node: RouteNode, x: number, y: number, w = 560) {
-    const accent = routeEventAccent(node.type);
     const profile = ROUTE_SET_PIECE_PROFILES[node.type];
-    const key = uiIconAssets['route-event-title-plaque'].key;
-    this.add.rectangle(x + 4, y + 5, w, 82, 0x020409, 0.48);
-    if (this.textures.exists(key)) {
-      this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      const plaque = this.add.image(x, y, key)
-        .setDisplaySize(w + 68, 124)
-        .setAlpha(0.92)
-        .setName('route-event-title-plaque');
-      const glint = this.add.image(x, y - 1, key)
-        .setDisplaySize(w + 84, 130)
-        .setAlpha(0.13)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setName('route-event-title-plaque');
-      if (!prefersReducedMotion()) {
-        this.tweens.add({
-          targets: glint,
-          alpha: 0.2,
-          scaleX: glint.scaleX * 1.006,
-          scaleY: glint.scaleY * 1.006,
-          duration: 1600,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
-      }
-      plaque.setTint(0xffffff);
-    } else {
-      this.add.rectangle(x, y, w, 78, 0x020409, 0.97)
-        .setStrokeStyle(2, accent, 0.92);
-      this.add.rectangle(x, y - 32, w - 34, 2, accent, 0.68);
-    }
-    this.add.text(x, y - 22, profile?.residentName ?? node.label, {
-      fontFamily: UI_FONT,
-      fontSize: '24px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      stroke: '#000000',
-      strokeThickness: 4,
-      align: 'center'
+    this.add.rectangle(x, y, w, 82, 0x08121b, 0.96).setName('route-event-title-plaque');
+    this.add.rectangle(x, y + 41, 96, 2, routeEventAccent(node.type), 0.7);
+    this.add.text(x, y - 12, profile?.residentName ?? node.label, {
+      fontFamily: UI_FONT, fontSize: '28px', fontStyle: UI_BOLD,
+      color: '#f4e7cd', resolution: 2, align: 'center'
     }).setOrigin(0.5);
-    this.add.text(x, y + 6, profile?.residentRole ?? routeNodeTypeLabel(node.type), {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: UI_CYAN,
-      align: 'center'
-    }).setOrigin(0.5);
-    this.add.text(x, y + 23, (profile?.species ?? routeNodeTypeLabel(node.type)).toUpperCase(), {
-      fontFamily: UI_FONT,
-      fontSize: '9px',
-      fontStyle: UI_BOLD,
-      color: UI_SOFT,
-      align: 'center'
+    this.add.text(x, y + 19, [profile?.residentRole ?? routeNodeTypeLabel(node.type), profile?.species].filter(Boolean).join('  ·  '), {
+      fontFamily: UI_FONT, fontSize: '14px', color: '#a9c3ca', resolution: 2, align: 'center'
     }).setOrigin(0.5);
   }
 
@@ -10679,50 +10295,6 @@ class RouteScene extends Phaser.Scene {
     this.renderRouteNodeTypeIcon(node.type, x, floorY - maxHeight * 0.34, 96);
   }
 
-  private renderEventEffectTokens(
-    choice: NodeChoiceOption,
-    x: number,
-    y: number,
-    maxWidth: number,
-    compact = false
-  ) {
-    const tokens: RouteEffectToken[] = choice.locked
-      ? [{ label: choice.lockedText ?? 'Locked', color: UI_FIELD.danger, textColor: '#ffd5cc', icon: 'locked-padlock' }]
-      : routeEffectTokens(choice.effects);
-    const maxTokens = compact ? 2 : 3;
-    let cursor = x;
-    tokens.slice(0, maxTokens).forEach((token) => {
-      const label = token.label.length > 14 ? `${token.label.slice(0, 12)}...` : token.label;
-      const w = Math.min(124, Math.max(62, label.length * 7 + (token.icon || token.scrap ? 36 : 18)));
-      if (cursor + w > x + maxWidth) return;
-      this.add.rectangle(cursor + w / 2, y, w, compact ? 18 : 22, 0x020409, 0.72)
-        .setStrokeStyle(1, token.color, 0.82);
-      if (token.scrap) {
-        addUiIconImage(this, token.icon ?? 'scrap-gear', cursor + 15, y, compact ? 13 : 15)
-          ?.setAlpha(choice.locked ? 0.46 : 0.94);
-      } else if (token.icon) {
-        addUiIconImage(this, token.icon, cursor + 15, y, compact ? 13 : 15)
-          ?.setAlpha(choice.locked ? 0.46 : 0.92);
-      }
-      this.add.text(cursor + (token.icon || token.scrap ? 29 : 9), y - (compact ? 7 : 8), label, {
-        fontFamily: UI_FONT,
-        fontSize: compact ? '9px' : '10px',
-        fontStyle: UI_BOLD,
-        color: choice.locked ? '#91a6b8' : token.textColor,
-        wordWrap: { width: w - (token.icon || token.scrap ? 34 : 12) },
-        maxLines: 1
-      });
-      cursor += w + 7;
-    });
-    if (tokens.length > maxTokens && cursor + 34 <= x + maxWidth) {
-      this.add.text(cursor + 4, y - 7, `+${tokens.length - maxTokens}`, {
-        fontFamily: UI_FONT,
-        fontSize: '10px',
-        fontStyle: UI_BOLD,
-        color: UI_SOFT
-      });
-    }
-  }
 
   private routeChoicePreviewRows(choice: NodeChoiceOption): Array<{ label: string; before: string; after: string; color: string }> {
     const rows = new Map<string, { label: string; before: string; after: string; color: string }>();
@@ -10887,115 +10459,21 @@ class RouteScene extends Phaser.Scene {
     return row.after;
   }
 
-  private showRouteChoiceDetail(
-    node: RouteNode,
-    choice: NodeChoiceOption,
-    anchorX: number,
-    anchorY: number,
-    accent: number
-  ) {
-    this.hideRouteChoiceDetail();
-    this.hideMarketItemDetail();
-    this.hideHoverCardDetail();
-    const w = 360;
-    const rows = this.routeChoicePreviewRows(choice);
-    const h = Math.max(194, 136 + rows.length * 28);
-    const panel = this.add.container(0, 0).setDepth(22000);
-    const detailFrame = this.renderRouteChoiceDetailFrame(w / 2, h / 2, w, h, choice.locked ? 0.9 : 0.96);
-    const bg = this.add.rectangle(0, 0, w, h, 0x07101a, 0.985)
-      .setOrigin(0, 0)
-      .setStrokeStyle(detailFrame ? 1 : 2, choice.locked ? UI_FIELD.danger : accent, detailFrame ? 0.34 : 0.96);
-    panel.add(bg);
-    if (detailFrame) {
-      panel.add(detailFrame);
-    } else {
-      panel.add(this.add.rectangle(0, 0, w, 4, choice.locked ? UI_FIELD.danger : accent, 1).setOrigin(0, 0));
-    }
-    panel.add(this.add.text(40, 18, choice.text, {
-      fontFamily: UI_FONT,
-      fontSize: '17px',
-      fontStyle: UI_BOLD,
-      color: choice.locked ? '#ffb8ad' : UI_GOLD,
-      fixedWidth: w - 80,
-      fixedHeight: 40,
-      wordWrap: { width: w - 80 },
-      maxLines: 2
-    }));
-    panel.add(this.add.text(40, 60, `${routeNodeTypeLabel(node.type)} / ${choice.locked ? 'LOCKED' : 'CHOICE'}`, {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: choice.locked ? '#ff9d4d' : UI_CYAN,
-      wordWrap: { width: w - 80 },
-      maxLines: 1
-    }));
-    panel.add(this.add.text(40, 82, compactSentenceText(choice.locked && choice.lockedText ? choice.lockedText : routeEffectSummary(choice.effects), 86, 1), {
-      fontFamily: UI_FONT,
-      fontSize: '12px',
-      color: '#dbe6f2',
-      lineSpacing: 2,
-      fixedWidth: w - 80,
-      fixedHeight: 32,
-      wordWrap: { width: w - 80 },
-      maxLines: 2
-    }));
-    const rowX = 38;
-    const rowW = w - 76;
-    const rowY = 128;
-    if (rows.length === 0) {
-      panel.add(this.add.text(rowX, rowY, 'No resource change. You simply keep moving.', {
-        fontFamily: UI_FONT,
-        fontSize: '12px',
-        color: UI_SOFT,
-        wordWrap: { width: rowW },
-        maxLines: 2
-      }));
-    } else {
-      panel.add(this.add.text(rowX, rowY - 18, 'PREVIEW', {
-        fontFamily: UI_FONT,
-        fontSize: '10px',
-        fontStyle: UI_BOLD,
-        color: UI_MUTED
-      }));
-      rows.forEach((row, index) => {
-        const y = rowY + index * 28;
-        const previewFrame = this.renderRouteChoicePreviewRowFrame(
-          rowX + rowW / 2,
-          y + 10,
-          rowW,
-          22,
-          index % 2 === 0 ? 0.72 : 0.62
-        );
-        if (previewFrame) {
-          panel.add(previewFrame);
-          panel.add(this.add.rectangle(rowX + rowW / 2 + 22, y + 10, rowW - 92, 12, 0x020409, 0.28));
-        } else {
-          panel.add(this.add.rectangle(rowX, y - 1, rowW, 22, 0x020409, 0.62)
-            .setOrigin(0, 0)
-            .setStrokeStyle(1, 0x49606d, 0.36));
-        }
-        panel.add(this.add.text(rowX + 10, y + 4, row.label, {
-          fontFamily: UI_FONT,
-          fontSize: '11px',
-          fontStyle: UI_BOLD,
-          color: UI_SOFT,
-          maxLines: 1
-        }));
-        panel.add(this.add.text(w - 42, y + 4, `${row.before} -> ${row.after}`, {
-          fontFamily: UI_FONT,
-          fontSize: '11px',
-          fontStyle: UI_BOLD,
-          color: row.color,
-          align: 'right',
-          maxLines: 1
-        }).setOrigin(1, 0));
-      });
-    }
-    const px = Math.max(20, Math.min(GAME_WIDTH - w - 20, anchorX - w - 286));
-    const py = Math.max(96, Math.min(GAME_HEIGHT - h - 18, anchorY - h / 2));
-    panel.setPosition(px, py);
-    setDisplayTreeDepth(panel, 22000);
-    this.routeChoiceHover = panel;
+  eventChoices() {
+    const node = currentMap().nodes.find((candidate) => candidate.id === this.nodeChoiceNodeId);
+    return node ? this.nodeChoiceList(node).map((choice, index) => node.type === 'cache'
+      ? { ...choice, text: cacheDrawerProfile(choice, index).title } : choice) : [];
+  }
+
+  eventChoiceSections(choice: NodeChoiceOption) {
+    const node = currentMap().nodes.find((candidate) => candidate.id === this.nodeChoiceNodeId);
+    const changes = choice.locked ? 'This option cannot be chosen yet.' :
+      this.routeChoicePreviewRows(choice).map((row) => `${row.label}: ${row.before} → ${row.after}`).join(' · ') || 'No resource change.';
+    return [{ title: 'DECISION SUMMARY', text: [choice.text,
+      ...(choice.locked ? [`Unavailable: ${choice.lockedText ?? 'Requirements not met.'}`] : []),
+      routeEffectSummary(choice.effects), changes,
+      ...(node ? [alphaSignalLibrary.get(node.payloadId)?.prompt ?? nonCombatLesson(node.type)] : []),
+    ].join('\n\n') }];
   }
 
   private renderMarketCategoryTabs(frame: { top: number }) {
@@ -11008,6 +10486,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private setMarketCategory(category: MarketCategory) {
+    if (this.pauseOverlayOpen || this.settingsOverlayOpen || this.cardPickerMode) return;
     if (this.marketCategory === category) {
       if (!this.marketFocusArmedId) return;
       playUiSound('close');
@@ -11231,12 +10710,7 @@ class RouteScene extends Phaser.Scene {
     const gap = compact ? 9 : 18;
     const totalHeight = choices.length * choiceHeight + Math.max(0, choices.length - 1) * gap;
     const startY = GAME_HEIGHT / 2 - totalHeight / 2 + choiceHeight / 2 + (compact ? 24 : 20);
-    this.renderRouteChoiceDecisionFrame(1008, startY + totalHeight / 2 - choiceHeight / 2, 560, Math.max(286, totalHeight + 98));
-    choices.forEach((choice, index) => {
-      const x = 1010;
-      const y = startY + index * (choiceHeight + gap);
-      this.renderSetPieceChoice(choice, x, y, index, accent, choiceHeight, compact);
-    });
+    this.renderRouteEventChoiceColumn(node, choices, 1000, startY, 438, accent);
   }
 
   private renderNestSetPieceOverlay(node: RouteNode) {
@@ -11336,92 +10810,32 @@ class RouteScene extends Phaser.Scene {
       this.renderRouteNodeTypeIcon('cache', cabinetX, top + 302, 120);
     }
 
-    const optionW = 472;
-    const optionH = choices.length > 6 ? 48 : 54;
-    const panelStartY = top + 144;
-    const startY = panelStartY + 12;
-    const optionPanelH = choices.length * (optionH + 6) + 56;
-    const optionPanelY = panelStartY + optionPanelH / 2 - 26;
-    this.add.rectangle(optionX + 7, optionPanelY + 8, optionW + 40, optionPanelH, 0x020409, 0.34);
-    this.add.rectangle(optionX, optionPanelY, optionW + 40, optionPanelH, 0x06101a, 0.58)
-      .setStrokeStyle(2, accent, 0.78);
-    this.add.rectangle(optionX, panelStartY - 42, optionW - 28, 2, accent, 0.62);
-    this.add.text(optionX - optionW / 2 + 20, panelStartY - 33, 'MARN WAITS FOR YOUR NOD', {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: UI_SOFT,
-      align: 'left'
-    }).setOrigin(0, 0.5);
-
-    choices.forEach((choice, i) => {
-      const dy = startY + i * (optionH + 6);
-      this.renderCacheDrawerTile(node, choice, optionX, dy, optionW, optionH, i, accent);
-    });
+    this.renderRouteEventChoiceColumn(node, choices, optionX, top + 144, 472, accent);
     this.add.rectangle(cabinetX + 96, top + 208, 72, 2, 0xffffff, 0.14)
       .setAngle(-18)
       .setBlendMode(Phaser.BlendModes.ADD);
   }
 
-  private routeEventChoiceColumnHeader(node: RouteNode) {
-    const firstName = ROUTE_SET_PIECE_PROFILES[node.type]?.residentName.split(' ')[0] ?? routeNodeTypeLabel(node.type);
-    switch (node.type) {
-      case 'basin': return `${firstName.toUpperCase()} KEEPS THE HEARTH READY`;
-      case 'nest': return `${firstName.toUpperCase()} WAITS AT THE BENCH`;
-      case 'signal': return `${firstName.toUpperCase()} HOLDS THE SWITCHES`;
-      default: return `${firstName.toUpperCase()} WAITS FOR YOUR NOD`;
-    }
-  }
-
   private renderRouteEventChoiceColumn(node: RouteNode, choices: NodeChoiceOption[], x: number, top: number, w: number, accent: number) {
-    const optionH = choices.length > 6 ? 38 : 44;
-    const optionGap = 6;
-    const panelH = choices.length * (optionH + optionGap) + 56;
-    const panelY = top + panelH / 2 - 26;
-    this.add.rectangle(x + 7, panelY + 8, w + 40, panelH, 0x020409, 0.34);
-    this.add.rectangle(x, panelY, w + 40, panelH, 0x06101a, 0.58)
-      .setStrokeStyle(2, accent, 0.78);
-    this.renderRouteChoiceDecisionFrame(x + 58, panelY + 10, Math.max(620, w + 188), Math.max(286, panelH + 92));
-    this.add.rectangle(x, top - 42, w - 28, 2, accent, 0.62);
-    this.add.text(x - w / 2 + 20, top - 33, this.routeEventChoiceColumnHeader(node), {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: UI_SOFT,
-      align: 'left',
-      maxLines: 1
-    }).setOrigin(0, 0.5);
+    const optionH = choices.length > 6 ? 58 : choices.length <= 4 ? 72 : 64;
+    const gap = 8;
+    top = Math.min(top, GAME_HEIGHT - 44 - (choices.length - 1) * (optionH + gap) - optionH / 2);
+    const panelH = (choices.length - 1) * (optionH + gap) + optionH + 78;
+    this.renderRouteChoiceDecisionFrame(x, top - optionH / 2 - 58 + panelH / 2, w + 32, panelH);
+    // Reserve two lines even while pointer copy is short: long remapped key
+    // names must not run into the first option when input devices change.
+    eventChoiceHint(this, x - w / 2 + 12, top - optionH / 2 - 47, w - 24);
     choices.forEach((choice, index) => {
-      this.renderRouteEventChoiceTile(node, choice, x, top + index * (optionH + optionGap), w, optionH, index, accent);
+      const y = top + index * (optionH + gap);
+      if (node.type === 'cache') this.renderCacheDrawerTile(node, choice, x, y, w, optionH, index, accent);
+      else this.renderRouteEventChoiceTile(node, choice, x, y, w, optionH, index, accent);
     });
   }
 
   private renderRouteChoiceDecisionFrame(x: number, y: number, width: number, height: number) {
-    const key = uiIconAssets['route-choice-decision-frame'].key;
-    if (!this.textures.exists(key)) return;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const reduced = prefersReducedMotion();
-    const frame = this.add.image(x, y, key)
-      .setDisplaySize(width, height)
-      .setAlpha(reduced ? 0.18 : 0.24)
-      .setName('route-choice-decision-frame');
-    const glint = this.add.image(x, y, key)
-      .setDisplaySize(width * 1.012, height * 1.012)
-      .setAlpha(reduced ? 0.06 : 0.09)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setName('route-choice-decision-frame');
-    if (!reduced) {
-      this.tweens.add({
-        targets: [frame, glint],
-        alpha: { value: reduced ? 0.14 : 0.17, duration: 1500 },
-        scaleX: '+=0.006',
-        scaleY: '+=0.006',
-        duration: 1600,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
-    }
+    const w = Math.min(width, 2 * (GAME_WIDTH - x - 24));
+    this.add.rectangle(x, y, w, height, 0x08121b, 0.97)
+      .setStrokeStyle(1, 0x66818c, 0.3).setName('route-choice-decision-frame');
   }
 
   routeChoiceDecisionFrameState() {
@@ -11438,7 +10852,7 @@ class RouteScene extends Phaser.Scene {
 
   routeEventTitlePlaqueState() {
     const key = uiIconAssets['route-event-title-plaque'].key;
-    const count = countTextureInGameObjects(this.children.list, key);
+    const count = this.children.list.filter((child) => child.name === 'route-event-title-plaque').length;
     return {
       loaded: this.textures.exists(key),
       rendered: count > 0,
@@ -11448,7 +10862,7 @@ class RouteScene extends Phaser.Scene {
 
   routeChoiceOptionFrameState() {
     const key = uiIconAssets['route-choice-option-frame'].key;
-    const count = countTextureInGameObjects(this.children.list, key);
+    const count = this.children.list.filter((child) => child.name === 'route-choice-option-frame').length;
     return {
       loaded: this.textures.exists(key),
       rendered: count > 0,
@@ -11476,174 +10890,68 @@ class RouteScene extends Phaser.Scene {
     };
   }
 
-  private renderRouteChoiceDetailFrame(x: number, y: number, w: number, h: number, alpha: number) {
-    const key = uiIconAssets['route-choice-detail-frame'].key;
-    if (!this.textures.exists(key)) return undefined;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    return this.add.image(x, y, key)
-      .setDisplaySize(w + 42, h + 30)
-      .setAlpha(alpha)
-      .setName('route-choice-detail-frame');
-  }
-
-  private renderRouteChoicePreviewRowFrame(x: number, y: number, w: number, h: number, alpha: number) {
-    const key = uiIconAssets['route-choice-preview-row-frame'].key;
-    if (!this.textures.exists(key)) return undefined;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    return this.add.image(x, y, key)
-      .setDisplaySize(w + 20, h + 14)
-      .setAlpha(alpha)
-      .setName('route-choice-preview-row-frame');
-  }
 
   private renderRouteChoiceOptionFrame(x: number, y: number, w: number, h: number, alpha: number) {
-    const key = uiIconAssets['route-choice-option-frame'].key;
-    if (!this.textures.exists(key)) return undefined;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    return this.add.image(x, y, key)
-      .setDisplaySize(w + 32, h + 14)
-      .setAlpha(alpha)
+    return this.add.rectangle(x, y, w, h, 0x14232d, alpha)
       .setName('route-choice-option-frame');
   }
 
   private renderRouteEventChoiceTile(
-    _node: RouteNode,
-    choice: NodeChoiceOption,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    index: number,
-    accent: number
+    node: RouteNode, choice: NodeChoiceOption, x: number, y: number,
+    w: number, h: number, index: number, accent: number
   ) {
-    const tokens = routeEffectTokens(choice.effects);
-    const token = tokens.find((entry) => entry.icon === 'cache-lockbox-medallion') ?? tokens[0];
-    const colors = [UI_FIELD.green, UI_FIELD.cyan, UI_FIELD.gold, 0xffb86b, UI_FIELD.violet, UI_FIELD.danger];
-    const choiceAccent = choice.locked ? 0x49606d : token?.color ?? colors[index % colors.length] ?? accent;
-    this.add.rectangle(x + 3, y + 4, w, h, 0x020409, 0.2);
-    const frame = this.renderRouteChoiceOptionFrame(x, y, w, h, choice.locked ? 0.36 : 0.64);
-    const bg = this.add.rectangle(x, y, w, h, choice.locked ? 0x0b1018 : 0xf3f7ff, frame ? (choice.locked ? 0.08 : 0.025) : (choice.locked ? 0.34 : 0.055))
-      .setStrokeStyle(1, choiceAccent, choice.locked ? 0.34 : 0.45);
-    bg.setInteractive({ useHandCursor: !choice.locked });
-    if (!choice.locked) bg.on('pointerdown', () => this.chooseNodeOption(choice.key));
+    const left = x - w / 2;
+    const bg = this.renderRouteChoiceOptionFrame(x, y, w, h, choice.locked ? 0.25 : 0.82);
+    const focused = eventChoiceState(this).index === index;
+    const restore = () => bg.setFillStyle(0x14232d, choice.locked ? 0.25 : 0.82)
+      .setStrokeStyle(focused ? 2 : 0, accent, 0.9);
+    restore();
+    bg.setName('route-choice-option-frame').setData('choiceKey', choice.key)
+      .setInteractive({ useHandCursor: !choice.locked });
+    if (!choice.locked) bg.on('pointerdown', () => handleEventChoice(this, 'confirm', index));
     bg.on('pointerover', () => {
-      bg.setFillStyle(choice.locked ? 0x141827 : 0xf3f7ff, frame ? (choice.locked ? 0.16 : 0.055) : (choice.locked ? 0.48 : 0.16));
-      bg.setStrokeStyle(1, choice.locked ? UI_FIELD.danger : choiceAccent, 0.92);
-      frame?.setDisplaySize(w + 38, h + 17).setAlpha(choice.locked ? 0.48 : 0.78);
-      this.hideRouteChoiceDetail();
+      bg.setFillStyle(0x203944, 1).setStrokeStyle(1, choice.locked ? 0xaa7970 : accent, 0.8);
     });
     bg.on('pointerout', () => {
-      bg.setFillStyle(choice.locked ? 0x0b1018 : 0xf3f7ff, frame ? (choice.locked ? 0.08 : 0.025) : (choice.locked ? 0.34 : 0.055));
-      bg.setStrokeStyle(1, choiceAccent, choice.locked ? 0.34 : 0.45);
-      frame?.setDisplaySize(w + 32, h + 14).setAlpha(choice.locked ? 0.36 : 0.64);
-      this.hideRouteChoiceDetail();
+      restore();
     });
-    this.add.rectangle(x - w / 2 + 5, y, 4, h - 10, choiceAccent, choice.locked ? 0.38 : 0.72);
-    this.add.text(x - w / 2 + 21, y - 8, `${index + 1}`.padStart(2, '0'), {
-      fontFamily: UI_FONT,
-      fontSize: '16px',
-      fontStyle: UI_BOLD,
-      color: choice.locked ? '#65788b' : '#ffe1a3',
-      align: 'center',
-      fixedWidth: 38
-    }).setOrigin(0.5, 0);
-    if (choice.locked) {
-      addUiIconImage(this, 'locked-padlock', x - w / 2 + 61, y, 25)?.setAlpha(0.38);
-    } else if (token?.scrap) {
-      addUiIconImage(this, token.icon ?? 'scrap-gear', x - w / 2 + 61, y, 25)?.setAlpha(0.82);
-    } else {
-      addUiIconImage(this, token?.icon ?? 'route-pin', x - w / 2 + 61, y, 25)?.setAlpha(0.72);
-    }
-    this.add.text(x - w / 2 + 92, y - 11, choice.text, {
-      fontFamily: UI_FONT,
-      fontSize: '14px',
-      fontStyle: UI_BOLD,
-      color: choice.locked ? '#7f93a8' : '#f3f7ff',
-      fixedWidth: w - 222,
-      fixedHeight: 18,
-      wordWrap: { width: w - 222 },
-      maxLines: 1
-    }).setOrigin(0, 0);
-    const effectSummary = routeChoiceShortTell(choice.effects, choice.locked ? (choice.lockedText ?? 'Locked') : undefined);
-    this.add.text(x + w / 2 - 14, y - 9, effectSummary, {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: choice.locked ? '#ffb8ad' : '#dffbff',
-      align: 'right',
-      fixedWidth: 132,
-      fixedHeight: 16,
-      maxLines: 1
-    }).setOrigin(1, 0);
-    if (choice.locked) {
-      this.add.rectangle(x + w / 2 - 8, y, 3, h - 12, UI_FIELD.danger, 0.48);
-    }
+    this.add.text(left + 18, y, choice.locked ? '–' : String(index + 1).padStart(2, '0'), {
+      fontFamily: UI_FONT, fontSize: '14px', color: '#a9bdc5', resolution: 2
+    }).setOrigin(0, 0.5);
+    const title = this.add.text(left + 54, y - h / 2 + 10, choice.text, {
+      fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD,
+      color: choice.locked ? '#a9b3bb' : '#f3e6c9', resolution: 2,
+      wordWrap: { width: w - 146 }, maxLines: 1
+    }).setName('route-choice-title');
+    const summary = choice.locked ? choice.lockedText ?? 'Locked' : routeEffectSummary(choice.effects);
+    const detail = this.add.text(left + 54, y - h / 2 + 32, summary, {
+      fontFamily: UI_FONT, fontSize: '16px', color: choice.locked ? '#e5a59c' : '#b8cdd2',
+      resolution: 2, wordWrap: { width: w - 146, useAdvancedWrap: true }, maxLines: h >= 72 ? 2 : 1, lineSpacing: 0
+    }).setName('route-choice-summary');
+    const fit = (label: Phaser.GameObjects.Text, source: string, maxLines: number) => {
+      let visible = source;
+      while (label.getWrappedText(visible).length > maxLines && visible.length > 2) {
+        visible = `${visible.replace(/…$/, '').slice(0, -1).trimEnd()}…`;
+      }
+      label.setText(visible).setData('fullText', source);
+      return visible !== source;
+    };
+    const titleOverflow = fit(title, choice.text, 1);
+    const detailOverflow = fit(detail, summary, h >= 72 ? 2 : 1);
+    bg.setData('hasOverflowDetail', titleOverflow || detailOverflow).setData('focused', focused);
+    this.add.rectangle(x + w / 2 - 40, y, 64, Math.max(58, h - 6), 0x07101a, 0.5)
+      .setInteractive({ useHandCursor: true }).setName('route-event-details-hit').setData('choiceIndex', index)
+      .on('pointerdown', () => handleEventChoice(this, 'inspect', index));
+    this.add.text(x + w / 2 - 40, y, 'Details', {
+      fontFamily: UI_FONT, fontSize: '16px', color: '#b8cdd2', resolution: 2
+    }).setOrigin(0.5);
   }
 
   private renderCacheDrawerTile(
-    _node: RouteNode,
-    choice: NodeChoiceOption,
-    x: number,
-    y: number,
-    w: number,
-    h: number,
-    index: number,
-    _accent: number
+    node: RouteNode, choice: NodeChoiceOption, x: number, y: number,
+    w: number, h: number, index: number, accent: number
   ) {
-    const profile = cacheDrawerProfile(choice, index);
-    const choiceAccent = choice.locked ? 0x49606d : profile.accent;
-    this.add.rectangle(x + 3, y + 4, w, h, 0x020409, 0.2);
-    const frame = this.renderRouteChoiceOptionFrame(x, y, w, h, choice.locked ? 0.36 : 0.64);
-    const bg = this.add.rectangle(x, y, w, h, choice.locked ? 0x0b1018 : 0xf3f7ff, frame ? (choice.locked ? 0.08 : 0.025) : (choice.locked ? 0.34 : 0.055))
-      .setStrokeStyle(1, choiceAccent, choice.locked ? 0.34 : 0.45);
-    bg.setInteractive({ useHandCursor: !choice.locked });
-    if (!choice.locked) bg.on('pointerdown', () => this.chooseNodeOption(choice.key));
-    bg.on('pointerover', () => {
-      bg.setFillStyle(choice.locked ? 0x141827 : 0xf3f7ff, frame ? (choice.locked ? 0.16 : 0.055) : (choice.locked ? 0.48 : 0.16));
-      bg.setStrokeStyle(1, choice.locked ? UI_FIELD.danger : choiceAccent, 0.92);
-      frame?.setDisplaySize(w + 38, h + 17).setAlpha(choice.locked ? 0.48 : 0.78);
-      this.hideRouteChoiceDetail();
-    });
-    bg.on('pointerout', () => {
-      bg.setFillStyle(choice.locked ? 0x0b1018 : 0xf3f7ff, frame ? (choice.locked ? 0.08 : 0.025) : (choice.locked ? 0.34 : 0.055));
-      bg.setStrokeStyle(1, choiceAccent, choice.locked ? 0.34 : 0.45);
-      frame?.setDisplaySize(w + 32, h + 14).setAlpha(choice.locked ? 0.36 : 0.64);
-      this.hideRouteChoiceDetail();
-    });
-    this.add.rectangle(x - w / 2 + 5, y, 4, h - 10, choiceAccent, choice.locked ? 0.38 : 0.72);
-    this.add.text(x - w / 2 + 21, y - 8, profile.drawer, {
-      fontFamily: UI_FONT,
-      fontSize: '16px',
-      fontStyle: UI_BOLD,
-      color: choice.locked ? '#65788b' : '#ffe1a3',
-      align: 'center',
-      fixedWidth: 38
-    }).setOrigin(0.5, 0);
-    addUiIconImage(this, choice.locked ? 'locked-padlock' : profile.icon, x - w / 2 + 61, y, 25)
-      ?.setAlpha(choice.locked ? 0.38 : 0.72);
-    this.add.text(x - w / 2 + 92, y - 11, profile.title, {
-      fontFamily: UI_FONT,
-      fontSize: '14px',
-      fontStyle: UI_BOLD,
-      color: choice.locked ? '#7f93a8' : '#f3f7ff',
-      fixedWidth: w - 222,
-      fixedHeight: 18,
-      wordWrap: { width: w - 222 },
-      maxLines: 1
-    }).setOrigin(0, 0);
-    this.add.text(x + w / 2 - 14, y - 9, choice.locked ? 'Locked' : profile.tell, {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: choice.locked ? '#ffb8ad' : '#dffbff',
-      align: 'right',
-      fixedWidth: 132,
-      fixedHeight: 16,
-      maxLines: 1
-    }).setOrigin(1, 0);
-    if (choice.locked) {
-      this.add.rectangle(x + w / 2 - 8, y, 3, h - 12, UI_FIELD.danger, 0.48);
-    }
+    this.renderRouteEventChoiceTile(node, { ...choice, text: cacheDrawerProfile(choice, index).title }, x, y, w, h, index, accent);
   }
 
 
@@ -11710,76 +11018,6 @@ class RouteScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
   }
 
-  private renderSetPieceChoice(
-    choice: { key: string; text: string; effects: string[]; locked: boolean; lockedText?: string },
-    x: number,
-    y: number,
-    index: number,
-    accent: number,
-    height = 78,
-    compact = false
-  ) {
-    const colors = [UI_FIELD.green, UI_FIELD.cyan, UI_FIELD.gold];
-    const tokens = choice.locked
-      ? [{ label: choice.lockedText ?? 'Locked', color: UI_FIELD.danger, textColor: '#ffd5cc', icon: 'locked-padlock' as UiIconId }]
-      : routeEffectTokens(choice.effects);
-    const token = tokens[0];
-    const choiceAccent = choice.locked ? (colors[index % colors.length] ?? accent) : token?.color ?? colors[index % colors.length] ?? accent;
-    const w = 398;
-    const h = height;
-    this.add.rectangle(x + 7, y + 7, w, h, 0x020409, 0.38);
-    const frame = this.renderRouteChoiceOptionFrame(x, y, w, h, choice.locked ? 0.42 : 0.72);
-    const bg = this.add.rectangle(x, y, w, h, choice.locked ? 0x0d1420 : 0x07101a, frame ? (choice.locked ? 0.14 : 0.08) : (choice.locked ? 0.8 : 0.98))
-      .setStrokeStyle(2, choice.locked ? 0x49606d : choiceAccent, choice.locked ? 0.62 : 0.95);
-    bg.setInteractive({ useHandCursor: !choice.locked });
-    if (!choice.locked) {
-      bg.on('pointerdown', () => this.chooseNodeOption(choice.key));
-    }
-    bg.on('pointerover', () => {
-      const node = currentMap().nodes.find((candidate) => candidate.id === this.nodeChoiceNodeId);
-      bg.setFillStyle(choice.locked ? 0x141827 : 0x102235, frame ? (choice.locked ? 0.22 : 0.16) : (choice.locked ? 0.88 : 1));
-      bg.setStrokeStyle(2, choice.locked ? UI_FIELD.danger : choiceAccent, 1);
-      frame?.setDisplaySize(w + 38, h + 17).setAlpha(choice.locked ? 0.52 : 0.86);
-      if (node) this.showRouteChoiceDetail(node, choice, x, y, choiceAccent);
-    });
-    bg.on('pointerout', () => {
-      bg.setFillStyle(choice.locked ? 0x0d1420 : 0x07101a, frame ? (choice.locked ? 0.14 : 0.08) : (choice.locked ? 0.8 : 0.98));
-      bg.setStrokeStyle(2, choice.locked ? 0x49606d : choiceAccent, choice.locked ? 0.62 : 0.95);
-      frame?.setDisplaySize(w + 32, h + 14).setAlpha(choice.locked ? 0.42 : 0.72);
-      this.hideRouteChoiceDetail();
-    });
-    this.add.rectangle(x - w / 2 + 6, y, 8, h - 12, choice.locked ? 0x49606d : choiceAccent, choice.locked ? 0.62 : 1);
-    this.add.rectangle(x, y - h / 2 + 8, w - 36, 2, choice.locked ? 0x49606d : choiceAccent, choice.locked ? 0.34 : 0.58);
-    this.add.rectangle(x - w / 2 + 42, y, 48, h - 18, 0x020409, choice.locked ? 0.5 : 0.66)
-      .setStrokeStyle(1, choice.locked ? 0x49606d : choiceAccent, choice.locked ? 0.42 : 0.72);
-    addUiIconImage(this, choice.locked ? 'locked-padlock' : token?.icon ?? 'route-pin', x - w / 2 + 42, y, compact ? 15 : 17)
-      ?.setAlpha(choice.locked ? 0.45 : 0.86);
-    const titleY = y - h / 2 + (compact ? 9 : 11);
-    this.add.text(x - w / 2 + 76, titleY, choice.text, {
-      fontFamily: UI_FONT,
-      fontSize: compact ? '14px' : '16px',
-      fontStyle: UI_BOLD,
-      color: choice.locked ? '#7f93a8' : '#ffe1a3',
-      fixedWidth: 286,
-      fixedHeight: compact ? 18 : 20,
-      wordWrap: { width: 286 },
-      maxLines: 1
-    });
-    if (!compact) {
-      this.add.text(x - w / 2 + 76, y - h / 2 + 33, routeChoiceShortTell(choice.effects, choice.locked ? choice.lockedText : undefined), {
-        fontFamily: UI_FONT,
-        fontSize: '12px',
-        color: choice.locked ? '#ff9d4d' : '#dbe6f2',
-        lineSpacing: 1,
-        fixedWidth: 288,
-        fixedHeight: 17,
-        wordWrap: { width: 288 },
-        maxLines: 1
-      });
-    }
-    this.renderEventEffectTokens(choice, x - w / 2 + 76, y + h / 2 - (compact ? 13 : 14), 292, compact);
-  }
-
   private renderMarketCardOffers(x: number, y: number) {
     if (this.marketCardShelf.length === 0) {
       this.add.rectangle(x, y - 6, 420, 78, 0x020409, 0.42)
@@ -11796,14 +11034,17 @@ class RouteScene extends Phaser.Scene {
     }
     this.marketCardShelf.forEach((listing, i) => {
       const card = cloneCard(listing.id);
-      const artW = 176;
+      const focusedShelf = this.marketCategory === 'cards';
+      const artW = focusedShelf ? 148 : 176;
       const artH = Math.round(artW * 1.5);
       const cardW = artW + 8;
       const cardH = artH + 8;
-      const cardX = x - 290 + i * 175;
-      const cardY = y - 4 + (i % 2 === 0 ? -8 : 8);
+      const cardX = focusedShelf ? 606 + i * 168 : x - 290 + i * 175;
+      const cardY = focusedShelf ? 410 : y - 4 + (i % 2 === 0 ? -8 : 8);
       const enabled = !listing.sold && this.runState.scrap >= listing.price;
       const accent = card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
+      if (focusedShelf) this.add.rectangle(cardX, 461, 156, 338, 0x080f18, 0.98)
+        .setStrokeStyle(1, accent, 0.4).setName('market-card-offer-frame');
       this.add.rectangle(cardX + 5, cardY + 8, cardW - 18, cardH - 18, 0x020409, 0.5);
       const key = compactCardArtKey(card);
       if (key && this.textures.exists(key)) {
@@ -11823,12 +11064,25 @@ class RouteScene extends Phaser.Scene {
       } else {
         this.add.rectangle(cardX, cardY, artW, artH, 0x05101a, 0.12);
       }
-      this.renderMarketPriceTag(cardX, cardY + artH / 2 + 2, listing.price, enabled, accent, 'BUY');
+      if (focusedShelf) {
+        const title = this.add.text(cardX - 68, 534, displayName(card), {
+          fontFamily: UI_FONT, fontSize: '18px', resolution: 2, color: '#e6eef6',
+          wordWrap: { width: 136, useAdvancedWrap: true }, lineSpacing: 2,
+        }).setName('market-card-offer-title').setData('fullTitle', displayName(card));
+        const lines = title.getWrappedText();
+        let excerpt = lines.slice(0, 3).join('\n');
+        title.setText(excerpt + (lines.length > 3 ? '…' : ''));
+        while (title.height > 64 && excerpt.length) { excerpt = excerpt.slice(0, -1).trimEnd(); title.setText(`${excerpt}…`); }
+        this.add.text(cardX, 614, listing.sold ? 'Sold' : `${listing.price} Scrap`, {
+          fontFamily: UI_FONT, fontSize: '18px', resolution: 2,
+          color: listing.sold ? '#abc4d4' : enabled ? UI_CYAN : '#ffc7a4',
+        }).setOrigin(0.5).setName('market-card-price');
+      } else this.renderMarketPriceTag(cardX, cardY + artH / 2 + 2, listing.price, enabled, accent, 'BUY');
       if (listing.sold) this.renderMarketSoldSlat(cardX, cardY, cardW, cardH);
       if (!listing.sold) {
-        const hit = this.add.rectangle(cardX, cardY + 8, cardW + 12, cardH + 34, 0x000000, 0.01)
+        const hit = this.add.rectangle(cardX, focusedShelf ? 461 : cardY + 8, focusedShelf ? 156 : cardW + 12, focusedShelf ? 338 : cardH + 34, 0x000000, 0.01)
           .setInteractive({ useHandCursor: enabled })
-          .setData('marketFocusId', enabled ? `card:${i}` : 0)
+          .setData('marketFocusId', `card:${i}`).setData('marketAvailable', enabled)
           .setData('label', displayName(card));
         hit.on('pointerover', () => this.showHoverCardDetail(
           card,
@@ -11863,6 +11117,14 @@ class RouteScene extends Phaser.Scene {
       const itemX = x - 134 + i * 134;
       const enabled = !listing.sold && this.runState.scrap >= listing.price;
       const key = waymarkCompactArtAssets[mark.id]?.key;
+      if (this.marketCategory === 'waymarks' && this.cardHoverDetailModule) {
+        this.cardHoverDetailModule.renderMarketMerchandise(this, {
+          index: i, title: mark.name, price: listing.price, enabled, sold: listing.sold,
+          accent: UI_FIELD.gold, artKey: key, kind: 'waymark', focusId: `waymark:${i}`,
+          onInspect: () => this.showMarketWaymarkDetail(mark, listing.price, itemX, rowY),
+        });
+        return;
+      }
       this.renderMarketObjectBackplate(itemX, rowY - 16, 112, 94, enabled ? UI_FIELD.gold : 0x3f4c58);
       const badge = addUiIconImage(this, 'market-waymark-badge', itemX, rowY - 16, 44);
       if (badge) {
@@ -11883,15 +11145,18 @@ class RouteScene extends Phaser.Scene {
       if (!listing.sold) {
         const hit = this.add.rectangle(itemX, rowY + 24, 136, 160, 0x000000, 0.01)
           .setInteractive({ useHandCursor: enabled })
-          .setData('marketFocusId', enabled ? `waymark:${i}` : 0)
+          .setData('marketFocusId', `waymark:${i}`).setData('marketAvailable', enabled)
           .setData('label', mark.name);
         hit.on('pointerover', () => this.showMarketWaymarkDetail(mark, listing.price, itemX, rowY));
-        hit.on('pointerout', () => this.hideMarketItemDetail());
       }
     });
   }
 
   private renderMarketUtilityOffers(x: number, y: number, goodsRowY?: number, view: 'all' | 'supplies' | 'services' = 'all') {
+    if (view === 'services' && this.cardHoverDetailModule) {
+      this.cardHoverDetailModule.renderMarketServices(this);
+      return;
+    }
     if (this.marketUtilityShelf.length === 0) {
       this.add.rectangle(x, y + 70, 220, 96, 0x020409, 0.34)
         .setStrokeStyle(1, 0x59606a, 0.24);
@@ -11936,16 +11201,23 @@ class RouteScene extends Phaser.Scene {
           const hit = this.add.rectangle(serviceX, serviceY, serviceWidth + 10, MIN_SUPPORTED_TOUCH_TARGET, 0x000000, 0.01)
             .setInteractive({ useHandCursor: enabled })
             .setName('market-service-hit')
-            .setData('marketFocusId', enabled ? `utility:${i}` : 0)
+            .setData('marketFocusId', `utility:${i}`).setData('marketAvailable', enabled)
             .setData('label', this.marketUtilityLabel(listing));
           hit.on('pointerover', () => this.showMarketUtilityDetail(listing, serviceX, serviceY));
-          hit.on('pointerout', () => this.hideMarketItemDetail());
         }
         return;
       }
 
       const rowY = goodsRowY ?? y + 276;
       const supplyX = x - 72 + supplyIndex * 134;
+      if (view === 'supplies' && this.cardHoverDetailModule) {
+        this.cardHoverDetailModule.renderMarketMerchandise(this, {
+          index: supplyIndex++, title: supply?.name ?? this.marketUtilityLabel(listing), price: listing.price,
+          enabled, sold: listing.sold, accent, artKey: supplyKey, kind: 'supply', focusId: `utility:${i}`,
+          onInspect: () => this.showMarketUtilityDetail(listing, supplyX, rowY),
+        });
+        return;
+      }
       supplyIndex += 1;
       this.renderMarketObjectBackplate(supplyX, rowY - 16, 112, 94, enabled ? accent : 0x3f4c58);
       if (listing.supplyId) {
@@ -11998,10 +11270,9 @@ class RouteScene extends Phaser.Scene {
       if (!listing.sold) {
         const hit = this.add.rectangle(supplyX, rowY + 24, 136, 160, 0x000000, 0.01)
           .setInteractive({ useHandCursor: enabled })
-          .setData('marketFocusId', enabled ? `utility:${i}` : 0)
+          .setData('marketFocusId', `utility:${i}`).setData('marketAvailable', enabled)
           .setData('label', this.marketUtilityLabel(listing));
         hit.on('pointerover', () => this.showMarketUtilityDetail(listing, supplyX, rowY));
-        hit.on('pointerout', () => this.hideMarketItemDetail());
       }
     });
     if (view === 'supplies') return;
@@ -12020,14 +11291,14 @@ class RouteScene extends Phaser.Scene {
       UI_FIELD.cyan,
       'Refresh stock'
     );
-    if (refreshEnabled) {
+    {
       const hit = this.add.rectangle(refreshX, refreshY, view === 'services' ? 350 : 154, MIN_SUPPORTED_TOUCH_TARGET, 0x000000, 0.01)
-        .setInteractive({ useHandCursor: true })
+        .setInteractive({ useHandCursor: refreshEnabled })
         .setName('market-refresh-hit')
         .setData('marketFocusId', 'refresh')
+        .setData('marketAvailable', refreshEnabled)
         .setData('label', 'Refresh stock');
       hit.on('pointerover', () => this.showMarketRefreshDetail(refreshCost, refreshX, refreshY));
-      hit.on('pointerout', () => this.hideMarketItemDetail());
     }
   }
 
@@ -12088,48 +11359,7 @@ class RouteScene extends Phaser.Scene {
     enabled: boolean,
     accent: number
   ) {
-    const fill = enabled ? 0x0d1420 : 0x0a0e15;
-    const stroke = enabled ? accent : 0x3f4c58;
-    const labelFrame = this.renderMarketItemLabelFrame(x, y, w, h, enabled);
-    this.renderMarketOfferTray(x, y, w, h, enabled, labelFrame ? 0.14 : 0.42);
-    this.add.rectangle(x, y, w, h, fill, enabled ? 0.96 : 0.88)
-      .setAlpha(labelFrame ? enabled ? 0.18 : 0.26 : enabled ? 0.96 : 0.88)
-      .setStrokeStyle(MENU_BORDER_WIDTH, stroke, labelFrame ? 0.16 : enabled ? 0.9 : 0.58);
-    const iconId = marketIconForKicker(kicker);
-    const icon = iconId ? addUiIconImage(this, iconId, x - w / 2 + 18, y, 28) : undefined;
-    if (icon) icon.setAlpha(enabled ? 0.94 : 0.42);
-    const textLeft = x - w / 2 + (icon ? 54 : 8);
-    const textWrapWidth = Math.max(38, w - (icon ? 98 : 58));
-    const showKicker = kicker !== 'WAYMARKER' && kicker !== 'SUPPLY';
-    if (showKicker) {
-      this.add.text(textLeft, y - h / 2 + 6, kicker, {
-        fontFamily: UI_FONT,
-        fontSize: '9px',
-        fontStyle: UI_BOLD,
-        color: enabled ? '#ffe1a3' : '#91a6b8',
-        wordWrap: { width: textWrapWidth },
-        maxLines: 1
-      });
-    }
-    this.add.text(textLeft, y - h / 2 + (showKicker ? 21 : 14), title, {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: enabled ? '#8df4ff' : '#596a78',
-      wordWrap: { width: textWrapWidth },
-      maxLines: 2,
-      lineSpacing: -1
-    });
-    this.renderMarketPriceChipFrame(x + w / 2 - 28, y - h / 2 + 20, 70, 32, enabled, labelFrame ? 0.28 : 0.5);
-    this.add.text(x + w / 2 - 9, y - h / 2 + 9, `${price}`, {
-      fontFamily: UI_FONT,
-      fontSize: '13px',
-      fontStyle: UI_BOLD,
-      color: enabled ? '#f0c36f' : '#91a6b8',
-      align: 'right'
-    }).setOrigin(1, 0);
-    addUiIconImage(this, 'scrap-gear', x + w / 2 - 42, y - h / 2 + 18, 20)
-      ?.setAlpha(enabled ? 0.94 : 0.46);
+    this.cardHoverDetailModule?.renderMarketCatalogLabel(this, x, y, w, h, kicker, title, price, enabled, accent);
   }
 
   private renderMarketItemLabelFrame(x: number, y: number, w: number, h: number, enabled: boolean) {
@@ -13217,13 +12447,9 @@ class RouteScene extends Phaser.Scene {
     this.closeSupplyDrawer();
   }
 
-  private focusRouteSupply(index: number) {
-    if (!this.routeUsableSupplyIndices().includes(index)) return;
-    if (this.supplyDrawerArmedIndex === undefined) this.supplyDrawerFocusIndex = index;
-  }
-
   private moveRouteSupplyFocus(direction: -1 | 1) {
-    const usable = this.routeUsableSupplyIndices();
+    if (this.pauseOverlayOpen || this.settingsOverlayOpen) return;
+    const usable = this.runState.supplies.map((_id, index) => index);
     if (!usable.length) {
       playUiSound('locked');
       return;
@@ -13237,9 +12463,15 @@ class RouteScene extends Phaser.Scene {
   }
 
   private requestRouteSupplyUse(index: number) {
+    if (this.pauseOverlayOpen || this.settingsOverlayOpen) return;
     const id = this.runState.supplies[index];
     const supply = id ? alphaSupplyLibrary.get(id) : undefined;
     if (!supply || supply.timing === 'combat') {
+      if (supply) {
+        this.supplyDrawerFocusIndex = index;
+        this.supplyDrawerArmedIndex = undefined;
+        this.renderAll();
+      }
       playUiSound('locked');
       return;
     }
@@ -13289,6 +12521,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private selectRouteWaymark(id: string, announce = true) {
+    if (!this.waymarkDrawerOpen || this.pauseOverlayOpen || this.settingsOverlayOpen) return;
     const marks = this.ownedRouteMarkDefs();
     const index = marks.findIndex((mark) => mark.id === id);
     if (index < 0 || this.routeWaymarkSelectedId === id) return;
@@ -13301,7 +12534,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private moveRouteWaymarkSelection(delta: number) {
-    if (!this.waymarkDrawerOpen) return;
+    if (!this.waymarkDrawerOpen || this.pauseOverlayOpen || this.settingsOverlayOpen) return;
     const marks = this.ownedRouteMarkDefs();
     if (marks.length === 0) return;
     const current = Math.max(0, marks.findIndex((mark) => mark.id === this.selectedRouteWaymark()?.id));
@@ -13310,7 +12543,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private toggleRouteWaymarkPin(id = this.selectedRouteWaymark()?.id) {
-    if (!this.waymarkDrawerOpen || !id) return;
+    if (!this.waymarkDrawerOpen || !id || this.pauseOverlayOpen || this.settingsOverlayOpen) return;
     this.routeWaymarkPinnedId = this.routeWaymarkPinnedId === id ? undefined : id;
     this.ensureWaymarkReviewModule();
     playUiSound(this.routeWaymarkPinnedId ? 'confirm' : 'close');
@@ -13318,21 +12551,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private routeWaymarkReviewEntry(mark: RuntimeRouteMark): SceneWaymarkReviewEntry {
-    return {
-      id: mark.id,
-      name: mark.name,
-      meta: `${routeMarkFamilyLabel(mark.family)} / ${mark.rarity.toUpperCase()} / ${mark.source.toUpperCase()}`,
-      trigger: formatWaymarkTrigger(mark.trigger),
-      description: mark.description,
-      effects: routeMarkEffects(mark).map((effect) => formatEffects([effect])),
-      tags: waymarkSynergyTags(mark),
-      accent: routeMarkAccent(mark),
-      artKey: waymarkCompactArtAssets[mark.id]?.key,
-      flavorText: mark.flavorText ?? '',
-      glyph: waymarkGlyph(mark),
-      tileMeta: `${routeMarkFamilyLabel(mark.family)} / ${mark.rarity}`,
-      summary: compactEffectGrammar(routeMarkEffects(mark), 72, 2),
-    };
+    return ownedWaymarkReviewEntry(mark);
   }
 
   routeWaymarkTextEntry(mark: RuntimeRouteMark) {
@@ -13342,7 +12561,7 @@ class RouteScene extends Phaser.Scene {
       family: routeMarkFamilyLabel(mark.family),
       rarity: mark.rarity,
       source: mark.source,
-      trigger: formatWaymarkTrigger(mark.trigger),
+      trigger: formatWaymarkTrigger(mark.trigger, routeMarkEffects(mark)),
       description: mark.description,
       effects: routeMarkEffects(mark).map((effect, index) => ({
         order: index + 1,
@@ -13434,7 +12653,8 @@ class RouteScene extends Phaser.Scene {
           glyph: this.supplyGlyph(supply),
           accent: supplyAccent(supply),
           name: supply.name,
-          summary: compactEffectGrammar(supply.effects, 72, 2),
+          summary: formatEffects(supply.effects),
+          timing: supply.timing,
           usable: supply.timing !== 'combat',
         };
       }),
@@ -13446,8 +12666,8 @@ class RouteScene extends Phaser.Scene {
       confirmLabel: controlBindingLabel('confirm'),
       backLabel: controlBindingLabel('back'),
       onClose: () => this.cancelOrCloseRouteSupplyDrawer(),
-      onFocus: (index) => this.focusRouteSupply(index),
       onActivate: (index) => this.requestRouteSupplyUse(index),
+      onBrowse: (direction) => this.moveRouteSupplyFocus(direction),
     });
   }
 
@@ -13702,13 +12922,20 @@ class RouteScene extends Phaser.Scene {
     const taggedEvent = event as KeyboardEvent & { __birdSquadDeckSearchHandled?: boolean };
     if (taggedEvent.__birdSquadDeckSearchHandled) return;
     if (!this.deckReviewSearchActive) {
+      if ((event.code === 'PageUp' || event.code === 'PageDown') && !controlActionForCode(event.code)) {
+        taggedEvent.__birdSquadDeckSearchHandled = true;
+        event.preventDefault?.();
+        this.cardComparisonModule?.changeComparisonPage(this, event.code === 'PageUp' ? -1 : 1);
+        this.cardHoverDetailModule?.changeSceneCardDetailPage(this, event.code === 'PageUp' ? -1 : 1);
+        return;
+      }
       if ((event.key.toLocaleLowerCase() === 'c' || event.code === 'KeyC') && !controlActionForCode(event.code)) {
         taggedEvent.__birdSquadDeckSearchHandled = true;
         event.preventDefault?.();
         this.toggleDeckReviewComparison();
         return;
       }
-      if (event.key === '/' || event.code === 'Slash') {
+      if ((event.key === '/' || event.code === 'Slash') && !controlActionForCode(event.code)) {
         taggedEvent.__birdSquadDeckSearchHandled = true;
         event.preventDefault?.();
         this.setDeckReviewSearchActive(true);
@@ -13808,6 +13035,7 @@ class RouteScene extends Phaser.Scene {
       role: contract.role,
       currentText: contract.text,
       alternateText: contract.usesMolt ? displayText(card) : card.upgraded ? 'Already preened.' : card.upgradedText,
+      moltText: card.runtime.moltEffects?.length ? activeCardContract(card, true).text : undefined,
       usesMolt: contract.usesMolt,
       stats: cardStatRows(card),
     };
@@ -13823,6 +13051,7 @@ class RouteScene extends Phaser.Scene {
       currentLabel: upgraded ? 'PREENED RULES' : 'BASE RULES',
       alternateLabel: upgraded ? 'PREENED MOLT' : 'BASE MOLT',
       alternateText: hasMolt ? moltContract.text : 'No Molt ability.',
+      moltText: undefined,
       usesMolt: Boolean(hasMolt),
       stats: cardStatTotalRows(previewCard),
     };
@@ -13838,16 +13067,17 @@ class RouteScene extends Phaser.Scene {
     this.queueCardPortraitArtLoad(comparison.selected, 'Comparison art');
     this.ensureCardComparisonModule();
     if (!this.cardComparisonModule) {
-      this.renderRouteCardDetailPanel(comparison.selected, 'Selected');
-      this.add.text(826, 571, this.cardComparisonFailed
+      this.add.rectangle(826, 389, 620, 450, 0x070b12, 0.99);
+      this.add.text(826, 389, this.cardComparisonFailed
         ? 'COMPARISON UNAVAILABLE / UNPIN AND REPIN TO RETRY'
         : 'OPENING COMPARISON…', {
         fontFamily: UI_FONT,
-        fontSize: '10px',
+        fontSize: '18px',
         fontStyle: UI_BOLD,
         color: this.cardComparisonFailed ? '#ffc78f' : '#dffbff',
         align: 'center',
         fixedWidth: 420,
+        wordWrap: { width: 420 },
         backgroundColor: '#07151f',
         padding: { x: 8, y: 6 },
       }).setOrigin(0.5).setName('deck-review-comparison-loading');
@@ -13872,26 +13102,10 @@ class RouteScene extends Phaser.Scene {
 
   private renderRouteCardDetailPanel(card: Card, zone: string) {
     this.queueCardPortraitArtLoad(card, 'Deck art');
-    const contract = activeCardContract(card, false);
     this.cardHoverDetailModule?.renderSceneCardDetail(this, {
-      name: displayName(card),
-      bird: card.bird,
-      label: cardLabel(card),
-      zone,
-      cost: card.cost,
-      accent: card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : 0x7ab8d6,
-      artKey: loadedCardArtKey(this, card),
-      snagBorderKey: isSnagCard(card) ? snagCardBorderAsset.key : undefined,
-      target: targetLabel(contract.target),
-      role: contract.role,
-      currentText: contract.text,
-      alternateText: contract.usesMolt ? displayText(card) : card.upgraded ? 'Already preened.' : card.upgradedText,
-      usesMolt: contract.usesMolt,
-      stats: cardStatRows(card),
-      reducedMotion: prefersReducedMotion(),
-      dossierFrameKey: uiIconAssets['card-hover-dossier-frame'].key,
-      detailFrameKey: uiIconAssets['deck-review-detail-frame'].key,
-      costBadgeKey: uiIconAssets['deck-review-cost-badge'].key,
+      ...this.routeCardComparisonView(card, zone),
+      moltText: card.runtime.moltEffects?.length ? activeCardContract(card, true).text : undefined,
+      upgradedMoltText: !card.upgraded && card.runtime.moltEffects?.length ? activeCardContract({ ...card, upgraded: true }, true).text : undefined,
     });
   }
 
@@ -14047,6 +13261,7 @@ class BattleScene extends Phaser.Scene {
   private rewardSkipArmed = false;
   private rewardChoiceArmedId: string | undefined;
   private log: string[] = [];
+  private combatHistory: string[] = [];
   private waymarkFeedback: WaymarkFeedback[] = [];
   private supplyFeedback: SupplyFeedback[] = [];
   private backdropLayer!: Phaser.GameObjects.Container;
@@ -14064,6 +13279,9 @@ class BattleScene extends Phaser.Scene {
   private systemOverlayLayer?: Phaser.GameObjects.Container;
   private systemOverlayRefreshQueued = false;
   private waymarkDrawerOpen = false;
+  private waymarkReviewModule?: WaymarkReviewModule;
+  private waymarkReviewLoading = false;
+  private waymarkReviewFailed = false;
   private supplyDrawerOpen = false;
   private supplyDrawerFocusIndex = 0;
   private supplyDrawerArmedIndex: number | undefined;
@@ -14113,6 +13331,7 @@ class BattleScene extends Phaser.Scene {
   private lastFlockState: FlockState = 'holding';
   // Floating large-card preview shown while hovering a hand card.
   private cardPreview?: Phaser.GameObjects.Container;
+  private combatCardDetail?: Phaser.GameObjects.Container;
   private selectionOutcomePreview?: Phaser.GameObjects.Container;
   private handCardRects = new Map<string, Phaser.GameObjects.Rectangle>();
   private handCardArtLayers = new Map<string, Phaser.GameObjects.Container>();
@@ -14389,6 +13608,8 @@ class BattleScene extends Phaser.Scene {
     this.systemOverlayLayer = undefined;
     this.systemOverlayRefreshQueued = false;
     this.waymarkDrawerOpen = false;
+    this.waymarkReviewModule?.resetBattleWaymarks(this);
+    this.waymarkReviewFailed = false;
     this.supplyDrawerOpen = false;
     this.supplyDrawerFocusIndex = 0;
     this.supplyDrawerArmedIndex = undefined;
@@ -14403,6 +13624,7 @@ class BattleScene extends Phaser.Scene {
     this.controllerChoiceIndex = 0;
     this.battleInputActive = false;
     this.log = [`${currentMap().name}: ${initialRouteNode.label} begins.`];
+    this.combatHistory = [...this.log];
     this.waymarkFeedback = [];
     this.supplyFeedback = [];
     this.optionalArtRequested = false;
@@ -14631,7 +13853,9 @@ class BattleScene extends Phaser.Scene {
         if (value > 0) {
           birdAudio.play('cover', Math.min(1.25, 0.72 + value / 14));
           this.queueFlockMotion('brace');
-          floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, `+${value} Cover`, '#c9a6ff');
+          this.presentNumberFeedback(FLOCK_FX_X, FLOCK_FX_Y, '#c9a6ff', {
+            target: 'flock', kind: 'cover', source: `Waymark: ${markName}`, amount: value, suffix: ' Cover', reducedMotion: prefersReducedMotion(),
+          });
           this.coverBuildFx('nests');
         }
         break;
@@ -14641,7 +13865,9 @@ class BattleScene extends Phaser.Scene {
         if (cover > 0) {
           birdAudio.play('cover', Math.min(1.25, 0.72 + cover / 14));
           this.queueFlockMotion('brace');
-          floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, `+${cover} Cover`, '#c9a6ff');
+          this.presentNumberFeedback(FLOCK_FX_X, FLOCK_FX_Y, '#c9a6ff', {
+            target: 'flock', kind: 'cover', source: `Waymark: ${markName}`, amount: cover, suffix: ' Cover', reducedMotion: prefersReducedMotion(),
+          });
           this.coverBuildFx('nests');
         }
         break;
@@ -14701,7 +13927,9 @@ class BattleScene extends Phaser.Scene {
           if (value > 0) {
             birdAudio.play('cover', Math.min(1.25, 0.72 + value / 14));
             this.queueFlockMotion('brace');
-            floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 24, `+${value} Boss-fight Cover`, '#ffe1a3');
+            this.presentNumberFeedback(FLOCK_FX_X, FLOCK_FX_Y, '#ffe1a3', {
+              target: 'flock', kind: 'cover', source: `Waymark: ${markName}`, amount: value, suffix: ' Cover', reducedMotion: prefersReducedMotion(),
+            });
             this.coverBuildFx('nests');
           }
         }
@@ -14738,73 +13966,23 @@ class BattleScene extends Phaser.Scene {
       ...this.waymarkFeedback
     ].slice(0, 4);
 
+    this.presentTriggerFeedback(mark.name, summary, this.waymarkAccent(mark));
+  }
+
+  private presentTriggerFeedback(name: string, summary: string, accent: number) {
     if (!this.fxLayer?.active) return;
-    const accent = this.waymarkAccent(mark);
-    const sameTurnIndex = Math.min(
-      this.waymarkFeedback.filter((entry) => entry.turn === this.turn).length - 1,
-      2
-    );
-    const x = 178;
-    const y = 216 + sameTurnIndex * 58;
-    const toast = this.add.container(x, y).setAlpha(0).setScale(0.96);
-    const frameAsset = uiIconAssets['combat-waymark-feedback-frame'];
-    if (this.textures.exists(frameAsset.key)) {
-      this.textures.get(frameAsset.key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      toast.add(this.add.image(0, 0, frameAsset.key)
-        .setDisplaySize(300, 66)
-        .setAlpha(0.84)
-        .setName('combat-waymark-feedback-frame'));
-      toast.add(this.add.rectangle(-20, 0, 206, 42, 0x07101c, 0.5)
-        .setStrokeStyle(1, accent, 0.18));
-    } else {
-      const bg = this.add.rectangle(0, 0, 294, 50, 0x07101c, 0.96)
-        .setStrokeStyle(2, accent, 0.95);
-      toast.add(bg);
-      toast.add(this.add.rectangle(-134, 0, 4, 36, accent, 0.95));
-    }
-    const artAsset = waymarkCompactArtAssets[mark.id];
-    if (artAsset && this.textures.exists(artAsset.key)) {
-      toast.add(addWaymarkArtImage(this, -108, 0, artAsset.key).setDisplaySize(36, 36));
-    } else {
-      toast.add(this.add.text(-108, -1, waymarkGlyph(mark), {
-        fontFamily: UI_FONT,
-        fontSize: '18px',
-        fontStyle: UI_BOLD,
-        color: '#e7eef7'
-      }).setOrigin(0.5));
-    }
-    toast.add(this.add.text(-78, -15, mark.name, {
-      fontFamily: UI_FONT,
-      fontSize: '12px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      fixedWidth: 190,
-      maxLines: 1,
-    }).setResolution(2));
-    toast.add(this.add.text(-78, 3, summary, {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      color: UI_BODY,
-      fixedWidth: 220,
-      maxLines: 1,
-    }).setResolution(2));
-    this.fxLayer.add(toast);
-    this.tweens.add({
-      targets: toast,
-      alpha: 1,
-      scale: 1,
-      duration: 150,
-      ease: 'Back.easeOut',
-      onComplete: () => this.tweens.add({
-        targets: toast,
-        y: y - 14,
-        alpha: 0,
-        delay: 900,
-        duration: 360,
-        ease: 'Cubic.easeIn',
-        onComplete: () => toast.destroy(),
-      }),
+    this.battleFxPresenterModule?.presentTriggerFeedback(this, this.fxLayer, {
+      name, summary, accent, turn: this.turn, fontFamily: UI_FONT,
+      reducedMotion: prefersReducedMotion(), holdScale: textPaceScale(),
     });
+  }
+
+  private presentNumberFeedback(x: number, y: number, color: string, value: import('./game/battle/number-feedback').NumberFeedback) {
+    if (this.battleFxPresenterModule) {
+      this.battleFxPresenterModule.presentNumberFeedback(this, this.fxLayer, x, y, color, value, textPaceScale());
+    } else {
+      floatingText(this, this.fxLayer, x, y, `${value.amount}${value.suffix}`, color);
+    }
   }
 
   private supplyFeedbackSummary(supply: RuntimeSupply, repeats = 1) {
@@ -14821,71 +13999,7 @@ class BattleScene extends Phaser.Scene {
       ...this.supplyFeedback
     ].slice(0, 4);
 
-    if (!this.fxLayer?.active) return;
-    const accent = 0xffb86b;
-    const sameTurnIndex = Math.min(
-      this.supplyFeedback.filter((entry) => entry.turn === this.turn).length - 1,
-      2
-    );
-    const x = 194;
-    const y = 184 + sameTurnIndex * 62;
-    const toast = this.add.container(x, y).setAlpha(0).setScale(0.96);
-    const frameAsset = uiIconAssets['combat-supply-feedback-frame'];
-    if (this.textures.exists(frameAsset.key)) {
-      this.textures.get(frameAsset.key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      toast.add(this.add.image(0, 0, frameAsset.key)
-        .setDisplaySize(286, 64)
-        .setAlpha(0.84)
-        .setName('combat-supply-feedback-frame'));
-    } else {
-      toast.add(this.add.rectangle(0, 0, 288, 48, 0x07101c, 0.96)
-        .setStrokeStyle(2, accent, 0.94));
-      toast.add(this.add.rectangle(-132, 0, 4, 34, accent, 0.95));
-    }
-    const artAsset = supplyCompactArtAssets[supply.id];
-    if (artAsset && this.textures.exists(artAsset.key)) {
-      toast.add(addSupplyArtImage(this, -108, 0, artAsset.key).setDisplaySize(36, 36));
-    } else {
-      toast.add(this.add.text(-108, 0, this.supplyGlyph(supply), {
-        fontFamily: UI_FONT,
-        fontSize: '18px',
-        fontStyle: UI_BOLD,
-        color: '#ffe7c9'
-      }).setOrigin(0.5));
-    }
-    toast.add(this.add.text(-78, -15, supply.name, {
-      fontFamily: UI_FONT,
-      fontSize: '12px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      fixedWidth: 186,
-      maxLines: 1
-    }).setResolution(2));
-    toast.add(this.add.text(-78, 3, summary, {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      color: UI_BODY,
-      fixedWidth: 180,
-      maxLines: 2,
-      wordWrap: { width: 180, useAdvancedWrap: true }
-    }).setResolution(2));
-    this.fxLayer.add(toast);
-    this.tweens.add({
-      targets: toast,
-      alpha: 1,
-      scale: 1,
-      duration: 150,
-      ease: 'Back.easeOut',
-      onComplete: () => this.tweens.add({
-        targets: toast,
-        y: y - 14,
-        alpha: 0,
-        delay: 900,
-        duration: 360,
-        ease: 'Cubic.easeIn',
-        onComplete: () => toast.destroy()
-      })
-    });
+    this.presentTriggerFeedback(supply.name, summary, 0xffb86b);
   }
 
   private triggerWaymark(mark: RuntimeRouteMark) {
@@ -15103,6 +14217,7 @@ class BattleScene extends Phaser.Scene {
   create() {
     syncSceneAnimationPace(this);
     birdAudio.setMood(this.battlefieldMood() === 'boss' ? 'boss' : 'battle');
+    observeChoiceInput(this);
     window.__birdSquadAudio = () => birdAudio.snapshot();
     this.time.paused = false;
     this.tweens.resumeAll();
@@ -15304,8 +14419,15 @@ class BattleScene extends Phaser.Scene {
     });
     bindControlActions(this, {
       back: () => this.handleBattleBack(),
-      confirm: () => {
+      guide: (event) => {
+        if (event?.repeat) return;
+        if (event?.shiftKey) this.openCombatHistory();
+        else this.toggleCombatCardDetail();
+      },
+      confirm: (event) => {
         if (!this.fxLayer?.active) return;
+        if (event?.repeat) return;
+        if (this.settingsOverlayOpen || this.pauseOverlayOpen) return;
         if (this.requestBattleIntroDismiss()) return;
         if (this.rewardInspectionCardId) {
           this.closeRewardCardInspection();
@@ -15316,6 +14438,7 @@ class BattleScene extends Phaser.Scene {
           return;
         }
         if (this.settingsOverlayOpen || this.pauseOverlayOpen) return;
+        if (this.combatCardDetail?.active) { this.closeCombatCardDetail(); return; }
         if (this.supplyDrawerOpen) {
           this.requestBattleSupplyUse(this.supplyDrawerFocusIndex);
           return;
@@ -15329,6 +14452,8 @@ class BattleScene extends Phaser.Scene {
         this.activateCombatChoice(this.controllerChoiceIndex);
       },
       previous: () => {
+        if (this.waymarkDrawerOpen) { this.waymarkReviewModule?.battleWaymarkAction(this, 'choose', -1); return; }
+        if (this.changeCombatCardDetailPage(-1)) return;
         if (this.rewardInspectionCardId) return;
         if (this.supplyDrawerOpen) {
           this.moveBattleSupplyFocus(-1);
@@ -15337,6 +14462,8 @@ class BattleScene extends Phaser.Scene {
         if (!this.cycleBattleInspectMode(-1)) this.cycleControllerChoice(-1);
       },
       next: () => {
+        if (this.waymarkDrawerOpen) { this.waymarkReviewModule?.battleWaymarkAction(this, 'choose', 1); return; }
+        if (this.changeCombatCardDetailPage(1)) return;
         if (this.rewardInspectionCardId) return;
         if (this.supplyDrawerOpen) {
           this.moveBattleSupplyFocus(1);
@@ -15345,6 +14472,8 @@ class BattleScene extends Phaser.Scene {
         if (!this.cycleBattleInspectMode(1)) this.cycleControllerChoice(1);
       },
       roost: () => {
+        if (this.waymarkDrawerOpen) { this.waymarkReviewModule?.battleWaymarkAction(this, 'pin'); return; }
+        if (this.mode === 'waymarkReward') { this.openWaymarkRewardDetail(); return; }
         if (
           (this.mode === 'cardReward' || this.mode === 'upgradeReward')
           && this.rewardPresentationReady()
@@ -15360,7 +14489,8 @@ class BattleScene extends Phaser.Scene {
           else this.endTurnAnimated();
         }
       },
-      skipReward: () => {
+      skipReward: (event) => {
+        if (event?.shiftKey) { if (!event.repeat) this.toggleBattleWaymarks(); return; }
         this.handleBattleSkipOrRunKit();
       },
       fullscreen: () => this.scale.toggleFullscreen(),
@@ -15386,6 +14516,9 @@ class BattleScene extends Phaser.Scene {
       if (controlActionForCode(event.code)) return;
       event.preventDefault?.();
       const direction = event.shiftKey ? -1 : 1;
+      if (this.waymarkDrawerOpen) { this.waymarkReviewModule?.battleWaymarkAction(this, 'choose', direction); return; }
+      if (this.changeReturnChoiceRulesPage(direction)) return;
+      if (this.changeCombatCardDetailPage(direction)) return;
       if (this.supplyDrawerOpen) {
         this.moveBattleSupplyFocus(direction);
         return;
@@ -15394,6 +14527,7 @@ class BattleScene extends Phaser.Scene {
     };
     const onUp = () => {
       if (controlActionForCode('ArrowUp')) return;
+      if (this.waymarkDrawerOpen) { this.waymarkReviewModule?.battleWaymarkAction(this, 'choose', -3); return; }
       if (this.supplyDrawerOpen) {
         this.moveBattleSupplyFocus(-1);
         return;
@@ -15402,6 +14536,7 @@ class BattleScene extends Phaser.Scene {
     };
     const onDown = () => {
       if (controlActionForCode('ArrowDown')) return;
+      if (this.waymarkDrawerOpen) { this.waymarkReviewModule?.battleWaymarkAction(this, 'choose', 3); return; }
       if (this.supplyDrawerOpen) {
         this.moveBattleSupplyFocus(1);
         return;
@@ -15409,7 +14544,31 @@ class BattleScene extends Phaser.Scene {
       if (!this.moveCardReviewFocus(1)) this.cycleLivingEnemy(1, true);
     };
     const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: { index?: number }) => {
+      if (this.waymarkDrawerOpen && !this.pauseOverlayOpen && !this.settingsOverlayOpen) {
+        if (button.index === 1 || button.index === 7) this.closeBattleWaymarks();
+        else if (button.index === 2) this.waymarkReviewModule?.battleWaymarkAction(this, 'pin');
+        else if (button.index === 4 || button.index === 5) this.waymarkReviewModule?.battleWaymarkAction(this, 'page', button.index === 4 ? -1 : 1);
+        else if (button.index === 12 || button.index === 13) this.waymarkReviewModule?.battleWaymarkAction(this, 'choose', button.index === 12 ? -3 : 3);
+        else if (button.index === 14 || button.index === 15) this.waymarkReviewModule?.battleWaymarkAction(this, 'choose', button.index === 14 ? -1 : 1);
+        else if (button.index === 9) this.togglePauseOverlay();
+        return;
+      }
+      if (this.rewardInspectionCardId && !this.pauseOverlayOpen && !this.settingsOverlayOpen) {
+        if (button.index === 0 || button.index === 1 || button.index === 3) this.closeRewardCardInspection();
+        else if (button.index === 4 || button.index === 14) this.changeCombatCardDetailPage(-1);
+        else if (button.index === 5 || button.index === 15) this.changeCombatCardDetailPage(1);
+        else if (button.index === 9) this.togglePauseOverlay();
+        return;
+      }
+      if (this.combatCardDetail?.active && !this.pauseOverlayOpen && !this.settingsOverlayOpen) {
+        if (button.index === 0 || button.index === 1 || button.index === 10 || button.index === 11) this.closeCombatCardDetail();
+        else if (button.index === 4 || button.index === 14) this.changeCombatCardDetailPage(-1);
+        else if (button.index === 5 || button.index === 15) this.changeCombatCardDetailPage(1);
+        else if (button.index === 9) this.togglePauseOverlay();
+        return;
+      }
       switch (button.index) {
+        case 7: this.toggleBattleWaymarks(); break; // RT: owned Waymarks
         case 0:
           if (!this.requestBattleIntroDismiss()) {
             if (this.rewardInspectionCardId) this.closeRewardCardInspection();
@@ -15424,6 +14583,7 @@ class BattleScene extends Phaser.Scene {
           this.handleBattleSkipOrRunKit();
           break;
         case 3: // Y
+          if (this.mode === 'waymarkReward') { this.openWaymarkRewardDetail(); break; }
           if (
             (this.mode === 'cardReward' || this.mode === 'upgradeReward')
             && this.rewardPresentationReady()
@@ -15435,12 +14595,16 @@ class BattleScene extends Phaser.Scene {
             else if (this.mode === 'battle' && !this.combatInteractionLocked()) this.endTurnAnimated();
           break;
         case 4:
+          if (this.changeReturnChoiceRulesPage(-1)) break;
           if (!this.moveCardReviewFocus(-1, true)) this.cycleLivingEnemy(-1, true);
           break; // L1
         case 5:
+          if (this.changeReturnChoiceRulesPage(1)) break;
           if (!this.moveCardReviewFocus(1, true)) this.cycleLivingEnemy(1, true);
           break; // R1
         case 9: this.togglePauseOverlay(); break; // Start
+        case 11: this.toggleCombatCardDetail(); break; // R3: contextual card help
+        case 10: this.openCombatHistory(); break; // L3: recent combat history
         case 12:
           if (this.supplyDrawerOpen) this.moveBattleSupplyFocus(-1);
           else if (!this.moveCardReviewFocus(-1)) this.cycleLivingEnemy(-1, true);
@@ -15462,16 +14626,31 @@ class BattleScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-TAB', onTab);
     this.input.keyboard?.on('keydown-UP', onUp);
     this.input.keyboard?.on('keydown-DOWN', onDown);
+    const onWaymarkKey = (event: KeyboardEvent) => {
+      if (!this.waymarkDrawerOpen || controlActionForCode(event.code)) return;
+      if (event.code === 'PageUp' || event.code === 'PageDown') {
+        if (this.pauseOverlayOpen || this.settingsOverlayOpen) return;
+        event.preventDefault();
+        this.waymarkReviewModule?.battleWaymarkAction(this, 'page', event.code === 'PageUp' ? -1 : 1);
+      } else if (event.code === 'KeyC') this.waymarkReviewModule?.battleWaymarkAction(this, 'pin');
+    };
+    this.input.keyboard?.on('keydown', onWaymarkKey);
     this.input.gamepad?.on('down', onGamepadDown);
     this.events.once('shutdown', () => {
       this.input.keyboard?.off('keydown-TAB', onTab);
       this.input.keyboard?.off('keydown-UP', onUp);
       this.input.keyboard?.off('keydown-DOWN', onDown);
+      this.input.keyboard?.off('keydown', onWaymarkKey);
       this.input.gamepad?.off('down', onGamepadDown);
+      this.combatCardDetail?.destroy(true);
+      this.combatCardDetail = undefined;
     });
     this.input.on('wheel', (_pointer: Phaser.Input.Pointer, _gameObjects: Phaser.GameObjects.GameObject[], _deltaX: number, deltaY: number) => {
-      if (!this.fxLayer?.active) return;
+      if (!deltaY || !this.fxLayer?.active || this.pauseOverlayOpen || this.settingsOverlayOpen) return;
+      if (this.changeReturnChoiceRulesPage(deltaY > 0 ? 1 : -1)) return;
+      if (this.changeCombatCardDetailPage(deltaY > 0 ? 1 : -1)) return;
       if (this.waymarkDrawerOpen) {
+        if (this.waymarkReviewModule?.handleWaymarkWheel(this, _pointer, deltaY)) return;
         this.scrollWaymarkDrawer(deltaY > 0 ? 1 : -1);
         return;
       }
@@ -15488,6 +14667,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private cycleControllerChoice(direction: -1 | 1) {
+    if (this.combatCardDetail?.active) return;
     if (this.rewardInspectionCardId || this.outcomeDetailsOpen || this.settingsOverlayOpen || this.pauseOverlayOpen || this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
     if (this.mode === 'battle' && this.returnChoice) {
       this.returnChoiceModule?.moveReturnChoice(this, direction);
@@ -15543,6 +14723,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private requestRewardChoice(choiceId: string) {
+    if (this.combatCardDetail?.active) return;
     this.battleHandRendererModule?.requestCombatReward(this, choiceId, () => playUiSound('confirm'));
   }
 
@@ -15595,6 +14776,7 @@ class BattleScene extends Phaser.Scene {
         confirm: controlBindingLabel('confirm'),
         roost: controlBindingLabel('roost'),
         pause: controlBindingLabel('pause'),
+        history: `Shift+${controlBindingLabel('guide')} / L3`,
       },
       controller: {
         choose: 'D-pad Left / Right',
@@ -15608,6 +14790,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private activateCombatChoice(index: number) {
+    if (this.combatCardDetail?.active) return;
     if (!this.fxLayer?.active || this.rewardInspectionCardId || this.settingsOverlayOpen || this.pauseOverlayOpen || this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
     if (this.outcomeDetailsOpen) {
       this.closeOutcomeFlightDetails();
@@ -15638,7 +14821,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private cycleLivingEnemy(direction: -1 | 1, inputFeedback = false) {
-    if (this.mode !== 'battle' || this.combatInteractionLocked()) return;
+    if (this.mode !== 'battle' || this.combatInteractionLocked() || this.supplyDrawerOpen || this.waymarkDrawerOpen) return;
     const living = this.enemies.filter((enemy) => enemy.hp > 0);
     if (living.length <= 1) return;
     const current = living.findIndex((enemy) => enemy.id === this.selectedEnemyId);
@@ -16186,7 +15369,7 @@ class BattleScene extends Phaser.Scene {
     if (!this.textures.exists(COMBAT_PLAYER_HIT_CONFIRM_TEXTURE)) return;
     this.textures.get(COMBAT_PLAYER_HIT_CONFIRM_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
     this.combatPlayerHitConfirmBursts += 1;
-    const size = heavy ? 250 : 208;
+    const size = heavy ? 128 : 92;
     const reducedMotion = prefersReducedMotion();
     const reducedFlashes = currentFlashEffectsState().reduced;
     const angle = Phaser.Math.Between(-10, 10);
@@ -16194,14 +15377,14 @@ class BattleScene extends Phaser.Scene {
       ? undefined
       : this.add.image(x, y, COMBAT_PLAYER_HIT_CONFIRM_TEXTURE)
         .setDisplaySize(size * 1.16, size * 1.16)
-        .setAlpha(reducedMotion ? 0.3 : heavy ? 0.46 : 0.38)
+        .setAlpha(reducedMotion ? 0.12 : heavy ? 0.22 : 0.16)
         .setBlendMode(Phaser.BlendModes.ADD)
         .setTint(color)
         .setAngle(angle)
         .setName('combat-player-hit-confirm');
     const burstSprite = this.add.image(x, y, COMBAT_PLAYER_HIT_CONFIRM_TEXTURE)
       .setDisplaySize(size, size)
-      .setAlpha(reducedMotion ? 0.78 : heavy ? 0.94 : 0.86)
+      .setAlpha(reducedMotion ? 0.48 : heavy ? 0.74 : 0.64)
       .setAngle(angle)
       .setName('combat-player-hit-confirm');
     this.fxLayer.add(glow ? [glow, burstSprite] : [burstSprite]);
@@ -16317,22 +15500,26 @@ class BattleScene extends Phaser.Scene {
     this.textures.get(COMBAT_FLOCK_IMPACT_BURST_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
     this.combatFlockImpactBurstBursts += 1;
     const burst = this.add.image(x, y, COMBAT_FLOCK_IMPACT_BURST_TEXTURE)
-      .setDisplaySize(heavy ? 340 : 306, heavy ? 142 : 128)
-      .setAlpha(heavy ? 0.66 : 0.58)
+      .setDisplaySize(heavy ? 180 : 128, heavy ? 75 : 54)
+      .setAlpha(heavy ? 0.5 : 0.38)
       .setAngle(heavy ? -4 : 3)
       .setName('combat-flock-impact-burst');
     this.fxLayer.add(burst);
+    let retirement: Phaser.Time.TimerEvent | undefined;
+    burst.once(Phaser.GameObjects.Events.DESTROY, () => {
+      retirement?.remove(false);
+      this.tweens.killTweensOf(burst);
+    });
     if (prefersReducedMotion()) {
-      this.time.delayedCall(150, () => burst.destroy());
+      retirement = this.time.delayedCall(130, () => burst.destroy());
       return;
     }
     this.tweens.add({
       targets: burst,
       alpha: 0,
-      scaleX: burst.scaleX * (heavy ? 1.22 : 1.16),
-      scaleY: burst.scaleY * (heavy ? 1.22 : 1.16),
-      delay: 80,
-      duration: heavy ? 420 : 340,
+      scaleX: burst.scaleX * 1.04,
+      scaleY: burst.scaleY * 1.04,
+      duration: heavy ? 220 : 160,
       ease: 'Cubic.easeOut',
       onComplete: () => burst.destroy(),
     });
@@ -16342,68 +15529,30 @@ class BattleScene extends Phaser.Scene {
     if (!this.textures.exists(COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE)) return;
     this.textures.get(COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
     const reducedMotion = prefersReducedMotion();
-    const reducedFlashes = currentFlashEffectsState().reduced;
     const direction = fromX >= x ? 1 : -1;
-    const width = heavy ? 610 : 540;
+    const width = heavy ? 228 : 180;
     const height = width * (256 / 768);
     this.combatEnemyImpactContactBursts += 1;
 
-    const glow = reducedFlashes
-      ? undefined
-      : this.add.image(x, y, COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE)
-        .setDisplaySize(width * 1.08, height * 1.08)
-        .setAlpha(reducedMotion ? 0.44 : 0.68)
-        .setTint(0xfff0cf)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setName('combat-enemy-impact-contact');
     const contact = this.add.image(x, y, COMBAT_ENEMY_IMPACT_CONTACT_TEXTURE)
       .setDisplaySize(width, height)
-      .setAlpha(reducedMotion ? 0.92 : 0.98)
+      .setAlpha(reducedMotion || currentFlashEffectsState().reduced ? 0.4 : 0.58)
       .setName('combat-enemy-impact-contact');
-    this.fxLayer.add(glow ? [glow, contact] : [contact]);
-    if (glow) this.fxLayer.bringToTop(glow);
-    this.fxLayer.bringToTop(contact);
-    this.children.bringToTop(this.fxLayer);
-
-    if (reducedMotion) {
-      this.time.delayedCall(420, () => {
-        glow?.destroy();
-        contact.destroy();
-      });
-      return;
-    }
-
-    this.fxGlowPulse(x, y + 4, 0xff7a42, heavy ? 118 : 98, 420, 0.18);
-    this.fxMoteBurst(x - direction * 18, y + 12, 0xff9d4d, {
-      count: heavy ? 18 : 13,
-      speed: heavy ? 176 : 144,
-      lifespan: heavy ? 520 : 430,
-      scale: heavy ? 0.56 : 0.48,
-      gravityY: 18,
-      spreadX: heavy ? 88 : 68,
-      spreadY: 18,
+    this.fxLayer.add(contact);
+    let retirement: Phaser.Time.TimerEvent | undefined;
+    contact.once(Phaser.GameObjects.Events.DESTROY, () => {
+      retirement?.remove(false);
+      this.tweens.killTweensOf(contact);
     });
-    if (glow) {
-      this.tweens.add({
-        targets: glow,
-        alpha: 0,
-        scaleX: glow.scaleX * (heavy ? 1.12 : 1.1),
-        scaleY: glow.scaleY * (heavy ? 1.12 : 1.1),
-        x: x - direction * 10,
-        delay: 420,
-        duration: heavy ? 800 : 700,
-        ease: 'Cubic.easeOut',
-        onComplete: () => glow.destroy(),
-      });
+    if (reducedMotion) {
+      retirement = this.time.delayedCall(130, () => contact.destroy());
+      return;
     }
     this.tweens.add({
       targets: contact,
       alpha: 0,
-      scaleX: contact.scaleX * (heavy ? 1.1 : 1.08),
-      scaleY: contact.scaleY * (heavy ? 1.1 : 1.08),
-      x: x - direction * 12,
-      delay: 560,
-      duration: heavy ? 860 : 760,
+      x: x - direction * 5,
+      duration: heavy ? 220 : 160,
       ease: 'Cubic.easeOut',
       onComplete: () => contact.destroy(),
     });
@@ -16416,18 +15565,23 @@ class BattleScene extends Phaser.Scene {
     const distance = Math.max(1, Math.hypot(fromX - toX, fromY - toY));
     const targetToSource = Phaser.Math.Angle.Between(toX, toY, fromX, fromY);
     const nativeSlashAngle = Phaser.Math.DegToRad(-24);
-    const width = Phaser.Math.Clamp(distance * (heavy ? 0.92 : 0.82), 230, heavy ? 460 : 390);
-    const height = Phaser.Math.Clamp(width * 0.56, 132, heavy ? 250 : 220);
+    const width = Phaser.Math.Clamp(distance * 0.3, 110, heavy ? 220 : 170);
+    const height = width * 0.5;
     const swipe = this.add.image(toX, toY + 10, COMBAT_ENEMY_SWIPE_TEXTURE)
       .setOrigin(0.12, 0.72)
       .setDisplaySize(width, height)
       .setRotation(targetToSource - nativeSlashAngle)
-      .setAlpha(heavy ? 0.78 : 0.66)
+      .setAlpha(heavy ? 0.56 : 0.46)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setName('combat-enemy-swipe');
     this.fxLayer.add(swipe);
+    let retirement: Phaser.Time.TimerEvent | undefined;
+    swipe.once(Phaser.GameObjects.Events.DESTROY, () => {
+      retirement?.remove(false);
+      this.tweens.killTweensOf(swipe);
+    });
     if (prefersReducedMotion()) {
-      this.time.delayedCall(130, () => swipe.destroy());
+      retirement = this.time.delayedCall(130, () => swipe.destroy());
       return;
     }
     this.tweens.add({
@@ -16437,7 +15591,7 @@ class BattleScene extends Phaser.Scene {
       scaleY: swipe.scaleY * (heavy ? 1.08 : 1.05),
       x: toX - Math.cos(targetToSource) * 14,
       y: toY + 10 - Math.sin(targetToSource) * 10,
-      duration: heavy ? 290 : 230,
+      duration: heavy ? 220 : 160,
       ease: 'Cubic.easeOut',
       onComplete: () => swipe.destroy(),
     });
@@ -16448,8 +15602,8 @@ class BattleScene extends Phaser.Scene {
     this.textures.get(COMBAT_COVER_GUARD_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
     this.combatCoverGuardBursts += 1;
     const guard = this.add.image(x, y - 8, COMBAT_COVER_GUARD_TEXTURE)
-      .setDisplaySize(270 * scale, 202 * scale)
-      .setAlpha(0.7)
+      .setDisplaySize(164 * scale, 122 * scale)
+      .setAlpha(0.48)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setAngle(Phaser.Math.Between(-8, 8))
       .setName('combat-cover-guard');
@@ -16676,16 +15830,25 @@ class BattleScene extends Phaser.Scene {
       objects.unshift(glow);
     }
     this.activeGeneratedFxSprites += objects.length;
-    const cleanup = () => {
+    let retired = false;
+    let retirement: Phaser.Time.TimerEvent | undefined;
+    const cleanup = (destroying?: Phaser.GameObjects.Image) => {
+      if (retired) return;
+      retired = true;
+      retirement?.remove(false);
+      this.tweens.killTweensOf(objects);
       objects.forEach((object) => {
-        if (object.active) object.destroy();
+        // DESTROY fires before active becomes false. Do not recursively destroy
+        // the image whose event is currently retiring this owned effect batch.
+        if (object !== destroying && object.active) object.destroy();
       });
       this.activeGeneratedFxSprites = Math.max(0, this.activeGeneratedFxSprites - objects.length);
     };
+    objects.forEach((object) => object.once(Phaser.GameObjects.Events.DESTROY, () => cleanup(object)));
     this.fxLayer.add(objects);
     this.children.bringToTop(this.fxLayer);
     if (reduced) {
-      this.time.delayedCall(options.reducedLifeMs ?? 190, cleanup);
+      retirement = this.time.delayedCall(options.reducedLifeMs ?? 190, () => cleanup());
       return true;
     }
     const scaleOut = options.scaleOut ?? 1.12;
@@ -16699,7 +15862,7 @@ class BattleScene extends Phaser.Scene {
       delay: options.delayMs ?? 100,
       duration: options.lifeMs ?? 520,
       ease: 'Cubic.easeOut',
-      onComplete: cleanup,
+      onComplete: () => cleanup(),
     });
     return true;
   }
@@ -16783,14 +15946,14 @@ class BattleScene extends Phaser.Scene {
 
   private combatEnemyHeavyContact(x: number, y: number, fromX: number, scale = 1) {
     const direction = fromX >= x ? 1 : -1;
-    if (!this.combatGeneratedFx(COMBAT_ENEMY_HEAVY_CONTACT_TEXTURE, 'combat-enemy-heavy-contact', x, y, 430 * scale, 143 * scale, {
-      alpha: 0.86,
-      glowAlpha: 0.42,
+    if (!this.combatGeneratedFx(COMBAT_ENEMY_HEAVY_CONTACT_TEXTURE, 'combat-enemy-heavy-contact', x, y, 260 * scale, 86 * scale, {
+      alpha: 0.58,
       angle: direction > 0 ? -5 : 185,
-      lifeMs: 760,
-      delayMs: 180,
-      scaleOut: 1.16,
-      driftX: -direction * 12,
+      lifeMs: 220,
+      reducedLifeMs: 130,
+      delayMs: 0,
+      scaleOut: 1.04,
+      driftX: -direction * 5,
       driftY: -2,
     })) return;
     this.combatEnemyHeavyContactBursts += 1;
@@ -16885,8 +16048,8 @@ class BattleScene extends Phaser.Scene {
     this.textures.get(COMBAT_HEAL_BLOOM_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
     this.combatHealBloomBursts += 1;
     const bloom = this.add.image(x, y + 8, COMBAT_HEAL_BLOOM_TEXTURE)
-      .setDisplaySize(282 * scale, 212 * scale)
-      .setAlpha(0.72)
+      .setDisplaySize(152 * scale, 114 * scale)
+      .setAlpha(0.48)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setAngle(Phaser.Math.Between(-7, 7))
       .setName('combat-heal-bloom');
@@ -17023,81 +16186,31 @@ class BattleScene extends Phaser.Scene {
   }
 
   private combatEnemyMend(x: number, y: number, scale = 1) {
-    if (!this.textures.exists(COMBAT_ENEMY_MEND_TEXTURE)) return;
-    this.textures.get(COMBAT_ENEMY_MEND_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    this.combatEnemyMendBursts += 1;
-    const mend = this.add.image(x, y - 20, COMBAT_ENEMY_MEND_TEXTURE)
-      .setDisplaySize(430 * scale, 323 * scale)
-      .setAlpha(0.92)
-      .setAngle(Phaser.Math.Between(-9, 9))
-      .setName('combat-enemy-mend');
-    const glow = this.add.image(x, y - 20, COMBAT_ENEMY_MEND_TEXTURE)
-      .setDisplaySize(430 * scale, 323 * scale)
-      .setAlpha(0.94)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setAngle(mend.angle)
-      .setName('combat-enemy-mend');
-    this.fxLayer.add([mend, glow]);
-    if (prefersReducedMotion()) {
-      this.time.delayedCall(170, () => {
-        mend.destroy();
-        glow.destroy();
-      });
-      return;
-    }
-    this.tweens.add({
-      targets: [mend, glow],
-      scaleX: mend.scaleX * 1.13,
-      scaleY: mend.scaleY * 1.13,
-      y: mend.y - 10,
-      angle: mend.angle + Phaser.Math.Between(-18, -8),
-      alpha: { value: 0, duration: 900, delay: 420 },
-      duration: 900,
-      ease: 'Cubic.easeOut',
-      onComplete: () => {
-        mend.destroy();
-        glow.destroy();
-      },
-    });
+    if (this.combatEnemySupportCue(x, y, scale, COMBAT_ENEMY_MEND_TEXTURE, 'combat-enemy-mend')) this.combatEnemyMendBursts += 1;
   }
 
   private combatEnemyCover(x: number, y: number, scale = 1) {
-    if (!this.textures.exists(COMBAT_ENEMY_COVER_TEXTURE)) return;
-    this.textures.get(COMBAT_ENEMY_COVER_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    this.combatEnemyCoverBursts += 1;
-    const armor = this.add.image(x, y - 18, COMBAT_ENEMY_COVER_TEXTURE)
-      .setDisplaySize(430 * scale, 323 * scale)
-      .setAlpha(0.98)
-      .setAngle(Phaser.Math.Between(-8, 8))
-      .setName('combat-enemy-cover');
-    const glow = this.add.image(x, y - 18, COMBAT_ENEMY_COVER_TEXTURE)
-      .setDisplaySize(430 * scale, 323 * scale)
-      .setAlpha(0.92)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setAngle(armor.angle)
-      .setName('combat-enemy-cover');
-    this.fxLayer.add([armor, glow]);
-    if (prefersReducedMotion()) {
-      this.time.delayedCall(160, () => {
-        armor.destroy();
-        glow.destroy();
-      });
-      return;
-    }
-    this.tweens.add({
-      targets: [armor, glow],
-      scaleX: armor.scaleX * 1.1,
-      scaleY: armor.scaleY * 1.1,
-      y: armor.y - 5,
-      angle: armor.angle + Phaser.Math.Between(-10, 10),
-      alpha: { value: 0, duration: 900, delay: 420 },
-      duration: 900,
-      ease: 'Cubic.easeOut',
-      onComplete: () => {
-        armor.destroy();
-        glow.destroy();
-      },
+    if (this.combatEnemySupportCue(x, y, scale, COMBAT_ENEMY_COVER_TEXTURE, 'combat-enemy-cover')) this.combatEnemyCoverBursts += 1;
+  }
+
+  private combatEnemySupportCue(x: number, y: number, scale: number, texture: string, name: string) {
+    if (!this.textures.exists(texture)) return false;
+    // Repeated support on one target changes the numeric total, not its glow.
+    if (this.fxLayer.list.some((object) => object.name === name && (object as Phaser.GameObjects.Image).x === x)) return false;
+    this.textures.get(texture).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    const reduced = prefersReducedMotion();
+    const size = 128 * Phaser.Math.Clamp(scale, 0.8, 1.2);
+    const cue = this.add.image(x, y - 88, texture).setDisplaySize(size, size * 0.75)
+      .setAlpha(reduced ? 0.35 : 0.58).setName(name);
+    this.fxLayer.add(cue);
+    this.fxLayer.sendToBack(cue);
+    const retirement = this.time.delayedCall(reduced ? 150 : 360, () => cue.destroy());
+    if (!reduced) this.tweens.add({ targets: cue, alpha: 0, duration: 300, onComplete: () => cue.destroy() });
+    cue.once(Phaser.GameObjects.Events.DESTROY, () => {
+      retirement.remove(false);
+      this.tweens.killTweensOf(cue);
     });
+    return true;
   }
 
   private combatCoverShatter(x: number, y: number, scale = 1) {
@@ -18848,10 +17961,11 @@ class BattleScene extends Phaser.Scene {
     const pressure = Math.max(1, damage || intentCoverValue(move) || move.effects.length);
     const color = damage > 0 ? 0xff7a6e : supportMove ? 0x8fd6a0 : 0xc98bff;
     const y = view.y + (enemy.runtime.type === 'boss' ? 10 : 20);
-    const releaseWindowMs = this.combatTimingDelay(ENEMY_ATTACK_RELEASE_MS + ENEMY_ATTACK_IMPACT_ANTICIPATION_MS, this.enemyMoveTimingScale(enemy, move));
+    const timing = this.combatFxModule!.enemyMoveTimings(this, enemy, move);
+    const releaseWindowMs = timing.release + timing.anticipation;
 
-    this.fxGlowPulse(view.x, y, color, 78 + pressure * 4, 560, 0.18);
-    this.fxShockwave(view.x, y + 18 * view.scale, color, 82 + pressure * 3, 520, -7);
+    this.fxGlowPulse(view.x, y, color, 78 + pressure * 4, Math.min(560, releaseWindowMs), 0.18);
+    this.fxShockwave(view.x, y + 18 * view.scale, color, 82 + pressure * 3, Math.min(520, releaseWindowMs), -7);
     this.fxMoteBurst(view.x - 18 * view.scale, y + 10, color, {
       count: Phaser.Math.Clamp(8 + pressure * 2, 10, 22),
       speed: 116 + pressure * 3,
@@ -18880,6 +17994,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   enemyAttackRecoveryAfterglowFx(enemy: Enemy, move: EnemyMove) {
+    if (combatPacePreference() !== 'cinematic') return;
     if (!this.textures.exists(COMBAT_ENEMY_RECOVERY_AFTERGLOW_TEXTURE)) return;
     const view = this.enemyView(enemy);
     const damage = move.effects.reduce((total, effect) => {
@@ -18967,48 +18082,21 @@ class BattleScene extends Phaser.Scene {
 
   private coverBuildFx(suit?: string | null) {
     const meta = suitFxMeta(suit ?? 'nests');
-    this.combatCoverGuard(FLOCK_FX_X, FLOCK_FX_Y + 16, 1.04);
-    this.fxGlowPulse(FLOCK_FX_X, FLOCK_FX_Y + 20, 0x8fd6a0, 90, 440, 0.16);
-    this.fxShockwave(FLOCK_FX_X, FLOCK_FX_Y + 24, 0x8fd6a0, 84, 460, -7);
-    this.fxSuitSignature('nests', FLOCK_FX_X, FLOCK_FX_Y + 18, 0x8fd6a0, 1.08);
-    this.playFxAnimation('fx-nests', FLOCK_FX_X, FLOCK_FX_Y + 20, {
-      scale: 1.52,
-      alpha: 0.76,
-      additive: true,
+    this.combatCoverGuard(FLOCK_FX_X, FLOCK_FX_Y + 24, 1);
+    this.fxMoteBurst(FLOCK_FX_X, FLOCK_FX_Y + 32, meta.color, {
+      count: 5, speed: 44, lifespan: 280, scale: 0.32,
+      gravityY: -12, spreadX: 22, spreadY: 6,
     });
-    this.fxMoteBurst(FLOCK_FX_X, FLOCK_FX_Y + 24, 0x8fd6a0, {
-      count: 12,
-      speed: 88,
-      lifespan: 440,
-      scale: 0.52,
-      gravityY: -18,
-      spreadX: 26,
-      spreadY: 10,
-    });
-    if (suit && suit !== 'nests') {
-      this.fxSuitSignature(suit, FLOCK_FX_X + 22, FLOCK_FX_Y - 12, meta.color, 0.82);
-      this.playFxAnimation(SUIT_FX_ANIM[suit] ?? this.fxAnimForColor(meta.color), FLOCK_FX_X + 22, FLOCK_FX_Y - 12, {
-        scale: 1.1,
-        alpha: 0.72,
-        additive: true,
-      });
-      this.fxMoteBurst(FLOCK_FX_X + 22, FLOCK_FX_Y - 12, meta.color, { count: 8, speed: 84, lifespan: 320, scale: 0.48, gravityY: 0 });
-    }
   }
 
   private healFx() {
     this.combatHealBloom(FLOCK_FX_X, FLOCK_FX_Y + 8, 1);
-    this.fxGlowPulse(FLOCK_FX_X, FLOCK_FX_Y + 12, 0x8fd6a0, 88, 520, 0.16);
-    this.fxShockwave(FLOCK_FX_X, FLOCK_FX_Y + 12, 0x8fd6a0, 74, 460, -6);
-    this.fxSuitSignature('basins', FLOCK_FX_X + 4, FLOCK_FX_Y - 2, 0x8fd6a0, 0.96);
-    this.playFxAnimation('fx-heal', FLOCK_FX_X, FLOCK_FX_Y + 12, { scale: 1.42, alpha: 0.78, additive: true });
-    this.playFxAnimation('fx-basins', FLOCK_FX_X + 16, FLOCK_FX_Y - 24, { scale: 0.92, alpha: 0.54, additive: true });
     this.fxMoteBurst(FLOCK_FX_X, FLOCK_FX_Y + 14, 0x8fd6a0, {
-      count: 14,
-      speed: 68,
-      lifespan: 560,
+      count: 5,
+      speed: 42,
+      lifespan: 320,
       angle: { min: 235, max: 305 },
-      scale: 0.52,
+      scale: 0.32,
       gravityY: -42,
       spreadX: 24,
       spreadY: 12,
@@ -19037,7 +18125,15 @@ class BattleScene extends Phaser.Scene {
     this.optionalArtRequested = true;
 
     const assets = this.battleArtAssets();
-    const queued = queueRuntimeImageAssets(this, assets, 'Optional art', onReady);
+    const refresh = (result: RuntimeImageLoadResult) => {
+      // A failed preload may recover after the intro's last render. Refresh
+      // the visible scene as well as its readiness report, without user input.
+      this.battleAssetReadiness.settle('battle-preloaded-art', result);
+      onReady?.(result);
+      this.refreshLoadedHandCardArt(this.hand);
+      this.requestBattleRender();
+    };
+    const queued = queueRuntimeImageAssets(this, assets, 'Optional art', refresh);
     if (!queued) onReady?.(runtimeImageLoadSnapshot(this, assets));
   }
 
@@ -19224,29 +18320,29 @@ class BattleScene extends Phaser.Scene {
     this.load.start();
   }
 
-  // Per-enemy board placement: a single enemy keeps the classic right-side
-  // anchor; larger groups shrink and stagger to keep art, HP, and intent readable.
-  // Boss fights keep the boss visually dominant while helpers sit lower/wider.
+  // Per-enemy board placement: solo opponents move into the open central stage.
+  // Four enemies occupy separate columns instead of hiding one another.
+  // Art and impact anchors sit above the fixed information band.
   private enemyView(enemy: Enemy): { x: number; y: number; scale: number } {
     const index = Math.max(0, this.enemies.indexOf(enemy));
     const count = this.enemies.length;
     const bossIndex = this.enemies.findIndex((candidate) => candidate.runtime.type === 'boss');
     if (bossIndex >= 0 && count > 1) {
       if (index === bossIndex) {
-        return { x: 930, y: count >= 4 ? 300 : 314, scale: count >= 4 ? 1 : 1.08 };
+        return { x: 930, y: 225, scale: count >= 4 ? 1 : 1.08 };
       }
       const goonIndex = this.enemies.slice(0, index).filter((candidate) => candidate.runtime.type !== 'boss').length;
       return bossGoonViewAt(goonIndex, count - 1);
     }
-    if (enemy.runtime.type === 'boss') return { x: ENEMY_FX_X, y: 342, scale: 1.24 };
+    if (enemy.runtime.type === 'boss') return { x: 875, y: 215, scale: 1.24 };
     return enemyViewAt(index, count);
   }
 
-  // HP-bar geometry for an enemy, matching the foreground renderer so the drain animation
-  // (damageEnemy) lines up. Identical to ENEMY_HP_BAR for the single-enemy case.
+  // Shared meter geometry keeps the health fill, forecast and damage drain aligned.
+  // The name/value header is laid out above this meter by the foreground renderer.
   private enemyHpBar(enemy: Enemy): { x: number; y: number; w: number; h: number } {
     const { x, y, scale } = this.enemyView(enemy);
-    return { x, y: y + 68 * scale, w: (enemy.runtime.type === 'boss' ? 250 : ENEMY_HP_BAR.w) * scale, h: ENEMY_HP_BAR.h };
+    return { x, y: y + 68 * scale + 45, w: Math.max(168, (enemy.runtime.type === 'boss' ? 250 : ENEMY_HP_BAR.w) * scale), h: ENEMY_HP_BAR.h };
   }
 
   private queueEnemyMotion(enemyId: string, cue: EnemyMotionCue) {
@@ -19287,6 +18383,7 @@ class BattleScene extends Phaser.Scene {
     this.enemyMotionCues.delete(enemy.id);
     // Breathing and the previous pose must not compete with the committed motion.
     this.tweens.killTweensOf(group);
+    group.setAlpha(1);
     if (cue === 'windup') {
       this.tweens.add({
         targets: group,
@@ -19317,7 +18414,7 @@ class BattleScene extends Phaser.Scene {
       scaleX: recoil ? 0.985 : 1.072,
       scaleY: recoil ? 1.012 : 0.942,
       duration,
-      hold: recoil ? 0 : this.combatTimingDelay(ENEMY_ATTACK_IMPACT_ANTICIPATION_MS, this.enemyMoveTimingScale(enemy, currentMove(enemy))),
+      hold: recoil ? 0 : this.combatFxModule!.enemyMoveTimings(this, enemy, currentMove(enemy)).anticipation,
       yoyo: true,
       ease: recoil ? 'Quad.easeOut' : 'Cubic.easeInOut',
       onComplete: () => {
@@ -19473,6 +18570,10 @@ class BattleScene extends Phaser.Scene {
           (236 * scale) / Math.max(1, Number(source.width ?? 1)),
           (214 * scale) / Math.max(1, Number(source.height ?? 1))
         );
+        // Fit the visible silhouette, not transparent padding, below the HUD.
+        const bounds = this.enemyTextureVisibleBounds(artAsset.key);
+        const visibleHeight = Math.max(1, Number(source.height ?? 1) * (bounds.bottom - bounds.top));
+        artFit = Math.min(artFit, Math.max(64, y + 32 * scale - 114) / visibleHeight);
         artPlacement = this.combatEnemyArtPlacement(artAsset.key, artFit, scale);
       }
       const incomingDamage = this.incomingAttackDamage(enemy);
@@ -19485,6 +18586,21 @@ class BattleScene extends Phaser.Scene {
             remainingBeats: Math.max(0, (objective.deadlineTurn ?? 3) - this.turn + 1)
           }
         : undefined;
+      if (artPlacement && artAsset && (boss || objectiveTarget)) {
+        // Reserve the phase/deadline row before fitting the visible silhouette.
+        // Translate the complete placement so paws, shadow and input agree.
+        const source = this.textures.get(artAsset.key).getSourceImage() as { height: number };
+        const bounds = this.enemyTextureVisibleBounds(artAsset.key);
+        const labelTop = this.enemyHpBar(enemy).y - (boss && objectiveTarget ? 124 : 92);
+        const floor = Math.min(y + 32 * scale, labelTop - 8);
+        const visibleHeight = Math.max(1, source.height * (bounds.bottom - bounds.top));
+        artFit = Math.min(artFit, Math.max(1, floor - 114) / visibleHeight);
+        artPlacement = this.combatEnemyArtPlacement(artAsset.key, artFit, scale);
+        const lift = y + artPlacement.shadowY - 2 * scale - floor;
+        artPlacement.artY -= lift;
+        artPlacement.hitboxY -= lift;
+        artPlacement.shadowY -= lift;
+      }
       return {
         id: enemy.id,
         name: enemy.name,
@@ -19509,9 +18625,8 @@ class BattleScene extends Phaser.Scene {
         artPlacement,
         moveLabel: move.label,
         incomingDamage,
-        bracePressure: intentCoverValue(move),
-        hasDebuff: move.effects.some((effect) => /applyWinded|applyOpenSky|applyPoison|applyFrail|addSnag/.test(effect)),
-        hasSupport: move.effects.some((effect) => /healAlly|healAllEnemies|gainCoverAlly|gainCoverAllEnemies|nextAttackBonusAlly/.test(effect)),
+        intent: enemyIntentLabel(move.effects, incomingDamage),
+        moveDescription: formatEffects(move.effects).replace(/Enter Open Sky/g, 'Flock enters Open Sky'),
         status: enemyStatus(enemy),
         objective: objectiveTarget
       };
@@ -19628,8 +18743,20 @@ class BattleScene extends Phaser.Scene {
 
   private handleBattleBack() {
     if (!this.fxLayer?.active) return;
+    if (this.settingsOverlayOpen) {
+      this.settingsOverlayOpen = false;
+      playUiSound('close');
+      this.renderBattleSystemOverlay();
+      return;
+    }
+    if (this.pauseOverlayOpen) { this.setBattlePaused(false); return; }
+    if (this.waymarkDrawerOpen) { this.closeBattleWaymarks(); return; }
     if (this.rewardInspectionCardId) {
       this.closeRewardCardInspection();
+      return;
+    }
+    if (this.combatCardDetail?.active) {
+      this.closeCombatCardDetail();
       return;
     }
     if (this.rewardChoiceArmedId) {
@@ -19653,14 +18780,8 @@ class BattleScene extends Phaser.Scene {
       this.returnToMainMenu();
       return;
     }
-    if (this.settingsOverlayOpen) {
-      this.settingsOverlayOpen = false;
-      playUiSound('close');
-      this.renderBattleSystemOverlay();
-      return;
-    }
-    if (this.pauseOverlayOpen) {
-      this.setBattlePaused(false);
+    if (this.inspectOverlay) {
+      this.closeOverlay();
       return;
     }
     if (this.returnChoice) {
@@ -19730,6 +18851,8 @@ class BattleScene extends Phaser.Scene {
     this.time.paused = false;
     this.tweens.resumeAll();
     playUiSound('close');
+    this.combatCardDetail?.getData('updateBindings')?.(controlBindingLabel('previous'), controlBindingLabel('next'), controlBindingLabel('back'));
+    (this.cardPreview?.getByName('combat-card-inspect-shortcut') as Phaser.GameObjects.Text | undefined)?.setText(`${controlBindingLabel('guide')} / R3`);
     this.requestBattleRender();
   }
 
@@ -19887,23 +19010,15 @@ class BattleScene extends Phaser.Scene {
       flowMax: this.flock.flowMax,
       flowPreview: this.getSelectedCard() && this.cardBuildsFlow(this.getSelectedCard()!) && this.flock.flow < this.flock.flowMax ? 1 : 0,
       cover: this.flock.block,
-      incoming: this.incomingFlockDamagePreview(),
+      // This is a Roost decision forecast, not a remaining-action ledger.
+      // During resolution some enemies have already advanced their intent.
+      incoming: this.combatAnimationPending ? undefined : this.incomingFlockDamagePreview(),
       suitCounts: this.flockSuitCounts(),
       wingbeats: `${this.energy}/${3 + this.nextTurnEnergyBonus}`,
       resonance: `${this.spark}/5`,
       railIcon: 'battle-hud-command-rail',
       onWaymarks: () => {
-        if (this.combatAnimationPending) return;
-        const nextOpen = !this.waymarkDrawerOpen;
-        this.waymarkDrawerOpen = nextOpen;
-        if (nextOpen) this.waymarkDrawerScroll = 0;
-        this.inspectOverlay = undefined;
-        this.supplyDrawerOpen = false;
-        if (nextOpen) {
-          this.queueCurrentWaymarkArtLoad();
-          this.queueBattleDrawerUiLoad();
-        }
-        this.requestBattleRender();
+        this.toggleBattleWaymarks();
       },
       onSupplies: () => {
         if (this.combatAnimationPending) return;
@@ -19917,127 +19032,6 @@ class BattleScene extends Phaser.Scene {
     this.root.add(hudObjects);
     renderPauseToggleControl(this, (obj) => this.root.add(obj), GAME_WIDTH - 82, 45, () => this.togglePauseOverlay());
     renderAudioToggleControl(this, (obj) => this.root.add(obj), GAME_WIDTH - 34, 45);
-    return;
-    const fstate = this.flockState();
-    const stateAccent = fstate === 'surging' ? 0x8df4ff : fstate === 'scattered' ? 0xff9d6b : 0xd8a840;
-    const highlight = this.flock.molt || fstate !== 'holding';
-    const stroke = this.flock.molt ? 0xc56cff : highlight ? stateAccent : 0x2a3a4d;
-    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 52, GAME_WIDTH - 28, 76, 0x070b12, 0.78)
-      .setStrokeStyle(1, stroke, highlight ? 0.78 : 0.26));
-    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 16, GAME_WIDTH - 62, 2, stroke, highlight ? 0.82 : 0.32));
-    this.root.add(this.add.rectangle(GAME_WIDTH / 2, 88, GAME_WIDTH - 62, 1, 0xffffff, 0.08));
-
-    const row2 = 74;
-    const left = FLOCK_HP_BAR.x - FLOCK_HP_BAR.w / 2;
-
-    // Cohesion bar (click Ã¢â€ â€™ full Flock Stats overlay).
-    const fbFrac = Math.max(0, Math.min(1, this.flock.hp / this.flock.maxHp));
-    const incoming = this.incomingFlockDamagePreview();
-    const barBg = this.add.rectangle(FLOCK_HP_BAR.x, FLOCK_HP_BAR.y, FLOCK_HP_BAR.w, FLOCK_HP_BAR.h, 0x0e1a12, 0.95)
-      .setStrokeStyle(1, 0x000000, 0.5).setInteractive({ useHandCursor: true });
-    barBg.on('pointerdown', () => this.openOverlay('flock'));
-    this.attachTooltip(barBg, 'Cohesion', 'Flock survival - reach 0 and the run ends. Click for full Flock Stats.');
-    this.root.add(barBg);
-    this.root.add(this.add.rectangle(left + (FLOCK_HP_BAR.w * fbFrac) / 2, FLOCK_HP_BAR.y, Math.max(2, FLOCK_HP_BAR.w * fbFrac), FLOCK_HP_BAR.h - 6, fbFrac > 0.34 ? 0x4fa777 : 0xe2b24a, 0.95));
-    if (incoming.hpLoss > 0) {
-      const afterFrac = Math.max(0, Math.min(1, incoming.afterHp / this.flock.maxHp));
-      const currentX = left + FLOCK_HP_BAR.w * fbFrac;
-      const afterX = left + FLOCK_HP_BAR.w * afterFrac;
-      const riskW = Math.max(2, currentX - afterX);
-      this.root.add(this.add.rectangle(afterX + riskW / 2, FLOCK_HP_BAR.y, riskW, FLOCK_HP_BAR.h - 6, 0xff5247, 0.82));
-      this.root.add(this.add.rectangle(afterX, FLOCK_HP_BAR.y, 2, FLOCK_HP_BAR.h + 4, 0xffd0c9, 0.9));
-      this.root.add(this.add.text(Math.min(left + FLOCK_HP_BAR.w - 6, currentX - 4), FLOCK_HP_BAR.y + 19, `-${incoming.hpLoss} / After ${incoming.afterHp}`, {
-        fontFamily: UI_FONT,
-        fontSize: '10px',
-        fontStyle: UI_BOLD,
-        color: '#ffd0c9',
-        stroke: '#180807',
-        strokeThickness: 2,
-      }).setOrigin(1, 0.5));
-    }
-    this.root.add(this.add.text(FLOCK_HP_BAR.x, FLOCK_HP_BAR.y, `Cohesion  ${this.flock.hp}/${this.flock.maxHp}`, { fontFamily: UI_FONT, fontSize: '14px', fontStyle: UI_BOLD, color: '#eaf6ee', stroke: '#0a1410', strokeThickness: 3 }).setOrigin(0.5));
-
-    // Formation badge + Flow pips (row 2, under the bar).
-    const stateLabel = fstate === 'surging' ? 'SURGING' : fstate === 'scattered' ? 'SCATTERED' : 'HOLDING';
-    this.root.add(this.add.text(left, row2, stateLabel, { fontFamily: UI_FONT, fontSize: '12px', fontStyle: UI_BOLD, color: fstate === 'surging' ? '#8df4ff' : fstate === 'scattered' ? '#ff9d6b' : '#ffe1a3' }).setOrigin(0, 0.5));
-    const flowX0 = left + 94;
-    for (let i = 0; i < this.flock.flowMax; i += 1) {
-      this.root.add(this.add.circle(flowX0 + i * 15, row2, 5, i < this.flock.flow ? stateAccent : 0x26333f, i < this.flock.flow ? 1 : 0.85).setStrokeStyle(1, 0x0a1410, 0.6));
-    }
-    this.root.add(this.add.text(flowX0 + this.flock.flowMax * 15 + 6, row2, 'Flow', { fontFamily: UI_FONT, fontSize: '10px', color: '#7f93a6' }).setOrigin(0, 0.5));
-
-    // Cover badge + statuses (row 1, right of the bar).
-    const coverX = left + FLOCK_HP_BAR.w + 70;
-    const cover = this.flock.block;
-    this.root.add(this.add.rectangle(coverX, FLOCK_HP_BAR.y, 92, 28, 0x10202c, cover > 0 ? 0.97 : 0.5).setStrokeStyle(2, cover > 0 ? 0x7ab8d6 : 0x2a3a4d, cover > 0 ? 1 : 0.6));
-    this.root.add(this.add.text(coverX, FLOCK_HP_BAR.y, `Ã¢â€”Ë† ${cover} Cover`, { fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: cover > 0 ? '#9fdcf0' : '#5f7488' }).setOrigin(0.5));
-    let stx = coverX + 58;
-    for (const entry of flockStatusEntries(this.flock)) {
-      const t = this.add.text(stx, FLOCK_HP_BAR.y, entry.label, { fontFamily: UI_FONT, fontSize: '12px', fontStyle: UI_BOLD, color: entry.kind === 'debuff' ? '#ff9d4d' : '#8fd6a0' }).setOrigin(0, 0.5);
-      this.attachTooltip(t, entry.label, STATUS_TOOLTIPS[entry.id] ?? 'A status affecting the flock.');
-      this.root.add(t);
-      stx += entry.label.length * 7 + 18;
-    }
-
-    // Suit keystone tally (row 2).
-    const suitMeta: Array<[string, string, string]> = [['plumes', 'Plumes', '#ffcf6b'], ['quills', 'Quills', '#c9a6ff'], ['basins', 'Basins', '#6fd0e6'], ['nests', 'Nests', '#8fd6a0']];
-    const suitCounts = this.flockSuitCounts();
-    const keystoneFrameKey = uiIconAssets['combat-suit-keystone-chip-frame'].key;
-    const hasKeystoneFrame = this.textures.exists(keystoneFrameKey);
-    if (hasKeystoneFrame) this.textures.get(keystoneFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const keystoneChipW = 86;
-    const keystoneChipH = 25;
-    let chipCx = coverX + 15;
-    for (const [suit, label, hex] of suitMeta) {
-      const n = suitCounts[suit] ?? 0;
-      const on = n >= KEYSTONE_AT;
-      const accent = Phaser.Display.Color.HexStringToColor(hex).color;
-      const alpha = on ? 0.96 : 0.52;
-      this.root.add(this.add.rectangle(chipCx, row2, keystoneChipW - 14, keystoneChipH - 9, 0x07101c, on ? 0.72 : 0.46));
-      if (hasKeystoneFrame) {
-        this.root.add(this.add.image(chipCx, row2, keystoneFrameKey)
-          .setDisplaySize(keystoneChipW, keystoneChipH)
-          .setAlpha(alpha)
-          .setName('combat-suit-keystone-chip-frame'));
-      } else {
-        this.root.add(this.add.rectangle(chipCx, row2, keystoneChipW, keystoneChipH, 0x10202c, alpha)
-          .setStrokeStyle(1, accent, on ? 0.72 : 0.34));
-      }
-      const chipText = this.add.text(chipCx, row2, `${on ? '* ' : ''}${label} ${n}`, {
-        fontFamily: UI_FONT,
-        fontSize: on ? '11px' : '10px',
-        fontStyle: on ? UI_BOLD : 'normal',
-        color: on ? hex : '#74879a',
-        stroke: '#081018',
-        strokeThickness: on ? 3 : 2
-      }).setOrigin(0.5);
-      this.root.add(chipText);
-      chipCx += keystoneChipW + 7;
-    }
-
-    // Run resources (row 1, mid-right).
-    this.renderChip(792, FLOCK_HP_BAR.y + 1, 118, 'Resonance', `${this.spark}/5`, 0x8df4ff, 'Plumes tempo resource, capped at 5.');
-    this.renderChip(916, FLOCK_HP_BAR.y + 1, 96, 'Scrap', `${this.scrap}`, 0x8df4ff, 'Currency for Markets and services.');
-    this.renderChip(1024, FLOCK_HP_BAR.y + 1, 120, 'Waymarks', `${this.routeMarks.length}`, 0xc9a6ff, 'Click to inspect found artifact items.', () => {
-      this.waymarkDrawerOpen = !this.waymarkDrawerOpen;
-      this.inspectOverlay = undefined;
-      this.requestBattleRender();
-    });
-
-    // Map info (far right).
-    const routeNode = currentCombatNodes()[this.currentRouteIndex];
-    this.root.add(this.add.text(1262, 36, `Rooftop ${this.encounter}/${this.maxEncounters} Ã‚Â· Beat ${this.turn}`, { fontFamily: UI_FONT, fontSize: '14px', fontStyle: UI_BOLD, color: '#f5d38a' }).setOrigin(1, 0.5));
-    this.root.add(this.add.text(1262, 58, `${currentMap().name}: ${routeNode.label}`, { fontFamily: UI_FONT, fontSize: '12px', color: UI_SOFT }).setOrigin(1, 0.5));
-  }
-
-
-  private renderChip(cx: number, cy: number, width: number, label: string, value: string, accent: number, tip?: string, onClick?: () => void) {
-    const rect = renderHudMetricChip(this, (obj) => this.root.add(obj), cx, cy, width, label, value, accent);
-    if (onClick) {
-      rect.setInteractive({ useHandCursor: true });
-      rect.on('pointerdown', onClick);
-    }
-    if (tip) this.attachTooltip(rect, label, tip);
   }
 
   // Shared tooltip: shown on hover, removed on pointer-out. Added to root so it
@@ -20093,7 +19087,6 @@ class BattleScene extends Phaser.Scene {
       };
     }
     if (!this.isGuidedFirstCombat()) return undefined;
-    const incoming = this.incomingFlockDamagePreview();
     const guideStep = firstFlightGuideStep();
     markFirstFlightGuideSeen(guideStep);
     const text = guideStep === 'card'
@@ -20102,11 +19095,12 @@ class BattleScene extends Phaser.Scene {
           const target = card ? this.firstCombatGuideTarget(card) : undefined;
           if (!card) return '1  SELECT A CARD   →   2  PLAY IT   •   BUILD FLOW   •   FULL FLOW: SURGE';
           const cost = this.effectiveCost(card);
-          return `1  SELECT ${displayName(card)}   →   2  TARGET ${target?.name ?? 'HIGHLIGHTED'}   •   ${cost} WINGBEAT${cost === 1 ? '' : 'S'}   •   FLOW +1`;
+          const action = target ? `TARGET ${target.name}` : 'CONFIRM TO PLAY';
+          return `1  SELECT ${displayName(card)}   →   2  ${action}   •   ${cost} WINGBEAT${cost === 1 ? '' : 'S'}${this.cardBuildsFlow(card) ? '   •   FLOW +1' : ''}`;
         })()
       : guideStep === 'roost'
-        ? `ROOST WHEN READY   |   INCOMING ${incoming.total}   |   COVER ${incoming.blocked}   |   COHESION -${incoming.hpLoss}`
-        : `READ THE TELL   |   INCOMING ${incoming.total}   |   COVER ${incoming.blocked}   |   FLOW BREAKS IF HIT`;
+        ? 'ROOST WHEN READY   |   WINGBEATS RESET NEXT BEAT'
+        : 'READ THE ENEMY TELL   |   COVER PREVENTS DAMAGE AND PROTECTS FLOW';
     return { text, accent: this.cardsPlayedThisTurn === 0 ? UI_FIELD.gold : UI_FIELD.cyan };
   }
 
@@ -20122,7 +19116,7 @@ class BattleScene extends Phaser.Scene {
           name: displayName(card),
           cost: this.effectiveCost(card),
           role: contract.role,
-          summary: compactSentenceText(compactCardEffectSummary(contract.effects), 76, 2),
+          summary: formatEffects(contract.effects),
         }];
       });
       this.returnChoiceModule?.renderReturnChoiceOverlay({
@@ -20142,6 +19136,13 @@ class BattleScene extends Phaser.Scene {
       return;
     }
     if (this.discardChoice && !this.settingsOverlayOpen && !this.pauseOverlayOpen) {
+      // The required decision temporarily owns the command lane. Roost and
+      // history are locked here; do not leave their labels behind the picker.
+      for (const child of this.root.list) {
+        if (child.name.startsWith('combat-roost-') || child.name.startsWith('combat-log-')) {
+          (child as Phaser.GameObjects.Text).setVisible(false).disableInteractive();
+        }
+      }
       this.discardChoiceModule?.renderDiscardChoiceRail({
         scene: this,
         target: this.root,
@@ -20162,6 +19163,8 @@ class BattleScene extends Phaser.Scene {
     if ((!this.battleInputActive && !skipCommitmentActive) || this.settingsOverlayOpen || this.pauseOverlayOpen || this.inspectOverlay || this.waymarkDrawerOpen || this.supplyDrawerOpen) return;
     if (this.mode !== 'battle' && !rewardMode) return;
     if (!rewardMode && this.selectedInstanceId && !retentionActive) return;
+    // The first-flight lesson already explains the current action.
+    if (!rewardMode && !retentionActive && this.isGuidedFirstCombat()) return;
     if (!rewardMode && !retentionActive && !this.isGuidedFirstCombat() && (this.cardsPlayedThisTurn > 0 || Boolean(this.selectedInstanceId))) return;
     const y = rewardMode ? 213 : 448;
     const skipBinding = controlBindingLabel('skipReward');
@@ -20184,6 +19187,13 @@ class BattleScene extends Phaser.Scene {
     const width = rewardMode
       ? this.mode === 'cardReward' ? 820 : this.mode === 'upgradeReward' ? 690 : 500
       : retentionActive ? 900 : 680;
+    if (!rewardMode) {
+      for (const child of this.root.list) {
+        if (child.name === 'combat-log-hit' || child.name === 'combat-log-latest') {
+          (child as Phaser.GameObjects.Rectangle | Phaser.GameObjects.Text).setVisible(false);
+        }
+      }
+    }
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, y, width, rewardMode ? 24 : 28, 0x020711, rewardMode ? 0.9 : 0.82)
       .setStrokeStyle(1, armedReward ? UI_FIELD.gold : UI_FIELD.cyan, armedReward ? 0.92 : rewardMode ? 0.62 : 0.52)
       .setName('combat-input-hint'));
@@ -20203,6 +19213,10 @@ class BattleScene extends Phaser.Scene {
   private battleHudObjectiveView() {
     const objective = this.encounterObjectiveTextState();
     if (!objective || this.mode !== 'battle') return undefined;
+    // A living priority target already carries the deadline and full tooltip.
+    // Do not repeat that goal in a second plaque over another enemy's head.
+    if (objective.type === 'priority' && this.battleForegroundRendererModule
+      && this.enemies.some(enemy => enemy.id === objective.targetEnemyId && enemy.hp > 0)) return undefined;
     const accent = objective.status === 'complete' ? UI_FIELD.green : objective.status === 'failed' ? UI_FIELD.danger : UI_FIELD.gold;
     return {
       accent,
@@ -20230,9 +19244,11 @@ class BattleScene extends Phaser.Scene {
   private battleHudRenderContext(includeSupplemental = false): Parameters<BattleHudRendererModule['renderBattleHud']>[0] {
     const latestEntries = this.log.slice(-4);
     const latest = this.log.at(-1) ?? 'The crossing is quiet.';
+    const incoming = this.incomingFlockDamagePreview();
     return {
       roostLabel: `Roost · ${controlBindingLabel('roost')}`,
-      roostPreview: `End turn · ${this.incomingFlockDamagePreview().hpLoss} HP at risk`,
+      roostPreview: `${incoming.uncertainty.length ? 'Est.' : 'End turn ·'} ${incoming.hpLoss} HP at risk`,
+      roostDetail: `${incoming.total} incoming; ${incoming.blocked} blocked; ${incoming.afterHp} Cohesion left. ${incoming.scope}.${incoming.uncertainty.length ? ` Estimate: ${incoming.uncertainty.join('; ')}.` : ''}`,
       scene: this,
       root: this.root,
       gameWidth: GAME_WIDTH,
@@ -20256,6 +19272,8 @@ class BattleScene extends Phaser.Scene {
       log: {
         latest: compactSentenceText(latest, 58, 1),
         tooltip: latestEntries.join(' / ') || 'Recent combat events.',
+        historyLabel: `History · Shift+${controlBindingLabel('guide')} / L3`,
+        onHistory: () => this.openCombatHistory(),
       },
       beat: this.battleHudBeatView(),
       guidance: includeSupplemental ? this.battleHudGuidanceView() : undefined,
@@ -20301,7 +19319,7 @@ class BattleScene extends Phaser.Scene {
   private renderBattleHudOverlayFallback() {
     const beatUi = this.renderBattleBeatBadgeFallback();
     const log = compactSentenceText(this.log.at(-1) ?? 'The crossing is quiet.', 58, 1);
-    this.root.add(this.add.text(650, 404, log, { fontFamily: UI_FONT, fontSize: '12px', color: '#d9e4ee', fixedWidth: 340, align: 'center' }).setOrigin(0.5));
+    this.root.add(this.add.text(650, 440, log, { fontFamily: UI_FONT, fontSize: '12px', color: '#d9e4ee', fixedWidth: 340, align: 'center' }).setOrigin(0.5).setName('combat-log-latest'));
     const roost = this.add.rectangle(1192, 470, 104, 104, 0x10202c, 0.94)
       .setStrokeStyle(2, UI_FIELD.gold, 0.9)
       .setInteractive({ useHandCursor: true });
@@ -20408,7 +19426,7 @@ class BattleScene extends Phaser.Scene {
     const status = this.root.list.find((child) => child.name === 'combat-flow-status') as Phaser.GameObjects.Text | undefined;
     status?.setText(flowStatus).setColor(flowStatusColor);
     const rail = this.root.list.find((child) => child.name === 'combat-flow-rail') as Phaser.GameObjects.Rectangle | undefined;
-    rail?.setFillStyle(flowFill, 0.96).setStrokeStyle(1.5, flowAccent, 0.88);
+    rail?.setFillStyle(flowFill, 0.96).setStrokeStyle(1, flowAccent, 0.3);
     this.renderSelectedCardOutcomePreview();
   }
 
@@ -20758,7 +19776,7 @@ class BattleScene extends Phaser.Scene {
       onCardOut: () => {
         const selected = this.getSelectedCard();
         if (selected) this.showCardPreview(selected);
-        else this.hideCardPreview();
+        // Keep the last hover's small details control reachable by pointer.
       },
       renderDiscardTag: (target: Phaser.GameObjects.Container, card: BattleHandCardView, x: number, y: number) => {
         this.discardChoiceModule?.renderDiscardChoiceTag({
@@ -20903,49 +19921,42 @@ class BattleScene extends Phaser.Scene {
 
   private simulateCardOutcome(card: Card, enemyId: string) {
     const contract = this.activeCardContract(card);
-    if (!this.combatPreviewModule) return {
-      contract,
-      target: this.enemies.find((enemy) => enemy.id === enemyId) ?? this.enemies[0],
-      enemyStates: this.enemies.map((enemy) => ({
-        id: enemy.id,
-        name: enemy.name,
-        maxHp: enemy.maxHp,
-        hpBefore: enemy.hp,
-        hpAfter: enemy.hp,
-        blockBefore: enemy.block,
-        blockAfter: enemy.block,
-        defeated: enemy.hp <= 0
-      })),
-      flockBefore: {
-        hp: this.flock.hp,
-        maxHp: this.flock.maxHp,
-        block: this.flock.block,
-        flow: this.flock.flow,
-        flowMax: this.flock.flowMax,
-        energy: this.energy,
-        resonance: this.spark
-      },
-      flockAfter: {
-        hp: this.flock.hp,
-        maxHp: this.flock.maxHp,
-        block: this.flock.block,
-        flow: this.flock.flow,
-        flowMax: this.flock.flowMax,
-        energy: this.energy,
-        resonance: this.spark
-      },
-      enemyDamage: 0,
-      blockedDamage: 0,
-      coverGain: 0,
-      cohesionDelta: 0,
-      flowGain: 0,
-      energyDelta: 0,
-      resonanceDelta: 0,
-      nextTurnDrawDelta: 0,
-      nextTurnEnergyDelta: 0,
-      moltPowerApplied: 0,
-      bossPhaseBreak: undefined
-    };
+    if (!this.combatPreviewModule) {
+      const flockBefore = {
+        hp: this.flock.hp, maxHp: this.flock.maxHp, block: this.flock.block,
+        flow: this.flock.flow, flowMax: this.flock.flowMax,
+        energy: this.energy, resonance: this.spark
+      };
+      return {
+        contract,
+        target: this.enemies.find((enemy) => enemy.id === enemyId) ?? this.enemies[0],
+        enemyStates: this.enemies.map((enemy) => ({
+          id: enemy.id,
+          name: enemy.name,
+          maxHp: enemy.maxHp,
+          hpBefore: enemy.hp,
+          hpAfter: enemy.hp,
+          blockBefore: enemy.block,
+          blockAfter: enemy.block,
+          defeated: enemy.hp <= 0
+        })),
+        flockBefore,
+        flockAfter: { ...flockBefore },
+        enemyDamage: 0,
+        blockedDamage: 0,
+        coverGain: 0,
+        cohesionDelta: 0,
+        flowGain: 0,
+        energyDelta: 0,
+        steps: [],
+        requiresChoice: false,
+        resonanceDelta: 0,
+        nextTurnDrawDelta: 0,
+        nextTurnEnergyDelta: 0,
+        moltPowerApplied: 0,
+        bossPhaseBreak: undefined
+      };
+    }
     return this.combatPreviewModule.simulateCombatCardOutcome({
       card,
       enemyId,
@@ -20955,6 +19966,7 @@ class BattleScene extends Phaser.Scene {
       energy: this.energy,
       resonance: this.spark,
       moltPower: this.activeMoltPower(),
+      cost: this.effectiveCost(card),
       pendingNestCoverBonus: this.pendingNestCoverBonus,
       nextTurnDraw: this.nextTurnDrawBonus,
       nextTurnEnergy: this.nextTurnEnergyBonus,
@@ -20963,7 +19975,7 @@ class BattleScene extends Phaser.Scene {
       playedCardIds: this.playedCardIdsThisCombat,
       playedSuits: this.playedSuitsThisTurn,
       cardName: displayName,
-      incomingNextAttackDamage: () => this.incomingNextAttackDamage(),
+      incomingNextAttackDamage: (enemies, flock) => this.incomingNextAttackDamage(enemies, flock),
       currentMoveDealsDamage: (enemy) => moveDealsDamage(currentMove(enemy)),
       flockSuitCount: (suit) => this.flockSuitCounts()[suit] ?? 0,
       firstAttackKeystoneActive: () => this.keystoneActive('quills'),
@@ -21055,9 +20067,103 @@ class BattleScene extends Phaser.Scene {
     this.cardPreview = undefined;
   }
 
-  // Readable rules dossier: fixed on the player's side in combat, opposite
-  // the hovered choice in rewards. Lives above the board in fxLayer.
+  private openCombatCardDetail(card: Card) {
+    if (this.mode !== 'battle' || this.combatCardDetail?.active || this.combatAnimationPending
+      || this.discardChoice || this.returnChoice || this.settingsOverlayOpen || this.pauseOverlayOpen
+      || this.waymarkDrawerOpen || this.supplyDrawerOpen || this.inspectOverlay === 'flock') return;
+    const pile = this.inspectOverlay ? this.battleInspectCards(this.inspectOverlay) : undefined;
+    if (!this.battleHandRendererModule || !(pile?.map((entry) => entry.card) ?? this.hand).some((entry) => entry.instanceId === card.instanceId)) return;
+    const preview = this.battleHandCardView(card).preview;
+    if (!pile) {
+      const outcome = this.simulateCardOutcome(card, this.selectedEnemyId);
+      const labels = { resolves: 'RESOLVES', 'not-met': 'NOT MET', choose: 'CHOOSE CARDS', 'after-choice': 'AFTER CHOICE' };
+      const cost = this.effectiveCost(card);
+      preview.outcome = this.battleHudRendererModule?.formatBattleSelectionOutcome(
+        displayName(card), this.selectedEnemyId, compactCardEffectSummary(outcome.contract.effects),
+        this.activeMoltPower(), outcome,
+      ).details + '\n\nCard-only forecast. Leader and Waymark triggers can change these results.';
+      preview.sequence = `Target: ${outcome.contract.target === 'enemy' ? outcome.target?.name ?? 'Choose target' : outcome.contract.target === 'allEnemies' ? 'All enemies' : 'Flock'}. Cost: ${cost} Wingbeat${cost === 1 ? '' : 's'}.\n\n`
+        + outcome.steps.map((step, i) => `${i + 1}. ${labels[step.status]} — ${formatEffects([step.effect])}`).join('\n\n')
+        + '\n\nCard-only forecast in written order. Leader and Waymark triggers can change the result. Effects after a card choice are not predicted.';
+    }
+    if (pile) {
+      const entry = pile.find((entry) => entry.card.instanceId === card.instanceId)!;
+      const inspected = this.battleInspectCardView(entry.card, entry.zone);
+      preview.name = inspected.name;
+      preview.usesMolt = inspected.usesMolt;
+      preview.currentText = `${inspected.targetLabel} · ${inspected.roleLabel}\n\n${inspected.currentText}`;
+      preview.alternateLabel = inspected.usesMolt ? 'BASE · WITHOUT MOLT' : 'PREEN · UPGRADE';
+      preview.alternateText = inspected.alternateText;
+    }
+    this.combatCardDetail = this.battleHandRendererModule.renderCombatCardDetail({
+      scene: this, fontFamily: UI_FONT, boldFontStyle: UI_BOLD,
+      previousLabel: controlBindingLabel('previous'), nextLabel: controlBindingLabel('next'),
+      backLabel: controlBindingLabel('back'), onClose: () => this.closeCombatCardDetail(),
+      announce: announceScreenReader,
+    }, preview);
+  }
+
+  private toggleCombatCardDetail() {
+    if (this.settingsOverlayOpen || this.pauseOverlayOpen) return;
+    if (this.combatCardDetail?.active) { this.closeCombatCardDetail(); return; }
+    if (this.inspectOverlay) {
+      if (this.inspectOverlay === 'flock') return;
+      const entries = this.battleInspectCards(this.inspectOverlay);
+      const card = entries.find((entry) => entry.card.instanceId === this.inspectedCardId)?.card ?? entries[0]?.card;
+      if (card) this.openCombatCardDetail(card);
+      return;
+    }
+    const id = this.cardPreview?.getData('instanceId') ?? this.selectedInstanceId;
+    const card = this.hand.find((entry) => entry.instanceId === id) ?? this.hand[this.controllerChoiceIndex];
+    if (card) this.openCombatCardDetail(card);
+  }
+
+  private openCombatHistory() {
+    if (this.settingsOverlayOpen || this.pauseOverlayOpen || this.combatIntroActive) return;
+    if (this.combatCardDetail?.active) {
+      if (this.combatCardDetail.getData('kind') === 'history') this.closeCombatCardDetail();
+      return;
+    }
+    if (this.mode !== 'battle' || this.combatInteractionLocked() || this.inspectOverlay
+      || this.waymarkDrawerOpen || this.supplyDrawerOpen || !this.battleHandRendererModule) return;
+    this.combatCardDetail = this.battleHandRendererModule.renderCombatHistory({
+      scene: this, fontFamily: UI_FONT, boldFontStyle: UI_BOLD,
+      previousLabel: controlBindingLabel('previous'), nextLabel: controlBindingLabel('next'),
+      backLabel: controlBindingLabel('back'), onClose: () => this.closeCombatCardDetail(),
+      announce: announceScreenReader,
+    }, this.combatHistory);
+  }
+
+  private closeCombatCardDetail() {
+    const kind = this.combatCardDetail?.getData('kind');
+    const name = kind === 'history' ? 'Combat history' : kind === 'waymark' ? 'Waymark details' : 'Card details';
+    this.combatCardDetail?.destroy(true);
+    this.combatCardDetail = undefined;
+    announceScreenReader(`${name} closed. Your selection is unchanged.`);
+  }
+
+  private changeReturnChoiceRulesPage(direction: number) {
+    if (!this.returnChoice || this.settingsOverlayOpen || this.pauseOverlayOpen || this.combatCardDetail?.active) return false;
+    const changePage = this.root.getByName('combat-return-choice-summary')?.getData('turnPage');
+    if (!changePage) return false;
+    changePage(direction);
+    return true;
+  }
+
+  private changeCombatCardDetailPage(direction: number) {
+    if (this.rewardInspectionCardId) {
+      if (!this.settingsOverlayOpen && !this.pauseOverlayOpen) this.cardPreview?.getData('turnRulesPage')?.(direction);
+      return true;
+    }
+    if (!this.combatCardDetail?.active) return false;
+    if (!this.settingsOverlayOpen && !this.pauseOverlayOpen) this.combatCardDetail.getData('changePage')(direction);
+    return true;
+  }
+
+  // Combat gets a compact, explicit inspect control. Rewards retain their
+  // existing hover dossier. Neither changes the pending decision.
   private showCardPreview(card: Card, previewX = GAME_WIDTH / 2) {
+    if (this.combatCardDetail?.active) return;
     this.hideCardPreview();
     if (!this.battleHandRendererModule) {
       this.showCardPreviewFallback(card, previewX);
@@ -21067,6 +20173,8 @@ class BattleScene extends Phaser.Scene {
     try {
       this.cardPreview = this.battleHandRendererModule.renderBattleHandPreview({
         combat: this.mode === 'battle',
+        inspectLabel: `${controlBindingLabel('guide')} / R3`,
+        onInspect: this.mode === 'battle' ? () => this.openCombatCardDetail(card) : undefined,
         scene: this,
         target: this.fxLayer,
         width: GAME_WIDTH,
@@ -21083,7 +20191,7 @@ class BattleScene extends Phaser.Scene {
         renderRichText: (target, x, y, text, options) => renderRichText(this, target, x, y, text, options),
         renderSnagArt: (target, _instanceId, x, y, width, height, alpha) =>
           renderSnagCardBorder(this, (obj) => target.add(obj), card, x, y, width, height, alpha),
-      }, view.preview, card.instanceId, previewX);
+      }, view.preview, card.instanceId, previewX).setData('instanceId', card.instanceId);
     } catch (error) {
       console.warn('Battle hand preview renderer failed; using compact fallback.', error);
       this.showCardPreviewFallback(card, previewX);
@@ -21207,13 +20315,9 @@ class BattleScene extends Phaser.Scene {
     this.requestBattleRender();
   }
 
-  private focusBattleSupply(index: number) {
-    if (!this.battleUsableSupplyIndices().includes(index)) return;
-    if (this.supplyDrawerArmedIndex === undefined) this.supplyDrawerFocusIndex = index;
-  }
-
   private moveBattleSupplyFocus(direction: -1 | 1) {
-    const usable = this.battleUsableSupplyIndices();
+    if (this.pauseOverlayOpen || this.settingsOverlayOpen) return;
+    const usable = this.runSupplies.map((_id, index) => index);
     if (!usable.length) {
       playUiSound('locked');
       return;
@@ -21230,6 +20334,11 @@ class BattleScene extends Phaser.Scene {
     const id = this.runSupplies[index];
     const supply = id ? alphaSupplyLibrary.get(id) : undefined;
     if (!supply || supply.timing === 'route' || this.combatInteractionLocked()) {
+      if (supply && !this.combatInteractionLocked()) {
+        this.supplyDrawerFocusIndex = index;
+        this.supplyDrawerArmedIndex = undefined;
+        this.requestBattleRender();
+      }
       playUiSound('locked');
       return;
     }
@@ -21269,7 +20378,8 @@ class BattleScene extends Phaser.Scene {
           glyph: this.supplyGlyph(supply),
           accent: supplyAccent(supply),
           name: supply.name,
-          summary: compactEffectGrammar(supply.effects, 72, 2),
+          summary: formatEffects(supply.effects),
+          timing: supply.timing,
           usable: !this.combatInteractionLocked() && supply.timing !== 'route',
         };
       }),
@@ -21282,109 +20392,63 @@ class BattleScene extends Phaser.Scene {
       backLabel: controlBindingLabel('back'),
       addTo: (object) => this.root.add(object),
       onClose: () => this.handleBattleBack(),
-      onFocus: (index) => this.focusBattleSupply(index),
       onActivate: (index) => this.requestBattleSupplyUse(index),
+      onBrowse: (direction) => this.moveBattleSupplyFocus(direction),
     });
   }
 
 
   private waymarkAccent(mark: RuntimeRouteMark) {
-    switch (mark.family) {
-      case 'safety': return 0x8fd6a0;
-      case 'route': return 0x7ab8d6;
-      case 'economy': return 0xe8c24a;
-      case 'suit': return 0xc9a6ff;
-      case 'molt': return 0xff9b6a;
-      case 'bossPrep': return 0xff6b57;
-      default: return 0x8fa3b6;
-    }
+    return routeMarkAccent(mark);
   }
 
   private waymarkFamilyLabel(mark: RuntimeRouteMark) {
-    switch (mark.family) {
-      case 'safety': return 'Shelter';
-      case 'route': return 'Tempo';
-      case 'economy': return 'Economy';
-      case 'suit': return 'Suit Engine';
-      case 'molt': return 'Molt';
-      case 'bossPrep': return 'Boss';
-      default: return mark.family;
-    }
+    return mark.family === 'suit' ? 'Suit Engine' : routeMarkFamilyLabel(mark.family);
   }
-
-  private waymarkTooltip(mark: RuntimeRouteMark) {
-    return `${this.waymarkFamilyLabel(mark)} / ${mark.rarity}\n${mark.description}\n${mark.trigger} -> ${routeMarkEffectGrammar(mark)}${mark.flavorText ? `\n${mark.flavorText}` : ''}`;
-  }
-
 
   private renderWaymarkDrawer() {
     this.queueBattleDrawerUiLoad();
     const marks = this.ownedMarkDefs();
     this.queueCurrentWaymarkArtLoad();
-    this.root.add(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.76)
-      .setInteractive({ useHandCursor: false }));
-    const frame = renderFieldPanel(this, (obj) => this.root.add(obj), HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy, HUD_MENU_PANEL.w, HUD_MENU_PANEL.h, {
-      eyebrow: 'Route Kit',
-      title: 'Found Waymarks',
-      subtitle: `${marks.length} artifact item${marks.length === 1 ? '' : 's'} carried this run`,
-      accent: UI_FIELD.violet
-    });
-    addRunKitDrawerFlourish(this, (obj) => this.root.add(obj), frame, { alpha: 0.11, tint: 0xe7d8ff, yOffset: 8 });
-    addUiIconImage(this, 'waymark-compass', frame.left + HUD_MENU_PANEL.headerIconX, frame.top + HUD_MENU_PANEL.headerIconY, 28)?.setAlpha(0.92);
-    renderCloseControl(this, (obj) => this.root.add(obj), frame.right - HUD_MENU_PANEL.closeX, frame.top + HUD_MENU_PANEL.closeY, () => {
-      this.waymarkDrawerOpen = false;
-      this.requestBattleRender();
-    });
-
-    if (marks.length === 0) {
-      const icon = addUiIconImage(this, 'waymark-compass', frame.left + 88, frame.top + 160, 34);
-      if (icon) this.root.add(icon.setAlpha(0.32));
-      this.root.add(this.add.text(frame.left + 126, frame.top + 150, '0 found', {
-        fontFamily: UI_FONT, fontSize: '14px', fontStyle: UI_BOLD, color: UI_MUTED, wordWrap: { width: frame.w - 108 }
-      }));
+    if (this.waymarkReviewModule) {
+      this.waymarkReviewModule.renderBattleWaymarks(this, marks.map(mark => ownedWaymarkReviewEntry(mark, this.waymarkFamilyLabel(mark))), () => this.closeBattleWaymarks());
       return;
     }
-
-    const columns = 3;
-    const visibleRows = 3;
-    const tileW = 252;
-    const tileH = 104;
-    const startX = frame.left + 64;
-    const startY = frame.top + 128;
-    const totalRows = Math.ceil(marks.length / columns);
-    const maxScrollRows = Math.max(0, totalRows - visibleRows);
-    this.waymarkDrawerScroll = clamp(Math.round(this.waymarkDrawerScroll), 0, maxScrollRows);
-    const visible = marks.slice(this.waymarkDrawerScroll * columns, (this.waymarkDrawerScroll + visibleRows) * columns);
-    visible.forEach((mark, index) => {
-      const col = index % columns;
-      const row = Math.floor(index / columns);
-      const x = startX + col * 272;
-      const y = startY + row * 112;
-      const bg = renderCompactItemTile(this, (obj) => this.root.add(obj), x, y, tileW, tileH, {
-        kind: 'waymark',
-        id: mark.id,
-        glyph: waymarkGlyph(mark),
-        accent: this.waymarkAccent(mark),
-        name: mark.name,
-        summary: compactEffectGrammar(routeMarkEffects(mark), 72, 2)
+    this.root.add(this.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9).setInteractive());
+    this.root.add(this.add.text(640, 330, this.waymarkReviewFailed ? 'Waymark reader unavailable. Close to keep playing; reload the game to retry.' : 'Opening Waymarks…', {
+      fontFamily: UI_FONT, fontSize: '22px', color: UI_SOFT, wordWrap: { width: 700 }, align: 'center',
+    }).setOrigin(0.5).setName('battle-waymark-loading'));
+    renderCloseControl(this, obj => this.root.add(obj), 1040, 160, () => this.closeBattleWaymarks());
+    if (!this.waymarkReviewLoading && !this.waymarkReviewFailed) {
+      this.waymarkReviewLoading = true;
+      void withRuntimeLoadTimeout(loadWaymarkReviewModule(), 'Waymark reader').then(module => {
+        this.waymarkReviewModule = module;
+      }).catch(error => {
+        this.waymarkReviewFailed = true; console.warn(LAZY_LOAD_FAILED, error);
+      }).finally(() => {
+        this.waymarkReviewLoading = false;
+        if (this.sys.settings.active && this.waymarkDrawerOpen) this.requestBattleRender();
       });
-      this.attachTooltip(bg, mark.name, this.waymarkTooltip(mark));
-    });
-
-    if (maxScrollRows > 0) {
-      const trackH = visibleRows * 112 - 8;
-      const trackX = frame.right - 38;
-      const trackY = startY + trackH / 2;
-      const thumbH = Math.max(34, trackH * (visibleRows / totalRows));
-      const thumbTravel = trackH - thumbH;
-      const thumbY = trackY - trackH / 2 + thumbH / 2 + (this.waymarkDrawerScroll / maxScrollRows) * thumbTravel;
-      addRouteWaymarkScrollRailFrame(this, (obj) => this.root.add(obj), trackX, trackY, trackH, thumbY, thumbH);
     }
   }
 
+  private closeBattleWaymarks() {
+    if (!this.waymarkDrawerOpen || this.pauseOverlayOpen || this.settingsOverlayOpen) return;
+    this.waymarkDrawerOpen = false;
+    playUiSound('close'); this.requestBattleRender();
+  }
+
+  private toggleBattleWaymarks() {
+    if (!this.fxLayer?.active || this.combatInteractionLocked() || this.supplyDrawerOpen) return;
+    if (this.waymarkDrawerOpen) { this.closeBattleWaymarks(); return; }
+    this.waymarkDrawerOpen = true;
+    this.waymarkReviewFailed = false;
+    this.requestBattleRender();
+  }
 
   private scrollWaymarkDrawer(deltaRows: number) {
-    const maxScrollRows = Math.max(0, Math.ceil(this.ownedMarkDefs().length / 3) - 3);
+    if (!this.waymarkDrawerOpen || this.pauseOverlayOpen || this.settingsOverlayOpen) return;
+    const maxScrollRows = Math.max(0, Math.ceil(this.ownedMarkDefs().length / 3) - 2);
     const next = clamp(this.waymarkDrawerScroll + deltaRows, 0, maxScrollRows);
     if (next === this.waymarkDrawerScroll) return;
     this.waymarkDrawerScroll = next;
@@ -21413,6 +20477,10 @@ class BattleScene extends Phaser.Scene {
       this.combatSupplyUseBurst(344, 232, repeats > 1 ? 0.76 : 0.64);
       this.checkSupplyUsedMarks();
       this.logEvent(`Used ${supply.name}.`);
+      // Complete costs, choices, consumption and Supply-triggered effects
+      // before handing the final state to rewards. A lethal Supply should
+      // never need an extra card or Roost to clear an empty battlefield.
+      this.checkOutcome();
       this.requestBattleRender();
     });
   }
@@ -21607,12 +20675,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private cleanseFlock(amount: number, source = 'Cleanse') {
-    const before = this.flock.weak + this.flock.frail + this.flock.fouled;
-    this.flock.weak = Math.max(0, this.flock.weak - amount);
-    this.flock.frail = Math.max(0, this.flock.frail - amount);
-    this.flock.fouled = Math.max(0, this.flock.fouled - amount);
-    const after = this.flock.weak + this.flock.frail + this.flock.fouled;
-    const cleared = before - after;
+    const cleared = cleanseFlockDebuffs(this.flock, amount);
     if (cleared > 0) {
       this.logEvent(`${source} clears ${cleared} pressure.`);
       this.cleanseFx(cleared);
@@ -21742,28 +20805,6 @@ class BattleScene extends Phaser.Scene {
     };
   }
 
-  private rewardDeckImpact(card: Card) {
-    const before = this.allDeckCards();
-    const preen = this.mode === 'upgradeReward';
-    const after = preen
-      ? before.map((owned) => owned.id === card.id ? { ...owned, upgraded: true } : owned)
-      : [...before, card];
-    const handTarget = (cards: Card[]) => flockHandTarget(
-      aggregateFlockStats(cards).draw ?? 0,
-      cards.filter((owned) => owned.runtime.suit === 'plumes').length >= KEYSTONE_AT,
-      this.runLeaderId,
-    );
-    return {
-      deckBefore: before.length, deckAfter: after.length,
-      handBefore: handTarget(before), handAfter: handTarget(after),
-      stats: preen
-        ? cardStatRows({ ...card, upgraded: true }).filter((row) => !cardStatRows(card).includes(row))
-        : cardStatRows(card),
-      scope: preen ? 'Preen changes this flight only; collection ownership is unchanged.'
-        : 'Collection record is permanent; this playable copy joins this flight.',
-      drawScope: 'Base target includes Flock Stats and Leader. Opening protection, retained cards, Waymarks and card effects can change actual draws.',
-    };
-  }
 
   private rewardWaymarkView(mark: RuntimeRouteMark, index: number) {
     return {
@@ -21808,7 +20849,7 @@ class BattleScene extends Phaser.Scene {
     const districtLean = isCardReward ? this.districtLeans() : [];
     const subtitle = mode === 'cardReward'
       ? `Pick a card or take Scrap.${districtLean.length ? ` District lean: ${districtLean.join(' / ')}.` : ''}`
-      : mode === 'upgradeReward' ? 'Pick one card.' : 'Pick one route artifact.';
+      : mode === 'upgradeReward' ? 'Pick one card.' : `Read effects, then choose one artifact. ${controlBindingLabel('roost')} / Y: Read.`;
     const result = this.battleRewardRendererModule.renderRewardCeremony({
       scene: this,
       target: this.root,
@@ -21857,6 +20898,7 @@ class BattleScene extends Phaser.Scene {
       },
       onCardOut: () => this.hideCardPreview(),
       onWaymarkSelect: (waymarkId) => this.requestRewardChoice(waymarkId),
+      onWaymarkInspect: (waymarkId) => this.openWaymarkRewardDetail(waymarkId),
       onWaymarkBuildRead: (waymarkId, observations) => {
         this.waymarkRewardBuildObservations[waymarkId] = observations;
       },
@@ -21935,13 +20977,14 @@ class BattleScene extends Phaser.Scene {
   }
 
   private openOverlay(overlay: InspectOverlay) {
+    if (this.combatInteractionLocked()) return;
     this.queueBattleInspectUiLoad();
     if (overlay === 'deck') this.queueCardArtLoad(this.allDeckCards());
     if (overlay === 'draw') this.queueCardArtLoad(this.drawPile);
     if (overlay === 'discard') this.queueCardArtLoad(this.discardPile);
     if (overlay === 'cleared') this.queueCardArtLoad(this.clearedPile);
     this.inspectOverlay = overlay;
-    this.selectedInstanceId = undefined;
+    this.hideCardPreview();
     this.inspectedCardId = overlay === 'flock'
       ? undefined
       : this.battleInspectCards(overlay)[0]?.card.instanceId;
@@ -21962,10 +21005,13 @@ class BattleScene extends Phaser.Scene {
     this.inspectOverlay = undefined;
     this.inspectedCardId = undefined;
     this.cardReviewScroll = 0;
+    playUiSound('close');
+    announceScreenReader('Inspection closed. Your selected card and target are unchanged.');
     this.requestBattleRender();
   }
 
   private switchBattleInspectMode(mode: BattleInspectMode) {
+    if (this.combatCardDetail?.active || this.settingsOverlayOpen || this.pauseOverlayOpen) return;
     if (!this.inspectOverlay || this.inspectOverlay === 'flock' || this.inspectOverlay === mode) return;
     if (mode === 'deck') this.queueCardArtLoad(this.allDeckCards());
     if (mode === 'draw') this.queueCardArtLoad(this.drawPile);
@@ -22172,6 +21218,7 @@ class BattleScene extends Phaser.Scene {
       cyanColor: UI_CYAN,
       reducedMotion: prefersReducedMotion(),
       inputHint: `UP / DOWN CARD  |  ${controlBindingLabel('previous')} / ${controlBindingLabel('next')} ZONE  |  LB / RB PAGE  |  ${controlBindingLabel('back')} CLOSE`,
+      detailsLabel: `Full rules · ${controlBindingLabel('guide')} / R3`,
       assets: {
         pileReviewFrame: uiIconAssets['combat-pile-review-frame'].key,
         pileRowFrame: uiIconAssets['combat-pile-row-frame'].key,
@@ -22206,6 +21253,7 @@ class BattleScene extends Phaser.Scene {
         return card ? renderSnagCardBorder(this, (obj) => this.root.add(obj), card, x, y, width, height, alpha) : false;
       },
       onInspect: (cardId) => this.inspectCard(cardId),
+      onRead: () => this.toggleCombatCardDetail(),
       onScroll: (delta) => this.scrollCardReview(delta),
       onSwitchMode: (mode) => this.switchBattleInspectMode(mode),
       onConfirmSound: () => playUiSound('confirm')
@@ -22213,11 +21261,13 @@ class BattleScene extends Phaser.Scene {
   }
 
   private inspectCard(cardId: string) {
+    if (this.combatCardDetail?.active || this.settingsOverlayOpen || this.pauseOverlayOpen) return;
     this.inspectedCardId = cardId;
     this.requestBattleRender();
   }
 
   private moveCardReviewFocus(direction: -1 | 1, page = false) {
+    if (this.combatCardDetail?.active || this.settingsOverlayOpen || this.pauseOverlayOpen) return true;
     if (!this.inspectOverlay || this.inspectOverlay === 'flock') return false;
     const cards = this.battleInspectCards(this.inspectOverlay);
     if (cards.length === 0) {
@@ -22242,6 +21292,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private scrollCardReview(delta: number) {
+    if (this.combatCardDetail?.active || this.settingsOverlayOpen || this.pauseOverlayOpen) return;
     if (!this.inspectOverlay || this.inspectOverlay === 'flock') return;
     const cards = this.battleInspectCards(this.inspectOverlay);
     const nextScroll = clamp(this.cardReviewScroll + delta, 0, Math.max(0, cards.length - CARD_REVIEW_VISIBLE_ROWS));
@@ -22324,102 +21375,37 @@ class BattleScene extends Phaser.Scene {
     const accent = win ? 0xe8b830 : 0xff7a6e;
     const softAccent = win ? 0x8df4ff : 0xff9d6b;
     const panelW = 760;
-    const panelH = 510;
-    const panelY = 362;
+    const panelH = 570;
+    const panelY = 382;
     const panelLeft = cx - panelW / 2;
     const panelTop = panelY - panelH / 2;
     const statLabelX = cx - 88;
     const statValueX = cx + 330;
     this.root.add(this.add.rectangle(cx, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.82));
-    const flourishKey = uiIconAssets['run-outcome-flourish'].key;
-    if (this.textures.exists(flourishKey)) {
-      this.textures.get(flourishKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      const flourish = this.add.image(cx, panelY - 12, flourishKey)
-        .setDisplaySize(320, 214)
-        .setAlpha(win ? 0.024 : 0.018);
-      if (!win) flourish.setTint(0xff8d73);
-      this.root.add(flourish);
-      if (!prefersReducedMotion()) {
-        this.tweens.add({
-          targets: flourish,
-          alpha: win ? 0.016 : 0.012,
-          scaleX: flourish.scaleX * 1.025,
-          scaleY: flourish.scaleY * 1.025,
-          angle: win ? 1.5 : -1.5,
-          duration: 1640,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
-      }
-    }
-    const reportFrameKey = uiIconAssets['run-outcome-report-frame'].key;
-    const reportFrameLoaded = this.textures.exists(reportFrameKey);
-    if (reportFrameLoaded) this.textures.get(reportFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    this.root.add(this.add.rectangle(cx, panelY, panelW, panelH, 0x0d1420, reportFrameLoaded ? 0.64 : 0.98)
-      .setStrokeStyle(3, accent, reportFrameLoaded ? 0.16 : 0.95));
-    if (reportFrameLoaded) {
-      const reportFrame = this.add.image(cx, panelY + 16, reportFrameKey)
-        .setDisplaySize(824, 566)
-        .setAlpha(win ? 0.46 : 0.4)
-        .setName('run-outcome-report-frame');
-      if (!win) reportFrame.setTint(0xffb195);
-      this.root.add(reportFrame);
-    } else {
-      this.root.add(this.add.rectangle(cx, panelTop + 64, panelW - 20, 4, accent, 0.72));
-      this.root.add(this.add.rectangle(panelLeft + 252, panelY + 30, 2, panelH - 144, 0xffffff, 0.12));
-    }
+    const reportFrameLoaded = false;
+    this.root.add(this.add.rectangle(cx, panelY, panelW, panelH, 0x0d1420, 0.98)
+      .setStrokeStyle(1, 0x7795ab, 0.28).setName('run-outcome-surface'));
+    this.root.add(this.add.rectangle(cx, panelTop + 24, panelW - 64, 2, accent, 0.65));
     const unlockHighlights = this.outcomeUnlockHighlights();
     const hasUnlocks = unlockHighlights.length > 0;
-    const titlePlaqueKey = uiIconAssets['run-outcome-title-plaque'].key;
-    if (this.textures.exists(titlePlaqueKey)) {
-      this.textures.get(titlePlaqueKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      const titlePlaque = this.add.image(cx, 190, titlePlaqueKey)
-        .setDisplaySize(600, 132)
-        .setAlpha(win ? 0.64 : 0.58)
-        .setName('run-outcome-title-plaque');
-      if (!win) titlePlaque.setTint(0xffb195);
-      this.root.add(titlePlaque);
-    } else {
-      this.root.add(this.add.rectangle(cx, 190, 560, 104, 0x07101c, 0.78)
-        .setStrokeStyle(2, accent, 0.72)
-        .setName('run-outcome-title-plaque-fallback'));
-    }
-
     this.root.add(this.add.text(cx, 170, memoryStorageSessionActive() ? 'Practice Complete' : win ? 'Run Complete' : 'Flock Scattered', {
-      fontFamily: 'Georgia, serif', fontSize: '44px', fontStyle: UI_BOLD,
-      color: win ? '#ffe1a3' : '#ffb2a4', stroke: '#000000', strokeThickness: 6
-    }).setOrigin(0.5));
+      fontFamily: 'Georgia, serif', fontSize: '36px', fontStyle: UI_BOLD,
+      color: win ? '#ffe1a3' : '#ffb2a4'
+    }).setOrigin(0.5).setResolution(2));
     this.root.add(this.add.text(cx, 212, memoryStorageSessionActive()
       ? 'Nothing saved. Your active flight, collection, and records are unchanged.' : win
       ? 'The flyway is restored - every district answers to the flock.'
       : `Scattered at ${currentMap().name}${killedBy ? `. Last hit: ${killedBy}` : ''}.`, {
-      fontFamily: UI_FONT, fontSize: '16px', color: UI_SOFT, align: 'center', wordWrap: { width: 540 }
+      fontFamily: UI_FONT, fontSize: '18px', color: UI_SOFT, align: 'center', wordWrap: { width: 680 }
     }).setOrigin(0.5));
 
     const crestKey = uiIconAssets['run-outcome-crest'].key;
     if (this.textures.exists(crestKey)) {
       const crest = this.add.image(panelLeft + 126, 342, crestKey)
-        .setDisplaySize(win ? 176 : 160, win ? 176 : 160)
-        .setAlpha(win ? 0.98 : 0.78)
-        .setAngle(win ? 0 : -5);
+        .setDisplaySize(144, 144)
+        .setAlpha(win ? 0.98 : 0.78);
       if (!win) crest.setTint(0xffb2a4);
       this.root.add(crest);
-      if (!prefersReducedMotion()) {
-        const crestBaseScaleX = crest.scaleX;
-        const crestBaseScaleY = crest.scaleY;
-        crest.setScale(crestBaseScaleX * 0.94, crestBaseScaleY * 0.94);
-        this.tweens.add({
-          targets: crest,
-          scaleX: crestBaseScaleX,
-          scaleY: crestBaseScaleY,
-          angle: win ? 2 : -7,
-          duration: 900,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
-      }
     }
 
     this.bossDossierModule?.renderOutcomeFlightSummary(this, this.root, {
@@ -22442,7 +21428,7 @@ class BattleScene extends Phaser.Scene {
     const totalDealt = summary?.combatResults.reduce((sum, combat) => sum + combat.damageDealt, 0) ?? this.statDealt;
     const stats: Array<[string, string]> = [
       ['Districts', `${districts} / ${runDistrictCount}`],
-      ['Encounters cleared', `${this.completedRouteNodeIds.length}`],
+      ['Encounters cleared', `${(summary?.combatResults ?? this.runCombatResults).filter(combat => this.completedRouteNodeIds.includes(combat.nodeId)).length}`],
       ['Damage dealt / taken', `${totalDealt} / ${totalTaken}`],
     ];
     const statFrameKey = uiIconAssets['run-outcome-stat-row-frame'].key;
@@ -22564,12 +21550,7 @@ class BattleScene extends Phaser.Scene {
       : collectionGoal
         ? collectionGoal.label
       : `${mastery.title}  /  ${mastery.nextGoal} (${mastery.current}/${mastery.target})`;
-    this.root.add(this.add.rectangle(cx, 642, 560, 38, 0x06101a, 0.96)
-      .setStrokeStyle(1, UI_FIELD.cyan, 0.64)
-      .setName('leader-mastery-next-goal'));
-    this.root.add(this.add.text(cx, 642, `NEXT FLIGHT  /  ${nextFlightGoal}`, {
-      fontFamily: UI_FONT, fontSize: '12px', fontStyle: UI_BOLD, color: '#dffbff', fixedWidth: 530, align: 'center', maxLines: 1
-    }).setOrigin(0.5).setName('leader-mastery-next-goal'));
+    this.bossDossierModule?.renderOutcomeNextGoal(this, this.root, nextFlightGoal, UI_FONT);
 
     if (this.outcomeFxPlayed !== this.mode && this.bossDossierModule) {
       this.outcomeFxPlayed = this.mode;
@@ -22670,12 +21651,14 @@ class BattleScene extends Phaser.Scene {
     const retentionActive = this.projectedRoostRetainCount() > 0;
     if (!canPay && !retentionActive) {
       this.statInvalidActions += 1;
+      this.explainCardCost(card);
       return;
     }
     this.controllerChoiceIndex = Math.max(0, cardIndex);
     this.normalizeSelectedEnemy();
     if (this.selectedInstanceId === instanceId) {
       if (canPay) this.playCardAnimated(card);
+      else this.explainCardCost(card);
       return;
     }
     this.selectedInstanceId = instanceId;
@@ -22686,6 +21669,17 @@ class BattleScene extends Phaser.Scene {
     else this.refreshHandCardSelection();
     this.refreshCombatSelectionPreview();
     this.showCardPreview(card);
+  }
+
+  private openWaymarkRewardDetail(id = this.waymarkChoices[this.controllerChoiceIndex]?.id) {
+    if (this.mode !== 'waymarkReward' || !this.rewardPresentationReady() || this.settingsOverlayOpen || this.pauseOverlayOpen || this.combatCardDetail?.active) return;
+    const mark = this.waymarkChoices.find(choice => choice.id === id);
+    if (!mark || !this.battleHandRendererModule) return;
+    this.combatCardDetail = this.battleHandRendererModule.renderWaymarkRewardDetail({
+      scene: this, fontFamily: UI_FONT, boldFontStyle: UI_BOLD,
+      previousLabel: controlBindingLabel('previous'), nextLabel: controlBindingLabel('next'),
+      backLabel: controlBindingLabel('back'), onClose: () => this.closeCombatCardDetail(), announce: announceScreenReader,
+    }, mark.name, mark.description, `${mark.rarity} · ${this.waymarkFamilyLabel(mark)} · ${mark.source}`, this.waymarkRewardBuildObservations[mark.id] ?? []);
   }
 
   private onEnemyClicked(enemyId: string) {
@@ -22739,6 +21733,8 @@ class BattleScene extends Phaser.Scene {
 
   private combatInteractionLocked() {
     return this.mode !== 'battle'
+      || Boolean(this.inspectOverlay)
+      || Boolean(this.combatCardDetail?.active)
       || this.combatAnimationPending
       || Boolean(this.discardChoice)
       || Boolean(this.returnChoice)
@@ -22819,6 +21815,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private playCardAnimated(card: Card, enemyId = this.selectedEnemyId) {
+    if (this.effectiveCost(card) > this.energy) { this.explainCardCost(card); return; }
     // Outcome art is never needed to understand the opening board. Warm it as
     // soon as the player commits so it is ready before a normal victory while
     // keeping route -> first interaction free of those decoded textures.
@@ -22834,6 +21831,19 @@ class BattleScene extends Phaser.Scene {
   private beginPlayerCardFxWindow() {
     this.playerCardFxBaseline = new Set(this.fxLayer?.list ?? []);
     this.playerCardFxLastRetired = 0;
+  }
+
+  private explainCardCost(card: Card, reason?: string) {
+    const missing = this.effectiveCost(card) - this.energy;
+    const summary = reason ?? `Needs ${missing} more Wingbeat${missing === 1 ? '' : 's'}.`;
+    const notice = this.fxLayer?.getByName('combat-action-rejection');
+    if (notice?.getData('source') === displayName(card) && notice.getData('summary') === summary) return;
+    announceScreenReader(`${displayName(card)}. ${summary}`);
+    playUiSound('locked');
+    this.battleFxPresenterModule?.presentTriggerFeedback(this, this.fxLayer, {
+      name: displayName(card), summary, accent: UI_FIELD.gold, turn: this.turn, action: true,
+      fontFamily: UI_FONT, reducedMotion: prefersReducedMotion(), holdScale: textPaceScale(),
+    });
   }
 
   private playerCardFxTransientCount() {
@@ -22856,9 +21866,11 @@ class BattleScene extends Phaser.Scene {
       for (const object of [...this.fxLayer.list]) {
         if (baseline.has(object) || object.active === false || object === this.cardPreview) continue;
         retired += 1;
+        killTweensForTree(this, object);
         object.destroy();
       }
-      this.activeGeneratedFxSprites = 0;
+      // Generated effects release their own count. Baseline effects can still
+      // be alive, so retiring only this card's window must not zero their count.
       this.activeFxParticleBursts = 0;
     }
     this.playerCardFxBaseline = undefined;
@@ -22871,10 +21883,10 @@ class BattleScene extends Phaser.Scene {
     this.hideCardPreview();
     const contract = this.activeCardContract(card);
     const targetEnemy = this.resolvePlayableEnemyTarget(enemyId);
-    if (contract.target === 'enemy' && !targetEnemy) return;
+    if (contract.target === 'enemy' && !targetEnemy) { this.explainCardCost(card, 'No living enemy to target.'); return; }
     enemyId = targetEnemy?.id ?? enemyId;
     const cost = this.effectiveCost(card);
-    if (cost > this.energy) return;
+    if (cost > this.energy) { this.explainCardCost(card); return; }
     const handSizeBeforePlay = this.hand.length;
     const handIndexBeforePlay = Math.max(0, this.hand.findIndex((candidate) => candidate.instanceId === card.instanceId));
     const playedCard = this.removeCardFromHand(card.instanceId);
@@ -22894,12 +21906,27 @@ class BattleScene extends Phaser.Scene {
     this.statMaxCardsPlayedTurn = Math.max(this.statMaxCardsPlayedTurn, this.cardsPlayedThisTurn);
     const resolveDelayMs = options.resolveDelayMs ?? 0;
     if (resolveDelayMs > 0) this.beginPlayerCardFxWindow();
-    this.playCardCastFx(playedCard, enemyId, handIndexBeforePlay, handSizeBeforePlay, contract);
+    this.playCardCastFx(playedCard, enemyId, handIndexBeforePlay, handSizeBeforePlay, contract, resolveDelayMs);
 
     if (resolveDelayMs > 0) {
       this.combatAnimationPending = true;
       this.selectedInstanceId = undefined;
-      this.renderAll();
+      // Preserve the live board through the cast. Only retire the committed
+      // card and update energy; rebuilding every text texture here stalls FX.
+      const committed = this.handCardRects.get(playedCard.instanceId);
+      const presentation = committed?.getData('presentation') as Phaser.GameObjects.GameObject[] | undefined;
+      if (presentation) {
+        for (const object of presentation) {
+          (object as Phaser.GameObjects.Rectangle).setVisible(false);
+          if (object.input) object.input.enabled = false;
+        }
+        this.handCardRects.delete(playedCard.instanceId);
+        const energyValue = this.root.getByName('hud-value-Wingbeats') as Phaser.GameObjects.Text;
+        energyValue?.setText(`${this.energy}/${3 + this.nextTurnEnergyBonus}`);
+        this.selectionOutcomePreview?.destroy(true);
+        this.selectionOutcomePreview = undefined;
+        this.refreshHandCardSelection();
+      } else this.renderAll();
       this.combatPlayerCommitSigil(playedCard, enemyId, contract, resolveDelayMs);
       this.time.delayedCall(resolveDelayMs, () => {
         this.finishPlayedCardResolution(playedCard, enemyId, contract, handIndexBeforePlay, handSizeBeforePlay);
@@ -22927,6 +21954,10 @@ class BattleScene extends Phaser.Scene {
     handIndexBeforePlay: number,
     handSizeBeforePlay: number
   ) {
+    // Impact is the hard lifetime boundary, even if a dropped frame or a pace
+    // change leaves the decorative tween behind the combat clock.
+    const cast = this.fxLayer.getByName('combat-card-cast-ghost');
+    if (cast) { killTweensForTree(this, cast); cast.destroy(); }
     this.resolveCardEffectsInteractive(playedCard, enemyId, contract, (outcome) => {
       this.finalizePlayedCardResolution(playedCard, handIndexBeforePlay, handSizeBeforePlay, outcome);
     });
@@ -22965,10 +21996,6 @@ class BattleScene extends Phaser.Scene {
     // Animated cards publish the settled board once when input unlocks. An
     // intermediate full rebuild here adds a hitch between impact and readiness.
     if (!this.combatAnimationPending || this.mode !== 'battle') this.renderAll();
-    if (this.mode === 'battle') {
-      const castColor = suitFxMeta(playedCard.runtime.suit).color;
-      this.fxCastFocusBurst(FLOCK_FX_X, FLOCK_FX_Y - 24, castColor, 0.82);
-    }
   }
 
   private addCastCardGhost(card: Card, x: number, y: number) {
@@ -23004,71 +22031,22 @@ class BattleScene extends Phaser.Scene {
     return c;
   }
 
-  private playCardCastFx(card: Card, enemyId: string, handIndex = 0, handSize = this.hand.length + 1, contract = this.activeCardContract(card)) {
+  private playCardCastFx(card: Card, _enemyId: string, handIndex = 0, handSize = this.hand.length + 1, contract = this.activeCardContract(card), resolveDelayMs = 0) {
     if (prefersReducedMotion()) return;
-    const meta = suitFxMeta(card.runtime.suit);
-    const activeTarget = contract.target;
-    const target = activeTarget === 'enemy'
-      ? this.enemyView(this.getEnemy(enemyId))
-      : activeTarget === 'allEnemies'
-        ? { x: ENEMY_FX_X, y: ENEMY_FX_Y, scale: 1 }
-        : { x: FLOCK_FX_X, y: FLOCK_FX_Y, scale: 1 };
-    const animKey = SUIT_FX_ANIM[card.runtime.suit ?? ''] ?? this.fxAnimForColor(meta.color);
     this.queueFlockMotion('cast');
-    const travelDirection = target.x >= FLOCK_FX_X ? 1 : -1;
-
     const fromX = this.handCardLeft(handIndex, handSize) + CARD_W / 2;
     const ghost = this.addCastCardGhost(card, fromX, HAND_Y);
-    ghost.setDepth(40);
-    this.fxShardSweep(fromX, HAND_Y - 18, meta.color, travelDirection, 7);
-    this.fxDirectionalStreak(fromX, HAND_Y - 34, FLOCK_FX_X + 18, FLOCK_FX_Y - 82, meta.color, 300);
-
-    this.tweens.chain({
+    const budget = resolveDelayMs || (contract.target === 'enemy' || contract.target === 'allEnemies' ? PLAYER_ATTACK_RESOLVE_DELAY_MS : PLAYER_CARD_RESOLVE_DELAY_MS);
+    // The card cues the bird; actual damage/heal/guard presenters own impact.
+    // Finish before resolution, including slow animation preference. No second
+    // projectile or late shockwave competing with the real result.
+    ghost.setDepth(40).setName('combat-card-cast-ghost').setData('budgetMs', budget);
+    this.tweens.add({
       targets: ghost,
-      tweens: [
-        {
-          x: FLOCK_FX_X + 22,
-          y: FLOCK_FX_Y - 120,
-          scale: 0.78,
-          angle: target.x > FLOCK_FX_X ? -7 : 7,
-          duration: 170,
-          ease: 'Cubic.easeOut',
-          onComplete: () => {
-            this.fxGlowPulse(FLOCK_FX_X + 10, FLOCK_FX_Y - 42, meta.color, 64, 360, 0.16);
-            this.fxSuitSignature(card.runtime.suit, FLOCK_FX_X + 10, FLOCK_FX_Y - 42, meta.color, 0.82);
-            this.playFxAnimation(animKey, FLOCK_FX_X + 10, FLOCK_FX_Y - 42, { scale: 1.18, alpha: 0.8, additive: true });
-            this.fxShardSweep(FLOCK_FX_X + 18, FLOCK_FX_Y - 62, meta.color, travelDirection, 7);
-            if (activeTarget === 'enemy' || activeTarget === 'allEnemies') {
-              this.fxDirectionalStreak(FLOCK_FX_X + 18, FLOCK_FX_Y - 72, target.x, target.y - 68, meta.color, 340);
-            }
-          },
-        },
-        {
-          x: target.x,
-          y: target.y - 86,
-          scale: 0.52,
-          angle: target.x > FLOCK_FX_X ? 6 : -6,
-          alpha: 0.82,
-          duration: activeTarget === 'self' || activeTarget === 'none' || activeTarget === 'choice' ? 120 : 230,
-          ease: 'Quad.easeInOut',
-          onComplete: () => {
-            ghost.destroy(true);
-            const selfTarget = activeTarget === 'self' || activeTarget === 'none' || activeTarget === 'choice';
-            this.fxGlowPulse(target.x, target.y - 18, meta.color, selfTarget ? 68 : 86, 440, 0.2);
-            this.fxShockwave(target.x, target.y - 18, meta.color, selfTarget ? 62 : 82, 460, selfTarget ? -6 : 8);
-            this.fxSuitSignature(card.runtime.suit, target.x, target.y - 18, meta.color, selfTarget ? 0.82 : 1.02);
-            this.fxImpactBurst(target.x, target.y - 18, meta.color, card.runtime.suit, selfTarget ? 0.78 : 1.08);
-            this.playFxAnimation(animKey, target.x, target.y - 18, { scale: 1.38, alpha: 0.88, additive: true });
-            this.fxMoteBurst(target.x, target.y - 18, meta.color, {
-              count: selfTarget ? 9 : 15,
-              speed: selfTarget ? 84 : 142,
-              lifespan: 420,
-              scale: 0.56,
-              gravityY: selfTarget ? -16 : 16,
-            });
-          },
-        },
-      ],
+      x: FLOCK_FX_X + 22, y: FLOCK_FX_Y - 100,
+      scale: 0.5, angle: -7, alpha: 0,
+      duration: budget * 0.75 * this.tweens.timeScale,
+      ease: 'Cubic.easeOut', onComplete: () => ghost.destroy(true),
     });
   }
 
@@ -23560,12 +22538,14 @@ class BattleScene extends Phaser.Scene {
       birdAudio.play('hitConfirm', damage >= 8 ? 1.1 : 0.9);
       this.queueEnemyMotion(enemy.id, 'hit');
       strike(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, view.x, view.y, meta.color);
-      this.combatImpactFlash(view.x, view.y - 16, meta.color, 1, damage >= 8);
       this.combatPlayerHitConfirm(view.x, view.y - 18, meta.color, damage >= 8);
-      floatingText(this, this.fxLayer, view.x, view.y - 40, `${damage}`, meta.hex);
-      burst(this, this.fxLayer, view.x, view.y, meta.color, 8);
-      this.sparkBurst(view.x, view.y - 18, meta.color, card ? 18 : 10, damage >= 8 ? 210 : 150);
-      this.pulseRing(view.x, view.y - 18, meta.color, damage >= 8 ? 88 : 58, 420);
+      this.presentNumberFeedback(view.x, view.y - 40, meta.hex, {
+        target: enemy.id, kind: 'damage', source, amount: damage, suffix: ' damage', reducedMotion: prefersReducedMotion(),
+      });
+      this.fxMoteBurst(view.x, view.y - 18, meta.color, {
+        count: damage >= 8 ? 8 : 4, speed: damage >= 8 ? 95 : 65,
+        lifespan: 240, scale: 0.3,
+      });
       if (damage >= 8 && currentScreenShakeState().enabled) shakeCamera(this, 0.004);
       if (enemy.hp > 0) {
         // Drain the lost segment of the enemy HP bar.
@@ -23632,7 +22612,9 @@ class BattleScene extends Phaser.Scene {
     if (block > 0) {
       birdAudio.play('cover', Math.min(1.35, 0.7 + block / 12));
       this.queueFlockMotion('brace');
-      floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, `+${block} Cover`, '#7ab8d6');
+      this.presentNumberFeedback(FLOCK_FX_X, FLOCK_FX_Y, '#7ab8d6', {
+        target: 'flock', kind: 'cover', source, amount: block, suffix: ' Cover', reducedMotion: prefersReducedMotion(),
+      });
       this.coverBuildFx(card?.runtime.suit);
     }
   }
@@ -23649,7 +22631,9 @@ class BattleScene extends Phaser.Scene {
       birdAudio.play('heal', Math.min(1.35, 0.7 + healed / 12));
       this.logEvent(`${source} restores ${healed} Cohesion.`);
       this.queueFlockMotion('heal');
-      floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y, `+${healed}`, '#8fd6a0');
+      this.presentNumberFeedback(FLOCK_FX_X, FLOCK_FX_Y, '#8fd6a0', {
+        target: 'flock', kind: 'heal', source, amount: healed, suffix: ' healed', reducedMotion: prefersReducedMotion(),
+      });
       this.healFx();
       this.checkHealFlockMarks();
     }
@@ -23666,7 +22650,10 @@ class BattleScene extends Phaser.Scene {
         : `${source} overflows into ${overheal} Cover.`);
       this.queueFlockMotion('brace');
       if (signatureOverflow) this.combatOverflowShelter(FLOCK_FX_X + 46, FLOCK_FX_Y - 70, 1);
-      floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 22, `+${overheal} Cover`, '#7ab8d6');
+      this.presentNumberFeedback(FLOCK_FX_X, FLOCK_FX_Y, '#7ab8d6', {
+        target: 'flock', kind: 'cover', source: signatureOverflow ? 'Leader: Overflow Shelter' : source,
+        amount: overheal, suffix: ' Cover', reducedMotion: prefersReducedMotion(),
+      });
       this.coverBuildFx('nests');
     }
   }
@@ -23719,7 +22706,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private endTurn(options: EndTurnOptions = {}) {
-    if (this.combatInteractionLocked()) return;
+    if (this.combatInteractionLocked() || this.supplyDrawerOpen || this.waymarkDrawerOpen) return;
     recordFirstFlightGuideEvent('roost');
     birdAudio.play('turn');
 
@@ -23910,7 +22897,7 @@ class BattleScene extends Phaser.Scene {
       enemyMoveContext = this.enemyContext(); // branch on live state per attacker
       const move = currentMove(enemy);
       for (const effect of move.effects) {
-        if (this.flock.hp <= 0) break;
+        if (enemy.hp <= 0 || this.flock.hp <= 0) break;
         this.resolveEnemyEffect(enemy, effect, move.label);
       }
       this.runSeenEnemyMoves.add(this.enemyMovePacingKey(enemy, move));
@@ -23974,25 +22961,25 @@ class BattleScene extends Phaser.Scene {
         this.damageFlock(enemy, value, moveLabel);
         break;
       case 'gainCover':
-        this.giveEnemyCover(enemy, value, enemy.name, 'guards');
+        this.giveEnemyCover(enemy, value, enemy.name, 'guards', enemy.id);
         break;
       case 'heal':
-        this.healEnemy(enemy, value, enemy.name, 'scavenges');
+        this.healEnemy(enemy, value, enemy.name, 'scavenges', enemy.id);
         break;
       case 'healAlly':
-        this.healEnemy(this.supportTargetEnemy(enemy, parsed.args[0]) ?? enemy, value, enemy.name, 'patches');
+        this.healEnemy(this.supportTargetEnemy(enemy, parsed.args[0]) ?? enemy, value, enemy.name, 'patches', enemy.id);
         break;
       case 'healAllEnemies':
         for (const target of this.enemies.filter((candidate) => candidate.hp > 0)) {
-          this.healEnemy(target, value, enemy.name, 'rallies');
+          this.healEnemy(target, value, enemy.name, 'rallies', enemy.id);
         }
         break;
       case 'gainCoverAlly':
-        this.giveEnemyCover(this.supportTargetEnemy(enemy, parsed.args[0]) ?? enemy, value, enemy.name, 'screens');
+        this.giveEnemyCover(this.supportTargetEnemy(enemy, parsed.args[0]) ?? enemy, value, enemy.name, 'screens', enemy.id);
         break;
       case 'gainCoverAllEnemies':
         for (const target of this.enemies.filter((candidate) => candidate.hp > 0)) {
-          this.giveEnemyCover(target, value, enemy.name, 'screens');
+          this.giveEnemyCover(target, value, enemy.name, 'screens', enemy.id);
         }
         break;
       case 'nextAttackBonusAlly':
@@ -24089,7 +23076,7 @@ class BattleScene extends Phaser.Scene {
     }
   }
 
-  private healEnemy(target: Enemy, amount: number, sourceName: string, verb: string) {
+  private healEnemy(target: Enemy, amount: number, sourceName: string, verb: string, sourceId = sourceName) {
     const before = target.hp;
     target.hp = Math.min(target.maxHp, target.hp + amount);
     const healed = target.hp - before;
@@ -24099,38 +23086,21 @@ class BattleScene extends Phaser.Scene {
     const y = view.y + (target.runtime.type === 'boss' ? 48 : 42) * view.scale;
     birdAudio.play('enemyHeal', Math.min(1.25, 0.76 + healed * 0.08));
     this.combatEnemyMend(view.x, y, Phaser.Math.Clamp(0.88 + healed * 0.04, 0.94, 1.18));
-    this.combatEnemyHealBeam(view.x - 150 * view.scale, y - 34, view.x, y, Phaser.Math.Clamp(0.86 + healed * 0.03, 0.9, 1.1));
-    this.fxGlowPulse(view.x, y, 0x55d7c8, 96, 430, 0.2);
-    this.fxMoteBurst(view.x, y + 6, 0xd6c066, {
-      count: Phaser.Math.Clamp(9 + healed * 2, 10, 22),
-      speed: 98,
-      lifespan: 390,
-      scale: 0.5,
-      gravityY: -8,
-      spreadX: 16,
-      spreadY: 10,
+    this.presentNumberFeedback(view.x, view.y - 40, '#8fd6a0', {
+      target: target.id, kind: 'heal', source: sourceId, amount: healed, suffix: ' healed', reducedMotion: prefersReducedMotion(),
     });
-    floatingText(this, this.fxLayer, view.x, view.y - 74, `+${healed}`, '#8fd6a0');
   }
 
-  private giveEnemyCover(target: Enemy, amount: number, sourceName: string, verb: string) {
+  private giveEnemyCover(target: Enemy, amount: number, sourceName: string, verb: string, sourceId = sourceName) {
     target.block += amount;
     this.logEvent(`${sourceName} ${verb} ${target.name} for ${amount} Cover.`);
     const view = this.enemyView(target);
     const y = view.y + (target.runtime.type === 'boss' ? 50 : 44) * view.scale;
     birdAudio.play('enemyCover', Math.min(1.35, 0.82 + amount * 0.06));
     this.combatEnemyCover(view.x, y, Phaser.Math.Clamp(0.86 + amount * 0.04, 0.92, 1.16));
-    this.fxGlowPulse(view.x, y, 0xd6a85f, 78, 360, 0.16);
-    this.fxMoteBurst(view.x, y + 4, 0xff9d4d, {
-      count: Phaser.Math.Clamp(8 + amount * 2, 10, 20),
-      speed: 86,
-      lifespan: 340,
-      scale: 0.46,
-      gravityY: 0,
-      spreadX: 14,
-      spreadY: 8,
+    this.presentNumberFeedback(view.x, view.y - 40, '#7ab8d6', {
+      target: target.id, kind: 'cover', source: sourceId, amount, suffix: ' Cover', reducedMotion: prefersReducedMotion(),
     });
-    floatingText(this, this.fxLayer, view.x, view.y - 74, `+${amount} Cover`, '#7ab8d6');
   }
 
   private boostEnemyAttack(target: Enemy, amount: number, sourceName: string) {
@@ -24164,48 +23134,88 @@ class BattleScene extends Phaser.Scene {
   }
 
   private incomingAttackDamage(enemy: Enemy) {
-    // Incoming damage is the sum of the current move's damage(flock, N) effects.
-    return currentMove(enemy).effects.reduce((total, effect) => {
-      const parsed = parseEffect(effect);
-      if (!parsed || parsed.name !== 'damage') return total;
-      return total
-        + parseEffectValue(parsed.args[1] ?? parsed.args[0], 0)
-        + enemy.nextAttackBonus
-        + enemy.damageBonus
-        + difficultyMods(this.runDifficulty).enemyDamageBonus;
-    }, 0);
+    return this.enemyDamageProjection(this.enemies, this.flock, false, enemy.id).total;
   }
 
   private incomingFlockDamagePreview() {
-    const damages = this.enemies
-      .filter((enemy) => enemy.hp > 0)
-      .map((enemy) => this.incomingAttackDamage(enemy))
-      .filter((damage) => damage > 0);
-    const total = damages.reduce((sum, damage) => sum + damage, 0);
-    const blocked = Math.min(this.flock.block, total);
-    const hpLoss = Math.max(0, total - blocked);
-    return {
-      total,
-      blocked,
-      hpLoss,
-      afterHp: Math.max(0, this.flock.hp - hpLoss),
-      attackers: damages.length,
-    };
+    return this.enemyDamageProjection(this.enemies, this.flock, !this.combatAnimationPending);
   }
 
-  private incomingNextAttackDamage() {
-    const nextAttacker = this.enemies
-      .filter((enemy) => enemy.hp > 0)
-      .find((enemy) => moveDealsDamage(currentMove(enemy)));
-    return nextAttacker ? this.incomingAttackDamage(nextAttacker) : 0;
+  private incomingNextAttackDamage(enemies = this.enemies, flock = this.flock) {
+    return this.enemyDamageProjection(enemies, flock, false, undefined, true).total;
+  }
+
+  private enemyDamageProjection(enemies: Enemy[], flock: Flock, roost: boolean, onlyEnemyId?: string, stopAfterFirstAttack = false) {
+    const context = roost
+      ? { turn: this.turn, c: this.cardsPlayedThisTurn, z: this.zeroCostThisTurn, h: this.hand.length }
+      : this.enemyContext();
+    const marks = this.ownedMarkDefs();
+    const firstSkyEffects = marks.filter(mark => mark.trigger === 'firstOpenSkyIncrease').flatMap(routeMarkEffects);
+    return projectEnemyPhase({
+      flock, enemies, mods: difficultyMods(this.runDifficulty),
+      move: (enemy, projectedFlock) => currentMove(enemy, { ...context, flock: projectedFlock }),
+      condition: (condition, enemy, projectedFlock) => evaluateEnemyCondition(condition, enemy, { ...context, flock: projectedFlock }),
+      firstSkyReduction: this.markFirstOpenSkyConsumed ? 0 : this.markValue('firstOpenSkyIncrease', 'reduceOpenSky'),
+      firstSkyEffects, onlyEnemyId, stopAfterFirstAttack,
+      counterstrike: {
+        available: this.leaderSignatureAvailable('roostkeeper', 'perfectBrace'),
+        firstAttackKeystone: this.firstAttackThisTurn && this.keystoneActive('quills'),
+        damage: (amount, projected, enemy, first) => cardDamageOutcome(amount, projected, enemy.block, false, 0, first),
+        coverBreakEffects: marks.filter(mark => mark.trigger === 'onEnemyCoverBroken' && !this.markFiredThisTurn.has(mark.id)).map(routeMarkEffects),
+      },
+      healing: {
+        overflowAvailable: this.leaderSignatureAvailable('tidewarden', 'firstOverheal'),
+        markEffects: marks.filter(mark => mark.trigger === 'onHealFlock' && !this.markFiredThisTurn.has(mark.id)).map(routeMarkEffects),
+      },
+      prepare: roost ? (projected, projectedEnemies, unknown, heal) => {
+        const apply = (text: string, snag = false): void => {
+          const conditional = /^if (.+?) then (.+)$/.exec(text);
+          if (conditional) {
+            if (conditional[1] === 'noCover') { if (projected.block <= 0) apply(conditional[2], snag); }
+            else unknown.add('Snag condition not projected');
+            return;
+          }
+          const effect = parseEffect(text);
+          if (!effect) { unknown.add('Roost rule not projected'); return; }
+          const value = parseEffectValue(effect.args[1] ?? effect.args[0], 0);
+          switch (effect.name) {
+            case 'damageFlock': projected.hp = Math.max(0, projected.hp - value); break;
+            case 'applyOpenSky': projected.exposed = true; break;
+            case 'applyWinded': projected.weak += value; break;
+            case 'enemyNextAttackBonus': { const enemy = projectedEnemies.find(enemy => enemy.hp > 0); if (enemy) enemy.nextAttackBonus += value; break; }
+            case 'gainCover': projected.block += value; break;
+            case 'gainCoverPerWaymark': projected.block += value * this.routeMarks.length; break;
+            case 'gainOpenSkyGuard': projected.openSkyGuard += value; break;
+            case 'reduceNextOpenSky': projected.openSkyReduction += value; break;
+            case 'heal': heal(value); break;
+            case 'cleanseFlock':
+              cleanseFlockDebuffs(projected, value);
+              break;
+            // Roost counters were captured before Snags; these do not change
+            // enemy-phase damage. Enemy Cover is cleared at phase entry.
+            case 'loseWingbeat': case 'shuffleSelfToDraw': case 'enemyGainCover':
+            case 'gainWingbeat': case 'gainEnergyNextTurn': case 'nextTurnDraw':
+            case 'gainResonance': case 'gainScrap': case 'retainHand': case 'nextCoverBonus': break;
+            default: unknown.add(snag ? 'Snag choice not projected' : 'Roost trigger not projected');
+          }
+        };
+        this.hand.filter(card => isSnagCard(card)).forEach(card => card.runtime.heldEffects?.forEach(effect => apply(effect, true)));
+        marks.filter(mark => !this.markFiredThisCombat.has(mark.id)
+          && this.roostRestraintMarkMatches(mark, this.hand.length, this.energy, this.cardsPlayedThisTurn))
+          .forEach(mark => routeMarkEffects(mark).forEach(effect => apply(effect)));
+        if (projected.molt || this.cardsPlayedThisTurn >= OVEREXTENSION_CARD_THRESHOLD) projected.exposed = true;
+        projected.molt = false;
+      } : undefined,
+    });
   }
 
   private damageFlock(enemy: Enemy, amount: number, moveLabel = currentMove(enemy).label) {
     this.queueEnemyMotion(enemy.id, 'attack');
     const mods = difficultyMods(this.runDifficulty);
-    let damage = amount + enemy.nextAttackBonus + enemy.damageBonus + mods.enemyDamageBonus;
+    const hit = incomingHit(amount, enemy, this.flock, mods,
+      this.markFirstOpenSkyConsumed ? 0 : this.markValue('firstOpenSkyIncrease', 'reduceOpenSky'));
+    let damage = hit.damage;
     enemy.nextAttackBonus = 0;
-    if (enemy.weak > 0) damage = Math.floor(damage * 0.75);
     if (this.flock.exposed) {
       const guarded = this.flock.openSkyGuard > 0;
       if (guarded) {
@@ -24214,10 +23224,9 @@ class BattleScene extends Phaser.Scene {
         this.combatOpenSkyGuard(FLOCK_FX_X - 6, FLOCK_FX_Y - 34, 1.05, true);
         this.sparkBurst(FLOCK_FX_X - 6, FLOCK_FX_Y - 22, 0x8df4ff, 18, 150);
       } else {
-        let openSky = mods.openSkyBonus;
+        const openSky = hit.skyBonus;
         if (this.flock.openSkyReduction > 0) {
-          const reduced = Math.min(openSky, this.flock.openSkyReduction);
-          openSky = Math.max(0, openSky - reduced);
+          const reduced = hit.reductionUsed;
           this.flock.openSkyReduction = Math.max(0, this.flock.openSkyReduction - reduced);
           if (reduced > 0) this.logEvent(`Scouting softens Open Sky by ${reduced}.`);
         }
@@ -24225,13 +23234,11 @@ class BattleScene extends Phaser.Scene {
         if (!this.markFirstOpenSkyConsumed) {
           const reduce = this.markValue('firstOpenSkyIncrease', 'reduceOpenSky');
           if (reduce > 0) {
-            openSky = Math.max(0, openSky - reduce);
             this.markFirstOpenSkyConsumed = true;
             this.logEvent('Quiet Landing softens the open sky.');
             this.applyMarkTrigger('firstOpenSkyIncrease');
           }
         }
-        damage += openSky;
         if (openSky > 0) {
           this.combatOpenSkyBreak(FLOCK_FX_X + 6, FLOCK_FX_Y + 4, Phaser.Math.Clamp(0.72 + openSky * 0.04, 0.78, 0.98));
         }
@@ -24273,14 +23280,16 @@ class BattleScene extends Phaser.Scene {
       const from = this.enemyView(enemy);
       strike(this, this.fxLayer, from.x, from.y, FLOCK_FX_X, FLOCK_FX_Y, 0xff7a6e);
       this.combatEnemySwipe(from.x, from.y - 18, FLOCK_FX_X, FLOCK_FX_Y + 18, damage >= 8);
-      this.combatImpactFlash(FLOCK_FX_X, FLOCK_FX_Y + 18, 0xff7a6e, -1, damage >= 8);
-      this.combatFlockImpactBurst(FLOCK_FX_X, FLOCK_FX_Y + 18, damage >= 8);
       this.combatEnemyImpactContact(FLOCK_FX_X + 84, FLOCK_FX_Y + 18, from.x, damage >= 8);
       if (damage >= 8 || enemy.runtime.type === 'boss' || enemy.runtime.type === 'elite') {
         this.combatEnemyHeavyContact(FLOCK_FX_X + 78, FLOCK_FX_Y + 20, from.x, damage >= 10 ? 1.08 : 0.96);
       }
-      floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 8, `-${damage}`, '#ff7a6e');
-      this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y + 32, 0xff9d6b, 16, 155);
+      this.presentNumberFeedback(FLOCK_FX_X, FLOCK_FX_Y, '#ff7a6e', {
+        target: 'flock', kind: 'damage', source: `${enemy.id}:${moveLabel}`, amount: damage, suffix: ' damage', reducedMotion: prefersReducedMotion(),
+      });
+      this.fxMoteBurst(FLOCK_FX_X, FLOCK_FX_Y + 32, 0xff9d6b, {
+        count: damage >= 8 ? 8 : 4, speed: 80, lifespan: 240, scale: 0.3,
+      });
       if (currentScreenShakeState().enabled) shakeCamera(this, 0.005);
       // Drain the lost segment of the Cohesion bar.
       const left = FLOCK_HP_BAR.x - FLOCK_HP_BAR.w / 2;
@@ -24338,6 +23347,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private handleBattleSkipOrRunKit() {
+    if (this.combatCardDetail?.active) return;
     if (this.mode === 'cardReward') {
       if (this.rewardPresentationReady() && !this.settingsOverlayOpen && !this.pauseOverlayOpen) {
         this.requestSkipCardReward();
@@ -24784,114 +23794,47 @@ class BattleScene extends Phaser.Scene {
       .setName('combat-card-back-fallback');
   }
 
-  private animateDraw(count: number, afterShuffle = false) {
-    if (!this.fxLayer) return; // init draws before create() - no FX yet
-    const from = this.drawPilePos();
-    const handN = this.hand.length;
-    birdAudio.play('draw', Math.min(1.25, 0.72 + count * 0.08));
-    const burstX = afterShuffle ? GAME_WIDTH / 2 + 70 : from.x + 232;
-    const burstY = afterShuffle ? HAND_Y - 330 : HAND_Y - 150;
-    this.fxGlowPulse(burstX - 12, burstY + 10, 0x8df4ff, afterShuffle ? 74 : 118, 560, afterShuffle ? 0.14 : 0.24);
-    this.combatCardDraw(burstX, burstY, afterShuffle ? 0.54 : Phaser.Math.Clamp(0.9 + count * 0.05, 0.98, 1.18));
-    this.fxMoteBurst(afterShuffle ? burstX - 12 : from.x + 208, afterShuffle ? burstY + 18 : HAND_Y - 126, 0x8df4ff, {
-      count: Phaser.Math.Clamp(8 + count * 2, 10, 18),
-      speed: afterShuffle ? 98 : 130,
-      lifespan: afterShuffle ? 280 : 330,
-      scale: afterShuffle ? 0.34 : 0.42,
-      gravityY: 0,
-      spreadX: afterShuffle ? 18 : 26,
-      spreadY: 12,
+  private animatePileCard(from: { x: number; y: number }, to: { x: number; y: number }, kind: string, delay = 0) {
+    if (!this.fxLayer?.active || prefersReducedMotion()) return;
+    const back = this.createCombatCardBack(from.x, from.y, 32, 48, 0.78, -4)
+      .setName('combat-pile-transfer').setData('kind', kind).setData('from', from).setData('to', to);
+    this.fxLayer.add(back);
+    this.tweens.add({
+      targets: back, x: to.x, y: to.y, alpha: 0, angle: 4,
+      duration: this.combatTimingDelay(180), delay: this.combatTimingDelay(delay), ease: 'Cubic.easeOut',
+      onComplete: () => back.destroy(),
     });
-    for (let i = 0; i < count; i += 1) {
-      const slot = handN - count + i;
-      const targetX = this.handSlotCenterX(slot);
-      const startX = afterShuffle ? GAME_WIDTH / 2 + 36 : from.x;
-      const startY = afterShuffle ? HAND_Y - 286 : from.y;
-      const back = this.createCombatCardBack(startX, startY, CARD_W * 0.42, CARD_H * 0.42, 0.96, -5);
-      this.fxLayer.add(back);
-      const baseScaleX = back.scaleX;
-      const baseScaleY = back.scaleY;
-      this.tweens.add({
-        targets: back,
-        x: targetX,
-        y: HAND_Y,
-        scaleX: baseScaleX * (afterShuffle ? 1.35 : 2.4),
-        scaleY: baseScaleY * (afterShuffle ? 1.35 : 2.4),
-        alpha: 0,
-        duration: 260, delay: i * 65, ease: 'Cubic.easeOut', onComplete: () => back.destroy(),
-      });
+    back.once(Phaser.GameObjects.Events.DESTROY, () => this.tweens.killTweensOf(back));
+  }
+
+  private animateDraw(count: number, _afterShuffle = false) {
+    if (!this.fxLayer?.active || count <= 0) return;
+    birdAudio.play('draw', Math.min(1.25, 0.72 + count * 0.08));
+    // Three representative transfers, not an unbounded stagger over a hand
+    // that is already usable. Counts and actual card order remain authoritative.
+    const shown = Math.min(3, count, this.hand.length);
+    for (let i = 0; i < shown; i += 1) {
+      this.animatePileCard(this.drawPilePos(), { x: this.handSlotCenterX(this.hand.length - shown + i), y: HAND_Y }, 'draw', i * 20);
     }
   }
 
-  private animateDiscard(count: number, fromX = GAME_WIDTH - 330, fromY = HAND_Y - 20, scale = 1) {
-    if (!this.fxLayer || count <= 0) return;
-    const to = this.discardPilePos();
+  private animateDiscard(count: number, fromX = GAME_WIDTH - 330, fromY = HAND_Y - 20, _scale = 1) {
+    if (!this.fxLayer?.active || count <= 0) return;
     birdAudio.play('discard', Math.min(1.25, 0.68 + count * 0.08));
-    const burstX = to.x - 16;
-    const burstY = HAND_Y - 34;
-    this.combatDiscardSweep(burstX, burstY, Phaser.Math.Clamp(scale * 0.64 + count * 0.025, 0.58, 0.78), count);
-    for (let i = 0; i < Math.min(4, count); i += 1) {
-      const back = this.createCombatCardBack(fromX - i * 16, fromY - i * 4, CARD_W * 0.34, CARD_H * 0.34, 0.9, 6);
-      this.fxLayer.add(back);
-      this.tweens.add({
-        targets: back,
-        x: to.x - 8 + i * 5,
-        y: to.y - 4 + i * 2,
-        scaleX: 0.42,
-        scaleY: 0.42,
-        angle: 28 + i * 14,
-        alpha: 0,
-        duration: 260,
-        delay: i * 42,
-        ease: 'Cubic.easeIn',
-        onComplete: () => back.destroy(),
-      });
+    for (let i = 0; i < Math.min(3, count); i += 1) {
+      this.animatePileCard({ x: fromX - i * 12, y: fromY }, this.discardPilePos(), 'discard', i * 20);
     }
   }
 
-  // A flurry of cards sweeps from the discard pile back into the draw pile.
   private animateShuffle() {
-    if (!this.fxLayer) return;
+    if (!this.fxLayer?.active) return;
     birdAudio.play('shuffle', 1);
-    banner(this, this.fxLayer, 360, 122, 'Shuffle!', '#7ab8d6');
-    const from = this.discardPilePos();
-    const to = this.drawPilePos();
-    this.fxGlowPulse(GAME_WIDTH / 2 + 84, HAND_Y - 378, 0x8df4ff, 78, 620, 0.14);
-    this.combatShuffleVortex(GAME_WIDTH / 2 + 112, HAND_Y - 430, 0.24);
-    for (let i = 0; i < 6; i += 1) {
-      const b = this.createCombatCardBack(from.x + 38 + i * 5, HAND_Y - 220 - i * 4, 24, 34, 0.92, 6);
-      this.fxLayer.add(b);
-      const baseScaleX = b.scaleX;
-      const baseScaleY = b.scaleY;
-      const midX = GAME_WIDTH / 2 + Phaser.Math.Between(-80, 80);
-      const midY = HAND_Y - 306 + Phaser.Math.Between(-16, 18);
-      this.tweens.chain({
-        targets: b,
-        tweens: [
-          {
-            x: midX,
-            y: midY,
-            angle: 112,
-            scaleX: baseScaleX * 1.12,
-            scaleY: baseScaleY * 1.12,
-            duration: 210,
-            delay: i * 42,
-            ease: 'Cubic.easeOut',
-          },
-          {
-            x: to.x + 14,
-            y: to.y - 20,
-            angle: 244,
-            scaleX: baseScaleX * 0.72,
-            scaleY: baseScaleY * 0.72,
-            alpha: 0,
-            duration: 260,
-            ease: 'Cubic.easeInOut',
-          },
-        ],
-        onComplete: () => b.destroy(),
-      });
-    }
+    this.animatePileCard(this.discardPilePos(), this.drawPilePos(), 'shuffle');
+  }
+
+  private animateReturnCard(instanceId: string) {
+    const index = this.hand.findIndex(card => card.instanceId === instanceId);
+    if (index >= 0) this.animatePileCard(this.discardPilePos(), { x: this.handSlotCenterX(index), y: HAND_Y }, 'return');
   }
 
 
@@ -24970,6 +23913,7 @@ class BattleScene extends Phaser.Scene {
       this.drawCards(drawCount);
       this.logEvent(`Route memory draws ${drawCount}.`);
     }
+    this.animateReturnCard(card.instanceId);
   }
 
 
@@ -25228,6 +24172,8 @@ class BattleScene extends Phaser.Scene {
   }
 
   private logEvent(message: string) {
+    this.combatHistory.push(`Beat ${this.turn} · ${message}`);
+    this.combatHistory = this.combatHistory.slice(-256);
     this.log.push(message);
     this.log = this.log.slice(-8);
   }
@@ -25252,11 +24198,12 @@ class BattleScene extends Phaser.Scene {
         system: this.systemOverlayLayer
       },
       counters: this as unknown as Record<string, unknown>,
-      keywordTooltipFrameCount: (this as Phaser.Scene & { keywordTooltipFrameCount?: number }).keywordTooltipFrameCount ?? 0
+      keywordTooltipFrameCount: 0
     }) ?? {};
     return {
       mode: this.mode,
       scene: 'BattleScene',
+      keywordTooltip: keywordTooltipState(this),
       practice: memoryStorageSessionActive(),
       assetReadiness: this.battleAssetReadiness.snapshot(),
       combatAnimationPending: this.combatAnimationPending,
@@ -25398,7 +24345,7 @@ class BattleScene extends Phaser.Scene {
       },
       firstCombatGuidance: {
         active: this.isGuidedFirstCombat() || Boolean(this.firstMoltGuideCard()),
-        rendered: this.root?.list.some((child) => child.name === 'first-combat-guidance') ?? false,
+        rendered: this.root?.list.some((child) => child.name === 'first-combat-guidance' && (child as Phaser.GameObjects.Text).visible) ?? false,
         cardName: firstCombatGuideCard ? displayName(firstCombatGuideCard) : undefined,
         cost: firstCombatGuideCard ? this.effectiveCost(firstCombatGuideCard) : undefined,
         target: firstCombatGuideTarget?.name,
@@ -25417,6 +24364,15 @@ class BattleScene extends Phaser.Scene {
         currentlyExposed: this.flock.exposed
       },
       combatInputFocus: this.combatInputFocusState(),
+      combatCardDetail: this.combatCardDetail?.active ? {
+        kind: this.combatCardDetail.getData('kind'),
+        card: this.combatCardDetail.getData('cardName'),
+        page: this.combatCardDetail.getData('page') + 1,
+        pageCount: this.combatCardDetail.getData('pageCount'),
+        heading: this.combatCardDetail.getData('heading'),
+        body: this.combatCardDetail.getData('body'),
+        controls: `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} or controller Left / Right to read pages. ${controlBindingLabel('back')} or controller B to close.`,
+      } : undefined,
       selectedCard: this.selectedInstanceId,
       selectedCardOutcome: this.selectedCardOutcomePreview(),
       discardChoice: this.discardChoice && this.discardChoiceModule
@@ -25442,12 +24398,12 @@ class BattleScene extends Phaser.Scene {
                 name: displayName(card),
                 cost: this.effectiveCost(card),
                 role: contract.role,
-                summary: compactCardEffectSummary(contract.effects),
+                summary: formatEffects(contract.effects),
               };
             }),
             {
-              choose: `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} / D-pad`,
-              confirm: `${controlBindingLabel('confirm')} / A / pointer`,
+              choose: `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} / D-pad / tap a card to read`,
+              confirm: `${controlBindingLabel('confirm')} / A / Return selected card button`,
               cancel: 'Mandatory choice; Back / B does not cancel',
             },
           )
@@ -25541,7 +24497,7 @@ class BattleScene extends Phaser.Scene {
         target: card.target
       })),
       rewardDecisionDeltas: this.root?.list
-        .filter((child): child is Phaser.GameObjects.Text => child.name === 'reward-decision-delta' && child instanceof Phaser.GameObjects.Text)
+        .filter((child): child is Phaser.GameObjects.Text => ['reward-decision-delta', 'reward-preen-change'].includes(child.name) && child instanceof Phaser.GameObjects.Text)
         .map((child) => child.text) ?? [],
       enemies: this.enemies.map((enemy) => ({
         id: enemy.id,
@@ -25575,6 +24531,8 @@ class BattleScene extends Phaser.Scene {
       },
       inspectOverlay: this.inspectOverlay,
       waymarkDrawerOpen: this.waymarkDrawerOpen,
+      waymarkReview: this.waymarkReviewModule?.battleWaymarkReading(this),
+      waymarkReaderNotice: this.waymarkDrawerOpen ? (this.root.getByName('battle-waymark-loading') as Phaser.GameObjects.Text)?.text : undefined,
       supplyDrawerOpen: this.supplyDrawerOpen,
       waymarkFeedback: [...this.waymarkFeedback],
       supplyFeedback: [...this.supplyFeedback],
@@ -25638,6 +24596,7 @@ class BattleScene extends Phaser.Scene {
     };
     const bindings = {
       select: 'Up / Down',
+      details: controlBindingLabel('guide'),
       previousZone: controlBindingLabel('previous'),
       nextZone: controlBindingLabel('next'),
       back: controlBindingLabel('back'),
@@ -26467,26 +25426,25 @@ function flockStatusEntries(flock: Flock): Array<{ id: string; label: string; ki
   return entries.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'debuff' ? -1 : 1));
 }
 
-// Board placement for enemy `index` of `count`. One enemy keeps the classic
-// anchor at a larger feature scale; 2-3 fan out around x=900, and 4 uses a
-// compact two-row stage so HP/intent badges do not pile up in one horizontal run.
+// Board placement for enemy `index` of `count`. A solo opponent uses the open
+// central stage; groups retain stable independent columns throughout the fight.
 function enemyViewAt(index: number, count: number): { x: number; y: number; scale: number } {
-  if (count <= 1) return { x: ENEMY_FX_X, y: ENEMY_FX_Y, scale: 1.12 };
+  if (count <= 1) return { x: 845, y: 225, scale: 1.12 };
   const layouts: Record<number, Array<{ x: number; y: number; scale: number }>> = {
     2: [
-      { x: 760, y: ENEMY_FX_Y, scale: 0.98 },
-      { x: 1040, y: ENEMY_FX_Y, scale: 0.98 },
+      { x: 760, y: ENEMY_FX_Y - 45, scale: 0.98 },
+      { x: 1040, y: ENEMY_FX_Y - 45, scale: 0.98 },
     ],
     3: [
-      { x: 675, y: 242, scale: 0.8 },
-      { x: 910, y: 230, scale: 0.84 },
-      { x: 1130, y: 252, scale: 0.8 },
+      { x: 675, y: 197, scale: 0.8 },
+      { x: 910, y: 185, scale: 0.84 },
+      { x: 1130, y: 207, scale: 0.8 },
     ],
     4: [
-      { x: 690, y: 200, scale: 0.68 },
-      { x: 1065, y: 200, scale: 0.68 },
-      { x: 755, y: 330, scale: 0.64 },
-      { x: 1125, y: 330, scale: 0.64 },
+      { x: 560, y: 210, scale: 0.68 },
+      { x: 770, y: 210, scale: 0.68 },
+      { x: 980, y: 210, scale: 0.68 },
+      { x: 1190, y: 210, scale: 0.68 },
     ],
   };
   return layouts[Math.min(4, count)]?.[index] ?? layouts[4][layouts[4].length - 1];
@@ -26495,16 +25453,16 @@ function enemyViewAt(index: number, count: number): { x: number; y: number; scal
 function bossGoonViewAt(index: number, count: number): { x: number; y: number; scale: number } {
   const layouts: Record<number, Array<{ x: number; y: number; scale: number }>> = {
     1: [
-      { x: 680, y: 344, scale: 0.66 },
+      { x: 680, y: 249, scale: 0.66 },
     ],
     2: [
-      { x: 650, y: 338, scale: 0.64 },
-      { x: 1178, y: 338, scale: 0.64 },
+      { x: 650, y: 249, scale: 0.64 },
+      { x: 1178, y: 249, scale: 0.64 },
     ],
     3: [
-      { x: 640, y: 338, scale: 0.62 },
-      { x: 1190, y: 338, scale: 0.62 },
-      { x: 930, y: 405, scale: 0.56 },
+      { x: 510, y: 249, scale: 0.62 },
+      { x: 710, y: 249, scale: 0.62 },
+      { x: 1190, y: 249, scale: 0.62 },
     ],
   };
   return layouts[Math.min(3, count)]?.[index] ?? layouts[3][layouts[3].length - 1];
@@ -26587,66 +25545,49 @@ function buildKeywordTokens(text: string): Array<{ text: string; kw?: string }> 
   return tokens;
 }
 
-let activeKwTooltip: { scene: Phaser.Scene; container: Phaser.GameObjects.Container } | undefined;
-function hideKwTooltip(scene?: Phaser.Scene) {
-  if (!activeKwTooltip) return;
-  (activeKwTooltip.scene as Phaser.Scene & {
-    keywordTooltipFrameCount?: number;
-    keywordTooltipFrameMetrics?: { displayWidth: number; displayHeight: number; alpha: number; name: string; visible: boolean };
-  }).keywordTooltipFrameCount = 0;
-  (activeKwTooltip.scene as Phaser.Scene & {
-    keywordTooltipFrameMetrics?: { displayWidth: number; displayHeight: number; alpha: number; name: string; visible: boolean };
-  }).keywordTooltipFrameMetrics = undefined;
-  if (scene && activeKwTooltip.scene !== scene) {
-    activeKwTooltip = undefined;
-    return;
-  }
-  activeKwTooltip.container.destroy(true);
-  activeKwTooltip = undefined;
+let activeKwTooltip: { scene: Phaser.Scene; container: Phaser.GameObjects.Container; owner?: Phaser.GameObjects.GameObject; keyword: string } | undefined;
+function keywordTooltipState(scene: Phaser.Scene) {
+  return activeKwTooltip?.scene === scene && activeKwTooltip.container.active
+    ? { keyword: activeKwTooltip.keyword, definition: KEYWORDS[activeKwTooltip.keyword].def }
+    : undefined;
 }
-function showKwTooltip(scene: Phaser.Scene, kw: string, atX: number, atY: number) {
-  hideKwTooltip(scene);
+function hideKwTooltip(scene?: Phaser.Scene) {
+  if (!activeKwTooltip || (scene && activeKwTooltip.scene !== scene)) return;
+  activeKwTooltip.container.destroy(true);
+}
+function showKwTooltip(scene: Phaser.Scene, kw: string, atX: number, atY: number, owner?: Phaser.GameObjects.GameObject) {
+  hideKwTooltip();
   const def = KEYWORDS[kw];
   if (!def) return;
-  const frameKey = uiIconAssets['keyword-tooltip-frame'].key;
-  const frameReady = scene.textures.exists(frameKey);
-  const textW = 248;
-  const contentX = frameReady ? 20 : 10;
-  const contentY = frameReady ? 16 : 8;
-  const title = scene.add.text(contentX, contentY, kw.toUpperCase(), { fontFamily: UI_FONT, fontSize: '12px', fontStyle: UI_BOLD, color: def.color });
-  const body = scene.add.text(contentX, contentY + title.height + 4, def.def, { fontFamily: UI_FONT, fontSize: '12px', color: '#dbe6f2', lineSpacing: 2, wordWrap: { width: frameReady ? textW : textW - 20 } });
-  const w = frameReady ? textW + 40 : textW;
-  const h = contentY + title.height + 4 + body.height + (frameReady ? 16 : 10);
+  const textW = 360, padding = 20;
+  const title = scene.add.text(padding, padding, kw.toUpperCase(), {
+    fontFamily: UI_FONT, fontSize: '22px', fontStyle: UI_BOLD, color: def.color, resolution: 2,
+    wordWrap: { width: textW, useAdvancedWrap: true },
+  }).setName('keyword-tooltip-title').setData('fullText', kw.toUpperCase());
+  const body = scene.add.text(padding, padding + title.height + 8, def.def, {
+    fontFamily: UI_FONT, fontSize: '20px', color: '#dbe6f2', resolution: 2, lineSpacing: 3,
+    wordWrap: { width: textW, useAdvancedWrap: true },
+  }).setName('keyword-tooltip-body').setData('fullText', def.def);
+  const w = textW + padding * 2, h = body.y + body.height + padding;
   const stroke = Phaser.Display.Color.HexStringToColor(def.color).color;
-  const bg = frameReady
-    ? scene.add.rectangle(w / 2, h / 2, w - 34, h - 26, 0x071018, 0.44).setStrokeStyle(1, stroke, 0.45)
-    : scene.add.rectangle(0, 0, w, h, 0x0a1018, 0.98).setOrigin(0, 0).setStrokeStyle(2, stroke, 1);
-  const frame = frameReady
-    ? scene.add.image(w / 2, h / 2, frameKey)
-      .setDisplaySize(w, h)
-      .setAlpha(0.96)
-      .setName('keyword-tooltip-frame')
-    : undefined;
-  if (frame) scene.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const c = scene.add.container(0, 0, frame ? [frame, bg, title, body] : [bg, title, body]).setDepth(99999);
-  let px = atX - w / 2;
-  let py = atY - h - 10;
-  px = Math.max(8, Math.min(GAME_WIDTH - w - 8, px));
-  if (py < 8) py = atY + 24;
+  const bg = scene.add.rectangle(0, 0, w, h, 0x091520, 1).setOrigin(0, 0)
+    .setStrokeStyle(1, stroke, 0.9).setName('keyword-tooltip-panel');
+  const c = scene.add.container(0, 0, [bg, title, body]).setDepth(99999).setName('keyword-tooltip');
+  const px = Phaser.Math.Clamp(atX - w / 2, 8, GAME_WIDTH - w - 8);
+  const above = atY - h - 12;
+  const py = Phaser.Math.Clamp(above >= 8 ? above : atY + 24, 8, GAME_HEIGHT - h - 8);
   c.setPosition(px, py);
-  activeKwTooltip = { scene, container: c };
-  (scene as Phaser.Scene & { keywordTooltipFrameCount?: number }).keywordTooltipFrameCount = frame ? 1 : 0;
-  (scene as Phaser.Scene & {
-    keywordTooltipFrameMetrics?: { displayWidth: number; displayHeight: number; alpha: number; name: string; visible: boolean };
-  }).keywordTooltipFrameMetrics = frame
-    ? {
-      displayWidth: Math.round(frame.displayWidth),
-      displayHeight: Math.round(frame.displayHeight),
-      alpha: Number(frame.alpha.toFixed(3)),
-      name: frame.name,
-      visible: frame.visible,
-    }
-    : undefined;
+  activeKwTooltip = { scene, container: c, owner, keyword: kw };
+  const dismiss = () => { if (activeKwTooltip?.container === c) hideKwTooltip(scene); };
+  scene.input.once(Phaser.Input.Events.GAME_OUT, dismiss);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, dismiss);
+  owner?.once(Phaser.GameObjects.Events.DESTROY, dismiss);
+  c.once(Phaser.GameObjects.Events.DESTROY, () => {
+    scene.input.off(Phaser.Input.Events.GAME_OUT, dismiss);
+    scene.events.off(Phaser.Scenes.Events.SHUTDOWN, dismiss);
+    owner?.off(Phaser.GameObjects.Events.DESTROY, dismiss);
+    if (activeKwTooltip?.container === c) activeKwTooltip = undefined;
+  });
 }
 
 // Lay out effect text with mechanical keywords highlighted in their color
@@ -26655,7 +25596,7 @@ function showKwTooltip(scene: Phaser.Scene, kw: string, atX: number, atY: number
 // is required because a Phaser Text object is a single color.
 interface RichTextOpts {
   wrap: number; fontSize?: number; baseColor?: string; lineSpacing?: number;
-  bold?: boolean; align?: 'left' | 'center'; tooltips?: boolean;
+  bold?: boolean; align?: 'left' | 'center'; tooltips?: boolean; resolution?: number;
 }
 function renderRichText(
   scene: Phaser.Scene,
@@ -26663,7 +25604,7 @@ function renderRichText(
   x: number, y: number, text: string, opts: RichTextOpts,
 ): number {
   const { wrap, fontSize = 14, baseColor = '#dbe6f2', lineSpacing = 3, bold = false, align = 'left', tooltips = false } = opts;
-  const base = { fontFamily: UI_FONT, fontSize: `${fontSize}px` };
+  const base = { fontFamily: UI_FONT, fontSize: `${fontSize}px`, resolution: opts.resolution ?? 0 };
   const m1 = scene.add.text(0, 0, 'a a', base); const m2 = scene.add.text(0, 0, 'aa', base);
   const spaceW = Math.max(3, m1.width - m2.width); m1.destroy(); m2.destroy();
   const tokens = buildKeywordTokens(text).map((t) => {
@@ -26690,10 +25631,13 @@ function renderRichText(
       const txt = scene.add.text(sx, yy, t.text, { ...base, color, fontStyle });
       parent.add(txt);
       if (t.kw && tooltips) {
-        const kw = t.kw; const tipX = sx + t.w / 2; const tipY = yy;
+        const kw = t.kw;
         txt.setInteractive({ useHandCursor: true });
-        txt.on('pointerover', () => showKwTooltip(scene, kw, tipX, tipY));
-        txt.on('pointerout', () => hideKwTooltip());
+        txt.on('pointerover', () => {
+          const bounds = txt.getBounds();
+          showKwTooltip(scene, kw, bounds.centerX, bounds.top, txt);
+        });
+        txt.on('pointerout', () => { if (activeKwTooltip?.owner === txt) hideKwTooltip(scene); });
       }
       sx += t.w + spaceW;
     }
@@ -27012,6 +25956,7 @@ type UnifiedRunHudData = {
     hpLoss: number;
     afterHp: number;
     attackers: number;
+    uncertainty?: string[];
   };
   suitCounts?: Record<string, number>;
   wingbeats?: string | number;
@@ -27095,7 +26040,7 @@ function renderUnifiedRunHud(
   renderPracticeBadge(scene);
   const accent = data.statusColor ? Phaser.Display.Color.HexStringToColor(data.statusColor).color : UI_FIELD.gold;
   const highlight = data.statusLabel && !['ROUTE', 'HOLDING'].includes(data.statusLabel);
-  if (data.railIcon && scene.textures.exists(uiIconAssets[data.railIcon].key)) {
+  if (data.context !== 'battle' && data.railIcon && scene.textures.exists(uiIconAssets[data.railIcon].key)) {
     scene.textures.get(uiIconAssets[data.railIcon].key).setFilter(Phaser.Textures.FilterMode.LINEAR);
     const rail = scene.add.image(GAME_WIDTH / 2, 47, uiIconAssets[data.railIcon].key)
       .setDisplaySize(1284, 118)
@@ -27114,10 +26059,12 @@ function renderUnifiedRunHud(
       });
     }
   }
-  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, 47, GAME_WIDTH - 28, 62, 0x070b12, 0.78)
-    .setStrokeStyle(1, accent, highlight ? 0.78 : 0.26));
+  const battleHud = data.context === 'battle';
+  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, battleHud ? 56 : 47, GAME_WIDTH - 28, battleHud ? 80 : 62, 0x070b12, battleHud ? 0.94 : 0.78)
+    .setStrokeStyle(1, accent, battleHud ? 0.22 : highlight ? 0.78 : 0.26)
+    .setName('run-hud-surface'));
   addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, 16, GAME_WIDTH - 62, 2, accent, highlight ? 0.82 : 0.32));
-  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, 76, GAME_WIDTH - 62, 1, 0xffffff, 0.08));
+  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, battleHud ? 96 : 76, GAME_WIDTH - 62, 1, 0xffffff, 0.08));
 
   const [hp, maxHp] = parseHudRatio(data.cohesion);
   const hpFrac = maxHp > 0 ? Math.max(0, Math.min(1, hp / maxHp)) : 0;
@@ -27133,7 +26080,7 @@ function renderUnifiedRunHud(
     0.95
   ));
   const cohesionFrameKey = uiIconAssets['combat-cohesion-gauge-frame'].key;
-  if (scene.textures.exists(cohesionFrameKey)) {
+  if (data.context !== 'battle' && scene.textures.exists(cohesionFrameKey)) {
     scene.textures.get(cohesionFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
     addUi(addTo, scene.add.image(FLOCK_HP_BAR.x + 2, FLOCK_HP_BAR.y + 1, cohesionFrameKey)
       .setDisplaySize(248, 52)
@@ -27153,41 +26100,44 @@ function renderUnifiedRunHud(
     const forecastKey = uiIconAssets['combat-incoming-forecast-frame'].key;
     const fx = FLOCK_HP_BAR.x;
     const fy = FLOCK_HP_BAR.y + 33;
-    if (scene.textures.exists(forecastKey)) {
+    if (data.context !== 'battle' && scene.textures.exists(forecastKey)) {
       scene.textures.get(forecastKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
       addUi(addTo, scene.add.image(fx, fy, forecastKey)
         .setDisplaySize(188, 38)
         .setAlpha(0.9)
         .setName('combat-incoming-forecast-frame'));
     } else {
-      addUi(addTo, scene.add.rectangle(fx, fy, 188, 30, 0x180807, 0.82)
-        .setStrokeStyle(1, 0xff6f6f, 0.7)
+      addUi(addTo, scene.add.rectangle(fx, fy, 188, 30, battleHud ? 0x070b12 : 0x180807, battleHud ? 0 : 0.82)
+        .setStrokeStyle(battleHud ? 0 : 1, 0xff6f6f, 0.7)
         .setName('combat-incoming-forecast-frame-fallback'));
     }
-    const forecastMath = `${incoming.hpLoss} damage after Cover`;
-    addUi(addTo, scene.add.text(fx, fy, `${forecastMath}\n${incoming.afterHp} Cohesion left`, {
+    const forecastMath = `${incoming.uncertainty?.length ? 'Est. ' : ''}${incoming.hpLoss} Cohesion at risk`;
+    addUi(addTo, scene.add.text(fx, fy, battleHud
+      ? `${incoming.uncertainty?.length ? 'Est. ' : ''}−${incoming.hpLoss} HP · ${incoming.afterHp} left`
+      : `${forecastMath}\n${incoming.afterHp} Cohesion left`, {
       fontFamily: UI_FONT,
-      fontSize: '13px',
+      fontSize: battleHud ? '18px' : '13px',
       fontStyle: UI_BOLD,
       color: '#ffe5dd',
       stroke: '#180807',
-      strokeThickness: 3,
-      fixedWidth: 178,
+      strokeThickness: battleHud ? 0 : 3,
+      resolution: 2,
       align: 'center',
       lineSpacing: 0,
       maxLines: 2
-    }).setOrigin(0.5).setName('combat-incoming-forecast-label'));
+    }).setOrigin(0.5).setName('combat-incoming-forecast-label')
+      .setData('fullText', `${forecastMath}; ${incoming.afterHp} Cohesion left`));
   }
   const flockIcon = addUiIconImage(scene, 'flock-heart', hpLeft, FLOCK_HP_BAR.y + 1, 28);
   if (flockIcon) addUi(addTo, flockIcon);
   addUi(addTo, scene.add.text(FLOCK_HP_BAR.x, FLOCK_HP_BAR.y, `${data.cohesion}`, {
     fontFamily: UI_FONT,
-    fontSize: '14px',
+    fontSize: battleHud ? '18px' : '14px',
     fontStyle: UI_BOLD,
     color: '#eaf6ee',
     stroke: '#0a1410',
     strokeThickness: 3
-  }).setOrigin(0.5));
+  }).setOrigin(0.5).setName('hud-value-Cohesion'));
   if (data.onFlock) {
     const cohesionHit = addUi(addTo, scene.add.rectangle(
       FLOCK_HP_BAR.x,
@@ -27215,7 +26165,9 @@ function renderUnifiedRunHud(
       height: 38,
       valueColor: metric.text,
       alpha: 0.76,
-      icon: metric.icon
+      icon: metric.icon,
+      quiet: true,
+      emphasis: battleHud ? 'primary' : undefined,
     });
     contextualX += metric.width + 8;
   });
@@ -27228,11 +26180,11 @@ function renderUnifiedRunHud(
     const flowY = FLOCK_HP_BAR.y + FLOW_HUD_Y_OFFSET;
     const flowX = hpLeft + FLOCK_HP_BAR.w + FLOW_HUD_X_OFFSET;
     addUi(addTo, scene.add.rectangle(flowX, flowY, FLOW_HUD_WIDTH, FLOW_HUD_HEIGHT, flowFill, 0.96)
-      .setStrokeStyle(1.5, flowAccent, 0.88)
+      .setStrokeStyle(1, flowAccent, battleHud ? 0.3 : 0.88)
       .setName('combat-flow-rail'));
-    addUi(addTo, scene.add.text(flowX - 140, flowY, `FLOW ${flow}/${flowMax}`, {
-      fontFamily: UI_FONT, fontSize: '12px', fontStyle: UI_BOLD, color: '#dffbff'
-    }).setOrigin(0, 0.5));
+    addUi(addTo, scene.add.text(flowX - 178, flowY, `Flow ${flow}/${flowMax}`, {
+      fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: '#dffbff', resolution: 2
+    }).setOrigin(0, 0.5).setName('combat-flow-value'));
     const pipStart = flowX + FLOW_HUD_PIP_OFFSET;
     for (let i = 0; i < flowMax; i += 1) {
       const filled = i < flow;
@@ -27247,19 +26199,19 @@ function renderUnifiedRunHud(
         .setAngle(-12)
         .setName('combat-flow-break-preview'));
     }
-    addUi(addTo, scene.add.text(flowX + 140, flowY, flowStatus, {
+    addUi(addTo, scene.add.text(flowX + 178, flowY, flowStatus, {
       fontFamily: UI_FONT,
-      fontSize: '11px',
+      fontSize: '16px',
       fontStyle: UI_BOLD,
       color: flowStatusColor,
-      fixedWidth: 84,
+      resolution: 2,
+      fixedWidth: 150,
       align: 'right',
       maxLines: 1
     }).setOrigin(1, 0.5).setName('combat-flow-status'));
   }
 
   addUi(addTo, scene.add.rectangle(650, FLOCK_HP_BAR.y + 1, 1, 38, 0x49606d, 0.55));
-  addUi(addTo, scene.add.rectangle(655, FLOCK_HP_BAR.y + 1, 1, 28, 0xffffff, 0.08));
 
   const chips: Array<{ label: string; value: string | number; width: number; color: number; text?: string; icon?: UiIconId }> = [
     { label: 'Scrap', value: data.scrap, width: 116, color: 0x8df4ff, text: '#dffbff', icon: 'scrap-gear' },
@@ -27276,6 +26228,7 @@ function renderUnifiedRunHud(
       alpha: 0.82,
       icon: chip.icon,
       quiet: true,
+      emphasis: battleHud ? 'secondary' : undefined,
     });
     if (chip.label === 'Deck' && data.onDeck) {
       const hit = addUi(addTo, scene.add.rectangle(cx, FLOCK_HP_BAR.y + 1, chip.width, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
@@ -27358,7 +26311,7 @@ function renderHudMetricChip(
   label: string,
   value: string,
   accent: number,
-  opts: { valueColor?: string; height?: number; alpha?: number; icon?: UiIconId; quiet?: boolean } = {}
+  opts: { valueColor?: string; height?: number; alpha?: number; icon?: UiIconId; quiet?: boolean; emphasis?: 'primary' | 'secondary' } = {}
 ) {
   const height = opts.height ?? 38;
   const compact = height <= 34;
@@ -27366,14 +26319,14 @@ function renderHudMetricChip(
   const frameKey = uiIconAssets['combat-hud-metric-chip-frame'].key;
   const hasFrame = !opts.quiet && scene.textures.exists(frameKey);
   const fillAlpha = opts.alpha ?? 0.78;
-  addUi(addTo, scene.add.rectangle(cx, cy, width - 14, height - 8, 0x0b1017, hasFrame ? fillAlpha * 0.82 : fillAlpha)
+  if (!opts.quiet) addUi(addTo, scene.add.rectangle(cx, cy, width - 14, height - 8, 0x0b1017, hasFrame ? fillAlpha * 0.82 : fillAlpha)
     .setStrokeStyle(hasFrame ? 0 : 1, accent, hasFrame ? 0 : 0.42));
   if (hasFrame) {
     scene.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
     addUi(addTo, scene.add.image(cx, cy, frameKey)
       .setDisplaySize(width + 16, height + 8)
       .setAlpha(0.94));
-  } else {
+  } else if (!opts.quiet) {
     addUi(addTo, scene.add.rectangle(cx, topRailY, width - 18, 2, accent, 0.72));
   }
   const iconId = opts.quiet ? undefined : opts.icon ?? hudIconForLabel(label);
@@ -27384,19 +26337,19 @@ function renderHudMetricChip(
   }
   const textLeft = cx - width / 2 + (hasIcon ? 58 : 10);
   if (!hasIcon) {
-    addUi(addTo, scene.add.text(textLeft, cy - height / 2 + 6, label.toUpperCase(), {
+    addUi(addTo, scene.add.text(textLeft, opts.emphasis === 'primary' ? cy - 23 : cy - height / 2 + 6, label.toUpperCase(), {
       fontFamily: UI_FONT,
-      fontSize: opts.quiet ? '12px' : compact ? '7px' : '8px',
+      fontSize: opts.emphasis === 'primary' ? '13px' : opts.quiet ? '12px' : compact ? '7px' : '8px',
       fontStyle: UI_BOLD,
-      color: '#91a6b8'
-    }));
+      color: '#aabcc8', resolution: 2
+    }).setName(`hud-label-${label}`));
   }
   addUi(addTo, scene.add.text(hasIcon ? cx + 16 : textLeft, hasIcon ? cy + 1 : cy + (compact ? 7 : 8), value, {
     fontFamily: UI_FONT,
-    fontSize: hasIcon ? '17px' : compact ? '13px' : '16px',
+    fontSize: opts.emphasis === 'primary' ? '22px' : opts.emphasis === 'secondary' ? '14px' : hasIcon ? '17px' : compact ? '13px' : '16px',
     fontStyle: UI_BOLD,
-    color: opts.valueColor ?? '#e7eef7'
-  }).setOrigin(hasIcon ? 0.5 : 0, 0.5));
+    color: opts.emphasis === 'secondary' ? '#b7c7d4' : opts.valueColor ?? '#e7eef7', resolution: 2
+  }).setOrigin(hasIcon ? 0.5 : 0, 0.5).setName(`hud-value-${label}`));
   const rect = addUi(addTo, scene.add.rectangle(cx, cy, width, height, 0x0b1017, hasFrame ? 0.001 : 0)
     .setStrokeStyle(0, accent, 0));
   return rect;
@@ -27459,58 +26412,6 @@ function renderFieldPanel(
     }));
   }
   return { left, right, top, bottom, cx, cy, w, h };
-}
-
-function addCardPickerFrame(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  frame: { cx: number; cy: number; w: number; h: number },
-  opts: { alpha?: number; tint?: number; yOffset?: number } = {}
-) {
-  const key = uiIconAssets['card-picker-frame'].key;
-  if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const reduced = prefersReducedMotion();
-  const alpha = reduced ? Math.min(opts.alpha ?? 0.38, 0.3) : (opts.alpha ?? 0.38);
-  const y = frame.cy + (opts.yOffset ?? 2);
-  const width = Math.min(frame.w + 94, 1148);
-  const height = Math.min(frame.h + 54, 626);
-  const shell = scene.add.image(frame.cx, y, key)
-    .setDisplaySize(width, height)
-    .setAlpha(alpha)
-    .setName('card-picker-frame');
-  if (opts.tint !== undefined) shell.setTint(opts.tint);
-  addUi(addTo, shell);
-
-  const glint = scene.add.image(frame.cx, y, key)
-    .setDisplaySize(width, height)
-    .setAlpha(reduced ? 0.035 : 0.055)
-    .setBlendMode(Phaser.BlendModes.ADD)
-    .setName('card-picker-frame');
-  if (opts.tint !== undefined) glint.setTint(opts.tint);
-  addUi(addTo, glint);
-
-  if (!reduced) {
-    scene.tweens.add({
-      targets: shell,
-      alpha: { from: alpha * 0.82, to: alpha },
-      scaleX: `+=${shell.scaleX * 0.004}`,
-      scaleY: `+=${shell.scaleY * 0.004}`,
-      duration: 1800,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
-    scene.tweens.add({
-      targets: glint,
-      alpha: { from: 0.032, to: 0.055 },
-      duration: 2100,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
-  }
-  return shell;
 }
 
 function addCodexDossierFrame(
@@ -28322,12 +27223,6 @@ function routeNodeGlyph(type: RouteNode['type']) {
 // without hovering); risk is shown as a small pip + in the legend/side panel.
 
 
-function routeNodeRiskColor(risk: RouteNode['risk']) {
-  if (risk === 'low') return 0xf5d38a;
-  if (risk === 'medium') return 0xff9d4d;
-  return 0xff7a6e;
-}
-
 function routeNodeTypeLabel(type: RouteNode['type']) {
   switch (type) {
     case 'street': return 'Street Encounter';
@@ -28411,13 +27306,13 @@ function routeMarkFamilyLabel(family: RuntimeRouteMark['family']) {
   }
 }
 
-function formatWaymarkTrigger(trigger: string) {
+export function formatWaymarkTrigger(trigger: string, effects: string[] = []) {
   const suit = /^onSuitPlayed\(([^)]+)\)$/.exec(trigger)?.[1];
   if (suit) return `First ${suit[0].toUpperCase()}${suit.slice(1)} card played each turn`;
   const nth = /^onNthCardThisTurn\((\d+)\)$/.exec(trigger)?.[1];
-  if (nth) return `Card ${nth} played each turn`;
+  if (nth) return `First time ${nth} cards are played in one turn each combat`;
   const lowCard = /^onLowCardTurn\((\d+)\)$/.exec(trigger)?.[1];
-  if (lowCard) return `Roost after playing ${lowCard} or fewer cards`;
+  if (lowCard) return `First Roost after playing 1–${lowCard} cards each combat`;
   const labels: Record<string, string> = {
     afterMarketPurchase: 'After each Market purchase',
     afterStreetEncounter: 'After each Street Encounter',
@@ -28427,14 +27322,15 @@ function formatWaymarkTrigger(trigger: string) {
     firstOpenSkyIncrease: 'First Open Sky increase each combat',
     mapStart: 'At the start of the next district',
     onEnemyCoverBroken: 'First enemy Cover break each turn',
-    onEnterMolt: 'When the flock enters Molt',
+    onEnterMolt: 'First time the flock enters Molt each combat',
     onHealFlock: 'First time the flock heals each turn',
-    onResonanceSpent: 'First time Resonance is spent each turn',
+    onResonanceSpent: 'First time Resonance is spent each combat',
     onRoostWithCardsInHand: 'First Roost with cards in hand each combat',
     onRoostWithWingbeat: 'First Roost with unspent Wingbeat each combat',
-    onSupplyUsed: 'Whenever a Supply is used',
+    onSupplyUsed: effects.some(effect => parseEffect(effect)?.name === 'repeatNextSupply')
+      ? 'Whenever a Supply is used' : 'First Supply used each combat',
     onTurnEndNoHpLoss: 'First enemy turn with no Cohesion loss each combat',
-    onTurnEndNoOverextension: 'First clean Roost without overextension each combat',
+    onTurnEndNoOverextension: 'First Roost after playing cards without overextension each combat',
     signalResolved: 'After resolving a Signal',
   };
   return labels[trigger] ?? trigger.replace(/([a-z])([A-Z])/g, '$1 $2');
@@ -28795,7 +27691,7 @@ function getEncounterEnemiesByPayload(payloadId: string | undefined): RuntimeEne
 
 // Select the enemy's current move by walking its attack pattern with intentIndex
 // (next-level-data-contracts Â§2). intentIndex is unbounded; the pattern maps it.
-function currentMove(enemy: Enemy): EnemyMove {
+function currentMove(enemy: Enemy, context = enemyMoveContext): EnemyMove {
   const { moves, attackPattern } = enemy.runtime;
   const byId = (id: string) => moves.find((move) => move.id === id) ?? moves[0];
   const i = enemy.intentIndex;
@@ -28820,7 +27716,7 @@ function currentMove(enemy: Enemy): EnemyMove {
       return byId(expanded[i % expanded.length]);
     }
     case 'conditional': {
-      const hit = attackPattern.entries.find((entry) => evalPatternCondition(entry.if, enemy));
+      const hit = attackPattern.entries.find((entry) => context && evaluateEnemyCondition(entry.if, enemy, context));
       return byId(hit ? hit.moveId : attackPattern.fallback);
     }
     default:
@@ -28888,6 +27784,11 @@ function formatCondition(condition: string) {
     .replace('flockHasCover', 'the flock has Cover')
     .replace('flockOpenSky', 'the flock is in Open Sky')
     .replace('flockCohesionBelowHalf', 'the flock is below half Cohesion')
+    .replace('handEmptyAtRoost', 'no cards were held at Roost')
+    .replace('notHitThisTurn', 'this enemy was not hit this turn')
+    .replace('selfBelowHalf', 'this enemy is below half Cohesion')
+    .replace(/^playedCardsAtLeast\((\d+)\)$/, '$1+ cards were played this turn')
+    .replace(/^zeroCostCardsAtLeast\((\d+)\)$/, '$1+ zero-cost cards were played this turn')
     .replace('firstPlayedThisCombat', 'first played')
     .replace('targetBelowHalf', 'target below half')
     .replace('targetIntendsAttack', 'target attacks')
@@ -28949,6 +27850,8 @@ function formatEffect(effect: string) {
       return `Give all enemies ${value} Cover.`;
     case 'nextAttackBonusAlly':
       return `Give an ally +${value} damage.`;
+    case 'nextAttackBonus':
+      return `Next attack gains +${value} damage.`;
     case 'overhealCover':
       return `Heal ${value}; overflow becomes Cover.`;
     case 'loseCohesion':
@@ -28980,6 +27883,8 @@ function formatEffect(effect: string) {
       return `Apply ${value} Winded.`;
     case 'applyPoison':
       return `Apply ${value} Fouled.`;
+    case 'applyFrail':
+      return `Apply ${value} Frail.`;
     case 'enterMolt':
       return 'Enter Molt.';
     case 'gainOpenSkyGuard':
@@ -29104,6 +28009,7 @@ function shuffle<T>(items: T[], random: () => number = Math.random) {
 // this deliberately narrow bridge so the boot path does not have to evaluate
 // two thousand lines of collection and dossier presentation code.
 export {
+  aggregateFlockStats, cardsFromSave, cardStatRows, flockStatLabel, KEYSTONE_AT,
   addCodexDossierFrame, addCodexEntryFrame, addDeckReviewCostBadge, addDeckReviewFlourish, addRewardRevealHaloFx,
   addDeckReviewMetaChipFrame, addDeckReviewPageIndicatorFrame, addDeckReviewRowFrame,
   addDeckReviewSectionTabFrame, addDeckReviewTitlePlaque, addRouteWaymarkScrollRailFrame, addRunKitDrawerFlourish,
@@ -29117,7 +28023,7 @@ export {
   codexIconForLabel, codexLeaderArtAssets, codexUiIconIds, compactCardArtKey, compactEffectSummary,
   countTextureInGameObjects, displayName, enemyArtAssets, enemyCodexIconForLabel, flockLeaders,
   deferredHowToPlayUiIconIds, deferredMenuSettingsUiIconIds, DISTRICT_CONTRACT_DEFINITIONS,
-  firstFlightGuideState, GAME_HEIGHT, GAME_WIDTH, getLeader, getMaxUnlockedTier, howToPlayUiIconIds,
+  firstFlightGuideState, formatEffects, GAME_HEIGHT, GAME_WIDTH, getLeader, getMaxUnlockedTier, howToPlayUiIconIds,
   graphicsQualityState, hasActiveRun, hideKwTooltip, isAviaryCard, isLeaderUnlocked, isSnagCard,
   itemTypeCodexIconForLabel, KEYWORDS, killTweensForScene, killTweensForTree, LAZY_LOAD_FAILED, leaderUnlockHints,
   latestPlaytestRunForRating, loadAccount, loadActiveRun, loadBossDossierModule, loadCodexSceneModule,
@@ -29132,7 +28038,7 @@ export {
   screenShakePreference, flashEffectsPreference, settingsFocusState, setAnimationPacePreference, setColorCuePreference, setCombatPacePreference,
   setFlashEffectsPreference, setGraphicsQualityPreference, setMotionPreference, setScreenReaderPreference,
   setScreenShakePreference, setTextPacePreference, setVisualContrastPreference,
-  showKwTooltip, suitAccentColor, supplyAccent, supplyArtAssets, supplyCategoryLabel, supplyCodexIconForLabel, supplyCompactArtAssets,
+  showKwTooltip, keywordTooltipState, suitAccentColor, supplyAccent, supplyArtAssets, supplyCategoryLabel, supplyCodexIconForLabel, supplyCompactArtAssets,
   supplySynergyTags, HUD_MENU_PANEL, UI_BODY, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, UI_MUTED, UI_SOFT,
   syncSceneAnimationPace, textPacePreference, textPacingState, titleMenuCompactIconIds, titleMenuUiIconIds,
   uiIconAssets, uniqueImageAssets, visualContrastState, waymarkArtAssets, waymarkCodexIconForLabel, waymarkCompactArtAssets, waymarkGlyph,
@@ -29216,15 +28122,10 @@ window.__birdSquadAudio = () => birdAudio.snapshot();
 window.__birdSquadShowKeywordTooltip = (sceneKey: string, keyword: string, x: number, y: number) => {
   const scene = window.__birdSquadGame?.scene.getScene(sceneKey);
   if (scene) showKwTooltip(scene, keyword, x, y);
-  const sceneWithTelemetry = scene as Phaser.Scene & {
-    keywordTooltipFrameCount?: number;
-    keywordTooltipFrameMetrics?: { displayWidth: number; displayHeight: number; alpha: number; name: string; visible: boolean };
-  } | undefined;
   return {
     shown: Boolean(scene),
     loaded: Boolean(scene?.textures.exists(uiIconAssets['keyword-tooltip-frame'].key)),
-    count: sceneWithTelemetry?.keywordTooltipFrameCount ?? 0,
+    count: 0,
     sceneKey,
-    frame: sceneWithTelemetry?.keywordTooltipFrameMetrics
   };
 };

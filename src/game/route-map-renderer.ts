@@ -233,16 +233,16 @@ export function renderRouteGuidance(context: {
   goldColor: number;
   cyanColor: number;
 }) {
-  context.scene.add.rectangle(382, 104, 650, 42, 0x06111a, 0.96)
-    .setStrokeStyle(2, context.selected ? context.goldColor : context.cyanColor, 0.86)
+  context.scene.add.rectangle(382, 104, 650, 48, 0x06111a, 0.96)
+    .setStrokeStyle(1, context.selected ? context.goldColor : context.cyanColor, 0.65)
     .setName(context.name);
   context.scene.add.text(382, 104, context.text, {
     fontFamily: context.fontFamily,
-    fontSize: '14px',
+    fontSize: '18px',
     fontStyle: context.boldFontStyle,
     color: '#e7fbff',
     fixedWidth: 620,
-    align: 'center',
-    maxLines: 1,
-  }).setOrigin(0.5).setName(context.name);
+    align: 'left',
+    wordWrap: { width: 620, useAdvancedWrap: true },
+  }).setOrigin(0.5).setResolution(2).setName(context.name);
 }

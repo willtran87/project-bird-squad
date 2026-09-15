@@ -57,6 +57,9 @@ export default defineConfig(({ command }) => ({
         manualChunks(id) {
           const moduleId = id.replace(/\\/g, '/');
           if (moduleId.includes('node_modules/phaser')) return 'vendor-phaser';
+          // Keep the read-only combat dossier independently measurable. It is
+          // a dependency of the lazy hand renderer, never a title preload.
+          if (moduleId.endsWith('/src/game/battle/card-detail.ts')) return 'combat-card-detail';
           if (
             moduleId.includes('/src/game/codex-data')
             || moduleId.includes('/data/cards/arcana/')

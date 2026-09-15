@@ -1,4 +1,3 @@
-import Phaser from 'phaser';
 import { replayFirstFlightGuide, skipFirstFlightGuide } from './first-flight-guide';
 import {
   GAME_WIDTH,
@@ -32,6 +31,20 @@ import {
   uiIconAssets,
 } from '../main';
 
+/** Non-blocking saved-flight context; never creates a second entry action. */
+export function renderResumeContext(scene: any, run: {
+  leaderId?: string; pendingDistrictPreens?: number; completedRouteNodeIds: string[];
+}, district: { name: string; bossNodeId: string }) {
+  scene.children.getByName('title-resume-context')?.destroy();
+  const next = run.pendingDistrictPreens ? 'Free Preen ready'
+    : run.completedRouteNodeIds.includes(district.bossNodeId) ? 'District cleared' : 'Reach the boss';
+  scene.add.text(260, 316, `${getLeader(run.leaderId).name}\n${district.name} · ${next}`, {
+    fontFamily: UI_FONT, fontSize: '20px', color: '#bfcbd0', align: 'center',
+    wordWrap: { width: 410 }, lineSpacing: 5,
+  }).setResolution(2).setOrigin(0.5, 0).setName('title-resume-context').setVisible(!scene.setupOpen);
+  scene.updateMenuTextState();
+}
+
 export function openCodex(scene: any, openCollectionAtlas = false, openCardId?: string) {
   if (scene.codexOpening) return;
   scene.codexOpening = true;
@@ -62,6 +75,7 @@ export function openCodex(scene: any, openCollectionAtlas = false, openCardId?: 
 
 export function openSettingsOverlay(scene: any, queueAssets = true) {
   if (scene.settingsOverlay) return;
+  scene.hideLeaderTooltip();
   if (scene.helpOverlay) scene.closeHelpOverlay();
   if (queueAssets) {
     queueUiIconAssets(scene, menuSettingsUiIconIds, 'Title Settings UI', () => {
@@ -97,6 +111,7 @@ export function openSettingsOverlay(scene: any, queueAssets = true) {
 
 export function openHelpOverlay(scene: any, queueAssets = true) {
   if (scene.helpOverlay) return;
+  scene.hideLeaderTooltip();
   if (scene.settingsOverlay) scene.closeSettingsOverlay();
   if (queueAssets) {
     queueUiIconAssets(scene, howToPlayUiIconIds, 'How to Play UI', () => {
@@ -136,53 +151,33 @@ export function toggleFirstFlightGuide(scene: any) {
   });
 }
 
-export function showLeaderTooltip(scene: any, id: string, anchorX: number) {
+export function showLeaderTooltip(scene: any, id: string, _anchorX: number) {
+  if (scene.settingsOverlay || scene.helpOverlay || !scene.setupOpen) return;
   scene.hideLeaderTooltip();
   const leader = getLeader(id);
   const unlocked = isLeaderUnlocked(scene.menuAccount, leader.id);
-  const tooltipX = Phaser.Math.Clamp(anchorX, 328, GAME_WIDTH - 328);
-  const tooltip = scene.add.container(tooltipX, 404).setDepth(100);
-  const key = uiIconAssets['title-leader-tooltip-frame'].key;
-  const frame = scene.textures.exists(key)
-    ? scene.add.image(0, 0, key)
-      .setDisplaySize(unlocked ? 704 : 680, unlocked ? 126 : 108)
-      .setAlpha(unlocked ? 0.78 : 0.58)
-      .setName('title-leader-tooltip-frame')
-    : undefined;
-  if (frame) {
-    scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    if (!unlocked) frame.setTint(0x8fa4bd);
-  }
-  const bg = frame
-    ? scene.add.rectangle(0, 0, unlocked ? 574 : 552, unlocked ? 72 : 58, 0x05070c, 0.08)
-    : scene.add.rectangle(0, 0, 640, unlocked ? 88 : 72, 0x05070c, 0.86)
-      .setStrokeStyle(2, unlocked ? 0xe8b830 : 0x7ab8d6, unlocked ? 0.9 : 0.68);
-  const title = scene.add.text(0, unlocked ? -32 : -22, unlocked
+  const tooltip = scene.add.container(GAME_WIDTH / 2, 350).setDepth(100);
+  const title = scene.add.text(0, -24, unlocked
     ? `${leader.name} - ${leader.suit} / ${leader.bird}`
     : `${leader.name} - Locked`, {
     fontFamily: UI_FONT,
-    fontSize: '13px',
+    fontSize: '20px',
     fontStyle: UI_BOLD,
-    color: unlocked ? '#ffe1a3' : '#9fb1c4',
+    color: unlocked ? '#dfc18b' : '#a4b6c2',
     align: 'center',
-    stroke: '#05070c',
-    strokeThickness: 2,
-    wordWrap: { width: 600 },
-  }).setOrigin(0.5);
-  const body = scene.add.text(0, unlocked ? 7 : 13, unlocked
-    ? `${leader.blurb}\nSignature: ${leader.signatureName} - ${leader.signatureText}`
+    wordWrap: { width: 1080 },
+  }).setResolution(2).setOrigin(0.5).setName('title-leader-description-title');
+  const body = scene.add.text(0, 0, unlocked
+    ? `${leader.blurb} Signature: ${leader.signatureName} - ${leader.signatureText}`
     : leaderUnlockHints[leader.id] ?? 'Locked', {
-    fontFamily: 'Georgia, serif',
-    fontSize: '12px',
-    fontStyle: unlocked ? 'italic' : '',
-    color: unlocked ? '#dce7f2' : '#9fb1c4',
+    fontFamily: UI_FONT,
+    fontSize: '20px',
+    color: unlocked ? '#c5d1d8' : '#a4b6c2',
     align: 'center',
-    stroke: '#05070c',
-    strokeThickness: 2,
-    wordWrap: { width: 584 },
-  }).setOrigin(0.5);
+    wordWrap: { width: 1080 },
+  }).setResolution(2).setOrigin(0.5, 0).setName('title-leader-description-body');
   body.setLineSpacing(2);
-  tooltip.add(frame ? [frame, bg, title, body] : [bg, title, body]);
+  tooltip.add([title, body]);
   scene.leaderTooltip = tooltip;
   scene.updateMenuTextState();
 }

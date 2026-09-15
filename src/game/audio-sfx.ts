@@ -1,3 +1,7 @@
+import { AudioCueBudget } from './audio-cue-budget';
+
+const cueBudgets = new WeakMap<AudioContext, AudioCueBudget>();
+
 export type SynthAudioCue =
   | 'confirm'
   | 'close'
@@ -81,6 +85,7 @@ function tone(
   }
   osc.start(now);
   osc.stop(now + duration + 0.02);
+  osc.onended = () => { osc.disconnect(); gain.disconnect(); panner?.disconnect(); };
 }
 
 function chord(
@@ -118,6 +123,7 @@ function noise(audio: SynthContext, duration: number, filterFreq: number, volume
   gain.connect(master);
   source.start();
   source.stop(ctx.currentTime + duration + 0.02);
+  source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
 }
 
 export function playAudioCue(
@@ -127,6 +133,9 @@ export function playAudioCue(
   cue: SynthAudioCue,
   intensity = 1,
 ) {
+  const budget = cueBudgets.get(ctx) ?? new AudioCueBudget();
+  cueBudgets.set(ctx, budget);
+  if (!budget.accepts(cue, ctx.currentTime * 1000)) return false;
   const audio = { ctx, master, sfxVolume };
   const loudness = clamp(intensity, 0.45, 1.8);
   switch (cue) {
@@ -334,4 +343,5 @@ export function playAudioCue(
       return exhaustiveCue;
     }
   }
+  return true;
 }

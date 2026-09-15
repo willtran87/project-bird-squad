@@ -5,7 +5,7 @@ This is the canonical inventory for the current Bird Squad world-demo direction.
 ## Canonical Runtime Families
 
 - District route backdrops: the four `assets/runtime/backdrops/<district>-route-map-v1.webp` files.
-- District battlefields: the four `assets/runtime/backdrops/<district>.webp` files.
+- District battlefields: `assets/runtime/backdrops/rooftop-blocks-readability-v2.webp` and the three other `assets/runtime/backdrops/<district>.webp` files. Rooftop v2 keeps perimeter detail but quiets the central actor and card lanes; its PNG master is `assets/concept-art/backdrops/sources/rooftop-blocks-readability-source-v2.png`.
 - Boss battlefields: the four named boss files under `assets/runtime/backdrops/variants/`.
 - Non-battle landmarks: the five current scene plates, five v2 resident cutouts, and four current props under `assets/runtime/route-events/`; the three standalone centerpiece masters under `assets/concept-art/route-event-centerpieces/sources/` are part of the matching source allowlist.
 - Market: the four files under `assets/runtime/market-kit/`.

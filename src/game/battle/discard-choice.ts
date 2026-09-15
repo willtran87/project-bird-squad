@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { bindChoiceHint } from '../choice-input-hints';
+import { controlBindingLabel } from '../input-bindings';
 
 export interface DiscardChoiceState {
   source: string;
@@ -96,23 +98,29 @@ export function renderDiscardChoiceRail(options: {
   const { scene, target, gameWidth, fontFamily, boldFontStyle, gold, danger, choice } = options;
   const selected = choice.selectedIds.length;
   const ready = choice.optional || selected === choice.max;
-  const prompt = choice.optional ? `DISCARD UP TO ${choice.max}` : `DISCARD ${choice.max}`;
-  const y = 442;
-  const buttonX = 1110;
-  target.add(scene.add.rectangle(gameWidth / 2, y, 930, 48, 0x020711, 0.96)
-    .setStrokeStyle(2, ready ? gold : danger, 0.9)
+  const prompt = choice.optional ? `Discard up to ${choice.max}` : `Discard ${choice.max}`;
+  const y = 414;
+  const buttonX = gameWidth - 152;
+  target.add(scene.add.rectangle(gameWidth / 2 + 160, y, 880, 84, 0x020711, 0.98)
+    .setStrokeStyle(1, gold, 0.55)
     .setName('combat-discard-choice-rail'));
-  target.add(scene.add.text(586, y, `${prompt}  (${selected}/${choice.max})   |   LEFT / RIGHT CHOOSE   |   ENTER / A TOGGLE`, {
-    fontFamily, fontSize: '12px', fontStyle: boldFontStyle, color: '#f4fdff', fixedWidth: 690, align: 'center', maxLines: 1,
-  }).setOrigin(0.5).setName('combat-discard-choice-hint'));
-  const confirm = scene.add.rectangle(buttonX, y, 166, 44, ready ? 0x3b2b08 : 0x271016, 0.98)
-    .setStrokeStyle(2, ready ? gold : danger, 0.96)
+  target.add(scene.add.text(382, y - 18, `${prompt} · ${selected} selected${choice.optional ? '' : ' · Required'}`, {
+    fontFamily, fontSize: '20px', fontStyle: boldFontStyle, color: '#f4fdff',
+  }).setOrigin(0, 0.5).setName('combat-discard-choice-prompt'));
+  const hint = scene.add.text(382, y + 17, '', {
+    fontFamily, fontSize: '18px', color: '#bed5df',
+  }).setOrigin(0, 0.5).setName('combat-discard-choice-hint');
+  target.add(bindChoiceHint(scene, hint, mode => mode === 'pointer'
+    ? 'Tap cards to toggle · Confirm when ready'
+    : `${mode === 'controller' ? 'D-pad' : `${controlBindingLabel('previous')}/${controlBindingLabel('next')}`}: choose · ${mode === 'controller' ? 'A' : controlBindingLabel('confirm')}: toggle · ${mode === 'controller' ? 'Y' : controlBindingLabel('roost')}: confirm${choice.optional ? ` · ${mode === 'controller' ? 'B' : controlBindingLabel('back')}: keep hand` : ''}`));
+  const confirm = scene.add.rectangle(buttonX, y, 208, 58, ready ? 0x26392c : 0x14212a, 0.98)
+    .setStrokeStyle(1, ready ? gold : danger, ready ? 0.8 : 0.35)
     .setInteractive({ useHandCursor: ready })
     .setName('combat-discard-confirm');
   confirm.on('pointerdown', options.onConfirm);
   target.add(confirm);
-  target.add(scene.add.text(buttonX, y, ready && choice.optional && selected === 0 ? 'KEEP HAND' : 'CONFIRM', {
-    fontFamily, fontSize: '13px', fontStyle: boldFontStyle, color: ready ? '#fff0b8' : '#a9878c',
+  target.add(scene.add.text(buttonX, y, ready && choice.optional && selected === 0 ? 'Keep hand' : ready ? `Discard ${selected}` : `Choose ${choice.max - selected} more`, {
+    fontFamily, fontSize: '18px', fontStyle: boldFontStyle, color: ready ? '#fff0b8' : '#b2c1cb',
   }).setOrigin(0.5).setName('combat-discard-confirm-label'));
 }
 
@@ -127,12 +135,14 @@ export function renderDiscardChoiceTag(options: {
   boldFontStyle: string;
 }) {
   const { scene, target, x, y, selected, order, fontFamily, boldFontStyle } = options;
-  target.add(scene.add.rectangle(x, y, 72, 20, selected ? 0x401219 : 0x24151a, 0.98)
-    .setStrokeStyle(1, selected ? 0xff6b57 : 0xd8a840, 0.96)
+  if (!selected) return; // The command lane already teaches how to choose.
+  // Keep the selection marker on the exposed left side of overlapping cards.
+  target.add(scene.add.rectangle(x - 82, y, 64, 28, 0x401219, 0.98)
+    .setStrokeStyle(1, 0xff6b57, 0.96)
     .setName('combat-discard-choice-tag')
     .setData('order', order ?? 0));
-  target.add(scene.add.text(x, y, selected ? `DROP ${order}` : 'CHOOSE', {
-    fontFamily, fontSize: '9px', fontStyle: boldFontStyle, color: selected ? '#ffd9d4' : '#fff0b8', align: 'center',
+  target.add(scene.add.text(x - 82, y, `Drop ${order}`, {
+    fontFamily, fontSize: '16px', fontStyle: boldFontStyle, color: '#ffd9d4', align: 'center',
   }).setOrigin(0.5).setName('combat-discard-choice-tag').setData('order', order ?? 0));
 }
 

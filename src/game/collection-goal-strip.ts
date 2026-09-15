@@ -52,21 +52,23 @@ export function renderCollectionGoalStrip(
     .setData('destination', newCardId ? 'Newest card dossier' : 'Collection Atlas');
   dependencies.addIcon(scene, x - width / 2 + 25, y)?.setAlpha(0.9);
   const textLeft = x - width / 2 + 48;
-  scene.add.text(textLeft, y - 13, compact
-    ? `COLLECTION  /  ${goal.owned}/${goal.total}  /  ${goal.completed}/${goal.milestoneTotal} BADGES`
+  scene.add.text(textLeft, y - (compact ? 11 : 13), compact
+    ? `${goal.owned}/${goal.total} cards  /  G · R3`
     : `COLLECTION PATH  /  ${goal.owned}/${goal.total} CARDS  /  ${goal.completed}/${goal.milestoneTotal} BADGES`, {
     fontFamily: 'Arial',
-    fontSize: '9px',
+    fontSize: compact ? '16px' : '9px',
     fontStyle: 'bold',
     color: '#8df4ff',
   }).setResolution(2).setOrigin(0, 0.5).setName(`${name}-kicker`);
-  scene.add.text(textLeft, y + 10, newCardId
-    ? `NEW CARD READY  /  VIEW DOSSIER${width >= 350 ? '' : '  /  G / R3'}`
+  scene.add.text(textLeft, y + 10, compact
+    ? newCardId ? 'VIEW NEW CARD' : 'OPEN COLLECTION'
+    : newCardId
+    ? 'NEW CARD READY  /  VIEW DOSSIER'
     : goal.next
       ? `NEXT: ${goal.next.name.toUpperCase()}  ${goal.next.current}/${goal.next.target}${width >= 350 ? '  /  OPEN ATLAS' : '  /  G / R3'}`
       : `ALL COLLECTION BADGES EARNED${width >= 350 ? '  /  OPEN ATLAS' : ''}`, {
     fontFamily: 'Arial',
-    fontSize: compact ? '10px' : '11px',
+    fontSize: compact ? '18px' : '11px',
     fontStyle: 'bold',
     color: '#ffe1a3',
     fixedWidth: width - 58,

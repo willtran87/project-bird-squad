@@ -1,4 +1,4 @@
-import type Phaser from 'phaser';
+import Phaser from 'phaser';
 
 export type BattleBackdropMood = 'street' | 'rival' | 'boss';
 
@@ -34,37 +34,11 @@ function renderEncounterTreatment(context: BattleBackdropRenderContext) {
   const treatment = scene.add.graphics();
 
   if (mood === 'boss') {
-    treatment.fillStyle(0x2a0808, 0.18);
+    treatment.fillStyle(0x2a0808, 0.12);
     treatment.fillRect(0, 0, width, height);
-    treatment.lineStyle(2, 0xff7a6e, 0.22);
-    for (let x = 64; x < width; x += 176) {
-      treatment.lineBetween(x, 0, x + 96, 116);
-    }
-    treatment.fillStyle(0xff3d3d, 0.34);
-    for (let x = 196; x < width; x += 196) {
-      treatment.fillCircle(x, 18, 4);
-      treatment.fillCircle(x, 26, 2);
-    }
-    treatment.fillStyle(0x020409, 0.34);
-    treatment.fillRect(0, 0, width, 72);
   } else if (mood === 'rival') {
-    treatment.fillStyle(0x241508, 0.13);
+    treatment.fillStyle(0x241508, 0.09);
     treatment.fillRect(0, 0, width, height);
-    treatment.lineStyle(3, 0xffcf6b, 0.18);
-    for (let x = -120; x < width + 160; x += 150) {
-      treatment.lineBetween(x, 452, x + 280, 248);
-    }
-    treatment.fillStyle(0xff9d4d, 0.16);
-    treatment.fillRect(0, 130, 142, 286);
-    treatment.fillRect(width - 142, 116, 142, 320);
-  } else {
-    treatment.lineStyle(1, 0x8df4ff, 0.12);
-    for (let x = 160; x < width; x += 220) {
-      treatment.lineBetween(x, 114, x - 74, 438);
-    }
-    treatment.fillStyle(0x8df4ff, 0.06);
-    treatment.fillRect(150, 116, 3, 324);
-    treatment.fillRect(width - 153, 116, 3, 324);
   }
 
   target.add(treatment);
@@ -81,7 +55,9 @@ function renderAtmosphere(context: BattleBackdropRenderContext) {
   } = context;
   if (!scene.textures.exists(atmosphereTextureKey)) return;
 
-  const frame = Math.max(0, Math.min(3, mapIndex));
+  // The canonical 768x96 strip has three 256x96 frames. High Roost shares
+  // the signal-wind frame; requesting frame 3 falls back to the wrong tile.
+  const frame = Math.max(0, Math.min(2, mapIndex));
   const rows = mapIndex === 1
     ? [160, 252, 344, 414]
     : mapIndex === 3
@@ -125,22 +101,28 @@ export function renderBattleBackdrop(context: BattleBackdropRenderContext) {
   if (scene.textures.exists(battlefieldTextureKey)) {
     const background = scene.add.image(width / 2, height / 2, battlefieldTextureKey)
       .setDisplaySize(width, height)
-      .setAlpha(0.82);
+      .setAlpha(1);
     target.add(background);
   } else {
     renderFallbackBackdrop(context);
   }
 
-  const shade = scene.add.graphics();
-  shade.fillStyle(0x06101d, 0.3);
+  const shade = scene.add.graphics().setName('combat-stage-vignette');
+  shade.fillStyle(0x06101d, 0.06);
   shade.fillRect(0, 0, width, height);
-  shade.fillStyle(0x020409, 0.42);
-  shade.fillRect(0, 0, width, 116);
-  shade.fillStyle(0x020409, 0.5);
-  shade.fillRect(0, 452, width, 268);
-  shade.fillStyle(0x02060c, 0.28);
-  shade.fillRect(0, 0, 150, height);
-  shade.fillRect(width - 150, 0, 150, height);
+  // Soft stage-relative edges separate the controls without cutting rectangular
+  // bands through the district artwork. Four static quads; no new animation.
+  const ink = 0x02060c;
+  if (scene.game.renderer.type === Phaser.WEBGL) {
+    shade.fillGradientStyle(ink, ink, ink, ink, 0.6, 0.6, 0, 0);
+    shade.fillRect(0, 0, width, height * 0.26);
+    shade.fillGradientStyle(ink, ink, ink, ink, 0, 0, 0.78, 0.78);
+    shade.fillRect(0, height * 0.55, width, height * 0.45);
+    shade.fillGradientStyle(ink, ink, ink, ink, 0.46, 0, 0.46, 0);
+    shade.fillRect(0, 0, width * 0.2, height);
+    shade.fillGradientStyle(ink, ink, ink, ink, 0, 0.46, 0, 0.46);
+    shade.fillRect(width * 0.8, 0, width * 0.2, height);
+  }
   target.add(shade);
 
   renderEncounterTreatment(context);

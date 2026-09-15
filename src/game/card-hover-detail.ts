@@ -1,6 +1,10 @@
 import Phaser from 'phaser';
-import { renderMarketCardDossier } from './reward-card-inspection';
+import { renderMarketCardDossier, renderRouteInspectionReader } from './reward-card-inspection';
 export {
+  renderMarketServices,
+  renderMarketCatalogLabel,
+  renderMarketMerchandise,
+  renderMarketItemDetail,
   activateMarketFocus,
   bindMarketInputs,
   cardPickerDecisionDelta,
@@ -24,7 +28,6 @@ export {
   renderCardPickerInspection,
   renderCardPickerConfirmationRail,
   renderMarketCategoryTabs,
-  renderMarketCardBuildRead,
   renderMarketInputHelp,
   renderMarketSectionHeader,
   requestCardPick,
@@ -41,6 +44,7 @@ const UI_CYAN = '#8df4ff';
 export interface CardHoverDetailView {
   marketCardId?: string;
   marketRules?: { page: number; total: number; title: string; text: string };
+  inspectionRules?: { page: number; total: number; title: string; text: string };
   name: string;
   bird: string;
   label: string;
@@ -57,6 +61,7 @@ export interface CardHoverDetailView {
   upgradedText: string;
   baseText: string;
   moltText?: string;
+  upgradedMoltText?: string;
   usesMolt: boolean;
   stats: string[];
   reducedMotion: boolean;
@@ -77,12 +82,10 @@ export interface SceneCardDetailView {
   role: string;
   currentText: string;
   alternateText: string;
+  moltText?: string;
+  upgradedMoltText?: string;
   usesMolt: boolean;
   stats: string[];
-  reducedMotion: boolean;
-  dossierFrameKey?: string;
-  detailFrameKey?: string;
-  costBadgeKey?: string;
 }
 
 export interface MarketItemDetailView {
@@ -103,6 +106,7 @@ export interface MarketItemDetailView {
 }
 
 export function renderCardHoverDetail(scene: Phaser.Scene, view: CardHoverDetailView) {
+  if (['Route reward inspection', 'Preen candidate', 'Release candidate'].includes(view.zone)) return renderRouteInspectionReader(scene, view);
   if (view.zone.startsWith('Market /')) return renderMarketCardDossier(scene, view);
   const w = 300;
   const h = 450;
@@ -283,247 +287,91 @@ export function renderCardHoverDetail(scene: Phaser.Scene, view: CardHoverDetail
   return container;
 }
 
-export function renderSceneCardDetail(scene: Phaser.Scene, view: SceneCardDetailView) {
-  const layout = {
-    panelCx: 826, panelCy: 379, panelW: 620, panelH: 430,
-    artX: 664, artY: 402, artW: 236, artH: 354,
-    costX: 550, costY: 200,
-    textX: 826, textW: 282,
-    titleY: 184, metaY: 234, targetY: 262, statusY: 292,
-    currentHeaderY: 322, currentBodyY: 346,
-    alternateHeaderY: 430, alternateBodyY: 454,
-    statsHeaderY: 512, statsY: 536,
-  };
-  const left = layout.panelCx - layout.panelW / 2;
-  const right = layout.panelCx + layout.panelW / 2;
-  const top = layout.panelCy - layout.panelH / 2;
-  const bottom = layout.panelCy + layout.panelH / 2;
-  scene.add.rectangle(layout.panelCx + 8, layout.panelCy + 10, layout.panelW, layout.panelH, 0x020409, 0.42);
-  scene.add.rectangle(layout.panelCx, layout.panelCy, layout.panelW, layout.panelH, 0x070b12, 0.985)
-    .setStrokeStyle(1, view.accent, 0.42);
-  scene.add.rectangle(layout.panelCx, top + 14, layout.panelW - 34, 2, view.accent, 0.72);
-  scene.add.rectangle(layout.panelCx, bottom - 14, layout.panelW - 34, 1, 0xffffff, 0.08);
-  const corner = 28;
-  [
-    [left + 15, top + 15, corner, 2], [left + 15, top + 15, 2, corner],
-    [right - 15 - corner, top + 15, corner, 2], [right - 15, top + 15, 2, corner],
-    [left + 15, bottom - 15, corner, 2], [left + 15, bottom - 15 - corner, 2, corner],
-    [right - 15 - corner, bottom - 15, corner, 2], [right - 15, bottom - 15 - corner, 2, corner],
-  ].forEach(([x, y, width, height]) => {
-    scene.add.rectangle(x, y, width, height, view.accent, 0.72).setOrigin(0, 0);
-  });
+// Preserve the page through portrait arrival; reset when the selected card changes.
+const detailReading = new WeakMap<Phaser.Scene, { key: string; page: number }>();
 
-  if (view.detailFrameKey && scene.textures.exists(view.detailFrameKey)) {
-    scene.textures.get(view.detailFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    scene.add.image(layout.panelCx, layout.panelCy, view.detailFrameKey)
-      .setDisplaySize(642, 444)
-      .setAlpha(0.62)
-      .setName('deck-review-detail-frame');
-  }
-  if (view.artKey && scene.textures.exists(view.artKey)) {
-    scene.add.image(layout.artX, layout.artY, view.artKey)
-      .setDisplaySize(layout.artW, layout.artH)
-      .setAlpha(0.92);
-  } else if (view.snagBorderKey && scene.textures.exists(view.snagBorderKey)) {
-    scene.add.rectangle(layout.artX, layout.artY, layout.artW, layout.artH, 0x07090d, 0.92);
-    scene.add.image(layout.artX, layout.artY, view.snagBorderKey)
-      .setDisplaySize(layout.artW, layout.artH)
-      .setAlpha(0.92);
-    scene.add.rectangle(layout.artX, layout.artY, layout.artW, layout.artH, 0x05101a, 0.12);
-  } else {
-    scene.add.rectangle(layout.artX, layout.artY, layout.artW, layout.artH, 0x141f2f, 0.95)
-      .setStrokeStyle(1, 0x49606d, 0.8);
-    scene.add.text(layout.artX, layout.artY, view.label, {
-      fontFamily: UI_FONT,
-      fontSize: '18px',
-      fontStyle: UI_BOLD,
-      color: '#7ab8d6',
-      wordWrap: { width: 190 },
-      align: 'center',
-    }).setOrigin(0.5);
-  }
-  if (view.dossierFrameKey && scene.textures.exists(view.dossierFrameKey)) {
-    scene.textures.get(view.dossierFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const alpha = view.reducedMotion ? 0.88 : 0.92;
-    const frame = scene.add.image(layout.artX, layout.artY, view.dossierFrameKey)
-      .setDisplaySize(layout.artW + 28, layout.artH + 42)
-      .setAlpha(alpha);
-    if (!view.reducedMotion) {
-      scene.tweens.add({
-        targets: frame,
-        alpha: alpha * 0.92,
-        scaleX: frame.scaleX * 1.004,
-        scaleY: frame.scaleY * 1.004,
-        duration: 1800,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
-  }
-  if (view.costBadgeKey && scene.textures.exists(view.costBadgeKey)) {
-    scene.textures.get(view.costBadgeKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const badge = scene.add.image(layout.costX, layout.costY, view.costBadgeKey)
-      .setDisplaySize(46, 46)
-      .setName('deck-review-cost-badge');
-    if (view.cost === 0) badge.setTint(0xd9fdff);
-  } else {
-    scene.add.circle(layout.costX, layout.costY, 23, 0x141b22, 1)
-      .setStrokeStyle(2, view.cost === 0 ? 0x24d0d6 : 0xd8a840, 1)
-      .setName('deck-review-cost-badge-fallback');
-  }
-
-  scene.add.text(layout.costX, layout.costY, `${view.cost}`, {
-    fontFamily: UI_FONT,
-    fontSize: '17px',
-    fontStyle: UI_BOLD,
-    color: '#f6f2df',
-    stroke: '#020409',
-    strokeThickness: 2,
-  }).setOrigin(0.5);
-  scene.add.text(layout.textX, layout.titleY, view.name, {
-    fontFamily: UI_FONT,
-    fontSize: '26px',
-    fontStyle: UI_BOLD,
-    color: UI_GOLD,
-    wordWrap: { width: layout.textW },
-  });
-  scene.add.text(layout.textX, layout.metaY, `${view.bird} / ${view.label} / ${view.zone}`, {
-    fontFamily: UI_FONT,
-    fontSize: '15px',
-    fontStyle: UI_BOLD,
-    color: '#7ab8d6',
-    wordWrap: { width: layout.textW },
-  });
-  scene.add.text(layout.textX, layout.targetY, `${view.target} / ${view.role.toUpperCase()}`, {
-    fontFamily: UI_FONT,
-    fontSize: '14px',
-    color: view.usesMolt ? '#ffc78f' : '#b9c7d6',
-  });
-  if (view.usesMolt) {
-    scene.add.rectangle(layout.textX + 40, layout.statusY + 9, 80, 22, 0x2a1208, 0.96)
-      .setStrokeStyle(1, 0xff9d4d, 0.82);
-    scene.add.text(layout.textX + 40, layout.statusY, 'MOLT', {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: '#ffc78f',
-      align: 'center',
-      fixedWidth: 72,
-    }).setOrigin(0.5, 0);
-  }
-  const headerStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-    fontFamily: UI_FONT, fontSize: '15px', fontStyle: UI_BOLD, color: UI_GOLD,
-  };
-  const bodyStyle: Phaser.Types.GameObjects.Text.TextStyle = {
-    fontFamily: UI_FONT,
-    fontSize: '14px',
-    color: '#dce8f2',
-    lineSpacing: 3,
-    wordWrap: { width: layout.textW },
-  };
-  scene.add.text(layout.textX, layout.currentHeaderY, view.usesMolt ? 'Now (Molt)' : 'Now', headerStyle);
-  scene.add.text(layout.textX, layout.currentBodyY, view.currentText, { ...bodyStyle, maxLines: 3 });
-  scene.add.text(layout.textX, layout.alternateHeaderY, view.usesMolt ? 'Base' : 'Preen', headerStyle);
-  scene.add.text(layout.textX, layout.alternateBodyY, view.alternateText, { ...bodyStyle, maxLines: 2 });
-  scene.add.text(layout.textX, layout.statsHeaderY, 'Flock Stats', headerStyle);
-  scene.add.text(layout.textX, layout.statsY, view.stats.length > 0 ? view.stats.join('   ') : 'None', {
-    fontFamily: UI_FONT,
-    fontSize: '14px',
-    fontStyle: UI_BOLD,
-    color: view.stats.length > 0 ? '#8df4ff' : '#91a6b8',
-    wordWrap: { width: layout.textW },
-  });
+export function changeSceneCardDetailPage(scene: Phaser.Scene, delta: number) {
+  scene.children.getByName('deck-review-detail-panel')?.getData('changePage')?.(delta);
 }
 
-export function renderMarketItemDetail(scene: Phaser.Scene, view: MarketItemDetailView) {
-  const w = 306;
-  const body = scene.add.text(16, 74, view.body, {
-    fontFamily: UI_FONT,
-    fontSize: '13px',
-    color: '#dbe6f2',
-    lineSpacing: 3,
-    wordWrap: { width: w - 32 },
-    maxLines: 4,
+export function renderSceneCardDetail(scene: Phaser.Scene, view: SceneCardDetailView) {
+  const text = (x: number, y: number, value: string, size = 22, width = 376) => scene.add.text(x, y, value, {
+    fontFamily: UI_FONT, fontSize: `${size}px`, color: '#dce8f2', resolution: 2,
+    wordWrap: { width, useAdvancedWrap: true }, lineSpacing: 3,
   });
-  const buildText = view.build.length > 0
-    ? `\nBUILD READ\n${view.build.join('\n')}`
-    : '';
-  const decisionText = view.decisionPreview.length > 0
-    ? `\nDECISION\n${view.decisionPreview.join('\n')}`
-    : '';
-  const meta = scene.add.text(16, 86 + body.height, `${view.meta}${view.afterPurchase}${buildText}${decisionText}`, {
-    fontFamily: UI_FONT,
-    fontSize: '11px',
-    fontStyle: UI_BOLD,
-    color: UI_CYAN,
-    lineSpacing: 2,
-    wordWrap: { width: w - 32 },
-    maxLines: 12,
-  });
-  const h = Math.max(150, 104 + body.height + meta.height);
-  const bg = scene.add.rectangle(0, 0, w, h, 0x07101a, 1)
-    .setOrigin(0, 0)
-    .setStrokeStyle(2, view.accent, 1);
-  const frameArt: Phaser.GameObjects.GameObject[] = [];
-  if (view.dossierFrameKey && scene.textures.exists(view.dossierFrameKey)) {
-    scene.textures.get(view.dossierFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const frame = scene.add.image(w / 2, h / 2, view.dossierFrameKey)
-      .setDisplaySize(w + 52, h + 56)
-      .setAlpha(view.enabled ? 0.86 : 0.54)
-      .setName('market-detail-dossier-frame');
-    const glint = scene.add.image(w / 2, h / 2, view.dossierFrameKey)
-      .setDisplaySize(w + 60, h + 64)
-      .setAlpha(view.enabled ? 0.18 : 0.08)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setName('market-detail-dossier-frame');
-    if (!view.enabled) {
-      frame.setTint(0x8fa4bd);
-      glint.setTint(0x8fa4bd);
-    }
-    frameArt.push(frame, glint);
+  const panel = scene.add.rectangle(826, 394, 620, 460, 0x070b12, 0.99)
+    .setStrokeStyle(1, view.accent, 0.5).setInteractive({ useHandCursor: false })
+    .setName('deck-review-detail-panel');
+  const title = text(536, 183, view.name, 26, 576).setColor(UI_GOLD).setFontStyle(UI_BOLD)
+    .setName('deck-review-detail-title');
+  const titleLines = title.getWrappedText();
+  let excerpt = titleLines.slice(0, 2).join('\n');
+  title.setText(excerpt + (titleLines.length > 2 ? '…' : ''));
+  while (title.height > 64 && excerpt.length) {
+    excerpt = excerpt.slice(0, -1).trimEnd();
+    title.setText(`${excerpt}…`);
   }
-  const rail = scene.add.rectangle(0, 0, w, 4, view.accent, 1).setOrigin(0, 0);
-  const title = scene.add.text(16, 13, view.title, {
-    fontFamily: UI_FONT,
-    fontSize: '17px',
-    fontStyle: UI_BOLD,
-    color: UI_GOLD,
-    wordWrap: { width: view.price === undefined ? w - 32 : w - 118 },
-    maxLines: 2,
+  scene.add.circle(558, 265, 20, 0x141b22, 1).setStrokeStyle(1, view.accent, 0.8);
+  text(558, 265, String(view.cost), 18, 40).setOrigin(0.5).setFontStyle(UI_BOLD);
+  text(586, 255, 'Wingbeats', 16, 126).setColor('#a9c6d5');
+  const art = view.artKey && scene.textures.exists(view.artKey) ? view.artKey
+    : view.snagBorderKey && scene.textures.exists(view.snagBorderKey) ? view.snagBorderKey : undefined;
+  scene.add.rectangle(626, 410, 162, 243, 0x141f2f, 1).setStrokeStyle(1, view.accent, 0.5);
+  if (art) scene.add.image(626, 410, art).setDisplaySize(162, 243);
+  else text(626, 410, 'Card art', 18, 150).setOrigin(0.5).setColor('#a9c6d5');
+  const heading = text(734, 285, '', 16).setColor(UI_GOLD).setFontStyle(UI_BOLD);
+  const body = text(734, 318, '').setName('deck-review-detail-body');
+  const sections = [
+    { title: view.usesMolt ? 'NOW · MOLT' : 'NOW', text: view.currentText },
+    { title: view.usesMolt ? 'BASE' : 'PREEN', text: view.alternateText },
+    ...(view.moltText ? [{ title: 'MOLT', text: view.moltText }] : []),
+    ...(view.upgradedMoltText ? [{ title: 'MOLT · PREEN', text: view.upgradedMoltText }] : []),
+    { title: 'PASSIVE FLOCK BONUSES', text: view.stats.length ? view.stats.join('\n') : 'No passive contribution.' },
+    { title: 'CARD DETAILS', text: `${view.name}\n${view.bird} / ${view.label} / ${view.zone}\n${view.target} / ${view.role}` },
+  ];
+  const pages: Array<{ title: string; text: string }> = [];
+  for (const section of sections) {
+    let lines: string[] = [];
+    for (const line of body.getWrappedText(section.text || 'None.')) {
+      body.setText([...lines, line].join('\n'));
+      if (body.getBounds().bottom > 528 && lines.length) {
+        pages.push({ title: section.title, text: lines.join('\n') }); lines = [];
+      }
+      lines.push(line);
+    }
+    if (lines.length) pages.push({ title: section.title, text: lines.join('\n') });
+  }
+  const key = JSON.stringify(sections);
+  const state = detailReading.get(scene)?.key === key ? detailReading.get(scene)! : { key, page: 0 };
+  detailReading.set(scene, state);
+  const pageLabel = text(826, 568, '', 16, 150).setOrigin(0.5);
+  text(826, 606, 'Read only · PgUp / PgDn · LB / RB', 14, 570).setOrigin(0.5).setColor('#a9c6d5');
+  const buttons: Phaser.GameObjects.Rectangle[] = [];
+  const labels: Phaser.GameObjects.Text[] = [];
+  const show = (delta: number) => {
+    const host = scene as Phaser.Scene & { pauseOverlayOpen?: boolean; settingsOverlayOpen?: boolean; deckReviewSearchActive?: boolean };
+    if (delta && (host.pauseOverlayOpen || host.settingsOverlayOpen || host.deckReviewSearchActive)) return;
+    state.page = Phaser.Math.Clamp(state.page + delta, 0, pages.length - 1);
+    const current = pages[state.page];
+    heading.setText(current.title); body.setText(current.text);
+    pageLabel.setText(`${state.page + 1} / ${pages.length}`);
+    panel.setData('reading', { ...current, page: state.page + 1, total: pages.length });
+    buttons.forEach((button, i) => {
+      const enabled = i ? state.page < pages.length - 1 : state.page > 0;
+      button.setData('enabled', enabled).setAlpha(enabled ? 1 : 0.4);
+      labels[i].setAlpha(enabled ? 1 : 0.4);
+    });
+  };
+  [-1, 1].forEach((delta, i) => {
+    const x = i ? 1042 : 610;
+    const hit = scene.add.rectangle(x, 568, 140, 58, 0x152432, 1).setStrokeStyle(1, 0x8df4ff, 0.4)
+      .setInteractive({ useHandCursor: true }).setName(`deck-review-detail-${i ? 'next' : 'previous'}`);
+    hit.on('pointerdown', () => { if (hit.getData('enabled')) show(delta); });
+    hit.on('pointerover', () => { if (hit.getData('enabled')) hit.setStrokeStyle(2, 0x8df4ff, 1); });
+    hit.on('pointerout', () => hit.setStrokeStyle(1, 0x8df4ff, 0.4));
+    buttons.push(hit);
+    labels.push(text(x, 568, i ? 'Next →' : '← Previous', 16, 132).setOrigin(0.5));
   });
-  const price = view.price === undefined
-    ? undefined
-    : scene.add.text(w - 16, 16, `${view.price}`, {
-      fontFamily: UI_FONT,
-      fontSize: '17px',
-      fontStyle: UI_BOLD,
-      color: '#f0c36f',
-    }).setOrigin(1, 0);
-  const scrapIcon = view.price !== undefined && view.scrapIconKey && scene.textures.exists(view.scrapIconKey)
-    ? scene.add.image(w - 72, 27, view.scrapIconKey).setDisplaySize(22, 22).setAlpha(0.94)
-    : undefined;
-  const kicker = scene.add.text(16, 52, view.kicker.toUpperCase(), {
-    fontFamily: UI_FONT,
-    fontSize: '10px',
-    fontStyle: UI_BOLD,
-    color: '#91a6b8',
-    wordWrap: { width: w - 32 },
-    maxLines: 1,
-  });
-  const panel = scene.add.container(0, 0, [
-    bg,
-    ...frameArt,
-    rail,
-    title,
-    ...(price ? [price] : []),
-    ...(scrapIcon ? [scrapIcon] : []),
-    kicker,
-    body,
-    meta,
-  ]).setDepth(23040);
-  const px = Math.max(12, Math.min(1280 - w - 12, view.anchorX - w / 2));
-  const above = view.anchorY - h - 22;
-  const py = above > 10 ? above : Math.min(720 - h - 12, view.anchorY + 48);
-  return panel.setPosition(px, py);
+  panel.setData('changePage', show);
+  show(0);
 }

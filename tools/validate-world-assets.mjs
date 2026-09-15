@@ -22,7 +22,7 @@ const canonicalGroups = [
       'high-roost-route-map-v1.webp',
       'high-roost.webp',
       'rooftop-blocks-route-map-v1.webp',
-      'rooftop-blocks.webp',
+      'rooftop-blocks-readability-v2.webp',
       'signal-spires-route-map-v1.webp',
       'signal-spires.webp',
     ],
@@ -88,6 +88,7 @@ const canonicalSourceGroups = [
   {
     dir: 'assets/concept-art/backdrops/sources',
     files: [
+      'rooftop-blocks-readability-source-v2.png',
       'canal-markets-route-map-source-v1.png',
       'high-roost-route-map-source-v1.png',
       'signal-spires-route-map-source-v1.png',

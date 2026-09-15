@@ -1,4 +1,6 @@
 import type Phaser from 'phaser';
+import { formatEffects } from '../../main';
+import { rewardDeckImpact } from '../reward-card-inspection';
 import { controlBindingLabel } from '../input-bindings';
 import { alphaSupplyLibrary } from '../runtime-data';
 
@@ -299,6 +301,9 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
   for (const [field, textureKey] of Object.entries(SCENE_COMBAT_TEXTURES)) {
     state[field] = loadedTextureState(context.scene, textureKey, sceneTextureCount(context, textureKey));
   }
+  // Targeting now uses a grounded vector ellipse instead of the decorative texture.
+  const targetReticles = namedCountInTrees('combat-target-reticle', [context.roots.battle]);
+  state.combatTargetReticle = { ...state.combatTargetReticle, rendered: targetReticles > 0, count: targetReticles };
 
   const battleHudTexture = uiTextureKey('battleHudCommandRail');
   const battleHudCount = directTextureCount(battleHudTexture, context.roots.battle?.list ?? []);
@@ -354,7 +359,8 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
               id: supply.id,
               name: supply.name,
               description: supply.description,
-              summary: supply.effects.slice(0, 3).join(' | ').slice(0, 96),
+                summary: supply.effects.slice(0, 3).join(' | ').slice(0, 96),
+                rules: formatEffects(supply.effects),
               timing: supply.timing,
               usable: supply.timing !== 'route',
             }
@@ -416,11 +422,12 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
     },
     rewardInspection: {
       open: Boolean(battle.rewardInspectionCardId),
+      reading: battle.rewardInspectionCardId ? battle.cardPreview?.getData('reading') : undefined,
       cardId: battle.rewardInspectionCardId,
       cardName: rewardInspectionCard?.runtime?.displayName ?? rewardInspectionCard?.name,
       cost: rewardInspectionCard?.cost,
-      rules: rewardInspectionCard ? battle.activeCardContract(rewardInspectionCard).text : undefined,
-      deckImpact: rewardInspectionCard ? battle.rewardDeckImpact(rewardInspectionCard) : undefined,
+      rules: rewardInspectionCard ? rewardInspectionCard.upgraded ? rewardInspectionCard.upgradedText : rewardInspectionCard.text : undefined,
+      deckImpact: rewardInspectionCard ? rewardDeckImpact(battle, rewardInspectionCard) : undefined,
       source: battle.mode === 'cardReward'
         ? 'combatReward'
         : battle.mode === 'upgradeReward'

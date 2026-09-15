@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
+import { fitTextExcerpt } from '../text-excerpt';
 
 export type BattleHudTooltipTarget = Phaser.GameObjects.Rectangle | Phaser.GameObjects.Arc | Phaser.GameObjects.Text;
 
@@ -64,6 +65,8 @@ export interface BattleHudRenderContext {
   log: {
     latest: string;
     tooltip: string;
+    historyLabel: string;
+    onHistory: () => void;
   };
   beat: BattleHudBeatView;
   guidance?: BattleHudGuidanceView;
@@ -71,6 +74,7 @@ export interface BattleHudRenderContext {
   onRoost: () => void;
   roostLabel?: string;
   roostPreview?: string;
+  roostDetail?: string;
   attachTooltip: (target: BattleHudTooltipTarget, title: string, body: string) => void;
 }
 
@@ -127,6 +131,7 @@ interface SelectionOutcome {
   nextTurnDrawDelta: number;
   nextTurnEnergyDelta: number;
   moltPowerApplied: number;
+  requiresChoice?: boolean;
   bossPhaseBreak?: { enemyId: string; name: string; nextIntent?: string };
 }
 
@@ -140,10 +145,10 @@ export function formatBattleSelectionOutcome(
   const targetState = outcome.enemyStates.find((enemy) => enemy.id === enemyId);
   const phaseBreak = outcome.bossPhaseBreak;
   const parts: string[] = [];
-  if (targetState && targetState.hpAfter !== targetState.hpBefore) {
+  if (outcome.contract.target !== 'allEnemies' && targetState && targetState.hpAfter !== targetState.hpBefore) {
     parts.push(targetState.defeated
-      ? `Cohesion ${targetState.hpBefore} -> DEFEATED`
-      : `Cohesion ${targetState.hpBefore} -> ${targetState.hpAfter}`);
+      ? `Enemy Cohesion ${targetState.hpBefore} -> DEFEATED`
+      : `Enemy Cohesion ${targetState.hpBefore} -> ${targetState.hpAfter}`);
   } else if (outcome.enemyDamage > 0) {
     const defeated = outcome.enemyStates.filter((enemy) => enemy.hpBefore > 0 && enemy.defeated).length;
     parts.push(`${outcome.enemyDamage} total damage${defeated > 0 ? ` / ${defeated} defeated` : ''}`);
@@ -167,7 +172,11 @@ export function formatBattleSelectionOutcome(
     target: outcome.contract.target === 'enemy'
       ? outcome.target?.name ?? 'Choose target'
       : outcome.contract.target === 'allEnemies' ? 'All enemies' : 'Flock',
-    summary: parts.length > 0 ? parts.slice(0, 3).join('  /  ') : fallbackSummary,
+    summary: outcome.requiresChoice
+      ? [...parts.slice(0, 2), 'Choose cards; later effects depend on your choice.'].join('  /  ')
+      : parts.length > 0 ? [...parts.slice(0, 3), ...(parts.length > 3 ? ['…'] : [])].join('  /  ') : fallbackSummary,
+    details: [...(parts.length ? parts : [fallbackSummary]),
+      ...(outcome.requiresChoice ? ['Choose cards; later effects depend on your choice.'] : [])].join('\n\n'),
     moltPower: outcome.moltPowerApplied > 0
       ? { total: moltPowerTotal, applied: outcome.moltPowerApplied }
       : undefined,
@@ -196,99 +205,44 @@ function textureReady(scene: Phaser.Scene, key: string) {
 
 function renderPile(context: BattleHudRenderContext, pile: BattleHudPileView) {
   const { scene, root, assets, fontFamily, boldFontStyle } = context;
-  const { x, y, count, label, accent, onInspect } = pile;
-  const hasCards = count > 0;
-  const hit = scene.add.rectangle(x, y, 104, 132, 0x000000, 0.001)
-    .setInteractive({ useHandCursor: true });
+  const { x, y, count, label, onInspect } = pile;
+  const hit = scene.add.rectangle(x, y, 104, 112, 0x08121b, 0.36)
+    .setStrokeStyle(1, 0x83979e, 0.22)
+    .setName('combat-pile-hit').setInteractive({ useHandCursor: true });
   hit.on('pointerdown', onInspect);
-  context.attachTooltip(
-    hit,
-    label === 'DRAW' ? 'Draw Pile' : 'Discard Pile',
-    label === 'DRAW' ? 'Cards left to draw. Click to inspect them.' : 'Cards already discarded. Click to inspect them.',
-  );
+  hit.on('pointerover', () => hit.setFillStyle(0x162b36, 0.92).setStrokeStyle(1, 0x8bd0d6, 0.8));
+  hit.on('pointerout', () => hit.setFillStyle(0x08121b, 0.36).setStrokeStyle(1, 0x83979e, 0.22));
+  context.attachTooltip(hit, label === 'DRAW' ? 'Draw Pile' : 'Discard Pile',
+    label === 'DRAW' ? 'Cards left to draw. Click to inspect them.' : 'Cards already discarded. Click to inspect them.');
   root.add(hit);
-
-  if (textureReady(scene, assets.pileDock)) {
-    root.add(scene.add.image(x, y - 10, assets.pileDock)
-      .setDisplaySize(164, 122)
-      .setAlpha(hasCards ? 0.72 : 0.46)
-      .setName('combat-pile-dock'));
-  }
-
-  if (textureReady(scene, assets.cardBack)) {
-    root.add(scene.add.image(x, y - 10, assets.cardBack)
-      .setDisplaySize(78, 104)
-      .setAlpha(hasCards ? 0.96 : 0.42)
-      .setAngle(label === 'DRAW' ? -5 : 5)
-      .setName('combat-card-back'));
-  } else {
-    root.add(scene.add.rectangle(x, y - 10, 78, 104, 0x16243c, hasCards ? 0.96 : 0.42)
-      .setStrokeStyle(2, 0x7ab8d6, 1)
-      .setAngle(label === 'DRAW' ? -5 : 5)
-      .setName('combat-card-back-fallback'));
-  }
-
-  const iconKey = label === 'DRAW' ? assets.drawIcon : assets.discardIcon;
-  if (textureReady(scene, iconKey)) {
-    root.add(scene.add.image(x, y - 18, iconKey)
-      .setDisplaySize(70, 70)
-      .setAlpha(hasCards ? 0.86 : 0.34));
-  }
-
-  const countY = y + 64;
-  root.add(scene.add.circle(x, countY, 18, 0x07101c, 1).setStrokeStyle(2, accent, 1));
-  root.add(scene.add.text(x, countY, `${count}`, {
-    fontFamily,
-    fontSize: '18px',
-    fontStyle: boldFontStyle,
-    color: '#ffffff',
-  }).setOrigin(0.5));
+  if (textureReady(scene, assets.cardBack)) root.add(scene.add.image(x - 21, y - 9, assets.cardBack)
+    .setDisplaySize(30, 42).setAlpha(count ? 0.88 : 0.35).setName('combat-card-back'));
+  root.add(scene.add.text(x + 21, y - 9, `${count}`, {
+    fontFamily, fontSize: '25px', fontStyle: boldFontStyle, color: count ? '#e4eff2' : '#889ba5', resolution: 2
+  }).setOrigin(0.5).setName('combat-pile-count').setData('pile', label));
+  root.add(scene.add.text(x, y + 30, label, {
+    fontFamily, fontSize: '12px', fontStyle: boldFontStyle, color: '#bdcbd2', resolution: 2
+  }).setOrigin(0.5).setName('combat-pile-label'));
 }
 
 function renderCombatLog(context: BattleHudRenderContext) {
-  const { scene, root, assets, fontFamily } = context;
-  const x = 650;
-  const y = 404;
-  const w = 326;
-  const h = 38;
-  const hit = scene.add.rectangle(x, y, w, Math.max(h, MIN_SUPPORTED_TOUCH_TARGET), 0x000000, 0.001)
-    .setInteractive({ useHandCursor: true })
-    .setName('combat-log-hit');
-  context.attachTooltip(hit, 'Combat Log', context.log.tooltip);
-
-  root.add(scene.add.rectangle(x, y, w - 36, h - 14, 0x07111a, 0.42)
-    .setStrokeStyle(1, 0x101b27, 0.52)
-    .setName('combat-log-frame-backplate'));
-  if (textureReady(scene, assets.logFrame)) {
-    root.add(scene.add.image(x, y, assets.logFrame)
-      .setDisplaySize(w, h)
-      .setAlpha(0.26)
-      .setName('combat-log-frame'));
-  } else {
-    root.add(scene.add.rectangle(x, y, w - 20, h - 18, 0x07111a, 0.78)
-      .setStrokeStyle(2, 0xd8a840, 0.7)
-      .setName('combat-log-frame-fallback'));
-  }
+  const { scene, root, fontFamily } = context;
+  const x = 650, y = 440;
+  const hit = scene.add.rectangle(x, y, 160, MIN_SUPPORTED_TOUCH_TARGET, 0x08121b, 0.22)
+    .setInteractive({ useHandCursor: true }).setName('combat-log-hit');
+  context.attachTooltip(hit, 'Combat history', `${context.log.tooltip}\n${context.log.historyLabel}. Review up to 256 recent events without changing your selection.`);
+  hit.on('pointerdown', context.log.onHistory);
+  hit.on('pointerover', () => hit.setFillStyle(0x162b36, 0.95));
+  hit.on('pointerout', () => hit.setFillStyle(0x08121b, 0.22));
   root.add(hit);
-
-  const beadX = x - 135;
-  if (textureReady(scene, assets.logEventBead)) {
-    root.add(scene.add.image(beadX, y, assets.logEventBead)
-      .setDisplaySize(18, 18)
-      .setAlpha(0.7)
-      .setName('combat-log-event-bead'));
-  }
-  root.add(scene.add.text(x - 119, y, context.log.latest, {
-    fontFamily,
-    fontSize: '12px',
-    color: '#d9e4ee',
-    fixedWidth: 246,
-    maxLines: 1,
-  }).setOrigin(0, 0.5));
+  root.add(scene.add.text(x, y, 'Combat history', {
+    fontFamily, fontSize: '15px', color: '#b7c8d0', resolution: 2,
+    wordWrap: { width: 148 }, maxLines: 2, align: 'center'
+  }).setOrigin(0.5).setName('combat-log-latest'));
 }
 
 export function renderBattleBeatBadge(context: BattleHudRenderContext) {
-  const { scene, root, assets, beat, fontFamily, boldFontStyle } = context;
+  const { scene, root, beat, fontFamily, boldFontStyle } = context;
   const beatUi = scene.add.container(0, 0).setName('combat-beat-progress-ui');
   root.add(beatUi);
   const beatX = beat.active ? 1146 : 1190;
@@ -296,16 +250,6 @@ export function renderBattleBeatBadge(context: BattleHudRenderContext) {
   const frameW = beat.active ? 250 : 148;
   const frameH = beat.active ? 48 : 37;
   beatUi.add(scene.add.rectangle(beatX, beatY, frameW - 30, frameH - 14, 0x07101c, beat.active ? 0.97 : 0.94));
-  if (textureReady(scene, assets.beatProgressFrame)) {
-    beatUi.add(scene.add.image(beatX, beatY, assets.beatProgressFrame)
-      .setDisplaySize(frameW, frameH)
-      .setAlpha(1)
-      .setName('combat-beat-progress-frame'));
-  } else {
-    beatUi.add(scene.add.rectangle(beatX, beatY, frameW - 10, frameH - 6, 0x10202c, 0.72)
-      .setStrokeStyle(1, 0xd8a840, 0.62)
-      .setName('combat-beat-progress-frame-fallback'));
-  }
 
   if (!beat.active) {
     beatUi.add(scene.add.text(1252, beatY, `Beat ${beat.turn}`, {
@@ -377,23 +321,28 @@ function renderCommandStrip(context: BattleHudRenderContext) {
   renderCombatLog(context);
   const x = 1192;
   const y = 470;
-  const hit = scene.add.rectangle(x, y, 164, 74, 0x12333b, 0.98)
-    .setStrokeStyle(2, 0x8df4ff, 0.9)
-    .setName('combat-roost-hit').setInteractive({ useHandCursor: true });
-  hit.on('pointerdown', context.onRoost);
-  context.attachTooltip(hit, 'End Turn', 'Roost and let enemies act.');
+  const busy = context.beat.active;
+  const hit = scene.add.rectangle(x, y, 164, 74, busy ? 0x0c1d25 : 0x12333b, 0.98)
+    .setStrokeStyle(1, busy ? 0x526c76 : 0x8df4ff, busy ? 0.5 : 0.72)
+    .setName('combat-roost-hit').setInteractive({ useHandCursor: !busy });
+  if (!busy) hit.on('pointerdown', context.onRoost);
+  context.attachTooltip(hit, busy ? 'Enemy turn' : 'End Turn', busy
+    ? 'Enemies are resolving their moves. Your hand returns when they finish.'
+    : context.roostDetail ?? 'Roost and let enemies act.');
 
   root.add(hit);
-  hit.on('pointerover', () => hit.setFillStyle(0x20515a, 1));
-  hit.on('pointerout', () => hit.setFillStyle(0x12333b, 0.98));
-  root.add(scene.add.text(x, y - 17, context.roostLabel ?? 'Roost · End Turn', {
+  if (!busy) {
+    hit.on('pointerover', () => hit.setFillStyle(0x20515a, 1));
+    hit.on('pointerout', () => hit.setFillStyle(0x12333b, 0.98));
+  }
+  root.add(scene.add.text(x, y - 17, busy ? 'Enemy turn' : context.roostLabel ?? 'Roost · End Turn', {
       fontFamily: context.fontFamily,
       fontSize: '16px',
       fontStyle: context.boldFontStyle,
-      color: '#fff0b8',
+      color: busy ? '#aabcc8' : '#fff0b8', resolution: 2,
     }).setOrigin(0.5).setName('combat-roost-label'));
-  root.add(scene.add.text(x, y + 14, context.roostPreview ?? 'Enemies act next', {
-    fontFamily: context.fontFamily, fontSize: '14px', color: '#dffbff',
+  root.add(scene.add.text(x, y + 14, busy ? 'Your hand returns next' : context.roostPreview ?? 'Enemies act next', {
+    fontFamily: context.fontFamily, fontSize: '14px', color: '#dffbff', resolution: 2,
     wordWrap: { width: 152 }, align: 'center',
   }).setOrigin(0.5).setName('combat-roost-preview'));
   return renderBattleBeatBadge(context);
@@ -404,7 +353,7 @@ function renderGuidance(context: BattleHudRenderContext) {
   const { scene, root, gameWidth, fontFamily, boldFontStyle, guidance } = context;
   root.add(scene.add.rectangle(gameWidth / 2, 112, 600, 32, 0x06111a, 0.94)
     .setStrokeStyle(2, guidance.accent, 0.8)
-    .setName('first-combat-guidance'));
+    .setName('first-combat-guidance').setData('deferToCard', guidance.text.startsWith('ROOST WHEN')));
   root.add(scene.add.text(gameWidth / 2, 112, guidance.text, {
     fontFamily,
     fontSize: '12px',
@@ -413,7 +362,7 @@ function renderGuidance(context: BattleHudRenderContext) {
     fixedWidth: 572,
     align: 'center',
     maxLines: 1,
-  }).setOrigin(0.5).setName('first-combat-guidance'));
+  }).setOrigin(0.5).setName('first-combat-guidance').setData('deferToCard', guidance.text.startsWith('ROOST WHEN')));
 }
 
 function renderObjective(context: BattleHudRenderContext) {
@@ -442,6 +391,13 @@ export function renderBattleSelectionPreview(
   preview: BattleSelectionPreviewView,
 ) {
   const { scene, root, gameWidth, fontFamily, boldFontStyle } = context;
+  // A new decision takes precedence over the previous hit's decoration.
+  for (const layer of scene.children.list) {
+    if (!(layer instanceof Phaser.GameObjects.Container)) continue;
+    for (const object of [...layer.list]) {
+      if (object.name === 'combat-number-feedback' && object.getData('placement') === 'target-lane') object.destroy();
+    }
+  }
   const targetHp = preview.targetHp;
   if (targetHp) {
     const lostWidth = Math.max(2, targetHp.width * (targetHp.beforeFraction - targetHp.afterFraction));
@@ -451,54 +407,59 @@ export function renderBattleSelectionPreview(
     root.add(scene.add.rectangle(afterX + lostWidth / 2, targetHp.y, lostWidth, targetHp.height - 6, accent, 0.62)
       .setBlendMode(Phaser.BlendModes.ADD)
       .setName('combat-enemy-outcome-preview'));
-    root.add(scene.add.rectangle(afterX, targetHp.y, 2, targetHp.height + 10, accent, 0.96)
+    root.add(scene.add.rectangle(afterX, targetHp.y, 2, targetHp.height, accent, 0.96)
       .setName('combat-enemy-outcome-preview'));
-    const labelY = targetHp.y + 27;
-    root.add(scene.add.rectangle(targetHp.x, labelY, targetHp.defeated ? 104 : 88, 19, 0x06111a, 0.96)
-      .setStrokeStyle(1, accent, 0.82)
-      .setName('combat-enemy-outcome-preview'));
-    root.add(scene.add.text(targetHp.x, labelY, targetHp.defeated ? 'LETHAL' : `AFTER ${targetHp.after}`, {
-      fontFamily,
-      fontSize: '10px',
-      fontStyle: boldFontStyle,
-      color: targetHp.defeated ? '#ffe7a8' : '#dffbff',
-      stroke: '#02060b',
-      strokeThickness: 2,
-    }).setOrigin(0.5).setName('combat-enemy-outcome-preview'));
+    // Exact remaining Cohesion/lethal text lives in the decision forecast.
+    // Keep the meter overlay; reserve the row below vitals for enemy statuses.
   }
 
-  const y = 440;
+  const y = 424;
   const container = scene.add.container(0, 0).setName('combat-selection-preview');
-  container.add(scene.add.rectangle(gameWidth / 2, y, 600, 42, 0x07101a, 0.97)
-    .setStrokeStyle(2, context.cyan, 0.88)
+  // History and the current decision share one quiet lane above the hand.
+  // A card decision temporarily takes precedence over history and the Roost
+  // lesson. First-card/Molt teaching remains; cancellation restores the lesson.
+  const logObjects = root.list.filter(child => child.name === 'combat-log-hit' || child.name === 'combat-log-latest' || child.getData('deferToCard')) as (Phaser.GameObjects.Rectangle | Phaser.GameObjects.Text)[];
+  logObjects.forEach(child => child.setVisible(false));
+  container.once(Phaser.GameObjects.Events.DESTROY, () => {
+    logObjects.forEach(child => { if (child.active) child.setVisible(true); });
+  });
+  container.add(scene.add.rectangle(gameWidth / 2, y, 600, 74, 0x07101a, 0.97)
+    .setStrokeStyle(1, context.cyan, 0.72)
     .setName('combat-outcome-preview'));
-  container.add(scene.add.text(gameWidth / 2 - 284, y - 9, `${preview.card}  →  ${preview.target}`, {
+  const title = scene.add.text(gameWidth / 2 - 284, y - 22, '', {
     fontFamily,
-    fontSize: '11px',
+    fontSize: '15px',
     fontStyle: boldFontStyle,
     color: '#ffe7a8',
     fixedWidth: 402,
+    wordWrap: { width: 402, useAdvancedWrap: true },
+    resolution: 2,
     align: 'left',
     maxLines: 1,
-  }).setOrigin(0, 0.5).setName('combat-selection-card-target'));
-  container.add(scene.add.rectangle(gameWidth / 2 + 208, y - 9, 144, 18, 0x102534, 0.98)
+  }).setOrigin(0, 0.5).setName('combat-selection-card-target');
+  container.add(fitTextExcerpt(title, `${preview.card} → ${preview.target}`, 1));
+  container.add(scene.add.rectangle(gameWidth / 2 + 208, y - 22, 144, 22, 0x102534, 0.98)
     .setStrokeStyle(1, context.gold, 0.72)
     .setName('combat-selection-command-frame'));
-  container.add(scene.add.text(gameWidth / 2 + 208, y - 9, 'CONFIRM TO PLAY', {
+  container.add(scene.add.text(gameWidth / 2 + 208, y - 22, 'CONFIRM TO PLAY', {
     fontFamily,
-    fontSize: '10px',
+    fontSize: '12px',
+    resolution: 2,
     fontStyle: boldFontStyle,
     color: '#dffbff',
   }).setOrigin(0.5).setName('combat-selection-command'));
-  container.add(scene.add.text(gameWidth / 2, y + 9, preview.summary, {
+  const summary = scene.add.text(gameWidth / 2, y + 10, '', {
     fontFamily,
-    fontSize: '11px',
+    fontSize: '15px',
+    resolution: 2,
     fontStyle: boldFontStyle,
     color: '#dffbff',
     fixedWidth: 570,
+    wordWrap: { width: 570, useAdvancedWrap: true },
     align: 'center',
-    maxLines: 1,
-  }).setOrigin(0.5).setName('combat-selection-summary'));
+    maxLines: 2,
+  }).setOrigin(0.5).setName('combat-selection-summary');
+  container.add(fitTextExcerpt(summary, preview.summary, 2));
   root.add(container);
   return container;
 }

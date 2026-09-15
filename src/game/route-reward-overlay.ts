@@ -1,7 +1,5 @@
 import Phaser from 'phaser';
 import {
-  addRewardRevealHaloFx,
-  compactSentenceText,
   currentMap,
   displayName,
   GAME_HEIGHT,
@@ -16,10 +14,12 @@ import {
   UI_FIELD,
   UI_FONT,
   UI_GOLD,
-  UI_SOFT,
 } from '../main';
-import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
-import { renderRouteRewardBuildRead, renderRouteRewardEffectShowcase, renderRouteRewardInspection, renderRouteSupplyRewardChoices, routeRewardInputHint } from './reward-card-inspection';
+import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET } from './theme';
+import { decisionButton, decisionExcerpt, decisionText } from './decision-surface';
+import { openOutcomeInspection, renderOutcomeInspectButton, renderOutcomeShowcase, renderSupplyInspection, supplyInspectionState } from './route-supply-reader';
+import { renderRouteRewardBuildRead, renderRouteRewardEffectShowcase, renderRouteRewardInspection, renderRouteSupplyRewardChoices } from './reward-card-inspection';
+import { bindChoiceHint, choiceInputHint } from './choice-input-hints';
 
 export {
   cardPickerDecisionDelta,
@@ -62,59 +62,32 @@ export function renderRouteRewardOverlay(scene: any) {
     accent,
     fill: 0x07101a
   });
-  scene.add.rectangle(frame.cx, frame.cy, frame.w - 36, frame.h - 36, 0x020409, 0.16);
-  scene.add.text(frame.left + 54, frame.top + 112, compactSentenceText(pending.choiceText, 58, 1), {
-    fontFamily: UI_FONT,
-    fontSize: '16px',
-    fontStyle: UI_BOLD,
-    color: UI_GOLD,
-    fixedWidth: 360,
-    fixedHeight: 42,
-    wordWrap: { width: 360 },
-    maxLines: 2
+  const left = frame.left + 54;
+  decisionExcerpt(decisionText(scene, left, frame.top + 112, pending.choiceText, 326, 20, UI_GOLD), 52).setName('route-decision-choice');
+  decisionExcerpt(decisionText(scene, left, frame.top + 175, pending.effectText || 'No reward will be taken.', 326, 18), 68).setName('route-decision-summary');
+  decisionText(scene, left, frame.top + 254, 'PROJECTED CHANGES', 326, 16, DECISION_UI.secondary);
+  const rows = pending.decisionPreview?.length ? pending.decisionPreview : ['No state change'];
+  const visibleCount = hasCardChoices ? 1 : 4;
+  rows.slice(0, visibleCount).forEach((row: string, index: number) => {
+    const y = frame.top + 285 + index * 44;
+    decisionExcerpt(decisionText(scene, left, y, row.replace(/ > /g, ' → '), 326, 18), hasCardChoices ? 24 : 40).setName('route-decision-row');
+    scene.add.rectangle(left + 163, y + (hasCardChoices ? 26 : 41), 326, 1, DECISION_UI.border, 0.4).setName('route-decision-divider');
   });
-  scene.add.text(frame.left + 54, frame.top + 164, compactSentenceText(pending.effectText || 'No reward will be taken.', 104, 1), {
-    fontFamily: UI_FONT,
-    fontSize: '13px',
-    fontStyle: UI_BOLD,
-    color: UI_SOFT,
-    fixedWidth: 360,
-    fixedHeight: 38,
-    wordWrap: { width: 360 },
-    maxLines: 2
-  });
-  const decisionPreview = pending.decisionPreview ?? ['NO STATE CHANGE'];
-  scene.add.text(frame.left + 54, frame.top + 214, 'DECISION', {
-    fontFamily: UI_FONT,
-    fontSize: '10px',
-    fontStyle: UI_BOLD,
-    color: UI_CYAN,
-    letterSpacing: 1.2,
-  });
-  decisionPreview.slice(0, 7).forEach((row: string, index: number) => {
-    const rowY = frame.top + 244 + index * 38;
-    scene.renderRouteChoicePreviewRowFrame(frame.left + 220, rowY, 342, 31, 0.7);
-    scene.add.text(frame.left + 66, rowY - 8, compactSentenceText(row, 46, 1), {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: row.startsWith('NEXT FIGHT') || row.startsWith('ENEMY COVER') ? '#ffd5cc' : '#e8f4ff',
-      fixedWidth: 308,
-      maxLines: 1,
-    });
-  });
+  if (rows.length > visibleCount) decisionText(scene, left, frame.top + (hasCardChoices ? 312 : 455), `+${rows.length - visibleCount} more in ${hasCardChoices || hasSupplyChoices ? 'Details' : 'Inspect outcome'}`, 326, 16, DECISION_UI.secondary);
   renderRouteRewardBuildRead(scene, frame);
+  if (hasCardChoices || hasSupplyChoices) decisionButton(scene, frame.left + 304, frame.bottom - 48, 166, 'Details', 'route-decision-inspect-hit', () => openOutcomeInspection(scene, true));
   scene.add.rectangle(frame.left + 408, frame.cy + 14, 2, 396, accent, 0.36);
   if (!hasCardChoices) {
     const panelX = frame.left + 672;
     const panelY = frame.top + 326;
     if (hasSupplyChoices) {
       renderRouteSupplyRewardChoices(scene, panelX, panelY + 2);
-    } else if (!pending.previewItem || !scene.renderRouteRewardItemShowcase(pending.previewItem, panelX, panelY, 410, 238, pending.previewCards ?? [])) {
+    } else if (!pending.previewItem || !renderOutcomeShowcase(scene, panelX, panelY)) {
       renderRouteRewardEffectShowcase(scene, pending, panelX, panelY, 410, 238);
     }
     if (!hasSupplyChoices) {
-      const claim = scene.add.rectangle(frame.right - 158, frame.bottom - 48, 180, 38, 0x102235, 0.98)
+      renderOutcomeInspectButton(scene, panelX, panelY);
+      const claim = scene.add.rectangle(frame.right - 158, frame.bottom - 48, 180, MIN_SUPPORTED_TOUCH_TARGET, DECISION_UI.raised, 1)
       .setStrokeStyle(2, accent, 0.92);
       const claimHit = scene.add.rectangle(frame.right - 158, frame.bottom - 48, 180, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
       .setInteractive({ useHandCursor: true })
@@ -122,18 +95,19 @@ export function renderRouteRewardOverlay(scene: any) {
       claimHit.on('pointerover', () => claim.setFillStyle(0x18314a, 1));
       claimHit.on('pointerout', () => claim.setFillStyle(0x102235, 0.98));
       claimHit.on('pointerdown', () => {
+        if (supplyInspectionState(scene) || scene.pauseOverlayOpen || scene.settingsOverlayOpen) return;
         playUiSound('confirm');
         scene.claimRouteReward();
       });
       const claimLabel = isDecline ? 'Leave' : pending.nodeType === 'cache' ? 'Claim' : 'Confirm';
       scene.add.text(frame.right - 158, frame.bottom - 60, claimLabel, {
         fontFamily: UI_FONT,
-        fontSize: '15px',
+        fontSize: '18px',
         fontStyle: UI_BOLD,
         color: UI_GOLD,
         align: 'center',
         fixedWidth: 150
-      }).setOrigin(0.5, 0);
+      }).setOrigin(0.5, 0).setResolution(2);
     }
   }
   scene.routeCardRewardChoices.forEach((card: any, index: number) => {
@@ -143,26 +117,16 @@ export function renderRouteRewardOverlay(scene: any) {
     const y = frame.top + 312;
     const armed = scene.routeRewardArmedCardId === card.id;
     const accentColor = card.type === 'major' ? UI_FIELD.gold : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
-    addRewardRevealHaloFx(scene, x, y, cardW + 68, cardH + 98, 0.18);
     scene.renderRouteRewardCardOption(card, x, y, cardW, cardH, accentColor);
     if (index === scene.routeRewardChoiceIndex) {
       scene.add.rectangle(x, y + 8, cardW + 30, cardH + 88, 0x000000, 0)
         .setStrokeStyle(4, armed ? UI_FIELD.gold : UI_FIELD.cyan, 1)
         .setName('route-reward-input-focus-ring');
     }
-    scene.add.rectangle(x, y + cardH / 2 + 24, cardW + 16, 34, 0x020409, 0.94)
+    scene.add.rectangle(x, y + cardH / 2 + 27, cardW + 16, 48, 0x020409, 0.94)
       .setStrokeStyle(1, accentColor, 0.72);
-    scene.add.text(x, y + cardH / 2 + 12, displayName(card), {
-      fontFamily: UI_FONT,
-      fontSize: '12px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      align: 'center',
-      fixedWidth: cardW,
-      fixedHeight: 28,
-      wordWrap: { width: cardW },
-      maxLines: 2
-    }).setOrigin(0.5, 0);
+    decisionExcerpt(decisionText(scene, x, y + cardH / 2 + 5, displayName(card), cardW, 18, UI_GOLD)
+      .setOrigin(0.5, 0).setAlign('center'), 44).setName('route-reward-card-name');
     const hit = scene.add.rectangle(x, y + 8, cardW + 18, cardH + 76, 0x000000, 0.01)
       .setInteractive({ useHandCursor: true })
       .setName('route-reward-card-hit');
@@ -194,44 +158,43 @@ export function renderRouteRewardOverlay(scene: any) {
     inspect.on('pointerout', () => inspect.setFillStyle(0x102534, 0.88));
     scene.add.text(x, inspectY, 'INSPECT', {
       fontFamily: UI_FONT,
-      fontSize: '11px',
+      fontSize: '18px',
       fontStyle: UI_BOLD,
       color: '#dffbff',
-    }).setOrigin(0.5).setName('route-reward-card-inspect-label');
+    }).setOrigin(0.5).setResolution(2).setName('route-reward-card-inspect-label');
   });
-  scene.renderRouteEventCancelButton(
-    frame.left + 126,
-    frame.bottom - 48,
-    166,
-    38,
-    scene.routeRewardArmedCardId || scene.routeSupplyRewardArmedId ? 'Clear pick' : 'Cancel',
-    () => scene.cancelRouteCardReward(),
-  );
+  const cancelLabel = scene.routeRewardArmedCardId || scene.routeSupplyRewardArmedId ? 'Clear pick' : 'Cancel';
+  const [cancelHit] = decisionButton(scene, frame.left + 126, frame.bottom - 48, 166, cancelLabel, 'route-event-cancel-hit', () => {
+    if (supplyInspectionState(scene) || scene.routeRewardInspectionCardId || scene.pauseOverlayOpen || scene.settingsOverlayOpen) return;
+    playUiSound('close');
+    scene.cancelRouteCardReward();
+  });
+  cancelHit.setData('label', cancelLabel);
   if (hasCardChoices) {
     const hintX = frame.left + 672;
     const hintY = frame.top + 116;
     const armed = !!scene.routeRewardArmedCardId;
     scene.add.rectangle(hintX, hintY, 500, 42, 0x020711, 0.86)
       .setStrokeStyle(1, armed ? UI_FIELD.gold : UI_FIELD.cyan, armed ? 0.92 : 0.55);
-    const hintText = routeRewardInputHint(armed);
-    scene.add.text(hintX, hintY, hintText, {
+    bindChoiceHint(scene, scene.add.text(hintX, hintY, '', {
       fontFamily: UI_FONT,
-      fontSize: '12px',
+      fontSize: '16px',
       fontStyle: UI_BOLD,
       color: armed ? '#ffe08a' : '#bfe8f4',
       fixedWidth: 476,
       align: 'center',
-    }).setOrigin(0.5).setResolution(2).setName('route-reward-input-hint');
+    }).setOrigin(0.5).setResolution(2).setName('route-reward-input-hint'), mode => choiceInputHint(mode, armed, true));
   }
   if (hasSupplyChoices) {
-    scene.add.text(frame.left + 672, frame.top + 116, `ARROWS / D-PAD  SUPPLY   |   ENTER / A / TAP  ${scene.routeSupplyRewardArmedId ? 'CONFIRM' : 'SELECT'}   |   ESC / B  BACK`, {
+    bindChoiceHint(scene, scene.add.text(frame.left + 672, frame.top + 116, '', {
       fontFamily: UI_FONT,
-      fontSize: '11px',
+      fontSize: '16px',
       fontStyle: UI_BOLD,
       color: scene.routeSupplyRewardArmedId ? '#ffe08a' : '#bfe8f4',
       align: 'center',
       fixedWidth: 490,
-    }).setOrigin(0.5).setResolution(2).setName('route-supply-reward-input-hint');
+    }).setOrigin(0.5).setResolution(2).setName('route-supply-reward-input-hint'), mode => choiceInputHint(mode, Boolean(scene.routeSupplyRewardArmedId), true));
   }
   renderRouteRewardInspection(scene);
+  renderSupplyInspection(scene);
 }

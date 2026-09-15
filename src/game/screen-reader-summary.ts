@@ -20,11 +20,17 @@ function spaced(value: string) {
   return value.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/[_-]+/g, ' ').trim();
 }
 
+function inspectionPageSummary(value: unknown, controls = 'Previous and Next or D-pad left and right') {
+  if (!isRecord(value)) return '';
+  return ` Reading page ${number(value.page)} of ${number(value.total)}. ${text(value.title)}: ${text(value.text).replace(/\s+/g, ' ')} Use ${controls} to read all sections.`;
+}
+
 function supplyDrawerSummary(payload: Record<string, unknown>) {
   const drawer = isRecord(payload.supplyDrawer) ? payload.supplyDrawer : undefined;
   if (payload.supplyDrawerOpen !== true || drawer?.open !== true) return '';
   const entries = records(drawer.entries);
-  const packed = entries.filter((entry) => entry.empty !== true);
+    const packed = entries.filter((entry) => entry.empty !== true);
+    if (!packed.length) return 'Packed Supplies. No items packed. Find tools at Caches, Basins and Markets. Back closes the Run Kit.';
   const focusIndex = number(drawer.focusIndex) ?? 0;
   const focused = entries[focusIndex];
   const packedPosition = focused
@@ -34,7 +40,7 @@ function supplyDrawerSummary(payload: Record<string, unknown>) {
   const controls = isRecord(drawer.controls) ? drawer.controls : undefined;
   const name = text(focused?.name) || 'empty slot';
   const timing = spaced(text(focused?.timing));
-  const details = (text(focused?.description) || text(focused?.summary)).replace(/[.!?]+$/, '');
+    const details = (text(focused?.rules) || text(focused?.description) || text(focused?.summary)).replace(/[.!?]+$/, '');
   const availability = focused?.usable === false && focused?.empty !== true
     ? ' It belongs to the other phase and cannot be used here.'
     : '';
@@ -42,6 +48,28 @@ function supplyDrawerSummary(payload: Record<string, unknown>) {
     ? `${name} is selected. Use ${text(controls?.confirm) || 'Confirm, controller A, or a second activation'} to consume it. Back clears the selection and keeps it packed.`
     : `Use ${text(controls?.select) || 'Previous, Next, D-pad, or pointer'} to browse. Activate once to select; ${text(controls?.confirm) || 'Confirm, controller A, or a second activation'} consumes it.`;
   return `Packed Supplies. ${packed.length} item${packed.length === 1 ? '' : 's'} packed.${focused?.empty === true ? ` Focused empty slot ${focusIndex + 1}.` : ` Focused ${packedPosition} of ${packed.length}, ${name}${timing ? `, ${timing} timing` : ''}.${details ? ` ${details}.` : ''}`}${availability} ${action} ${text(controls?.close) || 'Back or controller B'} closes the Run Kit.`;
+}
+
+function waymarkDrawerSummary(payload: Record<string, unknown>) {
+  if (payload.waymarkDrawerOpen === true && text(payload.waymarkReaderNotice)) {
+    return `${text(payload.waymarkReaderNotice)} Use Back or controller B to close. Your selected card and target are unchanged.`;
+  }
+  const view = isRecord(payload.waymarkReview) ? payload.waymarkReview : undefined;
+  if (payload.waymarkDrawerOpen !== true || view?.open !== true) return '';
+  const selected = isRecord(view.selected) ? view.selected : undefined;
+  const pinned = isRecord(view.pinned) ? view.pinned : undefined;
+  const effects = (item?: Record<string, unknown>) => records(item?.effects)
+    .map(effect => `${number(effect.order) ?? 0}. ${text(effect.text)}`).join(' ');
+  const count = number(view.count) ?? 0;
+  const current = selected ? ` Selected ${(number(view.selectedIndex) ?? 0) + 1} of ${count}, ${text(selected.name)}, ${text(selected.family)}, ${text(selected.rarity)}. Trigger: ${text(selected.trigger)}. Effect order: ${effects(selected)}` : ` ${count} Waymarks carried.`;
+  const comparison = view.comparing === true && pinned
+    ? ` Comparing pinned ${text(pinned.name)}. Its trigger is ${text(pinned.trigger)}. Its effect order is ${effects(pinned)}`
+    : pinned ? ` ${text(pinned.name)} is pinned. Choose another Waymark to compare.` : '';
+  const reading = isRecord(view.reading) ? view.reading : undefined;
+  const page = reading && Array.isArray(reading.headings) && Array.isArray(reading.bodies)
+    ? ` Reading page ${number(reading.page)} of ${number(reading.total)}. ${reading.headings.map((heading, i) => `${text(heading)}: ${text((reading.bodies as unknown[])[i])}`).join(' ')}` : '';
+  const controls = isRecord(view.controls) ? view.controls : undefined;
+  return `Found Waymarks.${current}${comparison}${page} Use Arrow keys, Tab, or pointer to choose, ${text(controls?.pin) || 'C'} or controller X to pin, Page Up and Page Down or controller LB and RB to read, and Back to close.`;
 }
 
 export function screenReaderSummary(payload: unknown): string {
@@ -70,10 +98,12 @@ function describeScreen(payload: unknown): string {
     const collectionGoal = isRecord(payload.collectionGoal) ? payload.collectionGoal : undefined;
     const nextGoal = isRecord(collectionGoal?.next) ? collectionGoal.next : undefined;
     const label = text(focus?.label) || 'Choose a setup, then start a run';
-    const collectionSummary = collectionGoal
+    const collectionSummary = collectionGoal && focus?.current === 'codex'
       ? ` Collection path: ${number(collectionGoal.owned) ?? 0} of ${number(collectionGoal.total) ?? 0} cards, ${number(collectionGoal.completed) ?? 0} of ${number(collectionGoal.milestoneTotal) ?? 0} badges.${nextGoal ? ` Next optional goal, ${text(nextGoal.name)}, ${number(nextGoal.current) ?? 0} of ${number(nextGoal.target) ?? 0}.` : ' All collection badges earned.'} No deadline and no gameplay power.`
       : '';
-    return `Bird Squad menu. ${label}.${collectionSummary} Press Confirm to select.`;
+    const resume = focus?.current === 'primaryRun' && text(payload.resumeContext)
+      ? ` ${text(payload.resumeContext).replace(/\n/g, '. ')}.` : '';
+    return `Bird Squad menu. ${label}.${resume}${collectionSummary} Press Confirm to select.`;
   }
 
   if (scene === 'ProfileScene' || mode === 'profile') {
@@ -267,31 +297,17 @@ function describeScreen(payload: unknown): string {
   }
 
   if (scene === 'RouteScene' || mode === 'routeSelection') {
+    const event = isRecord(payload.nodeChoice) ? payload.nodeChoice : undefined;
+    if (event) {
+      const focus = isRecord(event.focus) ? event.focus : undefined;
+      const choices = records(event.choices), index = number(focus?.index) ?? 0, choice = choices[index];
+      if (focus?.open === true) return `Event details. Nothing is spent or selected.${inspectionPageSummary(focus.reading)} Back returns to the same choice.`;
+      return `Event choices. Focused ${index + 1} of ${choices.length}. ${text(choice?.summary) || text(choice?.text)}. Use Previous and Next or D-pad to browse, Confirm to choose, and Inspect or controller Y to read the complete details. Back does not leave this stop; choose the leave option to move on.`;
+    }
     const supplySummary = supplyDrawerSummary(payload);
     if (supplySummary) return supplySummary;
-    const waymarkReview = isRecord(payload.waymarkReview) ? payload.waymarkReview : undefined;
-    if (payload.waymarkDrawerOpen === true && waymarkReview?.open === true) {
-      const selected = isRecord(waymarkReview.selected) ? waymarkReview.selected : undefined;
-      const pinned = isRecord(waymarkReview.pinned) ? waymarkReview.pinned : undefined;
-      const effects = records(selected?.effects)
-        .map((effect) => `${number(effect.order) ?? 0}. ${text(effect.text)}`)
-        .filter((effect) => !effect.endsWith('. '));
-      const pinnedEffects = records(pinned?.effects)
-        .map((effect) => `${number(effect.order) ?? 0}. ${text(effect.text)}`)
-        .filter((effect) => !effect.endsWith('. '));
-      const selectedIndex = number(waymarkReview.selectedIndex) ?? 0;
-      const count = number(waymarkReview.count) ?? 0;
-      const selectedName = text(selected?.name) || 'no Waymark';
-      const selectedSummary = selected
-        ? ` Selected ${selectedIndex + 1} of ${count}, ${selectedName}, ${text(selected.family)}, ${text(selected.rarity)}. Trigger: ${text(selected.trigger)}. Effect order: ${effects.join(' ')}`
-        : ` ${count} Waymarks carried.`;
-      const comparison = waymarkReview.comparing === true && pinned
-        ? ` Comparing pinned ${text(pinned.name)}. Its trigger is ${text(pinned.trigger)}. Its effect order is ${pinnedEffects.join(' ')}`
-        : pinned
-          ? ` ${text(pinned.name)} is pinned. Choose another Waymark to compare.`
-          : '';
-      return `Found Waymarks.${selectedSummary}${comparison} Use Arrow keys, Tab, or pointer to choose, C or controller X to pin, and Back to close.`;
-    }
+    const waymarkSummary = waymarkDrawerSummary(payload);
+    if (waymarkSummary) return waymarkSummary;
     const deckReview = isRecord(payload.deckReview) ? payload.deckReview : undefined;
     if (payload.deckOverlayOpen === true && deckReview?.open === true) {
       const cards = records(deckReview.cards);
@@ -308,6 +324,10 @@ function describeScreen(payload: unknown): string {
       const savedFlights = isRecord(deckReview.savedFlights) ? deckReview.savedFlights : undefined;
       const pinned = isRecord(comparison?.pinned) ? comparison.pinned : undefined;
       const compared = isRecord(comparison?.selected) ? comparison.selected : undefined;
+      const reading = isRecord(comparison?.reading) ? comparison.reading : undefined;
+      const readingSummary = reading
+        ? ` Comparison page ${number(reading.page)} of ${number(reading.total)}. ${Array.isArray(reading.headings) && Array.isArray(reading.bodies) ? reading.headings.map((heading, i) => `${text(heading)}: ${text((reading.bodies as unknown[])[i])}`).join(' ') : ''} Use Page Up and Page Down or controller LB and RB to read all sections.`
+        : inspectionPageSummary(deckReview.reading, 'Page Up and Page Down or controller LB and RB');
       const comparisonSummary = comparison?.active === true && comparison?.mode === 'preen' && pinned && compared
         ? ` Preen preview for ${text(pinned.name)}. Base: ${spaced(text(pinned.role))}, ${spaced(text(pinned.target))}. Preened: ${spaced(text(compared.role))}, ${spaced(text(compared.target))}. ${spaced(text(comparison.summary))}.`
         : comparison?.active === true && pinned && compared
@@ -318,7 +338,7 @@ function describeScreen(payload: unknown): string {
       const saveSummary = savedFlights
         ? ` Saved Flight Folios ${number(savedFlights.count) ?? 0} of ${number(savedFlights.capacity) ?? 6}.${savedFlights.status === 'saved' ? ' Current deck saved.' : savedFlights.status === 'full' ? ' Folios are full; no saved deck was replaced.' : savedFlights.status === 'failed' ? ' Save failed; no existing folio changed.' : ''}`
         : '';
-      return `Deck review. ${visible} of ${total} cards. Filter ${filter}. Sort ${sort}.${query ? ` Find ${query}.` : ''} Selected ${selectedName}${selectedCost === undefined ? '' : `, ${selectedCost} Wingbeats`}.${comparisonSummary}${saveSummary} Use Up and Down to choose a card, Previous and Next to change filter, Confirm to change sort, C or controller X to pin a comparison; pin the selected card to compare Base and Preened, V or controller Y to save this flight without replacing an existing folio, slash to find, and Back to close.`;
+      return `Deck review. ${visible} of ${total} cards. Filter ${filter}. Sort ${sort}.${query ? ` Find ${query}.` : ''} Selected ${selectedName}${selectedCost === undefined ? '' : `, ${selectedCost} Wingbeats`}.${comparisonSummary}${readingSummary}${saveSummary} Use Up and Down to choose a card, Previous and Next to change filter, Confirm to change sort, C or controller X to pin a comparison; pin the selected card to compare Base and Preened, V or controller Y to save this flight without replacing an existing folio, slash to find, and Back to close.`;
     }
     const cardPicker = isRecord(payload.cardPickerInput) ? payload.cardPickerInput : undefined;
     if (cardPicker) {
@@ -330,7 +350,7 @@ function describeScreen(payload: unknown): string {
       if (cardPicker.inspectionOpen === true) {
         const impact = isRecord(cardPicker.deckImpact) ? cardPicker.deckImpact : undefined;
         const details = impact && Array.isArray(impact.lines) ? impact.lines.filter((line): line is string => typeof line === 'string').join('. ') : '';
-        return `Full card inspection. ${text(cardPicker.cardName) || `${pickerMode} candidate`}${cost === undefined ? '' : `, ${cost} ${costLabel}`}. ${details} No card has been changed${costLabel === 'Scrap' ? ' and no Scrap has been spent' : ''}. Use Back, controller B, Confirm, controller A, or tap outside to return to card ${index + 1} of ${count}.`;
+        return `Full card inspection. ${text(cardPicker.cardName) || `${pickerMode} candidate`}${cost === undefined ? '' : `, ${cost} ${costLabel}`}.${inspectionPageSummary(cardPicker.reading)} ${details} No card has been changed${costLabel === 'Scrap' ? ' and no Scrap has been spent' : ''}. Use Back, controller B, Confirm, controller A, or tap outside to return to card ${index + 1} of ${count}.`;
       }
       if (cardPicker.armed === true) {
         return `${pickerMode} card picker. ${text(cardPicker.cardName) || 'Card'} is selected, card ${index + 1} of ${count}.${cost === undefined ? '' : ` Cost ${cost} ${costLabel}.`} Confirm, controller A, or activate the same card again to ${pickerMode.toLowerCase()}. Back or controller B clears the selection without changing the deck${costLabel === 'Scrap' ? ' or spending Scrap' : ''}.`;
@@ -353,13 +373,19 @@ function describeScreen(payload: unknown): string {
       const preview = previewRows ? `${text(market.previewCard) ? `${text(market.previewCard)}: ` : ''}${previewRows}` : '';
       const rules = isRecord(market.rules) ? market.rules : undefined;
       const rulesRead = rules ? ` Rules ${number(rules.page)} of ${number(rules.total)}, ${text(rules.title)}: ${text(rules.text).replace(/\s+/g, ' ')} Use Inspect or controller Y for the next rules page.` : '';
-      const confirmation = input?.armed === true
+        const confirmation = input?.available === false
+          ? ' This offer is unavailable. Confirm or controller A reads its requirements without spending Scrap.'
+          : input?.armed === true
         ? ' Purchase confirmation is armed. Confirm, controller A, or activate the same offer again to buy; moving focus or pressing Back cancels.'
         : ' Choose an offer before buying; a first pointer activation only arms the purchase.';
       return `Market, ${spaced(text(market.category))}. ${number(market.scrap) ?? 0} Scrap. Selected ${focus}, offer ${Math.min(index + 1, count)} of ${count}.${preview ? ` Purchase preview: ${preview}.` : ''}${rulesRead}${observations ? ` Build observations: ${observations}.` : ''}${unavailable ? ` Unavailable in this section: ${unavailable}.` : ''}${confirmation} Use Previous and Next or the D-pad to choose, Confirm or controller A to buy, keys 1 through 4 or controller shoulders to change sections, and Back or controller B to leave. Route commitment is blocked while the Market is open.`;
     }
     const routeReward = isRecord(payload.routeReward) ? payload.routeReward : undefined;
     if (routeReward) {
+      const supplyInspection = isRecord(routeReward.supplyInspection) ? routeReward.supplyInspection : isRecord(routeReward.itemInspection) ? routeReward.itemInspection : undefined;
+      if (supplyInspection?.open === true) {
+        return `${supplyInspection.kind === 'outcome' ? 'Outcome' : supplyInspection.kind === 'waymark' ? 'Waymark' : 'Supply'} inspection. ${text(supplyInspection.name)}.${inspectionPageSummary(supplyInspection.reading)} No reward has been claimed. Your choice is unchanged. Use Back, controller B, Confirm, controller A, or Return to close the reader.`;
+      }
       const routeInspection = isRecord(routeReward.inspection) ? routeReward.inspection : undefined;
       const routeFocus = isRecord(routeReward.inputFocus) ? routeReward.inputFocus : undefined;
       if (routeInspection?.open === true) {
@@ -368,7 +394,7 @@ function describeScreen(payload: unknown): string {
         const returnTarget = routeInspection.returnArmed === true
           ? `${returnChoice} remains selected. Use Back, controller B, Confirm, controller A, or tap outside to restore its confirmation.`
           : `Use Back, controller B, Confirm, controller A, or tap outside to return to choice ${returnIndex === undefined ? '' : returnIndex + 1}.`;
-        return `Full card inspection. ${text(routeInspection.cardName) || 'Reward card'}${number(routeInspection.cost) === undefined ? '' : `, ${number(routeInspection.cost)} Wingbeats`}. No reward has been claimed. ${returnTarget}`;
+        return `Full card inspection. ${text(routeInspection.cardName) || 'Reward card'}${number(routeInspection.cost) === undefined ? '' : `, ${number(routeInspection.cost)} Wingbeats`}.${inspectionPageSummary(routeInspection.reading)} No reward has been claimed. ${returnTarget}`;
       }
       const supplyChoices = Array.isArray(routeReward.supplyChoices) ? routeReward.supplyChoices.length : 0;
       if (supplyChoices > 1) {
@@ -379,7 +405,7 @@ function describeScreen(payload: unknown): string {
         const confirmation = routeFocus?.armed === true
           ? ` ${focusedName} is selected. Confirm, controller A, or activate it again to pack it; Back or controller B clears the selection.`
           : ' Choose a Supply before claiming; the first activation selects and the second confirms.';
-        return `Route Supply choice. Focused Supply ${index + 1} of ${supplyChoices}, ${focusedName}${timing ? `, ${timing} timing` : ''}.${description ? ` ${description}.` : ''}${confirmation} Use Previous and Next or the D-pad to compare, and Back or B to return without claiming.`;
+        return `Route Supply choice. Focused Supply ${index + 1} of ${supplyChoices}, ${focusedName}${timing ? `, ${timing} timing` : ''}.${description ? ` ${description}.` : ''}${confirmation} Use Inspect or Roost or Y to read the full rules, Previous and Next or the D-pad to compare, and Back or B to return without claiming.`;
       }
       const cardChoices = Array.isArray(routeReward.cardChoices) ? routeReward.cardChoices.length : 0;
       if (cardChoices > 0) {
@@ -393,6 +419,9 @@ function describeScreen(payload: unknown): string {
           : ' A direct activation selects without claiming; activate the same card again to commit. Previous, Next, or the D-pad deliberately selects a card, so Confirm or controller A commits it once.';
         return `Route reward choice. Focused card ${index + 1} of ${cardChoices}, ${focusedName}.${observations ? ` Build observations: ${observations}.` : ''}${confirmation} Use Roost or Y to inspect, and Back or B to return without claiming.`;
       }
+    }
+    if (routeReward && typeof routeReward.outcomeSummary === 'string') {
+      return `Route outcome. ${text(routeReward.outcomeSummary)}. Use Inspect, Roost, or controller Y to read all consequences and any item or companion-card rules without committing. Confirm or controller A confirms this decision. Back or controller B cancels without committing.`;
     }
     const map = isRecord(payload.map) ? payload.map : undefined;
     const run = isRecord(payload.run) ? payload.run : undefined;
@@ -432,6 +461,11 @@ function describeScreen(payload: unknown): string {
   }
 
   if (scene === 'BattleScene') {
+    if (payload.paused === true) return 'Battle paused. Use Settings, Resume, or Return to menu.';
+    const waymarkSummary = waymarkDrawerSummary(payload);
+    if (waymarkSummary) return waymarkSummary;
+    const cardDetail = payload.paused !== true && isRecord(payload.combatCardDetail) ? payload.combatCardDetail : undefined;
+    if (cardDetail) return `${cardDetail.kind === 'history' ? 'Combat history' : 'Card details'}, reading only. ${text(cardDetail.card)}. ${text(cardDetail.heading)}. Page ${number(cardDetail.page)} of ${number(cardDetail.pageCount)}. ${text(cardDetail.body)} ${text(cardDetail.controls)} Your selected card and target are unchanged.`;
     const supplySummary = supplyDrawerSummary(payload);
     if (supplySummary) return supplySummary;
     const battleSupplyDrawer = isRecord(payload.supplyDrawer) ? payload.supplyDrawer : undefined;
@@ -440,7 +474,7 @@ function describeScreen(payload: unknown): string {
     const rewardInspection = isRecord(payload.rewardInspection) ? payload.rewardInspection : undefined;
     if (rewardInspection?.open === true) {
       const cost = number(rewardInspection.cost);
-      const rules = text(rewardInspection.rules);
+      const rules = rewardInspection.reading ? '' : text(rewardInspection.rules);
       const impact = isRecord(rewardInspection.deckImpact) ? rewardInspection.deckImpact : undefined;
       const impactRead = impact
         ? ` Deck ${number(impact.deckBefore)} to ${number(impact.deckAfter)} cards. Base hand target ${number(impact.handBefore)} to ${number(impact.handAfter)}. ${Array.isArray(impact.stats) && impact.stats.length ? `${rewardInspection.source === 'preenReward' ? 'Changed stats after Preen' : 'Flock Stats gained'}: ${impact.stats.map(text).join(', ')}.` : 'Flock Stats unchanged.'} ${text(impact.scope)} ${text(impact.drawScope)}`
@@ -449,7 +483,7 @@ function describeScreen(payload: unknown): string {
       const returnTarget = rewardInspection.returnArmed === true
         ? `${returnChoice} remains selected. Use Back, controller B, Confirm, controller A, or tap outside to restore its confirmation.`
         : 'Use Back, controller B, Confirm, controller A, or tap outside to return to the same choice.';
-      return `Full card inspection. ${text(rewardInspection.cardName) || 'Reward card'}${cost === undefined ? '' : `, ${cost} Wingbeats`}.${rules ? ` ${rules}` : ''}${impactRead} No reward has been claimed. ${returnTarget}`;
+      return `Full card inspection. ${text(rewardInspection.cardName) || 'Reward card'}${cost === undefined ? '' : `, ${cost} Wingbeats`}.${inspectionPageSummary(rewardInspection.reading)}${rules ? ` ${rules}` : ''}${impactRead} No reward has been claimed. ${returnTarget}`;
     }
     const inspect = isRecord(payload.cardInspectFocus) ? payload.cardInspectFocus : undefined;
     if (inspect?.active === true) {
@@ -469,7 +503,7 @@ function describeScreen(payload: unknown): string {
       const selection = count > 0
         ? ` Selected ${index + 1} of ${count}, ${label}${zone ? `, ${zone}` : ''}${cost === undefined ? '' : `, ${cost} Wingbeats`}.${rules ? ` ${rules}` : ''}`
         : ' No cards in this zone.';
-      return `${overlay === 'deck' ? 'Deck review' : `${overlay} pile`}.${zoneSummary}${selection} Use ${text(bindings?.select) || 'Up and Down'} to choose a card, ${text(bindings?.previousZone) || 'Previous'} and ${text(bindings?.nextZone) || 'Next'} to switch zones, controller shoulders to page, and ${text(bindings?.back) || 'Back'} to close.`;
+      return `${overlay === 'deck' ? 'Deck review' : `${overlay} pile`}.${zoneSummary}${selection} Use ${text(bindings?.select) || 'Up and Down'} to choose a card, ${text(bindings?.previousZone) || 'Previous'} and ${text(bindings?.nextZone) || 'Next'} to switch zones, controller shoulders to page, ${text(bindings?.details) || 'Help'} or controller R3 to read full rules, and ${text(bindings?.back) || 'Back'} to close. Your selected hand card and target are unchanged.`;
     }
     const runOutcome = mode === 'defeat' || mode === 'runComplete';
     const flightDetailsState = isRecord(payload.outcomeFlightDetails) ? payload.outcomeFlightDetails : undefined;
@@ -519,6 +553,8 @@ function describeScreen(payload: unknown): string {
     const latestLog = Array.isArray(payload.log) ? text(payload.log.at(-1)) : '';
     const enemyMove = text(payload.combatEnemyTurnMove);
     const inputFocus = isRecord(payload.combatInputFocus) ? payload.combatInputFocus : undefined;
+    const historyBinding = isRecord(inputFocus?.bindings) ? text(inputFocus.bindings.history) : '';
+    const historyHint = historyBinding ? ` Review recent combat history with ${historyBinding}.` : '';
     if (enemyMove) {
       return `Enemy turn, ${enemyMove}.${phaseNote}${latestLog ? ` ${latestLog}` : ''} Cohesion ${hp} of ${maxHp}.`;
     }
@@ -578,7 +614,8 @@ function describeScreen(payload: unknown): string {
       const focused = candidates.find((card) => card.focused === true);
       const drawAfter = number(returnChoice.drawAfter) ?? 0;
       const optionNames = candidates.map((card) => text(card.name)).filter(Boolean);
-      return `${text(returnChoice.source) || 'Effect'} requires one card from discard to return. ${candidates.length} eligible option${candidates.length === 1 ? '' : 's'}${optionNames.length ? `: ${optionNames.join(', ')}` : ''}.${focused ? ` Focused ${text(focused.name)}, cost ${number(focused.cost) ?? 0}, ${text(focused.role)}. ${text(focused.summary)}` : ''}${drawAfter > 0 ? ` After the return, draw ${drawAfter}.` : ''} Use Previous and Next or D-pad to choose; Confirm, controller A, Roost, controller Y, or pointer returns the focused card. Back or controller B cannot cancel this committed effect.`;
+      const controls = isRecord(returnChoice.input) ? returnChoice.input : undefined;
+      return `${text(returnChoice.source) || 'Effect'} requires one card from discard to return. ${candidates.length} eligible option${candidates.length === 1 ? '' : 's'}${optionNames.length ? `: ${optionNames.join(', ')}` : ''}.${focused ? ` Focused ${text(focused.name)}, cost ${number(focused.cost) ?? 0}, ${text(focused.role)}. ${text(focused.summary)}` : ''}${drawAfter > 0 ? ` After the return, draw ${drawAfter}.` : ''} Use ${text(controls?.choose) || 'Previous / Next / D-pad / tap a card to read'}. Use ${text(controls?.confirm) || 'Confirm / A / Return selected card button'} to return the focused card. Browsing does not commit. Back or controller B cannot cancel this committed effect.`;
     }
     const discardChoice = isRecord(payload.discardChoice) ? payload.discardChoice : undefined;
     if (discardChoice) {
@@ -612,7 +649,7 @@ function describeScreen(payload: unknown): string {
       const guideTarget = text(firstCombatGuidance?.target);
       return `First flight guide. Start with ${guideCardName}, cost ${guideCost} Wingbeat${guideCost === 1 ? '' : 's'}${guideTarget ? `, targeting ${guideTarget}` : ''}. Cards build Flow. Full Flow becomes Surge.`;
     }
-    return `Combat, turn ${turn}. Wingbeats ${energy}. Cohesion ${hp} of ${maxHp}. ${hand.length} cards in hand, ${enemies.filter((enemy) => (number(enemy.hp) ?? 0) > 0).length} enemies.${retentionSummary}${phaseNote}${cleared > 0 ? ` ${cleared} card${cleared === 1 ? '' : 's'} cleared for this combat.` : ''}${latestLog ? ` ${latestLog}` : ''}${runKitControls ? ` Open Packed Supplies with ${runKitControls}.` : ''}`;
+    return `Combat, turn ${turn}. Wingbeats ${energy}. Cohesion ${hp} of ${maxHp}. ${hand.length} cards in hand, ${enemies.filter((enemy) => (number(enemy.hp) ?? 0) > 0).length} enemies.${retentionSummary}${phaseNote}${cleared > 0 ? ` ${cleared} card${cleared === 1 ? '' : 's'} cleared for this combat.` : ''}${latestLog ? ` ${latestLog}` : ''}${runKitControls ? ` Open Packed Supplies with ${runKitControls}.` : ''}${historyHint}`;
   }
 
   if (mode === 'codex') {

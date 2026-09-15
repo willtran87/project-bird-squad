@@ -8,6 +8,8 @@ assets are written to `assets/runtime/cards`.
 from __future__ import annotations
 
 import json
+import argparse
+import re
 import shutil
 from pathlib import Path
 
@@ -30,6 +32,10 @@ def copy_master(card_id: str, source: str) -> Path:
     source_path = ROOT / source
     if not source_path.exists():
         raise FileNotFoundError(f"Missing source for {card_id}: {source}")
+    # A later bulk export must not collapse versioned provenance back onto the
+    # legacy card-id master or overwrite the retained original.
+    if source_path.resolve().parent == GENERATED_ROOT.resolve():
+        return source_path
     GENERATED_ROOT.mkdir(parents=True, exist_ok=True)
     target = GENERATED_ROOT / f"{card_id}.png"
     if source_path.resolve() != target.resolve():
@@ -62,16 +68,35 @@ def build_card_assets(master: Path, card_id: str) -> dict[str, str]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--card-id', action='append', default=[], help='Build only named approved cards; repeat for a small batch.')
+    parser.add_argument('--source', type=Path, help='Versioned master for exactly one --card-id; preserve it as manifest provenance.')
+    args = parser.parse_args()
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    approved = {entry['cardId'] for entry in manifest.get('cards', []) if entry.get('status') == 'approved'}
+    unknown = set(args.card_id) - approved
+    if unknown:
+        parser.error(f'Unknown or unapproved card ids: {sorted(unknown)}')
+    master_override = None
+    if args.source:
+        if len(set(args.card_id)) != 1:
+            parser.error('--source requires exactly one --card-id')
+        master_override = (ROOT / args.source).resolve()
+        if (master_override.parent != ROOT / '.generated/imagegen/tarot/selected'
+                or not re.fullmatch(r'[a-z0-9_]+\.png', master_override.name)
+                or not master_override.is_file()):
+            parser.error('--source must be an existing selected tarot PNG with a lowercase/underscore filename')
     built = 0
     for entry in manifest.get("cards", []):
         if entry.get("status") != "approved":
+            continue
+        if args.card_id and entry['cardId'] not in args.card_id:
             continue
         source = entry.get("source")
         if not isinstance(source, str):
             raise ValueError(f"{entry.get('cardId')}: approved card requires source")
         card_id = entry["cardId"]
-        master = copy_master(card_id, source)
+        master = master_override or copy_master(card_id, source)
         paths = build_card_assets(master, card_id)
         entry["source"] = rel(master)
         entry.update(paths)

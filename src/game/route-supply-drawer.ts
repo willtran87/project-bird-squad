@@ -1,18 +1,8 @@
-import Phaser from 'phaser';
-import {
-  addRunKitDrawerFlourish,
-  addUiIconImage,
-  HUD_MENU_PANEL,
-  renderCloseControl,
-  renderCompactItemTile,
-  renderEmptySupplySlotTile,
-  renderFieldPanel,
-  UI_FIELD,
-  UI_FONT,
-  UI_MUTED,
-} from '../main';
-
-const UI_BOLD = 'bold';
+import type Phaser from 'phaser';
+import { supplyCompactArtAssets, UI_FIELD } from '../main';
+import { bindChoiceHint } from './choice-input-hints';
+import { controlBindingLabel } from './input-bindings';
+import { decisionButton, decisionText } from './decision-surface';
 
 export interface RouteSupplyDrawerEntry {
   id?: string;
@@ -20,6 +10,7 @@ export interface RouteSupplyDrawerEntry {
   accent?: number;
   name?: string;
   summary?: string;
+  timing?: 'route' | 'combat' | 'either';
   usable?: boolean;
 }
 
@@ -34,87 +25,71 @@ export interface RouteSupplyDrawerView {
   backLabel: string;
   addTo?: (object: Phaser.GameObjects.GameObject) => void;
   onClose: () => void;
-  onFocus: (index: number) => void;
   onActivate: (index: number) => void;
+  onBrowse: (direction: -1 | 1) => void;
 }
 
 export function renderRouteSupplyDrawer(scene: Phaser.Scene, view: RouteSupplyDrawerView) {
-  const addTo = view.addTo ?? (() => {});
-  addTo(scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.66)
-    .setInteractive({ useHandCursor: false }));
-  const frame = renderFieldPanel(scene, addTo, HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy, HUD_MENU_PANEL.w, HUD_MENU_PANEL.h, {
-    eyebrow: 'Run Kit',
-    title: 'Packed Supplies',
-    subtitle: `${view.filled}/${view.capacity} supply slot${view.capacity === 1 ? '' : 's'} filled`,
-    accent: 0xffb86b,
-  });
-  addRunKitDrawerFlourish(scene, addTo, frame, { alpha: 0.1, tint: 0xffe1a3, yOffset: 8 });
-  const pouch = addUiIconImage(scene, 'supply-pouch', frame.left + HUD_MENU_PANEL.headerIconX, frame.top + HUD_MENU_PANEL.headerIconY, 28)?.setAlpha(0.92);
-  if (pouch) addTo(pouch);
-  renderCloseControl(scene, addTo, frame.right - HUD_MENU_PANEL.closeX, frame.top + HUD_MENU_PANEL.closeY, view.onClose);
-
-  if (view.capacity === 0) {
-    const emptyPouch = addUiIconImage(scene, 'supply-pouch', frame.left + 88, frame.top + 160, 34)?.setAlpha(0.32);
-    if (emptyPouch) addTo(emptyPouch);
-    addTo(scene.add.text(frame.left + 126, frame.top + 150, '0 slots', {
-      fontFamily: UI_FONT,
-      fontSize: '14px',
-      fontStyle: UI_BOLD,
-      color: UI_MUTED,
-      wordWrap: { width: frame.w - 108 },
-    }));
+  const add = <T extends Phaser.GameObjects.GameObject>(object: T): T => { view.addTo?.(object); return object; };
+  const text = (x: number, y: number, value: string, width: number, size = 20, color = '#dbe8f2') =>
+    add(decisionText(scene, x, y, value, width, size, color));
+  const button = (x: number, width: number, label: string, name: string, action: () => void, y = 608) =>
+    decisionButton(scene, x, y, width, label, `supply-drawer-${name}`, action).map(add);
+  const timing = (entry: RouteSupplyDrawerEntry) => entry.timing === 'either' ? 'Route or combat' : entry.timing === 'route' ? 'Route only' : 'Combat only';
+  add(scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.88).setInteractive());
+  if (!view.entries.some(entry => entry.id)) {
+    add(scene.add.rectangle(640, 360, 720, 340, 0x070d15, 1).setStrokeStyle(1, 0x536574, 0.8).setName('supply-drawer-frame'));
+    text(312, 218, 'RUN KIT', 656, 16, '#abc4d4');
+    text(312, 244, 'Packed Supplies', 656, 32, '#ffe1a3');
+    text(312, 310, 'No Supplies packed', 656, 22);
+    text(312, 354, 'Find tools at Caches, Basins and Markets.', 656, 20, '#abc4d4');
+    button(640, 300, 'Close', 'close', view.onClose, 474);
     return;
   }
-
-  const tileW = 252;
-  const tileH = 104;
-  const startX = frame.left + 64;
-  const startY = frame.top + 128;
-  view.entries.forEach((entry, index) => {
-    const x = startX + (index % 3) * 272;
-    const y = startY + Math.floor(index / 3) * 112;
-    if (!entry.id) {
-      renderEmptySupplySlotTile(scene, addTo, x, y, tileW, tileH);
-      return;
-    }
-    const focused = view.inputActive && view.focusIndex === index;
-    const armed = view.armedIndex === index;
-    if (focused || armed) {
-      addTo(scene.add.rectangle(x + tileW / 2, y + tileH / 2, tileW + 10, tileH + 10, 0x07131b, 0.06)
-        .setStrokeStyle(armed ? 4 : 3, armed ? UI_FIELD.gold : UI_FIELD.cyan, 0.98)
-        .setName(armed ? 'supply-drawer-armed-ring' : 'supply-drawer-focus-ring'));
-    }
-    const bg = renderCompactItemTile(scene, addTo, x, y, tileW, tileH, {
-      kind: 'supply',
-      id: entry.id,
-      glyph: entry.glyph ?? '?',
-      accent: entry.accent ?? UI_FIELD.gold,
-      name: entry.name ?? entry.id,
-      summary: entry.summary ?? '',
-      enabled: entry.usable,
-      actionLabel: entry.usable ? armed ? 'CONFIRM' : 'SELECT' : 'OTHER PHASE',
-    }).setName(`supply-drawer-item-${index}`);
-    if (entry.usable) {
-      bg.setInteractive({ useHandCursor: true })
-        .on('pointerover', () => view.onFocus(index))
-        .on('pointerdown', () => view.onActivate(index));
-    }
+  add(scene.add.rectangle(640, 360, 1060, 600, 0x070d15, 1).setStrokeStyle(1, 0x536574, 0.8).setName('supply-drawer-frame'));
+  text(142, 88, 'RUN KIT', 350, 16, '#abc4d4');
+  text(142, 114, 'Packed Supplies', 670, 32, '#ffe1a3');
+  text(1138, 127, `${view.filled} / ${view.capacity} packed`, 250, 20, '#abc4d4').setOrigin(1, 0.5);
+  add(scene.add.rectangle(640, 168, 996, 1, 0x536574, 0.5));
+  const entries = view.entries.map((entry, index) => ({ ...entry, index })).filter(entry => entry.id);
+  const focus = entries.find(entry => entry.index === view.focusIndex) ?? entries[0];
+  const start = Math.floor(Math.max(0, entries.findIndex(entry => entry.index === focus?.index)) / 4) * 4;
+  entries.slice(start, start + 4).forEach((entry, rowIndex) => {
+    const y = 230 + rowIndex * 84;
+    const selected = focus?.index === entry.index;
+    const armed = view.armedIndex === entry.index;
+    const row = add(scene.add.rectangle(322, y, 360, 76, selected ? 0x14232e : 0x0b151f, 1)
+      .setStrokeStyle(selected ? 2 : 1, armed ? UI_FIELD.gold : selected ? UI_FIELD.cyan : 0x344653, selected ? 0.9 : 0.5)
+      .setInteractive({ useHandCursor: true }).setName(`supply-drawer-item-${entry.index}`));
+    row.on('pointerdown', () => view.onActivate(entry.index));
+    row.setData({ selected, armed });
+    text(158, y - 25, entry.name ?? entry.id!, 328, 20, selected ? '#ffe1a3' : '#dbe8f2').setName('supply-drawer-item-name');
+    text(158, y + 5, armed ? 'Selected · Confirm to use' : timing(entry), 328, 16, armed ? '#ffe1a3' : '#abc4d4');
   });
-
-  const focused = view.entries[view.focusIndex];
-  const command = view.armedIndex === undefined
-    ? `${view.confirmLabel} / A / TAP  SELECT  |  PREVIOUS / NEXT / D-PAD  BROWSE  |  ${view.backLabel} / B  CLOSE`
-    : `${view.confirmLabel} / A / SECOND TAP  USE ${focused?.name?.toUpperCase() ?? 'SUPPLY'}  |  ${view.backLabel} / B  CANCEL`;
-  addTo(scene.add.rectangle(frame.cx, frame.bottom - 48, 744, 38, 0x07131b, 0.92)
-    .setStrokeStyle(1.5, view.armedIndex === undefined ? UI_FIELD.cyan : UI_FIELD.gold, 0.78)
-    .setName('supply-drawer-command-rail'));
-  addTo(scene.add.text(frame.cx, frame.bottom - 48, command, {
-    fontFamily: UI_FONT,
-    fontSize: '11px',
-    fontStyle: UI_BOLD,
-    color: view.armedIndex === undefined ? '#bfe8f4' : '#ffe08a',
-    fixedWidth: 714,
-    align: 'center',
-    maxLines: 1,
-  }).setOrigin(0.5).setName('supply-drawer-command-copy'));
+  if (entries.length) {
+    text(142, 542, entries.length > 4 ? `${start + 1}–${Math.min(start + 4, entries.length)} of ${entries.length} packed` : `${Math.max(0, view.capacity - view.filled)} open slot${view.capacity - view.filled === 1 ? '' : 's'}`, 360, 16, '#abc4d4');
+    button(228, 172, '← Previous', 'previous', () => view.onBrowse(-1));
+    button(416, 172, 'Next →', 'next', () => view.onBrowse(1));
+  }
+  add(scene.add.rectangle(526, 376, 1, 368, 0x536574, 0.35));
+  if (focus) {
+    const key = supplyCompactArtAssets[focus.id!]?.key;
+    if (key && scene.textures.exists(key)) add(scene.add.image(594, 234, key).setDisplaySize(80, 80));
+    else text(594, 234, focus.glyph ?? '◇', 80, 32, '#ffe1a3').setOrigin(0.5);
+    text(654, 198, focus.name ?? focus.id!, 484, 26, '#ffe1a3').setName('supply-drawer-title');
+    text(654, 242, `${timing(focus)} · Single use`, 484, 18, '#abc4d4');
+    text(554, 304, focus.summary ?? '', 584, 22).setName('supply-drawer-rules');
+    const armed = view.armedIndex === focus.index;
+    const hint = text(554, 513, '', 584, 18, armed ? '#ffe1a3' : '#abc4d4').setName('supply-drawer-command-copy');
+    bindChoiceHint(scene, hint, mode => {
+      if (!focus.usable) return `Keep packed · Use ${focus.timing === 'route' ? 'on the route' : 'in combat'}.`;
+      if (mode === 'pointer') return armed ? 'Confirm use, or cancel to keep it packed.' : 'Select an item, then confirm to use it.';
+      const confirm = mode === 'controller' ? 'A' : view.confirmLabel;
+      const back = mode === 'controller' ? 'B' : view.backLabel;
+      const move = mode === 'controller' ? 'D-pad' : `${controlBindingLabel('previous')}/${controlBindingLabel('next')}`;
+      return `${move}: browse · ${confirm}: ${armed ? 'use' : 'select'} · ${back}: ${armed ? 'cancel' : 'close'}`;
+    });
+    if (focus.usable) button(705, 302, armed ? 'Confirm use' : 'Select Supply', 'use', () => view.onActivate(focus.index));
+  }
+  button(1007, 262, view.armedIndex === undefined ? 'Close' : 'Cancel selection', 'close', view.onClose);
 }

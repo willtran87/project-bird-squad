@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { fitTextExcerpt } from '../text-excerpt';
+import type { enemyIntentLabel } from '../enemy-intent';
 
 export interface BattleForegroundArtPlacement {
   artX: number;
@@ -33,9 +35,8 @@ export interface BattleForegroundEnemyView {
   artPlacement?: BattleForegroundArtPlacement;
   moveLabel: string;
   incomingDamage: number;
-  bracePressure: number;
-  hasDebuff: boolean;
-  hasSupport: boolean;
+  intent: ReturnType<typeof enemyIntentLabel>;
+  moveDescription: string;
   status: string;
   objective?: {
     title: string;
@@ -98,58 +99,33 @@ export interface BattleForegroundRenderContext {
   ) => void;
 }
 
-function renderTargetReticle(context: BattleForegroundRenderContext, enemy: BattleForegroundEnemyView) {
-  const { scene, target, reducedMotion, textures } = context;
-  if (!scene.textures.exists(textures.targetReticle)) return;
-  scene.textures.get(textures.targetReticle).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const width = (enemy.boss ? 316 : 274) * enemy.scale;
-  const height = (enemy.boss ? 158 : 136) * enemy.scale;
-  if (scene.textures.exists(textures.targetLockPulse)) {
-    scene.textures.get(textures.targetLockPulse).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const pulse = scene.add.image(enemy.x, enemy.y + 8 * enemy.scale, textures.targetLockPulse)
-      .setDisplaySize(width * 1.18, height * 1.28)
-      .setAlpha(reducedMotion ? 0.2 : 0.3)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setName('combat-target-lock-pulse');
-    target.add(pulse);
-    if (!reducedMotion) {
-      scene.tweens.add({
-        targets: pulse,
-        alpha: 0.12,
-        scaleX: pulse.scaleX * 1.075,
-        scaleY: pulse.scaleY * 1.075,
-        duration: 1180,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
-  }
-  const reticle = scene.add.image(enemy.x, enemy.y + 8 * enemy.scale, textures.targetReticle)
-    .setDisplaySize(width, height)
-    .setAlpha(reducedMotion ? 0.44 : 0.56)
-    .setBlendMode(Phaser.BlendModes.ADD)
-    .setName('combat-target-reticle');
-  target.add(reticle);
-  if (!reducedMotion) {
-    scene.tweens.add({
-      targets: reticle,
-      alpha: 0.34,
-      scaleX: reticle.scaleX * 1.035,
-      scaleY: reticle.scaleY * 1.035,
-      duration: 1040,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
-  }
+function fitSingleLine(label: Phaser.GameObjects.Text, source: string) {
+  return fitTextExcerpt(label, source, 1);
 }
 
-function renderEnemy(context: BattleForegroundRenderContext, enemy: BattleForegroundEnemyView) {
-  const { scene, target, textures, fontFamily, boldFontStyle } = context;
+function enemyGroundY(context: BattleForegroundRenderContext, enemy: BattleForegroundEnemyView) {
+  // Reviewed contact row in the 768×512 Roof Rat cutout. Its tail extends below
+  // the front paws, so the full alpha bounds are not a valid floor anchor.
+  if (enemy.artKey === 'enemy-roof_rat' && enemy.artPlacement) {
+    const source = context.scene.textures.get(enemy.artKey).getSourceImage() as { height: number };
+    return enemy.artPlacement.artY + source.height * enemy.artFit * (416 / 512 - 0.5) + 2 * enemy.scale;
+  }
+  return enemy.artPlacement?.shadowY ?? 34 * enemy.scale;
+}
+
+function renderTargetReticle(context: BattleForegroundRenderContext, enemy: BattleForegroundEnemyView) {
+  // One grounded selection mark leaves character art and intent unobstructed.
+  context.target.add(context.scene.add.ellipse(enemy.x, enemy.y + enemyGroundY(context, enemy),
+    156 * enemy.scale, 36 * enemy.scale, 0x24d0d6, 0.08)
+    .setStrokeStyle(2, 0x77d9df, 0.68).setName('combat-target-reticle').setData('enemyId', enemy.id));
+}
+
+function renderEnemyArt(context: BattleForegroundRenderContext, enemy: BattleForegroundEnemyView) {
+  const { scene, target, fontFamily, boldFontStyle } = context;
   const s = enemy.scale;
   const hasEnemyArt = Boolean(enemy.artKey && scene.textures.exists(enemy.artKey));
-  const breathGroup = scene.add.container(enemy.x, enemy.y);
+  const breathGroup = scene.add.container(enemy.x, enemy.y)
+    .setName('combat-enemy-art').setData('enemyId', enemy.id);
   const poseGroup = scene.add.container(0, 0);
   context.registerEnemyPose(enemy.id, poseGroup, s);
   breathGroup.add(poseGroup);
@@ -169,12 +145,12 @@ function renderEnemy(context: BattleForegroundRenderContext, enemy: BattleForegr
 
   poseGroup.add(scene.add.ellipse(
     0,
-    enemy.artPlacement?.shadowY ?? 34 * s,
+    enemyGroundY(context, enemy),
     enemy.artPlacement?.shadowW ?? 112 * s,
     enemy.artPlacement?.shadowH ?? 22 * s,
     0x020409,
     hasEnemyArt ? 0.38 : 0.26,
-  ));
+  ).setName('combat-enemy-contact-shadow').setData('enemyId', enemy.id));
   const body = hasEnemyArt
     ? scene.add.rectangle(0, enemy.artPlacement?.hitboxY ?? -18 * s, 248 * s, 236 * s, 0x000000, 0.001)
       .setInteractive({ useHandCursor: true })
@@ -185,6 +161,7 @@ function renderEnemy(context: BattleForegroundRenderContext, enemy: BattleForegr
   poseGroup.add(body);
   if (hasEnemyArt && enemy.artKey) {
     const art = scene.add.image(enemy.artPlacement?.artX ?? 0, enemy.artPlacement?.artY ?? -22 * s, enemy.artKey)
+      .setName('combat-enemy-portrait')
       .setScale(enemy.artFit)
       .setAlpha(0.99)
       .setInteractive({ useHandCursor: true });
@@ -201,7 +178,11 @@ function renderEnemy(context: BattleForegroundRenderContext, enemy: BattleForegr
   }
   target.add(breathGroup);
   context.presentEnemyMotion(enemy.id, breathGroup, poseGroup, s);
+}
 
+function renderEnemyLabels(context: BattleForegroundRenderContext, enemy: BattleForegroundEnemyView) {
+  const { scene, target, textures, fontFamily, boldFontStyle } = context;
+  const s = enemy.scale;
   if (enemy.elite) {
     const crestY = enemy.y - 140 * s;
     if (scene.textures.exists(textures.eliteCrest)) {
@@ -224,140 +205,124 @@ function renderEnemy(context: BattleForegroundRenderContext, enemy: BattleForegr
 
   const hp = enemy.hpBar;
   const hpFraction = Math.max(0, Math.min(1, enemy.hp / enemy.maxHp));
-  if (scene.textures.exists(textures.enemyVitalsFrame)) {
-    scene.textures.get(textures.enemyVitalsFrame).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    target.add(scene.add.image(hp.x, hp.y, textures.enemyVitalsFrame)
-      .setDisplaySize(hp.w + 48 * s, 50 * s)
-      .setAlpha(enemy.selected ? 0.72 : 0.6)
-      .setName('combat-enemy-vitals-frame'));
-  }
-  target.add(scene.add.rectangle(hp.x, hp.y, hp.w, hp.h, 0x140d0d, 0.92)
-    .setStrokeStyle(enemy.selected ? 3 : enemy.elite || enemy.boss ? 2 : 1, enemy.selected || enemy.elite || enemy.boss ? enemy.frameColor : 0x000000, enemy.selected || enemy.elite || enemy.boss ? 0.95 : 0.55));
+  const filledWidth = Math.max(2, hp.w * hpFraction);
+  const vitals = scene.add.rectangle(hp.x, hp.y - 12, hp.w + 8, 40, 0x0b151f, 0.97)
+    .setStrokeStyle(1, enemy.selected ? enemy.frameColor : 0x627078, enemy.selected ? 0.72 : 0.32)
+    .setName('combat-enemy-vitals').setData('enemyId', enemy.id);
+  context.attachTooltip(vitals, enemy.name, `Cohesion ${enemy.hp}/${enemy.maxHp}. ${enemy.moveLabel}`);
+  vitals.on('pointerdown', () => context.onEnemyClicked(enemy.id));
+  target.add(vitals);
+  target.add(scene.add.rectangle(hp.x, hp.y, hp.w, hp.h - 6, 0x34252c, 1)
+    .setName('combat-enemy-health-track').setData('enemyId', enemy.id));
   target.add(scene.add.rectangle(
-    hp.x - hp.w / 2 + (hp.w * hpFraction) / 2,
+    hp.x - hp.w / 2 + filledWidth / 2,
     hp.y,
-    Math.max(2, hp.w * hpFraction),
+    filledWidth,
     hp.h - 6,
-    hpFraction > 0.34 ? 0xb23b33 : 0xff5247,
+    hpFraction > 0.34 ? 0xc46d75 : 0xef746b,
     0.95,
-  ));
+  ).setName('combat-enemy-health-fill').setData('enemyId', enemy.id));
+  target.add(scene.add.rectangle(hp.x - hp.w / 2, hp.y - hp.h / 2 + 3,
+    Math.max(2, hp.w * hpFraction), 2, hpFraction > 0.34 ? 0xd47778 : 0xff8176, 0.8)
+    .setOrigin(0, 0.5).setName('combat-enemy-health-edge'));
   if (enemy.boss) {
     const phaseTwo = enemy.phase === 2;
     const phaseColor = phaseTwo ? 0xff9d4d : 0xf5c85b;
     target.add(scene.add.rectangle(hp.x, hp.y, 2 * s, hp.h - 4, phaseColor, 0.9)
       .setName('combat-boss-phase-threshold'));
-    const phaseY = hp.y - 27 * s;
-    const phasePanel = scene.add.rectangle(hp.x, phaseY, 188 * s, 20 * s, 0x11171e, 0.94)
-      .setStrokeStyle(2, phaseColor, 0.96)
+    const phaseY = hp.y - 78;
+    const phaseWidth = Math.min(hp.w + 8, 244);
+    const phasePanel = scene.add.rectangle(hp.x, phaseY, phaseWidth, 28, 0x11171e, 0.94)
+      .setStrokeStyle(1, phaseColor, 0.64)
       .setName('combat-boss-phase-badge');
     target.add(phasePanel);
-    target.add(scene.add.text(
+    const phaseText = phaseTwo ? `Phase II · ${enemy.phaseName ?? 'Final pattern'}` : 'Phase I · Shifts at 50%';
+    context.attachTooltip(phasePanel, phaseTwo ? 'Boss phase II' : 'Boss phase I', phaseText);
+    const phaseLabel = scene.add.text(
       hp.x,
       phaseY,
-      phaseTwo ? `PHASE II  /  ${enemy.phaseName ?? 'FINAL PATTERN'}` : 'PHASE I  /  SHIFTS AT 50%',
+      phaseText,
       {
         fontFamily,
-        fontSize: `${Math.round(10 * s)}px`,
+        fontSize: '16px',
         fontStyle: boldFontStyle,
-        color: phaseTwo ? '#ffd5ad' : '#fff1b8'
+        color: phaseTwo ? '#ffd5ad' : '#fff1b8', resolution: 2,
+        wordWrap: { width: phaseWidth - 16, useAdvancedWrap: true }, maxLines: 1,
       }
-    ).setOrigin(0.5).setName('combat-boss-phase-badge'));
+    ).setOrigin(0.5).setName('combat-boss-phase-badge').setData('fullText', phaseText);
+    target.add(fitSingleLine(phaseLabel, phaseText));
   }
-  target.add(scene.add.text(hp.x, hp.y, `${enemy.name.replace(/^The\s+/, '')}  ${enemy.hp}/${enemy.maxHp}`, {
+  const value = scene.add.text(hp.x + hp.w / 2 - 4, hp.y - 19, `${enemy.hp}/${enemy.maxHp}`, {
     fontFamily,
-    fontSize: `${Math.round((enemy.boss ? 15 : 18) * s)}px`,
+    fontSize: `${Math.max(14, Math.round(13 * s))}px`,
     fontStyle: boldFontStyle,
-    color: '#ffffff',
-    stroke: '#000000',
-    strokeThickness: 4
-  }).setOrigin(0.5));
+    color: '#c8d4dc', resolution: 2,
+  }).setOrigin(1, 0.5).setName('combat-enemy-hp-value').setData('enemyId', enemy.id);
+  const nameWidth = Math.max(32, hp.w - value.width - 16);
+  const label = scene.add.text(hp.x - hp.w / 2 + 4, hp.y - 19, '', {
+    fontFamily, fontSize: `${Math.max(15, Math.round(14 * s))}px`,
+    fontStyle: boldFontStyle, color: '#f2eee6', resolution: 2,
+    wordWrap: { width: nameWidth, useAdvancedWrap: true }, maxLines: 1,
+  }).setOrigin(0, 0.5).setName('combat-enemy-name').setData('enemyId', enemy.id);
+  fitSingleLine(label, enemy.name.replace(/^The\s+/, '')).setData('fullName', enemy.name);
+  target.add([label, value]);
 
-  const isBrace = enemy.incomingDamage === 0 && enemy.bracePressure > 0;
+  const intent = enemy.intent;
   const ringColor = enemy.incomingDamage > 0
     ? (enemy.incomingDamage <= 6 ? 0xf5d38a : enemy.incomingDamage <= 10 ? 0xff9d4d : 0xff5247)
-    : isBrace ? 0xffcf7a : enemy.hasSupport ? 0x8fd6a0 : 0xc98bff;
-  const badgeValue = enemy.incomingDamage > 0 ? `${enemy.incomingDamage}` : isBrace ? `+${enemy.bracePressure}` : enemy.hasSupport ? '+' : '!';
-  const crowdedIntent = context.enemies.length > 1;
-  const intentOffset = (crowdedIntent ? 12 : 30) * s;
-  const intentRadius = (crowdedIntent ? 20 : 24) * s;
-  const intentRingSize = intentRadius * 2.5;
-  const intentSide = enemy.boss
-    || enemy.x + hp.w / 2 + intentOffset + intentRingSize / 2 > context.width - 4 ? -1 : 1;
-  const bx = enemy.x + intentSide * (hp.w / 2 + intentOffset);
-  const by = hp.y;
-  if (scene.textures.exists(textures.enemyIntentRing)) {
-    scene.textures.get(textures.enemyIntentRing).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    target.add(scene.add.image(bx, by, textures.enemyIntentRing)
-      .setDisplaySize(intentRingSize, intentRingSize)
-      .setAlpha(enemy.incomingDamage > 0 ? 0.88 : 0.68));
-  }
-  const badge = scene.add.circle(bx, by, intentRadius, 0x10171f, 0.96)
-    .setStrokeStyle(enemy.incomingDamage >= 11 ? 5 : 3, ringColor, 1);
+    : intent.kind === 'cover' ? 0x7ab8d6 : intent.kind === 'charge' ? 0xffcf7a : intent.kind === 'support' ? 0x8fd6a0 : 0xc98bff;
+  // One named Tell is anchored directly to its own vitals, never between enemies.
+  const bx = hp.x;
+  const by = hp.y - 47;
+  const badge = scene.add.rectangle(bx, by, Math.min(hp.w, 176), 28, 0x10171f, 0.97)
+    .setStrokeStyle(1, ringColor, 0.65)
+    .setName('combat-enemy-intent-badge').setData('enemyId', enemy.id)
+    .setData('description', enemy.moveDescription);
   context.attachTooltip(
     badge,
     enemy.moveLabel,
-    enemy.incomingDamage > 0
-      ? `Incoming attack: ${enemy.incomingDamage} damage${enemy.hasDebuff ? ' plus a debuff' : ''}.`
-      : isBrace
-        ? `Enemy winds up: next attack gains +${enemy.bracePressure} damage.`
-        : 'Applies pressure - a debuff or special move.'
+    `${enemy.incomingDamage > 0 ? `Projected attack: ${enemy.incomingDamage} damage. ` : ''}${enemy.moveDescription}`
   );
   target.add(badge);
-  target.add(scene.add.text(bx, by, badgeValue, {
+  target.add(scene.add.text(bx, by, intent.label, {
     fontFamily,
-    fontSize: `${Math.round(21 * s)}px`,
+    fontSize: '18px',
     fontStyle: boldFontStyle,
-    color: '#ffffff'
-  }).setOrigin(0.5));
-  const intentIcon: BattleIntentIcon = enemy.incomingDamage > 0 ? 'attack' : isBrace ? 'brace' : enemy.hasSupport ? 'support' : 'pressure';
-  const intentMark = context.addIntentIcon(intentIcon, bx, by + 32 * s, Math.round(13 * s));
-  if (intentMark) target.add(intentMark.setAlpha(0.92));
+    color: '#ffffff', resolution: 2,
+  }).setOrigin(0.5).setName('combat-enemy-intent-value').setData('enemyId', enemy.id));
   if (enemy.objective) {
     const objectiveActive = enemy.objective.status === 'active';
     const objectiveColor = objectiveActive ? 0xf5c85b : enemy.objective.status === 'complete' ? 0x7ee2a8 : 0xff7d72;
     const objectiveText = objectiveActive
-      ? `OBJECTIVE  /  ${enemy.objective.remainingBeats} ${enemy.objective.remainingBeats === 1 ? 'BEAT' : 'BEATS'}`
-      : enemy.objective.status === 'complete' ? 'OBJECTIVE COMPLETE' : 'OBJECTIVE MISSED';
-    const objectiveY = hp.y - 34 * s;
-    const objectiveWidth = 158 * s;
-    const objectivePanel = scene.add.rectangle(hp.x, objectiveY, objectiveWidth, 23 * s, 0x11171e, 0.94)
-      .setStrokeStyle(2, objectiveColor, 0.96)
+      ? `Objective · ${enemy.objective.remainingBeats} ${enemy.objective.remainingBeats === 1 ? 'beat' : 'beats'}`
+      : enemy.objective.status === 'complete' ? 'Objective complete' : 'Objective missed';
+    const objectiveY = hp.y - (enemy.boss ? 110 : 78);
+    const objectiveWidth = Math.min(hp.w + 8, 244);
+    const objectivePanel = scene.add.rectangle(hp.x, objectiveY, objectiveWidth, 28, 0x11171e, 0.94)
+      .setStrokeStyle(1, objectiveColor, 0.8)
       .setName('combat-objective-target');
     context.attachTooltip(objectivePanel, enemy.objective.title, enemy.objective.detail);
     target.add(objectivePanel);
-    target.add(scene.add.text(hp.x, objectiveY, objectiveText, {
+    const objectiveLabel = scene.add.text(hp.x, objectiveY, objectiveText, {
       fontFamily,
-      fontSize: `${Math.round(10 * s)}px`,
+      fontSize: '16px',
       fontStyle: boldFontStyle,
-      color: objectiveActive ? '#fff1b8' : enemy.objective.status === 'complete' ? '#b7f4d0' : '#ffd0ca'
-    }).setOrigin(0.5).setName('combat-objective-target'));
-  }
-  if (enemy.hasDebuff && enemy.incomingDamage > 0) {
-    target.add(scene.add.circle(bx + 20 * s, by - 17 * s, 7 * s, 0xc98bff, 1));
-    target.add(scene.add.text(bx + 20 * s, by - 17 * s, '!', {
-      fontFamily,
-      fontSize: `${Math.round(12 * s)}px`,
-      fontStyle: boldFontStyle,
-      color: '#170f1e'
-    }).setOrigin(0.5));
+      color: objectiveActive ? '#fff1b8' : enemy.objective.status === 'complete' ? '#b7f4d0' : '#ffd0ca',
+      resolution: 2, wordWrap: { width: objectiveWidth - 16, useAdvancedWrap: true }, maxLines: 1,
+    }).setOrigin(0.5).setName('combat-objective-target').setData('fullText', objectiveText);
+    target.add(fitSingleLine(objectiveLabel, objectiveText));
   }
   if (enemy.block > 0 || enemy.weak > 0) {
-    const statusY = enemy.y + 95 * s;
-    if (scene.textures.exists(textures.enemyStatusChipFrame)) {
-      scene.textures.get(textures.enemyStatusChipFrame).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      target.add(scene.add.image(enemy.x, statusY, textures.enemyStatusChipFrame)
-        .setDisplaySize(162 * s, 40 * s)
-        .setAlpha(enemy.selected ? 0.84 : 0.7)
-        .setName('combat-enemy-status-chip-frame'));
-    }
-    target.add(scene.add.text(enemy.x, statusY, enemy.status, {
-      fontFamily,
-      fontSize: `${Math.round(15 * s)}px`,
-      fontStyle: boldFontStyle,
-      color: '#f4ecd7',
-      stroke: '#090b10',
-      strokeThickness: 3
-    }).setOrigin(0.5));
+    const statusY = hp.y + 23;
+    const panel = scene.add.rectangle(hp.x, statusY, hp.w + 8, 24, 0x0b151f, 0.97)
+      .setName('combat-enemy-status-panel').setData('enemyId', enemy.id);
+    context.attachTooltip(panel, enemy.name, enemy.status);
+    panel.on('pointerdown', () => context.onEnemyClicked(enemy.id));
+    const status = scene.add.text(hp.x, statusY, '', {
+      fontFamily, fontSize: '16px', fontStyle: boldFontStyle, color: '#cfdee3', resolution: 2,
+      wordWrap: { width: hp.w - 4, useAdvancedWrap: true }, maxLines: 1,
+    }).setOrigin(0.5).setName('combat-enemy-status').setData('enemyId', enemy.id);
+    target.add([panel, fitTextExcerpt(status, enemy.status, 1)]);
   }
 }
 
@@ -397,6 +362,9 @@ function renderLeader(context: BattleForegroundRenderContext) {
 
 /** Render battle combatants, target affordances, vitals, and intent presentation. */
 export function renderBattleForeground(context: BattleForegroundRenderContext) {
-  context.enemies.forEach((enemy) => renderEnemy(context, enemy));
+  context.enemies.forEach((enemy) => renderEnemyArt(context, enemy));
   renderLeader(context);
+  // Container insertion order is the render order. Keep every status and Tell
+  // above every combatant, including art belonging to a later front-row enemy.
+  context.enemies.forEach((enemy) => renderEnemyLabels(context, enemy));
 }

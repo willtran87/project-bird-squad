@@ -26,7 +26,7 @@
     },
     {
       "cardId": "wands_ace",
-      "source": ".generated/imagegen/tarot/selected/wands_ace.png",
+      "source": ".generated/imagegen/tarot/selected/wands_ace_readability_20260913.png",
       "portrait": "assets/runtime/cards/portrait/wands_ace.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_ace.webp",
       "icon": "assets/runtime/cards/icon/wands_ace.webp",

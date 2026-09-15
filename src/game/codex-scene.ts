@@ -47,12 +47,12 @@ import {
   bindControlActions, birdAudio, cardArtAssets, cardCompactArtAsset, cardLabel, cardLibrary, clamp,
   codexIconForLabel, codexLeaderArtAssets, codexUiIconIds, compactCardArtKey, compactEffectSummary,
   controlActionForCode, controlBindingLabel,
-  countTextureInGameObjects, displayName, enemyArtAssets, enemyCodexIconForLabel, flockLeaders,
+  countTextureInGameObjects, displayName, enemyArtAssets, enemyCodexIconForLabel, flockLeaders, formatEffects, formatWaymarkTrigger,
   GAME_HEIGHT, GAME_WIDTH, getLeader, hideKwTooltip, isAviaryCard, isLeaderUnlocked, isSnagCard,
-  itemTypeCodexIconForLabel, KEYWORDS, killTweensForTree, LAZY_LOAD_FAILED, leaderUnlockHints,
+  itemTypeCodexIconForLabel, KEYWORDS, keywordTooltipState, killTweensForTree, LAZY_LOAD_FAILED, leaderUnlockHints,
   loadAccount, loadBossDossierModule, loadedCardArtKey, playUiSound, queueReserveEnemyArtAssets,
   queueRuntimeImageAssets, queueUiIconAssets, renderAudioToggleControl, renderRichText,
-  renderSnagCardBorder, reserveEnemyArtAsset, routeMarkEffectGrammar, routeMarkEffectText,
+  renderSnagCardBorder, reserveEnemyArtAsset, routeMarkEffectText,
   showKwTooltip, suitAccentColor, supplyArtAssets, supplyCodexIconForLabel, supplyCompactArtAssets,
   supplySynergyTags, UI_BODY, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, UI_MUTED, UI_SOFT,
   uiIconAssets, waymarkArtAssets, waymarkCodexIconForLabel, waymarkCompactArtAssets, waymarkGlyph,
@@ -1663,7 +1663,7 @@ export class CodexScene extends Phaser.Scene {
       visualBrief: enemy.visualBrief,
       silhouette: enemy.silhouette,
       artPose: enemy.artPose,
-      moveKit: enemy.moves.map((move) => ({ id: move.id, text: `${move.label}: ${compactEffectSummary(move.effects, 132, 3)}` })),
+      moveKit: enemy.moves.map((move) => ({ id: move.id, text: `${move.label}: ${formatEffects(move.effects)}` })),
       source: 'encounter',
       health: enemy.health,
     };
@@ -2374,6 +2374,7 @@ export class CodexScene extends Phaser.Scene {
     window.advanceTime = (ms: number) => advanceGameTime(this.game, ms);
     window.render_game_to_text = () => JSON.stringify({
       mode: 'codex',
+      keywordTooltip: keywordTooltipState(this),
       section: this.activeSection,
       origin: {
         scene: this.returnScene,
@@ -3683,6 +3684,7 @@ export class CodexScene extends Phaser.Scene {
 
   private renderCodexInputHint() {
     const detail = Boolean(this.detailId);
+    const readOnlyDetail = detail && this.activeSection !== 'cards';
     const activeFilterHint = this.activeCardFilterChips().length > 0
       ? '   |   Filter chips: Enter / Delete'
       : '';
@@ -3690,18 +3692,20 @@ export class CodexScene extends Phaser.Scene {
       ? `Up / Down: Choose   |   ${controlBindingLabel('confirm')} / A: Apply   |   Ctrl+S / X: Save current   |   Delete / Y: Remove   |   B / Select / ${controlBindingLabel('back')}: Close`
       : this.collectionAtlasOpen
       ? `Up / Down: Browse sets   |   ${controlBindingLabel('confirm')}: Open set   |   G / R3 / ${controlBindingLabel('back')}: Close atlas`
+      : readOnlyDetail
+      ? `Up / Down: Scroll   |   ${controlBindingLabel('confirm')} / ${controlBindingLabel('back')}: Close`
       : detail
       ? `Up/Down: Scroll   |   C/X: Favorite   |   V/L3: Tag   |   T/Y: Hunt / Protect   |   G/R3: Showcase   |   J/Start: Journal   |   N/LT: Seen   |   ${controlBindingLabel('confirm')}: Close`
       : this.activeSection === 'cards'
         ? `Tab: Focus   |   B / Select: Views   |   G / R3: Atlas   |   / / RB: Find   |   R / RT: Sort   |   L / LB: Lens${activeFilterHint}   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate`
         : `Tab: Focus   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate   |   ${controlBindingLabel('confirm')}: Select   |   ${controlBindingLabel('back')}: Back`;
-    const width = this.savedCollectionViewsOpen ? 1120 : this.collectionAtlasOpen ? 830 : detail ? 1180 : this.activeSection === 'cards' ? 1240 : 710;
+    const width = this.savedCollectionViewsOpen ? 1120 : this.collectionAtlasOpen ? 830 : readOnlyDetail ? 530 : detail ? 1180 : this.activeSection === 'cards' ? 1240 : 710;
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 13, width, 22, 0x05070c, 0.86)
       .setStrokeStyle(1, UI_FIELD.cyan, 0.34)
       .setName('codex-input-hint-backdrop'));
     this.root.add(this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 13, label, {
       fontFamily: UI_FONT,
-      fontSize: '11px',
+      fontSize: readOnlyDetail ? '16px' : '11px',
       fontStyle: UI_BOLD,
       color: '#a9d9e8',
       stroke: '#05070c',
@@ -4785,77 +4789,99 @@ export class CodexScene extends Phaser.Scene {
   private renderSupplyDetail(id: string) {
     const supply = alphaSupplyLibrary.get(id);
     if (!supply) return;
-    const scrim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.76).setInteractive();
-    scrim.on('pointerdown', () => this.closeCodexDetail());
-    this.root.add(scrim);
+    this.renderItemDossier({
+      kind: 'Supply', name: supply.name, accent: this.supplyAccent(supply),
+      meta: `${this.supplyCategoryLabel(supply)} · ${supply.rarity} · Single use`,
+      art: supplyArtAssets[id], glyph: this.supplyGlyph(supply),
+      sections: [
+        { title: 'USE', text: supply.description },
+        { title: 'RULES', text: formatEffects(supply.effects) },
+        { title: 'WHEN TO USE', text: this.supplyTimingLabel(supply) },
+        { title: 'BUILD SYNERGIES', text: supplySynergyTags(supply).join(' · '), secondary: true },
+        { title: 'PACKING', text: `${this.supplyAnswerLabel(supply)} answer. Can be packed in a supply slot and consumed once.`, secondary: true },
+      ],
+    });
+  }
 
-    const px = GAME_WIDTH / 2;
-    const py = GAME_HEIGHT / 2;
-    const MW = 780;
-    const MH = 560;
-    const left = px - MW / 2;
-    const top = py - MH / 2;
-    const accent = this.supplyAccent(supply);
-    const accentText = `#${accent.toString(16).padStart(6, '0')}`;
-    const artAsset = supplyArtAssets[supply.id];
-    this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accent, 1));
-    addCodexDossierFrame(this, (obj) => this.root.add(obj), { cx: px, cy: py, w: MW, h: MH }, { alpha: 0.88 });
-    if (artAsset && this.textures.exists(artAsset.key)) {
-      this.root.add(addSupplyArtImage(this, left + 92, top + 92, artAsset.key).setDisplaySize(126, 126));
+  /** One measured, clipped reader for passive items and consumables; inspection never uses either. */
+  private renderItemDossier(item: {
+    kind: 'Supply' | 'Waymark'; name: string; accent: number; meta: string;
+    art?: RuntimeImageAsset; glyph: string;
+    sections: Array<{ title: string; text: string; secondary?: boolean }>;
+  }) {
+    const left = 180, right = 1100, top = 48, bottom = 672;
+    const tx = 440, wrap = right - tx - 32, viewTop = 92, viewBottom = 608;
+    const close = () => this.closeCodexDetail();
+    this.root.add(this.add.rectangle(640, 360, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.84)
+      .setInteractive().on('pointerdown', close));
+    this.root.add(this.add.rectangle(640, 360, right - left, bottom - top, 0x0c1420, 1)
+      .setStrokeStyle(1, item.accent, 0.8).setInteractive().setName('codex-item-dossier'));
+    this.root.add(this.add.text(left + 28, top + 22, item.kind.toUpperCase(), {
+      fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: UI_MUTED,
+    }).setResolution(2));
+    if (item.art && this.textures.exists(item.art.key)) {
+      const art = item.kind === 'Supply' ? addSupplyArtImage(this, 308, 218, item.art.key)
+        : addWaymarkArtImage(this, 308, 218, item.art.key);
+      this.root.add(art.setDisplaySize(192, 192).setName('codex-item-dossier-art'));
     } else {
-      this.root.add(this.add.text(left + 92, top + 91, this.supplyGlyph(supply), {
-        fontFamily: UI_FONT, fontSize: '38px', fontStyle: UI_BOLD, color: '#e7eef7'
+      this.root.add(this.add.text(308, 218, item.glyph, {
+        fontFamily: UI_FONT, fontSize: '48px', color: UI_BODY,
       }).setOrigin(0.5));
     }
-
-    const tx = left + 168;
-    const wrap = MW - 214;
-    let yy = top + 48;
-    this.root.add(this.add.text(tx, yy, supply.name, {
-      fontFamily: UI_FONT, fontSize: '30px', fontStyle: UI_BOLD, color: UI_GOLD,
-      wordWrap: { width: wrap }
-    }));
-    yy += 42;
-    this.root.add(this.add.text(tx, yy, `${this.supplyCategoryLabel(supply)} Supply / ${supply.rarity} / ${this.supplyTimingLabel(supply)}`, {
-      fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: UI_MUTED,
-      wordWrap: { width: wrap }
-    }));
-    yy += 28;
-    this.root.add(this.add.text(tx, yy, 'TAGS', { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: accentText }));
-    yy += 22;
-    this.addCodexTagRow(this.root, tx, yy, supplySynergyTags(supply), accent, wrap, true);
-    yy += 34;
-    this.root.add(this.add.text(tx, yy, 'USE', { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: accentText }));
-    yy += 18;
-    const effect = this.add.text(tx, yy, supply.description, {
-      fontFamily: UI_FONT, fontSize: '17px', fontStyle: UI_BOLD, color: '#cfe0ef',
-      lineSpacing: 4, wordWrap: { width: wrap }
-    });
-    this.root.add(effect);
-    yy += effect.height + 24;
-    this.root.add(this.add.text(tx, yy, 'SUMMARY', { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: accentText }));
-    yy += 18;
-    const summary = this.add.text(tx, yy, compactEffectSummary(supply.effects, 168, 2), {
-      fontFamily: UI_FONT, fontSize: '14px', fontStyle: UI_BOLD, color: '#ffe1a3',
-      lineSpacing: 3, wordWrap: { width: wrap }, maxLines: 3
-    });
-    this.root.add(summary);
-    yy += summary.height + 18;
-    this.root.add(this.add.text(tx, yy, 'RULES', { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: accentText }));
-    yy += 18;
-    this.root.add(this.add.text(tx, yy, supply.effects.join(' -> '), {
-      fontFamily: UI_FONT, fontSize: '13px', color: '#9fb1c4',
-      wordWrap: { width: wrap },
-      maxLines: 2
-    }));
-    yy += 38;
-    this.root.add(this.add.text(tx, yy, 'ROLE', { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: accentText }));
-    yy += 18;
-    this.root.add(this.add.text(tx, yy, `${this.supplyAnswerLabel(supply)} answer. Can be packed in a supply slot and consumed once.`, {
-      fontFamily: 'Georgia, serif', fontSize: '15px', fontStyle: 'italic', color: '#d9c8ff',
-      lineSpacing: 4, wordWrap: { width: wrap }
-    }));
-    this.renderCodexCloseControl(left + MW - 30, top + 30, () => this.closeCodexDetail());
+    // Phaser 4's WebGL renderer does not support legacy GeometryMask. Use the
+    // same opaque reading-window curtains as card dossiers, owned by this render.
+    const reader = this.add.container(0, 0).setName('codex-item-reader');
+    this.root.add(reader);
+    let yy = viewTop - this.detailScroll;
+    const text = (value: string, size: number, color: string, bold = false, name = '') => {
+      const node = this.add.text(tx, yy, value, {
+        fontFamily: UI_FONT, fontSize: `${size}px`, fontStyle: bold ? UI_BOLD : 'normal',
+        color, lineSpacing: 4, wordWrap: { width: wrap, useAdvancedWrap: true },
+      }).setResolution(2).setName(name);
+      reader.add(node); yy += node.height;
+      return node;
+    };
+    text(item.name, 28, UI_GOLD, true, 'codex-item-title'); yy += 10;
+    text(item.meta, 16, UI_MUTED); yy += 26;
+    for (const section of item.sections) {
+      if (!section.text) continue;
+      text(section.title, 16, '#a9c5d5', true); yy += 8;
+      text(section.text, section.secondary ? 18 : 20, section.secondary ? UI_BODY : '#e4edf5',
+        false, `codex-item-${section.title.toLowerCase().replaceAll(' ', '-')}`);
+      yy += 24;
+    }
+    this.detailMaxScroll = Math.max(0, yy + this.detailScroll - 24 - viewBottom);
+    this.detailScrollTarget = clamp(this.detailScrollTarget, 0, this.detailMaxScroll);
+    this.detailScroll = clamp(this.detailScroll, 0, this.detailMaxScroll);
+    this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, top, 0x070a11, 1).setOrigin(0)
+      .setInteractive().on('pointerdown', close));
+    this.root.add(this.add.rectangle(0, bottom, GAME_WIDTH, GAME_HEIGHT - bottom, 0x070a11, 1).setOrigin(0)
+      .setInteractive().on('pointerdown', close));
+    this.root.add(this.add.rectangle(tx, top, wrap, viewTop - top, 0x0c1420, 1).setOrigin(0)
+      .setInteractive().setName('codex-item-reader-clip-top'));
+    this.root.add(this.add.rectangle(tx, viewBottom, wrap, bottom - viewBottom, 0x0c1420, 1).setOrigin(0)
+      .setInteractive().setName('codex-item-reader-clip-bottom'));
+    this.root.add(this.add.rectangle(640, 360, right - left, bottom - top, 0x0c1420, 0)
+      .setStrokeStyle(1, item.accent, 0.8));
+    if (this.detailMaxScroll > 0) {
+      this.root.add(this.add.text(tx, bottom - 36,
+        this.detailScroll >= this.detailMaxScroll - 1 ? 'End of entry' : 'Scroll · ↑ / ↓', {
+          fontFamily: UI_FONT, fontSize: '16px', color: UI_MUTED,
+        }).setResolution(2).setName('codex-item-scroll-hint'));
+      for (const [x, delta, label, name] of [[856, -1, '↑ Back', 'back'], [1012, 1, 'More ↓', 'more']] as const) {
+        const enabled = delta < 0 ? this.detailScrollTarget > 0 : this.detailScrollTarget < this.detailMaxScroll;
+        const hit = this.add.rectangle(x, bottom - 30, 144, MIN_SUPPORTED_TOUCH_TARGET, 0x0c1420, 0.001)
+          .setName(`codex-item-scroll-${name}`);
+        this.root.add(hit);
+        if (enabled) hit.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+          this.detailScrollTarget = clamp(this.detailScrollTarget + delta * (viewBottom - viewTop) * 0.7, 0, this.detailMaxScroll);
+        });
+        this.root.add(this.add.text(x, bottom - 30, label, {
+          fontFamily: UI_FONT, fontSize: '18px', color: enabled ? '#cfe9f5' : '#788694',
+        }).setResolution(2).setOrigin(0.5));
+      }
+    }
+    this.renderCodexCloseControl(right - 26, top + 26, close);
   }
 
   private renderWaymarkThumb(layer: Phaser.GameObjects.Container, mark: RuntimeRouteMark, cx: number, cy: number) {
@@ -4901,79 +4927,18 @@ export class CodexScene extends Phaser.Scene {
   private renderWaymarkDetail(id: string) {
     const mark = alphaRouteMarkLibrary.get(id);
     if (!mark) return;
-    const scrim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.76).setInteractive();
-    scrim.on('pointerdown', () => this.closeCodexDetail());
-    this.root.add(scrim);
-
-    const px = GAME_WIDTH / 2;
-    const py = GAME_HEIGHT / 2;
-    const MW = 780;
-    const MH = 520;
-    const left = px - MW / 2;
-    const top = py - MH / 2;
-    const accent = this.waymarkAccent(mark);
-    const accentText = `#${accent.toString(16).padStart(6, '0')}`;
-    this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accent, 1));
-    addCodexDossierFrame(this, (obj) => this.root.add(obj), { cx: px, cy: py, w: MW, h: MH }, { alpha: 0.88 });
-    const artAsset = waymarkArtAssets[mark.id];
-    if (artAsset && this.textures.exists(artAsset.key)) {
-      this.root.add(addWaymarkArtImage(this, left + 92, top + 92, artAsset.key).setDisplaySize(126, 126));
-    } else {
-      this.root.add(this.add.text(left + 92, top + 91, waymarkGlyph(mark), {
-        fontFamily: UI_FONT, fontSize: '36px', fontStyle: UI_BOLD, color: '#e7eef7'
-      }).setOrigin(0.5));
-    }
-
-    const tx = left + 168;
-    const wrap = MW - 214;
-    let yy = top + 48;
-    this.root.add(this.add.text(tx, yy, mark.name, {
-      fontFamily: UI_FONT, fontSize: '30px', fontStyle: UI_BOLD, color: UI_GOLD,
-      wordWrap: { width: wrap }
-    }));
-    yy += 42;
-    this.root.add(this.add.text(tx, yy, `${this.waymarkFamilyLabel(mark)} Waymark / ${mark.rarity} / ${mark.source}`, {
-      fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: UI_MUTED,
-      wordWrap: { width: wrap }
-    }));
-    yy += 28;
-    this.root.add(this.add.text(tx, yy, 'TAGS', { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: accentText }));
-    yy += 22;
-    this.addCodexTagRow(this.root, tx, yy, waymarkSynergyTags(mark), accent, wrap, true);
-    yy += 34;
-    this.root.add(this.add.text(tx, yy, 'EFFECT', { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: accentText }));
-    yy += 18;
-    const effect = this.add.text(tx, yy, mark.description, {
-      fontFamily: UI_FONT, fontSize: '17px', fontStyle: UI_BOLD, color: '#cfe0ef',
-      lineSpacing: 4, wordWrap: { width: wrap }
+    this.renderItemDossier({
+      kind: 'Waymark', name: mark.name, accent: this.waymarkAccent(mark),
+      meta: `${this.waymarkFamilyLabel(mark)} · ${mark.rarity} · ${mark.source}`,
+      art: waymarkArtAssets[id], glyph: waymarkGlyph(mark),
+      sections: [
+        { title: 'EFFECT', text: mark.description },
+        { title: 'TRIGGER', text: formatWaymarkTrigger(mark.trigger, mark.effects ?? (mark.effect ? [mark.effect] : [])) },
+        { title: 'RULES', text: routeMarkEffectText(mark) },
+        { title: 'BUILD SYNERGIES', text: waymarkSynergyTags(mark).join(' · '), secondary: true },
+        { title: 'FIELD NOTE', text: mark.flavorText ?? 'A real route artifact carried by the flock.', secondary: true },
+      ],
     });
-    this.root.add(effect);
-    yy += effect.height + 24;
-    this.root.add(this.add.text(tx, yy, 'SUMMARY', { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: accentText }));
-    yy += 18;
-    const summary = this.add.text(tx, yy, compactEffectSummary(routeMarkEffectText(mark), 168, 2), {
-      fontFamily: UI_FONT, fontSize: '14px', fontStyle: UI_BOLD, color: '#ffe1a3',
-      lineSpacing: 3, wordWrap: { width: wrap }, maxLines: 3
-    });
-    this.root.add(summary);
-    yy += summary.height + 18;
-    this.root.add(this.add.text(tx, yy, 'TRIGGER', { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: accentText }));
-    yy += 18;
-    this.root.add(this.add.text(tx, yy, `${mark.trigger} -> ${routeMarkEffectGrammar(mark)}`, {
-      fontFamily: UI_FONT, fontSize: '13px', color: '#9fb1c4',
-      wordWrap: { width: wrap },
-      maxLines: 2
-    }));
-    yy += 38;
-    this.root.add(this.add.text(tx, yy, 'OBJECT', { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: accentText }));
-    yy += 18;
-    const flavor = this.add.text(tx, yy, mark.flavorText ?? 'A real route artifact carried by the flock.', {
-      fontFamily: 'Georgia, serif', fontSize: '15px', fontStyle: 'italic', color: '#d9c8ff',
-      lineSpacing: 4, wordWrap: { width: wrap }
-    });
-    this.root.add(flavor);
-
-    this.renderCodexCloseControl(left + MW - 30, top + 30, () => this.closeCodexDetail());
   }
 
   private leaderAccent(leader: typeof flockLeaders[number]) {
@@ -5853,53 +5818,87 @@ export class CodexScene extends Phaser.Scene {
     const accentText = this.hexColor(accentColor);
     const isAviary = isAviaryCard(card);
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accentColor, 1));
-    addCodexDossierFrame(this, (obj) => this.root.add(obj), { cx: px, cy: py, w: MW, h: MH }, { alpha: 0.9 });
 
     // Large card art on the left, at the art's true 2:3 aspect (no distortion).
     const key = loadedCardArtKey(this, card);
     const artW = 320;
     const artH = artW * 1.5;
     const artX = left + 24 + artW / 2;
-    this.renderCodexArtPreviewBacking(artX, py, artW + 14, artH + 14, accentColor);
     if (key && this.textures.exists(key)) {
       this.root.add(this.add.image(artX, py, key).setDisplaySize(artW, artH).setAlpha(0.99));
     } else {
       this.root.add(this.add.rectangle(artX, py, artW, artH, 0x141d2b, 0.9));
     }
-    this.renderCodexArtPreviewFrame(artX, py, artW + 14, artH + 14, 0.86);
 
     // Right column is a scrollable viewport (lots of content now). Text is drawn
     // in absolute coords offset by -detailScroll, then clipped by opaque curtains
     // top & bottom (WebGL has no geometry masks).
     const tx = artX + artW / 2 + 26;
-    const wrap = right - tx - 108;
+    const wrap = right - tx - 32;
     const flightDeckAction = this.canOpenCurrentCardInFlightDeck(card.id);
     const viewTop = mTop + 16 + (flightDeckAction ? 48 : 0);
-    const viewBottom = mBottom - 44;
+    const viewBottom = mBottom - 64;
     const viewH = viewBottom - viewTop;
     const flav = this.codexData?.getCardFlavor(card.id);
     const meaning = this.codexData?.getCardMeaning(card.id);
     const accent = accentText;
     let yy = viewTop - this.detailScroll;
-    const heading = (t: string, color: string) => { this.root.add(this.add.text(tx, yy, t, { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color })); yy += 17; };
+    const heading = (t: string, color: string) => {
+      const label = this.add.text(tx, yy, t, { fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color, resolution: 2, wordWrap: { width: wrap } });
+      this.root.add(label); yy += label.height + 8;
+    };
     const para = (t: string, opts: { color?: string; size?: number; italic?: boolean }) => {
-      const o = this.add.text(tx, yy, t, { fontFamily: opts.italic ? 'Georgia, serif' : 'Arial', fontSize: `${opts.size ?? 13}px`, fontStyle: opts.italic ? 'italic' : 'normal', color: opts.color ?? '#cfe0ef', lineSpacing: 3, wordWrap: { width: wrap } });
+      const o = this.add.text(tx, yy, t, { fontFamily: opts.italic ? 'Georgia, serif' : 'Arial', fontSize: `${Math.max(18, opts.size ?? 18)}px`, resolution: 2, fontStyle: opts.italic ? 'italic' : 'normal', color: opts.color ?? '#cfe0ef', lineSpacing: 3, wordWrap: { width: wrap, useAdvancedWrap: true } });
       this.root.add(o); yy += o.height;
     };
 
     // Title block.
     const title = this.add.text(tx, yy, displayName(card), {
-      fontFamily: UI_FONT, fontSize: '27px', fontStyle: UI_BOLD, color: UI_GOLD, wordWrap: { width: wrap }
+      fontFamily: UI_FONT, fontSize: '27px', fontStyle: UI_BOLD, color: UI_GOLD, resolution: 2, wordWrap: { width: wrap - 40 }
     });
     this.root.add(title);
     yy += Math.max(38, title.height + 7);
     const meta = this.add.text(tx, yy, `${cardLabel(card)} / Cost ${card.cost}${flav?.bird ? ` / ${flav.bird}` : ''}`, {
-      fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: UI_MUTED, wordWrap: { width: wrap }
+      fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: UI_MUTED, resolution: 2, wordWrap: { width: wrap }
     });
     this.root.add(meta);
     yy += Math.max(26, meta.height + 8);
 
     const collection = this.cardCollection[card.id];
+    para(collection ? 'Collected · Permanent record' : 'Discovered · Not yet collected', { color: accentText });
+    yy += 20;
+
+    // Gameplay first; collection administration remains below the complete rules.
+    const rule = (label: string, text: string, color: string) => {
+      heading(label, color);
+      yy += renderRichText(this, this.root, tx, yy, text, { wrap, fontSize: 20, resolution: 2, baseColor: '#dbe6f2', tooltips: true }) + 18;
+    };
+    rule('EFFECT', card.text, '#b8cbdc');
+    if (card.upgradedText && card.upgradedText !== card.text) rule('PREENED +', card.upgradedText, '#7fe39a');
+    if (card.moltText) {
+      rule('MOLT ABILITY', card.moltText, '#ffc78f');
+      if (card.moltTextUpgraded && card.moltTextUpgraded !== card.moltText) rule('MOLT · PREENED +', card.moltTextUpgraded, '#7fe39a');
+    }
+
+    const statLabels: Record<string, string> = {
+      cohesion: 'Cohesion', damage: 'Damage', cover: 'Cover', draw: 'Hand Size',
+      resonance: 'Resonance/turn', regen: 'Regen/turn', moltPower: 'Molt Power', openSkyGuard: 'Open Sky Guard',
+    };
+    const statStr = Object.entries(card.runtime.flockStats).map(([k, v]) => `${statLabels[k] ?? k} +${v}`).join(' / ') || 'None';
+    heading('FLOCK STATS', '#b8cbdc');
+    const statText = this.add.text(tx, yy, statStr, { fontFamily: UI_FONT, fontSize: '20px', resolution: 2, fontStyle: UI_BOLD, color: UI_CYAN, wordWrap: { width: wrap } });
+    const statKw = Object.keys(card.runtime.flockStats).map((k) => statLabels[k] ?? k).find((label) => KEYWORDS[label]);
+    if (statKw) {
+      statText.setInteractive({ useHandCursor: true });
+      statText.on('pointerover', () => {
+        const bounds = statText.getBounds();
+        showKwTooltip(this, statKw, bounds.centerX, bounds.top, statText);
+      });
+      statText.on('pointerout', () => hideKwTooltip());
+    }
+    this.root.add(statText);
+    yy += statText.height + 24;
+
     heading('COLLECTION STATUS', '#e8c24a');
     if (collection) {
       if (this.newlyAcquiredCards.has(card.id)) {
@@ -6022,18 +6021,18 @@ export class CodexScene extends Phaser.Scene {
     const journalNote = this.cardJournal[card.id] ?? '';
     const journalText = this.add.text(
       tx + 12,
-      yy + 26,
+      yy + 32,
       journalNote || 'No private note yet. Record a combo idea, memory, or collection goal.',
       {
         fontFamily: journalNote ? 'Arial' : 'Georgia, serif',
-        fontSize: '12px',
+        fontSize: '18px',
         fontStyle: journalNote ? 'normal' : 'italic',
         color: journalNote ? '#e7dcff' : '#a99abd',
         lineSpacing: 3,
-        wordWrap: { width: wrap - 24 },
+        wordWrap: { width: wrap - 24, useAdvancedWrap: true },
       },
     );
-    const journalHeight = Math.max(72, journalText.height + 48);
+    const journalHeight = Math.max(72, journalText.height + 56);
     const journalHit = this.add.rectangle(
       tx + wrap / 2,
       yy + journalHeight / 2,
@@ -6054,7 +6053,7 @@ export class CodexScene extends Phaser.Scene {
     this.root.add(journalHit);
     this.root.add(this.add.text(tx + 12, yy + 8, 'PRIVATE  ·  J / START  ·  EDIT', {
       fontFamily: UI_FONT,
-      fontSize: '9px',
+      fontSize: '14px',
       fontStyle: UI_BOLD,
       color: '#d9c7ff',
     }).setResolution(2).setName('codex-card-journal-control-label').setData('cardId', card.id));
@@ -6070,48 +6069,13 @@ export class CodexScene extends Phaser.Scene {
     );
     yy += 12;
 
-    // Effect - base + preened (keywords highlighted, hoverable).
-    heading('EFFECT', '#7f93a8');
-    yy += renderRichText(this, this.root, tx, yy, card.text, { wrap, fontSize: 15, tooltips: true }) + 6;
-    if (card.upgradedText && card.upgradedText !== card.text) {
-      this.root.add(this.add.text(tx, yy, 'PREENED  +', { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: '#7fe39a' })); yy += 16;
-      yy += renderRichText(this, this.root, tx, yy, card.upgradedText, { wrap, fontSize: 14, baseColor: '#bfe9cc', tooltips: true }) + 12;
-    } else { yy += 6; }
-
-    // Molt ability - base + preened.
-    if (card.moltText) {
-      heading('MOLT ABILITY', '#c8923a');
-      yy += renderRichText(this, this.root, tx, yy, card.moltText, { wrap, fontSize: 14, baseColor: '#ffc78f', bold: true, tooltips: true }) + 6;
-      if (card.moltTextUpgraded && card.moltTextUpgraded !== card.moltText) {
-        this.root.add(this.add.text(tx, yy, 'PREENED  +', { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: '#7fe39a' })); yy += 16;
-        yy += renderRichText(this, this.root, tx, yy, card.moltTextUpgraded, { wrap, fontSize: 13, baseColor: '#f0b487', tooltips: true }) + 12;
-      } else { yy += 6; }
-    }
-
-    // Flock Stats this card contributes to the flock.
-    const statLabels: Record<string, string> = {
-      cohesion: 'Cohesion', damage: 'Damage', cover: 'Cover', draw: 'Hand Size',
-      resonance: 'Resonance/turn', regen: 'Regen/turn', moltPower: 'Molt Power', openSkyGuard: 'Open Sky Guard',
-    };
-    const statStr = Object.entries(card.runtime.flockStats).map(([k, v]) => `${statLabels[k] ?? k} +${v}`).join(' / ') || 'None';
-    heading('FLOCK STATS', '#7f93a8');
-    const statText = this.add.text(tx, yy, statStr, { fontFamily: UI_FONT, fontSize: '14px', fontStyle: UI_BOLD, color: UI_CYAN, wordWrap: { width: wrap } });
-    const statKw = Object.keys(card.runtime.flockStats).map((k) => statLabels[k] ?? k).find((label) => KEYWORDS[label]);
-    if (statKw) {
-      statText.setInteractive({ useHandCursor: true });
-      statText.on('pointerover', () => showKwTooltip(this, statKw, tx + statText.width / 2, yy));
-      statText.on('pointerout', () => hideKwTooltip());
-    }
-    this.root.add(statText);
-    yy += Math.max(30, statText.height + 10);
-
     if (!this.codexData && this.codexDataPending()) {
       heading(isAviary ? 'AVIARY LEGEND' : 'TAROT MEANING', '#c9a6ff');
       para(isAviary ? 'Loading Aviary notes and bird facts...' : 'Loading tarot notes and bird facts...', { color: '#d9c8ff', italic: true, size: 13 });
       yy += 8;
-      this.root.add(this.add.text(tx, yy, isAviary ? 'SIGNAL' : 'UPRIGHT', { fontFamily: UI_FONT, fontSize: '10px', fontStyle: UI_BOLD, color: '#9d86c8' })); yy += 15;
+      heading(isAviary ? 'SIGNAL' : 'UPRIGHT', '#bda8df');
       para('Loading note...', { color: '#cfd9ea', size: 13 }); yy += 8;
-      this.root.add(this.add.text(tx, yy, isAviary ? 'SHADOW' : 'REVERSED', { fontFamily: UI_FONT, fontSize: '10px', fontStyle: UI_BOLD, color: '#9d86c8' })); yy += 15;
+      heading(isAviary ? 'SHADOW' : 'REVERSED', '#bda8df');
       para('Loading note...', { color: '#b9a7bd', size: 13 }); yy += 14;
       heading(`ABOUT THE ${(flav?.bird ?? card.bird).toUpperCase()}`, '#e8c24a');
       para('Loading field note...', { color: '#cfe0ef', size: 13 });
@@ -6126,9 +6090,9 @@ export class CodexScene extends Phaser.Scene {
     if (meaning) {
       heading(isAviary ? 'AVIARY LEGEND' : 'TAROT MEANING', '#c9a6ff');
       if (meaning.core) { para(meaning.core, { color: '#d9c8ff', italic: true, size: 13 }); yy += 8; }
-      this.root.add(this.add.text(tx, yy, isAviary ? 'SIGNAL' : 'UPRIGHT', { fontFamily: UI_FONT, fontSize: '10px', fontStyle: UI_BOLD, color: '#9d86c8' })); yy += 15;
+      heading(isAviary ? 'SIGNAL' : 'UPRIGHT', '#bda8df');
       para(meaning.upright, { color: '#cfd9ea', size: 13 }); yy += 8;
-      this.root.add(this.add.text(tx, yy, isAviary ? 'SHADOW' : 'REVERSED', { fontFamily: UI_FONT, fontSize: '10px', fontStyle: UI_BOLD, color: '#9d86c8' })); yy += 15;
+      heading(isAviary ? 'SHADOW' : 'REVERSED', '#bda8df');
       para(meaning.reversed, { color: '#b9a7bd', size: 13 }); yy += 14;
     }
 
@@ -6201,18 +6165,16 @@ export class CodexScene extends Phaser.Scene {
     const mBottom = py + MH / 2;
     const accent = this.enemyAccent(enemy);
     const accentText = `#${accent.toString(16).padStart(6, '0')}`;
-    this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accent, 1));
-    addCodexDossierFrame(this, (obj) => this.root.add(obj), { cx: px, cy: py, w: MW, h: MH }, { alpha: 0.9 });
+    this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 1).setStrokeStyle(1, accent, 0.8).setInteractive());
 
     const art = this.enemyArtAsset(enemy);
     const artBoxX = left + 220;
     const artBoxY = py + 24;
-    this.renderCodexArtPreviewBacking(artBoxX, artBoxY, 372, 516, accent);
     if (art && this.textures.exists(art.key)) {
       const fit = this.fittedTextureSize(art.key, 360, 500);
       const shadow = this.enemyShadowMetrics(art.key, artBoxX, artBoxY, fit.w, fit.h, 360, 500);
       this.root.add(this.add.ellipse(shadow.x, shadow.y, shadow.w, shadow.h, 0x020409, 0.34));
-      this.root.add(this.add.image(artBoxX, artBoxY, art.key).setDisplaySize(fit.w, fit.h).setAlpha(0.99));
+      this.root.add(this.add.image(artBoxX, artBoxY, art.key).setDisplaySize(fit.w, fit.h).setAlpha(0.99).setName('codex-enemy-dossier-art'));
     } else {
       this.root.add(this.add.rectangle(artBoxX, artBoxY, 340, 480, 0x141d2b, 0.9).setStrokeStyle(1, 0x2a3a4d, 0.8));
       this.root.add(this.add.text(artBoxX, artBoxY, enemy.typeHint, {
@@ -6220,45 +6182,38 @@ export class CodexScene extends Phaser.Scene {
         align: 'center', wordWrap: { width: 280 }
       }).setOrigin(0.5));
     }
-    this.renderCodexArtPreviewFrame(artBoxX, artBoxY, 372, 516, 0.84);
 
     const tx = left + 430;
-    const wrap = right - tx - 118;
-    const viewTop = mTop + 86;
-    const viewBottom = mBottom - 124;
+    const wrap = right - tx - 32;
+    const viewTop = mTop + 48;
+    const viewBottom = mBottom - 64;
     const viewH = viewBottom - viewTop;
     let yy = viewTop - this.detailScroll;
     const heading = (t: string, color: string) => {
-      this.root.add(this.add.text(tx, yy, t, { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color }));
-      yy += 17;
+      const label = this.add.text(tx, yy, t, {
+        fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color,
+        wordWrap: { width: wrap, useAdvancedWrap: true },
+      }).setResolution(2);
+      this.root.add(label);
+      yy += label.height + 8;
     };
     const para = (t: string, opts: { color?: string; size?: number; italic?: boolean; bold?: boolean } = {}) => {
       const o = this.add.text(tx, yy, t, {
         fontFamily: opts.italic ? 'Georgia, serif' : 'Arial',
-        fontSize: `${opts.size ?? 13}px`,
+        fontSize: `${Math.max(18, opts.size ?? 18)}px`,
         fontStyle: opts.bold ? 'bold' : opts.italic ? 'italic' : 'normal',
         color: opts.color ?? '#cfe0ef',
         lineSpacing: 3,
-        wordWrap: { width: wrap }
-      });
+        wordWrap: { width: wrap, useAdvancedWrap: true }
+      }).setResolution(2);
       this.root.add(o);
       yy += o.height;
     };
 
-    this.root.add(this.add.text(tx, yy, enemy.name, {
-      fontFamily: UI_FONT, fontSize: '29px', fontStyle: UI_BOLD, color: UI_GOLD,
-      wordWrap: { width: wrap }
-    }));
-    yy += 40;
-    this.root.add(this.add.text(tx, yy, `${enemy.source === 'encounter' ? 'Playable encounter' : enemy.species} / ${enemy.district} / ${enemy.role}`, {
-      fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: UI_MUTED,
-      wordWrap: { width: wrap }
-    }));
-    yy += 28;
-
-    heading('FIELD NOTE', '#7f93a8');
-    para(enemy.description, { size: 14 });
-    yy += 12;
+    para(enemy.name, { size: 28, bold: true, color: UI_GOLD });
+    yy += 10;
+    para(`${enemy.source === 'encounter' ? 'Playable encounter' : enemy.species} · ${enemy.district} · ${enemy.role}`, { color: UI_MUTED });
+    yy += 24;
 
     heading(enemy.source === 'encounter' ? 'COMBAT ROLE' : 'VARIETY ROLE', '#8df4ff');
     para(enemy.varietyContribution, { size: 13, bold: true, color: '#bceff4' });
@@ -6271,15 +6226,26 @@ export class CodexScene extends Phaser.Scene {
         : enemy.source === 'encounter' ? 'COMBAT KIT' : 'MOVE KIT',
       accentText
     );
-    dossier.rows.forEach((move) => {
+    dossier.rows.filter((move) => move.revealed).forEach((move) => {
       para(move.text, {
-        size: 13,
-        color: move.revealed ? '#dbe6f0' : '#788694',
+        size: 20,
+        color: move.revealed ? '#dbe6f0' : '#a8b6c5',
         italic: !move.revealed
       });
-      yy += 5;
+      yy += 14;
     });
+    const hiddenCount = dossier.rows.filter((move) => !move.revealed).length;
+    if (hiddenCount) {
+      para(`${hiddenCount} Undocumented tactic${hiddenCount === 1 ? '' : 's'} · Face this boss to reveal.`, {
+        size: 20, color: '#a8b6c5', italic: true,
+      });
+      yy += 14;
+    }
     yy += 8;
+
+    heading('FIELD NOTE', '#a9c5d5');
+    para(enemy.description);
+    yy += 20;
 
     heading('SILHOUETTE', '#e8c24a');
     para(enemy.silhouette, { size: 13 });
@@ -6310,16 +6276,9 @@ export class CodexScene extends Phaser.Scene {
     this.root.add(this.add.rectangle(curtainX, mTop + 1, curtainW, viewTop - mTop - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
     this.root.add(this.add.rectangle(curtainX, viewBottom, curtainW, mBottom - viewBottom - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x000000, 0).setStrokeStyle(2, accent, 1));
-    this.renderCodexDossierHeader(
-      left,
-      right,
-      mTop,
-      'ENEMY FIELD DOSSIER',
-      `${enemy.source === 'encounter' ? 'PLAYABLE ENCOUNTER' : 'RESERVE CONCEPT'} / ${enemy.district.toUpperCase()}`,
-      accent,
-      accentText
-    );
-    this.root.add(this.add.rectangle(tx - 18, (viewTop + viewBottom) / 2, 2, viewH - 8, accent, 0.5));
+    this.root.add(this.add.text(left + 28, mTop + 18, 'ENEMY FIELD NOTES', {
+      fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: UI_MUTED,
+    }).setResolution(2));
 
     if (this.detailMaxScroll > 0) {
       this.renderCodexScrollCue(right - 64, mBottom - 18, this.detailScroll >= this.detailMaxScroll);

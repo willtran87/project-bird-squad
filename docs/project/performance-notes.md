@@ -1,5 +1,490 @@
 # Performance Notes
 
+## September 15 2026 — gameplay-first Codex dossiers
+
+Build `index-q0FI8tPe.js` keeps entry/combined boot at approximately 689.7/724.9
+KiB minified. The lazy Codex chunk is 163.94 kB decimal (41.32 kB gzip), down
+from 164.58/41.34 before the hierarchy change. No asset, dependency, timer or
+per-frame observer was added. Removed redundant card-detail frame images;
+newly measured text stays owned by the existing root. Larger text canvases and
+the existing scroll redraw path still require sustained-device profiling;
+browser checks do not establish low-end performance. Hard budgets unchanged.
+
+## September 15 2026 — shared keyword help
+
+Build `index-xqtBPhMu.js`: entry 689.7/181.3 KiB minified/gzip; combined boot
+724.9/194.5 KiB. The first revision exceeded the unchanged 725 KiB hard combined
+budget; removing obsolete frame telemetry restores headroom without weakening
+the gate. Preferred 675/710 KiB startup targets remain open. The tooltip creates
+one rectangle and two measured Text objects, with no image dependency or timer.
+A scene-shutdown listener, canvas-exit listener and optional word-destruction
+listener are removed with the tooltip. Repeated replacement and owner/scene teardown are
+covered by browser tests; no per-frame observer or gameplay delay was added.
+
+## September 14 2026 — normal card and Preen choice readability
+
+Build `index-wKUaiise.js`: entry 689.6/181.3 KiB minified/gzip; combined boot
+724.8/194.5 KiB. Shared reward inspection is 67.3/20.8 KiB. The normal renderer
+and failure path share first-change formatting; text resolution is 2 for rule
+excerpts, Preen previews and controls. All new objects belong to the existing
+reward root. No new network asset, dependency, global listener, timer or combat
+delay was added. Hard budgets remain unchanged; preferred 675/710 KiB startup
+targets still require work. Catalog checks use the presenter directly with
+motion disabled, avoiding catalog-wide art requests and synthetic tween loops.
+
+## September 14 2026 — readable card and Preen fallbacks
+
+Build `index-r4UQ9NPj.js`: entry 689.6/181.3 KiB minified/gzip; combined boot
+724.8/194.5 KiB. Shared reward inspection is 67.2/20.8 KiB. The fallback uses
+already-loaded card textures, with all created images, text and controls owned
+by the existing reward root. No additional network asset, timer, listener on a
+global surface, combat wait, or dependency was introduced. Existing hard limits
+remain unchanged; preferred 675/710 KiB startup targets remain open.
+
+## September 14 2026 — reward failure-path presentation parity
+
+Build `index-CUKle8gr.js`: entry 689.6/181.3 KiB minified/gzip; combined boot
+724.8/194.5 KiB. Shared inspection is 67.0/20.6 KiB, while ceremony decreases
+to 11.9/4.2 KiB. Moving the existing Waymark choice presenter into the shared
+inspection module removes the duplicate fallback layout, without loading the
+failed ceremony chunk or adding an asset dependency. Hard budgets remain
+unchanged and pass; preferred 675/710 KiB boot targets remain open.
+
+Combat narration reuses the visible loading/failure message from text state;
+no new timer, listener or combat wait is introduced. This is failure-path and
+layout qualification, not sustained heap/FPS or physical-device evidence.
+Waymark skeleton card/Read/Select bounds now match the ready presentation;
+loading remains non-interactive. No added wait conceals the transition.
+
+## September 14 2026 — shared combat Waymark reader
+
+Build `index-CptVD8ai.js`: entry 689.4/181.2 KiB minified/gzip; combined boot
+724.6/194.5 KiB. The shared lazy reader is 6.7/3.1 KiB, below its unchanged
+8 KiB cap. Hard budgets pass; preferred 675/710 KiB startup targets remain open.
+Consolidated duplicate route/combat entry projection and identity lookups after
+the first build exceeded the combined hard cap; no budget was raised.
+
+Combat adopts the shared drawer's objects into its existing root for destruction.
+Twenty redraws retain stable object/listener counts and retire old reader objects;
+page changes update existing text. Late imports cannot reopen closed inspection.
+These are bounded lifecycle/input checks, not sustained heap/FPS measurements.
+No new art, dependency, preload boundary or combat delay was introduced.
+
+## September 14 2026 — complete owned-Waymark reader
+
+Build `index-B-iDguIK.js`: entry 689.4/181.6 KiB minified/gzip; combined boot
+724.6/194.8 KiB. Unchanged hard budgets pass; preferred 675/710 KiB startup
+targets remain open. The lazy Waymark review module is 4.6/2.4 KiB.
+
+The owned inventory replaces dense, clipped text with measured pages and simple
+art/name tiles. Page changes update the existing text objects instead of rebuilding
+the scene. Per-scene reading positions live in a WeakMap, stale destroyed-panel
+callbacks are inert, and no new listener, timer, image or gameplay wait is added.
+This is bounded input/layout qualification, not a sustained heap or frame-rate claim.
+
+## September 14 2026 — bounded incoming effects and owned cleanup
+
+Build `index-CiIyBx3d.js`: entry approximately 688.8/181.5 KiB minified/gzip;
+combined boot approximately 724.0/194.7 KiB. No budget, dependency, art file,
+preload boundary or gameplay delay changed. Preferred startup targets remain open.
+
+Routine incoming hits no longer stack duplicate flashes and broad spark sprites.
+Heavy accents use one smaller image with no glow and retire in 220ms/full or
+130ms/reduced motion. Generated effects release their batch, timer/tween and
+pressure count exactly once on destruction; partial card-window retirement
+preserves earlier live effects. These are reproduced ownership fixes, not a claim
+of measured heap reduction or sustained physical-device frame-rate qualification.
+
+## September 14 2026 — modal wheel ownership and boot budget
+
+Build `index-CevyHQSd.js`: entry 688.8/181.4 KiB minified/gzip; combined boot
+723.9/194.7 KiB. Removing the unused legacy event-cancel renderer offsets the
+route/combat wheel ownership guards. The prior local build measured 689.8/181.7
+KiB entry and 725.0/194.9 KiB combined. Hard budgets and deployment-cache checks
+pass without increasing any limit; preferred 675/710 KiB targets remain open.
+Vendor remains 1313.6/339.5 KiB and Codex data remains 281.0/88.5 KiB.
+
+No artwork, resolution, preload boundary, dependency or gameplay delay changed.
+Wheel events now respect system overlays and explicit card readers without new
+listeners or timers. This is a measured code-size improvement and bounded input
+regression fix, not a frame-rate, heap or physical-device performance claim.
+
+## September 14 2026 — unified Market reading and route object lifecycle
+
+Build `index-Cbt2hJ7H.js`: entry 689.6/181.6 KiB minified/gzip; combined boot
+724.8/194.8 KiB. Shared reward/card inspection is 65.4/20.1 KiB, replacing the
+separate narrow Market dossier/build panel. Vendor remains 1313.6/339.5 KiB;
+Codex data remains 281.0/88.5 KiB. Unchanged hard budgets and deployment-cache
+checks pass. Preferred 675/710 KiB entry/combined targets remain open.
+
+Route redraw previously called DisplayList.removeAll(true), which removes entries
+and skips callbacks rather than destroying objects. This left old Settings input
+ownership active after closing the panel, blocking subsequent keyboard actions.
+Destroying a snapshot of the prior display list now invokes object/container
+cleanup, retiring input listeners and text hint subscriptions. The focused test
+checks 20 redraws for destroyed prior objects and stable listener counts, then
+checks real keyboard return from Pause and Settings without spending or losing
+the armed Market selection. This is a bounded lifecycle regression check, not
+a heap-size benchmark or sustained-device performance qualification.
+
+The Market shares measured 22px rule pagination across cards and other items,
+with no new art, dependency, animation or gameplay waits. Complete catalog and
+responsive interaction evidence is recorded in `progress.md`.
+
+Late portrait completion now updates the explicit route/Preen/Release reader's
+image in place. It does not destroy/recreate its paging buttons, rule body or
+reading state. Cold first-use checks exposed the previous button replacement
+between pointer targeting and click dispatch. This preserves input continuity
+while retaining the existing lazy image loader and placeholder behavior.
+Background Market/picker/reward/route artwork completion likewise defers its
+cosmetic scene redraw while an explicit card reader owns interaction. Closing
+the reader renders the ready artwork normally; gameplay and system-overlay
+redraws are unchanged. No timer or artificial wait was added.
+
+## September 14 2026 — Market navigation
+
+Build `index-DuU-JD82.js`: entry 688.5/181.3 KiB minified/gzip; combined boot
+723.7/194.5 KiB. Unchanged hard budgets and deployment-cache checks pass;
+preferred 675/710 KiB targets remain open. No new art, dependency, animation
+or gameplay delay. The command rail reuses the bounded scene input observer.
+Availability is separate from inspectability; replaced pointer-only blocked
+offer handlers were removed. Rules rendering is separate from guarded input
+so Pause preserves the current page. This is not a sustained-load qualification.
+
+## September 14 2026 — original event reading
+
+Build `index-ChBVYxkF.js` (`--base=/project-bird-squad/`): entry 688.3/181.2 KiB
+minified/gzip; combined boot 723.5/194.5 KiB. All unchanged hard budgets pass;
+preferred 675/710 KiB entry/combined targets remain open. Event navigation and
+complete reading add no runtime images, animation or gameplay waits. Removed
+the replaced hover reader and its unused ornament/token rendering helpers.
+
+The explicit reader only exists while inspecting a choice, uses measured pages
+and the existing bounded input observer, and is destroyed with the scene display
+tree. Pointer hover changes appearance only, not focus or scene composition.
+These are layout/input checks, not sustained-device latency evidence.
+
+## September 14 2026 — Packed Supplies
+
+Build `index-BC44u4mQ.js` (`--base=/project-bird-squad/`): entry 686.9/180.3 KiB
+minified/gzip; combined boot 722.0/193.5 KiB. The Supply drawer is 3484 bytes
+(3.4 KiB), under its unchanged 4 KiB hard limit. All hard budgets pass; preferred entry/combined
+675/710 KiB targets remain open. No new art or gameplay delays were added.
+
+At most four packed rows render at once; empty capacity is a count, not repeated
+tiles. Hover does not recreate the drawer or change selection. Input hints reuse
+the existing bounded scene observer. Layout/control tests are not sustained-load
+or physical-device performance measurements.
+
+## September 13 2026 — Supply outcomes and discard command lane
+
+Build `index-BV5Z8TVB.js` (`--base=/project-bird-squad/`): entry 686.9 KiB
+minified / 180.3 KiB gzip; combined boot 722.1 / 193.6 KiB. All unchanged
+hard budgets pass; preferred 675/710 KiB targets remain open. The discard
+module stays below 6 KiB. No gameplay waits or new runtime art were added.
+
+Input hints share one scene observer with one canvas pointer capture, removed
+on shutdown. Capture is needed because card hits intentionally stop Phaser
+propagation. Repeated input in the same mode does not re-upload hint text.
+Full-run policy checks suppress intermediate renders and retire effects;
+they are mechanical evidence, not sustained performance/latency measurements.
+
+## September 13 2026 — discard return reader and scoped card export
+
+Build `index-CJ4LHUXN.js` (`--base=/project-bird-squad/`): entry 686.6 KiB
+minified / 180.3 KiB gzip; combined boot 721.7 KiB / 193.5 KiB gzip. The
+return-choice lazy module is 6093 bytes, below its unchanged 6 KiB limit.
+All hard bundle and runtime-asset budgets pass. Preferred 675/710 KiB entry/
+combined targets remain open; no budget was raised to accommodate the UI.
+
+The return reader uses existing scene input dispatch and shared device-hint
+observation, with no new per-card keyboard/controller/wheel listeners or
+gameplay waits. Rules page state survives rerenders. Focused identity is read
+at commit time, not captured by a potentially older button. Duplicate focus
+and foreground text-fitting logic was reused to contain module growth.
+
+Plume Flash's combined three runtime exports fall from 842574 to 765262 bytes
+(77312 bytes saved). Combat still requests its 184×276 compact texture, not
+an additional full portrait; browser tests compare received bytes with the
+approved runtime file. Scoped exporter tests preserve unrelated masters and
+versioned source identity during later bulk builds. These measurements do
+not establish sustained-load or physical-device performance.
+
+## September 13 2026 — input-aware reading and retired picker transfers
+
+Build `index-nATr5MEw.js` (`--base=/project-bird-squad/`): entry 684.3 / 179.5
+KiB minified/gzip; combined boot 719.5 / 192.7 KiB. Phaser remains 1313.6 /
+339.5 KiB and Codex data 281.0 / 88.5 KiB. Route diagnostics are 23.6 KiB.
+Unchanged hard budgets pass; preferred entry/combined 675/710 KiB targets
+remain open. No cache-policy or budget changes were made.
+
+Removed four unused picker decorations from runtime queues: frame, cost badge,
+nameplate frame and context plaque. Their runtime WebP files total 136,196
+bytes (133.0 KiB). Default/remapped input journeys in Chromium and Firefox
+verify zero requests for all four. Original assets remain in the repository
+and deployment manifest; this is avoided transfer, not smaller deployment.
+Diagnostics retain their public snapshot fields but report missing assets
+without dereferencing removed registry entries.
+
+Choice hints use one observer set per scene, not polling or per-card input
+listeners. Text destruction unregisters individual labels; scene shutdown
+removes pointer/controller and DOM-capture keyboard observers. Fifteen redraws
+retain stable Phaser listener counts. Chromium and Firefox additionally verify
+one DOM-capture observer while the picker is active and zero after RouteScene
+shutdown, including remapped bindings. Larger hand/HUD text and stronger picker
+dimming add no gameplay waits. Measurements establish bounded changes and
+tested behavior, not physical-device or sustained-load performance.
+
+Windows preview handles locked old generated assets during rebuild. Closing
+the known preview process released the locks; a clean default-output build
+then passed and the user preview was restarted at its existing port 43383.
+Temporary build copies were recycled and the temporary review tab closed.
+See `progress.md` for final test evidence.
+
+## September 13 2026 — bounded route progress and readable workbench
+
+Build `index-CY11xgii.js` (`--base=/project-bird-squad/`): entry 684.4 / 179.5 KiB
+minified/gzip; combined boot 719.6 / 192.8 KiB. All unchanged hard limits pass;
+preferred 675/710 KiB targets remain unmet. Obsolete private picker frame/badge
+renderers were removed. The oversized animated picker shell and repeated micro
+badges are no longer displayed; shared legacy textures remain in asset queues,
+so no texture-transfer reduction is claimed.
+
+Route restoration uses bounded footer segments instead of a graph-crossing path.
+Picker hover replaces one focus ring. Explicit Confirm reuses the existing
+purchase path and introduces no input locks or waits. Final verification:
+12 Chromium regression journeys, five Firefox layout/interaction tests and the
+shared gameplay client pass. These are correctness/readability checks, not
+physical-device or sustained-load performance evidence.
+
+## September 13 2026 — counterstrike projection and route decision cleanup
+
+Build `index-ChoS8oOb.js` (`--base=/project-bird-squad/`): entry 686.8 / 180.2 KiB
+minified/gzip; combined boot 721.9 / 193.4 KiB. All unchanged hard limits pass;
+the preferred 675/710 KiB entry/combined targets remain unmet. Route diagnostics
+stay within their 24 KiB limit (23.9 KiB) by counting the semantic tooltip root
+once, instead of repeating texture/child traversal. No budget was increased.
+
+Counterstrike forecasts use copied state and the live damage rule. 685 ordered
+parity cases and four interruption journeys passed with clean Chromium/Firefox
+exits. This establishes tested correctness, not sustained-load performance.
+No gameplay timer or input lock was added. Route tooltips no longer render the
+ornate frame, reward badge cluster or risk pips; legacy art remains in shared
+loading queues, so no transfer saving is claimed. Canvas-exit handlers are
+removed when each tooltip is destroyed and checked against listener baselines.
+
+## September 13 2026 — card rules, forecast correctness and outcome surfaces
+
+Build `index-Bt0qRzMv.js` (`--base=/project-bird-squad/`): entry 688.2 / 180.4 KiB
+minified/gzip; combined boot 723.4 / 193.6 KiB. Unchanged hard bundle limits pass;
+preferred entry/combined targets (675/710 KiB) remain unmet. The outcome module
+is 17.7 KiB. Decorative report/title/row/command frames and idle crest/unlock
+wobble are no longer rendered. These legacy textures are still in the existing
+asset queue; no network-transfer improvement is claimed for this UI change.
+
+Dead counterstruck enemies no longer heal themselves or continue their combos.
+The animated path retains the impact hold then skips dead-actor recovery. No
+new gameplay delay was introduced. Healing projections use copied trigger
+latches and shared cleansing arithmetic; 456 enemy-phase parity cases and
+1,320 card-layout cases passed in Chromium before the outcome-only revision.
+These correctness/layout checks are not sustained-load or human pacing evidence.
+
+## September 13 2026 — menu readability and rooftop pilot
+
+Build `index-DR3qrDvx.js` (`--base=/project-bird-squad/`): entry 689.8 / 180.7 KiB
+minified/gzip; combined boot 725.0 / 194.0 KiB, within the unchanged 725 KiB hard
+limit before rounding. The saved-flight summary uses the existing optional menu
+module and does not block Continue. Command narration reuses displayed labels.
+The preferred entry/combined targets (675/710 KiB) remain unmet.
+
+The revised Rooftop Blocks WebP is 235342 bytes versus 313578 previously: about
+25% fewer transferred bytes, with identical 1672×941 dimensions. It replaces
+the old export rather than adding a second runtime plate. No new effects, input
+locks or gameplay timers accompany this art change. Runtime asset and world
+allowlist checks pass (961 assets, 42 world files and 45 source files).
+
+## September 13 2026 — ordered forecasts and bounded pile motion
+
+Build `index-BQD6z200.js` (`--base=/project-bird-squad/`): entry 689.6 / 180.8
+KiB minified/gzip; combined boot 724.8 / 194.0 KiB. All existing hard limits pass unchanged, including
+the tightly budgeted 30 KiB core. Preferred 675/710 KiB startup targets remain
+open. Phaser remains 1313.6 / 339.5 KiB and Codex data 281.0 / 88.5 KiB.
+
+Live and forecast enemy hits now share arithmetic, with ordered phase projection
+covering the authored move pool without mutating live state or consuming RNG.
+Unused legacy top-bar code was removed only after confirming its entire branch
+and helper callers were unreachable. Pile movement now uses at most three draw
+or discard transfers and one shuffle/return transfer, with no new input waits.
+Enemy numeric results replace within one anchored lane; flock stacks remain
+capped at three and individual mechanical history is retained.
+Routine enemy impact contact no longer creates a second additive glow or its
+own mote burst; its smaller cue fades in 160ms instead of lingering over a second.
+Modified contact/swipe/flock-burst objects retire their owned timers and tweens.
+Intent classification is calculated in the combat view model; the foreground
+renderer only presents the resulting label and tone (7.6 KiB, below its unchanged
+8 KiB limit). The first renderer-owned classification exceeded that limit and
+was replaced. No new image assets or runtime waits were added.
+
+Manual test time previously advanced timers but not Phaser's wall-clock tween
+delta reliably. It now supplies a synchronous frame delta with try/finally
+restoration, preserving tween scaling, pause and manager cleanup. This changes
+the deterministic harness, not the production frame clock. Regression evidence
+and remaining full-run/device qualification are recorded in `progress.md`.
+
+## September 13 2026 — readable cards and grouped numeric results
+
+Numeric damage/heal/Cover presentation lives with the existing lazy battle FX
+presenter. An initial implementation in boot-shared `fx.ts` exceeded the 30 KiB
+core limit; that version was rejected. The retained implementation loads during
+existing battle readiness, adds no first-hit network wait, and uses the prior
+text fallback if the presenter fails. Per-target stacks are capped at three;
+replacement, expiry and destruction retire owned timers/tweens. No combat waits
+or new runtime assets were added. Foreground text fitting shares one helper.
+
+Build `index-C9U3HrPu.js`: entry 684.0 / 179.0 KiB minified/gzip; combined boot
+719.2 / 192.3 KiB. Core is just below 30 KiB; lazy FX presenter is 6.7 / 2.8 KiB,
+foreground 7.9 / 3.0 KiB, hand 8.9 / 3.3 KiB, comparison 4.1 / 2.0 KiB.
+Phaser remains 1313.6 / 339.5 KiB and Codex data 281.0 / 88.5 KiB. All hard
+budgets pass unchanged; preferred 675/710 KiB startup warnings remain open.
+Deployment validation confirms combat presentation remains absent from title
+preloads. This is no claim of device FPS, sustained memory or perceived speed.
+
+The 32-check content audit finds no drift. The 500-seed economy diagnostic stays
+within its configured tolerances; it does not simulate combat or player choice
+quality. Browser, three-size capture and cadence evidence is in `progress.md`.
+
+## September 13 2026 — bounded trigger feedback
+
+Supply and Waymark notices now share one live container; replacement, expiry
+and layer destruction remove associated timers and tweens. Combat history is
+bounded to 256 encounter-local events. A 500-notice stress fixture checks live
+object cleanup and retained-event bounds; this is not a device-FPS or long-session
+heap qualification. Notifications never gate combat resolution and remain in
+the lazy FX presenter. No new assets, dependencies or raised budgets.
+
+Build `index-CW6x1jGH.js`: entry 683.9 / 178.9 KiB minified/gzip; combined boot
+719.1 / 192.1 KiB. Hard limits pass; preferred 675/710 KiB startup targets remain
+open. Compared with the earlier same-day decision pass, boot code is slightly
+smaller; this alone does not establish perceptible loading improvement.
+
+## September 13 2026 — shared decision review
+
+Route reward summaries, non-item outcomes and full consequence reading reuse
+lazy modules. Removed duplicate reveal decoration from card choices; no new
+runtime assets, dependencies or budgets. Build `index-Ax-h2tnl.js`: entry
+685.0 / 179.2 KiB minified/gzip; combined boot 720.2 / 192.4 KiB. The shared
+inspection chunk is 65.5 / 20.0 KiB. Hard limits pass; preferred 675/710 KiB
+startup targets remain open. These sizes are not device-FPS measurements.
+
+The 500-seed route-economy audit stays within its configured deck/Waymark
+envelopes. It uses sampled route decisions, not combat agents or real-player
+sessions; do not use it to claim Leader balance, encounter pacing or fun.
+
+## September 12 2026 — readable route comparisons
+
+Replaced dense comparison microtext with measured, synchronized reading pages.
+Pagination stays in the existing lazy comparison module (3.9 KiB minified,
+1.9 KiB gzip); route browser remains 6.2 / 2.4 KiB. No new assets or boot
+dependencies. Removed duplicated deck-frame diagnostic reporting through its
+existing helper to keep the route text-state module within its 24 KiB cap
+(23.7 / 5.8 KiB). No budgets were increased.
+
+Pages build `index-r4jU3Yd4.js`: entry 688.7 / 180.2 KiB, combined boot
+724.0 / 193.4 KiB; Phaser 1313.6 / 339.5 KiB; Codex data 281.0 / 88.5 KiB.
+Hard limits pass; preferred 675/710 KiB startup advisories remain open.
+Cross-browser reading/paging and three-size visual checks are recorded in
+the matching progress entry. This is not a full-release or device-FPS claim.
+
+## September 12 2026 — brisk enemy cadence
+
+Standard/Snappy now allocate most staging time to the readable tell, followed
+by a quick release and immediate impact. The former second pre-damage pause is
+gone; impact and recovery holds are shorter. The lazy combat-FX module shares
+the phase profile with release effects, pose anticipation and commitment seals.
+Routine recovery omits the decorative afterglow; Cinematic retains it and the
+original timings. New moves and bosses still receive the longer first-use tell,
+and familiar-move Hustle retains its protected minimum and unaccelerated impact.
+No combat rules, assets, loading boundaries or bundle limits changed.
+
+Matched deterministic Chromium single-enemy measurements, including handoff:
+
+| Pace | Before | After | First damage, after |
+| --- | ---: | ---: | ---: |
+| Standard | 3400 ms | 1610 ms | 1080 ms |
+| Snappy | 2550 ms | 1240 ms | 800 ms |
+| Cinematic | 9620 ms | 9620 ms | 5920 ms |
+
+Standard first/repeated tells are 684/432 ms before accessibility scaling.
+A repeated two-enemy attack/support sequence takes 2080 ms (1610 ms with
+reduced motion), preserving effect order and restoring the playable hand.
+These are programmed scene-clock measurements, not physical-device FPS or
+wall-clock performance claims.
+
+Pages build `index-BBiJGt-b.js`: entry 689.2 KiB / 180.0 KiB gzip; combined
+boot 724.5 / 193.2 KiB; combat FX 18.6 / 5.3 KiB; Phaser 1313.6 / 339.5 KiB;
+Codex data 281.0 / 88.5 KiB. Hard bundle/cache gates pass unchanged. Existing
+preferred entry/boot size warnings remain. Nineteen focused Chromium tests
+pass, including pause, Hustle, Cinematic, motion/animation preferences,
+deterministic sequencing and redraw ownership. Phase captures were inspected
+at 2560x1600, 1440x900 and 1000x560. The shared web-game client reached turn 3
+through normal controls with no browser error artifact. Evidence:
+`.artifacts/enemy-cadence-tests/`, `.artifacts/enemy-cadence-smoke/` and
+`.artifacts/enemy-cadence-shared/`.
+
+Production TypeScript/build and static documentation/runtime/asset/bundle/cache/
+enemy-variety/overlay validators pass. The optional stricter unused-symbol
+audit still reports pre-existing unused declarations in menus, reward rendering
+and main telemetry. The complete browser/release suite was not run for this
+scoped pacing change.
+
+## September 12 2026 — restrained menu presentation
+
+The menu cleanup retains the existing canal splash and logo; no new runtime
+art or dependencies ship. Home utilities are separated from the primary action,
+setup has fewer borders, and system menus use text hierarchy instead of repeated
+ornamental frames. Settings text renders at 2x resolution and cycle values share
+an alignment edge. Gameplay timing, data, save semantics and asset-loading
+boundaries are unchanged by this pass.
+
+Pages-base build `index-BkMpPrxY.js`: entry 689.2 KiB / 179.9 KiB gzip;
+combined boot 724.4 / 193.2 KiB. The system-overlay chunk is 25.0 KiB.
+Hard bundle limits pass unchanged; preferred entry/boot advisories remain.
+Focused built-preview evidence is recorded in the September 12 progress entry.
+This is menu/readability verification, not a performance or full-release claim.
+
+## September 11 2026 — artwork-led home and incremental card commitment
+
+Follow-up to the remaining clutter/stagger report: the initial title view now
+shows Start/Continue, optional Flight setup, a short summary and quiet utilities.
+Leader/difficulty/length controls are disclosed on demand, with their hidden
+inputs disabled. Setup choices survive closing and reopening. Ambient title
+particles and the oversized combat targeting pulse are removed. Combat exposes
+more background color and uses simpler HUD/card surfaces with opaque text bands.
+No asset, rule, progression, animation-clock or loading-boundary changes.
+
+Player commitment now hides the played card's owned presentation and updates the
+existing energy text without rebuilding the board. The single full render occurs
+at resolution handoff; selection of the next card during the cast never queues a
+second play. A missing renderer presentation falls back to the prior full render.
+
+Matched local Chromium software-WebGL samples at 2560x1600 (three warmed actions,
+same machine and harness) measured baseline wall times 963/882/870 ms with two
+board passes. Final presentation samples were 720/619/662 ms with one pass:
+median 882 to 662 ms, approximately 25% lower. Hand rendering fell from about
+204–218 ms to 54–57 ms per action. These small samples are not device/FPS, player
+enjoyment, or general performance certification. Programmed Standard commitment
+and feedback remains 300 ms; real rendering overhead is still a watch item.
+
+Pages-base production build: entry 689.7 KiB / 180.1 KiB gzip; combined boot
+724.9 / 193.3 KiB; Phaser 1313.6 / 339.5 KiB; Codex data 281.0 / 88.5 KiB.
+All hard limits remain unchanged and pass. Preferred 675/710 KiB advisories
+remain open. Moved deck-impact methods into the existing deferred inspection
+module, updating both renderer and diagnostic callers to stay inside the boot cap.
+An initial removal exposed dynamic callers during reward tests; the shared
+implementation restores those paths without adding a boot dependency.
+No deployment-cache requirements changed. Runtime verification and screenshots
+are recorded in the matching progress entry; no full-release claim is made.
+
 ## September 11 2026 — title clarity and combat cadence
 
 The title no longer renders redundant generated frames, mastery microcopy, or a
@@ -1838,3 +2323,39 @@ combined boot 722.3 KB (195.0 KB gzip), Route diagnostics 23.7 KB, and the
 screen-reader summary 49.2 KB. Hard bundle/deployment gates pass. Preferred
 entry and combined-boot advisories remain; this pass makes no startup-speed
 improvement claim.
+
+### 2026-09-12: explicit combat card reading panel
+
+The combat reading panel replaces automatic large dossiers during selection.
+The first implementation increased the lazy hand renderer to 12.9 KB, failing
+its existing 10 KB cap. The panel now has a named, independently capped 4 KB
+chunk; the replaced automatic dossier implementation was removed. Its style
+values are injected from the existing shared theme so a manual chunk cannot
+accidentally absorb boot-shared theme code and become a title preload.
+
+Final built output: app entry 686.8 KB / 179.8 KB gzip; combined boot 722.0 KB /
+193.0 KB gzip; hand renderer 8.7 KB / 3.3 KB gzip; combat reading panel 3.3 KB /
+1.6 KB gzip. Phaser remains 1313.6 KB / 339.5 KB gzip and Codex data 281.0 KB /
+88.5 KB gzip. The panel loads with the lazy battle hand module, not on title
+boot and not as a network request when the player opens it. This is a bounded
+feature addition, not a claim of reduced total startup time or total code size.
+All existing hard caps remain unchanged. The 675 KB entry and 710 KB combined
+preferred targets remain unresolved warnings. Deployment validation checks the
+new chunk's uniqueness and absence from title module preloads.
+
+### 2026-09-14: missing artwork and late-load recovery
+
+Final production entry `index-C7lsCs5o.js` measures 689.8 KiB / 181.7 KiB
+gzip; combined boot rounds to 725.0 KiB / 194.9 KiB gzip and passes the
+unchanged 725 KiB hard cap. Phaser remains 1313.6 KiB / 339.5 KiB gzip and
+Codex data 281.0 KiB / 88.5 KiB gzip. Preferred 675 KiB entry / 710 KiB
+combined targets remain open advisories; no startup-speed improvement is claimed.
+
+Late image observers now outlive the soft UI timeout and stop at completion
+or scene shutdown. Network attempts are bounded, existing retries retained,
+and recovered hand textures refresh in place. Shared loader completion cleanup
+and removal of a redundant observer flag keep this correctness fix inside the
+existing budget. No asset quality reduction, new dependency, eager preload or
+budget increase was introduced. Production-byte and browser-decode checks cover
+296 card, enemy and district images; recovery and scene reuse pass in Chromium
+and Firefox, including all four district entry/boss transitions.

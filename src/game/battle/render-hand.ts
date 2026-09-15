@@ -1,5 +1,26 @@
 import Phaser from 'phaser';
 import { renderCardColorCue } from '../card-color-cues';
+import { fitTextExcerpt } from '../text-excerpt';
+import { formatCardRuleGroups } from './card-rule-layout';
+import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
+import { renderCombatReader, renderCombatCardDetail as renderCardReadingPanel, renderCombatHistory as renderHistoryReadingPanel, type CardDetailContext } from './card-detail';
+
+export function renderWaymarkRewardDetail(context: Omit<CardDetailContext, 'ui' | 'minTouchTarget'>, name: string, description: string, meta: string, notes: string[]) {
+  return renderCombatReader({ ...context, ui: DECISION_UI, minTouchTarget: MIN_SUPPORTED_TOUCH_TARGET }, {
+    name, kind: 'waymark', badge: 'Reading only', sections: [
+      { heading: 'EFFECT', body: description },
+      { heading: 'CONTEXT', body: `${meta}\n\n${notes.join('\n')}\n\nCard counts include conditional and Molt effects, not guaranteed triggers.\n\nBack returns to the same reward choice. Nothing is claimed here.` },
+    ],
+  });
+}
+
+export function renderCombatHistory(context: Omit<CardDetailContext, 'ui' | 'minTouchTarget'>, entries: string[]) {
+  return renderHistoryReadingPanel({ ...context, ui: DECISION_UI, minTouchTarget: MIN_SUPPORTED_TOUCH_TARGET }, entries);
+}
+
+export function renderCombatCardDetail(context: Omit<CardDetailContext, 'ui' | 'minTouchTarget'>, card: BattleHandCardPreviewView) {
+  return renderCardReadingPanel({ ...context, ui: DECISION_UI, minTouchTarget: MIN_SUPPORTED_TOUCH_TARGET }, card);
+}
 
 export interface BattleHandCardPreviewView {
   name: string;
@@ -11,6 +32,8 @@ export interface BattleHandCardPreviewView {
   fallbackLabel: string;
   usesMolt: boolean;
   currentText: string;
+  sequence?: string;
+  outcome?: string;
   alternateLabel?: string;
   alternateText?: string;
   stats: string;
@@ -83,7 +106,7 @@ export interface BattleHandRenderContext {
     x: number,
     y: number,
     text: string,
-    options: { wrap: number; fontSize: number; align: 'center'; lineSpacing: number; tooltips?: boolean; baseColor?: string; bold?: boolean },
+    options: { wrap: number; fontSize: number; align: 'left' | 'center'; lineSpacing: number; tooltips?: boolean; baseColor?: string; bold?: boolean; resolution?: number },
   ) => number;
   renderSnagArt: (
     target: Phaser.GameObjects.Container,
@@ -107,6 +130,8 @@ export interface BattleHandRenderContext {
 
 export interface BattleHandPreviewContext {
   combat?: boolean;
+  inspectLabel?: string;
+  onInspect?: () => void;
   scene: Phaser.Scene;
   target: Phaser.GameObjects.Container;
   width: number;
@@ -127,11 +152,11 @@ function textureReady(scene: Phaser.Scene, key: string) {
   return true;
 }
 
-function compactSentenceText(text: string, maxChars: number, maxLines = 1) {
-  const normalized = text.replace(/\s+/g, ' ').trim();
-  const max = Math.max(8, maxChars * maxLines);
-  if (normalized.length <= max) return normalized;
-  return `${normalized.slice(0, Math.max(1, max - 1)).trimEnd()}…`;
+function fitCardText(label: Phaser.GameObjects.Text, source: string, maxLines: number, separateConditions = false) {
+  // Measure actual wrapped lines, not character counts. Always signal omission;
+  // the unchanged hover/selection dossier exposes the complete authored rules.
+  const format = separateConditions ? formatCardRuleGroups : (value: string) => value;
+  fitTextExcerpt(label, source, maxLines, format);
 }
 
 function addCardArt(
@@ -175,40 +200,6 @@ export function renderBattleHandCardArt(
   );
 }
 
-function addSelectedPulse(
-  context: BattleHandRenderContext,
-  result: BattleHandRenderResult,
-  card: BattleHandCardView,
-  centerX: number,
-) {
-  const { scene, target, cardWidth, cardHeight, reducedMotion } = context;
-  if (!textureReady(scene, context.assets.selectedPulse)) return;
-  const emphasized = card.discardSelected || card.discardFocused || card.selected || card.guideMolt || card.guideCard;
-  const guidePulseName = card.guideMolt
-    ? 'combat-molt-guide-pulse'
-    : card.guideCard
-      ? 'combat-first-card-guide-pulse'
-      : 'combat-hand-selected-pulse';
-  const pulse = scene.add.image(centerX, context.handY, context.assets.selectedPulse)
-    .setDisplaySize(card.discardSelected || card.selected ? cardWidth + 38 : cardWidth + 32, card.discardSelected || card.selected ? cardHeight + 54 : cardHeight + 46)
-    .setAlpha(card.discardSelected ? 0.48 : card.discardFocused ? 0.34 : card.selected ? 0.54 : card.guideMolt ? 0.42 : card.guideCard ? 0.38 : 0)
-    .setBlendMode(Phaser.BlendModes.ADD)
-    .setName(guidePulseName);
-  target.add(pulse);
-  result.selectionPulses.set(card.instanceId, pulse);
-  if (emphasized && !reducedMotion) {
-    scene.tweens.add({
-      targets: pulse,
-      alpha: 0.34,
-      scaleX: pulse.scaleX * 1.035,
-      scaleY: pulse.scaleY * 1.035,
-      duration: 960,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut',
-    });
-  }
-}
 
 function renderCard(
   context: BattleHandRenderContext,
@@ -217,12 +208,13 @@ function renderCard(
   left: number,
 ) {
   const { scene, target, handY, cardWidth, cardHeight, fontFamily, boldFontStyle } = context;
+  const presentationStart = target.list.length;
   const centerX = left + cardWidth / 2;
   const top = handY - cardHeight / 2;
   const bottom = handY + cardHeight / 2;
   const rect = scene.add.rectangle(centerX, handY, cardWidth, cardHeight, 0x0a0f18, 1)
     .setStrokeStyle(
-      card.discardSelected ? 5 : card.discardFocused ? 4 : card.selected ? 5 : card.guideMolt || card.guideCard ? 4 : 2,
+      card.discardSelected ? 3 : card.discardFocused ? 3 : card.selected ? 3 : card.guideMolt || card.guideCard ? 3 : 1,
       card.discardSelected ? 0xff6b57 : card.discardFocused ? 0xd8a840 : card.selected ? 0x24d0d6 : card.guideMolt ? 0xff9d4d : card.guideCard ? 0xd8a840 : card.accent,
       1,
     )
@@ -240,41 +232,46 @@ function renderCard(
   renderBattleHandCardArt(context, artLayer, card, centerX);
   target.add(artLayer);
   result.artLayers.set(card.instanceId, artLayer);
-  addSelectedPulse(context, result, card, centerX);
 
-  if (textureReady(scene, context.assets.cardFrame)) {
+  if (card.usesMolt && textureReady(scene, context.assets.cardFrame)) {
     const guided = card.guideMolt || card.guideCard;
     const frame = scene.add.image(centerX, handY, context.assets.cardFrame)
-      .setDisplaySize(card.selected ? cardWidth + 24 : guided ? cardWidth + 20 : cardWidth + 16, card.selected ? cardHeight + 36 : guided ? cardHeight + 30 : cardHeight + 24)
+      .setDisplaySize(cardWidth - 2, cardHeight - 2)
       .setAlpha(card.selected ? 0.96 : guided ? 0.82 : card.canPay ? 0.52 : 0.26)
       .setName('combat-hand-card-frame');
     target.add(frame);
     result.frames.set(card.instanceId, frame);
   }
 
-  target.add(scene.add.rectangle(centerX, top + 16, cardWidth - 4, 26, 0x05080e, 0.66));
-  target.add(scene.add.text(left + 34, top + 8, card.name, {
+  target.add(scene.add.rectangle(centerX, top + 25, cardWidth - 4, 48, 0x081624, 0.98)
+    .setName('combat-card-title-panel'));
+  const title = scene.add.text(left + 34, top + 5, card.name, {
     fontFamily,
-    fontSize: '13px',
+    fontSize: '18px',
     fontStyle: boldFontStyle,
     color: card.canPay ? '#ffe7b0' : '#9aa7b6',
-    wordWrap: { width: cardWidth - 44 },
-  }));
+    wordWrap: { width: cardWidth - 44, useAdvancedWrap: true }, maxLines: 2, resolution: 2,
+  }).setName('combat-card-title');
+  fitCardText(title, card.name, 2);
+  title.setY(top + 22 - title.height / 2);
+  target.add(title);
   if (card.usesMolt) {
-    target.add(scene.add.rectangle(left + cardWidth - 43, top + 16, 70, 18, 0x2a1208, 0.88).setStrokeStyle(1, 0xff9d4d, 0.78));
-    target.add(scene.add.text(left + cardWidth - 43, top + 9, 'MOLT', {
+    target.add(scene.add.rectangle(left + cardWidth - 33, top + 56, 54, 18, 0x2a1208, 0.96)
+      .setStrokeStyle(1, 0xff9d4d, 0.78).setName('combat-card-molt-badge'));
+    target.add(scene.add.text(left + cardWidth - 33, top + 56, 'MOLT', {
       fontFamily,
       fontSize: '10px',
       fontStyle: boldFontStyle,
       color: '#ffc78f',
       align: 'center',
-    }).setOrigin(0.5, 0));
+      resolution: 2,
+    }).setOrigin(0.5).setName('combat-card-molt-label'));
   }
   if (card.guideMolt && !card.usesMolt) {
-    target.add(scene.add.rectangle(centerX, top + 42, 76, 18, 0x2a1208, 0.94)
+    target.add(scene.add.rectangle(centerX, top + 56, 76, 18, 0x2a1208, 0.94)
       .setStrokeStyle(1, 0xff9d4d, 0.95)
       .setName('combat-molt-guide-tag'));
-    target.add(scene.add.text(centerX, top + 35, 'MOLT CARD', {
+    target.add(scene.add.text(centerX, top + 49, 'MOLT CARD', {
       fontFamily,
       fontSize: '9px',
       fontStyle: boldFontStyle,
@@ -283,10 +280,10 @@ function renderCard(
     }).setOrigin(0.5, 0).setName('combat-molt-guide-tag'));
   }
   if (card.guideCard && !card.guideMolt) {
-    target.add(scene.add.circle(centerX, top + 42, 12, 0x231d08, 0.96)
+    target.add(scene.add.circle(centerX, top + 58, 12, 0x231d08, 0.96)
       .setStrokeStyle(2, 0xd8a840, 0.98)
       .setName('combat-first-card-guide-tag'));
-    target.add(scene.add.text(centerX, top + 42, '1', {
+    target.add(scene.add.text(centerX, top + 58, '1', {
       fontFamily,
       fontSize: '12px',
       fontStyle: boldFontStyle,
@@ -295,7 +292,7 @@ function renderCard(
     }).setOrigin(0.5).setName('combat-first-card-guide-tag'));
   }
   if (card.retainOrder) {
-    const keepY = top + (card.guideCard || card.guideMolt ? 70 : 46);
+    const keepY = top + (card.guideCard || card.guideMolt || card.usesMolt ? 84 : 56);
     target.add(scene.add.rectangle(left + cardWidth - 42, keepY, 72, 20, 0x08241f, 0.96)
       .setStrokeStyle(1, 0x8fd6a0, 0.96)
       .setName('combat-retain-priority-tag')
@@ -309,36 +306,38 @@ function renderCard(
     }).setOrigin(0.5).setName('combat-retain-priority-tag').setData('order', card.retainOrder));
   }
   if (card.discardSelectable) {
-    context.renderDiscardTag(target, card, left + cardWidth - 42, top + 46);
+    context.renderDiscardTag(target, card, left + cardWidth - 42, top + (card.usesMolt ? 84 : 56));
   }
   if (context.reinforcedColorCues) {
-    renderCardColorCue(scene, target, left + 44, top + 68, card.label, card.accent, {
+    renderCardColorCue(scene, target, left + 44, top + 106, card.label, card.accent, {
       name: 'combat-color-cue-badge',
       width: 82,
-      height: 24,
+      height: 18,
     });
   }
-  target.add(scene.add.circle(left + 16, top + 16, 14, card.cost === 0 ? 0x24d0d6 : 0xe8b830, 1).setStrokeStyle(2, 0x05080e, 0.9));
-  target.add(scene.add.text(left + 16, top + 16, `${card.cost}`, {
+  target.add(scene.add.circle(left + 16, top + 22, 14, card.cost === 0 ? 0x24d0d6 : 0xe8b830, 1).setStrokeStyle(2, 0x05080e, 0.9));
+  target.add(scene.add.text(left + 16, top + 22, `${card.cost}`, {
     fontFamily,
-    fontSize: '16px',
+    fontSize: '18px',
     fontStyle: boldFontStyle,
-    color: '#06101c',
+    color: '#06101c', resolution: 2,
   }).setOrigin(0.5));
 
-  const panelHeight = 94;
-  target.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - 3, cardWidth - 6, panelHeight, 0x05080e, 0.82));
+  const panelHeight = 132;
+  target.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - 3, cardWidth - 6, panelHeight, 0x081624, 0.98)
+    .setName('combat-card-rules-panel'));
   target.add(scene.add.rectangle(centerX, bottom - panelHeight - 3, cardWidth - 6, 2, card.accent, 0.85));
   {
-    target.add(scene.add.text(centerX, bottom - panelHeight + 8, compactSentenceText(card.summary, 54, 3), {
+    const summary = scene.add.text(left + 8, bottom - panelHeight + 5, '', {
       fontFamily,
-      fontSize: '16px',
-      color: card.canPay ? '#c7d4df' : '#7f8b98',
-      align: 'center',
-      fixedWidth: cardWidth - 16,
-      maxLines: 4,
-      wordWrap: { width: cardWidth - 16 },
-    }).setOrigin(0.5, 0).setName('combat-card-readable-summary'));
+      fontSize: '20px', resolution: 2, lineSpacing: 2,
+      color: card.canPay ? '#d5e0e6' : '#95a4b2',
+      align: 'left',
+      maxLines: 5,
+      wordWrap: { width: cardWidth - 16, useAdvancedWrap: true },
+    }).setName('combat-card-readable-summary');
+    fitCardText(summary, card.preview.currentText || card.summary, 5, true);
+    target.add(summary);
   }
 
   if (card.buildsFlow) {
@@ -356,6 +355,7 @@ function renderCard(
     target.add(container);
     result.flowIndicators.set(card.instanceId, { container, background, label });
   }
+  rect.setData('presentation', target.list.slice(presentationStart));
 }
 
 export function renderBattleHand(context: BattleHandRenderContext): BattleHandRenderResult {
@@ -367,11 +367,6 @@ export function renderBattleHand(context: BattleHandRenderContext): BattleHandRe
     flowIndicators: new Map(),
   };
   if (context.cards.length === 0) return result;
-  if (textureReady(context.scene, context.assets.handRail)) {
-    context.target.add(context.scene.add.image(context.width / 2, context.handY + 54, context.assets.handRail)
-      .setDisplaySize(918, 128)
-      .setAlpha(0.54));
-  }
   context.cards.forEach((card, index) => renderCard(context, result, card, context.cardLeft(index, context.cards.length)));
   return result;
 }
@@ -400,41 +395,42 @@ export function refreshBattleHandSelection(
     if (!rect?.scene) return;
     const guided = card.guideMolt || card.guideCard;
     rect.setStrokeStyle(
-      card.selected ? 5 : guided ? 4 : 2,
+      card.selected ? 3 : guided ? 3 : 1,
       card.selected ? 0x24d0d6 : card.guideMolt ? 0xff9d4d : card.guideCard ? 0xd8a840 : card.accent,
       1,
     );
     const frame = result.frames.get(card.instanceId);
     if (frame?.scene) {
       frame
-        .setDisplaySize(card.selected ? context.cardWidth + 24 : guided ? context.cardWidth + 20 : context.cardWidth + 16, card.selected ? context.cardHeight + 36 : guided ? context.cardHeight + 30 : context.cardHeight + 24)
+        .setDisplaySize(context.cardWidth - 2, context.cardHeight - 2)
         .setAlpha(card.selected ? 0.96 : guided ? 0.82 : card.canPay ? 0.52 : 0.26);
-    }
-    const pulse = result.selectionPulses.get(card.instanceId);
-    if (!pulse?.scene) return;
-    context.scene.tweens.killTweensOf(pulse);
-    pulse
-      .setDisplaySize(card.selected ? context.cardWidth + 38 : context.cardWidth + 32, card.selected ? context.cardHeight + 54 : context.cardHeight + 46)
-      .setAlpha(card.selected ? 0.54 : card.guideMolt ? 0.42 : card.guideCard ? 0.38 : 0)
-      .setName(card.guideMolt
-        ? 'combat-molt-guide-pulse'
-        : card.guideCard
-          ? 'combat-first-card-guide-pulse'
-          : 'combat-hand-selected-pulse');
-    if ((card.selected || guided) && !context.reducedMotion) {
-      context.scene.tweens.add({
-        targets: pulse,
-        alpha: 0.34,
-        scaleX: pulse.scaleX * 1.035,
-        scaleY: pulse.scaleY * 1.035,
-        duration: 960,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
     }
   });
   refreshBattleHandFlow(cards, result);
+}
+
+function renderCombatCardDossier(context: BattleHandPreviewContext) {
+  if (context.onInspect) {
+    const container = context.scene.add.container(26, 472).setName('combat-card-inspect-control');
+    const hit = context.scene.add.rectangle(64, 33, 128, MIN_SUPPORTED_TOUCH_TARGET + 8, DECISION_UI.surface, 0.98)
+      .setStrokeStyle(1, DECISION_UI.border, 0.8).setInteractive({ useHandCursor: true })
+      .setName('combat-card-inspect-hit');
+    container.add(hit);
+    container.add(context.scene.add.text(64, 15, 'Card details', {
+      fontFamily: context.fontFamily, fontSize: '16px', fontStyle: context.boldFontStyle,
+      color: DECISION_UI.text, resolution: DECISION_UI.resolution,
+    }).setOrigin(0.5, 0));
+    container.add(context.scene.add.text(64, 40, context.inspectLabel ?? 'Help', {
+      fontFamily: context.fontFamily, fontSize: '13px', color: DECISION_UI.secondary,
+      resolution: DECISION_UI.resolution,
+    }).setOrigin(0.5, 0).setName('combat-card-inspect-shortcut'));
+    hit.on('pointerover', () => hit.setStrokeStyle(2, DECISION_UI.accent, 1));
+    hit.on('pointerout', () => hit.setStrokeStyle(1, DECISION_UI.border, 0.8));
+    hit.on('pointerdown', context.onInspect);
+    context.target.add(container);
+    return container;
+  }
+  throw new Error('Combat card details require an explicit inspection action.');
 }
 
 export function renderBattleHandPreview(
@@ -443,6 +439,7 @@ export function renderBattleHandPreview(
   _instanceId: string,
   previewX = context.width / 2,
 ) {
+  if (context.combat) return renderCombatCardDossier(context);
   const { scene, target, fontFamily, boldFontStyle } = context;
   // Keep the dossier on the player's side, clear of enemy intents and the hand.
   const w = 438;
@@ -450,11 +447,12 @@ export function renderBattleHandPreview(
   const container = scene.add.container(0, 0).setName('combat-focused-card-dossier');
   const rules = scene.add.container(0, 0);
   let y = 0;
-  rules.add(scene.add.text(x, y, card.name, {
+  const title = scene.add.text(x, y, card.name, {
     fontFamily, fontSize: '22px', fontStyle: boldFontStyle, color: '#ffe7b0',
-    wordWrap: { width: w - 32 }, align: 'center',
-  }).setOrigin(0.5, 0).setName('combat-focused-card-name'));
-  y += 58;
+    wordWrap: { width: w - 32 }, align: 'center', resolution: 2,
+  }).setOrigin(0.5, 0).setName('combat-focused-card-name');
+  rules.add(title);
+  y += title.height + 12;
   y += context.renderRichText(rules, x, y, card.currentText, {
     wrap: w - 32, fontSize: 20, align: 'center', lineSpacing: 3,
   }) + 14;
@@ -480,6 +478,8 @@ export function renderBattleHandPreview(
 
 export {
   armCombatRewardAt,
+  cardPickerDeckImpact,
+  rewardDeckImpact,
   closeRewardCardInspection,
   focusedRewardCard,
   openRewardCardInspection,

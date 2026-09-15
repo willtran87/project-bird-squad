@@ -1,8 +1,7 @@
 import Phaser from 'phaser';
 import { renderCardColorCue } from '../card-color-cues';
 import { MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
-import { renderWaymarkBuildTags, waymarkBuildRead } from '../waymark-build-read';
-import { boundedRewardText, renderFocusedBuildRead } from '../reward-card-inspection';
+import { boundedRewardText, renderFocusedBuildRead, rewardDecisionPreviewLabel, renderWaymarkRewardChoice as renderWaymark } from '../reward-card-inspection';
 
 export type RewardCeremonyKind = 'card' | 'upgrade' | 'waymark';
 export type RewardNeedRank = 'low' | 'steady' | 'strong';
@@ -106,6 +105,7 @@ export interface RewardCeremonyRenderContext {
   onCardHover: (cardId: string, x: number, y: number) => void;
   onCardOut: () => void;
   onWaymarkSelect: (waymarkId: string) => void;
+  onWaymarkInspect: (waymarkId: string) => void;
   onWaymarkBuildRead: (waymarkId: string, observations: string[]) => void;
   onSkip: () => void;
 }
@@ -214,7 +214,7 @@ function renderBackdrop(context: RewardCeremonyRenderContext) {
   const { scene, target, width, height, textures, reducedMotion, fontFamily, boldFontStyle, cyanColor, goldColor, softColor } = context;
   target.add(scene.add.rectangle(width / 2, height / 2, width, height, 0x020409, 0.58));
   let hasCeremonyBackdrop = false;
-  if (scene.textures.exists(textures.ceremonyBackdrop)) {
+  if (context.kind !== 'waymark' && scene.textures.exists(textures.ceremonyBackdrop)) {
     scene.textures.get(textures.ceremonyBackdrop).setFilter(Phaser.Textures.FilterMode.LINEAR);
     const backdrop = scene.add.image(width / 2, height / 2 + 10, textures.ceremonyBackdrop)
       .setDisplaySize(1224, 612)
@@ -235,20 +235,7 @@ function renderBackdrop(context: RewardCeremonyRenderContext) {
       });
     }
   }
-  target.add(scene.add.rectangle(width / 2, 90, width - 230, 96, 0x020409, hasCeremonyBackdrop ? 0.16 : 0.62)
-    .setStrokeStyle(1, 0xd8a840, hasCeremonyBackdrop ? 0.08 : 0.35));
-  target.add(scene.add.rectangle(width / 2, 632, width - 170, 112, 0x020409, hasCeremonyBackdrop ? 0.12 : 0.38));
-  if (scene.textures.exists(textures.headerPlaque)) {
-    scene.textures.get(textures.headerPlaque).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    target.add(scene.add.image(width / 2, 98, textures.headerPlaque)
-      .setDisplaySize(570, 116)
-      .setAlpha(0.22)
-      .setName('reward-header-plaque'));
-  } else {
-    target.add(scene.add.rectangle(width / 2, 98, 612, 114, 0x07101c, 0.82)
-      .setStrokeStyle(2, 0xd8a840, 0.72)
-      .setName('reward-header-plaque-fallback'));
-  }
+  target.add(scene.add.rectangle(width / 2, 148, 80, 2, 0xd8a840, 0.65));
   target.add(scene.add.text(width / 2, 64, 'ROOFTOP LANDMARK', {
     fontFamily, fontSize: '12px', fontStyle: boldFontStyle, color: cyanColor
   }).setOrigin(0.5));
@@ -314,7 +301,7 @@ function renderDeckNeeds(context: RewardCeremonyRenderContext) {
 
 function renderCardArt(context: RewardCeremonyRenderContext, card: RewardCardView, x: number, y: number) {
   const { scene, target, textures, fontFamily, boldFontStyle } = context;
-  const artWidth = 208;
+  const artWidth = 200;
   const artHeight = Math.round(artWidth * 1.5);
   if (card.artKey && scene.textures.exists(card.artKey)) {
     target.add(scene.add.image(x, y, card.artKey).setDisplaySize(artWidth, artHeight).setAlpha(0.98));
@@ -330,28 +317,6 @@ function renderCardArt(context: RewardCeremonyRenderContext, card: RewardCardVie
   target.add(scene.add.rectangle(x, y, artWidth, artHeight, 0x05101a, 0.16));
 }
 
-function compactDeltaPart(text: string, max = 12) {
-  const value = text.replace(/\s+/g, ' ').replace(/[.]$/, '').trim();
-  return value.length <= max ? value : `${value.slice(0, max - 3).trimEnd()}...`;
-}
-
-function rewardDecisionLabel(preview: RewardDecisionPreview) {
-  if (preview.kind === 'add') return `ADD  /  DECK ${preview.deckBefore} > ${preview.deckBefore + 1}`;
-  const beforeParts = preview.before.split(/[.;]\s+/);
-  const afterParts = preview.after.split(/[.;]\s+/);
-  const moltBeforeParts = preview.moltBefore.split(/[.;]\s+/);
-  const moltAfterParts = preview.moltAfter.split(/[.;]\s+/);
-  const pairs: Array<[string, string]> = [
-    ...beforeParts.map((before, index) => [before, afterParts[index] ?? ''] as [string, string]),
-    ...moltBeforeParts.map((before, index) => [before, moltAfterParts[index] ?? ''] as [string, string]),
-  ];
-  const changed = pairs.find(([before, after]) => before !== after && after);
-  const change = changed
-    ? `${compactDeltaPart(changed[0])} > ${compactDeltaPart(changed[1])}`
-    : preview.statChanges[0] ?? 'Ability improved';
-  return `PREEN  /  ${change}`;
-}
-
 function renderCard(
   context: RewardCeremonyRenderContext,
   card: RewardCardView,
@@ -362,9 +327,9 @@ function renderCard(
 ) {
   const { scene, target, fontFamily, boldFontStyle, goldColor, softColor } = context;
   const cardWidth = 264;
-  const cardHeight = 312;
-  const hoverWidth = cardWidth + 54;
-  const hoverHeight = cardHeight + 78;
+  const cardHeight = 300;
+  const hoverWidth = cardWidth + 16;
+  const hoverHeight = cardHeight + 8;
   const top = y - cardHeight / 2;
   const bottom = y + cardHeight / 2;
   let hoverRing: Phaser.GameObjects.Image | undefined;
@@ -393,18 +358,18 @@ function renderCard(
   target.add(glow.objects);
   target.add(scene.add.rectangle(x + 8, y + 10, cardWidth, cardHeight, 0x020409, 0.42));
   target.add(hit);
-  const frame = addChoiceFrame(context, x, y, cardWidth + 32, cardHeight + 44, card.upgraded ? 0.54 : 0.34);
+  const frame = addChoiceFrame(context, x, y, cardWidth + 8, cardHeight + 8, card.upgraded ? 0.54 : 0.34);
   if (frame) target.add(frame);
   if (card.focused) {
-    target.add(scene.add.rectangle(x, y, cardWidth + 30, cardHeight + 32, 0x000000, 0)
+    target.add(scene.add.rectangle(x, y, cardWidth + 14, cardHeight + 8, 0x000000, 0)
       .setStrokeStyle(3, card.armed ? 0xd8a840 : 0x8df4ff, 1)
       .setName('reward-input-focus-ring'));
   }
-  if (card.focused || card.armed) {
+  if (context.kind === 'card' && (card.focused || card.armed)) {
     target.add(scene.add.rectangle(x, top - 6, 248, 24, 0x06111a, 0.98)
       .setStrokeStyle(1, card.accent, 0.86)
       .setName('reward-decision-delta'));
-    target.add(scene.add.text(x, top - 6, rewardDecisionLabel(card.decisionPreview), {
+    target.add(scene.add.text(x, top - 6, `ADD  /  DECK ${card.decisionPreview.deckBefore} > ${card.decisionPreview.deckBefore + 1}`, {
       fontFamily,
       fontSize: '12px',
       fontStyle: boldFontStyle,
@@ -462,16 +427,17 @@ function renderCard(
     .setStrokeStyle(1, card.accent, 0.28).setName('reward-card-effect-panel'));
   target.add(boundedRewardText(scene.add.text(x - cardWidth / 2 + 16, bottom - 104, card.summary, {
     fontFamily,
-    fontSize: '16px',
+    fontSize: '18px',
+    resolution: 2,
     color: '#dce8f2',
     stroke: '#020409',
     strokeThickness: 0,
     lineSpacing: 2,
     fixedWidth: cardWidth - 32,
     fixedHeight: 90,
-    wordWrap: { width: cardWidth - 32 },
+    wordWrap: { width: cardWidth - 32, useAdvancedWrap: true },
     maxLines: 4
-  }).setName('reward-card-effect'), 4));
+  }).setName('reward-card-effect').setData('fullText', card.summary), 4));
   if (card.molt) {
     target.add(scene.add.rectangle(x + cardWidth / 2 - 48, top + 106, 62, 24, 0x2a1208, 0.98).setStrokeStyle(1, 0xff9d4d, 0.72));
     target.add(scene.add.text(x + cardWidth / 2 - 48, top + 106, 'MOLT', {
@@ -500,29 +466,16 @@ function renderCard(
       maxLines: 1,
     }).setOrigin(0.5).setName('reward-collection-status'));
   }
-  const preenChoice = context.kind === 'upgrade';
-  const footerRows = preenChoice
-    ? card.focused ? [] : [rewardDecisionLabel(card.decisionPreview).slice(10)]
-    : [];
-  footerRows.forEach((text, index) => {
-    const caution = text.startsWith('!');
-    const neutral = text.startsWith('=');
-    target.add(scene.add.text(x, top - 8 + index * 18, text, {
-      fontFamily,
-      fontSize: '12px',
-      fontStyle: boldFontStyle,
-      color: caution ? '#ffad73' : neutral ? '#91a6b8' : '#ffcf6b',
-      stroke: '#020409',
-      strokeThickness: 2,
-      backgroundColor: '#05080e',
-      align: 'center',
-      fixedWidth: cardWidth - 24,
-      maxLines: 1
-    }).setOrigin(0.5).setName('reward-preen-change'));
-  });
-  const inspectY = bottom + 28;
+  if (context.kind === 'upgrade') {
+    const change = rewardDecisionPreviewLabel(card.decisionPreview);
+    target.add(boundedRewardText(scene.add.text(x - 120, 632, change, {
+      fontFamily, fontSize: '16px', color: '#bfe8f4', resolution: 2,
+      wordWrap: { width: 240, useAdvancedWrap: true }, lineSpacing: 2,
+    }), 3).setName('reward-preen-change').setData('fullText', change).setData('cardId', card.id));
+  }
+  const inspectY = 586;
   const inspect = scene.add.rectangle(
-    context.kind === 'card' ? x - 76 : x,
+    x - 76,
     inspectY,
     104,
     MIN_SUPPORTED_TOUCH_TARGET,
@@ -547,23 +500,26 @@ function renderCard(
     inspect.on('pointerout', () => inspect.setFillStyle(0x102534, 0.88));
   }
   target.add(inspect);
-  target.add(scene.add.text(context.kind === 'card' ? x - 76 : x, inspectY, 'INSPECT', {
+  target.add(scene.add.text(x - 76, inspectY, 'INSPECT', {
     fontFamily,
-    fontSize: '14px',
+    fontSize: '17px',
+    resolution: 2,
     fontStyle: boldFontStyle,
     color: inspectEnabled ? '#dffbff' : '#667b89',
     align: 'center',
     fixedWidth: 84,
   }).setOrigin(0.5).setName('reward-card-inspect-label'));
-  if (context.kind === 'card') {
-    const take = scene.add.rectangle(x + 54, inspectY, 144, MIN_SUPPORTED_TOUCH_TARGET, card.armed ? 0x21505a : 0x102534, 0.98)
-      .setStrokeStyle(card.armed ? 2 : 1, card.armed ? 0xffcf6b : 0x49606d, 0.9)
-      .setName('reward-card-take-hit').setData('cardId', card.id);
+  {
+    const take = scene.add.rectangle(x + 54, inspectY, 144, MIN_SUPPORTED_TOUCH_TARGET,
+      !inspectEnabled ? 0x0a141c : card.armed ? 0x21505a : 0x102534, inspectEnabled ? 0.98 : 0.48)
+      .setStrokeStyle(card.armed ? 2 : 1, card.armed ? 0xffcf6b : 0x49606d, inspectEnabled ? 0.9 : 0.42)
+      .setName('reward-card-take-hit').setData('cardId', card.id).setData('disabled', !inspectEnabled);
     if (inspectEnabled) take.setInteractive({ useHandCursor: true }).on('pointerdown', () => context.onCardSelect(card.id));
     target.add(take);
-    target.add(scene.add.text(x + 54, inspectY, card.armed ? `Take ${card.name}` : 'Select card', {
-      fontFamily, fontSize: '16px', fontStyle: boldFontStyle, color: card.armed ? '#ffe7a8' : '#dce8f2',
-      wordWrap: { width: 132 }, maxLines: 2, align: 'center',
+    target.add(scene.add.text(x + 54, inspectY, card.armed ? 'Confirm' : 'Select', {
+      fontFamily, fontSize: '17px', resolution: 2, fontStyle: boldFontStyle,
+      color: !inspectEnabled ? '#667b89' : card.armed ? '#ffe7a8' : '#dce8f2',
+      wordWrap: { width: 132 }, maxLines: 1, align: 'center',
     }).setOrigin(0.5).setName('reward-card-take-label'));
   }
   hoverRing = addHoverRing(context, x, y, hoverWidth, hoverHeight);
@@ -571,53 +527,6 @@ function renderCard(
   return glow.burst;
 }
 
-function renderWaymark(context: RewardCeremonyRenderContext, waymark: RewardWaymarkView, index: number, x: number, y: number) {
-  const { scene, target, fontFamily, boldFontStyle, goldColor, cyanColor } = context;
-  const build = waymarkBuildRead(waymark, context.waymarkBuildCards ?? [], context.waymarkSupplyCount ?? 0, waymark.familyCount);
-  context.onWaymarkBuildRead(waymark.id, build.notes);
-  const width = 248;
-  const height = 306;
-  const hit = scene.add.rectangle(x, y, width, height, 0x07101c, 0.98)
-    .setStrokeStyle(2, waymark.accent, 0.86)
-    .setInteractive({ useHandCursor: true })
-    .setName('reward-waymark-hit');
-  hit.on('pointerdown', () => context.onWaymarkSelect(waymark.id));
-  const spotlight = addSpotlight(context, x, y + 118, 236, 136, 0.018);
-  if (spotlight) target.add(spotlight);
-  const glow = addGlowBurst(context, x, y + 12, 292, 292, 0.16, index === 0);
-  target.add(glow.objects);
-  target.add(scene.add.rectangle(x + 8, y + 10, width, height, 0x020409, 0.42));
-  target.add(hit);
-  const frame = addChoiceFrame(context, x, y, width + 44, height + 58, 0.56);
-  if (frame) target.add(frame);
-  if (waymark.focused) {
-    target.add(scene.add.rectangle(x, y, width + 34, height + 46, 0x000000, 0)
-      .setStrokeStyle(3, waymark.armed ? 0xd8a840 : 0x8df4ff, 1)
-      .setName('reward-input-focus-ring'));
-  }
-  if (waymark.artKey && scene.textures.exists(waymark.artKey)) {
-    scene.textures.get(waymark.artKey).setFilter(Phaser.Textures.FilterMode.NEAREST);
-    target.add(scene.add.image(x, y - 84, waymark.artKey).setDisplaySize(86, 86));
-  } else {
-    target.add(scene.add.text(x, y - 84, waymark.glyph, {
-      fontFamily: 'Georgia, serif', fontSize: '32px', fontStyle: boldFontStyle, color: '#fff1c7'
-    }).setOrigin(0.5));
-  }
-  target.add(scene.add.text(x, y - 30, waymark.name, {
-    fontFamily, fontSize: '20px', fontStyle: boldFontStyle, color: goldColor, align: 'center', wordWrap: { width: 202 }, maxLines: 2
-  }).setOrigin(0.5));
-  target.add(scene.add.text(x, y + 24, `${waymark.rarity.toUpperCase()} / ${waymark.familyLabel} / ${waymark.source}`, {
-    fontFamily, fontSize: '12px', fontStyle: boldFontStyle, color: cyanColor, align: 'center'
-  }).setOrigin(0.5));
-  target.add(scene.add.text(x, y + 50, 'BUILD READ', {
-    fontFamily, fontSize: '10px', fontStyle: boldFontStyle, color: waymark.rarity === 'boss' ? '#ffb1a4' : '#ffcf6b', align: 'center'
-  }).setOrigin(0.5).setName('reward-waymark-build-read-title'));
-  renderWaymarkBuildTags(context, x - 102, y + 72, build.tags, waymark.accent, 204);
-  target.add(scene.add.text(x, y + 132, waymark.description, {
-    fontFamily, fontSize: '12px', color: '#d7c5a6', align: 'center', wordWrap: { width: 204 }, maxLines: 2
-  }).setOrigin(0.5));
-  return glow.burst;
-}
 
 function renderSkip(context: RewardCeremonyRenderContext) {
   if (!context.skip) return;
@@ -659,10 +568,12 @@ function renderSkip(context: RewardCeremonyRenderContext) {
 export function renderRewardCeremony(context: RewardCeremonyRenderContext) {
   renderBackdrop(context);
   renderDeckNeeds(context);
+  if (context.kind === 'upgrade') context.target.add(context.scene.add.rectangle(context.width / 2, 662, 920, 84, 0x050c14, 0.98)
+    .setName('reward-preen-preview-rail'));
   let glowBursts = 0;
   if (context.kind === 'waymark') {
     (context.waymarks ?? []).forEach((waymark, index) => {
-      glowBursts += renderWaymark(context, waymark, index, 336 + index * 304, 404);
+      glowBursts += renderWaymark(context, waymark, 336 + index * 304);
     });
   } else {
     const cards = context.cards ?? [];
@@ -673,7 +584,7 @@ export function renderRewardCeremony(context: RewardCeremonyRenderContext) {
         context,
         card,
         336 + index * 304,
-        402,
+        396,
         !commitmentActive,
         !skipCommitmentActive,
       );

@@ -9,6 +9,7 @@ const POLL_MS = 300;
 let enabled = false;
 let observer: number | undefined;
 let lastAnnouncement = '';
+let directAnnouncementUntil = 0;
 type ScreenReaderSummaryModule = typeof import('./screen-reader-summary');
 let summaryModulePromise: Promise<ScreenReaderSummaryModule> | undefined;
 
@@ -20,11 +21,12 @@ function loadScreenReaderSummary() {
   return summaryModulePromise ??= import('./screen-reader-summary');
 }
 
-export function announceScreenReaderRuntime(message: string) {
+export function announceScreenReaderRuntime(message: string, direct = true) {
   if (!enabled) return false;
   const region = statusRegion();
   const normalized = message.trim();
   if (!region || !normalized || normalized === lastAnnouncement) return false;
+  if (direct) directAnnouncementUntil = Date.now() + 1800;
   lastAnnouncement = normalized;
   region.textContent = normalized;
   region.dataset.announcement = normalized;
@@ -37,8 +39,8 @@ async function pollScreenReaderState() {
     const raw = window.render_game_to_text?.();
     if (!raw) return;
     const summary = await loadScreenReaderSummary();
-    if (!enabled) return;
-    announceScreenReaderRuntime(summary.screenReaderSummary(JSON.parse(raw)));
+    if (!enabled || Date.now() < directAnnouncementUntil) return;
+    announceScreenReaderRuntime(summary.screenReaderSummary(JSON.parse(raw)), false);
   } catch {
     // A transient scene handoff can replace the text-state function mid-poll.
   }
@@ -63,6 +65,7 @@ export function disableScreenReaderRuntime() {
     observer = undefined;
   }
   lastAnnouncement = '';
+  directAnnouncementUntil = 0;
   const region = statusRegion();
   if (region) {
     region.setAttribute('aria-live', 'off');

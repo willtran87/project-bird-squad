@@ -40,7 +40,7 @@ function waitForImageAssets(
 
   const loadingKeys = loadingKeysForScene(scene);
   const startedAt = performance.now();
-  let settled = false;
+  let timeoutReported = false;
   const result = (timedOut: boolean): RuntimeImageLoadResult => {
     const loadedKeys = keys.filter((key) => scene.textures.exists(key));
     const loaded = new Set(loadedKeys);
@@ -52,14 +52,20 @@ function waitForImageAssets(
     };
   };
   const check = () => {
-    if (settled || !scene.sys.settings.active) return;
+    if (!scene.sys.settings.active) return;
     const timedOut = performance.now() - startedAt >= timeoutMs;
-    if (!timedOut && !keys.every((key) => scene.textures.exists(key) || !loadingKeys.has(key))) {
+    if (!keys.every((key) => scene.textures.exists(key) || !loadingKeys.has(key))) {
+      // Release readiness gates, but keep observing the real request. A slow
+      // image must still replace its fallback when it eventually decodes.
+      if (timedOut && !timeoutReported) {
+        timeoutReported = true;
+        onComplete(result(true));
+      }
       scene.time.delayedCall(50, check);
       return;
     }
-    settled = true;
-    onComplete(result(timedOut));
+    // This polling chain stops here: no further timer is scheduled.
+    onComplete(result(false));
   };
 
   check();
@@ -94,45 +100,37 @@ function queueImageAssets(
     loadingKeys.delete(key);
     console.warn(`${warning}: ${key}`);
   };
-  const cleanup = () => {
+  const finish = () => {
+    if (settled) return;
+    settled = true;
     scene.load.off('filecomplete', onFileComplete);
     scene.load.off('loaderror', onLoadError);
-    scene.load.off('complete', onLoaderComplete);
-    scene.events.off('shutdown', onSceneEnd);
-    scene.events.off('destroy', onSceneEnd);
-  };
-  const markResolvedTextures = () => {
+    scene.load.off('complete', finish);
+    scene.events.off('shutdown', finish);
+    scene.events.off('destroy', finish);
     pending.forEach((asset) => {
       loadingKeys.delete(asset.key);
     });
   };
-  const onLoaderComplete = () => {
-    if (settled) return;
-    settled = true;
-    cleanup();
-    markResolvedTextures();
-  };
-  const onSceneEnd = () => {
-    if (settled) return;
-    settled = true;
-    cleanup();
-    markResolvedTextures();
-  };
 
   pending.forEach((asset) => {
     loadingKeys.add(asset.key);
-    scene.load.image(asset.key, asset.url);
+    // Bound hung transfers; Phaser retains its built-in two network retries.
+    // This transport deadline is deliberately longer than the UI's soft gate.
+    scene.load.image(asset.key, asset.url, { responseType: 'blob', timeout: 15_000 });
   });
   waitForImageAssets(scene, missing.map((asset) => asset.key), onComplete);
   scene.load.on('filecomplete', onFileComplete);
   scene.load.on('loaderror', onLoadError);
-  scene.load.once('complete', onLoaderComplete);
-  scene.events.once('shutdown', onSceneEnd);
-  scene.events.once('destroy', onSceneEnd);
+  scene.load.once('complete', finish);
+  scene.events.once('shutdown', finish);
+  scene.events.once('destroy', finish);
   if (startNow) scene.load.start();
   return true;
 }
 
+/** A soft timeout releases UI gates; a second callback reports final recovery
+ * or failure. Already-cached batches return false without a callback. */
 export function queueRuntimeImageAssets(
   scene: Phaser.Scene,
   assets: Array<RuntimeImageAsset | undefined>,

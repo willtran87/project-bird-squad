@@ -57,10 +57,10 @@ export const flockLeaders: FlockLeader[] = [
     name: 'The Tidewarden',
     bird: 'Great Blue Heron',
     suit: 'Basins',
-    blurb: 'Outlasts the storm — heal through attrition and never break.',
+    blurb: 'Heal and brace, then Molt to turn recovery into pressure.',
     signatureName: 'Overflow Shelter',
     signatureText: 'The first wasted healing each combat becomes Cover.',
-    startingDeckIds: ['cups_ace', 'cups_02', 'cups_03', 'cups_fledgling', 'cups_09', 'cups_outrider', 'major_17', 'aviary_41', 'pentacles_06', 'swords_ace'],
+    startingDeckIds: ['cups_ace', 'cups_02', 'cups_03', 'cups_fledgling', 'cups_09', 'cups_outrider', 'major_17', 'aviary_25', 'pentacles_06', 'swords_ace'],
   },
   {
     id: 'roostkeeper',

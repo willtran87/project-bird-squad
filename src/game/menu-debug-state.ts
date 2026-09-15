@@ -33,7 +33,10 @@ export function installMenuDebugState(scene: any) {
   window.render_game_to_text = () => JSON.stringify({
     mode: 'menu',
     scene: 'MenuScene',
-    prompt: SHARED_ROUTE_SEED ? 'Fly the shared route or choose your own setup.' : 'Choose a setup, then start a run.',
+    prompt: scene.setupOpen ? 'Choose your flock, challenge and flight length.' : 'Start a flight, or open Flight setup to customize it.',
+    setupOpen: scene.setupOpen,
+    resumeContext: scene.children.getByName('title-resume-context')?.visible
+      ? scene.children.getByName('title-resume-context').text : undefined,
     storageRecovery: scene.storageRecoveryNotice ? {
       ...scene.storageRecoveryNotice,
       rendered: scene.children.list.some((child: any) => child.name === 'storage-recovery-notice'),
@@ -43,7 +46,7 @@ export function installMenuDebugState(scene: any) {
     settingsFocus: settingsFocusState(scene, Boolean(scene.settingsOverlay)),
     controls: controlsTextState(scene, Boolean(scene.settingsOverlay)),
     helpOpen: Boolean(scene.helpOverlay),
-    helpContent: scene.helpOverlay?.list.filter((child: any) => child.name === 'how-to-play-readable')
+    helpContent: scene.helpOverlay?.list.filter((child: any) => ['how-to-play-readable', 'how-to-play-tip-label', 'how-to-play-tip-value'].includes(child.name))
       .map((child: any) => child.text),
     collectionGoal: {
       ...collectionGoalSummary(scene.menuAccount),

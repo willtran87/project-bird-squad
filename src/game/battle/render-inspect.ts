@@ -87,6 +87,7 @@ export interface BattleInspectRenderContext {
   cyanColor: string;
   reducedMotion: boolean;
   inputHint: string;
+  detailsLabel: string;
   assets: BattleInspectAssets;
   decorators: BattleInspectDecorators;
   renderPanel: (cx: number, cy: number, width: number, height: number, accent: number) => BattleInspectFrame;
@@ -94,6 +95,7 @@ export interface BattleInspectRenderContext {
   addIcon: (icon: string, x: number, y: number, size: number) => Phaser.GameObjects.Image | undefined;
   renderSnagArt: (cardId: string, x: number, y: number, width: number, height: number, alpha: number) => boolean;
   onInspect: (cardId: string) => void;
+  onRead: () => void;
   onScroll: (delta: number) => void;
   onSwitchMode: (mode: BattleInspectMode) => void;
   onConfirmSound: () => void;
@@ -111,8 +113,8 @@ const DETAIL = {
   artH: 354,
   costX: 550,
   costY: 200,
-  textX: 826,
-  textW: 282,
+  textX: 810,
+  textW: 296,
   titleY: 184,
   metaY: 234,
   targetY: 262,
@@ -152,23 +154,20 @@ function renderZoneCount(
   x: number,
   accent: number,
 ) {
-  const y = 146;
+  const y = 153;
   const active = context.mode === mode;
   context.target.add(context.scene.add.rectangle(x, y + 1, 70, 56, active ? 0x102736 : 0x07101c, active ? 0.98 : 0.64)
     .setStrokeStyle(active ? 2 : 1, active ? 0x8df4ff : accent, active ? 0.96 : 0.34)
     .setName(`combat-pile-zone-${mode}-frame`));
-  addIcon(context, icon, x - 16, y - 5, 14, active ? 1 : 0.82);
-  context.target.add(context.scene.add.circle(x + 15, y - 5, 13, 0x07101c, 0.98).setStrokeStyle(1.5, accent, active ? 0.8 : 0.5));
-  addCountBadge(context, x + 15, y - 5, 34, active ? 0.96 : 0.78);
-  context.target.add(context.scene.add.text(x + 15, y - 5, `${value}`, {
+  context.target.add(context.scene.add.text(x, y - 8, `${value}`, {
     fontFamily: context.fontFamily,
-    fontSize: '13px',
+    fontSize: '18px', resolution: 2,
     fontStyle: context.boldFontStyle,
     color: '#ffffff',
   }).setOrigin(0.5));
-  context.target.add(context.scene.add.text(x, y + 17, label, {
+  context.target.add(context.scene.add.text(x, y + 14, label, {
     fontFamily: context.fontFamily,
-    fontSize: '9px',
+    fontSize: '13px', resolution: 2,
     fontStyle: context.boldFontStyle,
     color: active ? '#dffbff' : '#aab9c6',
     align: 'center',
@@ -212,9 +211,9 @@ function renderHeader(context: BattleInspectRenderContext, frame: BattleInspectF
       .setAlpha(0.82)
       .setName('combat-pile-title-plaque'));
   }
-  context.target.add(context.scene.add.text(deck ? 218 : 140, 86, context.title, {
+  context.target.add(context.scene.add.text(140, 80, context.title, {
     fontFamily: context.fontFamily,
-    fontSize: '32px',
+    fontSize: '30px', resolution: 2,
     fontStyle: context.boldFontStyle,
     color: context.goldColor,
     stroke: '#020409',
@@ -226,25 +225,12 @@ function renderHeader(context: BattleInspectRenderContext, frame: BattleInspectF
   renderZoneCount(context, 'cleared', 'CLEARED', 'release-card', context.clearedCount, 372, 0xc98bff);
   context.target.add(context.scene.add.text(540, 139, context.inputHint, {
     fontFamily: context.fontFamily,
-    fontSize: '11px',
+    fontSize: '14px', resolution: 2,
     fontStyle: context.boldFontStyle,
     color: '#b9c9d8',
-    fixedWidth: 450,
+    wordWrap: { width: 500 },
     maxLines: 2,
   }).setName('combat-pile-input-hint'));
-  if (deck) {
-    context.decorators.addSectionTab();
-    context.target.add(context.scene.add.text(194, 174, 'CARD INDEX', {
-      fontFamily: context.fontFamily,
-      fontSize: '10px',
-      fontStyle: context.boldFontStyle,
-      color: '#d8f7ff',
-      stroke: '#020409',
-      strokeThickness: 2,
-      align: 'center',
-      fixedWidth: 112,
-    }).setOrigin(0.5));
-  }
 }
 
 function renderScrollButton(
@@ -265,7 +251,10 @@ function renderScrollButton(
       .setTint(enabled ? 0xffffff : 0x9dadba)
       .setName('combat-pile-scroll-button-frame'));
   }
-  addIcon(context, direction === 'up' ? 'scroll-up-chevron' : 'scroll-down-chevron', x, y, 13, enabled ? 0.9 : 0.38);
+  context.target.add(context.scene.add.text(x, y, direction === 'up' ? '↑' : '↓', {
+    fontFamily: context.fontFamily, fontSize: '24px', resolution: 2,
+    color: enabled ? '#edf3f6' : '#6e8391',
+  }).setOrigin(0.5).setName(`combat-pile-scroll-${direction}-label`));
   const hit = context.scene.add.rectangle(x, y, MIN_SUPPORTED_TOUCH_TARGET, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
     .setName(`combat-pile-scroll-${direction}-hit`);
   context.target.add(hit);
@@ -278,116 +267,35 @@ function renderScrollButton(
 }
 
 function renderRow(context: BattleInspectRenderContext, card: BattleInspectCardView, index: number, selected: boolean) {
-  const deck = context.mode === 'deck';
-  const x = 140;
-  const y = 198 + index * context.rowHeight;
-  context.target.add(context.scene.add.rectangle(x + 150, y + 15, 312, 42, selected ? 0x1d2224 : 0x0f151d, selected ? 0.96 : 0.44)
-    .setStrokeStyle(selected ? 1.5 : 1, selected ? 0xd8a840 : card.upgraded ? 0x24d0d6 : 0xffffff, selected ? 0.95 : 0.08));
-  if (deck) {
-    context.decorators.addRowFrame(x + 140, y + 15, selected, card.upgraded);
-  } else if (textureReady(context.scene, context.assets.pileRowFrame)) {
-    context.target.add(context.scene.add.image(x + 150, y + 15, context.assets.pileRowFrame)
-      .setDisplaySize(330, 42)
-      .setAlpha(selected ? 0.9 : 0.72)
-      .setName('combat-pile-row-frame'));
-  }
-  context.target.add(context.scene.add.rectangle(x + 150, y + 31, 280, 1, card.upgraded ? 0x24d0d6 : 0xd8a840, selected ? 0.6 : 0.18));
-  if (deck) context.decorators.addCostBadge(x + 14, y + 15, 34, card.cost === 0, selected);
-  else addCountBadge(context, x + 14, y + 15, 38, selected ? 0.94 : 0.82);
-  context.target.add(context.scene.add.text(x + 14, y + 15, `${card.cost}`, {
-    fontFamily: context.fontFamily,
-    fontSize: '13px',
-    fontStyle: context.boldFontStyle,
-    color: '#f6f2df',
-    stroke: '#020409',
-    strokeThickness: 2,
-  }).setOrigin(0.5));
-  context.target.add(context.scene.add.text(x + 36, y + 5, card.name, {
-    fontFamily: context.fontFamily,
-    fontSize: '13px',
-    fontStyle: context.boldFontStyle,
-    color: context.goldColor,
-    wordWrap: { width: 170 },
-  }));
-  context.decorators.addMetaChip(x + 246, y + 16, selected, card.upgraded);
-  context.target.add(context.scene.add.text(x + 200, y + 11, card.label, {
-    fontFamily: context.fontFamily,
-    fontSize: '10px',
-    fontStyle: context.boldFontStyle,
-    color: '#8df4ff',
-    align: 'center',
-    fixedWidth: 92,
-  }));
-  addIcon(context, card.zoneIcon, x + 414, y + 16, 14);
+  const x = 140, y = 198 + index * context.rowHeight;
+  context.target.add(context.scene.add.rectangle(x + 150, y + 15, 312, 54, selected ? 0x19313c : 0x0f151d, 0.96)
+    .setStrokeStyle(1, selected ? 0x8df4ff : 0x344954, selected ? 0.8 : 0.35));
+  const cost = context.scene.add.text(x + 14, y + 15, String(card.cost), {
+    fontFamily: context.fontFamily, fontSize: '18px', resolution: 2,
+    fontStyle: context.boldFontStyle, color: '#f6f2df',
+  }).setOrigin(0.5);
+  context.target.add(cost);
+  const name = context.scene.add.text(x + 38, y + 15, card.name, {
+    fontFamily: context.fontFamily, fontSize: '18px', resolution: 2,
+    fontStyle: context.boldFontStyle, color: selected ? '#f6f2df' : '#cfdae1',
+    wordWrap: { width: 246, useAdvancedWrap: true }, lineSpacing: 1,
+  }).setOrigin(0, 0.5).setName('combat-pile-row-title');
+  const lines = name.getWrappedText();
+  name.setText(lines.slice(0, 2).join('\n') + (lines.length > 2 ? '…' : ''));
+  context.target.add(name);
   if (selected) {
     context.target.add(context.scene.add.rectangle(x + 150, y + 15, 326, MIN_SUPPORTED_TOUCH_TARGET, 0x06151b, 0.02)
-      .setStrokeStyle(3, 0x8df4ff, 0.98)
-      .setName('combat-pile-input-focus-ring')
-      .setData('instanceId', card.id));
+      .setStrokeStyle(2, 0x8df4ff, 0.98).setName('combat-pile-input-focus-ring').setData('instanceId', card.id));
     context.target.add(context.scene.add.rectangle(x - 17, y + 15, 5, 34, 0x8df4ff, 0.96)
       .setName('combat-pile-input-focus-marker'));
   }
-  const rowHit = context.scene.add.rectangle(x + 150, y + 15, 312, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-    .setInteractive({ useHandCursor: true })
-    .setName('combat-pile-row-hit')
-    .setData('instanceId', card.id)
-    .setData('selected', selected);
-  rowHit.on('pointerdown', () => context.onInspect(card.id));
-  context.target.add(rowHit);
+  const hit = context.scene.add.rectangle(x + 150, y + 15, 312, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+    .setInteractive({ useHandCursor: true }).setName('combat-pile-row-hit')
+    .setData('instanceId', card.id).setData('selected', selected);
+  hit.on('pointerdown', () => context.onInspect(card.id));
+  context.target.add(hit);
 }
 
-function renderDetailChip(context: BattleInspectRenderContext, x: number, y: number, icon: string, text: string, accent: number) {
-  const width = 112;
-  context.target.add(context.scene.add.rectangle(x, y, width, 26, 0x0b1017, 0.9).setStrokeStyle(1, accent, 0.42));
-  if (textureReady(context.scene, context.assets.pileDetailChipFrame)) {
-    context.target.add(context.scene.add.image(x, y, context.assets.pileDetailChipFrame)
-      .setDisplaySize(width + 12, 36)
-      .setAlpha(0.76)
-      .setTint(accent === 0xff9d4d ? 0xffd1a1 : 0xffffff)
-      .setName('combat-pile-detail-chip-frame'));
-  }
-  addIcon(context, icon, x - width / 2 + 16, y, 8, 0.86);
-  context.target.add(context.scene.add.text(x + 10, y - 7, text, {
-    fontFamily: context.fontFamily,
-    fontSize: '10px',
-    fontStyle: context.boldFontStyle,
-    color: '#dce8f2',
-    fixedWidth: width - 42,
-    maxLines: 1,
-  }).setOrigin(0.5, 0));
-}
-
-function renderStats(context: BattleInspectRenderContext, card: BattleInspectCardView) {
-  if (card.stats.length === 0) {
-    context.target.add(context.scene.add.text(DETAIL.textX, DETAIL.statsHeaderY + 6, 'No flock bonuses', {
-      fontFamily: context.fontFamily,
-      fontSize: '12px',
-      color: '#91a6b8',
-    }));
-    return;
-  }
-  let x = DETAIL.textX;
-  card.stats.slice(0, 5).forEach((stat) => {
-    const width = 54;
-    if (x + width > DETAIL.textX + DETAIL.textW) return;
-    context.target.add(context.scene.add.rectangle(x + width / 2, DETAIL.statsHeaderY + 16, width, 24, 0x0b1017, 0.9)
-      .setStrokeStyle(1, 0x8df4ff, 0.52));
-    if (textureReady(context.scene, context.assets.pileStatChipFrame)) {
-      context.target.add(context.scene.add.image(x + width / 2, DETAIL.statsHeaderY + 16, context.assets.pileStatChipFrame)
-        .setDisplaySize(width + 12, 34)
-        .setAlpha(0.74)
-        .setName('combat-pile-stat-chip-frame'));
-    }
-    if (stat.icon) addIcon(context, stat.icon, x + 14, DETAIL.statsHeaderY + 16, 8, 0.82);
-    context.target.add(context.scene.add.text(x + 35, DETAIL.statsHeaderY + 9, `+${stat.value}`, {
-      fontFamily: context.fontFamily,
-      fontSize: '12px',
-      fontStyle: context.boldFontStyle,
-      color: context.cyanColor,
-    }).setOrigin(0.5, 0));
-    x += width + 6;
-  });
-}
 
 function renderCardArt(context: BattleInspectRenderContext, card: BattleInspectCardView) {
   if (card.artKey && textureReady(context.scene, card.artKey)) {
@@ -415,71 +323,46 @@ function renderCardArt(context: BattleInspectRenderContext, card: BattleInspectC
 function renderDetail(context: BattleInspectRenderContext, card: BattleInspectCardView) {
   const accent = card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : 0x7ab8d6;
   context.renderPanel(DETAIL.panelCx, DETAIL.panelCy, DETAIL.panelW, DETAIL.panelH, accent);
-  const deckFrame = context.mode === 'deck' && context.decorators.addDetailFrame();
-  if (!deckFrame && textureReady(context.scene, context.assets.pileReviewFrame)) {
+  // Keep the authored frame and illustration, without a second animated frame or nested chips.
+  if (textureReady(context.scene, context.assets.pileReviewFrame)) {
     context.target.add(context.scene.add.image(DETAIL.panelCx, DETAIL.panelCy, context.assets.pileReviewFrame)
-      .setDisplaySize(672, 466)
-      .setAlpha(0.68)
-      .setName('combat-pile-review-frame'));
-    const glint = context.scene.add.image(DETAIL.panelCx, DETAIL.panelCy, context.assets.pileReviewFrame)
-      .setDisplaySize(672, 466)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setAlpha(context.reducedMotion ? 0.025 : 0.045)
-      .setName('combat-pile-review-frame');
-    context.target.add(glint);
-    if (!context.reducedMotion) {
-      context.scene.tweens.add({ targets: glint, alpha: 0.025, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
-    }
-  } else if (!deckFrame) {
-    context.target.add(context.scene.add.rectangle(DETAIL.panelCx, DETAIL.panelCy, DETAIL.panelW - 22, DETAIL.panelH - 18, 0x07101c, 0.2)
-      .setStrokeStyle(1, accent, 0.28)
-      .setName('combat-pile-review-frame-fallback'));
+      .setDisplaySize(672, 466).setAlpha(0.32).setName('combat-pile-review-frame'));
   }
   renderCardArt(context, card);
-  context.decorators.addCostBadge(DETAIL.costX, DETAIL.costY, 46, card.cost === 0, true);
-  context.target.add(context.scene.add.text(DETAIL.costX, DETAIL.costY, `${card.cost}`, {
-    fontFamily: context.fontFamily,
-    fontSize: '17px',
-    fontStyle: context.boldFontStyle,
-    color: '#f6f2df',
-    stroke: '#020409',
-    strokeThickness: 2,
-  }).setOrigin(0.5));
-  context.target.add(context.scene.add.text(DETAIL.textX, DETAIL.titleY, card.name, {
-    fontFamily: context.fontFamily,
-    fontSize: '26px',
-    fontStyle: context.boldFontStyle,
-    color: context.goldColor,
-    wordWrap: { width: DETAIL.textW },
-  }));
-  context.target.add(context.scene.add.text(DETAIL.textX, DETAIL.metaY, `${card.bird} / ${card.label} / ${card.zone}`, {
-    fontFamily: context.fontFamily,
-    fontSize: '15px',
-    fontStyle: context.boldFontStyle,
-    color: '#7ab8d6',
-    wordWrap: { width: DETAIL.textW },
-  }));
-  renderDetailChip(context, DETAIL.textX + 56, DETAIL.targetY + 8, card.targetIcon, card.targetLabel, card.usesMolt ? 0xff9d4d : 0x7ab8d6);
-  renderDetailChip(context, DETAIL.textX + 186, DETAIL.targetY + 8, card.roleIcon, card.roleLabel, card.usesMolt ? 0xff9d4d : 0xd8a840);
-  if (card.usesMolt) {
-    context.target.add(context.scene.add.rectangle(DETAIL.textX + 40, DETAIL.statusY + 9, 80, 22, 0x2a1208, 0.96).setStrokeStyle(1, 0xff9d4d, 0.82));
-    context.target.add(context.scene.add.text(DETAIL.textX + 40, DETAIL.statusY, 'MOLT', {
-      fontFamily: context.fontFamily,
-      fontSize: '10px',
-      fontStyle: context.boldFontStyle,
-      color: '#ffc78f',
-      align: 'center',
-      fixedWidth: 72,
-    }).setOrigin(0.5, 0));
-  }
-  const headerStyle = { fontFamily: context.fontFamily, fontSize: '15px', fontStyle: context.boldFontStyle, color: context.goldColor };
-  const bodyStyle = (lines: number) => ({ fontFamily: context.fontFamily, fontSize: '14px', color: '#dce8f2', lineSpacing: 3, wordWrap: { width: DETAIL.textW }, maxLines: lines });
-  context.target.add(context.scene.add.text(DETAIL.textX, DETAIL.currentHeaderY, card.usesMolt ? 'Now (Molt)' : 'Now', headerStyle));
-  context.target.add(context.scene.add.text(DETAIL.textX, DETAIL.currentBodyY, card.currentText, bodyStyle(3)));
-  context.target.add(context.scene.add.text(DETAIL.textX, DETAIL.alternateHeaderY, card.usesMolt ? 'Base' : 'Preen', headerStyle));
-  context.target.add(context.scene.add.text(DETAIL.textX, DETAIL.alternateBodyY, card.alternateText, bodyStyle(2)));
-  renderStats(context, card);
+  const text = (y: number, value: string, size: number, color = '#dce8f2', name = '') => {
+    const object = context.scene.add.text(DETAIL.textX, y, value, {
+      fontFamily: context.fontFamily, fontSize: size + 'px', resolution: 2, color,
+      wordWrap: { width: DETAIL.textW, useAdvancedWrap: true }, lineSpacing: 3,
+    }).setName(name);
+    context.target.add(object); return object;
+  };
+  const excerpt = (object: Phaser.GameObjects.Text, bottom: number) => {
+    const lines = object.getWrappedText();
+    let visible = lines.length;
+    while (visible > 0 && object.y + object.height > bottom) {
+      visible--;
+      object.setText(lines.slice(0, visible).join('\n') + (visible < lines.length ? '…' : ''));
+    }
+    object.setData('truncated', visible < lines.length);
+  };
+  const title = text(184, card.name, 24, context.goldColor, 'combat-pile-detail-title').setFontStyle(context.boldFontStyle);
+  excerpt(title, 248);
+  const meta = text(258, card.zone + ' · ' + card.cost + ' Wingbeat' + (card.cost === 1 ? '' : 's')
+    + (card.upgraded ? ' · Preened' : ''), 16, '#abc0cd', 'combat-pile-detail-meta');
+  excerpt(meta, 308);
+  text(318, card.usesMolt ? 'ACTIVE · MOLT' : 'ACTIVE · NOW', 16, '#ffe7b0').setFontStyle(context.boldFontStyle);
+  const body = text(349, card.currentText, 18, '#edf3f6', 'combat-pile-detail-excerpt');
+  excerpt(body, 485);
+  const hit = context.scene.add.rectangle(DETAIL.textX + DETAIL.textW / 2, 548, DETAIL.textW, MIN_SUPPORTED_TOUCH_TARGET, 0x19313c, 1)
+    .setStrokeStyle(1, 0x71b8c6, 0.85).setInteractive({ useHandCursor: true }).setName('combat-pile-read-hit');
+  context.target.add(hit);
+  hit.on('pointerover', () => hit.setStrokeStyle(2, 0x8df4ff, 1));
+  hit.on('pointerout', () => hit.setStrokeStyle(1, 0x71b8c6, 0.85));
+  hit.on('pointerdown', () => { context.onConfirmSound(); context.onRead(); });
+  text(548, context.detailsLabel, 18, '#edf3f6', 'combat-pile-read-label')
+    .setPosition(DETAIL.textX + DETAIL.textW / 2, 548).setOrigin(0.5).setFontStyle(context.boldFontStyle);
 }
+
 
 export function renderBattleInspect(context: BattleInspectRenderContext) {
   context.target.add(context.scene.add.rectangle(context.width / 2, context.height / 2, context.width, context.height, 0x020409, 0.76)

@@ -36,19 +36,19 @@ const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
 const UI_FONT = 'Arial';
 const UI_BOLD = 'bold';
-const UI_GOLD = '#ffe1a3';
-const UI_CYAN = '#8df4ff';
-const UI_SOFT = '#b9c7d6';
+const UI_GOLD = '#dfc18b';
+const UI_CYAN = '#adc9d2';
+const UI_SOFT = '#a4b6c2';
 const UI_FIELD = {
-  ink: 0x070b12,
-  gold: 0xd8a840,
-  brass: 0xf0c36f,
-  cyan: 0x7ab8d6,
-  green: 0x8fd6a0,
+  ink: 0x0b1723,
+  gold: 0x86b1be,
+  brass: 0x86b1be,
+  cyan: 0x86b1be,
+  green: 0x86b1be,
   danger: 0xe05b4f,
-  muted: '#91a6b8',
-  warm: '#ffe1a3',
-  text: '#e7eef7',
+  muted: '#9cabb4',
+  warm: '#eee8d8',
+  text: '#eee8d8',
 };
 
 type UiAdd = (object: Phaser.GameObjects.GameObject) => void;
@@ -170,6 +170,7 @@ export interface SystemOverlayDependencies {
 }
 
 function addUi<T extends Phaser.GameObjects.GameObject>(addTo: UiAdd, object: T) {
+  if (object instanceof Phaser.GameObjects.Text) object.setResolution(2);
   addTo(object);
   return object;
 }
@@ -251,7 +252,7 @@ function addOverlayPanelFlourish(
   const flourish = scene.add.image(frame.cx, frame.cy + (options.yOffset ?? 0), key)
     .setDisplaySize(Math.min(frame.w + 130, 850), Math.min(frame.h + 96, 560))
     .setAlpha(dependencies.prefersReducedMotion() ? Math.min(alpha, 0.12) : alpha)
-    .setBlendMode(Phaser.BlendModes.ADD);
+    .setBlendMode(Phaser.BlendModes.NORMAL);
   if (options.tint !== undefined) flourish.setTint(options.tint);
   addUi(addTo, flourish);
   if (!dependencies.prefersReducedMotion()) {
@@ -292,7 +293,7 @@ function addSystemMenuCommandFrame(
   const glint = scene.add.image(frame.cx, y, key)
     .setDisplaySize(width, height)
     .setAlpha(reduced ? 0.045 : 0.075)
-    .setBlendMode(Phaser.BlendModes.ADD)
+    .setBlendMode(Phaser.BlendModes.NORMAL)
     .setName('system-menu-command-frame');
   if (options.tint !== undefined) {
     frameImage.setTint(options.tint);
@@ -381,9 +382,8 @@ function addSystemSettingsRowFrame(
   options: FrameOptions,
   dependencies: SystemOverlayDependencies,
 ) {
-  const frame = addAssetFrame(scene, addTo, 'system-settings-row-frame', cx, cy, width, height, options, 0.68);
-  if (frame && dependencies.prefersReducedMotion()) frame.setAlpha(frame.getData('reducedAlpha'));
-  return frame;
+  return addUi(addTo, scene.add.rectangle(cx, cy, width, height, 0x152b39, options.alpha ?? 0.7)
+    .setName('system-settings-row-surface'));
 }
 
 function addSystemSettingsToggleFrame(
@@ -396,9 +396,8 @@ function addSystemSettingsToggleFrame(
   options: FrameOptions,
   dependencies: SystemOverlayDependencies,
 ) {
-  const frame = addAssetFrame(scene, addTo, 'system-settings-toggle-frame', cx, cy, width, height, options, 0.6);
-  if (frame && dependencies.prefersReducedMotion()) frame.setAlpha(frame.getData('reducedAlpha'));
-  return frame;
+  return addUi(addTo, scene.add.rectangle(cx, cy, width, height, 0x152b39, 0)
+    .setName('system-settings-value-surface'));
 }
 
 function addSystemSettingsVolumeSliderFrame(
@@ -411,9 +410,8 @@ function addSystemSettingsVolumeSliderFrame(
   options: FrameOptions,
   dependencies: SystemOverlayDependencies,
 ) {
-  const frame = addAssetFrame(scene, addTo, 'system-settings-volume-slider-frame', cx, cy, width, height, options, 0.64);
-  if (frame && dependencies.prefersReducedMotion()) frame.setAlpha(frame.getData('reducedAlpha'));
-  return frame;
+  return addUi(addTo, scene.add.rectangle(cx, cy, width, height, 0x152b39, 0)
+    .setName('system-settings-value-surface'));
 }
 
 function addSystemSettingsMotionSwitchFrame(
@@ -426,9 +424,8 @@ function addSystemSettingsMotionSwitchFrame(
   options: FrameOptions,
   dependencies: SystemOverlayDependencies,
 ) {
-  const frame = addAssetFrame(scene, addTo, 'system-settings-motion-switch-frame', cx, cy, width, height, options, 0.66);
-  if (frame && dependencies.prefersReducedMotion()) frame.setAlpha(frame.getData('reducedAlpha'));
-  return frame;
+  return addUi(addTo, scene.add.rectangle(cx, cy, width, height, 0x152b39, 0)
+    .setName('system-settings-value-surface'));
 }
 
 function addHowToPlayGuideFrame(
@@ -452,7 +449,7 @@ function addHowToPlayGuideFrame(
   const glint = scene.add.image(frame.cx, y, key)
     .setDisplaySize(width, height)
     .setAlpha(reduced ? 0.035 : 0.06)
-    .setBlendMode(Phaser.BlendModes.ADD)
+    .setBlendMode(Phaser.BlendModes.NORMAL)
     .setName('how-to-play-guide-frame');
   addUi(addTo, guide);
   addUi(addTo, glint);
@@ -574,20 +571,20 @@ function renderSettingsVolumeSlider(
     { alpha: 0.78, tint: accent },
     dependencies,
   );
-  const hit = addUi(addTo, scene.add.rectangle(cx, cy, width + 28, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.02)
+  const hit = addUi(addTo, scene.add.rectangle(cx, cy, width + 28, MIN_SUPPORTED_TOUCH_TARGET, 0x0b1723, 0.02)
     .setName(controlName)
     .setInteractive({ useHandCursor: true }));
   const trackWidth = width - 78;
   const trackX = cx - trackWidth / 2 - 6;
   const fillWidth = Math.max(8, trackWidth * normalized);
-  const track = addUi(addTo, scene.add.rectangle(cx - 6, cy, trackWidth, 9, 0x02070d, frame ? 0.28 : 0.72)
-    .setStrokeStyle(1, 0x1b2f3a, 0.64));
+  const track = addUi(addTo, scene.add.rectangle(cx - 6, cy, trackWidth, 9, 0x243f4b, frame ? 0.28 : 0.72)
+    .setStrokeStyle(1, 0x243f4b, 0.64));
   const fill = addUi(addTo, scene.add.rectangle(trackX + fillWidth / 2, cy, fillWidth, 7, accent, 0.82)
-    .setBlendMode(Phaser.BlendModes.ADD));
+    .setBlendMode(Phaser.BlendModes.NORMAL));
   const knobX = trackX + trackWidth * normalized;
-  const knob = addUi(addTo, scene.add.circle(knobX, cy, 9, 0x06151b, 0.96)
+  const knob = addUi(addTo, scene.add.circle(knobX, cy, 9, 0x86b1be, 0.96)
     .setStrokeStyle(2, accent, 0.96));
-  const glint = addUi(addTo, scene.add.circle(knobX, cy, 4, 0xdffaff, 0.86));
+  const glint = addUi(addTo, scene.add.circle(knobX, cy, 4, 0x0b1723, 0.86));
   const applyPointer = (pointer: Phaser.Input.Pointer) => {
     const next = clamp((pointer.x - trackX) / trackWidth, 0, 1);
     onChange(Math.round(next * 20) / 20);
@@ -624,22 +621,11 @@ function renderSettingsMotionSwitch(
   const activeIndex = preference === 'full' ? 0 : preference === 'system' ? 1 : 2;
   const frame = addSystemSettingsMotionSwitchFrame(scene, addTo, cx, cy, 268, 58, {
     alpha: state.reduced ? 0.74 : 0.82,
-    tint: preference === 'reduced' ? 0xffefc4 : preference === 'full' ? 0xdffaff : undefined,
+    tint: preference === 'reduced' ? 0xffefc4 : preference === 'full' ? 0x0b1723 : undefined,
   }, dependencies);
-  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 276, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.02)
+  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 276, MIN_SUPPORTED_TOUCH_TARGET, 0x0b1723, 0.02)
     .setName('system-settings-motion-switch-hit')
     .setInteractive({ useHandCursor: true }));
-  [cx - 84, cx, cx + 84].forEach((x, index) => {
-    const active = index === activeIndex;
-    addUi(addTo, scene.add.circle(x, cy + 13, active ? 9 : 5, active ? 0x06151b : 0x020409, active ? 0.96 : 0.72)
-      .setStrokeStyle(active ? 3 : 1, active ? (state.reduced ? UI_FIELD.gold : UI_FIELD.cyan) : 0x49606d, active ? 0.98 : 0.55)
-      .setName(active ? 'system-settings-motion-switch-active' : 'system-settings-motion-switch-notch'));
-    if (active) {
-      addUi(addTo, scene.add.circle(x, cy + 13, 4, 0xdffaff, state.reduced ? 0.72 : 0.88)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setName('system-settings-motion-switch-active'));
-    }
-  });
   hit.on('pointerover', () => frame?.setAlpha(state.reduced ? 0.82 : 0.92));
   hit.on('pointerout', () => frame?.setAlpha(state.reduced ? 0.74 : 0.82));
   hit.on('pointerdown', () => {
@@ -661,17 +647,11 @@ function renderSettingsCombatPaceSwitch(
   const activeIndex = preference === 'cinematic' ? 0 : preference === 'standard' ? 1 : 2;
   const frame = addSystemSettingsMotionSwitchFrame(scene, addTo, cx, cy, 268, 58, {
     alpha: 0.82,
-    tint: preference === 'cinematic' ? 0xffefc4 : preference === 'snappy' ? 0xdffaff : undefined,
+    tint: preference === 'cinematic' ? 0xffefc4 : preference === 'snappy' ? 0x0b1723 : undefined,
   }, dependencies);
-  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 276, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.02)
+  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 276, MIN_SUPPORTED_TOUCH_TARGET, 0x0b1723, 0.02)
     .setName('system-settings-combat-pace-switch-hit')
     .setInteractive({ useHandCursor: true }));
-  [cx - 84, cx, cx + 84].forEach((x, index) => {
-    const active = index === activeIndex;
-    addUi(addTo, scene.add.circle(x, cy + 13, active ? 9 : 5, active ? 0x06151b : 0x020409, active ? 0.96 : 0.72)
-      .setStrokeStyle(active ? 3 : 1, active ? UI_FIELD.gold : 0x49606d, active ? 0.98 : 0.55)
-      .setName(active ? 'system-settings-combat-pace-active' : 'system-settings-combat-pace-notch'));
-  });
   hit.on('pointerover', () => frame?.setAlpha(0.92));
   hit.on('pointerout', () => frame?.setAlpha(0.82));
   hit.on('pointerdown', () => {
@@ -693,9 +673,9 @@ function renderSettingsContrastSwitch(
   const highContrast = preference === 'high';
   addSystemSettingsToggleFrame(scene, addTo, cx, cy, 176, 42, {
     alpha: highContrast ? 0.88 : 0.66,
-    tint: highContrast ? 0xdffaff : undefined,
+    tint: highContrast ? 0x0b1723 : undefined,
   }, dependencies);
-  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 184, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.02)
+  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 184, MIN_SUPPORTED_TOUCH_TARGET, 0x0b1723, 0.02)
     .setName('system-settings-contrast-toggle-hit')
     .setInteractive({ useHandCursor: true }));
   hit.on('pointerdown', () => {
@@ -718,17 +698,11 @@ function renderSettingsGraphicsQualitySwitch(
   const activeIndex = preference === 'full' ? 0 : preference === 'auto' ? 1 : 2;
   const frame = addSystemSettingsMotionSwitchFrame(scene, addTo, cx, cy, 268, 58, {
     alpha: state.lean ? 0.74 : 0.82,
-    tint: preference === 'lean' ? 0xffefc4 : preference === 'full' ? 0xdffaff : undefined,
+    tint: preference === 'lean' ? 0xffefc4 : preference === 'full' ? 0x0b1723 : undefined,
   }, dependencies);
-  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 276, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.02)
+  const hit = addUi(addTo, scene.add.rectangle(cx, cy, 276, MIN_SUPPORTED_TOUCH_TARGET, 0x0b1723, 0.02)
     .setName('system-settings-graphics-quality-switch-hit')
     .setInteractive({ useHandCursor: true }));
-  [cx - 84, cx, cx + 84].forEach((x, index) => {
-    const active = index === activeIndex;
-    addUi(addTo, scene.add.circle(x, cy + 13, active ? 9 : 5, active ? 0x06151b : 0x020409, active ? 0.96 : 0.72)
-      .setStrokeStyle(active ? 3 : 1, active ? (state.lean ? UI_FIELD.gold : UI_FIELD.cyan) : 0x49606d, active ? 0.98 : 0.55)
-      .setName(active ? 'system-settings-graphics-quality-active' : 'system-settings-graphics-quality-notch'));
-  });
   hit.on('pointerover', () => frame?.setAlpha(state.lean ? 0.82 : 0.92));
   hit.on('pointerout', () => frame?.setAlpha(state.lean ? 0.74 : 0.82));
   hit.on('pointerdown', () => {
@@ -739,162 +713,76 @@ function renderSettingsGraphicsQualitySwitch(
 }
 
 export function renderPauseMenuOverlay(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  options: PauseOverlayOptions,
-  dependencies: SystemOverlayDependencies,
+  scene: Phaser.Scene, addTo: UiAdd, options: PauseOverlayOptions, dependencies: SystemOverlayDependencies,
 ) {
-  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.82)
-    .setInteractive({ useHandCursor: false }));
-  const frame = dependencies.renderFieldPanel(scene, addTo, GAME_WIDTH / 2, GAME_HEIGHT / 2, 620, options.onAbandon ? 500 : 430, {
-    accent: UI_FIELD.gold,
-    fill: UI_FIELD.ink,
-  });
-  const icon = addIconImage(scene, 'pause-medallion', frame.left + 112, frame.top + 118, 54);
-  if (icon) addUi(addTo, icon.setAlpha(0.96));
-  addUi(addTo, scene.add.text(frame.left + 206, frame.top + 72, memoryStorageSessionActive() ? 'Practice Paused' : options.title, {
-    fontFamily: 'Georgia, serif',
-    fontSize: '34px',
-    fontStyle: UI_BOLD,
-    color: UI_GOLD,
-    stroke: '#000000',
-    strokeThickness: 4,
-  }));
-  addUi(addTo, scene.add.text(frame.left + 208, frame.top + 116, memoryStorageSessionActive()
+  addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9).setInteractive());
+  const frame = renderQuietMenuPanel(scene, addTo, 620, 580);
+  dependencies.renderAudioToggleControl(scene, addTo, frame.right - 58, frame.top + 50, options.onToggleAudio);
+  addUi(addTo, scene.add.text(640, frame.top + 48, memoryStorageSessionActive() ? 'Practice Paused' : options.title, {
+    fontFamily: 'Georgia, serif', fontSize: '38px', color: UI_FIELD.text,
+  }).setResolution(2).setOrigin(0.5, 0));
+  addUi(addTo, scene.add.text(640, frame.top + 106, memoryStorageSessionActive()
     ? 'Nothing saved. Main Menu ends practice.' : options.subtitle, {
-    fontFamily: UI_FONT,
-    fontSize: '15px',
-    fontStyle: UI_BOLD,
-    color: UI_CYAN,
-    wordWrap: { width: 340 },
-  }));
+    fontFamily: UI_FONT, fontSize: '15px', color: UI_SOFT, align: 'center', wordWrap: { width: 470 },
+  }).setResolution(2).setOrigin(0.5, 0));
   options.details.slice(0, 4).forEach(([label, value], index) => {
-    const y = frame.top + 170 + index * 34;
-    addUi(addTo, scene.add.rectangle(frame.left + 310, y, 390, 25, 0x050a12, index % 2 === 0 ? 0.36 : 0.2));
-    addUi(addTo, scene.add.text(frame.left + 136, y, label, {
-      fontFamily: UI_FONT,
-      fontSize: '16px',
-      color: UI_FIELD.muted,
-    }).setOrigin(0, 0.5));
-    addUi(addTo, scene.add.text(frame.left + 486, y, value, {
-      fontFamily: UI_FONT,
-      fontSize: '16px',
-      fontStyle: UI_BOLD,
-      color: UI_FIELD.text,
-      align: 'right',
-    }).setOrigin(1, 0.5));
+    const y = frame.top + 176 + index * 36;
+    addUi(addTo, scene.add.text(frame.left + 100, y, label, {
+      fontFamily: UI_FONT, fontSize: '16px', color: UI_SOFT,
+    }).setResolution(2).setOrigin(0, 0.5));
+    addUi(addTo, scene.add.text(frame.right - 100, y, value, {
+      fontFamily: UI_FONT, fontSize: '16px', color: UI_FIELD.text,
+    }).setResolution(2).setOrigin(1, 0.5));
   });
-  dependencies.renderAudioToggleControl(scene, addTo, frame.right - 74, frame.top + 58, options.onToggleAudio);
-  const commandY = frame.bottom - (options.onAbandon ? 110 : 72);
-  if (options.onSettings) {
-    dependencies.renderFieldButton(scene, addTo, frame.left + 132, commandY, 172, 64, 'Resume', true, options.onResume, UI_FIELD.gold);
-    dependencies.renderFieldButton(scene, addTo, frame.cx, commandY, 156, 56, 'Settings', true, options.onSettings, UI_FIELD.cyan);
-    dependencies.renderFieldButton(scene, addTo, frame.right - 132, commandY, 156, 56, 'Main Menu', true, options.onMenu, UI_FIELD.cyan);
-  } else {
-    dependencies.renderFieldButton(scene, addTo, frame.left + 174, frame.bottom - 72, 180, 56, 'Resume', true, options.onResume, UI_FIELD.cyan);
-    dependencies.renderFieldButton(scene, addTo, frame.right - 174, frame.bottom - 72, 180, 56, 'Main Menu', true, options.onMenu, UI_FIELD.gold);
-  }
-  if (options.onAbandon) (dependencies.renderFieldButton(scene, addTo, frame.cx, frame.bottom - 38, 220, 58,
-    memoryStorageSessionActive() ? 'End Practice…' : 'Abandon Flight…', true, options.onAbandon, UI_FIELD.danger) as Phaser.GameObjects.Rectangle)
+  const action = (callback: () => void) => () => { dependencies.playUiSound('confirm'); callback(); };
+  renderQuietMenuButton(scene, addTo, 640, frame.top + 368, 300, 'Resume', action(options.onResume), true);
+  if (options.onSettings) renderQuietMenuButton(scene, addTo, 540, frame.top + 440, 170, 'Settings', action(options.onSettings));
+  renderQuietMenuButton(scene, addTo, options.onSettings ? 740 : 640, frame.top + 440, 170, 'Main Menu', action(options.onMenu));
+  if (options.onAbandon) renderQuietMenuButton(scene, addTo, 640, frame.top + 516, 220,
+    memoryStorageSessionActive() ? 'End Practice…' : 'Abandon Flight…', action(options.onAbandon))
     .setName('pause-abandon-hit');
 }
 
 export function renderConfirmRunExitOverlay(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  options: ConfirmRunExitOverlayOptions,
-  dependencies: SystemOverlayDependencies,
+  scene: Phaser.Scene, addTo: UiAdd, options: ConfirmRunExitOverlayOptions, dependencies: SystemOverlayDependencies,
 ) {
-  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.86)
-    .setInteractive({ useHandCursor: false }));
-  const frameKey = iconKey('confirm-exit-frame');
-  if (scene.textures.exists(frameKey)) {
-    scene.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    addUi(addTo, scene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, frameKey)
-      .setDisplaySize(742, 278)
-      .setAlpha(0.94)
-      .setName('confirm-exit-frame'));
-    addUi(addTo, scene.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, frameKey)
-      .setDisplaySize(760, 284)
-      .setAlpha(dependencies.prefersReducedMotion() ? 0.035 : 0.055)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setName('confirm-exit-frame'));
-  } else {
-    addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 640, 286, 0x0d1420, 0.98)
-      .setStrokeStyle(3, 0xff7a6e, 0.92));
-  }
-  addUi(addTo, scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 78, memoryStorageSessionActive() ? 'End practice?' : 'Abandon this run?', {
-    fontFamily: UI_FONT,
-    fontSize: '30px',
-    fontStyle: UI_BOLD,
-    color: UI_GOLD,
-    stroke: '#000000',
-    strokeThickness: 4,
-  }).setOrigin(0.5));
-  addUi(addTo, scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 24, memoryStorageSessionActive()
+  addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9).setInteractive());
+  renderQuietMenuPanel(scene, addTo, 680, 320);
+  addUi(addTo, scene.add.text(640, 254, memoryStorageSessionActive() ? 'End practice?' : 'Abandon this run?', {
+    fontFamily: 'Georgia, serif', fontSize: '32px', color: UI_FIELD.text,
+  }).setResolution(2).setOrigin(0.5));
+  addUi(addTo, scene.add.text(640, 318, memoryStorageSessionActive()
     ? 'Practice is discarded. Your saved flight and collection stay unchanged.' : 'Your progress on this run will be lost.', {
-    fontFamily: UI_FONT,
-    fontSize: '16px',
-    color: UI_SOFT,
-    align: 'center',
-    wordWrap: { width: 540 },
-  }).setOrigin(0.5).setName('route-confirm-exit-subtitle'));
-
-  const commandFrameKey = iconKey('confirm-exit-command-frame');
-  const hasCommandFrame = scene.textures.exists(commandFrameKey);
-  const renderCommand = (x: number, danger: boolean) => {
-    addUi(addTo, scene.add.rectangle(x, GAME_HEIGHT / 2 + 56, 230, 54, danger ? 0x2a1014 : 0x122235, hasCommandFrame ? (danger ? 0.24 : 0.18) : 0.98)
-      .setStrokeStyle(2, danger ? 0xff7a6e : 0x7ab8d6, hasCommandFrame ? (danger ? 0.28 : 0.22) : 0.95));
-    if (hasCommandFrame) {
-      scene.textures.get(commandFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      const command = scene.add.image(x, GAME_HEIGHT / 2 + 56, commandFrameKey)
-        .setDisplaySize(262, 62)
-        .setAlpha(danger ? 0.92 : 0.88)
-        .setName('confirm-exit-command-frame');
-      if (danger) {
-        command.setTint(0xffe5dd);
-        addUi(addTo, scene.add.rectangle(x, GAME_HEIGHT / 2 + 57, 198, 25, 0x54151b, 0.16));
-      }
-      addUi(addTo, command);
-    }
-  };
-  const keepX = GAME_WIDTH / 2 - 140;
-  renderCommand(keepX, false);
-  addUi(addTo, scene.add.text(keepX, GAME_HEIGHT / 2 + 56, 'Keep Playing', {
-    fontFamily: UI_FONT,
-    fontSize: '18px',
-    fontStyle: UI_BOLD,
-    color: '#eef8ff',
-    stroke: '#000000',
-    strokeThickness: 3,
-  }).setOrigin(0.5));
-  const keepHit = addUi(addTo, scene.add.rectangle(keepX, GAME_HEIGHT / 2 + 56, 230, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-    .setInteractive({ useHandCursor: true })
-    .setName('route-confirm-exit-keep-hit'));
-  keepHit.on('pointerdown', options.onKeepPlaying);
-
-  const abandonX = GAME_WIDTH / 2 + 140;
-  renderCommand(abandonX, true);
-  addUi(addTo, scene.add.text(abandonX, GAME_HEIGHT / 2 + 56, memoryStorageSessionActive() ? 'End Practice' : 'Abandon Run', {
-    fontFamily: UI_FONT,
-    fontSize: '18px',
-    fontStyle: UI_BOLD,
-    color: '#ffd8d2',
-    stroke: '#000000',
-    strokeThickness: 3,
-  }).setOrigin(0.5));
-  const abandonHit = addUi(addTo, scene.add.rectangle(abandonX, GAME_HEIGHT / 2 + 56, 230, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-    .setInteractive({ useHandCursor: true })
-    .setName('route-confirm-exit-abandon-hit'));
-  abandonHit.on('pointerdown', options.onAbandonRun);
-  addUi(addTo, scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 4, 'Esc to keep playing', {
-    fontFamily: UI_FONT,
-    fontSize: '12px',
-    color: '#b8c5d8',
-  }).setOrigin(0.5).setAlpha(0.92).setName('route-confirm-exit-escape-hint'));
+    fontFamily: UI_FONT, fontSize: '16px', color: UI_SOFT, align: 'center', wordWrap: { width: 540 },
+  }).setResolution(2).setOrigin(0.5).setName('route-confirm-exit-subtitle'));
+  renderQuietMenuButton(scene, addTo, 500, 410, 230, 'Keep Playing', options.onKeepPlaying, true)
+    .setName('route-confirm-exit-keep-hit');
+  renderQuietMenuButton(scene, addTo, 780, 410, 230, memoryStorageSessionActive() ? 'End Practice' : 'Abandon Run', options.onAbandonRun)
+    .setName('route-confirm-exit-abandon-hit');
+  addUi(addTo, scene.add.text(640, 472, 'Esc to keep playing', {
+    fontFamily: UI_FONT, fontSize: '13px', color: UI_SOFT,
+  }).setResolution(2).setOrigin(0.5).setName('route-confirm-exit-escape-hint'));
 }
 
 const settingsInputCleanups = new WeakMap<Phaser.Scene, () => void>();
+
+function renderQuietMenuPanel(scene: Phaser.Scene, addTo: UiAdd, width: number, height: number): FieldFrame {
+  addUi(addTo, scene.add.rectangle(640, 360, width, height, 0x0b1723, 1)
+    .setName('system-quiet-menu-panel'));
+  return { cx: 640, cy: 360, w: width, h: height, left: 640 - width / 2,
+    right: 640 + width / 2, top: 360 - height / 2, bottom: 360 + height / 2 };
+}
+
+function renderQuietMenuButton(scene: Phaser.Scene, addTo: UiAdd, x: number, y: number, width: number, label: string, onClick: () => void, primary = false) {
+  const hit = addUi(addTo, scene.add.rectangle(x, y, width, MIN_SUPPORTED_TOUCH_TARGET, primary ? 0xd8b568 : 0x0b1723, 1)
+    .setInteractive({ useHandCursor: true }).setName('system-field-button-hit').setData('label', label));
+  addUi(addTo, scene.add.text(x, y, label, {fontFamily: UI_FONT, fontSize: '16px', color: primary ? '#101b24' : UI_FIELD.text})
+    .setResolution(2).setOrigin(0.5));
+  hit.on('pointerover', () => hit.setFillStyle(primary ? 0xefd293 : 0x152b39));
+  hit.on('pointerout', () => hit.setFillStyle(primary ? 0xd8b568 : 0x0b1723));
+  hit.on('pointerdown', onClick);
+  return hit;
+}
 
 export function renderSettingsMenuOverlay(
   scene: Phaser.Scene,
@@ -905,7 +793,7 @@ export function renderSettingsMenuOverlay(
   // A deferred scene redraw can replace a panel before its old destroy callback.
   // Retire the previous input owner before attaching replacement handlers.
   settingsInputCleanups.get(scene)?.();
-  const lifecycle = addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.84)
+  const lifecycle = addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b1723, 1)
     .setInteractive({ useHandCursor: false }));
   const settingsInputKey = settingsOverlayInputRegistryKey(scene);
   const controlsPanelKey = controlPanelRegistryKey(scene);
@@ -917,35 +805,15 @@ export function renderSettingsMenuOverlay(
     options.onClose();
   };
   scene.registry.set(settingsInputKey, true);
-  const frame = dependencies.renderFieldPanel(scene, addTo, GAME_WIDTH / 2, GAME_HEIGHT / 2, 1160, 660, {
-    accent: UI_FIELD.cyan,
-    fill: UI_FIELD.ink,
-  });
-  addOverlayPanelFlourish(scene, addTo, frame, { alpha: 0.06, tint: 0xdffaff, yOffset: 4 }, dependencies);
-  addSystemMenuCommandFrame(scene, addTo, frame, { alpha: 0.08, yOffset: 2 }, dependencies);
-  const icon = addIconImage(scene, 'settings-medallion', frame.left + 112, frame.top + 118, 54);
-  if (icon) addUi(addTo, icon.setAlpha(0.96));
-  addSystemOverlayTitlePlaque(scene, addTo, frame.left + 364, frame.top + 96, 424, 88, {
-    alpha: 0.52,
-    tint: 0xdffaff,
-  });
-  addUi(addTo, scene.add.text(frame.left + 206, frame.top + 72, options.title, {
+  const frame = renderQuietMenuPanel(scene, addTo, 1160, 660);
+  addUi(addTo, scene.add.text(frame.left + 108, frame.top + 68, options.title, {
     fontFamily: 'Georgia, serif',
-    fontSize: '34px',
-    fontStyle: UI_BOLD,
-    color: UI_GOLD,
-    stroke: '#000000',
-    strokeThickness: 4,
+    fontSize: '40px',
+    color: UI_FIELD.text,
   }));
-  addUi(addTo, scene.add.text(frame.left + 208, frame.top + 116, options.subtitle, {
-    fontFamily: UI_FONT,
-    fontSize: '15px',
-    fontStyle: UI_BOLD,
-    color: UI_CYAN,
-    wordWrap: { width: 340 },
-  }));
-  dependencies.renderCloseControl(scene, addTo, frame.right - 66, frame.top + 58, dismissSettingsOverlay);
+  renderQuietMenuButton(scene, addTo, frame.right - 66, frame.top + 58, 104, 'Close', () => { dependencies.playUiSound('close'); dismissSettingsOverlay(); });
 
+  addUi(addTo, scene.add.rectangle(640, 180, 944, 1, 0x334954));
   const audioSnapshot = dependencies.audio.snapshot();
   const motion = dependencies.motionState();
   const contrast = dependencies.visualContrastState();
@@ -991,7 +859,7 @@ export function renderSettingsMenuOverlay(
   let screenReaderPreference = screenReader.preference;
   let controlsValueText: Phaser.GameObjects.Text | undefined;
   let audioValueText: Phaser.GameObjects.Text | undefined;
-  let audioToggleFrame: Phaser.GameObjects.Image | undefined;
+  let audioToggleFrame: Phaser.GameObjects.Rectangle | undefined;
   let openControlsPanel = (_playSound = true) => {};
   const controlsRowIndex = rows.findIndex(([, , kind]) => kind === 'controls');
   const sections = [
@@ -1011,8 +879,6 @@ export function renderSettingsMenuOverlay(
     ? Math.round(clamp(storedFocusIndex, 0, rows.length - 1))
     : 0;
   let focusRing: Phaser.GameObjects.Rectangle | undefined;
-  const rowFrames: Array<Phaser.GameObjects.Image | undefined> = [];
-  const restingRowFrameAlpha = (index: number) => index % 2 === 0 ? 0.44 : 0.3;
   const rowPosition = (index: number) => {
     const row = sections[sectionForRow(index)].rows.indexOf(index);
     const cx = frame.right - 310;
@@ -1024,9 +890,6 @@ export function renderSettingsMenuOverlay(
     focusRing?.setPosition(position.cx, position.y);
     focusRing?.setData('index', focusIndex);
     focusRing?.setData('label', rows[focusIndex][0]);
-    rowFrames.forEach((rowFrame, rowIndex) => {
-      rowFrame?.setAlpha(rowIndex === focusIndex ? 0.82 : restingRowFrameAlpha(rowIndex));
-    });
     scene.registry.set(focusRegistryKey, focusIndex);
     const sectionIndex = sectionForRow(focusIndex);
     rowObjects.forEach((objects, rowIndex) => objects.forEach((object) => {
@@ -1035,8 +898,8 @@ export function renderSettingsMenuOverlay(
       if (object.input) object.input.enabled = visible;
     }));
     sectionButtons.forEach((button, index) => button
-      .setFillStyle(index === sectionIndex ? 0x183247 : 0x08131e, 0.98)
-      .setStrokeStyle(index === sectionIndex ? 2 : 1, index === sectionIndex ? UI_FIELD.cyan : 0x355163, 1)
+      .setFillStyle(index === sectionIndex ? 0x152b39 : 0x0b1723, 0.98)
+      .setStrokeStyle(0)
       .setData('selected', index === sectionIndex));
     sectionDescription?.setText(sections[sectionIndex].detail);
     scene.registry.set(`birdsquad.settingsDetail.${scene.scene.key}`, {
@@ -1113,8 +976,7 @@ export function renderSettingsMenuOverlay(
     audioValueText?.setText(muted ? 'Muted' : 'On');
     if (audioToggleFrame) {
       audioToggleFrame.setAlpha(muted ? 0.52 : 0.7);
-      if (muted) audioToggleFrame.clearTint();
-      else audioToggleFrame.setTint(0xdffaff);
+      audioToggleFrame.setFillStyle(muted ? 0x10202c : 0x152b39);
     }
   };
   const notifyAudioToggle = () => {
@@ -1181,13 +1043,8 @@ const addSettingsObject = addTo;
     };
     const position = rowPosition(index);
     const { cx, y, right } = position;
-    addUi(addTo, scene.add.rectangle(cx, y, 502, 42, 0x050a12, index % 2 === 0 ? 0.42 : 0.26));
-    const rowFrame = addSystemSettingsRowFrame(scene, addTo, cx, y, 530, MIN_SUPPORTED_TOUCH_TARGET, {
-      alpha: restingRowFrameAlpha(index),
-    }, dependencies);
-    rowFrame?.setName(`system-settings-row-frame-${index}`);
-    rowFrames[index] = rowFrame;
-    const focusZone = addUi(addTo, scene.add.rectangle(cx, y, 530, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+    addUi(addTo, scene.add.rectangle(cx, y, 502, 42, 0x0b1723, index % 2 === 0 ? 0.42 : 0.26));
+    const focusZone = addUi(addTo, scene.add.rectangle(cx, y, 530, MIN_SUPPORTED_TOUCH_TARGET, 0x0b1723, 0.001)
       .setName(`system-settings-row-${index}-hit`)
       .setInteractive({ useHandCursor: kind !== 'slider' }));
     focusZone.on('pointerover', () => setFocus(index));
@@ -1251,7 +1108,7 @@ const addSettingsObject = addTo;
         fontFamily: UI_FONT,
         fontSize: '16px',
         fontStyle: UI_BOLD,
-        color: motion.reduced ? '#ffe7a8' : UI_FIELD.text,
+        color: motion.reduced ? '#e4ca93' : UI_FIELD.text,
         align: 'right',
       }).setOrigin(1, 0.5));
     } else if (kind === 'pace') {
@@ -1269,9 +1126,9 @@ const addSettingsObject = addTo;
     } else if (kind === 'animationPace') {
       const toggle = addSystemSettingsToggleFrame(scene, addTo, right - 144, y, 176, 42, {
         alpha: 0.7,
-        tint: animationPace === 'standard' ? undefined : 0xdffaff,
+        tint: animationPace === 'standard' ? undefined : 0x0b1723,
       }, dependencies);
-      const animationHit = addUi(addTo, scene.add.rectangle(right - 144, y, 276, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      const animationHit = addUi(addTo, scene.add.rectangle(right - 144, y, 276, MIN_SUPPORTED_TOUCH_TARGET, 0x0b1723, 0.001)
         .setName('system-settings-animation-pace-toggle-hit')
         .setInteractive({ useHandCursor: true }));
       animationHit.on('pointerdown', () => {
@@ -1279,7 +1136,7 @@ const addSettingsObject = addTo;
         setAnimationPace(adjacentValue(['relaxed', 'standard', 'fast'] as const, animationPacePreference, 1));
       });
       if (toggle) toggle.setName('system-settings-animation-pace-frame');
-      addUi(addTo, scene.add.text(right - 96, y, value, {
+      addUi(addTo, scene.add.text(right - 62, y, value, {
         fontFamily: UI_FONT,
         fontSize: '17px',
         fontStyle: UI_BOLD,
@@ -1291,7 +1148,7 @@ const addSettingsObject = addTo;
         setFocus(index);
         setContrast(adjacentValue(['standard', 'high'] as const, contrastPreference, 1));
       }, dependencies);
-      addUi(addTo, scene.add.text(right - 96, y, value, {
+      addUi(addTo, scene.add.text(right - 62, y, value, {
         fontFamily: UI_FONT,
         fontSize: '17px',
         fontStyle: UI_BOLD,
@@ -1307,7 +1164,7 @@ const addSettingsObject = addTo;
         fontFamily: UI_FONT,
         fontSize: '16px',
         fontStyle: UI_BOLD,
-        color: graphics.lean ? '#ffe7a8' : UI_FIELD.text,
+        color: graphics.lean ? '#e4ca93' : UI_FIELD.text,
         align: 'right',
       }).setOrigin(1, 0.5));
     } else {
@@ -1318,10 +1175,10 @@ const addSettingsObject = addTo;
           || (kind === 'colorCues' && colorCues.reinforced)
           || (kind === 'screenShake' && screenShake.enabled)
           || (kind === 'flashEffects' && flashEffects.reduced)
-          ? 0xdffaff
+          ? 0x0b1723
           : undefined,
       }, dependencies);
-      const valueText = addUi(addTo, scene.add.text(right - 96, y, value, {
+      const valueText = addUi(addTo, scene.add.text(right - (label === 'Audio' ? 96 : 62), y, value, {
         fontFamily: UI_FONT,
         fontSize: '17px',
         fontStyle: UI_BOLD,
@@ -1334,10 +1191,13 @@ const addSettingsObject = addTo;
       }
       if (kind === 'controls') controlsValueText = valueText;
     }
+    if (kind !== 'slider' && label !== 'Audio') addUi(addTo, scene.add.text(right - 28, y, '›', {
+      fontFamily: UI_FONT, fontSize: '20px', color: UI_CYAN,
+    }).setOrigin(0.5));
   });
 
   const initialFocusPosition = rowPosition(focusIndex);
-  focusRing = addUi(addTo, scene.add.rectangle(initialFocusPosition.cx, initialFocusPosition.y, 536, MIN_SUPPORTED_TOUCH_TARGET, 0x06151b, 0.04)
+  focusRing = addUi(addTo, scene.add.rectangle(initialFocusPosition.cx, initialFocusPosition.y, 536, MIN_SUPPORTED_TOUCH_TARGET, 0x86b1be, 0.04)
     .setStrokeStyle(2, UI_FIELD.cyan, 0.96)
     .setName('system-settings-focus-ring'));
   const audioPosition = rowPosition(0);
@@ -1351,7 +1211,7 @@ const addSettingsObject = addTo;
   sections.forEach((section, index) => {
     const x = frame.left + 226;
     const y = frame.top + 198 + index * 68;
-    const button = addUi(addTo, scene.add.rectangle(x, y, 280, MIN_SUPPORTED_TOUCH_TARGET, 0x08131e, 0.98)
+    const button = addUi(addTo, scene.add.rectangle(x, y, 280, MIN_SUPPORTED_TOUCH_TARGET, 0x0b1723, 0.98)
       .setInteractive({ useHandCursor: true })
       .setName(`system-settings-section-${index}-hit`)
       .setData('label', section.label));
@@ -1373,15 +1233,16 @@ const addSettingsObject = addTo;
     align: 'center', fixedWidth: 1000,
   }).setOrigin(0.5).setName('system-settings-navigation-hint'));
   setFocus(focusIndex);
-  dependencies.renderFieldButton(scene, addTo, frame.cx, frame.bottom - 72, 190, MIN_SUPPORTED_TOUCH_TARGET, scene.scale.isFullscreen ? 'Windowed' : 'Full Screen', true, () => {
+  renderQuietMenuButton(scene, addTo, frame.cx, frame.bottom - 72, 190, scene.scale.isFullscreen ? 'Windowed' : 'Full Screen', () => {
+    dependencies.playUiSound('confirm');
     options.onToggleFullscreen();
-  }, UI_FIELD.cyan);
+  });
 
   const controlsPageKey = controlPanelPageRegistryKey(scene);
   const controlsFocusKey = controlPanelFocusRegistryKey(scene);
   let controlsPanel: Phaser.GameObjects.Container | undefined;
   let controlsFocusRing: Phaser.GameObjects.Rectangle | undefined;
-  let controlsRowFrames: Array<Phaser.GameObjects.Image | undefined> = [];
+  let controlsRowFrames: Array<Phaser.GameObjects.Rectangle | undefined> = [];
   const restingControlsRowFrameAlpha = (index: number) => index % 2 === 0 ? 0.42 : 0.28;
   let controlsPage: ControlBindingPage = scene.registry.get(controlsPageKey) === 'utility' ? 'utility' : 'play';
   let controlsFocusIndex = Number(scene.registry.get(controlsFocusKey));
@@ -1477,46 +1338,33 @@ const addSettingsObject = addTo;
     controlsPanel = addUi(addTo, panel);
     controlsRowFrames = [];
     const addPanel: UiAdd = (object) => panel.add(object);
-    addUi(addPanel, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.97)
+    addUi(addPanel, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b1723, 1)
       .setInteractive({ useHandCursor: false })
       .setName('system-controls-modal-backdrop'));
-    const controlFrame = dependencies.renderFieldPanel(scene, addPanel, GAME_WIDTH / 2, GAME_HEIGHT / 2, 760, 660, {
-      accent: UI_FIELD.cyan,
-      fill: UI_FIELD.ink,
-    });
+    const controlFrame = renderQuietMenuPanel(scene, addPanel, 760, 660);
     panel.setData('frame', controlFrame);
-    addOverlayPanelFlourish(scene, addPanel, controlFrame, { alpha: 0.14, tint: 0xdffaff, yOffset: 2 }, dependencies);
-    addSystemMenuCommandFrame(scene, addPanel, controlFrame, { alpha: 0.24, yOffset: 1 }, dependencies);
-    const controlIcon = addIconImage(scene, 'settings-medallion', controlFrame.left + 104, controlFrame.top + 102, 50);
-    if (controlIcon) addUi(addPanel, controlIcon.setAlpha(0.96));
-    addSystemOverlayTitlePlaque(scene, addPanel, controlFrame.left + 390, controlFrame.top + 82, 500, 86, {
-      alpha: 0.5,
-      tint: 0xdffaff,
-    });
-    addUi(addPanel, scene.add.text(controlFrame.left + 190, controlFrame.top + 58, 'Controls', {
-      fontFamily: 'Georgia, serif',
+    addUi(addPanel, scene.add.text(controlFrame.left + 190, controlFrame.top + 38, 'Controls', {
+      fontFamily: UI_FONT,
       fontSize: '32px',
       fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      stroke: '#000000',
-      strokeThickness: 4,
+      color: UI_FIELD.text,
     }));
-    addUi(addPanel, scene.add.text(controlFrame.left + 192, controlFrame.top + 100, 'Keyboard bindings  /  Controller: Standard', {
+    addUi(addPanel, scene.add.text(controlFrame.left + 192, controlFrame.top + 80, 'Keyboard bindings  /  Controller: Standard', {
       fontFamily: UI_FONT,
       fontSize: '14px',
       fontStyle: UI_BOLD,
       color: UI_CYAN,
     }));
-    dependencies.renderCloseControl(scene, addPanel, controlFrame.right - 64, controlFrame.top + 52, () => closeControlsPanel());
+    renderQuietMenuButton(scene, addPanel, controlFrame.right - 64, controlFrame.top + 52, 104, 'Close', () => closeControlsPanel());
 
     (['play', 'utility'] as const).forEach((page, index) => {
       const x = controlFrame.cx - 96 + index * 192;
       const active = page === controlsPage;
       addSystemSettingsToggleFrame(scene, addPanel, x, controlFrame.top + 132, 174, 40, {
         alpha: active ? 0.84 : 0.5,
-        tint: active ? 0xdffaff : undefined,
+        tint: active ? 0x0b1723 : undefined,
       }, dependencies);
-      const hit = addUi(addPanel, scene.add.rectangle(x, controlFrame.top + 132, 180, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      const hit = addUi(addPanel, scene.add.rectangle(x, controlFrame.top + 132, 180, MIN_SUPPORTED_TOUCH_TARGET, 0x0b1723, 0.001)
         .setName(`system-controls-${page}-tab-hit`)
         .setInteractive({ useHandCursor: true }));
       hit.on('pointerdown', () => setControlsPage(page));
@@ -1531,13 +1379,13 @@ const addSettingsObject = addTo;
     const definitions = pageDefinitions();
     definitions.forEach((definition, index) => {
       const y = controlFrame.top + 200 + index * MIN_SUPPORTED_TOUCH_TARGET;
-      addUi(addPanel, scene.add.rectangle(controlFrame.cx, y, 548, 42, 0x050a12, index % 2 === 0 ? 0.42 : 0.26));
+      addUi(addPanel, scene.add.rectangle(controlFrame.cx, y, 548, 42, 0x0b1723, index % 2 === 0 ? 0.42 : 0.26));
       const rowFrame = addSystemSettingsRowFrame(scene, addPanel, controlFrame.cx, y, 566, MIN_SUPPORTED_TOUCH_TARGET, {
         alpha: restingControlsRowFrameAlpha(index),
       }, dependencies);
       rowFrame?.setName(`system-controls-row-frame-${index}`);
       controlsRowFrames[index] = rowFrame;
-      const hit = addUi(addPanel, scene.add.rectangle(controlFrame.cx, y, 566, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      const hit = addUi(addPanel, scene.add.rectangle(controlFrame.cx, y, 566, MIN_SUPPORTED_TOUCH_TARGET, 0x0b1723, 0.001)
         .setName(`system-controls-binding-${definition.action}-hit`)
         .setInteractive({ useHandCursor: true }));
       hit.on('pointerover', () => setControlsFocus(index, controlFrame));
@@ -1553,7 +1401,7 @@ const addSettingsObject = addTo;
       }).setOrigin(0, 0.5));
       addSystemSettingsToggleFrame(scene, addPanel, controlFrame.right - 164, y, 196, 40, {
         alpha: captureAction === definition.action ? 0.9 : 0.68,
-        tint: captureAction === definition.action ? 0xffefc4 : 0xdffaff,
+        tint: captureAction === definition.action ? 0xffefc4 : 0x0b1723,
       }, dependencies);
       addUi(addPanel, scene.add.text(controlFrame.right - 164, y, captureAction === definition.action ? 'Press a key' : controlBindingLabel(definition.action), {
         fontFamily: UI_FONT,
@@ -1573,9 +1421,9 @@ const addSettingsObject = addTo;
       wordWrap: { width: 520 },
     }).setOrigin(0.5));
 
-    dependencies.renderFieldButton(scene, addPanel, controlFrame.cx, controlFrame.bottom - 58, 190, 56, 'Reset Defaults', true, resetAllControls, UI_FIELD.cyan);
+    renderQuietMenuButton(scene, addPanel, controlFrame.cx, controlFrame.bottom - 58, 190, 'Reset Defaults', resetAllControls);
     const resetGeometry = controlsFocusGeometry(6, controlFrame);
-    const resetHit = addUi(addPanel, scene.add.rectangle(resetGeometry.x, resetGeometry.y, resetGeometry.width, resetGeometry.height, 0x020409, 0.001)
+    const resetHit = addUi(addPanel, scene.add.rectangle(resetGeometry.x, resetGeometry.y, resetGeometry.width, resetGeometry.height, 0x0b1723, 0.001)
       .setName('system-controls-reset-hit')
       .setInteractive({ useHandCursor: true }));
     resetHit.on('pointerover', () => setControlsFocus(6, controlFrame));
@@ -1585,7 +1433,7 @@ const addSettingsObject = addTo;
     });
 
     const geometry = controlsFocusGeometry(controlsFocusIndex, controlFrame);
-    controlsFocusRing = addUi(addPanel, scene.add.rectangle(geometry.x, geometry.y, geometry.width, geometry.height, 0x06151b, 0.04)
+    controlsFocusRing = addUi(addPanel, scene.add.rectangle(geometry.x, geometry.y, geometry.width, geometry.height, 0x86b1be, 0.04)
       .setStrokeStyle(2, UI_FIELD.cyan, 0.98)
       .setName('system-controls-focus-ring'));
     setControlsFocus(controlsFocusIndex, controlFrame);
@@ -1723,36 +1571,17 @@ export function renderHowToPlayOverlay(
   options: HowToPlayOverlayOptions,
   dependencies: SystemOverlayDependencies,
 ) {
-  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.93)
+  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b1723, 1)
     .setInteractive({ useHandCursor: false }));
-  const frame = dependencies.renderFieldPanel(scene, addTo, GAME_WIDTH / 2, GAME_HEIGHT / 2, 1060, 620, {
-    accent: UI_FIELD.brass,
-    fill: UI_FIELD.ink,
-  });
-  addOverlayPanelFlourish(scene, addTo, frame, { alpha: 0.18, yOffset: 2 }, dependencies);
-  addHowToPlayGuideFrame(scene, addTo, frame, dependencies);
-  const icon = addIconImage(scene, 'help-medallion', frame.left + 106, frame.top + 92, 50);
-  if (icon) addUi(addTo, icon.setAlpha(0.96));
-  addSystemOverlayTitlePlaque(scene, addTo, frame.left + 390, frame.top + 82, 500, 92, {
-    alpha: 0.52,
-    tint: 0xffefc4,
-  });
-  addUi(addTo, scene.add.text(frame.left + 188, frame.top + 58, 'How to Play', {
-    fontFamily: 'Georgia, serif',
-    fontSize: '34px',
-    fontStyle: UI_BOLD,
-    color: UI_GOLD,
-    stroke: '#000000',
-    strokeThickness: 4,
-  }));
-  addUi(addTo, scene.add.text(frame.left + 190, frame.top + 104, 'Build a flock, learn its combinations, and adapt your next choice. No single build is required.', {
-    fontFamily: UI_FONT,
-    fontSize: '16px',
-    fontStyle: UI_BOLD,
-    color: UI_CYAN,
-    wordWrap: { width: 740 },
-  }).setName('how-to-play-readable'));
-  dependencies.renderCloseControl(scene, addTo, frame.right - 68, frame.top + 58, options.onClose);
+  const frame = renderQuietMenuPanel(scene, addTo, 1160, 660);
+  addUi(addTo, scene.add.text(168, 98, 'How to Play', {
+    fontFamily: 'Georgia, serif', fontSize: '40px', color: UI_FIELD.text,
+  }).setResolution(2));
+  addUi(addTo, scene.add.text(170, 158, 'Build a flock. Find your rhythm. Make every choice count.', {
+    fontFamily: UI_FONT, fontSize: '17px', color: UI_SOFT,
+  }).setResolution(2).setName('how-to-play-readable'));
+  renderQuietMenuButton(scene, addTo, frame.right - 66, 88, 104, 'Close',
+    () => { dependencies.playUiSound('close'); options.onClose(); });
 
   const cards = [
     {
@@ -1795,23 +1624,19 @@ export function renderHowToPlayOverlay(
   cards.forEach((card, index) => {
     const column = index % 3;
     const row = Math.floor(index / 3);
-    const x = frame.left + 184 + column * 346;
-    const y = frame.top + 230 + row * 158;
-    addHowToPlayTopicCardFrame(scene, addTo, x, y, 316, 140, card.accent, dependencies);
-    addUi(addTo, scene.add.rectangle(x, y, 304, 128, 0x06111b, 0.96)
-      .setStrokeStyle(1, card.accent, 0.5).setName('how-to-play-topic-panel'));
-    const cardIcon = addIconImage(scene, card.icon, x - 130, y - 43, 24);
-    if (cardIcon) addUi(addTo, cardIcon.setDisplaySize(24, 24).setAlpha(0.92).setName('how-to-play-topic-icon'));
-    addUi(addTo, scene.add.text(x - 110, y - 53, card.title, {
+    const x = frame.left + 250 + column * 340;
+    const y = frame.top + 254 + row * 164;
+    addUi(addTo, scene.add.rectangle(x, y - 66, 272, 1, 0x334954).setName('how-to-play-topic-rule'));
+    addUi(addTo, scene.add.text(x - 136, y - 48, card.title, {
       fontFamily: UI_FONT,
       fontSize: '17px',
       fontStyle: UI_BOLD,
       color: UI_FIELD.warm,
     }).setResolution(2).setName('how-to-play-readable'));
-    addUi(addTo, scene.add.text(x - 136, y - 22, card.body, {
+    addUi(addTo, scene.add.text(x - 136, y - 14, card.body, {
       fontFamily: UI_FONT,
       fontSize: '16px',
-      color: '#e6eef5',
+      color: '#c5d1d8',
       lineSpacing: 2,
       wordWrap: { width: 272 },
     }).setResolution(2).setName('how-to-play-readable'));
@@ -1822,23 +1647,12 @@ export function renderHowToPlayOverlay(
       'Quick keys',
       `${controlBindingLabel('roost')} Roost  |  ${controlBindingLabel('confirm')} Confirm  |  1-9 Cards  |  ${controlBindingLabel('skipReward')} Skip  |  ${controlBindingLabel('mute')} Mute`,
     ],
-    ['Your pace', 'Inspect before committing. Skip or replay the guide whenever you like.'],
+    ['Waymarks', `In combat: Shift+${controlBindingLabel('skipReward')} or controller RT opens your artifacts. Reading never spends a turn.`],
   ];
   tips.forEach(([label, value], index) => {
-    const y = frame.bottom - 125 + index * 32;
+    const y = frame.bottom - 116 + index * 30;
     const accent = index % 2 === 0 ? UI_FIELD.cyan : UI_FIELD.brass;
     const textAccent = index % 2 === 0 ? UI_CYAN : UI_GOLD;
-    addHowToPlayTipRowFrame(
-      scene,
-      addTo,
-      frame.cx,
-      y,
-      968,
-      28,
-      index % 2 === 0 ? 0.34 : 0.24,
-      accent,
-    );
-    addUi(addTo, scene.add.rectangle(frame.cx, y, 940, 28, 0x050a12, 0.94));
     addUi(addTo, scene.add.text(frame.cx - 458, y, label.toUpperCase(), {
       fontFamily: UI_FONT,
       fontSize: '14px',
@@ -1857,5 +1671,5 @@ export function renderHowToPlayOverlay(
   });
 
   const guideLabel = options.guide.enabled && !options.guide.completed ? 'Skip Guide' : 'Replay Guide';
-  dependencies.renderFieldButton(scene, addTo, frame.cx, frame.bottom - 42, 190, 56, guideLabel, true, options.onGuideAction, UI_FIELD.cyan);
+  renderQuietMenuButton(scene, addTo, frame.cx, frame.bottom - 42, 190, guideLabel, options.onGuideAction);
 }

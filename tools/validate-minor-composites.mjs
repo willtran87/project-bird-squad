@@ -4,6 +4,8 @@ import zlib from 'node:zlib';
 
 const root = process.cwd();
 const args = process.argv.slice(2);
+const selectedId = args.find(arg => arg.startsWith('--card-id='))?.slice('--card-id='.length);
+let checked = 0;
 const targetRootArg = args.find((arg) => !arg.startsWith('--')) ?? '.generated/imagegen/tarot/minor-arcana-border-first-runs/latest';
 const sourceRootArg = args.find((arg) => arg.startsWith('--source-root='))?.split('=')[1];
 const targetRoot = path.resolve(root, targetRootArg);
@@ -190,7 +192,8 @@ if (!fs.existsSync(targetRoot)) {
 
   for (const suit of suitFiles) {
     const data = readJson(suit.file);
-    const cards = data.cards;
+    const cards = selectedId ? data.cards.filter(card => card.id === selectedId) : data.cards;
+    if (cards.length === 0) continue;
     expectedTotal += cards.length;
 
     const suitDir = path.join(targetRoot, suit.key);
@@ -212,6 +215,7 @@ if (!fs.existsSync(targetRoot)) {
         fail(`${path.relative(root, compositePath)}: missing final composite`);
         continue;
       }
+      checked += 1;
 
       const size = pngSize(compositePath);
       if (size.width !== 1024 || size.height !== 1536) {
@@ -270,6 +274,7 @@ if (!fs.existsSync(targetRoot)) {
   if (allPngs.length !== expectedTotal) {
     fail(`${path.relative(root, targetRoot)}: expected ${expectedTotal} total composite PNGs, found ${allPngs.length}`);
   }
+  if (selectedId && expectedTotal !== 1) fail(`Unknown Minor Arcana card id: ${selectedId}`);
 
   for (const pngPath of allPngs) {
     const cardId = path.basename(pngPath, '.png');
@@ -288,4 +293,4 @@ if (errors.length > 0) {
 }
 
 console.log('Minor Arcana composite validation passed.');
-console.log(`Checked 56 final composite PNGs in ${path.relative(root, targetRoot)}.`);
+console.log(`Checked ${checked} final composite PNGs in ${path.relative(root, targetRoot)}.`);

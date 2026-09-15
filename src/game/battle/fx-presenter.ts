@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+export { presentTriggerFeedback } from './trigger-feedback';
+export { presentNumberFeedback, type NumberFeedback } from './number-feedback';
 
 export type BattleFxParticleQuality = {
   lean: boolean;
@@ -101,11 +103,14 @@ export function presentBattleFxMoteBurst(
     reserve: count,
   });
   host.setActiveParticleBursts(host.activeParticleBursts + 1);
-  emitter.setDepth(layer.depth + 1);
-  scene.children.bringToTop(emitter);
+  // Own particles with the encounter FX tree, behind result labels. Scene-level
+  // emitters used to escape overlay ordering and survive explicit FX cleanup.
+  layer.add(emitter);
+  layer.sendToBack(emitter);
   emitter.explode(count);
-  scene.time.delayedCall(lifespan + 120, () => {
-    if (emitter.active) emitter.destroy();
+  const retirement = scene.time.delayedCall(lifespan + 120, () => emitter.destroy());
+  emitter.once(Phaser.GameObjects.Events.DESTROY, () => {
+    retirement.remove(false);
     host.setActiveParticleBursts(Math.max(0, host.activeParticleBursts - 1));
   });
 }

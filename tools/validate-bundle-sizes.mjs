@@ -19,6 +19,7 @@ const budgets = [
   { label: 'battle foreground renderer lazy module', pattern: /^render-foreground-.*\.js$/, maxKb: 8, hard: true },
   { label: 'battle HUD renderer lazy module', pattern: /^render-hud-.*\.js$/, maxKb: 10, hard: true },
   { label: 'battle hand renderer lazy module', pattern: /^render-hand-.*\.js$/, maxKb: 10, hard: true },
+  { label: 'combat card reading panel', pattern: /^combat-card-detail-.*\.js$/, maxKb: 4, hard: true },
   { label: 'discard choice lazy module', pattern: /^discard-choice-.*\.js$/, maxKb: 6, hard: true },
   { label: 'discard return choice lazy module', pattern: /^return-choice-.*\.js$/, maxKb: 6, hard: true },
   { label: 'battle inspect renderer lazy module', pattern: /^render-inspect-.*\.js$/, maxKb: 12, hard: true },

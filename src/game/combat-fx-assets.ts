@@ -255,7 +255,8 @@ export function presentEnemyCommitmentSeal(host: any, enemy: any, move: any, flo
   const x = Phaser.Math.Linear(view.x, flockX, 0.38);
   const y = Phaser.Math.Linear(view.y, flockY, 0.34) - 26 * view.scale;
   const size = (enemy.runtime.type === 'boss' ? 226 : 178) * view.scale * Phaser.Math.Clamp(0.94 + damage * 0.018, 0.98, 1.12);
-  const holdMs = host.combatTimingDelay(ENEMY_ATTACK_RELEASE_MS + ENEMY_ATTACK_IMPACT_ANTICIPATION_MS + ENEMY_ATTACK_IMPACT_HOLD_MS, host.enemyMoveTimingScale(enemy, move));
+  const timing = enemyMoveTimings(host, enemy, move);
+  const holdMs = timing.release + timing.anticipation + timing.impact;
   host.combatEnemyCommitmentSealBursts += 1;
   birdAudio.play('enemyCommitment', Phaser.Math.Clamp(0.76 + damage * 0.045, 0.84, 1.28));
 
@@ -629,6 +630,21 @@ const ENEMY_ATTACK_IMPACT_HOLD_MS = 1350;
 const ENEMY_ATTACK_RECOVER_MS = 1450;
 const ENEMY_ATTACK_INTERLUDE_MS = 120;
 
+// Spend reading time on the tell, not on a slow travelling strike and a second
+// pause before damage. Keep Cinematic's authored choreography unchanged.
+export function enemyMoveTimings(host: any, enemy: any, move: any) {
+  const scale = host.enemyMoveTimingScale(enemy, move);
+  const cinematic = scale === 1;
+  const delay = (normal: number, film: number) => host.combatTimingDelay(cinematic ? film : normal, scale);
+  return {
+    windup: delay(1800, ENEMY_ATTACK_WINDUP_MS),
+    release: delay(550, ENEMY_ATTACK_RELEASE_MS),
+    anticipation: delay(0, ENEMY_ATTACK_IMPACT_ANTICIPATION_MS),
+    impact: delay(650, ENEMY_ATTACK_IMPACT_HOLD_MS),
+    recovery: delay(240, ENEMY_ATTACK_RECOVER_MS),
+  };
+}
+
 export function resolveEnemyTurnAnimated(
   host: any,
   getCurrentMove: (enemy: any) => any,
@@ -680,11 +696,8 @@ export function resolveEnemyTurnAnimated(
     const move = getCurrentMove(enemy);
     const moveTimingScale = host.enemyMoveTimingScale(enemy, move);
     const canHustle = moveTimingScale < 1 && host.runSeenEnemyMoves.has(host.enemyMovePacingKey(enemy, move));
-    const windupDelay = host.combatTimingDelay(ENEMY_ATTACK_WINDUP_MS, moveTimingScale);
-    const releaseDelay = host.combatTimingDelay(ENEMY_ATTACK_RELEASE_MS, moveTimingScale);
-    const anticipationDelay = host.combatTimingDelay(ENEMY_ATTACK_IMPACT_ANTICIPATION_MS, moveTimingScale);
-    const impactHoldDelay = host.combatTimingDelay(ENEMY_ATTACK_IMPACT_HOLD_MS, moveTimingScale);
-    const recoveryDelay = host.combatTimingDelay(ENEMY_ATTACK_RECOVER_MS, moveTimingScale);
+    const { windup: windupDelay, release: releaseDelay, anticipation: anticipationDelay,
+      impact: impactHoldDelay, recovery: recoveryDelay } = enemyMoveTimings(host, enemy, move);
     setBeat('windup', move.label, windupDelay, canHustle);
     host.queueEnemyMotion(enemy.id, 'windup');
     host.playQueuedEnemyMotion(enemy.id);
@@ -704,10 +717,10 @@ export function resolveEnemyTurnAnimated(
         if (host.mode !== 'battle') return abort();
         setBeat('impact', move.label, anticipationDelay + impactHoldDelay);
         host.refreshBeatProgressBadge();
-        schedule(anticipationDelay, () => {
+        const impact = () => {
           if (host.mode !== 'battle') return abort();
           for (const effect of move.effects) {
-            if (host.flock.hp <= 0) break;
+            if (enemy.hp <= 0 || host.flock.hp <= 0) break;
             host.resolveEnemyEffect(enemy, effect, move.label);
           }
           if (dealsDamage(move)) host.enemyMotionCues.delete(enemy.id);
@@ -716,6 +729,9 @@ export function resolveEnemyTurnAnimated(
           host.renderAll();
           schedule(impactHoldDelay, () => {
             if (host.mode !== 'battle') return abort();
+            // Preserve the readable counterstrike impact, then hand off without
+            // a recovery animation or interlude for an already defeated actor.
+            if (enemy.hp <= 0) return step();
             setBeat('recovery', move.label, recoveryDelay, canHustle);
             host.refreshBeatProgressBadge();
             host.enemyAttackRecoveryAfterglowFx(enemy, move);
@@ -730,7 +746,9 @@ export function resolveEnemyTurnAnimated(
               step();
             });
           });
-        });
+        };
+        if (anticipationDelay > 0) schedule(anticipationDelay, impact);
+        else impact();
       });
     });
   };

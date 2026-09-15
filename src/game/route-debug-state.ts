@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
+import { formatEffects } from '../main';
+import { cardPickerDeckImpact } from './reward-card-inspection';
 import { memoryStorageSessionActive } from './safe-storage';
+import { eventChoiceState } from './route-event-reading';
 
 export type RouteDebugStateDependencies = Record<string, any>;
 
@@ -41,7 +44,9 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
   } = dependencies;
 
   const iconState = (id: string) => {
-    const key = uiIconAssets[id].key;
+    // Retired decorative assets remain in the snapshot contract, not the load queue.
+    const key = uiIconAssets[id]?.key;
+    if (!key) return { loaded: false, rendered: false, count: 0 };
     const count = countTextureInGameObjects(scene.children.list, key);
     return { loaded: scene.textures.exists(key), rendered: count > 0, count };
   };
@@ -177,11 +182,10 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
           rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['route-map-frame'].key) > 0,
           count: countTextureInGameObjects(scene.children.list, uiIconAssets['route-map-frame'].key)
         },
-        routeNodeTooltipFrame: {
-          loaded: scene.textures.exists(uiIconAssets['route-node-tooltip-frame'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['route-node-tooltip-frame'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['route-node-tooltip-frame'].key)
-        },
+        routeNodeTooltipFrame: (() => {
+          const count = scene.children.list.filter((child: any) => child.name === 'route-node-tooltip').length;
+          return { loaded: true, rendered: count > 0, count };
+        })(),
         routeRiskMeterFrame: {
           loaded: scene.textures.exists(uiIconAssets['route-risk-meter-frame'].key),
           rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['route-risk-meter-frame'].key) > 0,
@@ -232,7 +236,8 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
                 focusVisible: scene.children.list.some((child: any) => child.name === 'card-picker-input-focus-ring'),
                 inspectTargets: scene.children.list.filter((child: any) => child.name === 'card-picker-card-inspect-hit').length,
                 inspectionOpen: Boolean(scene.cardPickerInspectionOpen),
-                deckImpact: scene.cardPickerInspectionOpen && focused ? scene.cardPickerDeckImpact(focused.index) : undefined,
+                reading: scene.cardPickerInspectionOpen ? scene.cardHoverDetailRequest?.inspectionRules : undefined,
+                deckImpact: scene.cardPickerInspectionOpen && focused ? cardPickerDeckImpact(scene, focused.index) : undefined,
                 returnIndex: index,
                 decisionPreserved: true,
                 controls: {
@@ -249,19 +254,11 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
         cardPickerScrollButtonFrame: iconState('card-picker-scroll-button-frame'),
         cardPickerCostBadge: iconState('card-picker-cost-badge'),
         cardPickerPageIndicatorFrame: iconState('card-picker-page-indicator-frame'),
-        cardPickerNameplateFrame: {
-          loaded: scene.textures.exists(uiIconAssets['card-picker-nameplate-frame'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['card-picker-nameplate-frame'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['card-picker-nameplate-frame'].key)
-        },
-        cardPickerContextPlaque: {
-          loaded: scene.textures.exists(uiIconAssets['card-picker-context-plaque'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['card-picker-context-plaque'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['card-picker-context-plaque'].key)
-        },
+        cardPickerNameplateFrame: iconState('card-picker-nameplate-frame'),
+        cardPickerContextPlaque: iconState('card-picker-context-plaque'),
         cardPickerDecisionDeltas: scene.children.list
-          .filter((child: any): child is Phaser.GameObjects.Text => child instanceof Phaser.GameObjects.Text && child.name === 'card-picker-decision-delta')
-          .map((child: Phaser.GameObjects.Text) => child.text),
+          .filter((child: any) => child.name === 'card-picker-card-hit')
+          .map((child: any) => child.getData('decisionDelta')),
         marketEnamelCommandFrame: {
           loaded: scene.textures.exists(uiIconAssets['market-enamel-command-frame'].key),
           rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['market-enamel-command-frame'].key) > 0,
@@ -360,12 +357,14 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
           query: scene.deckReviewQuery,
           searchActive: scene.deckReviewSearchActive,
           selectedCardId: selectedDeckEntry?.card.id ?? '',
+          reading: scene.children.getByName('deck-review-detail-panel')?.getData('reading'),
           scroll: scene.cardReviewScroll,
           comparison: deckComparison
             ? {
                 active: deckComparison.active,
                 mode: deckComparison.mode,
                 summary: deckComparison.summary,
+                reading: scene.children.getByName('deck-review-comparison-panel')?.getData('reading'),
                 renderer: {
                   requested: Boolean(scene.cardComparisonModule || scene.cardComparisonLoading || scene.cardComparisonFailed),
                   loaded: Boolean(scene.cardComparisonModule),
@@ -462,11 +461,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
           rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-scroll-button-frame'].key) > 0,
           count: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-scroll-button-frame'].key)
         },
-        deckReviewRowFrame: {
-          loaded: scene.textures.exists(uiIconAssets['deck-review-row-frame'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-row-frame'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-row-frame'].key)
-        },
+        deckReviewRowFrame: iconState('deck-review-row-frame'),
         deckReviewPageIndicatorFrame: {
           loaded: scene.textures.exists(uiIconAssets['deck-review-page-indicator-frame'].key),
           rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-page-indicator-frame'].key) > 0,
@@ -477,21 +472,13 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
           rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-title-plaque'].key) > 0,
           count: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-title-plaque'].key)
         },
-        deckReviewDetailFrame: {
-          loaded: scene.textures.exists(uiIconAssets['deck-review-detail-frame'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-detail-frame'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-detail-frame'].key)
-        },
+        deckReviewDetailFrame: iconState('deck-review-detail-frame'),
         deckReviewCostBadge: {
           loaded: scene.textures.exists(uiIconAssets['deck-review-cost-badge'].key),
           rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-cost-badge'].key) > 0,
           count: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-cost-badge'].key)
         },
-        deckReviewMetaChipFrame: {
-          loaded: scene.textures.exists(uiIconAssets['deck-review-meta-chip-frame'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-meta-chip-frame'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-meta-chip-frame'].key)
-        },
+        deckReviewMetaChipFrame: iconState('deck-review-meta-chip-frame'),
         deckReviewSectionTabFrame: {
           loaded: scene.textures.exists(uiIconAssets['deck-review-section-tab-frame'].key),
           rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-section-tab-frame'].key) > 0,
@@ -513,7 +500,8 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
           count: countTextureInGameObjects(scene.marketItemHover?.list ?? [], uiIconAssets['market-detail-dossier-frame'].key)
         },
         waymarkDrawerOpen: scene.waymarkDrawerOpen,
-        waymarkReview: {
+          waymarkReview: {
+            reading: scene.children.getByName('route-waymark-review-panel')?.getData('reading'),
           open: scene.waymarkDrawerOpen,
           count: ownedWaymarks.length,
           selectedIndex: selectedWaymark
@@ -530,7 +518,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
           },
           controls: {
             select: 'Arrow keys / Tab / pointer',
-            pin: 'C',
+              pin: controlBindingLabel('roost'),
             pinController: 'X',
             close: controlBindingLabel('back'),
           },
@@ -548,7 +536,8 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
                   id: supply.id,
                   name: supply.name,
                   description: supply.description,
-                  summary: compactEffectGrammar(supply.effects, 96, 3),
+                    summary: compactEffectGrammar(supply.effects, 96, 3),
+                    rules: formatEffects(supply.effects),
                   timing: supply.timing,
                   usable: supply.timing !== 'combat',
                 }
@@ -596,7 +585,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
               unavailableOffers: scene.cardHoverDetailModule?.marketUnavailableOffers(scene) ?? [],
               decisionPreview: [...scene.marketDecisionPreview],
               previewCard: scene.cardHoverDetailRequest?.marketCardId ? scene.cardHoverDetailRequest.name : undefined,
-              rules: scene.cardHoverDetailRequest?.marketRules,
+              rules: scene.cardHoverDetailRequest?.marketRules ?? scene.marketItemHover?.getData('reading'),
               message: scene.marketMessage,
               input: (() => {
                 const targets = scene.children.list.filter((child: any) => (
@@ -610,6 +599,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
                   label: focused?.getData('label') ?? '',
                   index: focused ? targets.indexOf(focused) : -1,
                   count: targets.length,
+                  available: !!focused && focused.getData('marketAvailable') !== false,
                   armed: !!focused && scene.marketFocusArmedId === focused.getData('marketFocusId'),
                   observations: scene.marketBuildObservations,
                   focusVisible: scene.children.list.some((child: any) => (
@@ -638,6 +628,9 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
         nodeChoice: scene.nodeChoiceOpen && choiceNode
           ? {
               nodeId: choiceNode.id,
+              focus: { ...eventChoiceState(scene) },
+              choices: scene.eventChoices().map((choice: any) => ({ ...choice,
+                summary: scene.eventChoiceSections(choice)[0]?.text })),
               type: choiceNode.type,
               backdropAssetKey: choiceBackdrop?.key ?? '',
               titlePlaque: scene.routeEventTitlePlaqueState(),
@@ -661,6 +654,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
               ...rewardChoices,
               inspection: {
                 open: Boolean(scene.routeRewardInspectionCardId),
+                reading: scene.routeRewardInspectionCardId ? scene.cardHoverDetailRequest?.inspectionRules : undefined,
                 cardId: scene.routeRewardInspectionCardId,
                 cardName: scene.routeRewardInspectionCardId
                   ? scene.routeCardRewardChoices.find((card: any) => card.id === scene.routeRewardInspectionCardId)?.name

@@ -16,6 +16,22 @@ export const TEAL = 0x45cfd8;
 // 44 CSS px touch-target floor at that boundary.
 export const MIN_SUPPORTED_TOUCH_TARGET = 58;
 
+// Decision surfaces share a quiet shell and fixed readable text sizes. Long
+// content is paged, never scaled down to fit. Adopt these tokens incrementally.
+export const DECISION_UI = {
+  surface: 0x0b151f,
+  raised: 0x152b36,
+  border: 0x496471,
+  text: '#edf2f5',
+  secondary: '#b6c8d2',
+  accent: 0x77d9df,
+  titleSize: 26,
+  bodySize: 22,
+  labelSize: 16,
+  resolution: 2,
+  inset: 28,
+} as const;
+
 // Text colors (CSS hex strings).
 export const TEXT = '#e0ddd8';
 export const TEXT_DIM = '#8a9298';

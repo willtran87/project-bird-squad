@@ -1,268 +1,208 @@
 import Phaser from 'phaser';
-import {
-  addRouteWaymarkScrollRailFrame,
-  addRunKitDrawerFlourish,
-  addUiIconImage,
-  HUD_MENU_PANEL,
-  renderCloseControl,
-  renderCompactItemTile,
-  renderFieldPanel,
-  UI_FIELD,
-  UI_MUTED as SHARED_UI_MUTED,
-} from '../main';
-
-const UI_FONT = 'Arial';
-const UI_BOLD = 'bold';
-const UI_GOLD = '#ffe1a3';
-const UI_BODY = '#dce8f2';
-const UI_MUTED = '#91a6b8';
-const UI_CYAN = '#8df4ff';
+import { addRouteWaymarkScrollRailFrame, addRunKitDrawerFlourish, addUiIconImage,
+  controlBindingLabel, HUD_MENU_PANEL, playUiSound, renderCloseControl, renderFieldPanel, UI_FIELD } from '../main';
+import { decisionButton, decisionExcerpt, decisionText } from './decision-surface';
 
 export interface SceneWaymarkReviewEntry {
-  id: string;
-  name: string;
-  meta: string;
-  trigger: string;
-  description: string;
-  effects: string[];
-  tags: string[];
-  accent: number;
-  artKey?: string;
-  flavorText: string;
-  glyph: string;
-  tileMeta: string;
-  summary: string;
+  id: string; name: string; meta: string; trigger: string; description: string;
+  effects: string[]; tags: string[]; accent: number; artKey?: string;
+  flavorText: string; glyph: string; tileMeta: string; summary: string;
+  family?: string; rarity?: string; source?: string; grammar?: string[];
 }
-
 export interface SceneWaymarkReviewView {
-  selected: SceneWaymarkReviewEntry;
-  pinned?: SceneWaymarkReviewEntry;
-  onPin: () => void;
+  selected: SceneWaymarkReviewEntry; pinned?: SceneWaymarkReviewEntry; onPin: () => void;
+}
+export interface SceneWaymarkDrawerView extends Omit<SceneWaymarkReviewView, 'selected'> {
+  entries: SceneWaymarkReviewEntry[]; selected?: SceneWaymarkReviewEntry; scrollRow: number;
+  onClose: () => void; onSelect: (id: string) => void;
 }
 
-export interface SceneWaymarkDrawerView {
-  entries: SceneWaymarkReviewEntry[];
-  selected?: SceneWaymarkReviewEntry;
-  pinned?: SceneWaymarkReviewEntry;
-  scrollRow: number;
-  onClose: () => void;
-  onSelect: (id: string) => void;
-  onPin: () => void;
-}
+type Reading = { page: number; total: number; headings: string[]; bodies: string[] };
+const positions = new WeakMap<Phaser.Scene, { key: string; page: number }>();
+const blocked = (scene: any) => !scene.waymarkDrawerOpen || scene.pauseOverlayOpen || scene.settingsOverlayOpen;
+const readerPanel = (scene: any) => scene.root?.getByName('route-waymark-review-panel')
+  ?? scene.children.getByName('route-waymark-review-panel');
+const text = (scene: Phaser.Scene, x: number, y: number, value: string, width: number, size = 18, color = '#dce8f2') =>
+  decisionText(scene, x, y, value, width, size, color);
 
-function addText(
-  scene: Phaser.Scene,
-  x: number,
-  y: number,
-  value: string,
-  size: string,
-  color: string,
-  width: number,
-  options: { bold?: boolean; lines?: number; align?: 'left' | 'center' } = {},
-) {
-  return scene.add.text(x, y, value, {
-    fontFamily: UI_FONT,
-    fontSize: size,
-    fontStyle: options.bold ? UI_BOLD : 'normal',
-    color,
-    fixedWidth: width,
-    align: options.align ?? 'left',
-    wordWrap: { width },
-    maxLines: options.lines,
-    lineSpacing: 1,
-  }).setResolution(2);
-}
-
-function renderArt(scene: Phaser.Scene, entry: SceneWaymarkReviewEntry, x: number, y: number, size: number) {
-  scene.add.rectangle(x, y, size, size, 0x06101a, 0.96)
-    .setStrokeStyle(2, entry.accent, 0.86);
+function art(scene: Phaser.Scene, entry: SceneWaymarkReviewEntry, x: number, y: number, size: number) {
   if (entry.artKey && scene.textures.exists(entry.artKey)) {
     scene.textures.get(entry.artKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    scene.add.image(x, y, entry.artKey)
-      .setDisplaySize(size - 10, size - 10)
-      .setName('route-waymark-review-art');
-  } else {
-    addText(scene, x - size / 2 + 8, y - 8, 'WAYMARK', '9px', UI_MUTED, size - 16, {
-      bold: true,
-      align: 'center',
-    });
-  }
+    scene.add.image(x, y, entry.artKey).setDisplaySize(size, size).setName('route-waymark-review-art');
+  } else text(scene, x, y, entry.glyph, size, 22, '#ffe1a3').setOrigin(0.5);
 }
 
-function renderPinControl(scene: Phaser.Scene, view: SceneWaymarkReviewView) {
-  const selectedPinned = view.pinned?.id === view.selected.id;
-  const hit = scene.add.rectangle(1076, 414, 112, 58, 0x09131f, 0.96)
-    .setStrokeStyle(1.5, selectedPinned ? 0xff9de8 : 0x8df4ff, 0.9)
-    .setInteractive({ useHandCursor: true })
-    .setName('route-waymark-pin-hit');
-  addText(scene, 1020, 405, selectedPinned ? 'UNPIN  C' : 'PIN  C', '11px', selectedPinned ? '#ffc9f5' : UI_CYAN, 112, {
-    bold: true,
-    align: 'center',
-  });
-  hit.on('pointerdown', view.onPin);
+export function changeWaymarkPage(scene: Phaser.Scene, delta: number) {
+  if (blocked(scene)) return;
+  readerPanel(scene)?.getData('turnRulesPage')?.(delta);
 }
 
-function renderEffectRows(
-  scene: Phaser.Scene,
-  entry: SceneWaymarkReviewEntry,
-  x: number,
-  y: number,
-  width: number,
-  maxRows = 4,
-) {
-  entry.effects.slice(0, maxRows).forEach((effect, index) => {
-    const rowY = y + index * 24;
-    scene.add.circle(x + 11, rowY + 9, 9, entry.accent, 0.22)
-      .setStrokeStyle(1, entry.accent, 0.72);
-    addText(scene, x + 3, rowY + 3, `${index + 1}`, '9px', '#f7fbff', 16, {
-      bold: true,
-      align: 'center',
-    }).setName('route-waymark-effect-order');
-    addText(scene, x + 27, rowY + 1, effect, '11px', UI_BODY, width - 27, {
-      lines: 2,
-    });
-  });
-}
-
-function renderTagLine(scene: Phaser.Scene, entry: SceneWaymarkReviewEntry, x: number, y: number, width: number) {
-  addText(scene, x, y, entry.tags.length ? entry.tags.map((tag) => tag.toUpperCase()).join('  /  ') : 'GENERAL', '9px', UI_CYAN, width, {
-    bold: true,
-    lines: 1,
-  });
-}
-
-function renderSingle(scene: Phaser.Scene, entry: SceneWaymarkReviewEntry, pinned: boolean) {
-  renderArt(scene, entry, 194, 502, 112);
-  addText(scene, 268, 401, entry.name, '21px', UI_GOLD, 500, { bold: true, lines: 1 });
-  addText(scene, 268, 430, entry.meta, '10px', UI_CYAN, 500, { bold: true, lines: 1 });
-  addText(scene, 268, 453, entry.description, '12px', UI_BODY, 430, { lines: 4 });
-  addText(scene, 268, 548, entry.flavorText, '10px', '#a8b7c8', 430, { lines: 2 });
-  addText(scene, 724, 407, 'TRIGGER', '9px', UI_MUTED, 294, { bold: true });
-  addText(scene, 724, 425, entry.trigger, '12px', '#fff0cf', 294, { bold: true, lines: 2 });
-  addText(scene, 724, 470, 'EFFECT ORDER', '9px', UI_MUTED, 294, { bold: true });
-  renderEffectRows(scene, entry, 724, 488, 322);
-  renderTagLine(scene, entry, 724, 588, 322);
-  addText(scene, 268, 588, pinned ? 'PINNED — choose another Waymark to compare.' : 'Select a Waymark above. Pin it to compare.', '10px', pinned ? '#ffc9f5' : UI_MUTED, 430, {
-    bold: pinned,
-    lines: 1,
-  });
-}
-
-function renderComparisonColumn(
-  scene: Phaser.Scene,
-  entry: SceneWaymarkReviewEntry,
-  left: number,
-  heading: string,
-  headingColor: string,
-) {
-  const width = 422;
-  addText(scene, left, 397, heading, '9px', headingColor, width, {
-    bold: true,
-    align: 'center',
-  });
-  renderArt(scene, entry, left + 38, 445, 64);
-  addText(scene, left + 80, 414, entry.name, '16px', UI_GOLD, width - 86, { bold: true, lines: 1 });
-  addText(scene, left + 80, 438, entry.meta, '9px', UI_CYAN, width - 86, { bold: true, lines: 1 });
-  addText(scene, left, 482, 'TRIGGER', '9px', UI_MUTED, width, { bold: true });
-  addText(scene, left, 498, entry.trigger, '11px', '#fff0cf', width, { bold: true, lines: 2 });
-  addText(scene, left, 532, 'EFFECT ORDER', '9px', UI_MUTED, width, { bold: true });
-  renderEffectRows(scene, entry, left, 548, width, 3);
-  renderTagLine(scene, entry, left, 616, width);
+export function handleWaymarkWheel(scene: Phaser.Scene, pointer: Phaser.Input.Pointer, delta: number) {
+  const panel = readerPanel(scene) as Phaser.GameObjects.Rectangle | null;
+  if (!panel?.getBounds().contains(pointer.x, pointer.y)) return false;
+  changeWaymarkPage(scene, delta > 0 ? 1 : -1);
+  return true;
 }
 
 export function renderSceneWaymarkReview(scene: Phaser.Scene, view: SceneWaymarkReviewView) {
   const comparing = Boolean(view.pinned && view.pinned.id !== view.selected.id);
-  scene.add.rectangle(640, 504, 958, 224, 0x050a12, 0.92)
-    .setStrokeStyle(1, 0xc9a6ff, 0.36)
-    .setName('route-waymark-review-panel');
-  renderPinControl(scene, view);
-
-  if (comparing && view.pinned) {
-    scene.add.rectangle(640, 516, 1, 188, 0x8df4ff, 0.22);
-    renderComparisonColumn(scene, view.pinned, 164, 'PINNED', '#ffc9f5');
-    renderComparisonColumn(scene, view.selected, 654, 'SELECTED', UI_CYAN);
-    return;
-  }
-
-  renderSingle(scene, view.selected, view.pinned?.id === view.selected.id);
+  const entries = comparing ? [view.pinned!, view.selected] : [view.selected];
+  const panel = scene.add.rectangle(640, 511, 1008, 256, 0x070d15, 0.98)
+    .setStrokeStyle(1, 0xc9a6ff, 0.4).setName('route-waymark-review-panel');
+  const key = entries.map(e => e.id).join('|');
+  let position = positions.get(scene);
+  if (!position || position.key !== key) { position = { key, page: 0 }; positions.set(scene, position); }
+  const bodies: Phaser.GameObjects.Text[] = [], headings: Phaser.GameObjects.Text[] = [];
+  const sectionNames = ['EFFECT ORDER', 'TRIGGER', 'DESCRIPTION', 'DETAILS', 'FLAVOR'];
+  const columns: string[][][] = [];
+  entries.forEach((entry, index) => {
+    const left = comparing ? 156 + index * 490 : 268;
+    const width = comparing ? 444 : 844;
+    art(scene, entry, comparing ? left + 25 : 198, comparing ? 419 : 510, comparing ? 50 : 100);
+    const nameX = comparing ? left + 62 : left;
+    decisionExcerpt(text(scene, nameX, comparing ? 414 : 402, entry.name,
+      comparing ? width - 62 : width, comparing ? 20 : 24, '#ffe1a3').setFontStyle('bold'), 30);
+    if (comparing) text(scene, nameX, 391, index === 0 ? 'PINNED' : 'SELECTED', width - 62, 16, index === 0 ? '#ffc9f5' : '#8df4ff');
+    headings.push(text(scene, left, 449, '', width, 16, '#abc4d4'));
+    const body = text(scene, left, 477, '', width, comparing ? 18 : 22).setName('route-waymark-reader-body');
+    bodies.push(body);
+    const sections = [entry.effects.map((effect, i) => `${i + 1}. ${effect}`).join('\n') || 'No additional effects.',
+      entry.trigger, entry.description, `${entry.name}\n${entry.meta}\n${entry.tags.join(' / ') || 'General'}`, entry.flavorText];
+    columns.push(sections.map(value => {
+      const pages: string[] = []; let lines: string[] = [];
+      for (const line of body.getWrappedText(value)) {
+        body.setText([...lines, line].join('\n'));
+        if (body.getBounds().bottom > 566 && lines.length) { pages.push(lines.join('\n')); lines = []; }
+        lines.push(line);
+      }
+      if (lines.length && lines.join('').length) pages.push(lines.join('\n'));
+      return pages;
+    }));
+  });
+  // Align comparison sections even when one item needs more pages.
+  const pages: Array<{ heading: string; bodies: string[] }> = [];
+  sectionNames.forEach((heading, section) => {
+    const count = Math.max(...columns.map(column => column[section].length));
+    for (let page = 0; page < count; page++) pages.push({ heading,
+      bodies: columns.map(column => column[section][page] ?? 'Section complete.') });
+  });
+  const label = text(scene, 640, 601, '', 190, 18, '#abc4d4').setOrigin(0.5);
+  const show = (delta: number) => {
+    if (delta && (blocked(scene) || !panel.active)) return;
+    position!.page = (position!.page + delta + pages.length) % pages.length;
+    const page = pages[position!.page];
+    headings.forEach(heading => heading.setText(page.heading));
+    bodies.forEach((body, i) => body.setText(page.bodies[i]));
+    label.setText(`${position!.page + 1} / ${pages.length}`);
+    panel.setData('reading', { page: position!.page + 1, total: pages.length,
+      headings: entries.map(e => `${e.name} · ${page.heading}`), bodies: page.bodies } satisfies Reading);
+    if (delta) (scene as any).updateTextState?.();
+  };
+  decisionButton(scene, 392, 601, 230, '← Previous', 'route-waymark-reader-previous', () => show(-1));
+  decisionButton(scene, 880, 601, 230, 'Next →', 'route-waymark-reader-next', () => show(1));
+  panel.setData('turnRulesPage', show); show(0);
 }
 
-export function renderSceneWaymarkDrawer(scene: Phaser.Scene, view: SceneWaymarkDrawerView) {
-  scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.66)
-    .setInteractive({ useHandCursor: false });
+export function renderSceneWaymarkDrawer(scene: Phaser.Scene, view: SceneWaymarkDrawerView, target?: Phaser.GameObjects.Container) {
+  const previous = target ? new Set(scene.children.list) : undefined;
+  renderDrawer(scene, view);
+  // Combat owns all drawer objects through its root; route owns its display list.
+  if (target) target.add(scene.children.list.filter(object => !previous!.has(object)));
+}
 
-  const frame = renderFieldPanel(scene, () => {}, HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy, HUD_MENU_PANEL.w, HUD_MENU_PANEL.h, {
-    eyebrow: 'Route Kit',
-    title: 'Found Waymarks',
-    subtitle: `${view.entries.length} artifact item${view.entries.length === 1 ? '' : 's'} carried this run`,
-    accent: UI_FIELD.violet,
+function renderDrawer(scene: Phaser.Scene, view: SceneWaymarkDrawerView) {
+  scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.88).setInteractive();
+  const frame = renderFieldPanel(scene, () => {}, HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy + 24, HUD_MENU_PANEL.w, HUD_MENU_PANEL.h + 48, {
+    eyebrow: 'Route Kit', title: 'Found Waymarks',
+    subtitle: `${view.entries.length} artifacts carried this run`, accent: UI_FIELD.violet,
   });
-  addRunKitDrawerFlourish(scene, () => {}, frame, { alpha: 0.11, tint: 0xe7d8ff, yOffset: 8 });
-  addUiIconImage(scene, 'waymark-compass', frame.left + HUD_MENU_PANEL.headerIconX, frame.top + HUD_MENU_PANEL.headerIconY, 28)?.setAlpha(0.92);
-  renderCloseControl(scene, () => {}, frame.right - HUD_MENU_PANEL.closeX, frame.top + HUD_MENU_PANEL.closeY, view.onClose);
-
-  if (view.entries.length === 0) {
-    addUiIconImage(scene, 'waymark-compass', frame.left + 88, frame.top + 160, 34)?.setAlpha(0.32);
-    scene.add.text(frame.left + 126, frame.top + 150, '0 found', {
-      fontFamily: UI_FONT,
-      fontSize: '14px',
-      fontStyle: UI_BOLD,
-      color: SHARED_UI_MUTED,
-      wordWrap: { width: HUD_MENU_PANEL.w - 108 },
-    });
-    return;
-  }
-
-  const columns = 3;
-  const visibleRows = 2;
-  const tileW = 252;
-  const tileH = 80;
-  const startX = frame.left + 64;
-  const startY = frame.top + 128;
-  const totalRows = Math.ceil(view.entries.length / columns);
-  const maxScrollRows = Math.max(0, totalRows - visibleRows);
+  addRunKitDrawerFlourish(scene, () => {}, frame, { alpha: 0.08, tint: 0xe7d8ff, yOffset: 8 });
+  addUiIconImage(scene, 'waymark-compass', frame.left + HUD_MENU_PANEL.headerIconX, frame.top + HUD_MENU_PANEL.headerIconY, 28);
+  renderCloseControl(scene, () => {}, frame.right - HUD_MENU_PANEL.closeX, frame.top + HUD_MENU_PANEL.closeY,
+    () => { if (!blocked(scene)) view.onClose(); });
+  if (!view.entries.length) { text(scene, 200, 260, 'No Waymarks found yet. Discover artifacts along your route.', 820, 22); return; }
+  const columns = 3, visibleRows = 2, tileW = 252, tileH = 80;
+  const startX = frame.left + 64, startY = frame.top + 128;
+  const totalRows = Math.ceil(view.entries.length / columns), maxScrollRows = Math.max(0, totalRows - visibleRows);
   const scrollRow = Phaser.Math.Clamp(Math.round(view.scrollRow), 0, maxScrollRows);
-  const visible = view.entries.slice(scrollRow * columns, (scrollRow + visibleRows) * columns);
-  visible.forEach((entry, index) => {
-    const col = index % columns;
-    const row = Math.floor(index / columns);
-    const x = startX + col * 272;
-    const y = startY + row * 88;
-    const bg = renderCompactItemTile(scene, () => {}, x, y, tileW, tileH, {
-      kind: 'waymark',
-      id: entry.id,
-      glyph: entry.glyph,
-      accent: entry.accent,
-      name: entry.name,
-      meta: entry.tileMeta,
-      summary: entry.summary,
-      actionLabel: view.pinned?.id === entry.id ? 'PINNED' : undefined,
-    });
-    bg.setName(`route-waymark-tile-${entry.id}`)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => view.onSelect(entry.id));
-    if (view.selected?.id === entry.id) {
-      scene.add.rectangle(x + tileW / 2, y + tileH / 2, tileW + 7, tileH + 7)
-        .setStrokeStyle(3, entry.accent, 0.96)
-        .setName('route-waymark-selected-outline');
-    }
+  view.entries.slice(scrollRow * columns, (scrollRow + visibleRows) * columns).forEach((entry, index) => {
+    const x = startX + index % columns * 272, y = startY + Math.floor(index / columns) * 88;
+    const selected = view.selected?.id === entry.id;
+    scene.add.rectangle(x + tileW / 2, y + tileH / 2, tileW, tileH, selected ? 0x18303b : 0x0b1520, 1)
+      .setStrokeStyle(selected ? 3 : 1, selected ? entry.accent : 0x38505e, 1)
+      .setName(`route-waymark-tile-${entry.id}`).setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => { if (!blocked(scene)) view.onSelect(entry.id); });
+    art(scene, entry, x + 35, y + 40, 56);
+    decisionExcerpt(text(scene, x + 72, y + 14, entry.name, tileW - 84, 18, '#ffe1a3').setFontStyle('bold')
+      .setName('route-waymark-tile-name'), 50);
+    if (view.pinned?.id === entry.id) text(scene, x + 10, y + 2, '●', 24, 16, '#ffc9f5');
   });
-
   if (maxScrollRows > 0) {
-    const trackH = visibleRows * 88 - 8;
-    const trackX = frame.right - 38;
-    const trackY = startY + trackH / 2;
+    const trackH = visibleRows * 88 - 8, trackX = frame.right - 38, trackY = startY + trackH / 2;
     const thumbH = Math.max(34, trackH * (visibleRows / totalRows));
-    const thumbTravel = trackH - thumbH;
-    const thumbY = trackY - trackH / 2 + thumbH / 2 + (scrollRow / maxScrollRows) * thumbTravel;
+    const thumbY = trackY - trackH / 2 + thumbH / 2 + scrollRow / maxScrollRows * (trackH - thumbH);
     addRouteWaymarkScrollRailFrame(scene, () => {}, trackX, trackY, trackH, thumbY, thumbH);
   }
+  const pin = view.pinned?.id === view.selected?.id;
+  decisionButton(scene, 926, 159, 112, pin ? 'Unpin' : 'Pin', 'route-waymark-pin-hit', () => { if (!blocked(scene)) view.onPin(); });
+  if (view.selected) renderSceneWaymarkReview(scene, { selected: view.selected, pinned: view.pinned, onPin: view.onPin });
+  text(scene, 148, 650,
+    `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} Choose · ${controlBindingLabel('roost')} / X Pin · PgUp / PgDn / LB / RB Read · ${controlBindingLabel('back')} Back`,
+    1020, 16, '#abc4d4').setName('route-waymark-reader-hints');
+}
 
-  if (view.selected) {
-    renderSceneWaymarkReview(scene, {
-      selected: view.selected,
-      pinned: view.pinned,
-      onPin: view.onPin,
-    });
+type BattleReading = { entries: SceneWaymarkReviewEntry[]; selected?: string; pinned?: string };
+const battles = new WeakMap<Phaser.Scene, BattleReading>();
+
+export function resetBattleWaymarks(scene: Phaser.Scene) { battles.delete(scene); positions.delete(scene); }
+
+export function battleWaymarkAction(scene: any, action: 'choose' | 'pin' | 'page', delta = 1) {
+  if (blocked(scene)) return;
+  if (action === 'page') { changeWaymarkPage(scene, delta); return; }
+  const state = battles.get(scene);
+  if (!state?.entries.length) return;
+  if (action === 'pin') state.pinned = state.pinned === state.selected ? undefined : state.selected;
+  else {
+    const index = Math.max(0, state.entries.findIndex(entry => entry.id === state.selected));
+    state.selected = state.entries[(index + delta % state.entries.length + state.entries.length) % state.entries.length].id;
+    const row = Math.floor(state.entries.findIndex(entry => entry.id === state.selected) / 3);
+    scene.waymarkDrawerScroll = Phaser.Math.Clamp(scene.waymarkDrawerScroll, Math.max(0, row - 1), row);
   }
+  playUiSound('confirm'); scene.requestBattleRender();
+}
+
+export function battleWaymarkReading(scene: any) {
+  const state = battles.get(scene);
+  if (!scene.waymarkDrawerOpen || !state) return undefined;
+  const entry = (id?: string) => {
+    const item = state.entries.find(entry => entry.id === id);
+    return item && { id: item.id, name: item.name, trigger: item.trigger,
+      family: item.family ?? '', rarity: item.rarity ?? '', source: item.source ?? '',
+      description: item.description, tags: item.tags,
+      effects: item.effects.map((text, index) => ({ order: index + 1, text, grammar: item.grammar?.[index] ?? '' })) };
+  };
+  return { open: true, count: state.entries.length,
+    scrollRow: scene.waymarkDrawerScroll,
+    selectedIndex: Math.max(0, state.entries.findIndex(entry => entry.id === state.selected)),
+    selected: entry(state.selected), pinned: entry(state.pinned),
+    comparing: Boolean(state.pinned && state.pinned !== state.selected),
+    reading: readerPanel(scene)?.getData('reading'), renderer: { requested: true, loaded: true, failed: false },
+    controls: { select: 'Arrow keys / Tab / pointer', pin: controlBindingLabel('roost'), pinController: 'X', close: controlBindingLabel('back') } };
+}
+
+export function renderBattleWaymarks(scene: any, entries: SceneWaymarkReviewEntry[], onClose: () => void) {
+  let state = battles.get(scene);
+  if (!state) { state = { entries }; battles.set(scene, state); }
+  state.entries = entries;
+  if (!entries.some(entry => entry.id === state!.selected)) state.selected = entries[0]?.id;
+  if (!entries.some(entry => entry.id === state!.pinned)) state.pinned = undefined;
+  renderSceneWaymarkDrawer(scene, { entries,
+    selected: entries.find(entry => entry.id === state!.selected),
+    pinned: entries.find(entry => entry.id === state!.pinned), scrollRow: scene.waymarkDrawerScroll,
+    onClose, onPin: () => battleWaymarkAction(scene, 'pin'),
+    onSelect: id => {
+      if (blocked(scene) || state!.selected === id) return;
+      state!.selected = id; playUiSound('confirm'); scene.requestBattleRender();
+    },
+  }, scene.root);
 }

@@ -11,6 +11,8 @@ playwright-report/
 blob-report/
 playwright/.cache/
 .playwright-mcp/
+__pycache__/
+*.py[cod]
 
 # --- Generated-image noise (not used by the game; regenerable) ---
 # Scratch / QA composite output

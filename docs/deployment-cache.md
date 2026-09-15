@@ -109,6 +109,9 @@ It requires exactly one `render-hud` chunk and rejects preloading battle piles,
 commands, beat timing, objective, guidance, and forecast presentation.
 It requires exactly one `render-hand` chunk and rejects preloading battle hand
 composition, selection motion, Flow hints, and hover dossiers.
+The combat-only `combat-card-detail` dependency is separately capped at 4 KB,
+requires one hashed output chunk, and is also rejected from title preloads.
+It loads with the hand renderer, so opening the reading panel adds no network wait.
 It requires one `discard-choice` and one `return-choice` chunk and rejects
 preloading either combat decision workflow before BattleScene opens.
 It requires exactly one `render-inspect` chunk and rejects preloading card/pile

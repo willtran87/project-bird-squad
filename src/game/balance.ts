@@ -168,6 +168,7 @@ export interface RouteDecisionReadInput {
   type: RouteNodeType;
   risk: RouteRisk;
   encounterTags: readonly string[];
+  enemyCount?: number;
   recovery: number;
   currentHp: number;
   maxHp: number;
@@ -181,7 +182,9 @@ export interface RouteDecisionReadInput {
 }
 
 export function routeDecisionRead(input: RouteDecisionReadInput) {
-  const pressure = encounterPressureRead(input.encounterTags).join(' / ');
+  const tags = input.enemyCount ? input.encounterTags.filter(tag => tag !== 'multi') : input.encounterTags;
+  const pressure = [input.enemyCount ? `${input.enemyCount} ${input.enemyCount === 1 ? 'foe' : 'foes'}` : '',
+    ...encounterPressureRead(tags)].filter(Boolean).join(' / ');
   const risk = pressure
     ? `${input.risk}: ${pressure}`
     : input.risk === 'high' ? 'high pressure' : input.risk === 'medium' ? 'medium damage risk' : 'low pressure';

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { fitTextExcerpt } from './text-excerpt';
 import { copySharedRouteLink, type SharedRouteMode } from './run-challenge';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 import type { RouteNodeType, RuntimeRouteMap } from './types';
@@ -509,18 +510,7 @@ export function renderOutcomeFlightSummary(
     softColor: string;
   }
 ) {
-  if (options.win) {
-    if (options.reportFrameLoaded) {
-      root.add(scene.add.rectangle(options.x, 492, 244, 92, 0x03070d, 0.9)
-        .setStrokeStyle(1, options.softAccent, 0.1));
-    }
-    root.add(scene.add.text(options.x, 468, 'DISTRICTS HELD', {
-      fontFamily: options.fontFamily,
-      fontSize: '13px',
-      fontStyle: options.boldStyle,
-      color: '#8df4ff',
-    }).setOrigin(0.5));
-  } else if (options.review) {
+  if (!options.win && options.review) {
     renderDefeatReview(scene, root, options.review, {
       x: 762,
       y: 470,
@@ -528,45 +518,46 @@ export function renderOutcomeFlightSummary(
       fontFamily: options.fontFamily,
       boldStyle: options.boldStyle,
     });
-  } else {
-    root.add(scene.add.rectangle(options.x, 473, 244, 88, 0x03070d, 0.94)
+  } else if (!options.win) {
+    root.add(scene.add.rectangle(762, 470, 452, 140, 0x03070d, 0.94)
       .setStrokeStyle(1, options.softAccent, 0.22)
       .setName('run-defeat-review-loading'));
-    root.add(scene.add.text(options.x, 473, 'REVIEWING THE LAST FLIGHT…', {
+    root.add(scene.add.text(762, 470, 'REVIEWING THE LAST FLIGHT…', {
       fontFamily: options.fontFamily,
-      fontSize: '12px',
+      fontSize: '18px',
       fontStyle: options.boldStyle,
       color: '#ffcfaa',
     }).setOrigin(0.5));
   }
-  const labelY = options.win ? 496 : 531;
-  if (!options.win) root.add(scene.add.rectangle(options.x, labelY, 244, 28, 0x07131d, 0.96)
-    .setStrokeStyle(1, options.softAccent, 0.48)
+  const seedLabel = scene.add.text(options.x, 462, '', {
+    fontFamily: options.fontFamily, fontSize: '14px', color: options.softColor, align: 'center',
+    wordWrap: { width: 232, useAdvancedWrap: true },
+  }).setOrigin(0.5).setResolution(2).setName('run-outcome-flight-seed');
+  root.add(fitTextExcerpt(seedLabel, `FLIGHT ${options.seed}`, 2));
+  const labelY = 514;
+  root.add(scene.add.rectangle(options.x, labelY, 244, MIN_SUPPORTED_TOUCH_TARGET, 0x07131d, 0.96)
+    .setStrokeStyle(1, options.softAccent, 0.3)
     .setName('run-outcome-flight-link-rail'));
   const label = scene.add.text(
     options.x,
     labelY,
-    options.win ? `FLIGHT ${options.seed}\nCOPY ROUTE LINK` : `FLIGHT ${options.seed} · COPY SEEDED FLIGHT`,
+    'COPY SEEDED FLIGHT',
     {
       fontFamily: options.fontFamily,
-      fontSize: options.win ? '13px' : '12px',
+      fontSize: '18px',
       color: options.softColor,
       align: 'center',
       fixedWidth: 232,
-      maxLines: options.win ? 2 : 1,
     }
   ).setOrigin(0.5).setResolution(2).setName('run-outcome-flight-link-label');
   root.add(label);
-  const hitY = options.win ? labelY : 524;
-  const hit = scene.add.rectangle(options.x, hitY, 244, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+  const hit = scene.add.rectangle(options.x, labelY, 244, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
     .setInteractive({ useHandCursor: true })
     .setName('run-outcome-flight-link-hit')
     .setData('label', 'Copy route link');
   hit.on('pointerdown', () => {
     void copySharedRouteLink(options.seed, options.runMode).then((copied) => {
-      label.setText(options.win
-        ? `FLIGHT ${options.seed}\n${copied ? 'LINK COPIED' : 'COPY FAILED'}`
-        : `FLIGHT ${options.seed} · ${copied ? 'LINK COPIED' : 'COPY FAILED'}`);
+      if (label.active) label.setText(copied ? 'LINK COPIED' : 'COPY FAILED');
     });
   });
   root.add(hit);
@@ -593,31 +584,10 @@ export function renderOutcomeUnlockStrip(
   const h = 54;
   const iconX = x + 34;
   const accent = win ? options.brass : 0xff9d6b;
-  if (scene.textures.exists(options.flourishKey)) {
-    scene.textures.get(options.flourishKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const flourish = scene.add.image(x + w / 2, y - 8, options.flourishKey)
-      .setDisplaySize(w + 24, 82)
-      .setAlpha(win ? 0.08 : 0.06);
-    if (!win) flourish.setTint(0xffa47c);
-    root.add(flourish);
-    if (!options.reducedMotion) {
-      scene.tweens.add({
-        targets: flourish,
-        alpha: win ? 0.052 : 0.038,
-        scaleX: flourish.scaleX * 1.018,
-        scaleY: flourish.scaleY * 1.018,
-        duration: 1280,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
-    }
-  }
-  root.add(scene.add.rectangle(x + w / 2, y, w, h, 0x06101a, 0.94)
-    .setStrokeStyle(2, accent, 0.72));
-  root.add(scene.add.rectangle(x + w / 2, y - h / 2 + 5, w - 18, 3, win ? options.cyan : 0xff9d6b, 0.62));
+  root.add(scene.add.rectangle(x + w / 2, y, w, h, 0x142331, 0.7)
+    .setName('run-outcome-unlock-surface'));
   const icon = options.addIcon(iconX, y);
-  if (icon) root.add(icon.setAlpha(win ? 0.98 : 0.86));
+  if (icon) root.add(icon.setDisplaySize(36, 36).setAlpha(win ? 0.98 : 0.86).setName('run-outcome-unlock-icon'));
   else root.add(scene.add.circle(iconX, y, 18, accent, 0.42).setStrokeStyle(2, accent, 0.8));
 
   const leaderCount = highlights.filter((item) => item.kind === 'leader').length;
@@ -633,21 +603,21 @@ export function renderOutcomeUnlockStrip(
   const names = highlights.map((item) => item.name);
   const visibleNames = names.slice(0, 3).join(' / ');
   const overflow = names.length > 3 ? ` / +${names.length - 3} more` : '';
-  root.add(scene.add.text(x + 68, y - 15, `${recordCount ? 'NEW PROGRESS' : 'NEW UNLOCKS'}: ${labelParts.join(' + ')}`, {
-    fontFamily: options.fontFamily,
-    fontSize: '12px',
-    fontStyle: options.boldStyle,
-    color: win ? '#ffe1a3' : '#ffcfaa',
-    fixedWidth: w - 90
-  }));
-  root.add(scene.add.text(x + 68, y + 7, `${visibleNames}${overflow}`, {
+  const heading = `${recordCount ? 'NEW PROGRESS' : 'NEW UNLOCKS'}: ${labelParts.join(' + ')}`;
+  root.add(fitTextExcerpt(scene.add.text(x + 62, y - 18, '', {
     fontFamily: options.fontFamily,
     fontSize: '14px',
     fontStyle: options.boldStyle,
+    color: win ? '#ffe1a3' : '#ffcfaa',
+    wordWrap: { width: w - 76, useAdvancedWrap: true },
+  }).setResolution(2).setName('run-outcome-unlock-heading'), heading, 1));
+  root.add(fitTextExcerpt(scene.add.text(x + 62, y + 3, '', {
+    fontFamily: options.fontFamily,
+    fontSize: '16px',
+    fontStyle: options.boldStyle,
     color: '#eaf6ff',
-    fixedWidth: w - 92,
-    maxLines: 1
-  }));
+    wordWrap: { width: w - 76, useAdvancedWrap: true },
+  }).setResolution(2).setName('run-outcome-unlock-names'), `${visibleNames}${overflow}`, 1));
 }
 
 export function renderOutcomeStats(
@@ -669,33 +639,17 @@ export function renderOutcomeStats(
 ) {
   const startY = options.hasUnlocks ? 312 : 266;
   const gap = 36;
-  const rowH = 30;
-  const fontSize = '18px';
+  const fontSize = '20px';
   const centerX = (options.labelX + options.valueX) / 2;
-  const frameLoaded = scene.textures.exists(options.rowFrameKey);
-  if (frameLoaded) scene.textures.get(options.rowFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  if (options.reportFrameLoaded) {
-    const matY = startY + ((stats.length - 1) * gap) / 2;
-    root.add(scene.add.rectangle(centerX, matY, 500, stats.length * gap + 8, 0x03070d, 0.98)
-      .setStrokeStyle(1, options.softAccent, 0.16));
-  }
   stats.forEach((row, index) => {
     const y = startY + index * gap;
-    root.add(scene.add.rectangle(centerX, y, 448, rowH, 0x050a12, index % 2 === 0 ? 0.72 : 0.58));
-    if (frameLoaded) {
-      const frame = scene.add.image(centerX, y, options.rowFrameKey)
-        .setDisplaySize(466, options.hasUnlocks ? 26 : 31)
-        .setAlpha(options.win ? 0.54 : 0.44)
-        .setName('run-outcome-stat-row-frame');
-      if (!options.win) frame.setTint(0xffb195);
-      root.add(frame);
-    }
+    root.add(scene.add.rectangle(centerX, y + 17, 418, 1, 0xffffff, 0.08));
     root.add(scene.add.text(options.labelX, y, row[0], {
       fontFamily: options.fontFamily, fontSize, color: options.mutedColor
-    }).setOrigin(0, 0.5));
+    }).setOrigin(0, 0.5).setResolution(2).setName('run-outcome-stat-label'));
     root.add(scene.add.text(options.valueX, y, row[1], {
       fontFamily: options.fontFamily, fontSize, fontStyle: options.boldStyle, color: '#eaf1f8'
-    }).setOrigin(1, 0.5));
+    }).setOrigin(1, 0.5).setResolution(2).setName('run-outcome-stat-value'));
   });
 }
 
@@ -767,32 +721,19 @@ export function renderOutcomeCommand(
   }
 ) {
   const width = options.width ?? 256;
-  const frameLoaded = scene.textures.exists(options.frameKey);
-  if (frameLoaded) scene.textures.get(options.frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const visual = scene.add.rectangle(options.x, 582, width, 52, options.baseFill, frameLoaded ? 0.18 : 0.98)
-    .setStrokeStyle(2, options.stroke, frameLoaded ? 0.28 : 1);
+  const visual = scene.add.rectangle(options.x, 582, width, 58, options.baseFill, 0.98)
+    .setStrokeStyle(1, options.stroke, 0.6);
   root.add(visual);
-  let frame: Phaser.GameObjects.Image | undefined;
-  if (frameLoaded) {
-    frame = scene.add.image(options.x, 582, options.frameKey)
-      .setDisplaySize(width + 22, 74)
-      .setAlpha(0.86)
-      .setName('run-outcome-command-frame');
-    if (options.frameTint) frame.setTint(options.frameTint);
-    root.add(frame);
-  }
   const hit = scene.add.rectangle(options.x, 582, width, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
     .setInteractive({ useHandCursor: true })
     .setName('run-outcome-command-hit')
     .setData('label', options.label);
   root.add(hit);
   hit.on('pointerover', () => {
-    visual.setFillStyle(options.hoverFill, frameLoaded ? 0.28 : 1);
-    frame?.setAlpha(0.94);
+    visual.setFillStyle(options.hoverFill, 1);
   });
   hit.on('pointerout', () => {
-    visual.setFillStyle(options.baseFill, frameLoaded ? 0.18 : 0.98);
-    frame?.setAlpha(0.86);
+    visual.setFillStyle(options.baseFill, 0.98);
   });
   hit.on('pointerdown', options.onActivate);
   if (options.focused) {
@@ -805,10 +746,18 @@ export function renderOutcomeCommand(
   if (icon) root.add(icon.setAlpha(0.9));
   root.add(scene.add.text(options.textX, 582, options.label, {
     fontFamily: options.fontFamily,
-    fontSize: `${options.fontSize ?? 20}px`,
+    fontSize: `${Math.max(18, options.fontSize ?? 20)}px`,
     fontStyle: options.boldStyle,
     color: options.labelColor
-  }).setOrigin(0.5));
+  }).setOrigin(0.5).setResolution(2).setName('run-outcome-command-label'));
+}
+
+export function renderOutcomeNextGoal(scene: Phaser.Scene, root: Phaser.GameObjects.Container, goal: string, fontFamily: string) {
+  const label = scene.add.text(640, 642, '', {
+    fontFamily, fontSize: '16px', color: '#b8cbd8', align: 'center',
+    wordWrap: { width: 680, useAdvancedWrap: true },
+  }).setOrigin(0.5).setResolution(2).setName('leader-mastery-next-goal');
+  root.add(fitTextExcerpt(label, `NEXT FLIGHT  /  ${goal}`, 2));
 }
 
 export function renderOutcomeFlightDetails(

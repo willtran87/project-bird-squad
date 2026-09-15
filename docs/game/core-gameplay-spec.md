@@ -599,7 +599,14 @@ Bird Squad keeps its enamel, brass, cyan-light, tarot, and rooftop identity whil
 - utilities and inactive information use quiet icons, thin borders, lower saturation, or progressive disclosure
 - inactive route nodes recede until reachable; boss preparation appears only when the boss becomes relevant
 - combat shows completed suit keystones rather than four permanent suit counters
-- the combat log presents one recent event, with history available on hover
+- combat has a quiet History control: pointer, Shift+the configured Help key, or controller L3 opens recent events between actions; the 22px read-only panel preserves the selected card and target and retains up to 256 encounter-local events in chronological order
+- owned Waymarks share a six-tile inventory and complete 22px single / 18px comparison reader across route and combat; combat opens it through its HUD, Shift+the configured Run Kit key, or controller RT, and closing inspection preserves the selected card and target without spending a turn
+- Waymark reward loading reserves the final card and Read/Select positions; input stays locked until options are ready, and a failed ceremony module retains readable choices and full inspection instead of reverting to tiny clipped fallback rules
+- Card and Preen ceremony failures retain loaded card art, printed energy costs, measured 18px rules and 14px change previews; separate 58px Read/Select controls preserve intentional confirmation, and full normal/Preen/Molt rules remain in the 22px reader
+- Normal card and Preen choices use 18px measured rule excerpts, separate 58px Inspect/Select controls and focus frames that clear the buttons. All Preen options expose a 16px first-change preview on a quiet footer; full multi-effect and Molt comparisons remain in Inspect. Loading reserves the ready geometry, and armed Skip visibly disables both Inspect and Select
+- Shared keyword hover help uses complete 20px definitions and 22px headings on an opaque, image-independent surface. It follows rendered word bounds, stays inside the stage, and dismisses on pointer exit, owner destruction, replacement or scene shutdown; reading never changes the run
+- Codex card dossiers lead with complete 20px effect/Preen/Molt/passive rules and a concise ownership status. Collection administration, acquisition paths and private journals remain below in 18px text; quiet framing preserves canonical artwork, and clipped scrolling preserves access without changing the run
+- Supply/Waymark triggers share one short-lived notice below the HUD; burst counts replace overlapping toast stacks, and notice timing never delays combat resolution
 - reward and outcome ceremonies do not render the battlefield hand, piles, enemies, or command UI underneath
 - Markets expose one of Cards, Waymarks, Supplies, or Services at a time
 - a combat beat may run one primary generated effect, with secondary particles and glow subject to concurrency budgets

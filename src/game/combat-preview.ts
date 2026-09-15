@@ -37,6 +37,7 @@ export interface CombatPreviewConfig<CardT extends CardEffectCard, EnemyT extend
   flock: FlockT;
   enemies: EnemyT[];
   energy: number;
+  cost?: number;
   resonance: number;
   moltPower: number;
   pendingNestCoverBonus: number;
@@ -47,7 +48,7 @@ export interface CombatPreviewConfig<CardT extends CardEffectCard, EnemyT extend
   playedCardIds: ReadonlySet<string>;
   playedSuits: ReadonlySet<string>;
   cardName: (card: CardT) => string;
-  incomingNextAttackDamage: () => number;
+  incomingNextAttackDamage: (enemies: EnemyT[], flock: FlockT) => number;
   currentMoveDealsDamage: (enemy: EnemyT) => boolean;
   flockSuitCount: (suit: string) => number;
   firstAttackKeystoneActive: () => boolean;
@@ -82,7 +83,7 @@ export function simulateCombatCardOutcome<
     energy: config.energy,
     resonance: config.resonance
   };
-  let energy = config.energy;
+  let energy = Math.max(0, config.energy - (config.cost ?? 0));
   let resonance = config.resonance;
   let pendingNestCoverBonus = config.pendingNestCoverBonus;
   let nextTurnDraw = config.nextTurnDraw;
@@ -98,7 +99,7 @@ export function simulateCombatCardOutcome<
     const enemy = getLivingEnemy(targetId);
     if (condition === 'firstPlayedThisCombat') return !config.playedCardIds.has(card.id);
     if (!enemy && (condition.startsWith('target') || condition.startsWith('windedAtLeast'))) return false;
-    if (condition === 'fullyBlocksNextAttack') return flock.block >= config.incomingNextAttackDamage();
+    if (condition === 'fullyBlocksNextAttack') return flock.block >= config.incomingNextAttackDamage(enemies, flock);
     if (condition === 'noCover') return flock.block <= 0;
     if (condition === 'targetBelowHalf') return Boolean(enemy && enemy.hp <= enemy.maxHp / 2);
     if (condition === 'targetIntendsAttack') return Boolean(enemy && config.currentMoveDealsDamage(enemy));
@@ -191,7 +192,7 @@ export function simulateCombatCardOutcome<
       flock.hp += healed;
       if (overflowToCover) flock.block += value - healed;
     },
-    loseCohesion: (_source, value) => { flock.hp = Math.max(0, flock.hp - value); },
+    loseCohesion: (_source, value) => { flock.hp = Math.max(1, flock.hp - value); },
     drawCards: () => {},
     discardCards: (value) => Math.min(value, config.discardableHandCount),
     gainWingbeat: (_source, value) => { energy += value; },
@@ -218,7 +219,22 @@ export function simulateCombatCardOutcome<
     giveEnemyCover: (enemy, value) => { enemy.block += value; },
     shuffleSelfToDraw: () => {}
   };
-  config.contract.effects.forEach((effect) => resolveCardEffect(effect, config.card, config.enemyId, state, context));
+  // A forecast must never choose cards on the player's behalf. Resolve only
+  // the known prefix; after an interactive choice, later gates are unknown.
+  let requiresChoice = false;
+  const steps = config.contract.effects.map(effect => {
+    if (requiresChoice) return { effect, status: 'after-choice' as const };
+    const conditional = /^if (.+?) then (.+)$/.exec(effect);
+    if (conditional && !conditionMet(conditional[1], config.card, config.enemyId, state)) {
+      return { effect, status: 'not-met' as const };
+    }
+    if (/^(discard|discardUpTo|returnDiscard)\(/.test(conditional?.[2] ?? effect)) {
+      requiresChoice = true;
+      return { effect, status: 'choose' as const };
+    }
+    resolveCardEffect(effect, config.card, config.enemyId, state, context);
+    return { effect, status: 'resolves' as const };
+  });
   const enemyDamage = enemies.reduce((total, enemy) => total + Math.max(0, (beforeEnemyHp.get(enemy.id) ?? enemy.hp) - enemy.hp), 0);
   const enemyStates = enemies.map((enemy) => ({
     id: enemy.id,
@@ -232,6 +248,8 @@ export function simulateCombatCardOutcome<
   }));
   return {
     contract: config.contract,
+    steps,
+    requiresChoice,
     target: getEnemy(config.enemyId),
     enemyStates,
     flockBefore: before,
