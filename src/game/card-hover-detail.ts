@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { decisionCardKeywordSections } from './keyword-definitions';
 import { renderMarketCardDossier, renderRouteInspectionReader } from './reward-card-inspection';
 export {
   renderMarketServices,
@@ -329,6 +330,7 @@ export function renderSceneCardDetail(scene: Phaser.Scene, view: SceneCardDetail
     { title: 'PASSIVE FLOCK BONUSES', text: view.stats.length ? view.stats.join('\n') : 'No passive contribution.' },
     { title: 'CARD DETAILS', text: `${view.name}\n${view.bird} / ${view.label} / ${view.zone}\n${view.target} / ${view.role}` },
   ];
+  sections.push(...decisionCardKeywordSections(sections));
   const pages: Array<{ title: string; text: string }> = [];
   for (const section of sections) {
     let lines: string[] = [];

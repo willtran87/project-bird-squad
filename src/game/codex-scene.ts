@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { createCardJournalEditor } from './card-journal-editor';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 import { safeStorageGet, safeStorageSet, writeJournaledJson } from './safe-storage';
 import { saveAccount, type CardPersonalTag } from './meta';
@@ -41,26 +42,26 @@ import {
 import { collectionMilestoneSnapshots } from './collection-milestones';
 import { unlockCollectionMilestones } from './collection-milestone-progress';
 import {
-  activateRenderedAudioToggleControl, addCodexDossierFrame, addCodexEntryFrame, addSupplyArtImage,
+  activateRenderedAudioToggleControl, addSupplyArtImage,
   addUiIconImage, addWaymarkArtImage,
   advanceGameTime, alphaEnemyLibrary, alphaRouteMarkLibrary, alphaRouteMarkSet, alphaSupplyLibrary,
   bindControlActions, birdAudio, cardArtAssets, cardCompactArtAsset, cardLabel, cardLibrary, clamp,
-  codexIconForLabel, codexLeaderArtAssets, codexUiIconIds, compactCardArtKey, compactEffectSummary,
+  codexLeaderArtAssets, codexUiIconIds, compactCardArtKey, compactEffectSummary,
   controlActionForCode, controlBindingLabel,
-  countTextureInGameObjects, displayName, enemyArtAssets, enemyCodexIconForLabel, flockLeaders, formatEffects, formatWaymarkTrigger,
+  countTextureInGameObjects, displayName, enemyArtAssets, flockLeaders, formatEffects, formatWaymarkTrigger,
   GAME_HEIGHT, GAME_WIDTH, getLeader, hideKwTooltip, isAviaryCard, isLeaderUnlocked, isSnagCard,
-  itemTypeCodexIconForLabel, KEYWORDS, keywordTooltipState, killTweensForTree, LAZY_LOAD_FAILED, leaderUnlockHints,
+  KEYWORDS, keywordTooltipState, killTweensForTree, LAZY_LOAD_FAILED, leaderUnlockHints,
   loadAccount, loadBossDossierModule, loadedCardArtKey, playUiSound, queueReserveEnemyArtAssets,
   queueRuntimeImageAssets, queueUiIconAssets, renderAudioToggleControl, renderRichText,
   renderSnagCardBorder, reserveEnemyArtAsset, routeMarkEffectText,
-  showKwTooltip, suitAccentColor, supplyArtAssets, supplyCodexIconForLabel, supplyCompactArtAssets,
+  showKwTooltip, suitAccentColor, supplyArtAssets, supplyCompactArtAssets,
   supplySynergyTags, UI_BODY, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, UI_MUTED, UI_SOFT,
-  uiIconAssets, waymarkArtAssets, waymarkCodexIconForLabel, waymarkCompactArtAssets, waymarkGlyph,
+  uiIconAssets, waymarkArtAssets, waymarkCompactArtAssets, waymarkGlyph,
   waymarkSynergyTags,
   type BossDossierModule, type Card, type CodexDataModule, type CodexEnemyEntry,
   type CodexEnemySource, type CodexGlossaryTerm, type CodexItemEntry, type CodexItemTab,
   type CodexSection, type ReserveEnemyContract, type RuntimeEnemy, type RuntimeImageAsset,
-  type RuntimeRouteMark, type RuntimeSupply, type TextureVisibleBounds, type UiIconId,
+  type RuntimeRouteMark, type RuntimeSupply, type TextureVisibleBounds,
 } from '../main';
 
 type CodexFocusZone = 'sections' | 'search' | 'sort' | 'savedViews' | 'savedViewsOverlay' | 'primaryTabs' | 'progress' | 'secondaryTabs' | 'activeFilters' | 'newCards' | 'entries' | 'back' | 'detail' | 'progressOverlay';
@@ -74,16 +75,39 @@ const CARD_SEARCH_KEY = 'birdsquad.codexCardSearch';
 const CARD_SORT_KEY = 'birdsquad.codexCardSort';
 const CARD_SEARCH_MAX_LENGTH = 40;
 const CODEX_DIAGNOSTIC_ID_LIMIT = 256;
-const CARD_SEARCH_X = 245;
-const CARD_SEARCH_Y = 42;
-const CARD_SEARCH_WIDTH = 190;
-const CARD_SEARCH_HEIGHT = 42;
-const CARD_SORT_WIDTH = 62;
+const CODEX_NAV_Y = 30;
+const CODEX_SECTION_X = 244;
+const CODEX_SECTION_STEP = 174;
+const CARD_SEARCH_X = 230;
+const CARD_SEARCH_Y = 92;
+const CARD_SEARCH_WIDTH = 380;
+const CARD_SEARCH_HEIGHT = 52;
+const CARD_SORT_WIDTH = 136;
 const CARD_SEARCH_ACTION_WIDTH = CARD_SEARCH_WIDTH - CARD_SORT_WIDTH;
 const CARD_SEARCH_ACTION_X = CARD_SEARCH_X - CARD_SORT_WIDTH / 2;
 const CARD_SORT_X = CARD_SEARCH_X + CARD_SEARCH_ACTION_WIDTH / 2;
-const CARD_FILTER_CHIP_Y = 180;
-const CARD_FILTER_GRID_TOP = 210;
+const CARD_LENS_X = 522;
+const CARD_LENS_WIDTH = 180;
+const CARD_VIEWS_X = 690;
+const CARD_VIEWS_WIDTH = 156;
+const CARD_ATLAS_X = 878;
+const CARD_ATLAS_WIDTH = 196;
+const CARD_NEW_X = 1108;
+const CARD_NEW_WIDTH = 240;
+const CARD_TAB_Y = 154;
+const CARD_GRID_TOP = 186;
+const CARD_FILTER_CHIP_Y = 216;
+const CARD_FILTER_GRID_TOP = 246;
+const SAVED_VIEW_ROW_Y = 266;
+const SAVED_VIEW_ROW_STEP = 80;
+const SAVED_VIEW_ROW_WIDTH = 1104;
+const SAVED_VIEW_ROW_HEIGHT = 78;
+const SAVED_VIEW_SAVE_X = 1084;
+const SAVED_VIEW_SAVE_Y = 171;
+const ATLAS_ROW_X = 340;
+const ATLAS_ROW_Y = 234;
+const ATLAS_ROW_WIDTH = 552;
+const ATLAS_ROW_STEP = 60;
 
 interface CodexFocusEntry {
   id: string;
@@ -160,6 +184,7 @@ export class CodexScene extends Phaser.Scene {
   private cardTags: Partial<Record<string, CardPersonalTag>> = {};
   private cardJournal: CardJournalNotes = {};
   private cardJournalInput?: HTMLTextAreaElement;
+  private cardJournalEditor?: ReturnType<typeof createCardJournalEditor>;
   private cardJournalEditingId?: string;
   private cardJournalStatus: 'idle' | 'saved' | 'failed' = 'idle';
   private cardShowcase: string[] = [];
@@ -207,9 +232,9 @@ export class CodexScene extends Phaser.Scene {
   private static readonly GRID_BOTTOM = 690;
   private static readonly GRID_BOTTOM_FADE_HEIGHT = 72;
   private static readonly GRID_BOTTOM_FADE_STEPS = 8;
-  private static readonly CARD_TAB_START_X = 54;
-  private static readonly CARD_TAB_STEP = 104;
-  private static readonly CARD_TAB_WIDTH = 104;
+  private static readonly CARD_TAB_START_X = 96;
+  private static readonly CARD_TAB_STEP = 136;
+  private static readonly CARD_TAB_WIDTH = 128;
   private readonly tabs: Array<{ label: string; match: (c: Card) => boolean; view?: 'favorites' | 'targets' }> = [
     { label: 'Major', match: (c) => c.id.startsWith('major_') },
     { label: 'Aviary', match: (c) => c.id.startsWith('aviary_') },
@@ -419,10 +444,10 @@ export class CodexScene extends Phaser.Scene {
     this.queueArt();
     this.renderAll();
     bindControlActions(this, {
-      confirm: () => this.activateCodexFocus(),
+      confirm: (event) => { if (!event?.repeat) this.activateCodexFocus(); },
       previous: () => this.moveCodexHorizontal(-1),
       next: () => this.moveCodexHorizontal(1),
-      back: () => this.handleCodexBack(),
+      back: (event) => { if (!event?.repeat) this.handleCodexBack(); },
       mute: () => {
         if (!activateRenderedAudioToggleControl(this)) birdAudio.toggleMute();
       },
@@ -464,6 +489,7 @@ export class CodexScene extends Phaser.Scene {
     };
     const onCardJournal = (event: KeyboardEvent) => {
       if (this.nativeTextInputActive() || event.repeat || this.activeSection !== 'cards' || !this.detailId) return;
+      event.preventDefault();
       this.openCardJournal();
     };
     const onCollectionLens = (event: KeyboardEvent) => {
@@ -531,8 +557,8 @@ export class CodexScene extends Phaser.Scene {
         || this.collectionAtlasOpen
         || this.savedCollectionViewsOpen
         || this.newlyAcquiredCards.size === 0
-        || Math.abs(pointer.x - (GAME_WIDTH - 72)) > 66
-        || Math.abs(pointer.y - CARD_FILTER_CHIP_Y) > MIN_SUPPORTED_TOUCH_TARGET / 2
+        || Math.abs(pointer.x - CARD_NEW_X) > CARD_NEW_WIDTH / 2
+        || Math.abs(pointer.y - CARD_SEARCH_Y) > MIN_SUPPORTED_TOUCH_TARGET / 2
       ) return;
       this.focusZone = 'newCards';
       this.clearAllNewCards();
@@ -544,8 +570,8 @@ export class CodexScene extends Phaser.Scene {
         || this.detailId
         || this.collectionAtlasOpen
         || this.savedCollectionViewsOpen
-        || Math.abs(pointer.x - 482) > 26
-        || Math.abs(pointer.y - 42) > MIN_SUPPORTED_TOUCH_TARGET / 2
+        || Math.abs(pointer.x - CARD_VIEWS_X) > CARD_VIEWS_WIDTH / 2
+        || Math.abs(pointer.y - CARD_SEARCH_Y) > MIN_SUPPORTED_TOUCH_TARGET / 2
       ) return;
       this.focusZone = 'savedViews';
       this.openSavedCollectionViews();
@@ -689,6 +715,8 @@ export class CodexScene extends Phaser.Scene {
       this.finishCardJournal(false, false);
     });
     this.input.on('wheel', (_p: unknown, _o: unknown, _dx: number, dy: number) => {
+      // These dialogs own input; their stationary content must not scroll the shelf underneath.
+      if (this.collectionAtlasOpen || this.savedCollectionViewsOpen || this.cardJournalInput) return;
       if (this.detailId) {
         if (this.detailMaxScroll <= 0) return;
         this.detailScrollTarget = clamp(
@@ -956,6 +984,7 @@ export class CodexScene extends Phaser.Scene {
 
   private openCollectionAtlas() {
     if (this.activeSection !== 'cards' || this.detailId) return;
+    this.gridScrollTarget = this.gridScroll;
     const familyCount = this.collectionAtlasSnapshot().families.length;
     this.collectionAtlasFamilyIndex = this.activeTab >= 0 && this.activeTab < familyCount
       ? this.activeTab
@@ -1012,6 +1041,7 @@ export class CodexScene extends Phaser.Scene {
 
   private openSavedCollectionViews() {
     if (this.activeSection !== 'cards' || this.detailId || this.collectionAtlasOpen) return;
+    this.gridScrollTarget = this.gridScroll;
     const current = this.currentSavedCollectionViewCriteria();
     const matching = this.savedCollectionViews.findIndex((view) => codexSavedViewMatches(view, current));
     this.savedCollectionViewIndex = matching >= 0
@@ -1269,14 +1299,14 @@ export class CodexScene extends Phaser.Scene {
     if (definitions.length === 0) return [];
     definitions.push({
       id: 'clear',
-      label: 'Clear all',
+      label: 'Clear filters',
       value: `${definitions.length} active`,
     });
     let cursor = 52;
     return definitions.map((definition) => {
       const width = definition.id === 'clear'
-        ? 142
-        : clamp(92 + definition.value.length * 7, 148, definition.id === 'search' ? 340 : 210);
+        ? 180
+        : clamp(112 + definition.value.length * 9, 188, definition.id === 'search' ? 520 : 260);
       const chip = {
         ...definition,
         x: cursor + width / 2,
@@ -1368,9 +1398,9 @@ export class CodexScene extends Phaser.Scene {
     const viewportHeight = viewport?.height ?? window.innerHeight;
     const viewportRight = viewportLeft + viewportWidth;
     const viewportBottom = viewportTop + viewportHeight;
-    const width = Math.min(Math.max(CARD_SEARCH_WIDTH * scaleX, 190), Math.max(120, viewportWidth - 16));
+    const width = Math.min(Math.max(CARD_SEARCH_ACTION_WIDTH * scaleX, 190), Math.max(120, viewportWidth - 16));
     const height = Math.min(Math.max(CARD_SEARCH_HEIGHT * scaleY, MIN_SUPPORTED_TOUCH_TARGET), 56);
-    const centerX = bounds.left + CARD_SEARCH_X * scaleX;
+    const centerX = bounds.left + CARD_SEARCH_ACTION_X * scaleX;
     const centerY = bounds.top + CARD_SEARCH_Y * scaleY;
     const minLeft = viewportLeft + 8;
     const maxLeft = Math.max(minLeft, viewportRight - width - 8);
@@ -1382,7 +1412,7 @@ export class CodexScene extends Phaser.Scene {
     )}px`;
     input.style.width = `${width}px`;
     input.style.height = `${height}px`;
-    input.style.fontSize = `${clamp(13 * Math.min(scaleX, scaleY), 13, 18)}px`;
+    input.style.fontSize = `${clamp(18 * Math.min(scaleX, scaleY), 16, 22)}px`;
   };
 
   private openCardSearch() {
@@ -1498,71 +1528,26 @@ export class CodexScene extends Phaser.Scene {
       playUiSound('locked');
       return;
     }
-    const input = document.createElement('textarea');
-    input.id = 'codex-card-journal-input';
-    input.value = this.cardJournal[id] ?? '';
-    input.maxLength = CARD_JOURNAL_NOTE_LIMIT;
-    input.rows = 5;
-    input.setAttribute('aria-label', `Private Card Journal note for ${displayName(cardLibrary[id])}`);
-    input.setAttribute('aria-keyshortcuts', 'J');
-    input.setAttribute('autocomplete', 'off');
-    input.setAttribute('spellcheck', 'true');
-    Object.assign(input.style, {
-      position: 'fixed',
-      left: '50%',
-      top: '52%',
-      width: 'min(620px, calc(100vw - 48px))',
-      minHeight: '144px',
-      transform: 'translate(-50%, -50%)',
-      zIndex: '2147483000',
-      boxSizing: 'border-box',
-      padding: '14px 18px',
-      border: '2px solid #c9a6ff',
-      borderRadius: '5px',
-      outline: '4px solid rgba(5, 7, 12, 0.94)',
-      background: '#101323',
-      color: '#f0e7ff',
-      caretColor: '#ffe1a3',
-      font: 'bold 16px Arial',
-      lineHeight: '1.45',
-      resize: 'none',
-      boxShadow: '0 0 24px rgba(201, 166, 255, 0.28)',
+    this.detailScrollTarget = this.detailScroll;
+    this.cardJournalEditor = createCardJournalEditor({
+      canvas: this.game.canvas,
+      name: displayName(cardLibrary[id]),
+      note: this.cardJournal[id] ?? '',
+      limit: CARD_JOURNAL_NOTE_LIMIT,
+      save: () => this.finishCardJournal(true),
+      cancel: () => this.finishCardJournal(false),
     });
-    this.cardJournalInput = input;
+    this.cardJournalInput = this.cardJournalEditor.input;
     this.cardJournalEditingId = id;
     this.cardJournalStatus = 'idle';
-    document.body.append(input);
     playUiSound('confirm');
     this.renderAll();
-
-    input.addEventListener('keydown', (event) => {
-      event.stopPropagation();
-      event.stopImmediatePropagation();
-      if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        this.finishCardJournal(true);
-      } else if (event.key === 'Escape') {
-        event.preventDefault();
-        this.finishCardJournal(false);
-      }
-    });
-    input.addEventListener('blur', () => {
-      if (this.cardJournalInput === input) this.finishCardJournal(true);
-    });
-    window.requestAnimationFrame(() => {
-      if (this.cardJournalInput !== input) return;
-      input.focus({ preventScroll: true });
-      input.select();
-    });
   }
 
   private finishCardJournal(commit: boolean, rerender = true) {
     const input = this.cardJournalInput;
     const id = this.cardJournalEditingId;
     if (!input || !id) return;
-    this.cardJournalInput = undefined;
-    this.cardJournalEditingId = undefined;
-    input.remove();
     if (commit) {
       const account = loadAccount();
       account.cardJournal = sanitizeCardJournalNotes(account.cardJournal, account.discoveredCards);
@@ -1575,12 +1560,19 @@ export class CodexScene extends Phaser.Scene {
         playUiSound('confirm');
       } else {
         this.cardJournalStatus = 'failed';
+        this.cardJournalEditor?.showError();
         playUiSound('locked');
+        if (rerender && this.sys.settings.active && this.root?.active) this.renderAll();
+        return; // Keep both the previous saved note and the unsaved draft.
       }
     } else {
       this.cardJournalStatus = 'idle';
       playUiSound('close');
     }
+    this.cardJournalInput = undefined;
+    this.cardJournalEditingId = undefined;
+    this.cardJournalEditor?.destroy();
+    this.cardJournalEditor = undefined;
     if (rerender && this.sys.settings.active && this.root?.active) this.renderAll();
   }
 
@@ -1702,8 +1694,8 @@ export class CodexScene extends Phaser.Scene {
 
   private currentGridTop() {
     if (this.activeSection === 'items') return CodexScene.ITEM_GRID_TOP;
-    if (this.activeSection === 'cards' && this.activeCardFilterChips().length > 0) {
-      return CARD_FILTER_GRID_TOP;
+    if (this.activeSection === 'cards') {
+      return this.activeCardFilterChips().length > 0 ? CARD_FILTER_GRID_TOP : CARD_GRID_TOP;
     }
     return CodexScene.GRID_TOP;
   }
@@ -1769,7 +1761,7 @@ export class CodexScene extends Phaser.Scene {
     if (this.activeSection === 'enemies') {
       return this.currentCodexEnemies().map((enemy) => ({ id: enemy.id, label: enemy.name, canOpen: true }));
     }
-    return this.glossaryTerms.map((term) => ({ id: term.term, label: `${term.term}. ${term.summary}`, canOpen: false }));
+    return this.glossaryTerms.map((term) => ({ id: term.term, label: `${term.term}. ${term.summary}`, canOpen: true }));
   }
 
   private codexFocusZones(): CodexFocusZone[] {
@@ -1901,10 +1893,10 @@ export class CodexScene extends Phaser.Scene {
       count = filters.length;
       const filter = filters[index];
       label = filter?.id === 'clear'
-        ? `Clear all active card filters, ${filter.value}`
+        ? `Clear filters, all active card filters, ${filter.value}`
         : `Remove ${filter?.label ?? 'card'} filter, ${filter?.value ?? ''}`;
     } else if (this.focusZone === 'newCards') {
-      label = `Clear all ${this.newlyAcquiredCards.size} new card marker${this.newlyAcquiredCards.size === 1 ? '' : 's'}`;
+      label = `Mark all ${this.newlyAcquiredCards.size} new cards as seen`;
     } else if (this.focusZone === 'progress') {
       const progress = this.activeCollectionProgress();
       label = `Open Collection Atlas, ${progress.name}, ${progress.owned} of ${progress.total} collected`;
@@ -1942,14 +1934,13 @@ export class CodexScene extends Phaser.Scene {
   private codexGridShape() {
     const cardMode = this.activeSection === 'cards';
     const itemMode = this.activeSection === 'items';
-    const leaderMode = this.activeSection === 'leaders';
     const glossaryMode = this.activeSection === 'glossary';
     return {
       top: this.currentGridTop(),
       bottom: CodexScene.GRID_BOTTOM,
-      cols: cardMode ? 5 : leaderMode ? 3 : glossaryMode ? 2 : 4,
-      cellW: cardMode ? 202 : itemMode ? 360 : leaderMode ? 360 : glossaryMode ? 580 : 274,
-      cellH: cardMode ? 286 : itemMode ? 148 : leaderMode ? 238 : glossaryMode ? 94 : 228,
+      cols: cardMode ? 5 : glossaryMode ? 2 : 3,
+      cellW: cardMode ? 240 : glossaryMode ? 580 : 400,
+      cellH: cardMode ? 444 : itemMode ? 208 : glossaryMode ? 154 : 254,
     };
   }
 
@@ -1961,13 +1952,12 @@ export class CodexScene extends Phaser.Scene {
     const gridLeft = (GAME_WIDTH - shape.cols * shape.cellW) / 2;
     const cardMode = this.activeSection === 'cards';
     const itemMode = this.activeSection === 'items';
-    const leaderMode = this.activeSection === 'leaders';
     const glossaryMode = this.activeSection === 'glossary';
     return {
       x: gridLeft + (index % shape.cols) * shape.cellW + shape.cellW / 2,
       y: shape.top + Math.floor(index / shape.cols) * shape.cellH + shape.cellH / 2 - this.gridScroll,
-      width: cardMode ? 198 : itemMode ? 342 : leaderMode ? 338 : glossaryMode ? shape.cellW - 16 : 258,
-      height: cardMode ? 290 : itemMode ? 134 : leaderMode ? 220 : glossaryMode ? shape.cellH - 10 : 212,
+      width: cardMode ? 232 : glossaryMode ? shape.cellW - 16 : 384,
+      height: cardMode ? 438 : itemMode ? 194 : glossaryMode ? shape.cellH - 10 : 238,
     };
   }
 
@@ -1976,13 +1966,16 @@ export class CodexScene extends Phaser.Scene {
     if (entries.length === 0) return;
     const shape = this.codexGridShape();
     const row = Math.floor(clamp(this.entryFocusIndex, 0, entries.length - 1) / shape.cols);
-    const rowTop = shape.top + row * shape.cellH;
-    const rowBottom = rowTop + shape.cellH;
+    const cardMode = this.activeSection === 'cards';
+    const focusInset = cardMode ? (shape.cellH - 438) / 2 : 0;
+    const rowTop = shape.top + row * shape.cellH + focusInset;
+    const rowBottom = shape.top + (row + 1) * shape.cellH - focusInset;
+    const margin = cardMode ? 2 : 6;
     const rows = Math.ceil(entries.length / shape.cols);
-    const maxScroll = Math.max(0, rows * shape.cellH - (shape.bottom - shape.top) + 12);
+    const maxScroll = Math.max(0, rows * shape.cellH - (shape.bottom - shape.top) + (cardMode ? 0 : 12));
     let next = this.gridScroll;
-    if (rowTop - next < shape.top + 6) next = rowTop - shape.top;
-    if (rowBottom - next > shape.bottom - 6) next = rowBottom - shape.bottom + 6;
+    if (rowTop - next < shape.top + margin) next = rowTop - shape.top - (cardMode ? margin : 0);
+    if (rowBottom - next > shape.bottom - margin) next = rowBottom - shape.bottom + margin;
     next = clamp(next, 0, maxScroll);
     this.gridScroll = next;
     this.gridScrollTarget = next;
@@ -2284,15 +2277,16 @@ export class CodexScene extends Phaser.Scene {
       }
       return this.enemyArtAsset(enemy);
     };
+    const { cols, cellH } = this.codexGridShape();
     const source = this.activeSection === 'items'
-      ? this.visibleGridEntries(items, 4, 176).map((item) => item.kind === 'waymark' ? waymarkCompactArtAssets[item.id] : supplyCompactArtAssets[item.id])
+      ? this.visibleGridEntries(items, cols, cellH).map((item) => item.kind === 'waymark' ? waymarkCompactArtAssets[item.id] : supplyCompactArtAssets[item.id])
       : this.activeSection === 'leaders'
-        ? this.visibleGridEntries(leaders, 3, 238).map((leader) => codexLeaderArtAssets[leader.id])
+        ? this.visibleGridEntries(leaders, cols, cellH).map((leader) => codexLeaderArtAssets[leader.id])
         : this.activeSection === 'enemies'
-          ? this.visibleGridEntries(enemies, 4, 228).map((enemy) => enemyGridArtAsset(enemy))
+          ? this.visibleGridEntries(enemies, cols, cellH).map((enemy) => enemyGridArtAsset(enemy))
           : this.activeSection === 'glossary'
             ? []
-            : this.visibleGridEntries(cards, 5, 286)
+            : this.visibleGridEntries(cards, cols, cellH)
             .filter((c) => this.discovered.has(c.id))
             .map((c) => cardCompactArtAsset(c));
     let detailArt = this.currentDetailArtAsset();
@@ -2467,7 +2461,12 @@ export class CodexScene extends Phaser.Scene {
         selectedIndex: this.savedCollectionViewIndex,
         selectedId: this.savedCollectionViews[this.savedCollectionViewIndex]?.id ?? '',
         status: this.savedCollectionViewStatus,
-        current: this.currentSavedCollectionViewCriteria(),
+        current: {
+          ...this.currentSavedCollectionViewCriteria(),
+          tabLabel: CODEX_SAVED_VIEW_TABS[this.activeTab]?.label ?? 'Cards',
+          lensLabel: this.activeCardCollectionLens().label,
+          sortLabel: this.activeCardSortMode().label,
+        },
         currentMatchesSaved: this.savedCollectionViews.some((view) => (
           codexSavedViewMatches(view, this.currentSavedCollectionViewCriteria())
         )),
@@ -2736,6 +2735,8 @@ export class CodexScene extends Phaser.Scene {
       leaderCount: leaders.length,
       enemyCount: enemyAll.length,
       detailOpen: this.detailId ?? '',
+      glossaryEntry: this.activeSection === 'glossary' && this.detailId
+        ? this.glossaryTerms.find((term) => term.term === this.detailId) : undefined,
       inspectionReturn: {
         detailOpen: Boolean(this.detailId),
         captured: Boolean(this.detailReturnContext),
@@ -2760,12 +2761,12 @@ export class CodexScene extends Phaser.Scene {
         enabled: true,
         sourceEntryCount: cardMode ? cards.length : undefined,
         renderedEntryCount: cardMode
-          ? this.gridLayer?.list.filter((entry) => entry.name === 'codex-card-entry-hit').length ?? 0
+          ? this.gridLayer?.list.filter((entry) => entry.name === 'codex-card-tile').length ?? 0
           : undefined,
         offscreenEntriesSkipped: cardMode
           ? Math.max(
             0,
-            cards.length - (this.gridLayer?.list.filter((entry) => entry.name === 'codex-card-entry-hit').length ?? 0),
+            cards.length - (this.gridLayer?.list.filter((entry) => entry.name === 'codex-card-tile').length ?? 0),
           )
           : undefined,
         overscanRows: 2,
@@ -2840,12 +2841,10 @@ export class CodexScene extends Phaser.Scene {
     //    header/footer curtains below can hide anything scrolled out of view
     //    (WebGL doesn't support geometry masks, so we clip with opaque strips).
     const glossaryMode = this.activeSection === 'glossary';
-    const cols = cardMode ? 5 : itemMode ? 3 : leaderMode ? 3 : glossaryMode ? 2 : 4;
-    const cellW = cardMode ? 202 : itemMode ? 360 : leaderMode ? 360 : glossaryMode ? 580 : 274;
-    const cellH = cardMode ? 286 : itemMode ? 148 : leaderMode ? 238 : glossaryMode ? 94 : 228;
+    const { cols, cellW, cellH } = this.codexGridShape();
     const gridLeft = (GAME_WIDTH - cols * cellW) / 2;
     const rows = Math.ceil((cardMode ? cards.length : itemMode ? items.length : leaderMode ? leaders.length : glossaryMode ? glossaryTerms.length : enemies.length) / cols);
-    this.gridMaxScroll = Math.max(0, rows * cellH - (bottom - top) + 12);
+    this.gridMaxScroll = Math.max(0, rows * cellH - (bottom - top) + (cardMode ? 0 : 12));
     this.gridScrollTarget = clamp(this.gridScrollTarget, 0, this.gridMaxScroll);
     this.gridScroll = clamp(this.gridScroll, 0, this.gridMaxScroll);
 
@@ -2930,13 +2929,10 @@ export class CodexScene extends Phaser.Scene {
     // 3) Header (title / counter / Back / tabs) on top of the curtain.
     const headerH = itemMode
       ? 188
-      : cardMode && this.activeCardFilterChips().length > 0
-        ? CARD_FILTER_GRID_TOP
-        : 156;
+      : cardMode ? this.currentGridTop() : 156;
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, headerH / 2, GAME_WIDTH, headerH, 0x08111e, 0.96));
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, headerH - 6, GAME_WIDTH - 80, 2, 0x1b2c3e, 0.82));
-    this.root.add(this.add.rectangle(838, 42, 486, 54, 0x05080e, 0.64).setStrokeStyle(1, 0x22364d, 0.72));
-    this.root.add(this.add.text(40, 24, 'Codex', { fontFamily: 'Georgia, serif', fontSize: '34px', fontStyle: UI_BOLD, color: UI_GOLD, stroke: '#000000', strokeThickness: 4 }));
+    this.root.add(this.add.text(40, 12, 'Codex', { fontFamily: 'Georgia, serif', fontSize: '28px', fontStyle: UI_BOLD, color: UI_GOLD }).setResolution(2));
     const subtitle = cardMode
       ? favoriteView
         ? `${cardTabCards.length} favorite card${cardTabCards.length === 1 ? '' : 's'} / ${found} discovered${activeLens.id === 'all' ? '' : ` / ${activeLens.label} lens: ${cards.length}`}`
@@ -2954,39 +2950,37 @@ export class CodexScene extends Phaser.Scene {
             : this.codexDataPending()
             ? `${encounterEnemyCount} enemies (loading reserves)`
             : `${enemyAll.length} enemies (${encounterEnemyCount} playable / ${reserveEnemyCount} reserve)`;
-    this.root.add(this.add.text(42, 66, subtitle, { fontFamily: UI_FONT, fontSize: '15px', color: UI_MUTED }));
+    if (!cardMode && !itemMode) this.root.add(this.add.text(42, 66, subtitle,
+      { fontFamily: UI_FONT, fontSize: '15px', color: UI_MUTED }).setResolution(2).setName('codex-section-summary'));
     const codexStatus = this.codexDataFailed
       ? 'Extended Codex notes unavailable'
       : this.codexDataPending()
         ? 'Loading extended Codex notes...'
         : '';
-    if (codexStatus) {
-      this.root.add(this.add.text(42, 84, codexStatus, {
-        fontFamily: UI_FONT,
-        fontSize: '12px',
-        color: this.codexDataFailed ? '#ff9b6a' : '#8df4ff'
-      }));
+    if (codexStatus && !cardMode) {
+      this.codexPreviewText(this.root, codexStatus, 600, 68, 640, 22, 14,
+        this.codexDataFailed ? '#ff9b6a' : '#8df4ff', 'codex-section-status');
     }
 
     const backX = GAME_WIDTH - 76;
     const backFrameKey = uiIconAssets['codex-back-command-frame'].key;
     const hasBackFrame = this.textures.exists(backFrameKey);
-    const back = this.add.rectangle(backX, 42, 132, 44, 0x122235, hasBackFrame ? 0.14 : 0.96)
+    const back = this.add.rectangle(backX, CODEX_NAV_Y, 132, 44, 0x122235, hasBackFrame ? 0.14 : 0.96)
       .setStrokeStyle(2, 0xd8a840, hasBackFrame ? 0.24 : 1);
     this.root.add(back);
-    const backHit = this.add.rectangle(backX, 42, 132, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+    const backHit = this.add.rectangle(backX, CODEX_NAV_Y, 132, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
       .setInteractive({ useHandCursor: true })
       .setName('codex-back-hit');
     backHit.on('pointerdown', () => { playUiSound('close'); this.returnToOrigin(); });
     this.root.add(backHit);
     if (hasBackFrame) {
       this.textures.get(backFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      this.root.add(this.add.image(backX, 42, backFrameKey)
+      this.root.add(this.add.image(backX, CODEX_NAV_Y, backFrameKey)
         .setDisplaySize(132, 42)
         .setAlpha(0.9)
         .setName('codex-back-command-frame'));
     }
-    this.root.add(this.add.text(backX, 42, this.returnScene === 'RouteScene' ? 'Route' : 'Back', {
+    this.root.add(this.add.text(backX, CODEX_NAV_Y, this.returnScene === 'RouteScene' ? 'Route' : 'Back', {
       fontFamily: UI_FONT,
       fontSize: '18px',
       fontStyle: UI_BOLD,
@@ -2994,12 +2988,12 @@ export class CodexScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 3
     }).setOrigin(0.5));
-    renderAudioToggleControl(this, (obj) => this.root.add(obj), GAME_WIDTH - 174, 42);
+    renderAudioToggleControl(this, (obj) => this.root.add(obj), GAME_WIDTH - 174, CODEX_NAV_Y);
     if (cardMode) {
-      this.renderCardSearchControl(CARD_SEARCH_X, CARD_SEARCH_Y);
-      this.renderCardCollectionLensControl(430, 42);
+      this.renderCardSearchControl();
+      this.renderCardCollectionLensControl();
       if (!this.detailId && this.newlyAcquiredCards.size > 0) {
-        this.renderClearNewCardsControl(GAME_WIDTH - 72, CARD_FILTER_CHIP_Y);
+        this.renderClearNewCardsControl();
       }
     }
 
@@ -3018,14 +3012,14 @@ export class CodexScene extends Phaser.Scene {
       enemies: 0xff9b6a,
     };
     this.sections.forEach(({ id: section, label }, i) => {
-      const tx = 568 + i * 110;
+      const tx = CODEX_SECTION_X + i * CODEX_SECTION_STEP;
       const active = section === this.activeSection;
-      this.renderCodexTab(tx, 42, 104, 42, label, sectionMeta[section], active, sectionAccent[section], () => {
+      this.renderCodexTab(tx, CODEX_NAV_Y, 164, 52, label, sectionMeta[section], active, sectionAccent[section], () => {
         this.focusZone = 'sections';
         playUiSound('confirm');
         this.setActiveSection(i);
         this.renderAll();
-      }, 14);
+      }, 18);
     });
 
     if (cardMode) {
@@ -3045,12 +3039,12 @@ export class CodexScene extends Phaser.Scene {
           : tab.view === 'favorites'
             ? `${tabCards.length}`
             : `${got}/${tabCards.length}`;
-        this.renderCodexTab(tx, 116, CodexScene.CARD_TAB_WIDTH, 40, tab.label, meta, active, accent, () => {
+        this.renderCodexTab(tx, CARD_TAB_Y, CodexScene.CARD_TAB_WIDTH, 48, tab.label, meta, active, accent, () => {
           this.focusZone = 'primaryTabs';
           playUiSound('confirm');
           this.setActivePrimaryTab(i);
           this.renderAll();
-        }, tab.view ? 10 : 11);
+        }, 14);
       });
       if (activeCardCollection) {
         const activeCards = this.allCards().filter(this.tabs[this.activeTab].match);
@@ -3068,13 +3062,12 @@ export class CodexScene extends Phaser.Scene {
         const active = i === this.activeItemTypeTab;
         const tabItems = this.allCodexItems().filter(tab.match);
         const accent = tab.label === 'Supplies' ? 0xffb86b : tab.label === 'Waymarks' ? 0xc9a6ff : 0xd8a840;
-        const iconOverride = itemTypeCodexIconForLabel(tab.label);
         this.renderCodexTab(tx, 102, 120, 32, tab.label, `${tabItems.length}`, active, accent, () => {
           this.focusZone = 'primaryTabs';
           playUiSound('confirm');
           this.setActivePrimaryTab(i);
           this.renderAll();
-        }, 11, iconOverride);
+        }, 11);
       });
       const contextTabs = this.currentItemFilterTabs();
       const typeDef = this.activeItemTypeDef();
@@ -3086,17 +3079,12 @@ export class CodexScene extends Phaser.Scene {
         const accent = tabItems[0]
           ? tabItems[0].kind === 'waymark' ? this.waymarkAccent(tabItems[0].mark) : this.supplyAccent(tabItems[0].supply)
           : typeDef.label === 'Supplies' ? 0xffb86b : 0xc9a6ff;
-        const iconOverride = typeDef.label === 'Waymarks'
-          ? waymarkCodexIconForLabel(tab.label)
-          : typeDef.label === 'Supplies'
-            ? supplyCodexIconForLabel(tab.label)
-            : undefined;
         this.renderCodexTab(tx, 160, 100, 30, tab.label, `${tabItems.length}`, active, accent, () => {
           this.focusZone = 'secondaryTabs';
           playUiSound('confirm');
           this.setActiveSecondaryTab(i);
           this.renderAll();
-        }, 10, iconOverride);
+        }, 10);
       });
     } else if (!leaderMode && !glossaryMode) {
       this.enemyTabs.forEach((tab, i) => {
@@ -3109,7 +3097,7 @@ export class CodexScene extends Phaser.Scene {
           playUiSound('confirm');
           this.setActivePrimaryTab(i);
           this.renderAll();
-        }, 13, enemyCodexIconForLabel(tab.label));
+        }, 13);
       });
     }
 
@@ -3124,6 +3112,7 @@ export class CodexScene extends Phaser.Scene {
       }
       else if (this.activeSection === 'leaders') this.renderLeaderDetail(this.detailId);
       else if (this.activeSection === 'enemies') this.renderEnemyDetail(this.detailId);
+      else if (this.activeSection === 'glossary') this.renderGlossaryDetail(this.detailId);
       else this.renderDetail(this.detailId);
     }
     if (this.collectionAtlasOpen) this.renderCollectionAtlas();
@@ -3136,38 +3125,6 @@ export class CodexScene extends Phaser.Scene {
     return `#${color.toString(16).padStart(6, '0')}`;
   }
 
-  private renderCodexDossierHeader(
-    left: number,
-    right: number,
-    mTop: number,
-    label: string,
-    meta: string,
-    accent: number,
-    accentText: string
-  ) {
-    const x = (left + right) / 2;
-    const headerW = right - left - 40;
-    const headerY = mTop + 36;
-    this.root.add(this.add.rectangle(x, headerY, headerW, 48, 0x07101c, 0.98).setStrokeStyle(1, accent, 0.72));
-    this.root.add(this.add.rectangle(left + 31, headerY, 5, 30, accent, 0.9));
-    this.root.add(this.add.text(left + 48, headerY - 7, label, {
-      fontFamily: UI_FONT,
-      fontSize: '12px',
-      fontStyle: UI_BOLD,
-      color: accentText,
-      fixedWidth: 228,
-      maxLines: 1
-    }).setResolution(2).setOrigin(0, 0.5));
-    this.root.add(this.add.text(left + 296, headerY - 7, meta, {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: '#7f93a8',
-      fixedWidth: headerW - 360,
-      maxLines: 1
-    }).setResolution(2).setOrigin(0, 0.5));
-    this.root.add(this.add.rectangle(x, mTop + 68, headerW - 26, 2, accent, 0.42));
-  }
 
   private addCodexChip(
     layer: Phaser.GameObjects.Container,
@@ -3250,319 +3207,101 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private renderCollectionAtlasRail(progress: CollectionProgress, accent: number) {
-    const x = 1100;
-    const y = 116;
-    const width = 280;
-    const left = x - width / 2;
-    const barX = left + 12;
-    const barWidth = width - 24;
-    const ratio = progress.found / Math.max(1, progress.total);
-    const rail = this.add.rectangle(x, y, width, 44, 0x06101a, 0.96)
-      .setStrokeStyle(1, accent, progress.complete ? 0.94 : 0.56)
-      .setName('codex-card-collection-rail');
-    this.root.add(rail);
-    const hit = this.add.rectangle(x, y, width, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-      .setInteractive({ useHandCursor: true })
-      .setName('codex-card-collection-atlas-hit')
-      .setData('owned', progress.owned)
-      .setData('total', progress.total);
-    hit.on('pointerover', () => rail.setFillStyle(0x102235, 1));
-    hit.on('pointerout', () => rail.setFillStyle(0x06101a, 0.96));
+    const hit = this.renderCollectionTool(CARD_ATLAS_X, CARD_ATLAS_WIDTH, 'Collection Atlas',
+      `${progress.owned}/${progress.total} collected`, 'codex-card-collection-atlas',
+      this.focusZone === 'progress', accent);
+    this.root.getByName('codex-card-collection-atlas-control')?.setName('codex-card-collection-rail');
+    hit.setData('owned', progress.owned).setData('total', progress.total);
     hit.on('pointerdown', () => {
       this.focusZone = 'progress';
       queueMicrotask(() => this.openCollectionAtlas());
     });
-    this.root.add(hit);
-    this.root.add(this.add.text(left + 12, y - 14, `${progress.name.toUpperCase()} COLLECTION`, {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: '#dffbff',
-    }).setResolution(2));
-    this.root.add(this.add.text(left + width - 12, y - 14, `${progress.owned}/${progress.total}`, {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: progress.complete ? '#ffe1a3' : '#a8bac9',
-    }).setResolution(2).setOrigin(1, 0));
-    this.root.add(this.add.text(left + 12, y + 1, `${progress.stage.toUpperCase()}  ·  VIEW ATLAS  G / R3`, {
-      fontFamily: UI_FONT,
-      fontSize: '9px',
-      fontStyle: UI_BOLD,
-      color: '#91cbdc',
-    }).setResolution(2));
-    this.root.add(this.add.rectangle(barX, y + 17, barWidth, 4, 0x172534, 0.95).setOrigin(0, 0.5));
-    if (ratio > 0) {
-      this.root.add(this.add.rectangle(barX, y + 17, barWidth * ratio, 4, accent, 0.94).setOrigin(0, 0.5));
-    }
+  }
+
+  private collectionDialogText(
+    text: string, x: number, y: number, width: number, size: number,
+    name: string, color = UI_BODY,
+  ) {
+    const label = this.add.text(x, y, text, {
+      fontFamily: UI_FONT, fontSize: size + 'px', color,
+      wordWrap: { width }, lineSpacing: 2,
+    }).setResolution(2).setName(name);
+    this.root.add(label);
+    return label;
   }
 
   private renderCollectionAtlas() {
     const atlas = this.collectionAtlasSnapshot();
-    const scrim = this.add.rectangle(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2,
-      GAME_WIDTH,
-      GAME_HEIGHT,
-      0x02050a,
-      0.86,
-    ).setInteractive().setName('codex-collection-atlas-scrim');
+    const text = (value: string, x: number, y: number, width: number, size: number, name: string, color = UI_BODY) =>
+      this.collectionDialogText(value, x, y, width, size, 'codex-atlas-' + name, color);
+    const scrim = this.add.rectangle(640, 360, 1280, 720, 0x02050a, 0.92)
+      .setInteractive().setName('codex-collection-atlas-scrim');
     scrim.on('pointerdown', () => this.closeCollectionAtlas());
     this.root.add(scrim);
+    this.root.add(this.add.rectangle(640, 356, 1200, 660, 0x09131f, 1)
+      .setStrokeStyle(1, UI_FIELD.cyan, 0.6).setInteractive().setName('codex-collection-atlas-panel'));
+    text('Collection Atlas', 64, 45, 900, 30, 'title', UI_GOLD).setFontFamily('Georgia, serif').setFontStyle(UI_BOLD);
+    text('A permanent record of cards brought home from your flights.', 64, 86, 1060, 18, 'intro', UI_SOFT);
+    text(atlas.overall.owned + ' collected  ·  ' + atlas.overall.discovered + ' encountered  ·  ' + atlas.overall.total + ' total',
+      64, 123, 850, 22, 'totals', '#dffbff');
+    text(atlas.overall.stage, 1216, 125, 280, 18, 'stage', UI_GOLD).setOrigin(1, 0);
+    this.root.add(this.add.rectangle(64, 160, 1152, 4, 0x263748, 1).setOrigin(0, 0.5));
+    if (atlas.overall.owned > 0) this.root.add(this.add.rectangle(64, 160,
+      1152 * atlas.overall.owned / Math.max(1, atlas.overall.total), 4, UI_FIELD.gold, 1).setOrigin(0, 0.5));
+    this.renderCodexCloseControl(1190, 60, () => this.closeCollectionAtlas());
 
-    const panel = this.add.rectangle(GAME_WIDTH / 2, 352, 1140, 588, 0x09131f, 0.995)
-      .setStrokeStyle(2, UI_FIELD.cyan, 0.9)
-      .setInteractive()
-      .setName('codex-collection-atlas-panel');
-    this.root.add(panel);
-    this.root.add(this.add.rectangle(640, 116, 1060, 112, 0x07101a, 0.96)
-      .setStrokeStyle(1, UI_FIELD.gold, 0.42));
-    this.root.add(this.add.text(110, 75, 'COLLECTION ATLAS', {
-      fontFamily: 'Georgia, serif',
-      fontSize: '30px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      stroke: '#000000',
-      strokeThickness: 4,
-    }).setResolution(2));
-    this.root.add(this.add.text(112, 108, 'A permanent record of every card brought home from a flight.', {
-      fontFamily: UI_FONT,
-      fontSize: '13px',
-      color: '#b7c8d8',
-    }).setResolution(2));
-    this.root.add(this.add.text(112, 137, `${atlas.overall.owned} COLLECTED  ·  ${atlas.overall.discovered} ENCOUNTERED  ·  ${atlas.overall.total} TOTAL`, {
-      fontFamily: UI_FONT,
-      fontSize: '15px',
-      fontStyle: UI_BOLD,
-      color: '#dffbff',
-    }).setResolution(2));
-    this.root.add(this.add.text(1168, 137, atlas.overall.stage.toUpperCase(), {
-      fontFamily: UI_FONT,
-      fontSize: '12px',
-      fontStyle: UI_BOLD,
-      color: atlas.overall.complete ? '#ffe1a3' : '#91cbdc',
-    }).setResolution(2).setOrigin(1, 0));
-    const overallBarX = 112;
-    const overallBarWidth = 1056;
-    this.root.add(this.add.rectangle(overallBarX, 161, overallBarWidth, 7, 0x172534, 1).setOrigin(0, 0.5));
-    if (atlas.overall.owned > 0) {
-      this.root.add(this.add.rectangle(
-        overallBarX,
-        161,
-        overallBarWidth * atlas.overall.owned / Math.max(1, atlas.overall.total),
-        7,
-        UI_FIELD.gold,
-        0.94,
-      ).setOrigin(0, 0.5));
-    }
-    this.renderCodexCloseControl(1170, 82, () => this.closeCollectionAtlas());
-
-    this.root.add(this.add.text(110, 188, 'SETS  /  CHOOSE A SHELF TO OPEN', {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: '#8df4ff',
-    }).setResolution(2));
+    text('Sets · collected / total', 64, 183, 552, 18, 'sets-heading', UI_CYAN);
     atlas.families.forEach((family, index) => {
-      const x = 360;
-      const y = 226 + index * 50;
-      const width = 500;
+      const y = ATLAS_ROW_Y + index * ATLAS_ROW_STEP;
       const selected = index === atlas.selectedIndex;
-      const accent = this.tabs[index]
-        ? this.allCards().find(this.tabs[index].match)
-        : undefined;
-      const accentColor = accent ? this.cardAccent(accent) : UI_FIELD.cyan;
-      const row = this.add.rectangle(x, y, width, 44, selected ? 0x173148 : 0x0b1826, 0.98)
-        .setStrokeStyle(selected ? 2 : 1, selected ? UI_FIELD.gold : accentColor, selected ? 0.96 : 0.5);
+      const row = this.add.rectangle(ATLAS_ROW_X, y, ATLAS_ROW_WIDTH, 58, selected ? 0x173148 : 0x0b1826, 1);
       this.root.add(row);
-      const hit = this.add.rectangle(x, y, width, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-        .setInteractive({ useHandCursor: true })
-        .setName('codex-collection-atlas-family-hit')
-        .setData('family', family.id)
-        .setData('index', index);
+      const hit = this.add.rectangle(ATLAS_ROW_X, y, ATLAS_ROW_WIDTH, 58, 0, 0.001)
+        .setInteractive({ useHandCursor: true }).setName('codex-collection-atlas-family-hit')
+        .setData('family', family.id).setData('index', index);
       hit.on('pointerover', () => row.setFillStyle(0x173148, 1));
-      hit.on('pointerout', () => row.setFillStyle(selected ? 0x173148 : 0x0b1826, 0.98));
+      hit.on('pointerout', () => row.setFillStyle(selected ? 0x173148 : 0x0b1826, 1));
       hit.on('pointerdown', () => this.selectCollectionAtlasFamily(index));
       this.root.add(hit);
-      this.root.add(this.add.rectangle(118, y, 5, 28, accentColor, 0.92));
-      this.root.add(this.add.text(132, y - 15, family.name.toUpperCase(), {
-        fontFamily: UI_FONT,
-        fontSize: '12px',
-        fontStyle: UI_BOLD,
-        color: selected ? '#ffe1a3' : '#dffbff',
-      }).setResolution(2));
-      this.root.add(this.add.text(132, y + 3, `${family.stage.toUpperCase()}  ·  ${family.discovered}/${family.total} ENCOUNTERED`, {
-        fontFamily: UI_FONT,
-        fontSize: '9px',
-        color: '#91a6b8',
-      }).setResolution(2));
-      this.root.add(this.add.text(596, y - 8, `${family.owned}/${family.total}`, {
-        fontFamily: UI_FONT,
-        fontSize: '14px',
-        fontStyle: UI_BOLD,
-        color: family.complete ? '#ffe1a3' : '#b8e8f4',
-      }).setResolution(2).setOrigin(1, 0.5));
-      this.root.add(this.add.text(596, y + 10, 'COLLECTED', {
-        fontFamily: UI_FONT,
-        fontSize: '8px',
-        fontStyle: UI_BOLD,
-        color: '#70869a',
-      }).setResolution(2).setOrigin(1, 0.5));
-      const rowBarWidth = 130;
-      this.root.add(this.add.rectangle(446, y + 12, rowBarWidth, 3, 0x263748, 1).setOrigin(0, 0.5));
-      if (family.owned > 0) {
-        this.root.add(this.add.rectangle(
-          446,
-          y + 12,
-          rowBarWidth * family.owned / Math.max(1, family.total),
-          3,
-          accentColor,
-          1,
-        ).setOrigin(0, 0.5));
-      }
+      text(family.name, 82, y - 25, 400, 22, 'family-name', selected ? UI_GOLD : '#dffbff').setFontStyle(UI_BOLD);
+      text(family.stage + ' · ' + family.discovered + ' encountered', 82, y + 3, 510, 18, 'family-stage', UI_SOFT);
+      text(family.owned + '/' + family.total, 598, y - 24, 100, 22, 'family-count', family.complete ? UI_GOLD : '#b8e8f4').setOrigin(1, 0);
     });
+    text('Permanent cards. No rotation, season, or store gate.\nMilestones grant badges, never power.',
+      64, 634, 552, 18, 'availability', UI_SOFT);
 
-    this.root.add(this.add.text(690, 188, 'RARITY BREAKDOWN', {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: '#8df4ff',
-    }).setResolution(2));
+    text('Rarity · collected / total', 672, 183, 544, 18, 'rarity-heading', UI_CYAN);
     atlas.rarities.forEach((rarity, index) => {
-      const y = 226 + index * 50;
-      const accent = [0x86a9b9, 0x8fd7b2, 0x77bdf2, 0xe8c24a][index] ?? UI_FIELD.cyan;
-      this.root.add(this.add.rectangle(930, y, 480, 44, 0x0b1826, 0.98)
-        .setStrokeStyle(1, accent, 0.52));
-      this.root.add(this.add.text(708, y - 8, rarity.name.toUpperCase(), {
-        fontFamily: UI_FONT,
-        fontSize: '12px',
-        fontStyle: UI_BOLD,
-        color: '#dffbff',
-      }).setResolution(2).setOrigin(0, 0.5));
-      this.root.add(this.add.text(1148, y - 8, `${rarity.owned}/${rarity.total} COLLECTED`, {
-        fontFamily: UI_FONT,
-        fontSize: '11px',
-        fontStyle: UI_BOLD,
-        color: rarity.complete ? '#ffe1a3' : '#b8e8f4',
-      }).setResolution(2).setOrigin(1, 0.5));
-      this.root.add(this.add.text(708, y + 10, rarity.stage.toUpperCase(), {
-        fontFamily: UI_FONT,
-        fontSize: '9px',
-        color: '#91a6b8',
-      }).setResolution(2).setOrigin(0, 0.5));
-      this.root.add(this.add.rectangle(930, y + 12, 206, 4, 0x263748, 1).setOrigin(0, 0.5));
-      if (rarity.owned > 0) {
-        this.root.add(this.add.rectangle(
-          930,
-          y + 12,
-          206 * rarity.owned / Math.max(1, rarity.total),
-          4,
-          accent,
-          1,
-        ).setOrigin(0, 0.5));
-      }
+      const y = 214 + index * 36;
+      text(rarity.name, 672, y, 160, 20, 'rarity-name', '#dffbff');
+      text(rarity.stage, 856, y + 2, 240, 18, 'rarity-stage', UI_SOFT);
+      text(rarity.owned + '/' + rarity.total, 1216, y, 100, 20, 'rarity-count',
+        rarity.complete ? UI_GOLD : '#b8e8f4').setOrigin(1, 0);
     });
-
-    const selectedMissing = atlas.selectedMissing;
-    const missingTitle = selectedMissing.count > 0
-      ? `MISSING PATHS  /  ${atlas.selectedFamily.name.toUpperCase()}  /  ${selectedMissing.count} LEFT`
-      : `${atlas.selectedFamily.name.toUpperCase()}  /  SET COMPLETE`;
-    this.root.add(this.add.text(690, 424, missingTitle, {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: '#8df4ff',
-    }).setResolution(2));
-    this.root.add(this.add.text(
-      690,
-      443,
-      selectedMissing.count > 0
-        ? selectedMissing.paths.map((path) => {
-          const shortName = path.id === 'starter_flock'
-            ? 'STARTER'
-            : path.id === 'combat_reward'
-              ? 'FIGHTS'
-              : path.id === 'route_reward'
-                ? 'ROUTE'
-                : path.id === 'market'
-                  ? 'MARKET'
-                  : 'SNAGS';
-          return `${shortName} ${path.count}`;
-        }).join('  /  ')
-        : 'Every card on this shelf has a permanent collection record.',
-      {
-        fontFamily: UI_FONT,
-        fontSize: '9px',
-        fontStyle: UI_BOLD,
-        color: selectedMissing.count > 0 ? '#dffbff' : '#ffe1a3',
-        fixedWidth: 480,
-      },
-    ).setResolution(2));
-    this.root.add(this.add.text(
-      690,
-      459,
-      'PERMANENT / NO ROTATION / NO SEASON / NO STORE GATE',
-      {
-        fontFamily: UI_FONT,
-        fontSize: '8px',
-        color: '#8196aa',
-        fixedWidth: 480,
-      },
-    ).setResolution(2));
-
-    this.root.add(this.add.text(
-      690,
-      476,
-      `COLLECTOR MILESTONES  /  ${atlas.completedMilestones}/${atlas.milestones.length} EARNED`,
-      {
-        fontFamily: UI_FONT,
-        fontSize: '11px',
-        fontStyle: UI_BOLD,
-        color: '#8df4ff',
-      },
-    ).setResolution(2));
-    const incompleteMilestones = atlas.milestones.filter((milestone) => !milestone.complete);
-    const featuredMilestones = [
-      ...incompleteMilestones.slice(0, 3),
-      ...atlas.milestones.filter((milestone) => milestone.complete).reverse(),
-    ].slice(0, 3);
-    featuredMilestones.forEach((milestone, index) => {
-      const y = 512 + index * 42;
-      const ratio = milestone.current / Math.max(1, milestone.target);
-      const accent = milestone.complete ? UI_FIELD.gold : UI_FIELD.cyan;
-      this.root.add(this.add.rectangle(930, y, 480, 36, 0x0b1826, 0.98)
-        .setStrokeStyle(1, accent, milestone.complete ? 0.72 : 0.42)
-        .setName('codex-collection-milestone-row')
-        .setData('milestoneId', milestone.id)
-        .setData('complete', milestone.complete));
-      this.root.add(this.add.text(704, y - 11, milestone.name.toUpperCase(), {
-        fontFamily: UI_FONT,
-        fontSize: '10px',
-        fontStyle: UI_BOLD,
-        color: milestone.complete ? '#ffe1a3' : '#dffbff',
-      }).setResolution(2));
-      this.root.add(this.add.text(1152, y - 11, milestone.complete ? 'EARNED' : `${milestone.current}/${milestone.target}`, {
-        fontFamily: UI_FONT,
-        fontSize: '10px',
-        fontStyle: UI_BOLD,
-        color: milestone.complete ? '#ffe1a3' : '#b8e8f4',
-      }).setResolution(2).setOrigin(1, 0));
-      this.root.add(this.add.text(704, y + 4, milestone.complete ? milestone.reward : milestone.description, {
-        fontFamily: UI_FONT,
-        fontSize: '8px',
-        color: '#91a6b8',
-        fixedWidth: 370,
-      }).setResolution(2));
-      this.root.add(this.add.rectangle(1090, y + 9, 62, 3, 0x263748, 1).setOrigin(0, 0.5));
-      if (ratio > 0) {
-        this.root.add(this.add.rectangle(1090, y + 9, 62 * Math.min(1, ratio), 3, accent, 1).setOrigin(0, 0.5));
-      }
+    this.root.add(this.add.rectangle(944, 359, 544, 1, 0x29404f, 1));
+    const missing = atlas.selectedMissing;
+    text(missing.count > 0 ? atlas.selectedFamily.name + ' · ' + missing.count + ' still to collect'
+      : atlas.selectedFamily.name + ' · set complete', 672, 374, 544, 20, 'missing-title', UI_CYAN);
+    const pathLabels: Record<string, string> = {
+      starter_flock: 'Starter', combat_reward: 'Fights', route_reward: 'Route', market: 'Market', snag: 'Snags',
+    };
+    text(missing.count > 0 ? missing.paths.map(path => (pathLabels[path.id] ?? path.name) + ' ' + path.count).join(' · ')
+      : 'Every card on this shelf has a permanent collection record.',
+    672, 406, 544, 18, 'missing-paths', '#dffbff');
+    text('Milestones · ' + atlas.completedMilestones + '/' + atlas.milestones.length + ' earned',
+      672, 464, 544, 18, 'milestones-heading', UI_CYAN);
+    const featured = [...atlas.milestones.filter(m => !m.complete).slice(0, 3),
+      ...atlas.milestones.filter(m => m.complete).reverse()].slice(0, 3);
+    featured.forEach((milestone, index) => {
+      const y = 498 + index * 60;
+      this.root.add(this.add.rectangle(944, y + 23, 544, 56, 0x0b1826, 1)
+        .setName('codex-collection-milestone-row').setData('milestoneId', milestone.id).setData('complete', milestone.complete));
+      text(milestone.name, 682, y, 360, 20, 'milestone-name', milestone.complete ? UI_GOLD : '#dffbff');
+      text(milestone.complete ? 'Earned' : milestone.current + '/' + milestone.target, 1206, y, 100, 20,
+        'milestone-count', milestone.complete ? UI_GOLD : '#b8e8f4').setOrigin(1, 0);
+      text(milestone.complete ? milestone.reward : milestone.description, 682, y + 25, 524, 18,
+        'milestone-description', UI_SOFT);
     });
-    this.root.add(this.add.text(690, 624, 'Breadth goals grant badges, never power; undiscovered identities stay concealed.', {
-      fontFamily: UI_FONT,
-      fontSize: '8px',
-      color: '#7f93a8',
-    }).setResolution(2));
   }
 
   private codexFocusGeometry(): CodexFocusGeometry | undefined {
@@ -3571,34 +3310,34 @@ export class CodexScene extends Phaser.Scene {
       return this.savedCollectionViews.length > 0
         ? {
           x: 640,
-          y: 260 + this.savedCollectionViewIndex * 74,
-          width: 920,
-          height: 62,
+          y: SAVED_VIEW_ROW_Y + this.savedCollectionViewIndex * SAVED_VIEW_ROW_STEP,
+          width: SAVED_VIEW_ROW_WIDTH,
+          height: SAVED_VIEW_ROW_HEIGHT,
         }
         : {
-          x: 1028,
-          y: 170,
+          x: SAVED_VIEW_SAVE_X,
+          y: SAVED_VIEW_SAVE_Y,
           width: 210,
           height: MIN_SUPPORTED_TOUCH_TARGET,
         };
     }
     if (this.focusZone === 'progressOverlay') {
       return {
-        x: 360,
-        y: 226 + this.collectionAtlasFamilyIndex * 50,
-        width: 500,
+        x: ATLAS_ROW_X,
+        y: ATLAS_ROW_Y + this.collectionAtlasFamilyIndex * ATLAS_ROW_STEP,
+        width: ATLAS_ROW_WIDTH,
         height: MIN_SUPPORTED_TOUCH_TARGET,
       };
     }
     if (this.focusZone === 'entries') return this.entryFocusGeometry();
-    if (this.focusZone === 'back') return { x: GAME_WIDTH - 76, y: 42, width: 140, height: MIN_SUPPORTED_TOUCH_TARGET };
+    if (this.focusZone === 'back') return { x: GAME_WIDTH - 76, y: CODEX_NAV_Y, width: 140, height: MIN_SUPPORTED_TOUCH_TARGET };
     if (this.focusZone === 'detail') {
       const point = this.detailClosePoint ?? { x: GAME_WIDTH - 206, y: 74 };
       return { x: point.x, y: point.y, width: MIN_SUPPORTED_TOUCH_TARGET, height: MIN_SUPPORTED_TOUCH_TARGET };
     }
     if (this.focusZone === 'sections') {
       const index = Math.max(0, this.sections.findIndex((section) => section.id === this.activeSection));
-      return { x: 568 + index * 110, y: 42, width: 110, height: MIN_SUPPORTED_TOUCH_TARGET };
+      return { x: CODEX_SECTION_X + index * CODEX_SECTION_STEP, y: CODEX_NAV_Y, width: 168, height: MIN_SUPPORTED_TOUCH_TARGET };
     }
     if (this.focusZone === 'search') {
       return {
@@ -3618,25 +3357,25 @@ export class CodexScene extends Phaser.Scene {
     }
     if (this.focusZone === 'savedViews') {
       return {
-        x: 482,
-        y: 42,
-        width: 52,
+        x: CARD_VIEWS_X,
+        y: CARD_SEARCH_Y,
+        width: CARD_VIEWS_WIDTH,
         height: MIN_SUPPORTED_TOUCH_TARGET,
       };
     }
     if (this.focusZone === 'newCards') {
       return {
-        x: GAME_WIDTH - 72,
-        y: CARD_FILTER_CHIP_Y,
-        width: 132,
+        x: CARD_NEW_X,
+        y: CARD_SEARCH_Y,
+        width: CARD_NEW_WIDTH,
         height: MIN_SUPPORTED_TOUCH_TARGET,
       };
     }
     if (this.focusZone === 'progress') {
       return {
-        x: 1100,
-        y: 116,
-        width: 280,
+        x: CARD_ATLAS_X,
+        y: CARD_SEARCH_Y,
+        width: CARD_ATLAS_WIDTH,
         height: MIN_SUPPORTED_TOUCH_TARGET,
       };
     }
@@ -3645,7 +3384,7 @@ export class CodexScene extends Phaser.Scene {
       if (this.activeSection === 'cards') {
         return {
           x: CodexScene.CARD_TAB_START_X + index * CodexScene.CARD_TAB_STEP,
-          y: 116,
+          y: CARD_TAB_Y,
           width: CodexScene.CARD_TAB_WIDTH,
           height: MIN_SUPPORTED_TOUCH_TARGET,
         };
@@ -3655,7 +3394,7 @@ export class CodexScene extends Phaser.Scene {
     }
     if (this.focusZone === 'secondaryTabs') {
       if (this.activeSection === 'cards') {
-        return { x: 404, y: 42, width: 104, height: MIN_SUPPORTED_TOUCH_TARGET };
+        return { x: CARD_LENS_X, y: CARD_SEARCH_Y, width: CARD_LENS_WIDTH, height: MIN_SUPPORTED_TOUCH_TARGET };
       }
       return { x: 62 + this.activeItemFilterTab * 108, y: 160, width: 106, height: MIN_SUPPORTED_TOUCH_TARGET };
     }
@@ -3689,23 +3428,25 @@ export class CodexScene extends Phaser.Scene {
       ? '   |   Filter chips: Enter / Delete'
       : '';
     const label = this.savedCollectionViewsOpen
-      ? `Up / Down: Choose   |   ${controlBindingLabel('confirm')} / A: Apply   |   Ctrl+S / X: Save current   |   Delete / Y: Remove   |   B / Select / ${controlBindingLabel('back')}: Close`
+      ? this.savedCollectionViews.length > 0
+        ? 'Up / Down: Choose a saved view · Use the actions above to save, apply, or remove'
+        : 'Save current to keep this combination for later'
       : this.collectionAtlasOpen
       ? `Up / Down: Browse sets   |   ${controlBindingLabel('confirm')}: Open set   |   G / R3 / ${controlBindingLabel('back')}: Close atlas`
       : readOnlyDetail
       ? `Up / Down: Scroll   |   ${controlBindingLabel('confirm')} / ${controlBindingLabel('back')}: Close`
       : detail
-      ? `Up/Down: Scroll   |   C/X: Favorite   |   V/L3: Tag   |   T/Y: Hunt / Protect   |   G/R3: Showcase   |   J/Start: Journal   |   N/LT: Seen   |   ${controlBindingLabel('confirm')}: Close`
+      ? `↑ / ↓: Read   ·   J / Start: Journal   ·   ${controlBindingLabel('confirm')} / ${controlBindingLabel('back')}: Close`
       : this.activeSection === 'cards'
         ? `Tab: Focus   |   B / Select: Views   |   G / R3: Atlas   |   / / RB: Find   |   R / RT: Sort   |   L / LB: Lens${activeFilterHint}   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate`
         : `Tab: Focus   |   ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: Navigate   |   ${controlBindingLabel('confirm')}: Select   |   ${controlBindingLabel('back')}: Back`;
-    const width = this.savedCollectionViewsOpen ? 1120 : this.collectionAtlasOpen ? 830 : readOnlyDetail ? 530 : detail ? 1180 : this.activeSection === 'cards' ? 1240 : 710;
+    const width = this.savedCollectionViewsOpen || this.collectionAtlasOpen ? 1168 : readOnlyDetail ? 530 : detail ? 1180 : this.activeSection === 'cards' ? 1240 : 710;
     this.root.add(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 13, width, 22, 0x05070c, 0.86)
       .setStrokeStyle(1, UI_FIELD.cyan, 0.34)
       .setName('codex-input-hint-backdrop'));
     this.root.add(this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 13, label, {
       fontFamily: UI_FONT,
-      fontSize: readOnlyDetail ? '16px' : '11px',
+      fontSize: detail || this.savedCollectionViewsOpen || this.collectionAtlasOpen ? '16px' : '11px',
       fontStyle: UI_BOLD,
       color: '#a9d9e8',
       stroke: '#05070c',
@@ -3772,48 +3513,33 @@ export class CodexScene extends Phaser.Scene {
     accent: number,
     onClick: () => void,
     labelSize = 13,
-    iconOverride?: UiIconId,
   ) {
     const fill = active ? 0x1d3047 : 0x0d1420;
-    const tabFrameKey = uiIconAssets['codex-tab-frame'].key;
-    const hasTabFrame = this.textures.exists(tabFrameKey);
-    const rect = this.add.rectangle(x, y, w, h, fill, hasTabFrame ? (active ? 0.22 : 0.1) : (active ? 1 : 0.9))
-      .setStrokeStyle(active ? 2 : 1, active ? accent : 0x2a3a4d, hasTabFrame ? (active ? 0.36 : 0.18) : (active ? 1 : 0.82));
+    const surfaceH = Math.max(48, h);
+    const rect = this.add.rectangle(x, y, w, surfaceH, fill, active ? 1 : 0.45)
+      .setStrokeStyle(1, accent, active ? 0.7 : 0)
+      .setName('codex-tab-surface').setData('active', active).setData('label', label);
     this.root.add(rect);
     const hit = this.add.rectangle(x, y, Math.max(w, MIN_SUPPORTED_TOUCH_TARGET), MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
       .setInteractive({ useHandCursor: true })
       .setName('codex-tab-hit')
       .setData('label', label);
-    hit.on('pointerover', () => rect.setFillStyle(active ? 0x243954 : 0x121d2b, hasTabFrame ? 0.24 : 0.98));
-    hit.on('pointerout', () => rect.setFillStyle(fill, hasTabFrame ? (active ? 0.22 : 0.1) : (active ? 1 : 0.9)));
+    hit.on('pointerover', () => rect.setFillStyle(active ? 0x243954 : 0x121d2b, 1));
+    hit.on('pointerout', () => rect.setFillStyle(fill, active ? 1 : 0.45));
     hit.on('pointerdown', onClick);
     this.root.add(hit);
-    if (hasTabFrame) {
-      this.textures.get(tabFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      this.root.add(this.add.image(x, y, tabFrameKey)
-        .setDisplaySize(w, h + 5)
-        .setAlpha(active ? 0.82 : 0.18)
-        .setName('codex-tab-frame')
-        .setData('active', active)
-        .setData('label', label));
-    }
-    const iconId = iconOverride ?? codexIconForLabel(label);
-    const icon = iconId ? addUiIconImage(this, iconId, x - w / 2 + 18, y - 2, Math.min(26, h - 10)) : undefined;
-    if (icon) {
-      icon.setAlpha(active ? 0.96 : 0.3);
-      this.root.add(icon);
-    }
-    this.root.add(this.add.text(x + (icon ? 8 : 0), y - 8, label, {
+    if (active) this.root.add(this.add.rectangle(x, y + surfaceH / 2 - 1, w - 12, 2, accent, 0.95));
+    this.root.add(this.add.text(x, y - 8, label, {
       fontFamily: UI_FONT,
-      fontSize: `${labelSize}px`,
+      fontSize: `${Math.max(14, labelSize)}px`,
       fontStyle: UI_BOLD,
-      color: active ? '#ffe1a3' : '#9fb1c4',
-    }).setResolution(2).setOrigin(0.5));
+      color: active ? '#ffe1a3' : '#b9c8d7',
+    }).setResolution(2).setOrigin(0.5).setName('codex-tab-label').setData('label', label));
     this.root.add(this.add.text(x, y + 10, meta, {
       fontFamily: UI_FONT,
-      fontSize: '9px',
-      color: active ? this.hexColor(accent) : '#708296',
-    }).setResolution(2).setOrigin(0.5));
+      fontSize: '14px',
+      color: active ? this.hexColor(accent) : '#9aafc0',
+    }).setResolution(2).setOrigin(0.5).setName('codex-tab-meta').setData('label', label));
   }
 
   private renderGlossaryEntry(
@@ -3825,21 +3551,66 @@ export class CodexScene extends Phaser.Scene {
     h: number,
   ) {
     const accent = 0x8df4ff;
-    layer.add(this.add.rectangle(cx, cy, w, h, 0x0b121d, 0.96).setStrokeStyle(1, accent, 0.68));
-    addCodexEntryFrame(this, (obj) => layer.add(obj), { cx, cy, w, h }, { alpha: 0.38, padX: 18, padY: 16 });
-    layer.add(this.add.text(cx - w / 2 + 24, cy - h / 2 + 18, term.term, {
-      fontFamily: UI_FONT,
-      fontSize: '17px',
-      fontStyle: UI_BOLD,
-      color: '#ffe1a3',
-    }).setResolution(2).setOrigin(0, 0.5));
-    this.addCodexChip(layer, cx + w / 2 - 68, cy - h / 2 + 18, 126, term.category, accent, true);
-    layer.add(this.add.text(cx - w / 2 + 24, cy - h / 2 + 42, term.summary, {
-      fontFamily: UI_FONT,
-      fontSize: '12px',
-      fontStyle: UI_BOLD,
-      color: this.hexColor(accent),
-    }).setResolution(2));
+    const left = cx - w / 2, top = cy - h / 2;
+    const tile = this.add.container().setName('codex-glossary-tile').setData('id', term.term);
+    layer.add(tile);
+    const bg = this.add.rectangle(cx, cy, w, h, 0x0c1420, 1).setStrokeStyle(1, accent, 0.3)
+      .setName('codex-entry-hit').setData('id', term.term).setInteractive({ useHandCursor: true });
+    bg.on('pointerover', () => bg.setFillStyle(0x142334, 1));
+    bg.on('pointerout', () => bg.setFillStyle(0x0c1420, 1));
+    bg.on('pointerdown', () => this.openCodexDetail(term.term));
+    tile.add(bg);
+    this.codexPreviewText(tile, term.term, left + 20, top + 16, w - 188, 28, 20, UI_GOLD, 'codex-entry-title', true);
+    this.codexPreviewText(tile, term.category, left + w - 164, top + 18, 144, 24, 14, '#a9c5d5', 'codex-entry-meta');
+    this.codexPreviewText(tile, term.summary, left + 20, top + 56, w - 40, h - 72, 18, UI_BODY, 'codex-entry-summary');
+  }
+
+  private renderGlossaryDetail(id: string) {
+    const term = this.glossaryTerms.find((entry) => entry.term === id);
+    if (!term) return;
+    const left = 220, right = 1060, top = 80, bottom = 640;
+    const tx = left + 36, wrap = right - tx - 36, viewTop = 148, viewBottom = 568;
+    const close = () => this.closeCodexDetail();
+    this.root.add(this.add.rectangle(640, 360, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.84)
+      .setInteractive().on('pointerdown', close));
+    this.root.add(this.add.rectangle(640, 360, right - left, bottom - top, 0x0c1420, 1)
+      .setInteractive().setName('codex-glossary-dossier'));
+    const reader = this.add.container().setName('codex-glossary-reader');
+    this.root.add(reader);
+    let yy = viewTop - this.detailScroll;
+    for (const [value, size, color, name] of [
+      [term.term, 28, UI_GOLD, 'title'], [term.category, 16, '#a9c5d5', 'category'],
+      [term.summary, 20, UI_BODY, 'summary'], [term.detail, 22, '#e4edf5', 'definition'],
+    ] as const) {
+      const text = this.add.text(tx, yy, value, {
+        fontFamily: UI_FONT, fontSize: `${size}px`, color, fontStyle: name === 'title' ? UI_BOLD : 'normal',
+        lineSpacing: 6, wordWrap: { width: wrap, useAdvancedWrap: true },
+      }).setResolution(2).setName(`codex-glossary-${name}`);
+      reader.add(text); yy += text.height + (name === 'category' ? 28 : 20);
+    }
+    this.detailMaxScroll = Math.max(0, yy + this.detailScroll - 20 - viewBottom);
+    this.detailScrollTarget = clamp(this.detailScrollTarget, 0, this.detailMaxScroll);
+    this.detailScroll = clamp(this.detailScroll, 0, this.detailMaxScroll);
+    // Opaque curtains keep a long definition inside the reading window in Phaser 4 WebGL.
+    this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, top, 0x070a11, 1).setOrigin(0).setInteractive().on('pointerdown', close));
+    this.root.add(this.add.rectangle(0, bottom, GAME_WIDTH, GAME_HEIGHT - bottom, 0x070a11, 1).setOrigin(0).setInteractive().on('pointerdown', close));
+    this.root.add(this.add.rectangle(left, top, right - left, viewTop - top, 0x0c1420, 1).setOrigin(0).setInteractive());
+    this.root.add(this.add.rectangle(left, viewBottom, right - left, bottom - viewBottom, 0x0c1420, 1).setOrigin(0).setInteractive());
+    this.root.add(this.add.rectangle(640, 360, right - left, bottom - top, 0x0c1420, 0).setStrokeStyle(1, 0x8df4ff, 0.6));
+    if (this.detailMaxScroll > 0) {
+      for (const [x, delta, label, name] of [[right - 264, -1, '↑ Back', 'back'], [right - 100, 1, 'More ↓', 'more']] as const) {
+        const enabled = delta < 0 ? this.detailScrollTarget > 0 : this.detailScrollTarget < this.detailMaxScroll;
+        const hit = this.add.rectangle(x, bottom - 34, 144, MIN_SUPPORTED_TOUCH_TARGET, 0x0c1420, 0.001)
+          .setName(`codex-glossary-scroll-${name}`);
+        this.root.add(hit);
+        if (enabled) hit.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+          this.detailScrollTarget = clamp(this.detailScrollTarget + delta * (viewBottom - viewTop) * 0.7, 0, this.detailMaxScroll);
+        });
+        this.root.add(this.add.text(x, bottom - 34, label, { fontFamily: UI_FONT, fontSize: '18px',
+          color: enabled ? '#cfe9f5' : '#788694' }).setResolution(2).setOrigin(0.5));
+      }
+    }
+    this.renderCodexCloseControl(right - 28, top + 28, close);
   }
 
   private cardAccent(card: Card) {
@@ -3911,161 +3682,79 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private renderThumb(layer: Phaser.GameObjects.Container, card: Card, cx: number, cy: number) {
-    // The art is a complete 2:3 card illustration - show it whole, undistorted.
-    const aw = 184;
-    const ah = Math.round(aw * 1.5); // exact 2:3, no smashing
-    const w = aw + 8;
-    const h = ah + 8;
-    const found = this.discovered.has(card.id);
-    const accent = this.cardAccent(card);
-    const bg = this.add.rectangle(cx, cy, w, h, found ? 0x0e131d : 0x0a0d13, found ? 1 : 0.9)
-      .setStrokeStyle(found ? 3 : 2, found ? accent : 0x232b35, found ? 1 : 0.7)
-      .setInteractive({ useHandCursor: found })
-      .setName('codex-card-entry-hit')
-      .setData('cardId', card.id);
-    bg.on('pointerover', () => bg.setFillStyle(found ? 0x162235 : 0x0d1420, found ? 1 : 0.94));
-    bg.on('pointerout', () => bg.setFillStyle(found ? 0x0e131d : 0x0a0d13, found ? 1 : 0.9));
+    // Preserve the complete 2:3 illustration. Collection metadata lives outside it.
+    const aw = 184, ah = 276, w = 224, h = 430;
+    const left = cx - w / 2, top = cy - h / 2, artY = top + 226;
+    const found = this.discovered.has(card.id), accent = this.cardAccent(card);
+    const tile = this.add.container().setName('codex-card-tile').setData('cardId', card.id);
+    layer.add(tile);
+    const bg = this.add.rectangle(cx, cy, w, h, 0x0c1420, 1)
+      .setStrokeStyle(1, found ? accent : 0x344558, found ? 0.55 : 0.6)
+      .setInteractive({ useHandCursor: found }).setName('codex-card-entry-hit').setData('cardId', card.id);
+    bg.on('pointerover', () => bg.setFillStyle(0x142334, 1));
+    bg.on('pointerout', () => bg.setFillStyle(0x0c1420, 1));
     if (found) bg.on('pointerdown', () => this.openCodexDetail(card.id));
-    layer.add(bg);
-    addCodexEntryFrame(this, (obj) => layer.add(obj), { cx, cy, w, h }, {
-      alpha: found ? 0.38 : 0.26,
-      tint: found ? undefined : 0x7f93a8,
-      padX: 18,
-      padY: 20
-    });
-
+    tile.add(bg);
+    this.codexPreviewText(tile, found ? displayName(card) : 'Undiscovered', left + 14, top + 12,
+      w - 28, 44, 18, found ? UI_GOLD : UI_MUTED, 'codex-card-title', true).setData('cardId', card.id);
+    // Transparent marker bounds preserve the existing semantic hooks and full-tile click target.
+    const marker = (name: string, label: string, x: number, y: number, width: number, color: string) => {
+      const rect = this.add.rectangle(x, y, width, 22, 0x0c1420, 0)
+        .setName(name).setData('cardId', card.id);
+      tile.add(rect);
+      const text = this.codexPreviewText(tile, label, x - width / 2, y - 10, width, 22, 14, color,
+        name + '-label').setData('cardId', card.id);
+      return { rect, text };
+    };
     const key = compactCardArtKey(card);
     if (found && key && this.textures.exists(key)) {
-      layer.add(this.add.image(cx, cy, key).setDisplaySize(aw, ah).setAlpha(0.99));
-      // Cost badge (gameplay info not shown in the illustration).
-      layer.add(this.add.circle(cx - aw / 2 + 18, cy - ah / 2 + 18, 15, card.cost === 0 ? 0x24d0d6 : 0xe8b830, 1).setStrokeStyle(2, 0x05080e, 0.95));
-      layer.add(this.add.text(cx - aw / 2 + 18, cy - ah / 2 + 18, `${card.cost}`, { fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: '#06101c' }).setOrigin(0.5));
-    } else if (found && renderSnagCardBorder(this, (obj) => layer.add(obj), card, cx, cy, aw, ah, 0.99)) {
-      // Snag cards use their own border template even before full illustration art exists.
+      tile.add(this.add.image(cx, artY, key).setDisplaySize(aw, ah).setAlpha(0.99)
+        .setName('codex-card-art').setData('cardId', card.id));
+    } else if (found && renderSnagCardBorder(this, (obj) => tile.add(obj), card, cx, artY, aw, ah, 0.99)) {
+      // Snag identity remains recognizable while its illustration is unavailable.
     } else if (found) {
-      layer.add(this.add.text(cx, cy, displayName(card), {
-        fontFamily: UI_FONT,
-        fontSize: '15px',
-        fontStyle: UI_BOLD,
-        color: UI_BODY,
-        align: 'center',
-        wordWrap: { width: aw - 16 },
-      }).setOrigin(0.5)
-        .setName('codex-card-art-placeholder')
-        .setData('cardId', card.id)
-        .setData('status', key ? 'streaming' : 'fallback'));
-      if (key) {
-        layer.add(this.add.text(cx, cy + 48, 'ART STREAMING', {
-          fontFamily: UI_FONT,
-          fontSize: '8px',
-          fontStyle: UI_BOLD,
-          color: '#91a6b8',
-        }).setResolution(2).setOrigin(0.5)
-          .setName('codex-card-art-streaming-label')
-          .setData('cardId', card.id));
-      }
-      this.addCodexChip(layer, cx, cy + 72, 118, this.cardFamilyLabel(card), accent, true);
+      this.codexPreviewText(tile, displayName(card), left + 24, artY - 35, w - 48, 76, 18,
+        UI_BODY, 'codex-card-art-placeholder').setData('cardId', card.id).setData('status', key ? 'streaming' : 'fallback');
+      if (key) this.codexPreviewText(tile, 'ART STREAMING', left + 24, artY + 54, w - 48, 22, 14,
+        '#91a6b8', 'codex-card-art-streaming-label').setData('cardId', card.id);
     } else {
-      this.drawLockedCardBack(layer, card, cx, cy, aw, ah, accent);
+      this.drawLockedCardBack(tile, card, cx, artY, aw, ah, accent);
     }
-    if (found) {
-      const collected = Boolean(this.cardCollection[card.id]);
-      const width = collected ? 82 : 52;
-      layer.add(this.add.rectangle(cx, cy - ah / 2 + 18, width, 20, collected ? 0x3b2b0b : 0x102534, 0.96)
-        .setStrokeStyle(1, collected ? UI_FIELD.gold : UI_FIELD.cyan, 0.96)
-        .setName('codex-card-ownership-marker')
-        .setData('cardId', card.id)
-        .setData('collected', collected));
-      layer.add(this.add.text(cx, cy - ah / 2 + 18, collected ? 'COLLECTED' : 'SEEN', {
-        fontFamily: UI_FONT,
-        fontSize: '9px',
-        fontStyle: UI_BOLD,
-        color: collected ? '#ffe08a' : '#b8e8f4',
-        stroke: '#05070c',
-        strokeThickness: 2,
-      }).setResolution(2).setOrigin(0.5).setName('codex-card-ownership-label').setData('cardId', card.id));
+    if (!found) {
+      this.codexPreviewText(tile, this.cardFamilyLabel(card), left + 14, top + 62, w - 28, 22, 14,
+        '#a9c5d5', 'codex-card-family');
+      return;
     }
-    const folioUsage = found ? this.cardFolioUsage[card.id] : undefined;
+    tile.add(this.add.circle(left + 26, top + 70, 14, card.cost === 0 ? 0x24d0d6 : 0xe8b830, 1)
+      .setName('codex-card-cost-badge'));
+    tile.add(this.add.text(left + 26, top + 70, String(card.cost), { fontFamily: UI_FONT,
+      fontSize: '16px', fontStyle: UI_BOLD, color: '#06101c' }).setResolution(2).setOrigin(0.5)
+      .setName('codex-card-cost-label'));
+    const collected = Boolean(this.cardCollection[card.id]);
+    const ownership = marker('codex-card-ownership-marker', collected ? 'COLLECTED' : 'SEEN',
+      left + 106, top + 70, 108, collected ? '#ffe08a' : '#b8e8f4');
+    ownership.rect.setData('collected', collected);
+    ownership.text.setName('codex-card-ownership-label');
+
+    let markerX = left + 14;
+    if (this.newlyAcquiredCards.has(card.id)) {
+      marker('codex-new-card-marker', 'NEW', markerX + 18, top + 383, 36, '#eadcff');
+      markerX += 44;
+    }
+    const personalTag = this.cardTags[card.id];
+    if (personalTag) marker('codex-card-tag-marker', this.cardTagLabel(personalTag),
+      markerX + 43, top + 383, 86, this.hexColor(this.cardTagAccent(personalTag))).rect.setData('tag', personalTag);
+    if (this.favoriteCards.has(card.id)) marker('codex-favorite-marker', '★', left + w - 46, top + 383, 20, '#ffe08a');
+    if (this.collectionTargets.has(card.id)) marker('codex-hunt-marker', '◎', left + w - 20, top + 383, 20, '#ffc09f');
+
+    const folioUsage = this.cardFolioUsage[card.id];
     if (folioUsage) {
       const archiveOnly = folioUsage.active === 0;
-      const label = archiveOnly
-        ? `ARCHIVE ${folioUsage.archived}`
-        : `FOLIO ${folioUsage.total}`;
-      layer.add(this.add.rectangle(cx, cy - ah / 2 + 42, 70, 18, archiveOnly ? 0x211738 : 0x102534, 0.97)
-        .setStrokeStyle(1, archiveOnly ? 0xc9a6ff : UI_FIELD.cyan, 0.96)
-        .setName('codex-card-folio-marker')
-        .setData('cardId', card.id)
-        .setData('total', folioUsage.total)
-        .setData('active', folioUsage.active)
-        .setData('archived', folioUsage.archived));
-      layer.add(this.add.text(cx, cy - ah / 2 + 42, label, {
-        fontFamily: UI_FONT,
-        fontSize: '8px',
-        fontStyle: UI_BOLD,
-        color: archiveOnly ? '#eadcff' : '#b8e8f4',
-        stroke: '#05070c',
-        strokeThickness: 2,
-      }).setResolution(2).setOrigin(0.5).setName('codex-card-folio-marker-label').setData('cardId', card.id));
-    }
-    if (found && this.newlyAcquiredCards.has(card.id)) {
-      layer.add(this.add.rectangle(cx - aw / 2 + 28, cy + ah / 2 - 18, 50, 22, 0x31215a, 0.98)
-        .setStrokeStyle(2, 0xc9a6ff, 0.98)
-        .setName('codex-new-card-marker')
-        .setData('cardId', card.id));
-      layer.add(this.add.text(cx - aw / 2 + 28, cy + ah / 2 - 18, 'NEW', {
-        fontFamily: UI_FONT,
-        fontSize: '10px',
-        fontStyle: UI_BOLD,
-        color: '#eadcff',
-        stroke: '#05070c',
-        strokeThickness: 2,
-      }).setResolution(2).setOrigin(0.5).setName('codex-new-card-marker-label').setData('cardId', card.id));
-    }
-    const personalTag = found ? this.cardTags[card.id] : undefined;
-    if (personalTag) {
-      const accentColor = this.cardTagAccent(personalTag);
-      const label = this.cardTagLabel(personalTag).toUpperCase();
-      const width = personalTag === 'experiment' ? 86 : 72;
-      layer.add(this.add.rectangle(cx + aw / 2 - width / 2, cy + ah / 2 - 18, width, 22, 0x0d1c28, 0.98)
-        .setStrokeStyle(2, accentColor, 0.98)
-        .setName('codex-card-tag-marker')
-        .setData('cardId', card.id)
-        .setData('tag', personalTag));
-      layer.add(this.add.text(cx + aw / 2 - width / 2, cy + ah / 2 - 18, label, {
-        fontFamily: UI_FONT,
-        fontSize: '8px',
-        fontStyle: UI_BOLD,
-        color: this.hexColor(accentColor),
-        stroke: '#05070c',
-        strokeThickness: 2,
-      }).setResolution(2).setOrigin(0.5).setName('codex-card-tag-marker-label').setData('cardId', card.id));
-    }
-    if (found && this.favoriteCards.has(card.id)) {
-      layer.add(this.add.circle(cx + aw / 2 - 18, cy - ah / 2 + 18, 16, 0x07101c, 0.94)
-        .setStrokeStyle(2, UI_FIELD.gold, 0.98)
-        .setName('codex-favorite-marker')
-        .setData('cardId', card.id));
-      layer.add(this.add.text(cx + aw / 2 - 18, cy - ah / 2 + 18, '★', {
-        fontFamily: 'Georgia, serif',
-        fontSize: '18px',
-        color: '#ffe08a',
-        stroke: '#05070c',
-        strokeThickness: 2,
-      }).setResolution(2).setOrigin(0.5).setName('codex-favorite-marker-label').setData('cardId', card.id));
-    }
-    if (found && this.collectionTargets.has(card.id)) {
-      layer.add(this.add.circle(cx + aw / 2 - 18, cy - ah / 2 + 54, 16, 0x28130e, 0.96)
-        .setStrokeStyle(2, 0xff9b6a, 0.98)
-        .setName('codex-hunt-marker')
-        .setData('cardId', card.id));
-      layer.add(this.add.text(cx + aw / 2 - 18, cy - ah / 2 + 54, '◎', {
-        fontFamily: UI_FONT,
-        fontSize: '18px',
-        fontStyle: UI_BOLD,
-        color: '#ffc09f',
-        stroke: '#05070c',
-        strokeThickness: 2,
-      }).setResolution(2).setOrigin(0.5).setName('codex-hunt-marker-label').setData('cardId', card.id));
+      const label = archiveOnly ? `ARCHIVE ${folioUsage.archived}` : `FOLIO ${folioUsage.total}`;
+      const folio = marker('codex-card-folio-marker', label, cx, top + 409, w - 28,
+        archiveOnly ? '#eadcff' : '#b8e8f4');
+      folio.rect.setData('total', folioUsage.total).setData('active', folioUsage.active).setData('archived', folioUsage.archived);
+      folio.text.setName('codex-card-folio-marker-label');
     }
   }
 
@@ -4212,7 +3901,7 @@ export class CodexScene extends Phaser.Scene {
     layer.add(this.add.text(
       cx,
       cy + 52,
-      `No cards in ${this.tabs[this.activeTab]?.label ?? 'this set'} match every search term.\nCheck spelling, remove SEARCH above, or choose CLEAR ALL.`,
+      `No cards in ${this.tabs[this.activeTab]?.label ?? 'this set'} match every search term.\nCheck spelling, remove SEARCH above, or choose Clear filters.`,
       {
         fontFamily: UI_FONT,
         fontSize: '14px',
@@ -4224,323 +3913,119 @@ export class CodexScene extends Phaser.Scene {
     ).setResolution(2).setOrigin(0.5));
   }
 
-  private renderCardSearchControl(x: number, y: number) {
-    const searchActive = this.focusZone === 'search' || this.cardSearchEditing;
-    const sortActive = this.focusZone === 'sort';
+  /** Collection tools share readable type and stable 58px input bounds. */
+  private renderCollectionTool(x: number, width: number, kicker: string, value: string,
+    prefix: string, active = false, accent = UI_FIELD.cyan) {
+    const y = CARD_SEARCH_Y;
+    const surface = this.add.rectangle(x, y, width, CARD_SEARCH_HEIGHT, active ? 0x183047 : 0x0b1724, 0.98)
+      .setStrokeStyle(1, accent, active ? 0.95 : 0.38).setName(prefix + '-control');
+    this.root.add(surface);
+    const hit = this.add.rectangle(x, y, width, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+      .setInteractive({ useHandCursor: true }).setName(prefix + '-hit');
+    hit.on('pointerover', () => surface.setFillStyle(0x183047, 1));
+    hit.on('pointerout', () => surface.setFillStyle(active ? 0x183047 : 0x0b1724, 0.98));
+    this.root.add(hit);
+    this.codexPreviewText(this.root, kicker, x - width / 2 + 12, y - 21, width - 24, 20, 14,
+      '#a9c5d5', prefix + '-kicker');
+    this.codexPreviewText(this.root, value, x - width / 2 + 12, y + 1, width - 24, 24, 18,
+      active ? '#ffe1a3' : '#e5edf4', prefix + '-label', true);
+    return hit;
+  }
+
+  private renderCardSearchControl() {
     const matchingCards = this.currentCardSearchMatches();
-    const matches = matchingCards.length;
     const typoToleranceUsed = matchingCards.some((card) => this.cardSearchMatch(card).usedTypoTolerance);
     const query = this.cardSearchQuery;
-    const sort = this.activeCardSortMode();
-    const displayQuery = query.length > 11 ? `${query.slice(0, 10)}…` : query;
-    this.root.add(this.add.rectangle(x, y, CARD_SEARCH_WIDTH, CARD_SEARCH_HEIGHT, 0x0b1724, 0.98)
-      .setStrokeStyle(2, UI_FIELD.cyan, searchActive || sortActive ? 0.98 : 0.66)
-      .setName('codex-card-search-control'));
-    this.root.add(this.add.rectangle(
-      CARD_SEARCH_ACTION_X,
-      y,
-      CARD_SEARCH_ACTION_WIDTH - 4,
-      CARD_SEARCH_HEIGHT - 4,
-      searchActive ? 0x183047 : 0x0b1724,
-      0.98,
-    ));
-    this.root.add(this.add.rectangle(
-      CARD_SORT_X,
-      y,
-      CARD_SORT_WIDTH - 4,
-      CARD_SEARCH_HEIGHT - 4,
-      sortActive ? 0x3a2b13 : 0x101a25,
-      0.98,
-    ));
-    this.root.add(this.add.rectangle(
-      CARD_SEARCH_X - CARD_SEARCH_WIDTH / 2 + CARD_SEARCH_ACTION_WIDTH,
-      y,
-      1,
-      CARD_SEARCH_HEIGHT - 8,
-      UI_FIELD.cyan,
-      0.42,
-    ));
-    const hit = this.add.rectangle(
-      CARD_SEARCH_ACTION_X,
-      y,
-      CARD_SEARCH_ACTION_WIDTH,
-      MIN_SUPPORTED_TOUCH_TARGET,
-      0x020409,
-      0.001,
-    )
-      .setInteractive({ useHandCursor: true })
-      .setName('codex-card-search-hit')
-      .setData('query', query);
-    this.root.add(hit);
-    const sortHit = this.add.rectangle(
-      CARD_SORT_X,
-      y,
-      CARD_SORT_WIDTH,
-      MIN_SUPPORTED_TOUCH_TARGET,
-      0x020409,
-      0.001,
-    )
-      .setInteractive({ useHandCursor: true })
-      .setName('codex-card-sort-hit')
-      .setData('sort', sort.id);
-    this.root.add(sortHit);
-    this.root.add(this.add.text(
-      CARD_SEARCH_ACTION_X,
-      y - 9,
-      query ? `FIND · ${matches}${typoToleranceUsed ? ' · TYPO' : ''}` : 'FIND CARDS',
-      {
-      fontFamily: UI_FONT,
-      fontSize: typoToleranceUsed ? '7px' : '8px',
-      fontStyle: UI_BOLD,
-      color: '#7f93a8',
-      },
-    ).setResolution(2).setOrigin(0.5).setName('codex-card-search-kicker'));
-    this.root.add(this.add.text(CARD_SEARCH_ACTION_X, y + 8, query ? displayQuery : '/  OR  RB', {
-      fontFamily: UI_FONT,
-      fontSize: query ? '11px' : '10px',
-      fontStyle: UI_BOLD,
-      color: query ? '#f5d38a' : '#b8e8f4',
-    }).setResolution(2).setOrigin(0.5).setName('codex-card-search-label'));
-    this.root.add(this.add.text(CARD_SORT_X, y - 9, 'SORT', {
-      fontFamily: UI_FONT,
-      fontSize: '8px',
-      fontStyle: UI_BOLD,
-      color: '#7f93a8',
-    }).setResolution(2).setOrigin(0.5).setName('codex-card-sort-kicker'));
-    this.root.add(this.add.text(CARD_SORT_X, y + 8, sort.label.toUpperCase(), {
-      fontFamily: UI_FONT,
-      fontSize: sort.id === 'rarity' ? '8px' : '9px',
-      fontStyle: UI_BOLD,
-      color: '#f5d38a',
-    }).setResolution(2).setOrigin(0.5).setName('codex-card-sort-label'));
+    this.renderCollectionTool(CARD_SEARCH_ACTION_X, CARD_SEARCH_ACTION_WIDTH - 6,
+      query ? `FIND · ${matchingCards.length}${typoToleranceUsed ? ' · TYPO' : ''}` : 'Find cards',
+      query || 'Name or keyword', 'codex-card-search',
+      this.focusZone === 'search' || this.cardSearchEditing).setData('query', query);
+    this.renderCollectionTool(CARD_SORT_X, CARD_SORT_WIDTH - 6, 'Sort cards',
+      this.activeCardSortMode().label, 'codex-card-sort', this.focusZone === 'sort')
+      .setData('sort', this.activeCardSortMode().id);
   }
 
   private renderActiveCardFilters() {
     const chips = this.activeCardFilterChips();
     if (chips.length === 0) return;
-    this.root.add(this.add.rectangle(580, CARD_FILTER_CHIP_Y, 1080, 52, 0x07101a, 0.98)
-      .setStrokeStyle(1, UI_FIELD.cyan, 0.42)
-      .setName('codex-active-filter-rail'));
-    this.root.add(this.add.text(52, CARD_FILTER_CHIP_Y - 21, 'ACTIVE FILTERS  /  SELECT A CHIP TO REMOVE', {
-      fontFamily: UI_FONT,
-      fontSize: '8px',
-      fontStyle: UI_BOLD,
-      color: '#7f93a8',
-    }).setResolution(2).setOrigin(0, 0.5).setName('codex-active-filter-kicker'));
     chips.forEach((chip, index) => {
       const selected = this.focusZone === 'activeFilters' && index === this.activeCardFilterIndex;
       const clearAll = chip.id === 'clear';
-      const panel = this.add.rectangle(
-        chip.x,
-        CARD_FILTER_CHIP_Y + 3,
-        chip.width,
-        38,
-        clearAll ? 0x2d2026 : selected ? 0x183047 : 0x0f1f2e,
-        0.99,
-      ).setStrokeStyle(
-        selected ? 2 : 1,
-        clearAll ? 0xff9b6a : selected ? UI_FIELD.gold : UI_FIELD.cyan,
-        selected ? 0.98 : 0.68,
-      ).setName('codex-active-filter-chip')
-        .setData('filterId', chip.id)
-        .setData('index', index)
-        .setData('value', chip.value);
+      const panel = this.add.rectangle(chip.x, CARD_FILTER_CHIP_Y, chip.width, 50,
+        selected ? 0x183047 : 0x0b1724, 0.99)
+        .setStrokeStyle(1, clearAll ? 0xff9b6a : UI_FIELD.cyan, selected ? 0.9 : 0.38)
+        .setName('codex-active-filter-chip').setData('filterId', chip.id)
+        .setData('index', index).setData('value', chip.value);
       this.root.add(panel);
-      const hit = this.add.rectangle(
-        chip.x,
-        CARD_FILTER_CHIP_Y,
-        chip.width,
-        MIN_SUPPORTED_TOUCH_TARGET,
-        0x020409,
-        0.001,
-      ).setInteractive({ useHandCursor: true })
-        .setName('codex-active-filter-chip-hit')
-        .setData('filterId', chip.id)
-        .setData('index', index)
-        .setData('value', chip.value);
-      hit.on('pointerover', () => panel.setFillStyle(clearAll ? 0x4b2c35 : 0x183047, 1));
-      hit.on('pointerout', () => panel.setFillStyle(
-        clearAll ? 0x2d2026 : selected ? 0x183047 : 0x0f1f2e,
-        0.99,
-      ));
+      const hit = this.add.rectangle(chip.x, CARD_FILTER_CHIP_Y, chip.width, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+        .setInteractive({ useHandCursor: true }).setName('codex-active-filter-chip-hit')
+        .setData('filterId', chip.id).setData('index', index).setData('value', chip.value);
+      hit.on('pointerover', () => panel.setFillStyle(0x183047, 1));
+      hit.on('pointerout', () => panel.setFillStyle(selected ? 0x183047 : 0x0b1724, 0.99));
       hit.on('pointerdown', () => {
         this.focusZone = 'activeFilters';
         this.activeCardFilterIndex = index;
         this.clearActiveCardFilter(index);
       });
       this.root.add(hit);
-      this.root.add(this.add.text(
-        chip.x,
-        CARD_FILTER_CHIP_Y + 3,
-        clearAll
-          ? `CLEAR ALL  ·  ${chip.value.toUpperCase()}`
-          : `${chip.label.toUpperCase()}  ·  ${chip.value}   ×`,
-        {
-          fontFamily: UI_FONT,
-          fontSize: clearAll ? '10px' : chip.value.length > 24 ? '9px' : '10px',
-          fontStyle: UI_BOLD,
-          color: clearAll ? '#ffd0c4' : selected ? '#ffe1a3' : '#dffbff',
-          fixedWidth: chip.width - 12,
-          align: 'center',
-        },
-      ).setResolution(2).setOrigin(0.5).setName('codex-active-filter-chip-label')
-        .setData('filterId', chip.id));
+      this.codexPreviewText(this.root,
+        clearAll ? 'Clear filters' : `${chip.label}: ${chip.value}  ×`,
+        chip.x - chip.width / 2 + 14, CARD_FILTER_CHIP_Y - 12, chip.width - 28, 26, 18,
+        clearAll ? '#ffd0c4' : '#dffbff', 'codex-active-filter-chip-label', true)
+        .setData('filterId', chip.id);
     });
   }
 
-  private renderCardCollectionLensControl(x: number, y: number) {
+  private renderCardCollectionLensControl() {
     const lens = this.activeCardCollectionLens();
-    const lensActive = this.focusZone === 'secondaryTabs';
-    const viewsActive = this.focusZone === 'savedViews' || this.savedCollectionViewsOpen;
-    const lensX = x - 26;
-    const viewsX = x + 52;
-    this.root.add(this.add.rectangle(x, y, 156, 42, 0x0b1724, 0.98)
-      .setStrokeStyle(2, UI_FIELD.cyan, lensActive || viewsActive ? 0.98 : 0.66)
-      .setName('codex-card-lens-control'));
-    this.root.add(this.add.rectangle(lensX, y, 102, 38, lensActive ? 0x183047 : 0x0b1724, 0.98));
-    this.root.add(this.add.rectangle(viewsX, y, 50, 38, viewsActive ? 0x3a2b13 : 0x101a25, 0.98));
-    this.root.add(this.add.rectangle(x + 26, y, 1, 34, UI_FIELD.cyan, 0.42));
-    const hit = this.add.rectangle(lensX, y, 104, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-      .setInteractive({ useHandCursor: true })
-      .setName('codex-card-lens-hit')
-      .setData('lens', lens.id);
-    hit.on('pointerdown', () => this.cycleCardCollectionLens(1));
-    this.root.add(hit);
-    const viewsHit = this.add.rectangle(viewsX, y, 52, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-      .setInteractive({ useHandCursor: true })
-      .setName('codex-saved-views-hit')
-      .setData('count', this.savedCollectionViews.length);
-    this.root.add(viewsHit);
-    this.root.add(this.add.text(lensX, y - 9, 'LENS', {
-      fontFamily: UI_FONT,
-      fontSize: '8px',
-      fontStyle: UI_BOLD,
-      color: '#7f93a8',
-    }).setResolution(2).setOrigin(0.5));
-    this.root.add(this.add.text(lensX, y + 8, lens.label.toUpperCase(), {
-      fontFamily: UI_FONT,
-      fontSize: lens.label.length > 9 ? '9px' : '11px',
-      fontStyle: UI_BOLD,
-      color: '#b8e8f4',
-    }).setResolution(2).setOrigin(0.5).setName('codex-card-lens-label'));
-    this.root.add(this.add.text(viewsX, y - 9, 'VIEWS', {
-      fontFamily: UI_FONT,
-      fontSize: '7px',
-      fontStyle: UI_BOLD,
-      color: '#7f93a8',
-    }).setResolution(2).setOrigin(0.5));
-    this.root.add(this.add.text(viewsX, y + 8, `${this.savedCollectionViews.length}/${CODEX_SAVED_VIEW_LIMIT}`, {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: viewsActive ? '#ffe1a3' : '#b8e8f4',
-    }).setResolution(2).setOrigin(0.5).setName('codex-saved-views-count'));
+    this.renderCollectionTool(CARD_LENS_X, CARD_LENS_WIDTH, 'Collection lens',
+      lens.label, 'codex-card-lens', this.focusZone === 'secondaryTabs')
+      .setData('lens', lens.id).on('pointerdown', () => this.cycleCardCollectionLens(1));
+    this.renderCollectionTool(CARD_VIEWS_X, CARD_VIEWS_WIDTH, 'Saved views',
+      `${this.savedCollectionViews.length} / ${CODEX_SAVED_VIEW_LIMIT} saved`, 'codex-saved-views',
+      this.focusZone === 'savedViews' || this.savedCollectionViewsOpen);
+    this.root.getByName('codex-saved-views-label')?.setName('codex-saved-views-count');
   }
 
   private renderSavedCollectionViews() {
     const current = this.currentSavedCollectionViewCriteria();
-    const currentTab = CODEX_SAVED_VIEW_TABS.find((tab) => tab.id === current.tab)?.label ?? 'Cards';
-    const currentLens = this.cardCollectionLenses.find((lens) => lens.id === current.lens)?.label ?? 'All';
-    const currentSort = this.cardSortModes.find((sort) => sort.id === current.sort)?.label ?? 'Binder';
-    const currentDescription = [
-      currentTab,
-      `${currentLens} lens`,
-      current.query ? `“${current.query}”` : 'No search',
-      `${currentSort} order`,
-    ].join('  ·  ');
-
-    const scrim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x02050a, 0.88)
-      .setInteractive()
-      .setName('codex-saved-views-scrim');
+    const text = (value: string, x: number, y: number, width: number, size: number, name: string, color = UI_BODY) =>
+      this.collectionDialogText(value, x, y, width, size, 'codex-saved-' + name, color);
+    const criteriaLabel = (view: CodexSavedViewCriteria) => [
+      CODEX_SAVED_VIEW_TABS.find(tab => tab.id === view.tab)?.label ?? 'Cards',
+      (this.cardCollectionLenses.find(lens => lens.id === view.lens)?.label ?? 'All') + ' lens',
+      (this.cardSortModes.find(sort => sort.id === view.sort)?.label ?? 'Binder') + ' order',
+    ].join(' · ');
+    const searchLabel = (view: CodexSavedViewCriteria) => view.query ? 'Search: “' + view.query + '”' : 'No search';
+    const scrim = this.add.rectangle(640, 360, 1280, 720, 0x02050a, 0.92)
+      .setInteractive().setName('codex-saved-views-scrim');
     scrim.on('pointerdown', () => this.closeSavedCollectionViews());
     this.root.add(scrim);
-
-    const panel = this.add.rectangle(640, 358, 1040, 584, 0x09131f, 0.995)
-      .setStrokeStyle(2, UI_FIELD.cyan, 0.9)
-      .setInteractive()
-      .setName('codex-saved-views-panel');
-    this.root.add(panel);
-    this.root.add(this.add.text(140, 88, 'SAVED COLLECTION VIEWS', {
-      fontFamily: 'Georgia, serif',
-      fontSize: '30px',
-      fontStyle: UI_BOLD,
-      color: UI_GOLD,
-      stroke: '#000000',
-      strokeThickness: 4,
-    }).setResolution(2));
-    this.root.add(this.add.text(142, 124, 'Keep up to four reusable combinations of set, lens, search, and sorting.', {
-      fontFamily: UI_FONT,
-      fontSize: '13px',
-      color: '#b7c8d8',
-    }).setResolution(2));
-    this.renderCodexCloseControl(1130, 102, () => this.closeSavedCollectionViews());
-
-    this.root.add(this.add.rectangle(530, 170, 760, 58, 0x07101a, 0.98)
-      .setStrokeStyle(1, UI_FIELD.gold, 0.48));
-    this.root.add(this.add.text(166, 151, 'CURRENT VIEW', {
-      fontFamily: UI_FONT,
-      fontSize: '9px',
-      fontStyle: UI_BOLD,
-      color: '#8df4ff',
-    }).setResolution(2));
-    this.root.add(this.add.text(166, 171, currentDescription, {
-      fontFamily: UI_FONT,
-      fontSize: '12px',
-      fontStyle: UI_BOLD,
-      color: '#dffbff',
-      fixedWidth: 700,
-    }).setResolution(2));
-    this.renderSavedCollectionViewButton(
-      1028,
-      170,
-      210,
-      this.savedCollectionViews.length >= CODEX_SAVED_VIEW_LIMIT ? 'SHELF FULL' : 'SAVE CURRENT',
-      'CTRL+S  /  X',
-      () => this.saveCurrentCollectionView(),
-      'codex-saved-view-save-hit',
-      this.savedCollectionViews.length >= CODEX_SAVED_VIEW_LIMIT,
-    );
+    this.root.add(this.add.rectangle(640, 358, 1168, 648, 0x09131f, 1)
+      .setStrokeStyle(1, UI_FIELD.cyan, 0.6).setInteractive().setName('codex-saved-views-panel'));
+    text('Saved Collection Views', 88, 54, 980, 30, 'title', UI_GOLD).setFontFamily('Georgia, serif').setFontStyle(UI_BOLD);
+    text('Keep up to four combinations of set, lens, search, and sorting.', 88, 96, 1020, 18, 'intro', UI_SOFT);
+    this.renderCodexCloseControl(1190, 66, () => this.closeSavedCollectionViews());
+    text('Current: ' + criteriaLabel(current), 88, 134, 890, 18, 'current-criteria', UI_CYAN);
+    text(searchLabel(current), 88, 163, 870, 20, 'current-query', '#dffbff');
+    this.renderSavedCollectionViewButton(SAVED_VIEW_SAVE_X, SAVED_VIEW_SAVE_Y, 210,
+      this.savedCollectionViews.length >= CODEX_SAVED_VIEW_LIMIT ? 'Shelf full' : 'Save current',
+      'Ctrl+S / X', () => this.saveCurrentCollectionView(), 'codex-saved-view-save-hit',
+      this.savedCollectionViews.length >= CODEX_SAVED_VIEW_LIMIT);
+    this.root.add(this.add.rectangle(640, 219, 1104, 1, 0x29404f, 1));
 
     if (this.savedCollectionViews.length === 0) {
-      this.root.add(this.add.rectangle(640, 360, 920, 216, 0x0b1826, 0.98)
-        .setStrokeStyle(1, UI_FIELD.cyan, 0.42));
-      this.root.add(this.add.text(640, 330, 'NO SAVED VIEWS YET', {
-        fontFamily: UI_FONT,
-        fontSize: '20px',
-        fontStyle: UI_BOLD,
-        color: '#dffbff',
-      }).setResolution(2).setOrigin(0.5));
-      this.root.add(this.add.text(
-        640,
-        376,
-        'Set up the card shelf you want, then save it here.\nSaved views are private conveniences. They never change drops, ownership, or card power.',
-        {
-          fontFamily: UI_FONT,
-          fontSize: '13px',
-          color: UI_SOFT,
-          align: 'center',
-          lineSpacing: 7,
-          wordWrap: { width: 700 },
-        },
-      ).setResolution(2).setOrigin(0.5));
+      text('No saved views yet', 150, 294, 980, 26, 'empty-title', '#dffbff').setFontStyle(UI_BOLD);
+      text('Set up the card shelf you want, then save it here.\nSaved views never change drops, ownership, or card power.',
+        150, 341, 980, 22, 'empty-body', UI_SOFT);
     } else {
       this.savedCollectionViews.forEach((view, index) => {
-        const y = 260 + index * 74;
+        const y = SAVED_VIEW_ROW_Y + index * SAVED_VIEW_ROW_STEP;
         const selected = index === this.savedCollectionViewIndex;
-        const tab = CODEX_SAVED_VIEW_TABS.find((candidate) => candidate.id === view.tab)?.label ?? 'Cards';
-        const lens = this.cardCollectionLenses.find((candidate) => candidate.id === view.lens)?.label ?? 'All';
-        const sort = this.cardSortModes.find((candidate) => candidate.id === view.sort)?.label ?? 'Binder';
-        const row = this.add.rectangle(640, y, 920, 62, selected ? 0x173148 : 0x0b1826, 0.98)
-          .setStrokeStyle(selected ? 2 : 1, selected ? UI_FIELD.gold : UI_FIELD.cyan, selected ? 0.94 : 0.38)
-          .setName('codex-saved-view-row')
-          .setData('viewId', view.id)
-          .setData('index', index);
-        this.root.add(row);
-        const hit = this.add.rectangle(640, y, 920, 62, 0x020409, 0.001)
-          .setInteractive({ useHandCursor: true })
-          .setName('codex-saved-view-row-hit')
-          .setData('viewId', view.id)
-          .setData('index', index);
+        this.root.add(this.add.rectangle(640, y, SAVED_VIEW_ROW_WIDTH, SAVED_VIEW_ROW_HEIGHT,
+          selected ? 0x173148 : 0x0b1826, 1).setName('codex-saved-view-row').setData('viewId', view.id).setData('index', index));
+        const hit = this.add.rectangle(640, y, SAVED_VIEW_ROW_WIDTH, SAVED_VIEW_ROW_HEIGHT, 0, 0.001)
+          .setInteractive({ useHandCursor: true }).setName('codex-saved-view-row-hit').setData('viewId', view.id).setData('index', index);
         hit.on('pointerdown', () => {
           this.savedCollectionViewIndex = index;
           this.savedCollectionViewStatus = 'idle';
@@ -4548,67 +4033,23 @@ export class CodexScene extends Phaser.Scene {
           this.renderAll();
         });
         this.root.add(hit);
-        this.root.add(this.add.text(204, y - 17, `${index + 1}`.padStart(2, '0'), {
-          fontFamily: UI_FONT,
-          fontSize: '10px',
-          fontStyle: UI_BOLD,
-          color: selected ? '#ffe1a3' : '#7f93a8',
-        }).setResolution(2));
-        this.root.add(this.add.text(244, y - 18, view.name.toUpperCase(), {
-          fontFamily: UI_FONT,
-          fontSize: '13px',
-          fontStyle: UI_BOLD,
-          color: selected ? '#ffe1a3' : '#dffbff',
-          fixedWidth: 700,
-        }).setResolution(2));
-        this.root.add(this.add.text(
-          244,
-          y + 7,
-          `${tab}  ·  ${lens} lens  ·  ${view.query ? `“${view.query}”` : 'No search'}  ·  ${sort} order`,
-          {
-            fontFamily: UI_FONT,
-            fontSize: '10px',
-            color: '#91a6b8',
-            fixedWidth: 760,
-          },
-        ).setResolution(2));
+        text(String(index + 1).padStart(2, '0'), 104, y - 27, 36, 18, 'row-index', selected ? UI_GOLD : UI_SOFT);
+        this.codexPreviewText(this.root, view.name, 150, y - 31, 1008, 26, 20,
+          selected ? UI_GOLD : '#dffbff', 'codex-saved-row-name', true);
+        text(criteriaLabel(view), 150, y - 5, 1008, 18, 'row-criteria', UI_CYAN);
+        text(searchLabel(view), 150, y + 18, 1008, 18, 'row-query', UI_SOFT);
       });
     }
-
     const hasSelection = this.savedCollectionViews.length > 0;
-    this.renderSavedCollectionViewButton(
-      360,
-      588,
-      280,
-      hasSelection ? 'APPLY SELECTED' : 'SAVE FIRST VIEW',
-      hasSelection ? `${controlBindingLabel('confirm')}  /  A` : 'CTRL+S  /  X',
-      () => hasSelection ? this.applySelectedCollectionView() : this.saveCurrentCollectionView(),
-      'codex-saved-view-apply-hit',
-      false,
-    );
-    this.renderSavedCollectionViewButton(
-      680,
-      588,
-      280,
-      'REMOVE SELECTED',
-      'DELETE  /  Y',
-      () => this.deleteSelectedCollectionView(),
-      'codex-saved-view-delete-hit',
-      !hasSelection,
-    );
-    this.renderSavedCollectionViewButton(
-      1000,
-      588,
-      280,
-      'CLOSE',
-      `B  /  SELECT  /  ${controlBindingLabel('back')}`,
-      () => this.closeSavedCollectionViews(),
-      'codex-saved-view-close-hit',
-      false,
-    );
-
+    this.renderSavedCollectionViewButton(268, 596, 320, hasSelection ? 'Apply selected' : 'Save first view',
+      hasSelection ? controlBindingLabel('confirm') + ' / A' : 'Ctrl+S / X',
+      () => hasSelection ? this.applySelectedCollectionView() : this.saveCurrentCollectionView(), 'codex-saved-view-apply-hit', false);
+    this.renderSavedCollectionViewButton(640, 596, 320, 'Remove selected', 'Delete / Y',
+      () => this.deleteSelectedCollectionView(), 'codex-saved-view-delete-hit', !hasSelection);
+    this.renderSavedCollectionViewButton(1012, 596, 320, 'Close', controlBindingLabel('back') + ' / B / Select',
+      () => this.closeSavedCollectionViews(), 'codex-saved-view-close-hit', false);
     const status: Record<typeof this.savedCollectionViewStatus, string> = {
-      idle: `${this.savedCollectionViews.length}/${CODEX_SAVED_VIEW_LIMIT} saved  ·  Included in complete save backups  ·  Never affects power`,
+      idle: this.savedCollectionViews.length + '/' + CODEX_SAVED_VIEW_LIMIT + ' saved · Included in complete save backups · Never affects power',
       saved: 'View saved. The current combination now has a permanent shortcut.',
       duplicate: 'That exact combination is already saved and selected.',
       full: 'The four-view shelf is full. Remove one before saving another.',
@@ -4616,54 +4057,29 @@ export class CodexScene extends Phaser.Scene {
       applied: 'Saved view applied.',
       failed: 'Could not write this view safely. Nothing was changed.',
     };
-    this.root.add(this.add.text(640, 636, status[this.savedCollectionViewStatus], {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: this.savedCollectionViewStatus === 'failed' || this.savedCollectionViewStatus === 'full'
-        ? '#ffb38a'
-        : this.savedCollectionViewStatus === 'saved'
-          ? '#ffe1a3'
-          : '#91cbdc',
-      fixedWidth: 980,
-      align: 'center',
-    }).setResolution(2).setOrigin(0.5));
+    text(status[this.savedCollectionViewStatus], 88, 645, 1104, 18, 'status',
+      ['failed', 'full'].includes(this.savedCollectionViewStatus) ? '#ffb38a' : '#b8e8f4');
   }
 
   private renderSavedCollectionViewButton(
-    x: number,
-    y: number,
-    width: number,
-    label: string,
-    shortcut: string,
-    onClick: () => void,
-    name: string,
-    disabled: boolean,
+    x: number, y: number, width: number, label: string, shortcut: string,
+    onClick: () => void, name: string, disabled: boolean,
   ) {
-    const panel = this.add.rectangle(x, y, width, 52, disabled ? 0x111722 : 0x102235, 0.98)
-      .setStrokeStyle(1, disabled ? 0x46515f : UI_FIELD.cyan, disabled ? 0.45 : 0.72);
+    const panel = this.add.rectangle(x, y, width, 58, disabled ? 0x111722 : 0x102235, 1)
+      .setStrokeStyle(1, disabled ? 0x46515f : UI_FIELD.cyan, disabled ? 0.6 : 0.72);
     this.root.add(panel);
-    const hit = this.add.rectangle(x, y, width, 52, 0x020409, 0.001)
-      .setInteractive({ useHandCursor: !disabled })
-      .setName(name);
+    const hit = this.add.rectangle(x, y, width, 58, 0, 0.001)
+      .setInteractive({ useHandCursor: !disabled }).setName(name).setData('disabled', disabled);
     if (!disabled) {
       hit.on('pointerover', () => panel.setFillStyle(0x183047, 1));
-      hit.on('pointerout', () => panel.setFillStyle(0x102235, 0.98));
+      hit.on('pointerout', () => panel.setFillStyle(0x102235, 1));
       hit.on('pointerdown', onClick);
     }
     this.root.add(hit);
-    this.root.add(this.add.text(x, y - 8, label, {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: disabled ? '#6f7b88' : '#dffbff',
-    }).setResolution(2).setOrigin(0.5));
-    this.root.add(this.add.text(x, y + 10, shortcut, {
-      fontFamily: UI_FONT,
-      fontSize: '8px',
-      fontStyle: UI_BOLD,
-      color: disabled ? '#59636e' : '#91cbdc',
-    }).setResolution(2).setOrigin(0.5));
+    this.collectionDialogText(label, x, y - 23, width - 24, 20, name + '-label', disabled ? '#9ca9b7' : '#dffbff')
+      .setFontStyle(UI_BOLD).setOrigin(0.5, 0);
+    this.collectionDialogText(shortcut, x, y + 5, width - 24, 16, name + '-shortcut', disabled ? '#8d9baa' : '#91cbdc')
+      .setOrigin(0.5, 0);
   }
 
   private waymarkAccent(mark: RuntimeRouteMark) {
@@ -4747,43 +4163,63 @@ export class CodexScene extends Phaser.Scene {
     }
   }
 
-  private renderSupplyThumb(layer: Phaser.GameObjects.Container, supply: RuntimeSupply, cx: number, cy: number) {
-    const w = 330;
-    const h = 126;
-    const accent = this.supplyAccent(supply);
-    const bg = this.add.rectangle(cx, cy, w, h, 0x0d1720, 0.96)
-      .setStrokeStyle(2, accent, 0.9)
-      .setInteractive({ useHandCursor: true });
-    bg.on('pointerover', () => bg.setFillStyle(0x142334, 0.98));
-    bg.on('pointerout', () => bg.setFillStyle(0x0d1720, 0.96));
-    bg.on('pointerdown', () => this.openCodexDetail(supply.id));
-    layer.add(bg);
-    addCodexEntryFrame(this, (obj) => layer.add(obj), { cx, cy, w, h }, {
-      alpha: 0.36,
-      padX: 18,
-      padY: 16,
-    });
-    layer.add(this.add.rectangle(cx, cy - h / 2 + 7, w - 16, 4, accent, 0.82));
-    const artAsset = supplyCompactArtAssets[supply.id];
-    if (artAsset && this.textures.exists(artAsset.key)) {
-      layer.add(addSupplyArtImage(this, cx - 132, cy - 20, artAsset.key).setDisplaySize(64, 64));
-    } else {
-      layer.add(this.add.text(cx - 132, cy - 20, this.supplyGlyph(supply), {
-        fontFamily: UI_FONT, fontSize: '22px', fontStyle: UI_BOLD, color: '#e7eef7'
-      }).setOrigin(0.5));
+  /** Compact previews may shorten text, but always mark it and keep full rules in the dossier. */
+  private codexPreviewText(layer: Phaser.GameObjects.Container, value: string, x: number, y: number,
+    width: number, height: number, size: number, color: string, name: string, bold = false) {
+    const node = this.add.text(x, y, value, {
+      fontFamily: UI_FONT, fontSize: `${size}px`, fontStyle: bold ? UI_BOLD : 'normal',
+      color, lineSpacing: 3, wordWrap: { width, useAdvancedWrap: true },
+    }).setResolution(2).setName(name).setData('fullText', value);
+    if (node.height > height || node.width > width) {
+      let low = 0, high = value.length;
+      while (low < high) {
+        const mid = Math.ceil((low + high) / 2);
+        node.setText(value.slice(0, mid).trimEnd() + '…');
+        if (node.height <= height && node.width <= width) low = mid;
+        else high = mid - 1;
+      }
+      node.setText(value.slice(0, low).trimEnd() + '…');
     }
-    layer.add(this.add.text(cx - 90, cy - 50, supply.name, {
-      fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: UI_GOLD,
-      wordWrap: { width: 238 }, maxLines: 1,
-    }).setOrigin(0, 0));
-    layer.add(this.add.text(cx - 90, cy - 24, `${this.supplyCategoryLabel(supply)} / ${supply.rarity}  ·  ${this.supplyTimingLabel(supply)} / ${this.supplyAnswerLabel(supply)}`, {
-      fontFamily: UI_FONT, fontSize: '10px', fontStyle: UI_BOLD, color: UI_CYAN,
-      wordWrap: { width: 238 }, maxLines: 1,
-    }).setOrigin(0, 0));
-    layer.add(this.add.text(cx - 90, cy + 4, compactEffectSummary(supply.effects, 82), {
-      fontFamily: UI_FONT, fontSize: '12px', color: UI_BODY,
-      wordWrap: { width: 238 }, maxLines: 2,
-    }).setOrigin(0, 0));
+    layer.add(node);
+    return node;
+  }
+
+  private renderItemThumb(layer: Phaser.GameObjects.Container, item: {
+    id: string; name: string; meta: string; summary: string; accent: number;
+    kind: 'Supply' | 'Waymark'; art?: RuntimeImageAsset; glyph: string;
+  }, cx: number, cy: number) {
+    const w = 376, h = 186, left = cx - w / 2, top = cy - h / 2;
+    const tile = this.add.container().setName('codex-item-tile').setData('id', item.id);
+    layer.add(tile);
+    const bg = this.add.rectangle(cx, cy, w, h, 0x0c1420, 1)
+      .setStrokeStyle(1, item.accent, 0.55).setName('codex-entry-hit')
+      .setData('id', item.id).setInteractive({ useHandCursor: true });
+    bg.on('pointerover', () => bg.setFillStyle(0x142334, 1));
+    bg.on('pointerout', () => bg.setFillStyle(0x0c1420, 1));
+    bg.on('pointerdown', () => this.openCodexDetail(item.id));
+    tile.add(bg);
+    if (item.art && this.textures.exists(item.art.key)) {
+      const image = item.kind === 'Supply' ? addSupplyArtImage(this, left + 48, cy - 24, item.art.key)
+        : addWaymarkArtImage(this, left + 48, cy - 24, item.art.key);
+      tile.add(image.setDisplaySize(72, 72).setName('codex-entry-art'));
+    } else {
+      tile.add(this.add.text(left + 48, cy - 24, item.glyph, {
+        fontFamily: UI_FONT, fontSize: '24px', color: UI_BODY,
+      }).setResolution(2).setOrigin(0.5).setName('codex-entry-fallback'));
+    }
+    const tx = left + 96, width = w - 112;
+    const title = this.codexPreviewText(tile, item.name, tx, top + 16, width, 50, 20, UI_GOLD, 'codex-entry-title', true);
+    const meta = this.codexPreviewText(tile, item.meta, tx, title.y + title.height + 8, width, 20, 14, '#a9c5d5', 'codex-entry-meta');
+    const sy = meta.y + meta.height + 12;
+    this.codexPreviewText(tile, item.summary, tx, sy, width, top + h - 16 - sy, 18, UI_BODY, 'codex-entry-summary');
+  }
+
+  private renderSupplyThumb(layer: Phaser.GameObjects.Container, supply: RuntimeSupply, cx: number, cy: number) {
+    this.renderItemThumb(layer, {
+      id: supply.id, name: supply.name, kind: 'Supply', accent: this.supplyAccent(supply),
+      meta: `${this.supplyTimingLabel(supply)} · ${this.supplyAnswerLabel(supply)} · ${supply.rarity}`,
+      summary: formatEffects(supply.effects), art: supplyCompactArtAssets[supply.id], glyph: this.supplyGlyph(supply),
+    }, cx, cy);
   }
 
   private renderSupplyDetail(id: string) {
@@ -4885,43 +4321,11 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private renderWaymarkThumb(layer: Phaser.GameObjects.Container, mark: RuntimeRouteMark, cx: number, cy: number) {
-    const w = 330;
-    const h = 126;
-    const accent = this.waymarkAccent(mark);
-    const bg = this.add.rectangle(cx, cy, w, h, 0x0d1420, 0.96)
-      .setStrokeStyle(2, accent, 0.9)
-      .setInteractive({ useHandCursor: true });
-    bg.on('pointerover', () => bg.setFillStyle(0x142033, 0.98));
-    bg.on('pointerout', () => bg.setFillStyle(0x0d1420, 0.96));
-    bg.on('pointerdown', () => this.openCodexDetail(mark.id));
-    layer.add(bg);
-    addCodexEntryFrame(this, (obj) => layer.add(obj), { cx, cy, w, h }, {
-      alpha: 0.36,
-      padX: 18,
-      padY: 16,
-    });
-    layer.add(this.add.rectangle(cx, cy - h / 2 + 7, w - 16, 4, accent, 0.82));
-
-    const artAsset = waymarkCompactArtAssets[mark.id];
-    if (artAsset && this.textures.exists(artAsset.key)) {
-      layer.add(addWaymarkArtImage(this, cx - 132, cy - 20, artAsset.key).setDisplaySize(64, 64));
-    } else {
-      layer.add(this.add.text(cx - 132, cy - 20, waymarkGlyph(mark), {
-        fontFamily: UI_FONT, fontSize: '22px', fontStyle: UI_BOLD, color: '#e7eef7'
-      }).setOrigin(0.5));
-    }
-    layer.add(this.add.text(cx - 90, cy - 50, mark.name, {
-      fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: UI_GOLD,
-      wordWrap: { width: 238 }, maxLines: 1,
-    }).setOrigin(0, 0));
-    layer.add(this.add.text(cx - 90, cy - 24, `${this.waymarkFamilyLabel(mark)} / ${mark.rarity}  ·  ${mark.source}`, {
-      fontFamily: UI_FONT, fontSize: '10px', fontStyle: UI_BOLD, color: UI_CYAN,
-      wordWrap: { width: 238 }, maxLines: 1,
-    }).setOrigin(0, 0));
-    layer.add(this.add.text(cx - 90, cy + 4, compactEffectSummary(routeMarkEffectText(mark), 82), {
-      fontFamily: UI_FONT, fontSize: '12px', color: UI_BODY,
-      wordWrap: { width: 238 }, maxLines: 2,
-    }).setOrigin(0, 0));
+    this.renderItemThumb(layer, {
+      id: mark.id, name: mark.name, kind: 'Waymark', accent: this.waymarkAccent(mark),
+      meta: `${this.waymarkFamilyLabel(mark)} · ${mark.rarity}`,
+      summary: routeMarkEffectText(mark), art: waymarkCompactArtAssets[mark.id], glyph: waymarkGlyph(mark),
+    }, cx, cy);
   }
 
   private renderWaymarkDetail(id: string) {
@@ -4952,58 +4356,35 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private renderLeaderThumb(layer: Phaser.GameObjects.Container, leader: typeof flockLeaders[number], cx: number, cy: number) {
-    const account = loadAccount();
-    const unlocked = isLeaderUnlocked(account, leader.id);
+    const account = loadAccount(), unlocked = isLeaderUnlocked(account, leader.id);
     const wins = account.winsByLeader[leader.id] ?? 0;
     const lore = this.codexData?.getLeaderLore(leader.id);
-    const w = 332;
-    const h = 214;
-    const accent = this.leaderAccent(leader);
-    const bg = this.add.rectangle(cx, cy, w, h, unlocked ? 0x0d1420 : 0x0a0d13, unlocked ? 0.98 : 0.92)
-      .setStrokeStyle(2, unlocked ? accent : 0x2a3a4d, unlocked ? 0.9 : 0.72)
-      .setInteractive({ useHandCursor: true });
-    bg.on('pointerover', () => bg.setFillStyle(unlocked ? 0x142033 : 0x0d1420, unlocked ? 1 : 0.94));
-    bg.on('pointerout', () => bg.setFillStyle(unlocked ? 0x0d1420 : 0x0a0d13, unlocked ? 0.98 : 0.92));
+    const w = 376, h = 230, left = cx - w / 2, top = cy - h / 2, accent = this.leaderAccent(leader);
+    const tile = this.add.container().setName('codex-leader-tile').setData('id', leader.id);
+    layer.add(tile);
+    const bg = this.add.rectangle(cx, cy, w, h, 0x0c1420, 1)
+      .setStrokeStyle(1, accent, unlocked ? 0.65 : 0.35).setName('codex-entry-hit')
+      .setData('id', leader.id).setInteractive({ useHandCursor: true });
+    bg.on('pointerover', () => bg.setFillStyle(0x142334, 1));
+    bg.on('pointerout', () => bg.setFillStyle(0x0c1420, 1));
     bg.on('pointerdown', () => this.openCodexDetail(leader.id));
-    layer.add(bg);
-    addCodexEntryFrame(this, (obj) => layer.add(obj), { cx, cy, w, h }, {
-      alpha: unlocked ? 0.42 : 0.26,
-      tint: unlocked ? undefined : 0x7f93a8,
-      padX: 20,
-      padY: 18
-    });
-    layer.add(this.add.rectangle(cx, cy - h / 2 + 8, w - 18, 4, unlocked ? accent : 0x2a3a4d, unlocked ? 0.84 : 0.6));
-
+    tile.add(bg);
     const art = codexLeaderArtAssets[leader.id];
     if (art && this.textures.exists(art.key)) {
-      const fit = this.fittedTextureSize(art.key, 132, 160);
-      layer.add(this.add.image(cx - 104, cy - 8, art.key).setDisplaySize(fit.w, fit.h).setAlpha(unlocked ? 0.99 : 0.38));
+      const fit = this.fittedTextureSize(art.key, 112, 166);
+      tile.add(this.add.image(left + 68, cy, art.key).setDisplaySize(fit.w, fit.h)
+        .setAlpha(unlocked ? 0.99 : 0.65).setName('codex-entry-art'));
     } else {
-      layer.add(this.add.rectangle(cx - 104, cy - 8, 116, 154, 0x141d2b, 0.9).setStrokeStyle(1, 0x2a3a4d, 0.8));
-      layer.add(this.add.text(cx - 104, cy - 12, leader.bird, {
-        fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: UI_BODY,
-        align: 'center', wordWrap: { width: 98 }
-      }).setOrigin(0.5));
+      this.codexPreviewText(tile, leader.bird, left + 16, cy - 30, 108, 72, 18, UI_BODY, 'codex-entry-fallback');
     }
-
-    layer.add(this.add.text(cx + 26, cy - 86, leader.name, {
-      fontFamily: UI_FONT, fontSize: '17px', fontStyle: UI_BOLD, color: unlocked ? '#ffe1a3' : '#6f7d8c',
-      wordWrap: { width: 176 }
-    }).setOrigin(0.5, 0));
-    layer.add(this.add.text(cx + 26, cy - 42, lore?.epithet ?? leader.signatureName, {
-      fontFamily: 'Georgia, serif', fontSize: '13px', fontStyle: 'italic', color: unlocked ? '#d9c8ff' : '#657385',
-      align: 'center', wordWrap: { width: 176 }
-    }).setOrigin(0.5, 0));
-    this.addCodexChip(layer, cx - 24, cy + 8, 86, leader.suit, accent, unlocked);
-    this.addCodexChip(layer, cx + 72, cy + 8, 86, unlocked ? 'Rallied' : 'Locked', accent, unlocked);
-    layer.add(this.add.text(cx + 26, cy + 20, lore?.codexSummary ?? leader.blurb, {
-      fontFamily: UI_FONT, fontSize: '12px', color: unlocked ? '#cdd9e6' : '#7f93a8',
-      align: 'center', wordWrap: { width: 178 }
-    }).setOrigin(0.5, 0));
-    layer.add(this.add.text(cx + 26, cy + 76, unlocked ? `${wins} ${wins === 1 ? 'win' : 'wins'}` : 'Locked', {
-      fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: unlocked ? '#ffe1a3' : '#6f7d8c',
-      align: 'center', wordWrap: { width: 176 }
-    }).setOrigin(0.5, 0));
+    const tx = left + 140, width = w - 156;
+    const title = this.codexPreviewText(tile, leader.name, tx, top + 18, width, 52, 20, UI_GOLD, 'codex-entry-title', true);
+    const meta = this.codexPreviewText(tile, `${leader.suit} · ${unlocked ? 'Rallied' : 'Locked'}`,
+      tx, title.y + title.height + 10, width, 22, 16, '#a9c5d5', 'codex-entry-meta');
+    const sy = meta.y + meta.height + 14;
+    this.codexPreviewText(tile, lore?.codexSummary ?? leader.blurb, tx, sy, width, top + h - 52 - sy, 18, UI_BODY, 'codex-entry-summary');
+    this.codexPreviewText(tile, unlocked ? `${wins} career ${wins === 1 ? 'win' : 'wins'}` : 'View unlock path',
+      tx, top + h - 34, width, 24, 16, '#b7cbd7', 'codex-entry-footer');
   }
 
   private renderLeaderDetail(id: string) {
@@ -5013,141 +4394,91 @@ export class CodexScene extends Phaser.Scene {
     const account = loadAccount();
     const unlocked = isLeaderUnlocked(account, leader.id);
     const wins = account.winsByLeader[leader.id] ?? 0;
-    const scrim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.76).setInteractive();
-    scrim.on('pointerdown', () => this.closeCodexDetail());
-    this.root.add(scrim);
-
-    const px = GAME_WIDTH / 2;
-    const py = GAME_HEIGHT / 2;
-    const MW = 980;
-    const MH = 624;
-    const left = px - MW / 2;
-    const right = px + MW / 2;
-    const mTop = py - MH / 2;
-    const mBottom = py + MH / 2;
+    const left = 150, right = 1130, top = 48, bottom = 672;
+    const tx = 560, wrap = right - tx - 32, viewTop = 96, viewBottom = 608;
     const accent = this.leaderAccent(leader);
     const accentText = `#${accent.toString(16).padStart(6, '0')}`;
-    this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accent, 1));
-    addCodexDossierFrame(this, (obj) => this.root.add(obj), { cx: px, cy: py, w: MW, h: MH }, { alpha: 0.9 });
+    const close = () => this.closeCodexDetail();
+    this.root.add(this.add.rectangle(640, 360, GAME_WIDTH, GAME_HEIGHT, 0x05070c, 0.76)
+      .setInteractive().on('pointerdown', close));
+    this.root.add(this.add.rectangle(640, 360, right - left, bottom - top, 0x0c1420, 1)
+      .setStrokeStyle(1, accent, 0.8).setInteractive());
 
     const art = codexLeaderArtAssets[leader.id];
-    const artBoxX = left + 205;
-    const artBoxY = py + 24;
-    this.renderCodexArtPreviewBacking(artBoxX, artBoxY, 348, 516, accent);
     if (art && this.textures.exists(art.key)) {
       const fit = this.fittedTextureSize(art.key, 340, 500);
-      this.root.add(this.add.image(artBoxX, artBoxY, art.key).setDisplaySize(fit.w, fit.h).setAlpha(unlocked ? 0.99 : 0.42));
+      this.root.add(this.add.image(355, 384, art.key).setDisplaySize(fit.w, fit.h)
+        .setAlpha(unlocked ? 0.99 : 0.65).setName('codex-leader-dossier-art'));
     } else {
-      this.root.add(this.add.rectangle(artBoxX, artBoxY, 320, 480, 0x141d2b, 0.9).setStrokeStyle(1, 0x2a3a4d, 0.8));
-      this.root.add(this.add.text(artBoxX, artBoxY, leader.bird, {
-        fontFamily: UI_FONT, fontSize: '20px', fontStyle: UI_BOLD, color: UI_BODY,
-        align: 'center', wordWrap: { width: 260 }
-      }).setOrigin(0.5));
-    }
-    this.renderCodexArtPreviewFrame(artBoxX, artBoxY, 348, 516, unlocked ? 0.82 : 0.52);
-    if (!unlocked) {
-      this.root.add(this.add.rectangle(artBoxX, artBoxY + 224, 260, 36, 0x05070c, 0.8).setStrokeStyle(1, 0x2a3a4d, 0.85));
-      this.root.add(this.add.text(artBoxX, artBoxY + 224, leaderUnlockHints[leader.id] ?? 'Locked', {
-        fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: UI_GOLD,
-        align: 'center', wordWrap: { width: 238 }
-      }).setOrigin(0.5));
+      this.root.add(this.add.text(355, 384, leader.bird, {
+        fontFamily: UI_FONT, fontSize: '20px', color: UI_BODY,
+        align: 'center', wordWrap: { width: 260, useAdvancedWrap: true },
+      }).setResolution(2).setOrigin(0.5));
     }
 
-    const tx = left + 410;
-    const wrap = right - tx - 118;
-    const viewTop = mTop + 86;
-    const viewBottom = mBottom - 124;
-    const viewH = viewBottom - viewTop;
+    const reader = this.add.container(0, 0).setName('codex-leader-reader');
+    this.root.add(reader);
     let yy = viewTop - this.detailScroll;
-    const heading = (t: string, color: string) => {
-      this.root.add(this.add.text(tx, yy, t, { fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color }));
-      yy += 17;
+    const text = (value: string, size: number, color: string, name: string, style = 'normal') => {
+      const node = this.add.text(tx, yy, value, {
+        fontFamily: style === 'italic' ? 'Georgia, serif' : UI_FONT,
+        fontSize: `${size}px`, fontStyle: style, color, lineSpacing: 5,
+        wordWrap: { width: wrap, useAdvancedWrap: true },
+      }).setResolution(2).setName(`codex-leader-${name}`);
+      reader.add(node); yy += node.height;
     };
-    const para = (t: string, opts: { color?: string; size?: number; italic?: boolean; bold?: boolean } = {}) => {
-      const o = this.add.text(tx, yy, t, {
-        fontFamily: opts.italic ? 'Georgia, serif' : 'Arial',
-        fontSize: `${opts.size ?? 13}px`,
-        fontStyle: opts.bold ? 'bold' : opts.italic ? 'italic' : 'normal',
-        color: opts.color ?? '#cfe0ef',
-        lineSpacing: 3,
-        wordWrap: { width: wrap }
-      });
-      this.root.add(o);
-      yy += o.height;
+    const section = (title: string, value: string, primary = false, italic = false) => {
+      const name = title.toLowerCase().replaceAll(' ', '-');
+      text(title, 16, '#a9c5d5', `${name}-heading`, UI_BOLD); yy += 8;
+      text(value, primary ? 20 : 18, primary ? '#e4edf5' : UI_BODY, name, italic ? 'italic' : 'normal'); yy += 24;
     };
+    text(leader.name, 28, UI_GOLD, 'title', UI_BOLD); yy += 10;
+    text(lore.epithet, 18, '#d9c8ff', 'epithet', 'italic'); yy += 12;
+    text(`${leader.bird} · ${leader.suit} Leader · ${unlocked ? `${wins} career ${wins === 1 ? 'win' : 'wins'}` : 'Locked'}`,
+      18, UI_MUTED, 'meta'); yy += 24;
+    section('ROLE', lore.flockRole);
+    section('COMBAT READ', lore.playstyleRead, true);
+    section('SIGNATURE', `${leader.signatureName}: ${leader.signatureText}`, true);
+    const starterNames = leader.startingDeckIds.map((cardId) => cardLibrary[cardId])
+      .filter((card): card is Card => Boolean(card)).map((card) => displayName(card));
+    section('STARTING DECK', starterNames.join(' / '));
+    if (!unlocked) section('HOW TO UNLOCK', leaderUnlockHints[leader.id] ?? 'Locked', true);
+    section('BACKSTORY', lore.backstory);
+    section('NARRATIVE BEATS', lore.narrativeBeats.map((beat) => `· ${beat}`).join('\n\n'));
+    section(unlocked ? 'FIELD QUOTE' : 'LOCKED NOTE', unlocked ? `"${lore.quote}"` : lore.unlockFlavor, false, true);
 
-    this.root.add(this.add.text(tx, yy, leader.name, {
-      fontFamily: UI_FONT, fontSize: '29px', fontStyle: UI_BOLD, color: UI_GOLD,
-      wordWrap: { width: wrap }
-    }));
-    yy += 38;
-    this.root.add(this.add.text(tx, yy, lore.epithet, {
-      fontFamily: 'Georgia, serif', fontSize: '17px', fontStyle: 'italic', color: '#d9c8ff',
-      wordWrap: { width: wrap }
-    }));
-    yy += 29;
-    this.root.add(this.add.text(tx, yy, `${leader.bird} / ${leader.suit} Leader / ${unlocked ? `${wins} career ${wins === 1 ? 'win' : 'wins'}` : 'Locked'}`, {
-      fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: UI_MUTED,
-      wordWrap: { width: wrap }
-    }));
-    yy += 28;
-
-    heading('ROLE', accentText);
-    para(lore.flockRole, { size: 14, bold: true, color: '#dbe6f0' });
-    yy += 12;
-
-    heading('BACKSTORY', '#7f93a8');
-    para(lore.backstory, { size: 13 });
-    yy += 12;
-
-    heading('NARRATIVE BEATS', '#8df4ff');
-    lore.narrativeBeats.forEach((beat) => {
-      para(`- ${beat}`, { size: 13, color: '#dbe6f0' });
-      yy += 5;
-    });
-    yy += 8;
-
-    heading('COMBAT READ', '#e8c24a');
-    para(lore.playstyleRead, { size: 13, bold: true, color: UI_GOLD });
-    yy += 12;
-
-    heading('SIGNATURE', '#c9a6ff');
-    para(`${leader.signatureName}: ${leader.signatureText}`, { size: 13, color: '#d9c8ff' });
-    yy += 12;
-
-    heading('STARTING DECK', '#7f93a8');
-    const starterNames = leader.startingDeckIds
-      .map((cardId) => cardLibrary[cardId])
-      .filter((card): card is Card => Boolean(card))
-      .map((card) => displayName(card));
-    para(starterNames.join(' / '), { size: 12, color: UI_SOFT });
-    yy += 12;
-
-    heading(unlocked ? 'FIELD QUOTE' : 'LOCKED NOTE', unlocked ? '#8fd6a0' : '#ff9b6a');
-    para(unlocked ? `"${lore.quote}"` : lore.unlockFlavor, { size: 14, italic: true, color: unlocked ? '#bfe9cc' : '#ffd5cc' });
-
-    const contentBottom = yy + this.detailScroll;
-    const SCROLL_PAD = 16;
-    this.detailMaxScroll = Math.max(0, (contentBottom - viewTop) - viewH + SCROLL_PAD);
+    this.detailMaxScroll = Math.max(0, yy + this.detailScroll - 24 - viewBottom);
     this.detailScrollTarget = clamp(this.detailScrollTarget, 0, this.detailMaxScroll);
     this.detailScroll = clamp(this.detailScroll, 0, this.detailMaxScroll);
-
-    const closeDetail = () => this.closeCodexDetail();
-    const curtainX = tx - 24;
-    const curtainW = right - curtainX - 1;
-    this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, mTop, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
-    this.root.add(this.add.rectangle(0, mBottom, GAME_WIDTH, GAME_HEIGHT - mBottom, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
-    this.root.add(this.add.rectangle(curtainX, mTop + 1, curtainW, viewTop - mTop - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
-    this.root.add(this.add.rectangle(curtainX, viewBottom, curtainW, mBottom - viewBottom - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
-    this.root.add(this.add.rectangle(px, py, MW, MH, 0x000000, 0).setStrokeStyle(2, accent, 1));
-    this.renderCodexDossierHeader(left, right, mTop, 'FLOCK LEADER DOSSIER', `ID ${leader.id.toUpperCase().replace(/_/g, '-')}`, accent, accentText);
-    this.root.add(this.add.rectangle(tx - 18, (viewTop + viewBottom) / 2, 2, viewH - 8, accent, 0.5));
-
+    // Opaque curtains work in Phaser 4 WebGL and leave the portrait stationary.
+    this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, top, 0x070a11, 1).setOrigin(0)
+      .setInteractive().on('pointerdown', close));
+    this.root.add(this.add.rectangle(0, bottom, GAME_WIDTH, GAME_HEIGHT - bottom, 0x070a11, 1).setOrigin(0)
+      .setInteractive().on('pointerdown', close));
+    this.root.add(this.add.rectangle(tx, top, wrap, viewTop - top, 0x0c1420, 1).setOrigin(0)
+      .setInteractive().setName('codex-leader-reader-clip-top'));
+    this.root.add(this.add.rectangle(tx, viewBottom, wrap, bottom - viewBottom, 0x0c1420, 1).setOrigin(0)
+      .setInteractive().setName('codex-leader-reader-clip-bottom'));
+    this.root.add(this.add.rectangle(640, 360, right - left, bottom - top, 0x0c1420, 0)
+      .setStrokeStyle(1, accent, 0.8));
+    this.root.add(this.add.text(left + 28, top + 22, 'FLOCK LEADER', {
+      fontFamily: UI_FONT, fontSize: '16px', color: accentText,
+    }).setResolution(2));
     if (this.detailMaxScroll > 0) {
-      this.renderCodexScrollCue(right - 64, mBottom - 18, this.detailScroll >= this.detailMaxScroll);
+      for (const [x, delta, label, name] of [[856, -1, '↑ Back', 'back'], [1012, 1, 'More ↓', 'more']] as const) {
+        const enabled = delta < 0 ? this.detailScrollTarget > 0 : this.detailScrollTarget < this.detailMaxScroll;
+        const hit = this.add.rectangle(x, bottom - 30, 144, MIN_SUPPORTED_TOUCH_TARGET, 0x0c1420, 0.001)
+          .setName(`codex-leader-scroll-${name}`);
+        this.root.add(hit);
+        if (enabled) hit.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+          this.detailScrollTarget = clamp(this.detailScrollTarget + delta * (viewBottom - viewTop) * 0.7, 0, this.detailMaxScroll);
+        });
+        this.root.add(this.add.text(x, bottom - 30, label, {
+          fontFamily: UI_FONT, fontSize: '18px', color: enabled ? '#cfe9f5' : '#788694',
+        }).setResolution(2).setOrigin(0.5));
+      }
     }
-
-    this.renderCodexCloseControl(right - 26, mTop + 26, closeDetail);
+    this.renderCodexCloseControl(right - 26, top + 26, close);
   }
 
   private fittedTextureSize(key: string, maxW: number, maxH: number) {
@@ -5158,24 +4489,6 @@ export class CodexScene extends Phaser.Scene {
     return { w: iw * scale, h: ih * scale };
   }
 
-  private renderCodexArtPreviewBacking(cx: number, cy: number, w: number, h: number, accent: number) {
-    const key = uiIconAssets['codex-art-preview-frame'].key;
-    const hasFrame = this.textures.exists(key);
-    this.root.add(this.add.rectangle(cx, cy, w, h, 0x05080e, hasFrame ? 0.42 : 0.78)
-      .setStrokeStyle(hasFrame ? 1 : 2, accent, hasFrame ? 0.28 : 0.72));
-  }
-
-  private renderCodexArtPreviewFrame(cx: number, cy: number, w: number, h: number, alpha = 0.86) {
-    const key = uiIconAssets['codex-art-preview-frame'].key;
-    const hasFrame = this.textures.exists(key);
-    if (!hasFrame) return;
-    this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const frame = this.add.image(cx, cy, key)
-      .setDisplaySize(w + 24, h + 40)
-      .setAlpha(alpha)
-      .setName('codex-art-preview-frame');
-    this.root.add(frame);
-  }
 
   private textureVisibleBounds(key: string): TextureVisibleBounds {
     const cached = this.textureBoundsCache.get(key);
@@ -5246,62 +4559,37 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private renderEnemyThumb(layer: Phaser.GameObjects.Container, enemy: CodexEnemyEntry, cx: number, cy: number) {
-    const w = 252;
-    const h = 206;
+    const w = 376, h = 230, left = cx - w / 2, top = cy - h / 2;
     const accent = this.enemyAccent(enemy);
-    const artX = cx - 68;
-    const artY = cy - 22;
-    const artW = 108;
-    const artH = 124;
-    const textX = cx + 42;
-    const textW = 122;
-    const bg = this.add.rectangle(cx, cy, w, h, 0x0d1420, 0.96)
-      .setStrokeStyle(1, 0x22364d, 0.84)
+    const artX = left + 72, artY = top + 76, artW = 116, artH = 128;
+    const tile = this.add.container().setName('codex-enemy-tile').setData('id', enemy.id);
+    layer.add(tile);
+    const bg = this.add.rectangle(cx, cy, w, h, 0x0c1420, 1)
+      .setStrokeStyle(1, accent, 0.45).setName('codex-entry-hit').setData('id', enemy.id)
       .setInteractive({ useHandCursor: true });
-    bg.on('pointerover', () => bg.setFillStyle(0x142033, 0.98));
-    bg.on('pointerout', () => bg.setFillStyle(0x0d1420, 0.96));
+    bg.on('pointerover', () => bg.setFillStyle(0x142334, 1));
+    bg.on('pointerout', () => bg.setFillStyle(0x0c1420, 1));
     bg.on('pointerdown', () => this.openCodexDetail(enemy.id));
-    layer.add(bg);
-    addCodexEntryFrame(this, (obj) => layer.add(obj), { cx, cy, w, h }, { alpha: 0.42, padX: 18, padY: 18 });
-    layer.add(this.add.rectangle(cx, cy - h / 2 + 7, w - 18, 3, accent, 0.62));
-    layer.add(this.add.rectangle(cx - w / 2 + 8, cy - h / 2 + 28, 3, 42, accent, 0.7));
-
+    tile.add(bg);
     const art = this.enemyArtAsset(enemy);
     if (art && this.textures.exists(art.key)) {
       const fit = this.fittedTextureSize(art.key, artW, artH);
       const shadow = this.enemyShadowMetrics(art.key, artX, artY, fit.w, fit.h, artW, artH);
-      layer.add(this.add.ellipse(shadow.x, shadow.y, shadow.w, shadow.h, 0x020409, 0.3));
-      layer.add(this.add.image(artX, artY, art.key).setDisplaySize(fit.w, fit.h).setAlpha(0.99));
+      tile.add(this.add.ellipse(shadow.x, shadow.y, shadow.w, shadow.h, 0x020409, 0.3));
+      tile.add(this.add.image(artX, artY, art.key).setDisplaySize(fit.w, fit.h).setAlpha(0.99).setName('codex-entry-art'));
     } else {
-      layer.add(this.add.rectangle(artX, artY, artW, artH, 0x141d2b, 0.9).setStrokeStyle(1, 0x22364d, 0.8));
-      layer.add(this.add.text(artX, artY - 2, enemy.typeHint, {
-        fontFamily: UI_FONT, fontSize: '13px', fontStyle: UI_BOLD, color: UI_BODY,
-        align: 'center', wordWrap: { width: artW - 14 }
-      }).setOrigin(0.5));
+      this.codexPreviewText(tile, enemy.typeHint, left + 16, top + 48, 112, 72, 18, UI_MUTED, 'codex-entry-fallback');
     }
-
-    layer.add(this.add.text(textX, cy - 82, enemy.name, {
-      fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: UI_GOLD,
-      align: 'center', wordWrap: { width: textW }
-    }).setOrigin(0.5, 0));
-    layer.add(this.add.text(textX, cy - 30, enemy.role, {
-      fontFamily: UI_FONT, fontSize: '12px', fontStyle: UI_BOLD, color: UI_CYAN,
-      align: 'center', wordWrap: { width: textW }
-    }).setOrigin(0.5, 0));
-    this.addCodexChip(layer, textX, cy - 1, 108, enemy.source === 'encounter' ? enemy.typeHint : 'Concept', accent);
-    layer.add(this.add.text(textX, cy + 8, enemy.district, {
-      fontFamily: UI_FONT, fontSize: '11px', color: UI_MUTED,
-      align: 'center', wordWrap: { width: textW }
-    }).setOrigin(0.5, 0));
+    const tx = left + 144, width = w - 160;
+    const title = this.codexPreviewText(tile, enemy.name, tx, top + 14, width, 48, 20, UI_GOLD, 'codex-entry-title', true);
+    this.codexPreviewText(tile, `${enemy.source === 'reserve' ? 'Concept · ' : ''}${enemy.role}`,
+      tx, title.y + title.height + 8, width, 42, 16, '#a9c5d5', 'codex-entry-meta');
+    this.codexPreviewText(tile, enemy.district, tx, top + 119, width, 20, 14, '#b7cbd7', 'codex-entry-district');
     const bossProgress = this.codexBossView(enemy);
     const footer = enemy.typeHint === 'Boss'
-      ? `DOSSIER  ${bossProgress.observed} / ${bossProgress.total} TACTICS`
+      ? `${bossProgress.observed} / ${bossProgress.total} tactics observed`
       : enemy.varietyContribution;
-    layer.add(this.add.text(cx, cy + 76, footer, {
-      fontFamily: UI_FONT, fontSize: '11px', color: UI_SOFT,
-      fontStyle: enemy.typeHint === 'Boss' ? UI_BOLD : '',
-      align: 'center', wordWrap: { width: w - 24 }
-    }).setOrigin(0.5, 0.5));
+    this.codexPreviewText(tile, footer, left + 16, top + 150, w - 32, h - 166, 18, UI_BODY, 'codex-entry-summary');
   }
 
   private enemyAccent(enemy: CodexEnemyEntry) {
@@ -5502,8 +4790,8 @@ export class CodexScene extends Phaser.Scene {
   private renderCardFavoriteControl(x: number, y: number, card: Card) {
     const favorite = this.favoriteCards.has(card.id);
     const accent = favorite ? UI_FIELD.gold : UI_FIELD.cyan;
-    const hit = this.add.rectangle(x, y, 142, 46, favorite ? 0x392d12 : 0x102534, 0.98)
-      .setStrokeStyle(2, accent, 0.96)
+    const hit = this.add.rectangle(x, y, 264, 58, favorite ? 0x392d12 : 0x102534, 0.98)
+      .setStrokeStyle(1, accent, 0.96)
       .setInteractive({ useHandCursor: true })
       .setName('codex-card-favorite-hit')
       .setData('cardId', card.id)
@@ -5512,9 +4800,12 @@ export class CodexScene extends Phaser.Scene {
     hit.on('pointerout', () => hit.setFillStyle(favorite ? 0x392d12 : 0x102534, 0.98));
     hit.on('pointerdown', () => this.toggleCurrentCardFavorite());
     this.root.add(hit);
-    this.root.add(this.add.text(x, y, favorite ? '★  FAVORITED' : '☆  FAVORITE', {
+    this.root.add(this.add.text(x, y - 12, 'FAVORITE  ·  C / X', {
+      fontFamily: UI_FONT, fontSize: '14px', color: '#b8e8f4',
+    }).setResolution(2).setOrigin(0.5).setName('codex-card-favorite-hint'));
+    this.root.add(this.add.text(x, y + 11, favorite ? '★  FAVORITED' : '☆  FAVORITE', {
       fontFamily: UI_FONT,
-      fontSize: '12px',
+      fontSize: '18px',
       fontStyle: UI_BOLD,
       color: favorite ? '#ffe08a' : '#b8e8f4',
       stroke: '#05070c',
@@ -5525,8 +4816,8 @@ export class CodexScene extends Phaser.Scene {
   private renderCardTagControl(x: number, y: number, card: Card) {
     const tag = this.cardTags[card.id];
     const accent = this.cardTagAccent(tag);
-    const hit = this.add.rectangle(x, y, 180, 46, tag ? 0x102534 : 0x151b24, 0.98)
-      .setStrokeStyle(2, accent, tag ? 0.96 : 0.68)
+    const hit = this.add.rectangle(x, y, 264, 58, tag ? 0x102534 : 0x151b24, 0.98)
+      .setStrokeStyle(1, accent, tag ? 0.96 : 0.68)
       .setInteractive({ useHandCursor: true })
       .setName('codex-card-tag-hit')
       .setData('cardId', card.id)
@@ -5535,15 +4826,15 @@ export class CodexScene extends Phaser.Scene {
     hit.on('pointerout', () => hit.setFillStyle(tag ? 0x102534 : 0x151b24, 0.98));
     hit.on('pointerdown', () => this.cycleCurrentCardTag());
     this.root.add(hit);
-    this.root.add(this.add.text(x, y - 9, 'PERSONAL TAG  ·  V / L3', {
+    this.root.add(this.add.text(x, y - 12, 'PERSONAL TAG  ·  V / L3', {
       fontFamily: UI_FONT,
-      fontSize: '8px',
+      fontSize: '14px',
       fontStyle: UI_BOLD,
       color: tag ? '#b8e8f4' : '#91a0ad',
     }).setResolution(2).setOrigin(0.5).setName('codex-card-tag-hint').setData('cardId', card.id));
-    this.root.add(this.add.text(x, y + 9, this.cardTagLabel(tag).toUpperCase(), {
+    this.root.add(this.add.text(x, y + 11, this.cardTagLabel(tag).toUpperCase(), {
       fontFamily: UI_FONT,
-      fontSize: '12px',
+      fontSize: '18px',
       fontStyle: UI_BOLD,
       color: tag ? this.hexColor(accent) : '#91a0ad',
       stroke: '#05070c',
@@ -5555,8 +4846,8 @@ export class CodexScene extends Phaser.Scene {
     const shown = this.cardShowcase.includes(card.id);
     const full = !shown && this.cardShowcase.length >= CARD_SHOWCASE_LIMIT;
     const accent = shown ? UI_FIELD.gold : full ? 0x627184 : UI_FIELD.violet;
-    const hit = this.add.rectangle(x, y, 180, 46, shown ? 0x392d12 : 0x151b24, 0.98)
-      .setStrokeStyle(2, accent, shown || !full ? 0.96 : 0.58)
+    const hit = this.add.rectangle(x, y, 264, 58, shown ? 0x392d12 : 0x151b24, 0.98)
+      .setStrokeStyle(1, accent, shown || !full ? 0.96 : 0.58)
       .setInteractive({ useHandCursor: !full })
       .setName('codex-card-showcase-hit')
       .setData('cardId', card.id)
@@ -5566,15 +4857,15 @@ export class CodexScene extends Phaser.Scene {
     hit.on('pointerout', () => hit.setFillStyle(shown ? 0x392d12 : 0x151b24, 0.98));
     hit.on('pointerdown', () => this.toggleCurrentCardShowcase());
     this.root.add(hit);
-    this.root.add(this.add.text(x, y - 9, `FLOCK RECORD  /  G / R3  /  ${this.cardShowcase.length}/${CARD_SHOWCASE_LIMIT}`, {
+    this.root.add(this.add.text(x, y - 12, `Flock Record · G / R3 · ${this.cardShowcase.length}/${CARD_SHOWCASE_LIMIT}`, {
       fontFamily: UI_FONT,
-      fontSize: '8px',
+      fontSize: '14px',
       fontStyle: UI_BOLD,
       color: shown ? '#ffe08a' : full ? '#7f8b98' : '#d9c7ff',
     }).setResolution(2).setOrigin(0.5).setName('codex-card-showcase-hint').setData('cardId', card.id));
-    this.root.add(this.add.text(x, y + 9, shown ? 'SHOWCASED' : full ? 'SHOWCASE FULL' : 'ADD TO SHOWCASE', {
+    this.root.add(this.add.text(x, y + 11, shown ? 'SHOWCASED' : full ? 'SHOWCASE FULL' : 'ADD TO SHOWCASE', {
       fontFamily: UI_FONT,
-      fontSize: full ? '10px' : '11px',
+      fontSize: '18px',
       fontStyle: UI_BOLD,
       color: shown ? '#ffe08a' : full ? '#7f8b98' : '#d9c7ff',
       stroke: '#05070c',
@@ -5583,8 +4874,8 @@ export class CodexScene extends Phaser.Scene {
   }
 
   private renderCardFlightDeckControl(x: number, y: number, card: Card) {
-    const hit = this.add.rectangle(x, y, 224, 44, 0x102534, 0.99)
-      .setStrokeStyle(2, UI_FIELD.cyan, 0.96)
+    const hit = this.add.rectangle(x, y, 264, 58, 0x102534, 0.99)
+      .setStrokeStyle(1, UI_FIELD.cyan, 0.96)
       .setInteractive({ useHandCursor: true })
       .setName('codex-card-flight-deck-hit')
       .setData('cardId', card.id)
@@ -5593,15 +4884,15 @@ export class CodexScene extends Phaser.Scene {
     hit.on('pointerout', () => hit.setFillStyle(0x102534, 0.99));
     hit.on('pointerdown', () => this.openCurrentCardInFlightDeck());
     this.root.add(hit);
-    this.root.add(this.add.text(x, y - 9, 'ACTIVE FLIGHT  /  D / RB', {
+    this.root.add(this.add.text(x, y - 12, 'ACTIVE FLIGHT  /  D / RB', {
       fontFamily: UI_FONT,
-      fontSize: '8px',
+      fontSize: '14px',
       fontStyle: UI_BOLD,
       color: '#91a6b8',
     }).setResolution(2).setOrigin(0.5).setName('codex-card-flight-deck-hint').setData('cardId', card.id));
-    this.root.add(this.add.text(x, y + 9, 'VIEW IN FLIGHT DECK', {
+    this.root.add(this.add.text(x, y + 11, 'VIEW IN FLIGHT DECK', {
       fontFamily: UI_FONT,
-      fontSize: '11px',
+      fontSize: '18px',
       fontStyle: UI_BOLD,
       color: '#b8e8f4',
       stroke: '#05070c',
@@ -5609,37 +4900,18 @@ export class CodexScene extends Phaser.Scene {
     }).setResolution(2).setOrigin(0.5).setName('codex-card-flight-deck-label').setData('cardId', card.id));
   }
 
-  private renderClearNewCardsControl(x: number, y: number) {
-    const active = this.focusZone === 'newCards';
+  private renderClearNewCardsControl() {
     const count = this.newlyAcquiredCards.size;
-    const hit = this.add.rectangle(x, y, 132, 46, active ? 0x3a285d : 0x211738, 0.99)
-      .setStrokeStyle(2, 0xc9a6ff, active ? 1 : 0.92)
-      .setInteractive({ useHandCursor: true })
-      .setName('codex-clear-new-cards-hit')
-      .setData('count', count);
-    hit.on('pointerover', () => hit.setFillStyle(0x48316f, 1));
-    hit.on('pointerout', () => hit.setFillStyle(active ? 0x3a285d : 0x211738, 0.99));
-    this.root.add(hit);
-    this.root.add(this.add.text(x, y - 9, `${count} NEW CARD${count === 1 ? '' : 'S'}`, {
-      fontFamily: UI_FONT,
-      fontSize: '9px',
-      fontStyle: UI_BOLD,
-      color: '#c9a6ff',
-    }).setResolution(2).setOrigin(0.5).setName('codex-clear-new-cards-count'));
-    this.root.add(this.add.text(x, y + 8, 'CLEAR ALL', {
-      fontFamily: UI_FONT,
-      fontSize: '12px',
-      fontStyle: UI_BOLD,
-      color: '#eadcff',
-      stroke: '#05070c',
-      strokeThickness: 2,
-    }).setResolution(2).setOrigin(0.5).setName('codex-clear-new-cards-label'));
+    const hit = this.renderCollectionTool(CARD_NEW_X, CARD_NEW_WIDTH, `${count} new card${count === 1 ? '' : 's'}`,
+      'Mark all seen', 'codex-clear-new-cards', this.focusZone === 'newCards', 0xc9a6ff);
+    hit.setData('count', count);
+    this.root.getByName('codex-clear-new-cards-kicker')?.setName('codex-clear-new-cards-count');
   }
 
   private renderCardTargetControl(x: number, y: number, card: Card) {
     if (this.newlyAcquiredCards.has(card.id)) {
-      const hit = this.add.rectangle(x, y, 142, 46, 0x31215a, 0.98)
-        .setStrokeStyle(2, 0xc9a6ff, 0.98)
+      const hit = this.add.rectangle(x, y, 264, 58, 0x31215a, 0.98)
+        .setStrokeStyle(1, 0xc9a6ff, 0.98)
         .setInteractive({ useHandCursor: true })
         .setName('codex-card-mark-seen-hit')
         .setData('cardId', card.id);
@@ -5647,9 +4919,12 @@ export class CodexScene extends Phaser.Scene {
       hit.on('pointerout', () => hit.setFillStyle(0x31215a, 0.98));
       hit.on('pointerdown', () => this.acknowledgeCurrentNewCard());
       this.root.add(hit);
-      this.root.add(this.add.text(x, y, 'NEW  /  MARK SEEN', {
+      this.root.add(this.add.text(x, y - 12, 'NEW CARD  ·  N / LT', {
+        fontFamily: UI_FONT, fontSize: '14px', color: '#eadcff',
+      }).setResolution(2).setOrigin(0.5).setName('codex-card-mark-seen-hint'));
+      this.root.add(this.add.text(x, y + 11, 'NEW  /  MARK SEEN', {
         fontFamily: UI_FONT,
-        fontSize: '11px',
+        fontSize: '18px',
         fontStyle: UI_BOLD,
         color: '#eadcff',
         stroke: '#05070c',
@@ -5660,8 +4935,8 @@ export class CodexScene extends Phaser.Scene {
     const collected = Boolean(this.cardCollection[card.id]);
     if (collected) {
       const protectedCard = this.lockedCards.has(card.id);
-      const hit = this.add.rectangle(x, y, 142, 46, protectedCard ? 0x392d12 : 0x102534, 0.98)
-        .setStrokeStyle(2, protectedCard ? UI_FIELD.gold : UI_FIELD.cyan, 0.96)
+      const hit = this.add.rectangle(x, y, 264, 58, protectedCard ? 0x392d12 : 0x102534, 0.98)
+        .setStrokeStyle(1, protectedCard ? UI_FIELD.gold : UI_FIELD.cyan, 0.96)
         .setInteractive({ useHandCursor: true })
         .setName('codex-card-protect-hit')
         .setData('cardId', card.id)
@@ -5671,15 +4946,15 @@ export class CodexScene extends Phaser.Scene {
       hit.on('pointerout', () => hit.setFillStyle(protectedCard ? 0x392d12 : 0x102534, 0.98));
       hit.on('pointerdown', () => this.toggleCurrentCardProtection());
       this.root.add(hit);
-      this.root.add(this.add.text(x, y - 9, 'CARD SAFETY  /  T / Y', {
+      this.root.add(this.add.text(x, y - 12, 'CARD SAFETY  /  T / Y', {
         fontFamily: UI_FONT,
-        fontSize: '8px',
+        fontSize: '14px',
         fontStyle: UI_BOLD,
         color: protectedCard ? '#ffe08a' : '#91a6b8',
       }).setResolution(2).setOrigin(0.5).setName('codex-card-protect-hint').setData('cardId', card.id));
-      this.root.add(this.add.text(x, y + 9, protectedCard ? 'PROTECTED' : 'PROTECT CARD', {
+      this.root.add(this.add.text(x, y + 11, protectedCard ? 'PROTECTED' : 'PROTECT CARD', {
         fontFamily: UI_FONT,
-        fontSize: '11px',
+        fontSize: '18px',
         fontStyle: UI_BOLD,
         color: protectedCard ? '#ffe08a' : '#b8e8f4',
         stroke: '#05070c',
@@ -5696,8 +4971,8 @@ export class CodexScene extends Phaser.Scene {
         ? `${COLLECTION_TARGET_LIMIT}/${COLLECTION_TARGET_LIMIT}  HUNT FULL`
         : '◎  TRACK';
     const accent = targeted ? 0xff9b6a : enabled ? UI_FIELD.cyan : 0x627184;
-    const hit = this.add.rectangle(x, y, 142, 46, targeted ? 0x3a1d14 : enabled ? 0x102534 : 0x151b24, 0.98)
-      .setStrokeStyle(2, accent, enabled ? 0.96 : 0.62)
+    const hit = this.add.rectangle(x, y, 264, 58, targeted ? 0x3a1d14 : enabled ? 0x102534 : 0x151b24, 0.98)
+      .setStrokeStyle(1, accent, enabled ? 0.96 : 0.62)
       .setInteractive({ useHandCursor: enabled })
       .setName('codex-card-target-hit')
       .setData('cardId', card.id)
@@ -5709,9 +4984,12 @@ export class CodexScene extends Phaser.Scene {
     hit.on('pointerout', () => hit.setFillStyle(targeted ? 0x3a1d14 : enabled ? 0x102534 : 0x151b24, 0.98));
     hit.on('pointerdown', () => this.toggleCurrentCollectionTarget());
     this.root.add(hit);
-    this.root.add(this.add.text(x, y, label, {
+    this.root.add(this.add.text(x, y - 12, 'HUNT LIST  ·  T / Y', {
+      fontFamily: UI_FONT, fontSize: '14px', color: '#b8e8f4',
+    }).setResolution(2).setOrigin(0.5).setName('codex-card-target-hint'));
+    this.root.add(this.add.text(x, y + 11, label, {
       fontFamily: UI_FONT,
-      fontSize: '11px',
+      fontSize: '18px',
       fontStyle: UI_BOLD,
       color: targeted ? '#ffc09f' : enabled ? '#b8e8f4' : '#91a0ad',
       stroke: '#05070c',
@@ -5735,68 +5013,10 @@ export class CodexScene extends Phaser.Scene {
     return Number.isNaN(date.getTime()) ? 'Date unavailable' : date.toISOString().slice(0, 10);
   }
 
-  private renderCardJournalPrompt(card: Card) {
-    this.root.add(this.add.rectangle(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2,
-      GAME_WIDTH,
-      GAME_HEIGHT,
-      0x02050a,
-      0.7,
-    ).setInteractive().setName('codex-card-journal-scrim'));
-    this.root.add(this.add.rectangle(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2,
-      720,
-      346,
-      0x0b1020,
-      0.998,
-    ).setStrokeStyle(3, UI_FIELD.violet, 0.96).setName('codex-card-journal-prompt-frame'));
-    this.root.add(this.add.text(GAME_WIDTH / 2, 218, 'EDIT PRIVATE CARD JOURNAL', {
-      fontFamily: 'Georgia, serif',
-      fontSize: '24px',
-      fontStyle: UI_BOLD,
-      color: UI_FIELD.warm,
-      stroke: '#020409',
-      strokeThickness: 3,
-    }).setResolution(2).setOrigin(0.5).setName('codex-card-journal-prompt-title'));
-    this.root.add(this.add.text(
-      GAME_WIDTH / 2,
-      256,
-      `${displayName(card).toUpperCase()}  ·  ${CARD_JOURNAL_NOTE_LIMIT} CHARACTER LIMIT`,
-      {
-        fontFamily: UI_FONT,
-        fontSize: '10px',
-        fontStyle: UI_BOLD,
-        color: '#d9c7ff',
-      },
-    ).setResolution(2).setOrigin(0.5).setName('codex-card-journal-prompt-card'));
-    this.root.add(this.add.rectangle(
-      GAME_WIDTH / 2,
-      374,
-      620,
-      154,
-      0x101323,
-      1,
-    ).setStrokeStyle(2, UI_FIELD.violet, 0.9).setName('codex-card-journal-prompt-field'));
-    this.root.add(this.add.text(GAME_WIDTH / 2 - 290, 312, 'TYPE YOUR PRIVATE NOTE…', {
-      fontFamily: UI_FONT,
-      fontSize: '11px',
-      fontStyle: UI_BOLD,
-      color: '#716987',
-    }).setResolution(2).setName('codex-card-journal-prompt-placeholder'));
-    this.root.add(this.add.text(
-      GAME_WIDTH / 2,
-      500,
-      'Enter: Save  ·  Shift+Enter: New Line  ·  Esc: Cancel\nController A: Save  ·  B: Cancel  ·  Local save + backups only  ·  Never affects play',
-      {
-        fontFamily: UI_FONT,
-        fontSize: '11px',
-        color: UI_SOFT,
-        align: 'center',
-        lineSpacing: 5,
-      },
-    ).setResolution(2).setOrigin(0.5).setName('codex-card-journal-prompt-help'));
+  private renderCardJournalPrompt() {
+    // The native dialog owns every editor label, field and action in one layout.
+    this.root.add(this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2,
+      GAME_WIDTH, GAME_HEIGHT, 0x02050a, 0.3).setInteractive().setName('codex-card-journal-scrim'));
   }
 
   private renderDetail(id: string) {
@@ -5808,8 +5028,8 @@ export class CodexScene extends Phaser.Scene {
 
     const px = GAME_WIDTH / 2;
     const py = GAME_HEIGHT / 2;
-    const MW = 920;
-    const MH = 624;
+    const MW = 1200;
+    const MH = 672;
     const left = px - MW / 2;
     const right = px + MW / 2;
     const mTop = py - MH / 2;
@@ -5817,7 +5037,7 @@ export class CodexScene extends Phaser.Scene {
     const accentColor = this.cardAccent(card);
     const accentText = this.hexColor(accentColor);
     const isAviary = isAviaryCard(card);
-    this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(2, accentColor, 1));
+    this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(1, accentColor, 0.8).setInteractive().setName('codex-card-detail-panel'));
 
     // Large card art on the left, at the art's true 2:3 aspect (no distortion).
     const key = loadedCardArtKey(this, card);
@@ -5825,9 +5045,9 @@ export class CodexScene extends Phaser.Scene {
     const artH = artW * 1.5;
     const artX = left + 24 + artW / 2;
     if (key && this.textures.exists(key)) {
-      this.root.add(this.add.image(artX, py, key).setDisplaySize(artW, artH).setAlpha(0.99));
+      this.root.add(this.add.image(artX, 344, key).setDisplaySize(artW, artH).setName('codex-card-detail-art'));
     } else {
-      this.root.add(this.add.rectangle(artX, py, artW, artH, 0x141d2b, 0.9));
+      this.root.add(this.add.rectangle(artX, 344, artW, artH, 0x141d2b, 0.9).setName('codex-card-detail-art-pending'));
     }
 
     // Right column is a scrollable viewport (lots of content now). Text is drawn
@@ -5836,8 +5056,8 @@ export class CodexScene extends Phaser.Scene {
     const tx = artX + artW / 2 + 26;
     const wrap = right - tx - 32;
     const flightDeckAction = this.canOpenCurrentCardInFlightDeck(card.id);
-    const viewTop = mTop + 16 + (flightDeckAction ? 48 : 0);
-    const viewBottom = mBottom - 64;
+    const viewTop = 104;
+    const viewBottom = 568;
     const viewH = viewBottom - viewTop;
     const flav = this.codexData?.getCardFlavor(card.id);
     const meaning = this.codexData?.getCardMeaning(card.id);
@@ -5845,23 +5065,23 @@ export class CodexScene extends Phaser.Scene {
     let yy = viewTop - this.detailScroll;
     const heading = (t: string, color: string) => {
       const label = this.add.text(tx, yy, t, { fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color, resolution: 2, wordWrap: { width: wrap } });
-      this.root.add(label); yy += label.height + 8;
+      label.setName('codex-card-detail-heading'); this.root.add(label); yy += label.height + 8;
     };
     const para = (t: string, opts: { color?: string; size?: number; italic?: boolean }) => {
       const o = this.add.text(tx, yy, t, { fontFamily: opts.italic ? 'Georgia, serif' : 'Arial', fontSize: `${Math.max(18, opts.size ?? 18)}px`, resolution: 2, fontStyle: opts.italic ? 'italic' : 'normal', color: opts.color ?? '#cfe0ef', lineSpacing: 3, wordWrap: { width: wrap, useAdvancedWrap: true } });
-      this.root.add(o); yy += o.height;
+      o.setName('codex-card-detail-paragraph'); this.root.add(o); yy += o.height;
     };
 
     // Title block.
     const title = this.add.text(tx, yy, displayName(card), {
       fontFamily: UI_FONT, fontSize: '27px', fontStyle: UI_BOLD, color: UI_GOLD, resolution: 2, wordWrap: { width: wrap - 40 }
     });
-    this.root.add(title);
+    title.setName('codex-card-detail-title'); this.root.add(title);
     yy += Math.max(38, title.height + 7);
     const meta = this.add.text(tx, yy, `${cardLabel(card)} / Cost ${card.cost}${flav?.bird ? ` / ${flav.bird}` : ''}`, {
       fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: UI_MUTED, resolution: 2, wordWrap: { width: wrap }
     });
-    this.root.add(meta);
+    meta.setName('codex-card-detail-meta'); this.root.add(meta);
     yy += Math.max(26, meta.height + 8);
 
     const collection = this.cardCollection[card.id];
@@ -6118,33 +5338,46 @@ export class CodexScene extends Phaser.Scene {
     const closeDetail = () => this.closeCodexDetail();
     this.root.add(this.add.rectangle(0, 0, GAME_WIDTH, mTop, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
     this.root.add(this.add.rectangle(0, mBottom, GAME_WIDTH, GAME_HEIGHT - mBottom, 0x070a11, 1).setOrigin(0, 0).setInteractive().on('pointerdown', closeDetail));
-    this.root.add(this.add.rectangle(left + 1, mTop + 1, MW - 2, viewTop - mTop - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
-    this.root.add(this.add.rectangle(left + 1, viewBottom, MW - 2, mBottom - viewBottom - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
+    this.root.add(this.add.rectangle(tx - 2, mTop + 1, right - tx + 1, viewTop - mTop - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
+    this.root.add(this.add.rectangle(tx - 2, viewBottom, right - tx + 1, mBottom - viewBottom - 1, 0x0c1420, 1).setOrigin(0, 0).setInteractive());
     // Redraw the panel border crisply over the covers.
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x000000, 0).setStrokeStyle(2, accentColor, 1));
-    const dossierLabel = this.cardDossierLabel(card);
-    const dossierW = Math.max(150, Math.min(190, dossierLabel.length * 9 + 30));
-    const dossierX = left + 24 + dossierW / 2;
-    this.root.add(this.add.rectangle(dossierX, mTop + 28, dossierW, 28, 0x07101c, 0.96).setStrokeStyle(1, accentColor, 0.9));
-    this.root.add(this.add.text(dossierX, mTop + 28, dossierLabel, {
-      fontFamily: UI_FONT, fontSize: '11px', fontStyle: UI_BOLD, color: accentText,
-      align: 'center', fixedWidth: dossierW - 18,
-    }).setResolution(2).setOrigin(0.5));
-    // Thin accent rule between art and text column (clipped to the viewport band).
-    this.root.add(this.add.rectangle(tx - 14, (viewTop + viewBottom) / 2, 2, viewH - 8, Phaser.Display.Color.HexStringToColor(accent).color, 0.5));
-
+    // Artwork, reading navigation and collection actions occupy separate bands.
+    this.root.add(this.add.text(left + 24, 64, this.cardDossierLabel(card), {
+      fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: accentText,
+    }).setResolution(2).setOrigin(0, 0.5).setName('codex-card-detail-dossier'));
+    this.root.add(this.add.rectangle(tx - 14, (viewTop + viewBottom) / 2, 1, viewH, accentColor, 0.35));
+    this.root.add(this.add.text(tx, 64, 'CARD REFERENCE', {
+      fontFamily: UI_FONT, fontSize: '16px', fontStyle: UI_BOLD, color: UI_MUTED,
+    }).setResolution(2).setOrigin(0, 0.5).setName('codex-card-detail-kicker'));
     if (this.detailMaxScroll > 0) {
-      this.renderCodexScrollCue(right - 64, mBottom - 18, this.detailScroll >= this.detailMaxScroll);
+      this.root.add(this.add.text(tx, 602, this.detailScroll >= this.detailMaxScroll - 1
+        ? 'End of entry' : 'Read more · Scroll / ↑ ↓', {
+        fontFamily: UI_FONT, fontSize: '18px', color: UI_SOFT,
+      }).setResolution(2).setOrigin(0, 0.5).setName('codex-card-detail-reading-status'));
+      for (const [name, label, x, delta] of [
+        ['back', '↑ Back', right - 200, -1], ['more', '↓ More', right - 80, 1],
+      ] as const) {
+        const enabled = delta < 0 ? this.detailScrollTarget > 0 : this.detailScrollTarget < this.detailMaxScroll;
+        const hit = this.add.rectangle(x, 602, 112, 58, 0x172837, enabled ? 1 : 0.3)
+          .setName(`codex-card-scroll-${name}`);
+        if (enabled) hit.setInteractive({ useHandCursor: true }).on('pointerdown', () => {
+          this.detailScrollTarget = clamp(this.detailScrollTarget + delta * viewH * 0.7, 0, this.detailMaxScroll);
+        });
+        this.root.add(hit);
+        this.root.add(this.add.text(x, 602, label, {
+          fontFamily: UI_FONT, fontSize: '18px', color: enabled ? '#dceefa' : '#8a9aa9',
+        }).setResolution(2).setOrigin(0.5).setName(`codex-card-scroll-${name}-label`));
+      }
     }
-
-    this.renderCardFavoriteControl(artX - 78, mBottom - 24, card);
-    this.renderCardTargetControl(artX + 78, mBottom - 24, card);
-    this.renderCardTagControl(tx + 96, mBottom - 24, card);
-    this.renderCardShowcaseControl(tx + 296, mBottom - 24, card);
-    if (flightDeckAction) this.renderCardFlightDeckControl(tx + wrap / 2, mTop + 28, card);
-    this.renderCodexCloseControl(right - 26, mTop + 26, closeDetail);
+    this.renderCardFavoriteControl(208, 660, card);
+    this.renderCardTargetControl(496, 660, card);
+    this.renderCardTagControl(784, 660, card);
+    this.renderCardShowcaseControl(1072, 660, card);
+    if (flightDeckAction) this.renderCardFlightDeckControl(right - 216, 64, card);
+    this.renderCodexCloseControl(right - 36, 64, closeDetail);
     if (this.cardJournalInput && this.cardJournalEditingId === card.id) {
-      this.renderCardJournalPrompt(card);
+      this.renderCardJournalPrompt();
     }
   }
 

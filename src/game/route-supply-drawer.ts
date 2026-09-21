@@ -2,7 +2,13 @@ import type Phaser from 'phaser';
 import { supplyCompactArtAssets, UI_FIELD } from '../main';
 import { bindChoiceHint } from './choice-input-hints';
 import { controlBindingLabel } from './input-bindings';
-import { decisionButton, decisionText } from './decision-surface';
+import { decisionButton, decisionExcerpt, decisionText } from './decision-surface';
+import { cardKeywordSections } from './keyword-definitions';
+
+type Reading = { page: number; total: number; title: string; text: string };
+const readings = new WeakMap<Phaser.Scene, { key: string; page: number; reading?: Reading; turn?: (delta: number) => void }>();
+export function supplyDrawerReading(scene: Phaser.Scene) { return readings.get(scene)?.reading; }
+export function turnSupplyDrawerPage(scene: Phaser.Scene, delta = 1) { readings.get(scene)?.turn?.(delta); }
 
 export interface RouteSupplyDrawerEntry {
   id?: string;
@@ -63,7 +69,7 @@ export function renderRouteSupplyDrawer(scene: Phaser.Scene, view: RouteSupplyDr
       .setInteractive({ useHandCursor: true }).setName(`supply-drawer-item-${entry.index}`));
     row.on('pointerdown', () => view.onActivate(entry.index));
     row.setData({ selected, armed });
-    text(158, y - 25, entry.name ?? entry.id!, 328, 20, selected ? '#ffe1a3' : '#dbe8f2').setName('supply-drawer-item-name');
+    decisionExcerpt(text(158, y - 25, entry.name ?? entry.id!, 328, 20, selected ? '#ffe1a3' : '#dbe8f2'), 28).setName('supply-drawer-item-name');
     text(158, y + 5, armed ? 'Selected · Confirm to use' : timing(entry), 328, 16, armed ? '#ffe1a3' : '#abc4d4');
   });
   if (entries.length) {
@@ -76,18 +82,56 @@ export function renderRouteSupplyDrawer(scene: Phaser.Scene, view: RouteSupplyDr
     const key = supplyCompactArtAssets[focus.id!]?.key;
     if (key && scene.textures.exists(key)) add(scene.add.image(594, 234, key).setDisplaySize(80, 80));
     else text(594, 234, focus.glyph ?? '◇', 80, 32, '#ffe1a3').setOrigin(0.5);
-    text(654, 198, focus.name ?? focus.id!, 484, 26, '#ffe1a3').setName('supply-drawer-title');
-    text(654, 242, `${timing(focus)} · Single use`, 484, 18, '#abc4d4');
-    text(554, 304, focus.summary ?? '', 584, 22).setName('supply-drawer-rules');
+    const fullName = focus.name ?? focus.id!;
+    const title = decisionExcerpt(text(654, 194, fullName, 484, 26, '#ffe1a3'), 70).setName('supply-drawer-title');
+    text(654, 270, `${timing(focus)} · Single use`, 484, 18, '#abc4d4');
+    const heading = text(554, 306, '', 584, 16, '#abc4d4').setName('supply-drawer-heading');
+    const body = text(554, 332, '', 584, 22).setName('supply-drawer-rules');
+    const sections = [{ heading: 'EFFECT', body: focus.summary || 'No additional rules.' },
+      ...cardKeywordSections(focus.summary ?? ''),
+      ...(title.text !== fullName ? [{ heading: 'FULL NAME', body: fullName }] : [])];
+    const pages: Array<{ title: string; text: string }> = [];
+    for (const section of sections) {
+      let lines: string[] = [];
+      for (const line of body.getWrappedText(section.body)) {
+        body.setText([...lines, line].join('\n'));
+        if (body.getBounds().bottom > 444 && lines.length) {
+          pages.push({ title: section.heading, text: lines.join('\n') }); lines = [];
+        }
+        lines.push(line);
+      }
+      if (lines.length) pages.push({ title: section.heading, text: lines.join('\n') });
+    }
+    const readingKey = JSON.stringify([focus.index, focus.id, sections]);
+    const state = readings.get(scene)?.key === readingKey ? readings.get(scene)! : { key: readingKey, page: 0 };
+    readings.set(scene, state);
+    const pageLabel = text(846, 480, '', 176, 16, '#abc4d4').setOrigin(0.5);
+    const owner = scene as Phaser.Scene & { pauseOverlayOpen?: boolean; settingsOverlayOpen?: boolean; updateTextState?: () => void };
+    const turn = (delta: number) => {
+      if (delta && (owner.pauseOverlayOpen || owner.settingsOverlayOpen)) return;
+      state.page = (state.page + delta + pages.length) % pages.length;
+      state.reading = { ...pages[state.page], page: state.page + 1, total: pages.length };
+      heading.setText(state.reading.title); body.setText(state.reading.text);
+      pageLabel.setText(pages.length > 1 ? `${state.page + 1} / ${pages.length}` : '');
+      if (delta) owner.updateTextState?.();
+    };
+    state.turn = turn;
+    body.once('destroy', () => { if (state.turn === turn) { state.turn = undefined; state.reading = undefined; } });
+    if (pages.length > 1) {
+      button(644, 180, '← Read back', 'read-previous', () => turn(-1), 480);
+      button(1048, 180, 'Read more →', 'read-next', () => turn(1), 480);
+    }
+    turn(0);
     const armed = view.armedIndex === focus.index;
-    const hint = text(554, 513, '', 584, 18, armed ? '#ffe1a3' : '#abc4d4').setName('supply-drawer-command-copy');
+    const hint = text(554, 526, '', 584, 18, armed ? '#ffe1a3' : '#abc4d4').setName('supply-drawer-command-copy');
     bindChoiceHint(scene, hint, mode => {
-      if (!focus.usable) return `Keep packed · Use ${focus.timing === 'route' ? 'on the route' : 'in combat'}.`;
+      const read = pages.length > 1 && mode !== 'pointer' ? `\n${mode === 'controller' ? 'Y' : controlBindingLabel('roost')}: read more` : '';
+      if (!focus.usable) return `Keep packed · Use ${focus.timing === 'route' ? 'on the route' : 'in combat'}.${read}`;
       if (mode === 'pointer') return armed ? 'Confirm use, or cancel to keep it packed.' : 'Select an item, then confirm to use it.';
       const confirm = mode === 'controller' ? 'A' : view.confirmLabel;
       const back = mode === 'controller' ? 'B' : view.backLabel;
       const move = mode === 'controller' ? 'D-pad' : `${controlBindingLabel('previous')}/${controlBindingLabel('next')}`;
-      return `${move}: browse · ${confirm}: ${armed ? 'use' : 'select'} · ${back}: ${armed ? 'cancel' : 'close'}`;
+      return `${move}: browse · ${confirm}: ${armed ? 'use' : 'select'} · ${back}: ${armed ? 'cancel' : 'close'}${read}`;
     });
     if (focus.usable) button(705, 302, armed ? 'Confirm use' : 'Select Supply', 'use', () => view.onActivate(focus.index));
   }

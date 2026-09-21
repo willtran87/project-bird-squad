@@ -1,0 +1,65 @@
+#codex-card-journal-editor {
+  position: fixed;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  max-width: none;
+  border: 1px solid #a68acb;
+  border-radius: 8px;
+  background: #0c1420;
+  color: #e6eaf4;
+  font: 18px/1.45 Arial, sans-serif;
+  box-shadow: 0 18px 64px #0009;
+  overflow: hidden;
+}
+#codex-card-journal-editor[open] { display: grid; grid-template-rows: minmax(0, 1fr) auto; }
+#codex-card-journal-editor::backdrop { background: #030810cc; }
+#codex-card-journal-editor .card-journal-body {
+  padding: 24px 28px 16px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+#codex-card-journal-editor h2 { margin: 0 0 10px; font-size: 28px; color: #ffe1a3; line-height: 1.2; }
+#codex-card-journal-editor label { display: block; font-size: 20px; font-weight: bold; overflow-wrap: anywhere; color: #d9c7ff; }
+#codex-card-journal-editor p { margin: 10px 0; }
+#codex-card-journal-editor textarea {
+  display: block;
+  width: 100%;
+  min-height: 132px;
+  padding: 14px;
+  margin-top: 18px;
+  border: 1px solid #8f85ac;
+  border-radius: 4px;
+  background: #080e19;
+  color: #f0e7ff;
+  caret-color: #ffe1a3;
+  font: 18px/1.5 Arial, sans-serif;
+  resize: none;
+}
+#codex-card-journal-editor textarea::placeholder { color: #a9afc1; opacity: 1; }
+#codex-card-journal-count, #codex-card-journal-help { color: #aebed0; font-size: 16px; }
+#codex-card-journal-count { text-align: right; }
+#codex-card-journal-error { color: #ffc2b2; }
+#codex-card-journal-editor .card-journal-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 28px;
+  border-top: 1px solid #324054;
+  background: #101c2b;
+}
+#codex-card-journal-editor button {
+  min-height: 48px;
+  min-width: 128px;
+  padding: 10px 24px;
+  border: 1px solid #8595ab;
+  border-radius: 4px;
+  background: #172535;
+  color: #e6eaf4;
+  font: bold 18px/1.4 Arial, sans-serif;
+  cursor: pointer;
+}
+#codex-card-journal-editor #codex-card-journal-save { background: #d9c7ff; border-color: #d9c7ff; color: #171324; }
+#codex-card-journal-editor button:hover { filter: brightness(1.13); }
+#codex-card-journal-editor :is(button, textarea):focus-visible { outline: 3px solid #ffe1a3; outline-offset: 3px; }

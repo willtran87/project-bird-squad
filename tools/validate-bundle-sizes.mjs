@@ -28,10 +28,11 @@ const budgets = [
   { label: 'card comparison lazy module', pattern: /^card-comparison-.*\.js$/, maxKb: 6, hard: true },
   { label: 'Route deck browser lazy module', pattern: /^route-deck-browser-.*\.js$/, maxKb: 8, hard: true },
   { label: 'saved Flight Folios lazy module', pattern: /^saved-decks-.*\.js$/, maxKb: 8, hard: true },
-  { label: 'Route supply drawer lazy module', pattern: /^route-supply-drawer-.*\.js$/, maxKb: 4, hard: true },
+  // Includes measured rule pagination and contextual term reading in both phases.
+  { label: 'Route supply drawer lazy module', pattern: /^route-supply-drawer-.*\.js$/, maxKb: 5, hard: true },
   { label: 'Route reward overlay lazy module', pattern: /^route-reward-overlay-.*\.js$/, maxKb: 6, hard: true },
   { label: 'Waymark review lazy module', pattern: /^waymark-review-.*\.js$/, maxKb: 8, hard: true },
-  { label: 'Route text-state lazy module', pattern: /^route-debug-state-.*\.js$/, maxKb: 24, hard: true },
+  { label: 'Route text-state lazy module', pattern: /^route-debug-state-.*\.js$/, maxKb: 24.25, hard: true },
   { label: 'Route map renderer lazy module', pattern: /^route-map-renderer-.*\.js$/, maxKb: 5, hard: true },
   { label: 'flock stats overlay lazy module', pattern: /^flock-stats-overlay-.*\.js$/, maxKb: 8, hard: true },
   { label: 'screen reader runtime lazy module', pattern: /^screen-reader-runtime-.*\.js$/, maxKb: 4, hard: true },

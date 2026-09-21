@@ -8,6 +8,7 @@ import cupsArcana from '../../data/cards/arcana/minor-arcana-cups.json';
 import swordsArcana from '../../data/cards/arcana/minor-arcana-swords.json';
 import pentaclesArcana from '../../data/cards/arcana/minor-arcana-pentacles.json';
 import type { CardFlavor, CardMeaning, ReserveEnemyContract } from './runtime-data';
+import { KEYWORDS } from './keyword-definitions';
 
 export { getLeaderLore } from './leader-lore';
 
@@ -75,7 +76,7 @@ export const codexGlossaryTerms: CodexGlossaryTerm[] = [
     { term: 'Molt', category: 'Stance', summary: 'A one-turn alternate card mode.', detail: 'Entering Molt changes cards to their Molt abilities for the turn. Ending a Molt turn can leave the flock exposed.' },
     { term: 'Open Sky', category: 'Pressure', summary: 'A dangerous exposed state.', detail: 'Open Sky makes enemy pressure sharper. Open Sky Guard prevents or softens exposure damage increases.' },
     { term: 'Open Sky Guard', category: 'Defense', summary: 'Protection against Open Sky pressure.', detail: 'Guard is spent before Open Sky pressure lands, and some route effects can carry it into the next fight.' },
-    { term: 'Winded', category: 'Enemy Debuff', summary: 'A stackable enemy pressure status.', detail: 'Winded reduces enemy attack pressure and fuels Quills payoffs, Winded bursts, and setup attacks.' },
+    { term: 'Winded', category: 'Attack Debuff', summary: 'Weakens the affected enemy or flock.', detail: '' },
     { term: 'Fouled', category: 'Flock Debuff', summary: 'A lingering harmful status.', detail: 'Fouled is pressure on the flock that can be reduced by cleanse effects.' },
     { term: 'Frail', category: 'Flock Debuff', summary: 'A defensive weakness status.', detail: 'Frail makes it harder to stabilize and can be reduced by cleanse effects.' },
     { term: 'Snag', category: 'Deck Trouble', summary: 'A bad card added to the deck.', detail: 'Snags clog hands, drain tempo, or loop back until removed at a route stop or market service.' },
@@ -93,4 +94,4 @@ export const codexGlossaryTerms: CodexGlossaryTerm[] = [
     { term: 'Nest', category: 'Route Node', summary: 'A deck-tuning route stop.', detail: 'Nests usually support Preen, card removal, Waymarks, and boss-ready tune-ups.' },
     { term: 'Signal', category: 'Route Node', summary: 'A planning and bargain stop.', detail: 'Signals offer choices that can grant Scrap, cards, Preen, Supplies, Waymarks, or route preview.' },
     { term: 'Cache', category: 'Route Node', summary: 'A scavenged reward stop.', detail: 'Caches offer a choice of useful rewards and interact with cache-focused Waymarks and Supplies.' },
-];
+].map(entry => ({ ...entry, detail: KEYWORDS[entry.term]?.def ?? entry.detail }));

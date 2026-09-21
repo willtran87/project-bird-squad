@@ -23,6 +23,46 @@ journeys and device qualification remain open. See `progress.md` for evidence.
 
 ## Continuation — combat inventory parity and preserved decisions
 
+September 21 Found Waymarks follow-up (D04/I04/X01): both owned-artifact
+drawers now expose 58px Earlier/Later shelf controls, an explicit visible-item
+range and disabled end states. Shelf browsing preserves the selected artifact,
+pinned comparison and current rules page. The quiet opaque frame retains the
+dark theme and original item art, replaces the ornamental Close control with
+readable Back, removes the header flourish/compass, and places the route HUD
+beneath the modal. Input hints show only the active device and remapped keys.
+This closes the missing touch access to items beyond the first six; broader
+inventory journeys and physical-device/AT qualification remain open.
+
+September 21 combat pile navigation follow-up (D04/I04/X01): Deck, Draw,
+Discard and Cleared now share a dedicated row of 20px labels with explicit
+counts, selected underline and 58px targets. Canonical card artwork remains
+intact; redundant title/detail/scroll/page ornament frames and looping flourish
+are removed. Back and list position are enlarged, navigation hints follow the
+active input device and remapped keys, and long row names use measured excerpts.
+Full rules remain a separate reading action; no pile or combat rules changed.
+Broader journey, device and human-play acceptance remains open.
+
+September 20 Flock Stats follow-up (C02/U02/X01): route/combat stats now share
+a quiet aligned table with 22px values, a distinct combat tally column and one
+58px Back control. Existing dark colors remain; decorative frames and looping
+flourishes no longer compete with values. The route HUD is beneath the reader.
+Combat labels distinguish maximum Cohesion and next-turn Wingbeats; Open Sky
+Guard shows remaining charges, including zero, separately from the deck bonus.
+Narration reads the displayed values, and route controller Back closes the
+reader without changing the pending decision. This completes these specific
+defects, not broader cross-surface, physical-device or human-play acceptance.
+
+September 20 Packed Supplies follow-up (C02/C05/X01): route and combat Run Kit
+now constrain inventory names and detail titles independently from timing and
+actions. Full effects and overflow identity use measured 22px reading pages;
+only terms occurring in that Supply's rules receive canonical definition pages.
+Read More/Read Back, the remapped Roost key and controller Y read without arming,
+consuming or changing focus. Current-page narration follows the same text.
+The existing dark theme, item artwork and confirmation flow remain. Broader
+decision-surface and physical-device qualification remain open; revision-specific
+verification and the explicit lazy-code cost are recorded in `progress.md` and
+`docs/project/performance-notes.md`.
+
 Codex card-detail follow-up: gameplay now leads the dossier with complete 20px
 effect, Preen, Molt and passive-stat text. Ownership is summarized beside the
 identity; full collection/acquisition/Folio/flight records and the journal remain
@@ -644,7 +684,7 @@ P2 = expansion after the foundation is proven.
 | D01 | P0 | One visual direction. Contract above established; apply consistently across every decision surface. **Partial.** |
 | D02 | P0 | Shared surface/type/spacing tokens. `DECISION_UI` begins with combat details; migrate and inspect remaining menus. **Partial.** |
 | D03 | P0 | Complete reference journey meets the contract above, not just isolated screenshots. |
-| D04 | P0 | Remove competing focal points and duplicate information in each scene/state. Combat selection no longer requires a large automatic dossier. Codex cards, Supplies, Waymarks and enemies use quieter detail surfaces; item rules are complete and readable, enemy kits precede lore, and hidden boss tactics use one counted message. Leader dossiers and browser density remain. **Partial.** |
+| D04 | P0 | Remove competing focal points and duplicate information in each scene/state. Combat selection no longer requires a large automatic dossier. Codex cards, Supplies, Waymarks, enemies and leaders use quieter detail surfaces; full rules remain readable, enemy/leader kits precede lore, and hidden boss tactics use one counted message. Leaders have measured unlock instructions and touch paging. Collection section/filter tabs use text, counts and selected underlines rather than competing medallions/frames. Supply, Waymark, Leader, enemy and glossary grids use restrained tiles, 18px measured summaries and explicit ellipses; all 200 entries fit without overlap. Rendering, keyboard/controller focus and lazy artwork loading share the same grid measurements, fixing the prior item three/four-column mismatch. Enemy grids retain health, district, concept status and observed boss tactic counts without duplicate chips. Card galleries now separate measured 18px names and 14px ownership/collection labels from complete 2:3 artwork; all 110 cards retain unobscured canonical frames and printed titles, with no duplicate decorative entry frame. Five-column layout, reserved New/filter header space and shared focus/scroll/art-loading measurements keep the gallery aligned. Codex navigation now has its own 18px section row, with separate 14–18px search/sort/lens/saved-view/Atlas controls and 14px set tabs. Measured 18px filter chips replace tiny text; Mark all seen is distinct from Clear filters in visuals and narration. All hit areas and focus coordinates share the new layout, and a single filtered card no longer shows an unnecessary scroll fade. Saved Views and Collection Atlas now use quiet progress rows and 18–22px reading text, complete search criteria on dedicated lines, 58px actions with 16px shortcuts, and shared focus geometry. Empty/full/failure states, all collection stages and compact touch are covered in both browsers at three sizes. Card dossiers now separate intact 320×480 artwork, a wider gameplay-first reader, 58px Back/More controls and four 264×58 collection actions. Labels use 18px text with separate 14px bindings; all 110 entries and New/protected/tagged/showcased/full/tracked/active-flight states have built-browser geometry coverage. The journal editor now has a unified responsive native dialog with readable body text, explicit Save/Cancel actions and visible focus. Other scene/state coverage remains. **Partial.** |
 | D05 | P1 | Review the complete product against the same quality criteria before expanding content. |
 | V01 | P0 | Combatant silhouettes, targets, intents and health remain readable against every district. Prior stage passes cover entry/boss; broader encounter matrix remains. **Partial.** |
 | V02 | P0 | Persistent HUD has a clear survival/resource/action hierarchy, including crowded modifier states. **Partial.** |
@@ -660,11 +700,11 @@ P2 = expansion after the foundation is proven.
 | C02 | P0 | Fixed-size, measured full-rule pagination for Now/Molt and long text. Hand and combat deck/draw/discard/cleared inspection share the 22px reader. Route comparisons use synchronized 18px pages. Explicit combat/route rewards and Preen/Release inspection share 22px measured pages for active/alternate rules, passive bonuses and full identity. Combat rewards also expose upgraded Molt rules and show printed costs/normal rules independent of the finished battle's stance. Route single-card Deck Review uses 22px measured pages for Now, Preen, Molt, upgraded Molt, passive bonuses and full identity. Market Waymarks, Supplies and services now use a stable 22px paged reader for effects, rules, build advice, purchase consequences and full identity. Market rules now use complete readable effect text; trigger frequencies match combat behavior, including the repeat-Supply exception. Non-Market item tooltips and remaining technical wording elsewhere remain; evidence is in progress.md. **Partial.** |
 | C03 | P0 | Distinguish active effects, passive contribution, temporary changes and flight/collection persistence. Combat separates active/passive pages. **Partial.** |
 | C04 | P1 | Compare exact add/remove/Preen/Market consequences with deck-size and draw assumptions. Existing comparison work remains partial (5, 7, 28, 31). |
-| C05 | P1 | Complete glossary/vocabulary and icon consistency, with contextual definitions that preserve the decision. |
+| C05 | P1 | Complete glossary/vocabulary and icon consistency, with contextual definitions that preserve the decision. All 25 existing Codex keywords now open their complete authored definitions in a measured 22px reader with keyboard, controller, pointer, touch paging and screen-reader narration; closing restores the exact entry and scroll. Previously the screen exposed only summaries and Confirm did nothing. Combat hand/pile readers now append deduplicated definitions for terms in the card’s active/alternate rules, stats and cost, using the existing 22px pages without adding persistent HUD. Hover, Codex and combat readers share canonical definitions; corrected Wingbeat timing, Cover reset, per-hit Open Sky Guard, Winded ownership/duration and whole-deck Keystone wording against runtime behavior. Route single-card Deck Review, Market cards, route rewards/Preen/Release and combat rewards/Preen now reuse contextual definitions after existing rules and consequences. Terms derive only from displayed rules, passive bonuses and costs, not names or advice; reading preserves armed choices and resources. Full vocabulary/rules accuracy, comparison and item-context access still require review. **Partial.** |
 | I01 | P0 | Input acknowledges selection immediately and never loses a valid action silently. |
 | I02 | P0 | Predictable select → target → commit → resolve; protect against double play and stale targets. **Partial.** |
-| I03 | P0 | Inspect/Back restores exact selection and focus. Hand and combat pile reading preserve the pending card, target and pile focus; pile Back no longer counts as cancelling the card. Route comparisons retain pages through redraws and separate Pin/selection/Save/Close. Combat/route reward and Preen/Release readers preserve armed choices and pages through redraws and guard pause/settings. Market non-card readers preserve pages and purchase state, and hovering a different offer cannot replace an armed purchase's preview. Route readers share controller confirmation latches; combat rewards reject repeated keyboard Confirm so holding a key cannot close and then commit. Verify remaining overlays. **Partial.** |
-| I04 | P0 | Pointer, remapped keyboard and controller navigation expose equivalent actions and accurate hints. **Partial.** |
+| I03 | P0 | Inspect/Back restores exact selection and focus. Hand and combat pile reading preserve the pending card, target and pile focus; pile Back no longer counts as cancelling the card. Route comparisons retain pages through redraws and separate Pin/selection/Save/Close. Combat/route reward and Preen/Release readers preserve armed choices and pages through redraws and guard pause/settings. Market non-card readers preserve pages and purchase state, and hovering a different offer cannot replace an armed purchase's preview. Route readers share controller confirmation latches; combat rewards reject repeated keyboard Confirm so holding a key cannot close and then commit. Saved Views and Collection Atlas now stop pending shelf motion and reject background wheel input so Back preserves the exact scroll position; normal grid scrolling resumes after closure. The journal editor freezes pending reader movement, owns wheel/focus, and returns to the same card and scroll position. Saving is explicit; blur/backdrop never commits, failed saves retain drafts, and scene shutdown cancels and disposes the editor. Repeated Codex Confirm/Back cannot advance through successive layers. Verify remaining overlays. **Partial.** |
+| I04 | P0 | Pointer, remapped keyboard and controller navigation expose equivalent actions and accurate hints. Deck Review now reserves an 18px footer below both single-card and comparison readers; the former partly hid its keyboard guide. Three-size geometry and device-mode/remapping checks cover the corrected footer. Other surfaces and physical-device journeys remain. **Partial.** |
 | I05 | P0 | Remove redundant routine confirmations while preserving purchases, skips and irreversible decisions. **Partial.** |
 | F01 | P0 | Measure input-to-feedback and effect-to-result timing; remove unexplained dead beats. Existing cadence regressions retained. **Partial.** |
 | F02 | P0 | Telegraph → action → impact is readable; use overlap only when causal order stays clear. **Partial.** |
@@ -696,7 +736,7 @@ P2 = expansion after the foundation is proven.
 | P03 | P2 | Mastery records and cosmetics reward experimentation without confusing card identity. |
 | P04 | P2 | Persistent optional challenges deepen replay without streak pressure or deadlines. |
 | P05 | P2 | District events and character consequences produce memorable, coherent run stories. |
-| X01 | P0 | Readable detail text and hit areas at supported sizes. Combat details, route single-card Deck Review, explicit route reward/Preen/Release and Market non-card readers use 22px logical body text and 58px paging controls; route comparison rules/index names use 18px at 2x resolution, with 58px paging/Pin/Close controls. Three-size built geometry evidence exists; Waymark/Supply shelves now separate 18px names and explicit Scrap prices from distinct 112px item art, with measured title excerpts and full names in inspection. Market services now use 20px names/explicit Scrap prices and separated 58–76px rows for early/later districts; unavailable Refresh exposes its exact shortfall without purchasing. Legacy catalog labels, remaining item tooltips and physical-device qualification remain. **Partial.** |
+| X01 | P0 | Readable detail text and hit areas at supported sizes. Combat details, route single-card Deck Review, explicit route reward/Preen/Release and Market non-card readers use 22px logical body text and 58px paging controls; route comparison rules/index names use 18px at 2x resolution, with 58px paging/Pin/Close controls. Three-size built geometry evidence exists; Waymark/Supply shelves now separate 18px names and explicit Scrap prices from distinct 112px item art, with measured title excerpts and full names in inspection. Market services now use 20px names/explicit Scrap prices and separated 58–76px rows for early/later districts; unavailable Refresh exposes its exact shortfall without purchasing. Saved Views and Collection Atlas have 18–22px body labels and 58px actions; maximum-length queries, counts, all progress stages and touch operation are checked at three sizes. Card dossier actions now use 18px labels and 58px targets, with separate 58px touch paging for the full rules, collection record and notes. Complete artwork is no longer affected by reading-area curtains. The native journal editor now retains 18px body text, 16px help and 48px physical action targets independently of canvas scale, with scrollable content and persistent actions for short viewports. Remaining item tooltips and physical-device qualification remain. **Partial.** |
 | X02 | P0 | Color, shape and wording communicate state redundantly; contrast remains valid in all options. |
 | X03 | P0 | Complete remapping, input focus, reduced motion/flash and independent audio journeys. **Partial.** |
 | X04 | P1 | Actual NVDA/VoiceOver journeys with recorded issues and fixes; automated narration checks are insufficient. |

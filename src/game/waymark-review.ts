@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { addRouteWaymarkScrollRailFrame, addRunKitDrawerFlourish, addUiIconImage,
-  controlBindingLabel, HUD_MENU_PANEL, playUiSound, renderCloseControl, renderFieldPanel, UI_FIELD } from '../main';
+import { addRouteWaymarkScrollRailFrame, controlBindingLabel, playUiSound } from '../main';
 import { decisionButton, decisionExcerpt, decisionText } from './decision-surface';
+import { bindChoiceHint } from './choice-input-hints';
 
 export interface SceneWaymarkReviewEntry {
   id: string; name: string; meta: string; trigger: string; description: string;
@@ -14,7 +14,7 @@ export interface SceneWaymarkReviewView {
 }
 export interface SceneWaymarkDrawerView extends Omit<SceneWaymarkReviewView, 'selected'> {
   entries: SceneWaymarkReviewEntry[]; selected?: SceneWaymarkReviewEntry; scrollRow: number;
-  onClose: () => void; onSelect: (id: string) => void;
+  onClose: () => void; onSelect: (id: string) => void; onScroll: (rows: number) => void;
 }
 
 type Reading = { page: number; total: number; headings: string[]; bodies: string[] };
@@ -112,14 +112,15 @@ export function renderSceneWaymarkDrawer(scene: Phaser.Scene, view: SceneWaymark
 
 function renderDrawer(scene: Phaser.Scene, view: SceneWaymarkDrawerView) {
   scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.88).setInteractive();
-  const frame = renderFieldPanel(scene, () => {}, HUD_MENU_PANEL.cx, HUD_MENU_PANEL.cy + 24, HUD_MENU_PANEL.w, HUD_MENU_PANEL.h + 48, {
-    eyebrow: 'Route Kit', title: 'Found Waymarks',
-    subtitle: `${view.entries.length} artifacts carried this run`, accent: UI_FIELD.violet,
-  });
-  addRunKitDrawerFlourish(scene, () => {}, frame, { alpha: 0.08, tint: 0xe7d8ff, yOffset: 8 });
-  addUiIconImage(scene, 'waymark-compass', frame.left + HUD_MENU_PANEL.headerIconX, frame.top + HUD_MENU_PANEL.headerIconY, 28);
-  renderCloseControl(scene, () => {}, frame.right - HUD_MENU_PANEL.closeX, frame.top + HUD_MENU_PANEL.closeY,
+  scene.add.rectangle(640, 384, 1060, 618, 0x0b121d, 1)
+    .setStrokeStyle(1, 0x8874a9, 0.7).setName('route-waymark-drawer-panel');
+  const frame = { left: 110, top: 75, right: 1170 };
+  text(scene, 148, 110, 'Found Waymarks', 650, 30, '#ffe1a3').setFontStyle('bold');
+  text(scene, 148, 156, `${view.entries.length} artifacts carried this run`, 650, 18, '#abc4d4');
+  const [, back] = decisionButton(scene, 1068, 159, 152, 'Back', 'route-waymark-close-hit',
     () => { if (!blocked(scene)) view.onClose(); });
+  bindChoiceHint(scene, back, mode => mode === 'pointer' ? 'Back'
+    : `Back · ${mode === 'controller' ? 'B' : controlBindingLabel('back')}`);
   if (!view.entries.length) { text(scene, 200, 260, 'No Waymarks found yet. Discover artifacts along your route.', 820, 22); return; }
   const columns = 3, visibleRows = 2, tileW = 252, tileH = 80;
   const startX = frame.left + 64, startY = frame.top + 128;
@@ -138,7 +139,19 @@ function renderDrawer(scene: Phaser.Scene, view: SceneWaymarkDrawerView) {
     if (view.pinned?.id === entry.id) text(scene, x + 10, y + 2, '●', 24, 16, '#ffc9f5');
   });
   if (maxScrollRows > 0) {
-    const trackH = visibleRows * 88 - 8, trackX = frame.right - 38, trackY = startY + trackH / 2;
+    for (const [delta, y, label] of [[-1, 232, '↑ Earlier'], [1, 342, 'Later ↓']] as const) {
+      const enabled = delta < 0 ? scrollRow > 0 : scrollRow < maxScrollRows;
+      const [hit, caption] = decisionButton(scene, 1052, y, 128, label,
+        `route-waymark-shelf-${delta < 0 ? 'previous' : 'next'}`, () => {
+          if (enabled && !blocked(scene)) view.onScroll(delta);
+        });
+      if (!enabled) { hit.disableInteractive().setAlpha(0.45); caption.setAlpha(0.5); }
+    }
+    text(scene, 1052, 287, `${scrollRow * columns + 1}–${Math.min(view.entries.length, (scrollRow + visibleRows) * columns)} / ${view.entries.length}`,
+      144, 18, '#abc4d4').setOrigin(0.5).setName('route-waymark-shelf-position');
+    // The generated frame adds 58px of end caps; keep those inside the shelf.
+    const shelfH = visibleRows * 88 - 8, trackH = shelfH - 58;
+    const trackX = frame.right - 38, trackY = startY + shelfH / 2;
     const thumbH = Math.max(34, trackH * (visibleRows / totalRows));
     const thumbY = trackY - trackH / 2 + thumbH / 2 + scrollRow / maxScrollRows * (trackH - thumbH);
     addRouteWaymarkScrollRailFrame(scene, () => {}, trackX, trackY, trackH, thumbY, thumbH);
@@ -146,9 +159,10 @@ function renderDrawer(scene: Phaser.Scene, view: SceneWaymarkDrawerView) {
   const pin = view.pinned?.id === view.selected?.id;
   decisionButton(scene, 926, 159, 112, pin ? 'Unpin' : 'Pin', 'route-waymark-pin-hit', () => { if (!blocked(scene)) view.onPin(); });
   if (view.selected) renderSceneWaymarkReview(scene, { selected: view.selected, pinned: view.pinned, onPin: view.onPin });
-  text(scene, 148, 650,
-    `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} Choose · ${controlBindingLabel('roost')} / X Pin · PgUp / PgDn / LB / RB Read · ${controlBindingLabel('back')} Back`,
-    1020, 16, '#abc4d4').setName('route-waymark-reader-hints');
+  bindChoiceHint(scene, text(scene, 148, 650, '', 1020, 18, '#abc4d4').setName('route-waymark-reader-hints'),
+    mode => mode === 'pointer' ? 'Choose an artifact to read · Pin one to compare'
+      : mode === 'controller' ? 'D-pad: choose · X: pin · LB / RB: rules · B: back'
+        : `${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: choose · ${controlBindingLabel('roost')}: pin · PgUp / PgDn: rules · ${controlBindingLabel('back')}: back`);
 }
 
 type BattleReading = { entries: SceneWaymarkReviewEntry[]; selected?: string; pinned?: string };
@@ -200,6 +214,7 @@ export function renderBattleWaymarks(scene: any, entries: SceneWaymarkReviewEntr
     selected: entries.find(entry => entry.id === state!.selected),
     pinned: entries.find(entry => entry.id === state!.pinned), scrollRow: scene.waymarkDrawerScroll,
     onClose, onPin: () => battleWaymarkAction(scene, 'pin'),
+    onScroll: rows => scene.scrollWaymarkDrawer(rows),
     onSelect: id => {
       if (blocked(scene) || state!.selected === id) return;
       state!.selected = id; playUiSound('confirm'); scene.requestBattleRender();

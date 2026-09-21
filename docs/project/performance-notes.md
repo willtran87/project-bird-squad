@@ -1,5 +1,88 @@
 # Performance Notes
 
+## September 21 2026 — contextual decision-card definitions
+
+Build `index-CaYXTu_B.js`: entry 679.7/178.3 KiB minified/gzip; combined boot
+719.1/193.4 KiB. Shared interaction rules measure 9.4/4.1 KiB; lazy reward
+inspection 67.4/20.9 KiB, card hover 8.2/3.3 KiB and route Deck Review 6.6/2.6
+KiB. Hard caps remain unchanged and pass; preferred 675/710 KiB entry/boot
+targets remain open. The definitions reuse existing canonical text and measured
+pagination without dependencies, assets, timers or new loading boundaries.
+The corrected Deck Review footer retains its existing scene-owned input
+observer. This is a readability addition, not a startup-speed improvement.
+
+## September 21 2026 — owned-Waymark shelf navigation
+
+Build `index-InPwbbFx.js`: entry 679.7/178.3 KiB minified/gzip; combined boot
+718.9/193.3 KiB. The lazy Waymark reader is 7.3/3.3 KiB, within its unchanged
+8 KiB cap. All hard caps pass; preferred entry/boot targets remain open.
+Earlier/Later controls use existing event-driven redraws; hints reuse the
+scene-owned observer and release registrations on text destruction. No timer,
+dependency, asset or gameplay delay added. The decorative shelf rail and
+existing asset groups remain; this is not a preload or startup-speed claim.
+
+## September 21 2026 — combat pile navigation cleanup
+
+Build `index-vfUuC22f.js`: entry 680.4/178.6 KiB minified/gzip; combined
+boot 719.5/193.5 KiB. Removing the unused ornament adapter and its now-unused
+helpers reduces the prior 684.7/723.8 KiB entry/boot totals by about 4.3 KiB.
+The lazy inspector is 7.0/2.6 KiB, previously 7.3/2.7 KiB. All hard caps remain
+unchanged; preferred 675/710 KiB targets still warn. No startup-latency gain
+is claimed from bytes alone. Existing ornament asset load groups are unchanged.
+
+The reader keeps canonical card artwork, removes duplicate UI image frames
+and looping flourishes, and reuses the shared scene-owned input-hint observer.
+Hints release their registration when text is destroyed. No dependency, timer,
+per-frame observer or gameplay wait was added. Larger text and touch targets
+are verified in built browsers; sustained physical-device qualification remains.
+
+## September 20 2026 — quiet, accurate Flock Stats
+
+Build `index-DiILkBA7.js`: entry 684.7/179.7 KiB minified/gzip; combined
+boot 723.8/194.6 KiB. Hard caps are unchanged in this pass; preferred 675/710
+KiB startup targets remain open. The shared lazy Flock Stats renderer measures
+2.8/1.4 KiB, down from 5.5/2.0 KiB before replacing ornamental frames with an
+aligned table. It adds no images, timers, dependency or animation loop.
+Current-value narration uses existing debug/narration ownership: route debug
+24.2/6.0 KiB, battle debug 9.4/3.4 KiB, narration 53.8/16.5 KiB, all inside
+their existing caps. This bounded module reduction is not evidence of faster
+startup or sustained physical-device performance. Full asset groups and their
+legacy ornament preload ownership were not changed by this presentation pass.
+
+## September 20 2026 — complete Packed Supplies reading
+
+Build `index-D4GFLrlx.js`: entry 684.6/179.7 KiB minified/gzip; combined
+boot 723.8/194.6 KiB. The unchanged 725 KiB hard boot cap passes; preferred
+675/710 KiB entry/boot targets remain open. Shared terms remain in the existing
+interaction-rules chunk (9.1/4.0 KiB), with no additional title asset preload.
+
+Measured rule pagination, overflow identity and contextual definitions grow the
+lazy Supply drawer to 4.8/2.3 KiB. Its explicit hard allocation changes from
+4 to 5 KiB; current-page accessibility telemetry grows route-debug-state to
+24.1/6.0 KiB, with its allocation changing from 24 to 24.25 KiB. These are
+documented feature costs, not a performance reduction or an unchanged-budget
+claim. No dependency, asset, input observer, timer or gameplay wait is added.
+Page updates replace only heading/body/index text; redraws retain the page,
+and destroyed body objects release their navigation callback and reading state.
+Sustained physical-device performance is not certified by scoped browser checks.
+
+## September 20 2026 — canonical contextual keyword help
+
+Shared keyword definitions/tokenization now live in the existing boot-critical
+interaction-rules chunk. The first extraction was rejected: Rollup absorbed
+the shared data into the manually named combat reader, exceeding its 4 KiB
+cap and pulling the reader into title dependencies. Explicit shared ownership
+restores the combat-only lazy boundary; no size gate was increased.
+
+Final build index-D-8HRcgY.js: entry 684.2/179.6 KiB minified/gzip;
+combined boot 723.3/194.5 KiB; interaction-rules 9.1/4.0 KiB;
+combat-card-detail 3.9/1.8 KiB; Codex data 281.2/88.6 KiB;
+Phaser 1313.6/339.5 KiB. All hard budgets and deployment-cache checks pass.
+Preferred 675/710 KiB entry/boot targets remain open. This is shared-reference
+correctness, not a startup-speed or sustained-device performance claim.
+No new asset, listener, timer, dependency or gameplay delay was introduced.
+Browser verification and remaining acceptance are recorded in progress.md.
+
 ## September 15 2026 — gameplay-first Codex dossiers
 
 Build `index-q0FI8tPe.js` keeps entry/combined boot at approximately 689.7/724.9

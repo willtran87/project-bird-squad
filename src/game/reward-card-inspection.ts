@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { aggregateFlockStats, cardsFromSave, cardStatRows, flockStatLabel, KEYSTONE_AT, type Card } from '../main';
 import { flockHandTarget } from './hand-size';
 import { bindChoiceHint, choiceInputHint, inspectInputHint } from './choice-input-hints';
+import { decisionCardKeywordSections } from './keyword-definitions';
 
 import {
   addRewardRevealHaloFx,
@@ -361,6 +362,7 @@ export function renderRouteInspectionReader(scene: Phaser.Scene, view: CardHover
     { title: 'CARD DETAILS', text: `${view.name}\n${view.bird} / ${view.label}\n${view.target} / ${view.role}\n${view.zone}` },
     ...(view.zone === 'Route reward inspection' ? routeDecisionSections(scene) : []),
   ];
+  sections.push(...decisionCardKeywordSections(sections));
   const pages: Array<{ title: string; text: string }> = [];
   for (const section of sections) {
     let lines: string[] = [];
@@ -484,6 +486,7 @@ export function renderMarketCardDossier(scene: Phaser.Scene, view: CardHoverDeta
     { title: 'DRAW ASSUMPTIONS', text: 'Base hand includes Leader and suit threshold. Waymarks, temporary effects and opening protection can change actual draws.' },
     { title: 'CARD DETAILS', text: `${view.name}\n${view.bird} / ${view.label}\n${view.target} / ${view.role}\n${view.cost} Wingbeats to play\n${view.zone}` },
   ];
+  sections.push(...decisionCardKeywordSections(sections));
   const panel = renderMarketItemDetail(scene, {
     title: view.name, kicker: view.label, body: view.currentText, meta: '', price: listing?.price,
     afterPurchase: '', build, decisionPreview: preview, accent: view.accent,

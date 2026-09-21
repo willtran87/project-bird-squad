@@ -1,5 +1,838 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-09-21 — contextual card terms at decision time
+
+- Continued C05/I04 using the game-development, UI-layout, high-resolution,
+  Phaser text and frontend-checklist skills. The checklist service was unavailable;
+  used focused source and built-browser evidence, not a full-corpus certification.
+  Preserved the dark theme and all existing card artwork. No gameplay changes.
+- Route single-card Deck Review, Market card readers, route reward/Preen/Release
+  and combat reward/Preen now append shared contextual definitions after existing
+  rules and consequences. Only displayed active/alternate rules, passive bonuses
+  and costs contribute terms; names, flavor and advice cannot create spurious
+  matches. Definitions deduplicate and retain longest-phrase matching.
+- Reused measured 22px pages, 58px controls, existing input ownership and live
+  narration. Reading does not spend resources, buy cards, change choices, or
+  commit upgrades/removals. No persistent HUD labels, new timers or dependencies.
+- Visual inspection found the Deck Review keyboard guide partly hidden behind
+  its single-card reader. Moved the 18px guide to a dedicated full-width footer
+  below both single-card and comparison readers. The regression now checks both
+  panel bounds, all three device modes, remapped keys and repeated redraw lifetime.
+- Added tests/decision-keyword-reading.spec.ts: canonical rule/cost selection,
+  seven decision contexts, complete definitions across pagination, keyboard and
+  real touch, live-region text, redraw persistence and unchanged gameplay state.
+  All seven contexts have captures and measured 22px/44+ CSS-pixel target checks
+  at 2560x1600, 1440x900 and 1000x560. Controller/remapping regressions retained.
+- Initial Firefox checks exposed a test assertion that treated closing Market
+  as a no-op. Closing legitimately settles the visited route node and clears the
+  shelf; corrected that expectation while checking no purchase or Scrap loss.
+  No application behavior was changed to accommodate the test. Subsequent
+  pre-footer suites passed 18 Firefox and 10 Chromium reader regressions.
+- Final production build index-CaYXTu_B.js passes TypeScript, runtime data,
+  961 optimized assets, world/FX contracts, deployment-cache and unchanged hard
+  bundle caps. Entry 679.7/178.3 KiB, boot 719.1/193.4 KiB minified/gzip.
+  Preferred startup targets remain open. Docs and whitespace checks pass.
+- Final Firefox and Chromium suites each pass 11/11 (new terms, all-rule Deck
+  Review, both input hint cases): 22 scoped checks on the final build, no retries.
+  Inspected built screenshots in .artifacts/decision-keywords-verified-firefox
+  and -chromium, including high-resolution, ordinary and compact reading,
+  single-card and comparison footers. Required shared client completed two
+  bursts: inspected .artifacts/decision-keywords-client-final/shot-1.png and
+  state-1.json, full-art battle, turn 1, energy 2, Roof Rat 22/27, no pending,
+  failed or timed-out asset groups and no browser-error artifact.
+- Commands: npm run build -- --base=/project-bird-squad/; npm run
+  validate:runtime; npm run validate:runtime-assets; npm run validate:bundle-size;
+  npm run validate:deployment-cache; npm run validate:docs; git diff --check;
+  npx playwright test --config .artifacts/decision-keywords.config.ts
+  tests/decision-keyword-reading.spec.ts tests/deck-review-input-hints.spec.ts
+  tests/deck-detail-reader.spec.ts (Chromium and Firefox, one worker each).
+- Remaining: comparison/item contextual terms, full vocabulary accuracy,
+  complete reference journey, art consistency, startup targets, human balance/fun
+  evidence and physical device/AT qualification. This bounded improvement does
+  not close the 70-package roadmap. No commit, push or publication this pass.
+- Cleanup: owned test runners and browsers exited normally. Removed temporary
+  config/actions; retained screenshots and logs. The requested hidden preview
+  remains on port 43383, PID 16232, serving index-CaYXTu_B.js with HTTP 200.
+  No unrelated processes stopped; previously blocked deletion targets untouched.
+
+## 2026-09-21 — reachable, quieter Found Waymarks shelves
+
+- Continued D04/I04/X01 using the game-development, Bird Squad layout audit,
+  high-resolution visual, text and input skills. Final frontend-checklist
+  review used local code/browser evidence because its MCP service tools were
+  unavailable. No claim of full corpus or physical-device certification.
+  Inspected the built baseline
+  in .artifacts/waymark-before.png: six visible items, no touch shelf controls,
+  an ornamental header and route HUD above the modal.
+- Added 58px Earlier/Later controls, an 18px visible-item range and disabled
+  end states to the shared route/combat shelf. Both now preserve the selected
+  item, pinned comparison and rules page while browsing. Route wheel browsing
+  also preserves that reading instead of automatically selecting another item.
+- Kept the dark theme, original artifact artwork and shelf rail. Replaced the
+  ornamental panel/Close/header flourish/compass with an opaque quiet frame,
+  30px title and readable Back control. Moved the route drawer above its HUD.
+  Input hints now show only the active device, including remapped keys. The
+  visual check caught rail end caps overlapping Back; the final rail fits
+  entirely within the shelf and has a regression assertion for this gap.
+- Added tests/waymark-shelf-reading.spec.ts: route/combat, default/remapped
+  keyboard, real touch and controller events; reach all 58 artifacts; all
+  authored thumbnails loaded; preserve rules/Pin while browsing; keep run,
+  hand selection, target, piles, resources, enemies and turn unchanged; verify
+  empty and six-item inventories. Geometry checks cover 2560x1600, 1440x900,
+  1000x560, non-overlapping/contained text, HUD order and 44+ CSS-pixel targets.
+- First diagnostic browser used a test-only helper absent from production;
+  closed it in finally, then used the exposed scene loader for the baseline.
+  Initial dedicated Chromium checks and all nine Firefox checks passed before
+  the rail-spacing refinement. Final built Firefox suite: 9/9 pass, covering
+  the new shelf cases plus existing art/rules, HUD opening, pinned comparison,
+  generated rail and blocked-wheel regressions. Final Chromium suite also
+  passes 9/9: 18 scoped checks total on the final build, no retries.
+- Production build index-InPwbbFx.js passes TypeScript. Runtime data, 961
+  optimized assets, world/FX contracts, documentation, deployment-cache and
+  hard bundle checks pass. Entry 679.7/178.3 KiB, boot 718.9/193.3 KiB,
+  lazy Waymark reader 7.3/3.3 KiB minified/gzip. Caps unchanged; preferred
+  startup targets remain open. No art assets, mechanics or timing changed.
+- Shared browser client completed two bursts against the final build. Inspected
+  .artifacts/waymark-cleanup-client-final/shot-1.png and state-1.json: full-art
+  battle, turn 1, energy 2, Roof Rat 22/27, no pending/failed/timed-out assets,
+  no browser-error artifact. Dedicated captures are in
+  .artifacts/waymark-cleanup-final-chromium and -firefox.
+- Commands: npm run build -- --base=/project-bird-squad/; npm run
+  validate:runtime; npm run validate:runtime-assets; npm run validate:docs;
+  npm run validate:bundle-size; npm run validate:deployment-cache;
+  npx playwright test --config .artifacts/waymark-cleanup.config.ts
+  tests/waymark-shelf-reading.spec.ts tests/smoke.spec.ts
+  tests/wheel-input-ownership.spec.ts --grep "Waymark shelf reaches|waymark
+  artifact drawer|route HUD Waymarks|route Waymark review exposes|waymark
+  drawer renders generated scroll rail|combat Waymark wheel".
+- Broader roadmap remains open: cross-surface journeys, remaining rules and
+  tooltips, startup targets, art consistency, balance/fun evidence and physical
+  device/AT qualification. This bounded fix does not certify the whole product.
+  No commit, push or publication requested or performed.
+- Cleanup: all owned browsers/test runners exited; removed the temporary
+  test config and shared-client action payload. Kept screenshots and logs as
+  evidence. The requested hidden preview remains at port 43383, PID 31400,
+  serving index-InPwbbFx.js with HTTP 200. No unrelated processes stopped.
+
+## 2026-09-21 — cleaner combat pile navigation
+
+- Continued D04/I04/X01 with game-development, UI-layout, high-resolution,
+  text/input and frontend-checklist guidance. Checklist service was unavailable;
+  used local code and production-browser evidence. Inspected the pre-change
+  2560x1600 view in .artifacts/pile-cleanup-before.png before editing.
+- Deck/Draw/Discard/Cleared now have a dedicated row of 20px labels, counts,
+  58px targets and an active underline. Removed redundant generated title,
+  detail, arrow and page frames plus the looping flourish; canonical card art
+  and its printed frame remain intact. Back is 20px/58px, position text 18px.
+  Large arrows are separated from the selected-row outline. Card row names
+  use the shared measured two-line excerpt with explicit omission markers.
+- Pointer, keyboard and controller instructions now show only the active
+  device, including remapped Guide/Back/zone bindings. Full rules remains
+  separate from selection/play, with existing nested-reader Back behavior.
+  No pile rules, ordering, card effects or combat timing changed.
+- The first new bounds test included dimmed background pile labels, incorrectly
+  treating them as modal children. Scoped it to objects following the named
+  modal surface. An older combined smoke test still required ornaments removed
+  in a prior route pass; updated those expectations after inspecting that
+  renderer, retaining its card-cost, readable-row and interaction assertions.
+  Initial dedicated pile navigation/art/cleared-card regressions passed in both
+  engines. This was test maintenance, not evidence of a gameplay failure.
+- Production build index-vfUuC22f.js passes TypeScript and runtime data/assets;
+  bundle and deployment-cache checks pass with unchanged hard caps. Entry
+  680.4/178.6 KiB, combined boot 719.5/193.5 KiB minified/gzip. Removing unused
+  decoration adapters/helpers reduces entry and boot by about 4.3 KiB; the
+  lazy inspector measures 7.0/2.6 KiB. Preferred startup targets remain open.
+  Existing asset load groups were not changed; no startup-speed claim.
+- New browser coverage exercises all four piles at 2560x1600, 1440x900 and
+  1000x560, long names, empty Cleared, geometry, 44+ CSS-pixel targets, intact
+  artwork, default/remapped keyboard, touch, controller events and full-rule
+  inspection/return without changes to selected hand card, target, piles,
+  resources, enemies or turn. Captures are in .artifacts/pile-cleanup-final.
+- Required shared browser client completed two bursts; inspected its latest
+  shot-1.png and state-1.json in .artifacts/pile-cleanup-client-final: battle
+  turn 1, energy 2, selected Plume Flash, full art and no pending/failed/timed-out
+  groups. No browser-error artifact. A diagnostic browser was closed in finally.
+- Commands: npm run build -- --base=/project-bird-squad/; npm run
+  validate:runtime; npm run validate:runtime-assets; npm run validate:bundle-size;
+  npm run validate:deployment-cache; npx playwright test --config
+  .artifacts/pile-cleanup.config.ts tests/combat-pile-reading.spec.ts
+  tests/smoke.spec.ts --grep "combat piles use quiet|combat pile inspector|deck review overlays retain|cleared cards stay|deck, pile, and reward commands"
+  --output .artifacts/pile-cleanup-final. Config uses the requested preview,
+  one worker, no retries, Chromium and Firefox.
+- Remaining: broader reference-journey coverage, rule/tooltips, startup targets,
+  balance/fun evidence, art consistency and physical-device/AT qualification.
+  This pass does not close the whole roadmap. No commit, push or publication.
+- Expanded touch regression initially timed out waiting for removed
+  combatPileReviewFrame decoration. Trace inspection confirmed no console or
+  failed-request errors; changed readiness to the panel plus real card art.
+  Chromium rerun passes in .artifacts/pile-cleanup-touch. Stopped the old runner
+  with Ctrl+C to avoid repeating its already-loaded obsolete Firefox wait;
+  the five Firefox regressions are rerun from the corrected source in
+  .artifacts/pile-cleanup-firefox-regression. Trace extraction was closed.
+- Final evidence: 14 distinct focused cases pass across Chromium/Firefox
+  across the final, touch and Firefox regression runs. This is not the full
+  end-to-end suite or physical-controller/AT certification. Inspected production
+  captures at all three sizes, including minimum-size Firefox and empty Cleared.
+  Docs and whitespace validation pass. Temporary config/actions removed;
+  owned browser and runner processes exited; ignored screenshots retained.
+  The requested hidden preview alone remains on port 43383 (PID 19580), HTTP
+  200. Previously blocked deletion targets were not retried.
+
+## 2026-09-20 — readable, accurate Flock Stats
+
+- Continued C02/U02/X01 with game-development, layout-audit, high-resolution,
+  text, input and frontend-checklist guidance. Checklist service unavailable;
+  used local code, production-browser geometry, input journeys and screenshots.
+  First investigated suspected hand-summary clipping: live measured wrapping
+  disproved the hypothesis, so hand summaries were left unchanged.
+- Route/combat stats share a quiet opaque table: 22px values at 2x text
+  resolution, aligned numeric columns, a separate combat tally and one 58px
+  Back target. Retained the dark/teal/gold theme without ornamental images or
+  looping decoration. Visual inspection caught the route HUD drawing above the
+  reader; moving it after HUD creation and before system overlays fixes that.
+- Fixed a real stat error: spent Open Sky Guard now displays remaining charges,
+  including zero, instead of the greater starting deck bonus. Starting bonus is
+  still shown separately; route totals retain their starting values. Combat
+  labels distinguish Max Cohesion and Next Wingbeats. No effect math changed.
+- Route controller B now closes Flock Stats; other controller events cannot
+  open competing route drawers behind it. Narration reads displayed values
+  while retaining pause/settings priority. Closing preserves the pending choice.
+- Production build index-DiILkBA7.js passes TypeScript, runtime data/assets,
+  docs, bundle hard budgets, deployment-cache and whitespace validation. Entry
+  684.7/179.7 KiB and boot 723.8/194.6 KiB minified/gzip. Preferred startup
+  targets remain open. Lazy Flock Stats shrinks from 5.5/2.0 to 2.8/1.4 KiB;
+  no caps were increased this pass. No startup-speed claim.
+- New production-browser suite tests route/combat, default/remapped Back,
+  touch and controller events, preserved state, narration, text bounds,
+  non-overlap, HUD ordering and >=44 CSS-pixel close targets at 2560x1600,
+  1440x900 and 1000x560. The old ornament-presence smoke check was replaced by
+  complete-table assertions; the existing Open Sky behavior check is retained.
+  Initial combat assertions wrongly assumed a single-card +7 bonus; the real
+  deck adds another +1. The fixture check now requires a positive deck bonus
+  alongside exactly zero remaining charges. It was not a production failure.
+- Inspected original-resolution route/combat captures at all three sizes,
+  including compact Firefox, under .artifacts/flock-reading-final. Required
+  shared browser client completed two gameplay bursts; inspected shot-1.png
+  and state-1.json in .artifacts/flock-reading-client-final: battle turn 1,
+  Wingbeats 2, Cover 4, Roof Rat 22/27, selected next card and full artwork,
+  no pending/failed/timed-out groups and no console-error artifact.
+- Commands: npm run build -- --base=/project-bird-squad/; npm run
+  validate:runtime; npm run validate:runtime-assets; npm run validate:docs;
+  npm run validate:bundle-size; npm run validate:deployment-cache;
+  npx playwright test --config .artifacts/flock-reading.config.ts
+  tests/flock-stats-reading.spec.ts tests/smoke.spec.ts --grep
+  "Flock Stats stays readable|flock stats overlays use|Open Sky softening is distinct"
+  --output .artifacts/flock-reading-final. Temporary config uses the existing
+  requested preview, one worker, no retries, Chromium and Firefox.
+- Remaining: broader cross-surface reference readability, preferred startup
+  targets, balance/fun evidence, artwork and sustained-device/AT qualification,
+  and other open roadmap acceptance. This bounded pass does not close the full
+  backlog. No commit, push or publication requested or performed.
+- Final result: all 12 focused Chromium/Firefox checks passed (2.3 minutes).
+  Owned test runners/browser contexts exited. Temporary config/actions removed;
+  ignored visual evidence retained. Requested hidden preview remains on port
+  43383, PID 19228. Previously blocked deletion targets were not retried.
+
+## 2026-09-20 — bounded Packed Supplies and contextual reading
+
+- Continued C02/C05/X01 using game-development, layout-audit, high-resolution,
+  text, input and frontend-checklist guidance. Checklist service unavailable;
+  used local source, rendered bounds, built-browser journeys and screenshots.
+  Inspected legacy non-Market hover methods but found no live callers; did not
+  spend this pass polishing dead UI. Focused on the shared live Run Kit instead.
+- Inventory names and detail titles now have separate measured limits. Full
+  effects, overflow identity and only the keywords appearing in a Supply's rules
+  use 22px pages. Existing art/dark theme and the select/confirm/cancel contract
+  remain. Reading never consumes, changes inventory focus or advances combat.
+  Pointer/touch Read More/Read Back, remapped Roost and controller Y share the
+  same reader; held key repeats and pause/settings cannot change pages.
+  Redraws retain reading position; destruction releases the callback and text
+  state. Narration exposes the current page instead of repeating every rule.
+- Final production build `index-D4GFLrlx.js` passes TypeScript, runtime data,
+  runtime/world/FX assets, docs and deployment-cache validation. Entry/boot
+  measure 684.6/723.8 KiB, within unchanged hard startup caps. Preferred 675/710
+  targets remain open. New feature cost is explicit: lazy Supply renderer
+  4.8 KiB, allocation 4 to 5 KiB; route reading telemetry 24.1 KiB, allocation
+  24 to 24.25 KiB. All revised bundle gates pass; no performance gain claimed.
+- Final browser verification: 18 distinct checks pass across Chromium/Firefox
+  in three runs: 8 new catalog/reading/remapping checks, 8 existing consumption,
+  confirmation, discard sequencing and repeated-Supply Waymark regressions,
+  and 2 touch/teardown checks. All 31 authored Supplies retain complete rules
+  and canonical contextual terms in both phases; long text and unbroken names
+  remain fully accessible. Scope is not the full end-to-end suite or physical AT.
+- Commands: npx playwright test --config .artifacts/supply-reading.config.ts
+  tests/supply-reading.spec.ts --output .artifacts/supply-reading-final;
+  npx playwright test --config .artifacts/supply-reading.config.ts tests/smoke.spec.ts
+  --grep "Packed Supplies require confirmation|discard sequencing delays Supply|supplies are carried into combat|repeat Supply Waymarks"
+  --output .artifacts/supply-reading-regression; additional --grep "touch reading"
+  run in .artifacts/supply-reading-touch. Temporary config used the existing
+  requested preview, one worker, no retries, Chromium and Firefox.
+- Early harness issues were corrected: JSON fixture import needed its type
+  attribute and the BattleScene redraw method is renderAll, not render. The
+  early route case passed; all final cases pass after correction. A first bundle
+  gate failure is accounted for by the explicit new-feature allocations above.
+- Captured route/combat and long-content views at 2560x1600, 1440x900 and
+  1000x560. Inspected actual captures (original-resolution image request) in
+  .artifacts/supply-reading-final, including Firefox at minimum size. Rules,
+  timing, hints and confirmation stay separated; targets remain >=44 CSS px.
+- Required shared game client completed two action bursts. Inspected latest
+  .artifacts/supply-reading-client/shot-1.png and state-1.json: BattleScene,
+  turn 1, Wingbeats 2, Cover 4, enemy 22/27, selected next card, full art,
+  no pending/failed/timed-out asset groups and no error artifact.
+- Cleanup: owned Playwright runners/browser contexts exited. Temporary config
+  and action payload removed; ignored screenshots retained. Requested hidden
+  local preview remains on port 43383, PID 29944, HTTP 200. Previously blocked
+  deletion targets were not retried. No commit, push or publication performed.
+- Remaining: broader live non-card tooltip/rule coverage, contextual lessons,
+  preferred startup targets, balance/fun evidence, artwork and sustained-device
+  qualification, and all other open roadmap acceptance. This bounded completion
+  does not certify the entire backlog as resolved.
+
+## 2026-09-20 — accurate, contextual combat keyword reading
+
+- Continued C05/C02/I04/X01 with game-development, layout-audit, high-resolution,
+  text, frontend-checklist and runtime-optimizer guidance. Checklist service
+  unavailable; used local source, production-browser and screenshot evidence.
+- Added one canonical keyword module used by rich-text hover, Codex definitions
+  and combat card readers. Corrected immediate Wingbeat gain versus explicit
+  next-turn energy; start-of-player-turn Cover reset; per-hit Open Sky Guard
+  consumption; enemy/flock Winded ownership, non-stacking 75% reduction and
+  duration; Winded Burst consumption; whole-deck Keystone eligibility. Scatter
+  now acknowledges full Flow taking priority. Combat mechanics are unchanged.
+- Hand/pile card readers append only relevant terms from active/alternate rules,
+  passive stats and cost, deduplicated in first-mention order. Longest phrases
+  win; punctuation and Wingbeats/Keystones plurals preserve written tokens.
+  Definitions use existing 22px measured pages, navigation and narration, after
+  authored rules/outcomes/passives. History and Waymark reading are unchanged.
+  No persistent HUD, hover requirement, new input listener or gameplay wait.
+- Existing keyword colors, dark urban/tarot art and quiet reader style retained.
+  The skill-guided approach reuses explicit reading instead of adding badges.
+- First regression pass: 17/18 passed; the new test inspected before battle
+  readiness. Waiting for the rendered hand and released intro fixed the test.
+  The initial Node-side Codex import also required JSON import attributes;
+  reference consistency is now checked in the actual built browser instead.
+- Initial extraction exceeded the lazy reader bundle cap. Kept the existing
+  limits and explicitly assigned boot-shared definitions to interaction-rules.
+  Final build index-D-8HRcgY.js passes TypeScript, runtime data/assets, docs,
+  bundle/deployment gates and whitespace checks. Reader 3.9 KiB; entry 684.2;
+  combined boot 723.3. Preferred 675/710 targets remain unresolved advisories.
+- Final core verification: 20/20 Chromium/Firefox checks pass for contextual
+  definitions, live Wingbeat gain, shared Guard/Winded arithmetic, longest
+  phrase/plural matching, complete rules, input/remapping, pause and decision
+  preservation, all Codex glossary definitions and written effect order.
+  Command: npx playwright test tests/contextual-keyword-reading.spec.ts
+  tests/card-dossier-polish.spec.ts tests/effect-order-polish.spec.ts
+  tests/codex-reference-reading.spec.ts --config .artifacts/keyword-reading.config.ts
+  --output .artifacts/keyword-reading-final.
+- Existing hover suite passes 4/4 in both browsers, including all 21 terms at
+  five anchors and three sizes, complete text, transformed word ownership,
+  replacement and scene-shutdown cleanup. Evidence: .artifacts/keyword-reading-hover.
+- Corrected one stale smoke-test wait for the removed ornamental reward Skip
+  frame: it now waits for the enabled Skip hit target. All original touch-size
+  assertions remain. Corrected scenario passes 2/2 in both browsers; evidence
+  .artifacts/keyword-reading-touch. The obsolete batch timed out on that wait
+  and was stopped; verified test-only process descendants were cleaned up.
+- Inspected actual contextual reader captures at 2560x1600 (original resolution),
+  1440x900 and 1000x560, plus compact hover help. Shared gameplay client passed
+  on the final build; .artifacts/keyword-reading-final-client/shot-1.png and
+  state-1.json show First Flight damage 5, Cover 4, draw 1, and full-art readiness
+  without failed/pending/timed-out asset groups. In-app browser title also
+  verified; temporary tab closed without changing its existing saved run.
+- Broader vocabulary/decision-surface coverage,
+  physical-device and assistive-tech acceptance, human fun/balance evaluation
+  and the remaining roadmap packages are not closed by this bounded change.
+  Full npm test / release:verify were not rerun; this is scoped qualification.
+- Additional regression evidence: seven initial Chromium history/pile/Return
+  Ticket scenarios passed; the remaining four Chromium smoke checks passed in
+  .artifacts/keyword-reading-regression-chromium. All eleven corresponding
+  Firefox cases pass in .artifacts/keyword-reading-regression-firefox. Together
+  with the corrected two-browser touch case this qualifies 24 distinct existing
+  regression cases, plus the 20 core and four hover checks: 48 distinct passing
+  checks across the recorded runs, not one uninterrupted full-suite result.
+- No commit, push or publication. Retained the requested hidden preview at
+  http://127.0.0.1:43383/project-bird-squad/ (PID 23056). Removed temporary
+  keyword-reading config/actions; retained ignored screenshot/test evidence.
+- Cleanup verification found no surviving recorded test-process descendants.
+  One stopped Chromium run left Temp/playwright_chromiumdev_profile-XH4yKY.
+  Removing that exact verified path was blocked by tool policy; did not retry
+  through another deletion mechanism. No user browser profile was touched.
+
+
+## 2026-09-20 — responsive, explicit private-journal editing
+
+- Continued D04/I03/X01 using game-development, layout-audit, high-resolution,
+  input and frontend-checklist skills. Checklist MCP unavailable; used local
+  source review, built-browser geometry, interaction tests and screenshots.
+- Replaced the independently positioned textarea and tiny canvas editor labels
+  with a single native modal dialog. Preserved dark ink/violet/gold styling,
+  240-character sanitation, private local/backups-only notes and all existing
+  journal/search/controller semantics. Body text is 18px, help/count 16px,
+  title 28px, card name 20px; explicit Save note/Cancel actions are at least
+  48 physical pixels tall and stay visible when content needs scrolling.
+- Dialog positions within the visible canvas/visual viewport intersection.
+  ResizeObserver plus window/visual viewport resize/scroll listeners maintain
+  alignment. The editor lives outside the landscape gate's hidden/inert stage
+  so an unfinished note stays recoverable when the visible height shrinks.
+- Removed blur auto-save. Clicking outside, moving focus or resizing neither
+  saves nor discards a draft. Save failure keeps the editor and draft open,
+  displays/announces a retry/cancel message and preserves the previous note.
+  Successful save and explicit cancel clean up the native dialog, observer,
+  listeners and pending focus frame; scene shutdown cancels without saving.
+- Tab/Shift+Tab cycle within the three editing controls. Native dialog semantics,
+  labels, descriptions, focus outlines and error alert support browser access.
+  Composition events do not commit/cancel notes. Deferred initial focus prevents
+  the opening J keystroke from entering the note. Codex Confirm/Back reject
+  key repeats so held Enter cannot save and then close the underlying card.
+- The editor freezes pending reader movement and owns wheel input. Closing
+  preserves the same card and scroll position. Controller A/B retain their
+  existing save/cancel semantics. This is automated browser coverage, not a
+  claim of completed physical-controller, IME or assistive-device certification.
+- Added tests/card-journal-editor.spec.ts: three supported viewports plus a
+  1000x420 short-height recovery case, 240-character notes, explicit touch
+  save/cancel/clear, no blur/backdrop commit, focus wrapping, composition,
+  repeated Confirm, failed-save retry/cancel, ownership preservation, reader
+  scroll freezing and scene shutdown cleanup. Updated the legacy journal
+  smoke test to verify the actual native dialog/actions instead of its removed
+  decorative canvas field.
+- First run exposed real integration defects: the stage's display:none gate
+  hid its child dialog, and browser Tab could leave the final dialog control.
+  Moved the editor to document.body and added explicit Tab cycling. One test
+  compared an incomplete legacy save with its normally migrated shape;
+  normalized it through a real save before checking unrelated-field preservation.
+- Screenshots inspected at 2560x1600, 1440x900 and 1000x560, plus short-height
+  1000x420 and save-failure states. Evidence: .artifacts/journal-editor-verified
+  and .artifacts/journal-editor-acceptance. Required shared-client gameplay:
+  .artifacts/journal-editor-verified-client; inspected shot-1.png/state-1.json.
+  First Flight damage 5, Cover 4 and draw 1 resolve in a full-art battle with
+  no pending/failed/timed-out asset groups.
+- Passed npm run build -- --base=/project-bird-squad/ (includes typecheck);
+  npm run validate:runtime; npm run validate:runtime-assets;
+  npm run validate:bundle-size; npm run validate:deployment-cache;
+  npm run validate:docs; git diff --check. Entry index-wDWIFkVO.js (703522 bytes),
+  Codex codex-scene-CETQVDQf.js (156888 bytes). Hard budgets pass; preferred
+  675 KiB entry / 710 KiB combined boot targets remain exceeded at 687.0/722.2.
+- Broader D04/I03/X01 remain partial: contextual help and touch parity outside
+  this editor, wider encounter/art coverage, full-run economy/balance, preferred
+  boot budgets and physical-device/assistive-tech/fresh-player qualification
+  remain open. No whole-product polish or human-rated fun certification.
+- Exact-build cross-browser verification: 24/24 passed using npx playwright test
+  tests/card-journal-editor.spec.ts tests/codex-card-reading.spec.ts
+  tests/smoke.spec.ts --grep 'journal editor|card reader|private Card Journal
+  supports|card inspection returns to the exact|personal tags organize|Saved
+  Views preserve' --config .artifacts/journal-editor.config.ts --output
+  .artifacts/journal-editor-verified. Expanded final editor suite: 10/10 passed
+  using the same config and tests/card-journal-editor.spec.ts, output
+  .artifacts/journal-editor-acceptance. Also inspected final Firefox compact
+  and Chromium short-height scrolled screenshots; complete content is reachable
+  while Save/Cancel remain visible. These 10 tests overlap the broader suite.
+- Test workers/shared clients exited. Removed temporary journal-editor config
+  and actions files; retained screenshot/trace evidence. Replaced the previous
+  preview with hidden PID 30004, serving the final build at
+  http://127.0.0.1:43383/project-bird-squad/ (HTTP 200). No commit/push/publish.
+
+## 2026-09-20 — card reader navigation and collection-action polish
+
+- Continued D04/X01 with the game-development, layout-audit, high-resolution,
+  text/input and frontend-checklist skills. Checklist service unavailable;
+  used local source review, measured built-browser geometry and screenshots.
+- Widened the Codex card reader to 1200x672 logical pixels. Canonical 320x480
+  artwork has its own unobscured column; scroll curtains affect only the
+  reading column. The complete gameplay-first rules, ownership/acquisition,
+  flight/Folio records, private journal, meanings and bird facts remain intact.
+- Replaced tiny collection-action labels with 18px text, separate 14px binding
+  hints and 264x58 targets. Favorite, New/Protect/Hunt, Tag and Showcase sit
+  in a dedicated footer. Active-flight access and Close are separate header
+  controls. Retained the existing theme, artwork, keyboard/controller bindings,
+  collection semantics and privacy boundaries.
+- Added independent 112x58 Back/More touch controls with overlapping reading
+  steps and an explicit end state. Keyboard and wheel scrolling are unchanged.
+  Condensed the long 11px footer shortcut string into a readable 16px hint;
+  action-specific shortcuts remain beside their controls.
+- New tests/codex-card-reading.spec.ts checks all 110 authored entries,
+  text bounds/resolution, reachable endings, artwork/curtain separation,
+  New/protected/tagged/showcased/full/tracked/active-flight controls, compact
+  touch actions, complete long-note paging and exact return without save changes.
+- First run: 5/6 passed. The first compact touch landed before Phaser finished
+  applying the viewport resize. Waiting for settled canvas geometry before
+  resolving a touch position fixed the harness; six repeated Chromium/Firefox
+  action runs passed. Existing smoke checks then identified two assertions for
+  the intentionally replaced 142x46 / 180x46 controls; updated them to 264x58.
+- Inspected built screenshots at 2560x1600, 1440x900 and 1000x560, including
+  the full rules and final bird-fact page. Evidence: .artifacts/card-reader-first
+  and .artifacts/card-reader-acceptance. Required shared client evidence:
+  .artifacts/card-reader-client; inspected shot-1.png and state-1.json. Full-art
+  battle resolves First Flight damage 5, Cover 4 and draw 1 with no pending,
+  failed or timed-out asset groups.
+- Build/typecheck, runtime data (110 cards/64 enemies/80 encounters), 961 asset
+  budgets, world/FX contracts, deployment-cache, docs and hard bundle checks
+  passed. Commands: npm run build -- --base=/project-bird-squad/;
+  npm run validate:runtime; npm run validate:runtime-assets;
+  npm run validate:bundle-size; npm run validate:deployment-cache;
+  npm run validate:docs; git diff --check.
+- Build entry index-CY6K7Kbi.js; Codex codex-scene-DjTR3Nu7.js (151.2 KiB).
+  Entry 687.0 / combined boot 722.2 KiB still exceed preferred 675/710 targets,
+  though hard budgets pass. No new startup dependency or artwork was added.
+- Final exact-build acceptance: 22/22 Chromium/Firefox tests passed in
+  .artifacts/card-reader-acceptance. Command: npx playwright test
+  tests/codex-card-reading.spec.ts tests/smoke.spec.ts --grep 'card reader|private
+  Card Journal supports|protected owned cards persist|active flight playable
+  status distinguishes|card inspection returns to the exact|new first-copy
+  markers|Favorites view groups|personal tags organize|acquisition paths explain
+  permanent' --config .artifacts/card-reader.config.ts --output
+  .artifacts/card-reader-acceptance. Config used both browsers, one worker and
+  the built preview. Final Firefox compact screenshot was also inspected.
+- Removed temporary card-reader.config.ts and card-reader-actions.json after
+  tests; retained screenshot/trace evidence. Test workers and shared-client
+  processes exited. Replaced old preview PID 14820 with hidden PID 1096 at
+  http://127.0.0.1:43383/project-bird-squad/ (HTTP 200). No commit/push/publish.
+- Remaining: journal-editor responsive layout/touch actions, contextual help,
+  wider encounter/art coverage, full-run balance/economy and device/assistive-
+  technology/fresh-player qualification. D04/X01 and the larger backlog remain
+  partial; these checks do not establish human-rated fun or whole-product polish.
+
+## 2026-09-20 — readable collection management dialogs
+
+- Continued D04/X01 with the game-development, layout-audit, high-resolution,
+  text and frontend-checklist skills. The checklist connector is unavailable;
+  used source review, built-browser geometry and screenshot verification.
+- Saved Collection Views now separates each saved name, set/lens/order and
+  complete search query into dedicated 20/18px lines. Current criteria remain
+  fully readable even with a 40-character wide query. Replaced 8–13px body and
+  action labels; actions use 20px labels, 16px shortcuts and 58px hit areas.
+  Shared row/action coordinates keep focus and touch aligned. Empty, full,
+  duplicate, save-failure and deletion feedback remain explicit and readable.
+- Collection Atlas now has quieter two-column set/rarity/progress rows with
+  18–22px text, full milestone explanations, acquisition paths, counts and
+  stages. Removed repeated boxed labels and miniature progress bars, retaining
+  the overall progress bar and selected-set focus. Canonical artwork, card
+  availability, ownership, collection milestones and concealed identities are
+  unchanged. Both dialogs have readable 16px footer hints.
+- Added tests/codex-collection-dialogs.spec.ts for empty/one/full saved shelves,
+  all seven save statuses, full maximum-length criteria, empty/partial/complete
+  collections across all seven families, text bounds/overlaps/focus and 58px
+  targets, three viewport captures and actual compact touch save/apply/remove/
+  Atlas navigation with collection-data preservation.
+- First verification exposed test-only issues: the new audit included the
+  toolbar hidden behind the modal, and deletion narration uses a different
+  existing phrase from the visible notice. Scoped the audit to dialog nodes
+  and asserted the actual narration. Updated the legacy Atlas panel bounds
+  assertion to its intentionally enlarged layout. Existing Saved Views
+  persistence/input regression passed on both browsers; Atlas geometry passed
+  across all collection stages. Expanded cross-browser regression: 18/18 pass
+  in .artifacts/collection-dialogs-final before the narration correction below.
+- Accessibility review found that Save current's combination was not announced
+  when managing saved views. Added explicit labeled current criteria to the
+  observable state and narration, distinct from the selected saved entry.
+  Added maximum-query and different-current/selected narration assertions.
+  The 18-test cross-browser suite passed again with that correction in
+  .artifacts/collection-dialogs-verified.
+- Input-skill review found a real return-position bug: wheel events reached
+  the scene handler behind either dialog. A new real-wheel regression failed
+  before the fix (shelf moved from 480 to 608 while Saved Views was open).
+  Both dialogs now consume wheel input and cancel pending shelf movement at
+  their current position on open. The test covers both dialogs, with/without
+  pending movement, Back restoration and normal scrolling after closure.
+- Final exact-build acceptance: 20/20 Chromium/Firefox tests passed in
+  .artifacts/collection-dialogs-acceptance, including toolbar/filter/acquisition
+  regressions, all dialog states, exact scroll restoration and narrated
+  current-versus-selected criteria. Inspected actual 2560x1600 Saved Views,
+  1440x900 partial Atlas and 1000x560 complete Atlas screenshots; earlier
+  maximum-query, empty and single-entry screenshots were also reviewed.
+- Required shared game client passed in .artifacts/collection-dialogs-acceptance-client:
+  inspected shot-1.png and state-1.json. Full-art battle, First Flight damage,
+  Cover and draw resolved; no pending, failed or timed-out asset groups.
+- Validation commands passed: npm run build -- --base=/project-bird-squad/;
+  npx tsc --noEmit; npm run validate:runtime; npm run validate:runtime-assets;
+  npm run validate:bundle-size; npm run validate:deployment-cache;
+  npm run validate:docs; git diff --check. Focused npx playwright test used
+  tests/codex-collection-dialogs.spec.ts, tests/codex-toolbar-reading.spec.ts
+  and tests/smoke.spec.ts with grep 'collection dialogs|Codex toolbar|Saved
+  Views preserve|Collection Atlas reports|acquisition paths explain permanent|
+  active filter chips remove', a temporary built-preview configuration with
+  one worker and both browser projects, and the acceptance folder above.
+- Final entry index-BaSoeXo0.js; Codex codex-scene-BsSSwO5v.js (149.8 KiB,
+  down from 153.5 KiB at the start of this pass). Hard bundle gates pass;
+  unchanged entry 687.0 / boot 722.2 KiB still exceed preferred 675/710 targets.
+- Removed temporary collection-dialogs config/actions after tests completed;
+  test runners and browser clients exited. Kept evidence and the requested
+  hidden preview, PID 14820 at http://127.0.0.1:43383/project-bird-squad/
+  (HTTP 200). No commit, push or publication.
+- D04/I03/X01 remain partial. Next concrete UI scope: legacy card dossier
+  controls and complete card-reference reading. Whole encounter/art coverage,
+  contextual rules, balance/economy, preferred boot budgets and manual
+  device/accessibility/fresh-player qualification remain open. This pass does
+  not certify the full roadmap or human-rated fun and polish.
+
+## 2026-09-20 — readable Codex navigation and collection tools
+
+- Continued D04/X01 using the game-development, layout-audit, high-resolution,
+  text and frontend-checklist skills. Checklist connector unavailable; used
+  local source/geometry review and built-browser interactions. Preserved the
+  dark theme, canonical art, rules, ownership and saved-view semantics.
+- Moved section navigation into its own 18px row. Search, sort, collection
+  lens, saved views, Atlas and new-card acknowledgement now have a dedicated
+  row with shared 14px descriptions / 18px values and 58px logical hit areas.
+  Replaced 7–11px header labels; enlarged set-tab labels and counts to 14px.
+  Repeated card-summary counts now live with their tabs and Atlas control.
+- Active filters use measured 18px labels with explicit ellipses for long
+  queries. Mark all seen and Clear filters have distinct wording, including
+  screen-reader summaries and focus descriptions. Search's native input is
+  anchored to its own control, not the combined search/sort region, with at
+  least 16px physical text. Saved search/sort/lens and undiscovered boundaries
+  are unchanged.
+- Shared header/focus coordinates keep pointer, keyboard and controller
+  targeting aligned. Card rows use 444px spacing; removed unnecessary trailing
+  scroll padding so a single filtered card fits completely without a misleading
+  scroll cue/fade. The complete 184x276 artwork and 224x430 tile are unchanged.
+- Added tests/codex-toolbar-reading.spec.ts: 56 lens/sort/query combinations,
+  all section headers, non-overlapping input regions, type/bounds/focus checks,
+  three viewport captures, real compact touch search/sort/lens/Views/Atlas/
+  acknowledgement and unchanged owned-record fields. An initial assertion
+  incorrectly expected isNew:false; the actual save schema removes that flag,
+  so the test now requires exact original records minus isNew. Updated legacy
+  geometry/count-location assertions to the intentional new layout.
+- Actual screenshot review also caught the enlarged item tabs covering the
+  old repeated item-count subtitle. Removed that duplicate line; retained
+  enemy/leader/glossary summaries and moved extended-data status to a measured
+  14px safe area. Named those summaries for overlap regression coverage;
+  added all item types and extended-data failure states to the header audit.
+- Build/TypeScript, runtime data, all 961 optimized runtime assets and 42 world
+  assets, bundle hard gates and deployment-cache validation pass. Required
+  shared game client passed in .artifacts/codex-toolbar-final-client:
+  full-art battle, First Flight resolved, no pending/failed/timed-out asset
+  groups; inspected the actual screenshot. Final entry index-DBB5dJxA.js,
+  Codex codex-scene-33HPiQrz.js. Codex chunk fell from 156.9 to 153.5 KiB;
+  entry 687.0 / boot 722.2 KiB still exceed preferred 675/710 KiB targets.
+- Cross-browser verification: 36/36 collection regressions passed before the
+  final caption correction (.artifacts/codex-toolbar-acceptance). After that
+  correction, 12/12 toolbar/navigation/full-art gallery tests passed against
+  the final production build in Chromium and Firefox. Evidence lives in
+  .artifacts/codex-toolbar-final. Inspected actual 2560x1600 and 1000x560
+  toolbar captures, the corrected 1440x900 Items capture, and Firefox's
+  single filtered card at 1000x560. Geometry coverage includes all 110 card
+  illustrations, all section/item tabs, and extended-data failure messages.
+- Commands passed: npm run build -- --base=/project-bird-squad/;
+  npx tsc --noEmit; npm run validate:runtime; npm run validate:runtime-assets;
+  npm run validate:bundle-size; npm run validate:deployment-cache; focused
+  npx playwright test runs described above; required web-game browser client.
+- Temporary test configuration/actions removed after completion; test runners
+  and browser clients exited. Retained evidence and the requested hidden
+  preview only: PID 33368, http://127.0.0.1:43383/project-bird-squad/ (HTTP 200).
+- Remaining: legacy overlay labels, full reference journey and encounter/art
+  matrix, rules/contextual vocabulary, balance/economy and manual device/AT/
+  fresh-player qualification. D04/X01 remain partial; no broad roadmap package
+  is claimed complete. No commit, push or publication this pass.
+
+## 2026-09-20 — complete-art card gallery and quieter collection labels
+
+- Continued D04 with the game-development, layout-audit, high-resolution,
+  text and frontend-checklist skills. Checklist connector unavailable; used
+  local source review and built-browser geometry/interaction checks. Preserved
+  the dark urban/tarot theme, all canonical artwork, rules and saved progress.
+- Replaced overlaid collection badges with a 224x430 gallery tile: measured
+  18px title, separate cost/ownership row, complete 184x276 illustration, then
+  14px New/tag/favorite/hunt and Folio labels. No redundant decorative entry
+  frame, no cropping or repainting, no badges covering the printed art title.
+  Undiscovered cards retain their locked identity and reveal no names/costs.
+- Card grid uses shared five-column 240x450 spacing for rendering, focus,
+  scrolling and lazy loading. New-card controls reserve header space even
+  without filters. Full tiles open inspection through their name or artwork.
+  Corrected virtualization diagnostics to count the new tile containers.
+- Added tests/codex-card-gallery.spec.ts: all 110 discovered and undiscovered
+  entries checked for text bounds, marker presence, information leaks and
+  resolution; all 110 real illustrations loaded across all seven sets; complete
+  2:3 art, aligned focus, compact touch/name and pointer/art inspection, exact
+  return position and unchanged saved data. Updated legacy inspection-return
+  regression to use shared scroll geometry and nested hit bounds instead of
+  the old 340px offset. The 10,000-card virtualization regression now inspects
+  nested placeholders; its existing render/time bounds remain unchanged.
+- Trace inspection caught one Firefox setup race: the test clicked just after
+  forcing a rebuilt, deeply scrolled scene, before streamed art/input frames
+  settled. Added the shared frame-settle helper after selected-art readiness;
+  kept real clicks and exact pointer/keyboard/controller return assertions.
+  Three consecutive runs per browser pass (6/6) in
+  .artifacts/card-gallery-return-repeat. A later full run exposed the same
+  first-click setup race in the existing favorite-button test; its asset-ready
+  frame settle also passes three runs per browser (6/6) in
+  .artifacts/card-gallery-favorite-repeat. No arbitrary sleeps, retries or
+  weakened save/input assertions were added. Both extracted traces were closed.
+- Build, runtime data, runtime assets, bundle hard gates, deployment-cache
+  and documentation validation pass. Inspected actual screenshots at
+  2560x1600, 1440x900 and 1000x560, including Major, Plumes and Snags under
+  worst-case simultaneous collection markers. Evidence: .artifacts/card-gallery-first.
+- Required shared game client passed on the final build in
+  .artifacts/card-gallery-final-client. Inspected its battle screenshot;
+  First Flight resolved and full-art readiness reports zero pending, failed
+  or timed-out asset groups. Entry index-DaCLeYgn.js / Codex HcSK9sWk.
+- Broader legacy labels, reference journey, encounter/art matrix, vocabulary
+  accuracy/contextual access, balance/economy and real-device/AT/fresh-player
+  qualification remain. Entry 687.0 KiB / boot 722.2 KiB pass hard gates but
+  exceed preferred 675/710 KiB targets. D04 remains partial; no broad roadmap
+  package is claimed complete. No commit, push or publication this pass.
+- Final focused Chromium/Firefox suite: **28/28 passed** in
+  .artifacts/card-gallery-acceptance, plus the 12 repeated input checks above.
+  Covers the new gallery, complete rules/journal access, touch target sizes,
+  favorites, New acknowledgements, Hunt List, Folio usage, tags, exact return,
+  active filters, large-library virtualization and quiet entry-frame contract.
+  Removed this pass's temporary capture script, action JSON and Playwright
+  configuration; runners exited and evidence remains. Requested hidden preview
+  stays on port 43383, PID 28356, with the final build returning HTTP 200.
+
+## 2026-09-20 — cleaner enemy reference and complete glossary reading
+
+- Continued D04/C05 using game-development, layout-audit, high-resolution,
+  text and frontend-checklist skills. Checklist connector unavailable; used
+  local source/geometry review and the built game. Preserved the dark theme,
+  original art, combat balance, save format and boss-knowledge gate.
+- Enemy grid now uses three columns of 376x230 quiet tiles, 20px titles,
+  16px role/health and 18px tactical summaries at resolution 2. Removed
+  decorative entry frames, duplicate type chips and accent bars. District,
+  reserve Concept status and observed boss tactics remain. Shared grid
+  measurements keep focus, scrolling and lazy artwork loading aligned.
+- Glossary tiles now have larger measured summaries and restrained borders.
+  Fixed inaccessible information: the 25 authored full definitions existed
+  in data but were never displayed, and Confirm did nothing. Entries now open
+  a 22px full-definition reader with complete summary/category, fixed readable
+  type, scroll clipping, 58-logical-pixel touch paging, pointer, keyboard and
+  controller support. Back restores entry/scroll. Screen-reader narration
+  includes the full definition only while the glossary detail is open.
+- Added `tests/codex-reference-reading.spec.ts`: all 81 enemy and 25 glossary
+  entries fit without overlapping text; deep jumps through both lists retain
+  visible art, focus and detail-return context; all 25 definitions are complete;
+  keyboard/controller/pointer/touch open and close; long synthetic definitions
+  reach their final sentence without shrinking type or changing saved progress.
+  Updated obsolete ornament expectations in enemy/entry regression tests to
+  check actual text-led district navigation and preserved content. The glossary
+  test now scrolls to Overextension rather than assuming an offscreen row exists.
+- Verification: `npm run build -- --base=/project-bird-squad/`, `npx tsc --noEmit`,
+  `npm run validate:runtime`, `npm run validate:runtime-assets`,
+  `npm run validate:bundle-size`, `npm run validate:deployment-cache` pass.
+  Focused Playwright suites: **20/20** in `.artifacts/codex-reference-first`
+  and **8/8** in `.artifacts/codex-reference-contracts`, Chromium and Firefox.
+  These include prior complete enemy readers, deep item navigation, remapped
+  keyboard/gamepad/screen-reader state, touch-target sizes, complete runtime/
+  reserve enemy art/details and retained card-frame behavior.
+- Inspected actual 2560x1600, 1440x900 and 1000x560 browser screenshots,
+  including deep collection positions, glossary pointer/touch details and
+  the final page of a long definition. Required shared web-game client passed
+  in `.artifacts/codex-reference-client`: full-art battle, First Flight resolved,
+  zero pending/failed/timed-out asset groups. Screenshot inspected.
+- Removed this pass's temporary Playwright config/action JSON; test sessions
+  exited, evidence retained. Requested hidden preview remains on port 43383,
+  PID 24768, serving entry `index-Bj-LGqwL.js` and `codex-scene-Cx7YaFH-.js`.
+  No commit, push or publication. Entry 687.3 KiB / combined boot 722.5 KiB:
+  hard gates pass, preferred 675/710 KiB targets remain open, limits unchanged.
+- Remaining: card-grid density, complete vocabulary accuracy/contextual access,
+  reference-journey and encounter/art matrix, balance/economy evidence and
+  real-device/assistive-technology/fresh-player qualification. C05 is now partial,
+  not complete; none of the 70 broad roadmap packages is claimed closed.
+
+## 2026-09-20 — readable collection tiles and aligned artwork/focus
+
+- Continued D04 with the game-development, layout-audit, high-resolution,
+  asset-loading and text skills. The frontend checklist connector is unavailable;
+  used source review, local validators and built-browser checks. Kept the
+  existing dark urban theme and art; no generation or balance changes needed.
+- Fixed a real layout discrepancy: item rendering used three columns while
+  navigation assumed four and lazy artwork loading used a different row height.
+  Rendering, focus, scrolling and visible-art queuing now share codexGridShape.
+  Deep collection entries no longer fall outside their artwork request window.
+- Replaced ornate Supply/Waymark/Leader entry frames and repeated chips with
+  quiet, opaque tiles and one restrained outline. Item grids keep three columns
+  with wider 376px tiles and more vertical space; leaders have larger portraits
+  and clearer status. Previews use 20px names and 18px summaries at resolution 2.
+  Text is measured and explicitly ends in an ellipsis when shortened, instead
+  of silent maxLines clipping. The complete detail readers remain unchanged.
+- Added all-94-entry bounds, overlap, fixed-type-size and marked-truncation
+  tests, including a hostile unbroken title. Added real-art checks at
+  2560x1600, 1440x900 and 1000x560; deep jumps to entries 47 and 88 verify
+  visible art, exact focus alignment and detail-return scroll preservation.
+  Pointer/artwork and touch/text tests cover both item kinds and leaders.
+  Updated the remapped gamepad test's obsolete four-column expectations to
+  the actual three-column positions; retained screen-reader and Back checks.
+- Production build, TypeScript, runtime data/assets, deployment-cache and hard
+  bundle gates pass. Entry is 687.3 KiB; combined boot is 722.5 KiB. Preferred
+  675/710 KiB targets remain open and no limits were increased. Required shared
+  browser client reached full-art combat and resolved First Flight, with no
+  pending, failed or timed-out asset groups. Evidence: `.artifacts/codex-grid-client`.
+- Final rebuilt Chromium/Firefox suite: **24/24 pass**, covering new grid
+  checks, leader readers, touch target sizes, remapped keyboard/gamepad,
+  screen-reader state, Supply details, roster and retained frame contracts.
+  Additional bounds/pointer/touch run: **4/4 pass** (two repeat bounds checks
+  plus two new pointer/touch cases). Evidence: `.artifacts/codex-grid-final`
+  and `.artifacts/codex-grid-touch-final`. Inspected actual screenshots at
+  all three sizes, including final item 88 with loaded artwork and aligned
+  focus. Documentation validation and `git diff --check` also pass.
+- Removed only this pass's temporary Playwright configuration and action JSON.
+  Test runners/browser sessions exited; retained screenshot/trace evidence.
+  Replaced verified old preview PID 5764 for the build; requested hidden
+  preview now remains on port 43383 (PID 32508, HTTP 200), serving entry
+  `index-kBWNj1Ex.js` and `codex-scene-DD9klaVT.js`. No commit, push or publish.
+- This is bounded progress, not closure of the 70-package roadmap. Remaining
+  software work includes other collection grids, contextual glossary access,
+  the complete reference journey, encounter/art coverage and balance/economy
+  evidence. Real-device, assistive-technology and rated fresh-player evidence
+  also remain required; an automated pass cannot establish fun or fairness.
+
+## 2026-09-20 — leader readers and quieter collection navigation
+
+- Continued the Codex hierarchy work with the game-development, layout-audit,
+  high-resolution and text skills. Frontend checklist connector unavailable;
+  verified locally. Preserved the dark urban theme, original portraits, full
+  rules/lore, unlock conditions and save/navigation behavior.
+- Leader dossiers now use an opaque, measured reader with 28px titles, 16px
+  headings, 20px combat/signature rules and 18px supporting text at resolution
+  2. Role, combat style, signature and the entire starter deck precede lore.
+  Locked leaders retain full unlock instructions in the reader, not a tiny
+  fixed-height overlay. Stationary portraits no longer have duplicate frames.
+  Added 58-logical-pixel Back/More touch targets and kept keyboard/wheel input.
+- Collection tabs now use text, counts and active underlines rather than a
+  repeated decorative frame plus medallion. Kept hit areas, remapping, focus,
+  filtering and tab order. Removed unused dossier rendering helpers. Visual
+  inspection also identified title/toolbar crowding; reduced only the Codex
+  title to leave breathing room, retaining readable collection controls.
+- Added focused all-five-leader content checks in initial/all-unlocked account
+  states, long-title/signature fixtures, three-viewport art and paging tests,
+  and every-section navigation geometry/touch coverage. Updated legacy tests
+  intentionally asserting retired ornament; their content checks remain.
+  Synthetic account setup initially triggered normal journal normalization;
+  the test now normalizes before checking subsequent read-only behavior.
+- Verification complete for this pass: production build, runtime data/assets, docs,
+  deployment cache and hard bundle gates pass. Required shared browser client
+  reached battle and played First Flight with full artwork and no pending,
+  failed or timed-out asset groups. Screenshots/state: `.artifacts/codex-leader-client`.
+  Initial cross-browser evidence: `.artifacts/codex-leader-verified` (26 passes;
+  four legacy loaded-medallion expectations were obsolete and corrected).
+  Final rebuilt evidence is in `.artifacts/codex-leader-final`; the shared
+  client was rerun in `.artifacts/codex-leader-client-final` and again reached
+  full-art combat with one correctly resolved card play and no asset failures.
+- Final focused Playwright run: **26/26 Chromium + Firefox pass**, including
+  all new leader/browser checks, prior card/journal reader, touch targets,
+  remapped keyboard/gamepad/focus/screen-reader state, collection discovery,
+  Supply details, glossary, roster and frame contracts. The earlier six
+  item/enemy regression checks also passed. Inspected original-resolution
+  screenshots at 2560x1600, 1440x900 and 1000x560. Commands: `npm run build
+  -- --base=/project-bird-squad/`, `npx tsc --noEmit`, `npm run validate:runtime`,
+  `npm run validate:runtime-assets`, `npm run validate:docs`,
+  `npm run validate:bundle-size`, `npm run validate:deployment-cache`, focused
+  `npx playwright test`, and the skill's `web_game_playwright_client.js`.
+- Removed this pass's temporary Playwright config and action JSON. Test
+  browser processes exited; screenshot/trace evidence retained. Requested
+  hidden preview remains at http://127.0.0.1:43383/project-bird-squad/ (PID
+  5764, HTTP 200), serving entry `index-DDS_Qwfq.js` and Codex
+  `codex-scene-BZWW_Aen.js`. No commit, push or publication this pass.
+- Release-evidence policy unit tests pass, but qualification still fails:
+  missing manual-audits.json and passing low-end Windows, Android tablet,
+  iPad, NVDA and VoiceOver records. There are zero rated human runs; the
+  existing 0.1.0 owner waiver is not human evidence and was not broadened.
+  Final bundle: entry 687.4 KiB / combined boot 722.6 KiB (hard gates pass,
+  preferred 675/710 KiB targets remain open). No limits were increased.
+- Remaining: full collection-grid density/legacy-label review, contextual
+  glossary and nonpointer access across all decisions, complete reference
+  journey and encounter/art matrix, balance/economy run evidence, preferred
+  bundle targets, real-device/assistive-technology and fresh-player audits.
+  This is bounded D04 progress, not closure of the 70-package roadmap.
+
 ## 2026-09-15 — readable item and enemy dossiers
 
 - Continued the bounded Codex hierarchy work using the game-development,

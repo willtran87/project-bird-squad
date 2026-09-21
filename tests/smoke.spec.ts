@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { flockLeaders } from '../src/game/leaders';
 import type { SavedDeckRecord } from '../src/game/saved-decks';
+import { settleCanvas } from './helpers/settled-canvas';
 
 // The game exposes a deterministic text-state harness on window; these smoke
 // tests drive scenes through it rather than clicking the canvas.
@@ -16263,7 +16264,8 @@ test('deck, pile, and reward commands keep touch targets at the minimum supporte
   });
   await page.waitForFunction(() => {
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
-    return state.battleInspectRenderer?.loaded && state.combatPileReviewFrame?.rendered;
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    return state.battleInspectRenderer?.loaded && battle.root?.getByName('combat-pile-panel') && battle.root?.getByName('combat-pile-card-art');
   });
   const pileTargets = await targetSnapshot('BattleScene', '^(combat-pile-row-hit|combat-pile-scroll-(up|down)-hit|combat-pile-zone-(deck|draw|discard|cleared)-hit)$');
   expect(pileTargets.filter((target) => target.name === 'combat-pile-row-hit')).toHaveLength(7);
@@ -16282,7 +16284,8 @@ test('deck, pile, and reward commands keep touch targets at the minimum supporte
   });
   await page.waitForFunction(() => {
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
-    return state.battleRewardRenderer?.ready && state.rewardSkipCommandFrame?.rendered;
+    const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    return state.battleRewardRenderer?.ready && battle.root?.getByName('reward-skip-hit')?.input?.enabled;
   });
   const rewardTargets = await targetSnapshot('BattleScene', '^reward-skip-hit$');
   expect(rewardTargets).toHaveLength(1);
@@ -16360,7 +16363,7 @@ test('Codex and Flock Record controls keep touch targets at the minimum supporte
       ...(Array.isArray(child.list) ? collect(child.list) : []),
     ]);
     return collect(codex.children.list)
-      .filter((child: any) => child.name === 'codex-tab-frame').length === 17;
+      .filter((child: any) => child.name === 'codex-tab-surface').length === 17;
   });
   const codexTabHierarchy = () => page.evaluate(() => {
     const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
@@ -16369,18 +16372,18 @@ test('Codex and Flock Record controls keep touch targets at the minimum supporte
       ...(Array.isArray(child.list) ? collect(child.list) : []),
     ]);
     return collect(codex.children.list)
-      .filter((child: any) => child.name === 'codex-tab-frame')
+      .filter((child: any) => child.name === 'codex-tab-surface')
       .map((child: any) => ({
         label: child.getData('label'),
         active: child.getData('active'),
-        alpha: child.alpha,
+        alpha: child.fillAlpha,
       }));
   });
   const initialCodexHierarchy = await codexTabHierarchy();
   expect(initialCodexHierarchy).toHaveLength(17);
   expect(initialCodexHierarchy.filter((tab) => tab.active).map((tab) => tab.label)).toEqual(['Items', 'Supplies', 'All']);
-  expect(initialCodexHierarchy.filter((tab) => tab.active).every((tab) => Math.abs(tab.alpha - 0.82) < 0.001)).toBe(true);
-  expect(initialCodexHierarchy.filter((tab) => !tab.active).every((tab) => tab.alpha <= 0.18)).toBe(true);
+  expect(initialCodexHierarchy.filter((tab) => tab.active).every((tab) => Math.abs(tab.alpha - 1) < 0.001)).toBe(true);
+  expect(initialCodexHierarchy.filter((tab) => !tab.active).every((tab) => tab.alpha <= 0.45)).toBe(true);
 
   const codexBottomFade = await page.evaluate(() => {
     const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
@@ -16415,8 +16418,8 @@ test('Codex and Flock Record controls keep touch targets at the minimum supporte
   });
   const filteredCodexHierarchy = await codexTabHierarchy();
   expect(filteredCodexHierarchy.filter((tab) => tab.active).map((tab) => tab.label)).toEqual(['Items', 'Supplies', 'Combat']);
-  expect(filteredCodexHierarchy.filter((tab) => tab.active).every((tab) => Math.abs(tab.alpha - 0.82) < 0.001)).toBe(true);
-  expect(filteredCodexHierarchy.filter((tab) => !tab.active).every((tab) => tab.alpha <= 0.18)).toBe(true);
+  expect(filteredCodexHierarchy.filter((tab) => tab.active).every((tab) => Math.abs(tab.alpha - 1) < 0.001)).toBe(true);
+  expect(filteredCodexHierarchy.filter((tab) => !tab.active).every((tab) => tab.alpha <= 0.45)).toBe(true);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/codex-items-1000x560.png' });
 
   const fadeCountAtGridEnd = await page.evaluate(() => {
@@ -19298,7 +19301,7 @@ test('deck review overlays retain authored art with quiet readable controls', as
     battle.openOverlay('deck');
     for (let i = 0; i < 40; i += 1) {
       const state = JSON.parse(window.render_game_to_text!());
-      if (state.battleInspectRenderer?.loaded && state.deckReviewFlourish?.rendered) break;
+      if (state.battleInspectRenderer?.loaded && battle.root.getByName('combat-pile-card-art')) break;
       await wait(50);
     }
     const battleState = JSON.parse(window.render_game_to_text!());
@@ -19422,22 +19425,16 @@ test('deck review overlays retain authored art with quiet readable controls', as
   expect(result.sectionTabFrameLoaded).toBe(true);
   expect(result.routeOpen).toBe(true);
   expect(result.routeFlourish).toBe(0);
-  expect(result.routeScrollButtonTelemetry).toEqual({ loaded: true, rendered: true, count: result.routeScrollButtonFrames });
+  expect(result.routeScrollButtonTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.routeRowFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
-  expect(result.routePageIndicatorFrameTelemetry).toEqual({ loaded: true, rendered: true, count: result.routePageIndicatorFrames });
+  expect(result.routePageIndicatorFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.routeTitlePlaqueTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.routeDetailFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.routeCostBadgeTelemetry).toEqual({ loaded: true, rendered: true, count: result.routeCostBadges });
   expect(result.routeMetaChipFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
-  expect(result.routeSectionTabFrameTelemetry).toEqual({ loaded: true, rendered: true, count: result.routeSectionTabFrames });
-  expect(result.routePageIndicatorFrames).toBe(1);
-  expect(result.routePageIndicatorFrameObjects).toHaveLength(1);
-  expect(result.routePageIndicatorFrameObjects[0]).toEqual(expect.objectContaining({
-    name: 'deck-review-page-indicator-frame',
-    width: 126,
-    height: 36,
-    visible: true
-  }));
+  expect(result.routeSectionTabFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.routePageIndicatorFrames).toBe(0);
+  expect(result.routePageIndicatorFrameObjects).toEqual([]);
   expect(result.routeTitlePlaques).toBe(0);
   expect(result.routeTitlePlaqueObjects).toEqual([]);
   expect(result.routeDetailFrames).toBe(0);
@@ -19456,9 +19453,9 @@ test('deck review overlays retain authored art with quiet readable controls', as
     && frame.height === 24
     && frame.visible
   ))).toBe(true);
-  expect(result.routeSectionTabFrames).toBe(1);
+  expect(result.routeSectionTabFrames).toBe(0);
   expect(result.routeSectionTabFrameObjects.map((frame: { width: number }) => frame.width).sort((a: number, b: number) => a - b))
-    .toEqual([136]);
+    .toEqual([]);
   expect(result.routeSectionTabFrameObjects.every((frame: { name: string; height: number; visible: boolean }) => (
     frame.name === 'deck-review-section-tab-frame'
     && [32, 34].includes(frame.height)
@@ -19471,8 +19468,8 @@ test('deck review overlays retain authored art with quiet readable controls', as
     && frame.height === 44
     && frame.visible
   ))).toBe(true);
-  expect(result.routeScrollButtonFrames).toBe(2);
-  expect(result.routeScrollButtonFrameObjects).toHaveLength(2);
+  expect(result.routeScrollButtonFrames).toBe(0);
+  expect(result.routeScrollButtonFrameObjects).toEqual([]);
   expect(result.routeScrollButtonFrameObjects.every((frame: { name: string; width: number; height: number; visible: boolean }) => (
     frame.name === 'deck-review-scroll-button-frame'
     && frame.width === 82
@@ -19481,23 +19478,18 @@ test('deck review overlays retain authored art with quiet readable controls', as
   ))).toBe(true);
   expect(result.battleOpen).toBe('deck');
   expect(result.battleInspectRenderer).toEqual({ requested: true, loaded: true, failed: false });
-  expect(result.battleFlourish).toBeGreaterThanOrEqual(1);
+  expect(result.battleFlourish).toBe(0);
   expect(result.battleRowFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.battleRowFrames).toBe(0);
   expect(result.battleReadableRows).toHaveLength(7);
   expect(result.battleReadableRows.every((row: { size: string; resolution: number }) => row.size === '18px' && row.resolution === 2)).toBe(true);
   expect(result.battleReadControl).toBe(true);
-  expect(result.battleQuietFrame).toBe(1);
-  expect(result.battlePageIndicatorFrameTelemetry).toEqual({ loaded: true, rendered: true, count: result.battlePageIndicatorFrames });
-  expect(result.battlePageIndicatorFrames).toBe(1);
-  expect(result.battleTitlePlaqueTelemetry).toEqual({ loaded: true, rendered: true, count: result.battleTitlePlaques });
-  expect(result.battleTitlePlaques).toBe(1);
-  expect(result.battleTitlePlaqueObjects[0]).toEqual(expect.objectContaining({
-    name: 'deck-review-title-plaque',
-    width: 430,
-    height: 78,
-    visible: true
-  }));
+  expect(result.battleQuietFrame).toBe(0);
+  expect(result.battlePageIndicatorFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.battlePageIndicatorFrames).toBe(0);
+  expect(result.battleTitlePlaqueTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.battleTitlePlaques).toBe(0);
+  expect(result.battleTitlePlaqueObjects).toEqual([]);
   expect(result.battleDetailFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.battleCostBadgeTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.battleMetaChipFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
@@ -19508,296 +19500,34 @@ test('deck review overlays retain authored art with quiet readable controls', as
   expect(result.battleSectionTabFrameObjects).toEqual([]);
 });
 
-test('flock stats overlays render generated formation flourish art', async ({ page }) => {
+test('flock stats overlays use complete readable tables without decorative frames', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(async () => {
-    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
-    const g = window.__birdSquadGame;
-    const countFlourish = (items: any[]): number => items.reduce((sum, child) => {
-      const self = child.texture?.key === 'ui-icon-flock-stats-flourish' ? 1 : 0;
-      const nested = Array.isArray(child.list) ? countFlourish(child.list) : 0;
-      return sum + self + nested;
-    }, 0);
-    const countFlockTitlePlaque = (items: any[]): number => items.reduce((sum, child) => {
-      const self = child.texture?.key === 'ui-icon-flock-stats-title-plaque' ? 1 : 0;
-      const nested = Array.isArray(child.list) ? countFlockTitlePlaque(child.list) : 0;
-      return sum + self + nested;
-    }, 0);
-    const countFlockCaptionFrame = (items: any[]): number => items.reduce((sum, child) => {
-      const self = child.texture?.key === 'ui-icon-flock-stats-caption-frame' ? 1 : 0;
-      const nested = Array.isArray(child.list) ? countFlockCaptionFrame(child.list) : 0;
-      return sum + self + nested;
-    }, 0);
-    const countFlockFooterFrame = (items: any[]): number => items.reduce((sum, child) => {
-      const self = child.texture?.key === 'ui-icon-flock-stats-footer-frame' ? 1 : 0;
-      const nested = Array.isArray(child.list) ? countFlockFooterFrame(child.list) : 0;
-      return sum + self + nested;
-    }, 0);
-    const countFlockHeaderFrame = (items: any[]): number => items.reduce((sum, child) => {
-      const self = child.texture?.key === 'ui-icon-flock-stats-header-frame' ? 1 : 0;
-      const nested = Array.isArray(child.list) ? countFlockHeaderFrame(child.list) : 0;
-      return sum + self + nested;
-    }, 0);
-    const countStatsFrame = (items: any[]): number => items.reduce((sum, child) => {
-      const self = child.texture?.key === 'ui-icon-combat-stats-tally-frame' ? 1 : 0;
-      const nested = Array.isArray(child.list) ? countStatsFrame(child.list) : 0;
-      return sum + self + nested;
-    }, 0);
-    const countStatsRowFrame = (items: any[]): number => items.reduce((sum, child) => {
-      const self = child.texture?.key === 'ui-icon-combat-stats-tally-row-frame' ? 1 : 0;
-      const nested = Array.isArray(child.list) ? countStatsRowFrame(child.list) : 0;
-      return sum + self + nested;
-    }, 0);
-    const countStatsTitlePlaque = (items: any[]): number => items.reduce((sum, child) => {
-      const self = child.texture?.key === 'ui-icon-combat-stats-tally-title-plaque' ? 1 : 0;
-      const nested = Array.isArray(child.list) ? countStatsTitlePlaque(child.list) : 0;
-      return sum + self + nested;
-    }, 0);
-    const countRowFrame = (items: any[]): number => items.reduce((sum, child) => {
-      const self = child.texture?.key === 'ui-icon-flock-stats-row-frame' ? 1 : 0;
-      const nested = Array.isArray(child.list) ? countRowFrame(child.list) : 0;
-      return sum + self + nested;
-    }, 0);
-
-    await window.__birdSquadStartScene!('RouteScene', {});
-    g.scene.stop('MenuScene');
-    const route: any = g.scene.getScene('RouteScene');
-    route.openFlockOverlay();
-    for (let i = 0; i < 80 && countFlourish(route.children.list) === 0; i += 1) {
-      await wait(50);
-    }
-    const routeState = JSON.parse(window.render_game_to_text!());
-    const routeFlourish = countFlourish(route.children.list);
-    const routeTitlePlaque = countFlockTitlePlaque(route.children.list);
-    const routeCaptionFrame = countFlockCaptionFrame(route.children.list);
-    const routeFooterFrame = countFlockFooterFrame(route.children.list);
-    const routeHeaderFrame = countFlockHeaderFrame(route.children.list);
-    const routeRowFrames = countRowFrame(route.children.list);
-    const routeTitlePlaqueObjects = route.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-flock-stats-title-plaque')
-      .map((child: any) => ({
-        width: Math.round(child.displayWidth),
-        height: Math.round(child.displayHeight),
-        alpha: Number(child.alpha?.toFixed?.(2) ?? child.alpha),
-        name: child.name,
-      }));
-    const routeHeaderFrameObjects = route.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-flock-stats-header-frame')
-      .map((child: any) => ({
-        width: Math.round(child.displayWidth),
-        height: Math.round(child.displayHeight),
-        alpha: Number(child.alpha?.toFixed?.(2) ?? child.alpha),
-        name: child.name,
-      }));
-    const routeCaptionFrameObjects = route.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-flock-stats-caption-frame')
-      .map((child: any) => ({
-        width: Math.round(child.displayWidth),
-        height: Math.round(child.displayHeight),
-        alpha: Number(child.alpha?.toFixed?.(2) ?? child.alpha),
-        name: child.name,
-      }));
-
-    await window.__birdSquadStartScene!('BattleScene', { runState: route.runState, routeNodeId: 'm1_entry' });
-    await wait(250);
-    const battle: any = g.scene.getScene('BattleScene');
-    battle.openOverlay('flock');
-    const battleFlockTextureKeys = [
-      'ui-icon-combat-stats-tally-frame',
-      'ui-icon-combat-stats-tally-row-frame',
-      'ui-icon-combat-stats-tally-title-plaque'
-    ];
-    for (let i = 0; i < 80 && !battleFlockTextureKeys.every((key) => battle.textures.exists(key)); i += 1) {
-      await wait(50);
-    }
-    for (let i = 0; i < 80 && countStatsFrame(battle.root?.list ?? battle.children.list) === 0; i += 1) {
-      battle.renderAll();
-      await wait(50);
-    }
-    const battleState = JSON.parse(window.render_game_to_text!());
-    const battleRoot = battle.root?.list ?? battle.children.list;
-    const battleFlourish = countFlourish(battleRoot);
-    const battleTitlePlaque = countFlockTitlePlaque(battleRoot);
-    const battleCaptionFrame = countFlockCaptionFrame(battleRoot);
-    const battleFooterFrame = countFlockFooterFrame(battleRoot);
-    const battleHeaderFrame = countFlockHeaderFrame(battleRoot);
-    const battleRowFrames = countRowFrame(battleRoot);
-    const battleStatsFrame = countStatsFrame(battleRoot);
-    const battleStatsRowFrame = countStatsRowFrame(battleRoot);
-    const battleStatsTitlePlaque = countStatsTitlePlaque(battleRoot);
-    const battleRowFrameObjects = battleRoot
-      .filter((child: any) => child.texture?.key === 'ui-icon-flock-stats-row-frame')
-      .map((child: any) => ({
-        width: Math.round(child.displayWidth),
-        height: Math.round(child.displayHeight),
-        alpha: Number(child.alpha?.toFixed?.(2) ?? child.alpha),
-        name: child.name,
-      }));
-    const battleTitlePlaqueObjects = battleRoot
-      .filter((child: any) => child.texture?.key === 'ui-icon-flock-stats-title-plaque')
-      .map((child: any) => ({
-        width: Math.round(child.displayWidth),
-        height: Math.round(child.displayHeight),
-        alpha: Number(child.alpha?.toFixed?.(2) ?? child.alpha),
-        name: child.name,
-      }));
-    const battleHeaderFrameObjects = battleRoot
-      .filter((child: any) => child.texture?.key === 'ui-icon-flock-stats-header-frame')
-      .map((child: any) => ({
-        width: Math.round(child.displayWidth),
-        height: Math.round(child.displayHeight),
-        alpha: Number(child.alpha?.toFixed?.(2) ?? child.alpha),
-        name: child.name,
-      }));
-    const battleCaptionFrameObjects = battleRoot
-      .filter((child: any) => child.texture?.key === 'ui-icon-flock-stats-caption-frame')
-      .map((child: any) => ({
-        width: Math.round(child.displayWidth),
-        height: Math.round(child.displayHeight),
-        alpha: Number(child.alpha?.toFixed?.(2) ?? child.alpha),
-        name: child.name,
-      }));
-    const battleFooterFrameObjects = battleRoot
-      .filter((child: any) => child.texture?.key === 'ui-icon-flock-stats-footer-frame')
-      .map((child: any) => ({
-        width: Math.round(child.displayWidth),
-        height: Math.round(child.displayHeight),
-        alpha: Number(child.alpha?.toFixed?.(2) ?? child.alpha),
-        name: child.name,
-      }));
-    const battleStatsRowFrameObjects = battleRoot
-      .filter((child: any) => child.texture?.key === 'ui-icon-combat-stats-tally-row-frame')
-      .map((child: any) => ({
-        width: Math.round(child.displayWidth),
-        height: Math.round(child.displayHeight),
-        alpha: Number(child.alpha?.toFixed?.(2) ?? child.alpha),
-        name: child.name,
-      }));
-    const battleStatsFrameObjects = battleRoot
-      .filter((child: any) => child.texture?.key === 'ui-icon-combat-stats-tally-frame')
-      .map((child: any) => ({
-        width: Math.round(child.displayWidth),
-        height: Math.round(child.displayHeight),
-        alpha: Number(child.alpha?.toFixed?.(2) ?? child.alpha),
-        name: child.name,
-      }));
-    const battleStatsTitlePlaqueObjects = battleRoot
-      .filter((child: any) => child.texture?.key === 'ui-icon-combat-stats-tally-title-plaque')
-      .map((child: any) => ({
-        width: Math.round(child.displayWidth),
-        height: Math.round(child.displayHeight),
-        alpha: Number(child.alpha?.toFixed?.(2) ?? child.alpha),
-        name: child.name,
-      }));
-
-    return {
-      loaded: g.textures.exists('ui-icon-flock-stats-flourish'),
-      titlePlaqueLoaded: g.textures.exists('ui-icon-flock-stats-title-plaque'),
-      captionFrameLoaded: g.textures.exists('ui-icon-flock-stats-caption-frame'),
-      footerFrameLoaded: g.textures.exists('ui-icon-flock-stats-footer-frame'),
-      headerFrameLoaded: g.textures.exists('ui-icon-flock-stats-header-frame'),
-      rowFrameLoaded: g.textures.exists('ui-icon-flock-stats-row-frame'),
-      tallyFrameLoaded: g.textures.exists('ui-icon-combat-stats-tally-frame'),
-      tallyRowFrameLoaded: g.textures.exists('ui-icon-combat-stats-tally-row-frame'),
-      tallyTitlePlaqueLoaded: g.textures.exists('ui-icon-combat-stats-tally-title-plaque'),
-      routeOpen: routeState.flockOverlayOpen,
-      routeFlourish,
-      routeTitlePlaque,
-      routeCaptionFrame,
-      routeFooterFrame,
-      routeHeaderFrame,
-      routeRowFrames,
-      routeTitlePlaqueObjects,
-      routeCaptionFrameObjects,
-      routeHeaderFrameObjects,
-      routeTelemetry: routeState.flockStatsFlourish,
-      routeTitlePlaqueTelemetry: routeState.flockStatsTitlePlaque,
-      routeCaptionFrameTelemetry: routeState.flockStatsCaptionFrame,
-      routeFooterFrameTelemetry: routeState.flockStatsFooterFrame,
-      routeHeaderFrameTelemetry: routeState.flockStatsHeaderFrame,
-      routeRowFrameTelemetry: routeState.flockStatsRowFrame,
-      battleOpen: battleState.inspectOverlay,
-      battleFlourish,
-      battleTitlePlaque,
-      battleCaptionFrame,
-      battleFooterFrame,
-      battleHeaderFrame,
-      battleRowFrames,
-      battleTitlePlaqueObjects,
-      battleCaptionFrameObjects,
-      battleFooterFrameObjects,
-      battleHeaderFrameObjects,
-      battleTelemetry: battleState.flockStatsFlourish,
-      battleTitlePlaqueTelemetry: battleState.flockStatsTitlePlaque,
-      battleCaptionFrameTelemetry: battleState.flockStatsCaptionFrame,
-      battleFooterFrameTelemetry: battleState.flockStatsFooterFrame,
-      battleHeaderFrameTelemetry: battleState.flockStatsHeaderFrame,
-      battleRowFrameTelemetry: battleState.flockStatsRowFrame,
-      battleStatsFrame,
-      battleStatsRowFrame,
-      battleStatsTitlePlaque,
-      battleRowFrameObjects,
-      battleStatsRowFrameObjects,
-      battleStatsFrameObjects,
-      battleStatsTitlePlaqueObjects,
-      battleStatsTelemetry: battleState.combatStatsTallyFrame,
-      battleStatsRowTelemetry: battleState.combatStatsTallyRowFrame,
-      battleStatsTitleTelemetry: battleState.combatStatsTallyTitlePlaque
-    };
-  });
-
-  expect(result.loaded).toBe(true);
-  expect(result.routeOpen).toBe(true);
-  expect(result.routeFlourish).toBeGreaterThanOrEqual(1);
-  expect(result.routeTelemetry).toEqual({ loaded: true, rendered: true, count: result.routeFlourish });
-  expect(result.titlePlaqueLoaded).toBe(true);
-  expect(result.routeTitlePlaque).toBe(1);
-  expect(result.routeTitlePlaqueTelemetry).toEqual({ loaded: true, rendered: true, count: result.routeTitlePlaque });
-  expect(result.routeTitlePlaqueObjects.every((frame: { width: number; height: number }) => frame.width === 560 && frame.height === 86)).toBe(true);
-  expect(result.captionFrameLoaded).toBe(true);
-  expect(result.routeCaptionFrame).toBe(1);
-  expect(result.routeCaptionFrameTelemetry).toEqual({ loaded: true, rendered: true, count: result.routeCaptionFrame });
-  expect(result.routeCaptionFrameObjects.every((frame: { width: number; height: number }) => frame.width === 520 && frame.height === 34)).toBe(true);
-  expect(result.footerFrameLoaded).toBe(true);
-  expect(result.routeFooterFrame).toBe(0);
-  expect(result.routeFooterFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
-  expect(result.headerFrameLoaded).toBe(true);
-  expect(result.routeHeaderFrame).toBe(1);
-  expect(result.routeHeaderFrameTelemetry).toEqual({ loaded: true, rendered: true, count: result.routeHeaderFrame });
-  expect(result.routeHeaderFrameObjects.every((frame: { width: number; height: number }) => frame.width === 566 && frame.height === 30)).toBe(true);
-  expect(result.rowFrameLoaded).toBe(true);
-  expect(result.routeRowFrames).toBeGreaterThanOrEqual(9);
-  expect(result.routeRowFrameTelemetry).toEqual({ loaded: true, rendered: true, count: result.routeRowFrames });
-  expect(result.battleOpen).toBe('flock');
-  expect(result.battleFlourish).toBeGreaterThanOrEqual(1);
-  expect(result.battleTelemetry).toEqual({ loaded: true, rendered: true, count: result.battleFlourish });
-  expect(result.battleTitlePlaque).toBe(1);
-  expect(result.battleTitlePlaqueTelemetry).toEqual({ loaded: true, rendered: true, count: result.battleTitlePlaque });
-  expect(result.battleTitlePlaqueObjects.every((frame: { width: number; height: number }) => frame.width === 560 && frame.height === 86)).toBe(true);
-  expect(result.battleCaptionFrame).toBe(1);
-  expect(result.battleCaptionFrameTelemetry).toEqual({ loaded: true, rendered: true, count: result.battleCaptionFrame });
-  expect(result.battleCaptionFrameObjects.every((frame: { width: number; height: number }) => frame.width === 520 && frame.height === 34)).toBe(true);
-  expect(result.battleFooterFrame).toBe(1);
-  expect(result.battleFooterFrameTelemetry).toEqual({ loaded: true, rendered: true, count: result.battleFooterFrame });
-  expect(result.battleFooterFrameObjects.every((frame: { width: number; height: number }) => frame.width === 540 && frame.height === 36)).toBe(true);
-  expect(result.battleHeaderFrame).toBe(1);
-  expect(result.battleHeaderFrameTelemetry).toEqual({ loaded: true, rendered: true, count: result.battleHeaderFrame });
-  expect(result.battleHeaderFrameObjects.every((frame: { width: number; height: number }) => frame.width === 566 && frame.height === 30)).toBe(true);
-  expect(result.battleRowFrames).toBeGreaterThanOrEqual(10);
-  expect(result.battleRowFrameTelemetry).toEqual({ loaded: true, rendered: true, count: result.battleRowFrames });
-  expect(result.battleRowFrameObjects.every((frame: { width: number; height: number }) => frame.width === 566 && frame.height === 34)).toBe(true);
-  expect(result.tallyFrameLoaded).toBe(true);
-  expect(result.battleStatsFrame).toBeGreaterThanOrEqual(1);
-  expect(result.battleStatsTelemetry).toEqual({ loaded: true, rendered: true, count: result.battleStatsFrame });
-  expect(result.battleStatsFrameObjects.every((frame: { width: number; height: number }) => frame.width === 286 && frame.height === 338)).toBe(true);
-  expect(result.tallyRowFrameLoaded).toBe(true);
-  expect(result.battleStatsRowFrame).toBe(6);
-  expect(result.battleStatsRowTelemetry).toEqual({ loaded: true, rendered: true, count: result.battleStatsRowFrame });
-  expect(result.battleStatsRowFrameObjects.every((frame: { width: number; height: number }) => frame.width === 314 && frame.height === 30)).toBe(true);
-  expect(result.tallyTitlePlaqueLoaded).toBe(true);
-  expect(result.battleStatsTitlePlaque).toBe(1);
-  expect(result.battleStatsTitleTelemetry).toEqual({ loaded: true, rendered: true, count: result.battleStatsTitlePlaque });
-  expect(result.battleStatsTitlePlaqueObjects.every((frame: { width: number; height: number }) => frame.width === 318 && frame.height === 54)).toBe(true);
+  for (const key of ['RouteScene', 'BattleScene']) {
+    await page.evaluate(async key => window.__birdSquadStartScene!(key, { routeNodeId: 'm1_entry' }), key);
+    await page.waitForFunction(key => {
+      const s: any = window.__birdSquadGame.scene.getScene(key);
+      return key === 'RouteScene' ? s.routeEssentialAssetsReady : s.battleHandRendererModule && !s.combatInteractionLocked();
+    }, key);
+    await page.evaluate(key => {
+      const s: any = window.__birdSquadGame.scene.getScene(key);
+      if (key === 'RouteScene') s.openFlockOverlay(); else s.openOverlay('flock');
+    }, key);
+    await page.waitForFunction(key => {
+      const s: any = window.__birdSquadGame.scene.getScene(key);
+      return (key === 'RouteScene' ? s.children : s.root).getByName('flock-stats-reader');
+    }, key);
+    const result = await page.evaluate(key => {
+      const s: any = window.__birdSquadGame.scene.getScene(key);
+      const p = (key === 'RouteScene' ? s.children : s.root).getByName('flock-stats-reader');
+      return { cells: p.list.filter((o: any) => o.name.startsWith('flock-stats-cell-')).length,
+        images: p.list.filter((o: any) => o.type === 'Image').length,
+        close: p.getByName('flock-stats-close').height, summary: p.getData('summary') };
+    }, key);
+    expect(result.cells).toBe(key === 'RouteScene' ? 36 : 40);
+    expect(result.images).toBe(0); expect(result.close).toBe(58);
+    expect(result.summary).toContain('Flock Stats. Reading only.');
+    await page.keyboard.press('Escape');
+  }
 });
 
 test('run kit drawers render generated inventory flourish art', async ({ page }) => {
@@ -19986,20 +19716,22 @@ test('combat pile inspector retains authored art with a quiet readable detail su
   await page.evaluate(() => (window.__birdSquadGame.scene.getScene('BattleScene') as any).openOverlay('draw'));
   await page.waitForFunction(() => {
     const b: any = window.__birdSquadGame.scene.getScene('BattleScene');
-    return b.root.getByName('combat-pile-review-frame') && b.root.getByName('combat-pile-read-hit');
+    return b.root.getByName('combat-pile-card-art') && b.root.getByName('combat-pile-read-hit');
   });
   const result = await page.evaluate(() => {
     const b: any = window.__birdSquadGame.scene.getScene('BattleScene');
     return {
       overlay: b.inspectOverlay,
       frames: b.root.list.filter((o: any) => o.name === 'combat-pile-review-frame').length,
+      art: b.root.getByName('combat-pile-card-art')?.texture.key,
       reading: b.root.getByName('combat-pile-read-label').text,
       rowSizes: b.root.list.filter((o: any) => o.name === 'combat-pile-row-title').map((o: any) => o.style.fontSize),
       chipFrames: b.root.list.filter((o: any) => ['combat-pile-detail-chip-frame', 'combat-pile-stat-chip-frame'].includes(o.name)).length,
     };
   });
   expect(result.overlay).toBe('draw');
-  expect(result.frames).toBe(1);
+  expect(result.frames).toBe(0);
+  expect(result.art).toBeTruthy();
   expect(result.reading).toContain('Full rules');
   expect(result.rowSizes.length).toBeGreaterThan(0);
   expect(result.rowSizes.every((size: string) => size === '18px')).toBe(true);
@@ -20164,13 +19896,13 @@ test('combat pile inspector supports keyboard and controller navigation accessib
   expect(navigated.zoneTargets.filter((target: any) => target.active)).toEqual([
     expect.objectContaining({ mode: 'draw' }),
   ]);
-  expect(navigated.zoneTargets.every((target: any) => target.width === 70 && target.height === 58)).toBe(true);
+  expect(navigated.zoneTargets.every((target: any) => target.width === 236 && target.height === 58)).toBe(true);
   expect(navigated.zoneTargets.every((target: any) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
   expect(navigated.focusRings).toEqual([
     expect.objectContaining({ instanceId: 'accessible-inspect-08', width: 326, height: 58 }),
   ]);
-  expect(navigated.hint).toContain('UP / DOWN CARD');
-  expect(navigated.hint).toContain('Left / Right ZONE');
+  expect(navigated.hint).toContain('D-pad: card / pile');
+  expect(navigated.hint).toContain('LB / RB: page');
   expect(navigated.announcement).toContain('draw pile');
   expect(navigated.announcement).toContain('Selected 9 of 12');
   expect(navigated.announcement).toContain('Draw 12, Discard 2, Cleared 1');
@@ -25684,15 +25416,15 @@ test('Codex browsing follows remapped keyboard, gamepad, visible focus, and scre
     codex.input.gamepad.emit('down', codex.input.gamepad.pad1, { index: buttonIndex }, 1);
   }, index);
   await gamepadDown(13);
-  expect((await state()).codexFocus.index).toBe(4);
+  expect((await state()).codexFocus.index).toBe(3);
   await gamepadDown(13);
   const scrolled = await state();
-  expect(scrolled.codexFocus.index).toBe(8);
-  expect(scrolled.codexFocus.gridScroll).toBe(0);
+  expect(scrolled.codexFocus.index).toBe(6);
+  expect(scrolled.codexFocus.gridScroll).toBeGreaterThan(0);
   await gamepadDown(15);
-  expect((await state()).codexFocus.index).toBe(9);
+  expect((await state()).codexFocus.index).toBe(7);
   await gamepadDown(13);
-  expect((await state()).codexFocus.index).toBe(13);
+  expect((await state()).codexFocus.index).toBe(10);
   expect((await state()).codexFocus.gridScroll).toBeGreaterThan(0);
   const selectedLabel = (await state()).codexFocus.label;
   await gamepadDown(0);
@@ -25765,10 +25497,8 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
         && cs.textures.exists('ui-icon-codex-quills-medallion')
         && cs.textures.exists('ui-icon-codex-basins-medallion')
         && cs.textures.exists('ui-icon-codex-nests-medallion')
-        && collect(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-cards-medallion')
-        && collect(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-major-medallion')
         && collect(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-back-command-frame')
-        && collect(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-tab-frame')
+        && collect(cs.root).some((child: any) => child.name === 'codex-tab-surface')
         && collect(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-grid-scroll-cue-frame')
         && collect(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-locked-card-medallion');
       if (ready) break;
@@ -25794,7 +25524,7 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
         name: child.name
       }));
     const codexTabFrames = collect(cs.root)
-      .filter((child: any) => child.texture?.key === 'ui-icon-codex-tab-frame')
+      .filter((child: any) => child.name === 'codex-tab-surface')
       .map((child: any) => ({
         alpha: Number(child.alpha?.toFixed?.(3) ?? child.alpha),
         visible: child.visible,
@@ -25825,12 +25555,6 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
     cs.gridScroll = 0;
     cs.gridScrollTarget = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-aviary-medallion')
-        && collect(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-aviary-medallion' && child.visible && child.alpha > 0.9);
-      if (ready) break;
-      await wait(50);
-    }
     const activeAviaryTabMedallions = collect(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-aviary-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
@@ -25847,12 +25571,6 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
       cs.gridScroll = 0;
       cs.gridScrollTarget = 0;
       cs.renderAll();
-      for (let i = 0; i < 40; i += 1) {
-        const ready = cs.textures.exists(suit.textureKey)
-          && collect(cs.root).some((child: any) => child.texture?.key === suit.textureKey && child.visible && child.alpha > 0.9);
-        if (ready) break;
-        await wait(50);
-      }
       suitTabResults.push({
         label: suit.label,
         textureKey: suit.textureKey,
@@ -25955,7 +25673,7 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
   expect(r.codexIconRendered).toBe(false);
   expect(r.codexControlRendered).toBe(true);
   expect(r.codexBackCommandFrame).toEqual({ loaded: true, rendered: true, count: 1 });
-  expect(r.codexTabFrame).toEqual({ loaded: true, rendered: true, count: 14 });
+  expect(r.codexTabFrame).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(r.codexCloseCommandFrame).toEqual({ loaded: true, rendered: true, count: 1 });
   expect(r.codexScrollCueFrame).toEqual({ loaded: true, rendered: true, count: 1 });
   expect(r.codexArtPreviewFrame).toEqual({ loaded: true, rendered: false, count: 0 });
@@ -25978,10 +25696,10 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
   expect(r.codexScrollCueFrames[0].alpha).toBeGreaterThan(0.55);
   expect(r.codexArtPreviewFrames).toEqual([]);
   expect(r.codexTabFrames).toHaveLength(14);
-  expect(r.codexTabFrames.every((frame: { name: string; visible: boolean }) => frame.name === 'codex-tab-frame' && frame.visible)).toBe(true);
+  expect(r.codexTabFrames.every((frame: { name: string; visible: boolean }) => frame.name === 'codex-tab-surface' && frame.visible)).toBe(true);
   expect(r.codexTabFrames.filter((frame: { active: boolean }) => frame.active).map((frame: { label: string }) => frame.label)).toEqual(['Cards', 'Major']);
-  expect(r.codexTabFrames.filter((frame: { active: boolean }) => frame.active).every((frame: { alpha: number }) => frame.alpha === 0.82)).toBe(true);
-  expect(r.codexTabFrames.filter((frame: { active: boolean }) => !frame.active).every((frame: { alpha: number }) => frame.alpha === 0.18)).toBe(true);
+  expect(r.codexTabFrames.filter((frame: { active: boolean }) => frame.active).every((frame: { alpha: number }) => frame.alpha === 1)).toBe(true);
+  expect(r.codexTabFrames.filter((frame: { active: boolean }) => !frame.active).every((frame: { alpha: number }) => frame.alpha === 1)).toBe(true);
   expect(r.codexTabFrames.every((frame: { displayHeight: number }) => frame.displayHeight >= 35)).toBe(true);
   expect(r.codexGridScrollCueFrames).toHaveLength(1);
   expect(r.codexGridScrollCueFrames[0]).toMatchObject({ name: 'codex-grid-scroll-cue-frame', visible: true });
@@ -25989,20 +25707,16 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
   expect(r.codexGridScrollCueFrames[0].displayHeight).toBe(34);
   expect(r.codexGridScrollCueFrames[0].alpha).toBeGreaterThan(0.65);
   expect(r.cardsTabTextureLoaded).toBe(true);
-  expect(r.cardsTabMedallions.length).toBeGreaterThan(0);
-  expect(r.cardsTabMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.cardsTabMedallions).toEqual([]);
   expect(r.majorTabTextureLoaded).toBe(true);
-  expect(r.majorTabMedallions.length).toBeGreaterThan(0);
-  expect(r.majorTabMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.majorTabMedallions).toEqual([]);
   expect(r.aviaryTabTextureLoaded).toBe(true);
-  expect(r.aviaryTabMedallions.length).toBeGreaterThan(0);
-  expect(r.activeAviaryTabMedallions.length).toBeGreaterThan(0);
-  expect(r.activeAviaryTabMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.aviaryTabMedallions).toEqual([]);
+  expect(r.activeAviaryTabMedallions).toEqual([]);
   expect(r.suitTabResults.map((result: { label: string }) => result.label)).toEqual(['Plumes', 'Quills', 'Basins', 'Nests']);
   for (const result of r.suitTabResults as Array<{ loaded: boolean; medallions: Array<{ alpha: number; visible: boolean }> }>) {
     expect(result.loaded).toBe(true);
-    expect(result.medallions.length).toBeGreaterThan(0);
-    expect(result.medallions.some((icon) => icon.visible && icon.alpha > 0.9)).toBe(true);
+    expect(result.medallions).toEqual([]);
   }
   expect(r.lockedCardTextureLoaded).toBe(true);
   expect(r.lockedCardMedallions.length).toBeGreaterThan(0);
@@ -26032,6 +25746,8 @@ test('codex: discovered cards can be favorited persistently with pointer, keyboa
       && state.cardFavorites?.detailId === 'major_00'
       && cs?.root?.getByName?.('codex-card-favorite-hit')?.input?.enabled;
   });
+  await page.waitForFunction(() => !window.__birdSquadGame.scene.getScene('CodexScene').load.isLoading());
+  await settleCanvas(page);
 
   const favoritePoint = await page.evaluate(() => {
     const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
@@ -26556,12 +26272,9 @@ test('codex: private Card Journal supports sanitized pointer, keyboard, controll
   const input = page.locator('#codex-card-journal-input');
   await expect(input).toBeVisible();
   expect(await input.getAttribute('maxlength')).toBe('240');
-  const editorFrame = await page.evaluate(() => {
-    const codex: any = window.__birdSquadGame.scene.getScene('CodexScene');
-    const field = codex.root.getByName('codex-card-journal-prompt-field');
-    return { width: field.displayWidth, height: field.displayHeight };
-  });
-  expect(editorFrame).toEqual({ width: 620, height: 154 });
+  await expect(page.getByRole('dialog', { name: 'Private card journal' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Save note', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
     .toContain('Editing the private Card Journal for First Flight');
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-private-card-journal-editor.png' });
@@ -26802,7 +26515,7 @@ test('codex: new first-copy markers support a New lens and intentional per-card 
     persisted: true,
   });
   expect(initial.markerIds).toEqual(['major_00', 'major_01', 'major_02']);
-  expect(initial.bulk).toMatchObject({ width: 132, height: 46, count: 3 });
+  expect(initial.bulk).toMatchObject({ width: 240, height: 58, count: 3 });
   expect(initial.account.cardCollection.wands_ace.isNew).toBeUndefined();
   await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
     .toContain('3 new card markers');
@@ -26820,7 +26533,7 @@ test('codex: new first-copy markers support a New lens and intentional per-card 
     const hit = cs.root.getByName('codex-card-mark-seen-hit');
     return { x: hit.x, y: hit.y, width: hit.displayWidth, height: hit.displayHeight };
   });
-  expect(markSeen).toMatchObject({ width: 142, height: 46 });
+  expect(markSeen).toMatchObject({ width: 264, height: 58 });
   await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
     .toContain('New to collection');
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-new-card-detail.png' });
@@ -26956,7 +26669,12 @@ test('codex: Favorites view groups personal cards and explains its empty state a
     visibleIds: ['major_00'],
   });
   expect(populated.state.codexFocus).toMatchObject({ zone: 'primaryTabs', label: 'Favorites filter' });
-  expect(populated.texts).toContain('1 favorite card / 2 discovered');
+  // Counts live with their tabs instead of repeating in a second subtitle.
+  expect(await page.evaluate(() => {
+    const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    return cs.root.list.filter((entry: any) => entry.name === 'codex-tab-meta')
+      .map((entry: any) => ({ label: entry.getData('label'), text: entry.text }));
+  })).toEqual(expect.arrayContaining([{ label: 'Favorites', text: '1' }, { label: 'Cards', text: '2/110' }]));
   expect(populated.markerIds).toEqual(['major_00']);
 
   await page.keyboard.press('ArrowLeft');
@@ -27621,7 +27339,7 @@ test('codex: personal tags organize discovered cards through pointer, keyboard, 
     const hit = cs.root.getByName('codex-card-tag-hit');
     return { x: hit.x, y: hit.y, width: hit.displayWidth, height: hit.displayHeight };
   });
-  expect(tagPoint).toMatchObject({ width: 180, height: 46 });
+  expect(tagPoint).toMatchObject({ width: 264, height: 58 });
   const canvas = await page.locator('canvas').boundingBox();
   if (!canvas) throw new Error('Missing game canvas');
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-personal-tag-detail-before-pointer.png' });
@@ -28010,7 +27728,7 @@ test('codex: typo-tolerant search corrects conservative misspellings without wea
       .filter((entry: any) => entry.type === 'Text')
       .map((entry: any) => entry.text);
   });
-  expect(emptyCopy).toContain('No cards in Plumes match every search term.\nCheck spelling, remove SEARCH above, or choose CLEAR ALL.');
+  expect(emptyCopy).toContain('No cards in Plumes match every search term.\nCheck spelling, remove SEARCH above, or choose Clear filters.');
   await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
     timeout: 5_000,
   }).toContain('No card matches every search term');
@@ -28058,28 +27776,38 @@ test('codex: card inspection returns to the exact filtered selection and scroll 
     cs.detailId = undefined;
     cs.focusZone = 'entries';
     cs.entryFocusIndex = 11;
-    cs.gridScroll = 340;
-    cs.gridScrollTarget = 340;
+    cs.resetCodexScroll();
+    cs.renderAll();
+    cs.ensureFocusedEntryVisible();
+    cs.gridScroll = cs.gridScrollTarget;
     cs.renderAll();
     const selectedId = cs.codexFocusEntries()[11].id;
-    const hit = cs.root.list
-      .flatMap((entry: any) => Array.isArray(entry?.list) ? entry.list : [])
-      .find((entry: any) => entry.name === 'codex-card-entry-hit' && entry.getData('cardId') === selectedId);
+    const tile = cs.gridLayer.list.find((entry: any) => entry.getData('cardId') === selectedId);
+    const hit = tile.getByName('codex-card-entry-hit');
+    const bounds = hit.getBounds();
     return {
       selectedId,
       entryIndex: 11,
       scroll: cs.gridScroll,
       hit: {
-        x: hit.x,
-        y: hit.y + (hit.parentContainer?.y ?? 0),
+        x: bounds.centerX,
+        y: bounds.centerY,
         width: hit.displayWidth,
         height: hit.displayHeight,
       },
     };
   });
-  expect(setup.scroll).toBe(340);
+  expect(setup.scroll).toBeGreaterThan(0);
   expect(setup.hit.width).toBeGreaterThanOrEqual(190);
   expect(setup.hit.height).toBeGreaterThanOrEqual(278);
+  // The forced scene/scroll setup replaces Phaser's interactive objects.
+  // Wait for streamed art and the input/render frames before a real click.
+  await page.waitForFunction((selectedId) => {
+    const cs = window.__birdSquadGame.scene.getScene('CodexScene');
+    const tile = cs.gridLayer.list.find((entry: any) => entry.getData('cardId') === selectedId);
+    return tile?.getByName('codex-card-art') && !cs.load.isLoading();
+  }, setup.selectedId);
+  await settleCanvas(page);
   const canvas = await page.locator('canvas').boundingBox();
   if (!canvas) throw new Error('Missing game canvas');
   await page.mouse.move(
@@ -28101,8 +27829,8 @@ test('codex: card inspection returns to the exact filtered selection and scroll 
     captured: true,
     selectedId: setup.selectedId,
     entryIndex: 11,
-    gridScroll: 340,
-    gridScrollTarget: 340,
+    gridScroll: setup.scroll,
+    gridScrollTarget: setup.scroll,
     section: 'cards',
     set: 'Plumes',
     lens: 'collected',
@@ -28131,7 +27859,7 @@ test('codex: card inspection returns to the exact filtered selection and scroll 
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').inspectionReturn?.lastRestoredExact === true);
   state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(state.detailOpen).toBe('');
-  expect(state.codexFocus).toMatchObject({ zone: 'entries', index: 11, gridScroll: 340 });
+  expect(state.codexFocus).toMatchObject({ zone: 'entries', index: 11, gridScroll: setup.scroll });
   expect(state.cardSearch).toMatchObject({ query: 'Plumes' });
   expect(state.cardCollectionLens).toMatchObject({ id: 'collected' });
   expect(state.cardSort).toMatchObject({ id: 'name' });
@@ -28139,7 +27867,7 @@ test('codex: card inspection returns to the exact filtered selection and scroll 
     selectedId: setup.selectedId,
     lastRestoredExact: true,
     membershipChanged: false,
-    gridScroll: 340,
+    gridScroll: setup.scroll,
   });
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-inspection-return-grid.png' });
 
@@ -28148,7 +27876,7 @@ test('codex: card inspection returns to the exact filtered selection and scroll 
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').inspectionReturn?.lastRestoredExact === true);
   state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
-  expect(state.codexFocus).toMatchObject({ zone: 'entries', index: 11, gridScroll: 340 });
+  expect(state.codexFocus).toMatchObject({ zone: 'entries', index: 11, gridScroll: setup.scroll });
 
   await page.evaluate(() => {
     const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
@@ -28161,7 +27889,7 @@ test('codex: card inspection returns to the exact filtered selection and scroll 
   });
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').inspectionReturn?.lastRestoredExact === true);
   state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
-  expect(state.codexFocus).toMatchObject({ zone: 'entries', index: 11, gridScroll: 340 });
+  expect(state.codexFocus).toMatchObject({ zone: 'entries', index: 11, gridScroll: setup.scroll });
   expect(await page.evaluate(() => ({
     lens: localStorage.getItem('birdsquad.codexCardLens'),
     query: localStorage.getItem('birdsquad.codexCardSearch'),
@@ -28541,7 +28269,7 @@ test('codex: active filter chips remove search and lens individually or together
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
     return state.activeCardFilters?.visible === true
       && state.activeCardFilters?.count === 2
-      && state.activeCardFilters?.gridTop === 210;
+      && state.activeCardFilters?.gridTop === 246;
   });
 
   let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
@@ -28550,7 +28278,7 @@ test('codex: active filter chips remove search and lens individually or together
     count: 2,
     individualRemoval: true,
     clearAllRendered: true,
-    gridTop: 210,
+    gridTop: 246,
     clearsSet: false,
     clearsSort: false,
     affectsOwnership: false,
@@ -28678,7 +28406,7 @@ test('codex: active filter chips remove search and lens individually or together
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
     return state.activeCardFilters?.visible === false
       && state.activeCardFilters?.count === 0
-      && state.activeCardFilters?.gridTop === 158;
+      && state.activeCardFilters?.gridTop === 186;
   });
   state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(state.cardSearch.query).toBe('');
@@ -28776,7 +28504,7 @@ test('codex: Collection Atlas reports permanent set, rarity, and acquisition pro
     const hit = cs.root.getByName('codex-card-collection-atlas-hit');
     return { x: hit.x, y: hit.y, width: hit.displayWidth, height: hit.displayHeight };
   });
-  expect(rail.width).toBeGreaterThanOrEqual(280);
+  expect(rail.width).toBeGreaterThanOrEqual(196);
   expect(rail.height).toBeGreaterThanOrEqual(44);
   const canvas = await page.locator('canvas').boundingBox();
   if (!canvas) throw new Error('Missing game canvas');
@@ -28863,7 +28591,7 @@ test('codex: Collection Atlas reports permanent set, rarity, and acquisition pro
       bottom: panel.getBounds().bottom,
     };
   });
-  expect(panelBounds).toEqual({ left: 70, top: 58, right: 1210, bottom: 646 });
+  expect(panelBounds).toEqual({ left: 40, top: 26, right: 1240, bottom: 686 });
 });
 
 test('codex: acquisition paths explain permanent missing-card sources without leaking concealed identities', async ({ page }) => {
@@ -29057,7 +28785,7 @@ test('codex: virtualizes a very large card library and keeps informative art pla
     cs.renderAll();
     const firstDuration = performance.now() - firstStart;
     const firstState = JSON.parse(window.render_game_to_text?.() ?? '{}');
-    const firstPlaceholders = cs.gridLayer.list.filter(
+    const firstPlaceholders = cs.gridLayer.list.flatMap((entry: any) => entry.list ?? []).filter(
       (entry: any) => entry.name === 'codex-card-art-placeholder',
     ).length;
 
@@ -29067,7 +28795,7 @@ test('codex: virtualizes a very large card library and keeps informative art pla
     cs.renderAll();
     const deepDuration = performance.now() - deepStart;
     const deepState = JSON.parse(window.render_game_to_text?.() ?? '{}');
-    const deepPlaceholders = cs.gridLayer.list.filter(
+    const deepPlaceholders = cs.gridLayer.list.flatMap((entry: any) => entry.list ?? []).filter(
       (entry: any) => entry.name === 'codex-card-art-placeholder',
     ).length;
     return {
@@ -32029,32 +31757,6 @@ test('codex: supplies are listed as items with usable details', async ({ page })
     cs.detailId = undefined;
     cs.gridScroll = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-items-medallion')
-        && cs.textures.exists('ui-icon-codex-items-all-medallion')
-        && cs.textures.exists('ui-icon-codex-supplies-medallion')
-        && cs.textures.exists('ui-icon-codex-supplies-all-medallion')
-        && cs.textures.exists('ui-icon-codex-combat-medallion')
-        && cs.textures.exists('ui-icon-codex-route-plan-medallion')
-        && cs.textures.exists('ui-icon-codex-flexible-medallion')
-        && cs.textures.exists('ui-icon-codex-defense-medallion')
-        && cs.textures.exists('ui-icon-codex-recovery-medallion')
-        && cs.textures.exists('ui-icon-codex-momentum-medallion')
-        && cs.textures.exists('ui-icon-codex-pressure-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-items-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-items-all-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-supplies-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-supplies-all-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-combat-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-route-plan-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-flexible-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-defense-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-recovery-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-momentum-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-pressure-medallion');
-      if (ready) break;
-      await wait(50);
-    }
     const itemMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-items-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
@@ -32107,12 +31809,6 @@ test('codex: supplies are listed as items with usable details', async ({ page })
     cs.gridScroll = 0;
     cs.gridScrollTarget = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-items-all-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-items-all-medallion' && child.visible && child.alpha > 0.9);
-      if (ready) break;
-      await wait(50);
-    }
     const activeItemsAllMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-items-all-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
@@ -32124,12 +31820,6 @@ test('codex: supplies are listed as items with usable details', async ({ page })
     cs.gridScroll = 0;
     cs.gridScrollTarget = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-combat-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-combat-medallion' && child.visible && child.alpha > 0.9);
-      if (ready) break;
-      await wait(50);
-    }
     const activeCombatMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-combat-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
@@ -32141,12 +31831,6 @@ test('codex: supplies are listed as items with usable details', async ({ page })
     cs.gridScroll = 0;
     cs.gridScrollTarget = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-route-plan-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-route-plan-medallion' && child.visible && child.alpha > 0.9);
-      if (ready) break;
-      await wait(50);
-    }
     const activeRoutePlanMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-route-plan-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
@@ -32158,12 +31842,6 @@ test('codex: supplies are listed as items with usable details', async ({ page })
     cs.gridScroll = 0;
     cs.gridScrollTarget = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-flexible-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-flexible-medallion' && child.visible && child.alpha > 0.9);
-      if (ready) break;
-      await wait(50);
-    }
     const activeFlexibleMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-flexible-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
@@ -32175,12 +31853,6 @@ test('codex: supplies are listed as items with usable details', async ({ page })
     cs.gridScroll = 0;
     cs.gridScrollTarget = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-defense-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-defense-medallion' && child.visible && child.alpha > 0.9);
-      if (ready) break;
-      await wait(50);
-    }
     const activeDefenseMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-defense-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
@@ -32192,12 +31864,6 @@ test('codex: supplies are listed as items with usable details', async ({ page })
     cs.gridScroll = 0;
     cs.gridScrollTarget = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-recovery-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-recovery-medallion' && child.visible && child.alpha > 0.9);
-      if (ready) break;
-      await wait(50);
-    }
     const activeRecoveryMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-recovery-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
@@ -32209,12 +31875,6 @@ test('codex: supplies are listed as items with usable details', async ({ page })
     cs.gridScroll = 0;
     cs.gridScrollTarget = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-momentum-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-momentum-medallion' && child.visible && child.alpha > 0.9);
-      if (ready) break;
-      await wait(50);
-    }
     const activeMomentumMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-momentum-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
@@ -32226,12 +31886,6 @@ test('codex: supplies are listed as items with usable details', async ({ page })
     cs.gridScroll = 0;
     cs.gridScrollTarget = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-pressure-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-pressure-medallion' && child.visible && child.alpha > 0.9);
-      if (ready) break;
-      await wait(50);
-    }
     const activePressureMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-pressure-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
@@ -32243,12 +31897,6 @@ test('codex: supplies are listed as items with usable details', async ({ page })
     cs.gridScroll = 0;
     cs.gridScrollTarget = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-waymark-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-waymark-medallion');
-      if (ready) break;
-      await wait(50);
-    }
     const waymarkTexts = collectTexts(cs);
     const waymarkMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-waymark-medallion')
@@ -32276,12 +31924,6 @@ test('codex: supplies are listed as items with usable details', async ({ page })
       cs.gridScroll = 0;
       cs.gridScrollTarget = 0;
       cs.renderAll();
-      for (let tick = 0; tick < 40; tick += 1) {
-        const ready = cs.textures.exists(key)
-          && collectObjects(cs.root).some((child: any) => child.texture?.key === key && child.visible && child.alpha > 0.9);
-        if (ready) break;
-        await wait(50);
-      }
       waymarkFamilyMedallions.push({
         key,
         loaded: cs.textures.exists(key),
@@ -32298,12 +31940,6 @@ test('codex: supplies are listed as items with usable details', async ({ page })
     cs.gridScroll = 0;
     cs.gridScrollTarget = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-molt-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-molt-medallion' && child.visible && child.alpha > 0.9);
-      if (ready) break;
-      await wait(50);
-    }
     const activeMoltMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-molt-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
@@ -32315,12 +31951,6 @@ test('codex: supplies are listed as items with usable details', async ({ page })
     cs.gridScroll = 0;
     cs.gridScrollTarget = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-boss-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-boss-medallion' && child.visible && child.alpha > 0.9);
-      if (ready) break;
-      await wait(50);
-    }
     const activeBossMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-boss-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
@@ -32377,7 +32007,7 @@ test('codex: supplies are listed as items with usable details', async ({ page })
       hasBottlecapArt: cs.textures.exists('supply-thumb-bottlecap_popper'),
       hasDetailFullArt: cs.textures.exists('supply-seed_packet') && detailUsesFullArt,
       hasDetailUse: detailTexts.some((t) => /USE/.test(t)),
-      hasDetailEffects: detailTexts.some((t) => /healCohesion\(6\)/.test(t)),
+      hasDetailEffects: detailTexts.some((t) => /Heal 6 Cohesion/i.test(t)),
       hasDetailTitle: detailTexts.some((t) => /Seed Packet/.test(t)),
     };
   });
@@ -32396,62 +32026,47 @@ test('codex: supplies are listed as items with usable details', async ({ page })
   expect(r.hasDetailEffects).toBe(true);
   expect(r.hasDetailTitle).toBe(true);
   expect(r.itemMedallionLoaded).toBe(true);
-  expect(r.itemMedallions.length).toBeGreaterThan(0);
-  expect(r.itemMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.itemMedallions).toEqual([]);
   expect(r.itemsAllMedallionLoaded).toBe(true);
-  expect(r.itemsAllMedallions.length).toBeGreaterThan(0);
-  expect(r.itemsAllMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha >= 0.3)).toBe(true);
-  expect(r.activeItemsAllMedallions.length).toBeGreaterThan(0);
-  expect(r.activeItemsAllMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.itemsAllMedallions).toEqual([]);
+  expect(r.activeItemsAllMedallions).toEqual([]);
   expect(r.supplyMedallionLoaded).toBe(true);
-  expect(r.supplyMedallions.length).toBeGreaterThan(0);
-  expect(r.supplyMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.supplyMedallions).toEqual([]);
   expect(r.suppliesAllMedallionLoaded).toBe(true);
-  expect(r.suppliesAllMedallions.length).toBeGreaterThan(0);
-  expect(r.suppliesAllMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.suppliesAllMedallions).toEqual([]);
   expect(r.combatMedallionLoaded).toBe(true);
-  expect(r.combatMedallions.length).toBeGreaterThan(0);
-  expect(r.activeCombatMedallions.length).toBeGreaterThan(0);
-  expect(r.activeCombatMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.combatMedallions).toEqual([]);
+  expect(r.activeCombatMedallions).toEqual([]);
   expect(r.routePlanMedallionLoaded).toBe(true);
-  expect(r.routePlanMedallions.length).toBeGreaterThan(0);
-  expect(r.activeRoutePlanMedallions.length).toBeGreaterThan(0);
-  expect(r.activeRoutePlanMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.routePlanMedallions).toEqual([]);
+  expect(r.activeRoutePlanMedallions).toEqual([]);
   expect(r.flexibleMedallionLoaded).toBe(true);
-  expect(r.flexibleMedallions.length).toBeGreaterThan(0);
-  expect(r.activeFlexibleMedallions.length).toBeGreaterThan(0);
-  expect(r.activeFlexibleMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.flexibleMedallions).toEqual([]);
+  expect(r.activeFlexibleMedallions).toEqual([]);
   expect(r.defenseMedallionLoaded).toBe(true);
-  expect(r.defenseMedallions.length).toBeGreaterThan(0);
-  expect(r.activeDefenseMedallions.length).toBeGreaterThan(0);
-  expect(r.activeDefenseMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.defenseMedallions).toEqual([]);
+  expect(r.activeDefenseMedallions).toEqual([]);
   expect(r.recoveryMedallionLoaded).toBe(true);
-  expect(r.recoveryMedallions.length).toBeGreaterThan(0);
-  expect(r.activeRecoveryMedallions.length).toBeGreaterThan(0);
-  expect(r.activeRecoveryMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.recoveryMedallions).toEqual([]);
+  expect(r.activeRecoveryMedallions).toEqual([]);
   expect(r.momentumMedallionLoaded).toBe(true);
-  expect(r.momentumMedallions.length).toBeGreaterThan(0);
-  expect(r.activeMomentumMedallions.length).toBeGreaterThan(0);
-  expect(r.activeMomentumMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.momentumMedallions).toEqual([]);
+  expect(r.activeMomentumMedallions).toEqual([]);
   expect(r.pressureMedallionLoaded).toBe(true);
-  expect(r.pressureMedallions.length).toBeGreaterThan(0);
-  expect(r.activePressureMedallions.length).toBeGreaterThan(0);
-  expect(r.activePressureMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.pressureMedallions).toEqual([]);
+  expect(r.activePressureMedallions).toEqual([]);
   expect(r.waymarkMedallionLoaded).toBe(true);
-  expect(r.waymarkMedallions.length).toBeGreaterThan(0);
-  expect(r.waymarkMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.waymarkMedallions).toEqual([]);
   expect(r.waymarkFamilyMedallions.every((entry: { loaded: boolean }) => entry.loaded)).toBe(true);
   expect(r.waymarkFamilyMedallions.every((entry: { icons: Array<{ alpha: number; visible: boolean }> }) => (
-    entry.icons.some((icon) => icon.visible && icon.alpha > 0.9)
+    entry.icons.length === 0
   ))).toBe(true);
   expect(r.moltMedallionLoaded).toBe(true);
-  expect(r.moltMedallions.length).toBeGreaterThan(0);
-  expect(r.activeMoltMedallions.length).toBeGreaterThan(0);
-  expect(r.activeMoltMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.moltMedallions).toEqual([]);
+  expect(r.activeMoltMedallions).toEqual([]);
   expect(r.bossMedallionLoaded).toBe(true);
-  expect(r.bossMedallions.length).toBeGreaterThan(0);
-  expect(r.activeBossMedallions.length).toBeGreaterThan(0);
-  expect(r.activeBossMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.bossMedallions).toEqual([]);
+  expect(r.activeBossMedallions).toEqual([]);
 });
 
 test('codex: glossary lists core gameplay keywords', async ({ page }) => {
@@ -32484,28 +32099,26 @@ test('codex: glossary lists core gameplay keywords', async ({ page }) => {
     cs.gridScroll = 0;
     cs.gridScrollTarget = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-glossary-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-glossary-medallion');
-      if (ready) break;
-      await wait(50);
-    }
     const texts = collectTexts(cs);
     const glossaryMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-glossary-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
     const state = JSON.parse(window.render_game_to_text!());
+    cs.entryFocusIndex = cs.glossaryTerms.findIndex((term: any) => term.term === 'Overextension');
+    cs.ensureFocusedEntryVisible();
+    cs.gridScroll = cs.gridScrollTarget;
+    cs.renderAll();
+    const scrolledTexts = collectTexts(cs);
     return {
       section: state.section,
       stateTerms: state.glossaryTerms,
-      glossaryMedallionLoaded: cs.textures.exists('ui-icon-codex-glossary-medallion'),
       glossaryMedallions,
       hasTab: texts.includes('Glossary'),
       hasSubtitle: texts.some((t) => /keywords/.test(t)),
       hasWingbeat: texts.some((t) => t === 'Wingbeat'),
       hasMolt: texts.some((t) => t === 'Molt'),
       hasOpenSky: texts.some((t) => t === 'Open Sky'),
-      hasOverextensionSummary: texts.some((t) => /Playing too many cards/.test(t)),
+      hasOverextensionSummary: scrolledTexts.some((t) => /Playing too many cards/.test(t)),
     };
   });
   expect(r.section).toBe('glossary');
@@ -32517,12 +32130,10 @@ test('codex: glossary lists core gameplay keywords', async ({ page }) => {
   expect(r.hasMolt).toBe(true);
   expect(r.hasOpenSky).toBe(true);
   expect(r.hasOverextensionSummary).toBe(true);
-  expect(r.glossaryMedallionLoaded).toBe(true);
-  expect(r.glossaryMedallions.length).toBeGreaterThan(0);
-  expect(r.glossaryMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.glossaryMedallions).toEqual([]);
 });
 
-test('codex: leaders tab renders roster with bespoke medallion', async ({ page }) => {
+test('codex: leaders tab renders roster with text-led navigation', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -32551,12 +32162,6 @@ test('codex: leaders tab renders roster with bespoke medallion', async ({ page }
     cs.gridScroll = 0;
     cs.gridScrollTarget = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-leader-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-leader-medallion');
-      if (ready) break;
-      await wait(50);
-    }
     const texts = collectTexts(cs);
     const leaderMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-leader-medallion')
@@ -32565,7 +32170,6 @@ test('codex: leaders tab renders roster with bespoke medallion', async ({ page }
     return {
       section: state.section,
       leaderCount: state.leaderCount,
-      leaderMedallionLoaded: cs.textures.exists('ui-icon-codex-leader-medallion'),
       leaderMedallions,
       hasTab: texts.includes('Leaders'),
       hasSubtitle: texts.some((t) => /Flock Leaders rallied/.test(t)),
@@ -32581,12 +32185,10 @@ test('codex: leaders tab renders roster with bespoke medallion', async ({ page }
   expect(r.hasFledgling).toBe(true);
   expect(r.hasSparkCaller).toBe(true);
   expect(r.hasRoostkeeper).toBe(true);
-  expect(r.leaderMedallionLoaded).toBe(true);
-  expect(r.leaderMedallions.length).toBeGreaterThan(0);
-  expect(r.leaderMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.leaderMedallions).toEqual([]);
 });
 
-test('codex: card item and enemy dossiers keep quiet surfaces while leaders retain their frames', async ({ page }) => {
+test('codex: all dossiers keep quiet surfaces without redundant art frames', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -32612,11 +32214,6 @@ test('codex: card item and enemy dossiers keep quiet surfaces while leaders reta
       cs.detailScrollTarget = 0;
       configure?.();
       cs.renderAll();
-      for (let i = 0; i < 20; i += 1) {
-        const frames = collectObjects(cs.root).filter((child: any) => child.texture?.key === 'ui-icon-codex-dossier-frame');
-        if (section !== 'leaders' || frames.some((frame: any) => frame.visible && frame.alpha > 0.8)) break;
-        await wait(50);
-      }
       const frames = collectObjects(cs.root)
         .filter((child: any) => child.texture?.key === 'ui-icon-codex-dossier-frame')
         .map((child: any) => ({ alpha: child.alpha, visible: child.visible, name: child.name }));
@@ -32650,20 +32247,12 @@ test('codex: card item and enemy dossiers keep quiet surfaces while leaders reta
     telemetry: { loaded: boolean; rendered: boolean; count: number };
   }>) {
     expect(result.detailOpen).toBe(result.id);
-    if (result.label !== 'leader') {
-      expect(result.frames).toEqual([]);
-      expect(result.telemetry).toMatchObject({ loaded: true, rendered: false, count: 0 });
-      continue;
-    }
-    expect(result.frames.length, `${result.label} frame count`).toBeGreaterThan(0);
-    expect(result.frames.some((frame) => frame.visible && frame.alpha > 0.8 && frame.name === 'codex-dossier-frame')).toBe(true);
-    expect(result.telemetry.loaded, `${result.label} telemetry loaded`).toBe(true);
-    expect(result.telemetry.rendered, `${result.label} telemetry rendered`).toBe(true);
-    expect(result.telemetry.count, `${result.label} telemetry count`).toBeGreaterThan(0);
+    expect(result.frames).toEqual([]);
+    expect(result.telemetry).toMatchObject({ loaded: true, rendered: false, count: 0 });
   }
 });
 
-test('codex: browser entries render generated frame art across sections', async ({ page }) => {
+test('codex: collection tiles omit redundant decorative entry frames', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -32688,11 +32277,6 @@ test('codex: browser entries render generated frame art across sections', async 
       cs.gridScroll = 0;
       cs.gridScrollTarget = 0;
       cs.renderAll();
-      for (let i = 0; i < 40; i += 1) {
-        const frames = collectObjects(cs.root).filter((child: any) => child.texture?.key === 'ui-icon-codex-entry-frame');
-        if (frames.some((frame: any) => frame.visible && frame.alpha > 0.25)) break;
-        await wait(50);
-      }
       const frames = collectObjects(cs.root)
         .filter((child: any) => child.texture?.key === 'ui-icon-codex-entry-frame')
         .map((child: any) => ({
@@ -32730,17 +32314,8 @@ test('codex: browser entries render generated frame art across sections', async 
     frames: Array<{ alpha: number; visible: boolean; name: string; width: number; height: number }>;
     telemetry: { loaded: boolean; rendered: boolean; count: number };
   }>) {
-    expect(result.frames.length, `${result.label} entry frame count`).toBeGreaterThan(0);
-    expect(result.frames.some((frame) => (
-      frame.visible
-      && frame.name === 'codex-entry-frame'
-      && frame.alpha > 0.25
-      && frame.width >= 200
-      && frame.height >= 90
-    )), `${result.label} visible entry frame`).toBe(true);
-    expect(result.telemetry.loaded, `${result.label} telemetry loaded`).toBe(true);
-    expect(result.telemetry.rendered, `${result.label} telemetry rendered`).toBe(true);
-    expect(result.telemetry.count, `${result.label} telemetry count`).toBeGreaterThan(0);
+    expect(result.frames, result.label).toEqual([]);
+    expect(result.telemetry).toMatchObject({ loaded: true, rendered: false, count: 0 });
   }
 });
 
@@ -33434,7 +33009,7 @@ test('next item pass supplies and Waymarks execute route and combat hooks', asyn
   expect(r.afterShadowTag.guard).toBe(2);
 });
 
-test('enemy codex: entire enemy cast renders with art and details', async ({ page }) => {
+test('enemy codex: entire cast retains art details and text-led district navigation', async ({ page }) => {
   test.setTimeout(60000);
   await boot(page);
   const r = await page.evaluate(async () => {
@@ -33464,40 +33039,24 @@ test('enemy codex: entire enemy cast renders with art and details', async ({ pag
     cs.detailId = undefined;
     cs.gridScroll = 0;
     cs.renderAll();
-    for (let i = 0; i < 40; i += 1) {
-      const ready = cs.textures.exists('ui-icon-codex-enemy-medallion')
-        && collectObjects(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-enemy-medallion');
-      if (ready) break;
-      await wait(50);
-    }
+    for (let i = 0; i < 40 && !cs.codexData; i += 1) await wait(50);
     const enemyMedallions = collectObjects(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-enemy-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    const districtMedallionKeys = [
-      'ui-icon-codex-enemy-all-medallion',
-      'ui-icon-codex-enemy-rooftops-medallion',
-      'ui-icon-codex-enemy-canals-medallion',
-      'ui-icon-codex-enemy-signals-medallion',
-      'ui-icon-codex-enemy-roost-medallion',
-    ];
-    const districtMedallions = [];
-    for (let i = 0; i < districtMedallionKeys.length; i += 1) {
-      const key = districtMedallionKeys[i];
+    const districtLabels = ['All', 'Rooftops', 'Canals', 'Signals', 'Roost'];
+    const districtTabs = [];
+    for (let i = 0; i < districtLabels.length; i += 1) {
+      const label = districtLabels[i];
       cs.activeEnemyTab = i;
       cs.detailId = undefined;
       cs.renderAll();
-      for (let tick = 0; tick < 40; tick += 1) {
-        const ready = cs.textures.exists(key)
-          && collectObjects(cs.root).some((child: any) => child.texture?.key === key);
-        if (ready) break;
-        await wait(50);
-      }
-      districtMedallions.push({
-        key,
-        loaded: cs.textures.exists(key),
-        icons: collectObjects(cs.root)
-          .filter((child: any) => child.texture?.key === key)
-          .map((child: any) => ({ alpha: child.alpha, visible: child.visible })),
+      districtTabs.push({
+        label,
+        active: collectObjects(cs.root).some((child: any) => child.name === 'codex-tab-surface'
+          && child.getData('label') === label && child.getData('active')),
+        interactive: collectObjects(cs.root).some((child: any) => child.name === 'codex-tab-hit'
+          && child.getData('label') === label && child.input?.enabled),
+        count: cs.currentCodexEnemies().length,
       });
     }
     cs.activeEnemyTab = 0;
@@ -33537,9 +33096,8 @@ test('enemy codex: entire enemy cast renders with art and details', async ({ pag
       hasFashion: reserveTexts.some((t) => /FASHION DIRECTION/.test(t)),
       hasRuntimeArt: cs.textures.exists('enemy-roof_rat'),
       hasReserveArt: cs.textures.exists('reserve-enemy-mole_tunnelbreaker'),
-      enemyMedallionLoaded: cs.textures.exists('ui-icon-codex-enemy-medallion'),
       enemyMedallions,
-      districtMedallions,
+      districtTabs,
     };
   });
   expect(r.count).toBe(81);
@@ -33553,13 +33111,10 @@ test('enemy codex: entire enemy cast renders with art and details', async ({ pag
   expect(r.hasFashion).toBe(true);
   expect(r.hasRuntimeArt).toBe(true);
   expect(r.hasReserveArt).toBe(true);
-  expect(r.enemyMedallionLoaded).toBe(true);
-  expect(r.enemyMedallions.length).toBeGreaterThan(0);
-  expect(r.enemyMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
-  expect(r.districtMedallions.every((entry: { loaded: boolean }) => entry.loaded)).toBe(true);
-  expect(r.districtMedallions.every((entry: { icons: Array<{ alpha: number; visible: boolean }> }) => (
-    entry.icons.some((icon) => icon.visible && icon.alpha > 0.9)
-  ))).toBe(true);
+  expect(r.enemyMedallions).toEqual([]);
+  expect(r.districtTabs.map((entry: { label: string }) => entry.label)).toEqual(['All', 'Rooftops', 'Canals', 'Signals', 'Roost']);
+  expect(r.districtTabs.every((entry: { active: boolean; interactive: boolean; count: number }) =>
+    entry.active && entry.interactive && entry.count > 0)).toBe(true);
 });
 
 test('promoted reserve enemies can surface in generated route encounters', async ({ page }) => {

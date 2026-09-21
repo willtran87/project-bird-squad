@@ -40,14 +40,15 @@ function supplyDrawerSummary(payload: Record<string, unknown>) {
   const controls = isRecord(drawer.controls) ? drawer.controls : undefined;
   const name = text(focused?.name) || 'empty slot';
   const timing = spaced(text(focused?.timing));
-    const details = (text(focused?.rules) || text(focused?.description) || text(focused?.summary)).replace(/[.!?]+$/, '');
+  const details = drawer.reading ? '' : (text(focused?.rules) || text(focused?.description) || text(focused?.summary)).replace(/[.!?]+$/, '');
+  const reading = inspectionPageSummary(drawer.reading, text(controls?.read) || 'Read more');
   const availability = focused?.usable === false && focused?.empty !== true
     ? ' It belongs to the other phase and cannot be used here.'
     : '';
   const action = armed
     ? `${name} is selected. Use ${text(controls?.confirm) || 'Confirm, controller A, or a second activation'} to consume it. Back clears the selection and keeps it packed.`
     : `Use ${text(controls?.select) || 'Previous, Next, D-pad, or pointer'} to browse. Activate once to select; ${text(controls?.confirm) || 'Confirm, controller A, or a second activation'} consumes it.`;
-  return `Packed Supplies. ${packed.length} item${packed.length === 1 ? '' : 's'} packed.${focused?.empty === true ? ` Focused empty slot ${focusIndex + 1}.` : ` Focused ${packedPosition} of ${packed.length}, ${name}${timing ? `, ${timing} timing` : ''}.${details ? ` ${details}.` : ''}`}${availability} ${action} ${text(controls?.close) || 'Back or controller B'} closes the Run Kit.`;
+  return `Packed Supplies. ${packed.length} item${packed.length === 1 ? '' : 's'} packed.${focused?.empty === true ? ` Focused empty slot ${focusIndex + 1}.` : ` Focused ${packedPosition} of ${packed.length}, ${name}${timing ? `, ${timing} timing` : ''}.${details ? ` ${details}.` : ''}`}${reading}${availability} ${action} ${text(controls?.close) || 'Back or controller B'} closes the Run Kit.`;
 }
 
 function waymarkDrawerSummary(payload: Record<string, unknown>) {
@@ -295,6 +296,8 @@ function describeScreen(payload: unknown): string {
     const folioSummary = ` Flight Folios ${number(folios?.count) ?? 0} active of ${number(folios?.capacity) ?? 6}, and ${number(folios?.archivedCount) ?? 0} archived of ${number(folios?.archiveCapacity) ?? 24}. Viewing ${archiveView ? 'Archive' : 'Active'}.${selectedFolio ? ` Selected ${text(selectedFolio.name)}, ${text(selectedFolio.leader)}, ${number(selectedFolio.cardCount) ?? 0} cards, revision ${number(selectedFolio.revision) ?? 1}${selectedFolio.favorite === true ? ', favorite' : ''}${selectedFolio.archived === true ? ', archived' : ''}, folder ${text(selectedFolio.folderLabel)}${selectedTags.length > 0 ? `, labels ${selectedTags.join(', ')}` : ''}, cover ${text(selectedFolio.coverCardName)}, card back ${text(selectedFolio.sleeveLabel)}${text(selectedFolio.description) ? `, description ${text(selectedFolio.description)}` : ''}.` : archiveView ? ' The Archive is empty.' : ' Build from an owned leader starter, save a deck from Route Deck Review, or import a flight code.'}${folioStatus} Archived Folios preserve their identity and never affect gameplay power. BSF version ${number(shareCode?.version) ?? 1} codes use a checksum and exclude account data, custom names, flight seeds, private notes, folders, labels, descriptions, cover choices, and sleeves.${folios?.viewActive === true ? ` Use K, controller right shoulder, or pointer to build from an owned starter; Previous and Next to select; O or controller A to organize; C or controller X to favorite; R or controller Y to rename; A or controller Start to ${archiveView ? 'restore' : 'archive'}; V or controller Select to switch libraries; D or controller left trigger to fork without changing the original; E or controller right trigger to copy a share code; I or controller left stick to import; and L or controller right stick to open the Flight Lab.` : ''}`;
     return `Flock Record. ${current}.${milestoneSummary}${showcaseSummary}${folioSummary} Press Confirm to select, or Back to return.`;
   }
+
+  if (!settingsOpen && payload.paused !== true && payload.pauseOverlayOpen !== true && text(payload.flockStatsReading)) return text(payload.flockStatsReading);
 
   if (scene === 'RouteScene' || mode === 'routeSelection') {
     const event = isRecord(payload.nodeChoice) ? payload.nodeChoice : undefined;
@@ -660,6 +663,10 @@ function describeScreen(payload: unknown): string {
     const position = number(focus?.index);
     const count = number(focus?.count);
     const detail = text(payload.detailOpen);
+    if (section === 'glossary' && detail && isRecord(payload.glossaryEntry)) {
+      const entry = payload.glossaryEntry;
+      return `Codex, glossary. ${text(entry.term)}. ${text(entry.category)}. ${text(entry.summary)} ${text(entry.detail)} Detail open. Use Up and Down to scroll, then Confirm or Back to close.`;
+    }
     const favorites = isRecord(payload.cardFavorites) ? payload.cardFavorites : undefined;
     const protection = isRecord(payload.cardProtection) ? payload.cardProtection : undefined;
     const personalTags = isRecord(payload.personalCardTags) ? payload.personalCardTags : undefined;
@@ -764,17 +771,18 @@ function describeScreen(payload: unknown): string {
           : ` ${personalTagCount} personally tagged card${personalTagCount === 1 ? '' : 's'}.`
       : '';
     if (cardJournal?.editing === true) {
-      return `Editing the private Card Journal for ${text(cardJournal.detailName) || 'this card'}. The limit is ${number(cardJournal.maxLength) ?? 240} characters. Press Enter or controller A to save, Shift plus Enter for a new line, or Escape or controller B to cancel. The note is included in local save backups, excluded from shared deck codes, and never affects play.`;
+      return `Editing the private Card Journal for ${text(cardJournal.detailName) || 'this card'}. ${cardJournal.status === 'failed' ? 'Could not save. Your draft is still here; retry Save note or Cancel to keep the previous note. ' : ''}The limit is ${number(cardJournal.maxLength) ?? 240} characters. Choose Save note or Cancel. Press Enter or controller A to save, Shift plus Enter for a new line, or Escape or controller B to cancel. The note is included in local save backups, excluded from shared deck codes, and never affects play.`;
     }
     if (savedViews?.open === true) {
       const items = records(savedViews.items);
       const selectedIndex = Math.max(0, number(savedViews.selectedIndex) ?? 0);
       const selected = items[selectedIndex];
       const selectedName = text(selected?.name);
-      const query = text(selected?.query);
-      const criteria = selected
-        ? `${text(selected.tabLabel) || 'Cards'}, ${text(selected.lensLabel) || 'All'} lens, ${query ? `search ${query}` : 'no search'}, ${text(selected.sortLabel) || 'Binder'} order`
-        : 'No saved view selected';
+      const current = isRecord(savedViews.current) ? savedViews.current : undefined;
+      const describeCriteria = (view: Record<string, unknown>) =>
+        `${text(view.tabLabel) || 'Cards'}, ${text(view.lensLabel) || 'All'} lens, ${text(view.query) ? `search ${text(view.query)}` : 'no search'}, ${text(view.sortLabel) || 'Binder'} order`;
+      const currentCriteria = current ? ` Current view to save: ${describeCriteria(current)}.` : '';
+      const criteria = selected ? describeCriteria(selected) : 'No saved view selected';
       const status = text(savedViews.status);
       const statusText = status === 'saved'
         ? ' View saved.'
@@ -787,7 +795,7 @@ function describeScreen(payload: unknown): string {
               : status === 'failed'
                 ? ' The view could not be stored; nothing changed.'
                 : '';
-      return `Saved Collection Views open. ${items.length} of ${number(savedViews.capacity) ?? 4} saved.${selectedName ? ` Selected ${selectedIndex + 1} of ${items.length}, ${selectedName}: ${criteria}.` : ' No saved views yet; save the current combination.'}${statusText} Use Up and Down to choose, Confirm or controller A to apply, Control plus S or controller X to save the current view, Delete or controller Y to remove the selected view, or B, controller Select, or Back to close. Saved views are private, included in complete save backups, and never affect card power, ownership, or reward odds.`;
+      return `Saved Collection Views open. ${items.length} of ${number(savedViews.capacity) ?? 4} saved.${currentCriteria}${selectedName ? ` Selected ${selectedIndex + 1} of ${items.length}, ${selectedName}: ${criteria}.` : ' No saved views yet; save the current combination.'}${statusText} Use Up and Down to choose, Confirm or controller A to apply, Control plus S or controller X to save the current view, Delete or controller Y to remove the selected view, or B, controller Select, or Back to close. Saved views are private, included in complete save backups, and never affect card power, ownership, or reward odds.`;
     }
     const cardJournalState = section === 'cards' && detail
       ? detailJournalNote
@@ -852,7 +860,7 @@ function describeScreen(payload: unknown): string {
           ? ' New to collection. Choose Mark Seen, press N, or use controller LT to acknowledge this marker.'
           : ''
         : newCardCount > 0
-          ? ` ${newCardCount} new card marker${newCardCount === 1 ? '' : 's'}. Use N, controller LT, or Clear All to acknowledge them without changing ownership.`
+          ? ` ${newCardCount} new card marker${newCardCount === 1 ? '' : 's'}. Use N, controller LT, or Mark all seen to acknowledge them without changing ownership.`
           : ' No new card markers.'
       : '';
     const collectionLensState = section === 'cards' && !detail
@@ -861,13 +869,13 @@ function describeScreen(payload: unknown): string {
     const activeFilterItems = records(activeFilters?.chips)
       .filter((chip) => chip.clearAll !== true);
     const activeFiltersState = section === 'cards' && !detail && activeFilterItems.length > 0
-      ? ` Active filter chips: ${activeFilterItems.map((chip) => `${text(chip.label)}, ${text(chip.value)}`).join('; ')}. Focus a chip and press Confirm, Delete, or controller A to remove it individually, or choose Clear All to reset search and lens together. The current set and sorting stay in place.`
+      ? ` Active filter chips: ${activeFilterItems.map((chip) => `${text(chip.label)}, ${text(chip.value)}`).join('; ')}. Focus a chip and press Confirm, Delete, or controller A to remove it individually, or choose Clear filters to reset search and lens together. The current set and sorting stay in place.`
       : '';
     const cardSearchState = section === 'cards' && !detail
       ? cardSearch?.editing === true
         ? ` Find cards field active.${searchQuery ? ` Current query ${searchQuery}.` : ''} Type to filter, Enter to apply, or Escape to cancel.`
         : searchQuery
-          ? ` Find cards query ${searchQuery}, ${searchMatches} match${searchMatches === 1 ? '' : 'es'} in ${searchScope}; ${searchVisible} visible after the collection lens.${typoMatches > 0 ? ` Typo-tolerant matching helped with ${typoMatches} result${typoMatches === 1 ? '' : 's'}.` : ''}${cardSearch?.empty === true ? ' No card matches every search term. Check spelling, remove the Search chip, or choose Clear All.' : ''} Use slash or controller RB to edit or clear it.`
+          ? ` Find cards query ${searchQuery}, ${searchMatches} match${searchMatches === 1 ? '' : 'es'} in ${searchScope}; ${searchVisible} visible after the collection lens.${typoMatches > 0 ? ` Typo-tolerant matching helped with ${typoMatches} result${typoMatches === 1 ? '' : 's'}.` : ''}${cardSearch?.empty === true ? ' No card matches every search term. Check spelling, remove the Search chip, or choose Clear filters.' : ''} Use slash or controller RB to edit or clear it.`
           : ' Use slash or controller RB to find cards by name, rules, keyword, character, set, type, cost, rarity, ownership, saved Folio usage, personal tag, private journal, showcase status, or protection status. Search tolerates conservative misspellings while requiring every term to match.'
       : '';
     const cardSortState = section === 'cards' && !detail

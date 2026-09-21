@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { KEYWORDS, buildKeywordTokens } from './game/keyword-definitions';
 import { observeChoiceInput } from './game/choice-input-hints';
 import { eventChoiceState, eventChoiceHint, handleEventChoice, renderEventChoiceReader } from './game/route-event-reading';
 import { endPracticeSession, practiceStartingDeck, renderPracticeBadge } from './game/practice-session';
@@ -5778,6 +5779,10 @@ class RouteScene extends Phaser.Scene {
     });
     const onRouteGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: { index?: number }) => {
       if (this.settingsOverlayOpen || this.pauseOverlayOpen) return;
+      if (this.flockOverlayOpen) {
+        if (button.index === 1) this.closeFlockOverlay();
+        return;
+      }
       if (this.waymarkDrawerOpen && (button.index === 4 || button.index === 5)) {
         this.waymarkReviewModule?.changeWaymarkPage(this, button.index === 4 ? -1 : 1);
         return;
@@ -5802,6 +5807,7 @@ class RouteScene extends Phaser.Scene {
         else if (this.waymarkDrawerOpen) this.toggleRouteWaymarkPin();
         else if (this.deckOverlayOpen && !this.deckReviewSearchActive) this.toggleDeckReviewComparison();
       } else if (button.index === 3) {
+        if (this.supplyDrawerOpen) { this.routeSupplyDrawerModule?.turnSupplyDrawerPage(this); return; }
         if (handleEventChoice(this, 'inspect')) return;
         if (this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'inspect')) return;
         if (this.deckOverlayOpen && !this.deckReviewSearchActive) this.saveCurrentDeckToFolio();
@@ -5933,7 +5939,8 @@ class RouteScene extends Phaser.Scene {
         if (!this.routeEssentialAssetsReady) return;
         this.togglePauseOverlay();
       },
-      roost: () => {
+      roost: (event) => {
+        if (this.supplyDrawerOpen) { if (!event?.repeat) this.routeSupplyDrawerModule?.turnSupplyDrawerPage(this); return; }
         if (this.waymarkDrawerOpen) { this.toggleRouteWaymarkPin(); return; }
         if (!handleEventChoice(this, 'inspect')) this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'inspect');
       },
@@ -6053,14 +6060,14 @@ class RouteScene extends Phaser.Scene {
       this.renderRouteSupplyFeedbackStrip();
     }
     if (this.deckOverlayOpen) this.renderMapDeckOverlay();
-    if (this.flockOverlayOpen) this.renderRouteFlockOverlay();
-    if (this.waymarkDrawerOpen) this.renderRouteWaymarkDrawer();
     if (this.marketOpen) this.renderMarketOverlay();
     if (this.nodeChoiceOpen) this.renderNodeChoiceOverlay();
     if (this.pendingRouteReward) this.renderRouteCardRewardOverlay();
     if (this.cardPickerMode) this.renderCardPickerOverlay();
     if (contractChoiceOpen) this.renderDistrictContractChoice();
     if (!this.confirmExitOpen) this.renderRunHud();
+    if (this.waymarkDrawerOpen) this.renderRouteWaymarkDrawer();
+    if (this.flockOverlayOpen) this.renderRouteFlockOverlay();
     if (this.supplyDrawerOpen) this.renderRouteSupplyDrawer();
     renderEventChoiceReader(this);
     if (this.confirmExitOpen) this.renderConfirmExitOverlay();
@@ -12589,6 +12596,7 @@ class RouteScene extends Phaser.Scene {
         onClose: () => this.closeWaymarkDrawer(),
         onSelect: (id) => this.selectRouteWaymark(id),
         onPin: () => this.toggleRouteWaymarkPin(),
+        onScroll: (rows) => this.scrollRouteWaymarks(rows),
       });
       return;
     }
@@ -12672,13 +12680,12 @@ class RouteScene extends Phaser.Scene {
   }
 
   private scrollRouteWaymarks(deltaRows: number) {
+    if (!this.waymarkDrawerOpen || this.pauseOverlayOpen || this.settingsOverlayOpen) return;
     const marks = this.ownedRouteMarkDefs();
     const maxScrollRows = Math.max(0, Math.ceil(marks.length / 3) - 2);
     const next = clamp(this.routeWaymarkScroll + deltaRows, 0, maxScrollRows);
     if (next === this.routeWaymarkScroll) return;
     this.routeWaymarkScroll = next;
-    const selectedColumn = Math.max(0, marks.findIndex((mark) => mark.id === this.selectedRouteWaymark()?.id)) % 3;
-    this.routeWaymarkSelectedId = marks[Math.min(marks.length - 1, next * 3 + selectedColumn)]?.id;
     this.renderAll();
   }
 
@@ -14471,7 +14478,8 @@ class BattleScene extends Phaser.Scene {
         }
         if (!this.cycleBattleInspectMode(1)) this.cycleControllerChoice(1);
       },
-      roost: () => {
+      roost: (event) => {
+        if (this.supplyDrawerOpen) { if (!event?.repeat) this.battleSupplyDrawerModule?.turnSupplyDrawerPage(this); return; }
         if (this.waymarkDrawerOpen) { this.waymarkReviewModule?.battleWaymarkAction(this, 'pin'); return; }
         if (this.mode === 'waymarkReward') { this.openWaymarkRewardDetail(); return; }
         if (
@@ -14583,6 +14591,7 @@ class BattleScene extends Phaser.Scene {
           this.handleBattleSkipOrRunKit();
           break;
         case 3: // Y
+          if (this.supplyDrawerOpen) { this.battleSupplyDrawerModule?.turnSupplyDrawerPage(this); break; }
           if (this.mode === 'waymarkReward') { this.openWaymarkRewardDetail(); break; }
           if (
             (this.mode === 'cardReward' || this.mode === 'upgradeReward')
@@ -21216,38 +21225,7 @@ class BattleScene extends Phaser.Scene {
       goldColor: UI_GOLD,
       softColor: UI_SOFT,
       cyanColor: UI_CYAN,
-      reducedMotion: prefersReducedMotion(),
-      inputHint: `UP / DOWN CARD  |  ${controlBindingLabel('previous')} / ${controlBindingLabel('next')} ZONE  |  LB / RB PAGE  |  ${controlBindingLabel('back')} CLOSE`,
-      detailsLabel: `Full rules · ${controlBindingLabel('guide')} / R3`,
-      assets: {
-        pileReviewFrame: uiIconAssets['combat-pile-review-frame'].key,
-        pileRowFrame: uiIconAssets['combat-pile-row-frame'].key,
-        pileScrollButtonFrame: uiIconAssets['combat-pile-scroll-button-frame'].key,
-        pileCountBadge: uiIconAssets['combat-pile-count-badge'].key,
-        pileDetailChipFrame: uiIconAssets['combat-pile-detail-chip-frame'].key,
-        pileStatChipFrame: uiIconAssets['combat-pile-stat-chip-frame'].key,
-        pileTitlePlaque: uiIconAssets['combat-pile-title-plaque'].key,
-        pilePageIndicatorFrame: uiIconAssets['combat-pile-page-indicator-frame'].key
-      },
-      decorators: {
-        addFlourish: (frame, mode) => {
-          addDeckReviewFlourish(this, (obj) => this.root.add(obj), frame, {
-            alpha: mode === 'discard' ? 0.1 : 0.12,
-            tint: mode === 'draw' ? 0xdffaff : mode === 'cleared' ? 0xe7c8ff : undefined,
-            yOffset: 10
-          });
-        },
-        addTitlePlaque: () => { addDeckReviewTitlePlaque(this, (obj) => this.root.add(obj), 342, 104, 430, 78, { alpha: 0.84 }); },
-        addSectionTab: () => { addDeckReviewSectionTabFrame(this, (obj) => this.root.add(obj), 194, 174, 136, 32, { alpha: 0.82 }); },
-        addRowFrame: (x, y, selected, upgraded) => { addDeckReviewRowFrame(this, (obj) => this.root.add(obj), x, y, { selected, upgraded }); },
-        addPageIndicator: () => { addDeckReviewPageIndicatorFrame(this, (obj) => this.root.add(obj), 462, 641); },
-        addDetailFrame: () => Boolean(addDeckReviewDetailFrame(this, (obj) => this.root.add(obj), DECK_DETAIL_LAYOUT.panelCx, DECK_DETAIL_LAYOUT.panelCy, 672, 466, { alpha: 0.68, glint: true })),
-        addCostBadge: (x, y, size, zero, selected) => { addDeckReviewCostBadge(this, (obj) => this.root.add(obj), x, y, size, { zero, selected }); },
-        addMetaChip: (x, y, selected, upgraded) => { addDeckReviewMetaChipFrame(this, (obj) => this.root.add(obj), x, y, 92, 24, { selected, upgraded }); }
-      },
-      renderPanel: (cx, cy, width, height, accent) => renderFieldPanel(this, (obj) => this.root.add(obj), cx, cy, width, height, { accent, fill: UI_FIELD.ink }),
-      renderClose: (x, y) => renderCloseControl(this, (obj) => this.root.add(obj), x, y, () => this.closeOverlay()),
-      addIcon: (icon, x, y, size) => addUiIconImage(this, icon as UiIconId, x, y, size),
+      onClose: () => { playUiSound('close'); this.closeOverlay(); },
       renderSnagArt: (cardId, x, y, width, height, alpha) => {
         const card = cardsById.get(cardId);
         return card ? renderSnagCardBorder(this, (obj) => this.root.add(obj), card, x, y, width, height, alpha) : false;
@@ -25501,49 +25479,6 @@ function suitFxMeta(suit: string | null | undefined) {
 // and a player-facing definition. Used to color keywords inside card effect
 // text and to pop an explanatory tooltip on hover (see renderRichText).
 // ---------------------------------------------------------------------------
-interface KeywordDef { color: string; def: string }
-const KEYWORDS: Record<string, KeywordDef> = {
-  Cover: { color: '#7ab8d6', def: 'Temporary shielding. Absorbs incoming damage, then clears at the end of your turn - unless your Nests keystone is holding it over.' },
-  Cohesion: { color: '#8fd6a0', def: "The flock's health. When Cohesion reaches 0, the run ends." },
-  Resonance: { color: '#c39bff', def: 'A Plumes resource. Bank it, then spend it on Resonance cards for amplified effects.' },
-  'Resonance Burst': { color: UI_CYAN, def: 'A Plumes payoff that spends all of your banked Resonance at once for a large effect.' },
-  Winded: { color: '#c98bff', def: "A Quills counter. High Winded weakens the flock's hits but supercharges Winded-payoff cards; it ticks down over time." },
-  Fouled: { color: '#8bd2a0', def: 'A poison-like pressure. It damages Cohesion at the start of your turn, then ticks down by 1.' },
-  'Winded Burst': { color: '#c98bff', def: 'A Quills payoff that converts accumulated Winded into a burst of damage.' },
-  Molt: { color: '#ff9d4d', def: 'A whole-turn transform stance. Non-Molt cards cost 1 less, cards use alternate abilities, and the first positive damage, Cover, or recovery gains Molt Power. Roost leaves Open Sky.' },
-  'Open Sky': { color: UI_GOLD, def: 'Exposed. Incoming damage is increased until it ticks down. Open Sky Guard cancels it, one point per stack.' },
-  'Open Sky Guard': { color: '#cfe3a3', def: "Cancels Open Sky's damage increase - one point per stack." },
-  Flow: { color: '#67d4e6', def: 'Momentum built by playing cards. Full Flow creates Surge; taking unblocked damage resets Flow.' },
-  Surge: { color: UI_CYAN, def: 'Full Flow. The flock gains +1 damage and +1 Cover until an unblocked hit breaks Flow.' },
-  Scatter: { color: '#ff7a6e', def: 'Below 34% Cohesion, damage and Cover fall to 75% until the flock heals enough to Regroup.' },
-  Hold: { color: '#9fd0e0', def: 'The steady mid formation - neither broken nor surging.' },
-  Wingbeat: { color: '#ffd97a', def: 'Stored momentum that grants extra Energy on a later turn.' },
-  Regen: { color: '#8fd6a0', def: 'Restores a set amount of Cohesion at the start of each of your turns.' },
-  Energy: { color: '#ffd54a', def: 'Spent to play cards. Refreshes at the start of each turn.' },
-  Draw: { color: '#bcd2e6', def: 'Pull cards from your draw pile into your hand. An empty draw pile reshuffles the discard.' },
-  Discard: { color: '#b6a0c8', def: 'Send cards from your hand to the discard pile.' },
-  Retain: { color: '#8fd6a0', def: 'Keep cards in hand through Roost. The selected card is kept first; remaining slots keep the rightmost unplayed cards.' },
-  Keystone: { color: '#ffd97a', def: 'A suit aura unlocked by holding 5+ cards of one suit, granting a passive bonus all combat.' },
-};
-const KEYWORD_LIST = Object.keys(KEYWORDS).sort((a, b) => b.length - a.length);
-
-// Split text into word tokens, fusing multi-word keyword phrases (e.g. "Open
-// Sky") into a single keyword token. Trailing punctuation is tolerated.
-function buildKeywordTokens(text: string): Array<{ text: string; kw?: string }> {
-  const words = text.split(/\s+/).filter(Boolean);
-  const tokens: Array<{ text: string; kw?: string }> = [];
-  for (let i = 0; i < words.length;) {
-    let matched = false;
-    for (let n = Math.min(3, words.length - i); n >= 1 && !matched; n--) {
-      const raw = words.slice(i, i + n).join(' ');
-      const stripped = raw.replace(/[.,;:!)]+$/, '').replace(/^[(]+/, '');
-      const canonical = KEYWORD_LIST.find((k) => k.toLowerCase() === stripped.toLowerCase());
-      if (canonical) { tokens.push({ text: raw, kw: canonical }); i += n; matched = true; }
-    }
-    if (!matched) { tokens.push({ text: words[i] }); i++; }
-  }
-  return tokens;
-}
 
 let activeKwTooltip: { scene: Phaser.Scene; container: Phaser.GameObjects.Container; owner?: Phaser.GameObjects.GameObject; keyword: string } | undefined;
 function keywordTooltipState(scene: Phaser.Scene) {
@@ -27960,7 +27895,7 @@ interface FlockStatRow { label: string; base: number; bonus: number; total: numb
 
 // Flock Stats rows from a set of cards. Shared by the in-battle Flock Stats
 // overlay and the route-map Flock view so both read identically.
-function buildFlockStatRows(cards: Card[], maxHp: number, energyBonus = 0, openSkyGuardCurrent = 0): FlockStatRow[] {
+function buildFlockStatRows(cards: Card[], maxHp: number, energyBonus = 0, openSkyGuardCurrent?: number): FlockStatRow[] {
   const stats = aggregateFlockStats(cards);
   return [
     { label: 'Cohesion', base: BASE_COHESION, bonus: stats.cohesion ?? 0, total: maxHp },
@@ -27972,7 +27907,7 @@ function buildFlockStatRows(cards: Card[], maxHp: number, energyBonus = 0, openS
     { label: 'Regen', base: 0, bonus: stats.regen ?? 0, total: stats.regen ?? 0 },
     { label: 'Start Resonance', base: 0, bonus: stats.resonance ?? 0, total: stats.resonance ?? 0 },
     { label: 'Molt Power', base: BASE_MOLT_POWER, bonus: stats.moltPower ?? 0, total: BASE_MOLT_POWER + (stats.moltPower ?? 0) },
-    { label: 'Open Sky Guard', base: 0, bonus: stats.openSkyGuard ?? 0, total: Math.max(stats.openSkyGuard ?? 0, openSkyGuardCurrent) },
+    { label: 'Open Sky Guard', base: 0, bonus: stats.openSkyGuard ?? 0, total: openSkyGuardCurrent ?? stats.openSkyGuard ?? 0 },
   ];
 }
 

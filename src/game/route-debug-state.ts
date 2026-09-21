@@ -425,6 +425,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
           })),
         },
         flockOverlayOpen: scene.flockOverlayOpen,
+        flockStatsReading: scene.flockOverlayOpen ? scene.children.getByName('flock-stats-reader')?.getData('summary') : undefined,
         confirmExitOpen: scene.confirmExitOpen,
         flockStatsFlourish: {
           loaded: scene.textures.exists(uiIconAssets['flock-stats-flourish'].key),
@@ -526,6 +527,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
         supplyDrawerOpen: scene.supplyDrawerOpen,
         supplyDrawer: {
           open: scene.supplyDrawerOpen,
+          reading: scene.supplyDrawerOpen ? scene.routeSupplyDrawerModule?.supplyDrawerReading(scene) : undefined,
           focusIndex: scene.supplyDrawerFocusIndex,
           inputActive: scene.supplyDrawerInputActive,
           armedIndex: scene.supplyDrawerArmedIndex,
@@ -552,6 +554,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
             open: `${controlBindingLabel('skipReward')} / controller X`,
             select: 'Previous / Next / Arrow keys / Tab / D-pad / pointer',
             confirm: `${controlBindingLabel('confirm')} / controller A / second tap`,
+            read: `${controlBindingLabel('roost')} / controller Y / Read more`,
             close: `${controlBindingLabel('back')} / controller B`,
           },
         },

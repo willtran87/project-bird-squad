@@ -347,8 +347,10 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
     : undefined;
   return {
     ...state,
+    flockStatsReading: battle.inspectOverlay === 'flock' ? battle.root?.getByName('flock-stats-reader')?.getData('summary') : undefined,
     supplyDrawer: {
       open: Boolean(battle.supplyDrawerOpen),
+      reading: battle.supplyDrawerOpen ? battle.battleSupplyDrawerModule?.supplyDrawerReading(battle) : undefined,
       focusIndex: battle.supplyDrawerFocusIndex ?? 0,
       inputActive: Boolean(battle.supplyDrawerInputActive),
       armedIndex: battle.supplyDrawerArmedIndex,
@@ -375,6 +377,7 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
         open: `${controlBindingLabel('skipReward')} / controller X`,
         select: 'Previous / Next / Arrow keys / Tab / D-pad / pointer',
         confirm: `${controlBindingLabel('confirm')} / controller A / second tap`,
+        read: `${controlBindingLabel('roost')} / controller Y / Read more`,
         close: `${controlBindingLabel('back')} / controller B`,
       },
     },

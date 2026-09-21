@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
 import { MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
+import { fitTextExcerpt } from '../text-excerpt';
+import { bindChoiceHint } from '../choice-input-hints';
+import { controlBindingLabel } from '../input-bindings';
 
 export type BattleInspectMode = 'deck' | 'draw' | 'discard' | 'cleared';
 
@@ -31,39 +34,6 @@ export interface BattleInspectCardView {
   snag: boolean;
 }
 
-export interface BattleInspectFrame {
-  cx: number;
-  cy: number;
-  w: number;
-  h: number;
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
-}
-
-export interface BattleInspectAssets {
-  pileReviewFrame: string;
-  pileRowFrame: string;
-  pileScrollButtonFrame: string;
-  pileCountBadge: string;
-  pileDetailChipFrame: string;
-  pileStatChipFrame: string;
-  pileTitlePlaque: string;
-  pilePageIndicatorFrame: string;
-}
-
-export interface BattleInspectDecorators {
-  addFlourish: (frame: BattleInspectFrame, mode: BattleInspectMode) => void;
-  addTitlePlaque: () => void;
-  addSectionTab: () => void;
-  addRowFrame: (x: number, y: number, selected: boolean, upgraded: boolean) => void;
-  addPageIndicator: () => void;
-  addDetailFrame: () => boolean;
-  addCostBadge: (x: number, y: number, size: number, zero: boolean, selected: boolean) => void;
-  addMetaChip: (x: number, y: number, selected: boolean, upgraded: boolean) => void;
-}
-
 export interface BattleInspectRenderContext {
   scene: Phaser.Scene;
   target: Phaser.GameObjects.Container;
@@ -85,14 +55,7 @@ export interface BattleInspectRenderContext {
   goldColor: string;
   softColor: string;
   cyanColor: string;
-  reducedMotion: boolean;
-  inputHint: string;
-  detailsLabel: string;
-  assets: BattleInspectAssets;
-  decorators: BattleInspectDecorators;
-  renderPanel: (cx: number, cy: number, width: number, height: number, accent: number) => BattleInspectFrame;
-  renderClose: (x: number, y: number) => void;
-  addIcon: (icon: string, x: number, y: number, size: number) => Phaser.GameObjects.Image | undefined;
+  onClose: () => void;
   renderSnagArt: (cardId: string, x: number, y: number, width: number, height: number, alpha: number) => boolean;
   onInspect: (cardId: string) => void;
   onRead: () => void;
@@ -101,29 +64,13 @@ export interface BattleInspectRenderContext {
   onConfirmSound: () => void;
 }
 
-const PANEL = { w: 1060, h: 570, cx: 640, cy: 360, headerIconX: 392, headerIconY: 58, closeX: 76, closeY: 56 };
 const DETAIL = {
-  panelCx: 826,
-  panelCy: 379,
-  panelW: 620,
-  panelH: 430,
   artX: 664,
   artY: 402,
   artW: 236,
   artH: 354,
-  costX: 550,
-  costY: 200,
   textX: 810,
   textW: 296,
-  titleY: 184,
-  metaY: 234,
-  targetY: 262,
-  statusY: 292,
-  currentHeaderY: 322,
-  currentBodyY: 346,
-  alternateHeaderY: 430,
-  alternateBodyY: 454,
-  statsHeaderY: 512,
 };
 
 function textureReady(scene: Phaser.Scene, key: string) {
@@ -132,48 +79,27 @@ function textureReady(scene: Phaser.Scene, key: string) {
   return true;
 }
 
-function addIcon(context: BattleInspectRenderContext, icon: string, x: number, y: number, size: number, alpha = 0.9) {
-  const image = context.addIcon(icon, x, y, size);
-  if (image) context.target.add(image.setAlpha(alpha));
-}
-
-function addCountBadge(context: BattleInspectRenderContext, x: number, y: number, size: number, alpha = 0.86) {
-  if (!textureReady(context.scene, context.assets.pileCountBadge)) return;
-  context.target.add(context.scene.add.image(x, y, context.assets.pileCountBadge)
-    .setDisplaySize(size, size)
-    .setAlpha(alpha)
-    .setName('combat-pile-count-badge'));
-}
-
 function renderZoneCount(
   context: BattleInspectRenderContext,
   mode: BattleInspectMode,
   label: string,
-  icon: string,
   value: number,
   x: number,
   accent: number,
 ) {
-  const y = 153;
+  const y = 146;
   const active = context.mode === mode;
-  context.target.add(context.scene.add.rectangle(x, y + 1, 70, 56, active ? 0x102736 : 0x07101c, active ? 0.98 : 0.64)
+  context.target.add(context.scene.add.rectangle(x, y, 236, 58, active ? 0x102736 : 0x07101c, active ? 0.98 : 0.64)
     .setStrokeStyle(active ? 2 : 1, active ? 0x8df4ff : accent, active ? 0.96 : 0.34)
     .setName(`combat-pile-zone-${mode}-frame`));
-  context.target.add(context.scene.add.text(x, y - 8, `${value}`, {
+  context.target.add(context.scene.add.text(x, y, `${label} · ${value}`, {
     fontFamily: context.fontFamily,
-    fontSize: '18px', resolution: 2,
+    fontSize: '20px', resolution: 2,
     fontStyle: context.boldFontStyle,
     color: '#ffffff',
-  }).setOrigin(0.5));
-  context.target.add(context.scene.add.text(x, y + 14, label, {
-    fontFamily: context.fontFamily,
-    fontSize: '13px', resolution: 2,
-    fontStyle: context.boldFontStyle,
-    color: active ? '#dffbff' : '#aab9c6',
-    align: 'center',
-    fixedWidth: 64,
-  }).setOrigin(0.5));
-  const hit = context.scene.add.rectangle(x, y + 1, 70, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
+  }).setOrigin(0.5).setName(`combat-pile-zone-${mode}-label`));
+  if (active) context.target.add(context.scene.add.rectangle(x, y + 26, 212, 3, 0x8df4ff, 1));
+  const hit = context.scene.add.rectangle(x, y, 236, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
     .setInteractive({ useHandCursor: true })
     .setName(`combat-pile-zone-${mode}-hit`)
     .setData('mode', mode)
@@ -186,51 +112,39 @@ function renderZoneCount(
   context.target.add(hit);
 }
 
-function renderHeader(context: BattleInspectRenderContext, frame: BattleInspectFrame) {
-  const deck = context.mode === 'deck';
-  context.decorators.addFlourish(frame, context.mode);
-  context.renderClose(frame.right - PANEL.closeX, frame.top + PANEL.closeY);
-  addIcon(
-    context,
-    context.mode === 'discard'
-      ? 'discard-basket'
-      : context.mode === 'draw'
-        ? 'draw-stack'
-        : context.mode === 'cleared'
-          ? 'release-card'
-          : 'deck-stack',
-    frame.left + PANEL.headerIconX,
-    frame.top + PANEL.headerIconY,
-    28,
-  );
-  if (deck) {
-    context.decorators.addTitlePlaque();
-  } else if (textureReady(context.scene, context.assets.pileTitlePlaque)) {
-    context.target.add(context.scene.add.image(318, 104, context.assets.pileTitlePlaque)
-      .setDisplaySize(390, 72)
-      .setAlpha(0.82)
-      .setName('combat-pile-title-plaque'));
-  }
-  context.target.add(context.scene.add.text(140, 80, context.title, {
+function renderHeader(context: BattleInspectRenderContext) {
+  const close = context.scene.add.rectangle(1048, 78, 176, 58, 0x14232e, 1)
+    .setStrokeStyle(1, 0x536574, 1).setInteractive({ useHandCursor: true }).setName('combat-pile-close-hit');
+  close.on('pointerdown', context.onClose);
+  close.on('pointerover', () => close.setStrokeStyle(2, 0x8df4ff, 1));
+  close.on('pointerout', () => close.setStrokeStyle(1, 0x536574, 1));
+  context.target.add(close);
+  const back = context.scene.add.text(1048, 78, '', {
+    fontFamily: context.fontFamily, fontSize: '20px', resolution: 2, color: '#edf3f6',
+  }).setOrigin(0.5).setName('combat-pile-close-label');
+  context.target.add(back);
+  bindChoiceHint(context.scene, back, mode => mode === 'pointer' ? 'Back' : `Back · ${mode === 'controller' ? 'B' : controlBindingLabel('back')}`);
+  context.target.add(context.scene.add.text(142, 61, context.title, {
     fontFamily: context.fontFamily,
     fontSize: '30px', resolution: 2,
     fontStyle: context.boldFontStyle,
     color: context.goldColor,
-    stroke: '#020409',
-    strokeThickness: deck ? 4 : 0,
-  }));
-  renderZoneCount(context, 'deck', 'DECK', 'deck-stack', context.deckCount, 144, 0xd8a840);
-  renderZoneCount(context, 'draw', 'DRAW', 'draw-stack', context.drawCount, 220, 0x8df4ff);
-  renderZoneCount(context, 'discard', 'DISCARD', 'discard-basket', context.discardCount, 296, 0xffb86b);
-  renderZoneCount(context, 'cleared', 'CLEARED', 'release-card', context.clearedCount, 372, 0xc98bff);
-  context.target.add(context.scene.add.text(540, 139, context.inputHint, {
+  }).setName('combat-pile-title'));
+  renderZoneCount(context, 'deck', 'Deck', context.deckCount, 252, 0xd8a840);
+  renderZoneCount(context, 'draw', 'Draw', context.drawCount, 510, 0x8df4ff);
+  renderZoneCount(context, 'discard', 'Discard', context.discardCount, 768, 0xffb86b);
+  renderZoneCount(context, 'cleared', 'Cleared', context.clearedCount, 1026, 0xc98bff);
+  const hint = context.scene.add.text(546, 609, '', {
     fontFamily: context.fontFamily,
-    fontSize: '14px', resolution: 2,
-    fontStyle: context.boldFontStyle,
+    fontSize: '18px', resolution: 2,
     color: '#b9c9d8',
-    wordWrap: { width: 500 },
-    maxLines: 2,
-  }).setName('combat-pile-input-hint'));
+    wordWrap: { width: 590, useAdvancedWrap: true }, lineSpacing: 3,
+  }).setName('combat-pile-input-hint');
+  context.target.add(hint);
+  bindChoiceHint(context.scene, hint, mode => mode === 'pointer'
+    ? 'Choose a pile, then a card.\nFull rules reads without playing it.'
+    : mode === 'controller' ? 'D-pad: card / pile · LB / RB: page\nR3: full rules · B: back'
+    : `Up / Down: card · ${controlBindingLabel('previous')} / ${controlBindingLabel('next')}: pile\n${controlBindingLabel('guide')}: full rules · ${controlBindingLabel('back')}: back`);
 }
 
 function renderScrollButton(
@@ -241,16 +155,9 @@ function renderScrollButton(
   enabled: boolean,
 ) {
   const accent = enabled ? 0xd8a840 : 0x3f4c58;
-  const button = context.scene.add.rectangle(x, y, 40, 32, enabled ? 0x0d1420 : 0x0a0e15, enabled ? 0.94 : 0.7)
+  const button = context.scene.add.rectangle(x, y, 58, 58, enabled ? 0x0d1420 : 0x0a0e15, enabled ? 0.94 : 0.7)
     .setStrokeStyle(1.5, accent, enabled ? 0.82 : 0.46);
   context.target.add(button);
-  if (textureReady(context.scene, context.assets.pileScrollButtonFrame)) {
-    context.target.add(context.scene.add.image(x, y, context.assets.pileScrollButtonFrame)
-      .setDisplaySize(54, 42)
-      .setAlpha(enabled ? 0.72 : 0.34)
-      .setTint(enabled ? 0xffffff : 0x9dadba)
-      .setName('combat-pile-scroll-button-frame'));
-  }
   context.target.add(context.scene.add.text(x, y, direction === 'up' ? '↑' : '↓', {
     fontFamily: context.fontFamily, fontSize: '24px', resolution: 2,
     color: enabled ? '#edf3f6' : '#6e8391',
@@ -280,8 +187,7 @@ function renderRow(context: BattleInspectRenderContext, card: BattleInspectCardV
     fontStyle: context.boldFontStyle, color: selected ? '#f6f2df' : '#cfdae1',
     wordWrap: { width: 246, useAdvancedWrap: true }, lineSpacing: 1,
   }).setOrigin(0, 0.5).setName('combat-pile-row-title');
-  const lines = name.getWrappedText();
-  name.setText(lines.slice(0, 2).join('\n') + (lines.length > 2 ? '…' : ''));
+  fitTextExcerpt(name, card.name, 2);
   context.target.add(name);
   if (selected) {
     context.target.add(context.scene.add.rectangle(x + 150, y + 15, 326, MIN_SUPPORTED_TOUCH_TARGET, 0x06151b, 0.02)
@@ -301,7 +207,7 @@ function renderCardArt(context: BattleInspectRenderContext, card: BattleInspectC
   if (card.artKey && textureReady(context.scene, card.artKey)) {
     context.target.add(context.scene.add.image(DETAIL.artX, DETAIL.artY, card.artKey)
       .setDisplaySize(DETAIL.artW, DETAIL.artH)
-      .setAlpha(0.92));
+      .setAlpha(1).setName('combat-pile-card-art'));
     return;
   }
   if (card.snag && context.renderSnagArt(card.id, DETAIL.artX, DETAIL.artY, DETAIL.artW, DETAIL.artH, 0.92)) {
@@ -321,13 +227,7 @@ function renderCardArt(context: BattleInspectRenderContext, card: BattleInspectC
 }
 
 function renderDetail(context: BattleInspectRenderContext, card: BattleInspectCardView) {
-  const accent = card.upgraded ? 0x24d0d6 : card.type === 'major' ? 0xd8a840 : 0x7ab8d6;
-  context.renderPanel(DETAIL.panelCx, DETAIL.panelCy, DETAIL.panelW, DETAIL.panelH, accent);
-  // Keep the authored frame and illustration, without a second animated frame or nested chips.
-  if (textureReady(context.scene, context.assets.pileReviewFrame)) {
-    context.target.add(context.scene.add.image(DETAIL.panelCx, DETAIL.panelCy, context.assets.pileReviewFrame)
-      .setDisplaySize(672, 466).setAlpha(0.32).setName('combat-pile-review-frame'));
-  }
+  // The canonical card frame belongs to the artwork, not a second UI frame.
   renderCardArt(context, card);
   const text = (y: number, value: string, size: number, color = '#dce8f2', name = '') => {
     const object = context.scene.add.text(DETAIL.textX, y, value, {
@@ -359,16 +259,20 @@ function renderDetail(context: BattleInspectRenderContext, card: BattleInspectCa
   hit.on('pointerover', () => hit.setStrokeStyle(2, 0x8df4ff, 1));
   hit.on('pointerout', () => hit.setStrokeStyle(1, 0x71b8c6, 0.85));
   hit.on('pointerdown', () => { context.onConfirmSound(); context.onRead(); });
-  text(548, context.detailsLabel, 18, '#edf3f6', 'combat-pile-read-label')
+  const read = text(548, '', 18, '#edf3f6', 'combat-pile-read-label')
     .setPosition(DETAIL.textX + DETAIL.textW / 2, 548).setOrigin(0.5).setFontStyle(context.boldFontStyle);
+  bindChoiceHint(context.scene, read, mode => mode === 'pointer' ? 'Full rules'
+    : `Full rules · ${mode === 'controller' ? 'R3' : controlBindingLabel('guide')}`);
 }
 
 
 export function renderBattleInspect(context: BattleInspectRenderContext) {
   context.target.add(context.scene.add.rectangle(context.width / 2, context.height / 2, context.width, context.height, 0x020409, 0.76)
     .setInteractive({ useHandCursor: false }));
-  const frame = context.renderPanel(PANEL.cx, PANEL.cy, PANEL.w, PANEL.h, 0xd8a840);
-  renderHeader(context, frame);
+  context.target.add(context.scene.add.rectangle(640, 360, 1060, 640, 0x070d15, 1)
+    .setStrokeStyle(1, 0x536574, 0.8).setName('combat-pile-panel'));
+  context.target.add(context.scene.add.rectangle(520, 385, 1, 400, 0x536574, 0.5));
+  renderHeader(context);
   const cards = [...context.cards].sort((a, b) => {
     const zoneOrder = a.zoneRank - b.zoneRank;
     return zoneOrder !== 0 ? zoneOrder : a.name.localeCompare(b.name);
@@ -377,27 +281,17 @@ export function renderBattleInspect(context: BattleInspectRenderContext) {
   const scroll = Phaser.Math.Clamp(context.scroll, 0, maxScroll);
   const selected = cards.find((card) => card.id === context.selectedCardId) ?? cards[0];
   cards.slice(scroll, scroll + context.visibleRows).forEach((card, index) => renderRow(context, card, index, selected?.id === card.id));
-  renderScrollButton(context, 480, 214, 'up', scroll > 0);
-  renderScrollButton(context, 480, 610, 'down', scroll < maxScroll);
-  if (context.mode === 'deck') context.decorators.addPageIndicator();
-  else if (textureReady(context.scene, context.assets.pilePageIndicatorFrame)) {
-    context.target.add(context.scene.add.image(462, 641, context.assets.pilePageIndicatorFrame)
-      .setDisplaySize(126, 36)
-      .setAlpha(0.72)
-      .setName('combat-pile-page-indicator-frame'));
-  }
+  renderScrollButton(context, 486, 214, 'up', scroll > 0);
+  renderScrollButton(context, 486, 610, 'down', scroll < maxScroll);
   const pageText = cards.length === 0
     ? '0 / 0'
     : `${scroll + 1}-${scroll + Math.min(context.visibleRows, cards.length - scroll)} / ${cards.length}`;
-  context.target.add(context.scene.add.text(462, 641, pageText, {
+  context.target.add(context.scene.add.text(290, 628, pageText, {
     fontFamily: context.fontFamily,
-    fontSize: '12px',
+    fontSize: '18px', resolution: 2,
     color: '#b9c9d8',
     align: 'center',
-    fixedWidth: 100,
-    stroke: '#000000',
-    strokeThickness: 2,
-  }).setOrigin(0.5));
+  }).setOrigin(0.5).setName('combat-pile-position'));
   if (selected) renderDetail(context, selected);
   else context.target.add(context.scene.add.text(662, 190, 'No cards in this pile.', {
     fontFamily: context.fontFamily,

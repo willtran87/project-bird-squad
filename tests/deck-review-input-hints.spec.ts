@@ -22,7 +22,7 @@ for (const remapped of [false, true]) test(`Deck Review hints follow input witho
     return { text: label.text, mode: label.getData('inputMode'), size: label.style.fontSize,
       bottom: label.getBounds().bottom, top: label.getBounds().top, lines: label.getWrappedText().length,
       paging: r.children.getByName('deck-review-comparison-hint')?.text,
-      panelBottom: r.children.getByName('deck-review-comparison-panel')?.getBounds().bottom };
+      panelBottom: (r.children.getByName('deck-review-comparison-panel') ?? r.children.getByName('deck-review-detail-panel'))?.getBounds().bottom };
   });
   const before = await page.evaluate(() => JSON.stringify((window as any).__birdSquadGame.scene.getScene('RouteScene').runState));
   expect((await hints()).text).toBe('Select a card to read its rules · Pin to compare');
@@ -49,8 +49,8 @@ for (const remapped of [false, true]) test(`Deck Review hints follow input witho
         await page.mouse.click(point.x, point.y);
       }
       const h = await hints();
-      expect(h.mode).toBe(mode); expect(h.size).toBe('16px');
-      expect(h.lines).toBeLessThanOrEqual(2); expect(h.bottom).toBeLessThanOrEqual(637);
+      expect(h.mode).toBe(mode); expect(h.size).toBe('18px');
+      expect(h.lines).toBeLessThanOrEqual(2); expect(h.bottom).toBeLessThanOrEqual(698);
       if (h.panelBottom) expect(h.top - h.panelBottom).toBeGreaterThanOrEqual(6);
       if (h.paging) expect(h.paging).toBe(mode === 'controller' ? 'LB / RB: pages' : mode === 'keyboard' ? 'PgUp / PgDn: pages' : 'Use Previous / Next');
       await page.screenshot({ path: info.outputPath(`review-${width}-${mode}.png`) });

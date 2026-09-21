@@ -278,13 +278,14 @@ export function renderRouteDeckBrowser(scene: Phaser.Scene, view: RouteDeckBrows
     view.onSaveDeck,
     view.savedDecks.status === 'saved',
   );
-  scene.add.text(826, 617, '', {
+  // Keep the input guide below both the single-card and comparison readers.
+  scene.add.text(640, 672, '', {
     fontFamily: UI_FONT,
-    fontSize: '16px',
+    fontSize: '18px',
     fontStyle: UI_BOLD,
     color: '#b9d6e3',
-    fixedWidth: 568,
-    wordWrap: { width: 568, useAdvancedWrap: true },
+    fixedWidth: 1008,
+    wordWrap: { width: 1008, useAdvancedWrap: true },
     align: 'center',
   }).setOrigin(0.5).setResolution(2).setName('deck-review-control-guide').setData('searchActive', view.searchActive);
   refreshReviewHints(scene);

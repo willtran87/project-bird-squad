@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import type { BattleHandCardPreviewView } from './render-hand';
+import { combatCardKeywordSections } from '../keyword-definitions';
 
 export interface CardDetailContext {
   scene: Phaser.Scene;
@@ -24,6 +25,7 @@ export function renderCombatCardDetail(context: CardDetailContext, card: BattleH
       ...(card.sequence ? [{ heading: 'PLAY NOW · EFFECT ORDER', body: card.sequence }] : []),
       ...(card.alternateText ? [{ heading: card.alternateLabel ?? 'ALTERNATE', body: card.alternateText }] : []),
       { heading: 'PASSIVE FLOCK CONTRIBUTION', body: `${card.upgraded ? 'Preened. ' : ''}${card.stats || 'No passive contribution.'}\n\nThese are this card’s contributions, not an additional effect each time it is played. The combat outcome preview includes current modifiers.` },
+      ...combatCardKeywordSections(card),
     ],
   });
 }

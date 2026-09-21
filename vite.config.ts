@@ -80,6 +80,8 @@ export default defineConfig(({ command }) => ({
           ) return 'runtime-data';
           if (
             moduleId.includes('/src/game/input-bindings')
+            // Already boot-used by rich text; do not let a lazy reader absorb it.
+            || moduleId.includes('/src/game/keyword-definitions')
             || moduleId.includes('/src/game/effects/retain')
           ) return 'interaction-rules';
           if (
