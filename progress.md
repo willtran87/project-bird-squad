@@ -1,5 +1,54 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-09-22 — complete contextual terms in card comparisons
+
+- Continued C05 with game-development, Bird Squad layout-audit, high-resolution
+  visual testing and Phaser text guidance. Frontend-checklist service tools were
+  unavailable; used local source and built-browser checks without claiming a
+  full-corpus audit. Started from clean main a269f982. Preserved theme and artwork.
+- Both Base/Preened and pinned-card comparisons now explain terms from the
+  displayed rules, passive bonuses and costs. Expanded shared section matching
+  to include PREENED RULES, with a unit assertion. Names and advice remain excluded.
+- Definitions follow existing differences/rules/summary in one shared 22px,
+  full-width measured reader. Both card identities remain visible; the body
+  divider disappears for definitions and returns with the 20px two-column rules.
+  Existing 58px paging, read-only narration and reading-position ownership remain.
+- New comparison-keyword-reading tests cover Preen, different-card and all-21-term
+  stress contexts. Reassemble every definition exactly across pages; measure all
+  definition bounds and touch targets at 2560x1600, 1440x900 and 1000x560; exercise
+  keyboard, touch, controller events, remapped Back, pause/resume, redraw retention,
+  layout restoration and unchanged run/selection/Pin while reading. Closing the
+  whole Deck Review correctly clears its UI selection/Pin without changing the run.
+- Initial test incorrectly expected Pin to survive closing the whole drawer.
+  Corrected its closing assertion after inspecting closeDeckOverlay; no product
+  behavior changed for the test. All preceding reading/geometry assertions passed.
+  Final browser suites pass 7/7 each in Chromium and Firefox: 14 scoped checks.
+  Existing full-rule/long-word comparison and
+  default/remapped hint regressions are included, with no retries.
+- Production build index-mR0pTkhb.js passes TypeScript, runtime data/assets,
+  world/FX contracts, deployment-cache and unchanged hard bundle caps. Comparison
+  lazy chunk 5.9/2.6 KiB; entry 679.8/178.3, boot 719.1/193.4 KiB minified/gzip.
+  Preferred startup targets remain open. No new dependency, asset or gameplay wait.
+- Inspected built comparison captures at all three sizes in
+  .artifacts/comparison-terms-firefox and final-browser folders. The required shared
+  client completed two bursts; inspected .artifacts/comparison-terms-client/shot-1.png
+  and state-1.json: full-art BattleScene, turn 1, energy 2, Roof Rat 22/27, no
+  pending/failed/timed-out asset groups and no browser-error artifact.
+- Commands: npm run build -- --base=/project-bird-squad/; npm run validate:runtime;
+  npm run validate:runtime-assets; npm run validate:bundle-size; npm run
+  validate:deployment-cache; npx playwright test --config
+  .artifacts/comparison-terms.config.ts tests/comparison-keyword-reading.spec.ts
+  tests/deck-review-polish.spec.ts tests/deck-review-input-hints.spec.ts
+  tests/decision-keyword-reading.spec.ts --grep "comparison|Deck Review hints|decision terms"
+  (Chromium and Firefox, one worker per engine).
+- Remaining: item contextual terms and full vocabulary accuracy, reference journey,
+  art consistency, startup targets, human balance/fun evidence and physical-device/AT
+  qualification. No whole-backlog completion claim, commit, push or publication.
+- Cleanup: owned test runners and browsers exited normally; removed temporary
+  config/action payload, retained ignored screenshot/log evidence. Requested hidden
+  preview remains at port 43383, PID 22868, serving index-mR0pTkhb.js with HTTP 200.
+  No unrelated processes or previously blocked deletion targets were touched.
+
 ## 2026-09-21 — contextual card terms at decision time
 
 - Continued C05/I04 using the game-development, UI-layout, high-resolution,

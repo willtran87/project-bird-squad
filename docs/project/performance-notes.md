@@ -1,5 +1,15 @@
 # Performance Notes
 
+## September 22 2026 — shared comparison definitions
+
+Build `index-mR0pTkhb.js`: entry 679.8/178.3 KiB minified/gzip; combined boot
+719.1/193.4 KiB. Card comparison grows from 5.5/2.5 to 5.9/2.6 KiB, within its
+unchanged 6 KiB cap. All hard caps pass; preferred startup targets remain open.
+Definitions reuse the boot-shared canonical vocabulary and existing measured
+pagination, with no new dependency, asset, timer or preload. Text width/font
+changes occur only while constructing or paging the reader, not every frame.
+No startup-speed or physical-device performance improvement is claimed.
+
 ## September 21 2026 — contextual decision-card definitions
 
 Build `index-CaYXTu_B.js`: entry 679.7/178.3 KiB minified/gzip; combined boot

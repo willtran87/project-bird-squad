@@ -752,6 +752,20 @@ P2 = expansion after the foundation is proven.
 | Q04 | P0 | Tie release claims to current revision, evidence, open defects and explicit waivers. Existing policy retained. **Partial.** |
 | Q05 | P0 | Track remaining scope honestly; clean launched test resources and leave only the requested preview. **Partial.** |
 
+### September 22 — comparison contextual-reading checkpoint
+
+C05 comparison access is now implemented for both pinned-card and Base/Preened
+views. Existing differences, complete rules and summary remain first. Relevant
+canonical definitions follow as one shared, measured 22px reading page at a time,
+not duplicate text in narrow columns. Both card identities stay visible. Returning
+to comparison restores the 20px two-column layout. Definitions come from displayed
+rules, passive bonuses and costs, excluding identity and advice. Keyboard, touch,
+controller events, pause/resume, narration and unchanged run/selection checks are
+covered; all 21 canonical definitions fit across the three supported test sizes.
+The comparison-access remainder in C05 above is superseded by this checkpoint;
+item-context access, vocabulary accuracy and physical-device/AT testing remain.
+This does not close C05 or the overall roadmap.
+
 Delivery order: D/V/C/I/X reference foundation → F/U/R end-to-end polish →
 G/E balance and variety → P progression/story → T/Q release qualification.
 Automated checks can prove geometry and state integrity; they cannot establish

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { comparisonPagingHint } from './deck-review-hints';
+import { decisionCardKeywordSections } from './keyword-definitions';
 
 export interface SceneCardComparisonCardView {
   name: string;
@@ -59,7 +60,7 @@ export function renderSceneCardComparison(scene: Phaser.Scene, view: SceneCardCo
   const panel = scene.add.rectangle(826, 377, 620, 426, 0x070b12, 0.99)
     .setStrokeStyle(1, 0x8df4ff, 0.42).setName('deck-review-comparison-panel');
   text(826, 183, view.title ?? 'CARD COMPARISON', 16, 570).setOrigin(0.5).setColor('#ffe1a3').setFontStyle('bold');
-  scene.add.rectangle(826, 374, 1, 302, 0x8df4ff, 0.2);
+  const divider = scene.add.rectangle(826, 374, 1, 302, 0x8df4ff, 0.2);
   const cards = [view.pinned, view.selected];
   const headings = [view.leftHeading ?? 'PINNED', view.rightHeading ?? 'SELECTED'];
   const columns = cards.map((card, i) => {
@@ -88,7 +89,7 @@ export function renderSceneCardComparison(scene: Phaser.Scene, view: SceneCardCo
       body: text(x, 347, '').setName(`deck-review-comparison-body-${i}`),
     };
   });
-  const pages: Array<{ headings: string[]; bodies: string[] }> = [];
+  const pages: Array<{ headings: string[]; bodies: string[]; term?: boolean }> = [];
   const sections = cards.map(card => [
     { heading: card.currentLabel ?? (card.usesMolt ? 'NOW · MOLT' : 'NOW'), body: card.currentText },
     { heading: card.alternateLabel ?? (card.usesMolt ? 'BASE' : 'PREEN'), body: card.alternateText },
@@ -144,6 +145,12 @@ export function renderSceneCardComparison(scene: Phaser.Scene, view: SceneCardCo
   const summaries = paginate(columns[0].body, view.summary);
   for (const body of summaries) pages.push({ headings: ['COMPARISON SUMMARY', 'READING ONLY'],
     bodies: [body, 'Pin the selected card to preview Base and Preened rules. No upgrade is applied here.'] });
+  // Explain the pair once, at full reading width, after its actual differences.
+  const termBody = columns[0].body;
+  termBody.setFontSize(22).setWordWrapWidth(580, true);
+  for (const term of decisionCardKeywordSections(sections.flat().map(section => ({ title: section.heading, text: section.body })))) {
+    for (const body of paginate(termBody, term.text)) pages.push({ headings: [term.title], bodies: [body], term: true });
+  }
   const key = JSON.stringify({ sections, costs: cards.map(card => card.cost), targets: cards.map(card => card.target) }) + view.summary;
   const state = reading.get(scene)?.key === key ? reading.get(scene)! : { key, page: 0 };
   reading.set(scene, state);
@@ -156,7 +163,9 @@ export function renderSceneCardComparison(scene: Phaser.Scene, view: SceneCardCo
   const show = (delta: number) => {
     state.page = Phaser.Math.Clamp(state.page + delta, 0, pages.length - 1);
     const current = pages[state.page];
-    columns.forEach((column, i) => { column.heading.setText(current.headings[i]); column.body.setText(current.bodies[i]); });
+    termBody.setFontSize(current.term ? 22 : 20).setWordWrapWidth(current.term ? 580 : 270, true);
+    divider.setVisible(!current.term);
+    columns.forEach((column, i) => { column.heading.setText(current.headings[i] ?? ''); column.body.setText(current.bodies[i] ?? ''); });
     pageLabel.setText(`${state.page + 1} / ${pages.length}`);
     panel.setData('reading', { page: state.page + 1, total: pages.length, headings: current.headings, bodies: current.bodies });
     buttons.forEach((button, i) => {

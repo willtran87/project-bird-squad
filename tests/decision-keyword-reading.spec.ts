@@ -8,6 +8,7 @@ test('decision terms include displayed variants and costs, exclude identity and 
   const sections = decisionCardKeywordSections([
     { title: 'NOW', text: 'Gain 2 Open Sky Guard. Gain 4 Cover. Cover.' },
     { title: 'PREEN', text: 'Apply 2 Winded.' },
+    { title: 'PREENED RULES', text: 'Gain Cover.' },
     { title: 'MOLT · PREEN', text: 'Winded Burst. Gain 2 Wingbeats.' },
     { title: 'PASSIVE FLOCK BONUSES', text: 'Regen +1' },
     { title: 'CARD DETAILS', text: 'Hold / Scatter / Energy' },
@@ -16,6 +17,7 @@ test('decision terms include displayed variants and costs, exclude identity and 
   ]);
   expect(sections.map(s => s.title)).toEqual(['OPEN SKY GUARD', 'COVER', 'WINDED', 'WINDED BURST', 'WINGBEAT', 'REGEN', 'MOLT'].map(s => `TERM · ${s}`));
   expect(sections[0].text).toBe(KEYWORDS['Open Sky Guard'].def);
+  expect(decisionCardKeywordSections([{ title: 'PREENED RULES', text: 'Apply Winded.' }])[0].title).toBe('TERM · WINDED');
   expect(decisionCardKeywordSections([{ title: 'NOW', text: 'No special terms.' }])).toEqual([{ title: 'TERM · WINGBEAT', text: KEYWORDS.Wingbeat.def }]);
 });
 

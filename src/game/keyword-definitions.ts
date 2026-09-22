@@ -56,7 +56,7 @@ export function combatCardKeywordSections(card: BattleHandCardPreviewView) {
 
 /** Decision readers explain only displayed rules and costs, never names or advice. */
 export function decisionCardKeywordSections(sections: Array<{ title: string; text: string }>) {
-  const rules = sections.filter(section => /^(NOW|BASE|PREEN|MOLT|PASSIVE FLOCK BONUSES)(?:$|[ ·/])/.test(section.title));
+  const rules = sections.filter(section => /^(NOW|BASE|PREEN(?:ED)?|MOLT|PASSIVE FLOCK BONUSES)(?:$|[ ·/])/.test(section.title));
   const context = `${rules.map(section => section.text).join('\n')}\nWingbeat${rules.some(section => section.title.includes('MOLT')) ? ' Molt' : ''}`;
   return cardKeywordSections(context).map(section => ({ title: section.heading, text: section.body }));
 }
