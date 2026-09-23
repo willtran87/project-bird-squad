@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { controlBindingLabel, displayName, formatEffects, formatWaymarkTrigger, isSnagCard, routeMarkEffectText, supplyAccent, supplyCompactArtAssets, waymarkCompactArtAssets, UI_FONT, UI_GOLD } from '../main';
 import { alphaRouteMarkLibrary, alphaSupplyLibrary } from './runtime-data';
 import { decisionButton, decisionText } from './decision-surface';
+import { itemKeywordSections } from './keyword-definitions';
 import { DECISION_UI } from './theme';
 
 type Reading = { title: string; text: string; page: number; total: number };
@@ -143,6 +144,7 @@ export function renderSupplyInspection(scene: any) {
     { title: 'WAYMARK DETAILS', text: `${mark!.name}\n${mark!.rarity} / ${mark!.family}` },
   ] : [{ title: 'DECISION SUMMARY', text: decision.slice(0, 3).map((section, index) =>
     `${index === 2 ? 'After confirming:\n' : ''}${section.text}`).join('\n\n') }];
+  sections.push(...itemKeywordSections(sections));
   if (state.outcome) {
     for (const card of scene.pendingRouteReward.previewCards ?? []) sections.push({ title: 'COMPANION CARD',
       text: `${displayName(card)}\n${isSnagCard(card) ? 'Snag · Unplayable' : `Card · Cost: ${card.cost}`}\n${card.upgraded ? card.upgradedText ?? card.text : card.text}` });

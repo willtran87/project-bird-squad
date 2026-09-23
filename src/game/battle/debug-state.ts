@@ -25,7 +25,6 @@ export interface BattlePresentationDebugContext {
     system: DebugRoot;
   };
   counters: Record<string, unknown>;
-  keywordTooltipFrameCount: number;
 }
 
 interface TextureState {
@@ -264,13 +263,6 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
     const textureKey = uiTextureKey(field);
     state[field] = loadedTextureState(context.scene, textureKey, sceneTextureCount(context, textureKey));
   }
-
-  const keywordTooltipTexture = uiTextureKey('keywordTooltipFrame');
-  state.keywordTooltipFrame = loadedTextureState(
-    context.scene,
-    keywordTooltipTexture,
-    context.keywordTooltipFrameCount
-  );
 
   for (const field of FX_TEXTURE_FIELDS) {
     if (field === 'combatFourSuitRally') {

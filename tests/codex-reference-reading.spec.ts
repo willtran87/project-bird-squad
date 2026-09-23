@@ -1,5 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
+import { codexGlossaryTerms } from '../src/game/codex-glossary';
+import { KEYWORDS, keywordIconId } from '../src/game/keyword-definitions';
 
 test.use({ hasTouch: true });
 
@@ -13,8 +15,23 @@ async function boot(page: Page) {
     for (const s of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(s.scene.key);
     w.__birdSquadGame.scene.start('CodexScene');
   });
-  await page.waitForFunction(() => Boolean((window as any).__birdSquadGame.scene.getScene('CodexScene').codexData));
+  await page.waitForFunction(() => {
+    const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
+    return Boolean(c.codexData) && c.glossaryTerms.every((term: any) => c.textures.exists(`ui-icon-${term.icon}`));
+  });
 }
+
+test('Codex glossary contains every canonical contextual definition exactly once', () => {
+  const names = codexGlossaryTerms.map(term => term.term);
+  expect(new Set(names).size).toBe(names.length);
+  expect(codexGlossaryTerms.every(term => term.summary.trim() && term.detail.trim() && term.icon.trim())).toBe(true);
+  for (const [term, definition] of Object.entries(KEYWORDS)) {
+    expect(codexGlossaryTerms.find(entry => entry.term === term)).toMatchObject({
+      detail: definition.def,
+      icon: keywordIconId(term),
+    });
+  }
+});
 
 test('all enemy and glossary tiles fit readable text without frame clutter', async ({ page }) => {
   await boot(page);
@@ -42,13 +59,18 @@ test('all enemy and glossary tiles fit readable text without frame clutter', asy
         if (tile.getByName('codex-entry-summary').style.fontSize !== '18px') errors.push('summary too small');
         if (kind === 'enemy' && entry.source === 'reserve' && !tile.getByName('codex-entry-meta').text.startsWith('Concept')) errors.push('reserve identity lost');
         if (kind === 'enemy' && entry.typeHint === 'Boss' && !tile.getByName('codex-entry-summary').text.includes('tactics observed')) errors.push('boss progress lost');
+        if (kind === 'glossary') {
+          const icon = tile.getByName('codex-glossary-icon'), b = icon?.getBounds();
+          if (!icon || icon.texture?.key !== `ui-icon-${entry.icon}` || !b || b.left < bounds.left + 12
+            || b.right > bounds.right - 12 || b.top < bounds.top + 12 || b.bottom > bounds.bottom - 12) errors.push(`${entry.term}: icon`);
+        }
         if (tile.list.some((n: any) => n.name === 'codex-entry-frame')) errors.push('frame clutter');
         count++;
       }
     }
     return { count, errors };
   });
-  expect(result.count).toBe(106); expect(result.errors).toEqual([]);
+  expect(result.count).toBe(115); expect(result.errors).toEqual([]);
 });
 
 test('enemy and glossary grids keep deep focus, loaded art and detail return across viewports', async ({ page }, info) => {
@@ -60,7 +82,7 @@ test('enemy and glossary grids keep deep focus, loaded art and detail return acr
       c.activeSection = section; c.activeEnemyTab = 0; c.focusZone = 'entries';
       c.entryFocusIndex = 0; c.gridScroll = c.gridScrollTarget = 0; c.renderAll();
     }, section);
-    for (const index of section === 'enemies' ? [0, 40, 80] : [0, 12, 24]) {
+    for (const index of section === 'enemies' ? [0, 40, 80] : [0, 17, 33]) {
       await page.evaluate(index => {
         const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
         c.entryFocusIndex = index; c.ensureFocusedEntryVisible(); c.gridScroll = c.gridScrollTarget; c.renderAll();
@@ -82,10 +104,12 @@ test('enemy and glossary grids keep deep focus, loaded art and detail return acr
         const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
         const entry = c.codexFocusEntries()[c.entryFocusIndex], geometry = c.entryFocusGeometry();
         const tile = c.gridLayer.list.find((n: any) => n.getData('id') === entry.id), b = tile.getByName('codex-entry-hit').getBounds();
-        return { id: entry.id, scroll: c.gridScroll, x: b.centerX, y: b.centerY, geometry, top: b.top, bottom: b.bottom, shape: c.codexGridShape() };
+        return { id: entry.id, scroll: c.gridScroll, x: b.centerX, y: b.centerY, geometry, top: b.top, bottom: b.bottom,
+          topFades: c.root.list.filter((n: any) => n.name === 'codex-grid-top-fade-strip').length, shape: c.codexGridShape() };
       });
       expect(selected.geometry.x).toBeCloseTo(selected.x); expect(selected.geometry.y).toBeCloseTo(selected.y);
       expect(selected.top).toBeGreaterThanOrEqual(selected.shape.top); expect(selected.bottom).toBeLessThanOrEqual(selected.shape.bottom);
+      expect(selected.topFades).toBe(index > 0 ? 8 : 0);
       await page.keyboard.press('Enter');
       await page.waitForFunction(id => JSON.parse((window as any).render_game_to_text()).detailOpen === id, selected.id);
       await page.keyboard.press('Escape');
@@ -115,12 +139,15 @@ test('all glossary definitions are complete, readable and announced through real
     }, term);
     const result = await page.evaluate(() => {
       const c = (window as any).__birdSquadGame.scene.getScene('CodexScene'), reader = c.root.getByName('codex-glossary-reader');
-      const texts = reader.list, definition = reader.getByName('codex-glossary-definition');
+      const texts = reader.list.filter((n: any) => n.type === 'Text'), definition = reader.getByName('codex-glossary-definition');
+      const icon = reader.getByName('codex-glossary-detail-icon');
       return { definition: definition.text, size: definition.style.fontSize, errors: texts.flatMap((n: any, i: number) =>
         n.style.maxLines || n.style.resolution !== 2 || n.getBounds().right > 1024 || (i && n.y < texts[i - 1].getBounds().bottom) ? [n.name] : []),
+        icon: icon?.getData('icon'), iconTexture: icon?.texture?.key,
         bottom: definition.getBounds().bottom - c.detailMaxScroll };
     });
-    expect(result.definition).toBe(term.detail); expect(result.size).toBe('22px'); expect(result.errors).toEqual([]); expect(result.bottom).toBeLessThanOrEqual(568);
+    expect(result.definition).toBe(term.detail); expect(result.size).toBe('22px'); expect(result.errors).toEqual([]);
+    expect(result.icon).toBe(term.icon); expect(result.iconTexture).toBe(`ui-icon-${term.icon}`); expect(result.bottom).toBeLessThanOrEqual(568);
     await page.keyboard.press('Escape');
   }
   // Pointer and touch both open a definition from its visible tile.

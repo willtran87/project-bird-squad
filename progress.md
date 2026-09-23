@@ -1,5 +1,151 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-09-23 — dense status and Open Sky presentation restraint
+
+- Continued V04 on the current combat art and dark streetwear theme. Repeated
+  Winded, Ruffled, Fouled and Open Sky applications now keep one authored accent
+  of each type while it is active, rather than stacking bright duplicate art.
+  Routine status application no longer adds secondary rings, glow or particles;
+  poison damage ticks retain a distinct impact cue. Normal blending and lower
+  alpha prevent dense simultaneous effects from bleaching the flock sprite.
+- Open Sky and Overextended labels now use the same bounded side-of-flock result
+  lane as other statuses. Same-source labels combine, while every application
+  remains in ordered combat history. Mechanical status totals and timing are
+  unchanged. Inspected normal-motion Open Sky screenshots at 2560×1600 and
+  1000×560; labels, intents and hand remain clear. Automated geometry and
+  normal/reduced-motion captures cover 2560×1600, 1440×900 and 1000×560.
+- Focused tests passed for dense enemy debuffs, Open Sky exposure, Open Sky
+  Guard distinction, four-card overextension, poison ticks and a complete
+  combat encounter (8/8). Open Sky visual/state checks also pass in Chromium,
+  Firefox and WebKit (3/3); the WebKit minimum-view capture was inspected.
+  Documentation, runtime data, bundle and deployment
+  cache validation pass; combined boot is 710.2 KB, just over the preferred
+  710 KB target but under the enforced limit. The shared production browser
+  client reached a full-art interactive Rooftop Blocks route with no asset
+  failures or browser-error artifact. V04 remains partial; other passive/status
+  families, full-run visual qualification and real-player/device evidence remain.
+  No commit, push or deployment was requested.
+
+## 2026-09-23 — bounded blocked feedback and cleaner hit results
+
+- Continued V04/F02 with the web-game, Bird Squad layout audit and high-resolution
+  visual-testing guidance. Fully blocked attacks now share the capped result
+  presenter with damage, healing and Cover. Same-source blocks combine as a
+  counted label; each attack still has its own chronological history entry.
+- Moved the flock result stack into the clear gap beside its sprite. At the
+  1000×560 minimum view, the label no longer sits on the impact art; enemy
+  results remain in their existing safe lane. Removed redundant “Down!” text
+  and generic defeat particles while retaining the authored defeat burst,
+  reward sound, exact damage log and target normalization.
+- Replaced a scene-child scan on every result with the explicit caller-supplied
+  flock/enemy target. This changes presentation work only, not damage or timing.
+- Enemy-applied Winded, Ruffled and Fouled now share the flock's capped status
+  lane. Repeated same-source Winded effects show a counted cue; mechanical
+  stacks and each event's history entry remain unchanged. Normal and reduced
+  motion status screenshots pass at all three viewports.
+- Focused normal/reduced-motion numeric and incoming-hit regression coverage,
+  three-size blocked screenshots in Chromium, Firefox and WebKit, a full
+  encounter FX regression, and the shared browser client were exercised.
+  All focused scenarios passed. Production build, documentation validation,
+  bundle hard limits and whitespace checks passed; combined boot remains
+  about 0.3 KiB above its non-blocking preferred 710 KiB target.
+  The broader V04 status/passive consolidation, full-run qualification and
+  human/device evidence remain open. No commit, push or deployment was requested.
+- Cleanup: Playwright and shared-client runs exited; test port 5373 has no
+  listener. The pre-existing user preview remains available on port 43383 and
+  responds successfully. Ignored screenshots are retained as visual evidence.
+
+## 2026-09-22 — canonical gameplay icon semantics
+
+- Continued C05/C02/X01 with the game-development, Bird Squad layout-audit and
+  high-resolution visual-testing guidance. Preserved the current dark streetwear
+  theme, canonical artwork, gameplay rules and saved-run format.
+- Added one canonical icon registry for all 21 gameplay terms. HUD/stat chips,
+  contextual keyword tooltips, all 34 Codex glossary tiles and glossary detail
+  headers now resolve the same semantic icon. The 13 shared gameplay icons and
+  seven existing world/item icons are reused; no generated placeholder or new
+  image dependency was introduced.
+- Keyword help remains contextual rather than persistent: a compact semantic icon
+  now precedes the 22px title on the existing quiet surface while the complete
+  20px definition remains unchanged. All 21 terms stay bounded at five stage
+  positions and 2560x1600, 1440x900 and 1000x560. Transformed text ownership,
+  replacement cleanup, shutdown cleanup and frame-free fallback remain intact.
+- The Codex glossary now uses the same icon in its list and detail reader. Every
+  one of the 115 enemy/glossary tiles is checked for loaded art and correct bounds.
+  Deep grids add a restrained top fade so a clipped prior row no longer reads as
+  a broken empty tile; the existing lower cue and scroll/focus restoration remain.
+- Focused release evidence passes 7/7 scenarios in Chromium and 7/7 in Firefox,
+  covering the source contract, full tile catalog, deep scroll and return, all
+  glossary definitions, every tooltip icon, transformed hover lifecycle and the
+  existing tooltip smoke path. Inspected the tooltip and deep last glossary row
+  at all three target sizes in `.artifacts/keyword-icons-top-fade/` and the final
+  browser outputs in `.artifacts/keyword-icons-compact-{chromium,firefox}/`.
+- Production build `index-PU5gAUMB.js` passes TypeScript, documentation, runtime
+  data, 961 runtime assets, world/FX contracts, deployment cache, content, balance,
+  500-seed economy and diff checks. Entry is 670.2/178.2 KiB minified/gzip and
+  combined boot is 710.0/193.5 KiB, inside the unchanged 675/710 improvement
+  targets. No new timer, per-frame work, dependency or gameplay wait was added.
+- Remaining roadmap evidence is human or platform-qualified: the complete
+  reference journey and encounter/art matrix, sustained physical-device testing,
+  actual assistive-technology sessions and authentic player evidence for
+  comprehension, pacing, beauty and fun. No commit, push or publication was
+  requested in this pass.
+
+## 2026-09-22 — contextual terms across item readers
+
+- Continued C05/C02/X01 with the game-development, Bird Squad layout-audit,
+  high-resolution visual-testing, Phaser text and frontend-checklist guidance.
+  The checklist service was unavailable; used its documented local fallback.
+  Preserved the existing dark streetwear theme, item art, gameplay rules and saves.
+- Added one shared item-term policy: only authored Effect, Use, Trigger and Rules
+  copy may contribute definitions. Names, rarity, flavor, build advice, purchase
+  forecasts and item identity cannot introduce false terms. Longest phrase matching,
+  canonical definitions and written-order deduplication remain shared with cards.
+- Owned route/combat Waymark shelves now append contextual definitions after exact
+  effect order, trigger, description, details and flavor. Pinned comparison aligns
+  each term across both columns and says when one Waymark does not use it. Route
+  reward item inspection, Market Waymarks/Supplies, combat Waymark rewards and
+  Codex Supply/Waymark dossiers use the same definitions. Packed Supplies retain
+  their existing contextual pages.
+- All definitions remain opt-in behind existing pagination: no persistent HUD or
+  shelf clutter, new confirmation, timer, dependency or asset. Keyboard, remapped
+  keyboard, controller, pointer, touch, wheel, pause/settings ownership, redraw
+  retention, screen-reader narration, armed choices, selected cards and run state
+  remain intact.
+- Reconciled the Codex with the contextual vocabulary: its glossary now contains
+  34 unique entries, including all 21 canonical terms with the exact shared
+  definitions. Added Regen, Energy, Resonance Burst, Flow, Surge, Hold, Scatter,
+  Winded Burst and Keystone; the glossary data now lives in a lightweight module
+  that can be validated without eagerly importing the Codex art/lore catalogs.
+- Final focused browser evidence passes 31 checks with no retries: 8 scoped catalog
+  and definition checks in Chromium and Firefox (16); 14 adjacent Supply/Waymark
+  reward, shelf, touch, long-copy and decision regressions in Chromium; and one
+  dedicated aligned-definition visual check. Full catalogs cover 31 Supplies,
+  58 Waymarks and 89 Codex items. Explicit 120-second budgets now describe the
+  catalog/stress suites; the initial 30-second failures were duration-only and all
+  passed unchanged on rerun.
+- Inspected the aligned Cover comparison at 2560x1600, 1440x900 and 1000x560 in
+  `.artifacts/item-context-visual-rerun/`: both 18px columns remain bounded and
+  legible, controls and page count stay separated, and the minimum view is clean.
+  The expanded glossary also passes 5 scoped scenarios in both Chromium and
+  Firefox, including all 115 enemy/glossary tiles, deep focus, real-input detail
+  paging, narration and contextual combat state preservation. Inspected its last
+  entry at all three sizes in `.artifacts/glossary-reconcile-chromium/`.
+  The required shared production client reached a full-art BattleScene in 1.459s
+  with no pending, failed or timed-out asset groups or browser-error artifact;
+  inspected `.artifacts/item-keywords-shared-client-route/shot-1.png` and state.
+  A final production-client pass opened the Codex Collection Atlas without an
+  error artifact; inspected `.artifacts/shared-client/item-glossary-final/`.
+- Production build `index-BCugk8ux.js` passes TypeScript, docs, runtime data,
+  961 runtime assets, world/FX contracts, deployment cache, content, balance and
+  500-seed economy audits. Entry is 670.2 KiB and combined boot 709.7 KiB minified,
+  now below the 675/710 KiB improvement targets without changing any threshold.
+- Remaining: cross-surface icon consistency beyond the now-complete shared glossary,
+  full reference journey and encounter/art matrix, sustained-device and assistive-
+  technology qualification, and authentic player evidence for comprehension,
+  pacing, beauty and fun. This bounded pass does not close the 70-package roadmap.
+  No commit, push or publication was requested.
+
 ## 2026-09-22 — complete contextual terms in card comparisons
 
 - Continued C05 with game-development, Bird Squad layout-audit, high-resolution

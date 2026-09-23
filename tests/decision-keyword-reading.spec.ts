@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { KEYWORDS, decisionCardKeywordSections } from '../src/game/keyword-definitions';
+import { KEYWORDS, decisionCardKeywordSections, itemKeywordSections } from '../src/game/keyword-definitions';
 import { settleCanvas } from './helpers/settled-canvas';
 
 test.use({ hasTouch: true });
@@ -19,6 +19,22 @@ test('decision terms include displayed variants and costs, exclude identity and 
   expect(sections[0].text).toBe(KEYWORDS['Open Sky Guard'].def);
   expect(decisionCardKeywordSections([{ title: 'PREENED RULES', text: 'Apply Winded.' }])[0].title).toBe('TERM · WINDED');
   expect(decisionCardKeywordSections([{ title: 'NOW', text: 'No special terms.' }])).toEqual([{ title: 'TERM · WINGBEAT', text: KEYWORDS.Wingbeat.def }]);
+});
+
+test('item terms use only authored effect, trigger, use, and rules copy', () => {
+  const sections = itemKeywordSections([
+    { title: 'EFFECT', text: 'Gain 3 Cover and 1 Open Sky Guard.' },
+    { title: 'TRIGGER', text: 'After spending Wingbeat.' },
+    { title: 'RULES', text: 'Draw 1, then Retain 1.' },
+    { title: 'ITEM DETAILS', text: 'Molt / Winded' },
+    { title: 'BUILD READ', text: 'Resonance.' },
+  ]);
+  expect(sections.map(section => section.title)).toEqual([
+    'TERM · COVER', 'TERM · OPEN SKY GUARD', 'TERM · WINGBEAT', 'TERM · DRAW', 'TERM · RETAIN',
+  ]);
+  expect(sections.map(section => section.text)).toEqual([
+    KEYWORDS.Cover.def, KEYWORDS['Open Sky Guard'].def, KEYWORDS.Wingbeat.def, KEYWORDS.Draw.def, KEYWORDS.Retain.def,
+  ]);
 });
 
 type Mode = 'deck' | 'market' | 'preen' | 'release' | 'reward' | 'combatReward' | 'combatPreen';

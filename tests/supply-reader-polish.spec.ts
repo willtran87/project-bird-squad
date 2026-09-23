@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 const supplies = JSON.parse(readFileSync(new URL('../data/game/alpha-supplies.json', import.meta.url), 'utf8')).supplies;
 
 for (const remapped of [false, true]) test(`Supply inspection is complete, readable and never commits, remapped=${remapped}`, async ({ page }, info) => {
+  test.setTimeout(120_000); // Full catalog, stress-copy, and three-viewport qualification.
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });

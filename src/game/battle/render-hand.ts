@@ -3,14 +3,18 @@ import { renderCardColorCue } from '../card-color-cues';
 import { fitTextExcerpt } from '../text-excerpt';
 import { formatCardRuleGroups } from './card-rule-layout';
 import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
+import { itemKeywordSections } from '../keyword-definitions';
 import { renderCombatReader, renderCombatCardDetail as renderCardReadingPanel, renderCombatHistory as renderHistoryReadingPanel, type CardDetailContext } from './card-detail';
 
 export function renderWaymarkRewardDetail(context: Omit<CardDetailContext, 'ui' | 'minTouchTarget'>, name: string, description: string, meta: string, notes: string[]) {
+  const sections = [
+    { heading: 'EFFECT', body: description },
+    { heading: 'CONTEXT', body: `${meta}\n\n${notes.join('\n')}\n\nCard counts include conditional and Molt effects, not guaranteed triggers.\n\nBack returns to the same reward choice. Nothing is claimed here.` },
+  ];
+  sections.push(...itemKeywordSections([{ title: 'EFFECT', text: description }])
+    .map(section => ({ heading: section.title, body: section.text })));
   return renderCombatReader({ ...context, ui: DECISION_UI, minTouchTarget: MIN_SUPPORTED_TOUCH_TARGET }, {
-    name, kind: 'waymark', badge: 'Reading only', sections: [
-      { heading: 'EFFECT', body: description },
-      { heading: 'CONTEXT', body: `${meta}\n\n${notes.join('\n')}\n\nCard counts include conditional and Molt effects, not guaranteed triggers.\n\nBack returns to the same reward choice. Nothing is claimed here.` },
-    ],
+    name, kind: 'waymark', badge: 'Reading only', sections,
   });
 }
 

@@ -42,7 +42,9 @@ for (const reduced of [false, true]) {
           pending: b.combatAnimationPending,
           contacts: b.fxLayer.list.filter((o: any) => names.includes(o.name)).map((o: any) => ({ name: o.name, width: o.displayWidth, alpha: o.alpha })),
           duplicateFlashes: b.fxLayer.list.filter((o: any) => ['combat-impact-flash', 'combat-flock-impact-burst'].includes(o.name)).length,
-          numbers: b.fxLayer.list.filter((o: any) => o.name === 'combat-number-feedback').map((o: any) => o.getData('amount')),
+          numbers: b.fxLayer.list.filter((o: any) => o.name === 'combat-number-feedback').map((o: any) => ({
+            amount: o.getData('amount'), kind: o.getData('kind'), text: o.getByName('combat-number-label')?.text,
+          })),
         };
       }, amount);
       for (const width of amount === 12 ? [2560, 1440, 1000] : [2560]) {
@@ -57,7 +59,9 @@ for (const reduced of [false, true]) {
       expect.soft(state.contacts).toHaveLength(amount === 0 ? 0 : amount >= 8 ? 3 : 2);
       expect.soft(state.contacts.every(c => c.width <= 285 && c.alpha <= 0.58)).toBe(true);
       expect.soft(state.duplicateFlashes).toBe(0);
-      expect.soft(state.numbers).toEqual(amount ? [amount] : []);
+      expect.soft(state.numbers).toEqual(amount
+        ? [{ amount, kind: 'damage', text: `${amount} damage` }]
+        : [{ amount: 0, kind: 'blocked', text: 'Blocked' }]);
       const remaining = await page.evaluate(() => {
         const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene');
         b.time.paused = false; b.tweens.resumeAll(); w.advanceTime(500);

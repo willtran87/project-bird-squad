@@ -1,5 +1,29 @@
 # Performance Notes
 
+## September 22 2026 — canonical gameplay icon semantics
+
+Build `index-PU5gAUMB.js`: entry 670.2/178.2 KiB minified/gzip; combined boot
+710.0/193.5 KiB. The unchanged 675/710 KiB improvement targets and all hard caps
+pass. Canonical keyword icon data is stored with the existing shared vocabulary;
+combat preloads 13 already-authored semantic assets, while the lazy Codex reuses
+those plus seven existing world/item icons. No image, dependency, loading boundary,
+timer, per-frame lookup or gameplay delay was added. Codex remains lazy at
+154.0/40.6 KiB; interaction rules are 9.9/4.3 KiB. The focused Chromium/Firefox
+checks and production screenshots establish revision behavior, not sustained
+physical-device performance.
+
+## September 22 2026 — contextual item definitions
+
+Build `index-BCugk8ux.js`: entry 670.2/178.2 KiB minified/gzip; combined boot
+709.7/193.3 KiB. Both are below the 675/710 KiB improvement targets without a
+threshold change. The lazy Waymark reader is 7.6/3.4 KiB inside its unchanged
+8 KiB cap; reward inspection is 67.4/20.9 KiB, Codex is 153.6/40.5 KiB, and
+lazy Codex data is 282.0/88.8 KiB after adding nine missing glossary entries.
+Definitions reuse the boot-shared canonical vocabulary and existing event-driven
+pagination. No dependency, asset, preload, gameplay wait, timer or per-frame text
+work was added. The shared production client reached full-art combat in 1.459s;
+this single desktop sample is not sustained-device performance qualification.
+
 ## September 22 2026 — shared comparison definitions
 
 Build `index-mR0pTkhb.js`: entry 679.8/178.3 KiB minified/gzip; combined boot

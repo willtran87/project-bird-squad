@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { KEYWORDS, buildKeywordTokens } from './game/keyword-definitions';
+import { KEYWORDS, KEYWORD_ICON_IDS, buildKeywordTokens, keywordIconId } from './game/keyword-definitions';
 import { observeChoiceInput } from './game/choice-input-hints';
 import { eventChoiceState, eventChoiceHint, handleEventChoice, renderEventChoiceReader } from './game/route-event-reading';
 import { endPracticeSession, practiceStartingDeck, renderPracticeBadge } from './game/practice-session';
@@ -918,11 +918,6 @@ interface RenderPayload {
     count: number;
   };
   keywordTooltip?: { keyword: string; definition: string };
-  keywordTooltipFrame?: {
-    loaded: boolean;
-    rendered: boolean;
-    count: number;
-  };
   routeCommitTooltipFrame?: {
     loaded: boolean;
     rendered: boolean;
@@ -2126,13 +2121,7 @@ declare global {
       ambienceVolume?: number;
       music?: { pattern: string; active: boolean; step: number; pulses: number };
     };
-    __birdSquadShowKeywordTooltip?: (sceneKey: string, keyword: string, x: number, y: number) => {
-      shown: boolean;
-      loaded: boolean;
-      count: number;
-      sceneKey: string;
-      frame?: { displayWidth: number; displayHeight: number; alpha: number; name: string; visible: boolean };
-    };
+    __birdSquadShowKeywordTooltip?: (sceneKey: string, keyword: string, x: number, y: number) => boolean;
   }
 }
 
@@ -3308,7 +3297,6 @@ const uiIconIds = [
   'card-hover-dossier-frame',
   'card-hover-stat-chip-frame',
   'reward-choice-hover-ring',
-  'keyword-tooltip-frame',
   'codex-dossier-frame',
   'codex-entry-frame',
   'codex-art-preview-frame',
@@ -3412,6 +3400,7 @@ const uiIconIds = [
   'unlock-badge',
 ] as const;
 type UiIconId = typeof uiIconIds[number];
+const keywordUiIconIds = KEYWORD_ICON_IDS as readonly UiIconId[];
 function uiIconIdsFor(prefixes: readonly string[], extras: readonly UiIconId[] = []): UiIconId[] {
   const ids = new Set<UiIconId>(extras);
   uiIconIds.forEach((id) => {
@@ -3421,6 +3410,7 @@ function uiIconIdsFor(prefixes: readonly string[], extras: readonly UiIconId[] =
 }
 
 const battleCoreUiIconIds: UiIconId[] = [
+  ...keywordUiIconIds,
   'audio-toggle-pulse-ring',
   'audio-toggle-wave-burst',
   'battle-hud-command-rail',
@@ -3447,7 +3437,6 @@ const battleCoreUiIconIds: UiIconId[] = [
   'combat-tooltip-frame',
   'combat-waymark-feedback-frame',
   'enemy-intent-ring',
-  'keyword-tooltip-frame',
   'roost-nest',
   'route-pin',
   'scrap-gear',
@@ -3536,7 +3525,16 @@ const titleMenuCompactArtById = Object.fromEntries(
 ) as Record<string, string>;
 const codexUiIconIds = uiIconIdsFor(
   ['codex-'],
-  ['keyword-tooltip-frame']
+  [
+    ...keywordUiIconIds,
+    'cache-lockbox-medallion',
+    'preen-kit',
+    'roost-nest',
+    'route-pin',
+    'scrap-gear',
+    'supply-pouch',
+    'waymark-compass',
+  ]
 ).filter((id) => id !== 'codex-medallion');
 const uiIconAssets: Record<UiIconId, RuntimeImageAsset> = Object.fromEntries(
   uiIconIds.map((id) => [id, runtimeUiIconAsset(id)])
@@ -3842,12 +3840,9 @@ function cacheDrawerProfile(choice: NodeChoiceOption, index = 0): CacheDrawerPro
 }
 
 function hudIconForLabel(label: string): UiIconId | undefined {
+  const term = label === 'Wingbeats' ? 'Wingbeat' : label;
+  if (KEYWORDS[term]) return keywordIconId(term);
   switch (label) {
-    case 'Cohesion': return 'flock-heart';
-    case 'Cover': return 'cover-shield';
-    case 'Resonance': return 'resonance-battery';
-    case 'Wingbeat':
-    case 'Wingbeats': return 'wingbeats';
     case 'Scrap': return 'scrap-gear';
     case 'Deck': return 'deck-stack';
     case 'Waymarks': return 'waymark-compass';
@@ -3953,11 +3948,10 @@ function targetIconForTarget(target: TargetType): UiIconId {
 }
 
 function statIconForKey(key: string): UiIconId | undefined {
-  if (key === 'cohesion' || key === 'regen' || key === 'openSkyGuard') return 'flock-heart';
-  if (key === 'cover') return 'cover-shield';
-  if (key === 'resonance') return 'resonance-battery';
-  if (key === 'wingbeat' || key === 'wingbeats' || key === 'energy') return 'wingbeats';
-  if (key === 'draw') return 'deck-stack';
+  const term = key === 'openSkyGuard' ? 'Open Sky Guard'
+    : key === 'wingbeats' ? 'Wingbeat'
+      : `${key[0]?.toUpperCase()}${key.slice(1)}`;
+  if (KEYWORDS[term]) return keywordIconId(term);
   if (key === 'damage') return 'release-card';
   if (key === 'moltPower') return 'preen-kit';
   return undefined;
@@ -13988,8 +13982,15 @@ class BattleScene extends Phaser.Scene {
     if (this.battleFxPresenterModule) {
       this.battleFxPresenterModule.presentNumberFeedback(this, this.fxLayer, x, y, color, value, textPaceScale());
     } else {
-      floatingText(this, this.fxLayer, x, y, `${value.amount}${value.suffix}`, color);
+      floatingText(this, this.fxLayer, x, y, value.label ?? `${value.amount}${value.suffix}`, color);
     }
+  }
+
+  private presentFlockStatus(label: string, color: string, source: string) {
+    this.presentNumberFeedback(FLOCK_FX_X, FLOCK_FX_Y, color, {
+      target: 'flock', kind: `status:${label}`, source, amount: 0, suffix: '', label,
+      reducedMotion: prefersReducedMotion(),
+    });
   }
 
   private supplyFeedbackSummary(supply: RuntimeSupply, repeats = 1) {
@@ -16425,8 +16426,8 @@ class BattleScene extends Phaser.Scene {
     this.combatFouledPressureBursts += 1;
     const pressure = this.add.image(x, y, COMBAT_FOULED_PRESSURE_TEXTURE)
       .setDisplaySize((tick ? 268 : 248) * scale, (tick ? 201 : 186) * scale)
-      .setAlpha(tick ? 0.82 : 0.76)
-      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(tick ? 0.82 : 0.7)
+      .setBlendMode(tick ? Phaser.BlendModes.ADD : Phaser.BlendModes.NORMAL)
       .setAngle(Phaser.Math.Between(-10, 10))
       .setName('combat-fouled-pressure');
     this.fxLayer.add(pressure);
@@ -16450,9 +16451,11 @@ class BattleScene extends Phaser.Scene {
   private fouledPressureFx(value: number, tick = false) {
     const x = FLOCK_FX_X - 4;
     const y = FLOCK_FX_Y + (tick ? 12 : -4);
-    const scale = Phaser.Math.Clamp(0.9 + value * 0.05, 0.95, 1.18);
+    if (!tick && this.statusAccentActive('combat-fouled-pressure', x)) return;
+    const scale = tick ? Phaser.Math.Clamp(0.9 + value * 0.05, 0.95, 1.18)
+      : Phaser.Math.Clamp(0.76 + value * 0.04, 0.82, 1.02);
     this.combatFouledPressure(x, y, scale, tick);
-    this.sparkBurst(x, y + 12, 0x8bd2a0, Phaser.Math.Clamp(10 + value * 3, 12, 24), tick ? 150 : 130);
+    if (tick) this.sparkBurst(x, y + 12, 0x8bd2a0, Phaser.Math.Clamp(10 + value * 3, 12, 24), 150);
   }
 
   private combatRuffledBreak(x: number, y: number, scale = 1) {
@@ -16461,8 +16464,8 @@ class BattleScene extends Phaser.Scene {
     this.combatRuffledBreakBursts += 1;
     const ruffle = this.add.image(x, y, COMBAT_RUFFLED_BREAK_TEXTURE)
       .setDisplaySize(292 * scale, 219 * scale)
-      .setAlpha(0.84)
-      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0.72)
+      .setBlendMode(Phaser.BlendModes.NORMAL)
       .setAngle(Phaser.Math.Between(-9, 9))
       .setName('combat-ruffled-break');
     this.fxLayer.add(ruffle);
@@ -16486,9 +16489,14 @@ class BattleScene extends Phaser.Scene {
   private ruffledBreakFx(value: number) {
     const x = FLOCK_FX_X - 4;
     const y = FLOCK_FX_Y - 12;
-    const scale = Phaser.Math.Clamp(0.92 + value * 0.07, 0.98, 1.22);
+    if (this.statusAccentActive('combat-ruffled-break', x)) return;
+    const scale = Phaser.Math.Clamp(0.78 + value * 0.04, 0.82, 1.02);
     this.combatRuffledBreak(x, y, scale);
-    this.sparkBurst(x, y + 8, 0xff9d6b, Phaser.Math.Clamp(12 + value * 4, 14, 28), 150);
+  }
+
+  private statusAccentActive(name: string, x: number) {
+    return this.fxLayer.list.some(object => object.name === name
+      && Math.abs((object as Phaser.GameObjects.Image).x - x) < 24);
   }
 
   private combatResonanceSurge(x: number, y: number, scale = 1) {
@@ -16748,8 +16756,8 @@ class BattleScene extends Phaser.Scene {
     this.combatOpenSkyExposureBursts += 1;
     const exposure = this.add.image(x, y, COMBAT_OPEN_SKY_EXPOSURE_TEXTURE)
       .setDisplaySize(284 * scale, 213 * scale)
-      .setAlpha(0.82)
-      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0.76)
+      .setBlendMode(Phaser.BlendModes.NORMAL)
       .setAngle(Phaser.Math.Between(-10, 10))
       .setName('combat-open-sky-exposure');
     this.fxLayer.add(exposure);
@@ -16777,10 +16785,10 @@ class BattleScene extends Phaser.Scene {
     if (!this.fxLayer?.active) return;
     const x = FLOCK_FX_X;
     const y = FLOCK_FX_Y - 20;
-    floatingText(this, this.fxLayer, x, FLOCK_FX_Y - 50, label, '#ff9d4d');
-    this.combatOpenSkyExposure(x - 4, y - 14, 1);
-    this.pulseRing(x, y, 0xff9d4d, 92, 580);
-    this.sparkBurst(x, y, 0xff9d4d, 20, 155);
+    this.presentFlockStatus(label, '#ff9d4d', logMessage);
+    if (!this.statusAccentActive('combat-open-sky-exposure', x - 4)) {
+      this.combatOpenSkyExposure(x - 4, y - 14, 0.9);
+    }
   }
 
   private gainOpenSkyGuard(amount: number, source = 'Open Sky Guard') {
@@ -17384,20 +17392,8 @@ class BattleScene extends Phaser.Scene {
   }
 
   private windedFx(x: number, y: number) {
-    this.combatWindedGust(x, y - 10, 1);
-    this.fxShockwave(x, y - 8, 0xc98bff, 62, 360, -11);
-    this.fxGlowPulse(x, y - 10, 0xc98bff, 52, 320, 0.12);
-    this.playFxAnimation('fx-winded', x, y - 10, { scale: 1.42, alpha: 0.78, additive: true });
-    this.fxMoteBurst(x + 6, y - 8, 0xc98bff, {
-      count: 10,
-      speed: 92,
-      lifespan: 420,
-      angle: { min: 178, max: 352 },
-      scale: 0.48,
-      gravityY: -8,
-      spreadX: 18,
-      spreadY: 8,
-    });
+    if (this.statusAccentActive('combat-winded-gust', x)) return;
+    this.combatWindedGust(x, y - 10, 0.86);
   }
 
   private combatWindedGust(x: number, y: number, scale = 1) {
@@ -17406,8 +17402,8 @@ class BattleScene extends Phaser.Scene {
     this.combatWindedGustBursts += 1;
     const gust = this.add.image(x, y, COMBAT_WINDED_GUST_TEXTURE)
       .setDisplaySize(276 * scale, 207 * scale)
-      .setAlpha(0.74)
-      .setBlendMode(Phaser.BlendModes.ADD)
+      .setAlpha(0.7)
+      .setBlendMode(Phaser.BlendModes.NORMAL)
       .setAngle(Phaser.Math.Between(-14, 14))
       .setName('combat-winded-gust');
     this.fxLayer.add(gust);
@@ -22534,7 +22530,9 @@ class BattleScene extends Phaser.Scene {
       }
     } else {
       birdAudio.play(hadCover || blocked > 0 ? 'coverBlock' : 'block', 0.84);
-      floatingText(this, this.fxLayer, view.x, view.y - 40, 'Blocked', '#9fb1c4');
+      this.presentNumberFeedback(view.x, view.y - 40, '#9fb1c4', {
+        target: enemy.id, kind: 'blocked', source, amount: 0, suffix: '', label: 'Blocked', reducedMotion: prefersReducedMotion(),
+      });
       if (hadCover || blocked > 0) {
         const blockScale = Phaser.Math.Clamp(0.88 + blocked * 0.025, 0.92, 1.16);
         this.combatEnemyCoverBlock(view.x, view.y - 18, blockScale);
@@ -22548,8 +22546,6 @@ class BattleScene extends Phaser.Scene {
         this.combatBossPhaseBreak(view.x, view.y - 24, enemy.runtime.type === 'boss' ? 1.08 : 0.92);
       }
       this.combatDefeatBurst(view.x, view.y - 12);
-      burst(this, this.fxLayer, view.x, view.y, 0xffe1a3, 16);
-      floatingText(this, this.fxLayer, view.x, view.y + 8, 'Down!', '#ffe1a3');
       this.normalizeSelectedEnemy();
     }
     return enemy.hp <= 0;
@@ -22966,7 +22962,7 @@ class BattleScene extends Phaser.Scene {
       case 'applyWinded':
         this.flock.weak += value;
         this.logEvent(`${enemy.name} knocks the flock Winded.`);
-        floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 30, 'Winded', '#c98bff');
+        this.presentFlockStatus('Winded', '#c98bff', enemy.id);
         this.windedFx(FLOCK_FX_X, FLOCK_FX_Y);
         break;
       case 'loseWingbeat':
@@ -22977,7 +22973,7 @@ class BattleScene extends Phaser.Scene {
       case 'applyFrail':
         this.flock.frail += value;
         this.logEvent(`${enemy.name} ruffles the flock - Cover weakened.`);
-        floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 30, 'Ruffled', '#ff9d6b');
+        this.presentFlockStatus('Ruffled', '#ff9d6b', enemy.id);
         this.ruffledBreakFx(value);
         break;
       case 'applyOpenSky':
@@ -22986,7 +22982,7 @@ class BattleScene extends Phaser.Scene {
       case 'applyPoison':
         this.flock.fouled += value;
         this.logEvent(`${enemy.name} fouls the flock for ${value}.`);
-        floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 58, `Fouled ${value}`, '#8bd2a0');
+        this.presentFlockStatus(`Fouled ${value}`, '#8bd2a0', enemy.id);
         this.fouledPressureFx(value);
         break;
       case 'addSnagToDiscard': {
@@ -23278,7 +23274,10 @@ class BattleScene extends Phaser.Scene {
       birdAudio.play('block');
       this.queueFlockMotion('brace');
       this.combatCoverBlockBurst(FLOCK_FX_X, FLOCK_FX_Y + 18, 1.02);
-      floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 8, 'Blocked', '#7ab8d6');
+      this.presentNumberFeedback(FLOCK_FX_X, FLOCK_FX_Y, '#7ab8d6', {
+        target: 'flock', kind: 'blocked', source: `${enemy.id}:${moveLabel}`, amount: 0, suffix: '', label: 'Blocked',
+        reducedMotion: prefersReducedMotion(),
+      });
       this.coverImpactFx(FLOCK_FX_X, FLOCK_FX_Y, 0x7ab8d6);
     }
   }
@@ -24175,8 +24174,7 @@ class BattleScene extends Phaser.Scene {
         fx: this.fxLayer,
         system: this.systemOverlayLayer
       },
-      counters: this as unknown as Record<string, unknown>,
-      keywordTooltipFrameCount: 0
+      counters: this as unknown as Record<string, unknown>
     }) ?? {};
     return {
       mode: this.mode,
@@ -25483,7 +25481,11 @@ function suitFxMeta(suit: string | null | undefined) {
 let activeKwTooltip: { scene: Phaser.Scene; container: Phaser.GameObjects.Container; owner?: Phaser.GameObjects.GameObject; keyword: string } | undefined;
 function keywordTooltipState(scene: Phaser.Scene) {
   return activeKwTooltip?.scene === scene && activeKwTooltip.container.active
-    ? { keyword: activeKwTooltip.keyword, definition: KEYWORDS[activeKwTooltip.keyword].def }
+    ? {
+      keyword: activeKwTooltip.keyword,
+      definition: KEYWORDS[activeKwTooltip.keyword].def,
+      icon: keywordIconId(activeKwTooltip.keyword),
+    }
     : undefined;
 }
 function hideKwTooltip(scene?: Phaser.Scene) {
@@ -25494,20 +25496,24 @@ function showKwTooltip(scene: Phaser.Scene, kw: string, atX: number, atY: number
   hideKwTooltip();
   const def = KEYWORDS[kw];
   if (!def) return;
+  const iconId = keywordIconId(kw);
   const textW = 360, padding = 20;
-  const title = scene.add.text(padding, padding, kw.toUpperCase(), {
-    fontFamily: UI_FONT, fontSize: '22px', fontStyle: UI_BOLD, color: def.color, resolution: 2,
-    wordWrap: { width: textW, useAdvancedWrap: true },
+  const icon = addUiIconImage(scene, iconId, padding + 15, padding + 15, 14)
+    ?.setName('keyword-tooltip-icon').setData('keyword', kw).setData('icon', iconId);
+  const titleX = icon ? padding + 42 : padding;
+  const title = scene.add.text(titleX, padding, kw.toUpperCase(), {
+    fontFamily: UI_FONT, fontSize: '22px', fontStyle: UI_BOLD, color: def.c, resolution: 2,
+    wordWrap: { width: textW - (titleX - padding), useAdvancedWrap: true },
   }).setName('keyword-tooltip-title').setData('fullText', kw.toUpperCase());
   const body = scene.add.text(padding, padding + title.height + 8, def.def, {
     fontFamily: UI_FONT, fontSize: '20px', color: '#dbe6f2', resolution: 2, lineSpacing: 3,
     wordWrap: { width: textW, useAdvancedWrap: true },
   }).setName('keyword-tooltip-body').setData('fullText', def.def);
   const w = textW + padding * 2, h = body.y + body.height + padding;
-  const stroke = Phaser.Display.Color.HexStringToColor(def.color).color;
+  const stroke = Phaser.Display.Color.HexStringToColor(def.c).color;
   const bg = scene.add.rectangle(0, 0, w, h, 0x091520, 1).setOrigin(0, 0)
     .setStrokeStyle(1, stroke, 0.9).setName('keyword-tooltip-panel');
-  const c = scene.add.container(0, 0, [bg, title, body]).setDepth(99999).setName('keyword-tooltip');
+  const c = scene.add.container(0, 0, [bg, ...(icon ? [icon] : []), title, body]).setDepth(99999).setName('keyword-tooltip');
   const px = Phaser.Math.Clamp(atX - w / 2, 8, GAME_WIDTH - w - 8);
   const above = atY - h - 12;
   const py = Phaser.Math.Clamp(above >= 8 ? above : atY + 24, 8, GAME_HEIGHT - h - 8);
@@ -25561,7 +25567,7 @@ function renderRichText(
     const lineW = line.reduce((s, t, i) => s + t.w + (i ? spaceW : 0), 0);
     let sx = align === 'center' ? x - lineW / 2 : x;
     for (const t of line) {
-      const color = t.kw ? KEYWORDS[t.kw].color : baseColor;
+      const color = t.kw ? KEYWORDS[t.kw].c : baseColor;
       const fontStyle = (t.kw || bold) ? 'bold' : 'normal';
       const txt = scene.add.text(sx, yy, t.text, { ...base, color, fontStyle });
       parent.add(txt);
@@ -28057,10 +28063,5 @@ window.__birdSquadAudio = () => birdAudio.snapshot();
 window.__birdSquadShowKeywordTooltip = (sceneKey: string, keyword: string, x: number, y: number) => {
   const scene = window.__birdSquadGame?.scene.getScene(sceneKey);
   if (scene) showKwTooltip(scene, keyword, x, y);
-  return {
-    shown: Boolean(scene),
-    loaded: Boolean(scene?.textures.exists(uiIconAssets['keyword-tooltip-frame'].key)),
-    count: 0,
-    sceneKey,
-  };
+  return !!scene;
 };

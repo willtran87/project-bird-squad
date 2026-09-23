@@ -1,6 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
+import { KEYWORDS, itemKeywordSections } from '../src/game/keyword-definitions';
+import marks from '../data/game/alpha-route-marks.json' with { type: 'json' };
+import supplies from '../data/game/alpha-supplies.json' with { type: 'json' };
 test.use({ hasTouch: true });
+
+const expectedItemTerms = Object.fromEntries([...supplies.supplies, ...marks.routeMarks].map(item => [item.id,
+  itemKeywordSections([{ title: 'EFFECT', text: item.description }])])) as Record<string, Array<{ title: string; text: string }>>;
 
 async function bootCodex(page: Page) {
   await page.setViewportSize({ width: 2560, height: 1600 });
@@ -92,7 +98,7 @@ test('Codex item and enemy reading surfaces', async ({ page }, info) => {
 
 test('every Supply and Waymark has complete measured rules and a reachable final section', async ({ page }) => {
   await bootCodex(page);
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate(({ expectedItemTerms, definitions }) => {
     const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
     const errors: string[] = []; let count = 0;
     for (const [kind, items] of [['Supply', c.allSupplies()], ['Waymark', c.allWaymarks()]] as const) {
@@ -105,6 +111,13 @@ test('every Supply and Waymark has complete measured rules and a reachable final
         if (effect.text !== item.description) errors.push(`${item.id}: description`);
         const rules = reader.getByName('codex-item-rules');
         if (!rules?.text || /->|\b\w+\([^)]*\)/.test(rules.text)) errors.push(`${item.id}: unformatted rules`);
+        for (const section of expectedItemTerms[item.id]) {
+          const name = `codex-item-${section.title.toLowerCase().replaceAll(' ', '-')}`;
+          if (reader.getByName(name)?.text !== section.text) errors.push(`${item.id}: missing ${section.title}`);
+        }
+        for (const term of texts.filter((text: any) => text.name.startsWith('codex-item-term-'))) {
+          if (!Object.values(definitions).some((definition: any) => definition.def === term.text)) errors.push(`${item.id}: inaccurate ${term.name}`);
+        }
         for (let i = 0; i < texts.length; i++) {
           const t = texts[i];
           if (t.style.maxLines > 0 || t.getBounds().right > 1069 || t.style.resolution !== 2) errors.push(`${item.id}: clipping`);
@@ -115,7 +128,7 @@ test('every Supply and Waymark has complete measured rules and a reachable final
       }
     }
     return { count, errors };
-  });
+  }, { expectedItemTerms, definitions: KEYWORDS });
   expect(result.count).toBe(89); expect(result.errors).toEqual([]);
 });
 

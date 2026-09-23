@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
+import { KEYWORDS, keywordIconId } from '../src/game/keyword-definitions';
 
 async function bootCodex(page: import('@playwright/test').Page) {
   await page.goto('./');
@@ -12,21 +13,26 @@ async function bootCodex(page: import('@playwright/test').Page) {
     for (const scene of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(scene.scene.key);
     w.__birdSquadGame.scene.start('CodexScene');
   });
-  await page.waitForFunction(() => Boolean((window as any).__birdSquadGame.scene.getScene('CodexScene').root));
+  const keywordIcons = [...new Set(Object.keys(KEYWORDS).map(keywordIconId))];
+  await page.waitForFunction((icons) => {
+    const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
+    return Boolean(c.root) && icons.every((icon: string) => c.textures.exists(`ui-icon-${icon}`));
+  }, keywordIcons);
   await page.evaluate(() => { const c = (window as any).__birdSquadGame.scene.getScene('CodexScene'); c.detailId = 'pentacles_04'; c.renderAll(); });
   await settleCanvas(page);
 }
 
-test('keyword definitions stay readable and bounded without ornamental assets', async ({ page }, info) => {
+test('keyword definitions keep canonical icons readable and bounded', async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.setViewportSize({ width: 2560, height: 1600 }); await bootCodex(page);
   const savedBefore = await page.evaluate(() => JSON.stringify(localStorage));
   const keywords = ['Cohesion', 'Cover', 'Resonance', 'Resonance Burst', 'Winded', 'Fouled', 'Winded Burst', 'Molt', 'Open Sky', 'Open Sky Guard', 'Flow', 'Surge', 'Scatter', 'Hold', 'Wingbeat', 'Regen', 'Energy', 'Draw', 'Discard', 'Retain', 'Keystone'];
+  const keywordIcons = Object.fromEntries(keywords.map(keyword => [keyword, keywordIconId(keyword)]));
   for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
     await page.setViewportSize(size); await settleCanvas(page);
     await page.evaluate(() => (window as any).__birdSquadShowKeywordTooltip('CodexScene', 'Molt', 1000, 320));
     await page.screenshot({ path: info.outputPath(`keyword-${size.width}.png`) });
-    const failures = await page.evaluate(keywords => {
+    const failures = await page.evaluate(({ keywords, keywordIcons }) => {
       const w = window as any, c = w.__birdSquadGame.scene.getScene('CodexScene'); const failures: string[] = [];
       for (const keyword of keywords) for (const [x, y] of [[8, 8], [1272, 8], [8, 712], [1272, 712], [640, 360]]) {
         w.__birdSquadShowKeywordTooltip('CodexScene', keyword, x, y);
@@ -34,6 +40,9 @@ test('keyword definitions stay readable and bounded without ornamental assets', 
         if (!tip) { failures.push(`${keyword}: missing readable surface`); continue; }
         const frame = tip.getByName('keyword-tooltip-panel').getBounds();
         if (frame.left < 8 || frame.right > 1272 || frame.top < 8 || frame.bottom > 712) failures.push(`${keyword}: stage overflow`);
+        const icon = tip.getByName('keyword-tooltip-icon'), iconBounds = icon?.getBounds();
+        if (!icon || icon.texture?.key !== `ui-icon-${keywordIcons[keyword]}` || !iconBounds
+          || iconBounds.left < frame.left + 12 || iconBounds.top < frame.top + 8 || iconBounds.bottom > frame.bottom - 8) failures.push(`${keyword}: icon`);
         for (const name of ['keyword-tooltip-title', 'keyword-tooltip-body']) {
           const t = tip.getByName(name), r = t.getBounds();
           if (parseInt(t.style.fontSize) < 20 || t.style.resolution !== 2 || r.left < frame.left + 16 || r.right > frame.right - 16
@@ -41,7 +50,7 @@ test('keyword definitions stay readable and bounded without ornamental assets', 
         }
       }
       return failures;
-    }, keywords);
+    }, { keywords, keywordIcons });
     expect(failures).toEqual([]);
   }
   const fallback = await page.evaluate(() => {
@@ -49,9 +58,12 @@ test('keyword definitions stay readable and bounded without ornamental assets', 
     c.textures.remove('ui-icon-keyword-tooltip-frame');
     w.__birdSquadShowKeywordTooltip('CodexScene', 'Molt', 1000, 320);
     const tip = c.children.getByName('keyword-tooltip');
-    return { body: tip.getByName('keyword-tooltip-body').text, art: tip.list.filter((o: any) => o.type === 'Image').length };
+    const icon = tip.getByName('keyword-tooltip-icon');
+    return { body: tip.getByName('keyword-tooltip-body').text, art: tip.list.filter((o: any) => o.type === 'Image').length,
+      icon: icon?.getData('icon'), texture: icon?.texture?.key };
   });
-  expect(fallback.body).toContain('whole-turn'); expect(fallback.art).toBe(0);
+  expect(fallback.body).toContain('whole-turn'); expect(fallback.art).toBe(1);
+  expect(fallback).toMatchObject({ icon: 'codex-molt-medallion', texture: 'ui-icon-codex-molt-medallion' });
   await page.screenshot({ path: info.outputPath('keyword-without-frame.png') });
   expect(await page.evaluate(() => JSON.stringify(localStorage))).toBe(savedBefore);
   expect(errors).toEqual([]);
@@ -60,17 +72,24 @@ test('keyword definitions stay readable and bounded without ornamental assets', 
 test('keyword help follows transformed words and cleans up on replacement and scene shutdown', async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.setViewportSize({ width: 1440, height: 900 }); await bootCodex(page);
-  const point = await page.evaluate(() => {
+  await page.evaluate(() => {
     const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
     const flatten = (items: any[]): any[] => items.flatMap(o => [o, ...(o.list ? flatten(o.list) : [])]);
     const word = flatten(c.root.list).find((o: any) => o.type === 'Text' && /^Cover[.,]?$/.test(o.text) && o.listenerCount('pointerover'));
     if (!word) throw new Error('Missing real interactive keyword');
     const fixture = c.add.container(760, 470).setScale(1.2).setDepth(90000);
     fixture.add(word); word.setPosition(0, 0); c.__keywordFixture = fixture; c.__keywordWord = word;
+  });
+  await settleCanvas(page);
+  const point = await page.evaluate(() => {
+    const c = (window as any).__birdSquadGame.scene.getScene('CodexScene'), word = c.__keywordWord;
     const r = word.getBounds(), canvas = c.game.canvas.getBoundingClientRect();
     return { x: canvas.left + r.centerX * canvas.width / 1280, y: canvas.top + r.centerY * canvas.height / 720 };
   });
   await page.mouse.move(point.x, point.y); await settleCanvas(page);
+  await expect.poll(() => page.evaluate(() => Boolean(
+    (window as any).__birdSquadGame.scene.getScene('CodexScene').children.getByName('keyword-tooltip'),
+  ))).toBe(true);
   const shown = await page.evaluate(() => {
     const c = (window as any).__birdSquadGame.scene.getScene('CodexScene'), tip = c.children.getByName('keyword-tooltip');
     const r = tip.getBounds(), word = c.__keywordWord.getBounds();

@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 import marks from '../data/game/alpha-route-marks.json' with { type: 'json' };
 import { settleCanvas } from './helpers/settled-canvas';
+import { itemKeywordSections } from '../src/game/keyword-definitions';
+
+const expectedTerms = Object.fromEntries(marks.routeMarks.map(mark => [mark.id,
+  itemKeywordSections([{ title: 'EFFECT', text: mark.description }])])) as Record<string, Array<{ title: string; text: string }>>;
 
 for (const remapped of [false, true]) test(`owned Waymarks preserve complete reading and paused focus, remapped=${remapped}`, async ({ page }, info) => {
   test.setTimeout(120_000); // Full 58-item, multi-viewport catalog qualification.
@@ -36,7 +40,7 @@ for (const remapped of [false, true]) test(`owned Waymarks preserve complete rea
     return r.children.list.filter((o: any) => o.name === 'route-waymark-reader-body').map((o: any) => o.style.fontSize);
   });
   expect(baseline).toEqual(['22px']);
-  const audit = await page.evaluate(() => {
+  const audit = await page.evaluate(expectedTerms => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     const clean = (s: string) => s.replace(/\s+/g, ' ').trim();
     const failures: string[] = [];
@@ -58,12 +62,15 @@ for (const remapped of [false, true]) test(`owned Waymarks preserve complete rea
       for (const value of [entry.name, entry.description, entry.trigger, entry.flavorText, ...entry.effects, ...entry.tags]) {
         if (value && !all.includes(clean(value))) failures.push(`${mark.id}: missing ${value}`);
       }
+      for (const section of expectedTerms[mark.id]) {
+        if (!all.includes(clean(section.text))) failures.push(`${mark.id}: missing ${section.title}`);
+      }
     }
     r.routeWaymarkPinnedId = undefined;
     r.selectRouteWaymark(r.ownedRouteMarkDefs()[0].id, false);
     r.renderAll();
     return failures;
-  });
+  }, expectedTerms);
   expect(audit).toEqual([]);
   const stable = () => page.evaluate(() => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');

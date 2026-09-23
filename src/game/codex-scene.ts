@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { itemKeywordSections } from './keyword-definitions';
 import { createCardJournalEditor } from './card-journal-editor';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 import { safeStorageGet, safeStorageSet, writeJournaledJson } from './safe-storage';
@@ -2827,11 +2828,6 @@ export class CodexScene extends Phaser.Scene {
         rendered: countTextureInGameObjects(this.root?.list ?? [], uiIconAssets['codex-grid-scroll-cue-frame'].key) > 0,
         count: countTextureInGameObjects(this.root?.list ?? [], uiIconAssets['codex-grid-scroll-cue-frame'].key)
       },
-      keywordTooltipFrame: {
-        loaded: this.textures.exists(uiIconAssets['keyword-tooltip-frame'].key),
-        rendered: ((this as Phaser.Scene & { keywordTooltipFrameCount?: number }).keywordTooltipFrameCount ?? 0) > 0,
-        count: (this as Phaser.Scene & { keywordTooltipFrameCount?: number }).keywordTooltipFrameCount ?? 0
-      },
       glossaryTerms: this.activeSection === 'glossary'
         ? glossaryTerms.map((term) => term.term)
         : undefined,
@@ -2920,6 +2916,27 @@ export class CodexScene extends Phaser.Scene {
           .setData('progress', progress)
           .setData('fadeAlpha', alpha)
           .setData('gridBottom', bottom);
+        this.root.add(strip);
+      }
+    }
+    if (this.gridScroll > 0.5) {
+      const fadeStepH = CodexScene.GRID_BOTTOM_FADE_HEIGHT / CodexScene.GRID_BOTTOM_FADE_STEPS;
+      for (let step = 0; step < CodexScene.GRID_BOTTOM_FADE_STEPS; step += 1) {
+        const progress = (step + 1) / CodexScene.GRID_BOTTOM_FADE_STEPS;
+        const alpha = 0.9 - progress * progress * 0.84;
+        const strip = this.add.rectangle(
+          GAME_WIDTH / 2,
+          top + fadeStepH * (step + 0.5),
+          GAME_WIDTH,
+          fadeStepH,
+          0x070a11,
+          alpha,
+        )
+          .setName('codex-grid-top-fade-strip')
+          .setData('step', step)
+          .setData('progress', progress)
+          .setData('fadeAlpha', alpha)
+          .setData('gridTop', top);
         this.root.add(strip);
       }
     }
@@ -3560,7 +3577,9 @@ export class CodexScene extends Phaser.Scene {
     bg.on('pointerout', () => bg.setFillStyle(0x0c1420, 1));
     bg.on('pointerdown', () => this.openCodexDetail(term.term));
     tile.add(bg);
-    this.codexPreviewText(tile, term.term, left + 20, top + 16, w - 188, 28, 20, UI_GOLD, 'codex-entry-title', true);
+    const icon = addUiIconImage(this, term.icon, left + 36, top + 32, 14);
+    if (icon) tile.add(icon.setName('codex-glossary-icon').setData('term', term.term).setData('icon', term.icon));
+    this.codexPreviewText(tile, term.term, left + 64, top + 16, w - 232, 28, 20, UI_GOLD, 'codex-entry-title', true);
     this.codexPreviewText(tile, term.category, left + w - 164, top + 18, 144, 24, 14, '#a9c5d5', 'codex-entry-meta');
     this.codexPreviewText(tile, term.summary, left + 20, top + 56, w - 40, h - 72, 18, UI_BODY, 'codex-entry-summary');
   }
@@ -3578,13 +3597,16 @@ export class CodexScene extends Phaser.Scene {
     const reader = this.add.container().setName('codex-glossary-reader');
     this.root.add(reader);
     let yy = viewTop - this.detailScroll;
+    const icon = addUiIconImage(this, term.icon, tx + 24, yy + 18, 22);
+    if (icon) reader.add(icon.setName('codex-glossary-detail-icon').setData('term', term.term).setData('icon', term.icon));
     for (const [value, size, color, name] of [
       [term.term, 28, UI_GOLD, 'title'], [term.category, 16, '#a9c5d5', 'category'],
       [term.summary, 20, UI_BODY, 'summary'], [term.detail, 22, '#e4edf5', 'definition'],
     ] as const) {
-      const text = this.add.text(tx, yy, value, {
+      const headerOffset = name === 'title' || name === 'category' ? 64 : 0;
+      const text = this.add.text(tx + headerOffset, yy, value, {
         fontFamily: UI_FONT, fontSize: `${size}px`, color, fontStyle: name === 'title' ? UI_BOLD : 'normal',
-        lineSpacing: 6, wordWrap: { width: wrap, useAdvancedWrap: true },
+        lineSpacing: 6, wordWrap: { width: wrap - headerOffset, useAdvancedWrap: true },
       }).setResolution(2).setName(`codex-glossary-${name}`);
       reader.add(text); yy += text.height + (name === 'category' ? 28 : 20);
     }
@@ -4225,17 +4247,19 @@ export class CodexScene extends Phaser.Scene {
   private renderSupplyDetail(id: string) {
     const supply = alphaSupplyLibrary.get(id);
     if (!supply) return;
+    const sections = [
+      { title: 'USE', text: supply.description },
+      { title: 'RULES', text: formatEffects(supply.effects) },
+      { title: 'WHEN TO USE', text: this.supplyTimingLabel(supply) },
+      { title: 'BUILD SYNERGIES', text: supplySynergyTags(supply).join(' · '), secondary: true },
+      { title: 'PACKING', text: `${this.supplyAnswerLabel(supply)} answer. Can be packed in a supply slot and consumed once.`, secondary: true },
+    ];
+    sections.push(...itemKeywordSections(sections));
     this.renderItemDossier({
       kind: 'Supply', name: supply.name, accent: this.supplyAccent(supply),
       meta: `${this.supplyCategoryLabel(supply)} · ${supply.rarity} · Single use`,
       art: supplyArtAssets[id], glyph: this.supplyGlyph(supply),
-      sections: [
-        { title: 'USE', text: supply.description },
-        { title: 'RULES', text: formatEffects(supply.effects) },
-        { title: 'WHEN TO USE', text: this.supplyTimingLabel(supply) },
-        { title: 'BUILD SYNERGIES', text: supplySynergyTags(supply).join(' · '), secondary: true },
-        { title: 'PACKING', text: `${this.supplyAnswerLabel(supply)} answer. Can be packed in a supply slot and consumed once.`, secondary: true },
-      ],
+      sections,
     });
   }
 
@@ -4331,17 +4355,19 @@ export class CodexScene extends Phaser.Scene {
   private renderWaymarkDetail(id: string) {
     const mark = alphaRouteMarkLibrary.get(id);
     if (!mark) return;
+    const sections = [
+      { title: 'EFFECT', text: mark.description },
+      { title: 'TRIGGER', text: formatWaymarkTrigger(mark.trigger, mark.effects ?? (mark.effect ? [mark.effect] : [])) },
+      { title: 'RULES', text: routeMarkEffectText(mark) },
+      { title: 'BUILD SYNERGIES', text: waymarkSynergyTags(mark).join(' · '), secondary: true },
+      { title: 'FIELD NOTE', text: mark.flavorText ?? 'A real route artifact carried by the flock.', secondary: true },
+    ];
+    sections.push(...itemKeywordSections(sections));
     this.renderItemDossier({
       kind: 'Waymark', name: mark.name, accent: this.waymarkAccent(mark),
       meta: `${this.waymarkFamilyLabel(mark)} · ${mark.rarity} · ${mark.source}`,
       art: waymarkArtAssets[id], glyph: waymarkGlyph(mark),
-      sections: [
-        { title: 'EFFECT', text: mark.description },
-        { title: 'TRIGGER', text: formatWaymarkTrigger(mark.trigger, mark.effects ?? (mark.effect ? [mark.effect] : [])) },
-        { title: 'RULES', text: routeMarkEffectText(mark) },
-        { title: 'BUILD SYNERGIES', text: waymarkSynergyTags(mark).join(' · '), secondary: true },
-        { title: 'FIELD NOTE', text: mark.flavorText ?? 'A real route artifact carried by the flock.', secondary: true },
-      ],
+      sections,
     });
   }
 

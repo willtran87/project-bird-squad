@@ -16,6 +16,7 @@ async function tap(page: Page, key: string, name: string) {
 
 for (const key of ['RouteScene', 'BattleScene']) for (const remapped of [false, true]) {
   test(`${key} Waymark shelf reaches every artifact without losing reading, remapped=${remapped}`, async ({ page }, info) => {
+    test.setTimeout(120_000); // Full shelf traversal and three-viewport qualification.
     const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
     await page.addInitScript(remapped => {
       if (remapped) localStorage.setItem('birdsquad.controlBindings', JSON.stringify({ version: 1,

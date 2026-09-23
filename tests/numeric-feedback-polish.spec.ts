@@ -1,6 +1,235 @@
 import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
 
+test('blocked attacks share bounded result lanes and retain each event in history', async ({ page }, info) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.setViewportSize({ width: 2560, height: 1600 });
+  await page.goto('./');
+  await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
+  await page.evaluate(async () => {
+    const w = window as any;
+    await w.__birdSquadEnsureScene('BattleScene');
+    for (const scene of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(scene.scene.key);
+    w.__birdSquadGame.scene.start('BattleScene', { routeNodeId: 'm1_boss' });
+  });
+  await page.waitForFunction(() => {
+    const battle = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    return battle.battleFxPresenterModule && battle.hand.length && !battle.combatAnimationPending && !battle.combatIntroActive;
+  });
+  const result = await page.evaluate(() => {
+    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    b.fxLayer.removeAll(true);
+    const enemy = b.enemies[0];
+    enemy.block = 100; b.flock.block = 100;
+    const beforeHp = [enemy.hp, b.flock.hp], historyStart = b.combatHistory.length;
+    b.damageEnemy(enemy.id, 1, 'blocked-fixture');
+    b.damageEnemy(enemy.id, 1, 'blocked-fixture');
+    b.damageFlock(enemy, 1, 'blocked-swipe');
+    b.damageFlock(enemy, 1, 'blocked-swipe');
+    b.renderAll(); (window as any).advanceTime(20);
+    b.time.paused = true; b.tweens.pauseAll();
+    const labels = b.fxLayer.list.filter((o: any) => o.name === 'combat-number-feedback');
+    return {
+      hp: [enemy.hp, b.flock.hp], beforeHp,
+      history: b.combatHistory.slice(historyStart),
+      labels: labels.map((o: any) => ({ target: o.getData('target'), kind: o.getData('kind'),
+        count: o.getData('count'), text: o.getByName('combat-number-label')?.text,
+        placement: o.getData('placement') })),
+    };
+  });
+  expect(result.hp).toEqual(result.beforeHp);
+  expect(result.history).toHaveLength(4);
+  expect(result.history.slice(0, 2).every((entry: string) => entry.includes('blocked-fixture'))).toBe(true);
+  expect(result.history.slice(2).every((entry: string) => entry.includes('hit is blocked'))).toBe(true);
+  expect(result.labels).toEqual([
+    { target: expect.any(String), kind: 'blocked', count: 2, text: 'Blocked ×2', placement: 'target-lane' },
+    { target: 'flock', kind: 'blocked', count: 2, text: 'Blocked ×2', placement: 'flock-stack' },
+  ]);
+  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    await page.setViewportSize(viewport);
+    await settleCanvas(page);
+    const clear = await page.evaluate(() => {
+      const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+      const labels = b.fxLayer.list.filter((o: any) => o.name === 'combat-number-feedback');
+      const safe = labels.every((o: any) => { const r = o.getBounds(); return r.left >= 0 && r.right <= 1280 && r.top > 100 && r.bottom < 460; });
+      const a = labels[0].getBounds(), z = labels[1].getBounds();
+      return safe && labels[1].x >= 360
+        && (a.right <= z.left || a.left >= z.right || a.bottom <= z.top || a.top >= z.bottom);
+    });
+    expect(clear).toBe(true);
+    await page.screenshot({ path: info.outputPath(`blocked-${viewport.width}.png`) });
+  }
+  await page.evaluate(() => {
+    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    b.time.paused = false; b.tweens.resumeAll(); b.fxLayer.removeAll(true);
+  });
+  expect(errors).toEqual([]);
+});
+
+for (const reduced of [false, true]) test(`enemy debuffs use one bounded flock status stack, reduced=${reduced}`, async ({ page }, info) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.addInitScript(value => localStorage.setItem('birdsquad.motionPreference', value ? 'reduced' : 'full'), reduced);
+  await page.setViewportSize({ width: 2560, height: 1600 });
+  await page.goto('./');
+  await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
+  await page.evaluate(async () => {
+    const w = window as any;
+    await w.__birdSquadEnsureScene('BattleScene');
+    for (const scene of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(scene.scene.key);
+    w.__birdSquadGame.scene.start('BattleScene', { routeNodeId: 'm1_boss' });
+  });
+  await page.waitForFunction(() => {
+    const battle = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    return battle.battleFxPresenterModule && battle.hand.length && !battle.combatAnimationPending && !battle.combatIntroActive;
+  });
+  const result = await page.evaluate(() => {
+    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    b.fxLayer.removeAll(true);
+    const enemy = b.enemies[0], start = b.combatHistory.length;
+    b.resolveEnemyEffect(enemy, 'applyWinded(1)');
+    b.resolveEnemyEffect(enemy, 'applyWinded(1)');
+    b.resolveEnemyEffect(enemy, 'applyFrail(1)');
+    b.resolveEnemyEffect(enemy, 'applyPoison(2)');
+    b.renderAll(); (window as any).advanceTime(20);
+    b.time.paused = true; b.tweens.pauseAll();
+    return {
+      statuses: [b.flock.weak, b.flock.frail, b.flock.fouled],
+      history: b.combatHistory.slice(start),
+      accents: b.fxLayer.list.filter((o: any) => [
+        'combat-winded-gust', 'combat-ruffled-break', 'combat-fouled-pressure',
+      ].includes(o.name)).map((o: any) => o.name),
+      additiveAccents: b.fxLayer.list.filter((o: any) => [
+        'combat-winded-gust', 'combat-ruffled-break', 'combat-fouled-pressure',
+      ].includes(o.name) && o.blendMode !== 0).length,
+      particles: b.fxLayer.list.filter((o: any) => o.type === 'ParticleEmitter').length,
+      labels: b.fxLayer.list.filter((o: any) => o.name === 'combat-number-feedback').map((o: any) => ({
+        kind: o.getData('kind'), count: o.getData('count'), text: o.getByName('combat-number-label')?.text,
+        target: o.getData('target'), source: o.getData('source'), x: o.x, y: o.y,
+      })),
+    };
+  });
+  expect(result.statuses).toEqual([2, 1, 2]);
+  expect(result.accents).toEqual(['combat-winded-gust', 'combat-ruffled-break', 'combat-fouled-pressure']);
+  expect(result.additiveAccents).toBe(0);
+  expect(result.particles).toBe(0);
+  expect(result.history).toHaveLength(4);
+  expect(result.history.map((entry: string) => /Winded|ruffles|fouls/.exec(entry)?.[0])).toEqual([
+    'Winded', 'Winded', 'ruffles', 'fouls',
+  ]);
+  expect(result.labels).toEqual([
+    { kind: 'status:Winded', count: 2, text: 'Winded ×2', target: 'flock', source: expect.any(String), x: 380, y: 332 },
+    { kind: 'status:Ruffled', count: 1, text: 'Ruffled', target: 'flock', source: expect.any(String), x: 380, y: 292 },
+    { kind: 'status:Fouled 2', count: 1, text: 'Fouled 2', target: 'flock', source: expect.any(String), x: 380, y: 252 },
+  ]);
+  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    await page.setViewportSize(viewport);
+    await settleCanvas(page);
+    const clear = await page.evaluate(() => {
+      const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+      const labels = b.fxLayer.list.filter((o: any) => o.name === 'combat-number-feedback');
+      const separate = (a: any, z: any) => a.right <= z.left || a.left >= z.right || a.bottom <= z.top || a.top >= z.bottom;
+      return labels.length === 3 && labels.every((o: any, i: number) => {
+        const r = o.getBounds();
+        return r.left >= 0 && r.right <= 1280 && r.top > 100 && r.bottom < 460
+          && labels.slice(i + 1).every((other: any) => separate(r, other.getBounds()));
+      });
+    });
+    expect(clear).toBe(true);
+    await page.screenshot({ path: info.outputPath(`debuffs-${viewport.width}.png`) });
+  }
+  const retired = await page.evaluate(() => {
+    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    b.time.paused = false; b.tweens.resumeAll(); (window as any).advanceTime(700);
+    const before = b.combatWindedGustBursts;
+    b.resolveEnemyEffect(b.enemies[0], 'applyWinded(1)');
+    const result = { newCue: b.combatWindedGustBursts - before,
+      activeCues: b.fxLayer.list.filter((o: any) => o.name === 'combat-winded-gust').length,
+      weak: b.flock.weak };
+    b.fxLayer.removeAll(true);
+    return result;
+  });
+  expect(retired).toEqual({ newCue: 1, activeCues: 1, weak: 3 });
+  expect(errors).toEqual([]);
+});
+
+for (const reduced of [false, true]) test(`Open Sky exposure keeps one clear cue and ordered causes, reduced=${reduced}`, async ({ page }, info) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.addInitScript(value => localStorage.setItem('birdsquad.motionPreference', value ? 'reduced' : 'full'), reduced);
+  await page.setViewportSize({ width: 2560, height: 1600 });
+  await page.goto('./');
+  await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
+  await page.evaluate(async () => {
+    const w = window as any;
+    await w.__birdSquadEnsureScene('BattleScene');
+    for (const scene of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(scene.scene.key);
+    w.__birdSquadGame.scene.start('BattleScene', { routeNodeId: 'm1_boss' });
+  });
+  await page.waitForFunction(() => {
+    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    return b.battleFxPresenterModule && b.hand.length && !b.combatAnimationPending && !b.combatIntroActive
+      && b.textures.exists('combat-open-sky-exposure');
+  });
+  const result = await page.evaluate(() => {
+    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    b.fxLayer.removeAll(true); b.flock.exposed = false; b.flock.exposedTurns = 0;
+    const start = b.combatHistory.length, before = b.combatOpenSkyExposureBursts;
+    b.enterOpenSky(2, 'fixture exposure');
+    b.enterOpenSky(1, 'fixture exposure');
+    b.enterOpenSky(1, 'fixture overextension', 'Overextended!');
+    b.renderAll(); (window as any).advanceTime(20);
+    b.time.paused = true; b.tweens.pauseAll();
+    return {
+      exposed: b.flock.exposed, turns: b.flock.exposedTurns,
+      history: b.combatHistory.slice(start), newCues: b.combatOpenSkyExposureBursts - before,
+      art: b.fxLayer.list.filter((o: any) => o.name === 'combat-open-sky-exposure').map((o: any) => ({
+        blendMode: o.blendMode, width: o.displayWidth,
+      })),
+      labels: b.fxLayer.list.filter((o: any) => o.name === 'combat-number-feedback').map((o: any) => ({
+        text: o.getByName('combat-number-label')?.text, kind: o.getData('kind'), target: o.getData('target'),
+        count: o.getData('count'), x: o.x, y: o.y,
+      })),
+    };
+  });
+  expect(result.exposed).toBe(true);
+  expect(result.turns).toBe(2);
+  expect(result.history.map((entry: string) => entry.replace(/^Beat \d+ · /, ''))).toEqual([
+    'fixture exposure', 'fixture exposure', 'fixture overextension',
+  ]);
+  expect(result.newCues).toBe(1);
+  expect(result.art).toEqual([{ blendMode: 0, width: expect.any(Number) }]);
+  expect(result.art[0].width).toBeLessThan(270);
+  expect(result.labels).toEqual([
+    { text: 'Open Sky! ×2', kind: 'status:Open Sky!', target: 'flock', count: 2, x: 380, y: 332 },
+    { text: 'Overextended!', kind: 'status:Overextended!', target: 'flock', count: 1, x: 380, y: 292 },
+  ]);
+  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    await page.setViewportSize(viewport);
+    await settleCanvas(page);
+    const safe = await page.evaluate(() => {
+      const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+      return b.fxLayer.list.filter((o: any) => o.name === 'combat-number-feedback').every((o: any) => {
+        const r = o.getBounds(); return r.left > 0 && r.right < 550 && r.top > 100 && r.bottom < 420;
+      });
+    });
+    expect(safe).toBe(true);
+    await page.screenshot({ path: info.outputPath(`open-sky-${viewport.width}.png`) });
+  }
+  const fresh = await page.evaluate(() => {
+    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    b.time.paused = false; b.tweens.resumeAll(); (window as any).advanceTime(700);
+    const before = b.combatOpenSkyExposureBursts;
+    b.enterOpenSky(1, 'fixture later exposure');
+    const result = { newCue: b.combatOpenSkyExposureBursts - before,
+      activeCues: b.fxLayer.list.filter((o: any) => o.name === 'combat-open-sky-exposure').length };
+    b.fxLayer.removeAll(true); return result;
+  });
+  expect(fresh).toEqual({ newCue: 1, activeCues: 1 });
+  expect(errors).toEqual([]);
+});
+
 for (const reduced of [false, true]) test(`numeric feedback groups explicit sources without delaying combat, reduced=${reduced}`, async ({ page }, info) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));

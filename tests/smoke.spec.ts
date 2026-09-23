@@ -17,13 +17,7 @@ declare global {
     __birdSquadAudio?: () => any;
     render_game_to_text?: () => string;
     advanceTime?: (ms: number) => void;
-    __birdSquadShowKeywordTooltip?: (sceneKey: string, keyword: string, x: number, y: number) => {
-      shown: boolean;
-      loaded: boolean;
-      count: number;
-      sceneKey: string;
-      frame?: { displayWidth: number; displayHeight: number; alpha: number; name: string; visible: boolean };
-    };
+    __birdSquadShowKeywordTooltip?: (sceneKey: string, keyword: string, x: number, y: number) => boolean;
   }
 }
 
@@ -21082,10 +21076,6 @@ test('keyword hover tooltip uses a readable surface without a generated frame', 
     await window.__birdSquadStartScene!('CodexScene');
     g.scene.stop('MenuScene');
     const codex: any = g.scene.getScene('CodexScene');
-    for (let i = 0; i < 40; i += 1) {
-      if (codex.textures.exists('ui-icon-keyword-tooltip-frame')) break;
-      await wait(50);
-    }
     codex.detailId = 'pentacles_04';
     codex.detailScroll = 0;
     codex.renderAll();
@@ -21095,7 +21085,6 @@ test('keyword hover tooltip uses a readable surface without a generated frame', 
       .find((child: any) => /^(Cover|Cohesion|Energy|Draw|Wingbeat|Keystone)$/i.test(child.text ?? '')
         && (child.listenerCount?.('pointerover') ?? 0) > 0);
     const hookResult = window.__birdSquadShowKeywordTooltip!('CodexScene', 'Cover', 760, 304);
-    const state = JSON.parse(window.render_game_to_text!()).keywordTooltipFrame;
     const tooltip = { state: JSON.parse(window.render_game_to_text!()).keywordTooltip,
       size: codex.children.getByName('keyword-tooltip').getByName('keyword-tooltip-body').style.fontSize };
     const frameObjects = collectObjects(codex.children.list)
@@ -21114,8 +21103,6 @@ test('keyword hover tooltip uses a readable surface without a generated frame', 
       hasKeyword: !!keyword,
       tooltip,
       hookResult,
-      state,
-      sceneCount: codex.keywordTooltipFrameCount ?? 0,
       frameCount: countTexture(codex.children.list, 'ui-icon-keyword-tooltip-frame'),
       frameObjects,
       hasDefinitionText: texts.some((text: string) => /Temporary shielding|flock's health|resource/i.test(text)),
@@ -21123,9 +21110,7 @@ test('keyword hover tooltip uses a readable surface without a generated frame', 
   });
 
   expect(result.hasKeyword).toBe(true);
-  expect(result.hookResult).toMatchObject({ shown: true, loaded: true, count: 0 });
-  expect(result.state.loaded).toBe(true);
-  expect(result.state).toMatchObject({ rendered: false, count: 0 });
+  expect(result.hookResult).toBe(true);
   expect(result.frameObjects).toEqual([]);
   expect(result.hookResult.frame).toBeUndefined();
   expect(result.hasDefinitionText).toBe(true);
@@ -21133,6 +21118,7 @@ test('keyword hover tooltip uses a readable surface without a generated frame', 
   expect(tooltip.size).toBe('20px');
   expect(tooltip.state.keyword).toBe('Cover');
   expect(tooltip.state.definition).toContain('Temporary shielding');
+  expect(tooltip.state.icon).toBe('cover-shield');
 });
 
 test('selecting a Flock Leader sets the run starter deck', async ({ page }) => {

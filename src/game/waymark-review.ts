@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { addRouteWaymarkScrollRailFrame, controlBindingLabel, playUiSound } from '../main';
 import { decisionButton, decisionExcerpt, decisionText } from './decision-surface';
 import { bindChoiceHint } from './choice-input-hints';
+import { itemKeywordSections } from './keyword-definitions';
 
 export interface SceneWaymarkReviewEntry {
   id: string; name: string; meta: string; trigger: string; description: string;
@@ -53,7 +54,21 @@ export function renderSceneWaymarkReview(scene: Phaser.Scene, view: SceneWaymark
   let position = positions.get(scene);
   if (!position || position.key !== key) { position = { key, page: 0 }; positions.set(scene, position); }
   const bodies: Phaser.GameObjects.Text[] = [], headings: Phaser.GameObjects.Text[] = [];
-  const sectionNames = ['EFFECT ORDER', 'TRIGGER', 'DESCRIPTION', 'DETAILS', 'FLAVOR'];
+  const entrySections = entries.map(entry => {
+    const sections = [
+      { title: 'EFFECT ORDER', text: entry.effects.map((effect, i) => `${i + 1}. ${effect}`).join('\n') || 'No additional effects.' },
+      { title: 'TRIGGER', text: entry.trigger },
+      { title: 'DESCRIPTION', text: entry.description },
+      { title: 'DETAILS', text: `${entry.name}\n${entry.meta}\n${entry.tags.join(' / ') || 'General'}` },
+      { title: 'FLAVOR', text: entry.flavorText },
+    ];
+    sections.push(...itemKeywordSections([
+      { title: 'EFFECT', text: entry.description },
+      { title: 'RULES', text: entry.summary },
+    ]));
+    return sections;
+  });
+  const sectionNames = [...new Set(entrySections.flatMap(sections => sections.map(section => section.title)))];
   const columns: string[][][] = [];
   entries.forEach((entry, index) => {
     const left = comparing ? 156 + index * 490 : 268;
@@ -66,9 +81,9 @@ export function renderSceneWaymarkReview(scene: Phaser.Scene, view: SceneWaymark
     headings.push(text(scene, left, 449, '', width, 16, '#abc4d4'));
     const body = text(scene, left, 477, '', width, comparing ? 18 : 22).setName('route-waymark-reader-body');
     bodies.push(body);
-    const sections = [entry.effects.map((effect, i) => `${i + 1}. ${effect}`).join('\n') || 'No additional effects.',
-      entry.trigger, entry.description, `${entry.name}\n${entry.meta}\n${entry.tags.join(' / ') || 'General'}`, entry.flavorText];
-    columns.push(sections.map(value => {
+    const sections = new Map(entrySections[index].map(section => [section.title, section.text]));
+    columns.push(sectionNames.map(heading => {
+      const value = sections.get(heading) ?? 'Not used by this Waymark.';
       const pages: string[] = []; let lines: string[] = [];
       for (const line of body.getWrappedText(value)) {
         body.setText([...lines, line].join('\n'));

@@ -1,6 +1,10 @@
 import { test, expect } from '@playwright/test';
 import marks from '../data/game/alpha-route-marks.json' with { type: 'json' };
 import { settleCanvas } from './helpers/settled-canvas';
+import { itemKeywordSections } from '../src/game/keyword-definitions';
+
+const expectedTerms = Object.fromEntries(marks.routeMarks.map(mark => [mark.id,
+  itemKeywordSections([{ title: 'EFFECT', text: mark.description }])])) as Record<string, Array<{ title: string; text: string }>>;
 
 for (const remapped of [false, true]) test(`combat Waymark reading is complete and Back preserves the pending card, remapped=${remapped}`, async ({ page }, info) => {
   test.setTimeout(120_000); // Full 58-item, multi-viewport catalog qualification.
@@ -52,7 +56,7 @@ for (const remapped of [false, true]) test(`combat Waymark reading is complete a
   });
   const reading = () => page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').getTextState().waymarkReview);
   const unchanged = await stable();
-  const failures = await page.evaluate(() => {
+  const failures = await page.evaluate(expectedTerms => {
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene'), failures: string[] = [];
     const clean = (value: string) => value.replace(/\s+/g, ' ').trim();
     for (const compare of [false, true]) {
@@ -71,12 +75,15 @@ for (const remapped of [false, true]) test(`combat Waymark reading is complete a
         for (const value of [mark.name, mark.description, mark.flavorText, selected.trigger, ...selected.effects.map((e: any) => e.text), ...selected.tags]) {
           if (value && !text.includes(clean(value))) failures.push(`${selected.id} missing ${value}`);
         }
+        for (const section of expectedTerms[selected.id]) {
+          if (!text.includes(clean(section.text))) failures.push(`${selected.id} missing ${section.title}`);
+        }
         b.waymarkReviewModule.battleWaymarkAction(b, 'choose', 1);
       }
     }
     b.waymarkReviewModule.battleWaymarkAction(b, 'pin'); b.renderAll();
     return failures;
-  });
+  }, expectedTerms);
   expect(failures).toEqual([]); expect(await stable()).toBe(unchanged);
   await press(remapped ? 'j' : 'r'); await press(remapped ? 'e' : 'ArrowRight');
   expect((await reading()).comparing).toBe(true);

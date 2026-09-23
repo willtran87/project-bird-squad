@@ -56,6 +56,7 @@ test.describe('Packed Supply touch and teardown', () => {
 });
 
 for (const sceneKey of ['RouteScene', 'BattleScene']) for (const remapped of [false, true]) test(`${sceneKey} packed Supply reading is complete, bounded and read-only, remapped=${remapped}`, async ({ page }, info) => {
+  test.setTimeout(120_000); // Full catalog, long-copy, input, and three-viewport qualification.
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   await page.addInitScript(remapped => {
     localStorage.setItem('birdsquad.screenReader', 'on');

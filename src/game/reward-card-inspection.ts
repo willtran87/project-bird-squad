@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { aggregateFlockStats, cardsFromSave, cardStatRows, flockStatLabel, KEYSTONE_AT, type Card } from '../main';
 import { flockHandTarget } from './hand-size';
 import { bindChoiceHint, choiceInputHint, inspectInputHint } from './choice-input-hints';
-import { decisionCardKeywordSections } from './keyword-definitions';
+import { decisionCardKeywordSections, itemKeywordSections } from './keyword-definitions';
 
 import {
   addRewardRevealHaloFx,
@@ -180,6 +180,7 @@ export function renderMarketItemDetail(scene: Phaser.Scene, view: MarketItemDeta
     ...(view.decisionPreview.length || view.afterPurchase ? [{ title: 'PURCHASE PREVIEW', text: [...view.decisionPreview, view.afterPurchase].filter(Boolean).join('\n') }] : []),
     { title: 'ITEM DETAILS', text: `${view.title}\n${view.kicker}` },
   ];
+  if (!options) sections.push(...itemKeywordSections(sections));
   const pages: Array<{ title: string; text: string }> = [];
   for (const section of sections) {
     let lines: string[] = [];

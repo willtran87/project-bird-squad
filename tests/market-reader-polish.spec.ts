@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { KEYWORDS } from '../src/game/keyword-definitions';
 
 for (const remapped of [false, true]) test(`Market item reader keeps complete text and purchase intent, remapped=${remapped}`, async ({ page }, info) => {
   test.setTimeout(240_000);
@@ -38,6 +39,24 @@ for (const remapped of [false, true]) test(`Market item reader keeps complete te
     await page.evaluate(category => (window as any).__birdSquadGame.scene.getScene('RouteScene').setMarketCategory(category), category);
     await expect.poll(async () => (await state()).rules?.page).toBe(1);
     const before = await stable();
+    if (category !== 'services') {
+      const terms = await page.evaluate(() => {
+        const r = (window as any).__birdSquadGame.scene.getScene('RouteScene'), panel = r.marketItemHover;
+        const turn = panel.getData('turnRulesPage'), first = panel.getData('reading').page, pages: any[] = [];
+        turn(-(first - 1));
+        const total = panel.getData('reading').total;
+        for (let i = 0; i < total; i++) { pages.push({ ...panel.getData('reading') }); if (i < total - 1) turn(1); }
+        turn(-(total - 1));
+        return pages.filter(page => page.title.startsWith('TERM · '));
+      });
+      expect(terms.length).toBeGreaterThan(0);
+      for (const title of new Set(terms.map(term => term.title))) {
+        const canonical = Object.keys(KEYWORDS).find(key => title === `TERM · ${key.toUpperCase()}`)!;
+        expect(terms.filter(term => term.title === title).map(term => term.text).join(' ').replace(/\s+/g, ' '))
+          .toBe(KEYWORDS[canonical].def);
+      }
+      expect(await stable()).toBe(before);
+    }
     for (const viewport of (remapped ? [{ width: 1000, height: 560 }] : [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }])) {
       await page.setViewportSize(viewport);
       const geometry = await page.evaluate(() => {

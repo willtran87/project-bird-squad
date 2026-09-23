@@ -510,7 +510,7 @@ completion or release qualification claim.
 | 1. Event/menu layouts | D02, U02, R04 | Prior decision-panel work retained; original event choices and remaining menus still need review. |
 | 2. Repeated information | D04, C02 | Non-item outcome context consolidated into a measured summary; broader duplication audit remains. |
 | 3. Inspection efficiency | C02, I03 | Short non-item outcomes fit on one page; long consequences and companion rules remain complete. Other readers remain sectional. |
-| 4. Combat notifications | V04, F03 | Supply/Waymark bursts share one bounded quiet lane. Up to 256 recent events are inspectable in order; floating damage/status callouts still need consolidation. |
+| 4. Combat notifications | V04, F03 | Supply/Waymark bursts share one bounded quiet lane. Blocked attacks and enemy-applied Winded/Ruffled/Fouled now join the same capped result lanes as damage/Cover/healing; every event remains inspectable in order among up to 256 recent events. Other status/passive callouts still need consolidation. |
 | 5. Responsiveness | I01, F01 | Notifications add no combat waits; keyboard auto-repeat cannot close a reader and then play a card. Full measured journey remains. |
 | 6. Interaction consistency | I03, I04 | History uses pointer, remapped Shift+Help, L3, shared reading navigation and pause guards; other overlays remain. |
 | 7. Whole-run continuity | D03, Q02 | Full reference journey remains; isolated tests do not close it. |
@@ -537,7 +537,7 @@ entire quality area. No human/device evidence is inferred from automated tests.
 | Event decision panels | D04, R04, X01 | Review/confirmation step improved; original choice panels still need review. |
 | Non-item rewards | C02, I03, R04 | Explicit outcome reading and intentional confirmation implemented; revision tests in progress.md. |
 | Consistent styling | D01, D02, U02 | Shared decision text/buttons applied to this flow; other legacy surfaces remain. |
-| Combat notification clutter | V04, F03 | Supply/Waymark lane and bounded history implemented; damage/status callout consolidation remains. |
+| Combat notification clutter | V04, F03 | Supply/Waymark lane and bounded history implemented; numeric damage/Cover/healing, blocked attacks and enemy-applied Winded/Ruffled/Fouled use bounded result lanes. Other status/passive callout consolidation remains. |
 | Action responsiveness | I01, F01, F02 | Existing cadence safeguards retained; full measured journey remains. |
 | Interaction consistency | I03, I04, I05 | Decision inspection, remapping and held-confirm protection extended; other overlays remain. |
 | Complete reference journey | D03, Q02 | Open; isolated surface tests are not end-to-end qualification. |
@@ -689,7 +689,7 @@ P2 = expansion after the foundation is proven.
 | V01 | P0 | Combatant silhouettes, targets, intents and health remain readable against every district. Prior stage passes cover entry/boss; broader encounter matrix remains. **Partial.** |
 | V02 | P0 | Persistent HUD has a clear survival/resource/action hierarchy, including crowded modifier states. **Partial.** |
 | V03 | P0 | Separate selection, outcome forecast and confirmation; selection must not cover the leader. Explicit details implemented; full journey evidence remains. **Partial.** |
-| V04 | P0 | Consolidate transient damage/status/passive notifications without losing inspectable causal order. |
+| V04 | P0 | Consolidate transient damage/status/passive notifications without losing inspectable causal order. Damage, Cover, healing, blocked hits, enemy-applied Winded/Ruffled/Fouled, and Open Sky exposure use bounded per-target result lanes, with same-source bursts grouped and exact event order retained in history. The flock result stack sits beside its sprite; repeated status art coalesces while active, and redundant secondary particles/defeat overlays were removed. Other status/passive families and dense full-run chains remain. **Partial.** |
 | V05 | P0 | Reserve safe regions for hand, intents and actions during every animation and overlay. **Partial.** |
 | A01 | P1 | Audit character/enemy/card art for consistent finish, lighting and scale; replace only demonstrated outliers. |
 | A02 | P1 | Align combatant staging, shadows and contact points across all enemy formations. **Partial.** |
@@ -700,7 +700,7 @@ P2 = expansion after the foundation is proven.
 | C02 | P0 | Fixed-size, measured full-rule pagination for Now/Molt and long text. Hand and combat deck/draw/discard/cleared inspection share the 22px reader. Route comparisons use synchronized 18px pages. Explicit combat/route rewards and Preen/Release inspection share 22px measured pages for active/alternate rules, passive bonuses and full identity. Combat rewards also expose upgraded Molt rules and show printed costs/normal rules independent of the finished battle's stance. Route single-card Deck Review uses 22px measured pages for Now, Preen, Molt, upgraded Molt, passive bonuses and full identity. Market Waymarks, Supplies and services now use a stable 22px paged reader for effects, rules, build advice, purchase consequences and full identity. Market rules now use complete readable effect text; trigger frequencies match combat behavior, including the repeat-Supply exception. Non-Market item tooltips and remaining technical wording elsewhere remain; evidence is in progress.md. **Partial.** |
 | C03 | P0 | Distinguish active effects, passive contribution, temporary changes and flight/collection persistence. Combat separates active/passive pages. **Partial.** |
 | C04 | P1 | Compare exact add/remove/Preen/Market consequences with deck-size and draw assumptions. Existing comparison work remains partial (5, 7, 28, 31). |
-| C05 | P1 | Complete glossary/vocabulary and icon consistency, with contextual definitions that preserve the decision. All 25 existing Codex keywords now open their complete authored definitions in a measured 22px reader with keyboard, controller, pointer, touch paging and screen-reader narration; closing restores the exact entry and scroll. Previously the screen exposed only summaries and Confirm did nothing. Combat hand/pile readers now append deduplicated definitions for terms in the card’s active/alternate rules, stats and cost, using the existing 22px pages without adding persistent HUD. Hover, Codex and combat readers share canonical definitions; corrected Wingbeat timing, Cover reset, per-hit Open Sky Guard, Winded ownership/duration and whole-deck Keystone wording against runtime behavior. Route single-card Deck Review, Market cards, route rewards/Preen/Release and combat rewards/Preen now reuse contextual definitions after existing rules and consequences. Terms derive only from displayed rules, passive bonuses and costs, not names or advice; reading preserves armed choices and resources. Full vocabulary/rules accuracy, comparison and item-context access still require review. **Partial.** |
+| C05 | P1 | Complete glossary/vocabulary and icon consistency, with contextual definitions that preserve the decision. The Codex now contains 34 unique glossary entries, including every one of the 21 canonical contextual terms with the exact shared definition; each opens in a measured 22px reader with keyboard, controller, pointer, touch paging and screen-reader narration, and closing restores the exact entry and scroll. Combat hand/pile readers append deduplicated definitions for terms in the card’s active/alternate rules, stats and cost, using the existing 22px pages without adding persistent HUD. Hover, Codex and combat readers share canonical definitions; corrected Wingbeat timing, Cover reset, per-hit Open Sky Guard, Winded ownership/duration and whole-deck Keystone wording against runtime behavior. Route single-card Deck Review, Market cards, route rewards/Preen/Release, combat rewards/Preen and both comparison modes reuse contextual definitions after existing rules and consequences. Supply and Waymark readers do the same across owned route/combat shelves, route reward inspection, Market offers, combat Waymark rewards and Codex dossiers; pinned Waymark comparison aligns the same term in both columns. Terms derive only from displayed rules, passive bonuses, costs and authored item effects/triggers, not names, flavor, identity or advice; reading preserves armed choices and resources. HUD/stat chips, contextual help and Codex list/detail readers now share the canonical icon for all 21 gameplay terms; all 34 glossary terms have explicit semantic icons. Authentic comprehension and physical-device/AT qualification still require review. **Partial.** |
 | I01 | P0 | Input acknowledges selection immediately and never loses a valid action silently. |
 | I02 | P0 | Predictable select → target → commit → resolve; protect against double play and stale targets. **Partial.** |
 | I03 | P0 | Inspect/Back restores exact selection and focus. Hand and combat pile reading preserve the pending card, target and pile focus; pile Back no longer counts as cancelling the card. Route comparisons retain pages through redraws and separate Pin/selection/Save/Close. Combat/route reward and Preen/Release readers preserve armed choices and pages through redraws and guard pause/settings. Market non-card readers preserve pages and purchase state, and hovering a different offer cannot replace an armed purchase's preview. Route readers share controller confirmation latches; combat rewards reject repeated keyboard Confirm so holding a key cannot close and then commit. Saved Views and Collection Atlas now stop pending shelf motion and reject background wheel input so Back preserves the exact scroll position; normal grid scrolling resumes after closure. The journal editor freezes pending reader movement, owns wheel/focus, and returns to the same card and scroll position. Saving is explicit; blur/backdrop never commits, failed saves retain drafts, and scene shutdown cancels and disposes the editor. Repeated Codex Confirm/Back cannot advance through successive layers. Verify remaining overlays. **Partial.** |
@@ -763,8 +763,72 @@ rules, passive bonuses and costs, excluding identity and advice. Keyboard, touch
 controller events, pause/resume, narration and unchanged run/selection checks are
 covered; all 21 canonical definitions fit across the three supported test sizes.
 The comparison-access remainder in C05 above is superseded by this checkpoint;
-item-context access, vocabulary accuracy and physical-device/AT testing remain.
+vocabulary accuracy and physical-device/AT testing remain.
 This does not close C05 or the overall roadmap.
+
+### September 22 — item contextual-reading checkpoint
+
+C05 item-context access is now implemented for every live full-rule item reader:
+owned route/combat Waymark shelves, route reward Supply/Waymark inspection, Market
+Waymarks and Supplies, combat Waymark rewards, Codex item dossiers and Packed
+Supplies. Definitions come only from authored Effect, Use, Trigger and Rules copy,
+so names, flavor, rarity, build advice and purchase forecasts cannot create false
+matches. Pinned Waymark comparison aligns shared terms and explicitly marks a term
+as unused when only one side contains it. Existing measured pagination keeps the
+shelves and HUD unchanged. Catalog evidence covers all 31 Supplies, 58 Waymarks
+and 89 Codex items across keyboard, remapping, controller, pointer, touch, wheel,
+pause/settings, narration, redraw and unchanged-decision checks; three-size visual
+evidence includes the 1000x560 minimum view. Item-context access in the C05 row is
+superseded by this checkpoint. The glossary reconciliation below closes shared
+canonical vocabulary accuracy; cross-surface icon consistency, authentic player
+comprehension and physical-device/AT testing remain, so C05 and the roadmap remain
+partial.
+
+### September 22 — glossary vocabulary reconciliation
+
+The Codex glossary now contains 34 unique terms. Its nine previously missing
+canonical terms—Regen, Energy, Resonance Burst, Flow, Surge, Hold, Scatter,
+Winded Burst and Keystone—reuse the exact definitions shown contextually in card
+and item readers. A source-level contract prevents missing, duplicate, blank or
+divergent definitions. Chromium and Firefox catalog checks cover every one of the
+115 enemy/glossary tiles, deep focus, detail return, narration and the expanded
+last row at 2560x1600, 1440x900 and 1000x560. Shared vocabulary accuracy is now
+complete for the canonical term set. Authentic comprehension and physical-device/
+assistive-technology qualification keep C05 partial.
+
+### September 22 — canonical icon consistency checkpoint
+
+The canonical term set now has one icon registry shared by HUD/stat chips,
+contextual help and Codex glossary list/detail readers. All 21 gameplay terms
+resolve exactly to their authored semantic icon, and all 34 glossary entries have
+an explicit icon rather than a generic or missing placeholder. The full 115-tile
+enemy/glossary catalog checks loaded art and geometry; deep-scroll masking removes
+the visual fragment of a clipped prior row. Chromium and Firefox each pass seven
+focused contract, input, lifecycle and viewport scenarios. This supersedes the
+cross-surface icon-consistency remainder above. Authentic player comprehension
+and physical-device/assistive-technology evidence keep C05 and the roadmap partial.
+
+### September 23 — combat result-lane checkpoint
+
+Fully blocked hits now use the same capped per-target result presenter as damage,
+Cover and healing. Repeated hits from the same source show one counted label;
+enemy-applied Winded, Ruffled and Fouled use the same stack, with repeated
+Winded effects counted rather than overlapping. The ordered combat history
+retains each event. The flock stack sits beside its sprite rather than over
+the hit contact. Defeats keep their authored burst and
+reward cue without a second generic burst or “Down!” label. Target-lane routing
+uses the explicit mechanical target instead of scanning scene children on each
+result. V04 remains partial: other status/passive callouts and dense full-run
+sequences still need consolidation and player/device qualification.
+
+The follow-up dense-status visual pass keeps one authored accent per live
+status type and removes redundant shockwaves, glow/animation layers and
+application particles. Status application art uses normal blend to prevent
+stacked highlights bleaching the flock; poison damage ticks keep their distinct
+impact cue. Open Sky exposure now shares the bounded flock lane and uses one
+authored accent instead of an overlapping label, ring and sparks. Normal and
+reduced-motion sequences retain each mechanical stack and ordered history event;
+their labels remain legible at 2560×1600, 1440×900 and 1000×560.
 
 Delivery order: D/V/C/I/X reference foundation → F/U/R end-to-end polish →
 G/E balance and variety → P progression/story → T/Q release qualification.
