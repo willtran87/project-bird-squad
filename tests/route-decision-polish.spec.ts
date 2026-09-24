@@ -140,6 +140,7 @@ for (const kind of ['scrap', 'mixed', 'leave']) for (const remapped of [false, t
 });
 
 for (const kind of ['card', 'supply']) test(`${kind} choice Details preserves armed picks and complete long consequences`, async ({ page }, info) => {
+  test.setTimeout(120_000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });

@@ -799,7 +799,7 @@ test('route map loads and previews the boss before the final node', async ({ pag
   });
   expect(result.routeMapFrames[0].displayWidth).toBe(1208);
   expect(result.routeMapFrames[0].displayHeight).toBe(590);
-  expect(result.routeMapFrames[0].alpha).toBe(0.32);
+  expect(result.routeMapFrames[0].alpha).toBe(0.14);
   expect(result.routeNodeTooltipFrameLoaded).toBe(true);
   expect(result.routeNodeTooltipFrameRendered).toBe(true);
   expect(result.routeNodeTooltipFrame.loaded).toBe(true);
@@ -864,7 +864,7 @@ test('route map loads and previews the boss before the final node', async ({ pag
   expect(result.selectedLabels).toBe(2);
   const futureRouteNodes = result.routeNodeIcons.filter((node: any) => node.state === 'future');
   expect(futureRouteNodes.length).toBeGreaterThan(0);
-  expect(futureRouteNodes.every((node: any) => node.alpha === 0.58)).toBe(true);
+  expect(futureRouteNodes.every((node: any) => node.alpha === 0.9)).toBe(true);
 });
 
 test('route commit renders generated travel streak before changing scenes', async ({ page }) => {

@@ -6754,7 +6754,7 @@ class RouteScene extends Phaser.Scene {
       this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
       this.add.image(cx, cy, key)
         .setDisplaySize(w, h)
-        .setAlpha(0.32)
+        .setAlpha(0.14)
         .setName('route-map-frame');
       return;
     }
@@ -10287,7 +10287,8 @@ class RouteScene extends Phaser.Scene {
     if (resident && this.textures.exists(resident.key)) {
       const residentImage = this.add.image(x, floorY, resident.key)
         .setOrigin(0.5, 1)
-        .setAlpha(0.99);
+        .setAlpha(0.99)
+        .setName('route-event-resident-art');
       this.fitImageInside(residentImage, maxWidth, maxHeight);
       return;
     }
@@ -10595,7 +10596,7 @@ class RouteScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 28, GAME_WIDTH - 100, 2, accent, 0.34);
 
     this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 132, 548);
-    this.renderRouteEventResident(node, 146, GAME_HEIGHT + 58, 350, 460, { showGlow: false });
+    this.renderRouteEventResident(node, 146, GAME_HEIGHT - 8, 350, 448, { showGlow: false });
     this.renderBasinHearthBench(1022, 492, 428, 316, accent);
     this.renderRouteEventChoiceColumn(node, choices, 560, 326, 472, accent);
   }
@@ -10726,7 +10727,7 @@ class RouteScene extends Phaser.Scene {
     }
     this.renderRouteEventAtmosphere(node, accent);
     this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 132, 560);
-    this.renderRouteEventResident(node, 146, GAME_HEIGHT + 70, 350, 560, { showGlow: false });
+    this.renderRouteEventResident(node, 146, GAME_HEIGHT - 8, 350, 508, { showGlow: false });
     this.renderNestWorkbench(1018, 488, 392, 300, accent);
     this.renderRouteEventChoiceColumn(node, choices, 560, 316, 472, accent);
   }
@@ -10792,7 +10793,7 @@ class RouteScene extends Phaser.Scene {
     }
     this.renderRouteEventAtmosphere(node, accent);
     this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 132, 560);
-    this.renderRouteEventResident(node, 146, GAME_HEIGHT + 62, 350, 500, { showGlow: false });
+    this.renderRouteEventResident(node, 146, GAME_HEIGHT - 8, 350, 464, { showGlow: false });
     this.renderCacheCabinet(node, 620, 438, 590, 506, choices, accent);
   }
 
@@ -10940,11 +10941,11 @@ class RouteScene extends Phaser.Scene {
     const titleOverflow = fit(title, choice.text, 1);
     const detailOverflow = fit(detail, summary, h >= 72 ? 2 : 1);
     bg.setData('hasOverflowDetail', titleOverflow || detailOverflow).setData('focused', focused);
-    this.add.rectangle(x + w / 2 - 40, y, 64, Math.max(58, h - 6), 0x07101a, 0.5)
+    this.add.rectangle(x + w / 2 - 40, y, 64, Math.max(58, h - 6), 0x07101a, focused ? 0.58 : 0.18)
       .setInteractive({ useHandCursor: true }).setName('route-event-details-hit').setData('choiceIndex', index)
       .on('pointerdown', () => handleEventChoice(this, 'inspect', index));
-    this.add.text(x + w / 2 - 40, y, 'Details', {
-      fontFamily: UI_FONT, fontSize: '16px', color: '#b8cdd2', resolution: 2
+    this.add.text(x + w / 2 - 40, y, 'Read', {
+      fontFamily: UI_FONT, fontSize: '15px', color: focused ? '#e8f7f7' : '#9eb5bc', resolution: 2
     }).setOrigin(0.5);
   }
 
@@ -10969,7 +10970,7 @@ class RouteScene extends Phaser.Scene {
     }
     this.renderRouteEventAtmosphere(node, accent);
     this.renderRouteEventTitlePlaque(node, GAME_WIDTH / 2, 132, 560);
-    this.renderRouteEventResident(node, 146, GAME_HEIGHT + 50, 330, 488, { showGlow: false });
+    this.renderRouteEventResident(node, 146, GAME_HEIGHT - 8, 330, 456, { showGlow: false });
     this.renderSignalSwitchboard(1018, 486, 430, 386, [], accent);
     this.renderRouteEventChoiceColumn(node, choices, 560, 316, 472, accent);
   }

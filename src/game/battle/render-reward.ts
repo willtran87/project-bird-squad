@@ -218,14 +218,14 @@ function renderBackdrop(context: RewardCeremonyRenderContext) {
     scene.textures.get(textures.ceremonyBackdrop).setFilter(Phaser.Textures.FilterMode.LINEAR);
     const backdrop = scene.add.image(width / 2, height / 2 + 10, textures.ceremonyBackdrop)
       .setDisplaySize(1224, 612)
-      .setAlpha(0.3)
+      .setAlpha(0.21)
       .setName('reward-ceremony-backdrop');
     target.add(backdrop);
     hasCeremonyBackdrop = true;
     if (!reducedMotion) {
       scene.tweens.add({
         targets: backdrop,
-        alpha: 0.28,
+        alpha: 0.19,
         scaleX: backdrop.scaleX * 1.006,
         scaleY: backdrop.scaleY * 1.006,
         duration: 2200,
@@ -267,9 +267,6 @@ function renderDeckNeeds(context: RewardCeremonyRenderContext) {
   if (!deckNeeds) return;
   const { scene, target, width, textures, fontFamily, boldFontStyle } = context;
   const y = 182;
-  target.add(scene.add.text(width / 2, y - 22, deckNeeds.guide, {
-    fontFamily, fontSize: '12px', fontStyle: boldFontStyle, color: '#7f93a8'
-  }).setOrigin(0.5).setName('reward-deck-read-guide'));
   const labels = deckNeeds.entries.map(({ label, rank }) => `${label}: ${rank}`);
   const widths = labels.map((label) => label.length * 8 + 58);
   let x = width / 2 - widths.reduce((sum, value) => sum + value, 0) / 2;
@@ -280,7 +277,7 @@ function renderDeckNeeds(context: RewardCeremonyRenderContext) {
     if (hasFrame) {
       target.add(scene.add.image(x + chipWidth / 2, y, textures.deckNeedChipFrame)
         .setDisplaySize(chipWidth, 34)
-        .setAlpha(rank === 'low' ? 0.58 : 0.5)
+        .setAlpha(rank === 'low' ? 0.42 : 0.34)
         .setName('reward-deck-need-chip-frame'));
     } else {
       target.add(scene.add.rectangle(x + chipWidth / 2, y, chipWidth, 28, 0x07101c, 0.78)
@@ -304,7 +301,8 @@ function renderCardArt(context: RewardCeremonyRenderContext, card: RewardCardVie
   const artWidth = 200;
   const artHeight = Math.round(artWidth * 1.5);
   if (card.artKey && scene.textures.exists(card.artKey)) {
-    target.add(scene.add.image(x, y, card.artKey).setDisplaySize(artWidth, artHeight).setAlpha(0.98));
+    target.add(scene.add.image(x, y, card.artKey).setDisplaySize(artWidth, artHeight).setAlpha(0.98)
+      .setName('reward-card-art'));
   } else if (card.snag && scene.textures.exists(textures.snagBorder)) {
     target.add(scene.add.rectangle(x, y, artWidth, artHeight, 0x07090d, 0.98));
     target.add(scene.add.image(x, y, textures.snagBorder).setDisplaySize(artWidth, artHeight));
@@ -382,7 +380,7 @@ function renderCard(
   renderCardArt(context, card, x, y);
   target.add(scene.add.rectangle(x, top + 18, cardWidth - 18, 2, card.accent, 0.78));
   target.add(scene.add.rectangle(x, bottom - 18, cardWidth - 18, 2, card.accent, 0.55));
-  target.add(scene.add.rectangle(x, top + 48, cardWidth - 18, 76, 0x05080e, 0.92));
+  target.add(scene.add.rectangle(x, top + 39, cardWidth - 18, 60, 0x05080e, 0.92));
   target.add(scene.add.circle(x - cardWidth / 2 + 24, top + 28, 19, card.cost === 0 ? 0x24d0d6 : 0xd8a840, 1).setStrokeStyle(2, 0x05080e, 0.95));
   target.add(scene.add.text(x - cardWidth / 2 + 24, top + 28, `${card.cost}`, {
     fontFamily, fontSize: '18px', fontStyle: boldFontStyle, color: '#07101c'
@@ -395,11 +393,11 @@ function renderCard(
     stroke: '#020409',
     strokeThickness: 3,
     fixedWidth: cardWidth - 66,
-    fixedHeight: 46,
+    fixedHeight: 38,
     wordWrap: { width: cardWidth - 66 },
     maxLines: 2
   }).setName('reward-card-name'), 2));
-  target.add(scene.add.text(x - cardWidth / 2 + 50, top + 68, card.bird, {
+  target.add(scene.add.text(x - cardWidth / 2 + 50, top + 58, card.bird, {
     fontFamily,
     fontSize: '13px',
     fontStyle: boldFontStyle,
@@ -412,20 +410,20 @@ function renderCard(
     maxLines: 1
   }));
   if (context.reinforcedColorCues) {
-    renderCardColorCue(scene, target, x - cardWidth / 2 + 68, top + 106, card.label, card.accent, {
+    renderCardColorCue(scene, target, x - cardWidth / 2 + 68, top + 86, card.label, card.accent, {
       name: 'reward-color-cue-badge',
       width: 92,
       height: 24,
     });
   } else {
-    target.add(scene.add.text(x - cardWidth / 2 + 16, top + 96, card.label, {
+    target.add(scene.add.text(x - cardWidth / 2 + 16, top + 78, card.label, {
       fontFamily, fontSize: '14px', fontStyle: boldFontStyle, color: card.accentText,
       backgroundColor: '#05080e', padding: { x: 4, y: 2 },
     }).setName('reward-card-family'));
   }
-  target.add(scene.add.rectangle(x, bottom - 60, cardWidth - 18, 104, 0x05080e, 0.97)
+  target.add(scene.add.rectangle(x, bottom - 48, cardWidth - 18, 88, 0x05080e, 0.96)
     .setStrokeStyle(1, card.accent, 0.28).setName('reward-card-effect-panel'));
-  target.add(boundedRewardText(scene.add.text(x - cardWidth / 2 + 16, bottom - 104, card.summary, {
+  target.add(boundedRewardText(scene.add.text(x - cardWidth / 2 + 16, bottom - 86, card.summary, {
     fontFamily,
     fontSize: '18px',
     resolution: 2,
@@ -434,13 +432,13 @@ function renderCard(
     strokeThickness: 0,
     lineSpacing: 2,
     fixedWidth: cardWidth - 32,
-    fixedHeight: 90,
+    fixedHeight: 72,
     wordWrap: { width: cardWidth - 32, useAdvancedWrap: true },
-    maxLines: 4
-  }).setName('reward-card-effect').setData('fullText', card.summary), 4));
+    maxLines: 3
+  }).setName('reward-card-effect').setData('fullText', card.summary), 3));
   if (card.molt) {
-    target.add(scene.add.rectangle(x + cardWidth / 2 - 48, top + 106, 62, 24, 0x2a1208, 0.98).setStrokeStyle(1, 0xff9d4d, 0.72));
-    target.add(scene.add.text(x + cardWidth / 2 - 48, top + 106, 'MOLT', {
+    target.add(scene.add.rectangle(x + cardWidth / 2 - 48, top + 86, 62, 24, 0x2a1208, 0.98).setStrokeStyle(1, 0xff9d4d, 0.72));
+    target.add(scene.add.text(x + cardWidth / 2 - 48, top + 86, 'MOLT', {
       fontFamily, fontSize: '12px', fontStyle: boldFontStyle, color: '#ffc78f', align: 'center', fixedWidth: 56
     }).setOrigin(0.5).setName('reward-card-molt-label'));
   }
@@ -453,10 +451,10 @@ function renderCard(
         ? 'NEW TO COLLECTION'
         : `COLLECTED / ${card.collectionStatus.timesClaimed} CLAIM${card.collectionStatus.timesClaimed === 1 ? '' : 'S'}`;
     const width = cardWidth - 24;
-    target.add(scene.add.rectangle(x, bottom - 126, width, 22, targeted || firstClaim ? 0x3b2b0b : 0x102534, 0.98)
+    target.add(scene.add.rectangle(x, bottom - 108, width, 22, targeted || firstClaim ? 0x3b2b0b : 0x102534, 0.98)
       .setStrokeStyle(1, targeted || firstClaim ? 0xffcf6b : 0x8df4ff, 0.96)
       .setName('reward-collection-status'));
-    target.add(scene.add.text(x, bottom - 126, label, {
+    target.add(scene.add.text(x, bottom - 108, label, {
       fontFamily,
       fontSize: '12px',
       fontStyle: boldFontStyle,
@@ -479,10 +477,10 @@ function renderCard(
     inspectY,
     104,
     MIN_SUPPORTED_TOUCH_TARGET,
-    inspectEnabled ? 0x102534 : 0x0a141c,
-    inspectEnabled ? 0.88 : 0.48,
+    inspectEnabled ? 0x07131d : 0x0a141c,
+    inspectEnabled ? 0.82 : 0.48,
   )
-    .setStrokeStyle(2, inspectEnabled ? card.accent : 0x49606d, inspectEnabled ? 0.9 : 0.42)
+    .setStrokeStyle(1, inspectEnabled ? 0x7195aa : 0x49606d, inspectEnabled ? 0.76 : 0.42)
     .setData('disabled', !inspectEnabled)
     .setName('reward-card-inspect-hit');
   if (inspectEnabled) {
@@ -497,7 +495,7 @@ function renderCard(
       context.onCardInspect(card.id);
     });
     inspect.on('pointerover', () => inspect.setFillStyle(0x18384b, 1));
-    inspect.on('pointerout', () => inspect.setFillStyle(0x102534, 0.88));
+    inspect.on('pointerout', () => inspect.setFillStyle(0x07131d, 0.82));
   }
   target.add(inspect);
   target.add(scene.add.text(x - 76, inspectY, 'INSPECT', {
@@ -510,15 +508,17 @@ function renderCard(
     fixedWidth: 84,
   }).setOrigin(0.5).setName('reward-card-inspect-label'));
   {
+    const primary = card.focused || card.armed;
     const take = scene.add.rectangle(x + 54, inspectY, 144, MIN_SUPPORTED_TOUCH_TARGET,
-      !inspectEnabled ? 0x0a141c : card.armed ? 0x21505a : 0x102534, inspectEnabled ? 0.98 : 0.48)
-      .setStrokeStyle(card.armed ? 2 : 1, card.armed ? 0xffcf6b : 0x49606d, inspectEnabled ? 0.9 : 0.42)
+      !inspectEnabled ? 0x0a141c : card.armed ? 0x70532a : primary ? 0xb99852 : 0x132631,
+      inspectEnabled ? 0.98 : 0.48)
+      .setStrokeStyle(card.armed ? 2 : 1, primary ? 0xe6c87a : 0x7195aa, inspectEnabled ? 0.9 : 0.42)
       .setName('reward-card-take-hit').setData('cardId', card.id).setData('disabled', !inspectEnabled);
     if (inspectEnabled) take.setInteractive({ useHandCursor: true }).on('pointerdown', () => context.onCardSelect(card.id));
     target.add(take);
     target.add(scene.add.text(x + 54, inspectY, card.armed ? 'Confirm' : 'Select', {
       fontFamily, fontSize: '17px', resolution: 2, fontStyle: boldFontStyle,
-      color: !inspectEnabled ? '#667b89' : card.armed ? '#ffe7a8' : '#dce8f2',
+      color: !inspectEnabled ? '#667b89' : card.armed ? '#fff0cb' : primary ? '#101820' : '#dce8f2',
       wordWrap: { width: 132 }, maxLines: 1, align: 'center',
     }).setOrigin(0.5).setName('reward-card-take-label'));
   }
@@ -568,7 +568,7 @@ function renderSkip(context: RewardCeremonyRenderContext) {
 export function renderRewardCeremony(context: RewardCeremonyRenderContext) {
   renderBackdrop(context);
   renderDeckNeeds(context);
-  if (context.kind === 'upgrade') context.target.add(context.scene.add.rectangle(context.width / 2, 662, 920, 84, 0x050c14, 0.98)
+  if (context.kind === 'upgrade') context.target.add(context.scene.add.rectangle(context.width / 2, 654, 920, 60, 0x050c14, 0.8)
     .setName('reward-preen-preview-rail'));
   let glowBursts = 0;
   if (context.kind === 'waymark') {

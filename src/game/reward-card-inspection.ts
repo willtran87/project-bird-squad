@@ -152,13 +152,13 @@ export function renderMarketItemDetail(scene: Phaser.Scene, view: MarketItemDeta
   if (!owner.marketOpen || owner.marketCategory === 'catalog') return renderLegacyMarketItemDetail(scene, view);
   const panel = scene.add.container(0, 0).setDepth(23040).setName('market-item-reader');
   const add = <T extends Phaser.GameObjects.GameObject>(o: T) => { panel.add(o); return o; };
-  const text = (x: number, y: number, value: string, size = 22, width = 376) => add(scene.add.text(x, y, value, {
+  const text = (x: number, y: number, value: string, size = 22, width = 324) => add(scene.add.text(x, y, value, {
     fontFamily: UI_FONT, fontSize: `${size}px`, color: '#e6eef6', resolution: 2,
     wordWrap: { width, useAdvancedWrap: true }, lineSpacing: 3,
   }));
-  add(scene.add.rectangle(294, 428, 420, 436, 0x070d15, 1).setStrokeStyle(1, view.accent, 0.7)
+  add(scene.add.rectangle(264, 428, 360, 436, 0x070d15, 0.97).setStrokeStyle(1, view.accent, 0.58)
     .setInteractive({ useHandCursor: false }).setName('market-item-reader-frame'));
-  const title = text(106, 228, view.title, 26).setColor(UI_GOLD).setFontStyle(UI_BOLD).setName('market-item-reader-title');
+  const title = text(102, 228, view.title, 24).setColor(UI_GOLD).setFontStyle(UI_BOLD).setName('market-item-reader-title');
   const wrapped = title.getWrappedText();
   let excerpt = wrapped.slice(0, 2).join('\n');
   title.setText(excerpt + (wrapped.length > 2 ? '…' : ''));
@@ -166,13 +166,13 @@ export function renderMarketItemDetail(scene: Phaser.Scene, view: MarketItemDeta
   // These exact blocking rows come from marketPreview/marketRefreshDecisionPreview.
   // Keep them visible on every page, not only inside Purchase Preview.
   const blocker = view.decisionPreview.find(row => /^(NEED \d+ MORE SCRAP|SUPPLY POUCH FULL|NO ELIGIBLE CARD)$/.test(row));
-  text(106, 307, view.price === undefined ? 'Item details' : `Cost ${view.price} Scrap`, 18)
+  text(102, 307, view.price === undefined ? 'Item details' : `Cost ${view.price} Scrap`, 18)
     .setColor(view.enabled && !blocker ? UI_CYAN : '#ffc7a4').setName('market-item-reader-cost');
-  if (options) text(482, 307, options.resourceLabel, 18, 170).setOrigin(1, 0).setColor('#abc4d4').setName('market-card-wingbeats');
-  if (blocker) text(106, 334, blocker, 18).setColor('#ffc7a4').setName('market-item-reader-blocker');
-  else if (options) text(106, 334, options.contextLabel, 16).setColor('#abc4d4').setName('market-card-context');
-  const heading = text(106, blocker || options ? 364 : 346, '', 16).setColor(UI_GOLD).setFontStyle(UI_BOLD);
-  const body = text(106, blocker || options ? 394 : 376, '').setName('market-item-reader-body');
+  if (options) text(426, 307, options.resourceLabel, 18, 140).setOrigin(1, 0).setColor('#abc4d4').setName('market-card-wingbeats');
+  if (blocker) text(102, 334, blocker, 18).setColor('#ffc7a4').setName('market-item-reader-blocker');
+  else if (options) text(102, 334, options.contextLabel, 16).setColor('#abc4d4').setName('market-card-context');
+  const heading = text(102, blocker || options ? 364 : 346, '', 16).setColor(UI_GOLD).setFontStyle(UI_BOLD);
+  const body = text(102, blocker || options ? 394 : 376, '').setName('market-item-reader-body');
   const sections = options?.sections ?? [
     { title: 'EFFECT', text: view.body },
     { title: 'RULES', text: view.meta },
@@ -194,8 +194,8 @@ export function renderMarketItemDetail(scene: Phaser.Scene, view: MarketItemDeta
   const key = JSON.stringify([view.price, view.enabled, sections]);
   const state = marketItemReading.get(scene)?.key === key ? marketItemReading.get(scene)! : { key, page: 0 };
   marketItemReading.set(scene, state);
-  const pageLabel = text(294, 551, '', 16, 160).setOrigin(0.5);
-  bindChoiceHint(scene, text(294, 626, '', 15, 376).setOrigin(0.5).setColor('#abc4d4'), mode =>
+  const pageLabel = text(264, 551, '', 16, 160).setOrigin(0.5);
+  bindChoiceHint(scene, text(264, 626, '', 15, 324).setOrigin(0.5).setColor('#abc4d4'), mode =>
     mode === 'pointer' ? 'Read only · Pages never purchase' : `${mode === 'controller' ? 'Y' : controlBindingLabel('roost')}: next page · Read only`);
   const show = (delta: number) => {
     if (delta && (owner.pauseOverlayOpen || owner.settingsOverlayOpen)) return;
@@ -209,13 +209,13 @@ export function renderMarketItemDetail(scene: Phaser.Scene, view: MarketItemDeta
     if (delta) owner.updateTextState();
   };
   [-1, 1].forEach((delta, i) => {
-    const x = i ? 398 : 190;
-    const button = add(scene.add.rectangle(x, 591, 170, 58, 0x142734, 1).setStrokeStyle(1, 0x7195aa, 0.8)
+    const x = i ? 357 : 171;
+    const button = add(scene.add.rectangle(x, 591, 140, 58, 0x142734, 1).setStrokeStyle(1, 0x7195aa, 0.8)
       .setInteractive({ useHandCursor: true }).setName(`market-item-reader-${i ? 'next' : 'previous'}`));
     button.on('pointerdown', () => show(delta));
     button.on('pointerover', () => button.setStrokeStyle(2, 0x8df4ff, 1));
     button.on('pointerout', () => button.setStrokeStyle(1, 0x7195aa, 0.8));
-    text(x, 591, i ? 'Next →' : '← Previous', 16, 162).setOrigin(0.5);
+    text(x, 591, i ? 'Next →' : '← Previous', 16, 136).setOrigin(0.5);
   });
   panel.setData('turnRulesPage', show); show(0); return panel;
 }

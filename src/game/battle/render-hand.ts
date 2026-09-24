@@ -327,7 +327,7 @@ function renderCard(
     color: '#06101c', resolution: 2,
   }).setOrigin(0.5));
 
-  const panelHeight = 132;
+  const panelHeight = 116;
   target.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - 3, cardWidth - 6, panelHeight, 0x081624, 0.98)
     .setName('combat-card-rules-panel'));
   target.add(scene.add.rectangle(centerX, bottom - panelHeight - 3, cardWidth - 6, 2, card.accent, 0.85));
@@ -337,10 +337,10 @@ function renderCard(
       fontSize: '20px', resolution: 2, lineSpacing: 2,
       color: card.canPay ? '#d5e0e6' : '#95a4b2',
       align: 'left',
-      maxLines: 5,
+      maxLines: 4,
       wordWrap: { width: cardWidth - 16, useAdvancedWrap: true },
     }).setName('combat-card-readable-summary');
-    fitCardText(summary, card.preview.currentText || card.summary, 5, true);
+    fitCardText(summary, card.preview.currentText || card.summary, 4, true);
     target.add(summary);
   }
 

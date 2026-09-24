@@ -4221,15 +4221,15 @@ export class CodexScene extends Phaser.Scene {
     bg.on('pointerdown', () => this.openCodexDetail(item.id));
     tile.add(bg);
     if (item.art && this.textures.exists(item.art.key)) {
-      const image = item.kind === 'Supply' ? addSupplyArtImage(this, left + 48, cy - 24, item.art.key)
-        : addWaymarkArtImage(this, left + 48, cy - 24, item.art.key);
-      tile.add(image.setDisplaySize(72, 72).setName('codex-entry-art'));
+      const image = item.kind === 'Supply' ? addSupplyArtImage(this, left + 64, cy, item.art.key)
+        : addWaymarkArtImage(this, left + 64, cy, item.art.key);
+      tile.add(image.setDisplaySize(112, 112).setName('codex-entry-art'));
     } else {
-      tile.add(this.add.text(left + 48, cy - 24, item.glyph, {
-        fontFamily: UI_FONT, fontSize: '24px', color: UI_BODY,
+      tile.add(this.add.text(left + 64, cy, item.glyph, {
+        fontFamily: UI_FONT, fontSize: '36px', color: UI_BODY,
       }).setResolution(2).setOrigin(0.5).setName('codex-entry-fallback'));
     }
-    const tx = left + 96, width = w - 112;
+    const tx = left + 128, width = w - 144;
     const title = this.codexPreviewText(tile, item.name, tx, top + 16, width, 50, 20, UI_GOLD, 'codex-entry-title', true);
     const meta = this.codexPreviewText(tile, item.meta, tx, title.y + title.height + 8, width, 20, 14, '#a9c5d5', 'codex-entry-meta');
     const sy = meta.y + meta.height + 12;

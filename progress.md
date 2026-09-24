@@ -12953,3 +12953,30 @@ sessions through `docs/game/playtest-runbook.md`.
   successfully. Expanded 440-state/card and four-keystone bounds checks pass in
   all three engines and exited normally. Removed temporary config/actions/helper;
   ignored screenshots remain intentionally. No live owned browser processes remain.
+
+## 2026-09-24 — art placement and visual hierarchy pass
+
+- Preserved the existing dark streetwear art direction. Reward cards now expose
+  more illustration, use a quieter ceremony frame and deck chips, and emphasize
+  only the focused Select action. Combat hand cards expose more art without
+  dropping the complete authored rules available on inspection.
+- Route frame chrome is quieter; future destinations and paths have stronger
+  legibility without adding bright glows. Market rules use a narrower reserved
+  reader lane, leaving merchandise unobstructed. Codex item thumbnails are 112 px
+  rather than 72 px. Event residents now fit inside the viewport and repeated
+  Details buttons use lower-emphasis Read labels. Dark crow enemies get a very
+  restrained silhouette underlay rather than a global spotlight.
+- Added three-viewport route, signal, and normal-reward visual regression tests.
+  Existing reward, Codex, combat-hand, event-navigation, market-reader, and route
+  tests were exercised; the market glossary assertion was corrected to reflect
+  only keywords actually present in a randomly offered item's authored rules.
+- Final production build, runtime-data and documentation validators, and
+  whitespace check pass. New route/signal/reward regression captures pass at
+  2560×1600, 1440×900 and 1000×560; reward/Preen catalog tests pass (440
+  card states checked). Market reader and route-map smoke checks pass. The two
+  long-form route reader cases pass with an explicit 120-second test budget;
+  their default 30-second limit was too short under full-suite load.
+- Shared gameplay client reached a fully loaded local Route scene with no failed
+  asset groups. The owned preview was stopped and port 43383 is closed. No
+  commit, push or deployment was requested. Human fun/balance and physical
+  device qualification are separate from this visual implementation pass.

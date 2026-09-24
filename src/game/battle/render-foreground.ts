@@ -151,6 +151,12 @@ function renderEnemyArt(context: BattleForegroundRenderContext, enemy: BattleFor
     0x020409,
     hasEnemyArt ? 0.38 : 0.26,
   ).setName('combat-enemy-contact-shadow').setData('enemyId', enemy.id));
+  // The darkest crow art needs a little separation from the roof, not a generic
+  // spotlight that competes with intent, target and impact cues.
+  if (hasEnemyArt && /crow/i.test(enemy.artKey ?? '')) {
+    poseGroup.add(scene.add.ellipse(0, -22 * s, 170 * s, 190 * s, 0x8fb2b7, 0.075)
+      .setName('combat-enemy-silhouette-separation'));
+  }
   const body = hasEnemyArt
     ? scene.add.rectangle(0, enemy.artPlacement?.hitboxY ?? -18 * s, 248 * s, 236 * s, 0x000000, 0.001)
       .setInteractive({ useHandCursor: true })

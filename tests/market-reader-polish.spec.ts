@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { KEYWORDS } from '../src/game/keyword-definitions';
+import { itemKeywordSections, KEYWORDS } from '../src/game/keyword-definitions';
 
 for (const remapped of [false, true]) test(`Market item reader keeps complete text and purchase intent, remapped=${remapped}`, async ({ page }, info) => {
   test.setTimeout(240_000);
@@ -40,16 +40,18 @@ for (const remapped of [false, true]) test(`Market item reader keeps complete te
     await expect.poll(async () => (await state()).rules?.page).toBe(1);
     const before = await stable();
     if (category !== 'services') {
-      const terms = await page.evaluate(() => {
+      const pages = await page.evaluate(() => {
         const r = (window as any).__birdSquadGame.scene.getScene('RouteScene'), panel = r.marketItemHover;
         const turn = panel.getData('turnRulesPage'), first = panel.getData('reading').page, pages: any[] = [];
         turn(-(first - 1));
         const total = panel.getData('reading').total;
         for (let i = 0; i < total; i++) { pages.push({ ...panel.getData('reading') }); if (i < total - 1) turn(1); }
         turn(-(total - 1));
-        return pages.filter(page => page.title.startsWith('TERM · '));
+        return pages;
       });
-      expect(terms.length).toBeGreaterThan(0);
+      const terms = pages.filter(page => page.title.startsWith('TERM · '));
+      const expectedTerms = itemKeywordSections(pages.filter(page => !page.title.startsWith('TERM · ')));
+      expect(new Set(terms.map(page => page.title))).toEqual(new Set(expectedTerms.map(page => page.title)));
       for (const title of new Set(terms.map(term => term.title))) {
         const canonical = Object.keys(KEYWORDS).find(key => title === `TERM · ${key.toUpperCase()}`)!;
         expect(terms.filter(term => term.title === title).map(term => term.text).join(' ').replace(/\s+/g, ' '))
