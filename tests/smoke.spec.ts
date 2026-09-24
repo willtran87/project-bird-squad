@@ -166,7 +166,7 @@ test('route becomes playable while optional painted node art streams', async ({ 
   expect(result.state.assetReadiness.pendingGroups).toContain('route-essential-art');
   expect(result.state.assetReadiness.timeToFirstInteractionMs).toBeLessThan(3_000);
   expect(result.texts).not.toContain('Charting the route...');
-  expect(result.texts).toContain('S');
+  expect(result.texts.some((text: string) => ['S', 'C', 'N', 'R', 'B', '?', '$', '~'].includes(text))).toBe(false);
   expect(result.enabledRouteTargets).toBeGreaterThan(0);
 });
 

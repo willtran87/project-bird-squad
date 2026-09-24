@@ -12980,3 +12980,28 @@ sessions through `docs/game/playtest-runbook.md`.
   asset groups. The owned preview was stopped and port 43383 is closed. No
   commit, push or deployment was requested. Human fun/balance and physical
   device qualification are separate from this visual implementation pass.
+
+## 2026-09-24 — art integration and flat-shape cleanup
+
+- Route node icons no longer flash single-letter placeholders while image art
+  streams; quiet type-specific engraved markers hold the position and the
+  painted icon still replaces them automatically. The route-map panel lets the authored district
+  backdrop show through rather than burying it beneath near-opaque layers.
+- Event backdrops no longer carry viewport-wide colored top/bottom rules. Close
+  controls lose the stray red underline. The Waymark scroll rail now keeps its
+  illustrated cap proportions through vertical nine-slice rendering.
+- Combat incoming damage uses a subdued etched forecast instead of a solid red
+  slab; the selected-enemy cue uses the existing enamel reticle at its native
+  proportions instead of a neon ellipse. The redundant red Flow-break slash
+  was removed; its text status stays.
+- Reviewed 2560×1600, 1440×900, and 1000×560 route/event/battle/waymark
+  captures. Focused route art-streaming, art-hierarchy, waymark layout, and
+  gameplay-clarity browser tests pass. The gameplay-clarity test now allows an
+  optional rival spawn and has an appropriate 120-second budget for its multi-
+  scene, multi-viewport coverage. TypeScript and whitespace checks pass.
+- Specific future image-generation briefs are recorded in
+  `docs/game/non-battle-set-piece-art-briefs.md`; no existing authored art was
+  regenerated merely to add decoration. Shared gameplay client visited the
+  built menu successfully. Late route-art recovery and docs validation pass.
+  Owned preview was stopped; audit/test ports 4179 and 5381–5390 have no
+  listeners. No commit, push, or deployment requested.

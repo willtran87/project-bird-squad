@@ -33,3 +33,15 @@ Each resident's source folder includes `*-chroma-source.png` on a flat green bac
 Lantern Roost is the first completed scene in this set-piece pass. It now uses a dedicated scene plate and Sella Warmwick's decomposed resident cutout so the Basin visit feels like a landmark stop rather than the generic route-event layout.
 
 The current scene and resident pass uses the supplied image-generated Desktop exports (`1.png`/`1-1.png` through `5.png`/`5-1.png`) as the canonical art source. Full scene PNGs are preserved in the matching concept-art folders and exported as opaque runtime WebPs; each resident keeps the original chroma-source PNG, a transparent alpha-source review PNG, and a transparent runtime WebP. The in-game presentation intentionally uses only the opaque scene plate plus the resident cutout so the landmark art stays visible and uncluttered.
+
+## Art-use audit: next image-generation opportunities (2026-09-24)
+
+The current cards, enemies, residents, event backdrops, and district backdrops are already authored. Their biggest problem was presentation, not missing images: opaque map UI buried the district painting, transient route letters appeared before icon art, and geometric accents overrode the set pieces. Those are integration fixes, not reasons to regenerate the existing images.
+
+New image-generation work would have the most value in these bounded replacements, in priority order:
+
+1. **Quieter route-map frame variant.** Replace `route-map-frame` with a transparent 1024×500 border that preserves the exact current center opening and edge safe zones but uses only restrained brass/teal corner hardware and short inset rails. Keep the interior empty and never paint labels, paths, nodes, or text. Compare at 2560×1600 and 1000×560 before switching; the current frame is valid but visually heavier than the map content.
+2. **Reward ceremony backdrop variant.** The reward screen has good card art but its large architectural frame competes with the three selections. Generate an alternate, text-free rooftop-material plate with its brightest detail outside the card and rule regions. Preserve the current 1280×640 composition and use the deterministic exporter; do not bake buttons or card slots into the painting.
+3. **Rival-wager foreground prop.** Caldra and the rival scene are complete, but a small transparent contract case or prize-board cutout could ground the decision instead of relying only on the backdrop. Keep it at the side of the central reading lane, never behind choice copy. This should be approved from a full 1000×560 layout mockup before export.
+
+Do not generate new card borders, text-bearing controls, generic combat glows, or replacement node glyphs. Those require exact repeatable geometry, interaction-state rendering, and readable scaling; the deterministic UI/asset pipeline is the better tool. For any new painted asset, retain the source PNG, derive the runtime WebP through the existing exporter, verify alpha/dimensions, and test it in the three supported viewport captures before adoption.

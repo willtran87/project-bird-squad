@@ -113,23 +113,22 @@ function enemyGroundY(context: BattleForegroundRenderContext, enemy: BattleForeg
   return enemy.artPlacement?.shadowY ?? 34 * enemy.scale;
 }
 
-function renderTargetReticle(context: BattleForegroundRenderContext, enemy: BattleForegroundEnemyView) {
-  // One grounded selection mark leaves character art and intent unobstructed.
-  context.target.add(context.scene.add.ellipse(enemy.x, enemy.y + enemyGroundY(context, enemy),
-    156 * enemy.scale, 36 * enemy.scale, 0x24d0d6, 0.08)
-    .setStrokeStyle(2, 0x77d9df, 0.68).setName('combat-target-reticle').setData('enemyId', enemy.id));
-}
-
 function renderEnemyArt(context: BattleForegroundRenderContext, enemy: BattleForegroundEnemyView) {
   const { scene, target, fontFamily, boldFontStyle } = context;
   const s = enemy.scale;
   const hasEnemyArt = Boolean(enemy.artKey && scene.textures.exists(enemy.artKey));
+  const groundY = enemyGroundY(context, enemy);
+  const reticle = context.textures.targetReticle;
   const breathGroup = scene.add.container(enemy.x, enemy.y)
     .setName('combat-enemy-art').setData('enemyId', enemy.id);
   const poseGroup = scene.add.container(0, 0);
   context.registerEnemyPose(enemy.id, poseGroup, s);
   breathGroup.add(poseGroup);
-  if (enemy.selected) renderTargetReticle(context, enemy);
+  // Authored enamel target art keeps its native proportions under the feet.
+  if (enemy.selected && scene.textures.exists(reticle)) {
+    target.add(scene.add.image(enemy.x, enemy.y + groundY, reticle)
+      .setScale(s / 4).setName('combat-target-reticle'));
+  }
   if (enemy.guideTarget) {
     const guideY = enemy.y - 88 * s;
     target.add(scene.add.circle(enemy.x, guideY, 13 * s, 0x231d08, 0.96)
@@ -145,7 +144,7 @@ function renderEnemyArt(context: BattleForegroundRenderContext, enemy: BattleFor
 
   poseGroup.add(scene.add.ellipse(
     0,
-    enemyGroundY(context, enemy),
+    groundY,
     enemy.artPlacement?.shadowW ?? 112 * s,
     enemy.artPlacement?.shadowH ?? 22 * s,
     0x020409,

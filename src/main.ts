@@ -6528,8 +6528,12 @@ class RouteScene extends Phaser.Scene {
     if (options.showBottomBand ?? true) {
       this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 66, GAME_WIDTH, 132, 0x020409, hasBackdrop ? 0.46 : 0.18);
     }
-    this.add.rectangle(GAME_WIDTH / 2, 24, GAME_WIDTH - 100, 2, accent, hasBackdrop ? 0.42 : 0.24);
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT - 28, GAME_WIDTH - 100, 2, accent, hasBackdrop ? 0.36 : 0.22);
+    // Short corner glints sit with the painted set rather than drawing a
+    // viewport-wide colored ruler over its horizon or floor.
+    for (const edgeX of [86, GAME_WIDTH - 86]) {
+      this.add.rectangle(edgeX, 25, 44, 2, accent, hasBackdrop ? 0.38 : 0.22);
+      this.add.rectangle(edgeX, GAME_HEIGHT - 29, 44, 2, accent, hasBackdrop ? 0.3 : 0.18);
+    }
   }
 
   private renderConfirmExitOverlay() {
@@ -6558,9 +6562,11 @@ class RouteScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x05070c, backdropKey === backdropAsset?.key ? 0.34 : 0.62);
     renderFieldPanel(this, () => {}, layout.map.cx, layout.map.cy, layout.map.w, layout.map.h, {
       accent: 0x49606d,
-      fill: 0x07101a
+      fill: 0x07101a,
+      fillAlpha: 0.62,
+      showRails: false,
     });
-    this.add.rectangle(layout.map.cx, layout.map.cy, layout.map.w - 34, layout.map.h - 34, 0x03070d, 0.28);
+    this.add.rectangle(layout.map.cx, layout.map.cy, layout.map.w - 34, layout.map.h - 34, 0x03070d, 0.14);
     this.renderRouteMapFrame(layout);
 
   }
@@ -7681,14 +7687,57 @@ class RouteScene extends Phaser.Scene {
       if (alpha < 1) icon.setTint(0xa6b3c2);
       return icon;
     }
-    return this.add.text(x, y, routeNodeGlyph(type), {
-      fontFamily: UI_FONT,
-      fontSize: `${Math.max(11, Math.round(size * 0.45))}px`,
-      fontStyle: UI_BOLD,
-      color: alpha < 1 ? '#7c8da0' : '#ffffff',
-      stroke: '#0a121c',
-      strokeThickness: 3
-    }).setOrigin(0.5).setAlpha(alpha);
+    // Small engraved motifs keep loading and failed-image states distinguishable
+    // without flashing out-of-style single-letter placeholders.
+    const marker = this.add.container(x, y).setAlpha(alpha);
+    const radius = Math.max(8, size * 0.28);
+    marker.add(this.add.circle(0, 0, radius, 0x0b1a24, 0.96)
+      .setStrokeStyle(2, 0x76939c, 0.72));
+    const motif = this.add.graphics();
+    const unit = Math.max(4, size * 0.095);
+    motif.lineStyle(2, 0xd8bd78, 0.9);
+    switch (type) {
+      case 'street':
+        motif.lineBetween(-unit, -unit, unit, unit);
+        motif.lineBetween(-unit, unit, unit, -unit);
+        break;
+      case 'rival':
+        motif.lineBetween(-unit, -unit * 0.7, 0, 0);
+        motif.lineBetween(0, 0, unit, -unit * 0.7);
+        motif.lineBetween(-unit, unit * 0.3, 0, unit);
+        motif.lineBetween(0, unit, unit, unit * 0.3);
+        break;
+      case 'boss':
+        motif.strokeTriangle(-unit, unit, 0, -unit, unit, unit);
+        break;
+      case 'basin':
+        motif.lineBetween(-unit, -unit * 0.4, -unit * 0.35, 0);
+        motif.lineBetween(-unit * 0.35, 0, unit * 0.35, -unit * 0.4);
+        motif.lineBetween(unit * 0.35, -unit * 0.4, unit, 0);
+        motif.lineBetween(-unit, unit * 0.55, unit, unit * 0.55);
+        break;
+      case 'nest':
+        motif.strokeEllipse(0, 0, unit * 2.2, unit * 1.45);
+        break;
+      case 'market':
+        motif.lineBetween(0, -unit, unit, 0);
+        motif.lineBetween(unit, 0, 0, unit);
+        motif.lineBetween(0, unit, -unit, 0);
+        motif.lineBetween(-unit, 0, 0, -unit);
+        break;
+      case 'signal':
+        motif.strokeCircle(0, 0, unit * 0.32);
+        motif.lineBetween(-unit, -unit, -unit * 0.45, -unit * 0.45);
+        motif.lineBetween(unit, -unit, unit * 0.45, -unit * 0.45);
+        motif.lineBetween(0, unit * 0.5, 0, unit);
+        break;
+      case 'cache':
+        motif.strokeRect(-unit, -unit * 0.7, unit * 2, unit * 1.6);
+        motif.lineBetween(-unit * 0.3, 0, unit * 0.3, 0);
+        break;
+    }
+    marker.add(motif);
+    return marker;
   }
 
   private routeRewardBadges(node: RouteNode): Array<{ id: string; icon: string; color: number; text: string; label: string }> {
@@ -26035,9 +26084,15 @@ function renderUnifiedRunHud(
     const currentX = hpLeft + FLOCK_HP_BAR.w * hpFrac;
     const afterX = hpLeft + FLOCK_HP_BAR.w * afterFrac;
     const riskW = Math.max(2, currentX - afterX);
-    addUi(addTo, scene.add.rectangle(afterX + riskW / 2, FLOCK_HP_BAR.y, riskW, FLOCK_HP_BAR.h - 6, 0xff5247, 0.84)
+    addUi(addTo, scene.add.rectangle(afterX + riskW / 2, FLOCK_HP_BAR.y, riskW, FLOCK_HP_BAR.h - 6, 0x913f3e, 0.8)
       .setName('combat-incoming-forecast-risk'));
-    addUi(addTo, scene.add.rectangle(afterX, FLOCK_HP_BAR.y, 2, FLOCK_HP_BAR.h + 4, 0xffd0c9, 0.92)
+    const riskHatch = scene.add.graphics().setName('combat-incoming-forecast-hatch');
+    riskHatch.lineStyle(1, 0xffc6ae, 0.42);
+    for (let hatchX = afterX + 3; hatchX < currentX - 3; hatchX += 8) {
+      riskHatch.lineBetween(hatchX, FLOCK_HP_BAR.y + 10, Math.min(hatchX + 6, currentX - 2), FLOCK_HP_BAR.y - 10);
+    }
+    addUi(addTo, riskHatch);
+    addUi(addTo, scene.add.rectangle(afterX, FLOCK_HP_BAR.y, 2, FLOCK_HP_BAR.h + 4, 0xffd0c9, 0.78)
       .setName('combat-incoming-forecast-marker'));
     const forecastKey = uiIconAssets['combat-incoming-forecast-frame'].key;
     const fx = FLOCK_HP_BAR.x;
@@ -26118,7 +26173,7 @@ function renderUnifiedRunHud(
     const flow = data.flow ?? 0;
     const flowMax = data.flowMax ?? 0;
     const flowPreview = Math.min(flowMax, flow + (data.flowPreview ?? 0));
-    const [flowStatus, flowAccent, flowStatusColor, flowFill, flowBreakPreview] = flowHudPresentation(flow, flowMax, flowPreview, data.statusLabel, data.incoming);
+    const [flowStatus, flowAccent, flowStatusColor, flowFill] = flowHudPresentation(flow, flowMax, flowPreview, data.statusLabel, data.incoming);
     const flowY = FLOCK_HP_BAR.y + FLOW_HUD_Y_OFFSET;
     const flowX = hpLeft + FLOCK_HP_BAR.w + FLOW_HUD_X_OFFSET;
     addUi(addTo, scene.add.rectangle(flowX, flowY, FLOW_HUD_WIDTH, FLOW_HUD_HEIGHT, flowFill, 0.96)
@@ -26134,12 +26189,6 @@ function renderUnifiedRunHud(
       addUi(addTo, scene.add.circle(pipStart + i * FLOW_HUD_PIP_GAP, flowY, filled ? 5.5 : preview ? 5 : 4.5, filled ? UI_FIELD.cyan : preview ? UI_FIELD.gold : 0x253845, filled ? 1 : preview ? 0.94 : 0.68)
         .setStrokeStyle(1, filled ? 0xdffbff : preview ? 0xffe7a8 : 0x07101a, 0.8)
         .setName(preview ? 'combat-flow-preview-pip' : 'combat-flow-pip'));
-    }
-    if (flowBreakPreview) {
-      const strikeWidth = Math.max(6, (Math.min(flow, flowMax) - 1) * FLOW_HUD_PIP_GAP + 12);
-      addUi(addTo, scene.add.rectangle(pipStart + strikeWidth / 2 - 6, flowY, strikeWidth, 2, 0xff6f6f, 0.96)
-        .setAngle(-12)
-        .setName('combat-flow-break-preview'));
     }
     addUi(addTo, scene.add.text(flowX + 178, flowY, flowStatus, {
       fontFamily: UI_FONT,
@@ -26304,14 +26353,16 @@ function renderFieldPanel(
   cy: number,
   w: number,
   h: number,
-  opts: { title?: string; subtitle?: string; accent?: number; fill?: number; eyebrow?: string } = {}
+  opts: { title?: string; subtitle?: string; accent?: number; fill?: number; fillAlpha?: number; showRails?: boolean; eyebrow?: string } = {}
 ) {
   const accent = opts.accent ?? UI_FIELD.gold;
   const fill = opts.fill ?? UI_FIELD.panel;
   addUi(addTo, scene.add.rectangle(cx + 8, cy + 10, w, h, 0x020409, 0.42));
-  addUi(addTo, scene.add.rectangle(cx, cy, w, h, fill, 0.985).setStrokeStyle(1, accent, 0.42));
-  addUi(addTo, scene.add.rectangle(cx, cy - h / 2 + 14, w - 34, 2, accent, 0.72));
-  addUi(addTo, scene.add.rectangle(cx, cy + h / 2 - 14, w - 34, 1, 0xffffff, 0.08));
+  addUi(addTo, scene.add.rectangle(cx, cy, w, h, fill, opts.fillAlpha ?? 0.985).setStrokeStyle(1, accent, 0.42));
+  if (opts.showRails !== false) {
+    addUi(addTo, scene.add.rectangle(cx, cy - h / 2 + 14, w - 34, 2, accent, 0.72));
+    addUi(addTo, scene.add.rectangle(cx, cy + h / 2 - 14, w - 34, 1, 0xffffff, 0.08));
+  }
   const left = cx - w / 2;
   const right = cx + w / 2;
   const top = cy - h / 2;
@@ -26323,6 +26374,7 @@ function renderFieldPanel(
     [left + 15, bottom - 15, corner, 2], [left + 15, bottom - 15, 2, corner],
     [right - 15, bottom - 15, corner, 2], [right - 15, bottom - 15, 2, corner]
   ].forEach(([x, y, cw, ch], index) => {
+    if (opts.showRails === false) return;
     const ox = index === 2 || index === 6 ? -corner : 0;
     const oy = index === 5 || index === 7 ? -corner : 0;
     addUi(addTo, scene.add.rectangle(x + ox, y + oy, cw, ch, accent, 0.72).setOrigin(0, 0));
@@ -26681,8 +26733,9 @@ function addRouteWaymarkScrollRailFrame(
   }
 
   scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  addUi(addTo, scene.add.image(x, trackY, key)
-    .setDisplaySize(52, trackH + 58)
+  const railScale = 52 / 256;
+  addUi(addTo, scene.add.nineslice(x, trackY, key, undefined, 256, (trackH + 58) / railScale, 1, 1, 300, 165)
+    .setScale(railScale)
     .setAlpha(0.92)
     .setName('route-waymark-scroll-rail-frame'));
   addUi(addTo, scene.add.rectangle(x, trackY, 8, Math.max(24, trackH - 22), 0x02070d, 0.32));
@@ -26710,14 +26763,13 @@ function renderCloseControl(scene: Phaser.Scene, addTo: UiAdd, x: number, y: num
     fontStyle: UI_BOLD,
     color: '#ffd5cc'
   }).setOrigin(0.5, 0));
-  const line = addUi(addTo, scene.add.rectangle(x, y + 12, 52, 2, UI_FIELD.danger, 0.85));
   hit.on('pointerover', () => {
     label.setColor('#ffffff');
-    line.setDisplaySize(66, 2);
+    icon?.setAlpha(1);
   });
   hit.on('pointerout', () => {
     label.setColor('#ffd5cc');
-    line.setDisplaySize(52, 2);
+    icon?.setAlpha(0.88);
   });
   hit.on('pointerdown', () => {
     playUiSound('close');
@@ -27144,21 +27196,6 @@ function routeNodeTitle(node: RouteNode) {
   if (node.type === 'rival') return 'Rival';
   if (node.type === 'boss') return 'Boss';
   return node.label;
-}
-
-// Fallback glyphs for the route map if icon art has not loaded yet.
-function routeNodeGlyph(type: RouteNode['type']) {
-  switch (type) {
-    case 'street': return 'S';
-    case 'rival': return 'R';
-    case 'boss': return 'B';
-    case 'basin': return '~';
-    case 'nest': return 'N';
-    case 'market': return '$';
-    case 'signal': return '?';
-    case 'cache': return 'C';
-    default: return '?';
-  }
 }
 
 // Node FILL color encodes the crossing TYPE (so the map is readable at a glance
