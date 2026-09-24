@@ -34,8 +34,10 @@ test('Market merchandise separates identity price and art with complete readable
         const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
         const find = (name: string) => r.children.list.filter((o: any) => o.name === `market-merchandise-${name}`);
         const frames = find('frame'), titles = find('title'), prices = find('price'), art = find('art'), hits = find('hit');
+        const backplates = r.children.list.filter((o: any) => o.name === 'market-merchandise-backplate');
         return {
           count: frames.length,
+          artBackplates: backplates.length === frames.length && backplates.every((o: any) => Math.abs(o.displayWidth / o.displayHeight - 4 / 3) < 0.01),
           text: titles.every((t: any, i: number) => {
             const b = t.getBounds(), f = frames[i].getBounds(), p = prices[i].getBounds();
             return b.left >= f.left + 16 && b.right <= f.right - 16 && b.top >= art[i].getBounds().bottom + 16 && b.bottom <= p.top - 12 && p.bottom <= f.bottom - 8 && t.style.fontSize === '18px' && t.style.resolution === 2;
@@ -45,11 +47,31 @@ test('Market merchandise separates identity price and art with complete readable
           art: art.map((a: any) => a.texture.key),
         };
       });
-      expect(geometry.count).toBe(3); expect(geometry.text).toBe(true); expect(geometry.separated).toBe(true); expect(geometry.touch).toBe(true);
+      expect(geometry.count).toBe(3); expect(geometry.artBackplates).toBe(true); expect(geometry.text).toBe(true); expect(geometry.separated).toBe(true); expect(geometry.touch).toBe(true);
       expect(new Set(geometry.art).size).toBe(3);
       await page.screenshot({ path: info.outputPath(`${category}-${viewport.width}.png`) });
     }
   }
+  await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').setMarketCategory('services'));
+  const services = await page.evaluate(() => {
+    const children = (window as any).__birdSquadGame.scene.getScene('RouteScene').children.list;
+    const rows = children.filter((o: any) => o.name === 'market-service-row');
+    const trays = children.filter((o: any) => o.name === 'market-service-tray');
+    const labels = children.filter((o: any) => o.name === 'market-service-label');
+    const costs = children.filter((o: any) => o.name === 'market-service-cost-value');
+    return { count: rows.length, framed: trays.length === rows.length,
+      fitted: trays.every((tray: any, i: number) => Math.abs(tray.getBounds().width - rows[i].getBounds().width) < 1),
+      readable: labels.every((label: any, i: number) => label.getBounds().right + 16 < costs[i].getBounds().left) };
+  });
+  expect(services.count).toBeGreaterThan(0);
+  expect(services.framed).toBe(true);
+  expect(services.fitted).toBe(true);
+  expect(services.readable).toBe(true);
+  for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+    await page.setViewportSize(viewport);
+    await page.screenshot({ path: info.outputPath(`services-${viewport.width}.png`) });
+  }
+  await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').setMarketCategory('supplies'));
   const reading = await page.evaluate(({ marks, supplies }) => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene'), original = r.showMarketItemDetail;
     let captured: any;

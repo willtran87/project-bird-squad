@@ -42,12 +42,13 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
     uiIconAssets,
     visualContrastState
   } = dependencies;
+  const children = scene.children.list;
 
   const iconState = (id: string) => {
     // Retired decorative assets remain in the snapshot contract, not the load queue.
     const key = uiIconAssets[id]?.key;
     if (!key) return { loaded: false, rendered: false, count: 0 };
-    const count = countTextureInGameObjects(scene.children.list, key);
+    const count = countTextureInGameObjects(children, key);
     return { loaded: scene.textures.exists(key), rendered: count > 0, count };
   };
 
@@ -91,10 +92,10 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
         },
         audioTogglePulseRing: {
           loaded: scene.textures.exists(uiIconAssets['audio-toggle-pulse-ring'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['audio-toggle-pulse-ring'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['audio-toggle-pulse-ring'].key)
+          rendered: countTextureInGameObjects(children, uiIconAssets['audio-toggle-pulse-ring'].key) > 0,
+          count: countTextureInGameObjects(children, uiIconAssets['audio-toggle-pulse-ring'].key)
         },
-        audioToggleWaveBurst: audioToggleWaveBurstState(scene, scene.children.list),
+        audioToggleWaveBurst: audioToggleWaveBurstState(scene, children),
         map: {
           id: currentMap().id,
           name: currentMap().name,
@@ -701,13 +702,8 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
         inspectedCard: inspected,
         selectableNodeIds: [...scene.selectableNodeIds],
         nodes: currentMap().nodes.map((node: any) => ({
-          ...(() => {
-            const position = scene.nodePosition(node);
-            return {
-              position,
-              visualBounds: scene.nodeVisualBounds(node)
-            };
-          })(),
+          position: scene.nodePosition(node),
+          visualBounds: scene.nodeVisualBounds(node),
           id: node.id,
           label: node.label,
           type: node.type,

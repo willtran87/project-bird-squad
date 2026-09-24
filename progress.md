@@ -13005,3 +13005,21 @@ sessions through `docs/game/playtest-runbook.md`.
   built menu successfully. Late route-art recovery and docs validation pass.
   Owned preview was stopped; audit/test ports 4179 and 5381–5390 have no
   listeners. No commit, push, or deployment requested.
+
+## 2026-09-24 — follow-up market art-use pass
+
+- The live market shelf now uses the authored object backplate at its 4:3 aspect
+  behind each illustrated good; the generic straight separator is removed.
+  Service offers use the existing market tray as a horizontal nine-slice, so
+  the metal end fittings stay proportionate even across the wide service rows.
+  Prices remain visually separate from names and icons.
+- Market shelf and reader captures were reviewed at 2560×1600, 1440×900, and
+  1000×560. Focused merchandise and reader browser tests pass. The shelf test
+  now checks backplate proportions, service frame coverage, and name/price
+  separation. The art brief records two bounded future image-generation uses
+  (quiet reader surface and merchandise-shelf grounding), while leaving
+  variable-copy controls in deterministic code.
+- Production build, documentation and bundle-size validators pass. A small
+  route text-state refactor restored its strict lazy-chunk size budget. The
+  shared gameplay client reached the built menu; its owned preview was stopped
+  and port 4276 has no listener. No commit, push, or deployment requested.

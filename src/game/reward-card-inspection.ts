@@ -34,6 +34,7 @@ import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 import { decisionExcerpt, decisionText } from './decision-surface';
 import { waymarkBuildRead } from './waymark-build-read';
 import { handleSupplyInspection, openOutcomeInspection, openSupplyInspection, routeDecisionSections, supplyInspectionState } from './route-supply-reader';
+import { uiIconAsset } from './ui-icon-assets';
 import type { RewardCeremonyRenderContext, RewardDecisionPreview, RewardWaymarkView } from './battle/render-reward';
 import type { CardHoverDetailView, MarketItemDetailView } from './card-hover-detail';
 
@@ -57,8 +58,18 @@ export function renderMarketServices(scene: any) {
   const height = Math.max(MIN_SUPPORTED_TOUCH_TARGET, Math.min(76, step - 8));
   rows.forEach((row: any, index: number) => {
     const y = 328 + index * step;
+    const trayKey = uiIconAsset('market-offer-tray').key;
+    const hasTray = scene.textures.exists(trayKey);
     scene.add.rectangle(830, y, 540, height, 0x080f18, 0.98)
-      .setStrokeStyle(1, row.accent, row.enabled ? 0.55 : 0.25).setName('market-service-row');
+      .setStrokeStyle(1, row.accent, hasTray ? 0 : row.enabled ? 0.55 : 0.25)
+      .setName('market-service-row');
+    if (hasTray) {
+      // Preserve the end fittings: scaling this wide tray as an ordinary image
+      // would stretch the metalwork and turn its circular details into ovals.
+      const scale = height / 192;
+      scene.add.nineslice(830, y, trayKey, undefined, 540 / scale, 192, 105, 105, 0, 0)
+        .setScale(scale).setAlpha(row.enabled ? 0.72 : 0.38).setName('market-service-tray');
+    }
     addUiIconImage(scene, row.icon, 590, y, 36)?.setDisplaySize(36, 36).setName('market-service-icon');
     const label = scene.add.text(624, y, row.title, {
       fontFamily: UI_FONT, fontSize: '20px', color: '#e6eef6', resolution: 2,
@@ -68,7 +79,7 @@ export function renderMarketServices(scene: any) {
     let excerpt = lines.slice(0, 2).join('\n');
     label.setText(excerpt + (lines.length > 2 ? '…' : ''));
     while (label.height > height - 12 && excerpt.length) { excerpt = excerpt.slice(0, -1).trimEnd(); label.setText(`${excerpt}…`); }
-    scene.add.text(1080, y, row.sold ? 'Sold' : `${row.price} Scrap`, {
+    scene.add.text(1052, y, row.sold ? 'Sold' : `${row.price} Scrap`, {
       fontFamily: UI_FONT, fontSize: '20px', color: row.sold ? '#abc4d4' : row.enabled ? UI_CYAN : '#ffc7a4', resolution: 2,
     }).setOrigin(1, 0.5).setName('market-service-cost-value');
     if (!row.sold) scene.add.rectangle(830, y, 540, height, 0x000000, 0.001)
@@ -121,10 +132,15 @@ export function renderMarketMerchandise(scene: Phaser.Scene, view: {
   const x = 636 + view.index * 194;
   scene.add.rectangle(x, 480, 184, 256, 0x080f18, 0.98)
     .setStrokeStyle(1, view.accent, view.enabled ? 0.55 : 0.25).setName('market-merchandise-frame');
+  const backplateKey = uiIconAsset('market-object-backplate-frame').key;
+  const hasBackplate = scene.textures.exists(backplateKey);
+  if (hasBackplate) scene.add.image(x, 416, backplateKey)
+    .setDisplaySize(152, 114).setAlpha(view.enabled ? 0.8 : 0.42)
+    .setName('market-merchandise-backplate');
   const key = view.artKey && scene.textures.exists(view.artKey) ? view.artKey : undefined;
-  if (key) scene.add.image(x, 416, key).setDisplaySize(112, 112).setName('market-merchandise-art');
-  else addUiIconImage(scene, view.kind === 'waymark' ? 'market-waymark-badge' : 'market-supply-crate', x, 416, 64);
-  scene.add.rectangle(x, 480, 152, 1, view.accent, 0.25);
+  const artSize = hasBackplate ? 84 : 112;
+  if (key) scene.add.image(x, 416, key).setDisplaySize(artSize, artSize).setName('market-merchandise-art');
+  else addUiIconImage(scene, view.kind === 'waymark' ? 'market-waymark-badge' : 'market-supply-crate', x, 416, hasBackplate ? 58 : 64);
   const title = scene.add.text(x - 76, 492, view.title, {
     fontFamily: UI_FONT, fontSize: '18px', color: '#e6eef6', resolution: 2,
     wordWrap: { width: 152, useAdvancedWrap: true }, lineSpacing: 3,

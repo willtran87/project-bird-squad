@@ -45,3 +45,14 @@ New image-generation work would have the most value in these bounded replacement
 3. **Rival-wager foreground prop.** Caldra and the rival scene are complete, but a small transparent contract case or prize-board cutout could ground the decision instead of relying only on the backdrop. Keep it at the side of the central reading lane, never behind choice copy. This should be approved from a full 1000×560 layout mockup before export.
 
 Do not generate new card borders, text-bearing controls, generic combat glows, or replacement node glyphs. Those require exact repeatable geometry, interaction-state rendering, and readable scaling; the deterministic UI/asset pipeline is the better tool. For any new painted asset, retain the source PNG, derive the runtime WebP through the existing exporter, verify alpha/dimensions, and test it in the three supported viewport captures before adoption.
+
+### Follow-up visual audit: market and event surfaces
+
+The market already has useful object backplates and offer-tray hardware. The live merchandise cards had not used the backplates, while service offers were flat rectangles. The backplates now sit behind the goods at their native 4:3 proportion, and the existing offer tray is sliced horizontally so its end fittings remain round. This is a rendering correction, not a new-art brief.
+
+Two genuinely useful future image-generation candidates remain after that correction:
+
+4. **Quiet market reading-surface plate.** The 360×436 rules reader is still a mostly featureless dark rectangle beside Veyra's richly painted stall. Create a portrait paper/enamel texture with only faint edge wear and a dark, low-contrast central reading lane. Keep a minimum 20 px clear inset for body text and 58 px clear zones for page controls. Do not generate headings, glyphs, or a heavy ornate border: the current dossier frame's thick sides would collide with the reader's text. Compose and validate the final 360×436 crop deterministically.
+5. **Shallow merchandise shelf grounding.** The three illustrated goods still appear to float above the market background. A low-contrast, text-free counter/shelf prop behind the offer row could ground them without changing the product cards. Generate it as a transparent scene prop, not a UI panel, and ensure its brightest detail stays below the product illustrations and away from prices. Reject it if the 1000×560 comparison becomes busier.
+
+Event option rows and reward buttons look geometric next to their painted scenes, but these are interaction surfaces with variable copy and focused/disabled states. Prefer a code-native, restrained state treatment or carefully sliced existing hardware there; do not bake choices or button labels into generated paintings. The unused ornate route-choice frame is too visually heavy to repeat across every option.
