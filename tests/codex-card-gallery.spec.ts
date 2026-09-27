@@ -107,6 +107,7 @@ test('card gallery loads every illustration and keeps full cards clear of collec
 
 test('card gallery title and artwork open details without changing collection or return position', async ({ page }) => {
   await boot(page); await decorate(page); await page.setViewportSize({ width: 1000, height: 560 });
+  await settleCanvas(page);
   for (const target of ['codex-card-title', 'codex-card-art']) {
     await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('CodexScene').gridLayer.list[0].getByName('codex-card-art'));
     const point = await page.evaluate(target => {
@@ -119,6 +120,7 @@ test('card gallery title and artwork open details without changing collection or
     await page.waitForFunction(id => JSON.parse((window as any).render_game_to_text()).detailOpen === id, point.id);
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !JSON.parse((window as any).render_game_to_text()).detailOpen);
+    await settleCanvas(page);
     expect(await page.evaluate(() => JSON.stringify(localStorage))).toBe(point.saved);
     expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('CodexScene').gridScroll)).toBe(point.scroll);
   }

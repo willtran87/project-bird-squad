@@ -327,20 +327,22 @@ function renderCard(
     color: '#06101c', resolution: 2,
   }).setOrigin(0.5));
 
-  const panelHeight = 116;
+  const panelHeight = 96;
   target.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - 3, cardWidth - 6, panelHeight, 0x081624, 0.98)
     .setName('combat-card-rules-panel'));
   target.add(scene.add.rectangle(centerX, bottom - panelHeight - 3, cardWidth - 6, 2, card.accent, 0.85));
   {
-    const summary = scene.add.text(left + 8, bottom - panelHeight + 5, '', {
+    const summary = scene.add.text(left + 8, bottom - panelHeight + 6, '', {
       fontFamily,
-      fontSize: '20px', resolution: 2, lineSpacing: 2,
-      color: card.canPay ? '#d5e0e6' : '#95a4b2',
+      fontSize: '18px', resolution: 2, lineSpacing: 1,
+      color: card.canPay ? '#e5edf0' : '#a8b6bf',
       align: 'left',
       maxLines: 4,
       wordWrap: { width: cardWidth - 16, useAdvancedWrap: true },
     }).setName('combat-card-readable-summary');
-    fitCardText(summary, card.preview.currentText || card.summary, 4, true);
+    fitCardText(summary, card.summary, 4);
+    summary.setData('fullText', card.preview.currentText.replace(/\s+/g, ' ').trim())
+      .setData('quickRead', card.summary);
     target.add(summary);
   }
 
@@ -420,7 +422,7 @@ function renderCombatCardDossier(context: BattleHandPreviewContext) {
       .setStrokeStyle(1, DECISION_UI.border, 0.8).setInteractive({ useHandCursor: true })
       .setName('combat-card-inspect-hit');
     container.add(hit);
-    container.add(context.scene.add.text(64, 15, 'Card details', {
+    container.add(context.scene.add.text(64, 15, 'Full rules', {
       fontFamily: context.fontFamily, fontSize: '16px', fontStyle: context.boldFontStyle,
       color: DECISION_UI.text, resolution: DECISION_UI.resolution,
     }).setOrigin(0.5, 0));

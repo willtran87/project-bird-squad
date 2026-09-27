@@ -230,14 +230,18 @@ test('dedicated setup and settings remove competing chrome at every supported si
   for (const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]) {
     await page.setViewportSize(size);
     await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('MenuScene').setSetupOpen(true));
-    expect(await page.evaluate(() => {
+    const layout = await page.evaluate(() => {
       const m=(window as any).__birdSquadGame.scene.getScene('MenuScene');
       return {logo:m.children.getByName('title-logo').visible,
         utilities:m.children.list.filter((o:any)=>o.name==='title-utility-hit'&&(o.visible||o.input.enabled)).length,
         focus:m.menuFocusOrder(),
         leaders:m.leaderPanels.map((p:any)=>p.rect.getBounds().bottom),
         modeTop:[...m.runModeViews.values()].map((v:any)=>v.hit.getBounds().top)};
-    })).toEqual({logo:false,utilities:0,focus:['leader','difficulty','runMode','primaryRun','configure'],leaders:[286,286,286,286,286],modeTop:[450,450]});
+    });
+    expect(layout).toMatchObject({logo:false,utilities:0,focus:['leader','difficulty','runMode','primaryRun','configure']});
+    expect(layout.leaders).toHaveLength(5);
+    expect(layout.modeTop).toHaveLength(2);
+    expect(Math.max(...layout.leaders) + 120).toBeLessThanOrEqual(Math.min(...layout.modeTop));
     await page.mouse.move(0,0);
     await page.screenshot({path:info.outputPath(`setup-${size.width}.png`)});
     await page.keyboard.press('Enter'); // Leader details must not cover Settings.

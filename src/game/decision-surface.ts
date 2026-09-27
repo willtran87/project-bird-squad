@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
-import { UI_FONT } from '../main';
-import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET } from './theme';
+import { UI_FONT, DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET } from './theme';
 
 export function decisionText(scene: Phaser.Scene, x: number, y: number, value: string, width: number, size: number = DECISION_UI.bodySize, color: string = DECISION_UI.text) {
   return scene.add.text(x, y, value, { fontFamily: UI_FONT, fontSize: `${size}px`, color,

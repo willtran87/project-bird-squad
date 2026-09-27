@@ -34,9 +34,10 @@ import {
 /** Non-blocking saved-flight context; never creates a second entry action. */
 export function renderResumeContext(scene: any, run: {
   leaderId?: string; pendingDistrictPreens?: number; completedRouteNodeIds: string[];
+  pendingCombatReward?: { stage: string };
 }, district: { name: string; bossNodeId: string }) {
   scene.children.getByName('title-resume-context')?.destroy();
-  const next = run.pendingDistrictPreens ? 'Free Preen ready'
+  const next = run.pendingCombatReward ? 'Rewards ready · fight cleared' : run.pendingDistrictPreens ? 'Free Preen ready'
     : run.completedRouteNodeIds.includes(district.bossNodeId) ? 'District cleared' : 'Reach the boss';
   scene.add.text(260, 316, `${getLeader(run.leaderId).name}\n${district.name} · ${next}`, {
     fontFamily: UI_FONT, fontSize: '20px', color: '#bfcbd0', align: 'center',
@@ -115,7 +116,7 @@ export function openHelpOverlay(scene: any, queueAssets = true) {
   if (scene.settingsOverlay) scene.closeSettingsOverlay();
   if (queueAssets) {
     queueUiIconAssets(scene, howToPlayUiIconIds, 'How to Play UI', () => {
-      if (!scene.scene.isActive() || !scene.helpOverlay?.active) return;
+      if (!scene.scene.isActive() || scene.helpOverlay !== overlay || !overlay.active || overlay.getData('practiceLoading') || overlay.getData('practiceFailed')) return;
       scene.closeHelpOverlay();
       openHelpOverlay(scene, false);
     });
@@ -127,6 +128,24 @@ export function openHelpOverlay(scene: any, queueAssets = true) {
     onClose: () => scene.closeHelpOverlay(),
     guide: firstFlightGuideState(),
     onGuideAction: () => toggleFirstFlightGuide(scene),
+    onPractice: () => {
+      if (overlay.getData('practiceFailed')) { window.location.reload(); return; }
+      if (overlay.getData('practiceLoading')) return;
+      overlay.setData('practiceLoading', true);
+      const caption = overlay.list.find((child: any) => child.getData('label') === 'Practice lessons')?.getData('caption');
+      caption?.setText('Opening lessons…');
+      void import('./practice-lessons').then(module => {
+        if (scene.scene.isActive() && scene.helpOverlay === overlay) module.openPracticeLessons(scene);
+      }).catch(() => {
+        if (!overlay.active) return;
+        overlay.setData('practiceLoading', false);
+        overlay.setData('practiceFailed', true);
+        overlay.setData('topic', 'Lesson download failed. Reload lessons reloads the page to try again. Your saved flight stays safe.');
+        caption?.setText('Reload lessons');
+        playUiSound('locked');
+        scene.updateMenuTextState();
+      });
+    },
   });
   scene.updateMenuTextState();
 }

@@ -18,6 +18,31 @@ Generated assets should be decomposed like the market where useful: background, 
 
 ## Implementation Status
 
+### September 26, 2026: quiet map and reward variants
+
+The first two briefs below now have generated v2 sources in
+`assets/concept-art/ui/icons/sources/`. Their previous source images remain
+available. `python tools/build-runtime-ui-art.py --icons route-map-frame
+reward-ceremony-backdrop` contains each new source proportionally in the
+existing transparent 1024×500 / 1280×640 runtime canvas and exports WebP.
+No canonical card frames, titles, or text-bearing controls are regenerated.
+
+Prompt set used with the current runtime images as references:
+
+- Map: transparent wide perimeter, dark urban bird/tarot materials; restrained
+  gunmetal and aged brass, four small corner fittings, fine rails and subtle
+  teal enamel. Remove magenta, neon and heavy machinery. Keep detail in the
+  outer five percent and the center entirely clear; no labels, paths, nodes,
+  letters, controls or background.
+- Reward: transparent 2:1 composition. Remove title plaque, jewels, neon,
+  card stands, posts and arch. Retain only a thin shallow slate ledge at the
+  extreme bottom, small worn-brass corner fittings and fine teal inlays.
+  Leave the top eighty percent and central reading area empty; no text,
+  symbols, cards or background.
+
+Integration review is recorded in progress.md. Generation alone is not visual
+acceptance; inspect the built map and rewards at all three supported sizes.
+
 The playable set-piece pass uses scene-and-resident route-event assets: individual scene plates for each landmark, chroma-key source PNGs for each resident, alpha-source PNGs for review, and transparent resident runtime WebPs for in-game composition.
 
 | Encounter | Current Backdrop | Current Resident Art | Scene Focus |

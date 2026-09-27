@@ -966,9 +966,13 @@ break FX, audio, written log evidence, text-state telemetry, and screen-reader
 narration. A lethal crossing skips Phase II, and the latched phase prevents a
 second transition.
 
-## Current Completion Evidence
+## Historical Completion Evidence
 
-The exact current build passes runtime-data validation, 961 optimized runtime
+The following records the earlier qualification checkpoint, not a claim that
+the complete suite has been rerun after every subsequent change. See
+`progress.md` for the current working-tree checks, pending work, and failures.
+
+That checkpoint passed runtime-data validation, 961 optimized runtime
 asset checks, canonical-world asset validation, the direction-neutral combat
 FX contract, the complete serial Playwright suite, and the interaction-heavy
 release sequencing gate. Current content, economy, and balance audits are also
@@ -989,3 +993,7 @@ fairness, clarity, replay intent, and fresh-player comprehension remain
 unverified. `docs/game/playtest-runbook.md` remains the standard for optional
 future sessions. Seeded telemetry must not be relabeled as human evidence or
 used to justify speculative balance claims.
+
+The September 26 policy reconciliation additionally records the explicitly
+skipped physical-device and assistive-technology sessions. These are waivers,
+not qualification passes; see `release-waiver-reconciliation.md`.

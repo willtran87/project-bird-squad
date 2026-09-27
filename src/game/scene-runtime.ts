@@ -23,10 +23,11 @@ export function advanceGameTime(game: Phaser.Game, requestedMs: number) {
   });
 }
 
-export function countTextureInGameObjects(children: any[], textureKey: string): number {
+export function countTextureInGameObjects(children: any[], textureKey: string, visibleOnly = false): number {
   return children.reduce((sum, child) => {
-    const self = child?.texture?.key === textureKey ? 1 : 0;
-    const nested = Array.isArray(child?.list) ? countTextureInGameObjects(child.list, textureKey) : 0;
+    const visible = !visibleOnly || (child?.visible !== false && (typeof child?.alpha !== 'number' || child.alpha > 0.01));
+    const self = child?.texture?.key === textureKey && visible ? 1 : 0;
+    const nested = Array.isArray(child?.list) ? countTextureInGameObjects(child.list, textureKey, visibleOnly) : 0;
     return sum + self + nested;
   }, 0);
 }
@@ -36,12 +37,7 @@ export function loadedTextureState(scene: Phaser.Scene, textureKey: string, coun
 }
 
 export function countVisibleTextureInGameObjects(children: any[], textureKey: string): number {
-  return children.reduce((sum, child) => {
-    const alpha = typeof child?.alpha === 'number' ? child.alpha : 1;
-    const self = child?.texture?.key === textureKey && child?.visible !== false && alpha > 0.01 ? 1 : 0;
-    const nested = Array.isArray(child?.list) ? countVisibleTextureInGameObjects(child.list, textureKey) : 0;
-    return sum + self + nested;
-  }, 0);
+  return countTextureInGameObjects(children, textureKey, true);
 }
 
 export function setDisplayTreeDepth(root: Phaser.GameObjects.GameObject, baseDepth: number) {

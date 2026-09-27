@@ -56,7 +56,10 @@ for (const scene of ['RouteScene', 'BattleScene']) for (const remapped of [false
     }, scene);
     const press = async (key: string) => { await page.keyboard.press(key); await settleCanvas(page); };
     expect((await read()).inventory).toEqual(packed);
-    expect((await read()).state.entries[0].rules).toBe((await read()).rules);
+    // Canvas pagination inserts measured wraps; narration carries the same
+    // complete wording without those visual line breaks.
+    expect((await read()).state.entries[0].rules.replace(/\s+/g, ' ').trim())
+      .toBe((await read()).rules.replace(/\s+/g, ' ').trim());
     if (scene === 'BattleScene') {
       const stayed = await page.evaluate(() => {
         const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');

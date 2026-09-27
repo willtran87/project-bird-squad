@@ -37,6 +37,7 @@ export interface PlayerAccount {
   decks?: SavedDeckRecord[]; // capped, identity-focused snapshots of meaningful flight decks
   hunt?: string[]; // up to three discovered, uncollected cards the player is actively hunting
   cardCollection: Record<string, CardCollectionRecord>; // permanent claim history; playable copies remain run-specific
+  recentCardClaims?: string[]; // idempotent replay of the active reward outbox
   observedEnemyMoves: string[]; // enemyId:moveId keys witnessed during combat
   contractBadges: string[];
   leaderProgress: Record<string, LeaderProgress>;
@@ -49,6 +50,10 @@ export interface LeaderProgress {
   swiftFights: number;
   blockedDamage: number;
   contracts: number;
+}
+
+function emptyLeaderProgress(): LeaderProgress {
+  return { surges: 0, cleanFights: 0, swiftFights: 0, blockedDamage: 0, contracts: 0 };
 }
 
 export type RunRecordMode = 'full' | 'quick';
@@ -73,6 +78,7 @@ export interface PersonalRecordUpdate {
 
 // A finished run, distilled to what meta-progression cares about.
 export interface RunRecord {
+  receipt?: string;
   result: 'win' | 'loss';
   leaderId: string;
   difficulty: number;
@@ -164,13 +170,9 @@ export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
   const leaderProgress = isRecord(value.leaderProgress)
     ? Object.fromEntries(Object.entries(value.leaderProgress).flatMap(([id, progress]) => {
         if (!LEADER_IDS.has(id) || !isRecord(progress)) return [];
-        return [[id, {
-          surges: finiteInt(progress.surges),
-          cleanFights: finiteInt(progress.cleanFights),
-          swiftFights: finiteInt(progress.swiftFights),
-          blockedDamage: finiteInt(progress.blockedDamage),
-          contracts: finiteInt(progress.contracts),
-        }]];
+        const clean = emptyLeaderProgress();
+        for (const key of Object.keys(clean) as Array<keyof LeaderProgress>) clean[key] = finiteInt(progress[key]);
+        return [[id, clean]];
       }))
     : {};
   return {
@@ -194,6 +196,7 @@ export function sanitizeAccount(value: unknown): PlayerAccount | undefined {
     decks: value.decks as SavedDeckRecord[],
     hunt: stringList(value.hunt).slice(0, 3),
     cardCollection,
+    recentCardClaims: stringList(value.recentCardClaims).filter(id => id.length <= 256).slice(-256),
     observedEnemyMoves: stringList(value.observedEnemyMoves),
     contractBadges: stringList(value.contractBadges),
     leaderProgress,
@@ -260,31 +263,35 @@ export interface LeaderMastery {
 export function leaderMastery(account: PlayerAccount, leaderId: string): LeaderMastery {
   const runs = account.runsByLeader[leaderId] ?? 0;
   const wins = account.winsByLeader[leaderId] ?? 0;
-  const progress = account.leaderProgress[leaderId] ?? {
-    surges: 0, cleanFights: 0, swiftFights: 0, blockedDamage: 0, contracts: 0
-  };
+  const progress = account.leaderProgress[leaderId] ?? emptyLeaderProgress();
   if (!runs) return { level: 0, title: 'Unflown', current: runs, target: 1, nextGoal: 'Complete one run' };
-  const specialty = leaderId === 'spark_caller'
-    ? { current: progress.surges, target: 6, goal: 'Trigger six Surges' }
-    : leaderId === 'talon'
-      ? { current: progress.swiftFights, target: 3, goal: 'Win three fights by Beat 3' }
-      : leaderId === 'tidewarden'
-        ? { current: progress.cleanFights, target: 4, goal: 'Clear four fights without Cohesion loss' }
-        : leaderId === 'roostkeeper'
-          ? { current: progress.blockedDamage, target: 40, goal: 'Block 40 damage' }
-          : { current: progress.contracts, target: 2, goal: 'Complete two district contracts' };
-  if (specialty.current < specialty.target) {
-    return { level: 1, title: 'Flight Craft', current: specialty.current, target: specialty.target, nextGoal: specialty.goal };
+  const specialties: Record<string, [keyof LeaderProgress, number, string]> = {
+    spark_caller: ['surges', 6, 'Trigger six Surges'],
+    talon: ['swiftFights', 3, 'Win three fights by Beat 3'],
+    tidewarden: ['cleanFights', 4, 'Clear four fights without Cohesion loss'],
+    roostkeeper: ['blockedDamage', 40, 'Block 40 damage'],
+  };
+  const [key, target, nextGoal] = specialties[leaderId] ?? ['contracts', 2, 'Complete two district contracts'];
+  if (progress[key] < target) {
+    return { level: 1, title: 'Flight Craft', current: progress[key], target, nextGoal };
   }
-  if (wins < 3) return { level: 2, title: 'Route Reader', current: wins, target: 3, nextGoal: 'Win three runs' };
-  if (wins < 7) return { level: 3, title: 'District Hand', current: wins, target: 7, nextGoal: 'Win seven runs' };
-  return { level: 4, title: 'Roofline Ace', current: wins, target: wins, nextGoal: 'Set a new personal record' };
+  const rank = wins < 3 ? 0 : wins < 7 ? 1 : 2;
+  return {
+    level: rank + 2,
+    title: ['Route Reader', 'District Hand', 'Roofline Ace'][rank],
+    current: wins,
+    target: [3, 7, wins][rank],
+    nextGoal: ['Win three runs', 'Win seven runs', 'Set a new personal record'][rank],
+  };
 }
 
 // Update the account from a finished run. Returns the new account plus anything
 // freshly unlocked (so the post-run screen can celebrate it).
-export function recordRun(record: RunRecord): { account: PlayerAccount; newLeaders: string[]; newAchievements: string[]; newContractBadges: string[]; newEnemyMoves: string[]; newPersonalRecords: PersonalRecordUpdate[] } {
+export function recordRun(record: RunRecord): { saved: boolean; account: PlayerAccount; newLeaders: string[]; newAchievements: string[]; newContractBadges: string[]; newEnemyMoves: string[]; newPersonalRecords: PersonalRecordUpdate[] } {
   const account = loadAccount();
+  if (record.receipt && account.recentCardClaims?.includes(record.receipt)) {
+    return { saved: true, account, newLeaders: [], newAchievements: [], newContractBadges: [], newEnemyMoves: [], newPersonalRecords: [] };
+  }
   const newPersonalRecords: PersonalRecordUpdate[] = [];
   account.runs += 1;
   account.runsByLeader[record.leaderId] = (account.runsByLeader[record.leaderId] ?? 0) + 1;
@@ -294,7 +301,7 @@ export function recordRun(record: RunRecord): { account: PlayerAccount; newLeade
     account.bestWinTier = Math.max(account.bestWinTier, record.difficulty);
     account.fastestWinTurns = account.fastestWinTurns === null ? record.turns : Math.min(account.fastestWinTurns, record.turns);
     const mode = record.runMode || 'full';
-    const tier = Math.max(0, Math.min(MAX_DIFFICULTY, finiteInt(record.difficulty)));
+    const tier = Math.min(MAX_DIFFICULTY, finiteInt(record.difficulty));
     const totalRunTurns = finiteInt(record.totalRunTurns, finiteInt(record.turns, 1, 1), 1);
     const key = `${mode}:${tier}`;
     const leaderRecord = account.leaderRecords[record.leaderId] || { clears: {} };
@@ -322,13 +329,9 @@ export function recordRun(record: RunRecord): { account: PlayerAccount; newLeade
   } else {
     account.losses += 1;
   }
-  const progress = account.leaderProgress[record.leaderId] || {
-    surges: 0, cleanFights: 0, swiftFights: 0, blockedDamage: 0, contracts: 0
-  };
+  const progress = account.leaderProgress[record.leaderId] || emptyLeaderProgress();
   progress.surges += record.surgesTriggered ?? 0;
-  progress.cleanFights += record.cleanFights ?? 0;
-  progress.swiftFights += record.swiftFights ?? 0;
-  progress.blockedDamage += record.blockedDamage ?? 0;
+  for (const key of ['cleanFights', 'swiftFights', 'blockedDamage'] as const) progress[key] += record[key] ?? 0;
   progress.contracts += record.completedContracts?.length ?? 0;
   account.leaderProgress[record.leaderId] = progress;
   const knownContractBadges = new Set(account.contractBadges);
@@ -346,8 +349,9 @@ export function recordRun(record: RunRecord): { account: PlayerAccount; newLeade
   account.achievements.push(...newAchievements);
   const newLeaders = pendingLeaderUnlocks(account);
   account.unlockedLeaders.push(...newLeaders);
-  saveAccount(account);
-  return { account, newLeaders, newAchievements, newContractBadges, newEnemyMoves, newPersonalRecords };
+  if (record.receipt) account.recentCardClaims = [...(account.recentCardClaims ?? []), record.receipt].slice(-256);
+  const saved = saveAccount(account);
+  return { saved, account, newLeaders, newAchievements, newContractBadges, newEnemyMoves, newPersonalRecords };
 }
 
 export function isLeaderUnlocked(account: PlayerAccount, id: string): boolean {

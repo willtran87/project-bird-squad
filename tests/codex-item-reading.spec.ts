@@ -17,10 +17,15 @@ async function bootCodex(page: Page) {
     for (const s of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(s.scene.key);
     w.__birdSquadGame.scene.start('CodexScene');
   });
-  await page.waitForFunction(() => Boolean((window as any).__birdSquadGame.scene.getScene('CodexScene').root));
+  await page.waitForFunction(() => {
+    const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
+    return Boolean(c.codexData && c.root);
+  });
 }
 
 test('Codex item and enemy reading surfaces', async ({ page }, info) => {
+  // Five dossiers, three viewports each, plus full-rule input journeys.
+  test.setTimeout(90000);
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   page.on('console', message => { if (/not supported in WebGL/.test(message.text())) errors.push(message.text()); });
   await bootCodex(page);

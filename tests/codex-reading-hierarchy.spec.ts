@@ -11,7 +11,10 @@ test('Codex puts complete gameplay rules before collection records and keeps the
     for (const s of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(s.scene.key);
     w.__birdSquadGame.scene.start('CodexScene');
   });
-  await page.waitForFunction(() => Boolean((window as any).__birdSquadGame.scene.getScene('CodexScene').root));
+  await page.waitForFunction(() => {
+    const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
+    return Boolean(c.codexData && c.root);
+  });
   const ids = await page.evaluate(() => {
     const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
     const cards = c.allCards(), length = (card: any) => [card.text, card.upgradedText, card.moltText, card.moltTextUpgraded].join(' ').length;
@@ -39,7 +42,9 @@ test('Codex puts complete gameplay rules before collection records and keeps the
         const rules = texts.filter((t: any) => t.x >= effect.x && t.y > effect.y && t.y < collection.y && parseInt(t.style.fontSize) === 20);
         return { effect: effect.y, collection: collection.y, journal: journal.y,
           before: heading('FLOCK STATS').y < collection.y,
-          rules: rules.length, overflow: rules.filter((t: any) => t.getBounds().right > 1069 || t.style.resolution !== 2).length,
+          // The current reader expands to 1208; the old 1069 boundary belonged
+          // to the retired narrow dossier. Preserve the actual inset contract.
+          rules: rules.length, overflow: rules.filter((t: any) => t.getBounds().right > 1208 || t.style.resolution !== 2).length,
           sections: texts.filter((t: any) => ['EFFECT', 'MOLT ABILITY', 'COLLECTION STATUS', 'HOW TO ACQUIRE', 'CARD JOURNAL'].includes(t.text)).map((t: any) => t.text),
           noteSize: c.root.getByName('codex-card-journal-note').style.fontSize,
           noteWidth: c.root.getByName('codex-card-journal-note').width,
@@ -50,7 +55,7 @@ test('Codex puts complete gameplay rules before collection records and keeps the
       expect(geometry.before).toBe(true); expect(geometry.collection).toBeGreaterThan(geometry.effect);
       expect(geometry.journal).toBeGreaterThan(geometry.collection); expect(geometry.rules).toBeGreaterThan(0);
       expect(geometry.overflow).toBe(0); expect(geometry.noteSize).toBe('18px'); expect(geometry.detail).toBe(id);
-      expect(geometry.noteWidth).toBeLessThanOrEqual(494);
+      expect(geometry.noteWidth).toBeLessThanOrEqual(798);
       if (id !== 'pentacles_04') expect(geometry.noteText).toBe('x'.repeat(240));
       expect(geometry.sections).toContain('HOW TO ACQUIRE');
     }

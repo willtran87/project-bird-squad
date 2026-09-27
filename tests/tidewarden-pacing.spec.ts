@@ -66,8 +66,11 @@ test('Tidewarden starter has a usable offense/defense transition', async ({ page
     results.push({ seed, policy, transition, ...result });
   }
   await info.attach('starter-comparison', { body: JSON.stringify(results, null, 2), contentType: 'application/json' });
-  for (const result of results) { expect(result.mode).not.toBe('battle'); expect(Number.isFinite(result.hp)).toBe(true); }
+  // The removed, defensive-only starter is a negative control: stalling at
+  // the fixed decision cap is evidence for the change, not a product failure.
+  for (const result of results) expect(Number.isFinite(result.hp)).toBe(true);
   for (const candidate of results.filter(r => r.transition)) {
+    expect(candidate.mode).toBe('cardReward');
     const old = results.find(r => !r.transition && r.seed === candidate.seed && r.policy === candidate.policy);
     expect(candidate.moltPlays).toBeGreaterThan(0);
     expect(candidate.turns).toBeLessThan(old.turns);

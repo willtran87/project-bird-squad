@@ -68,7 +68,7 @@ test('event choices retain readable text, marked omissions and safe review', asy
       for (const row of rows) {
         expect(row.fits).toBe(true); expect(row.inStage).toBe(true); expect(row.marked).toBe(true);
         expect(row.separation).toBeGreaterThanOrEqual(1);
-        expect(row.titleSize).toBe('18px'); expect(row.summarySize).toBe('16px');
+        expect(row.titleSize).toBe('19px'); expect(row.summarySize).toBe('17px');
       }
       await page.screenshot({ path: info.outputPath(`${type}-${viewport.width}.png`) });
     }

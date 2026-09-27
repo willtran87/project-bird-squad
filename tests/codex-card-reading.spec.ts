@@ -99,6 +99,8 @@ test('card reader keeps every authored entry readable with separated controls in
 });
 
 test('card reader pages full notes using touch keyboard and wheel and returns without changing the collection', async ({ page }, info) => {
+  // This reads every rules/note page through three separate input paths.
+  test.setTimeout(90000);
   await boot(page); await page.setViewportSize({ width: 1000, height: 560 });
   const saved = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
   const before = await page.evaluate(() => {

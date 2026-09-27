@@ -9,6 +9,9 @@ const point = (page: Page, name: string) => page.evaluate(name => {
 }, name);
 
 for (const remapped of [false, true]) test(`combat piles use quiet navigation and preserve decisions, remapped=${remapped}`, async ({ page }, info) => {
+  // Twelve full-resolution captures plus pointer/touch/remapped/controller
+  // journeys. Individual readiness waits remain bounded independently.
+  test.setTimeout(90000);
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message));
   await page.addInitScript(remapped => {
     localStorage.setItem('birdsquad.screenReader', 'on');

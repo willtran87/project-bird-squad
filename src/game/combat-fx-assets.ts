@@ -635,10 +635,14 @@ const ENEMY_ATTACK_INTERLUDE_MS = 120;
 export function enemyMoveTimings(host: any, enemy: any, move: any) {
   const scale = host.enemyMoveTimingScale(enemy, move);
   const cinematic = scale === 1;
+  // Familiar self-support has no travelling impact to follow. Preserve the
+  // readable result hold while giving these moves a shorter preparation beat.
+  const simpleSupport = move.effects.length > 0
+    && move.effects.every((effect: string) => /^(gainCover|heal|healSelf|gainStrength)\(/.test(effect));
   const delay = (normal: number, film: number) => host.combatTimingDelay(cinematic ? film : normal, scale);
   return {
-    windup: delay(1800, ENEMY_ATTACK_WINDUP_MS),
-    release: delay(550, ENEMY_ATTACK_RELEASE_MS),
+    windup: delay(simpleSupport ? 1200 : 1800, ENEMY_ATTACK_WINDUP_MS),
+    release: delay(simpleSupport ? 280 : 550, ENEMY_ATTACK_RELEASE_MS),
     anticipation: delay(0, ENEMY_ATTACK_IMPACT_ANTICIPATION_MS),
     impact: delay(650, ENEMY_ATTACK_IMPACT_HOLD_MS),
     recovery: delay(240, ENEMY_ATTACK_RECOVER_MS),

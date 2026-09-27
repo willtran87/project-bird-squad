@@ -127,8 +127,53 @@ voice synthesis, and rejects preloading it.
 It requires exactly one `audio-sfx` chunk as well and rejects preloading its UI
 and combat cue recipes before the first requested sound.
 
-## Rollback Rule
+## GitHub Pages verification and recovery
 
-If users report stale chunks after a deployment, clear the CDN cache for
-`/index.html` first. Hashed assets can stay cached unless the same hashed file
-was overwritten, which should not happen in normal Vite builds.
+The local `_headers` validator checks an artifact manifest, **not live HTTP
+headers**. The current GitHub Pages deployment does not apply this manifest:
+a read-only HEAD request on September 26, 2026 returned `Cache-Control:
+max-age=600`, HSTS, and no CSP, X-Frame-Options, or Permissions-Policy. Do not
+describe the preferred header table above as verified on GitHub Pages. A host
+or proxy that supports explicit response headers is needed to enforce that
+complete policy; changing hosting is a separate owner decision.
+
+`npx playwright test --config=playwright.pages.config.ts` builds an isolated
+artifact with `--base=/project-bird-squad/` and verifies real asset URLs, lazy
+scene imports, full-art combat, three viewport screenshots, and saved-checkpoint
+reload. It does not deploy or assert production headers. The Pages workflow now
+runs the production regression, data/policy validation, bundle/cache contracts,
+and this subdirectory smoke test before uploading a deployment artifact.
+
+Built image URLs in JavaScript are document-relative (`assets/<hashed-name>`).
+This single-document game has no history-based routes: serve it at `/`,
+`/index.html`, `/project-bird-squad/`, or its corresponding `index.html`.
+The directory resolves the same images without copying a long deployment prefix
+into every manifest entry. HTML/CSS and JavaScript chunk/preload URL handling
+remain Vite-managed. No `<base>` override or relaxed `base-uri 'none'` policy is
+needed. Both root and Pages artifacts must meet the existing hard size budgets;
+passing the root budget alone is insufficient.
+
+When a lazy import fails, the game offers **Keep playing** and **Reload options**.
+Reload requires a second explicit confirmation explaining that it restores the
+last saved checkpoint. It never clears storage or silently reloads a live fight.
+Before that confirmed reload, it revalidates only failed same-origin module
+preloads and consumes the responses, bounded by five seconds. This prevents a
+retained failed-resource response from poisoning WebKit recovery. Cancel aborts
+the requests and keeps the live page; a missing old chunk still leads to the
+new whole document, not a mixture of independently cache-busted module versions.
+
+## Rollback rule
+
+For GitHub Pages, identify the last known-good commit and its successful
+verification evidence. With explicit release authorization, revert the faulty
+change on `main` (preserving history), then let the gated workflow build and
+deploy the rollback. Confirm the workflow deployment URL, load a fresh document,
+and exercise Continue, combat, and lazy readers. Record the deployed commit and
+asset entry hash. Do not claim rollback until the deployment succeeds.
+
+GitHub's [custom workflow documentation](https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages)
+describes artifact upload and the separate Pages deployment job. This project
+does not assume a GitHub Pages CDN-purge control or that old hashed chunks remain
+available after deployment. On a different host where cache invalidation is
+explicitly available, invalidate the HTML entry first; never replace the contents
+of a previously published hashed asset.

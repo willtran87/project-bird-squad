@@ -1,5 +1,180 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-09-26 — priority input and recovery fixes qualified; broader P0 scope remains open
+
+- Found and fixed a real district-contract input gap: pointer exposed three
+  choices, while controller/arrow browsing did nothing and Confirm chose only
+  the first. Focus now moves through all options, survives redraws, and is
+  narrated; confirmation accepts that exact option. Duplicate acceptance is
+  guarded, and held keyboard Confirm cannot spill into route travel. The quiet
+  shared decision palette, 20px goals/rewards and visible selection replace tiny
+  contract copy. Corrected the inaccurate claim that rewards are paid on choice:
+  they are earned on completion. Keyboard, remapping, virtual Gamepad API and
+  pointer tests pass across recorded focused runs; three-size captures inspected.
+- Stabilized the combat Full rules pointer target when leaving a selected card.
+  Previously pointerout rebuilt the same control and could lose a click during
+  the crossing. A dedicated real-pointer test now verifies identity, opening,
+  closing and exact decision/resource preservation; compact reader inspected.
+- Fixed both pause menus leaving the live flight even when saving failed. They
+  now stay paused, explain the failure visually and in narration, and retry the
+  write on Main Menu. Route failures stay visible instead of disappearing after
+  4.2 seconds; their 58px Retry action can recover without spending or travelling.
+- Fixed battle Main Menu serializing an incomplete mid-combat save: it dropped
+  Quick mode, contracts and other run metadata, mixed spent resources with a
+  restarted fight, and could change deck order. It now retains the complete
+  pre-fight route checkpoint and explicitly describes that return point. The
+  old partial snapshot builder was removed. Reload and Main Menu both restore
+  the same opening encounter; save normalization is reflected explicitly in tests.
+- Cross-browser results: 24 focused contract/input/reload/failure cases reported
+  passes in p0-final-matrix. WebKit teardown stalled after its last passing case;
+  the owned runner/preview were stopped (not a clean aggregate run). The final
+  checkpoint build then passed all 12 reload/Main Menu/save-failure cases with a
+  clean exit in p0-checkpoint-verified across Chromium, Firefox and WebKit.
+- Strengthened both interruption paths to play a card and take real enemy
+  damage before pausing. All six browser cases reported passes in
+  p0-damaged-checkpoint: no partial-fight damage is carried into a restarted
+  encounter, and the saved account is unchanged by exit/resume. WebKit again
+  stalled during final teardown after every case reported a pass; the owned
+  runner/preview were stopped. Keep this separate from the clean 12-case run.
+- Separate pointer-only Quick flight passes: ten encounters / three districts /
+  victory / Replay, with no keyboard input, resource grants, scene shortcuts or
+  mechanical fast-forward (p0-live-recovery, 9.8 minutes). Complete outcome and
+  compact/high-resolution save-warning captures were inspected. The controller
+  journey also passes in p0-final-journeys: 270 real control decisions, ten
+  encounters, three-district victory and Replay, zero keyboard events, 12.4
+  minutes. Its durable JSON report and compact outcome capture were inspected.
+  The earlier 15-minute timeout occurred under concurrent test load; the final
+  serial run uses a 20-minute whole-flight allowance, retaining 20-second action
+  waits and the repeated-decision guard. No physical controller claim is made.
+- The initial 574-case Chromium run was stopped after reaching case 162 rather
+  than being reported as a pass: it tested the pre-fix build and showed stale
+  Codex bounds/readiness assertions plus multiple 30-second whole-test timeouts.
+  Corrected two Codex tests to await their lazy data, and the legacy card-reader
+  boundary to match the expanded renderer. Serial rechecks retain their action
+  assertions and allow 90 seconds for each entire screenshot-heavy case.
+- Serial recheck passed all 32 reading/layout cases in 8.2 minutes
+  (p0-regression-recheck), including every failure from that interrupted run.
+  Six exhaustive screenshot/paging cases measured near or above their former
+  30-second total deadline even alone; those cases now explicitly allow 90
+  seconds. Geometry, input, persistence and timing assertions were not removed.
+- Final production build and hard bundle/cache/docs checks pass. Reused the
+  existing icon-state helper to keep route diagnostics inside its unchanged
+  24.25 KB budget. Combined boot is 711.7 KB, above the 710 KB aspirational target
+  but below the hard ceiling; this is still open, not a performance win.
+- The required gameplay client reaches interactive, full-art combat with no
+  pending/failed/timed-out asset groups or error artifacts; final capture inspected
+  in p0-game-client-final. Eight tooling unit tests pass. Release policy passes
+  only with the owner's explicit human/device/AT waivers, never verified evidence.
+- All five asset-recovery/deployment/transition checks and all six practice
+  lesson/input/download-recovery checks passed against the final build in
+  p0-final-journeys. Inspected dense compact enemy layout, the final district's
+  high-resolution boss stage, and normal/high-resolution contract/card reading.
+  Including the controller flight, all 12 cases exited cleanly in 14.9 minutes.
+- All launched test runners and previews are stopped. Ports 5420–5423 have no
+  listeners; no owned test runner, preview or WebKit helper remains. Temporary
+  preview configurations are removed. The broad release suite was not completed,
+  the soft boot target remains open, and no all-P0/all-A completion claim is made.
+- All pre-existing user changes retained. No commit, push or deployment requested.
+- Removed obsolete temporary preview configurations. Deleting the two generated
+  build copies (.artifacts/p0-build and p0-build-next, approximately 249 MiB total)
+  was blocked by the execution environment after their exact paths and lack of
+  active users were verified. They remain; no bypass was attempted. The canonical
+  production build and test screenshots/reports are retained intentionally.
+
+## 2026-09-26 — all-A delivery work in progress
+
+- Added optional live Cover, Flow and Molt lessons under How to Play. Lessons
+  use ordinary combat rules and isolated in-memory practice storage. Three
+  built-browser journeys pass with byte-for-byte saved-flight preservation.
+  Help/picker actions now share remapped keyboard, controller-event and pointer
+  focus, with lifecycle cleanup. Late help-art callbacks cannot replace the
+  lesson picker. Remapping, repeated opens, failed-download recovery, exact
+  saved-flight resumption and three-size prompt bounds now pass in Chromium.
+  Built screenshot inspection caught and fixed a stray title focus ring above
+  the picker. Final lesson qualification passes all 18 cases across Chromium,
+  Firefox and WebKit, including download recovery, complete keyboard-listener
+  cleanup and duplicate-event protection. WebKit exposed duplicate delivery of
+  one Down event; modal navigation now consumes each event object once without
+  delaying distinct presses. A further three focused WebKit cases also pass.
+  Final WebKit high-resolution combat and compact picker captures were inspected.
+- Standard simple enemy support moves now have shorter anticipation/release;
+  impact and recovery remain readable. Six tightened cadence/result parity tests
+  pass: attack + Cover takes 1860 ms normal / 1450 ms reduced, with ordered
+  impact, unchanged damage and complete transient/tween cleanup.
+- Generated quieter map perimeter and reward bottom-ledge variants; preserved
+  versioned PNG sources and added targeted export to the existing deterministic
+  UI pipeline. No card artwork or canonical borders changed. Map hardware is
+  nine-sliced rather than stretched; the reward background no longer pulses.
+  Built map/reward checks and three-size screenshot inspection pass. Runtime
+  dimensions and transparent centers verified; the two WebPs fall from 163902
+  to 76446 bytes. Three exporter tests verify scoping, alpha/proportions and
+  byte-stable repeated exports.
+- Removed unused compact item renderers and moved Codex-only Supply tagging to
+  its lazy module. Measured combined boot drops from 711.4 to approximately
+  710.0 KB; hard budgets pass, with a very small remaining soft-target warning.
+- No physical-device, assistive-technology, or real-player sessions performed;
+  those remain explicitly skipped by the owner, never counted as passes.
+- Reconciled the existing owner instruction with the release policy's missing
+  physical-device/AT waivers. Seven policy tests pass; strict mode correctly fails
+  the absent authentic evidence. A supplied failed manual audit still fails even
+  with an evidence waiver. Historical full-suite claims in the experience
+  audit are now identified as historical, not current-working-tree evidence.
+- Current runtime-data, 961 optimized asset, world/FX, documentation, bundle and
+  cache validators pass. The shared gameplay client reaches full-art live combat
+  with no failed asset groups.
+- All fourteen existing mechanical full-run scenarios now reach a valid terminal
+  result across the recorded runs (ten in all-a-journeys, four in all-a-verified).
+  Five full clears: one Talon seed, both Tidewarden seeds, both Roostkeeper seeds.
+  The other scripted policies lose; these are measured outcomes, not human
+  balance evidence or a reason to apply speculative buffs.
+- The new live-control reference test passes: Fledgling, all-a-reference seed,
+  Quick flight, three districts / ten encounters / victory / Replay. It uses
+  ordinary keyboard and pointer controls, inspections, events, rewards, Preen
+  and Market exit without mechanical overrides. Initial driver mistakes (event
+  digit shortcuts and a nonexistent RouteScene getter) were corrected, then
+  the full test reran successfully in all-a-live-flight-diagnostic. Full-art
+  victory and Preen screenshots were inspected. This does not replace a full
+  controller journey or human feedback, and the overall roadmap stays open.
+- Reward geometry now waits for all offered artwork before measurement; the
+  corrected check passes in Firefox and WebKit. This was a test-readiness race,
+  not permission to omit unloaded cards from presentation checks.
+- Test servers and owned runners have exited. Ports 5409–5419 have no listeners;
+  the temporary focused-run configuration was removed, while screenshots,
+  regression tests and generated art sources are retained. No commit, push or
+  deployment performed. The entire release suite was not rerun; the broader
+  70-package roadmap is not closed and subjective all-A quality is not certified.
+
+## 2026-09-26 — combat quick-read and event-choice clarity checkpoint
+
+- Kept the existing dark bird-streetwear theme and authored card/event art. Combat
+  hand faces now show bounded, effect-by-effect quick reads instead of excerpts
+  cut from full prose. Amounts stay attached to their effects; cards with more
+  than three effects disclose the remainder, while Full rules still opens the
+  exact authored text without committing the card. The first-use trigger now
+  explicitly says it is per fight, not per turn. The rules panel is shorter
+  so more card art remains visible.
+- Event choices now use the shared measured word-excerpt helper rather than
+  rewrapping a title or consequence one character at a time. Short choice lists
+  have taller rows; titles, summaries and Read labels have higher type hierarchy.
+  Full consequences remain available in the separate read-only view.
+- Checked the entire 110-card catalog in base, Preened, normal and Molt states
+  at 2560x1600, 1440x900 and 1000x560; opening-hand typography and stress
+  states pass in Chromium, Firefox and WebKit. Event-choice geometry and
+  reading/navigation pass across the same sizes in Chromium; visual captures
+  were inspected. Built-preview gameplay client reached the art-loaded route
+  without console or asset errors. Runtime/data/art/docs/cache validators pass.
+- This is a partial C01/C02/I01/X01 and event readability pass, not completion
+  of the full product backlog. The combined boot bundle is 711.3 KB, above the
+  non-blocking 710 KB preference. Real-player, physical-device, NVDA and
+  VoiceOver sessions were explicitly skipped at the user's direction. The
+  release-evidence gate remains failed; no passing manual rows were fabricated.
+- The balance audit's small district-two Market average describes paths through
+  the legacy authored route map, not the procedural route generator used by
+  normal runs. The existing generator already enforces Market node coverage and
+  has a 1,024-seed fairness regression. No speculative economy retune was made.
+- No commit, push or deployment requested. All preview/test processes launched
+  for this pass were stopped; ports 5394-5408 were checked after testing.
+
 ## 2026-09-23 — dense status and Open Sky presentation restraint
 
 - Continued V04 on the current combat art and dark streetwear theme. Repeated
@@ -13023,3 +13198,172 @@ sessions through `docs/game/playtest-runbook.md`.
   route text-state refactor restored its strict lazy-chunk size budget. The
   shared gameplay client reached the built menu; its owned preview was stopped
   and port 4276 has no listener. No commit, push, or deployment requested.
+
+## 2026-09-26 — P0 resolution pass (verification in progress)
+
+Follow-up implementation and verification (same working turn):
+
+- Finished-flight persistence now writes a durable outbox before account/history
+  updates, records an idempotency receipt with account data, and retires only the
+  matching active checkpoint after successful writes. A readable native retry
+  dialog preserves failed results; Menu retries pending results after reload.
+  Controller actions are owned by this dialog, including Start; A/B and D-pad
+  access are implemented. Run IDs are stable across replayed checkpoints, while
+  displayed completion dates still include run duration.
+- Route, Market and Snag acquisitions use deterministic per-flight claim receipts.
+  Failed collection writes travel with the checkpoint/result and retry without
+  duplicate permanent claims. Market copy explicitly identifies pending saves.
+- Reward reload exposed a real Preen-order defect: choices now follow the stored
+  order rather than the shuffled deck order. The route-handoff test now waits for
+  the route checkpoint rather than merely an active, still-loading scene.
+- Remaining Resonance, enemy charge and Pinned Opening labels use bounded result
+  lanes. Shared menu/reader palette exports remove duplicate constants without
+  changing the established dark urban/tarot style.
+- Added a Pages subdirectory build/preview test. It passed title, lazy Codex,
+  full-art combat, three-size captures and checkpoint reload on the actual
+  `/project-bird-squad/` base path; the high-resolution capture was inspected.
+  Added gated Pages workflow validation and retained evidence, plus a build/source
+  identity writer. These workflow changes are local, not remotely exercised or
+  published. Read-only production HEAD inspection found max-age=600 and no custom
+  CSP; documentation and validator wording now distinguish manifest checks from
+  real hosting headers and describe an authorized Git-based rollback.
+- Follow-up build `index-3edJ2won.js`: 14/17 checks passed. Failures were the real
+  Preen ordering issue, a premature checkpoint assertion, and a controller journey
+  reaching its 20-minute total allowance under concurrent browser load. No full
+  pass is claimed. The pointer-only flight completed through Replay in 14.1 min.
+- Candidate `index-BTgiB2dE.js`: all hard bundle/cache contracts pass. Entry
+  680.7 KiB / 181.6 KiB gzip, combined boot 720.6 / 197.0; preferred 675/710 KiB
+  targets remain warnings. Core is 30,707 bytes, below the unchanged 30 KiB cap.
+  `.artifacts/p0-candidate-identity.json` records the dirty-source hash and entry.
+  Its 45-case run is still in progress; two new claim tests require normalizing
+  absent versus false Preen flags, not an application fix.
+- The 598-case baseline run continues on its frozen earlier artifact. Stale
+  Packed Supply whitespace and automatic-preview layout assertions were corrected
+  without dropping wording/geometry coverage. The keyboard live journey reached
+  its total time allowance; route-reader missed-click/timeout cases require an
+  isolated recheck. Final acceptance and process cleanup are still pending.
+
+- Active request: resolve all P0 packages in the normalized 70-package roadmap.
+  Preserve the dark urban/tarot style and all existing dirty-worktree changes.
+  Human, physical-device and assistive-technology sessions remain owner-waived,
+  not passed. No commit, push or deployment is authorized in this pass.
+- Added durable combat reward checkpoints for Waymark/card/Preen/committed-route
+  stages. Continue restores choices without fighting again, healing twice, or
+  duplicating collection claims. Account claims have bounded idempotency receipts;
+  save failures retain the live reward screen and Retry/Main Menu or Resume can
+  finish the committed transition. Final boss records use the saved fight's turns,
+  not the fresh presentation scene's initial turn. First-claim/Hunt feedback is
+  retained but replayed claims are silent.
+- Added cancellable, explicit-confirmation recovery for failed lazy downloads.
+  Never auto-reload or clear a live flight's storage. Native recovery buttons own
+  their key events. Non-Market item details now reuse the measured 22px paged
+  reader instead of the legacy tiny tooltip; loading fallbacks are bounded and
+  never squeeze full authored rules into a small box.
+- Routed additional Molt/Snag/Flow/Cleanse/Wingbeat/Cover/Winded/resource and enemy
+  status results through bounded result lanes. Long result labels visibly excerpt
+  while ordered combat history remains complete. Shared theme tokens replace
+  duplicated menu, gameplay and Profile palette definitions without changing hues.
+- Extracted the encounter intro into an explicitly capped lazy renderer loaded
+  with combat FX; removed the redundant diagonal line across generated intro art.
+  Scene-owned timers/tweens clean up on dismissal/destruction. Existing size caps
+  are unchanged; the new optional intro renderer has its own 4 KiB cap.
+- Initial focused production run: 13/14 passed. The remaining assertion omitted
+  the existing beat prefix in combat history; corrected to require both complete
+  event messages. All reward checkpoint/failure cases passed. Added committed-Preen
+  retry and final-boss record regression cases for final verification.
+- Catalog audit: all 80 authored encounters at 2560x1600, 1440x900 and 1000x560
+  passed art presence and non-overlapping intent/vital/status/forecast geometry.
+  District 1: 22 encounters; maps 2–4 come from separate content files. The first
+  harness version omitted those files, correctly failed its nonempty assertion,
+  and was fixed before the remaining three districts passed. Representative actual
+  captures inspected, including the four-enemy formation at high and compact size.
+- Runtime data, 961 runtime assets, documentation, deployment cache, TypeScript,
+  whitespace and release-waiver policy checks passed before the final intro build.
+  The skill gameplay client reached title, route and live combat; screenshots
+  opened and inspected. In-app browser timed out; no verification claimed there.
+- The first broad 593-case run was stopped after 86 delivered results because
+  source fixes required a fresh build. Two test failures were a resize-settlement
+  race (gallery; isolated rerun passed) and a 12-capture test exhausting its total
+  30-second allowance (pile reader). Added resize settlement and a bounded 90-second
+  whole-test allowance; per-interaction assertions remain intact. This interrupted
+  run is NOT a full-suite pass. Final production verification is still required.
+- Process ledger: interrupted broad runner session 63139 and its port-5430 preview
+  stopped; catalog audit sessions 82984/82047/33161 and skill clients completed.
+  Keep generated evidence under .artifacts; do not retry deletion of previously
+  permission-blocked p0-build/p0-build-next directories. Clean final owned processes.
+
+### P0 verification follow-up — September 26
+
+- Frozen baseline `.artifacts/p0-final-results.json`: 598 cases, 542 passed,
+  56 failed, none skipped. This is explicitly not a full-suite pass. The full
+  80-encounter/three-size catalog passed; district 3 Beacon-Breaker and district
+  4 Roost Warden production captures were also opened and visually inspected.
+- Cross-engine reward recheck on `index-CmFDfjgF.js`: all 18 reward-checkpoint
+  cases passed. The fixture now launches its declared seed through the title,
+  calculates recovery after the chosen card's Cohesion change, and waits for the
+  durable route checkpoint. Earlier fixed-HP and random-flight failures remain
+  retained in their reports. Claim/outbox fault injection passed across all three
+  engines in `.artifacts/p0-current-recovery-results.json`; that overall run still
+  had six failures and two worker-teardown errors and is not a green report.
+- Actual HTTP 503 testing reproduced WebKit's failed-module resource cache
+  surviving reload/new-tab navigation. Confirmed recovery now revalidates failed
+  same-origin module-preload URLs, then reloads the whole document; it never
+  executes cache-busted modules or clears save data. Cancellation remains available.
+  `.artifacts/p0-http-recovery-fixed.json`: all three engines passed on
+  `index-6m34EsV1.js`. The completed WebKit worker had no browser child and required
+  explicit teardown cleanup; the final report exited successfully. A final
+  refinement waits for response bodies before navigation and awaits revalidation.
+- Reward journal sanitation now rejects the entire malformed claim transaction
+  instead of silently dropping entries, allowing the existing backup recovery.
+- Regression assertions are being reconciled with the current quieter UI:
+  paged comparison rules, live menu focus, contextual collection badges, bounded
+  feedback lanes, modern measured readers and text-led tabs. The Tidewarden
+  comparison retains its old defensive-only deck as a negative control; only the
+  shipped transition starter must win within the fixed decision budget.
+- Documentation, runtime/content, all 961 optimized assets and waiver-policy
+  validation pass. TypeScript and whitespace checks pass. Current hard delivery
+  budgets pass; preferred boot-size targets are still warnings, not silently raised.
+  The remaining regression rerun and isolated live journeys are in progress.
+
+### P0 final qualification — September 27
+
+- All 56 failures from the retained 598-case baseline have now been reconciled
+  through meaningful updated assertions and passing focused reruns. The original
+  542-pass/56-fail report remains failed; no uninterrupted full-suite pass is claimed.
+  The three presentation reruns record 44/52, 6/9, then 3/3 passing. Their JSON
+  reports, and the recovery/live-control reports below, are actually under
+  `.artifacts/.artifacts/` (config-relative reporter output), correcting shorthand
+  report paths in preceding notes. The baseline itself is `.artifacts/p0-final-results.json`.
+- `p0-isolated-live-controls.json`: keyboard and browser-Gamepad flights both pass
+  through three-district victory and Replay, without game-rule overrides or
+  fast-forwarding. Keyboard takes 5.6 min; controller takes 12.0 min and 270
+  decisions, with zero keyboard events. Outcome captures were inspected.
+- `p0-final-recovery-results.json`: 30/30 pass, zero skipped/errors, across
+  Chromium, Firefox and WebKit. This qualifies the final reward-journal rejection,
+  backup recovery, reward-stage reload, exactly-once retry, final-boss turn count,
+  bounded feedback, complete item readers and real HTTP 503 module recovery.
+  All cases finished before owned WebKit worker 20664 was stopped after verifying
+  it had no browser children; the runner then wrote its successful report and exited 0.
+- Pages-specific verification caught a genuine delivery budget failure:
+  731.2 KiB combined boot exceeded the unchanged 725 KiB cap. Image-only,
+  document-relative Vite URLs remove repeated deployment prefixes; module imports,
+  CSS/HTML handling and strict base-uri policy are unchanged. Root and Pages
+  now pass at 721.9 and 722.7 KiB. Preferred 675/710 KiB targets remain warnings.
+- `.artifacts/p0-pages-compact-results.json`: final Pages smoke passes, including
+  the real subdirectory, lazy Codex, full-art combat at three sizes and reload.
+  Its 2560×1600 screenshot was opened. No GitHub deployment or remote CI was run.
+- `.artifacts/p0-compact-assets-recovery.json`: 9/9 passing with no skipped cases
+  or report errors, checking all approved art decoding, district/boss transitions
+  and HTTP-failure recovery in three engines after the URL-packaging change.
+  Worker 14180 required the same verified, child-free WebKit teardown cleanup;
+  the runner exited 0. The final shared skill client completed two iterations;
+  `.artifacts/p0-compact-qualified-client/shot-1.png` was inspected, and no error
+  artifact was emitted. Full art/interaction were ready with no failed groups.
+- Final owned preview PID 8872 was stopped after the client. Process inventory
+  shows no remaining test runner, browser worker or Vite preview; ports 5373,
+  5430–5433 and 5440 are clear. Other app processes and generated evidence remain.
+- All 33 normalized P0 packages are now implemented and locally verified.
+  `docs/game/p0-resolution-report.md` is the acceptance map and limitations record.
+  P1/P2 scope remains unchanged; no subjective all-A, physical-device or actual
+  assistive-technology claim is made. No commit, push, merge or publish occurred.
+  Final root and Pages identity JSON files accompany their compact artifacts.

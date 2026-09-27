@@ -1,5 +1,30 @@
 import Phaser from 'phaser';
 
+// Shared dark urban/tarot palette. Menus deliberately use the quieter variant;
+// combat reserves the brighter accents for resources and immediate decisions.
+export const UI_FONT = 'Arial';
+export const UI_BOLD = 'bold';
+export const UI_GOLD = '#ffe1a3';
+export const UI_BODY = '#cdd9e6';
+export const UI_MUTED = '#8fa3b6';
+export const UI_SOFT = '#b9c7d6';
+export const UI_CYAN = '#8df4ff';
+export const UI_FIELD = {
+  ink: 0x070b12, panel: 0x0b111b, panelWarm: 0x17120c, rail: 0x111923,
+  paper: 0x1c2022, gold: 0xd8a840, brass: 0xf0c36f, cyan: 0x7ab8d6,
+  green: 0x8fd6a0, danger: 0xff6b57, violet: 0xc9a6ff,
+  text: '#e7eef7', muted: '#91a6b8', warm: UI_GOLD, cyanText: UI_CYAN,
+};
+export const MENU_UI = {
+  gold: '#dfc18b', cyan: '#adc9d2', soft: '#a4b6c2',
+  field: {
+    ink: 0x0b1723, gold: 0x86b1be, brass: 0x86b1be, cyan: 0x86b1be,
+    green: 0x86b1be, danger: 0xe05b4f,
+    muted: '#9cabb4', warm: '#eee8d8', text: '#eee8d8',
+  },
+};
+export const READER_UI = { soft: '#bdc9d4', muted: UI_FIELD.muted };
+
 // Color numbers (Phaser uses 0xRRGGBB).
 export const PAGE = 0x0a1118;
 export const PANEL = 0x132028;

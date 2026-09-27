@@ -1,4 +1,7 @@
 import Phaser from 'phaser';
+import { showSaveRecovery, consumeSaveRecoveryGamepad } from './game/save-recovery-dialog';
+import { sanitizeCardClaims, type PendingCardClaim } from './game/card-claim-checkpoint';
+import { cloneRewardCheckpoint, sanitizeRewardCheckpoint, type RewardCheckpoint } from './game/reward-checkpoint';
 import { KEYWORDS, KEYWORD_ICON_IDS, buildKeywordTokens, keywordIconId } from './game/keyword-definitions';
 import { observeChoiceInput } from './game/choice-input-hints';
 import { eventChoiceState, eventChoiceHint, handleEventChoice, renderEventChoiceReader } from './game/route-event-reading';
@@ -74,7 +77,7 @@ import {
   loadAccount, recordRun, saveAccount, type CardAcquisitionSource, type CardCollectionRecord, type PlayerAccount
 } from './game/meta';
 import { collectionMilestoneProgress, unlockCollectionMilestones } from './game/collection-milestone-progress';
-import { MIN_SUPPORTED_TOUCH_TARGET } from './game/theme';
+import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET, UI_FONT, UI_BOLD, UI_GOLD, UI_BODY, UI_MUTED, UI_SOFT, UI_CYAN, UI_FIELD } from './game/theme';
 import {
   queuePreloadImageAssets,
   queueRuntimeImageAssets,
@@ -380,6 +383,9 @@ interface NextCombatMods {
 }
 
 interface RunState {
+  pendingCardClaims?: PendingCardClaim[];
+  cardClaimSequence?: number;
+  pendingCombatReward?: RewardCheckpoint;
   deck: SavedCard[];
   leaderId?: string;
   difficulty?: number;
@@ -833,6 +839,7 @@ interface RenderPayload {
     count: number;
   };
   paused?: boolean;
+  pauseSaveFailed?: boolean;
   settingsOverlayOpen?: boolean;
   settingsFocus?: { index: number; label: string };
   controls?: ReturnType<typeof controlsTextState>;
@@ -1466,6 +1473,7 @@ interface RenderPayload {
     target?: string;
   };
   firstFlightGuide?: ReturnType<typeof firstFlightGuideState>;
+  practiceLesson?: { id: string; title: string; step?: number; instruction: string; complete: boolean; finished?: boolean };
   firstMoltGuide?: ReturnType<typeof firstMoltGuideState> & {
     cardId?: string;
     cardName?: string;
@@ -2046,6 +2054,7 @@ interface BattleSceneData {
 // Run summary emitted on win/loss for local playtest stats
 // (next-level-implementation-spec Phase 5 / next-level-data-contracts Â§10).
 interface RunSummary {
+  pendingCardClaims?: PendingCardClaim[];
   id: string;
   seed: string;
   result: 'win' | 'loss';
@@ -2127,13 +2136,6 @@ declare global {
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
-const UI_FONT = 'Arial';
-const UI_BOLD = 'bold';
-const UI_GOLD = '#ffe1a3';
-const UI_BODY = '#cdd9e6';
-const UI_MUTED = '#8fa3b6';
-const UI_SOFT = '#b9c7d6';
-const UI_CYAN = '#8df4ff';
 const HUD_MENU_PANEL = {
   w: 1060,
   h: 570,
@@ -3967,103 +3969,10 @@ function marketIconForKicker(kicker: string): UiIconId | undefined {
   return undefined;
 }
 
-function codexIconForLabel(label: string): UiIconId | undefined {
-  switch (label) {
-    case 'Cards':
-      return 'codex-cards-medallion';
-    case 'Major':
-      return 'codex-major-medallion';
-    case 'Aviary':
-      return 'codex-aviary-medallion';
-    case 'Plumes':
-      return 'codex-plumes-medallion';
-    case 'Quills':
-      return 'codex-quills-medallion';
-    case 'Basins':
-      return 'codex-basins-medallion';
-    case 'Nests':
-      return 'codex-nests-medallion';
-    case 'Snags':
-      return 'codex-snags-medallion';
-    case 'Items':
-      return 'codex-items-medallion';
-    case 'Glossary':
-      return 'codex-glossary-medallion';
-    case 'Leaders':
-      return 'codex-leader-medallion';
-    case 'Enemies':
-      return 'codex-enemy-medallion';
-    case 'Waymarks':
-      return 'codex-waymark-medallion';
-    case 'Supplies':
-      return 'codex-supplies-medallion';
-    case 'Combat':
-      return 'codex-combat-medallion';
-    case 'Pressure':
-      return 'codex-pressure-medallion';
-    case 'Route':
-    case 'Plan':
-      return 'codex-route-plan-medallion';
-    case 'Flexible':
-      return 'codex-flexible-medallion';
-    case 'Defense':
-      return 'codex-defense-medallion';
-    case 'Recovery':
-      return 'codex-recovery-medallion';
-    case 'Momentum':
-      return 'codex-momentum-medallion';
-    case 'Molt':
-      return 'codex-molt-medallion';
-    case 'Boss':
-      return 'codex-boss-medallion';
-    default:
-      return undefined;
-  }
-}
 
-function enemyCodexIconForLabel(label: string): UiIconId | undefined {
-  switch (label) {
-    case 'All':
-      return 'codex-enemy-all-medallion';
-    case 'Rooftops':
-      return 'codex-enemy-rooftops-medallion';
-    case 'Canals':
-      return 'codex-enemy-canals-medallion';
-    case 'Signals':
-      return 'codex-enemy-signals-medallion';
-    case 'Roost':
-      return 'codex-enemy-roost-medallion';
-    default:
-      return undefined;
-  }
-}
 
-function waymarkCodexIconForLabel(label: string): UiIconId | undefined {
-  switch (label) {
-    case 'All':
-      return 'codex-waymark-all-medallion';
-    case 'Shelter':
-      return 'codex-waymark-shelter-medallion';
-    case 'Tempo':
-      return 'codex-waymark-tempo-medallion';
-    case 'Economy':
-      return 'codex-waymark-economy-medallion';
-    case 'Suit':
-      return 'codex-waymark-suit-medallion';
-    default:
-      return undefined;
-  }
-}
 
-function itemTypeCodexIconForLabel(label: string): UiIconId | undefined {
-  if (label === 'All') return 'codex-items-all-medallion';
-  return undefined;
-}
 
-function supplyCodexIconForLabel(label: string): UiIconId | undefined {
-  if (label === 'All') return 'codex-supplies-all-medallion';
-  return undefined;
-}
 
 const MOTION_PREFERENCE_STORAGE_KEY = 'birdsquad.motionPreference';
 const COMBAT_PACE_STORAGE_KEY = 'birdsquad.combatPace';
@@ -4285,10 +4194,14 @@ const cardLibrary: Record<string, Card> = Object.fromEntries(
 function recordCardAcquisitions(
   ids: string[],
   source: CardAcquisitionSource,
-): { firstCopies: string[]; completedTargets: string[]; newMilestones: string[] } {
+  receipt?: string,
+): { firstCopies: string[]; completedTargets: string[]; newMilestones: string[]; saved?: boolean; replayed?: boolean } {
   const uniqueIds = [...new Set(ids.filter((id) => Boolean(cardLibrary[id])))];
   if (!uniqueIds.length) return { firstCopies: [], completedTargets: [], newMilestones: [] };
   const account = loadAccount();
+  if (receipt && account.recentCardClaims?.includes(receipt)) {
+    return { firstCopies: [], completedTargets: [], newMilestones: [], saved: true, replayed: true };
+  }
   const discovered = new Set(account.discoveredCards);
   const targets = new Set((account.hunt ?? []).filter((id) => !account.cardCollection[id] && Boolean(cardLibrary[id])));
   const now = Date.now();
@@ -4311,8 +4224,30 @@ function recordCardAcquisitions(
   account.discoveredCards = [...discovered];
   account.hunt = [...targets];
   const newMilestones = unlockCollectionMilestones(account);
-  writeJournaledJson('birdsquad.account', account);
-  return { firstCopies, completedTargets, newMilestones };
+  if (receipt) account.recentCardClaims = [...(account.recentCardClaims ?? []), receipt].slice(-256);
+  const saved = writeJournaledJson('birdsquad.account', account);
+  return { firstCopies, completedTargets, newMilestones, saved };
+}
+
+function recordRunCardAcquisitions(run: RunState, ids: string[], source: CardAcquisitionSource) {
+  const result: ReturnType<typeof recordCardAcquisitions> = { firstCopies: [], completedTargets: [], newMilestones: [], saved: true };
+  const sequence = run.cardClaimSequence = (run.cardClaimSequence ?? 0) + 1;
+  for (const id of [...new Set(ids)].filter(id => cardLibrary[id])) {
+    const receipt = `card:${run.startedAtMs}:${run.seed}:${sequence}:${source}:${id}`;
+    const claim = recordCardAcquisitions([id], source, receipt);
+    if (!claim.saved) {
+      (run.pendingCardClaims ??= []).push({ id, source, receipt });
+      result.saved = false;
+    } else {
+      result.firstCopies.push(...claim.firstCopies); result.completedTargets.push(...claim.completedTargets);
+      result.newMilestones.push(...claim.newMilestones);
+    }
+  }
+  return result;
+}
+
+function flushCardClaims(claims: PendingCardClaim[] = []) {
+  return claims.every(claim => recordCardAcquisitions([claim.id], claim.source, claim.receipt).saved);
 }
 
 const arcanaRewardPool = alphaCardSet.rewardPool;
@@ -4661,6 +4596,10 @@ class MenuScene extends Phaser.Scene {
 
   create(data: { reopenSettings?: boolean; reopenHelp?: boolean; reopenLeaderTooltip?: { id: string; anchorX: number } } = {}) {
     endPracticeSession();
+    if (!recoverFinishedRun()) showSaveRecovery(() => {
+      if (!recoverFinishedRun()) return false;
+      this.scene.restart(); return true;
+    });
     syncSceneAnimationPace(this);
     const generation = ++this.menuGeneration;
     if (!data.reopenSettings) {
@@ -4976,7 +4915,9 @@ class MenuScene extends Phaser.Scene {
       this.closeSettingsOverlay();
     } else if (this.helpOverlay) {
       playUiSound('close');
-      this.closeHelpOverlay();
+      const onBack = this.helpOverlay.getData('onBack') as (() => void) | undefined;
+      if (onBack) onBack();
+      else this.closeHelpOverlay();
     } else if (this.setupOpen) {
       playUiSound('close');
       this.setSetupOpen(false);
@@ -5000,6 +4941,7 @@ class MenuScene extends Phaser.Scene {
     const onUp = (event: KeyboardEvent) => onDirectionalKey(event, -1);
     const onDown = (event: KeyboardEvent) => onDirectionalKey(event, 1);
     const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button) => {
+      if (consumeSaveRecoveryGamepad(button.index)) return;
       if (this.settingsOverlay || this.titleRunLaunchPending) return;
       if (this.helpOverlay) {
         if (button.index === 1) this.handleMenuBack();
@@ -5315,9 +5257,16 @@ class MenuScene extends Phaser.Scene {
   }
 
   private enterRoute(runState: RunState) {
+    if (!recoverFinishedRun()) {
+      this.titleRunLaunchPending = false;
+      showSaveRecovery(() => { if (!recoverFinishedRun()) return false; this.scene.restart(); return true; });
+      return;
+    }
     birdAudio.play('route');
     this.storageRecoveryNotice = undefined;
-    this.scene.start('RouteScene', { runState });
+    this.scene.start(runState.pendingCombatReward ? 'BattleScene' : 'RouteScene', {
+      runState, routeNodeId: runState.pendingCombatReward?.nodeId,
+    });
   }
 
   private createAnimatedTitle() {
@@ -5394,6 +5343,7 @@ class RouteScene extends Phaser.Scene {
   private runState!: RunState;
   private selectableNodeIds = new Set<string>();
   private selectedNodeId: string | undefined;
+  private districtContractFocusIndex = 0;
   private nodeChoiceOpen = false;
   private nodeChoiceNodeId: string | undefined;
   private routeCardPickerRestoreState: RunState | undefined;
@@ -5526,6 +5476,7 @@ class RouteScene extends Phaser.Scene {
     activeSeed = this.runState.seed ?? 'alpha';
     this.ensureDistrictContract();
     this.districtContractCelebration = undefined;
+    this.districtContractFocusIndex = 0;
     const completedContract = this.runState.districtContracts?.find((contract) => contract.completed && !contract.celebrated);
     const completedContractDefinition = completedContract
       ? DISTRICT_CONTRACT_DEFINITIONS.find((definition) => definition.id === completedContract.id)
@@ -5772,6 +5723,7 @@ class RouteScene extends Phaser.Scene {
       this.toggleRouteWaymarkPin();
     });
     const onRouteGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: { index?: number }) => {
+      if (consumeSaveRecoveryGamepad(button.index)) return;
       if (this.settingsOverlayOpen || this.pauseOverlayOpen) return;
       if (this.flockOverlayOpen) {
         if (button.index === 1) this.closeFlockOverlay();
@@ -5843,7 +5795,7 @@ class RouteScene extends Phaser.Scene {
     }));
     bindControlActions(this, {
       confirm: (event) => {
-        if (event?.repeat && (this.pendingRouteReward || this.nodeChoiceOpen)) return;
+        if (event?.repeat) return;
         if (handleEventChoice(this, 'confirm')) return;
         if (this.routeRewardInteractionModule()?.handleRouteRewardAction(this, 'confirm')) return;
         if (this.supplyDrawerOpen) {
@@ -6076,14 +6028,14 @@ class RouteScene extends Phaser.Scene {
     if (this.pauseOverlayOpen) this.tweens.pauseAll();
   }
 
-  private checkpointRouteIfChanged() {
+  private checkpointRouteIfChanged(force = false) {
     let snapshot: string;
     try {
       snapshot = JSON.stringify(this.runState);
     } catch {
       snapshot = '';
     }
-    if (snapshot === this.routeCheckpointAttempt) return;
+    if (!force && snapshot === this.routeCheckpointAttempt) return;
     this.routeCheckpointAttempt = snapshot;
     const saved = !!snapshot.length && persistActiveRun(this.runState);
     this.routeCheckpointState = {
@@ -6097,7 +6049,9 @@ class RouteScene extends Phaser.Scene {
       announceScreenReader('Flight could not be saved. Keep this tab open to preserve the current run.');
     }
     this.routeCheckpointTimer?.remove(false);
-    this.routeCheckpointTimer = this.time.delayedCall(saved ? 1800 : 4200, () => {
+    this.routeCheckpointTimer = undefined;
+    // A failed checkpoint remains actionable until a later write succeeds.
+    if (saved) this.routeCheckpointTimer = this.time.delayedCall(1800, () => {
       this.routeCheckpointState.visible = false;
       this.routeCheckpointIndicator?.destroy(true);
       this.routeCheckpointIndicator = undefined;
@@ -6120,26 +6074,42 @@ class RouteScene extends Phaser.Scene {
       .setDepth(48)
       .setName('route-checkpoint-feedback');
     const plate = this.add.graphics().setName('route-checkpoint-feedback-plate');
+    const height = saved ? 40 : MIN_SUPPORTED_TOUCH_TARGET;
     plate.fillStyle(0x050b14, 0.9);
-    plate.fillRoundedRect(-126, -20, 252, 40, 6);
+    plate.fillRoundedRect(-126, -height / 2, 252, height, 6);
     plate.lineStyle(1.5, saved ? UI_FIELD.cyan : 0xff9b7a, 0.86);
-    plate.strokeRoundedRect(-126, -20, 252, 40, 6);
+    plate.strokeRoundedRect(-126, -height / 2, 252, height, 6);
     const pip = this.add.circle(-108, 0, 4, saved ? UI_FIELD.cyan : 0xff765f, 0.95)
       .setStrokeStyle(1, saved ? UI_FIELD.gold : 0xffc1a8, 0.9);
-    const label = this.add.text(-94, 0, this.routeCheckpointState.label, {
+    const label = this.add.text(-94, 0, saved ? this.routeCheckpointState.label : 'SAVE FAILED · RETRY', {
       fontFamily: UI_FONT,
       fontSize: '18px',
       fontStyle: UI_BOLD,
       color: saved ? '#bff8ff' : '#ffd0bf',
       stroke: '#03070d',
       strokeThickness: 2,
-    }).setOrigin(0, 0.5);
+    }).setResolution(2).setOrigin(0, 0.5);
     indicator.add([plate, pip, label]);
+    if (!saved) {
+      const retry = this.add.rectangle(0, 0, 252, height, 0, 0)
+        .setName('route-checkpoint-retry-hit').setInteractive({ useHandCursor: true });
+      retry.on('pointerdown', () => {
+        this.checkpointRouteIfChanged(true);
+        this.renderRouteCheckpointFeedback();
+        this.updateTextState();
+      });
+      indicator.add(retry);
+    }
     this.routeCheckpointIndicator = indicator;
   }
 
   private cycleSelectableRouteNode(direction: -1 | 1) {
-    if (!this.routeEssentialAssetsReady || this.shouldChooseDistrictContract()) return;
+    if (!this.routeEssentialAssetsReady) return;
+    if (this.shouldChooseDistrictContract()) {
+      const count = this.districtContractChoices().length;
+      this.focusDistrictContract((this.districtContractFocusIndex + direction + count) % count);
+      return;
+    }
     if (this.routeCommitPending || this.pauseOverlayOpen || this.settingsOverlayOpen || this.confirmExitOpen) return;
     if (this.deckOverlayOpen || this.flockOverlayOpen || this.waymarkDrawerOpen || this.supplyDrawerOpen || this.marketOpen || this.nodeChoiceOpen || this.pendingRouteReward || this.cardPickerMode) return;
     const selectable = this.getSelectableNodes();
@@ -6279,8 +6249,8 @@ class RouteScene extends Phaser.Scene {
     if (!this.routeEssentialAssetsReady || this.settingsOverlayOpen || this.pauseOverlayOpen) return;
     if (this.deckOverlayOpen || this.flockOverlayOpen || this.waymarkDrawerOpen || this.supplyDrawerOpen || this.marketOpen) return;
     if (this.shouldChooseDistrictContract()) {
-      const firstChoice = this.districtContractChoices()[0];
-      if (firstChoice) this.chooseDistrictContract(firstChoice.id);
+      const choice = this.districtContractChoices()[this.districtContractFocusIndex];
+      if (choice) this.chooseDistrictContract(choice.id);
       return;
     }
     const target = (this.selectedNodeId && this.selectableNodeIds.has(this.selectedNodeId))
@@ -6650,6 +6620,7 @@ class RouteScene extends Phaser.Scene {
   private renderPauseOverlay() {
     renderPauseMenuOverlay(this, () => {}, {
       title: 'Run Paused',
+      saveFailed: this.routeCheckpointState.outcome === 'failed',
       subtitle: `${currentMap().name} / ${getLeader(this.runState.leaderId).name}`,
       details: [
         ['Cohesion', `${this.runState.currentHp}/${this.runMaxHp()}`],
@@ -6668,7 +6639,12 @@ class RouteScene extends Phaser.Scene {
         this.renderAll();
       },
       onMenu: () => {
-        persistActiveRun(this.runState);
+        this.checkpointRouteIfChanged(true);
+        if (this.routeCheckpointState.outcome === 'failed') {
+          playUiSound('locked');
+          this.refreshRouteSystemOverlay();
+          return;
+        }
         this.time.paused = false;
         this.tweens.resumeAll();
         playUiSound('close');
@@ -6758,8 +6734,7 @@ class RouteScene extends Phaser.Scene {
     const key = uiIconAssets['route-map-frame'].key;
     if (this.textures.exists(key)) {
       this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      this.add.image(cx, cy, key)
-        .setDisplaySize(w, h)
+      this.add.nineslice(cx, cy, key, undefined, w, h, 64, 64, 42, 42)
         .setAlpha(0.14)
         .setName('route-map-frame');
       return;
@@ -7403,7 +7378,7 @@ class RouteScene extends Phaser.Scene {
 
   private chooseDistrictContract(id: DistrictContractId) {
     const contract = this.activeDistrictContract();
-    if (!contract || !this.districtContractChoices().some((choice) => choice.id === id)) return;
+    if (!contract || contract.confirmed !== false || !this.districtContractChoices().some((choice) => choice.id === id)) return;
     contract.id = id;
     contract.confirmed = true;
     contract.baselineCombatResults = this.runState.combatResults?.length ?? 0;
@@ -7414,45 +7389,68 @@ class RouteScene extends Phaser.Scene {
     this.renderAll();
   }
 
+  private focusDistrictContract(index: number) {
+    const choice = this.districtContractChoices()[index];
+    if (!this.shouldChooseDistrictContract() || !choice) return;
+    this.districtContractFocusIndex = index;
+    this.children.list.forEach((child: any) => {
+      if (child.name === 'district-contract-option') {
+        const focused = child.getData('index') === index;
+        child.setStrokeStyle(focused ? 3 : 1, focused ? DECISION_UI.accent : DECISION_UI.border, 1);
+        child.setData('focused', focused);
+      }
+      if (child.name === 'district-contract-focus-label') child.setVisible(child.getData('index') === index);
+    });
+    announceScreenReader(`${choice.name}. ${index + 1} of ${this.districtContractChoices().length}. ${choice.goal}. On completion: ${choice.rewardScrap} Scrap and a record badge. Confirm to accept.`);
+    this.updateTextState();
+  }
+
   private renderDistrictContractChoice() {
     const choices = this.districtContractChoices();
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.82)
       .setInteractive()
       .setDepth(24000)
       .setName('district-contract-choice');
-    this.add.rectangle(GAME_WIDTH / 2, 356, 1120, 438, 0x07101a, 0.98)
-      .setStrokeStyle(2, UI_FIELD.gold, 0.78)
+    this.add.rectangle(GAME_WIDTH / 2, 356, 1120, 438, DECISION_UI.surface, 1)
+      .setStrokeStyle(1, DECISION_UI.border, 0.8)
       .setDepth(24001)
       .setName('district-contract-choice');
     this.add.text(GAME_WIDTH / 2, 178, 'Choose A District Contract', {
       fontFamily: 'Georgia, serif', fontSize: '30px', fontStyle: UI_BOLD, color: UI_GOLD
     }).setOrigin(0.5).setDepth(24002);
-    this.add.text(GAME_WIDTH / 2, 216, 'Pick the flight plan that fits this build. Contracts grant Scrap now and a permanent record badge.', {
-      fontFamily: UI_FONT, fontSize: '14px', color: UI_SOFT, fixedWidth: 880, align: 'center'
-    }).setOrigin(0.5).setDepth(24002);
+    this.add.text(GAME_WIDTH / 2, 222, 'Choose a goal for this district. Earn its Scrap and record badge on completion.', {
+      fontFamily: UI_FONT, fontSize: '20px', color: DECISION_UI.secondary, resolution: DECISION_UI.resolution,
+      fixedWidth: 1000, align: 'center', wordWrap: { width: 1000 }
+    }).setOrigin(0.5).setDepth(24002).setName('district-contract-guidance');
     choices.forEach((choice, index) => {
       const x = 310 + index * 330;
-      const hit = this.add.rectangle(x, 388, 286, 244, 0x10202c, 0.96)
-        .setStrokeStyle(2, index === 0 ? UI_FIELD.cyan : UI_FIELD.brass, 0.72)
+      const focused = index === this.districtContractFocusIndex;
+      const hit = this.add.rectangle(x, 388, 306, 244, DECISION_UI.raised, 1)
+        .setStrokeStyle(focused ? 3 : 1, focused ? DECISION_UI.accent : DECISION_UI.border, 1)
         .setInteractive({ useHandCursor: true })
         .setDepth(24002)
-        .setName('district-contract-option');
+        .setName('district-contract-option').setData('index', index).setData('focused', focused);
       this.add.text(x, 310, choice.name, {
-        fontFamily: UI_FONT, fontSize: '21px', fontStyle: UI_BOLD, color: UI_GOLD, fixedWidth: 248, align: 'center'
-      }).setOrigin(0.5).setDepth(24003);
+        fontFamily: UI_FONT, fontSize: '22px', fontStyle: UI_BOLD, color: DECISION_UI.text, resolution: 2,
+        fixedWidth: 278, align: 'center', wordWrap: { width: 278 }
+      }).setOrigin(0.5).setDepth(24003).setName('district-contract-option-name');
       this.add.text(x, 372, choice.goal, {
-        fontFamily: UI_FONT, fontSize: '15px', color: '#e7eef7', fixedWidth: 238, align: 'center', wordWrap: { width: 238 }
-      }).setOrigin(0.5).setDepth(24003);
+        fontFamily: UI_FONT, fontSize: '20px', color: DECISION_UI.text, resolution: 2,
+        fixedWidth: 278, align: 'center', wordWrap: { width: 278 }
+      }).setOrigin(0.5).setDepth(24003).setName('district-contract-option-goal');
       this.add.text(x, 446, `REWARD  +${choice.rewardScrap} Scrap`, {
-        fontFamily: UI_FONT, fontSize: '14px', fontStyle: UI_BOLD, color: '#bff4d0'
-      }).setOrigin(0.5).setDepth(24003);
-      this.add.text(x, 486, 'Permanent Flock Record badge', {
-        fontFamily: UI_FONT, fontSize: '12px', color: UI_CYAN
-      }).setOrigin(0.5).setDepth(24003);
-      hit.on('pointerover', () => hit.setFillStyle(0x183451, 1).setStrokeStyle(2, UI_FIELD.gold, 0.95));
-      hit.on('pointerout', () => hit.setFillStyle(0x10202c, 0.96).setStrokeStyle(2, index === 0 ? UI_FIELD.cyan : UI_FIELD.brass, 0.72));
+        fontFamily: UI_FONT, fontSize: '20px', fontStyle: UI_BOLD, color: '#bff4d0', resolution: 2
+      }).setOrigin(0.5).setDepth(24003).setName('district-contract-option-reward');
+      this.add.text(x, 486, 'SELECTED', {
+        fontFamily: UI_FONT, fontSize: '16px', color: DECISION_UI.secondary, resolution: 2
+      }).setOrigin(0.5).setDepth(24003).setName('district-contract-focus-label').setData('index', index).setVisible(focused);
+      hit.on('pointerover', () => this.focusDistrictContract(index));
       hit.on('pointerdown', () => this.chooseDistrictContract(choice.id));
     });
+    this.add.text(GAME_WIDTH / 2, 548,
+      `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} or D-pad: choose · ${controlBindingLabel('confirm')} / A: accept`, {
+        fontFamily: UI_FONT, fontSize: '18px', color: DECISION_UI.secondary, resolution: 2,
+      }).setOrigin(0.5).setDepth(24003).setName('district-contract-input-hint');
   }
 
   private districtContractProgress(contract = this.activeDistrictContract()) {
@@ -8694,7 +8692,7 @@ class RouteScene extends Phaser.Scene {
     if (pending.projectedState) {
       this.runState = cloneRunState(pending.projectedState);
       const priorIds = new Set(pending.restoreState.deck.map((card) => card.id));
-      const acquisition = recordCardAcquisitions(
+      const acquisition = recordRunCardAcquisitions(this.runState,
         this.runState.deck.map((card) => card.id).filter((id) => !priorIds.has(id)),
         'route_reward',
       );
@@ -9678,14 +9676,15 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderLazyDetailFallback(title: string, body: string, accent: number, x: number, y: number) {
-    return this.add.container(x, y, [
-      this.add.rectangle(0, 0, 300, 120, 0x06090f, 0.98).setStrokeStyle(2, accent, 0.9),
-      this.add.text(0, -26, title, {
-        fontFamily: UI_FONT, fontSize: '20px', fontStyle: UI_BOLD, color: UI_GOLD,
-      }).setOrigin(0.5),
-      this.add.text(0, 16, body, {
-        fontFamily: UI_FONT, fontSize: '12px', color: UI_SOFT, wordWrap: { width: 270 }, align: 'center',
-      }).setOrigin(0.5),
+    return this.add.container(clamp(x, 190, GAME_WIDTH - 190), clamp(y, 110, GAME_HEIGHT - 110), [
+      this.add.rectangle(0, 0, 360, 188, DECISION_UI.surface, 0.98).setStrokeStyle(1, accent, 0.65),
+      fitTextExcerpt(this.add.text(0, -74, title, {
+        fontFamily: UI_FONT, fontSize: '22px', fontStyle: UI_BOLD, color: UI_GOLD,
+        wordWrap: { width: 320 }, align: 'center', resolution: 2,
+      }).setOrigin(0.5, 0), title, 2),
+      this.add.text(0, 12, body, {
+        fontFamily: UI_FONT, fontSize: '18px', color: UI_SOFT, wordWrap: { width: 320 }, align: 'center', resolution: 2,
+      }).setOrigin(0.5, 0),
     ]).setDepth(23040);
   }
 
@@ -9732,7 +9731,7 @@ class RouteScene extends Phaser.Scene {
       title: mark.name,
       kicker: `${routeMarkFamilyLabel(mark.family)} Waymark / ${mark.rarity} / ${mark.source}`,
       body: mark.description,
-      meta: `Trigger: ${mark.trigger}\nEffect: ${routeMarkEffectGrammar(mark)}`,
+      meta: `Trigger: ${formatWaymarkTrigger(mark.trigger, routeMarkEffects(mark))}\nEffect: ${routeMarkEffectText(mark)}`,
       accent: UI_FIELD.gold,
       anchorX,
       anchorY
@@ -9744,7 +9743,7 @@ class RouteScene extends Phaser.Scene {
       title: supply.name,
       kicker: `${supply.rarity} ${supply.category} / ${supply.timing}`,
       body: supply.description,
-      meta: `Effects: ${supply.effects.join(', ')}`,
+      meta: `Effects: ${formatEffects(supply.effects)}`,
       accent: UI_FIELD.green,
       anchorX,
       anchorY
@@ -9793,7 +9792,8 @@ class RouteScene extends Phaser.Scene {
       enabled: opts.price === undefined || this.runState.scrap >= opts.price,
       dossierFrameKey: uiIconAssets['market-detail-dossier-frame'].key,
       scrapIconKey: uiIconAssets['scrap-gear'].key,
-    }) ?? this.renderLazyDetailFallback(opts.title, opts.body, opts.accent, opts.anchorX, opts.anchorY - 70);
+    }) ?? this.renderLazyDetailFallback(opts.title, 'Full details are downloading.\nIf unavailable, reopen to retry.', opts.accent, opts.anchorX, opts.anchorY - 70);
+    if (!this.cardHoverDetailModule) this.preloadCardHoverDetail();
   }
 
   private hideMarketItemDetail() {
@@ -9896,7 +9896,7 @@ class RouteScene extends Phaser.Scene {
       return false;
     }
     this.runState.deck.push({ id: cardId });
-    const acquisition = recordCardAcquisitions([cardId], source);
+    const acquisition = recordRunCardAcquisitions(this.runState, [cardId], source);
     if (acquisition.completedTargets.includes(cardId)) {
       this.runState.routeLog.push(`Hunt complete! ${card.runtime.displayName} is now a permanent collection milestone.`);
       this.runState.routeLog = this.runState.routeLog.slice(-8);
@@ -10868,7 +10868,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private renderRouteEventChoiceColumn(node: RouteNode, choices: NodeChoiceOption[], x: number, top: number, w: number, accent: number) {
-    const optionH = choices.length > 6 ? 58 : choices.length <= 4 ? 72 : 64;
+    const optionH = choices.length > 6 ? 58 : choices.length <= 4 ? 78 : 64;
     const gap = 8;
     top = Math.min(top, GAME_HEIGHT - 44 - (choices.length - 1) * (optionH + gap) - optionH / 2);
     const panelH = (choices.length - 1) * (optionH + gap) + optionH + 78;
@@ -10969,32 +10969,28 @@ class RouteScene extends Phaser.Scene {
     this.add.text(left + 18, y, choice.locked ? '–' : String(index + 1).padStart(2, '0'), {
       fontFamily: UI_FONT, fontSize: '14px', color: '#a9bdc5', resolution: 2
     }).setOrigin(0, 0.5);
-    const title = this.add.text(left + 54, y - h / 2 + 10, choice.text, {
-      fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD,
+    const title = this.add.text(left + 54, y - h / 2 + 8, choice.text, {
+      fontFamily: UI_FONT, fontSize: '19px', fontStyle: UI_BOLD,
       color: choice.locked ? '#a9b3bb' : '#f3e6c9', resolution: 2,
       wordWrap: { width: w - 146 }, maxLines: 1
     }).setName('route-choice-title');
     const summary = choice.locked ? choice.lockedText ?? 'Locked' : routeEffectSummary(choice.effects);
-    const detail = this.add.text(left + 54, y - h / 2 + 32, summary, {
-      fontFamily: UI_FONT, fontSize: '16px', color: choice.locked ? '#e5a59c' : '#b8cdd2',
+    const detail = this.add.text(left + 54, y - h / 2 + (h >= 72 ? 35 : 33), summary, {
+      fontFamily: UI_FONT, fontSize: '17px', color: choice.locked ? '#e5a59c' : '#b8cdd2',
       resolution: 2, wordWrap: { width: w - 146, useAdvancedWrap: true }, maxLines: h >= 72 ? 2 : 1, lineSpacing: 0
     }).setName('route-choice-summary');
-    const fit = (label: Phaser.GameObjects.Text, source: string, maxLines: number) => {
-      let visible = source;
-      while (label.getWrappedText(visible).length > maxLines && visible.length > 2) {
-        visible = `${visible.replace(/…$/, '').slice(0, -1).trimEnd()}…`;
-      }
-      label.setText(visible).setData('fullText', source);
-      return visible !== source;
-    };
-    const titleOverflow = fit(title, choice.text, 1);
-    const detailOverflow = fit(detail, summary, h >= 72 ? 2 : 1);
+    // Measured word excerpts avoid repeatedly re-wrapping one character at a
+    // time while keeping the full copy in the adjacent read-only detail view.
+    fitTextExcerpt(title, choice.text, 1);
+    fitTextExcerpt(detail, summary, h >= 72 ? 2 : 1);
+    const titleOverflow = Boolean(title.getData('truncated'));
+    const detailOverflow = Boolean(detail.getData('truncated'));
     bg.setData('hasOverflowDetail', titleOverflow || detailOverflow).setData('focused', focused);
     this.add.rectangle(x + w / 2 - 40, y, 64, Math.max(58, h - 6), 0x07101a, focused ? 0.58 : 0.18)
       .setInteractive({ useHandCursor: true }).setName('route-event-details-hit').setData('choiceIndex', index)
       .on('pointerdown', () => handleEventChoice(this, 'inspect', index));
     this.add.text(x + w / 2 - 40, y, 'Read', {
-      fontFamily: UI_FONT, fontSize: '15px', color: focused ? '#e8f7f7' : '#9eb5bc', resolution: 2
+      fontFamily: UI_FONT, fontSize: '17px', color: focused ? '#e8f7f7' : '#bdd2d8', resolution: 2
     }).setOrigin(0.5);
   }
 
@@ -11901,11 +11897,12 @@ class RouteScene extends Phaser.Scene {
     const anchor = this.marketCardOfferAnchor(slotIndex);
     this.spendRouteScrap(listing.price);
     this.runState.deck.push({ id: offer.id, upgraded: offer.upgraded });
-    const acquisition = recordCardAcquisitions([offer.id], 'market');
+    const acquisition = recordRunCardAcquisitions(this.runState, [offer.id], 'market');
     listing.sold = true;
     this.applyRouteMarkTrigger('afterMarketPurchase');
     this.marketMessage = memoryStorageSessionActive()
       ? `${displayName(offer)} joins this practice flight for ${listing.price} Scrap. Nothing saved.`
+      : !acquisition.saved ? `${displayName(offer)} joins this flight. Collection save pending; keep this tab open and retry saving.`
       : acquisition.completedTargets.includes(offer.id)
       ? `Hunt complete! ${displayName(offer)} joins this flight for ${listing.price} Scrap. Milestone recorded.`
       : acquisition.firstCopies.includes(offer.id)
@@ -13290,6 +13287,7 @@ class BattleScene extends Phaser.Scene {
   private runDifficulty = 0;
   private runMode: RunMode = 'full';
   private lastRunRewards?: ReturnType<typeof recordRun>;
+  private outcomeSaved = true;
   private runSignalChoices: SignalChoiceEvent[] = [];
   private runRewardEvents: CardRewardEvent[] = [];
   private runRouteDecisions: RouteDecisionEvent[] = [];
@@ -13326,6 +13324,7 @@ class BattleScene extends Phaser.Scene {
   private inspectOverlay: InspectOverlay | undefined;
   private inspectedCardId: string | undefined;
   private pauseOverlayOpen = false;
+  private pauseSaveFailed = false;
   private settingsOverlayOpen = false;
   private systemOverlayLayer?: Phaser.GameObjects.Container;
   private systemOverlayRefreshQueued = false;
@@ -13539,16 +13538,26 @@ class BattleScene extends Phaser.Scene {
   private battleBackdropReuses = 0;
   private battleHandBuilds = 0;
   private battleHandReuses = 0;
+  private battleRouteCheckpoint!: RunState;
+  private rewardClaims: RewardCheckpoint['claims'] = [];
+  private rewardResume?: RewardCheckpoint;
 
   constructor() {
     super('BattleScene');
   }
 
   init(data: BattleSceneData = {}) {
+    this.outcomeSaved = true;
+    this.lastRunRewards = undefined;
     this.registry.set(controlPanelRegistryKey(this), false);
     this.registry.remove(controlCaptureRegistryKey(this));
     const runState = cloneRunState(data.runState ?? createInitialRunState());
     this.runLeaderId = runState.leaderId;
+    // Combat is not a resumable save format. Keep the complete route state,
+    // including mode/contracts/modifiers, rather than persisting a partial fight.
+    this.battleRouteCheckpoint = cloneRunState(runState);
+    this.rewardResume = cloneRewardCheckpoint(runState.pendingCombatReward);
+    this.rewardClaims = this.rewardResume?.claims ?? [];
     this.runDifficulty = runState.difficulty ?? 0;
     this.runMode = runState.runMode ?? 'full';
     activeSeed = runState.seed ?? 'alpha';
@@ -13655,6 +13664,7 @@ class BattleScene extends Phaser.Scene {
     this.inspectOverlay = undefined;
     this.inspectedCardId = undefined;
     this.pauseOverlayOpen = false;
+    this.pauseSaveFailed = false;
     this.settingsOverlayOpen = false;
     this.systemOverlayLayer = undefined;
     this.systemOverlayRefreshQueued = false;
@@ -13704,7 +13714,7 @@ class BattleScene extends Phaser.Scene {
     this.roostHeld = 0;
     this.applyFlockStats(true);
     this.flock.hp = Math.min(this.flock.maxHp, Math.max(1, runState.currentHp));
-    this.applyNextCombatMods(runState.nextCombat);
+    if (!this.rewardResume) this.applyNextCombatMods(runState.nextCombat);
     this.firstAttackThisTurn = true;
     this.enemyMotionCues = new Map();
     this.enemyPoseGroups = new Map();
@@ -13865,6 +13875,25 @@ class BattleScene extends Phaser.Scene {
     }
     this.drawToHandSize();
     this.lastFlockState = this.flockState();
+    if (this.rewardResume) {
+      const reward = this.rewardResume;
+      this.mode = reward.stage === 'route' ? 'upgradeReward' : reward.stage;
+      this.enemies.forEach(enemy => { enemy.hp = 0; });
+      this.combatEconomyAwarded = true;
+      this.combatScrapAwarded = reward.scrapAwarded;
+      this.combatRouteMarkResolved = reward.stage !== 'waymarkReward';
+      this.combatRouteMarkAwarded = reward.waymarkAwarded ? alphaRouteMarkLibrary.get(reward.waymarkAwarded) : undefined;
+      this.waymarkChoices = reward.stage === 'waymarkReward'
+        ? reward.choices.flatMap(id => { const mark = alphaRouteMarkLibrary.get(id); return mark ? [mark] : []; }) : [];
+      this.rewardChoices = reward.stage === 'cardReward' ? reward.choices.map(id => cloneCard(id)) : [];
+      this.upgradeChoices = reward.stage === 'upgradeReward'
+        ? reward.choices.flatMap(id => {
+          const card = this.allDeckCards().find(card => card.id === id && !card.upgraded);
+          return card ? [card] : [];
+        }) : [];
+      this.rewardDecisionStartedAtMs = Date.now();
+      this.log = [...runState.routeLog];
+    }
   }
 
   // Consume route-granted pending combat modifiers at combat start (Supplies,
@@ -14039,6 +14068,20 @@ class BattleScene extends Phaser.Scene {
   private presentFlockStatus(label: string, color: string, source: string) {
     this.presentNumberFeedback(FLOCK_FX_X, FLOCK_FX_Y, color, {
       target: 'flock', kind: `status:${label}`, source, amount: 0, suffix: '', label,
+      reducedMotion: prefersReducedMotion(),
+    });
+  }
+
+  private presentFlockResult(amount: number, suffix: string, color: string, source: string) {
+    this.presentNumberFeedback(FLOCK_FX_X, FLOCK_FX_Y, color, {
+      target: 'flock', kind: suffix.trim(), source, amount, suffix, reducedMotion: prefersReducedMotion(),
+    });
+  }
+
+  private presentEnemyStatus(enemy: Enemy, label: string, color: string) {
+    const view = this.enemyView(enemy);
+    this.presentNumberFeedback(view.x, view.y, color, {
+      target: enemy.id, kind: `status:${label}`, source: label, amount: 0, suffix: '', label,
       reducedMotion: prefersReducedMotion(),
     });
   }
@@ -14603,6 +14646,7 @@ class BattleScene extends Phaser.Scene {
       if (!this.moveCardReviewFocus(1)) this.cycleLivingEnemy(1, true);
     };
     const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: { index?: number }) => {
+      if (consumeSaveRecoveryGamepad(button.index)) return;
       if (this.waymarkDrawerOpen && !this.pauseOverlayOpen && !this.settingsOverlayOpen) {
         if (button.index === 1 || button.index === 7) this.closeBattleWaymarks();
         else if (button.index === 2) this.waymarkReviewModule?.battleWaymarkAction(this, 'pin');
@@ -14899,6 +14943,19 @@ class BattleScene extends Phaser.Scene {
     if (this.fxLayer?.active) return;
     this.fxLayer = this.add.container(0, 0);
     this.ensureFxTextures();
+    if (this.rewardResume) {
+      const stage = this.rewardResume.stage;
+      this.rewardResume = undefined;
+      this.queueBattleRewardUiLoad();
+      this.battleAssetReadiness.markInteractive();
+      this.queueBattleFullArtTracking();
+      if (stage === 'route') this.returnToRouteMap();
+      else {
+        this.saveRewardCheckpoint(stage);
+        this.renderAll();
+      }
+      return;
+    }
     this.applyCombatStartMarks(); // relic effects need fxLayer, so fire after create()
     this.renderAll();
     this.queueBattleFullArtTracking();
@@ -14993,129 +15050,41 @@ class BattleScene extends Phaser.Scene {
     create('fx-hostile', 42, 47, 20);
   }
 
-  private playBattleIntro(onComplete?: () => void) {
-    if (this.introPlayed) {
-      onComplete?.();
-      return;
-    }
+private playBattleIntro(onComplete?: () => void) {
+    if (this.introPlayed) { onComplete?.(); return; }
     this.introPlayed = true;
-    const reduced = prefersReducedMotion();
+    if (!this.battleFxPresenterModule) { onComplete?.(); return; }
     const textTiming = textPacingState();
     setFeedbackTextHoldScale(textTiming.holdScale);
-    const node = currentCombatNodes()[this.currentRouteIndex];
-    const c = this.add.container(0, 0);
     this.combatIntroActive = true;
     this.combatIntroDismissQueued = false;
     this.combatIntroDismissed = false;
     this.combatIntroStartedAtMs = this.time.now;
     this.combatIntroElapsedMs = 0;
-    const shade = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.54);
-    const topBand = this.add.rectangle(GAME_WIDTH / 2, 106, GAME_WIDTH, 70, 0x05080e, 0.84);
-    const bottomBand = this.add.rectangle(GAME_WIDTH / 2, 610, GAME_WIDTH, 70, 0x05080e, 0.78);
-    const line = this.add.rectangle(GAME_WIDTH / 2, 356, 760, 3, 0x8df4ff, 0.85).setAngle(-9);
-    const generatedLayers: Phaser.GameObjects.Image[] = [];
-    if (this.textures.exists(COMBAT_ENCOUNTER_INTRO_TEXTURE)) {
-      this.textures.get(COMBAT_ENCOUNTER_INTRO_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      this.combatEncounterIntroBursts += 1;
-      const glow = this.add.image(GAME_WIDTH / 2, 356, COMBAT_ENCOUNTER_INTRO_TEXTURE)
-        .setDisplaySize(706, 282)
-        .setAlpha(reduced ? 0.34 : 0.48)
-        .setBlendMode(Phaser.BlendModes.ADD)
-        .setName('combat-encounter-intro');
-      const crest = this.add.image(GAME_WIDTH / 2, 356, COMBAT_ENCOUNTER_INTRO_TEXTURE)
-        .setDisplaySize(566, 226)
-        .setAlpha(reduced ? 0.76 : 0.9)
-        .setName('combat-encounter-intro');
-      generatedLayers.push(glow, crest);
-    }
-    const leftLabel = this.add.text(74, 86, 'ROOFLINE CONTACT', {
-      fontFamily: UI_FONT, fontSize: '14px', fontStyle: UI_BOLD, color: UI_CYAN,
-    });
-    const title = this.add.text(74, 112, currentMap().name, {
-      fontFamily: 'Georgia, serif', fontSize: '23px', fontStyle: UI_BOLD, color: UI_GOLD,
-      stroke: '#000000', strokeThickness: 4,
-    });
-    const plaqueAsset = uiIconAssets['combat-encounter-plaque'];
-    const rightPlaque = this.textures.exists(plaqueAsset.key)
-      ? this.add.image(GAME_WIDTH - 180, 614, plaqueAsset.key)
-        .setDisplaySize(328, 88)
-        .setAlpha(reduced ? 0.66 : 0.76)
-        .setName('combat-encounter-plaque')
-      : undefined;
-    if (rightPlaque) {
-      this.textures.get(plaqueAsset.key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    }
-    const rightLabel = this.add.text(GAME_WIDTH - 74, 594, node?.label ?? 'Rooftop Fight', {
-      fontFamily: UI_FONT, fontSize: '17px', fontStyle: UI_BOLD, color: '#ffd5cc',
-      stroke: '#000000', strokeThickness: 4,
-    }).setOrigin(1, 0);
-    const sub = this.add.text(GAME_WIDTH - 74, 620, 'Enemies sighted on the roofline.', {
-      fontFamily: UI_FONT, fontSize: '12px', color: UI_SOFT,
-    }).setOrigin(1, 0);
-    const dismissHit = this.add.rectangle(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT / 2,
-      GAME_WIDTH,
-      GAME_HEIGHT,
-      0x000000,
-      0.001,
-    ).setInteractive({ useHandCursor: true }).setName('combat-intro-dismiss-hit');
-    const dismissLabel = this.add.text(
-      GAME_WIDTH / 2,
-      GAME_HEIGHT - 44,
-      `${controlBindingLabel('confirm').toUpperCase()} / TAP  TAKE THE BEAT`,
-      {
-        fontFamily: UI_FONT,
-        fontSize: '12px',
-        fontStyle: UI_BOLD,
-        color: '#dffbff',
-        stroke: '#020409',
-        strokeThickness: 3,
-      },
-    ).setOrigin(0.5).setName('combat-intro-dismiss-label');
-    c.add([shade, topBand, bottomBand, ...generatedLayers, line, leftLabel, title]);
-    if (rightPlaque) c.add(rightPlaque);
-    c.add([rightLabel, sub, dismissHit, dismissLabel]);
-    this.fxLayer.add(c);
-    let finished = false;
-    const finish = (dismissed: boolean) => {
-      if (finished) return;
-      finished = true;
-      this.tweens.killTweensOf(c);
-      this.combatIntroActive = false;
-      this.combatIntroDismissed = dismissed;
-      this.combatIntroElapsedMs = Math.max(0, Math.round(this.time.now - this.combatIntroStartedAtMs));
-      this.combatIntroFinish = undefined;
-      c.destroy(true);
-      onComplete?.();
-    };
-    this.combatIntroFinish = () => finish(true);
-    dismissHit.on('pointerdown', () => this.requestBattleIntroDismiss());
+    if (this.textures.exists(COMBAT_ENCOUNTER_INTRO_TEXTURE)) this.combatEncounterIntroBursts += 1;
     birdAudio.play('encounter', 0.72);
-    if (reduced) {
-      this.time.delayedCall(textTiming.minimumReadableMs, () => finish(false));
-      return;
-    }
-    c.setAlpha(0);
-    this.tweens.add({
-      targets: c,
-      alpha: 1,
-      duration: 180,
-      ease: 'Quad.easeOut',
-      yoyo: true,
-      hold: Math.round(1360 * textTiming.holdScale),
-      onComplete: () => finish(false),
+    this.combatIntroFinish = this.battleFxPresenterModule.playEncounterIntro(this, this.fxLayer, {
+      reduced: prefersReducedMotion(), holdScale: textTiming.holdScale, minimumReadableMs: textTiming.minimumReadableMs,
+      width: GAME_WIDTH, height: GAME_HEIGHT, district: currentMap().name,
+      encounter: currentCombatNodes()[this.currentRouteIndex]?.label ?? 'Rooftop Fight',
+      confirm: controlBindingLabel('confirm'), texture: COMBAT_ENCOUNTER_INTRO_TEXTURE,
+      plaque: uiIconAssets['combat-encounter-plaque'].key,
+      font: UI_FONT, bold: UI_BOLD, gold: UI_GOLD, cyan: UI_CYAN, soft: UI_SOFT,
+      dismiss: () => this.requestBattleIntroDismiss(),
+      finish: (dismissed) => {
+        this.combatIntroActive = false;
+        this.combatIntroDismissed = dismissed;
+        this.combatIntroElapsedMs = Math.max(0, Math.round(this.time.now - this.combatIntroStartedAtMs));
+        this.combatIntroFinish = undefined;
+        onComplete?.();
+      },
+      accent: () => {
+        this.fxMoteBurst(GAME_WIDTH / 2, 356, 0x8df4ff, {
+          count: 18, speed: 122, lifespan: 620, scale: 0.6, gravityY: 0, spreadX: 260, spreadY: 44,
+        });
+        this.pulseRing(FLOCK_FX_X, FLOCK_FX_Y, 0x8df4ff, 92, 720);
+      },
     });
-    this.fxMoteBurst(GAME_WIDTH / 2, 356, 0x8df4ff, {
-      count: 18,
-      speed: 122,
-      lifespan: 620,
-      scale: 0.6,
-      gravityY: 0,
-      spreadX: 260,
-      spreadY: 44,
-    });
-    this.pulseRing(FLOCK_FX_X, FLOCK_FX_Y, 0x8df4ff, 92, 720);
   }
 
   private requestBattleIntroDismiss() {
@@ -16740,7 +16709,7 @@ class BattleScene extends Phaser.Scene {
       spreadX: 10,
       spreadY: 8,
     });
-    floatingText(this, this.fxLayer, x, y - 2, `-${amount} Wingbeat`, '#ffcf7a');
+    this.presentFlockResult(-amount, ' Wingbeat', '#ffcf7a', 'wingbeat-drain');
   }
 
   private combatMoltShift(x: number, y: number, scale = 1) {
@@ -16849,7 +16818,7 @@ class BattleScene extends Phaser.Scene {
     const y = FLOCK_FX_Y - 34;
     this.combatOpenSkyGuard(x, y, Phaser.Math.Clamp(0.86 + amount * 0.08, 0.92, 1.18));
     this.sparkBurst(x, y + 8, 0x8df4ff, Phaser.Math.Clamp(10 + amount * 3, 12, 22), 142);
-    floatingText(this, this.fxLayer, x, y - 18, `+${amount} Sky Guard`, '#dffbff');
+    this.presentFlockResult(amount, ' Sky Guard', '#dffbff', 'sky-guard');
   }
 
   private combatDefeatBurst(x: number, y: number) {
@@ -17437,7 +17406,7 @@ class BattleScene extends Phaser.Scene {
     });
     this.fxMoteBurst(x, y, meta.color, { count: 8, speed: 96, lifespan: 300, scale: 0.44, gravityY: 0 });
     if (label) {
-      floatingText(this, this.fxLayer, x, y - 58, label, meta.hex);
+      this.presentFlockStatus(label, meta.hex, 'suit-pulse');
     }
   }
 
@@ -17897,7 +17866,7 @@ class BattleScene extends Phaser.Scene {
       spreadX: 16,
       spreadY: 10,
     });
-    floatingText(this, this.fxLayer, x, y - 18, `+${amount} Flow`, color);
+    this.presentFlockResult(amount, ' Flow', color, 'flow');
   }
 
   private cleanseFx(cleared: number) {
@@ -17919,7 +17888,7 @@ class BattleScene extends Phaser.Scene {
       spreadX: 18,
       spreadY: 14,
     });
-    floatingText(this, this.fxLayer, x, y - 24, `Cleanse ${cleared}`, '#dffbff');
+    this.presentFlockResult(cleared, ' cleansed', '#dffbff', 'cleanse');
   }
 
   private bankNextTurnFx(amount: number, label: string, color = '#dffbff', moteColor = 0x8df4ff) {
@@ -17941,7 +17910,7 @@ class BattleScene extends Phaser.Scene {
       spreadX: 20,
       spreadY: 10,
     });
-    floatingText(this, this.fxLayer, x, y - 22, label, color);
+    this.presentFlockStatus(label, color, 'next-turn');
   }
 
   private enemyThreatChargeFx(enemy: Enemy, amount: number) {
@@ -17962,7 +17931,7 @@ class BattleScene extends Phaser.Scene {
       spreadX: 16,
       spreadY: 10,
     });
-    floatingText(this, this.fxLayer, view.x, view.y - 90, `+${amount} next dmg`, '#ffcf7a');
+    this.presentEnemyStatus(enemy, `+${amount} next damage`, '#ffcf7a');
   }
 
   enemyAttackWindupFx(enemy: Enemy, move: EnemyMove) {
@@ -18890,6 +18859,19 @@ class BattleScene extends Phaser.Scene {
 
   private setBattlePaused(paused: boolean) {
     if (this.pauseOverlayOpen === paused) return;
+    // A committed Preen has no choice left to display. Resume must retry its
+    // durable transition instead of dismissing the save warning into a dead end.
+    if (!paused && this.pauseSaveFailed && this.battleRouteCheckpoint.pendingCombatReward?.stage === 'route') {
+      if (!(persistActiveRun(this.battleRouteCheckpoint) && this.flushRewardClaims())) {
+        playUiSound('locked');
+        this.queueBattleSystemOverlayRender();
+        return;
+      }
+      this.pauseSaveFailed = false;
+      this.leaveBattleWhilePaused();
+      this.returnToRouteMap();
+      return;
+    }
     this.pauseOverlayOpen = paused;
     this.settingsOverlayOpen = false;
     if (paused) {
@@ -19007,7 +18989,10 @@ class BattleScene extends Phaser.Scene {
 
     renderPauseMenuOverlay(this, addTo, {
       title: 'Battle Paused',
-      subtitle: `${currentMap().name} / ${currentCombatNodes()[this.currentRouteIndex]?.label ?? 'Combat'}`,
+      saveFailed: this.pauseSaveFailed,
+      subtitle: this.battleRouteCheckpoint.pendingCombatReward
+        ? 'Main Menu saves this reward step. Continue returns here.'
+        : 'Main Menu returns to the route checkpoint before this fight.',
       details: [
         ['Cohesion', `${this.flock.hp}/${this.flock.maxHp}`],
         ['Wingbeats', `${this.energy}`],
@@ -19016,7 +19001,13 @@ class BattleScene extends Phaser.Scene {
       ],
       onResume: () => this.setBattlePaused(false),
       onMenu: () => {
-        persistActiveRun(this.buildRunStateSnapshot());
+        this.pauseSaveFailed = !(persistActiveRun(this.battleRouteCheckpoint) && this.flushRewardClaims());
+        if (this.pauseSaveFailed) {
+          announceScreenReader('Flight could not be saved. Your battle is still paused. Retry Main Menu, or Resume and keep this tab open.');
+          playUiSound('locked');
+          this.queueBattleSystemOverlayRender();
+          return;
+        }
         this.leaveBattleWhilePaused();
         playUiSound('close');
         this.scene.start('MenuScene');
@@ -19764,7 +19755,7 @@ class BattleScene extends Phaser.Scene {
       guideMolt: this.firstMoltGuideCard()?.instanceId === card.instanceId,
       accent: card.type === 'major' ? 0xd8a840 : card.type === 'molt' ? 0xc56cff : suitAccentColor(card),
       usesMolt: Boolean(contract.usesMolt),
-      summary: compactCardEffectSummary(contract.effects),
+      summary: compactHandCardSummary(contract.effects),
       buildsFlow,
       flowVisible: buildsFlow
         && this.flock.flow < this.flock.flowMax
@@ -20219,6 +20210,10 @@ class BattleScene extends Phaser.Scene {
   // existing hover dossier. Neither changes the pending decision.
   private showCardPreview(card: Card, previewX = GAME_WIDTH / 2) {
     if (this.combatCardDetail?.active) return;
+    // Crossing from the selected card to its reading control must not destroy
+    // the pointer's hit target between pointerout and pointerdown.
+    if (this.mode === 'battle' && this.cardPreview?.active
+      && this.cardPreview.getData('instanceId') === card.instanceId) return;
     this.hideCardPreview();
     if (!this.battleHandRendererModule) {
       this.showCardPreviewFallback(card, previewX);
@@ -20612,7 +20607,7 @@ class BattleScene extends Phaser.Scene {
       case 'loseCohesion':
         this.flock.hp = Math.max(1, this.flock.hp - n);
         this.logEvent(`${source} costs ${n} Cohesion.`);
-        floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 8, `-${n}`, '#ff7a6e');
+        this.presentFlockResult(-n, ' Cohesion', '#ff7a6e', source);
         break;
       case 'gainOpenSkyGuard':
         this.gainOpenSkyGuard(n, source);
@@ -20658,7 +20653,7 @@ class BattleScene extends Phaser.Scene {
             spreadX: 18,
             spreadY: 10,
           });
-          floatingText(this, this.fxLayer, view.x, view.y - 84, `-${removed} Cover`, '#8df4ff');
+          this.presentEnemyStatus(enemy, `−${removed} Cover`, '#8df4ff');
         }
         if (hadCover && enemy.block <= 0) this.checkEnemyCoverBrokenMarks();
         break;
@@ -20669,7 +20664,7 @@ class BattleScene extends Phaser.Scene {
         enemy.weak += n;
         this.logEvent(`${source} leaves ${enemy.name} Winded.`);
         const view = this.enemyView(enemy);
-        floatingText(this, this.fxLayer, view.x, view.y - 70, 'Winded', '#c98bff');
+        this.presentEnemyStatus(enemy, 'Winded', '#c98bff');
         this.windedFx(view.x, view.y);
         this.triggerTalonPinnedOpening(enemy);
         break;
@@ -20701,7 +20696,7 @@ class BattleScene extends Phaser.Scene {
           this.damageEnemy(enemy.id, burst, source);
           this.logEvent(`${source} releases ${spent} Resonance for ${burst} damage.`);
           const view = this.enemyView(enemy);
-          floatingText(this, this.fxLayer, view.x, view.y - 90, 'Resonance Burst!', '#8df4ff');
+          this.presentEnemyStatus(enemy, 'Resonance!', '#8df4ff');
           this.sparkBurst(view.x, view.y - 22, 0x8df4ff, 30, 210);
         }
         this.spark = 0;
@@ -21779,6 +21774,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private replayLastFlight() {
+    if (!this.ensureOutcomeSaved()) return;
     const summary = window.__birdSquadLastRun!;
     playUiSound('confirm');
     this.scene.start('RouteScene', {
@@ -21793,6 +21789,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private openPlaytestRunRating() {
+    if (!this.ensureOutcomeSaved()) return;
     if (!PLAYTEST_MODE || !window.__birdSquadLastRun) {
       playUiSound('locked');
       return;
@@ -21802,8 +21799,22 @@ class BattleScene extends Phaser.Scene {
   }
 
   private returnToMainMenu() {
+    if (isRunOutcome(this.mode) && !this.ensureOutcomeSaved()) return;
     playUiSound('close');
     this.scene.start('MenuScene');
+  }
+
+  private ensureOutcomeSaved() {
+    if (this.outcomeSaved || memoryStorageSessionActive()) return true;
+    const retry = () => {
+      const rewards = window.__birdSquadLastRun && persistFinishedRun(window.__birdSquadLastRun);
+      if (!rewards) return false;
+      this.lastRunRewards = rewards; this.outcomeSaved = true;
+      this.requestBattleRender(); return true;
+    };
+    if (retry()) return true;
+    showSaveRecovery(retry);
+    return false;
   }
 
   private setEnemyTurnBeat(beat: EnemyTurnBeat, move = '', durationMs = 0) {
@@ -22082,7 +22093,7 @@ class BattleScene extends Phaser.Scene {
     if (molting) {
       const moltLabel = contract.text;
       this.logEvent(`${displayName(card)} molts - ${moltLabel}`);
-      floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 40, 'Molt!', '#ff9d4d');
+      this.presentFlockStatus('Molt!', '#ff9d4d', 'molt');
     }
     const state = createCardEffectResolutionState(molting ? this.activeMoltPower() : 0);
     for (const effect of effects) {
@@ -22100,7 +22111,7 @@ class BattleScene extends Phaser.Scene {
     const molting = contract.usesMolt;
     if (molting) {
       this.logEvent(`${displayName(card)} molts - ${contract.text}`);
-      floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 40, 'Molt!', '#ff9d4d');
+      this.presentFlockStatus('Molt!', '#ff9d4d', 'molt');
     }
     const state = createCardEffectResolutionState(molting ? this.activeMoltPower() : 0);
     this.resolveCardEffectSequenceInteractive(contract.effects, card, enemyId, state, displayName(card), undefined, () => onComplete(state));
@@ -22162,7 +22173,7 @@ class BattleScene extends Phaser.Scene {
     for (const card of heldSnags) {
       const state = createCardEffectResolutionState();
       this.logEvent(`${displayName(card)} catches at Roost.`);
-      floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 72, 'Snag!', '#ff6b57');
+      this.presentFlockStatus('Snag!', '#ff6b57', 'snag');
       for (const effect of card.runtime.heldEffects ?? []) {
         this.resolveCardEffect(effect, card, '', state);
       }
@@ -22197,7 +22208,7 @@ class BattleScene extends Phaser.Scene {
         const removed = Math.min(this.flock.block, value);
         this.flock.block = Math.max(0, this.flock.block - removed);
         this.logEvent(`${source} shakes loose ${removed} Cover.`);
-        floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 42, `-${removed} Cover`, '#8df4ff');
+        this.presentFlockResult(-removed, ' Cover', '#8df4ff', source);
         this.coverImpactFx(FLOCK_FX_X, FLOCK_FX_Y, 0x8df4ff);
       },
       damageFlock: (source, value) => {
@@ -22209,7 +22220,7 @@ class BattleScene extends Phaser.Scene {
         this.logEvent(`${source} hurts the flock for ${damage}.`);
         if (damage > 0) {
           this.queueFlockMotion('hit');
-          floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 8, `-${damage}`, '#ff7a6e');
+          this.presentFlockResult(damage, ' damage', '#ff7a6e', source);
           this.combatImpactFlash(FLOCK_FX_X, FLOCK_FX_Y + 18, 0xff9d6b, -1, damage >= 8);
           this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y + 32, 0xff9d6b, 16, 155);
           if (currentScreenShakeState().enabled) shakeCamera(this, 0.004);
@@ -22219,7 +22230,7 @@ class BattleScene extends Phaser.Scene {
       loseCohesion: (source, value) => {
         this.flock.hp = Math.max(1, this.flock.hp - value);
         this.logEvent(`${source} spends ${value} Cohesion.`);
-        floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 8, `-${value}`, '#ff7a6e');
+        this.presentFlockResult(-value, ' Cohesion', '#ff7a6e', source);
       },
       drawCards: (value) => this.drawCards(value),
       discardCards: (value) => this.discardCards(value),
@@ -22240,12 +22251,12 @@ class BattleScene extends Phaser.Scene {
       checkResonanceSpentMarks: () => this.checkResonanceSpentMarks(),
       resonanceBurstFx: (enemyId) => {
         const rbView = this.enemyView(this.getEnemy(enemyId));
-        floatingText(this, this.fxLayer, rbView.x, rbView.y - 90, 'Resonance Burst!', '#8df4ff');
+        this.presentEnemyStatus(this.getEnemy(enemyId), 'Resonance!', '#8df4ff');
         this.sparkBurst(rbView.x, rbView.y - 22, 0x8df4ff, 30, 210);
       },
       windedBurstFx: (enemy) => {
         const wbView = this.enemyView(enemy);
-        floatingText(this, this.fxLayer, wbView.x, wbView.y - 90, 'Winded Burst!', '#c98bff');
+        this.presentEnemyStatus(enemy, 'Winded Burst', '#c98bff');
         this.sparkBurst(wbView.x, wbView.y - 22, 0xc98bff, 24, 190);
       },
       moltBonus: (state, effectValue, area) => spendMoltPower(state, effectValue, area, (amount) => {
@@ -22263,12 +22274,12 @@ class BattleScene extends Phaser.Scene {
       applyFlockWinded: (source, value) => {
         this.flock.weak += value;
         this.logEvent(`${source} leaves the flock Winded.`);
-        floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 46, 'Winded', '#c98bff');
+        this.presentFlockStatus('Winded', '#c98bff', source);
         this.windedFx(FLOCK_FX_X, FLOCK_FX_Y);
       },
       applyEnemyWinded: (enemy) => {
         const awView = this.enemyView(enemy);
-        floatingText(this, this.fxLayer, awView.x, awView.y - 70, 'Winded', '#c98bff');
+        this.presentEnemyStatus(enemy, 'Winded', '#c98bff');
         this.windedFx(awView.x, awView.y);
         this.triggerTalonPinnedOpening(enemy);
       },
@@ -22292,7 +22303,7 @@ class BattleScene extends Phaser.Scene {
             spreadX: 18,
             spreadY: 10,
           });
-          floatingText(this, this.fxLayer, rcView.x, rcView.y - 84, `-${removed} Cover`, '#8df4ff');
+          this.presentEnemyStatus(enemy, `-${removed} Cover`, '#8df4ff');
         }
         if (hadCover && enemy.block <= 0) this.checkEnemyCoverBrokenMarks();
       },
@@ -22436,7 +22447,7 @@ class BattleScene extends Phaser.Scene {
 
   presentHeldDiscardCard(card: Card) {
     this.logEvent(`${displayName(card)} catches at Roost.`);
-    floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 72, 'Snag!', '#ff6b57');
+    this.presentFlockStatus('Snag!', '#ff6b57', 'snag');
   }
 
   private triggerTalonPinnedOpening(enemy: Enemy) {
@@ -22450,7 +22461,10 @@ class BattleScene extends Phaser.Scene {
     birdAudio.play('heavyAttack', 0.72);
     this.combatPinnedOpeningStrike(view.x, view.y - 26, Phaser.Math.Clamp(0.9 + damage * 0.06, 0.96, 1.12));
     this.combatImpactFlash(view.x, view.y - 24, 0x8df4ff, 1, false);
-    floatingText(this, this.fxLayer, view.x, view.y - 92, `+${damage}`, '#ffce6b');
+    this.presentNumberFeedback(view.x, view.y, '#ffce6b', {
+      target: enemy.id, kind: 'damage', source: 'Pinned Opening', amount: damage,
+      suffix: ' damage', reducedMotion: prefersReducedMotion(),
+    });
     if (enemy.hp <= 0) {
       this.statDefeated += 1;
       this.normalizeSelectedEnemy();
@@ -22622,7 +22636,7 @@ class BattleScene extends Phaser.Scene {
     this.logEvent(`${enemy.name} enters Phase II: ${phaseName}.${reset} Next Tell: ${nextMove.label}.`);
     birdAudio.play('formation', 1.12);
     this.combatBossPhaseBreak(view.x, view.y - 24, 1.08);
-    floatingText(this, this.fxLayer, view.x, view.y - 86, 'PHASE II', '#ffcf7a');
+    this.presentEnemyStatus(enemy, 'PHASE II', '#ffcf7a');
   }
 
   private gainBlock(amount: number, source: string, card?: Card) {
@@ -22703,7 +22717,7 @@ class BattleScene extends Phaser.Scene {
       this.drawCards(1);
       this.logEvent('Spark Echo draws 1 card.');
       this.combatSparkEcho(FLOCK_FX_X + 62, FLOCK_FX_Y - 88, 1);
-      floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 54, 'Spark Echo', '#8df4ff');
+      this.presentFlockStatus('Spark Echo', '#8df4ff', 'spark-echo');
     }
     this.checkResonanceSpentMarks();
     return true;
@@ -22715,7 +22729,7 @@ class BattleScene extends Phaser.Scene {
     this.flock.exposed = false;
     this.flock.exposedTurns = 0;
     this.logEvent(`${source} turns the flock through Molt.`);
-    floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 30, 'Molt!', '#ff9d4d');
+    this.presentFlockStatus('Molt!', '#ff9d4d', 'molt');
     if (!wasMolting) {
       this.combatMoltShift(FLOCK_FX_X, FLOCK_FX_Y - 22, 1);
       this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y - 12, 0xff9d4d, 20, 160);
@@ -23041,10 +23055,10 @@ class BattleScene extends Phaser.Scene {
           if (this.hasCardInDeck(snagId)) {
             this.logEvent(`${enemy.name}'s Snag fails - ${cardLibrary[snagId].runtime.displayName} is already in the deck.`);
             birdAudio.play('block');
-            floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 44, 'Snag blocked', '#7ab8d6');
+            this.presentFlockStatus('Snag blocked', '#7ab8d6', enemy.id);
             break;
           }
-          const acquisition = recordCardAcquisitions([snagId], 'snag');
+          const acquisition = recordRunCardAcquisitions(this.battleRouteCheckpoint, [snagId], 'snag');
           if (acquisition.completedTargets.includes(snagId)) {
             this.logEvent(`Hunt complete! ${cardLibrary[snagId].runtime.displayName} enters the permanent collection.`);
           }
@@ -23060,10 +23074,10 @@ class BattleScene extends Phaser.Scene {
           if (this.hasCardInDeck(snagId)) {
             this.logEvent(`${enemy.name}'s Snag fails - ${cardLibrary[snagId].runtime.displayName} is already in the deck.`);
             birdAudio.play('block');
-            floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 44, 'Snag blocked', '#7ab8d6');
+            this.presentFlockStatus('Snag blocked', '#7ab8d6', enemy.id);
             break;
           }
-          const acquisition = recordCardAcquisitions([snagId], 'snag');
+          const acquisition = recordRunCardAcquisitions(this.battleRouteCheckpoint, [snagId], 'snag');
           if (acquisition.completedTargets.includes(snagId)) {
             this.logEvent(`Hunt complete! ${cardLibrary[snagId].runtime.displayName} enters the permanent collection.`);
           }
@@ -23144,7 +23158,7 @@ class BattleScene extends Phaser.Scene {
     this.flock.flow = 0;
     this.logEvent(`Fouled pressure costs ${damage} Cohesion.`);
     this.queueFlockMotion('hit');
-    floatingText(this, this.fxLayer, FLOCK_FX_X, FLOCK_FX_Y - 8, `-${damage} Fouled`, '#8bd2a0');
+    this.presentFlockResult(-damage, ' Fouled', '#8bd2a0', 'fouled');
     this.fouledPressureFx(damage, true);
     this.checkOutcome();
   }
@@ -23344,17 +23358,12 @@ class BattleScene extends Phaser.Scene {
       this.resolvePostCardReward();
       return;
     }
-    const acquisition = recordCardAcquisitions([reward.id], 'combat_reward');
-    const firstCollectionClaim = acquisition.firstCopies.includes(reward.id);
-    const targetCompleted = acquisition.completedTargets.includes(reward.id);
+    this.rewardClaims.push({ id: reward.id, receipt: `${this.runStartedAtMs}:${activeSeed}:${activeMapIndex}:${this.currentRouteIndex}:${reward.id}` });
     this.discardPile.push(cloneCard(reward.id));
-    birdAudio.play(firstCollectionClaim || targetCompleted ? 'objectiveComplete' : 'reward');
+    birdAudio.play('reward');
     this.logEvent(memoryStorageSessionActive()
-      ? `${displayName(reward)} joins this practice flight. Nothing saved.` : targetCompleted
-      ? `Hunt complete! ${displayName(reward)} joins this flight. Permanent milestone recorded.`
-      : firstCollectionClaim
-        ? `First collection claim! ${displayName(reward)} joins this flight.`
-        : `${displayName(reward)} joins this flight. Collection history updated.`);
+      ? `${displayName(reward)} joins this practice flight. Nothing saved.`
+      : `${displayName(reward)} joins this flight.`);
     this.applyFlockStats(false);
     this.runRewardEvents.push({ offered: this.rewardChoices.map((card) => card.id), picked: reward.id, skipped: false, decisionMs: Math.max(0, Date.now() - this.rewardDecisionStartedAtMs) });
     recordFirstFlightGuideEvent('reward');
@@ -23386,6 +23395,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   private skipCardReward() {
+    if (!this.rewardChoices.length) return;
     this.rewardSkipArmed = false;
     const skipScrap = this.currentSkipScrapReward();
     this.runRewardEvents.push({ offered: this.rewardChoices.map((card) => card.id), skipped: true, fallback: 'scrap', decisionMs: Math.max(0, Date.now() - this.rewardDecisionStartedAtMs) });
@@ -23416,6 +23426,7 @@ class BattleScene extends Phaser.Scene {
       this.mode = 'waymarkReward';
       this.controllerChoiceIndex = 0;
       this.battleInputActive = false;
+      this.saveRewardCheckpoint('waymarkReward');
       this.renderAll();
       return;
     }
@@ -23436,6 +23447,7 @@ class BattleScene extends Phaser.Scene {
       this.mode = 'cardReward';
       this.controllerChoiceIndex = 0;
       this.battleInputActive = false;
+      this.saveRewardCheckpoint('cardReward');
     } else {
       this.logEvent('No crew cards remain.');
       this.resolvePostCardReward();
@@ -23445,6 +23457,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   chooseWaymarkReward(markId: string) {
+    if (this.mode !== 'waymarkReward' || !this.waymarkChoices.some(mark => mark.id === markId)) return;
     this.rewardChoiceArmedId = undefined;
     this.claimWaymarkReward(markId);
     birdAudio.play('reward');
@@ -23475,6 +23488,7 @@ class BattleScene extends Phaser.Scene {
       this.mode = 'upgradeReward';
       this.controllerChoiceIndex = 0;
       this.battleInputActive = false;
+      this.saveRewardCheckpoint('upgradeReward');
       this.renderAll();
       return;
     }
@@ -23483,18 +23497,20 @@ class BattleScene extends Phaser.Scene {
   }
 
   chooseUpgradeCard(cardId: string) {
-    this.rewardChoiceArmedId = undefined;
     const card = this.upgradeChoices.find((candidate) => candidate.id === cardId);
-    if (card) {
-      card.upgraded = true;
-      birdAudio.play('moltPower');
-      this.logEvent(`${displayName(card)} preened.`);
-    }
+    if (!card) return;
+    this.rewardChoiceArmedId = undefined;
+    card.upgraded = true;
+    birdAudio.play('moltPower');
+    this.logEvent(`${displayName(card)} preened.`);
     this.upgradeChoices = [];
     this.returnToRouteMap();
   }
 
   private returnToRouteMap() {
+    // Persist the committed decision before either scene transition or collection
+    // writes. A failed write leaves a retryable reward step, not a lost flight.
+    if (!this.saveRewardCheckpoint('route')) { this.renderAll(); return; }
     const completedNodeId = currentCombatNodes()[this.currentRouteIndex]?.id;
     if (completedNodeId && !this.completedRouteNodeIds.includes(completedNodeId)) {
       this.completedRouteNodeIds.push(completedNodeId);
@@ -23539,6 +23555,45 @@ class BattleScene extends Phaser.Scene {
     this.scene.start('RouteScene', { runState });
   }
 
+  private flushRewardClaims() {
+    return this.rewardClaims.every(claim => {
+      const acquisition = recordCardAcquisitions([claim.id], 'combat_reward', claim.receipt);
+      if (acquisition.saved === false) return false;
+      if (!acquisition.replayed && !memoryStorageSessionActive()) {
+        const first = acquisition.firstCopies.includes(claim.id);
+        const target = acquisition.completedTargets.includes(claim.id);
+        birdAudio.play(first || target ? 'objectiveComplete' : 'reward');
+        const name = displayName(cardLibrary[claim.id]);
+        this.logEvent(target ? `Hunt complete! ${name} joins this flight. Permanent milestone recorded.`
+          : first ? `First collection claim! ${name} joins this flight.`
+          : `${name} joins this flight. Collection history updated.`);
+      }
+      return true;
+    });
+  }
+
+  private saveRewardCheckpoint(stage: RewardCheckpoint['stage']) {
+    const nodeId = currentCombatNodes()[this.currentRouteIndex]?.id;
+    if (!nodeId) return false;
+    const run = this.createRouteReturnState(nodeId, true);
+    run.pendingCombatReward = {
+      version: 1, nodeId, stage,
+      choices: (stage === 'waymarkReward' ? this.waymarkChoices
+        : stage === 'cardReward' ? this.rewardChoices : stage === 'upgradeReward' ? this.upgradeChoices : []).map(choice => choice.id),
+      scrapAwarded: this.combatScrapAwarded,
+      waymarkAwarded: this.combatRouteMarkAwarded?.id,
+      claims: this.rewardClaims.map(claim => ({ ...claim })),
+    };
+    this.battleRouteCheckpoint = run;
+    const saved = persistActiveRun(run) && this.flushRewardClaims();
+    this.pauseSaveFailed = !saved;
+    if (!saved) {
+      this.setBattlePaused(true);
+      announceScreenReader('Rewards could not be saved. Keep this tab open. Retry Main Menu to save this reward step.');
+    }
+    return saved;
+  }
+
   private finalizeDistrictContract(completedNodeId: string | undefined) {
     const contract = this.runDistrictContracts.find((candidate) => candidate.mapIndex === activeMapIndex);
     if (!contract || contract.confirmed === false || contract.completed) return;
@@ -23563,7 +23618,7 @@ class BattleScene extends Phaser.Scene {
     this.logEvent(`Contract complete: ${definition.name}. +${definition.rewardScrap} Scrap and record badge secured.`);
   }
 
-  private createRouteReturnState(completedNodeId: string | undefined): RunState {
+  private createRouteReturnState(completedNodeId: string | undefined, rewardCheckpoint = false): RunState {
     const completedRouteNode = currentCombatNodes()[this.currentRouteIndex];
     this.flock.block = 0;
     this.flock.molt = false;
@@ -23574,7 +23629,7 @@ class BattleScene extends Phaser.Scene {
     this.flock.openSkyGuard = this.flockStats().openSkyGuard ?? 0;
     this.applyFlockStats(false);
     this.applyCombatEconomyRewards();
-    if (!this.combatRouteMarkResolved) {
+    if (!rewardCheckpoint && !this.combatRouteMarkResolved) {
       const choices = this.createWaymarkRewardChoices();
       if (choices[0]) this.claimWaymarkReward(choices[0].id);
       else this.combatRouteMarkResolved = true;
@@ -23588,11 +23643,13 @@ class BattleScene extends Phaser.Scene {
 
     return {
       deck: saveCards(this.allDeckCards()),
+      pendingCardClaims: this.battleRouteCheckpoint.pendingCardClaims?.map(claim => ({ ...claim })),
+      cardClaimSequence: this.battleRouteCheckpoint.cardClaimSequence,
       leaderId: this.runLeaderId,
       difficulty: this.runDifficulty,
       runMode: this.runMode,
       seed: activeSeed,
-      currentHp: Math.min(this.flock.maxHp, this.flock.hp + POST_COMBAT_RECOVERY),
+      currentHp: Math.min(this.flock.maxHp, this.flock.hp + (rewardCheckpoint ? 0 : POST_COMBAT_RECOVERY)),
       scrap: this.scrap,
       scrapEarned: this.runScrapEarned,
       scrapSpent: this.runScrapSpent,
@@ -24026,7 +24083,8 @@ class BattleScene extends Phaser.Scene {
     });
     const totalTurnsTaken = combatResults.reduce((sum, combat) => sum + Math.max(0, combat.turnsTaken), 0);
     const summary: RunSummary = {
-      id: `run-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+      pendingCardClaims: this.battleRouteCheckpoint.pendingCardClaims?.map(claim => ({ ...claim })),
+      id: completedRunId(this.runStartedAtMs, activeSeed),
       seed: activeSeed,
       result,
       leaderId: this.runLeaderId,
@@ -24058,32 +24116,10 @@ class BattleScene extends Phaser.Scene {
       decisionStats
     };
     window.__birdSquadLastRun = summary;
-    clearActiveRun(); // the run is over - no longer resumable
-    if (memoryStorageSessionActive()) return; // Practice never awards records or unlocks.
-    if (result === 'win' && this.runMode === 'full') unlockTier(this.runDifficulty + 1); // full-flight clears unlock higher tiers
-    // Meta-progression: record the run, unlock Leaders / achievements.
-    this.lastRunRewards = recordRun({
-      result,
-      leaderId: this.runLeaderId ?? 'fledgling',
-      difficulty: this.runDifficulty,
-      runMode: this.runMode,
-      totalRunTurns: totalTurnsTaken,
-      cohesion: this.flock.hp,
-      maxCohesion: this.flock.maxHp,
-      turns: this.turn,
-      deckSize: this.allDeckCards().filter((card) => card.runtime.kind !== 'snag').length,
-      surgesTriggered: combatResults.reduce((sum, combat) => sum + (combat.decisionStats?.surgesTriggered ?? 0), 0),
-      cleanFights: combatResults.filter((combat) => combat.cohesionLost === 0).length,
-      swiftFights: combatResults.filter((combat) => combat.turnsTaken <= 3).length,
-      blockedDamage: decisionStats.blockedDamage,
-      completedContracts: this.runDistrictContracts
-        .filter((contract) => contract.completed)
-        .map((contract) => ({ mapIndex: contract.mapIndex, id: contract.id })),
-      observedEnemyMoves: [...this.runSeenEnemyMoves],
-    });
-    const prior = loadRunHistory();
-    prior.push(summary);
-    writeJournaledJson(RUN_HISTORY_KEY, prior.slice(-50));
+    if (memoryStorageSessionActive()) { clearActiveRun(); return; }
+    this.lastRunRewards = persistFinishedRun(summary);
+    this.outcomeSaved = !!this.lastRunRewards;
+    if (!this.outcomeSaved) this.ensureOutcomeSaved();
   }
 
   private createRewardChoices() {
@@ -24123,31 +24159,6 @@ class BattleScene extends Phaser.Scene {
 
   private allDeckCards() {
     return [...this.drawPile, ...this.discardPile, ...this.hand, ...this.clearedPile];
-  }
-
-  private buildRunStateSnapshot(): RunState {
-    const currentNode = currentCombatNodes()[this.currentRouteIndex];
-    return {
-      deck: saveCards(this.allDeckCards()),
-      leaderId: this.runLeaderId,
-      difficulty: this.runDifficulty,
-      seed: activeSeed,
-      currentHp: Math.max(1, this.flock.hp),
-      scrap: this.scrap,
-      routeMarks: [...this.routeMarks],
-      supplies: [...this.runSupplies],
-      supplySlots: this.runSupplyCapacity,
-      mapIndex: activeMapIndex,
-      completedRouteNodeIds: [...this.completedRouteNodeIds],
-      currentRouteNodeId: currentNode?.id,
-      routeLog: [...this.log].slice(-8),
-      nextCombat: undefined,
-      signalChoices: [...this.runSignalChoices],
-      rewardEvents: [...this.runRewardEvents],
-      suppliesUsed: [...this.runSuppliesUsed],
-      combatResults: [...this.runCombatResults],
-      freePreenNextDistrict: this.freePreenNextDistrict
-    };
   }
 
   private flockStats() {
@@ -24327,6 +24338,7 @@ class BattleScene extends Phaser.Scene {
       ...presentationDebugState,
       audioToggleWaveBurst: audioToggleWaveBurstState(this, this.children.list),
       paused: this.pauseOverlayOpen,
+      pauseSaveFailed: this.pauseOverlayOpen && this.pauseSaveFailed,
       settingsOverlayOpen: this.settingsOverlayOpen,
       settingsFocus: settingsFocusState(this, this.settingsOverlayOpen),
       controls: controlsTextState(this, this.settingsOverlayOpen),
@@ -24366,7 +24378,7 @@ class BattleScene extends Phaser.Scene {
         rendered: this.root?.list.some((child) => child.name === 'combat-flow-rail') ?? false,
         previewPips: this.root?.list.filter((child) => child.name === 'combat-flow-preview-pip').length ?? 0,
         status: flowStatus,
-        breakPreview: this.root?.list.some((child) => child.name === 'combat-flow-break-preview') ?? false,
+        breakPreview: flowStatus === 'FLOW BREAKS',
         holdPreview: flowStatus === 'FLOW HOLDS',
       },
       firstCombatGuidance: {
@@ -24376,12 +24388,13 @@ class BattleScene extends Phaser.Scene {
         cost: firstCombatGuideCard ? this.effectiveCost(firstCombatGuideCard) : undefined,
         target: firstCombatGuideTarget?.name,
       },
+      practiceLesson: this.registry.get('birdsquad.practiceLesson'),
       firstFlightGuide: firstFlightGuideState(),
       firstMoltGuide: {
         ...firstMoltGuideState(Boolean(this.hand.find((card) => card.runtime.kind === 'molt'))),
         cardId: this.firstMoltGuideCard()?.id,
         cardName: this.firstMoltGuideCard() ? displayName(this.firstMoltGuideCard()!) : undefined,
-        rendered: this.handLayer?.list.some((child) => child.name === 'combat-molt-guide-pulse') ?? false,
+        rendered: this.handLayer?.list.some((child) => child.name === 'combat-molt-guide-tag') ?? false,
       },
       overextension: {
         cardsPlayedThisTurn: this.cardsPlayedThisTurn,
@@ -24741,8 +24754,51 @@ function createEncounterEnemiesForRouteNode(routeNode: RouteNode): Enemy[] {
 // the player can close the tab and Continue. Written from the route checkpoint
 // (RouteScene.renderAll) and cleared on win / loss / abandon.
 const ACTIVE_RUN_KEY = 'birdsquad.run.active';
+const FINISHED_RUN_KEY = 'birdsquad.run.finished';
+
+function completedRunId(startedAt: number, seed: string) {
+  return `run-${startedAt}-flight-${seed}`;
+}
+
+function persistFinishedRun(summary: RunSummary): ReturnType<typeof recordRun> | undefined {
+  // Outbox first, account receipt and data together, then history, then retire
+  // the checkpoint. Any partial failure is replayable without a second award.
+  if (!writeJournaledJson(FINISHED_RUN_KEY, summary)) return;
+  if (!flushCardClaims(summary.pendingCardClaims)) return;
+  const combats = summary.combatResults;
+  const rewards = recordRun({
+    receipt: summary.id, result: summary.result, leaderId: summary.leaderId ?? defaultLeaderId,
+    difficulty: summary.difficulty ?? 0, runMode: summary.runMode,
+    totalRunTurns: summary.turnsTaken, turns: combats.at(-1)?.turnsTaken ?? summary.turnsTaken,
+    cohesion: summary.currentCohesion, maxCohesion: summary.maxCohesion,
+    deckSize: summary.deck.filter(card => cardLibrary[card.id]?.runtime.kind !== 'snag').length,
+    surgesTriggered: combats.reduce((sum, combat) => sum + (combat.decisionStats?.surgesTriggered ?? 0), 0),
+    cleanFights: combats.filter(combat => combat.cohesionLost === 0).length,
+    swiftFights: combats.filter(combat => combat.turnsTaken <= 3).length,
+    blockedDamage: summary.decisionStats?.blockedDamage,
+    completedContracts: summary.districtContracts.filter(contract => contract.completed),
+    observedEnemyMoves: summary.seenEnemyMoves,
+  });
+  if (!rewards.saved) return;
+  const history = loadRunHistory().filter(run => run.id !== summary.id);
+  if (!writeJournaledJson(RUN_HISTORY_KEY, [...history, summary].slice(-50))) return;
+  const active = loadActiveRun();
+  if (active && completedRunId(active.startedAtMs ?? 0, active.seed ?? '') === summary.id) {
+    clearActiveRun();
+    if (safeStorageGet(ACTIVE_RUN_KEY) || safeStorageGet(`${ACTIVE_RUN_KEY}.backup`)) return;
+  }
+  removeJournaledJson(FINISHED_RUN_KEY);
+  return rewards;
+}
+
+function recoverFinishedRun(): boolean {
+  const pending = readJournaledJson(FINISHED_RUN_KEY, sanitizeRunSummary);
+  return !pending || !!persistFinishedRun(pending);
+}
 function persistActiveRun(runState: RunState): boolean {
-  return writeJournaledJson(ACTIVE_RUN_KEY, runState);
+  if (!writeJournaledJson(ACTIVE_RUN_KEY, runState) || !flushCardClaims(runState.pendingCardClaims)) return false;
+  if (runState.pendingCardClaims?.length) runState.pendingCardClaims = [];
+  return true;
 }
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
@@ -24764,7 +24820,8 @@ function loadRunHistory(): RunSummary[] {
 }
 function runCompletedAtMs(summary: RunSummary) {
   const timestamp = /^run-(\d+)-/.exec(summary.id)?.[1];
-  return timestamp ? finiteInt(Number(timestamp), 0, 0) : 0;
+  return timestamp ? finiteInt(Number(timestamp), 0, 0)
+    + (/^run-\d+-flight-/.test(summary.id) ? summary.durationMs : 0) : 0;
 }
 function profileFlightHistory(): import('./game/profile-scene').FlightHistoryEntry[] {
   return loadRunHistory().slice(-50).reverse().map((summary) => {
@@ -24823,6 +24880,8 @@ function sanitizedPlaytestFeedback(value: unknown): import('./game/profile-scene
 }
 function sanitizeRunSummary(value: unknown): RunSummary | undefined {
   if (!isRecord(value)) return undefined;
+  const pendingCardClaims = sanitizeCardClaims(value.pendingCardClaims, id => !!cardLibrary[id]);
+  if (!pendingCardClaims) return undefined;
   const id = typeof value.id === 'string' ? value.id.trim().slice(0, 96) : '';
   const seed = typeof value.seed === 'string' ? value.seed.trim().slice(0, 64) : '';
   if (!id || !seed || (value.result !== 'win' && value.result !== 'loss')) return undefined;
@@ -24841,6 +24900,7 @@ function sanitizeRunSummary(value: unknown): RunSummary | undefined {
   return {
     id,
     seed,
+    pendingCardClaims: pendingCardClaims.length ? pendingCardClaims : undefined,
     result: value.result,
     leaderId: typeof value.leaderId === 'string' && flockLeaders.some((leader) => leader.id === value.leaderId)
       ? value.leaderId
@@ -25057,20 +25117,35 @@ function sanitizeDistrictContracts(value: unknown): DistrictContractState[] {
 }
 function sanitizeActiveRun(value: unknown): RunState | undefined {
   if (!isRecord(value) || !Array.isArray(value.deck)) return undefined;
+  const pendingCardClaims = sanitizeCardClaims(value.pendingCardClaims, id => !!cardLibrary[id]);
+  if (!pendingCardClaims) return undefined;
   const deck = canonicalSavedCards(value.deck.filter(isRecord).flatMap((entry) => {
     if (typeof entry.id !== 'string' || !cardLibrary[entry.id]) return [];
     return [{ id: entry.id, upgraded: entry.upgraded === true }];
   }));
   if (deck.length === 0) return undefined;
+  const seed = typeof value.seed === 'string' && value.seed.length ? value.seed : 'alpha';
+  const mapIndex = finiteInt(value.mapIndex, 0, 0, alphaMaps.length - 1);
+  const pendingCombatReward = sanitizeRewardCheckpoint(value.pendingCombatReward,
+    id => Boolean(cardLibrary[id]), id => alphaRouteMarkLibrary.has(id));
+  // A damaged reward transaction is not an ordinary route save: fall back to
+  // the journal instead of silently discarding a committed decision.
+  if (value.pendingCombatReward !== undefined && !pendingCombatReward) return undefined;
+  if (pendingCombatReward && !generatedMapFor(seed, mapIndex).nodes.some(node =>
+    node.id === pendingCombatReward.nodeId && ['street', 'rival', 'boss'].includes(node.type))) return undefined;
+  if (pendingCombatReward?.stage === 'upgradeReward'
+    && !pendingCombatReward.choices.every(id => deck.some(card => card.id === id && !card.upgraded))) return undefined;
   const leaderId = typeof value.leaderId === 'string' && flockLeaders.some((leader) => leader.id === value.leaderId)
     ? value.leaderId
     : defaultLeaderId;
   return {
     deck,
     leaderId,
+    pendingCardClaims: pendingCardClaims.length ? pendingCardClaims : undefined,
+    cardClaimSequence: finiteInt(value.cardClaimSequence, 0, 0),
     difficulty: finiteInt(value.difficulty, 0, 0, MAX_DIFFICULTY),
     runMode: value.runMode === 'quick' ? 'quick' : 'full',
-    seed: typeof value.seed === 'string' && value.seed.length ? value.seed : 'alpha',
+    seed,
     currentHp: finiteInt(value.currentHp, BASE_COHESION, 1),
     scrap: finiteInt(value.scrap, STARTING_SCRAP, 0),
     scrapEarned: finiteInt(value.scrapEarned, 0, 0),
@@ -25081,7 +25156,7 @@ function sanitizeActiveRun(value: unknown): RunState | undefined {
     routeMarks: stringArray(value.routeMarks).filter((id) => alphaRouteMarkLibrary.has(id)),
     supplies: stringArray(value.supplies).filter((id) => alphaSupplyLibrary.has(id)),
     supplySlots: finiteInt(value.supplySlots, BASE_SUPPLY_SLOTS, BASE_SUPPLY_SLOTS),
-    mapIndex: finiteInt(value.mapIndex, 0, 0, alphaMaps.length - 1),
+    mapIndex,
     completedRouteNodeIds: stringArray(value.completedRouteNodeIds),
     currentRouteNodeId: typeof value.currentRouteNodeId === 'string' ? value.currentRouteNodeId : undefined,
     routeLog: stringArray(value.routeLog).slice(-8),
@@ -25092,7 +25167,8 @@ function sanitizeActiveRun(value: unknown): RunState | undefined {
     suppliesUsed: stringArray(value.suppliesUsed).filter((id) => alphaSupplyLibrary.has(id)),
     combatResults: sanitizeCombatResults(value.combatResults),
     freePreenNextDistrict: finiteInt(value.freePreenNextDistrict, 0, 0),
-    pendingDistrictPreens: finiteInt(value.pendingDistrictPreens, 0, 0)
+    pendingDistrictPreens: finiteInt(value.pendingDistrictPreens, 0, 0),
+    pendingCombatReward,
   };
 }
 function loadActiveRun(): RunState | undefined {
@@ -25179,6 +25255,9 @@ function createInitialRunState(
 
 function cloneRunState(runState: RunState): RunState {
   return {
+    pendingCardClaims: runState.pendingCardClaims?.map(claim => ({ ...claim })),
+    cardClaimSequence: runState.cardClaimSequence,
+    pendingCombatReward: cloneRewardCheckpoint(runState.pendingCombatReward),
     deck: runState.deck.map((card) => ({ ...card })),
     leaderId: runState.leaderId,
     difficulty: runState.difficulty ?? 0,
@@ -25645,23 +25724,6 @@ function zoneRank(zone: string) {
   return 4;
 }
 
-const UI_FIELD = {
-  ink: 0x070b12,
-  panel: 0x0b111b,
-  panelWarm: 0x17120c,
-  rail: 0x111923,
-  paper: 0x1c2022,
-  gold: 0xd8a840,
-  brass: 0xf0c36f,
-  cyan: 0x7ab8d6,
-  green: 0x8fd6a0,
-  danger: 0xff6b57,
-  violet: 0xc9a6ff,
-  text: '#e7eef7',
-  muted: '#91a6b8',
-  warm: '#ffe1a3',
-  cyanText: '#8df4ff'
-};
 
 type UiAdd = (obj: Phaser.GameObjects.GameObject) => void;
 
@@ -25682,23 +25744,9 @@ function audioToggleWaveBurstState(scene: Phaser.Scene, children: any[]) {
   };
 }
 
-type CompactItemKind = 'supply' | 'waymark';
-
-interface CompactItemTileOptions {
-  kind: CompactItemKind;
-  id: string;
-  glyph: string;
-  accent: number;
-  name: string;
-  meta?: string;
-  summary: string;
-  enabled?: boolean;
-  actionLabel?: string;
-}
-
 function formatConditionCompact(condition: string) {
   return formatCondition(condition)
-    .replace('first played', 'first')
+    .replace('first played', 'first use/fight')
     .replace('target attacks', 'attack intent')
     .replace('target below half', 'low target')
     .replace('target has Cover', 'has Cover')
@@ -25802,6 +25850,20 @@ function compactCardEffectSummary(effects: string[]) {
   return compactEffectGrammar(effects, 86, 3);
 }
 
+function compactHandCardSummary(effects: string[]) {
+  // Hand cards are action previews, not rules readers. Keep effect boundaries
+  // intact and disclose additional effects instead of cutting a condition off.
+  const shown = effects.slice(0, 3).map(formatEffectCompact).join('  ·  ')
+    .replace(/\bplayed (plumes|basins|quills|nests):/g, 'After $1:')
+    .replace(/(\d+) all\b/g, '$1 all dmg')
+    // Phaser's word wrapper may split even at a nonbreaking space. A tight dot
+    // keeps each amount attached to its noun on a 164px card face.
+    .replace(/\b(Draw|Deal|Discard) (\d+)/g, '$1·$2')
+    .replace(/(\d+) (dmg|pierce|Cover|Resonance|Winded|Wingbeat|HP)/g, '$1·$2');
+  const remaining = effects.length - 3;
+  return remaining > 0 ? `${shown}  ·  +${remaining} more` : shown;
+}
+
 function compactEffectSummary(effects: string[] | string, maxChars = 96, maxSentences = 2) {
   const text = (Array.isArray(effects) ? formatEffects(effects) : effects)
     .replace(/\s+/g, ' ')
@@ -25816,114 +25878,6 @@ function compactSentenceText(text: string, maxChars = 96, maxSentences = 2) {
   const clipped = source.slice(0, maxChars - 1);
   const lastSpace = clipped.lastIndexOf(' ');
   return `${clipped.slice(0, lastSpace > 42 ? lastSpace : clipped.length).trim()}...`;
-}
-
-function renderEmptySupplySlotTile(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  x: number,
-  y: number,
-  w: number,
-  h: number
-) {
-  const frameKey = uiIconAssets['run-kit-empty-slot-frame'].key;
-  const hasGeneratedFrame = scene.textures.exists(frameKey);
-  addUi(addTo, scene.add.rectangle(x + w / 2, y + h / 2, w, h, 0x07101c, hasGeneratedFrame ? 0.28 : 0.42)
-    .setStrokeStyle(1.2, 0x263b52, hasGeneratedFrame ? 0.22 : 0.56));
-  if (hasGeneratedFrame) {
-    scene.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    addUi(addTo, scene.add.image(x + w / 2, y + h / 2, frameKey)
-      .setDisplaySize(w + 6, h + 10)
-      .setAlpha(0.52)
-      .setName('run-kit-empty-slot-frame'));
-  }
-  const icon = addUiIconImage(scene, 'supply-pouch', x + w / 2, y + h / 2, 25);
-  if (icon) addUi(addTo, icon.setAlpha(0.2));
-}
-
-function renderCompactItemTile(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  opts: CompactItemTileOptions,
-) {
-  const enabled = opts.enabled ?? true;
-  const stroke = enabled ? opts.accent : 0x49606d;
-  const frameKey = uiIconAssets['run-kit-item-tile-frame'].key;
-  const hasGeneratedFrame = scene.textures.exists(frameKey);
-  const bg = addUi(addTo, scene.add.rectangle(x + w / 2, y + h / 2, w, h, 0x07101c, hasGeneratedFrame ? (enabled ? 0.5 : 0.34) : (enabled ? 0.9 : 0.72))
-    .setStrokeStyle(1.5, stroke, hasGeneratedFrame ? (enabled ? 0.24 : 0.18) : (enabled ? 0.82 : 0.58)));
-  if (hasGeneratedFrame) {
-    scene.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const frame = scene.add.image(x + w / 2, y + h / 2, frameKey)
-      .setDisplaySize(w + 6, h + 10)
-      .setAlpha(enabled ? 0.84 : 0.44)
-      .setName('run-kit-item-tile-frame');
-    addUi(addTo, frame);
-  }
-  addUi(addTo, scene.add.rectangle(x + 5, y + h / 2, 4, h - 18, stroke, enabled ? 0.82 : 0.58));
-
-  const iconSize = 48;
-  const iconX = x + 38;
-  const iconY = y + 36;
-  addUi(addTo, scene.add.rectangle(iconX, iconY, iconSize, iconSize, 0x07101c, enabled ? 0.97 : 0.72)
-    .setStrokeStyle(2, stroke, enabled ? 0.95 : 0.62));
-  const artKey = opts.kind === 'supply'
-    ? supplyCompactArtAssets[opts.id]?.key
-    : waymarkCompactArtAssets[opts.id]?.key;
-  if (artKey && scene.textures.exists(artKey)) {
-    const icon = opts.kind === 'supply'
-      ? addSupplyArtImage(scene, iconX, iconY, artKey)
-      : addWaymarkArtImage(scene, iconX, iconY, artKey);
-    addUi(addTo, icon.setDisplaySize(iconSize - 8, iconSize - 8).setAlpha(enabled ? 1 : 0.58));
-  } else {
-    addUi(addTo, scene.add.text(iconX, iconY - 1, opts.glyph, {
-      fontFamily: UI_FONT,
-      fontSize: opts.kind === 'supply' ? '21px' : '23px',
-      fontStyle: UI_BOLD,
-      color: enabled ? '#ffe7c9' : '#7f93a8'
-    }).setOrigin(0.5));
-  }
-
-  const textX = x + 74;
-  const textW = w - 92;
-  addUi(addTo, scene.add.text(textX, y + 18, opts.name, {
-    fontFamily: UI_FONT,
-    fontSize: '13px',
-    fontStyle: UI_BOLD,
-    color: enabled ? '#ffe1a3' : '#9fb1c4',
-    fixedWidth: textW,
-    maxLines: 1
-  }).setResolution(2));
-  if (opts.meta) {
-    addUi(addTo, scene.add.text(textX, y + 39, opts.meta, {
-      fontFamily: UI_FONT,
-      fontSize: '10px',
-      fontStyle: UI_BOLD,
-      color: enabled ? '#ffcf9d' : '#7f93a8',
-      fixedWidth: textW,
-      maxLines: 1
-    }).setResolution(2));
-  }
-  addUi(addTo, scene.add.text(textX, opts.meta ? y + 58 : y + 43, opts.summary, {
-    fontFamily: UI_FONT,
-    fontSize: opts.meta ? '10px' : '11px',
-    color: UI_BODY,
-    fixedWidth: textW,
-    maxLines: opts.meta ? 2 : 2
-  }).setResolution(2));
-  if (opts.actionLabel) {
-    addUi(addTo, scene.add.text(x + w - 12, y + h - 18, opts.actionLabel, {
-      fontFamily: UI_FONT,
-      fontSize: '9px',
-      fontStyle: UI_BOLD,
-      color: enabled ? '#8df4ff' : '#5e7285'
-    }).setOrigin(1, 0.5));
-  }
-  return bg;
 }
 
 type UnifiedRunHudData = {
@@ -26408,54 +26362,7 @@ function renderFieldPanel(
   return { left, right, top, bottom, cx, cy, w, h };
 }
 
-function addCodexDossierFrame(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  frame: { cx: number; cy: number; w: number; h: number },
-  opts: { alpha?: number; tint?: number } = {}
-) {
-  const key = uiIconAssets['codex-dossier-frame'].key;
-  if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const alpha = opts.alpha ?? 0.92;
-  const shell = scene.add.image(frame.cx, frame.cy, key)
-    .setDisplaySize(frame.w + 54, frame.h + 40)
-    .setAlpha(prefersReducedMotion() ? Math.min(alpha, 0.86) : alpha)
-    .setName('codex-dossier-frame');
-  if (opts.tint !== undefined) shell.setTint(opts.tint);
-  addUi(addTo, shell);
-  if (!prefersReducedMotion()) {
-    scene.tweens.add({
-      targets: shell,
-      alpha: alpha * 0.94,
-      scaleX: shell.scaleX * 1.002,
-      scaleY: shell.scaleY * 1.002,
-      duration: 2200,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
-  }
-  return shell;
-}
 
-function addCodexEntryFrame(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  frame: { cx: number; cy: number; w: number; h: number },
-  opts: { alpha?: number; tint?: number; padX?: number; padY?: number } = {}
-) {
-  const key = uiIconAssets['codex-entry-frame'].key;
-  if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const shell = scene.add.image(frame.cx, frame.cy, key)
-    .setDisplaySize(frame.w + (opts.padX ?? 18), frame.h + (opts.padY ?? 18))
-    .setAlpha(opts.alpha ?? 0.5)
-    .setName('codex-entry-frame');
-  if (opts.tint !== undefined) shell.setTint(opts.tint);
-  addUi(addTo, shell);
-  return shell;
-}
 
 function addSystemFieldCommandFrame(
   scene: Phaser.Scene,
@@ -26478,93 +26385,9 @@ function addSystemFieldCommandFrame(
   return frame;
 }
 
-function addDeckReviewFlourish(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  frame: { cx: number; cy: number; w: number; h: number },
-  opts: { alpha?: number; tint?: number; yOffset?: number } = {}
-) {
-  const key = uiIconAssets['deck-review-flourish'].key;
-  if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const alpha = opts.alpha ?? 0.13;
-  const flourish = scene.add.image(frame.cx, frame.cy + (opts.yOffset ?? 0), key)
-    .setDisplaySize(Math.min(frame.w - 52, 1010), Math.min(frame.h - 38, 540))
-    .setAlpha(prefersReducedMotion() ? Math.min(alpha, 0.1) : alpha)
-    .setBlendMode(Phaser.BlendModes.ADD);
-  if (opts.tint !== undefined) flourish.setTint(opts.tint);
-  addUi(addTo, flourish);
-  if (!prefersReducedMotion()) {
-    scene.tweens.add({
-      targets: flourish,
-      alpha: alpha * 0.68,
-      scaleX: flourish.scaleX * 1.01,
-      scaleY: flourish.scaleY * 1.01,
-      duration: 2200,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
-  }
-  return flourish;
-}
 
-function addDeckReviewRowFrame(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  cx: number,
-  cy: number,
-  opts: { selected?: boolean; upgraded?: boolean } = {}
-) {
-  const key = uiIconAssets['deck-review-row-frame'].key;
-  if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const row = scene.add.image(cx, cy, key)
-    .setDisplaySize(334, 44)
-    .setAlpha(opts.selected ? 0.9 : 0.52)
-    .setName('deck-review-row-frame');
-  if (opts.upgraded && !opts.selected) row.setTint(0xd9fdff);
-  addUi(addTo, row);
-  return row;
-}
 
-function addDeckReviewPageIndicatorFrame(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  cx: number,
-  cy: number
-) {
-  const key = uiIconAssets['deck-review-page-indicator-frame'].key;
-  if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const frame = scene.add.image(cx, cy, key)
-    .setDisplaySize(126, 36)
-    .setAlpha(0.78)
-    .setName('deck-review-page-indicator-frame');
-  addUi(addTo, frame);
-  return frame;
-}
 
-function addDeckReviewTitlePlaque(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  cx: number,
-  cy: number,
-  width: number,
-  height: number,
-  opts: { alpha?: number; tint?: number } = {}
-) {
-  const key = uiIconAssets['deck-review-title-plaque'].key;
-  if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const plaque = scene.add.image(cx, cy, key)
-    .setDisplaySize(width, height)
-    .setAlpha(opts.alpha ?? 0.82)
-    .setName('deck-review-title-plaque');
-  if (opts.tint !== undefined) plaque.setTint(opts.tint);
-  addUi(addTo, plaque);
-  return plaque;
-}
 
 function addDeckReviewDetailFrame(
   scene: Phaser.Scene,
@@ -26631,90 +26454,8 @@ function addDeckReviewCostBadge(
   return badge;
 }
 
-function addDeckReviewMetaChipFrame(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  cx: number,
-  cy: number,
-  width: number,
-  height = 24,
-  opts: { selected?: boolean; upgraded?: boolean; alpha?: number } = {}
-) {
-  const key = uiIconAssets['deck-review-meta-chip-frame'].key;
-  if (!scene.textures.exists(key)) {
-    const fallback = scene.add.rectangle(cx, cy, width - 6, height - 4, 0x07101c, opts.alpha ?? 0.74)
-      .setStrokeStyle(1, opts.upgraded ? 0x24d0d6 : 0xd8a840, opts.selected ? 0.72 : 0.36)
-      .setName('deck-review-meta-chip-frame-fallback');
-    addUi(addTo, fallback);
-    return fallback;
-  }
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const chip = scene.add.image(cx, cy, key)
-    .setDisplaySize(width, height)
-    .setAlpha(opts.alpha ?? (opts.selected ? 0.9 : 0.68))
-    .setName('deck-review-meta-chip-frame');
-  if (opts.upgraded && !opts.selected) chip.setTint(0xd9fdff);
-  addUi(addTo, chip);
-  return chip;
-}
 
-function addDeckReviewSectionTabFrame(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  cx: number,
-  cy: number,
-  width: number,
-  height = 32,
-  opts: { alpha?: number; tint?: number } = {}
-) {
-  const key = uiIconAssets['deck-review-section-tab-frame'].key;
-  if (!scene.textures.exists(key)) {
-    const fallback = scene.add.rectangle(cx, cy, width - 8, height - 6, 0x07101c, opts.alpha ?? 0.82)
-      .setStrokeStyle(1, UI_FIELD.gold, 0.58)
-      .setName('deck-review-section-tab-frame-fallback');
-    addUi(addTo, fallback);
-    return fallback;
-  }
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const tab = scene.add.image(cx, cy, key)
-    .setDisplaySize(width, height)
-    .setAlpha(opts.alpha ?? 0.82)
-    .setName('deck-review-section-tab-frame');
-  if (opts.tint !== undefined) tab.setTint(opts.tint);
-  addUi(addTo, tab);
-  return tab;
-}
 
-function addRunKitDrawerFlourish(
-  scene: Phaser.Scene,
-  addTo: UiAdd,
-  frame: { cx: number; cy: number; w: number; h: number },
-  opts: { alpha?: number; tint?: number; yOffset?: number } = {}
-) {
-  const key = uiIconAssets['run-kit-drawer-flourish'].key;
-  if (!scene.textures.exists(key)) return undefined;
-  scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
-  const alpha = opts.alpha ?? 0.13;
-  const flourish = scene.add.image(frame.cx, frame.cy + (opts.yOffset ?? 0), key)
-    .setDisplaySize(Math.min(frame.w - 44, 1020), Math.min(frame.h - 34, 548))
-    .setAlpha(prefersReducedMotion() ? Math.min(alpha, 0.1) : alpha)
-    .setBlendMode(Phaser.BlendModes.ADD);
-  if (opts.tint !== undefined) flourish.setTint(opts.tint);
-  addUi(addTo, flourish);
-  if (!prefersReducedMotion()) {
-    scene.tweens.add({
-      targets: flourish,
-      alpha: alpha * 0.66,
-      scaleX: flourish.scaleX * 1.01,
-      scaleY: flourish.scaleY * 1.01,
-      duration: 2100,
-      yoyo: true,
-      repeat: -1,
-      ease: 'Sine.easeInOut'
-    });
-  }
-  return flourish;
-}
 
 function addRouteWaymarkScrollRailFrame(
   scene: Phaser.Scene,
@@ -27324,9 +27065,6 @@ function routeMarkEffectText(mark: RuntimeRouteMark): string {
   return formatEffects(routeMarkEffects(mark));
 }
 
-function routeMarkEffectGrammar(mark: RuntimeRouteMark): string {
-  return routeMarkEffects(mark).join(' -> ');
-}
 
 function supplyAccent(supply: RuntimeSupply) {
   switch (supply.category) {
@@ -27354,40 +27092,8 @@ function addSynergyTag(tags: string[], tag: string) {
   if (!tags.includes(tag)) tags.push(tag);
 }
 
-function authoredEffectBodies(effects: string[]) {
-  return effects.flatMap((effect) => {
-    const conditional = effect.match(/^if ([a-zA-Z][a-zA-Z0-9]*(?:\([^)]+\))?) then (.+)$/);
-    return conditional ? [conditional[1], conditional[2]] : [effect];
-  });
-}
-
 function effectVerb(effect: string) {
   return parseEffect(effect)?.name ?? '';
-}
-
-function supplySynergyTags(supply: RuntimeSupply) {
-  const tags: string[] = [];
-  const bodies = authoredEffectBodies(supply.effects);
-  const text = `${supply.answerType} ${supply.timing} ${supply.effects.join(' ')}`.toLowerCase();
-  const verbs = new Set(bodies.map(effectVerb));
-  if (supply.timing === 'route') addSynergyTag(tags, 'Route');
-  if (supply.timing === 'combat') addSynergyTag(tags, 'Combat');
-  if (supply.timing === 'either') addSynergyTag(tags, 'Flexible');
-  if (text.includes('visitednodetype')) addSynergyTag(tags, 'Route Memory');
-  if (verbs.has('gainCover') || supply.answerType === 'coverNow') addSynergyTag(tags, 'Cover');
-  if (verbs.has('healCohesion') || verbs.has('heal') || supply.answerType === 'healNow') addSynergyTag(tags, 'Recovery');
-  if (verbs.has('draw') || verbs.has('nextTurnDraw') || supply.answerType === 'drawNow') addSynergyTag(tags, 'Draw');
-  if (verbs.has('gainWingbeat') || verbs.has('gainEnergyNextTurn') || supply.answerType === 'wingbeatNow') addSynergyTag(tags, 'Wingbeat');
-  if (verbs.has('damage') || verbs.has('damageAll') || verbs.has('damagePierce') || supply.answerType === 'damageNow') addSynergyTag(tags, 'Pressure');
-  if (verbs.has('removeCover') || supply.answerType === 'antiCover') addSynergyTag(tags, 'Anti-Cover');
-  if (verbs.has('cleanseFlock') || supply.answerType === 'cleanseNow') addSynergyTag(tags, 'Cleanse');
-  if (verbs.has('gainSupplyChoice') || verbs.has('gainSupply')) addSynergyTag(tags, 'Packs Supply');
-  if (verbs.has('increaseSupplySlots')) addSynergyTag(tags, 'Capacity');
-  if (verbs.has('repeatNextSupply')) addSynergyTag(tags, 'Supply Combo');
-  if (verbs.has('retainHand') || supply.answerType === 'handFix') addSynergyTag(tags, 'Hand Fix');
-  if (verbs.has('enterMolt') || supply.answerType === 'moltNow') addSynergyTag(tags, 'Molt');
-  if (verbs.has('peekNextNodes') || supply.answerType === 'tellControl') addSynergyTag(tags, 'Plan');
-  return tags.slice(0, 5);
 }
 
 function waymarkSynergyTags(mark: RuntimeRouteMark) {
@@ -27989,38 +27695,36 @@ function shuffle<T>(items: T[], random: () => number = Math.random) {
 // two thousand lines of collection and dossier presentation code.
 export {
   aggregateFlockStats, cardsFromSave, cardStatRows, flockStatLabel, KEYSTONE_AT,
-  addCodexDossierFrame, addCodexEntryFrame, addDeckReviewCostBadge, addDeckReviewFlourish, addRewardRevealHaloFx,
-  addDeckReviewMetaChipFrame, addDeckReviewPageIndicatorFrame, addDeckReviewRowFrame,
-  addDeckReviewSectionTabFrame, addDeckReviewTitlePlaque, addRouteWaymarkScrollRailFrame, addRunKitDrawerFlourish,
-  addSupplyArtImage, addUiIconImage, addWaymarkArtImage,
+  addDeckReviewCostBadge, addRewardRevealHaloFx,
+  addRouteWaymarkScrollRailFrame, addSupplyArtImage, addUiIconImage, addWaymarkArtImage,
   SHARED_ROUTE_SEED, advanceGameTime, alphaEnemyLibrary, alphaRouteMarkLibrary, alphaRouteMarkSet, alphaSupplyLibrary,
   animationPacePreference, animationPacingState, audioToggleWaveBurstState,
   bindControlActions, birdAudio, cardArtAssets, cardCompactArtAsset, cardLabel, cardLibrary, clamp,
   collectionGoalSummary, colorCuePreference, colorCueState, combatPacePreference, combatPacingState, createInitialRunState,
   compactSentenceText, controlActionForCode, controlBindingLabel, controlBindingsSnapshot, currentMap,
   controlsTextState, currentFlashEffectsState, currentScreenShakeState,
-  codexIconForLabel, codexLeaderArtAssets, codexUiIconIds, compactCardArtKey, compactEffectSummary,
-  countTextureInGameObjects, displayName, enemyArtAssets, enemyCodexIconForLabel, flockLeaders,
+  codexLeaderArtAssets, codexUiIconIds, compactCardArtKey, compactEffectSummary,
+  countTextureInGameObjects, displayName, enemyArtAssets, flockLeaders,
   deferredHowToPlayUiIconIds, deferredMenuSettingsUiIconIds, DISTRICT_CONTRACT_DEFINITIONS,
   firstFlightGuideState, formatEffects, GAME_HEIGHT, GAME_WIDTH, getLeader, getMaxUnlockedTier, howToPlayUiIconIds,
   graphicsQualityState, hasActiveRun, hideKwTooltip, isAviaryCard, isLeaderUnlocked, isSnagCard,
-  itemTypeCodexIconForLabel, KEYWORDS, killTweensForScene, killTweensForTree, LAZY_LOAD_FAILED, leaderUnlockHints,
+  KEYWORDS, killTweensForScene, killTweensForTree, LAZY_LOAD_FAILED, leaderUnlockHints,
   latestPlaytestRunForRating, loadAccount, loadActiveRun, loadBossDossierModule, loadCodexSceneModule,
   loadProfileFlightReview, loadRunHistory, loadedCardArtKey, menuSettingsUiIconIds, motionPreference, motionState, playUiSound,
   prefersReducedMotion, profileFlightHistory, queueReserveEnemyArtAssets,
   queueRuntimeImageAssets, queueUiIconAssets, activateRenderedAudioToggleControl,
-  renderAudioToggleControl, renderCloseControl, renderCompactItemTile, renderEmptySupplySlotTile,
+  renderAudioToggleControl, renderCloseControl,
   renderFieldButton, renderFieldPanel, renderHowToPlayOverlay, renderRichText, renderSettingsMenuOverlay,
-  renderSnagCardBorder, reserveEnemyArtAsset, ROUTE_SET_PIECE_PROFILES, routeEffectTokens, routeMarkEffectGrammar, routeMarkEffectText,
+  renderSnagCardBorder, reserveEnemyArtAsset, ROUTE_SET_PIECE_PROFILES, routeEffectTokens, routeMarkEffectText,
   routeMarkFamilyLabel, routeNodeTypeLabel, registerCodexScene,
   sanitizeActiveRun, sanitizeRunHistory, saveLatestPlaytestFeedback, screenReaderPreference, screenReaderState,
   screenShakePreference, flashEffectsPreference, settingsFocusState, setAnimationPacePreference, setColorCuePreference, setCombatPacePreference,
   setFlashEffectsPreference, setGraphicsQualityPreference, setMotionPreference, setScreenReaderPreference,
   setScreenShakePreference, setTextPacePreference, setVisualContrastPreference,
-  showKwTooltip, keywordTooltipState, suitAccentColor, supplyAccent, supplyArtAssets, supplyCategoryLabel, supplyCodexIconForLabel, supplyCompactArtAssets,
-  supplySynergyTags, HUD_MENU_PANEL, UI_BODY, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, UI_MUTED, UI_SOFT,
+  showKwTooltip, keywordTooltipState, suitAccentColor, supplyAccent, supplyArtAssets, supplyCategoryLabel, supplyCompactArtAssets,
+  HUD_MENU_PANEL, UI_BODY, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, UI_MUTED, UI_SOFT,
   syncSceneAnimationPace, textPacePreference, textPacingState, titleMenuCompactIconIds, titleMenuUiIconIds,
-  uiIconAssets, uniqueImageAssets, visualContrastState, waymarkArtAssets, waymarkCodexIconForLabel, waymarkCompactArtAssets, waymarkGlyph,
+  uiIconAssets, uniqueImageAssets, visualContrastState, waymarkArtAssets, waymarkCompactArtAssets, waymarkGlyph,
   waymarkSynergyTags,
 };
 export type {

@@ -46,6 +46,9 @@ export function installMenuDebugState(scene: any) {
     settingsFocus: settingsFocusState(scene, Boolean(scene.settingsOverlay)),
     controls: controlsTextState(scene, Boolean(scene.settingsOverlay)),
     helpOpen: Boolean(scene.helpOverlay),
+    helpFocus: scene.helpOverlay?.getData('actionFocus')
+      ?? scene.helpOverlay?.getByName('how-to-play-actions')?.getData('actionFocus'),
+    helpTopic: scene.helpOverlay?.getData('topic'),
     helpContent: scene.helpOverlay?.list.filter((child: any) => ['how-to-play-readable', 'how-to-play-tip-label', 'how-to-play-tip-value'].includes(child.name))
       .map((child: any) => child.text),
     collectionGoal: {

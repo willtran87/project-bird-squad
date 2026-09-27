@@ -75,8 +75,10 @@ function waymarkDrawerSummary(payload: Record<string, unknown>) {
 
 export function screenReaderSummary(payload: unknown): string {
   const summary = describeScreen(payload);
+  const lesson = isRecord(payload) && isRecord(payload.practiceLesson) ? payload.practiceLesson : undefined;
+  const guidance = lesson ? `${text(lesson.title)}. ${text(lesson.instruction)}. ` : '';
   return memoryStorageSessionActive()
-    ? `Practice. Nothing saved. Main Menu or reload ends practice; your active flight, collection, and records are unchanged. ${summary}`
+    ? `Practice. Nothing saved. Main Menu or reload ends practice; your active flight, collection, and records are unchanged. ${guidance}${lesson?.finished ? 'Confirm returns to How to Play.' : summary}`
     : summary;
 }
 
@@ -93,7 +95,9 @@ function describeScreen(payload: unknown): string {
 
   if (scene === 'MenuScene' || mode === 'menu') {
     if (payload.helpOpen === true) return ['How to Play is open.',
+      text(payload.helpTopic),
       ...(Array.isArray(payload.helpContent) ? payload.helpContent.filter((text): text is string => typeof text === 'string') : []),
+      isRecord(payload.helpFocus) ? `${text(payload.helpFocus.label)}. Use Tab or D-pad to choose an action; Confirm to select.` : '',
       'Press Back to close.'].join(' ');
     const focus = isRecord(payload.titleFocus) ? payload.titleFocus : undefined;
     const collectionGoal = isRecord(payload.collectionGoal) ? payload.collectionGoal : undefined;
@@ -297,9 +301,18 @@ function describeScreen(payload: unknown): string {
     return `Flock Record. ${current}.${milestoneSummary}${showcaseSummary}${folioSummary} Press Confirm to select, or Back to return.`;
   }
 
+  if (!settingsOpen && (payload.pauseSaveFailed === true || (payload.pauseOverlayOpen === true
+    && isRecord(payload.routeCheckpoint) && payload.routeCheckpoint.outcome === 'failed'))) {
+    return 'Flight could not be saved. Your flight is still paused. Retry Main Menu, or Resume and keep this tab open.';
+  }
   if (!settingsOpen && payload.paused !== true && payload.pauseOverlayOpen !== true && text(payload.flockStatsReading)) return text(payload.flockStatsReading);
 
   if (scene === 'RouteScene' || mode === 'routeSelection') {
+    const contract = isRecord(payload.districtContractChoice) ? payload.districtContractChoice : undefined;
+    if (contract?.open === true) {
+      const choices = records(contract.options), index = number(contract.focusIndex) ?? 0, choice = choices[index];
+      return `District contract. ${index + 1} of ${choices.length}. ${text(choice?.name)}. ${text(choice?.goal)}. On completion: ${number(choice?.rewardScrap)} Scrap and a record badge. Previous and Next or D-pad choose; Confirm or controller A accepts.`;
+    }
     const event = isRecord(payload.nodeChoice) ? payload.nodeChoice : undefined;
     if (event) {
       const focus = isRecord(event.focus) ? event.focus : undefined;

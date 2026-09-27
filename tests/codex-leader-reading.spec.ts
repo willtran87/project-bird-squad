@@ -97,6 +97,8 @@ test('all leader dossiers preserve complete gameplay and lore in measured readin
 });
 
 test('leader dossiers fit three viewports with real art, keyboard, wheel and touch paging', async ({ page }, info) => {
+  // Full multi-viewport dossiers plus all three reading input paths.
+  test.setTimeout(90000);
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (/not supported in WebGL/.test(m.text())) errors.push(m.text()); });
   await boot(page);

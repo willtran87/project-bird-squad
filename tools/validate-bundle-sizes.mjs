@@ -4,7 +4,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 
 const root = process.cwd();
-const assetsDir = path.join(root, '.artifacts', 'build', 'assets');
+const assetsDir = path.join(path.resolve(root, process.argv[2] ?? '.artifacts/build'), 'assets');
 const kb = 1024;
 
 const budgets = [
@@ -14,6 +14,7 @@ const budgets = [
   { label: 'adaptive music lazy module', pattern: /^adaptive-music-.*\.js$/, maxKb: 8, hard: true },
   { label: 'synthesized SFX lazy module', pattern: /^audio-sfx-.*\.js$/, maxKb: 8, hard: true },
   { label: 'battle FX presenter lazy module', pattern: /^fx-presenter-.*\.js$/, maxKb: 8, hard: true },
+  { label: 'encounter intro lazy module', pattern: /^encounter-intro-.*\.js$/, maxKb: 4, hard: true },
   { label: 'battle debug-state lazy module', pattern: /^debug-state-.*\.js$/, maxKb: 10, hard: true },
   { label: 'battle backdrop renderer lazy module', pattern: /^render-backdrop-.*\.js$/, maxKb: 4, hard: true },
   { label: 'battle foreground renderer lazy module', pattern: /^render-foreground-.*\.js$/, maxKb: 8, hard: true },

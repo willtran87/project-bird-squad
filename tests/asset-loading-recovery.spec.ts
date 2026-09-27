@@ -116,11 +116,12 @@ test('every approved card, enemy and district image is deployed and decodes unde
     .flatMap(dir => readdirSync(dir).filter(name => name.endsWith('.webp')).map(name => `${dir}/${name}`));
   const sources: string[] = [...cards.flatMap((c: any) => [c.portrait, c.thumbnail]), ...enemies.map((e: any) => e.full), ...backdropFiles];
   expect(cards).toHaveLength(110); expect(enemies).toHaveLength(64);
-  const deployed = readdirSync('.artifacts/build/assets');
+  const deployedAssets = path.join(process.env.BIRD_SQUAD_TEST_BUILD_DIR ?? '.artifacts/build', 'assets');
+  const deployed = readdirSync(deployedAssets);
   const urls = sources.map(source => {
     const bytes = readFileSync(source), stem = path.basename(source, '.webp');
     const candidates = deployed.filter(name => name.startsWith(`${stem}-`) && name.endsWith('.webp'));
-    const exact = candidates.find(name => readFileSync(`.artifacts/build/assets/${name}`).equals(bytes));
+    const exact = candidates.find(name => readFileSync(path.join(deployedAssets, name)).equals(bytes));
     expect(exact, `Missing exact deployed art for ${source}`).toBeTruthy();
     return `assets/${exact}`;
   });

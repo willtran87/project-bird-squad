@@ -31,11 +31,13 @@ test('route frame recedes while future destinations remain legible', async ({ pa
     const route = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     return {
       frame: route.children.getByName('route-map-frame').alpha,
+      frameType: route.children.getByName('route-map-frame').type,
       future: route.children.list.filter((child: any) => child.name === 'route-node-icon'
         && child.getData('routeNodeState') === 'future').map((child: any) => child.alpha),
     };
   });
   expect(hierarchy.frame).toBe(0.14);
+  expect(hierarchy.frameType).toBe('NineSlice');
   expect(hierarchy.future.length).toBeGreaterThan(0);
   expect(hierarchy.future.every((alpha: number) => alpha >= 0.9)).toBe(true);
   for (const viewport of viewports) {
@@ -86,13 +88,15 @@ test('normal reward choices keep authored rules bounded while showing card art',
   });
   await page.waitForFunction(() => {
     const battle = (window as any).__birdSquadGame.scene.getScene('BattleScene');
-    return battle.root.getByName('reward-card-art') && battle.rewardPresentationReady();
+    return battle.root.list.filter((child: any) => child.name === 'reward-card-art').length === battle.rewardChoices.length
+      && battle.rewardPresentationReady();
   });
   const geometry = await page.evaluate(() => {
     const battle = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     const named = (name: string) => battle.root.list.filter((child: any) => child.name === name);
     return {
       arts: named('reward-card-art').length,
+      backdropTweens: battle.tweens.getTweensOf(named('reward-ceremony-backdrop')[0]).length,
       rules: named('reward-card-effect').map((effect: any, index: number) => {
         const panel = named('reward-card-effect-panel')[index].getBounds();
         const bounds = effect.getBounds();
@@ -103,6 +107,7 @@ test('normal reward choices keep authored rules bounded while showing card art',
     };
   });
   expect(geometry.arts).toBe(3);
+  expect(geometry.backdropTweens).toBe(0);
   expect(geometry.rules).toEqual([true, true, true]);
   for (const viewport of viewports) {
     await page.setViewportSize(viewport);

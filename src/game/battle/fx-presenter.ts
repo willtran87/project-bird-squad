@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 export { presentTriggerFeedback } from './trigger-feedback';
+export { playEncounterIntro } from './encounter-intro';
 export { presentNumberFeedback, type NumberFeedback } from './number-feedback';
 
 export type BattleFxParticleQuality = {

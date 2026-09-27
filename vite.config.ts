@@ -23,6 +23,18 @@ const bundleCompositionReport: Plugin = {
 
 export default defineConfig(({ command }) => ({
   plugins: [bundleCompositionReport],
+  experimental: {
+    renderBuiltUrl(filename, context) {
+      // Image URLs are consumed by the document's Phaser/DOM loaders, not by
+      // module resolution. This single-document app lives at root or the Pages
+      // directory (no history routes), so document-relative paths avoid repeating
+      // the deployment prefix in hundreds of manifests. No <base> override is
+      // needed; retain the strict base-uri 'none' security policy.
+      // Leave CSS, HTML and JS chunk/preload URLs under Vite's normal handling.
+      if (context.hostType === 'js' && context.type === 'asset'
+        && /\.(?:webp|png|jpe?g|svg)$/.test(filename)) return filename;
+    },
+  },
   resolve: command === 'build'
     ? {
       alias: {
@@ -60,6 +72,7 @@ export default defineConfig(({ command }) => ({
           // Keep the read-only combat dossier independently measurable. It is
           // a dependency of the lazy hand renderer, never a title preload.
           if (moduleId.endsWith('/src/game/battle/card-detail.ts')) return 'combat-card-detail';
+          if (moduleId.endsWith('/src/game/battle/encounter-intro.ts')) return 'encounter-intro';
           if (
             moduleId.includes('/src/game/codex-data')
             || moduleId.includes('/data/cards/arcana/')

@@ -30,26 +30,12 @@ import type {
   VisualContrastState,
 } from './visual-accessibility';
 import type { ScreenReaderPreference, ScreenReaderState } from './screen-reader-accessibility';
-import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
+import { MIN_SUPPORTED_TOUCH_TARGET, UI_FONT, UI_BOLD, MENU_UI } from './theme';
+const { gold: UI_GOLD, cyan: UI_CYAN, soft: UI_SOFT, field: UI_FIELD } = MENU_UI;
+import { bindActionFocus } from './action-focus';
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
-const UI_FONT = 'Arial';
-const UI_BOLD = 'bold';
-const UI_GOLD = '#dfc18b';
-const UI_CYAN = '#adc9d2';
-const UI_SOFT = '#a4b6c2';
-const UI_FIELD = {
-  ink: 0x0b1723,
-  gold: 0x86b1be,
-  brass: 0x86b1be,
-  cyan: 0x86b1be,
-  green: 0x86b1be,
-  danger: 0xe05b4f,
-  muted: '#9cabb4',
-  warm: '#eee8d8',
-  text: '#eee8d8',
-};
 
 type UiAdd = (object: Phaser.GameObjects.GameObject) => void;
 type MotionPreference = 'full' | 'system' | 'reduced';
@@ -95,11 +81,13 @@ export interface HowToPlayOverlayOptions {
   onClose: () => void;
   guide: { enabled: boolean; completed: boolean };
   onGuideAction: () => void;
+  onPractice?: () => void;
 }
 
 export interface PauseOverlayOptions {
   title: string;
   subtitle: string;
+  saveFailed?: boolean;
   details: Array<[string, string]>;
   onResume: () => void;
   onMenu: () => void;
@@ -722,9 +710,11 @@ export function renderPauseMenuOverlay(
     fontFamily: 'Georgia, serif', fontSize: '38px', color: UI_FIELD.text,
   }).setResolution(2).setOrigin(0.5, 0));
   addUi(addTo, scene.add.text(640, frame.top + 106, memoryStorageSessionActive()
-    ? 'Nothing saved. Main Menu ends practice.' : options.subtitle, {
-    fontFamily: UI_FONT, fontSize: '15px', color: UI_SOFT, align: 'center', wordWrap: { width: 470 },
-  }).setResolution(2).setOrigin(0.5, 0));
+    ? 'Nothing saved. Main Menu ends practice.' : options.saveFailed
+      ? 'Could not save. Your flight is still here.\nRetry Main Menu, or Resume and keep this tab open.' : options.subtitle, {
+    fontFamily: UI_FONT, fontSize: options.saveFailed ? '18px' : '15px',
+    color: options.saveFailed ? '#ffd0bf' : UI_SOFT, align: 'center', wordWrap: { width: 470 },
+  }).setResolution(2).setOrigin(0.5, 0).setName('pause-status'));
   options.details.slice(0, 4).forEach(([label, value], index) => {
     const y = frame.top + 176 + index * 36;
     addUi(addTo, scene.add.text(frame.left + 100, y, label, {
@@ -776,8 +766,9 @@ function renderQuietMenuPanel(scene: Phaser.Scene, addTo: UiAdd, width: number, 
 function renderQuietMenuButton(scene: Phaser.Scene, addTo: UiAdd, x: number, y: number, width: number, label: string, onClick: () => void, primary = false) {
   const hit = addUi(addTo, scene.add.rectangle(x, y, width, MIN_SUPPORTED_TOUCH_TARGET, primary ? 0xd8b568 : 0x0b1723, 1)
     .setInteractive({ useHandCursor: true }).setName('system-field-button-hit').setData('label', label));
-  addUi(addTo, scene.add.text(x, y, label, {fontFamily: UI_FONT, fontSize: '16px', color: primary ? '#101b24' : UI_FIELD.text})
+  const caption = addUi(addTo, scene.add.text(x, y, label, {fontFamily: UI_FONT, fontSize: '16px', color: primary ? '#101b24' : UI_FIELD.text})
     .setResolution(2).setOrigin(0.5));
+  hit.setData('caption', caption);
   hit.on('pointerover', () => hit.setFillStyle(primary ? 0xefd293 : 0x152b39));
   hit.on('pointerout', () => hit.setFillStyle(primary ? 0xd8b568 : 0x0b1723));
   hit.on('pointerdown', onClick);
@@ -1571,8 +1562,8 @@ export function renderHowToPlayOverlay(
   options: HowToPlayOverlayOptions,
   dependencies: SystemOverlayDependencies,
 ) {
-  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b1723, 1)
-    .setInteractive({ useHandCursor: false }));
+  const lifecycle = addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b1723, 1)
+    .setInteractive({ useHandCursor: false }).setName('how-to-play-actions'));
   const frame = renderQuietMenuPanel(scene, addTo, 1160, 660);
   addUi(addTo, scene.add.text(168, 98, 'How to Play', {
     fontFamily: 'Georgia, serif', fontSize: '40px', color: UI_FIELD.text,
@@ -1580,7 +1571,7 @@ export function renderHowToPlayOverlay(
   addUi(addTo, scene.add.text(170, 158, 'Build a flock. Find your rhythm. Make every choice count.', {
     fontFamily: UI_FONT, fontSize: '17px', color: UI_SOFT,
   }).setResolution(2).setName('how-to-play-readable'));
-  renderQuietMenuButton(scene, addTo, frame.right - 66, 88, 104, 'Close',
+  const close = renderQuietMenuButton(scene, addTo, frame.right - 66, 88, 104, 'Close',
     () => { dependencies.playUiSound('close'); options.onClose(); });
 
   const cards = [
@@ -1671,5 +1662,11 @@ export function renderHowToPlayOverlay(
   });
 
   const guideLabel = options.guide.enabled && !options.guide.completed ? 'Skip Guide' : 'Replay Guide';
-  renderQuietMenuButton(scene, addTo, frame.cx, frame.bottom - 42, 190, guideLabel, options.onGuideAction);
+  const guide = renderQuietMenuButton(scene, addTo, options.onPractice ? 790 : frame.cx, frame.bottom - 42, 190, guideLabel, options.onGuideAction);
+  const actions = [{ hit: guide, label: guideLabel, run: options.onGuideAction }, { hit: close, label: 'Close', run: options.onClose }];
+  if (options.onPractice) {
+    const practice = renderQuietMenuButton(scene, addTo, 500, frame.bottom - 42, 230, 'Practice lessons', options.onPractice, true);
+    actions.unshift({ hit: practice, label: 'Practice lessons', run: options.onPractice });
+  }
+  bindActionFocus(scene, lifecycle, actions);
 }

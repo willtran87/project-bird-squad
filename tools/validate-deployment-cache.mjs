@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const buildDir = path.join(root, '.artifacts', 'build');
+const buildDir = path.resolve(root, process.argv[2] ?? '.artifacts/build');
 const assetsDir = path.join(buildDir, 'assets');
 const indexPath = path.join(buildDir, 'index.html');
 const headersPath = path.join(buildDir, '_headers');
@@ -430,6 +430,8 @@ if (failures.length === 0) {
   }
 
   const vendorChunks = files.filter((name) => /^vendor-phaser-.*\.js$/.test(name));
+  const introChunks = files.filter((name) => /^encounter-intro-.*\.js$/.test(name));
+  if (introChunks.length !== 1) fail(`Expected exactly one lazy encounter intro chunk, found ${introChunks.length}.`);
   if (vendorChunks.length !== 1) {
     fail(`Expected exactly one vendor-phaser chunk, found ${vendorChunks.length}.`);
   }
@@ -476,4 +478,4 @@ if (failures.length > 0) {
 }
 
 console.log('Deployment cache validation passed.');
-console.log('Deployment headers validated: strict script CSP, browser hardening, /index.html no-cache, and immutable /assets/*.');
+console.log('Local _headers manifest validated: CSP, browser hardening, HTML revalidation, and immutable assets. Live hosting headers are not checked by this command.');

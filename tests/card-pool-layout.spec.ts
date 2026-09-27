@@ -60,10 +60,16 @@ test('complete card pool preserves measured rules and bounded frames in every st
           b.hand.forEach((card: any, i: number) => {
             const title = named('combat-card-title')[i], rules = named('combat-card-readable-summary')[i];
             const frame = b.handCardFrames.get(card.instanceId), rect = b.handCardRects.get(card.instanceId);
+            const effects = b.activeCardContract(card).effects;
+            const quickRead = rules.getData('quickRead');
             const checks = {
               title: contains(named('combat-card-title-panel')[i].getBounds(), title.getBounds()),
               rules: contains(named('combat-card-rules-panel')[i].getBounds(), rules.getBounds()),
               source: rules.getData('fullText') === b.activeCardContract(card).text.replace(/\s+/g, ' ').trim(),
+              quickRead: quickRead === b.battleHandCardView(card).summary,
+              extraEffects: effects.length <= 3 || quickRead.includes(`+${effects.length - 3} more`),
+              firstUse: !effects.slice(0, 3).some((effect: string) => effect.includes('firstPlayedThisCombat'))
+                || quickRead.includes('first use/fight'),
               omission: !rules.getData('truncated') || rules.text.endsWith('…'),
               frame: !frame || contains(rect.getBounds(), frame.getBounds()),
             };

@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
 
 test('deck comparison pages preserve full rules and separate pin from selection', async ({ page }, info) => {
+  // Complete comparisons and screenshots span all supported viewport sizes.
+  test.setTimeout(90000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });

@@ -97,7 +97,7 @@ test('polish: readable combat, safe preselection, pause and end turn', async ({p
   expect(errors).toEqual([]);
 });
 
-test('polish: every focused card stays above the hand', async ({ page }, info) => {
+test('polish: every focused card keeps inspection beside the hand without covering the leader', async ({ page }, info) => {
   await start(page, 'CodexScene');
   await start(page, 'BattleScene', { routeNodeId: 'm1_entry' });
   const bounds = await page.evaluate(() => {
@@ -113,10 +113,12 @@ test('polish: every focused card stays above the hand', async ({ page }, info) =
   });
   expect(bounds.length).toBeGreaterThanOrEqual(440);
   for (const r of bounds) {
-    expect(r.top, r.id).toBeGreaterThanOrEqual(100);
-    expect(r.bottom, r.id).toBeLessThanOrEqual(440);
-    expect(r.left, r.id).toBeGreaterThanOrEqual(0);
-    expect(r.right, r.id).toBeLessThanOrEqual(480);
+    // Full rules is now an explicit control in the reserved left gutter, not
+    // an automatic dossier obscuring the leader. Complete reading is modal.
+    expect(r.top, r.id).toBeGreaterThanOrEqual(440);
+    expect(r.bottom, r.id).toBeLessThanOrEqual(550);
+    expect(r.left, r.id).toBeGreaterThanOrEqual(24);
+    expect(r.right, r.id).toBeLessThanOrEqual(154);
   }
   await page.screenshot({ path: info.outputPath('focused-card-bounds.png') });
   const hud = await page.evaluate(() => {

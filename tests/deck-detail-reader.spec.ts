@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test';
 
 test('single-card Deck Review retains every rule and stays read-only', async ({ page }, info) => {
+  // Complete rule paging and multi-viewport captures exceed a single-action deadline.
+  test.setTimeout(90000);
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });

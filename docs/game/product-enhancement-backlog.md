@@ -5,6 +5,14 @@ on 2026-09-07. This backlog preserves the complete scope across implementation
 passes. A passing build is evidence for that revision, not proof of subjective
 quality or completion of every item.
 
+September 27 P0 closeout: **33/33 P0 packages implemented and locally verified;
+0 open P0 packages.** The normalized table below is current; earlier checkpoint
+paragraphs are historical. Evidence, retained failed runs, final build identities
+and limitations are recorded in [the P0 acceptance record](p0-resolution-report.md).
+P1/P2 work is unchanged. Owner-waived human, physical-device and assistive-technology
+testing is still unverified, not converted into passing evidence. Nothing was
+committed, pushed or deployed as part of this closeout.
+
 Status: **open** unless explicitly marked otherwise. Each item requires the
 player outcome below, proportionate regression coverage, and playable inspection
 when presentation changes. Balance changes require observed behavior; simulated
@@ -21,7 +29,35 @@ choice consequences and build advice, preserving armed picks. The subsequent
 vitals and comparison text, and groups numeric combat bursts. Broader reference
 journeys and device qualification remain open. See `progress.md` for evidence.
 
+September 26 C01/event-reading checkpoint: combat hand faces now present
+effect-bounded quick reads with explicit additional-effect counts, retaining
+complete authored rules in the existing non-committing reader. Event options
+use measured word excerpts, slightly larger type and taller short-list rows;
+their separate Read action still exposes full consequences. Three-size card
+catalog and event-choice captures and focused input tests are recorded in
+`progress.md`. These specific legibility fixes do not close the broader
+combat, balance, art, onboarding or release-evidence workstreams.
+
 ## Continuation — combat inventory parity and preserved decisions
+
+September 26 priority input/recovery checkpoint (D02/D03/I01/I03/I04/T03):
+district contracts now offer the same three choices through pointer, remapped
+keyboard and browser Gamepad polling, with visible/narrated focus, larger goals
+and accurate completion-reward wording. Combat's Full rules button now survives
+leaving the selected card, so pointer activation is not lost during hover exit.
+The pointer-only Quick reference flight reaches three-district victory and Replay.
+These specific fixes have three-size screenshots and focused browser evidence.
+
+Route and battle Main Menu actions no longer leave the live flight when saving
+fails. A persistent route warning offers Retry; pause keeps the flight intact
+and explains the failure. Battle exits retain a complete pre-fight route
+checkpoint instead of a partial mid-combat snapshot that dropped mode/contracts
+and could carry spent resources into a restarted fight. Reload/Main Menu and
+failed-save recovery pass in Chromium, Firefox and WebKit, including exit after
+actual enemy damage. A separate browser-Gamepad-API-only flight also reaches
+three-district victory and Replay without keyboard events. The broader stress
+matrix and release regression remain explicit acceptance work; these fixes do
+not close all P0 packages. See `progress.md` for final results and cleanup limits.
 
 September 21 Found Waymarks follow-up (D04/I04/X01): both owned-artifact
 drawers now expose 58px Earlier/Later shelf controls, an explicit visible-item
@@ -654,8 +690,10 @@ The latest 70-point review expands and reorganizes the requirements above.
 The work packages below are a normalized implementation index, not a claim
 that existing systems are absent or that a prior completed item reopened.
 Keep the original 52-item evidence and cross-reference it when closing work.
-**All packages remain open; `partial` means bounded implementation/evidence,
-not overall completion.** Do not count a design document as a shipped feature.
+**Packages remain open unless explicitly marked implemented/verified or
+owner-skipped; `partial` means bounded implementation/evidence, not overall
+completion.** Do not count a design document as a shipped feature. Owner-skipped
+evidence is unverified, never a passing quality grade.
 
 ### Reference-flow acceptance contract
 
@@ -681,36 +719,36 @@ P2 = expansion after the foundation is proven.
 
 | Package | Priority | Outcome / remaining acceptance |
 | --- | --- | --- |
-| D01 | P0 | One visual direction. Contract above established; apply consistently across every decision surface. **Partial.** |
-| D02 | P0 | Shared surface/type/spacing tokens. `DECISION_UI` begins with combat details; migrate and inspect remaining menus. **Partial.** |
-| D03 | P0 | Complete reference journey meets the contract above, not just isolated screenshots. |
-| D04 | P0 | Remove competing focal points and duplicate information in each scene/state. Combat selection no longer requires a large automatic dossier. Codex cards, Supplies, Waymarks, enemies and leaders use quieter detail surfaces; full rules remain readable, enemy/leader kits precede lore, and hidden boss tactics use one counted message. Leaders have measured unlock instructions and touch paging. Collection section/filter tabs use text, counts and selected underlines rather than competing medallions/frames. Supply, Waymark, Leader, enemy and glossary grids use restrained tiles, 18px measured summaries and explicit ellipses; all 200 entries fit without overlap. Rendering, keyboard/controller focus and lazy artwork loading share the same grid measurements, fixing the prior item three/four-column mismatch. Enemy grids retain health, district, concept status and observed boss tactic counts without duplicate chips. Card galleries now separate measured 18px names and 14px ownership/collection labels from complete 2:3 artwork; all 110 cards retain unobscured canonical frames and printed titles, with no duplicate decorative entry frame. Five-column layout, reserved New/filter header space and shared focus/scroll/art-loading measurements keep the gallery aligned. Codex navigation now has its own 18px section row, with separate 14–18px search/sort/lens/saved-view/Atlas controls and 14px set tabs. Measured 18px filter chips replace tiny text; Mark all seen is distinct from Clear filters in visuals and narration. All hit areas and focus coordinates share the new layout, and a single filtered card no longer shows an unnecessary scroll fade. Saved Views and Collection Atlas now use quiet progress rows and 18–22px reading text, complete search criteria on dedicated lines, 58px actions with 16px shortcuts, and shared focus geometry. Empty/full/failure states, all collection stages and compact touch are covered in both browsers at three sizes. Card dossiers now separate intact 320×480 artwork, a wider gameplay-first reader, 58px Back/More controls and four 264×58 collection actions. Labels use 18px text with separate 14px bindings; all 110 entries and New/protected/tagged/showcased/full/tracked/active-flight states have built-browser geometry coverage. The journal editor now has a unified responsive native dialog with readable body text, explicit Save/Cancel actions and visible focus. Other scene/state coverage remains. **Partial.** |
+| D01 | P0 | **Implemented; local automated acceptance verified (September 27).** Dark urban bird/tarot direction retained across title, route, combat, rewards and readers; restrained framing and a clear primary decision. |
+| D02 | P0 | **Implemented; local automated acceptance verified (September 27).** Shared menu/reader/surface typography, spacing and palette tokens are applied across decision and system screens; built geometry and hierarchy checks pass. |
+| D03 | P0 | **Implemented; local automated acceptance verified (September 27).** Pointer, keyboard and browser-Gamepad reference flights reach three-district victory and Replay without mechanical overrides. Final isolated controller flight completes 270 decisions with zero keyboard events; physical-controller testing remains owner-waived. |
+| D04 | P0 | **Implemented; local automated acceptance verified (September 27).** Text-led collection navigation, quiet measured grids/dossiers, explicit full-rule readers and bounded combat results remove competing decoration without hiding gameplay information. |
 | D05 | P1 | Review the complete product against the same quality criteria before expanding content. |
-| V01 | P0 | Combatant silhouettes, targets, intents and health remain readable against every district. Prior stage passes cover entry/boss; broader encounter matrix remains. **Partial.** |
-| V02 | P0 | Persistent HUD has a clear survival/resource/action hierarchy, including crowded modifier states. **Partial.** |
-| V03 | P0 | Separate selection, outcome forecast and confirmation; selection must not cover the leader. Explicit details implemented; full journey evidence remains. **Partial.** |
-| V04 | P0 | Consolidate transient damage/status/passive notifications without losing inspectable causal order. Damage, Cover, healing, blocked hits, enemy-applied Winded/Ruffled/Fouled, and Open Sky exposure use bounded per-target result lanes, with same-source bursts grouped and exact event order retained in history. The flock result stack sits beside its sprite; repeated status art coalesces while active, and redundant secondary particles/defeat overlays were removed. Other status/passive families and dense full-run chains remain. **Partial.** |
-| V05 | P0 | Reserve safe regions for hand, intents and actions during every animation and overlay. **Partial.** |
+| V01 | P0 | **Implemented; local automated acceptance verified (September 27).** All 80 authored encounters pass artwork and enemy/intent/vital/status/phase geometry checks at 2560×1600, 1440×900 and 1000×560; representative captures inspected. |
+| V02 | P0 | **Implemented; local automated acceptance verified (September 27).** Survival, incoming damage, resources and the current action have distinct HUD regions, including crowded modifiers and low-health forecasts. |
+| V03 | P0 | **Implemented; local automated acceptance verified (September 27).** Selection, exact forecast, inspection and commitment remain distinct. Selection preserves leader visibility; confirmation and complete-rules controls have regression coverage. |
+| V04 | P0 | **Implemented; local automated acceptance verified (September 27).** Damage, healing, Cover, remaining status/resource and passive chains use bounded target-associated results, grouped repeats and full ordered combat history. |
+| V05 | P0 | **Implemented; local automated acceptance verified (September 27).** Hand, intents, combatants and action controls retain reserved regions during motion, overlays and reduced-flash/motion states; geometry and sequence checks pass. |
 | A01 | P1 | Audit character/enemy/card art for consistent finish, lighting and scale; replace only demonstrated outliers. |
 | A02 | P1 | Align combatant staging, shadows and contact points across all enemy formations. **Partial.** |
 | A03 | P1 | Establish district-specific environment contrast without reducing essential readability. **Partial.** |
 | A04 | P1 | Give effects consistent direction, origin, layer and semantic colors/shapes. |
 | A05 | P1 | Review complete art at delivery resolution; eliminate placeholders, visual seams and inconsistent asset tiers. |
-| C01 | P0 | Card face prioritizes name, cost and active effect; full authored rules are reachable without commitment. **Partial.** |
-| C02 | P0 | Fixed-size, measured full-rule pagination for Now/Molt and long text. Hand and combat deck/draw/discard/cleared inspection share the 22px reader. Route comparisons use synchronized 18px pages. Explicit combat/route rewards and Preen/Release inspection share 22px measured pages for active/alternate rules, passive bonuses and full identity. Combat rewards also expose upgraded Molt rules and show printed costs/normal rules independent of the finished battle's stance. Route single-card Deck Review uses 22px measured pages for Now, Preen, Molt, upgraded Molt, passive bonuses and full identity. Market Waymarks, Supplies and services now use a stable 22px paged reader for effects, rules, build advice, purchase consequences and full identity. Market rules now use complete readable effect text; trigger frequencies match combat behavior, including the repeat-Supply exception. Non-Market item tooltips and remaining technical wording elsewhere remain; evidence is in progress.md. **Partial.** |
-| C03 | P0 | Distinguish active effects, passive contribution, temporary changes and flight/collection persistence. Combat separates active/passive pages. **Partial.** |
+| C01 | P0 | **Implemented; local automated acceptance verified (September 27).** Measured names, costs and effect-bounded quick reads preserve card identity. Explicit non-committing readers expose every authored rule; all 110 cards have catalog evidence. |
+| C02 | P0 | **Implemented; local automated acceptance verified (September 27).** Complete fixed-size pagination covers hand/piles, rewards, Preen/Release, comparisons, Deck Review, Market and non-Market items; definitions and full identity remain readable without shrinking. |
+| C03 | P0 | **Implemented; local automated acceptance verified (September 27).** Readers distinguish Now/Molt/Preened rules, passive contributions, printed costs, temporary state and flight-versus-collection consequences. |
 | C04 | P1 | Compare exact add/remove/Preen/Market consequences with deck-size and draw assumptions. Existing comparison work remains partial (5, 7, 28, 31). |
 | C05 | P1 | Complete glossary/vocabulary and icon consistency, with contextual definitions that preserve the decision. The Codex now contains 34 unique glossary entries, including every one of the 21 canonical contextual terms with the exact shared definition; each opens in a measured 22px reader with keyboard, controller, pointer, touch paging and screen-reader narration, and closing restores the exact entry and scroll. Combat hand/pile readers append deduplicated definitions for terms in the card’s active/alternate rules, stats and cost, using the existing 22px pages without adding persistent HUD. Hover, Codex and combat readers share canonical definitions; corrected Wingbeat timing, Cover reset, per-hit Open Sky Guard, Winded ownership/duration and whole-deck Keystone wording against runtime behavior. Route single-card Deck Review, Market cards, route rewards/Preen/Release, combat rewards/Preen and both comparison modes reuse contextual definitions after existing rules and consequences. Supply and Waymark readers do the same across owned route/combat shelves, route reward inspection, Market offers, combat Waymark rewards and Codex dossiers; pinned Waymark comparison aligns the same term in both columns. Terms derive only from displayed rules, passive bonuses, costs and authored item effects/triggers, not names, flavor, identity or advice; reading preserves armed choices and resources. HUD/stat chips, contextual help and Codex list/detail readers now share the canonical icon for all 21 gameplay terms; all 34 glossary terms have explicit semantic icons. Authentic comprehension and physical-device/AT qualification still require review. **Partial.** |
-| I01 | P0 | Input acknowledges selection immediately and never loses a valid action silently. |
-| I02 | P0 | Predictable select → target → commit → resolve; protect against double play and stale targets. **Partial.** |
-| I03 | P0 | Inspect/Back restores exact selection and focus. Hand and combat pile reading preserve the pending card, target and pile focus; pile Back no longer counts as cancelling the card. Route comparisons retain pages through redraws and separate Pin/selection/Save/Close. Combat/route reward and Preen/Release readers preserve armed choices and pages through redraws and guard pause/settings. Market non-card readers preserve pages and purchase state, and hovering a different offer cannot replace an armed purchase's preview. Route readers share controller confirmation latches; combat rewards reject repeated keyboard Confirm so holding a key cannot close and then commit. Saved Views and Collection Atlas now stop pending shelf motion and reject background wheel input so Back preserves the exact scroll position; normal grid scrolling resumes after closure. The journal editor freezes pending reader movement, owns wheel/focus, and returns to the same card and scroll position. Saving is explicit; blur/backdrop never commits, failed saves retain drafts, and scene shutdown cancels and disposes the editor. Repeated Codex Confirm/Back cannot advance through successive layers. Verify remaining overlays. **Partial.** |
-| I04 | P0 | Pointer, remapped keyboard and controller navigation expose equivalent actions and accurate hints. Deck Review now reserves an 18px footer below both single-card and comparison readers; the former partly hid its keyboard guide. Three-size geometry and device-mode/remapping checks cover the corrected footer. Other surfaces and physical-device journeys remain. **Partial.** |
-| I05 | P0 | Remove redundant routine confirmations while preserving purchases, skips and irreversible decisions. **Partial.** |
-| F01 | P0 | Measure input-to-feedback and effect-to-result timing; remove unexplained dead beats. Existing cadence regressions retained. **Partial.** |
-| F02 | P0 | Telegraph → action → impact is readable; use overlap only when causal order stays clear. **Partial.** |
+| I01 | P0 | **Implemented; local automated acceptance verified (September 27).** First-action response, pointer inspection, district-contract focus and action-rejection checks pass; valid choices expose immediate feedback and correct input hints. |
+| I02 | P0 | **Implemented; local automated acceptance verified (September 27).** Select → target → commit → resolve is guarded against double events and stale targets, with exact preview/commit parity and live-control journey evidence. |
+| I03 | P0 | **Implemented; local automated acceptance verified (September 27).** Inspection and Back preserve armed choices, pages, focus, scroll and resources across hand/piles, route/rewards, Market and collection overlays; repeated confirmation cannot cross layers. |
+| I04 | P0 | **Implemented; local automated acceptance verified (September 27).** Pointer, remapped keyboard and virtual-controller paths expose the required actions with matching hints. Live journeys and three-size focus/geometry checks pass; physical devices remain owner-waived. |
+| I05 | P0 | **Implemented; local automated acceptance verified (September 27).** Routine inspection stays read-only. Purchases, Skip, upgrades/removal and reload retain explicit deliberate commitment without redundant reading confirmations. |
+| F01 | P0 | **Implemented; local automated acceptance verified (September 27).** Existing first-input/readiness and cadence tests qualify response and effect timing; lazy encounter presentation stays bounded and measured. No physical-device latency claim. |
+| F02 | P0 | **Implemented; local automated acceptance verified (September 27).** Tell → action → impact retains causal order and readable minimums; directional/contact, feedback grouping and enemy sequencing checks pass. |
 | F03 | P1 | Draw/play/discard/return and resource transitions share cohesive motion and appropriate emphasis. |
 | F04 | P1 | Mix voices, impacts and music so simultaneous events do not mask essential feedback. |
-| F05 | P0 | Pace, Hustle, reduced motion, pause and resume retain identical gameplay results. **Partial.** |
+| F05 | P0 | **Implemented; local automated acceptance verified (September 27).** Pace, Hustle, pause/resume, reduced motion and reduced flash retain mechanical parity and complete event order. |
 | G01 | P1 | Demonstrate several viable plans per Leader, not merely available card tags. |
 | G02 | P1 | Evaluate card usefulness and common-card relevance across run stages and archetypes. |
 | G03 | P1 | Audit infinites, excessive stalling and dominant wide/thin-deck strategies with reproducible evidence. |
@@ -718,7 +756,7 @@ P2 = expansion after the foundation is proven.
 | G05 | P1 | Tune fair randomness, pivot tools and difficulty using observed decision outcomes, not speculative nerfs. |
 | E01 | P1 | Every enemy role creates a recognizable tactical question and understandable counterplay. |
 | E02 | P1 | Enemy combinations vary sequencing and target priorities without unreadable status stacks. |
-| E03 | P0 | Intent, phase threshold and exact result agree across status/interrupt edge cases. **Partial.** |
+| E03 | P0 | **Implemented; local automated acceptance verified (September 27).** Intent, phase thresholds, healing, damage and interrupt/status previews agree with actual results in parity and sequence regressions. |
 | E04 | P1 | Bosses test flexible preparation and adaptation rather than hidden rules or one required counter. |
 | E05 | P1 | Tune ordinary/elite/boss duration, repetition and already-decided fight tails against play evidence. |
 | R01 | P1 | Route tradeoffs reflect current health, build, resources and risk without prescribing one path. |
@@ -726,9 +764,9 @@ P2 = expansion after the foundation is proven.
 | R03 | P1 | Market purchase/save/Release/Preen/heal choices compete across actual run states. |
 | R04 | P1 | Events and Supplies communicate known costs, uncertainty and lasting consequences before commitment. **Partial.** |
 | R05 | P1 | Validate route generation, reward droughts and late-run pacing across seeds and Leaders. |
-| U01 | P0 | Title exposes one obvious start/continue path; secondary tools stay secondary. Prior title cleanup retained; journey review remains. **Partial.** |
-| U02 | P0 | Settings/help/rewards/results follow consistent hierarchy, navigation and Back behavior. **Partial.** |
-| U03 | P1 | Playable, optional lessons teach damage/defense, Flow and Molt in context. |
+| U01 | P0 | **Implemented; local automated acceptance verified (September 27).** Title prioritizes Start/Continue while secondary tools remain secondary; live title-to-flight and checkpoint-resume paths pass. |
+| U02 | P0 | **Implemented; local automated acceptance verified (September 27).** Settings, help, rewards and results use shared hierarchy and consistent focus/Back behavior; outcome Replay passes with keyboard and controller. |
+| U03 | P1 | **Implemented; automated acceptance verified.** Optional Cover, Flow and Molt lessons use live rules, disposable practice storage and contextual prompts. All 18 cases pass across Chromium, Firefox and WebKit: completion, exact saved-flight preservation/resumption, remapping/controller events, repeated openings/listener cleanup, failed-download recovery and duplicate-event protection without delaying distinct presses. Three-size built screenshots reviewed. Authentic comprehension and physical-device/AT evidence remain owner-skipped, not passed; this does not certify subjective teaching effectiveness. |
 | U04 | P1 | Continue and defeat explain current recovery point and actionable next steps. |
 | U05 | P1 | Collection → comparison → Folio → practice is discoverable without a menu maze. |
 | P01 | P2 | Collection unlocks expand strategies, not mandatory power or grinding. |
@@ -736,21 +774,21 @@ P2 = expansion after the foundation is proven.
 | P03 | P2 | Mastery records and cosmetics reward experimentation without confusing card identity. |
 | P04 | P2 | Persistent optional challenges deepen replay without streak pressure or deadlines. |
 | P05 | P2 | District events and character consequences produce memorable, coherent run stories. |
-| X01 | P0 | Readable detail text and hit areas at supported sizes. Combat details, route single-card Deck Review, explicit route reward/Preen/Release and Market non-card readers use 22px logical body text and 58px paging controls; route comparison rules/index names use 18px at 2x resolution, with 58px paging/Pin/Close controls. Three-size built geometry evidence exists; Waymark/Supply shelves now separate 18px names and explicit Scrap prices from distinct 112px item art, with measured title excerpts and full names in inspection. Market services now use 20px names/explicit Scrap prices and separated 58–76px rows for early/later districts; unavailable Refresh exposes its exact shortfall without purchasing. Saved Views and Collection Atlas have 18–22px body labels and 58px actions; maximum-length queries, counts, all progress stages and touch operation are checked at three sizes. Card dossier actions now use 18px labels and 58px targets, with separate 58px touch paging for the full rules, collection record and notes. Complete artwork is no longer affected by reading-area curtains. The native journal editor now retains 18px body text, 16px help and 48px physical action targets independently of canvas scale, with scrollable content and persistent actions for short viewports. Remaining item tooltips and physical-device qualification remain. **Partial.** |
-| X02 | P0 | Color, shape and wording communicate state redundantly; contrast remains valid in all options. |
-| X03 | P0 | Complete remapping, input focus, reduced motion/flash and independent audio journeys. **Partial.** |
-| X04 | P1 | Actual NVDA/VoiceOver journeys with recorded issues and fixes; automated narration checks are insufficient. |
-| X05 | P1 | Physical touch/controller/device readability, suspension and sustained-play qualification. |
-| T01 | P0 | Enforce boot/module/asset budgets and verify real transition stalls, not just averages. **Partial.** |
+| X01 | P0 | **Implemented; local automated acceptance verified (September 27).** Measured readers, visible focus and action targets pass supported-size checks. Non-Market item reading is now complete and paginated; physical-device readability remains owner-waived. |
+| X02 | P0 | **Implemented; local automated acceptance verified (September 27).** Wording, symbols, shapes and selection/focus cues supplement color; contrast/options and semantic-icon regressions pass. |
+| X03 | P0 | **Implemented; local automated acceptance verified (September 27).** Remapping, input focus, reduced motion/flash, independent audio and automated narration paths pass. Actual assistive-technology and physical-device sessions remain owner-waived. |
+| X04 | P1 | Actual NVDA/VoiceOver journeys: **owner-skipped**, not verified. Automated narration checks remain required and cannot stand in for actual AT sessions. See release-waiver-reconciliation.md. |
+| X05 | P1 | Physical touch/controller/device readability, suspension and sustained-play qualification: **owner-skipped**, not verified. Automated input/layout and browser checks remain required. See release-waiver-reconciliation.md. |
+| T01 | P0 | **Implemented; local automated acceptance verified (September 27).** Root and Pages artifacts pass unchanged hard boot/module/asset limits; encounter presentation is lazy and startup milestones recorded. Preferred 675/710 KiB targets still warn; sustained device performance is not certified. |
 | T02 | P1 | Bound long-session allocations, texture ownership and listener/timer lifetimes. |
-| T03 | P0 | Interruption recovery preserves advertised checkpoint, choices and collection without duplication. |
+| T03 | P0 | **Implemented; local automated acceptance verified (September 27).** Durable reward checkpoints, validated acquisition receipts and a finished-flight outbox preserve choices/results through interruption and retries without duplicate records. Backup, storage-failure and three-engine recovery checks pass. |
 | T04 | P1 | Consolidate shared presentation/decision logic with regression coverage, not a speculative scene rewrite. **Partial.** |
-| T05 | P0 | Validate deployment cache/chunks and retain rollback/recovery paths for updates. |
-| Q01 | P0 | Repeatable automated rule/sequence/preview parity coverage, including combinations and stress states. **Partial.** |
-| Q02 | P0 | Built visual and interaction evidence at all three sizes, including full-art gameplay. **Partial.** |
+| T05 | P0 | **Implemented; local automated acceptance verified (September 27).** Cancellable download recovery revalidates failed resources before explicit whole-document reload. Root/Pages delivery checks pass; rollback instructions and CI gates are recorded. No live deployment or hosted-header certification is claimed. |
+| Q01 | P0 | **Implemented; local automated acceptance verified (September 27).** Rule, sequence, preview, interruption, dense-feedback and encounter stress checks are repeatable. All baseline failures have passing targeted reconciliation; the retained broad failed run is not relabeled green. |
+| Q02 | P0 | **Implemented; local automated acceptance verified (September 27).** Built three-size catalog and interaction captures include complete art, long rules, high-hand-count, low-health and reduced-motion states; representative final outcome and Pages captures inspected. |
 | Q03 | P1 | Authentic new/experienced-player sessions establish comprehension, pacing and enjoyment; retain the explicit owner waiver. |
-| Q04 | P0 | Tie release claims to current revision, evidence, open defects and explicit waivers. Existing policy retained. **Partial.** |
-| Q05 | P0 | Track remaining scope honestly; clean launched test resources and leave only the requested preview. **Partial.** |
+| Q04 | P0 | **Implemented; local automated acceptance verified (September 27).** Exact source/artifact SHA-256 identities, intermediate failures, final reports and owner waivers accompany acceptance. Local implementation does not imply remote CI or publication. |
+| Q05 | P0 | **Implemented; local automated acceptance verified (September 27).** P0 scope and evidence are reconciled separately from P1/P2 and owner-waived checks. Owned test servers/workers are cleaned after verification; retained artifacts are evidence, not running resources. |
 
 ### September 22 — comparison contextual-reading checkpoint
 

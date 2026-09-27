@@ -107,7 +107,7 @@ for (const reduced of [false, true]) {
       expect(result.earlyDamage).toBe(false);
       expect(result.lingeringImpacts).toBe(0); expect(result.impactCleanup).toBe(true);
       expect(result.order.indexOf('Quick Strike:impact')).toBeLessThan(result.order.indexOf('Take Cover:windup'));
-      expect(result.elapsed).toBeLessThan(reduced ? 1750 : 2250);
+      expect(result.elapsed).toBeLessThan(reduced ? 1550 : 2000);
       console.log(`${width} reduced=${reduced}: repeated two-enemy turn ${Math.round(result.elapsed)}ms`);
       expect(errors).toEqual([]);
       await page.screenshot({ path: info.outputPath('player-ready.png') });

@@ -11,7 +11,9 @@ release's five-session gate only. The version-scoped record is
 `docs/game/release-evidence-policy.json`; the validator prints **WAIVED**, not
 passing human evidence. A missing, invalid, or different-version policy fails
 closed. New releases require an explicit policy decision; do not carry a waiver
-forward automatically. Device and assistive-technology evidence is not waived.
+forward automatically. The September 26 reconciliation also records the
+owner's explicitly skipped device and assistive-technology sessions as waived;
+see `release-waiver-reconciliation.md`. These remain unverified, not passed.
 
 For optional human evidence, follow `docs/game/playtest-runbook.md`. Place at least five separate JSON
 exports and their matching observation sheets in
@@ -22,7 +24,8 @@ observer sheet must contain `Exported run ID: <id>` for its matching run.
 ## Physical-device and assistive-technology evidence
 
 Create `.artifacts/release-evidence/manual-audits.json` after performing the
-audits. Never pre-populate passing rows. The required environments are:
+audits. Never pre-populate passing rows. When manual qualification is required,
+the environments are:
 
 - low-end Windows hardware;
 - Android tablet;
@@ -51,11 +54,14 @@ emulation, or an empty checklist does not count.
 
 `npm run validate` remains deterministic and suitable for normal development.
 It does not claim that subjective experience or physical assistive technology
-was tested. `npm run release:verify` remains incomplete until the required
-physical-device and assistive-technology artifacts exist. The current human
-waiver does not remove those requirements or establish subjective quality.
+was tested. `npm run release:verify` must pass every automated gate and prints
+the explicit current-version waivers. Policy satisfaction with waivers does
+not establish human experience, physical-device or assistive-technology quality.
 
-Run `npm run validate:release-evidence -- --strict-human` to require the
-five-session evidence set without modifying the recorded policy. Supplied
+Run `node tools/validate-release-evidence.mjs --strict-human --strict-manual`
+to require authentic player and manual evidence without modifying policy. Supplied
 session files must remain valid and rated human runs still require matching
 observer notes even when the minimum session count is waived.
+
+A supplied manual audit with `passed: false` still fails validation. Waivers
+allow missing owner-skipped evidence; they never conceal a recorded failure.

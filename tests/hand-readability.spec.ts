@@ -34,13 +34,14 @@ test('hand typography preserves authored rules, bounds and turn readiness', asyn
         const panel = named('combat-card-rules-panel')[i].getBounds();
         const contains = (outer: any, inner: any) => inner.left >= outer.left && inner.right <= outer.right && inner.top >= outer.top && inner.bottom <= outer.bottom;
         return { titleFits: contains(header, title.getBounds()), rulesFit: contains(panel, summary.getBounds()),
+          text: summary.text, wrapped: summary.getWrappedText(),
           authored: summary.getData('fullText') === b.activeCardContract(b.hand[i]).text.replace(/\s+/g,' ').trim(),
           omissionMarked: !summary.getData('truncated') || summary.text.endsWith('…'),
           linkedQuantities: summary.getWrappedText().every((line: string) => !/^(?:›|\d+[.!]?|Cover[.!]?|Resonance[.!]?)$/.test(line.trim())) };
       });
     });
     expect(result.length).toBeGreaterThan(0);
-    expect(result.every((r: any) => r.titleFits && r.rulesFit && r.authored && r.omissionMarked && r.linkedQuantities)).toBe(true);
+    expect(result.filter((r: any) => !r.titleFits || !r.rulesFit || !r.authored || !r.omissionMarked || !r.linkedQuantities)).toEqual([]);
     await page.screenshot({path:info.outputPath(`hand-${viewport.width}.png`)});
   }
   await page.setViewportSize({width:2560,height:1600});
@@ -84,6 +85,7 @@ test('hand typography preserves authored rules, bounds and turn readiness', asyn
     b.battleHandCardView = (card: any) => {
       const view = original(card);
       return {...view,name:'Featherwright Emergency Relay Station',canPay:false,usesMolt:true,guideCard:false,guideMolt:false,retainOrder:1,
+        summary:'first: Draw 1 · +4 Cover · Winded: 8 dmg · Retain 1 · if this was your first card this combat gain 2 Resonance and draw 2 more cards',
         preview:{...view.preview,currentText:'If this is your first card this turn, draw a card. Gain 4 Cover. If the target is Winded, deal 8 damage. Retain 1 card.'}};
     };
     b.handRenderKey = ''; b.renderHand();

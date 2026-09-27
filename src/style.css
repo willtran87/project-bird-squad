@@ -25,6 +25,36 @@ body,
   display: none;
 }
 
+#update-recovery {
+  position: fixed;
+  z-index: 200;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  width: min(720px, calc(100vw - 32px));
+  padding: 20px 24px;
+  border: 1px solid #77d9df;
+  border-radius: 12px;
+  background: #0b151f;
+  color: #edf2f5;
+  box-shadow: 0 12px 48px #0009;
+  font-size: 18px;
+  line-height: 1.5;
+}
+#update-recovery p { margin: 0 0 16px; }
+#update-recovery button {
+  min-height: 48px;
+  margin-right: 12px;
+  padding: 10px 16px;
+  border: 1px solid #77d9df;
+  border-radius: 6px;
+  background: #152b36;
+  color: #edf2f5;
+  font: inherit;
+  cursor: pointer;
+}
+#update-recovery button:focus-visible { outline: 3px solid #e8b830; outline-offset: 3px; }
+
 .screen-reader-status {
   position: fixed;
   width: 1px;
@@ -157,6 +187,20 @@ body,
   0% { transform: translateX(-72px); }
   100% { transform: translateX(180px); }
 }
+
+/* Native failure recovery stays readable independently of the canvas scale. */
+#save-recovery {
+  color: #eee8d8; background: #0b1723; border: 1px solid #a99366;
+  max-width: min(640px, calc(100vw - 48px)); max-height: calc(100vh - 48px);
+  padding: 24px; font: 18px/1.5 Arial, sans-serif; overflow: auto;
+}
+#save-recovery::backdrop { background: rgb(2 4 9 / 85%); }
+#save-recovery button {
+  min-height: 48px; padding: 8px 18px; margin: 4px;
+  color: #eee8d8; background: #193140; border: 1px solid #8db4ba;
+  font: inherit; cursor: pointer;
+}
+#save-recovery button:focus-visible { outline: 3px solid #e8b830; outline-offset: 3px; }
 
 body {
   display: grid;

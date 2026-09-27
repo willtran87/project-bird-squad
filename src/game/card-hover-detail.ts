@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { UI_FONT, UI_BOLD, UI_GOLD, UI_CYAN } from './theme';
 import { decisionCardKeywordSections } from './keyword-definitions';
 import { renderMarketCardDossier, renderRouteInspectionReader } from './reward-card-inspection';
 export {
@@ -36,11 +37,6 @@ export {
   setRouteRewardChoice,
   updateRouteRewardGamepad,
 } from './reward-card-inspection';
-
-const UI_FONT = 'Arial';
-const UI_BOLD = 'bold';
-const UI_GOLD = '#ffe1a3';
-const UI_CYAN = '#8df4ff';
 
 export interface CardHoverDetailView {
   marketCardId?: string;

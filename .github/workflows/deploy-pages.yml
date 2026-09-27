@@ -18,6 +18,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 180
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,8 +32,55 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Validate content and release policy
+        run: |
+          npm run validate:docs
+          npm run validate:runtime
+          npm run validate:runtime-assets
+          npm run validate:release-evidence
+
+      - name: Production regression
+        run: npx playwright test --fully-parallel --workers=2 --timeout=90000 --grep-invert="reference flight" --reporter=list,json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/release-results.json
+
+      - name: Serial live-control journeys
+        run: npx playwright test --workers=1 --grep="reference flight" --reporter=list,json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/reference-results.json
+
+      - name: Build Pages artifact
         run: npm run build -- --base=/project-bird-squad/
+
+      - name: Validate delivery budgets and chunk contract
+        run: |
+          npm run validate:bundle-size
+          npm run validate:deployment-cache
+
+      - name: Verify actual Pages base path
+        run: npx playwright test --config=playwright.pages.config.ts
+        env:
+          BIRD_SQUAD_PAGES_PREBUILT: '1'
+          BIRD_SQUAD_PAGES_BUILD_DIR: .artifacts/build
+
+      - name: Record release artifact identity
+        run: node tools/write-build-evidence.mjs
+
+      - name: Retain verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-verification-${{ github.sha }}
+          path: |
+            .artifacts/release-results.json
+            .artifacts/reference-results.json
+            .artifacts/build-evidence.json
+            .artifacts/pages-smoke
+            test-results
+          retention-days: 14
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

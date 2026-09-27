@@ -40,7 +40,7 @@ export function startRunAnimated(
     scene.titleRunLaunchPending = false;
     if (!scene.scene.isActive()) return;
     scene.storageRecoveryNotice = undefined;
-    scene.scene.start('RouteScene', { runState });
+    scene.enterRoute(runState);
   });
 }
 

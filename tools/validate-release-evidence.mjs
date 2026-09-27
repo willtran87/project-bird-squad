@@ -1,19 +1,26 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import { freshPlayerGate } from './release-evidence-policy.mjs';
+import { freshPlayerGate, evidenceGate, failedManualAudits } from './release-evidence-policy.mjs';
 
 const root = process.cwd();
 const sessionDir = path.join(root, '.artifacts', 'playtest-sessions');
 const auditFile = path.join(root, '.artifacts', 'release-evidence', 'manual-audits.json');
 const failures = [];
 let humanGate = { waived: false };
+const manualGates = {};
 try {
   const policy = JSON.parse(fs.readFileSync(path.join(root, 'docs/game/release-evidence-policy.json'), 'utf8'));
   const { version } = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   humanGate = freshPlayerGate(policy, version, process.argv.includes('--strict-human'));
   if (humanGate.error) failures.push(humanGate.error);
   if (humanGate.notice) console.log(humanGate.notice);
+  for (const [kind, key] of [['physical-device', 'physicalDeviceGate'], ['assistive-tech', 'assistiveTechGate']]) {
+    const gate = evidenceGate(policy, version, key, process.argv.includes('--strict-manual'));
+    manualGates[kind] = gate;
+    if (gate.error) failures.push(gate.error);
+    if (gate.notice) console.log(gate.notice);
+  }
 } catch (error) {
   failures.push(`Release policy: ${error.message}`);
 }
@@ -70,7 +77,7 @@ if (fs.existsSync(auditFile)) {
   } catch (error) {
     failures.push(`manual-audits.json: ${error.message}`);
   }
-} else {
+} else if (!manualGates['physical-device']?.waived || !manualGates['assistive-tech']?.waived) {
   failures.push('Manual evidence: missing .artifacts/release-evidence/manual-audits.json.');
 }
 
@@ -79,6 +86,7 @@ const completedAudits = audits.filter((audit) => (
   && typeof audit.revision === 'string' && audit.revision.trim()
   && typeof audit.notes === 'string' && audit.notes.trim()
 ));
+failures.push(...failedManualAudits(audits));
 const requires = [
   ['physical-device', 'windows', 'low-end Windows device'],
   ['physical-device', 'android', 'Android tablet'],
@@ -91,7 +99,7 @@ for (const [kind, environment, label] of requires) {
     String(audit.kind).toLowerCase() === kind
     && String(audit.environment).toLowerCase().includes(environment)
   ));
-  if (!found) failures.push(`Manual evidence: missing passing ${label} audit with revision and notes.`);
+  if (!found && !manualGates[kind]?.waived) failures.push(`Manual evidence: missing passing ${label} audit with revision and notes.`);
 }
 
 console.log(`Release evidence: ${humanRuns.length} rated human runs, ${noteFiles.length} observer notes, ${completedAudits.length} completed manual audits.`);
@@ -100,4 +108,5 @@ if (failures.length) {
   failures.forEach((failure) => console.error(`- ${failure}`));
   process.exit(1);
 }
-console.log('Release evidence validation passed.');
+const waived = humanGate.waived || Object.values(manualGates).some(gate => gate.waived);
+console.log(waived ? 'Release policy satisfied WITH EXPLICIT WAIVERS; skipped evidence is not verified.' : 'Release evidence validation passed.');

@@ -2,6 +2,8 @@ import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
 
 test('one to four enemy clusters keep statuses, vitals and forecasts separate', async ({ page }, info) => {
+  // Twenty-four full-resolution scene captures share this whole-test budget.
+  test.setTimeout(90000);
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.setViewportSize({ width: 2560, height: 1600 });

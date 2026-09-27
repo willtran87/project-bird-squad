@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { supplySynergyTags } from './supply-synergy';
 import { itemKeywordSections } from './keyword-definitions';
 import { createCardJournalEditor } from './card-journal-editor';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
@@ -56,7 +57,7 @@ import {
   queueRuntimeImageAssets, queueUiIconAssets, renderAudioToggleControl, renderRichText,
   renderSnagCardBorder, reserveEnemyArtAsset, routeMarkEffectText,
   showKwTooltip, suitAccentColor, supplyArtAssets, supplyCompactArtAssets,
-  supplySynergyTags, UI_BODY, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, UI_MUTED, UI_SOFT,
+  UI_BODY, UI_BOLD, UI_CYAN, UI_FIELD, UI_FONT, UI_GOLD, UI_MUTED, UI_SOFT,
   uiIconAssets, waymarkArtAssets, waymarkCompactArtAssets, waymarkGlyph,
   waymarkSynergyTags,
   type BossDossierModule, type Card, type CodexDataModule, type CodexEnemyEntry,

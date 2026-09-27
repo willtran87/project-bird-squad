@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { beginPracticeSession, endPracticeSession } from './practice-session';
 import * as runtime from '../main';
-import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
+import { MIN_SUPPORTED_TOUCH_TARGET, UI_FONT, UI_BOLD, UI_GOLD, UI_MUTED, UI_SOFT, UI_FIELD } from './theme';
 import { alphaCardLibrary, alphaCardSet } from './runtime-data';
 import { difficultyLabel } from './difficulty';
 import { flockLeaders } from './leaders';
@@ -81,26 +81,10 @@ import {
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
-const UI_FONT = 'Arial';
-const UI_BOLD = 'bold';
 const UI_ICON_PREVIEW_SCALE = 2.2;
-const UI_GOLD = '#ffe1a3';
-const UI_MUTED = '#8fa3b6';
-const UI_SOFT = '#b9c7d6';
 const FLIGHT_LOG_PAGE_SIZE = 7;
 const BADGE_PAGE_SIZE = 5;
 const SAVED_DECK_PAGE_SIZE = 1;
-const UI_FIELD = {
-  ink: 0x070b12,
-  gold: 0xd8a840,
-  brass: 0xf0c36f,
-  cyan: 0x7ab8d6,
-  green: 0x8fd6a0,
-  violet: 0xc9a6ff,
-  muted: '#91a6b8',
-  warm: '#ffe1a3',
-  cyanText: '#8df4ff',
-};
 
 const profileUiIconIds = [
   'profile-record-flourish',

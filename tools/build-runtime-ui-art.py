@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import argparse
 
 from PIL import Image, ImageOps
 
@@ -17,6 +18,10 @@ LEADER_ROOT = ROOT / "assets" / "runtime" / "flock" / "leaders"
 UI_ICON_ROOT = ROOT / "assets" / "runtime" / "ui" / "icons"
 TITLE_PRELOAD_ICON_ROOT = UI_ICON_ROOT / "title-preload"
 UI_ICON_WEBP_QUALITY = 90
+GENERATED_UI_SOURCES = {
+    'route-map-frame': ('route-map-frame-source-v2.png', (1024, 500)),
+    'reward-ceremony-backdrop': ('reward-ceremony-backdrop-source-v2.png', (1280, 640)),
+}
 TITLE_PRELOAD_ICON_SIZE = 128
 TITLE_PRELOAD_ICON_NAMES = [
     "ascension-medallion",
@@ -66,7 +71,16 @@ def build_leaders() -> None:
         print(f"{rel(target)} ({size_kb(target):.1f} KB)")
 
 
-def build_ui_icons() -> None:
+def build_ui_icons(names: list[str] | None = None) -> None:
+    for name, (filename, dimensions) in GENERATED_UI_SOURCES.items():
+        if names is not None and name not in names:
+            continue
+        source = ROOT / 'assets' / 'concept-art' / 'ui' / 'icons' / 'sources' / filename
+        with Image.open(source).convert('RGBA') as image:
+            fitted = ImageOps.contain(image, dimensions, Image.Resampling.LANCZOS)
+            canvas = Image.new('RGBA', dimensions, (0, 0, 0, 0))
+            canvas.alpha_composite(fitted, ((dimensions[0] - fitted.width) // 2, (dimensions[1] - fitted.height) // 2))
+            canvas.save(UI_ICON_ROOT / f'{name}.png', optimize=True)
     sources = sorted(UI_ICON_ROOT.glob("*.png"))
     if not sources:
         raise FileNotFoundError(f"No runtime UI icon PNG sources found in {rel(UI_ICON_ROOT)}")
@@ -76,6 +90,12 @@ def build_ui_icons() -> None:
     if stale:
         names = ", ".join(rel(path) for path in stale)
         raise RuntimeError(f"Remove stale runtime UI WebP assets before rebuilding: {names}")
+
+    if names is not None:
+        missing = set(names) - {source.stem for source in sources}
+        if missing:
+            raise FileNotFoundError(f"Unknown UI icons: {', '.join(sorted(missing))}")
+        sources = [source for source in sources if source.stem in names]
 
     source_bytes = 0
     target_bytes = 0
@@ -136,6 +156,12 @@ def build_title_preload_icons() -> None:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--icons', nargs='+', help='Rebuild only these named UI icons.')
+    args = parser.parse_args()
+    if args.icons:
+        build_ui_icons(args.icons)
+        return
     build_splash()
     build_leaders()
     build_ui_icons()

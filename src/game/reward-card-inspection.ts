@@ -165,7 +165,7 @@ export function renderMarketItemDetail(scene: Phaser.Scene, view: MarketItemDeta
   onPage: (page: { title: string; text: string; page: number; total: number }) => void;
 }) {
   const owner = scene as any;
-  if (!owner.marketOpen || owner.marketCategory === 'catalog') return renderLegacyMarketItemDetail(scene, view);
+  const inMarket = owner.marketOpen && owner.marketCategory !== 'catalog';
   const panel = scene.add.container(0, 0).setDepth(23040).setName('market-item-reader');
   const add = <T extends Phaser.GameObjects.GameObject>(o: T) => { panel.add(o); return o; };
   const text = (x: number, y: number, value: string, size = 22, width = 324) => add(scene.add.text(x, y, value, {
@@ -212,7 +212,7 @@ export function renderMarketItemDetail(scene: Phaser.Scene, view: MarketItemDeta
   marketItemReading.set(scene, state);
   const pageLabel = text(264, 551, '', 16, 160).setOrigin(0.5);
   bindChoiceHint(scene, text(264, 626, '', 15, 324).setOrigin(0.5).setColor('#abc4d4'), mode =>
-    mode === 'pointer' ? 'Read only · Pages never purchase' : `${mode === 'controller' ? 'Y' : controlBindingLabel('roost')}: next page · Read only`);
+    mode === 'pointer' || !inMarket ? 'Read only · Use page arrows' : `${mode === 'controller' ? 'Y' : controlBindingLabel('roost')}: next page · Read only`);
   const show = (delta: number) => {
     if (delta && (owner.pauseOverlayOpen || owner.settingsOverlayOpen)) return;
     // Wrap to match the existing Market card Inspect/Y convention.
@@ -233,100 +233,13 @@ export function renderMarketItemDetail(scene: Phaser.Scene, view: MarketItemDeta
     button.on('pointerout', () => button.setStrokeStyle(1, 0x7195aa, 0.8));
     text(x, 591, i ? 'Next →' : '← Previous', 16, 136).setOrigin(0.5);
   });
-  panel.setData('turnRulesPage', show); show(0); return panel;
+  panel.setData('turnRulesPage', show); show(0);
+  // Outside the Market, use the same complete reader on the opposite side of
+  // its anchor. Never resurrect the tiny, clipped, stretched-frame tooltip.
+  if (!inMarket) panel.setPosition(view.anchorX < 640 ? 752 : 0, -68);
+  return panel;
 }
 
-function renderLegacyMarketItemDetail(scene: Phaser.Scene, view: MarketItemDetailView) {
-  const w = 306;
-  const body = scene.add.text(16, 74, view.body, {
-    fontFamily: UI_FONT,
-    fontSize: '13px',
-    color: '#dbe6f2',
-    lineSpacing: 3,
-    wordWrap: { width: w - 32 },
-    maxLines: 4,
-  });
-  const buildText = view.build.length > 0
-    ? `\nBUILD READ\n${view.build.join('\n')}`
-    : '';
-  const decisionText = view.decisionPreview.length > 0
-    ? `\nDECISION\n${view.decisionPreview.join('\n')}`
-    : '';
-  const meta = scene.add.text(16, 86 + body.height, `${view.meta}${view.afterPurchase}${buildText}${decisionText}`, {
-    fontFamily: UI_FONT,
-    fontSize: '11px',
-    fontStyle: UI_BOLD,
-    color: UI_CYAN,
-    lineSpacing: 2,
-    wordWrap: { width: w - 32 },
-    maxLines: 12,
-  });
-  const h = Math.max(150, 104 + body.height + meta.height);
-  const bg = scene.add.rectangle(0, 0, w, h, 0x07101a, 1)
-    .setOrigin(0, 0)
-    .setStrokeStyle(2, view.accent, 1);
-  const frameArt: Phaser.GameObjects.GameObject[] = [];
-  if (view.dossierFrameKey && scene.textures.exists(view.dossierFrameKey)) {
-    scene.textures.get(view.dossierFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const frame = scene.add.image(w / 2, h / 2, view.dossierFrameKey)
-      .setDisplaySize(w + 52, h + 56)
-      .setAlpha(view.enabled ? 0.86 : 0.54)
-      .setName('market-detail-dossier-frame');
-    const glint = scene.add.image(w / 2, h / 2, view.dossierFrameKey)
-      .setDisplaySize(w + 60, h + 64)
-      .setAlpha(view.enabled ? 0.18 : 0.08)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setName('market-detail-dossier-frame');
-    if (!view.enabled) {
-      frame.setTint(0x8fa4bd);
-      glint.setTint(0x8fa4bd);
-    }
-    frameArt.push(frame, glint);
-  }
-  const rail = scene.add.rectangle(0, 0, w, 4, view.accent, 1).setOrigin(0, 0);
-  const title = scene.add.text(16, 13, view.title, {
-    fontFamily: UI_FONT,
-    fontSize: '17px',
-    fontStyle: UI_BOLD,
-    color: UI_GOLD,
-    wordWrap: { width: view.price === undefined ? w - 32 : w - 118 },
-    maxLines: 2,
-  });
-  const price = view.price === undefined
-    ? undefined
-    : scene.add.text(w - 16, 16, `${view.price}`, {
-      fontFamily: UI_FONT,
-      fontSize: '17px',
-      fontStyle: UI_BOLD,
-      color: '#f0c36f',
-    }).setOrigin(1, 0);
-  const scrapIcon = view.price !== undefined && view.scrapIconKey && scene.textures.exists(view.scrapIconKey)
-    ? scene.add.image(w - 72, 27, view.scrapIconKey).setDisplaySize(22, 22).setAlpha(0.94)
-    : undefined;
-  const kicker = scene.add.text(16, 52, view.kicker.toUpperCase(), {
-    fontFamily: UI_FONT,
-    fontSize: '10px',
-    fontStyle: UI_BOLD,
-    color: '#91a6b8',
-    wordWrap: { width: w - 32 },
-    maxLines: 1,
-  });
-  const panel = scene.add.container(0, 0, [
-    bg,
-    ...frameArt,
-    rail,
-    title,
-    ...(price ? [price] : []),
-    ...(scrapIcon ? [scrapIcon] : []),
-    kicker,
-    body,
-    meta,
-  ]).setDepth(23040);
-  const px = Math.max(12, Math.min(1280 - w - 12, view.anchorX - w / 2));
-  const above = view.anchorY - h - 22;
-  const py = above > 10 ? above : Math.min(720 - h - 12, view.anchorY + 48);
-  return panel.setPosition(px, py);
-}
 
 const inspectionReading = new WeakMap<Phaser.Scene, { key: string; page: number }>();
 

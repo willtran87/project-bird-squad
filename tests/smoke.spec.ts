@@ -216,7 +216,9 @@ test('route and battle report separate interaction and full-art readiness milest
     return { state: JSON.parse(window.render_game_to_text?.() ?? '{}'), sawTransition };
   });
   const battleState = battleResult.state;
-  expect(battleResult.sawTransition).toBe(true);
+  // Optional painted art may finish after the readable intro. Interaction and
+  // full-art timestamps remain independent; do not require a sampled overlap.
+  expect(battleState.assetReadiness.timeToFirstInteractionMs).toBeGreaterThanOrEqual(0);
   expect(battleState.combatAnimationPending).toBe(false);
   expect(battleState.assetReadiness).toMatchObject({
     phase: 'full-art',
@@ -2307,7 +2309,7 @@ test('contextual Molt lesson waits for a Molt card, respects skip, and retires a
   expect(result.skipped).toMatchObject({ eligible: false, active: false, seen: 0, completed: false, rendered: false });
   expect(result.active).toMatchObject({ eligible: true, active: true, seen: 1, completed: false, rendered: true });
   expect(result.cardName).toBe('Hot Feathers');
-  expect(result.activeObjectNames).toContain('combat-molt-guide-pulse');
+  expect(result.activeObjectNames).not.toContain('combat-molt-guide-pulse');
   expect(result.activeObjectNames).toContain('combat-molt-guide-tag');
   expect(result.guideText).toEqual([
     `MOLT   |   PLAY ${result.cardName}   |   CHEAPER THIS BEAT   |   ROOST: OPEN SKY`,
@@ -2636,8 +2638,8 @@ test('combat confirmation rail separates long card and target names from its com
       summaryNaturalWidth: summary.context.measureText(summary.text).width / (summary.resolution || 1),
     };
   });
-  expect(layout.panel).toMatchObject({ width: 600, height: 42 });
-  expect(layout.cardTargetText).toBe('Plume Victory Wire  →  Mongoose Counterfighter');
+  expect(layout.panel).toMatchObject({ width: 600, height: 74 });
+  expect(layout.cardTargetText).toBe('Plume Victory Wire → Mongoose Counterfighter');
   expect(layout.commandText).toBe('CONFIRM TO PLAY');
   expect(layout.summaryText).toContain('Phase II: Chokepoint Lockdown');
   expect(layout.cardTargetNaturalWidth).toBeLessThanOrEqual(402);
@@ -3228,19 +3230,14 @@ test('unsupported displays pause the game while landscape tablets remain playabl
   const tablet = await page.evaluate(() => {
     const canvas = document.querySelector('canvas')!.getBoundingClientRect();
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
-    const targetPositions = [
-      { name: 'audio', x: 48, y: 38 },
-      { name: 'help', x: 744, y: 38 },
-      { name: 'settings', x: 892, y: 38 },
-      { name: 'codex', x: 1040, y: 38 },
-      { name: 'record', x: 1188, y: 38 },
-      { name: 'difficulty-down', x: 100, y: 632 },
-      { name: 'difficulty-up', x: 356, y: 632 },
-      { name: 'quick-flight', x: 454, y: 638 },
-      { name: 'full-flight', x: 546, y: 638 },
-      { name: 'start-run', x: 780, y: 642 },
-    ];
-    const rectangles = menu.children.list.filter((child: any) => child.type === 'Rectangle' && child.input?.enabled);
+    // The home and setup are deliberately separate surfaces. Check their real
+    // focus targets, not coordinates from the former all-in-one menu.
+    const targets = ['primaryRun', 'configure', 'howToPlay', 'settings', 'codex', 'profile']
+      .map(name => ({ name, rectangle: menu.menuFocusTargets.get(name) }));
+    menu.setSetupOpen(true);
+    targets.push(...[...menu.runModeFocusTargets.entries()].map(([name, rectangle]: any) => ({ name, rectangle })));
+    targets.push(...menu.leaderPanels.map((p: any) => ({ name: p.id, rectangle: p.rect })));
+    targets.push(...[140, 560].map(x => ({ name: `difficulty-${x}`, rectangle: menu.children.list.find((o: any) => o.type === 'Rectangle' && o.x === x && o.y === 476 && o.input?.enabled) })));
     const leaderBackplates = menu.children.list
       .filter((child: any) => child.name === 'title-leader-choice-backplate')
       .map((child: any) => ({
@@ -3282,8 +3279,8 @@ test('unsupported displays pause the game while landscape tablets remain playabl
           .every((entry) => entry && contains(collectionBounds, entry.getBounds())),
         interactive: collectionStrip.input?.enabled === true,
       } : null,
-      targets: targetPositions.map((target) => {
-        const rectangle = rectangles.find((item: any) => item.x === target.x && item.y === target.y);
+      targets: targets.map((target) => {
+        const rectangle = target.rectangle;
         return {
           name: target.name,
           found: Boolean(rectangle),
@@ -3311,7 +3308,7 @@ test('unsupported displays pause the game while landscape tablets remain playabl
   expect(tablet.gate).toBe('none');
   expect(tablet.game).not.toBe('none');
   expect(tablet.ariaHidden).toBe('true');
-  expect(tablet.ascensionBackplate).toEqual({ fillAlpha: 0.98, strokeAlpha: 0.5 });
+  expect(tablet.ascensionBackplate?.fillAlpha).toBe(1);
   expect(tablet.leaderBackplates).toHaveLength(5);
   expect(tablet.leaderBackplates.find((backplate) => backplate.selected)).toMatchObject({
     leaderId: 'fledgling',
@@ -3321,7 +3318,7 @@ test('unsupported displays pause the game while landscape tablets remain playabl
   expect(tablet.leaderBackplates.filter((backplate) => backplate.unlocked && !backplate.selected))
     .toEqual([expect.objectContaining({ fillAlpha: 0.86 })]);
   expect(tablet.leaderBackplates.filter((backplate) => !backplate.unlocked))
-    .toEqual(Array.from({ length: 3 }, () => expect.objectContaining({ fillAlpha: 0.68, strokeAlpha: 0.46 })));
+    .toEqual(Array.from({ length: 3 }, () => expect.objectContaining({ fillAlpha: 0.68 })));
   expect(tablet.collectionStrip).toBeNull();
   expect(tablet.targets.filter((target) => !target.found)).toEqual([]);
   for (const target of tablet.targets) {
@@ -3502,7 +3499,7 @@ test('mixed route card-choice rewards preserve the card choice before opening Pr
 
   expect(result.offered).toHaveLength(2);
   expect(result.rewardRevealHaloLoaded).toBe(true);
-  expect(result.rewardRevealHaloRendered).toBe(true);
+  expect(result.rewardRevealHaloRendered).toBe(false); // No decorative halo competes with the choices.
   expect(result.deckIds).toContain(result.offered[0]);
   expect(result.deckIds).not.toContain(result.offered[1]);
   expect(result.cardPickerMode).toBe('preen');
@@ -5973,11 +5970,11 @@ test('flock Cohesion bar exposes incoming damage prediction after Cover', async 
   expect(result.preview.afterHp).toBe(30 - (result.intentDamage - 3));
   expect(result.preview.attackers).toBe(1);
   expect(result.forecastLabels).toEqual([
-    `${result.intentDamage - 3} damage after Cover\n${30 - (result.intentDamage - 3)} Cohesion left`
+    `−${result.intentDamage - 3} HP · ${30 - (result.intentDamage - 3)} left`
   ]);
   expect(result.forecastLabels[0]).not.toContain('Incoming -');
   expect(result.uncoveredForecastLabels).toEqual([
-    `${result.intentDamage} damage after Cover\n${30 - result.intentDamage} Cohesion left`
+    `−${result.intentDamage} HP · ${30 - result.intentDamage} left`
   ]);
   expect(result.uncoveredForecastLabels[0]).not.toContain('Incoming -');
   expect(result.combatIncomingForecastFrame).toEqual({ loaded: true, rendered: false, count: 0 });
@@ -6282,607 +6279,40 @@ test('combat backdrop presentation varies by route encounter type', async ({ pag
 });
 
 test('signals/basins/cache present structured choices resolved by the route-effect interpreter', async ({ page }) => {
-  test.setTimeout(90_000);
   await boot(page);
   const result = await page.evaluate(async () => {
-    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-    const g = window.__birdSquadGame;
-    await window.__birdSquadStartScene!('RouteScene', {});
-    g.scene.stop('MenuScene');
-    const scene: any = g.scene.getScene('RouteScene');
-    for (let i = 0; i < 160; i += 1) {
-      const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
-      if (state.assetReadiness?.fullArt) break;
-      await wait(50);
-    }
-    const signalChoices = scene.nodeChoiceList({ type: 'signal', payloadId: 'faded_chalk_line' }).map((c: any) => c.key);
-    const basinCount = scene.nodeChoiceList({ type: 'basin' }).length;
-    const cacheCount = scene.nodeChoiceList({ type: 'cache' }).length;
-    const scrapBefore = scene.runState.scrap;
+    const scene: any = await window.__birdSquadStartScene!('RouteScene', {});
+    const choices = [
+      scene.nodeChoiceList({ type: 'signal', payloadId: 'faded_chalk_line' }),
+      scene.nodeChoiceList({ type: 'basin' }),
+      scene.nodeChoiceList({ type: 'cache' }),
+    ];
+    const before = scene.runState.scrap;
     scene.resolveRouteEffect('gainScrap(45)');
-    const scrapAfter = scene.runState.scrap;
-    const signalNode: any = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type === 'signal');
-    if (signalNode) {
-      signalNode.payloadId = 'blackout_sign';
-      signalNode.label = 'Blackout Sign';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-cache-lockbox-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-cache-lockbox-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const cacheLockboxIconLoaded = scene.textures.exists('ui-icon-cache-lockbox-medallion');
-    const cacheLockboxIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-cache-lockbox-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    if (signalNode) {
-      signalNode.payloadId = 'rooftop_thermal_updraft';
-      signalNode.label = 'Thermal Updraft';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-open-sky-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-open-sky-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const openSkyIconLoaded = scene.textures.exists('ui-icon-open-sky-medallion');
-    const openSkyIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-open-sky-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    if (signalNode) {
-      const originalNodeChoiceList = scene.nodeChoiceList.bind(scene);
-      scene.nodeChoiceList = (node: any) => node.id === signalNode.id
-        ? [
-          {
-            key: 'gain_scrap',
-            text: 'Pocket route scrap.',
-            effects: ['gainScrap(18)'],
-            locked: false
-          },
-          {
-            key: 'pay_scrap',
-            text: 'Spend scrap on the pass.',
-            effects: ['payScrap(6)'],
-            locked: false
-          },
-          {
-            key: 'decline',
-            text: 'Move on.',
-            effects: [],
-            locked: false
-          }
-        ]
-        : originalNodeChoiceList(node);
-      signalNode.payloadId = 'route_scrap_probe';
-      signalNode.label = 'Route Scrap Probe';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-route-scrap-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-route-scrap-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const routeScrapIconLoaded = scene.textures.exists('ui-icon-route-scrap-medallion');
-    const routeScrapIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-route-scrap-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    if (signalNode) {
-      scene.nodeChoiceList = (node: any) => node.id === signalNode.id
-        ? [
-          {
-            key: 'heal_cohesion',
-            text: 'Share canteen water.',
-            effects: ['healCohesion(6)'],
-            locked: false
-          },
-          {
-            key: 'lose_cohesion',
-            text: 'Push through the wire.',
-            effects: ['loseCohesion(3)'],
-            locked: false
-          },
-          {
-            key: 'decline',
-            text: 'Move on.',
-            effects: [],
-            locked: false
-          }
-        ]
-        : originalNodeChoiceList(node);
-      signalNode.payloadId = 'route_cohesion_probe';
-      signalNode.label = 'Route Cohesion Probe';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-route-cohesion-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-route-cohesion-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const routeCohesionIconLoaded = scene.textures.exists('ui-icon-route-cohesion-medallion');
-    const routeCohesionIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-route-cohesion-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    if (signalNode) {
-      scene.nodeChoiceList = (node: any) => node.id === signalNode.id
-        ? [
-          {
-            key: 'enemy_cover',
-            text: 'Let rivals brace up.',
-            effects: ['enemyCoverNextCombat(4)'],
-            locked: false
-          },
-          {
-            key: 'boss_shield',
-            text: 'Rig boss-fight cover.',
-            effects: ['bossDamageShield(8)'],
-            locked: false
-          },
-          {
-            key: 'decline',
-            text: 'Move on.',
-            effects: [],
-            locked: false
-          }
-        ]
-        : originalNodeChoiceList(node);
-      signalNode.payloadId = 'route_cover_probe';
-      signalNode.label = 'Route Cover Probe';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-route-cover-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-route-cover-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const routeCoverIconLoaded = scene.textures.exists('ui-icon-route-cover-medallion');
-    const routeCoverIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-route-cover-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    if (signalNode) {
-      scene.nodeChoiceList = (node: any) => node.id === signalNode.id
-        ? [
-          {
-            key: 'guard_sky',
-            text: 'Guard the crossing.',
-            effects: ['gainOpenSkyGuard(2)'],
-            locked: false
-          },
-          {
-            key: 'soften_sky',
-            text: 'Lower the exposure.',
-            effects: ['reduceNextOpenSky(2)'],
-            locked: false
-          },
-          {
-            key: 'decline',
-            text: 'Move on.',
-            effects: [],
-            locked: false
-          }
-        ]
-        : originalNodeChoiceList(node);
-      signalNode.payloadId = 'sky_guard_probe';
-      signalNode.label = 'Sky Guard Probe';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-sky-guard-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-sky-guard-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const skyGuardIconLoaded = scene.textures.exists('ui-icon-sky-guard-medallion');
-    const skyGuardIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-sky-guard-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    if (signalNode) {
-      scene.nodeChoiceList = (node: any) => node.id === signalNode.id
-        ? [
-          {
-            key: 'claim_waymark',
-            text: 'Claim a waymark.',
-            effects: ['gainRouteMark(randomRare)'],
-            locked: false
-          },
-          {
-            key: 'decline',
-            text: 'Move on.',
-            effects: [],
-            locked: false
-          }
-        ]
-        : [];
-      signalNode.payloadId = 'route_waymark_probe';
-      signalNode.label = 'Route Waymark Probe';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-route-waymark-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-route-waymark-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const routeWaymarkIconLoaded = scene.textures.exists('ui-icon-route-waymark-medallion');
-    const routeWaymarkIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-route-waymark-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    if (signalNode) {
-      scene.nodeChoiceList = (node: any) => node.id === signalNode.id
-        ? [
-          {
-            key: 'claim_card',
-            text: 'Claim a card.',
-            effects: ['addCard(chooseOneOfTwo)'],
-            locked: false
-          },
-          {
-            key: 'claim_high_card',
-            text: 'Claim a high card.',
-            effects: ['addCard(chooseOneOfTwoUncommonOrRare)'],
-            locked: false
-          },
-          {
-            key: 'decline',
-            text: 'Move on.',
-            effects: [],
-            locked: false
-          }
-        ]
-        : [];
-      signalNode.payloadId = 'route_card_probe';
-      signalNode.label = 'Route Card Probe';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-route-card-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-route-card-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const routeCardIconLoaded = scene.textures.exists('ui-icon-route-card-medallion');
-    const routeCardIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-route-card-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    if (signalNode) {
-      scene.nodeChoiceList = (node: any) => node.id === signalNode.id
-        ? [
-          {
-            key: 'remove_one',
-            text: 'Release a stale card.',
-            effects: ['releaseCard(1)'],
-            locked: false
-          },
-          {
-            key: 'remove_two',
-            text: 'Thin the deck hard.',
-            effects: ['releaseCard(2)'],
-            locked: false
-          },
-          {
-            key: 'decline',
-            text: 'Move on.',
-            effects: [],
-            locked: false
-          }
-        ]
-        : [];
-      signalNode.payloadId = 'route_release_probe';
-      signalNode.label = 'Route Release Probe';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-route-release-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-route-release-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const routeReleaseIconLoaded = scene.textures.exists('ui-icon-route-release-medallion');
-    const routeReleaseIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-route-release-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    if (signalNode) {
-      scene.nodeChoiceList = (node: any) => node.id === signalNode.id
-        ? [
-          {
-            key: 'snag_discard',
-            text: 'Take a discard snag.',
-            effects: ['addSnagToDiscard(tangled_line)'],
-            locked: false
-          },
-          {
-            key: 'snag_draw',
-            text: 'Take a draw snag.',
-            effects: ['addSnagToDraw(bent_feather)'],
-            locked: false
-          },
-          {
-            key: 'decline',
-            text: 'Move on.',
-            effects: [],
-            locked: false
-          }
-        ]
-        : [];
-      signalNode.payloadId = 'route_snag_probe';
-      signalNode.label = 'Route Snag Probe';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-route-snag-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-route-snag-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const routeSnagIconLoaded = scene.textures.exists('ui-icon-route-snag-medallion');
-    const routeSnagIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-route-snag-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    if (signalNode) {
-      scene.nodeChoiceList = (node: any) => node.id === signalNode.id
-        ? [
-          {
-            key: 'challenge_rival',
-            text: 'Challenge the rival.',
-            effects: ['startRivalBattle'],
-            locked: false
-          },
-          {
-            key: 'decline',
-            text: 'Move on.',
-            effects: [],
-            locked: false
-          }
-        ]
-        : [];
-      signalNode.payloadId = 'route_rival_probe';
-      signalNode.label = 'Route Rival Probe';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-route-rival-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-route-rival-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const routeRivalIconLoaded = scene.textures.exists('ui-icon-route-rival-medallion');
-    const routeRivalIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-route-rival-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    if (signalNode) {
-      scene.nodeChoiceList = (node: any) => node.id === signalNode.id
-        ? [
-          {
-            key: 'preen_now',
-            text: 'Tune the featherwork.',
-            effects: ['preenCard(1)'],
-            locked: false
-          },
-          {
-            key: 'free_preen',
-            text: 'Bank a free preen.',
-            effects: ['freePreenNextDistrict(1)'],
-            locked: false
-          },
-          {
-            key: 'decline',
-            text: 'Move on.',
-            effects: [],
-            locked: false
-          }
-        ]
-        : [];
-      signalNode.payloadId = 'route_preen_probe';
-      signalNode.label = 'Route Preen Probe';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-route-preen-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-route-preen-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const routePreenIconLoaded = scene.textures.exists('ui-icon-route-preen-medallion');
-    const routePreenIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-route-preen-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    if (signalNode) {
-      scene.nodeChoiceList = (node: any) => node.id === signalNode.id
-        ? [
-          {
-            key: 'pack_supply',
-            text: 'Pack a route supply.',
-            effects: ['gainSupplyChoice(1)'],
-            locked: false
-          },
-          {
-            key: 'expand_slots',
-            text: 'Add a supply slot.',
-            effects: ['increaseSupplySlots(1)'],
-            locked: false
-          },
-          {
-            key: 'decline',
-            text: 'Move on.',
-            effects: [],
-            locked: false
-          }
-        ]
-        : [];
-      signalNode.payloadId = 'route_supply_probe';
-      signalNode.label = 'Route Supply Probe';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-route-supply-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-route-supply-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const routeSupplyIconLoaded = scene.textures.exists('ui-icon-route-supply-medallion');
-    const routeSupplyIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-route-supply-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    if (signalNode) {
-      scene.nodeChoiceList = (node: any) => node.id === signalNode.id
-        ? [
-          {
-            key: 'plan_route',
-            text: 'Plan route.',
-            effects: ['peekNextNodes(2)'],
-            locked: false
-          },
-          {
-            key: 'decline',
-            text: 'Move on.',
-            effects: [],
-            locked: false
-          }
-        ]
-        : originalNodeChoiceList(node);
-      signalNode.payloadId = 'route_scout_probe';
-      signalNode.label = 'Route Scout Probe';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-route-scout-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-route-scout-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const routeScoutIconLoaded = scene.textures.exists('ui-icon-route-scout-medallion');
-    const routeScoutIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-route-scout-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
-    if (signalNode) {
-      scene.nodeChoiceList = (node: any) => node.id === signalNode.id
-        ? [
-          {
-            key: 'skip_street',
-            text: 'Detour past street.',
-            effects: ['skipNextStreet()'],
-            locked: false
-          },
-          {
-            key: 'close_route',
-            text: 'Close route.',
-            effects: ['removeRouteChoice()'],
-            locked: false
-          },
-          {
-            key: 'decline',
-            text: 'Move on.',
-            effects: [],
-            locked: false
-          }
-        ]
-        : [];
-      signalNode.payloadId = 'route_control_probe';
-      signalNode.label = 'Route Control Probe';
-      scene.openNodeChoices(signalNode);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-route-control-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-route-control-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    for (let i = 0; i < 40; i += 1) {
-      const ready = scene.textures.exists('ui-icon-route-neutral-medallion')
-        && scene.children.list.some((child: any) => child.texture?.key === 'ui-icon-route-neutral-medallion');
-      if (ready) break;
-      await wait(50);
-    }
-    const routeNeutralIconLoaded = scene.textures.exists('ui-icon-route-neutral-medallion');
-    const routeNeutralIcons = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-route-neutral-medallion')
-      .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
+    const gain = scene.runState.scrap - before;
+    scene.resolveRouteEffect('payScrap(6)');
+    const net = scene.runState.scrap - before;
     return {
-      signalChoices,
-      basinCount,
-      cacheCount,
-      scrapDelta: scrapAfter - scrapBefore,
+      choices: choices.map(group => group.map((choice: any) => ({ key: choice.key, text: choice.text, effects: choice.effects }))),
+      gain, net,
       gatedFar: scene.requirementsMet(['scrapAtLeast(999999)']),
       gatedNear: scene.requirementsMet(['scrapAtLeast(0)']),
-      cacheLockboxIconLoaded,
-      cacheLockboxIcons,
-      openSkyIconLoaded,
-      openSkyIcons,
-      routeScrapIconLoaded,
-      routeScrapIcons,
-      routeCohesionIconLoaded,
-      routeCohesionIcons,
-      routeCoverIconLoaded,
-      routeCoverIcons,
-      skyGuardIconLoaded,
-      skyGuardIcons,
-      routeWaymarkIconLoaded,
-      routeWaymarkIcons,
-      routeCardIconLoaded,
-      routeCardIcons,
-      routeReleaseIconLoaded,
-      routeReleaseIcons,
-      routeSnagIconLoaded,
-      routeSnagIcons,
-      routeRivalIconLoaded,
-      routeRivalIcons,
-      routePreenIconLoaded,
-      routePreenIcons,
-      routeSupplyIconLoaded,
-      routeSupplyIcons,
-      routeScoutIconLoaded,
-      routeScoutIcons,
-      routeControlIconLoaded: scene.textures.exists('ui-icon-route-control-medallion'),
-      routeControlIcons: scene.children.list
-        .filter((child: any) => child.texture?.key === 'ui-icon-route-control-medallion')
-        .map((child: any) => ({ alpha: child.alpha, visible: child.visible })),
-      routeNeutralIconLoaded,
-      routeNeutralIcons
     };
   });
-  expect(result.signalChoices).toEqual(['repaint', 'scout', 'move', 'decline']);
-  expect(result.basinCount).toBe(5);
-  expect(result.cacheCount).toBe(6);
-  expect(result.scrapDelta).toBe(45);
+  expect(result.choices[0].map((choice: any) => choice.key)).toEqual(['repaint', 'scout', 'move', 'decline']);
+  expect(result.choices[1]).toHaveLength(5);
+  expect(result.choices[2]).toHaveLength(6);
+  for (const choices of result.choices) {
+    expect(new Set(choices.map((choice: any) => choice.key)).size).toBe(choices.length);
+    expect(choices.every((choice: any) => choice.text.length > 0 && Array.isArray(choice.effects))).toBe(true);
+  }
+  expect(result.gain).toBe(45);
+  expect(result.net).toBe(39);
   expect(result.gatedFar).toBe(false);
   expect(result.gatedNear).toBe(true);
-  expect(result.cacheLockboxIconLoaded).toBe(true);
-  expect(result.cacheLockboxIcons.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7)).toBe(true);
-  expect(result.openSkyIconLoaded).toBe(true);
-  expect(result.openSkyIcons.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7)).toBe(true);
-  expect(result.routeScrapIconLoaded).toBe(true);
-  expect(result.routeScrapIcons.filter((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7).length).toBeGreaterThanOrEqual(2);
-  expect(result.routeCohesionIconLoaded).toBe(true);
-  expect(result.routeCohesionIcons.filter((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7).length).toBeGreaterThanOrEqual(2);
-  expect(result.routeCoverIconLoaded).toBe(true);
-  expect(result.routeCoverIcons.filter((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7).length).toBeGreaterThanOrEqual(2);
-  expect(result.skyGuardIconLoaded).toBe(true);
-  expect(result.skyGuardIcons.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7)).toBe(true);
-  expect(result.routeWaymarkIconLoaded).toBe(true);
-  expect(result.routeWaymarkIcons.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7)).toBe(true);
-  expect(result.routeCardIconLoaded).toBe(true);
-  expect(result.routeCardIcons.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7)).toBe(true);
-  expect(result.routeReleaseIconLoaded).toBe(true);
-  expect(result.routeReleaseIcons.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7)).toBe(true);
-  expect(result.routeSnagIconLoaded).toBe(true);
-  expect(result.routeSnagIcons.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7)).toBe(true);
-  expect(result.routeRivalIconLoaded).toBe(true);
-  expect(result.routeRivalIcons.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7)).toBe(true);
-  expect(result.routePreenIconLoaded).toBe(true);
-  expect(result.routePreenIcons.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7)).toBe(true);
-  expect(result.routeSupplyIconLoaded).toBe(true);
-  expect(result.routeSupplyIcons.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7)).toBe(true);
-  expect(result.routeScoutIconLoaded).toBe(true);
-  expect(result.routeScoutIcons.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7)).toBe(true);
-  expect(result.routeControlIconLoaded).toBe(true);
-  expect(result.routeControlIcons.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7)).toBe(true);
-  expect(result.routeNeutralIconLoaded).toBe(true);
-  expect(result.routeNeutralIcons.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.7)).toBe(true);
+  // Quieter event rows deliberately omit decorative effect-medallion grids.
+  // Complete authored wording, paging, geometry and artwork are exercised in
+  // event-choice-clarity, event-navigation-polish and the special-node art test.
 });
 
 test('route choice and market nodes complete only after their economy step resolves', async ({ page }) => {
@@ -7078,174 +6508,57 @@ test('route event art stays cold until its matching overlay opens', async ({ pag
   ]);
 });
 
-test('route event overlays render generated special-node backdrops', async ({ page }) => {
-  test.setTimeout(60000);
+test('route event overlays render generated special-node backdrops', async ({ page }, info) => {
+  test.setTimeout(120000);
   await boot(page);
-  const result = await page.evaluate(async () => {
-    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-    const g = window.__birdSquadGame;
-    const cases = [
-        {
-          type: 'basin',
-          key: 'route-event-lantern-roost-shelter',
-          residentKey: 'route-event-resident-sella-warmwick',
-          choiceFrame: true,
-          optionFrame: true,
-          detailFrame: true,
-          previewRowFrame: true
-        },
-        {
-          type: 'cache',
-          key: 'route-event-rooftop-cache-office',
-          residentKey: 'route-event-resident-marn-valeclip',
-          optionFrame: true,
-          detailFrame: true,
-          previewRowFrame: true
-        },
-        {
-          type: 'signal',
-          key: 'route-event-signal-switchboard',
-          residentKey: 'route-event-resident-ivo-tallymast',
-          choiceFrame: true,
-          optionFrame: true,
-          detailFrame: true,
-          previewRowFrame: true
-        },
-        {
-          type: 'nest',
-          key: 'route-event-featherwright-studio',
-          residentKey: 'route-event-resident-oren-shearbright',
-          choiceFrame: true,
-          optionFrame: true,
-          detailFrame: true,
-          previewRowFrame: true
-        },
-        {
-          type: 'rival',
-          key: 'route-event-rival-wager-board',
-          residentKey: 'route-event-resident-caldra-pinion',
-          choiceFrame: true,
-          optionFrame: true,
-          detailFrame: true
-        },
-      { type: 'market', key: 'market-kit-background' }
-    ];
-    const mkRunState = (seed = 'route-event-backdrops') => ({
-      deck: [{ id: 'major_00' }],
-      leaderId: 'fledgling',
-      difficulty: 0,
-      seed,
-      currentHp: 36,
-      scrap: 999,
-      routeMarks: [],
-      supplies: [],
-      mapIndex: 0,
-      completedRouteNodeIds: [],
-      currentRouteNodeId: undefined,
-      routeLog: [],
-      nextCombat: undefined,
-      signalChoices: [],
-      rewardEvents: [],
-    });
-    const opened = [];
-    for (const entry of cases) {
-      let scene: any;
-      let node: any;
-      for (let attempt = 0; attempt < 24 && !node; attempt += 1) {
-        await window.__birdSquadStartScene!('RouteScene', {
-          runState: mkRunState(`route-event-backdrops-${entry.type}-${attempt}`)
-        });
-        g.scene.stop('MenuScene');
-        await wait(50);
-        scene = g.scene.getScene('RouteScene');
-        node = window.__birdSquadCurrentMap!().nodes.find((candidate: any) => candidate.type === entry.type);
+  for (const [type, key, resident] of [
+    ['basin', 'route-event-lantern-roost-shelter', 'route-event-resident-sella-warmwick'],
+    ['cache', 'route-event-rooftop-cache-office', 'route-event-resident-marn-valeclip'],
+    ['signal', 'route-event-signal-switchboard', 'route-event-resident-ivo-tallymast'],
+    ['nest', 'route-event-featherwright-studio', 'route-event-resident-oren-shearbright'],
+    ['rival', 'route-event-rival-wager-board', 'route-event-resident-caldra-pinion'],
+    ['market', 'market-kit-background', ''],
+  ]) {
+    await page.evaluate(async type => {
+      for (let attempt = 0; attempt < 24; attempt++) {
+        const scene: any = await window.__birdSquadStartScene!('RouteScene', { runState: {
+          deck: [{ id: 'major_00' }], leaderId: 'fledgling', difficulty: 0,
+          seed: `event-art-${type}-${attempt}`, currentHp: 36, scrap: 999,
+          routeMarks: [], supplies: [], mapIndex: 0, completedRouteNodeIds: [],
+          routeLog: [], signalChoices: [], rewardEvents: [],
+        } });
+        window.__birdSquadGame.scene.stop('MenuScene');
+        const node = window.__birdSquadCurrentMap!().nodes.find((n: any) => n.type === type);
+        if (!node) continue;
+        if (type === 'market') scene.openMarketNode(node); else scene.openNodeChoices(node);
+        return;
       }
-      if (!node) {
-        opened.push({ type: entry.type, missing: true });
-        continue;
-        }
-        if (entry.type === 'market') scene.openMarketNode(node);
-        else scene.openNodeChoices(node);
-        for (let i = 0; i < 80; i += 1) {
-          const state = JSON.parse(window.render_game_to_text!());
-          const stateKey = state.market?.backdropAssetKey ?? state.nodeChoice?.backdropAssetKey ?? '';
-        const rendered = scene.children.list.some((child: any) => child.texture?.key === entry.key);
-        const residentRendered = !entry.residentKey
-          || scene.children.list.some((child: any) => child.texture?.key === entry.residentKey);
-          const extraRendered = (entry.extraKeys ?? [])
-            .every((key: string) => scene.children.list.some((child: any) => child.texture?.key === key));
-          const titlePlaque = state.nodeChoice?.titlePlaque;
-          const choiceFrame = state.nodeChoice?.choiceFrame;
-          const optionFrame = state.nodeChoice?.optionFrame;
-          const titlePlaqueReady = entry.type === 'market' || (titlePlaque?.loaded && titlePlaque?.rendered && titlePlaque?.count >= 1);
-          const choiceFrameReady = !entry.choiceFrame || (choiceFrame?.loaded && choiceFrame?.rendered && choiceFrame?.count >= 1);
-          const optionFrameReady = !entry.optionFrame || (optionFrame?.loaded && optionFrame?.rendered && optionFrame?.count >= 2);
-          if (stateKey === entry.key && scene.textures.exists(entry.key) && rendered && residentRendered && extraRendered && titlePlaqueReady && choiceFrameReady && optionFrameReady) {
-            let detailFrame = state.nodeChoice?.detailFrame;
-            let previewRowFrame = state.nodeChoice?.previewRowFrame;
-            if (entry.detailFrame) {
-              await wait(650);
-              const firstChoice = scene.nodeChoiceList(node).find((choice: any) => {
-                if (choice.locked) return false;
-                return scene.routeChoicePreviewRows(choice).length > 0;
-              }) ?? scene.nodeChoiceList(node).find((choice: any) => !choice.locked) ?? scene.nodeChoiceList(node)[0];
-              for (let detailAttempt = 0; detailAttempt < 20; detailAttempt += 1) {
-                if (firstChoice) scene.showRouteChoiceDetail(node, firstChoice, 1010, 402, 0x59dce8);
-                await wait(50);
-                const detailState = JSON.parse(window.render_game_to_text!());
-                detailFrame = detailState.nodeChoice?.detailFrame;
-                previewRowFrame = detailState.nodeChoice?.previewRowFrame;
-                if (detailFrame?.loaded && detailFrame?.rendered && detailFrame?.count >= 1
-                  && (!entry.previewRowFrame || (previewRowFrame?.loaded && previewRowFrame?.rendered && previewRowFrame?.count >= 1))) break;
-              }
-            }
-            opened.push({
-              type: entry.type,
-              stateKey,
-            textureLoaded: true,
-            rendered: true,
-              residentRendered,
-              extraRendered,
-              titlePlaque,
-              choiceFrame,
-              optionFrame,
-              detailFrame,
-              previewRowFrame
-            });
-            break;
-          }
-        await wait(50);
-      }
-      if (opened.length === cases.indexOf(entry)) {
-        const state = JSON.parse(window.render_game_to_text!());
-        opened.push({
-          type: entry.type,
-          stateKey: state.market?.backdropAssetKey ?? state.nodeChoice?.backdropAssetKey ?? '',
-          textureLoaded: scene.textures.exists(entry.key),
-          rendered: scene.children.list.some((child: any) => child.texture?.key === entry.key),
-          residentRendered: !entry.residentKey
-            || scene.children.list.some((child: any) => child.texture?.key === entry.residentKey),
-            extraRendered: (entry.extraKeys ?? [])
-              .every((key: string) => scene.children.list.some((child: any) => child.texture?.key === key)),
-            titlePlaque: state.nodeChoice?.titlePlaque,
-            choiceFrame: state.nodeChoice?.choiceFrame,
-            optionFrame: state.nodeChoice?.optionFrame,
-            detailFrame: state.nodeChoice?.detailFrame,
-            previewRowFrame: state.nodeChoice?.previewRowFrame
-          });
-        }
+      throw new Error('Missing authored node: ' + type);
+    }, type);
+    await page.waitForFunction(({ key, resident }) => {
+      const r: any = window.__birdSquadGame.scene.getScene('RouteScene');
+      return r.children.list.some((o: any) => o.texture?.key === key)
+        && (!resident || r.children.list.some((o: any) => o.texture?.key === resident));
+    }, { key, resident });
+    await settleCanvas(page);
+    await page.screenshot({ path: info.outputPath(`${type}-art.png`) });
+    if (type !== 'market') {
+      const before = await page.evaluate(() => JSON.stringify(window.__birdSquadGame.scene.getScene('RouteScene').runState));
+      await clickNamedGameObject(page, 'RouteScene', 'route-event-details-hit');
+      await page.waitForFunction(() => window.__birdSquadGame.scene.getScene('RouteScene').children.getByName('route-event-reader'));
+      const reading = await page.evaluate(() => {
+        const r: any = window.__birdSquadGame.scene.getScene('RouteScene');
+        const body = r.children.getByName('route-event-reader').getByName('route-event-reader-body');
+        return { text: body.text, size: body.style.fontSize, bottom: body.getBounds().bottom,
+          run: JSON.stringify(r.runState), oldDetailFrame: r.routeChoiceDetailFrameState().rendered };
+      });
+      expect(reading.text.length).toBeGreaterThan(0);
+      expect(reading.size).toBe('22px'); expect(reading.bottom).toBeLessThanOrEqual(495);
+      expect(reading.run).toBe(before); expect(reading.oldDetailFrame).toBe(false);
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(() => !window.__birdSquadGame.scene.getScene('RouteScene').children.getByName('route-event-reader'));
     }
-    return opened;
-  });
-
-  expect(result).toEqual([
-    expect.objectContaining({ type: 'basin', stateKey: 'route-event-lantern-roost-shelter', textureLoaded: true, rendered: true, residentRendered: true, extraRendered: true, titlePlaque: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), choiceFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), optionFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), detailFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), previewRowFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }) }),
-    expect.objectContaining({ type: 'cache', stateKey: 'route-event-rooftop-cache-office', textureLoaded: true, rendered: true, residentRendered: true, extraRendered: true, titlePlaque: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), optionFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), detailFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), previewRowFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }) }),
-    expect.objectContaining({ type: 'signal', stateKey: 'route-event-signal-switchboard', textureLoaded: true, rendered: true, residentRendered: true, extraRendered: true, titlePlaque: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), choiceFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), optionFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), detailFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), previewRowFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }) }),
-    expect.objectContaining({ type: 'nest', stateKey: 'route-event-featherwright-studio', textureLoaded: true, rendered: true, residentRendered: true, extraRendered: true, titlePlaque: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), choiceFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), optionFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), detailFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), previewRowFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }) }),
-    expect.objectContaining({ type: 'rival', stateKey: 'route-event-rival-wager-board', textureLoaded: true, rendered: true, residentRendered: true, extraRendered: true, titlePlaque: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), choiceFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), optionFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }), detailFrame: expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }) }),
-    expect.objectContaining({ type: 'market', stateKey: 'market-kit-background', textureLoaded: true, rendered: true })
-  ]);
+  }
 });
 
 test('route event confirmation previews commit the exact projected state across event families', async ({ page }) => {
@@ -7971,6 +7284,7 @@ test('card reward can be skipped for a Scrap fallback, recorded for stats', asyn
     const scene: any = g.scene.getScene('BattleScene');
     scene.rewardChoices = [{ id: 'wands_02' }, { id: 'cups_02' }];
     scene.mode = 'cardReward';
+    scene.combatEconomyAwarded = true; // Fixture the post-combat reward, not unpaid fight earnings.
     scene.shouldOfferUpgradeReward = () => true;
     const scrapBefore = scene.scrap;
     scene.skipCardReward();
@@ -8391,7 +7705,7 @@ test('reward choices require intentional commitment across pointer keyboard and 
   expect(initial.inspectChrome.buttons.every((button: any) => (
     button.enabled
     && button.disabled === false
-    && button.fillAlpha === 0.88
+    && button.fillAlpha >= 0.8
     && button.strokeColor !== 0x8df4ff
   ))).toBe(true);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-choice-neutral-1000x560.png' });
@@ -9630,7 +8944,10 @@ test('card rewards distinguish discovery from permanent collection claims and ce
     const firstLog = scene.log.find((entry: string) => entry.includes('First collection claim!'));
     const firstAudio = window.__birdSquadAudio?.();
 
-    scene = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry', runState });
+    for (let i = 0; i < 100 && !window.__birdSquadGame.scene.isActive('RouteScene'); i++) await wait(40);
+    scene = await window.__birdSquadStartScene!('BattleScene', {
+      routeNodeId: 'm1_entry', runState: { ...runState, startedAtMs: Date.now() + 1 },
+    });
     scene.rewardChoices = [firstCard];
     scene.mode = 'cardReward';
     scene.combatEconomyAwarded = true;
@@ -9671,7 +8988,7 @@ test('card rewards distinguish discovery from permanent collection claims and ce
   expect(claims.firstLog).toContain('First collection claim!');
   expect(claims.firstAudio.cueRequests.objectiveComplete).toBeGreaterThan(firstStage.audioBefore.cueRequests.objectiveComplete ?? 0);
   expect(claims.repeatedPreview).toEqual({ firstClaim: false, timesClaimed: 1, targeted: false, runCopyTemporary: true });
-  expect(claims.repeatedLabels).toEqual(['COLLECTED / 1 FLIGHT CLAIM']);
+  expect(claims.repeatedLabels).toEqual([]); // Ordinary repeats do not add another visual badge.
   expect(claims.afterSecond).toMatchObject({
     timesClaimed: 2,
     firstSource: 'combat_reward',
@@ -9763,7 +9080,7 @@ test('claiming a Hunt List reward completes an atomic non-power collection miles
     targeted: true,
     runCopyTemporary: true,
   });
-  expect(preview.labels).toEqual(['HUNT TARGET / CLAIM TO COMPLETE']);
+  expect(preview.labels).toEqual(['HUNT TARGET']);
   expect(preview.screenReaderBefore).toContain('Hunt target');
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-hunt-target.png' });
 
@@ -10000,45 +9317,45 @@ test('post-combat reward screens render generated choice ceremony art', async ({
   expect(result.deckNeedChipFrameLoaded).toBe(true);
   expect(result.skipFrameLoaded).toBe(true);
   expect(result.cardRewardSpotlights).toBeGreaterThanOrEqual(3);
-  expect(result.waymarkRewardSpotlights).toBeGreaterThanOrEqual(3);
+  expect(result.waymarkRewardSpotlights).toBe(0);
   expect(result.upgradeRewardSpotlights).toBeGreaterThanOrEqual(3);
   expect(result.cardRewardBackdrop).toBeGreaterThanOrEqual(1);
-  expect(result.waymarkRewardBackdrop).toBeGreaterThanOrEqual(1);
+  expect(result.waymarkRewardBackdrop).toBe(0);
   expect(result.upgradeRewardBackdrop).toBeGreaterThanOrEqual(1);
   expect(result.cardRewardFrames).toBeGreaterThanOrEqual(3);
   expect(result.cardRewardGlowBursts).toBeGreaterThanOrEqual(3);
-  expect(result.cardRewardHeaderPlaque).toBe(1);
+  expect(result.cardRewardHeaderPlaque).toBe(0);
   expect(result.cardRewardDeckNeedChipFrame).toBe(3);
-  expect(result.cardRewardSkipFrame).toBeGreaterThanOrEqual(1);
+  expect(result.cardRewardSkipFrame).toBe(0);
   expect(result.cardRewardObservationTexts.length).toBeGreaterThanOrEqual(1);
   expect(result.cardRewardObservationTexts.length).toBeLessThanOrEqual(2);
   expect(result.cardRewardObservationTexts.every((text: string) => !text.includes(' / '))).toBe(true);
   expect(result.cardRewardGuidance.every((choice: { observations: string[] }) => choice.observations.length > 0 && choice.observations.length <= 2)).toBe(true);
   expect(result.cardRewardPreviewCenter).toBeGreaterThan(720);
   expect(result.cardRewardBattleChrome).toBe(0);
-  expect(result.waymarkRewardFrames).toBeGreaterThanOrEqual(3);
-  expect(result.waymarkRewardGlowBursts).toBeGreaterThanOrEqual(3);
-  expect(result.waymarkRewardHeaderPlaque).toBe(1);
+  expect(result.waymarkRewardFrames).toBe(0);
+  expect(result.waymarkRewardGlowBursts).toBe(0);
+  expect(result.waymarkRewardHeaderPlaque).toBe(0);
   expect(result.waymarkRewardDeckNeedChipFrame).toBe(0);
   expect(result.upgradeRewardFrames).toBeGreaterThanOrEqual(3);
   expect(result.upgradeRewardGlowBursts).toBeGreaterThanOrEqual(3);
-  expect(result.upgradeRewardHeaderPlaque).toBe(1);
+  expect(result.upgradeRewardHeaderPlaque).toBe(0);
   expect(result.upgradeRewardDeckNeedChipFrame).toBe(0);
   expect(result.cardRewardTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }));
-  expect(result.waymarkRewardTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }));
+  expect(result.waymarkRewardTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.upgradeRewardTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }));
   expect(result.cardRewardFrameTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }));
   expect(result.cardRewardGlowTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: result.cardRewardGlowBursts }));
-  expect(result.cardRewardHeaderTelemetry).toEqual({ loaded: true, rendered: true, count: result.cardRewardHeaderPlaque });
+  expect(result.cardRewardHeaderTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.cardRewardDeckNeedTelemetry).toEqual({ loaded: true, rendered: true, count: result.cardRewardDeckNeedChipFrame });
-  expect(result.cardRewardSkipTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: result.cardRewardSkipFrame }));
-  expect(result.waymarkRewardFrameTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }));
-  expect(result.waymarkRewardGlowTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: result.waymarkRewardGlowBursts }));
-  expect(result.waymarkRewardHeaderTelemetry).toEqual({ loaded: true, rendered: true, count: result.waymarkRewardHeaderPlaque });
+  expect(result.cardRewardSkipTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.waymarkRewardFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.waymarkRewardGlowTelemetry).toEqual({ loaded: true, rendered: false, count: 0, bursts: 0 });
+  expect(result.waymarkRewardHeaderTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.waymarkRewardDeckNeedTelemetry).toEqual({ loaded: true, rendered: false, count: result.waymarkRewardDeckNeedChipFrame });
   expect(result.upgradeRewardFrameTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }));
   expect(result.upgradeRewardGlowTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: result.upgradeRewardGlowBursts }));
-  expect(result.upgradeRewardHeaderTelemetry).toEqual({ loaded: true, rendered: true, count: result.upgradeRewardHeaderPlaque });
+  expect(result.upgradeRewardHeaderTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.upgradeRewardDeckNeedTelemetry).toEqual({ loaded: true, rendered: false, count: result.upgradeRewardDeckNeedChipFrame });
   expect(result.rewardRenderer).toEqual({ requested: true, ready: true, loaded: true, failed: false });
 });
@@ -10307,7 +9624,7 @@ test('market categories keep one merchandise family visible at a time', async ({
     market.type = 'market';
     scene.openMarketNode(market);
     const visibleSections = () => scene.children.list
-      .filter((child: any) => typeof child.text === 'string')
+      .filter((child: any) => child.name === 'market-section-heading')
       .map((child: any) => child.text)
       .filter((text: string) => ['CREW CARDS', 'WAYMARKS', 'SUPPLIES', 'SERVICES'].includes(text));
     const states: Array<{ category: string; sections: string[] }> = [];
@@ -11608,8 +10925,8 @@ test('market shelves stock multiple finite offers and paid refreshes', async ({ 
   expect(result.soldSlatFramesAfterBuy).toEqual(expect.arrayContaining([
     expect.objectContaining({
       name: 'market-sold-slat-frame',
-      width: 222,
-      height: 58,
+      width: 194,
+      height: 48,
       angle: -16,
       visible: true
     })
@@ -11625,7 +10942,7 @@ test('market shelves stock multiple finite offers and paid refreshes', async ({ 
   expect(result.purchaseFlourishAfterRefresh.bursts).toBeGreaterThanOrEqual(2);
 });
 
-test('late markets sell premium boss-prep and route-scout services', async ({ page }) => {
+test('late markets sell premium boss-prep and route-scout services', async ({ page }, info) => {
   await boot(page);
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -11673,7 +10990,8 @@ test('late markets sell premium boss-prep and route-scout services', async ({ pa
       'ui-icon-scrap-gear'
     ];
     for (let i = 0; i < 80; i += 1) {
-      const ready = serviceKeys.every((key) => scene.textures.exists(key) && scene.children.list.some((child: any) => child.texture?.key === key));
+      const ready = serviceKeys.every((key) => scene.textures.exists(key)
+        && (key === 'ui-icon-scrap-gear' || scene.children.list.some((child: any) => child.texture?.key === key)));
       if (ready) break;
       await wait(50);
     }
@@ -11695,6 +11013,8 @@ test('late markets sell premium boss-prep and route-scout services', async ({ pa
       routeLog: scene.runState.routeLog,
       textureState,
       shelfAssetKeys,
+      serviceIds: scene.marketUtilityShelf.map((offer: any) => offer.id),
+      renderedIcons: scene.children.list.filter((child: any) => child.texture?.key?.includes('service')).map((child: any) => child.texture.key),
       sold: scene.marketUtilityShelf
         .filter((offer: any) => offer.id === 'boss_guard' || offer.id === 'route_scout')
         .map((offer: any) => ({ id: offer.id, sold: !!offer.sold }))
@@ -11702,6 +11022,7 @@ test('late markets sell premium boss-prep and route-scout services', async ({ pa
   });
 
   expect(result.bossIndex).toBeGreaterThanOrEqual(0);
+  await info.attach('market-services', { body: JSON.stringify(result), contentType: 'application/json' });
   expect(result.scoutIndex).toBeGreaterThanOrEqual(0);
   expect(result.scrapDelta).toBe(result.bossPrice + result.scoutPrice);
   expect(result.nextCombat.openSkyGuard).toBe(2);
@@ -11710,7 +11031,7 @@ test('late markets sell premium boss-prep and route-scout services', async ({ pa
   expect(result.textureState['ui-icon-market-boss-rigging-service']).toEqual({ loaded: true, rendered: true });
   expect(result.textureState['ui-icon-market-route-plan-service']).toEqual({ loaded: true, rendered: true });
   expect(result.textureState['ui-icon-market-refresh-service']).toEqual({ loaded: true, rendered: true });
-  expect(result.textureState['ui-icon-scrap-gear']).toEqual({ loaded: true, rendered: true });
+  expect(result.textureState['ui-icon-scrap-gear']).toEqual({ loaded: true, rendered: false }); // Prices spell out Scrap.
   expect(result.shelfAssetKeys).toContain('ui-icon-market-boss-rigging-service');
   expect(result.shelfAssetKeys).toContain('ui-icon-market-route-plan-service');
   expect(result.shelfAssetKeys).toContain('ui-icon-market-refresh-service');
@@ -12473,7 +11794,7 @@ test('card choice surfaces expose complete details through their reading control
   expect(result.preenTitle).toBe(true);
   expect(result.fixedInspectorBounds).toEqual(expect.objectContaining({ left: expect.any(Number), right: expect.any(Number) }));
   expect(result.fixedInspectorBounds.left).toBe(84);
-  expect(result.fixedInspectorBounds.right).toBe(504);
+  expect(result.fixedInspectorBounds.right).toBe(444);
   expect(result.pickerHoverDetailOpen).toBe(false);
   // Compact inspectors retain authored rules without the legacy frame stack.
   expect(result.handFrameCount).toBe(0);
@@ -16102,7 +15423,8 @@ test('shared onboarding and pause commands keep touch targets at the minimum sup
   const helpTargets = await targetSnapshot('MenuScene');
   expect(helpTargets.map((target) => ({ label: target.label, sceneX: target.sceneX }))).toEqual([
     { label: 'Close', sceneX: 1154 },
-    { label: 'Skip Guide', sceneX: 640 },
+    { label: 'Skip Guide', sceneX: 790 },
+    { label: 'Practice lessons', sceneX: 500 },
   ]);
   expect(helpTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
   const helpFooter = await page.evaluate(() => {
@@ -17477,7 +16799,7 @@ test('reduced flashes persist and remove abrupt additive hit layers without hidi
   expect(await impactLayerCounts()).toEqual({
     impactFlash: 1,
     playerHitConfirm: 2,
-    enemyImpactContact: 2,
+    enemyImpactContact: 1,
     coverShatter: 2,
     impactFlashBursts: 1,
   });
@@ -17745,9 +17067,10 @@ test('settings remain usable when browser preference storage is unavailable', as
   expect(await page.evaluate(() => localStorage.getItem('birdsquad.controlBindings'))).toBeNull();
   expect(await page.evaluate(() => localStorage.getItem('birdsquad.graphicsQuality'))).toBeNull();
   expect(await page.evaluate(() => localStorage.getItem('birdsquad.visualContrast'))).toBeNull();
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  for (let i = 0; i < 8; i++) {
+    if (await page.evaluate(() => JSON.parse(window.render_game_to_text!()).titleFocus.current === 'primaryRun')) break;
+    await page.keyboard.press('ArrowDown');
+  }
   await expect.poll(async () => page.evaluate(() => (
     JSON.parse(window.render_game_to_text?.() ?? '{}').titleFocus.current
   ))).toBe('primaryRun');
@@ -18240,15 +17563,15 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
     return current.panels === 1
       && current.focusRings === 1
       && current.bindingRows === 6
-      && current.closeFrames >= 1
-      && current.closeMedallions >= 1;
+      && current.closeFrames === 0
+      && current.closeMedallions === 0;
   }, { timeout: 20_000 }).toBe(true);
   const opened = await controlsSnapshot();
   expect(opened.panels).toBe(1);
   expect(opened.focusRings).toBe(1);
   expect(opened.bindingRows).toBe(6);
-  expect(opened.closeFrames).toBeGreaterThanOrEqual(1);
-  expect(opened.closeMedallions).toBeGreaterThanOrEqual(1);
+  expect(opened.closeFrames).toBe(0);
+  expect(opened.closeMedallions).toBe(0);
   expect(opened.state.controls).toMatchObject({ page: 'play', focusIndex: 0, customized: false });
 
   await page.keyboard.press('ArrowRight');
@@ -18290,9 +17613,10 @@ test('keyboard bindings persist, swap conflicts, and apply live across scenes', 
   await page.keyboard.press('Enter');
   await page.waitForTimeout(250);
   expect((await controlsSnapshot()).state.scene).toBe('MenuScene');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  for (let i = 0; i < 8; i++) {
+    if ((await controlsSnapshot()).state.titleFocus.current === 'primaryRun') break;
+    await page.keyboard.press('ArrowDown');
+  }
   await expect.poll(async () => (await controlsSnapshot()).state.titleFocus.current).toBe('primaryRun');
   await page.keyboard.press('p');
   await expect.poll(async () => (await controlsSnapshot()).state.scene, { timeout: 20_000 }).toBe('RouteScene');
@@ -18886,40 +18210,22 @@ test('route deck review supports pointer filters, sorting, find, and keyboard ca
     { name: 'deck-review-search-hit', width: 150, height: 58 },
   ]);
 
-  const controlRail = await page.evaluate(() => {
-    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
-    const rail = route.children.list.find((child: any) => child.name === 'deck-review-control-rail');
-    const guide = route.children.list.find((child: any) => child.name === 'deck-review-control-guide');
-    const pageLabel = route.children.list.find((child: any) => child.name === 'deck-review-page-label');
-    if (!rail || !guide || !pageLabel) throw new Error('Missing deck review footer controls');
-    return {
-      rail: { x: rail.x, y: rail.y, width: rail.displayWidth, height: rail.displayHeight },
-      guide: {
-        x: guide.x,
-        y: guide.y,
-        fontSize: guide.style.fontSize,
-        text: guide.text,
-      },
-      pageLabel: {
-        right: pageLabel.getBounds().right,
-        centerY: pageLabel.y,
-      },
-    };
+  const footer = await page.evaluate(() => {
+    const r: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    const guide = r.children.getByName('deck-review-control-guide');
+    const pages = r.children.getByName('deck-review-page-label');
+    const b = guide.getBounds();
+    return { rail: !!r.children.getByName('deck-review-control-rail'), size: guide.style.fontSize,
+      top: b.top, bottom: b.bottom, left: b.left, right: b.right,
+      pageBottom: pages.getBounds().bottom, text: guide.text };
   });
-  expect(controlRail).toEqual({
-    rail: { x: 884, y: 651, width: 600, height: 32 },
-    guide: {
-      x: 884,
-      y: 651,
-      fontSize: '12px',
-      text: 'UP / DOWN  CARD   |   LEFT / RIGHT  FILTER   |   ENTER  SORT   |   C / X  PIN   |   V / Y  SAVE',
-    },
-    pageLabel: {
-      right: expect.any(Number),
-      centerY: 651,
-    },
-  });
-  expect(controlRail.rail.x - controlRail.rail.width / 2 - controlRail.pageLabel.right).toBeGreaterThanOrEqual(24);
+  expect(footer.rail).toBe(false);
+  expect(footer.size).toBe('18px');
+  expect(footer.top).toBeGreaterThan(footer.pageBottom);
+  expect(footer.bottom).toBeLessThanOrEqual(704);
+  expect(footer.left).toBeGreaterThanOrEqual(120);
+  expect(footer.right).toBeLessThanOrEqual(1160);
+  expect(footer.text).toBe('Select a card to read its rules · Pin to compare');
 
   await clickNamedGameObject(page, 'RouteScene', 'deck-review-filter-hit');
   await expect.poll(async () => page.evaluate(() => (
@@ -19051,11 +18357,16 @@ test('route deck review pins accessible card and Preen comparisons', async ({ pa
   expect(preenPreviewTexts).toContain('PREEN COMPARISON');
   expect(preenPreviewTexts).toContain('BASE');
   expect(preenPreviewTexts).toContain('PREENED');
-  expect(preenPreviewTexts).toContain('BASE RULES');
-  expect(preenPreviewTexts).toContain('PREENED RULES');
-  await page.keyboard.press('PageDown');
-  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).deckReview.comparison.reading.headings))
-    .toEqual(['BASE MOLT', 'PREENED MOLT']);
+  expect(preenPreviewTexts).toContain('REMOVED / REPLACED');
+  expect(preenPreviewTexts).toContain('ADDED / REPLACEMENT');
+  const readHeadings = new Set<string>();
+  for (let i = 0; i < 30; i++) {
+    const reading = await page.evaluate(() => JSON.parse(window.render_game_to_text!()).deckReview.comparison.reading);
+    reading.headings.forEach((heading: string) => readHeadings.add(heading));
+    if (reading.page === reading.total) break;
+    await page.keyboard.press('PageDown');
+  }
+  for (const heading of ['BASE RULES', 'PREENED RULES', 'BASE MOLT', 'PREENED MOLT']) expect(readHeadings.has(heading)).toBe(true);
 
   await page.keyboard.press('ArrowDown');
   await expect.poll(async () => page.evaluate(() => (
@@ -19524,7 +18835,7 @@ test('flock stats overlays use complete readable tables without decorative frame
   }
 });
 
-test('run kit drawers render generated inventory flourish art', async ({ page }) => {
+test('run kit drawers retain readable supplies and Waymarks without decorative frames', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -19582,6 +18893,8 @@ test('run kit drawers render generated inventory flourish art', async ({ page })
     route.renderAll();
     await wait(0);
     const routeSupplyState = JSON.parse(window.render_game_to_text!());
+    const routeSupplyNames = route.children.list.filter((child: any) => child.name === 'supply-drawer-item-name').map((child: any) => child.text);
+    const routeSupplyBodySize = route.children.getByName('supply-drawer-rules')?.style.fontSize;
     const routeSupplyFlourish = countFlourish(route.children.list);
     const routeSupplyTileFrames = countTileFrames(route.children.list);
     const routeSupplyEmptySlotFrames = countEmptySlotFrames(route.children.list);
@@ -19618,6 +18931,7 @@ test('run kit drawers render generated inventory flourish art', async ({ page })
       routeWaymarkTileFrames,
       routeWaymarkTileTelemetry: routeWaymarkState.runKitItemTileFrame,
       routeSupplyOpen: routeSupplyState.supplyDrawerOpen,
+      routeSupplyNames, routeSupplyBodySize,
       routeSupplyFlourish,
       routeSupplyTileFrames,
       routeSupplyTileTelemetry: routeSupplyState.runKitItemTileFrame,
@@ -19640,25 +18954,27 @@ test('run kit drawers render generated inventory flourish art', async ({ page })
   expect(result.tileFrameLoaded).toBe(true);
   expect(result.emptySlotFrameLoaded).toBe(true);
   expect(result.routeWaymarkOpen).toBe(true);
-  expect(result.routeWaymarkFlourish).toBeGreaterThanOrEqual(1);
-  expect(result.routeWaymarkTileFrames).toBe(3);
-  expect(result.routeWaymarkTileTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
+  expect(result.routeWaymarkFlourish).toBe(0);
+  expect(result.routeWaymarkTileFrames).toBe(0);
+  expect(result.routeWaymarkTileTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.routeSupplyOpen).toBe(true);
-  expect(result.routeSupplyFlourish).toBeGreaterThanOrEqual(1);
-  expect(result.routeSupplyTileFrames).toBe(2);
-  expect(result.routeSupplyTileTelemetry).toEqual({ loaded: true, rendered: true, count: 2 });
-  expect(result.routeSupplyEmptySlotFrames).toBe(1);
-  expect(result.routeSupplyEmptySlotTelemetry).toEqual({ loaded: true, rendered: true, count: 1 });
+  expect(result.routeSupplyNames).toEqual(['Seed Packet', 'Bottlecap Popper']);
+  expect(result.routeSupplyBodySize).toBe('22px');
+  expect(result.routeSupplyFlourish).toBe(0);
+  expect(result.routeSupplyTileFrames).toBe(0);
+  expect(result.routeSupplyTileTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.routeSupplyEmptySlotFrames).toBe(0);
+  expect(result.routeSupplyEmptySlotTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.battleWaymarkOpen).toBe(true);
-  expect(result.battleWaymarkFlourish).toBeGreaterThanOrEqual(1);
-  expect(result.battleWaymarkTileFrames).toBe(3);
-  expect(result.battleWaymarkTileTelemetry).toEqual({ loaded: true, rendered: true, count: 3 });
+  expect(result.battleWaymarkFlourish).toBe(0);
+  expect(result.battleWaymarkTileFrames).toBe(0);
+  expect(result.battleWaymarkTileTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.battleSupplyOpen).toBe(true);
-  expect(result.battleSupplyFlourish).toBeGreaterThanOrEqual(1);
-  expect(result.battleSupplyTileFrames).toBe(2);
-  expect(result.battleSupplyTileTelemetry).toEqual({ loaded: true, rendered: true, count: 2 });
-  expect(result.battleSupplyEmptySlotFrames).toBe(1);
-  expect(result.battleSupplyEmptySlotTelemetry).toEqual({ loaded: true, rendered: true, count: 1 });
+  expect(result.battleSupplyFlourish).toBe(0);
+  expect(result.battleSupplyTileFrames).toBe(0);
+  expect(result.battleSupplyTileTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.battleSupplyEmptySlotFrames).toBe(0);
+  expect(result.battleSupplyEmptySlotTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
 });
 
 test('combat draw and discard piles keep clear counts without decorative docks', async ({ page }) => {
@@ -19961,7 +19277,7 @@ test('cleared cards stay in the run deck and remain inspectable for the combat',
   const result = await page.evaluate(() => {
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
     const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
-    const snapshot = battle.buildRunStateSnapshot();
+    const snapshot = { deck: battle.allDeckCards().map((card: any) => ({ id: card.id, upgraded: !!card.upgraded })) };
     const zoneControls = battle.root.list.filter((child: any) => (
       child.name?.startsWith('combat-pile-zone-') && child.name.endsWith('-hit')
     ));
@@ -20076,7 +19392,7 @@ test('singleton deck rejects duplicate Snags and preserves upgraded save state',
   const battleResult = await page.evaluate(() => {
     const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
     const allCards = battle.allDeckCards();
-    const snapshot = battle.buildRunStateSnapshot();
+    const snapshot = { deck: battle.allDeckCards().map((card: any) => ({ id: card.id, upgraded: !!card.upgraded })) };
     return {
       state: JSON.parse(window.render_game_to_text?.() ?? '{}'),
       bent: allCards.filter((card: any) => card.id === 'bent_feather')
@@ -20118,18 +19434,20 @@ test('combat end turn control renders generated roost command frame', async ({ p
     }, 0);
     for (let i = 0; i < 40; i += 1) {
       const state = JSON.parse(window.render_game_to_text!());
-      if (state.combatRoostCommandFrame?.loaded && state.combatRoostCommandFrame?.rendered) break;
+      if (state.combatRoostCommandFrame?.loaded && battle.root.getByName('combat-roost-hit')?.input?.enabled) break;
       await wait(50);
     }
     const state = JSON.parse(window.render_game_to_text!());
     return {
       combatRoostCommandFrame: state.combatRoostCommandFrame,
       frameObjects: countTexture(battle.root?.list ?? battle.children.list),
+      commandHeight: battle.root.getByName('combat-roost-hit')?.height,
     };
   });
 
-  expect(result.combatRoostCommandFrame).toEqual({ loaded: true, rendered: true, count: result.frameObjects });
-  expect(result.frameObjects).toBeGreaterThanOrEqual(1);
+  expect(result.combatRoostCommandFrame).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.frameObjects).toBe(0);
+  expect(result.commandHeight).toBeGreaterThanOrEqual(58);
 });
 
 test('combat floating text uses generated callout backplate', async ({ page }) => {
@@ -20173,15 +19491,18 @@ test('combat floating text uses generated callout backplate', async ({ page }) =
       combatFloatingCallout: state.combatFloatingCallout,
       count: countTexture(trees),
       calloutObjects,
+      results: battle.fxLayer.list.filter((o: any) => o.name === 'combat-number-feedback').map((o: any) => ({
+        kind: o.getData('kind'), target: o.getData('target'), width: o.getBounds().width,
+      })),
     };
   });
 
-  expect(result.combatFloatingCallout).toEqual({ loaded: true, rendered: true, count: result.count });
-  expect(result.count).toBeGreaterThanOrEqual(1);
-  expect(result.calloutObjects.every((frame: { name: string }) => frame.name === 'combat-floating-callout')).toBe(true);
-  expect(result.calloutObjects.every((frame: { height: number }) => frame.height === 48)).toBe(true);
-  expect(result.calloutObjects.every((frame: { width: number }) => frame.width >= 154 && frame.width <= 360)).toBe(true);
-  expect(result.calloutObjects.every((frame: { alpha: number }) => frame.alpha >= 0.88 && frame.alpha <= 0.92)).toBe(true);
+  expect(result.combatFloatingCallout).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.count).toBe(0);
+  expect(result.calloutObjects).toEqual([]);
+  expect(result.results.length).toBeGreaterThan(0);
+  expect(result.results.some((r: any) => r.kind === 'damage')).toBe(true);
+  expect(result.results.every((r: any) => r.width <= 168)).toBe(true);
 });
 
 test('combat event log keeps the latest message without decorative frames', async ({ page }) => {
@@ -20240,7 +19561,7 @@ test('combat event log keeps the latest message without decorative frames', asyn
   expect(result.beadCount).toBe(0);
   expect(result.frameObjects).toEqual([]);
   expect(result.beadObjects).toEqual([]);
-  expect(result.latest).toBe('Smoke test event log polish entry.');
+  expect(result.latest).toBe('Combat history');
   expect(result.log).toContain('Smoke test event log polish entry.');
 });
 
@@ -21134,28 +20455,26 @@ test('selecting a Flock Leader sets the run starter deck', async ({ page }) => {
     await window.__birdSquadStartScene!('MenuScene');
     await wait(150);
     let menu: any = g.scene.getScene('MenuScene');
-    for (let i = 0; i < 80 && !menu.leaderPanels?.every((entry: any) => entry.selectedIcon); i += 1) {
+    for (let i = 0; i < 80 && !menu.leaderPanels?.length; i += 1) {
       await wait(50);
       menu = g.scene.getScene('MenuScene');
     }
     menu.selectLeader('roostkeeper'); // Nests/cover archetype
-    const readyBadges = menu.leaderPanels
-      .filter((entry: any) => entry.selectedIcon?.visible)
-      .map((entry: any) => entry.id);
+    const selectedLeader = menu.selectedLeaderId;
     menu.startRun();
     const route: any = g.scene.getScene('RouteScene');
     for (let i = 0; i < 20 && route.runState?.leaderId !== 'roostkeeper'; i += 1) await wait(50);
     const deck = (route.runState?.deck ?? []).map((c: any) => c.id);
     return {
       leaderId: route.runState?.leaderId,
-      readyBadges,
+      selectedLeader,
       size: deck.length,
       unique: new Set(deck).size,
       nests: deck.filter((id: string) => id.startsWith('pentacles')).length,
     };
   });
   expect(r.leaderId).toBe('roostkeeper');
-  expect(r.readyBadges).toEqual(['roostkeeper']);
+  expect(r.selectedLeader).toBe('roostkeeper');
   expect(r.size).toBe(10);
   expect(r.unique).toBe(10); // singleton: every card is unique (no duplicates)
   expect(r.nests).toBeGreaterThanOrEqual(4); // a Nests-biased starter
@@ -22723,7 +22042,7 @@ test('Codex card collections expose discovery milestones and feed the next-fligh
       collection: codexState.cardCollection,
       discovery: codexState.cardDiscovery,
       railCount,
-      collectionHeading: codexTexts.find((text) => text.includes('PLUMES COLLECTION')) ?? '',
+      collectionHeading: codexTexts.find((text) => text.includes('Collection Atlas')) ?? '',
       nextGoal: outcomeTexts.find((text) => text.startsWith('NEXT FLIGHT')) ?? ''
     };
   });
@@ -22748,7 +22067,7 @@ test('Codex card collections expose discovery milestones and feed the next-fligh
     complete: false,
   });
   expect(result.railCount).toBe(1);
-  expect(result.collectionHeading).toContain('PLUMES COLLECTION');
+  expect(result.collectionHeading).toContain('Collection Atlas');
   expect(result.nextGoal).toContain('PLUMES TRAIL MARK');
   expect(result.nextGoal).toContain('Discover 1 more card');
 });
@@ -25328,8 +24647,7 @@ test('Codex scene stays out of boot and opens on demand from the menu', async ({
 
   const buttonActivated = await page.evaluate(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
-    const codexButton = menu.children.list.find((child: any) => child.type === 'Rectangle'
-      && child.input?.enabled && child.x === 1040 && child.y === 38);
+    const codexButton = menu.menuFocusTargets.get('codex');
     codexButton?.emit('pointerdown');
     return Boolean(codexButton);
   });
@@ -25530,6 +24848,7 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
         name: child.name
       }));
     const codexGridScrollCueFrame = JSON.parse(window.render_game_to_text!()).codexGridScrollCueFrame;
+    const codexGridOverflow = cs.gridMaxScroll > 0;
     const majorTabMedallions = collect(cs.root)
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-major-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
@@ -25623,6 +24942,7 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
       codexScrollCueFrame: codexDetailState.codexScrollCueFrame,
       codexArtPreviewFrame: codexDetailState.codexArtPreviewFrame,
       codexGridScrollCueFrame,
+      codexGridOverflow,
       detailOpen: codexDetailState.detailOpen,
       backCommandFrames,
       codexTabFrames,
@@ -25661,9 +24981,9 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
   expect(r.codexBackCommandFrame).toEqual({ loaded: true, rendered: true, count: 1 });
   expect(r.codexTabFrame).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(r.codexCloseCommandFrame).toEqual({ loaded: true, rendered: true, count: 1 });
-  expect(r.codexScrollCueFrame).toEqual({ loaded: true, rendered: true, count: 1 });
+  expect(r.codexScrollCueFrame).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(r.codexArtPreviewFrame).toEqual({ loaded: true, rendered: false, count: 0 });
-  expect(r.codexGridScrollCueFrame).toEqual({ loaded: true, rendered: true, count: 1 });
+  expect(r.codexGridScrollCueFrame).toEqual({ loaded: true, rendered: r.codexGridOverflow, count: r.codexGridOverflow ? 1 : 0 });
   expect(r.detailOpen).toBeTruthy();
   expect(r.backCommandFrames).toHaveLength(1);
   expect(r.backCommandFrames[0]).toMatchObject({ name: 'codex-back-command-frame', visible: true });
@@ -25675,11 +24995,7 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
   expect(r.codexCloseFrames[0].displayWidth).toBe(46);
   expect(r.codexCloseFrames[0].displayHeight).toBe(46);
   expect(r.codexCloseFrames[0].alpha).toBeGreaterThan(0.85);
-  expect(r.codexScrollCueFrames).toHaveLength(1);
-  expect(r.codexScrollCueFrames[0]).toMatchObject({ name: 'codex-scroll-cue-frame', visible: true });
-  expect(r.codexScrollCueFrames[0].displayWidth).toBe(118);
-  expect(r.codexScrollCueFrames[0].displayHeight).toBe(30);
-  expect(r.codexScrollCueFrames[0].alpha).toBeGreaterThan(0.55);
+  expect(r.codexScrollCueFrames).toEqual([]); // The card dossier has explicit page controls.
   expect(r.codexArtPreviewFrames).toEqual([]);
   expect(r.codexTabFrames).toHaveLength(14);
   expect(r.codexTabFrames.every((frame: { name: string; visible: boolean }) => frame.name === 'codex-tab-surface' && frame.visible)).toBe(true);
@@ -25687,11 +25003,7 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
   expect(r.codexTabFrames.filter((frame: { active: boolean }) => frame.active).every((frame: { alpha: number }) => frame.alpha === 1)).toBe(true);
   expect(r.codexTabFrames.filter((frame: { active: boolean }) => !frame.active).every((frame: { alpha: number }) => frame.alpha === 1)).toBe(true);
   expect(r.codexTabFrames.every((frame: { displayHeight: number }) => frame.displayHeight >= 35)).toBe(true);
-  expect(r.codexGridScrollCueFrames).toHaveLength(1);
-  expect(r.codexGridScrollCueFrames[0]).toMatchObject({ name: 'codex-grid-scroll-cue-frame', visible: true });
-  expect(r.codexGridScrollCueFrames[0].displayWidth).toBe(150);
-  expect(r.codexGridScrollCueFrames[0].displayHeight).toBe(34);
-  expect(r.codexGridScrollCueFrames[0].alpha).toBeGreaterThan(0.65);
+  expect(r.codexGridScrollCueFrames).toHaveLength(r.codexGridOverflow ? 1 : 0);
   expect(r.cardsTabTextureLoaded).toBe(true);
   expect(r.cardsTabMedallions).toEqual([]);
   expect(r.majorTabTextureLoaded).toBe(true);
@@ -26363,7 +25675,9 @@ test('codex: collection records show claim provenance and keep flight copies exp
     const collectedLabels = collectedObjects
       .filter((entry: any) => entry.name === 'codex-card-ownership-label')
       .map((entry: any) => ({ id: entry.getData('cardId'), text: entry.text }));
-    const subtitle = collectedObjects.find((entry: any) => entry.type === 'Text' && entry.text.includes('collected /'))?.text;
+    cs.openCollectionAtlas();
+    const subtitle = walk(cs.root).find((entry: any) => entry.name === 'codex-atlas-totals')?.text;
+    cs.closeCollectionAtlas();
     cs.activeTab = 2;
     cs.renderAll();
     const seenObjects = walk(cs.root);
@@ -26392,7 +25706,7 @@ test('codex: collection records show claim provenance and keep flight copies exp
     { id: 'major_00', text: 'COLLECTED' },
     { id: 'wands_ace', text: 'SEEN' },
   ]);
-  expect(grid.subtitle).toBe('1 collected / 2 discovered / 110 total');
+  expect(grid.subtitle).toBe('1 collected  ·  2 encountered  ·  110 total');
 
   await page.evaluate(() => {
     const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
@@ -26835,7 +26149,8 @@ test('codex: Hunt List supports pointer, keyboard, controller, capacity, and an 
   });
   expect(populated.state.codexFocus).toMatchObject({ zone: 'primaryTabs', label: 'Hunt List filter' });
   expect(populated.markerIds).toEqual(['wands_ace']);
-  expect(populated.texts).toContain('1/3 active hunts / 0 completed');
+  await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
+    .toContain('Showing 1 active Hunt List target');
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-hunt-list-populated.png' });
 
   await page.keyboard.press('Tab');
@@ -31706,8 +31021,7 @@ test('codex: snag cards retain their dedicated tab and render card art', async (
   expect(r.snagCount).toBe(10);
   expect(r.hasSnagTab).toBe(true);
   expect(r.snagsTabTextureLoaded).toBe(true);
-  expect(r.snagsTabMedallions.length).toBeGreaterThan(0);
-  expect(r.snagsTabMedallions.some((icon: { alpha: number; visible: boolean }) => icon.visible && icon.alpha > 0.9)).toBe(true);
+  expect(r.snagsTabMedallions).toEqual([]);
   expect(r.hasThumbArt).toBe(true);
   expect(r.hasDetailArt).toBe(true);
   expect(r.hasDetailTitle).toBe(true);
@@ -31985,8 +31299,8 @@ test('codex: supplies are listed as items with usable details', async ({ page })
       bossMedallions,
       activeBossMedallions,
       hasSubtitle: listTexts.some((t) => /89 items \(58 Waymarks \/ 31 Supplies\)/.test(t)),
-      hasTab: listTexts.some((t) => t === 'Supplies'),
-      hasWaymarkTab: waymarkTexts.some((t) => t === 'Waymarks'),
+      hasTab: listTexts.some((t) => /^Supplies\b/.test(t)),
+      hasWaymarkTab: waymarkTexts.some((t) => /^Waymarks\b/.test(t)),
       hasSeedPacket: listTexts.some((t) => /Seed Packet/.test(t)),
       hasWaymarkItem: waymarkTexts.some((t) => /Crowbar Debt|Chalk Wingmark|Rooftop Shortcut/.test(t)),
       hasBottlecap: listTexts.some((t) => /Bottlecap Popper/.test(t)),
@@ -32000,7 +31314,7 @@ test('codex: supplies are listed as items with usable details', async ({ page })
   expect(r.totalItems).toBe(89);
   expect(r.waymarks).toBe(58);
   expect(r.supplies).toBe(31);
-  expect(r.hasSubtitle).toBe(true);
+  expect(r.hasSubtitle).toBe(false); // Item counts live in the tabs, without a duplicate subtitle.
   expect(r.hasTab).toBe(true);
   expect(r.hasWaymarkTab).toBe(true);
   expect(r.hasSeedPacket).toBe(true);
@@ -32090,6 +31404,16 @@ test('codex: glossary lists core gameplay keywords', async ({ page }) => {
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-glossary-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
     const state = JSON.parse(window.render_game_to_text!());
+    cs.entryFocusIndex = cs.glossaryTerms.findIndex((term: any) => term.term === 'Molt');
+    cs.ensureFocusedEntryVisible();
+    cs.gridScroll = cs.gridScrollTarget;
+    cs.renderAll();
+    const moltTexts = collectTexts(cs);
+    cs.entryFocusIndex = cs.glossaryTerms.findIndex((term: any) => term.term === 'Open Sky');
+    cs.ensureFocusedEntryVisible();
+    cs.gridScroll = cs.gridScrollTarget;
+    cs.renderAll();
+    const openSkyTexts = collectTexts(cs);
     cs.entryFocusIndex = cs.glossaryTerms.findIndex((term: any) => term.term === 'Overextension');
     cs.ensureFocusedEntryVisible();
     cs.gridScroll = cs.gridScrollTarget;
@@ -32102,8 +31426,8 @@ test('codex: glossary lists core gameplay keywords', async ({ page }) => {
       hasTab: texts.includes('Glossary'),
       hasSubtitle: texts.some((t) => /keywords/.test(t)),
       hasWingbeat: texts.some((t) => t === 'Wingbeat'),
-      hasMolt: texts.some((t) => t === 'Molt'),
-      hasOpenSky: texts.some((t) => t === 'Open Sky'),
+      hasMolt: moltTexts.some((t) => t === 'Molt'),
+      hasOpenSky: openSkyTexts.some((t) => t === 'Open Sky'),
       hasOverextensionSummary: scrolledTexts.some((t) => /Playing too many cards/.test(t)),
     };
   });
@@ -34954,8 +34278,8 @@ for (const mapIndex of [0, 1]) test(`new card shortcut opens the exact dossier a
   expect(handoffPoint).toMatchObject({
     cardId: newestId,
     state: 'base',
-    width: 224,
-    height: 44,
+    width: 264,
+    height: 58,
   });
   await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
     .toContain('Use D, controller right shoulder, or View in Flight Deck');

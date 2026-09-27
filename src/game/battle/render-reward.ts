@@ -218,22 +218,10 @@ function renderBackdrop(context: RewardCeremonyRenderContext) {
     scene.textures.get(textures.ceremonyBackdrop).setFilter(Phaser.Textures.FilterMode.LINEAR);
     const backdrop = scene.add.image(width / 2, height / 2 + 10, textures.ceremonyBackdrop)
       .setDisplaySize(1224, 612)
-      .setAlpha(0.21)
+      .setAlpha(0.6)
       .setName('reward-ceremony-backdrop');
     target.add(backdrop);
     hasCeremonyBackdrop = true;
-    if (!reducedMotion) {
-      scene.tweens.add({
-        targets: backdrop,
-        alpha: 0.19,
-        scaleX: backdrop.scaleX * 1.006,
-        scaleY: backdrop.scaleY * 1.006,
-        duration: 2200,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut'
-      });
-    }
   }
   target.add(scene.add.rectangle(width / 2, 148, 80, 2, 0xd8a840, 0.65));
   target.add(scene.add.text(width / 2, 64, 'ROOFTOP LANDMARK', {

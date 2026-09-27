@@ -1,3 +1,5 @@
+import './update-recovery';
+
 interface PlatformGateGame {
   loop: {
     running: boolean;

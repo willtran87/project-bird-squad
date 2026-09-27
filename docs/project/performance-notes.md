@@ -1,5 +1,36 @@
 # Performance Notes
 
+## September 27 2026 — P0 recovery and presentation qualification
+
+Local candidate `index-0ZUXstUw.js`: entry 681.8/182.0 KiB minified/gzip;
+combined boot 721.6/197.4 KiB. All unchanged hard caps pass. Preferred 675/710 KiB
+targets remain warnings; this is not a claim of improved startup performance.
+The lazy encounter intro is 2.2 KiB within its explicit 4 KiB cap. Shared core is
+30,707 bytes, narrowly below the unchanged 30 KiB cap.
+
+Final packaging follow-up: the first Pages-base build exceeded the combined
+hard cap (731.2 KiB versus 725 KiB) despite passing gameplay smoke. Document-relative
+image URLs remove repeated deployment prefixes without moving code out of the
+measurement or raising limits. Final `index-8tislPm9.js` is 682.0/182.2 KiB at
+root and 682.8/182.2 KiB on Pages; combined boot is 721.9/197.6 and 722.7/197.6
+KiB respectively. Both hard budgets pass; preferred targets still warn. Vite
+can produce the same entry filename with different base-path bytes, so use the
+recorded SHA-256 and artifact directory, not filename alone, as build identity.
+
+The added persistence journals and recovery path are event-driven, with no new
+per-frame scans or polling. Failed-module revalidation runs only on explicit
+confirmed reload, limits itself to 16 failed same-origin preload URLs, has a
+five-second abort bound, and releases its timer on completion/cancellation.
+It does not execute isolated cache-busted modules or clear storage. Bounded
+combat result lanes retain complete ordered history outside transient labels.
+
+A prior production-client sample on `index-wVK9UsiZ.js` reached full-art combat
+in 2,412 ms and interaction in 2,565 ms with no failed/timed-out asset groups.
+This is one local browser sample, not a benchmark average, device certification,
+or an improvement claim. The four-worker broad regression produced whole-test
+timeouts; targeted two-worker progression reruns passed. Long live-control
+journeys are qualified serially to avoid competing software-WebGL workloads.
+
 ## September 22 2026 — canonical gameplay icon semantics
 
 Build `index-PU5gAUMB.js`: entry 670.2/178.2 KiB minified/gzip; combined boot

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
+import { MIN_SUPPORTED_TOUCH_TARGET, UI_BOLD, READER_UI } from './theme';
 import { controlActionForCode, controlBindingLabel } from './input-bindings';
 import { comparisonPagingHint } from './deck-review-hints';
 import {
@@ -11,9 +11,8 @@ import {
   UI_GOLD,
 } from '../main';
 
-const UI_BOLD = 'bold';
-const UI_SOFT = '#bdc9d4';
-const UI_MUTED = '#91a6b8';
+const UI_SOFT = READER_UI.soft;
+const UI_MUTED = READER_UI.muted;
 const VISIBLE_ROWS = 7;
 const ROW_HEIGHT = 58;
 

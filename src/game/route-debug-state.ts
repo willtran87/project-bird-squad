@@ -90,11 +90,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
         graphicsRuntime: {
           ambientAnimations: graphicsQualityState().ambientAnimations,
         },
-        audioTogglePulseRing: {
-          loaded: scene.textures.exists(uiIconAssets['audio-toggle-pulse-ring'].key),
-          rendered: countTextureInGameObjects(children, uiIconAssets['audio-toggle-pulse-ring'].key) > 0,
-          count: countTextureInGameObjects(children, uiIconAssets['audio-toggle-pulse-ring'].key)
-        },
+        audioTogglePulseRing: iconState('audio-toggle-pulse-ring'),
         audioToggleWaveBurst: audioToggleWaveBurstState(scene, children),
         map: {
           id: currentMap().id,
@@ -687,7 +683,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
             }
           : undefined,
         districtContractChoice: scene.shouldChooseDistrictContract()
-          ? { open: true, options: scene.districtContractChoices().map((choice: any) => ({ ...choice })) }
+          ? { open: true, focusIndex: scene.districtContractFocusIndex, options: scene.districtContractChoices().map((choice: any) => ({ ...choice })) }
           : { open: false, options: [] },
         flywayRestoration: {
           ...scene.flywayRestorationProgress(),

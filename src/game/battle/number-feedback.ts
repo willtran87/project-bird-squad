@@ -25,6 +25,14 @@ export function presentNumberFeedback(scene: Phaser.Scene, layer: Phaser.GameObj
     entry.label.setText(value.label
       ? `${value.label}${entry.count > 1 ? ` ×${entry.count}` : ''}`
       : `${entry.amount}${value.suffix}${entry.count > 1 ? ' total' : ''}`);
+    const fullText = entry.label.text;
+    entry.label.setData('fullText', fullText);
+    const maxWidth = enemy ? 168 : 260;
+    let excerpt = fullText;
+    while (entry.label.width > maxWidth - 24 && excerpt.length > 1) {
+      excerpt = excerpt.slice(0, -1).trimEnd();
+      entry.label.setText(`${excerpt}…`);
+    }
     entry.plate.setSize(Math.max(120, entry.label.width + 24), 34);
     entry.group.x = Phaser.Math.Clamp(laneX, entry.plate.width / 2 + 8, scene.scale.width - entry.plate.width / 2 - 8);
     entry.group.setData('amount', entry.amount).setData('count', entry.count);
