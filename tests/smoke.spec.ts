@@ -7029,7 +7029,13 @@ test('combat route choices expose concise authored encounter pressure before com
       route.renderAll();
       const position = route.nodePosition(selected);
       const tooltip: any = route.showNodeTooltip(selected, position.x, position.y - 60);
-      await wait(120);
+      // The live region polls every 300 ms and preserves direct announcements
+      // for 1.8 seconds. Wait for this selection instead of sampling stale speech.
+      const expectedRisk = `Risk: ${route.nodeDecisionSummary(selected).risk}.`;
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        if (document.getElementById('game-status')?.textContent?.includes(expectedRisk)) break;
+        await wait(50);
+      }
       const state = JSON.parse(window.render_game_to_text!());
       const selectedState = state.nodes.find((node: any) => node.id === selected.id);
       const riskText: any = tooltip.getByName('route-node-risk');
@@ -10131,7 +10137,9 @@ test('Market item dossiers explain live build fit across Waymarks Supplies and s
 });
 
 test('market purchases require intentional input and block route commitment across pointer keyboard and controller', async ({ page }) => {
-  test.setTimeout(120_000);
+  // This integrated flow covers purchases, cancellation, hover, section changes,
+  // and all three input modes; software-rendered CI exceeded its old 2-minute budget.
+  test.setTimeout(300_000);
   await page.setViewportSize({ width: 1000, height: 560 });
   await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
   await boot(page);
@@ -21405,7 +21413,12 @@ test('boss prep footer fits every district boss name and complete pressure set',
       const bossNode = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.id === window.__birdSquadCurrentMap!().bossNodeId);
       const bossPosition = route.nodePosition(bossNode);
       const tooltip: any = route.showNodeTooltip(bossNode, bossPosition.x, bossPosition.y - 78);
-      await wait(120);
+      // Observe the current district after the live-region poll/direct-speech hold.
+      const expectedAnnouncement = `Boss prep for ${route.children.getByName('boss-prep-name').text}`;
+      for (let attempt = 0; attempt < 100; attempt += 1) {
+        if (document.getElementById('game-status')?.textContent?.includes(expectedAnnouncement)) break;
+        await wait(50);
+      }
       const name: any = route.children.getByName('boss-prep-name');
       const pressure: any = route.children.getByName('boss-prep-pressure');
       const backplate: any = route.children.getByName('boss-prep-dossier-backplate');

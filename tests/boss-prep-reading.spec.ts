@@ -58,13 +58,13 @@ const snapshot = (page: Page) => page.evaluate(() => {
     page: root?.getData('page'), summary: root?.getData('summary'), pending: r.routeCommitPending };
 });
 
-test('Boss preparation preserves complete information and readable geometry across all districts and viewports', async ({ page }, info) => {
+for (let district = 0; district < 4; district++) {
+test(`Boss preparation preserves complete information and readable geometry across all viewports in district ${district + 1}`, async ({ page }, info) => {
   test.setTimeout(120000);
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
   await boot(page);
-  for (let district = 0; district < 4; district++) {
     const before = await prepare(page, district);
     for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
       await page.setViewportSize(size); await settleCanvas(page);
@@ -110,9 +110,9 @@ test('Boss preparation preserves complete information and readable geometry acro
       await click(page, 'boss-prep-close', size.width === 1000);
       expect(await snapshot(page)).toMatchObject({ run: before.run, selected: before.selected, open: false, pending: false });
     }
-  }
   expect(errors).toEqual([]);
 });
+}
 
 test('Boss preparation supports remapped keyboard, controller, modal ownership and listener cleanup', async ({ page }) => {
   // Three full reopen/pause/controller cycles include real Phaser frame polling.

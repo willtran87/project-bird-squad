@@ -64,3 +64,43 @@ Ubuntu 26.04, which pinned Playwright 1.60.0 does not support. Pin the workflow'
 runner image to supported Ubuntu 24.04 so platform rollouts cannot change the
 test environment implicitly. This setup failure ran no regression cases and
 published no Pages artifact.
+
+## Linux timing follow-up
+
+The Ubuntu 24.04 run `39942128032` reached the tests. Its completed shards found
+two live-region assertions sampling old district-contract speech after only
+120 ms. The runtime polls every 300 ms and deliberately holds direct announcements
+for 1.8 seconds. Both tests now wait up to five seconds for the selected route
+risk or boss name before retaining the same content and geometry assertions.
+
+The integrated Market input test reached its two-minute total limit halfway
+through its 760-line purchase/cancellation/section/unavailable-inventory flow.
+Its per-case limit is now five minutes for software-rendered CI; interaction
+conditions, input modes, screenshots, and assertions are unchanged. The global
+90-second default remains unchanged. These follow-up changes affect tests only.
+
+All three corrected cases passed locally without retries in 1.9 minutes
+(`release-timing.json` / `release-timing.log` in the retained evidence directory).
+
+The next release uses 16 single-worker regression shards. The first eight-shard
+Linux run showed uneven completion times (20 minutes for shard 2, 35 minutes for
+shard 8), so smaller groups reduce the longest regression job while retaining
+the same cases and the separate serial journey prerequisite.
+
+Shard 1 also exceeded a two-minute total limit while capturing boss preparation
+across four districts and three viewports. Each district is now a separate case,
+retaining the three-size resize sequence, all three reader sections, narration,
+geometry, state preservation, and screenshots. The per-case limit stays two
+minutes. This adds three independently scheduled cases (912 regressions total).
+All four district cases pass locally without retries in 2.0 minutes
+(`release-boss-timing.json` / `release-boss-timing.log`).
+Fresh discovery confirms all 912 cases appear exactly once across the 16 shards
+(57 each), with zero missing or duplicate IDs (`release16-shard-coverage.json`).
+
+Shard 3 reached the final controller checks of the default event-navigation
+audit before its three-minute limit. Its 38-signal / 152-choice content audit
+reported zero failures; the remapped variant passed in 2.9 minutes. Both variants
+now have a five-minute total budget for the full multi-event, multi-viewport,
+long-text and input-ownership lifecycle. Their assertions remain unchanged.
+Both pass locally without retries in 3.1 minutes (`release-event-timing.json` /
+`release-event-timing.log`). Nine focused cases now pass across this follow-up.
