@@ -7208,7 +7208,7 @@ test('route gains update from live Cohesion deck Scrap Supply and choice availab
   expect(result.guidance).toContain(`GAIN  ${result.initial.basin.benefit}`);
   expect(result.gainText).toBe(`GAIN ${result.initial.basin.benefit}`);
   expect(result.gainInsideFrame).toBe(true);
-  expect(result.live).toContain(`Gain: ${result.initial.basin.benefit}.`);
+  await expect(page.locator('#game-status')).toContainText(`Gain: ${result.initial.basin.benefit}.`);
   await page.screenshot({ path: '.artifacts/test-results/contextual-route-gain-basin-1000x560.png', fullPage: true });
 });
 
@@ -12988,8 +12988,8 @@ test('district reward leans shape and explain the pivot without replacing deck-a
   expect(result.final.focusedObservations[0]).toMatch(/^\+ District lean: /);
   expect(result.final.leanCopy).toContain('Pick a card or take Scrap. District lean: rare cards / Open Sky Guard / boss prep.');
   expect(result.final.renderedObservations).toEqual(result.final.focusedObservations);
-  expect(result.final.live).toContain('District lean: rare cards, Open Sky Guard, boss prep.');
-  expect(result.final.live).toContain(`Build observations: ${result.final.focusedObservations.join('; ')}.`);
+  await expect(page.locator('#game-status')).toContainText('District lean: rare cards, Open Sky Guard, boss prep.');
+  await expect(page.locator('#game-status')).toContainText(`Build observations: ${result.final.focusedObservations.join('; ')}.`);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/district-reward-lean-1000x560.png' });
 });
 
@@ -17295,6 +17295,9 @@ test('title setup follows remapped keyboard and gamepad controls with one cue pe
   expect((await state()).titleFocus.current).toBe('primaryRun');
   await gamepadDown(0);
   await expect.poll(async () => (await state()).scene, { timeout: 20_000 }).toBe('RouteScene');
+  // RouteScene first exposes a minimal loading snapshot; its debug module adds
+  // audio counters asynchronously, after the scene name has already changed.
+  await expect.poll(async () => (await state()).audio?.cueRequests).toBeDefined();
   const result = await page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
     const routeState = JSON.parse(window.render_game_to_text?.() ?? '{}');
@@ -19411,7 +19414,7 @@ test('singleton deck rejects duplicate Snags and preserves upgraded save state',
     id: 'tangled_line',
     name: 'Tangled Line',
   });
-  expect(battleResult.announcement).toContain('Tangled Line');
+  await expect(page.locator('#game-status')).toContainText('Tangled Line');
 });
 
 test('combat end turn control renders generated roost command frame', async ({ page }) => {
@@ -26543,7 +26546,7 @@ test('codex: saved Folio usage marks active and archived cards and filters them 
     folioIds: ['folio-active', 'folio-archive'],
   });
   expect(detail.texts).toContain('SAVED FOLIOS / 2 TOTAL / 1 ACTIVE / 1 ARCHIVED');
-  expect(detail.screenReader).toContain('Used in 2 saved Flight Folios: 1 active and 1 archived');
+  await expect(page.locator('#game-status')).toContainText('Used in 2 saved Flight Folios: 1 active and 1 archived');
   expect(detail.decks).toEqual(initial.decks);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-folio-usage-detail.png' });
 });
@@ -27988,8 +27991,8 @@ test('codex: acquisition paths explain permanent missing-card sources without le
   expect(detail.texts).toContain('PERMANENT / NO ROTATION / NO SEASON / NO STORE GATE');
   expect(detail.texts).toContain('AVAILABLE FROM / STARTER FLOCK / FIGHT REWARDS / ROUTE CHOICES / CANAL MARKET');
   expect(detail.texts).toContain('STARTER OPTIONS / THE SPARK-CALLER');
-  expect(detail.screenReader).toContain('Permanently available with no seasonal rotation, expiration, or store gate');
-  expect(detail.screenReader).toContain('Starter options: The Spark-Caller');
+  await expect(page.locator('#game-status')).toContainText('Permanently available with no seasonal rotation, expiration, or store gate');
+  await expect(page.locator('#game-status')).toContainText('Starter options: The Spark-Caller');
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-acquisition-paths-card.png' });
 
   await page.keyboard.press('Escape');

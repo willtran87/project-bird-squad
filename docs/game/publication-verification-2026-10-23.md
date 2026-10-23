@@ -114,3 +114,19 @@ the 240-transition limit, legal-action policy, terminal outcome, run identity,
 finite HP, and error assertions remain unchanged. These scenarios passed in
 the earlier complete local qualification; the new remote run will verify the
 larger budget on Linux. No failing test or release prerequisite is omitted.
+
+## Asynchronous snapshot follow-up
+
+Run `39950281821` confirmed the repaired boss-preparation announcement case, but
+found two more asynchronous test reads: the district reward summary still held
+its loading announcement, and the title-control test read audio counters from
+RouteScene's minimal startup snapshot before its debug module was ready.
+
+The reward assertions now wait on the live DOM text. An audit found four more
+snapshot-only speech assertions (route gain, singleton Snag, saved-Folio usage,
+and card acquisition); these now use the same awaited DOM assertions. The title
+test waits for audio counters before checking the exact eleven-cue difference.
+All expected text, counters, state, and geometry checks are preserved; production
+code is unchanged. Six focused cases pass locally without retries, recorded in
+`release-announcements.json` and `release-title-readiness.json` in the evidence
+directory. The full remote verification remains required before publication.

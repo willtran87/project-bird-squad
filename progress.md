@@ -2,6 +2,11 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 
 ## 2026-10-23 — Publication verification follow-up
 
+- PR #4 merged as `0db639cd`, branch deleted. Run `39950281821` revealed another
+  stale reward narration read and a title-to-route audio-counter readiness race.
+  Awaited DOM assertions also cover four equivalent snapshot-only speech reads.
+  Six focused cases pass locally; production code is unchanged. See publication
+  verification notes for evidence and current remote qualification scope.
 - Ubuntu 24.04 follow-up `39942128032`: investigating completed-shard failures.
   Corrected two tests that read screen-reader announcements before the 300 ms
   poll / 1.8-second direct-speech hold, and extended the integrated Market case's
