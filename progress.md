@@ -7,6 +7,8 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
   Awaited DOM assertions also cover four equivalent snapshot-only speech reads.
   Six focused cases pass locally; production code is unchanged. See publication
   verification notes for evidence and current remote qualification scope.
+  The same live-text correction covers discard and reward-choice flows; four
+  more focused cases pass (`release-choice-announcements.json`), ten total.
 - Ubuntu 24.04 follow-up `39942128032`: investigating completed-shard failures.
   Corrected two tests that read screen-reader announcements before the 300 ms
   poll / 1.8-second direct-speech hold, and extended the integrated Market case's

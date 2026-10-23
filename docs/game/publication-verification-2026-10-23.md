@@ -130,3 +130,8 @@ All expected text, counters, state, and geometry checks are preserved; productio
 code is unchanged. Six focused cases pass locally without retries, recorded in
 `release-announcements.json` and `release-title-readiness.json` in the evidence
 directory. The full remote verification remains required before publication.
+The audit also converted the equivalent live-text checks in discard recovery,
+reward skipping, combat reward commitment and route reward commitment. Those
+four cases pass locally (`release-choice-announcements.json`), bringing this
+follow-up to ten passing focused cases without retries. Historical narration
+snapshots and checks that already wait for speech retain their existing logic.

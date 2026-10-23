@@ -4609,7 +4609,7 @@ test('discard recovery pauses in written order and returns the explicit pointer 
   expect(before.discard).not.toContain(setup.ids.recall);
   // The immediate choice announcement can precede the debounced scene summary.
   // Both convey the mandatory return; do not depend on a narration race.
-  expect(before.liveText).toMatch(/requires one card from discard to return|Choose one of 2 eligible discard cards to return for Route Recall\./);
+  await expect(page.locator('#game-status')).toContainText(/requires one card from discard to return|Choose one of 2 eligible discard cards to return for Route Recall\./);
 
   await page.evaluate(() => {
     const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
@@ -7459,7 +7459,7 @@ test('card reward skip requires intentional confirmation across pointer keyboard
   expect(pointerArmed.inputHints).toEqual([
     'Click Skip again to confirm · Back cancels',
   ]);
-  expect(pointerArmed.liveText).toContain('Skip confirmation');
+  await expect(page.locator('#game-status')).toContainText('Skip confirmation');
   await page.screenshot({ path: '.artifacts/test-results/reward-skip-confirmation-1000x560.png' });
 
   await page.keyboard.press('Escape');
@@ -7790,7 +7790,7 @@ test('reward choices require intentional commitment across pointer keyboard and 
   expect(pointerArmed.rewardHint.deckGap).toBeGreaterThanOrEqual(2);
   expect(pointerArmed.rewardHint.choiceGap).toBeGreaterThanOrEqual(2);
   expect(pointerArmed.rewardHint.focusGap).toBeGreaterThanOrEqual(4);
-  expect(pointerArmed.liveText).toContain('is selected. Activate Confirm');
+  await expect(page.locator('#game-status')).toContainText('is selected. Activate Confirm');
   const armedChoiceId = pointerArmed.state.rewardChoiceConfirmation.choiceId;
   const armedChoiceName = pointerArmed.state.rewardChoiceConfirmation.choiceName;
   await clickInspect(2);
@@ -7807,7 +7807,7 @@ test('reward choices require intentional commitment across pointer keyboard and 
     armed: true,
     choiceId: armedChoiceId,
   });
-  expect(inspectingArmedChoice.liveText).toContain(`${armedChoiceName} remains selected`);
+  await expect(page.locator('#game-status')).toContainText(`${armedChoiceName} remains selected`);
   expect(inspectingArmedChoice.inspectionFooter).toEqual([
     'Esc / B / TAP OUTSIDE  RETURN TO CONFIRM PICK',
   ]);
@@ -8685,9 +8685,9 @@ test('route card rewards require intentional commitment across pointer keyboard 
   expect(pointerInitial.buildRead.rows.every((row: any) => row.right < pointerInitial.buildRead.divider.left)).toBe(true);
   expect(pointerInitial.buildRead.rows.at(-1).bottom).toBeLessThan(pointerInitial.buildRead.cancel.top);
   expect(pointerInitial.state.routeReward.inputFocus.observations).toEqual(pointerInitial.guidance[0].observations);
-  expect(pointerInitial.liveText).toContain(pointerInitial.guidance[0].name);
+  await expect(page.locator('#game-status')).toContainText(pointerInitial.guidance[0].name);
   for (const observation of pointerInitial.guidance[0].observations) {
-    expect(pointerInitial.liveText).toContain(observation);
+    await expect(page.locator('#game-status')).toContainText(observation);
   }
 
   await page.evaluate(async () => {
@@ -8740,7 +8740,7 @@ test('route card rewards require intentional commitment across pointer keyboard 
   expect(pointerArmed.inputHintVisual.dividerGap).toBeGreaterThanOrEqual(12);
   // The larger, readable two-line hint preserves a clear 20px card gap.
   expect(pointerArmed.inputHintVisual.choiceGap).toBeGreaterThanOrEqual(20);
-  expect(pointerArmed.liveText).toContain('is selected. Confirm');
+  await expect(page.locator('#game-status')).toContainText('is selected. Confirm');
   await moveToReward(0);
   await expect.poll(async () => (await snapshot()).hoverDetail.open).toBe(false);
   const armedAfterHover = await snapshot();
@@ -8780,7 +8780,7 @@ test('route card rewards require intentional commitment across pointer keyboard 
     armed: true,
     armedCardId: pointerInitial.choices[1],
   });
-  expect(inspectingArmedRouteChoice.liveText).toContain('remains selected');
+  await expect(page.locator('#game-status')).toContainText('remains selected');
   expect(inspectingArmedRouteChoice.inspectionFooter).toEqual([
     'Esc / B / TAP OUTSIDE  RETURN TO CONFIRM PICK',
   ]);
