@@ -3848,7 +3848,7 @@ export class CodexScene extends Phaser.Scene {
     bg.on('pointerout', () => bg.setFillStyle(0x0c1420, 1));
     if (found) bg.on('pointerdown', () => this.openCodexDetail(card.id));
     tile.add(bg);
-    this.codexPreviewText(tile, found ? displayName(card) : 'Undiscovered', left + 14, top + 12,
+    this.codexPreviewText(tile, found ? displayName(card) : 'Undiscovered', left + 14, top + 8,
       w - 28, 48, 21, found ? UI_GOLD : UI_MUTED, 'codex-card-title', true).setData('cardId', card.id);
     // Transparent marker bounds preserve the existing semantic hooks and full-tile click target.
     const marker = (name: string, label: string, x: number, y: number, width: number, color: string) => {

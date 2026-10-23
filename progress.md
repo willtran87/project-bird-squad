@@ -1,5 +1,19 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-10-23 — Publication verification follow-up
+
+- User requested commit, push, merge, GitHub Pages publication, and branch cleanup.
+  PR #1 merged as `e23b1306`; its release branch was deleted locally and remotely.
+- GitHub run `39918444492` hit its 180-minute limit during regression and did not
+  deploy. Its log records 35 failures before cancellation, primarily timeouts.
+  The earlier 903/903 result below is local evidence, not remote publication.
+- Prepared eight complete regression shards with one worker per runner and a
+  separate serial journey job. All remain mandatory prerequisites for deployment.
+- Corrected two cross-platform label clearances and test timing/navigation races.
+  Pending clipboard viewport cases are independent; discovery now covers 909
+  regression cases exactly once across shards. See
+  `docs/game/publication-verification-2026-10-23.md` for retained evidence and scope.
+
 ## 2026-10-22 — Remaining acceptance plan complete (60/60)
 
 - Final candidate `index-Cl7N8-97.js`; all 60 plan items verified and named areas

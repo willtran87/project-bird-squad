@@ -90,7 +90,8 @@ test('outcome Copy is keyboard/controller reachable, guarded while pending, and 
 });
 
 for(const flow of ['folio','review','outcome'] as const) {
-  test(`${flow} copy exposes pending/error/retry and rejects duplicate input`,async({page},info)=>{
+  for(const [width,height] of [[2560,1600],[1440,900],[1000,560]]) test(`${flow} copy exposes pending/error/retry and rejects duplicate input at ${width}`,async({page},info)=>{
+    await page.setViewportSize({width,height});
     await boot(page,flow);const before=await stored(page),initial=await hitState(page,flow);
     await tap(page,flow);
     expect(await hitState(page,flow)).toMatchObject({status:'loading',enabled:false,requests:1,label:'Copying…',bounds:initial.bounds});
@@ -102,15 +103,12 @@ for(const flow of ['folio','review','outcome'] as const) {
       expect(await page.evaluate(()=>JSON.parse((window as any).render_game_to_text()).folioFocus.scope)).not.toBe('profile-folio');
       expect((await hitState(page,flow)).status).toBe('loading');
     }
-    for(const [width,height] of [[2560,1600],[1440,900],[1000,560]]){
-      await page.setViewportSize({width,height});await settleCanvas(page);
-      expect(await hitState(page,flow)).toMatchObject({status:'loading',enabled:false,alpha:1,fillAlpha:1,bounds:initial.bounds});
-      await page.screenshot({path:info.outputPath(`pending-${width}.png`)});
-    }
+    expect(await hitState(page,flow)).toMatchObject({status:'loading',enabled:false,alpha:1,fillAlpha:1,bounds:initial.bounds});
+    await page.screenshot({path:info.outputPath(`pending-${width}.png`)});
     await settleRequest(page,0,false);
     await expect.poll(async()=>(await hitState(page,flow)).status).toBe('error');
     expect(await hitState(page,flow)).toMatchObject({enabled:true,label:'Copy failed · Retry',bounds:initial.bounds});
-    await page.screenshot({path:info.outputPath('error-1000.png')});
+    await page.screenshot({path:info.outputPath(`error-${width}.png`)});
     await tap(page,flow);expect((await hitState(page,flow)).requests).toBe(2);
     await settleRequest(page,1,true);
     await expect.poll(async()=>(await hitState(page,flow)).status).toBe('idle');
