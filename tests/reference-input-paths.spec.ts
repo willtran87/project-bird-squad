@@ -7,7 +7,9 @@ import { settleCanvas } from './helpers/settled-canvas';
 // This is a reproducible scripted player, not authentic player/balance evidence.
 const referenceJourneys = new WeakMap<Page, any[]>();
 for (const input of ['pointer', 'controller'] as const) test(`${input}-only reference flight reaches outcome and replay`, async ({ page }, info) => {
-  test.setTimeout(1200000);
+  // Linux controller input can still be progressing at decision 260 after
+  // twenty minutes. Preserve action/decision bounds while allowing completion.
+  test.setTimeout(1800000);
   if (input === 'controller') await installVirtualController(page);
   await page.addInitScript(() => { (window as any).__testKeyboardEvents = 0; addEventListener('keydown', () => (window as any).__testKeyboardEvents++); });
   const press = (key: string, decision?: any) => inputAction(page, input, key, decision);

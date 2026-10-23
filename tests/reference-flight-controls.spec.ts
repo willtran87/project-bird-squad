@@ -4,7 +4,9 @@ import { settleCanvas } from './helpers/settled-canvas';
 // No scene jumps, resource grants, damage overrides or mechanical fast-forward.
 // This is a reproducible scripted player, not authentic player/balance evidence.
 test('reference flight uses live controls from title through outcome and replay', async ({ page }, info) => {
-  test.setTimeout(600000);
+  // Budget the complete native-clock flight on variable-speed software runners.
+  // The per-action deadline, 320-decision bound and no-progress guard remain.
+  test.setTimeout(1800000);
   page.setDefaultTimeout(20000);
   const errors: string[] = [], journey: any[] = [];
   const captured = new Set<string>();

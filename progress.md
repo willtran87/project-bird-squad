@@ -2,6 +2,22 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 
 ## 2026-10-23 — Publication verification follow-up
 
+- PR #4 merged as `0db639cd`, branch deleted. Run `39950281821` revealed another
+  stale reward narration read and a title-to-route audio-counter readiness race.
+  Awaited DOM assertions also cover four equivalent snapshot-only speech reads.
+  Six focused cases pass locally; production code is unchanged. See publication
+  verification notes for evidence and current remote qualification scope.
+  The same live-text correction covers discard and reward-choice flows; four
+  more focused cases pass (`release-choice-announcements.json`), ten total.
+  Controller flight later reached its 20-minute total deadline at decision 260;
+  three other live journeys passed. Full live flights now allow 30 minutes with
+  action/no-progress/decision bounds unchanged, and the four journeys run on
+  separate single-worker runners. Discovery proves four exact, unique matches.
+  Run `39950281821` completed with 910/912 regressions and 3/4 live journeys
+  passing. All three earlier campaign timeouts passed in 4.1 minutes each.
+  Their combined shard took 47.1 minutes, so the next workflow schedules all
+  14 campaign cases in six shards alongside 898 other cases in 16 shards and
+  four isolated live journeys. All three matrices remain required for build.
 - Ubuntu 24.04 follow-up `39942128032`: investigating completed-shard failures.
   Corrected two tests that read screen-reader announcements before the 300 ms
   poll / 1.8-second direct-speech hold, and extended the integrated Market case's
