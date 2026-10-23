@@ -56,3 +56,11 @@ publication of the subsequent release.
 The next GitHub run and its retained per-job reports determine publication status.
 The local baseline's human/player/device/assistive-technology waivers and measured
 software-rendering limitations remain unchanged.
+
+## Runner image correction
+
+Run `39941933620` stopped during browser installation: `ubuntu-latest` selected
+Ubuntu 26.04, which pinned Playwright 1.60.0 does not support. Pin the workflow's
+runner image to supported Ubuntu 24.04 so platform rollouts cannot change the
+test environment implicitly. This setup failure ran no regression cases and
+published no Pages artifact.
