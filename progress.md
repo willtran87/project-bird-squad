@@ -14,6 +14,10 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
   controller checks; both binding variants pass locally with a five-minute
   budget. Nine focused cases pass, and 912 cases distribute exactly once across
   the 16 shards (57 each). No production code changes in this timing follow-up.
+  Completed Linux result: 901/909 regressions and 4/4 live journeys passed.
+  Three final full-campaign simulations hit four-minute total limits; this
+  family now allows eight minutes while keeping its 240-transition bound and
+  terminal assertions. All eight CI failures are addressed for the next run.
 - User requested commit, push, merge, GitHub Pages publication, and branch cleanup.
   PR #1 merged as `e23b1306`; its release branch was deleted locally and remotely.
 - GitHub run `39918444492` hit its 180-minute limit during regression and did not

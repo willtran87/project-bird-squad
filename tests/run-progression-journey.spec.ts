@@ -20,7 +20,9 @@ const cases = [
 // A defeat is a valid measured outcome, not proof that the balance is wrong.
 for (const scenario of cases) test(`seeded run progression: ${scenario.equipped ? 'equipped' : scenario.policy} ${scenario.leader} ${scenario.seed}`, async ({ page }, info) => {
   const { policy, leader, seed, equipped } = scenario;
-  test.setTimeout(240000);
+  // Full four-district campaigns can exceed four minutes on Linux software
+  // rendering. Keep the 240-transition bound and terminal assertions below.
+  test.setTimeout(480000);
   const errors: string[] = [], journey: any[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.setViewportSize({ width: 1440, height: 900 });

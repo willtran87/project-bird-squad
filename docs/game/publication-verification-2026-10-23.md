@@ -104,3 +104,13 @@ now have a five-minute total budget for the full multi-event, multi-viewport,
 long-text and input-ownership lifecycle. Their assertions remain unchanged.
 Both pass locally without retries in 3.1 minutes (`release-event-timing.json` /
 `release-event-timing.log`). Nine focused cases now pass across this follow-up.
+
+The completed Linux run recorded 901/909 passing regressions, eight failures,
+and 4/4 passing live journeys. Its final three failures were equipped full-run
+simulations (Talon, Tidewarden, Roostkeeper; seed 2) reaching their four-minute
+total limit while still progressing. Seed-1 Tidewarden/Roostkeeper passed in
+3.9/3.8 minutes. The full-campaign family now has an eight-minute total budget;
+the 240-transition limit, legal-action policy, terminal outcome, run identity,
+finite HP, and error assertions remain unchanged. These scenarios passed in
+the earlier complete local qualification; the new remote run will verify the
+larger budget on Linux. No failing test or release prerequisite is omitted.
