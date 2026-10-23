@@ -279,3 +279,24 @@ A complete generation round should produce:
 
 The final exported cards should look like one coherent deck while allowing each
 bird to keep its own species silhouette, outfit, personality, and scene logic.
+
+## Validate the currently selected masters
+
+For borderless centers composed at full scene scale, pass `--fit-opening` to
+the Minor or Aviary compositor. This opt-in mode uniformly fits the scene into
+the connected transparent illustration window before applying the same locked
+mask, frame and title. The legacy canvas-fit default is unchanged. Inspect the
+result for rounded-corner clearance and countable objects; fitting is not an
+automatic anatomy or composition approval. Keep selected masters versioned.
+
+Run `npm run validate:canonical-card-art` when the locally approved source masters
+are available. The command reads the exact source selections from
+`assets/runtime/cards/card-art-manifest.json`; it does not assume the legacy
+`.generated/.../latest` staging folders represent the current release.
+
+It stages 56 Minor and 22 Aviary masters under their canonical filenames, runs
+the existing strict composite pixel validators, and removes only its own temporary
+copies in a `finally` block. It does not regenerate illustrations, frames, titles
+or runtime exports. Missing selected sources fail explicitly. This is a local
+source-master audit, not a clean-checkout CI requirement or a substitute for
+in-game visual review, alpha, compression and loading checks.

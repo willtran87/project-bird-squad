@@ -39,7 +39,7 @@ test('Codex puts complete gameplay rules before collection records and keeps the
         const texts = c.root.list.filter((o: any) => o.type === 'Text');
         const heading = (name: string) => texts.find((o: any) => o.text === name);
         const effect = heading('EFFECT'), collection = heading('COLLECTION STATUS'), journal = heading('CARD JOURNAL');
-        const rules = texts.filter((t: any) => t.x >= effect.x && t.y > effect.y && t.y < collection.y && parseInt(t.style.fontSize) === 20);
+        const rules = texts.filter((t: any) => t.x >= effect.x && t.y > effect.y && t.y < collection.y && parseInt(t.style.fontSize) >= 21);
         return { effect: effect.y, collection: collection.y, journal: journal.y,
           before: heading('FLOCK STATS').y < collection.y,
           // The current reader expands to 1208; the old 1069 boundary belonged

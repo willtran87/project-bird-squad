@@ -439,20 +439,36 @@ export function downloadSaveBackup(bundle: SaveBackupBundle): boolean {
   }
 }
 
-export function requestSaveBackupFile(): Promise<string | undefined> {
+export function requestSaveBackupFile(signal?: AbortSignal): Promise<string | undefined | { error: string }> {
   return new Promise((resolve) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'application/json,.json';
     input.hidden = true;
     let settled = false;
-    const settle = (value: string | undefined) => {
+    let reading = false;
+    let focusTimer: number | undefined;
+    let readTimer: number | undefined;
+    const settle = (value: string | undefined | { error: string }) => {
       if (settled) return;
       settled = true;
+      window.clearTimeout(focusTimer);
+      window.clearTimeout(readTimer);
+      window.removeEventListener('focus', onFocus);
+      signal?.removeEventListener('abort', onCancel);
+      input.removeEventListener('change', onChange);
+      input.removeEventListener('cancel', onCancel);
       input.remove();
       resolve(value);
     };
-    input.addEventListener('change', () => {
+    const onCancel = () => settle(undefined);
+    const onFocus = () => {
+      window.clearTimeout(focusTimer);
+      focusTimer = window.setTimeout(() => { if (!reading) settle(undefined); }, 120);
+    };
+    const onChange = () => {
+      reading = true;
+      window.clearTimeout(focusTimer);
       const file = input.files?.[0];
       if (!file) {
         settle(undefined);
@@ -462,10 +478,16 @@ export function requestSaveBackupFile(): Promise<string | undefined> {
         settle('');
         return;
       }
-      void file.text().then(settle).catch(() => settle(''));
-    }, { once: true });
-    window.addEventListener('focus', () => window.setTimeout(() => settle(undefined), 120), { once: true });
+      // Choosing a file is untimed; only the actual local read has a deadline.
+      readTimer = window.setTimeout(() => settle({error: 'Reading the backup timed out. Local data is unchanged. Choose the file again to retry.'}), 8000);
+      void Promise.resolve().then(() => file.text()).then(settle, () => settle({error: 'The backup could not be read. Local data is unchanged. Choose a readable file and retry.'}));
+    };
+    if (signal?.aborted) { settle(undefined); return; }
+    input.addEventListener('change', onChange, { once: true });
+    input.addEventListener('cancel', onCancel, { once: true });
+    signal?.addEventListener('abort', onCancel, { once: true });
+    window.addEventListener('focus', onFocus);
     document.body.append(input);
-    input.click();
+    try { input.click(); } catch { settle(''); }
   });
 }

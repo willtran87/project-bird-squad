@@ -62,7 +62,7 @@
     },
     {
       "cardId": "wands_05",
-      "source": ".generated/imagegen/tarot/selected/wands_05.png",
+      "source": ".generated/imagegen/tarot/selected/wands_05_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/wands_05.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_05.webp",
       "icon": "assets/runtime/cards/icon/wands_05.webp",
@@ -161,7 +161,7 @@
     },
     {
       "cardId": "swords_fledgling",
-      "source": ".generated/imagegen/tarot/selected/swords_fledgling.png",
+      "source": ".generated/imagegen/tarot/selected/swords_fledgling_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/swords_fledgling.webp",
       "thumbnail": "assets/runtime/cards/thumb/swords_fledgling.webp",
       "icon": "assets/runtime/cards/icon/swords_fledgling.webp",
@@ -215,7 +215,7 @@
     },
     {
       "cardId": "cups_06",
-      "source": ".generated/imagegen/tarot/selected/cups_06.png",
+      "source": ".generated/imagegen/tarot/selected/cups_06_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/cups_06.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_06.webp",
       "icon": "assets/runtime/cards/icon/cups_06.webp",
@@ -224,7 +224,7 @@
     },
     {
       "cardId": "cups_08",
-      "source": ".generated/imagegen/tarot/selected/cups_08.png",
+      "source": ".generated/imagegen/tarot/selected/cups_08_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/cups_08.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_08.webp",
       "icon": "assets/runtime/cards/icon/cups_08.webp",
@@ -251,7 +251,7 @@
     },
     {
       "cardId": "pentacles_02",
-      "source": ".generated/imagegen/tarot/selected/pentacles_02.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_02_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_02.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_02.webp",
       "icon": "assets/runtime/cards/icon/pentacles_02.webp",
@@ -260,7 +260,7 @@
     },
     {
       "cardId": "pentacles_03",
-      "source": ".generated/imagegen/tarot/selected/pentacles_03.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_03_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_03.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_03.webp",
       "icon": "assets/runtime/cards/icon/pentacles_03.webp",
@@ -296,7 +296,7 @@
     },
     {
       "cardId": "pentacles_08",
-      "source": ".generated/imagegen/tarot/selected/pentacles_08.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_08_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_08.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_08.webp",
       "icon": "assets/runtime/cards/icon/pentacles_08.webp",
@@ -512,7 +512,7 @@
     },
     {
       "cardId": "wands_10",
-      "source": ".generated/imagegen/tarot/selected/wands_10.png",
+      "source": ".generated/imagegen/tarot/selected/wands_10_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/wands_10.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_10.webp",
       "icon": "assets/runtime/cards/icon/wands_10.webp",
@@ -548,7 +548,7 @@
     },
     {
       "cardId": "wands_elder",
-      "source": ".generated/imagegen/tarot/selected/wands_elder.png",
+      "source": ".generated/imagegen/tarot/selected/wands_elder_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/wands_elder.webp",
       "thumbnail": "assets/runtime/cards/thumb/wands_elder.webp",
       "icon": "assets/runtime/cards/icon/wands_elder.webp",
@@ -584,7 +584,7 @@
     },
     {
       "cardId": "cups_outrider",
-      "source": ".generated/imagegen/tarot/selected/cups_outrider.png",
+      "source": ".generated/imagegen/tarot/selected/cups_outrider_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/cups_outrider.webp",
       "thumbnail": "assets/runtime/cards/thumb/cups_outrider.webp",
       "icon": "assets/runtime/cards/icon/cups_outrider.webp",
@@ -674,7 +674,7 @@
     },
     {
       "cardId": "pentacles_09",
-      "source": ".generated/imagegen/tarot/selected/pentacles_09.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_09_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_09.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_09.webp",
       "icon": "assets/runtime/cards/icon/pentacles_09.webp",
@@ -692,7 +692,7 @@
     },
     {
       "cardId": "pentacles_outrider",
-      "source": ".generated/imagegen/tarot/selected/pentacles_outrider.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_outrider_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_outrider.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_outrider.webp",
       "icon": "assets/runtime/cards/icon/pentacles_outrider.webp",
@@ -710,7 +710,7 @@
     },
     {
       "cardId": "pentacles_elder",
-      "source": ".generated/imagegen/tarot/selected/pentacles_elder.png",
+      "source": ".generated/imagegen/tarot/selected/pentacles_elder_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/pentacles_elder.webp",
       "thumbnail": "assets/runtime/cards/thumb/pentacles_elder.webp",
       "icon": "assets/runtime/cards/icon/pentacles_elder.webp",
@@ -719,7 +719,7 @@
     },
     {
       "cardId": "aviary_22",
-      "source": ".generated/imagegen/tarot/selected/aviary_22.png",
+      "source": ".generated/imagegen/tarot/selected/aviary_22_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/aviary_22.webp",
       "thumbnail": "assets/runtime/cards/thumb/aviary_22.webp",
       "icon": "assets/runtime/cards/icon/aviary_22.webp",
@@ -737,7 +737,7 @@
     },
     {
       "cardId": "aviary_24",
-      "source": ".generated/imagegen/tarot/selected/aviary_24.png",
+      "source": ".generated/imagegen/tarot/selected/aviary_24_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/aviary_24.webp",
       "thumbnail": "assets/runtime/cards/thumb/aviary_24.webp",
       "icon": "assets/runtime/cards/icon/aviary_24.webp",
@@ -800,7 +800,7 @@
     },
     {
       "cardId": "aviary_32",
-      "source": ".generated/imagegen/tarot/selected/aviary_32.png",
+      "source": ".generated/imagegen/tarot/selected/aviary_32_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/aviary_32.webp",
       "thumbnail": "assets/runtime/cards/thumb/aviary_32.webp",
       "icon": "assets/runtime/cards/icon/aviary_32.webp",
@@ -809,7 +809,7 @@
     },
     {
       "cardId": "aviary_33",
-      "source": ".generated/imagegen/tarot/selected/aviary_33.png",
+      "source": ".generated/imagegen/tarot/selected/aviary_33_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/aviary_33.webp",
       "thumbnail": "assets/runtime/cards/thumb/aviary_33.webp",
       "icon": "assets/runtime/cards/icon/aviary_33.webp",
@@ -890,7 +890,7 @@
     },
     {
       "cardId": "aviary_42",
-      "source": ".generated/imagegen/tarot/selected/aviary_42.png",
+      "source": ".generated/imagegen/tarot/selected/aviary_42_opening_20261022.png",
       "portrait": "assets/runtime/cards/portrait/aviary_42.webp",
       "thumbnail": "assets/runtime/cards/thumb/aviary_42.webp",
       "icon": "assets/runtime/cards/icon/aviary_42.webp",

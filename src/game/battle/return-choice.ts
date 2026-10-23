@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { bindChoiceHint } from '../choice-input-hints';
 import { controlBindingLabel } from '../input-bindings';
 import { fitTextExcerpt } from '../text-excerpt';
+import { quietButton } from '../quiet-ui';
 
 export interface ReturnChoiceState {
   source: string;
@@ -60,7 +61,7 @@ export function renderReturnChoiceOverlay(options: {
 }) {
   const { scene, target, gameWidth, gameHeight, fontFamily, boldFontStyle, gold, cyan, choice } = options;
   const visibleRows = Math.min(5, choice.candidateIds.length);
-  const rowHeight = 70;
+  const rowHeight = 62;
   const rowStep = 70;
   const panelX = gameWidth / 2;
   const panelY = gameHeight / 2;
@@ -72,7 +73,7 @@ export function renderReturnChoiceOverlay(options: {
   const start = Phaser.Math.Clamp(choice.focusIndex - Math.floor(visibleRows / 2), 0, maxStart);
   const visibleIds = choice.candidateIds.slice(start, start + visibleRows);
   const label = (x: number, y: number, copy: string, size: number, color: string, name = '') =>
-    scene.add.text(x, y, copy, { fontFamily, fontSize: `${size}px`, color })
+    scene.add.text(x, y, copy, { fontFamily, fontSize: `${Math.max(19, size)}px`, color })
       .setOrigin(0.5).setName(`combat-return-choice-${name}`);
 
   target.add(scene.add.rectangle(gameWidth / 2, gameHeight / 2, gameWidth, gameHeight, 0x02050b, 0.9)
@@ -101,19 +102,18 @@ export function renderReturnChoiceOverlay(options: {
     target.add(hit);
     target.add(label(panelX - 477, y, `${absoluteIndex + 1}`, 16, focused ? '#fff0b8' : '#8fb3bf', 'index'));
     target.add(fitTextExcerpt(scene.add.text(panelX - 446, y - 12, '', {
-      fontFamily, fontSize: '20px', fontStyle: boldFontStyle, color: focused ? '#fff0b8' : '#f4fdff', wordWrap: { width: 370, useAdvancedWrap: true },
+      fontFamily, fontSize: '21px', fontStyle: boldFontStyle, color: focused ? '#fff0b8' : '#f4fdff', wordWrap: { width: 370, useAdvancedWrap: true },
     }).setOrigin(0, 0.5).setName('combat-return-choice-name'), card.name, 1));
     target.add(fitTextExcerpt(scene.add.text(panelX - 446, y + 15, '', {
-      fontFamily, fontSize: '16px', color: '#9fc3cf', wordWrap: { width: 370, useAdvancedWrap: true },
+      fontFamily, fontSize: '19px', color: '#9fc3cf', wordWrap: { width: 370, useAdvancedWrap: true },
     }).setOrigin(0, 0.5).setName('combat-return-choice-meta'), `${card.cost} Wingbeat${card.cost === 1 ? '' : 's'} · ${card.role}`, 1));
   });
 
   const focusedPosition = choice.focusIndex + 1;
   const button = (x: number, y: number, width: number, copy: string, name: string, action: () => void) => {
-    const hit = scene.add.rectangle(x, y, width, 58, 0x19312f).setStrokeStyle(1, gold, 0.65)
-      .setInteractive({ useHandCursor: true }).setName(name);
-    hit.on('pointerdown', action);
-    target.add([hit, label(x, y, copy, 18, '#fff0b8')]);
+    const hit = quietButton(scene, { x, y, width, label: copy, name,
+      kind: name.endsWith('-confirm') ? 'primary' : 'secondary', onActivate: action });
+    target.add([hit, hit.getData('labelObject')]);
     return hit;
   };
   if (choice.candidateIds.length > visibleRows) {
@@ -142,11 +142,11 @@ export function renderReturnChoiceOverlay(options: {
     target.add(text);
     if (pages > 1) {
       hasRulePages = true;
-      const counter = label(panelX + 247, panelBottom - 146, '', 16, '#cfe7ee');
+      const counter = label(panelX + 247, panelBottom - 154, '', 16, '#cfe7ee');
       const update = (step: number) => { page = (page + step + pages) % pages; choice.rulesPage = page; showPage(); counter.setText(`Rules ${page + 1}/${pages}`); };
       text.setData('turnPage', update);
-      button(panelX + 74, panelBottom - 146, 140, 'Earlier rules', 'combat-return-rules-previous', () => update(-1));
-      button(panelX + 420, panelBottom - 146, 140, 'More rules', 'combat-return-rules-next', () => update(1));
+      button(panelX + 74, panelBottom - 154, 140, 'Earlier rules', 'combat-return-rules-previous', () => update(-1));
+      button(panelX + 420, panelBottom - 154, 140, 'More rules', 'combat-return-rules-next', () => update(1));
       target.add(counter);
       update(0);
     }

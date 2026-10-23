@@ -2,14 +2,20 @@ import { test, expect } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 const marks = JSON.parse(readFileSync(new URL('../data/game/alpha-route-marks.json', import.meta.url), 'utf8')).routeMarks;
 
-for (const kind of ['supply', 'waymark']) for (const remapped of [false, true]) test(`${kind} outcome reader preserves the transaction, remapped=${remapped}`, async ({ page }, info) => {
+// Full-content reading and transaction ownership each retain the unchanged
+// 30s limit. Both run independently at every viewport, with no assertions lost.
+for (const kind of ['supply', 'waymark']) for (const remapped of [false, true])
+for (const size of remapped ? [{ width: 1000, height: 560 }] : [
+  { width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 },
+]) for (const check of ['complete reading', 'transaction ownership'])
+test(`${kind} outcome reader ${check}, remapped=${remapped}, width=${size.width}`, async ({ page }, info) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', msg => { if (msg.type() === 'error') errors.push(msg.text()); });
   await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
   if (remapped) await page.addInitScript(() => localStorage.setItem('birdsquad.controlBindings', JSON.stringify({ version: 1, bindings: { roost: 'KeyJ', next: 'KeyE', previous: 'KeyQ', back: 'KeyB' } })));
   const keys = remapped ? { inspect: 'j', next: 'e', back: 'b' } : { inspect: 'r', next: 'ArrowRight', back: 'Escape' };
-  await page.setViewportSize({ width: 2560, height: 1600 });
+  await page.setViewportSize(size);
   await page.goto('./');
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
   await page.evaluate(async () => {
@@ -46,18 +52,15 @@ for (const kind of ['supply', 'waymark']) for (const remapped of [false, true]) 
     await page.mouse.click(p.x, p.y, { delay: 40 }); await settle();
   };
   const capture = async (surface: string) => {
-    if (remapped) return;
-    for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
-      await page.setViewportSize(size);
       await page.waitForFunction(() => { const b = document.querySelector('canvas')!.getBoundingClientRect(); return b.width <= innerWidth + 1 && b.height <= innerHeight + 1 && b.left >= -1 && b.top >= -1; });
       await settle();
       const geometry = await page.evaluate(() => {
         const r = (window as any).__birdSquadGame.scene.getScene('RouteScene'), p = r.children.getByName('route-supply-reader'), scale = r.game.canvas.getBoundingClientRect().height / 720;
-        return (p?.list ?? r.children.list).filter((o: any) => /reader-(next|previous|return)$|route-outcome-inspect-hit|route-reward-claim-hit/.test(o.name)).map((o: any) => o.height * scale);
+        return { reader: Boolean(p), heights: (p?.list ?? r.children.list).filter((o: any) => /^(route-supply-reader-(next|previous|return)|route-outcome-inspect-hit|route-reward-claim-hit)$/.test(o.name)).map((o: any) => o.height * scale) };
       });
-      geometry.forEach((height: number) => expect(height).toBeGreaterThanOrEqual(44));
+      expect(geometry.heights).toHaveLength(geometry.reader ? 3 : 2);
+      geometry.heights.forEach((height: number) => expect(height).toBeGreaterThanOrEqual(44));
       await page.screenshot({ path: info.outputPath(`${kind}-${surface}-${size.width}.png`) });
-    }
   };
   await capture('outcome');
   await expect.poll(() => page.locator('#game-status').textContent()).toContain('Route outcome.');
@@ -71,6 +74,7 @@ for (const kind of ['supply', 'waymark']) for (const remapped of [false, true]) 
   await click('route-outcome-inspect-hit'); await expect.poll(reading).not.toBeNull();
   await page.mouse.move(5, 5); expect(await stable()).toBe(before);
   await capture('reader');
+  if (check === 'complete reading') {
   const pages: Record<string, string[]> = {};
   for (let i = 0; i < 100; i++) {
     const read = await reading(); (pages[read.title] ??= []).push(read.text);
@@ -88,6 +92,12 @@ for (const kind of ['supply', 'waymark']) for (const remapped of [false, true]) 
     while ((await reading()).title !== 'COMPANION CARD') await press(keys.next);
     await capture('companion');
   }
+    await press(keys.back);
+    expect(await reading()).toBeNull(); expect(await stable()).toBe(before);
+    expect(errors).toEqual([]);
+    return;
+  }
+  await press(keys.next);
   await expect.poll(() => page.locator('#game-status').textContent()).toContain('Your choice is unchanged');
   const currentPage = (await reading()).page;
   await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').renderAll());

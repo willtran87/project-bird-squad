@@ -43,11 +43,18 @@ export function practiceStartingDeck() {
   return startingDeck?.map(card => ({ ...card }));
 }
 
+// Battle uses the whole HUD width; reserve a lane above its text and targets.
+export function practiceHudOffset(): number {
+  return memoryStorageSessionActive() ? 12 : 0;
+}
+
 export function renderPracticeBadge(scene: Phaser.Scene): void {
   if (!memoryStorageSessionActive() || scene.children.getByName('practice-session-badge')) return;
   // Scene-level object stays above battle/reward containers, never covers a control.
-  scene.add.text(640, 0, 'PRACTICE · nothing saved', {
-    fontFamily: 'Arial, sans-serif', fontSize: '16px', fontStyle: 'bold',
+  // Route has a free right-hand lane before Pause; its summary starts directly
+  // below the HUD, so keep that HUD at its normal vertical position.
+  scene.add.text(scene.scene.key === 'RouteScene' ? 1000 : 640, 0, 'PRACTICE · nothing saved', {
+    fontFamily: 'Arial, sans-serif', fontSize: '19px', fontStyle: 'bold',
     color: '#dcfff4', backgroundColor: '#103629', padding: { x: 10, y: 2 },
   }).setOrigin(0.5, 0).setResolution(2).setDepth(1_000_000).setName('practice-session-badge');
 }

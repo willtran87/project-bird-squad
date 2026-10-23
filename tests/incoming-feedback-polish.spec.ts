@@ -16,7 +16,9 @@ async function enterBattle(page: Page, reduced: boolean) {
   });
   await page.waitForFunction(() => {
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
-    return b.battleFxPresenterModule && b.hand.length && !b.combatAnimationPending && !b.combatIntroActive;
+    // The owned-batch checks require the deferred contact texture, not just the interactive hand.
+    return b.battleFxPresenterModule && b.textures.exists('combat-enemy-heavy-contact')
+      && b.hand.length && !b.combatAnimationPending && !b.combatIntroActive;
   });
 }
 

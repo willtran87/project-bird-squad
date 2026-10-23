@@ -22,6 +22,8 @@ export const reserveEnemyFashionDirections = enemyVarietyContracts.fashionDirect
 
 type ArcanaLoreEntry = {
   id?: string;
+  rank?: string;
+  tarot?: string;
   bird?: string;
   gameplayFantasy?: string;
   coreMeaning?: string;
@@ -29,8 +31,20 @@ type ArcanaLoreEntry = {
 };
 
 const arcanaLoreSets = [majorArcana, aviaryArcana, wandsArcana, cupsArcana, swordsArcana, pentaclesArcana] as Array<{
+  suit?: { name: string };
+  courtNaming?: Record<string, string>;
   cards?: ArcanaLoreEntry[];
 }>;
+
+const printedRanks: Record<string, string> = { '2': 'Two', '3': 'Three', '4': 'Four', '5': 'Five',
+  '6': 'Six', '7': 'Seven', '8': 'Eight', '9': 'Nine', '10': 'Ten' };
+const cardArtTitles = new Map(arcanaLoreSets.flatMap(set => (set.cards ?? [])
+  .filter(entry => entry.id && (entry.tarot || (entry.rank && set.suit)))
+  .map(entry => [entry.id!, entry.tarot ?? `${printedRanks[entry.rank!] ?? set.courtNaming?.[entry.rank!] ?? entry.rank} of ${set.suit!.name}`] as const)));
+
+export function getCardArtTitle(id: string): string | undefined {
+  return cardArtTitles.get(id);
+}
 
 export const cardFlavorLibrary: ReadonlyMap<string, CardFlavor> = new Map(
   arcanaLoreSets.flatMap((set) =>

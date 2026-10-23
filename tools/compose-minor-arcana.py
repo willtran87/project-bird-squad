@@ -140,7 +140,17 @@ def template_art_opening_mask(template: Image.Image | None = None, template_path
     return mask
 
 
-def fit_art_under_template(source: Image.Image, template: Image.Image | None = None, template_path: Path | None = None) -> Image.Image:
+def fit_art_under_template(source: Image.Image, template: Image.Image | None = None, template_path: Path | None = None, fit_opening: bool = False) -> Image.Image:
+    if fit_opening and template is not None:
+        mask = template_art_opening_mask(template, template_path)
+        bounds = mask.getbbox()
+        if bounds is None:
+            raise ValueError("Template has no illustration opening")
+        left, top, right, bottom = bounds
+        art = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
+        art.alpha_composite(fit_to_box(source, (right - left, bottom - top)), (left, top))
+        art.putalpha(mask)
+        return art
     art = fit_to_box(source, CANVAS)
     if template is None:
         return art
@@ -293,7 +303,7 @@ def assert_isolated_art_source(source_root: Path) -> None:
             )
 
 
-def compose_card(source_path: Path, output_path: Path, suit: SuitSpec, title: str, template_path: Path | None = None) -> None:
+def compose_card(source_path: Path, output_path: Path, suit: SuitSpec, title: str, template_path: Path | None = None, fit_opening: bool = False) -> None:
     with Image.open(source_path) as source:
         source.load()
         canvas = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
@@ -303,7 +313,7 @@ def compose_card(source_path: Path, output_path: Path, suit: SuitSpec, title: st
                 if template.size != CANVAS:
                     raise SystemExit(f"{template_path}: expected {CANVAS[0]}x{CANVAS[1]}, found {template.width}x{template.height}")
                 template_layer = template.convert("RGBA")
-                canvas.alpha_composite(fit_art_under_template(source, template_layer, template_path), (0, 0))
+                canvas.alpha_composite(fit_art_under_template(source, template_layer, template_path, fit_opening), (0, 0))
                 canvas.alpha_composite(template_layer)
             final = draw_title(canvas, title)
         else:
@@ -322,6 +332,7 @@ def main() -> None:
     parser.add_argument("--title-font", type=Path, default=None, help="Optional local title font override. Useful for prototype-only licensed fonts kept outside tracked assets.")
     parser.add_argument("--strict", action="store_true", help="Fail if any expected center-art source image is missing.")
     parser.add_argument("--dry-run", action="store_true", help="List work without writing final PNGs.")
+    parser.add_argument("--fit-opening", action="store_true", help="Fit borderless art uniformly to the template opening, rather than the entire card. Review rounded-corner clearance before acceptance.")
     args = parser.parse_args()
 
     global TITLE_FONT_PATH
@@ -345,7 +356,7 @@ def main() -> None:
 
             output = output_root / suit.key / f"{card_id}.png"
             if not args.dry_run:
-                compose_card(source, output, suit, display_title(card, data, suit), find_template(template_root, suit))
+                compose_card(source, output, suit, display_title(card, data, suit), find_template(template_root, suit), args.fit_opening)
             composed.append(output)
 
     action = "Would compose" if args.dry_run else "Composed"

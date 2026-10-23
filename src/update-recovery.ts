@@ -2,6 +2,12 @@
 // Revalidate only failed, same-origin module URLs before an explicit whole-page
 // reload. Never execute a separately cache-busted module or mix build versions.
 const failedModules = new Set<string>();
+// A click closing the native dialog must not hover/focus a canvas control below it.
+// Resume hover selection only after a fresh pointer movement outside the dialog.
+export let recoveryPointerBlocked = false;
+addEventListener('pointermove', () => {
+  if (!document.getElementById('update-recovery')) recoveryPointerBlocked = false;
+});
 addEventListener('error', event => {
   const link = event.target;
   if (!(link instanceof HTMLLinkElement) || link.rel !== 'modulepreload') return;
@@ -9,9 +15,11 @@ addEventListener('error', event => {
   if (url.origin === location.origin && /\/assets\/[^/]+\.js$/.test(url.pathname) && failedModules.size < 16) failedModules.add(url.href);
 }, true);
 
-addEventListener('vite:preloadError', () => {
+export function showDownloadRecovery() {
   if (document.getElementById('update-recovery')) return;
-  const panel = document.createElement('section');
+  recoveryPointerBlocked = true;
+  const previousFocus = document.activeElement as HTMLElement | null;
+  const panel = document.createElement('dialog');
   panel.id = 'update-recovery';
   panel.setAttribute('aria-label', 'Download recovery');
   const message = document.createElement('p');
@@ -29,6 +37,7 @@ addEventListener('vite:preloadError', () => {
       message.textContent = 'Reload returns to your last saved checkpoint, not necessarily this screen. If saving failed, keep this tab open and retry saving first.';
       reload.textContent = 'Reload saved checkpoint';
       dismiss.textContent = 'Cancel reload';
+      dismiss.focus();
       return;
     }
     reload.disabled = true;
@@ -47,8 +56,18 @@ addEventListener('vite:preloadError', () => {
       if (panel.isConnected) location.reload();
     }
   };
-  dismiss.onclick = () => { panel.remove(); request?.abort(); document.querySelector('canvas')?.focus(); };
-  for (const name of ['keydown', 'keyup', 'keypress']) panel.addEventListener(name, event => event.stopPropagation());
+  dismiss.onclick = () => { panel.close(); panel.remove(); request?.abort();
+    (previousFocus?.isConnected ? previousFocus : document.querySelector('canvas'))?.focus(); };
+  panel.addEventListener('cancel', event => { event.preventDefault(); dismiss.click(); });
+  // Phaser also listens for mouse/touch events on window. Native recovery
+  // controls must not choose a route option underneath the panel.
+  for (const name of ['keydown', 'keyup', 'keypress', 'mousedown', 'mouseup', 'mousemove',
+    'pointerdown', 'pointerup', 'touchstart', 'touchend', 'touchmove', 'click', 'wheel']) {
+    panel.addEventListener(name, event => event.stopPropagation());
+  }
   panel.append(message, reload, dismiss);
   document.body.append(panel);
-});
+  panel.showModal();
+  dismiss.focus();
+}
+addEventListener('vite:preloadError', showDownloadRecovery);

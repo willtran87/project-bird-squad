@@ -96,7 +96,7 @@ for (const mode of ['preen', 'cards', 'all-terms']) test(`comparison definitions
     const s = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     return [0, 1].map(i => { const b = s.children.getByName(`deck-review-comparison-body-${i}`); return { size: b.style.fontSize, width: b.width, text: b.text }; });
   });
-  columns.forEach(c => { expect(c.size).toBe('20px'); expect(c.width).toBeLessThanOrEqual(270); expect(c.text.length).toBeGreaterThan(0); });
+  columns.forEach(c => { expect(c.size).toBe('21px'); expect(c.width).toBeLessThanOrEqual(270); expect(c.text.length).toBeGreaterThan(0); });
   expect(await stable()).toBe(before);
   await page.keyboard.press('q'); await settleCanvas(page);
   expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').deckOverlayOpen)).toBe(false);

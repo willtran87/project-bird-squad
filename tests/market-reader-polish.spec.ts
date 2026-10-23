@@ -103,8 +103,15 @@ for (const remapped of [false, true]) test(`Market item reader keeps complete te
   const unavailablePoint = await point('unaffordable-offer');
   await page.mouse.move(unavailablePoint.x, unavailablePoint.y); await page.waitForTimeout(100);
   const unavailable = await stable();
-  expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').marketItemHover.getByName('market-item-reader-blocker').text)).toMatch(/^NEED \d+ MORE SCRAP$/);
+  const blocker = () => page.evaluate(() => {
+    const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');
+    return {text:r.children.getByName('market-input-help-text').text,
+      enabled:r.children.getByName('market-purchase-action').getData('enabled')};
+  });
+  const blocked = await blocker();
+  expect(blocked.text).toMatch(/NEED \d+ MORE SCRAP$/); expect(blocked.enabled).toBe(false);
   await click('market-item-reader-next'); expect(await stable()).toBe(unavailable);
+  expect(await blocker()).toEqual(blocked);
   await page.screenshot({ path: info.outputPath('unaffordable-1000.png') });
   await page.evaluate(() => { const r = (window as any).__birdSquadGame.scene.getScene('RouteScene'); r.runState.scrap = 999; r.setMarketCategory('services'); });
   const original = await stable();

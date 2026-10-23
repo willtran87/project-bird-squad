@@ -39,12 +39,12 @@ const canonicalGroups = [
   {
     dir: 'assets/runtime/route-events',
     files: [
-      'caldra-pinion-v2.webp',
+      'caldra-pinion-v3.webp',
       'featherwright-studio-v2.webp',
-      'ivo-tallymast-v2.webp',
+      'ivo-tallymast-v3.webp',
       'lantern-roost-shelter-v3.webp',
-      'marn-valeclip-v2.webp',
-      'oren-shearbright-v2.webp',
+      'marn-valeclip-v3.webp',
+      'oren-shearbright-v3.webp',
       'rival-wager-board-v2.webp',
       'rooftop-cache-office-v2.webp',
       'sella-warmwick-v2.webp',
@@ -66,7 +66,7 @@ const canonicalGroups = [
       'bird-market-background-v1.webp',
       'bird-market-sign-v1.webp',
       'market-counter-wares-v1.webp',
-      'starling-shopkeeper-v1.webp',
+      'starling-shopkeeper-v2.webp',
     ],
   },
   {
@@ -85,6 +85,10 @@ const canonicalGroups = [
 ];
 
 const canonicalSourceGroups = [
+  {
+    dir: 'assets/concept-art/route-events',
+    files: ['marn-valeclip-v3.png', 'ivo-tallymast-v3.png', 'oren-shearbright-v3.png', 'caldra-pinion-v3.png'],
+  },
   {
     dir: 'assets/concept-art/backdrops/sources',
     files: [
@@ -106,7 +110,7 @@ const canonicalSourceGroups = [
     files: [
       'bird-market-sign-v1.png',
       'market-counter-wares-v1.png',
-      'starling-shopkeeper-v1.png',
+      'starling-shopkeeper-v2.png',
     ],
   },
   {
@@ -114,7 +118,6 @@ const canonicalSourceGroups = [
     files: [
       'bird-market-sign-chroma-v1.png',
       'market-counter-wares-chroma-v1.png',
-      'starling-shopkeeper-chroma-v1.png',
     ],
   },
   {
@@ -123,8 +126,6 @@ const canonicalSourceGroups = [
       'featherwright-chair-press-v1-alpha-source.png',
       'featherwright-chair-press-v1-chroma-source.png',
       'featherwright-studio-v2-scene-source.png',
-      'oren-shearbright-v2-alpha-source.png',
-      'oren-shearbright-v2-chroma-source.png',
     ],
   },
   {
@@ -143,24 +144,18 @@ const canonicalSourceGroups = [
   {
     dir: 'assets/concept-art/route-events/rival-wager',
     files: [
-      'caldra-pinion-v2-alpha-source.png',
-      'caldra-pinion-v2-chroma-source.png',
       'rival-wager-board-v2-scene-source.png',
     ],
   },
   {
     dir: 'assets/concept-art/route-events/rooftop-cache',
     files: [
-      'marn-valeclip-v2-alpha-source.png',
-      'marn-valeclip-v2-chroma-source.png',
       'rooftop-cache-office-v2-scene-source.png',
     ],
   },
   {
     dir: 'assets/concept-art/route-events/signal-landmark',
     files: [
-      'ivo-tallymast-v2-alpha-source.png',
-      'ivo-tallymast-v2-chroma-source.png',
       'signal-route-switchboard-v1-alpha-source.png',
       'signal-route-switchboard-v1-chroma-source.png',
       'signal-switchboard-v2-scene-source.png',

@@ -145,41 +145,35 @@ def copy_contact_sheets() -> None:
 
 
 def main() -> None:
-    entries = []
-    for enemy_id, filename in ENEMY_SOURCES.items():
-        master = copy_master(enemy_id, filename)
-        full = FULL_ROOT / f"{enemy_id}.webp"
-        lossy = enemy_id in LOSSY_FULL_ENEMIES
-        optimize(master, full, max_edge=704 if lossy else 768, lossy=lossy, quality=82)
-        entries.append(
-            {
-                "enemyId": enemy_id,
-                "source": rel(master),
-                "full": rel(full),
-                "version": "0.1",
-                "status": "approved",
-            }
-        )
+    if MANIFEST_PATH.exists():
+        manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+        entries = manifest["enemies"]
+    else:
+        entries = [{"enemyId": enemy_id, "source": rel(copy_master(enemy_id, filename)),
+                    "full": rel(FULL_ROOT / f"{enemy_id}.webp"), "version": "0.1", "status": "approved"}
+                   for enemy_id, filename in ENEMY_SOURCES.items()]
+        manifest = {"version": "0.1", "project": "Bird Squad", "enemies": entries}
+    # Adopted reserve enemies belong to the current roster. Do not discard them
+    # by rebuilding the manifest from the smaller historical bootstrap roster.
+    ids = [entry["enemyId"] for entry in entries]
+    if len(ids) != len(set(ids)):
+        raise ValueError("Duplicate enemy IDs in the runtime art manifest")
+    for entry in entries:
+        if entry["status"] != "approved" or not (ROOT / entry["source"]).is_file():
+            raise ValueError(f"Missing approved enemy master: {entry['enemyId']}")
+        if entry["full"] != rel(FULL_ROOT / f"{entry['enemyId']}.webp"):
+            raise ValueError(f"Unexpected enemy export path: {entry['full']}")
+    for entry in entries:
+        enemy_id = entry["enemyId"]
+        lossy = enemy_id in LOSSY_FULL_ENEMIES or enemy_id not in ENEMY_SOURCES
+        optimize(ROOT / entry["source"], ROOT / entry["full"],
+                 max_edge=704 if lossy else 768, lossy=lossy, quality=82)
 
     copy_contact_sheets()
     reserve_count = build_reserve_enemies()
     RUNTIME_ROOT.mkdir(parents=True, exist_ok=True)
     MANIFEST_PATH.write_text(
-        json.dumps(
-            {
-                "version": "0.1",
-                "project": "Bird Squad",
-                "basedOn": [
-                    "docs/art/enemy-art-bible.md",
-                    "data/game/alpha-enemies.json",
-                    "data/game/map02-content.json",
-                    "data/game/map03-content.json",
-                    "data/game/map04-content.json",
-                ],
-                "enemies": entries,
-            },
-            indent=2,
-        )
+        json.dumps(manifest, indent=2)
         + "\n",
         encoding="utf-8",
     )

@@ -1,3 +1,4 @@
+import { UI_FONT as TOKEN_FONT } from './ui-tokens';
 import Phaser from 'phaser';
 
 export type CardColorCueShape = 'triangle' | 'waves' | 'diamond' | 'square' | 'star' | 'ring' | 'chevron' | 'cross';
@@ -39,7 +40,7 @@ function renderCueShape(
   }
   if (shape === 'waves') {
     return scene.add.text(x, -1, '≈', {
-      fontFamily: 'Arial',
+      fontFamily: TOKEN_FONT,
       fontSize: '19px',
       fontStyle: 'bold',
       color: '#f4f8fb',
@@ -58,7 +59,7 @@ function renderCueShape(
   }
   if (shape === 'chevron') {
     return scene.add.text(x, 0, '»', {
-      fontFamily: 'Arial',
+      fontFamily: TOKEN_FONT,
       fontSize: '18px',
       fontStyle: 'bold',
       color: '#f4f8fb',
@@ -68,7 +69,7 @@ function renderCueShape(
   }
   if (shape === 'cross') {
     return scene.add.text(x, 0, '×', {
-      fontFamily: 'Arial',
+      fontFamily: TOKEN_FONT,
       fontSize: '19px',
       fontStyle: 'bold',
       color: '#f4f8fb',
@@ -86,7 +87,7 @@ export function renderCardColorCue(
   y: number,
   label: string,
   accent: number,
-  options: { name: string; width?: number; height?: number } = { name: 'card-color-cue-badge' },
+  options: { name: string; width?: number; height?: number; iconOnly?: boolean } = { name: 'card-color-cue-badge' },
 ) {
   const descriptor = cardColorCueDescriptor(label);
   const width = options.width ?? Math.max(76, descriptor.label.length * 7 + 34);
@@ -98,8 +99,8 @@ export function renderCardColorCue(
   cue.add(scene.add.rectangle(0, 0, width, height, 0x06111a, 0.94)
     .setStrokeStyle(2, accent, 0.98));
   cue.add(renderCueShape(scene, descriptor.shape, -width / 2 + 14, accent));
-  cue.add(scene.add.text(-width / 2 + 27, 0, descriptor.label, {
-    fontFamily: 'Arial',
+  if (!options.iconOnly) cue.add(scene.add.text(-width / 2 + 27, 0, descriptor.label, {
+    fontFamily: TOKEN_FONT,
     fontSize: '9px',
     fontStyle: 'bold',
     color: '#f4f8fb',

@@ -184,12 +184,13 @@ export function banner(
   text: string,
   color: string,
   options: {
+    fontFamily: string;
     textureKey?: string;
     width?: number;
     height?: number;
     name?: string;
     holdMs?: number;
-  } = {},
+  },
 ): void {
   const group = scene.add.container(x, y).setAlpha(0).setScale(0.92);
   if (options.name) group.setName(options.name);
@@ -202,7 +203,7 @@ export function banner(
   }
 
   const label = scene.add.text(0, 0, text, {
-    fontFamily: 'Georgia, serif',
+    fontFamily: options.fontFamily,
     fontSize: '34px',
     fontStyle: 'bold',
     color,

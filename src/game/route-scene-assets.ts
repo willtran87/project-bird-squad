@@ -3,7 +3,7 @@ import type { RouteNode } from './types';
 
 const marketKitRuntimeArtUrls = import.meta.glob([
   '../../assets/runtime/market-kit/bird-market-background-v1.webp',
-  '../../assets/runtime/market-kit/starling-shopkeeper-v1.webp',
+  '../../assets/runtime/market-kit/starling-shopkeeper-v2.webp',
   '../../assets/runtime/market-kit/bird-market-sign-v1.webp',
   '../../assets/runtime/market-kit/market-counter-wares-v1.webp',
 ], {
@@ -18,10 +18,10 @@ const routeEventRuntimeArtUrls = import.meta.glob([
   '../../assets/runtime/route-events/featherwright-studio-v2.webp',
   '../../assets/runtime/route-events/rival-wager-board-v2.webp',
   '../../assets/runtime/route-events/sella-warmwick-v2.webp',
-  '../../assets/runtime/route-events/marn-valeclip-v2.webp',
-  '../../assets/runtime/route-events/ivo-tallymast-v2.webp',
-  '../../assets/runtime/route-events/oren-shearbright-v2.webp',
-  '../../assets/runtime/route-events/caldra-pinion-v2.webp',
+  '../../assets/runtime/route-events/marn-valeclip-v3.webp',
+  '../../assets/runtime/route-events/ivo-tallymast-v3.webp',
+  '../../assets/runtime/route-events/oren-shearbright-v3.webp',
+  '../../assets/runtime/route-events/caldra-pinion-v3.webp',
 ], {
   eager: true,
   query: '?url',
@@ -104,7 +104,7 @@ function routeMapBackdropAsset(filename: string, key: string): RuntimeImageAsset
 
 export const routeSceneMarketKitAssets = {
   background: marketKitAsset('bird-market-background-v1.webp', 'market-kit-background'),
-  shopkeeper: marketKitAsset('starling-shopkeeper-v1.webp', 'market-kit-shopkeeper-starling'),
+  shopkeeper: marketKitAsset('starling-shopkeeper-v2.webp', 'market-kit-shopkeeper-starling'),
   sign: marketKitAsset('bird-market-sign-v1.webp', 'market-kit-sign'),
   counter: marketKitAsset('market-counter-wares-v1.webp', 'market-kit-counter-wares')
 };
@@ -127,10 +127,10 @@ export const routeSceneEventPropAssets = {
 
 export const routeSceneEventResidentAssets: Partial<Record<RouteNode['type'], RuntimeImageAsset>> = {
   basin: routeEventAsset('sella-warmwick-v2.webp', 'route-event-resident-sella-warmwick'),
-  cache: routeEventAsset('marn-valeclip-v2.webp', 'route-event-resident-marn-valeclip'),
-  signal: routeEventAsset('ivo-tallymast-v2.webp', 'route-event-resident-ivo-tallymast'),
-  nest: routeEventAsset('oren-shearbright-v2.webp', 'route-event-resident-oren-shearbright'),
-  rival: routeEventAsset('caldra-pinion-v2.webp', 'route-event-resident-caldra-pinion')
+  cache: routeEventAsset('marn-valeclip-v3.webp', 'route-event-resident-marn-valeclip'),
+  signal: routeEventAsset('ivo-tallymast-v3.webp', 'route-event-resident-ivo-tallymast'),
+  nest: routeEventAsset('oren-shearbright-v3.webp', 'route-event-resident-oren-shearbright'),
+  rival: routeEventAsset('caldra-pinion-v3.webp', 'route-event-resident-caldra-pinion')
 };
 
 export const routeSceneNodeIconAssets: Record<RouteNode['type'], RuntimeImageAsset> = Object.fromEntries(

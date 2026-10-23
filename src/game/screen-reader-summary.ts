@@ -89,8 +89,15 @@ function describeScreen(payload: unknown): string {
   const settingsOpen = payload.settingsOpen === true || payload.settingsOverlayOpen === true;
   const settingsFocus = isRecord(payload.settingsFocus) ? payload.settingsFocus : undefined;
   if (settingsOpen && settingsFocus) {
+    const controls = isRecord(payload.controls) ? payload.controls : undefined;
+    if (controls?.panelOpen === true) {
+      const bindings = isRecord(controls.bindings) ? Object.values(controls.bindings).filter(isRecord) : [];
+      const focus = number(controls.focusIndex) ?? 0;
+      const binding = bindings[(controls.page === 'utility' ? 6 : 0) + focus];
+      return `Controls. ${text(controls.page)}. ${focus === 6 ? 'Reset Defaults' : `${text(binding?.label)}: ${text(binding?.key)}`}. ${text(settingsFocus.controlsStatus)} ${controls.captureAction ? 'Press a new key. Escape cancels unless you are remapping Back.' : 'Up or Down moves. Left or Right changes section. Confirm remaps. Back closes.'}`;
+    }
     const label = text(settingsFocus.label) || 'setting';
-    return `Settings. ${text(settingsFocus.section)}. ${label}: ${text(settingsFocus.value)}. ${number(settingsFocus.position) ?? 1} of ${number(settingsFocus.count) ?? 1}. Use Up, Down, or Tab to move, Left and Right to adjust, Page Up or Page Down or controller shoulders to change section, and Back to close.`;
+    return `Settings. ${text(settingsFocus.section)}. ${label}: ${text(settingsFocus.value)}. ${text(settingsFocus.explanation)} ${number(settingsFocus.position) ?? 1} of ${number(settingsFocus.count) ?? 1}. Use Up, Down, or Tab to move, Left and Right to adjust, Page Up or Page Down or controller shoulders to change section, and Back to close.`;
   }
 
   if (scene === 'MenuScene' || mode === 'menu') {
@@ -108,10 +115,22 @@ function describeScreen(payload: unknown): string {
       : '';
     const resume = focus?.current === 'primaryRun' && text(payload.resumeContext)
       ? ` ${text(payload.resumeContext).replace(/\n/g, '. ')}.` : '';
-    return `Bird Squad menu. ${label}.${resume}${collectionSummary} Press Confirm to select.`;
+    const leader = focus?.current === 'leader' ? ` ${text(payload.leaderExplanation)}` : '';
+    const newFlight = (focus?.current === 'secondaryRun' || (focus?.current === 'primaryRun' && !payload.hasSavedRun)) && text(payload.launchSummary)
+      ? ` ${text(payload.launchSummary)}.` : '';
+    return `Bird Squad menu. ${label}.${resume}${leader}${newFlight}${collectionSummary} Press Confirm to select.`;
   }
 
   if (scene === 'ProfileScene' || mode === 'profile') {
+    const folioFocus = isRecord(payload.folioFocus) ? payload.folioFocus : undefined;
+    const actionHint = text(folioFocus?.label) ? `Focused action: ${text(folioFocus?.label)}. Tab or D-pad left and right chooses actions; Confirm activates. ` : '';
+    const save = isRecord(payload.saveData) ? payload.saveData : undefined;
+    if (save?.open === true) {
+      const pending = isRecord(save.pending) ? save.pending : undefined;
+      return `Save Data. ${actionHint}${pending
+        ? 'Backup ready. Confirm Restore replaces local save data and settings. Cancel keeps existing data. Back returns to Save Data without restoring.'
+        : 'Download or restore a local backup. Nothing is uploaded. Back returns to Flock Record.'} ${text(save.message)}`;
+    }
     const history = isRecord(payload.flightHistory) ? payload.flightHistory : undefined;
     const review = isRecord(history?.review) ? history.review : undefined;
     if (review) {
@@ -119,7 +138,10 @@ function describeScreen(payload: unknown): string {
       const deck = Array.isArray(details?.deck) ? details.deck.map(text).filter(Boolean) : [];
       const path = Array.isArray(details?.path) ? details.path.map(text).filter(Boolean) : [];
       const focusedAction = spaced(text(review.focusedAction)) || 'copy';
-      return `Recorded flight ${text(review.seed)}. ${deck.length} cards in the final deck. ${path.length} route stops. Focused action ${focusedAction}. Use Previous and Next to choose Copy Flight Link or Close Review, Confirm to select, and Back to return to the Flight Log.`;
+      const copy = review.copyStatus === 'copying' ? 'Copying flight link. Close remains available.'
+        : review.copyStatus === 'failed' ? 'Copy failed. Retry Copy Flight Link or close; your recorded flight is unchanged.'
+        : review.copyStatus === 'copied' ? 'Flight link copied.' : '';
+      return `Recorded flight ${text(review.seed)}. ${deck.length} cards in the final deck. ${path.length} route stops. ${copy} Focused action ${focusedAction}. Use Previous and Next to choose Copy Flight Link or Close Review, Confirm to select, and Back to return to the Flight Log.`;
     }
     if (history?.open === true) {
       const selected = isRecord(history.selected) ? history.selected : undefined;
@@ -130,7 +152,7 @@ function describeScreen(payload: unknown): string {
       const result = spaced(text(selected?.result)) || 'flight';
       const seed = text(selected?.seed);
       const leader = text(selected?.leader);
-      return `Flight Log. ${count} recorded flight${count === 1 ? '' : 's'}. Page ${page} of ${pageCount}. Selected ${selectedIndex + 1} of ${count}, ${result}${seed ? `, flight ${seed}` : ''}${leader ? `, ${leader}` : ''}. Use Previous and Next to choose a flight, Page Up and Page Down or controller shoulders to change pages, Confirm for the complete review, and Back to return.`;
+      return `Flight Log. ${count} recorded flight${count === 1 ? '' : 's'}. Page ${page} of ${pageCount}. Selected ${selectedIndex + 1} of ${count}, ${result}${seed ? `, flight ${seed}` : ''}${leader ? `, ${leader}` : ''}. ${text(history.message)} ${actionHint}Previous/Next: flight. Page Up/Down or shoulders: page. Back: return.`;
     }
     const focus = isRecord(payload.focus) ? payload.focus : undefined;
     const collectionMilestones = isRecord(payload.collectionMilestones) ? payload.collectionMilestones : undefined;
@@ -147,7 +169,7 @@ function describeScreen(payload: unknown): string {
       const requirement = selected?.available === true
         ? 'Ready to build.'
         : `${text(selected?.reason) || 'Template unavailable'}.${missingNames.length > 0 ? ` Missing cards: ${missingNames.join(', ')}.` : ''}`;
-      return `Build a Starter Folio. Selected ${selectedIndex + 1} of ${options.length}, ${text(selected?.leader)}, ${text(selected?.bird)}, ${text(selected?.suit)}. ${number(selected?.ownedCount) ?? 0} of ${number(selected?.cardCount) ?? 0} starter cards permanently owned. ${requirement} Building creates a new revision 1 Full Flight Folio with Base cards. It never grants cards, changes collection history, replaces another Folio, or starts a flight. Use Previous and Next, D-pad, controller shoulders, or pointer to choose; Confirm, controller A, or pointer to build; and Back, controller B, or pointer to cancel.`;
+      return `${actionHint}Build a Starter Folio. Selected ${selectedIndex + 1} of ${options.length}, ${text(selected?.leader)}, ${text(selected?.bird)}, ${text(selected?.suit)}. ${number(selected?.ownedCount) ?? 0} of ${number(selected?.cardCount) ?? 0} starter cards permanently owned. ${requirement} Building creates a new revision 1 Full Flight Folio with Base cards. It never grants cards, changes collection history, replaces another Folio, or starts a flight. Use Tab or D-pad left and right to focus rows, Build, or Back; Confirm or controller A activates the focused control; Up, Down, or controller shoulders browse starters; and Back, controller B, or pointer to cancel.`;
     }
     const identity = isRecord(folios?.identity) ? folios.identity : undefined;
     if (identity?.open === true) {
@@ -160,7 +182,7 @@ function describeScreen(payload: unknown): string {
       const selected = selectedSleeve
         ? `${text(selectedSleeve.label)}: ${text(selectedSleeve.description)}`
         : `${text(cover?.name)}${cover?.selected === true ? ', currently set' : ''}`;
-      return `Folio Identity for ${text(identity.deckName)}. Current cover card ${text(cover?.name)}. Current card-back sleeve ${text(identity.sleeveLabel)}. Private description: ${text(identity.description) || 'none yet'}. Active section ${activeSection}. Selected ${selected}. Cover, sleeve, and description are cosmetic collection metadata, included in save backups, excluded from BSF share codes, and never affect power. Use Tab or controller shoulders to switch sections; Previous, Next, Up, Down, or controller D-pad to choose; Confirm or controller A to apply; E or controller X to edit the description; and Back or controller B to return to the Folio Organizer.`;
+      return `${actionHint}Folio Identity for ${text(identity.deckName)}. Current cover card ${text(cover?.name)}. Current card-back sleeve ${text(identity.sleeveLabel)}. Private description: ${text(identity.description) || 'none yet'}. Active section ${activeSection}. Selected ${selected}. Cover, sleeve, and description are cosmetic collection metadata, included in save backups, excluded from BSF share codes, and never affect power. Use Tab or D-pad left and right to focus any choice or action; Confirm or controller A to activate; controller shoulders to switch browsing sections; E or controller X to edit the description; and Back or controller B to return to the Folio Organizer.`;
     }
     const organizer = isRecord(folios?.organizer) ? folios.organizer : undefined;
     if (organizer?.open === true) {
@@ -179,7 +201,7 @@ function describeScreen(payload: unknown): string {
       const limitMessage = text(organizer.status) === 'tagLimit'
         ? ' The three-label limit is reached; remove one before adding another.'
         : '';
-      return `Folio Organizer for ${text(organizer.deckName)}. Current folder ${text(organizer.folderLabel)}. Strategy labels: ${labels.join(', ') || 'none'}. ${labels.length} of ${number(organizer.tagLimit) ?? 3} labels used. Active section ${section}. Selected ${text(selected?.label)}: ${text(selected?.description)}.${limitMessage} Organization is private, included in save backups, excluded from BSF share codes, and never affects power. Use Tab or controller shoulders to switch sections; Previous, Next, Up, Down, or controller D-pad to choose; Confirm or controller A to apply; P or controller X for Folio Identity; R or controller Y to rename; and Back or controller B to return.`;
+      return `${actionHint}Folio Organizer for ${text(organizer.deckName)}. Current folder ${text(organizer.folderLabel)}. Strategy labels: ${labels.join(', ') || 'none'}. ${labels.length} of ${number(organizer.tagLimit) ?? 3} labels used. Active section ${section}. Selected ${text(selected?.label)}: ${text(selected?.description)}.${limitMessage} Organization is private, included in save backups, excluded from BSF share codes, and never affects power. Use Tab or D-pad left and right to focus any choice or action; Confirm or controller A to activate; controller shoulders to switch browsing sections; P or controller X for Folio Identity; R or controller Y to rename; and Back or controller B to return.`;
     }
     const collectionSignals = isRecord(folios?.collectionSignals) ? folios.collectionSignals : undefined;
     if (collectionSignals?.open === true) {
@@ -198,7 +220,7 @@ function describeScreen(payload: unknown): string {
         const second = isRecord(pair.second) ? pair.second : undefined;
         return `${text(first?.name)} with ${text(second?.name)}, ${number(pair.folioCount) ?? 0} Folios`;
       }).join('; ');
-      return `Collection Signals for ${text(collectionSignals.deckName)}. ${number(collectionSignals.ownedCount) ?? 0} permanently owned cards across ${number(collectionSignals.activeFolioCount) ?? 0} active and ${number(collectionSignals.archivedFolioCount) ?? 0} archived Folios. ${number(collectionSignals.unusedCount) ?? 0} owned cards are unused.${unused ? ` Unused shown: ${unused}.` : ''}${frequent ? ` Many Folios: ${frequent}.` : ''}${recent ? ` New arrivals: ${recent}.` : ''}${pairs ? ` Common pairs touching this Folio: ${pairs}.` : ''} Usage counts distinct saved Folios including Archive, duplicate copies count once per Folio, recent means first acquired, and a pair means two owned cards share a Folio. These are descriptive signals, not recommendations; they never edit the Folio or affect power. Use G, Back, controller B or right stick, or pointer to return to Flight Lab.`;
+      return `${actionHint}Collection Signals for ${text(collectionSignals.deckName)}. Active section: ${text(collectionSignals.section) || 'unused'}. ${number(collectionSignals.ownedCount) ?? 0} permanently owned cards across ${number(collectionSignals.activeFolioCount) ?? 0} active and ${number(collectionSignals.archivedFolioCount) ?? 0} archived Folios. ${number(collectionSignals.unusedCount) ?? 0} owned cards are unused.${unused ? ` Unused shown: ${unused}.` : ''}${frequent ? ` Many Folios: ${frequent}.` : ''}${recent ? ` New arrivals: ${recent}.` : ''}${pairs ? ` Common pairs touching this Folio: ${pairs}.` : ''} Usage counts distinct saved Folios including Archive, duplicate copies count once per Folio, recent means first acquired, and a pair means two owned cards share a Folio. These are descriptive signals, not recommendations; they never edit the Folio or affect power. Use Previous, Next or controller shoulders to browse sections; Tab selects actions. Use G, Back, controller B or right stick, or pointer to return to Flight Lab.`;
     }
     const fieldRecord = isRecord(folios?.fieldRecord) ? folios.fieldRecord : undefined;
     if (fieldRecord?.open === true) {
@@ -210,32 +232,26 @@ function describeScreen(payload: unknown): string {
       )).join('; ');
       const notes = spaced(text(fieldRecord.notes));
       const flights = number(fieldRecord.flights) ?? 0;
-      return `Folio Field Record for ${text(fieldRecord.deckName)}, revision ${number(fieldRecord.revision) ?? 1}${fieldRecord.archived === true ? ', archived' : ''}. ${flights} exact-match flight${flights === 1 ? '' : 's'}, ${number(fieldRecord.wins) ?? 0} wins, ${number(fieldRecord.losses) ?? 0} losses, ${flights > 0 ? `${number(fieldRecord.winRate) ?? 0} percent win rate, average ${number(fieldRecord.averageTurns) ?? 0} turns` : 'no win rate yet'}${fieldRecord.fastestWinTurns == null ? '' : `, fastest win ${number(fieldRecord.fastestWinTurns) ?? 0} turns`}. Matching requires the same leader, mode, card order, and Base or Preened states.${recent ? ` Recent results: ${recent}.` : ' Complete a flight with this exact Folio to start its record.'} Private matchup notes: ${notes || 'none yet'}. Notes stay local, are included in backups, never enter BSF share codes, and never affect power. Use Confirm, E, controller A, or pointer to edit notes, and Back or controller B to return to Flight Lab.`;
+      return `${actionHint}Folio Field Record for ${text(fieldRecord.deckName)}, revision ${number(fieldRecord.revision) ?? 1}${fieldRecord.archived === true ? ', archived' : ''}. ${flights} exact-match flight${flights === 1 ? '' : 's'}, ${number(fieldRecord.wins) ?? 0} wins, ${number(fieldRecord.losses) ?? 0} losses, ${flights > 0 ? `${number(fieldRecord.winRate) ?? 0} percent win rate, average ${number(fieldRecord.averageTurns) ?? 0} turns` : 'no win rate yet'}${fieldRecord.fastestWinTurns == null ? '' : `, fastest win ${number(fieldRecord.fastestWinTurns) ?? 0} turns`}. Matching requires the same leader, mode, card order, and Base or Preened states.${recent ? ` Recent results: ${recent}.` : ' Complete a flight with this exact Folio to start its record.'} Private matchup notes: ${notes || 'none yet'}. Notes stay local, are included in backups, never enter BSF share codes, and never affect power. Use Confirm, E, controller A, or pointer to edit notes, and Back or controller B to return to Flight Lab.`;
     }
     const revisionTrail = isRecord(folios?.revisionTrail) ? folios.revisionTrail : undefined;
     if (revisionTrail?.open === true) {
       const source = isRecord(revisionTrail.source) ? revisionTrail.source : undefined;
       const target = isRecord(revisionTrail.selectedTarget) ? revisionTrail.selectedTarget : undefined;
       const comparison = isRecord(revisionTrail.comparison) ? revisionTrail.comparison : undefined;
-      const changes = records(comparison?.cardChanges).map((change) => {
-        const current = isRecord(change.current) ? change.current : undefined;
-        const next = isRecord(change.target) ? change.target : undefined;
-        const currentLabel = current
-          ? `${text(current.name)}${current.upgraded === true ? ', Preened' : ', Base'}`
-          : 'empty slot';
-        const targetLabel = next
-          ? `${text(next.name)}${next.upgraded === true ? ', Preened' : ', Base'}`
-          : 'empty slot';
-        return `card ${number(change.position) ?? 0}, ${currentLabel} to ${targetLabel}`;
-      }).join('; ');
+      // Announce the visible comparison, not the entire lineage on every page turn.
+      const change = isRecord(revisionTrail.currentChange) ? revisionTrail.currentChange : undefined;
+      const current = isRecord(change?.currentCard) ? change.currentCard : undefined;
+      const next = isRecord(change?.targetCard) ? change.targetCard : undefined;
+      const changes = change ? `${text(change.label)}: ${text(change.current)}${current ? current.upgraded === true ? ', Preened' : ', Base' : ''} to ${text(change.target)}${next ? next.upgraded === true ? ', Preened' : ', Base' : ''}` : '';
       const metadata = [
         comparison?.leaderChanged === true ? `leader changes to ${text(target?.leader)}` : '',
         comparison?.runModeChanged === true ? `mode changes to ${text(target?.runMode)}` : '',
       ].filter(Boolean).join(', ');
       if (!target) {
-        return `Revision Trail for ${text(source?.name)}, revision ${number(source?.revision) ?? 1}. This is the first preserved revision in its lineage, so there is nothing earlier to compare or restore. The Folio remains unchanged. Use Back or controller B to return to Flight Lab.`;
+        return `${actionHint}Revision Trail for ${text(source?.name)}, revision ${number(source?.revision) ?? 1}. This is the first preserved revision in its lineage, so there is nothing earlier to compare or restore. The Folio remains unchanged. Use Back or controller B to return to Flight Lab.`;
       }
-      return `Revision Trail for ${text(source?.name)}, current revision ${number(source?.revision) ?? 1}. Selected ${target.id === source?.parentId ? 'direct parent, ' : ''}${text(target.name)}, revision ${number(target.revision) ?? 1}${target.archived === true ? ', archived' : ''}. ${comparison?.exactMatch === true ? `The playable decks match exactly, with ${number(comparison.unchangedCards) ?? 0} unchanged cards.` : `${records(comparison?.cardChanges).length} card changes${metadata ? `, ${metadata}` : ''}: ${changes || 'no positional card changes'}.`} Restoring copies the selected revision's exact card order and Base or Preened states into a new active revision; source and target remain preserved. ${revisionTrail.canRestore === true ? 'Restore is available.' : number(revisionTrail.activeCount) === number(revisionTrail.capacity) ? 'Restore is unavailable because active Folios are full; archive one first.' : 'Restore is unnecessary because the playable decks match.'} Use Previous and Next, Up and Down, pointer, or controller shoulders to choose a revision, Confirm or controller A to restore, and Back or controller B to return to Flight Lab.`;
+      return `${actionHint}Revision Trail for ${text(source?.name)}, current revision ${number(source?.revision) ?? 1}. Selected ${target.id === source?.parentId ? 'direct parent, ' : ''}${text(target.name)}, revision ${number(target.revision) ?? 1}${target.archived === true ? ', archived' : ''}. ${comparison?.exactMatch === true ? `The playable decks match exactly, with ${number(comparison.unchangedCards) ?? 0} unchanged cards.` : `${records(comparison?.cardChanges).length} card changes${metadata ? `, ${metadata}` : ''}: ${changes || 'no positional card changes'}.`} Reviewing change ${number(revisionTrail.changePage) ?? 0} of ${number(revisionTrail.changeCount) ?? 0}; Page Up and Page Down or controller triggers browse every change. Restoring copies the selected revision's exact card order and Base or Preened states into a new active revision; source and target remain preserved. ${revisionTrail.canRestore === true ? 'Restore is available.' : number(revisionTrail.activeCount) === number(revisionTrail.capacity) ? 'Restore is unavailable because active Folios are full; archive one first.' : 'Restore is unnecessary because the playable decks match.'} Use Previous and Next, Up and Down, pointer, or controller shoulders to choose a revision, Confirm or controller A to restore, and Back or controller B to return to Flight Lab.`;
     }
     const workshop = isRecord(folios?.workshop) ? folios.workshop : undefined;
     if (workshop?.open === true) {
@@ -243,7 +259,7 @@ function describeScreen(payload: unknown): string {
       const selected = isRecord(workshop.selectedSuggestion) ? workshop.selectedSuggestion : undefined;
       const suggestions = records(workshop.suggestions);
       const reasons = Array.isArray(selected?.reasons) ? selected.reasons.map(text).filter(Boolean).join(', ') : '';
-      return `Tuning Bench for ${text(workshop.deckName)}. Replacing card ${number(workshop.sourceCardNumber) ?? 1} of ${number(workshop.sourceCardCount) ?? 0}, ${text(source?.name)}${source?.upgraded === true ? ', Preened' : ', Base'}${source?.available === false ? ', definition unavailable' : ''}. ${suggestions.length} permanently owned role-similar replacements.${selected ? ` Selected ${text(selected.name)}, ${number(selected.cost) ?? 0} Wingbeats, ${text(selected.family)}, ${text(selected.role)}.${reasons ? ` Reasons: ${reasons}.` : ''}` : ' No valid owned replacement is available.'} Saving creates a new revision with one Base replacement and preserves the source Folio unchanged. ${workshop.canSave === true ? 'A tuned revision can be saved.' : `A tuned revision cannot be saved${number(workshop.activeCount) === number(workshop.capacity) ? ' because active Folios are full; archive one first' : ''}.`} Use Previous and Next or controller shoulders to choose the source card, Up and Down or controller D-pad to choose a replacement, Confirm or controller A to save, and Back or controller B to return to Flight Lab.`;
+      return `${actionHint}Tuning Bench for ${text(workshop.deckName)}. Replacing card ${number(workshop.sourceCardNumber) ?? 1} of ${number(workshop.sourceCardCount) ?? 0}, ${text(source?.name)}${source?.upgraded === true ? ', Preened' : ', Base'}${source?.available === false ? ', definition unavailable' : ''}. ${suggestions.length} permanently owned role-similar replacements.${selected ? ` Selected ${text(selected.name)}, ${number(selected.cost) ?? 0} Wingbeats, ${text(selected.family)}, ${text(selected.role)}.${reasons ? ` Reasons: ${reasons}.` : ''}` : ' No valid owned replacement is available.'} Saving creates a new revision with one Base replacement and preserves the source Folio unchanged. ${workshop.canSave === true ? 'A tuned revision can be saved.' : `A tuned revision cannot be saved${number(workshop.activeCount) === number(workshop.capacity) ? ' because active Folios are full; archive one first' : ''}.`} Use Previous and Next or controller shoulders to choose the source card, Up and Down or controller D-pad to choose a replacement, Confirm or controller A to save, and Back or controller B to return to Flight Lab.`;
     }
     const flightLab = isRecord(folios?.flightLab) ? folios.flightLab : undefined;
     if (flightLab?.open === true) {
@@ -277,7 +293,7 @@ function describeScreen(payload: unknown): string {
         ? 'Use U, controller Select, or the Practice button for real battles without saving. Your active flight is safe. Main Menu or reload ends practice.'
         : `Playable practice is unavailable: ${text(practice?.detail) || 'review the Folio first'}.`;
       launchText += ` ${practiceText}`;
-      return `Flight Lab for ${text(flightLab.deckName)}. ${flightLab.legalForStandardFlight === true ? 'Standard ready.' : 'Review needed.'} ${number(flightLab.savedCopies) ?? 0} saved copies, ${number(flightLab.playableCards) ?? 0} playable cards, average cost ${number(flightLab.averageCost) ?? 0}. Cost curve: ${curve || 'empty'}. Roles: ${roles || 'none'}. Families: ${families || 'none'}. Resource hooks: ${hooks || 'none'}. Sample hand ${number(sample?.number) ?? 1}, card page ${number(sample?.page) ?? 1} of ${number(sample?.pages) ?? 1}: ${sampleCards || 'no cards'}. ${number(sample?.playableCount) ?? 0} individually affordable; the opening budget covers up to ${number(sample?.affordableTogether) ?? 0} together, before card-play effects. Across ${number(consistency?.sampleCount) ?? 0} deterministic hands, ${number(consistency?.averagePlayable) ?? 0} average playable, ${number(consistency?.atLeastTwoPlayablePercent) ?? 0} percent open with two playable, and ${number(consistency?.pressurePercent) ?? 0} percent include pressure.${issues ? ` ${issues}` : ''} ${launchText} Shared codes never grant ownership, archived Folios must be restored, locked leaders stay locked, and an active flight is never overwritten. The first sample uses saved order; later samples use shuffled openings. Draw includes Flock Stats and the Leader's keystone rule. Waymarks, route bonuses, and card-play effects are excluded. These samples are not win odds. Hand sampling uses protected opening draws, never changes the folio, never affects power, and spends no Scrap. Use S, controller Start, or pointer to launch when available; G or controller right stick for Collection Signals, N or controller left stick for the Field Record, R or controller Y for the Revision Trail, T or controller X for the Tuning Bench, Previous and Next, Space, or controller A to deal, Page Up or Page Down and D-pad Up or Down to browse cards in the current hand, and Back or controller B to close the Lab.`;
+      return `${actionHint}Flight Lab for ${text(flightLab.deckName)}. Active view: ${text(flightLab.section) || 'hand'}. Controller triggers switch views. Tab selects view buttons and actions; Confirm activates the focused action. ${flightLab.legalForStandardFlight === true ? 'Standard ready.' : 'Review needed.'} ${number(flightLab.savedCopies) ?? 0} saved copies, ${number(flightLab.playableCards) ?? 0} playable cards, average cost ${number(flightLab.averageCost) ?? 0}. Cost curve: ${curve || 'empty'}. Roles: ${roles || 'none'}. Families: ${families || 'none'}. Resource hooks: ${hooks || 'none'}. Sample hand ${number(sample?.number) ?? 1}, card page ${number(sample?.page) ?? 1} of ${number(sample?.pages) ?? 1}: ${sampleCards || 'no cards'}. ${number(sample?.playableCount) ?? 0} individually affordable; the opening budget covers up to ${number(sample?.affordableTogether) ?? 0} together, before card-play effects. Across ${number(consistency?.sampleCount) ?? 0} deterministic hands, ${number(consistency?.averagePlayable) ?? 0} average playable, ${number(consistency?.atLeastTwoPlayablePercent) ?? 0} percent open with two playable, and ${number(consistency?.pressurePercent) ?? 0} percent include pressure.${issues ? ` ${issues}` : ''} ${launchText} Shared codes never grant ownership, archived Folios must be restored, locked leaders stay locked, and an active flight is never overwritten. The first sample uses saved order; later samples use shuffled openings. Draw includes Flock Stats and the Leader's keystone rule. Waymarks, route bonuses, and card-play effects are excluded. These samples are not win odds. Hand sampling uses protected opening draws, never changes the folio, never affects power, and spends no Scrap. Use S, controller Start, or pointer to launch when available; G or controller right stick for Collection Signals, N or controller left stick for the Field Record, R or controller Y for the Revision Trail, T or controller X for the Tuning Bench, Previous and Next, Space, or controller shoulders to deal, Page Up or Page Down and D-pad Up or Down to browse cards in the current hand, and Back or controller B to close the Lab.`;
     }
     const nextMilestone = isRecord(collectionMilestones?.next) ? collectionMilestones.next : undefined;
     const current = spaced(text(focus?.current)) || 'Flock Record';
@@ -296,8 +312,11 @@ function describeScreen(payload: unknown): string {
       : [];
     const folioStatus = text(folios?.status) === 'templateCreated'
       ? ' A starter Folio was built; ownership and collection history were unchanged.'
+      : folios?.status === 'copying' ? ' Copying share code; your Folio is unchanged.'
+      : folios?.status === 'copyFailed' ? ' Copy failed. Retry Copy or leave; your Folio is unchanged.'
+      : folios?.status === 'codeCopied' ? ' Share code copied; private data excluded.'
       : '';
-    const folioSummary = ` Flight Folios ${number(folios?.count) ?? 0} active of ${number(folios?.capacity) ?? 6}, and ${number(folios?.archivedCount) ?? 0} archived of ${number(folios?.archiveCapacity) ?? 24}. Viewing ${archiveView ? 'Archive' : 'Active'}.${selectedFolio ? ` Selected ${text(selectedFolio.name)}, ${text(selectedFolio.leader)}, ${number(selectedFolio.cardCount) ?? 0} cards, revision ${number(selectedFolio.revision) ?? 1}${selectedFolio.favorite === true ? ', favorite' : ''}${selectedFolio.archived === true ? ', archived' : ''}, folder ${text(selectedFolio.folderLabel)}${selectedTags.length > 0 ? `, labels ${selectedTags.join(', ')}` : ''}, cover ${text(selectedFolio.coverCardName)}, card back ${text(selectedFolio.sleeveLabel)}${text(selectedFolio.description) ? `, description ${text(selectedFolio.description)}` : ''}.` : archiveView ? ' The Archive is empty.' : ' Build from an owned leader starter, save a deck from Route Deck Review, or import a flight code.'}${folioStatus} Archived Folios preserve their identity and never affect gameplay power. BSF version ${number(shareCode?.version) ?? 1} codes use a checksum and exclude account data, custom names, flight seeds, private notes, folders, labels, descriptions, cover choices, and sleeves.${folios?.viewActive === true ? ` Use K, controller right shoulder, or pointer to build from an owned starter; Previous and Next to select; O or controller A to organize; C or controller X to favorite; R or controller Y to rename; A or controller Start to ${archiveView ? 'restore' : 'archive'}; V or controller Select to switch libraries; D or controller left trigger to fork without changing the original; E or controller right trigger to copy a share code; I or controller left stick to import; and L or controller right stick to open the Flight Lab.` : ''}`;
+    const folioSummary = ` ${actionHint}Flight Folios ${number(folios?.count) ?? 0} active of ${number(folios?.capacity) ?? 6}, and ${number(folios?.archivedCount) ?? 0} archived of ${number(folios?.archiveCapacity) ?? 24}. Viewing ${archiveView ? 'Archive' : 'Active'}.${selectedFolio ? ` Selected ${text(selectedFolio.name)}, ${text(selectedFolio.leader)}, ${number(selectedFolio.cardCount) ?? 0} cards, revision ${number(selectedFolio.revision) ?? 1}${selectedFolio.favorite === true ? ', favorite' : ''}${selectedFolio.archived === true ? ', archived' : ''}, folder ${text(selectedFolio.folderLabel)}${selectedTags.length > 0 ? `, labels ${selectedTags.join(', ')}` : ''}, cover ${text(selectedFolio.coverCardName)}, card back ${text(selectedFolio.sleeveLabel)}${text(selectedFolio.description) ? `, description ${text(selectedFolio.description)}` : ''}.` : archiveView ? ' The Archive is empty.' : ' Build from an owned leader starter, save a deck from Route Deck Review, or import a flight code.'}${folioStatus} Archived Folios preserve their identity and never affect gameplay power. BSF version ${number(shareCode?.version) ?? 1} codes use a checksum and exclude account data, custom names, flight seeds, private notes, folders, labels, descriptions, cover choices, and sleeves.${folios?.viewActive === true ? ` Use K, controller right shoulder, or pointer to build from an owned starter; Previous and Next to select; O or controller A to organize; C or controller X to favorite; R or controller Y to rename; A or controller Start to ${archiveView ? 'restore' : 'archive'}; V or controller Select to switch libraries; D or controller left trigger to fork without changing the original; E or controller right trigger to copy a share code; I or controller left stick to import; and L or controller right stick to open the Flight Lab.` : ''}`;
     return `Flock Record. ${current}.${milestoneSummary}${showcaseSummary}${folioSummary} Press Confirm to select, or Back to return.`;
   }
 
@@ -678,7 +697,7 @@ function describeScreen(payload: unknown): string {
     const detail = text(payload.detailOpen);
     if (section === 'glossary' && detail && isRecord(payload.glossaryEntry)) {
       const entry = payload.glossaryEntry;
-      return `Codex, glossary. ${text(entry.term)}. ${text(entry.category)}. ${text(entry.summary)} ${text(entry.detail)} Detail open. Use Up and Down to scroll, then Confirm or Back to close.`;
+      return `Codex, glossary. ${text(entry.term)}. ${text(entry.category)}. ${text(entry.summary)} ${text(entry.detail)} Detail open. Use Up and Down to scroll and Tab to choose actions. Confirm activates the focused action; Back closes the detail.`;
     }
     const favorites = isRecord(payload.cardFavorites) ? payload.cardFavorites : undefined;
     const protection = isRecord(payload.cardProtection) ? payload.cardProtection : undefined;
@@ -905,7 +924,7 @@ function describeScreen(payload: unknown): string {
         ? ` Collection Atlas open. ${atlasCollected} of ${atlasTotal} cards permanently collected. Collector milestones ${number(collectionAtlas?.completedMilestones) ?? 0} of ${records(collectionAtlas?.milestones).length} earned.${atlasNextMilestone ? ` Next, ${text(atlasNextMilestone.name)}, ${number(atlasNextMilestone.current) ?? 0} of ${number(atlasNextMilestone.target) ?? 0}.` : ''} Focused ${spaced(text(atlasSelected?.name)) || 'set'}, ${number(atlasSelected?.owned) ?? 0} of ${number(atlasSelected?.total) ?? 0} collected and ${number(atlasSelected?.discovered) ?? 0} encountered.${atlasSelectedMissing ? ` ${number(atlasSelectedMissing.count) ?? 0} missing; available through ${records(atlasSelectedMissing.paths).map((path) => `${spaced(text(path.name))} for ${number(path.count) ?? 0}`).join(', ') || 'no remaining paths'}. All cards are permanent with no rotation, season, or store gate; undiscovered identities remain concealed.` : ''} Milestone badges never affect power. Use Up and Down to browse sets, Confirm to open one, or G, controller R3, or Back to close.`
         : ` Collection Atlas has permanent set, rarity, acquisition-path, and collector-milestone progress for ${atlasCollected} of ${atlasTotal} cards. Use G or controller R3 to open it.`
       : '';
-    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${protectionState}${personalTagState}${cardJournalState}${showcaseState}${huntState}${huntViewState}${ownershipState}${acquisitionState}${activeFlightState}${folioUsageState}${newCardState}${cardSearchState}${cardSortState}${collectionLensState}${activeFiltersState}${savedViewsState}${collectionAtlasState}${inspectionReturnState} ${detail ? 'Use Up and Down to scroll, then Confirm or Back to close.' : collectionAtlas?.open === true ? 'Choose a set or close the Collection Atlas.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
+    return `Codex, ${section}.${focusLabel ? ` ${focusLabel}.` : ''}${itemPosition}${detail ? ' Detail open.' : ''}${favoriteState}${favoriteViewState}${protectionState}${personalTagState}${cardJournalState}${showcaseState}${huntState}${huntViewState}${ownershipState}${acquisitionState}${activeFlightState}${folioUsageState}${newCardState}${cardSearchState}${cardSortState}${collectionLensState}${activeFiltersState}${savedViewsState}${collectionAtlasState}${inspectionReturnState} ${detail ? 'Use Up and Down to scroll and Tab to choose actions. Confirm activates the focused action; Back closes the detail.' : collectionAtlas?.open === true ? 'Choose a set or close the Collection Atlas.' : 'Use Tab to change focus, Previous and Next to navigate, and Confirm to select.'}`;
   }
   return scene ? `${spaced(scene)}.` : '';
 }

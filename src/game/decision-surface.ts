@@ -1,9 +1,27 @@
 import Phaser from 'phaser';
-import { UI_FONT, DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET } from './theme';
+import { UI_FONT, DECISION_UI } from './theme';
+import { quietButton } from './quiet-ui';
 
 export function decisionText(scene: Phaser.Scene, x: number, y: number, value: string, width: number, size: number = DECISION_UI.bodySize, color: string = DECISION_UI.text) {
   return scene.add.text(x, y, value, { fontFamily: UI_FONT, fontSize: `${size}px`, color,
     resolution: DECISION_UI.resolution, wordWrap: { width, useAdvancedWrap: true }, lineSpacing: 2 });
+}
+
+/** Preserve every wrapped line while fitting pages to the reader's real bounds. */
+export function measuredReadingPages(text: Phaser.GameObjects.Text, sections: Array<{heading:string;body:string}>, bottom: number) {
+  const pages: Array<{title:string;text:string}> = [];
+  for (const section of sections) {
+    let lines: string[] = [];
+    for (const line of text.getWrappedText(section.body)) {
+      text.setText([...lines, line].join('\n'));
+      if (text.getBounds().bottom > bottom && lines.length) {
+        pages.push({title:section.heading,text:lines.join('\n')}); lines=[];
+      }
+      lines.push(line);
+    }
+    if (lines.length) pages.push({title:section.heading,text:lines.join('\n')});
+  }
+  return pages;
 }
 
 // Summaries are explicitly abbreviated. Complete authored text belongs in the reader.
@@ -17,10 +35,6 @@ export function decisionExcerpt(text: Phaser.GameObjects.Text, height: number) {
 }
 
 export function decisionButton(scene: Phaser.Scene, x: number, y: number, width: number, label: string, name: string, action: () => void) {
-  const hit = scene.add.rectangle(x, y, width, MIN_SUPPORTED_TOUCH_TARGET, DECISION_UI.raised, 1)
-    .setStrokeStyle(1, DECISION_UI.border, 1).setInteractive({ useHandCursor: true }).setName(name);
-  hit.on('pointerdown', action);
-  hit.on('pointerover', () => hit.setStrokeStyle(2, DECISION_UI.accent, 1));
-  hit.on('pointerout', () => hit.setStrokeStyle(1, DECISION_UI.border, 1));
-  return [hit, decisionText(scene, x, y, label, width - 16, 18).setOrigin(0.5)] as const;
+  const hit = quietButton(scene, { x, y, width, label, name, onActivate: action });
+  return [hit, hit.getData('labelObject') as Phaser.GameObjects.Text] as const;
 }

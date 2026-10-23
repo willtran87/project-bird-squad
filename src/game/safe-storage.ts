@@ -11,6 +11,8 @@ const MAX_QUARANTINE_LENGTH = 100_000;
 const recoveryEvents: StorageRecoveryEvent[] = [];
 type StorageBackend = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 let memorySession: StorageBackend | undefined;
+/** Last durable write outcome; disposable practice writes never enter this map. */
+export const storageWriteResults = new Map<string, boolean>();
 
 /** Installing/removing a disposable backend never flushes its data to disk. */
 export function setMemoryStorageSession(backend?: StorageBackend): void {
@@ -21,42 +23,36 @@ export function memoryStorageSessionActive(): boolean {
   return memorySession !== undefined;
 }
 
-function storage(): StorageBackend | undefined {
-  try {
-    return memorySession ?? window.localStorage;
-  } catch {
-    return undefined;
-  }
+// Access is contained by the public read/write try blocks, including browsers
+// whose localStorage getter throws before a backend can be returned.
+function storage(): StorageBackend {
+  return memorySession ?? window.localStorage;
 }
 
 export function safeStorageGet(key: string): string | null {
   try {
-    return storage()?.getItem(key) ?? null;
+    return storage().getItem(key);
   } catch {
     return null;
   }
 }
 
 export function safeStorageSet(key: string, value: string): boolean {
-  try {
-    const target = storage();
-    if (!target) return false;
-    target.setItem(key, value);
-    return true;
-  } catch {
-    return false;
-  }
+  return mutateStorage('setItem', key, value);
 }
 
 export function safeStorageRemove(key: string): boolean {
+  return mutateStorage('removeItem', key);
+}
+
+function mutateStorage(method: 'setItem' | 'removeItem', key: string, value?: string): boolean {
+  let stored = false;
   try {
-    const target = storage();
-    if (!target) return false;
-    target.removeItem(key);
-    return true;
-  } catch {
-    return false;
-  }
+    storage()[method](key, value!);
+    stored = true;
+  } catch { /* Keep the active in-memory setting and report failed persistence. */ }
+  if (!memorySession) storageWriteResults.set(key, stored);
+  return stored;
 }
 
 function decode<T>(raw: string | null, sanitize: (value: unknown) => T | undefined): T | undefined {

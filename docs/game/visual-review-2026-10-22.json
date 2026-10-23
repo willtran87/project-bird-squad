@@ -1,0 +1,1498 @@
+{
+  "candidate": "index-Cl7N8-97.js",
+  "status": "complete",
+  "method": "LLM visual inspection of current production screenshots; geometry and interaction checks are reported separately.",
+  "evidenceRoot": "D:\\codex-bird-squad-closure24-20261021\\evidence",
+  "captures": [
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-map-direction-a-68224--without-committing-a-route-chromium/map-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "e285262b22a9db41ce3b796d52b6260827221663885608ac61c38b746b75ee46",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-map-direction-a-68224--without-committing-a-route-chromium/map-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "1a11243249733857fb5effdc81885ae26686078acf777dcdb7faa6c25e75ca1f",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-map-direction-a-68224--without-committing-a-route-chromium/map-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "d9474c1a4423a3df8ebef216191eed94bcba54526b9e9b9c70d095d52bb804d6",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-Market-sections-66f3d-ding-and-keep-costs-visible-chromium/market-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "6c8544d7754df15bb0b4d317c609306a2eeefe3e5a03cdd3a6a91344932b682f",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-Market-sections-66f3d-ding-and-keep-costs-visible-chromium/market-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "c4ebd036cede69ce16dbc3ef7633e55ffa63f6eef0b0dc68ebbe722c531772eb",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-Market-sections-66f3d-ding-and-keep-costs-visible-chromium/market-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "de606859cbec4003bf1d791fa2ace2f5ea2a7078f367f233dfd7375649eb402e",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-setup-portraits-33322-rve-unlocked-leader-choices-chromium/setup-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "b4bec5a2930ad255070af6613d489987df9c839082b8c8823aaf2b9abe7cba54",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-setup-portraits-33322-rve-unlocked-leader-choices-chromium/setup-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "74164314298157be33708a73f99eabd403a87f75b4f3bf8d86a262c63fba40b5",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-setup-portraits-33322-rve-unlocked-leader-choices-chromium/setup-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "c3fb94984c640adb33d3b2beb3092df22bebac9899f73e971ff69d4ace32e577",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/art-hierarchy-polish-norma-c9924-nded-while-showing-card-art-chromium/reward-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "0fd1bb95cd59034ac0f27ec5c09f5360cbe6c864a726fbfc956ab11c5b6199c1",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/art-hierarchy-polish-norma-c9924-nded-while-showing-card-art-chromium/reward-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "2df7a4a9b7e367e2167064fff7a34e5b654137ab8376f5452a327cce0080879e",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/art-hierarchy-polish-norma-c9924-nded-while-showing-card-art-chromium/reward-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "983505bcce3742130080d563e2134ff92f8a32bd8117ef4888d7c7618c614be0",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/battle-stage-polish-battle-26d60--input-readable-in-m1-entry-chromium/stage-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "0ea99b8f5d89af056b8085b03f8cc60258329e98e2dbc58f9172c746f2a7e771",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/battle-stage-polish-battle-26d60--input-readable-in-m1-entry-chromium/stage-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "594f41d11c2f21e5818c84a8eeb6b4c6ffe65f105973c287c74a6eb4c306a9db",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/battle-stage-polish-battle-26d60--input-readable-in-m1-entry-chromium/stage-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "9761ac90d66bd9b6a92affcefe8f01bb247f1ee8df6f8a0f961392d7a44505e0",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/codex-card-gallery-card-ga-03f77-lear-of-collection-controls-chromium/gallery-2-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "0e71daf69c36a02459ec8c5c054f17ada6cb914b45530cc725183a99e6700c7a",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/codex-card-gallery-card-ga-03f77-lear-of-collection-controls-chromium/gallery-2-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "759f3ea5d0e39331f272e5ba0c28a25d78b3b64d54a0e2c64e6122a7264367d1",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/codex-card-gallery-card-ga-03f77-lear-of-collection-controls-chromium/gallery-2-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "3b02bb073e4e62437a9f55d038f6fbc4ad85fdc03fbc835e33725cac461d26bb",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-populated-Flock-bd827-separated-readable-commands-chromium/leaders-populated-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "67ac878b4044328e693eec0f0ab801e55f0106c0309ffa1a4ad5ad15db130063",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-populated-Flock-bd827-separated-readable-commands-chromium/leaders-populated-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "67a76ec49462cbdf8e77e68b182382271c31c4b75ac2e8eae97a249a9b98a8b4",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-populated-Flock-bd827-separated-readable-commands-chromium/leaders-populated-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "1bfaa74ee8b0af2ee8cb64bd8aa2dea04c88137c3b1be89efe722b8bb2905859",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-populated-Flock-bd827-separated-readable-commands-chromium/folios-populated-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "5c3288238f0e8f353f63aa59803b2b61ef6ec7edc4d9eb549bb97e4e9965acff",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-populated-Flock-bd827-separated-readable-commands-chromium/folios-populated-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "b2262817bc98cfe577b0fd483ca54fa5173c04bbf3928e2e574653eb8d9d65a9",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/a-grade-ui-populated-Flock-bd827-separated-readable-commands-chromium/folios-populated-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "e2d5d7f1c879507abe376f5f8f4a029ebbf446be0003d5c5a191ab553b3a96a0",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/art-hierarchy-polish-signa-02f6e-nside-the-event-composition-chromium/signal-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "824e9b376bb22af83f084e1f0c96db0aea45598981916c81a641581a408acf88",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/art-hierarchy-polish-signa-02f6e-nside-the-event-composition-chromium/signal-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "ef7b751cb5558784832777163402cbe781dd79175511be4b7bd8daa11908770b",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/art-hierarchy-polish-signa-02f6e-nside-the-event-composition-chromium/signal-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "31daa5ec47925e388e9ff04943006d8dfbae12d3570d2171d973d1967001c472",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/boss-prep-reading-Boss-pre-ead70-all-districts-and-viewports-chromium/prep-0-0-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "c21be87bb4e5a7c5ee8511ebcff454380526f0b8487fa20e887f88c64d699eb5",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/boss-prep-reading-Boss-pre-ead70-all-districts-and-viewports-chromium/prep-0-0-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "c2be88943388112f04622cf52fc9d728587fb2008feee77a4e4def003fe30589",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/boss-prep-reading-Boss-pre-ead70-all-districts-and-viewports-chromium/prep-0-0-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "c7a87799032344ef1806716dec038fc45ef933324b0f28964b9ed938361297d8",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/codex-card-reading-card-re-7da90-ls-in-all-collection-states-chromium/card-reader-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "64c5afe3c83c63a43fa33cffcb79583d8d0033eca99f479eb46d7f92d310bc6e",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/codex-card-reading-card-re-7da90-ls-in-all-collection-states-chromium/card-reader-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "214f8605ad6c6dd8d56635889c33d31fe464ef417f788689cba56576bec00d15",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/codex-card-reading-card-re-7da90-ls-in-all-collection-states-chromium/card-reader-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "d91fc9a32fc30207143a7fd29764efab9381e0c295dc95b3678e883418e7fca7",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/combat-pile-reading-combat-d4748-ve-decisions-remapped-false-chromium/deck-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "b1345e98217754245ef350b709de89f0a405e965519bb51ead0de45e29ce3dc1",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/combat-pile-reading-combat-d4748-ve-decisions-remapped-false-chromium/deck-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "92b2f187d084cbc19abd095a1fbefdd71d4d11ab7800c6213aa4558fdb3c27fd",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/combat-pile-reading-combat-d4748-ve-decisions-remapped-false-chromium/deck-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "8b976a59e04f129f6ab5b1bf0c88de8d888fcbee970194acc85fff031a491b30",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/codex-collection-dialogs-c-c7c4b-revealing-hidden-identities-chromium/atlas-complete-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "e86f124f5f126b8456870e35b87efc40d2ed0ecda9a8e8c1c2a2fd202f09093b",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/codex-collection-dialogs-c-c7c4b-revealing-hidden-identities-chromium/atlas-complete-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "436b973f97542261b81f79d93f30320e7b1edf6f5bcc1b5bf7751c902aa973f7",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/codex-collection-dialogs-c-c7c4b-revealing-hidden-identities-chromium/atlas-complete-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "c12d6dfc48586ea33149f33b8014dc6c4a0b84868a2632b8134ba3365dc33720",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/codex-collection-dialogs-c-9f0fc-ithout-overlapping-controls-chromium/saved-4-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "6c2064f17e2bc7790fec8df231ec01ee5e2515f33457fe1b0852ed01072e55f9",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/codex-collection-dialogs-c-9f0fc-ithout-overlapping-controls-chromium/saved-4-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "4b63d10a82d889cab3225bed3ee23485e9e51c33827f6bfdcffad5ed88cb447e",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/codex-collection-dialogs-c-9f0fc-ithout-overlapping-controls-chromium/saved-4-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "531a758e5bdfc2270acce29e18fae4363a3b92d2024e74b2b8db3e8d56ca045d",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/combat-waymark-reader-comb-426a2-pending-card-remapped-false-chromium/comparison-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "a25ad207c4bfe01816e48192b05167764bc635adeea23780d1bb483ea8d315fe",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/combat-waymark-reader-comb-426a2-pending-card-remapped-false-chromium/comparison-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "6922674ce0f2c527345a24511b86231c3bd08a95687649cb56527c5a11260c89",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/combat-waymark-reader-comb-426a2-pending-card-remapped-false-chromium/comparison-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "9e3aa1dd0cb700f314eb50d0c2270cb3897fc76d4efd82e1ca488c499052de73",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/discard-choice-polish-disc-76fc8-and-explicit-remapped-false-chromium/discard-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "6f037bd5c94c1a6263aee393bfd2252435cedc4a8e29a84905841df0872e111a",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/discard-choice-polish-disc-76fc8-and-explicit-remapped-false-chromium/discard-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "6a0be7f3ef1a85924d927fcf914811d5833261f30a68074d25c8b64fbd2ee64e",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/discard-choice-polish-disc-76fc8-and-explicit-remapped-false-chromium/discard-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "e933cf2989a666489a84fb2de963da3524e8e458d83dd1ec83e4eee344f1e4a5",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/event-outcome-lifecycle-ev-b9c37-ion-and-checkpoint-recovery-chromium/reward-module-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "cc4f15abc6908b4383c16a684d61fc0e1f20d2b0f9bb90a87ba095cb324b3d8e",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/event-outcome-lifecycle-ev-b9c37-ion-and-checkpoint-recovery-chromium/reward-module-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "f3876fbe93dc5f16b553f704a548438a1d09298e2b224aa7660909c335cf80b1",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/event-outcome-lifecycle-ev-b9c37-ion-and-checkpoint-recovery-chromium/reward-module-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "f6b2d6a69d353093498e66827303dcfc0b8c60da6ea3a6b4c3f5e8d41f081cdd",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/finished-run-recovery-fini-d182b-y-without-duplicate-records-chromium/history-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "8f8d3b9efb25ab331fb66fc0b484d535a702d3b9815adfec58de999ef187d037",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/finished-run-recovery-fini-d182b-y-without-duplicate-records-chromium/history-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "65fd8d16eb690804177c3b0f223fcdaa0e54772103fbd92dcbb6100f2c6134f3",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/finished-run-recovery-fini-d182b-y-without-duplicate-records-chromium/history-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "86194b4f01047e86e9d9fd416b6ae38d01058f6baaa91ba427559c789c28f1e7",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/combat-history-polish-trig-9dd7c-educed-false-remapped-false-chromium/history-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "1d2003e7349efb7bc03fae48919cd09770df5a3ef7c5e5ccbfe2833147e84e44",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/combat-history-polish-trig-9dd7c-educed-false-remapped-false-chromium/history-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "42d306b5fc2c0fa8fccbc41ac986eb378c08b2140beeb8163d322652fd0ebe71",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/combat-history-polish-trig-9dd7c-educed-false-remapped-false-chromium/history-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "df1c1b3e8961ffc60f7c0f776a5c5071b73e9fef20a838b9c04e91787a98a59f",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/comparison-keyword-reading-960b4-eadable-and-read-only-preen-chromium/terms-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "1bba61c73a0af501adee2ec956a9dfa62b2345c4d5d913dd3354f6196ccc1416",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/comparison-keyword-reading-960b4-eadable-and-read-only-preen-chromium/terms-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d5a445823d255aed542e7c7415e25d1f542bebfccb1a134c7986762cf1a8939a",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/comparison-keyword-reading-960b4-eadable-and-read-only-preen-chromium/terms-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "3b056b4c192063de4740f5bdef20adabe88105f8ec7f0df38cd1fe61a40f181a",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-editor-targets-nativ-86b2c-ithout-held-confirm-leakage-chromium/native-actions-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "e7b978d17f858c9fd07b9fd3513dda730e5df15cfeb3094cf734ec7a0d1aa18b",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-editor-targets-nativ-86b2c-ithout-held-confirm-leakage-chromium/native-actions-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "f4bd2159158193fb10a3c4dd793daa469d22bf410a917e30be46fb2292a580f2",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-editor-targets-nativ-86b2c-ithout-held-confirm-leakage-chromium/native-actions-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "15afe48aa944c9a2b49f99b37f8797be3daa4880476a1b640feacfdd895ff9fb",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-reader-polish-Folio--424cd-ng-ownership-remapped-false-chromium/organizer-tagLimit-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "a8b8676a22d248883a5dabcfe14a6bc170c5f55f22b7c183f782f5a7d3e92fe5",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-reader-polish-Folio--424cd-ng-ownership-remapped-false-chromium/organizer-tagLimit-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "b0e5132262493634f96de013d956610e488bef43e489cdfa3a9bad9cd7a2c819",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-reader-polish-Folio--424cd-ng-ownership-remapped-false-chromium/organizer-tagLimit-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "b6c5bccb12a57e6723f6e1df6f08ea32011e71bafbbe6d4a21b850593180c89e",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-reader-polish-Folio--424cd-ng-ownership-remapped-false-chromium/identity-failed-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "d8a0d73d3a7c12b62f29be46033f69429b59b308b12ec1b13a3aa6e0333a501d",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-reader-polish-Folio--424cd-ng-ownership-remapped-false-chromium/identity-failed-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "6199eef5eaab1add3ad03091a8bce97c7725b01406907f25ced12495dd916107",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-reader-polish-Folio--424cd-ng-ownership-remapped-false-chromium/identity-failed-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "c6a35100b1f9d708866d208f002c5f831057730380bd3fb9fe305b34de667be7",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-starter-record-polis-2ded0--private-data-remapped-true-chromium/template-ready-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "b9c20fee0655e03636942f64146db0e44bd18b19f10a3e13eee8439996935306",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-starter-record-polis-2ded0--private-data-remapped-true-chromium/template-ready-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "7ed25e404d390b97c16b69cac6d3343568b20464974a20cc92470daf728d46e2",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-starter-record-polis-2ded0--private-data-remapped-true-chromium/template-ready-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "c6908a097e5ddb4735321d20431b72d0431a6b73523469961b4414b72e605d55",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-starter-record-polis-2ded0--private-data-remapped-true-chromium/field-record-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "fd4087b3507eab8ca0af169977803b7caddadf12a34aa3722a7775ba88a28322",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-starter-record-polis-2ded0--private-data-remapped-true-chromium/field-record-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "e8b319c64a12656102d31414f68e79eab166bdeaaef5d8a7bbe63d47c106e322",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-starter-record-polis-2ded0--private-data-remapped-true-chromium/field-record-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "d1015220fdd994f1fe7c8cd2c02273972a3f5535a5127d3138ea601526e626ca",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-starter-record-polis-2ded0--private-data-remapped-true-chromium/notes-retained-error-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "93b0d2bed06d7715413828b2bfe6ca64d5d61bcf01b9687b934b4e44dc670774",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-starter-record-polis-2ded0--private-data-remapped-true-chromium/notes-retained-error-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "3235f7e26822feb65cf35da1b3e7a24c66d26a0f8cd540a8957f14cfe1f624c1",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-starter-record-polis-2ded0--private-data-remapped-true-chromium/notes-retained-error-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "1d08439130b54647e246324525685250e17537538275600a6e7020e7303f6632",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-starter-record-polis-2ded0--private-data-remapped-true-chromium/import-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "1ab7b9ad7204acc05a4af151d969d5d5728781fe051de08585339f03e7ba8d63",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-starter-record-polis-2ded0--private-data-remapped-true-chromium/import-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "753ac247fc85ae1cf7e061d42cb3677d34b1a458f9fe45e0c351e46093fcc015",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/folio-starter-record-polis-2ded0--private-data-remapped-true-chromium/import-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "9a2c5ff5230cc90ab1059c78ad0828101dcb5542410a0d6cb55e3283ff1852d1",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/menu-flow-dedicated-setup--134b8-ome-at-every-supported-size-chromium/settings-3-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "439c80c9bcc4934d85ef4b1d8d568d111173d93d3479d87f7982eb5bf1afc3ae",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/menu-flow-dedicated-setup--134b8-ome-at-every-supported-size-chromium/settings-3-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "ab496dc40d6f67e6e0ebca8965adc14bd0dcd43bb9dcae44f564980d67a9688a",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/menu-flow-dedicated-setup--134b8-ome-at-every-supported-size-chromium/settings-3-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "0990223508135bf01ecddd224bbb8575ddaf98b1d94f9c49959cb6a484ee7320",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/menu-flow-dedicated-setup--134b8-ome-at-every-supported-size-chromium/settings-0-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "195d8b193196c32fa3adfa65e41bd4bb58d513fe9163adf870ebf4b8a05c5148",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/menu-flow-dedicated-setup--134b8-ome-at-every-supported-size-chromium/settings-1-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "995b47d1e90a9f6d5d828ce619f02a697c342582051c8d53b4ed446f3b1a4f05",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/menu-flow-dedicated-setup--134b8-ome-at-every-supported-size-chromium/settings-2-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "59a0b8cd00398a4581797bf4ae56ace775281ce810c4a98e962d341fdf7fbe6c",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/p0-encounter-catalog-autho-2ba1c-tays-readable-in-district-1-chromium/enc_gutter_baron-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "c1eb4b8698c2f2b780febee45c1625d4fe1fef0cf0ce1e79f52c380077c9e4b0",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/p0-encounter-catalog-autho-2ba1c-tays-readable-in-district-1-chromium/enc_gutter_baron-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "17a8d823819742ec0c5e64e150a1720d08d811eec150de8a46932478693c8841",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/p0-encounter-catalog-autho-2ba1c-tays-readable-in-district-1-chromium/enc_gutter_baron-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "16f5f1b6ed034eb435dde131180260c00e46a61383b666dca3b9e7d3ada7b81d",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/p0-encounter-catalog-autho-028dc-tays-readable-in-district-4-chromium/enc_roost_warden-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "5493026d3fa60b9eab976b6000acf6a4be6915407fa22201c9817ded2d11a6a5",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/p0-encounter-catalog-autho-028dc-tays-readable-in-district-4-chromium/enc_roost_warden-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "57e6d344fc519da4fd5d5e492243163c06a3f740a06b8dbd1018adf36174b9e7",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/p0-encounter-catalog-autho-028dc-tays-readable-in-district-4-chromium/enc_roost_warden-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "7ce662d2df8891157454e44adec89315bac3bfa89d0fca74c35f7c22563f9266",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-4d2e9-s-and-saved-data-50-flights-chromium/history-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "c22143b1c78781a14c406629ef733aa6bf397805e56ad69bec25b86468d3e7ae",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-4d2e9-s-and-saved-data-50-flights-chromium/history-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "0e97a7fdc09ce700574212bbb8ce5946ad0bf46cffc628f1a51a5cc2c02d733b",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-4d2e9-s-and-saved-data-50-flights-chromium/history-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "38385b386bd0f0d8a4df22fbccc06c73223ba8970b2f58ba9e1cd0c8d4b65742",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-4d2e9-s-and-saved-data-50-flights-chromium/restore-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "382817b1b2de8124dd0fa34ba59d9e44c7cd72babfce0c16a0eea840377799bd",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-4d2e9-s-and-saved-data-50-flights-chromium/restore-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "68bf59ddbed14255cf177d96d39967e4058206946b2f6b6699563a5a1bf7f41f",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-4d2e9-s-and-saved-data-50-flights-chromium/restore-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "b5323d528d9a005549b015319ff5d2d9b84400078c9a21458bb0f8d1a145e9d1",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-4d2e9-s-and-saved-data-50-flights-chromium/invalid-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "be25cd88f0b002d1520a3125da8f613e32b294deda6153478d2836cfaa5198ec",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-4d2e9-s-and-saved-data-50-flights-chromium/invalid-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "f2afaf7b778c3d5d690e30f27d258ae5e05b6a48974f1c3ae7025ef8bed5ec97",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-4d2e9-s-and-saved-data-50-flights-chromium/invalid-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "04a4ad22c4156fe7e463178bd7c2faaf8bf9237147f1f959933a1b105c20a06c",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-ab17f-ls-and-saved-data-0-flights-chromium/history-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "91876b2d0ebaf15dc3e8100a975cb4ea020f25caab89e41312eb2853d8eac5bc",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-ab17f-ls-and-saved-data-0-flights-chromium/history-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "828e4aef81e593df69e4f15e74d1459c65ff6ae6b574caf57e74bc83850e9ef6",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-ab17f-ls-and-saved-data-0-flights-chromium/history-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "305e21a9e449ee04801128f543e74785bf0124acc415348037e356f3bb959951",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-ab17f-ls-and-saved-data-0-flights-chromium/ratings-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "3da428481bbea3cfeac2e2e9312301dadde193fb35a7bfcf28fa9ae1a4591b9e",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-ab17f-ls-and-saved-data-0-flights-chromium/ratings-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "4e67e250956d8b9fcdba696088c78a093b2c68dbdf422304c387142aed7ba5c6",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-ab17f-ls-and-saved-data-0-flights-chromium/ratings-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "8594fbf9927546ff29431ee9bb0777db72a94c8fc2d49917eed84bb2e699f367",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-4d2e9-s-and-saved-data-50-flights-chromium/ratings-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "1a05b3ff45eab624e7d8243799ccf63cc348dd6c7e34ba5ac3eff66834c3f1f7",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-4d2e9-s-and-saved-data-50-flights-chromium/ratings-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "9db261c6d77c5842cdc2e096b193f7c1055a91c7e7e9ed15dfa473ba35b6c5bd",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/profile-record-readability-4d2e9-s-and-saved-data-50-flights-chromium/ratings-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "8dbec34bec567ad7b7235c9386bd89e54dea08625ce3847e28c19b3cf711e60b",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/shared-control-contract-sh-b4284-cidentally-abandon-a-flight-chromium/pause-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "3e8543d3cce74201927feb3e656472a5391d7de13b4d14cba8753d2f1b9771f4",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/shared-control-contract-sh-b4284-cidentally-abandon-a-flight-chromium/pause-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "e12a38b7c785963ee068c63af31940a9f096aaaf0bbe06450372a55223b8785f",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/shared-control-contract-sh-b4284-cidentally-abandon-a-flight-chromium/pause-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "b07206353c1e2ae46664945914a84850e24508ff1d023f0d50d0838221175cec",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/shared-control-contract-sh-b4284-cidentally-abandon-a-flight-chromium/confirm-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "4ed1c71a0e56cd240d912816685595641a9fd23cc12e0e46b1585c671eb66a1e",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/shared-control-contract-sh-b4284-cidentally-abandon-a-flight-chromium/confirm-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d010ab0a965ceac7fcef2ff9d21a5ac48f45f32db50777b83ffcdf571b7d7219",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "acceptance-final/shared-control-contract-sh-b4284-cidentally-abandon-a-flight-chromium/confirm-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "7df0e404ed668ded8605315b9aa175651c8ef531bd3774d3d6b8753516663518",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-title-1440-chromium/title-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "c6dd39c52a929fd4e867fa8589766329f51a61b9d033d587dc0e6dedc6b064a5",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-title-1000-chromium/title-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "388984be9a8e73cd013745b85b048b5d6f58bb4afccdd3e9f73c6359447e793a",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-guide-1440-chromium/guide-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "122a7b70a6df02a39eda7c3bf7be883ffa9dca41512cff25a484c9fbb8110daf",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-guide-1000-chromium/guide-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "cf227f8955e557df35cd3e86c60ac1ca3763cc89ef82b63ae59c3a7e209e7362",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-settings-2560-chromium/settings-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "639fa41b7bb87a7e3c50b4059fef6576d7b6f6fc740017360d565fbf4404ff40",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-settings-1440-chromium/settings-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "443abe895595fa170316828091317eecc2344a286be83da2291761e03ef578fc",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-settings-1000-chromium/settings-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "195d8b193196c32fa3adfa65e41bd4bb58d513fe9163adf870ebf4b8a05c5148",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-leader-dossier-2560-chromium/leader-dossier-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "3e7614aad51becacf35cd8484ed130a1bb140834e5ae120c29851bb46444cf3d",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-leader-dossier-1440-chromium/leader-dossier-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "779562a55fa128f4a7eef589ed00dd2248738b5bd928480c608eb9261bfd04b7",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-leader-dossier-1000-chromium/leader-dossier-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "7bb0e299784d78ef88535b3e7da1b7a7df3133ded1a43592979b7a01849d8a6a",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-enemy-dossier-2560-chromium/enemy-dossier-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "473a786cb16dbc3046ef0ea1d8b7c31f5b4736361bb4d9a933f42496bff8a771",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-enemy-dossier-1440-chromium/enemy-dossier-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "76510021a23839bad9e1d3fca38f07655018add280fa49369fa48d0c71b2d4be",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-enemy-dossier-1000-chromium/enemy-dossier-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "2e4b82ceeb7db91ac73bac7076142d12e5f3638eb5ccbe687ce4067ad35a37e2",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-picker-read-2560-chromium/picker-read-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "9ea16fd03673c5e636f4efd7b7ad9bf584bb526b248e440c22a78aa4904cd6a7",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-picker-read-1440-chromium/picker-read-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "a63fbcd593724d18cf8321fcfa1a126bdd12bfd795210926d7c07525670a6abf",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-picker-read-1000-chromium/picker-read-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "8c4f4cbd9261e73e86ce8e306982d5f47d328f9ca22b84d70e20ca84ff4f0f5e",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-supply-dossier-2560-chromium/supply-dossier-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "0eb4a4cf367ef59dc93a41d770cc714872d2ef5b8621278096a92e18c610466a",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-supply-dossier-1440-chromium/supply-dossier-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "bad5ed2dbb13497c81d0aa4ec0d6316346037d0949175d5a150b9ffd26dd08fe",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-supply-dossier-1000-chromium/supply-dossier-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "5795ce87516e984bb3b2415c7bd0d9999a065813340d1f1a6ad06acf521b05eb",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-picker-2560-chromium/picker-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "3e5967fe34c78c471ae6c5efa0c749707540c89c6ddf785d48db46d692f9e04a",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-picker-1440-chromium/picker-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "0267cbdf4b71228043e1ce15ca9e6b6f0c1edcded989380556caf2c1ace92b14",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-picker-1000-chromium/picker-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "686327e2fa943678a555c09313dae5e75a925d07b53f0a9bef5a7bd0223fd680",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-outcome-2560-chromium/outcome-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "185cebd7b7346ef43915d2148a59d8a52cfe5963640eb6d56b77fccbc5d41c30",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-outcome-1440-chromium/outcome-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "8b1e80609b19d32902c9520748bcdd4625bf72eae52f5645856d007cfc766c3d",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-outcome-1000-chromium/outcome-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "f827f96d6c3374b36abd3fe65089888e5fd1cfd4a7611db4cec895fad4ca60c0",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final--12a7f-atrix-storage-recovery-1440-chromium/storage-recovery-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "9887f60c5ff25e5adbd3da480ae1c11c63307562b0e9a02bfaa1b5f81664d8a9",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final--326ee-atrix-storage-recovery-2560-chromium/storage-recovery-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "6681fdbfc68f604e4dd866e37d3559a6f8526734d68f9907d6ed7ba605a373c1",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final--420ae-matrix-waymark-dossier-2560-chromium/waymark-dossier-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "c24d11c5a6ae393e6b93a1f9b5684b6ff021bc0f3a5b55a9a5ce39f0d8a5671a",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final--48c43-atrix-collection-tools-1000-chromium/collection-tools-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "f65a14e8bfb55d0e47dd7bba4d93e0f652587e0a34a7baa2c6701addcd72d2f1",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final--4d5c3-atrix-collection-tools-2560-chromium/collection-tools-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "1b157af04fa54fb1695cdb39c0f06609c18e8d04b43ed326d174058ed6d8f9b7",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final--830d0-atrix-storage-recovery-1000-chromium/storage-recovery-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "39ee802ad943b0024cd7e9fbea63e1c65befb209b03f754abae6f58faabf7825",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final--8b864-matrix-waymark-dossier-1000-chromium/waymark-dossier-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "bbc52cd0015a532bdd664737bc30b04b8d2649003fb560235aad909fa6ed80cb",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final--dc411-matrix-waymark-dossier-1440-chromium/waymark-dossier-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "43d8eea0bd8ec37fb5bcb1b8d70346d98aa1b811ee0951c0c095adcf2175ca02",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final--f7a9f-atrix-collection-tools-1440-chromium/collection-tools-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "71430390e2be9a81375615d04f2840caef90c7d9e36c7f103407ecd776581fde",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-flight-details-1000-chromium/flight-details-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "3ffeebfe45de8a1be33260ed5af60a53bbd263fc72ae88230baa956281d55e54",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-flight-details-1440-chromium/flight-details-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "d2974960edd249cd0233a7281ba4b59fc4337c6eb8a8054eb1df535b22171a02",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-matrix/final-visual-matrix-final-surface-matrix-flight-details-2560-chromium/flight-details-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "b6afd9239dd7d42ce449e3521d3b89ef457f257aea43a935b64c46d4bb3bc270",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-settled/final-visual-matrix-final-surface-matrix-title-2560-chromium/title-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "27cbdc7cceef757676c1f2f84778f660871fa42c7985dfbdc763e2c422c03215",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-visual-settled/final-visual-matrix-final-surface-matrix-guide-2560-chromium/guide-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "66fabe4df5d46181595ddf79bce16c31f6db7e03eaca0ea1a6dc31dd0fd313b2",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-natural-defeat/reference-defeat-controls--a25cc-ough-live-keyboard-controls-chromium/defeat-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "9f90bf747e468946cfc1bd5952053f94b8ebad00ac207616f45b687b99e8e25c",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-natural-defeat/reference-defeat-controls--a25cc-ough-live-keyboard-controls-chromium/defeat-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "de1f3cc066c7de79a0ebf2d12b851e082087e40076bc3d0f24a37c34740089d7",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-By96udgS.js",
+      "path": "final-natural-defeat/reference-defeat-controls--a25cc-ough-live-keyboard-controls-chromium/defeat-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "fd357c3e06c25d9d5b675dccb7f7920811c14e82f3485fbfc8e833334825ca16",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-BTY8t1E_.js",
+      "path": "practice-final-check/practice-lessons-guided-co-41f77--preserves-the-saved-flight-chromium/lesson-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "aa3254e1ae9f447e99f09c714cba0b310a89e9c39ef37fe2c968cc3db705d5b0",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-BTY8t1E_.js",
+      "path": "practice-final-check/practice-lessons-guided-co-41f77--preserves-the-saved-flight-chromium/lesson-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "feba01ff17ecde2f8377fc4fab13ee77f067e0d6602a125ec9e2b3c4a1db17a3",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-BTY8t1E_.js",
+      "path": "practice-final-check/practice-lessons-guided-co-41f77--preserves-the-saved-flight-chromium/lesson-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "6b962c7a988466fdd0bda9f0dbbc6e2de54412c1ff4e9b131c7e41d4605fe9f9",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-BTY8t1E_.js",
+      "path": "practice-final-check/practice-lessons-guided-co-41f77--preserves-the-saved-flight-chromium/complete-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "3b9b94968c8839a266ebca349e163a0c05aed67c5326046bab6d9e6c5a89befc",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-BTY8t1E_.js",
+      "path": "practice-final-check/practice-lessons-guided-co-41f77--preserves-the-saved-flight-chromium/complete-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "47a4f3bbbad5559a516a5f674a928dde198e937e1d2b4379428a862bd9729858",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-BTY8t1E_.js",
+      "path": "practice-final-check/practice-lessons-guided-co-41f77--preserves-the-saved-flight-chromium/complete-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "532a5bfa7949c2c1f5beb28a3505f2c3340b865182a31aecdd5548b6e81b49f0",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-BTY8t1E_.js",
+      "path": "practice-final-check/practice-playable-practice-6769a-t-outcomes-exit-and-refresh-chromium/route-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "b159d2871e27d3d0e9c0b5865cc6dcafbd9550859c84df6672abe5684eab701d",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-BTY8t1E_.js",
+      "path": "practice-final-check/practice-playable-practice-6769a-t-outcomes-exit-and-refresh-chromium/route-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "a0b8c2d206be7abda80e8e1dff55bedeef89bfc4314bf3e7290444b715659b53",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-BTY8t1E_.js",
+      "path": "practice-final-check/practice-playable-practice-6769a-t-outcomes-exit-and-refresh-chromium/route-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "b749804ef0c95a792d4fb303fdbc7c64127d84a08e080465a275319021db697d",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-BTY8t1E_.js",
+      "path": "practice-final-check/practice-lessons-help-and--2d588--Back-and-repeated-openings-chromium/picker-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "a61e83db63e41398ffd7b8e35c3cefdcff1b814bf0e89760aeafa0b1417d77d9",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-BTY8t1E_.js",
+      "path": "practice-final-check/practice-lessons-help-and--2d588--Back-and-repeated-openings-chromium/picker-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "32e3f1c8936817b5725c8c7b8dba4318381b5e8ab7eeade35e0be596093e1c68",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-BTY8t1E_.js",
+      "path": "practice-final-check/practice-lessons-help-and--2d588--Back-and-repeated-openings-chromium/picker-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "233dc559e7fc4863e7474bc127e78670326104981bd06e692aa8d383aa2e5eaa",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-CLWj8jMO.js",
+      "path": "qualified-picker/final-visual-matrix-final-surface-matrix-picker-1000-chromium/picker-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "161ed76c140f37b2d0519955db291998e085b784ec677e1ef7867ba060d4ef89",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-CLWj8jMO.js",
+      "path": "qualified-picker/final-visual-matrix-final-surface-matrix-picker-1440-chromium/picker-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "814f59557a135af1825e39c78a469074403709bd136816fdfa6f4b7361748724",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-CLWj8jMO.js",
+      "path": "qualified-picker/final-visual-matrix-final-surface-matrix-picker-2560-chromium/picker-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "7396811faccc62d133515200a359d3eb5dab7279a8077285442ff2cc49e23d53",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-CLWj8jMO.js",
+      "path": "qualified-picker/final-visual-matrix-final-surface-matrix-picker-read-1000-chromium/picker-read-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "b2cea8068f4c2ffb18c29dc80652f8f7e102fed6cf932340776f4ec559902636",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-CLWj8jMO.js",
+      "path": "qualified-picker/final-visual-matrix-final-surface-matrix-picker-read-1440-chromium/picker-read-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "647a14f212b7a47d19c0ebf9cdeb1ca062292e35adabd2795f4a2a78c5662fd4",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-CLWj8jMO.js",
+      "path": "qualified-picker/final-visual-matrix-final-surface-matrix-picker-read-2560-chromium/picker-read-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "b6ec5aa526d8a461873e49145b7979a98851e8ee45cc9785a175376c7c8ef6f5",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-Cl7N8-97.js",
+      "path": "release-waymark/waymark-decision-polish-Wa-49631-cannot-claim-remapped-false-chromium/longest-waymark-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "08afb9b411b4a154e2bce7ae474e1a73695a19098e8ba81ef5c1e58e3e4d4263",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-Cl7N8-97.js",
+      "path": "release-waymark/waymark-decision-polish-Wa-49631-cannot-claim-remapped-false-chromium/longest-waymark-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "7d05b0ab0d6407bafd9fff6212ddeb682375f5bb5f9140f35a4d0e42e1732657",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-Cl7N8-97.js",
+      "path": "release-waymark/waymark-decision-polish-Wa-49631-cannot-claim-remapped-false-chromium/longest-waymark-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "1bc08ae140b476bb36e489897bd6d14c31a4c01509f24ff1a01f7ec900097355",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-Cl7N8-97.js",
+      "path": "release-waymark-fallback/waymark-failure-polish-fai-f4609-e-inspection-remapped-false-chromium/longest-waymark-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "189012d19238f2fc7b505fdf95f971bbc26cdc7f409cd3f4ab74214f2bf9dde2",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-Cl7N8-97.js",
+      "path": "release-waymark-fallback/waymark-failure-polish-fai-f4609-e-inspection-remapped-false-chromium/longest-waymark-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "823b00b3e448477633217b705c8d3ba1b9438db234b4e95bee888d0c33c95910",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-Cl7N8-97.js",
+      "path": "release-waymark-fallback/waymark-failure-polish-fai-f4609-e-inspection-remapped-false-chromium/longest-waymark-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "c92792921bdda4f3402a46e609cc82549d69f636202121bd5664c19bdd6b4c45",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-Cl7N8-97.js",
+      "path": "clean-reference/reference-input-paths-poin-fffae--reaches-outcome-and-replay-chromium/outcome-2560.png",
+      "width": 2560,
+      "height": 1600,
+      "sha256": "aa602fc1be1bd5aa38dbbcd91ff91a5f9f804840e4f2a851022e32855b953460",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-Cl7N8-97.js",
+      "path": "clean-reference/reference-input-paths-poin-fffae--reaches-outcome-and-replay-chromium/outcome-1440.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "c934545f5fbaa04cf169a248f7c22fa92831991dfee7e7b2c3ead545c7ce7eda",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    },
+    {
+      "candidate": "index-Cl7N8-97.js",
+      "path": "clean-reference/reference-input-paths-poin-fffae--reaches-outcome-and-replay-chromium/outcome-1000.png",
+      "width": 1000,
+      "height": 560,
+      "sha256": "6bd61f22c621983ef45947d91b0dc39187ac8028f644cabdd7d0a7e4b9b477be",
+      "review": "Inspected; no unresolved actionable layout or artwork defect."
+    }
+  ],
+  "scope": "By96udgS captures cover unchanged non-practice UI/art. BTY8t1E_ reserves separate Practice badge lanes; CLWj8jMO has the inspected picker spacing; Cl7N8-97 widens the Waymark effect. Waymark stress captures substitute the longest authored name/effect into a live slot, retaining the original slot icon and build observation; they assess layout, not asset identity.",
+  "remaining": []
+}

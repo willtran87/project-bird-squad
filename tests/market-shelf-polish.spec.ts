@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { settleCanvas } from './helpers/settled-canvas';
 import { readFileSync } from 'node:fs';
 const marks = JSON.parse(readFileSync(new URL('../data/game/alpha-route-marks.json', import.meta.url), 'utf8'));
 const supplies = JSON.parse(readFileSync(new URL('../data/game/alpha-supplies.json', import.meta.url), 'utf8'));
@@ -16,7 +17,10 @@ test('Market merchandise separates identity price and art with complete readable
     for (const s of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(s.scene.key);
     w.__birdSquadGame.scene.start('RouteScene', {});
   });
-  await page.waitForFunction(() => !!(window as any).__birdSquadGame.scene.getScene('RouteScene').cardHoverDetailModule);
+  await page.waitForFunction(() => {
+    const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
+    return r.routeEssentialAssetsReady && r.cardHoverDetailModule;
+  });
   await page.evaluate(() => {
     const w = window as any, r = w.__birdSquadGame.scene.getScene('RouteScene');
     const node = w.__birdSquadCurrentMap().nodes.find((n: any) => n.type === 'market') ?? w.__birdSquadCurrentMap().nodes.find((n: any) => n.type !== 'boss');
@@ -30,6 +34,7 @@ test('Market merchandise separates identity price and art with complete readable
     });
     for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport);
+      await settleCanvas(page);
       const geometry = await page.evaluate(() => {
         const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
         const find = (name: string) => r.children.list.filter((o: any) => o.name === `market-merchandise-${name}`);
@@ -40,7 +45,10 @@ test('Market merchandise separates identity price and art with complete readable
           artBackplates: backplates.length === frames.length && backplates.every((o: any) => Math.abs(o.displayWidth / o.displayHeight - 4 / 3) < 0.01),
           text: titles.every((t: any, i: number) => {
             const b = t.getBounds(), f = frames[i].getBounds(), p = prices[i].getBounds();
-            return b.left >= f.left + 16 && b.right <= f.right - 16 && b.top >= art[i].getBounds().bottom + 16 && b.bottom <= p.top - 12 && p.bottom <= f.bottom - 8 && t.style.fontSize === '18px' && t.style.resolution === 2;
+            const scale = r.game.canvas.getBoundingClientRect().height / 720;
+            return b.left >= f.left + 16 && b.right <= f.right - 16 && b.top >= art[i].getBounds().bottom + 16 && b.bottom <= p.top - 12 && p.bottom <= f.bottom - 8
+              && t.style.fontSize === '21px' && t.style.resolution === 2
+              && parseFloat(t.style.fontSize) * scale >= 16 && parseFloat(prices[i].style.fontSize) * scale >= 16;
           }),
           separated: frames.every((f: any, i: number) => f.getBounds().left >= 528 && f.getBounds().right <= 1136 && (!i || f.getBounds().left >= frames[i - 1].getBounds().right + 10)),
           touch: hits.every((h: any) => h.width === 184 && h.height === 256),

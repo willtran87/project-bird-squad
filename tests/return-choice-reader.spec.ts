@@ -44,12 +44,17 @@ test('return reader exposes every discard and all rules without accidental commi
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     const text = b.root.getByName('combat-return-choice-summary');
     const bounds = text?.getBounds();
+    const controls = b.root.list.filter((o: any) => o.name?.startsWith('combat-return-') && o.input?.enabled && !o.name.endsWith('scrim'));
+    const separated = controls.every((a: any, i: number) => controls.slice(i + 1).every((c: any) => {
+      const x=a.getBounds(), y=c.getBounds();
+      return Math.max(x.left-y.right,y.left-x.right,x.top-y.bottom,y.top-x.bottom)>=8;
+    }));
     return { focused: b.returnChoice?.candidateIds[b.returnChoice.focusIndex], resolved: b.readerResolved,
       page: text?.getData('page'), pages: text?.getData('pages'), full: text?.getData('fullText'), text: text?.text,
       bounds: bounds && { x: bounds.x, right: bounds.right, bottom: bounds.bottom },
       bodySize: text?.style.fontSize,
-      touchTargets: b.root.list.filter((o: any) => o.name?.startsWith('combat-return-') && o.input?.enabled)
-        .every((o: any) => o.displayHeight * b.game.canvas.getBoundingClientRect().height / 720 >= 44),
+      touchTargets: controls.every((o: any) => Math.min(o.displayHeight,o.displayWidth) * b.game.canvas.getBoundingClientRect().height / 720 >= 44),
+      separated,
       hint: b.root.getByName('combat-return-choice-hint')?.text, discard: b.discardPile.length };
   });
   const before = await snapshot();
@@ -64,6 +69,7 @@ test('return reader exposes every discard and all rules without accidental commi
     expect(state.bounds!.bottom).toBeLessThan(485);
     expect(state.bodySize).toBe('22px');
     expect(state.touchTargets).toBe(true);
+    expect(state.separated).toBe(true);
     await page.screenshot({ path: info.outputPath(`return-reader-${width}.png`) });
   }
   // Paging must never return a card, including keyboard and controller paths.

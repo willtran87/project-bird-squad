@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
+import {targetGeometry,checkTargetGeometry} from './helpers/target-geometry';
 
 test.use({ hasTouch: true });
 const sizes = [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }];
@@ -17,6 +18,8 @@ async function boot(page: Page) {
 }
 
 async function audit(page: Page, kind: 'saved' | 'atlas') {
+  await settleCanvas(page);
+  checkTargetGeometry(await targetGeometry(page,'CodexScene'),kind);
   return page.evaluate(kind => {
     const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
     const nodes = c.root.list, problems: string[] = [];
@@ -125,11 +128,13 @@ async function tap(page: Page, name: string, index?: number) {
     return {x:canvas.left+b.centerX*canvas.width/1280,y:canvas.top+b.centerY*canvas.height/720};
   }, {name,index});
   await page.touchscreen.tap(point.x, point.y);
+  await settleCanvas(page);
 }
 
 test('collection dialogs compact touch save apply remove and Atlas return preserve collection data', async ({page}) => {
   await boot(page); await page.setViewportSize(sizes[2]);
   const account = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
+  await tap(page, 'codex-tools-hit');
   await tap(page, 'codex-saved-views-hit'); await tap(page, 'codex-saved-view-save-hit');
   await expect(page.locator('#game-status')).toContainText('View saved');
   await tap(page, 'codex-saved-view-close-hit');
@@ -141,6 +146,8 @@ test('collection dialogs compact touch save apply remove and Atlas return preser
   await tap(page, 'codex-saved-view-apply-hit');
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text()).cardSort.id === 'binder');
   await tap(page, 'codex-saved-views-hit'); await tap(page, 'codex-saved-view-delete-hit');
+  expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('CodexScene').savedCollectionViews.length)).toBe(2);
+  await tap(page, 'codex-saved-view-delete-hit');
   await expect(page.locator('#game-status')).toContainText('View removed without changing collection data');
   await tap(page, 'codex-saved-view-close-hit');
   await tap(page, 'codex-card-collection-atlas-hit'); await tap(page, 'codex-collection-atlas-family-hit', 3);

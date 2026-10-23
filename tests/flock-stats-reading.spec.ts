@@ -63,6 +63,7 @@ for (const key of ['RouteScene', 'BattleScene']) for (const remapped of [false, 
       aboveHud: key !== 'RouteScene' || (!!hud && s.children.list.indexOf(p) > s.children.list.indexOf(hud)),
       bounds: labels.every((o: any) => { const b = o.getBounds(); return b.left >= box.left && b.right <= box.right && b.top >= box.top && b.bottom <= box.bottom; }),
       fonts: cells.every((o: any) => o.style.fontSize === '22px' && o.style.resolution === 2),
+      secondaryFloor: labels.every((o: any) => parseFloat(o.style.fontSize) * s.game.canvas.getBoundingClientRect().height / 720 >= 14),
       close: p.getByName('flock-stats-close').height * s.game.canvas.getBoundingClientRect().height / 720,
       images: p.list.filter((o: any) => o.type === 'Image').length,
       tweens: s.tweens.getTweens().filter((t: any) => t.targets.some((o: any) => o.parentContainer === p)).length };
@@ -71,6 +72,7 @@ for (const key of ['RouteScene', 'BattleScene']) for (const remapped of [false, 
     await page.setViewportSize(size); await settleCanvas(page);
     const g = await geometry(); expect(g.cells).toBe(key === 'RouteScene' ? 36 : 40);
     expect(g.overlap).toEqual([]); expect(g.bounds && g.fonts).toBe(true); expect(g.close).toBeGreaterThanOrEqual(44);
+    expect(g.secondaryFloor).toBe(true);
     expect(g.images).toBe(0); expect(g.tweens).toBe(0); expect(g.aboveHud).toBe(true);
     if (!remapped) await page.screenshot({ path: info.outputPath(`stats-${size.width}.png`) });
   }

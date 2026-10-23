@@ -44,11 +44,13 @@ for (let mapIndex = 0; mapIndex < 4; mapIndex++) test(`authored encounter catalo
         b.selectedInstanceId = b.hand[0]?.instanceId; b.renderAll();
         const panels = b.root.list.filter((o: any) => o.type !== 'Text' && [
           'combat-enemy-vitals', 'combat-enemy-intent-badge', 'combat-enemy-status-panel',
-          'combat-boss-phase-badge', 'combat-objective-target',
+          'combat-boss-phase-badge', 'combat-objective-target', 'combat-elite-badge',
         ].includes(o.name));
         const clear = (a: any, z: any) => a.right <= z.left || a.left >= z.right || a.bottom <= z.top || a.top >= z.bottom;
+        const contains = (a: any, z: any) => z.left >= a.left && z.right <= a.right && z.top >= a.top && z.bottom <= a.bottom;
         const frame = b.selectionOutcomePreview?.getByName('combat-outcome-preview')?.getBounds();
         const visible = b.root.list.filter((o: any) => o.name === 'combat-enemy-art');
+        const goal = b.root.list.find((o: any) => o.name === 'encounter-objective' && o.type === 'Rectangle');
         const art = visible.map((group: any) => {
           const portrait = group.list[0].getByName('combat-enemy-portrait');
           const r = portrait.getBounds(), v = b.enemyTextureVisibleBounds(portrait.texture.key);
@@ -59,18 +61,34 @@ for (let mapIndex = 0; mapIndex < 4; mapIndex++) test(`authored encounter catalo
           enemies: b.enemies.map((e: any) => e.runtime.id),
           art: visible.map((g: any) => g.list[0].getByName('combat-enemy-portrait').texture.key),
           fits: panels.every((p: any) => { const r = p.getBounds(); return r.left >= 0 && r.right <= 1280 && r.top >= 100 && r.bottom < 435; }),
-          separated: panels.every((p: any, i: number) => panels.slice(i + 1).every((z: any) => clear(p.getBounds(), z.getBounds()))),
+          separated: panels.every((p: any, i: number) => panels.slice(i + 1).every((z: any) => {
+            // Intent belongs inside its own unified vitals, never another enemy's.
+            if (p.getData('enemyId') === z.getData('enemyId') && p.name === 'combat-enemy-vitals' && z.name === 'combat-enemy-intent-badge') {
+              return contains(p.getBounds(), z.getBounds());
+            }
+            return clear(p.getBounds(), z.getBounds());
+          })),
           artClear: art.every((r: any) => r.left >= 0 && r.right <= 1280 && r.top >= 106 && panels.every((p: any) => clear(p.getBounds(), r))),
+          goalClear: !goal || art.every((r: any) => clear(goal.getBounds(), r))
+            && panels.every((p: any) => clear(goal.getBounds(), p.getBounds())),
           previewClear: !frame || panels.every((p: any) => clear(p.getBounds(), frame)),
           targetsInteractive: visible.every((g: any) => g.list[0].getByName('combat-enemy-portrait').input?.enabled),
+          eliteLabels: b.enemies.filter((e: any) => e.runtime.type === 'elite').every((e: any) => {
+            const label = b.root.list.find((o: any) => o.name === 'combat-elite-label' && o.getData('enemyId') === e.id);
+            const panel = panels.find((o: any) => o.name === 'combat-elite-badge' && o.getData('enemyId') === e.id);
+            return label && panel && contains(panel.getBounds(), label.getBounds())
+              && parseFloat(label.style.fontSize) * b.game.canvas.getBoundingClientRect().width / 1280 >= 14;
+          }),
         };
       });
       expect(result.enemies, encounter.id).toEqual(encounter.enemies);
       expect(result.art, encounter.id).toHaveLength(encounter.enemies.length);
       expect(result.art.every((k: string) => k.startsWith('enemy-')), encounter.id).toBe(true);
       expect(result.targetsInteractive, encounter.id).toBe(true);
+      expect(result.eliteLabels, encounter.id).toBe(true);
       expect(result.fits, encounter.id).toBe(true); expect(result.separated, encounter.id).toBe(true);
       expect(result.artClear, encounter.id).toBe(true); expect(result.previewClear, encounter.id).toBe(true);
+      expect(result.goalClear, encounter.id).toBe(true);
       await settleCanvas(page);
       await page.screenshot({ path: info.outputPath(`${encounter.id}-${width}.png`) });
     }

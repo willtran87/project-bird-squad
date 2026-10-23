@@ -1,0 +1,23 @@
+#folio-editor-actions {
+  position: fixed;
+  z-index: 10001;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  row-gap: 8px;
+}
+#folio-editor-actions button {
+  min-width: 128px;
+  min-height: 48px;
+  padding: 10px 18px;
+  border: 1px solid #718b98;
+  border-radius: 4px;
+  background: #0b151f;
+  color: #edf2f5;
+  font: 18px/1.4 Arial, sans-serif;
+  cursor: pointer;
+}
+#folio-editor-actions #folio-editor-save { width: 148px; min-width: 148px; background: #d6b66f; color: #0b151f; border-color: #d6b66f; }
+#folio-editor-actions button:hover { filter: brightness(1.12); }
+#folio-editor-actions button:focus { outline: 3px solid #77d9df; outline-offset: 2px; }

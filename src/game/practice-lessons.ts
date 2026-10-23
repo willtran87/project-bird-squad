@@ -1,3 +1,4 @@
+import { UI_FONT as TOKEN_FONT, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT } from './ui-tokens';
 import Phaser from 'phaser';
 import { createInitialRunState } from '../main';
 import { bindActionFocus } from './action-focus';
@@ -7,6 +8,7 @@ import { announceScreenReader } from './screen-reader-accessibility';
 import { controlBindingLabel } from './input-bindings';
 import { openHelpOverlay } from './menu-optional-ui';
 import { DECISION_UI } from './theme';
+import { quietButton } from './quiet-ui';
 
 const KEY = 'GuidedPracticeScene';
 const STATE = 'birdsquad.practiceLesson';
@@ -30,12 +32,9 @@ const lessons = [
 type Lesson = typeof lessons[number];
 
 function button(scene: Phaser.Scene, root: Phaser.GameObjects.Container, x: number, y: number, width: number, label: string, run: () => void) {
-  const hit = scene.add.rectangle(x, y, width, 58, DECISION_UI.raised, 1)
-    .setInteractive({ useHandCursor: true }).setName('practice-lesson-action').setData('label', label);
-  root.add([hit, scene.add.text(x, y, label, {
-    fontFamily: 'Arial', fontSize: '20px', color: DECISION_UI.text,
-  }).setResolution(2).setOrigin(0.5)]);
-  hit.on('pointerdown', run);
+  const hit = quietButton(scene, { x, y, width, label, name: 'practice-lesson-action', onActivate: run });
+  hit.setData('label', label);
+  root.add([hit, hit.getData('labelObject')]);
   return { hit, label, run };
 }
 
@@ -49,10 +48,10 @@ export function openPracticeLessons(menu: any) {
   root.setData('onBack', back);
   root.add(menu.add.rectangle(640, 360, 1280, 720, DECISION_UI.surface, 1).setInteractive());
   root.add(menu.add.text(180, 100, 'Learn by playing', {
-    fontFamily: 'Georgia', fontSize: '38px', color: DECISION_UI.text,
+    fontFamily: TOKEN_DISPLAY_FONT, fontSize: '38px', color: DECISION_UI.text,
   }).setResolution(2));
   root.add(menu.add.text(180, 159, 'Short, replayable lessons. Your active flight and collection stay safe.', {
-    fontFamily: 'Arial', fontSize: '20px', color: DECISION_UI.secondary,
+    fontFamily: TOKEN_FONT, fontSize: '20px', color: DECISION_UI.secondary,
   }).setResolution(2).setName('how-to-play-readable'));
   let launching = false;
   const actions = lessons.map((lesson, index) => {
@@ -75,13 +74,13 @@ export function openPracticeLessons(menu: any) {
       }
     });
     root.add(menu.add.text(548, y, lesson.description, {
-      fontFamily: 'Arial', fontSize: '22px', color: DECISION_UI.secondary,
+      fontFamily: TOKEN_FONT, fontSize: '22px', color: DECISION_UI.secondary,
       wordWrap: { width: 540 }, lineSpacing: 4,
     }).setResolution(2).setOrigin(0, 0.5).setName('how-to-play-readable'));
     return action;
   });
   actions.push(button(menu, root, 640, 635, 240, 'Back to guide', back));
-  bindActionFocus(menu, root, actions);
+  bindActionFocus(menu, root, actions, back, { exclusive: true });
   menu.updateMenuTextState();
 }
 
@@ -108,7 +107,7 @@ class GuidedPracticeScene extends Phaser.Scene {
     this.prompt = this.add.container(0, 0);
     this.prompt.add(this.add.rectangle(400, 150, 600, 82, DECISION_UI.surface, 0.97).setName('practice-lesson-panel'));
     this.copy = this.add.text(400, 150, '', {
-      fontFamily: 'Arial', fontSize: '20px', color: DECISION_UI.text,
+      fontFamily: TOKEN_FONT, fontSize: '20px', color: DECISION_UI.text,
       wordWrap: { width: 560 }, align: 'center', lineSpacing: 3,
     }).setResolution(2).setOrigin(0.5).setName('practice-lesson-instruction');
     this.prompt.add(this.copy);
@@ -159,19 +158,19 @@ class GuidedPracticeScene extends Phaser.Scene {
     const root = this.add.container(0, 0);
     root.add(this.add.rectangle(640, 360, 1280, 720, 0x050d15, 0.93).setInteractive());
     root.add(this.add.text(640, 245, complete ? 'Lesson complete' : 'Give it another try', {
-      fontFamily: 'Georgia', fontSize: '36px', color: DECISION_UI.text,
+      fontFamily: TOKEN_DISPLAY_FONT, fontSize: '36px', color: DECISION_UI.text,
     }).setResolution(2).setOrigin(0.5));
     const instruction = complete ? this.lesson.conclusion
       : 'Follow the lesson prompts to try this mechanic. You can replay any lesson from How to Play.';
     root.add(this.add.text(640, 340, instruction, {
-      fontFamily: 'Arial', fontSize: '24px', color: DECISION_UI.secondary,
+      fontFamily: TOKEN_FONT, fontSize: '24px', color: DECISION_UI.secondary,
       wordWrap: { width: 740 }, align: 'center', lineSpacing: 8,
     }).setResolution(2).setOrigin(0.5));
     const back = () => this.battle.scene.start('MenuScene', { reopenHelp: true });
     const action = button(this, root, 640, 478, 300, 'Back to How to Play', back);
     bindActionFocus(this, root, [action], back);
     root.add(this.add.text(640, 550, `${controlBindingLabel('confirm')} / A: Continue  ·  Nothing saved`, {
-      fontFamily: 'Arial', fontSize: '18px', color: DECISION_UI.secondary,
+      fontFamily: TOKEN_FONT, fontSize: '18px', color: DECISION_UI.secondary,
     }).setOrigin(0.5).setResolution(2));
     this.registry.set(STATE, { id: this.lesson.id, title: this.lesson.title, instruction, complete, finished: true });
     announceScreenReader(`${complete ? 'Lesson complete.' : 'Give it another try.'} ${instruction} Confirm returns to How to Play.`);

@@ -56,6 +56,15 @@ test('card reader keeps every authored entry readable with separated controls in
       }
       const flightHit = c.root.getByName('codex-card-flight-deck-hit');
       if (flightHit && intersects(flightHit.getBounds(), c.root.getByName('codex-detail-close-hit').getBounds())) errors.push('flight/close overlap');
+      const earlier = c.root.getByName('codex-card-scroll-back'), more = c.root.getByName('codex-card-scroll-more');
+      for (const navigation of [earlier, more].filter(Boolean)) {
+        const bounds = navigation.getBounds();
+        for (const action of hits.filter((h: any) => h.y > 600)) {
+          const actionBounds = action.getBounds();
+          if (bounds.right > actionBounds.left && bounds.left < actionBounds.right
+            && actionBounds.top - bounds.bottom < 8) errors.push(`${id}: navigation/action separation`);
+        }
+      }
       for (const n of nodes.filter((n: any) => n.name?.startsWith('codex-card-detail-') && n.type === 'Text')) {
         if (n.style.maxLines || n.getBounds().right > 1208 || n.style.resolution !== 2) errors.push(`${id}: truncated reader`);
         if (n.name === 'codex-card-detail-paragraph' && parseInt(n.style.fontSize) < 18) errors.push(`${id}: tiny body`);
@@ -149,4 +158,49 @@ test('card reader collection actions remain independent touch targets at compact
   });
   expect(result).toMatchObject({ favorite: true, protected: true, showcased: true, detail: 'major_00' });
   expect(result.tag).toBeTruthy();
+});
+
+test('complete Collection cards fit filtered rows without reducing readable labels', async ({page}, info) => {
+  await boot(page);
+  const result = await page.evaluate(() => {
+    const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
+    const issues: string[] = []; let count = 0;
+    for (const card of c.allCards()) {
+      c.discovered.add(card.id); c.newlyAcquiredCards.add(card.id);
+      c.favoriteCards.add(card.id); c.collectionTargets.add(card.id);
+      c.cardTags[card.id] = 'experiment'; c.cardFolioUsage[card.id] = {active:9, archived:9, total:18};
+      c.root.removeAll(true); c.renderThumb(c.root, card, 640, 450);
+      const tile=c.root.getByName('codex-card-tile'), hit=tile.getByName('codex-card-entry-hit').getBounds();
+      const texts=tile.list.filter((n:any)=>n.type==='Text');
+      for(const n of texts){
+        const b=n.getBounds();
+        if(b.left<hit.left||b.right>hit.right||b.top<hit.top||b.bottom>hit.bottom)issues.push(`${card.id}: ${n.name} bounds`);
+        if(parseFloat(n.style.fontSize)<(n.name==='codex-card-title'?21:18))issues.push(`${card.id}: ${n.name} floor`);
+      }
+      const art=tile.getByName('codex-card-art');
+      if(art){
+        const b=art.getBounds();
+        if(Math.abs(b.width/b.height-2/3)>.001||b.top<hit.top+84||b.bottom>hit.bottom-60)issues.push(`${card.id}: artwork`);
+        for(const n of texts){const t=n.getBounds();if(t.left<b.right&&t.right>b.left&&t.top<b.bottom&&t.bottom>b.top)issues.push(`${card.id}: art/text overlap`);}
+      }
+      count++;
+    }
+    c.cardSearchQuery='First Flight'; c.gridScroll=c.gridScrollTarget=0; c.entryFocusIndex=0;
+    c.focusZone='entries'; c.renderAll(); c.ensureFocusedEntryVisible();
+    c.gridScroll=c.gridScrollTarget; c.renderAll();
+    return {issues,count};
+  });
+  expect(result.count).toBe(110); expect(result.issues).toEqual([]);
+  for(const size of [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}]){
+    await page.setViewportSize(size); await settleCanvas(page);
+    const geometry=await page.evaluate(()=>{
+      const c=(window as any).__birdSquadGame.scene.getScene('CodexScene');
+      const tile=c.gridLayer.list[0], b=tile.getByName('codex-card-entry-hit').getBounds(), shape=c.codexGridShape();
+      return {top:b.top,bottom:b.bottom,shape,scroll:c.gridMaxScroll,focus:c.entryFocusGeometry()};
+    });
+    expect(geometry.top).toBeGreaterThanOrEqual(geometry.shape.top);
+    expect(geometry.bottom).toBeLessThanOrEqual(geometry.shape.bottom);
+    expect(geometry.scroll).toBe(0); expect(geometry.focus.height).toBe(390);
+    await page.screenshot({path:info.outputPath(`filtered-card-${size.width}.png`)});
+  }
 });

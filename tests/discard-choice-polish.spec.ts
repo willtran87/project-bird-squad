@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
+import {targetGeometry,checkTargetGeometry} from './helpers/target-geometry';
 
 for (const remapped of [false, true]) test(`discard decisions are readable and explicit, remapped=${remapped}`, async ({ page }, info) => {
   const errors: string[] = [];
@@ -48,6 +49,7 @@ for (const remapped of [false, true]) test(`discard decisions are readable and e
     expect(keyboard.targetHeight).toBeGreaterThanOrEqual(44);
     expect(keyboard.railBottom).toBeLessThanOrEqual(keyboard.handTop - 8);
     expect(keyboard.roost).toBe(false);
+    checkTargetGeometry(await targetGeometry(page,'BattleScene'),'Discard chooser');
     await page.screenshot({ path: info.outputPath(`discard-${width}.png`) });
     await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').input.gamepad.emit('down', {}, { index: 10 }));
     expect((await state()).hint).toContain('D-pad: choose · A: toggle · Y: confirm');

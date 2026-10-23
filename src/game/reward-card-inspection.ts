@@ -1,6 +1,43 @@
+import { UI_FONT as TOKEN_FONT, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT } from './ui-tokens';
+import { boundedRewardText, renderRewardCardFace, rewardDecisionPreviewLabel } from './battle/reward-card-face';
+export { boundedRewardText, rewardDecisionPreviewLabel } from './battle/reward-card-face';
 import Phaser from 'phaser';
+import type { BattleHandPreviewContext, BattleHandCardPreviewView } from './battle/render-hand';
 import { aggregateFlockStats, cardsFromSave, cardStatRows, flockStatLabel, KEYSTONE_AT, type Card } from '../main';
 import { flockHandTarget } from './hand-size';
+
+/** Non-combat preview belongs with reward inspection; keep hand rendering focused. */
+export function renderRewardHoverPreview(context: BattleHandPreviewContext, card: BattleHandCardPreviewView, previewX: number) {
+  const { scene, target, fontFamily, boldFontStyle } = context;
+  const w = 438;
+  const x = Phaser.Math.Clamp(previewX, w / 2 + 8, context.width - w / 2 - 8);
+  const container = scene.add.container(0, 0).setName('combat-focused-card-dossier');
+  const rules = scene.add.container(0, 0);
+  let y = 0;
+  const title = scene.add.text(x, y, card.name, {
+    fontFamily, fontSize: '22px', fontStyle: boldFontStyle, color: '#ffe7b0',
+    wordWrap: { width: w - 32 }, align: 'center', resolution: 2,
+  }).setOrigin(0.5, 0).setName('combat-focused-card-name');
+  rules.add(title);
+  y += title.height + 12;
+  y += context.renderRichText(rules, x, y, card.currentText, {
+    wrap: w - 32, fontSize: 22, align: 'center', lineSpacing: 3,
+  }) + 14;
+  if (card.alternateText && card.alternateLabel) {
+    y += context.renderRichText(rules, x, y, `${card.alternateLabel}: ${card.alternateText}`, {
+      wrap: w - 32, fontSize: 19, align: 'center', lineSpacing: 2, baseColor: '#ffc78f',
+    }) + 12;
+  }
+  const stats = scene.add.text(x, y, `Cost ${card.cost} · ${card.upgraded ? 'Preened' : 'Base'}\n${card.stats}`, {
+    fontFamily, fontSize: '19px', color: context.cyanColor, wordWrap: { width: w - 32 }, align: 'center',
+  }).setOrigin(0.5, 0);
+  rules.add(stats); y += stats.height + 16;
+  const top = Math.max(110, 416 - y);
+  container.add(scene.add.rectangle(x, top + y / 2, w, y, 0x07111b, 0.99)
+    .setStrokeStyle(2, card.accent, 0.8).setName('combat-focused-card-panel'));
+  container.add(rules.setY(top + 8)); target.add(container);
+  return container;
+}
 import { bindChoiceHint, choiceInputHint, inspectInputHint } from './choice-input-hints';
 import { decisionCardKeywordSections, itemKeywordSections } from './keyword-definitions';
 
@@ -30,8 +67,9 @@ import {
   UI_SOFT,
 } from '../main';
 import { alphaSupplyLibrary } from './runtime-data';
-import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET } from './theme';
+import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET, UI_TYPE, UI_CONTROL } from './theme';
 import { decisionExcerpt, decisionText } from './decision-surface';
+import { quietButton } from './quiet-ui';
 import { waymarkBuildRead } from './waymark-build-read';
 import { handleSupplyInspection, openOutcomeInspection, openSupplyInspection, routeDecisionSections, supplyInspectionState } from './route-supply-reader';
 import { uiIconAsset } from './ui-icon-assets';
@@ -72,7 +110,7 @@ export function renderMarketServices(scene: any) {
     }
     addUiIconImage(scene, row.icon, 590, y, 36)?.setDisplaySize(36, 36).setName('market-service-icon');
     const label = scene.add.text(624, y, row.title, {
-      fontFamily: UI_FONT, fontSize: '20px', color: '#e6eef6', resolution: 2,
+      fontFamily: UI_FONT, fontSize: UI_TYPE.primary, color: '#e6eef6', resolution: 2,
       wordWrap: { width: 286, useAdvancedWrap: true }, lineSpacing: 2,
     }).setOrigin(0, 0.5).setName('market-service-label').setData('fullTitle', row.title);
     const lines = label.getWrappedText();
@@ -80,7 +118,7 @@ export function renderMarketServices(scene: any) {
     label.setText(excerpt + (lines.length > 2 ? '…' : ''));
     while (label.height > height - 12 && excerpt.length) { excerpt = excerpt.slice(0, -1).trimEnd(); label.setText(`${excerpt}…`); }
     scene.add.text(1052, y, row.sold ? 'Sold' : `${row.price} Scrap`, {
-      fontFamily: UI_FONT, fontSize: '20px', color: row.sold ? '#abc4d4' : row.enabled ? UI_CYAN : '#ffc7a4', resolution: 2,
+      fontFamily: UI_FONT, fontSize: UI_TYPE.primary, color: row.sold ? '#abc4d4' : row.enabled ? UI_CYAN : '#ffc7a4', resolution: 2,
     }).setOrigin(1, 0.5).setName('market-service-cost-value');
     if (!row.sold) scene.add.rectangle(830, y, 540, height, 0x000000, 0.001)
       .setInteractive({ useHandCursor: row.enabled }).setName(row.focusId === 'refresh' ? 'market-refresh-hit' : 'market-service-hit')
@@ -142,7 +180,7 @@ export function renderMarketMerchandise(scene: Phaser.Scene, view: {
   if (key) scene.add.image(x, 416, key).setDisplaySize(artSize, artSize).setName('market-merchandise-art');
   else addUiIconImage(scene, view.kind === 'waymark' ? 'market-waymark-badge' : 'market-supply-crate', x, 416, hasBackplate ? 58 : 64);
   const title = scene.add.text(x - 76, 492, view.title, {
-    fontFamily: UI_FONT, fontSize: '18px', color: '#e6eef6', resolution: 2,
+    fontFamily: UI_FONT, fontSize: UI_TYPE.primary, color: '#e6eef6', resolution: 2,
     wordWrap: { width: 152, useAdvancedWrap: true }, lineSpacing: 3,
   }).setName('market-merchandise-title').setData('fullTitle', view.title);
   const lines = title.getWrappedText();
@@ -150,7 +188,7 @@ export function renderMarketMerchandise(scene: Phaser.Scene, view: {
   title.setText(excerpt + (lines.length > 3 ? '…' : ''));
   while (title.height > 70 && excerpt.length) { excerpt = excerpt.slice(0, -1).trimEnd(); title.setText(`${excerpt}…`); }
   scene.add.text(x - 76, 578, view.sold ? 'Sold' : `${view.price} Scrap`, {
-    fontFamily: UI_FONT, fontSize: '18px', color: view.sold ? '#abc4d4' : view.enabled ? UI_CYAN : '#ffc7a4', resolution: 2,
+    fontFamily: UI_FONT, fontSize: UI_TYPE.primary, color: view.sold ? '#abc4d4' : view.enabled ? UI_CYAN : '#ffc7a4', resolution: 2,
   }).setName('market-merchandise-price');
   if (!view.sold) scene.add.rectangle(x, 480, 184, 256, 0x000000, 0.001)
     .setInteractive({ useHandCursor: view.enabled }).setName('market-merchandise-hit')
@@ -172,9 +210,10 @@ export function renderMarketItemDetail(scene: Phaser.Scene, view: MarketItemDeta
     fontFamily: UI_FONT, fontSize: `${size}px`, color: '#e6eef6', resolution: 2,
     wordWrap: { width, useAdvancedWrap: true }, lineSpacing: 3,
   }));
-  add(scene.add.rectangle(264, 428, 360, 436, 0x070d15, 0.97).setStrokeStyle(1, view.accent, 0.58)
+  // Reserve a footer row below the paging controls, not underneath their hit areas.
+  add(scene.add.rectangle(264, 386, 360, 536, 0x0b151f, 1).setStrokeStyle(1, view.accent, 0.58)
     .setInteractive({ useHandCursor: false }).setName('market-item-reader-frame'));
-  const title = text(102, 228, view.title, 24).setColor(UI_GOLD).setFontStyle(UI_BOLD).setName('market-item-reader-title');
+  const title = text(102, 134, view.title, 24).setColor(UI_GOLD).setFontStyle(UI_BOLD).setName('market-item-reader-title');
   const wrapped = title.getWrappedText();
   let excerpt = wrapped.slice(0, 2).join('\n');
   title.setText(excerpt + (wrapped.length > 2 ? '…' : ''));
@@ -182,13 +221,14 @@ export function renderMarketItemDetail(scene: Phaser.Scene, view: MarketItemDeta
   // These exact blocking rows come from marketPreview/marketRefreshDecisionPreview.
   // Keep them visible on every page, not only inside Purchase Preview.
   const blocker = view.decisionPreview.find(row => /^(NEED \d+ MORE SCRAP|SUPPLY POUCH FULL|NO ELIGIBLE CARD)$/.test(row));
-  text(102, 307, view.price === undefined ? 'Item details' : `Cost ${view.price} Scrap`, 18)
+  text(102, 205, view.price === undefined ? 'Item details' : `Cost ${view.price} Scrap`, 19)
     .setColor(view.enabled && !blocker ? UI_CYAN : '#ffc7a4').setName('market-item-reader-cost');
-  if (options) text(426, 307, options.resourceLabel, 18, 140).setOrigin(1, 0).setColor('#abc4d4').setName('market-card-wingbeats');
-  if (blocker) text(102, 334, blocker, 18).setColor('#ffc7a4').setName('market-item-reader-blocker');
-  else if (options) text(102, 334, options.contextLabel, 16).setColor('#abc4d4').setName('market-card-context');
-  const heading = text(102, blocker || options ? 364 : 346, '', 16).setColor(UI_GOLD).setFontStyle(UI_BOLD);
-  const body = text(102, blocker || options ? 394 : 376, '').setName('market-item-reader-body');
+  if (options) text(426, 205, options.resourceLabel, 19, 140).setOrigin(1, 0).setColor('#abc4d4').setName('market-card-wingbeats');
+  // The transaction rail owns blockers in Market, leaving the target visible.
+  if (blocker && !inMarket) text(102, 233, blocker, 19).setColor('#ffc7a4').setName('market-item-reader-blocker');
+  else if (options) text(102, 233, options.contextLabel, 19).setColor('#abc4d4').setName('market-card-context');
+  const heading = text(102, 337, '', 19).setColor(UI_GOLD).setFontStyle(UI_BOLD);
+  const body = text(102, 365, '').setName('market-item-reader-body');
   const sections = options?.sections ?? [
     { title: 'EFFECT', text: view.body },
     { title: 'RULES', text: view.meta },
@@ -210,34 +250,65 @@ export function renderMarketItemDetail(scene: Phaser.Scene, view: MarketItemDeta
   const key = JSON.stringify([view.price, view.enabled, sections]);
   const state = marketItemReading.get(scene)?.key === key ? marketItemReading.get(scene)! : { key, page: 0 };
   marketItemReading.set(scene, state);
-  const pageLabel = text(264, 551, '', 16, 160).setOrigin(0.5);
-  bindChoiceHint(scene, text(264, 626, '', 15, 324).setOrigin(0.5).setColor('#abc4d4'), mode =>
-    mode === 'pointer' || !inMarket ? 'Read only · Use page arrows' : `${mode === 'controller' ? 'Y' : controlBindingLabel('roost')}: next page · Read only`);
+  const pageLabel = text(264, 546, '', 19, 220).setOrigin(0.5);
+  const categoryFor = (title: string) => /^(NOW|EFFECT|RULES)/.test(title) ? 0
+    : /^(PREEN|BASE|MOLT)/.test(title) ? 1 : 2;
+  const categories = ['Effect', 'Upgrades', 'Details'];
+  const categoryButtons: Phaser.GameObjects.Rectangle[] = [];
+  bindChoiceHint(scene, text(264, 634, '', 19, 324).setOrigin(0.5).setColor('#abc4d4')
+    .setName('market-reader-input-hint'), mode =>
+    mode === 'pointer' || !inMarket ? 'Read only · No Scrap spent'
+      : mode === 'controller' ? 'LT/RT: section · Y: page'
+        : `Home/End · ${controlBindingLabel('roost')}: page`);
   const show = (delta: number) => {
     if (delta && (owner.pauseOverlayOpen || owner.settingsOverlayOpen)) return;
     // Wrap to match the existing Market card Inspect/Y convention.
     state.page = (state.page + delta + pages.length) % pages.length;
     const current = pages[state.page];
     heading.setText(current.title); body.setText(current.text);
-    pageLabel.setText(`${state.page + 1} / ${pages.length}`);
+    const category = categoryFor(current.title);
+    const categoryPages = pages.filter(page => categoryFor(page.title) === category);
+    pageLabel.setText(`${categories[category]} ${categoryPages.indexOf(current) + 1}/${categoryPages.length}`);
+    categoryButtons.forEach((button, index) => button.setData('selected', index === category));
     panel.setData('reading', { ...current, page: state.page + 1, total: pages.length });
     options?.onPage(panel.getData('reading'));
     if (delta) owner.updateTextState();
   };
+  categories.forEach((label, index) => {
+    const first = pages.findIndex(page => categoryFor(page.title) === index);
+    if (first < 0) return;
+    const x = 144 + index * 120;
+    const button = add(quietButton(scene, { x, y: 296, width: index === 1 ? 120 : 104, label,
+      name: `market-reader-category-${index}`, onActivate: () => show(first - state.page) }));
+    categoryButtons[index] = button;
+    add(button.getData('labelObject'));
+  });
   [-1, 1].forEach((delta, i) => {
     const x = i ? 357 : 171;
-    const button = add(scene.add.rectangle(x, 591, 140, 58, 0x142734, 1).setStrokeStyle(1, 0x7195aa, 0.8)
-      .setInteractive({ useHandCursor: true }).setName(`market-item-reader-${i ? 'next' : 'previous'}`));
-    button.on('pointerdown', () => show(delta));
-    button.on('pointerover', () => button.setStrokeStyle(2, 0x8df4ff, 1));
-    button.on('pointerout', () => button.setStrokeStyle(1, 0x7195aa, 0.8));
-    text(x, 591, i ? 'Next →' : '← Previous', 16, 136).setOrigin(0.5);
+    const button = add(quietButton(scene, { x, y: 591, width: 140, label: i ? 'Next →' : '← Previous',
+      name: `market-item-reader-${i ? 'next' : 'previous'}`, onActivate: () => show(delta) }));
+    add(button.getData('labelObject'));
   });
-  panel.setData('turnRulesPage', show); show(0);
+  panel.setData('turnRulesPage', show).setData('changeRulesSection', (delta: number) => {
+    const available = categories.map((_, index) => index).filter(index => pages.some(page => categoryFor(page.title) === index));
+    const current = available.indexOf(categoryFor(pages[state.page].title));
+    const next = available[(current + delta + available.length) % available.length];
+    show(pages.findIndex(page => categoryFor(page.title) === next) - state.page);
+  });
+  show(0);
   // Outside the Market, use the same complete reader on the opposite side of
   // its anchor. Never resurrect the tiny, clipped, stretched-frame tooltip.
-  if (!inMarket) panel.setPosition(view.anchorX < 640 ? 752 : 0, -68);
+  if (!inMarket) panel.setPosition(view.anchorX < 640 ? 752 : 0, 0);
   return panel;
+}
+
+export function changeMarketReaderSection(scene: any, delta: -1 | 1) {
+  if (!scene.marketOpen || scene.cardPickerMode || scene.pauseOverlayOpen || scene.settingsOverlayOpen) return false;
+  const panel = scene.marketCategory === 'cards'
+    ? scene.hoverCardDetail?.getByName('market-fixed-card-inspector') : scene.marketItemHover;
+  if (!panel?.active) return false;
+  panel.getData('changeRulesSection')?.(delta);
+  return true;
 }
 
 
@@ -250,7 +321,7 @@ export function renderRouteInspectionReader(scene: Phaser.Scene, view: CardHover
   const panel = scene.add.container(0, 0).setName('route-inspection-reader');
   const add = <T extends Phaser.GameObjects.GameObject>(child: T) => { panel.add(child); return child; };
   const text = (x: number, y: number, value: string, size = 22, width = 396) => add(scene.add.text(x, y, value, {
-    fontFamily: UI_FONT, fontSize: `${size}px`, resolution: 2, color: '#edf3f6',
+    fontFamily: UI_FONT, fontSize: `${Math.max(19,size)}px`, resolution: 2, color: '#edf3f6',
     wordWrap: { width, useAdvancedWrap: true }, lineSpacing: 3,
   }));
   // Clicking the reader itself must not activate the dismissible outside scrim.
@@ -291,6 +362,9 @@ export function renderRouteInspectionReader(scene: Phaser.Scene, view: CardHover
     { title: 'PASSIVE FLOCK BONUSES', text: view.stats.length ? view.stats.join('\n') : 'No passive contribution.' },
     { title: 'CARD DETAILS', text: `${view.name}\n${view.bird} / ${view.label}\n${view.target} / ${view.role}\n${view.zone}` },
     ...(view.zone === 'Route reward inspection' ? routeDecisionSections(scene) : []),
+    ...(['Preen candidate', 'Release candidate'].includes(view.zone)
+      ? [{title:'FULL FLIGHT IMPACT',text:cardPickerDeckImpact(scene, focusedCardPickerEntry(scene)?.index ?? -1)?.lines.join('\n\n') ?? 'No changes.'}]
+      : []),
   ];
   sections.push(...decisionCardKeywordSections(sections));
   const pages: Array<{ title: string; text: string }> = [];
@@ -309,7 +383,6 @@ export function renderRouteInspectionReader(scene: Phaser.Scene, view: CardHover
   const pageLabel = text(cx, 540, '', 16, 180).setOrigin(0.5);
   text(cx, 624, `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} · D-pad · Pages`, 15).setOrigin(0.5).setColor('#abc0cd');
   const buttons: Phaser.GameObjects.Rectangle[] = [];
-  const labels: Phaser.GameObjects.Text[] = [];
   const refresh = () => {
     const current = pages[state.page];
     heading.setText(current.title); body.setText(current.text); pageLabel.setText(`${state.page + 1} / ${pages.length}`);
@@ -317,7 +390,7 @@ export function renderRouteInspectionReader(scene: Phaser.Scene, view: CardHover
     panel.setData('reading', view.inspectionRules);
     buttons.forEach((button, i) => {
       const enabled = i ? state.page < pages.length - 1 : state.page > 0;
-      button.setData('enabled', enabled).setAlpha(enabled ? 1 : 0.4); labels[i].setAlpha(enabled ? 1 : 0.4);
+      button.setData('enabled', enabled);
     });
   };
   const turn = (delta: number) => {
@@ -327,13 +400,10 @@ export function renderRouteInspectionReader(scene: Phaser.Scene, view: CardHover
   };
   [-1, 1].forEach((delta, i) => {
     const x = cx + (i ? 106 : -106);
-    const button = add(scene.add.rectangle(x, 582, 190, MIN_SUPPORTED_TOUCH_TARGET, 0x19313c, 1)
-      .setStrokeStyle(1, 0x71b8c6, 0.65).setInteractive({ useHandCursor: true })
-      .setName(`route-inspection-reader-${i ? 'next' : 'previous'}`));
-    button.on('pointerdown', () => { if (button.getData('enabled')) turn(delta); });
-    button.on('pointerover', () => { if (button.getData('enabled')) button.setStrokeStyle(2, 0x8df4ff, 1); });
-    button.on('pointerout', () => button.setStrokeStyle(1, 0x71b8c6, 0.65));
-    buttons.push(button); labels.push(text(x, 582, i ? 'Next →' : '← Previous', 18, 180).setOrigin(0.5));
+    const button = add(quietButton(scene, { x, y: 582, width: 190, label: i ? 'Next →' : '← Previous',
+      name: `route-inspection-reader-${i ? 'next' : 'previous'}`, onActivate: () => turn(delta) }));
+    add(button.getData('labelObject'));
+    buttons.push(button);
   });
   panel.setData('turnRulesPage', turn); refresh(); return panel;
 }
@@ -394,7 +464,7 @@ export function rewardDeckImpact(scene: any, card: Card) {
       : cardStatRows(card),
     scope: preen ? 'Preen changes this flight only; collection ownership is unchanged.'
       : 'Collection record is permanent; this playable copy joins this flight.',
-    drawScope: 'Base target includes Flock Stats and Leader. Opening protection, retained cards, Waymarks and card effects can change actual draws.',
+    drawScope: 'Base target: Flock Stats + Leader. Opening protection, Retain, Waymarks and card effects can change draws.',
   };
 }
 
@@ -435,36 +505,25 @@ export function renderMarketCardDossier(scene: Phaser.Scene, view: CardHoverDeta
 
 // Truncate at a measured line boundary, never silently clip a partial rule.
 // Inspect retains the complete effect and all conditional/alternate text.
-export function boundedRewardText(text: Phaser.GameObjects.Text, maxLines: number) {
-  const lines = text.getWrappedText();
-  if (lines.length <= maxLines) return text;
-  const visible = lines.slice(0, maxLines);
-  let last = visible[maxLines - 1];
-  const width = text.style.wordWrapWidth ?? text.width;
-  while (last.length && text.context.measureText(`${last}...`).width > width) last = last.slice(0, -1);
-  visible[maxLines - 1] = `${last.trimEnd()}...`;
-  return text.setText(visible.join('\n'));
-}
-
 export function renderFocusedBuildRead(context: Pick<RewardCeremonyRenderContext, 'kind' | 'cards' | 'scene' | 'target' | 'fontFamily' | 'boldFontStyle' | 'width' | 'skip'>) {
   if (context.kind !== 'card') return;
   const card = context.cards?.find((choice) => choice.armed || choice.focused) ?? context.cards?.[0];
   if (!card) return;
   const { scene, target, fontFamily, boldFontStyle } = context;
   const left = context.width / 2 - 438;
-  target.add(scene.add.rectangle(left, 618, 584, 78, 0x050c14, 0.98)
+  target.add(scene.add.rectangle(left, 618, 584, 92, 0x050c14, 0.98)
     .setOrigin(0).setStrokeStyle(1, card.accent, 0.6).setName('reward-build-read-panel'));
-  target.add(scene.add.text(left + 14, 624, context.skip?.armed ? 'SKIP / KEEP YOUR CURRENT DECK' : `BUILD READ / ${card.name}`, {
-    fontFamily, fontSize: '13px', fontStyle: boldFontStyle, color: '#bfe8f4',
-    fixedWidth: 556, maxLines: 1,
-  }).setName('reward-build-read-title'));
+  target.add(boundedRewardText(scene.add.text(left + 14, 624, context.skip?.armed ? 'SKIP / KEEP YOUR CURRENT DECK' : `BUILD READ / ${card.name}`, {
+    fontFamily, fontSize: UI_TYPE.secondary, resolution: 2, fontStyle: boldFontStyle, color: '#bfe8f4',
+    wordWrap: { width: 556 },
+  }), 1).setName('reward-build-read-title'));
   const rows = context.skip?.armed
     ? ['No new card or passive Flock Stats.', 'Keep the same draw pool; take Scrap instead.']
     : card.footerRows.slice(0, 2);
-  rows.forEach((text, index) => target.add(scene.add.text(left + 14, 646 + index * 22, text, {
-    fontFamily, fontSize: '16px', color: text.startsWith('!') ? '#ffbc92' : '#f4f8fb',
-    fixedWidth: 556, maxLines: 1,
-  }).setName(context.skip?.armed ? 'reward-skip-tradeoff' : card.footerUsesObservations ? 'reward-build-observation' : 'reward-card-stat')));
+  rows.forEach((text, index) => target.add(boundedRewardText(scene.add.text(left + 14, 650 + index * 26, text, {
+    fontFamily, fontSize: UI_TYPE.secondary, resolution: 2, color: text.startsWith('!') ? '#ffbc92' : '#f4f8fb',
+    wordWrap: { width: 556 },
+  }), 1).setName(context.skip?.armed ? 'reward-skip-tradeoff' : card.footerUsesObservations ? 'reward-build-observation' : 'reward-card-stat')));
 }
 
 export function renderRouteSupplyRewardChoices(scene: any, x: number, y: number) {
@@ -497,7 +556,7 @@ export function renderRouteSupplyRewardChoices(scene: any, x: number, y: number)
     }
     const title = scene.add.text(cx, y + 10, supply.name, {
       fontFamily: UI_FONT,
-      fontSize: '18px',
+      fontSize: `${UI_TYPE.primary}px`,
       fontStyle: UI_BOLD,
       color: UI_GOLD,
       align: 'center',
@@ -509,7 +568,7 @@ export function renderRouteSupplyRewardChoices(scene: any, x: number, y: number)
     while (title.height > 52 && excerpt.length) { excerpt = excerpt.slice(0, -1).trimEnd(); title.setText(`${excerpt}…`); }
     scene.add.text(cx, y + 91, armed ? 'Confirm to pack' : focused ? 'Select this Supply' : 'Choose', {
       fontFamily: UI_FONT,
-      fontSize: '16px', resolution: 2,
+      fontSize: `${UI_TYPE.secondary}px`, resolution: 2,
       fontStyle: UI_BOLD,
       color: armed ? UI_GOLD : focused ? '#dffbff' : '#a9bbc8',
       align: 'center',
@@ -531,7 +590,7 @@ export function renderRouteSupplyRewardChoices(scene: any, x: number, y: number)
     scene.add.rectangle(cx, y + 180, 206, 58, 0x142734, 1).setStrokeStyle(1, 0x7195aa, 0.8)
       .setInteractive({ useHandCursor: true }).setName('route-supply-inspect-hit').setData('supplyId', supply.id)
       .on('pointerdown', () => openSupplyInspection(scene, supply.id));
-    scene.add.text(cx, y + 180, 'Inspect', { fontFamily: UI_FONT, fontSize: '18px', color: '#e6eef6', resolution: 2 }).setOrigin(0.5);
+    scene.add.text(cx, y + 180, 'Inspect', { fontFamily: UI_FONT, fontSize: `${UI_TYPE.primary}px`, color: '#e6eef6', resolution: 2 }).setOrigin(0.5).setName('route-supply-inspect-label');
   });
 }
 
@@ -613,7 +672,7 @@ export function renderRouteRewardInspection(scene: any) {
   scrim.on('pointerdown', () => scene.closeRouteRewardInspection());
   scene.add.text(GAME_WIDTH / 2, 38, 'FULL CARD INSPECTION', {
     fontFamily: UI_FONT,
-    fontSize: '13px',
+    fontSize: '21px',
     fontStyle: UI_BOLD,
     color: '#ffe08a',
     letterSpacing: 1.4,
@@ -621,7 +680,7 @@ export function renderRouteRewardInspection(scene: any) {
   const returnLabel = scene.routeRewardArmedCardId ? 'RETURN TO CONFIRM PICK' : 'RETURN TO THIS CHOICE';
   scene.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 34, `${controlBindingLabel('back')} / B / TAP OUTSIDE  ${returnLabel}`, {
     fontFamily: UI_FONT,
-    fontSize: '12px',
+    fontSize: '19px',
     fontStyle: UI_BOLD,
     color: '#dffbff',
   }).setOrigin(0.5).setDepth(23030);
@@ -630,13 +689,13 @@ export function renderRouteRewardInspection(scene: any) {
 
 export function renderRouteRewardBuildRead(scene: any, frame: any) {
   if (!scene.routeCardRewardChoices.length) return;
-  decisionText(scene, frame.left + 54, frame.bottom - 218, 'BUILD READ', 326, 16, DECISION_UI.secondary).setName('route-reward-build-read-title');
+  decisionText(scene, frame.left + 54, frame.bottom - 218, 'BUILD READ', 326, UI_TYPE.secondary, DECISION_UI.secondary).setName('route-reward-build-read-title');
   scene.routeCardRewardChoices.slice(0, 2).forEach((card: any, index: number) => {
     const observations = scene.routeRewardCardObservations(card).slice(0, 2);
-    const rowY = frame.bottom - 171 + index * 56;
+    const rowY = frame.bottom - 162 + index * 56;
     scene.add.rectangle(frame.left + 217, rowY, 326, 56, DECISION_UI.surface, 1).setName('route-reward-build-read-row');
-    decisionExcerpt(decisionText(scene, frame.left + 54, rowY - 24, displayName(card), 326, 18, UI_GOLD), 24).setName('route-reward-build-card-name');
-    decisionExcerpt(decisionText(scene, frame.left + 54, rowY, observations.join(' / '), 326, 16, observations.some((row: string) => row.startsWith('!')) ? '#ffd0b3' : DECISION_UI.secondary), 23).setName('route-reward-build-observation');
+    decisionExcerpt(decisionText(scene, frame.left + 54, rowY - 26, displayName(card), 326, UI_TYPE.primary, UI_GOLD), 26).setName('route-reward-build-card-name');
+    decisionExcerpt(decisionText(scene, frame.left + 54, rowY, observations.join(' / '), 326, UI_TYPE.secondary, observations.some((row: string) => row.startsWith('!')) ? '#ffd0b3' : DECISION_UI.secondary), 23).setName('route-reward-build-observation');
   });
 }
 
@@ -648,9 +707,9 @@ export function renderRouteRewardEffectShowcase(scene: any, pending: any, x: num
   if (cards.length) {
     cards.forEach((card: any, index: number) => {
       const cx = cards.length > 1 ? x - 104 + index * 208 : x;
-      decisionText(scene, cx, y - 110, card.runtime.kind === 'snag' ? 'SNAG CARD' : 'CARD', 182, 16, DECISION_UI.secondary).setOrigin(0.5, 0);
+      decisionText(scene, cx, y - 110, card.runtime.kind === 'snag' ? 'SNAG CARD' : 'CARD', 182, UI_TYPE.secondary, DECISION_UI.secondary).setOrigin(0.5, 0);
       scene.renderRouteRewardCardOption(card, cx, y - 24, 80, 120, card.runtime.kind === 'snag' ? UI_FIELD.danger : UI_FIELD.gold);
-      decisionExcerpt(decisionText(scene, cx, y + 55, displayName(card), 182, 20, UI_GOLD).setOrigin(0.5, 0), 52);
+      decisionExcerpt(decisionText(scene, cx, y + 55, displayName(card), 182, UI_TYPE.primary, UI_GOLD).setOrigin(0.5, 0), 52);
     });
     return;
   }
@@ -658,7 +717,7 @@ export function renderRouteRewardEffectShowcase(scene: any, pending: any, x: num
   const risks = tokens.filter(token => token.color === UI_FIELD.danger);
   const benefits = tokens.filter(token => token.color !== UI_FIELD.danger);
   const visible = tokens.length <= 3 ? tokens : [...benefits.slice(0, Math.max(1, 3 - Math.min(2, risks.length))), ...risks.slice(0, 2)].slice(0, 3);
-  decisionText(scene, x, y - 110, pending.effects.length ? 'OUTCOME AT A GLANCE' : 'LEAVE WITHOUT REWARD', w - 40, 16, DECISION_UI.secondary).setOrigin(0.5, 0);
+  decisionText(scene, x, y - 110, pending.effects.length ? 'OUTCOME AT A GLANCE' : 'LEAVE WITHOUT REWARD', w - 40, UI_TYPE.secondary, DECISION_UI.secondary).setOrigin(0.5, 0);
   visible.forEach((token, index) => {
     const cy = y + (index - (visible.length - 1) / 2) * 58;
     scene.add.rectangle(x, cy, 332, 56, DECISION_UI.raised, 0.55).setName('route-reward-effect-token-frame').setData('index', index).setData('count', visible.length);
@@ -666,7 +725,7 @@ export function renderRouteRewardEffectShowcase(scene: any, pending: any, x: num
     decisionExcerpt(decisionText(scene, x - 148, cy - 13, label, 296, 22, token.textColor), 30).setName('route-reward-effect-token-label');
   });
   if (!visible.length) decisionExcerpt(decisionText(scene, x, y - 35, pending.effects.length ? pending.effectText : 'Your resources stay unchanged.', w - 64, 22).setOrigin(0.5, 0), 114);
-  if (tokens.length > visible.length) decisionText(scene, x, y + 102, 'Full consequences in Inspect outcome', w - 28, 16, DECISION_UI.secondary).setOrigin(0.5, 0);
+  if (tokens.length > visible.length) decisionText(scene, x, y + 102, 'Full consequences in Inspect outcome', w - 28, UI_TYPE.secondary, DECISION_UI.secondary).setOrigin(0.5, 0);
 }
 
 function cardPickerEntries(scene: any) {
@@ -716,24 +775,15 @@ export function renderCardPickerConfirmationRail(
     .setData('fullText', summary).setName('card-picker-confirmation-summary');
   const armedIndex = scene.cardPickerArmedIndex;
   const context = scene.cardPickerContext;
-  const confirm = scene.add.rectangle(railX + 205, railY, 126, MIN_SUPPORTED_TOUCH_TARGET, 0x102534, 0.98)
-    .setStrokeStyle(1, UI_FIELD.gold, 0.76)
-    .setInteractive({ useHandCursor: true })
-    .setName('card-picker-confirmation-command-frame');
-  confirm.on('pointerover', () => confirm.setFillStyle(0x173a50, 1));
-  confirm.on('pointerout', () => confirm.setFillStyle(0x102534, 0.98));
-  confirm.on('pointerdown', () => {
+  const confirm = quietButton(scene, { x: railX + 205, y: railY, width: 126, label: 'CONFIRM',
+    name: 'card-picker-confirmation-command-frame', kind: view.mode === 'release' ? 'destructive' : 'primary', onActivate: () => {
     if (!confirm.active || armedIndex === undefined || scene.cardPickerArmedIndex !== armedIndex
       || scene.cardPickerMode !== view.mode || scene.cardPickerContext !== context
       || scene.cardPickerInspectionOpen || scene.pauseOverlayOpen || scene.settingsOverlayOpen) return;
     scene.requestCardPick(armedIndex);
-  });
-  scene.add.text(railX + 205, railY, 'CONFIRM', {
-    fontFamily: UI_FONT,
-    fontSize: '18px',
-    fontStyle: UI_BOLD,
-    color: '#dffbff',
-  }).setResolution(2).setOrigin(0.5).setName('card-picker-confirmation-command');
+  } });
+  confirm.setData({ statusLabel: 'CONFIRM', status: 'armed' });
+  confirm.getData('labelObject').setName('card-picker-confirmation-command');
 }
 
 function compactCardPickerDeltaPair(before: string, after: string): [string, string] {
@@ -1030,37 +1080,57 @@ export function cycleMarketCategory(scene: any, direction: -1 | 1) {
   scene.setMarketCategory(categories[(current + direction + categories.length) % categories.length]);
 }
 
-export function renderMarketInputHelp(scene: Phaser.Scene, x: number, y: number) {
+export function renderMarketInputHelp(scene: Phaser.Scene, _x: number, y: number) {
   const owner = scene as any;
-  const armed = !!owner.marketFocusArmedId;
-  scene.add.rectangle(x, y, 880, 56, 0x020409, 0.96)
-    .setStrokeStyle(1, armed ? 0xffcf70 : 0x49606d, armed ? 0.9 : 0.5)
+  scene.add.rectangle(640, y, 1120, 64, 0x020409, 0.98)
+    .setStrokeStyle(1, 0x49606d, 0.8)
     .setDepth(23050)
     .setName('market-input-help');
-  const hint = scene.add.text(x, y, '', {
-      fontFamily: UI_FONT,
-      fontSize: '16px',
-      resolution: 2,
-      color: armed ? '#ffe1a3' : '#dffbff',
-      align: 'center',
-      fixedWidth: 856, lineSpacing: 4,
-    }).setOrigin(0.5).setDepth(23051).setName('market-input-help-text');
+  const title = decisionText(scene, 102, y - 27, '', 752, UI_TYPE.primary, UI_GOLD)
+    .setDepth(23051).setName('market-transaction-title');
+  const hint = decisionText(scene, 102, y + 3, '', 752, UI_TYPE.secondary)
+    .setDepth(23051).setName('market-input-help-text');
+  const action = quietButton(scene, { x: 1034, y, width: 296, label: 'Select offer', kind: 'primary',
+    name: 'market-purchase-action', onActivate: () => {
+    if (!owner.marketOpen || owner.pauseOverlayOpen || owner.settingsOverlayOpen || owner.cardPickerMode) return;
+    marketInputTargets(owner).find((target: any) => target.getData('marketFocusId') === owner.marketFocusId)?.emit('pointerdown');
+  } }).setDepth(23051);
+  const label = (action.getData('labelObject') as Phaser.GameObjects.Text).setY(y - 25).setOrigin(0.5, 0)
+    .setDepth(23052).setName('market-purchase-label');
+  const actionHint = decisionText(scene, 1034, y + 4, '', 276, UI_TYPE.secondary).setOrigin(0.5, 0)
+    .setDepth(23052).setName('market-purchase-hint');
   const format = (mode: 'pointer' | 'keyboard' | 'controller') => {
     const target = marketInputTargets(owner).find((candidate: any) => candidate.getData('marketFocusId') === owner.marketFocusId);
-    const unavailable = target?.getData('marketAvailable') === false;
-    if (mode === 'pointer') return unavailable
-      ? 'This offer is unavailable · Read its requirements in the details\nChoose a section above to browse more offers'
-      : armed ? 'Click the selected offer again to buy\nClear cancels the selection'
-        : 'Click an offer to select · Click it again to buy\nBrowse the sections above · Details never spend Scrap';
-    const pad = mode === 'controller';
-    const move = pad ? 'D-pad' : `${controlBindingLabel('previous')}/${controlBindingLabel('next')}`;
-    const confirm = pad ? 'A' : controlBindingLabel('confirm');
-    const inspect = pad ? 'Y' : controlBindingLabel('roost');
-    const back = pad ? 'B' : controlBindingLabel('back');
-    return `${move}: offer · ${confirm}: ${unavailable ? 'requirements' : 'buy'} · ${inspect}: rules\n${pad ? 'LB/RB' : '1–4'}: section · ${back}: ${armed ? 'clear selection' : 'close Market'}`;
+    const [kind, slot] = String(owner.marketFocusId ?? '').split(':');
+    const listing = kind === 'card' ? owner.marketCardShelf[Number(slot)]
+      : kind === 'waymark' ? owner.marketWaymarkShelf[Number(slot)] : owner.marketUtilityShelf[Number(slot)];
+    const price = kind === 'refresh' ? owner.marketRefreshCost() : listing?.price;
+    const unavailable = !target || target.getData('marketAvailable') === false;
+    const choose = ['preen', 'release'].includes(listing?.id);
+    const state = unavailable ? 'Unavailable' : owner.marketFocusArmedId ? 'Selected' : 'Inspecting';
+    decisionExcerpt(title.setText(`${state} · ${target?.getData('label') ?? 'No offers remaining'}`), 27);
+    const caption = unavailable ? 'Unavailable'
+      : mode === 'pointer' && !owner.marketFocusArmedId ? 'Select offer'
+      : `${choose ? 'Choose card' : kind === 'refresh' ? 'Refresh' : 'Buy'}${mode === 'pointer' ? '' : ` · ${mode === 'controller' ? 'A' : controlBindingLabel('confirm')}`}`;
+    action.setData('fullLabel', caption).setData('statusLabel', caption)
+      .setData('status', owner.marketFocusArmedId ? 'armed' : 'idle')
+      .setData('available', !unavailable).setData('enabled', !unavailable);
+    label.setText(caption);
+    actionHint.setColor(unavailable ? UI_CONTROL.disabledText : UI_CONTROL.onPrimary);
+    const balance = `${price ?? 0} Scrap · Have ${owner.runState.scrap}`;
+    actionHint.setText(mode === 'pointer' ? owner.marketFocusArmedId ? 'Clear cancels' : 'Select, then confirm'
+      : mode === 'controller' ? 'D-pad: offer · LB/RB: shelf' : `${controlBindingLabel('previous')}/${controlBindingLabel('next')}: offer`);
+    const projectedScrap = owner.marketDecisionPreview.find((row: string) => /^SCRAP /.test(row))?.split(' > ')[1];
+    return unavailable ? `${balance} · ${owner.marketDecisionPreview[0] ?? 'Sold out'}`
+      : `${balance} · ${choose ? 'Exact cost after choosing a card' : projectedScrap ? `After purchase ${projectedScrap}` : 'See purchase preview'}`;
   };
   bindChoiceHint(scene, hint, format);
   hint.on('refreshHint', () => hint.setText(format(hint.getData('inputMode'))));
+  const closeLabel = owner.marketFocusArmedId ? 'Clear' : 'Close';
+  quietButton(scene, { x: 1140, y: 122, width: 120, label: closeLabel,
+    name: 'market-enamel-button-hit', onActivate: () => {
+      if (!owner.pauseOverlayOpen && !owner.settingsOverlayOpen && !owner.cardPickerMode) owner.leaveMarket();
+    } }).setData('label', closeLabel);
 }
 
 export function renderMarketCategoryTabs(
@@ -1076,15 +1146,15 @@ export function renderMarketCategoryTabs(
     ['services', 'Services'],
   ];
   tabs.forEach(([id, label], index) => {
-    const x = 450 + index * 156;
+    const x = 560 + index * 182;
     const selected = scene.marketCategory === id;
     const accent = accents[index];
     const visual = scene.add.rectangle(x, top + 86, 140, 34, selected ? 0x152637 : 0x07101a, 0.94)
       .setStrokeStyle(1, selected ? accent : 0x49606d, selected ? 0.94 : 0.42)
       .setName('market-category-tab');
     scene.add.text(x, top + 86, label, {
-      fontFamily: 'Arial',
-      fontSize: '18px',
+      fontFamily: TOKEN_FONT,
+      fontSize: UI_TYPE.primary,
       resolution: 2,
       fontStyle: 'bold',
       color: selected ? '#fff0c7' : '#b7cbd9',
@@ -1107,32 +1177,20 @@ export function renderMarketSectionHeader(
   title: string,
   subtitle: string,
   accent: number,
-  frameKey: string,
+  _frameKey: string,
 ) {
-  const hasFrame = scene.textures.exists(frameKey);
   const focusedSection = (scene as any).marketCategory !== 'catalog';
-  if (hasFrame) {
-    scene.textures.get(frameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    scene.add.image(x, y + 20, frameKey)
-      .setDisplaySize(width + 42, 60)
-      .setAlpha(0.88)
-      .setName('market-section-header-frame');
-    scene.add.rectangle(x, y + 20, Math.max(96, width - 52), 31, 0x020409, 0.18);
-  } else {
-    scene.add.rectangle(x, y, width, 1, accent, 0.72);
-  }
-  scene.add.rectangle(x - width / 2 + 18, y + 20, 4, 28, accent, hasFrame ? 0.86 : 0.78);
-  // Authored end-caps occupy more than the texture's geometric border.
-  // Keep readable copy inside the quiet center, not over the gold/teal caps.
-  scene.add.text(x - width / 2 + (focusedSection ? 80 : 30), y + (focusedSection ? 9 : 8), title.toUpperCase(), {
-    fontFamily: 'Arial',
-    fontSize: focusedSection ? '18px' : '10px',
+  scene.add.rectangle(x, y + 20, width, 52, 0x0b151f, 1).setName('market-section-surface');
+  scene.add.rectangle(x, y + 47, width, 1, accent, 0.45);
+  scene.add.text(x - width / 2 + 16, y + 8, title, {
+    fontFamily: TOKEN_FONT,
+    fontSize: focusedSection ? '22px' : '18px',
     fontStyle: 'bold',
     color: '#ffe1a3',
   }).setResolution(2).setName('market-section-heading');
-  scene.add.text(focusedSection ? x + width / 2 - 80 : x - width / 2 + 30, y + (focusedSection ? 11 : 23), subtitle, {
-    fontFamily: 'Arial',
-    fontSize: focusedSection ? '16px' : '9px',
+  scene.add.text(focusedSection ? x + width / 2 - 16 : x - width / 2 + 16, y + (focusedSection ? 11 : 31), subtitle, {
+    fontFamily: TOKEN_FONT,
+    fontSize: focusedSection ? '19px' : '14px',
     fontStyle: 'bold',
     color: '#b5c8d8',
   }).setOrigin(focusedSection ? 1 : 0, 0).setResolution(2).setName('market-section-description');
@@ -1217,7 +1275,7 @@ export function renderCardPickerInput(
   });
   if (focused) showFocus();
   if (focusIndex === owner.cardPickerScroll * 5) {
-    renderCardPickerInspectControl(scene, 440, 610, 200, accent);
+    renderCardPickerInspectControl(scene, 440, 610, 216, accent);
   }
 }
 
@@ -1229,13 +1287,9 @@ export function renderCardPickerInspectControl(
   accent: number,
 ) {
   const owner = scene as any;
-  const inspect = scene.add.rectangle(x, y, width, 64, 0x102534, 0.98)
-    .setStrokeStyle(2, accent, 0.9)
-    .setInteractive({ useHandCursor: true })
-    .setName('card-picker-card-inspect-hit');
+  const inspect = quietButton(scene, { x, y, width, label: 'Inspect focused', name: 'card-picker-card-inspect-hit',
+    onActivate: () => openCardPickerInspection(owner, owner.cardPickerFocusIndex) }).setDisplaySize(width, 64);
   inspect.setData('label', 'Inspect focused card');
-  inspect.on('pointerover', () => inspect.setFillStyle(0x173a50, 1).setStrokeStyle(2, 0x8df4ff, 1));
-  inspect.on('pointerout', () => inspect.setFillStyle(0x102534, 0.98).setStrokeStyle(2, accent, 0.9));
   inspect.on('pointerdown', (
     _pointer: Phaser.Input.Pointer,
     _localX: number,
@@ -1243,17 +1297,11 @@ export function renderCardPickerInspectControl(
     event?: Phaser.Types.Input.EventData,
   ) => {
     event?.stopPropagation();
-    openCardPickerInspection(owner, owner.cardPickerFocusIndex);
   });
-  scene.add.text(x, y - 9, 'INSPECT FOCUSED', {
-    fontFamily: 'Arial',
-    fontSize: '18px',
-    fontStyle: 'bold',
-    color: '#dffbff',
-  }).setResolution(2).setOrigin(0.5).setName('card-picker-card-inspect-label');
-  bindChoiceHint(scene, scene.add.text(x, y + 12, '', {
-    fontFamily: 'Arial',
-    fontSize: '16px',
+  inspect.getData('labelObject').setY(y - 12).setName('card-picker-card-inspect-label');
+  bindChoiceHint(scene, scene.add.text(x, y + 14, '', {
+    fontFamily: TOKEN_FONT,
+    fontSize: '19px',
     fontStyle: 'bold',
     color: '#91b9c8',
   }).setResolution(2).setOrigin(0.5).setName('card-picker-card-inspect-binding'), inspectInputHint);
@@ -1286,8 +1334,8 @@ export function renderCardPickerInspection(
     .setName('card-picker-inspection-scrim');
   scrim.on('pointerdown', () => closeCardPickerInspection(scene));
   scene.add.text(74, 38, `FULL CARD INSPECTION · ${scene.cardPickerMode === 'preen' ? 'PREEN' : 'RELEASE'}`, {
-    fontFamily: 'Arial',
-    fontSize: '13px',
+    fontFamily: TOKEN_FONT,
+    fontSize: '21px',
     fontStyle: 'bold',
     color: '#ffe08a',
     letterSpacing: 1.2,
@@ -1297,8 +1345,8 @@ export function renderCardPickerInspection(
     height - 34,
     `${backLabel} / B / CONFIRM / A / TAP OUTSIDE  RETURN WITHOUT APPLYING`,
     {
-      fontFamily: 'Arial',
-      fontSize: '12px',
+      fontFamily: TOKEN_FONT,
+      fontSize: '19px',
       fontStyle: 'bold',
       color: '#dffbff',
     },
@@ -1316,9 +1364,9 @@ export function renderCardPickerInspection(
     panel.add(scene.add.rectangle(0, 0, 430, 480, 0x071522, 0.99).setOrigin(0)
       .setStrokeStyle(1, UI_FIELD.cyan, 0.7).setInteractive());
     let y = 20;
-    impact.lines.forEach((line: string, index: number) => {
+    [...impact.lines.slice(0,3),impact.lines[5], 'Read full impact on the card reader’s pages.'].forEach((line: string, index: number) => {
       const label = scene.add.text(20, y, line, {
-        fontFamily: UI_FONT, fontSize: `${[14, 20, 18, 16, 16, 16, 14, 13][index]}px`,
+        fontFamily: UI_FONT, fontSize: index === 1 || index === 2 ? '21px' : '19px',
         color: index === 0 ? UI_CYAN : index < 3 ? UI_GOLD : '#e6eef5',
         wordWrap: { width: 390 }, lineSpacing: 3,
       }).setName('card-picker-impact-line');
@@ -1441,14 +1489,14 @@ export function renderCombatRewardLoading(scene: any) {
     .setStrokeStyle(2, 0xd8a840, 0.46)
     .setName('reward-loading-header'));
   target.add(scene.add.text(640, 64, 'ROOFTOP LANDMARK', {
-    fontFamily: UI_FONT, fontSize: '12px', fontStyle: UI_BOLD, color: UI_CYAN
+    fontFamily: UI_FONT, fontSize: UI_TYPE.secondary, resolution: 2, fontStyle: UI_BOLD, color: UI_CYAN
   }).setOrigin(0.5));
   target.add(scene.add.text(640, 91, title, {
     fontFamily: UI_FONT, fontSize: '34px', fontStyle: UI_BOLD, color: UI_GOLD,
     align: 'center', fixedWidth: 1060, fixedHeight: 52, maxLines: 1
   }).setOrigin(0.5).setName('reward-loading-title'));
   target.add(scene.add.text(640, 128, 'Preparing choices · Input unlocks when every option is visible.', {
-    fontFamily: UI_FONT, fontSize: '15px', color: UI_SOFT,
+    fontFamily: UI_FONT, fontSize: UI_TYPE.secondary, resolution: 2, color: UI_SOFT,
     align: 'center', fixedWidth: 1020, fixedHeight: 28, maxLines: 1
   }).setOrigin(0.5).setName('reward-renderer-loading'));
   [336, 640, 944].forEach((x) => {
@@ -1461,7 +1509,7 @@ export function renderCombatRewardLoading(scene: any) {
     target.add(scene.add.rectangle(waymark ? x - 70 : x - 76, waymark ? 595 : 586, waymark ? 116 : 104, MIN_SUPPORTED_TOUCH_TARGET, 0x102534, 0.58)
       .setStrokeStyle(2, 0x49606d, 0.54)
       .setName('reward-loading-inspect-slot'));
-    target.add(scene.add.rectangle(waymark ? x + 63 : x + 54, waymark ? 595 : 586, waymark ? 132 : 144, MIN_SUPPORTED_TOUCH_TARGET, 0x19424c, 0.58)
+    target.add(scene.add.rectangle(waymark ? x + 63 : x + 56, waymark ? 595 : 586, waymark ? 132 : 144, MIN_SUPPORTED_TOUCH_TARGET, 0x19424c, 0.58)
       .setStrokeStyle(1, 0x49606d, 0.54).setName('reward-loading-select-slot'));
   });
   if (cardReward) target.add(scene.add.rectangle(982, 652, 324, MIN_SUPPORTED_TOUCH_TARGET, 0x2a2320, 0.58)
@@ -1470,41 +1518,25 @@ export function renderCombatRewardLoading(scene: any) {
 }
 
 export function renderRewardSkipFallback(scene: any) {
-  const target = scene.root as Phaser.GameObjects.Container;
-  const scrap = scene.currentSkipScrapReward();
-  const deckSize = scene.allDeckCards().length;
-  const armed = Boolean(scene.rewardSkipArmed);
-  const hit = scene.add.rectangle(982, 652, 324, MIN_SUPPORTED_TOUCH_TARGET, 0x2a2320, 0.96)
-    .setStrokeStyle(2, 0xd8a840, 0.9)
-    .setInteractive({ useHandCursor: true })
-    .setName('reward-skip-hit');
-  hit.on('pointerdown', () => scene.requestSkipCardReward());
-  target.add(hit);
+  renderRewardSkipCommand(scene, scene.root, { scrap: scene.currentSkipScrapReward(),
+    deckSize: scene.allDeckCards().length, scrapAfter: scene.scrap + scene.currentSkipScrapReward(),
+    armed: Boolean(scene.rewardSkipArmed) }, () => scene.requestSkipCardReward());
+}
+
+/** The normal ceremony and offline fallback expose the same safe, armed action. */
+export function renderRewardSkipCommand(scene: Phaser.Scene, target: Phaser.GameObjects.Container,
+  { scrap, deckSize, scrapAfter, armed }: { scrap: number; deckSize: number; scrapAfter: number; armed: boolean },
+  onActivate: () => void) {
+  const label = `${armed ? 'Confirm skip' : 'Skip'}  +${scrap} Scrap`;
+  const hit = quietButton(scene, { x: 982, y: 652, width: 324, label, name: 'reward-skip-hit', onActivate });
+  if (armed) hit.setData({ statusLabel: label, status: 'armed' });
+  target.add([hit, hit.getData('labelObject').setY(640).setName('reward-skip-title')]);
   if (armed) target.add(scene.add.rectangle(982, 652, 344, 68, 0x000000, 0)
     .setStrokeStyle(3, 0xd8a840, 1)
     .setName('reward-skip-focus-ring'));
-  target.add(scene.add.text(982, 640, `Skip  +${scrap} Scrap`, {
-    fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: UI_GOLD,
-  }).setOrigin(0.5).setName('reward-skip-title'));
-  target.add(scene.add.text(982, 664, `Deck ${deckSize} unchanged / ${scene.scrap + scrap} Scrap`, {
-    fontFamily: UI_FONT, fontSize: '13px', color: UI_SOFT,
+  target.add(scene.add.text(982, 664, `Deck ${deckSize} unchanged / ${scrapAfter} Scrap`, {
+    fontFamily: UI_FONT, fontSize: UI_TYPE.secondary, resolution: 2, color: UI_SOFT,
   }).setOrigin(0.5).setName('reward-skip-summary'));
-}
-
-export function rewardDecisionPreviewLabel(preview: RewardDecisionPreview) {
-  if (preview.kind === 'add') return `Deck ${preview.deckBefore} → ${preview.deckBefore + 1} cards`;
-  const parts = (text: string) => text.split(/[.;]\s+/).map(part => part.replace(/[.]$/, '').trim());
-  for (const [beforeText, afterText, prefix] of [
-    [preview.before, preview.after, ''], [preview.moltBefore, preview.moltAfter, 'Molt: '],
-  ]) {
-    const before = parts(beforeText), after = parts(afterText);
-    for (let index = 0; index < Math.max(before.length, after.length); index++) {
-      const from = before[index] ?? '', to = after[index] ?? '';
-      if (from === to) continue;
-      return prefix + (from && to ? `${from} → ${to}` : to ? `Adds: ${to}` : `Removes: ${from}`);
-    }
-  }
-  return preview.statChanges[0] ?? 'Rules unchanged';
 }
 
 export function renderWaymarkRewardChoice(context: Pick<RewardCeremonyRenderContext,
@@ -1525,7 +1557,7 @@ export function renderWaymarkRewardChoice(context: Pick<RewardCeremonyRenderCont
     target.add(scene.add.image(x - 96, 280, waymark.artKey).setDisplaySize(64, 64));
   } else {
     target.add(scene.add.text(x - 96, 280, waymark.glyph, {
-      fontFamily: 'Georgia, serif', fontSize: '32px', fontStyle: boldFontStyle, color: '#fff1c7'
+      fontFamily: TOKEN_DISPLAY_FONT, fontSize: '32px', fontStyle: boldFontStyle, color: '#fff1c7'
     }).setOrigin(0.5));
   }
   const label = (left: number, y: number, value: string, size: number, width: number, color: string, lines: number, name: string) => {
@@ -1536,20 +1568,21 @@ export function renderWaymarkRewardChoice(context: Pick<RewardCeremonyRenderCont
     }), lines).setName(name).setData('fullText', value).setData('waymarkId', waymark.id);
     target.add(text); return text;
   };
-  label(x - 52, 256, waymark.name, 20, 180, goldColor, 3, 'reward-waymark-title');
-  label(x - 124, 324, [...new Set([waymark.rarity, waymark.familyLabel].map(value => value.toUpperCase()))].join(' · '), 13, 248, '#9eb6c6', 1, 'reward-waymark-meta');
-  label(x - 124, 354, waymark.description, 18, 248, '#e7eef7', 7, 'reward-waymark-effect');
-  label(x - 124, 516, build.notes[0].replace(/^[+!]\s*/, ''), 14, 248, '#a9c6d5', 2, 'reward-waymark-build-observation');
+  label(x - 52, 256, waymark.name, UI_TYPE.primary, 180, goldColor, 2, 'reward-waymark-title');
+  label(x - 124, 324, [...new Set([waymark.rarity, waymark.familyLabel].map(value => value.toUpperCase()))].join(' · '), UI_TYPE.secondary, 248, '#9eb6c6', 1, 'reward-waymark-meta');
+  // Keep the longest authored effect complete at the primary type size.
+  label(x - 126, 354, waymark.description, UI_TYPE.primary, 252, '#e7eef7', 6, 'reward-waymark-effect');
+  label(x - 124, 516, build.notes[0].replace(/^[+!]\s*/, ''), UI_TYPE.secondary, 248, '#a9c6d5', 2, 'reward-waymark-build-observation');
   for (const inspect of [true, false]) {
     const cx = x + (inspect ? -70 : 63);
-    const button = scene.add.rectangle(cx, 595, inspect ? 116 : 132, 58, inspect ? 0x10202d : 0x19424c, 1)
-      .setStrokeStyle(1, waymark.armed && !inspect ? 0xd8a840 : 0x49606d, 0.8)
-      .setInteractive({ useHandCursor: true }).setData('waymarkId', waymark.id)
-      .setName(inspect ? 'reward-waymark-inspect-hit' : 'reward-waymark-hit');
-    button.on('pointerdown', () => inspect ? context.onWaymarkInspect(waymark.id) : context.onWaymarkSelect(waymark.id));
-    target.add(button);
-    label(cx, 595, inspect ? 'Read' : waymark.armed ? 'Confirm' : 'Select', 17, 110, inspect ? '#dce8f2' : goldColor, 1,
-      'reward-waymark-command').setOrigin(0.5);
+    const button = quietButton(scene, { x: cx, y: 595, width: inspect ? 116 : 132,
+      label: inspect ? 'Read' : waymark.armed ? 'Confirm' : 'Select',
+      name: inspect ? 'reward-waymark-inspect-hit' : 'reward-waymark-hit',
+      kind: !inspect && (waymark.focused || waymark.armed) ? 'primary' : 'secondary',
+      onActivate: () => inspect ? context.onWaymarkInspect(waymark.id) : context.onWaymarkSelect(waymark.id)
+    }).setData('waymarkId', waymark.id);
+    if (!inspect && waymark.armed) button.setData({ statusLabel: 'Confirm', status: 'armed' });
+    target.add([button, button.getData('labelObject').setName('reward-waymark-command')]);
   }
   return 0;
 }
@@ -1561,7 +1594,7 @@ export function renderCombatRewardFallback(scene: any) {
   const target = scene.root as Phaser.GameObjects.Container;
   target.add(scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9));
   target.add(scene.add.text(640, 90, waymark ? 'Claim a Waymark' : scene.mode === 'upgradeReward' ? 'Preen a Card' : 'Add to the Flock', {
-    fontFamily: 'Arial', fontSize: '34px', fontStyle: 'bold', color: '#ffe08a'
+    fontFamily: TOKEN_FONT, fontSize: '34px', fontStyle: 'bold', color: '#ffe08a'
   }).setOrigin(0.5));
   choices.forEach((choice: any, index: number) => {
     const x = 336 + index * 304;
@@ -1585,29 +1618,10 @@ export function renderCombatRewardFallback(scene: any) {
     target.add(hit);
     if (view.focused) target.add(scene.add.rectangle(x, choiceY, 278, 308, 0x000000, 0)
       .setStrokeStyle(3, view.armed ? 0xd8a840 : 0x8df4ff, 1).setName('reward-input-focus-ring'));
-    const label = (left: number, y: number, value: string, size: number, width: number, color: string, lines: number, name: string) => {
-      const text = boundedRewardText(scene.add.text(left, y, value, {
-        fontFamily: UI_FONT, fontSize: `${size}px`, color, resolution: 2,
-        fontStyle: name === 'reward-fallback-choice-name' ? UI_BOLD : 'normal',
-        wordWrap: { width, useAdvancedWrap: true }, lineSpacing: 2,
-      }), lines).setName(name).setData('fullText', value).setData('cardId', view.id);
-      target.add(text); return text;
-    };
-    // Keep identity/art independent of the optional ceremony chunk. Never use a
-    // missing texture key: the reader and printed rules still work without art.
-    if (view.artKey && scene.textures.exists(view.artKey)) {
-      target.add(scene.add.image(x - 78, 314, view.artKey).setDisplaySize(72, 108)
-        .setName('reward-fallback-card-art').setData('cardId', view.id));
-    } else {
-      target.add(scene.add.rectangle(x - 78, 314, 72, 108, 0x10202d, 1));
-      label(x - 108, 279, view.bird, 14, 60, UI_SOFT, 4, 'reward-fallback-art-identity');
-    }
-    label(x - 26, 258, view.name, 20, 142, UI_GOLD, 3, 'reward-fallback-choice-name');
-    label(x - 26, 340, `${view.cost} Wingbeat${view.cost === 1 ? '' : 's'}`, 16, 142, '#bfe8f4', 1, 'reward-fallback-card-cost');
-    label(x - 116, 382, view.summary, 18, 232, '#e7eef7', 5, 'reward-fallback-effect');
-    if (view.focused || view.armed || scene.mode === 'upgradeReward') {
-      label(x - 116, 506, rewardDecisionPreviewLabel(view.decisionPreview), 14, 232, '#a9c6d5', 2, 'reward-fallback-decision-context');
-    }
+    renderRewardCardFace({ scene, target, fontFamily: UI_FONT, boldFontStyle: UI_BOLD,
+      goldColor: UI_GOLD, softColor: UI_SOFT, typography: UI_TYPE,
+      failedArtKeys: scene.rewardArtFailedKeys,
+      onCardArtRetry: () => scene.queueCardArtLoad([choice], true) }, view, x, true);
     renderRewardInspectButton({
       scene,
       target,
@@ -1615,21 +1629,20 @@ export function renderCombatRewardFallback(scene: any) {
       y: 586,
       width: 112,
       label: 'Read',
-      fontSize: 17,
+      fontSize: UI_TYPE.primary,
       accent: view.accent,
-      fontFamily: 'Arial',
+      fontFamily: TOKEN_FONT,
       boldFontStyle: 'bold',
       enabled,
       onInspect: () => scene.openRewardCardInspection(view.id),
     });
-    const take = scene.add.rectangle(x + 62, 586, 132, MIN_SUPPORTED_TOUCH_TARGET,
-      enabled ? 0x19424c : 0x0a141c, enabled ? 1 : 0.48)
-      .setStrokeStyle(1, enabled && view.armed ? 0xd8a840 : 0x49606d, 0.8)
-      .setName('reward-card-take-hit').setData('cardId', view.id).setData('disabled', !enabled);
-    if (enabled) take.setInteractive({ useHandCursor: true }).on('pointerdown', () => scene.requestRewardChoice(view.id));
-    target.add(take);
-    label(x + 62, 586, view.armed ? 'Confirm' : 'Select', 17, 116, enabled ? UI_GOLD : '#667b89', 1,
-      'reward-card-take-label').setOrigin(0.5);
+    const take = quietButton(scene, { x: x + 62, y: 586, width: 132,
+      label: view.armed ? 'Confirm' : 'Select', name: 'reward-card-take-hit', enabled,
+      kind: view.focused || view.armed ? 'primary' : 'secondary', focused: view.focused,
+      onActivate: () => scene.requestRewardChoice(view.id) });
+    take.setData('cardId', view.id).setData('disabled', !enabled);
+    if (view.armed) take.setData('statusLabel', 'Confirm').setData('status', 'armed');
+    target.add([take, take.getData('labelObject').setName('reward-card-take-label')]);
   });
   if (scene.mode === 'cardReward') renderFocusedBuildRead({
     scene, target, width: GAME_WIDTH, kind: 'card', fontFamily: UI_FONT, boldFontStyle: UI_BOLD,
@@ -1718,6 +1731,7 @@ export function handleRouteRewardAction(
   action: 'confirm' | 'previous' | 'next' | 'inspect' | 'back',
 ) {
   if (scene.pauseOverlayOpen || scene.settingsOverlayOpen) return false;
+  if (action === 'inspect' && scene.retryRouteCardArtwork?.()) return true;
   if (handleSupplyInspection(scene, action)) return true;
   if (scene.cardPickerMode) {
     if (action === 'back') {
@@ -1867,38 +1881,12 @@ export function renderRewardInspectButton(context: {
 }) {
   const { scene, target, x, y } = context;
   const enabled = context.enabled !== false;
-  const hit = scene.add.rectangle(
-    x,
-    y,
-    context.width ?? 132,
-    MIN_SUPPORTED_TOUCH_TARGET,
-    enabled ? 0x102534 : 0x0a141c,
-    enabled ? 0.88 : 0.48,
-  )
-    .setStrokeStyle(2, enabled ? context.accent : 0x49606d, enabled ? 0.9 : 0.42)
-    .setData('disabled', !enabled)
-    .setName('reward-card-inspect-hit');
-  if (enabled) {
-    hit.setInteractive({ useHandCursor: true });
-    hit.on('pointerdown', (
-      _pointer: Phaser.Input.Pointer,
-      _localX: number,
-      _localY: number,
-      event?: Phaser.Types.Input.EventData,
-    ) => {
-      event?.stopPropagation();
-      context.onInspect();
-    });
-    hit.on('pointerover', () => hit.setFillStyle(0x18384b, 1));
-    hit.on('pointerout', () => hit.setFillStyle(0x102534, 0.88));
-  }
+  const hit = quietButton(scene, { x, y, width: context.width ?? 132,
+    label: context.label ?? 'Inspect', name: 'reward-card-inspect-hit', enabled,
+    onActivate: context.onInspect }).setData('disabled', !enabled);
+  hit.on('pointerdown', (_pointer: Phaser.Input.Pointer, _x: number, _y: number, event?: Phaser.Types.Input.EventData) => event?.stopPropagation());
   target.add(hit);
-  target.add(scene.add.text(x, y, context.label ?? 'INSPECT', {
-    fontFamily: context.fontFamily,
-    fontSize: `${context.fontSize ?? 11}px`,
-    fontStyle: context.boldFontStyle,
-    color: enabled ? '#dffbff' : '#667b89',
-  }).setOrigin(0.5).setName('reward-card-inspect-label'));
+  target.add(hit.getData('labelObject').setName('reward-card-inspect-label'));
 }
 
 export function renderRewardInspectionChrome(context: {
@@ -1921,14 +1909,14 @@ export function renderRewardInspectionChrome(context: {
   layer.add(scrim);
   layer.add(scene.add.text(74, 38, 'FULL CARD INSPECTION', {
     fontFamily,
-    fontSize: '13px',
+    fontSize: UI_TYPE.secondary, resolution: 2,
     fontStyle: boldFontStyle,
     color: '#ffe08a',
     letterSpacing: 1.4,
   }).setOrigin(0, 0.5));
   layer.add(scene.add.text(width / 2, height - 34, `${context.backLabel} / B / TAP OUTSIDE  ${context.returnLabel}`, {
     fontFamily,
-    fontSize: '12px',
+    fontSize: UI_TYPE.secondary, resolution: 2,
     fontStyle: boldFontStyle,
     color: '#dffbff',
   }).setOrigin(0.5));
@@ -1962,18 +1950,18 @@ export function syncRewardCardInspection(scene: any, chrome: {
   const panel = scene.add.container(650, 120).setName('reward-deck-impact');
   panel.add(scene.add.rectangle(0, 0, 430, 480, 0x071522, 1).setOrigin(0)
     .setStrokeStyle(1, UI_FIELD.cyan, 0.6).setInteractive());
-  const row = (y: number, text: string, size: number, color: string) => panel.add(scene.add.text(18, y, text, {
+  const row = (y: number, text: string, size: number, color: string) => panel.add(boundedRewardText(scene.add.text(18, y, text, {
     fontFamily: UI_FONT, fontSize: `${size}px`, resolution: 2, color, wordWrap: { width: 394 }, lineSpacing: 3,
-  }).setName('reward-deck-impact-text'));
-  row(18, 'YOUR FLIGHT / BEFORE > AFTER', 14, UI_CYAN);
-  row(48, `Deck: ${impact.deckBefore} > ${impact.deckAfter} cards`, 20, UI_GOLD);
-  row(80, `Base hand target: ${impact.handBefore} > ${impact.handAfter}`, 18, '#f4f8fb');
-  row(120, impact.deckAfter > impact.deckBefore
+  }), 3).setName('reward-deck-impact-text').setData('fullText', text));
+  row(18, 'YOUR FLIGHT / BEFORE > AFTER', UI_TYPE.secondary, UI_CYAN);
+  row(58, `Deck: ${impact.deckBefore} > ${impact.deckAfter} cards`, UI_TYPE.primary, UI_GOLD);
+  row(94, `Base hand target: ${impact.handBefore} > ${impact.handAfter}`, UI_TYPE.primary, '#f4f8fb');
+  row(140, impact.deckAfter > impact.deckBefore
     ? 'More cards share the draw pool. Passive gains apply even before this card is drawn.'
-    : 'Same draw pool size. Preen changes this card without adding another copy.', 18, '#dce8f2');
-  row(208, impact.stats.length ? `${scene.mode === 'upgradeReward' ? 'Changed stats after Preen' : 'Flock Stats gained'}: ${impact.stats.join(' / ')}` : 'Flock Stats unchanged.', 18, UI_GOLD);
-  row(308, impact.scope, 16, '#dce8f2');
-  row(384, impact.drawScope, 14, '#b9cbd9');
+    : 'Same draw pool size. Preen changes this card without adding another copy.', UI_TYPE.secondary, '#dce8f2');
+  row(228, impact.stats.length ? `${scene.mode === 'upgradeReward' ? 'Changed stats after Preen' : 'Flock Stats gained'}: ${impact.stats.join(' / ')}` : 'Flock Stats unchanged.', UI_TYPE.secondary, UI_GOLD);
+  row(318, impact.scope, UI_TYPE.secondary, '#dce8f2');
+  row(384, impact.drawScope, UI_TYPE.secondary, '#b9cbd9');
   scene.rewardInspectionLayer.add(panel);
   // A reward describes the next flight decision, not the finished turn's Molt
   // stance or temporary energy discount. Never borrow effective combat costs.

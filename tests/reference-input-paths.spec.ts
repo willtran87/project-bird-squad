@@ -175,11 +175,19 @@ test.afterEach(async ({ page }, info) => {
 
 async function inputAction(page: Page, input: 'pointer' | 'controller', key: string, decision: any) {
   if (input === 'controller') {
-    if (/^[1-9]$/.test(key)) {
+    if (decision.kind === 'play') {
       const index = Number(key) - 1;
       for (let i = 0; i < 12; i++) {
-        if (await page.evaluate(index => (window as any).__birdSquadGame.scene.getScene('BattleScene').controllerChoiceIndex === index, index)) break;
-        await pressController(page, 15);
+        const cursor = await page.evaluate(() => {
+          const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+          return { index: b.controllerChoiceIndex, count: b.hand.length };
+        });
+        if (cursor.index === index) break;
+        // Use the shorter live D-pad path instead of circling the whole hand
+        // when the next chosen card sits immediately to the left.
+        const right = (index - cursor.index + cursor.count) % cursor.count;
+        const left = (cursor.index - index + cursor.count) % cursor.count;
+        await pressController(page, cursor.index >= 0 && left < right ? 14 : 15);
       }
       expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').controllerChoiceIndex)).toBe(index);
       if (!await page.evaluate(id => (window as any).__birdSquadGame.scene.getScene('BattleScene').selectedInstanceId === id, decision.instance)) await pressController(page, 0);
@@ -191,6 +199,29 @@ async function inputAction(page: Page, input: 'pointer' | 'controller', key: str
     return;
   }
   await settleCanvas(page);
+  if (decision.kind === 'play') {
+    // A legal hand can span pages. Reach the chosen card through the visible
+    // pager before looking up its hit area, just as a pointer player must.
+    for (let attempts = 0; attempts < 20; attempts++) {
+      const pager = await page.evaluate(instance => {
+        const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+        const index = b.hand.findIndex((card: any) => card.instanceId === instance);
+        if (index < 0) throw new Error('Chosen card left the hand before selection');
+        const target = Math.floor(index / 5);
+        if (target === b.handPage) return null;
+        const name = target > b.handPage ? 'combat-hand-next' : 'combat-hand-previous';
+        const collect = (list: any[]): any[] => list.flatMap(o => [o, ...collect(o.list ?? [])]);
+        const hit = collect(b.children.list).find(o => o.name === name && o.input?.enabled);
+        if (!hit) throw new Error('Missing visible hand pager: ' + name);
+        const r = hit.getBounds(), c = b.game.canvas.getBoundingClientRect();
+        return { page: b.handPage, x: c.left + r.centerX * c.width / 1280, y: c.top + r.centerY * c.height / 720 };
+      }, decision.instance);
+      if (!pager) break;
+      await page.mouse.click(pager.x, pager.y);
+      await page.waitForFunction(previous => (window as any).__birdSquadGame.scene.getScene('BattleScene').handPage !== previous, pager.page);
+      await settleCanvas(page);
+    }
+  }
   const point = await page.evaluate(({ key, decision }) => {
     const g = (window as any).__birdSquadGame;
     const sceneKey = ['BattleScene', 'RouteScene', 'MenuScene'].find(key => g.scene.isActive(key));

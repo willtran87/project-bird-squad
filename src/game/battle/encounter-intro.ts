@@ -12,6 +12,7 @@ export interface EncounterIntroOptions {
   texture: string;
   plaque: string;
   font: string;
+  displayFont: string;
   bold: string;
   gold: string;
   cyan: string;
@@ -41,26 +42,27 @@ export function playEncounterIntro(scene: Phaser.Scene, layer: Phaser.GameObject
   }
   // The authored crest supplies the accent; no diagonal flat line across art.
   c.add([
-    scene.add.text(74, 86, 'ROOFLINE CONTACT', { fontFamily: o.font, fontSize: '14px', fontStyle: o.bold, color: o.cyan }),
-    scene.add.text(74, 112, o.district, { fontFamily: 'Georgia, serif', fontSize: '23px', fontStyle: o.bold,
+    scene.add.text(74, 80, 'ROOFLINE CONTACT', { fontFamily: o.font, fontSize: '19px', fontStyle: o.bold, color: o.cyan }),
+    scene.add.text(74, 112, o.district, { fontFamily: o.displayFont, fontSize: '23px', fontStyle: o.bold,
       color: o.gold, stroke: '#000000', strokeThickness: 4 }),
   ]);
   if (scene.textures.exists(o.plaque)) {
     scene.textures.get(o.plaque).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    c.add(scene.add.image(w - 180, 614, o.plaque).setDisplaySize(328, 88)
+    const plaque = scene.add.image(w - 180, 614, o.plaque);
+    c.add(plaque.setScale(Math.min(328 / plaque.width, 88 / plaque.height))
       .setAlpha(o.reduced ? 0.66 : 0.76).setName('combat-encounter-plaque'));
   }
   c.add([
-    scene.add.text(w - 74, 594, o.encounter, { fontFamily: o.font, fontSize: '17px', fontStyle: o.bold,
+    scene.add.text(w - 74, 588, o.encounter, { fontFamily: o.font, fontSize: '21px', fontStyle: o.bold,
       color: '#ffd5cc', stroke: '#000000', strokeThickness: 4 }).setOrigin(1, 0),
-    scene.add.text(w - 74, 620, 'Enemies sighted on the roofline.', { fontFamily: o.font, fontSize: '12px', color: o.soft }).setOrigin(1, 0),
+    scene.add.text(w - 74, 620, 'Enemies sighted on the roofline.', { fontFamily: o.font, fontSize: '19px', color: o.soft }).setOrigin(1, 0),
   ]);
   const hit = scene.add.rectangle(w / 2, h / 2, w, h, 0, 0.001)
     .setInteractive({ useHandCursor: true }).setName('combat-intro-dismiss-hit').on('pointerdown', o.dismiss);
   c.add([
     hit,
     scene.add.text(w / 2, h - 44, `${o.confirm.toUpperCase()} / TAP  TAKE THE BEAT`, {
-      fontFamily: o.font, fontSize: '12px', fontStyle: o.bold, color: '#dffbff', stroke: '#020409', strokeThickness: 3,
+      fontFamily: o.font, fontSize: '21px', fontStyle: o.bold, color: '#dffbff', stroke: '#020409', strokeThickness: 3,
     }).setOrigin(0.5).setName('combat-intro-dismiss-label'),
   ]);
   layer.add(c);

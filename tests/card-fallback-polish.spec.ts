@@ -1,7 +1,10 @@
 import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
 
-for (const remapped of [false, true]) test(`failed ceremony keeps card art, readable Preens and intentional choices, remapped=${remapped}`, async ({ page }, info) => {
+// Independent journeys keep the unchanged 30-second budget meaningful without
+// charging two complete scene boots and eight captures to one test timeout.
+for (const remapped of [false, true]) for (const mode of ['cardReward', 'upgradeReward'])
+test(`failed ceremony keeps card art, readable Preens and intentional choices, mode=${mode}, remapped=${remapped}`, async ({ page }, info) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.route('**/assets/render-reward-*.js', route => route.abort('failed'));
@@ -34,18 +37,7 @@ for (const remapped of [false, true]) test(`failed ceremony keeps card art, read
     }, name);
     await page.mouse.click(p.x, p.y); await settleCanvas(page);
   };
-  for (const mode of ['cardReward', 'upgradeReward']) {
-    if (mode === 'upgradeReward') {
-      await page.evaluate(() => {
-        const w = window as any;
-        for (const s of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(s.scene.key);
-        w.__birdSquadGame.scene.start('BattleScene', { routeNodeId: 'm1_entry' });
-      });
-      await page.waitForFunction(() => {
-        const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
-        return b.battleHandRendererModule && b.hand.length && !b.combatIntroActive && !b.cameras.main.fadeEffect.isRunning;
-      });
-    }
+  {
     await page.evaluate(mode => {
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
       const cards = mode === 'cardReward' ? b.createRewardChoices() : b.allDeckCards().filter((c: any) => !c.upgraded && c.cost > 0).slice(0, 3);
@@ -57,11 +49,17 @@ for (const remapped of [false, true]) test(`failed ceremony keeps card art, read
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
       return b.battleRewardRendererFailed && b.rewardChoices.every((c: any, i: number) => b.rewardCardView(c, i).artKey);
     });
+    // The expected failed chunk opens the DOM recovery banner above the canvas.
+    // Dismiss it through the real Keep playing action before testing canvas input.
+    const keepPlaying = page.getByRole('button', { name: 'Keep playing', exact: true });
+    await expect(keepPlaying).toBeVisible(); await keepPlaying.click();
     for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport); await settleCanvas(page);
       await page.screenshot({ path: info.outputPath(`${mode}-${viewport.width}.png`) });
       const geometry = await page.evaluate(() => {
-        const b = (window as any).__birdSquadGame.scene.getScene('BattleScene'), objects = b.root.list;
+        const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+        const collect = (items: any[]): any[] => items.flatMap(o => [o, ...collect(o.list ?? [])]);
+        const objects = collect(b.root.list);
         const rows = (name: string) => objects.filter((o: any) => o.name === name);
         return {
           art: rows('reward-fallback-card-art').map((o: any) => o.texture.key),
@@ -76,8 +74,8 @@ for (const remapped of [false, true]) test(`failed ceremony keeps card art, read
       expect(geometry.art).toHaveLength(3); expect(geometry.art).toEqual(geometry.expectedArt);
       expect(geometry.cost).toEqual(geometry.expectedCost);
       expect(geometry.effects).toHaveLength(3);
-      geometry.effects.forEach((o: any) => { expect(o.size).toBe('18px'); expect(o.bottom).toBeLessThan(502); expect(o.full).toBe(true); });
-      geometry.context.forEach((o: any) => { expect(o.size).toBe('14px'); expect(o.bottom).toBeLessThan(550); expect(o.full).toBe(true); });
+      geometry.effects.forEach((o: any) => { expect(o.size).toBe('21px'); expect(o.bottom).toBeLessThan(502); expect(o.full).toBe(true); });
+      geometry.context.forEach((o: any) => { expect(o.size).toBe('19px'); expect(o.bottom).toBeLessThan(550); expect(o.full).toBe(true); });
       expect(geometry.controls).toHaveLength(mode === 'cardReward' ? 7 : 6);
       expect(geometry.controls.every((height: number) => height >= 58)).toBe(true);
     }
@@ -85,8 +83,12 @@ for (const remapped of [false, true]) test(`failed ceremony keeps card art, read
     await click('reward-card-inspect-hit'); expect(await reading()).not.toBeNull(); expect(await stable()).toBe(before);
     await click('reward-card-take-hit'); expect(await stable()).toBe(before);
     await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').setBattlePaused(true));
+    expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').pauseOverlayOpen)).toBe(true);
     await press('Enter'); expect(await reading()).not.toBeNull();
-    await press(remapped ? 'b' : 'Escape'); expect(await reading()).not.toBeNull();
+    // Confirm activates the shared pause menu's safe initial Resume action.
+    // It must not close/commit the reader underneath it.
+    expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').pauseOverlayOpen)).toBe(false);
+    expect(await stable()).toBe(before);
     await press(remapped ? 'b' : 'Escape'); expect(await reading()).toBeNull(); expect(await stable()).toBe(before);
     await press(remapped ? 'j' : 'r'); expect(await reading()).not.toBeNull();
     await press(remapped ? 'e' : 'ArrowRight');

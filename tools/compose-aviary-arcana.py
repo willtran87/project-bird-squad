@@ -86,7 +86,17 @@ def template_art_opening_mask(template: Image.Image) -> Image.Image:
     return filled.point(lambda value: 255 if value == 128 else 0)
 
 
-def fit_art_under_template(source: Image.Image, template: Image.Image) -> Image.Image:
+def fit_art_under_template(source: Image.Image, template: Image.Image, fit_opening: bool = False) -> Image.Image:
+    if fit_opening:
+        mask = template_art_opening_mask(template)
+        bounds = mask.getbbox()
+        if bounds is None:
+            raise ValueError("Template has no illustration opening")
+        left, top, right, bottom = bounds
+        art = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
+        art.alpha_composite(fit_to_box(source, (right - left, bottom - top)), (left, top))
+        art.putalpha(mask)
+        return art
     art = fit_to_box(source, CANVAS)
     art.putalpha(template_art_opening_mask(template))
     return art
@@ -197,7 +207,7 @@ def assert_isolated_art_source(source_root: Path) -> None:
             )
 
 
-def compose_card(source_path: Path, output_path: Path, template_path: Path, card: dict) -> None:
+def compose_card(source_path: Path, output_path: Path, template_path: Path, card: dict, fit_opening: bool = False) -> None:
     with Image.open(source_path) as source:
         source.load()
         with Image.open(template_path) as template:
@@ -206,7 +216,7 @@ def compose_card(source_path: Path, output_path: Path, template_path: Path, card
                 raise SystemExit(f"{template_path}: expected {CANVAS[0]}x{CANVAS[1]}, found {template.width}x{template.height}")
             template_layer = template.convert("RGBA")
             canvas = Image.new("RGBA", CANVAS, (0, 0, 0, 0))
-            canvas.alpha_composite(fit_art_under_template(source, template_layer), (0, 0))
+            canvas.alpha_composite(fit_art_under_template(source, template_layer, fit_opening), (0, 0))
             canvas.alpha_composite(template_layer)
         final = draw_title_and_badge(canvas, display_title(card), card.get("qualityCode") or card.get("roman") or "")
         final = apply_card_alpha_mask(final)
@@ -222,6 +232,7 @@ def main() -> None:
     parser.add_argument("--title-font", type=Path, default=None, help="Optional local title font override.")
     parser.add_argument("--strict", action="store_true", help="Fail if any expected center-art source image is missing.")
     parser.add_argument("--dry-run", action="store_true", help="List work without writing final PNGs.")
+    parser.add_argument("--fit-opening", action="store_true", help="Fit borderless art uniformly to the illustration opening; review rounded-corner clearance.")
     args = parser.parse_args()
 
     global TITLE_FONT_PATH
@@ -247,7 +258,7 @@ def main() -> None:
 
         output = output_root / "aviary" / f"{card_id}.png"
         if not args.dry_run:
-            compose_card(source, output, template_path, card)
+            compose_card(source, output, template_path, card, args.fit_opening)
         composed.append(output)
 
     action = "Would compose" if args.dry_run else "Composed"

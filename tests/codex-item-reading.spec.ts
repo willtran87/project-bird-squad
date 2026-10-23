@@ -59,7 +59,7 @@ test('Codex item and enemy reading surfaces', async ({ page }, info) => {
       const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
       const reader = c.root.getByName('codex-item-reader');
       const nodes = (reader?.list ?? c.root.list).filter((n: any) => n.type === 'Text' && n.x === (reader ? 440 : 580));
-      const rule = nodes.find((n: any) => reader ? n.name === 'codex-item-rules' : n.style.fontSize === '20px');
+      const rule = nodes.find((n: any) => reader ? n.name === 'codex-item-rules' : n.style.fontSize === '21px');
       const kit = nodes.find((n: any) => n.text.startsWith('COMBAT KIT') || n.text === 'MOVE KIT');
       const lore = nodes.find((n: any) => n.text === 'FIELD NOTE');
       return { ruleSize: rule.style.fontSize, max: c.detailMaxScroll,
@@ -69,7 +69,7 @@ test('Codex item and enemy reading surfaces', async ({ page }, info) => {
         masked: sample.section !== 'items' || Boolean(c.root.getByName('codex-item-reader-clip-top') && c.root.getByName('codex-item-reader-clip-bottom')),
         art: Boolean(c.root.getByName(sample.section === 'items' ? 'codex-item-dossier-art' : 'codex-enemy-dossier-art')) };
     }, sample);
-    expect(geometry.ruleSize).toBe('20px'); expect(geometry.overflow).toEqual([]);
+    expect(geometry.ruleSize).toBe(sample.section === 'items' ? '22px' : '21px'); expect(geometry.overflow).toEqual([]);
     expect(geometry.kitFirst).toBe(true); expect(geometry.frames).toBe(0);
     expect(geometry.masked).toBe(true); expect(geometry.art).toBe(true);
     if (geometry.max > 0) {
@@ -196,7 +196,7 @@ test('all enemy dossiers preserve complete known moves and measured text', async
       c.detailScrollTarget = c.detailScroll = 0; c.root.removeAll(true); c.renderEnemyDetail(enemy.id);
       const texts = c.root.list.filter((n: any) => n.type === 'Text' && n.x === 580);
       const dossier = c.codexBossView(enemy);
-      const actual = texts.filter((n: any) => n.style.fontSize === '20px').map((n: any) => n.text);
+      const actual = texts.filter((n: any) => n.style.fontSize === '21px').map((n: any) => n.text);
       const revealed = dossier.rows.filter((r: any) => r.revealed).map((r: any) => r.text);
       if (revealed.some((t: string) => !actual.includes(t))) errors.push(`${enemy.id}: missing move`);
       const hidden = dossier.total - dossier.observed;

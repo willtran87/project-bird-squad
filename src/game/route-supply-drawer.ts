@@ -2,7 +2,8 @@ import type Phaser from 'phaser';
 import { supplyCompactArtAssets, UI_FIELD } from '../main';
 import { bindChoiceHint } from './choice-input-hints';
 import { controlBindingLabel } from './input-bindings';
-import { decisionButton, decisionExcerpt, decisionText } from './decision-surface';
+import { decisionExcerpt, decisionText, measuredReadingPages } from './decision-surface';
+import { quietButton } from './quiet-ui';
 import { cardKeywordSections } from './keyword-definitions';
 
 type Reading = { page: number; total: number; title: string; text: string };
@@ -22,6 +23,7 @@ export interface RouteSupplyDrawerEntry {
 
 export interface RouteSupplyDrawerView {
   entries: RouteSupplyDrawerEntry[];
+  recent?: Array<{ name: string; summary: string }>;
   filled: number;
   capacity: number;
   focusIndex: number;
@@ -37,28 +39,31 @@ export interface RouteSupplyDrawerView {
 
 export function renderRouteSupplyDrawer(scene: Phaser.Scene, view: RouteSupplyDrawerView) {
   const add = <T extends Phaser.GameObjects.GameObject>(object: T): T => { view.addTo?.(object); return object; };
-  const text = (x: number, y: number, value: string, width: number, size = 20, color = '#dbe8f2') =>
-    add(decisionText(scene, x, y, value, width, size, color));
-  const button = (x: number, width: number, label: string, name: string, action: () => void, y = 608) =>
-    decisionButton(scene, x, y, width, label, `supply-drawer-${name}`, action).map(add);
+  const text = (x: number, y: number, value: string, width: number, size = 21, color = '#dbe8f2') =>
+    add(decisionText(scene, x, y, value, width, Math.max(19, size), color));
+  const button = (x: number, width: number, label: string, name: string, action: () => void, y = 608) => {
+    const hit = quietButton(scene, { x, y, width, label, name: `supply-drawer-${name}`,
+      kind: name === 'use' ? 'primary' : 'secondary', onActivate: action });
+    if (name === 'use' && view.armedIndex !== undefined) hit.setData({ statusLabel: label, status: 'armed' });
+    add(hit); add(hit.getData('labelObject'));
+  };
   const timing = (entry: RouteSupplyDrawerEntry) => entry.timing === 'either' ? 'Route or combat' : entry.timing === 'route' ? 'Route only' : 'Combat only';
   add(scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.88).setInteractive());
-  if (!view.entries.some(entry => entry.id)) {
-    add(scene.add.rectangle(640, 360, 720, 340, 0x070d15, 1).setStrokeStyle(1, 0x536574, 0.8).setName('supply-drawer-frame'));
-    text(312, 218, 'RUN KIT', 656, 16, '#abc4d4');
-    text(312, 244, 'Packed Supplies', 656, 32, '#ffe1a3');
+  const empty = !view.entries.some(entry => entry.id) && !view.recent?.length;
+  add(scene.add.rectangle(640, 360, empty ? 720 : 1060, empty ? 340 : 600, 0x070d15, 1).setStrokeStyle(1, 0x536574, 0.8).setName('supply-drawer-frame'));
+  text(empty ? 312 : 142, empty ? 218 : 88, 'RUN KIT', 350, 19, '#abc4d4');
+  text(empty ? 312 : 142, empty ? 244 : 114, 'Packed Supplies', 656, 32, '#ffe1a3');
+  if (empty) {
     text(312, 310, 'No Supplies packed', 656, 22);
-    text(312, 354, 'Find tools at Caches, Basins and Markets.', 656, 20, '#abc4d4');
+    text(312, 354, 'Find tools at Caches, Basins and Markets.', 656, 21, '#abc4d4');
     button(640, 300, 'Close', 'close', view.onClose, 474);
     return;
   }
-  add(scene.add.rectangle(640, 360, 1060, 600, 0x070d15, 1).setStrokeStyle(1, 0x536574, 0.8).setName('supply-drawer-frame'));
-  text(142, 88, 'RUN KIT', 350, 16, '#abc4d4');
-  text(142, 114, 'Packed Supplies', 670, 32, '#ffe1a3');
-  text(1138, 127, `${view.filled} / ${view.capacity} packed`, 250, 20, '#abc4d4').setOrigin(1, 0.5);
+  text(1138, 127, `${view.filled} / ${view.capacity} packed`, 250, 21, '#abc4d4').setOrigin(1, 0.5);
   add(scene.add.rectangle(640, 168, 996, 1, 0x536574, 0.5));
   const entries = view.entries.map((entry, index) => ({ ...entry, index })).filter(entry => entry.id);
-  const focus = entries.find(entry => entry.index === view.focusIndex) ?? entries[0];
+  const focus = entries.find(entry => entry.index === view.focusIndex) ?? entries[0]
+    ?? (view.recent?.length ? { index: -1, name: 'Recent Supply use' } as RouteSupplyDrawerEntry & {index:number} : undefined);
   const start = Math.floor(Math.max(0, entries.findIndex(entry => entry.index === focus?.index)) / 4) * 4;
   entries.slice(start, start + 4).forEach((entry, rowIndex) => {
     const y = 230 + rowIndex * 84;
@@ -69,13 +74,16 @@ export function renderRouteSupplyDrawer(scene: Phaser.Scene, view: RouteSupplyDr
       .setInteractive({ useHandCursor: true }).setName(`supply-drawer-item-${entry.index}`));
     row.on('pointerdown', () => view.onActivate(entry.index));
     row.setData({ selected, armed });
-    decisionExcerpt(text(158, y - 25, entry.name ?? entry.id!, 328, 20, selected ? '#ffe1a3' : '#dbe8f2'), 28).setName('supply-drawer-item-name');
+    decisionExcerpt(text(158, y - 25, entry.name ?? entry.id!, 328, 21, selected ? '#ffe1a3' : '#dbe8f2'), 28).setName('supply-drawer-item-name');
     text(158, y + 5, armed ? 'Selected · Confirm to use' : timing(entry), 328, 16, armed ? '#ffe1a3' : '#abc4d4');
   });
   if (entries.length) {
-    text(142, 542, entries.length > 4 ? `${start + 1}–${Math.min(start + 4, entries.length)} of ${entries.length} packed` : `${Math.max(0, view.capacity - view.filled)} open slot${view.capacity - view.filled === 1 ? '' : 's'}`, 360, 16, '#abc4d4');
+    text(142, 542, entries.length > 4 ? `${start + 1}–${Math.min(start + 4, entries.length)} of ${entries.length}` : `Open slots: ${Math.max(0, view.capacity - view.filled)}`, 360, 19, '#abc4d4');
     button(228, 172, '← Previous', 'previous', () => view.onBrowse(-1));
     button(416, 172, 'Next →', 'next', () => view.onBrowse(1));
+  } else {
+    text(158, 224, 'No Supplies packed', 328, 22);
+    text(158, 270, 'Find tools at Caches, Basins and Markets.', 328, 21, '#abc4d4');
   }
   add(scene.add.rectangle(526, 376, 1, 368, 0x536574, 0.35));
   if (focus) {
@@ -84,24 +92,14 @@ export function renderRouteSupplyDrawer(scene: Phaser.Scene, view: RouteSupplyDr
     else text(594, 234, focus.glyph ?? '◇', 80, 32, '#ffe1a3').setOrigin(0.5);
     const fullName = focus.name ?? focus.id!;
     const title = decisionExcerpt(text(654, 194, fullName, 484, 26, '#ffe1a3'), 70).setName('supply-drawer-title');
-    text(654, 270, `${timing(focus)} · Single use`, 484, 18, '#abc4d4');
+    text(654, 270, focus.id ? `${timing(focus)} · Single use` : 'Read-only record', 484, 18, '#abc4d4');
     const heading = text(554, 306, '', 584, 16, '#abc4d4').setName('supply-drawer-heading');
     const body = text(554, 332, '', 584, 22).setName('supply-drawer-rules');
-    const sections = [{ heading: 'EFFECT', body: focus.summary || 'No additional rules.' },
+    const sections = [...(focus.id ? [{ heading: 'EFFECT', body: focus.summary || 'No additional rules.' }] : []),
       ...cardKeywordSections(focus.summary ?? ''),
+      ...(view.recent ?? []).map(entry => ({heading:'RECENT USE',body:`${entry.name}\n${entry.summary}`})),
       ...(title.text !== fullName ? [{ heading: 'FULL NAME', body: fullName }] : [])];
-    const pages: Array<{ title: string; text: string }> = [];
-    for (const section of sections) {
-      let lines: string[] = [];
-      for (const line of body.getWrappedText(section.body)) {
-        body.setText([...lines, line].join('\n'));
-        if (body.getBounds().bottom > 444 && lines.length) {
-          pages.push({ title: section.heading, text: lines.join('\n') }); lines = [];
-        }
-        lines.push(line);
-      }
-      if (lines.length) pages.push({ title: section.heading, text: lines.join('\n') });
-    }
+    const pages = measuredReadingPages(body, sections, 444);
     const readingKey = JSON.stringify([focus.index, focus.id, sections]);
     const state = readings.get(scene)?.key === readingKey ? readings.get(scene)! : { key: readingKey, page: 0 };
     readings.set(scene, state);
@@ -126,6 +124,7 @@ export function renderRouteSupplyDrawer(scene: Phaser.Scene, view: RouteSupplyDr
     const hint = text(554, 526, '', 584, 18, armed ? '#ffe1a3' : '#abc4d4').setName('supply-drawer-command-copy');
     bindChoiceHint(scene, hint, mode => {
       const read = pages.length > 1 && mode !== 'pointer' ? `\n${mode === 'controller' ? 'Y' : controlBindingLabel('roost')}: read more` : '';
+      if (!focus.id) return `Recent use · Read only.${read}`;
       if (!focus.usable) return `Keep packed · Use ${focus.timing === 'route' ? 'on the route' : 'in combat'}.${read}`;
       if (mode === 'pointer') return armed ? 'Confirm use, or cancel to keep it packed.' : 'Select an item, then confirm to use it.';
       const confirm = mode === 'controller' ? 'A' : view.confirmLabel;

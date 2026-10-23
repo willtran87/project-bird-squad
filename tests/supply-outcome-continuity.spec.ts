@@ -94,7 +94,9 @@ test('a confirmed lethal Supply moves directly from its drawer to rewards', asyn
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').root.getByName('supply-drawer-item-0'));
   const read = () => page.evaluate(() => {
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
-    return { mode: b.mode, supplies: [...b.runSupplies], armed: b.supplyDrawerArmedIndex, turn: b.turn, drawer: b.supplyDrawerOpen };
+    return { mode: b.mode, supplies: [...b.runSupplies], armed: b.supplyDrawerArmedIndex, turn: b.turn, drawer: b.supplyDrawerOpen,
+      expectedReward: b.createWaymarkRewardChoices().length > 1 ? 'waymarkReward' : 'cardReward',
+      waymarks: b.waymarkChoices.map((item: any) => item.id) };
   });
   const before = await read();
   await page.keyboard.press('Enter'); await settleCanvas(page);
@@ -102,9 +104,18 @@ test('a confirmed lethal Supply moves directly from its drawer to rewards', asyn
   expect((await read()).supplies).toEqual(before.supplies);
   await page.keyboard.press('Enter'); await settleCanvas(page);
   const after = await read();
-  expect(after.mode).toBe('cardReward'); expect(after.supplies).toEqual([]);
+  expect(after.mode).toBe(before.expectedReward); expect(after.supplies).toEqual([]);
   expect(after.drawer).toBe(false); expect(after.turn).toBe(before.turn);
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').rewardPresentationReady());
+  if (after.mode === 'waymarkReward') {
+    expect(after.waymarks).toHaveLength(3);
+    await page.keyboard.press('Enter'); await settleCanvas(page);
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').mode === 'cardReward');
+    expect((await read()).supplies).toEqual([]);
+    expect((await read()).turn).toBe(before.turn);
+    await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').rewardPresentationReady());
+  }
   for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
     await page.setViewportSize({ width, height }); await settleCanvas(page);
     await page.screenshot({ path: info.outputPath(`supply-victory-${width}.png`) });

@@ -48,12 +48,12 @@ The playable set-piece pass uses scene-and-resident route-event assets: individu
 | Encounter | Current Backdrop | Current Resident Art | Scene Focus |
 | --- | --- | --- | --- |
 | Lantern Roost | `route-events/lantern-roost-shelter-v3.webp` | `route-events/sella-warmwick-v2.webp` | Heated brass roost hearth integrated into the background |
-| Rooftop Cache | `route-events/rooftop-cache-office-v2.webp` | `route-events/marn-valeclip-v2.webp` | Sealed pulley cache cabinet integrated into the background |
-| Signal Landmark | `route-events/signal-switchboard-v2.webp` | `route-events/ivo-tallymast-v2.webp` | Illuminated switchboard route map integrated into the background |
-| Featherwright Studio | `route-events/featherwright-studio-v2.webp` | `route-events/oren-shearbright-v2.webp` | Grooming chair and feather press integrated into the background |
-| Rival Wager | `route-events/rival-wager-board-v2.webp` | `route-events/caldra-pinion-v2.webp` | Contract case and prize board integrated into the background |
+| Rooftop Cache | `route-events/rooftop-cache-office-v2.webp` | `route-events/marn-valeclip-v3.webp` | Sealed pulley cache cabinet integrated into the background |
+| Signal Landmark | `route-events/signal-switchboard-v2.webp` | `route-events/ivo-tallymast-v3.webp` | Illuminated switchboard route map integrated into the background |
+| Featherwright Studio | `route-events/featherwright-studio-v2.webp` | `route-events/oren-shearbright-v3.webp` | Grooming chair and feather press integrated into the background |
+| Rival Wager | `route-events/rival-wager-board-v2.webp` | `route-events/caldra-pinion-v3.webp` | Contract case and prize board integrated into the background |
 
-Each resident's source folder includes `*-chroma-source.png` on a flat green background and `*-alpha-source.png` for transparent review. Rival now uses its set-piece overlay as a pre-battle wager stop: the player can take Caldra's wager to enter the rival battle or decline and move on.
+Sella retains its chroma and alpha source pair. The other four residents use native transparent v3 masters directly under `assets/concept-art/route-events/`; Veyra uses the transparent v2 master under `assets/concept-art/market-kit/layers/`. These anatomy corrections and prompts are documented in `docs/art/resident-anatomy-correction-2026-09-29.md`. Rival uses its set-piece overlay as a pre-battle wager stop: the player can take Caldra's wager to enter the rival battle or decline and move on.
 
 Lantern Roost is the first completed scene in this set-piece pass. It now uses a dedicated scene plate and Sella Warmwick's decomposed resident cutout so the Basin visit feels like a landmark stop rather than the generic route-event layout.
 

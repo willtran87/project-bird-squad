@@ -37,8 +37,8 @@ for (const encounter of ['m1_entry', 'm1_boss']) {
           const artBounds = portrait ? battle.enemyTextureVisibleBounds(portrait.texture.key) : undefined;
           const imageBounds = portrait?.getBounds();
           if (portrait?.texture.key === 'enemy-roof_rat') {
-            const shadow = group.list[0].getByName('combat-enemy-contact-shadow');
-            const contact = portrait.y + portrait.displayHeight * (416 / 512 - 0.5);
+            const shadow = named('combat-enemy-contact-shadow');
+            const contact = battle.enemyView(enemy).y + portrait.y + portrait.displayHeight * (416 / 512 - 0.5);
             if (!shadow || Math.abs(shadow.y - contact) > 3) throw new Error('Roof Rat contact shadow detached from paws');
           }
           const artTop = imageBounds ? imageBounds.top + imageBounds.height * artBounds.top : 114;
@@ -49,11 +49,18 @@ for (const encounter of ['m1_entry', 'm1_boss']) {
             return badge.right < bounds.left || badge.left > bounds.right || badge.bottom < bounds.top || badge.top > bounds.bottom;
           });
           const log = battle.root.getByName('combat-log-hit').getBounds();
+          const cssScale = battle.game.canvas.getBoundingClientRect().width / 1280;
           const contains = (bounds: any) => bounds.left >= panel.left && bounds.right <= panel.right && bounds.top >= panel.top && bounds.bottom <= panel.bottom;
           return { nameFits: contains(name.getBounds()), valueFits: contains(value.getBounds()),
+            readable: Math.min(parseFloat(name.style.fontSize), parseFloat(value.style.fontSize)) * cssScale >= 14
+              && parseFloat(named('combat-enemy-intent-value').style.fontSize) * cssScale >= 16,
             separated: name.getBounds().right + 4 <= value.getBounds().left,
-            badgeClear: badge.bottom < panel.top && badge.centerX === panel.centerX,
-            logClear: log.top > panel.bottom,
+            badgeClear: contains(badge) && badge.bottom + 2 <= name.getBounds().top && badge.centerX === panel.centerX,
+            logClear: (log.right <= panel.left || log.left >= panel.right || log.top >= panel.bottom || log.bottom <= panel.top)
+              && [...battle.handCardRects.values()].every((card: any) => {
+                const bounds = card.getBounds();
+                return log.right <= bounds.left || log.left >= bounds.right || log.top >= bounds.bottom || log.bottom <= bounds.top;
+              }),
             badgesSeparated,
             fullName: name.getData('fullName') === enemy.name,
             exactHealth: value.text === `${enemy.hp}/${enemy.maxHp}`,
@@ -65,7 +72,7 @@ for (const encounter of ['m1_entry', 'm1_boss']) {
         });
       });
       expect(values.length).toBeGreaterThan(0);
-      for (const value of values) expect(value).toEqual({ nameFits: true, valueFits: true, separated: true, badgeClear: true, logClear: true, badgesSeparated: true, fullName: true, exactHealth: true, headerClear: true, meterFits: true, meterAccurate: true, crispIntent: true, artBelowHud: true, artAboveTell: true });
+      for (const value of values) expect(value).toEqual({ nameFits: true, valueFits: true, readable: true, separated: true, badgeClear: true, logClear: true, badgesSeparated: true, fullName: true, exactHealth: true, headerClear: true, meterFits: true, meterAccurate: true, crispIntent: true, artBelowHud: true, artAboveTell: true });
     };
     for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport);

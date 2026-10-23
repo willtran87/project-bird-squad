@@ -175,6 +175,20 @@ for (const scene of ['RouteScene', 'BattleScene']) for (const remapped of [false
         s.supplyDrawerFocusIndex = 0; s.renderAll();
       }, scene);
       await settleCanvas(page); expect((await read()).use).toBe(false); expect((await read()).rows).toEqual([]);
+      // Consuming the earlier Thermos leaves a useful recent-use record even
+      // with an empty pouch. Only a pouch with no history uses the small panel.
+      expect(await page.evaluate(scene => {
+        const s = (window as any).__birdSquadGame.scene.getScene(scene), root = s.root ?? s.children;
+        return { height: root.getByName('supply-drawer-frame').height,
+          title: root.getByName('supply-drawer-title').text,
+          recent: s.supplyFeedback.length };
+      }, scene)).toEqual({ height: 600, title: 'Recent Supply use', recent: 1 });
+      await page.screenshot({ path: info.outputPath(`packed-${scene}-empty-with-history.png`) });
+      await page.evaluate(scene => {
+        const s = (window as any).__birdSquadGame.scene.getScene(scene);
+        s.supplyFeedback = []; s.renderAll();
+      }, scene);
+      await settleCanvas(page);
       const empty = await page.evaluate(scene => {
         const s = (window as any).__birdSquadGame.scene.getScene(scene), root = s.root ?? s.children;
         return { height: root.getByName('supply-drawer-frame').height, close: root.getByName('supply-drawer-close').height * s.game.canvas.getBoundingClientRect().height / 720 };

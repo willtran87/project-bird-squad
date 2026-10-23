@@ -27,6 +27,7 @@ test('hand typography preserves authored rules, bounds and turn readiness', asyn
     await settleCanvas(page);
     const result = await page.evaluate(() => {
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+      const cssScale = b.game.canvas.getBoundingClientRect().width / 1280;
       const named = (name: string) => b.handLayer.list.filter((c: any) => c.name === name);
       return named('combat-card-title').map((title: any, i: number) => {
         const header = named('combat-card-title-panel')[i].getBounds();
@@ -34,14 +35,15 @@ test('hand typography preserves authored rules, bounds and turn readiness', asyn
         const panel = named('combat-card-rules-panel')[i].getBounds();
         const contains = (outer: any, inner: any) => inner.left >= outer.left && inner.right <= outer.right && inner.top >= outer.top && inner.bottom <= outer.bottom;
         return { titleFits: contains(header, title.getBounds()), rulesFit: contains(panel, summary.getBounds()),
+          primaryReadable: Math.min(parseFloat(title.style.fontSize), parseFloat(summary.style.fontSize)) * cssScale >= 16,
           text: summary.text, wrapped: summary.getWrappedText(),
           authored: summary.getData('fullText') === b.activeCardContract(b.hand[i]).text.replace(/\s+/g,' ').trim(),
-          omissionMarked: !summary.getData('truncated') || summary.text.endsWith('…'),
+          omissionMarked: !summary.getData('truncated') || /Inspect/.test(summary.text),
           linkedQuantities: summary.getWrappedText().every((line: string) => !/^(?:›|\d+[.!]?|Cover[.!]?|Resonance[.!]?)$/.test(line.trim())) };
       });
     });
     expect(result.length).toBeGreaterThan(0);
-    expect(result.filter((r: any) => !r.titleFits || !r.rulesFit || !r.authored || !r.omissionMarked || !r.linkedQuantities)).toEqual([]);
+    expect(result.filter((r: any) => !r.primaryReadable || !r.titleFits || !r.rulesFit || !r.authored || !r.omissionMarked || !r.linkedQuantities)).toEqual([]);
     await page.screenshot({path:info.outputPath(`hand-${viewport.width}.png`)});
   }
   await page.setViewportSize({width:2560,height:1600});
@@ -50,31 +52,45 @@ test('hand typography preserves authored rules, bounds and turn readiness', asyn
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     b.onCardClicked(b.hand[0].instanceId);
     const control = b.cardPreview?.getByName('combat-card-inspect-hit');
-    return { right: control?.getBounds().right, selected: b.selectedInstanceId, modal: Boolean(b.combatCardDetail?.active) };
+    const a = control.getBounds(), history = b.root.getByName('combat-log-hit').getBounds();
+    const headings = b.cardPreview.list.filter((o: any) => o.type === 'Text');
+    return { right: a.right, selected: b.selectedInstanceId, modal: Boolean(b.combatCardDetail?.active),
+      historyClear: a.right <= history.left || a.left >= history.right || a.bottom <= history.top || a.top >= history.bottom,
+      inspectorClear: headings.length === 2 && headings[0].getBounds().bottom + 4 <= headings[1].getBounds().top };
   });
   expect(focus.selected).toBeTruthy();
   expect(focus.right).toBeLessThanOrEqual(154);
   expect(focus.modal).toBe(false);
+  expect(focus.historyClear).toBe(true);
+  expect(focus.inspectorClear).toBe(true);
   await page.screenshot({path:info.outputPath('selected-2560.png')});
   const turn = await page.evaluate(() => {
     const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene');
     b.handleBattleBack(); b.hand = []; b.endTurnAnimated();
     b.time.paused = true; b.tweens.pauseAll();
+    const hit=b.root.getByName('combat-roost-hit');
+    const before=JSON.stringify({turn:b.turn,run:b.runState,pending:b.combatAnimationPending});
+    // Shared controls retain a guarded handler; disabled input must neither
+    // participate in hit testing nor commit when an event is dispatched.
+    hit.emit('pointerdown'); hit.emit('pointerdown');
     return { label: b.root.getByName('combat-roost-label')?.text,
-      handlers: b.root.getByName('combat-roost-hit')?.listenerCount('pointerdown') };
+      interactive:Boolean(hit.input?.enabled), enabled:hit.getData('enabled'),
+      unchanged:before===JSON.stringify({turn:b.turn,run:b.runState,pending:b.combatAnimationPending}) };
   });
-  expect(turn).toEqual({label:'Enemy turn',handlers:0});
+  expect(turn).toEqual({label:'Enemy turn',interactive:false,enabled:false,unchanged:true});
   await page.screenshot({path:info.outputPath('enemy-turn-2560.png')});
   const ready = await page.evaluate(() => {
     const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene');
     b.time.paused = false; b.tweens.resumeAll();
     for (let i=0;i<1600 && b.combatAnimationPending;i++) w.advanceTime(10);
     return {pending:b.combatAnimationPending, label:b.root.getByName('combat-roost-label')?.text,
-      handlers:b.root.getByName('combat-roost-hit')?.listenerCount('pointerdown')};
+      handlers:b.root.getByName('combat-roost-hit')?.listenerCount('pointerdown'),
+      interactive:Boolean(b.root.getByName('combat-roost-hit')?.input?.enabled)};
   });
   expect(ready.pending).toBe(false);
   expect(ready.label).toContain('Roost');
   expect(ready.handlers).toBe(1);
+  expect(ready.interactive).toBe(true);
   // Stress the renderer independently of game balance: long title/rules, Molt,
   // unaffordable cards, Retain and reinforced color cues together.
   const stress = await page.evaluate(() => {
@@ -94,7 +110,7 @@ test('hand typography preserves authored rules, bounds and turn readiness', asyn
     const badge = items.find((c: any) => c.name === 'combat-card-molt-badge');
     const summary = items.find((c: any) => c.name === 'combat-card-readable-summary');
     return { separated:name.getBounds().bottom < badge.getBounds().top,
-      titleOmission:name.text.endsWith('…'), rulesOmission:summary.text.endsWith('…'),
+      titleOmission:name.text.endsWith('…'), rulesOmission:/Inspect/.test(summary.text),
       fullRules:summary.getData('fullText').endsWith('Retain 1 card.'),
       containedFrames: [...b.handCardFrames.entries()].every(([id, frame]: any) => {
         const outer = b.handCardRects.get(id).getBounds(), inner = frame.getBounds();

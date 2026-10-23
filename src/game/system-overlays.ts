@@ -1,5 +1,8 @@
+import { UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT } from './ui-tokens';
 import Phaser from 'phaser';
-import { memoryStorageSessionActive } from './safe-storage';
+import { recoveryOwnsInput } from './recovery-input';
+import { quietButton } from './quiet-ui';
+import { memoryStorageSessionActive, storageWriteResults } from './safe-storage';
 import {
   CONTROL_BINDING_DEFINITIONS,
   controlActionLabel,
@@ -30,12 +33,14 @@ import type {
   VisualContrastState,
 } from './visual-accessibility';
 import type { ScreenReaderPreference, ScreenReaderState } from './screen-reader-accessibility';
-import { MIN_SUPPORTED_TOUCH_TARGET, UI_FONT, UI_BOLD, MENU_UI } from './theme';
+import { MIN_SUPPORTED_TOUCH_TARGET, UI_FONT, UI_BOLD, UI_TYPE, MENU_UI } from './theme';
 const { gold: UI_GOLD, cyan: UI_CYAN, soft: UI_SOFT, field: UI_FIELD } = MENU_UI;
 import { bindActionFocus } from './action-focus';
 
 const GAME_WIDTH = 1280;
 const GAME_HEIGHT = 720;
+
+const storageWriteFailed = (key: string) => !memoryStorageSessionActive() && storageWriteResults.get(key) === false;
 
 type UiAdd = (object: Phaser.GameObjects.GameObject) => void;
 type MotionPreference = 'full' | 'system' | 'reduced';
@@ -78,6 +83,7 @@ export interface SettingsOverlayOptions {
 }
 
 export interface HowToPlayOverlayOptions {
+  initialFocus?: number;
   onClose: () => void;
   guide: { enabled: boolean; completed: boolean };
   onGuideAction: () => void;
@@ -127,34 +133,6 @@ export interface SystemOverlayDependencies {
     y: number,
     onToggle?: () => void,
   ) => unknown;
-  renderCloseControl: (
-    scene: Phaser.Scene,
-    addTo: UiAdd,
-    x: number,
-    y: number,
-    onClick: () => void,
-  ) => unknown;
-  renderFieldButton: (
-    scene: Phaser.Scene,
-    addTo: UiAdd,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    label: string,
-    enabled: boolean,
-    onClick: () => void,
-    accent?: number,
-  ) => unknown;
-  renderFieldPanel: (
-    scene: Phaser.Scene,
-    addTo: UiAdd,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    options: { accent: number; fill: number },
-  ) => FieldFrame;
 }
 
 function addUi<T extends Phaser.GameObjects.GameObject>(addTo: UiAdd, object: T) {
@@ -703,55 +681,81 @@ function renderSettingsGraphicsQualitySwitch(
 export function renderPauseMenuOverlay(
   scene: Phaser.Scene, addTo: UiAdd, options: PauseOverlayOptions, dependencies: SystemOverlayDependencies,
 ) {
-  addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9).setInteractive());
+  const lifecycle = addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9)
+    .setName('pause-actions').setInteractive());
   const frame = renderQuietMenuPanel(scene, addTo, 620, 580);
   dependencies.renderAudioToggleControl(scene, addTo, frame.right - 58, frame.top + 50, options.onToggleAudio);
   addUi(addTo, scene.add.text(640, frame.top + 48, memoryStorageSessionActive() ? 'Practice Paused' : options.title, {
-    fontFamily: 'Georgia, serif', fontSize: '38px', color: UI_FIELD.text,
+    fontFamily: TOKEN_DISPLAY_FONT, fontSize: '38px', color: UI_FIELD.text,
   }).setResolution(2).setOrigin(0.5, 0));
   addUi(addTo, scene.add.text(640, frame.top + 106, memoryStorageSessionActive()
     ? 'Nothing saved. Main Menu ends practice.' : options.saveFailed
       ? 'Could not save. Your flight is still here.\nRetry Main Menu, or Resume and keep this tab open.' : options.subtitle, {
-    fontFamily: UI_FONT, fontSize: options.saveFailed ? '18px' : '15px',
+    fontFamily: UI_FONT, fontSize: UI_TYPE.secondary,
     color: options.saveFailed ? '#ffd0bf' : UI_SOFT, align: 'center', wordWrap: { width: 470 },
   }).setResolution(2).setOrigin(0.5, 0).setName('pause-status'));
   options.details.slice(0, 4).forEach(([label, value], index) => {
     const y = frame.top + 176 + index * 36;
     addUi(addTo, scene.add.text(frame.left + 100, y, label, {
-      fontFamily: UI_FONT, fontSize: '16px', color: UI_SOFT,
+      fontFamily: UI_FONT, fontSize: UI_TYPE.secondary, color: UI_SOFT,
     }).setResolution(2).setOrigin(0, 0.5));
     addUi(addTo, scene.add.text(frame.right - 100, y, value, {
-      fontFamily: UI_FONT, fontSize: '16px', color: UI_FIELD.text,
+      fontFamily: UI_FONT, fontSize: UI_TYPE.secondary, color: UI_FIELD.text,
     }).setResolution(2).setOrigin(1, 0.5));
   });
-  const action = (callback: () => void) => () => { dependencies.playUiSound('confirm'); callback(); };
-  renderQuietMenuButton(scene, addTo, 640, frame.top + 368, 300, 'Resume', action(options.onResume), true);
-  if (options.onSettings) renderQuietMenuButton(scene, addTo, 540, frame.top + 440, 170, 'Settings', action(options.onSettings));
-  renderQuietMenuButton(scene, addTo, options.onSettings ? 740 : 640, frame.top + 440, 170, 'Main Menu', action(options.onMenu));
-  if (options.onAbandon) renderQuietMenuButton(scene, addTo, 640, frame.top + 516, 220,
-    memoryStorageSessionActive() ? 'End Practice…' : 'Abandon Flight…', action(options.onAbandon))
-    .setName('pause-abandon-hit');
+  const returnFocusKey = `birdsquad.pauseReturnFocus.${scene.scene.key}`;
+  const action = (callback: () => void) => () => {
+    scene.registry.remove(returnFocusKey);
+    dependencies.playUiSound('confirm'); callback();
+  };
+  const actions: Array<{ hit: Phaser.GameObjects.Rectangle; label: string; run: () => void }> = [];
+  const addAction = (x: number, y: number, width: number, label: string, callback: () => void, primary = false) => {
+    const run = action(callback);
+    const hit = renderQuietMenuButton(scene, addTo, x, y, width, label, run, primary);
+    actions.push({ hit, label, run });
+    return hit;
+  };
+  const settings = options.onSettings ? () => {
+    scene.registry.set(returnFocusKey, 1);
+    options.onSettings!();
+  } : undefined;
+  addAction(640, frame.top + 368, 300, 'Resume', options.onResume, true);
+  if (settings) addAction(540, frame.top + 440, 170, 'Settings', settings);
+  addAction(options.onSettings ? 740 : 640, frame.top + 440, 170, 'Main Menu', options.onMenu);
+  if (options.onAbandon) addAction(640, frame.top + 516, 220,
+    memoryStorageSessionActive() ? 'End Practice…' : 'Abandon Flight…', options.onAbandon).setName('pause-abandon-hit');
+  const initialIndex = scene.registry.get(returnFocusKey) ?? 0;
+  bindActionFocus(scene, lifecycle, actions, action(options.onResume), {
+    exclusive: true, initialIndex, onPause: action(options.onResume), onSettings: settings,
+    onMute: () => { dependencies.activateAudioToggleControl(scene); },
+    onFullscreen: () => { scene.scale.toggleFullscreen(); },
+  });
 }
 
 export function renderConfirmRunExitOverlay(
   scene: Phaser.Scene, addTo: UiAdd, options: ConfirmRunExitOverlayOptions, dependencies: SystemOverlayDependencies,
 ) {
-  addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9).setInteractive());
+  const lifecycle = addUi(addTo, scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9)
+    .setName('confirm-exit-actions').setInteractive());
   renderQuietMenuPanel(scene, addTo, 680, 320);
   addUi(addTo, scene.add.text(640, 254, memoryStorageSessionActive() ? 'End practice?' : 'Abandon this run?', {
-    fontFamily: 'Georgia, serif', fontSize: '32px', color: UI_FIELD.text,
+    fontFamily: TOKEN_DISPLAY_FONT, fontSize: '32px', color: UI_FIELD.text,
   }).setResolution(2).setOrigin(0.5));
   addUi(addTo, scene.add.text(640, 318, memoryStorageSessionActive()
     ? 'Practice is discarded. Your saved flight and collection stay unchanged.' : 'Your progress on this run will be lost.', {
-    fontFamily: UI_FONT, fontSize: '16px', color: UI_SOFT, align: 'center', wordWrap: { width: 540 },
+    fontFamily: UI_FONT, fontSize: UI_TYPE.secondary, color: UI_SOFT, align: 'center', wordWrap: { width: 540 },
   }).setResolution(2).setOrigin(0.5).setName('route-confirm-exit-subtitle'));
-  renderQuietMenuButton(scene, addTo, 500, 410, 230, 'Keep Playing', options.onKeepPlaying, true)
+  const keep = renderQuietMenuButton(scene, addTo, 500, 410, 230, 'Keep Playing', options.onKeepPlaying, true)
     .setName('route-confirm-exit-keep-hit');
-  renderQuietMenuButton(scene, addTo, 780, 410, 230, memoryStorageSessionActive() ? 'End Practice' : 'Abandon Run', options.onAbandonRun)
+  const abandon = renderQuietMenuButton(scene, addTo, 780, 410, 230, memoryStorageSessionActive() ? 'End Practice' : 'Abandon Run', options.onAbandonRun, false, true)
     .setName('route-confirm-exit-abandon-hit');
-  addUi(addTo, scene.add.text(640, 472, 'Esc to keep playing', {
-    fontFamily: UI_FONT, fontSize: '13px', color: UI_SOFT,
+  addUi(addTo, scene.add.text(640, 472, `${controlBindingLabel('back')} / B to keep playing`, {
+    fontFamily: UI_FONT, fontSize: UI_TYPE.secondary, color: UI_SOFT,
   }).setResolution(2).setOrigin(0.5).setName('route-confirm-exit-escape-hint'));
+  bindActionFocus(scene, lifecycle, [
+    { hit: keep, label: 'Keep Playing', run: options.onKeepPlaying },
+    { hit: abandon, label: abandon.getData('label'), run: options.onAbandonRun },
+  ], options.onKeepPlaying, { exclusive: true, onPause: options.onKeepPlaying });
 }
 
 const settingsInputCleanups = new WeakMap<Phaser.Scene, () => void>();
@@ -763,15 +767,13 @@ function renderQuietMenuPanel(scene: Phaser.Scene, addTo: UiAdd, width: number, 
     right: 640 + width / 2, top: 360 - height / 2, bottom: 360 + height / 2 };
 }
 
-function renderQuietMenuButton(scene: Phaser.Scene, addTo: UiAdd, x: number, y: number, width: number, label: string, onClick: () => void, primary = false) {
-  const hit = addUi(addTo, scene.add.rectangle(x, y, width, MIN_SUPPORTED_TOUCH_TARGET, primary ? 0xd8b568 : 0x0b1723, 1)
-    .setInteractive({ useHandCursor: true }).setName('system-field-button-hit').setData('label', label));
-  const caption = addUi(addTo, scene.add.text(x, y, label, {fontFamily: UI_FONT, fontSize: '16px', color: primary ? '#101b24' : UI_FIELD.text})
-    .setResolution(2).setOrigin(0.5));
+function renderQuietMenuButton(scene: Phaser.Scene, addTo: UiAdd, x: number, y: number, width: number, label: string, onClick: () => void, primary = false, destructive = false) {
+  const hit = quietButton(scene, { x, y, width, label, name: 'system-field-button-hit',
+    kind: destructive ? 'destructive' : primary ? 'primary' : 'secondary', onActivate: onClick });
+  const caption = hit.getData('labelObject') as Phaser.GameObjects.Text;
+  addUi(addTo, hit); addUi(addTo, caption);
+  hit.setData('label', label);
   hit.setData('caption', caption);
-  hit.on('pointerover', () => hit.setFillStyle(primary ? 0xefd293 : 0x152b39));
-  hit.on('pointerout', () => hit.setFillStyle(primary ? 0xd8b568 : 0x0b1723));
-  hit.on('pointerdown', onClick);
   return hit;
 }
 
@@ -798,11 +800,15 @@ export function renderSettingsMenuOverlay(
   scene.registry.set(settingsInputKey, true);
   const frame = renderQuietMenuPanel(scene, addTo, 1160, 660);
   addUi(addTo, scene.add.text(frame.left + 108, frame.top + 68, options.title, {
-    fontFamily: 'Georgia, serif',
+    fontFamily: TOKEN_DISPLAY_FONT,
     fontSize: '40px',
     color: UI_FIELD.text,
   }));
   renderQuietMenuButton(scene, addTo, frame.right - 66, frame.top + 58, 104, 'Close', () => { dependencies.playUiSound('close'); dismissSettingsOverlay(); });
+
+  const applyHint = addUi(addTo, scene.add.text(frame.left + 108, frame.top + 120, '', {
+    fontFamily: UI_FONT, fontSize: UI_TYPE.secondary, color: UI_SOFT,
+  }).setName('system-settings-apply-hint'));
 
   addUi(addTo, scene.add.rectangle(640, 180, 944, 1, 0x334954));
   const audioSnapshot = dependencies.audio.snapshot();
@@ -834,6 +840,15 @@ export function renderSettingsMenuOverlay(
     ['Screen Shake', screenShakeLabel(screenShake), 'screenShake'],
     ['Flashes', flashEffectsLabel(flashEffects), 'flashEffects'],
   ];
+  const storageKeys = ['audioMuted', 'musicVolume', 'sfxVolume', 'voiceVolume', 'ambienceVolume',
+    'controlBindings', 'motionPreference', 'visualContrast', 'graphicsQuality', 'combatPace',
+    'animationPace', 'textPace', 'screenReader', 'colorCues', 'screenShake', 'flashEffects'];
+  const refreshSaveHint = () => {
+    const failed = storageKeys.some(key => storageWriteFailed(`birdsquad.${key}`));
+    applyHint.setText(failed ? 'Some settings are session-only. Change them again to retry saving.' : 'Changes apply immediately.')
+      .setColor(failed ? '#ffd0bf' : UI_SOFT).setData('saveFailed', failed);
+  };
+  refreshSaveHint();
   let musicVolume = audioSnapshot.musicVolume;
   let sfxVolume = audioSnapshot.sfxVolume;
   let voiceVolume = audioSnapshot.voiceVolume;
@@ -854,12 +869,30 @@ export function renderSettingsMenuOverlay(
   let openControlsPanel = (_playSound = true) => {};
   const controlsRowIndex = rows.findIndex(([, , kind]) => kind === 'controls');
   const sections = [
-    { label: 'Audio', rows: [0, 1, 2, 3, 4], detail: 'Balance music, cues, card voices, and ambience independently.' },
-    { label: 'Presentation', rows: [8, 9, 10, 11], detail: 'Tune visual detail and pacing. Combat rules stay the same.' },
-    { label: 'Accessibility', rows: [6, 7, 12, 13, 14, 15], detail: 'Adjust motion, contrast, announcements, color cues, shake, and flashes.' },
-    { label: 'Controls', rows: [5], detail: 'Remap keyboard actions. Conflicting keys swap safely.' },
+    { label: 'Audio', rows: [0, 1, 2, 3, 4] },
+    { label: 'Presentation', rows: [8, 9, 10, 11] },
+    { label: 'Accessibility', rows: [6, 7, 12, 13, 14, 15] },
+    { label: 'Controls', rows: [5] },
   ];
   const navigationOrder = sections.flatMap((section) => section.rows);
+  const explanations = [
+    'Mute all sound without changing your individual volume levels.',
+    'Background music volume. Muting Audio silences it without losing this level.',
+    'Combat and interface cues. Muting Audio silences them without losing this level.',
+    'Spoken card cues. Muting Audio silences them without losing this level.',
+    'Environmental sound. Muting Audio silences it without losing this level.',
+    'Remap keyboard actions. Conflicting keys swap safely.',
+    'System follows your device. Reduced also disables shake and reduces flashes.',
+    'High contrast strengthens labels, outlines and interaction cues.',
+    'Lean reduces decorative effects. Auto adapts quality; rules stay the same.',
+    'Changes combat pauses and enemy tells, not game rules.',
+    'Changes card and effect animation speed independently of combat pauses.',
+    'Changes how long transient messages remain visible.',
+    'Announces game state and focused actions to screen-reader software.',
+    'Reinforced adds patterns and symbols so cues do not rely on color alone.',
+    screenShake.reducedByMotion ? 'Reduced Motion keeps shake off. Your chosen preference resumes with Full Motion.' : 'Turn camera shake on or off. Reduced Motion always keeps it off.',
+    flashEffects.reducedByMotion ? 'Reduced Motion limits flashes. Your chosen preference resumes with Full Motion.' : 'Reduce bright impact flashes without hiding the action result.',
+  ];
   const rowObjects: Phaser.GameObjects.GameObject[][] = rows.map(() => []);
   const sectionButtons: Phaser.GameObjects.Rectangle[] = [];
   let sectionDescription: Phaser.GameObjects.Text | undefined;
@@ -873,7 +906,7 @@ export function renderSettingsMenuOverlay(
   const rowPosition = (index: number) => {
     const row = sections[sectionForRow(index)].rows.indexOf(index);
     const cx = frame.right - 310;
-    return { cx, y: frame.top + 198 + row * 64, right: cx + 260 };
+    return { cx, y: frame.top + 198 + row * 66, right: cx + 260 };
   };
   const setFocus = (index: number) => {
     focusIndex = (index + rows.length) % rows.length;
@@ -892,9 +925,12 @@ export function renderSettingsMenuOverlay(
       .setFillStyle(index === sectionIndex ? 0x152b39 : 0x0b1723, 0.98)
       .setStrokeStyle(0)
       .setData('selected', index === sectionIndex));
-    sectionDescription?.setText(sections[sectionIndex].detail);
+    const unsaved = storageWriteFailed(`birdsquad.${storageKeys[focusIndex]}`);
+    sectionDescription?.setText(unsaved ? `Session-only. Change again to retry.\n${explanations[focusIndex]}` : explanations[focusIndex]);
+    refreshSaveHint();
     scene.registry.set(`birdsquad.settingsDetail.${scene.scene.key}`, {
       section: sections[sectionIndex].label, value: rows[focusIndex][1],
+      explanation: sectionDescription?.text ?? explanations[focusIndex], saveFailed: unsaved,
       position: sections[sectionIndex].rows.indexOf(focusIndex) + 1,
       count: sections[sectionIndex].rows.length,
     });
@@ -1026,9 +1062,13 @@ export function renderSettingsMenuOverlay(
     else if (kind === 'screenShake') setScreenShake(adjacentValue(['on', 'off'] as const, screenShakePreference, 1));
     else if (kind === 'flashEffects') setFlashEffects(adjacentValue(['full', 'reduced'] as const, flashEffectsPreference, 1));
   };
-const addSettingsObject = addTo;
+  const addSettingsObject = addTo;
   rows.forEach(([label, value, kind], index) => {
     const addTo: UiAdd = (object) => {
+      if (object instanceof Phaser.GameObjects.Text) {
+        object.setFontSize(UI_TYPE.primary).setData('settingsRow', index);
+        object.setName(object.text === label ? 'system-settings-row-label' : 'system-settings-row-value');
+      }
       rowObjects[index].push(object);
       addSettingsObject(object);
     };
@@ -1212,19 +1252,19 @@ const addSettingsObject = addTo;
     });
     sectionButtons.push(button);
     addUi(addTo, scene.add.text(x - 118, y, section.label, {
-      fontFamily: UI_FONT, fontSize: '18px', fontStyle: UI_BOLD, color: UI_GOLD,
+      fontFamily: UI_FONT, fontSize: UI_TYPE.primary, fontStyle: UI_BOLD, color: UI_GOLD,
     }).setOrigin(0, 0.5));
   });
   sectionDescription = addUi(addTo, scene.add.text(frame.left + 88, frame.top + 454, '', {
-    fontFamily: UI_FONT, fontSize: '15px', color: UI_SOFT,
-    wordWrap: { width: 280 }, maxLines: 4,
+    fontFamily: UI_FONT, fontSize: UI_TYPE.secondary, color: UI_SOFT,
+    wordWrap: { width: 350 },
   }).setName('system-settings-section-description'));
-  addUi(addTo, scene.add.text(frame.cx, frame.bottom - 30, 'Up / Down / Tab: move   ·   Left / Right: adjust   ·   PgUp / PgDn or LB / RB: section', {
-    fontFamily: UI_FONT, fontSize: '13px', color: UI_CYAN,
-    align: 'center', fixedWidth: 1000,
+  addUi(addTo, scene.add.text(frame.cx, frame.bottom - 26, '↑ / ↓ / Tab: move  ·  ← / →: adjust  ·  PgUp / PgDn or LB / RB: section', {
+    fontFamily: UI_FONT, fontSize: UI_TYPE.secondary, color: UI_CYAN,
+    align: 'center', fixedWidth: 1040,
   }).setOrigin(0.5).setName('system-settings-navigation-hint'));
   setFocus(focusIndex);
-  renderQuietMenuButton(scene, addTo, frame.cx, frame.bottom - 72, 190, scene.scale.isFullscreen ? 'Windowed' : 'Full Screen', () => {
+  renderQuietMenuButton(scene, addTo, frame.left + 226, frame.bottom - 72, 190, scene.scale.isFullscreen ? 'Windowed' : 'Full Screen', () => {
     dependencies.playUiSound('confirm');
     options.onToggleFullscreen();
   });
@@ -1308,11 +1348,12 @@ const addSettingsObject = addTo;
   };
 
   const resetAllControls = () => {
-    resetControlBindings();
+    const persisted = resetControlBindings();
     captureAction = undefined;
-    controlsStatus = 'Default keyboard bindings restored';
+    controlsStatus = persisted ? 'Default keyboard bindings restored' : 'Defaults applied for this session only. Could not save.';
     scene.registry.remove(controlsCaptureKey);
     updateControlsValue();
+    refreshSaveHint();
     dependencies.playUiSound('confirm');
     renderControlsPanel();
   };
@@ -1325,10 +1366,16 @@ const addSettingsObject = addTo;
 
   renderControlsPanel = () => {
     controlsPanel?.destroy(true);
+    scene.registry.get(`birdsquad.settingsDetail.${scene.scene.key}`).controlsStatus = controlsStatus;
     const panel = scene.add.container(0, 0).setName('system-controls-panel');
     controlsPanel = addUi(addTo, panel);
     controlsRowFrames = [];
-    const addPanel: UiAdd = (object) => panel.add(object);
+    const addPanel: UiAdd = (object) => {
+      if (object instanceof Phaser.GameObjects.Text) object.setFontSize(
+        Math.max(UI_TYPE.secondary, Number.parseFloat(String(object.style.fontSize))),
+      );
+      panel.add(object);
+    };
     addUi(addPanel, scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b1723, 1)
       .setInteractive({ useHandCursor: false })
       .setName('system-controls-modal-backdrop'));
@@ -1340,7 +1387,7 @@ const addSettingsObject = addTo;
       fontStyle: UI_BOLD,
       color: UI_FIELD.text,
     }));
-    addUi(addPanel, scene.add.text(controlFrame.left + 192, controlFrame.top + 80, 'Keyboard bindings  /  Controller: Standard', {
+    addUi(addPanel, scene.add.text(controlFrame.left + 96, controlFrame.top + 86, 'Keyboard bindings  /  Controller: Standard', {
       fontFamily: UI_FONT,
       fontSize: '14px',
       fontStyle: UI_BOLD,
@@ -1361,7 +1408,7 @@ const addSettingsObject = addTo;
       hit.on('pointerdown', () => setControlsPage(page));
       addUi(addPanel, scene.add.text(x, controlFrame.top + 132, page === 'play' ? 'Play' : 'Utility', {
         fontFamily: UI_FONT,
-        fontSize: '13px',
+        fontSize: UI_TYPE.primary,
         fontStyle: UI_BOLD,
         color: active ? UI_CYAN : UI_FIELD.muted,
       }).setOrigin(0.5));
@@ -1386,7 +1433,7 @@ const addSettingsObject = addTo;
       });
       addUi(addPanel, scene.add.text(controlFrame.left + 126, y, definition.label, {
         fontFamily: UI_FONT,
-        fontSize: '14px',
+        fontSize: UI_TYPE.primary,
         fontStyle: UI_BOLD,
         color: UI_FIELD.text,
       }).setOrigin(0, 0.5));
@@ -1396,14 +1443,14 @@ const addSettingsObject = addTo;
       }, dependencies);
       addUi(addPanel, scene.add.text(controlFrame.right - 164, y, captureAction === definition.action ? 'Press a key' : controlBindingLabel(definition.action), {
         fontFamily: UI_FONT,
-        fontSize: '13px',
+        fontSize: UI_TYPE.primary,
         fontStyle: UI_BOLD,
         color: captureAction === definition.action ? UI_GOLD : UI_CYAN,
         align: 'center',
       }).setOrigin(0.5));
     });
 
-    addUi(addPanel, scene.add.text(controlFrame.cx, controlFrame.bottom - 104, controlsStatus, {
+    addUi(addPanel, scene.add.text(controlFrame.cx, controlFrame.bottom - 118, controlsStatus, {
       fontFamily: UI_FONT,
       fontSize: '12px',
       fontStyle: UI_BOLD,
@@ -1462,10 +1509,11 @@ const addSettingsObject = addTo;
           captureAction = undefined;
           scene.registry.remove(controlsCaptureKey);
           if (update) {
-            controlsStatus = update.swappedAction
+            controlsStatus = !update.persisted ? 'Binding applied for this session only. Could not save.' : update.swappedAction
               ? `${controlActionLabel(action)}: ${controlCodeLabel(event.code)}  /  swapped with ${controlActionLabel(update.swappedAction)}`
               : `${controlActionLabel(action)}: ${controlCodeLabel(event.code)}`;
             updateControlsValue();
+            refreshSaveHint();
             dependencies.playUiSound('confirm');
           }
           renderControlsPanel();
@@ -1500,6 +1548,7 @@ const addSettingsObject = addTo;
     }
   };
   const onGamepadDown = (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button) => {
+    if (recoveryOwnsInput()) return;
     if (cleanedUp || !lifecycle.active || !scene.sys.settings.active) return;
     if (controlsPanel?.active) {
       const controlFrame = controlsPanel.getData('frame') as FieldFrame;
@@ -1566,11 +1615,11 @@ export function renderHowToPlayOverlay(
     .setInteractive({ useHandCursor: false }).setName('how-to-play-actions'));
   const frame = renderQuietMenuPanel(scene, addTo, 1160, 660);
   addUi(addTo, scene.add.text(168, 98, 'How to Play', {
-    fontFamily: 'Georgia, serif', fontSize: '40px', color: UI_FIELD.text,
+    fontFamily: TOKEN_DISPLAY_FONT, fontSize: '40px', color: UI_FIELD.text,
   }).setResolution(2));
   addUi(addTo, scene.add.text(170, 158, 'Build a flock. Find your rhythm. Make every choice count.', {
-    fontFamily: UI_FONT, fontSize: '17px', color: UI_SOFT,
-  }).setResolution(2).setName('how-to-play-readable'));
+    fontFamily: UI_FONT, fontSize: UI_TYPE.primary, color: UI_SOFT, wordWrap: { width: 940 },
+  }).setResolution(2).setName('guide-download-status'));
   const close = renderQuietMenuButton(scene, addTo, frame.right - 66, 88, 104, 'Close',
     () => { dependencies.playUiSound('close'); options.onClose(); });
 
@@ -1618,18 +1667,18 @@ export function renderHowToPlayOverlay(
     const x = frame.left + 250 + column * 340;
     const y = frame.top + 254 + row * 164;
     addUi(addTo, scene.add.rectangle(x, y - 66, 272, 1, 0x334954).setName('how-to-play-topic-rule'));
-    addUi(addTo, scene.add.text(x - 136, y - 48, card.title, {
+    addUi(addTo, scene.add.text(x - 148, y - 48, card.title, {
       fontFamily: UI_FONT,
-      fontSize: '17px',
+      fontSize: UI_TYPE.primary,
       fontStyle: UI_BOLD,
       color: UI_FIELD.warm,
     }).setResolution(2).setName('how-to-play-readable'));
-    addUi(addTo, scene.add.text(x - 136, y - 14, card.body, {
+    addUi(addTo, scene.add.text(x - 148, y - 14, card.body, {
       fontFamily: UI_FONT,
-      fontSize: '16px',
+      fontSize: UI_TYPE.secondary,
       color: '#c5d1d8',
       lineSpacing: 2,
-      wordWrap: { width: 272 },
+      wordWrap: { width: 296 },
     }).setResolution(2).setName('how-to-play-readable'));
   });
 
@@ -1638,25 +1687,25 @@ export function renderHowToPlayOverlay(
       'Quick keys',
       `${controlBindingLabel('roost')} Roost  |  ${controlBindingLabel('confirm')} Confirm  |  1-9 Cards  |  ${controlBindingLabel('skipReward')} Skip  |  ${controlBindingLabel('mute')} Mute`,
     ],
-    ['Waymarks', `In combat: Shift+${controlBindingLabel('skipReward')} or controller RT opens your artifacts. Reading never spends a turn.`],
+    ['Waymarks', `Shift+${controlBindingLabel('skipReward')} or RT: read artifacts without spending a turn.`],
   ];
   tips.forEach(([label, value], index) => {
-    const y = frame.bottom - 116 + index * 30;
+    const y = frame.bottom - 124 + index * 30;
     const accent = index % 2 === 0 ? UI_FIELD.cyan : UI_FIELD.brass;
     const textAccent = index % 2 === 0 ? UI_CYAN : UI_GOLD;
     addUi(addTo, scene.add.text(frame.cx - 458, y, label.toUpperCase(), {
       fontFamily: UI_FONT,
-      fontSize: '14px',
+      fontSize: UI_TYPE.secondary,
       fontStyle: UI_BOLD,
       color: textAccent,
-      fixedWidth: 100,
+      fixedWidth: 118,
       maxLines: 1,
     }).setOrigin(0, 0.5).setResolution(2).setName('how-to-play-tip-label'));
-    addUi(addTo, scene.add.text(frame.cx - 340, y, value, {
+    addUi(addTo, scene.add.text(frame.cx - 314, y, value, {
       fontFamily: UI_FONT,
-      fontSize: '15px',
+      fontSize: UI_TYPE.secondary,
       color: UI_FIELD.text,
-      fixedWidth: 800,
+      fixedWidth: 804,
       maxLines: 1,
     }).setOrigin(0, 0.5).setResolution(2).setName('how-to-play-tip-value'));
   });
@@ -1668,5 +1717,5 @@ export function renderHowToPlayOverlay(
     const practice = renderQuietMenuButton(scene, addTo, 500, frame.bottom - 42, 230, 'Practice lessons', options.onPractice, true);
     actions.unshift({ hit: practice, label: 'Practice lessons', run: options.onPractice });
   }
-  bindActionFocus(scene, lifecycle, actions);
+  bindActionFocus(scene, lifecycle, actions, options.onClose, { exclusive: true, initialIndex: options.initialFocus });
 }

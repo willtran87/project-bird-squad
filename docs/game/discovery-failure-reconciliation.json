@@ -1,0 +1,890 @@
+{
+  "candidate": "index-Cl7N8-97.js",
+  "discovery": "acceptance-final.json",
+  "final": "acceptance-clean.json",
+  "count": 49,
+  "rows": [
+    {
+      "discovery": {
+        "file": "combat-waymark-loading.spec.ts",
+        "title": "failed Waymark loading preserves combat and explains reload recovery",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "combat-waymark-loading.spec.ts",
+        "title": "failed Waymark loading preserves combat and explains reload recovery",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "deck-review-input-hints.spec.ts",
+        "title": "Deck Review hints follow input without changing decisions, remapped=false",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "deck-review-input-hints.spec.ts",
+        "title": "Deck Review hints follow input without changing decisions, remapped=false",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "deck-review-input-hints.spec.ts",
+        "title": "Deck Review hints follow input without changing decisions, remapped=true",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "deck-review-input-hints.spec.ts",
+        "title": "Deck Review hints follow input without changing decisions, remapped=true",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "deck-review-polish.spec.ts",
+        "title": "deck comparison pages preserve full rules and separate pin from selection",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "deck-review-polish.spec.ts",
+        "title": "deck comparison pages preserve full rules and separate pin from selection",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "incoming-feedback-polish.spec.ts",
+        "title": "generated effects retire their entire owned batch exactly once, reduced=false",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "incoming-feedback-polish.spec.ts",
+        "title": "generated effects retire their entire owned batch exactly once, reduced=false",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "market-shelf-polish.spec.ts",
+        "title": "Market merchandise separates identity price and art with complete readable rules",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "market-shelf-polish.spec.ts",
+        "title": "Market merchandise separates identity price and art with complete readable rules",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "market-transaction-polish.spec.ts",
+        "title": "Market exposes pouch and eligibility blockers and controller purchases exactly once",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "market-transaction-polish.spec.ts",
+        "title": "Market exposes pouch and eligibility blockers and controller purchases exactly once",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "packed-supplies-polish.spec.ts",
+        "title": "Packed Supplies are readable and deliberate in RouteScene, remapped=false",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "packed-supplies-polish.spec.ts",
+        "title": "Packed Supplies are readable and deliberate in RouteScene, remapped=false",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "packed-supplies-polish.spec.ts",
+        "title": "Packed Supplies are readable and deliberate in BattleScene, remapped=false",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "packed-supplies-polish.spec.ts",
+        "title": "Packed Supplies are readable and deliberate in BattleScene, remapped=false",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "preen-choice-polish.spec.ts",
+        "title": "Preen choices expose readable changes and explicit commitment, remapped=false",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "preen-choice-polish.spec.ts",
+        "title": "Preen choices expose readable changes and explicit commitment, remapped=false",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "preen-choice-polish.spec.ts",
+        "title": "Preen choices expose readable changes and explicit commitment, remapped=true",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "preen-choice-polish.spec.ts",
+        "title": "Preen choices expose readable changes and explicit commitment, remapped=true",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "preen-choice-polish.spec.ts",
+        "title": "normal reward catalog keeps long rules bounded and previews every kind of Preen change",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "preen-choice-polish.spec.ts",
+        "title": "normal reward catalog keeps long rules bounded and previews every kind of Preen change",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "route map loads and previews the boss before the final node",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "route map loads and previews the boss before the final node",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "contextual Molt lesson waits for a Molt card, respects skip, and retires after play",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "contextual Molt lesson waits for a Molt card, respects skip, and retires after play",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "discard recovery pauses in written order and returns the explicit pointer choice",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "discard recovery pauses in written order and returns the explicit pointer choice",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "reward renderer loading skeleton preserves ceremony anchors until choices unlock",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "reward renderer loading skeleton preserves ceremony anchors until choices unlock",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "reward decision chips preview the exact add and Preen outcomes before commitment",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "reward decision previews expose the exact add and Preen outcomes before commitment",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "Market card detail keeps live deck-fit guidance in the focused dossier",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "Market card detail keeps live deck-fit guidance in the focused dossier",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "market shelves stock multiple finite offers and paid refreshes",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "market shelves stock multiple finite offers and paid refreshes",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "market overlay renders generated shopkeeper sign and counter kit",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "market overlay renders generated shopkeeper sign and counter kit",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "settings overlay opens from menu and paused run surfaces",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "settings overlay opens from menu and paused run surfaces",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "shared onboarding and pause commands keep touch targets at the minimum supported viewport",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "shared onboarding and pause commands keep touch targets at the minimum supported viewport",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "Codex and Flock Record controls keep touch targets at the minimum supported viewport",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "Codex and Flock Record controls keep touch targets at the minimum supported viewport",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "route decisions and outcome commands keep touch targets at the minimum supported viewport",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "route decisions and outcome commands keep touch targets at the minimum supported viewport",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "run HUD, card picker, market close, and combat log keep touch targets at the minimum supported viewport",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "run HUD, card picker, market close, and combat log keep touch targets at the minimum supported viewport",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "grouped Settings isolate hidden controls and preserve focus and values across surfaces",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "grouped Settings isolate hidden controls and preserve focus and values across surfaces",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "How to Play teaches the full loop with readable unclipped text and matching narration",
+        "status": "unexpected",
+        "results": [
+          "timedOut"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "How to Play teaches the full loop with readable unclipped text and matching narration",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "title How to Play overlay opens, reports state, and loads its medallion",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "title How to Play overlay opens with quiet controls and stable guide actions",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "route deck review supports pointer filters, sorting, find, and keyboard card navigation",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "route deck review supports pointer filters, sorting, find, and keyboard card navigation",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "deck review overlays retain authored art with quiet readable controls",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "deck review overlays retain authored art with quiet readable controls",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "mute shortcut reuses rendered audio feedback without re-entering core scenes",
+        "status": "unexpected",
+        "results": [
+          "timedOut"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "mute shortcut reuses rendered audio feedback without re-entering core scenes",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "Codex card collections expose discovery milestones and feed the next-flight goal",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "Codex card collections expose discovery milestones and feed the next-flight goal",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "outcome flight codes copy a shared route link that launches the same seed and length",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "outcome flight codes copy a shared route link that launches the same seed and length",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "Flock Record focus follows remapped keyboard and gamepad controls with one cue per action",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "Flock Record focus follows remapped keyboard and gamepad controls with one cue per action",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "playtest mode exports local run history from the Flock Record without an upload",
+        "status": "unexpected",
+        "results": [
+          "timedOut"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "playtest mode exports local run history from the Flock Record without an upload",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "codex: Hunt List supports pointer, keyboard, controller, capacity, and an accessible empty state",
+        "status": "unexpected",
+        "results": [
+          "timedOut"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "codex: Hunt List supports pointer, keyboard, controller, capacity, and an accessible empty state",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "codex: personal tags organize discovered cards through pointer, keyboard, controller, search, a Tagged lens, and save sanitation",
+        "status": "unexpected",
+        "results": [
+          "timedOut"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "codex: personal tags organize discovered cards through pointer, keyboard, controller, search, a Tagged lens, and save sanitation",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "codex: active filter chips remove search and lens individually or together without losing set and sort context",
+        "status": "unexpected",
+        "results": [
+          "timedOut"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "codex: active filter chips remove search and lens individually or together without losing set and sort context",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "codex: Collection Atlas reports permanent set, rarity, and acquisition progress with pointer, keyboard, controller, and screen-reader access",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "codex: Collection Atlas reports permanent set, rarity, and acquisition progress with pointer, keyboard, controller, and screen-reader access",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "collection path surfaces the next optional goal from title and route and returns to the active flight",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "collection path surfaces the next optional goal from title and route and returns to the active flight",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "Flight Lab explains deck shape and replays deterministic protected sample hands without changing the folio",
+        "status": "unexpected",
+        "results": [
+          "timedOut"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "Flight Lab explains deck shape and replays deterministic protected sample hands without changing the folio",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "new card shortcut opens the exact dossier and returns to the active run across pointer keyboard and controller (district 1)",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "new card shortcut opens the exact dossier and returns to the active run across pointer keyboard and controller (district 1)",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "smoke.spec.ts",
+        "title": "new card shortcut opens the exact dossier and returns to the active run across pointer keyboard and controller (district 2)",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "smoke.spec.ts",
+        "title": "new card shortcut opens the exact dossier and returns to the active run across pointer keyboard and controller (district 2)",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "starter-combat-journey.spec.ts",
+        "title": "starter combat control journey: spark_caller",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "starter-combat-journey.spec.ts",
+        "title": "starter combat control journey: spark_caller",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "supply-outcome-continuity.spec.ts",
+        "title": "a confirmed lethal Supply moves directly from its drawer to rewards",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "supply-outcome-continuity.spec.ts",
+        "title": "a confirmed lethal Supply moves directly from its drawer to rewards",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "waymark-decision-polish.spec.ts",
+        "title": "Waymark decisions are readable and inspection cannot claim, remapped=false",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "waymark-decision-polish.spec.ts",
+        "title": "Waymark decisions are readable and inspection cannot claim, remapped=false",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "waymark-decision-polish.spec.ts",
+        "title": "Waymark decisions are readable and inspection cannot claim, remapped=true",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "waymark-decision-polish.spec.ts",
+        "title": "Waymark decisions are readable and inspection cannot claim, remapped=true",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "waymark-failure-polish.spec.ts",
+        "title": "failed reward art module retains readable Waymark choices and safe inspection, remapped=false",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "waymark-failure-polish.spec.ts",
+        "title": "failed reward art module retains readable Waymark choices and safe inspection, remapped=false",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    },
+    {
+      "discovery": {
+        "file": "waymark-failure-polish.spec.ts",
+        "title": "failed reward art module retains readable Waymark choices and safe inspection, remapped=true",
+        "status": "unexpected",
+        "results": [
+          "failed"
+        ]
+      },
+      "final": {
+        "file": "waymark-failure-polish.spec.ts",
+        "title": "failed reward art module retains readable Waymark choices and safe inspection, remapped=true",
+        "status": "expected",
+        "results": [
+          "passed"
+        ]
+      }
+    }
+  ]
+}

@@ -1,8 +1,13 @@
+import { UI_FONT as TOKEN_FONT } from './ui-tokens';
 import Phaser from 'phaser';
+import { quietButton } from './quiet-ui';
 import { comparisonPagingHint } from './deck-review-hints';
 import { decisionCardKeywordSections } from './keyword-definitions';
+import { renderDeckPortrait } from './deck-portrait';
+import type { RuntimeImageAsset } from './runtime-images';
 
 export interface SceneCardComparisonCardView {
+  portraitAsset?: RuntimeImageAsset;
   name: string;
   bird: string;
   label: string;
@@ -53,24 +58,21 @@ export function changeComparisonPage(scene: Phaser.Scene, delta: number) {
 }
 
 export function renderSceneCardComparison(scene: Phaser.Scene, view: SceneCardComparisonView) {
-  const text = (x: number, y: number, value: string, size = 20, width = 270) => scene.add.text(x, y, value, {
-    fontFamily: 'Arial', fontSize: `${size}px`, color: '#dce8f2', resolution: 2,
+  const text = (x: number, y: number, value: string, size = 21, width = 270) => scene.add.text(x, y, value, {
+    fontFamily: TOKEN_FONT, fontSize: `${size}px`, color: '#dce8f2', resolution: 2,
     wordWrap: { width, useAdvancedWrap: true }, lineSpacing: 3,
   });
   const panel = scene.add.rectangle(826, 377, 620, 426, 0x070b12, 0.99)
     .setStrokeStyle(1, 0x8df4ff, 0.42).setName('deck-review-comparison-panel');
-  text(826, 183, view.title ?? 'CARD COMPARISON', 16, 570).setOrigin(0.5).setColor('#ffe1a3').setFontStyle('bold');
+  text(826, 183, view.title ?? 'CARD COMPARISON', 19, 570).setOrigin(0.5).setColor('#ffe1a3').setFontStyle('bold');
   const divider = scene.add.rectangle(826, 374, 1, 302, 0x8df4ff, 0.2);
   const cards = [view.pinned, view.selected];
   const headings = [view.leftHeading ?? 'PINNED', view.rightHeading ?? 'SELECTED'];
   const columns = cards.map((card, i) => {
     const x = 536 + i * 310;
-    text(x, 210, headings[i], 15).setColor(i ? '#8df4ff' : '#ffc9f5').setFontStyle('bold');
-    const art = card.artKey && scene.textures.exists(card.artKey) ? card.artKey
-      : card.snagBorderKey && scene.textures.exists(card.snagBorderKey) ? card.snagBorderKey : undefined;
-    scene.add.rectangle(x + 24, 268, 48, 72, 0x141f2f, 1).setStrokeStyle(1, card.accent, 0.5);
-    if (art) scene.add.image(x + 24, 268, art).setDisplaySize(48, 72);
-    const name = text(x + 62, 232, card.name, 20, 208).setColor('#ffe1a3').setFontStyle('bold');
+    text(x, 210, headings[i], 19).setColor(i ? '#8df4ff' : '#ffc9f5').setFontStyle('bold');
+    renderDeckPortrait(scene, card, x + 24, 268, 48, 72, `deck-review-comparison-art-${i}`);
+    const name = text(x + 62, 232, card.name, 21, 208).setColor('#ffe1a3').setFontStyle('bold');
     const lines = name.getWrappedText();
     let excerpt = lines.slice(0, 2).join('\n');
     name.setText(excerpt + (lines.length > 2 ? '…' : ''));
@@ -82,10 +84,10 @@ export function renderSceneCardComparison(scene: Phaser.Scene, view: SceneCardCo
       scene.add.image(x + 76, 296, view.costBadgeKey).setDisplaySize(30, 30)
         .setName('deck-review-comparison-cost-badge');
     }
-    text(x + 76, 296, String(card.cost), 18, 30).setOrigin(0.5).setFontStyle('bold');
-    text(x + 98, 286, 'Wingbeats', 16, 140).setColor('#b9c7d6');
+    text(x + 76, 296, String(card.cost), 21, 30).setOrigin(0.5).setFontStyle('bold');
+    text(x + 98, 286, 'Wingbeats', 19, 140).setColor('#b9c7d6');
     return {
-      heading: text(x, 321, '', 15).setColor('#ffe1a3').setFontStyle('bold'),
+      heading: text(x, 321, '', 19).setColor('#ffe1a3').setFontStyle('bold'),
       body: text(x, 347, '').setName(`deck-review-comparison-body-${i}`),
     };
   });
@@ -126,7 +128,7 @@ export function renderSceneCardComparison(scene: Phaser.Scene, view: SceneCardCo
     const changes = columns.map((column, i) => paginate(column.body,
       changedRules(moltRules[i], moltRules[1 - i]).join('\n') || 'No unique Molt rules on this side.'));
     for (let i = 0; i < Math.max(...changes.map(side => side.length)); i++) {
-      pages.push({ headings: ['MOLT · REMOVED / REPLACED', 'MOLT · ADDED / REPLACEMENT'], bodies: changes.map(side => side[i] ?? 'End of Molt changes.') });
+      pages.push({ headings: ['MOLT · REMOVED', 'MOLT · ADDED'], bodies: changes.map(side => side[i] ?? 'End of Molt changes.') });
     }
   }
   // Keep short active rules and passive contributions together. If either side
@@ -154,35 +156,32 @@ export function renderSceneCardComparison(scene: Phaser.Scene, view: SceneCardCo
   const key = JSON.stringify({ sections, costs: cards.map(card => card.cost), targets: cards.map(card => card.target) }) + view.summary;
   const state = reading.get(scene)?.key === key ? reading.get(scene)! : { key, page: 0 };
   reading.set(scene, state);
-  const pageLabel = text(826, 539, '', 16, 150).setOrigin(0.5).setName('deck-review-comparison-page');
+  const pageLabel = text(826, 539, '', 19, 150).setOrigin(0.5).setName('deck-review-comparison-page');
   const inputMode = scene.children.getByName('deck-review-control-guide')?.getData('inputMode') ?? 'pointer';
-  text(826, 567, comparisonPagingHint(inputMode), 16, 260).setOrigin(0.5).setColor('#a9c6d5')
+  text(826, 567, comparisonPagingHint(inputMode), 19, 260).setOrigin(0.5).setColor('#a9c6d5')
     .setName('deck-review-comparison-hint');
   const buttons: Phaser.GameObjects.Rectangle[] = [];
-  const labels: Phaser.GameObjects.Text[] = [];
   const show = (delta: number) => {
+    const host = scene as Phaser.Scene & { pauseOverlayOpen?: boolean; settingsOverlayOpen?: boolean; deckReviewSearchActive?: boolean };
+    if (delta && (host.pauseOverlayOpen || host.settingsOverlayOpen || host.deckReviewSearchActive)) return;
     state.page = Phaser.Math.Clamp(state.page + delta, 0, pages.length - 1);
     const current = pages[state.page];
-    termBody.setFontSize(current.term ? 22 : 20).setWordWrapWidth(current.term ? 580 : 270, true);
+    termBody.setFontSize(current.term ? 22 : 21).setWordWrapWidth(current.term ? 580 : 270, true);
     divider.setVisible(!current.term);
     columns.forEach((column, i) => { column.heading.setText(current.headings[i] ?? ''); column.body.setText(current.bodies[i] ?? ''); });
     pageLabel.setText(`${state.page + 1} / ${pages.length}`);
     panel.setData('reading', { page: state.page + 1, total: pages.length, headings: current.headings, bodies: current.bodies });
     buttons.forEach((button, i) => {
       const enabled = i ? state.page < pages.length - 1 : state.page > 0;
-      button.setData('enabled', enabled).setAlpha(enabled ? 1 : 0.4);
-      labels[i].setAlpha(enabled ? 1 : 0.4);
+      button.setData('enabled', enabled);
     });
   };
   [-1, 1].forEach((delta, i) => {
     const x = i ? 1042 : 610;
-    const hit = scene.add.rectangle(x, 547, 140, 58, 0x152432, 1).setStrokeStyle(1, 0x8df4ff, 0.4)
-      .setInteractive({ useHandCursor: true }).setName(`deck-review-comparison-${i ? 'next' : 'previous'}`);
-    hit.on('pointerdown', () => { if (hit.getData('enabled')) show(delta); });
-    hit.on('pointerover', () => { if (hit.getData('enabled')) hit.setStrokeStyle(2, 0x8df4ff, 1); });
-    hit.on('pointerout', () => hit.setStrokeStyle(1, 0x8df4ff, 0.4));
+    const hit = quietButton(scene, { x, y: 547, width: 140,
+      label: i ? 'Next →' : '← Previous', name: `deck-review-comparison-${i ? 'next' : 'previous'}`,
+      onActivate: () => show(delta) });
     buttons.push(hit);
-    labels.push(text(x, 547, i ? 'Next →' : '← Previous', 16, 132).setOrigin(0.5));
   });
   panel.setData('changePage', show);
   show(0);

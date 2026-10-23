@@ -35,7 +35,7 @@ test('combat decision hierarchy preserves HUD targets and readable forecasts', a
       };
     });
     expect(hud.primary).toEqual(['22px', '22px']);
-    expect(hud.secondary).toEqual(['14px', '14px', '14px', '14px']);
+    expect(hud.secondary).toEqual(['19px', '19px', '19px', '19px']);
     expect(hud.hitTargets).toBe(true); expect(hud.labelsSeparate).toBe(true); expect(hud.guided).toBe(true); expect(hud.hint).toBe(false);
     await page.screenshot({ path: info.outputPath(`ready-${viewport.width}.png`) });
     const selection = await page.evaluate(() => {
@@ -47,7 +47,7 @@ test('combat decision hierarchy preserves HUD targets and readable forecasts', a
       return { size: body.style.fontSize, fits: bounds.left >= panel.left && bounds.right <= panel.right && bounds.bottom <= panel.bottom,
         lines: body.getWrappedText().length, handTop: b.handCardRects.get(b.hand[0].instanceId).getBounds().top, bottom: panel.bottom };
     });
-    expect(selection.size).toBe('15px'); expect(selection.fits).toBe(true); expect(selection.lines).toBeLessThanOrEqual(2);
+    expect(selection.size).toBe('19px'); expect(selection.fits).toBe(true); expect(selection.lines).toBe(1);
     expect(selection.bottom).toBeLessThan(selection.handTop);
     await settleCanvas(page); await page.screenshot({ path: info.outputPath(`selected-${viewport.width}.png`) });
     await page.keyboard.press('Escape'); await settleCanvas(page);

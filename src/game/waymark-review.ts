@@ -160,7 +160,7 @@ function renderDrawer(scene: Phaser.Scene, view: SceneWaymarkDrawerView) {
         `route-waymark-shelf-${delta < 0 ? 'previous' : 'next'}`, () => {
           if (enabled && !blocked(scene)) view.onScroll(delta);
         });
-      if (!enabled) { hit.disableInteractive().setAlpha(0.45); caption.setAlpha(0.5); }
+      hit.setData('enabled', enabled);
     }
     text(scene, 1052, 287, `${scrollRow * columns + 1}–${Math.min(view.entries.length, (scrollRow + visibleRows) * columns)} / ${view.entries.length}`,
       144, 18, '#abc4d4').setOrigin(0.5).setName('route-waymark-shelf-position');

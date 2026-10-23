@@ -43,8 +43,10 @@ for (const failure of ['outbox', 'account', 'history', 'checkpoint-removal']) {
       await page.setViewportSize({ width, height }); await settleCanvas(page);
       expect(await dialog.evaluate(element => {
         const b = element.getBoundingClientRect();
+        const buttons=[...element.querySelectorAll('button')].map(button=>button.getBoundingClientRect());
         return b.left >= 0 && b.right <= innerWidth && b.top >= 0 && b.bottom <= innerHeight
-          && [...element.querySelectorAll('button')].every(button => button.getBoundingClientRect().height >= 48);
+          && buttons.every(button => button.height >= 48 && button.width >= 44)
+          && buttons.every((a,i)=>buttons.slice(i+1).every(z=>Math.max(a.left-z.right,z.left-a.right,a.top-z.bottom,z.top-a.bottom)>=8));
       })).toBe(true);
       await page.screenshot({ path: info.outputPath(`${failure}-${width}.png`) });
     }

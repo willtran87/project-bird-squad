@@ -99,19 +99,45 @@ for (const remapped of [false, true]) test(`Market cards use one readable decisi
         wingbeats: panel.getByName('market-card-wingbeats').text,
         headers: ['market-section-heading', 'market-section-description'].map(name => {
           const o = r.children.getByName(name), b = o.getBounds();
-          return { font: o.style.fontSize, resolution: o.style.resolution, contained: b.left >= 612 && b.right <= 1092 && b.top >= 242 && b.bottom <= 266 };
+          const surface = r.children.getByName('market-section-surface').getBounds();
+          return { font: o.style.fontSize, resolution: o.style.resolution, contained: b.left >= surface.left + 16 && b.right <= surface.right - 16 && b.top >= surface.top && b.bottom <= surface.bottom };
         }),
       };
     });
     expect(geometry.contained).toBe(true); expect(geometry.oneReader).toBe(true); expect(geometry.separated).toBe(true); expect(geometry.touch).toBe(true);
     expect(geometry.font).toBe('22px'); expect(geometry.pages).toBeGreaterThan(4);
-    expect(geometry.seen['PASSIVE FLOCK BONUSES']).toBeTruthy(); expect(geometry.seen['PURCHASE PREVIEW'].join(' ')).toContain('Permanent collection ownership is kept');
+    expect(geometry.seen['PASSIVE FLOCK BONUSES']).toBeTruthy(); expect(geometry.seen['PURCHASE PREVIEW'].join(' ').replace(/\s+/g, ' ')).toContain('Permanent collection ownership is kept');
     expect(geometry.wingbeats).toContain('Wingbeat');
-    expect(geometry.headers).toEqual([{ font: '18px', resolution: 2, contained: true }, { font: '16px', resolution: 2, contained: true }]);
+    expect(geometry.headers).toEqual([{ font: '22px', resolution: 2, contained: true }, { font: '19px', resolution: 2, contained: true }]);
     expect(geometry.prices).toHaveLength(4); for (const price of geometry.prices) expect(price).toMatch(/^\d+ Scrap$/);
-    for (const title of geometry.titles) { expect(title.font).toBe('18px'); expect(title.bottom).toBeLessThanOrEqual(598); expect(title.width).toBeLessThanOrEqual(136); }
+    for (const title of geometry.titles) { expect(title.font).toBe('21px'); expect(title.bottom).toBeLessThanOrEqual(598); expect(title.width).toBeLessThanOrEqual(136); }
     await page.screenshot({ path: info.outputPath(`cards-${viewport.width}.png`) });
   }
+  await click('market-reader-category-0');
+  const sectionStart = await state();
+  await press('End');
+  expect((await state()).market.rules.title).toMatch(/^(PREEN|BASE|MOLT)/);
+  const keyboardHint = await page.evaluate(() => {
+    const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
+    const panel = r.hoverCardDetail.getByName('market-fixed-card-inspector');
+    const hint = panel.getByName('market-reader-input-hint'), b = hint.getBounds();
+    const frame = panel.getByName('market-rules-frame').getBounds();
+    const buttonBottom = Math.max(...['market-rules-next', 'market-rules-previous']
+      .map(name => panel.getByName(name).getBounds().bottom));
+    return { lines: hint.getWrappedText().length, separated: b.top >= buttonBottom + 2,
+      contained: b.left >= frame.left + 16 && b.right <= frame.right - 16 && b.bottom <= frame.bottom - 8 };
+  });
+  expect(keyboardHint).toEqual({ lines: 1, separated: true, contained: true });
+  await page.evaluate(() => {
+    const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
+    r.input.gamepad.emit('down', r.input.gamepad.pad1, {index:7}, 1);
+  });
+  expect((await state()).market.rules.title).toBe('PASSIVE FLOCK BONUSES');
+  await press('Home');
+  expect((await state()).market.rules.title).toMatch(/^(PREEN|BASE|MOLT)/);
+  expect((await state()).run).toBe(sectionStart.run);
+  expect((await state()).market.input).toEqual(sectionStart.market.input);
+  await click('market-reader-category-0');
   await click('card:0'); const armed = await state(); expect(armed.market.input.armed).toBe(true);
   const lifecycle = await page.evaluate(() => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
@@ -139,6 +165,7 @@ for (const remapped of [false, true]) test(`Market cards use one readable decisi
       r.hoverCardDetail.getByName('market-fixed-card-inspector').getData('turnRulesPage')(1);
     }, overlay);
     await press(remapped ? 'Delete' : 'r');
+    await press('End');
     expect((await state()).market.rules).toEqual(before.market.rules); expect((await state()).run).toBe(before.run);
     await press(remapped ? 'b' : 'Escape');
     await expect.poll(() => page.evaluate(() => {

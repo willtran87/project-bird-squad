@@ -57,8 +57,9 @@ for (const kind of ['scrap', 'mixed', 'leave']) for (const remapped of [false, t
       await settle();
       const geometry = await page.evaluate(() => {
         const r = (window as any).__birdSquadGame.scene.getScene('RouteScene'), p = r.children.getByName('route-supply-reader'), scale = r.game.canvas.getBoundingClientRect().height / 720;
-        return (p?.list ?? r.children.list).filter((o: any) => /reader-(next|previous|return)$|route-outcome-inspect-hit|route-decision-inspect-hit|route-reward-claim-hit/.test(o.name)).map((o: any) => o.height * scale);
+        return (p?.list ?? r.children.list).filter((o: any) => /(?:reader-(next|previous|return)|route-outcome-inspect-hit|route-decision-inspect-hit|route-reward-claim-hit)$/.test(o.name)).map((o: any) => o.height * scale);
       });
+      expect(geometry.length).toBeGreaterThan(0);
       geometry.forEach((height: number) => expect(height).toBeGreaterThanOrEqual(44));
       await page.screenshot({ path: info.outputPath(`${kind}-${surface}-${size.width}.png`) });
     }

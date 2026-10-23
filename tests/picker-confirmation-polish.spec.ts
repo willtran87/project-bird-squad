@@ -79,6 +79,9 @@ for (const mode of ['preen', 'release']) test(`${mode} confirmation is readable 
               && o.getBounds().top >= rail.top && o.getBounds().bottom <= rail.bottom })),
           separated: labels[0].getBounds().bottom + 2 <= labels[1].getBounds().top,
           buttonSize: button.height * r.game.canvas.getBoundingClientRect().height / 720,
+          commandRole: button.getData('controlKind'), commandStatus: button.getData('status'),
+          backRole: r.children.getByName('route-event-cancel-hit').getData('controlKind'),
+          inspectRole: r.children.getByName('card-picker-card-inspect-hit').getData('controlKind'),
           gridGap: rail.top - Math.max(...r.children.list.filter((o: any) => o.name === 'card-picker-card-hit').map((o: any) => o.getBounds().bottom)),
           inspect: ['label', 'binding'].map(suffix => {
             const o = r.children.getByName(`card-picker-card-inspect-${suffix}`), b = o.getBounds(), h = r.children.getByName('card-picker-card-inspect-hit').getBounds();
@@ -88,8 +91,10 @@ for (const mode of ['preen', 'release']) test(`${mode} confirmation is readable 
       });
       metrics.labels.forEach(o => { expect(o.font).toBeGreaterThanOrEqual(16); expect(o.inside, JSON.stringify(o)).toBe(true); });
       expect(metrics.cards).toHaveLength(10); expect(metrics.tinyDeltas).toBe(0);
-      metrics.cards.forEach(o => { expect(o.font).toBe('18px'); expect(o.contained, o.text).toBe(true); if (long) expect(o.truncated).toBe(true); });
+      metrics.cards.forEach(o => { expect(o.font).toBe('21px'); expect(o.contained, o.text).toBe(true); if (long) expect(o.truncated).toBe(true); });
       expect(metrics.separated).toBe(true); expect(metrics.buttonSize).toBeGreaterThanOrEqual(44); expect(metrics.gridGap).toBeGreaterThanOrEqual(8);
+      expect(metrics.commandStatus).toBe('armed'); expect(metrics.backRole).toBe('secondary'); expect(metrics.inspectRole).toBe('secondary');
+      expect(metrics.commandRole).toBe(mode === 'release' ? 'destructive' : 'primary');
       metrics.inspect.forEach(o => { expect(o.font).toBeGreaterThanOrEqual(16); expect(o.inside).toBe(true); });
       if (long) expect(metrics.labels[0].text).toMatch(/…$/);
       await page.screenshot({ path: info.outputPath(`${long ? 'long' : 'normal'}-${size.width}.png`) });

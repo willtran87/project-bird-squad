@@ -16,30 +16,38 @@ test('deck comparison pages preserve full rules and separate pin from selection'
     await w.__birdSquadEnsureScene('RouteScene');
     for (const scene of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(scene.scene.key);
     w.__birdSquadGame.scene.start('RouteScene', {});
-    w.__birdSquadGame.scene.getScene('RouteScene').openDeckOverlay();
   });
+  // The direct scene fixture must reach the same ready state as the player's route.
+  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').routeEssentialAssetsReady);
+  await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').openDeckOverlay());
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').children.getByName('deck-review-compare-hit-major_00'));
   const press = async (key: string) => { await page.keyboard.press(key); await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))); };
   const state = () => page.evaluate(() => JSON.parse((window as any).render_game_to_text()).deckReview);
   const click = async (name: string) => {
+    await settleCanvas(page);
     const point = await page.evaluate(name => {
       const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
       const o = r.children.getByName(name), b = o.getBounds(), c = r.game.canvas.getBoundingClientRect();
       return { x: c.left + b.centerX * c.width / 1280, y: c.top + b.centerY * c.height / 720 };
     }, name);
     await page.mouse.move(point.x, point.y);
-    await page.waitForFunction(name => { const r = (window as any).__birdSquadGame.scene.getScene('RouteScene'); return r.input.hitTestPointer(r.input.activePointer).some((o: any) => o.name === name); }, name);
+    await page.waitForFunction(name => {
+      const r = (window as any).__birdSquadGame.scene.getScene('RouteScene'), pointer = r.input.activePointer;
+      const hits = r.input.hitTestPointer(pointer);
+      r.input.sortGameObjects(hits, pointer);
+      return hits[0] === r.children.getByName(name);
+    }, name);
     await page.mouse.click(point.x, point.y, { delay: 40 });
   };
   const geometry = await page.evaluate(() => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     return r.children.list.filter((o: any) => o.name === 'deck-review-row-hit').map((o: any, i: number) => {
-      const pin = r.children.list.filter((p: any) => p.name.startsWith('deck-review-compare-hit-'))[i];
+      const pin = r.children.getByName(`deck-review-compare-hit-${o.getData('cardId')}`);
       return { right: o.getBounds().right, pinLeft: pin.getBounds().left, width: pin.width, height: pin.height };
     });
   });
-  expect(geometry).toHaveLength(7);
-  geometry.forEach((r: any) => { expect(r.pinLeft - r.right).toBeGreaterThanOrEqual(10); expect(r.width).toBe(58); expect(r.height).toBe(58); });
+  expect(geometry).toHaveLength(6);
+  geometry.forEach((r: any) => { expect(r.pinLeft - r.right).toBeGreaterThanOrEqual(10); expect(r.width).toBe(88); expect(r.height).toBe(58); });
   const toolbar = await page.evaluate(() => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     return ['filter', 'sort', 'search', 'save-folio', 'close'].map(key => {
@@ -66,10 +74,10 @@ test('deck comparison pages preserve full rules and separate pin from selection'
       const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
       return r.children.list.filter((o: any) => o.name.startsWith('deck-review-comparison-body-')).map((o: any) => ({ width: o.width, bottom: o.getBounds().bottom, size: o.style.fontSize, resolution: o.style.resolution }));
     });
-    text.forEach((t: any) => { expect(t.width).toBeLessThanOrEqual(270); expect(t.bottom).toBeLessThanOrEqual(514); expect(t.size).toBe('20px'); expect(t.resolution).toBe(2); });
+    text.forEach((t: any) => { expect(t.width).toBeLessThanOrEqual(270); expect(t.bottom).toBeLessThanOrEqual(502); expect(t.size).toBe('21px'); expect(t.resolution).toBe(2); });
   }
   await press('PageDown');
-  await expect.poll(async () => (await state()).comparison.reading.headings).toEqual(['MOLT · REMOVED / REPLACED', 'MOLT · ADDED / REPLACEMENT']);
+  await expect.poll(async () => (await state()).comparison.reading.headings).toEqual(['MOLT · REMOVED', 'MOLT · ADDED']);
   expect((await state()).comparison.reading.bodies[0]).toContain('2 Resonance');
   expect((await state()).comparison.reading.bodies[1]).toContain('3 Resonance');
   await page.screenshot({ path: info.outputPath('molt-differences.png') });

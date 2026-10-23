@@ -1,5 +1,351 @@
 # Performance Notes
 
+## October 20 2026 — Flight Log and save-file ownership (October 21 UTC)
+
+Candidate `index-HfNBGmr7.js` retains the 700,893-byte entry and 742,381-byte
+combined boot (19 bytes below the unchanged hard cap). Profile grows to 155.4 KiB
+/ 42.7 KiB gzip for review cancellation, action focus and abortable file-picker
+ownership. The deferred screen-reader summary remains 56.1 KiB / 17.2 KiB gzip.
+Build, bundle and local cache checks pass; preferred entry/boot warnings remain.
+No FPS, physical-device or boot-headroom improvement is claimed. Entry SHA256:
+`F75093F27FB0E4A8F691C58486F259D8A5B678D011E741BB7D17DAEA3865ACBB`.
+
+## October 20 2026 — Shared Folio editor lifecycle remains deferred
+
+Candidate `index-KevlCsZv.js` retains the 700,893-byte entry and 742,381-byte
+combined boot. The unchanged hard cap still has only 19 bytes of headroom;
+preferred boot-size warnings remain. Profile is 153.3 KiB / 42.2 KiB gzip.
+Editor lifecycle and expanded action focus live in the lazy Profile chunk.
+Build, bundle and local cache checks pass. No frame-rate or device-performance
+improvement is claimed. Entry SHA256:
+`9425BF4EFDF420447AF8DB92BA03998F6342944E489C8CD8BFE7F6DB6C585619`.
+
+## October 17 2026 — Atlas and Folio action focus stays deferred
+
+Candidate `index-wp9tUQMq.js` retains the 700,893-byte entry and 742,381-byte
+combined boot, still just 19 bytes below the unchanged hard cap. Collection is
+163.8 KiB / 43.4 KiB gzip, Profile 150.0 KiB / 41.1 KiB gzip, and the deferred
+screen-reader summary 56.1 KiB / 17.2 KiB gzip. Preferred boot warnings remain;
+this work does not claim an FPS gain or additional boot headroom. Build, bundle
+and local cache checks pass. Entry SHA256:
+`896E53D5866691B6906FDB6A8BAA2F12EB0EECD1F2DE084CA80015C9B2C62785`.
+
+## October 17 2026 — Collection controls remain deferred
+
+Candidate `index-D06heTZV.js` preserves the 700,893-byte entry and 742,381-byte
+combined boot (19 bytes below the unchanged cap). New Collection action/focus
+behavior stays in its lazy scene chunk: 163.4 KiB / 43.3 KiB gzip. Preferred boot
+targets still warn. No FPS improvement or additional boot allowance is claimed.
+Build, bundle and local cache checks pass; targeted browser evidence is recorded
+in `progress.md`. Entry SHA256:
+`8C00DE0CB02937A48E78A3B8CCBD4F4B987E0931660F3B5AD525894EEEFAAF81`.
+
+## October 17 2026 — Boot-resident cancellation and deferred optional presentation
+
+Candidate `index-tw7OnvL4.js`: entry 700,893 bytes (684.5 KiB) / 183.2 KiB gzip;
+combined boot 742,381 bytes / 198.9 KiB gzip, **19 bytes below** the unchanged
+725 KiB cap. Core remains 30,683 bytes; interaction rules are 10,805 bytes.
+Menu diagnostics are 6.9 KiB, optional menu UI 5.8 KiB. Phaser remains
+1,313.6 KiB / 339.5 KiB gzip; Codex data 282.7 KiB / 89.1 KiB gzip.
+Preferred entry/boot targets still warn. This is not meaningful growth headroom.
+
+Shared pending-panel input and recovery must work before a module arrives, so
+they now reside on the boot path. To offset that cost, optional history mapping,
+review/rating adapters, deck cost-badge presentation, reserve-enemy queue wiring,
+and front-facing leader portrait URLs moved to their actual deferred consumers.
+Setup and Collection share a small portrait manifest; combat retains its rear
+portrait manifest. No asset quality, cache rule or hard allowance was relaxed.
+Native dialog input-state tracking is separate from its rendering, keeping the
+interaction-rules chunk within its original cap. Unused guide-art requests and
+their focus-resetting redraw were removed.
+
+Build, bundle, runtime data/assets and local deployment-cache gates pass. Browser
+evidence and resource cleanup are recorded in `progress.md`; no full release,
+live hosting or FPS improvement is claimed. Entry SHA256:
+`3EFD1B3AE57559C11EA3A7D40DF31DAD40DFC59F3FCA984F118A1469E8E886AF`.
+
+## October 17 2026 — Exclusive overlay input without relaxing boot budgets
+
+Candidate `index-C4KA15ca.js`: entry 684.8 KiB / 182.7 KiB gzip; combined boot
+742,359 bytes (725.0 KiB rounded) / 198.2 KiB gzip, **41 bytes below** the unchanged
+725 KiB hard limit. Core remains 30,683 bytes. Phaser remains 1,313.6 KiB /
+339.5 KiB gzip; Codex data remains 282.7 KiB / 89.1 KiB gzip. All hard gates pass;
+preferred entry/boot targets still warn. This is extremely little headroom, not
+a performance improvement or room for unmeasured additions.
+
+An initial implementation exceeded combined boot by roughly 0.2 KiB. Removed
+unused overlay dependency wiring and reused the existing tested `lazyModule`
+promise cache for system overlays, Codex, Profile, title launch and optional menu
+UI. Deferred imports, concurrent request identity and retry after rejection are
+preserved; diagnostics retain their special existing loaded-promise behavior.
+No preload boundary, art fidelity, dependency, chunk allowance or gate changed.
+Most input-owner lifecycle logic remains in the deferred `action-focus` module.
+
+Local cache-contract validation passes. No live hosting claim is made. Focused
+acceptance reports and process cleanup are recorded in `progress.md`; this is not
+a fresh complete release regression. Entry SHA256:
+`2031EC0419E294513FE545FD7AE82271C2D9A893FB5729D1308816368DE387B9`.
+
+## October 17 2026 — Shared UI tokens without chunk-budget drift
+
+Candidate `index-DVS_lIuE.js`: entry 684.5 KiB / 182.6 KiB gzip, combined boot
+724.3 KiB / 198.0 KiB gzip. Core is 30,683 bytes, below its unchanged 30 KiB
+cap. Phaser remains 1,313.6 KiB / 339.5 KiB gzip; Codex data remains 282.7 KiB /
+89.1 KiB gzip. Hard bundle and local cache-contract gates pass. Preferred entry
+and boot targets still warn; no startup or FPS improvement is claimed.
+
+Shared styles now live in the pure `ui-tokens` module. A direct font dependency
+from FX initially pulled the whole palette into the manual core chunk (31.2
+KiB). Isolating fonts alone still left core 24 bytes over budget. The adopted
+solution passes the canonical display font through existing FX/encounter
+presentation options, keeping those budgeted renderers independent of the
+theme module. No size allowance, asset fidelity or preload gate was relaxed.
+
+Typography/contrast and actual-control regressions accompany this change. The
+acceptance plan and `progress.md` distinguish final-candidate results from
+intermediate runs and test-worker teardown issues. This is not a fresh complete
+release regression. SHA256:
+`4D67DDB45407712B00F01B0254854962FBDC4E2DCB15CA14C92EAAB17DFC6677`.
+
+## October 17 2026 — Shared reward face and explicit artwork recovery
+
+Candidate `index-1f5OIFNg.js`: entry 685.0 KiB / 182.6 KiB gzip, combined boot
+724.8 KiB / 198.0 KiB gzip. Phaser remains 1,313.6 KiB / 339.5 KiB gzip;
+Codex data remains 282.7 KiB / 89.1 KiB gzip. All hard budgets pass; preferred
+675 KiB entry and 710 KiB boot targets remain open. No startup/FPS improvement
+is claimed from these byte counts.
+
+Normal/fallback reward faces share `reward-card-face` (4 KiB cap, no title
+preload). Hand, ceremony and face together measure 20.7 KiB under the original
+combined 24 KiB allowance; the existing individual hard caps are unchanged.
+The common face takes typography as context and has no runtime theme/main
+dependency. An initial removal of the normal ceremony's reinforced family cue
+made Rollup inline its shared implementation into the hand chunk and exceed
+that chunk's cap. Keeping the real reinforced cue in both consumers preserves
+the shared dependency and passes the original gate.
+
+Reward image loads now remember attempts until an explicit Retry/Read or scene
+reset. This closes redraw retries even between a loader error and its polling
+observer. In-place completion does not rebuild choices or change armed state.
+Loaded texture hits remain on the existing Phaser path; no new fetch stack,
+dependency, asset export, or host policy was introduced. Cache validation now
+also requires exactly one hashed, non-preloaded shared-face chunk.
+
+The 24-test cross-district rollout on `index-DcFDPhgt.js` is separate from final
+reward recovery qualification on the candidate above. Historical passes are not
+a fresh full-suite result. Reports and cleanup details are in `progress.md`.
+
+## October 17 2026 — Rooftop hand readability and recovery pilot
+
+Candidate `index-CMqM1avE.js`: entry 700,972 bytes (684.5 KiB), combined boot
+724.4 KiB rounded. Hand renderer is 10,191 bytes and the independent combat card
+reader is 4,094 bytes, within unchanged 10/4 KiB caps. Preferred entry/boot targets
+still warn. SHA256: `1DBE0A20FE2C53E653FCE25AA3867C2A187CDA84B514ED7B47CD81E569C145E4`.
+
+Readable fallback hand states initially increased boot code past its hard cap.
+Consolidating 25 identical deferred import wrappers into a typed promise cache
+removed duplicate code while preserving import paths, on-demand requests,
+concurrent deduplication and failure retry. Unit tests cover those semantics.
+Reader typography is passed as context: a runtime theme import accidentally
+moved shared constants into the manual reader chunk during development and was
+removed. No budget, dependency, preload boundary or asset export was changed.
+
+All 33 pilot checks pass across three browsers with clean runner shutdown;
+`.artifacts/oct17-verified.json` records the results. The shared browser client
+also completed an enemy turn with full art and no error artifact. Local runtime,
+asset, cache and docs validation pass; bundle report is `.artifacts/oct17-bundle.log`.
+This focused one-district pass is not a full release regression or measured
+startup/FPS improvement. Live hosting headers were not checked.
+
+## October 16 2026 — grounded combat art and truthful resource feedback
+
+Candidate `index-vTW5YUtZ.js`: entry 701,345 bytes (684.9 KiB), combined boot
+724.7 KiB rounded. Foreground renderer `render-foreground-CAVFR_am.js` is
+8,090 bytes, below its unchanged 8,192-byte hard cap. The initial implementation
+exceeded that cap; compact contact metadata and shared badge/text construction
+removed duplicate code without removing labels, tooltips or presentation states.
+No chunk boundary, dependency, image export, preload or budget was changed.
+Preferred 675/710 KiB entry/boot targets still warn. This is an art integration
+and correctness improvement, not a measured startup or FPS improvement.
+
+The floor uses two low-opacity stationary ellipses per combatant rather than
+attaching shadows to animated character poses. Reviewed source-coordinate contact
+anchors are scale-independent; unlisted cutouts retain measured alpha bounds.
+A restrained screen tint lifts dark enemy details without another texture or
+postprocessing pass. Capped Resonance gains no longer emit a false gain or surge.
+The optional goal uses the quiet upper-left stage lane instead of covering the
+rightmost enemy. The HUD module is 10,221 bytes, under its unchanged 10,240-byte
+cap; this positioning correction adds no asset or layout measurement loop.
+Local bundle, runtime-asset and deployment-cache reports are
+`.artifacts/oct16-closure-bundle.log`, `.artifacts/oct16-assets.log` and
+`.artifacts/oct16-closure-cache.log`. Live hosting headers were not checked.
+
+## October 16 2026 — Flight Log and save-data readers
+
+Candidate `index-CKGd5mr-.js`: entry 701,180 bytes (684.7 KiB), combined boot
+724.6 KiB rounded. The lazy profile chunk is 161,744 bytes (157.9 KiB).
+Hard bundle limits are unchanged and pass; the preferred 675/710 KiB
+entry/boot targets still warn. This reflow adds no dependency, generated art,
+preload boundary or timing-budget change. These are presentation and
+interaction changes, not a measured startup/FPS improvement.
+
+## October 16 2026 — combat HUD readability
+
+Candidate `index-gTdOy51e.js`: entry 701,180 bytes (684.7 KiB), combined boot
+724.6 KiB rounded. Lazy HUD renderer is 10,211 bytes, below its unchanged
+10,240-byte hard cap. Preferred 675/710 KiB entry/boot targets still warn.
+No dependencies, preload boundaries, art exports or timing budgets changed.
+Four existing Text Pace, Animation Pace, Hustle and first-flight guidance
+regressions pass alongside six combat layout/input tests. This is readability
+and interaction evidence, not a new startup/FPS performance claim.
+
+## October 16 2026 — reward review readability
+
+Candidate `index-C_sMyOTy.js` retains the unchanged hard bundle limits:
+684.8 KiB entry / 724.6 KiB combined boot (rounded). The preferred 675/710 KiB
+targets remain open. The typography/hierarchy work stays in existing lazy
+reward and reader modules; no art, preload boundary or dependency changed.
+This is a readability change, not a measured performance improvement.
+Scoped transaction and input revalidation is recorded in the progress log.
+
+## October 16 2026 — event review recovery
+
+Candidate `index-Cykjfzi9.js`: entry 684.8/182.7 KiB minified/gzip;
+combined boot 724.6/198.0 KiB (742,027 minified bytes), below the unchanged
+725 KiB hard cap. Preferred 675/710 KiB targets remain open. Shared rendering
+of the deck and event module-status panels removes duplicated presentation
+code while adding a readable event exit. No dependency, preload boundary,
+art export or budget changed; this is not an FPS/startup-speed claim.
+
+Native download-recovery controls now stop pointer/mouse/touch propagation
+before Phaser's window listeners. Without this, a real recovery click could
+choose an underlying event and overwrite the checkpoint. Confirmed reload
+and cancellation are covered in Chromium, Firefox and WebKit. Geometry and
+screenshots cover 2560×1600, 1440×900 and 1000×560. The wider release matrix
+remains separate from these focused tests; see the acceptance/progress logs.
+
+## October 16 2026 — deck browser controls and save lifecycle
+
+Candidate `index-CsRPilbq.js`: entry 685.1/182.6 KiB minified/gzip;
+combined boot 725.0/198.0 KiB (rounded), Phaser 1313.6/339.5 KiB and
+Codex data 282.7/89.1 KiB. All existing hard caps pass unchanged. Preferred
+675 KiB entry / 710 KiB combined targets remain unresolved warnings; boot
+headroom is narrow and must be checked again on subsequent changes.
+
+An intermediate candidate exceeded the combined cap at 725.1 KiB. Moving
+Folio record construction into the existing lazy saved-decks module restored
+the budget without increasing it or adding a new preload. That module and
+the route deck browser are each 6.4 KiB minified. The append helper preserves
+archives, respects the six-active-Folio cap, and leaves persistence/reporting
+with the scene. A request token prevents a late module response from saving
+after reader closure/reopening or scene restart; repeated activation while
+loading is coalesced. No timer, new dependency or art recompression was added.
+
+Reader rows use six separated touch targets, shared quiet controls and readable
+text. These are layout/correctness improvements, not measured startup, FPS or
+real-device performance gains. Local cache checks pass; no deployment occurred.
+Scoped regression and visual evidence are recorded in the acceptance plan and
+progress log, separately from the still-open full release qualification.
+
+## October 7 2026 — on-demand map inspection
+
+Candidate `index-DvBUtnbY.js`: entry 684.6/182.5 KiB minified/gzip;
+combined boot 724.5/197.9 KiB, Phaser 1313.6/339.5 KiB and Codex data
+282.7/89.1 KiB. Existing hard caps are unchanged. The new map-inspection
+module measures 4.2/2.0 KiB and has a separate 5 KiB hard cap. It is not a
+title preload and is requested only when inspection opens. Preferred entry
+675 KiB / combined 710 KiB targets remain unresolved warnings.
+
+The first loading/error presentation pushed combined boot to 725.2 KiB and
+was rejected by the existing gate. Moving reader-only route adaptation into
+the lazy reader restored headroom without removing features or changing the
+budget. Reusing the existing texture-state helper also preserves the route
+debug contract inside its unchanged 24.25 KiB cap. No artwork recompression,
+new dependency, polling loop or combat delay was added. Page layout updates
+are event-driven, and input listeners retire with the reader.
+
+These are measured packaging changes, not a startup/FPS improvement claim.
+Local cache-manifest validation passes; live hosting headers and a full fresh
+release regression remain separate. Scoped browser results and screenshots
+are recorded in `docs/game/a-grade-acceptance-plan.md` and `progress.md`.
+
+## September 30 2026 — combat readability and full-size hand pages
+
+Latest candidate `index-ehLrDjjq.js` measures 684.9/182.9 KiB minified/gzip;
+combined boot is 724.7/198.3 KiB. The existing 700 KiB entry and 725 KiB combined
+hard caps pass without changes, but preferred 675/710 KiB targets remain open.
+The hand renderer remains below its 10 KiB cap (10,196 bytes). No additional
+preload, dependency, art recompression or runtime export was introduced.
+
+Large hands render at most five full-size cards per page instead of overlapping
+every card. Keyboard/controller selection reveals the corresponding page; pointer
+paging is read-only and does not commit a card. Draw/return/cast anchors use the
+same page geometry. This is a readability and bounded-presentation change, not
+a measured FPS/startup improvement claim.
+
+The preceding `index-e-mBFcp-.js` passed 27 affected-flow tests and the required
+real-input browser client. Later tests added 17-card pagination, Retain/discard
+continuity, overlay guards and card/forecast/Roost clearance. Intermediate
+clearance checks caught a six-pixel discard-gap deficit and truncated crowded
+status text; both were corrected without reducing the existing spacing or
+complete-text assertions. The final candidate passes 46 affected-flow cases and
+six legacy combat regressions with zero retries. Repeated two-enemy turns measure
+1,860ms normal / 1,450ms reduced motion in deterministic game time, with ordered
+impacts and retired effects; these are not wall-clock FPS measurements. The
+required real-input browser client completed a card play with no error artifact.
+Full release qualification remains separate.
+
+The preceding `index-BxCl7gnd.js` passes 61 combined affected-flow tests in
+12.1 minutes with zero retries. Collection artwork now refreshes without
+replacing registered card targets, and late decorative chrome retains the
+card grid. The delayed-arrival regression passes three consecutive repetitions.
+This is input-continuity evidence, not a measured FPS improvement. Bundle and
+local deployment-cache gates were rerun against the latest candidate. Its final
+foreground change replaces the floating elite crest with a bounded rank label;
+the existing source asset remains available, and no art exports were changed.
+All 80 authored encounters pass the three-viewport catalogue (240 captures).
+The expanded normal/elite/boss-plus-objective matrix and both legacy elite tests
+pass a fresh three-case run. Required shared-client Collection and combat
+walkthroughs on the final build have matching image/text state and no error
+artifact. These remain scoped checks, not a fresh full release regression.
+
+## September 30 2026 — readable hands and recoverable Collection artwork
+
+Production candidate `index-DfC_SCMa.js` measures 682.7/182.4 KiB minified/gzip;
+combined boot is 722.5/197.8 KiB. Phaser remains 1313.6/339.5 KiB and lazy
+Codex data 282.7/89.1 KiB. The unchanged hard bundle and local deployment-cache
+contracts pass; preferred 675/710 KiB targets remain warnings.
+
+Plain-language hand clauses, measured wrapping and explicit omission notices
+initially exceeded the hand renderer's existing 10 KiB limit. The non-combat
+hover preview now lives alongside the existing reward inspection implementation,
+already in the same lazy dependency graph. No extra chunk, request, preload or
+budget increase was added. The hand renderer is 10,196 bytes and shared reward
+inspection 68.1 KiB; this is a presentation improvement, not a reduction in total
+code size or a measured startup-speed improvement.
+
+Collection tracks pending and failed art per scene activation. Failed requests
+do not restart on every redraw; explicit retry or reopening a known dossier
+can recover, while late completions after a soft timeout still refresh the
+current scene. The existing shared loader and bounded retry policy are retained.
+No runtime art was recompressed or lowered in quality in this pass.
+
+The earlier `index-yp0DK2Mf.js` candidate passed 41 affected-flow cases, including 1,320
+card/state/viewport layout checks, failed-art recovery, Collection context/input
+regressions, and Market section navigation under remapped controls. The shared
+game client reached Collection and title -> route -> combat -> card resolution;
+screenshots and text state agree, with no client error artifact. Capture evidence
+is in `.artifacts/readability-final-results` and `.artifacts/readability-flight-action`.
+The current candidate additionally gives the Market keyboard hint a single row
+below the paging controls and adds separation between Collection tab labels and
+metadata. Build/bundle/cache gates and 24/24 affected-flow cases pass, with zero
+retries. The current shared-client combat capture is in
+`.artifacts/readability-final-client`; no error artifact was emitted.
+Four Firefox/WebKit toolbar test bodies passed, but their runner required manual
+owned-worker cleanup during shutdown. This is not clean unattended qualification.
+Full release qualification remains separate; these focused passes do not close
+the previous remote regression failure or certify physical-device performance.
+
 ## September 27 2026 — P0 recovery and presentation qualification
 
 Local candidate `index-0ZUXstUw.js`: entry 681.8/182.0 KiB minified/gzip;
