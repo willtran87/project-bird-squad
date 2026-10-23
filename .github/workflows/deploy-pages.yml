@@ -18,7 +18,7 @@ concurrency:
 jobs:
   regression:
     name: Production regression (${{ matrix.shard }}/8)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -57,7 +57,7 @@ jobs:
 
   journeys:
     name: Serial live-control journeys
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - name: Checkout
@@ -92,7 +92,7 @@ jobs:
 
   build:
     needs: [regression, journeys]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
       - name: Checkout
@@ -154,7 +154,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: build
     steps:
       - name: Deploy to GitHub Pages
