@@ -2,6 +2,22 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 
 ## 2026-10-23 — Publication verification follow-up
 
+- Ubuntu 24.04 follow-up `39942128032`: investigating completed-shard failures.
+  Corrected two tests that read screen-reader announcements before the 300 ms
+  poll / 1.8-second direct-speech hold, and extended the integrated Market case's
+  total budget for software-rendered CI. All three focused tests pass locally
+  with zero retries (`release-timing.json`); remote qualification remains pending.
+  Split the boss-reader geometry audit by district; all four cases pass locally
+  (`release-boss-timing.json`). The next release uses 16 regression shards to
+  reduce the longest job while keeping all gates mandatory.
+  The event-navigation audit also exhausted its total budget near the final
+  controller checks; both binding variants pass locally with a five-minute
+  budget. Nine focused cases pass, and 912 cases distribute exactly once across
+  the 16 shards (57 each). No production code changes in this timing follow-up.
+  Completed Linux result: 901/909 regressions and 4/4 live journeys passed.
+  Three final full-campaign simulations hit four-minute total limits; this
+  family now allows eight minutes while keeping its 240-transition bound and
+  terminal assertions. All eight CI failures are addressed for the next run.
 - User requested commit, push, merge, GitHub Pages publication, and branch cleanup.
   PR #1 merged as `e23b1306`; its release branch was deleted locally and remotely.
 - GitHub run `39918444492` hit its 180-minute limit during regression and did not

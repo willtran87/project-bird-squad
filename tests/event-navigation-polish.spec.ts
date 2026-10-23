@@ -19,7 +19,10 @@ async function click(page: Page, name: string, index = 0) {
 }
 
 for (const remapped of [false, true]) test(`event choices support complete reading and deliberate navigation, remapped=${remapped}`, async ({ page }, info) => {
-  test.setTimeout(180000);
+  // Five event types, three viewports, long-text paging and controller ownership
+  // share this lifecycle; the default bindings also audit 152 authored choices.
+  // Linux software rendering takes nearly three minutes even without that audit.
+  test.setTimeout(300000);
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
