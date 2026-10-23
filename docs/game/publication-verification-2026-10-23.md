@@ -135,3 +135,16 @@ reward skipping, combat reward commitment and route reward commitment. Those
 four cases pass locally (`release-choice-announcements.json`), bringing this
 follow-up to ten passing focused cases without retries. Historical narration
 snapshots and checks that already wait for speech retain their existing logic.
+
+The serial journey job passed natural defeat, keyboard flight (9.5 minutes),
+and pointer flight (12.7 minutes), then reached the controller flight's old
+20-minute limit while still advancing at decision 260. Full live flights now
+have 30-minute total budgets. Their 20-second action deadlines, 320-decision
+bounds, no-progress guards, input-purity checks, terminal outcomes and replay
+assertions are unchanged; the short defeat case keeps its existing limit.
+
+Each of the four journeys now runs alone with one browser worker on an isolated
+runner, avoiding a 43.5-minute serial queue. Build still depends on the entire
+journey matrix plus all regression shards. YAML parsing and test discovery
+confirm exactly one match per journey, all four covered once, and unchanged
+build/deploy dependencies (`release-journey-matrix.json`).

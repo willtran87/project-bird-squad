@@ -56,9 +56,21 @@ jobs:
           retention-days: 14
 
   journeys:
-    name: Serial live-control journeys
+    name: Live-control journey (${{ matrix.path }})
     runs-on: ubuntu-24.04
     timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - path: defeat
+            pattern: reference flight reaches natural defeat
+          - path: keyboard
+            pattern: reference flight uses live controls
+          - path: pointer
+            pattern: pointer-only reference flight reaches outcome and replay
+          - path: controller
+            pattern: controller-only reference flight reaches outcome and replay
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -75,8 +87,8 @@ jobs:
       - name: Install browser
         run: npx playwright install --with-deps chromium
 
-      - name: Serial live-control journeys
-        run: npx playwright test --workers=1 --grep="reference flight" --reporter=list,json
+      - name: Live-control journey
+        run: npx playwright test --workers=1 --grep="${{ matrix.pattern }}" --reporter=list,json
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/reference-results.json
 
@@ -84,7 +96,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: release-journeys-${{ github.sha }}
+          name: release-journeys-${{ matrix.path }}-${{ github.sha }}
           path: |
             .artifacts/reference-results.json
             test-results
