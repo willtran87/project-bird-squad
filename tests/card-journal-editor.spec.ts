@@ -43,8 +43,10 @@ test('journal editor keeps readable native controls together across stage sizes 
       }
       for (const el of dialog.querySelectorAll('button')) {
         const b = el.getBoundingClientRect();
-        if (b.height < 44 || b.top < d.top || b.bottom > d.bottom) errors.push('action offscreen');
+        if (b.height < 44 || b.width < 44 || b.top < d.top || b.bottom > d.bottom) errors.push('action offscreen');
       }
+      const buttons=[...dialog.querySelectorAll('button')].map(b=>b.getBoundingClientRect());
+      if(buttons.some((a,i)=>buttons.slice(i+1).some(b=>Math.max(a.left-b.right,b.left-a.right,a.top-b.bottom,b.top-a.bottom)<8))) errors.push('actions too close');
       if (dialog.scrollWidth > dialog.clientWidth) errors.push('horizontal overflow');
       return errors;
     });

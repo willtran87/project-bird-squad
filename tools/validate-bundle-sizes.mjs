@@ -21,6 +21,7 @@ const budgets = [
   { label: 'battle HUD renderer lazy module', pattern: /^render-hud-.*\.js$/, maxKb: 10, hard: true },
   { label: 'battle hand renderer lazy module', pattern: /^render-hand-.*\.js$/, maxKb: 10, hard: true },
   { label: 'combat card reading panel', pattern: /^combat-card-detail-.*\.js$/, maxKb: 4, hard: true },
+  { label: 'shared reward card face', pattern: /^reward-card-face-.*\.js$/, maxKb: 4, hard: true },
   { label: 'discard choice lazy module', pattern: /^discard-choice-.*\.js$/, maxKb: 6, hard: true },
   { label: 'discard return choice lazy module', pattern: /^return-choice-.*\.js$/, maxKb: 6, hard: true },
   { label: 'battle inspect renderer lazy module', pattern: /^render-inspect-.*\.js$/, maxKb: 12, hard: true },
@@ -35,10 +36,12 @@ const budgets = [
   { label: 'Waymark review lazy module', pattern: /^waymark-review-.*\.js$/, maxKb: 8, hard: true },
   { label: 'Route text-state lazy module', pattern: /^route-debug-state-.*\.js$/, maxKb: 24.25, hard: true },
   { label: 'Route map renderer lazy module', pattern: /^route-map-renderer-.*\.js$/, maxKb: 5, hard: true },
+  { label: 'Route map inspection lazy module', pattern: /^route-map-inspection-.*\.js$/, maxKb: 5, hard: true },
   { label: 'flock stats overlay lazy module', pattern: /^flock-stats-overlay-.*\.js$/, maxKb: 8, hard: true },
   { label: 'screen reader runtime lazy module', pattern: /^screen-reader-runtime-.*\.js$/, maxKb: 4, hard: true },
   { label: 'menu diagnostics lazy module', pattern: /^menu-debug-state-.*\.js$/, maxKb: 7, hard: true },
   { label: 'menu optional UI lazy module', pattern: /^menu-optional-ui-.*\.js$/, maxKb: 6, hard: true },
+  { label: 'setup portraits lazy module', pattern: /^setup-portraits-.*\.js$/, maxKb: 1, hard: true },
   { label: 'title launch lazy module', pattern: /^title-run-launch-.*\.js$/, maxKb: 4, hard: true },
   { label: 'Profile scene lazy module', pattern: /^profile-scene-.*\.js$/, maxKb: 170, hard: true },
   { label: 'Codex lazy data', pattern: /^codex-data-.*\.js$/, maxKb: 300, hard: true },
@@ -90,6 +93,12 @@ for (const budget of budgets) {
 }
 
 const combinedBootChunks = chunks.filter((chunk) => combinedBootBudget.patterns.some((pattern) => pattern.test(chunk.name)));
+// Extracting a shared presentation must not silently enlarge the previous
+// hand + ceremony allowance (10 + 14 KiB). Count the new dependency as well.
+const rewardPresentation = chunks.filter(chunk => /^(render-hand|render-reward|reward-card-face)-.*\.js$/.test(chunk.name));
+const rewardPresentationKb = rewardPresentation.reduce((sum, chunk) => sum + chunk.kb, 0);
+console.log(`Combined hand/reward presentation: ${rewardPresentationKb.toFixed(1)} KB minified`);
+if (rewardPresentation.length !== 3 || rewardPresentationKb > 24) failures.push('Combined hand/reward presentation exceeds its original 24 KB allowance or is incomplete.');
 if (combinedBootChunks.length !== combinedBootBudget.patterns.length) {
   failures.push(`${combinedBootBudget.label}: expected ${combinedBootBudget.patterns.length} chunks, found ${combinedBootChunks.length}`);
 } else {

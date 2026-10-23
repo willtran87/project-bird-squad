@@ -71,8 +71,15 @@ for (const remapped of [false, true]) test(`combat rewards keep full rules and p
     await page.evaluate(() => { const b = (window as any).__birdSquadGame.scene.getScene('BattleScene'); b.input.gamepad.emit('down', null, { index: 15 }); });
     expect((await reading()).page).toBe(2);
     await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').setBattlePaused(true));
+    await page.waitForFunction(() => Boolean((window as any).__birdSquadGame.scene.getScene('BattleScene').systemOverlayLayer.getByName('pause-actions')));
     await press(keys.next); await press('Enter');
+    // Pause now owns navigation: Next + Confirm opens its Settings action.
+    // Back must unwind Settings, then Pause, then the underlying reader.
+    await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').settingsOverlayOpen);
     expect((await reading()).page).toBe(2);
+    await press(keys.back);
+    expect(await page.evaluate(() => { const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return {settings:b.settingsOverlayOpen,pause:b.pauseOverlayOpen}; })).toEqual({settings:false,pause:true});
+    expect((await reading()).page).toBe(2); expect(await stable()).toBe(before);
     await press(keys.back);
     expect((await reading()).page).toBe(2); expect(await stable()).toBe(before);
     await press(keys.back); await expect.poll(reading).toBeNull(); expect(await stable()).toBe(before);

@@ -33,7 +33,7 @@ test('Market services keep readable prices and separated targets through late di
         return b.left >= 528 && b.right <= 1136 && b.top >= 282 && b.bottom <= 632 && (!i || b.top >= rows[i - 1].getBounds().bottom + 8)
           && l.left >= b.left + 64 && l.right <= c.left - 32 && l.top >= b.top + 6 && l.bottom <= b.bottom - 6 && c.right <= b.right - 20
           && (!icon || (icon.left >= b.left + 12 && icon.right <= l.left - 16 && icon.top >= b.top + 10 && icon.bottom <= b.bottom - 10))
-          && labels[i].style.fontSize === '20px' && labels[i].style.resolution === 2 && costs[i].style.fontSize === '20px' && costs[i].style.resolution === 2;
+          && labels[i].style.fontSize === '21px' && labels[i].style.resolution === 2 && costs[i].style.fontSize === '21px' && costs[i].style.resolution === 2;
       }), touch: hits.every((o: any) => o.width === 540 && o.height >= 58),
       prices: costs.map((o: any) => o.text),
     };
@@ -74,9 +74,10 @@ test('Market services keep readable prices and separated targets through late di
   await page.mouse.move(refresh.x, refresh.y); await page.waitForTimeout(100);
   const blocked = () => page.evaluate(() => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
-    return { reason: r.marketItemHover.getByName('market-item-reader-blocker')?.text, price: r.marketRefreshCost(), enabled: r.children.list.find((o: any) => o.name === 'market-refresh-hit').getData('marketAvailable') };
+    return { reason: r.children.getByName('market-input-help-text').text.match(/NEED \d+ MORE SCRAP$/)?.[0], price: r.marketRefreshCost(), enabled: r.children.list.find((o: any) => o.name === 'market-refresh-hit').getData('marketAvailable'),
+      purchaseEnabled:r.children.getByName('market-purchase-action').getData('enabled') };
   });
-  const reason = await blocked(); expect(reason.reason).toBe(`NEED ${reason.price} MORE SCRAP`); expect(reason.enabled).toBe(false);
+  const reason = await blocked(); expect(reason.reason).toBe(`NEED ${reason.price} MORE SCRAP`); expect(reason.enabled).toBe(false); expect(reason.purchaseEnabled).toBe(false);
   await page.mouse.click(refresh.x, refresh.y); await page.keyboard.press('Enter');
   await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').input.gamepad.emit('down', {}, { index: 0 }));
   expect(await snapshot()).toBe(before);

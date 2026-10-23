@@ -59,7 +59,7 @@ for (const remapped of [false, true]) test(`Waymark decisions are readable and i
       }));
     });
     expect(geometry).toHaveLength(3);
-    geometry.forEach((g: any) => { expect(g.size).toBe('18px'); expect(g.bottom).toBeLessThan(510); expect(g.full).toBe(true); });
+    geometry.forEach((g: any) => { expect(g.size).toBe('21px'); expect(parseFloat(g.size) * viewport.width / 1280).toBeGreaterThanOrEqual(16); expect(g.bottom).toBeLessThan(510); expect(g.full).toBe(true); });
     await page.screenshot({ path: info.outputPath(`choices-${viewport.width}.png`) });
   }
   await click('reward-waymark-hit');
@@ -73,6 +73,8 @@ for (const remapped of [false, true]) test(`Waymark decisions are readable and i
   await page.screenshot({ path: info.outputPath('read-context-1000.png') });
   await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').setBattlePaused(true));
   await press('Enter'); expect(await reader()).toBe('waymark');
+  await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').setBattlePaused(true));
+  await settleCanvas(page);
   await press(remapped ? 'b' : 'Escape'); expect(await reader()).toBe('waymark');
   await press(remapped ? 'b' : 'Escape'); expect(await reader()).toBeNull(); expect(await stable()).toBe(before);
   await press(remapped ? 'j' : 'r'); expect(await reader()).toBe('waymark');
@@ -95,6 +97,37 @@ for (const remapped of [false, true]) test(`Waymark decisions are readable and i
     b.waymarkChoices = originals; b.renderAll(); return failures;
   }, marks.routeMarks);
   expect(clipped).toEqual([]);
+
+  // Exercise the longest authored effect in its actual panel at every supported size.
+  const longest = marks.routeMarks.find(mark => mark.id === 'razor_kite_tail')!;
+  const savedChoice = await page.evaluate(mark => {
+    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    const saved = { ...b.waymarkChoices[0] };
+    b.waymarkChoices[0] = { ...saved, name: mark.name, description: mark.description };
+    b.renderAll(); return saved;
+  }, longest);
+  for (const width of [2560, 1440, 1000]) {
+    await page.setViewportSize({ width, height: width === 2560 ? 1600 : width === 1440 ? 900 : 560 });
+    await settleCanvas(page);
+    const bounds = await page.evaluate(() => {
+      const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+      const effect = b.root.getByName('reward-waymark-effect');
+      const panel = b.root.getByName('reward-waymark-panel').getBounds();
+      const observation = b.root.getByName('reward-waymark-build-observation').getBounds();
+      const r = effect.getBounds();
+      return { text: effect.text, left: r.left - panel.left, right: panel.right - r.right, gap: observation.top - r.bottom };
+    });
+    expect(bounds.text).toBe(longest.description);
+    expect(bounds.left).toBeGreaterThanOrEqual(8); expect(bounds.right).toBeGreaterThanOrEqual(8);
+    expect(bounds.gap).toBeGreaterThanOrEqual(8);
+    await page.screenshot({ path: info.outputPath(`longest-waymark-${width}.png`) });
+  }
+  await page.evaluate(saved => {
+    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    b.waymarkChoices[0] = saved; b.renderAll();
+  }, savedChoice);
+  await settleCanvas(page);
+
   const full = 'Gain 2 Cover, then gain 1 Resonance. '.repeat(40) + 'W'.repeat(90);
   await page.evaluate(full => {
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');

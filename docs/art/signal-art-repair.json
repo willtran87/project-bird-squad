@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-22",
+  "defect": "Disconnected right-edge green fragments and green chroma fringe",
+  "source": "assets/concept-art/ui/route-map/route-node-icons-splash-v7/signal-splash-v7.png",
+  "export": "assets/runtime/map-icons/icons/signal.webp",
+  "generatedOriginal": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-a9e3bf16-2d51-472e-abd3-8fc97c82f67b.png",
+  "prompt": "Use case: background-extraction. Edit target: the supplied Bird Squad route Signal icon. Remove ONLY the stray green vertical specks at the far right and the green chroma fringe around the kite, reel and cord. Keep the same existing pixel-art icon design, pose, layout, pixel clusters, colors, white feather emblem, purple tassel, brass edge and turquoise reel. Preserve the complete kite, reel, cord and tassel with generous transparent margins, square canvas. No extra objects, no text, no changes to the illustration, no background or ground shadow. Genuine transparent alpha with clean edges. This is a careful cutout cleanup, not a redesign.",
+  "exportPolicy": "Uniform contain to 384 square; WebP quality 90 method 6, true alpha; 31,440 bytes under existing 32 KiB cap",
+  "beforeEvidence": "D:/codex-bird-squad-closure24-20261021/evidence/signal-cleanup"
+}

@@ -1,0 +1,270 @@
+{
+  "version": 1,
+  "titlePolicy": "Approved original raster lettering is part of each immutable frame; never ask an illustration generator to recreate it.",
+  "cards": [
+    {
+      "cardId": "major_00",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_00.png",
+      "frame": "assets/templates/major-arcana/major_00-locked-frame.png",
+      "sha256": "cf18f3ade0a007e25b414b0909226c1344e4df0fade1f7fd1e2bd05dc12e41c6",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_01",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_01.png",
+      "frame": "assets/templates/major-arcana/major_01-locked-frame.png",
+      "sha256": "90ff1e2d51b96f0b43bd16a2fa5cb6be68ce61e80a16ce3b0f151126c5f61381",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_02",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_02.png",
+      "frame": "assets/templates/major-arcana/major_02-locked-frame.png",
+      "sha256": "ce8b76465cefb864f006550d8d7f54df6412ca193e0d328d782691acce613d96",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_03",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_03.png",
+      "frame": "assets/templates/major-arcana/major_03-locked-frame.png",
+      "sha256": "1078fe02815d8a0c38f5dada9ca58f14a6f21cff49be46eba1c55e866ccc8a6e",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_04",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_04.png",
+      "frame": "assets/templates/major-arcana/major_04-locked-frame.png",
+      "sha256": "275d854daa6c98ad2a6b5c67ee0720efc8b187bdeccbe998fd43672e89ed5a06",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_05",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_05.png",
+      "frame": "assets/templates/major-arcana/major_05-locked-frame.png",
+      "sha256": "0e95fb21ab434f8a2dd7cfefa38352328bc23a45e9f943d2a9e6b5e07bda44c1",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_06",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_06.png",
+      "frame": "assets/templates/major-arcana/major_06-locked-frame.png",
+      "sha256": "c502146f152e596a2e24f55ea69803e95933bfea00faecff50530d83dbab9e3f",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_07",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_07.png",
+      "frame": "assets/templates/major-arcana/major_07-locked-frame.png",
+      "sha256": "0aff8d8f5615449e1ab07b59d88a1a3026da50b97812b66cdd783d7dd8fd8a42",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_08",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_08.png",
+      "frame": "assets/templates/major-arcana/major_08-locked-frame.png",
+      "sha256": "3dea7e2c1abb667228541209c7acd71b539614f73d7e80a016560710c66156fb",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_09",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_09.png",
+      "frame": "assets/templates/major-arcana/major_09-locked-frame.png",
+      "sha256": "41c3a829757463fad6808f980de2d6c2e40dbb44d107082b7d9bdcbe0035f224",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_10",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_10.png",
+      "frame": "assets/templates/major-arcana/major_10-locked-frame.png",
+      "sha256": "6dc7cac9f2ae9d63d64da6b76a07820d4254d91d7e0c9970714bf3a5219c41c3",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_11",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_11.png",
+      "frame": "assets/templates/major-arcana/major_11-locked-frame.png",
+      "sha256": "bc11b20e83a029534c0234193f358cc750be5cccb8f8df2cd1b1d3b867fa561e",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_12",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_12.png",
+      "frame": "assets/templates/major-arcana/major_12-locked-frame.png",
+      "sha256": "b23dd3086a60cd666268d2b14c98861663614852dbe9b1e7f9b584308fbc1063",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_13",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_13.png",
+      "frame": "assets/templates/major-arcana/major_13-locked-frame.png",
+      "sha256": "af858de9c06e26fcca16a3a4afcb56037b8d4bf883cf284ca8fc25b8e4e0bddc",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_14",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_14.png",
+      "frame": "assets/templates/major-arcana/major_14-locked-frame.png",
+      "sha256": "b495c0bb70992676c72d4aa44bb004e6c025fb82b7ff879d08784949046e431d",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_15",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_15.png",
+      "frame": "assets/templates/major-arcana/major_15-locked-frame.png",
+      "sha256": "8b52b3d6ed95f1b552f754a6873dc71c57e9f96b07dc3ef79c203fb5154c1ff7",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_16",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_16.png",
+      "frame": "assets/templates/major-arcana/major_16-locked-frame.png",
+      "sha256": "c0d4773dc3bbec234e4b663d577408bc698143694179a595c11c1d3dee496432",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_17",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_17.png",
+      "frame": "assets/templates/major-arcana/major_17-locked-frame.png",
+      "sha256": "5de566545b1ef848cd638a13e7151528e983d5a47f58f5c426333c2031c9c41c",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_18",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_18.png",
+      "frame": "assets/templates/major-arcana/major_18-locked-frame.png",
+      "sha256": "3ae0024c763335ac1930447e1eb7a4fbdf7b2c710b60d158a891c49e2aa9fe68",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_19",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_19.png",
+      "frame": "assets/templates/major-arcana/major_19-locked-frame.png",
+      "sha256": "3705fad979a7b0a1604d246e98d99d41a46e0248d8a46d3f1da79efa37c65fa0",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_20",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_20.png",
+      "frame": "assets/templates/major-arcana/major_20-locked-frame.png",
+      "sha256": "e8e6b58fddd74b1941662db83c7125893a3dadbc8341d978b3e2d12c2132cf92",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    },
+    {
+      "cardId": "major_21",
+      "approvedSource": ".generated/imagegen/tarot/selected/major_21.png",
+      "frame": "assets/templates/major-arcana/major_21-locked-frame.png",
+      "sha256": "d2866431385c2e0eecbe78146e6005f676132845a38e22df0d81b12479ad232f",
+      "opening": [
+        112,
+        240,
+        912,
+        1280
+      ]
+    }
+  ]
+}

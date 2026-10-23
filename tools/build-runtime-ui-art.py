@@ -155,10 +155,45 @@ def build_title_preload_icons() -> None:
     )
 
 
+REVIEWED_RESIDENTS = ('marn-valeclip-v3', 'ivo-tallymast-v3', 'oren-shearbright-v3', 'caldra-pinion-v3', 'starling-shopkeeper-v2')
+
+
+def build_signal_icon() -> None:
+    source = ROOT / 'assets/concept-art/ui/route-map/route-node-icons-splash-v7/signal-splash-v7.png'
+    target = ROOT / 'assets/runtime/map-icons/icons/signal.webp'
+    with Image.open(source).convert('RGBA') as image:
+        if image.width != image.height or image.getchannel('A').getextrema() != (0, 255):
+            raise ValueError('Signal master must be square with genuine transparency')
+        image.resize((384, 384), Image.Resampling.LANCZOS).save(target, 'WEBP', quality=90, method=6)
+
+
+def build_resident(name: str) -> None:
+    """Export a reviewed transparent resident without changing its proportions."""
+    if name not in REVIEWED_RESIDENTS:
+        raise ValueError(f'Unknown reviewed resident: {name}')
+    market = name == 'starling-shopkeeper-v2'
+    source = ROOT / 'assets' / 'concept-art' / ('market-kit/layers' if market else 'route-events') / f'{name}.png'
+    target = ROOT / 'assets' / 'runtime' / ('market-kit' if market else 'route-events') / f'{name}.webp'
+    with Image.open(source).convert('RGBA') as image:
+        if image.getextrema()[3][0] != 0:
+            raise ValueError('Resident source must have genuine transparency')
+        image.thumbnail((768, 1024), Image.Resampling.LANCZOS)
+        image.save(target, 'WEBP', quality=90, method=6)
+    print(f'{rel(target)} ({size_kb(target):.1f} KB)')
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--icons', nargs='+', help='Rebuild only these named UI icons.')
+    parser.add_argument('--resident', help='Export one reviewed transparent resident.')
+    parser.add_argument('--signal', action='store_true', help='Export the reviewed Signal route icon.')
     args = parser.parse_args()
+    if args.signal:
+        build_signal_icon()
+        return
+    if args.resident:
+        build_resident(args.resident)
+        return
     if args.icons:
         build_ui_icons(args.icons)
         return
@@ -166,6 +201,9 @@ def main() -> None:
     build_leaders()
     build_ui_icons()
     build_title_preload_icons()
+    build_signal_icon()
+    for resident in REVIEWED_RESIDENTS:
+        build_resident(resident)
 
 
 if __name__ == "__main__":

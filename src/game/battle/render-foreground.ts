@@ -1,11 +1,12 @@
 import Phaser from 'phaser';
 import { fitTextExcerpt } from '../text-excerpt';
+import { artContact } from './art-grounding';
 import type { enemyIntentLabel } from '../enemy-intent';
 
 export interface BattleForegroundArtPlacement {
   artX: number;
   artY: number;
-  hitboxY: number;
+  hitBounds: { x: number; y: number; width: number; height: number };
   shadowY: number;
   shadowW: number;
   shadowH: number;
@@ -103,21 +104,43 @@ function fitSingleLine(label: Phaser.GameObjects.Text, source: string) {
   return fitTextExcerpt(label, source, 1);
 }
 
-function enemyGroundY(context: BattleForegroundRenderContext, enemy: BattleForegroundEnemyView) {
-  // Reviewed contact row in the 768×512 Roof Rat cutout. Its tail extends below
-  // the front paws, so the full alpha bounds are not a valid floor anchor.
-  if (enemy.artKey === 'enemy-roof_rat' && enemy.artPlacement) {
-    const source = context.scene.textures.get(enemy.artKey).getSourceImage() as { height: number };
-    return enemy.artPlacement.artY + source.height * enemy.artFit * (416 / 512 - 0.5) + 2 * enemy.scale;
-  }
-  return enemy.artPlacement?.shadowY ?? 34 * enemy.scale;
+function identifyEnemy<T extends Phaser.GameObjects.GameObject>(object: T, name: string, enemyId: string) {
+  return object.setName(name).setData('enemyId', enemyId);
+}
+
+function combatText(context: BattleForegroundRenderContext, x: number, y: number,
+  text: string, fontSize: number, color: string, width?: number, origin = 0.5) {
+  return context.scene.add.text(x, y, text, {
+    fontFamily: context.fontFamily, fontStyle: context.boldFontStyle,
+    fontSize, color, resolution: 2,
+    ...(width === undefined ? {} : { wordWrap: { width, useAdvancedWrap: true }, maxLines: 1 }),
+  }).setOrigin(origin, 0.5);
+}
+
+function enemyContact(context: BattleForegroundRenderContext, enemy: BattleForegroundEnemyView) {
+  const fallback = { x: 0, y: enemy.artPlacement?.shadowY ?? 34 * enemy.scale,
+    width: enemy.artPlacement?.shadowW ?? 112 * enemy.scale };
+  if (!enemy.artKey || !enemy.artPlacement || !context.scene.textures.exists(enemy.artKey)) return fallback;
+  const source = context.scene.textures.get(enemy.artKey).getSourceImage() as { width: number; height: number };
+  return artContact(enemy.artKey, enemy.artPlacement.artX, enemy.artPlacement.artY,
+    source.width * enemy.artFit, source.height * enemy.artFit, fallback);
+}
+
+function contactShadow(context: BattleForegroundRenderContext, x: number, y: number, width: number,
+  height: number, name: string, enemyId?: string) {
+  // Floor shadows belong to the stage, not the breathing/casting pose. Two quiet
+  // layers soften the silhouette without adding a spotlight behind the character.
+  context.target.add(context.scene.add.ellipse(x, y + 1, width * 1.16, height * 1.35, 0x020409, 0.12)
+    .setName(`${name}-penumbra`).setData('enemyId', enemyId));
+  context.target.add(context.scene.add.ellipse(x, y, width, height, 0x020409, 0.30)
+    .setName(name).setData('enemyId', enemyId));
 }
 
 function renderEnemyArt(context: BattleForegroundRenderContext, enemy: BattleForegroundEnemyView) {
   const { scene, target, fontFamily, boldFontStyle } = context;
   const s = enemy.scale;
   const hasEnemyArt = Boolean(enemy.artKey && scene.textures.exists(enemy.artKey));
-  const groundY = enemyGroundY(context, enemy);
+  const contact = enemyContact(context, enemy);
   const reticle = context.textures.targetReticle;
   const breathGroup = scene.add.container(enemy.x, enemy.y)
     .setName('combat-enemy-art').setData('enemyId', enemy.id);
@@ -126,7 +149,7 @@ function renderEnemyArt(context: BattleForegroundRenderContext, enemy: BattleFor
   breathGroup.add(poseGroup);
   // Authored enamel target art keeps its native proportions under the feet.
   if (enemy.selected && scene.textures.exists(reticle)) {
-    target.add(scene.add.image(enemy.x, enemy.y + groundY, reticle)
+    target.add(scene.add.image(enemy.x + contact.x, enemy.y + contact.y, reticle)
       .setScale(s / 4).setName('combat-target-reticle'));
   }
   if (enemy.guideTarget) {
@@ -142,34 +165,29 @@ function renderEnemyArt(context: BattleForegroundRenderContext, enemy: BattleFor
     }).setOrigin(0.5).setName('combat-first-target-guide'));
   }
 
-  poseGroup.add(scene.add.ellipse(
-    0,
-    groundY,
-    enemy.artPlacement?.shadowW ?? 112 * s,
-    enemy.artPlacement?.shadowH ?? 22 * s,
-    0x020409,
-    hasEnemyArt ? 0.38 : 0.26,
-  ).setName('combat-enemy-contact-shadow').setData('enemyId', enemy.id));
-  // The darkest crow art needs a little separation from the roof, not a generic
-  // spotlight that competes with intent, target and impact cues.
-  if (hasEnemyArt && /crow/i.test(enemy.artKey ?? '')) {
-    poseGroup.add(scene.add.ellipse(0, -22 * s, 170 * s, 190 * s, 0x8fb2b7, 0.075)
-      .setName('combat-enemy-silhouette-separation'));
-  }
-  const body = hasEnemyArt
-    ? scene.add.rectangle(0, enemy.artPlacement?.hitboxY ?? -18 * s, 248 * s, 236 * s, 0x000000, 0.001)
-      .setInteractive({ useHandCursor: true })
-    : scene.add.ellipse(0, 0, 174 * s, 136 * s, enemy.elite ? 0x5b3f6d : 0x6f4b35, 1)
+  contactShadow(context, enemy.x + contact.x, enemy.y + contact.y, contact.width,
+    Math.min(18 * s, contact.width * 0.16), 'combat-enemy-contact-shadow', enemy.id);
+  if (!hasEnemyArt) {
+    const body = scene.add.ellipse(0, 0, 174 * s, 136 * s, enemy.elite ? 0x5b3f6d : 0x6f4b35, 1)
       .setStrokeStyle(enemy.selected ? 5 : enemy.elite ? 4 : 2, enemy.frameColor, 1)
       .setInteractive({ useHandCursor: true });
-  body.on('pointerdown', () => context.onEnemyClicked(enemy.id));
-  poseGroup.add(body);
+    body.on('pointerdown', () => context.onEnemyClicked(enemy.id));
+    poseGroup.add(body);
+  }
   if (hasEnemyArt && enemy.artKey) {
     const art = scene.add.image(enemy.artPlacement?.artX ?? 0, enemy.artPlacement?.artY ?? -22 * s, enemy.artKey)
       .setName('combat-enemy-portrait')
       .setScale(enemy.artFit)
-      .setAlpha(0.99)
-      .setInteractive({ useHandCursor: true });
+      // A restrained cool ambient fill reveals dark feather/workwear detail on
+      // the night rooftops. Screen tint leaves existing highlights intact.
+      .setTint(0x111822).setTintMode(Phaser.TintModes.SCREEN)
+      .setAlpha(0.99);
+    // Transparent export padding must not steal input from the HUD or another
+    // enemy. The silhouette and the separate vitals are both selection targets.
+    const bounds = enemy.artPlacement?.hitBounds;
+    if (bounds) art.setInteractive(new Phaser.Geom.Rectangle(bounds.x, bounds.y, bounds.width, bounds.height), Phaser.Geom.Rectangle.Contains);
+    else art.setInteractive();
+    if (art.input) art.input.cursor = 'pointer';
     art.on('pointerdown', () => context.onEnemyClicked(enemy.id));
     poseGroup.add(art);
   } else {
@@ -185,90 +203,63 @@ function renderEnemyArt(context: BattleForegroundRenderContext, enemy: BattleFor
   context.presentEnemyMotion(enemy.id, breathGroup, poseGroup, s);
 }
 
+function renderRankBadge(context: BattleForegroundRenderContext, enemy: BattleForegroundEnemyView,
+  y: number, name: string, text: string, border: number, color: string, alpha = 0.64,
+  fontSize = 16, labelName = name) {
+  const { scene, target } = context;
+  const width = Math.min(enemy.hpBar.w + 8, 244);
+  const panel = identifyEnemy(scene.add.rectangle(enemy.hpBar.x, y, width, 28, 0x11171e, 0.94)
+    .setStrokeStyle(1, border, alpha), name, enemy.id);
+  const label = identifyEnemy(combatText(context, enemy.hpBar.x, y, text, fontSize, color, width - 16),
+    labelName, enemy.id).setData('fullText', text);
+  target.add([panel, fitSingleLine(label, text)]);
+  return panel;
+}
+
 function renderEnemyLabels(context: BattleForegroundRenderContext, enemy: BattleForegroundEnemyView) {
-  const { scene, target, textures, fontFamily, boldFontStyle } = context;
+  const { scene, target } = context;
   const s = enemy.scale;
+  const hp = enemy.hpBar;
   if (enemy.elite) {
-    const crestY = enemy.y - 140 * s;
-    if (scene.textures.exists(textures.eliteCrest)) {
-      scene.textures.get(textures.eliteCrest).setFilter(Phaser.Textures.FilterMode.LINEAR);
-      target.add(scene.add.image(enemy.x, crestY, textures.eliteCrest)
-        .setDisplaySize(126 * s, 43 * s)
-        .setAlpha(enemy.selected ? 0.94 : 0.82)
-        .setName('combat-elite-crest'));
-    }
-    target.add(scene.add.rectangle(enemy.x, crestY - s, 58 * s, 18 * s, 0x101017, 0.96));
-    target.add(scene.add.text(enemy.x, crestY - s, 'ELITE', {
-      fontFamily,
-      fontSize: `${Math.round(12 * s)}px`,
-      fontStyle: boldFontStyle,
-      color: '#fff1a8',
-      stroke: '#21120a',
-      strokeThickness: 3
-    }).setOrigin(0.5));
+    // Rank belongs to the measured label stack, not a free-floating crest
+    // above the portrait where small/back-row enemies can cross the top HUD.
+    renderRankBadge(context, enemy, hp.y - 78, 'combat-elite-badge', 'Elite',
+      0xd8a840, '#fff1a8', 0.64, 19, 'combat-elite-label');
   }
 
-  const hp = enemy.hpBar;
   const hpFraction = Math.max(0, Math.min(1, enemy.hp / enemy.maxHp));
   const filledWidth = Math.max(2, hp.w * hpFraction);
-  const vitals = scene.add.rectangle(hp.x, hp.y - 12, hp.w + 8, 40, 0x0b151f, 0.97)
-    .setStrokeStyle(1, enemy.selected ? enemy.frameColor : 0x627078, enemy.selected ? 0.72 : 0.32)
-    .setName('combat-enemy-vitals').setData('enemyId', enemy.id);
+  const vitals = identifyEnemy(scene.add.rectangle(hp.x, hp.y - 25, hp.w + 8, 76, 0x0b151f, 0.97)
+    .setStrokeStyle(1, enemy.selected ? enemy.frameColor : 0x627078, enemy.selected ? 0.72 : 0.32),
+    'combat-enemy-vitals', enemy.id);
   context.attachTooltip(vitals, enemy.name, `Cohesion ${enemy.hp}/${enemy.maxHp}. ${enemy.moveLabel}`);
   vitals.on('pointerdown', () => context.onEnemyClicked(enemy.id));
   target.add(vitals);
-  target.add(scene.add.rectangle(hp.x, hp.y, hp.w, hp.h - 6, 0x34252c, 1)
-    .setName('combat-enemy-health-track').setData('enemyId', enemy.id));
-  target.add(scene.add.rectangle(
+  target.add(identifyEnemy(scene.add.rectangle(hp.x, hp.y, hp.w, hp.h - 6, 0x34252c, 1)
+    .setStrokeStyle(1, 0x7c6563, 0.4), 'combat-enemy-health-track', enemy.id));
+  target.add(identifyEnemy(scene.add.rectangle(
     hp.x - hp.w / 2 + filledWidth / 2,
     hp.y,
     filledWidth,
     hp.h - 6,
     hpFraction > 0.34 ? 0xc46d75 : 0xef746b,
     0.95,
-  ).setName('combat-enemy-health-fill').setData('enemyId', enemy.id));
-  target.add(scene.add.rectangle(hp.x - hp.w / 2, hp.y - hp.h / 2 + 3,
-    Math.max(2, hp.w * hpFraction), 2, hpFraction > 0.34 ? 0xd47778 : 0xff8176, 0.8)
-    .setOrigin(0, 0.5).setName('combat-enemy-health-edge'));
+  ), 'combat-enemy-health-fill', enemy.id));
   if (enemy.boss) {
     const phaseTwo = enemy.phase === 2;
     const phaseColor = phaseTwo ? 0xff9d4d : 0xf5c85b;
     target.add(scene.add.rectangle(hp.x, hp.y, 2 * s, hp.h - 4, phaseColor, 0.9)
       .setName('combat-boss-phase-threshold'));
-    const phaseY = hp.y - 78;
-    const phaseWidth = Math.min(hp.w + 8, 244);
-    const phasePanel = scene.add.rectangle(hp.x, phaseY, phaseWidth, 28, 0x11171e, 0.94)
-      .setStrokeStyle(1, phaseColor, 0.64)
-      .setName('combat-boss-phase-badge');
-    target.add(phasePanel);
     const phaseText = phaseTwo ? `Phase II · ${enemy.phaseName ?? 'Final pattern'}` : 'Phase I · Shifts at 50%';
+    const phasePanel = renderRankBadge(context, enemy, hp.y - 78, 'combat-boss-phase-badge',
+      phaseText, phaseColor, phaseTwo ? '#ffd5ad' : '#fff1b8');
     context.attachTooltip(phasePanel, phaseTwo ? 'Boss phase II' : 'Boss phase I', phaseText);
-    const phaseLabel = scene.add.text(
-      hp.x,
-      phaseY,
-      phaseText,
-      {
-        fontFamily,
-        fontSize: '16px',
-        fontStyle: boldFontStyle,
-        color: phaseTwo ? '#ffd5ad' : '#fff1b8', resolution: 2,
-        wordWrap: { width: phaseWidth - 16, useAdvancedWrap: true }, maxLines: 1,
-      }
-    ).setOrigin(0.5).setName('combat-boss-phase-badge').setData('fullText', phaseText);
-    target.add(fitSingleLine(phaseLabel, phaseText));
   }
-  const value = scene.add.text(hp.x + hp.w / 2 - 4, hp.y - 19, `${enemy.hp}/${enemy.maxHp}`, {
-    fontFamily,
-    fontSize: `${Math.max(14, Math.round(13 * s))}px`,
-    fontStyle: boldFontStyle,
-    color: '#c8d4dc', resolution: 2,
-  }).setOrigin(1, 0.5).setName('combat-enemy-hp-value').setData('enemyId', enemy.id);
+  const value = identifyEnemy(combatText(context, hp.x + hp.w / 2 - 4, hp.y - 20,
+    `${enemy.hp}/${enemy.maxHp}`, 21, '#c8d4dc', undefined, 1), 'combat-enemy-hp-value', enemy.id);
   const nameWidth = Math.max(32, hp.w - value.width - 16);
-  const label = scene.add.text(hp.x - hp.w / 2 + 4, hp.y - 19, '', {
-    fontFamily, fontSize: `${Math.max(15, Math.round(14 * s))}px`,
-    fontStyle: boldFontStyle, color: '#f2eee6', resolution: 2,
-    wordWrap: { width: nameWidth, useAdvancedWrap: true }, maxLines: 1,
-  }).setOrigin(0, 0.5).setName('combat-enemy-name').setData('enemyId', enemy.id);
+  const label = identifyEnemy(combatText(context, hp.x - hp.w / 2 + 4, hp.y - 20, '', 21, '#f2eee6', nameWidth, 0),
+    'combat-enemy-name', enemy.id);
   fitSingleLine(label, enemy.name.replace(/^The\s+/, '')).setData('fullName', enemy.name);
   target.add([label, value]);
 
@@ -278,10 +269,9 @@ function renderEnemyLabels(context: BattleForegroundRenderContext, enemy: Battle
     : intent.kind === 'cover' ? 0x7ab8d6 : intent.kind === 'charge' ? 0xffcf7a : intent.kind === 'support' ? 0x8fd6a0 : 0xc98bff;
   // One named Tell is anchored directly to its own vitals, never between enemies.
   const bx = hp.x;
-  const by = hp.y - 47;
-  const badge = scene.add.rectangle(bx, by, Math.min(hp.w, 176), 28, 0x10171f, 0.97)
-    .setStrokeStyle(1, ringColor, 0.65)
-    .setName('combat-enemy-intent-badge').setData('enemyId', enemy.id)
+  const by = hp.y - 48;
+  const badge = identifyEnemy(scene.add.rectangle(bx, by, Math.min(hp.w, 176), 28, 0x10171f, 0.97)
+    .setStrokeStyle(1, ringColor, 0.24), 'combat-enemy-intent-badge', enemy.id)
     .setData('description', enemy.moveDescription);
   context.attachTooltip(
     badge,
@@ -289,44 +279,27 @@ function renderEnemyLabels(context: BattleForegroundRenderContext, enemy: Battle
     `${enemy.incomingDamage > 0 ? `Projected attack: ${enemy.incomingDamage} damage. ` : ''}${enemy.moveDescription}`
   );
   target.add(badge);
-  target.add(scene.add.text(bx, by, intent.label, {
-    fontFamily,
-    fontSize: '18px',
-    fontStyle: boldFontStyle,
-    color: '#ffffff', resolution: 2,
-  }).setOrigin(0.5).setName('combat-enemy-intent-value').setData('enemyId', enemy.id));
+  target.add(identifyEnemy(combatText(context, bx, by, intent.label, 21, '#ffffff'),
+    'combat-enemy-intent-value', enemy.id));
   if (enemy.objective) {
     const objectiveActive = enemy.objective.status === 'active';
     const objectiveColor = objectiveActive ? 0xf5c85b : enemy.objective.status === 'complete' ? 0x7ee2a8 : 0xff7d72;
     const objectiveText = objectiveActive
       ? `Objective · ${enemy.objective.remainingBeats} ${enemy.objective.remainingBeats === 1 ? 'beat' : 'beats'}`
       : enemy.objective.status === 'complete' ? 'Objective complete' : 'Objective missed';
-    const objectiveY = hp.y - (enemy.boss ? 110 : 78);
-    const objectiveWidth = Math.min(hp.w + 8, 244);
-    const objectivePanel = scene.add.rectangle(hp.x, objectiveY, objectiveWidth, 28, 0x11171e, 0.94)
-      .setStrokeStyle(1, objectiveColor, 0.8)
-      .setName('combat-objective-target');
+    const objectiveY = hp.y - (enemy.boss || enemy.elite ? 110 : 78);
+    const objectivePanel = renderRankBadge(context, enemy, objectiveY, 'combat-objective-target',
+      objectiveText, objectiveColor, objectiveActive ? '#fff1b8' : enemy.objective.status === 'complete' ? '#b7f4d0' : '#ffd0ca', 0.8);
     context.attachTooltip(objectivePanel, enemy.objective.title, enemy.objective.detail);
-    target.add(objectivePanel);
-    const objectiveLabel = scene.add.text(hp.x, objectiveY, objectiveText, {
-      fontFamily,
-      fontSize: '16px',
-      fontStyle: boldFontStyle,
-      color: objectiveActive ? '#fff1b8' : enemy.objective.status === 'complete' ? '#b7f4d0' : '#ffd0ca',
-      resolution: 2, wordWrap: { width: objectiveWidth - 16, useAdvancedWrap: true }, maxLines: 1,
-    }).setOrigin(0.5).setName('combat-objective-target').setData('fullText', objectiveText);
-    target.add(fitSingleLine(objectiveLabel, objectiveText));
   }
   if (enemy.block > 0 || enemy.weak > 0) {
-    const statusY = hp.y + 23;
-    const panel = scene.add.rectangle(hp.x, statusY, hp.w + 8, 24, 0x0b151f, 0.97)
-      .setName('combat-enemy-status-panel').setData('enemyId', enemy.id);
+    const statusY = hp.y + 26;
+    const panel = identifyEnemy(scene.add.rectangle(hp.x, statusY, hp.w + 8, 24, 0x0b151f, 0.97),
+      'combat-enemy-status-panel', enemy.id);
     context.attachTooltip(panel, enemy.name, enemy.status);
     panel.on('pointerdown', () => context.onEnemyClicked(enemy.id));
-    const status = scene.add.text(hp.x, statusY, '', {
-      fontFamily, fontSize: '16px', fontStyle: boldFontStyle, color: '#cfdee3', resolution: 2,
-      wordWrap: { width: hp.w - 4, useAdvancedWrap: true }, maxLines: 1,
-    }).setOrigin(0.5).setName('combat-enemy-status').setData('enemyId', enemy.id);
+    const status = identifyEnemy(combatText(context, hp.x, statusY, '', 19, '#cfdee3', hp.w - 4),
+      'combat-enemy-status', enemy.id);
     target.add([panel, fitTextExcerpt(status, enemy.status, 1)]);
   }
 }
@@ -334,15 +307,18 @@ function renderEnemyLabels(context: BattleForegroundRenderContext, enemy: Battle
 function renderLeader(context: BattleForegroundRenderContext) {
   const { scene, target, leader, fontFamily, boldFontStyle, goldColor } = context;
   const hasLeaderArt = Boolean(leader.artKey && scene.textures.exists(leader.artKey));
-  const breathGroup = scene.add.container(leader.x, leader.y);
+  const breathGroup = scene.add.container(leader.x, leader.y).setName('combat-leader-art');
   const poseGroup = scene.add.container(0, 0);
   breathGroup.add(poseGroup);
-  poseGroup.add(scene.add.ellipse(0, 126, 172, 26, 0x020409, 0.42));
   if (hasLeaderArt && leader.artKey) {
     const source = scene.textures.get(leader.artKey).getSourceImage() as { width?: number; height?: number };
     const fit = Math.min(230 / Math.max(1, Number(source.width ?? 1)), 288 / Math.max(1, Number(source.height ?? 1)));
-    poseGroup.add(scene.add.image(0, -18, leader.artKey).setScale(fit).setAlpha(0.99));
+    const width = Number(source.width ?? 1) * fit, height = Number(source.height ?? 1) * fit;
+    const contact = artContact(leader.artKey, 0, -18, width, height, { x: 0, y: 100, width: 112 });
+    contactShadow(context, leader.x + contact.x, leader.y + contact.y, contact.width, 15, 'combat-leader-contact-shadow');
+    poseGroup.add(scene.add.image(0, -18, leader.artKey).setName('combat-leader-portrait').setScale(fit).setAlpha(0.99));
   } else {
+    contactShadow(context, leader.x, leader.y + 40, 112, 18, 'combat-leader-contact-shadow');
     poseGroup.add(scene.add.ellipse(0, -18, 142, 118, 0x6f4b35, 0.96).setStrokeStyle(3, leader.stateAccent, 0.9));
     poseGroup.add(scene.add.triangle(52, -26, 0, 0, 28, 7, 0, 16, 0x1b1110, 1));
     poseGroup.add(scene.add.text(0, -18, 'FF', {
@@ -354,8 +330,10 @@ function renderLeader(context: BattleForegroundRenderContext) {
       strokeThickness: 4,
     }).setOrigin(0.5));
   }
-  const hitbox = scene.add.rectangle(0, -18, 250, 300, 0x000000, 0.001)
-    .setInteractive({ useHandCursor: true });
+  // Stop the leader's inspection region above the fixed hand rail: hovering
+  // or tapping a card must never be intercepted by the portrait's empty area.
+  const hitbox = scene.add.rectangle(0, -36, 250, 264, 0x000000, 0.001)
+    .setInteractive({ useHandCursor: true }).setName('combat-leader-hit');
   hitbox.on('pointerdown', context.onLeaderClicked);
   hitbox.on('pointerover', () => hitbox.setStrokeStyle(2, leader.stateAccent, 0.7));
   hitbox.on('pointerout', () => hitbox.setStrokeStyle());

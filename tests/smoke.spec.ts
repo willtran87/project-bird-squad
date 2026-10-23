@@ -3,6 +3,13 @@ import { readFile } from 'node:fs/promises';
 import { flockLeaders } from '../src/game/leaders';
 import type { SavedDeckRecord } from '../src/game/saved-decks';
 import { settleCanvas } from './helpers/settled-canvas';
+import { UI_CONTROL } from '../src/game/ui-tokens';
+
+async function focusFolioControl(page: Page, action: string) {
+  const current = () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').folioFocus?.action);
+  for (let index = 0; index < 24 && await current() !== action; index++) await page.keyboard.press('Tab');
+  expect(await current()).toBe(action);
+}
 
 // The game exposes a deterministic text-state harness on window; these smoke
 // tests drive scenes through it rather than clicking the canvas.
@@ -79,12 +86,14 @@ async function clickNamedGameObject(page: Page, sceneKey: string, name: string) 
     const collect = (items: any[]): any[] => items.flatMap((child: any) => [child, ...(Array.isArray(child.list) ? collect(child.list) : [])]);
     return collect(scene?.children?.list ?? []).some((child: any) => child.name === objectName && child.input?.enabled);
   }, { sceneKey, name });
+  await settleCanvas(page);
   const center = await page.evaluate(({ sceneKey: key, name: objectName }) => {
     const scene = window.__birdSquadGame.scene.getScene(key);
     const collect = (items: any[]): any[] => items.flatMap((child: any) => [child, ...(Array.isArray(child.list) ? collect(child.list) : [])]);
     const hit = collect(scene.children.list).find((child: any) => child.name === objectName && child.input?.enabled);
     if (!hit) throw new Error(`Missing enabled ${objectName} command`);
-    return { x: hit.x, y: hit.y };
+    const bounds = hit.getBounds();
+    return { x: bounds.centerX, y: bounds.centerY };
   }, { sceneKey, name });
   const canvas = await page.locator('canvas').boundingBox();
   if (!canvas) throw new Error('Missing game canvas');
@@ -96,9 +105,13 @@ async function clickNamedGameObject(page: Page, sceneKey: string, name: string) 
 }
 
 async function clickFlightLabTool(page: Page, name: string) {
+  // A newly drawn Phaser control is input-enabled before the next frame
+  // registers it for hit testing. Wait for that frame before real clicks.
+  await settleCanvas(page);
   const open = await page.evaluate(() => Boolean(window.__birdSquadGame.scene.getScene('ProfileScene')
     .children.getByName('profile-flight-lab-tools-panel')));
   if (!open) await clickNamedGameObject(page, 'ProfileScene', 'profile-flight-lab-tools-hit');
+  await settleCanvas(page);
   await clickNamedGameObject(page, 'ProfileScene', name);
 }
 
@@ -544,15 +557,18 @@ test('route map loads and previews the boss before the final node', async ({ pag
       const rendered = collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-route-map-frame')
         && collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-route-selected-node-ring')
         && collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-route-boss-beacon-ring')
-        && collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-route-district-banner')
+        && collectObjects(route.children).some((child: any) => child.name === 'route-district-banner' && child.type === 'Rectangle')
         && collectObjects(route.children).some((child: any) => child.texture?.key === 'route-node-street')
         && collectObjects(route.children).some((child: any) => child.texture?.key === 'route-node-boss');
       if (rendered) break;
       await wait(50);
     }
+    let bossTooltip: any;
+    let bossTooltipHeight = 0;
     if (bossNode) {
       const position = route.nodePosition(bossNode);
-      route.showNodeTooltip(bossNode, position.x, position.y - 40);
+      bossTooltip = route.showNodeTooltip(bossNode, position.x, position.y - 40);
+      bossTooltipHeight = collectObjects(bossTooltip).find((child: any) => child.name === 'route-node-tooltip-frame')?.displayHeight ?? 0;
     }
     if (cacheNode) {
       const position = route.nodePosition(cacheNode);
@@ -575,7 +591,7 @@ test('route map loads and previews the boss before the final node', async ({ pag
     const routeNodeTooltipFrameRendered = collectObjects(route.children).some((child: any) => child.name === 'route-node-tooltip-frame');
     const routeSelectedNodeRingRendered = collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-route-selected-node-ring');
     const routeBossBeaconRingRendered = collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-route-boss-beacon-ring');
-    const routeDistrictBannerRendered = collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-route-district-banner');
+    const routeDistrictBannerRendered = collectObjects(route.children).some((child: any) => child.name === 'route-district-banner' && child.type === 'Rectangle');
     const bossPrepDossierRendered = collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-boss-prep-dossier-flourish');
     const bossPrepReadinessChipFrameRendered = collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-boss-prep-readiness-chip-frame');
     const bossPrepPressurePlaqueRendered = collectObjects(route.children).some((child: any) => child.texture?.key === 'ui-icon-boss-prep-pressure-plaque');
@@ -611,12 +627,8 @@ test('route map loads and previews the boss before the final node', async ({ pag
       }
       const confirm = route.routeLayout().confirm;
       route.showSimpleTooltip('Take this route', confirm.cx, confirm.cy - 60);
-      for (let i = 0; i < 40; i += 1) {
-        const rendered = collectObjects(route.children)
-          .some((child: any) => child.texture?.key === 'ui-icon-route-commit-tooltip-frame');
-        if (rendered) break;
-        await wait(50);
-      }
+      // This is an immediate quiet Rectangle/Text tooltip. Waiting for its
+      // retired image texture lets unrelated asset refreshes replace the scene.
     }
     const finalState = JSON.parse(window.render_game_to_text!());
     const routeMapFrames = collectObjects(route.children)
@@ -638,7 +650,7 @@ test('route map loads and previews the boss before the final node', async ({ pag
         visible: child.visible,
       }));
     const routeCommitTooltipFrames = collectObjects(route.children)
-      .filter((child: any) => child.texture?.key === 'ui-icon-route-commit-tooltip-frame')
+      .filter((child: any) => child.name === 'route-commit-tooltip-frame' && child.type === 'Rectangle')
       .map((child: any) => ({
         displayWidth: Math.round(child.displayWidth),
         displayHeight: Math.round(child.displayHeight),
@@ -646,6 +658,9 @@ test('route map loads and previews the boss before the final node', async ({ pag
         name: child.name,
         visible: child.visible,
       }));
+    const commitLabel = collectObjects(route.children).find((child: any) => child.text === 'Take this route');
+    const commitFrame = collectObjects(route.children).find((child: any) => child.name === 'route-commit-tooltip-frame');
+    const labelBounds = commitLabel?.getBounds(), frameBounds = commitFrame?.getBounds();
     const routeNodeIcons = collectObjects(route.children)
       .filter((child: any) => child.name === 'route-node-icon')
       .map((child: any) => ({
@@ -663,6 +678,10 @@ test('route map loads and previews the boss before the final node', async ({ pag
       routeCommitIconRendered: route.children.list.some((child: any) => child.texture?.key === 'ui-icon-route-commit-medallion'),
       routeCommitTooltipFrameLoaded: route.textures.exists('ui-icon-route-commit-tooltip-frame'),
       routeCommitTooltipFrameRendered: routeCommitTooltipFrames.length > 0,
+      commitTooltipText: commitLabel?.text,
+      commitTooltipFont: commitLabel?.style.fontSize,
+      commitTooltipContained: Boolean(labelBounds && frameBounds && labelBounds.left >= frameBounds.left
+        && labelBounds.right <= frameBounds.right && labelBounds.top >= frameBounds.top && labelBounds.bottom <= frameBounds.bottom),
       routeCommitTooltipFrame: finalState.routeCommitTooltipFrame,
       routeCommitTooltipFrames,
       rewardCardBadgeLoaded: route.textures.exists('ui-icon-reward-card-badge'),
@@ -687,6 +706,8 @@ test('route map loads and previews the boss before the final node', async ({ pag
       routeNodeTooltipFrameRendered,
       routeNodeTooltipFrame: state.routeNodeTooltipFrame,
       routeNodeTooltipFrames,
+      bossTooltipHeight,
+      bossTooltipRetired: bossTooltip?.active === false,
       routeRiskMeterFrameLoaded: route.textures.exists('ui-icon-route-risk-meter-frame'),
       routeRiskMeterFrameRendered: routeRiskMeterFrames.length > 0,
       routeRiskMeterFrame: state.routeRiskMeterFrame,
@@ -735,14 +756,17 @@ test('route map loads and previews the boss before the final node', async ({ pag
   expect(result.routeCommitTooltipFrameLoaded).toBe(true);
   expect(result.routeCommitTooltipFrameRendered).toBe(true);
   expect(result.routeCommitTooltipFrame.loaded).toBe(true);
-  expect(result.routeCommitTooltipFrame.rendered).toBe(true);
-  expect(result.routeCommitTooltipFrame.count).toBe(1);
+  expect(result.routeCommitTooltipFrame.rendered).toBe(false);
+  expect(result.routeCommitTooltipFrame.count).toBe(0);
   expect(result.routeCommitTooltipFrames).toHaveLength(1);
   expect(result.routeCommitTooltipFrames[0]).toMatchObject({
     name: 'route-commit-tooltip-frame',
     visible: true,
-    displayHeight: 48,
   });
+  expect(result.routeCommitTooltipFrames[0].displayHeight).toBeGreaterThanOrEqual(40);
+  expect(result.commitTooltipText).toBe('Take this route');
+  expect(result.commitTooltipFont).toBe('19px');
+  expect(result.commitTooltipContained).toBe(true);
   expect(result.routeCommitTooltipFrames[0].displayWidth).toBeGreaterThanOrEqual(146);
   expect(result.routeCommitTooltipFrames[0].alpha).toBeGreaterThan(0.9);
   expect(result.routeDistrictBannerLoaded).toBe(true);
@@ -806,9 +830,11 @@ test('route map loads and previews the boss before the final node', async ({ pag
   expect(result.routeNodeTooltipFrameRendered).toBe(true);
   expect(result.routeNodeTooltipFrame.loaded).toBe(true);
   expect(result.routeNodeTooltipFrame.rendered).toBe(true);
-  expect(result.routeNodeTooltipFrame.count).toBe(2);
-  expect(result.routeNodeTooltipFrames).toHaveLength(2);
-  expect(result.routeNodeTooltipFrames.map((frame: any) => frame.displayHeight).sort((a: number, b: number) => a - b)).toEqual([174, 252]);
+  expect(result.bossTooltipHeight).toBe(252);
+  expect(result.bossTooltipRetired).toBe(true);
+  expect(result.routeNodeTooltipFrame.count).toBe(1);
+  expect(result.routeNodeTooltipFrames).toHaveLength(1);
+  expect(result.routeNodeTooltipFrames.map((frame: any) => frame.displayHeight)).toEqual([174]);
   result.routeNodeTooltipFrames.forEach((frame: any) => {
     expect(frame).toMatchObject({
       name: 'route-node-tooltip-frame',
@@ -2055,9 +2081,9 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
     target: expect.any(String),
   });
   expect(result.guideRecommendation.cost).toBeLessThanOrEqual(result.guideEnergy);
-  expect(result.guideVisual.text).toMatch(/^1 {2}SELECT .+ {3}→ {3}2 {2}TARGET .+ {3}• {3}\d+ WINGBEATS? {3}• {3}FLOW \+1$/);
-  expect(result.guideVisual.fontSize).toBe(12);
-  expect(result.guideVisual.panelSize).toEqual([600, 32]);
+  expect(result.guideVisual.text).toMatch(/^Select .+, then target .+\. Cost: \d+ · Flow \+1$/);
+  expect(result.guideVisual.fontSize).toBe(21);
+  expect(result.guideVisual.panelSize).toEqual([600, 58]);
   expect(result.guideVisual.leftInset).toBeGreaterThanOrEqual(14);
   expect(result.guideVisual.rightInset).toBeGreaterThanOrEqual(14);
   expect(result.guidePulseRendered).toBe(false);
@@ -2279,7 +2305,7 @@ test('contextual Molt lesson waits for a Molt card, respects skip, and retires a
     const active = JSON.parse(window.render_game_to_text!());
     const activeObjects = scene.handLayer.list.filter((child: any) => child.name?.startsWith('combat-molt-guide'));
     const guideText = scene.root.list
-      .filter((child: any) => typeof child.text === 'string' && child.text.startsWith('MOLT   |'))
+      .filter((child: any) => child.name === 'first-combat-guidance' && typeof child.text === 'string')
       .map((child: any) => child.text);
     const storedSeen = JSON.parse(window.localStorage.getItem(guideKey) ?? '{}');
 
@@ -2312,7 +2338,7 @@ test('contextual Molt lesson waits for a Molt card, respects skip, and retires a
   expect(result.activeObjectNames).not.toContain('combat-molt-guide-pulse');
   expect(result.activeObjectNames).toContain('combat-molt-guide-tag');
   expect(result.guideText).toEqual([
-    `MOLT   |   PLAY ${result.cardName}   |   CHEAPER THIS BEAT   |   ROOST: OPEN SKY`,
+    `Play ${result.cardName} for less this beat. Roost to open the sky.`,
   ]);
   expect(result.storedSeen.moltLessonSeen).toBe(1);
   expect(result.completed).toMatchObject({ eligible: false, active: false, seen: 1, completed: true, rendered: false });
@@ -2632,17 +2658,21 @@ test('combat confirmation rail separates long card and target names from its com
       command: bounds(command),
       summary: bounds(summary),
       cardTargetText: cardTarget.text,
+      cardTargetFullText: cardTarget.getData('fullText'),
       cardTargetNaturalWidth: cardTarget.context.measureText(cardTarget.text).width / (cardTarget.resolution || 1),
       commandText: command.text,
       summaryText: summary.text,
+      summaryFullText: summary.getData('fullText'),
       summaryNaturalWidth: summary.context.measureText(summary.text).width / (summary.resolution || 1),
     };
   });
-  expect(layout.panel).toMatchObject({ width: 600, height: 74 });
-  expect(layout.cardTargetText).toBe('Plume Victory Wire → Mongoose Counterfighter');
+  expect(layout.panel).toMatchObject({ width: 600, height: 52 });
+  expect(layout.cardTargetFullText).toBe('Plume Victory Wire → Mongoose Counterfighter');
+  expect(layout.cardTargetText).toMatch(/…$/);
   expect(layout.commandText).toBe('CONFIRM TO PLAY');
-  expect(layout.summaryText).toContain('Phase II: Chokepoint Lockdown');
-  expect(layout.cardTargetNaturalWidth).toBeLessThanOrEqual(402);
+  expect(layout.summaryFullText).toContain('Phase II: Chokepoint Lockdown');
+  expect(layout.summaryText).toMatch(/…$/);
+  expect(layout.cardTargetNaturalWidth).toBeLessThanOrEqual(368);
   expect(layout.summaryNaturalWidth).toBeLessThanOrEqual(570);
   expect(layout.cardTarget.left).toBeGreaterThanOrEqual(layout.panel.left);
   expect(layout.cardTarget.right).toBeLessThanOrEqual(layout.commandFrame.left - 8);
@@ -3552,7 +3582,7 @@ test('route Supplies resolve route-side cleanse explicitly instead of dropping i
   expect(result.log.some((entry: string) => entry.includes('restore 2 Cohesion'))).toBe(true);
 });
 
-test('route supply feedback renders generated frame behind toast', async ({ page }) => {
+test('route supply feedback retains a quiet surface behind its toast', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -3594,7 +3624,7 @@ test('route supply feedback renders generated frame behind toast', async ({ page
     route.useRouteSupply(0);
     for (let i = 0; i < 20; i += 1) {
       const state = JSON.parse(window.render_game_to_text!());
-      if (state.routeSupplyFeedbackFrame?.loaded && state.routeSupplyFeedbackFrame?.rendered) break;
+      if (route.children.getByName('route-supply-feedback-frame')) break;
       await wait(25);
     }
     const state = JSON.parse(window.render_game_to_text!());
@@ -3602,6 +3632,7 @@ test('route supply feedback renders generated frame behind toast', async ({ page
     return {
       feedback: state.supplyFeedback?.[0],
       routeSupplyFeedbackFrame: state.routeSupplyFeedbackFrame,
+      surfaceCount: route.children.list.filter((o: any) => o.name === 'route-supply-feedback-frame' && o.type === 'Rectangle').length,
       frameObjects,
       used: route.runState.suppliesUsed,
     };
@@ -3609,8 +3640,9 @@ test('route supply feedback renders generated frame behind toast', async ({ page
 
   expect(result.feedback?.id).toBe('feather_splint');
   expect(result.used).toEqual(['feather_splint']);
-  expect(result.routeSupplyFeedbackFrame).toEqual({ loaded: true, rendered: true, count: result.frameObjects });
-  expect(result.frameObjects).toBeGreaterThanOrEqual(1);
+  expect(result.routeSupplyFeedbackFrame).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.frameObjects).toBe(0);
+  expect(result.surfaceCount).toBe(1);
 });
 
 test('Packed Supplies require confirmation and support keyboard, pointer, and controller-style navigation in both phases', async ({ page }) => {
@@ -4547,6 +4579,11 @@ test('discard recovery pauses in written order and returns the explicit pointer 
       state,
       panel: panel ? { width: panel.width, height: panel.height } : undefined,
       rows: rows.map((row) => ({ instanceId: row.getData('instanceId'), width: row.width, height: row.height })),
+      rowTargetFloor: rows.every((row) => row.height * scene.game.canvas.getBoundingClientRect().height / 720 >= 44),
+      rowSeparation: rows.every((row, index) => rows.slice(index + 1).every(other => {
+        const a = row.getBounds(), b = other.getBounds();
+        return Math.max(a.left - b.right, b.left - a.right, a.top - b.bottom, b.top - a.bottom) >= 8;
+      })),
       hand: scene.hand.map((card: any) => card.instanceId),
       discard: scene.discardPile.map((card: any) => card.instanceId),
       liveText: document.getElementById('game-status')?.textContent ?? '',
@@ -4563,9 +4600,11 @@ test('discard recovery pauses in written order and returns the explicit pointer 
   expect(before.state.returnChoice.candidates.some((card: any) => card.instanceId === setup.ids.molt)).toBe(false);
   expect(before.panel).toEqual({ width: 1060, height: 600 });
   expect(before.rows).toEqual([
-    { instanceId: setup.ids.sacrifice, width: 448, height: 70 },
-    { instanceId: setup.ids.old, width: 448, height: 70 },
+    { instanceId: setup.ids.sacrifice, width: 448, height: 62 },
+    { instanceId: setup.ids.old, width: 448, height: 62 },
   ]);
+  expect(before.rowTargetFloor).toBe(true);
+  expect(before.rowSeparation).toBe(true);
   expect(before.hand).toEqual([]);
   expect(before.discard).toEqual([setup.ids.old, setup.ids.molt, setup.ids.sacrifice]);
   expect(before.discard).not.toContain(setup.ids.recall);
@@ -7395,7 +7434,7 @@ test('card reward skip requires intentional confirmation across pointer keyboard
     commitBlockedUntilConfirmed: true,
     input: { keyboard: 'X', controller: 'X', pointer: 'Activate Skip twice', cancel: 'Esc / B' },
   });
-  expect(initial.skipTitles).toEqual([`Skip  +${initial.state.rewardSkip.scrap} Scrap`]);
+  expect(initial.skipTitles).toEqual([`Skip +${initial.state.rewardSkip.scrap} Scrap`]);
   expect(initial.skipSummaries).toEqual([`Deck ${initial.state.rewardSkip.deckSize} unchanged / ${initial.state.rewardSkip.scrapAfter} Scrap`]);
   expect(initial.skipRings).toEqual([]);
   expect(initial.choiceRings).toEqual([]);
@@ -7406,14 +7445,14 @@ test('card reward skip requires intentional confirmation across pointer keyboard
   const pointerArmed = await snapshot();
   expect(pointerArmed.scrap).toBe(initial.scrap);
   expect(pointerArmed.rewardEvents).toBe(initial.rewardEvents);
-  expect(pointerArmed.skipTitles).toEqual(initial.skipTitles);
+  expect(pointerArmed.skipTitles).toEqual([`Confirm skip +${initial.state.rewardSkip.scrap} Scrap`]);
   expect(pointerArmed.skipSummaries).toEqual(initial.skipSummaries);
   expect(pointerArmed.skipTexts.join(' ')).not.toContain('Confirm Skip');
   expect(pointerArmed.skipTexts.join(' ')).not.toContain('BACK CANCELS');
   expect(pointerArmed.skipRings).toEqual([{ width: 3, color: 0xd8a840 }]);
   expect(pointerArmed.choiceRings).toEqual([]);
   expect(pointerArmed.inputHints).toEqual([
-    `CONFIRM SKIP +${initial.state.rewardSkip.scrap} SCRAP   |   X / CONTROLLER X / TAP AGAIN   |   Esc / B  CANCEL   |   Left / Right  CHOOSE CARD`,
+    'Click Skip again to confirm · Back cancels',
   ]);
   expect(pointerArmed.liveText).toContain('Skip confirmation');
   await page.screenshot({ path: '.artifacts/test-results/reward-skip-confirmation-1000x560.png' });
@@ -7515,13 +7554,13 @@ test('reward choices require intentional commitment across pointer keyboard and 
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
     const hintPanel = scene.root?.list.find((child: any) => child.name === 'combat-input-hint' && child.type === 'Rectangle');
     const hintLabel = scene.root?.list.find((child: any) => child.name === 'combat-input-hint' && child.type === 'Text');
-    const hintPanelBounds = hintPanel?.getBounds();
+    const hintPanelBounds = hintLabel?.getBounds();
     const hintLabelBounds = hintLabel?.getBounds();
     const deckNeedBounds = scene.root?.list
       .filter((child: any) => String(child.name).startsWith('reward-deck-need-chip-frame'))
       .map((child: any) => child.getBounds());
     const decisionBounds = scene.root?.list
-      .filter((child: any) => child.name === 'reward-decision-delta' && child.type === 'Rectangle')
+      .filter((child: any) => child.name === 'reward-choice-card-hit')
       .map((child: any) => child.getBounds());
     const cardHits = scene.root?.list.filter((child: any) => child.name === 'reward-choice-card-hit') ?? [];
     const waymarkHits = scene.root?.list.filter((child: any) => child.name === 'reward-waymark-hit') ?? [];
@@ -7537,7 +7576,7 @@ test('reward choices require intentional commitment across pointer keyboard and 
       rewardEvents: scene.runRewardEvents.length,
       routeMarks: scene.routeMarks.map((mark: any) => typeof mark === 'string' ? mark : mark.id),
       confirmLabels: scene.root?.list
-        ?.filter((child: any) => child.type === 'Text' && child.text?.includes('CONFIRM'))
+        ?.filter((child: any) => child.type === 'Text' && child.name === 'combat-input-hint')
         .map((child: any) => child.text) ?? [],
       focusChrome: {
         cardBorders: cardHits.map((child: any) => ({ width: child.lineWidth, color: child.strokeColor })),
@@ -7561,8 +7600,8 @@ test('reward choices require intentional commitment across pointer keyboard and 
         strokeColor: hintPanel?.strokeColor,
         panelSize: hintPanel ? [hintPanel.displayWidth, hintPanel.displayHeight] : [],
         panelY: hintPanel?.y,
-        leftInset: hintPanelBounds && hintLabelBounds ? hintLabelBounds.left - hintPanelBounds.left : -1,
-        rightInset: hintPanelBounds && hintLabelBounds ? hintPanelBounds.right - hintLabelBounds.right : -1,
+        leftInset: hintLabelBounds?.left ?? -1,
+        rightInset: hintLabelBounds ? 1280 - hintLabelBounds.right : -1,
         deckGap: hintPanelBounds && deckNeedBounds?.length
           ? hintPanelBounds.top - Math.max(...deckNeedBounds.map((bounds: any) => bounds.bottom))
           : -1,
@@ -7698,9 +7737,9 @@ test('reward choices require intentional commitment across pointer keyboard and 
   expect(initial.focusChrome.cardBorders.every((border: any) => border.width === 2 && border.color !== 0x8df4ff)).toBe(true);
   expect(initial.focusChrome.rings).toEqual([]);
   expect(initial.inspectChrome.labels).toEqual([
-    { text: 'INSPECT', color: '#dffbff' },
-    { text: 'INSPECT', color: '#dffbff' },
-    { text: 'INSPECT', color: '#dffbff' },
+    { text: 'Read', color: UI_CONTROL.text },
+    { text: 'Read', color: UI_CONTROL.text },
+    { text: 'Read', color: UI_CONTROL.text },
   ]);
   expect(initial.inspectChrome.buttons.every((button: any) => (
     button.enabled
@@ -7713,13 +7752,10 @@ test('reward choices require intentional commitment across pointer keyboard and 
   await moveToReward(0);
   await expect.poll(async () => {
     const hover = (await snapshot()).hoverChrome;
-    return hover.visibleRings === 1 && hover.previewOpen && hover.previewBounds;
+    return hover.visibleRings === 1 && !hover.previewOpen;
   }).toBeTruthy();
   const browsingHover = (await snapshot()).hoverChrome;
-  expect(browsingHover.previewBounds).toMatchObject({ top: expect.any(Number), right: expect.any(Number) });
-  expect(browsingHover.previewBounds.top).toBeGreaterThanOrEqual(0);
-  expect(browsingHover.previewBounds.right).toBeLessThanOrEqual(1280);
-  expect(browsingHover.previewBounds.left).toBeGreaterThan(450);
+  expect(browsingHover.previewBounds).toBeUndefined();
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-hover-browse-1000x560.png' });
   await moveAwayFromRewards();
   await expect.poll(async () => (await snapshot()).hoverChrome).toMatchObject({ visibleRings: 0, previewOpen: false });
@@ -7733,18 +7769,16 @@ test('reward choices require intentional commitment across pointer keyboard and 
   expect(pointerArmed.focusChrome.rings).toEqual([{ width: 3, color: 0xd8a840 }]);
   expect(pointerArmed.inspectChrome).toEqual(initial.inspectChrome);
   expect(pointerArmed.confirmLabels).toEqual([
-    'CONFIRM PICK   |   Enter / A / TAP AGAIN   |   Esc / B  CANCEL   |   R / Y  INSPECT   |   X  SKIP INSTEAD',
+    'Click Confirm to claim · Read inspects without claiming',
   ]);
-  expect(pointerArmed.state.rewardDecisionDeltas).toEqual([
-    `ADD  /  DECK ${initial.deckSize} > ${initial.deckSize + 1}`,
-  ]);
+  // New-collection identity occupies the compact context row. Exact deck
+  // changes remain in the read-only deck-impact panel verified below.
+  expect(pointerArmed.state.rewardChoices.every((c: any) => c.collection.firstClaim)).toBe(true);
   expect(pointerArmed.rewardHint).toMatchObject({
     text: pointerArmed.confirmLabels[0],
-    fontSize: 13,
-    textColor: '#ffe08a',
-    strokeColor: 0xd8a840,
-    panelSize: [820, 24],
-    panelY: 213,
+    fontSize: 19,
+    textColor: '#ffe1a3',
+    panelSize: [],
   });
   expect(pointerArmed.rewardHint.leftInset).toBeGreaterThanOrEqual(8);
   expect(pointerArmed.rewardHint.rightInset).toBeGreaterThanOrEqual(8);
@@ -7784,7 +7818,7 @@ test('reward choices require intentional commitment across pointer keyboard and 
   });
   expect(returnedToArmedChoice.state.combatInputFocus).toMatchObject({ active: true, index: 1 });
   expect(returnedToArmedChoice.focusChrome.rings).toEqual([{ width: 3, color: 0xd8a840 }]);
-  expect(returnedToArmedChoice.confirmLabels).toEqual(pointerArmed.confirmLabels);
+  expect(returnedToArmedChoice.confirmLabels[0]).toContain('Enter: confirm');
   expect(returnedToArmedChoice.deckSize).toBe(initial.deckSize);
   expect(returnedToArmedChoice.rewardEvents).toBe(initial.rewardEvents);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-card-inspection-return-armed-1000x560.png' });
@@ -7809,17 +7843,17 @@ test('reward choices require intentional commitment across pointer keyboard and 
     return { buttons: objects.filter((o: any) => o.name === 'reward-card-take-hit').map((o: any) => ({ enabled: Boolean(o.input?.enabled), disabled: o.getData('disabled'), alpha: o.fillAlpha })),
       labels: objects.filter((o: any) => o.name === 'reward-card-take-label').map((o: any) => o.style.color) };
   });
-  expect(disabledSelect.buttons).toEqual(Array.from({ length: 3 }, () => ({ enabled: false, disabled: true, alpha: 0.48 })));
-  expect(disabledSelect.labels).toEqual(['#667b89', '#667b89', '#667b89']);
+  expect(disabledSelect.buttons).toEqual(Array.from({ length: 3 }, () => ({ enabled: false, disabled: true, alpha: 1 })));
+  expect(disabledSelect.labels).toEqual(Array(3).fill(UI_CONTROL.disabledText));
   expect(skipArmed.inspectChrome.labels).toEqual([
-    { text: 'INSPECT', color: '#667b89' },
-    { text: 'INSPECT', color: '#667b89' },
-    { text: 'INSPECT', color: '#667b89' },
+    { text: 'Read', color: UI_CONTROL.disabledText },
+    { text: 'Read', color: UI_CONTROL.disabledText },
+    { text: 'Read', color: UI_CONTROL.disabledText },
   ]);
   expect(skipArmed.inspectChrome.buttons).toEqual([
-    { enabled: false, disabled: true, fillAlpha: 0.48, fillColor: 0x0a141c, strokeColor: 0x49606d },
-    { enabled: false, disabled: true, fillAlpha: 0.48, fillColor: 0x0a141c, strokeColor: 0x49606d },
-    { enabled: false, disabled: true, fillAlpha: 0.48, fillColor: 0x0a141c, strokeColor: 0x49606d },
+    { enabled: false, disabled: true, fillAlpha: 1, fillColor: UI_CONTROL.disabled, strokeColor: UI_CONTROL.border },
+    { enabled: false, disabled: true, fillAlpha: 1, fillColor: UI_CONTROL.disabled, strokeColor: UI_CONTROL.border },
+    { enabled: false, disabled: true, fillAlpha: 1, fillColor: UI_CONTROL.disabled, strokeColor: UI_CONTROL.border },
   ]);
   await clickInspect(0);
   await gamepadDown(3);
@@ -7860,9 +7894,9 @@ test('reward choices require intentional commitment across pointer keyboard and 
     kind: 'upgradeReward',
     index: (beforeKeyboard.state.combatInputFocus.index + 1) % beforeKeyboard.state.combatInputFocus.count,
   });
-  expect(keyboardSelected.confirmLabels).toEqual([
-    'CONFIRM PICK   |   Enter / A / TAP AGAIN   |   Esc / B  CANCEL   |   R / Y  INSPECT',
-  ]);
+  expect(keyboardSelected.confirmLabels).toHaveLength(1);
+  expect(keyboardSelected.confirmLabels[0]).toContain('Enter: confirm');
+  expect(keyboardSelected.confirmLabels[0]).toContain('R: read');
   expect(keyboardSelected.state.rewardDecisionDeltas).toHaveLength(keyboardSelected.state.combatInputFocus.count);
   expect(keyboardSelected.state.rewardDecisionDeltas.every((label: string) => !label.includes('CONFIRM') && !label.includes('BACK CANCELS'))).toBe(true);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/upgrade-reward-choice-confirmation-1000x560.png' });
@@ -7895,7 +7929,7 @@ test('reward choices require intentional commitment across pointer keyboard and 
   expect(controllerSelected.focusChrome.waymarkBorders.every((border: any) => border.width === 1 && border.color !== 0x8df4ff)).toBe(true);
   expect(controllerSelected.focusChrome.rings).toEqual([{ width: 2, color: 0xd8a840 }]);
   expect(controllerSelected.confirmLabels).toEqual([
-    'CONFIRM PICK   |   Enter / A / TAP AGAIN   |   Esc / B  CANCEL',
+    'D-pad: choose · A: confirm · Y: read · B: cancel',
   ]);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/waymark-reward-choice-confirmation-1000x560.png' });
   const selectedMarkId = controllerSelected.state.rewardChoiceConfirmation.choiceId;
@@ -7990,6 +8024,9 @@ test('reward renderer loading skeleton preserves ceremony anchors until choices 
       inputRails: objects
         .filter((object: any) => object.name === 'combat-input-hint' && object.type === 'Rectangle')
         .map(geometry),
+      hintLabels: objects
+        .filter((object: any) => object.name === 'combat-input-hint' && object.type === 'Text')
+        .map((object: any) => ({ ...geometry(object), fontSize: Number.parseFloat(object.style.fontSize) })),
       liveText: document.getElementById('game-status')?.textContent?.trim() ?? '',
       announcements: [...((window as any).__rewardTransitionAnnouncements ?? [])],
     };
@@ -8002,11 +8039,14 @@ test('reward renderer loading skeleton preserves ceremony anchors until choices 
   expect(loadingCard.loadingLabels).toEqual(['Preparing choices · Input unlocks when every option is visible.']);
   expect(loadingCard.slots).toEqual([336, 640, 944].map((x) => ({ x, y: 396, width: 264, height: 300 })));
   expect(loadingCard.inspectSlots).toEqual([336, 640, 944].map((x) => ({ x: x - 76, y: 586, width: 104, height: 58 })));
-  expect(loadingCard.selectSlots).toEqual([336, 640, 944].map((x) => ({ x: x + 54, y: 586, width: 144, height: 58 })));
+  expect(loadingCard.selectSlots).toEqual([336, 640, 944].map((x) => ({ x: x + 56, y: 586, width: 144, height: 58 })));
   expect(loadingCard.skipSlots).toEqual([{ x: 982, y: 652, width: 324, height: 58 }]);
   expect(loadingCard.choiceHits).toEqual([]);
-  expect(loadingCard.inputHints).toEqual(['PREPARING CHOICES   |   INPUT LOCKED UNTIL EVERY OPTION IS VISIBLE']);
-  expect(loadingCard.inputRails).toEqual([{ x: 640, y: 213, width: 820, height: 24 }]);
+  expect(loadingCard.inputHints).toEqual(['Preparing choices · Input locked']);
+  expect(loadingCard.inputRails).toEqual([]);
+  expect(loadingCard.hintLabels).toEqual([expect.objectContaining({ x: 640, y: 213, fontSize: 19 })]);
+  expect(loadingCard.hintLabels[0].width).toBeLessThanOrEqual(1040);
+  expect(loadingCard.hintLabels[0].height).toBeLessThanOrEqual(32);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-loading-card-1000x560.png' });
 
   await page.evaluate(async () => {
@@ -8031,7 +8071,7 @@ test('reward renderer loading skeleton preserves ceremony anchors until choices 
   expect(readyCard.readyInspect).toEqual(loadingCard.inspectSlots);
   expect(readyCard.readySelect).toEqual(loadingCard.selectSlots);
   expect(readyCard.inputRails).toEqual(loadingCard.inputRails);
-  expect(readyCard.inputHints.every((label: string) => !label.includes('INPUT LOCKED'))).toBe(true);
+  expect(readyCard.inputHints.every((label: string) => !/input locked/i.test(label))).toBe(true);
   expect(readyCard.liveText).toContain('Options:');
   expect(readyCard.announcements.filter((message: string) => message.startsWith('Reward choices ready.'))).toHaveLength(1);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-loading-transition-ready-1000x560.png' });
@@ -8061,8 +8101,9 @@ test('reward renderer loading skeleton preserves ceremony anchors until choices 
   expect(loadingWaymark.inspectSlots).toEqual([336, 640, 944].map((x) => ({ x: x - 70, y: 595, width: 116, height: 58 })));
   expect(loadingWaymark.skipSlots).toEqual([]);
   expect(loadingWaymark.choiceHits).toEqual([]);
-  expect(loadingWaymark.inputHints).toEqual(['PREPARING CHOICES   |   INPUT LOCKED UNTIL EVERY OPTION IS VISIBLE']);
-  expect(loadingWaymark.inputRails).toEqual([{ x: 640, y: 213, width: 500, height: 24 }]);
+  expect(loadingWaymark.inputHints).toEqual(['Preparing choices · Input locked']);
+  expect(loadingWaymark.inputRails).toEqual([]);
+  expect(loadingWaymark.hintLabels).toEqual(loadingCard.hintLabels);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-loading-waymark-1000x560.png' });
   for (const width of [2560, 1440, 1000]) {
     await page.setViewportSize({ width, height: width === 2560 ? 1600 : width === 1440 ? 900 : 560 });
@@ -8182,16 +8223,18 @@ test('reward renderer fallback keeps card identity and one stable focus ring', a
   expect(initial.borders).toHaveLength(3);
   expect(initial.borders.every((border: any) => border.width === 2)).toBe(true);
   expect(initial.rings).toEqual([{ width: 3, color: 0x8df4ff }]);
-  expect(initial.contexts).toHaveLength(1);
-  expect(initial.contexts[0].text).toBe(`Deck ${initial.deckSize} → ${initial.deckSize + 1} cards`);
-  expect(initial.contexts[0].width).toBeLessThanOrEqual(232);
+  expect(initial.contexts).toHaveLength(3);
+  for (const context of initial.contexts) {
+    expect(context.text).toBe(`Deck ${initial.deckSize} → ${initial.deckSize + 1} cards`);
+    expect(context.width).toBeLessThanOrEqual(232);
+  }
   expect(initial.contextChips).toEqual([]);
-  expect(initial.skipTitles).toEqual([`Skip  +${initial.state.rewardSkip.scrap} Scrap`]);
+  expect(initial.skipTitles).toEqual([`Skip +${initial.state.rewardSkip.scrap} Scrap`]);
   expect(initial.skipSummaries).toEqual([`Deck ${initial.deckSize} unchanged / ${initial.state.rewardSkip.scrapAfter} Scrap`]);
-  expect(initial.skipBorders).toEqual([{ width: 2, color: 0xd8a840 }]);
+  expect(initial.skipBorders).toEqual([{ width: 1, color: UI_CONTROL.border }]);
   expect(initial.skipRings).toEqual([]);
   expect(initial.inspectButtons.every((button: any) => button.enabled && button.disabled === false)).toBe(true);
-  expect(initial.inspectLabels.every((label: any) => label.text === 'Read' && label.color === '#dffbff')).toBe(true);
+  expect(initial.inspectLabels.every((label: any) => label.text === 'Read' && label.color === UI_CONTROL.text)).toBe(true);
 
   await page.evaluate(() => {
     const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
@@ -8204,7 +8247,7 @@ test('reward renderer fallback keeps card identity and one stable focus ring', a
   expect(armed.rings).toEqual([{ width: 3, color: 0xd8a840 }]);
   expect(armed.contexts).toEqual(initial.contexts);
   expect(armed.hints).toEqual([
-    'CONFIRM PICK   |   Enter / A / TAP AGAIN   |   Esc / B  CANCEL   |   R / Y  INSPECT   |   X  SKIP INSTEAD',
+    'Click Confirm to claim · Read inspects without claiming',
   ]);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-fallback-confirmation-1000x560.png' });
 
@@ -8224,23 +8267,23 @@ test('reward renderer fallback keeps card identity and one stable focus ring', a
   expect(skipArmed.deckSize).toBe(initial.deckSize);
   expect(skipArmed.scrap).toBe(initial.scrap);
   expect(skipArmed.rewardEvents).toBe(initial.rewardEvents);
-  expect(skipArmed.skipTitles).toEqual(initial.skipTitles);
+  expect(skipArmed.skipTitles).toEqual([`Confirm skip +${initial.state.rewardSkip.scrap} Scrap`]);
   expect(skipArmed.skipSummaries).toEqual(initial.skipSummaries);
-  expect(skipArmed.skipBorders).toEqual(initial.skipBorders);
+  expect(skipArmed.skipBorders).toEqual([{ width: 1, color: UI_CONTROL.primary }]);
   expect(skipArmed.skipRings).toEqual([{ width: 3, color: 0xd8a840 }]);
   expect(skipArmed.rings).toEqual([]);
   expect(skipArmed.inspectButtons).toEqual([
-    { enabled: false, disabled: true, fillAlpha: 0.48, fillColor: 0x0a141c, strokeColor: 0x49606d },
-    { enabled: false, disabled: true, fillAlpha: 0.48, fillColor: 0x0a141c, strokeColor: 0x49606d },
-    { enabled: false, disabled: true, fillAlpha: 0.48, fillColor: 0x0a141c, strokeColor: 0x49606d },
+    { enabled: false, disabled: true, fillAlpha: 1, fillColor: UI_CONTROL.disabled, strokeColor: UI_CONTROL.border },
+    { enabled: false, disabled: true, fillAlpha: 1, fillColor: UI_CONTROL.disabled, strokeColor: UI_CONTROL.border },
+    { enabled: false, disabled: true, fillAlpha: 1, fillColor: UI_CONTROL.disabled, strokeColor: UI_CONTROL.border },
   ]);
   expect(skipArmed.inspectLabels).toEqual([
-    { text: 'Read', color: '#667b89' },
-    { text: 'Read', color: '#667b89' },
-    { text: 'Read', color: '#667b89' },
+    { text: 'Read', color: UI_CONTROL.disabledText },
+    { text: 'Read', color: UI_CONTROL.disabledText },
+    { text: 'Read', color: UI_CONTROL.disabledText },
   ]);
   expect(skipArmed.hints).toEqual([
-    `CONFIRM SKIP +${initial.state.rewardSkip.scrap} SCRAP   |   X / CONTROLLER X / TAP AGAIN   |   Esc / B  CANCEL   |   Left / Right  CHOOSE CARD`,
+    'X: confirm Skip · Esc: cancel · Left/Right: choose card',
   ]);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-fallback-skip-confirmation-1000x560.png' });
 
@@ -8292,7 +8335,7 @@ test('reward renderer fallback keeps card identity and one stable focus ring', a
   const waymarkLabels = await page.evaluate(() => (window.__birdSquadGame.scene.getScene('BattleScene') as any).root.list
     .filter((object: any) => object.name === 'reward-waymark-meta').map((object: any) => ({ text: object.text, width: object.displayWidth, size: object.style.fontSize })));
   expect(waymarkLabels.map((label: any) => label.text)).toEqual(waymarkMeta);
-  expect(waymarkLabels.every((label: any) => label.width <= 248 && label.size === '13px')).toBe(true);
+  expect(waymarkLabels.every((label: any) => label.width <= 248 && label.size === '19px')).toBe(true);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/reward-fallback-waymarks-1000x560.png' });
 });
 
@@ -8418,7 +8461,7 @@ test('route card rewards require intentional commitment across pointer keyboard 
   const snapshot = () => page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
-    const hintPanel = route.children.list.find((child: any) => child.type === 'Rectangle' && child.displayWidth === 500 && child.displayHeight === 42);
+    const hintPanel = route.children.list.find((child: any) => child.type === 'Rectangle' && child.displayWidth === 500 && child.displayHeight === 56);
     const hintLabel = route.children.list.find((child: any) => child.name === 'route-reward-input-hint');
     const divider = route.children.list.find((child: any) => child.type === 'Rectangle' && child.displayWidth === 2 && child.displayHeight === 396);
     const focusRing = route.children.list.find((child: any) => child.name === 'route-reward-input-focus-ring');
@@ -8455,7 +8498,7 @@ test('route card rewards require intentional commitment across pointer keyboard 
         .map((child: any) => child.text),
       inspectChrome: {
         labels: inspectLabels.map((child: any) => child.text),
-        buttons: inspectHits.map((child: any) => ({ fillAlpha: child.fillAlpha, strokeColor: child.strokeColor })),
+        buttons: inspectHits.map((child: any) => ({ fillAlpha: child.fillAlpha, strokeColor: child.strokeColor, role: child.getData('controlKind') })),
       },
       buildRead: {
         titles: route.children.list.filter((child: any) => child.name === 'route-reward-build-read-title').map((child: any) => child.text),
@@ -8617,8 +8660,8 @@ test('route card rewards require intentional commitment across pointer keyboard 
     controls: { claim: 'Confirm / A selects' },
   });
   expect(pointerInitial.cancelLabels).toEqual(['Cancel']);
-  expect(pointerInitial.inspectChrome.labels).toEqual(['INSPECT', 'INSPECT']);
-  expect(pointerInitial.inspectChrome.buttons.every((button: any) => button.fillAlpha === 0.88 && button.strokeColor !== 0x8df4ff)).toBe(true);
+  expect(pointerInitial.inspectChrome.labels).toEqual(['Inspect', 'Inspect']);
+  expect(pointerInitial.inspectChrome.buttons).toEqual(Array(2).fill({fillAlpha:1,strokeColor:UI_CONTROL.border,role:'secondary'}));
   expect(pointerInitial.guidance).toHaveLength(2);
   expect(pointerInitial.guidance.every((choice: any) => (
     choice.name && choice.observations.length > 0 && choice.observations.length <= 2
@@ -8683,13 +8726,14 @@ test('route card rewards require intentional commitment across pointer keyboard 
   expect(pointerArmed.inputHints[0]).toBe('Click the selected choice again to confirm\nInspect reads without committing');
   expect(pointerArmed.inputHintVisual).toMatchObject({
     text: pointerArmed.inputHints[0],
-    fontSize: 16,
-    panelSize: [500, 42],
+    fontSize: 19,
+    panelSize: [500, 56],
     panelY: 205,
   });
   expect(pointerArmed.inputHintVisual.leftInset).toBeGreaterThanOrEqual(12);
   expect(pointerArmed.inputHintVisual.rightInset).toBeGreaterThanOrEqual(12);
   expect(pointerArmed.inputHintVisual.dividerGap).toBeGreaterThanOrEqual(12);
+  // The larger, readable two-line hint preserves a clear 20px card gap.
   expect(pointerArmed.inputHintVisual.choiceGap).toBeGreaterThanOrEqual(20);
   expect(pointerArmed.liveText).toContain('is selected. Confirm');
   await moveToReward(0);
@@ -8901,7 +8945,7 @@ test('card rewards distinguish discovery from permanent collection claims and ce
     for (let i = 0; i < 100; i += 1) {
       const state = scene.getTextState();
       const status = scene.root?.list?.filter((entry: any) => entry.name === 'reward-collection-status') ?? [];
-      if (state.battleRewardRenderer?.ready && status.length >= choices.length * 2) break;
+      if (state.battleRewardRenderer?.ready && status.length >= choices.length) break;
       await wait(40);
       scene.renderAll();
     }
@@ -9322,10 +9366,10 @@ test('post-combat reward screens render generated choice ceremony art', async ({
   expect(result.cardRewardBackdrop).toBeGreaterThanOrEqual(1);
   expect(result.waymarkRewardBackdrop).toBe(0);
   expect(result.upgradeRewardBackdrop).toBeGreaterThanOrEqual(1);
-  expect(result.cardRewardFrames).toBeGreaterThanOrEqual(3);
+  expect(result.cardRewardFrames).toBe(0);
   expect(result.cardRewardGlowBursts).toBeGreaterThanOrEqual(3);
   expect(result.cardRewardHeaderPlaque).toBe(0);
-  expect(result.cardRewardDeckNeedChipFrame).toBe(3);
+  expect(result.cardRewardDeckNeedChipFrame).toBe(0);
   expect(result.cardRewardSkipFrame).toBe(0);
   expect(result.cardRewardObservationTexts.length).toBeGreaterThanOrEqual(1);
   expect(result.cardRewardObservationTexts.length).toBeLessThanOrEqual(2);
@@ -9337,23 +9381,23 @@ test('post-combat reward screens render generated choice ceremony art', async ({
   expect(result.waymarkRewardGlowBursts).toBe(0);
   expect(result.waymarkRewardHeaderPlaque).toBe(0);
   expect(result.waymarkRewardDeckNeedChipFrame).toBe(0);
-  expect(result.upgradeRewardFrames).toBeGreaterThanOrEqual(3);
+  expect(result.upgradeRewardFrames).toBe(0);
   expect(result.upgradeRewardGlowBursts).toBeGreaterThanOrEqual(3);
   expect(result.upgradeRewardHeaderPlaque).toBe(0);
   expect(result.upgradeRewardDeckNeedChipFrame).toBe(0);
   expect(result.cardRewardTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }));
   expect(result.waymarkRewardTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.upgradeRewardTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }));
-  expect(result.cardRewardFrameTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }));
+  expect(result.cardRewardFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.cardRewardGlowTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: result.cardRewardGlowBursts }));
   expect(result.cardRewardHeaderTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
-  expect(result.cardRewardDeckNeedTelemetry).toEqual({ loaded: true, rendered: true, count: result.cardRewardDeckNeedChipFrame });
+  expect(result.cardRewardDeckNeedTelemetry).toEqual({ loaded: true, rendered: false, count: result.cardRewardDeckNeedChipFrame });
   expect(result.cardRewardSkipTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.waymarkRewardFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.waymarkRewardGlowTelemetry).toEqual({ loaded: true, rendered: false, count: 0, bursts: 0 });
   expect(result.waymarkRewardHeaderTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.waymarkRewardDeckNeedTelemetry).toEqual({ loaded: true, rendered: false, count: result.waymarkRewardDeckNeedChipFrame });
-  expect(result.upgradeRewardFrameTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }));
+  expect(result.upgradeRewardFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.upgradeRewardGlowTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: result.upgradeRewardGlowBursts }));
   expect(result.upgradeRewardHeaderTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(result.upgradeRewardDeckNeedTelemetry).toEqual({ loaded: true, rendered: false, count: result.upgradeRewardDeckNeedChipFrame });
@@ -9457,7 +9501,7 @@ test('Waymark rewards explain live trigger fit before an intentional claim', asy
   expect(fallback.state.map((choice: any) => choice.observations[0].replace(/^[+!]\s*/, ''))).toEqual(fallback.observations);
 });
 
-test('reward decision chips preview the exact add and Preen outcomes before commitment', async ({ page }) => {
+test('reward decision previews expose the exact add and Preen outcomes before commitment', async ({ page }) => {
   test.setTimeout(60_000);
   await boot(page);
   const result = await page.evaluate(async () => {
@@ -9493,7 +9537,17 @@ test('reward decision chips preview the exact add and Preen outcomes before comm
     scene.battleInputActive = true;
     scene.controllerChoiceIndex = 0;
     const addPreview = scene.rewardCardView(addCard).decisionPreview;
-    const addDeltas = await waitForDeltas(scene, 1);
+    scene.renderAll();
+    for (let i = 0; i < 100 && !scene.rewardPresentationReady(); i++) await wait(40);
+    scene.renderAll();
+    // First claims occupy the face's collection-status row. The complete
+    // before/after decision remains available through Read for every card.
+    scene.openRewardCardInspection(addCard.id);
+    for (let i = 0; i < 100 && !scene.rewardInspectionLayer; i++) await wait(40);
+    const addImpact = scene.getTextState().rewardInspection.deckImpact;
+    const addDeltas = scene.rewardInspectionLayer.getByName('reward-deck-impact').list
+      .filter((child: any) => child.name === 'reward-deck-impact-text').map((child: any) => child.text);
+    scene.closeRewardCardInspection();
     const deckBefore = scene.allDeckCards().length;
     // Continue through the real card -> Preen path. Restarting Battle here
     // races the asynchronous route transition started by a reward without Preen.
@@ -9526,6 +9580,7 @@ test('reward decision chips preview the exact add and Preen outcomes before comm
     return {
       addPreview,
       addDeltas,
+      addImpact,
       deckBefore,
       deckAfter,
       preenPreview,
@@ -9539,7 +9594,8 @@ test('reward decision chips preview the exact add and Preen outcomes before comm
   });
 
   expect(result.addPreview).toEqual({ kind: 'add', deckBefore: result.deckBefore, before: expect.any(String), after: expect.any(String), moltBefore: expect.any(String), moltAfter: expect.any(String), statChanges: expect.any(Array) });
-  expect(result.addDeltas).toEqual([`ADD  /  DECK ${result.deckBefore} > ${result.deckBefore + 1}`]);
+  expect(result.addDeltas).toContain(`Deck: ${result.deckBefore} > ${result.deckBefore + 1} cards`);
+  expect(result.addImpact).toMatchObject({ deckBefore: result.deckBefore, deckAfter: result.deckBefore + 1 });
   expect(result.deckAfter).toBe(result.deckBefore + 1);
   expect(result.preenPreview.kind).toBe('preen');
   expect(result.preenDeltas[0]).toContain(' → ');
@@ -9625,8 +9681,7 @@ test('market categories keep one merchandise family visible at a time', async ({
     scene.openMarketNode(market);
     const visibleSections = () => scene.children.list
       .filter((child: any) => child.name === 'market-section-heading')
-      .map((child: any) => child.text)
-      .filter((text: string) => ['CREW CARDS', 'WAYMARKS', 'SUPPLIES', 'SERVICES'].includes(text));
+      .map((child: any) => child.text.toUpperCase());
     const states: Array<{ category: string; sections: string[] }> = [];
     states.push({ category: JSON.parse(window.render_game_to_text!()).market.category, sections: visibleSections() });
     for (const key of ['TWO', 'THREE', 'FOUR']) {
@@ -9746,7 +9801,7 @@ test('Market card detail keeps live deck-fit guidance in the focused dossier', a
     await expect.poll(() => page.locator('#game-status').textContent()).toContain(observation);
   }
   expect(result.panel.left).toBe(84);
-  expect(result.panel.top).toBe(210);
+  expect(result.panel.top).toBe(118);
   expect(result.panel.bottom).toBeLessThan(657);
   expect(result.badgeCost).toBe(result.cardCost);
   expect(result.persistentShelfReads).toBe(0);
@@ -9769,12 +9824,15 @@ test('Market card detail keeps live deck-fit guidance in the focused dossier', a
       const labels = panel.list.filter((o: any) => o.type === 'Text');
       const offers = route.children.list.filter((o: any) => String(o.getData?.('marketFocusId') ?? '').startsWith('card:'));
       return {
-        overflow: labels.some((o: any) => { const b = o.getBounds(); return b.right > frame.right - 10 || b.bottom > frame.bottom - 10; }),
+        overflow: labels.filter((o: any) => { const b = o.getBounds(); return b.left < frame.left + 8 || b.top < frame.top + 8 || b.right > frame.right - 8 || b.bottom > frame.bottom - 8; })
+          .map((o: any) => ({ name: o.name, text: o.text, bounds: o.getBounds(), frame })),
         smallest: Math.min(...labels.map((o: any) => parseFloat(o.style.fontSize))),
         overlaps: offers.some((o: any) => { const b = o.getBounds(); return b.left < frame.right && b.right > frame.left && b.top < frame.bottom && b.bottom > frame.top; }),
       };
     });
-    expect(geometry).toEqual({ overflow: false, smallest: 15, overlaps: false });
+    expect(geometry.overflow).toEqual([]);
+    expect(geometry.smallest).toBe(19);
+    expect(geometry.overlaps).toBe(false);
     await page.screenshot({ path: `.artifacts/test-results/market-purchase-read/${testInfo.project.name}-${size.width}x${size.height}.png` });
   }
   expect(await page.evaluate(() => {
@@ -10126,11 +10184,10 @@ test('market purchases require intentional input and block route commitment acro
   });
   const browsingHelp = await marketInputHelp();
   expect(browsingHelp).toHaveLength(2);
-  expect(browsingHelp.find((item: any) => item.type === 'Rectangle')).toMatchObject({ width: 880, height: 56 });
+  expect(browsingHelp.find((item: any) => item.type === 'Rectangle')).toMatchObject({ width: 1120, height: 64 });
   expect(browsingHelp.find((item: any) => item.type === 'Text')).toMatchObject({
-    text: 'Click an offer to select · Click it again to buy\nBrowse the sections above · Details never spend Scrap',
-    width: 856,
-    fontSize: 16,
+    text: expect.stringMatching(/^\d+ Scrap · Have 999 · After purchase \d+$/),
+    fontSize: 19,
   });
 
   await page.keyboard.press('ArrowRight');
@@ -10317,11 +10374,10 @@ test('market purchases require intentional input and block route commitment acro
   expect(armedDecision.commands).not.toContain('Close');
   const confirmationHelp = await marketInputHelp();
   expect(confirmationHelp).toHaveLength(2);
-  expect(confirmationHelp.find((item: any) => item.type === 'Rectangle')).toMatchObject({ width: 880, height: 56 });
+  expect(confirmationHelp.find((item: any) => item.type === 'Rectangle')).toMatchObject({ width: 1120, height: 64 });
   expect(confirmationHelp.find((item: any) => item.type === 'Text')).toEqual(expect.objectContaining({
-    text: 'Click the selected offer again to buy\nClear cancels the selection',
-    width: 856,
-    fontSize: 16,
+    text: expect.stringMatching(/^\d+ Scrap · Have \d+ · After purchase \d+$/),
+    fontSize: 19,
   }));
   await page.screenshot({ path: '.artifacts/test-results/market-intentional-purchase-1000x560.png' });
 
@@ -10666,7 +10722,7 @@ test('market purchases require intentional input and block route commitment acro
   });
   const fullSupplyDetail = await page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
-    return route.marketItemHover.list
+    return [...route.marketItemHover.list, route.children.getByName('market-input-help-text')]
       .filter((child: any) => child.type === 'Text')
       .map((child: any) => child.text)
       .join('\n');
@@ -10704,7 +10760,7 @@ test('market purchases require intentional input and block route commitment acro
   });
   const noPreenDetail = await page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
-    return route.marketItemHover.list
+    return [...route.marketItemHover.list, route.children.getByName('market-input-help-text')]
       .filter((child: any) => child.type === 'Text')
       .map((child: any) => child.text)
       .join('\n');
@@ -10740,7 +10796,7 @@ test('market purchases require intentional input and block route commitment acro
   });
   const unavailableWaymarkDetail = await page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
-    return route.marketItemHover.list
+    return [...route.marketItemHover.list, route.children.getByName('market-input-help-text')]
       .filter((child: any) => child.type === 'Text')
       .map((child: any) => child.text)
       .join('\n');
@@ -10820,7 +10876,7 @@ test('market purchases require intentional input and block route commitment acro
     armedId: undefined,
     hoverOpen: true,
     focusRings: 1,
-    help: ['Left/Right: offer · Enter: requirements · R: rules\n1–4: section · Esc: close Market'],
+    help: [expect.stringMatching(/^\d+ Scrap · Have \d+ · NEED \d+ MORE SCRAP$/)],
     commands: expect.arrayContaining(['Close']),
   });
   expect(unavailableAfterInputs.commands).not.toContain('Clear');
@@ -10926,7 +10982,7 @@ test('market shelves stock multiple finite offers and paid refreshes', async ({ 
     expect.objectContaining({
       name: 'market-sold-slat-frame',
       width: 194,
-      height: 48,
+      height: 58,
       angle: -16,
       visible: true
     })
@@ -11437,7 +11493,9 @@ test('market overlay renders generated shopkeeper sign and counter kit', async (
     ];
     for (let i = 0; i < 80; i += 1) {
       const loaded = keys.every((key) => scene.textures.exists(key));
-      const rendered = keys.every((key) => scene.children.list.some((child: any) => child.texture?.key === key));
+      const quietFrames = ['market-offer-tray', 'market-object-backplate-frame', 'market-service-button-frame', 'market-card-price-tag-frame', 'market-price-chip-frame'];
+      const rendered = keys.filter(key => key !== 'ui-icon-market-section-header-frame' && !quietFrames.some(name => key === `ui-icon-${name}`))
+        .every((key) => scene.children.list.some((child: any) => child.texture?.key === key));
       if (loaded && rendered) break;
       await wait(50);
     }
@@ -11454,7 +11512,7 @@ test('market overlay renders generated shopkeeper sign and counter kit', async (
     const sectionHeaderFrameTelemetry = JSON.parse(window.render_game_to_text!()).market.sectionHeaderFrame;
     const vendorTitlePlaqueTelemetry = JSON.parse(window.render_game_to_text!()).marketVendorTitlePlaque;
     const objectBackplateFrames = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-market-object-backplate-frame')
+      .filter((child: any) => child.name === 'market-object-backplate-frame' && child.type === 'Rectangle')
       .map((child: any) => ({
         name: child.name,
         width: Math.round(child.displayWidth),
@@ -11478,7 +11536,7 @@ test('market overlay renders generated shopkeeper sign and counter kit', async (
         visible: child.visible
       }));
     const serviceButtonFrames = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-market-service-button-frame')
+      .filter((child: any) => child.name === 'market-service-button-frame' && child.type === 'Rectangle')
       .map((child: any) => ({
         name: child.name,
         width: Math.round(child.displayWidth),
@@ -11496,7 +11554,7 @@ test('market overlay renders generated shopkeeper sign and counter kit', async (
         visible: child.visible
       }));
     const cardPriceTagFrames = scene.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-market-card-price-tag-frame')
+      .filter((child: any) => child.name === 'market-card-price-tag-frame' && child.type === 'Rectangle')
       .map((child: any) => ({
         name: child.name,
         width: Math.round(child.displayWidth),
@@ -11512,15 +11570,22 @@ test('market overlay renders generated shopkeeper sign and counter kit', async (
     return {
       textureState,
       offerTrayTelemetry,
+      offerTraySurfaces: scene.children.list.filter((child: any) => child.name === 'market-offer-tray' && child.type === 'Rectangle').length,
       priceChipFrameTelemetry,
+      priceChipFrameSurfaces: scene.children.list.filter((child: any) => child.name === 'market-price-chip-frame' && child.type === 'Rectangle').length,
       serviceButtonFrameTelemetry,
+      serviceButtonFrameSurfaces: scene.children.list.filter((child: any) => child.name === 'market-service-button-frame' && child.type === 'Rectangle').length,
       itemLabelFrameTelemetry,
       cardPriceTagFrameTelemetry,
+      cardPriceTagFrameSurfaces: scene.children.list.filter((child: any) => child.name === 'market-card-price-tag-frame' && child.type === 'Rectangle').length,
       objectBackplateFrameTelemetry,
+      objectBackplateFrameSurfaces: scene.children.list.filter((child: any) => child.name === 'market-object-backplate-frame' && child.type === 'Rectangle').length,
       sectionHeaderFrameTelemetry,
       vendorTitlePlaqueTelemetry,
       objectBackplateFrames,
       sectionHeaderFrames,
+      quietHeaders: scene.children.list.filter((child:any)=>child.name==='market-section-surface')
+        .map((child:any)=>({width:child.displayWidth,height:child.displayHeight,alpha:child.fillAlpha})),
       vendorTitlePlaques,
       serviceButtonFrames,
       itemLabelFrames,
@@ -11538,29 +11603,25 @@ test('market overlay renders generated shopkeeper sign and counter kit', async (
   expect(result.textureState['market-kit-shopkeeper-starling']).toEqual({ loaded: true, rendered: true });
   expect(result.textureState['market-kit-sign']).toEqual({ loaded: true, rendered: true });
   expect(result.textureState['market-kit-counter-wares']).toEqual({ loaded: true, rendered: true });
-  expect(result.textureState['ui-icon-market-offer-tray']).toEqual({ loaded: true, rendered: true });
-  expect(result.offerTrayTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }));
-  expect(result.offerTrayTelemetry.count).toBeGreaterThanOrEqual(10);
-  expect(result.textureState['ui-icon-market-object-backplate-frame']).toEqual({ loaded: true, rendered: true });
-  expect(result.objectBackplateFrameTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }));
-  expect(result.objectBackplateFrameTelemetry.count).toBeGreaterThanOrEqual(6);
+  expect(result.textureState['ui-icon-market-offer-tray']).toEqual({ loaded: true, rendered: false });
+  expect(result.offerTrayTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.offerTraySurfaces).toBeGreaterThanOrEqual(10);
+  expect(result.textureState['ui-icon-market-object-backplate-frame']).toEqual({ loaded: true, rendered: false });
+  expect(result.objectBackplateFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.objectBackplateFrameSurfaces).toBeGreaterThanOrEqual(6);
   expect(result.objectBackplateFrames.every((frame: { name: string; width: number; height: number; visible: boolean }) => (
     frame.name === 'market-object-backplate-frame'
-    && frame.width === 130
-    && frame.height === 108
+    && frame.width === 112
+    && frame.height === 94
     && frame.visible
   ))).toBe(true);
-  expect(result.textureState['ui-icon-market-section-header-frame']).toEqual({ loaded: true, rendered: true });
-  expect(result.sectionHeaderFrameTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }));
-  expect(result.sectionHeaderFrameTelemetry.count).toBe(4);
-  expect(result.sectionHeaderFrames).toHaveLength(4);
-  expect(result.sectionHeaderFrames.every((frame: { name: string; width: number; height: number; visible: boolean }) => (
-    frame.name === 'market-section-header-frame'
-    && frame.height === 60
-    && frame.width >= 280
-    && frame.visible
+  expect(result.textureState['ui-icon-market-section-header-frame']).toEqual({ loaded: true, rendered: false });
+  expect(result.sectionHeaderFrameTelemetry).toMatchObject({ rendered: false, count: 0 });
+  expect(result.sectionHeaderFrames).toEqual([]);
+  expect(result.quietHeaders).toHaveLength(4);
+  expect(result.quietHeaders.every((frame: { width: number; height: number; alpha: number }) => (
+    frame.width >= 240 && frame.height === 52 && frame.alpha === 1
   ))).toBe(true);
-  expect(result.sectionHeaderFrames.some((frame: { width: number }) => frame.width >= 700)).toBe(true);
   expect(result.textureState['ui-icon-market-vendor-title-plaque']).toEqual({ loaded: true, rendered: true });
   expect(result.vendorTitlePlaqueTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: 1 }));
   expect(result.vendorTitlePlaques).toEqual([
@@ -11576,17 +11637,14 @@ test('market overlay renders generated shopkeeper sign and counter kit', async (
   expect(result.textureState['ui-icon-market-preen-service']).toEqual({ loaded: true, rendered: true });
   expect(result.textureState['ui-icon-market-remove-service']).toEqual({ loaded: true, rendered: true });
   expect(result.textureState['ui-icon-market-refresh-service']).toEqual({ loaded: true, rendered: true });
-  expect(result.textureState['ui-icon-market-service-button-frame']).toEqual({ loaded: true, rendered: true });
-  expect(result.serviceButtonFrameTelemetry).toEqual({
-    loaded: true,
-    rendered: true,
-    count: result.expectedServiceButtonFrames
-  });
+  expect(result.textureState['ui-icon-market-service-button-frame']).toEqual({ loaded: true, rendered: false });
+  expect(result.serviceButtonFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.serviceButtonFrameSurfaces).toBe(result.expectedServiceButtonFrames);
   expect(result.serviceButtonFrames).toHaveLength(result.expectedServiceButtonFrames);
   expect(result.serviceButtonFrames.every((frame: { name: string; width: number; height: number; alpha: number; visible: boolean }) => (
     frame.name === 'market-service-button-frame'
-    && frame.width === 174
-    && frame.height === 66
+    && frame.width === 144
+    && frame.height === 48
     && frame.alpha >= 0.9
     && frame.visible
   ))).toBe(true);
@@ -11604,23 +11662,20 @@ test('market overlay renders generated shopkeeper sign and counter kit', async (
     && frame.alpha >= 0.9
     && frame.visible
   ))).toBe(true);
-  expect(result.textureState['ui-icon-market-card-price-tag-frame']).toEqual({ loaded: true, rendered: true });
-  expect(result.cardPriceTagFrameTelemetry).toEqual({
-    loaded: true,
-    rendered: true,
-    count: result.expectedCardPriceTagFrames
-  });
+  expect(result.textureState['ui-icon-market-card-price-tag-frame']).toEqual({ loaded: true, rendered: false });
+  expect(result.cardPriceTagFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.cardPriceTagFrameSurfaces).toBe(result.expectedCardPriceTagFrames);
   expect(result.cardPriceTagFrames).toHaveLength(result.expectedCardPriceTagFrames);
   expect(result.cardPriceTagFrames.every((frame: { name: string; width: number; height: number; alpha: number; visible: boolean }) => (
     frame.name === 'market-card-price-tag-frame'
-    && frame.width === 154
-    && frame.height === 48
+    && frame.width === 122
+    && frame.height === 26
     && frame.alpha >= 0.9
     && frame.visible
   ))).toBe(true);
-  expect(result.textureState['ui-icon-market-price-chip-frame']).toEqual({ loaded: true, rendered: true });
-  expect(result.priceChipFrameTelemetry).toEqual(expect.objectContaining({ loaded: true, rendered: true, count: expect.any(Number) }));
-  expect(result.priceChipFrameTelemetry.count).toBeGreaterThanOrEqual(10);
+  expect(result.textureState['ui-icon-market-price-chip-frame']).toEqual({ loaded: true, rendered: false });
+  expect(result.priceChipFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.priceChipFrameSurfaces).toBeGreaterThanOrEqual(10);
   expect(result.textureState['ui-icon-scrap-gear']).toEqual({ loaded: true, rendered: true });
   expect(result.supplyShelfOffers).toBeGreaterThan(0);
   expect(result.waymarkShelfOffers).toBeGreaterThan(0);
@@ -11889,7 +11944,7 @@ test('route preen picker keeps large decks inside a two-row viewport', async ({ 
         };
       })[0];
     const scrollButtonFrames = () => route.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-card-picker-scroll-button-frame')
+      .filter((child: any) => /^card-picker-scroll-(up|down)-hit$/.test(child.name))
       .map((child: any) => ({
         width: Math.round(child.displayWidth),
         height: Math.round(child.displayHeight),
@@ -11898,7 +11953,7 @@ test('route preen picker keeps large decks inside a two-row viewport', async ({ 
         visible: child.visible
       }));
     const pageIndicatorFrames = () => route.children.list
-      .filter((child: any) => child.texture?.key === 'ui-icon-card-picker-page-indicator-frame')
+      .filter((child: any) => child.name === 'card-picker-page-indicator-frame' && child.type === 'Rectangle')
       .map((child: any) => {
         const bounds = child.getBounds();
         return {
@@ -12029,13 +12084,13 @@ test('route preen picker keeps large decks inside a two-row viewport', async ({ 
   expect(result.firstPageNameplateFrames).toHaveLength(0);
   expect(result.pickerScrollButtonFrameState).toEqual({
     loaded: true,
-    rendered: true,
-    count: 2
+    rendered: false,
+    count: 0
   });
   expect(result.pickerPageIndicatorFrameState).toEqual({
     loaded: true,
-    rendered: true,
-    count: 1
+    rendered: false,
+    count: 0
   });
   expect(result.firstPagePageIndicatorFrames).toHaveLength(1);
   expect(result.firstPagePageIndicatorFrames[0]).toEqual(expect.objectContaining({
@@ -12048,9 +12103,9 @@ test('route preen picker keeps large decks inside a two-row viewport', async ({ 
   expect(result.pageIndicatorOverlapsLastDelta).toBe(false);
   expect(result.firstPageScrollButtonFrames).toHaveLength(2);
   expect(result.firstPageScrollButtonFrames.every((frame: { name: string; width: number; height: number; visible: boolean }) => (
-    frame.name === 'card-picker-scroll-button-frame'
-    && frame.width === 56
-    && frame.height === 44
+    /^card-picker-scroll-(up|down)-hit$/.test(frame.name)
+    && frame.width === 72
+    && frame.height === 58
     && frame.visible
   ))).toBe(true);
   expect(result.routeEventCancelCommandFrameState).toEqual({
@@ -14367,6 +14422,9 @@ test('pause overlay opens on route and combat without advancing play', async ({ 
     route.input.keyboard.emit('keydown-ENTER');
     await wait(60);
     const afterRouteEnter = route.runState.currentRouteNodeId ?? '';
+    const routeResumedOnEnter = !route.pauseOverlayOpen;
+    route.input.keyboard.emit('keydown-P');
+    await wait(80);
     route.input.keyboard.emit('keydown-ESC');
     await wait(60);
     const routeClosed = JSON.parse(window.render_game_to_text!());
@@ -14401,6 +14459,9 @@ test('pause overlay opens on route and combat without advancing play', async ({ 
     battle.input.keyboard.emit('keydown-ENTER');
     await wait(60);
     const afterBattleEnter = battle.turn;
+    const battleResumedOnEnter = !battle.pauseOverlayOpen;
+    battle.input.keyboard.emit('keydown-P');
+    await wait(80);
     battle.input.keyboard.emit('keydown-ESC');
     await wait(60);
     const battleClosedText = JSON.parse(window.render_game_to_text!());
@@ -14464,6 +14525,7 @@ test('pause overlay opens on route and combat without advancing play', async ({ 
       routeTitlePlaqueTelemetry: routePausedText.systemOverlayTitlePlaque,
       routePauseDetailTelemetry: routePausedText.systemPauseDetailRowFrame,
       routeDidNotCommit: beforeRouteNode === afterRouteEnter,
+      routeResumedOnEnter,
       routeClosed: routeClosed.pauseOverlayOpen,
       routePauseBlockedDuringCommit,
       battlePaused: battlePausedText.paused,
@@ -14476,6 +14538,7 @@ test('pause overlay opens on route and combat without advancing play', async ({ 
       battlePauseDetailTelemetry: battlePausedText.systemPauseDetailRowFrame,
       battlePauseDepths,
       battleDidNotEndTurn: beforeTurn === afterBattleEnter,
+      battleResumedOnEnter,
       battleClosed: battleClosedText.paused,
       battleClosedDepths,
       windupBeforeSupply,
@@ -14502,6 +14565,7 @@ test('pause overlay opens on route and combat without advancing play', async ({ 
   expect(result.routePauseDetailTelemetry.loaded).toBe(true);
   expect(result.routePauseDetailTelemetry.count).toBe(0);
   expect(result.routeDidNotCommit).toBe(true);
+  expect(result.routeResumedOnEnter).toBe(true);
   expect(result.routeClosed).toBe(false);
   expect(result.routePauseBlockedDuringCommit).toBe(true);
   expect(result.battlePaused).toBe(true);
@@ -14516,6 +14580,7 @@ test('pause overlay opens on route and combat without advancing play', async ({ 
   expect(result.battlePauseDepths.root).toBeLessThan(result.battlePauseDepths.fx);
   expect(result.battlePauseDepths.overlay).toBeGreaterThan(result.battlePauseDepths.fx);
   expect(result.battleDidNotEndTurn).toBe(true);
+  expect(result.battleResumedOnEnter).toBe(true);
   expect(result.battleClosed).toBe(false);
   expect(result.battleClosedDepths.root).toBeLessThan(result.battleClosedDepths.fx);
   expect(result.windupBeforeSupply.combatEnemyTurnBeat).toBe('windup');
@@ -14995,7 +15060,7 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
     const routeSettingsMotionSwitchFrame = countTexture(route.root?.list ?? route.children.list, 'ui-icon-system-settings-motion-switch-frame');
     const routeSettingsFocusRings = collect(route.children.list)
       .filter((child: any) => child.name === 'system-settings-focus-ring').length;
-    route.input.keyboard.emit('keydown-ESC');
+    route.input.keyboard.emit('keydown', new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape' }));
     await wait(60);
     const routeClosed = JSON.parse(window.render_game_to_text!()).settingsOverlayOpen;
 
@@ -15019,10 +15084,10 @@ test('settings overlay opens from menu and paused run surfaces', async ({ page }
     const battleSettingsMotionSwitchFrame = countTexture(battleSystemObjects, 'ui-icon-system-settings-motion-switch-frame');
     const battleSettingsFocusRings = collect(battleSystemObjects)
       .filter((child: any) => child.name === 'system-settings-focus-ring').length;
-    battle.input.keyboard.emit('keydown-ENTER');
+    battle.input.keyboard.emit('keydown', new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter' }));
     await wait(60);
     const afterTurn = battle.turn;
-    battle.input.keyboard.emit('keydown-ESC');
+    battle.input.keyboard.emit('keydown', new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape' }));
     await wait(60);
     const battleClosed = JSON.parse(window.render_game_to_text!()).settingsOverlayOpen;
 
@@ -15271,7 +15336,7 @@ test('settings and remapping controls keep touch targets at the minimum supporte
       height: child.displayHeight,
     }));
   });
-  expect(settingsFooter).toEqual([{ label: 'Full Screen', x: 640, width: 190, height: 58 }]);
+  expect(settingsFooter).toEqual([{ label: 'Full Screen', x: 286, width: 190, height: 58 }]);
   const settingsRowHierarchy = async () => page.evaluate(() => {
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
     const objects = menu.settingsOverlay?.list ?? [];
@@ -15454,12 +15519,12 @@ test('shared onboarding and pause commands keep touch targets at the minimum sup
     return { labels, values, rows, buttonTop };
   });
   expect(helpFooter.labels.map((item: any) => ({ text: item.text, fontSize: item.fontSize }))).toEqual([
-    { text: 'QUICK KEYS', fontSize: 14 },
-    { text: 'WAYMARKS', fontSize: 14 },
+    { text: 'QUICK KEYS', fontSize: 19 },
+    { text: 'WAYMARKS', fontSize: 19 },
   ]);
   expect(helpFooter.values.map((item: any) => ({ text: item.text, fontSize: item.fontSize }))).toEqual([
-    { text: 'R Roost  |  Enter Confirm  |  1-9 Cards  |  X Skip  |  M Mute', fontSize: 15 },
-    { text: 'In combat: Shift+X or controller RT opens your artifacts. Reading never spends a turn.', fontSize: 15 },
+    { text: 'R Roost  |  Enter Confirm  |  1-9 Cards  |  X Skip  |  M Mute', fontSize: 19 },
+    { text: 'Shift+X or RT: read artifacts without spending a turn.', fontSize: 19 },
   ]);
   expect(helpFooter.rows).toEqual([]);
   expect(helpFooter.values[1].bounds.top - helpFooter.values[0].bounds.bottom).toBeGreaterThanOrEqual(8);
@@ -15561,7 +15626,7 @@ test('deck, pile, and reward commands keep touch targets at the minimum supporte
     return route.children.list.some((child: any) => child.name === 'deck-review-row-hit' && child.input?.enabled);
   });
   const routeTargets = await targetSnapshot('RouteScene', '^(deck-review-row-hit|deck-review-scroll-(up|down)-hit)$');
-  expect(routeTargets.filter((target) => target.name === 'deck-review-row-hit')).toHaveLength(7);
+  expect(routeTargets.filter((target) => target.name === 'deck-review-row-hit')).toHaveLength(6);
   expect(routeTargets.filter((target) => target.name.startsWith('deck-review-scroll-'))).toHaveLength(1);
   expect(routeTargets.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
   expect(await undersizedPointerTargets('RouteScene')).toEqual([]);
@@ -15720,8 +15785,8 @@ test('Codex and Flock Record controls keep touch targets at the minimum supporte
   expect(codexBottomFade).toHaveLength(8);
   expect(codexBottomFade.map((strip) => strip.step)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
   expect(codexBottomFade.every((strip) => strip.x === 640 && strip.width === 1280 && strip.height === 9)).toBe(true);
-  expect(codexBottomFade[0]).toMatchObject({ progress: 0.125, gridBottom: 690, top: 618 });
-  expect(codexBottomFade.at(-1)).toMatchObject({ progress: 1, fadeAlpha: 0.9, gridBottom: 690, bottom: 690 });
+  expect(codexBottomFade[0]).toMatchObject({ progress: 0.125, gridBottom: 658, top: 586 });
+  expect(codexBottomFade.at(-1)).toMatchObject({ progress: 1, fadeAlpha: 0.9, gridBottom: 658, bottom: 658 });
   expect(codexBottomFade.every((strip, index) => index === 0 || strip.top === codexBottomFade[index - 1].bottom)).toBe(true);
   expect(codexBottomFade.every((strip, index) => index === 0 || strip.fadeAlpha > codexBottomFade[index - 1].fadeAlpha)).toBe(true);
 
@@ -15785,40 +15850,35 @@ test('Codex and Flock Record controls keep touch targets at the minimum supporte
   await boot(page, '/?playtest=1');
   await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
   await page.waitForFunction(() => {
-    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
-    return state.profileSectionTabFrame?.rendered === true && state.profileSectionTabFrame?.count >= 2;
+    const scene: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    return Boolean(scene.children.getByName('profile-dashboard-surface'));
   });
-  const profileTabs = await targetSnapshot('ProfileScene', '^profile-(achievements|contracts|showcase|folios)-tab-hit$');
-  expect(profileTabs).toHaveLength(4);
+  const profileTabs = await targetSnapshot('ProfileScene', '^profile-(leaders|achievements|contracts|showcase|folios)-tab-hit$');
+  expect(profileTabs).toHaveLength(5);
   expect(profileTabs.every((target) => target.cssWidth >= 44 && target.cssHeight >= 44)).toBe(true);
   expect(await undersizedPointerTargets('ProfileScene')).toEqual([]);
   const profileTabTypography = await page.evaluate(() => {
     const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
-    const views = ['achievements', 'contracts', 'showcase', 'folios'];
+    const views = ['leaders', 'achievements', 'contracts', 'showcase', 'folios'];
     return views.map((view) => {
       const hit = profile.children.list.find((child: any) => child.name === `profile-${view}-tab-hit`);
-      const label = profile.children.list.find((child: any) => child.name === 'profile-badge-tab-label' && child.getData('view') === view);
-      const count = profile.children.list.find((child: any) => child.name === 'profile-badge-tab-count' && child.getData('view') === view);
+      const label = profile.children.list.find((child: any) => child.name === `profile-${view}-tab-hit-label`);
       const hitBounds = hit?.getBounds();
       const labelBounds = label?.getBounds();
-      const countBounds = count?.getBounds();
       return {
         view,
         label: label?.text,
-        count: count?.text,
         selected: hit?.getData('selected'),
         labelFontSize: Number.parseFloat(label?.style?.fontSize ?? '0'),
-        countFontSize: Number.parseFloat(count?.style?.fontSize ?? '0'),
-        contained: Boolean(hitBounds && labelBounds && countBounds
+        contained: Boolean(hitBounds && labelBounds
           && labelBounds.left >= hitBounds.left && labelBounds.right <= hitBounds.right
-          && countBounds.left >= hitBounds.left && countBounds.right <= hitBounds.right
-          && labelBounds.top >= hitBounds.top && countBounds.bottom <= hitBounds.bottom),
+          && labelBounds.top >= hitBounds.top && labelBounds.bottom <= hitBounds.bottom),
       };
     });
   });
-  expect(profileTabTypography.map((tab) => tab.label)).toEqual(['Badges', 'Contracts', 'Showcase', 'Folios']);
+  expect(profileTabTypography.map((tab) => tab.label)).toEqual(['Leaders', 'Badges', 'Contracts', 'Showcase', 'Folios']);
   expect(profileTabTypography.filter((tab) => tab.selected).map((tab) => tab.view)).toEqual(['achievements']);
-  expect(profileTabTypography.every((tab) => tab.labelFontSize === 12 && tab.countFontSize === 10)).toBe(true);
+  expect(profileTabTypography.every((tab) => tab.labelFontSize >= 20)).toBe(true);
   expect(profileTabTypography.every((tab) => tab.contained)).toBe(true);
   const profileBadgePagerLayout = await page.evaluate(() => {
     const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
@@ -15837,42 +15897,30 @@ test('Codex and Flock Record controls keep touch targets at the minimum supporte
     };
   });
   expect(profileBadgePagerLayout).toMatchObject({
-    descriptions: 5,
-    lastBadgeId: 'iron_flock',
+    descriptions: 3,
+    lastBadgeId: 'ascended',
     shortcutHints: 0,
   });
   expect(profileBadgePagerLayout.clearance).toBeGreaterThanOrEqual(48);
+  await clickNamedGameObject(page, 'ProfileScene', 'profile-leaders-tab-hit');
   const profileLeaderLedgerLayout = await page.evaluate(() => {
     const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
-    const curtain = profile.children.list.find((child: any) => child.name === 'profile-leader-list-curtain');
-    const rows = profile.children.list
-      .filter((child: any) => child.name === 'profile-leader-row-frame')
-      .sort((left: any, right: any) => left.y - right.y);
-    const flightLog = profile.children.list.find((child: any) => child.name === 'profile-flight-log-hit');
-    const firstBounds = rows[0]?.getBounds();
-    const lastBounds = rows.at(-1)?.getBounds();
-    const flightLogBounds = flightLog?.getBounds();
+    const rows = profile.children.list.filter((child: any) => child.name === 'profile-leader-row');
+    const labels = profile.children.list.filter((child: any) => child.name === 'profile-leader-detail');
     return {
-      curtainCount: curtain ? 1 : 0,
-      curtainTopAlpha: curtain?.getData('topAlpha'),
-      curtainBottomAlpha: curtain?.getData('bottomAlpha'),
       rowIds: rows.map((row: any) => row.getData('leaderId')),
-      rowSpacing: rows.slice(1).map((row: any, index: number) => row.y - rows[index].y),
-      curtainContainsRows: Boolean(firstBounds && lastBounds && curtain
-        && firstBounds.top >= curtain.getData('top')
-        && lastBounds.bottom <= curtain.getData('bottom')),
-      footerClearance: lastBounds && flightLogBounds ? flightLogBounds.top - lastBounds.bottom : -1,
+      separated: rows.every((row: any, i: number) => !i || row.getBounds().top >= rows[i-1].getBounds().bottom + 4),
+      contained: labels.every((label: any, i: number) => {
+        const b=label.getBounds(), row=rows[i].getBounds();
+        return b.left>=row.left && b.right<=row.right && b.bottom<=row.bottom;
+      }),
+      fontFloor: labels.every((label:any)=>parseFloat(label.style.fontSize)>=20),
     };
   });
-  expect(profileLeaderLedgerLayout).toMatchObject({
-    curtainCount: 1,
-    curtainTopAlpha: 0.08,
-    curtainBottomAlpha: 0.82,
+  expect(profileLeaderLedgerLayout).toEqual({
     rowIds: ['fledgling', 'spark_caller', 'talon', 'tidewarden', 'roostkeeper'],
-    rowSpacing: [36, 36, 36, 36],
-    curtainContainsRows: true,
+    separated: true, contained: true, fontFloor: true,
   });
-  expect(profileLeaderLedgerLayout.footerClearance).toBeGreaterThanOrEqual(16);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/profile-main-1000x560.png' });
   await clickNamedGameObject(page, 'ProfileScene', 'profile-save-data-hit');
   await page.waitForFunction(() => {
@@ -15909,7 +15957,7 @@ test('Codex and Flock Record controls keep touch targets at the minimum supporte
   });
   expect(profileRatingGridLayout.map((row) => row.key)).toEqual(['fun', 'fairness', 'clarity', 'replay']);
   expect(profileRatingGridLayout.every((row) => row.scoreCount === 5)).toBe(true);
-  expect(profileRatingGridLayout.every((row) => row.spacing.every((spacing) => spacing === 58))).toBe(true);
+  expect(profileRatingGridLayout.every((row) => row.spacing.every((spacing) => spacing === 66))).toBe(true);
   expect(profileRatingGridLayout.every((row) => row.contained)).toBe(true);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/profile-playtest-1000x560.png' });
 });
@@ -15996,7 +16044,7 @@ test('route decisions and outcome commands keep touch targets at the minimum sup
     };
   });
   expect(confirmHintLayout).toEqual({
-    hintText: 'Esc to keep playing',
+    hintText: 'Esc / B to keep playing',
     hintCenterX: 640,
     subtitleGap: expect.any(Number),
     actionGap: expect.any(Number),
@@ -16088,6 +16136,7 @@ test('route decisions and outcome commands keep touch targets at the minimum sup
       const labelBounds = label?.getBounds();
       return {
         fontSize: costFrame.style.fontSize,
+        cssFontSize: parseFloat(costFrame.style.fontSize) * route.game.canvas.getBoundingClientRect().height / 720,
         resolution: costFrame.style.resolution,
         explicitCurrency: /\d+ Scrap$/.test(costFrame.text),
         rightInset: serviceBounds ? serviceBounds.right - costBounds.right : -1,
@@ -16096,7 +16145,7 @@ test('route decisions and outcome commands keep touch targets at the minimum sup
     });
   });
   expect(serviceCostLayout).toHaveLength(3);
-  expect(serviceCostLayout.every((cost) => cost.fontSize === '20px' && cost.resolution === 2 && cost.explicitCurrency)).toBe(true);
+  expect(serviceCostLayout.every((cost) => cost.fontSize === '21px' && cost.cssFontSize >= 16 && cost.resolution === 2 && cost.explicitCurrency)).toBe(true);
   expect(serviceCostLayout.every((cost) => cost.rightInset >= 20)).toBe(true);
   expect(serviceCostLayout.every((cost) => cost.labelGap >= 32)).toBe(true);
   expect(await undersizedPointerTargets('RouteScene')).toEqual([]);
@@ -16296,7 +16345,7 @@ test('run HUD, card picker, market close, and combat log keep touch targets at t
     const inspectLabel = route.children.list.find((child: any) => child.name === 'card-picker-card-inspect-label');
     const inspectBinding = route.children.list.find((child: any) => child.name === 'card-picker-card-inspect-binding');
     const cardHits = route.children.list.filter((child: any) => child.name === 'card-picker-card-hit');
-    const scrollFrames = route.children.list.filter((child: any) => child.name === 'card-picker-scroll-button-frame');
+    const scrollFrames = route.children.list.filter((child: any) => /^card-picker-scroll-(up|down)-hit$/.test(child.name));
     const indicatorBounds = indicator?.getBounds();
     const rangeBounds = range?.getBounds();
     const hintBounds = inputHint?.getBounds();
@@ -16334,18 +16383,18 @@ test('run HUD, card picker, market close, and combat log keep touch targets at t
     fontSize: 13,
     inputHint: {
       text: 'Click a choice to select   ·   Inspect reads without committing',
-      fontSize: 16,
+      fontSize: 19,
     },
     indicatorSize: [88, 34],
-    inspectLabel: 'INSPECT FOCUSED',
+    inspectLabel: 'Inspect focused',
     inspectBinding: 'Read full card',
-    inspectSize: [200, 64],
+    inspectSize: [216, 64],
     rangeInsideIndicator: true,
   });
-  expect(pickerRail.hintCardGap).toBeGreaterThanOrEqual(6);
+  expect(pickerRail.hintCardGap).toBeGreaterThanOrEqual(8);
   expect(pickerRail.inspectBackGap).toBeGreaterThanOrEqual(16);
   expect(pickerRail.inspectCardGap).toBeGreaterThanOrEqual(8);
-  expect(pickerRail.scrollSizes).toEqual([[56, 44], [56, 44]]);
+  expect(pickerRail.scrollSizes).toEqual([[72, 58], [72, 58]]);
   expect(pickerRail.cardGutter).toBeGreaterThanOrEqual(8);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/route-card-picker-1000x560.png' });
 
@@ -16408,10 +16457,11 @@ test('run HUD, card picker, market close, and combat log keep touch targets at t
         fontSize: Number.parseFloat(child.style?.fontSize ?? '0'),
       }));
   });
-  expect(combatHint).toHaveLength(2);
-  expect(combatHint.find((item: any) => item.type === 'Rectangle')).toMatchObject({ width: 680, height: 28 });
-  expect(combatHint.find((item: any) => item.type === 'Text')).toMatchObject({ fontSize: 12 });
-  expect(combatHint.find((item: any) => item.type === 'Text')?.text).toContain('UP / DOWN  TARGET');
+  expect(combatHint).toEqual([expect.objectContaining({
+    type: 'Text', fontSize: 19, text: 'Select a card, then a target · Roost ends your turn',
+  })]);
+  expect(combatHint[0].width).toBeLessThanOrEqual(1040);
+  expect(combatHint[0].height).toBeLessThanOrEqual(32);
   await page.screenshot({ path: '.artifacts/test-results/min-supported/combat-run-hud-1000x560.png' });
 });
 
@@ -17104,8 +17154,22 @@ test('title boot paints generated controls once and defers overlay artwork until
   await page.keyboard.press('h');
   await expect.poll(async () => {
     const state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
-    return state.helpOpen && state.titleBoot.deferredHelpLoaded === state.titleBoot.deferredHelpAssetCount;
+    return state.helpOpen;
   }).toBe(true);
+  const readGuide = () => page.evaluate(() => {
+    const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
+    const children = menu.helpOverlay?.list ?? [];
+    return {
+      readable: children.filter((object: any) => object.name === 'how-to-play-readable' && object.visible).length,
+      actions: children.filter((object: any) => object.name === 'system-field-button-hit' && object.input?.enabled)
+        .map((object: any) => object.getData('label')),
+    };
+  });
+  await expect.poll(async () => (await readGuide()).readable).toBe(12);
+  const guide = await readGuide();
+  expect(guide.actions).toEqual(expect.arrayContaining(['Close', 'Practice lessons']));
+  // The quiet text guide has no image controls and must not fetch unused art.
+  expect((await titleBoot()).deferredHelpLoaded).toBe(0);
   expect((await titleBoot()).generation).toBe(1);
   await page.keyboard.press('Escape');
   await expect.poll(async () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').helpOpen)).toBe(false);
@@ -17324,7 +17388,11 @@ test('grouped Settings isolate hidden controls and preserve focus and values acr
       const current = await snapshot();
       expect(current.visible.sort((a, b) => a - b)).toEqual([...section.rows].sort((a, b) => a - b));
       expect(current.enabled.sort((a, b) => a - b)).toEqual(current.visible);
-      expect(current.bounds.every((box) => box.left >= 640 && box.right <= 1180 && box.top >= 190 && box.bottom <= 580)).toBe(true);
+      expect(current.bounds.every((box) => box.left >= 640 && box.right <= 1180 && box.top >= 190 && box.bottom <= 590)).toBe(true);
+      current.bounds.forEach((box, index) => {
+        expect(box.bottom - box.top).toBe(58);
+        if (index) expect(box.top - current.bounds[index - 1].bottom).toBeGreaterThanOrEqual(8);
+      });
       await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? '')).toContain(`Settings. ${section.label}.`);
       await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? '')).toContain(`${current.focus.label}: ${current.focus.value}`);
       await page.screenshot({ path: `.artifacts/test-results/grouped-settings/${sceneKey}-${index}-2560x1600.png` });
@@ -17715,6 +17783,7 @@ test('combat and rewards expose remapped keyboard and standard gamepad focus', a
       state,
       focusRings: objects.filter((child: any) => child.name === 'reward-input-focus-ring').length,
       inputHints: objects.filter((child: any) => child.name === 'combat-input-hint').length,
+      inputHintTexts: objects.filter((child: any) => child.name === 'combat-input-hint' && child.type === 'Text').map((child: any) => child.text),
       liveText: document.getElementById('game-status')?.textContent ?? '',
     };
   });
@@ -17782,7 +17851,9 @@ test('combat and rewards expose remapped keyboard and standard gamepad focus', a
   });
   const reward = await snapshot();
   expect(reward.focusRings).toBe(1);
-  expect(reward.inputHints).toBe(2);
+  expect(reward.inputHints).toBe(1);
+  expect(reward.inputHintTexts[0]).toContain('A/D: choose');
+  expect(reward.inputHintTexts[0]).toContain('Space: confirm');
   await expect.poll(async () => (await snapshot()).liveText).toContain(`Focused ${reward.state.combatInputFocus.label}`);
   expect((await snapshot()).liveText).toContain('choice 2 of 3');
 });
@@ -17822,7 +17893,7 @@ test('run outcomes expose equivalent keyboard and gamepad command focus', async 
     active: false,
     kind: 'outcome',
     index: 0,
-    count: 3,
+    count: 4,
     label: 'Replay Flight',
     visibleFocus: false,
   });
@@ -17831,7 +17902,7 @@ test('run outcomes expose equivalent keyboard and gamepad command focus', async 
     active: true,
     kind: 'outcome',
     index: 1,
-    count: 3,
+    count: 4,
     label: 'Flight Details',
     visibleFocus: true,
   });
@@ -17853,7 +17924,7 @@ test('run outcomes expose equivalent keyboard and gamepad command focus', async 
   await page.keyboard.press('ArrowRight');
   await expect.poll(async () => (await snapshot()).state.combatInputFocus).toMatchObject({
     index: 2,
-    count: 3,
+    count: 4,
     label: 'Main Menu',
   });
   await page.keyboard.press('Enter');
@@ -17928,7 +17999,7 @@ test('playtest outcomes hand the latest run directly to the local rating panel',
     active: true,
     kind: 'outcome',
     index: 2,
-    count: 4,
+    count: 5,
     label: 'Rate This Run',
     visibleFocus: true,
   });
@@ -17943,10 +18014,9 @@ test('playtest outcomes hand the latest run directly to the local rating panel',
     saveData: { open: true },
   });
   await expect.poll(async () => page.evaluate(() => {
-    const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
-    return state.profileTitlePlaque?.loaded
-      && state.profileTitlePlaque?.rendered
-      && state.profileSectionTabFrame?.loaded;
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    return Boolean(profile.children.getByName('profile-dashboard-surface')
+      && profile.children.getByName('profile-save-download-hit'));
   })).toBe(true);
   // The lazy profile art callback rebuilds the display list once after its
   // state first reports ready; wait for the next rendered frame before visual
@@ -18007,9 +18077,8 @@ test('How to Play teaches the full loop with readable unclipped text and matchin
   await page.waitForFunction(() => {
     const state = JSON.parse(window.render_game_to_text!());
     const menu = window.__birdSquadGame.scene.getScene('MenuScene');
-    // Loaded textures precede the overlay's deferred refresh. Inspect the
-    // finished presentation, not the still-playable loading frame.
-    return state.helpOpen && state.titleBoot.deferredHelpLoaded === state.titleBoot.deferredHelpAssetCount
+    // The quiet guide renders without requesting retired decorative frames.
+    return state.helpOpen
       && menu.helpOverlay?.list.filter((o: any) => o.name === 'how-to-play-topic-rule').length === 6;
   });
   for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
@@ -18027,16 +18096,16 @@ test('How to Play teaches the full loop with readable unclipped text and matchin
       const icons = children.filter((o: any) => o.name === 'how-to-play-topic-icon');
       return {
         state: JSON.parse(window.render_game_to_text!()).helpContent,
-        narratedTexts: children.filter((o: any) => ['how-to-play-readable', 'how-to-play-tip-label', 'how-to-play-tip-value'].includes(o.name)).map((o: any) => o.text),
+        narratedTexts: children.filter((o: any) => ['guide-download-status', 'how-to-play-readable', 'how-to-play-tip-label', 'how-to-play-tip-value'].includes(o.name)).map((o: any) => o.text),
         texts: texts.map((o: any) => o.text),
         panels: panels.length,
         icons: icons.length,
-        iconOverlap: icons.some((icon: any, i: number) => icon.getBounds().right + 6 > texts[1 + i * 2].getBounds().left),
+        iconOverlap: icons.some((icon: any, i: number) => icon.getBounds().right + 6 > texts[i * 2].getBounds().left),
         overflow: panels.some((panel: any, i: number) => {
           const box = panel.getBounds();
-          return texts.slice(1 + i * 2, 3 + i * 2).some((text: any) => {
+          return texts.slice(i * 2, 2 + i * 2).some((text: any) => {
             const b = text.getBounds();
-            return b.left < box.left || b.right > box.right || b.top < box.bottom + 8 || b.bottom > box.bottom + 148;
+            return b.left < box.left - 12 || b.right > box.right + 12 || b.top < box.bottom + 8 || b.bottom > box.bottom + 148;
           });
         }),
         minFont: Math.min(...texts.map((o: any) => parseInt(o.style.fontSize))),
@@ -18047,10 +18116,10 @@ test('How to Play teaches the full loop with readable unclipped text and matchin
     expect(layout.icons).toBe(0);
     expect(layout.iconOverlap).toBe(false);
     expect(layout.overflow).toBe(false);
-    expect(layout.minFont).toBeGreaterThanOrEqual(16);
+    expect(layout.minFont).toBeGreaterThanOrEqual(19);
     expect(layout.clipping).toBe(false);
     expect(layout.state).toEqual(layout.narratedTexts);
-    expect(layout.state.join(' ')).toContain('Shift+X or controller RT');
+    expect(layout.state.join(' ')).toContain('Shift+X or RT');
     expect(layout.texts.join(' ')).toContain('Skip keeps the deck and grants Scrap');
     expect(layout.texts.join(' ')).toContain('without adding a copy');
     await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent)).toContain('6 / Learn and Fly Again');
@@ -18061,118 +18130,36 @@ test('How to Play teaches the full loop with readable unclipped text and matchin
   expect(errors).toEqual([]);
 });
 
-test('title How to Play overlay opens, reports state, and loads its medallion', async ({ page }) => {
+test('title How to Play overlay opens with quiet controls and stable guide actions', async ({ page }) => {
   await boot(page);
-  const result = await page.evaluate(async () => {
-    const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
-    const g = window.__birdSquadGame;
-    let menu: any = g.scene.getScene('MenuScene');
-    const countTexture = (items: any[], key: string): number => items.reduce((sum, child) => {
-      const self = child.texture?.key === key ? 1 : 0;
-      const nested = Array.isArray(child.list) ? countTexture(child.list, key) : 0;
-      return sum + self + nested;
-    }, 0);
-
-    menu.input.keyboard.emit('keydown-H');
-    for (let i = 0; i < 80; i += 1) {
-      await wait(50);
-      menu = g.scene.getScene('MenuScene');
-      const state = JSON.parse(window.render_game_to_text!());
-      if (
-        state.helpOpen
-        && menu.textures.exists('ui-icon-how-to-play-tip-row-frame')
-        && menu.helpOverlay?.list.filter((o: any) => o.name === 'how-to-play-topic-rule').length === 6
-      ) break;
-    }
-    const opened = JSON.parse(window.render_game_to_text!());
-    const helpTextureLoaded = g.textures.exists('ui-icon-help-medallion');
-    const flourishLoaded = g.textures.exists('ui-icon-overlay-panel-flourish');
-    const flourishRendered = countTexture(menu.children.list, 'ui-icon-overlay-panel-flourish');
-    const titlePlaqueLoaded = g.textures.exists('ui-icon-system-overlay-title-plaque');
-    const titlePlaqueRendered = countTexture(menu.children.list, 'ui-icon-system-overlay-title-plaque');
-    const guideFrameLoaded = g.textures.exists('ui-icon-how-to-play-guide-frame');
-    const guideFrameRendered = countTexture(menu.children.list, 'ui-icon-how-to-play-guide-frame');
-    const topicCardFrameLoaded = g.textures.exists('ui-icon-how-to-play-topic-card-frame');
-    const topicCardFrameRendered = countTexture(menu.children.list, 'ui-icon-how-to-play-topic-card-frame');
-    const tipRowFrameLoaded = g.textures.exists('ui-icon-how-to-play-tip-row-frame');
-    const tipRowFrameRendered = countTexture(menu.children.list, 'ui-icon-how-to-play-tip-row-frame');
-    const collectTextureObjects = (items: any[], key: string): any[] => {
-      const found: any[] = [];
-      for (const child of items ?? []) {
-        if (child.texture?.key === key) found.push(child);
-        if (Array.isArray(child.list)) found.push(...collectTextureObjects(child.list, key));
-      }
-      return found;
-    };
-    const tipRowFrameObjects = collectTextureObjects(menu.children.list, 'ui-icon-how-to-play-tip-row-frame')
-      .map((child: any) => ({
-        displayWidth: Math.round(child.displayWidth),
-        displayHeight: Math.round(child.displayHeight),
-        alpha: Number(child.alpha?.toFixed?.(3) ?? child.alpha),
-        name: child.name,
-        visible: child.visible,
-      }));
-    const guideActionTargets = (menu.helpOverlay?.list ?? [])
-      .filter((child: any) => child.input?.enabled && child.type === 'Rectangle' && child.displayWidth === 190)
-      .map((child: any) => ({ width: child.displayWidth, height: child.displayHeight }));
-    menu.input.keyboard.emit('keydown-ESC');
-    await wait(80);
-    const closed = JSON.parse(window.render_game_to_text!());
-
-    return {
-      opened: opened.helpOpen,
-      settingsStayedClosed: opened.settingsOpen === false,
-      closed: closed.helpOpen,
-      helpTextureLoaded,
-      flourishLoaded,
-      flourishRendered,
-      titlePlaqueLoaded,
-      titlePlaqueRendered,
-      titlePlaqueTelemetry: opened.systemOverlayTitlePlaque,
-      guideFrameLoaded,
-      guideFrameRendered,
-      topicCardFrameLoaded,
-      topicCardFrameRendered,
-      topicCardFrameTelemetry: opened.howToPlayTopicCardFrame,
-      tipRowFrameLoaded,
-      tipRowFrameRendered,
-      tipRowFrameObjects,
-      tipRowFrameTelemetry: opened.howToPlayTipRowFrame,
-      guideActionTargets
+  await page.keyboard.press('h');
+  await page.waitForFunction(() => {
+    const m = window.__birdSquadGame.scene.getScene('MenuScene');
+    return m.helpOverlay?.list.filter((o: any) => o.name === 'how-to-play-topic-rule').length === 6;
+  });
+  await settleCanvas(page);
+  const inspect = () => page.evaluate(() => {
+    const m = window.__birdSquadGame.scene.getScene('MenuScene');
+    const state = JSON.parse(window.render_game_to_text!());
+    return { open: state.helpOpen, settings: state.settingsOpen,
+      decorations: m.helpOverlay.list.filter((o: any) => o.type === 'Image').length,
+      controls: m.helpOverlay.list.filter((o: any) => o.input?.enabled && o.type === 'Rectangle' && o.getData('labelObject'))
+        .map((o: any) => ({ label: o.getData('labelObject').text, width: o.displayWidth, height: o.displayHeight })),
+      topics: m.helpOverlay.list.filter((o: any) => o.name === 'how-to-play-topic-rule').length,
     };
   });
-
-  expect(result.opened).toBe(true);
-  expect(result.settingsStayedClosed).toBe(true);
-  expect(result.closed).toBe(false);
-  expect(result.helpTextureLoaded).toBe(true);
-  expect(result.flourishLoaded).toBe(true);
-  expect(result.flourishRendered).toBe(0);
-  expect(result.titlePlaqueLoaded).toBe(true);
-  expect(result.titlePlaqueRendered).toBe(0);
-  expect(result.titlePlaqueTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
-  expect(result.guideFrameLoaded).toBe(true);
-  expect(result.guideFrameRendered).toBe(0);
-  expect(result.topicCardFrameLoaded).toBe(true);
-  expect(result.topicCardFrameRendered).toBe(0);
-  expect(result.topicCardFrameTelemetry.loaded).toBe(true);
-  expect(result.topicCardFrameTelemetry.count).toBe(0);
-  expect(result.tipRowFrameLoaded).toBe(true);
-  expect(result.tipRowFrameRendered).toBe(0);
-  expect(result.tipRowFrameTelemetry).toEqual({ loaded: true, rendered: false, count: 0 });
-  expect(result.tipRowFrameObjects).toHaveLength(0);
-  // Asset refreshes must replace the overlay instead of stacking duplicate
-  // interactive controls at the same coordinates.
-  expect(result.guideActionTargets).toEqual([{ width: 190, height: 58 }]);
-  for (const frame of result.tipRowFrameObjects) {
-    expect(frame).toMatchObject({
-      displayWidth: 968,
-      displayHeight: 28,
-      name: 'how-to-play-tip-row-frame',
-      visible: true,
-    });
-    expect(frame.alpha).toBeGreaterThan(0.2);
-  }
+  const first = await inspect();
+  expect(first).toMatchObject({ open: true, settings: false, decorations: 0, topics: 6 });
+  expect(first.controls).toEqual([
+    { label: 'Close', width: 104, height: 58 },
+    { label: expect.stringMatching(/^(Skip|Replay) Guide$/), width: 190, height: 58 },
+    { label: 'Practice lessons', width: 230, height: 58 },
+  ]);
+  await page.keyboard.press('h');
+  await settleCanvas(page);
+  expect(await inspect()).toEqual(first);
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).helpOpen)).toBe(false);
 });
 
 test('route deck review supports pointer filters, sorting, find, and keyboard card navigation', async ({ page }) => {
@@ -18205,8 +18192,8 @@ test('route deck review supports pointer filters, sorting, find, and keyboard ca
     });
   });
   expect(targets).toEqual([
-    { name: 'deck-review-filter-hit', width: 114, height: 58 },
-    { name: 'deck-review-sort-hit', width: 122, height: 58 },
+    { name: 'deck-review-filter-hit', width: 134, height: 58 },
+    { name: 'deck-review-sort-hit', width: 134, height: 58 },
     { name: 'deck-review-search-hit', width: 150, height: 58 },
   ]);
 
@@ -18220,13 +18207,14 @@ test('route deck review supports pointer filters, sorting, find, and keyboard ca
       pageBottom: pages.getBounds().bottom, text: guide.text };
   });
   expect(footer.rail).toBe(false);
-  expect(footer.size).toBe('18px');
+  expect(footer.size).toBe('19px');
   expect(footer.top).toBeGreaterThan(footer.pageBottom);
   expect(footer.bottom).toBeLessThanOrEqual(704);
   expect(footer.left).toBeGreaterThanOrEqual(120);
   expect(footer.right).toBeLessThanOrEqual(1160);
   expect(footer.text).toBe('Select a card to read its rules · Pin to compare');
 
+  await settleCanvas(page);
   await clickNamedGameObject(page, 'RouteScene', 'deck-review-filter-hit');
   await expect.poll(async () => page.evaluate(() => (
     JSON.parse(window.render_game_to_text?.() ?? '{}').deckReview.filter
@@ -18299,8 +18287,8 @@ test('route deck review pins accessible card and Preen comparisons', async ({ pa
         height: child.displayHeight,
       }));
   });
-  expect(pinTargets).toHaveLength(7);
-  expect(pinTargets.every((target: any) => target.width === 58 && target.height === 58)).toBe(true);
+  expect(pinTargets).toHaveLength(6);
+  expect(pinTargets.every((target: any) => target.width === 88 && target.height === 58)).toBe(true);
   expect(pinTargets.every((target: any) => target.pinned === false)).toBe(true);
 
   const pinPoint = await page.evaluate(() => {
@@ -18744,9 +18732,9 @@ test('deck review overlays retain authored art with quiet readable controls', as
   expect(result.routeTitlePlaqueObjects).toEqual([]);
   expect(result.routeDetailFrames).toBe(0);
   expect(result.routeDetailFrameObjects).toEqual([]);
-  expect(result.routeCostBadges).toBe(7);
+  expect(result.routeCostBadges).toBe(6);
   expect(result.routeCostBadgeObjects.filter((badge: { width: number; height: number }) => badge.width === 46 && badge.height === 46)).toHaveLength(0);
-  expect(result.routeCostBadgeObjects.filter((badge: { width: number; height: number }) => badge.width === 34 && badge.height === 34)).toHaveLength(7);
+  expect(result.routeCostBadgeObjects.filter((badge: { width: number; height: number }) => badge.width === 34 && badge.height === 34)).toHaveLength(6);
   expect(result.routeCostBadgeObjects.every((badge: { name: string; visible: boolean }) => (
     badge.name === 'deck-review-cost-badge'
     && badge.visible
@@ -19565,7 +19553,7 @@ test('combat event log keeps the latest message without decorative frames', asyn
   expect(result.log).toContain('Smoke test event log polish entry.');
 });
 
-test('combat hover tooltip renders generated dossier frame', async ({ page }) => {
+test('combat hover tooltip keeps a content-sized quiet frame', async ({ page }) => {
   await boot(page);
   const result = await page.evaluate(async () => {
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -19587,7 +19575,7 @@ test('combat hover tooltip renders generated dossier frame', async ({ page }) =>
       return sum + self + nested;
     }, 0);
     const frameObjects = (tooltip?.list ?? [])
-      .filter((child: any) => child.texture?.key === 'ui-icon-combat-tooltip-frame')
+      .filter((child: any) => child.name === 'combat-tooltip-frame' && child.type === 'Rectangle')
       .map((child: any) => ({
         width: Math.round(child.displayWidth),
         height: Math.round(child.displayHeight),
@@ -19601,10 +19589,10 @@ test('combat hover tooltip renders generated dossier frame', async ({ page }) =>
     };
   });
 
-  expect(result.combatTooltipFrame).toEqual({ loaded: true, rendered: true, count: result.frameCount });
-  expect(result.frameCount).toBe(1);
+  expect(result.combatTooltipFrame).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(result.frameCount).toBe(0);
   expect(result.frameObjects).toEqual([
-    expect.objectContaining({ name: 'combat-tooltip-frame', width: 260, alpha: 0.94 })
+    expect.objectContaining({ name: 'combat-tooltip-frame', width: 360, alpha: 1 })
   ]);
 });
 
@@ -20012,6 +20000,7 @@ test('mute shortcut reuses rendered audio feedback without re-entering core scen
         child,
         ...(Array.isArray(child.list) ? collect(child.list) : []),
       ]);
+      if (key === 'ProfileScene') return scene.sys.settings.active;
       return collect(scene.children.list).some((child: any) => child.name === 'audio-toggle-control-hit' && child.input?.enabled)
         && scene.textures.exists('ui-icon-audio-toggle-wave-burst');
     }, sceneKey);
@@ -20023,6 +20012,7 @@ test('mute shortcut reuses rendered audio feedback without re-entering core scen
       return !transition || transition.fadeRunning === false;
     });
     await page.waitForFunction((key) => {
+      if (key === 'ProfileScene') return true;
       const scene: any = window.__birdSquadGame.scene.getScene(key);
       const collect = (items: any[]): any[] => items.flatMap((child: any) => [
         child,
@@ -20076,14 +20066,18 @@ test('mute shortcut reuses rendered audio feedback without re-entering core scen
   for (const surface of surfaces) {
     await startOnly(surface.key, surface.data);
     const before = await snapshot(surface.key);
-    expect(before.hitCount, surface.key).toBeGreaterThanOrEqual(1);
+    if (surface.key === 'ProfileScene') expect(before.hitCount).toBe(0);
+    else expect(before.hitCount, surface.key).toBeGreaterThanOrEqual(1);
     expect(before.visibleBursts, surface.key).toBe(0);
 
     await page.keyboard.press('m');
     const during = await snapshot(surface.key);
     expect(during.audio.muted, surface.key).toBe(!before.audio.muted);
-    expect(during.hitLabel, surface.key).toBe(during.audio.muted ? 'Unmute' : 'Mute');
-    expect(during.feedbackBursts, surface.key).toBe(before.feedbackBursts + 1);
+    if (surface.key === 'ProfileScene') expect(during.feedbackBursts).toBe(0);
+    else {
+      expect(during.hitLabel, surface.key).toBe(during.audio.muted ? 'Unmute' : 'Mute');
+      expect(during.feedbackBursts, surface.key).toBe(before.feedbackBursts + 1);
+    }
     expect(during.focus, surface.key).toBe(before.focus);
     expect(during.marker, surface.key).toEqual(before.marker);
 
@@ -21325,7 +21319,7 @@ test('route map exposes boss prep readiness before the final crossing', async ({
       signalModuleCount,
       routeForPlateCount,
       visiblePressure: route.children.getByName('boss-prep-pressure')?.text,
-      visibleUseful: route.children.getByName('boss-prep-useful')?.text,
+      openTarget: route.children.getByName('boss-prep-open')?.getBounds().height,
       dossierBounds: dossierBounds ? {
         left: dossierBounds.left,
         top: dossierBounds.top,
@@ -21333,8 +21327,8 @@ test('route map exposes boss prep readiness before the final crossing', async ({
         bottom: dossierBounds.bottom,
       } : null,
       hasBossPrepState: Boolean(state.bossPrep),
-      hasInspectorSummary: texts.includes('BOSS PREP'),
-      phaseThresholdRendered: texts.some((text: string) => text.includes('P2 50%'))
+      hasInspectorSummary: !!route.children.getByName('boss-prep-open'),
+      phaseThresholdRendered: texts.some((text: string) => text.includes('Phase II at 50%'))
     };
   });
   expect(r.bossName).toBeTruthy();
@@ -21345,31 +21339,30 @@ test('route map exposes boss prep readiness before the final crossing', async ({
   expect(['low', 'steady', 'strong']).toContain(r.readiness.cover);
   expect(Array.isArray(r.usefulNodes)).toBe(true);
   expect(new Set(r.usefulNodes).size).toBe(r.usefulNodes.length);
-  expect(r.visiblePressure).toBe('P2 50% · COVER / SNAG / SKY / MULTI');
-  expect(r.visibleUseful).toMatch(/^Useful: (?:[A-Z]+)(?: \/ [A-Z]+){1,3}$/);
-  expect(r.visibleUseful).not.toContain('…');
-  expect(r.dossierBounds).toEqual({ left: 92, top: 642, right: 880, bottom: 698 });
+  expect(r.visiblePressure).toBe('Phase II at 50% · Review before crossing');
+  expect(r.openTarget).toBe(58);
+  expect(r.dossierBounds).toEqual({ left: 92, top: 642, right: 880, bottom: 700 });
   expect(r.hasBossPrepState).toBe(true);
   expect(r.flourishLoaded).toBe(true);
   expect(r.bossPrepDossier.loaded).toBe(true);
-  expect(r.bossPrepDossier.rendered).toBe(true);
+  expect(r.bossPrepDossier.rendered).toBe(false);
   expect(r.bossPrepReadinessChipFrame.loaded).toBe(true);
-  expect(r.bossPrepReadinessChipFrame.rendered).toBe(true);
-  expect(r.bossPrepReadinessChipFrame.count).toBe(4);
-  expect(r.chipFrameCount).toBe(4);
+  expect(r.bossPrepReadinessChipFrame.rendered).toBe(false);
+  expect(r.bossPrepReadinessChipFrame.count).toBe(0);
+  expect(r.chipFrameCount).toBe(0);
   expect(r.bossPrepPressurePlaque.loaded).toBe(true);
-  expect(r.bossPrepPressurePlaque.rendered).toBe(true);
-  expect(r.bossPrepPressurePlaque.count).toBe(1);
-  expect(r.pressurePlaqueCount).toBe(1);
+  expect(r.bossPrepPressurePlaque.rendered).toBe(false);
+  expect(r.bossPrepPressurePlaque.count).toBe(0);
+  expect(r.pressurePlaqueCount).toBe(0);
   expect(r.bossPrepSignalModule.loaded).toBe(true);
-  expect(r.bossPrepSignalModule.rendered).toBe(true);
-  expect(r.bossPrepSignalModule.count).toBe(1);
-  expect(r.signalModuleCount).toBe(1);
+  expect(r.bossPrepSignalModule.rendered).toBe(false);
+  expect(r.bossPrepSignalModule.count).toBe(0);
+  expect(r.signalModuleCount).toBe(0);
   expect(r.bossPrepRouteForPlate.loaded).toBe(true);
-  expect(r.bossPrepRouteForPlate.rendered).toBe(true);
-  expect(r.bossPrepRouteForPlate.count).toBe(1);
-  expect(r.routeForPlateCount).toBe(1);
-  expect(r.dossierRendered).toBe(true);
+  expect(r.bossPrepRouteForPlate.rendered).toBe(false);
+  expect(r.bossPrepRouteForPlate.count).toBe(0);
+  expect(r.routeForPlateCount).toBe(0);
+  expect(r.dossierRendered).toBe(false);
   expect(r.hasInspectorSummary).toBe(true);
   await page.screenshot({ path: '.artifacts/test-results/boss-prep-dossier-current-1000x560.png', fullPage: true });
 });
@@ -21450,11 +21443,11 @@ test('boss prep footer fits every district boss name and complete pressure set',
 
     const expected = expectedBosses[mapIndex];
     expect(result.bossName).toBe(expected.name);
-    expect(result.nameNaturalWidth).toBeLessThanOrEqual(196);
+    expect(result.nameNaturalWidth).toBeLessThanOrEqual(550);
     expect(result.pressure).not.toContain('openSky');
     expect(result.pressureLines.length).toBeGreaterThanOrEqual(1);
     expect(result.pressureLines.length).toBeLessThanOrEqual(2);
-    expect(result.widestPressureLine).toBeLessThanOrEqual(196);
+    expect(result.widestPressureLine).toBeLessThanOrEqual(550);
     expect(result.pressureBottom).toBeLessThanOrEqual(result.backplateBottom);
     expect(result.primaryTests).toContain(expected.test);
     expect(result.strategyHints[0]).toContain(expected.hint);
@@ -21634,7 +21627,7 @@ test('defeat review explains the fatal hit, top pressure, and one actionable adj
     const headline: any = scene.root.list.find((child: any) => child.name === 'run-defeat-review-headline');
     const evidence: any = scene.root.list.find((child: any) => child.name === 'run-defeat-review-evidence');
     const tip: any = scene.root.list.find((child: any) => child.name === 'run-defeat-review-tip');
-    const copyRail: any = scene.root.list.find((child: any) => child.name === 'run-outcome-flight-link-rail');
+    const copyRail: any = scene.root.list.find((child: any) => child.name === 'run-outcome-flight-link-hit');
     const copyLabel: any = scene.root.list.find((child: any) => child.name === 'run-outcome-flight-link-label');
     const copyHit: any = scene.root.list.find((child: any) => child.name === 'run-outcome-flight-link-hit');
     const commandHits: any[] = scene.root.list.filter((child: any) => child.name === 'run-outcome-command-hit');
@@ -21661,6 +21654,9 @@ test('defeat review explains the fatal hit, top pressure, and one actionable adj
       headline: headline?.text,
       evidence: evidence?.text,
       tip: tip?.text,
+      completeReview: [headline, evidence, tip].map(entry => entry?.getData('fullText')),
+      reviewExcerpts: [headline, evidence, tip].map(entry => ({ text: entry?.text, full: entry?.getData('fullText'), truncated: entry?.getData('truncated') })),
+      reportResults: scene.outcomeFlightDetails()?.results,
       reviewRendered: Boolean(frame),
       reviewContainsText: frameBounds
         ? [headline, evidence, tip].every((entry) => entry && within(frameBounds, entry.getBounds()))
@@ -21704,16 +21700,19 @@ test('defeat review explains the fatal hit, top pressure, and one actionable adj
   });
   expect(result.review.tip).toContain('2 overextensions opened the flock');
   expect(result.review.replayNote).toContain('seed');
-  expect(result.headline).toBe(result.review.headline);
-  expect(result.evidence).toBe(result.review.evidence);
-  expect(result.tip).toBe(result.review.tip);
+  expect(result.completeReview).toEqual([result.review.headline, result.review.evidence, result.review.tip]);
+  for (const excerpt of result.reviewExcerpts) {
+    if (excerpt.truncated) { expect(excerpt.text).toMatch(/…$/); expect(excerpt.full).toContain(excerpt.text.slice(0, -1)); }
+    else expect(excerpt.text).toBe(excerpt.full);
+    expect(result.reportResults).toContain(excerpt.full);
+  }
   expect(result.reviewRendered).toBe(true);
   expect(result.reviewContainsText).toBe(true);
-  expect(result.reviewSize).toEqual([452, 140]);
-  expect(result.reviewFontSizes).toEqual([14, 18, 15, 16]);
+  expect(result.reviewSize).toEqual([452, 156]);
+  expect(result.reviewFontSizes).toEqual([18, 21, 18, 18]);
   expect(result.copyRailSize).toEqual([244, 58]);
   expect(result.copyRailY).toBe(514);
-  expect(result.copyLabelFontSize).toBe(18);
+  expect(result.copyLabelFontSize).toBe(21);
   expect(result.copyLabelContained).toBe(true);
   expect(result.reviewToCopyGap).toBeGreaterThanOrEqual(20);
   expect(result.copyToCommandsGap).toBeGreaterThanOrEqual(8);
@@ -21769,7 +21768,7 @@ test('flight details expose the final deck, path, kit, decisions, and results ac
   await expect.poll(async () => page.evaluate(() => {
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
     return state.combatInputFocus?.count;
-  })).toBe(3);
+  })).toBe(4);
   await page.keyboard.press('ArrowRight');
   await expect.poll(async () => page.evaluate(() => {
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
@@ -21785,11 +21784,30 @@ test('flight details expose the final deck, path, kit, decisions, and results ac
   await page.screenshot({
     path: '.artifacts/test-results/flight-details/minimum-landscape-defeat-review.png',
   });
-  const review = await page.evaluate(() => {
+  const initialAnnouncement = await page.evaluate(() => document.getElementById('game-status')?.textContent ?? '');
+  const visited: Array<{title:string;text:string;contained:boolean;separated:boolean}> = [];
+  const pageCount = await page.evaluate(() => (window.__birdSquadGame.scene.getScene('BattleScene') as any)
+    .root.getByName('run-flight-details-section-body').getData('reading').total);
+  for (let index=0; index<pageCount; index++) {
+    visited.push(await page.evaluate(() => {
+      const root=(window.__birdSquadGame.scene.getScene('BattleScene') as any).root;
+      const body=root.getByName('run-flight-details-section-body'), heading=root.getByName('run-flight-details-section-title');
+      const b=body.getBounds(), h=heading.getBounds(), frame=root.getByName('run-flight-details-panel').getBounds();
+      return {title:body.getData('section'),text:body.text,
+        contained:b.left>=frame.left&&b.right<=frame.right&&h.top>=frame.top&&b.bottom<=506,
+        separated:h.bottom+8<=b.top&&b.bottom+8<=root.getByName('run-flight-details-next').getBounds().top};
+    }));
+    await page.keyboard.press('PageDown');
+    await expect.poll(async()=>page.evaluate(()=>(window.__birdSquadGame.scene.getScene('BattleScene') as any)
+      .root.getByName('run-flight-details-section-body').getData('reading').page)).toBe((index+1)%pageCount+1);
+  }
+  expect(visited.length).toBeGreaterThanOrEqual(5);
+  expect(visited.every(p=>p.contained&&p.separated)).toBe(true);
+  const review = await page.evaluate(({visited, initialAnnouncement}) => {
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
     const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
     const panel: any = scene.root.list.find((child: any) => child.name === 'run-flight-details-panel');
-    const sections: any[] = scene.root.list.filter((child: any) => child.name === 'run-flight-details-section');
+    const sections: any[] = scene.root.list.filter((child: any) => child.name === 'run-flight-details-section-title');
     const bodies: any[] = scene.root.list.filter((child: any) => child.name === 'run-flight-details-section-body');
     const closeHit: any = scene.root.list.find((child: any) => child.name === 'run-flight-details-close-hit');
     const panelBounds = panel?.getBounds();
@@ -21808,8 +21826,8 @@ test('flight details expose the final deck, path, kit, decisions, and results ac
     return {
       state,
       title: scene.root.list.find((child: any) => child.name === 'run-flight-details-title')?.text,
-      sectionNames: sections.map((section) => section.getData('section')),
-      sectionBodies: Object.fromEntries(bodies.map((body) => [body.getData('section'), body.text])),
+      sectionNames: [...new Set(visited.map(page=>page.title))],
+      sectionBodies: Object.fromEntries(visited.map(page=>[page.title,visited.filter(p=>p.title===page.title).map(p=>p.text).join('\n')])),
       allSectionsInsidePanel: panelBounds
         ? [...sections, ...bodies, closeHit].every((entry) => entry && contained(panelBounds, entry.getBounds()))
         : false,
@@ -21818,9 +21836,9 @@ test('flight details expose the final deck, path, kit, decisions, and results ac
         : false,
       closeTarget: { width: closeHit?.width, height: closeHit?.height, enabled: closeHit?.input?.enabled },
       focusRings: scene.root.list.filter((child: any) => child.name === 'run-flight-details-input-focus-ring').length,
-      announcement: document.getElementById('game-status')?.textContent ?? '',
+      announcement: initialAnnouncement,
     };
-  });
+  },{visited,initialAnnouncement});
 
   expect(review.state).toMatchObject({
     mode: 'defeat',
@@ -22017,7 +22035,9 @@ test('Codex card collections expose discovery milestones and feed the next-fligh
       await wait(50);
       codexState = JSON.parse(window.render_game_to_text?.() ?? '{}');
     }
-    const railCount = codex.root.list.filter((child: any) => child.name === 'codex-card-collection-rail').length;
+    const hiddenRailCount = codex.root.list.filter((child: any) => child.name === 'codex-card-collection-atlas-hit').length;
+    codex.toggleCollectionTools();
+    const railCount = codex.root.list.filter((child: any) => child.name === 'codex-card-collection-atlas-hit' && child.input?.enabled).length;
     const codexTexts = codex.root.list
       .map((child: any) => child.text)
       .filter((text: unknown): text is string => typeof text === 'string');
@@ -22041,6 +22061,7 @@ test('Codex card collections expose discovery milestones and feed the next-fligh
     return {
       collection: codexState.cardCollection,
       discovery: codexState.cardDiscovery,
+      hiddenRailCount,
       railCount,
       collectionHeading: codexTexts.find((text) => text.includes('Collection Atlas')) ?? '',
       nextGoal: outcomeTexts.find((text) => text.startsWith('NEXT FLIGHT')) ?? ''
@@ -22066,6 +22087,7 @@ test('Codex card collections expose discovery milestones and feed the next-fligh
     stage: 'Ready to Begin',
     complete: false,
   });
+  expect(result.hiddenRailCount).toBe(0);
   expect(result.railCount).toBe(1);
   expect(result.collectionHeading).toContain('Collection Atlas');
   expect(result.nextGoal).toContain('PLUMES TRAIL MARK');
@@ -22129,7 +22151,7 @@ test('outcome flight codes copy a shared route link that launches the same seed 
     const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
     const menuState = JSON.parse(window.render_game_to_text?.() ?? '{}');
     const menu: any = window.__birdSquadGame.scene.getScene('MenuScene');
-    const startLabelVisible = menu.children.list.some((child: any) => child.text === 'Fly Shared Route');
+    const startLabelVisible = menu.children.list.some((child: any) => child.visible && child.text === (menu.menuHasSavedRun ? 'Shared Route' : 'Fly Shared Route'));
     menu.startRun();
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
     for (let i = 0; i < 40 && route.runState?.seed !== 'shared-rooftop-7'; i += 1) await wait(50);
@@ -22315,10 +22337,10 @@ test('one-flight strategy achievements reward varied play without cumulative gri
   const firstPage = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(firstPage.badgePagination).toMatchObject({
     page: 1,
-    pageCount: 4,
+    pageCount: 6,
     visibleStart: 1,
-    visibleEnd: 5,
-    visibleCount: 5,
+    visibleEnd: 3,
+    visibleCount: 3,
     total: 18,
   });
 
@@ -22326,15 +22348,12 @@ test('one-flight strategy achievements reward varied play without cumulative gri
   const keyboardPage = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(keyboardPage.badgePagination).toMatchObject({
     page: 2,
-    pageCount: 4,
-    visibleStart: 6,
-    visibleEnd: 10,
-    visibleCount: 5,
+    pageCount: 6,
+    visibleStart: 4,
+    visibleEnd: 6,
+    visibleCount: 3,
   });
-  expect(keyboardPage.badgePagination.items.filter((item: any) => strategyIds.includes(item.id))).toEqual([
-    { id: 'live_wire', name: 'Live Wire', description: 'Trigger 3 Surges in one flight.', earned: true },
-    { id: 'still_air', name: 'Still Air', description: 'Clear 3 fights without losing Cohesion in one flight.', earned: true },
-  ]);
+  expect(keyboardPage.badgePagination.items.filter((item: any) => strategyIds.includes(item.id))).toEqual([]);
 
   await page.evaluate(() => {
     const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
@@ -22358,8 +22377,23 @@ test('one-flight strategy achievements reward varied play without cumulative gri
       .map((child: any) => ({ name: child.name, width: child.displayWidth, height: child.displayHeight }));
   });
   expect(pagerGeometry).toEqual([
-    { name: 'profile-badge-page-previous', width: 76, height: 58 },
-    { name: 'profile-badge-page-next', width: 76, height: 58 },
+    { name: 'profile-badge-page-previous', width: 160, height: 58 },
+    { name: 'profile-badge-page-next', width: 160, height: 58 },
+  ]);
+
+  const badges = [...firstPage.badgePagination.items, ...pointerPage.badgePagination.items];
+  for (let next = 3; next <= firstPage.badgePagination.pageCount; next++) {
+    await page.keyboard.press('PageDown');
+    const current = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).badgePagination;
+    expect(current.page).toBe(next);
+    badges.push(...current.items);
+  }
+  expect(new Set(badges.map((item: any) => item.id)).size).toBe(18);
+  expect(badges.filter((item: any) => strategyIds.includes(item.id))).toEqual([
+    { id: 'live_wire', name: 'Live Wire', description: 'Trigger 3 Surges in one flight.', earned: true },
+    { id: 'still_air', name: 'Still Air', description: 'Clear 3 fights without losing Cohesion in one flight.', earned: true },
+    { id: 'brace_brigade', name: 'Brace Brigade', description: 'Block 24 damage in one flight.', earned: true },
+    { id: 'every_promise', name: 'Every Promise', description: 'Complete 3 district contracts in one flight.', earned: true },
   ]);
 
   await page.evaluate(async () => {
@@ -22385,21 +22419,35 @@ test('one-flight strategy achievements reward varied play without cumulative gri
   let contractPage = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(contractPage.badgePagination).toMatchObject({
     page: 1,
-    pageCount: 2,
-    visibleCount: 5,
+    pageCount: 3,
+    visibleCount: 3,
     total: 7,
   });
+  const contractItems = [...contractPage.badgePagination.items];
   await page.keyboard.press('PageDown');
   contractPage = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(contractPage.badgePagination).toMatchObject({
     page: 2,
-    pageCount: 2,
-    visibleStart: 6,
-    visibleEnd: 7,
-    visibleCount: 2,
+    pageCount: 3,
+    visibleStart: 4,
+    visibleEnd: 6,
+    visibleCount: 3,
     total: 7,
   });
-  expect(contractPage.badgePagination.items).toEqual([
+  contractItems.push(...contractPage.badgePagination.items);
+  await page.keyboard.press('PageDown');
+  contractPage = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(contractPage.badgePagination).toMatchObject({
+    page: 3,
+    pageCount: 3,
+    visibleStart: 7,
+    visibleEnd: 7,
+    visibleCount: 1,
+    total: 7,
+  });
+  contractItems.push(...contractPage.badgePagination.items);
+  expect(new Set(contractItems.map((item: any) => item.id)).size).toBe(7);
+  expect(contractItems.slice(-2)).toEqual([
     {
       id: '1:bright_signal',
       name: 'Bright Signal',
@@ -22757,10 +22805,8 @@ test('locked Flock Leaders are gated until unlocked, and the Profile screen rend
     const afterUnlockTalon = menu2.selectedLeaderId;
     // The Profile screen renders against the account without throwing.
     await window.__birdSquadStartScene!('ProfileScene');
-    for (let i = 0; i < 80 && !g.textures.exists('ui-icon-profile-record-flourish'); i += 1) await wait(50);
     for (let i = 0; i < 40; i += 1) {
-      const profileState = JSON.parse(window.render_game_to_text?.() ?? '{}');
-      if (profileState.profileRecordFlourish?.rendered) break;
+      if (g.scene.getScene('ProfileScene').children.getByName('profile-dashboard-surface')) break;
       await wait(50);
     }
     const profileActive = g.scene.getScenes(true).map((s: any) => s.scene.key).includes('ProfileScene');
@@ -22871,8 +22917,10 @@ test('locked Flock Leaders are gated until unlocked, and the Profile screen rend
       .filter((child: any) => typeof child.text === 'string')
       .map((child: any) => child.text)
       .filter((text: string) => text.includes('Clean Flight') || text.includes('District 1'));
+    profileScene.badgeView = 'leaders';
+    profileScene.renderPremiumProfileScene();
     const personalRecordLabels = profileScene.children.list
-      .filter((child: any) => child.name === 'leader-personal-record-fledgling')
+      .filter((child: any) => child.name === 'profile-leader-detail' && child.getData('leaderId') === 'fledgling')
       .map((child: any) => child.text);
     return {
       def,
@@ -22917,7 +22965,7 @@ test('locked Flock Leaders are gated until unlocked, and the Profile screen rend
   expect(r.afterUnlockTalon).toBe('talon');          // pickable once unlocked
   expect(r.profileActive).toBe(true);
   expect(r.recordTextureLoaded).toBe(true);
-  expect(r.profileFlourishLoaded).toBe(true);
+  expect(r.profileFlourishLoaded).toBe(false);
   expect(r.profileText.scene).toBe('ProfileScene');
   expect(r.profileText.playtestExport).toMatchObject({ enabled: false, localOnly: true, status: 'idle' });
   expect(r.profileText.progression.contractBadges).toBe(1);
@@ -22926,123 +22974,30 @@ test('locked Flock Leaders are gated until unlocked, and the Profile screen rend
     fastestFullWinTurns: 42,
     fastestQuickWinTurns: 24,
   });
-  expect(r.personalRecordLabels).toEqual(['A2  /  FULL 42B  /  QUICK 24B']);
+  expect(r.personalRecordLabels).toEqual(['Best: Tier 2 · Full 42 beats · Quick 24 beats']);
   expect(r.contractProfileText.badgeView).toBe('contracts');
   expect(r.profileKeyListenersBefore).toEqual({ escape: 1, mute: 1 });
   expect(r.profileKeyListenersAfter).toEqual(r.profileKeyListenersBefore);
   expect(r.profilePagerTargets).toEqual([
-    { name: 'profile-badge-page-next', width: 76, height: 58 },
+    { name: 'profile-badge-page-next', width: 160, height: 58 },
   ]);
-  expect(r.profileTouchTargets).toContainEqual({ width: 186, height: 58 });
+  expect(r.profileTouchTargets).toContainEqual({ width: 168, height: 58 });
   expect(r.contractProfileText.contractBadges).toContain('0:clean_flight');
   expect(r.contractBadgeLabels.length).toBeGreaterThanOrEqual(2);
-  expect(r.profileText.profileRecordFlourish.loaded).toBe(true);
-  expect(r.profileText.profileRecordFlourish.rendered).toBe(true);
-  expect(r.profileText.profileRecordFlourish.count).toBeGreaterThanOrEqual(2);
-  expect(r.profileText.profileRecordFlourish.revealBursts).toBe(1);
-  expect(r.contractProfileText.profileRecordFlourish.revealBursts).toBe(1);
-  expect(r.profileText.audio.cueRequests.profileRecord).toBeGreaterThanOrEqual(1);
-  expect(r.contractProfileText.audio.cueRequests.profileRecord).toBe(r.profileText.audio.cueRequests.profileRecord);
-  expect(r.profileFlourishObjects.length).toBeGreaterThanOrEqual(2);
-  expect(r.profileFlourishObjects.some((obj: { visible: boolean; alpha: number }) => obj.visible && obj.alpha > 0.3)).toBe(true);
-  expect(r.profileTitlePlaqueLoaded).toBe(true);
-  expect(r.profileText.profileTitlePlaque).toEqual({
-    loaded: true,
-    rendered: true,
-    count: r.profileTitlePlaqueObjects.length
-  });
-  expect(r.profileTitlePlaqueObjects).toEqual([
-    expect.objectContaining({
-      visible: true,
-      displayWidth: 560,
-      displayHeight: 104,
-      name: 'profile-title-plaque'
-    })
-  ]);
-  expect(r.profileTitlePlaqueObjects[0].alpha).toBeGreaterThanOrEqual(0.5);
-  expect(r.profileStatChipFrameLoaded).toBe(true);
-  expect(r.profileText.profileStatChipFrame).toEqual({
-    loaded: true,
-    rendered: true,
-    count: r.profileStatChipFrameObjects.length
-  });
-  expect(r.profileStatChipFrameObjects.length).toBe(10);
-  expect(r.profileStatChipFrameObjects.some((obj: { visible: boolean; alpha: number }) => obj.visible && obj.alpha > 0.6)).toBe(true);
-  expect(r.profileStatChipFrameObjects.every((obj: { displayWidth: number; displayHeight: number }) => obj.displayWidth >= 142 && obj.displayHeight >= 54)).toBe(true);
-  expect(r.profileRecordRowFrameLoaded).toBe(true);
-  expect(r.profileText.profileRecordRowFrame).toEqual({
-    loaded: true,
-    rendered: true,
-    count: r.profileRecordRowFrameObjects.length
-  });
-  expect(r.profileRecordRowFrameObjects.length).toBe(r.profileText.progression.leaderTotal + r.profileText.badgePagination.visibleCount);
-  expect(r.profileRecordRowFrameObjects.some((obj: { visible: boolean; alpha: number }) => obj.visible && obj.alpha > 0.4)).toBe(true);
-  expect(r.profileRecordRowFrameObjects.some((obj: { visible: boolean; alpha: number }) => obj.visible && obj.alpha < 0.25)).toBe(true);
-  expect(r.profileRecordRowFrameObjects.every((obj: { displayWidth: number; displayHeight: number }) => obj.displayWidth >= 310 && obj.displayHeight >= 40)).toBe(true);
-  expect(r.profileSectionTabFrameLoaded).toBe(true);
-  expect(r.profileText.profileSectionTabFrame).toEqual({
-    loaded: true,
-    rendered: true,
-    count: r.profileSectionTabFrameObjects.length
-  });
-  expect(r.profileSectionTabFrameObjects).toHaveLength(2);
-  expect(r.profileSectionTabFrameObjects).toEqual(expect.arrayContaining([
-    expect.objectContaining({
-      visible: true,
-      displayWidth: 220,
-      displayHeight: 48,
-      name: 'profile-section-tab-frame'
-    }),
-    expect.objectContaining({
-      visible: true,
-      displayWidth: 312,
-      displayHeight: 48,
-      name: 'profile-section-tab-frame'
-    })
-  ]));
-  expect(r.profileSectionTabFrameObjects.every((obj: { alpha: number }) => obj.alpha >= 0.55)).toBe(true);
-  expect(r.profileProgressRailFrameLoaded).toBe(true);
-  expect(r.profileText.profileProgressRailFrame).toEqual({
-    loaded: true,
-    rendered: true,
-    count: r.profileProgressRailFrameObjects.length
-  });
-  expect(r.profileProgressRailFrameObjects.length).toBe(3);
-  expect(r.profileProgressRailFrameObjects.every((obj: { visible: boolean; alpha: number }) => obj.visible && obj.alpha >= 0.45)).toBe(true);
-  expect(r.profileProgressRailFrameObjects.every((obj: { displayWidth: number; displayHeight: number }) => obj.displayWidth >= 332 && obj.displayHeight >= 34)).toBe(true);
-  expect(r.profileProgressFillStripLoaded).toBe(true);
-  expect(r.profileText.profileProgressFillStrip).toEqual({
-    loaded: true,
-    rendered: true,
-    count: r.profileProgressFillStripObjects.length
-  });
-  expect(r.profileProgressFillStripObjects.length).toBe(3);
-  expect(r.profileProgressFillStripObjects.every((obj: { visible: boolean; alpha: number }) => obj.visible && obj.alpha >= 0.8)).toBe(true);
-  expect(r.profileProgressFillStripObjects.every((obj: { displayWidth: number; displayHeight: number }) => obj.displayWidth >= 20 && obj.displayHeight === 16)).toBe(true);
-  expect(r.profileReturnCommandFrameLoaded).toBe(true);
-  expect(r.profileText.profileReturnCommandFrame).toEqual({
-    loaded: true,
-    rendered: true,
-    count: r.profileReturnCommandFrameObjects.length
-  });
-  expect(r.profileReturnCommandFrameObjects.length).toBe(1);
-  expect(r.profileReturnCommandFrameObjects[0]).toMatchObject({
-    visible: true,
-    displayWidth: 220,
-    displayHeight: 62,
-    name: 'profile-return-command-frame'
-  });
-  expect(r.profileReturnCommandFrameObjects[0].alpha).toBeGreaterThan(0.6);
+  // Decorative frames were intentionally retired. Keep a regression guard
+  // against reintroducing them; content and geometry are checked independently.
+  for (const objects of [
+    r.profileFlourishObjects, r.profileTitlePlaqueObjects, r.profileStatChipFrameObjects,
+    r.profileRecordRowFrameObjects, r.profileSectionTabFrameObjects,
+    r.profileProgressRailFrameObjects, r.profileProgressFillStripObjects,
+    r.profileReturnCommandFrameObjects,
+  ]) expect(objects).toEqual([]);
+  expect(r.profileText.badgePagination.visibleCount).toBe(3);
   expect(r.profileText.progression.leadersUnlocked).toBe(3);
   expect(r.profileText.progression.achievementsEarned).toBe(1);
   expect(r.profileText.progression.discoveredCards).toBe(3);
-  expect(r.leaderRecordTextureLoaded).toBe(true);
-  expect(r.leaderRecordIcons.length).toBe(r.profileText.progression.leaderTotal);
-  expect(r.leaderRecordIcons.some((icon: { alpha: number }) => icon.alpha > 0.85)).toBe(true);
-  expect(r.leaderRecordIcons.some((icon: { alpha: number }) => icon.alpha < 0.35)).toBe(true);
-  expect(r.achievementTextureLoaded).toBe(true);
-  expect(r.achievementIcons.length).toBe(r.profileText.badgePagination.visibleCount);
-  expect(r.achievementIcons.some((icon: { alpha: number }) => icon.alpha > 0.9)).toBe(true);
+  expect(r.leaderRecordIcons).toEqual([]);
+  expect(r.achievementIcons).toEqual([]);
 });
 
 test('Flock Record focus follows remapped keyboard and gamepad controls with one cue per action', async ({ page }) => {
@@ -23086,7 +23041,7 @@ test('Flock Record focus follows remapped keyboard and gamepad controls with one
     const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
     return profile.children.list.map((child: any) => child.text).filter((text: unknown) => typeof text === 'string');
   });
-  expect(modalLabels).toContain('A / D: Navigate   Space: Select   Q: Close');
+  expect(modalLabels).toContain('A / D: navigate · Space: select · Q: close');
   await page.keyboard.press('d');
   await page.keyboard.press('d');
   expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).focus.current).toBe('saveDownload');
@@ -23426,6 +23381,15 @@ test('Flock Record previews and confirms a transactional save restore', async ({
   expect(beforeConfirm.unrelated).toBe('keep-current');
   expect(beforeConfirm.pending).toMatchObject({ runs: 9, wins: 4, leaders: 3, activeRun: true });
 
+  expect(await page.evaluate(() => {
+    const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
+    return ['profile-save-restore-confirm-hit', 'profile-save-restore-cancel-hit']
+      .map(name => {
+        const hit = profile.children.getByName(name);
+        return { kind: hit.getData('controlKind'), focused: hit.getData('focused') };
+      });
+  })).toEqual([{ kind: 'destructive', focused: false }, { kind: 'primary', focused: true }]);
+
   await clickNamedGameObject(page, 'ProfileScene', 'profile-save-restore-confirm-hit');
   await page.waitForFunction(() => JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}').runs === 9);
   const restored = await page.evaluate(() => ({
@@ -23539,6 +23503,10 @@ test('playtest mode exports local run history from the Flock Record without an u
   await clickNamedGameObject(page, 'ProfileScene', 'profile-playtest-feedback-fairness-4');
   await clickNamedGameObject(page, 'ProfileScene', 'profile-playtest-feedback-clarity-5');
   await clickNamedGameObject(page, 'ProfileScene', 'profile-playtest-feedback-replay-4');
+  await page.keyboard.press('Enter');
+  // Confirm reactivates the focused rating; Tab selects the adjacent action.
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text!()).playtestFeedback?.ratings?.replay)).toBe(4);
+  await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').playtestFeedback?.ratings?.replay === 5);
   const locallyRated = await page.evaluate(() => ({
@@ -23745,14 +23713,14 @@ test('flight log safely restores, reviews, and shares recent completed flights',
     middle[3].id,
     middle[2].id,
   ]);
-  expect(log.rows.every((row: any) => row.width === 352 && row.height === 58 && row.enabled)).toBe(true);
+  expect(log.rows.every((row: any) => row.width === 430 && row.height === 58 && row.enabled)).toBe(true);
   expect(log.rows.every((row: any) => row.cssWidth >= 44 && row.cssHeight >= 44)).toBe(true);
   expect(log.pageButtons).toEqual(expect.arrayContaining([
-    expect.objectContaining({ name: 'profile-flight-log-page-newer', width: 72, height: 58, enabled: false }),
-    expect.objectContaining({ name: 'profile-flight-log-page-older', width: 72, height: 58, enabled: true }),
+    expect.objectContaining({ name: 'profile-flight-log-page-newer', width: 132, height: 58, enabled: false }),
+    expect.objectContaining({ name: 'profile-flight-log-page-older', width: 132, height: 58, enabled: true }),
   ]));
   expect(log.pageButtons.every((button: any) => button.cssWidth >= 44 && button.cssHeight >= 44)).toBe(true);
-  expect(log.preview).toEqual({ width: 420, height: 450 });
+  expect(log.preview).toEqual({ width: 634, height: 500 });
   expect(log.announcement).toContain('Flight Log');
   expect(log.announcement).toContain('10 recorded flights');
   expect(log.announcement).toContain('Page 1 of 2');
@@ -24801,9 +24769,9 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
         && cs.textures.exists('ui-icon-codex-quills-medallion')
         && cs.textures.exists('ui-icon-codex-basins-medallion')
         && cs.textures.exists('ui-icon-codex-nests-medallion')
-        && collect(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-back-command-frame')
+        && collect(cs.root).some((child: any) => child.name === 'codex-back-hit')
         && collect(cs.root).some((child: any) => child.name === 'codex-tab-surface')
-        && collect(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-grid-scroll-cue-frame')
+        && collect(cs.root).some((child: any) => child.name === 'codex-grid-scroll-cue-frame')
         && collect(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-locked-card-medallion');
       if (ready) break;
       await wait(50);
@@ -24819,7 +24787,7 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
       .filter((child: any) => child.texture?.key === 'ui-icon-codex-cards-medallion')
       .map((child: any) => ({ alpha: child.alpha, visible: child.visible }));
     const backCommandFrames = collect(cs.root)
-      .filter((child: any) => child.texture?.key === 'ui-icon-codex-back-command-frame')
+      .filter((child: any) => child.name === 'codex-back-hit')
       .map((child: any) => ({
         alpha: Number(child.alpha?.toFixed?.(3) ?? child.alpha),
         visible: child.visible,
@@ -24839,7 +24807,7 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
         label: child.getData('label')
       }));
     const codexGridScrollCueFrames = collect(cs.root)
-      .filter((child: any) => child.texture?.key === 'ui-icon-codex-grid-scroll-cue-frame')
+      .filter((child: any) => child.name === 'codex-grid-scroll-cue-frame' && child.type === 'Rectangle')
       .map((child: any) => ({
         alpha: Number(child.alpha?.toFixed?.(3) ?? child.alpha),
         visible: child.visible,
@@ -24893,8 +24861,7 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
     cs.detailScrollTarget = 0;
     cs.renderAll();
     for (let i = 0; i < 40; i += 1) {
-      const ready = collect(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-close-command-frame' && child.visible)
-        && collect(cs.root).some((child: any) => child.texture?.key === 'ui-icon-codex-scroll-cue-frame' && child.visible);
+      const ready = collect(cs.root).some((child: any) => child.name === 'codex-detail-close-hit' && child.visible);
       if (ready) break;
       await wait(50);
     }
@@ -24908,7 +24875,7 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
         name: child.name
       }));
     const codexCloseFrames = collect(cs.root)
-      .filter((child: any) => child.texture?.key === 'ui-icon-codex-close-command-frame')
+      .filter((child: any) => child.name === 'codex-detail-close-hit')
       .map((child: any) => ({
         alpha: Number(child.alpha?.toFixed?.(3) ?? child.alpha),
         visible: child.visible,
@@ -24978,22 +24945,22 @@ test('codex: starting a run discovers its deck and the Codex screen renders', as
   expect(r.codexIconLoaded).toBe(true);
   expect(r.codexIconRendered).toBe(false);
   expect(r.codexControlRendered).toBe(true);
-  expect(r.codexBackCommandFrame).toEqual({ loaded: true, rendered: true, count: 1 });
+  expect(r.codexBackCommandFrame).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(r.codexTabFrame).toEqual({ loaded: true, rendered: false, count: 0 });
-  expect(r.codexCloseCommandFrame).toEqual({ loaded: true, rendered: true, count: 1 });
+  expect(r.codexCloseCommandFrame).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(r.codexScrollCueFrame).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(r.codexArtPreviewFrame).toEqual({ loaded: true, rendered: false, count: 0 });
-  expect(r.codexGridScrollCueFrame).toEqual({ loaded: true, rendered: r.codexGridOverflow, count: r.codexGridOverflow ? 1 : 0 });
+  expect(r.codexGridScrollCueFrame).toEqual({ loaded: true, rendered: false, count: 0 });
   expect(r.detailOpen).toBeTruthy();
   expect(r.backCommandFrames).toHaveLength(1);
-  expect(r.backCommandFrames[0]).toMatchObject({ name: 'codex-back-command-frame', visible: true });
+  expect(r.backCommandFrames[0]).toMatchObject({ name: 'codex-back-hit', visible: true });
   expect(r.backCommandFrames[0].displayWidth).toBe(132);
-  expect(r.backCommandFrames[0].displayHeight).toBe(42);
+  expect(r.backCommandFrames[0].displayHeight).toBe(58);
   expect(r.backCommandFrames[0].alpha).toBeGreaterThan(0.85);
   expect(r.codexCloseFrames).toHaveLength(1);
-  expect(r.codexCloseFrames[0]).toMatchObject({ name: 'codex-close-command-frame', visible: true });
-  expect(r.codexCloseFrames[0].displayWidth).toBe(46);
-  expect(r.codexCloseFrames[0].displayHeight).toBe(46);
+  expect(r.codexCloseFrames[0]).toMatchObject({ name: 'codex-detail-close-hit', visible: true });
+  expect(r.codexCloseFrames[0].displayWidth).toBe(80);
+  expect(r.codexCloseFrames[0].displayHeight).toBe(58);
   expect(r.codexCloseFrames[0].alpha).toBeGreaterThan(0.85);
   expect(r.codexScrollCueFrames).toEqual([]); // The card dossier has explicit page controls.
   expect(r.codexArtPreviewFrames).toEqual([]);
@@ -25790,8 +25757,9 @@ test('codex: new first-copy markers support a New lens and intentional per-card 
   const initial = await page.evaluate(() => {
     const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
     const walk = (entry: any): any[] => [entry, ...(Array.isArray(entry?.list) ? entry.list.flatMap(walk) : [])];
+    if (!cs.collectionToolsOpen) cs.toggleCollectionTools();
     const objects = walk(cs.root);
-    const bulk = objects.find((entry: any) => entry.name === 'codex-clear-new-cards-hit');
+    const bulk = cs.root.getByName('codex-clear-new-cards-hit');
     const marker = objects.find((entry: any) => entry.name === 'codex-new-card-marker' && entry.getData('cardId') === 'major_00');
     return {
       state: JSON.parse(window.render_game_to_text?.() ?? '{}'),
@@ -25815,7 +25783,7 @@ test('codex: new first-copy markers support a New lens and intentional per-card 
     persisted: true,
   });
   expect(initial.markerIds).toEqual(['major_00', 'major_01', 'major_02']);
-  expect(initial.bulk).toMatchObject({ width: 240, height: 58, count: 3 });
+  expect(initial.bulk).toMatchObject({ width: 128, height: 58, count: 3 });
   expect(initial.account.cardCollection.wands_ace.isNew).toBeUndefined();
   await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''))
     .toContain('3 new card markers');
@@ -25987,8 +25955,7 @@ test('codex: Favorites view groups personal cards and explains its empty state a
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').cardFavorites?.viewActive === true);
 
   await page.keyboard.press('Tab');
-  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').codexFocus?.zone === 'secondaryTabs');
-  await page.keyboard.press('Tab');
+  // Collapsed tools are not in the focus order: family -> visible cards.
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').codexFocus?.zone === 'entries');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').detailOpen === 'major_00');
@@ -26087,10 +26054,7 @@ test('codex: Hunt List supports pointer, keyboard, controller, capacity, and an 
 
   const canvas = await page.locator('canvas').boundingBox();
   if (!canvas) throw new Error('Missing game canvas');
-  await page.mouse.click(
-    canvas.x + canvas.width * (initial.hit.x / 1280),
-    canvas.y + canvas.height * (initial.hit.y / 720),
-  );
+  await clickNamedGameObject(page, 'CodexScene', 'codex-card-target-hit');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionHunt?.count === 0);
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('birdsquad.account') ?? '{}').hunt))
     .toEqual([]);
@@ -26108,12 +26072,9 @@ test('codex: Hunt List supports pointer, keyboard, controller, capacity, and an 
     const hit = cs.root.getByName('codex-card-target-hit');
     return { x: hit.x, y: hit.y };
   });
-  await page.mouse.click(
-    canvas.x + canvas.width * (targetPoint.x / 1280),
-    canvas.y + canvas.height * (targetPoint.y / 720),
-  );
+  await clickNamedGameObject(page, 'CodexScene', 'codex-card-target-hit');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionHunt?.count === 1);
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').detailOpen === '');
 
   const huntTab = await page.evaluate(() => {
@@ -26154,14 +26115,13 @@ test('codex: Hunt List supports pointer, keyboard, controller, capacity, and an 
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/codex-hunt-list-populated.png' });
 
   await page.keyboard.press('Tab');
-  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').codexFocus?.zone === 'secondaryTabs');
-  await page.keyboard.press('Tab');
+  // Collapsed tools are not in the focus order: family -> visible cards.
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').codexFocus?.zone === 'entries');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').detailOpen === 'wands_ace');
   await page.keyboard.press('t');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').collectionHunt?.viewEmpty === true);
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').detailOpen === '');
   await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''), {
     timeout: 5_000,
@@ -26203,7 +26163,7 @@ test('codex: Hunt List supports pointer, keyboard, controller, capacity, and an 
   });
   expect(full.state).toMatchObject({ count: 3, detailTargeted: false, detailCanTarget: false });
   expect(full.enabled).toBe(false);
-  expect(full.label).toBe('3/3  HUNT FULL');
+  expect(full.label).toBe('3/3 HUNT FULL');
 });
 
 test('codex: Collection Lens filters ownership with pointer, keyboard, controller, persistence, and an accessible empty state', async ({ page }) => {
@@ -26241,6 +26201,7 @@ test('codex: Collection Lens filters ownership with pointer, keyboard, controlle
 
   const initial = await page.evaluate(() => {
     const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    if (!cs.collectionToolsOpen) cs.toggleCollectionTools();
     const hit = cs.root.getByName('codex-card-lens-hit');
     return {
       lens: JSON.parse(window.render_game_to_text?.() ?? '{}').cardCollectionLens,
@@ -26490,6 +26451,7 @@ test('codex: saved Folio usage marks active and archived cards and filters them 
     const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
     cs.cardCollectionLens = 'seen';
     cs.renderAll();
+    if (!cs.collectionToolsOpen) cs.toggleCollectionTools();
     const hit = cs.root.getByName('codex-card-lens-hit');
     return { x: hit.x, y: hit.y, width: hit.displayWidth, height: hit.displayHeight };
   });
@@ -26674,7 +26636,7 @@ test('codex: personal tags organize discovered cards through pointer, keyboard, 
   expect(JSON.parse(persisted.account ?? '{}').cardTags).toEqual({ major_00: 'keepsake', wands_ace: 'experiment' });
   expect(persisted.backup).toBe(persisted.account);
 
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Escape');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').detailOpen === '');
   for (const expected of ['collected', 'new', 'tagged']) {
     await page.keyboard.press('l');
@@ -27255,6 +27217,7 @@ test('codex: card sorting supports binder, name, rarity, and acquisition recency
   const binderHiddenIds = state.cardSort.visibleIds.filter((id: string) => !state.cardSort.discoveredIds.includes(id));
   const sortHit = await page.evaluate(() => {
     const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    if (!cs.collectionToolsOpen) cs.toggleCollectionTools();
     const hit = cs.root.getByName('codex-card-sort-hit');
     return { x: hit.x, y: hit.y, width: hit.displayWidth, height: hit.displayHeight };
   });
@@ -27415,6 +27378,7 @@ test('codex: Saved Views preserve sanitized set, lens, search, and sort combinat
 
   const viewControl = await page.evaluate(() => {
     const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    if (!cs.collectionToolsOpen) cs.toggleCollectionTools();
     const hit = cs.root.getByName('codex-saved-views-hit');
     return { x: hit.x, y: hit.y, width: hit.displayWidth, height: hit.displayHeight };
   });
@@ -27503,6 +27467,8 @@ test('codex: Saved Views preserve sanitized set, lens, search, and sort combinat
 
   await page.keyboard.press('b');
   await page.keyboard.press('Delete');
+  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).savedCollectionViews.removalPending).toBe(true);
+  await page.keyboard.press('Delete');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedCollectionViews?.status === 'deleted');
   state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(state.savedCollectionViews.count).toBe(2);
@@ -27570,7 +27536,7 @@ test('codex: active filter chips remove search and lens individually or together
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
     return state.activeCardFilters?.visible === true
       && state.activeCardFilters?.count === 2
-      && state.activeCardFilters?.gridTop === 246;
+      && state.activeCardFilters?.gridTop === 258;
   });
 
   let state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
@@ -27579,7 +27545,7 @@ test('codex: active filter chips remove search and lens individually or together
     count: 2,
     individualRemoval: true,
     clearAllRendered: true,
-    gridTop: 246,
+    gridTop: 258,
     clearsSet: false,
     clearsSort: false,
     affectsOwnership: false,
@@ -27651,7 +27617,7 @@ test('codex: active filter chips remove search and lens individually or together
   await page.evaluate(() => {
     const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
     cs.cardSearchQuery = 'resonance';
-    cs.focusZone = 'secondaryTabs';
+    cs.focusZone = 'primaryTabs';
     cs.activeCardFilterIndex = 0;
     localStorage.setItem('birdsquad.codexCardSearch', 'resonance');
     cs.renderAll();
@@ -27671,7 +27637,7 @@ test('codex: active filter chips remove search and lens individually or together
   await page.evaluate(() => {
     const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
     cs.cardCollectionLens = 'collected';
-    cs.focusZone = 'secondaryTabs';
+    cs.focusZone = 'primaryTabs';
     cs.activeCardFilterIndex = 0;
     localStorage.setItem('birdsquad.codexCardLens', 'collected');
     cs.renderAll();
@@ -27707,7 +27673,7 @@ test('codex: active filter chips remove search and lens individually or together
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
     return state.activeCardFilters?.visible === false
       && state.activeCardFilters?.count === 0
-      && state.activeCardFilters?.gridTop === 186;
+      && state.activeCardFilters?.gridTop === 194;
   });
   state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(state.cardSearch.query).toBe('');
@@ -27802,6 +27768,7 @@ test('codex: Collection Atlas reports permanent set, rarity, and acquisition pro
 
   const rail = await page.evaluate(() => {
     const cs: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    if (!cs.collectionToolsOpen) cs.toggleCollectionTools();
     const hit = cs.root.getByName('codex-card-collection-atlas-hit');
     return { x: hit.x, y: hit.y, width: hit.displayWidth, height: hit.displayHeight };
   });
@@ -27892,7 +27859,7 @@ test('codex: Collection Atlas reports permanent set, rarity, and acquisition pro
       bottom: panel.getBounds().bottom,
     };
   });
-  expect(panelBounds).toEqual({ left: 40, top: 26, right: 1240, bottom: 686 });
+  expect(panelBounds).toEqual({ left: 40, top: 14, right: 1240, bottom: 698 });
 });
 
 test('codex: acquisition paths explain permanent missing-card sources without leaking concealed identities', async ({ page }) => {
@@ -28289,13 +28256,16 @@ test('collection milestones reward breadth, acquisition variety, Hunt goals, and
 
   await page.evaluate(async () => window.__birdSquadStartScene!('ProfileScene'));
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').badgePagination?.page === 1);
-  await page.keyboard.press('PageDown');
-  await page.keyboard.press('PageDown');
-  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').badgePagination?.page === 3);
-  const collectionPageThree = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
-  await page.keyboard.press('PageDown');
-  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').badgePagination?.page === 4);
-  const profile = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  let profile = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+  expect(profile.badgePagination.pageCount).toBe(6);
+  const allBadges = [...profile.badgePagination.items];
+  for (let next = 2; next <= profile.badgePagination.pageCount; next++) {
+    await page.keyboard.press('PageDown');
+    await page.waitForFunction(next => JSON.parse(window.render_game_to_text?.() ?? '{}').badgePagination?.page === next, next);
+    profile = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
+    allBadges.push(...profile.badgePagination.items);
+  }
+  expect(new Set(allBadges.map((item: any) => item.id)).size).toBe(18);
   expect(profile.progression).toMatchObject({
     achievementsEarned: 6,
     achievementTotal: 18,
@@ -28308,7 +28278,7 @@ test('collection milestones reward breadth, acquisition variety, Hunt goals, and
     next: null,
     rewardsAffectPower: false,
   });
-  expect([...collectionPageThree.badgePagination.items, ...profile.badgePagination.items]
+  expect(allBadges
     .filter((item: any) => item.id.startsWith('collection_'))
     .map((item: any) => ({
     id: item.id,
@@ -28454,8 +28424,8 @@ test('collection path surfaces the next optional goal from title and route and r
       interactive: hit.input?.enabled === true,
     };
   });
-  expect(routeStrip.bounds).toEqual({ left: 720, top: 75, right: 1020, bottom: 133 });
-  expect(routeStrip.plateBounds).toEqual({ left: 720, top: 82, right: 1020, bottom: 126 });
+  expect(routeStrip.bounds).toEqual({ left: 720, top: 82, right: 1020, bottom: 140 });
+  expect(routeStrip.plateBounds).toEqual({ left: 720, top: 82, right: 1020, bottom: 140 });
   expect(routeStrip.contentInsidePlate).toBe(true);
   expect(routeStrip.interactive).toBe(true);
   await page.screenshot({ path: '.artifacts/test-results/collection-path-route.png', fullPage: true });
@@ -28819,7 +28789,10 @@ test('flight folio forks preserve revisions and BSF1 codes import exact privacy-
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.status === 'invalidCode');
   state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(state.savedFlightFolios.count).toBe(2);
-  expect(state.savedFlightFolios.importing).toBe(false);
+  expect(state.savedFlightFolios.importing).toBe(true);
+  await expect(codeInput).toHaveValue(`${copied.slice(0, -1)}x`);
+  await expect(page.locator('#folio-editor-error')).toContainText('Invalid code');
+  await codeInput.press('Escape');
 
   await page.evaluate(() => {
     const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
@@ -28980,7 +28953,9 @@ test('Flight Lab pages large hands without changing samples or saved cards', asy
     return profile.children.list.filter((child: any) => child.name === 'profile-flight-lab-card-frame').map((child: any) => ({ left: child.getBounds().left, right: child.getBounds().right }));
   });
   expect(bounds).toHaveLength(5);
-  expect(bounds.every((bound: any) => bound.left >= 552 && bound.right <= 1100)).toBe(true);
+  // The sample hand now owns the full content width rather than a narrow side column.
+  expect(bounds.every((bound: any) => bound.left >= 92 && bound.right <= 1188)).toBe(true);
+  expect(bounds.every((bound: any, index: number) => index === 0 || bound.left > bounds[index - 1].right)).toBe(true);
   await page.evaluate(() => window.__birdSquadGame.scene.getScene('ProfileScene').input.gamepad.emit('down', {}, { index: 12 }));
   await expect.poll(async () => (await snapshot()).sample.page).toBe(1);
   await clickNamedGameObject(page, 'ProfileScene', 'profile-flight-lab-hand-next-hit');
@@ -29131,6 +29106,9 @@ test('Flight Lab explains deck shape and replays deterministic protected sample 
 
   await page.keyboard.press('Space');
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.flightLab?.sample?.index === 1);
+  // A activates the focused action. Previous Hand remains focused after Space;
+  // move to Deal Again before confirming rather than expecting A to ignore it.
+  await page.keyboard.press('Tab');
   await page.evaluate(() => {
     const profile: any = window.__birdSquadGame.scene.getScene('ProfileScene');
     profile.input.gamepad.emit('down', {}, { index: 0 });
@@ -29318,15 +29296,23 @@ test('Collection Signals explains unused, frequent, recent, and paired owned car
   });
   expect(visualState).toEqual(expect.objectContaining({
     frame: 1,
-    panels: [1, 1, 1, 1],
+    panels: [1, 0, 0, 0],
     unusedRows: 2,
-    frequentRows: 5,
-    recentRows: 5,
-    pairedRows: 5,
-    closeTargets: [{ width: 126, height: 58 }],
+    frequentRows: 0,
+    recentRows: 0,
+    pairedRows: 0,
+    closeTargets: [{ width: 260, height: 58 }],
   }));
   expect(visualState.method[0]).toContain('including Archive');
-  expect(visualState.safety[0]).toContain('no recommendations');
+  expect(visualState.safety[0]).toContain('No recommendations');
+  // Each category now has its own readable view; verify all rows remain
+  // reachable through actual navigation instead of four cramped columns.
+  for (const section of ['frequent', 'recent', 'paired']) {
+    await page.keyboard.press('ArrowRight');
+    await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios.collectionSignals.section)).toBe(section);
+    expect(await page.evaluate(section => window.__birdSquadGame.scene.getScene('ProfileScene').children.list
+      .filter((child: any) => child.name === `profile-collection-signals-${section}-row`).length, section)).toBe(5);
+  }
 
   await page.setViewportSize({ width: 1000, height: 560 });
   await page.screenshot({ path: '.artifacts/test-results/flight-collection-signals.png', fullPage: true });
@@ -29983,7 +29969,12 @@ test('Revision Trail restores an exact earlier deck as a new immutable revision'
       child.name === 'profile-folio-history-current-art'
       || child.name === 'profile-folio-history-target-art'
     )).length;
-  }), { timeout: 15_000 }).toBe(4);
+  }), { timeout: 15_000 }).toBe(2);
+  await page.keyboard.press('PageDown');
+  await expect.poll(() => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios.revisionTrail.changePage)).toBe(2);
+  expect(await page.evaluate(() => window.__birdSquadGame.scene.getScene('ProfileScene').children.list
+    .filter((child: any) => child.name === 'profile-folio-history-current-art' || child.name === 'profile-folio-history-target-art').length)).toBe(2);
+  await page.keyboard.press('PageUp');
 
   await page.setViewportSize({ width: 1000, height: 560 });
   await page.screenshot({ path: '.artifacts/test-results/flight-folio-revision-trail.png', fullPage: true });
@@ -30436,10 +30427,8 @@ test('Folio Organizer preserves private folders and strategy labels across every
   await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer?.folder === 'ready');
   await page.screenshot({ path: '.artifacts/test-results/flight-folio-organizer.png', fullPage: true });
 
-  await page.keyboard.press('Tab');
-  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer?.section === 'tags');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await focusFolioControl(page, 'profile-folio-organizer-tag-hit:flow');
+  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).savedFlightFolios.organizer.tags).toEqual(['pressure', 'guard']);
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => {
     const organizer = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.organizer;
@@ -30656,10 +30645,8 @@ test('Folio Identity preserves private descriptions, cover cards, and card-back 
     const identity = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.identity;
     return identity?.status === 'personalized' && identity?.coverCardId === 'wands_ace';
   });
-  await page.keyboard.press('Tab');
-  await page.waitForFunction(() => JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.identity?.section === 'sleeve');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('ArrowDown');
+  await focusFolioControl(page, 'profile-folio-identity-sleeve-hit:canal');
+  expect(JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).savedFlightFolios.identity.sleeve).toBe('field');
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => {
     const identity = JSON.parse(window.render_game_to_text?.() ?? '{}').savedFlightFolios?.identity;
@@ -33106,6 +33093,7 @@ test('elite encounters spawn multiple enemies: every enemy telegraphs, all act, 
       hasElite: types.includes('elite'),
       combatEliteCrest: snap.combatEliteCrest,
       crestObjects,
+      eliteBadges: s.root.list.filter((o: any) => o.name === 'combat-elite-badge').length,
       snapCount: snap.enemies.length,
       snapIntents: snap.enemies.map((e: any) => e.intent),
       intentsBefore,
@@ -33119,8 +33107,10 @@ test('elite encounters spawn multiple enemies: every enemy telegraphs, all act, 
   expect(r.count).toBe(3);                       // every authored encounter enemy spawned
   expect(r.snapCount).toBe(3);                   // and every enemy is exposed to the UI/harness
   expect(r.hasElite).toBe(true);                 // one carries the elite tier
-  expect(r.combatEliteCrest).toEqual({ loaded: true, rendered: true, count: r.crestObjects });
-  expect(r.crestObjects).toBe(1);
+  // Rank now occupies the bounded label stack, not the old floating art crest.
+  expect(r.combatEliteCrest).toEqual({ loaded: true, rendered: false, count: 0 });
+  expect(r.crestObjects).toBe(0);
+  expect(r.eliteBadges).toBe(1);
   expect(r.names).toContain('Gutter Baron');
   for (const intent of r.snapIntents) expect(typeof intent).toBe('string'); // each telegraphs
   // a full enemy phase advances EVERY enemy's move counter, not just the first
@@ -33197,7 +33187,7 @@ test('multi-enemy elite formation stays readable at the minimum viewport', async
       const barBounds = bounds(bar);
       const badge: any = badges.find((object: any) => object.getData('enemyId') === enemy.id);
       const badgeBounds = bounds(badge);
-      const badgeGap = barBounds.top - badgeBounds.bottom;
+      const badgeGap = bounds(label).top - badgeBounds.bottom;
       const foreignBars = bars.filter((candidate: any) => candidate !== bar).map(bounds);
       const foreignBadges = badges.filter((candidate: any) => candidate !== badge).map(bounds);
       return {
@@ -33206,6 +33196,8 @@ test('multi-enemy elite formation stays readable at the minimum viewport', async
         bar: barBounds,
         badge: badgeBounds,
         badgeGap,
+        badgeContained: badgeBounds.left >= barBounds.left && badgeBounds.right <= barBounds.right
+          && badgeBounds.top >= barBounds.top && badgeBounds.bottom <= barBounds.bottom,
         overlapsForeignBar: foreignBars.some((candidate: ReturnType<typeof bounds>) => overlaps(badgeBounds, candidate)),
         overlapsForeignBadge: foreignBadges.some((candidate: ReturnType<typeof bounds>) => overlaps(badgeBounds, candidate)),
         nameFits: bounds(label).left >= barBounds.left && bounds(label).right <= bounds(hpValue).left,
@@ -33227,6 +33219,7 @@ test('multi-enemy elite formation stays readable at the minimum viewport', async
   expect(state.enemies.every((enemy: any) => typeof enemy.intent === 'string' && enemy.intent.length > 0)).toBe(true);
   expect(state.formation).toHaveLength(3);
   for (const enemy of state.formation) {
+    expect(enemy.badgeContained).toBe(true);
     expect(enemy.badgeGap).toBeLessThanOrEqual(10);
     expect(enemy.badgeGap).toBeGreaterThanOrEqual(0);
     expect(enemy.overlapsForeignBar).toBe(false);
@@ -33637,8 +33630,18 @@ test('card picker deck impact stays readable and keeps service prices separate f
         const labels = panel.list.filter((o: any) => o.type === 'Text');
         const fullState = JSON.parse(window.render_game_to_text!());
         const state = fullState.cardPickerInput;
+        const reader = route.hoverCardDetail.getByName('route-inspection-reader');
+        const impactPages: string[] = [];
+        const total = reader.getData('reading').total;
+        reader.getData('turnRulesPage')(-total);
+        for (let i = 0; i < total; i++) {
+          const reading = reader.getData('reading');
+          if (reading.title === 'FULL FLIGHT IMPACT') impactPages.push(reading.text);
+          reader.getData('turnRulesPage')(1);
+        }
+        reader.getData('turnRulesPage')(-total);
         return {
-          state, text: labels.map((o: any) => o.text),
+          state, text: labels.map((o: any) => o.text), impactText: impactPages.join('\n'),
           iconStates: ['cardPickerFrame', 'cardPickerScrollButtonFrame', 'cardPickerCostBadge', 'cardPickerPageIndicatorFrame']
             .map(key => fullState[key]),
           overflow: labels.some((o: any) => { const b = o.getBounds(); return b.right > box.right - 12 || b.bottom > box.bottom - 12; }),
@@ -33654,7 +33657,8 @@ test('card picker deck impact stays readable and keeps service prices separate f
         expect(icon.rendered).toBe(icon.count > 0);
       }
       expect(view.gap).toBeGreaterThan(24);
-      expect(view.text).toEqual(view.state.deckImpact.lines);
+      expect(view.text.slice(0, 4)).toEqual([...view.state.deckImpact.lines.slice(0, 3), view.state.deckImpact.lines[5]]);
+      expect(view.impactText.replace(/\s/g, '')).toBe(view.state.deckImpact.lines.join('\n').replace(/\s/g, ''));
       expect(view.badgeCost).toBe(view.cardCost);
       expect(view.run).toBe(original);
       expect(view.state.deckImpact.deckAfter).toBe(view.state.deckImpact.deckBefore - (mode === 'release' ? 1 : 0));
@@ -33856,7 +33860,7 @@ test('card picker inspection preserves Preen and Release decisions across pointe
     } : undefined;
   })).toEqual({
     text: 'Click the selected choice again to confirm   ·   Inspect reads without committing',
-    fontSize: 16,
+    fontSize: 19,
   });
   await page.locator('canvas').screenshot({
     path: '.artifacts/test-results/card-picker-confirmation-preen-1000x560.png',
@@ -34204,10 +34208,10 @@ for (const mapIndex of [0, 1]) test(`new card shortcut opens the exact dossier a
     destination: 'Newest card dossier',
     width: 300,
     x: mapIndex === 0 ? 870 : 620,
-    y: mapIndex === 0 ? 104 : 656,
+    y: mapIndex === 0 ? 111 : 656,
   });
   expect(strip.height).toBeGreaterThanOrEqual(44);
-  expect(strip.label).toBe('VIEW NEW CARD');
+  expect(strip.label).toBe('View new card');
   expect(strip.state.collectionGoal).toMatchObject({
     newCardId: newestId,
     destination: 'Newest card dossier',
@@ -34535,7 +34539,7 @@ test('owned Folio launches the exact saved deck across pointer keyboard and cont
       block: hit.getData('block'),
     };
   });
-  expect(launchTarget).toMatchObject({ width: 180, available: true, block: null });
+  expect(launchTarget).toMatchObject({ width: 204, available: true, block: null });
   expect(launchTarget.height).toBeGreaterThanOrEqual(58);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/folio-launch-flight-lab.png' });
   const folioBeforeLaunch = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
@@ -34662,7 +34666,8 @@ test('owned starter templates create reversible Folios across pointer keyboard a
     const hit = profile.children.getByName('profile-folio-template-hit');
     return { width: hit.displayWidth, height: hit.displayHeight, enabled: hit.input?.enabled };
   });
-  expect(newTarget).toMatchObject({ width: 58, enabled: true });
+  expect(newTarget.enabled).toBe(true);
+  expect(newTarget.width).toBeGreaterThanOrEqual(58);
   expect(newTarget.height).toBeGreaterThanOrEqual(44);
   await clickNamedGameObject(page, 'ProfileScene', 'profile-folio-template-hit');
 
@@ -34697,7 +34702,7 @@ test('owned starter templates create reversible Folios across pointer keyboard a
   });
   expect(modalTargets.rows).toHaveLength(5);
   expect(modalTargets.rows.every((row: any) => row.height >= 44)).toBe(true);
-  expect(modalTargets.build).toMatchObject({ width: 190, available: true });
+  expect(modalTargets.build).toMatchObject({ width: 390, available: true });
   expect(modalTargets.build.height).toBeGreaterThanOrEqual(44);
   await expect.poll(
     () => page.evaluate(() => document.getElementById('game-status')?.textContent ?? ''),
@@ -34707,12 +34712,13 @@ test('owned starter templates create reversible Folios across pointer keyboard a
 
   const beforeBlockedAccount = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
   await clickTemplateLeader('spark_caller');
+  await focusFolioControl(page, 'profile-folio-template-build-hit');
   await page.keyboard.press('Enter');
   state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(state.savedFlightFolios.template).toMatchObject({
     open: true,
     selectedLeaderId: 'spark_caller',
-    status: 'templateUnavailable',
+    status: 'idle',
   });
   expect(await page.evaluate(() => localStorage.getItem('birdsquad.account'))).toBe(beforeBlockedAccount);
   await expect.poll(
@@ -34824,11 +34830,12 @@ test('owned starter templates create reversible Folios across pointer keyboard a
     item.available === false && item.reason === 'Active Folios full'
   ))).toBe(true);
   const fullAccount = await page.evaluate(() => localStorage.getItem('birdsquad.account'));
+  await focusFolioControl(page, 'profile-folio-template-build-hit');
   await page.keyboard.press('Enter');
   state = JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}'));
   expect(state.savedFlightFolios.template).toMatchObject({
     open: true,
-    status: 'templateUnavailable',
+    status: 'idle',
     activeCount: 6,
   });
   expect(await page.evaluate(() => localStorage.getItem('birdsquad.account'))).toBe(fullAccount);

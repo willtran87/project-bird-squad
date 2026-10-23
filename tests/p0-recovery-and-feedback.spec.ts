@@ -15,7 +15,7 @@ test('failed lazy download offers cancellable recovery without replacing the liv
     });
     const saved = await page.evaluate(() => localStorage.getItem('birdsquad.run.active'));
     await page.evaluate(() => (window as any).__birdSquadEnsureScene('CodexScene').catch(() => {}));
-    await expect(page.getByRole('region', { name: 'Download recovery' })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: 'Download recovery' })).toBeVisible();
     expect(await page.evaluate(() => localStorage.getItem('birdsquad.run.active'))).toBe(saved);
     const url = page.url();
     await page.getByRole('button', { name: 'Reload options', exact: true }).click();
@@ -25,8 +25,10 @@ test('failed lazy download offers cancellable recovery without replacing the liv
       await page.setViewportSize({ width, height }); await settleCanvas(page);
       const geometry = await page.locator('#update-recovery').evaluate(element => {
         const r = element.getBoundingClientRect();
+        const buttons=[...element.querySelectorAll('button')].map(b=>b.getBoundingClientRect());
         return { fits: r.left >= 0 && r.right <= innerWidth && r.top >= 0 && r.bottom <= innerHeight,
-          buttons: [...element.querySelectorAll('button')].every(b => b.getBoundingClientRect().height >= 44) };
+          buttons: buttons.every(b=>b.height>=44&&b.width>=44)&&buttons.every((a,i)=>buttons.slice(i+1)
+            .every(b=>Math.max(a.left-b.right,b.left-a.right,a.top-b.bottom,b.top-a.bottom)>=8)) };
       });
       expect(geometry).toEqual({ fits: true, buttons: true });
       await page.screenshot({ path: info.outputPath(`update-recovery-${width}.png`) });

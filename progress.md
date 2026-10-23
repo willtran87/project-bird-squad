@@ -1,5 +1,1619 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-10-22 — Remaining acceptance plan complete (60/60)
+
+- Final candidate `index-Cl7N8-97.js`; all 60 plan items verified and named areas
+  assessed A within the explicit automated/LLM scope. Details:
+  `docs/game/final-qualification-2026-10-22.md` and `final-area-assessment-2026-10-22.md`.
+- Fresh uninterrupted regression: 903/903, zero failures/skips/flaky/retries,
+  106.5 minutes. All 41 prior remote failures and 49 discovery failures reconcile.
+- Live flights 4/4; Chromium/Firefox/WebKit 9/9; Pages 1/1; shared real-input client
+  completes a card play with matching screenshot/state and no error artifact.
+- 186 inspected three-size captures; 872 delivered images byte-identical to the
+  reviewed inventory. Six native-clock samples disclose ~20-fps SwiftShader
+  combat and loading spikes; physical-device/player/AT waivers remain explicit.
+- Final source/test/config and production hashes unchanged. Owned test browsers,
+  previews and ports closed; evidence retained in
+  `D:/codex-bird-squad-closure24-20261021/evidence`. No remote CI/publication claim.
+
+Earlier continuation notes below retain their original checkpoints.
+
+
+- Latest candidate: `index-Cl7N8-97.js` in `D:/codex-bird-squad-closure24-20261021/release-qualified-build`, owned preview 5498.
+  Discovery completed 854/903; all 49 failures remain recorded with focused repairs/rechecks.
+  Final production fixes reserve Practice badge lanes and picker header spacing,
+  correct Codex focus narration, and keep the longest Waymark effect complete at 21px.
+  Full fresh qualification and four live reference journeys remain open.
+  No all-A/completed-plan claim. Previous preview 5497 has been stopped.
+
+
+- User requested completion of all 12 open acceptance items. Initial qualification candidate
+  `index-By96udgS.js` is under `D:/codex-bird-squad-closure24-20261021/final-build`.
+  Owned preview is on 5497; the fresh 903-case Chromium regression uses the
+  existing CI two-worker/90-second gate, with four reference flights to run
+  serially. The earlier baseline was stopped after 80 completed cases and six
+  failures; it is incomplete evidence. Its fixture failures have passing focused
+  rechecks. No full pass is claimed while the current run is unfinished.
+- Reinspected all 110 final card review tiles at gallery/hand/compact scales,
+  81 distinct enemy exports, ten leader views, all six residents, world plates,
+  props and title artwork. Existing card/resident repairs retained.
+- Added reproducible exact-byte delivery/source/alpha/size/load-policy inventory.
+  Restored 31 missing canonical selected enemy masters from their retained
+  reserve sources. Exporter now preserves the full 64-enemy manifest instead
+  of overwriting it with the historical 33-enemy bootstrap roster; two meaningful
+  exporter tests pass. Original runtime images and manifest selections retained.
+- Initial baseline found stale test assumptions around setup download recovery,
+  unconfirmed route setup, and nested reward artwork. Corrected these checks
+  without removing navigation, state preservation or geometry assertions. Deck
+  art tests now explicitly enable the touch input they exercise. Fresh rechecks
+  and final full regression remain required.
+- Docs/runtime/assets/canonical frames and delivery gates pass. Current boot is
+  722.3 KiB against 725 KiB hard cap; preferred targets remain warnings.
+  Current release human/device/AT waivers remain explicit and unverified.
+- Reviewed all active UI, item, effect, world and character sheets. Repaired
+  Signal fringe and 20 clipped/contaminated Supply/Waymark icons with the image
+  tool. Selected transparent sources and exact prompts are recorded in the art
+  manifests; deterministic exporters produce both runtime tiers. Reviewed all
+  20 final exports at 64px. All 872 delivered rasters decode with exact dimensions
+  and alpha in the browser; final inventory has no missing sources/consumers.
+- Fixed the actual remapped reward-reader hint overflow by widening its control
+  from 200 to 216 authored pixels. Both binding variants pass all three sizes.
+  All 110 reviewed thumbnails and their manifest match current sources by SHA.
+- Canonical validation now passes immutable approved Major frame/title layers,
+  exact Snag source/font/template composition and all 220 lossless exports.
+  Items 20 and 41–44 are closed: 53/60 verified, seven open.
+- Pages subdirectory smoke passes against the final prebuilt artifact, including
+  lazy scenes, full-art combat and checkpoint reload. Keyboard reference flight
+  reaches an outcome and replay. Pointer reference discovered an unhandled hand
+  page in the scripted player; it now uses actual Next/Previous controls.
+- The first full run exposed a deck fixture opening before route readiness.
+  It now waits for ready state and actual topmost input registration; its complete
+  90-second comparison/long-text check passes. The title boot check now awaits
+  the quiet guide's 12 readable fields and real controls; unused Help image
+  assets remain unfetched, while Settings lazy assets and boot limits stay checked.
+- `acceptance-final` remains discovery evidence. Its first five failures were:
+  Waymark recovery must dismiss the native download owner before testing Pause;
+  two Deck hint cases now assert the shared 19px role and actual CSS floor;
+  Deck comparison waits for ready input; generated FX waits for its deferred
+  contact texture. All five have passing focused rechecks with original behavior
+  and cleanup assertions retained. The overlapping `acceptance-qualified` run
+  timed out in the 48-capture boss-preparation matrix and was stopped to remove
+  browser contention. Neither incomplete run is full-release evidence. A clean
+  uninterrupted run remains required; no timeout budget was increased.
+- Chromium, Firefox and WebKit pass the complete nine-case cross-browser gate
+  (`final-cross-complete.json`), and the Pages production-base smoke passes.
+  Serial reference flights remain in progress; pointer pagination needs its
+  full recheck after the scripted-player correction.
+- Extra three-size visual matrix passes 39/39 geometry checks. Visual inspection
+  rejected two high-resolution title/Help captures taken during fade; their
+  settled-frame recaptures pass 2/2 and were inspected. Remaining surface review,
+  wall-clock performance measurement and owned-process cleanup are still pending.
+- Item 45 is now verified: 60 proportional loaded repair contexts, all 20 compact
+  contexts inspected, Signal reviewed at three sizes, complete alpha/edge/export
+  review and current recovery checks pass. Current total: 54/60, six open.
+- Further discovery failures: Market's primary font assertion, Ledger Tab rebate,
+  both empty Supply-history states and three Preen font/catalog checks. Market
+  and Supplies pass focused rechecks; Preen is being rechecked with current roles
+  and unchanged geometry/decision assertions. Exact attempts are indexed in
+  `docs/game/final-qualification-2026-10-22.md`.
+- Visual inspection found a real Practice badge/Scrap overlap. The first correction
+  was rejected on Route; BTY8t1E_ reserves twelve pixels above the combat HUD and
+  uses a spare Route lane. All 15 Practice/Preen cases pass, and twelve replacement
+  captures were reviewed. The current visual index contains 171 inspected images.
+- Current candidate `index-B3jUG-qW.js` in
+  `D:/codex-bird-squad-closure24-20261021/qualified-build` also moves the card-picker
+  header group up three pixels to restore eight-pixel clearance above its choices.
+  Build/TypeScript and unchanged bundle/cache gates pass (722.5 KiB boot).
+  All 872 images remain byte-identical to the fully reviewed art candidate.
+  Owned preview 5498 serves this build; discovery stays on 5497. Final qualification
+  details and every failed/focused attempt are indexed in the qualification ledger.
+- Natural keyboard defeat/replay passes with ordinary Roost inputs; the earlier
+  keyboard plus pointer-targeting journey reached victory and replay. Pointer
+  pagination and controller navigation drivers are corrected; isolated complete
+  rechecks, native performance measurement and fresh full regression remain.
+
+## 2026-10-20 — Fixed 24-item closure execution (in progress)
+
+- 2026-10-22: Item 19 CLOSED on xEJR3yYv. Final 17/17 plus actual Deck-button
+  art recovery 1/1 reconcile all prior failures. Bounded Market/picker retries,
+  no redundant Market portrait request, separated Retry/Clear controls and
+  stable selected hand targets are verified. Loading/recovery contract and
+  evidence ledger updated; compact/high-resolution visuals and shared-client
+  real card play inspected. All runners/browsers exited, preview 35116 only.
+  48/60 verified, 12 open (12/24 closed). Item 20 next; no new scope or external writes.
+
+- 2026-10-22: Item 19 verification exposed real Market/picker image retry loops.
+  Both baseline cases timed out waiting for loaders to settle. Route shelf/picker
+  attempts are now latched until explicit art-only retry (pointer or existing
+  Inspect keyboard/controller action), preserving the decision. Market's
+  rules-only dossier no longer requests an unused full portrait on every focus.
+  First repair: 15/16; Market's redundant portrait accounted for 36 instead of
+  six requests and was fixed, not waived. Candidate BV7J_VTD passes build and
+  unchanged bundle/cache limits; expanded 29-case recovery/transaction matrix
+  running. Item remains open until all checks and visual review finish.
+
+- 2026-10-22: Item 18 CLOSED on CJKkbsRu. Final 7/7 includes 1,320 hand states,
+  failed renderer/art recovery and three pilot encounters with all badges.
+  Active crop inventory excludes unused square exports; complete canonical
+  images remain unobstructed in regular/fallback hands. Current compact/high-res
+  captures and shared-client real card play inspected. Build/runtime/docs/export
+  tests and unchanged bundle/cache gates pass. 47/60 verified, 13 open (11/24
+  closed). Item 19 next. All runners/browsers exited; owned preview 5932 only.
+
+- 2026-10-22: Item 18 visual review exposed text panels hiding card subjects.
+  Regular and failed-module hands now reserve an unobstructed 60×90 portrait
+  beside the name; rules, cost and badges remain separate. All 110 cards × four
+  states × three sizes pass containment/no-occlusion; regular matrix 9/9 and
+  fallback/current-art matrix 4/4 pass. The simultaneous Surge/Keep/Molt stress
+  test then caught label width and a 1px gap; corrected on CBdp6I8V and the final
+  seven-case matrix is running. Item remains open until that check and visual
+  review finish. Owned preview PID 21256, local 5496; superseded previews stopped.
+
+- 2026-10-22: Item 17 CLOSED on B99OHeup. All 110 runtime cards agree across
+  hand/reward/pile/Deck/picker/Collection/Market/Folio identities; loaded thumbnail
+  pixels equal canonical exports. Contract+dossier tests 2/2, high-res capture
+  inspected. Total 46/60 verified, 14 open (10 of requested 24 closed). Item 18
+  subject-safe art placement next; all runners/browsers exited, preview 26296 only.
+
+- 2026-10-22: Item 15 CLOSED on unchanged B99OHeup. Long/max/empty/nested
+  matrix 29/31 plus both corrected real-restore cases 2/2; all failures reconciled
+  in the closure ledger. Actual 30-Folio/50-flight export/restore/reload retains
+  full content. Three-size geometry and captures inspected. Total 45/60 verified,
+  15 open (9 of the requested 24 closed). Card identity item 17 next.
+  All runners/diagnostic browsers exited; owned preview 26296 remains local.
+
+- Item 14 CLOSED on B99OHeup: actual hit-region inventory, shared 44px CSS floor
+  and 8px game-space separation verified. Final surface/recovery matrix 62/62,
+  native stable-bounds/system touch follow-up 9/9, plus all earlier failures
+  reconciled. New native Save/Cancel commands retain drafts, exact focus and
+  held-input isolation; shared-flow recovery fixes a browser compositor artifact.
+  Current captures and shared interaction client inspected; build/TypeScript,
+  unchanged bundle/cache/docs/diff gates pass. Total: 44/60 verified, 16 open.
+  Item 15 next. All runners/browsers exited; owned preview 31576 retained locally.
+
+- Item 13 CLOSED on Bmv6fgWC: optional-information inventory plus 16/16 current
+  Collection/Atlas/Folio nested-return, shared-reader and full Supply inspection
+  checks. No reading commits purchases, plays or consumption; exact focus and
+  selection survive return and recovery. Total: 43/60 verified, 17 open.
+  Item 14 touch-target size/separation next; all item-13 runners exited.
+
+- Item 12 CLOSED on unchanged Bmv6fgWC: dense-surface inventory plus current
+  card-pool/Deck/menu follow-up 9/10 and complete corrected comparison recheck
+  1/1. All failed expectations reconciled without removing complete-reading,
+  geometry, input or data-preservation checks. Current total: 42/60 verified,
+  18 open. Optional secondary readers (13) next.
+
+- Item 11 CLOSED on Bmv6fgWC: full reader/type matrices reconciled, focused
+  layout/hand/Market checks 15/15 and final Collection/type checks 6/6.
+  All 110 card illustrations and labels fit; event Read and NEW captions stay
+  complete. Real reports retain all deck/path/decision/unlock data. TypeScript,
+  build, unchanged bundle/cache, docs and shared interaction client pass.
+  Current total: 41/60 verified, 19 open; item 12 next. Preview PID 40356 retained
+  for continued local qualification; test/browser processes exited.
+
+- Item 11 secondary qualification found one-card filtered Collection rows too
+  tall for the readable footer. Shared row/focus geometry is corrected without
+  shrinking labels or cropping artwork; all-110-card and filtered geometry
+  coverage is added. Visual review caught wrapped event Read buttons; their
+  width/summary clearance is corrected with a single-line regression assertion.
+  These changes await rebuild after the unchanged 101-case runner exits.
+
+- Item 11: main typography run finished 117/118 on Dh9ukFS0. The sole
+  three-digit forecast overflow is fixed and passes its real detail/geometry
+  recheck. BmF7S-Gy focused gate passed 5/7: real report-source completeness,
+  long-report paging and both outcome smoke journeys passed; two unlock-label
+  bounds failures exposed a two-pixel overflow. Corrected in DfPxCSfg, which
+  passes TypeScript/build and unchanged bundle/cache gates (721.1 KiB boot).
+  The 101-case secondary-reader qualification is running. No new item closed.
+- Item 11 latest: Dh9ukFS0 passes build and unchanged bundle/cache gates
+  (720.8 KiB boot). The three C8 gate failures (temporary card letters and picker
+  name clearance) pass the four-case focused recheck. The 118-case readability
+  run is active. Direct source review additionally found the report builder's
+  old 20-entry deck/path and eight-line decision caps; these are removed in
+  source, with a real-builder regression added. Complete defeat explanations
+  and unlock descriptions are preserved in the report; outcome excerpts mark
+  omission. These newest source changes await the next build and qualification.
+- Item 11 remains open during complete readability qualification. The 51-case
+  typography surface run passed 44: five tiny-text surfaces, one leaked report
+  listener and one pending-redraw fixture failed. The current repair run covers
+  all 44 surfaces, report paging/lifecycle, Flock editors and complete Supply
+  rules. Profile redraw now destroys old display objects instead of detaching
+  live reader owners. Report pages preserve every long entry; Supply feedback
+  remains fully readable after consumption in the existing drawer. A bundle
+  gate caught duplicated pagination code; consolidation is being verified
+  without changing its limit. No additional item is marked complete yet.
+- Item 25 verified on October 21: 40/60 total, 20 remaining. Candidate
+  `index-BVLVOWqu.js` passes unchanged build/bundle/cache gates (721.1 KiB boot).
+  Final ownership run 57/58, then corrected native-owner sequence 1/1 on the same
+  build; all intermediate failures reconciled in the fixed closure ledger.
+  Held Back/Confirm/numeric leaks and unavailable route recovery are repaired.
+  Current compact/large captures and shared-client state inspected; superseded
+  preview processes stopped. Continuing sequentially to compact typography (11).
+- Item 25: complete overlay-family inventory added. Reproduced held Back
+  leaking into the parent card/outcome and held numeric input replaying after
+  closing details; shared repeat guards repair those paths. Outcome Copy now
+  participates in keyboard/controller focus. Current repair candidate
+  `index-BcCSx_Bp.js` passes TypeScript/build and unchanged gates (720.9 KiB).
+  Lifecycle qualification is running; item 25 is not yet closed.
+- Item 24 verified: 39/60 total, 21 remaining. Active frame inventory, quiet
+  utility surfaces and contained canonical borders verified on `index-Dx6gds9m.js`.
+  Final frame/transaction matrix 37/37 and affected smoke 5/5 pass; current
+  three-size captures and shared-client image/state inspected. Build and unchanged
+  gates pass (720.5 KiB boot). Continuing to overlay ownership (25), not a handoff.
+- Item 23 now verified: 38/60 total, 22 remaining. Final state suite 54/54,
+  deliberate reward/picker smoke 5/5, shared gameplay-client image/state clean
+  on `index-CRxiCIrs.js`. Full evidence is in the fixed closure ledger. Moving
+  sequentially to decorative frames (24); no added scope or publication.
+- Item 22 is now verified: 37/60 total, 23 remaining. Candidate
+  `index-CJhx5GT4.js` passes build/bundle/cache gates. Final role run 44/46,
+  followed by corrected selector and full six-case reward requalification 6/6.
+  Exact evidence, failure reconciliation and inspected captures are in the fixed
+  closure ledger. Item 23 is next; execution continues locally, not a handoff.
+- Item 23 implementation now includes bounded clipboard ownership, route Folio
+  save timeout/retry, and backup read timeout/recovery. Utility state opacity and
+  primary hover contrast are corrected. Candidate `index-CRxiCIrs.js` passes
+  TypeScript/build, unchanged bundle/cache gates (723.2 KiB boot), and docs.
+  The final state suite passed 54/54 without retries; armed-action smoke is still
+  running, so item 23 remains open pending its complete checklist.
+- The preceding 68-case suite passed 65; three screenshot writes failed with
+  ENOSPC on C:. All three pass in the new 54-case run. Existing artifacts were
+  not deleted or moved (relocation was blocked before execution). New captures
+  and process-local browser temp files use the task-owned directory
+  `D:/codex-bird-squad-closure24-20261021`; reports remain in `.artifacts/`.
+
+- User requested complete sequential acceptance, no expanded scope, local-only
+  work and cleanup. `docs/game/remaining-24-closure.md` freezes the exact 24 items
+  and the evidence requirements. No new audit backlog is being added.
+- Save Data ratings, restore confirmation and Back now participate in stable
+  action focus, including safe Cancel default, exact opener restoration and
+  screen-reader status. The first 61-case shared/Collection/Folio/system suite
+  passed without retries. Further consumer migrations require requalification.
+- Shared role coverage is being finished across remaining card dossiers,
+  reader paging, combat confirmations, Supplies, outcome commands and reward
+  fallback. Disabled buttons retain readable opaque labels; safe Back no longer
+  looks like a destructive action. Existing action identities are preserved.
+- The initial 47-case consumer run passed 35 and exposed 12 test failures:
+  pause now navigates to Settings (test must unwind each actual layer), Market
+  copy now names the exact blocker, geometry matching accidentally included
+  new caption objects, and touch tests lacked a touch-enabled context. Corrected
+  tests preserve the underlying state/geometry assertions; no retries/skips.
+- Build `index-CsRh2SCL.js` passed unchanged bundle/cache gates (724.9 KiB boot;
+  preferred-size warnings remain). Reader controls receive their UI factory via
+  context to avoid pulling shared theme code into the combat-reader chunk.
+  Deduplicated reader contexts and kept a Profile-only adapter in its lazy
+  module. Further source changes await the next build; this is not final evidence.
+- Shared gameplay client completed with matching Flight Log image/state and no
+  error artifact in `.artifacts/closure24-client`. Owned preview PID 27232,
+  port 5495, remains running for the ongoing verification. It must be stopped
+  before completion. No Git or deployment mutation.
+
+## 2026-10-20 — Flight Log controls and asynchronous ownership (October 21 UTC)
+
+- Continued shared-control/overlay items 22/23/25 locally. Flight Log now shares
+  stable action focus for Back, rows, paging and Review. Tab/controller left-right
+  navigate actions without browsing flights; Previous/Next/up-down retain flight
+  browsing. Disabled paging is focusable but cannot activate. Nested review close
+  restores the exact opener and page, including held controller Back isolation.
+- Review loading now has stable shared loading/error states, duplicate activation
+  guards and explicit retry. Every attempt owns a wall-clock eight-second timeout
+  and shutdown listener. Rejection, missing reconstruction, timeout, selection
+  change, close and shutdown all settle/retire ownership. Late results cannot
+  reopen the reader, even after reopening the same record. Error/status copy is
+  also present in the screen-reader summary.
+- Fixed Save Data's file-picker race: focus-return cancellation no longer wins
+  over an in-progress File.text read. Abortable input disposal removes focus and
+  cancel listeners/timers/input on close or shutdown. Native cancel and read
+  failures settle safely. Late parsing cannot replace the focus/state of a newly
+  opened panel; pending Restore shows loading and rejects duplicate activation.
+- Added `tests/flight-log-ownership.spec.ts`: 10 cases covering real controls,
+  nested focus, disabled actions, review faults/timeouts, old-owner completion,
+  slow file reads, native cancellation and scene shutdown. Review fault injection
+  changes only the served test module's existing dependency binding, with an
+  exact-match assertion; no shipped diagnostic seam. Happy paths use production
+  code. Virtual-controller results are not physical-controller claims.
+- Initial run found a fixture error: blocking boss-dossier blocked Profile's
+  static dependency, not its review request. Stopped that owned run, corrected
+  injection scope, and corrected a new assertion from focus.section to the
+  existing focus.current diagnostic. No production gate or timeout was weakened.
+- Final candidate `index-HfNBGmr7.js`: build, `npx tsc --noEmit`, bundle and local
+  deployment-cache checks pass. Entry 700,893 bytes; combined boot 742,381 bytes,
+  still only 19 bytes below the unchanged hard cap. Preferred-size warnings remain.
+- Fresh browser evidence, zero retries:
+  - `npx playwright test --config=.artifacts/oct21-final.config.ts`: **25/25**
+    Chromium (10 new + 6 Atlas/Folio + 7 Folio editor + 2 record-layout cases).
+  - `npx playwright test --config=.artifacts/oct21-smoke.config.ts`: **4/4**
+    existing backup download, invalid restore, transactional restore, Flight Log.
+  - `npx playwright test --config=.artifacts/oct21-firefox.config.ts`: **10/10**.
+  - Additional headed Chromium Save Data read pass: **1/1**, same assertions plus
+    loading captures at 2560×1600, 1440×900 and 1000×560.
+  - Unmodified required web-game client with local bootstrap/actions:
+    `.artifacts/oct21-final-client`; opened review, focused Close, returned to
+    Review flight. Inspected its screenshot and matching JSON; no error artifact.
+- Visually inspected Flight Log action/error states and Save Data loading at high
+  resolution and compact sizes; checked ordinary desktop geometry as well.
+  Screenshots/results: `.artifacts/oct21-final`, `.artifacts/oct21-firefox`,
+  `.artifacts/oct21-save-headed`, `.artifacts/oct21-final-client`.
+- Scope remains **36/60 verified, 24 open**. Shared-contract transition matrix
+  now distinguishes this evidence from outstanding Save Data confirmation/ratings
+  focus and the remaining bespoke overlays. Next: finish those control paths and
+  extend the matrix across other game overlays before closing item 25. Full release,
+  WebKit, cross-game visual matrix and all-A regrade were not run/claimed.
+- Skills used: game-development incremental client, UI-layout and high-resolution
+  inspection, Phaser input, and conservative frontend checklist. Checklist MCP
+  review tools were unavailable; direct code review and local checks substituted.
+- Testing stayed local. No commit, push, merge, deployment, branch changes, or
+  external messages. Existing unrelated work was preserved.
+- Cleanup verified: owned preview PID 22292 stopped; port 5495 has no listener.
+  No matching owned Oct21 runner/client or Playwright browser processes remain.
+
+## 2026-10-20 — Folio editor lifecycle and complete local action traversal
+
+- Added `folio-editor.ts` as the single lifecycle for rename, description, import
+  and notes. Persistence failure and invalid codes retain the original draft,
+  associated inline alert and retry/cancel path. Enter explicitly commits;
+  Shift+Enter preserves multiline notes. Blur, touch release, Tab, composition,
+  repeat input, nested recovery and scene shutdown never implicitly commit.
+  Disposal retires the owner before removing the field and clears listeners,
+  focus timers and error UI. Successful import retries create exactly one copy.
+- Organizer folders/tags, Identity cover/sleeves, starter rows and Folio shelf
+  actions now have stable focus IDs and pointer/keyboard/controller parity.
+  Focus does not select or persist. Confirm activates the named action; disabled
+  actions remain inspectable. Browsing updates the action target. Nested return
+  restores the actual opener, late redraw preserves it, and the non-modal shelf
+  can Tab back out to global Flock navigation. Background action focus is cleared
+  when a child reader owns input. Screen-reader instructions match this model.
+- Early test evidence is retained in `.artifacts/oct20-folio`: it exposed touch
+  blur immediately committing rename and a second focus indicator behind Identity.
+  Both product defects were fixed. Legacy tests were updated for explicit Tab
+  focus/Confirm activation and retained invalid imports, without dropping their
+  persistence, privacy, copy-path or geometry assertions. The second matrix exposed
+  an added assertion comparing raw `undefined` against the canonical default sleeve
+  `field`; it now compares the documented default before asserting the explicit
+  `signal` change. The failure reports remain available.
+- The required unmodified shared game client exercised Organizer → Identity →
+  Organizer → Confirm reopening Identity. Screenshot and text state agree, with
+  no error artifact: `.artifacts/oct20-folio-client`. The skills required built
+  captures at 2560×1600, 1440×900 and 1000×560. A headless Chromium native-editor
+  screenshot again showed a black compositor rectangle over the heading; all
+  three editor scenarios passed headed Chromium with clean inspected captures
+  (`.artifacts/oct20-folio-headed`). This is not silently treated as a clean
+  headless visual. Firefox's seven new cases pass (`oct20-folio-firefox.json`).
+- Four legacy Chromium smoke flows pass (`oct20-folio-smoke.json`): privacy-safe
+  import/fork, Organizer, Identity and starter templates. New explicit-focus
+  tests also cover storage failures, nested recovery, held controller Back,
+  IME/repeat, cancellation, shutdown, exact opener and Tab exit. No retry policy,
+  build budget or release gate changed. Broader focused verification is recorded
+  below when complete.
+- Candidate `index-KevlCsZv.js`: 700,893-byte entry, unchanged hard boot budget,
+  preferred-size warnings still present. Build, TypeScript, bundle, docs and local
+  cache policy pass. SHA256:
+  `9425BF4EFDF420447AF8DB92BA03998F6342944E489C8CD8BFE7F6DB6C585619`.
+- Remaining scope is explicit: **36/60 verified, 24 open**. This continuation
+  advances shared items 22/23/25; it does not complete cross-scene ownership,
+  every compact/max-content screen, full art/crop/frame inventories, or fresh
+  release qualification. No all-A grade or physical-device claim is made.
+  Work stayed local; no commits, push, branches or publishing.
+- Final affected-flow evidence: `oct20-folio-final.json` contains 19 passes and
+  the two raw-default assertion failures described above. Their corrected default
+  and remapped cases pass in `oct20-folio-qualified.json` (2/2, zero retries).
+  Together with four legacy smoke cases, that is **25 distinct Chromium cases
+  passing on this candidate across runs**, plus seven Firefox and three headed
+  Chromium checks. This is explicitly not a single clean full-suite result.
+  Screenshots were inspected in `.artifacts/oct20-folio-final`,
+  `oct20-folio-qualified`, `oct20-folio-headed`, `oct20-folio-firefox` and
+  `oct20-folio-client`. Commands: `npm run build`, `npx tsc --noEmit`,
+  `npm run validate:bundle-size`, `npm run validate:deployment-cache`,
+  `npm run validate:docs`, and the named Playwright configs in `.artifacts`.
+- Cleanup verified: owned previews 28484 and 43928 stopped; port 5495 has no
+  listener and no owned Oct20 runner/shared-client processes remain. There was
+  no pre-existing port 5173 listener during this turn. Source changes, prior
+  artifacts and unrelated services were preserved.
+
+## 2026-10-17 — Atlas and nested Folio action focus
+
+- Atlas now exposes Close through Tab/Shift+Tab and controller left/right. Confirm
+  activates that focus rather than accidentally opening the selected family. Set
+  browsing remains on up/down; cancellation restores the Collection Atlas opener.
+  Atlas cannot open over Saved Views or the native search editor.
+- Flight Lab, Collection Signals, Field Record, Revision Trail and Tuning Bench
+  share stable named action focus. Tab selects controls instead of changing the
+  content; controller left/right follows the same action order. Disabled buttons
+  remain inspectable but never execute. Category identity is included in focus
+  keys, so similarly named Signals tabs do not produce duplicate focus rings.
+- Returning from each Lab tool restores its visible Tools opener and preserves
+  the sampled hand/page. Shortcut entry reveals that opener on return. Late art
+  redraws retain action focus. Diagnostics and screen-reader summaries name the
+  focused action. Remapped actions outrank Folio shortcuts; held Confirm/Back
+  cannot activate a newly exposed parent or child.
+- Private Folio notes retain the draft after failed persistence, expose an inline
+  retry/cancel error, preserve focus through nested download recovery, and return
+  to Edit Notes after save/cancel. IME/repeated Enter does not submit. Controller B
+  closes only the native editor; a fresh press returns to the Lab. Failed-save
+  helper copy is repositioned to avoid overlapping the native error message.
+- New `folio-atlas-focus.spec.ts` exercises these paths with browser keyboard,
+  emulated touch and a polled virtual controller. Existing deep-reader tests now
+  distinguish moving focus from activation and require failed notes to retain
+  their draft. No assertion, release gate, budget or retry policy was weakened.
+- Skills require built-preview screenshots at 2560×1600, 1440×900 and 1000×560,
+  plus the unmodified shared game client. Early reports are retained under
+  `.artifacts/oct17-folio-focus`; an initial test used the wrong capitalization
+  for the recovery button and was corrected (not a product failure).
+- Scope stays local. The inherited dirty checkout and user's preview on port
+  5173 are preserved. Backlog remains **36/60 verified, 24 open**: these are
+  further shared 22/23/25 improvements, not full closure. Remaining work includes
+  organizer/identity/template action migration, their native editor failure paths,
+  full cross-scene ownership coverage, compact layouts and art/frame inventories.
+- Final build candidate is `index-wp9tUQMq.js`, 700,893 bytes; combined boot remains
+  742,381 bytes (19 bytes below the unchanged cap). Build, TypeScript, bundle,
+  documentation and local cache validation pass. Preferred boot-size warnings
+  remain. SHA256: `896E53D5866691B6906FDB6A8BAA2F12EB0EECD1F2DE084CA80015C9B2C62785`.
+- Final shared-client action burst closes Field Record and reopens it through its
+  restored Lab opener, with no error artifact (`.artifacts/oct17-folio-final-client`).
+  Six new Firefox checks pass. Headless Chromium's native recovery/resize capture
+  showed a black compositor rectangle over the heading; the same scenario was
+  rerun in headed Chromium and passed with a clean, visually inspected screenshot,
+  as did Firefox. Both captures are retained; no visual assertion was suppressed.
+  Headed evidence: `.artifacts/oct17-folio-headed`; Firefox evidence:
+  `.artifacts/oct17-folio-firefox.json` and `.artifacts/oct17-folio-firefox`.
+- Final verification: **20/20 Chromium and 6/6 Firefox**, zero retries/skips/flaky
+  results, plus the passing headed Chromium recovery case. Chromium report:
+  `.artifacts/oct17-folio-final.json`; screenshots: `.artifacts/oct17-folio-final`.
+  Commands: `npm run build`, `npx tsc --noEmit`, `npm run validate:bundle-size`,
+  `npm run validate:deployment-cache`, `npm run validate:docs`, and Playwright
+  configs `oct17-folio-final.config.ts` / `oct17-folio-firefox.config.ts` under
+  `.artifacts`. No full release-suite, WebKit or physical-device claim is made.
+- Cleanup verified: owned preview PIDs 71964 and 75748 stopped; port 5495 has no
+  listener, all owned Playwright/shared-client sessions exited, and the user's
+  PID 74740 / port 5173 remains. No source cleanup, commits, push or publication.
+
+## 2026-10-17 — Collection controls and nested editor focus
+
+- Collection search/sort/lens/saved-view/Atlas/tool adapters now share quiet-control
+  styling, stable hit targets and larger two-line labels. Saved Views has a real
+  Tab/Shift+Tab and controller left/right action sequence, while up/down retains
+  row selection. Save/Apply/Remove/Close use explicit semantic roles. Removing a
+  saved view requires a second intentional action, starts at safe Cancel focus,
+  preserves data on failed writes and requires fresh confirmation before retry.
+- Dossier actions use stable names rather than disposable game-object references.
+  Tab/left/right reaches favorite, protection/target, tag, showcase, journal and
+  applicable flight-deck actions. Up/down still reads the dossier. The journal
+  opener scrolls into view and regains focus after save/cancel; closing the parent
+  restores the original shelf entry and browse context. Late redraws retain this
+  action. Native recovery over the journal preserves the unsaved draft and focus.
+- Canceling search now restores pre-edit scroll and entry selection. Recovery over
+  search no longer blur-commits/removes its draft. IME Enter cannot submit search;
+  deferred search open rejects a replaced scene owner. Remapped bound actions win
+  over overlapping Collection shortcuts without disabling unrelated defaults.
+- Added six fault-injected/browser-input cases in `collection-control-focus.spec.ts`:
+  keyboard, virtual controller, emulated touch, storage failure/retry, nested
+  recovery, redraws, IME, remapping and opener restoration. Updated the existing
+  Saved Views smoke case to assert the confirmation before its second Delete.
+  No gates, geometry assertions or retry policy were weakened.
+- Initial regression exposed duplicate hidden labels, then an unbroken 40-character
+  search token overflowing because the wrap setter disabled advanced wrapping.
+  Reused the shared button's single caption and restored advanced wrapping. Two
+  Windows output-directory lock errors were resolved by stopping only the owned
+  preview before rebuilding; source/assets and the user's preview were preserved.
+- Skill-driven verification uses the built app, measured geometry and screenshots
+  at 2560×1600 first, then 1440×900 and 1000×560. The shared unmodified game client
+  exercised Save → Remove → safe confirmation without console/page errors.
+- Scope remains local; no commits, pushes, branches, deployments or subagents.
+  Backlog remains **36/60 verified, 24 open**. This advances shared items 22/23/25;
+  remaining bespoke dossier/Folio roles and states, the full nested ownership
+  matrix, compact-layout matrix and decorative-frame inventory remain explicit.
+- Final candidate `index-D06heTZV.js` passed **15/15 Chromium Collection checks**,
+  **5/5 Chromium persistence/search/journal smoke checks**, and **6/6 Firefox**
+  interaction checks. No retries, skips or flaky results. Reports:
+  `.artifacts/oct17-collection-final.json`, `oct17-collection-smoke-final.json`,
+  and `oct17-collection-firefox-final.json`. Final shared-client evidence is in
+  `.artifacts/oct17-collection-final-client`; high-resolution/compact screenshots
+  are under `.artifacts/oct17-collection-final`. Earlier failing layout reports
+  are retained separately. No full release-suite or WebKit claim is made.
+- Build, documentation, unchanged bundle limits and local deployment-cache checks
+  pass. Entry remains 700,893 bytes; combined boot remains 742,381 bytes (19 bytes
+  below the hard cap), with existing preferred-size warnings. Collection's lazy
+  chunk is 163.4 KiB / 43.3 KiB gzip. Entry SHA256:
+  `8C00DE0CB02937A48E78A3B8CCBD4F4B987E0931660F3B5AD525894EEEFAAF81`.
+- All owned test runners/browser sessions exited. Owned previews PID 46064,
+  58492 and final PID 62980 were stopped; port 5495 has no listener. The user's
+  existing PID 74740 / port 5173 remains. No unrelated processes were stopped.
+
+## 2026-10-17 — Shared download recovery and focus continuation
+
+- Added boot-resident `pending-overlay.ts` for system panels and Collection launch.
+  Close remains available before a lazy module arrives. Eight wall-clock seconds
+  expose slow-download recovery even while combat's scene clock is paused. Actual
+  failures retain readable instructions; close/shutdown retires timers, listeners
+  and late completions without reopening panels or navigating scenes.
+- Native download recovery now owns input as a modal, focuses Keep Playing, then
+  focuses Cancel Reload after a separate checkpoint warning. Cancel has explicit
+  visible focus after pointer or controller activation, too. Reload still requires
+  a second intentional action and revalidates failed same-origin modules before a
+  whole-page navigation. Keyboard, touch, held-controller and stale-pointer input
+  cannot leak into the canvas below; dismissal restores previous DOM/canvas focus.
+- Guide lesson failures now have visible readable inline copy and Recovery Options
+  instead of an immediate reload. Guide redraws preserve the action index; lessons
+  return to their Practice opener. Removed unused guide-icon requests whose late
+  callback rebuilt the panel and stole focus. Settings art/redraw callbacks reject
+  pending or retired owners. Existing art, dark theme and saved-flight rules remain.
+- New `overlay-download-recovery.spec.ts` covers real delayed/503 module requests,
+  Route and Battle cancellation, confirmed recovery, late completion, restart,
+  Collection cancellation, remapped input, touch, held controller and guide focus.
+  The prior deck-recovery fixture expected touches to pass through the old notice;
+  it now verifies modal blocking, dismisses explicitly, then checks reader close
+  and confirmed recovery. No assertion, retry policy or release gate was weakened.
+- Optional history/review adapters, deck-cost badges, portrait manifests and reserve
+  asset wiring moved to their deferred consumers to fund boot-resident cancellation.
+  Candidate `index-tw7OnvL4.js` is 700,893 bytes; combined boot 742,381 bytes, just
+  19 bytes under the unchanged hard cap. Preferred-size warnings remain, so no
+  performance improvement or useful growth headroom is claimed. SHA256:
+  `3EFD1B3AE57559C11EA3A7D40DF31DAD40DFC59F3FCA984F118A1469E8E886AF`.
+- Build, docs, runtime data, runtime asset and local deployment-cache validations
+  pass. Shared client completed delayed-panel cancellation into full-art, unpaused
+  combat with no error artifact (`.artifacts/oct17-recovery-accepted-client`).
+  Visual/geometry checks cover 2560×1600 first, 1440×900 and 1000×560. Native dialog
+  captures were settled before inspection; an initial premature canvas capture
+  was replaced after checking the rendered background. Compact guide failure,
+  pending panel and native safe-focus states were visually inspected.
+- Backlog remains **36/60 verified, 24 open**. This completes system-module
+  loading/recovery work within item 25, but bespoke Collection control/state
+  adoption, decorative-frame review and the complete nested-overlay matrix remain.
+  Everything stays local; no commits, pushes, branches or deployments were made.
+- Final candidate: **42/42 Chromium** (5.0 minutes) and **18/18 Firefox**
+  (1.9 minutes), zero retries, skips or flaky results. Reports:
+  `.artifacts/oct17-recovery-accepted.json` and
+  `.artifacts/oct17-recovery-firefox-accepted.json`. The earlier broad Chromium
+  run had 41 passes plus the obsolete deck-modal fixture failure described above;
+  it is retained separately, not relabeled as passing evidence. No full 603-case
+  release suite or WebKit pass is claimed.
+- All owned test runners/browser sessions exited; the temporary IAB inspection
+  tab was closed. Stopped only owned Vite preview PID 11836 / port 5495 and verified
+  its listener is gone. Preserved the user's preview PID 74740 / port 5173.
+
+## 2026-10-17 — Shared controls and overlay ownership continuation
+
+- Added exclusive action-focus ownership to route/combat pause and route run-exit
+  confirmation. Bound actions, raw combat navigation and route controller polling
+  respect the active owner. Consumed keyboard events cannot fall through on close;
+  controller presses stay latched until release even if the modal is destroyed.
+  Listeners retire on owner destruction and scene shutdown. Settings keeps its
+  higher-priority owner and returns focus to its pause action across redraws.
+  Fresh pause starts at Resume; abandonment starts at Keep Playing. Remapped keys
+  and controller B/Start remain supported. Hidden parent containers block both
+  shared pointer activation and focused modal activation. Deck-reader selection
+  also remains unchanged when raw Up/Down/Tab are used over Pause.
+- Added shared `status` / `statusLabel` rendering for armed, loading and error,
+  preserving target geometry, readable labels, focus and disabled-input behavior.
+  Practice downloads use it, coalesce repeated activation and cannot reopen a
+  closed guide. Focus announcements distinguish unavailable/loading actions.
+  Save restore now uses a destructive Confirm Restore and a primary Cancel,
+  with **Cancel initially focused**. Existing art/theme remain unchanged.
+- New `shared-overlay-ownership.spec.ts` covers both game scenes at 2560×1600,
+  1440×900 and 1000×560, backdrop clicks, shortcut isolation, held virtual-controller
+  input, Settings return focus, remapped keys, shutdown/reopen, hidden ancestors,
+  delayed lesson cancellation and an underlying deck reader. Transactional save
+  restore smoke now asserts roles and safe initial focus before restoring.
+- Initial tests exposed real route focus-loss and combat release-latch issues;
+  both were fixed. The first broader run had 54 passes and three Folio fixture
+  failures: touchscreen calls without a touch-enabled context. Added explicit
+  `hasTouch: true`; no product assertion, retry policy or release gate was weakened.
+- Initial combined boot exceeded the hard cap. Removed unused dependency wiring
+  and reused the existing tested lazy-module cache for five optional feature
+  loaders. Final candidate `index-C4KA15ca.js`: 684.8 KiB entry / 182.7 KiB gzip;
+  combined boot 742,359 bytes / 198.2 KiB gzip, only 41 bytes below its unchanged
+  cap. Core remains 30,683 bytes. Preferred-size warnings remain; no performance
+  improvement is claimed. SHA256:
+  `2031EC0419E294513FE545FD7AE82271C2D9A893FB5729D1308816368DE387B9`.
+- Backlog remains **36/60 verified, 24 open**. Items 22/23/25 advanced, but the
+  acceptance plan now names the remaining bespoke control adoption, full state
+  coverage, system-module loading/recovery exit and nested-overlay focus matrix.
+  No all-A or full-release claim. No subagents, commits, pushes or deployments.
+- Final-candidate Firefox shared controls/ownership checks: **10/10**, no retries
+  or skips, clean exit in 1.0 minute (`.artifacts/oct17-overlay-accepted-firefox.json`).
+  Save backup, invalid restore and transactional restore: **3/3**, clean exit
+  (`.artifacts/oct17-overlay-save.json`). The unmodified shared web-game client
+  resumed full-art combat, `paused: false`, without an error artifact
+  (`.artifacts/oct17-overlay-accepted-client`). Reviewed 2560×1600 pause,
+  1440×900 confirmation and 1000×560 pause/loading captures, plus the live in-app
+  guide. The temporary in-app tab was closed.
+- Final broad Chromium regression: **58/58**, zero retries/flakes/skips, clean exit
+  in 7.4 minutes (`.artifacts/oct17-overlay-accepted.json`). Corrected Folio touch
+  fixtures passed both remapped and default maximum-history/readability matrices.
+  Existing pause-sequencing smoke also passed, retaining windup freeze, Supply
+  lockout and resumed-impact assertions while explicitly checking Enter resumes
+  and a subsequent Pause/Back closes (`.artifacts/oct17-overlay-pause-smoke.json`).
+  Together with the Firefox/save checks above: **72 passing case executions**.
+  Build, hard bundle/cache, runtime data/assets (961), world/FX and docs gates pass.
+  No full `npm test`, WebKit rerun, complete release gate or all-A result is claimed.
+- Owned preview PID 74124 / port 5495 stopped after testing. All owned runners
+  and shared-client browsers exited; a process check found no remaining Bird Squad
+  Playwright workers. The user's preview PID 74740 / port 5173 was preserved.
+  Ignored screenshots, reports and build logs remain as local evidence; no branch,
+  commit, push, deployment or external message was created.
+
+## 2026-10-17 — Shared criteria: tokens, readable controls and input safety
+
+- Completed acceptance item 21; 36/60 verified, 24 open. Shared typography,
+  palettes, spacing, shape and contrast defaults live in pure `ui-tokens.ts`.
+  Theme re-exports preserve callers; legacy text helpers no longer default to
+  11–16px copy. Literal Arial/Georgia definitions have one source, guarded by
+  tests. The dark bird-city/tarot style and existing art remain intact.
+- Shared field/close, decision, system-menu and practice buttons now delegate to
+  `quietButton`. Added semantic destructive controls, readable disabled states,
+  persistent focus independent of hover, dynamic enable/selection painting and
+  hidden/input-disabled activation guards. Live captions survive repainting.
+  Action-focus keyboard/controller callbacks honor disabled state and release
+  their owner on close. Guide/pause/confirmation copy and spacing are larger and
+  clearer at the supported compact size. Items 22–25 remain open for exhaustive
+  bespoke-screen adoption; `docs/game/shared-ui-contract.md` defines the contract.
+- Added three token/source tests and three rendered control tests. Existing
+  deck-reader touch tests now explicitly request a touch-enabled context; no
+  product assertion was removed. Initial fixture failures were corrected (touch
+  context and an unavailable helper), not bypassed. An intermediate source test
+  also failed while its compiled test still expected the old token-file location;
+  only the subsequent frozen-source final run is acceptance evidence.
+- Token imports initially pulled the complete palette into core (31.2 KiB).
+  A font-only experiment still exceeded the 30 KiB gate by 24 bytes. Passing the
+  canonical font through existing FX/encounter options removes that dependency.
+  Final core: 30,683 bytes; entry 684.5 KiB / 182.6 KiB gzip; combined boot
+  724.3 KiB / 198.0 KiB gzip. All hard caps remain unchanged; preferred size
+  targets still warn. Candidate `index-DVS_lIuE.js`, SHA256
+  `4D67DDB45407712B00F01B0254854962FBDC4E2DCB15CA14C92EAAB17DFC6677`.
+- Final focused Chromium regression: 40/40, no retries or skips, clean exit
+  (4.5 minutes), `.artifacts/oct17-shared-accepted.json`. This covers title,
+  setup, Settings, deck readers, reward ceremonies/recovery, shared controls and
+  the existing A-grade UI suite. Build, bundle/cache, runtime data/assets (961),
+  world/FX and docs checks pass. No full `npm test` or full release result claimed.
+- Final cross-browser attempts each passed all nine bodies at all three sizes,
+  but the Windows WebKit teardown worker hung after browser exit. Workers 46100
+  (parent 72900) and 57968 (parent 33304) had no browser children and were stopped
+  only after identity checks. Earlier intermediate worker 53648 (parent 77308)
+  needed the same cleanup. Logs retain this limitation; these are not clean
+  cross-browser release passes. A separate intermediate 9/9 run exited cleanly
+  but is not promoted to final-candidate evidence. Item 58 stays open.
+- Reviewed final compact/high-resolution guide and confirmation captures, the
+  live in-app title/guide, and shared-client combat screenshot/text state. The
+  unmodified shared client clicked Resume and returned to full-art battle with
+  no error artifact (`.artifacts/oct17-shared-final-client`). Its browser and the
+  temporary in-app tab were closed. Owned preview 59004 was stopped; final checks
+  found no port-5495 listener or owned test workers. Port 5173 / PID 74740 remains.
+  Disposable scratch-build removal was policy-blocked; those rebuildable outputs
+  and diagnostic logs remain under ignored `.artifacts`, not running processes.
+- Stayed local: no branch changes, commit, push, deployment or external writes.
+  Preserved inherited work and the user's existing port-5173 preview.
+
+## 2026-10-17 — Cross-district rollout and shared reward presentation
+
+- Expanded verification of the Rooftop pilot to every authored district and
+  encounter. Candidate `index-DcFDPhgt.js` passed 24 affected-flow tests, zero
+  retries, with clean runner exit: all 80 encounters / 240 captures, all 110
+  cards in four states at three sizes (1,320 layouts), large/remapped hands,
+  hand fallback, deck/Collection late-art continuity, and reward presentation.
+  Report: `.artifacts/oct17-rollout.json`.
+- Card rewards and Preens now share a measured card face with the fallback:
+  contained art, independent name/cost/family/rules slots, 21px primary and 19px
+  secondary authored text, and explicit Read / Select / Confirm controls.
+  Waymarks and the deck-impact inspection panel use the same readable scale.
+  Removed stretched choice borders, crowded decorative chip/Skip icons, the
+  automatic floating hover dossier, and duplicated Preen delta text. Preserved
+  the dark bird-city/tarot style and canonical illustrations; no art was replaced.
+- Reward hints follow the active input device and remapped bindings. Read,
+  cancellation, focus changes and art recovery must never claim a choice.
+  Existing smoke assertions now require the new presentation, while preserving
+  state, target separation, commitment and save-safety checks.
+- Cross-browser fault injection exposed redraw-driven failed-image retries.
+  Reward art now tracks attempted keys separately from failures; unrelated
+  redraws cannot restart a failed request, including the load-error/observer
+  timing window. A visible, touch-sized Retry control and the keyboard/controller
+  Read action explicitly retry. Recovery updates art in place and preserves the
+  armed choice. The same behavior is wired into the renderer fallback.
+- The common presentation is a type-only-dependency `reward-card-face` chunk.
+  Its 4 KiB cap and the combined hand/ceremony/face 24 KiB gate prevent extraction
+  from silently enlarging the former 10 + 14 KiB allowance. Existing hard caps
+  remain unchanged. Final candidate is `index-1f5OIFNg.js`, SHA256
+  `E6A7AA5B9B33803676BA65610236E88184A1224F869323D57B895DF38851692A`.
+  Entry 685.0 KiB, combined boot 724.8 KiB; preferred size targets still warn.
+- Intermediate evidence is not promoted to final acceptance: the first
+  cross-browser reward run passed 21 bodies and failed three real art-retry
+  assertions. Its completed teardown worker 68408 (parent 60752, no browser
+  children) was identity-checked and stopped. A transient Windows ENOTEMPTY
+  build-output cleanup error cleared after stopping the owned preview and
+  rebuilding; source/type checking had passed. A subsequent 25/27 run exposed
+  two WebKit test waits that observed texture insertion before the asynchronous
+  slot repaint. Waiting for the actual unchanged-slot/ready/state assertion
+  resolved that race without dropping any acceptance condition; its completed
+  teardown worker 30752 was identity-checked and stopped.
+- Final candidate verification: 27/27 Chromium/Firefox/WebKit reward/fallback
+  cases passed without retries or skips and with clean exit in 2.5 minutes
+  (`.artifacts/oct17-qualified.json`). All 10 targeted legacy regressions passed
+  with clean exit (`.artifacts/oct17-recovery-regression.json`). These cover
+  three viewport sizes, geometry, normal/fallback art retry, intentional
+  commitment, remapped input, Collection/Hunt, Waymarks and full inspection.
+  The shared web-game client separately exercised Read without commitment and
+  an actual enemy turn; screenshots and state were inspected in
+  `.artifacts/oct17-recovery-client` and
+  `.artifacts/oct17-recovery-combat-client`, with no console-error report.
+  Production build, hard bundle and cache gates passed; runtime/data/assets
+  (961)/world/FX/docs checks passed during this pass. No full-release pass is
+  claimed. All work remains local; no commit, push or deployment.
+- Cleanup verified: owned previews 76576/8476/43352 stopped and ports 5495/5496
+  closed; final test runners exited cleanly with no matching owned workers.
+  The temporary in-app browser tab was closed. Pre-existing preview 74740 on
+  port 5173 and unrelated project processes were preserved.
+- Remaining scope stays 35/60 verified, 25 open: this advances global layout,
+  identity, loading and UI criteria, but does not close all screens, the full art
+  inventory, full flights, or fresh full-release regression. Next: finish those
+  cross-surface criteria, not another unsupported blanket all-A regrade.
+
+## 2026-10-17 — Rooftop pilot: readable hand states and resilient artwork
+
+- Kept the requested dark streetwear/tarot style and tested one district first:
+  Roof Rat, Gutter Baron and Tar-Crowned Crow. Card illustrations now use uniform
+  scaling. Molt, Retain, discard and Flow cues have reserved, separated rows and
+  readable shared typography; reinforced family shapes no longer add tiny text.
+  The explicit Molt lesson remains distinct from an already-active Molt state.
+- The failed-hand-renderer fallback now preserves real artwork, stable card slots,
+  readable rules and explicit loading/unavailable states. Successful late loads
+  recover in place without changing the hand, selection, turn or energy. A failed
+  image stays unavailable instead of reverting to Loading when another finishes.
+  Full rules can load independently when the hand renderer fails; its overlay
+  blocks background gameplay and preserves the pending decision when closed.
+- Consolidated 25 identical deferred module loaders into a typed, retryable
+  helper. Imports remain lazy, successful requests retain identity, concurrent
+  requests share a promise, and failed requests can retry. Passing typography
+  into the card reader avoids moving theme constants across chunk boundaries.
+- Current candidate `index-CMqM1avE.js`, SHA256
+  `1DBE0A20FE2C53E653FCE25AA3867C2A187CDA84B514ED7B47CD81E569C145E4`:
+  33/33 focused checks pass on Chromium, Firefox and WebKit with zero retries,
+  failures or skips and clean runner exit. Tests cover 2560×1600, 1440×900 and
+  1000×560; real authored enemy rosters, badge stress states, hand paging,
+  discard controls, failed art/chunk recovery, reader isolation and enemy turns.
+  Evidence: `.artifacts/oct17-verified{.json,.log}` and screenshot directory.
+- The required shared browser client completed a real-input enemy turn with
+  full art, no failed asset groups and no error artifact; screenshot and text
+  state were inspected in `.artifacts/oct17-client`. Final elite and boss
+  captures were visually inspected, including the minimum landscape size.
+  The in-app-browser connection timed out and left no tab; it is not a pass.
+- Build, unchanged hard bundle budgets, runtime/data, runtime assets, local
+  cache policy and docs checks pass. Entry is 700,972 bytes, combined boot
+  724.4 KiB, hand renderer 10,191 bytes and card reader 4,094 bytes. Preferred
+  entry/boot targets still warn; no startup/FPS improvement is claimed.
+- This is pilot evidence and partial progress on compact/shared UI and art
+  recovery. The ledger remains 35/60 verified, 25 open. Do not expand this into
+  a game-wide A or release claim: full-flight, all-presentation and release
+  regressions remain necessary. No commit, push or deployment was requested.
+- Adjacent Codex grid and empty/full Flight Record coverage also passes: 6/6
+  Chromium cases, clean exit (`.artifacts/oct17-adjacent{.json,.log}`). Both
+  focused runners and the shared client exited naturally. The owned Vite preview
+  PID 64248 was identity-checked and stopped; port 5494 is no longer listening.
+  No test server or browser was intentionally left running. Existing unrelated
+  working-tree changes and art replacements were preserved.
+
+## 2026-10-16 — Combat art grounding and state-authoritative feedback
+
+- Reviewed all 64 enemy cutouts and five leaders in the existing dark streetwear
+  style. Added normalized contact anchors for tails, wing tips and carried tools
+  that should not define the floor; remaining cutouts use measured alpha bounds.
+  Soft two-layer shadows now belong to the stage, independent of breathing and
+  casting poses. Leader shadows sit at the feet instead of below their art.
+  Restrained ambient screen tint lifts dark enemy feather/workwear detail.
+- Visual inspection caught the optional objective plaque covering right-side
+  enemy heads in district encounters. It now uses the quiet upper-left lane and
+  yields to first-flight guidance and enemy-turn information. Full-cast and
+  authored-encounter geometry now include that plaque, not just health panels.
+- Resonance feedback and history report the actual capped meter gain, not the
+  requested gain. A full meter produces a neutral status and no false surge.
+  Added 24 starting-value/gain combinations in normal and reduced motion.
+- Both deterministic art QA sheet makers now alpha-composite onto their dark
+  background before RGB export. Invisible RGB values previously produced false
+  red stripes in transparent source pixels. Production artwork is unchanged;
+  a synthetic-alpha/proportion regression exercises both sheet makers.
+- Consolidated duplicate rank badge, text and enemy-identification code to keep
+  the foreground under its existing 8 KiB cap. Candidate `index-vTW5YUtZ.js`
+  has an 8,090-byte foreground module and a 10,221-byte HUD module; no budget,
+  chunk boundary, preload, dependency, combat balance or timing was changed.
+- All 90 game test bodies passed with zero failures, retries, flakes or skips
+  (`.artifacts/oct16-combat-closure.json`): all 80 authored encounters, all 64
+  enemy cutouts, all five leaders, three browsers and three viewport sizes.
+  The runner required owned-worker cleanup after its browsers exited; this is
+  not clean unattended release evidence. Items 28–29 are verified for their
+  implementation/visual scope: the acceptance ledger is now 35/60, with 25 open.
+  The shared browser client completed a real-input enemy turn on this exact
+  build with full art, no failed asset groups and no error artifact; captures
+  are in `.artifacts/oct16-combat-closure-client`.
+- Earlier candidate runs passed game assertions but repeatedly left an owned
+  Playwright worker alive during teardown, on both Node 20 and Node 24. Those
+  workers were identity-checked and cleaned up; do not count their eventual
+  reports as clean unattended shutdown evidence. Diagnostics are retained in
+  `.artifacts/oct16-worker-cleanup-notes.md`; release items 58–60 remain open.
+  Build, runtime/data/asset/cache/docs gates and the canonical 56 Minor/22 Aviary
+  frame checks pass; preferred boot-size targets still warn. The final owned
+  test server is stopped after verification; screenshots/logs remain as evidence.
+
+## 2026-10-16 — Deeper Folio tools and menu item 53 verified
+
+- Flight Lab now has separate hand/study/tools views; hand paging reveals the
+  hand instead of changing hidden state. Collection Signals uses four readable
+  category tabs. Revision Trail pages every metadata/card change independently
+  of its revision list. Tuning Bench gives the source and replacements separate
+  readable space. Existing ownership, saves, immutable revisions, launch rules,
+  privacy and dark street/tarot styling are preserved.
+- Shared portrait slots preserve geometry on loading/failure and contain images
+  without stretching. Failure labels wrap as whole words. Revision announcements
+  now describe the visible change rather than reread all changes; text state
+  exposes the active view/category/change. Singular-count copy is corrected.
+- New tests measure primary/secondary CSS font floors, 44px touch targets,
+  text/control/art containment and overlap at 2560×1600, 1440×900 and 1000×560.
+  They exercise maximum Folios/history, every change, default/remapped keys,
+  touch, virtual controllers, empty definitions, full libraries, write failures,
+  delayed/failed art and recovery. Existing deck-model/launch/restore/tuning
+  assertions remain; only deliberate layout expectations were updated.
+- Broad final menu matrix: 75/75 passed with zero retries/skips on
+  `index-Cas5JsyN.js`, SHA256
+  `F82EDFF7A43B3A6DDA1AB898CDC22C2A77D7A05E3D90EF8A9043F52B6FDD7A3C`.
+  Evidence: `.artifacts/oct16-menus-verified{.json,.log}` and screenshot directory.
+  After a copy-only singular-count correction, all 21 affected cases pass on
+  `index-Bdg3Pk9y.js`, SHA256
+  `378FF52F1382FDE1F6B4CAEEF19B3A52251EAC76305749B88807FBFE2FDDBB4D`.
+  Evidence: `.artifacts/oct16-menus-copy-final{.json,.log}` and screenshot directory.
+  These are separate artifact-specific runs, not 96 distinct tests or a fresh
+  full-release pass. Screenshots were visually reviewed in all three engines.
+- Build, runtime/data/asset/world/FX checks, hard bundle limits and local cache
+  validation pass; preferred boot-size targets still warn. Shared game-client
+  clicks and image/text state pass without an error artifact in
+  `.artifacts/oct16-menus-copy-client`. Earlier failed reports are retained:
+  two stale geometry assertions and an invalid `cups_king` test fixture (fixed
+  to canonical `cups_elder`); no product assertion or gate was weakened.
+- Item 53 is checked. Ledger: 33/60 verified, 27 open. Remaining work includes
+  global compact/shared UI, card/art/combat presentation and release qualification
+  (11–15, 17–25, 28–29, 41–45, 55–60). This is not an all-A assessment.
+  No commit, push or deployment was requested or performed in this pass.
+- Cleanup: stopped owned preview PID 9032 after verifying its exact command;
+  port 5490 has no listener. Test clients/browsers have exited; evidence is retained.
+
+## 2026-10-16 — Starter Folios, Field Record and private editor readability
+
+- Partial item 53: separated starter choices from exact ownership/build
+  requirements and reflowed Field Record into readable aggregate results,
+  private notes and five recent exact-match flights. Notes/code entry use
+  isolated quiet panels with larger headings and instructions; the dark theme
+  and existing ownership, revisions, saved card order and privacy remain.
+- Notes save failures now explicitly say the previous notes are unchanged.
+  Starter failures also preserve the collection and expose the blocked action.
+  Missing starter details show all unique missing card names.
+- New tests cover ready/locked/missing/full starter states, 32-character names,
+  240-character notes, 50-flight history, empty history, code validation,
+  cancellation, multiline notes, failed account writes, real touch,
+  default/remapped keyboard and virtual-controller Back at 2560×1600,
+  1440×900 and 1000×560. They measure text/control/editor bounds and overlap.
+  Existing starter, Field Record and BSF1 privacy checks remain intact; only
+  the starter button's intentional width assertion changes from 190 to 390.
+- Candidate `index-DFWXdm5H.js`, SHA256
+  `860F5EFE07E5B66A26194357F55AE223B55BD145BB2EB83F78895EB162FA925A`.
+  All 21 distinct focused Chromium/Firefox/WebKit cases have passing evidence:
+  12 layout/input matrix cases in `.artifacts/oct16-starter-final` plus nine
+  existing regressions in `.artifacts/oct16-starter-regression`; matching JSON
+  reports are retained. Screenshots at all three resolutions were visually
+  reviewed, including empty/full/blocked/editor/save-failure states.
+- The initial combined run passed 20 cases and exposed one WebKit test timing
+  race: the Flight Lab Tools control existed before Phaser registered it for
+  hit testing. `clickFlightLabTool` now awaits rendered frames before actual
+  clicks. All nine affected regressions then pass with zero retries/skips;
+  assertions and existing test budgets are unchanged. The initial failed
+  report is retained, not overwritten or treated as a full pass.
+  Three additional WebKit repetitions pass in
+  `.artifacts/oct16-starter-stability.log` without retries.
+- Build, runtime data/assets/world/FX, hard bundle limits and local cache checks
+  pass. Profile chunk is 155,647 bytes (previous pass 158,890); preferred
+  entry/combined-boot targets still warn. Shared gameplay client evidence in
+  `.artifacts/oct16-starter-client` matches actual starter-picker clicks and
+  has no error artifact. No commit/push/deployment or release-gate changes.
+- Documentation and whitespace checks pass. Owned preview PID 42340 stopped;
+  port 5490 has no listener. All test runners/browser clients exited. Preserved
+  unrelated processes and the inherited worktree/art changes.
+- Ledger stays 32/60 verified, 28 open. Flight Lab, Collection Signals, Revision
+  Trail and Tuning Bench remain within item 53, alongside art/global/full-release
+  acceptance elsewhere. No all-A completion claim.
+
+## 2026-10-16 — Folio Organizer and Identity readability
+
+- Partial item 53: replaced the tiny-text Organizer/Identity layouts with quiet
+  shared surfaces, readable choices, explicit selected/focused states, larger
+  actions and an isolated text-editing curtain. Existing dark bird-city/tarot
+  theme, deck ownership, private data, share-code exclusions and backups remain.
+- Restored the cover's portrait aspect ratio instead of stretching it into a
+  landscape slot. Loading/failure retain the same bounds and a clear recovery
+  instruction. Sleeve symbols and text now stay within padded card surfaces.
+- Save failures now explain that the existing Folio is unchanged. Previous/Next
+  Cover act on the first tap even after browsing sleeves, without saving the
+  preview or playing a duplicate confirmation cue.
+- New tests exercise long names/descriptions, selected/failed/label-limit
+  states at 2560×1600, 1440×900 and 1000×560, measured text/control geometry,
+  contained portrait art, real delayed/failed requests and reopen recovery,
+  rejected localStorage writes, editing click-through protection, actual touch,
+  default/remapped keyboard and virtual-controller Back. Existing private
+  identity/organization immutable-copy regressions are retained.
+- Final candidate `index-BH7nN44Z.js`, SHA256
+  `F911A4C38FB64D03E198B801709B480095D72B578A38C4EF8C9B14A09F7AFF2E`,
+  passes 12 focused cases across Chromium/Firefox/WebKit, zero retries/skips.
+  Evidence: `.artifacts/oct16-folio-final` and its JSON report. The shared
+  gameplay client opens Folios → Organizer → Identity using actual clicks;
+  matching image/text state and no error artifact in
+  `.artifacts/oct16-folio-client-final`. Final screenshots were reviewed at
+  2560×1600, 1440×900 and 1000×560, including failed-art and editing states.
+- Exploratory runs caught a fixture-normalization mismatch, sleeve symbols and
+  descriptions too close to their bounds, and a WebKit input-list timing race
+  after asynchronous art redraw. Fixed the fixture, padded the sleeve contents,
+  and made the test await the rendered input-registration frame before tapping.
+  None of the exploratory results are substituted for the final suite.
+- Build, runtime data/assets/world/FX, hard bundle limits and local cache checks
+  pass. Entry 701,180 bytes; lazy Profile chunk 158,890 bytes (down from 161,744
+  before this pass). Preferred entry/boot-size targets still warn. The new
+  long matrix/fault-injection cases have their own 120-second budget; existing
+  release gates and test budgets were not changed. No commit/push/deployment.
+- Documentation and whitespace checks pass. Owned preview PID 65352 stopped;
+  port 5490 has no listener. Test runners and browser clients exited normally.
+  No unrelated process or inherited worktree change was removed.
+- Ledger remains 32/60 verified, 28 open: Flight Lab, Collection Signals, Field
+  Record, Revision Trail, Tuning Bench, templates, notes and code-entry screens
+  still need treatment. Full-regression, art and global acceptance remain open.
+
+## 2026-10-16 — Flight Log, save-data and Flock Stats readability
+
+- Partial progress on item 53 and shared readability/control criteria; ledger
+  stays 32/60 verified, 28 open. Advanced Folio Organizer, Identity, Flight Lab,
+  Collection Signals, Field Record, Revision Trail, Tuning Bench, templates and
+  code-entry screens remain open. Do not treat these changes as all-A closure.
+- Reflowed Flight Log into a seven-flight list, readable summary and direct
+  review action. Enlarged paging/Back controls, clarified selected-flight
+  hierarchy and corrected singular card/stop counts. Save Data separates
+  backup/restore, confirmation preview and optional local ratings; score targets
+  have gaps, readable labels and distinct focus. Removed the redundant Flock
+  Stats eyebrow and enlarged its close hint. Kept the existing dark theme.
+- Candidate `index-CKGd5mr-.js`, SHA256
+  `3AC147EAA421283B8449CFB7959FC867F4E2BFA8BFA92AEB3811EDF33E709592`.
+  All 16 focused Chromium cases and six Firefox/WebKit cases pass, zero retries
+  or skips. Includes empty/50-flight histories, three viewport sizes, five
+  overlay states, text/target geometry, actual touch Back, exact focus return,
+  one close cue, history preservation, backup download, invalid-file protection,
+  restore transaction, local export, history review/sharing and existing combat
+  history/Flock Stats input ownership. Tests caught a lost backup confirmation
+  cue during the rewrite; restored it and covered Back's close cue explicitly.
+- Earlier exploratory tests were disrupted by rebuilding served chunks while
+  tests were active. Their results are not accepted as final evidence. The
+  passing final suites used one frozen build. No release gates were weakened.
+- Shared skill client opens Save Data with actual pointer input; screenshot and
+  text state agree, with no error artifact. Evidence under
+  `.artifacts/oct16-record-results`, `.artifacts/oct16-record-matrix` and
+  `.artifacts/oct16-record-client-final`, plus matching JSON reports.
+- Build, runtime data, runtime/world/FX assets, hard bundle limits and local
+  cache checks pass. Entry 701,180 bytes; lazy profile chunk 161,744 bytes.
+  Preferred entry/boot-size targets still warn. No art, balance, timing,
+  dependencies, budget changes, commit, push or deployment in this pass.
+- Final six-case Chromium/Firefox/WebKit layout rerun waits for the opening
+  fade before capture and passes with zero retries/skips. Ninety captures under
+  `.artifacts/oct16-record-layout-final` cover the five states at three sizes
+  for empty and populated histories; final screenshots visually reviewed at
+  2560×1600, 1440×900 and 1000×560. Documentation and normal repository
+  whitespace checks pass. Owned preview PID 69152 stopped; browser clients and
+  test runners exited normally. No unrelated processes were stopped.
+
+## 2026-10-16 — Actionable combat HUD readability
+
+- Closed acceptance item 26; ledger now 32/60 verified and 28 open. This is not
+  an all-A claim. Global typography, art audit, overlay consistency and full
+  release qualification still require work; preserve every unchecked item.
+- Enlarged combat resource labels/counts, Cohesion/Flow/forecast text and suit
+  bonuses; kept secondary inventory information muted. Reflowed Roost into a
+  clear action/consequence stack with a non-actionable enemy-turn state.
+  Replaced tiny phase/move/Hustle labels with a readable status strip. Optional
+  goals yield during enemy actions; first-flight guidance moves clear of the
+  opening enemy art and uses concise sentence case. Existing dark theme stays.
+- Candidate `index-gTdOy51e.js`, SHA256
+  `7F28E9D6E90B1C3E4829923B7DFDEB016877A881AC4DD4F8D8E69363072632C8`.
+  Six combat layout/interaction cases and four guidance/timing regressions pass
+  without retries/skips. Seven turn states × three viewports plus 24 goal/status
+  strings cover containment, separation, CSS text floors, zero energy, maximum
+  fixture values, four suit bonuses and long move excerpts. Existing tests cover
+  normal/boss stages, one-to-four enemies, selection and turn readiness.
+- Shared skill client performs a real Roost click: enemy damage resolves,
+  Regen restores two HP, Beat 2 starts at 32/38 HP and 3 Wingbeats. Screenshot
+  and text agree; no error artifact. Final captures in
+  `.artifacts/oct16-combat-client-final`; measured screenshot suite in
+  `.artifacts/oct16-combat-hud-results`, reviewed at 2560×1600, 1440×900, 1000×560.
+- Build, runtime/assets/world/FX, hard bundle limits, local cache and whitespace
+  pass. HUD renderer 10,211/10,240 bytes; entry 701,180 bytes. Preferred boot-size
+  warnings remain. No art, balance, timing, dependency or budget changes.
+  No commit/push/deployment was requested or performed in this pass.
+- Cleanup confirmed: owned preview PID 37456 stopped, port 5490 free; both
+  Playwright runners and the shared client exited normally with browsers closed.
+
+## 2026-10-16 — Reward review typography and hierarchy
+
+- Follow-up to the event lifecycle pass: screenshot inspection found undersized
+  confirmation, consequence, card/Supply name and reader labels. The reward
+  review now uses shared 21px primary / 19px secondary tokens, a single heading
+  and concise guidance instead of a tiny eyebrow and duplicate input prose.
+  Enlarged choice hints and shifted build-advice rows preserve their space.
+  Full rules still paginate; abbreviated summaries explicitly show ellipses.
+- Candidate `index-C_sMyOTy.js`, SHA256
+  `42ECADA656D9ED3F8AE97102A0759450E7B251A04A9A553315DF09CCD82178FC`.
+  Build, runtime data/assets/world/FX, documentation, hard bundle limits,
+  local deployment-cache validation and whitespace checks pass. Preferred
+  boot-size warnings remain; no thresholds or assets were changed.
+- Six focused readability cases pass on the production build: plain effects,
+  mixed effects, card selection, Supply selection, Waymark and no-reward exit.
+  Each is measured at 2560×1600, 1440×900 and 1000×560, then stressed with long
+  choice/effect text and eight projected rows. The reader preserves every word,
+  actions meet the 44px target floor and remain separated, and no resources are
+  spent by inspection. The event catalog additionally checks zero-effect
+  choices for unchanged resources and repeated-decline protection.
+- The unchanged shared game client performs an actual Inspect click:
+  `.artifacts/oct16-reward-client/shot-0.png` and `state-0.json` agree on the
+  complete read-only healing projection; HP 20 and Scrap 999 remain unchanged.
+  No browser-error artifact was emitted. Initial compact card/Supply screenshots
+  and the client image were visually inspected.
+- Final production regression: **33/33 Chromium passed, zero retries/skips,
+  6.1 minutes**, plus **4/4 Firefox/WebKit recovery checks**, zero retries/skips.
+  Includes all authored event outcomes, real commit/reload flows, all 58 Waymark
+  descriptions and 31 Supply descriptions, long/unbroken text, complete
+  consequences, pointer, emulated touch, remapped keyboard, virtual controller,
+  held-input guards, modal ownership, and preservation of armed choices.
+  Final high-resolution, ordinary and compact screenshots were inspected,
+  including the long-name/long-body Supply reader. No release gate was weakened.
+- Commands: `npx playwright test --config .artifacts/oct16-reward-readability.config.ts`
+  and `npx playwright test --config .artifacts/oct16-event-recovery-browsers.config.ts`.
+  Results: `.artifacts/oct16-reward-readability-results.json`,
+  `.artifacts/oct16-event-recovery-browsers-results.json`; screenshots:
+  `.artifacts/oct16-reward-readability-results`. These are focused suites,
+  not the still-open full release regression. Earlier 24-case event/deck evidence
+  belongs to the previous build and is recorded separately below.
+- Owned preview PID 62076 was stopped after both runners exited successfully;
+  port 5490 has no listener and no matching owned test/client process remains.
+  Existing user changes/art replacements are preserved. No commit, push or
+  deployment was performed.
+- This is partial progress on shared typography/compact presentation, not a
+  whole-game closure. Acceptance remains **31 verified / 29 open**.
+
+## 2026-10-16 — Event outcomes and native recovery input isolation
+
+- Continuing acceptance item 50. Found the event reward-module loading/failure
+  screen had tiny text, no pointer/touch exit, and misleading close/reopen retry
+  guidance. It now shares a readable 26/19px status panel with Deck Review,
+  a 58px Close target and the existing confirmed checkpoint-reload guidance.
+- The new failed-module test reproduced native recovery clicks reaching
+  Phaser's window mouse listener: Reload options could silently choose the
+  Basin's Move on row and overwrite the checkpoint before reload. Recovery
+  now stops mouse, pointer, touch and wheel propagation as well as keyboard
+  propagation, without preventing native button activation.
+- Production candidate `index-Cykjfzi9.js`, SHA256
+  `109D610D16B7E20372A80A2FA544A4EA3FC8D300D3C9D1B2017B1BCE405E0707`.
+  Build, docs, runtime data, runtime assets/world/FX, bundle hard caps and local
+  deployment-cache checks pass. Entry 684.8 KiB; combined boot 742,027 bytes
+  (724.6 KiB), below the unchanged 725 KiB hard cap. Preferred targets remain.
+- Initial focused evidence: seven Chromium cases pass; four Firefox/WebKit
+  cases pass and both runners exit cleanly. The native-panel regression covers
+  real mouse, touch and keyboard cancellation and confirmed reload without
+  checkpoint changes. Exhaustive transaction fixtures cover all 38 Signal
+  definitions and service choices under funded, poor and full-inventory states,
+  including the Waymark-gated choice and extra cache drawer.
+- The state matrix uses real choice/projection/commit/cancel implementations;
+  only rendering and scene scheduling are isolated for this matrix. Separate
+  browser flows exercise actual UI, scene transitions and saved-run reload.
+  Early fixture issues (a helper belonging only to smoke.spec.ts, missing run
+  arrays and double-counting a card in the test oracle after picker cancellation)
+  were corrected without changing game expectations or weakening assertions.
+- The unchanged shared game client performs a real Close click while the
+  reward module is delayed. Before/after screenshots and text show return to
+  the unchanged event choices, no resource spend and no error artifact:
+  `.artifacts/oct16-event-client` / `.artifacts/oct16-event-client-before.png`.
+- Final broader regression: **24/24 Chromium passed, zero retries, 5.0 minutes**.
+  Catalog totals: 168 options / 504 state fixtures, 38 locked cases, 340 previews
+  cancelled and committed, 44 picker rollbacks; no outcome mismatches.
+  Together with four Firefox/WebKit checks, this closes item 50: **31 verified /
+  29 open**. Final 2560×1600, 1440×900 and 1000×560 images were inspected.
+  Preview PID 71088 was stopped before the following readability build.
+  The next pass addresses undersized reward-review text observed in these images.
+
+## 2026-10-16 — Readable deck browser and safe Folio saving
+
+- Further partial work on 11–12, 14–15, 21–25, 53, 55 and 57. Global acceptance
+  stays **30 verified / 30 open**; no broad checkbox is closed by this surface.
+- Replaced seven touching rows with six separated rows, 21px primary / 19px
+  secondary text, shared quiet toolbar/scroll/Pin controls, explicit long-name
+  omissions and a complete search query in the footer. Pin/Unpin stays on one
+  line, including selected bold text. Kept the existing dark theme and art.
+- Folio saving reports loading, saved, full and retry states. Duplicate input
+  during lazy loading coalesces; close/reopen and scene restart invalidate the
+  pending intent. Failed storage can retry without falsely reporting success.
+  Pure record construction moved into the existing lazy saved-decks module;
+  archives, six-active-record capacity and caller data are preserved.
+- Reader callbacks honor pause/Settings ownership. Loading and failure panels
+  now have readable copy and touch-sized Close. Failed imports use the existing
+  confirmed Reload options recovery with checkpoint preservation, rather than
+  suggesting a close/reopen retry that Chromium's failed-import cache prevents.
+- Final candidate **`index-CsRPilbq.js`**, SHA256
+  `D11B095F8EBE8C10341167328C8E34F62CF94862724004AD876F26762EFD8344`:
+  **25/25 focused tests pass, zero retries, 3.0 minutes**. Nine new cases cover
+  geometry, long/empty/max states, emulated touch, keyboard wrap, delayed save
+  cancellation, storage recovery, modal guards and delayed/failed code loading.
+  Existing portrait continuity, keyword paging, recovery and deck smoke cases
+  pass, including remapped keys, virtual controller and pointer flows.
+- Commands: `npm test -- -- --config .artifacts/oct16-deck-browser.config.ts`
+  and `npm run validate -- -- --config .artifacts/oct16-deck-browser.config.ts
+  --grep "route deck review"`. The latter passes all static stages plus **2/2
+  explicitly scoped sequencing cases** (also in the 25-case run), not full
+  sequencing or full release regression. Build and `git diff --check` pass.
+  Final JSON: `.artifacts/oct16-deck-browser-results.json`; console logs:
+  `.artifacts/oct16-deck-browser-final-{build,tests,validate,bundle}.log`.
+- Reviewed actual screenshots at 2560×1600, 1440×900 and 1000×560, including
+  long titles, Unpin, empty search, failed saves and delayed/failed modules.
+  Images: `.artifacts/oct16-deck-browser-results`. The unchanged shared browser
+  client completed two real Down actions (scroll 1 then 2), with matching
+  screenshot/text state and no error artifact:
+  `.artifacts/oct16-deck-browser-final-client`. In-app Browser returned
+  ERR_BLOCKED_BY_CLIENT for localhost; its created blank tab was closed.
+- Entry 685.1/182.6 KiB minified/gzip; combined boot **742,365 bytes**, below
+  the unchanged 742,400-byte cap. Preferred 675/710 KiB targets remain open.
+  An over-budget intermediate candidate was rejected; lazy record construction
+  restored compliance without raising gates or reducing artwork quality.
+- Exploratory harness mismatches (old seven-row/Pin dimensions, empty-reader
+  display-list scope, nested npm forwarding and a preview/build launch race)
+  were corrected; all relevant assertions remain in the final pass. Visual
+  inspection also caught and fixed Unpin wrapping. The final production build
+  finished before preview/testing. Earlier candidate passes are not substituted
+  for the final candidate. No fresh full-suite or all-A claim is made.
+- No commit, push or deployment. Owned preview PID 66172 was verified and
+  stopped; port 5490 is released. Test/client processes finished and no matching
+  owned Node processes remain. The in-app tab was closed.
+
+## 2026-10-16 — Stable deck portraits and readable comparison pages
+
+- Continuing open items 11, 19, 25 and 45; the global ledger remains 30/60.
+- Found portrait completion rebuilding deck readers and failed requests feeding
+  back into redraw/retry. Detail and comparison portraits now load in reserved
+  slots, update in place, preserve aspect ratio, and ignore destroyed slots.
+  Full-art failure retains any available compact art; empty detail slots show
+  readable loading/unavailable states. Explicit reopening can retry.
+- Increased detail/comparison primary text to at least 21 stage pixels and
+  secondary text to 19; kept measured pagination rather than shrinking rules.
+  Comparison paging now honors pause, Settings and search input ownership.
+- Final candidate `index-CtDVA92k.js`: **18/18 focused cases pass, zero retries,
+  2.2 minutes**. Seven new cases verify delayed/failed detail and comparison art,
+  stable object identities/bounds/page/run state, bounded retries, successful
+  explicit reopen, no resurrection after close, long text, CSS text floors and
+  modal ownership. Complete 90-effect and 55-bonus fixtures are reconstructed
+  across pages without omissions. Existing keyword, Collection, reward-fallback,
+  image-observer and deck-navigation cases also pass, including remapped keys,
+  virtual controller, pointer and emulated touch.
+- Build, docs, runtime data/assets/world/FX, bundle hard caps and local cache
+  checks pass. Entry 684.5 KiB / combined boot 724.4 KiB; preferred 675/710 KiB
+  warnings remain. No release gates or hard caps were changed. This is focused
+  evidence, not a fresh full-release regression.
+- Actual screenshots reviewed at 2560×1600, 1440×900 and 1000×560, including
+  long rules and unavailable art. Unchanged shared game client completed two
+  real Next-button bursts (pages 2 and 3), with matching text/screenshot state
+  and no browser-error artifact. Evidence: `.artifacts/oct16-deck-art-verified-results`,
+  `.artifacts/oct16-deck-art-verified-results.json`,
+  `.artifacts/oct16-deck-art-verified-client` and verified validation logs.
+- Exploratory failures were corrected: an early preview/test launch raced the
+  build; long-text checks initially treated wrapped newlines as omitted text,
+  used a Preen view that intentionally replaces passive stats, and counted a
+  map label behind the opaque reader. Final tests scope the actual display list
+  and assert complete normalized content, retaining all geometry checks.
+- No global checkbox promoted: other card surfaces, compact menu controls,
+  art review, deeper menus and release qualification still require work.
+  No commit, push or publication. Owned browser/test processes completed;
+  preview PID 65692 stopped and port 5490 released.
+
+## 2026-10-07 — Complete, input-safe map inspection
+
+- Closed item 32: **30/60 verified, 30 open**. A applies to the scoped node
+  inspection implementation, not the entire game or release qualification.
+
+- Added a read-only map dossier with named stop types, route availability,
+  complete gains/risks, existing canonical icons and paginated long text.
+  Mouse/touch, remapped keys, reserved F2 fallback and virtual controller can
+  inspect without selecting a destination, travelling or spending resources.
+- Added modal input guards, listener cleanup, readable loading/failure surfaces
+  and narration. Late code loading cannot reopen a closed reader; an explicitly
+  reopened reader after a scene restart can finish loading normally.
+- Initial four-district/three-viewport matrix passed. A stale selectable-set
+  test fixture was corrected to follow a real graph path, matching game state.
+  The full matrix was split into district cases after the original aggregate
+  exceeded its timeout; all nodes, inputs and assertions are retained.
+- Catalogue seeds are now deterministic and include all eight types: valid
+  random districts can omit optional rivals. In-app review also caught the
+  Inspect control overlapping the Collection shortcut; a clearance assertion
+  now covers both it and every node hitbox.
+- Kept all existing bundle caps. Reader-only route adaptation now lives in its
+  lazy module after the first loading/error surface exceeded combined boot by
+  0.2 KiB. Candidate BaBVLBSH passes at 684.6 KiB entry / 724.5 KiB combined;
+  inspector 4.2 KiB has a new 5 KiB cap. Preferred targets remain open.
+- Final candidate `index-DvBUtnbY.js`: 17/17 focused map/preparation/state cases
+  pass with zero retries in 4.9 minutes, including all eight node types across
+  all districts and three viewports. CSS text floors, 44px targets, containment,
+  map-control clearance, long text, current/completed stops, all four input modes,
+  remapped I/F2, reduced motion, pause, held confirm and loading lifecycles pass.
+- Visually inspected 2560×1600, 1440×900 and 1000×560 captures, including final
+  in-app title/route/F2 inspection. The unchanged skill client completed two
+  bursts with matching text state and no error artifact. Closed the owned tab.
+- Full static validation passes; sequencing was explicitly scoped to four
+  additional combat/route art-recovery and Collection-return smoke cases, all
+  passing. npm test was scoped to the 17-case config, not the full release suite.
+  No original gate or test assertion was weakened. Final entry/combined boot
+  remain 684.6/724.5 KiB; preferred targets remain open.
+- Evidence: `.artifacts/oct7-map-inspection-verified-results`, matching JSON,
+  `.artifacts/oct7-map-inspection-clearance-client`,
+  `.artifacts/oct7-map-inspection-validation.log`. No commit/push/publication.
+- Stopped the owned preview and test resources. Port 5490 has no listener;
+  no owned map-inspection runner remains. Captures are retained as evidence.
+- Next: compact/global UI items 11–15 and 21–25, card/art 17–20 and 41–45,
+  combat 26/28/29, events 50, deeper menus 53/55, release matrix 56–60 remain
+  open. Preserve inherited asset replacements/deletions and other dirty work.
+
+## 2026-10-07 — Shared title controls and complete Flight setup inspection
+
+- Closed acceptance items 51 and 52: **29/60 verified, 31 open**. The grade is
+  scoped to title controls/setup, not an all-A or release-ready claim.
+- Reused quietButton for title actions/utilities, preserving the dark theme and
+  artwork. Primary controls and setup headings/labels are 21px; touch targets
+  remain 58px. Geometry verifies 16px primary / 14px secondary CSS floors at
+  1000×560, with complete labels and no overlap at the three supported sizes.
+- Separated inspected from selected leader. Locked requirements are reachable
+  by pointer, touch, remapped keys and polled virtual controller; locked leaders
+  never become the launch selection. Narration exposes the same requirements.
+- Added a live leader/tier/length summary, explicitly labeled Start New Run when
+  a save exists. Tests verify Continue preserves the save and new launch uses
+  the configured leader/mode. Added guards for obscured title actions/choices.
+- Final candidate `index-Pm0rmXMC.js`: 24/24 focused and shared-control regressions
+  pass, zero retries, 3.4 minutes. Includes all five leaders locked/unlocked,
+  maximum tier, saved runs, reduced motion, missing/late portrait recovery,
+  optional-module failure, hidden inputs, Flock controls and existing resident,
+  Market and map regressions. No gates or expected outcomes were weakened.
+- Visually inspected 2560×1600, 1440×900 and 1000×560 captures. The unchanged
+  skill client completed two keyboard inspection iterations with no error
+  artifact. Evidence: `.artifacts/oct7-title-results`,
+  `.artifacts/oct7-title-results.json`, `.artifacts/oct7-title-client`.
+- Build, runtime data/assets, world/FX, documentation, hard bundle limits and
+  local cache validation pass. Preferred boot targets still warn: 681.8 KiB
+  entry / 721.6 KiB combined. Global acceptance/release items remain open.
+- Stopped owned previews and test resources; port 5490 released. No commit,
+  push or publication. Preserve inherited dirty files and resident replacements.
+
+## 2026-10-07 — Event situation hierarchy and restrained decoration
+
+- Added a single quiet event header pairing resident name/role with the actual
+  situation. All 38 Signals retain their authored title and prompt; other stops
+  use short bird-led context. Complete context, species and exact consequences
+  remain in the optional reader. No effect, price or reward data changed.
+- Removed free-floating procedural glow/streak decoration, extra Roost edge
+  rules, the cabinet highlight and geometric prop substitutes. Missing prop
+  artwork now leaves the authored scene visible without moving the choice UI.
+- The first regression pass exposed a call from the lazy reward overlay to the
+  removed atmosphere helper. Removed that remaining caller and rebuilt. This
+  was a product regression caught during implementation, not a waived failure.
+- Expanded existing event tests with header containment and CSS text floors,
+  all-Signal context completeness, missing-art layout invariance, restored
+  artwork and emulated-touch Read/return. All 38 Signal headers and 152 complete
+  choice reads pass. Oversized future narrative excerpts retain full reader text.
+- Final candidate `index-CiqaJLz7.js`: 14/14 event, Market and reward-decision
+  regressions pass, zero retries. The shared client completed two real pointer
+  Read/return iterations without browser errors. Inspected high-resolution and
+  compact screenshots in `.artifacts/oct7-events-final-results` and the required
+  client output `.artifacts/oct7-events-final-client`.
+- Build, runtime data/assets, world/FX, documentation, hard bundle budgets and
+  local cache validation pass. Preferred 675/710 KiB boot targets still warn;
+  current entry/combined sizes are 680.0/719.8 KiB. Gates were not weakened.
+- Closed items 46 and 48: 27/60 verified, 33 open. A applies to the tested event
+  context and decorative restraint, not all event outcomes or the whole game.
+  Next work remains the unchecked ledger scope; canonical-border evidence still
+  omits Major/Snag masters. No commit, push or publication in this pass.
+
+## 2026-10-07 — Market transaction hierarchy and readable purchase controls
+
+- Added one transaction rail shared by cards, Waymarks, Supplies and services.
+  It keeps Inspecting/Selected/Unavailable, price, available Scrap, authoritative
+  projected balance and the primary action together. Blockers no longer hide
+  card targeting information; all full rules remain in the read-only dossier.
+- Pointer/touch primary action uses the existing select-then-confirm path.
+  Choosing Preen/Release opens the target picker without spending; keyboard and
+  controller retain their explicit Confirm/A behavior. Clear cancels selection.
+  Subsequent stock must be selected again after a pointer purchase.
+- Raised shelf titles/prices and reader controls to shared primary typography;
+  secondary reader labels and transaction information use 19px. Replaced the
+  small ornamental Close/Clear control with a quiet 120×58 control. High-resolution
+  review caught target/tab and page-count/button crowding; spacing is corrected.
+- Candidate `index--1iBQF3o.js` builds and stays inside existing hard bundle
+  limits; preferred boot-size warnings remain. Runtime data, optimized assets,
+  world/FX, documentation and local cache validations pass. All 15 Market tests
+  pass (three new and 12 existing), zero retries. Final high-resolution and
+  compact screenshots were inspected; the new tests measure typography,
+  containment, targets and overlap across all four shelves at three viewports.
+- Shared skill client remains unchanged, using a fixture-only Market entry
+  adapter `.artifacts/oct7-market-client-bootstrap.mjs`. It performs actual
+  pointer selection/purchase, screenshot/text capture and error collection.
+  The final two-iteration run completed without browser-error artifacts.
+- Closed acceptance items 36 and 39: 25/60 verified, 35 open. Market decision
+  hierarchy and transaction states assess as A within this tested scope, not
+  an all-game grade. Strict canonical art validation passed 56 Minor +22 Aviary
+  masters and removed its owned staging directory; item 44 stays open because
+  Major/Snag coverage is not established by that validator.
+
+## 2026-10-07 — Boss preparation hierarchy and route-safe advice
+
+- Replaced the 8–15px boss-prep ornament cluster with a quiet, readable footer
+  and a 58px Boss prep action. The complete Threat / Strategy / Readiness reader
+  reuses the lazy Flock modal's input ownership and retains the selected route.
+  It supports pointer/touch tabs, remapped keyboard navigation and controller
+  D-pad/LB/RB, plus Back/B and explicit close. Page survives pause/settings redraw.
+- The reader uses shared 21px primary / 19px secondary typography, full prose,
+  plain-language pressure names, the exact phase opener, coverage thresholds,
+  remaining needs and useful stops. No card, enemy or balance data changed.
+- Fixed preparation recommendations that included abandoned, unreachable
+  branches. Useful stops now follow unlocked edges from current legal choices.
+- Visual review caught Flyway progress rendering above the dossier. It now
+  stays behind the Flock reader. Save-failure retry stays separate from boss
+  name/phase/action; successful retries restore the normal footer layout.
+- Candidate `index-C6Z9oc3G.js` builds and passes runtime data/assets, world/FX,
+  docs, bundle and local-cache checks. Hard limits unchanged; preferred boot
+  warnings remain. Final boss/route/Flock regression: 10/10 passed, zero retries;
+  save/recovery regression: 15/15 passed, zero retries. Reports are
+  `.artifacts/oct7-boss-results.json` and `.artifacts/oct7-storage-results.json`.
+- The 15-case save/recovery suite passes on this candidate. The new three-cycle
+  input/lifecycle audit exceeded the default 30-second whole-test timeout while
+  still advancing through successful assertions (confirmed with a trace).
+  Its own budget is now 90 seconds; all three cycles, input assertions and
+  listener-cleanup checks remain intact. Existing release budgets are unchanged.
+- Shared skill client runs unchanged with a test-only late-route setup adapter:
+  `.artifacts/oct7-boss-client-bootstrap.mjs`. It then uses real pointer input,
+  built preview, screenshot/text capture and error tracking. Final artifacts:
+  `.artifacts/oct7-boss-final-client`; full state says Strategy reader open,
+  routeSelection and no pending commitment. No error artifact was emitted.
+- Item 35 is verified; the acceptance ledger is 23/60 complete, 37 still open.
+  Screenshot geometry and visual inspection cover 2560×1600, 1440×900 and
+  1000×560. This is scoped boss-preparation evidence, not a full-suite or all-A
+  release claim. Next work remains the unchecked compact/shared UI, art,
+  market/menu/event, every-input inspection and release-qualification items.
+- Cleanup: stopped this pass's preview on port 5489; verified zero listeners
+  and no matching owned test/client Node processes. No unrelated service was
+  stopped. No commit, push or deployment was performed.
+
+## 2026-10-07 — Settings clarity, persistence feedback and Controls readability
+
+- Verified acceptance-plan item 54; ledger is now 22/60 verified, 38 open.
+  All 16 options explain their effects, audio muting and reduced-motion
+  overrides. Shared primary/secondary text floors apply to Settings and
+  Controls, with compact geometry checks and no hidden explanatory truncation.
+- `safe-storage.ts` records last real-backend write outcomes per key. Settings
+  and binding remap/reset expose session-only failures; successful retries clear
+  only that key's warning. Disposable practice writes leave durable outcomes
+  untouched. Journal/recovery semantics are preserved and regression-tested.
+- Screen-reader summaries include focused explanations, Controls section,
+  binding, capture instructions and save status. Remapping status has room for
+  wrapped error text above Reset Defaults.
+- Final source/build candidate: `index-B2Sr5rnU.js`. Eleven Settings/feedback
+  tests, 15 save/recovery cases and four shared Help/Pause/abandonment cases pass,
+  zero retries. Reports: `.artifacts/oct7-settings-results.json`,
+  `.artifacts/oct7-storage-results.json`, `.artifacts/oct7-shared-controls-results.json`.
+  A test initially treated arrow cycling as direct tab selection; it now checks
+  current page before cycling and asserts both state and live announcement.
+- Inspected Settings and Controls at 2560x1600, 1440x900 and 1000x560, including
+  session-only warnings. Images: `.artifacts/oct7-settings-results`.
+  Required shared client: `.artifacts/oct7-final-settings-client/shot-1.png`
+  agrees with its full `state-1.json`; both iterations completed, no error file.
+- TypeScript/build, runtime data/assets, world/FX contracts, bundle budget and
+  local deployment-cache validation pass. Existing preferred boot-size warnings
+  remain; no hard cap was increased. Core is 30,690 bytes under 30 KiB.
+- Next: boss preparation item 35 still uses a tiny ornate footer. Investigated
+  reuse of the lazy Flock reader and its modal input ownership; no boss code was
+  changed. Do not enlarge the footer into map node lanes. Preserve full phase,
+  tests, strategy and readiness information in any replacement reader.
+- Full-suite/release evidence and other 38 items remain open; do not report
+  all-A or publish. No commit, push, branch mutation or deployment this pass.
+- Final docs, bundle and local cache checks pass. Stopped owned port-5489
+  preview after all test/client sessions finished; no owned runner remains.
+  Existing unrelated services and inherited worktree changes were preserved.
+
+## 2026-10-02 — Shared text, route states and event readability
+
+- Added shared 21px primary / 19px secondary authored typography tokens. Quiet
+  Flock/Folio controls use measured wrapping and retain full labels in metadata.
+  Seven focused UI tests passed on `index-fFmksfO2.js`, zero retries: compact
+  geometry, remapped focus, invalid/transactional restoration, Folios and Showcase.
+  Evidence: `.artifacts/oct2-ui-results.json`; compact and high-resolution captures
+  were inspected. This does not close typography across every screen.
+- Added a distinct current-location ring and `Here` label, preserving completed
+  checks, selected labels and available-route arrows. Node tooltips replace their
+  prior root and release its input listener. Three map tests passed on
+  `index-Dn8U1bFO.js`, including all five states across four districts and three
+  viewports, tooltip containment and read-only inspection. Removed unused column
+  guides afterward to keep the existing 5 KiB lazy-module budget; requalification
+  is required on the next build.
+- Required shared browser client reached Flock Record → Badges with matching
+  screenshot/text state and no error artifact (`.artifacts/oct2-profile-client-corrected`).
+  The earlier coordinate attempt opened Settings and is not counted as Flock evidence.
+- Event choice titles and Read controls now use 21px, summaries 19px, and up to
+  four choices receive taller 84px rows. Dense rows explicitly abbreviate into
+  the complete reader. Resident subtitles, event hints and reader secondary text
+  use 19px. Updated focused checks assert rendered CSS floors, not only source
+  font values. Event and final-build regression qualification is in progress.
+- No commit, push, branch change or deployment in this pass. Preserve unrelated
+  services; shut down the owned port-5489 preview and test resources at handoff.
+- Final source candidate is `index-DEN5Me_l.js`. Seven Flock/save tests, three map
+  cases and the strengthened five-resident staging case pass without retries.
+  Map selection covers real pointer, emulated touch and keyboard updates to one
+  gain/risk summary without travel or resource changes. Current/done/available/
+  selected/future states have non-color cues. Resident checks include loaded
+  textures, uniform scale, floor shadows and clearances at all three sizes.
+- Final shared browser clients reached Flock → Badges and title → route → battle
+  → actual card commitment. Images and text agree; combat ends at 2 Wingbeats,
+  22/27 enemy HP, full art ready, no pending animation and no error artifact.
+  Evidence: `.artifacts/oct2-final-profile-client` and `.artifacts/oct2-final-flight-client`.
+- Runtime data, 961 optimized assets, world/FX contracts, docs, local cache policy,
+  TypeScript/build and unchanged hard bundle gates pass. Preferred boot-size
+  targets still warn. No current full-release qualification is claimed.
+- The final 21-case shared-reader suite passed in 13.1 minutes, zero retries:
+  `.artifacts/oct2-events-results.json`. Combined with UI/map qualification, this
+  is 31 distinct focused tests plus the strengthened resident-staging rerun.
+  Items 33, 34, 47 and 49 are now verified. Ledger: 21/60, with 39 still open;
+  no all-A claim. Remaining compact boss-preparation/Settings/dossier text and
+  full-release gates are explicitly retained.
+- Owned preview PID 22256 was identity-checked and stopped after all runners
+  completed. Port 5489 has no listener and no Oct2 qualification runner remains.
+  Existing unrelated services and inherited working-tree changes were preserved.
+
+## 2026-09-30 — Readability, battlefield and Market composition qualification
+
+- Enlarged combat cards to a consistent 180×270 layout with 21px primary names,
+  costs and rules. Compact rendered primary text now exceeds 16 CSS pixels.
+  Unified intent, name, exact health and health meter into one quiet enemy panel;
+  19px secondary labels clear the 14 CSS-pixel floor at 1000×560. The strict
+  geometry test caught 18px labels falling just below that floor; it was not relaxed.
+- Combat history moved below Discard, clear of the hand, enemy panels and Full
+  rules control. Future map paths and destination labels have stronger visibility.
+- Market uses a proportion-preserving vendor portrait crop and a stronger scenic
+  scrim instead of a tiny full-body thumbnail. Removed the geometric vendor
+  placeholder; the usable named market remains during loading.
+- Candidate `index-e-mBFcp-.js` passed all 27 affected-flow cases, zero retries,
+  in 6.1 minutes (`.artifacts/a-quality-final-results.json`). The required shared
+  browser client completed title → route → combat → card resolution with matching
+  image/text state and no error artifact (`.artifacts/a-quality-final-client`).
+  These results precede the subsequent large-hand pagination change.
+- Added `validate:canonical-card-art`: exact manifest-selected source masters are
+  staged temporarily for the existing strict pixel validators. All 56 Minor and
+  22 Aviary composites passed; owned temporary copies were removed. Runtime art
+  was not regenerated. The absent legacy `latest` staging folders were not missing
+  game assets. Runtime/docs/assets/cache and unchanged bundle gates also passed.
+- Final pagination/combat candidate `index-qHuAh71-.js` passes 46 affected-flow
+  cases (9.3 minutes) plus six legacy combat regressions (57.1 seconds), zero retries.
+  The required shared client completes a real card play, with matching image/text
+  state, full art ready and no error artifact in `.artifacts/a-quality-qualified-client`.
+  Future-path visibility also has inspected three-size evidence and a passing
+  route hierarchy test. The acceptance ledger is now 17/60 verified, 43 open.
+  A separate 630-case full regression was interrupted after 67 passes to address
+  Collection art/input continuity; this is not a full-release pass or all-A claim.
+- Large hands now use full-size five-card pages instead of compressed overlap;
+  keyboard/controller focus follows the real hand across pages. Pointer paging
+  clears the armed play, preserves card order/resources/Retain/discard selections,
+  and cannot act beneath an overlay or during a non-choice animation. Draw,
+  return and cast anchors share the visible-page layout. Normal hands need no pager.
+- Visual review caught forecast/Roost overlap with the larger hand and a Retain
+  hint crossing the titles. The hand now reserves side-control clearances, the
+  forecast uses a readable two-row 52px strip with explicit measured omissions,
+  and Retain/input guidance uses the upper instruction lane. Complete forecast
+  details remain in Full rules. Discard prompts preserve the existing eight-pixel
+  gap. Crowded enemy vitals were widened and columns rebalanced so full status
+  labels remain readable without pushing the last panel outside the stage.
+- A deterministic delayed-art regression reproduced replacement of the Collection
+  tile, its registered click target, and hovered state. Refresh card art in place;
+  late decorative UI icons retain the existing card grid beneath the rebuilt
+  shell/curtains. The first fix exposed the second decorative callback and was
+  corrected without relaxing the identity/registration assertions. Current
+  candidate `index-BxCl7gnd.js` passes 61 combined affected-flow tests, zero
+  retries, in 12.1 minutes (`.artifacts/a-quality-complete-pass-results.json`).
+  The late-art regression also passes three consecutive repetitions. Visual
+  review caught retained locked-card fallback circles; artwork-state caching
+  now includes medallion texture readiness and the test requires actual images.
+  Bundle/cache/docs gates pass unchanged. Large-hand fixture artwork and the
+  full authored encounter catalog are receiving additional qualification.
+- The authored Gutter Baron capture exposed the old floating elite crest crossing
+  the top HUD. Rank now uses a readable 19px label in the measured vitals stack,
+  with reserved art and objective clearances. The catalogue gate now includes
+  elite panels and readable, contained labels. New candidate `index-ehLrDjjq.js`
+  builds and passes unchanged bundle/cache/runtime gates. Its 12-case follow-up
+  includes all 80 encounters, large-hand artwork, normal/boss/crowded layouts,
+  delayed Collection art and two legacy elite mechanics tests. All 80 encounters
+  pass at all three sizes (240 captures). The run finished 11/12 because its
+  worker retained the old standalone-intent gap assertion. Fresh qualification
+  passes all three cases: corrected legacy containment/name clearance, elite
+  mechanics and the expanded 36-layout normal/elite/boss + objective matrix,
+  zero retries (`.artifacts/a-quality-elite-objective-results.json`). No assertion
+  allowing collisions with other enemies, portraits or forecasts was removed.
+- Final shared-client walkthroughs on `index-ehLrDjjq.js` reach Collection tools
+  and complete an actual combat card play: energy 2, Roof Rat 22/27, full art,
+  no pending animation and no error artifact. Images/text reviewed in
+  `.artifacts/a-quality-complete-collection-client` and
+  `.artifacts/a-quality-complete-combat-client`. Remaining active ledger: 17/60
+  verified, 43 open. No all-A, full-regression, publication or commit claim.
+  Next priorities remain compact typography/reflow, shared control/overlay
+  consistency, cross-surface card identity/crops, cast scale/grounding, deeper
+  menu/event states, and fresh full-suite qualification; no human dependency.
+- Cleanup confirmed: final preview PID 36084 stopped after command-line identity
+  check; port 5489 closed, no owned quality/client Node processes remain, and
+  canonical-card validation left no staging folders. Existing port 5174 service
+  was not stopped. No application data or test evidence was deleted.
+- Read GitHub run 36297889787 directly: failed Production regression, skipped
+  deployment, 41 failures (27 timeouts/closed pages and 14 assertion/runtime
+  failures). Do not dismiss all as infrastructure; do not claim publication.
+
+## 2026-09-30 — A-grade card and Collection clarity pass (12/60 verified)
+
+- Expanded the requested scope into `docs/game/a-grade-acceptance-plan.md` with
+  60 explicit, non-human-dependent acceptance items. The earlier 44-item ledger
+  remains historical; do not combine its counts with the new plan.
+- Combat hand summaries now preserve ordered effect clauses and spell out live
+  conditions, spending, targets and first-use timing. Complete clauses are kept
+  when possible; explicit `+N more · Inspect` replaces silent truncation. Measured
+  wrapping keeps action quantities together. No combat data or resolution changed.
+- Collection advanced tools collapse by default, hidden controls leave the hit
+  and focus order, and shortcuts reveal their destination before restoring focus.
+  Simplified undiscovered backs do not reveal identities. Loading and failed art
+  are distinct; redraws do not retry indefinitely, and explicit retry recovers.
+- Card dossiers connect canonical illustration titles to gameplay names. Market
+  Home/End and controller LT/RT jump directly between optional reading sections,
+  respect remapped controls and system overlays, and do not arm purchases.
+- Production build and unchanged bundle/cache gates pass. Hand renderer is below
+  its existing 10 KiB cap; non-combat preview now lives with existing reward
+  inspection. Entry 682.7 KiB / 182.4 KiB gzip; combined boot 722.5 / 197.8 KiB.
+  Preferred entry/boot warnings remain. No new preload, dependency or lowered art
+  quality was introduced. This is not a startup-speed improvement claim.
+- Initial focused 10 cases passed. Broader Collection/reward run passed 27/31;
+  four fixtures retained old toolbar width or hidden focus-order assumptions.
+  Updated those fixtures without removing ownership, persistence or input checks.
+  The rebuilt 41-case run passed under `.artifacts/readability-final-*`.
+  The broader 75-case validation passed 74; its one old Flock pagination fixture
+  now traverses all six pages and all 18 badges and passes in isolation.
+- The expanded 40-case pass on `index-CUouR1ih.js` passed 37 and exposed a real
+  Market keyboard-hint footer overflow plus stale title-case and Collection
+  milestone pagination fixtures. Visual review then caught overlap between the
+  two-line hint and paging buttons even after panel containment passed. The hint
+  now uses one reserved footer row; a new test requires a gap below the controls.
+  Fixtures retain all ownership/content checks.
+- `npm test -- -- --max-failures=1` stopped after 35 passes at a 30-second timeout
+  in the combined two-journey reward fallback test (590 cases not run). Both
+  original cases passed independently at the same 30-second limit (26.9/27.6s).
+  Split the two reset-isolated journeys into four tests, preserving every
+  assertion and the 30-second limit. Do not treat this as a full regression pass.
+  An initial attempt failed before tests with Windows `ENOTEMPTY` in build output;
+  stopping the owned preview and rebuilding recovered without source deletion.
+- Candidate `index-tkPRpaVT.js` passed all static validation gates and 24 cases.
+  Final footer correction candidate `index-DfC_SCMa.js` passes build/bundle/cache
+  gates and all 24 current-flow cases in 4.5 minutes, zero retries, under
+  `.artifacts/readability-qualified-*`. This includes 1,320 card/state/size checks.
+  The Collection title/art click intermittency has not been root-caused: it passed
+  isolated and repeated runs but failed an earlier mixed run. Diagnostics remain.
+- Firefox/WebKit passed all four toolbar test bodies. Their runner hung during
+  shutdown with no browser descendants; stopped only the verified owned worker
+  PID 19764, after which the runner reported four passes and exited. Preserve the
+  results but do not call this clean unattended cross-browser qualification.
+- Inspected production captures at 2560x1600, 1440x900 and 1000x560; additionally
+  reviewed failed/recovered art and the canonical-title dossier. In-app Browser
+  rejected localhost; its created blank tab was closed. The required shared
+  client reached Collection via the real title command and toggled tools, with
+  matching text state and no error artifact (`.artifacts/readability-client-corrected`).
+- The final candidate's shared-client title -> route -> combat -> card action
+  capture (`.artifacts/readability-final-client`) matches text state, has no error
+  artifact and returns control with no animation pending. Inspected its image and
+  the final Market keyboard footer at 1000x560 and 2560x1600.
+- Still open: compact primary-font floor/reflow, broad art consistency and crop
+  audit, shared control polish, full-flight and release qualification, and other
+  unchecked acceptance items. Do not claim the entire game is all-A or published.
+- Prior owned previews PID 21808, 32796 and 33912 were stopped before subsequent
+  builds. Final preview PID 37036 was stopped after final checks; ports 5489 and
+  5373 have no listener and no owned focused runner/shared client remains.
+  Other projects' servers were untouched. No commits, push or deployment.
+
 ## 2026-09-26 — priority input and recovery fixes qualified; broader P0 scope remains open
 
 - Found and fixed a real district-contract input gap: pointer exposed three
@@ -13367,3 +14981,65 @@ Follow-up implementation and verification (same working turn):
   P1/P2 scope remains unchanged; no subjective all-A, physical-device or actual
   assistive-technology claim is made. No commit, push, merge or publish occurred.
   Final root and Pages identity JSON files accompany their compact artifacts.
+
+## September 29, 2026 — A-grade visual backlog, implementation in progress
+
+- Added `docs/game/a-grade-ui-backlog.md`: 44 scoped items, no human-feedback,
+  physical-device or human-operated AT dependencies. Unverified items stay open.
+- Rebuilt the Flock dashboard around one quiet surface, readable 20px body copy,
+  dedicated Leaders/Badges/Contracts/Showcase/Folios tabs, three complete badges
+  per page, wider Folio actions and larger Showcase art. Save management remains
+  isolated; owned-deck, backup/restore and record logic are preserved.
+- Market readers expose Effect/Upgrades/Details shortcuts while preserving every
+  rule page. Prices, Wingbeats and blockers remain pinned. Moved the shop tabs
+  clear of the reader; quiet shelf headings and opaque background remove map
+  text bleed. Resident art now preserves proportions and respects reduced motion.
+- Built-in image edits corrected Marn, Ivo, Oren, Caldra and Veyra to avian
+  anatomy. The deterministic exporter preserves alpha/aspect ratio; exact world
+  imports and allowlists were updated. Superseded 15 files moved into ignored
+  `.artifacts/retired-residents-2026-09-29/` and remain recoverable in Git.
+  Prompts/source paths: `docs/art/resident-anatomy-correction-2026-09-29.md`.
+- Route paths have stronger contrast, tangent-aligned direction arrows,
+  completed checkmarks and readable selected labels. Route rules are unchanged.
+- Verification so far: production builds and runtime data/assets/FX checks pass.
+  Latest focused 11-case run passed, including resident geometry at three sizes,
+  all-card Market pagination, remapped Market input, leader gating and reversible
+  starter Folios. Earlier focused checks passed backup/download/reject/restore,
+  controller focus, compact touch targets and populated Showcase persistence.
+  New populated-dashboard/map/touch checks are still running; no release claim.
+- Owned preview: port 5489, exec session 94229. Stop it before handoff. No commit,
+  push, branch change, publish or background automation was requested this turn.
+- The previous remote 603-case release run had 41 failures; the broad release
+  gate and remaining backlog are NOT complete. Do not turn targeted passes into
+  an all-A, proven-fun or full-regression claim.
+
+### Final verification and handoff for this pass
+
+- Added setup-only canonical leader portraits and concise playstyle labels.
+  Portraits load lazily, preserve aspect ratio, do not block choices when absent,
+  remain hidden after returning home, and recover after a failed image load.
+  Optional module rejections are caught; existing input bindings are preserved.
+- Visual inspection caught and fixed a Showcase heading/card overlap. Added an
+  explicit geometry regression. Market loading-state coverage now starts directly
+  below the HUD, hiding all map guidance. The fully loaded Market was inspected
+  at 2560x1600 and 1000x560, alongside its 1440x900 capture.
+- The 37-case affected-flow run passed 36; one assertion still expected the old
+  Market panel top (210 instead of the intentional 118). Updated that coordinate
+  while retaining full-content, deck-fit, geometry and purchase-safety checks.
+- Final rebuilt production artifact: 19/19 focused cases passed, zero retries,
+  including that corrected assertion, all new visual tests, remapped Market
+  controls and setup keyboard/gamepad input. Report:
+  `.artifacts/a-grade-ui-results.json`; preceding broader report:
+  `.artifacts/a-grade-broad-pre-final.json`.
+- Build, runtime data/assets, docs, bundle budget and local deployment-cache
+  validation pass. Existing preferred boot/entry-size warnings remain. The new
+  setup-only module has its own 1KB hard cap; no existing budget was increased.
+- Shared web-game skill client completed two iterations on the final build;
+  `.artifacts/a-grade-final-client/shot-1.png` was inspected, no error file.
+- Stopped owned preview PID 26392 (port 5489); browser/test clients finished.
+  No commit, push, deployment or branch mutation occurred.
+- Backlog now records 9 completed / 35 open items, with partial work explicitly
+  described and release gates separate. Human feedback and physical-device/AT
+  sessions remain excluded. All 44 items are NOT resolved; broad art consistency,
+  shared controls, card/combat/Collection polish and full release verification
+  still require work. Do not report the game as all-A.

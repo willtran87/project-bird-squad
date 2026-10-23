@@ -37,19 +37,19 @@ export function renderStorageRecoveryNotice(
 ): void {
   const recovered = notice.outcome === 'recovered';
   const accent = recovered ? 0x8fd6a0 : 0xf0c36f;
-  scene.add.rectangle(780, 697, 620, 28, 0x05070c, 0.84)
+  scene.add.rectangle(872, 574, 744, 100, 0x05070c, 0.94)
     .setStrokeStyle(1, accent, 0.74)
     .setName('storage-recovery-notice');
-  scene.add.rectangle(484, 697, 4, 18, accent, 0.92)
+  scene.add.rectangle(514, 574, 4, 64, accent, 0.92)
     .setName('storage-recovery-notice');
-  scene.add.text(792, 697, notice.text, {
+  scene.add.text(882, 574, notice.text, {
     fontFamily,
-    fontSize: '13px',
+    fontSize: '19px',
     fontStyle,
     color: recovered ? '#bce9c5' : '#ffe1a3',
     stroke: '#05070c',
     strokeThickness: 2,
     align: 'center',
-    wordWrap: { width: 584 },
+    wordWrap: { width: 684, useAdvancedWrap: true },
   }).setResolution(2).setOrigin(0.5).setName('storage-recovery-notice');
 }

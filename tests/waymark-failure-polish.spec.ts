@@ -29,6 +29,10 @@ for (const remapped of [false, true]) test(`failed reward art module retains rea
     return b.mode === 'waymarkReward' && b.battleRewardRendererFailed;
   });
   const press = async (key: string) => { await page.keyboard.press(key); await settleCanvas(page); };
+  // The native download recovery dialog owns input until Keep playing is chosen.
+  await page.getByRole('button', { name: 'Keep playing', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Keep playing', exact: true })).toBeHidden();
+  await settleCanvas(page);
   const stable = () => page.evaluate(() => {
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     return JSON.stringify({ mode: b.mode, deck: b.allDeckCards(), marks: b.routeMarks, scrap: b.scrap, armed: b.rewardChoiceArmedId, focus: b.controllerChoiceIndex });
@@ -50,7 +54,7 @@ for (const remapped of [false, true]) test(`failed reward art module retains rea
         read: b.root.list.filter((o: any) => o.name === 'reward-waymark-inspect-hit').map((o: any) => o.height) };
     });
     expect(geometry.descriptions).toHaveLength(3);
-    geometry.descriptions.forEach((g: any) => { expect(g.size).toBe('18px'); expect(g.full).toBe(true); expect(g.bottom).toBeLessThan(510); });
+    geometry.descriptions.forEach((g: any) => { expect(g.size).toBe('21px'); expect(parseFloat(g.size) * viewport.width / 1280).toBeGreaterThanOrEqual(16); expect(g.full).toBe(true); expect(g.bottom).toBeLessThan(510); });
     expect(geometry.read).toEqual([58, 58, 58]);
   }
   // Authored descriptions remain complete even without the ceremony chunk.
@@ -65,6 +69,37 @@ for (const remapped of [false, true]) test(`failed reward art module retains rea
     b.waymarkChoices = original; b.renderAll(); return failures;
   }, marks.routeMarks);
   expect(missing).toEqual([]);
+
+  // Exercise the longest authored effect in its actual panel at every supported size.
+  const longest = marks.routeMarks.find(mark => mark.id === 'razor_kite_tail')!;
+  const savedChoice = await page.evaluate(mark => {
+    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    const saved = { ...b.waymarkChoices[0] };
+    b.waymarkChoices[0] = { ...saved, name: mark.name, description: mark.description };
+    b.renderAll(); return saved;
+  }, longest);
+  for (const width of [2560, 1440, 1000]) {
+    await page.setViewportSize({ width, height: width === 2560 ? 1600 : width === 1440 ? 900 : 560 });
+    await settleCanvas(page);
+    const bounds = await page.evaluate(() => {
+      const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+      const effect = b.root.getByName('reward-waymark-effect');
+      const panel = b.root.getByName('reward-waymark-panel').getBounds();
+      const observation = b.root.getByName('reward-waymark-build-observation').getBounds();
+      const r = effect.getBounds();
+      return { text: effect.text, left: r.left - panel.left, right: panel.right - r.right, gap: observation.top - r.bottom };
+    });
+    expect(bounds.text).toBe(longest.description);
+    expect(bounds.left).toBeGreaterThanOrEqual(8); expect(bounds.right).toBeGreaterThanOrEqual(8);
+    expect(bounds.gap).toBeGreaterThanOrEqual(8);
+    await page.screenshot({ path: info.outputPath(`longest-waymark-${width}.png`) });
+  }
+  await page.evaluate(saved => {
+    const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+    b.waymarkChoices[0] = saved; b.renderAll();
+  }, savedChoice);
+  await settleCanvas(page);
+
   await click('reward-waymark-hit'); const before = await stable();
   await click('reward-waymark-inspect-hit'); expect(await reading()).toBe(true); expect(await stable()).toBe(before);
   const notes = await page.evaluate(() => {
@@ -75,6 +110,8 @@ for (const remapped of [false, true]) test(`failed reward art module retains rea
   await click('reward-waymark-hit'); expect(await stable()).toBe(before);
   await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').setBattlePaused(true));
   await press('Enter'); expect(await reading()).toBe(true);
+  await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').setBattlePaused(true));
+  await settleCanvas(page);
   await press(remapped ? 'b' : 'Escape'); expect(await reading()).toBe(true);
   await press(remapped ? 'b' : 'Escape'); expect(await reading()).toBe(false); expect(await stable()).toBe(before);
   await press(remapped ? 'j' : 'r'); expect(await reading()).toBe(true);

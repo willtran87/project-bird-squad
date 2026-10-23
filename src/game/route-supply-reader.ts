@@ -3,7 +3,7 @@ import { controlBindingLabel, displayName, formatEffects, formatWaymarkTrigger, 
 import { alphaRouteMarkLibrary, alphaSupplyLibrary } from './runtime-data';
 import { decisionButton, decisionText } from './decision-surface';
 import { itemKeywordSections } from './keyword-definitions';
-import { DECISION_UI } from './theme';
+import { DECISION_UI, UI_TYPE } from './theme';
 
 type Reading = { title: string; text: string; page: number; total: number };
 type Inspection = { pending: object; id: string; kind: 'supply' | 'waymark' | 'outcome'; outcome: boolean; page: number; reading?: Reading };
@@ -57,20 +57,20 @@ export function renderOutcomeShowcase(scene: any, x: number, y: number) {
     fontFamily: UI_FONT, fontSize: `${size}px`, color, resolution: 2, align: 'center', wordWrap: { width, useAdvancedWrap: true }, lineSpacing: 2,
   }).setOrigin(0.5, 0);
   const name = (cx: number, value: string, width: number, color: string) => {
-    const title = label(cx, y + 55, value, width, 20, color).setName('route-outcome-item-name');
+    const title = label(cx, y + 55, value, width, UI_TYPE.primary, color).setName('route-outcome-item-name');
     const lines = title.getWrappedText();
     let excerpt = lines.slice(0, 2).join('\n');
     title.setText(excerpt + (lines.length > 2 ? '…' : ''));
     while (title.height > 52 && excerpt.length) { excerpt = excerpt.slice(0, -1).trimEnd(); title.setText(`${excerpt}…`); }
   };
   scene.add.rectangle(x, y, 410, 254, 0x07101a, 0.96).setStrokeStyle(1, accent, 0.55);
-  label(cx, y - 110, supply ? 'SUPPLY' : 'WAYMARK', 180, 16, '#abc4d4');
+  label(cx, y - 110, supply ? 'SUPPLY' : 'WAYMARK', 180, UI_TYPE.secondary, '#abc4d4');
   const key = supply ? supplyCompactArtAssets[found.id]?.key : waymarkCompactArtAssets[found.id]?.key;
   if (key && scene.textures.exists(key)) scene.add.image(cx, y - 24, key).setDisplaySize(116, 116);
   name(cx, found.name, companion ? 182 : 370, UI_GOLD);
   if (companion) {
     scene.add.rectangle(x, y, 1, 224, accent, 0.25);
-    label(x + 106, y - 110, isSnagCard(companion) ? 'SNAG CARD' : 'COMPANION CARD', 188, 16, '#ffd5cc');
+    label(x + 106, y - 110, isSnagCard(companion) ? 'SNAG CARD' : 'COMPANION CARD', 188, UI_TYPE.secondary, '#ffd5cc');
     scene.renderRouteRewardCardOption(companion, x + 106, y - 24, 80, 120, 0xe38a7b);
     name(x + 106, displayName(companion), 182, '#ffd5cc');
   }
@@ -80,7 +80,7 @@ export function renderOutcomeShowcase(scene: any, x: number, y: number) {
 export function renderOutcomeInspectButton(scene: any, x: number, y: number) {
   decisionButton(scene, x - 102, y + 184, 194, 'Inspect outcome', 'route-outcome-inspect-hit', () => openOutcomeInspection(scene));
   const action = scene.pendingRouteReward.effects.length === 0 ? 'Leave' : scene.pendingRouteReward.nodeType === 'cache' ? 'Claim' : 'Confirm';
-  decisionText(scene, x, y - 184, `${controlBindingLabel('roost')} / Y  Inspect · ${controlBindingLabel('confirm')} / A  ${action}`, 430, 16, DECISION_UI.secondary).setOrigin(0.5, 0);
+  decisionText(scene, x, y - 184, `${controlBindingLabel('roost')} / Y  Inspect · ${controlBindingLabel('confirm')} / A  ${action}`, 430, UI_TYPE.secondary, DECISION_UI.secondary).setOrigin(0.5, 0).setAlign('center');
 }
 
 export function openSupplyInspection(scene: any, id: string) {
@@ -121,16 +121,16 @@ export function renderSupplyInspection(scene: any) {
   if (key && scene.textures.exists(key)) add(scene.add.image(466, 148, key).setDisplaySize(96, 96));
   const headingX = state.kind === 'outcome' ? 408 : 534;
   const headingWidth = state.kind === 'outcome' ? 464 : 332;
-  text(headingX, 85, `${supply ? 'SUPPLY' : mark ? 'WAYMARK' : 'OUTCOME'} / INSPECTION`, 16, headingWidth).setColor('#abc4d4');
+  text(headingX, 85, `${supply ? 'SUPPLY' : mark ? 'WAYMARK' : 'OUTCOME'} / INSPECTION`, UI_TYPE.secondary, headingWidth).setColor('#abc4d4');
   const title = text(headingX, 116, item.name, 26, headingWidth).setColor(UI_GOLD).setName('route-supply-reader-title');
   const lines = title.getWrappedText();
   let excerpt = lines.slice(0, 2).join('\n');
   title.setText(excerpt + (lines.length > 2 ? '…' : ''));
   while (title.height > 70 && excerpt.length) { excerpt = excerpt.slice(0, -1).trimEnd(); title.setText(`${excerpt}…`); }
   const outcomeOnly = state.kind === 'outcome';
-  text(408, outcomeOnly ? 167 : 212, 'Read only · Your choice is unchanged', 18).setColor('#abc4d4');
+  text(408, outcomeOnly ? 167 : 212, 'Read only · Your choice is unchanged', UI_TYPE.secondary).setColor('#abc4d4');
   add(scene.add.rectangle(640, outcomeOnly ? 205 : 252, 464, 1, accent, 0.35));
-  const heading = text(408, outcomeOnly ? 225 : 272, '', 16).setColor(UI_GOLD);
+  const heading = text(408, outcomeOnly ? 225 : 272, '', UI_TYPE.secondary).setColor(UI_GOLD);
   const body = text(408, outcomeOnly ? 258 : 305, '').setName('route-supply-reader-body');
   const decision = routeDecisionSections(scene);
   const sections = supply ? [
@@ -163,7 +163,7 @@ export function renderSupplyInspection(scene: any) {
   const compact = pages.length === 1;
   body.setText(pages[0].text);
   const footerY = compact ? Math.max(400, body.getBounds().bottom + 28) : 521;
-  const pageLabel = text(640, footerY, '', 16, 220).setOrigin(0.5);
+  const pageLabel = text(640, footerY, '', UI_TYPE.secondary, 220).setOrigin(0.5);
   const show = (delta: number) => {
     if (delta && (scene.pauseOverlayOpen || scene.settingsOverlayOpen)) return;
     state.page = (state.page + delta + pages.length) % pages.length;

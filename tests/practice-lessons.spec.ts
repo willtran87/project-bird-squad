@@ -55,8 +55,20 @@ for (const [index, id] of ['cover', 'flow', 'molt'].entries()) {
         const lesson = g.scene.getScene('GuidedPracticeScene');
         const panel = lesson.children.list.flatMap((o: any) => o.list ?? []).find((o: any) => o.name === 'practice-lesson-panel').getBounds();
         const text = lesson.children.list.flatMap((o: any) => o.list ?? []).find((o: any) => o.name === 'practice-lesson-instruction').getBounds();
+        const battle = g.scene.getScene('BattleScene');
+        const badge = battle.children.getByName('practice-session-badge');
+        const badgeBounds = badge.getBounds();
+        const hud = battle.root.list.filter((o: any) => o.name?.startsWith('hud-label-') || o.name?.startsWith('hud-value-'));
+        const overlaps = hud.some((o: any) => {
+          const bounds = o.getBounds();
+          return badgeBounds.left < bounds.right && badgeBounds.right > bounds.left
+            && badgeBounds.top < bounds.bottom && badgeBounds.bottom > bounds.top;
+        });
+        const surface = battle.root.getByName('run-hud-surface').getBounds();
+        const readable = parseFloat(badge.style.fontSize) * g.canvas.getBoundingClientRect().height / 720 >= 14;
         return text.left >= panel.left + 10 && text.right <= panel.right - 10 && text.top >= panel.top + 8
-          && text.bottom <= panel.bottom - 8 && panel.bottom < 200;
+          && text.bottom <= panel.bottom - 8 && panel.bottom < 200
+          && !overlaps && readable && badgeBounds.bottom < surface.top && surface.bottom < panel.top;
       })).toBe(true);
       await page.screenshot({ path: info.outputPath(`lesson-${viewport.width}.png`) });
     }
@@ -147,8 +159,15 @@ test('failed lesson download exposes recovery without trapping the menu', async 
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => {
     const overlay = (window as any).__birdSquadGame.scene.getScene('MenuScene').helpOverlay;
-    return overlay?.getData('practiceFailed') && overlay.list.some((child: any) => child.text === 'Reload lessons');
+    return overlay?.getData('practiceFailed') && overlay.list.some((child: any) => child.text === 'Recovery options');
   });
+  await expect(page.getByRole('dialog', { name: 'Download recovery' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Download recovery' })).toHaveCount(0);
+  expect((await state(page)).helpTopic).toContain('Lessons are unavailable');
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Keep playing', exact: true })).toBeFocused();
+  await page.keyboard.press('Escape');
   await page.keyboard.press('Escape');
   await expect.poll(async () => (await state(page)).helpFocus).toBeUndefined();
   await page.keyboard.press('Enter');

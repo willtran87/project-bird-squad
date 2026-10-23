@@ -253,6 +253,15 @@ export function createSavedDeckRecord(input: NewSavedDeck): SavedDeckRecord {
   };
 }
 
+/** Route-only append: keep naming, capacity and sanitation with the lazy Folio
+ * model. The host owns persistence and must report its actual write result. */
+export function appendFlightFolio(decks: unknown, input: Omit<NewSavedDeck, 'name'> & { leaderName: string }) {
+  const existing = sanitizeSavedDecks(decks);
+  const count = activeSavedDecks(existing).length;
+  if (count >= SAVED_DECK_LIMIT) return undefined;
+  return [createSavedDeckRecord({ ...input, name: `${input.leaderName} Flight ${count + 1}` }), ...existing];
+}
+
 export function renameSavedDeck(
   decks: readonly SavedDeckRecord[],
   id: string,

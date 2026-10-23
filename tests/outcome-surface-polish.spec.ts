@@ -51,7 +51,10 @@ for (const mode of ['runComplete', 'defeat']) test(`quiet outcome surface: ${mod
           targetHeights: hits.map((n: any) => n.height * scale),
           commandsContained: commands.every((n: any, i: number) => n.getBounds().left >= hits[i].getBounds().left && n.getBounds().right <= hits[i].getBounds().right),
           goal: { bottom: goal.getBounds().bottom, top: goal.getBounds().top, font: goal.style.fontSize },
-          copy: { text: copy.text, font: copy.style.fontSize, height: copyHit.height * scale, gap: Math.min(...hits.map((n: any) => n.getBounds().top)) - copyHit.getBounds().bottom },
+          copy: { text: copy.text, font: copy.style.fontSize, height: copyHit.height * scale,
+            contained: copy.getBounds().left >= copyHit.getBounds().left && copy.getBounds().right <= copyHit.getBounds().right
+              && copy.getBounds().top >= copyHit.getBounds().top && copy.getBounds().bottom <= copyHit.getBounds().bottom,
+            role: copyHit.getData('controlKind'), gap: Math.min(...hits.map((n: any) => n.getBounds().top)) - copyHit.getBounds().bottom },
           frames: nodes.filter((n: any) => /run-outcome-(stat-row-frame|command-frame|report-frame|title-plaque)/.test(n.texture?.key ?? '')).length,
           unlock: nodes.filter((n: any) => /run-outcome-unlock-(icon|heading|names)$/.test(n.name)).map((n: any) => ({ left: n.getBounds().left, right: n.getBounds().right, top: n.getBounds().top, bottom: n.getBounds().bottom })),
         };
@@ -60,12 +63,13 @@ for (const mode of ['runComplete', 'defeat']) test(`quiet outcome surface: ${mod
       expect(metrics.unlock).toHaveLength(unlocks ? 3 : 0);
       metrics.unlock.forEach((bounds: any) => { expect(bounds.left).toBeGreaterThanOrEqual(546); expect(bounds.right).toBeLessThanOrEqual(984); expect(bounds.top).toBeGreaterThanOrEqual(243); expect(bounds.bottom).toBeLessThanOrEqual(297); });
       metrics.gaps.forEach((gap: number) => expect(gap).toBeGreaterThan(12));
-      expect(metrics.labelFonts).toEqual(['20px', '20px', '20px']);
+      expect(metrics.labelFonts).toEqual(['21px', '21px', '21px']);
       expect(metrics.cleared).toBe('1');
       metrics.targetHeights.forEach((height: number) => expect(height).toBeGreaterThanOrEqual(44));
       expect(metrics.commandsContained).toBe(true);
-      expect(metrics.goal.font).toBe('16px'); expect(metrics.goal.top).toBeGreaterThan(615); expect(metrics.goal.bottom).toBeLessThan(667);
-      expect(metrics.copy.text).toBe('COPY SEEDED FLIGHT'); expect(metrics.copy.font).toBe('18px');
+      expect(metrics.goal.font).toBe('19px'); expect(metrics.goal.top).toBeGreaterThan(615); expect(metrics.goal.bottom).toBeLessThan(667);
+      expect(metrics.copy.text).toBe('COPY SEEDED FLIGHT'); expect(metrics.copy.font).toBe('21px');
+      expect(metrics.copy.contained).toBe(true); expect(metrics.copy.role).toBe('secondary');
       expect(metrics.copy.height).toBeGreaterThanOrEqual(44); expect(metrics.copy.gap).toBeGreaterThanOrEqual(8);
       await page.screenshot({ path: info.outputPath(`${mode}-${unlocks ? 'unlock' : 'plain'}-${size.width}.png`) });
     }

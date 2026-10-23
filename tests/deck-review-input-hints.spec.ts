@@ -13,13 +13,15 @@ for (const remapped of [false, true]) test(`Deck Review hints follow input witho
     const w = window as any; await w.__birdSquadEnsureScene('RouteScene');
     for (const s of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(s.scene.key);
     w.__birdSquadGame.scene.start('RouteScene', {});
-    w.__birdSquadGame.scene.getScene('RouteScene').openDeckOverlay();
   });
+  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').routeEssentialAssetsReady);
+  await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').openDeckOverlay());
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').children.getByName('deck-review-control-guide'));
   const hints = () => page.evaluate(() => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     const label = r.children.getByName('deck-review-control-guide');
     return { text: label.text, mode: label.getData('inputMode'), size: label.style.fontSize,
+      cssSize: parseFloat(label.style.fontSize) * r.game.canvas.getBoundingClientRect().height / 720,
       bottom: label.getBounds().bottom, top: label.getBounds().top, lines: label.getWrappedText().length,
       paging: r.children.getByName('deck-review-comparison-hint')?.text,
       panelBottom: (r.children.getByName('deck-review-comparison-panel') ?? r.children.getByName('deck-review-detail-panel'))?.getBounds().bottom };
@@ -49,7 +51,7 @@ for (const remapped of [false, true]) test(`Deck Review hints follow input witho
         await page.mouse.click(point.x, point.y);
       }
       const h = await hints();
-      expect(h.mode).toBe(mode); expect(h.size).toBe('18px');
+      expect(h.mode).toBe(mode); expect(h.size).toBe('19px'); expect(h.cssSize).toBeGreaterThanOrEqual(14);
       expect(h.lines).toBeLessThanOrEqual(2); expect(h.bottom).toBeLessThanOrEqual(698);
       if (h.panelBottom) expect(h.top - h.panelBottom).toBeGreaterThanOrEqual(6);
       if (h.paging) expect(h.paging).toBe(mode === 'controller' ? 'LB / RB: pages' : mode === 'keyboard' ? 'PgUp / PgDn: pages' : 'Use Previous / Next');

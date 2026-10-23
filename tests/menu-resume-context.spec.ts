@@ -73,7 +73,7 @@ test('saved-flight context and secondary actions remain readable without changin
       });
     });
     for (const item of utility) {
-      expect(item.font).toBeGreaterThanOrEqual(15.5);
+      expect(item.font).toBeGreaterThanOrEqual(16);
       expect(item.hit).toBeGreaterThanOrEqual(44);
       expect(item.inside).toBe(true); expect(item.onStage).toBe(true);
     }

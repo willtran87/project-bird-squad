@@ -111,13 +111,21 @@ It requires exactly one `render-hand` chunk and rejects preloading battle hand
 composition, selection motion, Flow hints, and hover dossiers.
 The combat-only `combat-card-detail` dependency is separately capped at 4 KB,
 requires one hashed output chunk, and is also rejected from title preloads.
-It loads with the hand renderer, so opening the reading panel adds no network wait.
+Normally it loads with the hand renderer, so opening the reading panel adds no
+network wait. If the hand renderer fails, explicitly opening Full rules requests
+the independent reader with a bounded timeout. Failure preserves the pending
+decision and reports that details could not load; it does not play a card.
 It requires one `discard-choice` and one `return-choice` chunk and rejects
 preloading either combat decision workflow before BattleScene opens.
 It requires exactly one `render-inspect` chunk and rejects preloading card/pile
 review composition until the player opens a combat deck, draw, or discard index.
 It requires exactly one `render-reward` chunk and rejects preloading reward
 ceremony composition until a post-combat card, Preen, or Waymark choice opens.
+The shared `reward-card-face` dependency keeps normal and fallback choice layout
+identical. It must have one hashed chunk and must not be preloaded by the title.
+Its own cap is 4 KiB; hand, ceremony and shared face together retain the former
+24 KiB combined allowance (10 KiB hand plus 14 KiB ceremony). The individual
+hand and ceremony hard caps remain unchanged.
 It requires exactly one `route-map-renderer` chunk and rejects preloading route
 edges, node hierarchy, and route commitment controls before RouteScene opens.
 It requires exactly one `saved-decks` chunk and rejects preloading persisted

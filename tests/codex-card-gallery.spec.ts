@@ -31,7 +31,7 @@ test('all card gallery titles and collection markers fit outside the complete ar
     for (const card of c.allCards()) {
       c.root.removeAll(true); c.renderThumb(c.root, card, 640, 360);
       const tile = c.root.getByName('codex-card-tile'), b = tile.getByName('codex-card-entry-hit').getBounds();
-      const artBox = { left: 548, right: 732, top: b.top + 88, bottom: b.top + 364 };
+      const artBox = { left: 640 - 244 / 3, right: 640 + 244 / 3, top: b.top + 88, bottom: b.top + 332 };
       const texts = tile.list.filter((n: any) => n.type === 'Text' && !['codex-card-art-placeholder', 'codex-card-art-streaming-label'].includes(n.name));
       for (const n of texts) {
         const a = n.getBounds();
@@ -47,6 +47,7 @@ test('all card gallery titles and collection markers fit outside the complete ar
       for (const name of ['codex-card-ownership-marker', 'codex-card-folio-marker', 'codex-new-card-marker', 'codex-card-tag-marker', 'codex-favorite-marker', 'codex-hunt-marker']) {
         if (!tile.getByName(name)) issues.push(`${card.id}: missing ${name}`);
       }
+      if(tile.getByName('codex-new-card-marker-label').text !== 'NEW') issues.push(`${card.id}: unreadable new badge`);
       count++;
     }
     c.discovered.clear();
@@ -105,7 +106,7 @@ test('card gallery loads every illustration and keeps full cards clear of collec
   expect(seen.size).toBe(110); expect(errors).toEqual([]);
 });
 
-test('card gallery title and artwork open details without changing collection or return position', async ({ page }) => {
+test('card gallery title and artwork open details without changing collection or return position', async ({ page }, info) => {
   await boot(page); await decorate(page); await page.setViewportSize({ width: 1000, height: 560 });
   await settleCanvas(page);
   for (const target of ['codex-card-title', 'codex-card-art']) {
@@ -117,7 +118,17 @@ test('card gallery title and artwork open details without changing collection or
         scroll: c.gridScroll, saved: JSON.stringify(localStorage) };
     }, target);
     if (target === 'codex-card-title') await page.touchscreen.tap(point.x, point.y); else await page.mouse.click(point.x, point.y);
-    await page.waitForFunction(id => JSON.parse((window as any).render_game_to_text()).detailOpen === id, point.id);
+    try {
+      await page.waitForFunction(id => JSON.parse((window as any).render_game_to_text()).detailOpen === id, point.id, { timeout: 10000 });
+    } catch (error) {
+      await info.attach('gallery-click-state', { contentType: 'application/json', body: JSON.stringify(await page.evaluate(({point,target}) => {
+        const c=(window as any).__birdSquadGame.scene.getScene('CodexScene'), p=c.input.activePointer;
+        return {point,target,state:JSON.parse((window as any).render_game_to_text()),pointer:{x:p.x,y:p.y},
+          hits:c.input.hitTestPointer(p).map((o:any)=>({name:o.name,id:o.getData('cardId'),enabled:o.input?.enabled,bounds:o.getBounds()}))};
+      }, {point,target})) });
+      await page.screenshot({path:info.outputPath('gallery-click-failure.png')});
+      throw error;
+    }
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !JSON.parse((window as any).render_game_to_text()).detailOpen);
     await settleCanvas(page);

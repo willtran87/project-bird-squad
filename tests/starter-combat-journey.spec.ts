@@ -65,6 +65,14 @@ for (const leader of flockLeaders) test(`starter combat control journey: ${leade
       const canvas = b.game.canvas.getBoundingClientRect();
       const point = (x: number, y: number) => ({ x: canvas.left + x * canvas.width / 1280, y: canvas.top + y * canvas.height / 720 });
       if (!pick) return { done: false, action: 'roost', point: point(1192, 470), turn: b.turn };
+      const targetPage = Math.floor(b.hand.indexOf(pick.card) / 5);
+      if (targetPage !== b.handPage) {
+        const name = targetPage > b.handPage ? 'combat-hand-next' : 'combat-hand-previous';
+        const hit = b.handLayer.getByName(name);
+        if (!hit?.input?.enabled) throw new Error(`Missing enabled hand pager: ${name}`);
+        const bounds = hit.getBounds();
+        return { done: false, action: 'page', page: b.handPage, point: point(bounds.centerX, bounds.centerY), turn: b.turn };
+      }
       const rect = b.handCardRects.get(pick.card.instanceId).getBounds();
       const target = b.enemyHpBar(pick.enemy);
       return { done: false, action: 'card', card: pick.card.id, target: pick.target,
@@ -73,7 +81,12 @@ for (const leader of flockLeaders) test(`starter combat control journey: ${leade
     });
     actions.push(decision);
     if (decision.done) break;
+    await settleCanvas(page);
     await page.mouse.click(decision.point!.x, decision.point!.y);
+    if (decision.action === 'page') {
+      await page.waitForFunction(previous => (window as any).__birdSquadGame.scene.getScene('BattleScene').handPage !== previous, decision.page);
+      continue;
+    }
     if (decision.action === 'card') {
       await page.waitForFunction(id => (window as any).__birdSquadGame.scene.getScene('BattleScene').selectedInstanceId === id, decision.instanceId);
       if (decision.target === 'enemy') await page.mouse.click(decision.enemy!.x, decision.enemy!.y);

@@ -2,6 +2,9 @@ import Phaser from 'phaser';
 import { UI_FONT, UI_BOLD, UI_GOLD, UI_CYAN } from './theme';
 import { decisionCardKeywordSections } from './keyword-definitions';
 import { renderMarketCardDossier, renderRouteInspectionReader } from './reward-card-inspection';
+import { renderDeckPortrait } from './deck-portrait';
+import { quietButton } from './quiet-ui';
+import type { RuntimeImageAsset } from './runtime-images';
 export {
   renderMarketServices,
   renderMarketCatalogLabel,
@@ -14,6 +17,7 @@ export {
   closeRouteRewardInspection,
   cycleCardPickerFocus,
   cycleMarketCategory,
+  changeMarketReaderSection,
   cycleMarketFocus,
   cycleRouteRewardChoice,
   focusedCardPickerEntry,
@@ -67,6 +71,7 @@ export interface CardHoverDetailView {
 }
 
 export interface SceneCardDetailView {
+  portraitAsset?: RuntimeImageAsset;
   name: string;
   bird: string;
   label: string;
@@ -141,25 +146,8 @@ export function renderCardHoverDetail(scene: Phaser.Scene, view: CardHoverDetail
     }).setOrigin(0.5));
   }
 
-  if (view.dossierFrameKey && scene.textures.exists(view.dossierFrameKey)) {
-    scene.textures.get(view.dossierFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const alpha = view.reducedMotion ? 0.88 : 0.94;
-    const frame = add(scene.add.image(cx, cy, view.dossierFrameKey)
-      .setDisplaySize(w + 26, h + 38)
-      .setAlpha(alpha));
-    if (!view.reducedMotion) {
-      scene.tweens.add({
-        targets: frame,
-        alpha: alpha * 0.92,
-        scaleX: frame.scaleX * 1.004,
-        scaleY: frame.scaleY * 1.004,
-        duration: 1800,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-    }
-  }
+  // The canonical card already carries its authored border. A second stretched
+  // ornamental frame obscures that border and competes with the rules.
 
   add(scene.add.rectangle(cx, top + 24, w - 4, 44, 0x05080e, 0.76));
   add(scene.add.text(left + 52, top + 9, view.name, {
@@ -266,13 +254,8 @@ export function renderCardHoverDetail(scene: Phaser.Scene, view: CardHoverDetail
     color: UI_GOLD,
   }));
 
-  if (view.statChipFrameKey && scene.textures.exists(view.statChipFrameKey)) {
-    scene.textures.get(view.statChipFrameKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    add(scene.add.image(cx, bottom - 17, view.statChipFrameKey)
-      .setDisplaySize(w - 38, 34)
-      .setAlpha(0.8)
-      .setName('card-hover-stat-chip-frame'));
-  }
+  add(scene.add.rectangle(cx, bottom - 17, w - 38, 34, 0x07101a, 0.96)
+    .setStrokeStyle(1, view.accent, 0.4).setName('card-hover-stat-chip-frame'));
   add(scene.add.text(tx, bottom - 16, view.stats.length > 0 ? view.stats.join('   ') : 'None', {
     fontFamily: UI_FONT,
     fontSize: '11px',
@@ -309,14 +292,10 @@ export function renderSceneCardDetail(scene: Phaser.Scene, view: SceneCardDetail
     title.setText(`${excerpt}…`);
   }
   scene.add.circle(558, 265, 20, 0x141b22, 1).setStrokeStyle(1, view.accent, 0.8);
-  text(558, 265, String(view.cost), 18, 40).setOrigin(0.5).setFontStyle(UI_BOLD);
-  text(586, 255, 'Wingbeats', 16, 126).setColor('#a9c6d5');
-  const art = view.artKey && scene.textures.exists(view.artKey) ? view.artKey
-    : view.snagBorderKey && scene.textures.exists(view.snagBorderKey) ? view.snagBorderKey : undefined;
-  scene.add.rectangle(626, 410, 162, 243, 0x141f2f, 1).setStrokeStyle(1, view.accent, 0.5);
-  if (art) scene.add.image(626, 410, art).setDisplaySize(162, 243);
-  else text(626, 410, 'Card art', 18, 150).setOrigin(0.5).setColor('#a9c6d5');
-  const heading = text(734, 285, '', 16).setColor(UI_GOLD).setFontStyle(UI_BOLD);
+  text(558, 265, String(view.cost), 21, 40).setOrigin(0.5).setFontStyle(UI_BOLD);
+  text(586, 255, 'Wingbeats', 19, 126).setColor('#a9c6d5');
+  renderDeckPortrait(scene, view, 626, 410, 162, 243, 'deck-review-detail-art');
+  const heading = text(734, 285, '', 19).setColor(UI_GOLD).setFontStyle(UI_BOLD);
   const body = text(734, 318, '').setName('deck-review-detail-body');
   const sections = [
     { title: view.usesMolt ? 'NOW · MOLT' : 'NOW', text: view.currentText },
@@ -342,10 +321,9 @@ export function renderSceneCardDetail(scene: Phaser.Scene, view: SceneCardDetail
   const key = JSON.stringify(sections);
   const state = detailReading.get(scene)?.key === key ? detailReading.get(scene)! : { key, page: 0 };
   detailReading.set(scene, state);
-  const pageLabel = text(826, 568, '', 16, 150).setOrigin(0.5);
-  text(826, 606, 'Read only · PgUp / PgDn · LB / RB', 14, 570).setOrigin(0.5).setColor('#a9c6d5');
+  const pageLabel = text(826, 568, '', 19, 150).setOrigin(0.5);
+  text(826, 610, 'Read only · PgUp / PgDn · LB / RB', 19, 570).setOrigin(0.5).setColor('#a9c6d5');
   const buttons: Phaser.GameObjects.Rectangle[] = [];
-  const labels: Phaser.GameObjects.Text[] = [];
   const show = (delta: number) => {
     const host = scene as Phaser.Scene & { pauseOverlayOpen?: boolean; settingsOverlayOpen?: boolean; deckReviewSearchActive?: boolean };
     if (delta && (host.pauseOverlayOpen || host.settingsOverlayOpen || host.deckReviewSearchActive)) return;
@@ -356,19 +334,15 @@ export function renderSceneCardDetail(scene: Phaser.Scene, view: SceneCardDetail
     panel.setData('reading', { ...current, page: state.page + 1, total: pages.length });
     buttons.forEach((button, i) => {
       const enabled = i ? state.page < pages.length - 1 : state.page > 0;
-      button.setData('enabled', enabled).setAlpha(enabled ? 1 : 0.4);
-      labels[i].setAlpha(enabled ? 1 : 0.4);
+      button.setData('enabled', enabled);
     });
   };
   [-1, 1].forEach((delta, i) => {
     const x = i ? 1042 : 610;
-    const hit = scene.add.rectangle(x, 568, 140, 58, 0x152432, 1).setStrokeStyle(1, 0x8df4ff, 0.4)
-      .setInteractive({ useHandCursor: true }).setName(`deck-review-detail-${i ? 'next' : 'previous'}`);
-    hit.on('pointerdown', () => { if (hit.getData('enabled')) show(delta); });
-    hit.on('pointerover', () => { if (hit.getData('enabled')) hit.setStrokeStyle(2, 0x8df4ff, 1); });
-    hit.on('pointerout', () => hit.setStrokeStyle(1, 0x8df4ff, 0.4));
+    const hit = quietButton(scene, { x, y: 568, width: 140,
+      label: i ? 'Next →' : '← Previous', name: `deck-review-detail-${i ? 'next' : 'previous'}`,
+      onActivate: () => show(delta) });
     buttons.push(hit);
-    labels.push(text(x, 568, i ? 'Next →' : '← Previous', 16, 132).setOrigin(0.5));
   });
   panel.setData('changePage', show);
   show(0);

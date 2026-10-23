@@ -35,7 +35,7 @@ for (const remapped of [false, true]) test(`Market reads unavailable offers acro
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene'); r.updateTextState();
     const hint = r.children.getByName('market-input-help-text');
     return { market: JSON.parse((window as any).render_game_to_text()).market,
-      run: JSON.stringify(r.runState), hint: hint.text, mode: hint.getData('inputMode') };
+      run: JSON.stringify(r.runState), hint: hint.text, actionHint: r.children.getByName('market-purchase-hint').text, mode: hint.getData('inputMode') };
   });
   const pad = async (button: 'right' | 'A' | 'Y', held = false) => {
     await page.evaluate(({ button, held }) => {
@@ -59,7 +59,8 @@ for (const remapped of [false, true]) test(`Market reads unavailable offers acro
       expect(selected.market.input.available).toBe(false);
       expect(selected.market.input.focusVisible).toBe(true);
       expect(selected.market.rules?.total).toBeGreaterThan(0);
-      expect(selected.hint).toContain('requirements');
+      expect(selected.hint).toContain('Have 0');
+      expect(selected.hint).toContain(selected.market.decisionPreview[0]);
       expect(selected.mode).toBe('keyboard');
       await press(keys.confirm); await press(keys.inspect);
       const after = await state();
@@ -73,7 +74,7 @@ for (const remapped of [false, true]) test(`Market reads unavailable offers acro
     expect((await state()).market.input.index).toBe((oldIndex + 1) % count);
     await pad('A', true); await pad('Y');
     expect((await state()).run).toBe(before.run);
-    expect((await state()).hint).toContain('LB/RB');
+    expect((await state()).actionHint).toContain('LB/RB');
     for (const viewport of (remapped ? [{ width: 1000, height: 560 }] : [
       { width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 },
     ])) {
@@ -85,11 +86,15 @@ for (const remapped of [false, true]) test(`Market reads unavailable offers acro
           font: hint.style.fontSize, resolution: hint.style.resolution,
           lines: hint.getWrappedText().length,
           tabs: r.children.list.filter((o: any) => o.name === 'market-category-tab' && o.type === 'Text').map((o: any) => ({ font: o.style.fontSize, width: o.width })),
+          readerControls: (r.marketItemHover?.list ?? r.hoverCardDetail?.getByName('market-fixed-card-inspector')?.list ?? [])
+            .filter((o: any) => /^market-(reader-category-\d|item-reader-(next|previous))$/.test(o.name))
+            .map((o: any) => ({ role: o.getData('controlKind'), alpha: o.alpha, font: o.getData('labelObject')?.style.fontSize })),
         };
       });
-      expect(geometry.contained).toBe(true); expect(geometry.font).toBe('16px'); expect(geometry.resolution).toBe(2);
-      expect(geometry.lines).toBe(2);
-      for (const tab of geometry.tabs) { expect(tab.font).toBe('18px'); expect(tab.width).toBeLessThanOrEqual(128); }
+      expect(geometry.contained).toBe(true); expect(geometry.font).toBe('19px'); expect(geometry.resolution).toBe(2);
+      expect(geometry.lines).toBe(1);
+      for (const tab of geometry.tabs) { expect(tab.font).toBe('21px'); expect(tab.width).toBeLessThanOrEqual(128); }
+      for (const control of geometry.readerControls) expect(control).toEqual({ role: 'secondary', alpha: 1, font: '21px' });
       await page.screenshot({ path: info.outputPath(`${category}-unavailable-${viewport.width}.png`) });
     }
   }

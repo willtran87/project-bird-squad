@@ -1,29 +1,30 @@
 import Phaser from 'phaser';
 import { renderCardColorCue } from '../card-color-cues';
 import { fitTextExcerpt } from '../text-excerpt';
-import { formatCardRuleGroups } from './card-rule-layout';
-import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
+import { renderRewardHoverPreview } from '../reward-card-inspection';
+import { readableHandRules, fitHandRules, wrapHandRules } from './hand-rule-summary';
+import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET, UI_TYPE } from '../theme';
 import { itemKeywordSections } from '../keyword-definitions';
 import { renderCombatReader, renderCombatCardDetail as renderCardReadingPanel, renderCombatHistory as renderHistoryReadingPanel, type CardDetailContext } from './card-detail';
 
-export function renderWaymarkRewardDetail(context: Omit<CardDetailContext, 'ui' | 'minTouchTarget'>, name: string, description: string, meta: string, notes: string[]) {
+export function renderWaymarkRewardDetail(context: Omit<CardDetailContext, 'ui' | 'typography'>, name: string, description: string, meta: string, notes: string[]) {
   const sections = [
     { heading: 'EFFECT', body: description },
     { heading: 'CONTEXT', body: `${meta}\n\n${notes.join('\n')}\n\nCard counts include conditional and Molt effects, not guaranteed triggers.\n\nBack returns to the same reward choice. Nothing is claimed here.` },
   ];
   sections.push(...itemKeywordSections([{ title: 'EFFECT', text: description }])
     .map(section => ({ heading: section.title, body: section.text })));
-  return renderCombatReader({ ...context, ui: DECISION_UI, minTouchTarget: MIN_SUPPORTED_TOUCH_TARGET }, {
+  return renderCombatReader({ ...context, ui: DECISION_UI, typography: UI_TYPE }, {
     name, kind: 'waymark', badge: 'Reading only', sections,
   });
 }
 
-export function renderCombatHistory(context: Omit<CardDetailContext, 'ui' | 'minTouchTarget'>, entries: string[]) {
-  return renderHistoryReadingPanel({ ...context, ui: DECISION_UI, minTouchTarget: MIN_SUPPORTED_TOUCH_TARGET }, entries);
+export function renderCombatHistory(context: Omit<CardDetailContext, 'ui' | 'typography'>, entries: string[]) {
+  return renderHistoryReadingPanel({ ...context, ui: DECISION_UI, typography: UI_TYPE }, entries);
 }
 
-export function renderCombatCardDetail(context: Omit<CardDetailContext, 'ui' | 'minTouchTarget'>, card: BattleHandCardPreviewView) {
-  return renderCardReadingPanel({ ...context, ui: DECISION_UI, minTouchTarget: MIN_SUPPORTED_TOUCH_TARGET }, card);
+export function renderCombatCardDetail(context: Omit<CardDetailContext, 'ui' | 'typography'>, card: BattleHandCardPreviewView) {
+  return renderCardReadingPanel({ ...context, ui: DECISION_UI, typography: UI_TYPE }, card);
 }
 
 export interface BattleHandCardPreviewView {
@@ -156,11 +157,10 @@ function textureReady(scene: Phaser.Scene, key: string) {
   return true;
 }
 
-function fitCardText(label: Phaser.GameObjects.Text, source: string, maxLines: number, separateConditions = false) {
+function fitCardText(label: Phaser.GameObjects.Text, source: string, maxLines: number) {
   // Measure actual wrapped lines, not character counts. Always signal omission;
   // the unchanged hover/selection dossier exposes the complete authored rules.
-  const format = separateConditions ? formatCardRuleGroups : (value: string) => value;
-  fitTextExcerpt(label, source, maxLines, format);
+  fitTextExcerpt(label, source, maxLines);
 }
 
 function addCardArt(
@@ -176,7 +176,9 @@ function addCardArt(
   const { scene } = context;
   target.removeAll(true);
   if (card.artKey && textureReady(scene, card.artKey)) {
-    target.add(scene.add.image(x, y, card.artKey).setDisplaySize(width, height).setAlpha(alpha));
+    const image = scene.add.image(x, y, card.artKey).setAlpha(alpha).setName('combat-hand-illustration');
+    image.setScale(Math.min(width / image.width, height / image.height));
+    target.add(image);
     return;
   }
   if (card.snag && context.renderSnagArt(target, card.instanceId, x, y, width, height, alpha)) {
@@ -196,10 +198,10 @@ export function renderBattleHandCardArt(
     context,
     target,
     card,
-    centerX,
-    context.handY,
-    context.cardWidth - 4,
-    context.cardHeight - 4,
+    centerX - context.cardWidth / 2 + 32,
+    context.handY - context.cardHeight / 2 + 50,
+    60,
+    90,
     card.discardSelectable !== undefined ? card.discardSelectable ? 1 : 0.42 : card.canPay ? 1 : 0.55,
   );
 }
@@ -247,100 +249,98 @@ function renderCard(
     result.frames.set(card.instanceId, frame);
   }
 
-  target.add(scene.add.rectangle(centerX, top + 25, cardWidth - 4, 48, 0x081624, 0.98)
+  // A reserved portrait beside the name keeps the entire illustration visible.
+  // Text and state badges must never turn it into an accidental cropped strip.
+  target.add(scene.add.rectangle(left + 64 + (cardWidth - 68) / 2, top + 50, cardWidth - 68, 90, 0x081624, 0.98)
     .setName('combat-card-title-panel'));
-  const title = scene.add.text(left + 34, top + 5, card.name, {
+  const title = scene.add.text(left + 64, top + 5, card.name, {
     fontFamily,
-    fontSize: '18px',
+    fontSize: '21px',
     fontStyle: boldFontStyle,
     color: card.canPay ? '#ffe7b0' : '#9aa7b6',
-    wordWrap: { width: cardWidth - 44, useAdvancedWrap: true }, maxLines: 2, resolution: 2,
+    wordWrap: { width: cardWidth - 68, useAdvancedWrap: true }, maxLines: 3, resolution: 2,
   }).setName('combat-card-title');
-  fitCardText(title, card.name, 2);
-  title.setY(top + 22 - title.height / 2);
+  fitCardText(title, card.name, 3);
+  title.setY(top + 50 - title.height / 2);
   target.add(title);
-  if (card.usesMolt) {
-    target.add(scene.add.rectangle(left + cardWidth - 33, top + 56, 54, 18, 0x2a1208, 0.96)
-      .setStrokeStyle(1, 0xff9d4d, 0.78).setName('combat-card-molt-badge'));
-    target.add(scene.add.text(left + cardWidth - 33, top + 56, 'MOLT', {
+  // Two reserved rows between title and rules: identity/choice, then Flow.
+  // Their geometry never depends on which other badges happen to be active.
+  const badgeY = top + 111;
+  if (card.usesMolt || card.guideMolt) {
+    const badgeName = card.usesMolt ? 'combat-card-molt-badge' : 'combat-molt-guide-tag';
+    target.add(scene.add.rectangle(left + 62, badgeY, 60, 28, 0x2a1208, 0.96)
+      .setStrokeStyle(1, 0xff9d4d, 0.78).setName(badgeName));
+    target.add(scene.add.text(left + 62, badgeY, card.usesMolt ? 'MOLT' : 'Molt?', {
       fontFamily,
-      fontSize: '10px',
+      fontSize: UI_TYPE.secondary,
       fontStyle: boldFontStyle,
       color: '#ffc78f',
       align: 'center',
       resolution: 2,
-    }).setOrigin(0.5).setName('combat-card-molt-label'));
+    }).setOrigin(0.5).setName(card.usesMolt ? 'combat-card-molt-label' : badgeName));
   }
-  if (card.guideMolt && !card.usesMolt) {
-    target.add(scene.add.rectangle(centerX, top + 56, 76, 18, 0x2a1208, 0.94)
-      .setStrokeStyle(1, 0xff9d4d, 0.95)
-      .setName('combat-molt-guide-tag'));
-    target.add(scene.add.text(centerX, top + 49, 'MOLT CARD', {
-      fontFamily,
-      fontSize: '9px',
-      fontStyle: boldFontStyle,
-      color: '#ffe1bd',
-      align: 'center',
-    }).setOrigin(0.5, 0).setName('combat-molt-guide-tag'));
-  }
-  if (card.guideCard && !card.guideMolt) {
-    target.add(scene.add.circle(centerX, top + 58, 12, 0x231d08, 0.96)
+  if (card.guideCard && !card.guideMolt && !card.usesMolt) {
+    target.add(scene.add.circle(left + 62, badgeY, 12, 0x231d08, 0.96)
       .setStrokeStyle(2, 0xd8a840, 0.98)
       .setName('combat-first-card-guide-tag'));
-    target.add(scene.add.text(centerX, top + 58, '1', {
+    target.add(scene.add.text(left + 62, badgeY, '1', {
       fontFamily,
-      fontSize: '12px',
+      fontSize: UI_TYPE.secondary,
       fontStyle: boldFontStyle,
       color: '#fff0b8',
       align: 'center',
     }).setOrigin(0.5).setName('combat-first-card-guide-tag'));
   }
-  if (card.retainOrder) {
-    const keepY = top + (card.guideCard || card.guideMolt || card.usesMolt ? 84 : 56);
-    target.add(scene.add.rectangle(left + cardWidth - 42, keepY, 72, 20, 0x08241f, 0.96)
+  if (card.retainOrder && !card.discardSelectable) {
+    target.add(scene.add.rectangle(left + cardWidth - 44, badgeY, 84, 28, 0x08241f, 0.96)
       .setStrokeStyle(1, 0x8fd6a0, 0.96)
       .setName('combat-retain-priority-tag')
       .setData('order', card.retainOrder));
-    target.add(scene.add.text(left + cardWidth - 42, keepY, `KEEP ${card.retainOrder}`, {
+    target.add(scene.add.text(left + cardWidth - 44, badgeY, `KEEP ${card.retainOrder}`, {
       fontFamily,
-      fontSize: '9px',
+      fontSize: UI_TYPE.secondary,
+      resolution: UI_TYPE.resolution,
       fontStyle: boldFontStyle,
       color: '#dfffe8',
       align: 'center',
     }).setOrigin(0.5).setName('combat-retain-priority-tag').setData('order', card.retainOrder));
   }
   if (card.discardSelectable) {
-    context.renderDiscardTag(target, card, left + cardWidth - 42, top + (card.usesMolt ? 84 : 56));
+    context.renderDiscardTag(target, card, left + cardWidth - 44, badgeY);
   }
   if (context.reinforcedColorCues) {
-    renderCardColorCue(scene, target, left + 44, top + 106, card.label, card.accent, {
+    renderCardColorCue(scene, target, left + 16, badgeY, card.label, card.accent, {
       name: 'combat-color-cue-badge',
-      width: 82,
-      height: 18,
+      width: 26,
+      height: 28,
+      iconOnly: true,
     });
   }
-  target.add(scene.add.circle(left + 16, top + 22, 14, card.cost === 0 ? 0x24d0d6 : 0xe8b830, 1).setStrokeStyle(2, 0x05080e, 0.9));
-  target.add(scene.add.text(left + 16, top + 22, `${card.cost}`, {
+  target.add(scene.add.circle(left + 16, top + 141, 14, card.cost === 0 ? 0x24d0d6 : 0xe8b830, 1).setStrokeStyle(2, 0x05080e, 0.9));
+  target.add(scene.add.text(left + 16, top + 141, `${card.cost}`, {
     fontFamily,
-    fontSize: '18px',
+    fontSize: '21px',
     fontStyle: boldFontStyle,
     color: '#06101c', resolution: 2,
   }).setOrigin(0.5));
 
-  const panelHeight = 96;
+  const panelHeight = 110;
   target.add(scene.add.rectangle(centerX, bottom - panelHeight / 2 - 3, cardWidth - 6, panelHeight, 0x081624, 0.98)
     .setName('combat-card-rules-panel'));
-  target.add(scene.add.rectangle(centerX, bottom - panelHeight - 3, cardWidth - 6, 2, card.accent, 0.85));
   {
     const summary = scene.add.text(left + 8, bottom - panelHeight + 6, '', {
       fontFamily,
-      fontSize: '18px', resolution: 2, lineSpacing: 1,
+      fontSize: '21px', resolution: 2, lineSpacing: 1,
       color: card.canPay ? '#e5edf0' : '#a8b6bf',
       align: 'left',
       maxLines: 4,
-      wordWrap: { width: cardWidth - 16, useAdvancedWrap: true },
+      wordWrap: { width: cardWidth - 16, callback: (text: string, label: Phaser.GameObjects.Text) =>
+        wrapHandRules(text, value => label.context.measureText(value).width, cardWidth - 16) },
     }).setName('combat-card-readable-summary');
-    fitCardText(summary, card.summary, 4);
+    const readable = readableHandRules(card.summary.split('\n'));
+    const excerpt = fitHandRules(readable, text => summary.getWrappedText(text).length <= 4);
+    summary.setText(excerpt.text).setData('truncated', excerpt.omitted > 0)
+      .setData('omittedEffects', excerpt.omitted).setData('readableRules', readable);
     summary.setData('fullText', card.preview.currentText.replace(/\s+/g, ' ').trim())
       .setData('quickRead', card.summary);
     target.add(summary);
@@ -348,11 +348,12 @@ function renderCard(
 
   if (card.buildsFlow) {
     const container = scene.add.container(0, 0);
-    const background = scene.add.rectangle(centerX, bottom - panelHeight - 14, cardWidth - 18, 18, card.surgeNext ? 0x0d3b45 : 0x071b26, 0.96)
+    const background = scene.add.rectangle(centerX + 14, top + 141, cardWidth - 36, 28, card.surgeNext ? 0x0d3b45 : 0x071b26, 0.96)
       .setStrokeStyle(1, card.surgeNext ? 0xd8a840 : 0x24d0d6, 0.82);
-    const label = scene.add.text(centerX, bottom - panelHeight - 14, card.surgeNext ? 'SURGE NEXT  /  +1 FLOW' : '+1 FLOW', {
+    const label = scene.add.text(centerX + 14, top + 141, card.surgeNext ? '+1 Flow · Surge' : '+1 Flow', {
       fontFamily,
-      fontSize: '9px',
+      fontSize: UI_TYPE.secondary,
+      resolution: UI_TYPE.resolution,
       fontStyle: boldFontStyle,
       color: card.surgeNext ? '#ffe7a8' : '#bff8ff',
     }).setOrigin(0.5);
@@ -386,7 +387,7 @@ export function refreshBattleHandFlow(cards: BattleHandCardView[], result: Battl
       .setFillStyle(card.surgeNext ? 0x0d3b45 : 0x071b26, 0.96)
       .setStrokeStyle(1, card.surgeNext ? 0xd8a840 : 0x24d0d6, 0.82);
     indicator.label
-      .setText(card.surgeNext ? 'SURGE NEXT  /  +1 FLOW' : '+1 FLOW')
+      .setText(card.surgeNext ? '+1 Flow · Surge' : '+1 Flow')
       .setColor(card.surgeNext ? '#ffe7a8' : '#bff8ff');
   });
 }
@@ -418,16 +419,16 @@ export function refreshBattleHandSelection(
 function renderCombatCardDossier(context: BattleHandPreviewContext) {
   if (context.onInspect) {
     const container = context.scene.add.container(26, 472).setName('combat-card-inspect-control');
-    const hit = context.scene.add.rectangle(64, 33, 128, MIN_SUPPORTED_TOUCH_TARGET + 8, DECISION_UI.surface, 0.98)
+    const hit = context.scene.add.rectangle(64, 33, 128, MIN_SUPPORTED_TOUCH_TARGET, DECISION_UI.surface, 0.98)
       .setStrokeStyle(1, DECISION_UI.border, 0.8).setInteractive({ useHandCursor: true })
       .setName('combat-card-inspect-hit');
     container.add(hit);
-    container.add(context.scene.add.text(64, 15, 'Full rules', {
-      fontFamily: context.fontFamily, fontSize: '16px', fontStyle: context.boldFontStyle,
+    container.add(context.scene.add.text(64, 10, 'Full rules', {
+      fontFamily: context.fontFamily, fontSize: '21px', fontStyle: context.boldFontStyle,
       color: DECISION_UI.text, resolution: DECISION_UI.resolution,
     }).setOrigin(0.5, 0));
     container.add(context.scene.add.text(64, 40, context.inspectLabel ?? 'Help', {
-      fontFamily: context.fontFamily, fontSize: '13px', color: DECISION_UI.secondary,
+      fontFamily: context.fontFamily, fontSize: '18px', color: DECISION_UI.secondary,
       resolution: DECISION_UI.resolution,
     }).setOrigin(0.5, 0).setName('combat-card-inspect-shortcut'));
     hit.on('pointerover', () => hit.setStrokeStyle(2, DECISION_UI.accent, 1));
@@ -436,7 +437,7 @@ function renderCombatCardDossier(context: BattleHandPreviewContext) {
     context.target.add(container);
     return container;
   }
-  throw new Error('Combat card details require an explicit inspection action.');
+  throw new Error('Missing card inspection action.');
 }
 
 export function renderBattleHandPreview(
@@ -446,54 +447,20 @@ export function renderBattleHandPreview(
   previewX = context.width / 2,
 ) {
   if (context.combat) return renderCombatCardDossier(context);
-  const { scene, target, fontFamily, boldFontStyle } = context;
-  // Keep the dossier on the player's side, clear of enemy intents and the hand.
-  const w = 438;
-  const x = context.combat ? 244 : Phaser.Math.Clamp(previewX, w / 2 + 8, context.width - w / 2 - 8);
-  const container = scene.add.container(0, 0).setName('combat-focused-card-dossier');
-  const rules = scene.add.container(0, 0);
-  let y = 0;
-  const title = scene.add.text(x, y, card.name, {
-    fontFamily, fontSize: '22px', fontStyle: boldFontStyle, color: '#ffe7b0',
-    wordWrap: { width: w - 32 }, align: 'center', resolution: 2,
-  }).setOrigin(0.5, 0).setName('combat-focused-card-name');
-  rules.add(title);
-  y += title.height + 12;
-  y += context.renderRichText(rules, x, y, card.currentText, {
-    wrap: w - 32, fontSize: 20, align: 'center', lineSpacing: 3,
-  }) + 14;
-  if (card.alternateText && card.alternateLabel) {
-    y += context.renderRichText(rules, x, y, `${card.alternateLabel}: ${card.alternateText}`, {
-      wrap: w - 32, fontSize: 16, align: 'center', lineSpacing: 2,
-      baseColor: '#ffc78f',
-    }) + 12;
-  }
-  const stats = scene.add.text(x, y, `Cost ${card.cost} · ${card.upgraded ? 'Preened' : 'Base'}\n${card.stats}`, {
-    fontFamily, fontSize: '14px', color: context.cyanColor,
-    wordWrap: { width: w - 32 }, align: 'center',
-  }).setOrigin(0.5, 0);
-  rules.add(stats);
-  y += stats.height + 16;
-  const top = Math.max(110, 416 - y);
-  container.add(scene.add.rectangle(x, top + y / 2, w, y, 0x07111b, 0.99)
-    .setStrokeStyle(2, card.accent, 0.8).setName('combat-focused-card-panel'));
-  container.add(rules.setY(top + 8));
-  target.add(container);
-  return container;
+  return renderRewardHoverPreview(context, card, previewX);
 }
 
 export {
   armCombatRewardAt,
   cardPickerDeckImpact,
-  rewardDeckImpact,
   closeRewardCardInspection,
   focusedRewardCard,
   openRewardCardInspection,
   renderCombatRewardLoading,
   renderCombatRewardFallback,
   renderRewardSkipFallback,
-  renderRewardInspectButton,
   requestCombatReward,
   requestCombatRewardAt,
+  rewardDeckImpact,
   syncRewardCardInspection,
 } from '../reward-card-inspection';

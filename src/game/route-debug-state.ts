@@ -423,37 +423,19 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
         },
         flockOverlayOpen: scene.flockOverlayOpen,
         flockStatsReading: scene.flockOverlayOpen ? scene.children.getByName('flock-stats-reader')?.getData('summary') : undefined,
+        mapInspection: scene.flockOverlayOpen && scene.flockOverlayMode === 'map'
+          ? scene.children.getByName('flock-stats-reader')?.getData('mapInspection') ?? { loading: scene.mapInspectionLoading, failed: scene.mapInspectionFailed } : undefined,
         confirmExitOpen: scene.confirmExitOpen,
         flockStatsFlourish: {
           loaded: scene.textures.exists(uiIconAssets['flock-stats-flourish'].key),
           rendered: scene.children.list.some((child: any) => child.texture?.key === uiIconAssets['flock-stats-flourish'].key),
           count: scene.children.list.filter((child: any) => child.texture?.key === uiIconAssets['flock-stats-flourish'].key).length
         },
-        flockStatsTitlePlaque: {
-          loaded: scene.textures.exists(uiIconAssets['flock-stats-title-plaque'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['flock-stats-title-plaque'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['flock-stats-title-plaque'].key)
-        },
-        flockStatsCaptionFrame: {
-          loaded: scene.textures.exists(uiIconAssets['flock-stats-caption-frame'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['flock-stats-caption-frame'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['flock-stats-caption-frame'].key)
-        },
-        flockStatsFooterFrame: {
-          loaded: scene.textures.exists(uiIconAssets['flock-stats-footer-frame'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['flock-stats-footer-frame'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['flock-stats-footer-frame'].key)
-        },
-        flockStatsHeaderFrame: {
-          loaded: scene.textures.exists(uiIconAssets['flock-stats-header-frame'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['flock-stats-header-frame'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['flock-stats-header-frame'].key)
-        },
-        flockStatsRowFrame: {
-          loaded: scene.textures.exists(uiIconAssets['flock-stats-row-frame'].key),
-          rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['flock-stats-row-frame'].key) > 0,
-          count: countTextureInGameObjects(scene.children.list, uiIconAssets['flock-stats-row-frame'].key)
-        },
+        flockStatsTitlePlaque: iconState('flock-stats-title-plaque'),
+        flockStatsCaptionFrame: iconState('flock-stats-caption-frame'),
+        flockStatsFooterFrame: iconState('flock-stats-footer-frame'),
+        flockStatsHeaderFrame: iconState('flock-stats-header-frame'),
+        flockStatsRowFrame: iconState('flock-stats-row-frame'),
         deckReviewScrollButtonFrame: {
           loaded: scene.textures.exists(uiIconAssets['deck-review-scroll-button-frame'].key),
           rendered: countTextureInGameObjects(scene.children.list, uiIconAssets['deck-review-scroll-button-frame'].key) > 0,

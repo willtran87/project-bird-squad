@@ -125,6 +125,11 @@ for (const remapped of [false, true]) test(`event choices support complete readi
       try {
         for (const id of ids) {
           node.payloadId = id; r.openNodeChoices(node);
+          const context = r.children.getByName('route-event-context');
+          const header = r.children.getByName('route-event-title-plaque').getBounds();
+          if (context.text !== r.eventNarrativeContext(node)) failures.push(`${id}: incomplete situation in header`);
+          if (context.getBounds().bottom > header.bottom - 8 || context.getBounds().right > header.right - 12)
+            failures.push(`${id}: situation outside header`);
           const count = r.eventChoices().length;
           for (let index = 0; index < count; index++) {
             r.children.list.filter((o: any) => o.name === 'route-event-details-hit')[index].emit('pointerdown');
@@ -155,10 +160,19 @@ for (const remapped of [false, true]) test(`event choices support complete readi
   await page.evaluate(longText => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     r.savedEventChoicesForTest = r.eventChoices;
+    r.savedEventContextForTest = r.eventNarrativeContext;
+    r.eventNarrativeContext = () => 'The caller keeps the whole situation visible before the crew decides. '.repeat(10).trim();
     r.eventChoices = () => [{ key: 'locked-reading-stress', text: longText, effects: [], locked: true,
       lockedText: 'Requires the repaired switchboard and 120 Scrap. No payment will be taken.' }];
     r.renderAll();
   }, longText);
+  const longContext = await page.evaluate(() => {
+    const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
+    const context = r.children.getByName('route-event-context');
+    return { full: r.eventNarrativeContext(), shown: context.text, bottom: context.getBounds().bottom };
+  });
+  expect(longContext.shown).toMatch(/…$/);
+  expect(longContext.bottom).toBeLessThanOrEqual(165);
   await settleCanvas(page); await click(page, 'route-event-details-hit');
   const stressTotal = (await read()).nodeChoice.focus.reading.total;
   expect(stressTotal).toBeGreaterThan(2);
@@ -176,11 +190,13 @@ for (const remapped of [false, true]) test(`event choices support complete readi
   }
   expect(stressPages.join(' ').replace(/\s+/g, ' ')).toContain(longText);
   expect(stressPages.join(' ')).toContain('120 Scrap');
+  expect(stressPages.join(' ').replace(/\s+/g, ' ')).toContain(longContext.full);
   await page.screenshot({ path: info.outputPath('long-locked-reader-1000.png') });
   await press(keys.back);
   await page.evaluate(() => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     r.eventChoices = r.savedEventChoicesForTest; delete r.savedEventChoicesForTest;
+    r.eventNarrativeContext = r.savedEventContextForTest; delete r.savedEventContextForTest;
   });
   await open('cache');
   // Controller events select the device hint; navigation uses real scene polling.

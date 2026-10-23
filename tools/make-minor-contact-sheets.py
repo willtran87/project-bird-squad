@@ -40,13 +40,15 @@ def make_sheet(files: list[Path], output: Path, columns: int, thumb: tuple[int, 
         x = gutter + col * (thumb[0] + gutter)
         y = gutter + row * (thumb[1] + label_h + gutter)
         with Image.open(file) as source:
-            image = source.convert("RGB")
+            # Composite transparency before discarding alpha. Converting straight
+            # to RGB exposes invisible WebP/PNG edge colors as false art defects.
+            image = source.convert("RGBA")
             image.thumbnail(thumb, Image.Resampling.LANCZOS)
-            tile = Image.new("RGB", thumb, (8, 10, 18))
+            tile = Image.new("RGBA", thumb, (8, 10, 18, 255))
             tx = (thumb[0] - image.width) // 2
             ty = (thumb[1] - image.height) // 2
-            tile.paste(image, (tx, ty))
-            sheet.paste(tile, (x, y))
+            tile.alpha_composite(image, (tx, ty))
+            sheet.paste(tile.convert("RGB"), (x, y))
         draw.text((x, y + thumb[1] + 7), file.stem, fill=(238, 238, 230), font=font)
 
     output.parent.mkdir(parents=True, exist_ok=True)

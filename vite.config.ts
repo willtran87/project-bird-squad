@@ -72,6 +72,8 @@ export default defineConfig(({ command }) => ({
           // Keep the read-only combat dossier independently measurable. It is
           // a dependency of the lazy hand renderer, never a title preload.
           if (moduleId.endsWith('/src/game/battle/card-detail.ts')) return 'combat-card-detail';
+          // Shared by ceremony and offline fallback; no runtime imports or theme ownership.
+          if (moduleId.endsWith('/src/game/battle/reward-card-face.ts')) return 'reward-card-face';
           if (moduleId.endsWith('/src/game/battle/encounter-intro.ts')) return 'encounter-intro';
           if (
             moduleId.includes('/src/game/codex-data')

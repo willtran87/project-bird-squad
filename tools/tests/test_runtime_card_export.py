@@ -12,6 +12,16 @@ spec.loader.exec_module(export)
 
 
 class ScopedCardExport(unittest.TestCase):
+    def test_active_exports_preserve_canonical_proportions(self):
+        manifest = json.loads(export.MANIFEST_PATH.read_text(encoding='utf-8'))
+        approved = [entry for entry in manifest['cards'] if entry['status'] == 'approved']
+        self.assertEqual(len(approved), 110)
+        for entry in approved:
+            for kind, dimensions in [('portrait', (512, 768)), ('thumbnail', (184, 276))]:
+                with self.subTest(card=entry['cardId'], kind=kind):
+                    with export.Image.open(export.ROOT / entry[kind]) as image:
+                        self.assertEqual(image.size, dimensions)
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)

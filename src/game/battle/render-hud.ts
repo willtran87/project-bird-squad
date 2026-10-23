@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
-import { MIN_SUPPORTED_TOUCH_TARGET } from '../theme';
+import { MIN_SUPPORTED_TOUCH_TARGET, UI_TYPE } from '../theme';
 import { fitTextExcerpt } from '../text-excerpt';
+import { quietButton } from '../quiet-ui';
 
 export type BattleHudTooltipTarget = Phaser.GameObjects.Rectangle | Phaser.GameObjects.Arc | Phaser.GameObjects.Text;
 
@@ -206,7 +207,7 @@ function textureReady(scene: Phaser.Scene, key: string) {
 function renderPile(context: BattleHudRenderContext, pile: BattleHudPileView) {
   const { scene, root, assets, fontFamily, boldFontStyle } = context;
   const { x, y, count, label, onInspect } = pile;
-  const hit = scene.add.rectangle(x, y, 104, 112, 0x08121b, 0.36)
+  const hit = scene.add.rectangle(x, y - 3, 104, 106, 0x08121b, 0.36)
     .setStrokeStyle(1, 0x83979e, 0.22)
     .setName('combat-pile-hit').setInteractive({ useHandCursor: true });
   hit.on('pointerdown', onInspect);
@@ -221,14 +222,14 @@ function renderPile(context: BattleHudRenderContext, pile: BattleHudPileView) {
     fontFamily, fontSize: '25px', fontStyle: boldFontStyle, color: count ? '#e4eff2' : '#889ba5', resolution: 2
   }).setOrigin(0.5).setName('combat-pile-count').setData('pile', label));
   root.add(scene.add.text(x, y + 30, label, {
-    fontFamily, fontSize: '12px', fontStyle: boldFontStyle, color: '#bdcbd2', resolution: 2
+    fontFamily, fontSize: '18px', fontStyle: boldFontStyle, color: '#bdcbd2', resolution: 2
   }).setOrigin(0.5).setName('combat-pile-label'));
 }
 
 function renderCombatLog(context: BattleHudRenderContext) {
   const { scene, root, fontFamily } = context;
-  const x = 650, y = 440;
-  const hit = scene.add.rectangle(x, y, 160, MIN_SUPPORTED_TOUCH_TARGET, 0x08121b, 0.22)
+  const x = 1204, y = 687;
+  const hit = scene.add.rectangle(x, y, 120, MIN_SUPPORTED_TOUCH_TARGET, 0x08121b, 0.22)
     .setInteractive({ useHandCursor: true }).setName('combat-log-hit');
   context.attachTooltip(hit, 'Combat history', `${context.log.tooltip}\n${context.log.historyLabel}. Review up to 256 recent events without changing your selection.`);
   hit.on('pointerdown', context.log.onHistory);
@@ -236,8 +237,8 @@ function renderCombatLog(context: BattleHudRenderContext) {
   hit.on('pointerout', () => hit.setFillStyle(0x08121b, 0.22));
   root.add(hit);
   root.add(scene.add.text(x, y, 'Combat history', {
-    fontFamily, fontSize: '15px', color: '#b7c8d0', resolution: 2,
-    wordWrap: { width: 148 }, maxLines: 2, align: 'center'
+    fontFamily, fontSize: UI_TYPE.secondary, color: '#b7c8d0', resolution: 2,
+    wordWrap: { width: 108 }, maxLines: 2, align: 'center'
   }).setOrigin(0.5).setName('combat-log-latest'));
 }
 
@@ -245,20 +246,16 @@ export function renderBattleBeatBadge(context: BattleHudRenderContext) {
   const { scene, root, beat, fontFamily, boldFontStyle } = context;
   const beatUi = scene.add.container(0, 0).setName('combat-beat-progress-ui');
   root.add(beatUi);
-  const beatX = beat.active ? 1146 : 1190;
-  const beatY = 104;
-  const frameW = beat.active ? 250 : 148;
-  const frameH = beat.active ? 48 : 37;
-  beatUi.add(scene.add.rectangle(beatX, beatY, frameW - 30, frameH - 14, 0x07101c, beat.active ? 0.97 : 0.94));
+  const beatX = 1107;
+  const beatY = 127;
+  if (beat.active) beatUi.add(scene.add.rectangle(beatX, beatY, 306, 58, 0x07101c, 0.97));
 
   if (!beat.active) {
-    beatUi.add(scene.add.text(1252, beatY, `Beat ${beat.turn}`, {
+    beatUi.add(scene.add.text(1252, 111, `Beat ${beat.turn}`, {
       fontFamily,
-      fontSize: '15px',
+      fontSize: UI_TYPE.secondary,
       fontStyle: boldFontStyle,
       color: '#fff0b8',
-      stroke: '#05070c',
-      strokeThickness: 2,
     }).setOrigin(1, 0.5));
     return beatUi;
   }
@@ -270,9 +267,9 @@ export function renderBattleBeatBadge(context: BattleHudRenderContext) {
       : beat.phase === 'release'
         ? 0xff9d4d
         : 0xffcf7a;
-  const railX = beatX - 92;
-  const railY = beatY + 13;
-  const railW = 184;
+  const railX = beatX - 141;
+  const railY = beatY + 25;
+  const railW = 282;
   beatUi.add(scene.add.rectangle(railX + railW / 2, railY, railW, 6, 0x020409, 0.84)
     .setStrokeStyle(1, 0xffcf7a, 0.28)
     .setName('combat-enemy-beat-progress-rail'));
@@ -286,63 +283,53 @@ export function renderBattleBeatBadge(context: BattleHudRenderContext) {
   if (remaining > 80) {
     scene.tweens.add({ targets: fill, scaleX: 1, duration: remaining, ease: 'Linear' });
   }
-  beatUi.add(scene.add.text(beatX - 100, beatY - 11, beat.progress.label.toUpperCase(), {
+  beatUi.add(scene.add.text(beatX - 141, beatY - 16, beat.progress.label, {
     fontFamily,
-    fontSize: '11px',
+    fontSize: UI_TYPE.secondary,
     fontStyle: boldFontStyle,
     color: '#ffcf7a',
-  }).setOrigin(0, 0.5));
+    resolution: 2,
+  }).setOrigin(0, 0.5).setName('combat-enemy-phase-label'));
   if (beat.acceleration?.available) {
     beatUi.add(scene.add.text(
-      beatX + 100,
-      beatY - 11,
-      beat.acceleration.active ? `HUSTLE ${beat.acceleration.multiplier}X` : 'HOLD: HUSTLE',
+      beatX + 141,
+      beatY - 16,
+      beat.acceleration.active ? `Hustle ${beat.acceleration.multiplier}×` : 'Hold: Hustle',
       {
         fontFamily,
-        fontSize: '9px',
+        fontSize: UI_TYPE.secondary,
         fontStyle: boldFontStyle,
-        color: beat.acceleration.active ? '#76e6dc' : '#a8b8bf',
+        color: beat.acceleration.active ? '#76e6dc' : '#a8b8bf', resolution: 2,
       },
     ).setOrigin(1, 0.5).setName('combat-enemy-acceleration-label'));
   }
-  beatUi.add(scene.add.text(beatX - 100, beatY + 2, beat.move, {
+  const move = scene.add.text(beatX - 141, beatY + 7, '', {
     fontFamily,
-    fontSize: '13px',
+    fontSize: UI_TYPE.secondary,
     fontStyle: boldFontStyle,
     color: '#f6e6bd',
-    stroke: '#05070c',
-    strokeThickness: 2,
-  }).setOrigin(0, 0.5));
+    resolution: 2, wordWrap: { width: 282 }, maxLines: 1,
+  }).setOrigin(0, 0.5).setName('combat-enemy-move-label');
+  beatUi.add(fitTextExcerpt(move, beat.move, 1));
   return beatUi;
 }
 
 function renderCommandStrip(context: BattleHudRenderContext) {
   const { scene, root } = context;
   renderCombatLog(context);
-  const x = 1192;
+  const x = 1196;
   const y = 470;
   const busy = context.beat.active;
-  const hit = scene.add.rectangle(x, y, 164, 74, busy ? 0x0c1d25 : 0x12333b, 0.98)
-    .setStrokeStyle(1, busy ? 0x526c76 : 0x8df4ff, busy ? 0.5 : 0.72)
-    .setName('combat-roost-hit').setInteractive({ useHandCursor: !busy });
-  if (!busy) hit.on('pointerdown', context.onRoost);
-  context.attachTooltip(hit, busy ? 'Enemy turn' : 'End Turn', busy
-    ? 'Enemies are resolving their moves. Your hand returns when they finish.'
-    : context.roostDetail ?? 'Roost and let enemies act.');
+  const hit = quietButton(scene, { x, y, width: 164, label: busy ? 'Enemy turn' : context.roostLabel ?? 'Roost',
+    name: 'combat-roost-hit', kind: 'primary', enabled: !busy, onActivate: context.onRoost });
+  hit.setDisplaySize(164, 92);
+  // The busy explanation is visible below; attaching a pointer tooltip would
+  // re-register a deliberately disabled control with the input manager.
+  if (!busy) context.attachTooltip(hit, 'End Turn', context.roostDetail ?? 'Roost and let enemies act.');
 
-  root.add(hit);
-  if (!busy) {
-    hit.on('pointerover', () => hit.setFillStyle(0x20515a, 1));
-    hit.on('pointerout', () => hit.setFillStyle(0x12333b, 0.98));
-  }
-  root.add(scene.add.text(x, y - 17, busy ? 'Enemy turn' : context.roostLabel ?? 'Roost · End Turn', {
-      fontFamily: context.fontFamily,
-      fontSize: '16px',
-      fontStyle: context.boldFontStyle,
-      color: busy ? '#aabcc8' : '#fff0b8', resolution: 2,
-    }).setOrigin(0.5).setName('combat-roost-label'));
-  root.add(scene.add.text(x, y + 14, busy ? 'Your hand returns next' : context.roostPreview ?? 'Enemies act next', {
-    fontFamily: context.fontFamily, fontSize: '14px', color: '#dffbff', resolution: 2,
+  root.add([hit, hit.getData('labelObject').setY(y - 27).setName('combat-roost-label')]);
+  root.add(scene.add.text(x, y + 12, busy ? 'Enemies act\nHand returns' : context.roostPreview ?? 'Enemies act next', {
+    fontFamily: context.fontFamily, fontSize: UI_TYPE.secondary, color: busy ? '#a2b1ba' : '#0b151f', resolution: 2,
     wordWrap: { width: 152 }, align: 'center',
   }).setOrigin(0.5).setName('combat-roost-preview'));
   return renderBattleBeatBadge(context);
@@ -351,38 +338,40 @@ function renderCommandStrip(context: BattleHudRenderContext) {
 function renderGuidance(context: BattleHudRenderContext) {
   if (!context.guidance) return;
   const { scene, root, gameWidth, fontFamily, boldFontStyle, guidance } = context;
-  root.add(scene.add.rectangle(gameWidth / 2, 112, 600, 32, 0x06111a, 0.94)
-    .setStrokeStyle(2, guidance.accent, 0.8)
-    .setName('first-combat-guidance').setData('deferToCard', guidance.text.startsWith('ROOST WHEN')));
-  root.add(scene.add.text(gameWidth / 2, 112, guidance.text, {
+  root.add(scene.add.rectangle(gameWidth / 2 - 220, 126, 600, 58, 0x06111a, 0.94)
+    .setStrokeStyle(1, guidance.accent, 0.5)
+    .setName('first-combat-guidance').setData('deferToCard', guidance.text.startsWith('Roost when')));
+  root.add(scene.add.text(gameWidth / 2 - 220, 126, guidance.text, {
     fontFamily,
-    fontSize: '12px',
+    fontSize: UI_TYPE.primary,
     fontStyle: boldFontStyle,
     color: '#f1f8ff',
-    fixedWidth: 572,
+    wordWrap: { width: 572 }, resolution: 2,
     align: 'center',
-    maxLines: 1,
-  }).setOrigin(0.5).setName('first-combat-guidance').setData('deferToCard', guidance.text.startsWith('ROOST WHEN')));
+  }).setOrigin(0.5).setName('first-combat-guidance').setData('deferToCard', guidance.text.startsWith('Roost when')));
 }
 
 function renderObjective(context: BattleHudRenderContext) {
-  if (!context.objective) return;
+  // The immediate enemy action takes priority while input is locked. Restore
+  // the optional goal when the player can act on it again.
+  if (!context.objective || context.beat.active || context.guidance) return;
   const { scene, root, fontFamily, boldFontStyle, objective } = context;
-  const x = 1068;
-  const y = 154;
-  const panel = scene.add.rectangle(x, y, 354, 36, 0x07101a, 0.86)
+  // Reserve the quiet upper-left stage lane: the upper-right belongs to
+  // enemy silhouettes. First-flight guidance temporarily owns this lane.
+  const x = 280;
+  const y = 138;
+  const panel = scene.add.rectangle(x, y, 306, 76, 0x07101a, 0.94)
     .setStrokeStyle(1, objective.accent, 0.76)
     .setName('encounter-objective');
   root.add(panel);
   context.attachTooltip(panel, objective.text.split('  /  ')[0] ?? 'Encounter Goal', objective.detail);
   root.add(scene.add.text(x, y, objective.text, {
     fontFamily,
-    fontSize: '10px',
+    fontSize: UI_TYPE.secondary,
     fontStyle: boldFontStyle,
     color: '#e8f1f7',
-    fixedWidth: 330,
+    wordWrap: { width: 282 }, resolution: 2,
     align: 'center',
-    maxLines: 1,
   }).setOrigin(0.5).setName('encounter-objective'));
 }
 
@@ -413,7 +402,7 @@ export function renderBattleSelectionPreview(
     // Keep the meter overlay; reserve the row below vitals for enemy statuses.
   }
 
-  const y = 424;
+  const y = 412;
   const container = scene.add.container(0, 0).setName('combat-selection-preview');
   // History and the current decision share one quiet lane above the hand.
   // A card decision temporarily takes precedence over history and the Roost
@@ -423,43 +412,43 @@ export function renderBattleSelectionPreview(
   container.once(Phaser.GameObjects.Events.DESTROY, () => {
     logObjects.forEach(child => { if (child.active) child.setVisible(true); });
   });
-  container.add(scene.add.rectangle(gameWidth / 2, y, 600, 74, 0x07101a, 0.97)
+  container.add(scene.add.rectangle(gameWidth / 2, y, 600, 52, 0x07101a, 0.97)
     .setStrokeStyle(1, context.cyan, 0.72)
     .setName('combat-outcome-preview'));
-  const title = scene.add.text(gameWidth / 2 - 284, y - 22, '', {
+  const title = scene.add.text(gameWidth / 2 - 284, y - 13, '', {
     fontFamily,
-    fontSize: '15px',
+    fontSize: '19px',
     fontStyle: boldFontStyle,
     color: '#ffe7a8',
-    fixedWidth: 402,
-    wordWrap: { width: 402, useAdvancedWrap: true },
+    fixedWidth: 368,
+    wordWrap: { width: 368, useAdvancedWrap: true },
     resolution: 2,
     align: 'left',
     maxLines: 1,
   }).setOrigin(0, 0.5).setName('combat-selection-card-target');
   container.add(fitTextExcerpt(title, `${preview.card} → ${preview.target}`, 1));
-  container.add(scene.add.rectangle(gameWidth / 2 + 208, y - 22, 144, 22, 0x102534, 0.98)
+  container.add(scene.add.rectangle(gameWidth / 2 + 190, y - 13, 188, 24, 0x102534, 0.98)
     .setStrokeStyle(1, context.gold, 0.72)
     .setName('combat-selection-command-frame'));
-  container.add(scene.add.text(gameWidth / 2 + 208, y - 22, 'CONFIRM TO PLAY', {
+  container.add(scene.add.text(gameWidth / 2 + 190, y - 13, 'CONFIRM TO PLAY', {
     fontFamily,
-    fontSize: '12px',
+    fontSize: '19px',
     resolution: 2,
     fontStyle: boldFontStyle,
     color: '#dffbff',
   }).setOrigin(0.5).setName('combat-selection-command'));
-  const summary = scene.add.text(gameWidth / 2, y + 10, '', {
+  const summary = scene.add.text(gameWidth / 2, y + 13, '', {
     fontFamily,
-    fontSize: '15px',
+    fontSize: '19px',
     resolution: 2,
     fontStyle: boldFontStyle,
     color: '#dffbff',
     fixedWidth: 570,
     wordWrap: { width: 570, useAdvancedWrap: true },
     align: 'center',
-    maxLines: 2,
+    maxLines: 1,
   }).setOrigin(0.5).setName('combat-selection-summary');
-  container.add(fitTextExcerpt(summary, preview.summary, 2));
+  container.add(fitTextExcerpt(summary, preview.summary, 1));
   root.add(container);
   return container;
 }

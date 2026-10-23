@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import cards from '../data/game/alpha-cards.json' with { type: 'json' };
+import manifest from '../assets/runtime/cards/card-art-manifest.json' with { type: 'json' };
 import { settleCanvas } from './helpers/settled-canvas';
 
 test('complete card pool preserves measured rules and bounded frames in every stance', async ({ page }, info) => {
@@ -22,7 +22,7 @@ test('complete card pool preserves measured rules and bounded frames in every st
     await w.__birdSquadEnsureScene('BattleScene');
     for (const s of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(s.scene.key);
     w.__birdSquadGame.scene.start('BattleScene', { routeNodeId: 'm1_entry', runState });
-  }, cards.cards.map(c => c.id));
+  }, manifest.cards.filter(c => c.status === 'approved').map(c => c.cardId));
   await page.waitForFunction(() => {
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     return b.hand.length && b.battleHandRendererModule && b.handLayer?.active && b.fxLayer?.active
@@ -35,7 +35,7 @@ test('complete card pool preserves measured rules and bounded frames in every st
     b.energy = 3; b.pendingRetainHand = 0;
     return b.layoutFixtureCards.map((c: any) => c.id);
   });
-  expect(ids).toEqual(cards.cards.map(c => c.id).sort());
+  expect(ids).toEqual(manifest.cards.filter(c => c.status === 'approved').map(c => c.cardId).sort());
   await page.waitForFunction(() => {
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     return b.layoutFixtureCards.every((card: any) => {
@@ -60,6 +60,7 @@ test('complete card pool preserves measured rules and bounded frames in every st
           b.hand.forEach((card: any, i: number) => {
             const title = named('combat-card-title')[i], rules = named('combat-card-readable-summary')[i];
             const frame = b.handCardFrames.get(card.instanceId), rect = b.handCardRects.get(card.instanceId);
+            const art=b.handCardArtLayers.get(card.instanceId)?.getByName('combat-hand-illustration');
             const effects = b.activeCardContract(card).effects;
             const quickRead = rules.getData('quickRead');
             const checks = {
@@ -67,11 +68,16 @@ test('complete card pool preserves measured rules and bounded frames in every st
               rules: contains(named('combat-card-rules-panel')[i].getBounds(), rules.getBounds()),
               source: rules.getData('fullText') === b.activeCardContract(card).text.replace(/\s+/g, ' ').trim(),
               quickRead: quickRead === b.battleHandCardView(card).summary,
-              extraEffects: effects.length <= 3 || quickRead.includes(`+${effects.length - 3} more`),
-              firstUse: !effects.slice(0, 3).some((effect: string) => effect.includes('firstPlayedThisCombat'))
-                || quickRead.includes('first use/fight'),
-              omission: !rules.getData('truncated') || rules.text.endsWith('…'),
+              everyEffect: quickRead.split('\n').length === effects.length,
+              firstUse: !effects.some((effect: string) => effect.includes('firstPlayedThisCombat'))
+                || rules.getData('readableRules').includes('First use this fight:'),
+              plainLanguage: !/[·](?:dmg|Cover|Resonance)|\bdmg\b/.test(rules.getData('readableRules')),
+              omission: !rules.getData('truncated') || /Inspect/.test(rules.text),
               frame: !frame || contains(rect.getBounds(), frame.getBounds()),
+              intactArt: Boolean(art)&&!art.isCropped&&!art.mask&&Math.abs(art.scaleX-art.scaleY)<0.001&&contains(rect.getBounds(),art.getBounds()),
+              visibleArt: Boolean(art) && art.displayHeight >= 90 && [title, rules,
+                named('combat-card-title-panel')[i], named('combat-card-rules-panel')[i]]
+                .every((node:any)=>!((a:any,z:any)=>a.left<z.right&&a.right>z.left&&a.top<z.bottom&&a.bottom>z.top)(art.getBounds(),node.getBounds())),
             };
             if (Object.values(checks).some(ok => !ok)) failures.push({ id: card.id, upgraded, molt, checks });
             checked++;
@@ -85,6 +91,6 @@ test('complete card pool preserves measured rules and bounded frames in every st
       await page.screenshot({ path: info.outputPath(`pool-${width}-${upgraded ? 'preened' : 'base'}-${molt ? 'molt' : 'normal'}.png`) });
     }
   }
-  expect(checked).toBe(cards.cards.length * 12);
+  expect(checked).toBe(manifest.cards.filter(c => c.status === 'approved').length * 12);
   expect(errors).toEqual([]);
 });

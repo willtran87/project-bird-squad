@@ -18,9 +18,12 @@ test('text-led collection navigation stays readable and touch-operable in every 
         const scale = document.querySelector('canvas')!.getBoundingClientRect().height / 720;
         const title = c.root.list.find((n: any) => n.type === 'Text' && n.text === 'Codex');
         return { titleRight: title.getBounds().right, count: tabs.length, errors: tabs.flatMap((tab: any) => {
-          const label = c.root.list.find((n: any) => n.type === 'Text' && n.text === tab.getData('label') && n.x === tab.x && n.y === tab.y - 8);
+          const label = c.root.list.find((n: any) => n.name === 'codex-tab-label' && n.getData('label') === tab.getData('label') && n.x === tab.x);
+          const meta = c.root.list.find((n: any) => n.name === 'codex-tab-meta' && n.getData('label') === tab.getData('label') && n.x === tab.x);
           const hit = c.root.list.find((n: any) => n.name === 'codex-tab-hit' && n.x === tab.x && n.y === tab.y);
-          return !label || label.width > tab.width - 6 || !hit?.input?.enabled || hit.height * scale < 44 ? [tab.getData('label')] : [];
+          return !label || !meta || label.width > tab.width - 6 || label.getBounds().bottom > meta.getBounds().top
+            || label.getBounds().top < hit.getBounds().top || meta.getBounds().bottom > hit.getBounds().bottom
+            || !hit?.input?.enabled || hit.height * scale < 44 ? [tab.getData('label')] : [];
         }), frames: c.root.list.filter((n: any) => n.name === 'codex-tab-frame').length };
       });
       expect(geometry.titleRight).toBeLessThanOrEqual(138);
@@ -73,7 +76,7 @@ test('all leader dossiers preserve complete gameplay and lore in measured readin
             || node('combat-read').text !== lore.playstyleRead || node('backstory').text !== lore.backstory
             || node('narrative-beats').text !== lore.narrativeBeats.map((b: string) => `· ${b}`).join('\n\n')) errors.push(`${leader.id}: incomplete content`);
           if (node('starting-deck').y > node('backstory').y) errors.push(`${leader.id}: hierarchy`);
-          if (node('signature').style.fontSize !== '20px') errors.push(`${leader.id}: rules size`);
+          if (node('signature').style.fontSize !== '22px') errors.push(`${leader.id}: rules size`);
           const locked = node('meta').text.endsWith('Locked');
           if (locked && !node('how-to-unlock')?.text) errors.push(`${leader.id}: unlock instructions`);
           if (!locked && node('field-quote')?.text !== `"${lore.quote}"`) errors.push(`${leader.id}: quote`);

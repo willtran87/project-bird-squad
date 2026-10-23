@@ -67,6 +67,7 @@ for (const remapped of [false, true]) test(`choice hints follow real bindings an
     const inspect = r.children.getByName('card-picker-card-inspect-binding');
     const b = inspect.getBounds(), h = r.children.getByName('card-picker-card-inspect-hit').getBounds();
     return { text: label.text, mode: label.getData('inputMode'), inspect: inspect.text,
+      bounds: { hintRight: label.getBounds().right, inspectLeft: b.left, inspectRight: b.right, hitLeft: h.left, hitRight: h.right },
       fits: label.getBounds().right <= 1132 && b.left >= h.left + 8 && b.right <= h.right - 8 };
   });
   expect((await hint()).mode).toBe('pointer');
@@ -78,7 +79,7 @@ for (const remapped of [false, true]) test(`choice hints follow real bindings an
     expect(keyboard.text).toContain(remapped ? 'A/D: choose · K: select / confirm' : 'Left/Right: choose · Enter: select / confirm');
     expect(keyboard.text).toContain(remapped ? 'Q: back' : 'Esc: back');
     expect(keyboard.inspect).toBe(remapped ? 'Backspace: full card' : 'R: full card');
-    expect(keyboard.fits).toBe(true);
+    expect(keyboard.fits, JSON.stringify(keyboard.bounds)).toBe(true);
     await page.screenshot({ path: info.outputPath(`picker-${width}-keyboard.png`) });
     // Unassigned pad button signals a device change without selecting anything.
     await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').input.gamepad.emit('down', {}, { index: 10 }));

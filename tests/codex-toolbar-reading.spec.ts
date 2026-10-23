@@ -23,6 +23,7 @@ async function boot(page: Page) {
 }
 
 test('Codex toolbar keeps labels readable and input regions separate across every lens and order', async ({ page }, info) => {
+  test.setTimeout(120000);
   await boot(page);
   const issues = await page.evaluate(() => {
     const c = (window as any).__birdSquadGame.scene.getScene('CodexScene'), issues: string[] = [];
@@ -56,16 +57,21 @@ test('Codex toolbar keeps labels readable and input regions separate across ever
           if (b.left < d.right && b.right > d.left && b.top < d.bottom && b.bottom > d.top) issues.push(`${n.name}: overlaps ${other.name}`);
         }
       }
-      for (const [zone, name] of [['search', 'codex-card-search-hit'], ['sort', 'codex-card-sort-hit'],
+      for (const [zone, name] of [['search', 'codex-card-search-hit'], ['tools', 'codex-tools-hit'], ['sort', 'codex-card-sort-hit'],
         ['secondaryTabs', 'codex-card-lens-hit'], ['savedViews', 'codex-saved-views-hit'],
         ['progress', 'codex-card-collection-atlas-hit'], ['newCards', 'codex-clear-new-cards-hit']]) {
         if (c.activeSection !== 'cards') continue;
+        if (!c.collectionToolsOpen && !['search', 'tools'].includes(zone)) {
+          if (nodes.some((n: any) => n.name === name && n.input?.enabled)) issues.push(`${zone}: hidden tool is interactive`);
+          continue;
+        }
         c.focusZone = zone;
         const f = c.codexFocusGeometry(), h = nodes.find((n: any) => n.name === name)?.getBounds();
         if (!h || Math.abs(h.centerX - f.x) > 0.5 || Math.abs(h.centerY - f.y) > 0.5) issues.push(`${zone}: misplaced focus`);
       }
     };
-    for (const sort of c.cardSortModes) for (const lens of c.cardCollectionLenses) for (const query of ['', 'W'.repeat(40)]) {
+    for (const open of [false, true]) for (const sort of c.cardSortModes) for (const lens of c.cardCollectionLenses) for (const query of ['', 'W'.repeat(40)]) {
+      c.collectionToolsOpen = open;
       c.cardSortMode = sort.id; c.cardCollectionLens = lens.id; c.cardSearchQuery = query; c.renderAll(); check();
     }
     c.cardSearchQuery = ''; c.cardCollectionLens = 'all'; c.focusZone = 'sections';
@@ -109,6 +115,7 @@ test('Codex toolbar touch search sorting saved views Atlas and acknowledgement p
   const bounds = await input.boundingBox(); expect(bounds!.x).toBeGreaterThanOrEqual(0); expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(1000);
   expect(await input.evaluate(n => parseFloat(getComputedStyle(n).fontSize))).toBeGreaterThanOrEqual(16);
   await input.press('Enter'); await expect(input).toHaveCount(0);
+  await tap(page, 'codex-tools-hit');
   await tap(page, 'codex-card-sort-hit');
   await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text()).cardSort.id === 'name');
   await tap(page, 'codex-card-lens-hit');
@@ -120,7 +127,7 @@ test('Codex toolbar touch search sorting saved views Atlas and acknowledgement p
       fades: c.root.list.filter((n: any) => n.name === 'codex-grid-bottom-fade-strip').length };
   });
   expect(singleCard.top).toBeGreaterThanOrEqual(singleCard.gridTop);
-  expect(singleCard.bottom).toBeLessThanOrEqual(690);
+  expect(singleCard.bottom).toBeLessThanOrEqual(658);
   expect(singleCard.scroll).toBe(0); expect(singleCard.fades).toBe(0);
   await settleCanvas(page); await page.screenshot({path: info.outputPath('filtered-1000.png')});
   await tap(page, 'codex-saved-views-hit');

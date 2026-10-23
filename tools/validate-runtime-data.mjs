@@ -51,6 +51,12 @@ const arcanaCards = arcanaFiles.flatMap((file) =>
   readJson(file).cards.map((card) => ({ ...card, file })),
 );
 const knownArcanaIds = new Set(arcanaCards.map((card) => card.id));
+const canonicalBirds = new Map(arcanaCards.map((card) => [card.id, card.bird]));
+for (const card of alphaCards.cards ?? []) {
+  if (canonicalBirds.has(card.id) && card.bird !== canonicalBirds.get(card.id)) {
+    fail(`${card.id}: runtime bird "${card.bird}" differs from canonical art species "${canonicalBirds.get(card.id)}"`);
+  }
+}
 
 const validKinds = new Set(['legend', 'crew', 'molt', 'aviary', 'snag']);
 const validSuits = new Set(['plumes', 'quills', 'basins', 'nests']);

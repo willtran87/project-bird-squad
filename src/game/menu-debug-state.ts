@@ -49,7 +49,9 @@ export function installMenuDebugState(scene: any) {
     helpFocus: scene.helpOverlay?.getData('actionFocus')
       ?? scene.helpOverlay?.getByName('how-to-play-actions')?.getData('actionFocus'),
     helpTopic: scene.helpOverlay?.getData('topic'),
-    helpContent: scene.helpOverlay?.list.filter((child: any) => ['how-to-play-readable', 'how-to-play-tip-label', 'how-to-play-tip-value'].includes(child.name))
+    pendingOverlay: (scene.children.getByName('pending-overlay') ?? scene.helpOverlay?.getByName('pending-overlay')
+      ?? scene.settingsOverlay?.getByName('pending-overlay'))?.getData('status'),
+    helpContent: scene.helpOverlay?.list.filter((child: any) => ['guide-download-status', 'how-to-play-readable', 'how-to-play-tip-label', 'how-to-play-tip-value'].includes(child.name))
       .map((child: any) => child.text),
     collectionGoal: {
       ...collectionGoalSummary(scene.menuAccount),
@@ -74,6 +76,10 @@ export function installMenuDebugState(scene: any) {
       fadeProgress: Number((scene.cameras.main?.fadeEffect?.progress ?? 0).toFixed(3)),
     },
     selectedLeader: scene.selectedLeaderId,
+    inspectedLeader: scene.inspectedLeaderId,
+    leaderExplanation: scene.leaderTooltip?.getByName('title-leader-description-body')?.text,
+    launchSummary: scene.setupOpen ? scene.children.getByName('title-launch-summary')?.text : undefined,
+    hasSavedRun: scene.menuHasSavedRun,
     selectedDifficulty: scene.selectedDifficulty,
     selectedRunMode: scene.selectedRunMode,
     runModeChoices: scene.children.list
@@ -126,6 +132,7 @@ export function installMenuDebugState(scene: any) {
     firstFlightGuide: firstFlightGuideState(),
   });
 }
+
 
 function roundedBounds(object: any) {
   const bounds = object?.getBounds?.();

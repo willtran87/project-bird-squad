@@ -88,12 +88,14 @@ test('normal reward choices keep authored rules bounded while showing card art',
   });
   await page.waitForFunction(() => {
     const battle = (window as any).__birdSquadGame.scene.getScene('BattleScene');
-    return battle.root.list.filter((child: any) => child.name === 'reward-card-art').length === battle.rewardChoices.length
+    const walk = (items: any[]): any[] => items.flatMap(child => [child, ...walk(child.list ?? [])]);
+    return walk(battle.root.list).filter((child: any) => child.name === 'reward-card-art').length === battle.rewardChoices.length
       && battle.rewardPresentationReady();
   });
   const geometry = await page.evaluate(() => {
     const battle = (window as any).__birdSquadGame.scene.getScene('BattleScene');
-    const named = (name: string) => battle.root.list.filter((child: any) => child.name === name);
+    const walk = (items: any[]): any[] => items.flatMap(child => [child, ...walk(child.list ?? [])]);
+    const named = (name: string) => walk(battle.root.list).filter((child: any) => child.name === name);
     return {
       arts: named('reward-card-art').length,
       backdropTweens: battle.tweens.getTweensOf(named('reward-ceremony-backdrop')[0]).length,

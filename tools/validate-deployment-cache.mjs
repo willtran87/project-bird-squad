@@ -336,6 +336,9 @@ if (failures.length === 0) {
     fail(`Expected exactly one lazy battle HUD renderer chunk, found ${battleHudRendererChunks.length}.`);
   }
 
+  const rewardFaceChunks = files.filter((name) => /^reward-card-face-.*\.js$/.test(name));
+  if (rewardFaceChunks.length !== 1) fail('Expected exactly one shared reward card face chunk.');
+  if (preloadHrefs.some((href) => /reward-card-face-/.test(href))) fail('Reward card face must not be a title preload.');
   const combatCardDetailChunks = files.filter((name) => /^combat-card-detail-.*\.js$/.test(name));
   if (combatCardDetailChunks.length !== 1) fail(`Expected exactly one combat card detail chunk, found ${combatCardDetailChunks.length}.`);
   if (preloadHrefs.some((href) => /combat-card-detail-/.test(href))) fail('Combat card detail must not be a title preload.');

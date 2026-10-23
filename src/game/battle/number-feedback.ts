@@ -1,3 +1,4 @@
+import { UI_FONT as TOKEN_FONT } from '../ui-tokens';
 import Phaser from 'phaser';
 
 export type NumberFeedback = { target: string; kind: string; source: string; amount: number; suffix: string; reducedMotion: boolean; label?: string };
@@ -51,7 +52,7 @@ export function presentNumberFeedback(scene: Phaser.Scene, layer: Phaser.GameObj
   const slot = [0, 1, 2].find(index => !peers.some(entry => entry.slot === index)) ?? 0;
   const group = scene.add.container(laneX, enemy ? 405 : Phaser.Math.Clamp(y, 220, 420) - slot * 40).setName('combat-number-feedback');
   const plate = scene.add.rectangle(0, 0, 120, 34, 0x07101c, 0.96).setStrokeStyle(1, 0x718793, 0.45);
-  const label = scene.add.text(0, 0, '', { fontFamily: 'Arial', fontSize: '20px', fontStyle: 'bold',
+  const label = scene.add.text(0, 0, '', { fontFamily: TOKEN_FONT, fontSize: '20px', fontStyle: 'bold',
     color, resolution: 2 }).setOrigin(0.5).setName('combat-number-label');
   group.add([plate, label]); layer.add(group);
   const entry: NumberBurst = { group, label, plate, created: scene.time.now, amount: value.amount, count: 1, target: value.target, slot };

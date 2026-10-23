@@ -12,7 +12,8 @@ export interface CardDetailContext {
   onClose: () => void;
   announce: (text: string) => void;
   ui: typeof import('../theme').DECISION_UI;
-  minTouchTarget: number;
+  typography: Pick<typeof import('../theme').UI_TYPE, 'primary' | 'secondary'>;
+  createButton: typeof import('../quiet-ui').quietButton;
 }
 
 /** Read-only, explicitly opened card help. It never mutates a combat decision. */
@@ -24,7 +25,7 @@ export function renderCombatCardDetail(context: CardDetailContext, card: BattleH
       ...(card.outcome ? [{ heading: 'PLAY NOW · OUTCOME', body: card.outcome }] : []),
       ...(card.sequence ? [{ heading: 'PLAY NOW · EFFECT ORDER', body: card.sequence }] : []),
       ...(card.alternateText ? [{ heading: card.alternateLabel ?? 'ALTERNATE', body: card.alternateText }] : []),
-      { heading: 'PASSIVE FLOCK CONTRIBUTION', body: `${card.upgraded ? 'Preened. ' : ''}${card.stats || 'No passive contribution.'}\n\nThese are this card’s contributions, not an additional effect each time it is played. The combat outcome preview includes current modifiers.` },
+      { heading: 'PASSIVE FLOCK CONTRIBUTION', body: `${card.upgraded ? 'Preened. ' : ''}${card.stats || 'No passive contribution.'}\n\nPassive stats, not on-play effects. The combat forecast includes current modifiers.` },
       ...combatCardKeywordSections(card),
     ],
   });
@@ -33,14 +34,14 @@ export function renderCombatCardDetail(context: CardDetailContext, card: BattleH
 export function renderCombatHistory(context: CardDetailContext, entries: string[]) {
   return renderCombatReader(context, {
     name: 'Combat history', kind: 'history', badge: `${entries.length} events`,
-    sections: [{ heading: 'RECENT EVENTS · OLDEST TO NEWEST', body: entries.map((entry, index) => `${index + 1}. ${entry}`).join('\n\n') || 'No events yet.' }],
+    sections: [{ heading: 'RECENT EVENTS · OLDEST FIRST', body: entries.map((entry, index) => `${index + 1}. ${entry}`).join('\n\n') || 'No events yet.' }],
   });
 }
 
 export function renderCombatReader(context: CardDetailContext, content: {
   name: string; kind: 'card' | 'history' | 'waymark'; badge: string; sections: Array<{ heading: string; body: string }>;
 }) {
-  const { scene, fontFamily, boldFontStyle, ui: UI } = context;
+  const { scene, fontFamily, boldFontStyle, ui: UI, typography } = context;
   const layer = scene.add.container(0, 0).setDepth(900).setName('combat-card-detail');
   const add = <T extends Phaser.GameObjects.GameObject>(object: T) => { layer.add(object); return object; };
   const text = (x: number, y: number, value: string, size = UI.bodySize as number, width = 664) =>
@@ -54,17 +55,17 @@ export function renderCombatReader(context: CardDetailContext, content: {
   add(scene.add.rectangle(640, 360, 760, 568, UI.surface, 1)
     .setStrokeStyle(1, UI.border, 1).setName('combat-card-detail-panel'));
   layer.setData('kind', content.kind);
-  text(288, 100, `${content.kind === 'history' ? 'COMBAT HISTORY' : content.kind === 'waymark' ? 'WAYMARK DETAILS' : 'CARD DETAILS'} · READING ONLY`, UI.labelSize).setColor(UI.secondary);
+  text(288, 100, `${content.kind === 'history' ? 'COMBAT HISTORY' : content.kind === 'waymark' ? 'WAYMARK DETAILS' : 'CARD DETAILS'} · READING ONLY`, typography.secondary).setColor(UI.secondary);
   const title = text(288, 136, content.name, UI.titleSize, 550).setFontStyle(boldFontStyle)
     .setName('combat-card-detail-title');
   // Names have their own measured header, outside the rules viewport.
   const titleLines = title.getWrappedText();
   title.setText(titleLines.slice(0, 3).join('\n') + (titleLines.length > 3 ? '…' : ''));
-  text(991, 140, content.badge, UI.labelSize, 135)
+  text(991, 140, content.badge, typography.secondary, 135)
     .setOrigin(1, 0).setColor(UI.secondary);
   const headingY = Math.max(224, title.y + title.height + 20);
   add(scene.add.rectangle(640, headingY - 16, 704, 1, UI.border, 0.7));
-  const heading = text(288, headingY, '', UI.labelSize).setColor('#ffe7b0').setFontStyle(boldFontStyle)
+  const heading = text(288, headingY, '', typography.secondary).setColor('#ffe7b0').setFontStyle(boldFontStyle)
     .setName('combat-card-detail-heading');
   const body = text(288, headingY + 30, '').setName('combat-card-detail-body');
   const bodyBottom = 502;
@@ -85,7 +86,7 @@ export function renderCombatReader(context: CardDetailContext, content: {
     }
     if (chunk.length) pages.push({ heading: section.heading, body: chunk.join('\n') });
   }
-  const pageLabel = text(640, 526, '', UI.labelSize, 200).setOrigin(0.5, 0).setColor(UI.secondary)
+  const pageLabel = text(640, 526, '', typography.secondary, 200).setOrigin(0.5, 0).setColor(UI.secondary)
     .setName('combat-card-detail-page');
   let page = 0;
   const buttons: Phaser.GameObjects.Rectangle[] = [];
@@ -99,18 +100,13 @@ export function renderCombatReader(context: CardDetailContext, content: {
     layer.setData('heading', pages[page].heading).setData('body', pages[page].body);
     buttons.forEach((button, i) => {
       const enabled = i === 2 || (i === 0 ? page > 0 : page < pages.length - 1);
-      button.setData('enabled', enabled).setAlpha(enabled ? 1 : 0.4);
-      labels[i].setAlpha(enabled ? 1 : 0.4);
+      button.setData('enabled', enabled);
     });
     context.announce(`${content.name}. ${pages[page].heading}. Page ${page + 1} of ${pages.length}. ${pages[page].body}`);
   };
   const button = (x: number, label: string, name: string, action: () => void) => {
-    const hit = add(scene.add.rectangle(x, 588, 210, context.minTouchTarget, UI.raised, 1)
-      .setStrokeStyle(1, UI.border, 1).setInteractive({ useHandCursor: true }).setName(name));
-    const caption = text(x, 588, label, UI.labelSize, 202).setOrigin(0.5).setFontStyle(boldFontStyle);
-    hit.on('pointerover', () => { if (hit.getData('enabled')) hit.setStrokeStyle(2, UI.accent, 1); });
-    hit.on('pointerout', () => hit.setStrokeStyle(1, UI.border, 1));
-    hit.on('pointerdown', () => { if (hit.getData('enabled')) action(); });
+    const hit = add(context.createButton(scene, { x, y: 588, width: 210, label, name, onActivate: action }));
+    const caption = add(hit.getData('labelObject') as Phaser.GameObjects.Text);
     buttons.push(hit); labels.push(caption);
   };
   button(397, `Previous · ${context.previousLabel}`, 'combat-card-detail-previous', () => showPage(page - 1));

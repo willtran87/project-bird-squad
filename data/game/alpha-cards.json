@@ -808,7 +808,7 @@
     {
       "id": "swords_04",
       "displayName": "Sheathed Quills",
-      "bird": "Belted Kingfisher",
+      "bird": "Northern Goshawk",
       "kind": "crew",
       "suit": "quills",
       "rarity": "common",
@@ -853,7 +853,7 @@
     {
       "id": "swords_05",
       "displayName": "Scattered Quills",
-      "bird": "Red-winged Blackbird",
+      "bird": "Black Drongo",
       "kind": "crew",
       "suit": "quills",
       "rarity": "common",
@@ -936,7 +936,7 @@
     {
       "id": "swords_06",
       "displayName": "Quill Crossing",
-      "bird": "Green Heron",
+      "bird": "Merlin",
       "kind": "crew",
       "suit": "quills",
       "rarity": "uncommon",
@@ -975,7 +975,7 @@
     {
       "id": "swords_07",
       "displayName": "Quill Slip",
-      "bird": "Cedar Waxwing",
+      "bird": "Steller's Jay",
       "kind": "crew",
       "suit": "quills",
       "rarity": "uncommon",
@@ -1016,7 +1016,7 @@
     {
       "id": "cups_02",
       "displayName": "Twin Basin Bond",
-      "bird": "Wood Duck",
+      "bird": "Hooded Merganser",
       "kind": "crew",
       "suit": "basins",
       "rarity": "common",
@@ -1060,7 +1060,7 @@
     {
       "id": "cups_04",
       "displayName": "Closed Basin",
-      "bird": "American Coot",
+      "bird": "Green Heron",
       "kind": "crew",
       "suit": "basins",
       "rarity": "common",
@@ -1102,7 +1102,7 @@
     {
       "id": "cups_05",
       "displayName": "Spilled Basin",
-      "bird": "Killdeer",
+      "bird": "Wood Duck",
       "kind": "crew",
       "suit": "basins",
       "rarity": "common",
@@ -1183,7 +1183,7 @@
     {
       "id": "cups_06",
       "displayName": "Basin Memory",
-      "bird": "Sandhill Crane",
+      "bird": "Sanderling",
       "kind": "crew",
       "suit": "basins",
       "rarity": "uncommon",
@@ -1307,7 +1307,7 @@
     {
       "id": "pentacles_03",
       "displayName": "Nest Blueprint",
-      "bird": "Baya Weaver",
+      "bird": "Hamerkop",
       "kind": "crew",
       "suit": "nests",
       "rarity": "common",
@@ -1346,7 +1346,7 @@
     {
       "id": "pentacles_05",
       "displayName": "Cold Nest",
-      "bird": "Cliff Swallow",
+      "bird": "Mourning Dove",
       "kind": "crew",
       "suit": "nests",
       "rarity": "common",
@@ -1388,7 +1388,7 @@
     {
       "id": "pentacles_fledgling",
       "displayName": "Nest Fledgling",
-      "bird": "Long-tailed Tit",
+      "bird": "Eurasian Hoopoe",
       "kind": "crew",
       "suit": "nests",
       "rarity": "common",
@@ -1427,7 +1427,7 @@
     {
       "id": "pentacles_06",
       "displayName": "Shared Nest",
-      "bird": "Acorn Woodpecker",
+      "bird": "Common Myna",
       "kind": "crew",
       "suit": "nests",
       "rarity": "uncommon",
@@ -1471,7 +1471,7 @@
     {
       "id": "pentacles_08",
       "displayName": "Workshop Nest",
-      "bird": "Carolina Wren",
+      "bird": "Common Tailorbird",
       "kind": "crew",
       "suit": "nests",
       "rarity": "uncommon",

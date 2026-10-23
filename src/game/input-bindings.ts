@@ -1,4 +1,5 @@
 import type Phaser from 'phaser';
+import { recoveryOwnsInput } from './recovery-input';
 import { safeStorageGet, safeStorageRemove, safeStorageSet } from './safe-storage';
 
 export type ControlAction =
@@ -246,14 +247,25 @@ export function controlPanelFocusRegistryKey(scene: Phaser.Scene): string {
   return `birdsquad.controlsFocus.${scene.scene.key}`;
 }
 
-export function controlPanelOwnsInput(scene: Phaser.Scene): boolean {
+export const actionFocusOwners = new WeakMap<Phaser.Scene, Phaser.GameObjects.GameObject>();
+export const modalGamepadRelease = new WeakSet<Phaser.Scene>();
+const modalKeyEvents = new WeakSet<object>();
+
+export function controlPanelOwnsInput(scene: Phaser.Scene, owner?: Phaser.GameObjects.GameObject): boolean {
+  if (recoveryOwnsInput()) return true;
+  if (modalGamepadRelease.has(scene)) {
+    if (!scene.input.gamepad?.pad1?.buttons.some(button => button.pressed)) modalGamepadRelease.delete(scene);
+    else if (!owner) return true;
+  }
   return Boolean(scene.registry.get(controlPanelRegistryKey(scene)))
-    || Boolean(scene.registry.get(settingsOverlayInputRegistryKey(scene)));
+    || Boolean(scene.registry.get(settingsOverlayInputRegistryKey(scene)))
+    || Boolean(actionFocusOwners.has(scene) && actionFocusOwners.get(scene) !== owner);
 }
 
 export function bindControlActions(
   scene: Phaser.Scene,
   handlers: Partial<Record<ControlAction, (event?: KeyboardEvent) => void>>,
+  owner?: Phaser.GameObjects.GameObject,
 ): () => void {
   const keyboard = scene.input.keyboard;
   if (!keyboard) return () => {};
@@ -263,12 +275,18 @@ export function bindControlActions(
   let cleanedUp = false;
 
   const dispatch = (action: ControlAction, event?: KeyboardEvent) => {
-    if (controlPanelOwnsInput(scene) && event) return;
+    // A held commit/exit key belongs to its original press, even after its
+    // modal has closed. Repeats must never act on the newly exposed owner.
+    if (event?.repeat && (action === 'back' || action === 'confirm')) return;
+    if (event && modalKeyEvents.has(event)) return;
+    if (controlPanelOwnsInput(scene, owner) && (event || actionFocusOwners.has(scene))) return;
     const handler = handlers[action];
     if (!handler) return;
     if (event && typeof event === 'object') {
       if (dispatchedEvents.has(event)) return;
       dispatchedEvents.add(event);
+      // A closing modal must not pass this same event to the newly exposed scene.
+      if (owner && actionFocusOwners.get(scene) === owner) modalKeyEvents.add(event);
       event.preventDefault?.();
       event.stopPropagation?.();
     }
@@ -276,7 +294,7 @@ export function bindControlActions(
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
-    if (!event?.code || controlPanelOwnsInput(scene)) return;
+    if (!event?.code || controlPanelOwnsInput(scene, owner)) return;
     const action = ACTIONS.find((candidate) => handlers[candidate] && matchesControlAction(event, candidate));
     if (action) dispatch(action, event);
   };

@@ -1,14 +1,15 @@
 import Phaser from 'phaser';
+import { UI_TYPE } from './theme';
 
 export interface RouteMapNodeView {
   id: string;
   type: string;
-  column: number;
   x: number;
   y: number;
   radius: number;
   iconSize: number;
   completed: boolean;
+  current: boolean;
   selected: boolean;
   selectable: boolean;
   boss: boolean;
@@ -28,8 +29,6 @@ export interface RouteMapRendererContext {
   scene: Phaser.Scene;
   nodes: RouteMapNodeView[];
   edges: RouteMapEdgeView[];
-  graph: { left: number; right: number; top: number; bottom: number };
-  columnCount: number;
   activeMapIndex: number;
   fontFamily: string;
   boldFontStyle: string;
@@ -38,6 +37,7 @@ export interface RouteMapRendererContext {
   renderSelectedFocus: (node: RouteMapNodeView) => void;
   showNodeTooltip: (nodeId: string, x: number, anchorY: number) => Phaser.GameObjects.Container | undefined;
   selectNode: (nodeId: string) => void;
+  inspectNode: (nodeId: string) => void;
   confirm?: {
     cx: number;
     cy: number;
@@ -75,21 +75,22 @@ function drawEdgePath(
   dotRadius: number,
   activeMapIndex: number,
 ) {
-  const start = new Phaser.Math.Vector2(from.x + from.iconSize / 2, from.y);
-  const end = new Phaser.Math.Vector2(to.x - to.iconSize / 2, to.y);
+  const { Vector2 } = Phaser.Math;
+  const start = new Vector2(from.x + from.iconSize / 2, from.y);
+  const end = new Vector2(to.x - to.iconSize / 2, to.y);
   const dx = end.x - start.x;
   const dy = end.y - start.y;
   const length = Math.max(1, Math.hypot(dx, dy));
   const side = (hashSeed(edgeKey, activeMapIndex) & 1) === 0 ? 1 : -1;
   const bend = clamp(length * 0.16, 14, 34) * side;
-  const control = new Phaser.Math.Vector2(
+  const control = new Vector2(
     (start.x + end.x) / 2 + (-dy / length) * bend,
     (start.y + end.y) / 2 + (dx / length) * bend,
   );
   const curve = new Phaser.Curves.QuadraticBezier(start, control, end);
   const points = curve.getSpacedPoints(Math.max(7, Math.ceil(length / 16)));
 
-  graphics.lineStyle(Math.max(1, dotRadius * 1.2), color, Math.min(0.64, alpha * 0.64));
+  graphics.lineStyle(Math.max(1.6, dotRadius * 1.4), color, alpha * 0.86);
   points.slice(1).forEach((point, index) => {
     const previous = points[index];
     graphics.lineBetween(previous.x, previous.y, point.x, point.y);
@@ -104,25 +105,14 @@ function drawEdgePath(
   return curve;
 }
 
-function renderColumnGuides(context: RouteMapRendererContext) {
-  const { scene, graph, columnCount, nodes } = context;
-  const count = Math.max(1, columnCount);
-  const graphics = scene.add.graphics().setName('route-column-guides');
-  for (let column = 0; column < count; column += 1) {
-    const columnNodes = nodes.filter((node) => node.column === column);
-    const x = columnNodes.length
-      ? columnNodes.reduce((sum, node) => sum + node.x, 0) / columnNodes.length
-      : count > 1 ? graph.left + (column * (graph.right - graph.left)) / (count - 1) : (graph.left + graph.right) / 2;
-    graphics.lineStyle(1, 0x2a3a4d, column === 0 || column === count - 1 ? 0.1 : 0.035);
-    graphics.lineBetween(x, graph.top, x, graph.bottom);
-  }
-}
-
 function renderNode(context: RouteMapRendererContext, node: RouteMapNodeView) {
   const { scene } = context;
   if (node.boss) context.renderBossBeacon(node, node.completed || (!node.selectable && !node.selected));
 
-  if (!node.completed && (node.selected || node.selectable)) {
+  if (node.current) {
+    scene.add.circle(node.x, node.y, node.radius + 3, 0x06131d, 0.94)
+      .setStrokeStyle(3, 0xe7eef7, 1).setName('route-node-current-backplate');
+  } else if (!node.completed && (node.selected || node.selectable)) {
     const haloColor = node.selected ? 0xd8a840 : 0x24d0d6;
     scene.add.circle(node.x, node.y, node.radius + (node.selected ? 7 : 3), 0x06131d, node.selected ? 0.84 : 0.58)
       .setStrokeStyle(node.selected ? 3 : 2, haloColor, node.selected ? 0.98 : 0.82)
@@ -133,33 +123,49 @@ function renderNode(context: RouteMapRendererContext, node: RouteMapNodeView) {
   }
   if (node.selected) context.renderSelectedFocus(node);
 
-  const hitTarget = scene.add.circle(node.x, node.y, node.radius + 10, 0x000000, 0)
-    .setInteractive({ useHandCursor: node.selectable })
+  // Explicit circular bounds avoid the overlapping rectangular default hit
+  // areas of neighboring map medallions. Both sizes exceed 44 CSS px.
+  const hitRadius = node.boss ? 44 : 38;
+  const hitTarget = scene.add.circle(node.x, node.y, hitRadius, 0x000000, 0)
+    .setInteractive(new Phaser.Geom.Circle(hitRadius, hitRadius, hitRadius), Phaser.Geom.Circle.Contains)
     .setName('route-node-hit');
-  if (node.selectable) hitTarget.on('pointerdown', () => context.selectNode(node.id));
+  hitTarget.input!.cursor = 'pointer';
+  hitTarget.on('pointerdown', () => node.selectable ? context.selectNode(node.id) : context.inspectNode(node.id));
   let tip: Phaser.GameObjects.Container | undefined;
   hitTarget.on('pointerover', () => { tip = context.showNodeTooltip(node.id, node.x, node.y - node.radius - 8); });
   hitTarget.on('pointerout', () => { tip?.destroy(true); tip = undefined; });
 
-  const visualState = node.completed ? 'completed' : node.selected ? 'selected' : node.selectable ? 'selectable' : 'future';
-  const visualAlpha = node.completed ? 0.32 : node.selected ? 1 : node.selectable ? 0.96 : 0.9;
+  const visualState = node.current ? 'current' : node.completed ? 'completed' : node.selected ? 'selected' : node.selectable ? 'selectable' : 'future';
+  const visualAlpha = node.current ? 1 : node.completed ? 0.32 : node.selected ? 1 : node.selectable ? 0.96 : 0.9;
+  hitTarget.setData('routeNodeId', node.id).setData('routeNodeState', visualState);
   context.renderNodeIcon(node, visualAlpha)
     .setName('route-node-icon')
     .setData('routeNodeId', node.id)
     .setData('routeNodeState', visualState);
 
-  if (node.selected) {
-    const labelY = node.y + node.radius + 13;
-    scene.add.rectangle(node.x, labelY, 70, 18, 0x06111a, 0.96)
-      .setStrokeStyle(1, 0xd8a840, 0.88)
-      .setName('route-node-selected-label');
-    scene.add.text(node.x, labelY, 'SELECTED', {
+  if (node.completed) {
+    const x = node.x + node.radius * 0.65, y = node.y + node.radius * 0.65;
+    scene.add.circle(x, y, 11, 0x0b151f, 1).setStrokeStyle(1, 0xadc9d2, 0.9)
+      .setName('route-node-completed-mark').setData('routeNodeId', node.id);
+    const mark = scene.add.graphics().setName('route-node-completed-check');
+    mark.lineStyle(3, 0xe7f4e7, 1);
+    mark.lineBetween(x - 5, y, x - 1, y + 4);
+    mark.lineBetween(x - 1, y + 4, x + 6, y - 5);
+  }
+
+  if (node.current || node.selected) {
+    const name = node.current ? 'route-node-current-label' : 'route-node-selected-label';
+    const labelY = node.y + node.radius + 18;
+    scene.add.rectangle(node.x, labelY, 104, 28, 0x06111a, 0.98)
+      .setStrokeStyle(1, node.current ? 0xe7eef7 : 0xd8a840, 0.88)
+      .setName(name);
+    scene.add.text(node.x, labelY, node.current ? 'Here' : 'Selected', {
       fontFamily: context.fontFamily,
-      fontSize: '9px',
+      fontSize: `${UI_TYPE.primary}px`,
       fontStyle: context.boldFontStyle,
-      color: '#fff0b8',
-      letterSpacing: 1,
-    }).setOrigin(0.5).setName('route-node-selected-label');
+      color: node.current ? '#e7eef7' : '#fff0b8',
+      resolution: 2,
+    }).setOrigin(0.5).setName(name);
   }
 }
 
@@ -178,12 +184,12 @@ function renderConfirmButton(context: RouteMapRendererContext) {
   ).setName('route-commit-hit').setInteractive({ useHandCursor: true });
   const icon = confirm.addIcon();
   icon?.setAlpha(0.98);
-  scene.add.rectangle(confirm.labelCx, confirm.cy, confirm.labelWidth, 30, 0x06111a, 0.96)
+  scene.add.rectangle(confirm.labelCx, confirm.cy, confirm.labelWidth, 44, 0x06111a, 0.96)
     .setStrokeStyle(1, confirm.goldColor, 0.72)
     .setName('route-commit-label');
   scene.add.text(confirm.labelCx, confirm.cy, 'TAKE ROUTE', {
     fontFamily: context.fontFamily,
-    fontSize: '13px',
+    fontSize: `${UI_TYPE.primary}px`,
     fontStyle: context.boldFontStyle,
     color: confirm.goldText,
   }).setOrigin(0.5).setName('route-commit-label');
@@ -204,22 +210,24 @@ function renderConfirmButton(context: RouteMapRendererContext) {
 
 export function renderRouteMap(context: RouteMapRendererContext) {
   const nodes = new Map(context.nodes.map((node) => [node.id, node]));
-  renderColumnGuides(context);
   const lines = context.scene.add.graphics().setName('route-edge-layer');
   context.edges.forEach((edge) => {
     const from = nodes.get(edge.from);
     const to = nodes.get(edge.to);
     if (!from || !to) return;
-    const color = edge.lit ? 0x87b884 : edge.primaryPreview ? 0xd8a840 : edge.available ? 0x24d0d6 : edge.secondaryPreview ? 0x7893a0 : 0x345466;
-    const alpha = edge.lit ? 0.88 : edge.primaryPreview ? 0.98 : edge.available ? 0.9 : edge.secondaryPreview ? 0.66 : 0.56;
-    const dotRadius = edge.lit ? 1.5 : edge.primaryPreview ? 1.8 : edge.available ? 1.55 : edge.secondaryPreview ? 1.05 : 0.9;
+    const color = edge.lit ? 0x87b884 : edge.primaryPreview ? 0xd8a840 : edge.available ? 0x77d9df : edge.secondaryPreview ? 0xb3c8d2 : 0x9cb3bf;
+    const alpha = edge.lit ? 0.88 : edge.primaryPreview ? 1 : edge.available ? 0.94 : edge.secondaryPreview ? 0.86 : 0.78;
+    const dotRadius = edge.lit ? 1.5 : edge.primaryPreview ? 2.2 : edge.available ? 1.8 : edge.secondaryPreview ? 1.5 : 1.3;
     const curve = drawEdgePath(lines, from, to, edge.key, color, alpha, dotRadius, context.activeMapIndex);
     if (edge.available || edge.primaryPreview) {
-      const marker = curve.getPoint(0.65);
-      lines.fillStyle(0x06111a, 0.62);
-      lines.fillCircle(marker.x, marker.y, edge.primaryPreview ? 5 : 4.5);
-      lines.fillStyle(edge.primaryPreview ? 0xd8a840 : 0x24d0d6, 0.98);
-      lines.fillCircle(marker.x, marker.y, edge.primaryPreview ? 3.9 : 3.4);
+      const marker = curve.getPointAt(0.65);
+      const tangent = curve.getTangentAt(0.65);
+      const arrow = context.scene.add.graphics().setName('route-edge-direction')
+        .setData('routeEdgeKey', edge.key);
+      arrow.lineStyle(3, edge.primaryPreview ? 0xd8a840 : 0x77d9df, 1);
+      for (const side of [-1, 1]) arrow.lineBetween(marker.x, marker.y,
+        marker.x - tangent.x * 8 - tangent.y * 5 * side,
+        marker.y - tangent.y * 8 + tangent.x * 5 * side);
     }
   });
   context.nodes.forEach((node) => renderNode(context, node));

@@ -21,20 +21,28 @@ test('estimated incoming damage stays in its own HUD lane at large values', asyn
     for (const values of [{ hpLoss: 8, afterHp: 30 }, { hpLoss: 123, afterHp: 456 }]) {
       const result = await page.evaluate(values => {
         const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
-        b.incomingFlockDamagePreview = () => ({ ...values, uncertainty: ['Card-only trigger'] });
+        b.incomingFlockDamagePreview = () => ({ ...values, total: values.hpLoss, blocked: 0,
+          scope: 'Current enemy Tells', uncertainty: ['Card-only trigger'] });
         b.renderAll();
         const text = b.root.getByName('combat-incoming-forecast-label');
         const r = text.getBounds(), lane = b.root.getByName('combat-incoming-forecast-frame-fallback').getBounds();
+        b.root.getByName('combat-roost-hit').emit('pointerover');
+        const tooltip = b.root.list.flatMap((o: any) => o.list ?? []).find((o: any) => o.name === 'combat-tooltip-body');
+        const detail = tooltip?.text;
+        b.root.getByName('combat-roost-hit').emit('pointerout');
         return { fits: r.left >= lane.left && r.right <= lane.right && r.top >= lane.top && r.bottom <= lane.bottom,
+          detail, separated: r.right < b.root.getByName('combat-flow-rail').getBounds().left,
           text: text.text, size: text.style.fontSize, full: text.getData('fullText') };
       }, values);
       await settleCanvas(page);
       await page.screenshot({ path: info.outputPath(`forecast-${width}-${values.hpLoss}.png`) });
       expect.soft(result.fits, JSON.stringify(result)).toBe(true);
-      expect(result.size).toBe('18px');
+      expect(result.size).toBe('19px');
       expect(result.text).toContain('Est.');
       expect(result.text).toContain(String(values.hpLoss));
       expect(result.full).toContain(`${values.afterHp} Cohesion left`);
+      expect(result.detail).toContain(`${values.afterHp} Cohesion left`);
+      expect(result.separated).toBe(true);
     }
   }
   expect(errors).toEqual([]);

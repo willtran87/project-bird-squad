@@ -50,6 +50,11 @@ test('failed Waymark loading preserves combat and explains reload recovery', asy
   expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').root.getByName('battle-waymark-loading').text)).toContain('reload the game to retry');
   await expect.poll(() => page.locator('#game-status').textContent()).toContain('reload the game to retry');
   await expect.poll(() => page.locator('#game-status').textContent()).toContain('controller B to close');
+  await expect(page.getByRole('dialog', { name: 'Download recovery' })).toBeVisible();
+  await page.screenshot({ path: info.outputPath('download-recovery.png') });
+  await page.getByRole('button', { name: 'Keep playing', exact: true }).click();
+  await expect(page.getByRole('dialog', { name: 'Download recovery' })).toBeHidden();
+  expect((await reader(page)).open).toBe(true);
   await page.screenshot({ path: info.outputPath('unavailable.png') });
   await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').setBattlePaused(true));
   await expect.poll(() => page.locator('#game-status').textContent()).toContain('Battle paused');

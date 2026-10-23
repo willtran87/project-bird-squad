@@ -49,8 +49,13 @@ test('fallback catalog retains bounded identity, rules and controls without cere
     // An unavailable texture must not reach Phaser's native missing-image frame.
     const original = b.rewardCardView;
     b.rewardCardView = function (...args: any[]) { return { ...original.apply(this, args), artKey: 'unavailable-catalog-art' }; };
+    b.rewardArtFailedKeys.add('unavailable-catalog-art');
     b.root.removeAll(true); b.battleHandRendererModule.renderCombatRewardFallback(b);
-    const missingArtSafe = !b.root.getByName('reward-fallback-card-art') && Boolean(b.root.getByName('reward-fallback-art-identity'));
+    const slot = b.root.getByName('reward-card-art-slot');
+    const missingArtSafe = slot?.getData('artState') === 'unavailable'
+      && !slot.list.some((o:any)=>o.type==='Image')
+      && /Art failed\nRetry/.test(slot.getByName('reward-art-status')?.text)
+      && Boolean(b.root.getByName('reward-fallback-choice-name')?.getData('fullText'));
     // Keep the missing-art fixture through async repaint and screenshot; this
     // isolated browser context is disposed by Playwright after the scenario.
     b.renderAll();
@@ -59,7 +64,8 @@ test('fallback catalog retains bounded identity, rules and controls without cere
   expect(result.count).toBe(440);
   expect(result.failures).toEqual([]);
   expect(result.missingArtSafe).toBe(true);
-  await page.waitForFunction(() => Boolean((window as any).__birdSquadGame.scene.getScene('BattleScene').root.getByName('reward-fallback-art-identity')));
+  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').root
+    .getByName('reward-card-art-slot')?.getData('artState') === 'unavailable');
   await page.screenshot({ path: info.outputPath('missing-art-readable-identity.png') });
   expect(errors).toEqual([]);
 });

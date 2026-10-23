@@ -1,3 +1,4 @@
+import { holdRecoveryInput, recoveryOwnsInput } from './recovery-input';
 /** A failed write must never silently navigate away from the only live result. */
 export function showSaveRecovery(retry: () => boolean) {
   if (document.getElementById('save-recovery')) return;
@@ -24,8 +25,9 @@ export function showSaveRecovery(retry: () => boolean) {
 }
 
 export function consumeSaveRecoveryGamepad(index?: number) {
-  const dialog = document.getElementById('save-recovery');
-  if (!dialog) return false;
+  const dialog = document.getElementById('update-recovery') ?? document.getElementById('save-recovery');
+  if (!dialog) return recoveryOwnsInput();
+  holdRecoveryInput();
   const buttons = [...dialog.querySelectorAll('button')];
   if (index === 0) (buttons.find(button => button === document.activeElement) ?? buttons[0]).click();
   else if (index === 1) buttons[1].click();

@@ -1,0 +1,654 @@
+{
+  "assets/runtime/enemies/full/alley_cat.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/alley_cat-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/anchor_threader.webp": {
+    "source": "assets/concept-art/supplies/sources/anchor_threader-imagegen-crop-v3.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/armadillo_roller.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/armadillo_roller-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/badger_underpass_bruiser.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/badger_underpass_bruiser-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/map-icons/icons/basin.webp": {
+    "source": "assets/concept-art/ui/route-map/route-node-icons-splash-v7/basin-splash-v7.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/basin_charm.webp": {
+    "source": "assets/concept-art/waymarks/sources/basin_charm-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/basin_overflow_cup.webp": {
+    "source": "assets/concept-art/waymarks/sources/basin_overflow_cup-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/basin_safety_pin.webp": {
+    "source": "assets/concept-art/waymarks/sources/basin_safety_pin-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/bat_nightcaller.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/bat_nightcaller-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/beaver_streetwright.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/beaver_streetwright-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/splash/bird-squad-bold-streetwear-splash-v3-gate.webp": {
+    "source": "assets/splash/bird-squad-bold-streetwear-splash-v3.png",
+    "kind": "upstream raster"
+  },
+  "assets/splash/bird-squad-canal-run-splash-v11-menu-pop.webp": {
+    "source": "assets/splash/bird-squad-canal-run-splash-v11.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/black_ink_pin.webp": {
+    "source": "assets/concept-art/waymarks/sources/black_ink_pin-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/blue_cup_token.webp": {
+    "source": "assets/concept-art/waymarks/sources/blue_cup_token-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/waymarks/icons/borrowed_raincoat.webp": {
+    "source": "assets/concept-art/waymarks/sources/borrowed_raincoat-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/map-icons/icons/boss.webp": {
+    "source": "assets/concept-art/ui/route-map/route-node-icons-splash-v7/boss-splash-v7.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/bottlecap_popper.webp": {
+    "source": "assets/concept-art/supplies/sources/bottlecap_popper-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/bright_bottlecap.webp": {
+    "source": "assets/concept-art/waymarks/sources/bright_bottlecap-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/broken_cover_chime.webp": {
+    "source": "assets/concept-art/waymarks/sources/broken_cover_chime-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/bus_token_cache.webp": {
+    "source": "assets/concept-art/supplies/sources/bus_token_cache-imagegen-crop-v3.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/map-icons/icons/cache.webp": {
+    "source": "assets/concept-art/ui/route-map/route-node-icons-splash-v7/cache-splash-v7.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/cache_divining_hook.webp": {
+    "source": "assets/concept-art/waymarks/sources/cache_divining_hook-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/cache_hook.webp": {
+    "source": "assets/concept-art/waymarks/sources/cache_hook-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/cache_key.webp": {
+    "source": "assets/concept-art/supplies/sources/cache_key-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/backdrops/variants/canal-markets-boss-gatekeeper-v1.webp": {
+    "source": "assets/runtime/backdrops/variants/canal-markets-boss-gatekeeper-v1.webp",
+    "kind": "retained published WebP master; upstream generation raster unavailable"
+  },
+  "assets/runtime/backdrops/canal-markets.webp": {
+    "source": ".generated/imagegen/backdrops/selected/canal-markets-battle-backdrop-v2.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/backdrops/canal-markets-route-map-v1.webp": {
+    "source": "assets/concept-art/backdrops/sources/canal-markets-route-map-source-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/canal_otter.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/canal_otter-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/caterpillar_roadcrew.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/caterpillar_roadcrew-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/chalk_dust_pouch.webp": {
+    "source": "assets/concept-art/supplies/sources/chalk_dust_pouch-imagegen-crop-v3.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/chalk_wingmark.webp": {
+    "source": "assets/concept-art/waymarks/sources/chalk_wingmark-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/cicada_static_swarm.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/cicada_static_swarm-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/cormorant_netter.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/cormorant_netter-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/courier_thread.webp": {
+    "source": "assets/concept-art/waymarks/sources/courier_thread-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/couriers_ledger.webp": {
+    "source": "assets/concept-art/waymarks/sources/couriers_ledger-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/coyote_street_scout.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/coyote_street_scout-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/crab_dockguard.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/crab_dockguard-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/crane_signal_caller.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/crane_signal_caller-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/crow_saboteur.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/crow_saboteur-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/crowbar_debt.webp": {
+    "source": "assets/concept-art/waymarks/sources/crowbar_debt-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/dawn_ribbon.webp": {
+    "source": "assets/concept-art/waymarks/sources/dawn_ribbon-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/double_packed_buckle.webp": {
+    "source": "assets/concept-art/waymarks/sources/double_packed_buckle-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/enemies/reserve/duckweed_frog.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/duckweed_frog-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/eave_bloom.webp": {
+    "source": "assets/concept-art/waymarks/sources/eave_bloom-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/supplies/icons/emergency_call.webp": {
+    "source": "assets/concept-art/supplies/sources/emergency_call-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/supplies/icons/feather_splint.webp": {
+    "source": "assets/concept-art/supplies/sources/feather_splint-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/feather_tape.webp": {
+    "source": "assets/concept-art/waymarks/sources/feather_tape-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/ferret_pipe_sneak.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/ferret_pipe_sneak-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/flock_counterweight.webp": {
+    "source": "assets/concept-art/waymarks/sources/flock_counterweight-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/fox_lookout.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/fox_lookout-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/fresh_pinfeather.webp": {
+    "source": "assets/concept-art/waymarks/sources/fresh_pinfeather-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/frog_canal_jumper.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/frog_canal_jumper-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/goose_bouncer.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/goose_bouncer-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/harbor_bead_strand.webp": {
+    "source": "assets/concept-art/waymarks/sources/harbor_bead_strand-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/hedgehog_curb_crosser.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/hedgehog_curb_crosser-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/hermit_crab_salvager.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/hermit_crab_salvager-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/heron_spearstepper.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/heron_spearstepper-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/backdrops/variants/high-roost-boss-warden-v1.webp": {
+    "source": "assets/runtime/backdrops/variants/high-roost-boss-warden-v1.webp",
+    "kind": "retained published WebP master; upstream generation raster unavailable"
+  },
+  "assets/runtime/backdrops/high-roost.webp": {
+    "source": ".generated/imagegen/backdrops/selected/high-roost-battle-backdrop-v2.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/backdrops/high-roost-route-map-v1.webp": {
+    "source": "assets/concept-art/backdrops/sources/high-roost-route-map-source-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/iguana_heatbasker.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/iguana_heatbasker-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/jackrabbit_sprinter.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/jackrabbit_sprinter-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/kingfisher_snapdiver.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/kingfisher_snapdiver-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/kite_hawk_courier.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/kite_hawk_courier-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/ledger_tab.webp": {
+    "source": "assets/concept-art/waymarks/sources/ledger_tab-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/loose_change_tin.webp": {
+    "source": "assets/concept-art/waymarks/sources/loose_change_tin-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/loose_feather_token.webp": {
+    "source": "assets/concept-art/waymarks/sources/loose_feather_token-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/macaque_market_raider.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/macaque_market_raider-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/mantis_street_duelist.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/mantis_street_duelist-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/map_sticker_strip.webp": {
+    "source": "assets/concept-art/supplies/sources/map_sticker_strip-imagegen-crop-v3.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/map-icons/icons/market.webp": {
+    "source": "assets/concept-art/ui/route-map/route-node-icons-splash-v7/market-splash-v7.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/market_iou.webp": {
+    "source": "assets/concept-art/supplies/sources/market_iou-imagegen-crop-v3.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/market_tally_string.webp": {
+    "source": "assets/concept-art/waymarks/sources/market_tally_string-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/route-events/props/marn-lockbox-cabinet-v1.webp": {
+    "source": "assets/concept-art/route-events/marn-cache/marn-lockbox-cabinet-v1-raw.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/mirror_shard.webp": {
+    "source": "assets/concept-art/supplies/sources/mirror_shard-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/enemies/reserve/mole_tunnelbreaker.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/mole_tunnelbreaker-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/molt_metronome.webp": {
+    "source": "assets/concept-art/waymarks/sources/molt_metronome-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/molt_pin.webp": {
+    "source": "assets/concept-art/supplies/sources/molt_pin-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/molt_shadow_tag.webp": {
+    "source": "assets/concept-art/waymarks/sources/molt_shadow_tag-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/mongoose_counterfighter.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/mongoose_counterfighter-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/monitor_lizard_strider.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/monitor_lizard_strider-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/moth_lantern_drifter.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/moth_lantern_drifter-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/map-icons/icons/nest.webp": {
+    "source": "assets/concept-art/ui/route-map/route-node-icons-splash-v7/nest-splash-v7.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/nest_clamp.webp": {
+    "source": "assets/concept-art/supplies/sources/nest_clamp-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/nest_measure_line.webp": {
+    "source": "assets/concept-art/waymarks/sources/nest_measure_line-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/nest_ratchet.webp": {
+    "source": "assets/concept-art/waymarks/sources/nest_ratchet-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/supplies/icons/oath_ledger.webp": {
+    "source": "assets/concept-art/supplies/sources/oath_ledger-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/opossum_decoy.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/opossum_decoy-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/parade_mirror.webp": {
+    "source": "assets/concept-art/waymarks/sources/parade_mirror-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/patched_harness.webp": {
+    "source": "assets/concept-art/waymarks/sources/patched_harness-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/patched_shoulder_wrap.webp": {
+    "source": "assets/concept-art/waymarks/sources/patched_shoulder_wrap-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/enemies/full/peacock_intimidator.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/peacock_intimidator-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/pelican_canal_hauler.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/pelican_canal_hauler-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/pigeon_enforcer.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/pigeon_enforcer-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/plumes_applause_cap.webp": {
+    "source": "assets/concept-art/waymarks/sources/plumes_applause_cap-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/plumes_busker_patch.webp": {
+    "source": "assets/concept-art/waymarks/sources/plumes_busker_patch-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/porcupine_bristleguard.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/porcupine_bristleguard-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/quiet_landing.webp": {
+    "source": "assets/concept-art/waymarks/sources/quiet_landing-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/quiet_roost_token.webp": {
+    "source": "assets/concept-art/waymarks/sources/quiet_roost_token-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/waymarks/icons/quill_notch.webp": {
+    "source": "assets/concept-art/waymarks/sources/quill_notch-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/quills_pressure_gauge.webp": {
+    "source": "assets/concept-art/waymarks/sources/quills_pressure_gauge-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/rain_cape.webp": {
+    "source": "assets/concept-art/supplies/sources/rain_cape-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/rain_gutter.webp": {
+    "source": "assets/concept-art/waymarks/sources/rain_gutter-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/rat_courier.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/rat_courier-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/razor_kite_tail.webp": {
+    "source": "assets/concept-art/waymarks/sources/razor_kite_tail-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/waymarks/icons/reopened_roofline.webp": {
+    "source": "assets/concept-art/waymarks/sources/reopened_roofline-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/supplies/icons/resonance_battery.webp": {
+    "source": "assets/concept-art/supplies/sources/resonance_battery-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/return_ticket.webp": {
+    "source": "assets/concept-art/supplies/sources/return_ticket-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/map-icons/icons/rival.webp": {
+    "source": "assets/concept-art/ui/route-map/route-node-icons-splash-v7/rival-splash-v7.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/roofline_compass.webp": {
+    "source": "assets/concept-art/waymarks/sources/roofline_compass-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/backdrops/variants/rooftop-blocks-boss-tar-crow-v1.webp": {
+    "source": "assets/runtime/backdrops/variants/rooftop-blocks-boss-tar-crow-v1.webp",
+    "kind": "retained published WebP master; upstream generation raster unavailable"
+  },
+  "assets/runtime/backdrops/rooftop-blocks-readability-v2.webp": {
+    "source": "assets/concept-art/backdrops/sources/rooftop-blocks-readability-source-v2.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/backdrops/rooftop-blocks-route-map-v1.webp": {
+    "source": "assets/runtime/backdrops/rooftop-blocks-route-map-v1.webp",
+    "kind": "retained published WebP master; upstream generation raster unavailable"
+  },
+  "assets/runtime/supplies/icons/rooftop_decoy.webp": {
+    "source": "assets/concept-art/supplies/sources/rooftop_decoy-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/rooftop_nest_lining.webp": {
+    "source": "assets/concept-art/waymarks/sources/rooftop_nest_lining-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/rooftop_raccoon.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/rooftop_raccoon-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/rooftop_relay_bell.webp": {
+    "source": "assets/concept-art/waymarks/sources/rooftop_relay_bell-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/rooftop_shortcut.webp": {
+    "source": "assets/concept-art/waymarks/sources/rooftop_shortcut-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/salamander_slickstep.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/salamander_slickstep-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/scaffold_knot.webp": {
+    "source": "assets/concept-art/waymarks/sources/scaffold_knot-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/supplies/icons/scrap.webp": {
+    "source": "assets/concept-art/supplies/sources/scrap-icon-user-reference-v4.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/seagull_fry_snatcher.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/seagull_fry_snatcher-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/seed_packet.webp": {
+    "source": "assets/concept-art/supplies/sources/seed_packet-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/shade_cloth.webp": {
+    "source": "assets/concept-art/supplies/sources/shade_cloth-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/shed_feather_case.webp": {
+    "source": "assets/concept-art/waymarks/sources/shed_feather_case-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/map-icons/icons/signal.webp": {
+    "source": "assets/concept-art/ui/route-map/route-node-icons-splash-v7/signal-splash-v7.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/backdrops/signal-spires.webp": {
+    "source": ".generated/imagegen/backdrops/selected/signal-spires-battle-backdrop-v2.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/backdrops/variants/signal-spires-boss-beacon-breaker-v1.webp": {
+    "source": "assets/runtime/backdrops/variants/signal-spires-boss-beacon-breaker-v1.webp",
+    "kind": "retained published WebP master; upstream generation raster unavailable"
+  },
+  "assets/runtime/backdrops/signal-spires-route-map-v1.webp": {
+    "source": "assets/concept-art/backdrops/sources/signal-spires-route-map-source-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/signal_flare.webp": {
+    "source": "assets/concept-art/supplies/sources/signal_flare-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/signal_kite.webp": {
+    "source": "assets/concept-art/supplies/sources/signal_kite-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/waymarks/icons/signal_whistle.webp": {
+    "source": "assets/concept-art/waymarks/sources/signal_whistle-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/enemies/full/skunk_chemist.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/skunk_chemist-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/sky_safe_harness.webp": {
+    "source": "assets/concept-art/waymarks/sources/sky_safe_harness-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/supplies/icons/sky_sugar.webp": {
+    "source": "assets/concept-art/supplies/sources/sky_sugar-imagegen-crop-v3.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/smoke_thread.webp": {
+    "source": "assets/concept-art/supplies/sources/smoke_thread-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/snapping_turtle_dock_boss.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/snapping_turtle_dock_boss-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/spare_harness.webp": {
+    "source": "assets/concept-art/supplies/sources/spare_harness-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/spare_pocket.webp": {
+    "source": "assets/concept-art/supplies/sources/spare_pocket-imagegen-crop-v3.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/spark_ground_clip.webp": {
+    "source": "assets/concept-art/waymarks/sources/spark_ground_clip-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/squirrel_line_runner.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/squirrel_line_runner-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/stage_pin.webp": {
+    "source": "assets/concept-art/waymarks/sources/stage_pin-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/storm_lantern.webp": {
+    "source": "assets/concept-art/supplies/sources/storm_lantern-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/map-icons/icons/street.webp": {
+    "source": "assets/concept-art/ui/route-map/route-node-icons-splash-v7/street-splash-v7.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/sunbreak_lens.webp": {
+    "source": "assets/concept-art/waymarks/sources/sunbreak_lens-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/supply_bell.webp": {
+    "source": "assets/concept-art/waymarks/sources/supply_bell-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/supplies/icons/tar_solvent.webp": {
+    "source": "assets/concept-art/supplies/sources/tar_solvent-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/reserve/tarantula_corner_keeper.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/tarantula_corner_keeper-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/thermos_lid.webp": {
+    "source": "assets/concept-art/supplies/sources/thermos_lid-imagegen-crop-v7.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/tin_roof_shade.webp": {
+    "source": "assets/concept-art/waymarks/sources/tin_roof_shade-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/turtle_barricader.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/turtle_barricader-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/under_eave_charm.webp": {
+    "source": "assets/concept-art/waymarks/sources/under_eave_charm-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/enemies/full/vulture_cleanup_crew.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/vulture_cleanup_crew-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/enemies/full/weasel_cutpurse.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/weasel_cutpurse-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/wind_step_tag.webp": {
+    "source": "assets/concept-art/waymarks/sources/wind_step_tag-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/windcatcher_spool.webp": {
+    "source": "assets/concept-art/supplies/sources/windcatcher_spool-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/wire_map.webp": {
+    "source": "assets/concept-art/waymarks/sources/wire_map-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/wire_snips.webp": {
+    "source": "assets/concept-art/supplies/sources/wire_snips-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/runtime/enemies/full/woodpecker_riveter.webp": {
+    "source": ".generated/imagegen/enemies/reserve-selected/woodpecker_riveter-transparent.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/waymarks/icons/workshop_stamp.webp": {
+    "source": "assets/concept-art/waymarks/sources/workshop_stamp-imagegen-crop-v1.png",
+    "kind": "upstream raster"
+  },
+  "assets/runtime/supplies/icons/zip_tie_roll.webp": {
+    "source": "assets/concept-art/supplies/sources/zip_tie_roll-cleanup-v2.png",
+    "kind": "reviewed generated boundary/alpha repair; prompt in item-art-repairs.json"
+  },
+  "assets/ui/bird-squad-title-bird-textured-v2.png": {
+    "source": "assets/ui/bird-squad-title-bird-textured-v2.png",
+    "kind": "canonical title raster, shipped losslessly"
+  },
+  "assets/ui/bird-squad-title-squad-textured-v2.png": {
+    "source": "assets/ui/bird-squad-title-squad-textured-v2.png",
+    "kind": "canonical title raster, shipped losslessly"
+  }
+}

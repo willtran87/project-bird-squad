@@ -1,7 +1,13 @@
+import { UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT } from './ui-tokens';
 import Phaser from 'phaser';
+import { quietButton } from './quiet-ui';
+import { startOwnedCopy } from './owned-copy';
 import { fitTextExcerpt } from './text-excerpt';
+import { measuredReadingPages } from './decision-surface';
 import { copySharedRouteLink, type SharedRouteMode } from './run-challenge';
 import { MIN_SUPPORTED_TOUCH_TARGET } from './theme';
+import { controlPanelOwnsInput } from './input-bindings';
+import { announceScreenReader } from './screen-reader-accessibility';
 import type { RouteNodeType, RuntimeRouteMap } from './types';
 
 export interface BossDossierEnemy {
@@ -92,7 +98,7 @@ export interface OutcomeFlightDetails {
   results: string[];
 }
 
-interface OutcomeFlightSummary {
+interface OutcomeFlightSummary extends DefeatReviewRunSummary {
   seed: string;
   result: 'win' | 'loss';
   difficulty?: number;
@@ -112,7 +118,7 @@ interface OutcomeFlightSummary {
   signals: Array<{ signalId: string; choiceKey: string }>;
   cardRewards: Array<{ picked?: string; skipped: boolean }>;
   routeDecisions: Array<{ decisionMs: number }>;
-  combatResults: Array<{
+  combatResults: Array<DefeatReviewRunSummary['combatResults'][number] & {
     damageDealt: number;
     cohesionLost: number;
     objective?: { status: 'complete' | 'failed' | 'active' };
@@ -139,22 +145,19 @@ export function buildOutcomeFlightDetails(
   summary: OutcomeFlightSummary,
   lookups: OutcomeFlightDetailsLookups,
 ): OutcomeFlightDetails {
-  const cap = (lines: string[], maximum: number) => lines.length <= maximum
-    ? lines
-    : [...lines.slice(0, maximum - 1), `+ ${lines.length - maximum + 1} more`];
-  const deck = cap(summary.deck.map((saved, index) => (
+  const deck = summary.deck.map((saved, index) => (
     `${String(index + 1).padStart(2, '0')} · ${lookups.cardName(saved.id)}${saved.upgraded ? '+' : ''}`
-  )), 20);
+  ));
   const pathIds = [...summary.path];
   if (summary.finalNodeId && !pathIds.includes(summary.finalNodeId)) pathIds.push(summary.finalNodeId);
-  const path = cap(pathIds.map((id, index) => {
+  const path = pathIds.map((id, index) => {
     const located = lookups.maps.map(({ map, mapIndex }) => ({
       mapIndex,
       node: map.nodes.find((candidate) => candidate.id === id),
     })).find((entry) => entry.node);
     const district = located ? located.mapIndex + 1 : '?';
     return `${String(index + 1).padStart(2, '0')} · D${district} ${located?.node ? lookups.routeNodeTypeLabel(located.node.type).toUpperCase() : 'STOP'} · ${located?.node?.label ?? id}`;
-  }), 20);
+  });
   const pickedRewards = summary.cardRewards
     .filter((reward) => reward.picked)
     .map((reward) => lookups.cardName(reward.picked!));
@@ -166,7 +169,7 @@ export function buildOutcomeFlightDetails(
   const completedObjectives = summary.combatResults.filter((combat) => combat.objective?.status === 'complete').length;
   const failedObjectives = summary.combatResults.filter((combat) => combat.objective?.status === 'failed').length;
   const stats = summary.decisionStats;
-  const decisions = cap([
+  const decisions = [
     `${summary.routeDecisions.length} route choice${summary.routeDecisions.length === 1 ? '' : 's'} · ${averageRouteSeconds}s average`,
     `${pickedRewards.length} card recruit${pickedRewards.length === 1 ? '' : 's'} · ${skippedRewards} skipped`,
     ...(pickedRewards.length > 0 ? [`Recruited · ${pickedRewards.join(' / ')}`] : []),
@@ -174,11 +177,12 @@ export function buildOutcomeFlightDetails(
     `Objectives · ${completedObjectives} complete / ${failedObjectives} missed`,
     `Cards played · ${stats?.cardsPlayed ?? 0} · Overextensions ${stats?.overextensions ?? 0}`,
     `Cover blocked · ${stats?.blockedDamage ?? 0} · Unspent Wingbeats ${stats?.unspentWingbeatAtRoost ?? 0}`,
-  ], 8);
+  ];
   const totalDealt = summary.combatResults.reduce((sum, combat) => sum + combat.damageDealt, 0);
   const totalTaken = summary.combatResults.reduce((sum, combat) => sum + combat.cohesionLost, 0);
   const totalSeconds = Math.max(0, Math.round(summary.durationMs / 1000));
   const duration = `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
+  const review = summary.result === 'loss' ? buildDefeatReview(summary) : undefined;
   return {
     deck,
     path,
@@ -190,6 +194,7 @@ export function buildOutcomeFlightDetails(
       `Cohesion ${summary.currentCohesion}/${summary.maxCohesion} · ${summary.turnsTaken} beats`,
       `Damage ${totalDealt} dealt / ${totalTaken} taken`,
       `Scrap ${summary.finalScrap} · +${summary.scrapEarned} earned / ${summary.scrapSpent} spent`,
+      ...(review ? [review.headline, review.evidence, review.tip, review.replayNote] : []),
     ],
   };
 }
@@ -455,43 +460,40 @@ export function renderDefeatReview(
     boldStyle: string;
   }
 ) {
-  const height = 140;
+  const height = 156;
   const left = options.x - options.width / 2 + 12;
   root.add(scene.add.rectangle(options.x, options.y, options.width, height, 0x03070d, 0.94)
     .setStrokeStyle(1, 0xff9d6b, 0.34)
     .setName('run-defeat-review'));
-  root.add(scene.add.text(left, options.y - 60, `FLIGHT REVIEW · ${review.signal}`, {
+  root.add(scene.add.text(left, options.y - 68, `FLIGHT REVIEW · ${review.signal}`, {
     fontFamily: options.fontFamily,
-    fontSize: '14px',
+    fontSize: '18px',
     fontStyle: options.boldStyle,
     color: '#ffcfaa',
     fixedWidth: options.width - 24,
     maxLines: 1,
   }).setResolution(2).setName('run-defeat-review-signal'));
-  root.add(scene.add.text(left, options.y - 38, review.headline, {
+  root.add(fitTextExcerpt(scene.add.text(left, options.y - 42, '', {
     fontFamily: options.fontFamily,
-    fontSize: '18px',
+    fontSize: '21px',
     fontStyle: options.boldStyle,
     color: '#fff0e8',
-    fixedWidth: options.width - 24,
-    maxLines: 1,
-  }).setResolution(2).setName('run-defeat-review-headline'));
-  root.add(scene.add.text(left, options.y - 12, review.evidence, {
+    wordWrap: { width: options.width - 24, useAdvancedWrap: true },
+  }).setResolution(2).setName('run-defeat-review-headline'), review.headline, 1));
+  root.add(fitTextExcerpt(scene.add.text(left, options.y - 12, '', {
     fontFamily: options.fontFamily,
-    fontSize: '15px',
+    fontSize: '18px',
     color: '#d7e3ec',
-    fixedWidth: options.width - 24,
-    maxLines: 1,
-  }).setResolution(2).setName('run-defeat-review-evidence'));
-  root.add(scene.add.text(left, options.y + 12, review.tip, {
+    wordWrap: { width: options.width - 24, useAdvancedWrap: true },
+  }).setResolution(2).setName('run-defeat-review-evidence'), review.evidence, 1));
+  root.add(fitTextExcerpt(scene.add.text(left, options.y + 12, '', {
     fontFamily: options.fontFamily,
-    fontSize: '16px',
+    fontSize: '18px',
     color: '#b9cad7',
     fixedWidth: options.width - 24,
     wordWrap: { width: options.width - 24, useAdvancedWrap: true },
     lineSpacing: -1,
-    maxLines: 3,
-  }).setResolution(2).setName('run-defeat-review-tip'));
+  }).setResolution(2).setName('run-defeat-review-tip'), review.tip, 3));
 }
 
 export function renderOutcomeFlightSummary(
@@ -508,6 +510,7 @@ export function renderOutcomeFlightSummary(
     fontFamily: string;
     boldStyle: string;
     softColor: string;
+    focused?: boolean;
   }
 ) {
   if (!options.win && options.review) {
@@ -530,37 +533,32 @@ export function renderOutcomeFlightSummary(
     }).setOrigin(0.5));
   }
   const seedLabel = scene.add.text(options.x, 462, '', {
-    fontFamily: options.fontFamily, fontSize: '14px', color: options.softColor, align: 'center',
+    fontFamily: options.fontFamily, fontSize: '18px', color: options.softColor, align: 'center',
     wordWrap: { width: 232, useAdvancedWrap: true },
   }).setOrigin(0.5).setResolution(2).setName('run-outcome-flight-seed');
   root.add(fitTextExcerpt(seedLabel, `FLIGHT ${options.seed}`, 2));
   const labelY = 514;
-  root.add(scene.add.rectangle(options.x, labelY, 244, MIN_SUPPORTED_TOUCH_TARGET, 0x07131d, 0.96)
-    .setStrokeStyle(1, options.softAccent, 0.3)
-    .setName('run-outcome-flight-link-rail'));
-  const label = scene.add.text(
-    options.x,
-    labelY,
-    'COPY SEEDED FLIGHT',
-    {
-      fontFamily: options.fontFamily,
-      fontSize: '18px',
-      color: options.softColor,
-      align: 'center',
-      fixedWidth: 232,
-    }
-  ).setOrigin(0.5).setResolution(2).setName('run-outcome-flight-link-label');
-  root.add(label);
-  const hit = scene.add.rectangle(options.x, labelY, 244, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-    .setInteractive({ useHandCursor: true })
-    .setName('run-outcome-flight-link-hit')
-    .setData('label', 'Copy route link');
-  hit.on('pointerdown', () => {
-    void copySharedRouteLink(options.seed, options.runMode).then((copied) => {
-      if (label.active) label.setText(copied ? 'LINK COPIED' : 'COPY FAILED');
-    });
-  });
-  root.add(hit);
+  let pendingCopy: ReturnType<typeof startOwnedCopy> | undefined;
+  const hit = quietButton(scene, { x: options.x, y: labelY, width: 244, label: 'COPY SEEDED FLIGHT',
+    name: 'run-outcome-flight-link-hit', kind: 'secondary', focused: options.focused, onActivate: () => {
+      if (pendingCopy) return;
+      hit.setData({statusLabel: 'Copying…', status: 'loading'});
+      pendingCopy = startOwnedCopy(scene, {
+        isCurrent: () => hit.active && root.active,
+        write: () => copySharedRouteLink(options.seed, options.runMode),
+        complete: copied => {
+          pendingCopy = undefined;
+          if (copied) hit.setData({fullLabel: 'LINK COPIED', status: 'idle'});
+          else hit.setData({statusLabel: 'Copy failed · Retry', status: 'error'});
+        },
+        canceled: () => { pendingCopy = undefined; },
+      });
+    } }).setData('label', 'Copy route link');
+  hit.once('destroy', () => pendingCopy?.cancel());
+  if (options.focused) root.add(scene.add.rectangle(options.x, labelY, 254, 64, 0x06151b, 0.03)
+    .setStrokeStyle(3, 0x8df4ff, 0.98).setName('run-outcome-input-focus-ring')
+    .setData('label', 'Copy seeded flight'));
+  root.add([hit, hit.getData('labelObject').setName('run-outcome-flight-link-label')]);
 }
 
 export function renderOutcomeUnlockStrip(
@@ -604,16 +602,16 @@ export function renderOutcomeUnlockStrip(
   const visibleNames = names.slice(0, 3).join(' / ');
   const overflow = names.length > 3 ? ` / +${names.length - 3} more` : '';
   const heading = `${recordCount ? 'NEW PROGRESS' : 'NEW UNLOCKS'}: ${labelParts.join(' + ')}`;
-  root.add(fitTextExcerpt(scene.add.text(x + 62, y - 18, '', {
+  root.add(fitTextExcerpt(scene.add.text(x + 62, y - 22, '', {
     fontFamily: options.fontFamily,
-    fontSize: '14px',
+    fontSize: '18px',
     fontStyle: options.boldStyle,
     color: win ? '#ffe1a3' : '#ffcfaa',
     wordWrap: { width: w - 76, useAdvancedWrap: true },
   }).setResolution(2).setName('run-outcome-unlock-heading'), heading, 1));
   root.add(fitTextExcerpt(scene.add.text(x + 62, y + 3, '', {
     fontFamily: options.fontFamily,
-    fontSize: '16px',
+    fontSize: '19px',
     fontStyle: options.boldStyle,
     color: '#eaf6ff',
     wordWrap: { width: w - 76, useAdvancedWrap: true },
@@ -639,7 +637,7 @@ export function renderOutcomeStats(
 ) {
   const startY = options.hasUnlocks ? 312 : 266;
   const gap = 36;
-  const fontSize = '20px';
+  const fontSize = '21px';
   const centerX = (options.labelX + options.valueX) / 2;
   stats.forEach((row, index) => {
     const y = startY + index * gap;
@@ -721,44 +719,28 @@ export function renderOutcomeCommand(
   }
 ) {
   const width = options.width ?? 256;
-  const visual = scene.add.rectangle(options.x, 582, width, 58, options.baseFill, 0.98)
-    .setStrokeStyle(1, options.stroke, 0.6);
-  root.add(visual);
-  const hit = scene.add.rectangle(options.x, 582, width, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-    .setInteractive({ useHandCursor: true })
-    .setName('run-outcome-command-hit')
-    .setData('label', options.label);
+  const hit = quietButton(scene, { x: options.x, y: 582, width, label: options.label,
+    name: 'run-outcome-command-hit', kind: options.iconId === 'route-pin' ? 'primary' : 'secondary',
+    focused: options.focused, onActivate: options.onActivate }).setData('label', options.label);
   root.add(hit);
-  hit.on('pointerover', () => {
-    visual.setFillStyle(options.hoverFill, 1);
-  });
-  hit.on('pointerout', () => {
-    visual.setFillStyle(options.baseFill, 0.98);
-  });
-  hit.on('pointerdown', options.onActivate);
   if (options.focused) {
     root.add(scene.add.rectangle(options.x, 582, width + 10, 64, 0x06151b, 0.03)
       .setStrokeStyle(3, 0x8df4ff, 0.98)
       .setName('run-outcome-input-focus-ring')
       .setData('label', options.label));
   }
-  const icon = options.addIcon(options.iconId, options.iconX, 582);
-  if (icon) root.add(icon.setAlpha(0.9));
-  root.add(scene.add.text(options.textX, 582, options.label, {
-    fontFamily: options.fontFamily,
-    fontSize: `${Math.max(18, options.fontSize ?? 20)}px`,
-    fontStyle: options.boldStyle,
-    color: options.labelColor
-  }).setOrigin(0.5).setResolution(2).setName('run-outcome-command-label'));
+  root.add(hit.getData('labelObject').setName('run-outcome-command-label'));
 }
 
 export function renderOutcomeNextGoal(scene: Phaser.Scene, root: Phaser.GameObjects.Container, goal: string, fontFamily: string) {
   const label = scene.add.text(640, 642, '', {
-    fontFamily, fontSize: '16px', color: '#b8cbd8', align: 'center',
+    fontFamily, fontSize: '19px', color: '#b8cbd8', align: 'center',
     wordWrap: { width: 680, useAdvancedWrap: true },
   }).setOrigin(0.5).setResolution(2).setName('leader-mastery-next-goal');
   root.add(fitTextExcerpt(label, `NEXT FLIGHT  /  ${goal}`, 2));
 }
+
+const flightReadingPages = new WeakMap<object, number>();
 
 export function renderOutcomeFlightDetails(
   scene: Phaser.Scene,
@@ -766,98 +748,113 @@ export function renderOutcomeFlightDetails(
   details: OutcomeFlightDetails,
   options: {
     title: string;
+    identity?: object;
     subtitle: string;
     fontFamily: string;
     boldStyle: string;
     focused: boolean;
     focusedAction?: 'copy' | 'close';
-    copyStatus?: 'idle' | 'copied' | 'failed';
+    copyStatus?: 'idle' | 'copying' | 'copied' | 'failed';
     onCopy?: () => void;
     onClose: () => void;
   }
 ) {
-  const addSection = (
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    title: string,
-    lines: string[],
-    accent: number,
-    maxLines: number,
-  ) => {
-    root.add(scene.add.rectangle(x, y, width, height, 0x050a12, 0.96)
-      .setStrokeStyle(1, accent, 0.54)
-      .setName('run-flight-details-section')
-      .setData('section', title));
-    root.add(scene.add.rectangle(x, y - height / 2 + 25, width - 16, 34, 0x0d1a29, 0.92)
-      .setStrokeStyle(1, accent, 0.26));
-    root.add(scene.add.text(x - width / 2 + 18, y - height / 2 + 14, title, {
-      fontFamily: options.fontFamily,
-      fontSize: '13px',
-      fontStyle: options.boldStyle,
-      color: '#ffe1a3',
-      fixedWidth: width - 36,
-      maxLines: 1,
-    }).setName('run-flight-details-section-title'));
-    root.add(scene.add.text(x - width / 2 + 18, y - height / 2 + 52, lines.join('\n') || 'None recorded.', {
-      fontFamily: options.fontFamily,
-      fontSize: '11px',
-      color: '#d7e3ec',
-      fixedWidth: width - 36,
-      wordWrap: { width: width - 36, useAdvancedWrap: true },
-      lineSpacing: 4,
-      maxLines,
-    }).setName('run-flight-details-section-body').setData('section', title));
-  };
-
   root.add(scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.94)
     .setInteractive()
     .setName('run-flight-details-blocker'));
   root.add(scene.add.rectangle(640, 360, 1120, 620, 0x08111c, 0.99)
     .setStrokeStyle(3, 0x8df4ff, 0.72)
     .setName('run-flight-details-panel'));
-  root.add(scene.add.rectangle(640, 84, 1060, 74, 0x0d1a29, 0.98)
+  root.add(scene.add.rectangle(640, 89, 1060, 84, 0x0d1a29, 0.98)
     .setStrokeStyle(1, 0xe8b830, 0.58));
   root.add(scene.add.text(118, 61, options.title, {
-    fontFamily: 'Georgia, serif',
+    fontFamily: TOKEN_DISPLAY_FONT,
     fontSize: '32px',
     fontStyle: options.boldStyle,
     color: '#ffe1a3',
     stroke: '#020409',
     strokeThickness: 4,
   }).setName('run-flight-details-title'));
-  root.add(scene.add.text(120, 101, options.subtitle, {
+  const subtitle = fitTextExcerpt(scene.add.text(120, 101, '', {
     fontFamily: options.fontFamily,
-    fontSize: '12px',
+    fontSize: '19px',
     fontStyle: options.boldStyle,
     color: '#b9d9e9',
-    fixedWidth: 880,
-    maxLines: 1,
-  }).setName('run-flight-details-subtitle'));
+    wordWrap: {width:1040,useAdvancedWrap:true},
+  }).setName('run-flight-details-subtitle'), options.subtitle, 1);
+  root.add(subtitle);
 
-  addSection(246, 358, 330, 450, `FINAL DECK · ${details.deck.length}`, details.deck, 0xc98bff, 20);
-  addSection(600, 358, 342, 450, `ROUTE PATH · ${details.path.length} STOPS`, details.path, 0x8df4ff, 20);
-  addSection(1010, 198, 350, 130, 'KIT AT LANDING', [
-    `Waymarks · ${details.waymarks.join(' / ') || 'None'}`,
-    `Supplies used · ${details.supplies.join(' / ') || 'None'}`,
-  ], 0xe8b830, 4);
-  addSection(1010, 380, 350, 206, 'DECISIONS', details.decisions, 0x9fd8a9, 8);
-  addSection(1010, 542, 350, 112, 'RESULTS', details.results, 0xff9d6b, 4);
+  // One readable section at a time. Measure every wrapped line instead of
+  // dropping report entries at fixed column limits. The identity survives
+  // parent redraws (for example Copy status or action-focus changes).
+  const identity = options.identity ?? details;
+  const heading = scene.add.text(120, 148, '', { fontFamily: options.fontFamily,
+    fontSize: '21px', fontStyle: options.boldStyle, color: '#ffe1a3' })
+    .setName('run-flight-details-section-title');
+  const body = scene.add.text(120, 190, '', { fontFamily: options.fontFamily,
+    fontSize: '22px', color: '#d7e3ec', wordWrap: { width: 1040, useAdvancedWrap: true }, lineSpacing: 4 })
+    .setName('run-flight-details-section-body');
+  root.add([heading, body]);
+  const sections = [
+    { title: `FINAL DECK · ${details.deck.length}`, lines: details.deck },
+    { title: `ROUTE PATH · ${details.path.length} STOPS`, lines: details.path },
+    { title: 'KIT AT LANDING', lines: [`Waymarks · ${details.waymarks.join(' / ') || 'None'}`,
+      `Supplies used · ${details.supplies.join(' / ') || 'None'}`] },
+    { title: 'DECISIONS', lines: details.decisions },
+    { title: 'RESULTS', lines: details.results },
+    ...(subtitle.getData('truncated') ? [{title:'FLIGHT IDENTITY',lines:[options.subtitle]}] : []),
+  ];
+  const pages = measuredReadingPages(body, sections.map(section => ({heading: section.title,
+    body: section.lines.join('\n') || 'None recorded.'})), 506);
+  const pageLabel = scene.add.text(650, 556, '', { fontFamily: options.fontFamily,
+    fontSize: '19px', color: '#b9d9e9' }).setOrigin(0, 0.5).setName('run-flight-details-page');
+  root.add(pageLabel);
+  const show = (delta: number) => {
+    if (!body.active || (delta && (controlPanelOwnsInput(scene) || (scene as any).pauseOverlayOpen))) return;
+    const index = ((flightReadingPages.get(identity) ?? 0) + delta + pages.length) % pages.length;
+    flightReadingPages.set(identity, index);
+    const page = pages[index];
+    heading.setText(page.title); body.setText(page.text).setData('section', page.title);
+    body.setData('reading', { ...page, page: index + 1, total: pages.length });
+    pageLabel.setText(`Page ${index + 1} of ${pages.length}`);
+    if (delta) announceScreenReader(`${page.title}. Page ${index + 1} of ${pages.length}. ${page.text}`);
+  };
+  for (const [x, delta, label, name] of [[240, -1, '← Previous page', 'previous'], [482, 1, 'Next page →', 'next']] as const) {
+    const hit = quietButton(scene, { x, y: 556, width: 220, label,
+      name: `run-flight-details-${name}`, onActivate: () => show(delta) });
+    root.add([hit, hit.getData('labelObject')]);
+  }
+  const previous = (event: KeyboardEvent) => { if (!event.repeat) show(-1); };
+  const next = (event: KeyboardEvent) => { if (!event.repeat) show(1); };
+  const onPad = (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button) => {
+    if (button.index === 4 || button.index === 5) show(button.index === 4 ? -1 : 1);
+  };
+  scene.input.keyboard?.on('keydown-PAGE_UP', previous);
+  scene.input.keyboard?.on('keydown-PAGE_DOWN', next);
+  scene.input.gamepad?.on('down', onPad);
+  const retire = () => {
+    scene.input.keyboard?.off('keydown-PAGE_UP', previous);
+    scene.input.keyboard?.off('keydown-PAGE_DOWN', next);
+    scene.input.gamepad?.off('down', onPad);
+    scene.events.off(Phaser.Scenes.Events.SHUTDOWN, retire);
+  };
+  body.once(Phaser.GameObjects.Events.DESTROY, retire);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, retire);
+  show(0);
 
   const hasCopy = Boolean(options.onCopy);
   root.add(scene.add.text(
     112,
-    641,
+    608,
     hasCopy
-      ? 'Previous / Next chooses an action. Confirm selects. Back returns to the Flight Log.'
-      : 'Previous / Next are paused while reviewing. Confirm or Back closes this report.',
+      ? 'PgUp / PgDn · LB / RB: pages\nLeft / Right: actions · Confirm: select · Back: return'
+      : 'PgUp / PgDn · LB / RB: pages\nConfirm or Back: close this report',
     {
     fontFamily: options.fontFamily,
-    fontSize: '11px',
+    fontSize: '18px',
     fontStyle: options.boldStyle,
     color: '#9fb5c5',
-    fixedWidth: hasCopy ? 600 : 760,
+    wordWrap: { width: hasCopy ? 590 : 760, useAdvancedWrap: true },
   }).setName('run-flight-details-input-hint'));
   if (options.onCopy) {
     const copyX = 834;
@@ -868,14 +865,10 @@ export function renderOutcomeFlightDetails(
       : options.copyStatus === 'failed'
         ? 'Copy Failed'
         : 'Copy Flight Link';
-    root.add(scene.add.rectangle(copyX, copyY, copyWidth, 52, 0x182032, 0.98)
-      .setStrokeStyle(2, 0xc9a6ff, 0.82)
-      .setName('run-flight-details-copy-frame'));
-    const copyHit = scene.add.rectangle(copyX, copyY, copyWidth, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-      .setInteractive({ useHandCursor: true })
-      .setName('run-flight-details-copy-hit')
-      .setData('label', 'Copy Flight Link');
-    copyHit.on('pointerdown', options.onCopy);
+    const copyHit = quietButton(scene, { x: copyX, y: copyY, width: copyWidth, label: copyLabel,
+      name: 'run-flight-details-copy-hit', onActivate: options.onCopy }).setData('label', 'Copy Flight Link');
+    if (options.copyStatus === 'failed') copyHit.setData('statusLabel', 'Copy failed · Retry').setData('status', 'error');
+    if (options.copyStatus === 'copying') copyHit.setData({statusLabel: 'Copying…', status: 'loading'});
     root.add(copyHit);
     if (options.focused && options.focusedAction === 'copy') {
       root.add(scene.add.rectangle(copyX, copyY, copyWidth + 10, 64, 0x06151b, 0.03)
@@ -883,24 +876,13 @@ export function renderOutcomeFlightDetails(
         .setName('run-flight-details-input-focus-ring')
         .setData('action', 'copy'));
     }
-    root.add(scene.add.text(copyX, copyY, copyLabel, {
-      fontFamily: options.fontFamily,
-      fontSize: '16px',
-      fontStyle: options.boldStyle,
-      color: options.copyStatus === 'failed' ? '#ffb8ad' : '#ead8ff',
-    }).setOrigin(0.5).setName('run-flight-details-copy-label'));
+    root.add(copyHit.getData('labelObject').setName('run-flight-details-copy-label'));
   }
   const closeX = 1082;
   const closeY = 640;
   const closeWidth = 190;
-  root.add(scene.add.rectangle(closeX, closeY, closeWidth, 52, 0x122235, 0.98)
-    .setStrokeStyle(2, 0x8df4ff, 0.82)
-    .setName('run-flight-details-close-frame'));
-  const closeHit = scene.add.rectangle(closeX, closeY, closeWidth, MIN_SUPPORTED_TOUCH_TARGET, 0x020409, 0.001)
-    .setInteractive({ useHandCursor: true })
-    .setName('run-flight-details-close-hit')
-    .setData('label', 'Close Flight Details');
-  closeHit.on('pointerdown', options.onClose);
+  const closeHit = quietButton(scene, { x: closeX, y: closeY, width: closeWidth, label: 'Close Review',
+    name: 'run-flight-details-close-hit', onActivate: options.onClose }).setData('label', 'Close Flight Details');
   root.add(closeHit);
   if (options.focused && (!hasCopy || options.focusedAction !== 'copy')) {
     root.add(scene.add.rectangle(closeX, closeY, closeWidth + 10, 64, 0x06151b, 0.03)
@@ -908,10 +890,5 @@ export function renderOutcomeFlightDetails(
       .setName('run-flight-details-input-focus-ring')
       .setData('action', 'close'));
   }
-  root.add(scene.add.text(closeX, closeY, 'Close Review', {
-    fontFamily: options.fontFamily,
-    fontSize: '17px',
-    fontStyle: options.boldStyle,
-    color: '#dffbff',
-  }).setOrigin(0.5).setName('run-flight-details-close-label'));
+  root.add(closeHit.getData('labelObject').setName('run-flight-details-close-label'));
 }

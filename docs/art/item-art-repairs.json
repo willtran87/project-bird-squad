@@ -1,0 +1,186 @@
+{
+  "schema": 1,
+  "date": "2026-10-22",
+  "items": [
+    {
+      "id": "emergency_call",
+      "group": "supplies",
+      "defect": "Remove the disconnected horizontal scraps above and below the whistles; preserve both whistles and their red cord.",
+      "source": "assets/concept-art/supplies/sources/emergency_call-cleanup-v2.png",
+      "export": "assets/runtime/supplies/icons/emergency_call.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-c662d629-aa39-4882-9b70-bc21f35041cf.png",
+      "prompt": "Edit this existing Bird Squad item icon (emergency_call). Remove the disconnected horizontal scraps above and below the whistles; preserve both whistles and their red cord. Remove the green chroma background and green fringe completely; use genuine transparent alpha. Preserve the existing object design, colors, silhouette, pixel-art clusters, dark outlines, highlights and material detail. Do not add any extra objects, symbols, words or shadows. Whole intended object visible, centered on a square canvas with 12% clear transparent margins. Only the specified cleanup; retain existing pixel-art style."
+    },
+    {
+      "id": "mirror_shard",
+      "group": "supplies",
+      "defect": "Remove the tiny disconnected horizontal speck below the shard. Preserve the shard and its attached fragments.",
+      "source": "assets/concept-art/supplies/sources/mirror_shard-cleanup-v2.png",
+      "export": "assets/runtime/supplies/icons/mirror_shard.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-ce6e1c83-8d4d-4a88-a1ea-888c25e78875.png",
+      "prompt": "Edit this existing Bird Squad item icon (mirror_shard). Remove the tiny disconnected horizontal speck below the shard. Preserve the shard and its attached fragments. Remove the green chroma background and green fringe completely; use genuine transparent alpha. Preserve the existing object design, colors, silhouette, pixel-art clusters, dark outlines, highlights and material detail. Do not add any extra objects, symbols, words or shadows. Whole intended object visible, centered on a square canvas with 12% clear transparent margins. Only the specified cleanup; retain existing pixel-art style."
+    },
+    {
+      "id": "signal_kite",
+      "group": "supplies",
+      "defect": "Remove the disconnected horizontal line above the kite. Preserve kite, cords and tassels.",
+      "source": "assets/concept-art/supplies/sources/signal_kite-cleanup-v2.png",
+      "export": "assets/runtime/supplies/icons/signal_kite.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-2668c620-6a81-440e-b6f0-fcc1c1515735.png",
+      "prompt": "Edit this existing Bird Squad item icon (signal_kite). Remove the disconnected horizontal line above the kite. Preserve kite, cords and tassels. Remove the green chroma background and green fringe completely; use genuine transparent alpha. Preserve the existing object design, colors, silhouette, pixel-art clusters, dark outlines, highlights and material detail. Do not add any extra objects, symbols, words or shadows. Whole intended object visible, centered on a square canvas with 12% clear transparent margins. Only the specified cleanup; retain existing pixel-art style."
+    },
+    {
+      "id": "wire_snips",
+      "group": "supplies",
+      "defect": "Remove the unrelated clipped blue object below the snips. Preserve the snips, severed cable and sparks.",
+      "source": "assets/concept-art/supplies/sources/wire_snips-cleanup-v2.png",
+      "export": "assets/runtime/supplies/icons/wire_snips.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-5ab01de8-0ad3-4284-9669-eca6df6ec73d.png",
+      "prompt": "Edit this existing Bird Squad item icon (wire_snips). Remove the unrelated clipped blue object below the snips. Preserve the snips, severed cable and sparks. Remove the green chroma background and green fringe completely; use genuine transparent alpha. Preserve the existing object design, colors, silhouette, pixel-art clusters, dark outlines, highlights and material detail. Do not add any extra objects, symbols, words or shadows. Whole intended object visible, centered on a square canvas with 12% clear transparent margins. Only the specified cleanup; retain existing pixel-art style."
+    },
+    {
+      "id": "zip_tie_roll",
+      "group": "supplies",
+      "defect": "Remove the disconnected horizontal speck below the cable roll.",
+      "source": "assets/concept-art/supplies/sources/zip_tie_roll-cleanup-v2.png",
+      "export": "assets/runtime/supplies/icons/zip_tie_roll.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-5d7792a7-759d-4584-9ac1-3446d3289a65.png",
+      "prompt": "Edit this existing Bird Squad item icon (zip_tie_roll). Remove the disconnected horizontal speck below the cable roll. Remove the green chroma background and green fringe completely; use genuine transparent alpha. Preserve the existing object design, colors, silhouette, pixel-art clusters, dark outlines, highlights and material detail. Do not add any extra objects, symbols, words or shadows. Whole intended object visible, centered on a square canvas with 12% clear transparent margins. Only the specified cleanup; retain existing pixel-art style."
+    },
+    {
+      "id": "double_packed_buckle",
+      "group": "waymarks",
+      "defect": "Remove the disconnected small sliver at the far right of the buckle.",
+      "source": "assets/concept-art/waymarks/sources/double_packed_buckle-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/double_packed_buckle.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-d58d3957-e93d-48ad-b869-982ffba41517.png",
+      "prompt": "Carefully repair this Bird Squad item icon (double_packed_buckle). Remove the disconnected small sliver at the far right of the buckle. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area if needed. Remove stray green chroma fringe and unrelated fragments. Genuine transparent background. Entire object centered and fully visible with 12% transparent margin on all four sides of a square canvas. No words, new props, border or ground shadow."
+    },
+    {
+      "id": "quiet_roost_token",
+      "group": "waymarks",
+      "defect": "Remove the disconnected small vertical sliver at the far right of the token.",
+      "source": "assets/concept-art/waymarks/sources/quiet_roost_token-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/quiet_roost_token.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-0d511c7b-c83d-4eef-8fef-5f4a8873fd3a.png",
+      "prompt": "Carefully repair this Bird Squad item icon (quiet_roost_token). Remove the disconnected small vertical sliver at the far right of the token. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area if needed. Remove stray green chroma fringe and unrelated fragments. Genuine transparent background. Entire object centered and fully visible with 12% transparent margin on all four sides of a square canvas. No words, new props, border or ground shadow."
+    },
+    {
+      "id": "blue_cup_token",
+      "group": "waymarks",
+      "defect": "Restore the clipped left edge of the cup so its full rim and body are visible.",
+      "source": "assets/concept-art/waymarks/sources/blue_cup_token-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/blue_cup_token.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-4a035129-532e-44f8-ada3-3ee37db84843.png",
+      "prompt": "Carefully repair this Bird Squad item icon (blue_cup_token). Restore the clipped left edge of the cup so its full rim and body are visible. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area if needed. Remove stray green chroma fringe and unrelated fragments. Genuine transparent background. Entire object centered and fully visible with 12% transparent margin on all four sides of a square canvas. No words, new props, border or ground shadow."
+    },
+    {
+      "id": "eave_bloom",
+      "group": "waymarks",
+      "defect": "Restore the clipped left petal edge so the whole metal flower is visible.",
+      "source": "assets/concept-art/waymarks/sources/eave_bloom-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/eave_bloom.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-6fea4830-2f94-43ea-9367-3229809acc07.png",
+      "prompt": "Carefully repair this Bird Squad item icon (eave_bloom). Restore the clipped left petal edge so the whole metal flower is visible. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area if needed. Remove stray green chroma fringe and unrelated fragments. Genuine transparent background. Entire object centered and fully visible with 12% transparent margin on all four sides of a square canvas. No words, new props, border or ground shadow."
+    },
+    {
+      "id": "nest_ratchet",
+      "group": "waymarks",
+      "defect": "Restore the clipped bottom-left end of the ratchet handle with a short rounded metal end.",
+      "source": "assets/concept-art/waymarks/sources/nest_ratchet-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/nest_ratchet.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-d34be570-0f93-4967-938b-cd59cb3cf110.png",
+      "prompt": "Carefully repair this Bird Squad item icon (nest_ratchet). Restore the clipped bottom-left end of the ratchet handle with a short rounded metal end. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area if needed. Remove stray green chroma fringe and unrelated fragments. Genuine transparent background. Entire object centered and fully visible with 12% transparent margin on all four sides of a square canvas. No words, new props, border or ground shadow."
+    },
+    {
+      "id": "roofline_compass",
+      "group": "waymarks",
+      "defect": "Restore the clipped right side of the hanging gold arrow charm and cord.",
+      "source": "assets/concept-art/waymarks/sources/roofline_compass-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/roofline_compass.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-7af8325d-b23e-4b5f-82c7-91d9a429dfa8.png",
+      "prompt": "Carefully repair this Bird Squad item icon (roofline_compass). Restore the clipped right side of the hanging gold arrow charm and cord. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area. Remove the green chroma background, green fringe and ALL unrelated cropped neighboring objects or fragments. Genuine transparent background. Entire main object centered and fully visible with 12% transparent margin on ALL four sides of a square canvas. No words, new props, border or ground shadow."
+    },
+    {
+      "id": "shed_feather_case",
+      "group": "waymarks",
+      "defect": "Restore the clipped left end of the brass cylindrical case.",
+      "source": "assets/concept-art/waymarks/sources/shed_feather_case-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/shed_feather_case.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-066fc638-5eeb-45d1-be0a-cf99211d34c7.png",
+      "prompt": "Carefully repair this Bird Squad item icon (shed_feather_case). Restore the clipped left end of the brass cylindrical case. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area. Remove the green chroma background, green fringe and ALL unrelated cropped neighboring objects or fragments. Genuine transparent background. Entire main object centered and fully visible with 12% transparent margin on ALL four sides of a square canvas. No words, new props, border or ground shadow."
+    },
+    {
+      "id": "signal_whistle",
+      "group": "waymarks",
+      "defect": "Restore the clipped red cord loop at the upper right.",
+      "source": "assets/concept-art/waymarks/sources/signal_whistle-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/signal_whistle.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-c4610cc8-1001-444b-8787-7cabc40dd944.png",
+      "prompt": "Carefully repair this Bird Squad item icon (signal_whistle). Restore the clipped red cord loop at the upper right. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area. Remove the green chroma background, green fringe and ALL unrelated cropped neighboring objects or fragments. Genuine transparent background. Entire main object centered and fully visible with 12% transparent margin on ALL four sides of a square canvas. No words, new props, border or ground shadow."
+    },
+    {
+      "id": "sky_safe_harness",
+      "group": "waymarks",
+      "defect": "Restore the clipped top ends of the two harness straps as continuous closed loops.",
+      "source": "assets/concept-art/waymarks/sources/sky_safe_harness-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/sky_safe_harness.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-7fcd4af8-7d31-4cb4-b672-15a31dcf3331.png",
+      "prompt": "Carefully repair this Bird Squad item icon (sky_safe_harness). Restore the clipped top ends of the two harness straps as continuous closed loops. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area. Remove the green chroma background, green fringe and ALL unrelated cropped neighboring objects or fragments. Genuine transparent background. Entire main object centered and fully visible with 12% transparent margin on ALL four sides of a square canvas. No words, new props, border or ground shadow."
+    },
+    {
+      "id": "under_eave_charm",
+      "group": "waymarks",
+      "defect": "Restore the clipped top suspension loop of the charm as a small complete loop.",
+      "source": "assets/concept-art/waymarks/sources/under_eave_charm-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/under_eave_charm.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-d9d737f2-f276-48ab-ae24-851e7d4583c6.png",
+      "prompt": "Carefully repair this Bird Squad item icon (under_eave_charm). Restore the clipped top suspension loop of the charm as a small complete loop. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area. Remove the green chroma background, green fringe and ALL unrelated cropped neighboring objects or fragments. Genuine transparent background. Entire main object centered and fully visible with 12% transparent margin on ALL four sides of a square canvas. No words, new props, border or ground shadow."
+    },
+    {
+      "id": "reopened_roofline",
+      "group": "waymarks",
+      "defect": "Restore the clipped left border of the arrow sign so all four corners and its metal outline are complete.",
+      "source": "assets/concept-art/waymarks/sources/reopened_roofline-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/reopened_roofline.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-7a7a3c76-1dae-485d-b004-f10d02ca0a8d.png",
+      "prompt": "Carefully repair this Bird Squad item icon (reopened_roofline). Restore the clipped left border of the arrow sign so all four corners and its metal outline are complete. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area. Remove the green chroma background, green fringe and ALL unrelated cropped neighboring objects or fragments. Genuine transparent background. Entire main object centered and fully visible with 12% transparent margin on ALL four sides of a square canvas. No words, new props, border or ground shadow."
+    },
+    {
+      "id": "scaffold_knot",
+      "group": "waymarks",
+      "defect": "Restore the clipped far-right end of the horizontal scaffold bar as a short complete square-cut tube end.",
+      "source": "assets/concept-art/waymarks/sources/scaffold_knot-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/scaffold_knot.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-cdf604ef-5d87-49aa-82f6-b4ad001ca09f.png",
+      "prompt": "Carefully repair this Bird Squad item icon (scaffold_knot). Restore the clipped far-right end of the horizontal scaffold bar as a short complete square-cut tube end. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area. Remove the green chroma background, green fringe and ALL unrelated cropped neighboring objects or fragments. Genuine transparent background. Entire main object centered and fully visible with 12% transparent margin on ALL four sides of a square canvas. No words, new props, border or ground shadow."
+    },
+    {
+      "id": "supply_bell",
+      "group": "waymarks",
+      "defect": "Restore the clipped far-right edge of the small round brass button beside the bell.",
+      "source": "assets/concept-art/waymarks/sources/supply_bell-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/supply_bell.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-4050a8bc-268d-43b7-8576-ee52a05e0f0d.png",
+      "prompt": "Carefully repair this Bird Squad item icon (supply_bell). Restore the clipped far-right edge of the small round brass button beside the bell. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area. Remove the green chroma background, green fringe and ALL unrelated cropped neighboring objects or fragments. Genuine transparent background. Entire main object centered and fully visible with 12% transparent margin on ALL four sides of a square canvas. No words, new props, border or ground shadow."
+    },
+    {
+      "id": "razor_kite_tail",
+      "group": "waymarks",
+      "defect": "Restore the clipped leftmost fabric tip while preserving its deliberately ragged cloth edge.",
+      "source": "assets/concept-art/waymarks/sources/razor_kite_tail-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/razor_kite_tail.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-a6e99fb5-ae70-49a8-8e5d-2a6802a07913.png",
+      "prompt": "Carefully repair this Bird Squad item icon (razor_kite_tail). Restore the clipped leftmost fabric tip while preserving its deliberately ragged cloth edge. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area. Remove the green chroma background, green fringe and ALL unrelated cropped neighboring objects or fragments. Genuine transparent background. Entire main object centered and fully visible with 12% transparent margin on ALL four sides of a square canvas. No words, new props, border or ground shadow."
+    },
+    {
+      "id": "patched_shoulder_wrap",
+      "group": "waymarks",
+      "defect": "Restore the clipped left side of the wrap and the small cord knot so the whole garment is visible.",
+      "source": "assets/concept-art/waymarks/sources/patched_shoulder_wrap-cleanup-v2.png",
+      "export": "assets/runtime/waymarks/icons/patched_shoulder_wrap.webp",
+      "generated": "C:/Users/Will/.codex/generated_images/01a165f2-5280-77c0-ad98-80ccda1a203b/exec-872d8734-98f5-48f7-af33-fb5a9caff9f2.png",
+      "prompt": "Carefully repair this Bird Squad item icon (patched_shoulder_wrap). Restore the clipped left side of the wrap and the small cord knot so the whole garment is visible. Preserve the same recognizable design, orientation, colors, dark outlines, brass/steel/cloth material detail and pixel-art aesthetic. Extend only the accidentally clipped area. Remove the green chroma background, green fringe and ALL unrelated cropped neighboring objects or fragments. Genuine transparent background. Entire main object centered and fully visible with 12% transparent margin on ALL four sides of a square canvas. No words, new props, border or ground shadow."
+    }
+  ]
+}

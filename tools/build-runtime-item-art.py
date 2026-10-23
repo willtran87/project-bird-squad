@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import json
 
 from PIL import Image
 
@@ -13,6 +14,26 @@ ITEM_GROUPS = ("supplies", "waymarks")
 COMPACT_EDGE = 256
 SCRAP_EDGE = 96
 WEBP_QUALITY = 88
+
+
+def build_selected_masters() -> None:
+    """Keep reviewed repairs reproducible before generating their compact tier."""
+    manifest = ROOT / 'docs/art/item-art-repairs.json'
+    if not manifest.exists():
+        return
+    items = json.loads(manifest.read_text(encoding='utf-8'))['items']
+    for item in items:
+        if item['group'] not in ITEM_GROUPS:
+            raise ValueError(f"Unknown item group: {item['group']}")
+        expected = f"assets/runtime/{item['group']}/icons/{item['id']}.webp"
+        if item['export'] != expected or not (ROOT / item['source']).is_file():
+            raise ValueError(f"Invalid reviewed item master: {item['id']}")
+    for item in items:
+        with Image.open(ROOT / item['source']).convert('RGBA') as image:
+            if image.width != image.height or image.getchannel('A').getextrema() != (0, 255):
+                raise ValueError(f"Item master must be square with genuine alpha: {item['id']}")
+            image.resize((512, 512), Image.Resampling.LANCZOS).save(
+                ROOT / item['export'], 'WEBP', quality=90, method=6)
 
 
 def rel(path: Path) -> str:
@@ -53,6 +74,7 @@ def build_group(group: str) -> tuple[int, int, int]:
 
 
 def main() -> None:
+    build_selected_masters()
     count = 0
     source_bytes = 0
     target_bytes = 0

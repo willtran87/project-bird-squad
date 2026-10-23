@@ -1,16 +1,15 @@
 import { replayFirstFlightGuide, skipFirstFlightGuide } from './first-flight-guide';
+import { showDownloadRecovery } from '../update-recovery';
+import { pendingOverlay } from './pending-overlay';
 import {
   GAME_WIDTH,
-  LAZY_LOAD_FAILED,
   UI_BOLD,
   UI_FONT,
-  UI_GOLD,
   birdAudio,
   firstFlightGuideState,
   getLeader,
   isLeaderUnlocked,
   leaderUnlockHints,
-  howToPlayUiIconIds,
   loadCodexSceneModule,
   playUiSound,
   queueUiIconAssets,
@@ -28,8 +27,14 @@ import {
   setScreenShakePreference,
   setTextPacePreference,
   setVisualContrastPreference,
-  uiIconAssets,
 } from '../main';
+
+/** Decorative portraits load only after opening setup; labels and controls never wait. */
+export async function renderSetupLeaderPortraits(scene: any) {
+  const generation = scene.menuGeneration;
+  const module = await import('./setup-portraits');
+  if (scene.scene.isActive() && scene.menuGeneration === generation && scene.setupOpen) module.renderSetupPortraits(scene);
+}
 
 /** Non-blocking saved-flight context; never creates a second entry action. */
 export function renderResumeContext(scene: any, run: {
@@ -50,27 +55,13 @@ export function openCodex(scene: any, openCollectionAtlas = false, openCardId?: 
   if (scene.codexOpening) return;
   scene.codexOpening = true;
   const game = scene.game;
-  const notice = scene.add.text(GAME_WIDTH - 240, 72, 'Opening Codex…', {
-    fontFamily: UI_FONT,
-    fontSize: '12px',
-    fontStyle: UI_BOLD,
-    color: UI_GOLD,
-    stroke: '#05070c',
-    strokeThickness: 3,
-  }).setOrigin(0.5).setDepth(120).setName('codex-scene-loading');
-  void loadCodexSceneModule()
-    .then((module) => {
+  pendingOverlay(scene, object => (object as any).setDepth(120), loadCodexSceneModule,
+    module => {
       registerCodexScene(game, module);
-      if (!game.scene.isActive('MenuScene')) return;
-      if (notice.active) notice.destroy();
       game.scene.getScene('MenuScene').scene.start('CodexScene', { openCollectionAtlas, openCardId });
-    })
-    .catch((error) => {
-      console.warn(LAZY_LOAD_FAILED, error);
-      if (!scene.sys.settings.active) return;
+    }, () => {
       scene.codexOpening = false;
-      notice.setText('Codex unavailable · click to retry').setColor('#ffb09a');
-      scene.time.delayedCall(2400, () => notice.destroy());
+      scene.updateMenuTextState();
     });
 }
 
@@ -80,12 +71,14 @@ export function openSettingsOverlay(scene: any, queueAssets = true) {
   if (scene.helpOverlay) scene.closeHelpOverlay();
   if (queueAssets) {
     queueUiIconAssets(scene, menuSettingsUiIconIds, 'Title Settings UI', () => {
-      if (scene.scene.isActive() && scene.settingsOverlay?.active) refreshSettingsOverlay(scene, false);
+      if (scene.scene.isActive() && scene.settingsOverlay?.active
+        && !scene.settingsOverlay.list.some((child: any) => child.name === 'pending-overlay')) refreshSettingsOverlay(scene, false);
     });
   }
   const overlay = scene.add.container(0, 0).setDepth(80);
   scene.settingsOverlay = overlay;
   scene.menuFocusRing?.setVisible(false);
+  const update = (set: (value: any) => void) => (value: any) => { set(value); refreshSettingsOverlay(scene); };
   renderSettingsMenuOverlay(scene, (obj) => overlay.add(obj), {
     title: 'Settings',
     subtitle: 'Title controls',
@@ -96,52 +89,59 @@ export function openSettingsOverlay(scene: any, queueAssets = true) {
     onSetVoiceVolume: (value) => { birdAudio.setVoiceVolume(value); refreshSettingsOverlay(scene); },
     onSetAmbienceVolume: (value) => { birdAudio.setAmbienceVolume(value); refreshSettingsOverlay(scene); },
     onSetMotionPreference: (value) => { setMotionPreference(value); scene.syncHomeParticles(); refreshSettingsOverlay(scene); },
-    onSetVisualContrastPreference: (value) => { setVisualContrastPreference(value); refreshSettingsOverlay(scene); },
-    onSetColorCuePreference: (value) => { setColorCuePreference(value); refreshSettingsOverlay(scene); },
-    onSetScreenShakePreference: (value) => { setScreenShakePreference(value); refreshSettingsOverlay(scene); },
-    onSetFlashEffectsPreference: (value) => { setFlashEffectsPreference(value); refreshSettingsOverlay(scene); },
+    onSetVisualContrastPreference: update(setVisualContrastPreference),
+    onSetColorCuePreference: update(setColorCuePreference),
+    onSetScreenShakePreference: update(setScreenShakePreference),
+    onSetFlashEffectsPreference: update(setFlashEffectsPreference),
     onSetGraphicsQualityPreference: (value) => { setGraphicsQualityPreference(value); scene.syncHomeParticles(); refreshSettingsOverlay(scene); },
-    onSetCombatPacePreference: (value) => { setCombatPacePreference(value); refreshSettingsOverlay(scene); },
+    onSetCombatPacePreference: update(setCombatPacePreference),
     onSetAnimationPacePreference: (value) => { setAnimationPacePreference(scene, value); refreshSettingsOverlay(scene); },
-    onSetTextPacePreference: (value) => { setTextPacePreference(value); refreshSettingsOverlay(scene); },
-    onSetScreenReaderPreference: (value) => { setScreenReaderPreference(value); refreshSettingsOverlay(scene); },
+    onSetTextPacePreference: update(setTextPacePreference),
+    onSetScreenReaderPreference: update(setScreenReaderPreference),
     onToggleFullscreen: () => scene.scale.toggleFullscreen(),
   });
   scene.updateMenuTextState();
 }
 
-export function openHelpOverlay(scene: any, queueAssets = true) {
+export function openHelpOverlay(scene: any, _queueAssets = true, initialFocus = 0) {
   if (scene.helpOverlay) return;
   scene.hideLeaderTooltip();
   if (scene.settingsOverlay) scene.closeSettingsOverlay();
-  if (queueAssets) {
-    queueUiIconAssets(scene, howToPlayUiIconIds, 'How to Play UI', () => {
-      if (!scene.scene.isActive() || scene.helpOverlay !== overlay || !overlay.active || overlay.getData('practiceLoading') || overlay.getData('practiceFailed')) return;
-      scene.closeHelpOverlay();
-      openHelpOverlay(scene, false);
-    });
-  }
+  // This quiet guide has no image controls. A decorative download must not
+  // rebuild its pending/error panel or steal the player's focused action.
   const overlay = scene.add.container(0, 0).setDepth(80);
   scene.helpOverlay = overlay;
   scene.menuFocusRing?.setVisible(false);
   renderHowToPlayOverlay(scene, (obj) => overlay.add(obj), {
+    initialFocus,
     onClose: () => scene.closeHelpOverlay(),
     guide: firstFlightGuideState(),
     onGuideAction: () => toggleFirstFlightGuide(scene),
     onPractice: () => {
-      if (overlay.getData('practiceFailed')) { window.location.reload(); return; }
+      if (overlay.getData('practiceFailed')) { showDownloadRecovery(); return; }
       if (overlay.getData('practiceLoading')) return;
       overlay.setData('practiceLoading', true);
-      const caption = overlay.list.find((child: any) => child.getData('label') === 'Practice lessons')?.getData('caption');
-      caption?.setText('Opening lessons…');
+      const control = overlay.list.find((child: any) => child.getData('label') === 'Practice lessons');
+      control?.setData('statusLabel', 'Opening lessons…').setData('status', 'loading');
+      const failed = () => {
+        if (!overlay.active) return;
+        overlay.setData('practiceFailed', true);
+        const text = 'Lessons are unavailable. Close to keep playing, or review recovery options before reloading.';
+        overlay.setData('topic', text);
+        overlay.list.find((child: any) => child.name === 'guide-download-status')?.setText(text);
+        control?.setData('statusLabel', 'Recovery options').setData('status', 'error');
+        scene.updateMenuTextState();
+      };
+      const timeout = setTimeout(failed, 8000);
+      overlay.once('destroy', () => clearTimeout(timeout));
       void import('./practice-lessons').then(module => {
+        clearTimeout(timeout);
         if (scene.scene.isActive() && scene.helpOverlay === overlay) module.openPracticeLessons(scene);
       }).catch(() => {
+        clearTimeout(timeout);
         if (!overlay.active) return;
         overlay.setData('practiceLoading', false);
-        overlay.setData('practiceFailed', true);
-        overlay.setData('topic', 'Lesson download failed. Reload lessons reloads the page to try again. Your saved flight stays safe.');
-        caption?.setText('Reload lessons');
+        failed();
         playUiSound('locked');
         scene.updateMenuTextState();
       });
@@ -150,23 +150,30 @@ export function openHelpOverlay(scene: any, queueAssets = true) {
   scene.updateMenuTextState();
 }
 
+function refreshHelpOverlay(scene: any, overlay: any) {
+  if (!scene.scene.isActive() || scene.helpOverlay !== overlay || !overlay.active) return;
+  const index = overlay.list.find((child: any) => child.name === 'how-to-play-actions')?.getData('actionFocus')?.index ?? 0;
+  scene.closeHelpOverlay();
+  openHelpOverlay(scene, false, index);
+}
+
 function refreshSettingsOverlay(scene: any, queueAssets = true) {
+  const overlay = scene.settingsOverlay;
   scene.time.delayedCall(16, () => {
-    if (!scene.scene.isActive() || !scene.settingsOverlay?.active) return;
+    if (!scene.scene.isActive() || !overlay?.active || scene.settingsOverlay !== overlay) return;
     scene.closeSettingsOverlay();
     openSettingsOverlay(scene, queueAssets);
   });
 }
 
 export function toggleFirstFlightGuide(scene: any) {
+  const overlay = scene.helpOverlay;
   const guide = firstFlightGuideState();
   if (guide.enabled && !guide.completed) skipFirstFlightGuide();
   else replayFirstFlightGuide();
   playUiSound('confirm');
   scene.time.delayedCall(16, () => {
-    if (!scene.scene.isActive() || !scene.helpOverlay?.active) return;
-    scene.closeHelpOverlay();
-    openHelpOverlay(scene);
+    refreshHelpOverlay(scene, overlay);
   });
 }
 
@@ -180,7 +187,7 @@ export function showLeaderTooltip(scene: any, id: string, _anchorX: number) {
     ? `${leader.name} - ${leader.suit} / ${leader.bird}`
     : `${leader.name} - Locked`, {
     fontFamily: UI_FONT,
-    fontSize: '20px',
+    fontSize: '21px',
     fontStyle: UI_BOLD,
     color: unlocked ? '#dfc18b' : '#a4b6c2',
     align: 'center',
@@ -190,7 +197,7 @@ export function showLeaderTooltip(scene: any, id: string, _anchorX: number) {
     ? `${leader.blurb} Signature: ${leader.signatureName} - ${leader.signatureText}`
     : leaderUnlockHints[leader.id] ?? 'Locked', {
     fontFamily: UI_FONT,
-    fontSize: '20px',
+    fontSize: '21px',
     color: unlocked ? '#c5d1d8' : '#a4b6c2',
     align: 'center',
     wordWrap: { width: 1080 },

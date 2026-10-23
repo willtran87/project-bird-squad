@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { settleCanvas } from './helpers/settled-canvas';
 import { flockLeaders } from '../src/game/leaders';
 import { beginPracticeSession, endPracticeSession } from '../src/game/practice-session';
 import { safeStorageGet, safeStorageSet, readJournaledJson, writeJournaledJson, removeJournaledJson, consumeStorageRecoveryEvents, memoryStorageSessionActive } from '../src/game/safe-storage';
@@ -135,6 +136,24 @@ for (const launch of ['pointer', 'keyboard', 'controller'] as const) {
     expect(await disk(page)).toEqual(before);
     const runState = await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').runState);
     expect(runState.deck).toEqual(cards);
+    for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
+      await page.setViewportSize(viewport); await settleCanvas(page);
+      expect(await page.evaluate(() => {
+        const s = (window as any).__birdSquadGame.scene.getScene('RouteScene');
+        const badge = s.children.getByName('practice-session-badge');
+        const bounds = badge.getBounds();
+        const surface = s.children.getByName('run-hud-surface').getBounds();
+        const neighbors = s.children.list.filter((o: any) => o !== badge
+          && (o.name?.startsWith('hud-label-') || o.name?.startsWith('hud-value-') || o.input?.enabled));
+        const overlaps = neighbors.some((o: any) => {
+          const r = o.getBounds();
+          return bounds.left < r.right && bounds.right > r.left && bounds.top < r.bottom && bounds.bottom > r.top;
+        });
+        return !overlaps && surface.bottom <= 78
+          && parseFloat(badge.style.fontSize) * s.game.canvas.getBoundingClientRect().height / 720 >= 14;
+      })).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath(`route-${viewport.width}.png`) });
+    }
     const routeNodeId = await page.evaluate(() => (window as any).__birdSquadCurrentMap().nodes.find((n: any) => n.type === 'street').id);
     await startScene(page, 'BattleScene', { runState, routeNodeId });
     expect((await state(page)).practice).toBe(true);

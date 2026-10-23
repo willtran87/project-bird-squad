@@ -23,6 +23,7 @@
     "validate:minor-overlays": "node tools/validate-minor-card-overlays.mjs",
     "validate:minor-composites": "node tools/validate-minor-composites.mjs",
     "validate:aviary-composites": "node tools/validate-aviary-composites.mjs",
+    "validate:canonical-card-art": "node tools/validate-canonical-card-art.mjs",
     "normalize:minor-art": "python tools/normalize-card-images.py .generated/imagegen/tarot/minor-arcana --width 1024 --height 1536 --write",
     "validate:art-dimensions": "node tools/validate-art-dimensions.mjs .generated/imagegen/tarot/minor-arcana",
     "build:runtime-card-art": "python tools/build-runtime-card-art.py",

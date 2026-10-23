@@ -39,24 +39,38 @@ for (const remapped of [false, true]) test(`Preen choices expose readable change
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene'), list = b.root.list;
       const all = (name: string) => list.filter((o: any) => o.name === name);
       const rect = (o: any) => { const r = o.getBounds(); return { left: r.left, right: r.right, height: r.height }; };
-      return { changes: all('reward-preen-change').map((o: any) => ({ font: o.style.fontSize, top: o.getBounds().top, bottom: o.getBounds().bottom, width: o.width, full: o.getData('fullText') })),
+      const scale = b.game.canvas.getBoundingClientRect().height / 720;
+      return { scale, changes: all('reward-preen-change').map((o: any) => ({ font: o.style.fontSize, top: o.getBounds().top, bottom: o.getBounds().bottom, width: o.width, full: o.getData('fullText') })),
         read: all('reward-card-inspect-hit').map(rect), take: all('reward-card-take-hit').map(rect),
         effects: all('reward-card-effect').map((o: any) => ({ font: o.style.fontSize, lines: o.getWrappedText().length, resolution: o.style.resolution })) };
     });
     expect(geometry.changes).toHaveLength(3);
-    geometry.changes.forEach((o: any) => { expect(o.font).toBe('16px'); expect(o.top).toBeGreaterThan(615); expect(o.bottom).toBeLessThan(702); expect(o.width).toBeLessThanOrEqual(240); expect(o.full).toBeTruthy(); });
+    expect(19 * geometry.scale).toBeGreaterThanOrEqual(14);
+    expect(21 * geometry.scale).toBeGreaterThanOrEqual(16);
+    geometry.changes.forEach((o: any) => { expect(o.font).toBe('19px'); expect(o.top).toBeGreaterThan(615); expect(o.bottom).toBeLessThan(702); expect(o.width).toBeLessThanOrEqual(240); expect(o.full).toBeTruthy(); });
     expect(geometry.take).toHaveLength(3);
     geometry.read.forEach((r: any, i: number) => { expect(r.height).toBe(58); expect(r.right).toBeLessThan(geometry.take[i].left); expect(geometry.take[i].height).toBe(58); });
-    geometry.effects.forEach((o: any) => expect(o).toEqual({ font: '18px', lines: expect.any(Number), resolution: 2 }));
+    geometry.effects.forEach((o: any) => expect(o).toEqual({ font: '21px', lines: expect.any(Number), resolution: 2 }));
   }
   await click('reward-card-take-hit'); const armed = await stable();
   const labels = () => page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').root.list.filter((o: any) => o.name === 'reward-card-take-label').map((o: any) => o.text));
   expect((await labels())[0]).toBe('Confirm');
   await click('reward-card-inspect-hit'); await expect.poll(reading).not.toBeNull(); expect(await stable()).toBe(armed);
   await click('reward-card-take-hit'); expect(await stable()).toBe(armed);
-  await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').setBattlePaused(true));
-  await press('Enter'); expect(await reading()).not.toBeNull();
-  await press(remapped ? 'b' : 'Escape'); expect(await reading()).not.toBeNull();
+  const pause = async () => {
+    await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').setBattlePaused(true));
+    await page.waitForFunction(() => {
+      const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+      return b.pauseOverlayOpen && b.systemOverlayLayer?.list.some((o: any) => o.text === 'Resume');
+    });
+    await settleCanvas(page);
+  };
+  const paused = () => page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').pauseOverlayOpen);
+  await pause();
+  // Resume is the default Pause action. Confirm returns to the same reader.
+  await press('Enter'); expect(await paused()).toBe(false); expect(await reading()).not.toBeNull(); expect(await stable()).toBe(armed);
+  await pause();
+  await press(remapped ? 'b' : 'Escape'); expect(await paused()).toBe(false); expect(await reading()).not.toBeNull();
   await press(remapped ? 'b' : 'Escape'); await expect.poll(reading).toBeNull(); expect(await stable()).toBe(armed);
   await press(remapped ? 'j' : 'r'); await expect.poll(reading).not.toBeNull();
   await press(remapped ? 'e' : 'ArrowRight'); await page.screenshot({ path: info.outputPath('preen-full-comparison.png') });
@@ -121,7 +135,8 @@ test('normal reward catalog keeps long rules bounded and previews every kind of 
       const effect = b.root.getByName('reward-card-effect'), panel = b.root.getByName('reward-card-effect-panel').getBounds();
       const bounds = effect.getBounds();
       if (effect.getData('fullText') !== view.summary || bounds.right > panel.right || bounds.bottom > panel.bottom
-        || effect.style.fontSize !== '18px' || effect.getWrappedText().length > 4
+        || effect.style.fontSize !== '21px' || parseFloat(effect.style.fontSize) * b.game.canvas.getBoundingClientRect().height / 720 < 16
+        || effect.getWrappedText().length > 4
         || (effect.text !== view.summary && !effect.text.endsWith('...'))) failures.push(`${card.id}/${mode}/${upgraded}/rules`);
       const ring = b.root.getByName('reward-input-focus-ring').getBounds();
       const read = b.root.getByName('reward-card-inspect-hit').getBounds(), take = b.root.getByName('reward-card-take-hit').getBounds();
