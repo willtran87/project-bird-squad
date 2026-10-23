@@ -53,10 +53,13 @@ for (const surface of ['market', 'picker'] as const) for (const late of [false, 
   if (!late) await page.waitForFunction(() => !(window as any).__birdSquadGame.scene.getScene('RouteScene').load.isLoading());
   await settleCanvas(page);
   const initialRequests = requests;
-  for (let i = 0; i < 10; i++) {
-    await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').renderAll());
-    await settleCanvas(page);
-  }
+  // Exercise repeated redraws while the original request is still pending;
+  // browser round trips must not turn this into the separate XHR-timeout case.
+  await page.evaluate(() => {
+    const scene = (window as any).__birdSquadGame.scene.getScene('RouteScene');
+    for (let i = 0; i < 10; i++) scene.renderAll();
+  });
+  await settleCanvas(page);
   expect(requests).toBe(initialRequests);
   expect(initialRequests).toBeLessThanOrEqual(3); // one compact portrait, including Phaser's two retries
   expect(await snapshot()).toEqual(before);

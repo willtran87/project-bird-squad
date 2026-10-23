@@ -187,9 +187,9 @@ export function renderMarketMerchandise(scene: Phaser.Scene, view: {
   let excerpt = lines.slice(0, 3).join('\n');
   title.setText(excerpt + (lines.length > 3 ? '…' : ''));
   while (title.height > 70 && excerpt.length) { excerpt = excerpt.slice(0, -1).trimEnd(); title.setText(`${excerpt}…`); }
-  scene.add.text(x - 76, 578, view.sold ? 'Sold' : `${view.price} Scrap`, {
+  scene.add.text(x - 76, 600, view.sold ? 'Sold' : `${view.price} Scrap`, {
     fontFamily: UI_FONT, fontSize: UI_TYPE.primary, color: view.sold ? '#abc4d4' : view.enabled ? UI_CYAN : '#ffc7a4', resolution: 2,
-  }).setName('market-merchandise-price');
+  }).setOrigin(0, 1).setName('market-merchandise-price');
   if (!view.sold) scene.add.rectangle(x, 480, 184, 256, 0x000000, 0.001)
     .setInteractive({ useHandCursor: view.enabled }).setName('market-merchandise-hit')
     .setData('marketFocusId', view.focusId).setData('marketAvailable', view.enabled).setData('label', view.title)

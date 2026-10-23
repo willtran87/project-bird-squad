@@ -77,13 +77,13 @@ for (const count of [0, 50]) test(`record readers preserve readable text, separa
   }
   const reloaded=page.waitForEvent('framenavigated',frame=>frame===page.mainFrame());
   await tap('profile-save-restore-confirm-hit');
+  await reloaded;
+  await page.waitForFunction(()=>JSON.parse((window as any).render_game_to_text?.()??'{}').titleBoot?.ready);
   await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('birdsquad.account')!).runs)).toBe(count);
   const restored=await page.evaluate(()=>JSON.parse(localStorage.getItem('birdsquad.account')!));
   expect(restored.decks).toEqual(backup.data.account.decks);
   expect(restored.discoveredCards).toEqual(backup.data.account.discoveredCards);
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('birdsquad.runs')!))).toEqual(backup.data.runHistory);
-  await reloaded;
-  await page.waitForFunction(()=>JSON.parse((window as any).render_game_to_text?.()??'{}').titleBoot?.ready);
   await page.evaluate(async()=>{const w=window as any;await w.__birdSquadEnsureScene('ProfileScene');
     for(const s of w.__birdSquadGame.scene.getScenes(true))w.__birdSquadGame.scene.stop(s.scene.key);
     w.__birdSquadGame.scene.start('ProfileScene');});

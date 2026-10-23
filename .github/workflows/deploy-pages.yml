@@ -16,7 +16,82 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  regression:
+    name: Production regression (${{ matrix.shard }}/8)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Production regression
+        run: npx playwright test --fully-parallel --workers=1 --timeout=90000 --grep-invert="reference flight" --shard=${{ matrix.shard }}/8 --reporter=list,json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/release-results.json
+
+      - name: Retain regression evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-regression-${{ matrix.shard }}-${{ github.sha }}
+          path: |
+            .artifacts/release-results.json
+            test-results
+          retention-days: 14
+
+  journeys:
+    name: Serial live-control journeys
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Serial live-control journeys
+        run: npx playwright test --workers=1 --grep="reference flight" --reporter=list,json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/reference-results.json
+
+      - name: Retain journey evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-journeys-${{ github.sha }}
+          path: |
+            .artifacts/reference-results.json
+            test-results
+          retention-days: 14
+
   build:
+    needs: [regression, journeys]
     runs-on: ubuntu-latest
     timeout-minutes: 180
     steps:
@@ -42,16 +117,6 @@ jobs:
           npm run validate:runtime-assets
           npm run validate:release-evidence
 
-      - name: Production regression
-        run: npx playwright test --fully-parallel --workers=2 --timeout=90000 --grep-invert="reference flight" --reporter=list,json
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/release-results.json
-
-      - name: Serial live-control journeys
-        run: npx playwright test --workers=1 --grep="reference flight" --reporter=list,json
-        env:
-          PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/reference-results.json
-
       - name: Build Pages artifact
         run: npm run build -- --base=/project-bird-squad/
 
@@ -75,8 +140,6 @@ jobs:
         with:
           name: release-verification-${{ github.sha }}
           path: |
-            .artifacts/release-results.json
-            .artifacts/reference-results.json
             .artifacts/build-evidence.json
             .artifacts/pages-smoke
             test-results

@@ -479,7 +479,7 @@ test('Text Pace scales readable intro and feedback holds without changing combat
       localStorage.setItem('birdsquad.combatPace', 'cinematic');
       scene.combatTurnBanner('Text Pace', '#dffbff', 0x8df4ff);
       localStorage.setItem('birdsquad.combatPace', 'standard');
-      await wait(1000);
+      window.advanceTime!(1000);
       const bannerAliveAt1000Ms = scene.fxLayer.list.some((child: any) => (
         child.name === 'combat-turn-banner' && child.active
       ));
@@ -924,7 +924,6 @@ test('route commit renders generated travel streak before changing scenes', asyn
     }
     if (window.advanceTime) await window.advanceTime(120);
     else await wait(120);
-    await wait(20);
     const duringState = JSON.parse(window.render_game_to_text!());
     const streaks = collectObjects(route.children)
       .filter((child: any) => child.texture?.key === 'route-commit-streak')
