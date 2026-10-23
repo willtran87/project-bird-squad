@@ -148,3 +148,15 @@ runner, avoiding a 43.5-minute serial queue. Build still depends on the entire
 journey matrix plus all regression shards. YAML parsing and test discovery
 confirm exactly one match per journey, all four covered once, and unchanged
 build/deploy dependencies (`release-journey-matrix.json`).
+
+The completed run passed 910/912 regressions and 3/4 live journeys. All three
+previously timed-out full-campaign simulations passed in 4.1 minutes each, but
+their combined regression shard took 47.1 minutes. The next workflow therefore
+places all 14 seeded campaign cases in six separate single-worker shards. The
+remaining 898 regressions stay in 16 shards, and all four live journeys have
+isolated shards. Generic family filters and Playwright sharding include future
+cases without maintaining a hand-picked list of test names. Build depends on
+all three matrices before Pages verification and deployment can run.
+Fresh CLI discovery plus YAML validation proves all 916 cases occur exactly
+once across the three matrices (898 + 14 + 4), with no missing or duplicate IDs
+and all release dependencies intact (`release-family-coverage.json`).
