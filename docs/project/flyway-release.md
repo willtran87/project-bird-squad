@@ -55,6 +55,17 @@ Source/build identity is recorded separately in `flyway-release-build-evidence.j
 
 ## Publication gate and limits
 
+The first GitHub run additionally exposed two timing-sensitive paths. Late
+Collection detail artwork replaced registered action buttons; the detail now
+refreshes only its artwork, keeping the live controls and reading position.
+A controlled delayed-art regression failed before the correction and passed
+afterward in Chromium, Firefox and WebKit. The boss atmosphere test now waits
+for its actual loaded pose rather than assuming artwork arrives within 600 ms.
+All six affected reader/art/boss cases passed on the corrected production build;
+the shared gameplay client and high-resolution reader captures also passed
+inspection. Evidence: `.artifacts/flyway-ci-fixes.log`,
+`.artifacts/flyway-ci-art-cross.log`, and `.artifacts/flyway-ci-art-play/`.
+
 The GitHub Pages workflow runs the final committed source in 16 regression,
 six campaign and four live-journey shards. Build and deployment require all
 three groups to pass. Flyway's pure rule tests are also part of the build gate.
