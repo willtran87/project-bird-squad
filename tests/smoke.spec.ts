@@ -4,6 +4,7 @@ import { flockLeaders } from '../src/game/leaders';
 import type { SavedDeckRecord } from '../src/game/saved-decks';
 import { settleCanvas } from './helpers/settled-canvas';
 import { UI_CONTROL } from '../src/game/ui-tokens';
+import { branchCards } from '../src/game/flyway-rules';
 
 async function focusFolioControl(page: Page, action: string) {
   const current = () => page.evaluate(() => JSON.parse(window.render_game_to_text?.() ?? '{}').folioFocus?.action);
@@ -1692,8 +1693,11 @@ test('imagegen combat FX pack renders each wired asset', async ({ page }) => {
     g.scene.stop('MenuScene');
     const scene: any = g.scene.getScene('BattleScene');
     scene.queueOutcomeCombatFxAssetLoad();
+    const requiredFx = ['combat-overextension-warning', 'combat-boss-phase-break', 'combat-status-cleanse-specific',
+      'combat-open-sky-break', 'combat-cache-choice-reveal', 'combat-molt-trigger-choice',
+      'combat-enemy-heavy-contact', 'combat-enemy-heal-beam', 'combat-resource-overcap'];
     for (let attempt = 0; attempt < 80; attempt += 1) {
-      if (scene.textures.exists('combat-victory-rally') && scene.textures.exists('combat-boss-phase-break')) break;
+      if (requiredFx.every(key => scene.textures.exists(key))) break;
       await wait(25);
     }
     scene.fxLayer.removeAll(true);
@@ -1721,7 +1725,9 @@ test('imagegen combat FX pack renders each wired asset', async ({ page }) => {
     scene.combatEnemyHeavyContact(370, 575, 830, 0.78);
     scene.combatEnemyHealBeam(560, 610, 850, 555, 0.78);
     scene.combatResourceOvercap(1050, 580, 0.82);
-    await wait(120);
+    // Sample the 220ms heavy-contact effect at a precise age. A wall-clock
+    // sleep can resume after that effect has retired on a busy test machine.
+    window.advanceTime!(120);
     const state = window.__birdSquadState!();
     return {
       combatOverextensionWarning: state.combatOverextensionWarning,
@@ -7905,7 +7911,14 @@ test('reward choices require intentional commitment across pointer keyboard and 
   expect(keyboardSelected.state.rewardDecisionDeltas).toHaveLength(keyboardSelected.state.combatInputFocus.count);
   expect(keyboardSelected.state.rewardDecisionDeltas.every((label: string) => !label.includes('CONFIRM') && !label.includes('BACK CANCELS'))).toBe(true);
   await page.locator('canvas').screenshot({ path: '.artifacts/test-results/upgrade-reward-choice-confirmation-1000x560.png' });
+  const preenCardId = await page.evaluate(() => window.__birdSquadGame.scene.getScene('BattleScene').rewardChoiceArmedId);
   await page.keyboard.press('Enter');
+  if (branchCards.includes(preenCardId)) {
+    await expect(page.getByRole('heading', { name: 'Choose this bird’s Preen', exact: true })).toBeVisible();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Choose Shelter', exact: true })).toBeFocused();
+    await page.keyboard.press('Enter');
+  }
   await expect.poll(async () => (await snapshot()).state.mode).not.toBe('upgradeReward');
   expect((await snapshot()).upgraded).toBe(beforeKeyboard.upgraded + 1);
 
@@ -21784,6 +21797,14 @@ test('flight details expose the final deck, path, kit, decisions, and results ac
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
     return state.combatInputFocus?.count;
   })).toBe(4);
+  // The action count is known before the lazy outcome presentation arrives.
+  // Navigate only once its actual controls have taken ownership from loading.
+  await page.waitForFunction(() => {
+    const scene: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    return scene.root?.list.some((entry: any) => entry.name === 'run-outcome-command-hit' && entry.input?.enabled)
+      && !scene.root.getByName('pending-overlay')?.active;
+  });
+  await settleCanvas(page);
   await page.keyboard.press('ArrowRight');
   await expect.poll(async () => page.evaluate(() => {
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
@@ -22775,7 +22796,7 @@ test('Flock Leader signatures fire at their once-per-combat hooks', async ({ pag
   expect(r.tideOverflowShelter.rendered).toBe(true);
   expect(r.tideOverflowShelter.count).toBeGreaterThanOrEqual(1);
   expect(r.tideOverflowShelter.bursts).toBe(1);
-  expect(r.tideLog).toContain('Overflow Shelter turns 3 wasted healing into Cover.');
+  expect(r.tideLog).toContain('Overflow Shelter turns 3 wasted healing into 3 Cover.');
   expect(r.roostFlow).toBe(1);
   expect(r.roostPerfectBraceRiposte.loaded).toBe(true);
   expect(r.roostPerfectBraceRiposte.rendered).toBe(true);
@@ -26239,8 +26260,17 @@ test('codex: Collection Lens filters ownership with pointer, keyboard, controlle
   expect(initial.hit.width).toBeGreaterThanOrEqual(104);
   expect(initial.hit.height).toBeGreaterThanOrEqual(46);
 
+  await settleCanvas(page);
   const canvas = await page.locator('canvas').boundingBox();
   if (!canvas) throw new Error('Missing game canvas');
+  await page.mouse.move(
+    canvas.x + canvas.width * (initial.hit.x / 1280),
+    canvas.y + canvas.height * (initial.hit.y / 720),
+  );
+  await page.waitForFunction(() => {
+    const scene: any = window.__birdSquadGame.scene.getScene('CodexScene');
+    return scene.input.hitTestPointer(scene.input.activePointer).some((entry: any) => entry.name === 'codex-card-lens-hit');
+  });
   await page.mouse.click(
     canvas.x + canvas.width * (initial.hit.x / 1280),
     canvas.y + canvas.height * (initial.hit.y / 720),
@@ -33890,6 +33920,8 @@ test('card picker inspection preserves Preen and Release decisions across pointe
   })).toBe(preenStart.upgraded);
   await clickPickerCard(0);
   await clickPickerCard(0);
+  await expect(page.getByRole('dialog', { name: 'Choose this bird’s Preen' })).toBeVisible();
+  await page.getByRole('button', { name: 'Choose Shelter', exact: true }).click();
   await expect.poll(async () => page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
     return route.cardPickerRemainingPicks;
@@ -33960,7 +33992,17 @@ test('card picker inspection preserves Preen and Release decisions across pointe
   expect(preenArmed.remaining).toBe(2);
   expect(preenArmed.state).toMatchObject({ inspectionOpen: false, armed: true });
 
+  const armedPreenId = await page.evaluate(() => {
+    const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
+    return route.runState.deck[route.cardPickerArmedIndex]?.id;
+  });
   await page.keyboard.press('Enter');
+  if (branchCards.includes(armedPreenId)) {
+    await expect(page.getByRole('dialog', { name: 'Choose this bird’s Preen' })).toBeVisible();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Choose Shelter', exact: true })).toBeFocused();
+    await page.keyboard.press('Enter');
+  }
   const preenApplied = await page.evaluate(() => {
     const route: any = window.__birdSquadGame.scene.getScene('RouteScene');
     return {

@@ -21,6 +21,9 @@ interface PreviewContract {
 }
 
 interface PreviewEnemy extends CardEffectEnemy {
+  intentIndex?: number;
+  hitThisTurn?: boolean;
+  flywayBroken?: boolean;
   phase?: 1 | 2;
   runtime?: {
     type?: string;
@@ -40,6 +43,8 @@ export interface CombatPreviewConfig<CardT extends CardEffectCard, EnemyT extend
   cost?: number;
   resonance: number;
   moltPower: number;
+  moltEntryEnergy?: number;
+  rawCoverGain?: (amount: number) => number;
   pendingNestCoverBonus: number;
   nextTurnDraw: number;
   nextTurnEnergy: number;
@@ -62,6 +67,7 @@ export interface CombatPreviewConfig<CardT extends CardEffectCard, EnemyT extend
     flockDamageBonus: number,
     firstAttackKeystone: boolean
   ) => { blocked: number; hpDamage: number };
+  afterCard?: (context: CardEffectContext<CardT, EnemyT>) => void;
   coverOutcome: (amount: number, flock: FlockT, flockCoverBonus: number, nestBonus: number) => number;
 }
 
@@ -150,6 +156,7 @@ export function simulateCombatCardOutcome<
       blockedDamage += damage.blocked;
       if (!pierceCover) enemy.block -= damage.blocked;
       enemy.hp = Math.max(0, enemy.hp - damage.hpDamage);
+      enemy.hitThisTurn = true;
       const phaseIds = enemy.runtime?.phaseTwoMoveIds;
       if (!bossPhaseBreak
         && enemy.runtime?.type === 'boss'
@@ -159,6 +166,7 @@ export function simulateCombatCardOutcome<
         && enemy.hp > 0
         && enemy.hp <= enemy.maxHp / 2) {
         enemy.phase = 2;
+        enemy.intentIndex = 0;
         enemy.block = 0;
         enemy.nextAttackBonus = 0;
         bossPhaseBreak = {
@@ -190,7 +198,7 @@ export function simulateCombatCardOutcome<
     healFlock: (value, _source, overflowToCover = false) => {
       const healed = Math.min(value, flock.maxHp - flock.hp);
       flock.hp += healed;
-      if (overflowToCover) flock.block += value - healed;
+      if (overflowToCover) flock.block += config.rawCoverGain?.(value - healed) ?? value - healed;
     },
     loseCohesion: (_source, value) => { flock.hp = Math.max(1, flock.hp - value); },
     drawCards: () => {},
@@ -206,9 +214,9 @@ export function simulateCombatCardOutcome<
     windedBurstFx: () => {},
     moltBonus: (previewState, effectValue, area) => spendMoltPower(previewState, effectValue, area),
     applyFlockWinded: (_source, value) => { flock.weak += value; },
-    applyEnemyWinded: () => {},
+    applyEnemyWinded: (enemy, value) => { enemy.weak += value; },
     removeEnemyCover: (_source, enemy, value) => { enemy.block = Math.max(0, enemy.block - value); },
-    enterMolt: () => { flock.molt = true; flock.exposed = false; flock.exposedTurns = 0; },
+    enterMolt: () => { if (!flock.molt) energy += config.moltEntryEnergy ?? 0; flock.molt = true; flock.exposed = false; flock.exposedTurns = 0; },
     gainOpenSkyGuard: (value) => { flock.openSkyGuard += value; },
     returnDiscardToHand: () => {},
     addNextCoverBonus: (value) => { pendingNestCoverBonus += value; },
@@ -235,6 +243,7 @@ export function simulateCombatCardOutcome<
     resolveCardEffect(effect, config.card, config.enemyId, state, context);
     return { effect, status: 'resolves' as const };
   });
+  if (!requiresChoice) config.afterCard?.(context);
   const enemyDamage = enemies.reduce((total, enemy) => total + Math.max(0, (beforeEnemyHp.get(enemy.id) ?? enemy.hp) - enemy.hp), 0);
   const enemyStates = enemies.map((enemy) => ({
     id: enemy.id,
@@ -265,6 +274,7 @@ export function simulateCombatCardOutcome<
     enemyDamage,
     blockedDamage,
     bossPhaseBreak,
+    bossDisruptions: enemies.filter(enemy => enemy.flywayBroken && !config.enemies.find(actual => actual.id === enemy.id)?.flywayBroken).map(enemy => enemy.name),
     coverGain: flock.block - before.block,
     cohesionDelta: flock.hp - before.hp,
     flowGain: flock.flow - before.flow,

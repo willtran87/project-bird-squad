@@ -1,5 +1,93 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-10-24 — Flyway release qualification
+
+- Ran all 956 production cases: 938 passed / 18 failed. Preserved the original
+  failures and matched every one to a passing rerun: 44 recorded affected cases,
+  zero unresolved failures. All 14 campaigns and four live-control journeys pass.
+- Fixed journal/remapped-history conflict, noncanonical fresh resident state,
+  controller A leaking into the newly opened Preen dialog, and the Molt caption's
+  shared-font contract. Updated explicit Preen choices, large-hand navigation,
+  control readiness, precise FX timing and overflow log assertions in tests.
+- Nine cross-browser release smoke cases, six new release regression cases
+  across three browsers, 16 unit cases, Pages-base smoke, TypeScript/build,
+  static release gates and hard delivery budgets pass. Shared gameplay client
+  screenshot/state and three Pages viewport captures were inspected.
+- Full evidence and qualification limits: `docs/project/flyway-release.md`.
+  The GitHub workflow reruns final-source regressions, campaigns and journeys
+  before allowing Pages publication; it now includes the Flyway rule unit tests.
+
+## 2026-10-23/24 — Flyway follow-up audit
+
+- Reproduced and fixed five additional issues: endings depending on a lazy UI
+  download, missing journal/seal exit guards, stale cancelled Preen requests,
+  WebKit pointer focus, and a same-frame journal pause/resume freeze.
+- Ending persistence now belongs to the run and completes before clearing the
+  active checkpoint. Failed writes retain the live result and retry safely.
+  Manual Preens validate their original context; cancellation/shutdown retire
+  queued work. Practice storage remains disposable.
+- Broad browser sweep recorded 113 passes / four WebKit failures. Two tests
+  needed to await Phaser's queued transitions; two expected Web Audio, which
+  this Windows WebKit binary does not provide. Preserved the original outcomes;
+  see the audit report for reproduction and teardown details.
+- Final production rerun: 44 passes, zero failures, one explicit WebKit audio
+  skip across Chromium/Firefox/WebKit. Seven existing affected regressions and
+  seven pure rule cases also passed. Build/docs/data/assets/cache/hard bundle
+  checks pass; entry/combined boot 680.4/722.5 KiB still exceed preferred targets.
+- Final shared gameplay client completed real actions without an error file;
+  screenshot/state inspected. Multi-resolution journal/save recovery inspected.
+  Evidence uses `.artifacts/flyway-second-*`; full report and limitations are
+  `docs/project/flyway-audit.md`. No known finding remains in this scope.
+- Changes remain local, uncommitted and unpublished. The full release/campaign
+  matrix and Safari hardware audio qualification remain outside this pass.
+
+## 2026-10-23/24 — Flyway bug audit
+
+- Audited the uncommitted expansion before release. Fixed nine findings:
+  corrupt archived birds, lost journal focus, overlapping decision ownership,
+  Storm Pin energy forecasts, Cover costs bypassed by direct gains, cached
+  failed journal imports, phase-II intent forecasts, missing outcome download
+  recovery controls, and Supplies failing to trigger boss disruption.
+- Added ten focused browser cases in `tests/flyway-audit.spec.ts`; eight findings
+  have failing browser reproductions and the phase-index defect has source
+  evidence and a focused transition test. Held controller confirm also verified.
+- Final production verification logs use `.artifacts/flyway-audit-final-*`.
+  All 55 checks passed: 34 expansion/audit, 14 existing regressions (including
+  the authored enemy-move forecast matrix), and seven pure rule cases. Build,
+  docs/data/assets/cache/bundle gates passed. Shared gameplay and outcome
+  recovery inspected at 2560×1600, 1440×900 and 1000×560. Entry/combined boot
+  679.2/721.3 KiB pass hard limits; preferred size targets still warn.
+  Full scope, fixes and remaining qualification limits are in
+  `docs/project/flyway-audit.md`. Release work remains uncommitted/unpublished.
+
+## 2026-10-23 — Flyway expansion implemented
+
+- Implemented all 18 next-level proposals on `codex/flyway-expansion`; the
+  checked acceptance ledger is `docs/game/flyway-expansion-plan.md`.
+- Added earned calls for five Leaders, three suit combinations, four boss
+  disruption rules, six branching Preens and three strategic keepsakes.
+- Added coordinated Molt/Open Sky cues, signature bird cameos, suit effects,
+  Leader/boss poses, battlefield reactions, district atmosphere and adaptive music.
+- Added restored city panels, recurring residents and Rival Crew consequences,
+  optional crossing conditions, three fixed-seed stories and an illustrated
+  ending archive with actual birds and cosmetic seals.
+- Journal opens with J (F8 when J is remapped), View/Select, or its button;
+  native dialog owns focus and pauses play. Save state is normalized, branch
+  effects reconstruct on reload, settlement receipts prevent repeated rewards,
+  and presentation work is bounded and cleaned up on scene shutdown.
+- Fixed resolving-card passive stats, manual versus automatic Preen dispatch,
+  failed-save UI rollback, and title-button clearance during verification.
+- 49 distinct focused checks passed across runs: 24 new browser cases, 18
+  existing regressions and seven pure rule tests. Production TypeScript/build,
+  docs/runtime/assets/cache checks and hard bundle limits passed. Shared gameplay
+  client completed real actions; visuals reviewed at 2560×1600, 1440×900 and
+  1000×560, plus all four boss stages and the ending archive.
+- Entry 679.3 KiB / combined boot 721.4 KiB pass hard limits but exceed preferred
+  targets. Deferred typed snapshot/outcome adapters retain title loading bounds;
+  build identity and cache checks recognize both hashed index chunks.
+- Evidence and qualification limits are recorded in the ledger. Full release
+  CI was not rerun. This expansion remains local, uncommitted and unpublished.
+
 ## 2026-10-23 — Publication verification follow-up
 
 - PR #4 merged as `0db639cd`, branch deleted. Run `39950281821` revealed another

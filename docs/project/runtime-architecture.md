@@ -286,3 +286,31 @@ contract are part of the shipped runtime.
 - Generated/source art belongs under `.generated/`; optimized runtime assets
   belong under `assets/runtime/` and should be referenced through manifests or
   Vite-managed imports.
+
+## Flyway expansion boundary
+
+- `flyway-rules.ts`: typed versioned state, normalization, authored calls,
+  combinations, conditions, keepsakes, story goals, and branch upgrades.
+- `flyway-loader.ts`: deferred journal download, scene ownership, explicit checkpoint recovery,
+  and a pending Preen guard so a slow download cannot skip a branch choice.
+- `flyway-expansion.ts` / `.css`: accessible modal journal, controller navigation,
+  resident decisions, city restoration, stories, ending archive, and bounded FX.
+- `adaptive-music.ts`: phrase-aligned combat layers and district instrumentation.
+- `battle/state-snapshot.ts`: typed deferred BattleScene text-state adapter.
+- `battle/outcome-scene.ts`: typed deferred ending renderer, loaded through the
+  existing outcome dossier boundary. The title does not request these adapters.
+  Slow or failed downloads retain an owned recovery panel and save-checked exit.
+- The production boot graph has a small hashed `index` launcher and a distinct
+  hashed `index` app module. Bundle validation counts both in the unchanged
+  combined boot limit; cache validation checks the launcher and app preload.
+  Build identity records both chunks, including their sizes and SHA-256 hashes.
+- `RunState.flyway` is optional for old saves and normalized at load/clone/return.
+  Manual `SavedCard.preenBranch` is whitelisted and reconstructs upgrade effects
+  from canonical card data. Reward settlement receipts prevent double awards.
+- `birdsquad.flyway.journal` retains the latest state and actual bird IDs;
+  `birdsquad.flyway.medals` retains earned cosmetic seals. Both use journaled
+  storage; practice writes stay disposable.
+
+Validation: `tools/tests/flyway-rules.test.mjs`, `tests/flyway-expansion.spec.ts`,
+existing sequencing/recovery tests, production bundle budgets, and the shared
+web-game client. The expansion acceptance ledger records final evidence.

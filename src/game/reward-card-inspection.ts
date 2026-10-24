@@ -749,7 +749,7 @@ export function requestCardPick(scene: any, index: number, playConfirm: () => vo
   }
   scene.cardPickerArmedIndex = undefined;
   playConfirm();
-  scene.applyCardPick(index);
+  scene.applyCardPick(index, true);
 }
 
 function compactCardPickerDeltaPart(text: string, max = 16) {
@@ -1467,7 +1467,7 @@ export function requestCombatReward(scene: any, choiceId: string, onArm: () => v
   scene.rewardChoiceArmedId = undefined;
   if (scene.mode === 'waymarkReward') scene.chooseWaymarkReward(choiceId);
   else if (scene.mode === 'cardReward') scene.chooseRewardCard(choiceId);
-  else scene.chooseUpgradeCard(choiceId);
+  else scene.chooseUpgradeCard(choiceId, true);
   return true;
 }
 

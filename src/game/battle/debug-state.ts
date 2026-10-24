@@ -436,3 +436,5 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
     },
   };
 }
+
+export { buildBattleStateSnapshot } from './state-snapshot';

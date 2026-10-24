@@ -575,3 +575,53 @@ The first three Rooftop Blocks combats introduce one layer at a time:
 3. Molt and Open Sky, with a Clean Roost objective.
 
 District contracts remain hidden until the opening combat is complete.
+
+## Flyway expansion — crossings and relationships
+
+Expansion state is per flight. The Flyway journal presents a four-panel city
+view using the authored district paintings. Defeating each district boss repairs
+that district's connection; restored panels brighten and their route becomes
+continuous. The ending archive retains the final city, birds, and choices.
+
+At the route journal, choose one keepsake Waymark for the flight:
+
+- **Woven Roost:** carry up to 8 Cover between turns; each Cover gain loses 2.
+- **Storm Pin:** entering Molt grants 1 Wingbeat; leaving it causes two turns of
+  Open Sky.
+- **Light Travel:** attacks gain 2 damage for a turn begun with at most four
+  cards; draw one fewer card at turn start.
+
+These three strategic keepsakes use a separate single-choice slot, alongside
+the existing 58 Waymarks. Their penalties combine with crossing conditions.
+
+For a selected, reachable combat crossing, the player may choose **Exposed
+crossing** (one fewer initial Wingbeat, +20 Scrap on victory), **Heavy rain**
+(each Cover gain loses 1, +20 Scrap), or **Unstable scaffold** (Roost after three
+or more played cards causes Open Sky, +25 Scrap). Sheltered approach is standard.
+Conditions apply only to that crossing and clear after settlement. The save
+checkpoint includes an idempotent settlement receipt before leaving combat.
+
+Sella Warmwick, Ivo Tallymast, and Oren Shearbright remember a 10-Scrap donation.
+Each offers one interaction per district. In a later district, an established
+relationship can instead return 5 Cohesion, one Open Sky Guard for the next
+fight, or 15 Scrap respectively. The journal records the actual decision.
+
+Caldra's Pinion Crew returns at Rival crossings. Each prior victory grants the
+crew 2 additional starting Cover, capped at 6; after two victories its attacks
+gain 1 damage. The wager describes these adaptations before accepting, and the
+encounter introduction identifies Caldra and the encounter number.
+
+### Permanent Flight Stories
+
+Three fixed-seed, Full, Tier 0 stories are available from the main menu after
+their Leader is unlocked and when no active flight exists:
+
+| Story | Leader / keepsake | Victory objective | Cosmetic seal |
+| --- | --- | --- | --- |
+| After the Storm | Tidewarden / Storm Pin | Survive at least three Molt enemy phases | Storm Survivor, copper feather |
+| Ten Familiar Wings | Fledgling / Light Travel | Finish with at most ten cards | Close Company, woven circle |
+| The Quiet Crossing | Roostkeeper / Woven Roost | Win at least three fights without Cohesion damage | Still Air, blue wing |
+
+A loss never grants a seal. Seals persist separately from the latest illustrated
+ending journal; they confer no combat bonus. Practice uses the disposable
+storage backend and does not award permanent seals.

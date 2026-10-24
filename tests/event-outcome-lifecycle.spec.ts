@@ -270,13 +270,16 @@ for (const family of ['basin', 'cache', 'nest', 'signal']) test(`event ${family}
     await tap(page, 'card-picker-card-hit');
     expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').runState.deck.some((c: any) => c.upgraded))).toBe(false);
     await tap(page, 'card-picker-card-hit');
+    await expect(page.getByRole('dialog', { name: 'Choose this bird’s Preen' })).toBeVisible();
+    await page.getByRole('button', { name: 'Choose Shelter', exact: true }).tap();
     expected.run.deck[0].upgraded = true;
+    expected.run.deck[0].preenBranch = 'shelter';
   }
   await page.waitForFunction(id => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     return r.runState.completedRouteNodeIds.includes(id) && !r.pendingRouteReward && !r.cardPickerMode && r.routeEssentialAssetsReady;
   }, expected.nodeId);
-  const digest = (r: any) => ({ hp: r.currentHp, scrap: r.scrap, deck: r.deck.map((c: any) => ({ id: c.id, upgraded: !!c.upgraded })),
+  const digest = (r: any) => ({ hp: r.currentHp, scrap: r.scrap, deck: r.deck.map((c: any) => ({ id: c.id, upgraded: !!c.upgraded, preenBranch: c.preenBranch })),
     supplies: r.supplies, marks: r.routeMarks, next: r.nextCombat ?? {}, signals: r.signalChoices });
   const actual = await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').runState);
   expect(digest(actual)).toEqual(digest(expected.run));

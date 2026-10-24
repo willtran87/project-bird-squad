@@ -11,7 +11,9 @@ const names = [...new Set(git('ls-files', '-c', '-o', '--exclude-standard', '-z'
   .filter(name => name && fs.existsSync(name) && fs.statSync(name).isFile()).sort();
 const source = crypto.createHash('sha256');
 for (const name of names) source.update(name).update('\0').update(fs.readFileSync(name)).update('\0');
-const entries = fs.readdirSync(path.join(build, 'assets')).filter(name => /^index-.*\.js$/.test(name));
+const html = fs.readFileSync(path.join(build, 'index.html'), 'utf8');
+const entries = [...html.matchAll(/<script[^>]+src="([^"]*\/assets\/index-[^"]+\.js)"/g)].map(match => path.basename(match[1]));
+const appChunks = fs.readdirSync(path.join(build, 'assets')).filter(name => /^index-.*\.js$/.test(name)).sort();
 if (entries.length !== 1) throw new Error(`Expected one app entry, found ${entries.length}`);
 const entry = path.join(build, 'assets', entries[0]);
 const result = {
@@ -19,6 +21,7 @@ const result = {
   dirty: git('status', '--porcelain').length > 0,
   sourceSha256: source.digest('hex'), sourceFiles: names.length,
   buildDirectory: path.relative(process.cwd(), build).replaceAll('\\', '/'),
+  appChunks: appChunks.map(name => { const bytes = fs.readFileSync(path.join(build, 'assets', name)); return { name, bytes: bytes.length, sha256: crypto.createHash('sha256').update(bytes).digest('hex') }; }),
   entry: entries[0], entryBytes: fs.statSync(entry).size,
   entrySha256: crypto.createHash('sha256').update(fs.readFileSync(entry)).digest('hex'),
   htmlSha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(build, 'index.html'))).digest('hex'),

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
+import { branchCards } from '../src/game/flyway-rules';
 
 // Independent journeys keep the unchanged 30-second budget meaningful without
 // charging two complete scene boots and eight captures to one test timeout.
@@ -110,6 +111,10 @@ test(`failed ceremony keeps card art, readable Preens and intentional choices, m
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene'); return b.rewardChoiceArmedId;
     });
     await click('reward-card-take-hit');
+    if (mode === 'upgradeReward' && branchCards.includes(picked)) {
+      await expect(page.getByRole('heading', { name: 'Choose this bird’s Preen', exact: true })).toBeVisible();
+      await page.getByRole('button', { name: 'Choose Shelter', exact: true }).click();
+    }
     await page.waitForFunction(mode => {
       const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
       return (mode === 'cardReward' ? b.rewardChoices : b.upgradeChoices).length === 0;

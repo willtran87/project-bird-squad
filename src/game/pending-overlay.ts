@@ -5,7 +5,7 @@ import { showDownloadRecovery } from '../update-recovery';
 
 /** Boot-resident: cancelling a download must not depend on that download. */
 export function pendingOverlay<T>(scene: Phaser.Scene, addTo: (o: Phaser.GameObjects.GameObject) => void,
-  load: () => Promise<T>, render: (module: T) => void, onClose: () => void) {
+  load: () => Promise<T>, render: (module: T) => void, onClose: () => void, closeLabel = 'Close') {
   const root = scene.add.container(0, 0).setName('pending-overlay');
   addTo(root);
   root.add(scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.94).setInteractive());
@@ -14,10 +14,10 @@ export function pendingOverlay<T>(scene: Phaser.Scene, addTo: (o: Phaser.GameObj
   const detail = quietText(scene, 360, 316, 'You can close this panel while it downloads.', 560);
   root.add([message, detail]);
   const close = () => { root.destroy(); onClose(); };
-  const cancel = quietButton(scene, { x: 484, y: 430, width: 240, label: 'Close', name: 'pending-overlay-close', kind: 'primary', onActivate: close });
+  const cancel = quietButton(scene, { x: 484, y: 430, width: 240, label: closeLabel, name: 'pending-overlay-close', kind: 'primary', onActivate: close });
   const recover = quietButton(scene, { x: 776, y: 430, width: 240, label: 'Recovery options', name: 'pending-overlay-recovery', enabled: false, onActivate: showDownloadRecovery });
   root.add([cancel, cancel.getData('labelObject'), recover, recover.getData('labelObject')]);
-  bindActionFocus(scene, root, [{ hit: cancel, label: 'Close', run: close },
+  bindActionFocus(scene, root, [{ hit: cancel, label: closeLabel, run: close },
     { hit: recover, label: 'Recovery options', run: showDownloadRecovery }], close, { exclusive: true, onPause: close });
   const status = (failed: boolean) => {
     if (!root.active) return;
