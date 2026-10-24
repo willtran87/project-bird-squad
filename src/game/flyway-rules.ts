@@ -1,0 +1,147 @@
+import type { CardSuit, RuntimeCard, RuntimeCardUpgrade } from './types';
+
+export type PreenBranch = 'shelter' | 'flight';
+export type FlightStoryId = 'open-sky' | 'small-flock' | 'unbroken';
+export type FlywayCondition = 'clear' | 'crosswind' | 'rain' | 'scaffold';
+export type FlywayRelic = 'woven-roost' | 'storm-pin' | 'light-travel';
+export interface FlywayState {
+  version: 1;
+  restored: number[];
+  residents: Record<string, number>;
+  visits: string[];
+  rivalWins: number;
+  rivalNodes: string[];
+  settledNodes: string[];
+  condition: FlywayCondition;
+  conditionNode?: string;
+  relic?: FlywayRelic;
+  relicChosen: boolean;
+  story?: FlightStoryId;
+  storyComplete: boolean;
+  medals: string[];
+  journal: string[];
+  combinations: number;
+  leaderCalls: number;
+  survivedMolt: number;
+  cleanFights: number;
+}
+export const districts = [
+  { name: 'Rooftop Blocks', color: '#edba72', tint: 0xe4a568, weather: 'Warm windows · drifting paper', restored: 'Neighbors cross the repaired clothesline. Window lanterns answer the first safe-flight call.' },
+  { name: 'Canal Markets', color: '#86d8d4', tint: 0x72bfc4, weather: 'Canal rain · rippling reflections', restored: 'The sluice opens. Market awnings rise, and the water route carries food and shelter again.' },
+  { name: 'Signal Spires', color: '#b5bcea', tint: 0xa8b2da, weather: 'Crosswinds · taut signal cables', restored: 'Calls leap from mast to mast. Couriers reclaim the high crossings above the city.' },
+  { name: 'High Roost', color: '#f3deb1', tint: 0xf0d6a0, weather: 'Clear dawn · a vast open sky', restored: 'The final call reaches every district. Four broken routes become one living flyway.' },
+] as const;
+export const conditions: Record<FlywayCondition, { name: string; rule: string; reward: number }> = {
+  clear: { name: 'Sheltered approach', rule: 'Standard combat conditions.', reward: 0 },
+  crosswind: { name: 'Exposed crossing', rule: 'Begin with 1 fewer Wingbeat. Win for 20 bonus Scrap.', reward: 20 },
+  rain: { name: 'Heavy rain', rule: 'Each Cover gain is reduced by 1, to a minimum of 0. Win for 20 bonus Scrap.', reward: 20 },
+  scaffold: { name: 'Unstable scaffold', rule: 'Roost after three or more cards causes Open Sky. Win for 25 bonus Scrap.', reward: 25 },
+};
+export const relics: Record<FlywayRelic, { name: string; rule: string }> = {
+  'woven-roost': { name: 'Woven Roost', rule: 'Carry up to 8 Cover into your next turn. Each Cover gain is reduced by 2.' },
+  'storm-pin': { name: 'Storm Pin', rule: 'Gain 1 Wingbeat when entering Molt. Leaving Molt adds a second turn of Open Sky.' },
+  'light-travel': { name: 'Light Travel', rule: 'If you begin a turn with at most 4 cards, attacks gain +2 damage for that turn. Draw one fewer card at turn start.' },
+};
+/** All sources pay the same disclosed Cover cost, after their normal modifiers. */
+export function flywayCoverGain(state: Pick<FlywayState, 'relic' | 'condition'>, amount: number) {
+  return Math.max(0, amount - (state.relic === 'woven-roost' ? 2 : 0) - (state.condition === 'rain' ? 1 : 0));
+}
+export const leaderCalls: Record<string, { name: string; goal: number; charge: string; effect: string }> = {
+  fledgling: { name: 'Neighborhood Rally', goal: 3, charge: 'Play three different suits.', effect: 'Gain 2 Wingbeats and 3 Cover.' },
+  spark_caller: { name: 'Chorus Break', goal: 3, charge: 'Spend a total of 3 Resonance.', effect: 'Gain 2 Wingbeats and draw 1 card.' },
+  talon: { name: 'Decisive Dive', goal: 3, charge: 'Hit a Winded enemy three times.', effect: 'Deal 8 damage to the selected enemy, bypassing Cover.' },
+  tidewarden: { name: 'Sheltering Sweep', goal: 6, charge: 'Restore 6 actual Cohesion.', effect: 'Restore 6 Cohesion and gain 4 Cover.' },
+  roostkeeper: { name: 'Return the Pressure', goal: 2, charge: 'Fully block two damaging attacks.', effect: 'Deal 4 damage to every enemy and gain 4 Cover.' },
+};
+export const combinations = [
+  { id: 'brace-cut', name: 'Brace & Cut', first: 'nests', second: 'quills', rule: 'Nests → Quills: deal 2 extra damage to the selected enemy.', effect: 'damage' },
+  { id: 'rain-chorus', name: 'Rain Chorus', first: 'basins', second: 'plumes', rule: 'Basins → Plumes: gain 1 Resonance.', effect: 'resonance' },
+  { id: 'safe-landing', name: 'Safe Landing', first: 'quills', second: 'basins', rule: 'Quills → Basins: gain 3 Cover.', effect: 'cover' },
+] as const;
+export const flightStories: Array<{ id: FlightStoryId; title: string; premise: string; rule: string; reward: string; seed: string; leader: string; relic?: FlywayRelic }> = [
+  { id: 'open-sky', title: 'After the Storm', premise: 'Carry a warning through the storm, then bring your flock safely home.', rule: 'Win a Full flight after surviving at least 3 Molt enemy phases.', reward: 'Storm Survivor · copper feather journal seal', seed: 'story-after-storm-v1', leader: 'tidewarden', relic: 'storm-pin' },
+  { id: 'small-flock', title: 'Ten Familiar Wings', premise: 'A small crew knows every rooftop by heart.', rule: 'Win a Full flight with at most 10 cards. Adding a card is allowed, but you must release enough before the ending.', reward: 'Close Company · woven circle journal seal', seed: 'story-ten-wings-v1', leader: 'fledgling', relic: 'light-travel' },
+  { id: 'unbroken', title: 'The Quiet Crossing', premise: 'Guide the city through a route that leaves no bird behind.', rule: 'Win a Full flight with at least 3 fights taking no Cohesion damage.', reward: 'Still Air · blue wing journal seal', seed: 'story-quiet-crossing-v1', leader: 'roostkeeper', relic: 'woven-roost' },
+];
+export function newFlywayState(story?: FlightStoryId): FlywayState {
+  const authored = flightStories.find(entry => entry.id === story);
+  return { version: 1, restored: [], residents: { sella: 0, ivo: 0, oren: 0 }, visits: [], rivalWins: 0, rivalNodes: [], settledNodes: [], condition: 'clear',
+    relic: authored?.relic, relicChosen: Boolean(authored?.relic), story: authored?.id, storyComplete: false,
+    medals: [], journal: [], combinations: 0, leaderCalls: 0, survivedMolt: 0, cleanFights: 0 };
+}
+const finite = (n: unknown) => typeof n === 'number' && Number.isFinite(n) ? Math.max(0, Math.min(100000, Math.floor(n))) : 0;
+const strings = (a: unknown, max = 128): string[] => Array.isArray(a) ? a.filter((v): v is string => typeof v === 'string').slice(-max).map(v => v.slice(0, 300)) : [];
+export function normalizeFlyway(value: unknown): FlywayState {
+  const s = newFlywayState();
+  if (!value || typeof value !== 'object') return s;
+  const v = value as Record<string, unknown>;
+  s.restored = Array.isArray(v.restored) ? [...new Set(v.restored.filter((n): n is number => Number.isInteger(n) && n >= 0 && n < 4))] : [];
+  s.visits = strings(v.visits); s.rivalNodes = strings(v.rivalNodes); s.settledNodes = strings(v.settledNodes); s.journal = strings(v.journal, 48);
+  for (const key of ['rivalWins', 'combinations', 'leaderCalls', 'survivedMolt', 'cleanFights'] as const) s[key] = finite(v[key]);
+  for (const id of ['sella', 'ivo', 'oren']) {
+    const residents = v.residents as Record<string, unknown> | undefined;
+    s.residents[id] = Math.min(8, finite(residents?.[id]));
+  }
+  if (typeof v.condition === 'string' && Object.hasOwn(conditions, v.condition)) s.condition = v.condition as FlywayCondition;
+  if (typeof v.conditionNode === 'string') s.conditionNode = v.conditionNode.slice(0, 100);
+  if (typeof v.relic === 'string' && Object.hasOwn(relics, v.relic)) s.relic = v.relic as FlywayRelic;
+  s.relicChosen = v.relicChosen === true || Boolean(s.relic);
+  s.story = flightStories.find(entry => entry.id === v.story)?.id;
+  s.storyComplete = v.storyComplete === true;
+  s.medals = strings(v.medals, 3).filter(id => flightStories.some(story => story.id === id));
+  return s;
+}
+export function journal(s: FlywayState, text: string) { s.journal = [...s.journal, text].slice(-48); }
+export function restoreDistrict(s: FlywayState, index: number) {
+  if (!districts[index] || s.restored.includes(index)) return false;
+  s.restored.push(index); journal(s, districts[index].restored); return true;
+}
+export function finishStory(s: FlywayState, won: boolean, deckSize: number) {
+  const complete = won && (s.story === 'open-sky' ? s.survivedMolt >= 3 : s.story === 'small-flock' ? deckSize <= 10 : s.story === 'unbroken' ? s.cleanFights >= 3 : false);
+  if (complete && s.story && !s.storyComplete) { s.storyComplete = true; s.medals.push(s.story); journal(s, `Flight Story complete: ${flightStories.find(story => story.id === s.story)!.title}.`); }
+  return complete;
+}
+export interface FlightCombatState {
+  lightTravelReady?: boolean;
+  charge: number; called: boolean; suits: CardSuit[]; previousSuit?: CardSuit;
+  combos: string[]; bossBreaks: string[]; molted: boolean; moltSurvived: boolean;
+  completed: boolean;
+}
+export function newFlightCombat(): FlightCombatState { return { charge: 0, called: false, suits: [], combos: [], bossBreaks: [], molted: false, moltSurvived: false, completed: false }; }
+export function chargeCall(combat: FlightCombatState, leader: string, kind: 'suit' | 'spend' | 'winded' | 'heal' | 'block', amount = 1, suit?: CardSuit) {
+  if (combat.called) return;
+  if (kind === 'suit' && suit && !combat.suits.includes(suit)) combat.suits.push(suit);
+  if (leader === 'fledgling') combat.charge = combat.suits.length;
+  else if ((leader === 'spark_caller' && kind === 'spend') || (leader === 'talon' && kind === 'winded') || (leader === 'tidewarden' && kind === 'heal') || (leader === 'roostkeeper' && kind === 'block')) combat.charge += Math.max(0, amount);
+  combat.charge = Math.min(combat.charge, (leaderCalls[leader] ?? leaderCalls.fledgling).goal);
+}
+export function takeCall(combat: FlightCombatState, leader: string) {
+  if (combat.called || combat.charge < (leaderCalls[leader] ?? leaderCalls.fledgling).goal) return false;
+  combat.called = true; return true;
+}
+export function playCombination(combat: FlightCombatState, suit?: CardSuit | null) {
+  const combo = combinations.find(c => c.first === combat.previousSuit && c.second === suit && !combat.combos.includes(c.id));
+  combat.previousSuit = suit ?? undefined;
+  if (combo) combat.combos.push(combo.id);
+  return combo;
+}
+export const branchCards = ['major_00', 'wands_ace', 'swords_ace', 'cups_ace', 'pentacles_04', 'aviary_25'];
+export function validBranch(id: string, value: unknown): PreenBranch | undefined {
+  return branchCards.includes(id) && (value === 'shelter' || value === 'flight') ? value : undefined;
+}
+export function branchUpgrade(card: RuntimeCard, branch?: PreenBranch): RuntimeCardUpgrade {
+  const base = card.upgrade;
+  if (!branch || !branchCards.includes(card.id)) return base;
+  const extra = branch === 'shelter' ? 'gainCover(2)' : 'draw(1)';
+  return { ...base, effects: [...base.effects, extra], moltEffects: [...(base.moltEffects ?? card.moltEffects ?? base.effects), extra] };
+}
+export function bossDisruption(enemy: { runtime: { type: string }; weak: number; hitThisTurn: boolean; block: number }, map: number) {
+  if (enemy.runtime.type !== 'boss') return undefined;
+  const index = ((map % 4) + 4) % 4;
+  return [
+    { rule: 'Make the boss Winded to cancel its next attack this fight.', met: enemy.weak > 0 },
+    { rule: 'Hit the boss and strip all its Cover to cancel its next attack this fight.', met: enemy.hitThisTurn && enemy.block === 0 },
+    { rule: 'Apply at least 2 Winded to cancel its next attack this fight.', met: enemy.weak >= 2 },
+    { rule: 'Hit the Winded boss to cancel its next attack this fight.', met: enemy.hitThisTurn && enemy.weak > 0 },
+  ][index];
+}

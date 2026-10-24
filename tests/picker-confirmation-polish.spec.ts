@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
+import { branchCards } from '../src/game/flyway-rules';
 
 for (const mode of ['preen', 'release']) test(`${mode} confirmation is readable and commits the armed purchase exactly once`, async ({ page }, info) => {
   const errors: string[] = [];
@@ -120,11 +121,17 @@ for (const mode of ['preen', 'release']) test(`${mode} confirmation is readable 
   expect(await snapshot()).toEqual({ ...armed, scrap: 0 });
   await page.evaluate(scrap => { (window as any).__birdSquadGame.scene.getScene('RouteScene').runState.scrap = scrap; }, before.scrap);
   await click();
+  const branched = mode === 'preen' && branchCards.includes(before.deck[before.index].id);
+  if (branched) {
+    await expect(page.getByRole('dialog', { name: 'Choose this bird’s Preen' })).toBeVisible();
+    await page.getByRole('button', { name: 'Choose Shelter', exact: true }).click();
+  }
   await page.waitForFunction(() => !(window as any).__birdSquadGame.scene.getScene('RouteScene').cardPickerMode);
   const after = await snapshot();
   const expectedDeck = structuredClone(before.deck);
   if (mode === 'preen') expectedDeck[before.index].upgraded = true;
   else expectedDeck.splice(before.index, 1);
+  if (branched) expectedDeck[before.index].preenBranch = 'shelter';
   expect(after.deck).toEqual(expectedDeck); expect(after.scrap).toBe(before.scrap - before.cost);
   expect(await page.evaluate(slot => (window as any).__birdSquadGame.scene.getScene('RouteScene').marketUtilityShelf[slot].sold, before.slot)).toBe(true);
   expect(errors).toEqual([]);

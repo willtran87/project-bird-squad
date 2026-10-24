@@ -892,3 +892,5 @@ export function renderOutcomeFlightDetails(
   }
   root.add(closeHit.getData('labelObject').setName('run-flight-details-close-label'));
 }
+
+export { renderOutcomeScene } from './battle/outcome-scene';

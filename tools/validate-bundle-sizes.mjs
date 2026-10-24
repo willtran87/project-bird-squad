@@ -8,6 +8,9 @@ const assetsDir = path.join(path.resolve(root, process.argv[2] ?? '.artifacts/bu
 const kb = 1024;
 
 const budgets = [
+  { label: 'battle state snapshot lazy module', pattern: /^battle-state-snapshot-.*\.js$/, maxKb: 12, hard: true },
+  { label: 'battle outcome scene lazy module', pattern: /^battle-outcome-scene-.*\.js$/, maxKb: 8, hard: true },
+  { label: 'Flyway expansion lazy module', pattern: /^flyway-expansion-.*\.js$/, maxKb: 32, hard: true },
   { label: 'app entry', pattern: /^index-.*\.js$/, maxKb: 700, targetKb: 675, hard: true },
   { label: 'game core', pattern: /^game-core-.*\.js$/, maxKb: 30, hard: true },
   { label: 'interaction rules', pattern: /^interaction-rules-.*\.js$/, maxKb: 12, hard: true },
@@ -99,8 +102,10 @@ const rewardPresentation = chunks.filter(chunk => /^(render-hand|render-reward|r
 const rewardPresentationKb = rewardPresentation.reduce((sum, chunk) => sum + chunk.kb, 0);
 console.log(`Combined hand/reward presentation: ${rewardPresentationKb.toFixed(1)} KB minified`);
 if (rewardPresentation.length !== 3 || rewardPresentationKb > 24) failures.push('Combined hand/reward presentation exceeds its original 24 KB allowance or is incomplete.');
-if (combinedBootChunks.length !== combinedBootBudget.patterns.length) {
-  failures.push(`${combinedBootBudget.label}: expected ${combinedBootBudget.patterns.length} chunks, found ${combinedBootChunks.length}`);
+// Vite may emit a tiny index launcher plus the explicitly owned app chunk.
+// Require every boot family and count every matching byte against the same cap.
+if (combinedBootBudget.patterns.some(pattern => !combinedBootChunks.some(chunk => pattern.test(chunk.name)))) {
+  failures.push(`${combinedBootBudget.label}: a required boot chunk family is missing`);
 } else {
   const combinedKb = combinedBootChunks.reduce((sum, chunk) => sum + chunk.kb, 0);
   const combinedGzipKb = combinedBootChunks.reduce((sum, chunk) => sum + chunk.gzipKb, 0);

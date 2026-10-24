@@ -111,7 +111,7 @@ if (failures.length === 0) {
     fail(`index.html references non-hashed asset names: ${unhashedRefs.join(', ')}`);
   }
 
-  const bootPreloadPattern = /\/assets\/(?:vendor-phaser|runtime-data|game-core|interaction-rules)-[A-Za-z0-9_-]+\.js$/;
+  const bootPreloadPattern = /\/assets\/(?:vendor-phaser|runtime-data|game-core|interaction-rules|index)-[A-Za-z0-9_-]+\.js$/;
   const unexpectedPreloads = preloadHrefs.filter((href) => !bootPreloadPattern.test(href));
   if (unexpectedPreloads.length > 0) {
     fail(`index.html modulepreloads non-boot chunks: ${unexpectedPreloads.join(', ')}`);
@@ -455,8 +455,18 @@ if (failures.length === 0) {
   }
 
   const appChunks = files.filter((name) => /^index-.*\.js$/.test(name));
-  if (appChunks.length !== 1) {
-    fail(`Expected exactly one app entry chunk, found ${appChunks.length}.`);
+  // The explicit app chunk keeps deferred scene adapters from absorbing the
+  // boot graph. Vite emits one tiny HTML launcher and one shared app module.
+  const launchers = [...html.matchAll(/<script[^>]+src="([^"]*\/assets\/index-[^"]+\.js)"/g)].map(match => path.basename(match[1]));
+  const appPreloads = preloadHrefs.filter(href => /\/index-[^/]+\.js$/.test(href)).map(href => path.basename(href));
+  if (appChunks.length !== 2 || launchers.length !== 1 || appPreloads.length !== 1
+      || launchers[0] === appPreloads[0]
+      || !appChunks.includes(launchers[0]) || !appChunks.includes(appPreloads[0])) {
+    fail('Expected one hashed app launcher and one distinct, preloaded app module.');
+  }
+  for (const prefix of ['battle-state-snapshot', 'battle-outcome-scene']) {
+    if (files.filter(name => name.startsWith(`${prefix}-`) && name.endsWith('.js')).length !== 1) fail(`Expected one deferred ${prefix} chunk.`);
+    if (preloadHrefs.some(href => href.includes(`/${prefix}-`))) fail(`${prefix} must remain deferred until its scene needs it.`);
   }
 
   const unreferencedBootChunks = [...vendorChunks, ...runtimeChunks, ...gameCoreChunks, ...interactionRuleChunks, ...appChunks].filter((name) => !html.includes(`/assets/${name}`));

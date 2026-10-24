@@ -20,6 +20,7 @@ test('reference flight uses live controls from title through outcome and replay'
   let lastDecision = '', repeated = 0;
   for (let step = 0; step < 320 && !terminal; step++) {
     await page.waitForFunction(() => {
+      if (document.querySelector('#flyway-book h1')?.textContent === 'Choose this bird’s Preen') return true;
       const g = (window as any).__birdSquadGame;
       if (g.scene.isActive('RouteScene')) {
         const r = g.scene.getScene('RouteScene');
@@ -31,6 +32,9 @@ test('reference flight uses live controls from title through outcome and replay'
         && !b.battleRenderQueued && (b.mode === 'battle' || b.rewardPresentationReady());
     });
     const decision = await page.evaluate(() => {
+      if (document.querySelector('#flyway-book h1')?.textContent === 'Choose this bird’s Preen') {
+        return { kind: 'preen-branch', key: document.activeElement?.textContent === 'Choose Shelter' ? 'Enter' : 'Tab' };
+      }
       const g = (window as any).__birdSquadGame;
       if (g.scene.isActive('RouteScene')) {
         const r = g.scene.getScene('RouteScene');
@@ -79,6 +83,7 @@ test('reference flight uses live controls from title through outcome and replay'
         point: { x: canvas.left + hp.x * canvas.width / 1280, y: canvas.top + (hp.y - 19) * canvas.height / 720 } };
     });
     journey.push(decision);
+    if (step % 20 === 0) console.log(`keyboard flight: decision ${step}, ${decision.kind}`);
     const fingerprint = JSON.stringify(decision);
     repeated = fingerprint === lastDecision ? repeated + 1 : 0;
     lastDecision = fingerprint;
@@ -89,7 +94,23 @@ test('reference flight uses live controls from title through outcome and replay'
       await page.screenshot({ path: info.outputPath(`${decision.kind}-1440.png`) });
     }
     if (['defeat', 'runComplete'].includes(decision.kind)) { terminal = decision.kind; break; }
-    await page.keyboard.press(decision.key!);
+    if (decision.kind === 'play' && Number(decision.key) > 9) {
+      // Hands may grow past the nine numeric shortcuts. Reach those cards
+      // through the same visible selection controls available to the player.
+      for (let attempt = 0; attempt < 32; attempt++) {
+        const cursor = await page.evaluate(id => {
+          const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+          return { selected: b.selectedInstanceId === id, index: b.controllerChoiceIndex,
+            target: b.hand.findIndex((card: any) => card.instanceId === id), count: b.hand.length };
+        }, decision.instance);
+        if (cursor.selected) break;
+        expect(cursor.target).toBeGreaterThanOrEqual(0);
+        const right = (cursor.target - cursor.index + cursor.count) % cursor.count;
+        const left = (cursor.index - cursor.target + cursor.count) % cursor.count;
+        await page.keyboard.press(left < right || right === 0 ? 'ArrowLeft' : 'ArrowRight');
+        await settleCanvas(page);
+      }
+    } else await page.keyboard.press(decision.key!);
     if (decision.kind === 'play') {
       await page.waitForFunction(id => (window as any).__birdSquadGame.scene.getScene('BattleScene').selectedInstanceId === id, decision.instance);
       if (!captured.has('inspected-card')) {

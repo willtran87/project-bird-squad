@@ -27,6 +27,7 @@ for (const input of ['pointer', 'controller'] as const) test(`${input}-only refe
   let lastDecision = '', repeated = 0;
   for (let step = 0; step < 320 && !terminal; step++) {
     await page.waitForFunction(() => {
+      if (document.querySelector('#flyway-book h1')?.textContent === 'Choose this bird’s Preen') return true;
       const g = (window as any).__birdSquadGame;
       if (g.scene.isActive('RouteScene')) {
         const r = g.scene.getScene('RouteScene');
@@ -38,6 +39,9 @@ for (const input of ['pointer', 'controller'] as const) test(`${input}-only refe
         && !b.battleRenderQueued && (b.mode === 'battle' || b.rewardPresentationReady());
     });
     const decision = await page.evaluate(() => {
+      if (document.querySelector('#flyway-book h1')?.textContent === 'Choose this bird’s Preen') {
+        return { kind: 'preen-branch', key: document.activeElement?.textContent === 'Choose Shelter' ? 'Enter' : 'ArrowRight' };
+      }
       const g = (window as any).__birdSquadGame;
       if (g.scene.isActive('RouteScene')) {
         const r = g.scene.getScene('RouteScene');
@@ -176,6 +180,10 @@ test.afterEach(async ({ page }, info) => {
 
 
 async function inputAction(page: Page, input: 'pointer' | 'controller', key: string, decision: any) {
+  if (input === 'pointer' && decision.kind === 'preen-branch') {
+    await page.getByRole('button', { name: 'Choose Shelter', exact: true }).click();
+    return;
+  }
   if (input === 'controller') {
     if (decision.kind === 'play') {
       const index = Number(key) - 1;

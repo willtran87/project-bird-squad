@@ -155,6 +155,7 @@ jobs:
 
       - name: Validate content and release policy
         run: |
+          node --test tools/tests/flyway-rules.test.mjs
           npm run validate:docs
           npm run validate:runtime
           npm run validate:runtime-assets

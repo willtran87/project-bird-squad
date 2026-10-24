@@ -1,4 +1,7 @@
 import Phaser from 'phaser';
+import { loadFlyway } from './game/flyway-loader';
+import { persistFlywayEnding } from './game/flyway-storage';
+import { newFlywayState, normalizeFlyway, newFlightCombat, chargeCall, takeCall, playCombination, bossDisruption, branchUpgrade, validBranch, restoreDistrict, finishStory, flywayCoverGain, conditions, leaderCalls, journal, type FlywayState, type PreenBranch } from './game/flyway-rules';
 import { showSaveRecovery, consumeSaveRecoveryGamepad } from './game/save-recovery-dialog';
 import { sanitizeCardClaims, type PendingCardClaim } from './game/card-claim-checkpoint';
 import { cloneRewardCheckpoint, sanitizeRewardCheckpoint, type RewardCheckpoint } from './game/reward-checkpoint';
@@ -309,6 +312,8 @@ function cardCoverOutcome(
 }
 
 interface Enemy {
+  flywayBroken?: boolean;
+  flywayBreakUsed?: boolean;
   id: string;
   name: string;
   hp: number;
@@ -326,6 +331,7 @@ interface Enemy {
 }
 
 interface Card {
+  preenBranch?: PreenBranch;
   instanceId: string;
   id: string;
   name: string;
@@ -374,6 +380,7 @@ interface TextureVisibleBounds {
 }
 
 interface SavedCard {
+  preenBranch?: PreenBranch;
   id: string;
   upgraded?: boolean;
 }
@@ -387,6 +394,7 @@ interface NextCombatMods {
 }
 
 interface RunState {
+  flyway?: FlywayState;
   pendingCardClaims?: PendingCardClaim[];
   cardClaimSequence?: number;
   pendingCombatReward?: RewardCheckpoint;
@@ -684,6 +692,7 @@ class SceneAssetReadinessTracker {
 }
 
 interface RenderPayload {
+  flyway?: FlywayState & { combat?: ReturnType<typeof newFlightCombat> };
   practice?: boolean;
   mode: GameMode;
   scene: string;
@@ -3961,6 +3970,12 @@ type AudioCue = SynthAudioCue | 'card';
 type StoppableAudioNode = AudioNode & { stop: (when?: number) => void };
 
 class BirdAudioDirector {
+  private flightState = 'planning';
+  private flightDistrict = 0;
+  setFlightState(state: string, district: number) {
+    this.flightState = state; this.flightDistrict = district;
+    this.adaptiveMusic?.setFlightState(state, district);
+  }
   private ctx?: AudioContext;
   private master?: GainNode;
   private ambience?: { mood: AudioMood; gain: GainNode; nodes: StoppableAudioNode[] };
@@ -4193,6 +4208,7 @@ class BirdAudioDirector {
         || !this.master
       ) return;
       this.adaptiveMusic ??= new module.AdaptiveMusicSequencer();
+      this.adaptiveMusic.setFlightState(this.flightState, this.flightDistrict);
       this.adaptiveMusic.start(this.ctx, this.master, mood, this.musicVolume);
       this.adaptiveMusicStatus = 'ready';
     });
@@ -4288,6 +4304,7 @@ class MenuScene extends Phaser.Scene {
   }
 
   create(data: { reopenSettings?: boolean; reopenHelp?: boolean; reopenLeaderTooltip?: { id: string; anchorX: number } } = {}) {
+    loadFlyway(this);
     endPracticeSession();
     if (!recoverFinishedRun()) showSaveRecovery(() => {
       if (!recoverFinishedRun()) return false;
@@ -5356,6 +5373,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   create() {
+    loadFlyway(this);
     syncSceneAnimationPace(this);
     birdAudio.setMood('route');
     observeChoiceInput(this);
@@ -7751,7 +7769,7 @@ class RouteScene extends Phaser.Scene {
       return [
         {
           key: 'challenge_rival',
-          text: 'Take Caldra\'s wager',
+          text: `Take Caldra's wager · crew gains ${Math.min(6, (this.runState.flyway?.rivalWins ?? 0) * 2)} Cover${(this.runState.flyway?.rivalWins ?? 0) >= 2 ? ' and +1 attack damage' : ''}`,
           effects: ['startRivalBattle'],
           locked: false
         },
@@ -8542,8 +8560,7 @@ class RouteScene extends Phaser.Scene {
         return true;
       })
       .map(({ saved, index }) => {
-        const card = cloneCard(saved.id);
-        card.upgraded = !!saved.upgraded;
+        const card = cardsFromSave([saved])[0];
         const cost = context === 'market' ? this.marketCardPickerPrice(mode, card) : card.cost;
         return { index, card, name: card.name, cost, upgraded: !!saved.upgraded };
       });
@@ -8567,17 +8584,20 @@ class RouteScene extends Phaser.Scene {
   }
 
 
-  applyCardPick(index: number) {
+  // Commands retain the canonical automatic upgrade; player commits request a branch.
+  applyCardPick(index: number, interactive = false) {
     this.cardPickerArmedIndex = undefined;
     this.cardPickerInspectionOpen = false;
     if (this.cardPickerContext === 'market') {
-      this.applyMarketCardPick(index);
+      this.applyMarketCardPick(index, interactive);
       return;
     }
     const isDistrictPreen = this.cardPickerContext === 'districtPreen';
     const mode = this.cardPickerMode;
     const saved = this.runState.deck[index];
     if (!saved || !mode) return;
+    const context = this.cardPickerContext;
+    if (interactive && mode === 'preen' && (this as any).flywayPreenRequest?.(saved, (branch: PreenBranch) => { saved.preenBranch = branch; this.applyCardPick(index); }, () => this.cardPickerMode === mode && this.cardPickerContext === context && this.runState.deck[index] === saved && !saved.upgraded)) return;
     const name = cardLibrary[saved.id]?.name ?? saved.id;
     if (mode === 'preen') {
       saved.upgraded = true;
@@ -8622,6 +8642,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private cancelMarketCardPicker() {
+    (this as any).flywayCancelPreen?.();
     this.cardPickerMode = undefined;
     this.cardPickerContext = undefined;
     this.cardPickerRemainingPicks = 0;
@@ -8634,6 +8655,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private cancelRouteCardPicker() {
+    (this as any).flywayCancelPreen?.();
     const isDistrictPreen = this.cardPickerContext === 'districtPreen';
     const skippedDistrictPreens = Math.max(1, this.cardPickerRemainingPicks || 1);
     const nodeId = this.nodeChoiceNodeId;
@@ -8659,7 +8681,7 @@ class RouteScene extends Phaser.Scene {
     this.renderAll();
   }
 
-  private applyMarketCardPick(index: number) {
+  private applyMarketCardPick(index: number, interactive = false) {
     const mode = this.cardPickerMode;
     const slot = this.marketPickerUtilitySlot;
     if (!mode || slot === undefined) return;
@@ -8668,6 +8690,7 @@ class RouteScene extends Phaser.Scene {
     const entry = this.pickerEligibleCards(mode, 'market').find((candidate) => candidate.index === index);
     const saved = this.runState.deck[index];
     if (!entry || !saved || this.runState.scrap < entry.cost) return;
+    if (interactive && mode === 'preen' && (this as any).flywayPreenRequest?.(saved, (branch: PreenBranch) => { saved.preenBranch = branch; this.applyMarketCardPick(index); }, () => this.cardPickerMode === mode && this.cardPickerContext === 'market' && this.marketPickerUtilitySlot === slot && this.marketUtilityShelf[slot] === listing && !listing.sold && this.runState.deck[index] === saved && !saved.upgraded && this.runState.scrap >= entry.cost)) return;
     const name = cardLibrary[saved.id]?.name ?? saved.id;
     this.spendRouteScrap(entry.cost);
     listing.price = entry.cost;
@@ -12571,6 +12594,10 @@ class RouteScene extends Phaser.Scene {
 }
 
 class BattleScene extends Phaser.Scene {
+  private resolvingCard?: Card;
+  flyway = newFlywayState();
+  flightCombat = newFlightCombat();
+  flywayMapIndex = 0;
   private flock!: Flock;
   private enemies: Enemy[] = [];
   private drawPile: Card[] = [];
@@ -12611,6 +12638,7 @@ class BattleScene extends Phaser.Scene {
   private runMode: RunMode = 'full';
   private lastRunRewards?: ReturnType<typeof recordRun>;
   private outcomeSaved = true;
+  private flywayArchiveSaved = true;
   private runSignalChoices: SignalChoiceEvent[] = [];
   private runRewardEvents: CardRewardEvent[] = [];
   private runRouteDecisions: RouteDecisionEvent[] = [];
@@ -12746,7 +12774,6 @@ class BattleScene extends Phaser.Scene {
   private outcomeFxPlayed?: GameMode;
   private outcomeDetailsOpen = false;
   private bossDossierModule?: BossDossierModule;
-  private bossDossierLoadRequested = false;
   private combatDefeatBurstBursts = 0;
   private combatImpactFlashBursts = 0;
   private combatPlayerHitConfirmBursts = 0;
@@ -12874,11 +12901,16 @@ class BattleScene extends Phaser.Scene {
 
   init(data: BattleSceneData = {}) {
     this.outcomeSaved = true;
+    this.flywayArchiveSaved = true;
     this.lastRunRewards = undefined;
     this.registry.set(controlPanelRegistryKey(this), false);
     this.registry.remove(controlCaptureRegistryKey(this));
     const runState = cloneRunState(data.runState ?? createInitialRunState());
     this.runLeaderId = runState.leaderId;
+    this.resolvingCard = undefined;
+    this.flyway = normalizeFlyway(runState.flyway);
+    this.flightCombat = newFlightCombat();
+    this.flywayMapIndex = runState.mapIndex ?? 0;
     // Combat is not a resumable save format. Keep the complete route state,
     // including mode/contracts/modifiers, rather than persisting a partial fight.
     this.battleRouteCheckpoint = cloneRunState(runState);
@@ -12896,6 +12928,11 @@ class BattleScene extends Phaser.Scene {
     this.flock.flowMax = leader.flowMax ?? this.flock.flowMax;
     this.flock.flow = Math.min(this.flock.flowMax, leader.startFlow ?? 0);
     this.enemies = createEncounterEnemiesForRouteNode(initialRouteNode);
+    if (this.flyway.conditionNode && this.flyway.conditionNode !== initialRouteNode.id) { this.flyway.condition = 'clear'; this.flyway.conditionNode = undefined; }
+    if (initialRouteNode.type === 'rival') this.enemies.forEach(enemy => {
+      enemy.block += Math.min(6, this.flyway.rivalWins * 2);
+      enemy.damageBonus += this.flyway.rivalWins >= 2 ? 1 : 0;
+    });
     const ascension = difficultyMods(this.runDifficulty);
     applyAscensionOpeningIntents(
       this.runDifficulty,
@@ -12950,7 +12987,7 @@ class BattleScene extends Phaser.Scene {
     this.discardChoice = undefined;
     this.returnChoice = undefined;
     this.selectedEnemyId = this.enemies[0]?.id ?? '';
-    this.energy = 3;
+    this.energy = this.flyway.condition === 'crosswind' ? 2 : 3;
     this.nextTurnEnergyBonus = 0;
     this.nextTurnDrawBonus = 0;
     this.pendingNestCoverBonus = 0;
@@ -13234,8 +13271,9 @@ class BattleScene extends Phaser.Scene {
     if (pending.startOpenSky) { this.flock.exposed = true; this.flock.exposedTurns = 2; }
     if (pending.enemyCover) this.enemies.forEach((enemy) => { enemy.block += pending.enemyCover ?? 0; });
     if (pending.bossDamageShield && currentCombatNodes()[this.currentRouteIndex]?.type === 'boss') {
-      this.flock.block += pending.bossDamageShield;
-      this.logEvent(`Boss prep adds ${pending.bossDamageShield} Cover.`);
+      const cover = flywayCoverGain(this.flyway, pending.bossDamageShield);
+      this.flock.block += cover;
+      this.logEvent(`Boss prep adds ${cover} Cover.`);
     }
   }
 
@@ -13255,7 +13293,8 @@ class BattleScene extends Phaser.Scene {
   private resolveMarkEffect(effect: string, markName: string) {
     const parsed = parseEffect(effect);
     if (!parsed) return;
-    const value = parseEffectValue(parsed.args[1] ?? parsed.args[0], 0);
+    const rawValue = parseEffectValue(parsed.args[1] ?? parsed.args[0], 0);
+    const value = ['gainCover', 'bossDamageShield'].includes(parsed.name) ? flywayCoverGain(this.flyway, rawValue) : rawValue;
     switch (parsed.name) {
       case 'gainCover':
         this.flock.block += value;
@@ -13269,7 +13308,7 @@ class BattleScene extends Phaser.Scene {
         }
         break;
       case 'gainCoverPerWaymark': {
-        const cover = Math.max(0, value * this.routeMarks.length);
+        const cover = flywayCoverGain(this.flyway, value * this.routeMarks.length);
         this.flock.block += cover;
         if (cover > 0) {
           birdAudio.play('cover', Math.min(1.25, 0.72 + cover / 14));
@@ -13645,6 +13684,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   create() {
+    loadFlyway(this);
     syncSceneAnimationPace(this);
     birdAudio.setMood(this.battlefieldMood() === 'boss' ? 'boss' : 'battle');
     observeChoiceInput(this);
@@ -14405,7 +14445,7 @@ private playBattleIntro(onComplete?: () => void) {
     this.combatIntroFinish = this.battleFxPresenterModule.playEncounterIntro(this, this.fxLayer, {
       reduced: prefersReducedMotion(), holdScale: textTiming.holdScale, minimumReadableMs: textTiming.minimumReadableMs,
       width: GAME_WIDTH, height: GAME_HEIGHT, district: currentMap().name,
-      encounter: currentCombatNodes()[this.currentRouteIndex]?.label ?? 'Rooftop Fight',
+      encounter: this.battlefieldMood() === 'rival' ? `Caldra’s Pinion Crew · encounter ${this.flyway.rivalWins + 1}` : currentCombatNodes()[this.currentRouteIndex]?.label ?? 'Rooftop Fight',
       confirm: controlBindingLabel('confirm'), texture: COMBAT_ENCOUNTER_INTRO_TEXTURE,
       plaque: uiIconAssets['combat-encounter-plaque'].key,
       font: UI_FONT, displayFont: TOKEN_DISPLAY_FONT, bold: UI_BOLD, gold: UI_GOLD, cyan: UI_CYAN, soft: UI_SOFT,
@@ -19407,6 +19447,8 @@ private playBattleIntro(onComplete?: () => void) {
       energy: this.energy,
       resonance: this.spark,
       moltPower: this.activeMoltPower(),
+      moltEntryEnergy: this.flyway.relic === 'storm-pin' ? 1 : 0,
+      rawCoverGain: amount => flywayCoverGain(this.flyway, amount),
       cost: this.effectiveCost(card),
       pendingNestCoverBonus: this.pendingNestCoverBonus,
       nextTurnDraw: this.nextTurnDrawBonus,
@@ -19423,7 +19465,15 @@ private playBattleIntro(onComplete?: () => void) {
       scaledDamageBonus: (area) => this.scaledFlockStatBonus('damage', area),
       scaledCoverBonus: () => this.scaledFlockStatBonus('cover'),
       damageOutcome: cardDamageOutcome,
-      coverOutcome: cardCoverOutcome
+      coverOutcome: (amount, flock, bonus, nest) => flywayCoverGain(this.flyway, cardCoverOutcome(amount, flock, bonus, nest)),
+      afterCard: (context) => {
+        if (this.runLeaderId === 'fledgling' && card.runtime.suit && !this.fledglingSuitRallies.has(card.runtime.suit)) context.flock.flow = Math.min(this.flock.flowMax, context.flock.flow + 1);
+        const combo = playCombination(structuredClone(this.flightCombat), card.runtime.suit);
+        if (combo?.effect === 'damage') context.damageEnemy(enemyId, 2, combo.name, card);
+        if (combo?.effect === 'cover') context.gainBlock(3, combo.name, card);
+        if (combo?.effect === 'resonance') context.gainResonance(1);
+        for (const enemy of context.livingEnemies()) if (!enemy.flywayBreakUsed && bossDisruption(enemy, activeMapIndex)?.met && moveDealsDamage(currentMove(enemy))) enemy.flywayBroken = true;
+      }
     });
   }
 
@@ -19922,6 +19972,7 @@ private playBattleIntro(onComplete?: () => void) {
       birdAudio.play('supplyUse', Math.min(1.25, 0.86 + repeats * 0.08));
       this.combatSupplyUseBurst(344, 232, repeats > 1 ? 0.76 : 0.64);
       this.checkSupplyUsedMarks();
+      this.updateFlywayBossBreaks();
       this.logEvent(`Used ${supply.name}.`);
       // Complete costs, choices, consumption and Supply-triggered effects
       // before handing the final state to rewards. A lethal Supply should
@@ -20791,221 +20842,11 @@ private playBattleIntro(onComplete?: () => void) {
 
   private renderOutcome() {
     this.queueBattleRewardUiLoad();
-    this.queueOutcomeDossierLoad();
-    const win = this.mode === 'runComplete';
-    const summary = window.__birdSquadLastRun;
-    const defeatReview = win ? undefined : this.bossDossierModule?.buildDefeatReview(summary);
-    const killedBy = win
-      ? ''
-      : defeatReview?.fatalMove ?? summary?.killedBy ?? this.enemies.find((enemy) => enemy.hp > 0)?.name ?? '';
-    const cx = GAME_WIDTH / 2;
-    const accent = win ? 0xe8b830 : 0xff7a6e;
-    const softAccent = win ? 0x8df4ff : 0xff9d6b;
-    const panelW = 760;
-    const panelH = 570;
-    const panelY = 382;
-    const panelLeft = cx - panelW / 2;
-    const panelTop = panelY - panelH / 2;
-    const statLabelX = cx - 88;
-    const statValueX = cx + 330;
-    this.root.add(this.add.rectangle(cx, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x020409, 0.82));
-    const reportFrameLoaded = false;
-    this.root.add(this.add.rectangle(cx, panelY, panelW, panelH, 0x0d1420, 0.98)
-      .setStrokeStyle(1, 0x7795ab, 0.28).setName('run-outcome-surface'));
-    this.root.add(this.add.rectangle(cx, panelTop + 24, panelW - 64, 2, accent, 0.65));
-    const unlockHighlights = this.outcomeUnlockHighlights();
-    const hasUnlocks = unlockHighlights.length > 0;
-    this.root.add(this.add.text(cx, 170, memoryStorageSessionActive() ? 'Practice Complete' : win ? 'Run Complete' : 'Flock Scattered', {
-      fontFamily: TOKEN_DISPLAY_FONT, fontSize: '36px', fontStyle: UI_BOLD,
-      color: win ? '#ffe1a3' : '#ffb2a4'
-    }).setOrigin(0.5).setResolution(2));
-    const outcomeSubtitle = memoryStorageSessionActive()
-      ? 'Nothing saved. Your active flight, collection, and records are unchanged.' : win
-      ? 'The flyway is restored - every district answers to the flock.'
-      : `Scattered at ${currentMap().name}${killedBy ? `. Last hit: ${killedBy}` : ''}.`;
-    this.root.add(fitTextExcerpt(this.add.text(cx, 212, '', {
-      fontFamily: UI_FONT, fontSize: '18px', color: UI_SOFT, align: 'center', wordWrap: { width: 680, useAdvancedWrap: true }
-    }).setOrigin(0.5).setName('run-outcome-subtitle'), outcomeSubtitle, 2));
-
-    const crestKey = uiIconAssets['run-outcome-crest'].key;
-    if (this.textures.exists(crestKey)) {
-      const crest = this.add.image(panelLeft + 126, 342, crestKey)
-        .setDisplaySize(144, 144)
-        .setAlpha(win ? 0.98 : 0.78);
-      if (!win) crest.setTint(0xffb2a4);
-      this.root.add(crest);
-    }
-
-    this.bossDossierModule?.renderOutcomeFlightSummary(this, this.root, {
-      x: panelLeft + 126,
-      win,
-      review: defeatReview,
-      seed: activeSeed,
-      runMode: this.runMode,
-      reportFrameLoaded,
-      softAccent,
-      fontFamily: UI_FONT,
-      boldStyle: UI_BOLD,
-      softColor: UI_SOFT,
-      focused: this.battleInputActive && !this.outcomeDetailsOpen
-        && this.outcomeInputActions()[this.controllerChoiceIndex]?.id === 'copy',
-    });
-
-    // Recap stats, drawn from the same run state RunSummary captures.
-    const runDistrictCount = runMapIndices(this.runMode).length;
-    const districts = win ? runDistrictCount : runDistrictOrdinal(this.runMode, activeMapIndex);
-    const totalTaken = summary?.combatResults.reduce((sum, combat) => sum + combat.cohesionLost, 0) ?? this.statTaken;
-    const totalDealt = summary?.combatResults.reduce((sum, combat) => sum + combat.damageDealt, 0) ?? this.statDealt;
-    const stats: Array<[string, string]> = [
-      ['Districts', `${districts} / ${runDistrictCount}`],
-      ['Encounters cleared', `${(summary?.combatResults ?? this.runCombatResults).filter(combat => this.completedRouteNodeIds.includes(combat.nodeId)).length}`],
-      ['Damage dealt / taken', `${totalDealt} / ${totalTaken}`],
-    ];
-    const statFrameKey = uiIconAssets['run-outcome-stat-row-frame'].key;
-    this.bossDossierModule?.renderOutcomeStats(this, this.root, stats, {
-      labelX: statLabelX,
-      valueX: statValueX,
-      hasUnlocks,
-      reportFrameLoaded,
-      softAccent,
-      win,
-      rowFrameKey: statFrameKey,
-      fontFamily: UI_FONT,
-      boldStyle: UI_BOLD,
-      mutedColor: UI_MUTED
-    });
-
-    /*
-    const rewards = this.lastRunRewards ?? { newLeaders: [], newAchievements: [] };
-    if (rewards && false && (rewards.newLeaders.length || rewards.newAchievements.length)) {
-      const parts: string[] = [];
-      if (rewards.newLeaders.length) parts.push(`New Leader - ${rewards.newLeaders.map((id) => getLeader(id).name).join(', ')}`);
-      if (rewards.newAchievements.length) parts.push(`Achievement - ${rewards.newAchievements.map((id) => achievements.find((a) => a.id === id)?.name ?? id).join(', ')}`);
-      this.root.add(this.add.text(cx, 240, `Ã¢Ëœâ€¦ ${parts.join('    Ã‚Â·    ')}`, {
-        fontFamily: UI_FONT, fontSize: '14px', fontStyle: UI_BOLD, color: '#ffe07a', align: 'center', wordWrap: { width: 540 }
-      }).setOrigin(0.5));
-    }
-
-    */
-    if (hasUnlocks) this.bossDossierModule?.renderOutcomeUnlockStrip(
-      this,
-      this.root,
-      unlockHighlights,
-      panelLeft + 286,
-      270,
-      438,
-      win,
-      {
-        flourishKey: uiIconAssets['progression-unlock-flourish'].key,
-        reducedMotion: prefersReducedMotion(),
-        fontFamily: UI_FONT,
-        boldStyle: UI_BOLD,
-        brass: UI_FIELD.brass,
-        cyan: UI_FIELD.cyan,
-        addIcon: (x, y) => addUiIconImage(this, 'unlock-badge', x, y, 42)
-      }
-    );
-
-    const commandFrameKey = uiIconAssets['run-outcome-command-frame'].key;
-    const addCommandIcon = (id: string, x: number, y: number) => addUiIconImage(this, id as UiIconId, x, y, 18);
-    const outcomeActions = this.outcomeActions();
-    const outcomeIndex = this.normalizeCombatChoiceIndex();
-    const compactCommands = outcomeActions.length > 2;
-    const commandSpacing = outcomeActions.length > 3 ? 214 : compactCommands ? 232 : 280;
-    const commandWidth = outcomeActions.length > 3 ? 190 : compactCommands ? 210 : 256;
-    outcomeActions.forEach((action, index) => {
-      const x = cx + (index - (outcomeActions.length - 1) / 2) * commandSpacing;
-      const style = action.id === 'replay'
-        ? {
-            labelColor: UI_GOLD,
-            iconId: 'route-pin',
-            baseFill: 0x122235,
-            hoverFill: 0x183451,
-            stroke: 0xd8a840,
-            frameTint: win ? undefined : 0xffb195,
-          }
-        : action.id === 'details'
-          ? {
-              labelColor: '#dffbff',
-              iconId: 'release-card',
-              baseFill: 0x0b2530,
-              hoverFill: 0x123b4b,
-              stroke: 0x8df4ff,
-              frameTint: 0xcfefff,
-            }
-        : action.id === 'rate'
-          ? {
-              labelColor: '#dffbff',
-              iconId: 'unlock-badge',
-              baseFill: 0x0d2730,
-              hoverFill: 0x164251,
-              stroke: 0x8df4ff,
-              frameTint: 0xcfefff,
-            }
-          : {
-              labelColor: '#dbe6f0',
-              iconId: 'back-chevron',
-              baseFill: 0x141d2b,
-              hoverFill: 0x1b2d42,
-              stroke: 0x7ab8d6,
-              frameTint: win ? 0xcfefff : 0xffb195,
-            };
-      this.bossDossierModule?.renderOutcomeCommand(this, this.root, {
-        x,
-        textX: x + (compactCommands ? 14 : 22),
-        label: action.label,
-        labelColor: style.labelColor,
-        iconId: style.iconId,
-        iconX: x - commandWidth / 2 + (compactCommands ? 34 : 32),
-        baseFill: style.baseFill,
-        hoverFill: style.hoverFill,
-        stroke: style.stroke,
-        frameTint: style.frameTint,
-        frameKey: commandFrameKey,
-        fontFamily: UI_FONT,
-        boldStyle: UI_BOLD,
-        width: commandWidth,
-        fontSize: outcomeActions.length > 3 ? 15 : compactCommands ? 17 : 20,
-        focused: this.battleInputActive && outcomeIndex === index,
-        onActivate: action.activate,
-        addIcon: addCommandIcon,
-      });
-    });
-
-    const mastery = leaderMastery(this.lastRunRewards?.account ?? loadAccount(), this.runLeaderId ?? defaultLeaderId);
-    const dossierGoal = this.outcomeBossDossierGoal();
-    const collectionGoal = this.outcomeCardDiscoveryGoal();
-    const nextFlightGoal = dossierGoal
-      ? `${dossierGoal.name} DOSSIER  /  Witness ${dossierGoal.remaining} more tactic${dossierGoal.remaining === 1 ? '' : 's'}`
-      : collectionGoal
-        ? collectionGoal.label
-      : `${mastery.title}  /  ${mastery.nextGoal} (${mastery.current}/${mastery.target})`;
-    this.bossDossierModule?.renderOutcomeNextGoal(this, this.root, nextFlightGoal, UI_FONT);
-
-    if (this.outcomeFxPlayed !== this.mode && this.bossDossierModule) {
-      this.outcomeFxPlayed = this.mode;
-      this.bossDossierModule?.playOutcomeRevealFx({
-        win,
-        color: softAccent,
-        hasUnlocks,
-        reducedMotion: prefersReducedMotion(),
-        pulseRing: (x, y, fxColor, radius, duration) => this.pulseRing(x, y, fxColor, radius, duration),
-        moteBurst: (x, y, fxColor, config) => this.fxMoteBurst(x, y, fxColor, config as Parameters<typeof this.fxMoteBurst>[3]),
-        playAnimation: (key, x, y, config) => this.playFxAnimation(key, x, y, config as Parameters<typeof this.playFxAnimation>[3])
-      });
-    }
-    const flightDetails = this.outcomeDetailsOpen ? this.outcomeFlightDetails() : undefined;
-    if (flightDetails && this.bossDossierModule) {
-      this.bossDossierModule.renderOutcomeFlightDetails(this, this.root, flightDetails, {
-        title: 'Flight Details',
-        identity: summary ?? flightDetails,
-        subtitle: `${summary?.result === 'win' ? 'Completed' : 'Scattered'} flight ${summary?.seed ?? activeSeed} · ${getLeader(summary?.leaderId).name} · ${difficultyLabel(summary?.difficulty ?? 0)}`,
-        fontFamily: UI_FONT,
-        boldStyle: UI_BOLD,
-        focused: this.battleInputActive,
-        onClose: () => this.closeOutcomeFlightDetails(),
-      });
-    }
+    if (this.bossDossierModule) this.bossDossierModule.renderOutcomeScene(this);
+    else pendingOverlay(this, object => this.root.add(object), loadBossDossierModule, module => {
+      this.bossDossierModule = module;
+      this.requestBattleRender();
+    }, () => this.returnToMainMenu(), 'Main Menu');
   }
 
   private outcomeUnlockHighlights(): Array<{ id: string; name: string; kind: 'leader' | 'achievement' | 'contract' | 'dossier' | 'record'; description: string }> {
@@ -21037,19 +20878,6 @@ private playBattleIntro(onComplete?: () => void) {
       alphaCardSet.cards,
       (this.lastRunRewards?.account ?? loadAccount()).discoveredCards
     );
-  }
-
-  private queueOutcomeDossierLoad() {
-    if (this.bossDossierModule || this.bossDossierLoadRequested) return;
-    this.bossDossierLoadRequested = true;
-    void loadBossDossierModule().then((module) => {
-      this.bossDossierModule = module;
-      this.bossDossierLoadRequested = false;
-      if (this.sys.settings.active && isRunOutcome(this.mode)) this.requestBattleRender();
-    }).catch((error) => {
-      this.bossDossierLoadRequested = false;
-      console.warn(LAZY_LOAD_FAILED, error);
-    });
   }
 
   private onCardClicked(instanceId: string) {
@@ -21212,12 +21040,21 @@ private playBattleIntro(onComplete?: () => void) {
     this.scene.start('MenuScene');
   }
 
+  private saveFlywayEnding() {
+    this.flywayArchiveSaved = persistFlywayEnding(this.flyway, saveCards(this.allDeckCards()));
+    return this.flywayArchiveSaved;
+  }
+
   private ensureOutcomeSaved() {
-    if (this.outcomeSaved || memoryStorageSessionActive()) return true;
+    if ((this.outcomeSaved && this.flywayArchiveSaved) || memoryStorageSessionActive()) return true;
     const retry = () => {
-      const rewards = window.__birdSquadLastRun && persistFinishedRun(window.__birdSquadLastRun);
-      if (!rewards) return false;
-      this.lastRunRewards = rewards; this.outcomeSaved = true;
+      // Keep the active checkpoint until the journal, seals, and result are durable.
+      if (!this.flywayArchiveSaved && !this.saveFlywayEnding()) return false;
+      if (!this.outcomeSaved) {
+        const rewards = window.__birdSquadLastRun && persistFinishedRun(window.__birdSquadLastRun);
+        if (!rewards) return false;
+        this.lastRunRewards = rewards; this.outcomeSaved = true;
+      }
       this.requestBattleRender(); return true;
     };
     if (retry()) return true;
@@ -21321,6 +21158,32 @@ private playBattleIntro(onComplete?: () => void) {
     return retired;
   }
 
+  activateFlywayCall() {
+    if (this.combatInteractionLocked() || this.combatIntroActive || this.supplyDrawerOpen || this.waymarkDrawerOpen) return false;
+    const leader = this.runLeaderId ?? 'fledgling';
+    if (!takeCall(this.flightCombat, leader)) return false;
+    const call = leaderCalls[leader] ?? leaderCalls.fledgling;
+    if (leader === 'talon') { const target = this.resolvePlayableEnemyTarget(this.selectedEnemyId); if (target) this.damageEnemy(target.id, 8, call.name, undefined, true); }
+    else if (leader === 'tidewarden') { this.healFlock(6, call.name); this.gainBlock(4, call.name); }
+    else if (leader === 'roostkeeper') { this.enemies.filter(e => e.hp > 0).forEach(e => this.damageEnemy(e.id, 4, call.name)); this.gainBlock(4, call.name); }
+    else { this.energy += 2; if (leader === 'spark_caller') this.drawCards(1); else this.gainBlock(3, call.name); }
+    this.flyway.leaderCalls += 1;
+    this.logEvent(`${call.name}: ${call.effect}`);
+    this.events.emit('flyway-call', call.name);
+    this.updateFlywayBossBreaks(); this.checkOutcome(); this.renderAll(); return true;
+  }
+
+  private updateFlywayBossBreaks() {
+    for (const enemy of this.enemies) {
+      const rule = bossDisruption(enemy, activeMapIndex);
+      if (enemy.hp <= 0 || enemy.flywayBreakUsed || !rule?.met || !moveDealsDamage(currentMove(enemy))) continue;
+      enemy.flywayBroken = true; enemy.flywayBreakUsed = true;
+      this.flightCombat.bossBreaks.push(enemy.id);
+      this.logEvent(`${enemy.name}'s attack is disrupted. ${rule.rule}`);
+      this.events.emit('flyway-break', enemy.id);
+    }
+  }
+
   private playCard(card: Card, enemyId = this.selectedEnemyId, options: PlayCardOptions = {}) {
     if (this.combatInteractionLocked()) return;
     this.hideCardPreview();
@@ -21334,6 +21197,7 @@ private playBattleIntro(onComplete?: () => void) {
     const handIndexBeforePlay = Math.max(0, this.hand.findIndex((candidate) => candidate.instanceId === card.instanceId));
     const playedCard = this.removeCardFromHand(card.instanceId);
     if (!playedCard) return;
+    this.resolvingCard = playedCard;
     recordFirstFlightGuideEvent('card');
     if (playedCard.runtime.kind === 'molt') completeFirstMoltGuide();
     birdAudio.play('card', 1, playedCard.runtime.suit, contract.usesMolt);
@@ -21402,7 +21266,7 @@ private playBattleIntro(onComplete?: () => void) {
     const cast = this.fxLayer.getByName('combat-card-cast-ghost');
     if (cast) { killTweensForTree(this, cast); cast.destroy(); }
     this.resolveCardEffectsInteractive(playedCard, enemyId, contract, (outcome) => {
-      this.finalizePlayedCardResolution(playedCard, handIndexBeforePlay, handSizeBeforePlay, outcome);
+      this.finalizePlayedCardResolution(playedCard, handIndexBeforePlay, handSizeBeforePlay, outcome, enemyId);
     });
   }
 
@@ -21411,14 +21275,28 @@ private playBattleIntro(onComplete?: () => void) {
     handIndexBeforePlay: number,
     handSizeBeforePlay: number,
     outcome: EffectResolutionState,
+    enemyId: string,
   ) {
     if (playedCard.runtime.suit) {
       this.playedSuitsThisTurn.add(playedCard.runtime.suit);
       this.triggerFledglingSuitRally(playedCard);
       this.checkSuitPlayedMarks(playedCard.runtime.suit);
     }
+    chargeCall(this.flightCombat, this.runLeaderId ?? 'fledgling', 'suit', 1, playedCard.runtime.suit ?? undefined);
+    const combo = playCombination(this.flightCombat, playedCard.runtime.suit);
+    if (combo) {
+      const target = this.enemies.find(enemy => enemy.id === enemyId && enemy.hp > 0);
+      if (combo.effect === 'damage' && target) this.damageEnemy(target.id, 2, combo.name);
+      if (combo.effect === 'resonance') this.gainResonance(1);
+      if (combo.effect === 'cover') this.gainBlock(3, combo.name);
+      this.flyway.combinations += 1;
+      this.logEvent(`${combo.name}: ${combo.rule}`);
+      this.events.emit('flyway-combination', combo);
+    }
+    this.events.emit('flyway-card', playedCard, enemyId);
     this.playedCardIdsThisCombat.add(playedCard.id);
     this.checkNthCardMarks(); // rooftop_shortcut-style Waymarks that trigger on the Nth card
+    this.updateFlywayBossBreaks();
 
     // (Molt is now a whole-turn transform stance - it no longer breaks on the
     // next card. It ends in endTurn, leaving the flock briefly Open Sky.)
@@ -21434,6 +21312,7 @@ private playBattleIntro(onComplete?: () => void) {
       this.discardPile.push(playedCard);
       this.animateDiscard(1, this.handCardLeft(handIndexBeforePlay, handSizeBeforePlay) + CARD_W / 2, HAND_Y, 0.82);
     }
+    this.resolvingCard = undefined;
     if (!this.hand.some(card => card.instanceId === this.selectedInstanceId)) this.selectedInstanceId = undefined;
     this.checkOutcome();
     // Animated cards publish the settled board once when input unlocks. An
@@ -21909,9 +21788,9 @@ private playBattleIntro(onComplete?: () => void) {
 
   private scaledFlockStatBonus(kind: 'damage' | 'cover', area = false) {
     const raw = this.flockStats()[kind] ?? 0;
-    if (raw <= 0) return 0;
+    const travel = kind === 'damage' && this.flyway.relic === 'light-travel' && this.flightCombat.lightTravelReady ? 2 : 0;
     const softened = Math.ceil(raw * (area ? 0.4 : 0.65));
-    return Math.max(1, softened);
+    return (raw > 0 ? Math.max(1, softened) : 0) + travel;
   }
 
   private spendFlockDamageBonus(state: EffectResolutionState, area = false) {
@@ -21954,6 +21833,7 @@ private playBattleIntro(onComplete?: () => void) {
     const enemy = this.getLivingEnemy(enemyId);
     if (!enemy) return false;
     const hpBefore = enemy.hp;
+    if (card && enemy.weak > 0) chargeCall(this.flightCombat, this.runLeaderId ?? 'fledgling', 'winded');
     const outcome = cardDamageOutcome(
       amount,
       this.flock,
@@ -22036,6 +21916,7 @@ private playBattleIntro(onComplete?: () => void) {
     enemy.intentIndex = 0;
     enemy.block = 0;
     enemy.nextAttackBonus = 0;
+    this.events.emit('flyway-phase', enemy.id);
     const phaseName = enemy.runtime.phaseTwoName ?? 'Final Pattern';
     const nextMove = currentMove(enemy);
     const reset = lostCover > 0 || lostForce > 0
@@ -22049,7 +21930,7 @@ private playBattleIntro(onComplete?: () => void) {
 
   private gainBlock(amount: number, source: string, card?: Card) {
     const nestBonus = card?.runtime.suit === 'nests' ? this.pendingNestCoverBonus : 0;
-    const block = cardCoverOutcome(amount, this.flock, this.scaledFlockStatBonus('cover'), nestBonus);
+    const block = flywayCoverGain(this.flyway, cardCoverOutcome(amount, this.flock, this.scaledFlockStatBonus('cover'), nestBonus));
     if (nestBonus > 0) {
       this.pendingNestCoverBonus = 0;
     }
@@ -22073,6 +21954,7 @@ private playBattleIntro(onComplete?: () => void) {
     const before = this.flock.hp;
     this.flock.hp = Math.min(this.flock.maxHp, this.flock.hp + healing);
     const healed = this.flock.hp - before;
+    chargeCall(this.flightCombat, this.runLeaderId ?? 'fledgling', 'heal', healed);
     if (healed > 0) {
       birdAudio.play('heal', Math.min(1.35, 0.7 + healed / 12));
       this.logEvent(`${source} restores ${healed} Cohesion.`);
@@ -22089,16 +21971,17 @@ private playBattleIntro(onComplete?: () => void) {
       && this.leaderSignatureAvailable('tidewarden', 'firstOverheal');
     if (signatureOverflow) this.markLeaderSignature('firstOverheal');
     if ((overflowToCover || signatureOverflow) && overheal > 0) {
+      const cover = flywayCoverGain(this.flyway, overheal);
       birdAudio.play('cover', Math.min(1.2, 0.7 + overheal / 14));
-      this.flock.block += overheal;
+      this.flock.block += cover;
       this.logEvent(signatureOverflow
-        ? `Overflow Shelter turns ${overheal} wasted healing into Cover.`
-        : `${source} overflows into ${overheal} Cover.`);
+        ? `Overflow Shelter turns ${overheal} wasted healing into ${cover} Cover.`
+        : `${source} overflows into ${cover} Cover.`);
       this.queueFlockMotion('brace');
       if (signatureOverflow) this.combatOverflowShelter(FLOCK_FX_X + 46, FLOCK_FX_Y - 70, 1);
       this.presentNumberFeedback(FLOCK_FX_X, FLOCK_FX_Y, '#7ab8d6', {
         target: 'flock', kind: 'cover', source: signatureOverflow ? 'Leader: Overflow Shelter' : source,
-        amount: overheal, suffix: ' Cover', reducedMotion: prefersReducedMotion(),
+        amount: cover, suffix: ' Cover', reducedMotion: prefersReducedMotion(),
       });
       this.coverBuildFx('nests');
     }
@@ -22124,6 +22007,7 @@ private playBattleIntro(onComplete?: () => void) {
       return false;
     }
     this.spark -= amount;
+    chargeCall(this.flightCombat, this.runLeaderId ?? 'fledgling', 'spend', amount);
     this.logEvent(`The flock spends ${amount} Resonance.`);
     this.combatResonanceSpend(FLOCK_FX_X + 18, FLOCK_FX_Y - 38, Phaser.Math.Clamp(0.88 + amount * 0.07, 0.92, 1.16));
     this.sparkBurst(FLOCK_FX_X + 18, FLOCK_FX_Y - 38, 0x8df4ff, Phaser.Math.Clamp(12 + amount * 4, 14, 24), 150);
@@ -22146,6 +22030,10 @@ private playBattleIntro(onComplete?: () => void) {
     this.logEvent(`${source} turns the flock through Molt.`);
     this.presentFlockStatus('Molt!', '#ff9d4d', 'molt');
     if (!wasMolting) {
+      this.flightCombat.molted = true;
+      this.flightCombat.moltSurvived = false;
+      if (this.flyway.relic === 'storm-pin') this.energy += 1;
+      this.events.emit('flyway-molt', true);
       this.combatMoltShift(FLOCK_FX_X, FLOCK_FX_Y - 22, 1);
       this.sparkBurst(FLOCK_FX_X, FLOCK_FX_Y - 12, 0xff9d4d, 20, 160);
     }
@@ -22174,7 +22062,7 @@ private playBattleIntro(onComplete?: () => void) {
     this.statCardsHeldAtRoost += cardsHeldAtRoost;
     this.statUnspentWingbeatAtRoost += wingbeatAtRoost;
     if (cardsPlayedAtRoost > 0 && cardsPlayedAtRoost <= 2) this.statLowCardTurns += 1;
-    if (cardsPlayedAtRoost > 0 && cardsPlayedAtRoost < OVEREXTENSION_CARD_THRESHOLD) this.statNoOverextensionTurns += 1;
+    if (cardsPlayedAtRoost > 0 && cardsPlayedAtRoost < (this.flyway.condition === 'scaffold' ? 3 : OVEREXTENSION_CARD_THRESHOLD)) this.statNoOverextensionTurns += 1;
 
     this.roostRetainPriorityInstanceId = this.selectedInstanceId
       && this.hand.some((card) => card.instanceId === this.selectedInstanceId)
@@ -22218,7 +22106,8 @@ private playBattleIntro(onComplete?: () => void) {
     // briefly Open Sky (the cost of shedding into Molt) for the enemy's swing.
     if (this.flock.molt) {
       this.flock.molt = false;
-      this.enterOpenSky(1, 'The flock sheds out of Molt - Open Sky.');
+      this.enterOpenSky(this.flyway.relic === 'storm-pin' ? 2 : 1, 'The flock sheds out of Molt - Open Sky.');
+      this.events.emit('flyway-molt', false);
     }
     this.applyOverextensionPenalty();
     const hpBeforeEnemyTurn = this.flock.hp;
@@ -22269,7 +22158,9 @@ private playBattleIntro(onComplete?: () => void) {
     this.energy = 3 + this.nextTurnEnergyBonus;
     this.nextTurnEnergyBonus = 0;
     // Nests keystone: Cover carries between turns (capped) instead of fully clearing.
-    this.flock.block = this.keystoneActive('nests') ? Math.min(this.flock.block, NESTS_COVER_CARRY_CAP) : 0;
+    this.flock.block = Math.min(this.flock.block, this.flyway.relic === 'woven-roost' ? 8 : this.keystoneActive('nests') ? NESTS_COVER_CARRY_CAP : 0);
+    this.flightCombat.previousSuit = undefined;
+    this.flightCombat.combos = [];
     this.cardsPlayedThisTurn = 0;
     this.zeroCostThisTurn = 0;
     this.markFiredThisTurn = new Set();
@@ -22331,7 +22222,7 @@ private playBattleIntro(onComplete?: () => void) {
   }
 
   private applyOverextensionPenalty() {
-    if (this.cardsPlayedThisTurn < OVEREXTENSION_CARD_THRESHOLD || this.flock.exposed) return;
+    if (this.cardsPlayedThisTurn < (this.flyway.condition === 'scaffold' ? 3 : OVEREXTENSION_CARD_THRESHOLD) || this.flock.exposed) return;
     this.statOverextensions += 1;
     this.combatOverextensionWarning(FLOCK_FX_X, FLOCK_FX_Y - 52, 1);
     this.enterOpenSky(1, `${this.cardsPlayedThisTurn} cards overextend the formation - Open Sky.`, 'Overextended!');
@@ -22375,6 +22266,7 @@ private playBattleIntro(onComplete?: () => void) {
   }
 
   advanceEnemyIntent(enemy: Enemy) {
+    enemy.flywayBroken = false;
     const currentNodeId = currentCombatNodes()[this.currentRouteIndex]?.id ?? 'encounter';
     if (advanceAscensionEnemyIntent(
       this.runDifficulty,
@@ -22389,6 +22281,7 @@ private playBattleIntro(onComplete?: () => void) {
   }
 
   private tickOpenSkyAfterEnemyPhase() {
+    if (this.flightCombat.molted && !this.flightCombat.moltSurvived && this.flock.hp > 0) { this.flyway.survivedMolt += 1; this.flightCombat.moltSurvived = true; }
     if (this.flock.exposed && this.flock.exposedTurns > 0) {
       this.flock.exposedTurns -= 1;
       if (this.flock.exposedTurns <= 0) this.flock.exposed = false;
@@ -22606,6 +22499,7 @@ private playBattleIntro(onComplete?: () => void) {
     const firstSkyEffects = marks.filter(mark => mark.trigger === 'firstOpenSkyIncrease').flatMap(routeMarkEffects);
     return projectEnemyPhase({
       flock, enemies, mods: difficultyMods(this.runDifficulty),
+      coverGain: amount => flywayCoverGain(this.flyway, amount),
       move: (enemy, projectedFlock) => currentMove(enemy, { ...context, flock: projectedFlock }),
       condition: (condition, enemy, projectedFlock) => evaluateEnemyCondition(condition, enemy, { ...context, flock: projectedFlock }),
       firstSkyReduction: this.markFirstOpenSkyConsumed ? 0 : this.markValue('firstOpenSkyIncrease', 'reduceOpenSky'),
@@ -22636,8 +22530,8 @@ private playBattleIntro(onComplete?: () => void) {
             case 'applyOpenSky': projected.exposed = true; break;
             case 'applyWinded': projected.weak += value; break;
             case 'enemyNextAttackBonus': { const enemy = projectedEnemies.find(enemy => enemy.hp > 0); if (enemy) enemy.nextAttackBonus += value; break; }
-            case 'gainCover': projected.block += value; break;
-            case 'gainCoverPerWaymark': projected.block += value * this.routeMarks.length; break;
+            case 'gainCover': projected.block += flywayCoverGain(this.flyway, value); break;
+            case 'gainCoverPerWaymark': projected.block += flywayCoverGain(this.flyway, value * this.routeMarks.length); break;
             case 'gainOpenSkyGuard': projected.openSkyGuard += value; break;
             case 'reduceNextOpenSky': projected.openSkyReduction += value; break;
             case 'heal': heal(value); break;
@@ -22656,7 +22550,7 @@ private playBattleIntro(onComplete?: () => void) {
         marks.filter(mark => !this.markFiredThisCombat.has(mark.id)
           && this.roostRestraintMarkMatches(mark, this.hand.length, this.energy, this.cardsPlayedThisTurn))
           .forEach(mark => routeMarkEffects(mark).forEach(effect => apply(effect)));
-        if (projected.molt || this.cardsPlayedThisTurn >= OVEREXTENSION_CARD_THRESHOLD) projected.exposed = true;
+        if (projected.molt || this.cardsPlayedThisTurn >= (this.flyway.condition === 'scaffold' ? 3 : OVEREXTENSION_CARD_THRESHOLD)) projected.exposed = true;
         projected.molt = false;
       } : undefined,
     });
@@ -22705,6 +22599,7 @@ private playBattleIntro(onComplete?: () => void) {
     const cohesionLost = hpBefore - this.flock.hp;
     if (damage > 0 && this.flock.hp <= 0) this.killedByMove = moveLabel;
     this.statBlocked += blocked;
+    if (blocked > 0 && damage === 0) chargeCall(this.flightCombat, this.runLeaderId ?? 'fledgling', 'block');
     this.statTaken += cohesionLost;
     const move = currentMove(enemy);
     const pressureKey = `${enemy.runtime.id}:${move.id}:${moveLabel}`;
@@ -22911,9 +22806,16 @@ private playBattleIntro(onComplete?: () => void) {
     this.returnToRouteMap();
   }
 
-  chooseUpgradeCard(cardId: string) {
+  chooseUpgradeCard(cardId: string, interactive = false) {
     const card = this.upgradeChoices.find((candidate) => candidate.id === cardId);
     if (!card) return;
+    if (interactive && (this as any).flywayPreenRequest?.(card, (branch: PreenBranch) => {
+      card.preenBranch = branch;
+      card.runtime = { ...card.runtime, upgrade: branchUpgrade(card.runtime, branch) };
+      card.upgradedText = formatEffects(card.runtime.upgrade.effects);
+      card.moltTextUpgraded = formatEffects(card.runtime.upgrade.moltEffects ?? []);
+      this.chooseUpgradeCard(cardId);
+    }, () => this.mode === 'upgradeReward' && this.upgradeChoices.includes(card) && !card.upgraded)) return;
     this.rewardChoiceArmedId = undefined;
     card.upgraded = true;
     birdAudio.play('moltPower');
@@ -22925,12 +22827,27 @@ private playBattleIntro(onComplete?: () => void) {
   private returnToRouteMap() {
     // Persist the committed decision before either scene transition or collection
     // writes. A failed write leaves a retryable reward step, not a lost flight.
-    if (!this.saveRewardCheckpoint('route')) { this.renderAll(); return; }
     const completedNodeId = currentCombatNodes()[this.currentRouteIndex]?.id;
     if (completedNodeId && !this.completedRouteNodeIds.includes(completedNodeId)) {
       this.completedRouteNodeIds.push(completedNodeId);
     }
     this.finalizeDistrictContract(completedNodeId);
+    const settlementId = `${activeMapIndex}:${completedNodeId}`;
+    if (!this.flyway.settledNodes.includes(settlementId)) {
+      this.flyway.settledNodes.push(settlementId);
+      this.flightCombat.completed = true;
+      if (this.statTaken === 0) this.flyway.cleanFights += 1;
+      const node = currentCombatNodes()[this.currentRouteIndex];
+      if (node?.type === 'rival' && !this.flyway.rivalNodes.includes(node.id)) {
+        this.flyway.rivalWins += 1; this.flyway.rivalNodes.push(node.id);
+        journal(this.flyway, `Caldra's Pinion Crew yields crossing ${this.flyway.rivalWins}. They remember your formation.`);
+      }
+      const bonus = conditions[this.flyway.condition].reward;
+      if (bonus) { this.scrap += bonus; this.runScrapEarned += bonus; journal(this.flyway, `${conditions[this.flyway.condition].name} cleared: +${bonus} Scrap.`); }
+      this.flyway.condition = 'clear'; this.flyway.conditionNode = undefined;
+    }
+    if (completedNodeId === currentMap().bossNodeId) restoreDistrict(this.flyway, activeMapIndex);
+    if (!this.saveRewardCheckpoint('route')) { this.renderAll(); return; }
 
     if (completedNodeId === currentMap().bossNodeId) {
       // Final district boss Ã¢â€ â€™ run complete; otherwise advance to the next district.
@@ -23058,6 +22975,7 @@ private playBattleIntro(onComplete?: () => void) {
 
     return {
       deck: saveCards(this.allDeckCards()),
+      flyway: normalizeFlyway(this.flyway),
       pendingCardClaims: this.battleRouteCheckpoint.pendingCardClaims?.map(claim => ({ ...claim })),
       cardClaimSequence: this.battleRouteCheckpoint.cardClaimSequence,
       leaderId: this.runLeaderId,
@@ -23230,11 +23148,12 @@ private playBattleIntro(onComplete?: () => void) {
   }
 
   private handTargetSize() {
-    return flockHandTarget(this.flockStats().draw ?? 0, this.keystoneActive('plumes'), this.runLeaderId, this.nextTurnDrawBonus);
+    return Math.max(1, flockHandTarget(this.flockStats().draw ?? 0, this.keystoneActive('plumes'), this.runLeaderId, this.nextTurnDrawBonus) - (this.flyway.relic === 'light-travel' ? 1 : 0));
   }
 
   private drawToHandSize() {
     this.drawCards(Math.max(0, this.handTargetSize() - this.hand.length));
+    this.flightCombat.lightTravelReady = this.hand.length <= 4;
     this.nextTurnDrawBonus = 0;
   }
 
@@ -23450,6 +23369,8 @@ private playBattleIntro(onComplete?: () => void) {
   // Emit a local run-summary artifact (localStorage + window) so playtests are
   // observable (next-level-implementation-spec Phase 5).
   private emitRunSummary(result: 'win' | 'loss') {
+    finishStory(this.flyway, result === 'win', this.allDeckCards().length);
+    this.flywayArchiveSaved = false;
     const currentNode = currentCombatNodes()[this.currentRouteIndex];
     const finalNodeId =
       currentNode?.id ??
@@ -23524,10 +23445,9 @@ private playBattleIntro(onComplete?: () => void) {
       decisionStats
     };
     window.__birdSquadLastRun = summary;
-    if (memoryStorageSessionActive()) { clearActiveRun(); return; }
-    this.lastRunRewards = persistFinishedRun(summary);
-    this.outcomeSaved = !!this.lastRunRewards;
-    if (!this.outcomeSaved) this.ensureOutcomeSaved();
+    if (memoryStorageSessionActive()) { this.saveFlywayEnding(); clearActiveRun(); return; }
+    this.outcomeSaved = false;
+    this.ensureOutcomeSaved();
   }
 
   private createRewardChoices() {
@@ -23566,7 +23486,9 @@ private playBattleIntro(onComplete?: () => void) {
   }
 
   private allDeckCards() {
-    return [...this.drawPile, ...this.discardPile, ...this.hand, ...this.clearedPile];
+    const cards = [...this.drawPile, ...this.discardPile, ...this.hand, ...this.clearedPile];
+    if (this.resolvingCard && !cards.some(card => card.instanceId === this.resolvingCard!.instanceId)) cards.push(this.resolvingCard);
+    return cards;
   }
 
   private flockStats() {
@@ -23625,379 +23547,8 @@ private playBattleIntro(onComplete?: () => void) {
   }
 
   private getTextState(): RenderPayload {
-    const battlefield = this.currentBattlefieldAsset();
-    const districtBattlefield = BATTLEFIELD_ASSETS[currentMap().id] ?? DEFAULT_BATTLEFIELD_ASSET;
-    const rewardAccount = this.rewardChoices.length ? loadAccount() : undefined;
-    const cardCollection = rewardAccount?.cardCollection ?? {};
-    const collectionTargets = new Set(rewardAccount?.hunt ?? []);
-    const flowStatus = (this.root?.list.find((child) => child.name === 'combat-flow-status') as Phaser.GameObjects.Text | undefined)?.text ?? '';
-    const firstCombatGuideCard = this.firstCombatGuideCard();
-    const firstCombatGuideTarget = this.firstCombatGuideTarget(firstCombatGuideCard);
-    const retention = this.retentionPlan();
-    const presentationDebugState = this.battleDebugStateModule?.buildBattlePresentationDebugState({
-      scene: this,
-      roots: {
-        backdrop: this.backdropLayer,
-        battle: this.root,
-        hand: this.handLayer,
-        fx: this.fxLayer,
-        system: this.systemOverlayLayer
-      },
-      counters: this as unknown as Record<string, unknown>
-    }) ?? {};
-    return {
-      mode: this.mode,
-      scene: 'BattleScene',
-      keywordTooltip: keywordTooltipState(this),
-      practice: memoryStorageSessionActive(),
-      assetReadiness: this.battleAssetReadiness.snapshot(),
-      combatAnimationPending: this.combatAnimationPending,
-      playerCardFeedback: {
-        active: Boolean(this.playerCardFxBaseline),
-        baselineObjects: this.playerCardFxBaseline?.size ?? 0,
-        transientObjects: this.playerCardFxTransientCount(),
-        lastRetiredObjects: this.playerCardFxLastRetired,
-      },
-      combatIntro: {
-        active: this.combatIntroActive,
-        dismissQueued: this.combatIntroDismissQueued,
-        dismissed: this.combatIntroDismissed,
-        minimumReadableMs: textPacingState().minimumReadableMs,
-        elapsedMs: this.combatIntroActive
-          ? Math.max(0, Math.round(this.time.now - this.combatIntroStartedAtMs))
-          : this.combatIntroElapsedMs,
-        binding: controlBindingLabel('confirm'),
-      },
-      combatEnemyTurnBeat: this.combatEnemyTurnBeat,
-      combatEnemyTurnMove: this.combatEnemyTurnMove,
-      combatEnemyTurnProgress: this.enemyTurnBeatProgress(),
-      combatEnemyTurnAcceleration: this.combatFxModule?.enemyTurnAccelerationState(this),
-      difficulty: {
-        ...difficultyMods(this.runDifficulty),
-        label: difficultyLabel(this.runDifficulty),
-      },
-      audio: birdAudio.snapshot(),
-      motion: motionState(),
-      visualContrast: visualContrastState(),
-      colorCues: colorCueState(),
-      screenShake: currentScreenShakeState(),
-      flashEffects: currentFlashEffectsState(),
-      graphics: graphicsQualityState(),
-      screenReader: screenReaderState(),
-      combatPacing: combatPacingState(),
-      animationPacing: animationPacingState(this),
-      textPacing: textPacingState(),
-      graphicsRuntime: {
-        atmosphereStrips: countTextureInGameObjects(this.backdropLayer?.list ?? [], COMBAT_ATMOSPHERE_TEXTURE),
-        activeParticleBursts: this.activeFxParticleBursts,
-        particleBurstCap: graphicsQualityState().particleBurstCap,
-      },
-      battleFxPresenter: {
-        ready: this.battleFxPresenterReady,
-        loaded: Boolean(this.battleFxPresenterModule),
-      },
-      combatRender: {
-        requests: this.battleRenderRequests,
-        passes: this.battleRenderPasses,
-        coalesced: this.battleRenderCoalesced,
-        queued: this.battleRenderQueued,
-        lastMs: Number(this.battleRenderLastMs.toFixed(2)),
-        maxMs: Number(this.battleRenderMaxMs.toFixed(2)),
-        totalMs: Number(this.battleRenderTotalMs.toFixed(2)),
-        backdropBuilds: this.battleBackdropBuilds,
-        backdropReuses: this.battleBackdropReuses,
-        handBuilds: this.battleHandBuilds,
-        handReuses: this.battleHandReuses,
-        backdropObjects: this.backdropLayer?.list.length ?? 0,
-        uiObjects: (this.root?.list.length ?? 0) + (this.handLayer?.list.length ?? 0),
-      },
-      battleDebugState: {
-        ready: this.battleDebugStateReady,
-        loaded: Boolean(this.battleDebugStateModule)
-      },
-      battleBackdropRenderer: {
-        ready: this.battleBackdropRendererReady,
-        loaded: Boolean(this.battleBackdropRendererModule)
-      },
-      battleForegroundRenderer: {
-        ready: this.battleForegroundRendererReady,
-        loaded: Boolean(this.battleForegroundRendererModule)
-      },
-      battleHudRenderer: {
-        ready: this.battleHudRendererReady,
-        loaded: Boolean(this.battleHudRendererModule)
-      },
-      battleHandRenderer: {
-        ready: this.battleHandRendererReady,
-        loaded: Boolean(this.battleHandRendererModule)
-      },
-      battleRewardRenderer: {
-        requested: this.battleRewardRendererLoading || Boolean(this.battleRewardRendererModule) || this.battleRewardRendererFailed,
-        ready: this.rewardPresentationReady(),
-        loaded: Boolean(this.battleRewardRendererModule),
-        failed: this.battleRewardRendererFailed
-      },
-      battleInspectRenderer: {
-        requested: this.battleInspectRendererLoading || Boolean(this.battleInspectRendererModule) || this.battleInspectRendererFailed,
-        loaded: Boolean(this.battleInspectRendererModule),
-        failed: this.battleInspectRendererFailed
-      },
-      openingDraw: { ...this.openingDraw },
-      ...presentationDebugState,
-      audioToggleWaveBurst: audioToggleWaveBurstState(this, this.children.list),
-      paused: this.pauseOverlayOpen,
-      pauseSaveFailed: this.pauseOverlayOpen && this.pauseSaveFailed,
-      settingsOverlayOpen: this.settingsOverlayOpen,
-      settingsFocus: settingsFocusState(this, this.settingsOverlayOpen),
-      controls: controlsTextState(this, this.settingsOverlayOpen),
-      unlockHighlights: {
-        iconLoaded: this.textures.exists(uiIconAssets['unlock-badge'].key),
-        flourishLoaded: this.textures.exists(uiIconAssets['progression-unlock-flourish'].key),
-        items: this.outcomeUnlockHighlights()
-      },
-      defeatReview: this.mode === 'defeat'
-        ? this.bossDossierModule?.buildDefeatReview(window.__birdSquadLastRun)
-        : undefined,
-      outcomeFlightDetails: isRunOutcome(this.mode)
-        ? {
-            open: this.outcomeDetailsOpen,
-            details: this.outcomeDetailsOpen ? this.outcomeFlightDetails() : undefined,
-          }
-        : undefined,
-      encounter: this.encounter,
-      encounterObjective: this.encounterObjectiveTextState(),
-      encounterObjectiveFeedback: {
-        status: this.encounterObjectiveFeedbackStatus,
-        bursts: this.encounterObjectiveFeedbackBursts,
-        rendered: this.fxLayer?.list.some((child) => child.name === 'combat-objective-feedback') ?? false,
-      },
-      combatMoltPower: {
-        total: this.activeMoltPower(),
-        bursts: this.combatMoltPowerBursts,
-        rendered: this.fxLayer?.list.some((child) => child.name === 'combat-molt-power') ?? false,
-      },
-      turn: this.turn,
-      energy: this.energy,
-      resonance: this.spark,
-      flow: this.flock.flow,
-      flowMax: this.flock.flowMax,
-      flowPreview: this.getSelectedCard() && this.cardBuildsFlow(this.getSelectedCard()!) && this.flock.flow < this.flock.flowMax ? 1 : 0,
-      flowRail: {
-        rendered: this.root?.list.some((child) => child.name === 'combat-flow-rail') ?? false,
-        previewPips: this.root?.list.filter((child) => child.name === 'combat-flow-preview-pip').length ?? 0,
-        status: flowStatus,
-        breakPreview: flowStatus === 'FLOW BREAKS',
-        holdPreview: flowStatus === 'FLOW HOLDS',
-      },
-      firstCombatGuidance: {
-        active: this.isGuidedFirstCombat() || Boolean(this.firstMoltGuideCard()),
-        rendered: this.root?.list.some((child) => child.name === 'first-combat-guidance' && (child as Phaser.GameObjects.Text).visible) ?? false,
-        cardName: firstCombatGuideCard ? displayName(firstCombatGuideCard) : undefined,
-        cost: firstCombatGuideCard ? this.effectiveCost(firstCombatGuideCard) : undefined,
-        target: firstCombatGuideTarget?.name,
-      },
-      practiceLesson: this.registry.get('birdsquad.practiceLesson'),
-      firstFlightGuide: firstFlightGuideState(),
-      firstMoltGuide: {
-        ...firstMoltGuideState(Boolean(this.hand.find((card) => card.runtime.kind === 'molt'))),
-        cardId: this.firstMoltGuideCard()?.id,
-        cardName: this.firstMoltGuideCard() ? displayName(this.firstMoltGuideCard()!) : undefined,
-        rendered: this.handLayer?.list.some((child) => child.name === 'combat-molt-guide-tag') ?? false,
-      },
-      overextension: {
-        cardsPlayedThisTurn: this.cardsPlayedThisTurn,
-        threshold: OVEREXTENSION_CARD_THRESHOLD,
-        safeCardsRemaining: Math.max(0, OVEREXTENSION_CARD_THRESHOLD - 1 - this.cardsPlayedThisTurn),
-        currentlyExposed: this.flock.exposed
-      },
-      combatInputFocus: this.combatInputFocusState(),
-      combatCardDetail: this.combatCardDetail?.active ? {
-        kind: this.combatCardDetail.getData('kind'),
-        card: this.combatCardDetail.getData('cardName'),
-        page: this.combatCardDetail.getData('page') + 1,
-        pageCount: this.combatCardDetail.getData('pageCount'),
-        heading: this.combatCardDetail.getData('heading'),
-        body: this.combatCardDetail.getData('body'),
-        controls: `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} or controller Left / Right to read pages. ${controlBindingLabel('back')} or controller B to close.`,
-      } : undefined,
-      selectedCard: this.selectedInstanceId,
-      selectedCardOutcome: this.selectedCardOutcomePreview(),
-      discardChoice: this.discardChoice && this.discardChoiceModule
-        ? this.discardChoiceModule.discardChoiceTextState(
-            this.discardChoice,
-            this.hand.map((card) => ({ instanceId: card.instanceId, id: card.id, name: displayName(card) })),
-            {
-              choose: `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} / D-pad`,
-              toggle: `${controlBindingLabel('confirm')} / A / pointer`,
-              confirm: `${controlBindingLabel('roost')} / Y / pointer`,
-              cancel: this.discardChoice.optional ? `${controlBindingLabel('back')} / B keeps the hand` : 'Mandatory choice',
-            },
-          )
-        : undefined,
-      returnChoice: this.returnChoice && this.returnChoiceModule
-        ? this.returnChoiceModule.returnChoiceTextState(
-            this.returnChoice,
-            this.discardPile.map((card) => {
-              const contract = this.activeCardContract(card);
-              return {
-                instanceId: card.instanceId,
-                id: card.id,
-                name: displayName(card),
-                cost: this.effectiveCost(card),
-                role: contract.role,
-                summary: formatEffects(contract.effects),
-              };
-            }),
-            {
-              choose: `${controlBindingLabel('previous')} / ${controlBindingLabel('next')} / D-pad / tap a card to read`,
-              confirm: `${controlBindingLabel('confirm')} / A / Return selected card button`,
-              cancel: 'Mandatory choice; Back / B does not cancel',
-            },
-          )
-        : undefined,
-      retentionPlan: retention.count > 0
-        ? {
-            count: retention.count,
-            cards: retention.cards.map((card, index) => ({
-              instanceId: card.instanceId,
-              id: card.id,
-              name: displayName(card),
-              order: index + 1,
-            })),
-            selectedPriority: retention.selectedPriority,
-            rule: RETAIN_PRIORITY_RULE,
-          }
-        : undefined,
-      inspectedCard: this.getInspectedCardPayload(),
-      cardInspectFocus: this.cardInspectFocusState(),
-      selectedEnemy: this.selectedEnemyId,
-      deckIds: this.allDeckCards().map((card) => card.id),
-      drawPile: this.drawPile.length,
-      discardPile: this.discardPile.length,
-      clearedPile: this.clearedPile.length,
-      deckSize: this.allDeckCards().length,
-      flock: {
-        hp: this.flock.hp,
-        maxHp: this.flock.maxHp,
-        block: this.flock.block,
-        fouled: this.flock.fouled,
-        incoming: this.incomingFlockDamagePreview(),
-        statuses: flockStatuses(this.flock)
-      },
-      hand: this.hand.map((card) => {
-        const contract = this.activeCardContract(card);
-        const retainIndex = retention.cards.findIndex((candidate) => candidate.instanceId === card.instanceId);
-        return {
-          instanceId: card.instanceId,
-          id: card.id,
-          name: displayName(card),
-          bird: card.bird,
-          cost: this.effectiveCost(card),
-          type: card.type,
-          role: card.role,
-          target: card.target,
-          activeTarget: contract.target,
-          activeRole: contract.role,
-          activeText: contract.text,
-          usesMolt: contract.usesMolt,
-          retainOrder: retainIndex >= 0 ? retainIndex + 1 : undefined,
-          discardSelectable: this.discardChoice?.candidateIds.includes(card.instanceId),
-          discardSelected: this.discardChoice?.selectedIds.includes(card.instanceId),
-          discardOrder: this.discardChoice ? (() => {
-            const index = this.discardChoice!.selectedIds.indexOf(card.instanceId);
-            return index >= 0 ? index + 1 : undefined;
-          })() : undefined,
-        };
-      }),
-      waymarkChoices: this.waymarkChoices.map((mark) => ({
-        id: mark.id,
-        name: mark.name,
-        family: mark.family,
-        rarity: mark.rarity,
-        source: mark.source,
-        description: mark.description,
-        tags: waymarkSynergyTags(mark),
-        observations: this.waymarkRewardBuildObservations[mark.id] ?? []
-      })),
-      rewardChoices: this.rewardChoices.map((card) => ({
-        id: card.id,
-        name: displayName(card),
-        bird: card.bird,
-        cost: card.cost,
-        type: card.type,
-        target: card.target,
-        observations: this.rewardObservations(card),
-        collection: {
-          firstClaim: !cardCollection[card.id],
-          timesClaimed: cardCollection[card.id]?.timesClaimed ?? 0,
-          targeted: collectionTargets.has(card.id),
-          runCopyTemporary: true as const,
-        }
-      })),
-      rewardDistrictLean: this.mode === 'cardReward' ? this.districtLeans() : [],
-      upgradeChoices: this.upgradeChoices.map((card) => ({
-        id: card.id,
-        name: displayName(card),
-        bird: card.bird,
-        cost: card.cost,
-        type: card.type,
-        target: card.target
-      })),
-      rewardDecisionDeltas: this.root?.list
-        .filter((child): child is Phaser.GameObjects.Text => ['reward-decision-delta', 'reward-preen-change'].includes(child.name) && child instanceof Phaser.GameObjects.Text)
-        .map((child) => child.text) ?? [],
-      enemies: this.enemies.map((enemy) => ({
-        id: enemy.id,
-        name: enemy.name,
-        hp: enemy.hp,
-        maxHp: enemy.maxHp,
-        block: enemy.block,
-        weak: enemy.weak,
-        roles: enemy.roles,
-        solo: enemy.solo,
-        damageBonus: enemy.damageBonus,
-        intent: currentMove(enemy).label,
-        intentIndex: enemy.intentIndex,
-        phase: enemy.phase,
-        phaseName: enemy.runtime.phaseTwoName,
-        phaseThreshold: enemy.runtime.type === 'boss' ? Math.ceil(enemy.maxHp / 2) : undefined,
-        phaseTwoMoveIds: enemy.runtime.phaseTwoMoveIds ? [...enemy.runtime.phaseTwoMoveIds] : undefined,
-      })),
-      route: {
-        mapId: currentMap().id,
-        mapName: currentMap().name,
-        currentNodeId: currentCombatNodes()[this.currentRouteIndex]?.id ?? '',
-        currentPayloadId: currentCombatNodes()[this.currentRouteIndex]?.payloadId ?? '',
-        completedNodeIds: [...this.completedRouteNodeIds],
-        scrap: this.scrap,
-        routeMarks: [...this.routeMarks],
-        supplies: [...this.runSupplies],
-        battlefieldAssetKey: battlefield.key,
-        battlefieldVariant: battlefield.key !== districtBattlefield.key,
-        battlefieldMood: this.battlefieldMood()
-      },
-      inspectOverlay: this.inspectOverlay,
-      waymarkDrawerOpen: this.waymarkDrawerOpen,
-      waymarkReview: this.waymarkReviewModule?.battleWaymarkReading(this),
-      waymarkReaderNotice: this.waymarkDrawerOpen ? (this.root.getByName('battle-waymark-loading') as Phaser.GameObjects.Text)?.text : undefined,
-      supplyDrawerOpen: this.supplyDrawerOpen,
-      waymarkFeedback: [...this.waymarkFeedback],
-      supplyFeedback: [...this.supplyFeedback],
-      piles: {
-        deck: this.allDeckCards().length,
-        draw: this.drawPile.length,
-        hand: this.hand.length,
-        discard: this.discardPile.length,
-        cleared: this.clearedPile.length
-      },
-      flockStats: this.flockStatRows().map((row) => ({
-        label: row.label,
-        base: row.base,
-        flock: row.bonus,
-        current: row.total
-      })),
-      log: this.log.slice(-5)
-    };
+    if (this.battleDebugStateModule) return this.battleDebugStateModule.buildBattleStateSnapshot(this);
+    return { scene: 'BattleScene', mode: this.mode, assetReadiness: this.battleAssetReadiness.snapshot(), combatAnimationPending: true } as RenderPayload;
   }
 
   private activeMoltPower() {
@@ -24254,7 +23805,7 @@ function sanitizeRunSummary(value: unknown): RunSummary | undefined {
   const deck = Array.isArray(value.deck)
     ? canonicalSavedCards(value.deck.filter(isRecord).flatMap((entry) => (
         typeof entry.id === 'string' && Boolean(cardLibrary[entry.id])
-          ? [{ id: entry.id, upgraded: entry.upgraded === true }]
+          ? [{ id: entry.id, upgraded: entry.upgraded === true, preenBranch: validBranch(entry.id, entry.preenBranch) }]
           : []
       ))).slice(0, 200)
     : [];
@@ -24459,7 +24010,7 @@ function sanitizeActiveRun(value: unknown): RunState | undefined {
   if (!pendingCardClaims) return undefined;
   const deck = canonicalSavedCards(value.deck.filter(isRecord).flatMap((entry) => {
     if (typeof entry.id !== 'string' || !cardLibrary[entry.id]) return [];
-    return [{ id: entry.id, upgraded: entry.upgraded === true }];
+    return [{ id: entry.id, upgraded: entry.upgraded === true, preenBranch: validBranch(entry.id, entry.preenBranch) }];
   }));
   if (deck.length === 0) return undefined;
   const seed = typeof value.seed === 'string' && value.seed.length ? value.seed : 'alpha';
@@ -24478,6 +24029,7 @@ function sanitizeActiveRun(value: unknown): RunState | undefined {
     : defaultLeaderId;
   return {
     deck,
+    flyway: normalizeFlyway(value.flyway),
     leaderId,
     pendingCardClaims: pendingCardClaims.length ? pendingCardClaims : undefined,
     cardClaimSequence: finiteInt(value.cardClaimSequence, 0, 0),
@@ -24561,6 +24113,7 @@ function createInitialRunState(
   if (!folioCards) recordCardAcquisitions(leader.startingDeckIds, 'starter_flock');
   return {
     deck,
+    flyway: newFlywayState(),
     leaderId: leader.id,
     difficulty,
     runMode,
@@ -24593,6 +24146,7 @@ function createInitialRunState(
 
 function cloneRunState(runState: RunState): RunState {
   return {
+    flyway: normalizeFlyway(runState.flyway),
     pendingCardClaims: runState.pendingCardClaims?.map(claim => ({ ...claim })),
     cardClaimSequence: runState.cardClaimSequence,
     pendingCombatReward: cloneRewardCheckpoint(runState.pendingCombatReward),
@@ -24638,9 +24192,10 @@ function canonicalSavedCards(savedCards: readonly SavedCard[]): SavedCard[] {
     if (!cardLibrary[saved.id]) return;
     const existing = byId.get(saved.id);
     if (!existing) {
-      byId.set(saved.id, { id: saved.id, upgraded: saved.upgraded === true });
+      byId.set(saved.id, { id: saved.id, upgraded: saved.upgraded === true, preenBranch: validBranch(saved.id, saved.preenBranch) });
     } else if (saved.upgraded === true && !existing.upgraded) {
       existing.upgraded = true;
+      existing.preenBranch = validBranch(saved.id, saved.preenBranch);
     }
   });
   return [...byId.values()];
@@ -24650,12 +24205,18 @@ function cardsFromSave(savedCards: readonly SavedCard[]): Card[] {
   return canonicalSavedCards(savedCards).map((saved) => {
     const card = cloneCard(saved.id);
     card.upgraded = saved.upgraded;
+    card.preenBranch = validBranch(saved.id, saved.preenBranch);
+    if (card.preenBranch) {
+      card.runtime = { ...card.runtime, upgrade: branchUpgrade(card.runtime, card.preenBranch) };
+      card.upgradedText = formatEffects(card.runtime.upgrade.effects);
+      card.moltTextUpgraded = formatEffects(card.runtime.upgrade.moltEffects ?? []);
+    }
     return card;
   });
 }
 
 function saveCards(cards: readonly Card[]): SavedCard[] {
-  return canonicalSavedCards(cards.map((card) => ({ id: card.id, upgraded: card.upgraded })));
+  return canonicalSavedCards(cards.map((card) => ({ id: card.id, upgraded: card.upgraded, preenBranch: card.preenBranch })));
 }
 
 function displayName(card: Card) {
@@ -26558,6 +26119,7 @@ function getEncounterEnemiesByPayload(payloadId: string | undefined): RuntimeEne
 // Select the enemy's current move by walking its attack pattern with intentIndex
 // (next-level-data-contracts Â§2). intentIndex is unbounded; the pattern maps it.
 function currentMove(enemy: Enemy, context = enemyMoveContext): EnemyMove {
+  if (enemy.flywayBroken) return { id: 'flyway-stagger', label: 'Disrupted: regaining footing', effects: [] };
   const { moves, attackPattern } = enemy.runtime;
   const byId = (id: string) => moves.find((move) => move.id === id) ?? moves[0];
   const i = enemy.intentIndex;
@@ -26989,3 +26551,7 @@ window.__birdSquadShowKeywordTooltip = (sceneKey: string, keyword: string, x: nu
   if (scene) showKwTooltip(scene, keyword, x, y);
   return !!scene;
 };
+
+export { BattleScene, BATTLEFIELD_ASSETS, DEFAULT_BATTLEFIELD_ASSET, normalizeFlyway, memoryStorageSessionActive, difficultyMods, difficultyLabel, COMBAT_ATMOSPHERE_TEXTURE, isRunOutcome, firstMoltGuideState, OVEREXTENSION_CARD_THRESHOLD, RETAIN_PRIORITY_RULE, flockStatuses, currentMove, currentCombatNodes, TOKEN_DISPLAY_FONT, fitTextExcerpt, activeSeed, runMapIndices, runDistrictOrdinal, activeMapIndex, leaderMastery, defaultLeaderId };
+
+export type { RenderPayload };

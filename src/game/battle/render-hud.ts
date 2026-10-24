@@ -133,6 +133,7 @@ interface SelectionOutcome {
   nextTurnEnergyDelta: number;
   moltPowerApplied: number;
   requiresChoice?: boolean;
+  bossDisruptions?: string[];
   bossPhaseBreak?: { enemyId: string; name: string; nextIntent?: string };
 }
 
@@ -145,7 +146,7 @@ export function formatBattleSelectionOutcome(
 ) {
   const targetState = outcome.enemyStates.find((enemy) => enemy.id === enemyId);
   const phaseBreak = outcome.bossPhaseBreak;
-  const parts: string[] = [];
+  const parts: string[] = outcome.bossDisruptions?.length ? ['Boss attack disrupted'] : [];
   if (outcome.contract.target !== 'allEnemies' && targetState && targetState.hpAfter !== targetState.hpBefore) {
     parts.push(targetState.defeated
       ? `Enemy Cohesion ${targetState.hpBefore} -> DEFEATED`

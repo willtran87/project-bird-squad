@@ -4,6 +4,8 @@ export type AdaptiveMusicMood = 'menu' | 'route' | 'battle' | 'boss' | 'victory'
 export type CardAudioVoice = CardSuit | 'neutral';
 
 export interface AdaptiveMusicSnapshot {
+  flightState?: string;
+  district?: number;
   pattern: string;
   active: boolean;
   step: number;
@@ -28,6 +30,13 @@ interface MusicProfile {
 }
 
 export class AdaptiveMusicSequencer {
+  private flightState = 'planning';
+  private pendingFlightState = 'planning';
+  private district = 0;
+  setFlightState(state: string, district: number) {
+    this.pendingFlightState = ['planning','flow','surge','molt','open-sky','boss-phase'].includes(state) ? state : 'planning';
+    this.district = Math.max(0, Math.min(3, Math.floor(district)));
+  }
   private ctx?: AudioContext;
   private bus?: GainNode;
   private mood: AdaptiveMusicMood = 'menu';
@@ -88,6 +97,7 @@ export class AdaptiveMusicSequencer {
 
   snapshot(): AdaptiveMusicSnapshot {
     return {
+      flightState: this.flightState, district: this.district,
       pattern: musicProfile(this.mood).id,
       active: Boolean(this.bus && this.volume > 0.001),
       step: this.step,
@@ -119,6 +129,8 @@ export class AdaptiveMusicSequencer {
     const pulse = () => {
       if (!this.bus || generation !== this.generation) return;
       if (this.volume > 0.001) {
+        // Orchestration changes at the start of a four-step phrase.
+        if (this.step % 4 === 0) this.flightState = this.pendingFlightState;
         const interval = profile.intervals[this.step % profile.intervals.length];
         const frequency = profile.base * Math.pow(2, interval / 12);
         const accented = this.step % profile.accentEvery === 0;
@@ -127,6 +139,16 @@ export class AdaptiveMusicSequencer {
         if (accented) {
           const harmony = frequency * Math.pow(2, profile.harmony / 12);
           this.tone(harmony, profile.duration * 0.82, 'sine', 0.13, profile.filter * 1.2, -pan, 0.035);
+        }
+        if (this.mood === 'battle' || this.mood === 'boss') {
+          const active = this.flightState;
+          const root = [110, 98, 123.47, 130.81][this.district];
+          if (this.step % 4 === 0) this.tone(root, .3, 'triangle', .13, 800, -.2);
+          if (active === 'flow' || active === 'surge') this.tone(root * 2, .09, 'sine', active === 'surge' ? .15 : .08, 1800, pan);
+          if (active === 'surge' && this.step % 2 === 0) this.tone(root * 3, .18, 'triangle', .1, 2200, -pan, .08);
+          if (active === 'molt') this.tone(root * 2 ** ([0,7,12,7][this.step % 4] / 12), .13, 'triangle', .18, 2100, pan);
+          if (active === 'open-sky' && this.step % 4 === 0) this.tone(root / 2, .6, 'sine', .16, 500, 0);
+          if (active === 'boss-phase' && this.step % 2 === 0) this.tone(root / 2, .14, 'triangle', .2, 1000, 0);
         }
         this.pulses += 1;
       }

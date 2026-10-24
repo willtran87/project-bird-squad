@@ -68,6 +68,9 @@ export default defineConfig(({ command }) => ({
       output: {
         manualChunks(id) {
           const moduleId = id.replace(/\\/g, '/');
+          if (moduleId.endsWith('/src/main.ts')) return 'index';
+          if (moduleId.endsWith('/src/game/battle/state-snapshot.ts')) return 'battle-state-snapshot';
+          if (moduleId.endsWith('/src/game/battle/outcome-scene.ts')) return 'battle-outcome-scene';
           if (moduleId.includes('node_modules/phaser')) return 'vendor-phaser';
           // Keep the read-only combat dossier independently measurable. It is
           // a dependency of the lazy hand renderer, never a title preload.

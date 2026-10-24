@@ -46,6 +46,7 @@ export function projectEnemyPhase<F extends IncomingFlock, E extends IncomingEne
   condition: (condition: string, enemy: E, flock: F) => boolean;
   firstSkyReduction: number;
   firstSkyEffects: string[];
+  coverGain?: (amount: number) => number;
   healing?: { overflowAvailable: boolean; markEffects: string[][] };
   counterstrike?: {
     available: boolean;
@@ -96,7 +97,7 @@ export function projectEnemyPhase<F extends IncomingFlock, E extends IncomingEne
     const overflow = amount - restored;
     if (overflowAvailable && overflow > 0) {
       overflowAvailable = false;
-      flock.block += overflow;
+      flock.block += config.coverGain?.(overflow) ?? overflow;
     }
   };
 
@@ -105,7 +106,7 @@ export function projectEnemyPhase<F extends IncomingFlock, E extends IncomingEne
     if (!effect) { uncertainty.add('Unprojected Waymark rule'); return; }
     const value = parseEffectValue(effect.args[1] ?? effect.args[0], 0);
     switch (effect.name) {
-      case 'gainCover': flock.block += value; break;
+      case 'gainCover': flock.block += config.coverGain?.(value) ?? value; break;
       case 'gainOpenSkyGuard': flock.openSkyGuard += value; break;
       case 'reduceNextOpenSky': flock.openSkyReduction += value; break;
       case 'heal': heal(value); break;

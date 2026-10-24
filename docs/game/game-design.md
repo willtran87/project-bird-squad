@@ -140,3 +140,13 @@ and `docs/project/runtime-architecture.md` for the implementation map.
 - Update `docs/art/art-bible.md` when visual, world, prompt, suit, or Molt art
   rules change.
 - Update `docs/README.md` when documentation ownership or reading paths change.
+
+## Flyway expansion presentation
+
+The expansion connects combat choices to the city's recovery. Five earned
+Leader calls, consecutive suit combinations, boss disruptions, and branching
+Preens add decisions within the shared-Flock model. Returning residents,
+Caldra's crew, authored Flight Stories, and the illustrated ending journal make
+individual flights recognizable. Exact rules live in the core gameplay and
+run design specs; the implementation evidence ledger is
+`docs/game/flyway-expansion-plan.md`.

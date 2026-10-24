@@ -799,3 +799,30 @@ Crop/review rules:
 - Does the card avoid human anatomy, hands, gore, ropes, nooses, watermark text,
   clothing text, readable logos, gang-coded styling, generic spellcasting, and
   floating icons with no physical source?
+
+## Flyway expansion motion and material language
+
+Molt coordinates a warm battlefield wash, hand rail, wing silhouettes, and a
+short readable transformation caption. Open Sky replaces the warm cue with a
+cool exposed atmosphere. Existing Molt card faces remain the source of card
+identity; the effect never changes species or dresses a bird as a spellcaster.
+
+Three signature cameos reuse exact-species approved portraits: First Flight's
+House Sparrow, Quill Point's shrike, and Open Basin's heron. The shrike cuts
+toward its target; the sparrow and heron move across the flock's foreground.
+Plumes scatter feather shapes, Quills produce narrow physical streaks, Basins
+spread water rings, and Nests interleave woven strips. The existing four suit
+sound voices accompany these actions. Contact ripples and displaced paper
+react to plays and boss phase changes.
+
+Leader idle offsets distinguish quick Fledgling and Spark-Caller movements,
+Talon's lean, Tidewarden's slow sway, and Roostkeeper's planted stance. Bosses
+have four district-specific timings. Ambient district lighting, drifting paper,
+canal rain, and music pitch progress from warm roofs to canals, signal heights,
+and clear High Roost dawn. Music states change on phrase boundaries for Flow,
+Surge, Molt, Open Sky, and boss Phase II; no action requires rhythmic timing.
+
+The illustrated Flyway journal uses existing district and resident art. Broken
+routes are muted and dashed; restored districts regain color, a solid connection,
+and a star. Reduced motion keeps static rule cues and removes travel, weather,
+and personality tweens. Lean effects cap transient groups and particle counts.

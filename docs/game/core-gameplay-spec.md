@@ -685,3 +685,57 @@ gain no fabricated completion. Flock Record badge rows are paged six at a time
 instead of silently truncating the collection. Pointer controls, Page Up/Page
 Down, and LB/RB all reach the same page state; the text-state contract exposes
 the visible range, exact requirements, earned state, and input labels.
+
+## Flyway expansion — earned combat decisions
+
+The Flyway journal is available through its on-screen button, **J** (**F8**
+when J has been assigned to another control), or controller **View / Select**. It
+pauses play, supports keyboard focus and controller navigation, and explains
+all expansion rules before commitment.
+
+### Leader calls
+
+Each Leader earns one deliberate, player-activated call per fight. Progress
+appears on the Flyway button; open the journal to inspect and activate it.
+
+| Leader | Earn the call | Base effect |
+| --- | --- | --- |
+| Fledgling | Play three distinct suits | 2 Wingbeats and 3 Cover |
+| Spark-Caller | Spend 3 Resonance | 2 Wingbeats and draw 1 |
+| Talon | Hit Winded enemies three times | 8 damage through the selected enemy's Cover |
+| Tidewarden | Restore 6 actual Cohesion | Heal 6 and gain 4 Cover |
+| Roostkeeper | Fully block two damaging attacks | 4 damage to every enemy and 4 Cover |
+
+Damage and Cover use the usual formation modifiers. Calls cannot interrupt a
+card choice, enemy animation, or another modal decision.
+
+### Consecutive suit combinations
+
+Each combination resolves once per turn, after the second card's effects and
+Leader signature. A different suit or unsuited card interrupts the sequence;
+Roost resets it. The two cards need not be different rarities.
+
+- **Brace & Cut:** Nests → Quills deals 2 base damage to the card's target if it
+  survives. It never redirects to a different enemy.
+- **Rain Chorus:** Basins → Plumes grants 1 Resonance.
+- **Safe Landing:** Quills → Basins grants 3 base Cover.
+
+Previews include the combination. Resolving cards continue contributing their
+passive Flock Stats until they enter their destination pile.
+
+### Boss disruptions
+
+A boss can have one damaging intent disrupted per fight. The journal gives the
+condition and the resulting Tell says **Disrupted: regaining footing**. Support
+moves do not consume the counter. Conditions are: Rooftop Blocks, make the boss
+Winded; Canal Markets, hit it and remove all Cover; Signal Spires, reach 2
+Winded; High Roost, hit it while Winded. Phase II remains a separate mechanic.
+
+### Branching Preens
+
+First Flight, Plume Flash, Quill Point, Open Basin, Locked Nest, and Hot Feathers
+have two manual Preen choices. **Shelter** adds `gainCover(2)` to the canonical
+upgrade; **Flight** adds `draw(1)`. Both apply to normal and Molt effects. The
+confirmation shows both complete effect lists. Existing upgraded cards and
+automatic upgrades keep their original upgrade. The choice persists through
+route changes, rewards, reloads, and run summaries.

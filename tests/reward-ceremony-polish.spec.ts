@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
+import { branchCards } from '../src/game/flyway-rules';
 import waymarks from '../data/game/alpha-route-marks.json' with { type: 'json' };
 
 async function boot(page: Page) {
@@ -100,7 +101,14 @@ for (const mode of ['cardReward', 'upgradeReward', 'waymarkReward']) test(`cerem
     return JSON.stringify({ deck: b.allDeckCards(), scrap: b.scrap, marks: b.routeMarks });
   })).toBe(before);
   // Keyboard navigation selects; only the separate confirmation commits.
+  const picked = await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').rewardChoiceArmedId);
   await page.keyboard.press('Enter'); await settleCanvas(page);
+  if (mode === 'upgradeReward' && branchCards.includes(picked)) {
+    await expect(page.getByRole('dialog', { name: 'Choose this bird’s Preen' })).toBeVisible();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Choose Shelter', exact: true })).toBeFocused();
+    await page.keyboard.press('Enter');
+  }
   expect(await page.evaluate(() => {
     const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
     return JSON.stringify({ deck: b.allDeckCards(), scrap: b.scrap, marks: b.routeMarks });

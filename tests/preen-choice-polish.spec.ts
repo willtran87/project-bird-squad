@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
+import { branchCards } from '../src/game/flyway-rules';
 
 for (const remapped of [false, true]) test(`Preen choices expose readable changes and explicit commitment, remapped=${remapped}`, async ({ page }, info) => {
   const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
@@ -81,6 +82,10 @@ for (const remapped of [false, true]) test(`Preen choices expose readable change
   await expect.poll(reading).toBeNull(); expect(await stable()).toBe(armed);
   const picked = await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').rewardChoiceArmedId);
   await click('reward-card-take-hit');
+  if (branchCards.includes(picked)) {
+    await expect(page.getByRole('dialog', { name: 'Choose this bird’s Preen' })).toBeVisible();
+    await page.getByRole('button', { name: 'Choose Shelter', exact: true }).click();
+  }
   await page.waitForFunction(() => !(window as any).__birdSquadGame.scene.getScene('BattleScene').upgradeChoices.length);
   expect(await page.evaluate(id => (window as any).__birdSquadGame.scene.getScene('BattleScene').allDeckCards().some((c: any) => c.id === id && c.upgraded), picked)).toBe(true);
   expect(errors).toEqual([]);
