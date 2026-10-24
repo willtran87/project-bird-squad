@@ -66,6 +66,14 @@ the shared gameplay client and high-resolution reader captures also passed
 inspection. Evidence: `.artifacts/flyway-ci-fixes.log`,
 `.artifacts/flyway-ci-art-cross.log`, and `.artifacts/flyway-ci-art-play/`.
 
+The next CI run passed 958 of 959 cases, but a reduced-motion cleanup test hit
+its wall-clock polling timeout twice on Linux while passing five unchanged
+local repetitions. That test now drives the existing game-clock harness and
+checks the actual lifetime boundary: effects remain at 799 ms and are retired
+at 801 ms, with an active scene and unpaused clock. It preserves the effect-cap
+and reduced-weather assertions. This deadline check passes Chromium, Firefox
+and WebKit (`.artifacts/flyway-effect-clock-final.log`); production behavior is unchanged.
+
 The GitHub Pages workflow runs the final committed source in 16 regression,
 six campaign and four live-journey shards. Build and deployment require all
 three groups to pass. Flyway's pure rule tests are also part of the build gate.

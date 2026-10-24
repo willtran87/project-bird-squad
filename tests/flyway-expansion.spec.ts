@@ -222,10 +222,26 @@ test('strategic keepsakes apply their benefits and costs through combat rules',a
 });
 
 test('reduced motion keeps rule cues while bounded transient effects retire',async({page})=>{
-  await page.emulateMedia({reducedMotion:'reduce'});await battle(page);await page.waitForTimeout(300);
-  const state=await page.evaluate(()=>{const s=(window as any).__birdSquadGame.scene.getScene('BattleScene');const c=s.allDeckCards().find((c:any)=>c.id==='swords_ace');for(let i=0;i<12;i++)s.events.emit('flyway-card',c,s.enemies[0].id);return {groups:s.fxLayer.list.filter((x:any)=>x.name.startsWith('flyway-')).length,weather:s.backdropLayer.list.filter((x:any)=>x.name==='flyway-district-weather').length};});
-  expect(state.groups).toBeLessThanOrEqual(5);expect(state.weather).toBe(0);
-  await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').fxLayer.list.filter((x:any)=>x.name.startsWith('flyway-')).length)).toBe(0);
+  await page.emulateMedia({reducedMotion:'reduce'});await battle(page);
+  const state=await page.evaluate(()=>{
+    const w=window as any,s=w.__birdSquadGame.scene.getScene('BattleScene');
+    const count=()=>s.fxLayer.list.filter((x:any)=>x.name.startsWith('flyway-')).length;
+    w.advanceTime(1000);
+    const c=s.allDeckCards().find((c:any)=>c.id==='swords_ace');
+    for(let i=0;i<12;i++)s.events.emit('flyway-card',c,s.enemies[0].id);
+    const groups=count(),now=s.time.now;
+    // Retirement uses Phaser time. Check its actual deadline independently
+    // of the runner's render cadence and wall-clock polling budget.
+    w.advanceTime(799);const beforeDeadline=count();
+    w.advanceTime(2);
+    return {groups,beforeDeadline,afterDeadline:count(),elapsed:s.time.now-now,
+      active:s.sys.isActive(),paused:s.time.paused,
+      weather:s.backdropLayer.list.filter((x:any)=>x.name==='flyway-district-weather').length};
+  });
+  expect(state.active).toBe(true);expect(state.paused).toBe(false);
+  expect(state.groups).toBeGreaterThan(0);expect(state.groups).toBeLessThanOrEqual(5);
+  expect(state.weather).toBe(0);expect(state.beforeDeadline).toBe(state.groups);
+  expect(state.elapsed).toBeCloseTo(801);expect(state.afterDeadline).toBe(0);
 });
 
 test('the title does not fetch battle snapshot or outcome adapters',async({page})=>{
