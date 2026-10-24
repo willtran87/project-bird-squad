@@ -1,5 +1,59 @@
 # Performance Notes
 
+## October 24 2026 — Deferred presentation and backbuffer measurement
+
+The reconciled release defers the shared HUD, route framing/guidance and route
+transition FX until Route/Battle need them. Root entry is 666.7 KiB, combined
+boot 708.8 KiB, down from 680.4/722.5 KiB at baseline. Pages is 667.8/709.9 KiB.
+Both now meet the existing preferred entry/combined targets (675/710 KiB) and
+hard limits (700/725 KiB). Pages has only 129 bytes below the preferred combined
+target. All pre-existing chunk allowances remain unchanged. New HUD/route-FX
+chunks have 10/7 KiB caps; the bounded breathing module has a 2 KiB cap.
+A failed renderer still exposes usable HUD controls.
+
+`antialiasGL: false` removes multisampling of the WebGL backbuffer. Texture
+antialiasing, LINEAR_MIPMAP_LINEAR, original art dimensions and high-resolution
+text remain. The final production captures were inspected at all three sizes.
+
+Measured native-clock frame intervals, milliseconds (lower is better):
+
+| Viewport | Motion | Baseline combat idle | Final combat idle | Baseline card + enemy turn | Final card + enemy turn |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 2560×1600 | Normal | 50.17 | 34.02 | 51.29 | 33.59 |
+| 2560×1600 | Reduced | 49.83 | 22.83 | 50.80 | 23.03 |
+| 1440×900 | Normal | 51.54 | 24.27 | 50.31 | 23.26 |
+| 1440×900 | Reduced | 50.16 | 23.65 | 49.29 | 23.53 |
+| 1000×560 | Normal | 49.83 | 23.96 | 51.19 | 24.92 |
+| 1000×560 | Reduced | 52.84 | 23.07 | 74.76 | 22.94 |
+
+Final title idle averages 16.67–17.44 ms, versus 25.56–28.85 ms at baseline.
+Final idle combat has no recorded long tasks in these samples. Route-entry
+averages improve from 76.49–85.71 ms to 42.85–67.42 ms, but cold setup still has
+long frames. The 74.76 ms baseline action sample is an outlier; do not generalize
+its larger percentage gain. Combat throughput improves from roughly 20 FPS to
+29–44 FPS on this host, not a claim about every device or encounter. The earlier
+six-case qualification measured about 25 ms throughout; the final first large
+viewport sample is slower at 34 ms. Both reports are retained, showing the
+host variability rather than selecting only the fastest run.
+
+Method: Chromium 148.0.7778.96 on Windows, Xeon Gold 6148 / 40 logical CPUs,
+fresh sequential contexts, real title/route/card/Roost inputs, native RAF/Long
+Tasks, no synthetic clock or throttling. Final reports identify SwiftShader;
+baseline renderer metadata was unavailable. Both use the same browser/host and
+1280×720 game backbuffer. Viewport size is not backbuffer resolution. Other app
+activity and software-renderer variability limit precision; physical-device
+performance remains unverified. The final six-case run used the source config,
+without the experimental context override used to isolate the MSAA hypothesis.
+
+Reproduce with `tools/measure-runtime-performance.mjs` and `PERF_URL`/
+`PERF_OUTPUT`. Evidence: `.artifacts/backlog-performance-before.json`,
+`.artifacts/backlog-performance-no-msaa.json`, and
+`.artifacts/backlog-qualified-performance.json`, and the final repaired-build
+report `.artifacts/backlog-repaired-performance.json`. Final measurements ran
+after all regression browsers exited. Earlier post-change samples are retained
+separately. Final build hashes and release qualification are in
+[backlog-release.md](backlog-release.md).
+
 ## October 20 2026 — Flight Log and save-file ownership (October 21 UTC)
 
 Candidate `index-HfNBGmr7.js` retains the 700,893-byte entry and 742,381-byte

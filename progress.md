@@ -1,5 +1,35 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-10-24 — Backlog reconciliation and measured performance
+
+- Reconciled the original 52 enhancements and 70-package index in
+  `docs/game/backlog-reconciliation-2026-10-24.md`, preserving explicit human,
+  physical-device and native assistive-technology waivers.
+- Added disposable Preen/Release lessons and numerical draw comparisons with
+  stated sampling assumptions. Fixed lesson ownership across Route restarts,
+  reader prompt overlap and reduced-motion flourish cleanup.
+- Deferred HUD, route framing and transition presentation; retained clickable
+  fallback HUD controls when the optional renderer cannot download. Removed
+  WebGL backbuffer MSAA while retaining linear/trilinear texture filtering and
+  high-resolution artwork/text. Existing delivery allowances remain unchanged.
+- The 15 strategy fixtures resolved all 45 opening/rival/boss battles without
+  loops (2–3, 2 and 4–7 turns respectively). Eight warm transitions kept scene
+  objects, timers, listeners and textures bounded. Content audit: 32 checks,
+  zero drift/pending; 1,000-seed economy audit met every district target.
+- Fixed boss breathing crossing the HUD boundary at maximum stretch. The new
+  deterministic full-cycle regression passes in all three browsers.
+- Full local sweep: 977 passed / four failed across 981 cases; every failure is
+  mapped to passing repaired-build reruns. All 14 campaigns and four live-control
+  journeys pass. The nine-case stage matrix exits cleanly with explicit WebGL
+  page cleanup; interrupted runner attempts remain recorded.
+- New feature matrix: 15 passed; release browser smoke: nine passed; unit checks:
+  18 passed. Final-source CI runs all 982 cases before Pages publication. Evidence
+  and qualification limits: `docs/project/backlog-release.md`.
+- Final six-case performance confirmation measured 23–34 ms combat frame
+  intervals versus roughly 50 ms at baseline; the unmodified shared gameplay
+  client passed and its screenshot/state were inspected. Root/Pages boot code
+  meets preferred targets without increasing any pre-existing budget.
+
 ## 2026-10-24 — Flyway release qualification
 
 - Ran all 956 production cases: 938 passed / 18 failed. Preserved the original

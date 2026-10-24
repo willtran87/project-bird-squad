@@ -8,6 +8,9 @@ const assetsDir = path.join(path.resolve(root, process.argv[2] ?? '.artifacts/bu
 const kb = 1024;
 
 const budgets = [
+  { label: 'enemy breathing lazy module', pattern: /^enemy-breathing-.*\.js$/, maxKb: 2, hard: true },
+  { label: 'shared run HUD lazy module', pattern: /^run-hud-.*\.js$/, maxKb: 10, hard: true },
+  { label: 'route transition FX lazy module', pattern: /^route-transition-fx-.*\.js$/, maxKb: 7, hard: true },
   { label: 'battle state snapshot lazy module', pattern: /^battle-state-snapshot-.*\.js$/, maxKb: 12, hard: true },
   { label: 'battle outcome scene lazy module', pattern: /^battle-outcome-scene-.*\.js$/, maxKb: 8, hard: true },
   { label: 'Flyway expansion lazy module', pattern: /^flyway-expansion-.*\.js$/, maxKb: 32, hard: true },

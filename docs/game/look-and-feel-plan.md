@@ -1,5 +1,9 @@
 # Bird Squad Look-and-Feel Plan
 
+Historical design sequence. Implementation status is superseded by the
+[60-item acceptance](a-grade-acceptance-plan.md), [Flyway expansion](flyway-expansion-plan.md)
+and [October 24 reconciliation](backlog-reconciliation-2026-10-24.md).
+
 Version: 0.1
 
 Status: implementation plan for raising Bird Squad from "prototype" to "polished,"

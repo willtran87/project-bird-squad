@@ -1,6 +1,42 @@
 import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
 
+test.afterEach(async ({ page }) => {
+  // Release the live WebGL scene before the Windows WebKit context closes.
+  await page.goto('about:blank');
+});
+
+test('boss breathing stays below the HUD for a complete idle cycle', async ({ page }, info) => {
+  await page.goto('./');
+  await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
+  await page.evaluate(async () => {
+    const w = window as any;
+    await w.__birdSquadEnsureScene('BattleScene');
+    for (const scene of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(scene.scene.key);
+    w.__birdSquadGame.scene.start('BattleScene', { routeNodeId: 'm1_boss' });
+  });
+  await page.waitForFunction(() => {
+    const s = JSON.parse((window as any).render_game_to_text?.() ?? '{}');
+    return s.scene === 'BattleScene' && s.assetReadiness?.fullArt && !s.combatIntro?.active && !s.combatAnimationPending;
+  });
+  const samples = await page.evaluate(() => {
+    const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene'), samples: number[] = [];
+    for (let i = 0; i < 90; i++) {
+      w.advanceTime(50);
+      for (const group of b.root.list.filter((o: any) => o.name === 'combat-enemy-art')) {
+        const portrait = group.list[0].getByName('combat-enemy-portrait');
+        if (!portrait) continue;
+        const rect = portrait.getBounds(), bounds = b.enemyTextureVisibleBounds(portrait.texture.key);
+        samples.push(rect.top + rect.height * bounds.top);
+      }
+    }
+    return samples;
+  });
+  await info.attach('visible-top-samples', { body: JSON.stringify(samples), contentType: 'application/json' });
+  expect(samples.length).toBeGreaterThanOrEqual(90);
+  expect(Math.min(...samples)).toBeGreaterThanOrEqual(106);
+});
+
 for (const encounter of ['m1_entry', 'm1_boss']) {
   test(`battle stage keeps measured vitals and target input readable in ${encounter}`, async ({ page }, info) => {
     const errors: string[] = [];
@@ -8,7 +44,7 @@ for (const encounter of ['m1_entry', 'm1_boss']) {
     page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
     await page.setViewportSize({ width: 2560, height: 1600 });
     await page.goto('./');
-    await page.waitForFunction(() => (window as any).__birdSquadEnsureScene);
+    await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
     await page.evaluate(async routeNodeId => {
       const w = window as any;
       await w.__birdSquadEnsureScene('BattleScene');
@@ -21,6 +57,7 @@ for (const encounter of ['m1_entry', 'm1_boss']) {
         && !battle.combatAnimationPending && !battle.battleRenderQueued
         && !JSON.parse(w.render_game_to_text()).combatIntro?.active;
     });
+    expect(await page.evaluate(() => (window as any).__birdSquadGame.scene.getScenes(true).map((scene: any) => scene.scene.key))).toEqual(['BattleScene']);
 
     const checkVitals = async () => {
       const values = await page.evaluate(() => {

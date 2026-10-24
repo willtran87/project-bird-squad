@@ -1,5 +1,11 @@
 # Product enhancement backlog
 
+Current status and the disposition of every original ID/package are in the
+[October 24 reconciliation](backlog-reconciliation-2026-10-24.md). The dated
+checkpoint narrative and tables below are historical; their open/partial labels
+must not be counted as a second current backlog. Human/device/AT waivers remain
+unverified evidence, as recorded in the current ledger.
+
 Accepted scope: the 52-item product enhancement list, requested for implementation
 on 2026-09-07. This backlog preserves the complete scope across implementation
 passes. A passing build is evidence for that revision, not proof of subjective
