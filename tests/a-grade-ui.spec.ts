@@ -287,6 +287,30 @@ test('setup remains usable when optional portraits fail and recovers on reopenin
     .filter((o:any)=>o.name.startsWith('title-leader-portrait-')&&o.visible).length===5);
 });
 
+test('reopening setup retries portraits after the previous opening finishes failing', async ({page})=>{
+  let release!:()=>void;
+  const gate=new Promise<void>(resolve=>{release=resolve;});
+  let requests=0;
+  const attempts=new Map<string,number>();
+  await page.route(/front-3q.*\.webp/,async route=>{
+    const url=route.request().url(),attempt=(attempts.get(url)??0)+1;attempts.set(url,attempt);requests++;
+    // Fail the original transfer and both built-in transport retries.
+    if(attempt<=3){await gate;await route.abort();}else await route.continue();
+  });
+  try{
+    await start(page,'MenuScene');
+    await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('MenuScene').setSetupOpen(true));
+    await expect.poll(()=>requests).toBeGreaterThanOrEqual(5);
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('MenuScene').setupOpen===false);
+    await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('MenuScene').setSetupOpen(true));
+    await settleCanvas(page);
+    release();
+    await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('MenuScene').children.list
+      .filter((o:any)=>o.name.startsWith('title-leader-portrait-')&&o.visible).length===5);
+  }finally{release();await page.unrouteAll({behavior:'wait'});}
+});
+
 test('late setup portraits remain hidden after returning home', async ({page})=>{
   let release!:()=>void;
   const gate=new Promise<void>(resolve=>{release=resolve;});
