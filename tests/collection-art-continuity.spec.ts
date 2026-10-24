@@ -1,6 +1,45 @@
 import { test, expect } from '@playwright/test';
 import { settleCanvas } from './helpers/settled-canvas';
 
+test('late detail artwork preserves registered collection actions before a touch', async ({ page }) => {
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route(/\/assets\/wands_03[^/]*\.webp/, async route => { await gate; await route.continue(); });
+  try {
+    await page.setViewportSize({ width: 1000, height: 560 });
+    await page.goto('./');
+    await page.waitForFunction(() => JSON.parse((window as any).render_game_to_text?.() ?? '{}').titleBoot?.ready);
+    await page.evaluate(async () => {
+      const w = window as any; await w.__birdSquadEnsureScene('CodexScene');
+      w.__birdSquadGame.scene.stop('MenuScene'); w.__birdSquadGame.scene.start('CodexScene');
+    });
+    await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('CodexScene').codexData);
+    await page.evaluate(() => {
+      const c = (window as any).__birdSquadGame.scene.getScene('CodexScene');
+      c.discovered.add('wands_03'); c.openCodexDetail('wands_03');
+    });
+    await settleCanvas(page);
+    await page.evaluate(() => {
+      const w = window as any, c = w.__birdSquadGame.scene.getScene('CodexScene');
+      w.detailActionBeforeArt = c.root.getByName('codex-card-favorite-hit');
+    });
+    release();
+    await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('CodexScene').root.getByName('codex-card-detail-art'));
+    const result = await page.evaluate(() => {
+      const w = window as any, c = w.__birdSquadGame.scene.getScene('CodexScene');
+      const hit = c.root.getByName('codex-card-favorite-hit');
+      const b = hit.getBounds(), canvas = c.game.canvas.getBoundingClientRect();
+      return { same: hit === w.detailActionBeforeArt, active: w.detailActionBeforeArt.active,
+        x: canvas.left + b.centerX * canvas.width / 1280, y: canvas.top + b.centerY * canvas.height / 720 };
+    });
+    expect(result.same).toBe(true); expect(result.active).toBe(true);
+    await page.touchscreen.tap(result.x, result.y);
+    await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('CodexScene').favoriteCards.has('wands_03'));
+  } finally { release(); await page.unrouteAll({ behavior: 'wait' }); }
+});
+
+test.use({ hasTouch: true });
+
 test('late Collection artwork preserves the registered card hit target and hovered tile', async ({ page }, info) => {
   let release!: () => void;
   const gate = new Promise<void>(resolve => { release = resolve; });

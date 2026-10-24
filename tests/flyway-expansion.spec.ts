@@ -261,7 +261,11 @@ test('district boss stages expose distinct atmosphere and restoration context',a
   for(let index=0;index<4;index++){
     await page.evaluate(({base,index})=>{const g=(window as any).__birdSquadGame;for(const name of ['RouteScene','BattleScene'])if(g.scene.isActive(name))g.scene.stop(name);g.scene.start('BattleScene',{runState:{...base,mapIndex:index},routeNodeId:`m${index+1}_boss`});},{base,index});
     await page.waitForFunction(index=>{const s=(window as any).__birdSquadGame.scene.getScene('BattleScene');return s.flywayMapIndex===index&&s.fxLayer?.active&&s.openFlyway&&!s.combatAnimationPending;},index);
-    await page.waitForTimeout(600);
+    await page.waitForFunction(() => {
+      const s = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+      return [...s.enemyPoseGroups.values()].some((p: any) => p.enemy.runtime.type === 'boss'
+        && p.group.getData('flyway-personality'));
+    });
     const state=await page.evaluate(()=>{const s=(window as any).__birdSquadGame.scene.getScene('BattleScene');return {boss:s.enemies.some((e:any)=>e.runtime.type==='boss'),light:s.backdropLayer.getByName('flyway-district-light')?.fillColor,personalities:[...s.enemyPoseGroups.values()].filter((p:any)=>p.enemy.runtime.type==='boss'&&p.group.getData('flyway-personality')).length};});
     expect(state.boss).toBe(true);expect(state.light).toBe([0xe4a568,0x72bfc4,0xa8b2da,0xf0d6a0][index]);expect(state.personalities).toBeGreaterThan(0);
     await page.screenshot({path:testInfo.outputPath(`district-boss-${index}.png`)});

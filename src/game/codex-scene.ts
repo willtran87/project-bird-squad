@@ -2488,12 +2488,20 @@ export class CodexScene extends Phaser.Scene {
           const hit = entry.getByName('codex-card-entry-hit') as Phaser.GameObjects.Rectangle;
           if (card && hit) this.renderThumbArtwork(entry, card, hit.x, hit.y + 11);
         }
+      } else if (this.activeSection === 'cards' && this.detailId && this.root.getByName('codex-card-detail-panel')) {
+        this.refreshCardDetailArt(cardLibrary[this.detailId]);
       } else this.renderAll();
     });
     queueReserveEnemyArtAssets(this, [...reserveEnemyIds], 'Codex enemy art', () => this.renderAll());
   }
 
   private renderAll(preserveCardGrid = false) {
+    // Decorative assets must not retire live detail actions between input frames.
+    if (preserveCardGrid && this.activeSection === 'cards' && this.detailId
+      && this.root.getByName('codex-card-detail-panel')) {
+      this.refreshCardDetailArt(cardLibrary[this.detailId]);
+      return;
+    }
     // Late decorative chrome may refresh the surrounding shell, but not the
     // live card targets beneath it. Reattach below the new curtains and overlays.
     const retainedGrid = preserveCardGrid && this.activeSection === 'cards' && !this.detailId
@@ -5059,6 +5067,37 @@ export class CodexScene extends Phaser.Scene {
       GAME_WIDTH, GAME_HEIGHT, 0x02050a, 0.3).setInteractive().setName('codex-card-journal-scrim'));
   }
 
+  private refreshCardDetailArt(card: Card) {
+    if (!card) return;
+    const names = new Set(['codex-card-detail-art', 'codex-card-detail-art-pending',
+      'codex-detail-art-status', 'codex-detail-art-retry-hit', 'codex-detail-art-retry-label',
+      'codex-detail-art-retry-hint']);
+    for (const node of [...this.root.list]) if (names.has(node.name)) this.root.remove(node, true);
+    const index = this.root.list.indexOf(this.root.getByName('codex-card-detail-panel')) + 1;
+    const before = this.root.length;
+    const key = loadedCardArtKey(this, card), artX = 224, artW = 320, artH = 480;
+    if (key && this.textures.exists(key)) {
+      this.root.add(this.add.image(artX, 344, key).setDisplaySize(artW, artH).setName('codex-card-detail-art'));
+    } else {
+      this.root.add(this.add.rectangle(artX, 344, artW, artH, 0x141d2b, 0.9).setName('codex-card-detail-art-pending'));
+      const failed = Boolean(key && this.failedArt.has(key));
+      this.root.add(this.add.text(artX, 320, failed ? 'Artwork unavailable' : 'Loading artwork', {
+        fontFamily:UI_FONT, fontSize:'22px', color:UI_SOFT, resolution:2,
+      }).setOrigin(0.5).setName('codex-detail-art-status'));
+      if (failed) {
+        const retry = this.add.rectangle(artX, 382, 240, MIN_SUPPORTED_TOUCH_TARGET, 0x172c3e, 1)
+          .setInteractive({useHandCursor:true}).setName('codex-detail-art-retry-hit');
+        retry.on('pointerdown', () => this.retryCardArt(card.id));
+        this.root.add(retry);
+        this.root.add(this.add.text(artX, 382, 'Retry artwork', {fontFamily:UI_FONT,fontSize:'20px',color:UI_BODY,resolution:2})
+          .setOrigin(0.5).setName('codex-detail-art-retry-label'));
+        this.root.add(this.add.text(artX, 438, 'Or close and reopen this card', {fontFamily:UI_FONT,fontSize:'18px',color:UI_SOFT,resolution:2})
+          .setOrigin(0.5).setName('codex-detail-art-retry-hint'));
+      }
+    }
+    for (const [offset, node] of this.root.list.slice(before).entries()) this.root.moveTo(node, index + offset);
+  }
+
   private renderDetail(id: string) {
     const card = cardLibrary[id];
     if (!card) return;
@@ -5080,27 +5119,9 @@ export class CodexScene extends Phaser.Scene {
     this.root.add(this.add.rectangle(px, py, MW, MH, 0x0c1420, 0.995).setStrokeStyle(1, accentColor, 0.8).setInteractive().setName('codex-card-detail-panel'));
 
     // Large card art on the left, at the art's true 2:3 aspect (no distortion).
-    const key = loadedCardArtKey(this, card);
     const artW = 320;
-    const artH = artW * 1.5;
     const artX = left + 24 + artW / 2;
-    if (key && this.textures.exists(key)) {
-      this.root.add(this.add.image(artX, 344, key).setDisplaySize(artW, artH).setName('codex-card-detail-art'));
-    } else {
-      this.root.add(this.add.rectangle(artX, 344, artW, artH, 0x141d2b, 0.9).setName('codex-card-detail-art-pending'));
-      const failed = Boolean(key && this.failedArt.has(key));
-      this.root.add(this.add.text(artX, 320, failed ? 'Artwork unavailable' : 'Loading artwork', {
-        fontFamily:UI_FONT, fontSize:'22px', color:UI_SOFT, resolution:2,
-      }).setOrigin(0.5).setName('codex-detail-art-status'));
-      if (failed) {
-        const retry = this.add.rectangle(artX, 382, 240, MIN_SUPPORTED_TOUCH_TARGET, 0x172c3e, 1)
-          .setInteractive({useHandCursor:true}).setName('codex-detail-art-retry-hit');
-        retry.on('pointerdown', () => this.retryCardArt(card.id));
-        this.root.add(retry);
-        this.root.add(this.add.text(artX, 382, 'Retry artwork', {fontFamily:UI_FONT,fontSize:'20px',color:UI_BODY,resolution:2}).setOrigin(0.5));
-        this.root.add(this.add.text(artX, 438, 'Or close and reopen this card', {fontFamily:UI_FONT,fontSize:'18px',color:UI_SOFT,resolution:2}).setOrigin(0.5));
-      }
-    }
+    this.refreshCardDetailArt(card);
 
     // Right column is a scrollable viewport (lots of content now). Text is drawn
     // in absolute coords offset by -detailScroll, then clipped by opaque curtains
