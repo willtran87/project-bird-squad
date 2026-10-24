@@ -1,11 +1,14 @@
 import { queueRuntimeImageAssets } from '../main';
 import { codexLeaderArtAssets } from './leader-portrait-assets';
 
+const pendingPortraitRequests = new WeakMap<object, { generation: number; retry: boolean }>();
+
 /** Setup-only decoration. Never gates input or paints a misleading fallback. */
 export function renderSetupPortraits(scene: any) {
   const generation = scene.menuGeneration;
+  const current = () => scene.scene.isActive() && scene.menuGeneration === generation;
   const render = () => {
-    if (!scene.scene.isActive() || scene.menuGeneration !== generation) return;
+    if (!current()) return;
     for (const panel of scene.leaderPanels) {
       const asset = codexLeaderArtAssets[panel.id];
       const name = `title-leader-portrait-${panel.id}`;
@@ -17,5 +20,19 @@ export function renderSetupPortraits(scene: any) {
     }
   };
   render();
-  queueRuntimeImageAssets(scene, Object.values(codexLeaderArtAssets), 'Setup portraits', render);
+  const pending = pendingPortraitRequests.get(scene);
+  if (pending && pending.generation === generation) {
+    // Reopening owns one fresh attempt after the previous transfer settles.
+    pending.retry = true;
+    return;
+  }
+  const request = { generation, retry: false };
+  pendingPortraitRequests.set(scene, request);
+  const queued = queueRuntimeImageAssets(scene, Object.values(codexLeaderArtAssets), 'Setup portraits', result => {
+    render();
+    if (pendingPortraitRequests.get(scene) !== request || result.timedOut) return;
+    pendingPortraitRequests.delete(scene);
+    if (request.retry && result.failedKeys.length > 0 && scene.setupOpen && current()) renderSetupPortraits(scene);
+  });
+  if (!queued) pendingPortraitRequests.delete(scene);
 }

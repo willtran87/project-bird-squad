@@ -74,6 +74,19 @@ at 801 ms, with an active scene and unpaused clock. It preserves the effect-cap
 and reduced-weather assertions. This deadline check passes Chromium, Firefox
 and WebKit (`.artifacts/flyway-effect-clock-final.log`); production behavior is unchanged.
 
+A later full run exposed a setup portrait recovery race: reopening while the
+previous transfer was still failing joined that old request without starting a
+fresh attempt. Setup now remembers the reopen and makes one fresh attempt after
+the previous request settles. Scene generation and visibility guards remain in
+place, and failures do not trigger an unbounded retry loop. A controlled test
+holds all three original transport attempts until after reopening; it fails on
+the old build and passes on the correction. Six affected setup cases and the
+new race in Chromium, Firefox and WebKit passed, alongside strict TypeScript,
+production build, gameplay-client and visual checks. Evidence:
+`.artifacts/flyway-portrait-fixes.log`, `.artifacts/flyway-portrait-final-cross.log`,
+`.artifacts/flyway-portrait-final-pages.log`, and `.artifacts/flyway-portrait-final-play/`.
+The final portrait module is 1,004 bytes within its unchanged 1 KiB hard budget.
+
 The GitHub Pages workflow runs the final committed source in 16 regression,
 six campaign and four live-journey shards. Build and deployment require all
 three groups to pass. Flyway's pure rule tests are also part of the build gate.
