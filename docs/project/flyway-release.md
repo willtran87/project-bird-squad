@@ -72,7 +72,7 @@ local repetitions. That test now drives the existing game-clock harness and
 checks the actual lifetime boundary: effects remain at 799 ms and are retired
 at 801 ms, with an active scene and unpaused clock. It preserves the effect-cap
 and reduced-weather assertions. This deadline check passes Chromium, Firefox
-and WebKit (`.artifacts/flyway-effect-clock.log`); production behavior is unchanged.
+and WebKit (`.artifacts/flyway-effect-clock-final.log`); production behavior is unchanged.
 
 The GitHub Pages workflow runs the final committed source in 16 regression,
 six campaign and four live-journey shards. Build and deployment require all
