@@ -332,9 +332,17 @@ test('route commit accepts pointer input across its full visible label and medal
 
   const canvas = await page.locator('canvas').boundingBox();
   if (!canvas) throw new Error('Missing game canvas');
+  // Enabled Phaser objects join hit testing on the next rendered frame.
+  // Keep this click at the visible label center, after pointer movement settles.
+  await page.mouse.move(
+    canvas.x + canvas.width * (target.labelCenter.x / 1280),
+    canvas.y + canvas.height * (target.labelCenter.y / 720),
+  );
+  await settleCanvas(page);
   await page.mouse.click(
     canvas.x + canvas.width * (target.labelCenter.x / 1280),
     canvas.y + canvas.height * (target.labelCenter.y / 720),
+    { delay: 50 },
   );
   await expect.poll(async () => page.evaluate(() => {
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');

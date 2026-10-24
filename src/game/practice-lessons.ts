@@ -2,7 +2,7 @@ import { UI_FONT as TOKEN_FONT, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT } from './
 import Phaser from 'phaser';
 import { createInitialRunState } from '../main';
 import { bindActionFocus } from './action-focus';
-import { beginPracticeSession, endPracticeSession } from './practice-session';
+import { beginPracticeSession, endPracticeSession, renderPracticeBadge } from './practice-session';
 import { skipFirstFlightGuide } from './first-flight-guide';
 import { announceScreenReader } from './screen-reader-accessibility';
 import { controlBindingLabel } from './input-bindings';
@@ -28,6 +28,14 @@ const lessons = [
       'Play Plume Flash: in Molt it grants Cover instead of attacking.',
       'Roost to see Molt end and Open Sky expose the flock.'],
     conclusion: 'Molt changes every card’s ability and reduces non-Molt costs by 1. Roost ends Molt and leaves the flock Open Sky for the enemy turn.' },
+  { id: 'preen', title: 'Preen a card', description: 'Read the before and after rules, then upgrade one flight card.',
+    cards: ['pentacles_04', 'swords_ace', 'cups_fledgling', 'wands_ace', 'pentacles_fledgling', 'aviary_25'],
+    steps: ['Read a card, confirm Preen, then choose its branch. Nothing is saved.'],
+    conclusion: 'Preen changes this flight’s copy and passive stats without adding to the draw pool. Read both its normal and Molt rules before committing.' },
+  { id: 'deck', title: 'Shape your deck', description: 'Compare draw chances and passive losses, then try Release.',
+    cards: ['pentacles_04', 'swords_ace', 'cups_fledgling', 'wands_ace', 'pentacles_fledgling', 'aviary_25'],
+    steps: ['Read a Release candidate’s Full flight impact, then select and confirm a removal.'],
+    conclusion: 'Release removes a card and its passive stats from this flight. Fewer cards can improve access to those left, but losing a draw bonus can offset that. Your collection stays unchanged.' },
 ] as const;
 type Lesson = typeof lessons[number];
 
@@ -43,7 +51,7 @@ export function openPracticeLessons(menu: any) {
   const root = menu.add.container(0, 0).setDepth(80);
   menu.helpOverlay = root;
   menu.menuFocusRing?.setVisible(false);
-  root.setData('topic', 'Practice lessons. Choose Cover, Flow, or Molt. Nothing is saved.');
+  root.setData('topic', 'Practice lessons. Choose Cover, Flow, Molt, Preen, or deck shaping. Nothing is saved.');
   const back = () => { menu.closeHelpOverlay(); openHelpOverlay(menu); };
   root.setData('onBack', back);
   root.add(menu.add.rectangle(640, 360, 1280, 720, DECISION_UI.surface, 1).setInteractive());
@@ -55,7 +63,7 @@ export function openPracticeLessons(menu: any) {
   }).setResolution(2).setName('how-to-play-readable'));
   let launching = false;
   const actions = lessons.map((lesson, index) => {
-    const y = 270 + index * 116;
+    const y = 230 + index * 78;
     const action = button(menu, root, 340, y, 320, lesson.title, () => {
       if (launching) return;
       launching = true;
@@ -64,6 +72,13 @@ export function openPracticeLessons(menu: any) {
       try {
         skipFirstFlightGuide();
         const runState = createInitialRunState('fledgling', 0, 'quick', `lesson-${lesson.id}`, cards);
+        if (lesson.id === 'preen' || lesson.id === 'deck') {
+          const key = 'GuidedDeckPracticeScene';
+          if (!menu.game.scene.getScene(key)) menu.game.scene.add(key, GuidedDeckPracticeScene, false);
+          menu.scene.start('RouteScene', { runState });
+          menu.scene.launch(key, { id: lesson.id });
+          return;
+        }
         if (!menu.game.scene.getScene(KEY)) menu.game.scene.add(KEY, GuidedPracticeScene, false);
         menu.scene.start('BattleScene', { runState, routeNodeId: 'm1_entry' });
         menu.scene.launch(KEY, { id: lesson.id });
@@ -82,6 +97,63 @@ export function openPracticeLessons(menu: any) {
   actions.push(button(menu, root, 640, 635, 240, 'Back to guide', back));
   bindActionFocus(menu, root, actions, back, { exclusive: true });
   menu.updateMenuTextState();
+}
+
+/** Disposable route exercise using the same inspection and commitment controls. */
+class GuidedDeckPracticeScene extends Phaser.Scene {
+  private lesson!: Lesson;
+  private route: any;
+  private started = false;
+  private finished = false;
+  private copy!: Phaser.GameObjects.Text;
+  constructor() { super('GuidedDeckPracticeScene'); }
+  create(data: { id: string }) {
+    this.lesson = lessons.find(lesson => lesson.id === data.id)!;
+    this.route = this.scene.get('RouteScene'); this.started = false; this.finished = false;
+    this.add.rectangle(640, 42, 1280, 84, DECISION_UI.surface, 1).setInteractive();
+    renderPracticeBadge(this);
+    this.copy = this.add.text(640, 54, this.lesson.steps[0], {
+      fontFamily: TOKEN_FONT, fontSize: '20px', color: DECISION_UI.text,
+      wordWrap: { width: 950 }, align: 'center',
+    }).setOrigin(0.5).setResolution(2).setName('practice-deck-instruction');
+    // A committed route service restarts RouteScene. Keep the exercise alive
+    // across that restart so it can verify the resulting deck.
+    this.events.once('shutdown', () => this.registry.remove(STATE));
+    this.scene.bringToTop();
+  }
+  update() {
+    const r = this.route;
+    if (this.scene.isActive('MenuScene') || this.scene.isActive('BattleScene')) { this.scene.stop(); return; }
+    if (this.finished || !this.scene.isActive('RouteScene') || !r.routeEssentialAssetsReady || !r.cardHoverDetailModule) return;
+    this.children.list.forEach(object => (object as any).setVisible(!r.pauseOverlayOpen && !r.settingsOverlayOpen && !r.cardPickerInspectionOpen));
+    if (r.pauseOverlayOpen || r.settingsOverlayOpen) return;
+    if (!this.started) {
+      this.started = true;
+      if (r.shouldChooseDistrictContract()) r.chooseDistrictContract(r.districtContractChoices()[0].id);
+      r.cardPickerMode = this.lesson.id === 'preen' ? 'preen' : 'release';
+      r.cardPickerContext = 'route'; r.cardPickerFocusIndex = 0; r.cardPickerScroll = 0;
+      r.renderAll();
+      this.registry.set(STATE, { id: this.lesson.id, title: this.lesson.title, instruction: this.lesson.steps[0], complete: false });
+      announceScreenReader(this.lesson.steps[0]);
+      return;
+    }
+    const complete = this.lesson.id === 'preen' ? r.runState.deck.some((card: any) => card.upgraded)
+      : r.runState.deck.length < this.lesson.cards.length;
+    if (!complete && r.cardPickerMode) return;
+    this.finished = true;
+    r.scene.pause(); this.children.removeAll(true);
+    const root = this.add.container(0, 0);
+    root.add(this.add.rectangle(640, 360, 1280, 720, DECISION_UI.surface, 1).setInteractive());
+    const instruction = complete ? this.lesson.conclusion : 'You can replay this lesson from How to Play. Read the full impact, then select and confirm a card to try the change.';
+    root.add(this.add.text(640, 230, complete ? 'Lesson complete' : 'Give it another try', { fontFamily: TOKEN_DISPLAY_FONT, fontSize: '36px', color: DECISION_UI.text }).setOrigin(0.5).setResolution(2));
+    root.add(this.add.text(640, 340, instruction, { fontFamily: TOKEN_FONT, fontSize: '24px', color: DECISION_UI.secondary,
+      wordWrap: { width: 800 }, align: 'center', lineSpacing: 6 }).setOrigin(0.5).setResolution(2));
+    const back = () => { r.scene.start('MenuScene', { reopenHelp: true }); this.scene.stop(); };
+    const action = button(this, root, 640, 510, 320, 'Back to How to Play', back);
+    bindActionFocus(this, root, [action], back);
+    this.registry.set(STATE, { id: this.lesson.id, title: this.lesson.title, instruction, complete, finished: true });
+    announceScreenReader(`${complete ? 'Lesson complete.' : 'Give it another try.'} ${instruction}`);
+  }
 }
 
 class GuidedPracticeScene extends Phaser.Scene {

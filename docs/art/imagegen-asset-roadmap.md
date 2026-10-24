@@ -1,5 +1,9 @@
 # Bird Squad Imagegen Asset Roadmap
 
+Historical briefs and inventory. Current delivered-art acceptance and conditional
+future work are reconciled in [the October 24 ledger](../game/backlog-reconciliation-2026-10-24.md).
+The inventory counts below belong to the July audit.
+
 Status: planning document for future image-generation passes.
 Last audited: 2026-07-09.
 

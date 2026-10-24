@@ -3,8 +3,9 @@ import { boundedRewardText, renderRewardCardFace, rewardDecisionPreviewLabel } f
 export { boundedRewardText, rewardDecisionPreviewLabel } from './battle/reward-card-face';
 import Phaser from 'phaser';
 import type { BattleHandPreviewContext, BattleHandCardPreviewView } from './battle/render-hand';
-import { aggregateFlockStats, cardsFromSave, cardStatRows, flockStatLabel, KEYSTONE_AT, type Card } from '../main';
+import { aggregateFlockStats, cardsFromSave, cardLibrary, cardStatRows, flockStatLabel, KEYSTONE_AT, type Card } from '../main';
 import { flockHandTarget } from './hand-size';
+import { drawComparison } from './draw-comparison';
 
 /** Non-combat preview belongs with reward inspection; keep hand rendering focused. */
 export function renderRewardHoverPreview(context: BattleHandPreviewContext, card: BattleHandCardPreviewView, previewX: number) {
@@ -361,9 +362,13 @@ export function renderRouteInspectionReader(scene: Phaser.Scene, view: CardHover
     ...(view.upgradedMoltText ? [{ title: 'MOLT · PREEN', text: view.upgradedMoltText }] : []),
     { title: 'PASSIVE FLOCK BONUSES', text: view.stats.length ? view.stats.join('\n') : 'No passive contribution.' },
     { title: 'CARD DETAILS', text: `${view.name}\n${view.bird} / ${view.label}\n${view.target} / ${view.role}\n${view.zone}` },
-    ...(view.zone === 'Route reward inspection' ? routeDecisionSections(scene) : []),
+    ...(view.zone === 'Route reward inspection' ? [...routeDecisionSections(scene), routeDrawComparison(scene)] : []),
+    ...(view.drawComparison ? [{ title: 'DRAW COMPARISON', text: view.drawComparison }] : []),
     ...(['Preen candidate', 'Release candidate'].includes(view.zone)
-      ? [{title:'FULL FLIGHT IMPACT',text:cardPickerDeckImpact(scene, focusedCardPickerEntry(scene)?.index ?? -1)?.lines.join('\n\n') ?? 'No changes.'}]
+      ? [
+        { title: 'DRAW COMPARISON', text: cardPickerDeckImpact(scene, focusedCardPickerEntry(scene)?.index ?? -1)?.drawComparison ?? 'No changes.' },
+        { title: 'FULL FLIGHT IMPACT', text: cardPickerDeckImpact(scene, focusedCardPickerEntry(scene)?.index ?? -1)?.lines.join('\n\n') ?? 'No changes.' },
+      ]
       : []),
   ];
   sections.push(...decisionCardKeywordSections(sections));
@@ -412,6 +417,17 @@ function turnRouteInspectionPage(scene: any, delta: number) {
   scene.hoverCardDetail?.getByName('route-inspection-reader')?.getData('turnRulesPage')?.(delta);
 }
 
+function routeDrawComparison(scene: any) {
+  const before = cardsFromSave(scene.runState.deck);
+  const projected = scene.pendingRouteReward?.projectedState ?? scene.runState;
+  const after = cardsFromSave(projected.deck);
+  const card = scene.routeCardRewardChoices.find((card: Card) => card.id === scene.routeRewardInspectionCardId);
+  if (card && !after.some(owned => owned.id === card.id)) after.push(card);
+  const hand = (cards: Card[]) => flockHandTarget(aggregateFlockStats(cards).draw ?? 0,
+    cards.filter(card => card.runtime.suit === 'plumes').length >= KEYSTONE_AT, scene.runState.leaderId);
+  return { title: 'DRAW COMPARISON', text: drawComparison(before.length, after.length, hand(before), hand(after)) };
+}
+
 export function cardPickerDeckImpact(scene: any, index: number) {
   const before = cardsFromSave(scene.runState.deck);
   if (!before[index] || !scene.cardPickerMode) return undefined;
@@ -430,6 +446,7 @@ export function cardPickerDeckImpact(scene: any, index: number) {
   const handBefore = hand(before, beforeStats), handAfter = hand(after, afterStats);
   return {
     deckBefore: before.length, deckAfter: after.length, handBefore, handAfter, changes, cost,
+    drawComparison: drawComparison(before.length, after.length, handBefore, handAfter),
     lines: [
       `${release ? 'RELEASE' : 'PREEN'} / YOUR FLIGHT`,
       `Deck: ${before.length} > ${after.length} cards`,
@@ -459,6 +476,7 @@ export function rewardDeckImpact(scene: any, card: Card) {
   return {
     deckBefore: before.length, deckAfter: after.length,
     handBefore: handTarget(before), handAfter: handTarget(after),
+    drawComparison: drawComparison(before.length, after.length, handTarget(before), handTarget(after)),
     stats: preen
       ? cardStatRows({ ...card, upgraded: true }).filter((row) => !cardStatRows(card).includes(row))
       : cardStatRows(card),
@@ -475,6 +493,11 @@ export function renderMarketCardDossier(scene: Phaser.Scene, view: CardHoverDeta
   const listing = owner.marketCardShelf?.find((offer: any) => offer.id === view.marketCardId);
   const preview: string[] = owner.marketDecisionPreview ?? [];
   const build: string[] = owner.marketBuildObservations ?? [];
+  const before = cardsFromSave(owner.runState.deck);
+  const offered = cardLibrary[view.marketCardId ?? ''];
+  const after = offered && !before.some(card => card.id === offered.id) ? [...before, offered] : before;
+  const hand = (cards: Card[]) => flockHandTarget(aggregateFlockStats(cards).draw ?? 0,
+    cards.filter(card => card.runtime.suit === 'plumes').length >= KEYSTONE_AT, owner.runState.leaderId);
   const sections = [
     { title: view.usesMolt ? 'NOW / MOLT' : 'NOW', text: view.currentText },
     { title: view.usesMolt ? 'BASE' : 'PREEN', text: view.usesMolt ? view.baseText : view.upgradedText },
@@ -484,6 +507,7 @@ export function renderMarketCardDossier(scene: Phaser.Scene, view: CardHoverDeta
     { title: 'PURCHASE PREVIEW', text: [...preview, 'Buying adds this card to your flight. Permanent collection ownership is kept.'].join('\n') },
     ...(build.length ? [{ title: 'BUILD READ', text: build.join('\n') }] : []),
     { title: 'DRAW ASSUMPTIONS', text: 'Base hand includes Leader and suit threshold. Waymarks, temporary effects and opening protection can change actual draws.' },
+    { title: 'DRAW COMPARISON', text: drawComparison(before.length, after.length, hand(before), hand(after)) },
     { title: 'CARD DETAILS', text: `${view.name}\n${view.bird} / ${view.label}\n${view.target} / ${view.role}\n${view.cost} Wingbeats to play\n${view.zone}` },
   ];
   sections.push(...decisionCardKeywordSections(sections));
@@ -1976,6 +2000,7 @@ export function syncRewardCardInspection(scene: any, chrome: {
     moltText: card.upgraded ? card.moltTextUpgraded || card.moltText : card.moltText,
     upgradedMoltText: !card.upgraded ? card.moltTextUpgraded : undefined,
     usesMolt: false, stats: cardStatRows(card), reducedMotion: true,
+    drawComparison: impact.drawComparison,
   };
   scene.cardPreview = renderRouteInspectionReader(scene, view);
   scene.rewardInspectionLayer.add(scene.cardPreview);

@@ -17,7 +17,10 @@ for (const remapped of [false, true]) test(`route reward and Market candidate re
     for (const scene of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(scene.scene.key);
     w.__birdSquadGame.scene.start('RouteScene', {});
   });
-  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').cardHoverDetailModule);
+  await page.waitForFunction(() => {
+    const route = (window as any).__birdSquadGame.scene.getScene('RouteScene');
+    return route.routeEssentialAssetsReady && route.cardHoverDetailModule;
+  });
   const press = async (key: string) => { await page.keyboard.press(key); await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))); };
   const reading = () => page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').cardHoverDetailRequest?.inspectionRules ?? null);
   const stable = () => page.evaluate(() => {
@@ -33,6 +36,7 @@ for (const remapped of [false, true]) test(`route reward and Market candidate re
       return { x: c.left + b.centerX * c.width / 1280, y: c.top + b.centerY * c.height / 720 };
     }, name);
     await page.mouse.move(p.x, p.y);
+    await page.evaluate(() => new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
     await page.waitForFunction(name => { const r = (window as any).__birdSquadGame.scene.getScene('RouteScene'); return r.input.hitTestPointer(r.input.activePointer).some((o: any) => o.name === name); }, name);
     await page.mouse.click(p.x, p.y, { delay: 40 });
   };

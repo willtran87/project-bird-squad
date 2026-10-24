@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+export { renderUnifiedRunHud } from '../run-hud';
 import { MIN_SUPPORTED_TOUCH_TARGET, UI_TYPE } from '../theme';
 import { fitTextExcerpt } from '../text-excerpt';
 import { quietButton } from '../quiet-ui';

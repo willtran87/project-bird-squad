@@ -43,6 +43,7 @@ export {
 } from './reward-card-inspection';
 
 export interface CardHoverDetailView {
+  drawComparison?: string;
   marketCardId?: string;
   marketRules?: { page: number; total: number; title: string; text: string };
   inspectionRules?: { page: number; total: number; title: string; text: string };

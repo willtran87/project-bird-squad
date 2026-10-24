@@ -1,5 +1,10 @@
 # Runtime Remaining Work Plan
 
+Historical plan. Current measurements and conditional-work dispositions are in
+[the October 24 reconciliation](../game/backlog-reconciliation-2026-10-24.md)
+and [performance notes](performance-notes.md). The bundle tables below describe
+their original candidates, not today's build.
+
 Status: Phase 4 combat redraw ownership and device-aware Effects quality are
 complete. Phase 2 now has lazy FX-presentation, debug-state, battle-backdrop,
 and battle-foreground seams; a deeper BattleScene split remains optional and

@@ -7,7 +7,7 @@ const bundleCompositionReport: Plugin = {
   generateBundle(_options, bundle) {
     if (process.env.BIRD_SQUAD_BUNDLE_REPORT !== '1') return;
     Object.values(bundle)
-      .filter((entry) => entry.type === 'chunk' && entry.isEntry)
+      .filter((entry) => entry.type === 'chunk' && (entry.isEntry || entry.name === 'index'))
       .forEach((entry) => {
         const modules = Object.entries(entry.modules)
           .map(([id, detail]) => ({
@@ -69,6 +69,9 @@ export default defineConfig(({ command }) => ({
         manualChunks(id) {
           const moduleId = id.replace(/\\/g, '/');
           if (moduleId.endsWith('/src/main.ts')) return 'index';
+          if (moduleId.endsWith('/src/game/battle/enemy-breathing.ts')) return 'enemy-breathing';
+          if (moduleId.endsWith('/src/game/run-hud.ts')) return 'run-hud';
+          if (moduleId.endsWith('/src/game/route-transition-fx.ts')) return 'route-transition-fx';
           if (moduleId.endsWith('/src/game/battle/state-snapshot.ts')) return 'battle-state-snapshot';
           if (moduleId.endsWith('/src/game/battle/outcome-scene.ts')) return 'battle-outcome-scene';
           if (moduleId.includes('node_modules/phaser')) return 'vendor-phaser';
