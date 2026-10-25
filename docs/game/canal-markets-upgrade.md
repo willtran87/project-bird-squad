@@ -93,3 +93,8 @@ collection, and teardown-origin errors from cancelled outcome image requests.
 The journey now collects from the already-open journal; error assertions run
 before navigating away from the app. All three affected WebKit cases pass
 locally. These are test-lifecycle fixes, not waived gameplay failures.
+
+The full regression also found the intent catalog's old 222-move expectation.
+The three added Gatekeeper moves correctly raise the catalog to 225. The
+updated catalog and label tests pass, including written-rule descriptions and
+bounded labels at all three viewports; no production change was needed.
