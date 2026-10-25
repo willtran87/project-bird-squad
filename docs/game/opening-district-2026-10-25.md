@@ -136,3 +136,32 @@ reward-cost regressions in all three engines. Pull requests run verification
 without Pages write permissions or deployment; only a passing main build
 publishes. Original local failures and incomplete WebKit attempts remain in
 the earlier evidence record.
+
+## Published release
+
+- [x] Commit, push and merge implementation through PR #11.
+- [x] Re-run all release gates on merge revision `f699a3bb1c099f1d928859683eb59d6e7adc765f`.
+- [x] Publish GitHub Pages and verify the live artifact.
+- [x] Exercise strategy save/reload and real card input on the public site.
+- [x] Delete the merged local and remote `codex/opening-district` branch.
+
+[Main release run 40216948279](https://github.com/willtran87/project-bird-squad/actions/runs/40216948279)
+completed successfully: **992/992** regression cases and **36/36** browser
+qualification cases, with no skips, failures or duplicate cases in the
+reconciled logs. Unit/static gates, the actual Pages-base build and checkpoint
+smoke also passed. CI published the verified build; its live HTML, boot entry
+and main application chunk all match the recorded SHA-256 hashes.
+
+The public-site strategy test passed a real checkpoint reload with saved plan
+and coaching preference intact. The shared gameplay client played First Flight:
+the Roof Rat fell to 22/27 HP, Cover became 4, and Wingbeats became 2. Full art
+loaded with no failed assets or recorded console errors. Live strategy captures
+at 2560×1600, 1440×900 and 1000×560, plus the combat capture, were inspected.
+
+Local evidence: `.artifacts/opening-main-ci-summary.json`,
+`.artifacts/opening-live-identity.json`, `.artifacts/opening-live-test.json`,
+`.artifacts/opening-live-results/` and `.artifacts/opening-live-client/`.
+Subsequent release-record edits are documentation only; the published game
+revision remains the merge revision above. Human/device/accessibility sessions
+remain waived and unperformed, with the requested handoff ready. The measured
+FPS limitation remains unchanged; no overall frame-rate gain is claimed.

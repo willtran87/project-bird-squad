@@ -2,6 +2,16 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 
 ## 2026-10-25 — Opening district experience
 
+- Complete: PR #11 merged as `f699a3bb`; main release run 40216948279 passed
+  992/992 regression cases, 36/36 browser cases and all build/release gates,
+  then published Pages. Live HTML and app hashes match the tested artifact.
+  Public strategy save/reload and real First Flight combat input passed;
+  screenshots at all three supported verification sizes were inspected.
+- The merged local/remote feature branch is deleted. Requested five-player
+  handoff is ready; real human/device/accessibility evidence remains waived
+  and unperformed. No FPS improvement is claimed. Final record edits are
+  documentation only and do not change the published game revision.
+
 - Continuation: owner requested completion of the remaining list and confirmed
   no human sessions exist; prepared `docs/game/opening-district-playtest-handoff.md`
   and expanded the observer prompts. Existing manual waivers remain unmodified.
@@ -25,11 +35,9 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 - Fixed checkpoint-retry overlap, tooltip dismissal during late artwork,
   incomplete advice-preview matching and selected-card test synchronization.
   Strategy reward advice keeps cost cautions in the visible two-row footer.
-- Earlier WebKit cases passed; final Windows WebKit reruns stalled and were
-  stopped without a complete report. Human sessions, physical-device checks
-  and final WebKit qualification remain open. Performance evidence does not
-  establish an overall FPS improvement. Changes remain local on
-  `codex/opening-district`; this milestone has not been published.
+- Initial Windows WebKit reruns stalled without complete reports. The later
+  Linux PR and main qualification runs resolved the browser gap. Original
+  interrupted attempts remain recorded; they were never counted as passes.
 
 ## 2026-10-24 — Backlog reconciliation and measured performance
 

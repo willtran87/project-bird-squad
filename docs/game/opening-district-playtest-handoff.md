@@ -8,8 +8,10 @@ human, device or assistive-technology evidence.
 ## Session kit
 
 - Game: <https://willtran87.github.io/project-bird-squad/?playtest=1>.
-  Use the opening-district release only after its Pages deployment is confirmed.
-  Record the deployed Git commit from the release report alongside the URL.
+  The opening-district release is published and live-verified at revision
+  `f699a3bb1c099f1d928859683eb59d6e7adc765f`. Record this revision alongside the
+  URL; check the [release report](opening-district-2026-10-25.md#published-release)
+  for later updates before starting a session.
 - Instructions: [first-run runbook](playtest-runbook.md).
 - One blank copy per tester: [observer sheet](playtest-observer-template.md).
 - Focus: [six opening-district moments](opening-district-2026-10-25.md#five-player-follow-up).
