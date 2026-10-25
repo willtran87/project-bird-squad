@@ -4,15 +4,25 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 
 - User requested the full six-encounter, boss, six-upgrade, resident-story and
   audiovisual milestone followed by complete release and branch cleanup.
-- Working on `codex/canal-markets`; acceptance ledger:
+- PR #12 merged as `10f49f6f`; acceptance ledger:
   `docs/game/canal-markets-upgrade.md`. Existing manual evidence waivers remain.
-- Added six named upgrade rule branches and normalized ferry story state;
-  integration, content authoring and verification are in progress.
+- Added six named upgrade rule branches and normalized ferry story state.
 - Implemented the six curated formations, Gatekeeper charge/recovery phase,
   six Canal Preens, Oren's durable ferry choices and bounded water/audio cues.
 - Focused tests found and fixed the Sheltered Harbor cost reconstruction bug.
   Both ferry paths passed two real victories and durable one-time collection.
-  Static gates and 13 rules/draw units pass; full release qualification pending.
+  Main release run 40243283305 passed all 1,010 unique core cases, including
+  17 campaigns and four input journeys, plus 90 Chromium/Firefox/WebKit cases.
+  All 20 unit/policy checks, static/content/delivery gates and Pages-base smoke
+  passed. The workflow published the tested artifact successfully.
+- Public HTML/app hashes match the CI artifact. Three live Canal checks passed
+  (saved upgrade cost, durable ferry reward and Gatekeeper mechanics); screenshots
+  at 2560×1600, 1440×900 and 1000×560 were inspected.
+- The merged local/remote feature branch is deleted and the owned preview is
+  stopped. Final record edits are documentation only; published game revision
+  remains `10f49f6f`. Human/device/assistive-technology sessions remain waived
+  and unperformed. Pages boot is 714.5 KiB, below the unchanged 725 KiB ceiling
+  but above the 710 KiB preferred target; no physical-device FPS claim is made.
 
 ## 2026-10-25 — Opening district experience
 
