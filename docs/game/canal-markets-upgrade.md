@@ -81,3 +81,9 @@ mute reruns, plus the updated all-district boss-footer check. The initial mute
 fixture used `true` instead of the game's stored `1` and accessed storage on
 `about:blank`; both test setup errors are corrected. The complete final suite
 will run together in CI, including the existing campaigns and input journeys.
+
+The first CI attempt exposed Firefox test synchronization races: the ferry
+journey could select an already-cleared reward during the queued route
+transition, and recovery checked scene activity before the resume frame.
+The tests now wait for a populated reward choice or the active Route scene,
+and poll for resume. Gameplay assertions and release gates are unchanged.

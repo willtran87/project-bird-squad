@@ -99,8 +99,8 @@ for(const pledge of ['timber','lamps']) test(`Canal ferry ${pledge} survives rel
     await battle(page,'enc_canal_dock_swarm',fight);
     const result=await page.evaluate(resolveScriptedBattle,'balanced');expect(result.mode).not.toBe('defeat');
     for(let i=0;i<5;i++) {
+      await page.waitForFunction(()=>{const g=(window as any).__birdSquadGame;if(g.scene.isActive('RouteScene'))return true;const b=g.scene.getScene('BattleScene');return b.rewardPresentationReady()&&(b.mode==='cardReward'&&b.rewardChoices.length>0||b.mode==='upgradeReward'&&b.upgradeChoices.length>0||b.mode==='waymarkReward'&&b.waymarkChoices.length>0);});
       if(await page.evaluate(()=>(window as any).__birdSquadGame.scene.isActive('RouteScene')))break;
-      await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').rewardPresentationReady());
       await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');if(b.mode==='cardReward')b.skipCardReward();else if(b.mode==='upgradeReward')b.chooseUpgradeCard(b.upgradeChoices[0].id);else if(b.mode==='waymarkReward')b.chooseWaymarkReward(b.waymarkChoices[0].id);});
     }
     await readyRoute(page);await page.keyboard.press('j');
@@ -168,7 +168,7 @@ test('Canal content stays lazy on title and offers recovery after a failed downl
   const recovery=page.getByRole('dialog',{name:'Download recovery'});
   await expect(recovery).toBeVisible();await page.getByRole('button',{name:'Keep playing',exact:true}).click();
   await page.keyboard.press('j');await expect(page.getByRole('button',{name:'Canal recovery options'})).toBeVisible();
-  await page.keyboard.press('Escape');expect(await page.evaluate(()=>(window as any).__birdSquadGame.scene.isActive('RouteScene'))).toBe(true);
+  await page.keyboard.press('Escape');await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.isActive('RouteScene'))).toBe(true);
 });
 
 test('Canal ferry save failure rolls back payment and permits one durable retry',async({page})=>{
