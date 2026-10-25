@@ -7,8 +7,9 @@ replay intent have not been validated with fresh players.
 
 The validator reads the version-scoped waiver in
 `docs/game/release-evidence-policy.json` and reports it separately from passed
-evidence. Physical-device and assistive-technology checks are not waived; see
-`docs/game/release-evidence-runbook.md`.
+evidence. Physical-device and assistive-technology sessions are also waived for
+this version under the September 26 owner reconciliation; they remain
+unverified. See `docs/game/release-evidence-runbook.md`.
 
 This runbook remains the required standard if human evidence is collected
 later. Automated and seeded runs prove the telemetry pipeline, but they never

@@ -8,6 +8,7 @@ import { codexLeaderArtAssets } from './leader-portrait-assets';
 import { writeJournaledJson, readJournaledJson } from './safe-storage';
 import { controlBindingsSnapshot } from './input-bindings';
 import { prefersLeanEffects } from './graphics-quality';
+import { showDownloadRecovery } from '../update-recovery';
 import { bossDisruption, branchCards, branchUpgrade, combinations, conditions, districts, flightStories,
   journal, leaderCalls, newFlywayState, normalizeFlyway, relics, type FlywayState,
   type FlywayCondition, type FlywayRelic, type PreenBranch } from './flyway-rules';
@@ -61,6 +62,8 @@ export function installFlyway(raw: Phaser.Scene) {
   if (installed.has(raw)) return;
   installed.add(raw);
   const scene = raw as Scene;
+  let alive = true, openingFailed = false;
+  let opening: typeof import('./opening-district') | undefined;
   let dialog: HTMLDialogElement | undefined;
   let page: Page = 'flight';
   let pendingPreen: { card: any; accept: (branch: PreenBranch) => void; isCurrent: () => boolean } | undefined;
@@ -80,19 +83,27 @@ export function installFlyway(raw: Phaser.Scene) {
     const rect = scene.game.canvas.getBoundingClientRect();
     const battle = scene.scene.key === 'BattleScene';
     const menu = scene.scene.key === 'MenuScene';
-    launch.style.left = `${rect.left + (battle ? 14 : menu ? 110 : 16) * rect.width / 1280}px`;
-    launch.style.top = `${rect.top + (battle ? 359 : menu ? 18 : 640) * rect.height / 720}px`;
+    const left = `${rect.left + (battle ? 14 : menu ? 110 : 16) * rect.width / 1280}px`;
+    const top = `${rect.top + (battle ? 359 : menu ? 18 : 640) * rect.height / 720}px`;
+    if (launch.style.left !== left) launch.style.left = left;
+    if (launch.style.top !== top) launch.style.top = top;
     const key = shortcutCode() === 'KeyJ' ? 'J' : 'F8';
     const shortcut = ` · ${key}`;
-    launch.setAttribute('aria-label', `Open Flyway journal, Leader call and Flight Stories. Keyboard ${key}; controller View or Select.`);
-    launch.textContent = `${menu ? 'Flight Stories' : 'Flyway'}${shortcut}`;
-    launch.hidden = Boolean(isBusy(scene) || !scene.sys.isActive() || scene.mode && scene.mode !== 'battle' && !['runComplete', 'defeat'].includes(scene.mode));
+    const accessible = `Open Flyway journal, Leader call and Flight Stories. Keyboard ${key}; controller View or Select.`;
+    if (launch.getAttribute('aria-label') !== accessible) launch.setAttribute('aria-label', accessible);
+    const label = menu ? 'Flight Stories' : scene.runState?.mapIndex === 0 && !scene.runState.flyway?.rooftopPlan ? 'Strategy' : 'Flyway';
+    let caption = `${label}${shortcut}`;
+    const hidden = Boolean(isBusy(scene) || !scene.sys.isActive() || scene.routeCheckpointIndicator?.active
+      || scene.mode && scene.mode !== 'battle' && !['runComplete', 'defeat'].includes(scene.mode));
+    if (launch.hidden !== hidden) launch.hidden = hidden;
     if (battle && !launch.hidden) {
       const call = leaderCalls[scene.runLeaderId] ?? leaderCalls.fledgling;
       const ready = !scene.flightCombat.called && scene.flightCombat.charge >= call.goal;
-      launch.textContent = `${ready ? 'Call ready' : ['runComplete','defeat'].includes(scene.mode) ? 'Flight journal' : scene.flightCombat.called ? 'Flyway' : `Call ${scene.flightCombat.charge}/${call.goal}`}${shortcut}`;
-      launch.title = `${call.name}: ${call.charge} ${call.effect}`;
+      caption = `${ready ? 'Call ready' : ['runComplete','defeat'].includes(scene.mode) ? 'Flight journal' : scene.flightCombat.called ? 'Flyway' : `Call ${scene.flightCombat.charge}/${call.goal}`}${shortcut}`;
+      const title = `${call.name}: ${call.charge} ${call.effect}`;
+      if (launch.title !== title) launch.title = title;
     }
+    if (launch.textContent !== caption) launch.textContent = caption;
   };
   position();
   const resize = () => position(); window.addEventListener('resize', resize);
@@ -177,6 +188,7 @@ export function installFlyway(raw: Phaser.Scene) {
     const s = state(scene);
     const district = districts[mapIndex(scene)] ?? districts[0];
     section(body, district.name, district.weather);
+    if (mapIndex(scene) === 0 && scene.runState) renderPlans(body, s);
     if (scene.scene.key === 'BattleScene') {
       const call = leaderCalls[scene.runLeaderId] ?? leaderCalls.fledgling;
       const combat = scene.flightCombat;
@@ -200,6 +212,7 @@ export function installFlyway(raw: Phaser.Scene) {
     if (s.story) { const story = flightStories.find(entry => entry.id === s.story)!; section(body, story.title, `${story.rule} Progress: ${s.survivedMolt} Molt phases survived; ${s.cleanFights} clean fights.`); }
   }
   function renderCrew(body: HTMLElement) {
+    if (mapIndex(scene) === 0 && scene.flock) renderPlans(body, state(scene));
     section(body, 'Call and response', 'Each combination can resolve once per turn. Play the two suits consecutively; a different card interrupts the sequence. The sequence resets at Roost.');
     for (const combo of combinations) section(body, combo.name, combo.rule);
     const deck = scene.runState?.deck ?? scene.allDeckCards?.() ?? [];
@@ -339,7 +352,19 @@ export function installFlyway(raw: Phaser.Scene) {
   scene.flywayCancelPreen = () => { if (pendingPreen) close(); };
   scene.openFlyway = open;
   installPresentation(scene);
+  if (scene.scene.key !== 'MenuScene') void import('./opening-district').then(module => {
+    if (!alive) return;
+    opening = module; module.installOpeningDistrict(scene); render();
+  }).catch(() => { if (alive) { openingFailed = true; render(); } });
+  function renderPlans(body: HTMLElement, s: FlywayState) {
+    if (opening) opening.renderRooftopPlans(body, scene, s, mutate);
+    else {
+      const box = section(body, 'Rooftops strategies', openingFailed ? 'Strategy notes could not load. Your flight is still available.' : 'Preparing strategy notes…');
+      if (openingFailed) box.append(button('Strategy recovery options', showDownloadRecovery));
+    }
+  }
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    alive = false;
     close(); installed.delete(raw); launch.remove(); window.clearInterval(refreshTimer); cancelAnimationFrame(frame);
     window.removeEventListener('resize', resize); window.removeEventListener('keydown', onKey, true);
     delete scene.flywayPreenRequest; delete scene.flywayCancelPreen; delete scene.openFlyway;

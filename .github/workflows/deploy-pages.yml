@@ -1,6 +1,9 @@
 name: Deploy GitHub Pages
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
@@ -8,11 +11,9 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -133,8 +134,46 @@ jobs:
             test-results
           retention-days: 14
 
+  browsers:
+    name: Browser qualification (${{ matrix.browser }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install browser
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Verify release smoke and opening district
+        run: >-
+          node tools/run-cross-browser-smoke.mjs
+          tests/opening-district.spec.ts tests/smoke.spec.ts
+          --project=${{ matrix.browser }} --workers=1 --timeout=90000 --reporter=list,json
+          --grep="strategy choices|plan drafting|real combinations|saved shelter|Crow purpose|strategy presentation|title boot paints generated controls once|sold-out Market stock remains in the spoken unavailable inventory|opt-in screen reader announcements follow|reward advice preserves costs|reward cost cautions remain visible"
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/browser-results.json
+      - name: Retain browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-browser-${{ matrix.browser }}-${{ github.sha }}
+          path: |
+            .artifacts/browser-results.json
+            test-results
+          retention-days: 14
+
   build:
-    needs: [regression, campaigns, journeys]
+    needs: [regression, campaigns, journeys, browsers]
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     steps:
@@ -160,6 +199,8 @@ jobs:
           npm run validate:docs
           npm run validate:runtime
           npm run validate:runtime-assets
+          npm run validate:enemy-variety-contracts
+          npm run validate:minor-overlays
           npm run validate:release-evidence
 
       - name: Build Pages artifact
@@ -191,11 +232,16 @@ jobs:
           retention-days: 14
 
       - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: .artifacts/build
 
   deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

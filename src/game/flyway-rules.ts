@@ -4,6 +4,15 @@ export type PreenBranch = 'shelter' | 'flight';
 export type FlightStoryId = 'open-sky' | 'small-flock' | 'unbroken';
 export type FlywayCondition = 'clear' | 'crosswind' | 'rain' | 'scaffold';
 export type FlywayRelic = 'woven-roost' | 'storm-pin' | 'light-travel';
+export type RooftopPlan = 'shelter' | 'tempo' | 'molt';
+/** Draft weight only: keeps rarity, singleton exclusions and structured slots. */
+export function rooftopPlanMatch(plan: RooftopPlan | undefined, card: Pick<RuntimeCard, 'effects'>) {
+  if (!plan) return false;
+  const effects = card.effects?.join(' ') ?? '';
+  return plan === 'shelter' ? /gainCover|fullyBlocksNextAttack|retainHand/.test(effects)
+    : plan === 'tempo' ? /gainResonance|spendResonance|gainWingbeat/.test(effects)
+    : plan === 'molt' ? /enterMolt|gainOpenSkyGuard/.test(effects) : false;
+}
 export interface FlywayState {
   version: 1;
   restored: number[];
@@ -24,6 +33,8 @@ export interface FlywayState {
   leaderCalls: number;
   survivedMolt: number;
   cleanFights: number;
+  rooftopPlan?: RooftopPlan;
+  coachingOff?: boolean;
 }
 export const districts = [
   { name: 'Rooftop Blocks', color: '#edba72', tint: 0xe4a568, weather: 'Warm windows · drifting paper', restored: 'Neighbors cross the repaired clothesline. Window lanterns answer the first safe-flight call.' },
@@ -89,6 +100,8 @@ export function normalizeFlyway(value: unknown): FlywayState {
   s.story = flightStories.find(entry => entry.id === v.story)?.id;
   s.storyComplete = v.storyComplete === true;
   s.medals = strings(v.medals, 3).filter(id => flightStories.some(story => story.id === id));
+  if (v.rooftopPlan === 'shelter' || v.rooftopPlan === 'tempo' || v.rooftopPlan === 'molt') s.rooftopPlan = v.rooftopPlan;
+  if (v.coachingOff === true) s.coachingOff = true;
   return s;
 }
 export function journal(s: FlywayState, text: string) { s.journal = [...s.journal, text].slice(-48); }

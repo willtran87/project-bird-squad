@@ -1,5 +1,45 @@
 # Performance Notes
 
+## October 25 2026 — Opening district presentation
+
+The optional strategy presentation is a separate 7.4 KiB module (9 KiB hard
+cap), requested after leaving the title. Failed downloads use the existing
+recovery dialog and leave core gameplay available. Root entry measures
+668.7 KiB / 179.4 KiB gzip; combined boot is 710.8 / 195.9 KiB. The combined
+preferred 710 KiB target is exceeded by 0.8 KiB; the 725 KiB hard cap passes.
+Existing allowances were not raised. Phaser remains 1313.6 / 339.5 KiB and
+Codex data 282.7 / 89.1 KiB.
+
+Route artwork completions now queue one redraw per frame, retaining delayed
+work while the journal pauses the scene. A browser check confirms twelve
+notifications yield one redraw and a paused notification flushes on resume.
+An open route tooltip retains ownership until it closes; background artwork
+then gets its deferred repaint instead of interrupting the reader.
+Flyway launch controls also avoid writing unchanged DOM properties every poll.
+These reduce redundant work; the wall-clock sample does **not** establish an
+overall frame-rate improvement.
+
+| 1440×900 sample | Normal before | Normal after | Reduced before | Reduced after |
+| --- | ---: | ---: | ---: | ---: |
+| Title idle, mean frame ms | 18.39 | 16.67 | 16.67 | 16.76 |
+| Route entry, mean frame ms | 43.63 | 49.18 | 40.00 | 42.49 |
+| Battle idle, mean frame ms | 22.86 | 24.87 | 24.39 | 25.38 |
+| Card + enemy turn, mean frame ms | 23.03 | 24.80 | 22.39 | 24.98 |
+
+Route-entry long-task totals are 498→435 ms (normal) and 417→454 ms
+(reduced); counts change from five/three to four/four. Combat idle has no long tasks in
+either final sample. Cold route latency and combat throughput remain watch
+items. These short samples do not establish a statistically reliable cause
+or physical-device certification. Method: the same native-clock Chromium
+journey and Windows Xeon host, sequential fresh contexts, 1280×720 backbuffer,
+no synthetic stepping, no concurrent test job. Evidence:
+`.artifacts/opening-perf-before.json` and `.artifacts/opening-perf-verified.json`.
+The earlier post-change sample is retained at `.artifacts/opening-perf-after.json`:
+normal combat idle/action were 25.46/25.34 ms, reduced 25.29/25.12 ms. Both
+post-change captures are slower than baseline combat; neither supports an FPS
+improvement claim. No further tuning was adopted without another controlled
+comparison.
+
 ## October 24 2026 — Deferred presentation and backbuffer measurement
 
 The reconciled release defers the shared HUD, route framing/guidance and route

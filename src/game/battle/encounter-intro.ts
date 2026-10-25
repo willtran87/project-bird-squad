@@ -8,6 +8,7 @@ export interface EncounterIntroOptions {
   height: number;
   district: string;
   encounter: string;
+  enemies?: string[];
   confirm: string;
   texture: string;
   plaque: string;
@@ -26,10 +27,16 @@ export interface EncounterIntroOptions {
 export function playEncounterIntro(scene: Phaser.Scene, layer: Phaser.GameObjects.Container, o: EncounterIntroOptions) {
   const c = scene.add.container(0, 0);
   const { width: w, height: h } = o;
+  const ids = o.enemies ?? [];
+  const lesson = ids.includes('tar_crowned_crow') ? 'Break the toll road. Winded disrupts the Crow once; its escorts still act.'
+    : ids.includes('wire_hawk') ? 'Watch precedes Heavy Strike. Find your safe burst window.'
+    : ids.includes('signal_gull') && ids.length > 1 ? 'The gull can recover. Thin the attackers or stop its next Tell.'
+    : ids.includes('roof_rat') && ids.length === 1 ? 'Bring everyone across. Cover absorbs hits and preserves Flow.'
+    : 'Read the Tells. Choose which threat needs your Wingbeats first.';
   c.add([
     scene.add.rectangle(w / 2, h / 2, w, h, 0x020409, 0.54),
-    scene.add.rectangle(w / 2, 106, w, 70, 0x05080e, 0.84),
-    scene.add.rectangle(w / 2, 610, w, 70, 0x05080e, 0.78),
+    scene.add.rectangle(w / 2, 108, w, 96, 0x05080e, 1),
+    scene.add.rectangle(w / 2, 626, w, 106, 0x05080e, 1),
   ]);
   if (scene.textures.exists(o.texture)) {
     scene.textures.get(o.texture).setFilter(Phaser.Textures.FilterMode.LINEAR);
@@ -48,14 +55,15 @@ export function playEncounterIntro(scene: Phaser.Scene, layer: Phaser.GameObject
   ]);
   if (scene.textures.exists(o.plaque)) {
     scene.textures.get(o.plaque).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const plaque = scene.add.image(w - 180, 614, o.plaque);
-    c.add(plaque.setScale(Math.min(328 / plaque.width, 88 / plaque.height))
+    const plaque = scene.add.image(w - 180, 598, o.plaque);
+    c.add(plaque.setScale(Math.min(328 / plaque.width, 58 / plaque.height))
       .setAlpha(o.reduced ? 0.66 : 0.76).setName('combat-encounter-plaque'));
   }
   c.add([
     scene.add.text(w - 74, 588, o.encounter, { fontFamily: o.font, fontSize: '21px', fontStyle: o.bold,
       color: '#ffd5cc', stroke: '#000000', strokeThickness: 4 }).setOrigin(1, 0),
-    scene.add.text(w - 74, 620, 'Enemies sighted on the roofline.', { fontFamily: o.font, fontSize: '19px', color: o.soft }).setOrigin(1, 0),
+    scene.add.text(w - 74, 634, lesson, { fontFamily: o.font, fontSize: '18px', color: o.soft,
+      wordWrap: { width: 760 }, align: 'right', resolution: 2 }).setOrigin(1, 0).setName('opening-encounter-purpose'),
   ]);
   const hit = scene.add.rectangle(w / 2, h / 2, w, h, 0, 0.001)
     .setInteractive({ useHandCursor: true }).setName('combat-intro-dismiss-hit').on('pointerdown', o.dismiss);

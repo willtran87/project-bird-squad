@@ -10,15 +10,20 @@ const supplyData = JSON.parse(readFileSync(new URL('../data/game/alpha-supplies.
 const cases = [
   ...(['balanced', 'pressure', 'sheltered', 'cache-first'] as const).map(policy => ({
     policy, leader: 'fledgling', seed: 'continuation-progression-1', equipped: false,
+    plan: undefined as string | undefined,
   })),
   ...flockLeaders.flatMap(leader => [1, 2].map(seed => ({
     policy: 'cache-first' as const, leader: leader.id, seed: `continuation-equipped-${seed}`, equipped: true,
+    plan: undefined as string | undefined,
   }))),
+  ...(['shelter','tempo','molt'] as const).map(plan => ({
+    policy: 'cache-first' as const, leader: 'fledgling', seed: 'opening-strategy-1', equipped: true, plan,
+  })),
 ];
 
 // Actual run state flows through route, combat, reward and district transitions.
 // A defeat is a valid measured outcome, not proof that the balance is wrong.
-for (const scenario of cases) test(`seeded run progression: ${scenario.equipped ? 'equipped' : scenario.policy} ${scenario.leader} ${scenario.seed}`, async ({ page }, info) => {
+for (const scenario of cases) test(`seeded run progression: ${scenario.plan ?? (scenario.equipped ? 'equipped' : scenario.policy)} ${scenario.leader} ${scenario.seed}`, async ({ page }, info) => {
   const { policy, leader, seed, equipped } = scenario;
   // Full four-district campaigns can exceed four minutes on Linux software
   // rendering. Keep the 240-transition bound and terminal assertions below.
@@ -36,10 +41,10 @@ for (const scenario of cases) test(`seeded run progression: ${scenario.equipped 
     menu.selectedRunMode = 'full'; menu.startRun();
   }, leader);
   await page.waitForFunction(() => (window as any).__birdSquadGame.scene.isActive('RouteScene'));
-  await page.evaluate(seed => {
+  await page.evaluate(({seed,plan}) => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
-    r.scene.restart({ runState: { ...r.runState, seed } });
-  }, seed);
+    r.scene.restart({ runState: { ...r.runState, seed, flyway: { ...r.runState.flyway, ...(plan ? {rooftopPlan:plan} : {}) } } });
+  }, {seed,plan:scenario.plan});
   let terminal = '';
   // Four districts plus Market picks/Supplies need more transitions than the
   // old opening-only policy. Still bounded to expose actual progression loops.

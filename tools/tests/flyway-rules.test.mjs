@@ -6,6 +6,24 @@ const source = await readFile(new URL('../../src/game/flyway-rules.ts', import.m
 const javascript = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText;
 const rules = await import(`data:text/javascript;base64,${Buffer.from(javascript).toString('base64')}`);
 const cards = JSON.parse(await readFile(new URL('../../data/game/alpha-cards.json', import.meta.url), 'utf8')).cards;
+
+test('Rooftops strategies survive saves, reject malformed plans and classify actual active rules', () => {
+  for (const plan of ['shelter', 'tempo', 'molt']) {
+    const state = rules.normalizeFlyway({rooftopPlan: plan, coachingOff: true});
+    assert.equal(rules.normalizeFlyway(JSON.parse(JSON.stringify(state))).rooftopPlan, plan);
+    assert.equal(state.coachingOff, true);
+  }
+  assert.equal(rules.normalizeFlyway({rooftopPlan:'__proto__',coachingOff:'true'}).rooftopPlan, undefined);
+  assert.equal(rules.normalizeFlyway({coachingOff:'true'}).coachingOff, undefined);
+  const byId = id => cards.find(c => c.id === id);
+  assert.equal(rules.rooftopPlanMatch('shelter',byId('pentacles_04')),true);
+  assert.equal(rules.rooftopPlanMatch('tempo',byId('wands_ace')),true);
+  assert.equal(rules.rooftopPlanMatch('molt',byId('aviary_25')),true);
+  assert.equal(rules.rooftopPlanMatch('molt',byId('pentacles_04')),false);
+  assert.equal(rules.rooftopPlanMatch(undefined,byId('wands_ace')),false);
+  assert.equal(rules.rooftopPlanMatch(undefined,{}),false);
+  assert.equal(rules.rooftopPlanMatch('shelter',{}),false);
+});
 test('legacy and malformed expansion saves normalize without shared references', () => {
   const a = rules.normalizeFlyway({ restored:[0,0,-1,4,'2'], residents:{sella:Infinity,ivo:3}, rivalWins:-4, condition:'prototype', journal:['safe',99], medals:['forged','open-sky'] });
   assert.deepEqual(a.restored,[0]); assert.equal(a.residents.sella,0); assert.equal(a.residents.ivo,3); assert.equal(a.condition,'clear');
