@@ -87,3 +87,9 @@ journey could select an already-cleared reward during the queued route
 transition, and recovery checked scene activity before the resume frame.
 The tests now wait for a populated reward choice or the active Route scene,
 and poll for resume. Gameplay assertions and release gates are unchanged.
+
+WebKit then exposed a redundant close/reopen between ferry readiness and reward
+collection, and teardown-origin errors from cancelled outcome image requests.
+The journey now collects from the already-open journal; error assertions run
+before navigating away from the app. All three affected WebKit cases pass
+locally. These are test-lifecycle fixes, not waived gameplay failures.

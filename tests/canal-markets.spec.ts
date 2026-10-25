@@ -42,7 +42,10 @@ async function reload(page: Page) {
 }
 const errors = new WeakMap<Page,string[]>();
 test.beforeEach(async({page})=>{const entries:string[]=[];errors.set(page,entries);page.on('pageerror',e=>entries.push(e.message));});
-test.afterEach(async({page})=>{await page.goto('about:blank');expect(errors.get(page)).toEqual([]);});
+test.afterEach(async({page})=>{
+  // Check the app before teardown changes its origin and cancels image loads.
+  try { expect(errors.get(page)).toEqual([]); } finally { await page.goto('about:blank'); }
+});
 
 for(const branch of canalPreens) test(`Canal Preen ${branch.name} commits, reloads and executes its written rules`,async({page},info)=>{
   await route(page);
@@ -104,11 +107,13 @@ for(const pledge of ['timber','lamps']) test(`Canal ferry ${pledge} survives rel
       await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');if(b.mode==='cardReward')b.skipCardReward();else if(b.mode==='upgradeReward')b.chooseUpgradeCard(b.upgradeChoices[0].id);else if(b.mode==='waymarkReward')b.chooseWaymarkReward(b.waymarkChoices[0].id);});
     }
     await readyRoute(page);await page.keyboard.press('j');
-    if(fight===0)await expect(reopen).toBeDisabled();else await expect(reopen).toBeEnabled();
-    await page.keyboard.press('Escape');
+    if(fight===0) {
+      await expect(reopen).toBeDisabled();await page.keyboard.press('Escape');
+      await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.isActive('RouteScene'))).toBe(true);
+    } else await expect(reopen).toBeEnabled();
   }
   const rewardBefore=await page.evaluate(()=>{const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');return {hp:r.runState.currentHp,max:r.runMaxHp(),guard:r.runState.nextCombat?.openSkyGuard??0,trust:r.runState.flyway.residents.oren};});
-  await page.keyboard.press('j');await reopen.click();await expect(reopen).toHaveCount(0);
+  await reopen.click();await expect(reopen).toHaveCount(0);
   await page.keyboard.press('Escape');await reload(page);
   const after=await page.evaluate(()=>{const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');return {hp:r.runState.currentHp,guard:r.runState.nextCombat?.openSkyGuard??0,trust:r.runState.flyway.residents.oren,ferry:r.runState.flyway.canalFerry,visible:r.canalMarkets.restored};});
   expect(after.ferry).toMatchObject({pledge,rewarded:true});expect(after.trust).toBe(rewardBefore.trust+1);expect(after.visible).toBe(true);
