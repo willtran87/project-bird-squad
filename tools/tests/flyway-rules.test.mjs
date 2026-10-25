@@ -61,6 +61,34 @@ test('boss disruption requirements differ across districts and exclude normal en
 test('restoration is idempotent and records the actual district', () => {
   const s=rules.newFlywayState();assert.equal(rules.restoreDistrict(s,2),true);assert.equal(rules.restoreDistrict(s,2),false);assert.equal(rules.restoreDistrict(s,9),false);assert.deepEqual(s.restored,[2]);assert.equal(s.journal.length,1);
 });
+test('Canal alternatives keep exclusive card identity, canonical stats and exact active rules', () => {
+  assert.equal(rules.canalPreens.length, 6);
+  for (const choice of rules.canalPreens) {
+    const card = cards.find(card => card.id === choice.card), original = JSON.stringify(card);
+    assert.equal(rules.validBranch(card.id, choice.id), choice.id);
+    assert.equal(rules.validBranch('major_00', choice.id), undefined);
+    const upgraded = rules.branchUpgrade(card, choice.id);
+    assert.deepEqual(upgraded.effects, choice.effects);
+    assert.deepEqual(upgraded.moltEffects, choice.moltEffects);
+    assert.deepEqual(upgraded.flockStats, card.upgrade.flockStats);
+    assert.notDeepEqual(upgraded.effects, card.upgrade.effects);
+    upgraded.effects.push('tampered');
+    assert.equal(rules.branchUpgrade(card, choice.id).effects.includes('tampered'), false);
+    assert.equal(JSON.stringify(card), original);
+  }
+  assert.equal(rules.branchUpgrade(cards.find(c => c.id === 'aviary_25'), 'canal-harbor').cost, 1);
+});
+test('ferry progress counts unique Canal settlements after the pledge and survives normalization', () => {
+  const s = rules.normalizeFlyway({canalFerry:{pledge:'lamps',startedAt:1,rewarded:'true'},settledNodes:['0:a','1:a','1:a','2:b']});
+  assert.equal(s.canalFerry.rewarded, undefined);
+  assert.deepEqual(rules.canalFerryProgress(s), {clears:1,ready:false});
+  s.settledNodes.push('1:b'); assert.equal(rules.canalFerryProgress(s).ready,false);
+  s.settledNodes.push('1:c'); assert.equal(rules.canalFerryProgress(s).ready,true);
+  s.canalFerry.rewarded=true;
+  assert.deepEqual(rules.normalizeFlyway(JSON.parse(JSON.stringify(s))).canalFerry,s.canalFerry);
+  assert.equal(rules.normalizeFlyway({canalFerry:{pledge:'forged'}}).canalFerry,undefined);
+  assert.equal(rules.normalizeFlyway({canalFerry:{pledge:'timber',startedAt:Infinity}}).canalFerry.startedAt,0);
+});
 test('Flight Stories require a victory and their own objective', () => {
   for(const story of rules.flightStories){const s=rules.newFlywayState(story.id);assert.equal(s.relic,story.relic);assert.equal(rules.finishStory(s,false,10),false);if(story.id!=='small-flock')assert.equal(rules.finishStory(s,true,10),false);s.survivedMolt=3;s.cleanFights=3;assert.equal(rules.finishStory(s,true,10),true);rules.finishStory(s,true,10);assert.deepEqual(s.medals,[story.id]);}
   const s=rules.newFlywayState('small-flock');assert.equal(rules.finishStory(s,true,11),false);

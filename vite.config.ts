@@ -70,6 +70,7 @@ export default defineConfig(({ command }) => ({
           const moduleId = id.replace(/\\/g, '/');
           if (moduleId.endsWith('/src/main.ts')) return 'index';
           if (moduleId.endsWith('/src/game/opening-district.ts')) return 'opening-district';
+          if (moduleId.endsWith('/src/game/canal-markets.ts')) return 'canal-markets';
           if (moduleId.endsWith('/src/game/battle/enemy-breathing.ts')) return 'enemy-breathing';
           if (moduleId.endsWith('/src/game/run-hud.ts')) return 'run-hud';
           if (moduleId.endsWith('/src/game/route-transition-fx.ts')) return 'route-transition-fx';
