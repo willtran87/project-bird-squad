@@ -1,5 +1,19 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-10-25 — Canal Markets upgrade
+
+- User requested the full six-encounter, boss, six-upgrade, resident-story and
+  audiovisual milestone followed by complete release and branch cleanup.
+- Working on `codex/canal-markets`; acceptance ledger:
+  `docs/game/canal-markets-upgrade.md`. Existing manual evidence waivers remain.
+- Added six named upgrade rule branches and normalized ferry story state;
+  integration, content authoring and verification are in progress.
+- Implemented the six curated formations, Gatekeeper charge/recovery phase,
+  six Canal Preens, Oren's durable ferry choices and bounded water/audio cues.
+- Focused tests found and fixed the Sheltered Harbor cost reconstruction bug.
+  Both ferry paths passed two real victories and durable one-time collection.
+  Static gates and 13 rules/draw units pass; full release qualification pending.
+
 ## 2026-10-25 — Opening district experience
 
 - Complete: PR #11 merged as `f699a3bb`; main release run 40216948279 passed

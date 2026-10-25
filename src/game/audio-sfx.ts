@@ -3,6 +3,9 @@ import { AudioCueBudget } from './audio-cue-budget';
 const cueBudgets = new WeakMap<AudioContext, AudioCueBudget>();
 
 export type SynthAudioCue =
+  | 'canalBell'
+  | 'canalSurge'
+  | 'canalRepair'
   | 'confirm'
   | 'close'
   | 'locked'
@@ -139,6 +142,18 @@ export function playAudioCue(
   const audio = { ctx, master, sfxVolume };
   const loudness = clamp(intensity, 0.45, 1.8);
   switch (cue) {
+    case 'canalBell':
+      tone(audio, 660, 658, .22, 'sine', .012 * loudness, -.12);
+      tone(audio, 990, 988, .16, 'sine', .008 * loudness, .12);
+      break;
+    case 'canalSurge':
+      noise(audio, .24, 380, .015 * loudness);
+      tone(audio, 110, 165, .26, 'triangle', .014 * loudness);
+      break;
+    case 'canalRepair':
+      chord(audio, [330, 440, 660], .3, 'triangle', .012 * loudness);
+      noise(audio, .045, 1200, .006 * loudness);
+      break;
     case 'confirm':
       tone(audio, 420, 610, 0.09, 'sine', 0.036 * loudness);
       break;

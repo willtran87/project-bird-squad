@@ -58,7 +58,7 @@ test('authored intent descriptions and compact defence labels remain readable', 
     }
     return descriptions;
   }, authored);
-  expect(descriptions).toHaveLength(222);
+  expect(descriptions).toHaveLength(225); // Includes the three Open Sluice moves.
   expect(descriptions.filter(text => /[a-zA-Z]+\(|then |undefined|NaN/.test(text))).toEqual([]);
   for (const [width, height] of [[2560, 1600], [1440, 900], [1000, 560]]) {
     await page.setViewportSize({ width, height });

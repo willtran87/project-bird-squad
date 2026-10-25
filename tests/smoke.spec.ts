@@ -21415,7 +21415,7 @@ test('boss prep footer fits every district boss name and complete pressure set',
   });
   const expectedBosses = [
     { name: 'The Tar-Crowned Crow', test: 'Cover', compactTest: 'Cover', hint: 'Build Cover' },
-    { name: 'The Canal Gatekeeper', test: 'recovery', compactTest: 'recovery', hint: 'Bank Cohesion' },
+    { name: 'The Canal Gatekeeper', test: 'recovery', compactTest: 'recovery', hint: 'Thin the dock escorts' },
     { name: 'The Beacon-Breaker', test: 'tempo', compactTest: 'tempo', hint: 'Keep Open Sky Guard' },
     { name: 'The Roost Warden', test: 'full Flock build', compactTest: 'full build', hint: 'Stockpile Cover' },
   ];

@@ -9,6 +9,7 @@ export interface EncounterIntroOptions {
   district: string;
   encounter: string;
   enemies?: string[];
+  purpose?: string;
   confirm: string;
   texture: string;
   plaque: string;
@@ -28,11 +29,11 @@ export function playEncounterIntro(scene: Phaser.Scene, layer: Phaser.GameObject
   const c = scene.add.container(0, 0);
   const { width: w, height: h } = o;
   const ids = o.enemies ?? [];
-  const lesson = ids.includes('tar_crowned_crow') ? 'Break the toll road. Winded disrupts the Crow once; its escorts still act.'
+  const lesson = o.purpose ?? (ids.includes('tar_crowned_crow') ? 'Break the toll road. Winded disrupts the Crow once; its escorts still act.'
     : ids.includes('wire_hawk') ? 'Watch precedes Heavy Strike. Find your safe burst window.'
     : ids.includes('signal_gull') && ids.length > 1 ? 'The gull can recover. Thin the attackers or stop its next Tell.'
     : ids.includes('roof_rat') && ids.length === 1 ? 'Bring everyone across. Cover absorbs hits and preserves Flow.'
-    : 'Read the Tells. Choose which threat needs your Wingbeats first.';
+    : 'Read the Tells. Choose which threat needs your Wingbeats first.');
   c.add([
     scene.add.rectangle(w / 2, h / 2, w, h, 0x020409, 0.54),
     scene.add.rectangle(w / 2, 108, w, 96, 0x05080e, 1),
@@ -49,7 +50,7 @@ export function playEncounterIntro(scene: Phaser.Scene, layer: Phaser.GameObject
   }
   // The authored crest supplies the accent; no diagonal flat line across art.
   c.add([
-    scene.add.text(74, 80, 'ROOFLINE CONTACT', { fontFamily: o.font, fontSize: '19px', fontStyle: o.bold, color: o.cyan }),
+    scene.add.text(74, 80, o.district === 'Canal Markets' ? 'CANAL CROSSING' : 'ROOFLINE CONTACT', { fontFamily: o.font, fontSize: '19px', fontStyle: o.bold, color: o.cyan }),
     scene.add.text(74, 112, o.district, { fontFamily: o.displayFont, fontSize: '23px', fontStyle: o.bold,
       color: o.gold, stroke: '#000000', strokeThickness: 4 }),
   ]);
@@ -62,8 +63,8 @@ export function playEncounterIntro(scene: Phaser.Scene, layer: Phaser.GameObject
   c.add([
     scene.add.text(w - 74, 588, o.encounter, { fontFamily: o.font, fontSize: '21px', fontStyle: o.bold,
       color: '#ffd5cc', stroke: '#000000', strokeThickness: 4 }).setOrigin(1, 0),
-    scene.add.text(w - 74, 634, lesson, { fontFamily: o.font, fontSize: '18px', color: o.soft,
-      wordWrap: { width: 760 }, align: 'right', resolution: 2 }).setOrigin(1, 0).setName('opening-encounter-purpose'),
+    scene.add.text(w - 74, o.purpose ? 622 : 634, lesson, { fontFamily: o.font, fontSize: o.purpose ? '16px' : '18px', color: o.soft,
+      wordWrap: { width: o.purpose ? 1020 : 760 }, align: 'right', resolution: 2 }).setOrigin(1, 0).setName('opening-encounter-purpose'),
   ]);
   const hit = scene.add.rectangle(w / 2, h / 2, w, h, 0, 0.001)
     .setInteractive({ useHandCursor: true }).setName('combat-intro-dismiss-hit').on('pointerdown', o.dismiss);

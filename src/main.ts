@@ -14140,7 +14140,8 @@ private playBattleIntro(onComplete?: () => void) {
       reduced: prefersReducedMotion(), holdScale: textTiming.holdScale, minimumReadableMs: textTiming.minimumReadableMs,
       width: GAME_WIDTH, height: GAME_HEIGHT, district: currentMap().name,
       enemies: this.enemies.map(enemy => enemy.runtime.id),
-      encounter: this.battlefieldMood() === 'rival' ? `Caldra’s Pinion Crew · encounter ${this.flyway.rivalWins + 1}` : this.enemies.find(enemy => enemy.runtime.type === 'boss')?.name ?? currentCombatNodes()[this.currentRouteIndex]?.label ?? 'Rooftop Fight',
+      purpose: activeMapIndex === 1 ? alphaEncounterLibrary.get(currentCombatNodes()[this.currentRouteIndex]?.payloadId)?.lesson : undefined,
+      encounter: this.battlefieldMood() === 'rival' ? `Caldra’s Pinion Crew · encounter ${this.flyway.rivalWins + 1}` : this.enemies.find(enemy => enemy.runtime.type === 'boss')?.name ?? (activeMapIndex === 1 ? alphaEncounterLibrary.get(currentCombatNodes()[this.currentRouteIndex]?.payloadId)?.name : undefined) ?? currentCombatNodes()[this.currentRouteIndex]?.label ?? 'Rooftop Fight',
       confirm: controlBindingLabel('confirm'), texture: COMBAT_ENCOUNTER_INTRO_TEXTURE,
       plaque: uiIconAssets['combat-encounter-plaque'].key,
       font: UI_FONT, displayFont: TOKEN_DISPLAY_FONT, bold: UI_BOLD, gold: UI_GOLD, cyan: UI_CYAN, soft: UI_SOFT,
@@ -22514,6 +22515,7 @@ private playBattleIntro(onComplete?: () => void) {
     }, () => this.mode === 'upgradeReward' && this.upgradeChoices.includes(card) && !card.upgraded)) return;
     this.rewardChoiceArmedId = undefined;
     card.upgraded = true;
+    card.cost = card.runtime.upgrade.cost ?? card.runtime.cost;
     birdAudio.play('moltPower');
     this.logEvent(`${displayName(card)} preened.`);
     this.upgradeChoices = [];
@@ -23908,6 +23910,7 @@ function cardsFromSave(savedCards: readonly SavedCard[]): Card[] {
       card.upgradedText = formatEffects(card.runtime.upgrade.effects);
       card.moltTextUpgraded = formatEffects(card.runtime.upgrade.moltEffects ?? []);
     }
+    if (card.upgraded) card.cost = card.runtime.upgrade.cost ?? card.runtime.cost;
     return card;
   });
 }

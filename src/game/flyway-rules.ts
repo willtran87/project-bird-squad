@@ -1,6 +1,6 @@
 import type { CardSuit, RuntimeCard, RuntimeCardUpgrade } from './types';
 
-export type PreenBranch = 'shelter' | 'flight';
+export type PreenBranch = 'shelter' | 'flight' | 'canal-anchor' | 'canal-counter' | 'canal-chorus' | 'canal-cadence' | 'canal-harbor' | 'canal-current';
 export type FlightStoryId = 'open-sky' | 'small-flock' | 'unbroken';
 export type FlywayCondition = 'clear' | 'crosswind' | 'rain' | 'scaffold';
 export type FlywayRelic = 'woven-roost' | 'storm-pin' | 'light-travel';
@@ -35,6 +35,7 @@ export interface FlywayState {
   cleanFights: number;
   rooftopPlan?: RooftopPlan;
   coachingOff?: boolean;
+  canalFerry?: { pledge: 'timber' | 'lamps'; startedAt: number; rewarded?: true };
 }
 export const districts = [
   { name: 'Rooftop Blocks', color: '#edba72', tint: 0xe4a568, weather: 'Warm windows · drifting paper', restored: 'Neighbors cross the repaired clothesline. Window lanterns answer the first safe-flight call.' },
@@ -102,6 +103,11 @@ export function normalizeFlyway(value: unknown): FlywayState {
   s.medals = strings(v.medals, 3).filter(id => flightStories.some(story => story.id === id));
   if (v.rooftopPlan === 'shelter' || v.rooftopPlan === 'tempo' || v.rooftopPlan === 'molt') s.rooftopPlan = v.rooftopPlan;
   if (v.coachingOff === true) s.coachingOff = true;
+  const ferry = v.canalFerry && typeof v.canalFerry === 'object' ? v.canalFerry as Record<string, unknown> : undefined;
+  if (ferry && typeof ferry === 'object' && (ferry.pledge === 'timber' || ferry.pledge === 'lamps')) {
+    s.canalFerry = { pledge: ferry.pledge, startedAt: Math.floor(finite(ferry.startedAt)) };
+    if (ferry.rewarded === true) s.canalFerry.rewarded = true;
+  }
   return s;
 }
 export function journal(s: FlywayState, text: string) { s.journal = [...s.journal, text].slice(-48); }
@@ -139,11 +145,28 @@ export function playCombination(combat: FlightCombatState, suit?: CardSuit | nul
   return combo;
 }
 export const branchCards = ['major_00', 'wands_ace', 'swords_ace', 'cups_ace', 'pentacles_04', 'aviary_25'];
+/** Canal alternatives replace active upgrade rules; canonical passive stats remain. */
+export const canalPreens: Array<{ id: PreenBranch; card: string; name: string; plan: string; tradeoff: string; effects: string[]; moltEffects: string[]; cost?: number }> = [
+  { id: 'canal-anchor', card: 'pentacles_04', name: 'Mooring Anchor', plan: 'Hold & Answer', tradeoff: 'More immediate Cover; gives up the normal full-block draw and Guard payoff.', effects: ['gainCover(12)', 'retainHand(1)'], moltEffects: ['damage(target, 10)', 'retainHand(1)'] },
+  { id: 'canal-counter', card: 'pentacles_04', name: 'Countercurrent', plan: 'Hold & Answer', tradeoff: 'Less Cover now; retain two cards and earn three next-turn draws only if you fully block the next attack.', effects: ['gainCover(4)', 'retainHand(2)', 'if fullyBlocksNextAttack then nextTurnDraw(3)'], moltEffects: ['damage(target, 12)'] },
+  { id: 'canal-chorus', card: 'wands_ace', name: 'Ferry Chorus', plan: 'Chorus Engine', tradeoff: 'Two draws require existing Resonance. Lower damage; drawn cards still cost Wingbeats and count toward Open Sky.', effects: ['if hasResonance then draw(2)', 'damage(target, 2)', 'gainResonance(2)'], moltEffects: ['gainCover(3)', 'draw(2)'] },
+  { id: 'canal-cadence', card: 'wands_ace', name: 'Lockstep Cadence', plan: 'Chorus Engine', tradeoff: 'Greater damage with existing Resonance; gives up upgrade draw and generates only one Resonance.', effects: ['if hasResonance then damage(target, 6)', 'damage(target, 3)', 'gainResonance(1)'], moltEffects: ['gainCover(8)'] },
+  { id: 'canal-harbor', card: 'aviary_25', name: 'Sheltered Harbor', plan: 'Storm Window', tradeoff: 'Costs one Wingbeat instead of zero to enter Molt with extra Cover and active Open Sky Guard.', cost: 1, effects: ['enterMolt()', 'gainOpenSkyGuard(2)', 'gainCover(4)'], moltEffects: ['gainCover(8)', 'draw(1)'] },
+  { id: 'canal-current', card: 'aviary_25', name: 'Running Current', plan: 'Storm Window', tradeoff: 'Draw two on entry but forgo the normal upgrade’s active Guard. Prepare protection before the burst.', effects: ['enterMolt()', 'draw(2)'], moltEffects: ['gainWingbeat(1)', 'draw(1)'] },
+];
+export function canalFerryProgress(s: FlywayState) {
+  const clears = new Set(s.settledNodes.filter(id => id.startsWith('1:'))).size;
+  return { clears, ready: !!s.canalFerry && (s.restored.includes(1) || clears >= s.canalFerry.startedAt + 2) };
+}
 export function validBranch(id: string, value: unknown): PreenBranch | undefined {
+  const canal = canalPreens.find(branch => branch.card === id && branch.id === value);
+  if (canal) return canal.id;
   return branchCards.includes(id) && (value === 'shelter' || value === 'flight') ? value : undefined;
 }
 export function branchUpgrade(card: RuntimeCard, branch?: PreenBranch): RuntimeCardUpgrade {
   const base = card.upgrade;
+  const canal = canalPreens.find(entry => entry.card === card.id && entry.id === branch);
+  if (canal) return { ...base, cost: canal.cost ?? base.cost, effects: [...canal.effects], moltEffects: [...canal.moltEffects] };
   if (!branch || !branchCards.includes(card.id)) return base;
   const extra = branch === 'shelter' ? 'gainCover(2)' : 'draw(1)';
   return { ...base, effects: [...base.effects, extra], moltEffects: [...(base.moltEffects ?? card.moltEffects ?? base.effects), extra] };

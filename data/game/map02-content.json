@@ -7,7 +7,7 @@
   ],
   "mapProfile": {
     "mapId": "map_02_canal_markets",
-    "thesis": "Survive sustained attrition while rebuilding water, food, repair, and rest stops along the canals.",
+    "thesis": "Read the canal rhythm: interrupt support, protect the crossing, then use the quiet water to rebuild.",
     "primaryTests": [
       "recovery",
       "chip damage",
@@ -38,9 +38,9 @@
       "Waymarks"
     ],
     "bossPrepHints": [
-      "Bank Cohesion at Basins before the Canal Gatekeeper's drowning pressure.",
-      "Carry Scrap into the final Market; the boss punishes a starved economy.",
-      "Keep Open Sky Guard for the heron's sweeping reach."
+      "Thin the dock escorts before the Gatekeeper crosses half Cohesion.",
+      "Open Sluice cycles Charge Floodgate, a 12-damage strike plus stored charge, then a non-attacking reset.",
+      "Hit and strip the boss’s Cover to cancel one attack; keep protection for Molt’s exposed enemy phase."
     ]
   },
   "enemies": [
@@ -160,7 +160,10 @@
       "name": "Market Crow",
       "type": "normal",
       "health": 26,
-      "roles": ["support", "saboteur"],
+      "roles": [
+        "support",
+        "saboteur"
+      ],
       "lesson": "Scavengers heal if left alone; deny their rest turn.",
       "description": "A market crow that steals, sorts, and recovers behind the bustle whenever the flock looks away.",
       "visualBrief": "Glossy crow in a cropped market-worker jacket, bright abstract pin clips, tiny satchel, and talon bands amid tarps, produce crates, and canal reflections.",
@@ -297,9 +300,9 @@
       "attackPattern": {
         "type": "cycle",
         "moveIds": [
-          "wheel_5",
           "ride_thermal",
-          "dive_heavy_12"
+          "dive_heavy_12",
+          "wheel_5"
         ]
       },
       "rewards": {
@@ -327,14 +330,16 @@
           "id": "shut_gate",
           "label": "Shut Gate",
           "effects": [
-            "gainCover(8)"
+            "gainCover(8)",
+            "nextAttackBonus(2)"
           ]
         },
         {
           "id": "press_7",
-          "label": "Press 7",
+          "label": "Twin Press 3 + 4",
           "effects": [
-            "damage(flock, 7)"
+            "damage(flock, 3)",
+            "damage(flock, 4)"
           ]
         },
         {
@@ -476,7 +481,7 @@
       "name": "The Canal Gatekeeper",
       "type": "boss",
       "health": 54,
-      "description": "A towering heron that holds the canal's central gate and tests whether the flock can survive slow water pressure.",
+      "description": "The gatekeeper holds the locks behind dock escorts. At half Cohesion the sluice opens: a charged floodgate strike gives way to a short recovery window.",
       "visualBrief": "Tall great heron in layered canal rainwear, long hooded neck wrap, reflective leg bands, and a basin-worker satchel standing amid raised weirs and churning locks.",
       "silhouette": "Very tall spear-necked waterbird with long legs and a still, gate-like stance.",
       "artPose": "Front-facing 3/4 dramatic idle cutout pose, body angled slightly left or right with face and head aligned to the same 3/4 angle; enemy appears braced, watchful, or ready to act while staying readable; full body visible with natural wings, long neck, legs, and feet, standing on an implied ground line with weight supported by natural feet, talons, paws, or webbed feet; avoiding straight-on symmetry, floating poses, and human shoulder posture.",
@@ -531,25 +536,44 @@
           "effects": [
             "damage(flock, 14)"
           ]
+        },
+        {
+          "id": "sluice_charge",
+          "label": "Charge Floodgate",
+          "effects": [
+            "gainCover(6)",
+            "nextAttackBonus(4)"
+          ]
+        },
+        {
+          "id": "sluice_release",
+          "label": "Release 12 + charge",
+          "effects": [
+            "damage(flock, 12)",
+            "if flockHasNoCover then addSnagToDiscard(wet_feathers)"
+          ]
+        },
+        {
+          "id": "sluice_recovery",
+          "label": "Reset the Sluice",
+          "effects": [
+            "gainCover(3)"
+          ]
         }
       ],
       "attackPattern": {
-        "type": "scripted",
+        "type": "cycle",
         "moveIds": [
           "raise_weir",
           "spear_strike_9",
-          "wading_lull",
-          "tide_call",
-          "drown_press",
-          "heavy_lunge_14"
-        ],
-        "loopFrom": 1
+          "wading_lull"
+        ]
       },
-      "phaseTwoName": "Floodgate Pressure",
+      "phaseTwoName": "Open Sluice",
       "phaseTwoMoveIds": [
-        "tide_call",
-        "drown_press",
-        "heavy_lunge_14"
+        "sluice_charge",
+        "sluice_release",
+        "sluice_recovery"
       ],
       "rewards": {
         "bossRouteMarkChoices": 3,
@@ -751,8 +775,8 @@
         "type": "cycle",
         "moveIds": [
           "turtle_shell_wall",
-          "turtle_snap_6",
-          "turtle_lane_block"
+          "turtle_lane_block",
+          "turtle_snap_6"
         ]
       },
       "rewards": {
@@ -976,8 +1000,8 @@
         "type": "cycle",
         "moveIds": [
           "opossum_play_dead",
-          "opossum_startle_snap_7",
-          "opossum_bait_line"
+          "opossum_bait_line",
+          "opossum_startle_snap_7"
         ]
       },
       "rewards": {
@@ -1115,11 +1139,11 @@
   "encounters": [
     {
       "id": "enc_canal_dock_swarm",
-      "name": "Dock Swarm",
+      "name": "The Pantry Line",
       "mapId": "map_02_canal_markets",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "Three scavengers crowd the dock — clear one before the whole line stacks up.",
+      "lesson": "Choose between removing the rat’s steady damage and hitting the crow on Pick Clean to deny its healing.",
       "tags": [
         "multi",
         "support",
@@ -1127,8 +1151,7 @@
       ],
       "enemies": [
         "canal_dock_rat",
-        "canal_market_crow",
-        "canal_dock_rat"
+        "canal_market_crow"
       ],
       "rewardProfileId": "street_map02"
     },
@@ -1190,43 +1213,45 @@
     },
     {
       "id": "enc_canal_dredge_eel",
-      "name": "Dredge Eel",
+      "name": "Three-Card Crossing",
       "mapId": "map_02_canal_markets",
       "nodeType": "street",
       "band": "standard",
-      "lesson": "Winded throttles your tempo; plan around the lull.",
+      "lesson": "Coil taxes the next Wingbeat after four plays. Remove the rat or keep a compact turn while preparing for Lash.",
       "tags": [
         "winded",
         "tempo"
       ],
       "enemies": [
-        "canal_dredge_eel"
+        "canal_dredge_eel",
+        "canal_dock_rat"
       ],
       "rewardProfileId": "street_map02"
     },
     {
       "id": "enc_canal_barge_gull",
-      "name": "Barge Gull",
+      "name": "Loaded Barge",
       "mapId": "map_02_canal_markets",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "Heavy Strike rewards Cover banked in advance.",
+      "lesson": "Ride Thermal charges the next dive if you have no Cover. Guard during setup, then decide whether to burst the gull or weather its dive.",
       "tags": [
         "heavy",
         "cover"
       ],
       "enemies": [
-        "canal_barge_gull"
+        "canal_barge_gull",
+        "crab_dockguard"
       ],
       "rewardProfileId": "street_map02"
     },
     {
       "id": "enc_canal_lock_keeper",
-      "name": "Lock Keeper",
+      "name": "Lock Release",
       "mapId": "map_02_canal_markets",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "A turtling foe stalls your clock; out-pace its Cover.",
+      "lesson": "Shut Gate banks Cover and a stronger first hit. Twin Press hits twice; prepare enough Cover for the whole sequence, then exploit Flood’s smaller attack.",
       "tags": [
         "cover",
         "winded",
@@ -1277,7 +1302,7 @@
       "mapId": "map_02_canal_markets",
       "nodeType": "boss",
       "band": "boss",
-      "lesson": "Tests recovery and attrition while dock helpers keep the canal pressure wide.",
+      "lesson": "Manage the escorts before half Cohesion. Open Sluice charges a heavy strike, then spends a beat resetting. Hit and strip the boss’s Cover to disrupt one attack this fight.",
       "tags": [
         "boss",
         "cover",
@@ -1394,11 +1419,11 @@
     },
     {
       "id": "enc_canal_net_barricade",
-      "name": "Net Barricade",
+      "name": "Net & Shell",
       "mapId": "map_02_canal_markets",
       "nodeType": "street",
       "band": "standard",
-      "lesson": "A barricade and netter pair asks whether to break Cover or clear tempo first.",
+      "lesson": "The shell buys time for the netter. Cut the netter’s Snags first, or break the shell while keeping Cover against Lane Block.",
       "tags": [
         "cover",
         "winded",
@@ -1498,11 +1523,11 @@
     },
     {
       "id": "enc_canal_feint_line",
-      "name": "Canal Feint Line",
+      "name": "False Mooring",
       "mapId": "map_02_canal_markets",
       "nodeType": "street",
       "band": "standard",
-      "lesson": "A decoy and netter stack Open Sky bait with Winded control.",
+      "lesson": "A small hit denies Play Dead Cover, but the netter threatens your deck. Pick which setup to interrupt before the Open Sky bait.",
       "tags": [
         "tempo",
         "openSky",
