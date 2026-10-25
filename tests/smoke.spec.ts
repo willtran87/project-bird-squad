@@ -12757,9 +12757,12 @@ test('reward advice preserves costs alongside competing synergy and district ben
     const owned = Array.from({ length: 4 }, () => ({ ...card }));
     const observations = observe(card, owned);
     const district = battle.rewardObservations(card);
+    battle.flyway.rooftopPlan = 'shelter';
+    const planned = battle.rewardObservations({ ...card, runtime: { ...card.runtime, effects: ['gainCover(4)'] } });
+    delete battle.flyway.rooftopPlan;
     const recovery = { ...card, role: 'skill', cost: 1, runtime: { ...card.runtime, tags: ['heal'] } };
     return {
-      observations, district,
+      observations, district, planned,
       recovery: observe(recovery, Array.from({ length: 4 }, () => recovery)),
       first: observe(card, []),
       twentyOne: observe(card, Array.from({ length: 20 }, () => card)),
@@ -12768,27 +12771,29 @@ test('reward advice preserves costs alongside competing synergy and district ben
   });
   expect(result.observations).toEqual(['+ Feeds Stage Pin', '! 5 cards cost 2+']);
   expect(result.district).toEqual(['+ District lean: direct damage', '! 5 cards cost 2+']);
+  expect(result.planned).toEqual(['Hold & Answer · Cover / Retain setup', '! 5 cards cost 2+', '+ District lean: direct damage']);
   expect(result.recovery).toEqual(['+ Feeds Stage Pin', '! Recovery already strong']);
   expect(result.first).toEqual(['+ Feeds Stage Pin', '+ First damage source']);
   expect(result.twentyOne[1]).toBe('! 21 cards cost 2+');
   expect(result.preserved).toBe(true);
 });
 
-test('reward cost cautions remain visible and announced before commitment', async ({ page }) => {
+for (const planned of [false, true]) test(`reward cost cautions remain visible and announced before commitment, planned=${planned}`, async ({ page }) => {
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 2560, height: 1600 });
   await page.addInitScript(() => localStorage.setItem('birdsquad.screenReader', 'on'));
   await boot(page);
-  const expected = await page.evaluate(async () => {
+  const expected = await page.evaluate(async (planned) => {
     const battle: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
     let choices: any[] = [];
     let index = -1;
     for (let attempt = 0; attempt < 32 && index < 0; attempt++) {
       choices = battle.createRewardChoices();
-      index = choices.findIndex((card: any) => card.cost >= 2);
+      index = choices.findIndex((card: any) => card.cost >= 2 && (!planned || /gainCover|fullyBlocksNextAttack|retainHand/.test(card.runtime.effects.join(' '))));
     }
     if (index < 0) throw new Error('Expected a real 2+ cost reward candidate');
     const card = choices[index];
+    if (planned) battle.flyway.rooftopPlan = 'shelter';
     battle.hand = [];
     battle.discardPile = [];
     battle.clearedPile = [];
@@ -12801,8 +12806,9 @@ test('reward cost cautions remain visible and announced before commitment', asyn
     battle.battleInputActive = true;
     battle.renderAll();
     return { observations: battle.rewardObservations(card), count: battle.allDeckCards().length };
-  });
+  }, planned);
   expect(expected.observations).toContain('! 5 cards cost 2+');
+  if (planned) expect(expected.observations[0]).toContain('Hold & Answer');
   await page.waitForFunction(() => {
     const battle = window.__birdSquadGame.scene.getScene('BattleScene');
     return battle.getTextState().battleRewardRenderer?.ready
@@ -12811,7 +12817,7 @@ test('reward cost cautions remain visible and announced before commitment', asyn
   await expect.poll(() => page.evaluate(() => document.getElementById('game-status')?.textContent ?? '')).toContain('5 cards cost 2+');
   for (const size of [{ width: 2560, height: 1600 }, { width: 1000, height: 560 }]) {
     await page.setViewportSize(size);
-    await page.screenshot({ path: `.artifacts/test-results/reward-tradeoffs/reward-${size.width}x${size.height}.png` });
+    await page.screenshot({ path: `.artifacts/test-results/reward-tradeoffs/reward-${planned ? 'planned' : 'open'}-${size.width}x${size.height}.png` });
   }
   expect(await page.evaluate(() => window.__birdSquadGame.scene.getScene('BattleScene').allDeckCards().length)).toBe(expected.count);
   expect(await page.evaluate(() => window.__birdSquadGame.scene.getScene('BattleScene').rewardChoiceArmedId)).toBeUndefined();

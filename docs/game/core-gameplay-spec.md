@@ -43,6 +43,22 @@ in `docs/game/alpha-run-spec.md`.
 - Improved cards show a `+` suffix and use their improved effect.
 - Foundation combat should prioritize readability before adding new mechanics.
 
+### Rooftops strategies
+
+The route's Flyway journal offers three optional plans: Hold & Answer (Cover,
+Retain and full-block payoffs), Chorus Engine (Resonance and Wingbeat engines),
+and Storm Window (Molt entry and Open Sky Guard). Matching active rules receive
+double their normal draft weight in Rooftops battle card rewards. Structured
+reward roles, district affinity, rarity weights and singleton exclusions still
+apply. Named cards are never guaranteed. The choice can be changed or cleared
+on the route before a fight; saved offers, Markets and later districts are
+unaffected. Plan and coaching preference survive normal checkpoints.
+
+Choosing a plan enables optional contextual Rooftops coaching after the initial
+controls lesson. It uses current legal cards and Tells, yields to card inspection,
+and retires after beat three. The Flyway journal can hide it. Existing practice
+and first-flight guide controls remain available.
+
 Do not add parked mechanics to the foundation by default: Ruffled, Mark, Bond,
 Shine, Scry, Discover, Cleanse, Route, Seed, replay/reflection, status
 conversion, intent delay/freeze, temporary cards, or all-four-suits payoffs.

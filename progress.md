@@ -1,5 +1,32 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-10-25 — Opening district experience
+
+- Continuation: owner requested completion of the remaining list and confirmed
+  no human sessions exist; prepared `docs/game/opening-district-playtest-handoff.md`
+  and expanded the observer prompts. Existing manual waivers remain unmodified.
+- Added pull-request qualification and Linux Chromium/Firefox/WebKit gates to
+  the release workflow, with Pages publication restricted to passing main runs.
+  Final clean regression and deployment evidence are pending CI.
+
+- Implemented the accepted opening-district milestone; acceptance ledger in
+  `docs/game/opening-district-2026-10-25.md`.
+- Added optional persisted strategy weights, contextual coaching, encounter
+  purpose, Leader reactions and saved neighborhood feedback. Coalescing route
+  artwork redraws and honoring animation pace during route commitments.
+- Validation: build/static gates, 75 sequencing checks, 17 focused repair checks,
+  12 Chromium/Firefox opening checks, three final reward checks and the native
+  keyboard outcome/replay journey pass. The 991-case full run found five
+  failures (986 passed); all five checks passed in focused reruns after fixes.
+- Fixed checkpoint-retry overlap, tooltip dismissal during late artwork,
+  incomplete advice-preview matching and selected-card test synchronization.
+  Strategy reward advice keeps cost cautions in the visible two-row footer.
+- Earlier WebKit cases passed; final Windows WebKit reruns stalled and were
+  stopped without a complete report. Human sessions, physical-device checks
+  and final WebKit qualification remain open. Performance evidence does not
+  establish an overall FPS improvement. Changes remain local on
+  `codex/opening-district`; this milestone has not been published.
+
 ## 2026-10-24 — Backlog reconciliation and measured performance
 
 - Reconciled the original 52 enhancements and 70-package index in

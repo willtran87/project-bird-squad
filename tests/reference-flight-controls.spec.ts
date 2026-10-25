@@ -124,6 +124,13 @@ test('reference flight uses live controls from title through outcome and replay'
         await page.keyboard.press('Escape');
         expect(await stable()).toBe(before); captured.add('inspected-card');
       }
+      // Selection can queue a redraw of the confirmation/target controls.
+      // Commit only after those visible controls have caught up with state.
+      await settleCanvas(page);
+      await page.waitForFunction(() => {
+        const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
+        return !b.battleRenderQueued && !b.combatAnimationPending;
+      });
       if (decision.target === 'enemy') await page.mouse.click(decision.point!.x, decision.point!.y);
       else await page.keyboard.press('Enter');
       await page.waitForFunction(played => {

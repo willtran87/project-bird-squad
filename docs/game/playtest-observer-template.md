@@ -34,9 +34,14 @@ before asking what they understood.
 | First card selection and targeting |  |  |  |
 | First enemy Tell |  |  |  |
 | First use or interpretation of Cover |  |  |  |
+| Strategy choice and expected tradeoff |  |  |  |
+| First combination; attempt to repeat it deliberately |  |  |  |
+| First Molt; expected changed hand and enemy phase |  |  |  |
 | First Roost |  |  |  |
 | First Flow change |  |  |  |
 | First reward pick or skip |  |  |  |
+| Reward connection to plan; add, Preen or skip reasoning |  |  |  |
+| Crow target priority and disruption timing |  |  |  |
 | Defeat or victory review |  |  |  |
 | Replay, restart, or exit decision |  |  |  |
 
@@ -71,6 +76,7 @@ words.
 - Why did you pick or skip the reward?
 - What would you try differently next run?
 - What was the most satisfying moment?
+- Which bird or moment do you remember most clearly?
 - What felt unfair, unclear, slow, or repetitive?
 - Would you voluntarily start another run now? Why or why not?
 

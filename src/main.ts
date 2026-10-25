@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { loadFlyway } from './game/flyway-loader';
 import { persistFlywayEnding } from './game/flyway-storage';
-import { newFlywayState, normalizeFlyway, newFlightCombat, chargeCall, takeCall, playCombination, bossDisruption, branchUpgrade, validBranch, restoreDistrict, finishStory, flywayCoverGain, conditions, leaderCalls, journal, type FlywayState, type PreenBranch } from './game/flyway-rules';
+import { newFlywayState, normalizeFlyway, newFlightCombat, chargeCall, takeCall, playCombination, bossDisruption, branchUpgrade, validBranch, restoreDistrict, finishStory, flywayCoverGain, rooftopPlanMatch, conditions, leaderCalls, journal, type FlywayState, type PreenBranch } from './game/flyway-rules';
 import { showSaveRecovery, consumeSaveRecoveryGamepad } from './game/save-recovery-dialog';
 import { sanitizeCardClaims, type PendingCardClaim } from './game/card-claim-checkpoint';
 import { cloneRewardCheckpoint, sanitizeRewardCheckpoint, type RewardCheckpoint } from './game/reward-checkpoint';
@@ -5130,6 +5130,25 @@ class RouteScene extends Phaser.Scene {
   private routeWaymarkPinnedId: string | undefined;
   private routeEventArtRequested = new Set<RouteNode['type']>();
   private routeEssentialAssetsReady = false;
+  private routeArtworkRefreshPending = false;
+  private flushRouteArtwork = () => {
+    // A background image must not dismiss the tooltip the player is reading.
+    // Keep one pending repaint until its existing close path releases it.
+    const tooltip = this.children.getByName('route-node-tooltip');
+    if (this.sys.isActive() && tooltip?.active) {
+      tooltip.once(Phaser.GameObjects.Events.DESTROY, () => {
+        this.routeArtworkRefreshPending = false;
+        this.refreshRouteArtwork();
+      });
+      return;
+    }
+    this.routeArtworkRefreshPending = false;
+    if (!this.sys.isActive()) return;
+    if (this.hoverCardDetail?.active && (this.cardPickerInspectionOpen || this.routeRewardInspectionCardId)) {
+      this.updateTextState(); return;
+    }
+    this.renderAll();
+  };
   private routeEssentialUiReady = false;
   private routeMapRendererReady = false;
   private routeMapRendererModule?: RouteMapRendererModule;
@@ -5365,6 +5384,11 @@ class RouteScene extends Phaser.Scene {
     loadFlyway(this);
     syncSceneAnimationPace(this);
     birdAudio.setMood('route');
+    this.routeArtworkRefreshPending = false;
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.events.off(Phaser.Scenes.Events.PRE_UPDATE, this.flushRouteArtwork);
+      this.routeArtworkRefreshPending = false;
+    });
     observeChoiceInput(this);
     window.__birdSquadAudio = () => birdAudio.snapshot();
     void loadRouteDebugStateModule()
@@ -5926,7 +5950,7 @@ class RouteScene extends Phaser.Scene {
         this.routeMapBackdrop = backdrop;
         this.routeAssetReadiness.settle('route-essential-art', result);
         this.markRouteFullArtReady();
-      if (this.routeEssentialAssetsReady) this.renderAll();
+      if (this.routeEssentialAssetsReady) this.refreshRouteArtwork();
     });
   }
 
@@ -6162,7 +6186,9 @@ class RouteScene extends Phaser.Scene {
       this.updateTextState();
       return;
     }
-    this.renderAll();
+    if (this.routeArtworkRefreshPending || (!this.sys.isActive() && !this.sys.isPaused())) return;
+    this.routeArtworkRefreshPending = true;
+    this.events.once(Phaser.Scenes.Events.PRE_UPDATE, this.flushRouteArtwork);
   }
 
   private queueCardPortraitArtLoad(card: Pick<Card, 'id'>, warning: string, onComplete: () => void = () => this.refreshRouteArtwork()) {
@@ -6323,6 +6349,7 @@ class RouteScene extends Phaser.Scene {
     });
     this.add.rectangle(layout.map.cx, layout.map.cy, layout.map.w - 34, layout.map.h - 34, 0x03070d, 0.14);
     this.renderRouteMapFrame(layout);
+    this.events.emit('opening-route-backdrop');
 
   }
 
@@ -7316,7 +7343,7 @@ class RouteScene extends Phaser.Scene {
   }
 
   private routeCommitDelayMs() {
-    return prefersReducedMotion() ? 0 : ROUTE_COMMIT_STREAK_DELAY_MS;
+    return prefersReducedMotion() ? 0 : Math.round(ROUTE_COMMIT_STREAK_DELAY_MS / animationPaceTimeScale());
   }
 
   routeCommitStreakState() {
@@ -14112,7 +14139,8 @@ private playBattleIntro(onComplete?: () => void) {
     this.combatIntroFinish = this.battleFxPresenterModule.playEncounterIntro(this, this.fxLayer, {
       reduced: prefersReducedMotion(), holdScale: textTiming.holdScale, minimumReadableMs: textTiming.minimumReadableMs,
       width: GAME_WIDTH, height: GAME_HEIGHT, district: currentMap().name,
-      encounter: this.battlefieldMood() === 'rival' ? `Caldra’s Pinion Crew · encounter ${this.flyway.rivalWins + 1}` : currentCombatNodes()[this.currentRouteIndex]?.label ?? 'Rooftop Fight',
+      enemies: this.enemies.map(enemy => enemy.runtime.id),
+      encounter: this.battlefieldMood() === 'rival' ? `Caldra’s Pinion Crew · encounter ${this.flyway.rivalWins + 1}` : this.enemies.find(enemy => enemy.runtime.type === 'boss')?.name ?? currentCombatNodes()[this.currentRouteIndex]?.label ?? 'Rooftop Fight',
       confirm: controlBindingLabel('confirm'), texture: COMBAT_ENCOUNTER_INTRO_TEXTURE,
       plaque: uiIconAssets['combat-encounter-plaque'].key,
       font: UI_FONT, displayFont: TOKEN_DISPLAY_FONT, bold: UI_BOLD, gold: UI_GOLD, cyan: UI_CYAN, soft: UI_SOFT,
@@ -18178,7 +18206,11 @@ private playBattleIntro(onComplete?: () => void) {
         accent: 0xff9d4d,
       };
     }
-    if (!this.isGuidedFirstCombat()) return undefined;
+    if (!this.isGuidedFirstCombat()) {
+      const hints: Array<{ text: string; accent: number }> = [];
+      this.events.emit('opening-coaching', hints);
+      return hints[0];
+    }
     const guideStep = firstFlightGuideStep();
     markFirstFlightGuideSeen(guideStep);
     const text = guideStep === 'card'
@@ -19874,7 +19906,14 @@ private playBattleIntro(onComplete?: () => void) {
   }
 
   private rewardObservations(card: Card): string[] {
-    return districtRewardObservations(card, this.districtBias(), this.cardNeedTags(card));
+    const observations = districtRewardObservations(card, this.districtBias(), this.cardNeedTags(card));
+    if (activeMapIndex === 0 && rooftopPlanMatch(this.flyway.rooftopPlan, card.runtime)) {
+      const plan = this.flyway.rooftopPlan === 'shelter' ? 'Hold & Answer · Cover / Retain setup'
+        : this.flyway.rooftopPlan === 'tempo' ? 'Chorus Engine · Resonance / Wingbeat engine' : 'Storm Window · Molt / Open Sky safety';
+      // The focused reward footer shows two rows. Keep its caution visible.
+      return [plan, ...observations.filter(row => row.startsWith('!')), ...observations.filter(row => !row.startsWith('!'))];
+    }
+    return observations;
   }
 
   private rewardPresentationReady() {
@@ -22257,6 +22296,7 @@ private playBattleIntro(onComplete?: () => void) {
     this.statBlocked += blocked;
     if (blocked > 0 && damage === 0) chargeCall(this.flightCombat, this.runLeaderId ?? 'fledgling', 'block');
     this.statTaken += cohesionLost;
+    this.events.emit('opening-impact', { blocked, lost: cohesionLost, hp: this.flock.hp });
     const move = currentMove(enemy);
     const pressureKey = `${enemy.runtime.id}:${move.id}:${moveLabel}`;
     const pressure = this.statDamageTakenByMove.get(pressureKey) ?? {
@@ -23115,7 +23155,8 @@ private playBattleIntro(onComplete?: () => void) {
       this.allDeckCards().map((card) => card.id),
       difficultyMods(this.runDifficulty).rewardChoices,
       this.combatRandom,
-      (id) => REWARD_RARITY_WEIGHT[cardLibrary[id]?.runtime.rarity ?? 'common'] ?? 50,
+      (id) => (REWARD_RARITY_WEIGHT[cardLibrary[id]?.runtime.rarity ?? 'common'] ?? 50)
+        * (activeMapIndex === 0 && rooftopPlanMatch(this.flyway.rooftopPlan, cardLibrary[id].runtime) ? 2 : 1),
       (id) => this.cardNeedTags(cardLibrary[id]).some((tag) => tag.includes('First ') || tag.includes('Fills ') || tag.includes('KEYSTONE')),
       (id) => cardLibrary[id]?.role,
       (id) => cardLibrary[id]?.runtime.suit ?? undefined,

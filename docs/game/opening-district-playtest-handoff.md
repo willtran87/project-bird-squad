@@ -1,0 +1,55 @@
+# Opening district playtest handoff
+
+Status: **ready to schedule; no human sessions performed**. The owner requested
+this handoff because no sessions are available yet. The current 0.1.0 release
+retains its explicit evidence waivers; preparation does not count as passing
+human, device or assistive-technology evidence.
+
+## Session kit
+
+- Game: <https://willtran87.github.io/project-bird-squad/?playtest=1>.
+  Use the opening-district release only after its Pages deployment is confirmed.
+  Record the deployed Git commit from the release report alongside the URL.
+- Instructions: [first-run runbook](playtest-runbook.md).
+- One blank copy per tester: [observer sheet](playtest-observer-template.md).
+- Focus: [six opening-district moments](opening-district-2026-10-25.md#five-player-follow-up).
+- Manual hardware/accessibility checks: [release evidence runbook](release-evidence-runbook.md).
+
+Arrange five fresh players. Each uses a separate empty browser profile with the
+guide enabled. Let them choose their own Leader and strategy, including no
+strategy. Observe silently through a complete run or voluntary abandonment;
+do not prescribe a win or teach the intended sequence. If intervention is
+necessary, record the confusion before helping. Ask comprehension questions
+after the first fight and collect ratings only from the player.
+
+| Anonymous code | Session status | Notes filename | Export filename and run ID |
+| --- | --- | --- | --- |
+| P01 | Not scheduled | P01.md | Pending |
+| P02 | Not scheduled | P02.md | Pending |
+| P03 | Not scheduled | P03.md | Pending |
+| P04 | Not scheduled | P04.md | Pending |
+| P05 | Not scheduled | P05.md | Pending |
+
+## Return the evidence
+
+After each completed run, use **Rate This Run**, record Fun, Fairness, Clarity
+and Replay, then **Export N Runs**. Save the untouched JSON next to its observer
+sheet in `.artifacts/playtest-sessions/`. Each sheet must name the exact
+`Exported run ID: ...` and filename; never invent ratings for an abandoned run.
+Keep tester identities out of the files. Exports stay local until deliberately
+shared with the project owner.
+
+Generate a dashboard using real exports only:
+
+```powershell
+node tools/playtest-stats.mjs .artifacts/playtest-sessions
+node tools/validate-release-evidence.mjs --strict-human
+```
+
+The strict human check must remain failing until five valid rated exports and
+matching notes exist. It does not validate comprehension by itself. Review the
+notes for four-of-five comprehension, repeated hesitation, ratings of 1–2,
+and voluntary replay. Record each repeated issue with its reproduction, impact
+and follow-up; retain the original observations after fixes. Physical-device
+and NVDA/VoiceOver evidence remains separate and unverified until those actual
+sessions occur; `--strict-manual` additionally requires them.
