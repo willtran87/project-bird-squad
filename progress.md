@@ -7,7 +7,11 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
   and expanded the observer prompts. Existing manual waivers remain unmodified.
 - Added pull-request qualification and Linux Chromium/Firefox/WebKit gates to
   the release workflow, with Pages publication restricted to passing main runs.
-  Final clean regression and deployment evidence are pending CI.
+  PR run 40214567523 passed 992/992 regression cases and all 36 Linux browser
+  checks, resolving the full-suite and WebKit gaps. Reconciled all 29 job logs
+  with no skipped, failed or duplicate cases. Pages build, delivery budgets,
+  unit/static gates and the production-subdirectory smoke passed. Publication
+  and branch cleanup are tracked on PR #11.
 
 - Implemented the accepted opening-district milestone; acceptance ledger in
   `docs/game/opening-district-2026-10-25.md`.

@@ -76,9 +76,11 @@ that a selected plan retains a visible and announced cost caution. Its
 Final WebKit reload and redraw reruns stalled on this Windows host after their
 browser processes exited, leaving network helper processes and no completed
 report. Those attempts were stopped. The older six-case WebKit pass does not
-establish a clean final WebKit pass; final WebKit qualification remains open.
-Chromium/Firefox and targeted repaired-build evidence are complete. No clean
-992-case full rerun was claimed after the additional reward regression case.
+establish a clean final WebKit pass. This host limitation was subsequently
+resolved by Linux CI: all 36 browser qualification cases passed (12 per engine)
+in [PR verification](https://github.com/willtran87/project-bird-squad/actions/runs/40214567523).
+Chromium/Firefox and targeted repaired-build evidence are complete. The initial
+local run did not establish a clean 992-case pass after the added reward case.
 
 ## Five-player follow-up
 
@@ -111,10 +113,23 @@ generated player opinions count as this evidence.
 - [x] Prepare the five-player handoff; retain unverified evidence honestly.
 - [x] Correct the stale runbook statement about existing manual waivers.
 - [x] Add pull-request regression and Linux browser gates before publication.
-- [ ] Obtain a clean full 992-case regression on the final source.
-- [ ] Complete final Chromium, Firefox and WebKit qualification.
-- [ ] Verify the Pages build, merge, publish and check the live release.
-- [ ] Clean up the merged working branch.
+- [x] Obtain a clean full 992-case regression on the final implementation.
+- [x] Complete final Chromium, Firefox and WebKit qualification (36 Linux cases).
+- [x] Verify the Pages build, content, delivery budgets and checkpoint reload.
+
+PR verification run **40214567523** passed **992/992** regression cases and
+**36/36** browser checks, without skips or failures. The 29 completed job logs
+were reconciled against the test catalog: 971 general cases, 17 campaigns and
+four live-control journeys, with no duplicate cases. Compact local evidence:
+`.artifacts/opening-pr-ci-summary.json`. The Pages build passed its static
+validators, unit tests, existing waiver policy and production-subdirectory
+smoke. The policy reports zero human sessions and manual audits; these are
+waived, not passing evidence.
+
+Publication, live artifact identity and branch cleanup are tracked in the final
+checklist on [PR #11](https://github.com/willtran87/project-bird-squad/pull/11).
+Main runs the same release gates before publishing. Documentation-only updates
+do not alter the verified game implementation.
 
 The new CI browser gate covers the opening-district cases, release smoke, and
 reward-cost regressions in all three engines. Pull requests run verification
