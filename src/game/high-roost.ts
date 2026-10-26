@@ -104,7 +104,7 @@ export function installHighRoost(scene: Scene) {
       ? scene.children.getByName('roost-route-sky') ?? scene.add.container().setDepth(1).setName('roost-route-sky') : undefined);
     if (layer?.active && !layer.getByName('roost-morning')) {
       const root = scene.add.container().setName('roost-morning'); layer.add(root);
-      const sky = scene.add.rectangle(640, 215, 1280, 330, 0x879bbd, .08).setName('roost-dawn'); root.add(sky);
+      const sky = scene.add.rectangle(640, 360, 1280, 720, 0x879bbd, .08).setName('roost-dawn'); root.add(sky);
       const cable = scene.add.graphics(); root.add(cable); cable.lineStyle(1, 0xc6c3b4, .25);
       for (let i=0;i<3;i++) { cable.beginPath();cable.moveTo(240,120+i*9);cable.lineTo(670,144+i*9);cable.lineTo(1180,115+i*9);cable.strokePath(); }
       const still = prefersReducedMotion() || prefersLeanEffects();
