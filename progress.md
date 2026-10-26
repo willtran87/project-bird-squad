@@ -2,11 +2,20 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 
 ## 2026-10-26 — Signal Spires + Combat Clarity
 
-- Implementing the full requested milestone on `codex/signal-spires-clarity`.
-  Scope and release gates: `docs/game/signal-spires-clarity-upgrade.md`.
-- Six curated encounters, Beacon-Breaker cycle, three strategy upgrades with
-  late retraining, Ivo relay consequences, bounded presentation and combat clarity.
-  Existing human/device/assistive-technology evidence waivers remain unchanged.
+- Implemented and published the full milestone; all acceptance items are checked
+  in `docs/game/signal-spires-clarity-upgrade.md`.
+- Six curated encounters, Beacon-Breaker's charge/broadcast/exposed cycle, three
+  strategy Preens with retraining, Ivo's relay and High Roost payoff, bounded
+  presentation, protected combat information and resource-first forecasts.
+- PR #13 merged as `52021434`; post-merge test-readiness repair `160613c1`
+  is the published revision. Full release run 40289945992 passed 1,032 unique
+  core tests, 156 browser cases, 22 unit/policy tests and the Pages smoke.
+- Public HTML/app hashes match the CI artifact; three live Spires checks passed.
+  The merged feature branch was deleted locally/remotely and owned previews
+  were stopped. Final record edits are documentation only.
+- Earlier forecast and pause-test failures plus a lazy confirmation test race
+  are documented with their repairs. Existing human/device/assistive-technology
+  evidence waivers remain unchanged; no manual sessions are claimed.
 
 ## 2026-10-25 — Canal Markets upgrade
 

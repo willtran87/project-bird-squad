@@ -13,7 +13,7 @@ tests, commit, push, merge, publish GitHub Pages and clean up the feature branch
 - [x] Combat information protected from effects, concise truthful card summaries,
   clearer selected-card resource forecasts and appropriately paced routine actions.
 - [x] Focused rules/integration/browser tests and 2560×1600, 1440×900, 1000×560 review.
-- [ ] Full release tests, merge, Pages publication, live verification and cleanup.
+- [x] Full release tests, merge, Pages publication, live verification and cleanup.
 
 Existing version-scoped human/device/accessibility waivers remain unchanged.
 Update the prepared playtest handoff for this milestone; no invented sessions,
@@ -121,3 +121,36 @@ The final local root build's combined boot code is 715.4 KiB, above the 710 KiB
 preferred target and below the unchanged 725 KiB release ceiling. The lazy
 Signal Spires module is approximately 7 KiB against its 12 KiB cap, with no
 new artwork downloads. No physical-device performance improvement is claimed.
+
+The final main run [40289945992](https://github.com/willtran87/project-bird-squad/actions/runs/40289945992)
+at `160613c1e39e2a4084e0082509e89c3757504882` passed all **1,032 unique core
+tests** and all **156 browser qualification cases**. All 29 test-job logs were
+reconciled, with zero failed, skipped or flaky cases in this final run. This
+includes 17 campaign progression cases and four live-control journeys. All
+earlier failures remain documented above and are superseded by this clean run.
+
+Case-level evidence: `.artifacts/spires-main-test-verification.json`.
+
+## Published release
+
+- Release run 40289945992 completed successfully, including build and Pages
+  deployment of `160613c1e39e2a4084e0082509e89c3757504882` on 2026-10-26.
+- All 22 unit/policy tests, content/assets/contracts, docs, overlays, bundle/cache
+  checks and the actual Pages-subdirectory smoke passed. The Pages boot total
+  is 716.5 KiB, below the unchanged 725 KiB release ceiling (preferred: 710 KiB).
+- [The public game](https://willtran87.github.io/project-bird-squad/) matched
+  the tested artifact's HTML, loader and both app-chunk hashes at 08:34 UTC.
+- Three public-site checks passed: saved Storm Aperture Molt cost/live rules;
+  Ivo's wires after two real victories, one-time collection and High Roost
+  delivery; Beacon-Breaker phase/reset, forecast parity, recovery, disruption
+  and bounded effects. Live screenshots were inspected at 2560×1600, 1440×900
+  and 1000×560.
+- The merged `codex/signal-spires-clarity` branch was deleted locally and
+  remotely after verifying both refs' ancestry. Owned previews and test runners
+  were stopped. Final record edits are documentation only; the published game
+  revision remains `160613c1`.
+
+Local release evidence: `.artifacts/spires-main-verification/` (downloaded CI
+artifact), `.artifacts/spires-live-identity.json`, `.artifacts/spires-live-results.json`
+and `.artifacts/spires-live/` (screenshots). Human, physical-device and
+assistive-technology waivers remain unchanged; no such sessions were performed.
