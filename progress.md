@@ -2,8 +2,25 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 
 ## 2026-10-26 — High Roost + The Living City
 
-- Implementation in progress on codex/high-roost-living-city. Acceptance ledger:
-  docs/game/high-roost-living-city-upgrade.md. Full release and publication pending.
+- Implemented and published the full milestone; all acceptance items are checked
+  in `docs/game/high-roost-living-city-upgrade.md`.
+- Six curated encounters, selectable Warden support perches with live/forecast
+  parity, three durable resident consequences, choice-sensitive ending scenes,
+  dawn/city presentation, combat stances and revised pressure/recovery pacing.
+- PR #14 merged as `d87bd9c1`; post-merge atmosphere-test correction `5142217a`
+  is the published revision. Full release run 40325340530 passed 1,043 unique
+  core tests, 189 browser cases, 23 unit/policy checks and the Pages-base smoke.
+- Public HTML/app hashes match the CI artifact; four live High Roost checks pass.
+  Reviewed 2560×1600, 1440×900 and 1000×560 layouts. Pages boot is 716.9 KiB,
+  below the unchanged 725 KiB ceiling but above the 710 KiB preferred target;
+  lazy High Roost presentation is 8.7 KiB against its 14 KiB cap.
+- Fixed route audio isolation, stance tween ownership and save normalization;
+  repaired stale inspection/atmosphere assertions and WebKit journal readiness.
+  Superseded CI attempts and Windows teardown stalls are not counted as passes.
+- The merged feature branch is deleted locally/remotely, only main remains,
+  and owned previews are stopped. Final record edits are documentation only.
+  Existing human/device/assistive-technology evidence waivers remain unchanged;
+  the playtest handoff is updated and no manual sessions are claimed.
 
 
 ## 2026-10-26 — Signal Spires + Combat Clarity

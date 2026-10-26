@@ -13,8 +13,8 @@ tests, commit, push, merge, publish GitHub Pages, and clean up branches.
 - [x] Predawn-to-morning presentation, cables, rooftop birds, answering calls,
   brace/stagger/recovery poses, reduced motion and protected decision UI.
 - [x] Pressure/recovery/commitment pacing and fewer repetitive cleanup turns.
-- [ ] Focused mechanics, save failure, reload, browser and high-resolution checks.
-- [ ] Full release suite, PR merge, Pages verification and branch cleanup.
+- [x] Focused mechanics, save failure, reload, browser and high-resolution checks.
+- [x] Full release suite, PR merge, Pages verification and branch cleanup.
 
 ## Design contract
 
@@ -52,7 +52,44 @@ before commitment and event cleanup after the queued scene shutdown. Fourteen
 Flyway unit cases pass, including duplicate/invalid favor normalization. Shared
 unmodified web-game client reached real combat and played a card without errors.
 Reviewed rendered 2560×1600, 1440×900 and 1000×560 layouts. Runtime, asset, docs,
-bundle, cache and release-policy checks pass. Boot measured 715.6 KiB: above the
-710 KiB preferred target, below the unchanged 725 KiB hard cap.
+bundle, cache and release-policy checks pass. Final Pages boot measured 716.9 KiB:
+above the 710 KiB preferred target, below the unchanged 725 KiB hard cap. The lazy
+High Roost module is 8.7 KiB against its 14 KiB cap. No physical-device FPS claim
+is made.
 
-Full release matrix, publication and live verification pending.
+### Release completion — 2026-10-26
+
+- [PR #14](https://github.com/willtran87/project-bird-squad/pull/14) merged as
+  `d87bd9c1`. The subsequent atmosphere-test correction `5142217a` is the
+  published game revision; final record edits are documentation only.
+- [Release run 40325340530](https://github.com/willtran87/project-bird-squad/actions/runs/40325340530)
+  passed 1,043 unique core tests across all regression shards, 17 campaign cases
+  and four live-control journeys. Separate browser qualification passed 189 cases
+  (63 each on Chromium, Firefox and WebKit; intentional overlap with core tests).
+  Logs were reconciled with no failed, skipped, flaky or duplicate core cases.
+- All 23 unit/policy checks, content/assets/contracts, delivery budgets, cache
+  checks and the actual Pages-base smoke passed. The workflow deployed its
+  clean-source artifact from `5142217a7dad2bca2826c2ab497ace58ad9b65ab`.
+- Public HTML and app-chunk hashes match that artifact. Four checks against
+  [the public game](https://willtran87.github.io/project-bird-squad/) passed:
+  perch/phase forecast parity, durable resident claims and rollback, completed
+  choice ending/skip, and bounded reduced-motion scenery with encounter purpose.
+- The merged feature branch was deleted locally and remotely; only `main`
+  remains. Owned preview servers were stopped.
+
+### Repairs found during verification
+
+- Restricted the new phase audio handler to BattleScene, preserving route silence.
+- Preserved breathing/hit tweens when changing Roost stances, distinguished ally
+  Cover/Charge Tells, and extended the dawn overlay to the full backdrop.
+- Corrected optional favor normalization while preserving older save serialization.
+- Updated map-inspection expectations for the new purpose text without dropping
+  geometry or immutability checks. The legacy boss-atmosphere test now checks the
+  three Roost stances while retaining other districts' idle-presentation checks.
+- Made the resident reload test await the queued RouteScene resume before
+  reopening its journal. Corrected fixture phase updates and innate Guard accounting.
+
+Earlier superseded CI attempts and Windows WebKit shutdown stalls are not counted
+as passes. Final Linux qualification passed all three browsers. Existing human,
+physical-device and native assistive-technology waivers remain unchanged; the
+updated playtest handoff is ready, but no human sessions are claimed.
