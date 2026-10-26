@@ -72,7 +72,7 @@ test('High Roost perches change live support and preserve forecast and phase par
 
 test('High Roost resident consequences save once, survive reload and roll back failed claims',async({page},info)=>{
   await route(page);await page.keyboard.press('j');
-  await expect(page.getByRole('button',{name:/Rest at Sella/})).toBeDisabled();await expect(page.getByRole('button',{name:/Collect Oren/})).toBeDisabled();await expect(page.getByRole('button',{name:/Listen to Ivo/})).toBeDisabled();await page.keyboard.press('Escape');
+  await expect(page.getByRole('button',{name:/Rest at Sella/})).toBeDisabled();await expect(page.getByRole('button',{name:/Collect Oren/})).toBeDisabled();await expect(page.getByRole('button',{name:/Listen to Ivo/})).toBeDisabled();await page.keyboard.press('Escape');await readyRoute(page);
   await page.evaluate(()=>{const r=(window as any).__birdSquadGame.scene.getScene('RouteScene'),s=r.runState.flyway;s.residents.sella=1;s.visits=['sella:0'];s.canalFerry={pledge:'timber',startedAt:0,rewarded:true};s.spireRelay={pledge:'lenses',startedAt:0,rewarded:true};r.runState.currentHp=r.runMaxHp()-10;});await page.keyboard.press('j');
   const before=await page.evaluate(()=>structuredClone((window as any).__birdSquadGame.scene.getScene('RouteScene').runState));
   await page.evaluate(()=>{(window as any).originalWrite=Storage.prototype.setItem;Storage.prototype.setItem=function(key,value){if(key.startsWith('birdsquad.run.active'))throw new DOMException('Full','QuotaExceededError');(window as any).originalWrite.call(this,key,value);};});
@@ -101,6 +101,7 @@ for(const restored of [false,true])test(`High Roost ending reflects ${restored?'
 
 test('High Roost reduced-motion scenery stays bounded and purpose is available before commitment',async({page},info)=>{
   await page.emulateMedia({reducedMotion:'reduce'});await route(page);
+  expect(await page.evaluate(()=>{const w=window as any,r=w.__birdSquadGame.scene.getScene('RouteScene'),before=JSON.stringify(w.__birdSquadAudio().cueRequests);r.events.emit('flyway-phase');r.events.emit('flyway-break');return {quiet:before===JSON.stringify(w.__birdSquadAudio().cueRequests),answers:r.highRoost.answers};})).toEqual({quiet:true,answers:0});
   const purpose=await page.evaluate(()=>{const w=window as any,r=w.__birdSquadGame.scene.getScene('RouteScene'),node=w.__birdSquadCurrentMap().nodes.find((n:any)=>n.id===r.selectedNodeId);return r.nodeDetail(node).lesson;});
   expect(purpose).toBeTruthy();await page.keyboard.press('j');await expect(page.locator('[data-high-roost]')).toContainText(purpose);await page.keyboard.press('Escape');
   await battle(page,'enc_roost_warden');

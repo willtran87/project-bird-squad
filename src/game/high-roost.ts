@@ -128,7 +128,7 @@ export function installHighRoost(scene: Scene) {
       else group.setData('roost-pose-tween',scene.tweens.add({targets:group,angle,duration:220,ease:'Sine.easeOut'}));
     }
   };
-  const answer = () => { if((scene.runState?.mapIndex ?? scene.flywayMapIndex)!==3)return;record.answers++;birdAudio.play('spireAnswer',.35);backdrop(); };
+  const answer = () => { if(scene.scene.key!=='BattleScene'||(scene.runState?.mapIndex ?? scene.flywayMapIndex)!==3)return;record.answers++;birdAudio.play('spireAnswer',.35);backdrop(); };
   scene.events.on('roost-backdrop',backdrop);scene.events.on('opening-route-backdrop',backdrop);scene.events.on('flyway-phase',answer);scene.events.on('flyway-break',answer);backdrop();
   scene.events.once('shutdown',()=>{scene.events.off('roost-backdrop',backdrop);scene.events.off('opening-route-backdrop',backdrop);scene.events.off('flyway-phase',answer);scene.events.off('flyway-break',answer);delete scene.highRoost;});
 }
