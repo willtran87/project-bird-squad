@@ -64,3 +64,19 @@ and voluntary replay. Record each repeated issue with its reproduction, impact
 and follow-up; retain the original observations after fixes. Physical-device
 and NVDA/VoiceOver evidence remains separate and unverified until those actual
 sessions occur; `--strict-manual` additionally requires them.
+
+## High Roost + The Living City follow-up
+
+Use the release revision recorded in `high-roost-living-city-upgrade.md`. No
+sessions have been supplied for this milestone. Ask each participant to explain
+the shield and signal perches before choosing a target, then compare the next
+Tell after disabling one. Record whether stored force remaining after a Falcon
+defeat surprises them. Observe one defensive and one aggressive approach without
+coaching. Note repeated cleanup turns and whether the recovery fork feels useful.
+
+Ask which earlier choice opened each resident favor and whether the three ending
+scenes match their own flight. Let them discover Skip and Replay themselves.
+Record which specific replay invitation they remember, any unreadable Tells or
+hidden card details, and whether they voluntarily begin another flight. These
+observations supplement the existing five-player protocol; automated scripts
+are mechanics evidence only.

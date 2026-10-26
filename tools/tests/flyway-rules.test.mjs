@@ -7,6 +7,12 @@ const javascript = ts.transpileModule(source, { compilerOptions: { target: ts.Sc
 const rules = await import(`data:text/javascript;base64,${Buffer.from(javascript).toString('base64')}`);
 const cards = JSON.parse(await readFile(new URL('../../data/game/alpha-cards.json', import.meta.url), 'utf8')).cards;
 
+test('High Roost claimed favors normalize without duplicates or invented IDs', () => {
+  assert.deepEqual(rules.normalizeFlyway({cityAid:['sella','sella','ivo']}).cityAid,['sella','ivo']);
+  assert.deepEqual(rules.normalizeFlyway({cityAid:['prototype',99,'oren']}).cityAid,['oren']);
+  assert.equal(rules.normalizeFlyway({cityAid:'ivo'}).cityAid,undefined);
+});
+
 test('Spires signatures reconstruct exact costs and active rules without mutating canonical cards', () => {
   for (const branch of rules.spirePreens) {
     const card=cards.find(c=>c.id===branch.card),before=JSON.stringify(card);

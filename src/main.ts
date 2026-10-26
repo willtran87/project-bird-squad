@@ -7036,6 +7036,7 @@ class RouteScene extends Phaser.Scene {
     const profile = node.type === 'boss' ? alphaMapProfileLibrary.get(currentMap().id) : undefined;
     return {
       title: encounter?.name ?? routeNodeTitle(node),
+      lesson: activeMapIndex === 3 ? encounter?.lesson : undefined,
       bossPrep: profile ? {
         thesis: profile.thesis,
         tests: [...profile.primaryTests],
@@ -14143,7 +14144,7 @@ private playBattleIntro(onComplete?: () => void) {
       reduced: prefersReducedMotion(), holdScale: textTiming.holdScale, minimumReadableMs: textTiming.minimumReadableMs,
       width: GAME_WIDTH, height: GAME_HEIGHT, district: currentMap().name,
       enemies: this.enemies.map(enemy => enemy.runtime.id),
-      purpose: activeMapIndex === 1 || activeMapIndex === 2 ? alphaEncounterLibrary.get(currentCombatNodes()[this.currentRouteIndex]?.payloadId)?.lesson : undefined,
+      purpose: activeMapIndex >= 1 ? alphaEncounterLibrary.get(currentCombatNodes()[this.currentRouteIndex]?.payloadId)?.lesson : undefined,
       encounter: this.battlefieldMood() === 'rival' ? `Caldra’s Pinion Crew · encounter ${this.flyway.rivalWins + 1}` : this.enemies.find(enemy => enemy.runtime.type === 'boss')?.name ?? (activeMapIndex === 1 || activeMapIndex === 2 ? alphaEncounterLibrary.get(currentCombatNodes()[this.currentRouteIndex]?.payloadId)?.name : undefined) ?? currentCombatNodes()[this.currentRouteIndex]?.label ?? 'Rooftop Fight',
       confirm: controlBindingLabel('confirm'), texture: COMBAT_ENCOUNTER_INTRO_TEXTURE,
       plaque: uiIconAssets['combat-encounter-plaque'].key,

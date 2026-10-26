@@ -72,7 +72,9 @@ for (let district = 0; district < 4; district++) test(`district ${district + 1}:
         const expected = await page.evaluate(id => {
           const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
           const n = (window as any).__birdSquadCurrentMap().nodes.find((n: any) => n.id === id);
-          return { ...r.nodeDecisionSummary(n), title: r.nodeDetail(n).title, type: n.type };
+          const decision = r.nodeDecisionSummary(n), detail = r.nodeDetail(n);
+          return { ...decision, title: detail.title, type: n.type,
+            risk: [decision.risk, detail.lesson].filter(Boolean).join('\n\n') };
         }, inspect.id);
         types.add(expected.type);
         expect(inspect.title).toBe(expected.title); expect(inspect.benefit).toBe(expected.benefit); expect(inspect.risk).toBe(expected.risk);

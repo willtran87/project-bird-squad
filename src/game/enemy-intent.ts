@@ -16,6 +16,13 @@ export function enemyIntentLabel(effects: string[], incomingDamage: number) {
     const amount = direct(rule);
     if (amount > 0) return { label: `${label}${amount}${extra(rule) ? ' +' : ''}`, kind };
   }
+  for (const [rule, label] of [['gainCoverAlly', 'Ally Cover '], ['nextAttackBonusAlly', 'Ally Charge +']] as const) {
+    const amount = effects.reduce((total, effect) => {
+      const match = new RegExp(`^${rule}\\((?:front|lowest|highest|random),\\s*(\\d+)\\)$`).exec(effect);
+      return total + (match ? Number(match[1]) : 0);
+    }, 0);
+    if (amount > 0) return { label: `${label}${amount}${extra(rule) ? ' +' : ''}`, kind: 'support' as const };
+  }
   if (effects.some(effect => /heal|gainCover|nextAttackBonusAlly/.test(effect))) return { label: 'Support', kind: 'support' as const };
   if (effects.some(effect => /nextAttackBonus/.test(effect))) return { label: 'Prepare', kind: 'charge' as const };
   return { label: 'Pressure', kind: 'pressure' as const };

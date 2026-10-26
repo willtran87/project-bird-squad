@@ -66,6 +66,7 @@ export function installFlyway(raw: Phaser.Scene) {
   let opening: typeof import('./opening-district') | undefined;
   let canal: typeof import('./canal-markets') | undefined, canalFailed = false;
   let spires: typeof import('./signal-spires') | undefined, spiresFailed = false;
+  let roost: typeof import('./high-roost') | undefined, roostFailed = false;
   let dialog: HTMLDialogElement | undefined;
   let page: Page = 'flight';
   let pendingPreen: { card: any; accept: (branch: PreenBranch) => void; isCurrent: () => boolean } | undefined;
@@ -199,6 +200,7 @@ export function installFlyway(raw: Phaser.Scene) {
     if (mapIndex(scene) === 0 && scene.runState) renderPlans(body, s);
     if (mapIndex(scene) === 1 || s.canalFerry) renderCanal(body, s);
     if (mapIndex(scene) === 2 || s.spireRelay) renderSpires(body, s);
+    if (mapIndex(scene) === 3) renderRoost(body, s);
     if (scene.scene.key === 'BattleScene') {
       const call = leaderCalls[scene.runLeaderId] ?? leaderCalls.fledgling;
       const combat = scene.flightCombat;
@@ -233,6 +235,7 @@ export function installFlyway(raw: Phaser.Scene) {
     const s = state(scene); renderRestoration(body, s);
     if (mapIndex(scene) === 1 || s.canalFerry) renderCanal(body, s);
     if (mapIndex(scene) === 2 || s.spireRelay) renderSpires(body, s);
+    if (mapIndex(scene) === 3) renderRoost(body, s);
     const grid = element('div', undefined, 'flyway-grid'); body.append(grid);
     districts.forEach((district, index) => {
       const box = section(grid, `${s.restored.includes(index) ? '✓ ' : ''}${district.name}`, s.restored.includes(index) ? district.restored : district.weather);
@@ -317,6 +320,7 @@ export function installFlyway(raw: Phaser.Scene) {
     const s = state(scene);
     if (scene.flywayArchiveSaved === false) {const notice=section(body,'Journal not yet saved','Keep this flight open and retry saving your journal and seals.');notice.append(button('Retry saving journal',()=>{scene.saveFlywayEnding();render();}));}
     section(body, s.restored.length === 4 ? 'The city answers' : 'Wings across the city', `${s.restored.length}/4 flyways restored · ${s.combinations} combinations · ${s.leaderCalls} Leader calls · ${s.survivedMolt} Molt phases survived.`);
+    if (s.restored.includes(3)) { if (roost) roost.renderCityEnding(body, s); else renderRoost(body, s); }
     renderRestoration(body, s);
     const grid = element('div', undefined, 'flyway-grid'); body.append(grid);
     for (const index of s.restored) { const box = section(grid, districts[index].name, districts[index].restored); box.classList.add('flyway-restored'); }
@@ -364,6 +368,13 @@ export function installFlyway(raw: Phaser.Scene) {
   scene.flywayCancelPreen = () => { if (pendingPreen) close(); };
   scene.openFlyway = open;
   installPresentation(scene);
+  if (mapIndex(scene) === 3 || state(scene).restored.includes(3)) void import('./high-roost').then(module => {
+    if (!alive) return; roost = module; module.installHighRoost(scene); render();
+  }).catch(() => { if (alive) { roostFailed = true; render(); } });
+  function renderRoost(body: HTMLElement, s: FlywayState) {
+    if (roost) roost.renderHighRoost(body, scene, s, mutate);
+    else { const box = section(body, 'High Roost', roostFailed ? 'City notes could not load. Your flight remains available.' : 'Preparing the final crossing…'); if (roostFailed) box.append(button('City recovery options', showDownloadRecovery)); }
+  }
   if (mapIndex(scene) === 2 || state(scene).spireRelay) void import('./signal-spires').then(module => {
     if (!alive) return;
     spires = module; module.installSignalSpires(scene); render();
@@ -461,6 +472,7 @@ function installPresentation(scene: Scene) {
     if (!scene.flock || scene.mode !== 'battle') return;
     if (mapIndex(scene) === 1) scene.events.emit('canal-backdrop');
     if (mapIndex(scene) === 2) scene.events.emit('spire-backdrop');
+    if (mapIndex(scene) === 3) scene.events.emit('roost-backdrop');
     const musicState = scene.flock.molt ? 'molt' : scene.flock.exposed ? 'open-sky' : scene.enemies.some((e:any)=>e.phase===2&&e.hp>0) ? 'boss-phase' : scene.flock.flow >= scene.flock.flowMax ? 'surge' : scene.flock.flow > 0 ? 'flow' : 'planning';
     if (musicState !== lastMode) { lastMode=musicState; birdAudio.setFlightState(musicState, mapIndex(scene)); }
     const art = scene.root?.getByName('combat-leader-art');
@@ -469,7 +481,7 @@ function installPresentation(scene: Scene) {
       const personality = ({fledgling:{angle:.7,dx:1.8,duration:1250},spark_caller:{angle:1.1,dx:2.4,duration:950},talon:{angle:-.6,dx:-1.5,duration:1800},tidewarden:{angle:.35,dx:.6,duration:2600},roostkeeper:{angle:-.25,dx:.4,duration:2200}} as Record<string,{angle:number,dx:number,duration:number}>)[scene.runLeaderId] ?? {angle:.4,dx:1,duration:1700};
       if (!motionState().reduced && !prefersLeanEffects()) scene.tweens.add({targets:art,angle:personality.angle,x:art.x+personality.dx,duration:personality.duration,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
     }
-    for (const {group:pose,enemy} of scene.enemyPoseGroups?.values() ?? []) if(enemy.runtime.type==='boss'&&!pose.getData('flyway-personality')) {
+    for (const {group:pose,enemy} of scene.enemyPoseGroups?.values() ?? []) if(mapIndex(scene)!==3&&enemy.runtime.type==='boss'&&!pose.getData('flyway-personality')) {
       pose.setData('flyway-personality',true); const stance=[{angle:.65,dx:1.4,duration:1600},{angle:-.35,dx:.7,duration:2400},{angle:-.9,dx:2,duration:1300},{angle:.25,dx:.3,duration:2800}][mapIndex(scene)]; if(!prefersReducedMotion()&&!prefersLeanEffects())scene.tweens.add({targets:pose,angle:stance.angle,x:pose.x+stance.dx,duration:stance.duration,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
     }
     const layer = scene.backdropLayer;

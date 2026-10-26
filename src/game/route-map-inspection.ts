@@ -19,7 +19,7 @@ interface RouteInspectionHost extends Phaser.Scene {
   pauseOverlayOpen: boolean;
   settingsOverlayOpen: boolean;
   confirmExitOpen: boolean;
-  nodeDetail: (node: RouteNode) => { title: string };
+  nodeDetail: (node: RouteNode) => { title: string; lesson?: string };
   nodeDecisionSummary: (node: RouteNode) => { benefit: string; risk: string };
   closeFlockOverlay: () => void;
   renderRouteNodeTypeIcon: (type: RouteNodeType, x: number, y: number, size: number) => Phaser.GameObjects.GameObject;
@@ -36,6 +36,7 @@ export function renderRouteMapInspection(scene: Phaser.Scene, map: RuntimeRouteM
         : route.runState.completedRouteNodeIds.includes(node.id) ? 'Completed'
         : route.selectableNodeIds.has(node.id) ? 'Available now' : 'Not currently reachable',
       ...route.nodeDecisionSummary(node),
+      risk: [route.nodeDecisionSummary(node).risk, route.nodeDetail(node).lesson].filter(Boolean).join('\n\n'),
     })),
     nodeId: route.mapInspectionNodeId, page: route.mapInspectionPage,
     onChange: (id, page) => { route.mapInspectionNodeId = id; route.mapInspectionPage = page; },
