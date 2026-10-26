@@ -177,9 +177,12 @@ export function formatBattleSelectionOutcome(
     target: outcome.contract.target === 'enemy'
       ? outcome.target?.name ?? 'Choose target'
       : outcome.contract.target === 'allEnemies' ? 'All enemies' : 'Flock',
+    // The resource line is additional information: preserve the previous three
+    // outcome slots (two before a choice) so Surge and phase cues are not lost.
+    // The measured renderer still bounds the displayed excerpt; details are full.
     summary: outcome.requiresChoice
-      ? [...parts.slice(0, 2), 'Choose cards; later effects depend on your choice.'].join('  /  ')
-      : parts.length > 0 ? [...parts.slice(0, 3), ...(parts.length > 3 ? ['…'] : [])].join('  /  ') : fallbackSummary,
+      ? [...parts.slice(0, 3), 'Choose cards; later effects depend on your choice.'].join('  /  ')
+      : parts.length > 0 ? [...parts.slice(0, 4), ...(parts.length > 4 ? ['…'] : [])].join('  /  ') : fallbackSummary,
     details: [...(parts.length ? parts : [fallbackSummary]),
       ...(outcome.requiresChoice ? ['Choose cards; later effects depend on your choice.'] : [])].join('\n\n'),
     moltPower: outcome.moltPowerApplied > 0

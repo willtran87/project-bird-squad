@@ -12,7 +12,7 @@ tests, commit, push, merge, publish GitHub Pages and clean up the feature branch
 - [x] Grounded signal lamps, cables, answering calls and bounded district effects.
 - [x] Combat information protected from effects, concise truthful card summaries,
   clearer selected-card resource forecasts and appropriately paced routine actions.
-- [ ] Focused rules/integration/browser tests and 2560×1600, 1440×900, 1000×560 review.
+- [x] Focused rules/integration/browser tests and 2560×1600, 1440×900, 1000×560 review.
 - [ ] Full release tests, merge, Pages publication, live verification and cleanup.
 
 Existing version-scoped human/device/accessibility waivers remain unchanged.
@@ -52,3 +52,46 @@ complete effect clauses with explicit omission markers and full inspection.
 Selected-card forecasts lead with remaining Wingbeats, including refunds.
 Ordinary attack/support commitments are 200/140 ms before pace scaling;
 cinematic pacing and readable enemy timing are preserved.
+
+## Local verification
+
+- Production build, 15 rules/draw unit tests, seven release-policy unit tests,
+  content/assets, documentation, enemy contracts, overlays, bundle/cache checks
+  and policy validation passed. Existing evidence waivers remain explicit.
+- Final Chromium run: 49 focused cases passed, plus two forecast/layout
+  regressions. Firefox: all 22 new integration cases passed. The shared gameplay
+  client ran against the final production build; its screenshot was inspected.
+- Windows WebKit reported all 22 individual cases passing but stalled during
+  worker shutdown without writing its final JSON report. The owned runner was
+  stopped; this is not recorded as a clean completed suite. Linux CI provides
+  the release WebKit gate.
+- Screenshots at 2560×1600, 1440×900 and 1000×560 were inspected for Preen
+  choices, encounter purpose, selected-card forecast/inspection, boss effects
+  and relay delivery. The reaction caption was raised above portrait art while
+  its decorative echo remains below the protected combat UI.
+- Verification exposed and fixed paid Aviary Molt cards incorrectly receiving
+  the normal-card discount: runtime kind now controls the rule. Full inspection
+  was also moved above battle effects. The old Canal isolation assertion now
+  checks Canal cues specifically because Signal Spires has its own calls.
+
+Evidence: `.artifacts/spires-final-focused.json`, `.artifacts/spires-forecast.json`,
+`.artifacts/spires-firefox.json`, `.artifacts/spires-webkit.log`,
+`.artifacts/spires-final-client/` and corresponding screenshot directories.
+Full release and publication evidence follows after the CI gates finish.
+
+The first full PR run exposed an old pause-layer assertion that required combat
+effects above the battle UI. It now asserts the intended protected UI ordering
+both while paused and after closing, with the pause overlay above both layers.
+The complete pause/input/time-freeze test passes locally with these assertions;
+original failure evidence remains in PR run 40283131686 and
+`.artifacts/spires-pause.log`. Final local result: `.artifacts/spires-pause-final.json`.
+
+The full run also found the added resource line displacing Surge and boss
+Cover-reset information from the compact forecast model. The new Wingbeat slot
+now preserves the existing three outcome slots (two before a required choice).
+The renderer still measures and bounds the visible excerpt, shows omissions,
+and retains all outcomes in Full rules and narration. Both original regressions,
+the pause check and three responsive forecast/inspection checks pass on the
+repaired production build: `.artifacts/spires-forecast-final.json`. The shared
+client was rerun and visually inspected in `.artifacts/spires-release-client/`.
+The local actual-Pages-base smoke also passed: `.artifacts/spires-pages.json`.

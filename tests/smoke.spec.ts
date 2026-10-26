@@ -14611,12 +14611,12 @@ test('pause overlay opens on route and combat without advancing play', async ({ 
   expect(result.battlePauseDetailFrame).toBe(0);
   expect(result.battlePauseDetailTelemetry.loaded).toBe(true);
   expect(result.battlePauseDetailTelemetry.count).toBe(0);
-  expect(result.battlePauseDepths.root).toBeLessThan(result.battlePauseDepths.fx);
-  expect(result.battlePauseDepths.overlay).toBeGreaterThan(result.battlePauseDepths.fx);
+  expect(result.battlePauseDepths.root).toBeGreaterThan(result.battlePauseDepths.fx);
+  expect(result.battlePauseDepths.overlay).toBeGreaterThan(result.battlePauseDepths.root);
   expect(result.battleDidNotEndTurn).toBe(true);
   expect(result.battleResumedOnEnter).toBe(true);
   expect(result.battleClosed).toBe(false);
-  expect(result.battleClosedDepths.root).toBeLessThan(result.battleClosedDepths.fx);
+  expect(result.battleClosedDepths.root).toBeGreaterThan(result.battleClosedDepths.fx);
   expect(result.windupBeforeSupply.combatEnemyTurnBeat).toBe('windup');
   expect(result.windupBeforeSupply.combatAnimationPending).toBe(true);
   expect(result.lockedSupply.hp).toBe(result.windupBeforeSupply.flock.hp);
