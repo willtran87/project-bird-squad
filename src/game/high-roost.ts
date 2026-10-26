@@ -123,9 +123,9 @@ export function installHighRoost(scene: Scene) {
       if(group.getData('roost-pose')===pose)continue;
       group.setData('roost-pose',pose);record.pose=pose;
       const angle=pose==='stagger'?-4:pose==='brace'?2:0;
-      scene.tweens.killTweensOf(group);
+      group.getData('roost-pose-tween')?.stop();
       if(prefersReducedMotion()||prefersLeanEffects())group.setAngle(angle);
-      else scene.tweens.add({targets:group,angle,duration:220,ease:'Sine.easeOut'});
+      else group.setData('roost-pose-tween',scene.tweens.add({targets:group,angle,duration:220,ease:'Sine.easeOut'}));
     }
   };
   const answer = () => { if((scene.runState?.mapIndex ?? scene.flywayMapIndex)!==3)return;record.answers++;birdAudio.play('spireAnswer',.35);backdrop(); };
