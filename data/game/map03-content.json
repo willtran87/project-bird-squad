@@ -36,9 +36,9 @@
       "Waymarks"
     ],
     "bossPrepHints": [
-      "Keep Open Sky Guard ready before the Beacon-Breaker's Molt-triggered calls.",
-      "Spend Wingbeat early to outrun stacking Winded Tells.",
-      "Sequence Plumes and Quills so a single big turn lands before the next telegraph resolves."
+      "Cover the charged broadcast or apply 2 Winded to disrupt one boss attack.",
+      "Use the exposed relay’s no-attack beat to prepare; escorts still act.",
+      "Sequence Basins into Plumes and Quills before Molt to use Spires signatures."
     ]
   },
   "enemies": [
@@ -142,8 +142,8 @@
       "attackPattern": {
         "type": "cycle",
         "moveIds": [
-          "relay_jab_6",
           "settle_cover",
+          "relay_jab_6",
           "quick_peck_5"
         ]
       },
@@ -300,9 +300,9 @@
       "attackPattern": {
         "type": "cycle",
         "moveIds": [
-          "static_nip_5",
           "charge_call",
-          "dart_7"
+          "dart_7",
+          "static_nip_5"
         ]
       },
       "rewards": {
@@ -540,7 +540,7 @@
         },
         {
           "id": "spire_toll_8",
-          "label": "Spire Toll 8",
+          "label": "Broadcast 8 + charge",
           "effects": [
             "damage(flock, 8)",
             "if flockOpenSky then applyWinded(flock, 1)"
@@ -552,25 +552,44 @@
           "effects": [
             "damage(flock, 14)"
           ]
+        },
+        {
+          "id": "relay_charge",
+          "label": "Charge Relay",
+          "effects": [
+            "gainCover(6)",
+            "nextAttackBonus(4)"
+          ]
+        },
+        {
+          "id": "relay_broadcast",
+          "label": "Broadcast 12 + charge",
+          "effects": [
+            "damage(flock, 12)",
+            "if flockOpenSky then applyWinded(flock, 1)"
+          ]
+        },
+        {
+          "id": "relay_exposed",
+          "label": "Exposed Relay · no attack",
+          "effects": [
+            "gainCover(0)"
+          ]
         }
       ],
       "attackPattern": {
-        "type": "scripted",
+        "type": "cycle",
         "moveIds": [
-          "open_the_spire",
-          "warning_call",
-          "skyline_flare",
           "charge_the_beacon",
           "spire_toll_8",
-          "beacon_break_14"
-        ],
-        "loopFrom": 1
+          "relay_exposed"
+        ]
       },
-      "phaseTwoName": "Beacon Overload",
+      "phaseTwoName": "Last Broadcast",
       "phaseTwoMoveIds": [
-        "charge_the_beacon",
-        "spire_toll_8",
-        "beacon_break_14"
+        "relay_charge",
+        "relay_broadcast",
+        "relay_exposed"
       ],
       "rewards": {
         "bossRouteMarkChoices": 3,
@@ -585,7 +604,10 @@
       "name": "Cicada Static Swarm",
       "type": "normal",
       "health": 32,
-      "roles": ["support", "controller"],
+      "roles": [
+        "support",
+        "controller"
+      ],
       "lesson": "Static caller: tempo pressure grows if the flock lets it hum.",
       "description": "A representative signal cicada whose rattling wing buzz scrambles tells in dense spire weather.",
       "visualBrief": "Single large cicada enemy in tiny signal-safe strap accents and reflective tags on a utility box, with natural transparent wings unobstructed.",
@@ -638,7 +660,10 @@
       "name": "Crane Signal Caller",
       "type": "elite",
       "health": 46,
-      "roles": ["support", "controller"],
+      "roles": [
+        "support",
+        "controller"
+      ],
       "lesson": "Signal support elite: calls Open Sky pressure before a long reach strike.",
       "description": "A tall signal caller that turns skyline distance into marching pressure.",
       "visualBrief": "Sandhill crane in a wind-cut neck wrap, fitted signal sash, long leg bands, and small route tags beside antenna cages.",
@@ -813,7 +838,10 @@
       "name": "Moth Lantern-Drifter",
       "type": "normal",
       "health": 32,
-      "roles": ["poison", "saboteur"],
+      "roles": [
+        "poison",
+        "saboteur"
+      ],
       "lesson": "Night distractor: Cover, Winded, and bad-direction Snags vary Spire street pressure.",
       "description": "A night moth that drifts around service lamps and draws attention away from harder threats.",
       "visualBrief": "Large moth with tiny body-safe reflective tags and no wing coverings near a practical lantern and rain-specked utility glass.",
@@ -866,19 +894,18 @@
   "encounters": [
     {
       "id": "enc_spire_relay_swarm",
-      "name": "Relay Swarm",
+      "name": "Crossed Wires",
       "mapId": "map_03_signal_spires",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "Three flyers stagger their Tells — answer the bigger threat first.",
+      "lesson": "Hit the relay before Settle to prevent its Snag, or prepare Cover for the swift’s charged strike.",
       "tags": [
         "multi",
         "winded"
       ],
       "enemies": [
         "spire_relay_starling",
-        "spire_aerial_kite",
-        "spire_relay_starling"
+        "spire_static_swift"
       ],
       "rewardProfileId": "street_map03"
     },
@@ -903,11 +930,11 @@
     },
     {
       "id": "enc_spire_relay_starling",
-      "name": "Relay Starling",
+      "name": "Silent Relay",
       "mapId": "map_03_signal_spires",
       "nodeType": "street",
       "band": "weak",
-      "lesson": "Read a two-part Tell that adds Winded after damage.",
+      "lesson": "A hit interrupts the relay’s Settle Snag. Save a cheap attack for that Tell.",
       "tags": [
         "support",
         "winded",
@@ -920,27 +947,28 @@
     },
     {
       "id": "enc_spire_aerial_kite",
-      "name": "Aerial Kite",
+      "name": "Open-Air Courier",
       "mapId": "map_03_signal_spires",
       "nodeType": "street",
       "band": "standard",
-      "lesson": "Punish Open Sky telegraphs and keep tempo.",
+      "lesson": "The kite marks Open Sky before a charged dive. Isolate it or brace while keeping the relay quiet.",
       "tags": [
         "openSky",
         "tempo"
       ],
       "enemies": [
-        "spire_aerial_kite"
+        "spire_aerial_kite",
+        "spire_relay_starling"
       ],
       "rewardProfileId": "street_map03"
     },
     {
       "id": "enc_spire_tower_pigeon",
-      "name": "Tower Pigeon",
+      "name": "Tower Shelter",
       "mapId": "map_03_signal_spires",
       "nodeType": "street",
       "band": "standard",
-      "lesson": "Survive a Heavy Strike that hits harder when you lack Cover.",
+      "lesson": "Keep Cover through Tower Strike: its extra hit and Snag only trigger after your Cover runs out.",
       "tags": [
         "heavy",
         "cover"
@@ -952,11 +980,11 @@
     },
     {
       "id": "enc_spire_static_swift",
-      "name": "Static Swift",
+      "name": "The Answering Beat",
       "mapId": "map_03_signal_spires",
       "nodeType": "street",
       "band": "standard",
-      "lesson": "Manage tempo against a fast bird that builds toward a bonus strike.",
+      "lesson": "Charge Call does no damage. Use that beat to prepare for the next 11-damage Dart.",
       "tags": [
         "tempo",
         "winded"
@@ -968,11 +996,11 @@
     },
     {
       "id": "enc_spire_beacon_grackle",
-      "name": "Beacon Grackle",
+      "name": "Lantern Watch",
       "mapId": "map_03_signal_spires",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "Respect a heavy multi-part Tell that punishes a thin Molt.",
+      "lesson": "Hunker grants a recovery window. Time Molt around the screech and prepare for Heavy Toll.",
       "tags": [
         "heavy",
         "openSky",
@@ -1024,7 +1052,7 @@
       "mapId": "map_03_signal_spires",
       "nodeType": "boss",
       "band": "boss",
-      "lesson": "Tests tempo, multi-part Tells, and Open Sky restraint while relay helpers keep alarms moving.",
+      "lesson": "Charge, broadcast, exposed. Phase II broadcasts for 12 + stored force. Brace, race the charge, or apply 2 Winded to disrupt one attack. Escorts still act.",
       "tags": [
         "boss",
         "winded",

@@ -338,7 +338,7 @@ function renderCard(
         wrapHandRules(text, value => label.context.measureText(value).width, cardWidth - 16) },
     }).setName('combat-card-readable-summary');
     const readable = readableHandRules(card.summary.split('\n'));
-    const excerpt = fitHandRules(readable, text => summary.getWrappedText(text).length <= 4);
+    const excerpt = fitHandRules(readable, text => summary.getWrappedText(text).length <= 4, 2);
     summary.setText(excerpt.text).setData('truncated', excerpt.omitted > 0)
       .setData('omittedEffects', excerpt.omitted).setData('readableRules', readable);
     summary.setData('fullText', card.preview.currentText.replace(/\s+/g, ' ').trim())

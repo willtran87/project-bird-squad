@@ -9,6 +9,7 @@ const kb = 1024;
 
 const budgets = [
   { label: 'canal markets lazy module', pattern: /^canal-markets-.*\.js$/, maxKb: 10, hard: true },
+  { label: 'signal spires lazy module', pattern: /^signal-spires-.*\.js$/, maxKb: 12, hard: true },
   { label: 'opening district lazy module', pattern: /^opening-district-.*\.js$/, maxKb: 9, hard: true },
   { label: 'enemy breathing lazy module', pattern: /^enemy-breathing-.*\.js$/, maxKb: 2, hard: true },
   { label: 'shared run HUD lazy module', pattern: /^run-hud-.*\.js$/, maxKb: 10, hard: true },

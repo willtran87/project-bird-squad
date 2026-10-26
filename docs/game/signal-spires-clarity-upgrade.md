@@ -1,0 +1,97 @@
+# Signal Spires + Combat Clarity
+
+User request: implement the full milestone, complete all items, run full release
+tests, commit, push, merge, publish GitHub Pages and clean up the feature branch.
+
+## Acceptance
+
+- [x] Six curated Spires crossings with distinct sequencing/tempo decisions.
+- [x] Beacon-Breaker charge → broadcast → exposed cycle and multiple responses.
+- [x] Three optional strategy Preens, including paid retraining for upgraded birds.
+- [x] Ivo relay story, durable one-time rewards and a visible High Roost payoff.
+- [x] Grounded signal lamps, cables, answering calls and bounded district effects.
+- [x] Combat information protected from effects, concise truthful card summaries,
+  clearer selected-card resource forecasts and appropriately paced routine actions.
+- [x] Focused rules/integration/browser tests and 2560×1600, 1440×900, 1000×560 review.
+- [ ] Full release tests, merge, Pages publication, live verification and cleanup.
+
+Existing version-scoped human/device/accessibility waivers remain unchanged.
+Update the prepared playtest handoff for this milestone; no invented sessions,
+ratings, enjoyment claims or physical-device performance claims.
+
+## Authored behavior
+
+Crossed Wires, Silent Relay, Open-Air Courier, Tower Shelter, The Answering Beat
+and Lantern Watch retain their route IDs. Formations and move order emphasize
+interrupting Settle, covering a charged dive, preserving Cover through a heavy
+strike, and preparing during a non-attacking beat.
+
+Beacon-Breaker cycles charge, broadcast, exposed. Phase I broadcasts for 8 plus
+stored force; Phase II for 12 plus stored force. Charge adds 4 force and 6 Cover;
+the exposed beat grants 0 Cover and does not attack. The half-health transition
+clears existing Cover/force. Applying 2 Winded disrupts one boss attack per fight.
+Escorts remain independent; the exposed boss does not make their attacks safe.
+
+Patient Watch costs 2 Wingbeats and banks 1 for next turn while retaining two
+cards. Relay Chorus rewards Basins before Plumes and Quills before its Molt form.
+Storm Aperture refunds its 1-Wingbeat entry cost but adds Open Sky with no active
+Guard; its Molt strike loses 4 Cover. Normal Spires Preens and optional 25-Scrap
+retraining share these exact rules. Retraining requires confirmation, preserves
+canonical passive stats and rolls back on save failure.
+
+Ivo's 18-Scrap wires/lenses pledge needs two new Spires victories or the boss
+defeat. Wires grant 1 opening-turn Wingbeat next fight; lenses grant 2 Open Sky
+Guard. After collection, High Roost offers one final delivery: 1 opening-turn
+Wingbeat, plus 2 Guard if Oren's ferry was restored. All gifts persist through
+reload and are collected only once. Decorations use existing artwork, static
+cables and event-driven lamps (maximum two transient groups, 650 ms lifetime).
+
+Combat effects stay below the hand, HUD and enemy Tell labels. Intro and reward
+presentations retain their separate ordering. Card faces show at most two
+complete effect clauses with explicit omission markers and full inspection.
+Selected-card forecasts lead with remaining Wingbeats, including refunds.
+Ordinary attack/support commitments are 200/140 ms before pace scaling;
+cinematic pacing and readable enemy timing are preserved.
+
+## Local verification
+
+- Production build, 15 rules/draw unit tests, seven release-policy unit tests,
+  content/assets, documentation, enemy contracts, overlays, bundle/cache checks
+  and policy validation passed. Existing evidence waivers remain explicit.
+- Final Chromium run: 49 focused cases passed, plus two forecast/layout
+  regressions. Firefox: all 22 new integration cases passed. The shared gameplay
+  client ran against the final production build; its screenshot was inspected.
+- Windows WebKit reported all 22 individual cases passing but stalled during
+  worker shutdown without writing its final JSON report. The owned runner was
+  stopped; this is not recorded as a clean completed suite. Linux CI provides
+  the release WebKit gate.
+- Screenshots at 2560×1600, 1440×900 and 1000×560 were inspected for Preen
+  choices, encounter purpose, selected-card forecast/inspection, boss effects
+  and relay delivery. The reaction caption was raised above portrait art while
+  its decorative echo remains below the protected combat UI.
+- Verification exposed and fixed paid Aviary Molt cards incorrectly receiving
+  the normal-card discount: runtime kind now controls the rule. Full inspection
+  was also moved above battle effects. The old Canal isolation assertion now
+  checks Canal cues specifically because Signal Spires has its own calls.
+
+Evidence: `.artifacts/spires-final-focused.json`, `.artifacts/spires-forecast.json`,
+`.artifacts/spires-firefox.json`, `.artifacts/spires-webkit.log`,
+`.artifacts/spires-final-client/` and corresponding screenshot directories.
+Full release and publication evidence follows after the CI gates finish.
+
+The first full PR run exposed an old pause-layer assertion that required combat
+effects above the battle UI. It now asserts the intended protected UI ordering
+both while paused and after closing, with the pause overlay above both layers.
+The complete pause/input/time-freeze test passes locally with these assertions;
+original failure evidence remains in PR run 40283131686 and
+`.artifacts/spires-pause.log`. Final local result: `.artifacts/spires-pause-final.json`.
+
+The full run also found the added resource line displacing Surge and boss
+Cover-reset information from the compact forecast model. The new Wingbeat slot
+now preserves the existing three outcome slots (two before a required choice).
+The renderer still measures and bounds the visible excerpt, shows omissions,
+and retains all outcomes in Full rules and narration. Both original regressions,
+the pause check and three responsive forecast/inspection checks pass on the
+repaired production build: `.artifacts/spires-forecast-final.json`. The shared
+client was rerun and visually inspected in `.artifacts/spires-release-client/`.
+The local actual-Pages-base smoke also passed: `.artifacts/spires-pages.json`.

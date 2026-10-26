@@ -50,7 +50,7 @@ export function playEncounterIntro(scene: Phaser.Scene, layer: Phaser.GameObject
   }
   // The authored crest supplies the accent; no diagonal flat line across art.
   c.add([
-    scene.add.text(74, 80, o.district === 'Canal Markets' ? 'CANAL CROSSING' : 'ROOFLINE CONTACT', { fontFamily: o.font, fontSize: '19px', fontStyle: o.bold, color: o.cyan }),
+    scene.add.text(74, 80, o.district === 'Signal Spires' ? 'SIGNAL CROSSING' : o.district === 'Canal Markets' ? 'CANAL CROSSING' : 'ROOFLINE CONTACT', { fontFamily: o.font, fontSize: '19px', fontStyle: o.bold, color: o.cyan }),
     scene.add.text(74, 112, o.district, { fontFamily: o.displayFont, fontSize: '23px', fontStyle: o.bold,
       color: o.gold, stroke: '#000000', strokeThickness: 4 }),
   ]);

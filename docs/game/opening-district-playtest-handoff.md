@@ -7,6 +7,15 @@ human, device or assistive-technology evidence.
 
 ## Session kit
 
+Signal Spires follow-up: once this upgrade is published, record its actual
+deployed revision from [the release ledger](signal-spires-clarity-upgrade.md).
+After the opening observations, ask returning players to explain one relay Tell,
+their chosen Spires signature's tradeoff, and why they chose a Molt window.
+Observe whether the shorter card face leads naturally to Full rules, whether
+the Wingbeat forecast predicts their next action, and whether Ivo/Oren's High
+Roost contribution is noticed. Record confusion before providing assistance.
+No Signal Spires sessions have been performed.
+
 - Game: <https://willtran87.github.io/project-bird-squad/?playtest=1>.
   The opening-district release is published and live-verified at revision
   `f699a3bb1c099f1d928859683eb59d6e7adc765f`. Record this revision alongside the

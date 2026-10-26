@@ -18,6 +18,7 @@ test('hand excerpt never drops a condition or silently truncates an effect', () 
   const source = 'Deal 3 damage.\nGain 2 Cover.\nFirst use this fight: Draw 1.';
   expect(fitHandRules(source, t => t.length < 48)).toEqual({text:'Deal 3 damage.\nGain 2 Cover.\n+1 more · Inspect', omitted:1});
   expect(fitHandRules(source, () => true)).toEqual({text:source, omitted:0});
+  expect(fitHandRules(source, () => true, 2)).toEqual({text:'Deal 3 damage.\nGain 2 Cover.\n+1 more · Inspect', omitted:1});
   expect(fitHandRules('If the previous hit defeated an enemy: Draw 2.', t => t.length < 35))
     .toEqual({text:'Complex effect\nInspect full rules', omitted:1});
 });

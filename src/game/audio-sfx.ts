@@ -3,6 +3,9 @@ import { AudioCueBudget } from './audio-cue-budget';
 const cueBudgets = new WeakMap<AudioContext, AudioCueBudget>();
 
 export type SynthAudioCue =
+  | 'spireAnswer'
+  | 'spireBroadcast'
+  | 'spireRepair'
   | 'canalBell'
   | 'canalSurge'
   | 'canalRepair'
@@ -142,6 +145,17 @@ export function playAudioCue(
   const audio = { ctx, master, sfxVolume };
   const loudness = clamp(intensity, 0.45, 1.8);
   switch (cue) {
+    case 'spireAnswer':
+      tone(audio, 740, 760, .14, 'sine', .010 * loudness, -.3);
+      tone(audio, 1110, 1080, .24, 'sine', .008 * loudness, .3);
+      break;
+    case 'spireBroadcast':
+      noise(audio, .18, 650, .012 * loudness);
+      tone(audio, 185, 370, .25, 'triangle', .012 * loudness);
+      break;
+    case 'spireRepair':
+      chord(audio, [370, 554, 740], .25, 'triangle', .011 * loudness);
+      break;
     case 'canalBell':
       tone(audio, 660, 658, .22, 'sine', .012 * loudness, -.12);
       tone(audio, 990, 988, .16, 'sine', .008 * loudness, .12);

@@ -1,5 +1,13 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-10-26 — Signal Spires + Combat Clarity
+
+- Implementing the full requested milestone on `codex/signal-spires-clarity`.
+  Scope and release gates: `docs/game/signal-spires-clarity-upgrade.md`.
+- Six curated encounters, Beacon-Breaker cycle, three strategy upgrades with
+  late retraining, Ivo relay consequences, bounded presentation and combat clarity.
+  Existing human/device/assistive-technology evidence waivers remain unchanged.
+
 ## 2026-10-25 — Canal Markets upgrade
 
 - User requested the full six-encounter, boss, six-upgrade, resident-story and
