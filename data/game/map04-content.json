@@ -268,8 +268,8 @@
       "id": "roost_relay_falcon",
       "name": "Relay Falcon",
       "type": "normal",
-      "health": 38,
-      "lesson": "Punish telegraphed Heavy Strike with a winded setup.",
+      "health": 22,
+      "lesson": "Signal perch: stores 3 force on the front ally. Defeat it to prevent future charges; already stored force remains visible.",
       "description": "A relay falcon that marks the flock with a fast pass, then returns for the heavy strike it already signaled.",
       "visualBrief": "Sleek falcon in a tight relay jacket, racing straps, small beacon tabs, and reinforced talon bands above a high-roost signal gap.",
       "silhouette": "Long-winged predator with a narrow body, fast dive line, and focused head.",
@@ -277,24 +277,23 @@
       "moves": [
         {
           "id": "mark_winded",
-          "label": "Mark",
+          "label": "Signal Perch · ally +3",
           "effects": [
-            "applyWinded(flock, 1)",
-            "nextAttackBonus(2)"
+            "nextAttackBonusAlly(front, 3)"
           ]
         },
         {
           "id": "heavy_strike_13",
-          "label": "Heavy Strike 13",
+          "label": "Relay Strike 7",
           "effects": [
-            "damage(flock, 13)"
+            "damage(flock, 7)"
           ]
         },
         {
           "id": "strike_8",
-          "label": "Strike 8",
+          "label": "Relay Recovery",
           "effects": [
-            "damage(flock, 8)"
+            "gainCover(0)"
           ]
         }
       ],
@@ -320,8 +319,8 @@
       "id": "roost_spire_sentinel",
       "name": "Spire Sentinel",
       "type": "normal",
-      "health": 40,
-      "lesson": "A walled defender that scales damage when you have no Cover.",
+      "health": 24,
+      "lesson": "Shield perch: grants the front ally 8 Cover. Interrupt it to keep the Warden exposed.",
       "description": "A sentinel owl that anchors the old spire wall and punishes any flock caught without cover.",
       "visualBrief": "Broad owl in a heavy padded roost vest, quiet hood wrap, utility perch straps, and bright eyes between cracked signal panels.",
       "silhouette": "Wide still watcher with round head, broad wing cloak, and wall-like posture.",
@@ -329,26 +328,23 @@
       "moves": [
         {
           "id": "bulwark_cover",
-          "label": "Bulwark",
+          "label": "Shield Perch · 8 ally Cover",
           "effects": [
-            "gainCover(10)",
-            "if flockHasCover then loseWingbeat(1)"
+            "gainCoverAlly(front, 8)"
           ]
         },
         {
           "id": "spire_slam_10",
           "label": "Spire Slam 10",
           "effects": [
-            "damage(flock, 10)",
-            "if flockHasNoCover then damage(flock, 4)",
-            "applyFrail(1)"
+            "damage(flock, 6)"
           ]
         },
         {
           "id": "watch_open_sky",
-          "label": "Watch",
+          "label": "Perch Recovery",
           "effects": [
-            "applyOpenSky(1)"
+            "gainCover(0)"
           ]
         }
       ],
@@ -496,7 +492,7 @@
       "id": "roost_warden",
       "name": "The Roost Warden",
       "type": "boss",
-      "health": 72,
+      "health": 68,
       "description": "The final guardian of the restored flyway, a huge raptor that binds routes, opens the sky, and tests the whole flock.",
       "visualBrief": "Massive eagle-owl boss in layered final-route workwear, heavy utility harness, worn roost mantle, snagged line accents, and talon bands on the citywide chokepoint tower.",
       "silhouette": "Largest enemy silhouette: broad wings, heavy head, deep talons, and a tower-filling final-boss stance.",
@@ -511,8 +507,7 @@
           "id": "warden_opening",
           "label": "Warden's Toll",
           "effects": [
-            "gainCover(10)",
-            "if flockHasNoCover then addSnagToDiscard(bad_directions)"
+            "gainCover(4)"
           ]
         },
         {
@@ -526,9 +521,7 @@
           "id": "skyfall_decree",
           "label": "Skyfall Decree",
           "effects": [
-            "applyOpenSky(1)",
-            "if isMolting then applyOpenSky(1)",
-            "if handEmptyAtRoost then applyWinded(flock, 1)"
+            "applyOpenSky(1)"
           ]
         },
         {
@@ -543,10 +536,8 @@
           "id": "warden_brace",
           "label": "Roost Brace",
           "effects": [
-            "gainCover(9)",
-            "nextAttackBonus(4)",
-            "if flockHasCover then loseWingbeat(1)",
-            "if zeroCostCardsAtLeast(2) then loseWingbeat(1)"
+            "gainCover(6)",
+            "nextAttackBonus(3)"
           ]
         },
         {
@@ -583,22 +574,26 @@
       "phaseTwoMoveIds": [
         "warden_brace",
         "final_signal_18",
-        "talon_volley_10",
-        "skyfall_decree"
+        "skyfall_decree",
+        "talon_volley_10"
       ],
       "rewards": {
         "bossRouteMarkChoices": 3,
         "rareCardChoices": 3,
         "preen": 1,
         "scrap": 150
-      }
+      },
+      "lesson": "Shield and signal perches protect and charge the Warden. Remove either, or brace through their support. Hit the Winded Warden to cancel one attack."
     },
     {
       "id": "vulture_cleanup_crew",
       "name": "Vulture Cleanup Crew",
       "type": "normal",
       "health": 42,
-      "roles": ["support", "bruiser"],
+      "roles": [
+        "support",
+        "bruiser"
+      ],
       "lesson": "Cleanup pressure: heals if left alone and punishes low Cohesion.",
       "description": "A patient high-roost scavenger posted near roof-access salvage carts, waiting for weakness before closing the cleanup lane.",
       "visualBrief": "Turkey vulture in a worn roost mantle, utility harness, talon bands, subtle salvage tags, and clipped tarp-cord accents beside a roof-access landing and service-cart scrap; natural bare head and wings unobstructed.",
@@ -876,20 +871,19 @@
   "encounters": [
     {
       "id": "enc_roost_perch_gang",
-      "name": "Perch Gang",
+      "name": "The Two Perches",
       "mapId": "map_04_high_roost",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "Four enforcers hold the perch — sustained Cover or fast kills.",
+      "lesson": "Interrupt support: the Sentinel protects the front bird; the Falcon charges it. Choose which support to stop.",
       "tags": [
         "multi",
         "cover"
       ],
       "enemies": [
         "roost_perch_thug",
-        "roost_wind_shrike",
-        "roost_perch_thug",
-        "roost_wind_shrike"
+        "roost_spire_sentinel",
+        "roost_relay_falcon"
       ],
       "rewardProfileId": "street_map04"
     },
@@ -914,11 +908,11 @@
     },
     {
       "id": "enc_roost_perch_thug",
-      "name": "Perch Thug",
+      "name": "Hold the Crossing",
       "mapId": "map_04_high_roost",
       "nodeType": "street",
       "band": "standard",
-      "lesson": "Sustained Cover against a relentless basic attacker.",
+      "lesson": "Preserve Cover: a steady attacker rewards a small defense each turn.",
       "tags": [
         "cover",
         "basic"
@@ -930,11 +924,11 @@
     },
     {
       "id": "enc_roost_wind_shrike",
-      "name": "Wind Shrike",
+      "name": "The Molt Window",
       "mapId": "map_04_high_roost",
       "nodeType": "street",
       "band": "standard",
-      "lesson": "Open Sky pressure forces Guard discipline.",
+      "lesson": "Choose your Molt window: build Guard before the Shrike opens the sky.",
       "tags": [
         "openSky",
         "winded"
@@ -946,11 +940,11 @@
     },
     {
       "id": "enc_roost_tar_drifter",
-      "name": "Tar Drifter",
+      "name": "Tangled Approach",
       "mapId": "map_04_high_roost",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "Snags clog the draw under heavy follow-up.",
+      "lesson": "Manage Snags: clear the clogged draw before the heavy follow-up.",
       "tags": [
         "snag",
         "heavy",
@@ -963,34 +957,36 @@
     },
     {
       "id": "enc_roost_relay_falcon",
-      "name": "Relay Falcon",
+      "name": "Last Courier",
       "mapId": "map_04_high_roost",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "Punish telegraphed Heavy Strike with a winded setup.",
+      "lesson": "Finish under pressure: interrupt the Falcon before its charge strengthens the Thug.",
       "tags": [
         "heavy",
         "winded",
         "tempo"
       ],
       "enemies": [
+        "roost_perch_thug",
         "roost_relay_falcon"
       ],
       "rewardProfileId": "street_map04"
     },
     {
       "id": "enc_roost_spire_sentinel",
-      "name": "Spire Sentinel",
+      "name": "Split the Watch",
       "mapId": "map_04_high_roost",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "A walled defender that scales damage when you have no Cover.",
+      "lesson": "Split targets: remove the shielding Sentinel or race the exposed Shrike.",
       "tags": [
         "cover",
         "heavy",
         "openSky"
       ],
       "enemies": [
+        "roost_wind_shrike",
         "roost_spire_sentinel"
       ],
       "rewardProfileId": "street_map04"
@@ -1037,7 +1033,7 @@
       "mapId": "map_04_high_roost",
       "nodeType": "boss",
       "band": "boss",
-      "lesson": "Final exam: full build, Molt timing, Open Sky management, snag clearing, and boss helpers.",
+      "lesson": "Two perches: Sentinel gives 8 Cover; Falcon stores +3 attack. Stop future support, brace, or hit the Winded boss to disrupt.",
       "tags": [
         "boss",
         "cover",
@@ -1050,7 +1046,7 @@
       "enemies": [
         "roost_warden",
         "roost_spire_sentinel",
-        "roost_wind_shrike"
+        "roost_relay_falcon"
       ],
       "rewardProfileId": "boss_map04"
     },

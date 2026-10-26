@@ -35,6 +35,7 @@ export interface FlywayState {
   cleanFights: number;
   rooftopPlan?: RooftopPlan;
   coachingOff?: boolean;
+  cityAid?: Array<'sella' | 'oren' | 'ivo'>;
   canalFerry?: { pledge: 'timber' | 'lamps'; startedAt: number; rewarded?: true };
   spireRelay?: { pledge: 'wires' | 'lenses'; startedAt: number; rewarded?: true; delivered?: true };
 }
@@ -117,6 +118,7 @@ export function normalizeFlyway(value: unknown): FlywayState {
       if (relay.delivered === true) s.spireRelay.delivered = true;
     }
   }
+  if (Array.isArray(v.cityAid)) s.cityAid = [...new Set(strings(v.cityAid, 3).filter((id): id is 'sella' | 'oren' | 'ivo' => ['sella','oren','ivo'].includes(id)))];
   return s;
 }
 export function journal(s: FlywayState, text: string) { s.journal = [...s.journal, text].slice(-48); }

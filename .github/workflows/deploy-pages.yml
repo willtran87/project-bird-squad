@@ -157,9 +157,9 @@ jobs:
       - name: Verify release smoke and district upgrades
         run: >-
           node tools/run-cross-browser-smoke.mjs
-          tests/opening-district.spec.ts tests/canal-markets.spec.ts tests/signal-spires.spec.ts tests/smoke.spec.ts
+          tests/opening-district.spec.ts tests/canal-markets.spec.ts tests/signal-spires.spec.ts tests/high-roost.spec.ts tests/smoke.spec.ts
           --project=${{ matrix.browser }} --workers=1 --timeout=90000 --reporter=list,json
-          --grep="Spires |Canal |strategy choices|plan drafting|real combinations|saved shelter|Crow purpose|strategy presentation|title boot paints generated controls once|sold-out Market stock remains in the spoken unavailable inventory|opt-in screen reader announcements follow|reward advice preserves costs|reward cost cautions remain visible"
+          --grep="High Roost |Spires |Canal |strategy choices|plan drafting|real combinations|saved shelter|Crow purpose|strategy presentation|title boot paints generated controls once|sold-out Market stock remains in the spoken unavailable inventory|opt-in screen reader announcements follow|reward advice preserves costs|reward cost cautions remain visible"
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/browser-results.json
       - name: Retain browser evidence

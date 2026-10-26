@@ -1,5 +1,11 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-10-26 — High Roost + The Living City
+
+- Implementation in progress on codex/high-roost-living-city. Acceptance ledger:
+  docs/game/high-roost-living-city-upgrade.md. Full release and publication pending.
+
+
 ## 2026-10-26 — Signal Spires + Combat Clarity
 
 - Implemented and published the full milestone; all acceptance items are checked
