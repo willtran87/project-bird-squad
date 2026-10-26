@@ -95,3 +95,29 @@ the pause check and three responsive forecast/inspection checks pass on the
 repaired production build: `.artifacts/spires-forecast-final.json`. The shared
 client was rerun and visually inspected in `.artifacts/spires-release-client/`.
 The local actual-Pages-base smoke also passed: `.artifacts/spires-pages.json`.
+
+## Release verification
+
+PR run [40283131686](https://github.com/willtran87/project-bird-squad/actions/runs/40283131686)
+completed 1,029 passing core cases, the three failures described above, and all
+156 browser qualification cases. All 29 test-job logs were reconciled in
+`.artifacts/spires-pr-verification.json`. The fixed commit is `7d73ccef`;
+[PR #13](https://github.com/willtran87/project-bird-squad/pull/13) merged as
+`5202143493ec4ba1a3927791ac73daa14939de10`. The duplicate post-fix PR run was
+canceled after merge; the first main release attempt is 40285945858.
+
+That main attempt passed 1,031 core and all 156 browser cases, including all
+three repaired PR failures. One existing route-exit geometry test sampled the
+lazy confirmation before both real input receivers were available. Five local
+reruns passed unchanged; an explicit redraw probe confirmed the transient
+missing-controls window. The test now polls for both reachable confirmation
+buttons and applies the unchanged geometry checks to that same snapshot. This
+does not change game code or relax target-size, spacing or accidental-abandon
+checks. Evidence: `.artifacts/spires-exit-registration.json`,
+`.artifacts/spires-exit-repro.json`, and `.artifacts/spires-exit-snapshot-final.json`.
+A fresh full main release run qualifies this test-readiness repair.
+
+The final local root build's combined boot code is 715.4 KiB, above the 710 KiB
+preferred target and below the unchanged 725 KiB release ceiling. The lazy
+Signal Spires module is approximately 7 KiB against its 12 KiB cap, with no
+new artwork downloads. No physical-device performance improvement is claimed.

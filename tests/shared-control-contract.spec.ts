@@ -125,7 +125,16 @@ test('shared pause and exit controls are readable, separated and cannot accident
     for (const check of pause) expect(check).toMatchObject({ target: true, readable: true, full: true, contained: true });
     await page.screenshot({ path: info.outputPath(`pause-${size.width}.png`) });
     await click(page, 'RouteScene', 'pause-abandon-hit', true);
-    checkTargetGeometry(await targetGeometry(page,'RouteScene'),'abandon confirmation');
+    // Lazy overlay rendering and late route-art redraws can settle after the two
+    // canvas frames. Wait for both real input receivers, then measure that same
+    // snapshot rather than treating the loading window as the finished dialog.
+    let confirmationTargets: Awaited<ReturnType<typeof targetGeometry>> = [];
+    await expect.poll(async () => {
+      confirmationTargets = await targetGeometry(page, 'RouteScene');
+      return confirmationTargets.filter(t => t.reachable && !t.backdrop).map(t => t.name);
+    })
+      .toEqual(expect.arrayContaining(['route-confirm-exit-keep-hit', 'route-confirm-exit-abandon-hit']));
+    checkTargetGeometry(confirmationTargets,'abandon confirmation');
     const confirmation = await page.evaluate(() => {
       const s = (window as any).__birdSquadGame.scene.getScene('RouteScene');
       const keep = s.children.getByName('route-confirm-exit-keep-hit'), abandon = s.children.getByName('route-confirm-exit-abandon-hit');
