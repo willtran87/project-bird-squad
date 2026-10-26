@@ -166,7 +166,9 @@ export function formatBattleSelectionOutcome(
   if (outcome.flowGain > 0) parts.push(outcome.flockAfter.flow >= outcome.flockAfter.flowMax
     ? `Flow ${outcome.flockBefore.flow} -> Surge`
     : `Flow ${outcome.flockBefore.flow} -> ${outcome.flockAfter.flow}`);
-  if (outcome.energyDelta !== 0) parts.push(`Wingbeats ${outcome.flockBefore.energy} -> ${outcome.flockAfter.energy}`);
+  // Always expose the actual card-only resource forecast, including refunds and
+  // free plays. Full inspection retains every subsequent effect in written order.
+  parts.unshift(`Wingbeats ${outcome.flockBefore.energy} → ${outcome.flockAfter.energy}`);
   if (outcome.resonanceDelta !== 0) parts.push(`Resonance ${outcome.flockBefore.resonance} -> ${outcome.flockAfter.resonance}`);
   if (outcome.nextTurnDrawDelta !== 0) parts.push(`Next draw ${outcome.nextTurnDrawDelta > 0 ? '+' : ''}${outcome.nextTurnDrawDelta}`);
   if (outcome.nextTurnEnergyDelta !== 0) parts.push(`Next Wingbeats ${outcome.nextTurnEnergyDelta > 0 ? '+' : ''}${outcome.nextTurnEnergyDelta}`);

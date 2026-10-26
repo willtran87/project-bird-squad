@@ -9,7 +9,7 @@ import { writeJournaledJson, readJournaledJson } from './safe-storage';
 import { controlBindingsSnapshot } from './input-bindings';
 import { prefersLeanEffects } from './graphics-quality';
 import { showDownloadRecovery } from '../update-recovery';
-import { bossDisruption, branchCards, branchUpgrade, canalPreens, combinations, conditions, districts, flightStories,
+import { bossDisruption, branchCards, branchUpgrade, canalPreens, spirePreens, combinations, conditions, districts, flightStories,
   journal, leaderCalls, newFlywayState, normalizeFlyway, relics, type FlywayState,
   type FlywayCondition, type FlywayRelic, type PreenBranch } from './flyway-rules';
 
@@ -65,6 +65,7 @@ export function installFlyway(raw: Phaser.Scene) {
   let alive = true, openingFailed = false;
   let opening: typeof import('./opening-district') | undefined;
   let canal: typeof import('./canal-markets') | undefined, canalFailed = false;
+  let spires: typeof import('./signal-spires') | undefined, spiresFailed = false;
   let dialog: HTMLDialogElement | undefined;
   let page: Page = 'flight';
   let pendingPreen: { card: any; accept: (branch: PreenBranch) => void; isCurrent: () => boolean } | undefined;
@@ -177,12 +178,15 @@ export function installFlyway(raw: Phaser.Scene) {
   function renderPreen(body: HTMLElement) {
     const request = pendingPreen!; const runtime = cardLibrary[request.card.id].runtime;
     const grid = element('div', undefined, 'flyway-grid'); body.append(grid);
-    const branches: PreenBranch[] = ['shelter', 'flight', ...(mapIndex(scene) === 1 ? canalPreens.filter(entry => entry.card === runtime.id).map(entry => entry.id) : [])];
+    const extras = mapIndex(scene) === 1 ? canalPreens : mapIndex(scene) === 2 ? spirePreens : [];
+    const branches: PreenBranch[] = ['shelter', 'flight', ...extras.filter(entry => entry.card === runtime.id).map(entry => entry.id)];
     for (const branch of branches) {
       const upgrade = branchUpgrade(runtime, branch);
-      const special = canalPreens.find(entry => entry.id === branch);
+      const special = extras.find(entry => entry.id === branch);
       const name = special?.name ?? (branch === 'shelter' ? 'Shelter' : 'Flight');
-      const box = section(grid, `${name} Preen`, `${special ? `${special.plan}: ${special.tradeoff}\n` : ''}Cost: ${upgrade.cost ?? runtime.cost} Wingbeats. ${formatEffects(upgrade.effects)}\nMolt: ${formatEffects(upgrade.moltEffects ?? [])}`);
+      const cost = upgrade.cost ?? runtime.cost;
+      const moltCost = Math.max(0, cost - (runtime.kind === 'molt' ? 0 : 1));
+      const box = section(grid, `${name} Preen`, `${special ? `${special.plan}: ${special.tradeoff}\n` : ''}Cost: ${cost} Wingbeats. ${formatEffects(upgrade.effects)}\nMolt (${moltCost} Wingbeats): ${formatEffects(upgrade.moltEffects ?? [])}`);
       const asset = cardArtAssets[request.card.id];
       if (asset) { const img = element('img'); img.src = asset.url; img.alt = cardLibrary[request.card.id].bird; img.className = 'flyway-card-art'; box.prepend(img); }
       box.append(button(`Choose ${name}`, () => { const current = request.isCurrent(); close(); if (current) request.accept(branch); }));
@@ -194,6 +198,7 @@ export function installFlyway(raw: Phaser.Scene) {
     section(body, district.name, district.weather);
     if (mapIndex(scene) === 0 && scene.runState) renderPlans(body, s);
     if (mapIndex(scene) === 1 || s.canalFerry) renderCanal(body, s);
+    if (mapIndex(scene) === 2 || s.spireRelay) renderSpires(body, s);
     if (scene.scene.key === 'BattleScene') {
       const call = leaderCalls[scene.runLeaderId] ?? leaderCalls.fledgling;
       const combat = scene.flightCombat;
@@ -227,6 +232,7 @@ export function installFlyway(raw: Phaser.Scene) {
   function renderCity(body: HTMLElement) {
     const s = state(scene); renderRestoration(body, s);
     if (mapIndex(scene) === 1 || s.canalFerry) renderCanal(body, s);
+    if (mapIndex(scene) === 2 || s.spireRelay) renderSpires(body, s);
     const grid = element('div', undefined, 'flyway-grid'); body.append(grid);
     districts.forEach((district, index) => {
       const box = section(grid, `${s.restored.includes(index) ? '✓ ' : ''}${district.name}`, s.restored.includes(index) ? district.restored : district.weather);
@@ -358,6 +364,10 @@ export function installFlyway(raw: Phaser.Scene) {
   scene.flywayCancelPreen = () => { if (pendingPreen) close(); };
   scene.openFlyway = open;
   installPresentation(scene);
+  if (mapIndex(scene) === 2 || state(scene).spireRelay) void import('./signal-spires').then(module => {
+    if (!alive) return;
+    spires = module; module.installSignalSpires(scene); render();
+  }).catch(() => { if (alive) { spiresFailed = true; render(); } });
   if (mapIndex(scene) === 1 || state(scene).canalFerry) void import('./canal-markets').then(module => {
     if (!alive) return;
     canal = module; module.installCanalMarkets(scene); render();
@@ -378,6 +388,13 @@ export function installFlyway(raw: Phaser.Scene) {
     else {
       const box = section(body, 'Canal crossings', canalFailed ? 'Canal notes could not load. Your flight and normal Preens remain available.' : 'Preparing canal notes…');
       if (canalFailed) box.append(button('Canal recovery options', showDownloadRecovery));
+    }
+  }
+  function renderSpires(body: HTMLElement, s: FlywayState) {
+    if (spires) spires.renderSignalSpires(body, scene, s, mutate, routeSceneEventResidentAssets.signal?.url);
+    else {
+      const box = section(body, 'Signal crossings', spiresFailed ? 'Signal notes could not load. Your flight and normal Preens remain available.' : 'Preparing signal notes…');
+      if (spiresFailed) box.append(button('Signal recovery options', showDownloadRecovery));
     }
   }
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -443,6 +460,7 @@ function installPresentation(scene: Scene) {
   const tick = () => {
     if (!scene.flock || scene.mode !== 'battle') return;
     if (mapIndex(scene) === 1) scene.events.emit('canal-backdrop');
+    if (mapIndex(scene) === 2) scene.events.emit('spire-backdrop');
     const musicState = scene.flock.molt ? 'molt' : scene.flock.exposed ? 'open-sky' : scene.enemies.some((e:any)=>e.phase===2&&e.hp>0) ? 'boss-phase' : scene.flock.flow >= scene.flock.flowMax ? 'surge' : scene.flock.flow > 0 ? 'flow' : 'planning';
     if (musicState !== lastMode) { lastMode=musicState; birdAudio.setFlightState(musicState, mapIndex(scene)); }
     const art = scene.root?.getByName('combat-leader-art');

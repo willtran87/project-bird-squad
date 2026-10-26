@@ -24,10 +24,10 @@ export function readableHandRules(formattedEffects: readonly string[]): string {
 }
 
 /** Keep complete effect clauses when possible. Never show an effect without its predicate. */
-export function fitHandRules(source: string, fits: (text: string) => boolean) {
+export function fitHandRules(source: string, fits: (text: string) => boolean, maxClauses = Infinity) {
   const clauses = source.split('\n').filter(Boolean);
-  if (fits(source)) return { text: source, omitted: 0 };
-  for (let count = clauses.length - 1; count > 0; count--) {
+  if (clauses.length <= maxClauses && fits(source)) return { text: source, omitted: 0 };
+  for (let count = Math.min(maxClauses, clauses.length - 1); count > 0; count--) {
     const omitted = clauses.length - count;
     const text = `${clauses.slice(0, count).join('\n')}\n+${omitted} more · Inspect`;
     if (fits(text)) return { text, omitted };

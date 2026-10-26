@@ -1,6 +1,6 @@
 import type { CardSuit, RuntimeCard, RuntimeCardUpgrade } from './types';
 
-export type PreenBranch = 'shelter' | 'flight' | 'canal-anchor' | 'canal-counter' | 'canal-chorus' | 'canal-cadence' | 'canal-harbor' | 'canal-current';
+export type PreenBranch = 'shelter' | 'flight' | 'canal-anchor' | 'canal-counter' | 'canal-chorus' | 'canal-cadence' | 'canal-harbor' | 'canal-current' | 'spire-watch' | 'spire-chorus' | 'spire-aperture';
 export type FlightStoryId = 'open-sky' | 'small-flock' | 'unbroken';
 export type FlywayCondition = 'clear' | 'crosswind' | 'rain' | 'scaffold';
 export type FlywayRelic = 'woven-roost' | 'storm-pin' | 'light-travel';
@@ -36,6 +36,7 @@ export interface FlywayState {
   rooftopPlan?: RooftopPlan;
   coachingOff?: boolean;
   canalFerry?: { pledge: 'timber' | 'lamps'; startedAt: number; rewarded?: true };
+  spireRelay?: { pledge: 'wires' | 'lenses'; startedAt: number; rewarded?: true; delivered?: true };
 }
 export const districts = [
   { name: 'Rooftop Blocks', color: '#edba72', tint: 0xe4a568, weather: 'Warm windows · drifting paper', restored: 'Neighbors cross the repaired clothesline. Window lanterns answer the first safe-flight call.' },
@@ -108,6 +109,14 @@ export function normalizeFlyway(value: unknown): FlywayState {
     s.canalFerry = { pledge: ferry.pledge, startedAt: Math.floor(finite(ferry.startedAt)) };
     if (ferry.rewarded === true) s.canalFerry.rewarded = true;
   }
+  const relay = v.spireRelay && typeof v.spireRelay === 'object' ? v.spireRelay as Record<string, unknown> : undefined;
+  if (relay && (relay.pledge === 'wires' || relay.pledge === 'lenses')) {
+    s.spireRelay = { pledge: relay.pledge, startedAt: finite(relay.startedAt) };
+    if (relay.rewarded === true) {
+      s.spireRelay.rewarded = true;
+      if (relay.delivered === true) s.spireRelay.delivered = true;
+    }
+  }
   return s;
 }
 export function journal(s: FlywayState, text: string) { s.journal = [...s.journal, text].slice(-48); }
@@ -158,14 +167,30 @@ export function canalFerryProgress(s: FlywayState) {
   const clears = new Set(s.settledNodes.filter(id => id.startsWith('1:'))).size;
   return { clears, ready: !!s.canalFerry && (s.restored.includes(1) || clears >= s.canalFerry.startedAt + 2) };
 }
+export const spirePreens: typeof canalPreens = [
+  { id: 'spire-watch', card: 'pentacles_04', name: 'Patient Watch', plan: 'Hold & Answer', cost: 2,
+    tradeoff: 'Pay 2 Wingbeats now to retain two cards and bank 1 Wingbeat for next turn. Gives up the original conditional draw and Guard.',
+    effects: ['gainCover(8)', 'retainHand(2)', 'gainEnergyNextTurn(1)'], moltEffects: ['damage(target, 10)', 'gainEnergyNextTurn(1)'] },
+  { id: 'spire-chorus', card: 'wands_ace', name: 'Relay Chorus', plan: 'Chorus Engine',
+    tradeoff: 'Play a Basin first to recover 1 Wingbeat. In Molt, play a Quill first for two draws. Lower immediate damage; sequencing matters.',
+    effects: ['if playedSuitThisTurn(basins) then gainWingbeat(1)', 'damage(target, 3)', 'gainResonance(1)'],
+    moltEffects: ['if playedSuitThisTurn(quills) then draw(2)', 'gainCover(4)'] },
+  { id: 'spire-aperture', card: 'aviary_25', name: 'Storm Aperture', plan: 'Storm Window', cost: 1,
+    tradeoff: 'Requires 1 Wingbeat before refunding 1 on Molt entry. Adds Open Sky and grants no active Guard. Its Molt strike costs 4 Cover.',
+    effects: ['enterMolt()', 'gainWingbeat(1)', 'applyOpenSky(1)'], moltEffects: ['damage(target, 12)', 'loseCover(4)'] },
+];
+export function spireRelayProgress(s: FlywayState) {
+  const clears = new Set(s.settledNodes.filter(id => id.startsWith('2:'))).size;
+  return { clears, ready: !!s.spireRelay && (s.restored.includes(2) || clears >= s.spireRelay.startedAt + 2) };
+}
 export function validBranch(id: string, value: unknown): PreenBranch | undefined {
-  const canal = canalPreens.find(branch => branch.card === id && branch.id === value);
+  const canal = [...canalPreens, ...spirePreens].find(branch => branch.card === id && branch.id === value);
   if (canal) return canal.id;
   return branchCards.includes(id) && (value === 'shelter' || value === 'flight') ? value : undefined;
 }
 export function branchUpgrade(card: RuntimeCard, branch?: PreenBranch): RuntimeCardUpgrade {
   const base = card.upgrade;
-  const canal = canalPreens.find(entry => entry.card === card.id && entry.id === branch);
+  const canal = [...canalPreens, ...spirePreens].find(entry => entry.card === card.id && entry.id === branch);
   if (canal) return { ...base, cost: canal.cost ?? base.cost, effects: [...canal.effects], moltEffects: [...canal.moltEffects] };
   if (!branch || !branchCards.includes(card.id)) return base;
   const extra = branch === 'shelter' ? 'gainCover(2)' : 'draw(1)';

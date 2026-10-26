@@ -7,6 +7,32 @@ const javascript = ts.transpileModule(source, { compilerOptions: { target: ts.Sc
 const rules = await import(`data:text/javascript;base64,${Buffer.from(javascript).toString('base64')}`);
 const cards = JSON.parse(await readFile(new URL('../../data/game/alpha-cards.json', import.meta.url), 'utf8')).cards;
 
+test('Spires signatures reconstruct exact costs and active rules without mutating canonical cards', () => {
+  for (const branch of rules.spirePreens) {
+    const card=cards.find(c=>c.id===branch.card),before=JSON.stringify(card);
+    assert.equal(rules.validBranch(card.id,branch.id),branch.id);
+    assert.equal(rules.validBranch('major_00',branch.id),undefined);
+    const upgrade=rules.branchUpgrade(card,branch.id);
+    assert.deepEqual(upgrade.effects,branch.effects);assert.deepEqual(upgrade.moltEffects,branch.moltEffects);
+    assert.equal(upgrade.cost,branch.cost??card.upgrade.cost);
+    upgrade.effects.push('draw(99)');assert.equal(JSON.stringify(card),before);assert.ok(!branch.effects.includes('draw(99)'));
+    for(const [key,value] of Object.entries(card.upgrade))if(!['cost','effects','moltEffects'].includes(key))assert.deepEqual(upgrade[key],value);
+  }
+});
+test('Ivo relay progress rejects forged delivery flags and counts only unique Spires settlements', () => {
+  const s=rules.normalizeFlyway({spireRelay:{pledge:'wires',startedAt:1,delivered:true},settledNodes:['1:a','2:a','2:a']});
+  assert.equal(s.spireRelay.delivered,undefined);assert.equal(rules.spireRelayProgress(s).ready,false);
+  s.settledNodes.push('2:b');assert.equal(rules.spireRelayProgress(s).ready,false);
+  s.settledNodes.push('2:c');assert.equal(rules.spireRelayProgress(s).ready,true);
+  for(const pledge of ['wires','lenses']){
+    const saved=rules.normalizeFlyway({spireRelay:{pledge,startedAt:-4,rewarded:true,delivered:true}});
+    assert.deepEqual(saved.spireRelay,{pledge,startedAt:0,rewarded:true,delivered:true});
+    assert.deepEqual(rules.normalizeFlyway(JSON.parse(JSON.stringify(saved))),saved);
+  }
+  assert.equal(rules.normalizeFlyway({spireRelay:{pledge:'__proto__'}}).spireRelay,undefined);
+  const defeated=rules.normalizeFlyway({spireRelay:{pledge:'lenses',startedAt:5},restored:[2]});assert.equal(rules.spireRelayProgress(defeated).ready,true);
+});
+
 test('Rooftops strategies survive saves, reject malformed plans and classify actual active rules', () => {
   for (const plan of ['shelter', 'tempo', 'molt']) {
     const state = rules.normalizeFlyway({rooftopPlan: plan, coachingOff: true});

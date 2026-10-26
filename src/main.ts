@@ -386,6 +386,7 @@ interface SavedCard {
 }
 
 interface NextCombatMods {
+  wingbeatBonus?: number;
   openSkyGuard?: number;
   reduceNextOpenSky?: number;
   enemyCover?: number;
@@ -2190,8 +2191,8 @@ const FLOCK_FX_X = 230;
 const FLOCK_FX_Y = 332;
 const FLOCK_ART_X = 230;
 const FLOCK_ART_Y = 340;
-const PLAYER_ATTACK_RESOLVE_DELAY_MS = 240;
-const PLAYER_CARD_RESOLVE_DELAY_MS = 180;
+const PLAYER_ATTACK_RESOLVE_DELAY_MS = 200;
+const PLAYER_CARD_RESOLVE_DELAY_MS = 140;
 const PLAYER_CARD_FEEDBACK_SETTLE_MS = 60;
 const PLAYER_TURN_HANDOFF_DELAY_MS = 180;
 const ENEMY_TURN_PREAMBLE_MS = 180;
@@ -12960,6 +12961,7 @@ class BattleScene extends Phaser.Scene {
   // Signals, and Waymarks that set up the next fight).
   private applyNextCombatMods(pending: NextCombatMods | undefined) {
     if (!pending) return;
+    if (pending.wingbeatBonus) { this.energy += pending.wingbeatBonus; this.logEvent(`Ivo’s relay adds ${pending.wingbeatBonus} Wingbeat on the opening turn.`); }
     if (pending.openSkyGuard) this.flock.openSkyGuard += pending.openSkyGuard;
     if (pending.reduceNextOpenSky) this.flock.openSkyReduction += pending.reduceNextOpenSky;
     if (pending.startOpenSky) { this.flock.exposed = true; this.flock.exposedTurns = 2; }
@@ -13387,7 +13389,7 @@ class BattleScene extends Phaser.Scene {
     this.tweens.resumeAll();
     this.cameras.main.setBackgroundColor('#08101d');
     this.backdropLayer = this.add.container(0, 0).setDepth(-20);
-    this.handLayer = this.add.container(0, 0).setVisible(false);
+    this.handLayer = this.add.container(0, 0).setDepth(30).setVisible(false);
     this.root = this.add.container(0, 0);
     this.ensureFxTextures();
     this.combatAnimationPending = true;
@@ -14136,18 +14138,20 @@ private playBattleIntro(onComplete?: () => void) {
     this.combatIntroElapsedMs = 0;
     if (this.textures.exists(COMBAT_ENCOUNTER_INTRO_TEXTURE)) this.combatEncounterIntroBursts += 1;
     birdAudio.play('encounter', 0.72);
+    this.setBattleFxDepth(200);
     this.combatIntroFinish = this.battleFxPresenterModule.playEncounterIntro(this, this.fxLayer, {
       reduced: prefersReducedMotion(), holdScale: textTiming.holdScale, minimumReadableMs: textTiming.minimumReadableMs,
       width: GAME_WIDTH, height: GAME_HEIGHT, district: currentMap().name,
       enemies: this.enemies.map(enemy => enemy.runtime.id),
-      purpose: activeMapIndex === 1 ? alphaEncounterLibrary.get(currentCombatNodes()[this.currentRouteIndex]?.payloadId)?.lesson : undefined,
-      encounter: this.battlefieldMood() === 'rival' ? `Caldra’s Pinion Crew · encounter ${this.flyway.rivalWins + 1}` : this.enemies.find(enemy => enemy.runtime.type === 'boss')?.name ?? (activeMapIndex === 1 ? alphaEncounterLibrary.get(currentCombatNodes()[this.currentRouteIndex]?.payloadId)?.name : undefined) ?? currentCombatNodes()[this.currentRouteIndex]?.label ?? 'Rooftop Fight',
+      purpose: activeMapIndex === 1 || activeMapIndex === 2 ? alphaEncounterLibrary.get(currentCombatNodes()[this.currentRouteIndex]?.payloadId)?.lesson : undefined,
+      encounter: this.battlefieldMood() === 'rival' ? `Caldra’s Pinion Crew · encounter ${this.flyway.rivalWins + 1}` : this.enemies.find(enemy => enemy.runtime.type === 'boss')?.name ?? (activeMapIndex === 1 || activeMapIndex === 2 ? alphaEncounterLibrary.get(currentCombatNodes()[this.currentRouteIndex]?.payloadId)?.name : undefined) ?? currentCombatNodes()[this.currentRouteIndex]?.label ?? 'Rooftop Fight',
       confirm: controlBindingLabel('confirm'), texture: COMBAT_ENCOUNTER_INTRO_TEXTURE,
       plaque: uiIconAssets['combat-encounter-plaque'].key,
       font: UI_FONT, displayFont: TOKEN_DISPLAY_FONT, bold: UI_BOLD, gold: UI_GOLD, cyan: UI_CYAN, soft: UI_SOFT,
       dismiss: () => this.requestBattleIntroDismiss(),
       finish: (dismissed) => {
         this.combatIntroActive = false;
+        this.setBattleFxDepth(20);
         this.combatIntroDismissed = dismissed;
         this.combatIntroElapsedMs = Math.max(0, Math.round(this.time.now - this.combatIntroStartedAtMs));
         this.combatIntroFinish = undefined;
@@ -14213,6 +14217,10 @@ private playBattleIntro(onComplete?: () => void) {
     this.performBattleRender();
   }
 
+  private setBattleFxDepth(depth: number) {
+    this.fxLayer.setDepth(this.combatIntroActive ? 200 : this.mode === 'battle' ? 20 : depth);
+  }
+
   private performBattleRender() {
     if (!this.root?.active) return;
     const startedAt = performance.now();
@@ -14232,8 +14240,10 @@ private playBattleIntro(onComplete?: () => void) {
         || this.supplyDrawerOpen
       );
       this.backdropLayer.setDepth(-20);
-      this.fxLayer.setDepth(20);
-      this.root.setDepth(modalUiOpen ? 40 : 0);
+      this.setBattleFxDepth(20);
+      // Readable decisions stay above transient effects, including boss breaks.
+      // Battlefield art remains grounded; effects surround it without covering Tells.
+      this.root.setDepth(40);
       killTweensForTree(this, this.root);
       this.enemyPoseGroups.clear();
       this.enemyTurnBeatUi = undefined;
@@ -14251,7 +14261,7 @@ private playBattleIntro(onComplete?: () => void) {
         this.renderRewardCeremony();
         this.renderCombatInputHint();
         this.renderRewardCardInspection();
-        this.fxLayer.setDepth(80);
+        this.setBattleFxDepth(80);
         this.children.bringToTop(this.fxLayer);
         return;
       }
@@ -14261,7 +14271,7 @@ private playBattleIntro(onComplete?: () => void) {
         // Outcome reveal motion belongs between the dimmed battlefield and the
         // report. Keeping the report above this layer prevents even an opaque
         // animation frame from masking the title, diagnosis, stats, or actions.
-        this.fxLayer.setDepth(10);
+        this.setBattleFxDepth(10);
         this.root.setDepth(20);
         this.children.bringToTop(this.root);
         return;
@@ -14279,7 +14289,7 @@ private playBattleIntro(onComplete?: () => void) {
       if (this.waymarkDrawerOpen) this.renderWaymarkDrawer();
       if (this.supplyDrawerOpen) this.renderSupplyDrawer();
       if (!modalUiOpen) {
-        this.fxLayer.setDepth(80);
+        this.setBattleFxDepth(80);
         this.children.bringToTop(this.fxLayer);
         const selected = this.getSelectedCard();
         if (selected && !this.discardChoice && !this.returnChoice) this.showCardPreview(selected);
@@ -15236,7 +15246,7 @@ private playBattleIntro(onComplete?: () => void) {
   private combatFormationShift(state: FlockState, x: number, y: number, scale = 1) {
     if (!this.textures.exists(COMBAT_FORMATION_SHIFT_TEXTURE)) return;
     this.textures.get(COMBAT_FORMATION_SHIFT_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    this.fxLayer.setDepth(90);
+    this.setBattleFxDepth(90);
     this.children.bringToTop(this.fxLayer);
     this.combatFormationShiftBursts += 1;
     const tint = state === 'surging' ? 0x8df4ff : state === 'scattered' ? 0xff9d6b : 0x8fd6a0;
@@ -16009,7 +16019,7 @@ private playBattleIntro(onComplete?: () => void) {
   private combatVictoryFanfareSigil(x: number, y: number) {
     if (!this.textures.exists(COMBAT_VICTORY_FANFARE_SIGIL_TEXTURE)) return;
     this.textures.get(COMBAT_VICTORY_FANFARE_SIGIL_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    this.fxLayer.setDepth(110);
+    this.setBattleFxDepth(110);
     this.children.bringToTop(this.fxLayer);
     this.combatVictoryFanfareSigilBursts += 1;
     const reduced = prefersReducedMotion();
@@ -19370,7 +19380,7 @@ private playBattleIntro(onComplete?: () => void) {
         inspectLabel: `${controlBindingLabel('guide')} / R3`,
         onInspect: this.mode === 'battle' ? () => this.openCombatCardDetail(card) : undefined,
         scene: this,
-        target: this.fxLayer,
+        target: this.mode === 'battle' ? this.root : this.fxLayer,
         width: GAME_WIDTH,
         handY: HAND_Y,
         cardHeight: CARD_H,
@@ -19400,7 +19410,7 @@ private playBattleIntro(onComplete?: () => void) {
       const control = quietButton(this, { x: 90, y: this.hand.length > 5 ? 687 : 505, width: 128,
         label: 'Full rules', name: 'combat-card-inspect-hit', onActivate: () => this.openCombatCardDetail(card) });
       container.add([control, control.getData('labelObject')]);
-      this.fxLayer.add(container);
+      this.root.add(container);
       this.cardPreview = container;
       return;
     }
@@ -23040,7 +23050,8 @@ private playBattleIntro(onComplete?: () => void) {
   }
 
   private effectiveCost(card: Card) {
-    if (this.flock.molt && card.type !== 'molt') {
+    // Aviary is an artwork category; the runtime kind owns Molt cost rules.
+    if (this.flock.molt && card.runtime.kind !== 'molt') {
       return Math.max(0, card.cost - 1);
     }
     return card.cost;
@@ -23577,6 +23588,7 @@ function validRouteNodeType(value: unknown): value is RouteNode['type'] {
 function sanitizeNextCombat(value: unknown): NextCombatMods | undefined {
   if (!isRecord(value)) return undefined;
   const mods: NextCombatMods = {};
+  if (Number.isFinite(value.wingbeatBonus)) mods.wingbeatBonus = Math.max(0, Math.min(8, Math.floor(Number(value.wingbeatBonus))));
   if (Number.isFinite(value.openSkyGuard)) mods.openSkyGuard = Math.max(0, Number(value.openSkyGuard));
   if (Number.isFinite(value.reduceNextOpenSky)) mods.reduceNextOpenSky = Math.max(0, Number(value.reduceNextOpenSky));
   if (Number.isFinite(value.enemyCover)) mods.enemyCover = Math.max(0, Number(value.enemyCover));

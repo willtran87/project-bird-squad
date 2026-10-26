@@ -112,7 +112,9 @@ export function installOpeningDistrict(scene: Scene) {
       tidewarden: ['Shelter holds.', 'Breathe. I’m here.', 'One current.', 'Through the gap.', 'All wings home.'],
     };
     const text = (lines[scene.runLeaderId] ?? lines.fledgling)[['block','escape','combo','break','victory'].indexOf(kind)];
-    root.add(scene.add.text(272, 414, text, { fontFamily: UI_FONT, fontSize: '18px', color: '#ffe6b5', backgroundColor: '#101b25', padding: {x: 8, y: 4}, resolution: 2 }).setOrigin(.5));
+    // Keep the small reaction caption above portrait art while its decorative echo
+    // remains behind the protected combat UI. The FX root owns both lifetimes.
+    const caption = scene.add.text(272, 414, text, { fontFamily: UI_FONT, fontSize: '18px', color: '#ffe6b5', backgroundColor: '#101b25', padding: {x: 8, y: 4}, resolution: 2 }).setOrigin(.5).setDepth(45);
     const reduced = prefersReducedMotion() || prefersLeanEffects();
     if (!reduced && portrait) {
       // Anticipation, a small decisive pose, then recovery; original idle art is untouched.
@@ -121,7 +123,7 @@ export function installOpeningDistrict(scene: Scene) {
       } });
     } else portrait?.setVisible(false);
     const timer = scene.time.delayedCall(850, () => root.destroy(true));
-    root.once('destroy', () => { timer.remove(false); if (portrait) scene.tweens.killTweensOf(portrait); });
+    root.once('destroy', () => { caption.destroy(); timer.remove(false); if (portrait) scene.tweens.killTweensOf(portrait); });
   };
   const impact = ({blocked, lost, hp}: {blocked: number; lost: number; hp: number}) => {
     if (blocked > 0 && lost === 0) react('block');
