@@ -16,8 +16,8 @@ push, merge, publish Pages and clean up branches.
   narrative endings, cosmetic seals and unlock/save/reload protection.
 - [x] Measured pacing observations and targeted improvements, with scripted
   measurements clearly separated from human decision/reading time.
-- [ ] Focused mechanical, input, save, browser and three-size visual checks.
-- [ ] Complete release suite, merged PR, verified public artifact and cleanup.
+- [x] Focused mechanical, input, save, browser and three-size visual checks.
+- [x] Complete release suite, merged PR, verified public artifact and cleanup.
 
 ## Human follow-up
 
@@ -56,7 +56,8 @@ evidence remain explicitly waived/unverified under the existing release policy.
   overlong enemy names and post-choice scroll position. The unmodified shared
   web-game client played a real card on the production preview; inspected its
   image/state and found no browser-error artifact.
-- Full CI, publication identity and branch cleanup remain pending below.
+- Full PR CI, clean main release, public artifact verification and feature-branch
+  cleanup are complete; final publication identity is recorded below.
 - The final first-three-chapters scope passes all 18 upgrade cases. A rebuilt
   timing follow-up also verifies positive cleanup/reward counters and freezes
   reward timing while the journal is open (1/1). The complete upgrade/catalog
@@ -126,3 +127,50 @@ evidence remain explicitly waived/unverified under the existing release policy.
 - The frame-aware controller follow-up passed 9/9 locally: three repetitions
   each in Chromium, Firefox and WebKit, without retries. A clean full main-branch
   release is required after this test-only correction before publication.
+
+## Published release — 2026-10-26 CDT
+
+- [PR #15](https://github.com/willtran87/project-bird-squad/pull/15) merged as
+  `9402ee434c2f97c6862948195a64cdaa99fcb97e`. The subsequent controller-fixture
+  repair, `7e6c4b851e75b8b8d83f6a3c030022b49cfb10f0`, is the deployed source.
+  Its game code and emitted app hashes are identical to the successful PR build.
+- Clean [release run 40446042526](https://github.com/willtran87/project-bird-squad/actions/runs/40446042526)
+  passed 1,061 unique core cases (1,020 regression, 37 campaign/combat and four
+  reference journeys), 243 browser cases (81 per browser), 26 unit/policy checks,
+  static release validators and one actual Pages-base smoke. No failed, flaky or
+  skipped test cases. Deployment completed at 2026-10-27 04:16:06 UTC.
+- The preceding merged attempt had 997 core passes and 242 browser passes before
+  the controller-fixture failure; its last job was cancelled as superseded. It
+  is retained as failed evidence, not combined with the clean release counts.
+- CI build identity reports the deployed revision above and `dirty: false`.
+  Public HTML and both app chunk SHA-256 hashes match that artifact exactly.
+  The [public game](https://willtran87.github.io/project-bird-squad/) passed five
+  additional live checks: Call/modal/paging behavior, specialization save rollback
+  and reload, Caldra's third chapter, Spark story/seal persistence and controller
+  confirmation. These use explicit mechanical fixtures, not human play sessions.
+- Pages boot code is 722.5 KiB (199.2 KiB gzip), below the unchanged 725 KiB hard
+  ceiling but above the preferred 710 KiB target. The 680.5 KiB main chunk remains
+  below its 700 KiB ceiling; lazy identity presentation is 6.8 KiB against 14 KiB.
+- Reviewed Call controls, protected hand paging/forecasts, specializations,
+  rival formations, story endings and signatures at 2560x1600, 1440x900 and
+  1000x560. Also reviewed the compact capture from the published page.
+- The feature branch is deleted locally and remotely, only main remains, and
+  the owned preview is stopped. Final ledger/progress edits are documentation
+  only; they do not change the published source identity above.
+- Existing human-playtest, physical-device and native assistive-technology
+  waivers remain explicit. No missing manual evidence is claimed as passing.
+
+Verification commands include `npm run build`, `npm run validate:runtime`, the
+full workflow's unit/content/asset/budget/cache gates, and focused Playwright
+checks. The final public command was:
+
+```powershell
+npx playwright test --config=.artifacts/identity-live.config.ts tests/flock-identity.spec.ts --project=chromium --grep 'direct Call|specialization waits|rival chapter 3|chorus-line records|controller opens the focused Call' --workers=1 --output=.artifacts/identity-live-results
+```
+
+Local evidence: `.artifacts/identity-main-qualification.json`,
+`.artifacts/identity-live-identity.json`, `.artifacts/identity-live.log`,
+`.artifacts/identity-live-results/`,
+`.artifacts/identity-control-lanes-qualified-results/` and
+`.artifacts/identity-controller-frame.log`. CI evidence is attached to the linked
+release run; local artifacts are intentionally untracked.

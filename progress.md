@@ -5,12 +5,23 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 - Implemented direct Calls, ten per-flight specializations, Caldra's three-chapter
   arc, bounded signature effects and two permanent Flight Stories on
   `codex/flock-identity-rival-stories`. Later rivals preserve the original catalog.
-- Candidate 21/21 focused tests, 26 unit/policy checks and static release gates
-  pass. Three-size captures and shared-client real card play inspected. Familiar
-  empty recovery staging shortened with first-read/impact holds preserved.
+- Clean PR release qualification passed 1,061 unique core cases, 243 browser
+  cases, 26 unit/policy checks, static gates and Pages-path smoke. Three-size
+  captures and shared-client real card play inspected. Familiar empty recovery
+  staging shortened with first-read/impact holds preserved.
 - Acceptance and measured evidence: `docs/game/flock-identity-rival-stories-upgrade.md`.
-  Final catalog check, full CI, merge and publication remain in progress. Existing
-  human/device/assistive-technology waivers remain explicit; no human sessions.
+  PR #15 merged as `9402ee43`; controller-fixture repair `7e6c4b85` is published.
+  Clean release run 40446042526 passed 1,061 unique core cases, 243 browser cases,
+  26 unit/policy checks and Pages-base smoke, with no failed/flaky/skipped cases.
+- Public HTML/app hashes match the clean CI artifact; five live feature checks
+  pass. Boot code is 722.5 KiB under the unchanged 725 KiB ceiling, above its
+  preferred 710 KiB target; lazy identity presentation is 6.8 KiB against 14 KiB.
+- Fixed optional cue payloads, resize tracking, Call/paging overlap and selected
+  forecast visibility. Corrected canonical rival fixtures and frame-aware virtual
+  controller input (9/9 local browser repetitions); failed attempts remain recorded.
+- The feature branch is deleted locally/remotely, only main remains, and owned
+  previews are stopped. Final record edits are documentation only. Existing human,
+  device and assistive-technology waivers remain explicit; no human sessions.
 
 ## 2026-10-26 — High Roost + The Living City
 
