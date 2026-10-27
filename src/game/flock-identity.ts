@@ -98,7 +98,8 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
     group.once('destroy',()=>{active=Math.max(0,active-1);});
     scene.time.delayedCall(850,()=>{if(group.active){killTweensForTree(scene,group);group.destroy(true);}});
   };
-  const onCall=(name:string)=>signature('call',name),onCombo=(combo:{id:string;name:string})=>signature(combo.id,combo.name);
+  const onCall=(name?:string)=>signature('call',name??resolvedLeaderCall(scene.runLeaderId,scene.flyway).name);
+  const onCombo=(combo?:{id:string;name:string})=>{if(combo)signature(combo.id,combo.name);};
   scene.events.on('flyway-call',onCall);scene.events.on('flyway-combination',onCombo);
   return {update,destroy:()=>{callButton.remove();sequence.remove();window.removeEventListener('keydown',key,true);scene.events.off('flyway-call',onCall);scene.events.off('flyway-combination',onCombo);}};
 }

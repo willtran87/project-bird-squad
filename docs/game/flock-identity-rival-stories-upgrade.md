@@ -59,5 +59,14 @@ evidence remain explicitly waived/unverified under the existing release policy.
 - Full CI, publication identity and branch cleanup remain pending below.
 - The final first-three-chapters scope passes all 18 upgrade cases. A rebuilt
   timing follow-up also verifies positive cleanup/reward counters and freezes
-  reward timing while the journal is open (1/1). The complete canonical catalog
-  run and CI browser qualification are in progress.
+  reward timing while the journal is open (1/1). The complete upgrade/catalog
+  run passed 22/22, including every canonical district formation at three sizes.
+- First PR CI run 40432038210 found four Firefox failures in existing Canal/Spires
+  presentation checks: a detail-free combination cue reached the new listener.
+  The optional signature listener now ignores a combination cue without details
+  and resolves the current Call name when its cue omits one. Regression coverage
+  retains the old district emissions and explicitly tests both optional payloads.
+  The failed run was cancelled after preserving diagnostics; a clean full rerun
+  is required before merge. The rebuilt repair passed all ten targeted checks
+  across Chromium and Firefox (four affected district cases and the expanded
+  signature/pacing case per browser), with no retries or skipped cases.

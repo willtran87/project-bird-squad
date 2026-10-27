@@ -108,6 +108,8 @@ for(const story of ['chorus-line','clean-cut'])test(`Flock Identity ${story} rec
 
 test('Flock Identity signatures and pacing stay bounded, support reduced motion and clean up',async({page},info)=>{
   await page.emulateMedia({reducedMotion:'reduce'});await battle(page);
+  // Older district presentation hooks can emit these cues without details.
+  await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.events.emit('flyway-combination');b.events.emit('flyway-call');});
   await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').identityPacing.decisionMs)).toBeGreaterThan(0);
   await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.enemies=b.enemies.slice(0,1);b.enemies[0].hp=1;});
   await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').identityPacing.cleanupMs)).toBeGreaterThan(0);
