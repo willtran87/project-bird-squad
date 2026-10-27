@@ -28,8 +28,9 @@ test('Flock Identity direct Call previews, cancels, commits once and respects mo
   await page.keyboard.press('Escape');await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.isActive('BattleScene'));
   await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.flightCombat.charge=3;b.flightCombat.previousSuit='nests';b.enemies[0].hp=b.enemies[0].maxHp=200;});
   await expect(page.locator('#identity-sequence')).toContainText('Nests'.toLowerCase()+' → quills');
-  for(const size of sizes){await page.setViewportSize(size);await settleCanvas(page);await expect(page.locator('#identity-call')).toBeVisible();await page.screenshot({path:info.outputPath(`controls-${size.width}.png`)});
-    const fit=await page.evaluate(()=>{const c=document.querySelector('#identity-call')!.getBoundingClientRect(),s=document.querySelector('#identity-sequence')!.getBoundingClientRect(),j=document.querySelector('#flyway-launch')!.getBoundingClientRect(),canvas=document.querySelector('canvas')!.getBoundingClientRect();return c.right<s.left&&s.right<canvas.right&&c.height>=44&&j.bottom+4<c.top;});expect(fit).toBe(true);}
+  for(const size of sizes){await page.setViewportSize(size);await settleCanvas(page);await expect(page.locator('#identity-call')).toBeVisible();
+    await expect.poll(()=>page.evaluate(()=>{const c=document.querySelector('#identity-call')!.getBoundingClientRect(),s=document.querySelector('#identity-sequence')!.getBoundingClientRect(),j=document.querySelector('#flyway-launch')!.getBoundingClientRect(),canvas=document.querySelector('canvas')!.getBoundingClientRect();return c.right<s.left&&s.right<canvas.right&&c.height>=44&&j.bottom+4<c.top&&Math.abs(c.left-(canvas.left+14*canvas.width/1280))<1&&Math.abs(c.top-(canvas.top+425*canvas.width/1280))<1;})).toBe(true);
+    await page.screenshot({path:info.outputPath(`controls-${size.width}.png`)});}
   await page.keyboard.press('F9');await expect(page.locator('[data-call-preview]')).toBeVisible();await page.keyboard.press('Escape');
   expect(await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').flightCombat.called)).toBe(false);
   await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.isActive('BattleScene'));await page.keyboard.press('F9');
@@ -120,9 +121,12 @@ test('Flock Identity signatures and pacing stay bounded, support reduced motion 
   await page.waitForTimeout(600);
   expect(await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').identityPacing.rewardMs)).toBe(rewardBefore);
   await page.keyboard.press('Escape');await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').mode='battle');
+  await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.isActive('BattleScene'));
   const before=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');for(let i=0;i<30;i++){b.events.emit('flyway-call','Neighborhood Rally');b.events.emit('flyway-combination',{id:'brace-cut',name:'Brace & Cut'});}const roots=b.fxLayer.list.filter((o:any)=>o.name?.startsWith('identity-signature'));return {count:roots.length,tweens:roots.flatMap((o:any)=>o.list).reduce((n:number,o:any)=>n+b.tweens.getTweensOf(o).length,0),pacing:{...b.identityPacing}};});
   expect(before.count).toBeLessThanOrEqual(2);expect(before.tweens).toBe(0);await info.attach('native-clock-observation',{body:JSON.stringify(before.pacing),contentType:'application/json'});
   await page.setViewportSize(sizes[0]);await page.screenshot({path:info.outputPath('reduced-signatures.png')});
+  // Signature expiry uses the scene clock, which can be throttled in WebKit.
+  await page.evaluate(()=>(window as any).advanceTime(1200));
   await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').fxLayer.list.filter((o:any)=>o.name?.startsWith('identity-signature')).length)).toBe(0);
   await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').scene.stop());await expect(page.locator('#identity-call')).toHaveCount(0);await expect(page.locator('#identity-sequence')).toHaveCount(0);
   expect(await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').events.listenerCount('flyway-call'))).toBe(0);

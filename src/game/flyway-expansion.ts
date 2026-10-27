@@ -114,6 +114,9 @@ export function installFlyway(raw: Phaser.Scene) {
   };
   position();
   const resize = () => position(); window.addEventListener('resize', resize);
+  // Phaser can apply its canvas size after the window resize event. Anchor DOM
+  // controls to the completed canvas layout rather than the next polling tick.
+  const canvasResize = new ResizeObserver(position); canvasResize.observe(scene.game.canvas);
   const refreshTimer = window.setInterval(position, 250);
   function close() {
     if (!dialog) return;
@@ -435,7 +438,7 @@ export function installFlyway(raw: Phaser.Scene) {
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
     alive = false;
     identityHud?.destroy();
-    close(); installed.delete(raw); launch.remove(); window.clearInterval(refreshTimer); cancelAnimationFrame(frame);
+    close(); installed.delete(raw); launch.remove(); canvasResize.disconnect(); window.clearInterval(refreshTimer); cancelAnimationFrame(frame);
     window.removeEventListener('resize', resize); window.removeEventListener('keydown', onKey, true);
     delete scene.flywayPreenRequest; delete scene.flywayCancelPreen; delete scene.openFlyway;
   });

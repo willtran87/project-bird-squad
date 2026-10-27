@@ -70,3 +70,18 @@ evidence remain explicitly waived/unverified under the existing release policy.
   is required before merge. The rebuilt repair passed all ten targeted checks
   across Chromium and Firefox (four affected district cases and the expanded
   signature/pacing case per browser), with no retries or skipped cases.
+- Second PR run 40433275463 passed 80/81 Firefox cases; the remaining capture
+  showed DOM controls retaining their pre-resize coordinates while the canvas
+  had already resized. A canvas ResizeObserver now updates both Flyway and Call
+  controls immediately after layout, and disconnects at scene shutdown. The
+  geometry test waits for settled layout and additionally checks exact canvas
+  anchors before each capture; no spacing or target-size assertion was removed.
+- The local three-browser follow-up initially passed eight of nine cases. WebKit
+  reached the signature-expiry wall-clock timeout after its large capture. The
+  lifecycle test now waits for the journal's queued scene resume and advances
+  the existing deterministic scene clock before checking that all effects retire.
+  Native decision/reward measurements are still captured before that clock step.
+- Final resize/lifecycle follow-up: 9/9 passed across Chromium, Firefox and WebKit.
+  Repaired Firefox captures were inspected. The shared client replayed First
+  Flight on the rebuilt game (5 damage, 4 Cover, one draw), with full art ready
+  and no error artifact. Original hard delivery budgets still pass.
