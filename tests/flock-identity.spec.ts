@@ -29,7 +29,7 @@ test('Flock Identity direct Call previews, cancels, commits once and respects mo
   await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.flightCombat.charge=3;b.flightCombat.previousSuit='nests';b.enemies[0].hp=b.enemies[0].maxHp=200;});
   await expect(page.locator('#identity-sequence')).toContainText('Nests'.toLowerCase()+' → quills');
   for(const size of sizes){await page.setViewportSize(size);await settleCanvas(page);await expect(page.locator('#identity-call')).toBeVisible();
-    await expect.poll(()=>page.evaluate(()=>{const c=document.querySelector('#identity-call')!.getBoundingClientRect(),s=document.querySelector('#identity-sequence')!.getBoundingClientRect(),j=document.querySelector('#flyway-launch')!.getBoundingClientRect(),canvas=document.querySelector('canvas')!.getBoundingClientRect();return c.right<s.left&&s.right<canvas.right&&c.height>=44&&j.bottom+4<c.top&&Math.abs(c.left-(canvas.left+14*canvas.width/1280))<1&&Math.abs(c.top-(canvas.top+425*canvas.width/1280))<1;})).toBe(true);
+    await expect.poll(()=>page.evaluate(()=>{const c=document.querySelector('#identity-call')!.getBoundingClientRect(),s=document.querySelector('#identity-sequence')!.getBoundingClientRect(),j=document.querySelector('#flyway-launch')!.getBoundingClientRect(),canvas=document.querySelector('canvas')!.getBoundingClientRect();return c.right<s.left&&s.right<canvas.right&&c.height>=44&&j.bottom+4<c.top&&c.bottom<=canvas.bottom&&Math.abs(c.left-(canvas.left+14*canvas.width/1280))<1&&Math.abs(c.top-(canvas.top+321*canvas.width/1280))<1;})).toBe(true);
     await page.screenshot({path:info.outputPath(`controls-${size.width}.png`)});}
   await page.keyboard.press('F9');await expect(page.locator('[data-call-preview]')).toBeVisible();await page.keyboard.press('Escape');
   expect(await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').flightCombat.called)).toBe(false);
@@ -38,6 +38,26 @@ test('Flock Identity direct Call previews, cancels, commits once and respects mo
   await expect(page.getByRole('button',{name:'Use Leader call',exact:true})).toBeFocused();await page.keyboard.press('Enter');await expect(page.locator('#flyway-book')).toHaveCount(0);
   expect(await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return {energy:b.energy,called:b.flightCombat.called,again:b.activateFlywayCall()};})).toEqual({energy:energy+2,called:true,again:false});
   await expect(page.locator('#identity-call')).toContainText('Call used');
+  // Legal larger hands retain pointer access to both pages and pile inspection.
+  await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.hand.push(...b.drawPile.splice(0,3));b.selectedInstanceId=b.hand[0].instanceId;b.renderAll();});
+  await expect(page.locator('#identity-sequence')).toBeHidden();
+  for(const size of sizes){
+    await page.setViewportSize(size);await settleCanvas(page);
+    await expect.poll(()=>page.evaluate(()=>{
+      const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'),c=b.game.canvas.getBoundingClientRect(),scale=c.width/1280;
+      const collect=(list:any[]):any[]=>list.flatMap(o=>[o,...collect(o.list??[])]);
+      const protectedUi=collect(b.children.list).filter(o=>['combat-hand-previous','combat-hand-next','combat-hand-page-count','combat-pile-hit','combat-card-inspect-hit'].includes(o.name));
+      return protectedUi.filter(o=>o.name==='combat-hand-next'||o.name==='combat-hand-previous').length===2&&['#identity-call','#flyway-launch'].every(selector=>{const a=document.querySelector(selector)!.getBoundingClientRect();return protectedUi.every(o=>{const r=o.getBounds(),z={left:c.left+r.left*scale,right:c.left+r.right*scale,top:c.top+r.top*scale,bottom:c.top+r.bottom*scale};return a.right<=z.left||a.left>=z.right||a.bottom<=z.top||a.top>=z.bottom;});});
+    })).toBe(true);
+    for(const [name,target] of [['combat-hand-next',1],['combat-hand-previous',0]] as const){
+      await page.waitForFunction(name=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return !b.battleRenderQueued&&b.handLayer.getByName(name)?.input?.enabled;},name);
+      await settleCanvas(page); // Register the rebuilt hit areas with Phaser input.
+      const point=await page.evaluate(name=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'),r=b.handLayer.getByName(name).getBounds(),c=b.game.canvas.getBoundingClientRect();return {x:c.left+r.centerX*c.width/1280,y:c.top+r.centerY*c.height/720};},name);
+      await page.mouse.click(point.x,point.y);await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').handPage)).toBe(target);await expect(page.locator('#flyway-book')).toHaveCount(0);
+    }
+    await expect(page.locator('#identity-sequence')).toBeVisible();
+    await page.screenshot({path:info.outputPath(`paged-controls-${size.width}.png`)});
+  }
   await page.keyboard.press('Escape');await expect(page.locator('#identity-call')).toBeHidden();await page.keyboard.press('F9');await expect(page.locator('#flyway-book')).toHaveCount(0);
 });
 

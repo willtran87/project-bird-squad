@@ -91,7 +91,7 @@ export function installFlyway(raw: Phaser.Scene) {
     const battle = scene.scene.key === 'BattleScene';
     const menu = scene.scene.key === 'MenuScene';
     const left = `${rect.left + (battle ? 14 : menu ? 110 : 16) * rect.width / 1280}px`;
-    const top = `${rect.top + (battle ? 359 : menu ? 18 : 640) * rect.height / 720}px`;
+    const top = `${rect.top + (battle ? 255 : menu ? 18 : 640) * rect.height / 720}px`;
     if (launch.style.left !== left) launch.style.left = left;
     if (launch.style.top !== top) launch.style.top = top;
     const key = shortcutCode() === 'KeyJ' ? 'J' : 'F8';

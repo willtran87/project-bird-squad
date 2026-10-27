@@ -57,10 +57,10 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
         }
       }else if(!blocked()&&['cardReward','upgradeReward','waymarkReward'].includes(scene.mode))stats.rewardMs+=dt;
     }
-    const hidden=blocked()||paused||scene.mode!=='battle';callButton.hidden=hidden;sequence.hidden=hidden;
+    const hidden=blocked()||paused||scene.mode!=='battle';callButton.hidden=hidden;sequence.hidden=hidden||!!scene.selectedInstanceId;
     if(hidden)return;
     const r=scene.game.canvas.getBoundingClientRect(),scale=r.width/1280;
-    Object.assign(callButton.style,{left:`${r.left+14*scale}px`,top:`${r.top+425*scale}px`,width:`${142*scale}px`,fontSize:`${Math.max(12,14*scale)}px`});
+    Object.assign(callButton.style,{left:`${r.left+14*scale}px`,top:`${r.top+321*scale}px`,width:`${142*scale}px`,fontSize:`${Math.max(12,14*scale)}px`});
     Object.assign(sequence.style,{left:`${r.left+370*scale}px`,top:`${r.top+402*scale}px`,width:`${625*scale}px`,fontSize:`${Math.max(12,15*scale)}px`});
     const call=resolvedLeaderCall(scene.runLeaderId,scene.flyway),combat=scene.flightCombat;
     const label=combat.called?'Call used · F9':combat.charge>=call.goal?'Call ready · F9':`Call ${combat.charge}/${call.goal} · F9`;

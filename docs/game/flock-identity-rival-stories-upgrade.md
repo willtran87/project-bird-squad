@@ -85,3 +85,18 @@ evidence remain explicitly waived/unverified under the existing release policy.
   Repaired Firefox captures were inspected. The shared client replayed First
   Flight on the rebuilt game (5 damage, 4 Cover, one draw), with full art ready
   and no error artifact. Original hard delivery budgets still pass.
+- Third PR run 40434767403 caught a real pointer conflict in a larger hand: the
+  Call button covered the Previous-page control, so the pointer journey opened
+  the journal. Journal and Call now occupy the clear column above the page count;
+  both paging controls, pile inspection and Full rules retain their original
+  locations. The combo strip hides while a selected card's forecast is visible.
+  The direct-Call case now uses eight cards, checks every protected control's
+  full bounds, and clicks both pages at all three sizes in each browser.
+- The new pager interaction also waits for the queued hand redraw and the next
+  control's enabled input state plus two frames for Phaser hit-area registration;
+  logical page changes alone precede input readiness in WebKit. Full geometry
+  and pointer activation assertions remain mandatory.
+- Final larger-hand check: 3/3 browsers passed, including both directions at
+  every target size. The unchanged full pointer-only reference flight passed
+  outcome and replay in 4.5 minutes. Reviewed the compact paged-hand capture and
+  reran the shared client on this build without browser errors. Hard budgets pass.
