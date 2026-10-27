@@ -10,12 +10,12 @@ import { controlBindingsSnapshot } from './input-bindings';
 import { prefersLeanEffects } from './graphics-quality';
 import { showDownloadRecovery } from '../update-recovery';
 import { bossDisruption, branchCards, branchUpgrade, canalPreens, spirePreens, combinations, conditions, districts, flightStories,
-  journal, leaderCalls, newFlywayState, normalizeFlyway, relics, type FlywayState,
+  journal, resolvedLeaderCall, rivalChapter, newFlywayState, normalizeFlyway, relics, type FlywayState,
   type FlywayCondition, type FlywayRelic, type PreenBranch } from './flyway-rules';
 
 // Matches the scene adapters used by the existing lazy battle/route modules.
 type Scene = Phaser.Scene & Record<string, any>;
-type Page = 'flight' | 'crew' | 'city' | 'stories' | 'journal';
+type Page = 'flight' | 'crew' | 'city' | 'stories' | 'journal' | 'call';
 const installed = new WeakSet<Phaser.Scene>();
 const archiveKey = 'birdsquad.flyway.journal';
 const medalsKey = 'birdsquad.flyway.medals';
@@ -67,6 +67,9 @@ export function installFlyway(raw: Phaser.Scene) {
   let canal: typeof import('./canal-markets') | undefined, canalFailed = false;
   let spires: typeof import('./signal-spires') | undefined, spiresFailed = false;
   let roost: typeof import('./high-roost') | undefined, roostFailed = false;
+  let identity: typeof import('./flock-identity') | undefined;
+  let identityHud: ReturnType<typeof import('./flock-identity')['installIdentity']> | undefined;
+  let identityFailed = false;
   let dialog: HTMLDialogElement | undefined;
   let page: Page = 'flight';
   let pendingPreen: { card: any; accept: (branch: PreenBranch) => void; isCurrent: () => boolean } | undefined;
@@ -83,11 +86,12 @@ export function installFlyway(raw: Phaser.Scene) {
   const shortcutCode = () => Object.values(controlBindingsSnapshot()).includes('KeyJ') ? 'F8' : 'KeyJ';
   document.body.append(launch);
   const position = () => {
+    identityHud?.update();
     const rect = scene.game.canvas.getBoundingClientRect();
     const battle = scene.scene.key === 'BattleScene';
     const menu = scene.scene.key === 'MenuScene';
     const left = `${rect.left + (battle ? 14 : menu ? 110 : 16) * rect.width / 1280}px`;
-    const top = `${rect.top + (battle ? 359 : menu ? 18 : 640) * rect.height / 720}px`;
+    const top = `${rect.top + (battle ? 255 : menu ? 18 : 640) * rect.height / 720}px`;
     if (launch.style.left !== left) launch.style.left = left;
     if (launch.style.top !== top) launch.style.top = top;
     const key = shortcutCode() === 'KeyJ' ? 'J' : 'F8';
@@ -100,9 +104,9 @@ export function installFlyway(raw: Phaser.Scene) {
       || scene.mode && scene.mode !== 'battle' && !['runComplete', 'defeat'].includes(scene.mode));
     if (launch.hidden !== hidden) launch.hidden = hidden;
     if (battle && !launch.hidden) {
-      const call = leaderCalls[scene.runLeaderId] ?? leaderCalls.fledgling;
+      const call = resolvedLeaderCall(scene.runLeaderId,scene.flyway);
       const ready = !scene.flightCombat.called && scene.flightCombat.charge >= call.goal;
-      caption = `${ready ? 'Call ready' : ['runComplete','defeat'].includes(scene.mode) ? 'Flight journal' : scene.flightCombat.called ? 'Flyway' : `Call ${scene.flightCombat.charge}/${call.goal}`}${shortcut}`;
+      caption = `${identityHud ? 'Flyway' : ready ? 'Call ready' : ['runComplete','defeat'].includes(scene.mode) ? 'Flight journal' : scene.flightCombat.called ? 'Flyway' : `Call ${scene.flightCombat.charge}/${call.goal}`}${shortcut}`;
       const title = `${call.name}: ${call.charge} ${call.effect}`;
       if (launch.title !== title) launch.title = title;
     }
@@ -110,6 +114,9 @@ export function installFlyway(raw: Phaser.Scene) {
   };
   position();
   const resize = () => position(); window.addEventListener('resize', resize);
+  // Phaser can apply its canvas size after the window resize event. Anchor DOM
+  // controls to the completed canvas layout rather than the next polling tick.
+  const canvasResize = new ResizeObserver(position); canvasResize.observe(scene.game.canvas);
   const refreshTimer = window.setInterval(position, 250);
   function close() {
     if (!dialog) return;
@@ -136,7 +143,8 @@ export function installFlyway(raw: Phaser.Scene) {
         controls[(index + (event.shiftKey ? -1 : 1) + controls.length) % controls.length]?.focus();
       }
     });
-    render(); dialog.showModal(); dialog.querySelector<HTMLButtonElement>('button')?.focus();
+    render(); dialog.showModal();
+    (target==='call' ? dialog.querySelector<HTMLButtonElement>('[data-call-preview] button:not(:disabled)')??dialog.querySelector<HTMLButtonElement>('button') : dialog.querySelector<HTMLButtonElement>('button'))?.focus();
     // The press that opened this owner must be released before it can activate
     // a dialog control, even when Phaser and this poll run in the same frame.
     lastPad = pressedButtons();
@@ -164,6 +172,7 @@ export function installFlyway(raw: Phaser.Scene) {
     const body = element('main'); dialog.append(body);
     const status = element('p'); status.setAttribute('role', 'status'); status.setAttribute('aria-live','polite'); body.append(status);
     if (pendingPreen) renderPreen(body);
+    else if (page === 'call') renderCall(body);
     else if (page === 'flight') renderFlight(body);
     else if (page === 'crew') renderCrew(body);
     else if (page === 'city') renderCity(body);
@@ -197,15 +206,14 @@ export function installFlyway(raw: Phaser.Scene) {
     const s = state(scene);
     const district = districts[mapIndex(scene)] ?? districts[0];
     section(body, district.name, district.weather);
+    renderIdentity(body,s);
     if (mapIndex(scene) === 0 && scene.runState) renderPlans(body, s);
     if (mapIndex(scene) === 1 || s.canalFerry) renderCanal(body, s);
     if (mapIndex(scene) === 2 || s.spireRelay) renderSpires(body, s);
     if (mapIndex(scene) === 3) renderRoost(body, s);
     if (scene.scene.key === 'BattleScene') {
-      const call = leaderCalls[scene.runLeaderId] ?? leaderCalls.fledgling;
-      const combat = scene.flightCombat;
-      const box = section(body, call.name, `${call.charge} ${combat.charge}/${call.goal}. ${call.effect} Once per combat.`);
-      box.append(button(combat.called ? 'Call used this fight' : 'Use Leader call', () => { close(); scene.activateFlywayCall(); }, combat.called || combat.charge < call.goal || scene.mode !== 'battle'));
+      const combat=scene.flightCombat;
+      renderCall(body);
       for (const enemy of scene.enemies) {
         const disruption = bossDisruption(enemy, mapIndex(scene));
         if (disruption) section(body, `${enemy.name} · disruption`, enemy.flywayBreakUsed ? 'Your disruption has been used for this fight.' : disruption.rule);
@@ -221,7 +229,21 @@ export function installFlyway(raw: Phaser.Scene) {
         row.append(button(`Carry ${relic.name}`, () => mutate(() => { s.relic = id as FlywayRelic; s.relicChosen = true; journal(s, `The flock carries ${relic.name}. ${relic.rule}`); })));
       }
     }
-    if (s.story) { const story = flightStories.find(entry => entry.id === s.story)!; section(body, story.title, `${story.rule} Progress: ${s.survivedMolt} Molt phases survived; ${s.cleanFights} clean fights.`); }
+    if (s.story) { const story = flightStories.find(entry => entry.id === s.story)!; section(body, story.title, `${story.rule} Progress: ${s.survivedMolt} Molt phases survived; ${s.cleanFights} clean fights; ${s.resonanceSpent??0} Resonance spent; ${s.windedHits??0} Winded card hits; ${s.leaderCalls} Calls.`); }
+  }
+  function renderCall(body:HTMLElement) {
+    if(scene.scene.key!=='BattleScene')return;
+    const call=resolvedLeaderCall(scene.runLeaderId,scene.flyway),combat=scene.flightCombat;
+    const target=scene.resolvePlayableEnemyTarget(scene.selectedEnemyId);
+    const box=section(body,call.name,`${call.charge} ${combat.charge}/${call.goal}. ${call.effect} Once per combat. ${call.tradeoff??''}`);
+    box.dataset.callPreview='true';
+    box.append(element('p',`Base damage and Cover use normal formation modifiers. ${call.rules.damage&&!call.rules.all?`Target: ${target?.name??'none'} (${target?.hp??0} Cohesion, ${target?.block??0} Cover).`:call.rules.all?'Targets: every living enemy.':''}`));
+    box.append(button(combat.called?'Call used this fight':'Use Leader call',()=>{close();scene.activateFlywayCall();},combat.called||combat.charge<call.goal||scene.mode!=='battle'||!!call.rules.damage&&!scene.enemies.some((e:any)=>e.hp>0)));
+    section(body,'Combination sequence',`Last suit: ${combat.previousSuit??'none'}. ${combinations.filter(c=>c.first===combat.previousSuit&&!combat.combos.includes(c.id)).map(c=>c.rule).join(' ')||'Play a first suit to prepare a combination.'} Each combination resolves once per turn; Roost resets the sequence.`);
+  }
+  function renderIdentity(body:HTMLElement,s:FlywayState){
+    if(identity)identity.renderIdentity(body,scene,s,mutate);
+    else if(scene.runState){const box=section(body,'Leader specialization',identityFailed?'Leader notes could not load; your base Call remains available.':'Preparing Leader notes…');if(identityFailed)box.append(button('Leader recovery options',showDownloadRecovery));}
   }
   function renderCrew(body: HTMLElement) {
     if (mapIndex(scene) === 0 && scene.flock) renderPlans(body, state(scene));
@@ -254,7 +276,8 @@ export function installFlyway(raw: Phaser.Scene) {
       }
       renderResidents(body, s);
     }
-    const rival = section(body, 'Caldra’s Pinion Crew', `Rival victories: ${s.rivalWins}. Caldra returns at Rival crossings. After your first victory, her crew begins with ${Math.min(6, s.rivalWins * 2)} additional Cover; after two victories, its attacks gain +1 damage. The change is disclosed before entering.`);
+    const chapter=rivalChapter(s.rivalWins);
+    const rival = section(body, 'Caldra’s Pinion Crew', `Rival victories: ${s.rivalWins}. ${s.rivalWins>=3?'Caldra keeps her promise: her crossings are open. Other district crews still offer their own challenges.':`Next: ${chapter.name}. ${chapter.line} ${chapter.weakness}`}`);
     const rivalArt=routeSceneEventResidentAssets.rival; if(rivalArt){const img=element('img');img.src=rivalArt.url;img.alt='Caldra Pinion';img.className='flyway-resident';rival.prepend(img);}
   }
 
@@ -320,6 +343,7 @@ export function installFlyway(raw: Phaser.Scene) {
     const s = state(scene);
     if (scene.flywayArchiveSaved === false) {const notice=section(body,'Journal not yet saved','Keep this flight open and retry saving your journal and seals.');notice.append(button('Retry saving journal',()=>{scene.saveFlywayEnding();render();}));}
     section(body, s.restored.length === 4 ? 'The city answers' : 'Wings across the city', `${s.restored.length}/4 flyways restored · ${s.combinations} combinations · ${s.leaderCalls} Leader calls · ${s.survivedMolt} Molt phases survived.`);
+    identity?.renderIdentityEnding(body,s);
     if (s.restored.includes(3)) { if (roost) roost.renderCityEnding(body, s); else renderRoost(body, s); }
     renderRestoration(body, s);
     const grid = element('div', undefined, 'flyway-grid'); body.append(grid);
@@ -347,7 +371,7 @@ export function installFlyway(raw: Phaser.Scene) {
   const poll = () => {
     const pressed = pressedButtons();
     const hit = (id: number) => pressed.has(id) && !lastPad.has(id);
-    if (!dialog && hit(8) && scene.sys.isActive() && !isBusy(scene)) open();
+    if (!dialog && hit(8) && scene.sys.isActive() && !isBusy(scene)) open(scene.scene.key==='BattleScene'&&scene.mode==='battle'?'call':undefined);
     else if (dialog) {
       if (hit(1)) close();
       else if (hit(0)) (document.activeElement as HTMLButtonElement)?.click();
@@ -368,6 +392,9 @@ export function installFlyway(raw: Phaser.Scene) {
   scene.flywayCancelPreen = () => { if (pendingPreen) close(); };
   scene.openFlyway = open;
   installPresentation(scene);
+  void import('./flock-identity').then(module=>{
+    if(!alive)return;identity=module;identityHud=module.installIdentity(scene,()=>!!dialog||!!isBusy(scene),()=>open('call'));render();
+  }).catch(()=>{if(alive){identityFailed=true;render();}});
   if (mapIndex(scene) === 3 || state(scene).restored.includes(3)) void import('./high-roost').then(module => {
     if (!alive) return; roost = module; module.installHighRoost(scene); render();
   }).catch(() => { if (alive) { roostFailed = true; render(); } });
@@ -410,7 +437,8 @@ export function installFlyway(raw: Phaser.Scene) {
   }
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
     alive = false;
-    close(); installed.delete(raw); launch.remove(); window.clearInterval(refreshTimer); cancelAnimationFrame(frame);
+    identityHud?.destroy();
+    close(); installed.delete(raw); launch.remove(); canvasResize.disconnect(); window.clearInterval(refreshTimer); cancelAnimationFrame(frame);
     window.removeEventListener('resize', resize); window.removeEventListener('keydown', onKey, true);
     delete scene.flywayPreenRequest; delete scene.flywayCancelPreen; delete scene.openFlyway;
   });

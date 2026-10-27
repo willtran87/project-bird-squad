@@ -149,7 +149,8 @@ test('rival adaptations and resident help carry into a later district',async({pa
   await page.getByRole('button',{name:'Receive 1 Open Sky Guard next fight',exact:true}).click();
   expect(await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('RouteScene').runState.currentHp)).toBe(before+5);
   expect(await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('RouteScene').runState.nextCombat.openSkyGuard)).toBe(1);
-  await expect(page.getByText(/begins with 4 additional Cover/)).toBeVisible();
+  await expect(page.getByText(/Next: The Last Wager/)).toBeVisible();
+  await expect(page.getByText(/Shield and signal birds support the captain/)).toBeVisible();
 });
 
 test('crossing rewards are checkpointed once and survive a resumed reward',async({page})=>{

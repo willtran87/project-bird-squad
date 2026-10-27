@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { loadFlyway } from './game/flyway-loader';
 import { persistFlywayEnding } from './game/flyway-storage';
-import { newFlywayState, normalizeFlyway, newFlightCombat, chargeCall, takeCall, playCombination, bossDisruption, branchUpgrade, validBranch, restoreDistrict, finishStory, flywayCoverGain, rooftopPlanMatch, conditions, leaderCalls, journal, type FlywayState, type PreenBranch } from './game/flyway-rules';
+import { newFlywayState, normalizeFlyway, newFlightCombat, chargeCall, takeCall, playCombination, bossDisruption, branchUpgrade, validBranch, restoreDistrict, finishStory, flywayCoverGain, rooftopPlanMatch, conditions, resolvedLeaderCall, rivalChapter, rivalFormation, journal, type FlywayState, type PreenBranch } from './game/flyway-rules';
 import { showSaveRecovery, consumeSaveRecoveryGamepad } from './game/save-recovery-dialog';
 import { sanitizeCardClaims, type PendingCardClaim } from './game/card-claim-checkpoint';
 import { cloneRewardCheckpoint, sanitizeRewardCheckpoint, type RewardCheckpoint } from './game/reward-checkpoint';
@@ -693,7 +693,7 @@ class SceneAssetReadinessTracker {
 }
 
 interface RenderPayload {
-  flyway?: FlywayState & { combat?: ReturnType<typeof newFlightCombat> };
+  flyway?: FlywayState & { combat?: ReturnType<typeof newFlightCombat>; pacing?: unknown };
   practice?: boolean;
   mode: GameMode;
   scene: string;
@@ -7035,8 +7035,8 @@ class RouteScene extends Phaser.Scene {
     const encounter = alphaEncounterLibrary.get(node.payloadId);
     const profile = node.type === 'boss' ? alphaMapProfileLibrary.get(currentMap().id) : undefined;
     return {
-      title: encounter?.name ?? routeNodeTitle(node),
-      lesson: activeMapIndex === 3 ? encounter?.lesson : undefined,
+      title: node.type==='rival' && (this.runState.flyway?.rivalWins??0)<3 ? `Caldra · ${rivalChapter(this.runState.flyway?.rivalWins).name}` : encounter?.name ?? routeNodeTitle(node),
+      lesson: node.type==='rival' && (this.runState.flyway?.rivalWins??0)<3 ? rivalChapter(this.runState.flyway?.rivalWins).weakness : activeMapIndex === 3 ? encounter?.lesson : undefined,
       bossPrep: profile ? {
         thesis: profile.thesis,
         tests: [...profile.primaryTests],
@@ -7053,8 +7053,8 @@ class RouteScene extends Phaser.Scene {
     return routeDecisionRead({
       type: node.type,
       risk: node.risk,
-      encounterTags: encounter?.tags ?? [],
-      enemyCount: encounter?.enemies.length,
+      encounterTags: node.type==='rival' && (this.runState.flyway?.rivalWins??0)<3 ? ['cover','support'] : encounter?.tags ?? [],
+      enemyCount: node.type==='rival' && (this.runState.flyway?.rivalWins??0)<3 ? (this.runState.flyway?.rivalWins??0)<2?2:3 : encounter?.enemies.length,
       recovery: routeNodeRecovery(node, this.runState.routeMarks),
       currentHp: this.runState.currentHp,
       maxHp: this.runMaxHp(),
@@ -7465,7 +7465,7 @@ class RouteScene extends Phaser.Scene {
       return [
         {
           key: 'challenge_rival',
-          text: `Take Caldra's wager · crew gains ${Math.min(6, (this.runState.flyway?.rivalWins ?? 0) * 2)} Cover${(this.runState.flyway?.rivalWins ?? 0) >= 2 ? ' and +1 attack damage' : ''}`,
+          text: (this.runState.flyway?.rivalWins??0)<3 ? `Take Caldra's wager · ${rivalChapter(this.runState.flyway?.rivalWins).name}. ${rivalChapter(this.runState.flyway?.rivalWins).weakness}` : `Challenge the rival crew · ${alphaEncounterLibrary.get(node.payloadId)?.name??node.label}`,
           effects: ['startRivalBattle'],
           locked: false
         },
@@ -12623,12 +12623,8 @@ class BattleScene extends Phaser.Scene {
     const leader = getLeader(this.runLeaderId);
     this.flock.flowMax = leader.flowMax ?? this.flock.flowMax;
     this.flock.flow = Math.min(this.flock.flowMax, leader.startFlow ?? 0);
-    this.enemies = createEncounterEnemiesForRouteNode(initialRouteNode);
+    this.enemies = createEncounterEnemiesForRouteNode(initialRouteNode, this.flyway);
     if (this.flyway.conditionNode && this.flyway.conditionNode !== initialRouteNode.id) { this.flyway.condition = 'clear'; this.flyway.conditionNode = undefined; }
-    if (initialRouteNode.type === 'rival') this.enemies.forEach(enemy => {
-      enemy.block += Math.min(6, this.flyway.rivalWins * 2);
-      enemy.damageBonus += this.flyway.rivalWins >= 2 ? 1 : 0;
-    });
     const ascension = difficultyMods(this.runDifficulty);
     applyAscensionOpeningIntents(
       this.runDifficulty,
@@ -14144,8 +14140,8 @@ private playBattleIntro(onComplete?: () => void) {
       reduced: prefersReducedMotion(), holdScale: textTiming.holdScale, minimumReadableMs: textTiming.minimumReadableMs,
       width: GAME_WIDTH, height: GAME_HEIGHT, district: currentMap().name,
       enemies: this.enemies.map(enemy => enemy.runtime.id),
-      purpose: activeMapIndex >= 1 ? alphaEncounterLibrary.get(currentCombatNodes()[this.currentRouteIndex]?.payloadId)?.lesson : undefined,
-      encounter: this.battlefieldMood() === 'rival' ? `Caldra’s Pinion Crew · encounter ${this.flyway.rivalWins + 1}` : this.enemies.find(enemy => enemy.runtime.type === 'boss')?.name ?? (activeMapIndex === 1 || activeMapIndex === 2 ? alphaEncounterLibrary.get(currentCombatNodes()[this.currentRouteIndex]?.payloadId)?.name : undefined) ?? currentCombatNodes()[this.currentRouteIndex]?.label ?? 'Rooftop Fight',
+      purpose: this.battlefieldMood() === 'rival' && this.flyway.rivalWins<3 ? rivalChapter(this.flyway.rivalWins).weakness : activeMapIndex >= 1 ? alphaEncounterLibrary.get(currentCombatNodes()[this.currentRouteIndex]?.payloadId)?.lesson : undefined,
+      encounter: this.battlefieldMood() === 'rival' && this.flyway.rivalWins<3 ? `Caldra · ${rivalChapter(this.flyway.rivalWins).name}` : this.enemies.find(enemy => enemy.runtime.type === 'boss')?.name ?? (activeMapIndex === 1 || activeMapIndex === 2 ? alphaEncounterLibrary.get(currentCombatNodes()[this.currentRouteIndex]?.payloadId)?.name : undefined) ?? currentCombatNodes()[this.currentRouteIndex]?.label ?? 'Rooftop Fight',
       confirm: controlBindingLabel('confirm'), texture: COMBAT_ENCOUNTER_INTRO_TEXTURE,
       plaque: uiIconAssets['combat-encounter-plaque'].key,
       font: UI_FONT, displayFont: TOKEN_DISPLAY_FONT, bold: UI_BOLD, gold: UI_GOLD, cyan: UI_CYAN, soft: UI_SOFT,
@@ -20869,11 +20865,16 @@ private playBattleIntro(onComplete?: () => void) {
     if (this.combatInteractionLocked() || this.combatIntroActive || this.supplyDrawerOpen || this.waymarkDrawerOpen) return false;
     const leader = this.runLeaderId ?? 'fledgling';
     if (!takeCall(this.flightCombat, leader)) return false;
-    const call = leaderCalls[leader] ?? leaderCalls.fledgling;
-    if (leader === 'talon') { const target = this.resolvePlayableEnemyTarget(this.selectedEnemyId); if (target) this.damageEnemy(target.id, 8, call.name, undefined, true); }
-    else if (leader === 'tidewarden') { this.healFlock(6, call.name); this.gainBlock(4, call.name); }
-    else if (leader === 'roostkeeper') { this.enemies.filter(e => e.hp > 0).forEach(e => this.damageEnemy(e.id, 4, call.name)); this.gainBlock(4, call.name); }
-    else { this.energy += 2; if (leader === 'spark_caller') this.drawCards(1); else this.gainBlock(3, call.name); }
+    const call = resolvedLeaderCall(leader, this.flyway), rules = call.rules;
+    const targets = rules.all ? this.enemies.filter(e=>e.hp>0) : [this.resolvePlayableEnemyTarget(this.selectedEnemyId)].filter((e): e is Enemy=>!!e);
+    for (const target of targets) {
+      if (rules.damage) this.damageEnemy(target.id,rules.damage,call.name,undefined,rules.pierce);
+      if (rules.winded && target.hp>0) { target.weak+=rules.winded; this.triggerTalonPinnedOpening(target); }
+    }
+    if (rules.energy) this.energy+=rules.energy;
+    if (rules.draw) this.drawCards(rules.draw);
+    if (rules.heal) this.healFlock(rules.heal,call.name);
+    if (rules.cover) this.gainBlock(rules.cover,call.name);
     this.flyway.leaderCalls += 1;
     this.logEvent(`${call.name}: ${call.effect}`);
     this.events.emit('flyway-call', call.name);
@@ -21540,7 +21541,10 @@ private playBattleIntro(onComplete?: () => void) {
     const enemy = this.getLivingEnemy(enemyId);
     if (!enemy) return false;
     const hpBefore = enemy.hp;
-    if (card && enemy.weak > 0) chargeCall(this.flightCombat, this.runLeaderId ?? 'fledgling', 'winded');
+    if (card && enemy.weak > 0 && amount > 0) {
+      chargeCall(this.flightCombat, this.runLeaderId ?? 'fledgling', 'winded');
+      this.flyway.windedHits=(this.flyway.windedHits??0)+1;
+    }
     const outcome = cardDamageOutcome(
       amount,
       this.flock,
@@ -21714,6 +21718,7 @@ private playBattleIntro(onComplete?: () => void) {
       return false;
     }
     this.spark -= amount;
+    this.flyway.resonanceSpent=(this.flyway.resonanceSpent??0)+Math.max(0,amount);
     chargeCall(this.flightCombat, this.runLeaderId ?? 'fledgling', 'spend', amount);
     this.logEvent(`The flock spends ${amount} Resonance.`);
     this.combatResonanceSpend(FLOCK_FX_X + 18, FLOCK_FX_Y - 38, Phaser.Math.Clamp(0.88 + amount * 0.07, 0.92, 1.16));
@@ -22549,7 +22554,7 @@ private playBattleIntro(onComplete?: () => void) {
       const node = currentCombatNodes()[this.currentRouteIndex];
       if (node?.type === 'rival' && !this.flyway.rivalNodes.includes(node.id)) {
         this.flyway.rivalWins += 1; this.flyway.rivalNodes.push(node.id);
-        journal(this.flyway, `Caldra's Pinion Crew yields crossing ${this.flyway.rivalWins}. They remember your formation.`);
+        journal(this.flyway, this.flyway.rivalWins<=3?rivalChapter(this.flyway.rivalWins-1).ending:`The flock clears another rival crossing in ${currentMap().name}.`);
       }
       const bonus = conditions[this.flyway.condition].reward;
       if (bonus) { this.scrap += bonus; this.runScrapEarned += bonus; journal(this.flyway, `${conditions[this.flyway.condition].name} cleared: +${bonus} Scrap.`); }
@@ -23385,8 +23390,10 @@ function selectedCombatRouteNode(routeNodeId: string | undefined) {
 // enemy id appears more than once, each instance gets a unique id ("roof_rat#0")
 // and a disambiguating display suffix ("Roof Rat A") so targeting/selection and
 // per-enemy state stay independent.
-function createEncounterEnemiesForRouteNode(routeNode: RouteNode): Enemy[] {
-  const runtimes = getEncounterEnemiesByPayload(routeNode.payloadId);
+function createEncounterEnemiesForRouteNode(routeNode: RouteNode, flyway?: FlywayState): Enemy[] {
+  const runtimes = routeNode.type === 'rival' && flyway && flyway.rivalWins<3
+    ? rivalFormation(flyway.rivalWins, id=>alphaEnemyLibrary.get(id)!)
+    : getEncounterEnemiesByPayload(routeNode.payloadId);
   const solo = runtimes.length === 1 && routeNode.type !== 'boss';
   const multi = runtimes.length > 1 && routeNode.type !== 'boss';
   const totalById = new Map<string, number>();

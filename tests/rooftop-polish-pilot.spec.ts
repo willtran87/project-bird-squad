@@ -21,9 +21,11 @@ for (const id of pilot) test(`Rooftop pilot: ${id}`, async ({ page }, info) => {
     await w.__birdSquadEnsureScene('BattleScene');
     const node = w.__birdSquadCurrentMap().nodes.find((n: any) => n.id === 'm1_entry');
     Object.assign(node, { payloadId: encounter.id, type: encounter.nodeType, label: encounter.name });
+    // This pilot covers canonical district art after Caldra's three chapters.
+    const runState = w.__birdSquadGame.scene.getScene('RouteScene').runState;
     for (const scene of w.__birdSquadGame.scene.getScenes(true)) w.__birdSquadGame.scene.stop(scene.scene.key);
     w.__birdSquadGame.scene.start('BattleScene', { routeNodeId: node.id,
-      runState: w.__birdSquadGame.scene.getScene('RouteScene').runState });
+      runState: { ...runState, flyway: { ...runState.flyway, rivalWins: 3 } } });
   }, catalog.find((e: any) => e.id === id));
   await page.waitForFunction(() => {
     const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene');

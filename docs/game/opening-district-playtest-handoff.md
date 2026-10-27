@@ -80,3 +80,18 @@ Record which specific replay invitation they remember, any unreadable Tells or
 hidden card details, and whether they voluntarily begin another flight. These
 observations supplement the existing five-player protocol; automated scripts
 are mechanics evidence only.
+
+## Flock Identity + Rival Stories follow-up
+
+Use the deployed revision recorded in `flock-identity-rival-stories-upgrade.md`.
+No sessions have been supplied. Observe whether the player notices a ready Call
+and discovers a combination without opening the full journal. Ask them to explain
+the specialization they chose and what it gives up. On a rival rematch, record
+which support bird they target and whether Caldra's next formation feels fair.
+After an ending, ask which story they would voluntarily try next.
+
+Record active decision, animation, reward-reading and final-enemy cleanup time
+separately. Optional local `JSON.parse(render_game_to_text()).flyway.pacing` counters estimate
+these categories during battle; journal/background time is excluded, and cleanup
+is a subset of decision time. Preserve the observer's actual notes and timing;
+scripted fixture timings do not represent human comprehension or enjoyment.

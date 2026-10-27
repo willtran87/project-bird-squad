@@ -122,6 +122,37 @@ test('ferry progress counts unique Canal settlements after the pledge and surviv
   assert.equal(rules.normalizeFlyway({canalFerry:{pledge:'timber',startedAt:Infinity}}).canalFerry.startedAt,0);
 });
 test('Flight Stories require a victory and their own objective', () => {
-  for(const story of rules.flightStories){const s=rules.newFlywayState(story.id);assert.equal(s.relic,story.relic);assert.equal(rules.finishStory(s,false,10),false);if(story.id!=='small-flock')assert.equal(rules.finishStory(s,true,10),false);s.survivedMolt=3;s.cleanFights=3;assert.equal(rules.finishStory(s,true,10),true);rules.finishStory(s,true,10);assert.deepEqual(s.medals,[story.id]);}
+  for(const story of rules.flightStories){const s=rules.newFlywayState(story.id);assert.equal(s.relic,story.relic);assert.equal(rules.finishStory(s,false,10),false);if(story.id!=='small-flock')assert.equal(rules.finishStory(s,true,10),false);s.survivedMolt=3;s.cleanFights=3;s.resonanceSpent=12;s.windedHits=12;s.leaderCalls=3;assert.equal(rules.finishStory(s,true,10),true);rules.finishStory(s,true,10);assert.deepEqual(s.medals,[story.id]);}
   const s=rules.newFlywayState('small-flock');assert.equal(rules.finishStory(s,true,11),false);
+});
+
+test('identity branches normalize safely, preserve base Calls and keep ten distinct tradeoffs',()=>{
+  for(const [leader,variants] of Object.entries(rules.callSpecializations)){
+    assert.equal(variants.length,2);
+    assert.deepEqual(rules.resolvedLeaderCall(leader).name,rules.leaderCalls[leader].name);
+    for(const choice of variants){const saved=rules.normalizeFlyway({callStyle:choice.style});assert.equal(rules.normalizeFlyway(JSON.parse(JSON.stringify(saved))).callStyle,choice.style);assert.equal(rules.resolvedLeaderCall(leader,saved).name,choice.name);assert.ok(choice.tradeoff.length>20);}
+    assert.notDeepEqual(variants[0].rules,variants[1].rules);
+  }
+  assert.equal(rules.normalizeFlyway({callStyle:'__proto__'}).callStyle,undefined);
+  assert.equal(rules.normalizeFlyway({resonanceSpent:Infinity,windedHits:-2}).resonanceSpent,0);
+  assert.equal(rules.normalizeFlyway({windedHits:-2}).windedHits,0);
+});
+test('new stories require both their own action and Calls, award once, and never award a defeat',()=>{
+  for(const [id,counter] of [['chorus-line','resonanceSpent'],['clean-cut','windedHits']]){
+    const s=rules.newFlywayState(id);s[counter]=11;s.leaderCalls=3;assert.equal(rules.finishStory(s,true,10),false);
+    s[counter]=12;s.leaderCalls=2;assert.equal(rules.finishStory(s,true,10),false);s.leaderCalls=3;
+    assert.equal(rules.finishStory(s,false,10),false);assert.equal(rules.finishStory(s,true,10),true);
+    rules.finishStory(s,true,10);assert.deepEqual(s.medals,[id]);assert.equal(rules.normalizeFlyway(s).storyComplete,true);
+  }
+});
+test('rival chapters clone canonical birds and share finite readable support/recovery loops',async()=>{
+  const set=JSON.parse(await readFile(new URL('../../data/game/alpha-enemies.json',import.meta.url),'utf8'));
+  const enemies=[...set.normalEncounters,...set.rivalEncounters],before=JSON.stringify(enemies);
+  for(const wins of [0,1,2,20]){
+    const formation=rules.rivalFormation(wins,id=>enemies.find(e=>e.id===id));
+    assert.equal(formation.length,wins<2?2:3);assert.ok(rules.rivalChapter(wins).weakness.length>30);
+    for(const enemy of formation){assert.equal(enemy.attackPattern.type,'cycle');assert.equal(enemy.moves[2].effects.length,0);assert.equal(enemy.moves.length,3);}
+    formation[0].health=999;
+  }
+  assert.equal(JSON.stringify(enemies),before);
 });
