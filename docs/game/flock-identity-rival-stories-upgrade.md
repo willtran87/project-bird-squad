@@ -107,3 +107,8 @@ evidence remain explicitly waived/unverified under the existing release policy.
   catalog fixture and preserving every original enemy/geometry assertion.
   All three pilot cases pass locally, with the compact Gutter Baron capture
   inspected. This correction changes only the test fixture, not game behavior.
+- Release-job distribution now sends the 15 strategy simulations and five
+  starter-control journeys to the six campaign workers instead of one overloaded
+  regression shard. Inventory reconciliation proves 1,020 regression + 37 campaign
+  + 4 reference journeys = 1,061 unique cases, with zero omissions or overlaps.
+  Browser qualification, assertions, retries and per-test limits are unchanged.
