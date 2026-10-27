@@ -27,7 +27,10 @@ for (let mapIndex = 0; mapIndex < 4; mapIndex++) test(`authored encounter catalo
       const node = map.nodes.find((n: any) => n.id === `m${mapIndex + 1}_entry`);
       node.payloadId = encounter.id; node.type = encounter.nodeType; node.label = encounter.name;
       for (const scene of game.scene.getScenes(true)) game.scene.stop(scene.scene.key);
-      game.scene.start('BattleScene', { runState: { ...runState, mapIndex }, routeNodeId: node.id });
+      // Caldra's first three staged rivals have separate identity acceptance.
+      // After her arc, every canonical district formation remains playable.
+      game.scene.start('BattleScene', { runState: { ...runState, mapIndex,
+        flyway: {...runState.flyway,rivalWins:3} }, routeNodeId: node.id });
     }, { runState, mapIndex, encounter });
     await page.waitForFunction(() => {
       const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene');

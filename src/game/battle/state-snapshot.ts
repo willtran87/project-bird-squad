@@ -154,7 +154,8 @@ export function buildBattleStateSnapshot(raw: BattleScene): RenderPayload {
       counters: scene as unknown as Record<string, unknown>
     }) ?? {};
     return {
-      flyway: { ...normalizeFlyway(scene.flyway), combat: scene.flightCombat },
+      flyway: { ...normalizeFlyway(scene.flyway), combat: scene.flightCombat,
+        pacing: (scene as unknown as {identityPacing?:unknown}).identityPacing },
       mode: scene.mode,
       scene: 'BattleScene',
       keywordTooltip: keywordTooltipState(scene),

@@ -1,7 +1,7 @@
-import type { CardSuit, RuntimeCard, RuntimeCardUpgrade } from './types';
+import type { CardSuit, RuntimeCard, RuntimeCardUpgrade, RuntimeEnemy } from './types';
 
 export type PreenBranch = 'shelter' | 'flight' | 'canal-anchor' | 'canal-counter' | 'canal-chorus' | 'canal-cadence' | 'canal-harbor' | 'canal-current' | 'spire-watch' | 'spire-chorus' | 'spire-aperture';
-export type FlightStoryId = 'open-sky' | 'small-flock' | 'unbroken';
+export type FlightStoryId = 'open-sky' | 'small-flock' | 'unbroken' | 'chorus-line' | 'clean-cut';
 export type FlywayCondition = 'clear' | 'crosswind' | 'rain' | 'scaffold';
 export type FlywayRelic = 'woven-roost' | 'storm-pin' | 'light-travel';
 export type RooftopPlan = 'shelter' | 'tempo' | 'molt';
@@ -36,6 +36,9 @@ export interface FlywayState {
   rooftopPlan?: RooftopPlan;
   coachingOff?: boolean;
   cityAid?: Array<'sella' | 'oren' | 'ivo'>;
+  callStyle?: 'shelter' | 'flight';
+  resonanceSpent?: number;
+  windedHits?: number;
   canalFerry?: { pledge: 'timber' | 'lamps'; startedAt: number; rewarded?: true };
   spireRelay?: { pledge: 'wires' | 'lenses'; startedAt: number; rewarded?: true; delivered?: true };
 }
@@ -67,6 +70,67 @@ export const leaderCalls: Record<string, { name: string; goal: number; charge: s
   tidewarden: { name: 'Sheltering Sweep', goal: 6, charge: 'Restore 6 actual Cohesion.', effect: 'Restore 6 Cohesion and gain 4 Cover.' },
   roostkeeper: { name: 'Return the Pressure', goal: 2, charge: 'Fully block two damaging attacks.', effect: 'Deal 4 damage to every enemy and gain 4 Cover.' },
 };
+export interface CallEffect { energy?: number; draw?: number; heal?: number; cover?: number; damage?: number; pierce?: boolean; all?: boolean; winded?: number }
+const baseCallEffects: Record<string, CallEffect> = {
+  fledgling: {energy:2,cover:3}, spark_caller:{energy:2,draw:1}, talon:{damage:8,pierce:true},
+  tidewarden:{heal:6,cover:4}, roostkeeper:{damage:4,all:true,cover:4},
+};
+export const callSpecializations: Record<string, Array<{style:'shelter'|'flight';name:string;effect:string;tradeoff:string;rules:CallEffect}>> = {
+  fledgling: [
+    {style:'shelter',name:'Gather the Neighbors',effect:'Gain 1 Wingbeat and 7 Cover.',tradeoff:'Give up one Wingbeat for stronger protection.',rules:{energy:1,cover:7}},
+    {style:'flight',name:'Lead the Crossing',effect:'Gain 3 Wingbeats.',tradeoff:'Give up all Call Cover for an extra Wingbeat.',rules:{energy:3}},
+  ],
+  spark_caller: [
+    {style:'shelter',name:'Echo Relay',effect:'Gain 1 Wingbeat and draw 2 cards.',tradeoff:'One fewer Wingbeat; extra cards still need energy and can expose the flock.',rules:{energy:1,draw:2}},
+    {style:'flight',name:'Fast Chorus',effect:'Gain 3 Wingbeats.',tradeoff:'Give up the Call draw for an extra Wingbeat.',rules:{energy:3}},
+  ],
+  talon: [
+    {style:'shelter',name:'Scatter the Watch',effect:'Deal 4 damage to every enemy, then give each survivor 1 Winded.',tradeoff:'Lower focused damage; damage no longer bypasses Cover.',rules:{damage:4,all:true,winded:1}},
+    {style:'flight',name:'Clean Execution',effect:'Deal 12 damage to the selected enemy, bypassing Cover.',tradeoff:'Focuses the entire Call on one target; gives no protection or Winded.',rules:{damage:12,pierce:true}},
+  ],
+  tidewarden: [
+    {style:'shelter',name:'Deep Shelter',effect:'Restore 10 Cohesion.',tradeoff:'Give up all Call Cover; healing cannot exceed maximum Cohesion.',rules:{heal:10}},
+    {style:'flight',name:'Breakwater Sweep',effect:'Restore 3 Cohesion and gain 9 Cover.',tradeoff:'Less recovery in exchange for immediate protection.',rules:{heal:3,cover:9}},
+  ],
+  roostkeeper: [
+    {style:'shelter',name:'Hold the Roof',effect:'Gain 12 Cover.',tradeoff:'Give up all Call damage for protection.',rules:{cover:12}},
+    {style:'flight',name:'Answer Together',effect:'Deal 7 damage to every enemy.',tradeoff:'Give up all Call Cover for a stronger retaliation.',rules:{damage:7,all:true}},
+  ],
+};
+export function resolvedLeaderCall(leader: string, state?: Pick<FlywayState,'callStyle'>) {
+  const id = Object.hasOwn(leaderCalls,leader) ? leader : 'fledgling';
+  const variant = callSpecializations[id].find(v=>v.style===state?.callStyle);
+  return {...leaderCalls[id],...variant,rules:variant?.rules??baseCallEffects[id]};
+}
+export const rivalChapters = [
+  {name:'The First Wager',weakness:'The Watch shields its captain. Remove the Watch or strike during recovery.',line:'“Show me how you bring them across.”',ending:'Caldra remembers the flock that accepted her first wager.'},
+  {name:'The Answering Crew',weakness:'The Courier stores force for its captain. Stop future charges; stored force remains until spent.',line:'“I have seen your opening. Now read mine.”',ending:'Caldra changes her formation after the rematch, then leaves the next crossing open.'},
+  {name:'The Last Wager',weakness:'Shield and signal birds support the captain. Choose a support target; recovery opens every third move.',line:'“One last crossing. No toll after this.”',ending:'Having yielded three wagers, Caldra calls her crew aside and keeps her promise: the crossing belongs to everyone.'},
+] as const;
+export function rivalChapter(wins=0) { return rivalChapters[Math.min(2,Math.max(0,Math.floor(wins)))]; }
+/** Clone canonical birds; their art/identity stays stable and live/forecast share these loops. */
+export function rivalFormation(wins: number, lookup: (id:string)=>RuntimeEnemy): RuntimeEnemy[] {
+  const stage=Math.min(2,Math.max(0,Math.floor(wins)));
+  const ids=stage===0?['tarline_jackdaw','pigeon_enforcer']:stage===1?['tarline_jackdaw','signal_gull']:['tarline_jackdaw','pigeon_enforcer','signal_gull'];
+  return ids.map((id,index)=>{
+    const base=structuredClone(lookup(id));
+    const captain=index===0, shield=id==='pigeon_enforcer';
+    base.name=captain?'Captain':shield?'Watch':'Courier';
+    base.health=captain?[26,30,34][stage]:[20,20,18][stage];
+    base.lesson=rivalChapter(wins).weakness;
+    base.moves=captain?[
+      {id:'pinion-strike',label:'Crossing Strike',effects:[`damage(flock, ${[8,10,12][stage]})`]},
+      {id:'pinion-brace',label:'Regroup',effects:['gainCover(self, 6)']},
+      {id:'pinion-rest',label:'Recover footing',effects:[]},
+    ]:[
+      {id:'pinion-support',label:shield?'Shield the Captain':'Signal the Captain',effects:[shield?'gainCoverAlly(front, 6)':'nextAttackBonusAlly(front, 3)']},
+      {id:'pinion-strike',label:'Crossing Peck',effects:['damage(flock, 4)']},
+      {id:'pinion-rest',label:'Recover footing',effects:[]},
+    ];
+    base.attackPattern={type:'cycle',moveIds:base.moves.map(m=>m.id)};
+    return base;
+  });
+}
 export const combinations = [
   { id: 'brace-cut', name: 'Brace & Cut', first: 'nests', second: 'quills', rule: 'Nests → Quills: deal 2 extra damage to the selected enemy.', effect: 'damage' },
   { id: 'rain-chorus', name: 'Rain Chorus', first: 'basins', second: 'plumes', rule: 'Basins → Plumes: gain 1 Resonance.', effect: 'resonance' },
@@ -76,6 +140,8 @@ export const flightStories: Array<{ id: FlightStoryId; title: string; premise: s
   { id: 'open-sky', title: 'After the Storm', premise: 'Carry a warning through the storm, then bring your flock safely home.', rule: 'Win a Full flight after surviving at least 3 Molt enemy phases.', reward: 'Storm Survivor · copper feather journal seal', seed: 'story-after-storm-v1', leader: 'tidewarden', relic: 'storm-pin' },
   { id: 'small-flock', title: 'Ten Familiar Wings', premise: 'A small crew knows every rooftop by heart.', rule: 'Win a Full flight with at most 10 cards. Adding a card is allowed, but you must release enough before the ending.', reward: 'Close Company · woven circle journal seal', seed: 'story-ten-wings-v1', leader: 'fledgling', relic: 'light-travel' },
   { id: 'unbroken', title: 'The Quiet Crossing', premise: 'Guide the city through a route that leaves no bird behind.', rule: 'Win a Full flight with at least 3 fights taking no Cohesion damage.', reward: 'Still Air · blue wing journal seal', seed: 'story-quiet-crossing-v1', leader: 'roostkeeper', relic: 'woven-roost' },
+  { id: 'chorus-line', title: 'Every Roof Answers', premise: 'Spark-Caller carries a warning that grows with every answering roof.', rule: 'Win a Full flight after spending at least 12 Resonance and using at least 3 Leader calls.', reward: 'Answering Chorus · amber wave journal seal', seed: 'story-chorus-line-v1', leader: 'spark_caller' },
+  { id: 'clean-cut', title: 'A Path Through the Watch', premise: 'Talon finds a way through the watch so the smaller wings can follow.', rule: 'Win a Full flight after hitting Winded enemies with cards at least 12 times and using at least 3 Leader calls.', reward: 'Clear Passage · silver quill journal seal', seed: 'story-clean-cut-v1', leader: 'talon' },
 ];
 export function newFlywayState(story?: FlightStoryId): FlywayState {
   const authored = flightStories.find(entry => entry.id === story);
@@ -102,7 +168,9 @@ export function normalizeFlyway(value: unknown): FlywayState {
   s.relicChosen = v.relicChosen === true || Boolean(s.relic);
   s.story = flightStories.find(entry => entry.id === v.story)?.id;
   s.storyComplete = v.storyComplete === true;
-  s.medals = strings(v.medals, 3).filter(id => flightStories.some(story => story.id === id));
+  s.medals = [...new Set(strings(v.medals, 5).filter(id => flightStories.some(story => story.id === id)))];
+  if (v.callStyle === 'shelter' || v.callStyle === 'flight') s.callStyle = v.callStyle;
+  for (const key of ['resonanceSpent','windedHits'] as const) if (v[key] !== undefined) s[key]=finite(v[key]);
   if (v.rooftopPlan === 'shelter' || v.rooftopPlan === 'tempo' || v.rooftopPlan === 'molt') s.rooftopPlan = v.rooftopPlan;
   if (v.coachingOff === true) s.coachingOff = true;
   const ferry = v.canalFerry && typeof v.canalFerry === 'object' ? v.canalFerry as Record<string, unknown> : undefined;
@@ -127,7 +195,7 @@ export function restoreDistrict(s: FlywayState, index: number) {
   s.restored.push(index); journal(s, districts[index].restored); return true;
 }
 export function finishStory(s: FlywayState, won: boolean, deckSize: number) {
-  const complete = won && (s.story === 'open-sky' ? s.survivedMolt >= 3 : s.story === 'small-flock' ? deckSize <= 10 : s.story === 'unbroken' ? s.cleanFights >= 3 : false);
+  const complete = won && (s.story === 'open-sky' ? s.survivedMolt >= 3 : s.story === 'small-flock' ? deckSize <= 10 : s.story === 'unbroken' ? s.cleanFights >= 3 : s.story === 'chorus-line' ? (s.resonanceSpent??0)>=12&&s.leaderCalls>=3 : s.story === 'clean-cut' ? (s.windedHits??0)>=12&&s.leaderCalls>=3 : false);
   if (complete && s.story && !s.storyComplete) { s.storyComplete = true; s.medals.push(s.story); journal(s, `Flight Story complete: ${flightStories.find(story => story.id === s.story)!.title}.`); }
   return complete;
 }

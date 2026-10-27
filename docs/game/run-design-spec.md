@@ -606,14 +606,19 @@ Each offers one interaction per district. In a later district, an established
 relationship can instead return 5 Cohesion, one Open Sky Guard for the next
 fight, or 15 Scrap respectively. The journal records the actual decision.
 
-Caldra's Pinion Crew returns at Rival crossings. Each prior victory grants the
-crew 2 additional starting Cover, capped at 6; after two victories its attacks
-gain 1 damage. The wager describes these adaptations before accepting, and the
-encounter introduction identifies Caldra and the encounter number.
+Caldra's Pinion Crew returns at Rival crossings in three authored chapters.
+The First Wager pairs a captain with a shielding Watch. The Answering Crew
+replaces the Watch with a Courier that stores attack force for its captain.
+The Last Wager combines both support birds. Every bird recovers on its third
+move. Defeating a support bird prevents future support but does not remove force
+already stored. The route inspection, wager and introduction disclose the next
+formation's weakness. Three victories earn Caldra's promise of an open crossing;
+later rivals retain the district's original authored formations. Settlement is saved
+once per crossing and the journal ending reflects actual rival victories.
 
 ### Permanent Flight Stories
 
-Three fixed-seed, Full, Tier 0 stories are available from the main menu after
+Five fixed-seed, Full, Tier 0 stories are available from the main menu after
 their Leader is unlocked and when no active flight exists:
 
 | Story | Leader / keepsake | Victory objective | Cosmetic seal |
@@ -621,6 +626,8 @@ their Leader is unlocked and when no active flight exists:
 | After the Storm | Tidewarden / Storm Pin | Survive at least three Molt enemy phases | Storm Survivor, copper feather |
 | Ten Familiar Wings | Fledgling / Light Travel | Finish with at most ten cards | Close Company, woven circle |
 | The Quiet Crossing | Roostkeeper / Woven Roost | Win at least three fights without Cohesion damage | Still Air, blue wing |
+| Every Roof Answers | Spark-Caller / no preset keepsake | Spend 12 Resonance, use 3 Calls and win | Answering Chorus, amber wave |
+| A Path Through the Watch | Talon / no preset keepsake | Land 12 card hits on Winded enemies, use 3 Calls and win | Clear Passage, silver quill |
 
 A loss never grants a seal. Seals persist separately from the latest illustrated
 ending journal; they confer no combat bonus. Practice uses the disposable

@@ -42,3 +42,9 @@
 .flyway-book .flyway-seal.open-sky { color: #e3a46d; border-color: #c88b59; }
 .flyway-book .flyway-seal.small-flock { border-style: double; border-width: 5px; }
 .flyway-book .flyway-seal.unbroken { color: #9cdaea; border-color: #81b7d6; }
+.identity-call { position:fixed; z-index:15; min-height:44px; padding:6px; border:1px solid #e2c584; border-radius:5px; color:#fff1cf; background:#10232cf5; font-weight:600; cursor:pointer; }
+.identity-call:focus-visible { outline:3px solid #8de3e8; outline-offset:3px; }
+.identity-sequence { position:fixed; z-index:14; box-sizing:border-box; padding:5px 10px; border-radius:4px; color:#daeff1; background:#0a1721e8; font-family:system-ui; text-align:center; pointer-events:none; }
+.flyway-book .flyway-seal.chorus-line { color:#f4cc7a; border-style:double; }
+.flyway-book .flyway-seal.clean-cut { color:#dae5f2; border-color:#b4c8d8; }
+@media (max-width:999px), (max-height:559px) { .identity-call,.identity-sequence { display:none; } }

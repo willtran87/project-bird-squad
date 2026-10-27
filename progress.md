@@ -1,5 +1,17 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-10-26 — Flock Identity + Rival Stories
+
+- Implemented direct Calls, ten per-flight specializations, Caldra's three-chapter
+  arc, bounded signature effects and two permanent Flight Stories on
+  `codex/flock-identity-rival-stories`. Later rivals preserve the original catalog.
+- Candidate 21/21 focused tests, 26 unit/policy checks and static release gates
+  pass. Three-size captures and shared-client real card play inspected. Familiar
+  empty recovery staging shortened with first-read/impact holds preserved.
+- Acceptance and measured evidence: `docs/game/flock-identity-rival-stories-upgrade.md`.
+  Final catalog check, full CI, merge and publication remain in progress. Existing
+  human/device/assistive-technology waivers remain explicit; no human sessions.
+
 ## 2026-10-26 — High Roost + The Living City
 
 - Implemented and published the full milestone; all acceptance items are checked

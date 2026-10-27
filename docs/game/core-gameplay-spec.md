@@ -711,8 +711,10 @@ all expansion rules before commitment.
 
 ### Leader calls
 
-Each Leader earns one deliberate, player-activated call per fight. Progress
-appears on the Flyway button; open the journal to inspect and activate it.
+Each Leader earns one deliberate, player-activated call per fight. The battle
+Call button and F9 open a focused effect/target preview; activation is a separate
+confirmation. Controller View opens the same preview. J retains the full journal.
+The live suit-sequence strip shows combinations ready to finish; Roost resets it.
 
 | Leader | Earn the call | Base effect |
 | --- | --- | --- |
@@ -724,6 +726,27 @@ appears on the Flyway button; open the journal to inspect and activate it.
 
 Damage and Cover use the usual formation modifiers. Calls cannot interrupt a
 card choice, enemy animation, or another modal decision.
+
+After the first district boss, the route journal offers two mutually exclusive
+Call specializations per Leader. Choosing is optional, requires inspection and
+confirmation, and lasts for this flight. A failed save rolls back the choice.
+Charge conditions and once-per-combat limits remain unchanged.
+
+| Leader | Shelter specialization | Flight specialization |
+| --- | --- | --- |
+| Fledgling | Gather the Neighbors: 1 Wingbeat, 7 Cover | Lead the Crossing: 3 Wingbeats, no Cover |
+| Spark-Caller | Echo Relay: 1 Wingbeat, draw 2 | Fast Chorus: 3 Wingbeats, no draw |
+| Talon | Scatter the Watch: 4 damage to all, 1 Winded to survivors, no piercing | Clean Execution: 12 piercing damage to one target, no Winded/protection |
+| Tidewarden | Deep Shelter: heal 10, no Cover | Breakwater Sweep: heal 3, 9 Cover |
+| Roostkeeper | Hold the Roof: 12 Cover, no damage | Answer Together: 7 damage to all, no Cover |
+
+The optional presentation module gives five Calls and three combinations their
+own movements and sound signatures. Effects stay below decision UI, expire, and
+retain stationary portraits/captions with reduced motion. Native-clock pacing
+counters separate active decisions, animations and reward screens; cleanup time
+is a subset of decision time with one enemy at or below 20% health. Background
+tabs, pauses and journal time are excluded. Counters are local diagnostic
+observations, not player ratings or proof of enjoyable pacing.
 
 ### Consecutive suit combinations
 
