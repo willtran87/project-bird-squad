@@ -100,3 +100,10 @@ evidence remain explicitly waived/unverified under the existing release policy.
   every target size. The unchanged full pointer-only reference flight passed
   outcome and replay in 4.5 minutes. Reviewed the compact paged-hand capture and
   reran the shared client on this build without browser errors. Hard budgets pass.
+- Fourth PR run 40437022034 passed all 243 browser cases, all campaigns and all
+  live-control journeys. The Rooftop polish pilot still expected a canonical
+  Gutter Baron encounter in a fresh pre-Caldra flight. Its authored-art fixture
+  now explicitly starts after three rival victories, matching the exhaustive
+  catalog fixture and preserving every original enemy/geometry assertion.
+  All three pilot cases pass locally, with the compact Gutter Baron capture
+  inspected. This correction changes only the test fixture, not game behavior.
