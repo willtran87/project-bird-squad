@@ -112,3 +112,17 @@ evidence remain explicitly waived/unverified under the existing release policy.
   regression shard. Inventory reconciliation proves 1,020 regression + 37 campaign
   + 4 reference journeys = 1,061 unique cases, with zero omissions or overlaps.
   Browser qualification, assertions, retries and per-test limits are unchanged.
+- Clean PR run 40440331343 passed 1,061 unique core cases, all 243 browser cases,
+  26 unit/policy checks, static release gates and the Pages-base smoke, with no
+  failed, flaky or skipped cases. PR #15 merged as 9402ee43; its feature branch
+  was deleted locally/remotely. The Pages build is 722.5 KiB against the unchanged
+  725 KiB boot ceiling (above the preferred 710 KiB target).
+- The merged release run 40443371338 found a WebKit controller-fixture failure:
+  the 120 ms synthetic confirm tap ended without closing the focused Call dialog.
+  This test now uses the existing virtual-controller helper, which holds both
+  press and release across processed frames. Focus, once-only effects, unchanged
+  hand/turn and exact Wingbeat assertions remain; game behavior is unchanged.
+  This failed attempt is not counted as a clean release or waived.
+- The frame-aware controller follow-up passed 9/9 locally: three repetitions
+  each in Chromium, Firefox and WebKit, without retries. A clean full main-branch
+  release is required after this test-only correction before publication.

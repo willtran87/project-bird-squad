@@ -1,6 +1,7 @@
 import {test,expect,type Page} from '@playwright/test';
 import {resolveScriptedBattle} from './helpers/scripted-battle';
 import {settleCanvas} from './helpers/settled-canvas';
+import {installVirtualController,pressController} from './helpers/virtual-controller';
 const sizes=[{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}];
 async function route(page:Page){
   await page.goto('./?flight=identity-acceptance&length=full');
@@ -191,9 +192,8 @@ test('Flock Identity five Calls and three combinations have bounded signature pr
 });
 
 test('Flock Identity controller opens the focused Call and commits without playing a card',async({page})=>{
-  await battle(page);await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.flightCombat.charge=3;(window as any).identityPad=[];Object.defineProperty(navigator,'getGamepads',{configurable:true,value:()=>[{index:0,connected:true,mapping:'standard',axes:[0,0,0,0],buttons:Array.from({length:17},(_,i)=>({pressed:(window as any).identityPad.includes(i),value:(window as any).identityPad.includes(i)?1:0}))}]});});
-  const press=async(id:number)=>{await page.evaluate(id=>{(window as any).identityPad=[id];},id);await page.waitForTimeout(120);await page.evaluate(()=>{(window as any).identityPad=[];});await page.waitForTimeout(120);};
+  await installVirtualController(page);await battle(page);await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.flightCombat.charge=3;});
   const before=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return {energy:b.energy,hand:b.hand.length,turn:b.turn};});
-  await press(8);await expect(page.getByRole('button',{name:'Use Leader call',exact:true})).toBeFocused();await press(0);await expect(page.locator('#flyway-book')).toHaveCount(0);
+  await pressController(page,8);await expect(page.getByRole('button',{name:'Use Leader call',exact:true})).toBeFocused();await pressController(page,0);await expect(page.locator('#flyway-book')).toHaveCount(0);
   expect(await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return {energy:b.energy,hand:b.hand.length,turn:b.turn,calls:b.flyway.leaderCalls};})).toEqual({...before,energy:before.energy+2,calls:1});
 });
