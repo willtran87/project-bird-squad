@@ -30,7 +30,11 @@ for(const branch of buildPreens)for(const molt of [false,true])test(`Distinct Bu
   if(!molt)for(const size of sizes){await page.setViewportSize(size);await page.getByRole('button',{name:`Choose ${branch.name}`,exact:true}).scrollIntoViewIfNeeded();expect(await page.locator('#flyway-book').evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);await page.screenshot({path:info.outputPath(`preen-${size.width}.png`)});}
   await page.getByRole('button',{name:`Choose ${branch.name}`,exact:true}).click();
   await page.reload();await page.waitForFunction(()=>JSON.parse((window as any).render_game_to_text?.()??'{}').titleBoot?.ready);
-  await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('MenuScene').continueRun());await ready(page);await battle(page);
+  await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('MenuScene').continueRun());await ready(page);
+  await page.keyboard.press('j');await page.getByRole('button',{name:'Flock & combinations',exact:true}).click();
+  await expect(page.locator('#flyway-book')).toContainText(`${branch.name} Preen`);
+  await expect(page.locator('#flyway-book')).not.toContainText(`${branch.id} Preen`);
+  await page.keyboard.press('Escape');await battle(page);
   const result=await page.evaluate(({id,molt})=>{
     const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'),c=b.allDeckCards().find((c:any)=>c.id===id);
     b.flock.molt=molt;b.energy=20;b.spark=2;b.flock.hp=b.flock.maxHp;b.flock.block=0;
