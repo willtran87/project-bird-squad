@@ -111,3 +111,10 @@ caught one remaining pixel. The final 23px layout is requalified at all three
 sizes. Local build attempts 8 failed while Windows held preview files; stopping
 the owned preview allowed builds 9 and 10 to complete. These attempts remain in
 the evidence logs and are not counted as passing runs.
+
+Run 40654835681 passed all 261 browser cases but found Linux font-height
+clearance failures and two old timing assumptions. The Wingbeat label/value
+row is translated upward together, preserving the 19px label floor; the timing
+tests now expect the accepted shorter repeat and sample Hustle's acceleration
+window instead of skipping past it. Impact protection remains asserted. A local
+18px-label experiment failed the compact type floor and was discarded.

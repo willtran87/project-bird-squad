@@ -387,17 +387,18 @@ function renderHudMetricChip(
     if (icon) addUi(addTo, icon);
   }
   const textLeft = cx - width / 2 + (hasIcon ? 58 : 10);
+  const wingbeat = label === 'Wingbeats' && opts.emphasis === 'primary';
   if (!hasIcon) {
-    addUi(addTo, scene.add.text(textLeft, opts.emphasis || opts.quiet ? cy - 28 : cy - height / 2 + 6, opts.emphasis || opts.quiet ? label : label.toUpperCase(), {
+    addUi(addTo, scene.add.text(textLeft, wingbeat ? cy - 29 : opts.emphasis || opts.quiet ? cy - 28 : cy - height / 2 + 6, opts.emphasis || opts.quiet ? label : label.toUpperCase(), {
       fontFamily: UI_FONT,
       fontSize: opts.emphasis || opts.quiet ? '19px' : compact ? '7px' : '8px',
       fontStyle: opts.emphasis === 'secondary' ? 'normal' : UI_BOLD,
       color: opts.emphasis === 'secondary' ? '#96acba' : '#aabcc8', resolution: 2
     }).setName(`hud-label-${label}`));
   }
-  addUi(addTo, scene.add.text(hasIcon ? cx + 16 : textLeft, hasIcon ? cy + 1 : cy + (compact ? 7 : 8), value, {
+  addUi(addTo, scene.add.text(hasIcon ? cx + 16 : textLeft, hasIcon ? cy + 1 : cy + (compact || wingbeat ? 7 : 8), value, {
     fontFamily: UI_FONT,
-    fontSize: label === 'Wingbeats' && opts.emphasis === 'primary' ? '23px' : opts.emphasis === 'primary' ? '22px' : opts.emphasis === 'secondary' ? '19px' : opts.quiet ? '21px' : hasIcon ? '17px' : compact ? '13px' : '16px',
+    fontSize: wingbeat ? '23px' : opts.emphasis === 'primary' ? '22px' : opts.emphasis === 'secondary' ? '19px' : opts.quiet ? '21px' : hasIcon ? '17px' : compact ? '13px' : '16px',
     fontStyle: UI_BOLD,
     color: opts.emphasis === 'secondary' ? '#b7c7d4' : opts.valueColor ?? '#e7eef7', resolution: 2
   }).setOrigin(hasIcon ? 0.5 : 0, 0.5).setName(`hud-value-${label}`)

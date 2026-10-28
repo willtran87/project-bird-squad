@@ -1922,7 +1922,7 @@ test('adaptive combat pacing preserves first move staging and shortens repeats',
   expect(result.firstScale).toBe(0.38);
   expect(result.firstWindup).toBe(684);
   expect(result.repeatScale).toBeCloseTo(0.24, 2);
-  expect(result.repeatWindup).toBeCloseTo(432, 0);
+  expect(result.repeatWindup).toBe(302);
   expect(result.cinematicScale).toBe(1);
   expect(result.snappyScale).toBeCloseTo(0.18, 2);
   expect(result.bossScale).toBe(0.28);
@@ -1945,8 +1945,12 @@ test('holding Hustle accelerates familiar enemy staging but preserves Impact', a
     b.input.keyboard.emit('keydown-SPACE');
     window.advanceTime!(100);
     const protectedTell=window.__birdSquadState!();
-    window.advanceTime!(200);
-    const accelerated=window.__birdSquadState!();
+    // Observe the acceleration window instead of jumping past the now shorter
+    // familiar windup. Impact must still retain its protected damage hold.
+    let accelerated=window.__birdSquadState!();
+    for(let i=0;i<200 && !accelerated.combatEnemyTurnAcceleration.active && b.combatEnemyTurnBeat!=='impact';i++) {
+      window.advanceTime!(10); accelerated=window.__birdSquadState!();
+    }
     for(let i=0;i<200 && b.combatEnemyTurnBeat!=='impact';i++) window.advanceTime!(10);
     const impact=window.__birdSquadState!();
     window.advanceTime!(200);
@@ -1958,6 +1962,7 @@ test('holding Hustle accelerates familiar enemy staging but preserves Impact', a
   expect(result.protectedTell.combatEnemyTurnAcceleration.eligible).toBe(false);
   expect(result.protectedTell.flock.hp).toBe(result.hp);
   expect(result.accelerated.combatEnemyTurnAcceleration.active).toBe(true);
+  expect(result.accelerated.flock.hp).toBe(result.hp);
   expect(result.impact.combatEnemyTurnBeat).toBe('impact');
   expect(result.impact.combatEnemyTurnAcceleration.available).toBe(false);
   expect(result.impact.flock.hp).toBeLessThan(result.hp);
