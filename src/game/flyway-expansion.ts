@@ -9,7 +9,7 @@ import { writeJournaledJson, readJournaledJson } from './safe-storage';
 import { controlBindingsSnapshot } from './input-bindings';
 import { prefersLeanEffects } from './graphics-quality';
 import { showDownloadRecovery } from '../update-recovery';
-import { bossDisruption, branchCards, branchUpgrade, canalPreens, spirePreens, combinations, conditions, districts, flightStories,
+import { bossDisruption, branchCards, branchUpgrade, canalPreens, spirePreens, buildPreens, combinations, conditions, districts, flightStories,
   journal, resolvedLeaderCall, rivalChapter, newFlywayState, normalizeFlyway, relics, type FlywayState,
   type FlywayCondition, type FlywayRelic, type PreenBranch } from './flyway-rules';
 
@@ -188,7 +188,7 @@ export function installFlyway(raw: Phaser.Scene) {
   function renderPreen(body: HTMLElement) {
     const request = pendingPreen!; const runtime = cardLibrary[request.card.id].runtime;
     const grid = element('div', undefined, 'flyway-grid'); body.append(grid);
-    const extras = mapIndex(scene) === 1 ? canalPreens : mapIndex(scene) === 2 ? spirePreens : [];
+    const extras = [...(mapIndex(scene) === 1 ? canalPreens : mapIndex(scene) === 2 ? spirePreens : []), ...(mapIndex(scene) > 0 ? buildPreens : [])];
     const branches: PreenBranch[] = ['shelter', 'flight', ...extras.filter(entry => entry.card === runtime.id).map(entry => entry.id)];
     for (const branch of branches) {
       const upgrade = branchUpgrade(runtime, branch);
@@ -207,7 +207,7 @@ export function installFlyway(raw: Phaser.Scene) {
     const district = districts[mapIndex(scene)] ?? districts[0];
     section(body, district.name, district.weather);
     renderIdentity(body,s);
-    if (mapIndex(scene) === 0 && scene.runState) renderPlans(body, s);
+    if (scene.runState) renderPlans(body, s);
     if (mapIndex(scene) === 1 || s.canalFerry) renderCanal(body, s);
     if (mapIndex(scene) === 2 || s.spireRelay) renderSpires(body, s);
     if (mapIndex(scene) === 3) renderRoost(body, s);
@@ -251,7 +251,11 @@ export function installFlyway(raw: Phaser.Scene) {
     for (const combo of combinations) section(body, combo.name, combo.rule);
     const deck = scene.runState?.deck ?? scene.allDeckCards?.() ?? [];
     const box = section(body, 'Branching Preens', 'First Flight, Plume Flash, Quill Point, Open Basin, Locked Nest and Hot Feathers offer Shelter (+2 Cover) or Flight (+1 draw) on top of their normal upgrade. Choose at the Preen confirmation.');
-    for (const card of deck.filter((card: any) => branchCards.includes(card.id))) box.append(element('p', `${cardLibrary[card.id]?.name ?? card.id}: ${card.upgraded ? card.preenBranch ? `${card.preenBranch} Preen` : 'original Preen' : 'branches available at a Preen stop'}`));
+    for (const card of deck.filter((card: any) => branchCards.includes(card.id))) {
+      const branch = [...canalPreens, ...spirePreens, ...buildPreens].find(b => b.id === card.preenBranch);
+      const label = branch?.name ?? (card.preenBranch === 'shelter' ? 'Shelter' : 'Flight');
+      box.append(element('p', `${cardLibrary[card.id]?.name ?? card.id}: ${card.upgraded ? card.preenBranch ? `${label} Preen` : 'original Preen' : 'branches available at a Preen stop'}`));
+    }
   }
   function renderCity(body: HTMLElement) {
     const s = state(scene); renderRestoration(body, s);

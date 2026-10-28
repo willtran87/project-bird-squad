@@ -6,6 +6,7 @@ const root = process.cwd();
 const kb = 1024;
 
 const budgets = [
+  { label: 'living bird pose atlas', dir: 'assets/runtime/flock/performances', pattern: /\.webp$/i, maxKb: 575 },
   { label: 'splash WebP', dir: 'assets/splash', pattern: /\.webp$/i, maxKb: 350 },
   { label: 'flock leader WebP', dir: 'assets/runtime/flock/leaders', pattern: /\.webp$/i, maxKb: 280 },
   { label: 'encounter enemy WebP', dir: 'assets/runtime/enemies/full', pattern: /\.webp$/i, maxKb: 260 },

@@ -7,6 +7,15 @@ human, device or assistive-technology evidence.
 
 ## Session kit
 
+Distinct Builds + Living Battles follow-up: use the revision in the
+[upgrade ledger](distinct-builds-living-battles.md). Ask players to describe their
+strategy and its weakness, explain a candidate’s pairing with an owned bird,
+and distinguish predicted potential from recorded contributions. Observe whether
+they exploit the support, alternating-watch and recovery formations without
+coaching. Ask which bird acted, whether the pose change clarified impact, and
+whether the factual flight highlights suggest a specific next flock. Record
+confusion and voluntary replay intent; do not infer either from scripted tests.
+
 Flock in Motion follow-up: use the deployed revision recorded in the
 [current upgrade ledger](flock-in-motion-faster-flights.md). Ask players to point
 to incoming damage and remaining Wingbeats, identify the card that just acted,

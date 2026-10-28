@@ -10,7 +10,7 @@ import { renderCombatReader, renderCombatCardDetail as renderCardReadingPanel, r
 export function renderWaymarkRewardDetail(context: Omit<CardDetailContext, 'ui' | 'typography'>, name: string, description: string, meta: string, notes: string[]) {
   const sections = [
     { heading: 'EFFECT', body: description },
-    { heading: 'CONTEXT', body: `${meta}\n\n${notes.join('\n')}\n\nCard counts include conditional and Molt effects, not guaranteed triggers.\n\nBack returns to the same reward choice. Nothing is claimed here.` },
+    { heading: 'CONTEXT', body: `${meta}\n\n${notes.join('\n')}\n\nCounts include conditional and Molt effects; triggers are not guaranteed.\n\nReading only. Back keeps your reward choice.` },
   ];
   sections.push(...itemKeywordSections([{ title: 'EFFECT', text: description }])
     .map(section => ({ heading: section.title, body: section.text })));

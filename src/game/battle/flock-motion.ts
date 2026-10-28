@@ -18,6 +18,7 @@ export function flockAction(card: Card, contract: ActiveCardContract): FlockActi
  * presenters provide sound and impact; this adds neither a wait nor a projectile. */
 export function playFlockAction(host: any, card: Card, enemyId: string, contract: ActiveCardContract, budget: number) {
   if (!host.fxLayer?.active) return;
+  host.events.emit('living-cast', budget);
   const old = host.fxLayer.getByName('combat-card-cast-ghost');
   if (old) { killTweensForTree(host, old); old.destroy(); }
   const style = flockAction(card, contract), reduced = prefersReducedMotion() || prefersLeanEffects();

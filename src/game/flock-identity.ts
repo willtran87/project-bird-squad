@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { birdAudio, prefersReducedMotion, killTweensForTree, UI_FONT, queueRuntimeImageAssets } from '../main';
 import { prefersLeanEffects } from './graphics-quality';
+import { flightHighlights } from './flight-highlights';
+import { cardLibrary } from '../main';
 import { codexLeaderArtAssets } from './leader-portrait-assets';
 import { callSpecializations, resolvedLeaderCall, combinations, rivalChapter, journal, type FlywayState } from './flyway-rules';
 
@@ -31,6 +33,8 @@ export function renderIdentity(root:HTMLElement,scene:Scene,s:FlywayState,mutate
 }
 
 export function renderIdentityEnding(root:HTMLElement,s:FlywayState){
+  const labels = ['A combination to remember', 'A familiar wing', 'A choice in the city', 'Your next flock'];
+  flightHighlights(s, id => cardLibrary[id]?.name ?? id).forEach((text, i) => section(root, labels[i], text));
   if(s.rivalWins)section(root,'Caldra keeps the crossing',rivalChapter(s.rivalWins-1).ending);
   if(s.story==='chorus-line')section(root,s.storyComplete?'Every roof answers':'The unfinished chorus',s.storyComplete?'Spark-Caller waits. One call returns from the market, another from the mast, then a whole street answers. The warning is now everyone’s song.':'The warning reached some roofs. Spend 12 Resonance and use three Calls on a winning flight to complete the chorus.');
   if(s.story==='clean-cut')section(root,s.storyComplete?'A path for smaller wings':'The watch remains',s.storyComplete?'Talon folds the striking wing and lands beside the smallest bird. The watch has stepped back; the whole flock crosses together.':'The flock found openings, but the passage is unfinished. Land 12 card hits on Winded enemies and use three Calls on a winning flight.');
@@ -44,7 +48,10 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
   document.body.append(callButton,sequence);
   const stats={decisionMs:0,animationMs:0,rewardMs:0,cleanupMs:0,signatures:0};scene.identityPacing=stats;
   let last=performance.now(),active=0;
+  let alive=true, performances: ReturnType<typeof import('./living-performances')['installLivingPerformances']> | undefined;
+  void import('./living-performances').then(module=>{if(alive)performances=module.installLivingPerformances(scene);}).catch(()=>{});
   const update=()=>{
+    performances?.update();
     const now=performance.now(),dt=Math.min(500,now-last);last=now;
     const paused=scene.sys.isPaused()||!scene.sys.isActive()||document.hidden||scene.pauseOverlayOpen||scene.settingsOverlayOpen;
     if(!paused){
@@ -87,7 +94,7 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
     const group=scene.add.container().setName(`identity-signature-${kind}`);scene.fxLayer.add(group);active++;stats.signatures++;
     const caption=scene.add.text(480,205,name,{fontFamily:UI_FONT,fontSize:'18px',color:'#fff1cf',backgroundColor:'#0a1721',padding:{x:10,y:6}}).setOrigin(.5);group.add(caption);
     const art=codexLeaderArtAssets[leader];
-    if(art&&scene.textures.exists(art.key)){
+    if(art&&scene.textures.exists(art.key)&&(combo||!scene.livingPerformances?.ready)){
       const bird=scene.add.image(400,290,art.key);bird.setScale(105/bird.height);group.add(bird);
       if(!reduced)scene.tweens.add({targets:bird,x:combo?.effect==='damage'||index===2?565:index===3?435:485,y:index===4?302:index===3?270:245,angle:index===2?-18:index===4?0:9,duration:420,yoyo:true});
     }
@@ -95,12 +102,12 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
       const wing=scene.add.ellipse(480+n*23,300,combo?.effect==='cover'?65:32,combo?.effect==='damage'?4:10,color,.8).setAngle(combo?.effect==='damage'?-35:combo?.effect==='cover'?0:n*18-18);group.add(wing);
       if(!reduced)scene.tweens.add({targets:wing,x:wing.x+(combo?.effect==='damage'?90:20),y:wing.y-(combo?.effect==='cover'?0:30),alpha:0,duration:540+n*60});
     }
-    birdAudio.play(combo?(combo.effect==='damage'?'hitConfirm':combo.effect==='cover'?'cover':'spend'):(['formation','spend','heavyAttack','heal','coverBlock'] as const)[Math.max(0,index)],.65);
+    if(combo||!scene.livingPerformances?.ready)birdAudio.play(combo?(combo.effect==='damage'?'hitConfirm':combo.effect==='cover'?'cover':'spend'):(['formation','spend','heavyAttack','heal','coverBlock'] as const)[Math.max(0,index)],.65);
     group.once('destroy',()=>{active=Math.max(0,active-1);});
     scene.time.delayedCall(850,()=>{if(group.active){killTweensForTree(scene,group);group.destroy(true);}});
   };
   const onCall=(name?:string)=>signature('call',name??resolvedLeaderCall(scene.runLeaderId,scene.flyway).name);
   const onCombo=(combo?:{id:string;name:string})=>{if(combo)signature(combo.id,combo.name);};
   scene.events.on('flyway-call',onCall);scene.events.on('flyway-combination',onCombo);
-  return {update,destroy:()=>{callButton.remove();sequence.remove();window.removeEventListener('keydown',key,true);scene.events.off('flyway-call',onCall);scene.events.off('flyway-combination',onCombo);}};
+  return {update,destroy:()=>{alive=false;performances?.destroy();callButton.remove();sequence.remove();window.removeEventListener('keydown',key,true);scene.events.off('flyway-call',onCall);scene.events.off('flyway-combination',onCombo);}};
 }

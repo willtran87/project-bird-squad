@@ -893,6 +893,17 @@
   ],
   "encounters": [
     {
+      "id": "enc_spire_quiet_beat",
+      "name": "The Quiet Beat",
+      "mapId": "map_03_signal_spires",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "The grackle gathers force, strikes, then takes a Quiet Beat with no effects. Prepare Cover for the charged strike and a combination for its recovery. The cycle repeats.",
+      "tags": ["heavy", "tempo"],
+      "enemies": ["spire_beacon_grackle"],
+      "rewardProfileId": "street_map03"
+    },
+    {
       "id": "enc_spire_relay_swarm",
       "name": "Crossed Wires",
       "mapId": "map_03_signal_spires",

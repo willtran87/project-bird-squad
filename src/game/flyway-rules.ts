@@ -1,6 +1,6 @@
 import type { CardSuit, RuntimeCard, RuntimeCardUpgrade, RuntimeEnemy } from './types';
 
-export type PreenBranch = 'shelter' | 'flight' | 'canal-anchor' | 'canal-counter' | 'canal-chorus' | 'canal-cadence' | 'canal-harbor' | 'canal-current' | 'spire-watch' | 'spire-chorus' | 'spire-aperture';
+export type PreenBranch = 'shelter' | 'flight' | 'canal-anchor' | 'canal-counter' | 'canal-chorus' | 'canal-cadence' | 'canal-harbor' | 'canal-current' | 'spire-watch' | 'spire-chorus' | 'spire-aperture' | 'build-shelter' | 'build-answer' | 'build-chorus' | 'build-echo' | 'build-storm' | 'build-landing';
 export type FlightStoryId = 'open-sky' | 'small-flock' | 'unbroken' | 'chorus-line' | 'clean-cut';
 export type FlywayCondition = 'clear' | 'crosswind' | 'rain' | 'scaffold';
 export type FlywayRelic = 'woven-roost' | 'storm-pin' | 'light-travel';
@@ -35,6 +35,8 @@ export interface FlywayState {
   cleanFights: number;
   rooftopPlan?: RooftopPlan;
   coachingOff?: boolean;
+  comboMoment?: { id: string; turn: number; damage: number; cover: number; resonance: number; defeated: boolean };
+  cardMoment?: { cardId: string; plays: number; damage: number; cover: number };
   cityAid?: Array<'sella' | 'oren' | 'ivo'>;
   callStyle?: 'shelter' | 'flight';
   resonanceSpent?: number;
@@ -173,6 +175,14 @@ export function normalizeFlyway(value: unknown): FlywayState {
   for (const key of ['resonanceSpent','windedHits'] as const) if (v[key] !== undefined) s[key]=finite(v[key]);
   if (v.rooftopPlan === 'shelter' || v.rooftopPlan === 'tempo' || v.rooftopPlan === 'molt') s.rooftopPlan = v.rooftopPlan;
   if (v.coachingOff === true) s.coachingOff = true;
+  const moment = v.comboMoment as FlywayState['comboMoment'];
+  if (moment && combinations.some(c => c.id === moment.id)) s.comboMoment = {
+    id: moment.id, turn: finite(moment.turn), damage: finite(moment.damage), cover: finite(moment.cover), resonance: finite(moment.resonance), defeated: moment.defeated === true,
+  };
+  const cardMoment = v.cardMoment as FlywayState['cardMoment'];
+  if (cardMoment && typeof cardMoment.cardId === 'string' && finite(cardMoment.plays)) s.cardMoment = {
+    cardId: cardMoment.cardId.slice(0, 80), plays: finite(cardMoment.plays), damage: finite(cardMoment.damage), cover: finite(cardMoment.cover),
+  };
   const ferry = v.canalFerry && typeof v.canalFerry === 'object' ? v.canalFerry as Record<string, unknown> : undefined;
   if (ferry && typeof ferry === 'object' && (ferry.pledge === 'timber' || ferry.pledge === 'lamps')) {
     s.canalFerry = { pledge: ferry.pledge, startedAt: Math.floor(finite(ferry.startedAt)) };
@@ -253,14 +263,36 @@ export function spireRelayProgress(s: FlywayState) {
   const clears = new Set(s.settledNodes.filter(id => id.startsWith('2:'))).size;
   return { clears, ready: !!s.spireRelay && (s.restored.includes(2) || clears >= s.spireRelay.startedAt + 2) };
 }
+/** Complementary birds become available after leaving the first district.
+ * Replace active rules, never add an undisclosed passive bonus. */
+export const buildPreens: typeof canalPreens = [
+  { id: 'build-shelter', card: 'cups_ace', name: 'Shelter Song', plan: 'Hold & Answer', cost: 1,
+    tradeoff: 'Trade healing for 6 Cover and retaining one card. Follow a Quill for Safe Landing; retained attacks still need Wingbeats.',
+    effects: ['gainCover(6)', 'retainHand(1)'], moltEffects: ['damage(target, 6)', 'gainOpenSkyGuard(1)'] },
+  { id: 'build-answer', card: 'swords_ace', name: 'Patient Answer', plan: 'Hold & Answer', cost: 1,
+    tradeoff: 'Deal only 4 damage now; bank 1 Wingbeat for the next turn. A Nest first also earns Brace & Cut.',
+    effects: ['damage(target, 4)', 'gainEnergyNextTurn(1)'], moltEffects: ['gainCover(7)', 'retainHand(1)'] },
+  { id: 'build-chorus', card: 'cups_ace', name: 'Answering Basin', plan: 'Chorus Engine', cost: 1,
+    tradeoff: 'Trade healing for 2 Resonance and 2 Cover. A Plume afterward earns Rain Chorus; this is weak protection by itself.',
+    effects: ['gainResonance(2)', 'gainCover(2)'], moltEffects: ['gainWingbeat(1)', 'gainCover(2)'] },
+  { id: 'build-echo', card: 'major_00', name: 'Returning Call', plan: 'Chorus Engine', cost: 1,
+    tradeoff: 'Give up damage and normal draw. Gain 4 Cover; draw two only when Resonance was already prepared.',
+    effects: ['if hasResonance then draw(2)', 'gainCover(4)'], moltEffects: ['gainResonance(2)', 'gainCover(4)'] },
+  { id: 'build-storm', card: 'swords_ace', name: 'Storm Shelter', plan: 'Storm Window', cost: 1,
+    tradeoff: 'Give up the normal strike for Cover and active Guard. In Molt this becomes a 10-damage strike with no Cover gain.',
+    effects: ['gainCover(5)', 'gainOpenSkyGuard(2)'], moltEffects: ['damage(target, 10)'] },
+  { id: 'build-landing', card: 'major_00', name: 'Homeward Wing', plan: 'Storm Window', cost: 1,
+    tradeoff: 'Give up damage and draw for 6 Cover. In Molt gain 8 Cover and bank 1 Wingbeat for the next turn.',
+    effects: ['gainCover(6)'], moltEffects: ['gainCover(8)', 'gainEnergyNextTurn(1)'] },
+];
 export function validBranch(id: string, value: unknown): PreenBranch | undefined {
-  const canal = [...canalPreens, ...spirePreens].find(branch => branch.card === id && branch.id === value);
+  const canal = [...canalPreens, ...spirePreens, ...buildPreens].find(branch => branch.card === id && branch.id === value);
   if (canal) return canal.id;
   return branchCards.includes(id) && (value === 'shelter' || value === 'flight') ? value : undefined;
 }
 export function branchUpgrade(card: RuntimeCard, branch?: PreenBranch): RuntimeCardUpgrade {
   const base = card.upgrade;
-  const canal = [...canalPreens, ...spirePreens].find(entry => entry.card === card.id && entry.id === branch);
+  const canal = [...canalPreens, ...spirePreens, ...buildPreens].find(entry => entry.card === card.id && entry.id === branch);
   if (canal) return { ...base, cost: canal.cost ?? base.cost, effects: [...canal.effects], moltEffects: [...canal.moltEffects] };
   if (!branch || !branchCards.includes(card.id)) return base;
   const extra = branch === 'shelter' ? 'gainCover(2)' : 'draw(1)';

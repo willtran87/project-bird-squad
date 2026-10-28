@@ -1138,6 +1138,28 @@
   ],
   "encounters": [
     {
+      "id": "enc_canal_open_perch",
+      "name": "The Open Perch",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "The exposed crow stores force for the gull, then shields it. Remove the crow to stop future support; already stored force remains. Both recover on their third Tell.",
+      "tags": ["multi", "support", "cover"],
+      "enemies": ["canal_barge_gull", "canal_market_crow"],
+      "rewardProfileId": "street_map02"
+    },
+    {
+      "id": "enc_canal_alternating_watch",
+      "name": "The Alternating Watch",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "The gull strikes first while the crow braces; next beat the crow strikes while the gull braces. Retain protection for the second hit. Both recover on beat three.",
+      "tags": ["multi", "cover", "tempo"],
+      "enemies": ["canal_barge_gull", "canal_market_crow"],
+      "rewardProfileId": "street_map02"
+    },
+    {
       "id": "enc_canal_dock_swarm",
       "name": "The Pantry Line",
       "mapId": "map_02_canal_markets",
