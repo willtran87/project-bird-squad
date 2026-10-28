@@ -34,7 +34,7 @@ test('combat decision hierarchy preserves HUD targets and readable forecasts', a
         guided: b.isGuidedFirstCombat(), hint: Boolean(b.root.getByName('combat-input-hint')),
       };
     });
-    expect(hud.primary).toEqual(['22px', '24px']);
+    expect(hud.primary).toEqual(['22px', '23px']);
     expect(hud.secondary).toEqual(['19px', '19px', '19px', '19px']);
     expect(hud.hitTargets).toBe(true); expect(hud.labelsSeparate).toBe(true); expect(hud.guided).toBe(true); expect(hud.hint).toBe(false);
     await page.screenshot({ path: info.outputPath(`ready-${viewport.width}.png`) });

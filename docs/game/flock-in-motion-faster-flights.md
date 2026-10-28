@@ -100,9 +100,14 @@ including its grep prefix. The corrected run must report 87 cases per browser;
 the earlier run is not counted as complete release evidence.
 
 The superseded run also exposed a Wingbeat value/label overlap; the value now
-uses 24px (still above Cover at 22px and inventory at 19px), and the geometry
+uses 23px (still above Cover at 22px and inventory at 19px), and the geometry
 checks also assert clearance above Flow. Existing exact-size and reduced-motion
 expectations were updated for the accepted hierarchy and stationary cue, while
 retaining impact cleanup and adding stationary/no-tween assertions. Final reader
 captures exposed a Flyway shortcut over the report; the report now owns that
 input window. Run 40653075512 was canceled before qualification for these fixes.
+Run 40653671519 was also superseded when the newly added Flow-clearance assertion
+caught one remaining pixel. The final 23px layout is requalified at all three
+sizes. Local build attempts 8 failed while Windows held preview files; stopping
+the owned preview allowed builds 9 and 10 to complete. These attempts remain in
+the evidence logs and are not counted as passing runs.
