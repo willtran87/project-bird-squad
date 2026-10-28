@@ -125,9 +125,10 @@ test('Distinct Builds flight highlights use actual combinations and survive the 
     for(const zone of ['hand','drawPile','discardPile','clearedPile'])b[zone]=b[zone].filter((c:any)=>c.instanceId!==nest.instanceId&&c.instanceId!==quill.instanceId);
     b.hand.push(nest,quill);b.energy=20;b.enemies[0].hp=b.enemies[0].maxHp=1000;b.playCard(nest);b.playCard(quill);
     b.flyway.cityAid=['oren'];b.flyway.canalFerry={pledge:'timber',startedAt:0,rewarded:true};b.flock.hp=0;b.checkOutcome();b.renderAll();
-    return {moment:b.flyway.comboMoment,card:b.flyway.cardMoment,summary:(window as any).__birdSquadLastRun.flyway};
+    return {moment:b.flyway.comboMoment,card:b.flyway.cardMoment,summary:(window as any).__birdSquadLastRun.flyway,archive:JSON.parse((window as any).__birdSquadExportRuns()).at(-1).flyway};
   });
   expect(evidence.moment.id).toBe('brace-cut');expect(evidence.moment.damage).toBeGreaterThan(0);expect(evidence.card.plays).toBeGreaterThan(0);expect(evidence.summary.comboMoment).toEqual(evidence.moment);
+  expect(evidence.archive).toEqual(evidence.summary);
   await expect(page.locator('#flyway-launch')).toBeVisible();await page.keyboard.press('j');await page.getByRole('button',{name:'Flight journal',exact:true}).click();
   await expect(page.locator('#flyway-book')).toContainText('most-played recorded bird');await expect(page.locator('#flyway-book')).toContainText('claimed its Guard');
   await page.screenshot({path:info.outputPath('flight-highlights.png')});

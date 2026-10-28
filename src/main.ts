@@ -21768,6 +21768,7 @@ function sanitizeRunSummary(value: unknown): RunSummary | undefined {
   return {
     id,
     seed,
+    flyway: isRecord(value.flyway) ? normalizeFlyway(value.flyway) : undefined,
     pendingCardClaims: pendingCardClaims.length ? pendingCardClaims : undefined,
     result: value.result,
     leaderId: typeof value.leaderId === 'string' && flockLeaders.some((leader) => leader.id === value.leaderId)

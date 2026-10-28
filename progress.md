@@ -14,6 +14,11 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
   presentation cases pass across Chromium, Firefox and WebKit, including actual
   card and rival impact events. Full CI qualification and publication are pending.
 - Root boot is 697.1 KiB / 195.0 KiB gzip, below the unchanged 710 KiB cap.
+- Final local upgrade suite passed 20/20. Review then caught the flight-report
+  sanitizer omitting highlights; it now normalizes the optional Flyway snapshot,
+  and the archive test checks exported history as well as the journal.
+- Preliminary PR runs were superseded for readable Preen labels and that archive
+  repair; they are not counted as complete release qualification.
 - Human sessions remain unperformed; prepared handoff remains the acceptance path.
 
 ## 2026-10-28 — Flock in Motion + Faster Flights
