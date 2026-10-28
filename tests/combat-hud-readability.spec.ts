@@ -53,6 +53,7 @@ test(`combat HUD keeps actionable text readable and secondary goals out of enemy
         return {
           floors: texts.filter(Boolean).map((o: any) => ({ name: o.name || o.text, css: parseFloat(o.style.fontSize) * scale })),
           labelsSeparate: metrics.every(key => b.root.getByName(`hud-label-${key}`).getBounds().bottom <= b.root.getByName(`hud-value-${key}`).getBounds().top),
+          energyFlowSeparate: b.root.getByName('hud-value-Wingbeats').getBounds().bottom <= b.root.getByName('combat-flow-rail').getBounds().top,
           metricsSeparate: metrics.every((key, i) => i === metrics.length - 1 ||
             Math.max(b.root.getByName(`hud-label-${key}`).getBounds().right, b.root.getByName(`hud-value-${key}`).getBounds().right)
               < b.root.getByName(`hud-label-${metrics[i + 1]}`).getBounds().left),
@@ -71,6 +72,7 @@ test(`combat HUD keeps actionable text readable and secondary goals out of enemy
       for (const item of measured.floors) expect(item.css, `${phase}: ${item.name}`).toBeGreaterThanOrEqual(
         ['hud-value-Cover', 'hud-value-Wingbeats', 'hud-value-Cohesion', 'combat-roost-label', 'first-combat-guidance'].includes(item.name) ? 16 : 14);
       expect(measured.labelsSeparate).toBe(true);
+      expect(measured.energyFlowSeparate).toBe(true);
       expect(measured.metricsSeparate).toBe(true);
       expect(measured.roostContained).toBe(true); expect(measured.roostSeparate).toBe(true);
       expect(measured.guidanceContained).toBe(true); expect(measured.objectiveContained).toBe(true);

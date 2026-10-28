@@ -42,8 +42,8 @@ export function totalContributions(combats: Array<{ cardContributions?: CardCont
 
 export function contributionResults(row: CardContribution): string[] {
   return [row.damage && `${row.damage} damage`, row.cover && `${row.cover} Cover gained`,
-    row.healing && `${row.healing} Cohesion restored`, row.drawn && `${row.drawn} cards drawn`,
-    row.wingbeats && `${row.wingbeats} Wingbeats gained`, row.resonance && `${row.resonance} Resonance gained`,
+    row.healing && `${row.healing} Cohesion restored`, row.drawn && `${row.drawn} card${row.drawn === 1 ? '' : 's'} drawn`,
+    row.wingbeats && `${row.wingbeats} Wingbeat${row.wingbeats === 1 ? '' : 's'} gained`, row.resonance && `${row.resonance} Resonance gained`,
     row.spent && `${row.spent} Resonance spent`, row.flow && `${row.flow} Flow built`].filter(Boolean) as string[];
 }
 

@@ -397,7 +397,7 @@ function renderHudMetricChip(
   }
   addUi(addTo, scene.add.text(hasIcon ? cx + 16 : textLeft, hasIcon ? cy + 1 : cy + (compact ? 7 : 8), value, {
     fontFamily: UI_FONT,
-    fontSize: label === 'Wingbeats' && opts.emphasis === 'primary' ? '27px' : opts.emphasis === 'primary' ? '22px' : opts.emphasis === 'secondary' ? '19px' : opts.quiet ? '21px' : hasIcon ? '17px' : compact ? '13px' : '16px',
+    fontSize: label === 'Wingbeats' && opts.emphasis === 'primary' ? '24px' : opts.emphasis === 'primary' ? '22px' : opts.emphasis === 'secondary' ? '19px' : opts.quiet ? '21px' : hasIcon ? '17px' : compact ? '13px' : '16px',
     fontStyle: UI_BOLD,
     color: opts.emphasis === 'secondary' ? '#b7c7d4' : opts.valueColor ?? '#e7eef7', resolution: 2
   }).setOrigin(hasIcon ? 0.5 : 0, 0.5).setName(`hud-value-${label}`)

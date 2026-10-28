@@ -157,6 +157,14 @@ test('Flock Motion fixed hand grid, HUD and resolved feedback fit all supported 
   }
   await page.evaluate(() => { const b = (window as any).__birdSquadGame.scene.getScene('BattleScene'); b.selectedInstanceId = undefined; b.onCardClicked(b.hand[0].instanceId); });
   await expect(page.locator('#identity-sequence')).toBeHidden();
+  await page.evaluate(() => { const b = (window as any).__birdSquadGame.scene.getScene('BattleScene'); b.flock.hp = 0; b.checkOutcome(); b.renderAll(); });
+  await expect(page.locator('#flyway-launch')).toBeVisible();
+  await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').openOutcomeFlightDetails());
+  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').root.getByName('run-flight-details-section-body'));
+  await expect(page.locator('#flyway-launch')).toBeHidden();
+  await page.keyboard.press('j'); await expect(page.locator('#flyway-book')).toHaveCount(0);
+  await page.evaluate(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').closeOutcomeFlightDetails());
+  await expect(page.locator('#flyway-launch')).toBeVisible();
 });
 
 test('Flock Motion familiar attacks shorten preparation while preserving impact holds and cinematic timing', async ({ page }, info) => {

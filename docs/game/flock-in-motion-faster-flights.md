@@ -98,3 +98,11 @@ The initial PR run (40651657521) was superseded after discovering that the
 browser command's explicit file list omitted `flock-motion.spec.ts`, despite
 including its grep prefix. The corrected run must report 87 cases per browser;
 the earlier run is not counted as complete release evidence.
+
+The superseded run also exposed a Wingbeat value/label overlap; the value now
+uses 24px (still above Cover at 22px and inventory at 19px), and the geometry
+checks also assert clearance above Flow. Existing exact-size and reduced-motion
+expectations were updated for the accepted hierarchy and stationary cue, while
+retaining impact cleanup and adding stationary/no-tween assertions. Final reader
+captures exposed a Flyway shortcut over the report; the report now owns that
+input window. Run 40653075512 was canceled before qualification for these fixes.
