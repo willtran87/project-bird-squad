@@ -639,12 +639,13 @@ export function enemyMoveTimings(host: any, enemy: any, move: any) {
   // readable result hold while giving these moves a shorter preparation beat.
   const simpleSupport = move.effects.length > 0
     && move.effects.every((effect: string) => /^(gainCover|heal|healSelf|gainStrength)\(/.test(effect));
-  const recoveryOnly = host.runSeenEnemyMoves.has(host.enemyMovePacingKey(enemy,move))
+  const familiar = host.runSeenEnemyMoves.has(host.enemyMovePacingKey(enemy, move));
+  const recoveryOnly = familiar
     && (move.effects.length === 0 || move.effects.every((effect:string)=>/^gainCover\((?:self,\s*)?0\)$/.test(effect)));
   const delay = (normal: number, film: number) => host.combatTimingDelay(cinematic ? film : normal, scale);
   return {
-    windup: delay(recoveryOnly ? 300 : simpleSupport ? 1200 : 1800, ENEMY_ATTACK_WINDUP_MS),
-    release: delay(recoveryOnly ? 0 : simpleSupport ? 280 : 550, ENEMY_ATTACK_RELEASE_MS),
+    windup: delay(recoveryOnly ? 300 : familiar ? (simpleSupport ? 840 : 1260) : simpleSupport ? 1200 : 1800, ENEMY_ATTACK_WINDUP_MS),
+    release: delay(recoveryOnly ? 0 : familiar ? (simpleSupport ? 196 : 385) : simpleSupport ? 280 : 550, ENEMY_ATTACK_RELEASE_MS),
     anticipation: delay(0, ENEMY_ATTACK_IMPACT_ANTICIPATION_MS),
     impact: delay(650, ENEMY_ATTACK_IMPACT_HOLD_MS),
     recovery: delay(240, ENEMY_ATTACK_RECOVER_MS),
@@ -764,3 +765,7 @@ export function resolveEnemyTurnAnimated(
   host.renderAll();
   host.combatRoostHandoff();
 }
+
+export * from './battle/action-presentation';
+
+export { playFlockAction, presentCardPayoff } from './battle/flock-motion';

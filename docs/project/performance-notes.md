@@ -1,5 +1,33 @@
 # Performance Notes
 
+## October 28 2026 — Flock in Motion
+
+Fifty-seven combat presenters moved unchanged into the battle-loaded FX module;
+AST comparison confirms their bodies match the baseline (apart from an explicit
+callback type). Root build boot code falls from 721.5 to 692.7 KiB; main is
+650.6 KiB. The existing 710 KiB preferred boot target is now the hard ceiling.
+The combined combat FX/action chunk has a new 64 KiB ceiling. Other caps are
+unchanged. Card action illustrations reuse loaded textures; title requests no
+new artwork. Pages-base figures are recorded in the release ledger after CI.
+
+Native-clock Chromium at 1440×900, same explicit First Flight fixture, sequential
+runs with no parallel browser job or synthetic stepping:
+
+| Metric | Before | After |
+| --- | ---: | ---: |
+| Nine card plays, median ms | 335.5 | 339.3 |
+| Card frame P95 / max ms | 66.7 / 83.4 | 66.7 / 66.7 |
+| Three battle entries, median ms | 1897.0 | 1947.6 |
+| Entry frame P95 / max ms | 83.4 / 383.3 | 100.0 / 283.2 |
+| Two warm entries, frame P95 / max ms | 33.4 / 100.0 | 50.0 / 100.0 |
+
+These small samples show reduced boot bytes, essentially unchanged card latency,
+and mixed entry timing. They do not establish an overall frame-rate improvement.
+Familiar enemy preparation/release is 30% shorter by rule, with existing impact
+and recovery durations preserved; the normal card resolution window is unchanged.
+Evidence: `.artifacts/motion-baseline/profile.json`,
+`.artifacts/motion-candidate/profile.json`, `.artifacts/motion-final-budget.log`.
+
 ## October 25 2026 — Opening district presentation
 
 The optional strategy presentation is a separate 7.4 KiB module (9 KiB hard

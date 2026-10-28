@@ -1,3 +1,4 @@
+import { contributionReading, type CardContribution } from './card-contributions';
 import { UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT } from './ui-tokens';
 import Phaser from 'phaser';
 import { quietButton } from './quiet-ui';
@@ -120,6 +121,7 @@ interface OutcomeFlightSummary extends DefeatReviewRunSummary {
   routeDecisions: Array<{ decisionMs: number }>;
   combatResults: Array<DefeatReviewRunSummary['combatResults'][number] & {
     damageDealt: number;
+    cardContributions?: CardContribution[];
     cohesionLost: number;
     objective?: { status: 'complete' | 'failed' | 'active' };
   }>;
@@ -176,6 +178,7 @@ export function buildOutcomeFlightDetails(
     ...summary.signals.map((event) => `Signal · ${lookups.signalChoice(event.signalId, event.choiceKey)}`),
     `Objectives · ${completedObjectives} complete / ${failedObjectives} missed`,
     `Cards played · ${stats?.cardsPlayed ?? 0} · Overextensions ${stats?.overextensions ?? 0}`,
+    `OBSERVED CARD CONTRIBUTIONS\n${contributionReading(summary.combatResults, lookups.cardName)}`,
     `Cover blocked · ${stats?.blockedDamage ?? 0} · Unspent Wingbeats ${stats?.unspentWingbeatAtRoost ?? 0}`,
   ];
   const totalDealt = summary.combatResults.reduce((sum, combat) => sum + combat.damageDealt, 0);

@@ -61,15 +61,16 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
     if(hidden)return;
     const r=scene.game.canvas.getBoundingClientRect(),scale=r.width/1280;
     Object.assign(callButton.style,{left:`${r.left+14*scale}px`,top:`${r.top+321*scale}px`,width:`${142*scale}px`,fontSize:`${Math.max(12,14*scale)}px`});
-    Object.assign(sequence.style,{left:`${r.left+370*scale}px`,top:`${r.top+402*scale}px`,width:`${625*scale}px`,fontSize:`${Math.max(12,15*scale)}px`});
+    Object.assign(sequence.style,{left:`${r.left+370*scale}px`,top:`${r.top+402*scale}px`,width:`${625*scale}px`,fontSize:`${scene.motionPayoff && scene.time.now < scene.motionPayoff.until ? Math.max(14,18*scale) : Math.max(12,15*scale)}px`});
     const call=resolvedLeaderCall(scene.runLeaderId,scene.flyway),combat=scene.flightCombat;
     const label=combat.called?'Call used · F9':combat.charge>=call.goal?'Call ready · F9':`Call ${combat.charge}/${call.goal} · F9`;
     if(callButton.textContent!==label)callButton.textContent=label;
     callButton.title=`${call.name}: ${call.charge} ${call.effect}`;
     callButton.setAttribute('aria-label',`Inspect Leader Call. ${call.name}. ${combat.charge}/${call.goal}. ${combat.called?'Used this fight.':call.effect} Keyboard F9; controller View.`);
     const next=combinations.filter(c=>c.first===combat.previousSuit&&!combat.combos.includes(c.id));
-    const text=next.length?next.map(c=>`${c.name}: ${c.first} → ${c.second}`).join(' · '):combat.previousSuit?`Last suit: ${combat.previousSuit} · no unfinished combination`:'Combinations: Nests → Quills · Basins → Plumes · Quills → Basins';
+    const text=scene.motionPayoff && scene.time.now < scene.motionPayoff.until ? scene.motionPayoff.text : next.length?next.map(c=>`${c.name}: ${c.first} → ${c.second}`).join(' · '):combat.previousSuit?`Last suit: ${combat.previousSuit} · no unfinished combination`:'Combinations: Nests → Quills · Basins → Plumes · Quills → Basins';
     if(sequence.textContent!==text)sequence.textContent=text;
+    sequence.dataset.feedback=scene.motionPayoff && scene.time.now < scene.motionPayoff.until ? 'resolved' : 'combination';
   };
   const key=(event:KeyboardEvent)=>{
     if(event.code!=='F9'||event.repeat||event.ctrlKey||event.altKey||event.metaKey||event.shiftKey||blocked()||!scene.sys.isActive()||scene.mode!=='battle')return;

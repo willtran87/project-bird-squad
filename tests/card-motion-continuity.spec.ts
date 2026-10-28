@@ -35,10 +35,14 @@ for (const setting of [
     b.selectedInstanceId = card.instanceId; b.playCardAnimated(card, enemy.id);
     const ghost = b.fxLayer.getByName('combat-card-cast-ghost');
     const budget = ghost?.getData('budgetMs');
+    const origin = ghost && { x: ghost.x, y: ghost.y };
     w.advanceTime(60); record(); b.time.paused = true; b.tweens.pauseAll();
-    return { ghost: Boolean(ghost), budget };
+    return { ghost: Boolean(ghost), budget, reduced: ghost?.getData('reducedMotion'),
+      stationary: !!ghost && ghost.x === origin.x && ghost.y === origin.y, tweens: ghost ? b.tweens.getTweensOf(ghost).length : 0 };
   });
-  expect(start.ghost).toBe(!setting.reduced);
+  expect(start.ghost).toBe(true);
+  expect(start.reduced).toBe(setting.reduced);
+  if (setting.reduced) { expect(start.stationary).toBe(true); expect(start.tweens).toBe(0); }
   await page.screenshot({ path: info.outputPath('cast-2560.png') });
   const result = await page.evaluate(() => {
     const w = window as any, b = w.__birdSquadGame.scene.getScene('BattleScene');

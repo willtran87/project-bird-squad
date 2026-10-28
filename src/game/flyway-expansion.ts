@@ -52,7 +52,7 @@ function isBusy(scene: Scene) {
   return document.querySelector('dialog[open]:not(#flyway-book)') || scene.confirmExitOpen || scene.shouldChooseDistrictContract?.() || scene.routeCommitPending
     || scene.pauseOverlayOpen || scene.settingsOverlayOpen || scene.settingsOverlay?.active || scene.helpOverlay?.active || scene.leaderTooltip?.active || scene.titleRunLaunchPending || scene.codexOpening
     || scene.combatAnimationPending || scene.combatIntroActive || scene.discardChoice || scene.returnChoice
-    || scene.inspectOverlay || scene.combatCardDetail?.active || scene.supplyDrawerOpen || scene.waymarkDrawerOpen
+    || scene.inspectOverlay || scene.combatCardDetail?.active || scene.outcomeDetailsOpen || scene.supplyDrawerOpen || scene.waymarkDrawerOpen
     || scene.deckOverlayOpen || scene.flockOverlayOpen || scene.nodeChoiceOpen || scene.marketOpen
     || scene.pendingRouteReward || scene.cardPickerMode || scene.root?.getByName('pending-overlay')?.active
     || scene.scene.key === 'BattleScene' && !scene.fxLayer?.active;
