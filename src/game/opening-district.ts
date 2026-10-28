@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
-import { cardLibrary, cardArtAssets, prefersReducedMotion, firstFlightGuideState, currentMove, UI_FONT } from '../main';
+import { cardLibrary, cardsFromSave, cardArtAssets, prefersReducedMotion, firstFlightGuideState, currentMove, UI_FONT } from '../main';
 import { rooftopPlanMatch, combinations, type FlywayState, type RooftopPlan } from './flyway-rules';
 import { prefersLeanEffects } from './graphics-quality';
+import { buildRecipes } from './build-guidance';
+import { alphaRouteMarkLibrary } from './runtime-data';
 
 type Scene = Phaser.Scene & Record<string, any>;
 export const rooftopPlans: Array<{ id: RooftopPlan; name: string; play: string; preen: string; cost: string }> = [
@@ -16,15 +18,20 @@ export function renderRooftopPlans(parent: HTMLElement, scene: Scene, state: Fly
   note.textContent = 'Optional: matching cards get double draft weight in Rooftops battle rewards, making other strategies less likely. Existing reward roles and exclusions still apply; no specific card is guaranteed. Change your plan on the route before a fight.';
   parent.append(note);
   const grid = document.createElement('div'); grid.className = 'flyway-grid rooftop-plans'; parent.append(grid);
-  const deck: Array<{id: string}> = scene.runState?.deck ?? scene.allDeckCards?.() ?? [];
+  const deck = scene.runState ? cardsFromSave(scene.runState.deck) : scene.allDeckCards?.() ?? [];
   for (const plan of rooftopPlans) {
     const box = document.createElement('section'); box.dataset.rooftopPlan = plan.id;
     const title = document.createElement('h3'); title.textContent = plan.name;
     const asset = cardArtAssets[({shelter:'pentacles_04',tempo:'wands_ace',molt:'aviary_25'} as const)[plan.id]];
     if (asset) { const art = document.createElement('img'); art.src = asset.url; art.alt = ''; art.className = 'rooftop-plan-art'; box.append(art); }
-    const owned = deck.filter(card => cardLibrary[card.id] && rooftopPlanMatch(plan.id, cardLibrary[card.id].runtime));
+    const owned = deck.filter((card: any) => rooftopPlanMatch(plan.id, { effects: card.upgraded ? card.runtime.upgrade.effects : card.runtime.effects }));
     box.append(title);
-    for (const text of [plan.play, plan.preen, plan.cost, `In your flock: ${owned.map(c => cardLibrary[c.id].name).join(', ') || 'no matching cards yet'}.`]) {
+    const recipe = buildRecipes[plan.id];
+    const marks: string[] = scene.runState?.routeMarks ?? scene.routeMarks ?? [];
+    for (const text of [plan.play, plan.preen, plan.cost, `In your flock: ${owned.map((c: any) => cardLibrary[c.id].name).join(', ') || 'no matching cards yet'}.`,
+      'Complementary Preens become available after Rooftops. Each replaces the active upgrade; passive stats stay unchanged.',
+      ...recipe.sequences, `Weakness: ${recipe.weakness}`,
+      `Waymark pairings: ${recipe.marks.map(id => `${alphaRouteMarkLibrary.get(id)?.name ?? id}${marks.includes(id) ? ' (owned)' : ' (not owned)'}`).join(', ')}. Inspect each Waymark for its trigger limits.`]) {
       const p = document.createElement('p'); p.textContent = text; box.append(p);
     }
     if (scene.runState && scene.runState.mapIndex === 0) {

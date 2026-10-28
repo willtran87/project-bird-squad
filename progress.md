@@ -1,5 +1,21 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-10-28 — Distinct Builds + Living Battles
+- Accepted five-package follow-up; implementation on
+  `codex/distinct-builds-living-battles`. Six complementary Preens, owned-card
+  pairing guidance, three encounter loops, factual flight moments and a new
+  six-bird/five-pose atlas are implemented; qualification is in progress.
+- Four focused rule tests and TypeScript pass. Runtime content validator passes.
+  Initial bundle check found optional guidance inflating the opening module and
+  a small hand-reader overrun; extracted guidance and tightened redundant copy.
+- Atlas source is preserved alongside a 530.3 KiB WebP. Animation uses measured
+  transparent gutters and actual resolution events, with still alternatives.
+- All 33 unit/policy checks and static content/art gates pass. Five focused
+  presentation cases pass across Chromium, Firefox and WebKit, including actual
+  card and rival impact events. Full CI qualification and publication are pending.
+- Root boot is 697.1 KiB / 195.0 KiB gzip, below the unchanged 710 KiB cap.
+- Human sessions remain unperformed; prepared handoff remains the acceptance path.
+
 ## 2026-10-28 — Flock in Motion + Faster Flights
 - Published `06eaa0d5` through clean production run 40662622603: 1,067 core cases,
   261 browser checks, 29 unit/policy checks and Pages-base smoke all passed,

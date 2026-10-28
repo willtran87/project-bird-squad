@@ -1,4 +1,6 @@
 import { contributionReading, type CardContribution } from './card-contributions';
+import { flightHighlights } from './flight-highlights';
+import type { FlywayState } from './flyway-rules';
 import { UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT } from './ui-tokens';
 import Phaser from 'phaser';
 import { quietButton } from './quiet-ui';
@@ -100,6 +102,7 @@ export interface OutcomeFlightDetails {
 }
 
 interface OutcomeFlightSummary extends DefeatReviewRunSummary {
+  flyway?: FlywayState;
   seed: string;
   result: 'win' | 'loss';
   difficulty?: number;
@@ -172,6 +175,7 @@ export function buildOutcomeFlightDetails(
   const failedObjectives = summary.combatResults.filter((combat) => combat.objective?.status === 'failed').length;
   const stats = summary.decisionStats;
   const decisions = [
+    ...(summary.flyway ? ['FLIGHT HIGHLIGHTS\n' + flightHighlights(summary.flyway, lookups.cardName).join('\n\n')] : []),
     `${summary.routeDecisions.length} route choice${summary.routeDecisions.length === 1 ? '' : 's'} · ${averageRouteSeconds}s average`,
     `${pickedRewards.length} card recruit${pickedRewards.length === 1 ? '' : 's'} · ${skippedRewards} skipped`,
     ...(pickedRewards.length > 0 ? [`Recruited · ${pickedRewards.join(' / ')}`] : []),

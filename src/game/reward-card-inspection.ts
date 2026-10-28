@@ -1,4 +1,5 @@
 import { contributionReading } from './card-contributions';
+import { candidateBuildReading } from './build-guidance';
 import { UI_FONT as TOKEN_FONT, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT } from './ui-tokens';
 import { boundedRewardText, renderRewardCardFace, rewardDecisionPreviewLabel } from './battle/reward-card-face';
 export { boundedRewardText, rewardDecisionPreviewLabel } from './battle/reward-card-face';
@@ -322,6 +323,16 @@ function observedFlightSection(scene: any) {
   if (scene.cardContributions?.length) combats.push({ cardContributions: scene.cardContributions });
   return { title: 'OBSERVED THIS FLIGHT', text: contributionReading(combats, id => cardLibrary[id]?.name ?? id) };
 }
+function candidateSections(scene: any, view: CardHoverDetailView) {
+  const id = view.cardId ?? view.marketCardId;
+  const deck: Card[] = scene.runState ? cardsFromSave(scene.runState.deck) : scene.allDeckCards?.() ?? [];
+  const card = deck.find(c => c.id === id) ?? cardLibrary[id ?? ''];
+  if (!card) return [];
+  const combats = [...(scene.runState?.combatResults ?? scene.runCombatResults ?? [])];
+  if (scene.cardContributions?.length) combats.push({ cardContributions: scene.cardContributions });
+  const read = candidateBuildReading(card, deck, combats);
+  return [{ title: 'FITS THIS FLOCK · POTENTIAL', text: read.potential }, { title: 'THIS BIRD · OBSERVED', text: read.observed }];
+}
 
 export function renderRouteInspectionReader(scene: Phaser.Scene, view: CardHoverDetailView) {
   const cx = view.zone === 'Route reward inspection' ? 640 : 404;
@@ -369,6 +380,7 @@ export function renderRouteInspectionReader(scene: Phaser.Scene, view: CardHover
     ...(view.upgradedMoltText ? [{ title: 'MOLT · PREEN', text: view.upgradedMoltText }] : []),
     { title: 'PASSIVE FLOCK BONUSES', text: view.stats.length ? view.stats.join('\n') : 'No passive contribution.' },
     observedFlightSection(scene),
+    ...candidateSections(scene, view),
     { title: 'CARD DETAILS', text: `${view.name}\n${view.bird} / ${view.label}\n${view.target} / ${view.role}\n${view.zone}` },
     ...(view.zone === 'Route reward inspection' ? [...routeDecisionSections(scene), routeDrawComparison(scene)] : []),
     ...(view.drawComparison ? [{ title: 'DRAW COMPARISON', text: view.drawComparison }] : []),
@@ -513,6 +525,7 @@ export function renderMarketCardDossier(scene: Phaser.Scene, view: CardHoverDeta
     ...(view.upgradedMoltText ? [{ title: 'MOLT / PREEN', text: view.upgradedMoltText }] : []),
     { title: 'PASSIVE FLOCK BONUSES', text: view.stats.length ? view.stats.join('\n') : 'No passive contribution.' },
     observedFlightSection(scene),
+    ...candidateSections(scene, view),
     { title: 'PURCHASE PREVIEW', text: [...preview, 'Buying adds this card to your flight. Permanent collection ownership is kept.'].join('\n') },
     ...(build.length ? [{ title: 'BUILD READ', text: build.join('\n') }] : []),
     { title: 'DRAW ASSUMPTIONS', text: 'Base hand includes Leader and suit threshold. Waymarks, temporary effects and opening protection can change actual draws.' },
@@ -1999,6 +2012,7 @@ export function syncRewardCardInspection(scene: any, chrome: {
   // A reward describes the next flight decision, not the finished turn's Molt
   // stance or temporary energy discount. Never borrow effective combat costs.
   const view: CardHoverDetailView = {
+    cardId: card.id,
     name: displayName(card), bird: card.bird, label: cardLabel(card),
     zone: scene.mode === 'upgradeReward' ? 'Combat Preen inspection' : 'Combat reward inspection',
     cost: card.cost, anchorX: 404, anchorY: 365, accent: suitAccentColor(card),

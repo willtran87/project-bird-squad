@@ -706,6 +706,7 @@ export function resolveEnemyTurnAnimated(
     const { windup: windupDelay, release: releaseDelay, anticipation: anticipationDelay,
       impact: impactHoldDelay, recovery: recoveryDelay } = enemyMoveTimings(host, enemy, move);
     setBeat('windup', move.label, windupDelay, canHustle);
+    host.events.emit('living-enemy-start', enemy.id, windupDelay + releaseDelay + anticipationDelay);
     host.queueEnemyMotion(enemy.id, 'windup');
     host.playQueuedEnemyMotion(enemy.id);
     host.refreshBeatProgressBadge();
@@ -726,6 +727,7 @@ export function resolveEnemyTurnAnimated(
         host.refreshBeatProgressBadge();
         const impact = () => {
           if (host.mode !== 'battle') return abort();
+          host.events.emit('living-enemy-impact', enemy.id);
           for (const effect of move.effects) {
             if (enemy.hp <= 0 || host.flock.hp <= 0) break;
             host.resolveEnemyEffect(enemy, effect, move.label);

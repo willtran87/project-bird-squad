@@ -339,6 +339,7 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
     : undefined;
   return {
     ...state,
+      livingPerformances: (battle as any).livingPerformances,
     flockStatsReading: battle.inspectOverlay === 'flock' ? battle.root?.getByName('flock-stats-reader')?.getData('summary') : undefined,
     supplyDrawer: {
       open: Boolean(battle.supplyDrawerOpen),

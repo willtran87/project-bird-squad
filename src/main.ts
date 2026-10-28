@@ -1,4 +1,5 @@
-import { recordContribution, sanitizeContributions, type CardContribution, type ContributionKey } from './game/card-contributions';
+import { recordContribution, sanitizeContributions, totalContributions, type CardContribution, type ContributionKey } from './game/card-contributions';
+import { tacticalFormation } from './game/tactical-formations';
 import Phaser from 'phaser';
 import { loadFlyway } from './game/flyway-loader';
 import { persistFlywayEnding } from './game/flyway-storage';
@@ -2074,6 +2075,7 @@ interface BattleSceneData {
 // Run summary emitted on win/loss for local playtest stats
 // (next-level-implementation-spec Phase 5 / next-level-data-contracts Â§10).
 interface RunSummary {
+  flyway?: FlywayState;
   pendingCardClaims?: PendingCardClaim[];
   id: string;
   seed: string;
@@ -4024,7 +4026,8 @@ class BirdAudioDirector {
       }
       this.sfxStatus = 'ready';
       if ((!this.muted || playThroughMute) && this.master) {
-        if (module.playAudioCue(ctx, this.master, this.sfxVolume, cue, intensity)) this.sfxPlayed += 1;
+        const volume = cue === 'rooftopAir' ? this.ambienceVolume : cue.startsWith('flock') ? this.voiceVolume : this.sfxVolume;
+        if (module.playAudioCue(ctx, this.master, volume, cue, intensity)) this.sfxPlayed += 1;
       }
     });
   }
@@ -7041,7 +7044,7 @@ class RouteScene extends Phaser.Scene {
     const profile = node.type === 'boss' ? alphaMapProfileLibrary.get(currentMap().id) : undefined;
     return {
       title: node.type==='rival' && (this.runState.flyway?.rivalWins??0)<3 ? `Caldra · ${rivalChapter(this.runState.flyway?.rivalWins).name}` : encounter?.name ?? routeNodeTitle(node),
-      lesson: node.type==='rival' && (this.runState.flyway?.rivalWins??0)<3 ? rivalChapter(this.runState.flyway?.rivalWins).weakness : activeMapIndex === 3 ? encounter?.lesson : undefined,
+      lesson: node.type==='rival' && (this.runState.flyway?.rivalWins??0)<3 ? rivalChapter(this.runState.flyway?.rivalWins).weakness : activeMapIndex >= 1 ? encounter?.lesson : undefined,
       bossPrep: profile ? {
         thesis: profile.thesis,
         tests: [...profile.primaryTests],
@@ -8779,6 +8782,7 @@ class RouteScene extends Phaser.Scene {
       : anchorX;
     const contract = activeCardContract(card, false);
     this.cardHoverDetailRequest = {
+      cardId: card.id,
       marketCardId: marketCard ? card.id : undefined,
       name: displayName(card),
       bird: card.bird,
@@ -15708,6 +15712,7 @@ private playBattleIntro(onComplete?: () => void) {
   }
 
   private queueEnemyMotion(enemyId: string, cue: EnemyMotionCue) {
+    this.events.emit('living-enemy-cue', enemyId, cue);
     if (prefersReducedMotion()) return;
     this.enemyMotionCues.set(enemyId, cue);
   }
@@ -15718,6 +15723,7 @@ private playBattleIntro(onComplete?: () => void) {
   }
 
   private queueFlockMotion(cue: 'cast' | 'brace' | 'heal' | 'hit') {
+    this.events.emit('living-flock-cue', cue);
     if (prefersReducedMotion()) return;
     this.flockMotionCue = cue;
   }
@@ -19242,9 +19248,13 @@ private playBattleIntro(onComplete?: () => void) {
     const combo = playCombination(this.flightCombat, playedCard.runtime.suit);
     if (combo) {
       const target = this.enemies.find(enemy => enemy.id === enemyId && enemy.hp > 0);
+      const hpBefore = target?.hp ?? 0, coverBefore = this.flock.block, resonanceBefore = this.spark;
       if (combo.effect === 'damage' && target) this.damageEnemy(target.id, 2, combo.name);
       if (combo.effect === 'resonance') this.gainResonance(1);
       if (combo.effect === 'cover') this.gainBlock(3, combo.name);
+      const moment = { id: combo.id, turn: this.turn, damage: Math.max(0, hpBefore - (target?.hp ?? 0)), cover: Math.max(0, this.flock.block - coverBefore), resonance: Math.max(0, this.spark - resonanceBefore), defeated: hpBefore > 0 && target?.hp === 0 };
+      const old = this.flyway.comboMoment;
+      if (!old || moment.defeated || !old.defeated && moment.damage + moment.cover + moment.resonance > old.damage + old.cover + old.resonance) this.flyway.comboMoment = moment;
       this.flyway.combinations += 1;
       this.logEvent(`${combo.name}: ${combo.rule}`);
       this.events.emit('flyway-combination', combo);
@@ -21348,7 +21358,10 @@ private playBattleIntro(onComplete?: () => void) {
       bossEntryScrap: undefined as number | undefined
     });
     const totalTurnsTaken = combatResults.reduce((sum, combat) => sum + Math.max(0, combat.turnsTaken), 0);
+    const most = totalContributions(combatResults)[0];
+    if (most) this.flyway.cardMoment = { cardId: most.cardId, plays: most.plays, damage: most.damage, cover: most.cover };
     const summary: RunSummary = {
+      flyway: normalizeFlyway(this.flyway),
       pendingCardClaims: this.battleRouteCheckpoint.pendingCardClaims?.map(claim => ({ ...claim })),
       id: completedRunId(this.runStartedAtMs, activeSeed),
       seed: activeSeed,
@@ -23734,11 +23747,11 @@ function createCardTemplate(runtime: RuntimeCard): Card {
 function getEncounterEnemiesByPayload(payloadId: string | undefined): RuntimeEnemy[] {
   const encounter = payloadId ? alphaEncounterLibrary.get(payloadId) : undefined;
   if (encounter) {
-    return encounter.enemies.map((enemyId) => {
+    return tacticalFormation(encounter.id, encounter.enemies.map((enemyId) => {
       const enemy = alphaEnemyLibrary.get(enemyId);
       if (!enemy) throw new Error(`Encounter ${payloadId} references missing enemy: ${enemyId}`);
       return enemy;
-    });
+    }));
   }
   const enemy = payloadId ? alphaEnemyLibrary.get(payloadId) : undefined;
   if (!enemy) throw new Error(`Missing encounter payload: ${payloadId}`);
