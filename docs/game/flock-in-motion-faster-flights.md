@@ -18,16 +18,16 @@ handoff under the existing explicit waivers, not automated acceptance evidence.
   reward inspection and flight reports explain those contributions honestly.
 - [x] Pages boot code below the existing 710 KiB preferred target; native-clock
   card/transition measurements and no new eager art/dependency load.
-- [ ] Focused mechanics, input, persistence, lifecycle and three-size visual
+- [x] Focused mechanics, input, persistence, lifecycle and three-size visual
   checks, shared-client play, complete release suite and browser qualification.
-- [ ] Commit, push, merge, publish verified Pages artifact and clean branches.
+- [x] Commit, push, merge, publish verified Pages artifact and clean branches.
 
 ## Baseline and evidence
 
 Baseline source: `c07471d3`; deployed game: `7e6c4b85`. Existing Pages boot is
 722.5 KiB; the main chunk is 680.5 KiB. A fresh local baseline build and timings
-will be retained before implementing changes. No balance or enjoyment conclusion
-will be inferred from simulated runs.
+were retained before implementation. No balance or enjoyment conclusion is
+inferred from simulated runs.
 
 ## Implementation and local verification
 
@@ -80,7 +80,7 @@ will be inferred from simulated runs.
   Both earlier failed attempts remain recorded in local logs.
 - Core inventory: 1,026 regression + 37 campaign + 4 reference journeys = 1,067
   unique cases. Browser qualification now includes the six new cases per browser.
-- Root boot: 692.7 KiB / 193.6 KiB gzip; entry: 650.6 / 177.1 KiB. Native nine-card
+- Root boot: 692.7 KiB / 193.6 KiB gzip; main: 650.7 / 177.1 KiB. Native nine-card
   median 335.5→339.3 ms and three-entry median 1897→1947.6 ms are mixed/small-sample
   evidence, not an overall speed claim. See [performance notes](../project/performance-notes.md).
 - Human follow-up is prepared in [the handoff](opening-district-playtest-handoff.md).
@@ -118,3 +118,51 @@ row is translated upward together, preserving the 19px label floor; the timing
 tests now expect the accepted shorter repeat and sample Hustle's acceleration
 window instead of skipping past it. Impact protection remains asserted. A local
 18px-label experiment failed the compact type floor and was discarded.
+
+## Clean PR qualification
+
+[Run 40658365185](https://github.com/willtran87/project-bird-squad/actions/runs/40658365185)
+passed 1,067 core cases (1,026 regression, 37 campaign, four reference journeys),
+261 browser cases (87 each in Chromium, Firefox and WebKit), 29 unit/policy
+checks, Pages-path smoke, content/art validation and delivery gates. There were
+no failed, flaky or skipped test cases. Both previously failing regression
+shards passed in this run. Earlier failed/superseded runs remain recorded above.
+
+The final local HUD/pacing pass has 21/21 across all browsers; the motion and
+impact-lifecycle pass has 30/30. Screenshots are in
+`.artifacts/motion-platform-final-results/`, `.artifacts/motion-final-feature-results/`
+and `.artifacts/motion-reader-captures/`. The final shared client completed real
+card input with no console errors (`.artifacts/motion-client-final3/`). Report
+captures confirm the journal shortcut stays clear of Flight Details.
+
+[PR #16](https://github.com/willtran87/project-bird-squad/pull/16) merged as
+`06eaa0d59383dadcb2123aa0726152983c0dd789`.
+
+## Published release and cleanup
+
+[Production run 40662622603](https://github.com/willtran87/project-bird-squad/actions/runs/40662622603)
+passed the same complete 1,067 core / 261 browser / 29 unit-policy / one Pages
+smoke qualification on the merged source, with no failed/flaky/skipped cases.
+Content, art, budget and cache gates passed, and GitHub Pages deployment succeeded.
+
+The [public game](https://willtran87.github.io/project-bird-squad/) serves the
+tested `06eaa0d5` artifact. Public HTML and both bootstrap/main bundles match the
+identity record; an additional comparison of all 73 HTML/JavaScript/CSS files
+in the deployed artifact also matched SHA-256 and byte counts. Evidence:
+`.artifacts/motion-live-identity.json`, `.artifacts/motion-live-all-bundles.json`,
+`.artifacts/motion-main-clean-evidence.json` and the downloaded CI identity record
+under `.artifacts/motion-release/`.
+
+Eleven public-site feature, HUD and pacing tests passed without retries or console
+errors. Inspected public compact HUD and action captures in
+`.artifacts/motion-live-results/`; test log: `.artifacts/motion-live-tests.log`.
+The Pages build is 693.8 KiB / 193.7 KiB gzip combined boot, 651.7 / 177.2 KiB
+main application code and 59.9 / 14.4 KiB combat FX. The 710 KiB cap passes without
+increasing any existing allowance. Native timings remain the limited evidence
+reported above, not an overall frame-rate claim.
+
+The merged feature branch was deleted locally and remotely; only `main` remains.
+Owned previews are stopped. Final ledger edits are documentation only, so the
+published application remains the tested merge revision. Human sessions, physical
+device checks and native assistive-technology evidence remain the prepared handoff
+under the existing explicit waivers; none is represented as completed here.

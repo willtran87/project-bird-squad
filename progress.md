@@ -1,11 +1,26 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
 ## 2026-10-28 — Flock in Motion + Faster Flights
+- Published `06eaa0d5` through clean production run 40662622603: 1,067 core cases,
+  261 browser checks, 29 unit/policy checks and Pages-base smoke all passed,
+  without failed/flaky/skipped cases. Eleven public-site checks passed; all 73
+  deployed HTML/JS/CSS files match the tested artifact by SHA-256 and size.
+- Pages boot is 693.8 KiB, down 28.7 KiB from the previous release and below the
+  now-enforced 710 KiB cap. All six technical work packages are complete.
+- Feature branch deleted locally/remotely; only main remains and owned previews
+  are stopped. Final ledger edits are docs only. Human/device/native-AT handoff
+  remains explicit; no human sessions or general frame-rate gain are claimed.
+- Clean PR run 40658365185 passed 1,067 core cases, 261 browser checks,
+  29 unit/policy checks and Pages-base smoke, without failed/flaky/skipped cases.
+  PR #16 merged as `06eaa0d5`; production release verification also passed.
+- Fixed cross-platform Wingbeat/Flow clearance and report/journal ownership.
+  Updated old pacing and reduced-motion assertions while preserving impact
+  protection. Final local HUD/pacing pass: 21/21; motion/lifecycle: 30/30.
 - Local qualification: 18/18 new browser cases passed across Chromium/Firefox/
   WebKit. Reviewed all required sizes. Corrected WebKit fixtures to step frozen
   animation lifecycle and read complete wrapped outcome sections; native timing
   measured separately. Full release pipeline is the remaining technical gate.
-- Final root boot 692.7 KiB, main 650.6 KiB. Native card median 339.3 ms versus
+- Final root boot 692.7 KiB, main 650.7 KiB. Native card median 339.3 ms versus
   335.5 baseline; entry median 1947.6 versus 1897 ms. Mixed short-run timings are
   recorded honestly; no general FPS improvement claimed. Human handoff updated.
 - Implemented all six work packages; local/browser/release qualification in progress.

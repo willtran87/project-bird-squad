@@ -5,10 +5,12 @@
 Fifty-seven combat presenters moved unchanged into the battle-loaded FX module;
 AST comparison confirms their bodies match the baseline (apart from an explicit
 callback type). Root build boot code falls from 721.5 to 692.7 KiB; main is
-650.6 KiB. The existing 710 KiB preferred boot target is now the hard ceiling.
+650.7 KiB. The existing 710 KiB preferred boot target is now the hard ceiling.
 The combined combat FX/action chunk has a new 64 KiB ceiling. Other caps are
 unchanged. Card action illustrations reuse loaded textures; title requests no
-new artwork. Pages-base figures are recorded in the release ledger after CI.
+new artwork. The qualified Pages build is 693.8 KiB / 193.7 KiB gzip combined
+boot, with a 651.7 / 177.2 KiB main bundle and 59.9 / 14.4 KiB combat FX module.
+That is 28.7 KiB less boot code than the preceding 722.5 KiB Pages release.
 
 Native-clock Chromium at 1440×900, same explicit First Flight fixture, sequential
 runs with no parallel browser job or synthetic stepping:
