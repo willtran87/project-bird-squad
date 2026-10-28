@@ -1,5 +1,29 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-10-28 — Flock in Motion + Faster Flights
+- Local qualification: 18/18 new browser cases passed across Chromium/Firefox/
+  WebKit. Reviewed all required sizes. Corrected WebKit fixtures to step frozen
+  animation lifecycle and read complete wrapped outcome sections; native timing
+  measured separately. Full release pipeline is the remaining technical gate.
+- Final root boot 692.7 KiB, main 650.6 KiB. Native card median 339.3 ms versus
+  335.5 baseline; entry median 1947.6 versus 1897 ms. Mixed short-run timings are
+  recorded honestly; no general FPS improvement claimed. Human handoff updated.
+- Implemented all six work packages; local/browser/release qualification in progress.
+- Baseline native-clock sample: nine cards median 335.5 ms, frame P95 66.7 ms;
+  three battle entries median 1897 ms, warm-entry frame P95 33.4 ms. Explicit
+  headless fixtures, not enjoyment or physical-device evidence.
+- Effects extraction brought root boot from 721.5 to below 710 KiB. The 710 KiB
+  preferred goal is now enforced. Existing subchunk budgets remain unchanged.
+- Initial focused pass: four passed; two fixture failures fixed (wait for
+  canonical art and pass instanceId to click handler). Requalification pending.
+
+- Accepted all six proposed improvements. Work is on
+  `codex/flock-in-motion-faster-flights`; the initial checkout was clean.
+- Scope and acceptance: `docs/game/flock-in-motion-faster-flights.md`.
+- Measuring baseline before combat hierarchy/pacing, card-action presentation,
+  resolved payoff feedback, persisted contributions and boot-size optimization.
+  Full release verification/publication remain pending; human waivers unchanged.
+
 ## 2026-10-26 — Flock Identity + Rival Stories
 
 - Implemented direct Calls, ten per-flight specializations, Caldra's three-chapter

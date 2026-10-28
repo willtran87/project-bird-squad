@@ -7,6 +7,15 @@ human, device or assistive-technology evidence.
 
 ## Session kit
 
+Flock in Motion follow-up: use the deployed revision recorded in the
+[current upgrade ledger](flock-in-motion-faster-flights.md). Ask players to point
+to incoming damage and remaining Wingbeats, identify the card that just acted,
+and explain one resolved payoff. Observe whether familiar enemy actions remain
+readable and whether opening Full rules during a cast feels predictable. At the
+reward screen, ask them to use observed contributions to explain a choice;
+check that they distinguish Cover gained from damage prevented. Record confusion
+and preference verbatim. No sessions for this upgrade have been performed.
+
 Signal Spires follow-up: once this upgrade is published, record its actual
 deployed revision from [the release ledger](signal-spires-clarity-upgrade.md).
 After the opening observations, ask returning players to explain one relay Tell,

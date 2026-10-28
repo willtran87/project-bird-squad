@@ -1,3 +1,4 @@
+import { contributionReading } from './card-contributions';
 import { UI_FONT as TOKEN_FONT, UI_DISPLAY_FONT as TOKEN_DISPLAY_FONT } from './ui-tokens';
 import { boundedRewardText, renderRewardCardFace, rewardDecisionPreviewLabel } from './battle/reward-card-face';
 export { boundedRewardText, rewardDecisionPreviewLabel } from './battle/reward-card-face';
@@ -316,6 +317,12 @@ export function changeMarketReaderSection(scene: any, delta: -1 | 1) {
 const inspectionReading = new WeakMap<Phaser.Scene, { key: string; page: number }>();
 
 /** Shared explicit reward / Preen / Release reading, never a commitment action. */
+function observedFlightSection(scene: any) {
+  const combats = [...(scene.runState?.combatResults ?? scene.runCombatResults ?? [])];
+  if (scene.cardContributions?.length) combats.push({ cardContributions: scene.cardContributions });
+  return { title: 'OBSERVED THIS FLIGHT', text: contributionReading(combats, id => cardLibrary[id]?.name ?? id) };
+}
+
 export function renderRouteInspectionReader(scene: Phaser.Scene, view: CardHoverDetailView) {
   const cx = view.zone === 'Route reward inspection' ? 640 : 404;
   const left = cx - 220;
@@ -361,6 +368,7 @@ export function renderRouteInspectionReader(scene: Phaser.Scene, view: CardHover
     ...(!view.usesMolt && view.moltText ? [{ title: 'MOLT', text: view.moltText }] : []),
     ...(view.upgradedMoltText ? [{ title: 'MOLT · PREEN', text: view.upgradedMoltText }] : []),
     { title: 'PASSIVE FLOCK BONUSES', text: view.stats.length ? view.stats.join('\n') : 'No passive contribution.' },
+    observedFlightSection(scene),
     { title: 'CARD DETAILS', text: `${view.name}\n${view.bird} / ${view.label}\n${view.target} / ${view.role}\n${view.zone}` },
     ...(view.zone === 'Route reward inspection' ? [...routeDecisionSections(scene), routeDrawComparison(scene)] : []),
     ...(view.drawComparison ? [{ title: 'DRAW COMPARISON', text: view.drawComparison }] : []),
@@ -504,6 +512,7 @@ export function renderMarketCardDossier(scene: Phaser.Scene, view: CardHoverDeta
     ...(!view.usesMolt && view.moltText ? [{ title: 'MOLT', text: view.moltText }] : []),
     ...(view.upgradedMoltText ? [{ title: 'MOLT / PREEN', text: view.upgradedMoltText }] : []),
     { title: 'PASSIVE FLOCK BONUSES', text: view.stats.length ? view.stats.join('\n') : 'No passive contribution.' },
+    observedFlightSection(scene),
     { title: 'PURCHASE PREVIEW', text: [...preview, 'Buying adds this card to your flight. Permanent collection ownership is kept.'].join('\n') },
     ...(build.length ? [{ title: 'BUILD READ', text: build.join('\n') }] : []),
     { title: 'DRAW ASSUMPTIONS', text: 'Base hand includes Leader and suit threshold. Waymarks, temporary effects and opening protection can change actual draws.' },

@@ -111,9 +111,9 @@ export function renderUnifiedRunHud(
   }
   const battleHud = data.context === 'battle';
   addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, battleHud ? 56 : 47, GAME_WIDTH - 28, battleHud ? 80 : 62, 0x070b12, battleHud ? 0.94 : 0.78)
-    .setStrokeStyle(1, accent, battleHud ? 0.22 : highlight ? 0.78 : 0.26)
+    .setStrokeStyle(1, accent, battleHud ? 0.10 : highlight ? 0.78 : 0.26)
     .setName('run-hud-surface'));
-  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, 16, GAME_WIDTH - 62, 2, accent, highlight ? 0.82 : 0.32));
+  addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, 16, GAME_WIDTH - 62, 2, accent, battleHud ? 0.12 : highlight ? 0.82 : 0.32));
   addUi(addTo, scene.add.rectangle(GAME_WIDTH / 2, battleHud ? 96 : 76, GAME_WIDTH - 62, 1, 0xffffff, 0.08));
 
   const [hp, maxHp] = parseHudRatio(data.cohesion);
@@ -391,13 +391,13 @@ function renderHudMetricChip(
     addUi(addTo, scene.add.text(textLeft, opts.emphasis || opts.quiet ? cy - 28 : cy - height / 2 + 6, opts.emphasis || opts.quiet ? label : label.toUpperCase(), {
       fontFamily: UI_FONT,
       fontSize: opts.emphasis || opts.quiet ? '19px' : compact ? '7px' : '8px',
-      fontStyle: UI_BOLD,
-      color: '#aabcc8', resolution: 2
+      fontStyle: opts.emphasis === 'secondary' ? 'normal' : UI_BOLD,
+      color: opts.emphasis === 'secondary' ? '#96acba' : '#aabcc8', resolution: 2
     }).setName(`hud-label-${label}`));
   }
   addUi(addTo, scene.add.text(hasIcon ? cx + 16 : textLeft, hasIcon ? cy + 1 : cy + (compact ? 7 : 8), value, {
     fontFamily: UI_FONT,
-    fontSize: opts.emphasis === 'primary' ? '22px' : opts.emphasis === 'secondary' ? '19px' : opts.quiet ? '21px' : hasIcon ? '17px' : compact ? '13px' : '16px',
+    fontSize: label === 'Wingbeats' && opts.emphasis === 'primary' ? '27px' : opts.emphasis === 'primary' ? '22px' : opts.emphasis === 'secondary' ? '19px' : opts.quiet ? '21px' : hasIcon ? '17px' : compact ? '13px' : '16px',
     fontStyle: UI_BOLD,
     color: opts.emphasis === 'secondary' ? '#b7c7d4' : opts.valueColor ?? '#e7eef7', resolution: 2
   }).setOrigin(hasIcon ? 0.5 : 0, 0.5).setName(`hud-value-${label}`)

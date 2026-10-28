@@ -16,6 +16,7 @@ type SceneAccess = Phaser.Scene & {
   fxLayer: BattleScene['fxLayer'];
   systemOverlayLayer: BattleScene['systemOverlayLayer'];
   flyway: BattleScene['flyway'];
+  cardContributions: BattleScene['cardContributions'];
   flightCombat: BattleScene['flightCombat'];
   mode: BattleScene['mode'];
   battleAssetReadiness: BattleScene['battleAssetReadiness'];
@@ -156,6 +157,15 @@ export function buildBattleStateSnapshot(raw: BattleScene): RenderPayload {
     return {
       flyway: { ...normalizeFlyway(scene.flyway), combat: scene.flightCombat,
         pacing: (scene as unknown as {identityPacing?:unknown}).identityPacing },
+      cardContributions: scene.cardContributions.map(row => ({ ...row })),
+      cardAction: (() => {
+        const actor = scene.fxLayer?.getByName('combat-card-cast-ghost');
+        return actor?.active ? { style: actor.getData('actionStyle'), cardId: actor.getData('cardId'), reducedMotion: actor.getData('reducedMotion') } : undefined;
+      })(),
+      cardPayoff: (() => {
+        const payoff = (scene as unknown as { motionPayoff?: { until: number; text: string; cardId: string; results: string[] } }).motionPayoff;
+        return payoff && scene.time.now < payoff.until ? { text: payoff.text, cardId: payoff.cardId, results: [...payoff.results] } : undefined;
+      })(),
       mode: scene.mode,
       scene: 'BattleScene',
       keywordTooltip: keywordTooltipState(scene),

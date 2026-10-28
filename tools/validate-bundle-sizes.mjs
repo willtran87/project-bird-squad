@@ -8,6 +8,7 @@ const assetsDir = path.join(path.resolve(root, process.argv[2] ?? '.artifacts/bu
 const kb = 1024;
 
 const budgets = [
+  { label: 'combat actions and FX lazy module', pattern: /^combat-fx-assets-.*\.js$/, maxKb: 64, hard: true },
   { label: 'Flock identity lazy module', pattern: /^flock-identity-.*\.js$/, maxKb: 14, hard: true },
   { label: 'High Roost lazy module', pattern: /^high-roost-.*\.js$/, maxKb: 14, hard: true },
   { label: 'canal markets lazy module', pattern: /^canal-markets-.*\.js$/, maxKb: 10, hard: true },
@@ -61,7 +62,7 @@ const budgets = [
 const combinedBootBudget = {
   label: 'combined app boot code',
   patterns: [/^index-.*\.js$/, /^game-core-.*\.js$/, /^interaction-rules-.*\.js$/],
-  maxKb: 725,
+  maxKb: 710,
   targetKb: 710,
 };
 
