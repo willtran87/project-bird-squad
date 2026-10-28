@@ -93,3 +93,8 @@ Commands: `npm run build`, `npm run validate:bundle-size`,
 `tests/flock-motion.spec.ts` run. Screenshots: `.artifacts/motion-final-results/`;
 logs: `.artifacts/motion-browser-final.log`; shared-client output:
 `.artifacts/motion-client-final/`. Final full-release status follows here.
+
+The initial PR run (40651657521) was superseded after discovering that the
+browser command's explicit file list omitted `flock-motion.spec.ts`, despite
+including its grep prefix. The corrected run must report 87 cases per browser;
+the earlier run is not counted as complete release evidence.
