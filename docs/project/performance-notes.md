@@ -2,9 +2,9 @@
 
 ## October 28 2026 — Distinct Builds + Living Battles
 
-Root boot is 697.1 KiB / 195.0 KiB gzip; main is 655.0 / 178.4 KiB. Existing
+Root boot is 697.2 KiB / 195.0 KiB gzip; main is 655.1 / 178.4 KiB. Existing
 caps remain unchanged, including the 710 KiB combined boot limit. This adds
-4.4 KiB over the previous root build; it is not a boot-size improvement.
+4.5 KiB over the previous root build; it is not a boot-size improvement.
 The optional strategy module remains 8.0 / 3.7 KiB after extracting shared
 build guidance (2.9 / 1.4 KiB). Flight highlights are 2.0 / 1.0 KiB.
 
@@ -14,6 +14,8 @@ art fallback and a 575 KiB asset cap. At most two pose actors run at once,
 using the existing update loop and pausable scene timers. Reduced motion and
 lean effects use still poses. No new title artwork or audio downloads are added.
 No general frame-rate or physical-device performance gain is claimed.
+The qualified Pages build is 698.3 / 195.0 KiB combined boot, with a
+656.2 / 178.5 KiB main chunk: 4.5 KiB above the preceding Pages release.
 
 ## October 28 2026 — Flock in Motion
 

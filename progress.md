@@ -1,25 +1,23 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
 ## 2026-10-28 — Distinct Builds + Living Battles
-- Accepted five-package follow-up; implementation on
-  `codex/distinct-builds-living-battles`. Six complementary Preens, owned-card
-  pairing guidance, three encounter loops, factual flight moments and a new
-  six-bird/five-pose atlas are implemented; qualification is in progress.
-- Four focused rule tests and TypeScript pass. Runtime content validator passes.
-  Initial bundle check found optional guidance inflating the opening module and
-  a small hand-reader overrun; extracted guidance and tightened redundant copy.
-- Atlas source is preserved alongside a 530.3 KiB WebP. Animation uses measured
-  transparent gutters and actual resolution events, with still alternatives.
-- All 33 unit/policy checks and static content/art gates pass. Five focused
-  presentation cases pass across Chromium, Firefox and WebKit, including actual
-  card and rival impact events. Full CI qualification and publication are pending.
-- Root boot is 697.1 KiB / 195.0 KiB gzip, below the unchanged 710 KiB cap.
-- Final local upgrade suite passed 20/20. Review then caught the flight-report
-  sanitizer omitting highlights; it now normalizes the optional Flyway snapshot,
-  and the archive test checks exported history as well as the journal.
-- Preliminary PR runs were superseded for readable Preen labels and that archive
-  repair; they are not counted as complete release qualification.
-- Human sessions remain unperformed; prepared handoff remains the acceptance path.
+- Published `6918d281` through PR #17 and clean production run 40681063218.
+  Both PR and production qualification passed 1,087 core, 321 browser and
+  33 unit/policy checks, static gates and Pages-base smoke without failed,
+  flaky or skipped cases. Fourteen public-site checks also passed.
+- All 77 deployed HTML/JS/CSS files and the pose atlas match the tested Pages
+  artifact by SHA-256 and size. PR and main builds have identical source,
+  app-chunk and HTML hashes. Full evidence is in the upgrade acceptance ledger.
+- Completed all five packages: six complementary Preens, owned-card reward
+  guidance, three tactical formations, thirty Leader/Caldra poses with calls,
+  and factual archived flight highlights. Fixed archive sanitization and readable
+  Preen labels; earlier superseded runs are not release qualification evidence.
+- Root boot is 697.2 KiB; Pages boot is 698.3 KiB under the unchanged 710 KiB cap.
+  The 530.3 KiB atlas loads during battle. Three-size captures and the shared
+  client were reviewed; no overall frame-rate improvement is claimed.
+- Feature branch deleted locally/remotely; only main remains. Task-owned previews
+  are stopped. Final ledger edits are docs only. Human/device/native-AT sessions
+  remain unperformed under the existing explicit waivers; the handoff is ready.
 
 ## 2026-10-28 — Flock in Motion + Faster Flights
 - Published `06eaa0d5` through clean production run 40662622603: 1,067 core cases,

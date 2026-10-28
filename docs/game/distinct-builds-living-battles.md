@@ -13,8 +13,8 @@ commit, push, merge, publish Pages and clean up the feature branch.
 - [x] Five Leaders and Caldra have anticipation, wingbeat, contact, recoil and
   recovery performances, distinct calls, restrained ambience and still alternatives.
 - [x] Factual flight highlights and one specific next-flight suggestion.
-- [ ] Save/reload, input, lifecycle, three-size visual and full release checks.
-- [ ] Merge, deployment identity verification and branch cleanup.
+- [x] Save/reload, input, lifecycle, three-size visual and full release checks.
+- [x] Merge, deployment identity verification and branch cleanup.
 
 ## Implemented evidence
 
@@ -34,8 +34,42 @@ avoid tweening, and the module retires actors/listeners on shutdown.
 Twenty browser cases cover Preen persistence and normal/Molt parity, formation
 loops, recipes, candidate reading, real impacts/calls, bounded pose lifecycles
 and archived factual highlights. All 33 unit/policy cases and static gates pass.
-Focused presentation checks pass in Chromium, Firefox and WebKit. Full release
-CI and public deployment verification are pending.
+Focused presentation checks pass in Chromium, Firefox and WebKit.
+
+## Release qualification
+
+PR [#17](https://github.com/willtran87/project-bird-squad/pull/17) merged as
+`6918d281d92cfe008f3606954cfa62c8e811b2b4`. Clean PR run
+[40676117992](https://github.com/willtran87/project-bird-squad/actions/runs/40676117992)
+passed 1,087 core cases (1,046 regression, 37 campaign and four control
+journeys), 321 browser cases (107 each in Chromium, Firefox and WebKit),
+33 unit/policy checks, static content/art/budget gates and the Pages-base smoke.
+All cases passed without failures, retries, flaky or skipped results. Earlier
+runs 40673465708 and 40674351559 were superseded and are not qualification evidence.
+
+Local review covered 2560×1600, 1440×900 and 1000×560. The unmodified shared
+client reached full-art combat without captured errors. New save checks include
+friendly Preen names, normal/Molt forecast parity and sanitized flight-history
+exports; a missing highlight field in the archive reader was repaired.
+
+The qualified Pages boot is 698.3 KiB / 195.0 KiB gzip under the unchanged
+710 KiB cap. Detailed reports are retained in `.artifacts/living-pr-reports/`;
+the final local suite is `.artifacts/living-final-focused-results/`, archive
+follow-up `.artifacts/living-archive-fixed-results/`, and shared-client output
+`.artifacts/living-client-release/`.
+
+Production run
+[40681063218](https://github.com/willtran87/project-bird-squad/actions/runs/40681063218)
+passed the same complete suite and deployed `6918d281`. Its clean source hash,
+app chunks and HTML match the qualified PR build. All 77 deployed HTML/JS/CSS
+files and the new pose atlas match the Pages artifact by SHA-256 and size.
+Fourteen public-site checks passed with zero failures, flaky cases or skips.
+Evidence: `.artifacts/living-main-reports/`, `.artifacts/living-live.json`,
+`.artifacts/living-live-all-bundles.json` and `.artifacts/living-live-results/`.
+
+The feature branch was deleted locally and remotely; only main remains.
+Task-owned preview servers are stopped. Final release-ledger edits are docs only
+and do not change the published game. All accepted technical work is complete.
 
 ## Constraints
 
