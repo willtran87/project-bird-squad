@@ -48,3 +48,6 @@
 .flyway-book .flyway-seal.chorus-line { color:#f4cc7a; border-style:double; }
 .flyway-book .flyway-seal.clean-cut { color:#dae5f2; border-color:#b4c8d8; }
 @media (max-width:999px), (max-height:559px) { .identity-call,.identity-sequence { display:none; } }
+.flyway-book [data-flight-workshop] table { width: min(100%, 720px); border-collapse: collapse; margin: 16px 0; }
+.flyway-book [data-flight-workshop] th, .flyway-book [data-flight-workshop] td { padding: 8px 16px; text-align: left; border-bottom: 1px solid #476270; }
+.flyway-book [data-flight-workshop] button { margin: 4px; }

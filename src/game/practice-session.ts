@@ -3,8 +3,9 @@ import { setMemoryStorageSession, memoryStorageSessionActive, removeJournaledJso
 
 let previousResult: Window['__birdSquadLastRun'];
 let startingDeck: Array<{ id: string; upgraded: boolean }> | undefined;
+let onEnd: (() => void) | undefined;
 
-export function beginPracticeSession(cards?: Array<{ id: string; upgraded: boolean }>): boolean {
+export function beginPracticeSession(cards?: Array<{ id: string; upgraded: boolean }>, cleanup?: () => void): boolean {
   if (memoryStorageSessionActive()) return false;
   const snapshot = new Map<string, string>();
   try {
@@ -25,6 +26,7 @@ export function beginPracticeSession(cards?: Array<{ id: string; upgraded: boole
     removeItem: (key) => { snapshot.delete(key); },
   });
   previousResult = window.__birdSquadLastRun;
+  onEnd = cleanup;
   startingDeck = cards?.map(card => ({ ...card }));
   // A practice flight must never resume the player's real flight.
   removeJournaledJson('birdsquad.run.active');
@@ -37,6 +39,7 @@ export function endPracticeSession(): void {
   window.__birdSquadLastRun = previousResult;
   previousResult = undefined;
   startingDeck = undefined;
+  const cleanup = onEnd; onEnd = undefined; cleanup?.();
 }
 
 export function practiceStartingDeck() {

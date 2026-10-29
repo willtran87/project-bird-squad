@@ -1,11 +1,22 @@
 import type { RuntimeEnemy } from './types';
 
 export const signatureFights = {
-  enc_signature_ferry: { name: 'The Last Ferry', lesson: 'Hold the crossing for three enemy beats. The gull attacks while the crow shields it; from beat four both retreat to weaker attacks. Defeat both to win.', phases: ['Ferry loading · 1/3', 'Ferry crossing · 2/3', 'Ferry landing · 3/3', 'Ferry safe · watch retreating'] },
-  enc_signature_relay: { name: 'Before the Bell', lesson: 'The relay crow charges the front ally on its third Tell. Remove the crow before then to stop the charge. Stored force remains; the gull attacks on beat four.', phases: ['Relay winding · 1/3', 'Relay winding · 2/3', 'Last chance · relay charge next', 'Relay cycle · watch stored force'] },
-  enc_signature_watch: { name: 'Two Moving Rooftops', lesson: 'The gull attacks while the crow braces, then they exchange roles. Both recover on beat three. From beat four their attack order reverses for the rest of the fight.', phases: ['Gull advances · crow shelters', 'Crow advances · gull shelters', 'Both recover · positions switching', 'Positions reversed · read each Tell'] },
+  enc_signature_ferry: { name: 'The Last Ferry', lesson: 'Survive three enemy beats to win the crossing. Defeat both defenders sooner for +8 Scrap. The gull attacks while the crow shields it.', phases: ['Survive · crossing 1/3', 'Survive · crossing 2/3', 'Survive · crossing 3/3', 'Ferry safe · crossing won'] },
+  enc_signature_relay: { name: 'Before the Bell', lesson: 'Defeat the relay crow before its third Tell to win by interception. If it rings, defeat both enemies to win; stored force remains. Defeating both grants +8 Scrap.', phases: ['Intercept crow · before beat 3', 'Intercept crow · before beat 3', 'Last chance · stop the relay', 'Bell rang · defeat both'] },
+  enc_signature_watch: { name: 'Two Moving Rooftops', lesson: 'Defeat either defender before the third enemy beat, then survive that beat to escape through the gap. Otherwise defeat both to win. Defeating both grants +8 Scrap.', phases: ['Break one perch · then escape', 'Break one perch · then escape', 'Escape window · survive beat 3', 'Window closed · defeat both'] },
 };
 export type SignatureFight = keyof typeof signatureFights;
+/** Intent counters advance only after a Tell resolves; never infer survival from the player turn number. */
+export function signatureVictory(id: string, enemies: Array<{ hp: number; intentIndex: number }>, hp: number, defeatedTurns: Map<string, number> = new Map()) {
+  if (hp <= 0 || !Object.hasOwn(signatureFights, id)) return undefined;
+  if (enemies.length && enemies.every(e => e.hp <= 0)) return { reason: 'Both defenders defeated', bonus: 8 };
+  const survivors = enemies.filter(e => e.hp > 0);
+  if (id === 'enc_signature_ferry' && survivors.length && survivors.every(e => e.intentIndex >= 3)) return { reason: 'The ferry crosses safely', bonus: 0 };
+  if (id === 'enc_signature_relay' && enemies[1]?.hp <= 0 && enemies[1].intentIndex < 3) return { reason: 'Relay intercepted; the watch withdraws', bonus: 0 };
+  if (id === 'enc_signature_watch' && enemies.some(e => e.hp <= 0) && [...defeatedTurns.values()].some(turn => turn <= 3)
+    && survivors.length && survivors.every(e => e.intentIndex >= 3)) return { reason: 'Formation broken; the flock escapes', bonus: 0 };
+  return undefined;
+}
 export function signatureFormation(id: string, enemies: RuntimeEnemy[]): RuntimeEnemy[] | undefined {
   if (!Object.hasOwn(signatureFights, id)) return;
   const fight = signatureFights[id as SignatureFight];
@@ -31,6 +42,6 @@ export function signaturePhase(id: string, enemies: Array<{ hp: number; intentIn
   if (!Object.hasOwn(signatureFights, id)) return undefined;
   const fight = signatureFights[id as SignatureFight];
   const beat = Math.max(0, ...enemies.filter(e => e.hp > 0).map(e => e.intentIndex));
-  const phase = id === 'enc_signature_relay' ? Math.min(3, beat % 5) : Math.min(3, beat);
+  const phase = Math.min(3, beat);
   return { name: fight.name, phase, text: id === 'enc_signature_relay' && enemies[1]?.hp <= 0 ? 'Relay silenced · stored force still applies' : fight.phases[phase], lesson: fight.lesson };
 }

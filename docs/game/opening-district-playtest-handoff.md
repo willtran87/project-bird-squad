@@ -7,6 +7,16 @@ human, device or assistive-technology evidence.
 
 ## Session kit
 
+Flock + Meaningful Victories follow-up: use the revision in the
+[upgrade ledger](flock-meaningful-victories.md). Ask players to explain how each
+signature encounter ends, identify which supporting bird acted, and describe a
+reward's base benefit and limitation. Observe the earned Canal gift and optional
+demo. After defeat, try a different final turn and interpret the comparison.
+Players may mark Confusing, Satisfying or Slow through Journal → Practice &
+feedback and export the local JSON voluntarily. Practice markers live only in the
+practice session; export them before leaving. Record P01–P05 observations without
+treating automated completion as evidence of enjoyment.
+
 Signature Fights + Faster Decisions follow-up: use the published revision from
 the [upgrade ledger](signature-fights-faster-decisions.md). Ask players to
 compare offers without opening the reader, explain a capstone's limitation,

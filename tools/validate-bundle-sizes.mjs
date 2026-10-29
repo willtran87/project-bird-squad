@@ -8,6 +8,8 @@ const assetsDir = path.join(path.resolve(root, process.argv[2] ?? '.artifacts/bu
 const kb = 1024;
 
 const budgets = [
+  { label: 'supporting flock lazy module', pattern: /^supporting-flock-.*\.js$/, maxKb: 2.5, hard: true },
+  { label: 'flight workshop lazy module', pattern: /^flight-workshop-.*\.js$/, maxKb: 6, hard: true },
   { label: 'build guidance shared lazy module', pattern: /^build-guidance-.*\.js$/, maxKb: 5, hard: true },
   { label: 'flight highlights shared lazy module', pattern: /^flight-highlights-.*\.js$/, maxKb: 3, hard: true },
   { label: 'living bird performance lazy module', pattern: /^living-performances-.*\.js$/, maxKb: 6, hard: true },

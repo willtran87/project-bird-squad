@@ -60,7 +60,7 @@ export function renderRewardCardFace(context: { scene: Phaser.Scene; target: Pha
   label(x - 116 + inset, 348, card.label, typography.secondary, (card.molt ? 160 : 232) - inset, 1, 'reward-card-family', card.accentText);
   if (card.molt) label(x + 58, 348, 'MOLT', typography.secondary, 60, 1, 'reward-card-molt-label', '#ffc78f');
   target.add(scene.add.rectangle(x, 400, 248, 54, 0x050c14, 1).setName('reward-card-effect-panel'));
-  label(x - 116, 376, card.summary, typography.primary, 232, 2, `${prefix}-effect`);
+  label(x - 116, 376, card.quickRead?.primary ?? card.summary, typography.primary, 232, 2, `${prefix}-effect`);
   const collection = !fallback && card.collectionStatus;
   const status = collection && (collection.firstClaim || collection.targeted);
   const preenContext = !fallback && card.decisionPreview.kind === 'preen';

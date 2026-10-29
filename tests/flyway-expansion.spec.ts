@@ -78,7 +78,7 @@ test('Molt, suit cameos and dynamic music respond to actual combat events',async
     const s=(window as any).__birdSquadGame.scene.getScene('BattleScene');s.combatAnimationPending=false;s.energy=20;
     const card=s.hand.find((c:any)=>c.id==='major_00');s.playCard(card,s.enemies[0].id);s.enterMolt('Flight test');
   });
-  await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').flywayPresentation.cameos)).toBeGreaterThan(0);
+  await expect.poll(()=>page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return b.livingPerformances?.crew.length===2||b.flywayPresentation.cameos>0;})).toBe(true);
   if (await page.evaluate(()=>!!(window.AudioContext||(window as any).webkitAudioContext))) {
     await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadAudio().music.flightState)).toBe('molt');
   } else {

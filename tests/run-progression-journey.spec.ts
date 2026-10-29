@@ -51,6 +51,7 @@ for (const scenario of cases) test(`seeded run progression: ${scenario.plan ?? (
   for (let step = 0; step < 240 && !terminal; step++) {
     await settleCanvas(page);
     await page.waitForFunction(() => {
+      if (document.querySelector('#flyway-book-title')?.textContent === 'The Canal carries your flock forward') return true;
       const game = (window as any).__birdSquadGame;
       if (game.scene.isActive('RouteScene')) return game.scene.getScene('RouteScene').routeEssentialAssetsReady;
       if (!game.scene.isActive('BattleScene')) return false;
@@ -58,6 +59,14 @@ for (const scenario of cases) test(`seeded run progression: ${scenario.plan ?? (
       return b.fxLayer?.active && b.combatPreviewModule && b.discardChoiceModule && b.returnChoiceModule
         && !b.combatIntroActive && !b.combatAnimationPending;
     });
+    if (await page.getByRole('heading', {name:'The Canal carries your flock forward'}).isVisible()) {
+      const gift = scenario.plan === 'tempo' ? 'Answering Bell' : scenario.plan === 'molt' ? 'Storm Anchor' : 'Answerkeeper Knot';
+      await page.getByRole('button',{name:`Inspect ${gift}`,exact:true}).click();
+      await page.getByRole('button',{name:`Carry ${gift}`,exact:true}).click();
+      journey.push({kind:'earned-capstone',gift});
+      await page.keyboard.press('Escape');
+      continue;
+    }
     const state = await page.evaluate(() => {
       const game = (window as any).__birdSquadGame;
       return game.scene.isActive('RouteScene') ? 'route' : game.scene.getScene('BattleScene').mode;

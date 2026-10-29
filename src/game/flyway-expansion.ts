@@ -16,7 +16,7 @@ import { bossDisruption, branchCards, branchUpgrade, canalPreens, spirePreens, b
 
 // Matches the scene adapters used by the existing lazy battle/route modules.
 type Scene = Phaser.Scene & Record<string, any>;
-type Page = 'flight' | 'crew' | 'city' | 'stories' | 'journal' | 'call';
+type Page = 'flight' | 'crew' | 'city' | 'stories' | 'journal' | 'call' | 'workshop' | 'gift';
 const installed = new WeakSet<Phaser.Scene>();
 const archiveKey = 'birdsquad.flyway.journal';
 const medalsKey = 'birdsquad.flyway.medals';
@@ -71,6 +71,8 @@ export function installFlyway(raw: Phaser.Scene) {
   let identity: typeof import('./flock-identity') | undefined;
   let identityHud: ReturnType<typeof import('./flock-identity')['installIdentity']> | undefined;
   let identityFailed = false;
+  let workshop: typeof import('./flight-workshop') | undefined, workshopLoading = false;
+  let introducedGift = false;
   let dialog: HTMLDialogElement | undefined;
   let page: Page = 'flight';
   let pendingPreen: { card: any; accept: (branch: PreenBranch) => void; isCurrent: () => boolean } | undefined;
@@ -86,6 +88,9 @@ export function installFlyway(raw: Phaser.Scene) {
   launch.className = 'flyway-launch'; launch.id = 'flyway-launch';
   const shortcutCode = () => Object.values(controlBindingsSnapshot()).includes('KeyJ') ? 'F8' : 'KeyJ';
   document.body.append(launch);
+  const sleep = () => launch.remove();
+  const wake = () => document.body.append(launch);
+  scene.events.on('sleep',sleep); scene.events.on('wake',wake);
   const position = () => {
     identityHud?.update();
     const rect = scene.game.canvas.getBoundingClientRect();
@@ -112,6 +117,11 @@ export function installFlyway(raw: Phaser.Scene) {
       if (launch.title !== title) launch.title = title;
     }
     if (launch.textContent !== caption) launch.textContent = caption;
+    if (!hidden && !dialog && identity && scene.runState?.flyway?.canalGiftPending && !scene.runState.flyway.capstone && !introducedGift) {
+      introducedGift = true;
+      open('gift');
+      if (dialog) mutate(() => { scene.runState.flyway.canalGiftPending = false; });
+    }
   };
   position();
   const resize = () => position(); window.addEventListener('resize', resize);
@@ -163,16 +173,24 @@ export function installFlyway(raw: Phaser.Scene) {
     const scroll = dialog.scrollTop;
     dialog.replaceChildren();
     const header = element('header');
-    const title = element('h1', pendingPreen ? 'Choose this bird’s Preen' : 'The Flyway Journal'); title.id = 'flyway-book-title';
+    const title = element('h1', pendingPreen ? 'Choose this bird’s Preen' : page === 'gift' ? 'The Canal carries your flock forward' : 'The Flyway Journal'); title.id = 'flyway-book-title';
     header.append(title, element('p', 'A city connected by familiar wings.', 'flyway-note'));
     const nav = element('nav'); nav.setAttribute('aria-label', 'Flyway sections');
-    if (!pendingPreen) for (const [id, label] of [['flight','This flight'],['crew','Flock & combinations'],['city','City & crossings'],['stories','Flight Stories'],['journal','Flight journal']] as Array<[Page,string]>) {
+    if (!pendingPreen) for (const [id, label] of [['flight','This flight'],['crew','Flock & combinations'],['city','City & crossings'],['stories','Flight Stories'],['journal','Flight journal'],['workshop','Practice & feedback']] as Array<[Page,string]>) {
       const tab = button(label, () => { page = id; render(); }); tab.setAttribute('aria-pressed', String(page === id)); nav.append(tab);
     }
     nav.append(button(pendingPreen ? 'Cancel' : 'Return to game', close)); header.append(nav); dialog.append(header);
     const body = element('main'); dialog.append(body);
     const status = element('p'); status.setAttribute('role', 'status'); status.setAttribute('aria-live','polite'); body.append(status);
     if (pendingPreen) renderPreen(body);
+    else if (page === 'gift') { section(body,'A crossing restored','Market birds gather at the reopened sluice. Choose one gift for this flight, try it safely, or return later through the Journal.'); identity?.renderIdentity(body,scene,state(scene),mutate,true); }
+    else if (page === 'workshop') {
+      if (workshop) workshop.renderWorkshop(body,scene,close);
+      else {
+        section(body,'Preparing practice & feedback','Your flight is unchanged.');
+        if (!workshopLoading) { workshopLoading=true; void import('./flight-workshop').then(module=>{if(alive){workshop=module;render();}}).catch(()=>{workshopLoading=false;feedback('Practice could not load. Reopen this section to retry.');}); }
+      }
+    }
     else if (page === 'call') renderCall(body);
     else if (page === 'flight') renderFlight(body);
     else if (page === 'crew') renderCrew(body);
@@ -366,6 +384,7 @@ export function installFlyway(raw: Phaser.Scene) {
     for (const medal of s.medals) { const box = section(body, 'Flight Story seal', flightStories.find(story => story.id === medal)?.reward ?? medal); box.prepend(element('span', medal === 'open-sky' ? '❧' : medal === 'small-flock' ? '◎' : '≋', `flyway-seal ${medal}`)); }
   }
   const onKey = (event: KeyboardEvent) => {
+    if (!dialog && !scene.sys.isActive()) return;
     if (!dialog && (!scene.sys.isActive() || isBusy(scene))) return;
     // Shift + a remapped guide key already owns combat history. Function keys
     // cannot be bound in Controls; F8 is separate from map inspection's F2.
@@ -397,6 +416,9 @@ export function installFlyway(raw: Phaser.Scene) {
   };
   scene.flywayCancelPreen = () => { if (pendingPreen) close(); };
   scene.openFlyway = open;
+  scene.previewCapstone = (choice: import('./signature-capstones').Capstone) => {
+    void import('./flight-workshop').then(module=>{if(alive){workshop=module;close();module.startCapstoneDemo(scene,choice);}}).catch(()=>feedback('Practice could not load. Please try again.'));
+  };
   installPresentation(scene);
   void import('./flock-identity').then(module=>{
     if(!alive)return;identity=module;identityHud=module.installIdentity(scene,()=>!!dialog||!!isBusy(scene),()=>open('call'));render();
@@ -446,7 +468,8 @@ export function installFlyway(raw: Phaser.Scene) {
     identityHud?.destroy();
     close(); installed.delete(raw); launch.remove(); canvasResize.disconnect(); window.clearInterval(refreshTimer); cancelAnimationFrame(frame);
     window.removeEventListener('resize', resize); window.removeEventListener('keydown', onKey, true);
-    delete scene.flywayPreenRequest; delete scene.flywayCancelPreen; delete scene.openFlyway;
+    scene.events.off('sleep',sleep); scene.events.off('wake',wake);
+    delete scene.flywayPreenRequest; delete scene.flywayCancelPreen; delete scene.openFlyway; delete scene.previewCapstone;
   });
 }
 
@@ -482,7 +505,7 @@ function installPresentation(scene: Scene) {
     // These portraits match the exact species on their cards.
     const cameoLeader = ({ major_00: 'fledgling', swords_ace: 'talon', cups_ace: 'tidewarden' } as Record<string,string>)[card.id];
     const asset = cameoLeader ? codexLeaderArtAssets[cameoLeader] : undefined;
-    if (asset && scene.textures.exists(asset.key)) {
+    if (asset && scene.textures.exists(asset.key) && !scene.livingPerformances?.ready) {
       counters.cameos += 1;
       const image = scene.add.image(360, 280, asset.key).setName('flyway-card-bird');
       image.setScale(125 / image.height).setAlpha(.92); root.add(image);

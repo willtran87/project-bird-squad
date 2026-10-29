@@ -12,6 +12,8 @@ import { bindChoiceHint, observeChoiceInput } from './game/choice-input-hints';
 import { eventChoiceState, eventChoiceHint, handleEventChoice, renderEventChoiceReader } from './game/route-event-reading';
 import { beginPracticeSession, endPracticeSession, practiceHudOffset, practiceStartingDeck, renderPracticeBadge } from './game/practice-session';
 import { capstoneMarks } from './game/signature-capstones';
+import { signatureVictory } from './game/signature-fights';
+import { combatRandom, captureTurn, finishPracticeTurn, restoreTurn, type TurnCheckpoint } from './game/turn-practice';
 import { decisionBrief } from './game/decision-brief';
 import type { FlockStatKey } from './game/types';
 import { memoryStorageSessionActive } from './game/safe-storage';
@@ -2072,6 +2074,7 @@ interface RouteSceneData {
 }
 
 interface BattleSceneData {
+  turnCheckpoint?: TurnCheckpoint;
   practiceRematch?: boolean;
   routeNodeId?: string;
   runState?: RunState;
@@ -12311,7 +12314,9 @@ class BattleScene extends Phaser.Scene {
   private flock!: Flock;
   private enemies: Enemy[] = [];
   private drawPile: Card[] = [];
-  private combatRandom!: () => number;
+  private combatRandom!: ReturnType<typeof combatRandom>;
+  private turnCheckpoint?: TurnCheckpoint;
+  private practiceTurn = false;
   private openingDraw!: OpeningDrawState;
   private discardPile: Card[] = [];
   private clearedPile: Card[] = [];
@@ -12614,6 +12619,7 @@ class BattleScene extends Phaser.Scene {
   }
 
   init(data: BattleSceneData = {}) {
+    this.practiceTurn = false;
     this.practiceRematch = data.practiceRematch === true && memoryStorageSessionActive();
     this.outcomeSaved = true;
     this.flywayArchiveSaved = true;
@@ -12690,7 +12696,7 @@ class BattleScene extends Phaser.Scene {
         enemy.hp = enemy.maxHp;
       });
     }
-    this.combatRandom = seededRng(`${activeSeed}:combat:${activeMapIndex}:${initialRouteNode.id}`);
+    this.combatRandom = combatRandom(`${activeSeed}:combat:${activeMapIndex}:${initialRouteNode.id}`);
     this.drawPile = cardsFromSave(runState.deck);
     this.discardPile = [];
     this.clearedPile = [];
@@ -12975,6 +12981,8 @@ class BattleScene extends Phaser.Scene {
       this.rewardDecisionStartedAtMs = Date.now();
       this.log = [...runState.routeLog];
     }
+    if (data.turnCheckpoint && this.practiceRematch) restoreTurn(this, data.turnCheckpoint);
+    else captureTurn(this);
   }
 
   // Consume route-granted pending combat modifiers at combat start (Supplies,
@@ -16900,7 +16908,7 @@ private playBattleIntro(onComplete?: () => void) {
     const objective = this.encounterObjective;
     if (!objective) return undefined;
     if (terminalResult === 'loss') return { ...objective, status: 'failed' };
-    const combatWon = this.enemies.every((enemy) => enemy.hp <= 0);
+    const combatWon = this.enemies.every((enemy) => enemy.hp <= 0) || !!this.signatureWin();
     if (objective.type === 'priority') {
       const defeatedTurn = objective.targetEnemyId ? this.enemyDefeatedTurns.get(objective.targetEnemyId) : undefined;
       if (defeatedTurn !== undefined) return { ...objective, status: defeatedTurn <= (objective.deadlineTurn ?? 3) ? 'complete' : 'failed' };
@@ -20089,6 +20097,7 @@ private playBattleIntro(onComplete?: () => void) {
       this.resolveEnemyTurnAnimated(() => {
         if (this.flock.hp >= hpBeforeEnemyTurn) this.checkNoDamageTurnMarks();
         this.checkOutcome();
+        finishPracticeTurn(this);
         this.setEnemyTurnBeat('idle');
         if (this.mode !== 'battle') {
           this.combatAnimationPending = false;
@@ -20113,6 +20122,7 @@ private playBattleIntro(onComplete?: () => void) {
     this.resolveEnemyTurn();
     if (this.flock.hp >= hpBeforeEnemyTurn) this.checkNoDamageTurnMarks();
     this.checkOutcome();
+    finishPracticeTurn(this);
     if (this.mode === 'battle') this.startPlayerTurn();
     this.renderAll();
   }
@@ -20155,6 +20165,7 @@ private playBattleIntro(onComplete?: () => void) {
     this.roostRetainPriorityInstanceId = undefined;
     if ((this.flockStats().resonance ?? 0) > 0) this.gainResonance(this.flockStats().resonance ?? 0);
     this.logEvent(`Turn ${this.turn} starts.`);
+    captureTurn(this);
     const announceDelayMs = options.announceDelayMs ?? 0;
     if (announceDelayMs <= 0) {
       options.onReady?.();
@@ -21060,11 +21071,13 @@ private playBattleIntro(onComplete?: () => void) {
       : Math.min(scrapReward + streetBonus, this.statOverextensions * 10);
     const objective = this.encounterObjectiveStatus();
     const objectiveBonus = objective?.status === 'complete' ? objective.bonusScrap : 0;
-    this.combatScrapAwarded = scrapReward + streetBonus + objectiveBonus - overextensionTax;
+    const signatureBonus = this.signatureWin()?.bonus ?? 0;
+    this.combatScrapAwarded = scrapReward + streetBonus + objectiveBonus + signatureBonus - overextensionTax;
     this.scrap += this.combatScrapAwarded;
     this.runScrapEarned += Math.max(0, this.combatScrapAwarded);
     this.combatEconomyAwarded = true;
     this.logEvent(`Recovered +${this.combatScrapAwarded} Scrap.`);
+    if (signatureBonus) this.logEvent(`Both defenders defeated: +${signatureBonus} bonus Scrap.`);
     if (objective) this.logEvent(objectiveBonus > 0
       ? `${objective.title} complete: +${objectiveBonus} bonus Scrap.`
       : `${objective.title} missed: no bonus Scrap.`);
@@ -21324,9 +21337,14 @@ private playBattleIntro(onComplete?: () => void) {
     return card.cost;
   }
 
+  private signatureWin() {
+    return signatureVictory(currentCombatNodes()[this.currentRouteIndex]?.payloadId ?? '', this.enemies, this.flock.hp, this.enemyDefeatedTurns);
+  }
+
   private checkOutcome() {
-    if (this.enemies.every((enemy) => enemy.hp <= 0)) {
+    if (this.flock.hp > 0 && (this.enemies.every((enemy) => enemy.hp <= 0) || this.signatureWin())) {
       if (this.mode === 'battle') {
+        finishPracticeTurn(this);
         if (this.practiceRematch) {
           this.mode = 'runComplete';
           this.emitRunSummary('win');
@@ -21335,11 +21353,12 @@ private playBattleIntro(onComplete?: () => void) {
           return;
         }
         this.beginPostCombatRewards();
-        this.logEvent('The rooftop is clear.');
+        this.logEvent(this.signatureWin()?.reason ?? 'The rooftop is clear.');
         this.combatVictoryRally();
         return;
       }
     } else if (this.flock.hp <= 0) {
+      finishPracticeTurn(this);
       this.mode = 'defeat';
       birdAudio.setMood('defeat');
       birdAudio.play('defeat');
