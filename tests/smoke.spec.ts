@@ -8068,7 +8068,7 @@ test('reward renderer loading skeleton preserves ceremony anchors until choices 
   expect(loadingCard.state.battleRewardRenderer).toMatchObject({ requested: true, ready: false, loaded: false, failed: false });
   expect(loadingCard.titles).toEqual([{ text: 'Add to the Flock', x: 640, y: 91, width: 1060, height: 52 }]);
   expect(loadingCard.loadingLabels).toEqual(['Preparing choices · Input unlocks when every option is visible.']);
-  expect(loadingCard.slots).toEqual([336, 640, 944].map((x) => ({ x, y: 396, width: 264, height: 300 })));
+  expect(loadingCard.slots).toEqual([336, 640, 944].map((x) => ({ x, y: 396, width: 264, height: 306 })));
   expect(loadingCard.inspectSlots).toEqual([336, 640, 944].map((x) => ({ x: x - 76, y: 586, width: 104, height: 58 })));
   expect(loadingCard.selectSlots).toEqual([336, 640, 944].map((x) => ({ x: x + 56, y: 586, width: 144, height: 58 })));
   expect(loadingCard.skipSlots).toEqual([{ x: 982, y: 652, width: 324, height: 58 }]);
@@ -21823,7 +21823,7 @@ test('flight details expose the final deck, path, kit, decisions, and results ac
   await expect.poll(async () => page.evaluate(() => {
     const state = JSON.parse(window.render_game_to_text?.() ?? '{}');
     return state.combatInputFocus?.count;
-  })).toBe(4);
+  })).toBe(5);
   // The action count is known before the lazy outcome presentation arrives.
   // Navigate only once its actual controls have taken ownership from loading.
   await page.waitForFunction(() => {

@@ -277,7 +277,7 @@ function renderCard(
 ) {
   const { scene, target, fontFamily, boldFontStyle, goldColor, softColor } = context;
   const cardWidth = 264;
-  const cardHeight = 312;
+  const cardHeight = 306;
   const hoverWidth = cardWidth + 16;
   const hoverHeight = cardHeight + 8;
   const top = y - cardHeight / 2;

@@ -11,6 +11,11 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 - Full release qualification, commit/PR/merge/Pages verification and branch
   cleanup remain pending. Ledger: `docs/game/signature-fights-faster-decisions.md`.
 - Human acceptance remains a prepared handoff, with zero sessions.
+- First PR qualification found an outdated outcome control count and a reward
+  loading placeholder height mismatch. Updated the expectation, aligned loading
+  slots with the 306px cards, and added route hint/offer/name separation checks.
+  Compact control coverage also found a 5px gap; restored the shared 8px minimum.
+  A fresh complete workflow must pass before merge.
 
 ## 2026-10-28 — Distinct Builds + Living Battles
 - Published `6918d281` through PR #17 and clean production run 40681063218.

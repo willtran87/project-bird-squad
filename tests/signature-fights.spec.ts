@@ -141,7 +141,24 @@ test('Signature Fights route rewards show comparisons before any commitment',asy
   await route(page);
   await page.evaluate(()=>{const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');r.openRouteRewardMenu({id:'signature-cache',type:'cache',label:'Signature Cache',payloadId:'signature-cache'}, {key:'choose',text:'Review the drawer.',effects:['addCard(chooseOneOfTwoUncommonOrRare)'],locked:false},structuredClone(r.runState));});
   await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('RouteScene').children.list.some((o:any)=>o.name==='route-reward-quick-read'));
-  for(const size of sizes){await page.setViewportSize(size);await settleCanvas(page);const rows=await page.evaluate(()=>{const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');return r.children.list.filter((o:any)=>o.name==='route-reward-quick-read').map((o:any)=>({text:o.getData('fullText'),right:o.getBounds().right,font:parseFloat(o.style.fontSize)*r.game.canvas.getBoundingClientRect().height/720}));});expect(rows).toHaveLength(6);expect(rows.every(r=>r.font>=14&&r.right<1280&&r.text)).toBe(true);await page.screenshot({path:info.outputPath(`route-comparison-${size.width}.png`)});}
+  for(const size of sizes){
+    await page.setViewportSize(size);await settleCanvas(page);
+    const layout=await page.evaluate(()=>{
+      const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');
+      const named=(name:string)=>r.children.list.filter((o:any)=>o.name===name);
+      const rows=named('route-reward-quick-read');
+      const hint=named('route-reward-input-hint')[0].getBounds();
+      const hits=named('route-reward-card-hit'),inspect=named('route-reward-card-inspect-hit');
+      return {
+        rows:rows.map((o:any)=>({text:o.getData('fullText'),right:o.getBounds().right,font:parseFloat(o.style.fontSize)*r.game.canvas.getBoundingClientRect().height/720})),
+        clear:hits.every((hit:any,i:number)=>rows[i*3].getBounds().top>=hint.bottom
+          && rows[i*3+2].getBounds().bottom<=hit.getBounds().top
+          && named('route-reward-card-name')[i].getBounds().bottom<=inspect[i].getBounds().top),
+      };
+    });
+    expect(layout.rows).toHaveLength(6);expect(layout.rows.every((r:any)=>r.font>=14&&r.right<1280&&r.text)).toBe(true);
+    expect(layout.clear).toBe(true);await page.screenshot({path:info.outputPath(`route-comparison-${size.width}.png`)});
+  }
   expect(await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('RouteScene').routeRewardArmedCardId)).toBeFalsy();
 });
 

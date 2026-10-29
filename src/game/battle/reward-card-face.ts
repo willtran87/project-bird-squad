@@ -71,7 +71,7 @@ export function renderRewardCardFace(context: { scene: Phaser.Scene; target: Pha
   label(x - 116, 456, card.passiveDelta ?? 'No passive stat change', typography.secondary, 232, 1, 'reward-passive-delta', '#bfe8f4');
   if (card.quickRead) {
     label(x - 116, 480, card.quickRead.pairing, typography.secondary, 232, 2, 'reward-owned-pairing');
-    label(x - 116, 528, card.quickRead.tradeoff, typography.secondary, 232, 1, 'reward-main-tradeoff', '#ffcfaa');
+    label(x - 116, 526, card.quickRead.tradeoff, typography.secondary, 232, 1, 'reward-main-tradeoff', '#ffcfaa');
   }
 }
 
