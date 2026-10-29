@@ -13,7 +13,7 @@ const el=<K extends keyof HTMLElementTagNameMap>(tag:K,text?:string)=>{const n=d
 const section=(root:HTMLElement,title:string,text:string)=>{const n=el('section');n.append(el('h2',title),el('p',text));root.append(n);return n;};
 const button=(text:string,action:()=>void)=>{const b=el('button',text);b.type='button';b.onclick=action;return b;};
 
-export function renderIdentity(root:HTMLElement,scene:Scene,s:FlywayState,mutate:(fn:()=>void)=>boolean){
+export function renderIdentity(root:HTMLElement,scene:Scene,s:FlywayState,mutate:(fn:()=>void)=>boolean, giftOnly=false){
   const leader=scene.runState?.leaderId??scene.runLeaderId??'fledgling';
   const call=resolvedLeaderCall(leader,s);
   if(!scene.runState)return;
@@ -22,6 +22,7 @@ export function renderIdentity(root:HTMLElement,scene:Scene,s:FlywayState,mutate
   capstone.dataset.signatureCapstones = 'true';
   if (!s.capstone && s.restored.includes(1)) for (const [id, mark] of Object.entries(capstones)) {
     const row = section(capstone, mark.name, mark.description);
+    row.append(button(`Try ${mark.name}`, () => scene.previewCapstone?.(id)));
     row.append(button(`Inspect ${mark.name}`, () => {
       row.querySelector('[data-capstone-confirm]')?.remove();
       const confirmation = el('div'); confirmation.dataset.capstoneConfirm = id;
@@ -33,6 +34,7 @@ export function renderIdentity(root:HTMLElement,scene:Scene,s:FlywayState,mutate
       row.append(confirmation); confirmation.querySelector('button')?.focus();
     }));
   }
+  if(giftOnly)return;
   const box=section(root,'Your Leader’s next step',s.callStyle?`${call.name}: ${call.effect} ${call.tradeoff}`:s.restored.length?'Choose a Call specialization for the rest of this flight, or keep the base Call. Charge and once-per-fight limits stay the same.':'Defeat your first district boss to choose one of two Call specializations.');
   box.dataset.flockIdentity='specializations';
   if(s.callStyle||!s.restored.length)return;
@@ -71,7 +73,6 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
   let alive=true, performances: ReturnType<typeof import('./living-performances')['installLivingPerformances']> | undefined;
   void import('./living-performances').then(module=>{if(alive)performances=module.installLivingPerformances(scene);}).catch(()=>{});
   const update=()=>{
-    performances?.update();
     const now=performance.now(),dt=Math.min(500,now-last);last=now;
     const paused=scene.sys.isPaused()||!scene.sys.isActive()||document.hidden||scene.pauseOverlayOpen||scene.settingsOverlayOpen;
     if(!paused){
@@ -121,7 +122,7 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
     const group=scene.add.container().setName(`identity-signature-${kind}`);scene.fxLayer.add(group);active++;stats.signatures++;
     const caption=scene.add.text(480,205,name,{fontFamily:UI_FONT,fontSize:'18px',color:'#fff1cf',backgroundColor:'#0a1721',padding:{x:10,y:6}}).setOrigin(.5);group.add(caption);
     const art=codexLeaderArtAssets[leader];
-    if(art&&scene.textures.exists(art.key)&&(combo||!scene.livingPerformances?.ready)){
+    if(art&&scene.textures.exists(art.key)&&!scene.livingPerformances?.ready){
       const bird=scene.add.image(400,290,art.key);bird.setScale(105/bird.height);group.add(bird);
       if(!reduced)scene.tweens.add({targets:bird,x:combo?.effect==='damage'||index===2?565:index===3?435:485,y:index===4?302:index===3?270:245,angle:index===2?-18:index===4?0:9,duration:420,yoyo:true});
     }

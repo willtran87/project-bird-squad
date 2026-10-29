@@ -24,7 +24,7 @@ export interface RewardDeckNeedView {
 }
 
 export interface RewardCardView {
-  quickRead?: { pairing: string; tradeoff: string };
+  quickRead?: { primary: string; pairing: string; tradeoff: string };
   passiveDelta?: string;
   id: string;
   name: string;

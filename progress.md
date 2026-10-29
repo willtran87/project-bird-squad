@@ -1,5 +1,11 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-10-29 — Flock + Meaningful Victories (in progress)
+- Implementing objective victories, supporting birds, complete reward briefs,
+  earned capstone introduction/demo, final-turn practice and local feedback.
+- Acceptance ledger: `docs/game/flock-meaningful-victories.md`.
+- Human acceptance remains a handoff; no real sessions have been supplied.
+
 ## 2026-10-28 — Signature Fights + Faster Decisions
 - Published `7e260da2` through PR #18 and production run 40803195981.
 - All five packages are complete: three signature encounters, three exclusive

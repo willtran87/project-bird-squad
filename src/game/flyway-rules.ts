@@ -14,6 +14,7 @@ export function rooftopPlanMatch(plan: RooftopPlan | undefined, card: Pick<Runti
     : plan === 'molt' ? /enterMolt|gainOpenSkyGuard/.test(effects) : false;
 }
 export interface FlywayState {
+  canalGiftPending?: boolean;
   capstone?: import('./signature-capstones').Capstone;
   version: 1;
   restored: number[];
@@ -158,6 +159,7 @@ export function normalizeFlyway(value: unknown): FlywayState {
   const s = newFlywayState();
   if (!value || typeof value !== 'object') return s;
   const v = value as Record<string, unknown>;
+  if (v.canalGiftPending === true) s.canalGiftPending = true;
   if (v.capstone === 'shelter' || v.capstone === 'tempo' || v.capstone === 'molt') s.capstone = v.capstone;
   s.restored = Array.isArray(v.restored) ? [...new Set(v.restored.filter((n): n is number => Number.isInteger(n) && n >= 0 && n < 4))] : [];
   s.visits = strings(v.visits); s.rivalNodes = strings(v.rivalNodes); s.settledNodes = strings(v.settledNodes); s.journal = strings(v.journal, 48);
@@ -204,7 +206,7 @@ export function normalizeFlyway(value: unknown): FlywayState {
 export function journal(s: FlywayState, text: string) { s.journal = [...s.journal, text].slice(-48); }
 export function restoreDistrict(s: FlywayState, index: number) {
   if (!districts[index] || s.restored.includes(index)) return false;
-  s.restored.push(index); journal(s, districts[index].restored); return true;
+  s.restored.push(index); if (index === 1 && !s.capstone) s.canalGiftPending = true; journal(s, districts[index].restored); return true;
 }
 export function finishStory(s: FlywayState, won: boolean, deckSize: number) {
   const complete = won && (s.story === 'open-sky' ? s.survivedMolt >= 3 : s.story === 'small-flock' ? deckSize <= 10 : s.story === 'unbroken' ? s.cleanFights >= 3 : s.story === 'chorus-line' ? (s.resonanceSpent??0)>=12&&s.leaderCalls>=3 : s.story === 'clean-cut' ? (s.windedHits??0)>=12&&s.leaderCalls>=3 : false);

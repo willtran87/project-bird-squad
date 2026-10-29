@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import atlasUrl from '../../assets/runtime/flock/performances/living-battles-atlas-v2.webp';
 import { birdAudio, prefersReducedMotion, queueRuntimeImageAssets, currentMove } from '../main';
 import { prefersLeanEffects } from './graphics-quality';
+import { installSupportingFlock } from './supporting-flock';
 
 const key = 'living-battles-atlas-v2';
 const leaders = ['fledgling', 'spark_caller', 'talon', 'tidewarden', 'roostkeeper', 'caldra'];
@@ -16,9 +17,10 @@ type Actor = { image: Phaser.GameObjects.Image; row: number; clock: Phaser.Time.
 
 export function installLivingPerformances(scene: Scene) {
   let alive = true, ambientAt = scene.time.now + 14000;
+  let flock: ReturnType<typeof installSupportingFlock> | undefined;
   const actors = new Map<string, Actor>();
   let support: Phaser.GameObjects.Graphics | undefined;
-  const status = { ready: false, active: [] as Array<{ bird: string; pose: string }>, calls: 0 }; scene.livingPerformances = status;
+  const status = { ready: false, active: [] as Array<{ bird: string; pose: string }>, crew: [] as ReturnType<typeof installSupportingFlock>['state'], calls: 0 }; scene.livingPerformances = status;
   const frames = () => {
     if (!alive || !scene.textures.exists(key)) return;
     const texture = scene.textures.get(key);
@@ -27,6 +29,8 @@ export function installLivingPerformances(scene: Scene) {
       if (!texture.has(name)) texture.add(name, 0, columns[col], rows[row], columns[col+1]-columns[col], rows[row+1]-rows[row]);
     }
     status.ready = true;
+    flock ??= installSupportingFlock(scene, key);
+    status.crew = flock.state;
   };
   queueRuntimeImageAssets(scene, [{key, url:atlasUrl}], 'Bird performance art unavailable', frames); frames();
   const still = () => prefersReducedMotion() || prefersLeanEffects();
@@ -85,6 +89,7 @@ export function installLivingPerformances(scene: Scene) {
   scene.events.on('living-enemy-cue',enemy); scene.events.on('living-enemy-start',enemyStart); scene.events.on('living-enemy-impact',enemyImpact); scene.events.on('flyway-call',call);
   const update = () => {
     if (!alive || scene.sys.isPaused()) return;
+    flock?.update();
     const now = scene.time.now;
     for (const [id,a] of actors) {
       const elapsed=a.clock.getElapsed();
@@ -102,8 +107,10 @@ export function installLivingPerformances(scene: Scene) {
       if (!document.hidden && !document.querySelector('dialog[open]') && scene.mode==='battle' && !scene.combatAnimationPending && !scene.pauseOverlayOpen && !scene.settingsOverlayOpen) birdAudio.play('rooftopAir',.45);
     }
   };
+  scene.events.on('postupdate',update);
   return { update, destroy: () => {
-    alive=false; support?.destroy(); for (const id of [...actors.keys()]) retire(id); status.active=[];
+    scene.events.off('postupdate',update);
+    alive=false; flock?.destroy(); support?.destroy(); for (const id of [...actors.keys()]) retire(id); status.active=[];
     scene.events.off('living-cast',cast);scene.events.off('flyway-card',impact);scene.events.off('living-flock-cue',hit);
     scene.events.off('living-enemy-cue',enemy);scene.events.off('living-enemy-start',enemyStart);scene.events.off('living-enemy-impact',enemyImpact);scene.events.off('flyway-call',call);
   }};

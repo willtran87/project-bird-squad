@@ -21,7 +21,7 @@ export function playFlockAction(host: any, card: Card, enemyId: string, contract
   const old = host.fxLayer.getByName('combat-card-cast-ghost');
   if (old) { killTweensForTree(host, old); old.destroy(); }
   const style = flockAction(card, contract), reduced = prefersReducedMotion() || prefersLeanEffects();
-  host.events.emit('living-cast', budget, style);
+  host.events.emit('living-cast', budget, style, enemyId);
   host.queueFlockMotion(style === 'shelter' ? 'brace' : style === 'retreat' ? 'heal' : 'cast');
   const actor = host.add.container(FLOCK_FX_X + 185, FLOCK_FX_Y - 128)
     .setName('combat-card-cast-ghost').setDepth(40)

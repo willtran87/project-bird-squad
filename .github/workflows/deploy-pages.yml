@@ -157,9 +157,9 @@ jobs:
       - name: Verify release smoke and district upgrades
         run: >-
           node tools/run-cross-browser-smoke.mjs
-          tests/opening-district.spec.ts tests/canal-markets.spec.ts tests/signal-spires.spec.ts tests/high-roost.spec.ts tests/flock-identity.spec.ts tests/flock-motion.spec.ts tests/distinct-builds.spec.ts tests/signature-fights.spec.ts tests/audio-cue-budget.spec.ts tests/smoke.spec.ts
+          tests/opening-district.spec.ts tests/canal-markets.spec.ts tests/signal-spires.spec.ts tests/high-roost.spec.ts tests/flock-identity.spec.ts tests/flock-motion.spec.ts tests/distinct-builds.spec.ts tests/signature-fights.spec.ts tests/meaningful-victories.spec.ts tests/audio-cue-budget.spec.ts tests/smoke.spec.ts
           --project=${{ matrix.browser }} --workers=1 --timeout=90000 --reporter=list,json
-          --grep="Signature Fights |Distinct Builds |Flock Motion |Flock Identity |High Roost |Spires |Canal |strategy choices|plan drafting|real combinations|saved shelter|Crow purpose|strategy presentation|title boot paints generated controls once|sold-out Market stock remains in the spoken unavailable inventory|opt-in screen reader announcements follow|reward advice preserves costs|reward cost cautions remain visible"
+          --grep="Meaningful Victories |Signature Fights |Distinct Builds |Flock Motion |Flock Identity |High Roost |Spires |Canal |strategy choices|plan drafting|real combinations|saved shelter|Crow purpose|strategy presentation|title boot paints generated controls once|sold-out Market stock remains in the spoken unavailable inventory|opt-in screen reader announcements follow|reward advice preserves costs|reward cost cautions remain visible"
         env:
           PLAYWRIGHT_JSON_OUTPUT_NAME: .artifacts/browser-results.json
       - name: Retain browser evidence

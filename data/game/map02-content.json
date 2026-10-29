@@ -1143,7 +1143,7 @@
       "mapId": "map_02_canal_markets",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "Hold the crossing for three enemy beats. The gull attacks while the crow shields it; from beat four both retreat to weaker attacks. Defeat both to win.",
+      "lesson": "Survive three enemy beats to win the crossing. Defeat both defenders sooner for +8 Scrap. The gull attacks while the crow shields it.",
       "tags": ["multi", "support", "cover"],
       "enemies": ["canal_barge_gull", "canal_market_crow"],
       "rewardProfileId": "street_map02"
@@ -1154,7 +1154,7 @@
       "mapId": "map_02_canal_markets",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "The gull attacks while the crow braces, then they exchange roles. Both recover on beat three. From beat four their attack order reverses for the rest of the fight.",
+      "lesson": "Defeat either defender before the third enemy beat, then survive that beat to escape through the gap. Otherwise defeat both to win. Defeating both grants +8 Scrap.",
       "tags": ["multi", "cover", "tempo"],
       "enemies": ["canal_barge_gull", "canal_market_crow"],
       "rewardProfileId": "street_map02"
