@@ -16,6 +16,9 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
   slots with the 306px cards, and added route hint/offer/name separation checks.
   Compact control coverage also found a 5px gap; restored the shared 8px minimum.
   A fresh complete workflow must pass before merge.
+- Firefox caught the new capstone fixture reopening its journal before queued
+  scene resume completed. The fixture now awaits the active RouteScene, matching
+  existing journal tests; no gameplay guard was bypassed.
 
 ## 2026-10-28 — Distinct Builds + Living Battles
 - Published `6918d281` through PR #17 and clean production run 40681063218.

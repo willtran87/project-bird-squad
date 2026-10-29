@@ -57,6 +57,7 @@ test('Signature Fights capstones are earned, exclusive, persistent and inspectab
   await expect(page.locator('[data-signature-capstones]')).toContainText('Restore Canal');
   await expect(page.getByRole('button',{name:'Inspect Answerkeeper Knot',exact:true})).toHaveCount(0);
   await page.keyboard.press('Escape');
+  await ready(page,2);
   await page.evaluate(()=>{const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');r.runState.flyway.restored=[0,1];r.openFlyway();});
   await page.getByRole('button',{name:'Inspect Answerkeeper Knot',exact:true}).click();
   for(const size of sizes){await page.setViewportSize(size);await page.getByRole('button',{name:'Carry Answerkeeper Knot',exact:true}).scrollIntoViewIfNeeded();expect(await page.locator('#flyway-book').evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);await page.screenshot({path:info.outputPath(`capstone-${size.width}.png`)});}
