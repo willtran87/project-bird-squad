@@ -608,6 +608,8 @@ function describeScreen(payload: unknown): string {
       const focusedIndex = number(inputFocus?.index);
       const focusedCount = number(inputFocus?.count);
       const focusedChoice = focusedIndex === undefined ? undefined : source[focusedIndex];
+      const quick = isRecord(focusedChoice?.quickRead) ? focusedChoice.quickRead : undefined;
+      const brief = quick ? ` ${text(quick.pairing)}. ${text(quick.tradeoff)} ${text(focusedChoice?.passiveDelta)}.` : '';
       const buildObservations = (mode === 'cardReward' || mode === 'waymarkReward') && focusedChoice && Array.isArray(focusedChoice.observations)
         ? focusedChoice.observations.map(text).filter(Boolean).join('; ')
         : '';
@@ -641,7 +643,7 @@ function describeScreen(payload: unknown): string {
           ? ` Skip confirmation is armed for ${number(rewardSkip.scrap) ?? 0} Scrap. Activate ${text(isRecord(rewardSkip.input) ? rewardSkip.input.keyboard : undefined) || 'Skip Reward'}, controller X, or Skip again to commit; Back or controller B cancels without skipping.`
           : ` Skip is available for ${number(rewardSkip.scrap) ?? 0} Scrap and requires two activations; the first only arms confirmation.`
         : '';
-      return `Reward choices ready.${districtLean ? ` District lean: ${districtLean}.` : ''}${focused}${buildObservations ? ` Build observations: ${buildObservations}.` : ''}${collectionNote}${choices.length ? ` Options: ${choices.join(', ')}.` : ''}${claimInstruction} Use Roost or controller Y to inspect without claiming.${skipInstruction}`;
+      return `Reward choices ready.${districtLean ? ` District lean: ${districtLean}.` : ''}${focused}${brief}${buildObservations ? ` Build observations: ${buildObservations}.` : ''}${collectionNote}${choices.length ? ` Options: ${choices.join(', ')}.` : ''}${claimInstruction} Use Roost or controller Y to inspect without claiming.${skipInstruction}`;
     }
     const returnChoice = isRecord(payload.returnChoice) ? payload.returnChoice : undefined;
     if (returnChoice) {

@@ -107,6 +107,7 @@ type SceneAccess = Phaser.Scene & {
   cardInspectFocusState: BattleScene['cardInspectFocusState'];
   selectedEnemyId: BattleScene['selectedEnemyId'];
   allDeckCards: BattleScene['allDeckCards'];
+  rewardCardView: BattleScene['rewardCardView'];
   drawPile: BattleScene['drawPile'];
   clearedPile: BattleScene['clearedPile'];
   incomingFlockDamagePreview: BattleScene['incomingFlockDamagePreview'];
@@ -155,17 +156,10 @@ export function buildBattleStateSnapshot(raw: BattleScene): RenderPayload {
       counters: scene as unknown as Record<string, unknown>
     }) ?? {};
     return {
+      signatureFight: (scene as unknown as { signatureFight?: unknown }).signatureFight,
       flyway: { ...normalizeFlyway(scene.flyway), combat: scene.flightCombat,
         pacing: (scene as unknown as {identityPacing?:unknown}).identityPacing },
       cardContributions: scene.cardContributions.map(row => ({ ...row })),
-      cardAction: (() => {
-        const actor = scene.fxLayer?.getByName('combat-card-cast-ghost');
-        return actor?.active ? { style: actor.getData('actionStyle'), cardId: actor.getData('cardId'), reducedMotion: actor.getData('reducedMotion') } : undefined;
-      })(),
-      cardPayoff: (() => {
-        const payoff = (scene as unknown as { motionPayoff?: { until: number; text: string; cardId: string; results: string[] } }).motionPayoff;
-        return payoff && scene.time.now < payoff.until ? { text: payoff.text, cardId: payoff.cardId, results: [...payoff.results] } : undefined;
-      })(),
       mode: scene.mode,
       scene: 'BattleScene',
       keywordTooltip: keywordTooltipState(scene),
@@ -439,7 +433,9 @@ export function buildBattleStateSnapshot(raw: BattleScene): RenderPayload {
         tags: waymarkSynergyTags(mark),
         observations: scene.waymarkRewardBuildObservations[mark.id] ?? []
       })),
-      rewardChoices: scene.rewardChoices.map((card) => ({
+      rewardChoices: scene.rewardChoices.map((card, index) => ({
+        quickRead: scene.rewardCardView(card, index).quickRead,
+        passiveDelta: scene.rewardCardView(card, index).passiveDelta,
         id: card.id,
         name: displayName(card),
         bird: card.bird,

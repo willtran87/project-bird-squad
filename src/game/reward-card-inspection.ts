@@ -1529,7 +1529,7 @@ export function renderCombatRewardLoading(scene: any) {
   const title = cardReward ? 'Add to the Flock' : scene.mode === 'upgradeReward' ? 'Preen a Card' : 'Claim a Waymark';
   const choiceY = waymark ? 440 : 396;
   const choiceWidth = waymark ? 284 : 264;
-  const choiceHeight = waymark ? 392 : 300;
+  const choiceHeight = waymark ? 392 : 306;
   target.add(scene.add.rectangle(640, 360, 1280, 720, 0x020409, 0.9).setName('reward-loading-backdrop'));
   target.add(scene.add.rectangle(640, 98, 612, 114, 0x07101c, 0.82)
     .setStrokeStyle(2, 0xd8a840, 0.46)
@@ -1656,13 +1656,13 @@ export function renderCombatRewardFallback(scene: any) {
     }
     const view = scene.rewardCardView(choice, index);
     const enabled = !(scene.mode === 'cardReward' && scene.rewardSkipArmed);
-    const hit = scene.add.rectangle(x, choiceY, 264, 300, 0x07101c, 0.98)
+    const hit = scene.add.rectangle(x, choiceY, 264, 306, 0x07101c, 0.98)
       .setStrokeStyle(2, view.accent, 0.9)
       .setInteractive({ useHandCursor: true })
       .setName('reward-fallback-choice-hit');
     hit.on('pointerdown', () => scene.requestRewardChoice(view.id));
     target.add(hit);
-    if (view.focused) target.add(scene.add.rectangle(x, choiceY, 278, 308, 0x000000, 0)
+    if (view.focused) target.add(scene.add.rectangle(x, choiceY, 278, 314, 0x000000, 0)
       .setStrokeStyle(3, view.armed ? 0xd8a840 : 0x8df4ff, 1).setName('reward-input-focus-ring'));
     renderRewardCardFace({ scene, target, fontFamily: UI_FONT, boldFontStyle: UI_BOLD,
       goldColor: UI_GOLD, softColor: UI_SOFT, typography: UI_TYPE,

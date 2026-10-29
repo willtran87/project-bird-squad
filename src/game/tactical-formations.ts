@@ -1,7 +1,10 @@
 import type { RuntimeEnemy } from './types';
+import { signatureFormation } from './signature-fights';
 /** Encounter-specific loops retain canonical species/art. Every payload lookup
  * uses these loops, including previews and live combat. */
 export function tacticalFormation(id: string, enemies: RuntimeEnemy[]): RuntimeEnemy[] {
+  const signature = signatureFormation(id, enemies);
+  if (signature) return signature;
   if (!['enc_canal_open_perch', 'enc_canal_alternating_watch', 'enc_spire_quiet_beat'].includes(id)) return enemies;
   return enemies.map((original, i) => {
     const bird = structuredClone(original);

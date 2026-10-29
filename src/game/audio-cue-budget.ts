@@ -1,6 +1,6 @@
 import type { SynthAudioCue } from './audio-sfx';
 
-const supporting = new Set<SynthAudioCue>(['draw', 'discard', 'shuffle', 'flow', 'cover', 'heal', 'bank', 'spend', 'moltPower']);
+const supporting = new Set<SynthAudioCue>(['draw', 'discard', 'shuffle', 'flow', 'cover', 'heal', 'bank', 'spend', 'moltPower', 'rooftopAir']);
 const essential = new Set<SynthAudioCue>(['attack', 'heavyAttack', 'hitConfirm', 'coverBreak', 'threat', 'enemyCommitment',
   'locked', 'victory', 'victoryFanfare', 'defeat', 'roostHandoff', 'playerTurnRally']);
 
@@ -11,7 +11,7 @@ export class AudioCueBudget {
   private quietUntil = -Infinity;
 
   accepts(cue: SynthAudioCue, nowMs: number) {
-    const important = essential.has(cue);
+    const important = essential.has(cue) || cue.startsWith('flock');
     if (nowMs - (this.last.get(cue) ?? -Infinity) < (important ? 40 : 80)) return false;
     this.supportTimes = this.supportTimes.filter(time => nowMs - time < 100);
     if (supporting.has(cue)) {

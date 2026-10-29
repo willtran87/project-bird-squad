@@ -10,7 +10,10 @@ import { cloneRewardCheckpoint, sanitizeRewardCheckpoint, type RewardCheckpoint 
 import { KEYWORDS, KEYWORD_ICON_IDS, buildKeywordTokens, keywordIconId } from './game/keyword-definitions';
 import { bindChoiceHint, observeChoiceInput } from './game/choice-input-hints';
 import { eventChoiceState, eventChoiceHint, handleEventChoice, renderEventChoiceReader } from './game/route-event-reading';
-import { endPracticeSession, practiceHudOffset, practiceStartingDeck, renderPracticeBadge } from './game/practice-session';
+import { beginPracticeSession, endPracticeSession, practiceHudOffset, practiceStartingDeck, renderPracticeBadge } from './game/practice-session';
+import { capstoneMarks } from './game/signature-capstones';
+import { decisionBrief } from './game/decision-brief';
+import type { FlockStatKey } from './game/types';
 import { memoryStorageSessionActive } from './game/safe-storage';
 import './style.css';
 import splashUrl from '../assets/splash/bird-squad-canal-run-splash-v11-menu-pop.webp';
@@ -696,6 +699,7 @@ class SceneAssetReadinessTracker {
 }
 
 interface RenderPayload {
+  signatureFight?: unknown;
   cardContributions?: CardContribution[];
   cardAction?: { style: string; cardId: string; reducedMotion: boolean };
   cardPayoff?: { text: string; cardId: string; results: string[] };
@@ -2068,6 +2072,7 @@ interface RouteSceneData {
 }
 
 interface BattleSceneData {
+  practiceRematch?: boolean;
   routeNodeId?: string;
   runState?: RunState;
 }
@@ -12599,6 +12604,8 @@ class BattleScene extends Phaser.Scene {
   private battleHandBuilds = 0;
   private battleHandReuses = 0;
   private battleRouteCheckpoint!: RunState;
+  private battleStartingData!: BattleSceneData;
+  private practiceRematch = false;
   private rewardClaims: RewardCheckpoint['claims'] = [];
   private rewardResume?: RewardCheckpoint;
 
@@ -12607,12 +12614,14 @@ class BattleScene extends Phaser.Scene {
   }
 
   init(data: BattleSceneData = {}) {
+    this.practiceRematch = data.practiceRematch === true && memoryStorageSessionActive();
     this.outcomeSaved = true;
     this.flywayArchiveSaved = true;
     this.lastRunRewards = undefined;
     this.registry.set(controlPanelRegistryKey(this), false);
     this.registry.remove(controlCaptureRegistryKey(this));
     const runState = cloneRunState(data.runState ?? createInitialRunState());
+    this.battleStartingData = { runState: cloneRunState(runState), routeNodeId: data.routeNodeId };
     this.runLeaderId = runState.leaderId;
     this.resolvingCard = undefined;
     this.flyway = normalizeFlyway(runState.flyway);
@@ -12990,9 +12999,9 @@ class BattleScene extends Phaser.Scene {
   // `effect` at its `trigger` through resolveMarkEffect, so authored marks
   // actually reshape combat instead of being decorative collectibles.
   private ownedMarkDefs() {
-    return this.routeMarks
+    return [...this.routeMarks
       .map((id) => alphaRouteMarkLibrary.get(id))
-      .filter((mark): mark is NonNullable<typeof mark> => !!mark);
+      .filter((mark): mark is NonNullable<typeof mark> => !!mark), ...capstoneMarks(this.flyway.capstone)];
   }
 
   // The closed mark-effect verb set the runtime honors at a trigger point.
@@ -17388,6 +17397,8 @@ private playBattleIntro(onComplete?: () => void) {
       resonance: this.spark,
       moltPower: this.activeMoltPower(),
       moltEntryEnergy: this.flyway.relic === 'storm-pin' ? 1 : 0,
+      moltEntryEffects: capstoneMarks(this.flyway.capstone).filter(m => m.trigger === 'onEnterMolt' && !this.markFiredThisCombat.has(m.id)).flatMap(routeMarkEffects),
+      afterCardEffects: capstoneMarks(this.flyway.capstone).filter(m => m.trigger === 'onNthCardThisTurn(3)' && this.cardsPlayedThisTurn === 2 && !this.markFiredThisCombat.has(m.id)).flatMap(routeMarkEffects),
       rawCoverGain: amount => flywayCoverGain(this.flyway, amount),
       cost: this.effectiveCost(card),
       pendingNestCoverBonus: this.pendingNestCoverBonus,
@@ -18224,6 +18235,17 @@ private playBattleIntro(onComplete?: () => void) {
     const needTags = this.mode === 'cardReward' ? this.rewardObservations(card) : this.cardNeedTags(card);
     const stats = cardStatRows(card).slice(0, 2);
     return {
+      quickRead: decisionBrief({ ...card, upgraded: this.mode === 'upgradeReward' || card.upgraded, name: displayName(card) }, this.allDeckCards().map(c => ({ ...c, name: displayName(c) }))),
+      passiveDelta: (() => {
+        const before = aggregateFlockStats(this.allDeckCards());
+        const after = aggregateFlockStats(this.mode === 'upgradeReward'
+          ? this.allDeckCards().map(c => c.id === card.id ? { ...c, upgraded: true } : c) : [...this.allDeckCards(), card]);
+        return Object.keys(after).flatMap(key => {
+          const delta = (after[key as FlockStatKey] ?? 0) - (before[key as FlockStatKey] ?? 0);
+          const label = ({cohesion:'HP',damage:'ATK',cover:'Cover',regen:'Regen',draw:'Draw',resonance:'Res',moltPower:'Molt',openSkyGuard:'Guard'} as Record<string,string>)[key] ?? flockStatLabel(key as FlockStatKey);
+          return delta ? [`${label} ${delta > 0 ? '+' : ''}${delta}`] : [];
+        }).join(' · ') || 'No passive stat change';
+      })(),
       id: card.id,
       name: displayName(card),
       bird: card.bird,
@@ -18738,12 +18760,12 @@ private playBattleIntro(onComplete?: () => void) {
   }
 
   private outcomeActions(): Array<{
-    id: 'replay' | 'details' | 'rate' | 'menu';
+    id: 'replay' | 'details' | 'rate' | 'menu' | 'practice';
     label: string;
     activate: () => void;
   }> {
     const actions: Array<{
-      id: 'replay' | 'details' | 'rate' | 'menu';
+      id: 'replay' | 'details' | 'rate' | 'menu' | 'practice';
       label: string;
       activate: () => void;
     }> = [{ id: 'replay', label: 'Replay Flight', activate: () => this.replayLastFlight() }];
@@ -18753,6 +18775,7 @@ private playBattleIntro(onComplete?: () => void) {
     if (PLAYTEST_MODE && window.__birdSquadLastRun) {
       actions.push({ id: 'rate', label: 'Rate This Run', activate: () => this.openPlaytestRunRating() });
     }
+    if (this.practiceRematch || this.mode === 'defeat' && window.__birdSquadLastRun?.result === 'loss') actions.push({ id: 'practice', label: 'Practice This Fight', activate: () => this.practiceLostFight() });
     actions.push({ id: 'menu', label: 'Main Menu', activate: () => this.returnToMainMenu() });
     return actions;
   }
@@ -18975,6 +18998,12 @@ private playBattleIntro(onComplete?: () => void) {
         practiceStartingDeck()
       )
     });
+  }
+
+  private practiceLostFight() {
+    if (!isRunOutcome(this.mode) || !this.ensureOutcomeSaved()) return;
+    if (!memoryStorageSessionActive() && !beginPracticeSession()) return;
+    this.scene.restart({ ...structuredClone(this.battleStartingData), practiceRematch: true });
   }
 
   private openPlaytestRunRating() {
@@ -21298,6 +21327,13 @@ private playBattleIntro(onComplete?: () => void) {
   private checkOutcome() {
     if (this.enemies.every((enemy) => enemy.hp <= 0)) {
       if (this.mode === 'battle') {
+        if (this.practiceRematch) {
+          this.mode = 'runComplete';
+          this.emitRunSummary('win');
+          this.retireCombatFxForOutcome();
+          this.logEvent('Practice complete. No rewards or progression saved.');
+          return;
+        }
         this.beginPostCombatRewards();
         this.logEvent('The rooftop is clear.');
         this.combatVictoryRally();

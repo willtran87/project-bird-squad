@@ -7,6 +7,14 @@ human, device or assistive-technology evidence.
 
 ## Session kit
 
+Signature Fights + Faster Decisions follow-up: use the published revision from
+the [upgrade ledger](signature-fights-faster-decisions.md). Ask players to
+compare offers without opening the reader, explain a capstone's limitation,
+predict each signature fight's next phase, and identify shield/signal/recovery
+actions. After a loss, observe whether they discover Practice This Fight and
+understand that it preserves their real progress. Record decision time,
+misreadings and voluntary rematches; no human sessions have been performed.
+
 Distinct Builds + Living Battles follow-up: use the revision in the
 [upgrade ledger](distinct-builds-living-battles.md). Ask players to describe their
 strategy and its weakness, explain a candidate’s pairing with an owned bird,

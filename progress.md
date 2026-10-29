@@ -1,5 +1,25 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-10-28 — Signature Fights + Faster Decisions
+- Implementing all five accepted packages on `codex/signature-fights-faster-decisions`.
+- Added three scripted district encounters, phase guidance, three exclusive
+  Canal capstones, front-of-offer comparisons, v2 bird poses/support glyphs,
+  decisive audio priority and isolated exact lost-fight practice.
+- Initial focused tests verified all encounter projections and rematch opening/
+  storage isolation. Fixed capstone preview handling and reward spacing found
+  during that pass; broadened visual/catalog regression is in progress.
+- Full release qualification, commit/PR/merge/Pages verification and branch
+  cleanup remain pending. Ledger: `docs/game/signature-fights-faster-decisions.md`.
+- Human acceptance remains a prepared handoff, with zero sessions.
+- First PR qualification found an outdated outcome control count and a reward
+  loading placeholder height mismatch. Updated the expectation, aligned loading
+  slots with the 306px cards, and added route hint/offer/name separation checks.
+  Compact control coverage also found a 5px gap; restored the shared 8px minimum.
+  A fresh complete workflow must pass before merge.
+- Firefox caught the new capstone fixture reopening its journal before queued
+  scene resume completed. The fixture now awaits the active RouteScene, matching
+  existing journal tests; no gameplay guard was bypassed.
+
 ## 2026-10-28 — Distinct Builds + Living Battles
 - Published `6918d281` through PR #17 and clean production run 40681063218.
   Both PR and production qualification passed 1,087 core, 321 browser and

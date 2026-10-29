@@ -24,6 +24,8 @@ export interface RewardDeckNeedView {
 }
 
 export interface RewardCardView {
+  quickRead?: { pairing: string; tradeoff: string };
+  passiveDelta?: string;
   id: string;
   name: string;
   bird: string;
@@ -275,7 +277,7 @@ function renderCard(
 ) {
   const { scene, target, fontFamily, boldFontStyle, goldColor, softColor } = context;
   const cardWidth = 264;
-  const cardHeight = 300;
+  const cardHeight = 306;
   const hoverWidth = cardWidth + 16;
   const hoverHeight = cardHeight + 8;
   const top = y - cardHeight / 2;
@@ -313,7 +315,7 @@ function renderCard(
       .setName('reward-input-focus-ring'));
   }
   renderRewardCardFace({ ...context, typography: UI_TYPE }, card, x);
-  if (context.reinforcedColorCues) renderCardColorCue(scene, target, x - 102, 383, card.label, card.accent,
+  if (context.reinforcedColorCues) renderCardColorCue(scene, target, x - 102, 359, card.label, card.accent,
     { name: 'reward-color-cue-badge', width: 26, height: 28, iconOnly: true });
   if (context.kind === 'upgrade') {
     const change = rewardDecisionPreviewLabel(card.decisionPreview);

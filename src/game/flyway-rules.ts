@@ -14,6 +14,7 @@ export function rooftopPlanMatch(plan: RooftopPlan | undefined, card: Pick<Runti
     : plan === 'molt' ? /enterMolt|gainOpenSkyGuard/.test(effects) : false;
 }
 export interface FlywayState {
+  capstone?: import('./signature-capstones').Capstone;
   version: 1;
   restored: number[];
   residents: Record<string, number>;
@@ -157,6 +158,7 @@ export function normalizeFlyway(value: unknown): FlywayState {
   const s = newFlywayState();
   if (!value || typeof value !== 'object') return s;
   const v = value as Record<string, unknown>;
+  if (v.capstone === 'shelter' || v.capstone === 'tempo' || v.capstone === 'molt') s.capstone = v.capstone;
   s.restored = Array.isArray(v.restored) ? [...new Set(v.restored.filter((n): n is number => Number.isInteger(n) && n >= 0 && n < 4))] : [];
   s.visits = strings(v.visits); s.rivalNodes = strings(v.rivalNodes); s.settledNodes = strings(v.settledNodes); s.journal = strings(v.journal, 48);
   for (const key of ['rivalWins', 'combinations', 'leaderCalls', 'survivedMolt', 'cleanFights'] as const) s[key] = finite(v[key]);
