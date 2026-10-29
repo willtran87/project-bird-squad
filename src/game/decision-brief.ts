@@ -5,7 +5,7 @@ export function primaryBenefit(card: Bird) {
   const verbs: Record<string, string> = { damage: 'damage', gainCover: 'Cover', heal: 'healing', draw: 'cards drawn', gainResonance: 'Resonance', gainWingbeat: 'Wingbeats', gainOpenSkyGuard: 'Open Sky Guard' };
   for (const effect of effects) {
     const match = /^(\w+)\((?:target, |self, )?(\d+)\)$/.exec(effect);
-    if (match && verbs[match[1]]) return `Base: ${match[2]} ${verbs[match[1]]}.`;
+    if (match && verbs[match[1]]) return match[1] === 'draw' ? `Base: draw ${match[2]}.` : `Base: ${match[2]} ${verbs[match[1]]}.`;
     if (effect === 'enterMolt()' || effect === 'enterMolt') return 'Enter Molt this turn.';
   }
   const conditions: Record<string,string> = {hasResonance:'With Resonance',noResonance:'No Resonance',isMolting:'While Molting',openSky:'In Open Sky',fullCohesion:'At full Cohesion',targetWinded:'If target is Winded',targetHasCover:'If target has Cover',spentResonance:'After Resonance spent',firstPlayedThisCombat:'First play this fight'};
@@ -14,7 +14,7 @@ export function primaryBenefit(card: Bird) {
     if(!match || !verbs[match[2]])continue;
     const suit=/^playedSuitThisTurn\((\w+)\)$/.exec(match[1]);
     const condition=conditions[match[1]] ?? (suit ? `${suit[1]} this turn` : undefined);
-    if(condition)return `${condition}:\n${match[3]} ${verbs[match[2]]}.`;
+    if(condition)return `${condition}:\n${match[2] === 'draw' ? `Draw ${match[3]}` : `${match[3]} ${verbs[match[2]]}`}.`;
   }
   return effects.some(e => e.startsWith('if ')) ? 'Conditional ability.\nRead its trigger.' : 'Tactical ability.\nRead its timing.';
 }

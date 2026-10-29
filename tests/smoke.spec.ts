@@ -12692,13 +12692,15 @@ test('reward readability separates effects badges and build advice at every supp
     battle.renderAll();
     await new Promise((resolve) => setTimeout(resolve, 100));
     const effect = battle.root.list.find((o: any) => o.name === 'reward-card-effect');
-    const result = { visible: effect.text, full: battle.rewardCardView(card, 0).summary, lines: effect.getWrappedText().length };
+    const view = battle.rewardCardView(card, 0);
+    const result = { visible: effect.text, primary: view.quickRead.primary, full: view.summary, lines: effect.getWrappedText().length };
     card.text = original;
     battle.renderAll();
     return result;
   });
-  expect(truncation.visible.endsWith('...')).toBe(true);
-  expect(truncation.lines).toBeLessThanOrEqual(4);
+  expect(truncation.visible).toBe(truncation.primary);
+  expect(truncation.visible.endsWith('...')).toBe(false);
+  expect(truncation.lines).toBeLessThanOrEqual(2);
   expect(truncation.full.length).toBeGreaterThan(truncation.visible.length);
   await clickNamedGameObject(page, 'BattleScene', 'reward-skip-hit');
   await page.waitForFunction(() => window.__birdSquadGame.scene.getScene('BattleScene').root.list.some((o: any) => o.name === 'reward-skip-tradeoff'));

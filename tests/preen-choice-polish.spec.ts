@@ -139,10 +139,10 @@ test('normal reward catalog keeps long rules bounded and previews every kind of 
       render(view, mode === 'cardReward' ? 'card' : 'upgrade');
       const effect = b.root.getByName('reward-card-effect'), panel = b.root.getByName('reward-card-effect-panel').getBounds();
       const bounds = effect.getBounds();
-      if (effect.getData('fullText') !== view.summary || bounds.right > panel.right || bounds.bottom > panel.bottom
+      if (effect.getData('fullText') !== view.quickRead.primary || bounds.right > panel.right || bounds.bottom > panel.bottom
         || effect.style.fontSize !== '21px' || parseFloat(effect.style.fontSize) * b.game.canvas.getBoundingClientRect().height / 720 < 16
-        || effect.getWrappedText().length > 4
-        || (effect.text !== view.summary && !effect.text.endsWith('...'))) failures.push(`${card.id}/${mode}/${upgraded}/rules`);
+        || effect.getWrappedText().length > 2
+        || effect.text !== view.quickRead.primary) failures.push(`${card.id}/${mode}/${upgraded}/rules`);
       const ring = b.root.getByName('reward-input-focus-ring').getBounds();
       const read = b.root.getByName('reward-card-inspect-hit').getBounds(), take = b.root.getByName('reward-card-take-hit').getBounds();
       if (ring.bottom >= read.top || read.right >= take.left || read.height !== 58 || take.height !== 58) failures.push(`${card.id}/controls`);
