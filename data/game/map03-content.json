@@ -898,7 +898,7 @@
       "mapId": "map_03_signal_spires",
       "nodeType": "street",
       "band": "pressure",
-      "lesson": "The relay crow charges the front ally on its third Tell. Remove the crow before then to stop the charge. Stored force remains; the gull attacks on beat four.",
+      "lesson": "Defeat the relay crow before its third Tell to win by interception. If it rings, defeat both enemies to win; stored force remains. Defeating both grants +8 Scrap.",
       "tags": ["multi", "support", "heavy"],
       "enemies": ["signal_gull", "crow_saboteur"],
       "rewardProfileId": "street_map03"

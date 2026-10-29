@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { signatureVictory } from '../src/game/signature-fights';
+import { signatureVictory, signatureFights } from '../src/game/signature-fights';
 import { primaryBenefit, decisionBrief } from '../src/game/decision-brief';
 import { readFileSync } from 'node:fs';
 const cards = JSON.parse(readFileSync('data/game/alpha-cards.json','utf8'));
@@ -30,6 +30,8 @@ async function workshop(page:Page) {
   await expect(page.locator('[data-feedback-markers]')).toBeVisible();
 }
 test('Meaningful Victories objective boundaries reject late interceptions and simultaneous defeat',()=>{
+  const encounters=[2,3].flatMap(n=>JSON.parse(readFileSync(`data/game/map0${n}-content.json`,'utf8')).encounters);
+  for(const [id,fight] of Object.entries(signatureFights))expect(encounters.find((e:any)=>e.id===id)?.lesson).toBe(fight.lesson);
   const flock=[{hp:10,intentIndex:2},{hp:10,intentIndex:2}];
   expect(signatureVictory('enc_signature_ferry',flock,1)).toBeUndefined();
   flock.forEach(e=>e.intentIndex=3);
