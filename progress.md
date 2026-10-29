@@ -1,10 +1,23 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
-## 2026-10-29 — Flock + Meaningful Victories (in progress)
-- Implementing objective victories, supporting birds, complete reward briefs,
-  earned capstone introduction/demo, final-turn practice and local feedback.
-- Acceptance ledger: `docs/game/flock-meaningful-victories.md`.
-- Human acceptance remains a handoff; no real sessions have been supplied.
+## 2026-10-29 — Flock + Meaningful Victories
+- Published `52869fa1` through PR #19 and production run 40847463959.
+- Completed all six packages: objective victories, two supporting birds,
+  complete reward briefs, earned capstone introduction and reversible demo,
+  exact final-turn practice with comparison, and optional local feedback export.
+- Clean PR run 40842583977 and production each passed 1,108 core, 384 browser
+  and 33 unit/policy cases, static gates and Pages-base smoke. No failed,
+  flaky or skipped cases. All 20 post-deployment checks also passed.
+- All 79 served HTML/JS/CSS/atlas files match the tested Pages artifact.
+  PR and production source, application and HTML hashes match. The shared game
+  client reached live combat without console errors; screenshot/state inspected.
+- Pages boot is 708.6 KiB under the unchanged 710 KiB cap. Supporting birds reuse
+  the existing atlas; new modules load lazily. No general FPS gain is claimed.
+- Feature branch deleted locally/remotely; only main remains. Task-owned
+  previews stopped; the user's existing preview was preserved. Final ledger
+  edits are docs only. Evidence: `docs/game/flock-meaningful-victories.md`.
+- Human sessions remain zero. The updated five-player handoff is ready;
+  existing human/device/native-AT evidence waivers remain unchanged.
 
 ## 2026-10-28 — Signature Fights + Faster Decisions
 - Published `7e260da2` through PR #18 and production run 40803195981.
