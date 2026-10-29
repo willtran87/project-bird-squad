@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
-import { birdAudio, prefersReducedMotion, killTweensForTree, UI_FONT, queueRuntimeImageAssets } from '../main';
+import { birdAudio, prefersReducedMotion, killTweensForTree, UI_FONT, queueRuntimeImageAssets, currentCombatNodes } from '../main';
+import { signaturePhase } from './signature-fights';
 import { prefersLeanEffects } from './graphics-quality';
 import { flightHighlights } from './flight-highlights';
 import { cardLibrary } from '../main';
 import { codexLeaderArtAssets } from './leader-portrait-assets';
 import { callSpecializations, resolvedLeaderCall, combinations, rivalChapter, journal, type FlywayState } from './flyway-rules';
+import { capstones, type Capstone } from './signature-capstones';
 
 type Scene=Phaser.Scene & Record<string,any>;
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,text?:string)=>{const n=document.createElement(tag);if(text)n.textContent=text;return n;};
@@ -15,6 +17,22 @@ export function renderIdentity(root:HTMLElement,scene:Scene,s:FlywayState,mutate
   const leader=scene.runState?.leaderId??scene.runLeaderId??'fledgling';
   const call=resolvedLeaderCall(leader,s);
   if(!scene.runState)return;
+  const capstone = section(root, 'A gift from the Canal', s.capstone ? `${capstones[s.capstone].name}: ${capstones[s.capstone].description}`
+    : s.restored.includes(1) ? 'The market birds offer one capstone for this flight. Inspect its timing and limitation before committing.' : 'Restore Canal Markets to earn one strategy capstone.');
+  capstone.dataset.signatureCapstones = 'true';
+  if (!s.capstone && s.restored.includes(1)) for (const [id, mark] of Object.entries(capstones)) {
+    const row = section(capstone, mark.name, mark.description);
+    row.append(button(`Inspect ${mark.name}`, () => {
+      row.querySelector('[data-capstone-confirm]')?.remove();
+      const confirmation = el('div'); confirmation.dataset.capstoneConfirm = id;
+      confirmation.append(el('p', 'Choose one for this flight. The other two gifts become unavailable.'), button(`Carry ${mark.name}`, () => mutate(() => {
+        const current = scene.runState.flyway as FlywayState;
+        if (current.capstone || !current.restored.includes(1)) return;
+        current.capstone = id as Capstone; journal(current, `${mark.name}: ${mark.description}`);
+      })), button('Keep deciding', () => confirmation.remove()));
+      row.append(confirmation); confirmation.querySelector('button')?.focus();
+    }));
+  }
   const box=section(root,'Your Leader’s next step',s.callStyle?`${call.name}: ${call.effect} ${call.tradeoff}`:s.restored.length?'Choose a Call specialization for the rest of this flight, or keep the base Call. Charge and once-per-fight limits stay the same.':'Defeat your first district boss to choose one of two Call specializations.');
   box.dataset.flockIdentity='specializations';
   if(s.callStyle||!s.restored.length)return;
@@ -46,6 +64,8 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
   const callButton=button('Inspect Call · F9',openCall);callButton.className='identity-call';callButton.id='identity-call';
   const sequence=el('div');sequence.className='identity-sequence';sequence.id='identity-sequence';sequence.setAttribute('role','status');sequence.setAttribute('aria-live','polite');
   document.body.append(callButton,sequence);
+  const fight = el('div'); fight.id = 'signature-fight'; fight.className = 'identity-sequence';
+  fight.setAttribute('role', 'status'); fight.setAttribute('aria-live', 'polite'); document.body.append(fight);
   const stats={decisionMs:0,animationMs:0,rewardMs:0,cleanupMs:0,signatures:0};scene.identityPacing=stats;
   let last=performance.now(),active=0;
   let alive=true, performances: ReturnType<typeof import('./living-performances')['installLivingPerformances']> | undefined;
@@ -65,8 +85,15 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
       }else if(!blocked()&&['cardReward','upgradeReward','waymarkReward'].includes(scene.mode))stats.rewardMs+=dt;
     }
     const hidden=blocked()||paused||scene.mode!=='battle';callButton.hidden=hidden;sequence.hidden=hidden||!!scene.selectedInstanceId;
+    const phase = signaturePhase(currentCombatNodes()[scene.currentRouteIndex]?.payloadId ?? '', scene.enemies);
+    scene.signatureFight = phase;
+    fight.hidden = hidden || !phase || !!scene.selectedInstanceId;
     if(hidden)return;
     const r=scene.game.canvas.getBoundingClientRect(),scale=r.width/1280;
+    Object.assign(fight.style, { left: `${r.left+370*scale}px`, top: `${r.top+372*scale}px`, width: `${625*scale}px`, fontSize: `${Math.max(12,16*scale)}px`, borderLeft: `4px solid ${phase?.phase===3?'#90d4b5':'#edba72'}` });
+    const phaseText = phase ? `${phase.name} · ${phase.text}` : '';
+    if (fight.textContent !== phaseText) fight.textContent = phaseText;
+    fight.title = phase?.lesson ?? '';
     Object.assign(callButton.style,{left:`${r.left+14*scale}px`,top:`${r.top+321*scale}px`,width:`${142*scale}px`,fontSize:`${Math.max(12,14*scale)}px`});
     Object.assign(sequence.style,{left:`${r.left+370*scale}px`,top:`${r.top+402*scale}px`,width:`${625*scale}px`,fontSize:`${scene.motionPayoff && scene.time.now < scene.motionPayoff.until ? Math.max(14,18*scale) : Math.max(12,15*scale)}px`});
     const call=resolvedLeaderCall(scene.runLeaderId,scene.flyway),combat=scene.flightCombat;
@@ -109,5 +136,5 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
   const onCall=(name?:string)=>signature('call',name??resolvedLeaderCall(scene.runLeaderId,scene.flyway).name);
   const onCombo=(combo?:{id:string;name:string})=>{if(combo)signature(combo.id,combo.name);};
   scene.events.on('flyway-call',onCall);scene.events.on('flyway-combination',onCombo);
-  return {update,destroy:()=>{alive=false;performances?.destroy();callButton.remove();sequence.remove();window.removeEventListener('keydown',key,true);scene.events.off('flyway-call',onCall);scene.events.off('flyway-combination',onCombo);}};
+  return {update,destroy:()=>{alive=false;performances?.destroy();callButton.remove();sequence.remove();fight.remove();window.removeEventListener('keydown',key,true);scene.events.off('flyway-call',onCall);scene.events.off('flyway-combination',onCombo);}};
 }

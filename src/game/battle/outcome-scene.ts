@@ -146,8 +146,8 @@ export function renderOutcomeScene(raw: BattleScene) {
     const outcomeActions = scene.outcomeActions();
     const outcomeIndex = scene.normalizeCombatChoiceIndex();
     const compactCommands = outcomeActions.length > 2;
-    const commandSpacing = outcomeActions.length > 3 ? 214 : compactCommands ? 232 : 280;
-    const commandWidth = outcomeActions.length > 3 ? 190 : compactCommands ? 210 : 256;
+    const commandSpacing = outcomeActions.length > 4 ? 184 : outcomeActions.length > 3 ? 214 : compactCommands ? 232 : 280;
+    const commandWidth = outcomeActions.length > 4 ? 174 : outcomeActions.length > 3 ? 190 : compactCommands ? 210 : 256;
     outcomeActions.forEach((action, index) => {
       const x = cx + (index - (outcomeActions.length - 1) / 2) * commandSpacing;
       const style = action.id === 'replay'

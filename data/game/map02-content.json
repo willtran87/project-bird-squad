@@ -1138,6 +1138,28 @@
   ],
   "encounters": [
     {
+      "id": "enc_signature_ferry",
+      "name": "The Last Ferry",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "Hold the crossing for three enemy beats. The gull attacks while the crow shields it; from beat four both retreat to weaker attacks. Defeat both to win.",
+      "tags": ["multi", "support", "cover"],
+      "enemies": ["canal_barge_gull", "canal_market_crow"],
+      "rewardProfileId": "street_map02"
+    },
+    {
+      "id": "enc_signature_watch",
+      "name": "Two Moving Rooftops",
+      "mapId": "map_02_canal_markets",
+      "nodeType": "street",
+      "band": "pressure",
+      "lesson": "The gull attacks while the crow braces, then they exchange roles. Both recover on beat three. From beat four their attack order reverses for the rest of the fight.",
+      "tags": ["multi", "cover", "tempo"],
+      "enemies": ["canal_barge_gull", "canal_market_crow"],
+      "rewardProfileId": "street_map02"
+    },
+    {
       "id": "enc_canal_open_perch",
       "name": "The Open Perch",
       "mapId": "map_02_canal_markets",

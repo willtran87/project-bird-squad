@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import {
   currentMap,
+  cardsFromSave,
+  cardStatRows,
   displayName,
   GAME_HEIGHT,
   GAME_WIDTH,
@@ -21,6 +23,8 @@ import { quietButton } from './quiet-ui';
 import { openOutcomeInspection, renderOutcomeInspectButton, renderOutcomeShowcase, renderSupplyInspection, supplyInspectionState } from './route-supply-reader';
 import { renderRouteRewardBuildRead, renderRouteRewardEffectShowcase, renderRouteRewardInspection, renderRouteSupplyRewardChoices } from './reward-card-inspection';
 import { bindChoiceHint, choiceInputHint } from './choice-input-hints';
+import { decisionBrief } from './decision-brief';
+import { boundedRewardText } from './battle/reward-card-face';
 
 export {
   cardPickerDecisionDelta,
@@ -96,23 +100,29 @@ export function renderRouteRewardOverlay(scene: any) {
     }
   }
   scene.routeCardRewardChoices.forEach((card: any, index: number) => {
-    const cardW = 148;
-    const cardH = 222;
-    const x = frame.left + 540 + index * 190;
-    const y = frame.top + 312;
+    const cardW = 104;
+    const cardH = 156;
+    const x = frame.left + 540 + index * 230;
+    const y = frame.top + 344;
+    const brief = decisionBrief({ ...card, name: displayName(card) }, cardsFromSave(scene.runState.deck).map(c=>({...c,name:displayName(c)})));
+    const stats = cardStatRows(card).join(' / ').replaceAll('Open Sky Guard', 'Guard').replaceAll('Hand Target', 'Draw');
+    const briefRows = [brief.pairing, `+1 card · ${stats || 'No stat change'}`, brief.tradeoff];
+    briefRows.forEach((value, row) => boundedRewardText(scene.add.text(x-109, frame.top+151+[0,46,70][row], value, {
+      fontFamily:UI_FONT,fontSize:19,resolution:2,color:row===2?'#ffcfaa':'#dcebf1',wordWrap:{width:218},lineSpacing:1,
+    }),row===1?1:2).setName('route-reward-quick-read').setData({cardId:card.id,fullText:value}));
     const armed = scene.routeRewardArmedCardId === card.id;
     const accentColor = card.type === 'major' ? UI_FIELD.gold : card.type === 'molt' ? 0xc56cff : suitAccentColor(card);
     scene.renderRouteRewardCardOption(card, x, y, cardW, cardH, accentColor);
     if (index === scene.routeRewardChoiceIndex) {
-      scene.add.rectangle(x, y + 8, cardW + 30, cardH + 88, 0x000000, 0)
+      scene.add.rectangle(x, y + 28, 224, cardH + 60, 0x000000, 0)
         .setStrokeStyle(4, armed ? UI_FIELD.gold : UI_FIELD.cyan, 1)
         .setName('route-reward-input-focus-ring');
     }
-    scene.add.rectangle(x, y + cardH / 2 + 27, cardW + 16, 48, 0x020409, 0.94)
+    scene.add.rectangle(x, y + cardH / 2 + 27, 218, 48, 0x020409, 0.94)
       .setStrokeStyle(1, accentColor, 0.72);
-    decisionExcerpt(decisionText(scene, x, y + cardH / 2 + 5, displayName(card), cardW, UI_TYPE.primary, UI_GOLD)
+    decisionExcerpt(decisionText(scene, x, y + cardH / 2 + 5, displayName(card), 212, UI_TYPE.primary, UI_GOLD)
       .setOrigin(0.5, 0).setAlign('center'), 44).setName('route-reward-card-name');
-    const hit = scene.add.rectangle(x, y + 8, cardW + 18, cardH + 76, 0x000000, 0.01)
+    const hit = scene.add.rectangle(x, y + 28, 218, cardH + 60, 0x000000, 0.01)
       .setInteractive({ useHandCursor: true })
       .setName('route-reward-card-hit');
     hit.on('pointerdown', () => scene.requestRouteRewardCard(card.id));

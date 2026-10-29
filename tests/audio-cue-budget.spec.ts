@@ -30,6 +30,15 @@ test('audio budgets are local, expire without replay queues, and preserve quiet 
   expect(first.accepts('cover', 400)).toBe(true);
 });
 
+test('Signature Fights decisive calls suppress ambient and support cues without delaying attacks', () => {
+  const budget = new AudioCueBudget();
+  expect(budget.accepts('flockHeron', 0)).toBe(true);
+  expect(budget.accepts('rooftopAir', 1)).toBe(false);
+  expect(budget.accepts('cover', 2)).toBe(false);
+  expect(budget.accepts('heavyAttack', 3)).toBe(true);
+  expect(budget.accepts('rooftopAir', 104)).toBe(true);
+});
+
 test('completed synthesized cues disconnect their owned audio graph', () => {
   const nodes: any[] = [], sources: any[] = [];
   const param = () => ({ setValueAtTime() {}, exponentialRampToValueAtTime() {} });

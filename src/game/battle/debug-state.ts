@@ -339,6 +339,14 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
     : undefined;
   return {
     ...state,
+    cardAction: (() => {
+      const actor = context.roots.fx?.getByName('combat-card-cast-ghost');
+      return actor?.active ? { style: actor.getData('actionStyle'), cardId: actor.getData('cardId'), reducedMotion: actor.getData('reducedMotion') } : undefined;
+    })(),
+    cardPayoff: (() => {
+      const payoff = battle.motionPayoff;
+      return payoff && context.scene.time.now < payoff.until ? { text: payoff.text, cardId: payoff.cardId, results: [...payoff.results] } : undefined;
+    })(),
       livingPerformances: (battle as any).livingPerformances,
     flockStatsReading: battle.inspectOverlay === 'flock' ? battle.root?.getByName('flock-stats-reader')?.getData('summary') : undefined,
     supplyDrawer: {

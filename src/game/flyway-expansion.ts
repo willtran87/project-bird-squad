@@ -7,6 +7,7 @@ import { routeSceneEventResidentAssets, routeSceneMapBackdropAssets } from './ro
 import { codexLeaderArtAssets } from './leader-portrait-assets';
 import { writeJournaledJson, readJournaledJson } from './safe-storage';
 import { controlBindingsSnapshot } from './input-bindings';
+import { capstones } from './signature-capstones';
 import { prefersLeanEffects } from './graphics-quality';
 import { showDownloadRecovery } from '../update-recovery';
 import { bossDisruption, branchCards, branchUpgrade, canalPreens, spirePreens, buildPreens, combinations, conditions, districts, flightStories,
@@ -98,7 +99,7 @@ export function installFlyway(raw: Phaser.Scene) {
     const shortcut = ` · ${key}`;
     const accessible = `Open Flyway journal, Leader call and Flight Stories. Keyboard ${key}; controller View or Select.`;
     if (launch.getAttribute('aria-label') !== accessible) launch.setAttribute('aria-label', accessible);
-    const label = menu ? 'Flight Stories' : scene.runState?.mapIndex === 0 && !scene.runState.flyway?.rooftopPlan ? 'Strategy' : 'Flyway';
+    const label = menu ? 'Flight Stories' : scene.runState?.flyway?.restored.includes(1) && !scene.runState.flyway.capstone ? 'Canal gift' : scene.runState?.mapIndex === 0 && !scene.runState.flyway?.rooftopPlan ? 'Strategy' : 'Flyway';
     let caption = `${label}${shortcut}`;
     const hidden = Boolean(isBusy(scene) || !scene.sys.isActive() || scene.routeCheckpointIndicator?.active
       || scene.mode && scene.mode !== 'battle' && !['runComplete', 'defeat'].includes(scene.mode));
@@ -212,6 +213,7 @@ export function installFlyway(raw: Phaser.Scene) {
     if (mapIndex(scene) === 2 || s.spireRelay) renderSpires(body, s);
     if (mapIndex(scene) === 3) renderRoost(body, s);
     if (scene.scene.key === 'BattleScene') {
+      if (s.capstone) section(body, capstones[s.capstone].name, capstones[s.capstone].description);
       const combat=scene.flightCombat;
       renderCall(body);
       for (const enemy of scene.enemies) {

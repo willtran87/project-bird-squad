@@ -44,6 +44,8 @@ export interface CombatPreviewConfig<CardT extends CardEffectCard, EnemyT extend
   resonance: number;
   moltPower: number;
   moltEntryEnergy?: number;
+  moltEntryEffects?: string[];
+  afterCardEffects?: string[];
   rawCoverGain?: (amount: number) => number;
   pendingNestCoverBonus: number;
   nextTurnDraw: number;
@@ -216,7 +218,12 @@ export function simulateCombatCardOutcome<
     applyFlockWinded: (_source, value) => { flock.weak += value; },
     applyEnemyWinded: (enemy, value) => { enemy.weak += value; },
     removeEnemyCover: (_source, enemy, value) => { enemy.block = Math.max(0, enemy.block - value); },
-    enterMolt: () => { if (!flock.molt) energy += config.moltEntryEnergy ?? 0; flock.molt = true; flock.exposed = false; flock.exposedTurns = 0; },
+    enterMolt: () => {
+      const entering = !flock.molt;
+      if (entering) energy += config.moltEntryEnergy ?? 0;
+      flock.molt = true; flock.exposed = false; flock.exposedTurns = 0;
+      if (entering) for (const effect of config.moltEntryEffects ?? []) resolveCardEffect(effect, config.card, config.enemyId, state, context);
+    },
     gainOpenSkyGuard: (value) => { flock.openSkyGuard += value; },
     returnDiscardToHand: () => {},
     addNextCoverBonus: (value) => { pendingNestCoverBonus += value; },
@@ -243,7 +250,10 @@ export function simulateCombatCardOutcome<
     resolveCardEffect(effect, config.card, config.enemyId, state, context);
     return { effect, status: 'resolves' as const };
   });
-  if (!requiresChoice) config.afterCard?.(context);
+  if (!requiresChoice) {
+    config.afterCard?.(context);
+    for (const effect of config.afterCardEffects ?? []) resolveCardEffect(effect, config.card, config.enemyId, state, context);
+  }
   const enemyDamage = enemies.reduce((total, enemy) => total + Math.max(0, (beforeEnemyHp.get(enemy.id) ?? enemy.hp) - enemy.hp), 0);
   const enemyStates = enemies.map((enemy) => ({
     id: enemy.id,
@@ -269,7 +279,8 @@ export function simulateCombatCardOutcome<
       flow: flock.flow,
       flowMax: flock.flowMax,
       energy,
-      resonance
+      resonance,
+      openSkyGuard: flock.openSkyGuard,
     },
     enemyDamage,
     blockedDamage,

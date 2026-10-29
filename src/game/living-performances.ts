@@ -1,22 +1,23 @@
 import Phaser from 'phaser';
-import atlasUrl from '../../assets/runtime/flock/performances/living-battles-atlas-v1.webp';
-import { birdAudio, prefersReducedMotion, queueRuntimeImageAssets } from '../main';
+import atlasUrl from '../../assets/runtime/flock/performances/living-battles-atlas-v2.webp';
+import { birdAudio, prefersReducedMotion, queueRuntimeImageAssets, currentMove } from '../main';
 import { prefersLeanEffects } from './graphics-quality';
 
-const key = 'living-battles-atlas-v1';
+const key = 'living-battles-atlas-v2';
 const leaders = ['fledgling', 'spark_caller', 'talon', 'tidewarden', 'roostkeeper', 'caldra'];
 const poses = ['anticipation', 'wingbeat', 'contact', 'recoil', 'recovery'];
 const calls = ['flockSparrow', 'flockChorus', 'flockShrike', 'flockHeron', 'flockFinch', 'flockJackdaw'] as const;
 // Measured transparent gutters in the approved atlas, including its irregular
 // row spacing. No resizing or runtime canvas extraction of the source pixels.
-const rows = [0, 201, 395, 583, 774, 954, 1122];
-const columns = [0, 286, 566, 864, 1142, 1402];
+const rows = [0, 234, 457, 683, 954, 1152, 1374];
+const columns = [0, 224, 464, 701, 925, 1145];
 type Scene = Phaser.Scene & Record<string, any>;
 type Actor = { image: Phaser.GameObjects.Image; row: number; clock: Phaser.Time.TimerEvent; until: number; kind: 'cast'|'hit'|'call'; impact?: number; budget: number; enemyId?: string };
 
 export function installLivingPerformances(scene: Scene) {
   let alive = true, ambientAt = scene.time.now + 14000;
   const actors = new Map<string, Actor>();
+  let support: Phaser.GameObjects.Graphics | undefined;
   const status = { ready: false, active: [] as Array<{ bird: string; pose: string }>, calls: 0 }; scene.livingPerformances = status;
   const frames = () => {
     if (!alive || !scene.textures.exists(key)) return;
@@ -38,13 +39,16 @@ export function installLivingPerformances(scene: Scene) {
     if (enemyId && !enemy) return;
     const at = enemy ? scene.enemyView(enemy) : {x:280,y:352};
     const image = scene.add.image(at.x, at.y + 64, key, `${row}-${kind === 'hit' ? 3 : 0}`).setOrigin(.5, 1)
-      .setScale(enemy ? .72 : .90).setFlipX(!!enemy).setName(`living-bird-${id}`).setDepth(42);
+      .setScale(enemy ? .82 : row === 3 ? .98 : 1.16).setFlipX(!!enemy).setName(`living-bird-${id}`).setDepth(42);
     scene.fxLayer.add(image);
     const clock=scene.time.addEvent({delay:Math.max(700,budget+600)});
     actors.set(id, {image,row,clock,until:Math.max(700,budget+600),kind,budget,enemyId});
   };
   const leaderRow = () => Math.max(0, leaders.indexOf(scene.runLeaderId ?? 'fledgling'));
-  const cast = (budget: number) => start('leader', leaderRow(), 'cast', budget);
+  const cast = (budget: number, style = 'swoop') => {
+    start('leader', leaderRow(), 'cast', budget);
+    actors.get('leader')?.image.setData('actionStyle', style);
+  };
   const impact = () => { const a = actors.get('leader'); if (a?.kind === 'cast') { a.impact = a.clock.getElapsed(); a.until = a.impact + 360; } };
   const hit = (cue: string) => { if (cue === 'hit') start('leader', leaderRow(), 'hit'); };
   const enemy = (id: string, cue: string) => {
@@ -52,6 +56,22 @@ export function installLivingPerformances(scene: Scene) {
     if (cue === 'hit') start('caldra', 5, 'hit', 0, id);
   };
   const enemyStart = (id: string, budget: number) => {
+    support?.destroy(); support = undefined;
+    const bird = scene.enemies.find((e:any) => e.id === id && e.hp > 0);
+    const effects = bird ? currentMove(bird).effects.join(' ') : '';
+    const kind = /gainCover/.test(effects) ? 'shield' : /nextAttackBonus/.test(effects) ? 'signal' : !effects ? 'recover' : undefined;
+    if (bird && kind && scene.fxLayer?.active) {
+      const at = scene.enemyView(bird);
+      const glyph = scene.add.graphics({ x: at.x, y: at.y + 65 }).setName('living-support-signature').setData('kind', kind);
+      glyph.lineStyle(3, kind === 'shield' ? 0x94d4d6 : 0xe8bf78, .9);
+      if (kind === 'shield') glyph.strokePoints([[-24,0],[-24,-25],[0,-40],[24,-25],[24,0],[0,15],[-24,0]].map(([x,y])=>new Phaser.Math.Vector2(x,y)));
+      else if (kind === 'signal') { for (let n=0;n<3;n++) glyph.lineBetween(-24+n*24,0,-24+n*24,-18-n*8); }
+      else { glyph.lineBetween(-28,0,28,0); glyph.lineBetween(-16,-8,16,-8); }
+      scene.fxLayer.add(glyph); support=glyph;
+      if (!still()) scene.tweens.add({targets:glyph,alpha:.4,duration:Math.max(80,budget/2),yoyo:true});
+      scene.time.delayedCall(budget+360,()=>{if(glyph.active)glyph.destroy();if(support===glyph)support=undefined;});
+      glyph.once('destroy',()=>scene.tweens.killTweensOf(glyph));
+    }
     if (scene.battlefieldMood() !== 'rival' || scene.flyway.rivalWins >= 3) return;
     const captain = scene.enemies.find((e:any) => e.hp>0 && e.runtime.id==='tarline_jackdaw');
     if (captain?.id === id) start('caldra',5,'cast',budget,id);
@@ -83,7 +103,7 @@ export function installLivingPerformances(scene: Scene) {
     }
   };
   return { update, destroy: () => {
-    alive=false; for (const id of [...actors.keys()]) retire(id); status.active=[];
+    alive=false; support?.destroy(); for (const id of [...actors.keys()]) retire(id); status.active=[];
     scene.events.off('living-cast',cast);scene.events.off('flyway-card',impact);scene.events.off('living-flock-cue',hit);
     scene.events.off('living-enemy-cue',enemy);scene.events.off('living-enemy-start',enemyStart);scene.events.off('living-enemy-impact',enemyImpact);scene.events.off('flyway-call',call);
   }};

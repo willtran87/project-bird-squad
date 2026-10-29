@@ -17930,12 +17930,12 @@ test('run outcomes expose equivalent keyboard and gamepad command focus', async 
   });
 
   await openOutcome();
-  await expect.poll(async () => (await snapshot()).commands).toEqual(['Replay Flight', 'Flight Details', 'Main Menu']);
+  await expect.poll(async () => (await snapshot()).commands).toEqual(['Replay Flight', 'Flight Details', 'Practice This Fight', 'Main Menu']);
   expect((await snapshot()).state.combatInputFocus).toMatchObject({
     active: false,
     kind: 'outcome',
     index: 0,
-    count: 4,
+    count: 5,
     label: 'Replay Flight',
     visibleFocus: false,
   });
@@ -17944,7 +17944,7 @@ test('run outcomes expose equivalent keyboard and gamepad command focus', async 
     active: true,
     kind: 'outcome',
     index: 1,
-    count: 4,
+    count: 5,
     label: 'Flight Details',
     visibleFocus: true,
   });
@@ -17966,14 +17966,20 @@ test('run outcomes expose equivalent keyboard and gamepad command focus', async 
   await page.keyboard.press('ArrowRight');
   await expect.poll(async () => (await snapshot()).state.combatInputFocus).toMatchObject({
     index: 2,
-    count: 4,
+    count: 5,
+    label: 'Practice This Fight',
+  });
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(async () => (await snapshot()).state.combatInputFocus).toMatchObject({
+    index: 3,
+    count: 5,
     label: 'Main Menu',
   });
   await page.keyboard.press('Enter');
   await expect.poll(async () => JSON.parse(await page.evaluate(() => window.render_game_to_text?.() ?? '{}')).scene).toBe('MenuScene');
 
   await openOutcome();
-  await expect.poll(async () => (await snapshot()).commands).toHaveLength(3);
+  await expect.poll(async () => (await snapshot()).commands).toHaveLength(4);
   await page.evaluate(() => {
     const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
     battle.input.gamepad.emit('down', battle.input.gamepad.pad1, { index: 15 }, 1);
@@ -17997,6 +18003,7 @@ test('run outcomes expose equivalent keyboard and gamepad command focus', async 
   await expect.poll(async () => (await snapshot()).state.outcomeFlightDetails).toMatchObject({ open: false });
   await page.evaluate(() => {
     const battle: any = window.__birdSquadGame.scene.getScene('BattleScene');
+    battle.input.gamepad.emit('down', battle.input.gamepad.pad1, { index: 15 }, 1);
     battle.input.gamepad.emit('down', battle.input.gamepad.pad1, { index: 15 }, 1);
     battle.input.gamepad.emit('down', battle.input.gamepad.pad1, { index: 0 }, 1);
   });
@@ -18033,6 +18040,7 @@ test('playtest outcomes hand the latest run directly to the local rating panel',
     'Replay Flight',
     'Flight Details',
     'Rate This Run',
+    'Practice This Fight',
     'Main Menu',
   ]);
   await page.keyboard.press('ArrowRight');
@@ -18041,7 +18049,7 @@ test('playtest outcomes hand the latest run directly to the local rating panel',
     active: true,
     kind: 'outcome',
     index: 2,
-    count: 5,
+    count: 6,
     label: 'Rate This Run',
     visibleFocus: true,
   });
@@ -21764,7 +21772,7 @@ test('defeat review explains the fatal hit, top pressure, and one actionable adj
   expect(result.reviewToCopyGap).toBeGreaterThanOrEqual(20);
   expect(result.copyToCommandsGap).toBeGreaterThanOrEqual(8);
   expect(result.copyDoesNotOverlapCommands).toBe(true);
-  expect(result.commands).toEqual(['Replay Flight', 'Flight Details', 'Main Menu']);
+  expect(result.commands).toEqual(['Replay Flight', 'Flight Details', 'Practice This Fight', 'Main Menu']);
   expect(result.flightLinkLabel).toContain('COPY SEEDED FLIGHT');
   expect(result.staleCombatFx).toEqual([]);
   expect(result.outcomeReportAboveFx).toBe(true);
