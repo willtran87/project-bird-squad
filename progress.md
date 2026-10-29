@@ -1,24 +1,18 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
 ## 2026-10-28 — Signature Fights + Faster Decisions
-- Implementing all five accepted packages on `codex/signature-fights-faster-decisions`.
-- Added three scripted district encounters, phase guidance, three exclusive
-  Canal capstones, front-of-offer comparisons, v2 bird poses/support glyphs,
-  decisive audio priority and isolated exact lost-fight practice.
-- Initial focused tests verified all encounter projections and rematch opening/
-  storage isolation. Fixed capstone preview handling and reward spacing found
-  during that pass; broadened visual/catalog regression is in progress.
-- Full release qualification, commit/PR/merge/Pages verification and branch
-  cleanup remain pending. Ledger: `docs/game/signature-fights-faster-decisions.md`.
+- Published `7e260da2` through PR #18 and production run 40803195981.
+- All five packages are complete: three signature encounters, three exclusive
+  Canal capstones, faster reward comparisons, revised bird poses/support/audio
+  cues, and exact lost-fight practice isolated from saved progress.
+- Clean PR run 40800259390 and production each passed 1,100 core, 360 browser,
+  33 unit/policy checks, static gates and Pages-base smoke. Earlier qualification
+  issues were fixed before these runs; the ledger records the corrections.
+- All 77 served HTML/JS/CSS/atlas files match the tested Pages artifact. PR and
+  production source, app and HTML hashes match. Seventeen post-deployment checks
+  passed; live combat and reward screenshots were visually inspected.
+- Full evidence: `docs/game/signature-fights-faster-decisions.md`.
 - Human acceptance remains a prepared handoff, with zero sessions.
-- First PR qualification found an outdated outcome control count and a reward
-  loading placeholder height mismatch. Updated the expectation, aligned loading
-  slots with the 306px cards, and added route hint/offer/name separation checks.
-  Compact control coverage also found a 5px gap; restored the shared 8px minimum.
-  A fresh complete workflow must pass before merge.
-- Firefox caught the new capstone fixture reopening its journal before queued
-  scene resume completed. The fixture now awaits the active RouteScene, matching
-  existing journal tests; no gameplay guard was bypassed.
 
 ## 2026-10-28 — Distinct Builds + Living Battles
 - Published `6918d281` through PR #17 and clean production run 40681063218.

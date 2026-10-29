@@ -53,9 +53,46 @@ A second edit preserved all designs while separating the five-by-six grid.
 
 ## Acceptance evidence
 
-Release qualification is pending. Do not interpret implementation or targeted
-test results as a published release. The final ledger will record exact commits,
-CI runs, full core/browser counts, Pages artifact identity and live-site checks.
+Published through [PR #18](https://github.com/willtran87/project-bird-squad/pull/18)
+at `7e260da2c727de017beaffd1fe9a1920e8ffe0c3` on 2026-10-28 (CDT).
+
+| Gate | PR qualification | Production qualification |
+| --- | --- | --- |
+| Workflow | [40800259390](https://github.com/willtran87/project-bird-squad/actions/runs/40800259390) | [40803195981](https://github.com/willtran87/project-bird-squad/actions/runs/40803195981) |
+| Core cases | 1,100 passed | 1,100 passed |
+| Chromium / Firefox / WebKit | 360 passed | 360 passed |
+| Unit and release-policy cases | 33 passed | 33 passed |
+| Content, assets, bundles, cache and Pages base | Passed | Passed |
+| Failed / flaky / skipped test cases | 0 / 0 / 0 | 0 / 0 / 0 |
+
+The PR and production builds have identical source, application-chunk and HTML
+hashes; both builds report a clean working tree. Source SHA-256:
+`296b4897418797f823a08f2709f0b8d76a3a4c46419f7a1812bb73b2bc78b649`.
+All 77 deployed HTML/JS/CSS files and the v2 atlas match the production Pages
+artifact by SHA-256 and byte length. The combined boot code remains within the
+unchanged 710 KiB limit; no delivery budget was increased.
+
+Earlier qualification exposed a loading-placeholder height mismatch, reward
+control gaps below 8px, an outdated outcome-control count and a Firefox fixture
+that reopened the journal before its scene resumed. These were corrected before
+the clean qualification runs above. The Firefox fixture passed five consecutive
+local runs, and route comparison tests now assert separation from hints, offers
+and inspection controls.
+
+Post-deployment verification passed 17 checks: 15 browser cases against the
+public site plus two policy/data cases. These covered every signature fight,
+capstone unlock and persistence, once-per-fight limits, exact rematch opening
+and save isolation, reward comparisons, input confirmation and spoken status.
+The unmodified shared game client also reached live combat in both headless
+and headed Chromium with no recorded console errors. Final headed combat and
+public reward screenshots were visually inspected.
+
+Local evidence is retained under `.artifacts/signature-pr-qualified`,
+`.artifacts/signature-main-qualified`, `.artifacts/signature-live-results`,
+`.artifacts/signature-live-tests.log`, `.artifacts/signature-live-all-bundles.json`
+and `.artifacts/signature-public-headed`. CI reports are attached to the linked
+workflows. The five implementation packages and technical release gates are
+complete; human playtest evidence remains a separate handoff below.
 
 Dedicated coverage includes all ten early/looping enemy beats with and without
 support, capstone unlock/save/exclusivity/once limits, card and enemy forecast
