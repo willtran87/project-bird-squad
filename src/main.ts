@@ -15814,6 +15814,7 @@ private playBattleIntro(onComplete?: () => void) {
 
   private applyFlockMotionCue(group: Phaser.GameObjects.Container) {
     const cue = this.flockMotionCue;
+    if ((this as any).livingPerformances?.ready) { this.flockMotionCue = undefined; return; }
     if (!cue || prefersReducedMotion()) return;
     this.flockMotionCue = undefined;
     const motion = {
@@ -16014,6 +16015,19 @@ private playBattleIntro(onComplete?: () => void) {
       this.renderBattleForegroundFallback(enemies, leader.name, stateAccent);
       return;
     }
+    const leaderArtKey = leaderArt && this.textures.exists(leaderArt.key) ? leaderArt.key : undefined;
+    let leaderArtFit = 1, leaderArtY = -18;
+    if (leaderArtKey) {
+      const source = this.textures.get(leaderArtKey).getSourceImage() as { width: number; height: number };
+      const bounds = this.enemyTextureVisibleBounds(leaderArtKey);
+      // Match enemy placement: prepare geometry in the view, then render it.
+      // Leave room between objective and hand for bounded Call/recoil motion.
+      leaderArtFit = Math.min(230 / source.width, 288 / source.height,
+        240 / Math.max(1, source.height * (bounds.bottom - bounds.top)));
+      const height = source.height * leaderArtFit;
+      leaderArtY = Math.max(186 - FLOCK_ART_Y - height * (bounds.top - .5),
+        Math.min(-18, 426 - FLOCK_ART_Y - height * (bounds.bottom - .5)));
+    }
     const iconIds = {
       attack: 'release-card',
       brace: 'cover-shield',
@@ -16041,7 +16055,9 @@ private playBattleIntro(onComplete?: () => void) {
         name: leader.name,
         bird: leader.bird,
         signatureLabel: this.leaderSignatureLabel(),
-        artKey: leaderArt && this.textures.exists(leaderArt.key) ? leaderArt.key : undefined,
+        artKey: leaderArtKey,
+        artFit: leaderArtFit,
+        artY: leaderArtY,
         stateAccent,
         x: FLOCK_ART_X,
         y: FLOCK_ART_Y
@@ -16486,13 +16502,13 @@ private playBattleIntro(onComplete?: () => void) {
       ? (() => {
           const card = this.firstCombatGuideCard();
           const target = card ? this.firstCombatGuideTarget(card) : undefined;
-          if (!card) return 'Select a card, then confirm to play. Build full Flow to Surge.';
+          if (!card) return 'Select a card, inspect its target, then confirm to play.';
           const cost = this.effectiveCost(card);
           const action = target ? `target ${target.name}` : 'confirm to play';
-          return `Select ${displayName(card)}, then ${action}. Cost: ${cost}${this.cardBuildsFlow(card) ? ' · Flow +1' : ''}`;
+          return `Select ${displayName(card)}; ${action}. ${cost} Wingbeat${cost === 1 ? '' : 's'}.`;
         })()
       : guideStep === 'roost'
-        ? 'Roost when ready. Wingbeats reset next beat.'
+        ? 'Roost when ready. Check incoming damage; Cover absorbs hits. Wingbeats reset next beat.'
         : 'Read the enemy tell. Cover prevents damage and protects Flow.';
     return { text, accent: this.cardsPlayedThisTurn === 0 ? UI_FIELD.gold : UI_FIELD.cyan };
   }

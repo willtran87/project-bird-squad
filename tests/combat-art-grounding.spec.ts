@@ -75,7 +75,10 @@ test('entire combat cast retains proportional art and stage-owned contact shadow
             proportional: art.scaleX === art.scaleY, stageOwned: shadow.parentContainer === b.root,
             stationary: JSON.stringify(before) === JSON.stringify(after),
             clear: panels.every((p: any) => clear(p.getBounds(), silhouette) && clear(p.getBounds(), before)),
+            overlaps: panels.filter((p: any) => !clear(p.getBounds(), silhouette) || !clear(p.getBounds(), before))
+              .map((p: any) => ({ name: p.name, bounds: p.getBounds() })),
             visible: silhouette.top >= 106 && silhouette.bottom < 440,
+            silhouette,
             size: { width: silhouette.right - silhouette.left, height: silhouette.bottom - silhouette.top } };
         });
       }, { ids: ids.slice(start, start + 4), start, leaders });

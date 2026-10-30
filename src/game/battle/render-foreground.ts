@@ -52,6 +52,8 @@ export interface BattleForegroundLeaderView {
   bird: string;
   signatureLabel: string;
   artKey?: string;
+  artFit: number;
+  artY: number;
   stateAccent: number;
   x: number;
   y: number;
@@ -308,15 +310,15 @@ function renderLeader(context: BattleForegroundRenderContext) {
   const { scene, target, leader, fontFamily, boldFontStyle, goldColor } = context;
   const hasLeaderArt = Boolean(leader.artKey && scene.textures.exists(leader.artKey));
   const breathGroup = scene.add.container(leader.x, leader.y).setName('combat-leader-art');
-  const poseGroup = scene.add.container(0, 0);
+  const poseGroup = scene.add.container(0, 0).setName('combat-leader-pose');
   breathGroup.add(poseGroup);
   if (hasLeaderArt && leader.artKey) {
-    const source = scene.textures.get(leader.artKey).getSourceImage() as { width?: number; height?: number };
-    const fit = Math.min(230 / Math.max(1, Number(source.width ?? 1)), 288 / Math.max(1, Number(source.height ?? 1)));
-    const width = Number(source.width ?? 1) * fit, height = Number(source.height ?? 1) * fit;
-    const contact = artContact(leader.artKey, 0, -18, width, height, { x: 0, y: 100, width: 112 });
+    const source = scene.textures.get(leader.artKey).getSourceImage() as { width: number; height: number };
+    const fit = leader.artFit, artY = leader.artY;
+    const width = source.width * fit, height = source.height * fit;
+    const contact = artContact(leader.artKey, 0, artY, width, height, { x: 0, y: 100, width: 112 });
     contactShadow(context, leader.x + contact.x, leader.y + contact.y, contact.width, 15, 'combat-leader-contact-shadow');
-    poseGroup.add(scene.add.image(0, -18, leader.artKey).setName('combat-leader-portrait').setScale(fit).setAlpha(0.99));
+    poseGroup.add(scene.add.image(0, artY, leader.artKey).setName('combat-leader-portrait').setScale(fit).setAlpha(0.99));
   } else {
     contactShadow(context, leader.x, leader.y + 40, 112, 18, 'combat-leader-contact-shadow');
     poseGroup.add(scene.add.ellipse(0, -18, 142, 118, 0x6f4b35, 0.96).setStrokeStyle(3, leader.stateAccent, 0.9));

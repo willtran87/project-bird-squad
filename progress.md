@@ -1,5 +1,35 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-10-29 — Opening combat quality (in progress)
+- Accepted the five follow-ups: publish identity cleanup, clarify action phases,
+  represent actual flock members, sharpen existing tactical choices, and stage
+  teaching with a concrete five-player handoff.
+- One canonical played-card spotlight now identifies the acting bird and target,
+  with anticipation/commit/settle inside existing timing and observed payoff.
+  Leader casts stay quiet. Combination detail names the actual played pair once.
+- Signature fights reuse the feedback lane for contextual tactical alternatives;
+  existing balance, forecasts and victory conditions remain authoritative.
+- First-turn teaching prioritizes target/cost/incoming damage; later combination
+  hints require an affordable matching bird. Human sessions remain zero.
+- Technical verification/release in progress. Ledger: `docs/game/opening-combat-quality.md`.
+
+## 2026-10-29 — Identity and combat motion audit
+- Confirmed Spark-Caller species drift, Caldra/Captain conflation, atlas pose
+  proportions/facing drift, duplicate bodies/effects and competing transforms.
+- Retired atlas runtime use and unassigned supporting characters; original
+  portraits now retain identity through action phases. Shared one feedback lane.
+- Repaired Talon's source anatomy with a constrained built-in image edit.
+  Raw-viewer colored patches were verified as fully transparent, not game defects.
+- Replaced the oversized commitment banner with one attached card seal and
+  constrained travel to clear combatants/labels, including crowded boss layouts.
+- Verified all five identities and alpha in Chromium, Firefox and WebKit,
+  high-resolution/compact visuals, real action timing, reduced motion and cleanup.
+  The 105-case sweep's two obsolete effect assertions were corrected and passed;
+  seven supplemental sequencing/portrait checks and the shared client passed.
+- Added retired-atlas import protection and explicit identity/transition gates.
+  Audit, evidence and exact image prompt: `docs/art/identity-motion-audit-2026-10-29.md`.
+- Changes are local on `codex/identity-motion-audit`; no Pages publication in this audit.
+
 ## 2026-10-29 — Flock + Meaningful Victories
 - Published `52869fa1` through PR #19 and production run 40847463959.
 - Completed all six packages: objective victories, two supporting birds,

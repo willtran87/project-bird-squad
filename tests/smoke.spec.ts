@@ -2099,7 +2099,7 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
     target: expect.any(String),
   });
   expect(result.guideRecommendation.cost).toBeLessThanOrEqual(result.guideEnergy);
-  expect(result.guideVisual.text).toMatch(/^Select .+, then target .+\. Cost: \d+ · Flow \+1$/);
+  expect(result.guideVisual.text).toMatch(/^Select .+; target .+\. \d+ Wingbeats?\.$/);
   expect(result.guideVisual.fontSize).toBe(21);
   expect(result.guideVisual.panelSize).toEqual([600, 58]);
   expect(result.guideVisual.leftInset).toBeGreaterThanOrEqual(14);
@@ -12792,6 +12792,13 @@ for (const planned of [false, true]) test(`reward cost cautions remain visible a
   await boot(page);
   const expected = await page.evaluate(async (planned) => {
     const battle: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    // This checks presentation, not random draft coverage. Keep the real reward
+    // factory, but use a fixed stream so the expensive shelter fixture is stable.
+    let rewardSeed = 1;
+    battle.combatRandom = () => {
+      rewardSeed = (Math.imul(rewardSeed, 1_664_525) + 1_013_904_223) >>> 0;
+      return rewardSeed / 0x1_0000_0000;
+    };
     let choices: any[] = [];
     let index = -1;
     for (let attempt = 0; attempt < 32 && index < 0; attempt++) {

@@ -87,7 +87,7 @@ test('Flock Motion five canonical action styles are bounded and reduced motion k
       (window as any).advanceTime(280); b.time.paused = true; b.tweens.pauseAll();
       return { state: b.getTextState().cardAction, art: a.list.find((o: any) => o.name === 'flock-action-canonical-art')?.texture.key, children: a.list.length, count: b.fxLayer.list.filter((o: any) => o.name === a.name).length, moved: Math.hypot(a.x - start.x, a.y - start.y), sound: (window as any).__birdSquadAudio().cueRequests.card - audioBefore };
     }, { id });
-    expect(actor.state).toEqual({ style, cardId: id, reducedMotion: false }); expect(actor.art).toBeTruthy(); expect(actor.children).toBeLessThanOrEqual(3); expect(actor.count).toBe(1); expect(actor.moved).toBeGreaterThan(0); expect(actor.sound).toBe(1);
+    expect(actor.state).toEqual({ style, cardId: id, reducedMotion: false }); expect(actor.art).toBeTruthy(); expect(actor.children).toBeLessThanOrEqual(4); expect(actor.count).toBe(1); expect(actor.moved).toBeGreaterThan(0); expect(actor.sound).toBe(1);
     await page.screenshot({ path: info.outputPath(`action-${style}-2560.png`) });
     await page.evaluate(() => { const b = (window as any).__birdSquadGame.scene.getScene('BattleScene'); b.time.paused = false; b.tweens.resumeAll(); (window as any).advanceTime(1000); });
     await page.waitForFunction(() => !(window as any).__birdSquadGame.scene.getScene('BattleScene').combatAnimationPending);

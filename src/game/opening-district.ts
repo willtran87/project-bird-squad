@@ -1,7 +1,6 @@
 import Phaser from 'phaser';
-import { cardLibrary, cardsFromSave, cardArtAssets, prefersReducedMotion, firstFlightGuideState, currentMove, UI_FONT } from '../main';
+import { cardLibrary, cardsFromSave, cardArtAssets, firstFlightGuideState, currentMove, UI_FONT } from '../main';
 import { rooftopPlanMatch, combinations, type FlywayState, type RooftopPlan } from './flyway-rules';
-import { prefersLeanEffects } from './graphics-quality';
 import { buildRecipes } from './build-guidance';
 import { alphaRouteMarkLibrary } from './runtime-data';
 
@@ -101,16 +100,6 @@ export function installOpeningDistrict(scene: Scene) {
   const react = (kind: 'block' | 'escape' | 'combo' | 'break' | 'victory') => {
     if (!scene.fxLayer?.active || scene.time.now - lastReaction < 900) return;
     lastReaction = scene.time.now; record.reactions++; record.last = kind;
-    const art = scene.root?.getByName('combat-leader-art');
-    if (!art?.active) return;
-    const root = scene.add.container().setName('opening-bird-reaction'); scene.fxLayer.add(root);
-    const findPortrait = (object: any): Phaser.GameObjects.Image | undefined => object.name === 'combat-leader-portrait' ? object
-      : object.list?.map(findPortrait).find(Boolean);
-    const source = findPortrait(art);
-    const matrix = source?.getWorldTransformMatrix();
-    const portrait = source && matrix ? scene.add.image(matrix.tx, matrix.ty, source.texture.key)
-      .setScale(Math.hypot(matrix.a,matrix.b),Math.hypot(matrix.c,matrix.d)).setAlpha(.65) : undefined;
-    if (portrait) root.add(portrait);
     const lines: Record<string, string[]> = {
       fledgling: ['Together.', 'Still with you.', 'That’s our rhythm.', 'The crossing is ours.', 'Everyone made it.'],
       roostkeeper: ['Held.', 'Stay behind me.', 'Now answer.', 'Hold this opening.', 'Homeward.'],
@@ -119,18 +108,9 @@ export function installOpeningDistrict(scene: Scene) {
       tidewarden: ['Shelter holds.', 'Breathe. I’m here.', 'One current.', 'Through the gap.', 'All wings home.'],
     };
     const text = (lines[scene.runLeaderId] ?? lines.fledgling)[['block','escape','combo','break','victory'].indexOf(kind)];
-    // Keep the small reaction caption above portrait art while its decorative echo
-    // remains behind the protected combat UI. The FX root owns both lifetimes.
-    const caption = scene.add.text(272, 414, text, { fontFamily: UI_FONT, fontSize: '18px', color: '#ffe6b5', backgroundColor: '#101b25', padding: {x: 8, y: 4}, resolution: 2 }).setOrigin(.5).setDepth(45);
-    const reduced = prefersReducedMotion() || prefersLeanEffects();
-    if (!reduced && portrait) {
-      // Anticipation, a small decisive pose, then recovery; original idle art is untouched.
-      scene.tweens.add({ targets: portrait, x: portrait.x - 3, duration: 90, yoyo: true, onComplete: () => {
-        if (portrait.active) scene.tweens.add({ targets: portrait, x: matrix!.tx + (kind === 'block' ? -5 : 8), angle: kind === 'combo' ? -3 : 2, alpha: 0, duration: 340, ease: 'Sine.easeOut' });
-      } });
-    } else portrait?.setVisible(false);
-    const timer = scene.time.delayedCall(850, () => root.destroy(true));
-    root.once('destroy', () => { caption.destroy(); timer.remove(false); if (portrait) scene.tweens.killTweensOf(portrait); });
+    // Share the existing feedback lane; no translucent portrait duplicate.
+    scene.openingReaction = { text, until: scene.time.now + 1200 };
+
   };
   const impact = ({blocked, lost, hp}: {blocked: number; lost: number; hp: number}) => {
     if (blocked > 0 && lost === 0) react('block');

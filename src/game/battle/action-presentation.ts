@@ -86,90 +86,16 @@ export function combatPlayerHitConfirm(this: any, x: number, y: number, color: n
     });
   }
 
-export function combatPlayerCommitSigil(this: any, card: Card, enemyId: string, contract: ActiveCardContract, holdMs: number): any {
-    if (!this.textures.exists(COMBAT_PLAYER_COMMIT_SIGIL_TEXTURE)) return;
-    this.textures.get(COMBAT_PLAYER_COMMIT_SIGIL_TEXTURE).setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const meta = suitFxMeta(card.runtime.suit);
-    const activeTarget = contract.target;
-    const target = activeTarget === 'enemy'
-      ? this.enemyView(this.getEnemy(enemyId))
-      : activeTarget === 'allEnemies'
-        ? { x: ENEMY_FX_X, y: ENEMY_FX_Y, scale: 1 }
-        : { x: FLOCK_FX_X + 80, y: FLOCK_FX_Y - 24, scale: 0.9 };
-    const midX = Phaser.Math.Linear(FLOCK_FX_X + 34, target.x, activeTarget === 'enemy' ? 0.42 : 0.46);
-    const midY = Phaser.Math.Linear(FLOCK_FX_Y - 82, target.y - 60, activeTarget === 'enemy' ? 0.52 : 0.42);
-    const distance = Math.max(1, Math.hypot(target.x - FLOCK_FX_X, target.y - FLOCK_FX_Y));
-    const width = Phaser.Math.Clamp(distance * 0.42, 280, 360);
-    const height = width * (256 / 768);
-    const direction = target.x >= FLOCK_FX_X ? 1 : -1;
-    const reduced = prefersReducedMotion();
-    const lifeMs = Math.max(reduced ? 280 : 520, holdMs + (reduced ? 120 : 240));
+export function combatPlayerCommitSigil(this: any, _card: Card, _enemyId: string, _contract: ActiveCardContract, _holdMs: number): any {
+    const cardCue = this.fxLayer.getByName('combat-card-cast-ghost');
+    if (!cardCue?.active || !this.textures.exists(COMBAT_PLAYER_COMMIT_SIGIL_TEXTURE)) return;
     this.combatPlayerCommitSigilBursts += 1;
     birdAudio.play('playerCommitment', 0.84);
-
-    const shadow = this.add.image(midX - 7 * direction, midY + 10, COMBAT_PLAYER_COMMIT_SIGIL_TEXTURE)
-      .setDisplaySize(width * 1.02, height * 1.02)
-      .setTint(0x06101a)
-      .setAlpha(reduced ? 0.28 : 0.38)
-      .setFlipX(direction < 0)
-      .setName('combat-player-commit-sigil');
-    const glow = this.add.image(midX, midY, COMBAT_PLAYER_COMMIT_SIGIL_TEXTURE)
-      .setDisplaySize(width * 1.1, height * 1.1)
-      .setTint(meta.color)
-      .setBlendMode(Phaser.BlendModes.ADD)
-      .setAlpha(reduced ? 0.24 : 0.34)
-      .setFlipX(direction < 0)
-      .setName('combat-player-commit-sigil');
-    const sigil = this.add.image(midX, midY, COMBAT_PLAYER_COMMIT_SIGIL_TEXTURE)
-      .setDisplaySize(width, height)
-      .setAlpha(reduced ? 0.6 : 0.76)
-      .setFlipX(direction < 0)
-      .setName('combat-player-commit-sigil');
-    this.fxLayer.add([shadow, glow, sigil]);
-    this.children.bringToTop(this.fxLayer);
-    this.fxGlowPulse(midX, midY + 3, meta.color, Math.min(104, width * 0.2), 520, 0.14);
-    this.fxDirectionalStreak(FLOCK_FX_X + 22, FLOCK_FX_Y - 82, target.x, target.y - 66, meta.color, reduced ? 180 : 340);
-    this.fxMoteBurst(midX, midY + 6, meta.color, {
-      count: reduced ? 6 : 14,
-      speed: reduced ? 54 : 116,
-      lifespan: reduced ? 260 : 520,
-      scale: reduced ? 0.42 : 0.54,
-      gravityY: reduced ? 0 : 8,
-      spreadX: width * 0.36,
-      spreadY: 14,
-    });
-
-    if (reduced) {
-      this.time.delayedCall(lifeMs, () => {
-        shadow.destroy();
-        glow.destroy();
-        sigil.destroy();
-      });
-      return;
-    }
-
-    this.tweens.add({
-      targets: [shadow, glow, sigil],
-      x: `+=${direction * 18}`,
-      scaleX: `+=${0.035}`,
-      scaleY: `+=${0.035}`,
-      duration: Math.min(340, Math.max(180, holdMs * 0.42)),
-      ease: 'Sine.easeOut',
-    });
-    this.tweens.add({
-      targets: [shadow, glow, sigil],
-      alpha: 0,
-      scaleX: `+=${0.07}`,
-      scaleY: `+=${0.07}`,
-      delay: Math.max(140, holdMs - 90),
-      duration: 260,
-      ease: 'Cubic.easeIn',
-      onComplete: () => {
-        shadow.destroy();
-        glow.destroy();
-        sigil.destroy();
-      },
-    });
+    // A small seal inside the card cue shares its transform and exact lifetime.
+    // No independent banner, additive glow, streak or particle burst competes
+    // with the character or the impact that will follow.
+    cardCue.add(this.add.image(0, 46, COMBAT_PLAYER_COMMIT_SIGIL_TEXTURE)
+      .setDisplaySize(48, 16).setAlpha(.85).setName('combat-player-commit-sigil'));
   }
 
 export function combatFlockImpactBurst(this: any, x: number, y: number, heavy = false): any {

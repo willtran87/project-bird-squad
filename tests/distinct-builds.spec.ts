@@ -92,13 +92,16 @@ test('Distinct Builds candidate reading keeps observed and potential separate',a
   await info.attach('candidate-reading',{body:JSON.stringify(read),contentType:'application/json'});
 });
 
-test('Distinct Builds six birds use bounded distinct poses, impact timing and still alternatives',async({page},info)=>{
+test('Distinct Builds canonical bodies keep identity through action phases and still alternatives',async({page},info)=>{
   await route(page);await battle(page,'enc_canal_open_perch',true);
   for(const leader of ['fledgling','spark_caller','talon','tidewarden','roostkeeper']){
-    await page.evaluate(leader=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.time.paused=true;b.runLeaderId=leader;b.events.emit('living-cast',900);},leader);
+    await page.evaluate(leader=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.time.paused=true;b.runLeaderId=leader;b.optionalArtRequested=false;b.queueOptionalArtLoad();},leader);
+    await page.waitForFunction(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return b.textures.exists(b.currentFlockLeaderArtAsset().key);});
+    const texture=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.renderAll();b.events.emit('living-cast',900);return b.root.getByName('combat-leader-art').getByName('combat-leader-pose').getByName('combat-leader-portrait').texture.key;});
+    expect(texture).toBe(`flock-leader-${leader.replaceAll('_','-')}`);
     await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').livingPerformances.active[0]?.pose)).toBe('anticipation');
     await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.time.paused=false;(window as any).advanceTime(400);b.time.paused=true;});
-    await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').livingPerformances.active[0]?.pose)).toBe('wingbeat');
+    await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').livingPerformances.active[0]?.pose)).toBe('commit');
     for(const size of sizes){await page.setViewportSize(size);await settleCanvas(page);await page.screenshot({path:info.outputPath(`${leader}-${size.width}.png`)});}
     await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.events.emit('flyway-card',b.hand[0],b.enemies[0].id);});
     await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').livingPerformances.active[0]?.pose)).toBe('contact');
@@ -110,11 +113,11 @@ test('Distinct Builds six birds use bounded distinct poses, impact timing and st
     await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').livingPerformances.active.length)).toBe(0);
   }
   await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.events.emit('living-enemy-start',b.enemies[0].id,800);b.time.paused=false;(window as any).advanceTime(350);b.time.paused=true;});
-  await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').livingPerformances.active[0])).toEqual({bird:'caldra',pose:'wingbeat'});
-  await page.screenshot({path:info.outputPath('caldra-wingbeat.png')});
+  await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').livingPerformances.active[0])).toEqual({bird:'tarline_jackdaw',pose:'commit'});
+  await page.screenshot({path:info.outputPath('jackdaw-captain-commit.png')});
   await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.time.paused=false;(window as any).advanceTime(1600);b.time.paused=true;localStorage.setItem('birdsquad.motionPreference','reduced');b.events.emit('living-cast',900);});
-  await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').livingPerformances.active.find((a:any)=>a.bird==='roostkeeper')?.pose)).toBe('contact');
-  const still=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'),a=b.fxLayer.getByName('living-bird-leader');return b.tweens.getTweensOf(a).length;});expect(still).toBe(0);
+  await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').livingPerformances.active.find((a:any)=>a.bird==='roostkeeper')?.pose)).toBe('anticipation');
+  const still=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'),a=b.root.getByName('combat-leader-art').getByName('combat-leader-pose');return b.tweens.getTweensOf(a).length;});expect(still).toBe(0);
   await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.scene.stop();});await expect(page.locator('#identity-sequence')).toHaveCount(0);
 });
 
@@ -151,7 +154,7 @@ test('Distinct Builds performances follow real card and rival impacts and distin
   await page.waitForFunction(()=>!(window as any).__birdSquadGame.scene.getScene('BattleScene').combatAnimationPending);
   const calls=await page.evaluate(()=>{
     const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'),results=[];
-    for(const [leader,cue] of [['fledgling','flockSparrow'],['spark_caller','flockChorus'],['talon','flockShrike'],['tidewarden','flockHeron'],['roostkeeper','flockFinch']]){
+    for(const [leader,cue] of [['fledgling','flockSparrow'],['spark_caller','flockChorus'],['talon','flockShrike'],['tidewarden','flockHeron'],['roostkeeper','flockWeaver']]){
       b.runLeaderId=leader;b.flightCombat.charge=99;b.flightCombat.called=false;
       const before=(window as any).__birdSquadAudio().cueRequests[cue]??0;
       const used=b.activateFlywayCall();results.push({leader,used,count:((window as any).__birdSquadAudio().cueRequests[cue]??0)-before});

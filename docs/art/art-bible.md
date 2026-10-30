@@ -807,17 +807,16 @@ short readable transformation caption. Open Sky replaces the warm cue with a
 cool exposed atmosphere. Existing Molt card faces remain the source of card
 identity; the effect never changes species or dresses a bird as a spellcaster.
 
-Three signature cameos reuse exact-species approved portraits: First Flight's
-House Sparrow, Quill Point's shrike, and Open Basin's heron. The shrike cuts
-toward its target; the sparrow and heron move across the flock's foreground.
-Plumes scatter feather shapes, Quills produce narrow physical streaks, Basins
-spread water rings, and Nests interleave woven strips. The existing four suit
-sound voices accompany these actions. Contact ripples and displaced paper
-react to plays and boss phase changes.
+Combat keeps the established Leader and enemy cutouts throughout each action.
+The played card retains its own canonical card illustration; a Leader portrait
+must not impersonate a card simply because both depict the same species.
+The core combat presenter owns impact effects. Do not add a second set of suit
+particles, portrait echoes, replacement bodies or ground ripples for that event.
 
-Leader idle offsets distinguish quick Fledgling and Spark-Caller movements,
-Talon's lean, Tidewarden's slow sway, and Roostkeeper's planted stance. Bosses
-have four district-specific timings. Ambient district lighting, drifting paper,
+Leader Calls and reactions use small bounded offsets on the original portrait,
+with a fixed scale and one transform owner. During a card action, its actual
+canonical card illustration owns the spotlight and the Leader stays quiet.
+Ambient district lighting, drifting paper,
 canal rain, and music pitch progress from warm roofs to canals, signal heights,
 and clear High Roost dawn. Music states change on phrase boundaries for Flow,
 Surge, Molt, Open Sky, and boss Phase II; no action requires rhythmic timing.
@@ -826,3 +825,37 @@ The illustrated Flyway journal uses existing district and resident art. Broken
 routes are muted and dashed; restored districts regain color, a solid connection,
 and a star. Reduced motion keeps static rule cues and removes travel, weather,
 and personality tweens. Lean effects cap transient groups and particle counts.
+
+## Character identity and transition gates
+
+The [2026-10-29 identity audit](identity-motion-audit-2026-10-29.md) supersedes the
+earlier Living Battles atlas acceptance notes. Both v1 and v2 atlases are retired
+from runtime use; passing a dimensions or file-size check does not approve art.
+
+| Identity | Species | Locked visual anchors |
+| --- | --- | --- |
+| Fledgling | House Sparrow | Brown head, dark cheek patch, rust hood, olive satchel; existing combat cutout proportions. |
+| Spark-Caller | Lilac-breasted Roller | Turquoise crown, lilac throat, long blue/turquoise tail, orange/purple garment; no blue-jay crest or mask. |
+| Talon | Loggerhead Shrike | Black eye mask, ivory hood, gray courier layers, turquoise quiver trim; exactly two legs. |
+| Tidewarden | Great Blue Heron | Long neck, long bill and legs, teal draped rain shell, olive aid satchel. |
+| Roostkeeper | Baya Weaver | Yellow/black plumage, orange beanie, checked scarf, denim utility layers; not a finch identity. |
+| Caldra Pinion | Peafowl | Teal neck and crest, eye-patterned tail, magenta capelet, passive contract case. |
+
+Use the exact original front and rear references for that character, not another
+bird in a shared sheet. Caldra sponsors the rival wagers; her jackdaw Captain is
+a separate character and retains its original enemy art. Do not identify that
+captain as Caldra in code, screenshots or production notes.
+
+Every future pose must retain species, facial markings, beak and neck shape,
+wardrobe, palette, proportions, facing, pixel density and two-wing/two-leg anatomy.
+Review the complete sequence beside the original reference at gameplay size.
+Align feet and body scale before evaluating anticipation, commitment, contact,
+recoil and recovery. Reject cut-frame clipping, neighboring-pose bleed, outfit
+morphing, sudden size/facing changes and overlapping original/replacement bodies.
+
+One event has one primary actor, one impact presenter and one feedback lane.
+Keep art clear of intent labels, health bars, the hand and decision controls.
+Replacing or interrupting an action must retire its old visual ownership and
+restore the original pose. Reduced motion preserves the same identity without
+travel, texture swaps or ghosting. Verify normal/reduced motion, rapid actions,
+pause, defeat and scene exit at 2560×1600, 1440×900 and 1000×560.
