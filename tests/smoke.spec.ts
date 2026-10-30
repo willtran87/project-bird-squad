@@ -12792,6 +12792,13 @@ for (const planned of [false, true]) test(`reward cost cautions remain visible a
   await boot(page);
   const expected = await page.evaluate(async (planned) => {
     const battle: any = await window.__birdSquadStartScene!('BattleScene', { routeNodeId: 'm1_entry' });
+    // This checks presentation, not random draft coverage. Keep the real reward
+    // factory, but use a fixed stream so the expensive shelter fixture is stable.
+    let rewardSeed = 1;
+    battle.combatRandom = () => {
+      rewardSeed = (Math.imul(rewardSeed, 1_664_525) + 1_013_904_223) >>> 0;
+      return rewardSeed / 0x1_0000_0000;
+    };
     let choices: any[] = [];
     let index = -1;
     for (let attempt = 0; attempt < 32 && index < 0; attempt++) {

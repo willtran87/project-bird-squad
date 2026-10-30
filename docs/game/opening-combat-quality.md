@@ -56,6 +56,12 @@ placement now follows enemy placement: the scene prepares geometry and the lazy
 renderer draws that view. The actual Pages build passes both the renderer and
 710 KiB boot budgets. Superseded runs are diagnostic evidence, not release passes.
 
+A later run exposed an existing reward-warning fixture that searched 32 random
+drafts for an expensive shelter card. That setup could fail before exercising
+the UI. It now supplies a fixed random stream to the real reward factory; all
+cost-warning, spoken-feedback, viewport and no-commitment assertions remain.
+Reward gameplay and selection weights are unchanged.
+
 All 16 local Firefox/WebKit feature assertions passed, but the Windows WebKit
 worker subsequently timed out during shutdown. That run is not a clean suite
 pass; final release qualification requires the full CI workflow to exit cleanly.
