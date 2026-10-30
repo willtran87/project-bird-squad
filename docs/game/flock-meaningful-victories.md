@@ -1,5 +1,10 @@
 # Flock + Meaningful Victories
 
+Historical release record: the arbitrary supporting Leader bodies and atlas
+presentation were retired by the [opening combat release](opening-combat-quality.md).
+Its played-card cue identifies the actual acting bird. The objective victories,
+reward, practice and local-feedback features remain current.
+
 Requested 2026-10-29: implement the next improvement package, qualify the full release, publish Pages and clean up the feature branch.
 
 ## Acceptance ledger

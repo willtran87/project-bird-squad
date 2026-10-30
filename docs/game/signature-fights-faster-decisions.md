@@ -1,5 +1,10 @@
 # Signature Fights + Faster Decisions
 
+Historical release record: its atlas presentation was superseded by the
+[identity cleanup and opening combat release](opening-combat-quality.md).
+Both Living Battles atlases are retired. The encounter mechanics remain current;
+use the art bible's canonical identity rules for presentation work.
+
 Accepted scope: implement all five packages, qualify the complete release,
 commit, push, merge, publish GitHub Pages and clean up the feature branch.
 

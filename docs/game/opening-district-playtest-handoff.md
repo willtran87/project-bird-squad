@@ -1,92 +1,48 @@
 # Opening district playtest handoff
 
 Status: **ready to schedule; no human sessions performed**. The owner requested
-this handoff because no sessions are available yet. The current 0.1.0 release
-retains its explicit evidence waivers; preparation does not count as passing
-human, device or assistive-technology evidence.
+this handoff because no sessions are available yet. Existing release evidence
+waivers remain explicit; preparation does not count as passing human, device or
+assistive-technology evidence.
 
-## Session kit
-
-Current follow-up: [opening combat quality](opening-combat-quality.md). Use its
-published revision once available. The identity audit retired the two arbitrary
-supporting Leader bodies and both Living Battles atlases; older instructions
-below about identifying those supporting actors are historical.
-
-For P01–P05, observe the first fight silently, then ask:
-1. Which bird acted, who was affected, and what changed?
-2. What will the enemy do when you Roost, and what would Cover change?
-3. After a signature encounter, what were the two ways you could approach it?
-4. Would you choose another fight now? Record the answer and reason verbatim.
-
-Record time to the first intentional play, target-selection errors, requests
-for help, whether the player can explain the outcome, and voluntary continuation.
-Do not teach combinations before the player encounters a relevant opportunity.
-The desired milestone is at least four of five players making an intentional
-first play and explaining the first fight without coaching. This is a proposed
-acceptance target, not a measured result. Enjoyment and replay intent remain
-player-reported. No human sessions have been performed.
-
-Flock + Meaningful Victories follow-up: use the revision in the
-[upgrade ledger](flock-meaningful-victories.md). Ask players to explain how each
-signature encounter ends, identify which supporting bird acted, and describe a
-reward's base benefit and limitation. Observe the earned Canal gift and optional
-demo. After defeat, try a different final turn and interpret the comparison.
-Players may mark Confusing, Satisfying or Slow through Journal → Practice &
-feedback and export the local JSON voluntarily. Practice markers live only in the
-practice session; export them before leaving. Record P01–P05 observations without
-treating automated completion as evidence of enjoyment.
-
-Signature Fights + Faster Decisions follow-up: use the published revision from
-the [upgrade ledger](signature-fights-faster-decisions.md). Ask players to
-compare offers without opening the reader, explain a capstone's limitation,
-predict each signature fight's next phase, and identify shield/signal/recovery
-actions. After a loss, observe whether they discover Practice This Fight and
-understand that it preserves their real progress. Record decision time,
-misreadings and voluntary rematches; no human sessions have been performed.
-
-Distinct Builds + Living Battles follow-up: use the revision in the
-[upgrade ledger](distinct-builds-living-battles.md). Ask players to describe their
-strategy and its weakness, explain a candidate’s pairing with an owned bird,
-and distinguish predicted potential from recorded contributions. Observe whether
-they exploit the support, alternating-watch and recovery formations without
-coaching. Ask which bird acted, whether the pose change clarified impact, and
-whether the factual flight highlights suggest a specific next flock. Record
-confusion and voluntary replay intent; do not infer either from scripted tests.
-
-Flock in Motion follow-up: use the deployed revision recorded in the
-[current upgrade ledger](flock-in-motion-faster-flights.md). Ask players to point
-to incoming damage and remaining Wingbeats, identify the card that just acted,
-and explain one resolved payoff. Observe whether familiar enemy actions remain
-readable and whether opening Full rules during a cast feels predictable. At the
-reward screen, ask them to use observed contributions to explain a choice;
-check that they distinguish Cover gained from damage prevented. Record confusion
-and preference verbatim. No sessions for this upgrade have been performed.
-
-Signal Spires follow-up: once this upgrade is published, record its actual
-deployed revision from [the release ledger](signal-spires-clarity-upgrade.md).
-After the opening observations, ask returning players to explain one relay Tell,
-their chosen Spires signature's tradeoff, and why they chose a Molt window.
-Observe whether the shorter card face leads naturally to Full rules, whether
-the Wingbeat forecast predicts their next action, and whether Ivo/Oren's High
-Roost contribution is noticed. Record confusion before providing assistance.
-No Signal Spires sessions have been performed.
+## Current session kit
 
 - Game: <https://willtran87.github.io/project-bird-squad/?playtest=1>.
-  The opening-district release is published and live-verified at revision
-  `f699a3bb1c099f1d928859683eb59d6e7adc765f`. Record this revision alongside the
-  URL; check the [release report](opening-district-2026-10-25.md#published-release)
-  for later updates before starting a session.
+- Published revision: `cf44e250d96a9ca07bb1eee1a952d61df8716861`.
+- Current scope and release evidence: [opening combat quality](opening-combat-quality.md).
 - Instructions: [first-run runbook](playtest-runbook.md).
 - One blank copy per tester: [observer sheet](playtest-observer-template.md).
-- Focus: [six opening-district moments](opening-district-2026-10-25.md#five-player-follow-up).
 - Manual hardware/accessibility checks: [release evidence runbook](release-evidence-runbook.md).
+
+This protocol supersedes earlier batch-specific prompts about arbitrary
+supporting Leader bodies and Living Battles atlas poses. Those presenters have
+been retired. Identify the actual played bird, its target and its observed result.
+Historical upgrade ledgers retain the earlier design and release records.
 
 Arrange five fresh players. Each uses a separate empty browser profile with the
 guide enabled. Let them choose their own Leader and strategy, including no
 strategy. Observe silently through a complete run or voluntary abandonment;
 do not prescribe a win or teach the intended sequence. If intervention is
-necessary, record the confusion before helping. Ask comprehension questions
-after the first fight and collect ratings only from the player.
+necessary, record the confusion before helping. Do not teach combinations before
+the player encounters a relevant opportunity.
+
+After the first fight, ask:
+
+1. Which bird acted, who was affected, and what changed?
+2. What will the enemy do when you Roost, and what would Cover change?
+3. Would you choose another fight now? Record the answer and reason verbatim.
+
+After a signature encounter, ask what two approaches the player could take.
+Record whether the ferry crossing, relay interception or rooftop escape is
+understood, including its defeat-all alternative. For the relay, distinguish
+stored force that remains from force already spent or removed with its recipient.
+
+Record time to the first intentional play, target-selection errors, requests
+for help, whether the player can explain the outcome, and voluntary continuation.
+The desired milestone is at least four of five players making an intentional
+first play and explaining the first fight without coaching. This is a proposed
+acceptance target, not a measured result. Enjoyment and replay intent remain
+player-reported.
 
 | Anonymous code | Session status | Notes filename | Export filename and run ID |
 | --- | --- | --- | --- |
@@ -95,6 +51,24 @@ after the first fight and collect ratings only from the player.
 | P03 | Not scheduled | P03.md | Pending |
 | P04 | Not scheduled | P04.md | Pending |
 | P05 | Not scheduled | P05.md | Pending |
+
+## Optional later-run observations
+
+After the opening observations, let players discover Calls, combinations and
+Molt without coaching. Ask them to explain a chosen specialization or reward's
+benefit and tradeoff. Observe the earned Canal gift and optional isolated demo.
+After defeat, let them try Practice This Fight and explain the comparison.
+Record whether resident favors and ending scenes reflect choices they remember.
+Use questions after the relevant decision, never to teach its intended answer.
+
+Players may mark Confusing, Satisfying or Slow through Journal → Practice &
+feedback and export that local JSON voluntarily. Practice markers live only in
+the practice session; export them before leaving. Record decision, animation,
+reward-reading and final-enemy cleanup time separately. Optional local
+`JSON.parse(render_game_to_text()).flyway.pacing` counters estimate these
+categories during battle; journal/background time is excluded and cleanup is a
+subset of decision time. Preserve actual observer notes; scripted timings do not
+represent human comprehension or enjoyment.
 
 ## Return the evidence
 
@@ -119,34 +93,3 @@ and voluntary replay. Record each repeated issue with its reproduction, impact
 and follow-up; retain the original observations after fixes. Physical-device
 and NVDA/VoiceOver evidence remains separate and unverified until those actual
 sessions occur; `--strict-manual` additionally requires them.
-
-## High Roost + The Living City follow-up
-
-Use the release revision recorded in `high-roost-living-city-upgrade.md`. No
-sessions have been supplied for this milestone. Ask each participant to explain
-the shield and signal perches before choosing a target, then compare the next
-Tell after disabling one. Record whether stored force remaining after a Falcon
-defeat surprises them. Observe one defensive and one aggressive approach without
-coaching. Note repeated cleanup turns and whether the recovery fork feels useful.
-
-Ask which earlier choice opened each resident favor and whether the three ending
-scenes match their own flight. Let them discover Skip and Replay themselves.
-Record which specific replay invitation they remember, any unreadable Tells or
-hidden card details, and whether they voluntarily begin another flight. These
-observations supplement the existing five-player protocol; automated scripts
-are mechanics evidence only.
-
-## Flock Identity + Rival Stories follow-up
-
-Use the deployed revision recorded in `flock-identity-rival-stories-upgrade.md`.
-No sessions have been supplied. Observe whether the player notices a ready Call
-and discovers a combination without opening the full journal. Ask them to explain
-the specialization they chose and what it gives up. On a rival rematch, record
-which support bird they target and whether Caldra's next formation feels fair.
-After an ending, ask which story they would voluntarily try next.
-
-Record active decision, animation, reward-reading and final-enemy cleanup time
-separately. Optional local `JSON.parse(render_game_to_text()).flyway.pacing` counters estimate
-these categories during battle; journal/background time is excluded, and cleanup
-is a subset of decision time. Preserve the observer's actual notes and timing;
-scripted fixture timings do not represent human comprehension or enjoyment.

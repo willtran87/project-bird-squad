@@ -92,6 +92,19 @@ Review images (local, ignored test evidence):
 - `.artifacts/identity-cross-final/`: all five Leaders, canonical alpha and three viewport captures.
 - `.artifacts/identity-sequencing-final/`: loaded original portraits, Captain, attack timing and pause.
 
-This was targeted correction verification, not a full release-pipeline run or
-human playtest. Future authored pose sequences still require the identity and
-transition review in the art bible before replacing these canonical stills.
+The initial audit used targeted correction verification. Its corrections were
+subsequently published on 2026-10-30 with the
+[opening combat release](../game/opening-combat-quality.md), after full PR and
+production qualification. Both runs passed 1,123 gameplay cases, 429 browser
+cases, 33 unit/policy checks and Pages-base smoke. The published artifact has
+no retired atlases; all ten canonical leader images match its public files.
+
+Release qualification additionally corrected Talon's stage clearance. The scene
+uniformly fits each visible silhouette between the objective panel and hand,
+reserving room for bounded reactions and positioning its floor shadow from the
+same placement. Scale remains stable through an action. The complete cast is
+checked at high-resolution and compact viewports, including four-enemy layouts.
+
+Human sessions remain unperformed. Future authored pose sequences still require
+the identity and transition review in the art bible before replacing these
+canonical stills.

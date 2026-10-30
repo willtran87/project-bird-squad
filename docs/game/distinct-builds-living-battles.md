@@ -1,5 +1,10 @@
 # Distinct Builds + Living Battles
 
+Historical release record: its atlas presentation was superseded by the
+[identity cleanup and opening combat release](opening-combat-quality.md).
+Both Living Battles atlases are retired. Use the art bible's canonical identity
+rules for current or future presentation work.
+
 Accepted October 28: implement the five proposed packages, qualify the release,
 commit, push, merge, publish Pages and clean up the feature branch.
 

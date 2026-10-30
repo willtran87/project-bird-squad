@@ -1,6 +1,6 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
-## 2026-10-29 — Opening combat quality (in progress)
+## 2026-10-30 — Opening combat quality (published)
 - Accepted the five follow-ups: publish identity cleanup, clarify action phases,
   represent actual flock members, sharpen existing tactical choices, and stage
   teaching with a concrete five-player handoff.
@@ -11,7 +11,20 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
   existing balance, forecasts and victory conditions remain authoritative.
 - First-turn teaching prioritizes target/cost/incoming damage; later combination
   hints require an affordable matching bird. Human sessions remain zero.
-- Technical verification/release in progress. Ledger: `docs/game/opening-combat-quality.md`.
+- Published `cf44e250` through PR #20 and production run 41019724232.
+- Clean PR and production runs each passed 1,123 gameplay, 429 browser and
+  33 unit/policy cases, static gates and Pages-base smoke. No failed, flaky,
+  skipped or retried cases. All 17 post-deployment checks passed.
+- All 99 checked public files match the deployed artifact; PR and production
+  source, application and HTML hashes match. The live client played three cards
+  with full art, no recorded console errors and no lingering action objects.
+- Pages boot is 709.0 KiB under the unchanged 710 KiB cap; the foreground
+  renderer is 8,093 bytes under its unchanged 8 KiB cap. No FPS gain is claimed.
+- Feature branch deleted locally/remotely; only main remains. Task preview
+  stopped and the user's existing preview preserved. Final closure edits are
+  documentation only. Ledger: `docs/game/opening-combat-quality.md`.
+- The five-player handoff is ready; no human sessions or new device/native-AT
+  acceptance evidence have been claimed.
 
 ## 2026-10-29 — Identity and combat motion audit
 - Confirmed Spark-Caller species drift, Caldra/Captain conflation, atlas pose
@@ -28,7 +41,8 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
   seven supplemental sequencing/portrait checks and the shared client passed.
 - Added retired-atlas import protection and explicit identity/transition gates.
   Audit, evidence and exact image prompt: `docs/art/identity-motion-audit-2026-10-29.md`.
-- Changes are local on `codex/identity-motion-audit`; no Pages publication in this audit.
+- Published with the opening combat quality release above; canonical identity,
+  stage clearance and transition checks passed on the deployed game.
 
 ## 2026-10-29 — Flock + Meaningful Victories
 - Published `52869fa1` through PR #19 and production run 40847463959.
