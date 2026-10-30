@@ -7,6 +7,25 @@ human, device or assistive-technology evidence.
 
 ## Session kit
 
+Current follow-up: [opening combat quality](opening-combat-quality.md). Use its
+published revision once available. The identity audit retired the two arbitrary
+supporting Leader bodies and both Living Battles atlases; older instructions
+below about identifying those supporting actors are historical.
+
+For P01–P05, observe the first fight silently, then ask:
+1. Which bird acted, who was affected, and what changed?
+2. What will the enemy do when you Roost, and what would Cover change?
+3. After a signature encounter, what were the two ways you could approach it?
+4. Would you choose another fight now? Record the answer and reason verbatim.
+
+Record time to the first intentional play, target-selection errors, requests
+for help, whether the player can explain the outcome, and voluntary continuation.
+Do not teach combinations before the player encounters a relevant opportunity.
+The desired milestone is at least four of five players making an intentional
+first play and explaining the first fight without coaching. This is a proposed
+acceptance target, not a measured result. Enjoyment and replay intent remain
+player-reported. No human sessions have been performed.
+
 Flock + Meaningful Victories follow-up: use the revision in the
 [upgrade ledger](flock-meaningful-victories.md). Ask players to explain how each
 signature encounter ends, identify which supporting bird acted, and describe a

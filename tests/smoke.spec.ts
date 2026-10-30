@@ -2099,7 +2099,7 @@ test('first-flight guidance exposes route tradeoffs and Flow outcome previews', 
     target: expect.any(String),
   });
   expect(result.guideRecommendation.cost).toBeLessThanOrEqual(result.guideEnergy);
-  expect(result.guideVisual.text).toMatch(/^Select .+, then target .+\. Cost: \d+ · Flow \+1$/);
+  expect(result.guideVisual.text).toMatch(/^Select .+; target .+\. \d+ Wingbeats?\.$/);
   expect(result.guideVisual.fontSize).toBe(21);
   expect(result.guideVisual.panelSize).toEqual([600, 58]);
   expect(result.guideVisual.leftInset).toBeGreaterThanOrEqual(14);

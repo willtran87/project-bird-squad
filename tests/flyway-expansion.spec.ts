@@ -72,13 +72,13 @@ test('Leader call is earned through real card plays, has one use, and combos mat
   });
   expect(result.charge).toBe(3);expect(result.first).toBe(true);expect(result.second).toBe(false);expect(result.energyAfter).toBe(result.energyBefore+2);expect(result.combos).toBe(2);expect(result.hp).toBe(result.expectedHp);
 });
-test('Molt, suit cameos and dynamic music respond to actual combat events',async({page})=>{
+test('Molt, resolved suit actions and dynamic music respond without duplicate cameos',async({page})=>{
   await battle(page);
   await page.evaluate(()=>{
     const s=(window as any).__birdSquadGame.scene.getScene('BattleScene');s.combatAnimationPending=false;s.energy=20;
     const card=s.hand.find((c:any)=>c.id==='major_00');s.playCard(card,s.enemies[0].id);s.enterMolt('Flight test');
   });
-  await expect.poll(()=>page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return b.livingPerformances?.crew.length===2||b.flywayPresentation.cameos>0;})).toBe(true);
+  await expect.poll(()=>page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return b.flywayPresentation.suitActions>0&&b.flywayPresentation.cameos===0;})).toBe(true);
   if (await page.evaluate(()=>!!(window.AudioContext||(window as any).webkitAudioContext))) {
     await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadAudio().music.flightState)).toBe('molt');
   } else {
@@ -222,27 +222,25 @@ test('strategic keepsakes apply their benefits and costs through combat rules',a
   expect(result.woven).toBe(result.normal-2);expect(result.carried).toBe(8);expect(result.stormEnergy).toBe(1);expect(result.skyTurns).toBe(1);expect(result.target).toBe(4);expect(result.ready).toBe(true);expect(result.bonus).toBe(result.ordinary+2);expect(result.rain).toBe(result.clear-1);expect(result.exposed).toBe(true);expect(result.over).toBe(1);
 });
 
-test('reduced motion keeps rule cues while bounded transient effects retire',async({page})=>{
+test('reduced motion keeps rule cues without duplicate Flyway card effects',async({page})=>{
   await page.emulateMedia({reducedMotion:'reduce'});await battle(page);
   const state=await page.evaluate(()=>{
     const w=window as any,s=w.__birdSquadGame.scene.getScene('BattleScene');
     const count=()=>s.fxLayer.list.filter((x:any)=>x.name.startsWith('flyway-')).length;
     w.advanceTime(1000);
     const c=s.allDeckCards().find((c:any)=>c.id==='swords_ace');
+    const before=s.flywayPresentation.suitActions;
     for(let i=0;i<12;i++)s.events.emit('flyway-card',c,s.enemies[0].id);
-    const groups=count(),now=s.time.now;
-    // Retirement uses Phaser time. Check its actual deadline independently
-    // of the runner's render cadence and wall-clock polling budget.
-    w.advanceTime(799);const beforeDeadline=count();
-    w.advanceTime(2);
-    return {groups,beforeDeadline,afterDeadline:count(),elapsed:s.time.now-now,
+    const groups=count();w.advanceTime(1000);
+    return {groups,after:count(),resolved:s.flywayPresentation.suitActions-before,
       active:s.sys.isActive(),paused:s.time.paused,
       weather:s.backdropLayer.list.filter((x:any)=>x.name==='flyway-district-weather').length};
   });
   expect(state.active).toBe(true);expect(state.paused).toBe(false);
-  expect(state.groups).toBeGreaterThan(0);expect(state.groups).toBeLessThanOrEqual(5);
-  expect(state.weather).toBe(0);expect(state.beforeDeadline).toBe(state.groups);
-  expect(state.elapsed).toBeCloseTo(801);expect(state.afterDeadline).toBe(0);
+  expect(state.groups).toBe(0);expect(state.after).toBe(0);expect(state.resolved).toBe(12);
+  expect(state.weather).toBe(0);
+  await expect(page.locator('#identity-sequence')).toBeVisible();
+  await expect(page.locator('#identity-sequence')).toContainText('Choose a bird');
 });
 
 test('the title does not fetch battle snapshot or outcome adapters',async({page})=>{
@@ -281,10 +279,11 @@ test('district boss stages expose distinct atmosphere and restoration context',a
     await page.waitForFunction(() => {
       const s = (window as any).__birdSquadGame.scene.getScene('BattleScene');
       return [...s.enemyPoseGroups.values()].some((p: any) => p.enemy.runtime.type === 'boss'
-        && (s.flywayMapIndex === 3 ? ['brace','stagger','recovery'].includes(p.group.getData('roost-pose')) : p.group.getData('flyway-personality')));
+        && p.group.getByName('combat-enemy-portrait')?.visible
+        && (s.flywayMapIndex !== 3 || ['brace','stagger','recovery'].includes(p.group.getData('roost-pose'))));
     });
-    const state=await page.evaluate(()=>{const s=(window as any).__birdSquadGame.scene.getScene('BattleScene');return {boss:s.enemies.some((e:any)=>e.runtime.type==='boss'),light:s.backdropLayer.getByName('flyway-district-light')?.fillColor,personalities:[...s.enemyPoseGroups.values()].filter((p:any)=>p.enemy.runtime.type==='boss'&&(s.flywayMapIndex===3?['brace','stagger','recovery'].includes(p.group.getData('roost-pose')):p.group.getData('flyway-personality'))).length};});
-    expect(state.boss).toBe(true);expect(state.light).toBe([0xe4a568,0x72bfc4,0xa8b2da,0xf0d6a0][index]);expect(state.personalities).toBeGreaterThan(0);
+    const state=await page.evaluate(()=>{const s=(window as any).__birdSquadGame.scene.getScene('BattleScene');return {boss:s.enemies.some((e:any)=>e.runtime.type==='boss'),light:s.backdropLayer.getByName('flyway-district-light')?.fillColor,portraits:[...s.enemyPoseGroups.values()].filter((p:any)=>p.enemy.runtime.type==='boss'&&p.group.getByName('combat-enemy-portrait')?.visible).length,extraPersonality:[...s.enemyPoseGroups.values()].some((p:any)=>p.group.getData('flyway-personality'))};});
+    expect(state.boss).toBe(true);expect(state.light).toBe([0xe4a568,0x72bfc4,0xa8b2da,0xf0d6a0][index]);expect(state.portraits).toBeGreaterThan(0);expect(state.extraPersonality).toBe(false);
     await page.screenshot({path:testInfo.outputPath(`district-boss-${index}.png`)});
   }
 });

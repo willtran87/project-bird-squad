@@ -126,12 +126,12 @@ test('Signature Fights lost-fight practice restores exact opening and never save
   expect(await page.evaluate(()=>JSON.stringify(Object.entries(localStorage).sort()))).toBe(disk);
 });
 
-test('Signature Fights support glyphs are bounded and survive reduced-motion settings',async({page},info)=>{
+test('Signature Fights support keeps the canonical bird and one readable intent',async({page},info)=>{
   await route(page);await battle(page);
   for(const reduced of [false,true])for(const [beat,kind] of [[0,'shield'],[4,'recover']] as const){
     await page.evaluate(({beat,reduced})=>{localStorage.setItem('birdsquad.motionPreference',reduced?'reduced':'full');const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.enemies[1].intentIndex=beat;b.time.paused=true;b.events.emit('living-enemy-start',b.enemies[1].id,500);},{beat,reduced});
-    const glyph=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'),all=b.fxLayer.list.filter((o:any)=>o.name==='living-support-signature');return {count:all.length,kind:all[0]?.getData('kind')};});expect(glyph).toEqual({count:1,kind});
-    if(reduced)expect(await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return b.tweens.getTweensOf(b.fxLayer.getByName('living-support-signature')).length;})).toBe(0);
+    const glyph=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'),all=b.fxLayer.list.filter((o:any)=>o.name==='living-support-signature');return {count:all.length,kind:all[0]?.getData('kind')};});expect(glyph).toEqual({count:0,kind:undefined});
+    const bodies=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return {visible:[...b.enemyPoseGroups.values()].every((p:any)=>p.group.visible),clones:b.fxLayer.list.filter((o:any)=>o.name.startsWith('living-bird-')).length};});expect(bodies).toEqual({visible:true,clones:0});
     await page.screenshot({path:info.outputPath(`support-${kind}-${reduced}.png`)});
   }
   await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.time.paused=false;(window as any).advanceTime(1200);});

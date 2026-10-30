@@ -58,8 +58,8 @@ def build_splash() -> None:
             print(f"{rel(target)} ({size_kb(target):.1f} KB)")
 
 
-def build_leaders() -> None:
-    sources = sorted(LEADER_ROOT.glob("*.png"))
+def build_leaders(names: list[str] | None = None) -> None:
+    sources = [LEADER_ROOT / f"{name}.png" for name in names] if names else sorted(LEADER_ROOT.glob("*.png"))
     if not sources:
         raise FileNotFoundError(f"No leader PNG sources found in {rel(LEADER_ROOT)}")
 
@@ -185,9 +185,13 @@ def build_resident(name: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--icons', nargs='+', help='Rebuild only these named UI icons.')
+    parser.add_argument('--leaders', nargs='+', help='Re-export only these reviewed leader PNGs, preserving alpha.')
     parser.add_argument('--resident', help='Export one reviewed transparent resident.')
     parser.add_argument('--signal', action='store_true', help='Export the reviewed Signal route icon.')
     args = parser.parse_args()
+    if args.leaders:
+        build_leaders(args.leaders)
+        return
     if args.signal:
         build_signal_icon()
         return

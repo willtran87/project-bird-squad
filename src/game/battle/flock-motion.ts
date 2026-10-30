@@ -21,10 +21,21 @@ export function playFlockAction(host: any, card: Card, enemyId: string, contract
   const old = host.fxLayer.getByName('combat-card-cast-ghost');
   if (old) { killTweensForTree(host, old); old.destroy(); }
   const style = flockAction(card, contract), reduced = prefersReducedMotion() || prefersLeanEffects();
+  const targetName = contract.target === 'enemy' ? host.enemies.find((e: any) => e.id === enemyId)?.name ?? 'Target'
+    : contract.target === 'allEnemies' ? 'All enemies' : 'Your flock';
+  const focus = { cardId: card.id, instanceId: card.instanceId, name: displayName(card), bird: card.bird,
+    target: targetName, style, phase: 'anticipation', active: true };
+  host.motionFocus = focus;
+  host.time.delayedCall(budget * .25, () => { if (host.motionFocus === focus) focus.phase = 'commit'; });
+  host.time.delayedCall(budget, () => { if (host.motionFocus === focus) focus.active = false; });
   host.events.emit('living-cast', budget, style, enemyId);
   host.queueFlockMotion(style === 'shelter' ? 'brace' : style === 'retreat' ? 'heal' : 'cast');
-  const actor = host.add.container(FLOCK_FX_X + 185, FLOCK_FX_Y - 128)
+  const crowded = host.enemies.length >= 4;
+  // Four-enemy formations occupy the center lane. Use the clear pocket below
+  // the HUD and above the leader's head instead of crossing the first support.
+  const actor = host.add.container(crowded ? 385 : 450, crowded ? 142 : 190)
     .setName('combat-card-cast-ghost').setDepth(40)
+    .setScale(crowded ? .58 : 1)
     .setData({ actionStyle: style, cardId: card.id, budgetMs: budget, reducedMotion: reduced });
   host.fxLayer.add(actor);
   const key = loadedCardArtKey(host, card), accent = suitAccentColor(card);
@@ -46,18 +57,23 @@ export function playFlockAction(host: any, card: Card, enemyId: string, contract
   actor.add(mark);
   const enemy = host.enemies.find((entry: any) => entry.id === enemyId && entry.hp > 0);
   const target = enemy ? host.enemyView(enemy) : { x: FLOCK_FX_X + 230, y: FLOCK_FX_Y };
-  const travel = Math.min(170, Math.max(40, target.x - actor.x - 80));
+  const travel = crowded ? 0 : Math.min(64, Math.max(0, target.x - actor.x - 170));
   const end = {
-    swoop: { x: actor.x + travel, y: actor.y + 16, angle: 14 },
-    shove: { x: actor.x + travel * 0.65, y: actor.y, angle: -5 },
-    shelter: { x: actor.x - 20, y: actor.y + 12, angle: 0 },
-    rally: { x: actor.x + 24, y: actor.y - 28, angle: -8 },
-    retreat: { x: actor.x - 62, y: actor.y + 22, angle: 6 },
+    swoop: { x: actor.x + travel, y: actor.y + 6, angle: 4 },
+    shove: { x: actor.x + travel * 0.65, y: actor.y + 4, angle: -3 },
+    shelter: { x: actor.x - 4, y: actor.y + 4, angle: 0 },
+    rally: { x: actor.x + 8, y: actor.y - 4, angle: -3 },
+    retreat: { x: actor.x - 8, y: actor.y + 4, angle: 3 },
   }[style];
   if (!reduced) {
-    if (style === 'swoop') actor.y -= 32;
-    host.tweens.add({ targets: actor, ...end, scale: style === 'shelter' ? 1.06 : 0.92,
-      duration: budget * 0.85 * host.tweens.timeScale, ease: style === 'shove' ? 'Cubic.easeIn' : 'Sine.easeInOut' });
+    // Anticipate in the safe pocket, commit once, then settle before impact.
+    // All three segments fit inside the existing resolution budget.
+    const start = { x: actor.x, y: actor.y, angle: 0 };
+    host.tweens.chain({ targets: actor, tweens: [
+      { x: start.x - 3, y: start.y + 2, duration: budget * .22 * host.tweens.timeScale, ease: 'Sine.easeOut' },
+      { ...end, duration: budget * .48 * host.tweens.timeScale, ease: style === 'shove' ? 'Cubic.easeIn' : 'Sine.easeInOut' },
+      { x: start.x + (end.x - start.x) * .85, y: start.y, angle: 0, duration: budget * .15 * host.tweens.timeScale, ease: 'Sine.easeOut' },
+    ] });
   }
   host.time.delayedCall(budget, () => { if (actor.active) { killTweensForTree(host, actor); actor.destroy(true); } });
 }
@@ -68,8 +84,17 @@ export function presentCardPayoff(host: any, card: Card, total?: CardContributio
   const delta = emptyContribution(card.id);
   for (const key of contributionKeys) delta[key] = Math.max(0, total[key] - (before?.[key] ?? 0));
   const results = contributionResults(delta);
-  host.motionPayoff = results.length ? {
-    text: `Resolved: ${results.slice(0, 2).join(' · ')}`,
+  const partner = host.flockCombination?.cardId === card.id ? host.flockCombination : undefined;
+  delete host.flockCombination;
+  host.motionPayoff = {
+    text: `Resolved: ${displayName(card)} · ${results[0] ?? 'effects applied'}`,
+    detail: `${card.bird} · ${displayName(card)}. ${results.join(' · ') || 'No tracked numeric changes.'}${partner ? ` ${partner.name}: ${partner.first} → ${displayName(card)}.` : ''}`,
     until: host.time.now + 2200 * textPaceScale(), cardId: card.id, results,
-  } : undefined;
+  };
+  if (host.motionFocus?.instanceId === card.instanceId) {
+    const focus = host.motionFocus;
+    focus.phase = 'contact'; focus.active = true;
+    host.time.delayedCall(90, () => { if (host.motionFocus === focus) focus.phase = 'recovery'; });
+    host.time.delayedCall(240, () => { if (host.motionFocus === focus) focus.active = false; });
+  }
 }

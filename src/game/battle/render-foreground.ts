@@ -308,7 +308,7 @@ function renderLeader(context: BattleForegroundRenderContext) {
   const { scene, target, leader, fontFamily, boldFontStyle, goldColor } = context;
   const hasLeaderArt = Boolean(leader.artKey && scene.textures.exists(leader.artKey));
   const breathGroup = scene.add.container(leader.x, leader.y).setName('combat-leader-art');
-  const poseGroup = scene.add.container(0, 0);
+  const poseGroup = scene.add.container(0, 0).setName('combat-leader-pose');
   breathGroup.add(poseGroup);
   if (hasLeaderArt && leader.artKey) {
     const source = scene.textures.get(leader.artKey).getSourceImage() as { width?: number; height?: number };

@@ -348,6 +348,7 @@ export function buildBattlePresentationDebugState(context: BattlePresentationDeb
       return payoff && context.scene.time.now < payoff.until ? { text: payoff.text, cardId: payoff.cardId, results: [...payoff.results] } : undefined;
     })(),
       livingPerformances: (battle as any).livingPerformances,
+    combatReading: (battle as any).combatReading,
     flockStatsReading: battle.inspectOverlay === 'flock' ? battle.root?.getByName('flock-stats-reader')?.getData('summary') : undefined,
     supplyDrawer: {
       open: Boolean(battle.supplyDrawerOpen),

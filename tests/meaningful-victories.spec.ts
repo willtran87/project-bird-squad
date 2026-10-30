@@ -110,13 +110,15 @@ test('Meaningful Victories earned gift offers a reversible real combat demo',asy
   expect(await page.evaluate(()=>JSON.stringify(Object.entries(localStorage).sort()))).toBe(disk);
 });
 
-test('Meaningful Victories supporting flock stays bounded and uses still poses',async({page},info)=>{
+test('Meaningful Victories canonical action has no unassigned wingmates or duplicate bodies',async({page},info)=>{
   await battle(page);
   for(const reduced of [false,true]) {
     await page.evaluate(reduced=>{localStorage.setItem('birdsquad.motionPreference',reduced?'reduced':'full');const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.events.emit('living-cast',500,'swoop',b.enemies[0].id);},reduced);
     await page.waitForTimeout(150);
     const actors=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return b.children.list.filter((o:any)=>o.name.startsWith('supporting-flock')).map((o:any)=>({x:o.x,visible:o.visible,pose:o.getData('pose')}));});
-    expect(actors).toHaveLength(2);expect(actors.every(a=>a.visible)).toBe(true);if(reduced)expect(actors[0].x).toBe(440);
+    expect(actors).toHaveLength(0);
+    const identity=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'),art=b.root.getByName('combat-leader-art'),pose=art.getByName('combat-leader-pose');return {visible:art.visible,x:pose.x,y:pose.y,duplicates:b.fxLayer.list.filter((o:any)=>o.name.startsWith('living-bird-')).length};});
+    expect(identity.visible).toBe(true);expect(identity.duplicates).toBe(0);if(reduced){expect(Math.hypot(identity.x,identity.y)).toBe(0);}
     await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.events.emit('flyway-combination',{id:'brace-cut',name:'Brace & Cut'});b.events.emit('flyway-card',b.hand[0],b.enemies[0].id);});
     for(const size of sizes){await page.setViewportSize(size);await settleCanvas(page);await page.screenshot({path:info.outputPath(`flock-${reduced}-${size.width}.png`)});}
   }

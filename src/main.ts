@@ -15814,6 +15814,7 @@ private playBattleIntro(onComplete?: () => void) {
 
   private applyFlockMotionCue(group: Phaser.GameObjects.Container) {
     const cue = this.flockMotionCue;
+    if ((this as any).livingPerformances?.ready) { this.flockMotionCue = undefined; return; }
     if (!cue || prefersReducedMotion()) return;
     this.flockMotionCue = undefined;
     const motion = {
@@ -16486,13 +16487,13 @@ private playBattleIntro(onComplete?: () => void) {
       ? (() => {
           const card = this.firstCombatGuideCard();
           const target = card ? this.firstCombatGuideTarget(card) : undefined;
-          if (!card) return 'Select a card, then confirm to play. Build full Flow to Surge.';
+          if (!card) return 'Select a card, inspect its target, then confirm to play.';
           const cost = this.effectiveCost(card);
           const action = target ? `target ${target.name}` : 'confirm to play';
-          return `Select ${displayName(card)}, then ${action}. Cost: ${cost}${this.cardBuildsFlow(card) ? ' · Flow +1' : ''}`;
+          return `Select ${displayName(card)}; ${action}. ${cost} Wingbeat${cost === 1 ? '' : 's'}.`;
         })()
       : guideStep === 'roost'
-        ? 'Roost when ready. Wingbeats reset next beat.'
+        ? 'Roost when ready. Check incoming damage; Cover absorbs hits. Wingbeats reset next beat.'
         : 'Read the enemy tell. Cover prevents damage and protects Flow.';
     return { text, accent: this.cardsPlayedThisTurn === 0 ? UI_FIELD.gold : UI_FIELD.cyan };
   }

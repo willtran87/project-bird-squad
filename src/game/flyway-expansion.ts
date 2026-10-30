@@ -49,10 +49,10 @@ function state(scene: Scene): FlywayState {
   return readArchive()?.flyway ?? newFlywayState();
 }
 function mapIndex(scene: Scene) { return scene.runState?.mapIndex ?? scene.flywayMapIndex ?? 0; }
-function isBusy(scene: Scene) {
+function isBusy(scene: Scene, reading = false) {
   return document.querySelector('dialog[open]:not(#flyway-book)') || scene.confirmExitOpen || scene.shouldChooseDistrictContract?.() || scene.routeCommitPending
     || scene.pauseOverlayOpen || scene.settingsOverlayOpen || scene.settingsOverlay?.active || scene.helpOverlay?.active || scene.leaderTooltip?.active || scene.titleRunLaunchPending || scene.codexOpening
-    || scene.combatAnimationPending || scene.combatIntroActive || scene.discardChoice || scene.returnChoice
+    || (!reading && scene.combatAnimationPending) || scene.combatIntroActive || scene.discardChoice || scene.returnChoice
     || scene.inspectOverlay || scene.combatCardDetail?.active || scene.outcomeDetailsOpen || scene.supplyDrawerOpen || scene.waymarkDrawerOpen
     || scene.deckOverlayOpen || scene.flockOverlayOpen || scene.nodeChoiceOpen || scene.marketOpen
     || scene.pendingRouteReward || scene.cardPickerMode || scene.root?.getByName('pending-overlay')?.active
@@ -421,7 +421,7 @@ export function installFlyway(raw: Phaser.Scene) {
   };
   installPresentation(scene);
   void import('./flock-identity').then(module=>{
-    if(!alive)return;identity=module;identityHud=module.installIdentity(scene,()=>!!dialog||!!isBusy(scene),()=>open('call'));render();
+    if(!alive)return;identity=module;identityHud=module.installIdentity(scene,()=>!!dialog||!!isBusy(scene),()=>open('call'),()=>!!dialog||!!isBusy(scene,true));render();
   }).catch(()=>{if(alive){identityFailed=true;render();}});
   if (mapIndex(scene) === 3 || state(scene).restored.includes(3)) void import('./high-roost').then(module => {
     if (!alive) return; roost = module; module.installHighRoost(scene); render();
@@ -478,7 +478,6 @@ function installPresentation(scene: Scene) {
   let lastMode = '', active = 0;
   const counters = { cameos: 0, suitActions: 0, moltTransitions: 0, impacts: 0, phaseChanges: 0 };
   scene.flywayPresentation = counters;
-  queueRuntimeImageAssets(scene, Object.values(codexLeaderArtAssets), 'Flyway bird cameo art unavailable');
   function group(name: string) {
     if (!scene.fxLayer?.active || active >= (prefersLeanEffects() ? 2 : 5)) return undefined;
     const root = scene.add.container().setName(name); scene.fxLayer.add(root); active += 1;
@@ -486,36 +485,9 @@ function installPresentation(scene: Scene) {
     scene.time.delayedCall(800, () => { if (root.active) { killTweensForTree(scene, root); root.destroy(true); } });
     return root;
   }
-  const cardAction = (card: any, enemyId: string) => {
-    const root = group('flyway-suit-action'); if (!root) return;
-    counters.suitActions += 1;
-    const suit = card.runtime.suit; const enemy = scene.enemies.find((e: any) => e.id === enemyId);
-    const view = enemy ? scene.enemyView(enemy) : { x: 800, y: 280 };
-    const reduced = prefersReducedMotion();
-    const color = suit === 'plumes' ? 0xe6ac72 : suit === 'quills' ? 0xbccad8 : suit === 'basins' ? 0x93cfcf : 0xd5bc83;
-    for (let i = 0; i < (reduced ? 2 : prefersLeanEffects() ? 5 : 9); i++) {
-      const x = suit === 'basins' || suit === 'nests' ? 250 : view.x;
-      const y = suit === 'basins' || suit === 'nests' ? 350 : view.y;
-      const object = suit === 'basins' ? scene.add.ellipse(x, y + 30 + i * 4, 26 + i * 14, 7 + i * 3).setStrokeStyle(2, color, .65)
-        : suit === 'nests' ? scene.add.rectangle(x - 40 + i * 10, y, 6, 44, color, .8).setAngle(i % 2 ? 28 : -28)
-        : scene.add.ellipse(x - 30 + i * 8, y, suit === 'quills' ? 38 : 20, suit === 'quills' ? 3 : 7, color, .85).setAngle(suit === 'quills' ? -28 : -55 + i * 12);
-      root.add(object);
-      if (!reduced) scene.tweens.add({ targets: object, y: y + (suit === 'basins' ? 34 : -25), x: x - 24 + i * 10, alpha: 0, duration: 450 + i * 20, ease: 'Sine.easeOut' });
-    }
-    // These portraits match the exact species on their cards.
-    const cameoLeader = ({ major_00: 'fledgling', swords_ace: 'talon', cups_ace: 'tidewarden' } as Record<string,string>)[card.id];
-    const asset = cameoLeader ? codexLeaderArtAssets[cameoLeader] : undefined;
-    if (asset && scene.textures.exists(asset.key) && !scene.livingPerformances?.ready) {
-      counters.cameos += 1;
-      const image = scene.add.image(360, 280, asset.key).setName('flyway-card-bird');
-      image.setScale(125 / image.height).setAlpha(.92); root.add(image);
-      if (!reduced) scene.tweens.add({ targets: image, x: suit === 'quills' ? view.x - 70 : 440, y: 245, angle: suit === 'quills' ? -12 : 7, alpha: 0, duration: 620, ease: 'Sine.easeInOut' });
-    }
-    // Canal water spreads outward; rooftop grit lifts in a narrow contact oval.
-    const ripple = scene.add.ellipse(view.x, 355, mapIndex(scene)===1?30:18, mapIndex(scene)===1?6:3).setStrokeStyle(mapIndex(scene)===1?2:1, districts[mapIndex(scene)].tint, .6); root.add(ripple);
-    if (!reduced) scene.tweens.add({ targets: ripple, scaleX: 4, scaleY: 2, alpha: 0, duration: 550 });
-    counters.impacts += 1;
-  };
+  // The combat effect presenter owns contact visuals. Recording a resolved
+  // action must not spawn a second bird, suit-particle burst or ground ripple.
+  const cardAction = () => { counters.suitActions += 1; counters.impacts += 1; };
   const molt = (entering: boolean) => {
     counters.moltTransitions += 1; const root = group('flyway-molt-transition'); if (!root) return;
     const color = entering ? 0xefbf7f : 0xa9c9dd;
@@ -532,15 +504,6 @@ function installPresentation(scene: Scene) {
     if (mapIndex(scene) === 3) scene.events.emit('roost-backdrop');
     const musicState = scene.flock.molt ? 'molt' : scene.flock.exposed ? 'open-sky' : scene.enemies.some((e:any)=>e.phase===2&&e.hp>0) ? 'boss-phase' : scene.flock.flow >= scene.flock.flowMax ? 'surge' : scene.flock.flow > 0 ? 'flow' : 'planning';
     if (musicState !== lastMode) { lastMode=musicState; birdAudio.setFlightState(musicState, mapIndex(scene)); }
-    const art = scene.root?.getByName('combat-leader-art');
-    if (art && !art.getData('flyway-personality')) {
-      art.setData('flyway-personality',true);
-      const personality = ({fledgling:{angle:.7,dx:1.8,duration:1250},spark_caller:{angle:1.1,dx:2.4,duration:950},talon:{angle:-.6,dx:-1.5,duration:1800},tidewarden:{angle:.35,dx:.6,duration:2600},roostkeeper:{angle:-.25,dx:.4,duration:2200}} as Record<string,{angle:number,dx:number,duration:number}>)[scene.runLeaderId] ?? {angle:.4,dx:1,duration:1700};
-      if (!motionState().reduced && !prefersLeanEffects()) scene.tweens.add({targets:art,angle:personality.angle,x:art.x+personality.dx,duration:personality.duration,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
-    }
-    for (const {group:pose,enemy} of scene.enemyPoseGroups?.values() ?? []) if(mapIndex(scene)!==3&&enemy.runtime.type==='boss'&&!pose.getData('flyway-personality')) {
-      pose.setData('flyway-personality',true); const stance=[{angle:.65,dx:1.4,duration:1600},{angle:-.35,dx:.7,duration:2400},{angle:-.9,dx:2,duration:1300},{angle:.25,dx:.3,duration:2800}][mapIndex(scene)]; if(!prefersReducedMotion()&&!prefersLeanEffects())scene.tweens.add({targets:pose,angle:stance.angle,x:pose.x+stance.dx,duration:stance.duration,yoyo:true,repeat:-1,ease:'Sine.easeInOut'});
-    }
     const layer = scene.backdropLayer;
     const lighting = layer?.getByName('flyway-district-light');
     lighting?.setFillStyle(scene.flock.molt ? 0xe8b475 : scene.flock.exposed ? 0x8daebc : districts[mapIndex(scene)].tint, scene.flock.molt || scene.flock.exposed ? .07 : .035);

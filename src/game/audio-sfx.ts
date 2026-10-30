@@ -3,7 +3,7 @@ import { AudioCueBudget } from './audio-cue-budget';
 const cueBudgets = new WeakMap<AudioContext, AudioCueBudget>();
 
 export type SynthAudioCue =
-  | 'flockSparrow' | 'flockChorus' | 'flockShrike' | 'flockHeron' | 'flockFinch' | 'flockJackdaw' | 'rooftopAir'
+  | 'flockSparrow' | 'flockChorus' | 'flockShrike' | 'flockHeron' | 'flockWeaver' | 'flockJackdaw' | 'rooftopAir'
   | 'spireAnswer'
   | 'spireBroadcast'
   | 'spireRepair'
@@ -146,8 +146,8 @@ export function playAudioCue(
   const audio = { ctx, master, sfxVolume };
   const loudness = clamp(intensity, 0.45, 1.8);
   switch (cue) {
-    case 'flockSparrow': case 'flockChorus': case 'flockShrike': case 'flockHeron': case 'flockFinch': case 'flockJackdaw': {
-      const notes = {flockSparrow:[1100,1600],flockChorus:[740,1110],flockShrike:[1800,900],flockHeron:[240,320],flockFinch:[1300,1900],flockJackdaw:[420,260]}[cue];
+    case 'flockSparrow': case 'flockChorus': case 'flockShrike': case 'flockHeron': case 'flockWeaver': case 'flockJackdaw': {
+      const notes = {flockSparrow:[1100,1600],flockChorus:[740,1110],flockShrike:[1800,900],flockHeron:[240,320],flockWeaver:[1300,1900],flockJackdaw:[420,260]}[cue];
       tone(audio,notes[0],notes[1],.11,'sine',.014*loudness,-.15);
       tone(audio,notes[1],notes[0]*1.05,.20,'triangle',.006*loudness,.15);
       break;

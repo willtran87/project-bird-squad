@@ -5,6 +5,19 @@ import zlib from 'node:zlib';
 
 const root = process.cwd();
 const failures = [];
+// Historical sheets changed species/identity and must not return through a new
+// importer. New animation art needs the original-reference review in the bible.
+function auditIdentityImports(dir) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const file = path.join(dir, entry.name);
+    if (entry.isDirectory()) auditIdentityImports(file);
+    else if (/\.[cm]?[jt]sx?$/.test(entry.name)
+      && /living-battles-atlas-v[12]/.test(fs.readFileSync(file, 'utf8'))) {
+      failures.push(`retired identity-drift atlas referenced by ${path.relative(root, file)}`);
+    }
+  }
+}
+auditIdentityImports(path.join(root, 'src'));
 const runtimeTellPath = path.join(root, 'assets/runtime/fx/combat-enemy-attack-tell.png');
 const canonicalSourcePath = path.join(
   root,

@@ -24,7 +24,7 @@ export const COMBAT_ART_CONTACTS: Readonly<Record<string, readonly [x: number, y
   'flock-leader-fledgling': [0.60, 0.884, 0.44],
   'flock-leader-roostkeeper': [0.64, 0.788, 0.34],
   'flock-leader-spark-caller': [0.65, 0.844, 0.34],
-  'flock-leader-talon': [0.68, 0.77, 0.35],
+  'flock-leader-talon': [0.73, 0.89, 0.29],
   'flock-leader-tidewarden': [0.59, 0.915, 0.29],
 };
 
