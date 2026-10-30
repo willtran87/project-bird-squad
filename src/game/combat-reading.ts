@@ -24,9 +24,13 @@ export function encounterDecision(id: string, enemies: any[], defeated: Map<stri
   if (id === 'enc_signature_ferry') return beat < 3
     ? `Survive ${3 - beat} more beat${beat === 2 ? '' : 's'}, or clear both for +8 Scrap.`
     : 'Crossing secured.';
-  if (id === 'enc_signature_relay') return enemies[1]?.hp > 0 && enemies[1].intentIndex < 3
-    ? 'Stop the relay before Tell 3, or prepare for its empowered attack.'
-    : 'Stored force remains. Cover the next hit or finish the attacker.';
+  if (id === 'enc_signature_relay') {
+    if (enemies[1]?.hp > 0 && enemies[1].intentIndex < 3)
+      return 'Stop the relay before Tell 3, or prepare for its empowered attack.';
+    return living.some(e => e.nextAttackBonus > 0)
+      ? 'Stored force remains. Cover the next hit or finish the attacker.'
+      : 'Defeat the remaining defenders. Compare their Tells before you Roost.';
+  }
   if (id === 'enc_signature_watch') {
     const gap = enemies.some(e => e.hp <= 0) && [...defeated.values()].some(turn => turn <= 3);
     return gap ? 'Gap opened: survive beat 3, or defeat both for +8 Scrap.'

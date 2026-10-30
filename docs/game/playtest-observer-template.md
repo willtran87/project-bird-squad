@@ -67,6 +67,23 @@ words.
 | Wingbeats |  | yes / no |
 | Enemy Tells |  | yes / no |
 
+### Opening combat clarity follow-up
+
+Use the current revision in [the opening combat ledger](opening-combat-quality.md).
+Record observations before explaining or correcting an answer.
+
+- Time from the first playable hand to the first intentional card play:
+- Target-selection errors before that play:
+- Requests for help before the end of the first fight:
+- Which bird acted, who was affected, and what changed? (Player's own words):
+- Can the player explain what happens when they Roost and how Cover changes it?
+- After a signature fight, which two approaches did the player identify?
+- Would the player voluntarily choose another fight? (Answer and reason verbatim):
+- First intentional play and first-fight explanation completed without coaching: yes / no
+
+The proposed milestone is four of five players completing that last item.
+An empty sheet is preparation, not a passed session or evidence of enjoyment.
+
 ## Post-Run Questions
 
 - What did you look at first?

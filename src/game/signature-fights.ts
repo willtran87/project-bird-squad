@@ -38,10 +38,13 @@ export function signatureFormation(id: string, enemies: RuntimeEnemy[]): Runtime
     return bird;
   });
 }
-export function signaturePhase(id: string, enemies: Array<{ hp: number; intentIndex: number }>) {
+export function signaturePhase(id: string, enemies: Array<{ hp: number; intentIndex: number; nextAttackBonus?: number }>) {
   if (!Object.hasOwn(signatureFights, id)) return undefined;
   const fight = signatureFights[id as SignatureFight];
   const beat = Math.max(0, ...enemies.filter(e => e.hp > 0).map(e => e.intentIndex));
   const phase = Math.min(3, beat);
-  return { name: fight.name, phase, text: id === 'enc_signature_relay' && enemies[1]?.hp <= 0 ? 'Relay silenced · stored force still applies' : fight.phases[phase], lesson: fight.lesson };
+  const storedForce = enemies.some(e => e.hp > 0 && (e.nextAttackBonus ?? 0) > 0);
+  return { name: fight.name, phase, text: id === 'enc_signature_relay' && enemies[1]?.hp <= 0
+    ? storedForce ? 'Relay silenced · stored force still applies' : 'Relay silenced · finish the defender'
+    : fight.phases[phase], lesson: fight.lesson };
 }

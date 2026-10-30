@@ -38,6 +38,16 @@ game client reached combat, played cards and left no lingering action objects.
 Evidence: `.artifacts/opening-quality-verified/`, `opening-quality-final/`,
 `opening-quality-client/` and the corresponding logs.
 
+Final review also found stale relay guidance after stored force was consumed
+or its recipient defeated. Both the tactical line and relay phase caption now
+check the living enemies' actual bonus; boundary and rendered-line regressions
+cover those transitions. The first PR workflow was canceled for this correction
+and is not release evidence.
+
+All 16 local Firefox/WebKit feature assertions passed, but the Windows WebKit
+worker subsequently timed out during shutdown. That run is not a clean suite
+pass; final release qualification requires the full CI workflow to exit cleanly.
+
 Full PR/production qualification and publication are pending. Automated success
 does not establish enjoyment or replace the human milestone. Existing owner
 waivers remain explicit; no human, physical-device or native-AT evidence was added.

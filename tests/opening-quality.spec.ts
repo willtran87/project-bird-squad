@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { encounterDecision } from '../src/game/combat-reading';
+import { signaturePhase } from '../src/game/signature-fights';
 import { settleCanvas } from './helpers/settled-canvas';
 
 const sizes=[{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}];
@@ -89,13 +90,28 @@ for(const id of ['enc_signature_ferry','enc_signature_relay','enc_signature_watc
   const expected=id.includes('ferry')?'Survive 3':id.includes('relay')?'Stop the relay':'Break either perch';
   await expect(page.locator('#identity-sequence')).toContainText(expected);
   for(const size of sizes){await page.setViewportSize(size);await settleCanvas(page);expect(await page.locator('#identity-sequence').evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);await page.screenshot({path:info.outputPath(`decision-${size.width}.png`)});}
+  if(id==='enc_signature_relay'){
+    await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.enemies[1].intentIndex=3;b.enemies[0].nextAttackBonus=6;});
+    await expect(page.locator('#identity-sequence')).toContainText('Stored force');
+    await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').enemies[0].nextAttackBonus=0);
+    await expect(page.locator('#identity-sequence')).toContainText('remaining defenders');
+    await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.enemies[0].nextAttackBonus=6;b.enemies[0].hp=0;});
+    await expect(page.locator('#identity-sequence')).not.toContainText('Stored force');
+  }
 });
 
 test('Opening quality tactical choices respect elapsed beats and earned escape gaps',()=>{
-  const e=[{hp:32,intentIndex:2},{hp:20,intentIndex:2}];
+  const e=[{hp:32,intentIndex:2,nextAttackBonus:0},{hp:20,intentIndex:2,nextAttackBonus:0}];
   expect(encounterDecision('enc_signature_ferry',e,new Map())).toContain('1 more beat');
   expect(encounterDecision('enc_signature_relay',e,new Map())).toContain('before Tell 3');
-  e[1].intentIndex=3;expect(encounterDecision('enc_signature_relay',e,new Map())).toContain('Stored force');
+  e[1].intentIndex=3;e[0].nextAttackBonus=6;
+  expect(encounterDecision('enc_signature_relay',e,new Map())).toContain('Stored force');
+  e[1].hp=0;expect(signaturePhase('enc_signature_relay',e)?.text).toContain('stored force');
+  e[0].nextAttackBonus=0;
+  expect(encounterDecision('enc_signature_relay',e,new Map())).not.toContain('Stored force');
+  expect(signaturePhase('enc_signature_relay',e)?.text).not.toContain('stored force');
+  e[0].nextAttackBonus=6;e[0].hp=0;e[1].hp=20;
+  expect(encounterDecision('enc_signature_relay',e,new Map())).not.toContain('Stored force');
   e.forEach(v=>v.intentIndex=3);e[0].hp=0;
   expect(encounterDecision('enc_signature_watch',e,new Map([['defender',4]]))).toContain('missed');
   expect(encounterDecision('enc_signature_watch',e,new Map([['defender',3]]))).toContain('Gap opened');
