@@ -44,6 +44,12 @@ check the living enemies' actual bonus; boundary and rendered-line regressions
 cover those transitions. The first PR workflow was canceled for this correction
 and is not release evidence.
 
+Full regression then caught Talon's repaired tail extending into the hand area.
+Leader placement now uses the cached visible silhouette to reserve clearance
+for bounded Call/recoil movement; portrait proportions and the matching contact
+shadow are preserved. The full-cast grounding test retains its strict stage
+and panel clearance checks and now includes exact bounds in failure diagnostics.
+
 All 16 local Firefox/WebKit feature assertions passed, but the Windows WebKit
 worker subsequently timed out during shutdown. That run is not a clean suite
 pass; final release qualification requires the full CI workflow to exit cleanly.

@@ -16043,6 +16043,7 @@ private playBattleIntro(onComplete?: () => void) {
         bird: leader.bird,
         signatureLabel: this.leaderSignatureLabel(),
         artKey: leaderArt && this.textures.exists(leaderArt.key) ? leaderArt.key : undefined,
+        artBounds: leaderArt && this.textures.exists(leaderArt.key) ? this.enemyTextureVisibleBounds(leaderArt.key) : undefined,
         stateAccent,
         x: FLOCK_ART_X,
         y: FLOCK_ART_Y
