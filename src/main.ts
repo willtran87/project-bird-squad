@@ -16015,6 +16015,19 @@ private playBattleIntro(onComplete?: () => void) {
       this.renderBattleForegroundFallback(enemies, leader.name, stateAccent);
       return;
     }
+    const leaderArtKey = leaderArt && this.textures.exists(leaderArt.key) ? leaderArt.key : undefined;
+    let leaderArtFit = 1, leaderArtY = -18;
+    if (leaderArtKey) {
+      const source = this.textures.get(leaderArtKey).getSourceImage() as { width: number; height: number };
+      const bounds = this.enemyTextureVisibleBounds(leaderArtKey);
+      // Match enemy placement: prepare geometry in the view, then render it.
+      // Leave room between objective and hand for bounded Call/recoil motion.
+      leaderArtFit = Math.min(230 / source.width, 288 / source.height,
+        240 / Math.max(1, source.height * (bounds.bottom - bounds.top)));
+      const height = source.height * leaderArtFit;
+      leaderArtY = Math.max(186 - FLOCK_ART_Y - height * (bounds.top - .5),
+        Math.min(-18, 426 - FLOCK_ART_Y - height * (bounds.bottom - .5)));
+    }
     const iconIds = {
       attack: 'release-card',
       brace: 'cover-shield',
@@ -16042,8 +16055,9 @@ private playBattleIntro(onComplete?: () => void) {
         name: leader.name,
         bird: leader.bird,
         signatureLabel: this.leaderSignatureLabel(),
-        artKey: leaderArt && this.textures.exists(leaderArt.key) ? leaderArt.key : undefined,
-        artBounds: leaderArt && this.textures.exists(leaderArt.key) ? this.enemyTextureVisibleBounds(leaderArt.key) : undefined,
+        artKey: leaderArtKey,
+        artFit: leaderArtFit,
+        artY: leaderArtY,
         stateAccent,
         x: FLOCK_ART_X,
         y: FLOCK_ART_Y

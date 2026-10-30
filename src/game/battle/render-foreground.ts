@@ -52,7 +52,8 @@ export interface BattleForegroundLeaderView {
   bird: string;
   signatureLabel: string;
   artKey?: string;
-  artBounds?: { top: number; bottom: number };
+  artFit: number;
+  artY: number;
   stateAccent: number;
   x: number;
   y: number;
@@ -312,17 +313,9 @@ function renderLeader(context: BattleForegroundRenderContext) {
   const poseGroup = scene.add.container(0, 0).setName('combat-leader-pose');
   breathGroup.add(poseGroup);
   if (hasLeaderArt && leader.artKey) {
-    const source = scene.textures.get(leader.artKey).getSourceImage() as { width?: number; height?: number };
-    const sourceWidth = Math.max(1, Number(source.width ?? 1)), sourceHeight = Math.max(1, Number(source.height ?? 1));
-    const bounds = leader.artBounds ?? { top: 0, bottom: 1 };
-    // The visible body fits between the objective panel and hand, with a margin
-    // for bounded Call/recoil movement. Keep one uniform scale and use measured
-    // alpha bounds so transparent padding cannot determine stage clearance.
-    const fit = Math.min(230 / sourceWidth, 288 / sourceHeight,
-      240 / Math.max(1, sourceHeight * (bounds.bottom - bounds.top)));
-    const width = sourceWidth * fit, height = sourceHeight * fit;
-    const artY = Math.max(186 - leader.y - height * (bounds.top - .5),
-      Math.min(-18, 426 - leader.y - height * (bounds.bottom - .5)));
+    const source = scene.textures.get(leader.artKey).getSourceImage() as { width: number; height: number };
+    const fit = leader.artFit, artY = leader.artY;
+    const width = source.width * fit, height = source.height * fit;
     const contact = artContact(leader.artKey, 0, artY, width, height, { x: 0, y: 100, width: 112 });
     contactShadow(context, leader.x + contact.x, leader.y + contact.y, contact.width, 15, 'combat-leader-contact-shadow');
     poseGroup.add(scene.add.image(0, artY, leader.artKey).setName('combat-leader-portrait').setScale(fit).setAlpha(0.99));

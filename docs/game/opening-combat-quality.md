@@ -50,6 +50,12 @@ for bounded Call/recoil movement; portrait proportions and the matching contact
 shadow are preserved. The full-cast grounding test retains its strict stage
 and panel clearance checks and now includes exact bounds in failure diagnostics.
 
+The next full run passed all 1,123 gameplay and 429 browser cases, then caught
+the foreground renderer exceeding its unchanged 8 KiB delivery budget. Portrait
+placement now follows enemy placement: the scene prepares geometry and the lazy
+renderer draws that view. The actual Pages build passes both the renderer and
+710 KiB boot budgets. Superseded runs are diagnostic evidence, not release passes.
+
 All 16 local Firefox/WebKit feature assertions passed, but the Windows WebKit
 worker subsequently timed out during shutdown. That run is not a clean suite
 pass; final release qualification requires the full CI workflow to exit cleanly.
