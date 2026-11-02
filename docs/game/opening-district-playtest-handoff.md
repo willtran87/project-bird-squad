@@ -8,8 +8,8 @@ assistive-technology evidence.
 ## Current session kit
 
 - Game: <https://willtran87.github.io/project-bird-squad/?playtest=1>.
-- Published revision: `cf44e250d96a9ca07bb1eee1a952d61df8716861`.
-- Current scope and release evidence: [opening combat quality](opening-combat-quality.md).
+- Published revision: `39f7e522295bfb3b59258f59cc130181a6a5df82`.
+- Current scope and release evidence: [opening mastery](opening-mastery.md).
 - Instructions: [first-run runbook](playtest-runbook.md).
 - One blank copy per tester: [observer sheet](playtest-observer-template.md).
 - Manual hardware/accessibility checks: [release evidence runbook](release-evidence-runbook.md).

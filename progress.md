@@ -1,6 +1,6 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
-## 2026-11-01 — Opening mastery (in progress)
+## 2026-11-01 — Opening mastery (published)
 - Accepted the opening polish recommendations: clearer teaching hands and card
   faces, tactical payoff explanations, three strategy showcase fights, restrained
   contact feedback, and the existing five-player handoff.
@@ -13,8 +13,19 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 - Full-block reading reports actual prevented damage; casting settles before
   contact and retires the card cue when effects resolve. Duplicate combo sounds
   are removed. Canonical identity art remains unchanged.
-- Verification and release pending. Human sessions remain zero; see
-  `docs/game/opening-mastery.md` for scope, evidence and remaining work.
+- PR #21 merged as `39f7e522295bfb3b59258f59cc130181a6a5df82`. Clean PR run
+  `41387759139` and production run `41390784166` each passed 1,131 core cases,
+  453 browser cases, 33 unit/policy checks, content/assets, delivery budgets and
+  Pages smoke. No gameplay/browser failures, retries or skips in either release run.
+- Qualified and production source/application hashes match. All 101 checked
+  public files match the Pages artifact; all 25 live checks passed. The shared
+  client played two cards with full art, no errors and zero lingering action objects.
+- Earlier diagnostic runs caught an obsolete duplicate-audio assertion, a queued
+  scene-restart test race and a browser job deadline; all are corrected. Runtime
+  budgets remain 709.7/710 KiB boot and 20.2/24 KiB combined hand/reward presentation.
+- Local/remote feature branches and the task preview are cleaned up. The handoff
+  names the published revision; human sessions remain zero. Full evidence and
+  scope are recorded in `docs/game/opening-mastery.md`.
 
 ## 2026-10-30 — Opening combat quality (published)
 - Accepted the five follow-ups: publish identity cleanup, clarify action phases,

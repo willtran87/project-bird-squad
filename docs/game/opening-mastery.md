@@ -42,9 +42,10 @@ The initial three module budget failures were resolved through lazy practice
 loading and shared text formatting; these failed attempts are not release passes.
 
 The actual Pages build passes at 709.7 KiB of boot code under 710 KiB. Combined
-hand/reward presentation is 20.2 KiB under 24 KiB. A final expanded lifecycle,
-alternate-policy and identity sweep, full CI qualification and public artifact
-verification are pending. Evidence is under `.artifacts/mastery-*`.
+hand/reward presentation is 20.2 KiB under 24 KiB. The final expanded lifecycle,
+alternate-policy and identity sweep passed 24 checks. Another 24 opening-mastery
+checks passed across Chromium, Firefox and WebKit, along with three focused
+presentation and actual-impact audio checks. Evidence is under `.artifacts/mastery-*`.
 The first full CI attempt exposed an obsolete assertion requiring a duplicate
 combination-caption sound. It was corrected to require sound for Calls and no
 extra sound for bare combination notices; actual card and rival audio remains
@@ -60,6 +61,36 @@ expanded 151-case suite, setup and evidence retention; per-test limits and all
 checks remain unchanged. The canceled workflow is not release qualification.
 Existing hard delivery limits remain unchanged; extracted card-rule formatting
 counts toward the original combined 24 KiB hand/reward allowance.
+
+## Published release
+
+[PR #21](https://github.com/willtran87/project-bird-squad/pull/21) merged as
+`39f7e522295bfb3b59258f59cc130181a6a5df82`; its complete tree matches qualified
+head `496e44821a4884f018942f3ef260e79b615ea2e0`.
+
+- [PR qualification](https://github.com/willtran87/project-bird-squad/actions/runs/41387759139)
+  and [production qualification/publication](https://github.com/willtran87/project-bird-squad/actions/runs/41390784166)
+  both passed 1,131 core and 453 browser cases with no retries, skips or failures,
+  plus 33 unit/policy checks, content/assets, budgets and the actual Pages-path smoke test.
+- Both artifacts came from clean checkouts. All 2,666 source files, application
+  chunks, entry and HTML hashes match; source SHA-256 is
+  `dbbd57c4e40a10f375f7aab0e1893f9d5622b447dac85cff2b0250377c0323c7`.
+- All 101 checked public files match the published artifact byte-for-byte,
+  including ten canonical leader images. No retired Living Battles atlas is included.
+- All 25 live-site checks passed, including identity continuity, crowded layouts,
+  guide bypass/reload, real blocks, three challenge retries and save preservation,
+  full/reduced motion and Pages checkpoint reload. Published high-resolution and
+  compact captures were inspected. The unmodified shared client played two cards
+  with full art, no recorded browser errors and zero lingering action objects.
+- Local and remote feature branches were removed after tree verification; only
+  `main` remains. The task-owned port 5419 preview was stopped. A documentation-only
+  closure follows publication without replacing the qualified runtime revision.
+
+Retained local evidence: `.artifacts/mastery-pr-release`,
+`.artifacts/mastery-main-final`, `.artifacts/mastery-build-comparison.json`,
+`.artifacts/mastery-live-files.json`, `.artifacts/mastery-public.log`,
+`.artifacts/mastery-public-verified` and `.artifacts/mastery-public-client`.
+The three diagnostic CI runs above remain separate from passing release evidence.
 
 ## Human acceptance
 
