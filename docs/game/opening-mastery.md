@@ -53,6 +53,11 @@ The next diagnostic run exposed a Firefox test-harness race around queued Phaser
 scene restarts. The new tests now require a fresh battle initialization before
 reading the opening hand or driving a rematch, rather than accepting the outgoing
 scene's ready state. All three browser engines are checked before resubmission.
+The third run passed all 1,131 core and 453 browser cases without retries or
+skips, but Chromium reached the old 30-minute job deadline at completion and the
+workflow skipped its build. Browser job allowance is now 45 minutes for the
+expanded 151-case suite, setup and evidence retention; per-test limits and all
+checks remain unchanged. The canceled workflow is not release qualification.
 Existing hard delivery limits remain unchanged; extracted card-rule formatting
 counts toward the original combined 24 KiB hand/reward allowance.
 
