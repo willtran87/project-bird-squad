@@ -13,6 +13,7 @@ import { eventChoiceState, eventChoiceHint, handleEventChoice, renderEventChoice
 import { beginPracticeSession, endPracticeSession, practiceHudOffset, practiceStartingDeck, renderPracticeBadge } from './game/practice-session';
 import { capstoneMarks } from './game/signature-capstones';
 import { signatureVictory } from './game/signature-fights';
+import { orderTeachingHand } from './game/guided-opening';
 import { combatRandom, captureTurn, finishPracticeTurn, restoreTurn, type TurnCheckpoint } from './game/turn-practice';
 import { decisionBrief } from './game/decision-brief';
 import type { FlockStatKey } from './game/types';
@@ -2074,6 +2075,7 @@ interface RouteSceneData {
 }
 
 interface BattleSceneData {
+  practiceEncounterId?: string;
   turnCheckpoint?: TurnCheckpoint;
   practiceRematch?: boolean;
   routeNodeId?: string;
@@ -3897,8 +3899,11 @@ function currentBattlefieldAsset(routeNode?: RouteNode): RuntimeImageAsset {
   return battlefieldVariantForRouteNode(routeNode) ?? BATTLEFIELD_ASSETS[currentMap().id] ?? DEFAULT_BATTLEFIELD_ASSET;
 }
 
+let practiceEncounterId: string | undefined;
 function currentCombatNodes(): RouteNode[] {
-  return currentMap().nodes.filter((node) => ['street', 'rival', 'boss'].includes(node.type));
+  const nodes = currentMap().nodes.filter((node) => ['street', 'rival', 'boss'].includes(node.type));
+  if (practiceEncounterId && memoryStorageSessionActive()) nodes[0] = { ...nodes[0], type: 'street', payloadId: practiceEncounterId };
+  return nodes;
 }
 
 function currentCombatNodeIds(): Set<string> {
@@ -12627,7 +12632,8 @@ class BattleScene extends Phaser.Scene {
     this.registry.set(controlPanelRegistryKey(this), false);
     this.registry.remove(controlCaptureRegistryKey(this));
     const runState = cloneRunState(data.runState ?? createInitialRunState());
-    this.battleStartingData = { runState: cloneRunState(runState), routeNodeId: data.routeNodeId };
+    practiceEncounterId = this.practiceRematch && ['enc_canal_open_perch', 'enc_canal_alternating_watch', 'enc_spire_quiet_beat'].includes(data.practiceEncounterId ?? '') ? data.practiceEncounterId : undefined;
+    this.battleStartingData = { runState: cloneRunState(runState), routeNodeId: data.routeNodeId, practiceEncounterId };
     this.runLeaderId = runState.leaderId;
     this.resolvingCard = undefined;
     this.flyway = normalizeFlyway(runState.flyway);
@@ -12949,14 +12955,16 @@ class BattleScene extends Phaser.Scene {
     this.combatRoostHandoffBursts = 0;
     this.combatPlayerTurnRallyBursts = 0;
     this.rewardChoiceGlowBurstBursts = 0;
+    const teachingOrder = activeMapIndex === 0 && this.runCombatResults.length === 0 && ['card', 'roost', 'reward'].includes(firstFlightGuideStep());
     const preparedOpening = prepareOpeningDraw(
-      this.drawPile,
+      teachingOrder ? orderTeachingHand(this.drawPile) : this.drawPile,
       `${activeSeed}:opening:${activeMapIndex}:${initialRouteNode.id}`,
       this.runCombatResults.length > 0,
       this.handTargetSize(),
     );
     this.drawPile = preparedOpening.deck;
     this.openingDraw = preparedOpening.state;
+    if (teachingOrder) this.openingDraw.teachingOrder = true;
     if (this.openingDraw.protectionSwaps > 0) {
       this.log.push('Opening draw steadied: playable pressure is ready.');
     }
@@ -20599,7 +20607,7 @@ private playBattleIntro(onComplete?: () => void) {
     this.statBlocked += blocked;
     if (blocked > 0 && damage === 0) chargeCall(this.flightCombat, this.runLeaderId ?? 'fledgling', 'block');
     this.statTaken += cohesionLost;
-    this.events.emit('opening-impact', { blocked, lost: cohesionLost, hp: this.flock.hp });
+    this.events.emit('opening-impact', { blocked, lost: cohesionLost, hp: this.flock.hp, move: moveLabel });
     const move = currentMove(enemy);
     const pressureKey = `${enemy.runtime.id}:${move.id}:${moveLabel}`;
     const pressure = this.statDamageTakenByMove.get(pressureKey) ?? {

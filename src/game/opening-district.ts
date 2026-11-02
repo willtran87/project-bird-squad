@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { cardLibrary, cardsFromSave, cardArtAssets, firstFlightGuideState, currentMove, UI_FONT } from '../main';
+import { cardLibrary, cardsFromSave, cardArtAssets, firstFlightGuideState, currentMove, textPaceScale, UI_FONT } from '../main';
 import { rooftopPlanMatch, combinations, type FlywayState, type RooftopPlan } from './flyway-rules';
 import { buildRecipes } from './build-guidance';
 import { alphaRouteMarkLibrary } from './runtime-data';
@@ -71,6 +71,7 @@ function coaching(scene: Scene) {
 }
 
 export function installOpeningDistrict(scene: Scene) {
+  scene.openingReaction = undefined;
   const index = () => scene.runState?.mapIndex ?? scene.flywayMapIndex ?? 0;
   const hints = (out: Array<{text: string; accent: number}>) => {
     if (index() !== 0) return;
@@ -112,9 +113,20 @@ export function installOpeningDistrict(scene: Scene) {
     scene.openingReaction = { text, until: scene.time.now + 1200 };
 
   };
-  const impact = ({blocked, lost, hp}: {blocked: number; lost: number; hp: number}) => {
+  const impact = ({blocked, lost, hp, move}: {blocked: number; lost: number; hp: number; move?: string}) => {
     if (blocked > 0 && lost === 0) react('block');
     else if (lost > 0 && hp > 0 && hp <= scene.flock.maxHp * .34) react('escape');
+    // Actual resolved damage, not Cover gained or forecast damage. The current
+    // hit replaces a previous card's payoff in the same reading lane.
+    if (blocked > 0 || lost > 0) {
+      scene.motionPayoff = undefined;
+      scene.openingReaction = {
+        text: lost === 0 ? `Cover blocked all ${blocked} damage · no Cohesion lost.`
+          : `Cover blocked ${blocked} damage · ${lost} Cohesion lost.`,
+        detail: `${move ?? 'Enemy hit'}: ${blocked} damage blocked; ${lost} Cohesion lost.`,
+        until: scene.time.now + 2400 * textPaceScale(),
+      };
+    }
   };
   const combo = () => react('combo'), broken = () => react('break');
   const card = () => { if (scene.enemies.every((e: any) => e.hp <= 0)) react('victory'); };
@@ -123,6 +135,6 @@ export function installOpeningDistrict(scene: Scene) {
   scene.events.once('shutdown', () => {
     scene.events.off('opening-coaching', hints); scene.events.off('opening-route-backdrop', neighborhood);
     scene.events.off('opening-impact', impact); scene.events.off('flyway-combination', combo);
-    scene.events.off('flyway-break', broken); scene.events.off('flyway-card', card); delete scene.openingDistrict;
+    scene.events.off('flyway-break', broken); scene.events.off('flyway-card', card); delete scene.openingDistrict; delete scene.openingReaction;
   });
 }

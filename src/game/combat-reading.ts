@@ -21,6 +21,18 @@ export function encounterDecision(id: string, enemies: any[], defeated: Map<stri
   const living = enemies.filter(e => e.hp > 0);
   if (!living.length) return;
   const beat = Math.min(...living.map(e => e.intentIndex));
+  if (id === 'enc_canal_alternating_watch') return beat % 3 === 2
+    ? 'Both recover now. Answer with retained strikes, or prepare for the next attack.'
+    : 'One attacks while one braces. Cover the hit, or focus a defender to reduce pressure.';
+  if (id === 'enc_canal_open_perch') return beat % 3 === 2
+    ? 'Recovery beat: spend your prepared sequence, or rebuild protection.'
+    : living.some(e => e.nextAttackBonus > 0)
+      ? 'Stored force is ready. Cover the strike or finish the attacker; removing support will not erase it.'
+      : 'Build a short sequence, or remove support before it stores force. Check your Wingbeats.';
+  if (id === 'enc_spire_quiet_beat') return beat % 3 === 2
+    ? 'Quiet Beat: attack or rebuild. Molt changes the hand; inspect its alternate rules.'
+    : beat % 3 === 0 ? 'Force is gathering. Prepare Cover or Guard before a Molt burst.'
+      : 'The charged strike is next. Compare protection with staying in normal form.';
   if (id === 'enc_signature_ferry') return beat < 3
     ? `Survive ${3 - beat} more beat${beat === 2 ? '' : 's'}, or clear both for +8 Scrap.`
     : 'Crossing secured.';

@@ -23,6 +23,19 @@ export function readableHandRules(formattedEffects: readonly string[]): string {
   ).join('\n');
 }
 
+/** Lead with the action, but keep its entire condition attached. Each line
+ * remains one written effect in engine order; never lift a conditional bonus. */
+export function actionFirstHandRules(source: string): string {
+  return source.split('\n').map(clause => {
+    const match = /^(If [^:]+|First use this fight|While in Molt): (.+)$/.exec(clause);
+    if (!match) return clause;
+    const condition = match[1].replace(/^If you have /, 'if ').replace(/^If you played /, 'if you played ')
+      .replace(/^If the target /, 'if target ').replace(/^If /, 'if ')
+      .replace(/^First/, 'first').replace(/^While/, 'while');
+    return `${match[2].replace(/\.$/, '')} (${condition}).`;
+  }).join('\n');
+}
+
 /** Keep complete effect clauses when possible. Never show an effect without its predicate. */
 export function fitHandRules(source: string, fits: (text: string) => boolean, maxClauses = Infinity) {
   const clauses = source.split('\n').filter(Boolean);

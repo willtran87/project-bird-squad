@@ -8,6 +8,8 @@ const assetsDir = path.join(path.resolve(root, process.argv[2] ?? '.artifacts/bu
 const kb = 1024;
 
 const budgets = [
+  { label: 'hand rule formatting shared lazy module', pattern: /^hand-rule-summary-.*\.js$/, maxKb: 3, hard: true },
+  { label: 'strategy showcase lazy module', pattern: /^strategy-showcase-.*\.js$/, maxKb: 4, hard: true },
   { label: 'flight workshop lazy module', pattern: /^flight-workshop-.*\.js$/, maxKb: 6, hard: true },
   { label: 'build guidance shared lazy module', pattern: /^build-guidance-.*\.js$/, maxKb: 5, hard: true },
   { label: 'flight highlights shared lazy module', pattern: /^flight-highlights-.*\.js$/, maxKb: 3, hard: true },
@@ -111,10 +113,10 @@ for (const budget of budgets) {
 const combinedBootChunks = chunks.filter((chunk) => combinedBootBudget.patterns.some((pattern) => pattern.test(chunk.name)));
 // Extracting a shared presentation must not silently enlarge the previous
 // hand + ceremony allowance (10 + 14 KiB). Count the new dependency as well.
-const rewardPresentation = chunks.filter(chunk => /^(render-hand|render-reward|reward-card-face)-.*\.js$/.test(chunk.name));
+const rewardPresentation = chunks.filter(chunk => /^(render-hand|render-reward|reward-card-face|hand-rule-summary)-.*\.js$/.test(chunk.name));
 const rewardPresentationKb = rewardPresentation.reduce((sum, chunk) => sum + chunk.kb, 0);
 console.log(`Combined hand/reward presentation: ${rewardPresentationKb.toFixed(1)} KB minified`);
-if (rewardPresentation.length !== 3 || rewardPresentationKb > 24) failures.push('Combined hand/reward presentation exceeds its original 24 KB allowance or is incomplete.');
+if (rewardPresentation.length !== 4 || rewardPresentationKb > 24) failures.push('Combined hand/reward presentation exceeds its original 24 KB allowance or is incomplete.');
 // Vite may emit a tiny index launcher plus the explicitly owned app chunk.
 // Require every boot family and count every matching byte against the same cap.
 if (combinedBootBudget.patterns.some(pattern => !combinedBootChunks.some(chunk => pattern.test(chunk.name)))) {

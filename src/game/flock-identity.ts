@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { birdAudio, currentCombatNodes } from '../main';
+import { currentCombatNodes } from '../main';
 import { signaturePhase } from './signature-fights';
 import { flightHighlights } from './flight-highlights';
 import { cardLibrary } from '../main';
@@ -104,14 +104,14 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
     callButton.title=`${call.name}: ${call.charge} ${call.effect}`;
     callButton.setAttribute('aria-label',`Inspect Leader Call. ${call.name}. ${combat.charge}/${call.goal}. ${combat.called?'Used this fight.':call.effect} Keyboard F9; controller View.`);
     const announcement = scene.identityAnnouncement && scene.time.now < scene.identityAnnouncement.until ? scene.identityAnnouncement.text : scene.openingReaction && scene.time.now < scene.openingReaction.until ? scene.openingReaction.text : undefined;
-    const casting=focus && ['anticipation','commit'].includes(focus.phase);
+    const casting=focus && ['anticipation','commit','settle'].includes(focus.phase);
     const payoff=!casting && scene.motionPayoff && scene.time.now < scene.motionPayoff.until ? scene.motionPayoff : undefined;
     const decision=encounterDecision(currentCombatNodes()[scene.currentRouteIndex]?.payloadId??'',scene.enemies,scene.enemyDefeatedTurns);
     const text=casting ? `${focus.name} → ${focus.target} · ${focus.style==='shelter'?'Shelter':focus.style==='retreat'?'Support':focus.style==='rally'?'Rally':'Strike'}`
       : payoff?.text ?? announcement ?? decision ?? combinationReading(scene);
     if(sequence.textContent!==(text??''))sequence.textContent=text??'';
     sequence.hidden ||= !text;
-    sequence.title=casting ? `${focus.bird} · ${focus.name} → ${focus.target}` : payoff?.detail ?? text ?? '';
+    sequence.title=casting ? `${focus.bird} · ${focus.name} → ${focus.target}` : payoff?.detail ?? (announcement === scene.openingReaction?.text ? scene.openingReaction?.detail : undefined) ?? text ?? '';
     sequence.setAttribute('aria-label',sequence.title);
     sequence.dataset.feedback=casting?'action':payoff?'resolved':decision?'decision':'combination';
     scene.combatReading={text:text??'',detail:sequence.title,visible:!sequence.hidden,kind:sequence.dataset.feedback,actor:focus?{...focus}:undefined};
@@ -125,8 +125,8 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
     if(scene.mode!=='battle')return;
     stats.signatures++;
     scene.identityAnnouncement={text:name,until:scene.time.now+1400};
-    const combo=combinations.find(c=>c.id===kind);
-    if(combo)birdAudio.play(combo.effect==='damage'?'hitConfirm':combo.effect==='cover'?'cover':'spend',.65);
+    // Resolved effects already own contact sounds. A combination notice must
+    // not layer a second hit/cover/spend cue over that same moment.
     update();
   };
   const onCall=(name?:string)=>signature('call',name??resolvedLeaderCall(scene.runLeaderId,scene.flyway).name);

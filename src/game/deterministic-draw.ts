@@ -10,6 +10,7 @@ export interface OpeningDrawCard {
 export interface OpeningDrawState {
   shuffled: boolean;
   protectionSwaps: number;
+  teachingOrder?: boolean;
 }
 
 export function deterministicChance(key: string, chance: number): boolean {
