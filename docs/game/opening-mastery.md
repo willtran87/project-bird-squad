@@ -45,6 +45,10 @@ The actual Pages build passes at 709.7 KiB of boot code under 710 KiB. Combined
 hand/reward presentation is 20.2 KiB under 24 KiB. A final expanded lifecycle,
 alternate-policy and identity sweep, full CI qualification and public artifact
 verification are pending. Evidence is under `.artifacts/mastery-*`.
+The first full CI attempt exposed an obsolete assertion requiring a duplicate
+combination-caption sound. It was corrected to require sound for Calls and no
+extra sound for bare combination notices; actual card and rival audio remains
+covered separately. That diagnostic run does not qualify the release.
 Existing hard delivery limits remain unchanged; extracted card-rule formatting
 counts toward the original combined 24 KiB hand/reward allowance.
 

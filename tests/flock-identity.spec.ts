@@ -185,7 +185,8 @@ test('Flock Identity five Calls and three combinations have bounded signature pr
   await battle(page);
   for(const [leader,kind,name] of [['fledgling','call','Neighborhood Rally'],['spark_caller','call','Chorus Break'],['talon','call','Decisive Dive'],['tidewarden','call','Sheltering Sweep'],['roostkeeper','call','Return the Pressure'],['fledgling','brace-cut','Brace & Cut'],['fledgling','rain-chorus','Rain Chorus'],['fledgling','safe-landing','Safe Landing']]){
     const result=await page.evaluate(({leader,kind,name})=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.fxLayer.list.filter((o:any)=>o.name?.startsWith('identity-signature')).forEach((o:any)=>o.destroy(true));b.runLeaderId=leader;const before={...(window as any).__birdSquadAudio().cueRequests};if(kind==='call')b.events.emit('flyway-call',name);else b.events.emit('flyway-combination',{id:kind,name});const root=b.fxLayer.getByName(`identity-signature-${kind}`);b.time.paused=true;b.tweens.pauseAll();return {children:root?.list.length??0,caption:document.querySelector('#identity-sequence')?.textContent,audio:JSON.stringify(before)!==JSON.stringify((window as any).__birdSquadAudio().cueRequests),protected:b.fxLayer.depth<b.root.depth};},{leader,kind,name});
-    expect(result.children).toBe(0);expect(result.caption).toBe(name);expect(result.audio).toBe(true);expect(result.protected).toBe(true);
+    // Calls own a cue; combination notices must not duplicate the resolved card's impact sound.
+    expect(result.children).toBe(0);expect(result.caption).toBe(name);expect(result.audio).toBe(kind==='call');expect(result.protected).toBe(true);
     await page.setViewportSize(sizes[0]);await page.screenshot({path:info.outputPath(`${leader}-${kind}.png`)});
     await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');b.time.paused=false;b.tweens.resumeAll();});
   }
