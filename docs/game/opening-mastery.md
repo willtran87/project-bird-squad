@@ -49,6 +49,10 @@ The first full CI attempt exposed an obsolete assertion requiring a duplicate
 combination-caption sound. It was corrected to require sound for Calls and no
 extra sound for bare combination notices; actual card and rival audio remains
 covered separately. That diagnostic run does not qualify the release.
+The next diagnostic run exposed a Firefox test-harness race around queued Phaser
+scene restarts. The new tests now require a fresh battle initialization before
+reading the opening hand or driving a rematch, rather than accepting the outgoing
+scene's ready state. All three browser engines are checked before resubmission.
 Existing hard delivery limits remain unchanged; extracted card-rule formatting
 counts toward the original combined 24 KiB hand/reward allowance.
 

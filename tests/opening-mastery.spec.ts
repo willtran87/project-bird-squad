@@ -14,7 +14,9 @@ async function route(page: Page) {
   await page.evaluate(() => { const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');if(r.shouldChooseDistrictContract())r.chooseDistrictContract(r.districtContractChoices()[0].id); });
 }
 async function ready(page: Page) {
-  await page.waitForFunction(() => { const g=(window as any).__birdSquadGame,b=g.scene.getScene('BattleScene');return g.scene.isActive('BattleScene')&&b.openingDistrict&&b.combatPreviewModule&&b.discardChoiceModule&&b.returnChoiceModule&&!b.combatIntroActive&&!b.combatAnimationPending; });
+  // Phaser queues restarts until its next frame. Require the new initialization,
+  // not the still-ready outgoing battle, before inspecting or driving the scene.
+  await page.waitForFunction(() => { const w=window as any,g=w.__birdSquadGame,b=g.scene.getScene('BattleScene');return g.scene.isActive('BattleScene')&&b.battleStartingData!==w.masteryPreviousBattle&&b.mode==='battle'&&b.openingDistrict&&b.combatPreviewModule&&b.discardChoiceModule&&b.returnChoiceModule&&!b.combatIntroActive&&!b.combatAnimationPending; });
 }
 test.afterEach(async ({page}) => { await page.goto('about:blank'); });
 
@@ -46,10 +48,10 @@ test('Opening mastery guided battle offers attack and Cover; skip preserves the 
   const hand=await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return {ids:b.hand.map((c:any)=>c.id),opening:b.openingDraw};});
   expect(hand.ids.slice(0,3)).toEqual(['major_00','swords_ace','pentacles_fledgling']);expect(hand.opening.teachingOrder).toBe(true);
   for(const size of sizes){await page.setViewportSize(size);await settleCanvas(page);await page.screenshot({path:info.outputPath(`guided-${size.width}.png`)});}
-  await page.evaluate(()=>{const w=window as any,b=w.__birdSquadGame.scene.getScene('BattleScene');localStorage.setItem('birdsquad.firstFlightGuide',JSON.stringify({enabled:true,routeCommits:1,cardsPlayed:1}));b.scene.restart({runState:w.masteryRun,routeNodeId:'m1_entry'});});
+  await page.evaluate(()=>{const w=window as any,b=w.__birdSquadGame.scene.getScene('BattleScene');w.masteryPreviousBattle=b.battleStartingData;localStorage.setItem('birdsquad.firstFlightGuide',JSON.stringify({enabled:true,routeCommits:1,cardsPlayed:1}));b.scene.restart({runState:w.masteryRun,routeNodeId:'m1_entry'});});
   await ready(page);
   expect(await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').hand.slice(0,3).map((c:any)=>c.id))).toEqual(hand.ids.slice(0,3));
-  await page.evaluate(()=>{const w=window as any,b=w.__birdSquadGame.scene.getScene('BattleScene');localStorage.setItem('birdsquad.firstFlightGuide',JSON.stringify({enabled:false}));b.scene.restart({runState:w.masteryRun,routeNodeId:'m1_entry'});});
+  await page.evaluate(()=>{const w=window as any,b=w.__birdSquadGame.scene.getScene('BattleScene');w.masteryPreviousBattle=b.battleStartingData;localStorage.setItem('birdsquad.firstFlightGuide',JSON.stringify({enabled:false}));b.scene.restart({runState:w.masteryRun,routeNodeId:'m1_entry'});});
   await ready(page);
   expect(await page.evaluate(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return b.hand.slice(0,3).map((c:any)=>c.id);})).toEqual(['major_00','wands_ace','wands_fledgling']);
 });
@@ -78,7 +80,7 @@ test(`Opening mastery ${name} challenge uses real rules, retries and preserves t
   const outcome=await page.evaluate(resolveScriptedBattle,'sheltered');
   expect(outcome.mode).toBe('runComplete');expect(outcome.decisions.length).toBeGreaterThan(1);
   await info.attach('mechanical-outcome',{body:JSON.stringify(outcome),contentType:'application/json'});
-  await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').practiceLostFight());await ready(page);
+  await page.evaluate(()=>{const w=window as any,b=w.__birdSquadGame.scene.getScene('BattleScene');w.masteryPreviousBattle=b.battleStartingData;b.practiceLostFight();});await ready(page);
   expect(await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').getTextState().route.currentPayloadId)).toBe(id);
   const alternative=await page.evaluate(resolveScriptedBattle,'pressure');
   expect(alternative.mode).toBe('runComplete');
