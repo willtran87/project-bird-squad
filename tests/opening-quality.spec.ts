@@ -53,7 +53,10 @@ for(const reduced of [false,true])test(`Opening quality actual attack and shelte
     expect(action.actor.instanceId).toBe(played.instanceId);expect(action.canonical).toBe(true);expect(action.count).toBe(1);expect(Math.hypot(action.leader.x,action.leader.y,action.leader.angle)).toBe(0);
     if(reduced)expect({x:action.x,y:action.y}).toEqual(start);else expect(Math.hypot(action.x-start.x,action.y-start.y)).toBeGreaterThan(0);
     for(const size of sizes){await page.setViewportSize(size);await settleCanvas(page);expect(await page.locator('#identity-sequence').evaluate(e=>e.scrollWidth<=e.clientWidth+1)).toBe(true);await page.screenshot({path:info.outputPath(`${id}-${size.width}.png`)});}
-    await advance(page,440);
+    await advance(page,250);
+    await expect.poll(()=>page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').combatReading?.actor?.phase)).toBe('settle');
+    await expect(page.locator('#identity-sequence')).toContainText(`${played.name} → ${played.target}`);
+    await advance(page,190);
     await expect(page.locator('#identity-sequence')).toContainText(`Resolved: ${played.name}`);
     expect(await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('BattleScene').fxLayer.getByName('combat-card-cast-ghost')?.active??false)).toBe(false);
     await advance(page,400);

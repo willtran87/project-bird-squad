@@ -27,6 +27,13 @@ export function startCapstoneDemo(scene: any, choice: Capstone) {
 export function renderWorkshop(root: HTMLElement, scene: any, close: () => void) {
   root.dataset.flightWorkshop='true';
   root.append(el('h2', 'Practice & feedback'));
+  if (['RouteScene', 'MenuScene'].includes(scene.scene.key) && !memoryStorageSessionActive()) {
+    const challenges = el('section', 'Preparing strategy challenges…'); root.append(challenges);
+    void import('./strategy-showcase').then(module => {
+      if (!challenges.isConnected) return;
+      challenges.textContent = ''; module.renderStrategyShowcases(challenges, scene, close);
+    }).catch(() => { challenges.textContent = 'Challenges could not load. Reopen Practice & feedback to retry.'; });
+  }
   if (!memoryStorageSessionActive()) { returnRoute = undefined; demoChoice = undefined; }
   if (demoChoice && returnRoute) {
     root.append(el('h3', `${capstones[demoChoice].name} · practice demonstration`), el('p', capstones[demoChoice].description),

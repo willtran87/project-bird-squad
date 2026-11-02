@@ -57,6 +57,12 @@ player-reported.
 After the opening observations, let players discover Calls, combinations and
 Molt without coaching. Ask them to explain a chosen specialization or reward's
 benefit and tradeoff. Observe the earned Canal gift and optional isolated demo.
+After the unaided run, offer Journal → Practice & feedback → Try a strategy.
+Record whether the player chooses a challenge, can describe its alternative
+approach, and voluntarily retries. These supplied-flock challenges must not
+replace the unaided first-run observations or count as fresh-player sessions.
+Record whether the guide was enabled: it now brings existing attack/Cover cards
+forward in the first fight, while Skip guide preserves the normal opening order.
 After defeat, let them try Practice This Fight and explain the comparison.
 Record whether resident favors and ending scenes reflect choices they remember.
 Use questions after the relevant decision, never to teach its intended answer.

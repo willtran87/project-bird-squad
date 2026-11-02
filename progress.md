@@ -1,5 +1,21 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-11-01 — Opening mastery (in progress)
+- Accepted the opening polish recommendations: clearer teaching hands and card
+  faces, tactical payoff explanations, three strategy showcase fights, restrained
+  contact feedback, and the existing five-player handoff.
+- Guided first combat reorders existing copies toward attack and Cover. Skipping
+  the guide preserves the original opening; later shuffled encounters are unchanged.
+- Card faces lead with actions and retain complete conditions in written order.
+  Measured overflow still links to full rules; simple three-effect cards may fit.
+- Strategy challenges use real encounter loops and supplied six-card flocks in
+  isolated practice. No scripted win, extra resources or saved unlocks.
+- Full-block reading reports actual prevented damage; casting settles before
+  contact and retires the card cue when effects resolve. Duplicate combo sounds
+  are removed. Canonical identity art remains unchanged.
+- Verification and release pending. Human sessions remain zero; see
+  `docs/game/opening-mastery.md` for scope, evidence and remaining work.
+
 ## 2026-10-30 — Opening combat quality (published)
 - Accepted the five follow-ups: publish identity cleanup, clarify action phases,
   represent actual flock members, sharpen existing tactical choices, and stage

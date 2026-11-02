@@ -26,7 +26,8 @@ export function playFlockAction(host: any, card: Card, enemyId: string, contract
   const focus = { cardId: card.id, instanceId: card.instanceId, name: displayName(card), bird: card.bird,
     target: targetName, style, phase: 'anticipation', active: true };
   host.motionFocus = focus;
-  host.time.delayedCall(budget * .25, () => { if (host.motionFocus === focus) focus.phase = 'commit'; });
+  host.time.delayedCall(budget * .22, () => { if (host.motionFocus === focus) focus.phase = 'commit'; });
+  host.time.delayedCall(budget * .70, () => { if (host.motionFocus === focus) focus.phase = 'settle'; });
   host.time.delayedCall(budget, () => { if (host.motionFocus === focus) focus.active = false; });
   host.events.emit('living-cast', budget, style, enemyId);
   host.queueFlockMotion(style === 'shelter' ? 'brace' : style === 'retreat' ? 'heal' : 'cast');
@@ -80,15 +81,20 @@ export function playFlockAction(host: any, card: Card, enemyId: string, contract
 
 /** Reuses the combination lane after resolution; never replaces selection math. */
 export function presentCardPayoff(host: any, card: Card, total?: CardContribution, before?: CardContribution) {
+  const actor = host.fxLayer?.getByName('combat-card-cast-ghost');
+  if (actor) { killTweensForTree(host, actor); actor.destroy(true); }
   if (!total) return;
   const delta = emptyContribution(card.id);
   for (const key of contributionKeys) delta[key] = Math.max(0, total[key] - (before?.[key] ?? 0));
   const results = contributionResults(delta);
   const partner = host.flockCombination?.cardId === card.id ? host.flockCombination : undefined;
   delete host.flockCombination;
+  const victory = host.signatureWin?.();
+  const objective = host.encounterObjectiveStatus?.();
+  const consequence = victory?.reason ?? (objective?.status === 'complete' ? `${objective.title} · +${objective.bonusScrap} Scrap on victory` : undefined);
   host.motionPayoff = {
     text: `Resolved: ${displayName(card)} · ${results[0] ?? 'effects applied'}`,
-    detail: `${card.bird} · ${displayName(card)}. ${results.join(' · ') || 'No tracked numeric changes.'}${partner ? ` ${partner.name}: ${partner.first} → ${displayName(card)}.` : ''}`,
+    detail: `${card.bird} · ${displayName(card)}. ${results.join(' · ') || 'No tracked numeric changes.'}${partner ? ` ${partner.name}: ${partner.first} → ${displayName(card)}.` : ''}${consequence ? ` ${consequence}.` : ''}`,
     until: host.time.now + 2200 * textPaceScale(), cardId: card.id, results,
   };
   if (host.motionFocus?.instanceId === card.instanceId) {

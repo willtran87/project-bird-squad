@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { renderCardColorCue } from '../card-color-cues';
 import { fitTextExcerpt } from '../text-excerpt';
 import { renderRewardHoverPreview } from '../reward-card-inspection';
-import { readableHandRules, fitHandRules, wrapHandRules } from './hand-rule-summary';
+import { readableHandRules, actionFirstHandRules, fitHandRules, wrapHandRules } from './hand-rule-summary';
 import { DECISION_UI, MIN_SUPPORTED_TOUCH_TARGET, UI_TYPE } from '../theme';
 import { itemKeywordSections } from '../keyword-definitions';
 import { renderCombatReader, renderCombatCardDetail as renderCardReadingPanel, renderCombatHistory as renderHistoryReadingPanel, type CardDetailContext } from './card-detail';
@@ -338,7 +338,7 @@ function renderCard(
         wrapHandRules(text, value => label.context.measureText(value).width, cardWidth - 16) },
     }).setName('combat-card-readable-summary');
     const readable = readableHandRules(card.summary.split('\n'));
-    const excerpt = fitHandRules(readable, text => summary.getWrappedText(text).length <= 4, 2);
+    const excerpt = fitHandRules(actionFirstHandRules(readable), text => summary.getWrappedText(text).length <= 4);
     summary.setText(excerpt.text).setData('truncated', excerpt.omitted > 0)
       .setData('omittedEffects', excerpt.omitted).setData('readableRules', readable);
     summary.setData('fullText', card.preview.currentText.replace(/\s+/g, ' ').trim())
