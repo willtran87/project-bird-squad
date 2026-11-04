@@ -17,6 +17,11 @@ test('all runtime card identities agree across combat, rewards, picker, Collecti
   await page.evaluate(async()=>{const w=window as any,g=w.__birdSquadGame;await w.__birdSquadEnsureScene('RouteScene');
     g.scene.stop('CodexScene');g.scene.start('RouteScene');});
   await page.waitForFunction(()=>JSON.parse((window as any).render_game_to_text()).assetReadiness?.fullArt);
+  // Open the real picker while RouteScene is active, before checking its
+  // renderer adapters from the inactive scene alongside battle adapters.
+  await page.evaluate(()=>{const r=(window as any).__birdSquadGame.scene.getScene('RouteScene');r.cardPickerMode='release';r.cardPickerContext='route';r.renderAll();});
+  await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('RouteScene').routeSecondaryPresentationModule);
+  await page.evaluate(()=>(window as any).__birdSquadGame.scene.getScene('RouteScene').cardPickerMode=undefined);
   await page.evaluate(async()=>{const w=window as any,g=w.__birdSquadGame;await w.__birdSquadEnsureScene('BattleScene');
     g.scene.stop('RouteScene');g.scene.start('BattleScene',{routeNodeId:'m1_entry'});});
   await page.waitForFunction(()=>{const b=(window as any).__birdSquadGame.scene.getScene('BattleScene');return b.battleHandRendererModule&&b.handLayer?.active&&!b.combatInteractionLocked();});

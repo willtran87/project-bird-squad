@@ -76,14 +76,14 @@ five-player handoff for understanding, enjoyment and build-choice evidence.
 | --- | ---: | ---: |
 | Combined app boot, minified | 709.7 KiB | 694.1 KiB |
 | Boot ceiling | 710 KiB | 700 KiB |
-| Median card resolution, 9 samples | 334.5 ms | 337.7 ms |
-| Median battle entry, 3 samples | 1,932.0 ms | 1,957.6 ms |
+| Median card resolution, 9 samples | 334.5 ms | 348.8 ms |
+| Median battle entry, 3 samples | 1,932.0 ms | 1,996.4 ms |
 | Warm-entry frame P95, 2 entries | 33.4 ms | 50.1 ms |
 
 The measured gain is 15.6 KiB less boot code, not a frame-rate improvement.
 Native-clock Chromium measurements were taken at 1440×900 with the same fixed
 card/transition fixture and no synthetic stepping. The sample is small and
-frame timing remains variable; candidate max warm-entry frame was 116.7 ms.
+frame timing remains variable; candidate max warm-entry frame was 133.3 ms.
 Game-core's individual ceiling rises from 30 to 31 KiB for versioned route
 logic, within the tighter 700 KiB combined cap. The optional panel has a new
 23 KiB cap. No textures, text resolution or motion-quality settings were reduced.
@@ -108,6 +108,14 @@ logic, within the tighter 700 KiB combined cap. The optional panel has a new
   Pending route panels also expose loading/failure state to spoken summaries,
   so downloading is not announced as empty stock. Early remote run
   `41798837364` was cancelled on discovery; it is not qualifying evidence.
+- Diagnostic run `41799381933` completed all 1,138 core cases with 15 failures:
+  immediate-read fixtures did not await the optional renderer. Those cases now
+  wait for actual controls; all 16 targeted cases (including combat Preen) pass.
+  The browser timing contract now checks the intentional 420/160 ms familiar
+  recovery timings while retaining first-read and cinematic assertions (6/6).
+  Extra keyboard/touch checks exposed unrelated host gamepad events in Firefox;
+  that test now isolates its input sources, with dedicated controller coverage
+  retained. Failed diagnostic runs are not release qualification.
 
 No new human, physical-device or native-AT evidence exists. Existing waivers
 remain explicit; zero player sessions are represented as passes.

@@ -9,11 +9,15 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 - Implemented selection hierarchy, versioned route demand variation, actual
   full-block highlights, shorter known empty recovery and lazy market/picker UI.
 - Boot measured 709.7 → 694.1 KiB; combined ceiling tightened to 700 KiB.
-  Native-clock card timings 334.5 → 337.7 ms; no FPS improvement claimed.
+  Native-clock card timings 334.5 → 348.8 ms; no FPS improvement claimed.
 - Local checks: 33 unit/policy, 21 browser cases across three engines and four
   real-acquisition campaign cases. Route audit: 1,024 districts, repeated demands
   1,207 → 212 with graph structure and legacy route behavior preserved.
 - Full remote release qualification, merge/publication and cleanup are pending.
+- Diagnostic full-suite failures were deferred-panel fixture readiness and the
+  intentionally shortened familiar recovery timing. All 16 targeted core cases
+  and six cross-browser timing checks pass after correcting those contracts.
+  A traced host-controller event also motivated keyboard/touch input isolation.
 
 ## 2026-11-01 — Opening mastery (published)
 - Accepted the opening polish recommendations: clearer teaching hands and card

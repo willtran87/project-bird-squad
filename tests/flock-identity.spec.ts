@@ -170,15 +170,19 @@ test('Flock Identity familiar recovery trims empty staging while retaining first
   const timing=await page.evaluate(async()=>{
     localStorage.setItem('birdsquad.combatPace','standard');localStorage.setItem('birdsquad.motionPreference','full');
     const b=(window as any).__birdSquadGame.scene.getScene('BattleScene'),e=b.enemies[0],move=e.runtime.moves[2];
-    const first=b.combatFxModule.enemyMoveTimings(b,e,move);b.runSeenEnemyMoves.add(b.enemyMovePacingKey(e,move));
+    const first=b.combatFxModule.enemyMoveTimings(b,e,move),firstImpact=b.combatTimingDelay(650,b.enemyMoveTimingScale(e,move));b.runSeenEnemyMoves.add(b.enemyMovePacingKey(e,move));
     const repeat=b.combatFxModule.enemyMoveTimings(b,e,move),scale=b.enemyMoveTimingScale(e,move);
     const prior={windup:b.combatTimingDelay(1800,scale),release:b.combatTimingDelay(550,scale),anticipation:b.combatTimingDelay(0,scale),impact:b.combatTimingDelay(650,scale),recovery:b.combatTimingDelay(240,scale)};
+    const expectedRepeat={impact:b.combatTimingDelay(420,scale),recovery:b.combatTimingDelay(160,scale)};
     localStorage.setItem('birdsquad.combatPace','cinematic');const cinematic=b.combatFxModule.enemyMoveTimings(b,e,move);localStorage.setItem('birdsquad.combatPace','standard');
     b.enemies=b.enemies.slice(0,1);e.intentIndex=2;b.combatAnimationPending=true;const started=performance.now();await new Promise<void>(resolve=>b.resolveEnemyTurnAnimated(resolve));const elapsed=performance.now()-started;b.combatAnimationPending=false;b.renderAll();
-    return {first,repeat,prior,cinematic,elapsed,pacing:b.identityPacing};
+    return {first,firstImpact,repeat,expectedRepeat,prior,cinematic,elapsed,pacing:b.identityPacing};
   });
   await info.attach('recovery-timing',{body:JSON.stringify(timing),contentType:'application/json'});
-  expect(timing.first.windup).toBeGreaterThan(timing.repeat.windup);expect(timing.repeat.windup).toBeLessThan(timing.prior.windup);expect(timing.repeat.impact).toBe(timing.prior.impact);expect(timing.cinematic.windup).toBe(2600);expect(timing.elapsed).toBeGreaterThan(100);expect(timing.pacing.animationMs).toBeGreaterThan(0);
+  expect(timing.first.windup).toBeGreaterThan(timing.repeat.windup);expect(timing.repeat.windup).toBeLessThan(timing.prior.windup);
+  expect(timing.first.impact).toBe(timing.firstImpact);expect(timing.repeat).toMatchObject(timing.expectedRepeat);
+  expect(timing.repeat.impact).toBeLessThan(timing.prior.impact);expect(timing.repeat.recovery).toBeLessThan(timing.prior.recovery);
+  expect(timing.cinematic.windup).toBe(2600);expect(timing.cinematic.impact).toBe(1350);expect(timing.elapsed).toBeGreaterThan(100);expect(timing.pacing.animationMs).toBeGreaterThan(0);
 });
 
 test('Flock Identity five Calls and three combinations have bounded signature presentation',async({page},info)=>{

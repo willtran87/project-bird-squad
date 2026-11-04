@@ -9710,9 +9710,11 @@ test('market categories keep one merchandise family visible at a time', async ({
       ?? window.__birdSquadCurrentMap!().nodes[0];
     market.type = 'market';
     scene.openMarketNode(market);
+    // Opening is asynchronous; inventory reads below wait for the renderer.
     const visibleSections = () => scene.children.list
       .filter((child: any) => child.name === 'market-section-heading')
       .map((child: any) => child.text.toUpperCase());
+    for (let i = 0; i < 200 && !scene.routeSecondaryPresentationModule; i++) await new Promise(resolve => setTimeout(resolve, 25));
     const states: Array<{ category: string; sections: string[] }> = [];
     states.push({ category: JSON.parse(window.render_game_to_text!()).market.category, sections: visibleSections() });
     for (const key of ['TWO', 'THREE', 'FOUR']) {
@@ -10085,6 +10087,7 @@ test('Market item dossiers explain live build fit across Waymarks Supplies and s
     route.openMarketNode(market);
     route.runState.scrap = 999;
     route.runState.routeMarks = ['supply_bell'];
+    for (let i = 0; i < 200 && !route.routeSecondaryPresentationModule; i++) await wait(25);
 
     const inspect = (category: 'waymarks' | 'supplies' | 'services') => {
       route.setMarketCategory(category);
@@ -10944,6 +10947,7 @@ test('market shelves stock multiple finite offers and paid refreshes', async ({ 
     scene.openMarketNode(market);
     scene.runState.scrap = 999;
     const firstOffer = scene.marketCardOffer()?.id;
+    for (let i = 0; i < 200 && !scene.routeSecondaryPresentationModule; i++) await wait(25);
     const beforeCardOffers = scene.marketCardOffers().map((offer: any) => ({ id: offer.id, price: offer.price, sold: !!offer.sold }));
     const beforeWaymarkOffers = scene.marketRouteMarkOffers().map((offer: any) => ({ id: offer.id, price: offer.price, sold: !!offer.sold }));
     const beforeSupplyOffers = scene.marketUtilityShelf
@@ -11810,6 +11814,7 @@ test('card choice surfaces expose complete details through their reading control
     route.runState.scrap = 999;
     const marketOffer = route.marketCardOffer();
     route.renderAll();
+    for (let i = 0; i < 200 && !route.routeSecondaryPresentationModule; i++) await wait(25);
     const marketHit = route.children.list.find((child: any) => child.getData?.('marketFocusId') === 'card:0');
     marketHit?.emit('pointerover');
     const fixedInspector = collectObjects(route.hoverCardDetail)
@@ -12435,6 +12440,7 @@ test('nest boss ready up allows two chosen preens before completing', async ({ p
     scene.chooseNodeOption('boss_ready_tune');
     const pendingKey = scene.pendingRouteReward?.choiceKey;
     scene.claimRouteReward();
+    for (let i = 0; i < 200 && !scene.routeSecondaryPresentationModule; i++) await new Promise(resolve => setTimeout(resolve, 25));
     const titleBeforePick = scene.children.list
       .filter((child: any) => typeof child.text === 'string')
       .map((child: any) => child.text)
@@ -16377,6 +16383,7 @@ test('run HUD, card picker, market close, and combat log keep touch targets at t
     route.nodeChoiceNodeId = window.__birdSquadCurrentMap!().nodes.find((node: any) => node.type === 'nest')?.id;
     route.renderAll();
   });
+  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').children.getByName('card-picker-card-inspect-hit'));
   const pickerTargets = await targetSnapshot('RouteScene', '^(card-picker-(card-inspect|scroll-(up|down))-hit|route-event-cancel-hit)$');
   expect(pickerTargets).toHaveLength(3);
   expect(pickerTargets.map((target) => target.name).sort()).toEqual([
@@ -33701,6 +33708,8 @@ test('card picker deck impact stays readable and keeps service prices separate f
       route.renderAll();
       return JSON.stringify(route.runState);
     }, mode);
+    await page.waitForFunction(() => window.__birdSquadGame.scene.getScene('RouteScene').children.getByName('card-picker-card-inspect-hit'));
+    await settleCanvas(page);
     await page.keyboard.press('r');
     await page.waitForFunction(() => window.__birdSquadGame.scene.getScene('RouteScene').children.list.some((o: any) => o.name === 'card-picker-deck-impact'));
     for (const size of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
