@@ -28,6 +28,7 @@ for (const mode of ['preen', 'release']) test(`${mode} confirmation is readable 
     r.requestCardPick(entry.index);
     return { deck: structuredClone(r.runState.deck), scrap: r.runState.scrap, index: entry.index, cost: entry.cost, slot };
   }, mode);
+  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').children.getByName('card-picker-card-hit'));
   const snapshot = () => page.evaluate(() => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     return { deck: r.runState.deck, scrap: r.runState.scrap, armed: r.cardPickerArmedIndex };

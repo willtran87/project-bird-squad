@@ -27,7 +27,9 @@ const budgets = [
   { label: 'battle outcome scene lazy module', pattern: /^battle-outcome-scene-.*\.js$/, maxKb: 8, hard: true },
   { label: 'Flyway expansion lazy module', pattern: /^flyway-expansion-.*\.js$/, maxKb: 32, hard: true },
   { label: 'app entry', pattern: /^index-.*\.js$/, maxKb: 700, targetKb: 675, hard: true },
-  { label: 'game core', pattern: /^game-core-.*\.js$/, maxKb: 30, hard: true },
+  // Versioned route rhythm adds ~1 KiB; the total boot ceiling below is tighter.
+  { label: 'game core', pattern: /^game-core-.*\.js$/, maxKb: 31, hard: true },
+  { label: 'optional market and card picker', pattern: /^route-secondary-presentation-.*\.js$/, maxKb: 23, hard: true },
   { label: 'interaction rules', pattern: /^interaction-rules-.*\.js$/, maxKb: 12, hard: true },
   { label: 'adaptive music lazy module', pattern: /^adaptive-music-.*\.js$/, maxKb: 8, hard: true },
   { label: 'synthesized SFX lazy module', pattern: /^audio-sfx-.*\.js$/, maxKb: 8, hard: true },
@@ -68,8 +70,8 @@ const budgets = [
 const combinedBootBudget = {
   label: 'combined app boot code',
   patterns: [/^index-.*\.js$/, /^game-core-.*\.js$/, /^interaction-rules-.*\.js$/],
-  maxKb: 710,
-  targetKb: 710,
+  maxKb: 700,
+  targetKb: 700,
 };
 
 if (!fs.existsSync(assetsDir)) {

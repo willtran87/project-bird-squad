@@ -3,7 +3,9 @@ import { combinations, type FlywayState } from './flyway-rules';
 export function flightHighlights(s: FlywayState, cardName: (id: string) => string) {
   const m = s.comboMoment, c = s.cardMoment;
   const combo = combinations.find(c => c.id === m?.id);
-  const combination = m && combo ? `${combo.name}, beat ${m.turn}: ${[
+  const combination = s.blockMoment && !m?.defeated
+    ? `Beat ${s.blockMoment.turn}: Cover absorbed all ${s.blockMoment.blocked} damage from ${s.blockMoment.enemy}’s ${s.blockMoment.move}. No Cohesion was lost to that hit.`
+    : m && combo ? `${combo.name}, beat ${m.turn}: ${[
     m.damage && `${m.damage} Cohesion damage`, m.cover && `${m.cover} Cover gained`, m.resonance && `${m.resonance} Resonance gained`,
   ].filter(Boolean).join(' · ') || 'no numeric gain'}${m.defeated ? '; the combination defeated its target' : ''}.`
     : `${s.combinations} combinations recorded. No detailed combination moment was saved.`;

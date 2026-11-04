@@ -37,6 +37,9 @@ export interface FlywayState {
   cleanFights: number;
   rooftopPlan?: RooftopPlan;
   coachingOff?: boolean;
+  /** Absent on existing flights: their seeded routes retain the original algorithm. */
+  routeRhythm?: 1;
+  blockMoment?: { enemy: string; move: string; turn: number; blocked: number };
   comboMoment?: { id: string; turn: number; damage: number; cover: number; resonance: number; defeated: boolean };
   cardMoment?: { cardId: string; plays: number; damage: number; cover: number };
   cityAid?: Array<'sella' | 'oren' | 'ivo'>;
@@ -179,6 +182,11 @@ export function normalizeFlyway(value: unknown): FlywayState {
   for (const key of ['resonanceSpent','windedHits'] as const) if (v[key] !== undefined) s[key]=finite(v[key]);
   if (v.rooftopPlan === 'shelter' || v.rooftopPlan === 'tempo' || v.rooftopPlan === 'molt') s.rooftopPlan = v.rooftopPlan;
   if (v.coachingOff === true) s.coachingOff = true;
+  if (v.routeRhythm === 1) s.routeRhythm = 1;
+  const block = v.blockMoment as FlywayState['blockMoment'];
+  if (block && typeof block.enemy === 'string' && typeof block.move === 'string' && finite(block.blocked)) {
+    s.blockMoment = { enemy: block.enemy.slice(0, 80), move: block.move.slice(0, 80), turn: finite(block.turn), blocked: finite(block.blocked) };
+  }
   const moment = v.comboMoment as FlywayState['comboMoment'];
   if (moment && combinations.some(c => c.id === moment.id)) s.comboMoment = {
     id: moment.id, turn: finite(moment.turn), damage: finite(moment.damage), cover: finite(moment.cover), resonance: finite(moment.resonance), defeated: moment.defeated === true,

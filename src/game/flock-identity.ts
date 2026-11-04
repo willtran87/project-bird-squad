@@ -52,7 +52,7 @@ export function renderIdentity(root:HTMLElement,scene:Scene,s:FlywayState,mutate
 }
 
 export function renderIdentityEnding(root:HTMLElement,s:FlywayState){
-  const labels = ['A combination to remember', 'A familiar wing', 'A choice in the city', 'Your next flock'];
+  const labels = ['A turning point', 'A familiar wing', 'A choice in the city', 'Your next flock'];
   flightHighlights(s, id => cardLibrary[id]?.name ?? id).forEach((text, i) => section(root, labels[i], text));
   if(s.rivalWins)section(root,'Caldra keeps the crossing',rivalChapter(s.rivalWins-1).ending);
   if(s.story==='chorus-line')section(root,s.storyComplete?'Every roof answers':'The unfinished chorus',s.storyComplete?'Spark-Caller waits. One call returns from the market, another from the mast, then a whole street answers. The warning is now everyone’s song.':'The warning reached some roofs. Spend 12 Resonance and use three Calls on a winning flight to complete the chorus.');
@@ -89,7 +89,7 @@ export function installIdentity(scene:Scene,blocked:()=>boolean,openCall:()=>voi
     sequence.hidden=hidden||!!scene.selectedInstanceId&&!focus;
     const phase = signaturePhase(currentCombatNodes()[scene.currentRouteIndex]?.payloadId ?? '', scene.enemies);
     scene.signatureFight = phase;
-    fight.hidden = hidden || !phase || !!scene.selectedInstanceId;
+      fight.hidden = hidden || !phase || !!scene.selectedInstanceId || !!focus;
     if(hidden){scene.combatReading=undefined;return;}
     const r=scene.game.canvas.getBoundingClientRect(),scale=r.width/1280;
     Object.assign(fight.style, { left: `${r.left+370*scale}px`, top: `${r.top+372*scale}px`, width: `${625*scale}px`, fontSize: `${Math.max(12,16*scale)}px`, borderLeft: `4px solid ${phase?.phase===3?'#90d4b5':'#edba72'}` });

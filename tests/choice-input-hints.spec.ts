@@ -56,6 +56,7 @@ for (const remapped of [false, true]) test(`choice hints follow real bindings an
     r.openMarketNode({ ...w.__birdSquadCurrentMap().nodes.find((n: any) => n.type !== 'boss'), type: 'market' });
     r.openMarketCardPicker(r.marketUtilityShelf.findIndex((o: any) => o.id === 'preen'), 'preen');
   });
+  await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').children.getByName('card-picker-input-hint'));
   const snapshot = () => page.evaluate(() => {
     const r = (window as any).__birdSquadGame.scene.getScene('RouteScene');
     return JSON.stringify({ run: r.runState, focus: r.cardPickerFocusIndex, armed: r.cardPickerArmedIndex });

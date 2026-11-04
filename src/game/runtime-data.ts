@@ -161,6 +161,13 @@ const blueprintFromMap = (map: RuntimeRouteMap): RouteBlueprint => {
     rivalEncounterIds,
     streetEncounterWeights: weightsFor(streetEncounterIds),
     rivalEncounterWeights: weightsFor(rivalEncounterIds),
+    encounterDemands: Object.fromEntries([...alphaEncounterLibrary.values()].filter(enc => enc.mapId === map.id).map(enc => [enc.id, {
+      enemies: enc.enemies.length,
+      // Authored mechanical demands, not visual identities or difficulty ratings.
+      tactic: enc.tags.includes('support') ? 'support' : enc.tags.includes('heavy') ? 'heavy'
+        : enc.tags.includes('multi') ? 'multi' : enc.tags.includes('snag') ? 'snag'
+        : enc.tags.includes('tempo') ? 'tempo' : enc.tags.includes('cover') ? 'cover' : 'pressure',
+    }])),
     signalIds: uniq([...payloadsOf('signal'), ...libSignal]),
     basinPayloadId: first('basin', 'basin_alpha'),
     nestPayloadId: first('nest', 'nest_alpha'),

@@ -73,6 +73,7 @@ export function updateRouteDebugState(scene: any, dependencies: RouteDebugStateD
       window.render_game_to_text = () => JSON.stringify({
         mode: 'routeSelection',
         scene: 'RouteScene',
+        routePanelDownload: scene.children.getByName('route-secondary-pending')?.getData('status'),
         practice: memoryStorageSessionActive(),
         routeAssetsReady: scene.routeEssentialAssetsReady,
         assetReadiness: scene.routeAssetReadiness.snapshot(),

@@ -44,6 +44,9 @@ for (const mode of ['deck', 'market', 'preen', 'release', 'reward', 'combatRewar
     const remapped = mode === 'preen' || mode === 'combatPreen';
     const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
     await page.addInitScript(remapped => {
+      // This case exercises keyboard and touch. Keep host controllers from
+      // injecting unrelated confirm/back presses into its modal assertions.
+      Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: () => [] });
       localStorage.setItem('birdsquad.screenReader', 'on');
       if (remapped) localStorage.setItem('birdsquad.controlBindings', JSON.stringify({ version: 1,
         bindings: { previous: 'KeyJ', next: 'KeyL', roost: 'KeyG', back: 'KeyB' } }));
@@ -82,6 +85,9 @@ for (const mode of ['deck', 'market', 'preen', 'release', 'reward', 'combatRewar
     }, { key, mode });
     if (combat) await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('BattleScene').rewardPresentationReady());
     if (mode === 'reward') await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').routeRewardOverlayModule);
+    if (mode === 'preen' || mode === 'release') await page.waitForFunction(() => (window as any).__birdSquadGame.scene.getScene('RouteScene').children.getByName('card-picker-card-inspect-hit'));
+    // Let Phaser publish the new input owners before the first keyboard action.
+    await settleCanvas(page);
     if (!['deck', 'market'].includes(mode)) await page.keyboard.press(remapped ? 'g' : 'r');
     await page.waitForFunction(({ key, mode }) => {
       const s = (window as any).__birdSquadGame.scene.getScene(key);
@@ -121,13 +127,21 @@ for (const mode of ['deck', 'market', 'preen', 'release', 'reward', 'combatRewar
     }
     const firstTerm = pages.findIndex(p => p.title === 'TERM · WINGBEAT');
     const nextKey = mode === 'deck' ? 'PageDown' : mode === 'market' ? 'r' : remapped ? 'l' : 'ArrowRight';
-    for (let i = 0; i < firstTerm; i++) await page.keyboard.press(nextKey);
+    const reading = () => page.evaluate(() => {
+      try { return (window as any).__termPanel()?.getData('reading'); } catch { return undefined; }
+    });
+    // Observe each page turn before sending the next key; Phaser consumes input
+    // on its frame clock, which differs between browser engines.
+    for (let i = 0; i < firstTerm; i++) {
+      await page.keyboard.press(nextKey);
+      await expect.poll(async () => (await reading())?.page).toBe(i + 2);
+    }
     await settleCanvas(page);
-    const reading = () => page.evaluate(() => (window as any).__termPanel().getData('reading'));
     expect((await reading()).title).toBe('TERM · WINGBEAT');
     await expect.poll(() => page.locator('#game-status').textContent()).toContain('TERM · WINGBEAT');
     for (const viewport of [{ width: 2560, height: 1600 }, { width: 1440, height: 900 }, { width: 1000, height: 560 }]) {
       await page.setViewportSize(viewport); await settleCanvas(page);
+      await expect.poll(async () => (await reading())?.title).toBe('TERM · WINGBEAT');
       const geometry = await page.evaluate(({ key, mode }) => {
         const s = (window as any).__birdSquadGame.scene.getScene(key), panel = (window as any).__termPanel();
         const owner = mode === 'deck' ? s.children : panel;
