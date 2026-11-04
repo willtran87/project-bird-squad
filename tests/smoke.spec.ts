@@ -10179,6 +10179,9 @@ test('market purchases require intentional input and block route commitment acro
     route.openMarketNode(market);
     route.runState.scrap = 999;
     route.routeCommitCalls = 0;
+    // The optional Market renderer downloads on first open. Verify the settled
+    // offer inventory, rather than the cancellable pending panel.
+    for (let attempt = 0; attempt < 120 && !route.routeSecondaryPresentationModule; attempt += 1) await wait(25);
     route.commitRouteNodeAnimated = () => { route.routeCommitCalls += 1; };
     const inputModule = route.cardHoverDetailModule;
     route.cardHoverDetailModule = undefined;

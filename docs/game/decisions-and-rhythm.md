@@ -103,6 +103,11 @@ logic, within the tighter 700 KiB combined cap. The optional panel has a new
   enemy bonuses contribute to blocked damage, and WebKit can render cancellation
   on the next frame. Assertions now check the actual modal, damage and settled
   state. Failed runs remain retained alongside the clean run.
+- The broader Market regression exposed an immediate-read fixture that needed
+  to wait for the deferred renderer. Its assertion now waits for readiness.
+  Pending route panels also expose loading/failure state to spoken summaries,
+  so downloading is not announced as empty stock. Early remote run
+  `41798837364` was cancelled on discovery; it is not qualifying evidence.
 
 No new human, physical-device or native-AT evidence exists. Existing waivers
 remain explicit; zero player sessions are represented as passes.

@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { normalizeFlyway, combinations } from '../src/game/flyway-rules';
 import { flightHighlights } from '../src/game/flight-highlights';
 import { settleCanvas } from './helpers/settled-canvas';
+import { screenReaderSummary } from '../src/game/screen-reader-summary';
 
 const sizes = [{width:2560,height:1600},{width:1440,height:900},{width:1000,height:560}];
 async function route(page: Page) {
@@ -20,6 +21,10 @@ test.afterEach(async({page})=>{await page.goto('about:blank');});
 
 test('Decisions rhythm bounded turning points survive normalization without inventing old records',()=>{
   expect(normalizeFlyway({}).routeRhythm).toBeUndefined();
+  for(const status of ['loading','slow','error']){
+    const spoken=screenReaderSummary({scene:'RouteScene',routePanelDownload:status,market:{input:{count:0}}});
+    expect(spoken).toContain('No purchase or card choice is committed');expect(spoken).not.toContain('no available offer');
+  }
   expect(normalizeFlyway({routeRhythm:2,blockMoment:{enemy:'a',move:'b',blocked:Infinity}}).blockMoment).toBeUndefined();
   const state=normalizeFlyway({routeRhythm:1,blockMoment:{enemy:'e'.repeat(100),move:'Strike',turn:-5,blocked:999999}});
   expect(state.routeRhythm).toBe(1);expect(state.blockMoment).toEqual({enemy:'e'.repeat(80),move:'Strike',turn:0,blocked:100000});
@@ -51,6 +56,7 @@ test('Decisions rhythm varies demands across 1024 districts and preserves legacy
 });
 
 for(const failed of [false,true])test(`Decisions rhythm optional picker ${failed?'download failure':'late download'} can cancel without spending or committing`,async({page},info)=>{
+  await page.addInitScript(()=>localStorage.setItem('birdsquad.screenReader','on'));
   let release:()=>void=()=>{};
   const held=new Promise<void>(resolve=>release=resolve);
   await page.route(/route-secondary-presentation.*\.js/,async request=>{if(failed)await request.abort();else{await held;await request.continue();}});
@@ -59,6 +65,7 @@ for(const failed of [false,true])test(`Decisions rhythm optional picker ${failed
   await page.waitForFunction(()=>!!(window as any).__birdSquadGame.scene.getScene('RouteScene').children.getByName('route-secondary-pending'));
   if(failed)await page.waitForFunction(()=>(window as any).__birdSquadGame.scene.getScene('RouteScene').children.getByName('route-secondary-pending')?.getData('status')==='error');
   for(const size of sizes){await page.setViewportSize(size);await settleCanvas(page);await page.screenshot({path:info.outputPath(`picker-${failed?'failed':'pending'}-${size.width}.png`)});}
+  await expect(page.locator('#game-status')).toContainText('No purchase or card choice is committed');
   // Vite's global download recovery is modal and intentionally owns Escape.
   if(failed){await expect(page.locator('#update-recovery')).toBeVisible();await page.keyboard.press('Escape');await expect(page.locator('#update-recovery')).toHaveCount(0);}
   await page.keyboard.press('Escape');release();

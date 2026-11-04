@@ -327,6 +327,8 @@ function describeScreen(payload: unknown): string {
   if (!settingsOpen && payload.paused !== true && payload.pauseOverlayOpen !== true && text(payload.flockStatsReading)) return text(payload.flockStatsReading);
 
   if (scene === 'RouteScene' || mode === 'routeSelection') {
+    const panelDownload = text(payload.routePanelDownload);
+    if (panelDownload) return `${panelDownload === 'error' ? 'Panel download failed' : panelDownload === 'slow' ? 'Panel is still downloading' : 'Opening panel'}. No purchase or card choice is committed. Back closes this panel. ${panelDownload === 'loading' ? 'Wait for the offers to finish loading.' : 'Recovery options are available; dismiss the recovery dialog to return here.'}`;
     const contract = isRecord(payload.districtContractChoice) ? payload.districtContractChoice : undefined;
     if (contract?.open === true) {
       const choices = records(contract.options), index = number(contract.focusIndex) ?? 0, choice = choices[index];
