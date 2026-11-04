@@ -26,8 +26,8 @@ prepared five-player handoff; automated policies cannot establish enjoyment.
 
 ## Evidence
 
-Implementation and local qualification complete; remote release qualification
-and publication are pending. Evidence uses `.artifacts/rhythm-*`.
+Implementation, full release qualification and publication are complete.
+Evidence uses `.artifacts/rhythm-*`; public interaction checks are recorded below.
 
 - Objectives now yield to selection forecasts and restore their previous
   visibility on cancel. Signature notices yield to the active bird action.
@@ -119,3 +119,29 @@ logic, within the tighter 700 KiB combined cap. The optional panel has a new
 
 No new human, physical-device or native-AT evidence exists. Existing waivers
 remain explicit; zero player sessions are represented as passes.
+
+### Release verification
+
+- [PR #22](https://github.com/willtran87/project-bird-squad/pull/22) merged as
+  `f6cb7f3c2e85220bb33c655a58d065de8680ce5e`. The merged tree exactly matches
+  qualified head `b6369443f0bd96d26b706e4efbf3be7522c73362`.
+- [PR qualification](https://github.com/willtran87/project-bird-squad/actions/runs/41804530180)
+  and [production release](https://github.com/willtran87/project-bird-squad/actions/runs/41809294641)
+  each passed 1,138 core cases, 474 browser cases and 33 unit/policy checks,
+  content/assets, delivery budgets, cache, release evidence and Pages-base smoke.
+  No failed, retried, flaky or skipped gameplay/browser cases. The PR's deploy
+  job is intentionally skipped; all 31 production jobs succeeded.
+- Qualified and production source, application chunks and HTML hashes match.
+  All 102 checked public HTML/JS/CSS and canonical leader files match the deployed
+  artifact in size and SHA-256. All ten canonical leader images are present;
+  retired Living Battles atlases are absent from the artifact.
+- All 32 post-deployment checks passed on the public Pages URL, with zero
+  failures, retries or skips: changed interactions, identity continuity,
+  proportional combat art, opening mastery/clarity and checkpoint reload.
+  Public Market and combat-selection captures were visually inspected.
+- The diagnostic run was cancelled after collecting all core results and the
+  Chromium/Firefox timing failures. The corrected run above is the qualifying
+  evidence. The isolated keyboard/touch checks also passed 9/9 across engines.
+- Local and remote feature branches are deleted; both task-owned preview servers
+  are stopped. The five-player handoff names the published revision, with zero
+  human sessions still explicitly recorded.

@@ -1,6 +1,6 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
-## 2026-11-04 — Decisions and rhythm (release qualification)
+## 2026-11-04 — Decisions and rhythm (published)
 - Accepted the clarity, strategy, encounter-rhythm, turning-point and measured
   performance pass, followed by full release tests, publication and cleanup.
 - Scope and acceptance: `docs/game/decisions-and-rhythm.md`. Keep canonical
@@ -13,7 +13,14 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
 - Local checks: 33 unit/policy, 21 browser cases across three engines and four
   real-acquisition campaign cases. Route audit: 1,024 districts, repeated demands
   1,207 → 212 with graph structure and legacy route behavior preserved.
-- Full remote release qualification, merge/publication and cleanup are pending.
+- PR #22 merged as `f6cb7f3c2e85220bb33c655a58d065de8680ce5e`. PR run
+  `41804530180` and production run `41809294641` each passed 1,138 core cases,
+  474 browser cases, 33 unit/policy checks and all static/build/Pages gates.
+  No failed, flaky, retried or skipped gameplay/browser cases.
+- Qualified and production application/source/HTML hashes match. All 102 checked
+  public files match the deployed artifact; all 32 live checks passed with zero
+  retries or skips. Feature branches and both local
+  preview servers are cleaned up; the handoff names the published revision.
 - Diagnostic full-suite failures were deferred-panel fixture readiness and the
   intentionally shortened familiar recovery timing. All 16 targeted core cases
   and six cross-browser timing checks pass after correcting those contracts.
