@@ -17,6 +17,7 @@ export interface RouteBlueprint {
   rivalEncounterIds: string[];
   streetEncounterWeights?: Record<string, number>;
   rivalEncounterWeights?: Record<string, number>;
+  encounterDemands?: Record<string, { tactic: string; enemies: number }>;
   signalIds: string[];
   basinPayloadId: string;
   nestPayloadId: string;
@@ -60,7 +61,7 @@ const COMBAT_NODE_TYPES = new Set<RouteNodeType>(['street', 'rival']);
 const SAFETY_NODE_TYPES = new Set<RouteNodeType>(['basin', 'nest']);
 const BUILD_NODE_TYPES = new Set<RouteNodeType>(['cache', 'market', 'signal', 'nest']);
 
-export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRouteMap {
+export function generateRouteMap(bp: RouteBlueprint, seed: number, rhythm = false): RuntimeRouteMap {
   const rand = mulberry32(seed);
   const ri = (min: number, max: number) => min + Math.floor(rand() * (max - min + 1));
   const pick = <T,>(arr: T[]): T | undefined => (arr.length ? arr[Math.floor(rand() * arr.length)] : undefined);
@@ -409,6 +410,33 @@ export function generateRouteMap(bp: RouteBlueprint, seed: number): RuntimeRoute
     }
   };
   repairPathRules();
+
+  // Versioned opt-in: preserve every original graph/repair and all old saves.
+  // Compare the last combat on every incoming path, including paths through a
+  // rest or market. Only swap street encounters within the same enemy-count
+  // band; bosses, rivals and the teaching opener retain their authored identity.
+  if (rhythm && bp.encounterDemands) {
+    const demands = bp.encounterDemands;
+    const previous = new Map<string, Set<string>>();
+    const uses = new Map<string, number>();
+    for (const column of columns) for (const id of column) {
+      const node = byId.get(id)!;
+      const incoming = new Set(edges.filter(edge => edge.to === id).flatMap(edge => [...(previous.get(edge.from) ?? [])]));
+      const demand = demands[node.payloadId];
+      if (node.type === 'street' && id !== entryId && demand && incoming.has(demand.tactic)) {
+        const alternatives = nonEntryStreetIds.filter(candidate => demands[candidate]?.enemies === demand.enemies
+          && !incoming.has(demands[candidate].tactic));
+        if (alternatives.length) {
+          const minUses = Math.min(...alternatives.map(candidate => uses.get(candidate) ?? 0));
+          node.payloadId = pickWeightedPayload(alternatives.filter(candidate => (uses.get(candidate) ?? 0) === minUses), bp.streetEncounterWeights)!;
+        }
+      }
+      if (['street', 'rival', 'boss'].includes(node.type)) {
+        previous.set(id, new Set(demands[node.payloadId] ? [demands[node.payloadId].tactic] : []));
+        uses.set(node.payloadId, (uses.get(node.payloadId) ?? 0) + 1);
+      } else previous.set(id, incoming);
+    }
+  }
 
   return {
     version: '0.1',

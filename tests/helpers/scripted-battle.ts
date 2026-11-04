@@ -12,6 +12,8 @@ export function resolveScriptedBattle(options: 'balanced' | 'pressure' | 'shelte
   const decisions: Array<{ turn: number; card: string; target?: string; hp: number }> = [];
   const choices: Array<{ source: string; kind: string; ids: string[] }> = [];
   const supplyUses: Array<{ id: string; turn: number; hp: number; remaining: number }> = [];
+  let cleanupRoosts = 0;
+  const owned = b.allDeckCards().map((c: any) => ({ id: c.id, effects: (c.upgraded ? c.runtime.upgrade.effects : c.runtime.effects) }));
   b.renderAll = () => {}; // Presentation is captured at the encounter boundary.
   const rate = (outcome: any, effects: string[], incoming: number) =>
     outcome.enemyDamage * (policy === 'pressure' ? 1.6 : 1)
@@ -96,11 +98,17 @@ export function resolveScriptedBattle(options: 'balanced' | 'pressure' | 'shelte
       const pick = candidates[0];
       decisions.push({ turn: b.turn, card: pick?.card.id ?? 'ROOST', target: pick?.enemy.id, hp: b.flock.hp });
       if (pick) b.playCard(pick.card, pick.enemy.id, { resolveDelayMs: 0 });
-      else b.endTurn();
+      else {
+        const alive = b.enemies.filter((e: any) => e.hp > 0);
+        if (alive.length === 1 && alive[0].hp <= alive[0].maxHp * 0.2) cleanupRoosts++;
+        b.endTurn();
+      }
       resolveChoices();
       b.retireCombatFxForOutcome();
     }
   } finally { b.renderAll = render; b.renderAll(); }
   return { mode: b.mode, turn: b.turn, hp: b.flock.hp, deck: b.allDeckCards().length,
-    decisions, choices, supplyUses, encounter: b.getTextState().route.currentPayloadId };
+    decisions, choices, supplyUses, owned, cleanupRoosts, blocked: b.statBlocked,
+    blockMoment: b.flyway.blockMoment, comboMoment: b.flyway.comboMoment,
+    encounter: b.getTextState().route.currentPayloadId };
 }

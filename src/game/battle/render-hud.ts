@@ -369,7 +369,7 @@ function renderObjective(context: BattleHudRenderContext) {
   const y = 138;
   const panel = scene.add.rectangle(x, y, 306, 76, 0x07101a, 0.94)
     .setStrokeStyle(1, objective.accent, 0.76)
-    .setName('encounter-objective');
+    .setName('encounter-objective').setData('deferToCard', true);
   root.add(panel);
   context.attachTooltip(panel, objective.text.split('  /  ')[0] ?? 'Encounter Goal', objective.detail);
   root.add(scene.add.text(x, y, objective.text, {
@@ -379,7 +379,7 @@ function renderObjective(context: BattleHudRenderContext) {
     color: '#e8f1f7',
     wordWrap: { width: 282 }, resolution: 2,
     align: 'center',
-  }).setOrigin(0.5).setName('encounter-objective'));
+  }).setOrigin(0.5).setName('encounter-objective').setData('deferToCard', true));
 }
 
 export function renderBattleSelectionPreview(
@@ -415,9 +415,10 @@ export function renderBattleSelectionPreview(
   // A card decision temporarily takes precedence over history and the Roost
   // lesson. First-card/Molt teaching remains; cancellation restores the lesson.
   const logObjects = root.list.filter(child => child.name === 'combat-log-hit' || child.name === 'combat-log-latest' || child.getData('deferToCard')) as (Phaser.GameObjects.Rectangle | Phaser.GameObjects.Text)[];
+  const previousVisibility = logObjects.map(child => child.visible);
   logObjects.forEach(child => child.setVisible(false));
   container.once(Phaser.GameObjects.Events.DESTROY, () => {
-    logObjects.forEach(child => { if (child.active) child.setVisible(true); });
+    logObjects.forEach((child, index) => { if (child.active) child.setVisible(previousVisibility[index]); });
   });
   container.add(scene.add.rectangle(gameWidth / 2, y, 600, 52, 0x07101a, 0.97)
     .setStrokeStyle(1, context.cyan, 0.72)

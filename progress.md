@@ -1,5 +1,20 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-11-04 — Decisions and rhythm (release qualification)
+- Accepted the clarity, strategy, encounter-rhythm, turning-point and measured
+  performance pass, followed by full release tests, publication and cleanup.
+- Scope and acceptance: `docs/game/decisions-and-rhythm.md`. Keep canonical
+  identities, existing save recovery and full rules intact. Human sessions remain
+  zero; the existing five-player handoff is the accepted human-test deliverable.
+- Implemented selection hierarchy, versioned route demand variation, actual
+  full-block highlights, shorter known empty recovery and lazy market/picker UI.
+- Boot measured 709.7 → 694.1 KiB; combined ceiling tightened to 700 KiB.
+  Native-clock card timings 334.5 → 337.7 ms; no FPS improvement claimed.
+- Local checks: 33 unit/policy, 21 browser cases across three engines and four
+  real-acquisition campaign cases. Route audit: 1,024 districts, repeated demands
+  1,207 → 212 with graph structure and legacy route behavior preserved.
+- Full remote release qualification, merge/publication and cleanup are pending.
+
 ## 2026-11-01 — Opening mastery (published)
 - Accepted the opening polish recommendations: clearer teaching hands and card
   faces, tactical payoff explanations, three strategy showcase fights, restrained

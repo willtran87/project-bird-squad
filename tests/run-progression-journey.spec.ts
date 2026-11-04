@@ -157,7 +157,8 @@ for (const scenario of cases) test(`seeded run progression: ${scenario.plan ?? (
         const mode = b.mode;
         if (mode === 'cardReward') {
           const card = b.rewardChoices.find((c: any) => c.runtime.kind !== 'snag');
-          if (card) { b.chooseRewardCard(card.id); return { kind: mode, id: card.id }; }
+          const offered = b.rewardChoices.map((c: any) => ({ id: c.id, effects: c.runtime.effects }));
+          if (card) { b.chooseRewardCard(card.id); return { kind: mode, id: card.id, offered }; }
           b.skipCardReward(); return { kind: 'skip-card' };
         }
         if (mode === 'upgradeReward') { const id = b.upgradeChoices[0].id; b.chooseUpgradeCard(id); return { kind: mode, id }; }

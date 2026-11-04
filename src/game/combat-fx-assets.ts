@@ -647,8 +647,10 @@ export function enemyMoveTimings(host: any, enemy: any, move: any) {
     windup: delay(recoveryOnly ? 300 : familiar ? (simpleSupport ? 840 : 1260) : simpleSupport ? 1200 : 1800, ENEMY_ATTACK_WINDUP_MS),
     release: delay(recoveryOnly ? 0 : familiar ? (simpleSupport ? 196 : 385) : simpleSupport ? 280 : 550, ENEMY_ATTACK_RELEASE_MS),
     anticipation: delay(0, ENEMY_ATTACK_IMPACT_ANTICIPATION_MS),
-    impact: delay(650, ENEMY_ATTACK_IMPACT_HOLD_MS),
-    recovery: delay(240, ENEMY_ATTACK_RECOVER_MS),
+    // Known empty recovery beats have no new impact to explain. Keep the first
+    // tell, attacks, support effects and the cinematic preference unchanged.
+    impact: delay(recoveryOnly ? 420 : 650, ENEMY_ATTACK_IMPACT_HOLD_MS),
+    recovery: delay(recoveryOnly ? 160 : 240, ENEMY_ATTACK_RECOVER_MS),
   };
 }
 
