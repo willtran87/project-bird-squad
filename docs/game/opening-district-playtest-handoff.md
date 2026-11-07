@@ -57,6 +57,11 @@ player-reported.
 After the opening observations, let players discover Calls, combinations and
 Molt without coaching. Ask them to explain a chosen specialization or reward's
 benefit and tradeoff. Observe the earned Canal gift and optional isolated demo.
+For the clearer-choices candidate, record whether players can explain Wingbeat
+cost, enemy outcome and Cover before confirming. After a reward choice, ask
+which owned bird could support it and what condition must hold. Record whether
+they mistake pairing advice for a guaranteed draw, or for a promise that Molt
+uses the same rules. Ask after their unaided decision, not as coaching.
 After the unaided run, offer Journal → Practice & feedback → Try a strategy.
 Record whether the player chooses a challenge, can describe its alternative
 approach, and voluntarily retries. These supplied-flock challenges must not

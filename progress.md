@@ -1,5 +1,21 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
+## 2026-11-07 — Clearer choices and distinct builds (in progress)
+- Implement separate readable combat forecast fields, evidence-based owned-card
+  reward advice, strategy-aware earned-deck audits across shared seeds, and
+  measured fixes for repeatable interaction stalls. Preserve canonical art,
+  complete rules, deliberate confirmation and the existing human-test handoff.
+- Baseline: `6ebcb887`; branch `codex/clear-choices-distinct-builds`.
+  Baseline Pages build: `.artifacts/choices-baseline-build`, preview port 5428.
+- New cross-browser checks: 24/24 passed; 440 normal/upgraded/Molt forecasts
+  remain bounded. 33 unit/policy tests and content/assets/docs checks passed.
+- Three alternating native-clock samples per build show mixed timing, not an
+  FPS gain. Selection calls fall from seven simulations/five full views to
+  two/zero. Pages boot is 696.4/700 KiB; lazy HUD cap is explicitly 12 KiB.
+- Nine strategy campaigns and complete release qualification remain pending.
+  See `docs/game/clearer-choices.md` and `docs/project/performance-notes.md`.
+- No human sessions are available; preparation remains the accepted deliverable.
+
 ## 2026-11-04 — Decisions and rhythm (published)
 - Accepted the clarity, strategy, encounter-rhythm, turning-point and measured
   performance pass, followed by full release tests, publication and cleanup.

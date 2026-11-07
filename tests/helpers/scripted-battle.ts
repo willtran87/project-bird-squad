@@ -4,23 +4,29 @@
 export function resolveScriptedBattle(options: 'balanced' | 'pressure' | 'sheltered' | {
   policy: 'balanced' | 'pressure' | 'sheltered';
   supplies: Array<{ id: string; timing: string; answerType: string; effects: string[] }>;
+  plan?: string;
 }) {
   const policy = typeof options === 'string' ? options : options.policy;
   const supplies = typeof options === 'string' ? [] : options.supplies;
+  const plan = typeof options === 'string' ? undefined : options.plan;
   const b = (window as any).__birdSquadGame.scene.getScene('BattleScene');
   const render = b.renderAll;
-  const decisions: Array<{ turn: number; card: string; target?: string; hp: number }> = [];
+  const decisions: Array<{ turn: number; card: string; target?: string; hp: number; molt: boolean; energy: number; resonance: number }> = [];
   const choices: Array<{ source: string; kind: string; ids: string[] }> = [];
   const supplyUses: Array<{ id: string; turn: number; hp: number; remaining: number }> = [];
   let cleanupRoosts = 0;
+  const resonanceBefore = b.flyway.resonanceSpent ?? 0;
   const owned = b.allDeckCards().map((c: any) => ({ id: c.id, effects: (c.upgraded ? c.runtime.upgrade.effects : c.runtime.effects) }));
   b.renderAll = () => {}; // Presentation is captured at the encounter boundary.
   const rate = (outcome: any, effects: string[], incoming: number) =>
-    outcome.enemyDamage * (policy === 'pressure' ? 1.6 : 1)
-    + Math.max(0, Math.min(incoming, outcome.coverGain)) * (policy === 'pressure' ? 0.35 : 0.9)
+    outcome.enemyDamage * (policy === 'pressure' ? 1.6 : plan === 'shelter' ? 0.8 : 1)
+    + Math.max(0, Math.min(incoming, outcome.coverGain)) * (plan === 'shelter' ? 1.4 : policy === 'pressure' ? 0.35 : 0.9)
     + Math.max(0, outcome.cohesionDelta) * 0.8
     + effects.reduce((n, effect) => n + (/^draw\(/.test(effect) ? 1.4 : 0), 0)
-    + Math.max(0, outcome.energyDelta) * 0.8;
+    + Math.max(0, outcome.energyDelta) * (plan === 'tempo' ? 1.5 : 0.8)
+    + (plan === 'tempo' ? Math.max(0, outcome.resonanceDelta) * 1.5 : 0)
+    + (plan === 'shelter' ? Math.max(0, outcome.nextTurnEnergyDelta) + Math.max(0, outcome.nextTurnDrawDelta) : 0)
+    + (plan === 'molt' ? Math.max(0, outcome.moltPowerApplied) * 0.8 : 0);
   try {
     for (let step = 0; step < 200 && b.mode === 'battle'; step++) {
       const candidates: any[] = [], incoming = b.incomingFlockDamagePreview().hpLoss;
@@ -89,14 +95,15 @@ export function resolveScriptedBattle(options: 'balanced' | 'pressure' | 'shelte
             const normal = best();
             let molted = 0;
             try { b.flock.molt = true; molted = best(); } finally { b.flock.molt = false; }
-            score += Math.max(0, molted - normal) + (molted > 0 ? 0.1 : 0);
+            score += Math.max(0, molted - normal) * (plan === 'molt' ? 1.5 : 1) + (molted > 0 ? 0.1 : 0);
           }
           if (score > 0) candidates.push({ card, enemy, score });
         }
       }
       candidates.sort((a, z) => z.score - a.score);
       const pick = candidates[0];
-      decisions.push({ turn: b.turn, card: pick?.card.id ?? 'ROOST', target: pick?.enemy.id, hp: b.flock.hp });
+      decisions.push({ turn: b.turn, card: pick?.card.id ?? 'ROOST', target: pick?.enemy.id, hp: b.flock.hp,
+        molt: b.flock.molt, energy: b.energy, resonance: b.spark });
       if (pick) b.playCard(pick.card, pick.enemy.id, { resolveDelayMs: 0 });
       else {
         const alive = b.enemies.filter((e: any) => e.hp > 0);
@@ -108,7 +115,9 @@ export function resolveScriptedBattle(options: 'balanced' | 'pressure' | 'shelte
     }
   } finally { b.renderAll = render; b.renderAll(); }
   return { mode: b.mode, turn: b.turn, hp: b.flock.hp, deck: b.allDeckCards().length,
-    decisions, choices, supplyUses, owned, cleanupRoosts, blocked: b.statBlocked,
+    decisions, choices, supplyUses, owned, cleanupRoosts, blocked: b.statBlocked, plan,
+    resonanceSpent: (b.flyway.resonanceSpent ?? 0) - resonanceBefore,
+    combinations: [...b.flightCombat.combos],
     blockMoment: b.flyway.blockMoment, comboMoment: b.flyway.comboMoment,
     encounter: b.getTextState().route.currentPayloadId };
 }

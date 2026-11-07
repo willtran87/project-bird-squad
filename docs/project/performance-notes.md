@@ -1,5 +1,41 @@
 # Performance Notes
 
+## November 7 2026 — Clearer choices
+
+Pages boot is 696.4 KiB against the unchanged 700 KiB cap, versus 694.1 KiB
+at baseline `6ebcb887`. The separate battle HUD grows to 11.4 KiB for three
+forecast fields and a persistent critical-warning row; its lazy-module cap
+changes from 10 to 12 KiB. This is an explicit feature cost, not a size win.
+No artwork, text resolution or motion quality was reduced.
+
+Selection refresh reuses its current forecast, updates only visible selection
+and Flow state, and builds the complete Inspect dossier on activation. Separate
+instrumentation consistently measured seven simulations/five full card views
+before versus two/zero after. There is no persistent simulation cache.
+
+Three alternating production-build runs per version, Chromium 1440×900,
+native clock, no concurrent browser tests or synthetic stepping. Each run has
+36 selections, nine plays, three entries (two warm). Values below list all
+three runs, in order. Extra resources are confined to this timing fixture;
+the earned-deck strategy audit uses ordinary resources.
+
+| Metric, ms | Baseline | Candidate |
+| --- | --- | --- |
+| Selection median | 40.3 / 41.5 / 42.3 | 31.7 / 60.6 / 48.2 |
+| Selection synchronous median | 4.3 / 4.8 / 4.3 | 3.9 / 4.2 / 5.6 |
+| Selection frame P95 | 50.1 / 50.1 / 83.3 | 33.4 / 66.7 / 50.1 |
+| Play median | 333.8 / 332.7 / 342.0 | 322.3 / 338.6 / 361.8 |
+| Play frame P95 | 83.3 / 83.4 / 83.4 | 66.7 / 100.0 / 100.0 |
+| Entry median | 1940.1 / 1990.9 / 1982.8 | 1919.9 / 2076.4 / 1995.9 |
+| Entry frame P95 | 116.6 / 116.7 / 133.4 | 100.0 / 133.3 / 133.3 |
+| Entry max frame | 266.7 / 283.3 / 416.6 | 283.3 / 300.0 / 316.7 |
+| Warm-entry frame P95 | 50.1 / 50.0 / 83.3 | 50.0 / 83.3 / 83.4 |
+
+These samples establish less redundant work, not improved latency or FPS.
+Several candidate timing samples are slower; no general performance gain is
+claimed. All six runs were free of captured page errors. Raw profiles are local
+`.artifacts/choices-{baseline,baseline-2,baseline-3,candidate-1,candidate-2,candidate-3}/profile.json`.
+
 ## October 28 2026 — Distinct Builds + Living Battles
 
 Root boot is 697.2 KiB / 195.0 KiB gzip; main is 655.1 / 178.4 KiB. Existing
