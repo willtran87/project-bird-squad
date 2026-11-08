@@ -459,11 +459,11 @@ export function renderBattleSelectionPreview(
     }).setOrigin(0, 0.5).setName('combat-selection-card-target');
     container.add(fitTextExcerpt(title, `${preview.card} → ${preview.target}`, 1));
   }
-  // Confirmation sits beside the hand, immediately above Full rules. It must
-  // not occupy the enemy status row when the forecast has critical warnings.
-  const commandX = preview.fields ? 90 : gameWidth / 2 + 190;
-  const commandY = preview.fields ? 450 : titleY;
-  container.add(scene.add.rectangle(commandX, commandY, preview.fields ? 128 : 188, preview.fields ? 48 : 24, 0x102534, 0.98)
+  // The right end of the decision lane clears enemy statuses, Roost and both
+  // ordinary/paged hands. The left gutter belongs to paging and inspection.
+  const commandX = preview.fields ? 1050 : gameWidth / 2 + 190;
+  const commandY = preview.fields ? 400 : titleY;
+  container.add(scene.add.rectangle(commandX, commandY, 188, 24, 0x102534, 0.98)
     .setStrokeStyle(1, context.gold, 0.72)
     .setName('combat-selection-command-frame'));
   container.add(scene.add.text(commandX, commandY, 'CONFIRM TO PLAY', {
@@ -472,7 +472,6 @@ export function renderBattleSelectionPreview(
     resolution: 2,
     fontStyle: boldFontStyle,
     color: '#dffbff',
-    ...(preview.fields ? { wordWrap: { width: 120 }, align: 'center' } : {}),
   }).setOrigin(0.5).setName('combat-selection-command'));
   if (preview.fields) {
     const { cost, impact, protection, notice, critical } = preview.fields;

@@ -11,7 +11,8 @@ Implementation and qualification are in progress; this is not a release claim.
   phase change, attack disruption and unresolved choice warnings remain visible.
   Complete ordered outcomes remain in Full rules. The two-row preview keeps
   its original 52-pixel lane above the hand, below enemy statuses. Confirmation
-  sits beside the hand above Full rules. The selected card and target retain
+  sits to the right of the forecast, above Roost and clear of hand paging.
+  The selected card and target retain
   their existing identity labels; secondary feedback yields during selection.
 - Reward advice uses normal/upgraded rules, owned cards, actual Resonance
   thresholds, guaranteed producers and a stated three-Wingbeat base budget.
@@ -122,3 +123,19 @@ checks across Chromium, Firefox and WebKit. Crowded status/critical-warning
 screens were inspected at supported sizes. The unmodified shared game client
 selected and played First Flight, with clean forecast dismissal and no captured
 errors. Final exact-revision release qualification remains required.
+
+Diagnostic `42430004689` completed all 1,152 core cases (1,150 passed) and all
+498 browser cases (passed). Its two large-hand cases exposed the left-side
+confirmation hint overlapping a paged hand; the same gutter also belongs to
+paging controls. The final hint uses the right end of the forecast lane.
+Geometry checks now cover cards, paging, inspection, Roost, enemy statuses and
+text containment separately. Large-hand cases join the permanent browser gate,
+raising qualification to 168 cases per engine (504 total). This diagnostic is
+not qualifying release evidence.
+
+The final right-side hint passes 23 layout/identity/catalog checks, 33 checks
+across Chromium, Firefox and WebKit, and three additional critical-warning
+clearance checks. The unmodified shared client selected and played First Flight;
+reviewed screenshots show the forecast dismissing cleanly. Six final native
+timing runs captured no page errors, with mixed timing results documented in
+the performance notes. Full qualification must pass on this exact revision.

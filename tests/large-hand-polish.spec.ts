@@ -98,12 +98,22 @@ for (const remapped of [false, true]) test(`large hands remain readable and page
     const panel = b.cardPreview.getBounds();
     const next = b.handLayer.getByName('combat-hand-next').getBounds();
     const draw = b.root.list.find((o: any) => o.name === 'combat-pile-hit').getBounds();
-    const forecast = b.selectionOutcomePreview.getBounds();
+    const forecast = b.selectionOutcomePreview.getByName('combat-outcome-preview').getBounds();
+    const confirmation = b.selectionOutcomePreview.getByName('combat-selection-command-frame').getBounds();
+    const command = b.selectionOutcomePreview.getByName('combat-selection-command').getBounds();
     const hint = b.root.getByName('combat-input-hint').getBounds();
+    const clear=(a:any,z:any)=>a.right<z.left||a.left>z.right||a.bottom<z.top||a.top>z.bottom;
+    const controls=[next,b.handLayer.getByName('combat-hand-previous').getBounds(),b.root.getByName('combat-roost-hit').getBounds(),panel,draw];
     return { separate: panel.top > next.bottom && panel.top >= draw.bottom + 2, contained: panel.bottom <= 720,
-      clearHand: [...b.handCardRects.values()].every((r: any) => forecast.bottom < r.getBounds().top && hint.bottom < r.getBounds().top) };
+      clearHand: [...b.handCardRects.values()].every((r: any) => {
+        const card=r.getBounds();
+        return forecast.bottom < card.top && hint.bottom < card.top
+          && (confirmation.right < card.left || confirmation.left > card.right || confirmation.bottom < card.top || confirmation.top > card.bottom);
+      }),
+      commandContained: command.left>=confirmation.left && command.right<=confirmation.right && command.top>=confirmation.top && command.bottom<=confirmation.bottom,
+      controlsClear:controls.every(r=>clear(confirmation,r)) };
   });
-  expect(inspect).toEqual({ separate: true, contained: true, clearHand: true });
+  expect(inspect).toEqual({ separate: true, contained: true, clearHand: true, commandContained: true, controlsClear:true });
   await page.screenshot({ path: info.outputPath('large-hand-focused-1000.png') });
   await pressController(page, 14);
   expect(await read()).toMatchObject({ page: 0, selected: ids[4], energy: 100, hp: initial.hp });

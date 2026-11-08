@@ -13,32 +13,33 @@ and Flow state, and builds the complete Inspect dossier on activation. Separate
 instrumentation consistently measured seven simulations/five full card views
 before versus two/zero after. There is no persistent simulation cache.
 
-Three planned alternating production-build runs per version, followed by one
-diagnostic pair after a cold-entry outlier, Chromium 1440×900, native clock,
+Three alternating production-build runs per version, Chromium 1440×900, native clock,
 no concurrent browser tests or synthetic stepping. Each run has 36 selections,
-nine plays, three entries (two warm). Values list all four runs, in order.
-These final-layout samples supersede the initial taller-forecast samples.
+nine plays, three entries (two warm). Values list all three runs, in order.
+These final right-side-confirmation samples supersede earlier layout samples.
 Extra resources are confined to this timing fixture;
 the earned-deck strategy audit uses ordinary resources.
 
 | Metric, ms | Baseline | Candidate |
 | --- | --- | --- |
-| Selection median | 34.3 / 31.8 / 31.2 / 30.5 | 30.4 / 33.7 / 42.1 / 45.1 |
-| Selection synchronous median | 4.3 / 4.3 / 4.5 / 4.5 | 4.0 / 4.2 / 6.5 / 4.0 |
-| Selection frame P95 | 33.4 / 49.9 / 33.4 / 33.4 | 33.4 / 50.0 / 50.0 / 50.1 |
-| Play median | 330.4 / 331.6 / 335.1 / 352.3 | 316.5 / 355.8 / 371.4 / 356.9 |
-| Play frame P95 | 66.7 / 66.7 / 66.7 / 83.2 | 66.7 / 83.3 / 100.0 / 83.3 |
-| Entry median | 1955.3 / 1917.4 / 1921.6 / 1929.3 | 1929.0 / 1931.5 / 2019.7 / 2001.9 |
-| Entry frame P95 | 100.0 / 100.0 / 116.6 / 100.0 | 116.6 / 100.0 / 150.0 / 149.9 |
-| Entry max frame | 300.0 / 283.3 / 316.6 / 433.2 | 350.0 / 283.3 / 1800.0 / 350.0 |
-| Warm-entry frame P95 | 50.0 / 33.5 / 33.4 / 49.9 | 50.0 / 50.0 / 50.0 / 50.1 |
+| Selection median | 31.1 / 30.6 / 33.1 | 42.1 / 33.4 / 31.1 |
+| Selection synchronous median | 4.7 / 4.3 / 4.7 | 6.2 / 3.6 / 3.9 |
+| Selection frame P95 | 33.4 / 33.4 / 49.9 | 50.1 / 49.9 / 33.4 |
+| Play median | 337.3 / 352.2 / 345.0 | 366.4 / 342.5 / 354.2 |
+| Play frame P95 | 66.6 / 66.7 / 66.7 | 99.9 / 66.8 / 66.7 |
+| Entry median | 1937.4 / 1928.5 / 1949.0 | 2013.1 / 1926.2 / 1937.4 |
+| Entry frame P95 | 100.0 / 83.3 / 133.3 | 149.9 / 116.7 / 116.7 |
+| Entry max frame | 349.9 / 1333.3 / 316.6 | 1250.0 / 366.6 / 400.0 |
+| Warm-entry frame P95 | 33.4 / 33.4 / 50.0 | 50.0 / 33.5 / 33.5 |
 
 These samples establish less redundant work, not improved latency or FPS.
 Several candidate timing samples are slower; no general performance gain is
-claimed. The candidate's 1.8-second cold-entry frame did not recur in the
-diagnostic pair, but its cause is unverified; it is retained, not called fixed.
-All eight runs were free of captured page errors. Raw profiles are local
-`.artifacts/choices-final-{baseline,candidate}-{1,2,3,4}/profile.json`.
+claimed. Both versions show long cold-entry frames. An earlier candidate's
+1.8-second cold-entry frame did not recur at that magnitude, but its cause is
+unverified; it is retained, not called fixed. All six final runs were free of
+captured page errors. Raw profiles are local
+`.artifacts/choices-release-{baseline,candidate}-{1,2,3}/profile.json`; earlier
+outlier evidence remains in `.artifacts/choices-final-candidate-3/profile.json`.
 
 ## October 28 2026 — Distinct Builds + Living Battles
 

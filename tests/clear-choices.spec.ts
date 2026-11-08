@@ -67,9 +67,13 @@ test('Clear choices critical forecasts stay complete and separate at every suppo
         const p=b.selectionOutcomePreview,box=p.getByName('combat-outcome-preview').getBounds();
         const values=['combat-selection-summary','combat-selection-impact','combat-selection-protection','combat-selection-notice'].map(name=>{
           const t=p.getByName(name),r=t.getBounds();return {name,text:t.text,left:r.left,right:r.right,top:r.top,bottom:r.bottom,fits:r.left>=box.left&&r.right<=box.right&&r.top>=box.top&&r.bottom<=box.bottom};});
+        const command=p.getByName('combat-selection-command-frame').getBounds(),commandText=p.getByName('combat-selection-command').getBounds();
+        const clear=(a:any,z:any)=>a.right<=z.left||a.left>=z.right||a.bottom<=z.top||a.top>=z.bottom;
         const enemyClear=b.root.list.filter((o:any)=>['combat-enemy-vitals','combat-enemy-status-panel','combat-boss-phase-badge','combat-objective-target','combat-elite-badge'].includes(o.name))
-          .every((o:any)=>{const r=o.getBounds();return r.right<=box.left||r.left>=box.right||r.bottom<=box.top||r.top>=box.bottom;});
-        return {values,details:view.details,fields:view.fields,bottom:box.bottom,top:box.top,enemyClear};
+          .every((o:any)=>clear(o.getBounds(),box)&&clear(o.getBounds(),command));
+        const controlsClear=[...b.handCardRects.values(),b.root.getByName('combat-roost-hit')].every((o:any)=>clear(o.getBounds(),command))&&clear(box,command);
+        const commandContained=commandText.left>=command.left&&commandText.right<=command.right&&commandText.top>=command.top&&commandText.bottom<=command.bottom;
+        return {values,details:view.details,fields:view.fields,bottom:box.bottom,top:box.top,enemyClear,controlsClear,commandContained};
       },scenario);
       expect(result.values.every(v=>v.fits)).toBe(true);
       expect(result.values[0].right).toBeLessThan(result.values[1].left);
@@ -78,6 +82,7 @@ test('Clear choices critical forecasts stay complete and separate at every suppo
       expect(result.bottom).toBeLessThan(444);
       expect(result.top).toBeGreaterThanOrEqual(386);
       expect(result.enemyClear).toBe(true);
+      expect(result.controlsClear&&result.commandContained).toBe(true);
       if(scenario==='lethal')expect(result.fields.impact).toContain('DEFEATED');
       if(scenario==='phase-choice') {expect(result.fields.notice).toContain('PHASE II');expect(result.fields.notice).toContain('ATTACK DISRUPTED');expect(result.fields.notice).toContain('later effects pending');expect(result.details).toContain('Attack 20');}
       await settleCanvas(page);

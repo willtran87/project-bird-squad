@@ -25,7 +25,16 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
   across browsers. Final shared-client selection/play captures are clean.
 - Final native samples still show mixed timing; a 1.8-second cold-entry outlier
   did not repeat in a diagnostic pair. Its cause is unverified, not fixed.
+- Diagnostic `42430004689`: 1,150/1,152 core and 498/498 browser cases passed.
+  The two failures exposed the confirmation hint overlapping large, paged hands.
+  It now sits to the right of the forecast above Roost. Hand/pager/inspection
+  geometry is explicitly checked; large hands join all three browser gates
+  (168 cases per engine / 504 total). Final release qualification remains pending.
   See `docs/game/clearer-choices.md` and `docs/project/performance-notes.md`.
+- Final right-side layout: 23/23 layout/identity/catalog, 33/33 cross-browser,
+  and 3/3 focused critical-warning checks passed. Final shared-client captures
+  show clean selection/play transitions. Six native samples retain mixed
+  timings and cold-entry outliers in both versions; no latency gain is claimed.
 - No human sessions are available; preparation remains the accepted deliverable.
 
 ## 2026-11-04 — Decisions and rhythm (published)
