@@ -8,8 +8,8 @@ assistive-technology evidence.
 ## Current session kit
 
 - Game: <https://willtran87.github.io/project-bird-squad/?playtest=1>.
-- Published revision: `f6cb7f3c2e85220bb33c655a58d065de8680ce5e`.
-- Current scope and release evidence: [decisions and rhythm](decisions-and-rhythm.md).
+- Published revision: `a072362d23e0c9f15938171a450c82b7060b33d3`.
+- Current scope and release evidence: [clearer choices and distinct builds](clearer-choices.md).
 - Instructions: [first-run runbook](playtest-runbook.md).
 - One blank copy per tester: [observer sheet](playtest-observer-template.md).
 - Manual hardware/accessibility checks: [release evidence runbook](release-evidence-runbook.md).
@@ -57,7 +57,7 @@ player-reported.
 After the opening observations, let players discover Calls, combinations and
 Molt without coaching. Ask them to explain a chosen specialization or reward's
 benefit and tradeoff. Observe the earned Canal gift and optional isolated demo.
-For the clearer-choices candidate, record whether players can explain Wingbeat
+For the clearer-choices release, record whether players can explain Wingbeat
 cost, enemy outcome and Cover before confirming. After a reward choice, ask
 which owned bird could support it and what condition must hold. Record whether
 they mistake pairing advice for a guaranteed draw, or for a promise that Molt

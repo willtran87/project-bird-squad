@@ -3,7 +3,7 @@
 Accepted scope: readable combat consequences, useful owned-flock reward advice,
 strategy-aware earned-deck audits on shared seeds, measured interaction work,
 and the prepared five-player handoff. Canonical art and game rules are retained.
-Implementation and qualification are in progress; this is not a release claim.
+Published as `a072362d23e0c9f15938171a450c82b7060b33d3`; release evidence is below.
 
 ## Player-facing changes
 
@@ -106,8 +106,8 @@ as did 33 unit/policy checks. Review then found a duplicate-identity reader
 edge case: an owned Preened copy could replace the offered base copy's advice.
 Readers now carry the exact inspected card; both reward and Preen tests include
 an owned duplicate with different rules. Initial CI run `42427628611` was
-cancelled as superseded and is not qualifying evidence. Final qualification
-must cover this fix.
+cancelled as superseded and is not qualifying evidence. The clean release
+qualification below includes this fix.
 
 The next diagnostic run (`42428071928`) exposed an actual crowded-status
 overlap from the initial 80-pixel forecast, plus an old empty-deck copy
@@ -122,7 +122,7 @@ encounter catalogs, the entire combat cast and new choices, plus 27 browser
 checks across Chromium, Firefox and WebKit. Crowded status/critical-warning
 screens were inspected at supported sizes. The unmodified shared game client
 selected and played First Flight, with clean forecast dismissal and no captured
-errors. Final exact-revision release qualification remains required.
+errors. These local checks precede the clean release qualification below.
 
 Diagnostic `42430004689` completed all 1,152 core cases (1,150 passed) and all
 498 browser cases (passed). Its two large-hand cases exposed the left-side
@@ -138,10 +138,41 @@ across Chromium, Firefox and WebKit, and three additional critical-warning
 clearance checks. The unmodified shared client selected and played First Flight;
 reviewed screenshots show the forecast dismissing cleanly. Six final native
 timing runs captured no page errors, with mixed timing results documented in
-the performance notes. Full qualification must pass on this exact revision.
+the performance notes. The clean full qualification below covers this layout.
 
 Diagnostic `42433365993` exposed an older title-flourish test sampling a fading
 glow after a fixed wall-clock delay. It now waits for lazy-module readiness
 with scene timers/tweens paused, then samples a defined animation beat. The
 existing visible-art, pending-launch and route-transition assertions remain.
 This superseded run is not qualifying evidence.
+
+## Release verification
+
+- [PR #23](https://github.com/willtran87/project-bird-squad/pull/23) merged as
+  `a072362d23e0c9f15938171a450c82b7060b33d3`. Its tree exactly matches qualified
+  head `5850ae4e7ea32649eeb5277fd45b088d91262895`.
+- [PR qualification](https://github.com/willtran87/project-bird-squad/actions/runs/42434383091)
+  and [production release](https://github.com/willtran87/project-bird-squad/actions/runs/42436886395)
+  each passed 1,152 core cases, 504 browser cases and 33 unit/policy checks,
+  content/assets/docs, delivery budgets, cache, release policy and Pages-base
+  smoke. Gameplay/browser reports contain no failures, retries, flakes or skips.
+  The PR deploy job is intentionally skipped; all 31 production jobs succeeded.
+- Qualified and production source, application chunks and HTML hashes match.
+  All 102 checked public HTML/JS/CSS and canonical leader files match the deployed
+  artifact in size and SHA-256. All ten canonical leader images are present;
+  retired Living Battles atlases are absent.
+- All 42 post-deployment checks passed with no failures, retries or skips.
+  Public forecast, Preen and large-hand captures were reviewed, including native
+  2560×1600 and minimum-size captures. The shared client also selected and played
+  First Flight with clean forecast dismissal and no captured page errors.
+- The title-flourish correction passed in all three engines. Its repeat runner
+  stalled during worker teardown after eight passing cases; that run was stopped,
+  and a standalone WebKit check passed. Neither the interrupted local run nor
+  superseded CI diagnostics substitutes for the clean full runs above.
+- The five-player handoff names this published revision. Human sessions remain
+  zero; existing physical-device and assistive-technology waivers remain explicit.
+  Native timings remain mixed; fewer repeated calls do not establish a latency
+  or frame-rate improvement. No speculative balance adjustment was made.
+- The merged local and remote feature branches are deleted. Task-owned preview
+  servers and test processes are stopped. Documentation closure is recorded
+  separately from the published runtime revision above.

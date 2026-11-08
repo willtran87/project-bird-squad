@@ -1,6 +1,19 @@
 Original prompt: make it happen, can you wire the found artifacts in an appropriate spot that I can view during the run, along with a tooltip to tell me what they do
 
-## 2026-11-07 — Clearer choices and distinct builds (in progress)
+## 2026-11-07 — Clearer choices and distinct builds (published)
+- PR #23 merged as `a072362d23e0c9f15938171a450c82b7060b33d3`; its tree matches
+  qualified head `5850ae4e7ea32649eeb5277fd45b088d91262895` exactly. PR run
+  `42434383091` and production run `42436886395` each passed 1,152 core cases,
+  504 browser cases, 33 unit/policy checks and all content/build/Pages gates.
+  No failed, flaky, retried or skipped gameplay/browser cases; all 31 production
+  jobs succeeded. The diagnostics below are historical, not qualification.
+- Qualified/production source, application and HTML hashes match. All 102 checked
+  public files match the deployed artifact; all 42 post-deployment checks passed
+  without failures, retries or skips. Public forecast, Preen and large-hand
+  captures were reviewed. The five-player handoff names the published revision.
+- Merged local/remote feature branches are deleted; task preview servers and
+  test processes are stopped. Documentation closure is separate from the
+  published runtime revision above.
 - Implement separate readable combat forecast fields, evidence-based owned-card
   reward advice, strategy-aware earned-deck audits across shared seeds, and
   measured fixes for repeatable interaction stalls. Preserve canonical art,
@@ -17,7 +30,7 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
   claims or speculative card changes.
 - Review fixed exact-copy advice when an owned Preened duplicate shares an
   offered base card's identity. Superseded CI `42427628611` was cancelled;
-  complete final-revision release qualification remains pending.
+  the clean full release runs above cover the correction.
 - Diagnostic `42428071928` then found crowded enemy statuses overlapping the
   taller forecast and an outdated empty-deck advice expectation. The forecast
   now retains its original 52-pixel lane; the confirmation hint clears the full
@@ -29,7 +42,7 @@ Original prompt: make it happen, can you wire the found artifacts in an appropri
   The two failures exposed the confirmation hint overlapping large, paged hands.
   It now sits to the right of the forecast above Roost. Hand/pager/inspection
   geometry is explicitly checked; large hands join all three browser gates
-  (168 cases per engine / 504 total). Final release qualification remains pending.
+  (168 cases per engine / 504 total). The clean full runs above cover the fix.
   See `docs/game/clearer-choices.md` and `docs/project/performance-notes.md`.
 - Final right-side layout: 23/23 layout/identity/catalog, 33/33 cross-browser,
   and 3/3 focused critical-warning checks passed. Final shared-client captures
